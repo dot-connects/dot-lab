@@ -204,7 +204,7 @@ async function score() {
   const acc = {}; const add2 = (k, d, side) => { const c = (k % GW) - M, r = ((k / GW) | 0) - M, id = REG_OF[region(c, r, false)], a = acc[id] || (acc[id] = [0, 0, 0, 0]);
     a[side] += d; a[side + 1]++; };
   te.forEach(k => add2(k, du[k], 0)); ue.forEach(k => add2(k, dt[k], 2));
-  const regs = REGS.map(([id, name]) => { const a = acc[id] || [0, 0, 0, 0]; return { id, name, pct: a[1] ? toPct(Math.max(a[0] / a[1], a[3] ? a[2] / a[3] : 0)) : 0 }; });
+  const regs = REGS.map(([id, name]) => { const a = acc[id] || [0, 0, 0, 0]; return { id, name, pct: a[1] + a[3] ? toPct((a[0] + a[2]) / (a[1] + a[3])) : 0 }; });
   // notes: the three biggest regional errors, plus the shape when it is far too fat or thin
   const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
     .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
@@ -233,8 +233,8 @@ async function score() {
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {}), code = enc(main);
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   store.set("lab.korea.hist", [...store.get("lab.korea.hist", []), pct].slice(-30));
-  if (pct > prev) { store.set("lab.korea.best", pct); store.set("lab.korea.bestd", code); }
-  const mine = res = { pct, gap, t2u, u2t, wiggle, X, Y, s, ux, uy, notes, got, prev, regs, code, friend: FRIEND && placePoly(FRIEND.pts, ux, uy, n * 4) };
+  if (pct > prev || !store.get("lab.korea.bestd", null)) { store.set("lab.korea.best", Math.max(pct, prev)); store.set("lab.korea.bestd", code); }
+  const mine = res = { pct, gap, t2u, u2t, wiggle, X, Y, s, ux, uy, notes, got, prev, regs, code, friend: FRIEND && FRIEND.pts && placePoly(FRIEND.pts, ux, uy, n * 4) };
   const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%친구";
   await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
     .map(([f, t]) => Promise.race([document.fonts.load(f, t).catch(() => {}), new Promise(ok => setTimeout(ok, 1500))])));
@@ -269,7 +269,7 @@ function dec(str) {
 // lay a decoded outline over the result: same area as the target, centroid on the target's centroid
 function placePoly(pts, cx, cy, A) {
   let a = 0, sx = 0, sy = 0; for (let i = 0; i < pts.length; i++) { const [x1, y1] = pts[i], [x2, y2] = pts[(i + 1) % pts.length], f = x1 * y2 - x2 * y1; a += f; sx += (x1 + x2) * f; sy += (y1 + y2) * f; }
-  if (Math.abs(a) < 1e-6) return null; const gx = sx / (3 * a), gy = sy / (3 * a), k = Math.sqrt(A / Math.abs(a / 2));
+  if (Math.abs(a) / 2 < 0.005) return null; /* real strokes are >= ~0.01 after the scoring guards */ const gx = sx / (3 * a), gy = sy / (3 * a), k = Math.sqrt(A / Math.abs(a / 2));
   return pts.map(([x, y]) => [cx + (x - gx) * k, cy + (y - gy) * k]);
 }
 const FRIEND = (() => { const q = new URLSearchParams(location.search), s = q.get("s"), d = q.get("d");
@@ -397,7 +397,7 @@ if (FRIEND) { $("friend").textContent = `친구는 ${FRIEND.pct}% 받았다. 이
 function histLine() {
   const h = store.get("lab.korea.hist", []), best = store.get("lab.korea.best", -1), code = store.get("lab.korea.bestd", null); if (!h.length) return;
   const last = h.slice(-12), hi = Math.max(...last);
-  $("histTxt").textContent = `내 기록 · ${h.length}판 · 최고 ${best}%`;
+  $("histTxt").textContent = `내 기록 · ${store.get("lab.korea.plays", h.length)}판 · 최고 ${best}%`;
   $("bars").innerHTML = last.map((v, i) => `<i class="${i === last.length - 1 ? "now" : v === hi && v > Math.min(...last) ? "top" : ""}" style="height:${Math.max(4, v * .4)}px" title="${v}%"></i>`).join("");
   const c = $("bestc"), g = c.getContext("2d"), W = c.width = 120, H = c.height = 180; g.clearRect(0, 0, W, H);
   const k = Math.min(W / PW, H / (PH * ASP)) * .9, ox = (W - PW * k) / 2, oy = (H - PH * ASP * k) / 2;
