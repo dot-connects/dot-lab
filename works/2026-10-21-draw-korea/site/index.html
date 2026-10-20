@@ -85,7 +85,7 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   </div>
   <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
-  <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나(양쪽으로 재서 더 먼 쪽). 약 11 km 이하 = 100%, 92 km 이상 = 0%. 대충 그린 타원 ≈ 20%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
+  <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나(양쪽으로 재서 더 먼 쪽). 약 11 km 이하 = 100%, 92 km 이상 = 0%. 대충 그린 타원 ≈ 20~40%. 지그재그 낙서는 채점 안 함. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
   <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
@@ -127,12 +127,12 @@ const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5,
   { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5 }];
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
-const G1 = 3, G0 = 24;   // gap (cells) for 100% and 0%, calibrated in brief.md
+const G1 = 3, G0 = 24, WIGGLE = 1.4;   // honest drawings 0.4-0.6 (smoother than the real coast), stripes 1.6-4.4 (round-2 review)   // gap (cells) for 100% and 0%, calibrated in brief.md
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
   if (cv.width === Math.round(r.width * dpr) && cv.height === Math.round(r.height * dpr)) return;
-  const fresh = !cv.width; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  const fresh = !strokes.length; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
   if (res) render(); else if (!fresh && strokes.length) { clearTimeout(timer); cur = null; $("wait").hidden = true; reset(); drawInk(); } }
 new ResizeObserver(sizePad).observe(pad);
 
@@ -164,7 +164,7 @@ function say(text) { $("wait").hidden = true; $("msg").textContent = text; $("ms
 async function score() {
   $("wait").hidden = true;
   const areas = strokes.map(s => s.length > 2 ? area(s) : 0), mi = areas.indexOf(Math.max(...areas)), main = strokes[mi], bb = bbox(main);
-  if (Math.max(bb.w, bb.h) > 0.3 * cv.height && areas[mi] < 0.12 * Math.max(bb.w, bb.h) ** 2) return say("선은 반도가 아니다. 테두리를 한 바퀴 빙 둘러 봐");
+  if (Math.max(bb.w, bb.h) > 0.3 * cv.height && areas[mi] < 0.07 * Math.max(bb.w, bb.h) ** 2) return say("선은 반도가 아니다. 테두리를 한 바퀴 빙 둘러 봐");
   if (areas[mi] < 0.015 * cv.width * cv.height) return say("이건 독도 크기다. 크게 그려 봐");
   // rasterise the main stroke, then lay the target grid over it by matching area + centroid
   const off = document.createElement("canvas"); off.width = cv.width; off.height = cv.height; const o = off.getContext("2d");
@@ -175,12 +175,11 @@ async function score() {
   const X = c => ux + (c - tg.cx) * s, Y = r => uy + (r - tg.cy) * s * ASP;
   // padded grid: a drawing that runs past the map frame is still sampled, and the frame edge is not a fake coast
   const M = 60, GW = PW + 2 * M, GH = PH + 2 * M, U = new Uint8Array(GW * GH), TP = new Uint8Array(GW * GH), err = {};
-  let inter = 0, uni = 0, ur0 = 1e9, ur1 = -1e9, uc0 = 1e9, uc1 = -1e9;
+  let ur0 = 1e9, ur1 = -1e9, uc0 = 1e9, uc1 = -1e9;
   for (let gr = 0; gr < GH; gr++) for (let gc = 0; gc < GW; gc++) {
     const c = gc - M, r = gr - M, k = gr * GW + gc, inT = c >= 0 && r >= 0 && c < PW && r < PH;
     const u = at(Math.round(X(c)), Math.round(Y(r))) ? 1 : 0, t = inT ? T[r * PW + c] : 0; U[k] = u; TP[k] = t;
     if (u) { ur0 = Math.min(ur0, r); ur1 = Math.max(ur1, r); uc0 = Math.min(uc0, c); uc1 = Math.max(uc1, c); }
-    if (u && t) inter++; if (u || t) uni++;
     if (u !== t) { const key = (u ? "over" : "miss") + region(c, r, u), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
   }
   // score = gap between the two outlines (chamfer, cell widths of 3.83 km), the worse of the two directions.
@@ -189,8 +188,10 @@ async function score() {
   const edgeOf = G => { const e = []; for (let r = 1; r < GH - 1; r++) for (let c = 1; c < GW - 1; c++) { const k = r * GW + c;
     if (G[k] && (!G[k - 1] || !G[k + 1] || !G[k - GW] || !G[k + GW])) e.push(k); } return e; };
   const ue = edgeOf(U), te = edgeOf(TP), du = chamfer(ue, GW, GH), dt = chamfer(te, GW, GH);
+  const wiggle = ue.length / te.length;   // drawn outline length / real coast length
   const t2u = te.reduce((a, k) => a + du[k], 0) / te.length, u2t = ue.reduce((a, k) => a + dt[k], 0) / Math.max(1, ue.length), gap = Math.max(t2u, u2t);
-  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
+  if (wiggle > WIGGLE) return say("낙서는 채점 안 함. 테두리만 한 바퀴 그려 봐");
+  const pct = Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
   // notes: the three biggest regional errors, plus the shape when it is far too fat or thin
   const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
     .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
@@ -219,7 +220,7 @@ async function score() {
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {});
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   if (pct > prev) store.set("lab.korea.best", pct);
-  const mine = res = { pct, gap, t2u, u2t, X, Y, s, notes, got, prev };
+  const mine = res = { pct, gap, t2u, u2t, wiggle, X, Y, s, notes, got, prev };
   const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%";
   await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
     .map(([f, t]) => Promise.race([document.fonts.load(f, t).catch(() => {}), new Promise(ok => setTimeout(ok, 1500))])));
@@ -312,6 +313,7 @@ function show() {
   $("verdict").hidden = false; $("vScore").textContent = pct + "%"; $("vLabel").textContent = label(pct);
   $("vSub").textContent = fr != null ? (pct > fr ? `친구 ${fr}% 이김 (+${pct - fr})` : pct === fr ? `친구 ${fr}%와 동점` : `친구 ${fr}%에게 짐 (${pct - fr})`)
     : prev < 0 ? "첫 기록" : pct > prev ? `최고 갱신! (+${pct - prev})` : `내 최고 ${prev}%`;
+  const mine = res; cardBlob = null; card().then(b => { if (res === mine) cardBlob = b; });
   $("share").hidden = $("again").hidden = false; $("idle").hidden = true; noteList(); meLine(); islesLine(); render();
 }
 function meLine() { const b = store.get("lab.korea.best", -1), p = store.get("lab.korea.plays", 0); $("me").textContent = p ? `내 최고 ${b}% · ${p}판` : ""; }
@@ -322,6 +324,7 @@ function friend() { const v = new URLSearchParams(location.search).get("s"); ret
 meLine(); islesLine();
 
 // ---- share card ----
+let cardBlob = null;
 const pageUrl = () => location.origin && location.origin !== "null" ? location.origin + location.pathname : "";
 async function card() {
   const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
@@ -342,7 +345,7 @@ async function card() {
 }
 const shareText = () => `한반도 그리기 ${res.pct}% — 「${label(res.pct)}」 이길 수 있나?` + (pageUrl() ? `\n${pageUrl()}?s=${res.pct}` : "");
 $("share").onclick = async () => {
-  if (!res) return; const blob = await card(), file = new File([blob], `korea-${res.pct}.png`, { type: "image/png" });
+  if (!res) return; const blob = cardBlob || await card(), file = new File([blob], `korea-${res.pct}.png`, { type: "image/png" });
   if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); return; } catch (e) { if (e.name === "AbortError") return; } }
   $("dlgImg").src = URL.createObjectURL(blob); $("copy").textContent = "링크 복사"; $("dlg").showModal();
 };
