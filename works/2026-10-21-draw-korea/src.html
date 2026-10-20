@@ -16,7 +16,7 @@ main{max-width:520px;margin:0 auto;display:grid;gap:8px;padding-block:max(10px,e
 h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46px);line-height:1}
 .q{margin:0;font-size:15px;line-height:1.45}
 .friend{font-size:15px;border:1.5px dashed var(--red);border-radius:4px;padding:6px 10px;color:var(--red);font-weight:600}
-.pad{position:relative;width:100%;aspect-ratio:3/4;max-height:calc(100svh - 236px);min-height:300px;border:1.5px solid var(--ink);border-radius:4px;touch-action:none;
+.pad{position:relative;width:100%;aspect-ratio:10/16;max-height:calc(100svh - 216px);min-height:300px;border:1.5px solid var(--ink);border-radius:4px;touch-action:none;
   background-color:var(--card);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;background-position:-1px -1px;
   user-select:none;-webkit-user-select:none;overflow:hidden}
 .pad canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -35,25 +35,18 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46
 .res{display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px}
 .verdict{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
 .verdict b{grid-row:span 2;font-family:var(--mono);font-size:clamp(36px,11vw,46px);line-height:1;font-variant-numeric:tabular-nums}
-.verdict span{font-family:var(--hand);font-size:clamp(28px,8vw,34px);line-height:1;color:var(--red)}
+.verdict{min-width:0}.verdict span{font-family:var(--hand);font-size:clamp(24px,7vw,32px);line-height:1.05;color:var(--red);text-wrap:balance}
 .verdict small{font-size:13px;color:var(--muted);font-weight:600}
-.verdict.a b{font-family:var(--hand);font-weight:400;font-size:clamp(50px,14vw,60px);color:var(--red);border:3px solid var(--red);border-radius:50%;padding:0 14px;transform:rotate(-6deg)}
-.verdict.b b{border:1.5px solid var(--ink);border-radius:4px;padding:4px 8px;background:var(--card)}
+.verdict b.pen{font-family:var(--hand);font-weight:400;font-size:clamp(50px,14vw,60px);color:var(--red);border:3px solid var(--red);border-radius:50%;padding:0 14px;transform:rotate(-6deg)}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
-.btn.main{font-family:var(--hand);font-size:28px;padding:2px 14px;min-height:44px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+.btn.main{flex:none;white-space:nowrap;font-family:var(--hand);font-size:28px;padding:2px 14px;min-height:44px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
 .btn:disabled{opacity:.35;box-shadow:none}
 button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .sub{font-size:13px;color:var(--muted);line-height:1.45}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
 .isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
-.report{border:1.5px solid var(--ink);border-radius:4px;background:var(--card);font-size:14px;border-collapse:collapse;width:100%}
-.report td{padding:5px 10px;border-top:1px solid var(--grid)}.report tr:first-child td{border-top:0}
-.report td:last-child{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
-.mock{display:flex;gap:6px;align-items:center;font-size:13px;border-top:1.5px dashed var(--grid);padding-top:8px}
-.mock button{font:inherit;font-size:13px;border:1.5px solid var(--ink);border-radius:12px;background:none;color:var(--ink);padding:3px 10px;cursor:pointer}
-.mock button.on{background:var(--ink);color:var(--paper)}
 dialog{border:1.5px solid var(--ink);border-radius:6px;padding:12px;background:var(--paper);color:var(--ink);max-width:min(92vw,420px)}
 dialog::backdrop{background:rgba(29,39,51,.55)}
 dialog img{width:100%;display:block;border:1px solid var(--grid)}
@@ -75,14 +68,12 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
     <div class="msg" id="msg" role="status" hidden></div>
   </div>
   <div class="res" aria-live="polite">
-    <div class="verdict" id="verdict" hidden><b id="vScore"></b><span id="vLabel"></span><small id="vSub"></small></div>
+    <div class="verdict" id="verdict" hidden><b class="pen" id="vScore"></b><span id="vLabel"></span><small id="vSub"></small></div>
     <span class="sub" id="idle">손을 떼고 잠깐 기다리면 채점. 다시 하려면 그냥 다시 그리면 된다.</span>
-    <button class="btn main" id="share" type="button" hidden>결과 이미지</button>
+    <button class="btn main" id="share" type="button" hidden>공유하기</button>
   </div>
   <div class="isles" id="isles"></div>
-  <table class="report" id="report" hidden></table>
-  <p class="sub">채점: 본토 테두리만, 넓이·중심을 맞춘 뒤 겹친 넓이 ÷ 합친 넓이. 비슷한 크기의 타원 ≈ 0%, 꼼꼼한 테두리 ≈ 90% 이상. 섬은 점수 밖 도감. 지도: Natural Earth 1:50m(본토), 섬은 중심 좌표.</p>
-  <div class="mock" id="mock"><span>결과 시안</span><button type="button" data-s="a" class="on">A 빨간펜</button><button type="button" data-s="b">B 보고서</button><button type="button" data-s="c">C 공개</button></div>
+  <p class="sub">채점: 본토 테두리만, 넓이·중심을 맞춘 뒤 겹친 넓이 ÷ 합친 넓이. 비슷한 크기의 타원 ≈ 0%, 꼼꼼한 테두리 ≈ 90% 이상. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
   <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
@@ -91,9 +82,6 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
 const $ = id => document.getElementById(id);
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
-const MOCK = __MOCK__;   // mockup round: result style switcher shown
-let STYLE = "__STYLE__";
-if (!MOCK) $("mock").remove();
 
 // ---- target: mainland mask, lon 124..131, lat 33..43.2, 160x233 cells, row 0 = north ----
 const PW = 160, PH = 233, PEN = Uint8Array.from(atob("__PENINSULA__"), c => c.charCodeAt(0));
@@ -121,7 +109,7 @@ const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5,
   { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5, tol: 14 }];
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
-let dpr = 1, strokes = [], cur = null, timer = 0, res = null, anim = 0;
+let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
   if (cv.width === Math.round(r.width * dpr) && cv.height === Math.round(r.height * dpr)) return;
@@ -134,7 +122,7 @@ function drawStrokes(c, u) { c.strokeStyle = "#1d2733"; c.fillStyle = "#1d2733";
   for (const s of strokes) { if (s.length < 3) { c.beginPath(); c.arc(s[0][0], s[0][1], 3 * u, 0, 7); c.fill(); continue; }
     c.beginPath(); s.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } }
 function drawInk() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); drawStrokes(ctx, dpr); }
-function reset() { strokes = []; res = null; cancelAnimationFrame(anim); ["verdict", "msg", "report", "share"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
+function reset() { strokes = []; res = null; ["verdict", "msg", "share"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
 pad.addEventListener("pointerdown", e => {
   if (!e.isPrimary) return;
   if (res || !$("msg").hidden) reset();
@@ -205,50 +193,41 @@ function penCircle(c, x, y, r, u, seed) {   // wobbly red-pen loop, a bit more t
   for (let a = 0; a <= Math.PI * 2.25; a += 0.12) { const k = 1 + (g() - .5) * .12; const px = x + Math.cos(a - 2) * r * 1.15 * k, py = y + Math.sin(a - 2) * r * .9 * k; a ? c.lineTo(px, py) : c.moveTo(px, py); }
   c.stroke(); }
 function isleXY(is) { return [res.X(is.at[0]), res.Y(is.at[1])]; }
-// draws the result in pad pixels; u = output px per css px of line weight (pad: dpr, share card: scaled)
-function scene(c, st, prog, u, W, H) {
-  const { X, Y, s, U } = res;
-  if (st === "b") for (let r = 0; r < PH; r++) for (let q = 0; q < PW; q++) { const k = r * PW + q, uu = U[k], t = T[k]; if (!uu && !t) continue;
-    c.fillStyle = uu && t ? "rgba(47,138,91,.45)" : uu ? "rgba(210,63,39,.45)" : "rgba(43,89,195,.10)"; c.fillRect(X(q) - s / 2, Y(r) - s * ASP / 2, s + .6, s * ASP + .6); }
-  const rows = st === "c" ? tg.r0 + (tg.r1 - tg.r0 + 8) * Math.min(1, prog) : PH;
+// the scene's bounding box: the drawing, the real outline and all three islands
+function sceneBox() { const { X, Y } = res; return bbox([...strokes.flat(), [X(tg.c0), Y(tg.r0)], [X(tg.c1), Y(tg.r1)], ...ISLES.map(isleXY)]); }
+// draws the result in pad pixels; u = output px per css px of line weight; [x0,y0,x1,y1] = visible area for the notes
+function scene(c, u, x0, y0, x1, y1) {
+  const { X, Y, s } = res;
   c.fillStyle = "#2b59c3"; const d = Math.max(1.6 * u, s * 0.9);
-  for (const [q, r] of EDGE) if (r <= rows) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d);
-  if (prog >= 1 || st !== "c") { c.strokeStyle = "#2b59c3"; c.lineWidth = 1.5 * u; c.setLineDash([3 * u, 3 * u]);
-    for (const is of ISLES) { const [x, y] = isleXY(is); c.beginPath(); c.ellipse(x, y, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
-    c.setLineDash([]); }
+  for (const [q, r] of EDGE) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d);
+  c.strokeStyle = "#2b59c3"; c.lineWidth = 1.5 * u; c.setLineDash([3 * u, 3 * u]);
+  for (const is of ISLES) { const [x, y] = isleXY(is); c.beginPath(); c.ellipse(x, y, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
+  c.setLineDash([]);
   drawStrokes(c, u);
-  if (st === "b") return;
-  const shown = st === "c" ? Math.floor(Math.max(0, prog - 1) / 0.35) : res.notes.length;
   c.strokeStyle = c.fillStyle = "#d23f27"; c.lineWidth = 2.6 * u; c.font = `${30 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
-  res.notes.slice(0, shown).forEach((nt, i) => {
+  res.notes.forEach((nt, i) => {
     let x = nt.x, y = nt.y, r = nt.r; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
     if (r) penCircle(c, x, y, r, u, i * 31 + res.pct);
-    const left = x > W * 0.55, tw = c.measureText(nt.text).width;
+    const left = x > x0 + (x1 - x0) * 0.55, tw = c.measureText(nt.text).width;
     let tx = r ? (left ? x - r * 1.2 - 6 * u - tw : x + r * 1.2 + 6 * u) : x - tw / 2, ty = r ? y - r * 0.4 : y;
-    tx = Math.min(W - tw - 8 * u, Math.max(8 * u, tx)); ty = Math.min(H - 18 * u, Math.max(20 * u, ty));
+    tx = Math.min(x1 - tw - 8 * u, Math.max(x0 + 8 * u, tx)); ty = Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, ty));
     c.lineWidth = 6 * u; c.strokeStyle = "#fffdf8"; c.strokeText(nt.text, tx, ty); c.fillText(nt.text, tx, ty); c.lineWidth = 2.6 * u; c.strokeStyle = "#d23f27"; });
 }
-function render(prog) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); scene(ctx, STYLE, prog, dpr, cv.width, cv.height); }
+function render() {
+  // zoom out only when something would fall off the pad (a big drawing pushes Jeju below the edge)
+  const W = cv.width, H = cv.height, m = 10 * dpr, b = sceneBox();
+  const k = Math.min(1, (W - 2 * m) / b.w, (H - 2 * m) / b.h);
+  const tx = k < 1 ? W / 2 - (b.x0 + b.w / 2) * k : Math.min(0, W - m - b.x1) + Math.max(0, m - b.x0);
+  const ty = k < 1 ? H / 2 - (b.y0 + b.h / 2) * k : Math.min(0, H - m - b.y1) + Math.max(0, m - b.y0);
+  ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.setTransform(k, 0, 0, k, tx, ty);
+  scene(ctx, dpr / k, -tx / k, -ty / k, (W - tx) / k, (H - ty) / k);
+}
 function show() {
-  const { pct, prev, plays } = res, v = $("verdict"), fr = friend();
-  v.className = "verdict " + STYLE; v.hidden = false; $("vLabel").textContent = label(pct);
+  const { pct, prev } = res, fr = friend();
+  $("verdict").hidden = false; $("vScore").textContent = pct + "%"; $("vLabel").textContent = label(pct);
   $("vSub").textContent = fr != null ? (pct > fr ? `친구 ${fr}% 이김 (+${pct - fr})` : pct === fr ? `친구 ${fr}%와 동점` : `친구 ${fr}%에게 짐 (${pct - fr})`)
     : prev < 0 ? "첫 기록" : pct > prev ? `최고 갱신! (+${pct - prev})` : `내 최고 ${prev}%`;
-  $("share").hidden = false; $("idle").hidden = true; meLine(); islesLine(); report();
-  cancelAnimationFrame(anim);
-  if (STYLE !== "c" || matchMedia("(prefers-reduced-motion: reduce)").matches) { $("vScore").textContent = pct + "%"; return render(9); }
-  const t0 = performance.now(), dur = 900 + res.notes.length * 350;
-  const step = now => { const p = (now - t0) / 900; $("vScore").textContent = Math.round(pct * Math.min(1, p)) + "%"; render(p);
-    if (now - t0 < dur + 50) anim = requestAnimationFrame(step); };
-  anim = requestAnimationFrame(step);
-  setTimeout(() => { if (res) { $("vScore").textContent = pct + "%"; render(9); } }, dur + 400);   // resting state even if rAF is throttled
-}
-function report() {
-  const t = $("report"); t.hidden = STYLE !== "b"; if (t.hidden) return;
-  const n = res.notes.filter(x => !x.isle).map(x => x.text).join(" · ") || "크게 틀린 곳 없음";
-  t.innerHTML = `<tr><td>일치도 (겹침 ÷ 합침)</td><td>${(res.iou * 100).toFixed(1)}% → ${res.pct}점</td></tr>
-    <tr><td>세로 ÷ 가로 (진짜 = 1)</td><td>${res.shape.toFixed(2)}</td></tr><tr><td>진단</td><td style="font-family:var(--ui)">${n}</td></tr>
-    <tr><td>섬</td><td>${ISLES.filter(i => res.got[i.id]).map(i => i.name).join("·") || "없음"}</td></tr>`;
+  $("share").hidden = false; $("idle").hidden = true; meLine(); islesLine(); render();
 }
 function meLine() { const b = store.get("lab.korea.best", -1), p = store.get("lab.korea.plays", 0); $("me").textContent = p ? `내 최고 ${b}% · ${p}판` : ""; }
 function islesLine() { const isl = store.get("lab.korea.isles", {}), k = ISLES.filter(i => isl[i.id]).length;
@@ -266,10 +245,9 @@ async function card() {
   g.fillStyle = "#1d2733"; g.font = '700 30px "IBM Plex Mono", monospace'; g.textBaseline = "top"; g.fillText("D:OT LAB · 실험 #001", 60, 56);
   g.font = '92px "Nanum Pen Script", cursive'; g.fillText("한반도를 그릴 수 있나?", 60, 100);
   // fit the drawing + real outline into the middle box
-  const pts = strokes.flat(), { X, Y } = res; pts.push([X(tg.c0), Y(tg.r0)], [X(tg.c1), Y(tg.r1)], ...ISLES.map(isleXY));
-  const b = bbox(pts), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
+  const b = sceneBox(), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
   g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
-  g.textBaseline = "middle"; scene(g, STYLE === "b" ? "b" : "a", 9, 2.2 / k, (b.x1 + 40 / k), b.y1 + 40 / k); g.restore();
+  g.textBaseline = "middle"; scene(g, 2.2 / k, b.x0 - 40 / k, b.y0 - 40 / k, b.x1 + 40 / k, b.y1 + 40 / k); g.restore();
   g.textBaseline = "alphabetic"; g.fillStyle = "#d23f27"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
   g.font = '76px "Nanum Pen Script", cursive'; g.fillText(label(res.pct), 520, 1150);
   g.fillStyle = "#56616e"; g.font = '600 32px "IBM Plex Sans KR", sans-serif';
@@ -287,6 +265,4 @@ $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shar
 $("close").onclick = () => $("dlg").close();
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
-if (MOCK) document.querySelectorAll("#mock button").forEach(bt => bt.onclick = () => {
-  document.querySelectorAll("#mock button").forEach(x => x.classList.toggle("on", x === bt)); STYLE = bt.dataset.s; if (res) show(); });
 </script>
