@@ -65,7 +65,7 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
     <canvas id="padc"></canvas>
     <div class="ghost" id="ghost" aria-hidden="true">
       <svg viewBox="0 0 120 150"><path d="M60 10 C95 8 104 40 92 62 C84 78 98 96 84 118 C70 140 30 138 22 112 C14 88 30 80 26 58 C22 34 32 12 60 10"/><circle class="pen" r="6"/></svg>
-      <p>여기에 한 번에 쭉 · 손 떼면 채점</p>
+      <p>본토는 손 떼지 말고 한 번에 · 섬은 따로</p>
     </div>
     <div class="wait" id="wait" hidden><span>섬도 그릴 거면 지금</span><i id="waitbar"></i></div>
     <div class="msg" id="msg" role="status" hidden></div>
@@ -106,7 +106,7 @@ const MID = new Float32Array(PH); { let last = PW / 2;
 const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
 const PAEKTU = Math.round(cellOf(0, 128.1)[0]);
 const region = (c0, r0, over) => { const c = Math.min(PW - 1, Math.max(0, c0)), r = Math.min(PH - 1, Math.max(0, r0)), mid = MID[r];
-  return over && r0 < TOP[c] && r < R_N ? (c0 < PAEKTU ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c0 < mid ? "SW" : "SE") : c0 < mid ? "W" : "E"; };
+  return over && TOP[c] < PH && r0 < TOP[c] && r < R_N ? (c0 < PAEKTU ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c0 < mid ? "SW" : "SE") : c0 < mid ? "W" : "E"; };
 const NOTE = {
   over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?"], T: ["두만강 건너감", "러시아 땅 접수"], W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다"],
     E: ["동해에 땅 증설", "울릉도까지 걸어감", "동해가 좁아짐"], SW: ["남해가 육지 됨", "제주까지 다리 놓음"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체"] },
@@ -124,8 +124,10 @@ let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
   if (cv.width === Math.round(r.width * dpr) && cv.height === Math.round(r.height * dpr)) return;
-  const fresh = !strokes.length; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-  if (res) render(); else if (!fresh && strokes.length) { clearTimeout(timer); cur = null; $("wait").hidden = true; reset(); drawInk(); } }
+  const ow = cv.width, oh = cv.height; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+  if (res) return render();
+  for (const st of strokes) for (const pt of st) { pt[0] *= cv.width / ow; pt[1] *= cv.height / oh; }
+  drawInk(); }
 new ResizeObserver(sizePad).observe(pad);
 
 // ---- drawing ----
@@ -345,5 +347,6 @@ $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shar
 $("close").onclick = () => $("dlg").close();
 $("again").onclick = () => { reset(); drawInk(); };
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
-$("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
+$("dlg").addEventListener("click", e => { const b = $("dlg").getBoundingClientRect();
+  if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) $("dlg").close(); });
 </script>
