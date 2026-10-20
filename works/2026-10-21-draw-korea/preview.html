@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
 <style>
 /* Lab-notebook palette (operator pick B, earth-stop round 1). Light only: the pad is paper. */
-:root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#d23f27;--blue:#2b59c3;--green:#2f8a5b;--muted:#56616e;--card:#fffdf8;
+:root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#b8341d;--blue:#2b59c3;--green:#25744c;--muted:#56616e;--card:#fffdf8;
   --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
 html,body{height:100%}
 [hidden]{display:none!important}
@@ -32,20 +32,20 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46
 .wait.go i{width:0;transition:width linear}
 .msg{position:absolute;inset:auto 12px 40%;text-align:center;font-family:var(--hand);font-size:34px;line-height:1.1;color:var(--red);pointer-events:none}
 /* verdict row right under the pad: the pad stays free for the red-pen notes, the score stays above the fold */
-.res{display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px}
+.res{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;justify-content:space-between;min-height:64px}
 .verdict{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
-.verdict b{grid-row:span 2;font-family:var(--mono);font-size:clamp(36px,11vw,46px);line-height:1;font-variant-numeric:tabular-nums}
-.verdict{min-width:0}.verdict span{font-family:var(--hand);font-size:clamp(24px,7vw,32px);line-height:1.05;color:var(--red);word-break:keep-all}
+.verdict b{grid-row:span 2;line-height:1}
+.verdict{min-width:0;flex:1 1 200px}.verdict span{font-family:var(--hand);font-size:clamp(24px,7vw,32px);line-height:1.05;color:var(--red);word-break:keep-all}
 .verdict small{font-size:13px;color:var(--muted);font-weight:600}
 .verdict b.pen{font-family:var(--hand);font-weight:400;font-size:clamp(50px,14vw,60px);color:var(--red);border:3px solid var(--red);border-radius:50%;padding:0 14px;transform:rotate(-6deg)}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
-.btn.main{flex:none;white-space:nowrap;font-family:var(--hand);font-size:28px;padding:2px 14px;min-height:44px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+.btn.main{flex:none;white-space:nowrap;font-family:var(--hand);font-size:28px;padding:2px 12px;min-height:44px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
 .btn:disabled{opacity:.35;box-shadow:none}
 button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .sub{font-size:13px;color:var(--muted);line-height:1.45}
-.acts{display:flex;gap:8px;flex:none}
-.acts .btn:not(.main){min-height:44px;font-family:var(--hand);font-size:26px;padding:0 12px}
+.acts{display:flex;gap:8px;flex:none;margin-left:auto}
+.acts .btn:not(.main){min-height:44px;font-family:var(--hand);font-size:26px;padding:0 10px}
 .notes{font-size:13px;color:var(--muted)}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
@@ -77,7 +77,7 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   </div>
   <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
-  <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나. 약 10 km 이하 = 100%, 77 km 이상 = 0%. 대충 그린 타원 ≈ 30%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
+  <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나(양쪽으로 재서 더 먼 쪽). 약 11 km 이하 = 100%, 92 km 이상 = 0%. 대충 그린 타원 ≈ 20%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
   <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
@@ -104,10 +104,12 @@ const MID = new Float32Array(PH); { let last = PW / 2;
   for (let r = tg.r0 - 1; r >= 0; r--) MID[r] = MID[tg.r0]; }
 // TOP[c] = northern-most land row per column; drawing above it crossed the Yalu (west) or the Tumen (east)
 const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
-const region = (c, r, over) => over && r < TOP[c] && r < R_N ? (c < tg.cx ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c < MID[r] ? "SW" : "SE") : c < MID[r] ? "W" : "E";
+const PAEKTU = Math.round(cellOf(0, 128.1)[0]);
+const region = (c0, r0, over) => { const c = Math.min(PW - 1, Math.max(0, c0)), r = Math.min(PH - 1, Math.max(0, r0)), mid = MID[r];
+  return over && r0 < TOP[c] && r < R_N ? (c0 < PAEKTU ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c0 < mid ? "SW" : "SE") : c0 < mid ? "W" : "E"; };
 const NOTE = {
   over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?"], T: ["두만강 건너감", "러시아 땅 접수"], W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다"],
-    E: ["동해에 땅 증설", "울릉도까지 걸어감", "동해가 좁아짐"], SW: ["남해가 육지 됨", "제주까지 다리 놓음"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체"], N: ["북쪽이 너무 큼"] },
+    E: ["동해에 땅 증설", "울릉도까지 걸어감", "동해가 좁아짐"], SW: ["남해가 육지 됨", "제주까지 다리 놓음"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체"] },
   miss: { N: ["북쪽이 다이어트함", "북쪽 땅 증발"], W: ["서해안 깎여 나감", "태안반도 어디 감?", "인천이 바다로"], E: ["동해안 실종", "강원도가 홀쭉"],
     SW: ["전라도가 바다로", "남해안 증발"], SE: ["부산이 사라짐", "경상도 다이어트"] } };
 const pick = a => a[Math.floor(Math.random() * a.length)];
@@ -117,12 +119,13 @@ const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5,
   { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5 }];
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
+const G1 = 3, G0 = 24;   // gap (cells) for 100% and 0%, calibrated in brief.md
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
   if (cv.width === Math.round(r.width * dpr) && cv.height === Math.round(r.height * dpr)) return;
   const fresh = !cv.width; cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
-  if (!fresh && strokes.length) { clearTimeout(timer); cur = null; $("wait").hidden = true; reset(); } }
+  if (res) render(); else if (!fresh && strokes.length) { clearTimeout(timer); cur = null; $("wait").hidden = true; reset(); drawInk(); } }
 new ResizeObserver(sizePad).observe(pad);
 
 // ---- drawing ----
@@ -130,7 +133,7 @@ function drawStrokes(c, u) { c.strokeStyle = "#1d2733"; c.fillStyle = "#1d2733";
   for (const s of strokes) { if (s.length < 3) { c.beginPath(); c.arc(s[0][0], s[0][1], 3 * u, 0, 7); c.fill(); continue; }
     c.beginPath(); s.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } }
 function drawInk() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); drawStrokes(ctx, dpr); }
-function reset() { strokes = []; res = null; ["verdict", "msg", "share", "again", "notes"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
+function reset() { strokes = []; res = null; ["verdict", "msg", "share", "again", "notes"].forEach(id => $(id).hidden = true); $("idle").hidden = $("ghost").hidden = false; }
 pad.addEventListener("pointerdown", e => {
   if (!e.isPrimary) return;
   if (res || !$("msg").hidden) reset();
@@ -162,22 +165,25 @@ async function score() {
   let n = 0, sx = 0, sy = 0; for (let y = 0; y < off.height; y += 2) for (let x = 0; x < off.width; x += 2) if (at(x, y)) { n++; sx += x; sy += y; }
   const ux = sx / n, uy = sy / n, s = Math.sqrt((n * 4) / (tg.n * ASP));   // drawing px per cell width
   const X = c => ux + (c - tg.cx) * s, Y = r => uy + (r - tg.cy) * s * ASP;
-  const U = new Uint8Array(PW * PH), err = {}; let inter = 0, uni = 0, ur0 = PH, ur1 = 0, uc0 = PW, uc1 = 0;
-  // cells cover a margin around the target so a drawing that sticks out is still counted
-  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) {
-    const u = at(Math.round(X(c)), Math.round(Y(r))) ? 1 : 0, t = T[r * PW + c]; U[r * PW + c] = u;
+  // padded grid: a drawing that runs past the map frame is still sampled, and the frame edge is not a fake coast
+  const M = 60, GW = PW + 2 * M, GH = PH + 2 * M, U = new Uint8Array(GW * GH), TP = new Uint8Array(GW * GH), err = {};
+  let inter = 0, uni = 0, ur0 = 1e9, ur1 = -1e9, uc0 = 1e9, uc1 = -1e9;
+  for (let gr = 0; gr < GH; gr++) for (let gc = 0; gc < GW; gc++) {
+    const c = gc - M, r = gr - M, k = gr * GW + gc, inT = c >= 0 && r >= 0 && c < PW && r < PH;
+    const u = at(Math.round(X(c)), Math.round(Y(r))) ? 1 : 0, t = inT ? T[r * PW + c] : 0; U[k] = u; TP[k] = t;
     if (u) { ur0 = Math.min(ur0, r); ur1 = Math.max(ur1, r); uc0 = Math.min(uc0, c); uc1 = Math.max(uc1, c); }
     if (u && t) inter++; if (u || t) uni++;
     if (u !== t) { const key = (u ? "over" : "miss") + region(c, r, u), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
   }
-  // score = mean gap between the two outlines, both ways (chamfer), in cell widths (3.83 km). Overlap (IoU) alone
-// could not tell a real attempt from a plain ellipse (0.58 vs 0.56, operator 2026-10-20).
-  const edgeOf = M => { const e = []; for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { const k = r * PW + c;
-    if (M[k] && (c === 0 || r === 0 || c === PW - 1 || r === PH - 1 || !M[k - 1] || !M[k + 1] || !M[k - PW] || !M[k + PW])) e.push(k); } return e; };
-  const ue = edgeOf(U), te = edgeOf(T), du = chamfer(ue), dt = chamfer(te);
-  const gap = (te.reduce((a, k) => a + du[k], 0) / te.length + ue.reduce((a, k) => a + dt[k], 0) / Math.max(1, ue.length)) / 2;
-  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (20 - gap) / 17.5)) * 100);
-  // notes: the two biggest regional errors, plus the shape when it is far too fat or thin
+  // score = gap between the two outlines (chamfer, cell widths of 3.83 km), the worse of the two directions.
+  // IoU could not tell a real attempt from an ellipse (0.58 vs 0.56, operator 2026-10-20); the mean of both
+  // directions let a striped scribble hug every coast (73%, review 2026-10-20), so take the max.
+  const edgeOf = G => { const e = []; for (let r = 1; r < GH - 1; r++) for (let c = 1; c < GW - 1; c++) { const k = r * GW + c;
+    if (G[k] && (!G[k - 1] || !G[k + 1] || !G[k - GW] || !G[k + GW])) e.push(k); } return e; };
+  const ue = edgeOf(U), te = edgeOf(TP), du = chamfer(ue, GW, GH), dt = chamfer(te, GW, GH);
+  const t2u = te.reduce((a, k) => a + du[k], 0) / te.length, u2t = ue.reduce((a, k) => a + dt[k], 0) / Math.max(1, ue.length), gap = Math.max(t2u, u2t);
+  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
+  // notes: the three biggest regional errors, plus the shape when it is far too fat or thin
   const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
     .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
       for (let i = 0; i < e.cells.length; i += 2) { const d = (e.cells[i] - mc) ** 2 + ((e.cells[i + 1] - mr) * ASP) ** 2; if (d < bd) { bd = d; bc = e.cells[i]; br = e.cells[i + 1]; } }
@@ -188,7 +194,7 @@ async function score() {
   // peninsula even when the peninsula itself is off (real map: Jeju at 34% across / 110% down, Ulleung 103% / 63%).
   const got = {}, extra = [], east = [];
   strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
-    if (Math.max(b.w, b.h) > 0.5 * bb.w) return;   // a second mainland stroke, not an island
+    if (Math.max(b.w, b.h) > 0.5 * bb.w || at(Math.round(cx), Math.round(cy))) return;   // a second mainland stroke, or a dot inside it
     const rx = (cx - bb.x0) / bb.w, ry = (cy - bb.y0) / bb.h;
     if (ry > 0.8 && rx < 0.8) got.jeju = true;
     else if (rx > 0.6 && ry > 0.25 && ry < 0.85) east.push(cx);
@@ -205,15 +211,15 @@ async function score() {
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {});
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   if (pct > prev) store.set("lab.korea.best", pct);
-  const mine = res = { pct, iou, gap, X, Y, s, U, notes, got, prev, plays, shape, area: n * 4 / (tg.n * s * s * ASP) };
+  const mine = res = { pct, gap, t2u, u2t, X, Y, s, notes, got, prev };
   const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%";
   await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
-    .map(([f, t]) => document.fonts.load(f, t).catch(() => {})));
+    .map(([f, t]) => Promise.race([document.fonts.load(f, t).catch(() => {}), new Promise(ok => setTimeout(ok, 1500))])));
   if (res === mine) show();
 }
 
-// two-pass chamfer distance transform on the cell grid (cell width 1, height ASP)
-function chamfer(src) {
+// two-pass chamfer distance transform on a W x H cell grid (cell width 1, height ASP)
+function chamfer(src, PW, PH) {
   const D = new Float32Array(PW * PH).fill(1e6), dg = Math.hypot(1, ASP); for (const k of src) D[k] = 0;
   for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { const k = r * PW + c; let v = D[k];
     if (c > 0) v = Math.min(v, D[k - 1] + 1); if (r > 0) { v = Math.min(v, D[k - PW] + ASP); if (c > 0) v = Math.min(v, D[k - PW - 1] + dg); if (c < PW - 1) v = Math.min(v, D[k - PW + 1] + dg); } D[k] = v; }
@@ -260,23 +266,23 @@ function occupancy(c, u) {
 function scene(c, u, x0, y0, x1, y1) {
   const { s } = res;
   mapLayer(c, u, false); drawStrokes(c, u);
-  const free = occupancy(c, u), placed = [], th = 30 * u;
+  const free = occupancy(c, u), placed = [], th = 27 * u;
   const clear = (a, b, e, f) => a >= x0 + 4 * u && b >= y0 + 4 * u && e <= x1 - 4 * u && f <= y1 - 4 * u && free(a, b, e, f) && !placed.some(p => a < p[2] && e > p[0] && b < p[3] && f > p[1]);
-  c.lineWidth = 2.6 * u; c.font = `${28 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
+  c.lineWidth = 2.6 * u; c.font = `${25 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
   res.notes.forEach((nt, i) => {
-    const col = nt.good ? "#2f8a5b" : "#d23f27"; c.strokeStyle = c.fillStyle = col;
+    const col = nt.good ? "#25744c" : "#b8341d"; c.strokeStyle = c.fillStyle = col;
     let x = nt.x, y = nt.y, r = nt.r || 0; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
     if (x == null) { x = (x0 + x1) / 2; y = y0 + 40 * u; }
     if (r) { penCircle(c, x, y, r, u, i * 31 + res.pct); placed.push([x - r * 1.2, y - r, x + r * 1.2, y + r]); }
     const tw = c.measureText(nt.text).width; let spot = null;
     // nearest empty spot around the mark: sideways first, then diagonals, then above/below
     // pass 1: close, with a leader line that stays in empty sea; pass 2: anywhere empty, line may cross
-    for (const strict of [true, false]) for (let dd = r + 6 * u; dd < (strict ? 170 : 400) * u && !spot; dd += 10 * u)
+    for (const strict of [true, false]) for (let dd = r + 6 * u; dd < (strict ? 230 : 400) * u && !spot; dd += 10 * u)
       for (const a of [0, Math.PI, -.45, Math.PI + .45, .45, Math.PI - .45, -Math.PI / 2, Math.PI / 2]) {
         const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd, rx = Math.abs(Math.cos(a)) < .2 ? px - tw / 2 : Math.cos(a) > 0 ? px : px - tw;
         const path = [.35, .55, .75, .95].every(t => { const q = r * 1.25 + (dd - r * 1.25) * t, lx = x + Math.cos(a) * q, ly = y + Math.sin(a) * q; return free(lx - 2 * u, ly - 2 * u, lx + 2 * u, ly + 2 * u); });
         if ((!r || path || !strict) && clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; } }
-    const [tx, ty] = spot || [Math.min(x1 - tw - 8 * u, Math.max(x0 + 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
+    const [tx, ty] = spot || [Math.max(x0 + 8 * u, Math.min(x1 - tw - 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
     placed.push([tx, ty - th / 2, tx + tw, ty + th / 2]);
     if (r && spot && spot[3] > r + 16 * u) { const a = spot[2], ex = Math.cos(a) > .2 ? tx - 3 * u : Math.cos(a) < -.2 ? tx + tw + 3 * u : tx + tw / 2;   // leader line
       c.lineWidth = 1.6 * u; c.beginPath(); c.moveTo(x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * .9); c.lineTo(ex, ty); c.stroke(); c.lineWidth = 2.6 * u; }
@@ -285,11 +291,11 @@ function scene(c, u, x0, y0, x1, y1) {
 function noteList() {
   $("notes").textContent = `테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남 · 검은 선 = 내 그림 · 파란 면 = 진짜`; $("notes").hidden = false; }
 function render() {
-  // zoom out only when something would fall off the pad (a big drawing pushes Jeju below the edge)
+  // centre the result and zoom out until it fits with side room for the red-pen notes (Jeju below a big drawing too)
   const W = cv.width, H = cv.height, m = 10 * dpr, b = sceneBox();
-  const k = Math.min(1, (W - 2 * m) / b.w, (H - 2 * m) / b.h);
-  const tx = k < 1 ? W / 2 - (b.x0 + b.w / 2) * k : Math.min(0, W - m - b.x1) + Math.max(0, m - b.x0);
-  const ty = k < 1 ? H / 2 - (b.y0 + b.h / 2) * k : Math.min(0, H - m - b.y1) + Math.max(0, m - b.y0);
+  const k = Math.min(1, W * 0.76 / b.w, (H - 2 * m) / b.h);
+  const tx = W / 2 - (b.x0 + b.w / 2) * k;
+  const ty = H / 2 - (b.y0 + b.h / 2) * k;
   ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, W, H); ctx.setTransform(k, 0, 0, k, tx, ty);
   scene(ctx, dpr / k, -tx / k, -ty / k, (W - tx) / k, (H - ty) / k);
 }
@@ -319,8 +325,8 @@ async function card() {
   const b = sceneBox(), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
   g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
   g.textBaseline = "middle"; scene(g, 2.2 / k, b.x0 - 40 / k, b.y0 - 40 / k, b.x1 + 40 / k, b.y1 + 40 / k); g.restore();
-  g.textBaseline = "alphabetic"; g.fillStyle = "#d23f27"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
-  g.font = '76px "Nanum Pen Script", cursive'; g.fillText(label(res.pct), 520, 1150);
+  g.textBaseline = "alphabetic"; g.fillStyle = "#b8341d"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
+  let fs = 76; do g.font = `${fs}px "Nanum Pen Script", cursive`; while (g.measureText(label(res.pct)).width > 500 && (fs -= 4) > 40); g.fillText(label(res.pct), 520, 1150);
   g.fillStyle = "#56616e"; g.font = '600 32px "IBM Plex Sans KR", sans-serif';
   g.fillText("섬 " + (ISLES.filter(i => res.got[i.id]).map(i => i.name + " ✓").join(" ") || "없음"), 520, 1210);
   g.fillStyle = "#1d2733"; g.fillText("너도 그려 봐 → 지도 안 보고, 한 번에", 60, 1290);
@@ -334,7 +340,7 @@ $("share").onclick = async () => {
 };
 $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shareText()); $("copy").textContent = "복사됨"; } catch { $("copy").textContent = "복사 안 됨"; } };
 $("close").onclick = () => $("dlg").close();
-$("again").onclick = () => { reset(); drawInk(); $("ghost").hidden = false; };
+$("again").onclick = () => { reset(); drawInk(); };
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
 </script>
