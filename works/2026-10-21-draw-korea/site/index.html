@@ -149,6 +149,7 @@ const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5,
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
 const G1 = 3, G0 = 24, WIGGLE = 1.4;
+const ISLE_TOL_KM = 60;   // under Ulleung-Dokdo (87 km): a Dokdo drawn on Ulleung's spot is "off"
 const WEAK = 70, GOOD = 80;   // coast score below WEAK gets a red note, at or above GOOD gets praise
 const toPct = gap => Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
@@ -232,20 +233,29 @@ async function score() {
   if (shape < 0.72) notes.push({ text: pick(["감자 반도", "너무 통통함"]) }); else if (shape > 1.45) notes.push({ text: pick(["멸치 반도", "너무 홀쭉함"]) });
   // islands: judged against the player's own mainland box, not the fitted map — a drawn Jeju sits below a drawn
   // peninsula even when the peninsula itself is off (real map: Jeju at 34% across / 110% down, Ulleung 103% / 63%).
-  const got = {}, extra = [], east = [];
+  const got = {}, extra = [], east = [], drawn = {};
   strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
     if (Math.max(b.w, b.h) > 0.5 * bb.w || at(Math.round(cx), Math.round(cy))) return;   // a second mainland stroke, or a dot inside it
     const rx = (cx - bb.x0) / bb.w, ry = (cy - bb.y0) / bb.h;
-    if (ry > 0.8 && rx < 0.8) got.jeju = true;
-    else if (rx > 0.6 && ry > 0.25 && ry < 0.85) east.push(cx);
+    if (ry > 0.8 && rx < 0.8) { got.jeju = true; drawn.jeju = [cx, cy]; }
+    else if (rx > 0.6 && ry > 0.25 && ry < 0.85) east.push([cx, cy]);
     else extra.push({ x: cx, y: cy }); });
   // east of the mainland: two islands = Ulleung then Dokdo (west to east); one = the closer of the two on the map
-  east.sort((a, b) => a - b);
-  if (east.length > 1) got.ulleung = got.dokdo = true;
-  else if (east.length) { const c = tg.cx + (east[0] - ux) / s; got[Math.abs(c - ISLES[1].at[0]) <= Math.abs(c - ISLES[2].at[0]) ? "ulleung" : "dokdo"] = true; }
+  east.sort((a, b) => a[0] - b[0]);
+  if (east.length > 1) { drawn.ulleung = east[0]; drawn.dokdo = east[east.length - 1]; }
+  else if (east.length) { const c = tg.cx + (east[0][0] - ux) / s; drawn[Math.abs(c - ISLES[1].at[0]) <= Math.abs(c - ISLES[2].at[0]) ? "ulleung" : "dokdo"] = east[0]; }
+  // a drawn island counts for the collection; if it sits far from the real one the note only points at the real spot
+  // (operator 2026-10-20: "if Dokdo's position is off, just point out where it is")
+  const astray = {};
+  for (const is of ISLES) { const d = drawn[is.id]; if (!d) continue; got[is.id] = true;
+    const rx = (d[0] - bb.x0) / bb.w - (is.at[0] - tg.c0) / (tg.c1 - tg.c0), ry = (d[1] - bb.y0) / bb.h - (is.at[1] - tg.r0) / (tg.r1 - tg.r0);
+    const km = Math.hypot(rx * (tg.c1 - tg.c0) * 3.83, ry * (tg.r1 - tg.r0) * 4.86);
+    if (km > ISLE_TOL_KM) astray[is.id] = true; }
   if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
+  for (const is of ISLES) if (astray[is.id]) notes.push({ isle: is.id, text: { jeju: "제주도는 여기", ulleung: "울릉도는 여기", dokdo: "독도는 여기" }[is.id] });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
-  if (got.dokdo) notes.push({ good: true, isle: "dokdo", text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, isle: "ulleung", text: "울릉도 챙김" });
+  if (got.dokdo && !astray.dokdo) notes.push({ good: true, isle: "dokdo", text: "독도까지 챙김" });
+  else if (got.ulleung && !astray.ulleung) notes.push({ good: true, isle: "ulleung", text: "울릉도 챙김" });
   const top = pct >= 40 && regs.filter(r => r.pct >= GOOD).sort((a, b) => b.pct - a.pct)[0];   // no praise on a potato
   if (top) { const [c, r] = SPOT_COAST[top.id]; notes.push({ good: true, x: X(c), y: Y(r), r: 14 * dpr, text: top.name + pick([" 칼같음", " 완벽", " 장인급", " 교과서급"]) }); }
   if (!notes.some(x => x.r || x.isle) && !top) notes.unshift({ good: true, text: "흠잡을 데 없음" });
