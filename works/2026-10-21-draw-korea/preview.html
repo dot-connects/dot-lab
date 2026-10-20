@@ -44,6 +44,11 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46
 .btn:disabled{opacity:.35;box-shadow:none}
 button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .sub{font-size:13px;color:var(--muted);line-height:1.45}
+.acts{display:flex;gap:8px;flex:none}
+.acts .btn:not(.main){min-height:44px;font-family:var(--hand);font-size:26px;padding:0 12px}
+.notes{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--hand);font-size:24px;line-height:1.15;color:var(--red)}
+.notes i{font-style:normal;font-family:var(--mono);font-size:13px;font-weight:700;display:inline-grid;place-items:center;width:20px;height:20px;border:2px solid var(--red);border-radius:50%;margin-right:4px;vertical-align:3px}
+.notes .good{color:var(--green)}.notes .km{color:var(--ink)}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
 .isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
@@ -70,10 +75,11 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   <div class="res" aria-live="polite">
     <div class="verdict" id="verdict" hidden><b class="pen" id="vScore"></b><span id="vLabel"></span><small id="vSub"></small></div>
     <span class="sub" id="idle">손을 떼고 잠깐 기다리면 채점. 다시 하려면 그냥 다시 그리면 된다.</span>
-    <button class="btn main" id="share" type="button" hidden>공유하기</button>
+    <div class="acts"><button class="btn" id="again" type="button" hidden>다시</button><button class="btn main" id="share" type="button" hidden>공유하기</button></div>
   </div>
+  <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
-  <p class="sub">채점: 본토 테두리만, 넓이·중심을 맞춘 뒤 겹친 넓이 ÷ 합친 넓이. 비슷한 크기의 타원 ≈ 0%, 꼼꼼한 테두리 ≈ 90% 이상. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
+  <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나. 약 10 km 이하 = 100%, 77 km 이상 = 0%. 대충 그린 타원 ≈ 30%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
   <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
@@ -100,9 +106,13 @@ const MID = new Float32Array(PH); { let last = PW / 2;
   for (let r = tg.r0 - 1; r >= 0; r--) MID[r] = MID[tg.r0]; }
 // TOP[c] = northern-most land row per column; drawing above it crossed the Yalu (west) or the Tumen (east)
 const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
-const region = (c, r, over) => over && r < TOP[c] && r < R_N ? (c < tg.cx ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? "S" : c < MID[r] ? "W" : "E";
-const NOTE = { over: { Y: "압록강 건너감", T: "두만강 건너감", W: "서해를 메워 버림", E: "동해에 땅 증설", S: "남해가 육지 됨" },
-  miss: { N: "북쪽이 다이어트함", W: "서해안 깎여 나감", E: "동해안 실종", S: "남해안 증발" } };
+const region = (c, r, over) => over && r < TOP[c] && r < R_N ? (c < tg.cx ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c < MID[r] ? "SW" : "SE") : c < MID[r] ? "W" : "E";
+const NOTE = {
+  over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?"], T: ["두만강 건너감", "러시아 땅 접수"], W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다"],
+    E: ["동해에 땅 증설", "울릉도까지 걸어감", "동해가 좁아짐"], SW: ["남해가 육지 됨", "제주까지 다리 놓음"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체"], N: ["북쪽이 너무 큼"] },
+  miss: { N: ["북쪽이 다이어트함", "북쪽 땅 증발"], W: ["서해안 깎여 나감", "태안반도 어디 감?", "인천이 바다로"], E: ["동해안 실종", "강원도가 홀쭉"],
+    SW: ["전라도가 바다로", "남해안 증발"], SE: ["부산이 사라짐", "경상도 다이어트"] } };
+const pick = a => a[Math.floor(Math.random() * a.length)];
 // islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
 const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2, tol: 30 },
   { id: "ulleung", name: "울릉", at: cellOf(37.50, 130.86), rx: 1.4, ry: 1.1, tol: 16 },
@@ -122,7 +132,7 @@ function drawStrokes(c, u) { c.strokeStyle = "#1d2733"; c.fillStyle = "#1d2733";
   for (const s of strokes) { if (s.length < 3) { c.beginPath(); c.arc(s[0][0], s[0][1], 3 * u, 0, 7); c.fill(); continue; }
     c.beginPath(); s.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } }
 function drawInk() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); drawStrokes(ctx, dpr); }
-function reset() { strokes = []; res = null; ["verdict", "msg", "share"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
+function reset() { strokes = []; res = null; ["verdict", "msg", "share", "again", "notes"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
 pad.addEventListener("pointerdown", e => {
   if (!e.isPrimary) return;
   if (res || !$("msg").hidden) reset();
@@ -162,28 +172,46 @@ async function score() {
     if (u && t) inter++; if (u || t) uni++;
     if (u !== t) { const key = (u ? "over" : "miss") + region(c, r, u), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
   }
-  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (iou - 0.60) / 0.30)) * 100);
+  // score = mean gap between the two outlines, both ways (chamfer), in cell widths (3.83 km). Overlap (IoU) alone
+// could not tell a real attempt from a plain ellipse (0.58 vs 0.56, operator 2026-10-20).
+  const edgeOf = M => { const e = []; for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { const k = r * PW + c;
+    if (M[k] && (c === 0 || r === 0 || c === PW - 1 || r === PH - 1 || !M[k - 1] || !M[k + 1] || !M[k - PW] || !M[k + PW])) e.push(k); } return e; };
+  const ue = edgeOf(U), te = edgeOf(T), du = chamfer(ue), dt = chamfer(te);
+  const gap = (te.reduce((a, k) => a + du[k], 0) / te.length + ue.reduce((a, k) => a + dt[k], 0) / Math.max(1, ue.length)) / 2;
+  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (20 - gap) / 17.5)) * 100);
   // notes: the two biggest regional errors, plus the shape when it is far too fat or thin
-  const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 2)
+  const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
     .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
       for (let i = 0; i < e.cells.length; i += 2) { const d = (e.cells[i] - mc) ** 2 + ((e.cells[i + 1] - mr) * ASP) ** 2; if (d < bd) { bd = d; bc = e.cells[i]; br = e.cells[i + 1]; } }
-      return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: NOTE[k.slice(0, -1)][k.slice(-1)], k }; });
+      return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: pick(NOTE[k.startsWith("over") ? "over" : "miss"][k.replace(/^(over|miss)/, "")]), k }; });
   const shape = ((ur1 - ur0) * ASP / (uc1 - uc0 + 1)) / ((tg.r1 - tg.r0) * ASP / (tg.c1 - tg.c0 + 1));
-  if (shape < 0.72) notes.push({ x: ux, y: uy, r: 0, text: "감자 반도" }); else if (shape > 1.45) notes.push({ x: ux, y: uy, r: 0, text: "멸치 반도" });
+  if (shape < 0.72) notes.push({ text: pick(["감자 반도", "너무 통통함"]) }); else if (shape > 1.45) notes.push({ text: pick(["멸치 반도", "너무 홀쭉함"]) });
   // islands: every other stroke is matched to the nearest island in target cells
   const got = {}, extra = [];
   strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), small = Math.max(b.w, b.h) < 24 * s, cx = tg.cx + ((b.x0 + b.x1) / 2 - ux) / s, cy = tg.cy + ((b.y0 + b.y1) / 2 - uy) / (s * ASP);
     let best = null, bd = 1e9; for (const is of ISLES) { const d = Math.hypot(cx - is.at[0], (cy - is.at[1]) * ASP); if (d < is.tol && d < bd) { bd = d; best = is; } }
     if (best && small) got[best.id] = true; else if (small) extra.push({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 }); });
-  if (!got.jeju) notes.push({ isle: "jeju", text: "제주도 어디 감?" });
+  if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
+  if (got.dokdo) notes.push({ good: true, text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, text: "울릉도 챙김" });
+  if (!notes.some(x => x.r || x.isle)) notes.unshift({ good: true, text: "흠잡을 데 없음" });
 
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {});
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   if (pct > prev) store.set("lab.korea.best", pct);
-  const mine = res = { pct, iou, X, Y, s, U, notes, got, prev, plays, shape, area: n * 4 / (tg.n * s * s * ASP) };
+  const mine = res = { pct, iou, gap, X, Y, s, U, notes, got, prev, plays, shape, area: n * 4 / (tg.n * s * s * ASP) };
   await Promise.all(['30px "Nanum Pen Script"', '700 30px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
   if (res === mine) show();
+}
+
+// two-pass chamfer distance transform on the cell grid (cell width 1, height ASP)
+function chamfer(src) {
+  const D = new Float32Array(PW * PH).fill(1e6), dg = Math.hypot(1, ASP); for (const k of src) D[k] = 0;
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { const k = r * PW + c; let v = D[k];
+    if (c > 0) v = Math.min(v, D[k - 1] + 1); if (r > 0) { v = Math.min(v, D[k - PW] + ASP); if (c > 0) v = Math.min(v, D[k - PW - 1] + dg); if (c < PW - 1) v = Math.min(v, D[k - PW + 1] + dg); } D[k] = v; }
+  for (let r = PH - 1; r >= 0; r--) for (let c = PW - 1; c >= 0; c--) { const k = r * PW + c; let v = D[k];
+    if (c < PW - 1) v = Math.min(v, D[k + 1] + 1); if (r < PH - 1) { v = Math.min(v, D[k + PW] + ASP); if (c < PW - 1) v = Math.min(v, D[k + PW + 1] + dg); if (c > 0) v = Math.min(v, D[k + PW - 1] + dg); } D[k] = v; }
+  return D;
 }
 
 // ---- result ----
@@ -204,15 +232,21 @@ function scene(c, u, x0, y0, x1, y1) {
   for (const is of ISLES) { const [x, y] = isleXY(is); c.beginPath(); c.ellipse(x, y, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
   c.setLineDash([]);
   drawStrokes(c, u);
-  c.strokeStyle = c.fillStyle = "#d23f27"; c.lineWidth = 2.6 * u; c.font = `${30 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
-  res.notes.forEach((nt, i) => {
-    let x = nt.x, y = nt.y, r = nt.r; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
-    if (r) penCircle(c, x, y, r, u, i * 31 + res.pct);
-    const left = x > x0 + (x1 - x0) * 0.55, tw = c.measureText(nt.text).width;
-    let tx = r ? (left ? x - r * 1.2 - 6 * u - tw : x + r * 1.2 + 6 * u) : x - tw / 2, ty = r ? y - r * 0.4 : y;
-    tx = Math.min(x1 - tw - 8 * u, Math.max(x0 + 8 * u, tx)); ty = Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, ty));
-    c.lineWidth = 6 * u; c.strokeStyle = "#fffdf8"; c.strokeText(nt.text, tx, ty); c.fillText(nt.text, tx, ty); c.lineWidth = 2.6 * u; c.strokeStyle = "#d23f27"; });
+  c.strokeStyle = c.fillStyle = "#d23f27"; c.lineWidth = 2.2 * u; c.font = `700 ${15 * u}px "IBM Plex Mono", monospace`; c.textAlign = "center"; c.textBaseline = "middle";
+  marks().forEach(({ nt, n }) => {
+    let x = nt.x, y = nt.y; if (nt.isle) [x, y] = isleXY(ISLES[0]);
+    const r = nt.isle ? Math.max(14 * u, ISLES[0].rx * s * 1.15) : 13 * u;
+    penCircle(c, x, y, r, u, n * 31 + res.pct);
+    // number tag just outside the circle, on a paper halo so it stays readable over ink
+    const tx = Math.min(x1 - 10 * u, Math.max(x0 + 10 * u, x + r * 1.1)), ty = Math.min(y1 - 10 * u, Math.max(y0 + 10 * u, y - r * 0.9));
+    c.lineWidth = 5 * u; c.strokeStyle = "#fffdf8"; c.strokeText(n, tx, ty); c.fillText(n, tx, ty); c.lineWidth = 2.2 * u; c.strokeStyle = "#d23f27"; });
+  c.textAlign = "start";
 }
+// notes with a place on the map get a number; praise and shape notes are list-only
+function marks() { let n = 0; return res.notes.map(nt => ({ nt, n: nt.r || nt.isle ? String(++n) : "" })).filter(m => m.n); }
+function noteList() { let n = 0;
+  $("notes").innerHTML = `<span class="km">테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남</span>` + res.notes.map(nt =>
+    `<span class="${nt.good ? "good" : ""}">${nt.r || nt.isle ? `<i>${++n}</i>` : ""}${nt.text}</span>`).join(""); $("notes").hidden = false; }
 function render() {
   // zoom out only when something would fall off the pad (a big drawing pushes Jeju below the edge)
   const W = cv.width, H = cv.height, m = 10 * dpr, b = sceneBox();
@@ -227,7 +261,7 @@ function show() {
   $("verdict").hidden = false; $("vScore").textContent = pct + "%"; $("vLabel").textContent = label(pct);
   $("vSub").textContent = fr != null ? (pct > fr ? `친구 ${fr}% 이김 (+${pct - fr})` : pct === fr ? `친구 ${fr}%와 동점` : `친구 ${fr}%에게 짐 (${pct - fr})`)
     : prev < 0 ? "첫 기록" : pct > prev ? `최고 갱신! (+${pct - prev})` : `내 최고 ${prev}%`;
-  $("share").hidden = false; $("idle").hidden = true; meLine(); islesLine(); render();
+  $("share").hidden = $("again").hidden = false; $("idle").hidden = true; noteList(); meLine(); islesLine(); render();
 }
 function meLine() { const b = store.get("lab.korea.best", -1), p = store.get("lab.korea.plays", 0); $("me").textContent = p ? `내 최고 ${b}% · ${p}판` : ""; }
 function islesLine() { const isl = store.get("lab.korea.isles", {}), k = ISLES.filter(i => isl[i.id]).length;
@@ -245,7 +279,11 @@ async function card() {
   g.fillStyle = "#1d2733"; g.font = '700 30px "IBM Plex Mono", monospace'; g.textBaseline = "top"; g.fillText("D:OT LAB · 실험 #001", 60, 56);
   g.font = '92px "Nanum Pen Script", cursive'; g.fillText("한반도를 그릴 수 있나?", 60, 100);
   // fit the drawing + real outline into the middle box
-  const b = sceneBox(), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
+  // red-pen notes as a numbered list under the title, wrapped to the card width
+  g.font = '48px "Nanum Pen Script", cursive'; let lx = 60, ly = 236; let n = 0;
+  for (const nt of res.notes) { const tag = nt.r || nt.isle ? `${++n} ` : "", t = tag + nt.text, w = g.measureText(t).width;
+    if (lx + w > W - 60) { lx = 60; ly += 54; } g.fillStyle = nt.good ? "#2f8a5b" : "#d23f27"; g.fillText(t, lx, ly); lx += w + 36; }
+  const b = sceneBox(), bx = 70, by = ly + 50, bw = 940, bh = 1080 - ly - 50, k = Math.min(bw / b.w, bh / b.h) * 0.9;
   g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
   g.textBaseline = "middle"; scene(g, 2.2 / k, b.x0 - 40 / k, b.y0 - 40 / k, b.x1 + 40 / k, b.y1 + 40 / k); g.restore();
   g.textBaseline = "alphabetic"; g.fillStyle = "#d23f27"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
@@ -263,6 +301,7 @@ $("share").onclick = async () => {
 };
 $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shareText()); $("copy").textContent = "복사됨"; } catch { $("copy").textContent = "복사 안 됨"; } };
 $("close").onclick = () => $("dlg").close();
+$("again").onclick = () => { reset(); drawInk(); $("ghost").hidden = false; };
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
 </script>
