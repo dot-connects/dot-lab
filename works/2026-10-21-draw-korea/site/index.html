@@ -56,6 +56,8 @@ button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .regs span{font-size:14px;border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;font-variant-numeric:tabular-nums;background:var(--card)}
 .regs b{font-family:var(--mono);font-weight:700;margin-left:4px}
 .regs .worst{border-color:var(--red);color:var(--red)}.regs .best{border-color:var(--green);color:var(--green)}
+.regs details{flex-basis:100%;font-size:13px;color:var(--muted)}.regs details[open]{display:flex;flex-wrap:wrap;gap:6px}
+.regs summary{cursor:pointer;flex-basis:100%;min-height:28px;display:flex;align-items:center}
 .hist{display:flex;gap:12px;align-items:center;border-top:1.5px dashed var(--grid);padding-top:8px}
 .hist canvas{width:60px;height:90px;flex:none;border:1.5px solid var(--grid);border-radius:4px;background:var(--card)}
 .hist .bars{display:flex;gap:3px;align-items:flex-end;height:40px;margin-top:4px}
@@ -117,25 +119,27 @@ const tg = (() => { let n = 0, sx = 0, sy = 0, r0 = PH, r1 = 0, c0 = PW, c1 = 0;
   return { n, cx: sx / n, cy: sy / n, r0, r1, c0, c1 }; })();
 const EDGE = []; for (let r = 1; r < PH - 1; r++) for (let c = 1; c < PW - 1; c++) { const k = r * PW + c;
   if (T[k] && (!T[k - 1] || !T[k + 1] || !T[k - PW] || !T[k + PW])) EDGE.push([c, r]); }
-// regions for diagnosis: north above 39N, south below 35.2N, the rest split at each row's middle
-const R_N = Math.round(cellOf(39, 0)[1]), R_S = Math.round(cellOf(35.2, 0)[1]);
-const MID = new Float32Array(PH); { let last = PW / 2;
-  for (let r = 0; r < PH; r++) { let a = -1, b = -1; for (let c = 0; c < PW; c++) if (T[r * PW + c]) { if (a < 0) a = c; b = c; } if (a >= 0) last = (a + b) / 2; MID[r] = last; }
-  for (let r = tg.r0 - 1; r >= 0; r--) MID[r] = MID[tg.r0]; }
-// TOP[c] = northern-most land row per column; drawing above it crossed the Yalu (west) or the Tumen (east)
-const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
-const PAEKTU = Math.round(cellOf(0, 128.1)[0]);
-const region = (c0, r0, over) => { const c = Math.min(PW - 1, Math.max(0, c0)), r = Math.min(PH - 1, Math.max(0, r0)), west = c0 < MID[r];
-  if (over && TOP[c] < PH && r0 < TOP[c] && r < R_N) return c0 < PAEKTU ? "Y" : "T";   // across the Yalu / Tumen
-  return (r < R_N ? "N" : r >= R_S ? "S" : "") + (west ? "W" : "E"); };   // NW NE W E SW SE
-const NOTE = {
-  over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?", "신의주 너머로"], T: ["두만강 건너감", "러시아 땅 접수", "블라디보스토크 근처"],
-    NW: ["서한만 메움", "평안도 바다로 확장"], NE: ["함경도 바다로 확장", "동해 북부 매립"],
-    W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다", "새만금 확장판"], E: ["동해에 땅 증설", "동해가 좁아짐", "원산만 메움", "동해 매립"],
-    SW: ["남해가 육지 됨", "제주까지 다리 놓음", "다도해 합체"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체", "부산이 바다로 출근"] },
-  miss: { NW: ["평안도 잘림", "신의주 실종", "북서쪽이 잘림"], NE: ["함경도 다이어트", "개마고원 실종", "북동쪽이 홀쭉"],
-    W: ["서해안 깎여 나감", "태안반도 어디 감?", "인천이 바다로", "경기만 너무 큼"], E: ["동해안 실종", "강원도가 홀쭉", "동해안 깎임"],
-    SW: ["전라도가 바다로", "해남 땅끝 실종", "전라도 다이어트"], SE: ["경상도가 작아짐", "부산이 사라짐", "포항 어디 감?", "울산 바다로"] } };
+// coast spots for diagnosis: [name, lon, lat, over lines (drew sea as land), miss lines (left land out)].
+// Every cell belongs to the nearest spot, so a note always names the place it circles.
+const SPOTS = [
+  ["신의주", 124.5, 40.0, ["신의주 너머 중국 땅", "압록강 하구 매립", "단둥까지 진출"], ["신의주 실종", "평북 끝이 잘림", "압록강 하구 증발"]],
+  ["압록강", 126.3, 41.0, ["압록강 건너감", "만주까지 진출", "중국 땅 접수"], ["자강도 잘림", "압록강 따라 깎임", "북서쪽이 잘림"]],
+  ["백두산", 128.1, 41.9, ["백두산 너머 중국", "만주까지 진출함", "고구려 부활?"], ["백두산 실종", "개마고원 실종", "북쪽이 다이어트함"]],
+  ["두만강", 130.4, 42.4, ["두만강 건너감", "러시아 땅 접수", "블라디보스토크 근처"], ["두만강 끝 실종", "북쪽 꼬리 잘림", "나선 어디 감?"]],
+  ["함경북도", 129.6, 41.4, ["함경도 바다로 확장", "청진 앞바다 매립", "동해 북부 매립"], ["함경도 다이어트", "청진 실종", "북동 해안 깎임"]],
+  ["원산만", 127.6, 39.4, ["원산만 메움", "원산만이 없어짐", "동해가 좁아짐"], ["원산만이 너무 깊음", "함남 해안 깎임", "원산 어디 감?"]],
+  ["평안남도", 125.3, 39.0, ["서한만 메움", "평양 앞바다 매립", "서한만 간척"], ["평안도 잘림", "서한만이 너무 깊음", "평남 해안 깎임"]],
+  ["황해도", 125.2, 38.1, ["황해도 바다로 확장", "옹진반도 부풀림", "백령도까지 연결"], ["옹진반도 실종", "황해도가 사라짐", "장산곶 어디 감?"]],
+  ["경기만", 126.5, 37.4, ["경기만 메움", "인천 앞바다 매립", "강화도 붙여 버림"], ["인천이 바다로", "경기만 너무 큼", "서울 앞이 바다"]],
+  ["강원 동해안", 128.8, 37.6, ["강원도 바다로 확장", "울릉도까지 걸어감", "동해 매립"], ["강원도가 홀쭉", "동해안 깎임", "강릉이 바다로"]],
+  ["충남 서해안", 126.2, 36.6, ["태안 앞바다 매립", "서해를 메워 버림", "중국까지 걸어가겠다"], ["태안반도 어디 감?", "충남 해안 깎임", "서산이 바다로"]],
+  ["경북 동해안", 129.4, 36.2, ["동해에 땅 증설", "포항 앞바다 매립", "호미곶 부풀림"], ["포항 어디 감?", "호미곶 실종", "경상도가 작아짐", "울산 바다로"]],
+  ["전북 해안", 126.6, 35.8, ["새만금 확장판", "군산 앞바다 매립", "변산반도 부풀림"], ["변산반도 실종", "전북 해안 깎임", "군산이 바다로"]],
+  ["부산", 129.0, 35.1, ["대마도 쪽으로 진출", "부산이 바다로 출근", "대한해협 좁아짐"], ["부산이 사라짐", "부산 어디 감?", "경남 끝 잘림"]],
+  ["남해안", 127.8, 34.7, ["남해가 육지 됨", "제주까지 다리 놓음", "여수 앞바다 매립"], ["남해안 증발", "여수·통영 실종", "남해안이 일자"]],
+  ["전남 서남해", 126.3, 34.6, ["다도해 합체", "목포 앞바다 매립", "신안 섬들 붙임"], ["해남 땅끝 실종", "전라도가 바다로", "목포 어디 감?"]],
+].map(([name, lon, lat, over, miss]) => ({ name, at: cellOf(lat, lon), over, miss }));
+const spotOf = (c, r) => { let best = 0, bd = 1e9; SPOTS.forEach((p, i) => { const d = (c - p.at[0]) ** 2 + ((r - p.at[1]) * ASP) ** 2; if (d < bd) { bd = d; best = i; } }); return best; };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 // islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
 const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2 },
@@ -146,8 +150,6 @@ const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
 const G1 = 3, G0 = 24, WIGGLE = 1.4;
 const WEAK = 70, GOOD = 80;   // coast score below WEAK gets a red note, at or above GOOD gets praise
 const toPct = gap => Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
-const REGS = [["NW", "북서", "평안도"], ["NE", "북동", "함경도"], ["W", "서해", "서해안"], ["E", "동해", "동해안"], ["SW", "남서", "전라도"], ["SE", "남동", "경상도"]];
-const REG_OF = { NW: "NW", NE: "NE", W: "W", E: "E", SW: "SW", SE: "SE", Y: "NW", T: "NE" };
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
@@ -202,7 +204,7 @@ async function score() {
     const c = gc - M, r = gr - M, k = gr * GW + gc, inT = c >= 0 && r >= 0 && c < PW && r < PH;
     const u = at(Math.round(X(c)), Math.round(Y(r))) ? 1 : 0, t = inT ? T[r * PW + c] : 0; U[k] = u; TP[k] = t;
     if (u) { ur0 = Math.min(ur0, r); ur1 = Math.max(ur1, r); uc0 = Math.min(uc0, c); uc1 = Math.max(uc1, c); }
-    if (u !== t) { const key = (u ? "over" : "miss") + region(c, r, u), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
+    if (u !== t) { const key = (u ? "o" : "m") + spotOf(c, r), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
   }
   // score = gap between the two outlines (chamfer, cell widths of 3.83 km), the worse of the two directions.
   // IoU could not tell a real attempt from an ellipse (0.58 vs 0.56, operator 2026-10-20); the mean of both
@@ -215,16 +217,16 @@ async function score() {
   if (wiggle > WIGGLE) return say("낙서는 채점 안 함. 테두리만 한 바퀴 그려 봐");
   const pct = toPct(gap);
   // the same gap per coast, so the player knows which part to fix next time
-  const acc = {}; const add2 = (k, d, side) => { const c = (k % GW) - M, r = ((k / GW) | 0) - M, id = REG_OF[region(c, r, false)], a = acc[id] || (acc[id] = [0, 0, 0, 0]);
-    a[side] += d; a[side + 1]++; };
+  const acc = SPOTS.map(() => [0, 0, 0, 0]); const add2 = (k, d, side) => { const a = acc[spotOf((k % GW) - M, ((k / GW) | 0) - M)]; a[side] += d; a[side + 1]++; };
   te.forEach(k => add2(k, du[k], 0)); ue.forEach(k => add2(k, dt[k], 2));
-  const regs = REGS.map(([id, name, full]) => { const a = acc[id] || [0, 0, 0, 0]; return { id, name, full, pct: a[1] + a[3] ? toPct((a[0] + a[2]) / (a[1] + a[3])) : 0 }; });
-  // notes: the three biggest regional errors, plus the shape when it is far too fat or thin
+  // a spot needs some coast in it to be judged (a tip like 두만강 has only a few edge cells)
+  const regs = SPOTS.map((p, id) => { const a = acc[id]; return { id, name: p.name, n: a[1], pct: a[1] + a[3] ? toPct((a[0] + a[2]) / (a[1] + a[3])) : 0 }; }).filter(r => r.n >= 6);
+  // notes: the weakest spots under WEAK, each circled at its biggest error; then shape, islands, praise
   const weak = regs.filter(r => r.pct < WEAK).sort((a, b) => a.pct - b.pct).map(r => r.id);
-  const notes = weak.map(id => Object.entries(err).filter(([k, e]) => REG_OF[k.replace(/^(over|miss)/, "")] === id && e.n > tg.n * 0.015).sort((a, b) => b[1].n - a[1].n)[0])
+  const notes = weak.map(id => ["o" + id, "m" + id].filter(k => err[k] && err[k].n > tg.n * 0.008).map(k => [k, err[k]]).sort((a, b) => b[1].n - a[1].n)[0])
     .filter(Boolean).slice(0, 3).map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
       for (let i = 0; i < e.cells.length; i += 2) { const d = (e.cells[i] - mc) ** 2 + ((e.cells[i + 1] - mr) * ASP) ** 2; if (d < bd) { bd = d; bc = e.cells[i]; br = e.cells[i + 1]; } }
-      return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: pick(NOTE[k.startsWith("over") ? "over" : "miss"][k.replace(/^(over|miss)/, "")]), k }; });
+      return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: pick(SPOTS[+k.slice(1)][k[0] === "o" ? "over" : "miss"]), k }; });
   const shape = ((ur1 - ur0) * ASP / (uc1 - uc0 + 1)) / ((tg.r1 - tg.r0) * ASP / (tg.c1 - tg.c0 + 1));
   if (shape < 0.72) notes.push({ text: pick(["감자 반도", "너무 통통함"]) }); else if (shape > 1.45) notes.push({ text: pick(["멸치 반도", "너무 홀쭉함"]) });
   // islands: judged against the player's own mainland box, not the fitted map — a drawn Jeju sits below a drawn
@@ -243,8 +245,8 @@ async function score() {
   if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
   if (got.dokdo) notes.push({ good: true, text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, text: "울릉도 챙김" });
-  const top = regs.filter(r => r.pct >= GOOD).sort((a, b) => b.pct - a.pct)[0];
-  if (top) notes.push({ good: true, text: top.full + pick([" 칼같음", " 완벽", " 장인급"]) });
+  const top = pct >= 40 && regs.filter(r => r.pct >= GOOD).sort((a, b) => b.pct - a.pct)[0];   // no praise on a potato
+  if (top) notes.push({ good: true, text: top.name + pick([" 칼같음", " 완벽", " 장인급", " 정확함"]) });
   if (!notes.some(x => x.r || x.isle) && !top) notes.unshift({ good: true, text: "흠잡을 데 없음" });
 
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {}), code = enc(main);
@@ -252,7 +254,7 @@ async function score() {
   store.set("lab.korea.hist", [...store.get("lab.korea.hist", []), pct].slice(-30));
   if (pct > prev || !store.get("lab.korea.bestd", null)) { store.set("lab.korea.best", Math.max(pct, prev)); store.set("lab.korea.bestd", code); }
   const mine = res = { pct, gap, t2u, u2t, wiggle, X, Y, s, ux, uy, notes, got, prev, regs, code, friend: FRIEND && FRIEND.pts && placePoly(FRIEND.pts, ux, uy, n * 4) };
-  const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%친구";
+  const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%친구";   // canvas text only; chips are HTML
   await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
     .map(([f, t]) => Promise.race([document.fonts.load(f, t).catch(() => {}), new Promise(ok => setTimeout(ok, 1500))])));
   if (res === mine) show();
@@ -375,8 +377,10 @@ function scene(c, u, x0, y0, x1, y1, lay, t = Infinity) {
 const revealEnd = () => T_MAP + 50 + res.notes.length * T_NOTE + 200;
 function noteList() {
   $("notes").textContent = `테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남 · 검은 선 = 내 그림 · 파란 면 = 진짜` + (res.friend ? " · 초록 점선 = 친구" : ""); $("notes").hidden = false;
-  const lo = Math.min(...res.regs.map(r => r.pct)), hi = Math.max(...res.regs.map(r => r.pct));
-  $("regs").innerHTML = res.regs.map(r => `<span class="${r.pct === lo && lo < hi ? "worst" : r.pct === hi && lo < hi ? "best" : ""}">${r.name}<b>${r.pct}</b></span>`).join(""); $("regs").hidden = false; }
+  const by = [...res.regs].sort((a, b) => a.pct - b.pct), chip = (r, c) => `<span class="${c}">${r.name}<b>${r.pct}</b></span>`;
+  $("regs").innerHTML = by.slice(0, 3).map(r => chip(r, r.pct < WEAK ? "worst" : "")).join("") + by.slice(-2).reverse().map(r => chip(r, r.pct >= GOOD ? "best" : "")).join("")
+    + `<details><summary>${by.length}곳 전부</summary>${res.regs.map(r => chip(r, r.pct < WEAK ? "worst" : r.pct >= GOOD ? "best" : "")).join("")}</details>`;
+  $("regs").hidden = false; }
 let anim = 0, view = null;
 function render(t = Infinity) {
   // centre the result and zoom out until it fits with side room for the red-pen notes (Jeju below a big drawing too)
@@ -442,10 +446,12 @@ async function card() {
   g.textBaseline = "alphabetic"; g.fillStyle = "#b8341d"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
   let fs = 76; do g.font = `${fs}px "Nanum Pen Script", cursive`; while (g.measureText(label(res.pct)).width > 500 && (fs -= 4) > 40); g.fillText(label(res.pct), 520, 1150);
   g.fillStyle = "#56616e"; g.font = '600 32px "IBM Plex Sans KR", sans-serif';
-  const rl = res.regs.map(r => `${r.name} ${r.pct}`).join(" · "); let rs = 32;
-  do g.font = `600 ${rs}px "IBM Plex Sans KR", sans-serif`; while (g.measureText(rl).width > 500 && (rs -= 2) > 18); g.fillText(rl, 520, 1205);
+  // right column, each line shrunk to fit: weakest two spots, then the strongest spot + islands
+  const srt = [...res.regs].sort((a, b) => a.pct - b.pct), fit = (t, y) => { let fz = 32;
+    do g.font = `600 ${fz}px "IBM Plex Sans KR", sans-serif`; while (g.measureText(t).width > 500 && (fz -= 2) > 20); g.fillText(t, 520, y); };
+  fit(`약한 곳 ${srt.slice(0, 2).map(r => r.name + " " + r.pct).join(", ")}`, 1200);
+  fit(`강한 곳 ${srt[srt.length - 1].name} ${srt[srt.length - 1].pct} · 섬 ` + (ISLES.filter(i => res.got[i.id]).map(i => i.name + "✓").join(" ") || "없음") + (res.friend ? " · 초록 = 친구" : ""), 1245);
   g.font = '600 32px "IBM Plex Sans KR", sans-serif';
-  g.fillText("섬 " + (ISLES.filter(i => res.got[i.id]).map(i => i.name + " ✓").join(" ") || "없음") + (res.friend ? " · 초록 = 친구" : ""), 520, 1250);
   g.fillStyle = "#1d2733"; g.fillText("너도 그려 봐 → 지도 안 보고, 한 번에", 60, 1290);
   return new Promise(ok => c.toBlob(ok, "image/png"));
 }
