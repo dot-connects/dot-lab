@@ -1,0 +1,246 @@
+<title>lab 스케치 4종</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* layout: sticky tab bar on top, one game per tab filling the rest of the phone screen. Lab-notebook palette. */
+:root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#e0482f;--blue:#2b59c3;--green:#2f8a5b;--muted:#5a6572;--card:#fffdf8;
+  --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:repeat(4,1fr);gap:4px;
+  padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));border-bottom:1.5px solid var(--ink)}
+.tabs button{font:inherit;font-size:13px;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:6px 0;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+.game{max-width:520px;margin:0 auto;display:grid;gap:10px;padding-block:12px 28px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.game[hidden]{display:none!important}
+h2{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(32px,9vw,42px);line-height:1}
+.q{margin:0;font-size:15px;line-height:1.5}
+.sub{font-size:12px;color:var(--muted)}
+.btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
+.btn.main{font-family:var(--hand);font-size:30px;padding:4px 12px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.big{font-family:var(--mono);font-size:clamp(34px,10vw,48px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.05}
+.label{font-family:var(--hand);font-size:clamp(30px,8.5vw,40px);color:var(--red);line-height:1}
+.card{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;padding:12px 14px;display:grid;gap:6px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.copy{font-family:var(--mono);font-size:13px;white-space:pre-wrap;background:#eef0f2;border-radius:4px;padding:8px 10px}
+/* 1 draw korea */
+.pad{position:relative;width:100%;aspect-ratio:3/4;max-height:62vh;border:1.5px solid var(--ink);border-radius:4px;background:var(--card);touch-action:none}
+.pad canvas{position:absolute;inset:0;width:100%;height:100%}
+.pad .hint{position:absolute;inset:auto 0 10px;text-align:center;font-size:13px;color:var(--muted);pointer-events:none}
+/* 2 number */
+.slider{width:100%}
+.line{position:relative;height:54px;border-bottom:2px solid var(--ink);margin-top:6px}
+.line .m{position:absolute;bottom:-6px;width:10px;height:10px;margin-left:-5px;border-radius:50%}
+.line .m b{position:absolute;bottom:14px;left:50%;transform:translateX(-50%);font-size:12px;white-space:nowrap;font-weight:600}
+/* 3 cup */
+.pair{display:grid;gap:10px}
+.pick{font:inherit;text-align:left;font-size:17px;line-height:1.45;border:1.5px solid var(--ink);border-radius:4px;background:var(--card);padding:18px 16px;min-height:96px;cursor:pointer;box-shadow:3px 3px 0 var(--grid)}
+.pick:active{transform:translate(1px,1px);box-shadow:none}
+.vs{text-align:center;font-family:var(--hand);font-size:28px;color:var(--red);line-height:1}
+.prog{height:6px;background:var(--grid);border-radius:3px;overflow:hidden}.prog span{display:block;height:100%;background:var(--red)}
+/* 4 timer */
+.tap{width:100%;aspect-ratio:1/1;max-height:56vh;border:2px solid var(--ink);border-radius:50%;background:var(--card);font:inherit;cursor:pointer;display:grid;place-items:center;
+  font-family:var(--hand);font-size:clamp(34px,10vw,46px);color:var(--ink);touch-action:manipulation}
+.tap.run{background:var(--ink);color:var(--paper)}
+.hist{display:flex;gap:4px;align-items:flex-end;height:60px}
+.hist i{flex:1;background:var(--blue);border-radius:2px 2px 0 0;min-height:2px}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<nav class="tabs" id="tabs">
+  <button type="button" data-g="g1" class="on">한반도</button><button type="button" data-g="g2">이상한 숫자</button>
+  <button type="button" data-g="g3">질문 월드컵</button><button type="button" data-g="g4">인간 타이머</button>
+</nav>
+
+<!-- 1. draw korea -->
+<section class="game" id="g1">
+  <h2>실험: 한반도를 그릴 수 있나?</h2>
+  <p class="q">지도 안 보고, 손가락으로 한반도 테두리를 한 번에 그려 봐. 크기·위치는 상관없다.</p>
+  <div class="pad" id="pad"><canvas id="padc"></canvas><div class="hint" id="padhint">여기에 그리기 · 손을 떼면 채점</div></div>
+  <div class="card" id="kres" hidden>
+    <div class="row" style="justify-content:space-between"><span class="big" id="kscore">0%</span><span class="sub" id="kbest"></span></div>
+    <div class="label" id="klabel"></div>
+    <div class="sub">초록 = 맞음 · 빨강 = 바다에 그림 · 파랑 테두리 = 진짜 한반도. 다시 그리면 바로 재도전.</div>
+  </div>
+</section>
+
+<!-- 2. daily strange number -->
+<section class="game" id="g2" hidden>
+  <h2 id="nTitle">오늘의 이상한 숫자 #1</h2>
+  <p class="q" id="nQ"></p>
+  <div class="big" id="nGuess">1</div>
+  <input class="slider" id="nSlider" type="range" min="0" max="1000" value="300" aria-label="내 추측">
+  <div class="row"><button class="btn main" id="nGo" type="button">이걸로!</button><button class="btn" id="nOther" type="button">다른 날 문제 (시안용)</button></div>
+  <div class="card" id="nRes" hidden>
+    <div class="line" id="nLine"></div>
+    <div class="row" style="justify-content:space-between"><span class="big" id="nOff"></span></div>
+    <div class="label" id="nLabel"></div>
+    <div class="q" id="nWhy"></div>
+    <div class="copy" id="nShare"></div>
+  </div>
+</section>
+
+<!-- 3. strange question cup -->
+<section class="game" id="g3" hidden>
+  <h2>이상한 질문 월드컵</h2>
+  <p class="sub" id="cRound"></p>
+  <div class="prog"><span id="cProg" style="width:0"></span></div>
+  <div class="pair" id="cPair"></div>
+  <div class="card" id="cRes" hidden>
+    <div class="sub">우승 질문</div>
+    <div class="q" style="font-size:19px;font-weight:700" id="cWin"></div>
+    <div class="label" id="cLabel"></div>
+    <div class="q" id="cWhy"></div>
+    <div class="sub">실제로는 이 우승 질문들을 모아 다음 주 lab 실험을 정한다 (서버 붙이면).</div>
+    <div class="row"><button class="btn main" id="cAgain" type="button">다시 (새 대진)</button></div>
+  </div>
+</section>
+
+<!-- 4. human timer -->
+<section class="game" id="g4" hidden>
+  <h2>실험: 인간은 <span id="tTarget">10</span>초를 셀 수 있나?</h2>
+  <p class="q">누르면 시작, 숫자는 안 보인다. <b id="tTarget2">10</b>초 됐다 싶을 때 다시 눌러.</p>
+  <button class="tap" id="tap" type="button">시작</button>
+  <div class="card" id="tRes" hidden>
+    <div class="row" style="justify-content:space-between"><span class="big" id="tGot"></span><span class="sub" id="tBest"></span></div>
+    <div class="label" id="tLabel"></div>
+    <div class="hist" id="tHist" aria-label="최근 기록"></div>
+    <div class="sub">원 안을 누르면 바로 다시. 목표 시간은 판마다 바뀐다.</div>
+  </div>
+</section>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => {
+  document.querySelectorAll("#tabs button").forEach(x => x.classList.toggle("on", x === b));
+  document.querySelectorAll(".game").forEach(g => g.hidden = g.id !== b.dataset.g);
+  if (b.dataset.g === "g1") sizePad();
+});
+
+// ---------------- 1. draw korea ----------------
+const PW = 160, PH = 233, PEN = Uint8Array.from(atob("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAACA/38AAAAAAAAAAAAAAAAAAAAAAPD///8BAAAAAAAAAAAAAAAAAAAA/v//gwAAAAAAAAAAAAAAAAAAAMD///8BAAAAAAAAAAAAAAAAAAAA+P//fwAAAAAAAAAAAAAAAAAAAAD///8/AAAAAAAAAAAAAAAAAAAA4P///z8AAAAAAAAAAAAAAAAAAAD8////BwAAAAAAAAAAAAAAAAAAgP////8DAAAAAAAAAAAAAAAAAADw/////wEAAAAAAAAAAAAAAAAAAP7/////AAAAAAAAAAAAAAAAAADg/////38AAAAAAAAAAAAAAAAAAPz/////fwAAAAAAAAAAAAAAAADA//////8/AAAAAAAAAAAAAAAAAPj//////x8AAAAAAAAAAAAAAAAA////////DwAAAAAAAAAAAAAAAPD///////8HAAAAAAAAAAAAAAAA/v///////wMAAAAAAAAAAAAAAOD/////////AwAAAAAAAAAAAAAA/P////////8DAAAAAAAAAAAAAID//////////wMAAAAAAAAAAAAA+P//////////BwAAAAAAAAAAAAD+//////////8PAAAAAAAAAAAAgP///////////w8AAAAAAAAAAADA////////////DwAAAAAAAAAAAPD///////////8PAAAAAAAAAAAA+P///////////wcAAAAAAAAAAAD8////////////BwAAAAAAAAAAAP////////////8HAAAAAAAAAACA/////////////wcAAAAAAAAAAMD/////////////BwAAAAAAAAAA8P////////////8PAAAAAAAAAAD4/////////////w8AAAAAAAAAAP7/////////////BwAAAAAAAAAA//////////////8HAAAAAAAAAID//////////////wAAAAAAAAAA4P////////////8/AAAAAAAAAADw/////////////wcAAAAAAAAAAPj/////////////AQAAAAAAAAAA/v////////////8AAAAAAAAAAAD/////////////fwAAAAAAAAAAwP////////////8/AAAAAAAAAADg/////////////z8AAAAAAAAAAPD/////////////HwAAAAAAAAAA/P////////////8BAAAAAAAAAAD+/////////////wAAAAAAAAAAAP////////////9/AAAAAAAAAADA/////////////wcAAAAAAAAAAOD/////////////BwAAAAAAAAAA+P////////////8DAAAAAAAAAAD8/////////////wEAAAAAAAAAAP7/////////////AAAAAAAAAACA/////////////x8AAAAAAAAAAMD/////////////BwAAAAAAAAAA4P///////////wcAAAAAAAAAAAD4////////////AwAAAAAAAAAAAPz///////////8BAAAAAAAAAAAA/v//////////fwAAAAAAAAAAAAD4//////////8PAAAAAAAAAAAAAPD//////////wMAAAAAAAAAAAAA4P3/////////AQAAAAAAAAAAAADg+f////////8BAAAAAAAAAAAAAMDB/////////wEAAAAAAAAAAAAAQAD+////////AwAAAAAAAAAAAAAAAOD///////8DAAAAAAAAAAAAAAAAgP///////wMAAAAAAAAAAAAAAACA////////AwAAAAAAAAAAAAAAAID///////8BAAAAAAAAAAAAAAAAAP//////fwEAAAAAAAAAAAAAAAAA//////8/AAAAAAAAAAAAAAAAAAD//////z8AAAAAAAAAAAAAAAAAgP//////PwAAAAAAAAAAAAAAAACA////////AAAAAAAAAAAAAAAAAMD///////8DAAAAAAAAAAAAAAAAwP///////x8AAAAAAAAAAAAAAADg////////fwAAAAAAAAAAAAAAAPD/////////AAAAAAAAAAAAAAAA8P////////8BAAAAAAAAAAAAAAD4/////////wMAAAAAAAAAAAAAAPj/////////BwAAAAAAAAAAAAAA/P////////8fAAAAAAAAAAAAAAD8//////////8AAAAAAAAAAAAAAOD//////////wMAAAAAAAAAAAAAAP7/////////AwAAAAAAAAAAAADg//////////8HAAAAAAAAAAAAAPj//////////w8AAAAAAAAAAAAA/P//////////HwAAAAAAAAAAAAD///////////8fAAAAAAAAAAAAwP///////////z8AAAAAAAAAAADA////////////PwAAAAAAAAAAAOD///////////9/AAAAAAAAAAAA4P////////////8AAAAAAAAAAADw/////////////wAAAAAAAAAAAPD/////////////AQAAAAAAAAAA+P////////////8BAAAAAAAAAAD+/////////////wMAAAAAAAAAgP//////////////BwAAAAAAAAAA/v////////////8HAAAAAAAAAABA+P///////////w8AAAAAAAAAAAD4////////////HwAAAAAAAAAAAP7///////////8/AAAAAAAAAADA/3/8/////////z8AAAAAAAAAAAD+P/D/////////fwAAAAAAAAAAAOA/gIf/////////AAAAAAAAAAAAwB+Ag/3///////8BAAAAAAAAAACABwDD/////////wMAAAAAAAAAAMADAMD/////////BwAAAAAAAAAAAAAAwP////////8PAAAAAAAAAAAAAACA+////////x8AAAAAAAAAAAAAAADw////////HwAAAAAAAAAAAAAAAPD///////8/AAAAAAAAAAAAAAAA8P///////38AAAAAAAAAAAAAAADw////////fwAAAAAAAAAAAAAAAOD/////////AAAAAAAAAAAAAAAAwP////////8BAAAAAAAAAAAAAADA/////////wEAAAAAAAAAAAAAAID/////////AwAAAAAAAAAAAAAAgP////////8DAAAAAAAAAAAAAADA/////////wcAAAAAAAAAAAAAAID/////////BwAAAAAAAAAAAAAAgP////////8PAAAAAAAAAAAAAAAA/////////w8AAAAAAAAAAAAAAAf/////////DwAAAAAAAAAAAADg//7///////8PAAAAAAAAAAAAAPD/+P///////w8AAAAAAAAAAAAA/P//////////DwAAAAAAAAAAAAD8//////////8fAAAAAAAAAAAAAP7//////////x8AAAAAAAAAAAAA/v//////////PwAAAAAAAAAAAAD+//////////8/AAAAAAAAAAAAAMD//////////x8AAAAAAAAAAAAAAP7/////////HwAAAAAAAAAAAAAA/v////////8fAAAAAAAAAAAAAAD8/////////x8AAAAAAAAAAAAAAPz/////////HwAAAAAAAAAAAAAA/P////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPz/////////DwAAAAAAAAAAAAAA/P////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPz/////////DwAAAAAAAAAAAAAA/v////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPj/////////DwAAAAAAAAAAAAAA4P/////////vAAAAAAAAAAAAAADg//////////8AAAAAAAAAAAAAAPD//////////wAAAAAAAAAAAAAA8P//////////AAAAAAAAAAAAAADA/////////38AAAAAAAAAAAAAAMD/////////fwAAAAAAAAAAAAAAwP////////9/AAAAAAAAAAAAAADg/////////z8AAAAAAAAAAAAAAPj/////////PwAAAAAAAAAAAAAA//////////8/AAAAAAAAAAAAAAD//////////x8AAAAAAAAAAAAAAPj/////////HwAAAAAAAAAAAAAA//////////8PAAAAAAAAAAAAAAD//////////w8AAAAAAAAAAAAAAP//////////BwAAAAAAAAAAAACA//////////8HAAAAAAAAAAAAAID//////////wMAAAAAAAAAAAAAwP//////////AQAAAAAAAAAAAADA//////////8BAAAAAAAAAAAAAOD//////////wAAAAAAAAAAAAAA8P//////////AAAAAAAAAAAAAADw/////////w8AAAAAAAAAAAAAAOD////////gAwAAAAAAAAAAAAAA4P//////HwAAAAAAAAAAAAAAAADA/////+cfDAAAAAAAAAAAAAAAAMD/////4T8PAAAAAAAAAAAAAAAAwP///w/Avw8AAAAAAAAAAAAAAACA////DwDwHwAAAAAAAAAAAAAAAID///8PAIAfAAAAAAAAAAAAAAAAAP//Pz4AAB4AAAAAAAAAAAAAAAAQ/v8/HAAABAAAAAAAAAAAAAAAAPj//30EAAAAAAAAAAAAAAAAAAAA8P//fAAAAAAAAAAAAAAAAAAAAADg/z//AAAAAAAAAAAAAAAAAAAAAPj/Hz8AAAAAAAAAAAAAAAAAAAAA/P8PPAAAAAAAAAAAAAAAAAAAAAA+Pw8IAAAAAAAAAAAAAAAAAAAAAD8eBAAAAAAAAAAAAAAAAAAAAAAABz4AAAAAAAAAAAAAAAAAAAAAAAACdgAAAAAAAAAAAAAAAAAAAAAAAADmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="), c => c.charCodeAt(0));
+const target = new Uint8Array(PW * PH); for (let k = 0; k < PW * PH; k++) target[k] = (PEN[k >> 3] >> (k & 7)) & 1;
+// a cell is 3.83 km wide (0.04375 deg lon at 38N) and 4.86 km tall (0.04378 deg lat): ASP keeps the drawn shape true
+const ASP = 1.27;
+const tStat = (() => { let n = 0, sx = 0, sy = 0; for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) if (target[r * PW + c]) { n++; sx += c; sy += r; } return { n, cx: sx / n, cy: sy / n }; })();
+const pad = $("pad"), pc = $("padc"), px = pc.getContext("2d");
+let pts = [], drawing = false, dpr = 1;
+function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1); pc.width = Math.round(r.width * dpr); pc.height = Math.round(r.height * dpr); }
+new ResizeObserver(sizePad).observe(pad);
+function stroke() { px.clearRect(0, 0, pc.width, pc.height); px.strokeStyle = "#1d2733"; px.lineWidth = 3 * dpr; px.lineJoin = px.lineCap = "round";
+  px.beginPath(); pts.forEach(([x, y], i) => i ? px.lineTo(x, y) : px.moveTo(x, y)); px.stroke(); }
+pad.addEventListener("pointerdown", e => { pad.setPointerCapture(e.pointerId); drawing = true; pts = []; $("kres").hidden = true; $("padhint").hidden = true; add(e); });
+pad.addEventListener("pointermove", e => { if (drawing) add(e); });
+pad.addEventListener("pointerup", () => { drawing = false; if (pts.length > 12) score(); });
+function add(e) { const r = pc.getBoundingClientRect(); pts.push([(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]); stroke(); }
+function score() {
+  // rasterise the closed drawing on a scratch canvas, then map it onto the target grid by matching area + centroid
+  const off = document.createElement("canvas"); off.width = pc.width; off.height = pc.height; const o = off.getContext("2d");
+  o.fillStyle = "#000"; o.beginPath(); pts.forEach(([x, y], i) => i ? o.lineTo(x, y) : o.moveTo(x, y)); o.closePath(); o.fill();
+  const img = o.getImageData(0, 0, off.width, off.height).data; let n = 0, sx = 0, sy = 0;
+  for (let y = 0; y < off.height; y += 2) for (let x = 0; x < off.width; x += 2) if (img[(y * off.width + x) * 4 + 3] > 0) { n++; sx += x; sy += y; }
+  if (n < 20) return;
+  const ucx = sx / n, ucy = sy / n, s = Math.sqrt((n * 4) / (tStat.n * ASP));  // drawing px per target cell width
+  const user = new Uint8Array(PW * PH); let inter = 0, uni = 0;
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) {
+    const x = Math.round(ucx + (c - tStat.cx) * s), y = Math.round(ucy + (r - tStat.cy) * s * ASP);
+    const u = x >= 0 && y >= 0 && x < off.width && y < off.height && img[(y * off.width + x) * 4 + 3] > 0 ? 1 : 0;
+    user[r * PW + c] = u; const t = target[r * PW + c]; if (u && t) inter++; if (u || t) uni++;
+  }
+  // raw overlap: a plain ellipse already gets ~0.50 and a careful outline ~0.88, so stretch that band to 0..100
+  const pct = Math.round(Math.min(1, Math.max(0, (inter / uni - 0.45) / 0.43)) * 100);
+  // overlay: fit the target grid into the pad
+  const k = Math.min(pc.width / PW, pc.height / (PH * ASP)) * 0.92, ky = k * ASP, ox = (pc.width - PW * k) / 2, oy = (pc.height - PH * ky) / 2;
+  px.clearRect(0, 0, pc.width, pc.height);
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { const u = user[r * PW + c], t = target[r * PW + c]; if (!u) continue;
+    px.fillStyle = t ? "rgba(47,138,91,.75)" : "rgba(224,72,47,.7)"; px.fillRect(ox + c * k, oy + r * ky, k + .5, ky + .5); }
+  px.fillStyle = "#2b59c3";
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) { if (!target[r * PW + c]) continue;
+    const edge = !target[r * PW + c - 1] || !target[r * PW + c + 1] || !target[(r - 1) * PW + c] || !target[(r + 1) * PW + c]; if (edge) px.fillRect(ox + c * k, oy + r * ky, k + .5, ky + .5); }
+  const best = Math.max(pct, store.get("lab.korea.best", 0)); store.set("lab.korea.best", best);
+  $("kscore").textContent = pct + "%"; $("kbest").textContent = `내 최고 ${best}%`;
+  $("klabel").textContent = pct >= 80 ? "인간 GPS" : pct >= 65 ? "지리 선생님 미소" : pct >= 50 ? "그럭저럭 반도" : pct >= 35 ? "토끼가 다이어트함" : "외계인이 본 한반도";
+  $("kres").hidden = false;
+}
+
+// ---------------- 2. daily strange number ----------------
+const NUMS = [
+  { q: "A4 종이(두께 0.1mm)를 반으로 몇 번 접으면 두께가 달까지(38만 4,400km) 닿을까?", a: 42, unit: "번",
+    why: "0.1mm × 2⁴² ≈ 44만 km. 접을 때마다 두께가 두 배라서 42번이면 달을 지나간다. (실제로는 7~8번이 한계)" },
+  { q: "빛은 1초 동안 지구 둘레를 몇 바퀴 돌 수 있을까?", a: 7.5, unit: "바퀴", why: "빛의 속도 29만 9,792km ÷ 지구 둘레 4만 75km ≈ 7.5바퀴." },
+  { q: "사람 심장은 하루에 몇 번 뛸까? (분당 70번 기준)", a: 100800, unit: "번", why: "70번 × 60분 × 24시간 = 10만 800번. 평생이면 약 30억 번." },
+];
+let ni = 0;
+const sl = $("nSlider"), toVal = v => Math.round(Math.pow(10, v / 1000 * 7) * 10) / 10;   // log slider 1 .. 10,000,000
+const fmt = v => v >= 100 ? Math.round(v).toLocaleString("ko-KR") : String(v);
+function nLoad() { const d = NUMS[ni]; $("nTitle").textContent = `오늘의 이상한 숫자 #${ni + 1}`; $("nQ").textContent = d.q; $("nRes").hidden = true; sl.value = 300; nShow(); }
+function nShow() { $("nGuess").textContent = fmt(toVal(+sl.value)) + " " + NUMS[ni].unit; }
+sl.oninput = nShow;
+$("nOther").onclick = () => { ni = (ni + 1) % NUMS.length; nLoad(); };
+$("nGo").onclick = () => {
+  const d = NUMS[ni], g = toVal(+sl.value), ratio = g > d.a ? g / d.a : d.a / g;
+  const pos = v => Math.min(98, Math.max(2, (Math.log10(v) / 7) * 100));
+  $("nLine").innerHTML = `<div class="m" style="left:${pos(g)}%;background:var(--blue)"><b style="color:var(--blue)">나 ${fmt(g)}</b></div><div class="m" style="left:${pos(d.a)}%;background:var(--red)"><b style="color:var(--red);bottom:32px">정답 ${fmt(d.a)}</b></div>`;
+  $("nOff").textContent = ratio < 1.05 ? "정답!" : `${ratio.toFixed(1)}배 ${g > d.a ? "많게" : "적게"}`;
+  $("nLabel").textContent = ratio < 1.2 ? "감이 우주급" : ratio < 2 ? "꽤 날카로운 감" : ratio < 10 ? "평범한 지구인" : ratio < 1000 ? "숫자 감각 휴가 중" : "다른 차원에서 옴";
+  $("nWhy").textContent = d.why;
+  const bars = ratio < 1.2 ? "🟩🟩🟩🟩🟩" : ratio < 2 ? "🟩🟩🟩🟩⬜" : ratio < 10 ? "🟩🟩🟩⬜⬜" : ratio < 1000 ? "🟩⬜⬜⬜⬜" : "⬜⬜⬜⬜⬜";
+  $("nShare").textContent = `D:OT lab 이상한 숫자 #${ni + 1}\n${bars} 오차 ${ratio.toFixed(1)}배`;
+  $("nRes").hidden = false;
+};
+nLoad();
+
+// ---------------- 3. strange question cup ----------------
+const QS = [
+  ["남산타워를 고양이로 쌓으면 몇 마리일까?", "동물"], ["평생 먹는 밥은 몇 공기일까?", "몸"], ["전 국민이 동시에 점프하면 지진이 날까?", "우주"],
+  ["내 머리카락을 다 이으면 몇 km일까?", "몸"], ["1초에 서울에서 배달되는 치킨은 몇 마리일까?", "돈"], ["지하철 2호선을 걸어서 한 바퀴 돌면 몇 시간?", "일상"],
+  ["평생 스마트폰 보는 시간은 몇 년일까?", "일상"], ["엘리베이터 닫힘 버튼은 진짜 작동할까?", "일상"], ["모기가 내 피를 다 빨려면 몇 마리가 필요할까?", "동물"],
+  ["한강 물을 혼자 다 마시려면 몇 년 걸릴까?", "우주"], ["내 인생에서 눈 감고 있던 시간은 얼마나 될까?", "몸"], ["개미가 사람만 하면 얼마나 셀까?", "동물"],
+  ["라면 국물로 수영장을 채우려면 몇 봉지?", "돈"], ["평생 걷는 거리로 지구를 몇 바퀴 돌까?", "몸"], ["비둘기는 서울에서 부산까지 몇 시간에 갈까?", "동물"],
+  ["내 월급을 1원짜리로 받으면 무게는?", "돈"],
+];
+const KIND = { 동물: ["동물 과몰입형", "질문의 주인공이 늘 동물이다. 고양이 단위로 세상을 잰다."], 몸: ["내 몸 탐구형", "남의 일보다 내 몸이 제일 신기하다."],
+  우주: ["스케일 폭주형", "질문이 커질수록 신난다. 한강도 마실 수 있다고 믿는다."], 돈: ["생활 경제 집착형", "모든 걸 원과 치킨으로 환산한다."], 일상: ["사소한 것 탐정형", "버튼 하나도 그냥 지나치지 못한다."] };
+let bracket = [], next = [], picks = [], roundSize = 16;
+function cStart() { bracket = QS.slice().sort(() => Math.random() - .5); next = []; picks = []; roundSize = 16; $("cRes").hidden = true; cShow(); }
+function cShow() {
+  if (bracket.length === 0) { if (next.length === 1) return cEnd(next[0]); bracket = next; next = []; roundSize = bracket.length; }
+  const [a, b] = bracket; const done = (roundSize - bracket.length) / 2, total = roundSize / 2;
+  $("cRound").textContent = roundSize === 2 ? "결승" : `${roundSize}강 ${done + 1}/${total}`;
+  $("cProg").style.width = (picks.length / 15 * 100) + "%";
+  $("cPair").innerHTML = ""; [a, b].forEach((q, i) => { const btn = document.createElement("button"); btn.className = "pick"; btn.type = "button"; btn.textContent = q[0];
+    btn.onclick = () => { picks.push(q); next.push(q); bracket = bracket.slice(2); cShow(); }; $("cPair").append(btn); if (i === 0) { const v = document.createElement("div"); v.className = "vs"; v.textContent = "vs"; $("cPair").append(v); } });
+}
+function cEnd(win) {
+  $("cPair").innerHTML = ""; $("cProg").style.width = "100%"; $("cRound").textContent = "끝";
+  const tally = {}; picks.forEach(q => tally[q[1]] = (tally[q[1]] || 0) + 1); const top = Object.entries(tally).sort((a, b) => b[1] - a[1])[0][0];
+  $("cWin").textContent = win[0]; $("cLabel").textContent = KIND[top][0]; $("cWhy").textContent = KIND[top][1]; $("cRes").hidden = false;
+}
+$("cAgain").onclick = cStart;
+cStart();
+
+// ---------------- 4. human timer ----------------
+let tT0 = 0, tTarget = 10;
+const TARGETS = [10, 7, 15, 5, 12];
+function tSetTarget() { tTarget = TARGETS[store.get("lab.timer.n", 0) % TARGETS.length]; $("tTarget").textContent = $("tTarget2").textContent = tTarget; }
+tSetTarget();
+$("tap").onclick = () => {
+  const tap = $("tap");
+  if (!tT0) { tT0 = performance.now(); tap.classList.add("run"); tap.textContent = "세는 중…"; $("tRes").hidden = true; return; }
+  const got = (performance.now() - tT0) / 1000, off = got - tTarget; tT0 = 0; tap.classList.remove("run"); tap.textContent = "다시";
+  const hist = store.get("lab.timer.hist", []); hist.push(+off.toFixed(2)); while (hist.length > 12) hist.shift(); store.set("lab.timer.hist", hist);
+  const best = Math.min(Math.abs(off), store.get("lab.timer.best", 99)); store.set("lab.timer.best", best);
+  $("tGot").textContent = `${got.toFixed(2)}초`; $("tBest").textContent = `오차 ${off >= 0 ? "+" : ""}${off.toFixed(2)}초 · 최고 ±${best.toFixed(2)}`;
+  const a = Math.abs(off);
+  $("tLabel").textContent = a <= 0.1 ? "인간 원자시계" : a <= 0.4 ? "칼 같은 사람" : a <= 1 ? "평범한 지구인" : off < 0 ? "성급한 감자" : "느긋한 거북이";
+  const max = Math.max(1, ...hist.map(Math.abs));
+  $("tHist").innerHTML = hist.map(v => `<i style="height:${Math.max(3, (1 - Math.abs(v) / max) * 100)}%" title="${v}"></i>`).join("");
+  $("tRes").hidden = false;
+  store.set("lab.timer.n", store.get("lab.timer.n", 0) + 1); tSetTarget();
+};
+</script>
