@@ -62,6 +62,8 @@ button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
 .isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
+.toast{position:fixed;left:50%;bottom:max(20px,env(safe-area-inset-bottom,0px));transform:translateX(-50%);z-index:20;background:var(--ink);color:var(--paper);
+  font-size:14px;padding:10px 14px;border-radius:6px;max-width:calc(100vw - 32px)}
 dialog{border:1.5px solid var(--ink);border-radius:6px;padding:12px;background:var(--paper);color:var(--ink);max-width:min(92vw,420px)}
 dialog::backdrop{background:rgba(29,39,51,.55)}
 dialog img{width:100%;display:block;border:1px solid var(--grid)}
@@ -94,8 +96,10 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나(양쪽으로 재서 더 먼 쪽). 약 11 km 이하 = 100%, 92 km 이상 = 0%. 대충 그린 타원 ≈ 20~40%. 지그재그 낙서는 채점 안 함. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
+  <p class="sub" id="dlgLink" style="margin:8px 0 0;word-break:break-all;user-select:all"></p>
   <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
 
+<div class="toast" id="toast" role="status" hidden></div>
 <script>
 const $ = id => document.getElementById(id);
 const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
@@ -273,19 +277,20 @@ function chamfer(src, PW, PH) {
   return D;
 }
 
-// ---- stroke codec: 64 points resampled by arc length, 12 bits per axis, 4 url-safe chars per point ----
+// ---- stroke codec: 48 points resampled by arc length, 9 bits per axis (512 steps), 3 url-safe chars per point ----
 const B64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 function enc(st) {
   const L = [0]; for (let i = 1; i < st.length; i++) L.push(L[i - 1] + Math.hypot(st[i][0] - st[i - 1][0], st[i][1] - st[i - 1][1]));
   const b = bbox(st), m = Math.max(b.w, b.h) || 1; let out = "", j = 0;
-  for (let q = 0; q < 64; q++) { const d = L[L.length - 1] * q / 63; while (j < L.length - 2 && L[j + 1] < d) j++;
+  for (let q = 0; q < 48; q++) { const d = L[L.length - 1] * q / 47; while (j < L.length - 2 && L[j + 1] < d) j++;
     const t = L[j + 1] > L[j] ? (d - L[j]) / (L[j + 1] - L[j]) : 0, x = st[j][0] + (st[j + 1 < st.length ? j + 1 : j][0] - st[j][0]) * t, y = st[j][1] + (st[j + 1 < st.length ? j + 1 : j][1] - st[j][1]) * t;
-    for (const v of [(x - b.x0) / m, (y - b.y0) / m]) { const n = Math.round(Math.min(1, Math.max(0, v)) * 4095); out += B64[n >> 6] + B64[n & 63]; } }
+    const nx = Math.round(Math.min(1, Math.max(0, (x - b.x0) / m)) * 511), ny = Math.round(Math.min(1, Math.max(0, (y - b.y0) / m)) * 511), n = nx << 9 | ny;
+    out += B64[n >> 12] + B64[(n >> 6) & 63] + B64[n & 63]; }
   return out;
 }
 function dec(str) {
-  if (!/^[A-Za-z0-9_-]+$/.test(str) || str.length !== 256) return null; const pts = [];
-  for (let i = 0; i < str.length; i += 4) { const v = k => (B64.indexOf(str[k]) << 6 | B64.indexOf(str[k + 1])) / 4095; pts.push([v(i), v(i + 2)]); }
+  if (!/^[A-Za-z0-9_-]+$/.test(str) || str.length !== 144) return null; const pts = [];
+  for (let i = 0; i < str.length; i += 3) { const n = B64.indexOf(str[i]) << 12 | B64.indexOf(str[i + 1]) << 6 | B64.indexOf(str[i + 2]); pts.push([(n >> 9) / 511, (n & 511) / 511]); }
   return pts;
 }
 // lay a decoded outline over the result: same area as the target, centroid on the target's centroid
@@ -437,7 +442,8 @@ meLine(); islesLine(); histLine();
 
 // ---- share card ----
 let cardBlob = null;
-const pageUrl = () => location.origin && location.origin !== "null" ? location.origin + location.pathname : "";
+const SITE = "https://dot-connects.github.io/dot-lab/works/2026-10-21-draw-korea/site/";
+const challengeUrl = () => `${SITE}?s=${res.pct}&d=${res.code}`;
 async function card() {
   const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
   g.fillStyle = "#fffdf8"; g.fillRect(0, 0, W, H); g.strokeStyle = "#dde2e7"; g.lineWidth = 2;
@@ -458,15 +464,21 @@ async function card() {
   fit(`약한 곳 ${srt.slice(0, 2).map(r => r.name + " " + r.pct).join(", ")}`, 1200);
   fit(`강한 곳 ${srt[srt.length - 1].name} ${srt[srt.length - 1].pct} · 섬 ` + (ISLES.filter(i => res.got[i.id]).map(i => i.name + "✓").join(" ") || "없음") + (res.friend ? " · 초록 = 친구" : ""), 1245);
   g.font = '600 32px "IBM Plex Sans KR", sans-serif';
-  g.fillStyle = "#1d2733"; g.fillText("너도 그려 봐 → 지도 안 보고, 한 번에", 60, 1290);
+  g.fillStyle = "#1d2733"; g.fillText("너도 그려 봐 → dot-connects.github.io/dot-lab", 60, 1290);   // apps that drop the text still carry the address
   return new Promise(ok => c.toBlob(ok, "image/png"));
 }
-const shareText = () => `한반도 그리기 ${res.pct}% — 「${label(res.pct)}」 이길 수 있나?` + (pageUrl() ? `\n${pageUrl()}?s=${res.pct}&d=${res.code}` : "");
+const shareText = () => `한반도 그리기 ${res.pct}% — 「${label(res.pct)}」 이길 수 있나?\n${challengeUrl()}`;
 $("share").onclick = async () => {
   if (!res) return; const blob = cardBlob || await card(), file = new File([blob], `korea-${res.pct}.png`, { type: "image/png" });
-  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); return; } catch (e) { if (e.name === "AbortError") return; } }
-  $("dlgImg").src = URL.createObjectURL(blob); $("copy").textContent = "링크 복사"; $("dlg").showModal();
+  // KakaoTalk / Instagram often keep only the image from a files share, so the link also goes to the clipboard
+  let copied = false; try { await navigator.clipboard.writeText(shareText()); copied = true; } catch {}
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text: shareText(), url: challengeUrl() }); if (copied) toast("링크도 복사해 뒀다. 붙여 넣기만 하면 됨"); return; }
+    catch (e) { if (e.name === "AbortError") return; } }
+  if (navigator.share && !navigator.canShare) { try { await navigator.share({ text: shareText(), url: challengeUrl() }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  $("dlgImg").src = URL.createObjectURL(blob); $("dlgLink").textContent = `${SITE}?s=${res.pct}…`; $("copy").textContent = copied ? "링크 복사됨" : "링크 복사"; $("dlg").showModal();
 };
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 3000); }
 $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shareText()); $("copy").textContent = "복사됨"; } catch { $("copy").textContent = "복사 안 됨"; } };
 $("close").onclick = () => $("dlg").close();
 $("again").onclick = () => { reset(); drawInk(); };
