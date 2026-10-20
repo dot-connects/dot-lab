@@ -4,8 +4,11 @@ Headless Chromium 540x960 at dpr 2; frames come from CDP Page.screencast at devi
 recorder letterboxed the page into a corner), touch via CDP, captions injected into the page so they use the work's
 own fonts. Writes out/reel.mp4 (silent; content-system adds music), out/cover.png and out/card.png.
 Usage: python record_reel.py <work dir>   (needs playwright + ffmpeg on PATH)
+The reel's score is written into manifest.json captions ("이 그림은 NN%"), so the caption cannot disagree with the video.
 """
 import base64
+import json
+import re
 import subprocess
 import sys
 import tempfile
@@ -87,6 +90,8 @@ with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
     (OUT / "card.png").write_bytes(base64.b64decode(blob.split(",")[1]))
     score = page.evaluate("res.pct")
     ctx.close(); b.close()
+    if len(frames) < 30:
+        sys.exit(f"only {len(frames)} screencast frames; reel not written")
     # screencast frames arrive only when the page changes: keep each one on screen until the next (concat durations)
     lines = []
     for i, (ts, data) in enumerate(frames):
@@ -97,5 +102,12 @@ with sync_playwright() as p, tempfile.TemporaryDirectory() as tmp:
     subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", str(Path(tmp) / "list.txt"),
                     "-vf", "fps=30,scale=1080:1920:flags=lanczos,format=yuv420p", "-c:v", "libx264", "-crf", "18", "-movflags", "+faststart",
                     str(OUT / "reel.mp4")], check=True)
+    man = WORK / "manifest.json"
+    if man.exists():
+        m = json.loads(man.read_text(encoding="utf-8"))
+        for key in ("caption", "caption_threads"):
+            if key in m:
+                m[key] = re.sub(r"이 그림은 \d+%", f"이 그림은 {score}%", m[key])
+        man.write_text(json.dumps(m, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("frames", len(frames), "span", round(frames[-1][0] - frames[0][0], 2), "s")
     print("score", score, "->", OUT / "reel.mp4")

@@ -102,7 +102,8 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
 <div class="toast" id="toast" role="status" hidden></div>
 <script>
 const $ = id => document.getElementById(id);
-const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+const store = { get(k, d) { try { const v = JSON.parse(localStorage.getItem(k));
+    return v === null || (d !== null && (typeof v !== typeof d || Array.isArray(v) !== Array.isArray(d))) ? d : v; } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
 
 // ---- target: mainland mask, lon 124..131, lat 33..43.2, 160x233 cells, row 0 = north ----
@@ -259,7 +260,7 @@ async function score() {
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {}), code = enc(main);
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   store.set("lab.korea.hist", [...store.get("lab.korea.hist", []), pct].slice(-30));
-  if (pct > prev || !store.get("lab.korea.bestd", null)) { store.set("lab.korea.best", Math.max(pct, prev)); store.set("lab.korea.bestd", code); }
+  if (pct > prev || (pct === prev && !store.get("lab.korea.bestd", null))) { store.set("lab.korea.best", Math.max(pct, prev)); store.set("lab.korea.bestd", code); }
   const mine = res = { pct, gap, t2u, u2t, wiggle, X, Y, s, ux, uy, notes, got, prev, regs, code, friend: FRIEND && FRIEND.pts && placePoly(FRIEND.pts, ux, uy, n * 4) };
   const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%친구";   // canvas text only; chips are HTML
   await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
@@ -357,6 +358,9 @@ function layout(c, u, x0, y0, x1, y1) {
         for (const rx of vert ? [px - tw / 2, px - tw + 10 * u, px - 10 * u] : [Math.cos(a) > 0 ? px : px - tw])
           if ((!r || path || !strict) && clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; }
         if (spot) break; }
+    if (!spot) { let bd = 1e18;
+      for (let yy = y0 + th; yy < y1 - th; yy += th / 2) for (let xx = x0 + 8 * u; xx < x1 - tw - 8 * u; xx += 12 * u)
+        if (clear(xx, yy - th / 2, xx + tw, yy + th / 2)) { const d = (xx + tw / 2 - x) ** 2 + (yy - y) ** 2; if (d < bd) { bd = d; spot = [xx, yy, Math.atan2(yy - y, xx + tw / 2 - x), Math.sqrt(d)]; } } }
     const [tx, ty] = spot || [Math.max(x0 + 8 * u, Math.min(x1 - tw - 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
     placed.push([tx, ty - th / 2, tx + tw, ty + th / 2]);
     let lead = null; if (r && spot && spot[3] > r + 16 * u) { const a = spot[2]; lead = [x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * .9, Math.cos(a) > .2 ? tx - 3 * u : Math.cos(a) < -.2 ? tx + tw + 3 * u : tx + tw / 2, ty]; }
@@ -453,7 +457,7 @@ async function card() {
   // fit the drawing + real outline into the middle box
   const b = sceneBox(), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
   g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
-  const box = [b.x0 - 40 / k, b.y0 - 40 / k, b.x1 + 40 / k, b.y1 + 40 / k];
+  const ox = bx + bw / 2 - (b.x0 + b.w / 2) * k, oy = by + bh / 2 - (b.y0 + b.h / 2) * k, box = [(40 - ox) / k, (by - 20 - oy) / k, (W - 40 - ox) / k, (by + bh + 20 - oy) / k];
   g.textBaseline = "middle"; scene(g, 2.2 / k, ...box, layout(g, 2.2 / k, ...box)); g.restore();
   g.textBaseline = "alphabetic"; g.fillStyle = "#b8341d"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
   let fs = 76; do g.font = `${fs}px "Nanum Pen Script", cursive`; while (g.measureText(label(res.pct)).width > 500 && (fs -= 4) > 40); g.fillText(label(res.pct), 520, 1150);
@@ -470,19 +474,19 @@ async function card() {
 const shareText = () => `한반도 그리기 ${res.pct}% — 「${label(res.pct)}」 이길 수 있나?\n${challengeUrl()}`;
 $("share").onclick = async () => {
   if (!res) return; const blob = cardBlob || await card(), file = new File([blob], `korea-${res.pct}.png`, { type: "image/png" });
-  // KakaoTalk / Instagram often keep only the image from a files share, so the link also goes to the clipboard
-  let copied = false; try { await navigator.clipboard.writeText(shareText()); copied = true; } catch {}
-  if (navigator.canShare && navigator.canShare({ files: [file] })) {
-    try { await navigator.share({ files: [file], text: shareText(), url: challengeUrl() }); if (copied) toast("링크도 복사해 뒀다. 붙여 넣기만 하면 됨"); return; }
+  // KakaoTalk / Instagram often keep only the image from a files share, so the link also goes to the clipboard (not awaited)
+  const clip = navigator.clipboard ? navigator.clipboard.writeText(shareText()).then(() => true, () => false) : Promise.resolve(false);
+  const files = navigator.canShare && navigator.canShare({ files: [file] });
+  if (files || navigator.share) {
+    try { await navigator.share(files ? { files: [file], text: shareText() } : { text: shareText() }); if (files && await clip) toast("링크도 복사해 뒀다. 붙여 넣기만 하면 됨"); return; }
     catch (e) { if (e.name === "AbortError") return; } }
-  if (navigator.share && !navigator.canShare) { try { await navigator.share({ text: shareText(), url: challengeUrl() }); return; } catch (e) { if (e.name === "AbortError") return; } }
-  $("dlgImg").src = URL.createObjectURL(blob); $("dlgLink").textContent = `${SITE}?s=${res.pct}…`; $("copy").textContent = copied ? "링크 복사됨" : "링크 복사"; $("dlg").showModal();
+  const fr = new FileReader(); fr.onload = () => { $("dlgImg").src = fr.result; }; fr.readAsDataURL(blob);
+  $("dlgLink").textContent = challengeUrl(); $("copy").textContent = await clip ? "링크 복사됨" : "링크 복사"; $("dlg").showModal();
 };
 function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => el.hidden = true, 3000); }
 $("copy").onclick = async () => { try { await navigator.clipboard.writeText(shareText()); $("copy").textContent = "복사됨"; } catch { $("copy").textContent = "복사 안 됨"; } };
 $("close").onclick = () => $("dlg").close();
 $("again").onclick = () => { reset(); drawInk(); };
-$("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { const b = $("dlg").getBoundingClientRect();
   if (e.clientX < b.left || e.clientX > b.right || e.clientY < b.top || e.clientY > b.bottom) $("dlg").close(); });
 </script>
