@@ -17,3 +17,12 @@ page = head + body[:title_end] + "\n</head>\n<body>\n" + body[title_end:] + "\n<
 (here / "site").mkdir(exist_ok=True)
 (here / "site" / "index.html").write_text(page, encoding="utf-8")
 print("built", len(page), "bytes")
+
+# The brake game (no masks): brake/src.html -> brake/preview.html (Artifact) + site/brake/index.html (Pages).
+brake = (here / "brake" / "src.html").read_text(encoding="utf-8")
+(here / "brake" / "preview.html").write_text(brake, encoding="utf-8")
+end = brake.index("</style>") + len("</style>")
+(here / "site" / "brake").mkdir(exist_ok=True)
+(here / "site" / "brake" / "index.html").write_text(
+    head + brake[:end] + "\n</head>\n<body>\n" + brake[end:] + "\n</body>\n</html>\n", encoding="utf-8")
+print("built brake")
