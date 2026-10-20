@@ -35,7 +35,7 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46
 .res{display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px}
 .verdict{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
 .verdict b{grid-row:span 2;font-family:var(--mono);font-size:clamp(36px,11vw,46px);line-height:1;font-variant-numeric:tabular-nums}
-.verdict{min-width:0}.verdict span{font-family:var(--hand);font-size:clamp(24px,7vw,32px);line-height:1.05;color:var(--red);text-wrap:balance}
+.verdict{min-width:0}.verdict span{font-family:var(--hand);font-size:clamp(24px,7vw,32px);line-height:1.05;color:var(--red);word-break:keep-all}
 .verdict small{font-size:13px;color:var(--muted);font-weight:600}
 .verdict b.pen{font-family:var(--hand);font-weight:400;font-size:clamp(50px,14vw,60px);color:var(--red);border:3px solid var(--red);border-radius:50%;padding:0 14px;transform:rotate(-6deg)}
 .actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
@@ -46,9 +46,10 @@ button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .sub{font-size:13px;color:var(--muted);line-height:1.45}
 .acts{display:flex;gap:8px;flex:none}
 .acts .btn:not(.main){min-height:44px;font-family:var(--hand);font-size:26px;padding:0 12px}
-.notes{display:flex;flex-wrap:wrap;gap:4px 14px;font-family:var(--hand);font-size:24px;line-height:1.15;color:var(--red)}
-.notes i{font-style:normal;font-family:var(--mono);font-size:13px;font-weight:700;display:inline-grid;place-items:center;width:20px;height:20px;border:2px solid var(--red);border-radius:50%;margin-right:4px;vertical-align:3px}
-.notes .good{color:var(--green)}.notes .km{color:var(--ink)}
+.notes{font-size:13px;color:var(--muted)}
+.mock{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;border:1.5px dashed var(--muted);border-radius:6px;padding:6px 8px}
+.mock button{font:inherit;font-size:13px;border:1.5px solid var(--ink);border-radius:12px;background:none;color:var(--ink);padding:3px 10px;cursor:pointer;min-height:32px}
+.mock button.on{background:var(--ink);color:var(--paper)}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
 .isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
@@ -79,6 +80,7 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   </div>
   <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
+  <div class="mock" id="mock"><span>정답 지도</span><button type="button" data-l="a" class="on">A 파란 면</button><button type="button" data-l="b">B 형광펜</button><button type="button" data-l="c">C 회색 그림자</button></div>
   <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나. 약 10 km 이하 = 100%, 77 km 이상 = 0%. 대충 그린 타원 ≈ 30%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
@@ -92,6 +94,7 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ==
 // ---- target: mainland mask, lon 124..131, lat 33..43.2, 160x233 cells, row 0 = north ----
 const PW = 160, PH = 233, PEN = Uint8Array.from(atob("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAADADwAAAAAAAAAAAAAAAAAAAAAAAOAfAAAAAAAAAAAAAAAAAAAAAAAA4H8AAAAAAAAAAAAAAAAAAAAAAADwfwAAAAAAAAAAAAAAAAAAAAAAAPB/AAAAAAAAAAAAAAAAAAAAAAAA8H8AAAAAAAAAAAAAAAAAAAAAAADw/wAAAAAAAAAAAAAAAAAAAAAAAPD/AQAAAAAAAAAAAAAAAAAAAAAA+P8XAAAAAAAAAAAAAAAAAAAAAAD4/x8AAAAAAAAAAAAAAAAAAAAAAPj/PwAAAAAAAAAAAAAAAAAAAAAA+P8/AAAAAAAAAAAAAAAAAAAAABz//38AAAAAAAAAAAAAAAAAAAAAvv///wAAAAAAAAAAAAAAAAAAAAD/////AAAAAAAAAAAAAAAAAAAAgP///8MBAAAAAAAAAAAAAAAAAADA////AwAAAAAAAAAAAAAAAAAAAID//38BAAAAAAAAAAAAAAAAAAAA4P//PwAAAAAAAAAAAAAAAAAAAAD4//8/AAAAAAAAAAAAAAAAAAAAAP7//x8AAAAAAAAAAAAAAAAAAABw/v//AwAAAAAAAAAAAAAAAADw//////8DAAAAAAAAAAAAAAAAAPD//////wEAAAAAAAAAAAAAAAAA8P//////AAAAAAAAAAAAAAAAAADw/////38AAAAAAAAAAAAAAAAAAMD/////fwAAAAAAAAAAAAAADAAAwP////8/AAAAAAAAAAAAAGAfAACA/////w8AAAAAAAAAAAAAwD8AAAD/////BwAAAAAAAAAAAAD4PwAAAP7///8DAAAAAAAAAAAAAPj/AAAA/P///wMAAAAAAAAAAAAA+P8AAAD8////AQAAAAAAAAAAAAD8/wcAAP7///8BAAAAAAAAAAAAAPz//wEC/v///wMAAAAAAAAAAAAA/v///w//////BwAAAAAAAAAAAAD+//////////8fAAAAAAAAAAAAAP///////////x8AAAAAAAAAAADA////////////DwAAAAAAAAAAAMD///////////8HAAAAAAAAAAAA4P///////////wcAAAAAAAAAAADw////////////BwAAAAAAAAAAAPz///////////8HAAAAAAAAAAAA/v///////////wcAAAAAAAAAAAD/////////////BwAAAAAAAAAAgP////////////8HAAAAAAAAAADA/////////////w8AAAAAAAAAAOD/////////////BwAAAAAAAADA//////////////8HAAAAAAAAAMD/////////////fwAAAAAAAAAA8P////////////8PAAAAAAAAAAD8/////////////wMAAAAAAAAAAP7///////////9/AAAAAAAAAADg/////////////38AAAAAAAAAAPj/////////////fwAAAAAAAAAA//////////////8/AAAAAAAAAID//////////////x8AAAAAAAAA8P//////////////DwAAAAAAAAD4//////////////8BAAAAAAAAAP7/////////////fwAAAAAAAAAA//////////////8PAAAAAAAAAMD//////////////wMAAAAAAAAA4P//////////////BwAAAAAAAAD4//////////////8HAAAAAAAAAPz//////////////wAAAAAAAAAA/v////////////8/AAAAAAAAAAD+/////////////wcAAAAAAAAAAP7////////////PAAAAAAAAAAAA/v///////////wMAAAAAAAAAAAD/////////////AQAAAAAAAAAAAP////////////8BAAAAAAAAAAAA/v//////////PwAAAAAAAAAAAADw//////////8DAAAAAAAAAAAAAOD//////////wEAAAAAAAAAAAAA4Pn/////////AAAAAAAAAAAAAADA8f////////8AAAAAAAAAAAAAAMCA/////////wEAAAAAAAAAAAAAAAD+////////AwAAAAAAAAAAAAAAAHD///////8BAAAAAAAAAAAAAAAAAP///////wEAAAAAAAAAAAAAAACA////////AQAAAAAAAAAAAAAAAID//////38BAAAAAAAAAAAAAAAAAP7/////PwAAAAAAAAAAAAAAAAAA//////8/AAAAAAAAAAAAAAAAAAD//////x8AAAAAAAAAAAAAAAAAAP//////HwAAAAAAAAAAAAAAAADA//////8/AAAAAAAAAAAAAAAAAOD///////8HAAAAAAAAAAAAAAAA4P///////z8AAAAAAAAAAAAAAADg////////fwAAAAAAAAAAAAAAAPD/////////AAAAAAAAAAAAAAAA+P////////8BAAAAAAAAAAAAAAD4/////////wMAAAAAAAAAAAAAAPz/////////BwAAAAAAAAAAAAAA/P////////8fAAAAAAAAAAAAAAD8/////////38AAAAAAAAAAAAAAPj//////////wAAAAAAAAAAAAAA4P7/////////BwAAAAAAAAAAAADA//////////8PAAAAAAAAAAAAAPz//////////w8AAAAAAAAAAACA////////////DwAAAAAAAAAAAID///////////8fAAAAAAAAAAAAgP///////////z8AAAAAAAAAAADA////////////PwAAAAAAAAAAAOD///////////9/AAAAAAAAAAAA8P///////////38AAAAAAAAAAADw/////////////wAAAAAAAAAAAPD/////////////AQAAAAAAAAAA8P////////////8BAAAAAAAAAAD8/////////////wMAAAAAAAAAAP//////////////AwAAAAAAAAAA7v////////////8HAAAAAAAAAAAA4P///////////w8AAAAAAAAAAAD+3///////////HwAAAAAAAAAAgP9//v////////8fAAAAAAAAAACA///8/////////z8AAAAAAAAAAADOHfj/////////fwAAAAAAAAAAAGA8kAf/////////AAAAAAAAAAAAAB+Awez///////8BAAAAAAAAAACAAwDB/////////wMAAAAAAAAAAIAAAPD/////////BwAAAAAAAAAAAAAA4P////////8PAAAAAAAAAAAAAADA/////////w8AAAAAAAAAAAAAAAD4////////HwAAAAAAAAAAAAAAAPr///////8/AAAAAAAAAAAAAACA/////////z8AAAAAAAAAAAAAAMD5////////fwAAAAAAAAAAAAAAAPD/////////AAAAAAAAAAAAAAAAwP////////8BAAAAAAAAAAAAAADA/////////wEAAAAAAAAAAAAAACD/////////AwAAAAAAAAAAAAAA4P////////8DAAAAAAAAAAAAAADg/////////wcAAAAAAAAAAAAAAGD/////////BwAAAAAAAAAAAAAAgP////////8PAAAAAAAAAAAAAACC/////////w8AAAAAAAAAAAAAwA7+////////DwAAAAAAAAAAAADA/P7///////8PAAAAAAAAAAAAAJD/+P///////w8AAAAAAAAAAAAA3P/9////////DwAAAAAAAAAAAAD8//3///////8fAAAAAAAAAAAAAP7//////////x8AAAAAAAAAAAAA////////////HwAAAAAAAAAAAADW//////////8fAAAAAAAAAAAAAND+/////////w8AAAAAAAAAAAAAcP7/////////DwAAAAAAAAAAAAAg//////////8PAAAAAAAAAAAAAGD+/////////x8AAAAAAAAAAAAAYP7/////////HwAAAAAAAAAAAABA/v////////8fAAAAAAAAAAAAAAD+/////////w8AAAAAAAAAAAAAAPz/////////DwAAAAAAAAAAAAAA+P////////8HAAAAAAAAAAAAAAD8/////////wcAAAAAAAAAAAAAAPz/////////BwAAAAAAAAAAAAAA/P////////8PAAAAAAAAAAAAAAD4/////////w8AAAAAAAAAAAAAAPD/////////DwAAAAAAAAAAAAAA4P/////////HAAAAAAAAAAAAAADg//////////8AAAAAAAAAAAAAAPz/////////fwAAAAAAAAAAAAAA+P////////9/AAAAAAAAAAAAAADA/////////z8AAAAAAAAAAAAAAMD/////////PwAAAAAAAAAAAAAA8P////////8/AAAAAAAAAAAAAADw/////////z8AAAAAAAAAAAAAAPz/////////HwAAAAAAAAAAAAAA/v////////8fAAAAAAAAAAAAAAD//////////x8AAAAAAAAAAAAAAPD/////////HwAAAAAAAAAAAAAA/v////////8fAAAAAAAAAAAAAAD//////////w8AAAAAAAAAAAAAgP//////////BwAAAAAAAAAAAACA//////////8HAAAAAAAAAAAAAMD//////////wMAAAAAAAAAAAAAwP//////////AQAAAAAAAAAAAADg//////////8AAAAAAAAAAAAAAMD//////////wAAAAAAAAAAAAAAwP////////9/AAAAAAAAAAAAAACA////////+R8AAAAAAAAAAAAAAAD//////z9ABgAAAAAAAAAAAAAAwP//////f0AAAAAAAAAAAAAAAADg//////9/CAAAAAAAAAAAAAAAAOD////f8z8OAAAAAAAAAAAAAAAAsP///wvLOA8AAAAAAAAAAAAAAAC4////gxvwHwAAAAAAAAAAAAAAAMD7/z8+H5gOAAAAAAAAAAAAAAAAwP//Pz4fEAcAAAAAAAAAAAAAAADQ//87PB8ABgAAAAAAAAAAAAAAAPD8/3UGAAAAAAAAAAAAAAAAAAAAsP8//AQAAAAAAAAAAAAAAAAAAADw/x//AAAAAAAAAAAAAAAAAAAAANh/nz8AAAAAAAAAAAAAAAAAAAAAPH4POAAAAAAAAAAAAAAAAAAAAAB+fwcIAAAAAAAAAAAAAAAAAAAAAD8+AwAAAAAAAAAAAAAAAAAAAAAADr4AAAAAAAAAAAAAAAAAAAAAAAAA/AMAAAAAAAAAAAAAAAAAAAAAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="), c => c.charCodeAt(0));
 const T = new Uint8Array(PW * PH); for (let k = 0; k < PW * PH; k++) T[k] = (PEN[k >> 3] >> (k & 7)) & 1;
+let LOOK = "a";   // mockup round 2: answer-map look
 const ASP = 1.27;   // a cell is 3.83 km wide and 4.86 km tall at 38N
 const cellOf = (lat, lon) => [(lon - 124) / 7 * PW, (43.2 - lat) / 10.2 * PH];   // [c, r]
 const tg = (() => { let n = 0, sx = 0, sy = 0, r0 = PH, r1 = 0, c0 = PW, c1 = 0;
@@ -223,30 +226,59 @@ function penCircle(c, x, y, r, u, seed) {   // wobbly red-pen loop, a bit more t
 function isleXY(is) { return [res.X(is.at[0]), res.Y(is.at[1])]; }
 // the scene's bounding box: the drawing, the real outline and all three islands
 function sceneBox() { const { X, Y } = res; return bbox([...strokes.flat(), [X(tg.c0), Y(tg.r0)], [X(tg.c1), Y(tg.r1)], ...ISLES.map(isleXY)]); }
-// draws the result in pad pixels; u = output px per css px of line weight; [x0,y0,x1,y1] = visible area for the notes
-function scene(c, u, x0, y0, x1, y1) {
-  const { X, Y, s } = res;
-  c.fillStyle = "#2b59c3"; const d = Math.max(1.6 * u, s * 0.9);
-  for (const [q, r] of EDGE) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d);
-  c.strokeStyle = "#2b59c3"; c.lineWidth = 1.5 * u; c.setLineDash([3 * u, 3 * u]);
-  for (const is of ISLES) { const [x, y] = isleXY(is); c.beginPath(); c.ellipse(x, y, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
+// target mask as an image, drawn scaled under the ink (one drawImage instead of 37k rects)
+const MASK = (() => { const m = document.createElement("canvas"); m.width = PW; m.height = PH; const g = m.getContext("2d"), im = g.createImageData(PW, PH);
+  for (let k = 0; k < PW * PH; k++) if (T[k]) im.data.set([255, 255, 255, 255], k * 4); g.putImageData(im, 0, 0); return m; })();
+const tint = hex => { const m = document.createElement("canvas"); m.width = PW; m.height = PH; const g = m.getContext("2d");
+  g.drawImage(MASK, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = hex; g.fillRect(0, 0, PW, PH); return m; };
+const MAPS = { a: tint("#7fa3e8"), c: tint("#b9c0c8") };
+// answer-map looks for mockup round 2: a = blue fill, b = highlighter outline, c = grey shadow
+function mapLayer(c, u, look, solid) {
+  const { X, Y, s } = res, x = X(0) - s / 2, y = Y(0) - s * ASP / 2, w = PW * s, h = PH * s * ASP;
+  if (solid) c.drawImage(MASK, x, y, w, h);
+  else if (look === "b") { c.globalAlpha = .85; c.fillStyle = "#f2c94c"; const d = Math.max(5 * u, s * 2.2); for (const [q, r] of EDGE) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d); }
+  else { c.globalAlpha = look === "a" ? .45 : .6; c.drawImage(MAPS[look], x, y, w, h); }
+  c.globalAlpha = 1;
+  const col = solid ? "#000" : look === "b" ? "#d39b00" : look === "a" ? "#2b59c3" : "#8a939d";
+  c.strokeStyle = col; c.lineWidth = (solid ? 6 : 1.5) * u; if (!solid) c.setLineDash([3 * u, 3 * u]);
+  for (const is of ISLES) { const [ix, iy] = isleXY(is); c.beginPath(); c.ellipse(ix, iy, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
   c.setLineDash([]);
-  drawStrokes(c, u);
-  c.strokeStyle = c.fillStyle = "#d23f27"; c.lineWidth = 2.2 * u; c.font = `700 ${15 * u}px "IBM Plex Mono", monospace`; c.textAlign = "center"; c.textBaseline = "middle";
-  marks().forEach(({ nt, n }) => {
-    let x = nt.x, y = nt.y; if (nt.isle) [x, y] = isleXY(ISLES[0]);
-    const r = nt.isle ? Math.max(14 * u, ISLES[0].rx * s * 1.15) : 13 * u;
-    penCircle(c, x, y, r, u, n * 31 + res.pct);
-    // number tag just outside the circle, on a paper halo so it stays readable over ink
-    const tx = Math.min(x1 - 10 * u, Math.max(x0 + 10 * u, x + r * 1.1)), ty = Math.min(y1 - 10 * u, Math.max(y0 + 10 * u, y - r * 0.9));
-    c.lineWidth = 5 * u; c.strokeStyle = "#fffdf8"; c.strokeText(n, tx, ty); c.fillText(n, tx, ty); c.lineWidth = 2.2 * u; c.strokeStyle = "#d23f27"; });
-  c.textAlign = "start";
 }
-// notes with a place on the map get a number; praise and shape notes are list-only
-function marks() { let n = 0; return res.notes.map(nt => ({ nt, n: nt.r || nt.isle ? String(++n) : "" })).filter(m => m.n); }
-function noteList() { let n = 0;
-  $("notes").innerHTML = `<span class="km">테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남</span>` + res.notes.map(nt =>
-    `<span class="${nt.good ? "good" : ""}">${nt.r || nt.isle ? `<i>${++n}</i>` : ""}${nt.text}</span>`).join(""); $("notes").hidden = false; }
+// what is already drawn, as a mask, so the red-pen text can look for empty sea
+function occupancy(c, u) {
+  const W = c.canvas.width, H = c.canvas.height, o = document.createElement("canvas"); o.width = W; o.height = H; const g = o.getContext("2d");
+  const m = c.getTransform(); g.setTransform(m); mapLayer(g, u, "a", true); drawStrokes(g, u * 3);
+  const d = g.getImageData(0, 0, W, H).data;
+  return (ax, ay, bx, by) => { const x0 = Math.max(0, Math.floor(ax * m.a + m.e)), x1 = Math.min(W - 1, Math.ceil(bx * m.a + m.e)), y0 = Math.max(0, Math.floor(ay * m.d + m.f)), y1 = Math.min(H - 1, Math.ceil(by * m.d + m.f));
+    for (let y = y0; y <= y1; y += 3) for (let x = x0; x <= x1; x += 3) if (d[(y * W + x) * 4 + 3]) return false; return true; };
+}
+// draws the result in scene px; u = output px per css px of line weight; [x0,y0,x1,y1] = visible area for the notes
+function scene(c, u, x0, y0, x1, y1) {
+  const { s } = res;
+  mapLayer(c, u, LOOK, false); drawStrokes(c, u);
+  const free = occupancy(c, u), placed = [], th = 30 * u;
+  const clear = (a, b, e, f) => a >= x0 + 4 * u && b >= y0 + 4 * u && e <= x1 - 4 * u && f <= y1 - 4 * u && free(a, b, e, f) && !placed.some(p => a < p[2] && e > p[0] && b < p[3] && f > p[1]);
+  c.lineWidth = 2.6 * u; c.font = `${28 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
+  res.notes.forEach((nt, i) => {
+    const col = nt.good ? "#2f8a5b" : "#d23f27"; c.strokeStyle = c.fillStyle = col;
+    let x = nt.x, y = nt.y, r = nt.r || 0; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
+    if (x == null) { x = (x0 + x1) / 2; y = y0 + 40 * u; }
+    if (r) { penCircle(c, x, y, r, u, i * 31 + res.pct); placed.push([x - r * 1.2, y - r, x + r * 1.2, y + r]); }
+    const tw = c.measureText(nt.text).width; let spot = null;
+    // nearest empty spot around the mark: sideways first, then diagonals, then above/below
+    for (let dd = r + 6 * u; dd < 320 * u && !spot; dd += 10 * u)
+      for (const a of [0, Math.PI, -.45, Math.PI + .45, .45, Math.PI - .45, -Math.PI / 2, Math.PI / 2]) {
+        const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd, rx = Math.abs(Math.cos(a)) < .2 ? px - tw / 2 : Math.cos(a) > 0 ? px : px - tw;
+        if (clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; } }
+    const [tx, ty] = spot || [Math.min(x1 - tw - 8 * u, Math.max(x0 + 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
+    placed.push([tx, ty - th / 2, tx + tw, ty + th / 2]);
+    if (r && spot && spot[3] > r + 16 * u) { const a = spot[2], ex = Math.cos(a) > .2 ? tx - 3 * u : Math.cos(a) < -.2 ? tx + tw + 3 * u : tx + tw / 2;   // leader line
+      c.lineWidth = 1.6 * u; c.beginPath(); c.moveTo(x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * .9); c.lineTo(ex, ty); c.stroke(); c.lineWidth = 2.6 * u; }
+    c.lineWidth = 6 * u; c.strokeStyle = "#fffdf8"; c.strokeText(nt.text, tx, ty); c.fillText(nt.text, tx, ty); c.lineWidth = 2.6 * u; c.strokeStyle = col; });
+}
+function noteList() {
+  const key = { a: "파란 면", b: "노란 형광펜", c: "회색 그림자" }[LOOK];
+  $("notes").innerHTML = `테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남 · 검은 선 = 내 그림 · ${key} = 진짜`; $("notes").hidden = false; }
 function render() {
   // zoom out only when something would fall off the pad (a big drawing pushes Jeju below the edge)
   const W = cv.width, H = cv.height, m = 10 * dpr, b = sceneBox();
@@ -279,11 +311,7 @@ async function card() {
   g.fillStyle = "#1d2733"; g.font = '700 30px "IBM Plex Mono", monospace'; g.textBaseline = "top"; g.fillText("D:OT LAB · 실험 #001", 60, 56);
   g.font = '92px "Nanum Pen Script", cursive'; g.fillText("한반도를 그릴 수 있나?", 60, 100);
   // fit the drawing + real outline into the middle box
-  // red-pen notes as a numbered list under the title, wrapped to the card width
-  g.font = '48px "Nanum Pen Script", cursive'; let lx = 60, ly = 236; let n = 0;
-  for (const nt of res.notes) { const tag = nt.r || nt.isle ? `${++n} ` : "", t = tag + nt.text, w = g.measureText(t).width;
-    if (lx + w > W - 60) { lx = 60; ly += 54; } g.fillStyle = nt.good ? "#2f8a5b" : "#d23f27"; g.fillText(t, lx, ly); lx += w + 36; }
-  const b = sceneBox(), bx = 70, by = ly + 50, bw = 940, bh = 1080 - ly - 50, k = Math.min(bw / b.w, bh / b.h) * 0.9;
+  const b = sceneBox(), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
   g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
   g.textBaseline = "middle"; scene(g, 2.2 / k, b.x0 - 40 / k, b.y0 - 40 / k, b.x1 + 40 / k, b.y1 + 40 / k); g.restore();
   g.textBaseline = "alphabetic"; g.fillStyle = "#d23f27"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
@@ -304,4 +332,6 @@ $("close").onclick = () => $("dlg").close();
 $("again").onclick = () => { reset(); drawInk(); $("ghost").hidden = false; };
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
+document.querySelectorAll("#mock button").forEach(bt => bt.onclick = () => {
+  document.querySelectorAll("#mock button").forEach(x => x.classList.toggle("on", x === bt)); LOOK = bt.dataset.l; if (res) { noteList(); render(); } });
 </script>
