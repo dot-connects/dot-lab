@@ -114,24 +114,25 @@ const EDGE = []; for (let r = 1; r < PH - 1; r++) for (let c = 1; c < PW - 1; c+
 // coast spots for diagnosis: [name, lon, lat, over lines (drew sea as land), miss lines (left land out)].
 // Every cell belongs to the nearest spot, so a note always names the place it circles.
 const SPOTS = [
-  ["신의주", 124.5, 40.0, ["신의주 너머 중국 땅", "압록강 하구 매립", "단둥까지 진출"], ["신의주 실종", "평북 끝이 잘림", "압록강 하구 증발"]],
-  ["압록강", 126.3, 41.0, ["압록강 건너감", "만주까지 진출", "중국 땅 접수"], ["자강도 잘림", "압록강 따라 깎임", "북서쪽이 잘림"]],
-  ["백두산", 128.1, 41.9, ["백두산 너머 중국", "만주까지 진출함", "고구려 부활?"], ["백두산 실종", "개마고원 실종", "북쪽이 다이어트함"]],
-  ["두만강", 130.4, 42.4, ["두만강 건너감", "러시아 땅 접수", "블라디보스토크 근처"], ["두만강 끝 실종", "북쪽 꼬리 잘림", "나선 어디 감?"]],
-  ["함경북도", 129.6, 41.4, ["함경도 바다로 확장", "청진 앞바다 매립", "동해 북부 매립"], ["함경도 다이어트", "청진 실종", "북동 해안 깎임"]],
-  ["원산만", 127.6, 39.4, ["원산만 메움", "원산만이 없어짐", "동해가 좁아짐"], ["원산만이 너무 깊음", "함남 해안 깎임", "원산 어디 감?"]],
-  ["평안남도", 125.3, 39.0, ["서한만 메움", "평양 앞바다 매립", "서한만 간척"], ["평안도 잘림", "서한만이 너무 깊음", "평남 해안 깎임"]],
-  ["황해도", 125.2, 38.1, ["황해도 바다로 확장", "옹진반도 부풀림", "백령도까지 연결"], ["옹진반도 실종", "황해도가 사라짐", "장산곶 어디 감?"]],
-  ["경기만", 126.5, 37.4, ["경기만 메움", "인천 앞바다 매립", "강화도 붙여 버림"], ["인천이 바다로", "경기만 너무 큼", "서울 앞이 바다"]],
+  ["신의주", 124.5, 40.0, ["압록강 하구 매립", "압록강 건넘", "강 건너 출장"], ["신의주 실종", "평북 끝이 잘림", "압록강 하구 증발"]],
+  ["압록강", 126.3, 41.0, ["국경 무시함", "강 건너 산책", "압록강 넘어감"], ["자강도 잘림", "압록강 따라 깎임", "북서쪽이 잘림"]],
+  ["백두산", 128.1, 41.9, ["천지 너머 산책", "백두산 키 큼", "북쪽으로 웃자람"], ["백두산 실종", "개마고원 실종", "북쪽이 다이어트함"]],
+  ["두만강", 130.4, 42.4, ["두만강 건너감", "국경 넘어 출장", "북쪽 꼬리 김"], ["두만강 끝 실종", "북쪽 꼬리 잘림", "나선 어디 감?"]],
+  ["함경북도", 129.8, 41.2, ["함경도 바다로 확장", "청진 앞바다 매립", "함경도 뚱뚱"], ["함경도 다이어트", "청진 실종", "북동 해안 깎임"]],
+  ["원산만", 127.6, 39.4, ["원산만 메움", "동해안이 일자", "동해가 좁아짐"], ["원산만이 너무 깊음", "함흥 실종", "원산 어디 감?"]],
+  ["평안남도", 125.3, 39.0, ["서한만 메움", "평양 앞바다 매립", "대동강 하구 매립"], ["평안도 잘림", "서한만이 너무 깊음", "평남 해안 깎임"]],
+  ["황해도", 125.2, 38.1, ["황해도 바다로 확장", "옹진반도 부풀림", "장산곶 늘어남"], ["옹진반도 실종", "황해도가 사라짐", "장산곶 어디 감?"]],
+  ["경기만", 126.5, 37.4, ["경기만 메움", "인천 앞바다 매립", "강화도 붙여 버림", "영종도 합체"], ["인천이 바다로", "경기만 너무 큼", "서울 앞이 바다"]],
   ["강원 동해안", 128.8, 37.6, ["강원도 바다로 확장", "울릉도까지 걸어감", "동해 매립"], ["강원도가 홀쭉", "동해안 깎임", "강릉이 바다로"]],
-  ["충남 서해안", 126.2, 36.6, ["태안 앞바다 매립", "서해를 메워 버림", "중국까지 걸어가겠다"], ["태안반도 어디 감?", "충남 해안 깎임", "서산이 바다로"]],
-  ["경북 동해안", 129.4, 36.2, ["동해에 땅 증설", "포항 앞바다 매립", "호미곶 부풀림"], ["포항 어디 감?", "호미곶 실종", "경상도가 작아짐", "울산 바다로"]],
+  ["충남 서해안", 126.2, 36.6, ["태안 앞바다 매립", "서해를 메워 버림", "서해 건너가겠다"], ["태안반도 어디 감?", "충남 해안 깎임", "서산이 바다로"]],
+  ["경북 동해안", 129.4, 36.5, ["동해에 땅 증설", "포항 앞바다 매립", "호미곶 부풀림"], ["포항 어디 감?", "호미곶 실종", "경상도가 작아짐"]],
   ["전북 해안", 126.6, 35.8, ["새만금 확장판", "군산 앞바다 매립", "변산반도 부풀림"], ["변산반도 실종", "전북 해안 깎임", "군산이 바다로"]],
-  ["부산", 129.0, 35.1, ["대마도 쪽으로 진출", "부산이 바다로 출근", "대한해협 좁아짐"], ["부산이 사라짐", "부산 어디 감?", "경남 끝 잘림"]],
-  ["남해안", 127.8, 34.7, ["남해가 육지 됨", "제주까지 다리 놓음", "여수 앞바다 매립"], ["남해안 증발", "여수·통영 실종", "남해안이 일자"]],
-  ["전남 서남해", 126.3, 34.6, ["다도해 합체", "목포 앞바다 매립", "신안 섬들 붙임"], ["해남 땅끝 실종", "전라도가 바다로", "목포 어디 감?"]],
+  ["부산", 129.0, 35.1, ["광안리 매립됨", "해운대 메움", "남해 섬들 합체"], ["부산이 사라짐", "부산 어디 감?", "울산 바다로", "거제도 실종"]],
+  ["남해안", 127.8, 34.7, ["남해가 육지 됨", "제주까지 다리 놓음", "여수 앞바다 매립"], ["남해안 증발", "여수·고흥 실종", "남해안이 일자"]],
+  ["전남 서남해", 126.3, 34.6, ["다도해 합체", "목포 앞바다 매립", "땅끝이 연장됨"], ["해남 땅끝 실종", "전라도가 바다로", "목포 어디 감?"]],
 ].map(([name, lon, lat, over, miss]) => ({ name, at: cellOf(lat, lon), over, miss }));
 const spotOf = (c, r) => { let best = 0, bd = 1e9; SPOTS.forEach((p, i) => { const d = (c - p.at[0]) ** 2 + ((r - p.at[1]) * ASP) ** 2; if (d < bd) { bd = d; best = i; } }); return best; };
+const SPOT_COAST = SPOTS.map(p => EDGE.reduce((b, e) => ((e[0] - p.at[0]) ** 2 + ((e[1] - p.at[1]) * ASP) ** 2 < (b[0] - p.at[0]) ** 2 + ((b[1] - p.at[1]) * ASP) ** 2 ? e : b), EDGE[0]));
 const pick = a => a[Math.floor(Math.random() * a.length)];
 // islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
 const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2 },
@@ -174,7 +175,7 @@ function add(e) { const r = cv.getBoundingClientRect(); cur.push([(e.clientX - r
 // ---- scoring ----
 const area = s => { let a = 0; for (let i = 0; i < s.length; i++) { const [x1, y1] = s[i], [x2, y2] = s[(i + 1) % s.length]; a += x1 * y2 - x2 * y1; } return Math.abs(a) / 2; };
 const bbox = s => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y] of s) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 }; };
-const label = p => p >= 85 ? "인간 GPS" : p >= 70 ? "지리 선생님 미소" : p >= 55 ? "그럭저럭 반도" : p >= 40 ? "토끼가 다이어트함" : p >= 20 ? "외계인이 본 한반도" : "이건 감자다";
+const label = p => p >= 85 ? "인간 GPS" : p >= 70 ? "지리 선생님 미소" : p >= 55 ? "그럭저럭 반도" : p >= 40 ? "호랑이가 다이어트함" : p >= 20 ? "외계인이 본 한반도" : "이건 감자다";
 function say(text) { $("wait").hidden = true; $("msg").textContent = text; $("msg").hidden = false; }
 
 async function score() {
@@ -236,9 +237,9 @@ async function score() {
   else if (east.length) { const c = tg.cx + (east[0] - ux) / s; got[Math.abs(c - ISLES[1].at[0]) <= Math.abs(c - ISLES[2].at[0]) ? "ulleung" : "dokdo"] = true; }
   if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
-  if (got.dokdo) notes.push({ good: true, text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, text: "울릉도 챙김" });
+  if (got.dokdo) notes.push({ good: true, isle: "dokdo", text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, isle: "ulleung", text: "울릉도 챙김" });
   const top = pct >= 40 && regs.filter(r => r.pct >= GOOD).sort((a, b) => b.pct - a.pct)[0];   // no praise on a potato
-  if (top) notes.push({ good: true, text: top.name + pick([" 칼같음", " 완벽", " 장인급", " 정확함"]) });
+  if (top) { const [c, r] = SPOT_COAST[top.id]; notes.push({ good: true, x: X(c), y: Y(r), r: 14 * dpr, text: top.name + pick([" 칼같음", " 완벽", " 장인급", " 교과서급"]) }); }
   if (!notes.some(x => x.r || x.isle) && !top) notes.unshift({ good: true, text: "흠잡을 데 없음" });
 
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {}), code = enc(main);
@@ -328,16 +329,19 @@ function layout(c, u, x0, y0, x1, y1) {
   const clear = (a, b, e, f) => a >= x0 + 4 * u && b >= y0 + 4 * u && e <= x1 - 4 * u && f <= y1 - 4 * u && free(a, b, e, f) && !placed.some(p => a < p[2] && e > p[0] && b < p[3] && f > p[1]);
   c.font = `${25 * u}px "Nanum Pen Script", cursive`;
   res.notes.forEach(nt => {
-    let x = nt.x, y = nt.y, r = nt.r || 0; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
+    let x = nt.x, y = nt.y, r = nt.r || 0; if (nt.isle) { const is = ISLES.find(i => i.id === nt.isle); [x, y] = isleXY(is); r = Math.max(16 * u, is.rx * s * 1.1); }
     if (x == null) { x = (x0 + x1) / 2; y = y0 + 40 * u; }
     if (r) placed.push([x - r * 1.2, y - r, x + r * 1.2, y + r]);
     const tw = c.measureText(nt.text).width; let spot = null;
     // pass 1: close, with a leader line that stays in empty sea; pass 2: anywhere empty, line may cross
     for (const strict of [true, false]) for (let dd = r + 6 * u; dd < (strict ? 230 : 400) * u && !spot; dd += 10 * u)
       for (const a of [0, Math.PI, -.45, Math.PI + .45, .45, Math.PI - .45, -Math.PI / 2, Math.PI / 2]) {
-        const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd, rx = Math.abs(Math.cos(a)) < .2 ? px - tw / 2 : Math.cos(a) > 0 ? px : px - tw;
+        const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd, vert = Math.abs(Math.cos(a)) < .2;
         const path = [.35, .55, .75, .95].every(t => { const q = r * 1.25 + (dd - r * 1.25) * t, lx = x + Math.cos(a) * q, ly = y + Math.sin(a) * q; return free(lx - 2 * u, ly - 2 * u, lx + 2 * u, ly + 2 * u); });
-        if ((!r || path || !strict) && clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; } }
+        // above/below a mark near the frame edge (Dokdo): centred, or slid left/right so it still fits
+        for (const rx of vert ? [px - tw / 2, px - tw + 10 * u, px - 10 * u] : [Math.cos(a) > 0 ? px : px - tw])
+          if ((!r || path || !strict) && clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; }
+        if (spot) break; }
     const [tx, ty] = spot || [Math.max(x0 + 8 * u, Math.min(x1 - tw - 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
     placed.push([tx, ty - th / 2, tx + tw, ty + th / 2]);
     let lead = null; if (r && spot && spot[3] > r + 16 * u) { const a = spot[2]; lead = [x + Math.cos(a) * r * 1.1, y + Math.sin(a) * r * .9, Math.cos(a) > .2 ? tx - 3 * u : Math.cos(a) < -.2 ? tx + tw + 3 * u : tx + tw / 2, ty]; }
