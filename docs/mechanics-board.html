@@ -1,0 +1,94 @@
+<title>lab 메커닉 장부</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* lab notebook: one column on phones, two-up cards on wide screens; ledger table on top, picks highlighted in red pen */
+:root{--paper:#f6f4ee;--card:#fffdf8;--grid:#dde2e7;--ink:#1d2733;--muted:#56616e;--red:#b8341d;--green:#25744c;--blue:#2b59c3;
+  --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);line-height:1.5}
+main{max-width:980px;margin:0 auto;display:grid;gap:18px;padding-block:20px 40px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-family:var(--hand);font-weight:400;font-size:clamp(38px,9vw,52px);line-height:1;margin:0;text-wrap:balance}
+h2{font-family:var(--hand);font-weight:400;font-size:32px;margin:0;line-height:1}
+.lead{margin:0;max-width:65ch;color:var(--muted)}
+.rule{border:1.5px dashed var(--red);border-radius:4px;padding:10px 12px;background:var(--card);max-width:65ch}
+.rule b{color:var(--red)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;min-width:520px;background:var(--card);border:1.5px solid var(--ink);font-size:14px}
+th,td{padding:7px 10px;border-top:1px solid var(--grid);text-align:left;vertical-align:top}
+th{font-size:12px;letter-spacing:.04em;color:var(--muted);font-weight:600;border-top:0}
+.st{font-family:var(--mono);font-size:12px;font-weight:700;white-space:nowrap}
+.used{color:var(--ink)}.fail,.avoid{color:var(--red)}.ok{color:var(--green)}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(290px,1fr));gap:12px}
+.c{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;padding:12px 14px;display:grid;gap:6px;min-width:0;position:relative}
+.c.pick{border-color:var(--red);box-shadow:4px 4px 0 var(--red)}
+.c .no{font-family:var(--mono);font-size:12px;font-weight:700;color:var(--muted)}
+.c h3{margin:0;font-size:18px;line-height:1.3}
+.c .mech{font-family:var(--hand);font-size:26px;color:var(--blue);line-height:1}
+.c dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:13.5px}
+.c dt{color:var(--muted);white-space:nowrap}.c dd{margin:0;min-width:0}
+.c .joke{font-family:var(--hand);font-size:22px;color:var(--red);line-height:1.1}
+.c .tag{position:absolute;top:10px;right:12px;font-family:var(--hand);font-size:24px;color:var(--red);transform:rotate(-4deg)}
+.eff{font-family:var(--mono);font-size:12px;border:1.5px solid var(--grid);border-radius:10px;padding:0 7px;justify-self:start}
+.warn{font-size:13px;color:var(--red)}
+</style>
+
+<main>
+  <div>
+    <h1>lab 메커닉 장부</h1>
+    <p class="lead">작품마다 손이 하는 동작과 점수가 정해지는 방식이 달라야 한다. 아래는 이미 쓴 것, 피할 것, 그리고 서로 전부 다른 후보 18개. 2026-10-20 · T-0162</p>
+  </div>
+  <div class="rule"><b>운영자 규칙</b> · 좋았던 형식에 주제만 바꾸면 노잼(“사과 그리기”). 통과 기준은 하나: 해 보고 한 번 더 하고 싶은가. 다시 하기 공식: 0탭 재시도 · 숫자 하나 + 내 최고 · 틀린 곳이 보임 · 비교 · 웃긴 라벨 · 내 입력이 결과를 정함.</div>
+
+  <h2>장부</h2>
+  <div class="tw"><table>
+    <thead><tr><th>메커닉 (동작 → 점수)</th><th>상태</th><th>어디서</th></tr></thead>
+    <tbody>
+      <tr><td>기억으로 그리기 → 테두리 거리</td><td class="st used">사용함</td><td>#001 한반도 그리기 (통과)</td></tr>
+      <tr><td>레버로 제한 시간 안에 목표에 세우기</td><td class="st fail">실패</td><td>#0 지구 멈추기 (다시 안 함)</td></tr>
+      <tr><td>시뮬레이션 구경 (입력 없음)</td><td class="st fail">실패</td><td>지구 멈추기 v0</td></tr>
+      <tr><td>N초 됐다 싶을 때 탭 (속시계)</td><td class="st avoid">피함</td><td>스케치 · “너무 흔함”</td></tr>
+      <tr><td>두 카드 중 고르는 토너먼트</td><td class="st avoid">피함</td><td>스케치 · 반응 없음</td></tr>
+      <tr><td>로그 눈금으로 숫자 추측</td><td class="st ok">후보</td><td>스케치 · “괜찮음” → 후보 9</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>후보 18개</h2>
+  <p class="lead">빨간 테두리 = 다음 세 작품으로 추천. 숫자·크기는 만들 때 출처 상수표로만 쓴다(“출처 필요” 표시).</p>
+  <div class="cards" id="cards"></div>
+</main>
+
+<script>
+// [title, mechanic, the one number, replay, funny failure, data, 3-second reel hook, effort, pick, warning]
+const W = [
+  ["라면 물 550ml 맞추기", "누르고 있다 떼서 붓기", "ml 오차", "냄비가 판마다 바뀜 · 최고 기록", "한강 라면 / 라면 수프", "봉지 조리법 550ml (제조사 표기, 출처 필요)", "물줄기 + 숨은 눈금 공개", "S", 1, ""],
+  ["내 간은 어디 있나", "몸 그림에 핀 찍기 (아는 위치)", "장기별 cm 오차", "장기 6개 · 최고 기록", "간이 등에 있음", "교과서 해부 도식 단순화", "투명 인체에 핀이 박힘", "M", 0, ""],
+  ["피자 8등분", "선을 그어 자르기", "조각 넓이 편차 %", "판마다 모양이 바뀜(사각·하트)", "막내 조각 실종", "계산만", "칼질 → 조각 무게 막대", "S", 0, ""],
+  ["대왕고래 실제 크기", "두 손가락으로 크기 늘리기 (사람 옆)", "길이 % 오차", "물건 10개 · 최고", "고래가 붕어빵", "대왕고래·남산타워·버스 길이 (출처 필요)", "사람 옆에서 고래가 커짐", "S", 1, ""],
+  ["서울 25개 구 다 말하기", "60초 타이핑, 맞히면 지도에 불", "/25", "꺼진 구가 다음 목표", "은평구 누락 장인", "행정구역 공식 목록", "지도 칸이 하나씩 켜짐", "S", 0, "#001 바로 뒤라 지도 주제가 겹침 → 뒤로"],
+  ["진짜 태극기 고르기", "미세하게 다른 6개 중 진짜 고르기", "연속 정답", "가짜가 판마다 새로 생김", "괘 위치 랜덤 장인", "국기법 시행령 도식", "깃발 6개 → 정답 공개", "M", 0, "국기를 비트는 연출은 조심(존중 톤)"],
+  ["비싼 순서로 줄 세우기", "끌어서 순서 정렬", "맞은 쌍 %", "세트가 판마다 바뀜", "물가 감각 2009년", "가격 조사 (출처 필요)", "정답 순서로 착 정렬", "S", 0, ""],
+  ["더 많을까 적을까", "둘 중 큰 쪽 고르기 연속", "연속 정답", "끝없이 이어짐", "통계청이 운다", "공공 통계 쌍마다 출처", "치킨집 vs 편의점 숫자 공개", "S", 1, ""],
+  ["이상한 숫자 10문제", "로그 눈금으로 추측", "평균 몇 배 틀림", "날짜 시드 = 오늘의 10문제", "숫자 감각 휴가 중", "상수표 + 우리 계산", "슬라이더 vs 정답이 튀어 오름", "S", 0, "스케치 반응 “괜찮음”"],
+  ["행성에서 던지기", "끌어서 조준 + 힘 (포물선)", "착지 거리 오차", "행성(중력)이 판마다 바뀜", "목성에서 공이 납작", "행성 g 표 (출처)", "같은 던지기가 달에선 날아감", "M", 0, ""],
+  ["2호선 손 안 떨기", "통로 안에서 선 따라가기", "완주 %", "벽에 닿으면 즉시 재시도", "을지로에서 탈선", "노선 모양 (OSM 단순화)", "닿는 순간 빨간 번쩍", "M", 0, ""],
+  ["시도 퍼즐", "조각 끌어서 돌려 맞추기", "걸린 초", "기록 경신", "강원도 거꾸로", "행정 경계 공개 데이터", "조각이 착착 붙음", "M", 0, "#001과 주제(지도) 겹침"],
+  ["평생 출퇴근 환산", "내 숫자 입력 → 환산 카드", "평생 며칠", "약함 (계산기)", "지하철 거주민", "통근 시간 통계 (출처 필요)", "인생 막대가 노선 색으로 참", "S", 0, "다시 하기 장치가 약함"],
+  ["지옥철 버티기", "한 손가락 좌우 피하기", "버틴 정거장 수", "끝없음 · 최고", "신도림에서 튕겨 나감", "없음", "사람 물결 사이로 빠져나감", "M", 0, "인파 사고 연상 표현 금지"],
+  ["한식 조합 도감", "두 개 합쳐 새것 발견", "발견 N/80", "도감 채우기", "김치+김치=김치", "조합표 직접 제작 (큼)", "쌀+물=밥 → … 비빔밥", "L", 0, "내용 제작량이 큼"],
+  ["이삿짐 트럭 싣기", "상자를 정해진 칸에 꽉 채우기", "적재율 %", "상자가 판마다 바뀜", "냉장고 못 실음", "1톤 트럭 적재함 크기 (출처 필요)", "마지막 상자가 딱 들어감", "M", 0, ""],
+  ["3초 보고 없어진 것", "진열대 외우고 사라진 것 찾기", "찾은 개수", "진열대가 점점 늘어남", "금붕어 기억력", "직접 그린 물건", "진열대 깜빡 → 하나 사라짐", "M", 0, ""],
+  ["내 하루 24시간 나누기", "정해진 총량을 슬라이더로 나누기", "한국인 평균과의 거리", "바꿔 보며 비교", "잠 부족 국가대표", "생활시간조사 (통계청, 출처)", "내 파이 vs 평균 파이", "S", 0, ""],
+];
+document.getElementById("cards").innerHTML = W.map(([t, m, n, r, j, d, reel, e, pick, w], i) => `
+  <article class="c${pick ? " pick" : ""}">
+    ${pick ? '<span class="tag">다음 추천</span>' : ""}
+    <span class="no">${String(i + 1).padStart(2, "0")}</span>
+    <h3>${t}</h3>
+    <div class="mech">${m}</div>
+    <dl><dt>숫자 하나</dt><dd>${n}</dd><dt>다시 하기</dt><dd>${r}</dd><dt>데이터</dt><dd>${d}</dd><dt>릴스 3초</dt><dd>${reel}</dd></dl>
+    <div class="joke">${j}</div>
+    <span class="eff">크기 ${e}</span>
+    ${w ? `<div class="warn">${w}</div>` : ""}
+  </article>`).join("");
+</script>
