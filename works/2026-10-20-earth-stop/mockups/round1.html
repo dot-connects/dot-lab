@@ -1,0 +1,216 @@
+<title>지구 멈추기 시안 1</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* layout: one column of three phone frames; each frame is one art direction of the same first screen */
+:root{--bg:#e9ecef;--fg:#161a1f;--muted:#5d6670;--card:#fff;--line:#d3d8de;
+  --ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#0e1114;--fg:#e7ebef;--muted:#98a2ad;--card:#171b20;--line:#2a3139;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0e1114;--fg:#e7ebef;--muted:#98a2ad;--card:#171b20;--line:#2a3139;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:460px;margin:0 auto;display:grid;gap:22px}
+h1{margin:0;font-size:22px}
+.lead{margin:0;color:var(--muted);font-size:14px}
+.variant{display:grid;gap:8px}
+.vhead{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.vhead b{font-size:17px}.vhead span{color:var(--muted);font-size:13px}
+/* phone: fixed art direction per variant (deliberately single-theme inside the frame) */
+.phone{position:relative;width:100%;max-width:430px;aspect-ratio:430/860;border-radius:28px;overflow:hidden;
+  border:1px solid var(--line);background:var(--p-bg);color:var(--p-fg);font-family:var(--p-font);user-select:none;touch-action:manipulation}
+.phone.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:translate(0)}20%{transform:translate(-7px,2px)}40%{transform:translate(6px,-3px)}60%{transform:translate(-4px,1px)}80%{transform:translate(3px,0)}}
+@media (prefers-reduced-motion: reduce){.phone.shake{animation:none}}
+.nums{position:absolute;top:4.5%;left:6%;right:6%;display:grid;gap:2px;font-family:var(--p-num);z-index:3}
+.row{display:flex;justify-content:space-between;align-items:baseline}
+.row .k{font-size:clamp(13px,3.6vw,16px);opacity:.8}
+.row .v{font-size:clamp(17px,5.2vw,24px);font-variant-numeric:tabular-nums}
+.row.ground .v{color:var(--p-hot)}
+.chip{justify-self:start;margin-top:6px;font-size:12px;border:1px solid currentColor;border-radius:99px;padding:1px 9px;opacity:.75;font-family:var(--ui)}
+canvas{position:absolute;inset:0;width:100%;height:100%;z-index:1}
+.q{position:absolute;left:6%;right:6%;top:66%;text-align:center;font-family:var(--p-title);font-size:clamp(26px,8vw,38px);z-index:3;line-height:1.15}
+.ctrl{position:absolute;left:6%;right:6%;bottom:5%;display:grid;gap:12px;z-index:3}
+.slider{display:flex;justify-content:space-between;font-size:13px;opacity:.35;font-family:var(--ui)}
+.slider.on{opacity:1}
+.slider span{padding:4px 6px;border-radius:6px}
+.slider span.cur{background:var(--p-hot);color:var(--p-bg)}
+button.stop{font:inherit;font-family:var(--p-title);font-size:clamp(22px,6.6vw,30px);border:0;border-radius:var(--p-radius);
+  padding:16px;background:var(--p-btn);color:var(--p-btn-fg);cursor:pointer;box-shadow:var(--p-shadow)}
+button.stop:focus-visible{outline:3px solid var(--p-hot);outline-offset:3px}
+.card{position:absolute;left:5%;right:5%;bottom:24%;z-index:4;background:var(--p-card);color:var(--p-card-fg);border-radius:var(--p-radius);
+  padding:14px 16px;display:grid;gap:4px;transform:translateY(12px);opacity:0;transition:.35s;pointer-events:none;border:var(--p-card-border)}
+.card.on{transform:none;opacity:1}
+.card .g{font-family:var(--p-num);font-size:clamp(28px,9vw,40px);color:var(--p-hot);line-height:1}
+.card .t{font-family:var(--ui);font-size:15px}
+.card .s{font-family:var(--ui);font-size:12px;opacity:.7}
+.stamp{position:absolute;left:6%;top:24%;z-index:4;font-family:var(--p-title);font-size:20px;color:var(--p-hot);border:3px solid var(--p-hot);
+  border-radius:6px;padding:2px 10px;transform:rotate(-8deg) scale(1.6);opacity:0;transition:.3s}
+.stamp.on{opacity:1;transform:rotate(-8deg) scale(1)}
+.note{font-size:13px;color:var(--muted);margin:0}
+/* A — D:OT dots */
+.a{--p-bg:#0b1020;--p-fg:#e9eefc;--p-hot:#ffd23f;--p-btn:#ffd23f;--p-btn-fg:#0b1020;--p-card:#151c33;--p-card-fg:#e9eefc;--p-card-border:1px solid #2a3560;
+  --p-font:var(--ui);--p-num:"IBM Plex Mono",monospace;--p-title:"Do Hyeon",sans-serif;--p-radius:16px;--p-shadow:0 0 0 0 transparent}
+/* B — lab notebook */
+.b{--p-bg:#f6f4ee;--p-fg:#1d2733;--p-hot:#e0482f;--p-btn:#1d2733;--p-btn-fg:#f6f4ee;--p-card:#fffdf8;--p-card-fg:#1d2733;--p-card-border:1.5px solid #1d2733;
+  --p-font:var(--ui);--p-num:"IBM Plex Mono",monospace;--p-title:"Nanum Pen Script",cursive;--p-radius:4px;--p-shadow:4px 4px 0 #e0482f}
+.b .q{font-size:clamp(34px,10vw,48px)}
+.b button.stop{font-size:clamp(30px,9vw,40px);padding:10px}
+/* C — poster */
+.c{--p-bg:#ffe14d;--p-fg:#101010;--p-hot:#ff3b2f;--p-btn:#101010;--p-btn-fg:#ffe14d;--p-card:#101010;--p-card-fg:#ffe14d;--p-card-border:0;
+  --p-font:var(--ui);--p-num:"Black Han Sans",sans-serif;--p-title:"Black Han Sans",sans-serif;--p-radius:999px;--p-shadow:0 6px 0 #ff3b2f}
+.c .row .v{font-size:clamp(18px,5.6vw,26px)}
+.c .card{border-radius:24px}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:6px">
+    <h1>지구 멈추기 · 첫 화면 시안 1</h1>
+    <p class="lead">세 시안은 구성이 같고 그림체·색만 다르다. 폰에서 [멈추기]를 눌러 보면 1초 정지 결과가 나온다. 다시 누르면 처음으로 돌아간다.</p>
+  </header>
+
+  <section class="variant"><div class="vhead"><b>A · 도트</b><span>지구를 점으로 찍는다. D:OT 이름과 이어진다</span></div><div class="phone a" data-style="dots"></div></section>
+  <section class="variant"><div class="vhead"><b>B · 실험 노트</b><span>모눈 노트 위 손글씨, 판정 도장</span></div><div class="phone b" data-style="note"></div></section>
+  <section class="variant"><div class="vhead"><b>C · 포스터</b><span>원색 면과 큰 글자, 릴스 썸네일에서 멀리서도 보인다</span></div><div class="phone c" data-style="poster"></div></section>
+  <p class="note">대륙: Natural Earth 110m(공개 도메인)을 1° 격자로 줄여 페이지에 넣었다. 남극 테두리의 줄무늬는 시안용 변환의 흔적이고 구현 때 고친다.</p>
+</div>
+
+<template id="tpl">
+  <canvas></canvas>
+  <div class="nums">
+    <div class="row ground"><span class="k">땅</span><span class="v" data-n="ground">1,327 km/h</span></div>
+    <div class="row"><span class="k">당신</span><span class="v" data-n="you">1,327 km/h</span></div>
+    <div class="row"><span class="k">공기</span><span class="v" data-n="air">1,327 km/h</span></div>
+    <span class="chip">시뮬레이션 · 단순 모델 ⓘ</span>
+  </div>
+  <div class="q">지구가 멈추면?</div>
+  <div class="stamp">실험 #1</div>
+  <div class="card" aria-live="polite"><span class="g">37.6 g</span><span class="t">땅이 발밑에서 시속 1,327km로 빠져나간다. 땅에 붙지 않은 모든 것이 동쪽으로 날아간다.</span><span class="s">서울 · 1초 만에 멈춤 · 그리고 그다음엔 하루가 1년이 된다</span></div>
+  <div class="ctrl">
+    <div class="slider"><span class="cur">1초</span><span>1분</span><span>1시간</span><span>1일</span><span>1년</span></div>
+    <button class="stop" type="button">멈추기</button>
+  </div>
+</template>
+
+<script>
+const MASK_W = 360, MASK_H = 180;
+const MASK = Uint8Array.from(atob("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADg/wMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADg//8/AOD//z8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD+///j//////9/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPD//3////////8PAAAAwB8AADwAAAAAAD8AAAAAAAAAAAAAAAAAAAAAAAAAAPD//wf8//////8DAACA/z8AAAAAAAAAAP4EAAAAAAAAAAAAAAAAAAAAAAAY+I73//j///////8BAAAAfwYAAAAAAAAAAAAfAAAAAAAAAAAAAAAAAAAAAPA4ADDwH+D///////8BAAAAPAQAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAAAAAHzAwPP5H8D///////8AAAAAAAAAAAAA/gEAAID/DwAAAAAAAAAAAAAAAAAAAID/w7P/DwAA/v////8AAAAAAAAAAADgDwAAwP//PwAA4J8AAAAAAAAAAAAAAAMYACD8BwAA+P////8AAAAAAAAAAAB4AAAA/P//BwAAAAAAAAAAAAAAAAAAAP8Ahve5OwAA8P///38AAAAAAAAAAAAeAADg/////4cHAAcAAAAAAAAAAAAAgP9/xzf8/wAA4P///z8AAAAAAAAAAAAPAJ7k//////8fgD8AAAAAAwAAAAAAAO//B3f8/w8A4P///z8AAAAAAAAAAAAPgO////////8f//8HAAAAAAD8fwAAAMD/H/j4//8A4P///zcAAAAAAPADAAAAgN//////////////DwAAAAD+///h/4//f/7Bh/8BwP7//w8AAAAAwP8/AAAAj9///////////////88/AcD///////8LF+TPh/8AgP///wEAAAAA8P//BwHzf57/////////////////DwD////////////vh/kPwP//BwAAAAAA/P//H/P//9///////////////////4H+////////////Afw/wP//AyAYAAAA/v8/X/////////////////////////H///////////9fwP8YgP8fAPA/AAAA/+N/8P//////////////////////QMD////////////Pw/8HAP8PAOA/AACA//F//v////////////////////9/AAf+///////////DBPAHAP8HAAADAADg//z///////////////////////9/AID///////////8Aw8ADAPwDAAAAAAD8P/7///////////////////////9/AMD//////////38AwB8AAPgDAAAAAAD+H/7/////////////////////O/8DAMD///z//////z8AwH8AAMABAAAAAAD+P/z///////////////////9/wH8AAAD8M4D//////z8AwH8MAAAAAAAAAAD+f+D///////////////////9/8AAAAADQAwD8/////38AwP8eAAAAAAAAgAGcH/D//////////////////wEAeAAAAADADgDA//////8AgP8/AAAAAAAAwAMAH/T//////////////////wAAfgAAAAAwAACA//////8PgP9/AAAAAAAAwANwD/7/////////////////PwAAfwAAAAAOAAAA//////9/wP//AAAAAAAAgAOwA/7/////////////////HwCAPwAAAAABAAAA/v//////4///BwAAAAAAOAdg8P//////////////////HwCAHwAAAAAAAACA/P//////4///DwAAAAAAPA/8/////////////////////wUADwAAAAAAAAAA8P//////5///DwAAAAAAnD///////////////////////wcABwAAAAAAAAAA8P//////7///DwAAAAAAgJ///////////////////////wUAAwAAAAAAAAAA8P//////////DAAAAAAAgOP//////////////////////w0AAAAAAAAAAAAA4P////////8BPAAAAAAAAPz//////////////////////w0AAAAAAAAAAAAAgP7///////8PfgAAAAAAgP///////////////////////wQAAAAAAAAAAAAAAP////////8HfgAAAAAAAP7/////////////////////fwQAAAAAAAAAAAAAAP////////+fAAAAAAAAAPz//////T/+////////////PwwAAAAAAAAAAAAAAP////////9/AAAAAAAAAPj////j/gf+////////////HwAAAAAAAAAAAAAAAP////////8MAAAAAAAAAPz/+f8B/If/////////////DwYAAAAAAAAAAAAAAP///////z8AAAAAAAAA8P/H8/8A8If/////////////Bz4AAAAAAAAAAAAAgP///////x8AAAAAAAAA+H+gx/8A4A/+//////////9/AA8AAAAAAAAAAAAAAP///////z8AAAAAAAAA+H8Aj//x4R/8//////////8/AAEAAAAAAAAAAAAAAP///////wcAAAAAAAAA+B8wvM///z/+/////////98fAAMAAAAAAAAAAAAAAP///////wMAAAAAAAAA+A8wEMf//x/+/////////2cOAAMAAAAAAAAAAAAAAP7//////wEAAAAAAAAA/A8AGM7//x/8/////////wMegAEAAAAAAAAAAAAAAP7//////wAAAAAAAAAA+AcADob//z/8/////////zccwAEAAAAAAAAAAAAAAPz//////wAAAAAAAAAAwON/AAR//////////////x888AEAAAAAAAAAAAAAAPj//////wAAAAAAAAAAwPx/ACAg/////////////w8c/gEAAAAAAAAAAAAAAPj/////fwAAAAAAAAAA4P9/AAAA/////////////w+MfwAAAAAAAAAAAAAAAMD/////HwAAAAAAAAAA8P9/AACA/////////////x/ABwAAAAAAAAAAAAAAAID/////DwAAAAAAAAAA+P//BwaA/////////////x/AAAAAAAAAAAAAAAAAAID/////BwAAAAAAAAAA/P//D3/E/////////////z9AAAAAAAAAAAAAAAAAAAD5////BwAAAAAAAAAA/P///////////////////z8AAAAAAAAAAAAAAAAAAAD6/z8HBgAAAAAAAAAA/P///////8///////////z8AAAAAAAAAAAAAAAAAAAD0/w8ABgAAAAAAAAAA/v///////5///////////z8AAAAAAAAAAAAAAAAAAADu/wcADgAAAAAAAACA//////+//x///////////x8AAAAAAAAAAAAAAAAAAADI/wcAbAAAAAAAAADA//////8//z/k/////////w8AAAAAAAAAAAAAAAAAAACQ/wcACAAAAAAAAADg//////9//v/Y/////////w8AAAAAAAAAAAAAAAAAAAAw/wcAAAAAAAAAAADg//////9//v8cgP///////zcAAAAAAAAAAAAAAAAAAABg/gMAAAAAAAAAAADw/////////P9/AP///////zEAAAAAAAAAAAAAAAAAAAAA/AMAPwAAAAAAAAD4////////+P//AP7/////fxAAAAAAAAAAAAAAAAAAAAAA/AcYYAAAAAAAAAD4////////+f9/APz/H///DwAAAAAAAAAAAAAAAAAAAAAA/AcewAMAAAAAAAD4////////8f9/AOD/B/9/BAAAAAAAAAAAAAAAAQAAAAAA+A8eAHgAAAAAAAD4////////4f8/AOD/A/4/BgAAAAAAAAAAAAAAAAAAAAAA8J8PQHwCAAAAAADw////////4/8fAOD/APw/AiAAAAAAAAAAAAAAAAAAAAAAwP8PAAAAAAAAAADw////////x/8PAOB/APx/AHAAAAAAAAAAAAAAAAAAAAAAAP4PAAAAAAAAAAD4////////h/8BAOA/APz/ADAAAAAAAAAAAAAAAAAAAAAAAID/AAAAAAAAAAD4////////j/8AAMAfAMD/ATAAAAAAAAAAAAAAAAAAAAAAAAD/AQAAAAAAAAD4////////nz8AAMAPAMD/ATAAAAAAAAAAAAAAAAAAAAAAAAD8AQAAAAAAAAD4////////vwcAAIAPAMD/AeAAAAAAAAAAAAAAAAAAAAAAAADgAQAAAAAAAAD4/////////wEAAIAPAMD+ASABAAAAAAAAAAAAAAAAAAAAAADAAFgAAAAAAADw////////f2AAAIAPAID4AUADAAAAAAAAAAAAAAAAAAAAAADAAf97AAAAAADg/////////38AAAAPAEDwAMgAAAAAAAAAAAAAAAAAAAAAAACAE/9/AAAAAADA/////////38AAAAXAEAgAEQCAAAAAAAAAAAAAAAAAAAAAAAA7///AAAAAACA/////////z8AAAAyAMAAAIAHAAAAAAAAAAAAAAAAAAAAAAAAyP//AQAAAACA/////////z8AAAAwAIABAMAHAAAAAAAAAAAAAAAAAAAAAAAAwP//AwAAAAAA/v///////x8AAAAwAAADAAMDAAAAAAAAAAAAAAAAAAAAAAAAwP//fwAAAAAA/A/+/////x8AAAAAAAAHgAcAAAAAAAAAAAAAAAAAAAAAAAAAwP///wAAAAAAEAD8/////w8AAAAAADAPwAMAAAAAAAAAAAAAAAAAAAAAAAAAwP///wEAAAAAAADg/////wcAAAAAAGAO4AMAAAAAAAAAAAAAAAAAAAAAAAAA4P///wEAAAAAAADA/////wMAAAAAAMAO+AMAAAAAAAAAAAAAAAAAAAAAAAAA4P///wMAAAAAAADg/////wEAAAAAAIAP/gMYAAAAAAAAAAAAAAAAAAAAAAAA8P///wMAAAAAAADg////fwAAAAAAAIAH/vMZAAAAAAAAAAAAAAAAAAAAAAAA+P///w8AAAAAAADg////fwAAAAAAAAAP/gMAAQAAAAAAAAAAAAAAAAAAAAAA+P///38AAAAAAADg////PwAAAAAAAAAf/HmAAwAAAAAAAAAAAAAAAAAAAAAA+P////8BAAAAAADA////HwAAAAAAAAA+/DkA9wEAAAAAAAAAAAAAAAAAAAAA+P////8fAAAAAACA////DwAAAAAAAAA8wHh0/gcQAAAAAAAAAAAAAAAAAAAA+P////9/AAAAAACA////DwAAAAAAAAA4AHgA+D8YAAAAAAAAAAAAAAAAAAAA+P//////AQAAAAAA////BwAAAAAAAAAwAEAAwD8OAAAAAAAAAAAAAAAAAAAA+P//////AQAAAAAA////BwAAAAAAAADAAQAAxP+AAAAAAAAAAAAAAAAAAAAA8P//////AQAAAAAA/v//BwAAAAAAAACAHwAAwP8AAAAAAAAAAAAAAAAAAAAA4P//////AQAAAAAA/v//BwAAAAAAAAAAcFYGQM8AAAAAAAAAAAAAAAAAAAAA4P//////AQAAAAAA/v//DwAAAAAAAAAAAAgBAIADEAAAAAAAAAAAAAAAAAAAwP//////AAAAAAAA/v//DwAAAAAAAAAAAAAAAAAGIAAAAAAAAAAAAAAAAAAAwP////9/AAAAAAAA/v//HwAAAAAAAAAAAAAAAQQAAAAAAAAAAAAAAAAAAAAAgP////8/AAAAAAAA/v//HyAAAAAAAAAAAACAHwQAAAAAAAAAAAAAAAAAAAAAgP////8fAAAAAAAA////HzAAAAAAAAAAAADADw4AAAAAAAAAAAAAAAAAAAAAAP////8fAAAAAAAA////HzAAAAAAAAAAAADuDx4AAAAAAAAAAAAAAAAAAAAAAP7///8fAAAAAAAA////HzwAAAAAAAAAAAD/Dz4AAAAAAAAAAAAAAAAAAAAAAPj///8fAAAAAAAA////Dz8AAAAAAAAAAID/Pz4AAACAAAAAAAAAAAAAAAAAAPD///8fAAAAAAAA////Az8AAAAAAAAAAMD//z8AAABAAAAAAAAAAAAAAAAAAOD///8fAAAAAAAA////AR8AAAAAAAAAAMD//z8AAAAAAAAAAAAAAAAAAAAAAMD///8PAAAAAAAA/v9/AB8AAAAAAAAAAOD///8AAAAAAAAAAAAAAAAAAAAAAMD///8PAAAAAAAA/v9/AB8AAAAAAAAAAP7///8BAAEAAAAAAAAAAAAAAAAAAMD///8HAAAAAAAA/P9/gA8AAAAAAAAAgP////8BAAYAAAAAAAAAAAAAAAAAAMD///8DAAAAAAAA/P//gA8AAAAAAAAAwP////8HAAAAAAAAAAAAAAAAAAAAAOD//38AAAAAAAAA/P//gA8AAAAAAAAAwP////8HAAAAAAAAAAAAAAAAAAAAAOD//x8AAAAAAAAA/P9/AAcAAAAAAAAA4P////8PAAAAAAAAAAAAAAAAAAAAAOD//w8AAAAAAAAA+P8fAAIAAAAAAAAAwP////8fAAAAAAAAAAAAAAAAAAAAAOD//w8AAAAAAAAA+P8fAAAAAAAAAAAA4P////8fAAAAAAAAAAAAAAAAAAAAAOD//w8AAAAAAAAA+P8fAAAAAAAAAAAAwP////8fAAAAAAAAAAAAAAAAAAAAAOD//wcAAAAAAAAA8P8PAAAAAAAAAAAAwP////8/AAAAAAAAAAAAAAAAAAAAAPD//wMAAAAAAAAA4P8PAAAAAAAAAAAAgP////8fAAAAAAAAAAAAAAAAAAAAAPD//wMAAAAAAAAA4P8HAAAAAAAAAAAAgP////8fAAAAAAAAAAAAAAAAAAAAAPD//wEAAAAAAAAAwP8DAAAAAAAAAAAAgP////8fAAAAAAAAAAAAAAAAAAAAAPD//wAAAAAAAAAAwP8BAAAAAAAAAAAAAP8D/P8PAAAAAAAAAAAAAAAAAAAAAPD/fwAAAAAAAAAAwH8AAAAAAAAAAAAAgP8A+P8PAAAAAAAAAAAAAAAAAAAAAPD/PwAAAAAAAAAAgAEAAAAAAAAAAAAAAAcA6P8HAAAAAAAAAAAAAAAAAAAAAPj/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAwP8HAAACAAAAAAAAAAAAAAAAAPj/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8DAAAEAAAAAAAAAAAAAAAAAPz/BwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8DAAAMAAAAAAAAAAAAAAAAAPz/AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAGwAAAA8AAAAAAAAAAAAAAAAAPg/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAcAAAAAAAAAAAAAAAAAPw/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAPwHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOABAAALAAAAAAAAAAAAAAAAAPwPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOAAAIADAAAAAAAAAAAAAAAAAPgHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAEAAAMABAAAAAAAAAAAAAAAAAPwHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAAAP4BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHgAAAAAAAAAAAAAAAAAAP4BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAADAAAAAAAAAAAAAAAAAAAP4DAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8BAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP8BAAAAAAAAAAAAAAAAAAAAAAYAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAH4AAwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAP4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPwAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPADAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA4AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAeAAAAAAAAAAAAAAAAAIAfAAAAGAAe/IDPDwAAAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAAAAAPj/MADA/////////z8AAAAAAAAAAAAAAAAAAAAAAAAHAAAAAAAAAAAAAABAwP///wH4//////////8HAAAAAAAAAAAAAAAAAAAAAPAfAAAAAAAAAAAAAADw8////wP/////////////BwAAAAAAAAAAAAAAAAAAAPA/AAAAAAAAAAB+/////////+H//////////////wAAAAAAAAAAAAAAAAAAAP5/AAAAAAAA/v////////////D//////////////38AAAAAAAAAAAAAwAcAADB/AAAAAACA/////////////////////////////38AAAAAAAAAAAwA4P//efx/AAAAAADw/////////////////////////////z8AAAAAAAD4//8fgP////8/AAAAAADw/////////////////////////////wMAAAAAAPz///////////8HAAAAAAD//////////////////////////////wAAAAAAAP7//////////z8AAAAAgP///////////////////////////////wAAAADA/////////////wEAAAAA8P///////////////////////////////wAAAACO////////////PwAAAPwA/////////////////////////////////wcAAAAM4P//////////fwAAAP4B/v//////////////////////////////HwAAAAAAAP7//////////w/4wH8AwP//////////////////////////////DwAAAAAA/v////////////8PAAz8////////////////////////////////PwAAAAAA+P//////////////4f///////////////////////////////////wEAAAAA+P///////////////////////////////////////////////////x8A3g////////////////////////////////////////////////////////8/AAAA4AMAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"), c => c.charCodeAt(0));
+const isLand = (lat, lon) => {
+  let c = Math.floor((lon + 180) / 360 * MASK_W), r = Math.floor((90 - lat) / 180 * MASK_H);
+  c = ((c % MASK_W) + MASK_W) % MASK_W; r = Math.min(MASK_H - 1, Math.max(0, r));
+  const k = r * MASK_W + c; return (MASK[k >> 3] >> (k & 7)) & 1;
+};
+const D = Math.PI / 180, SEOUL = { lat: 37.57, lon: 126.98 }, TILT = 23.4 * D;
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const STYLES = {
+  dots:   { ocean: "#1b2547", land: "#ffd23f", rim: "#2a3560", grid: null,      dot: true,  seoul: "#ff5d73", obj: "#e9eefc", label: "#e9eefc" },
+  note:   { ocean: "#f6f4ee", land: "#1d2733", rim: "#1d2733", grid: "#d7dde3", dot: false, seoul: "#e0482f", obj: "#1d2733", label: "#1d2733" },
+  poster: { ocean: "#2353ff", land: "#3ddc84", rim: "#101010", grid: null,      dot: false, seoul: "#ff3b2f", obj: "#101010", label: "#101010" },
+};
+
+// Orthographic globe: screen point -> (lat, lon) given the rotation (spin around the axis, then axial tilt).
+function sample(x, y, spin) {
+  const z = Math.sqrt(1 - x * x - y * y);
+  // undo tilt (rotation around the screen x axis)
+  const y1 = y * Math.cos(TILT) - z * Math.sin(TILT), z1 = y * Math.sin(TILT) + z * Math.cos(TILT);
+  const lat = Math.asin(-y1) / D, lon = Math.atan2(x, z1) / D + spin;
+  return [lat, ((lon + 540) % 360) - 180];
+}
+function project(lat, lon, spin) {
+  const p = lat * D, l = (lon - spin) * D;
+  const x = Math.cos(p) * Math.sin(l), y = -Math.sin(p), z = Math.cos(p) * Math.cos(l);
+  const y2 = y * Math.cos(TILT) + z * Math.sin(TILT), z2 = -y * Math.sin(TILT) + z * Math.cos(TILT);
+  return [x, y2, z2];
+}
+
+function mount(phone) {
+  phone.append(document.getElementById("tpl").content.cloneNode(true));
+  const st = STYLES[phone.dataset.style], cv = phone.querySelector("canvas"), ctx = cv.getContext("2d");
+  const card = phone.querySelector(".card"), stamp = phone.querySelector(".stamp"), slider = phone.querySelector(".slider");
+  const nGround = phone.querySelector('[data-n="ground"]'), btn = phone.querySelector("button.stop");
+  let W = 0, H = 0, dpr = 1, spin = SEOUL.lon - 40, speed = 6, stopped = false, t0 = 0, objs = [], globe = null;
+  function resize() {
+    const r = phone.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
+    W = cv.width = Math.round(r.width * dpr); H = cv.height = Math.round(r.height * dpr); globe = null;
+  }
+  // Globe pixels are rebuilt only when the rotation moved enough; cheap enough at phone size.
+  function drawGlobe(cx, cy, R) {
+    const size = Math.ceil(R * 2), img = ctx.createImageData(size, size), d = img.data;
+    const hex = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+    const O = hex(st.ocean), L = hex(st.land);
+    const step = st.dot ? Math.max(4, Math.round(R / 26)) : 1;
+    for (let py = 0; py < size; py += step) for (let px = 0; px < size; px += step) {
+      const x = (px + step / 2 - R) / R, y = (py + step / 2 - R) / R; if (x * x + y * y >= 1) continue;
+      const [lat, lon] = sample(x, y, spin), land = isLand(lat, lon);
+      if (st.dot) {
+        const rad = step * (land ? 0.42 : 0.2), col = land ? L : O;
+        for (let oy = 0; oy < step; oy++) for (let ox = 0; ox < step; ox++) {
+          const dx = ox - step / 2, dy = oy - step / 2; if (dx * dx + dy * dy > rad * rad) continue;
+          const i = ((py + oy) * size + px + ox) * 4; if (i >= d.length) continue;
+          d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+        }
+      } else {
+        const i = (py * size + px) * 4, col = land ? L : O;
+        d[i] = col[0]; d[i + 1] = col[1]; d[i + 2] = col[2]; d[i + 3] = 255;
+      }
+    }
+    ctx.putImageData(img, Math.round(cx - R), Math.round(cy - R));
+  }
+  function frame(t) {
+    const dt = Math.min(50, t - (frame.last || t)); frame.last = t;
+    if (!stopped) spin -= speed * dt / 1000;
+    ctx.clearRect(0, 0, W, H);
+    if (st.grid) { ctx.strokeStyle = st.grid; ctx.lineWidth = dpr; const g = 22 * dpr;
+      ctx.beginPath(); for (let x = 0; x < W; x += g) { ctx.moveTo(x, 0); ctx.lineTo(x, H); } for (let y = 0; y < H; y += g) { ctx.moveTo(0, y); ctx.lineTo(W, y); } ctx.stroke(); }
+    const cx = W / 2, cy = H * 0.44, R = Math.min(W * 0.38, H * 0.19);
+    drawGlobe(cx, cy, R);
+    ctx.lineWidth = (phone.dataset.style === "note" ? 2 : 3) * dpr; ctx.strokeStyle = st.rim;
+    ctx.beginPath(); ctx.arc(cx, cy, R, 0, Math.PI * 2); ctx.stroke();
+    if (phone.dataset.style === "note") { // meridians like a lab sketch
+      ctx.lineWidth = dpr; ctx.globalAlpha = .35;
+      for (let lon = -180; lon < 180; lon += 30) { ctx.beginPath(); let on = false;
+        for (let lat = -90; lat <= 90; lat += 5) { const [x, y, z] = project(lat, lon, spin);
+          if (z < 0) { on = false; continue; } const X = cx + x * R, Y = cy + y * R; on ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); on = true; }
+        ctx.stroke(); }
+      ctx.globalAlpha = 1;
+    }
+    const [sx, sy, sz] = project(SEOUL.lat, SEOUL.lon, spin);
+    if (sz > 0) { ctx.fillStyle = st.seoul; ctx.beginPath(); ctx.arc(cx + sx * R, cy + sy * R, 5 * dpr, 0, Math.PI * 2); ctx.fill();
+      ctx.font = `${12 * dpr}px ${getComputedStyle(phone).fontFamily}`; ctx.fillStyle = st.label; ctx.fillText("서울", cx + sx * R + 8 * dpr, cy + sy * R + 4 * dpr); }
+    if (stopped) { // things not tied to the ground keep going east
+      const k = (t - t0) / 1000;
+      ctx.fillStyle = st.obj;
+      for (const o of objs) { const x = o.x + o.v * k * W, y = o.y + o.g * k * k * H;
+        if (x > W + 40) continue;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(o.r * k);
+        if (o.kind === 0) ctx.fillRect(-o.s, -o.s * 2, o.s * 2, o.s * 2);            // box
+        else if (o.kind === 1) { ctx.beginPath(); ctx.moveTo(0, -o.s * 2.4); ctx.lineTo(o.s, 0); ctx.lineTo(-o.s, 0); ctx.fill(); } // tree
+        else { ctx.beginPath(); ctx.arc(0, -o.s * 2, o.s * .6, 0, 7); ctx.fill(); ctx.fillRect(-o.s * .35, -o.s * 1.4, o.s * .7, o.s * 1.4); } // person
+        ctx.restore();
+        ctx.globalAlpha = .25; ctx.fillRect(x - o.v * W * .12, y - o.s, o.v * W * .1, 2 * dpr); ctx.globalAlpha = 1; }
+    }
+    requestAnimationFrame(frame);
+  }
+  function countDown() {
+    const start = performance.now();
+    const tick = now => { const p = Math.min(1, (now - start) / 1000), v = Math.round(1327 * (1 - p));
+      nGround.textContent = (p < 1 ? v.toLocaleString("ko-KR") : "0") + " km/h"; if (p < 1) requestAnimationFrame(tick); };
+    requestAnimationFrame(tick);
+  }
+  function stop() {
+    if (stopped) { reset(); return; }
+    stopped = true; t0 = performance.now(); countDown();
+    objs = Array.from({ length: 14 }, (_, i) => ({ x: W * (0.04 + Math.random() * 0.4), y: H * (0.3 + Math.random() * 0.25),
+      v: reduce ? 0 : 0.25 + Math.random() * 0.45, g: -0.02 + Math.random() * 0.04, r: Math.random() * 6 - 3, s: (7 + Math.random() * 6) * dpr, kind: i % 3 }));
+    phone.querySelector(".q").style.opacity = 0;
+    if (!reduce) { phone.classList.remove("shake"); void phone.offsetWidth; phone.classList.add("shake"); }
+    setTimeout(() => { card.classList.add("on"); stamp.classList.add("on"); slider.classList.add("on"); btn.textContent = "다시"; }, reduce ? 0 : 900);
+  }
+  function reset() {
+    stopped = false; objs = []; nGround.textContent = "1,327 km/h"; card.classList.remove("on"); stamp.classList.remove("on");
+    slider.classList.remove("on"); phone.querySelector(".q").style.opacity = 1; btn.textContent = "멈추기";
+  }
+  btn.addEventListener("click", stop);
+  new ResizeObserver(resize).observe(phone); resize(); requestAnimationFrame(frame);
+}
+document.querySelectorAll(".phone").forEach(mount);
+</script>
