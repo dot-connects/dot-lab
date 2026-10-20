@@ -117,13 +117,17 @@ const MID = new Float32Array(PH); { let last = PW / 2;
 // TOP[c] = northern-most land row per column; drawing above it crossed the Yalu (west) or the Tumen (east)
 const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
 const PAEKTU = Math.round(cellOf(0, 128.1)[0]);
-const region = (c0, r0, over) => { const c = Math.min(PW - 1, Math.max(0, c0)), r = Math.min(PH - 1, Math.max(0, r0)), mid = MID[r];
-  return over && TOP[c] < PH && r0 < TOP[c] && r < R_N ? (c0 < PAEKTU ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? (c0 < mid ? "SW" : "SE") : c0 < mid ? "W" : "E"; };
+const region = (c0, r0, over) => { const c = Math.min(PW - 1, Math.max(0, c0)), r = Math.min(PH - 1, Math.max(0, r0)), west = c0 < MID[r];
+  if (over && TOP[c] < PH && r0 < TOP[c] && r < R_N) return c0 < PAEKTU ? "Y" : "T";   // across the Yalu / Tumen
+  return (r < R_N ? "N" : r >= R_S ? "S" : "") + (west ? "W" : "E"); };   // NW NE W E SW SE
 const NOTE = {
-  over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?"], T: ["두만강 건너감", "러시아 땅 접수"], W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다"],
-    E: ["동해에 땅 증설", "울릉도까지 걸어감", "동해가 좁아짐"], SW: ["남해가 육지 됨", "제주까지 다리 놓음"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체"] },
-  miss: { N: ["북쪽이 다이어트함", "북쪽 땅 증발"], W: ["서해안 깎여 나감", "태안반도 어디 감?", "인천이 바다로"], E: ["동해안 실종", "강원도가 홀쭉"],
-    SW: ["전라도가 바다로", "남해안 증발"], SE: ["부산이 사라짐", "경상도 다이어트"] } };
+  over: { Y: ["압록강 건너감", "만주까지 진출함", "고구려 부활?", "신의주 너머로"], T: ["두만강 건너감", "러시아 땅 접수", "블라디보스토크 근처"],
+    NW: ["서한만 메움", "평안도 바다로 확장"], NE: ["함경도 바다로 확장", "동해 북부 매립"],
+    W: ["서해를 메워 버림", "간척 장인", "중국까지 걸어가겠다", "새만금 확장판"], E: ["동해에 땅 증설", "동해가 좁아짐", "원산만 메움", "동해 매립"],
+    SW: ["남해가 육지 됨", "제주까지 다리 놓음", "다도해 합체"], SE: ["대마도 쪽으로 진출", "남해 섬들 합체", "부산이 바다로 출근"] },
+  miss: { NW: ["평안도 잘림", "신의주 실종", "북서쪽이 잘림"], NE: ["함경도 다이어트", "개마고원 실종", "북동쪽이 홀쭉"],
+    W: ["서해안 깎여 나감", "태안반도 어디 감?", "인천이 바다로", "경기만 너무 큼"], E: ["동해안 실종", "강원도가 홀쭉", "동해안 깎임"],
+    SW: ["전라도가 바다로", "해남 땅끝 실종", "전라도 다이어트"], SE: ["경상도가 작아짐", "부산이 사라짐", "포항 어디 감?", "울산 바다로"] } };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 // islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
 const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2 },
@@ -132,8 +136,10 @@ const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5,
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
 const G1 = 3, G0 = 24, WIGGLE = 1.4;
+const WEAK = 70, GOOD = 80;   // coast score below WEAK gets a red note, at or above GOOD gets praise
 const toPct = gap => Math.round(Math.min(1, Math.max(0, (G0 - gap) / (G0 - G1))) * 100);
-const REGS = [["N", "북쪽"], ["W", "서해안"], ["E", "동해안"], ["S", "남해안"]], REG_OF = { N: "N", W: "W", E: "E", SW: "S", SE: "S", Y: "N", T: "N" };   // honest drawings 0.4-0.6 (smoother than the real coast), stripes 1.6-4.4 (round-2 review)   // gap (cells) for 100% and 0%, calibrated in brief.md
+const REGS = [["NW", "북서", "평안도"], ["NE", "북동", "함경도"], ["W", "서해", "서해안"], ["E", "동해", "동해안"], ["SW", "남서", "전라도"], ["SE", "남동", "경상도"]];
+const REG_OF = { NW: "NW", NE: "NE", W: "W", E: "E", SW: "SW", SE: "SE", Y: "NW", T: "NE" };
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
 const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
 function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
@@ -204,10 +210,11 @@ async function score() {
   const acc = {}; const add2 = (k, d, side) => { const c = (k % GW) - M, r = ((k / GW) | 0) - M, id = REG_OF[region(c, r, false)], a = acc[id] || (acc[id] = [0, 0, 0, 0]);
     a[side] += d; a[side + 1]++; };
   te.forEach(k => add2(k, du[k], 0)); ue.forEach(k => add2(k, dt[k], 2));
-  const regs = REGS.map(([id, name]) => { const a = acc[id] || [0, 0, 0, 0]; return { id, name, pct: a[1] + a[3] ? toPct((a[0] + a[2]) / (a[1] + a[3])) : 0 }; });
+  const regs = REGS.map(([id, name, full]) => { const a = acc[id] || [0, 0, 0, 0]; return { id, name, full, pct: a[1] + a[3] ? toPct((a[0] + a[2]) / (a[1] + a[3])) : 0 }; });
   // notes: the three biggest regional errors, plus the shape when it is far too fat or thin
-  const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 3)
-    .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
+  const weak = regs.filter(r => r.pct < WEAK).sort((a, b) => a.pct - b.pct).map(r => r.id);
+  const notes = weak.map(id => Object.entries(err).filter(([k, e]) => REG_OF[k.replace(/^(over|miss)/, "")] === id && e.n > tg.n * 0.015).sort((a, b) => b[1].n - a[1].n)[0])
+    .filter(Boolean).slice(0, 3).map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
       for (let i = 0; i < e.cells.length; i += 2) { const d = (e.cells[i] - mc) ** 2 + ((e.cells[i + 1] - mr) * ASP) ** 2; if (d < bd) { bd = d; bc = e.cells[i]; br = e.cells[i + 1]; } }
       return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: pick(NOTE[k.startsWith("over") ? "over" : "miss"][k.replace(/^(over|miss)/, "")]), k }; });
   const shape = ((ur1 - ur0) * ASP / (uc1 - uc0 + 1)) / ((tg.r1 - tg.r0) * ASP / (tg.c1 - tg.c0 + 1));
@@ -228,7 +235,9 @@ async function score() {
   if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
   if (got.dokdo) notes.push({ good: true, text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, text: "울릉도 챙김" });
-  if (!notes.some(x => x.r || x.isle)) notes.unshift({ good: true, text: "흠잡을 데 없음" });
+  const top = regs.filter(r => r.pct >= GOOD).sort((a, b) => b.pct - a.pct)[0];
+  if (top) notes.push({ good: true, text: top.full + pick([" 칼같음", " 완벽", " 장인급"]) });
+  if (!notes.some(x => x.r || x.isle) && !top) notes.unshift({ good: true, text: "흠잡을 데 없음" });
 
   const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {}), code = enc(main);
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
