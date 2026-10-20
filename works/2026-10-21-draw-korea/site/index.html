@@ -1,0 +1,300 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>한반도 그리기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* Lab-notebook palette (operator pick B, earth-stop round 1). Light only: the pad is paper. */
+:root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#d23f27;--blue:#2b59c3;--green:#2f8a5b;--muted:#56616e;--card:#fffdf8;
+  --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+html,body{height:100%}
+[hidden]{display:none!important}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);-webkit-tap-highlight-color:transparent}
+main{max-width:520px;margin:0 auto;display:grid;gap:8px;padding-block:max(10px,env(safe-area-inset-top,0px)) 24px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.stamp{font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.06em;border:1.5px solid var(--ink);border-radius:3px;padding:2px 6px}
+.me{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46px);line-height:1}
+.q{margin:0;font-size:15px;line-height:1.45}
+.friend{font-size:15px;border:1.5px dashed var(--red);border-radius:4px;padding:6px 10px;color:var(--red);font-weight:600}
+.pad{position:relative;width:100%;aspect-ratio:3/4;max-height:calc(100svh - 236px);min-height:300px;border:1.5px solid var(--ink);border-radius:4px;touch-action:none;
+  background-color:var(--card);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px;background-position:-1px -1px;
+  user-select:none;-webkit-user-select:none;overflow:hidden}
+.pad canvas{position:absolute;inset:0;width:100%;height:100%}
+.ghost{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+.ghost svg{width:46%;overflow:visible}
+.ghost path{fill:none;stroke:var(--muted);stroke-width:3;stroke-linecap:round;stroke-dasharray:6 7;opacity:.6}
+.ghost circle{fill:var(--ink)}
+.ghost .pen{offset-path:path("M60 10 C95 8 104 40 92 62 C84 78 98 96 84 118 C70 140 30 138 22 112 C14 88 30 80 26 58 C22 34 32 12 60 10");animation:pen 2.6s ease-in-out infinite}
+@keyframes pen{from{offset-distance:0%}to{offset-distance:100%}}
+.ghost p{position:absolute;inset:auto 0 14px;margin:0;text-align:center;font-size:14px;color:var(--muted)}
+.wait{position:absolute;inset:auto 10px 10px;display:grid;gap:4px;pointer-events:none;font-size:13px;color:var(--muted);text-align:center}
+.wait i{display:block;height:4px;background:var(--ink);border-radius:2px;width:100%}
+.wait.go i{width:0;transition:width linear}
+.msg{position:absolute;inset:auto 12px 40%;text-align:center;font-family:var(--hand);font-size:34px;line-height:1.1;color:var(--red);pointer-events:none}
+/* verdict row right under the pad: the pad stays free for the red-pen notes, the score stays above the fold */
+.res{display:flex;gap:12px;align-items:center;justify-content:space-between;min-height:64px}
+.verdict{display:grid;grid-template-columns:auto 1fr;column-gap:12px;align-items:center}
+.verdict b{grid-row:span 2;font-family:var(--mono);font-size:clamp(36px,11vw,46px);line-height:1;font-variant-numeric:tabular-nums}
+.verdict span{font-family:var(--hand);font-size:clamp(28px,8vw,34px);line-height:1;color:var(--red)}
+.verdict small{font-size:13px;color:var(--muted);font-weight:600}
+.verdict.a b{font-family:var(--hand);font-weight:400;font-size:clamp(50px,14vw,60px);color:var(--red);border:3px solid var(--red);border-radius:50%;padding:0 14px;transform:rotate(-6deg)}
+.verdict.b b{border:1.5px solid var(--ink);border-radius:4px;padding:4px 8px;background:var(--card)}
+.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
+.btn.main{font-family:var(--hand);font-size:28px;padding:2px 14px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+.btn:disabled{opacity:.35;box-shadow:none}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.sub{font-size:13px;color:var(--muted);line-height:1.45}
+.isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
+.isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
+.isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
+.report{border:1.5px solid var(--ink);border-radius:4px;background:var(--card);font-size:14px;border-collapse:collapse;width:100%}
+.report td{padding:5px 10px;border-top:1px solid var(--grid)}.report tr:first-child td{border-top:0}
+.report td:last-child{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.mock{display:flex;gap:6px;align-items:center;font-size:13px;border-top:1.5px dashed var(--grid);padding-top:8px}
+.mock button{font:inherit;font-size:13px;border:1.5px solid var(--ink);border-radius:12px;background:none;color:var(--ink);padding:3px 10px;cursor:pointer}
+.mock button.on{background:var(--ink);color:var(--paper)}
+dialog{border:1.5px solid var(--ink);border-radius:6px;padding:12px;background:var(--paper);color:var(--ink);max-width:min(92vw,420px)}
+dialog::backdrop{background:rgba(29,39,51,.55)}
+dialog img{width:100%;display:block;border:1px solid var(--grid)}
+@media (prefers-reduced-motion: reduce){.ghost .pen{animation:none}.wait.go i{transition:none}}
+</style>
+</head>
+<body>
+
+
+<main>
+  <div class="top"><span class="stamp">D:OT LAB · 실험 #001</span><span class="me" id="me"></span></div>
+  <h1>한반도를 그릴 수 있나?</h1>
+  <p class="q">지도 안 보고, 손가락으로 한반도를 그려 봐. 크기·위치는 상관없다.</p>
+  <div class="friend" id="friend" hidden></div>
+  <div class="pad" id="pad">
+    <canvas id="padc"></canvas>
+    <div class="ghost" id="ghost" aria-hidden="true">
+      <svg viewBox="0 0 120 150"><path d="M60 10 C95 8 104 40 92 62 C84 78 98 96 84 118 C70 140 30 138 22 112 C14 88 30 80 26 58 C22 34 32 12 60 10"/><circle class="pen" r="6"/></svg>
+      <p>여기에 한 번에 쭉 · 손 떼면 채점</p>
+    </div>
+    <div class="wait" id="wait" hidden><span>섬도 그릴 거면 지금</span><i id="waitbar"></i></div>
+    <div class="msg" id="msg" hidden></div>
+  </div>
+  <div class="res" aria-live="polite">
+    <div class="verdict" id="verdict" hidden><b id="vScore"></b><span id="vLabel"></span><small id="vSub"></small></div>
+    <span class="sub" id="idle">손을 떼고 잠깐 기다리면 채점. 다시 하려면 그냥 다시 그리면 된다.</span>
+    <button class="btn main" id="share" type="button" hidden>결과 이미지</button>
+  </div>
+  <div class="isles" id="isles"></div>
+  <table class="report" id="report" hidden></table>
+  <p class="sub">채점: 본토 테두리만, 넓이·중심을 맞춘 뒤 겹친 넓이 ÷ 합친 넓이. 비슷한 크기의 타원 ≈ 0%, 꼼꼼한 테두리 ≈ 90% 이상. 섬은 점수 밖 도감. 지도: Natural Earth 1:50m(본토), 섬은 중심 좌표.</p>
+  <div class="mock" id="mock"><span>결과 시안</span><button type="button" data-s="a" class="on">A 빨간펜</button><button type="button" data-s="b">B 보고서</button><button type="button" data-s="c">C 공개</button></div>
+</main>
+<dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
+  <div class="actions" style="margin-top:10px"><button class="btn" id="copy" type="button">링크 복사</button><button class="btn" id="close" type="button">닫기</button></div></dialog>
+
+<script>
+const $ = id => document.getElementById(id);
+const store = { get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} } };
+const MOCK = true;   // mockup round: result style switcher shown
+let STYLE = "a";
+if (!MOCK) $("mock").remove();
+
+// ---- target: mainland mask, lon 124..131, lat 33..43.2, 160x233 cells, row 0 = north ----
+const PW = 160, PH = 233, PEN = Uint8Array.from(atob("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAABwAAAAAAAAAAAAAAAAAAAAAAACA/38AAAAAAAAAAAAAAAAAAAAAAPD///8BAAAAAAAAAAAAAAAAAAAA/v//gwAAAAAAAAAAAAAAAAAAAMD///8BAAAAAAAAAAAAAAAAAAAA+P//fwAAAAAAAAAAAAAAAAAAAAD///8/AAAAAAAAAAAAAAAAAAAA4P///z8AAAAAAAAAAAAAAAAAAAD8////BwAAAAAAAAAAAAAAAAAAgP////8DAAAAAAAAAAAAAAAAAADw/////wEAAAAAAAAAAAAAAAAAAP7/////AAAAAAAAAAAAAAAAAADg/////38AAAAAAAAAAAAAAAAAAPz/////fwAAAAAAAAAAAAAAAADA//////8/AAAAAAAAAAAAAAAAAPj//////x8AAAAAAAAAAAAAAAAA////////DwAAAAAAAAAAAAAAAPD///////8HAAAAAAAAAAAAAAAA/v///////wMAAAAAAAAAAAAAAOD/////////AwAAAAAAAAAAAAAA/P////////8DAAAAAAAAAAAAAID//////////wMAAAAAAAAAAAAA+P//////////BwAAAAAAAAAAAAD+//////////8PAAAAAAAAAAAAgP///////////w8AAAAAAAAAAADA////////////DwAAAAAAAAAAAPD///////////8PAAAAAAAAAAAA+P///////////wcAAAAAAAAAAAD8////////////BwAAAAAAAAAAAP////////////8HAAAAAAAAAACA/////////////wcAAAAAAAAAAMD/////////////BwAAAAAAAAAA8P////////////8PAAAAAAAAAAD4/////////////w8AAAAAAAAAAP7/////////////BwAAAAAAAAAA//////////////8HAAAAAAAAAID//////////////wAAAAAAAAAA4P////////////8/AAAAAAAAAADw/////////////wcAAAAAAAAAAPj/////////////AQAAAAAAAAAA/v////////////8AAAAAAAAAAAD/////////////fwAAAAAAAAAAwP////////////8/AAAAAAAAAADg/////////////z8AAAAAAAAAAPD/////////////HwAAAAAAAAAA/P////////////8BAAAAAAAAAAD+/////////////wAAAAAAAAAAAP////////////9/AAAAAAAAAADA/////////////wcAAAAAAAAAAOD/////////////BwAAAAAAAAAA+P////////////8DAAAAAAAAAAD8/////////////wEAAAAAAAAAAP7/////////////AAAAAAAAAACA/////////////x8AAAAAAAAAAMD/////////////BwAAAAAAAAAA4P///////////wcAAAAAAAAAAAD4////////////AwAAAAAAAAAAAPz///////////8BAAAAAAAAAAAA/v//////////fwAAAAAAAAAAAAD4//////////8PAAAAAAAAAAAAAPD//////////wMAAAAAAAAAAAAA4P3/////////AQAAAAAAAAAAAADg+f////////8BAAAAAAAAAAAAAMDB/////////wEAAAAAAAAAAAAAQAD+////////AwAAAAAAAAAAAAAAAOD///////8DAAAAAAAAAAAAAAAAgP///////wMAAAAAAAAAAAAAAACA////////AwAAAAAAAAAAAAAAAID///////8BAAAAAAAAAAAAAAAAAP//////fwEAAAAAAAAAAAAAAAAA//////8/AAAAAAAAAAAAAAAAAAD//////z8AAAAAAAAAAAAAAAAAgP//////PwAAAAAAAAAAAAAAAACA////////AAAAAAAAAAAAAAAAAMD///////8DAAAAAAAAAAAAAAAAwP///////x8AAAAAAAAAAAAAAADg////////fwAAAAAAAAAAAAAAAPD/////////AAAAAAAAAAAAAAAA8P////////8BAAAAAAAAAAAAAAD4/////////wMAAAAAAAAAAAAAAPj/////////BwAAAAAAAAAAAAAA/P////////8fAAAAAAAAAAAAAAD8//////////8AAAAAAAAAAAAAAOD//////////wMAAAAAAAAAAAAAAP7/////////AwAAAAAAAAAAAADg//////////8HAAAAAAAAAAAAAPj//////////w8AAAAAAAAAAAAA/P//////////HwAAAAAAAAAAAAD///////////8fAAAAAAAAAAAAwP///////////z8AAAAAAAAAAADA////////////PwAAAAAAAAAAAOD///////////9/AAAAAAAAAAAA4P////////////8AAAAAAAAAAADw/////////////wAAAAAAAAAAAPD/////////////AQAAAAAAAAAA+P////////////8BAAAAAAAAAAD+/////////////wMAAAAAAAAAgP//////////////BwAAAAAAAAAA/v////////////8HAAAAAAAAAABA+P///////////w8AAAAAAAAAAAD4////////////HwAAAAAAAAAAAP7///////////8/AAAAAAAAAADA/3/8/////////z8AAAAAAAAAAAD+P/D/////////fwAAAAAAAAAAAOA/gIf/////////AAAAAAAAAAAAwB+Ag/3///////8BAAAAAAAAAACABwDD/////////wMAAAAAAAAAAMADAMD/////////BwAAAAAAAAAAAAAAwP////////8PAAAAAAAAAAAAAACA+////////x8AAAAAAAAAAAAAAADw////////HwAAAAAAAAAAAAAAAPD///////8/AAAAAAAAAAAAAAAA8P///////38AAAAAAAAAAAAAAADw////////fwAAAAAAAAAAAAAAAOD/////////AAAAAAAAAAAAAAAAwP////////8BAAAAAAAAAAAAAADA/////////wEAAAAAAAAAAAAAAID/////////AwAAAAAAAAAAAAAAgP////////8DAAAAAAAAAAAAAADA/////////wcAAAAAAAAAAAAAAID/////////BwAAAAAAAAAAAAAAgP////////8PAAAAAAAAAAAAAAAA/////////w8AAAAAAAAAAAAAAAf/////////DwAAAAAAAAAAAADg//7///////8PAAAAAAAAAAAAAPD/+P///////w8AAAAAAAAAAAAA/P//////////DwAAAAAAAAAAAAD8//////////8fAAAAAAAAAAAAAP7//////////x8AAAAAAAAAAAAA/v//////////PwAAAAAAAAAAAAD+//////////8/AAAAAAAAAAAAAMD//////////x8AAAAAAAAAAAAAAP7/////////HwAAAAAAAAAAAAAA/v////////8fAAAAAAAAAAAAAAD8/////////x8AAAAAAAAAAAAAAPz/////////HwAAAAAAAAAAAAAA/P////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPz/////////DwAAAAAAAAAAAAAA/P////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPz/////////DwAAAAAAAAAAAAAA/v////////8PAAAAAAAAAAAAAAD8/////////w8AAAAAAAAAAAAAAPj/////////DwAAAAAAAAAAAAAA4P/////////vAAAAAAAAAAAAAADg//////////8AAAAAAAAAAAAAAPD//////////wAAAAAAAAAAAAAA8P//////////AAAAAAAAAAAAAADA/////////38AAAAAAAAAAAAAAMD/////////fwAAAAAAAAAAAAAAwP////////9/AAAAAAAAAAAAAADg/////////z8AAAAAAAAAAAAAAPj/////////PwAAAAAAAAAAAAAA//////////8/AAAAAAAAAAAAAAD//////////x8AAAAAAAAAAAAAAPj/////////HwAAAAAAAAAAAAAA//////////8PAAAAAAAAAAAAAAD//////////w8AAAAAAAAAAAAAAP//////////BwAAAAAAAAAAAACA//////////8HAAAAAAAAAAAAAID//////////wMAAAAAAAAAAAAAwP//////////AQAAAAAAAAAAAADA//////////8BAAAAAAAAAAAAAOD//////////wAAAAAAAAAAAAAA8P//////////AAAAAAAAAAAAAADw/////////w8AAAAAAAAAAAAAAOD////////gAwAAAAAAAAAAAAAA4P//////HwAAAAAAAAAAAAAAAADA/////+cfDAAAAAAAAAAAAAAAAMD/////4T8PAAAAAAAAAAAAAAAAwP///w/Avw8AAAAAAAAAAAAAAACA////DwDwHwAAAAAAAAAAAAAAAID///8PAIAfAAAAAAAAAAAAAAAAAP//Pz4AAB4AAAAAAAAAAAAAAAAQ/v8/HAAABAAAAAAAAAAAAAAAAPj//30EAAAAAAAAAAAAAAAAAAAA8P//fAAAAAAAAAAAAAAAAAAAAADg/z//AAAAAAAAAAAAAAAAAAAAAPj/Hz8AAAAAAAAAAAAAAAAAAAAA/P8PPAAAAAAAAAAAAAAAAAAAAAA+Pw8IAAAAAAAAAAAAAAAAAAAAAD8eBAAAAAAAAAAAAAAAAAAAAAAABz4AAAAAAAAAAAAAAAAAAAAAAAACdgAAAAAAAAAAAAAAAAAAAAAAAADmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=="), c => c.charCodeAt(0));
+const T = new Uint8Array(PW * PH); for (let k = 0; k < PW * PH; k++) T[k] = (PEN[k >> 3] >> (k & 7)) & 1;
+const ASP = 1.27;   // a cell is 3.83 km wide and 4.86 km tall at 38N
+const cellOf = (lat, lon) => [(lon - 124) / 7 * PW, (43.2 - lat) / 10.2 * PH];   // [c, r]
+const tg = (() => { let n = 0, sx = 0, sy = 0, r0 = PH, r1 = 0, c0 = PW, c1 = 0;
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) if (T[r * PW + c]) { n++; sx += c; sy += r; r0 = Math.min(r0, r); r1 = Math.max(r1, r); c0 = Math.min(c0, c); c1 = Math.max(c1, c); }
+  return { n, cx: sx / n, cy: sy / n, r0, r1, c0, c1 }; })();
+const EDGE = []; for (let r = 1; r < PH - 1; r++) for (let c = 1; c < PW - 1; c++) { const k = r * PW + c;
+  if (T[k] && (!T[k - 1] || !T[k + 1] || !T[k - PW] || !T[k + PW])) EDGE.push([c, r]); }
+// regions for diagnosis: north above 39N, south below 35.2N, the rest split at each row's middle
+const R_N = Math.round(cellOf(39, 0)[1]), R_S = Math.round(cellOf(35.2, 0)[1]);
+const MID = new Float32Array(PH); { let last = PW / 2;
+  for (let r = 0; r < PH; r++) { let a = -1, b = -1; for (let c = 0; c < PW; c++) if (T[r * PW + c]) { if (a < 0) a = c; b = c; } if (a >= 0) last = (a + b) / 2; MID[r] = last; }
+  for (let r = tg.r0 - 1; r >= 0; r--) MID[r] = MID[tg.r0]; }
+// TOP[c] = northern-most land row per column; drawing above it crossed the Yalu (west) or the Tumen (east)
+const TOP = new Int16Array(PW).fill(PH); for (let c = 0; c < PW; c++) for (let r = 0; r < PH; r++) if (T[r * PW + c]) { TOP[c] = r; break; }
+const region = (c, r, over) => over && r < TOP[c] && r < R_N ? (c < tg.cx ? "Y" : "T") : r < R_N && !over ? "N" : r >= R_S ? "S" : c < MID[r] ? "W" : "E";
+const NOTE = { over: { Y: "압록강 건너감", T: "두만강 건너감", W: "서해를 메워 버림", E: "동해에 땅 증설", S: "남해가 육지 됨" },
+  miss: { N: "북쪽이 다이어트함", W: "서해안 깎여 나감", E: "동해안 실종", S: "남해안 증발" } };
+// islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
+const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2, tol: 30 },
+  { id: "ulleung", name: "울릉", at: cellOf(37.50, 130.86), rx: 1.4, ry: 1.1, tol: 16 },
+  { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5, tol: 14 }];
+
+const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
+let dpr = 1, strokes = [], cur = null, timer = 0, res = null, anim = 0;
+const WAIT = 1400;   // ms after lifting before scoring, so islands can be added as more strokes
+function sizePad() { const r = pad.getBoundingClientRect(); dpr = Math.min(2, devicePixelRatio || 1);
+  if (cv.width === Math.round(r.width * dpr) && cv.height === Math.round(r.height * dpr)) return;
+  cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr); res ? render(1) : drawInk(); }
+new ResizeObserver(sizePad).observe(pad);
+
+// ---- drawing ----
+function drawStrokes(c, u) { c.strokeStyle = "#1d2733"; c.fillStyle = "#1d2733"; c.lineWidth = 3 * u; c.lineJoin = c.lineCap = "round";
+  for (const s of strokes) { if (s.length < 3) { c.beginPath(); c.arc(s[0][0], s[0][1], 3 * u, 0, 7); c.fill(); continue; }
+    c.beginPath(); s.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } }
+function drawInk() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); drawStrokes(ctx, dpr); }
+function reset() { strokes = []; res = null; cancelAnimationFrame(anim); ["verdict", "msg", "report", "share"].forEach(id => $(id).hidden = true); $("idle").hidden = false; }
+pad.addEventListener("pointerdown", e => {
+  if (res || !$("msg").hidden) reset();
+  clearTimeout(timer); $("wait").hidden = true; $("ghost").hidden = true;
+  pad.setPointerCapture(e.pointerId); cur = []; strokes.push(cur); add(e);
+});
+pad.addEventListener("pointermove", e => { if (cur) add(e); });
+const lift = () => { if (!cur) return; cur = null; timer = setTimeout(score, WAIT);
+  const w = $("wait"), bar = $("waitbar"); w.hidden = false; w.classList.remove("go"); bar.style.transitionDuration = "0ms"; bar.style.width = "100%";
+  void bar.offsetWidth; w.classList.add("go"); bar.style.transitionDuration = WAIT + "ms"; bar.style.width = "0"; };
+pad.addEventListener("pointerup", lift); pad.addEventListener("pointercancel", lift);
+function add(e) { const r = cv.getBoundingClientRect(); cur.push([(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]); drawInk(); }
+
+// ---- scoring ----
+const area = s => { let a = 0; for (let i = 0; i < s.length; i++) { const [x1, y1] = s[i], [x2, y2] = s[(i + 1) % s.length]; a += x1 * y2 - x2 * y1; } return Math.abs(a) / 2; };
+const bbox = s => { let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9; for (const [x, y] of s) { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); } return { x0, y0, x1, y1, w: x1 - x0, h: y1 - y0 }; };
+const label = p => p >= 85 ? "인간 GPS" : p >= 70 ? "지리 선생님 미소" : p >= 55 ? "그럭저럭 반도" : p >= 40 ? "토끼가 다이어트함" : p >= 20 ? "외계인이 본 한반도" : "이건 감자다";
+function say(text) { $("wait").hidden = true; $("msg").textContent = text; $("msg").hidden = false; }
+
+async function score() {
+  $("wait").hidden = true;
+  const areas = strokes.map(s => s.length > 2 ? area(s) : 0), mi = areas.indexOf(Math.max(...areas)), main = strokes[mi], bb = bbox(main);
+  if (Math.max(bb.w, bb.h) > 0.3 * cv.height && areas[mi] < 0.12 * Math.max(bb.w, bb.h) ** 2) return say("선은 반도가 아니다. 테두리를 한 바퀴 빙 둘러 봐");
+  if (areas[mi] < 0.015 * cv.width * cv.height) return say("이건 독도 크기다. 크게 그려 봐");
+  // rasterise the main stroke, then lay the target grid over it by matching area + centroid
+  const off = document.createElement("canvas"); off.width = cv.width; off.height = cv.height; const o = off.getContext("2d");
+  o.beginPath(); main.forEach(([x, y], i) => i ? o.lineTo(x, y) : o.moveTo(x, y)); o.closePath(); o.fill();
+  const img = o.getImageData(0, 0, off.width, off.height).data, at = (x, y) => x >= 0 && y >= 0 && x < off.width && y < off.height && img[(y * off.width + x) * 4 + 3] > 0;
+  let n = 0, sx = 0, sy = 0; for (let y = 0; y < off.height; y += 2) for (let x = 0; x < off.width; x += 2) if (at(x, y)) { n++; sx += x; sy += y; }
+  const ux = sx / n, uy = sy / n, s = Math.sqrt((n * 4) / (tg.n * ASP));   // drawing px per cell width
+  const X = c => ux + (c - tg.cx) * s, Y = r => uy + (r - tg.cy) * s * ASP;
+  const U = new Uint8Array(PW * PH), err = {}; let inter = 0, uni = 0, ur0 = PH, ur1 = 0, uc0 = PW, uc1 = 0;
+  // cells cover a margin around the target so a drawing that sticks out is still counted
+  for (let r = 0; r < PH; r++) for (let c = 0; c < PW; c++) {
+    const u = at(Math.round(X(c)), Math.round(Y(r))) ? 1 : 0, t = T[r * PW + c]; U[r * PW + c] = u;
+    if (u) { ur0 = Math.min(ur0, r); ur1 = Math.max(ur1, r); uc0 = Math.min(uc0, c); uc1 = Math.max(uc1, c); }
+    if (u && t) inter++; if (u || t) uni++;
+    if (u !== t) { const key = (u ? "over" : "miss") + region(c, r, u), e = err[key] || (err[key] = { n: 0, sc: 0, sr: 0, cells: [] }); e.n++; e.sc += c; e.sr += r; e.cells.push(c, r); }
+  }
+  const iou = inter / uni, pct = Math.round(Math.min(1, Math.max(0, (iou - 0.60) / 0.30)) * 100);
+  // notes: the two biggest regional errors, plus the shape when it is far too fat or thin
+  const notes = Object.entries(err).filter(([, e]) => e.n > tg.n * 0.04).sort((a, b) => b[1].n - a[1].n).slice(0, 2)
+    .map(([k, e]) => { const mc = e.sc / e.n, mr = e.sr / e.n; let bc = mc, br = mr, bd = 1e9;
+      for (let i = 0; i < e.cells.length; i += 2) { const d = (e.cells[i] - mc) ** 2 + ((e.cells[i + 1] - mr) * ASP) ** 2; if (d < bd) { bd = d; bc = e.cells[i]; br = e.cells[i + 1]; } }
+      return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: NOTE[k.slice(0, -1)][k.slice(-1)], k }; });
+  const shape = ((ur1 - ur0) * ASP / (uc1 - uc0 + 1)) / ((tg.r1 - tg.r0) * ASP / (tg.c1 - tg.c0 + 1));
+  if (shape < 0.72) notes.push({ x: ux, y: uy, r: 0, text: "감자 반도" }); else if (shape > 1.45) notes.push({ x: ux, y: uy, r: 0, text: "멸치 반도" });
+  // islands: every other stroke is matched to the nearest island in target cells
+  const got = {}, extra = [];
+  strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), cx = tg.cx + ((b.x0 + b.x1) / 2 - ux) / s, cy = tg.cy + ((b.y0 + b.y1) / 2 - uy) / (s * ASP);
+    let best = null, bd = 1e9; for (const is of ISLES) { const d = Math.hypot(cx - is.at[0], (cy - is.at[1]) * ASP); if (d < is.tol && d < bd) { bd = d; best = is; } }
+    if (best) got[best.id] = true; else extra.push({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 }); });
+  if (!got.jeju) notes.push({ isle: "jeju", text: "제주도 어디 감?" });
+  if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
+
+  const prev = store.get("lab.korea.best", -1), plays = store.get("lab.korea.plays", 0) + 1, isl = store.get("lab.korea.isles", {});
+  Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
+  if (pct > prev) store.set("lab.korea.best", pct);
+  res = { pct, iou, X, Y, s, U, notes, got, prev, plays, shape, area: n * 4 / (tg.n * s * s * ASP) };
+  await Promise.all(['30px "Nanum Pen Script"', '700 30px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  show();
+}
+
+// ---- result ----
+function rnd(seed) { return () => { seed = (seed * 16807) % 2147483647; return seed / 2147483647; }; }
+function penCircle(c, x, y, r, u, seed) {   // wobbly red-pen loop, a bit more than one turn
+  const g = rnd(seed + 7); c.beginPath();
+  for (let a = 0; a <= Math.PI * 2.25; a += 0.12) { const k = 1 + (g() - .5) * .12; const px = x + Math.cos(a - 2) * r * 1.15 * k, py = y + Math.sin(a - 2) * r * .9 * k; a ? c.lineTo(px, py) : c.moveTo(px, py); }
+  c.stroke(); }
+function isleXY(is) { return [res.X(is.at[0]), res.Y(is.at[1])]; }
+// draws the result in pad pixels; u = output px per css px of line weight (pad: dpr, share card: scaled)
+function scene(c, st, prog, u, W, H) {
+  const { X, Y, s, U } = res;
+  if (st === "b") for (let r = 0; r < PH; r++) for (let q = 0; q < PW; q++) { const k = r * PW + q, uu = U[k], t = T[k]; if (!uu && !t) continue;
+    c.fillStyle = uu && t ? "rgba(47,138,91,.45)" : uu ? "rgba(210,63,39,.45)" : "rgba(43,89,195,.10)"; c.fillRect(X(q) - s / 2, Y(r) - s * ASP / 2, s + .6, s * ASP + .6); }
+  const rows = st === "c" ? tg.r0 + (tg.r1 - tg.r0 + 8) * Math.min(1, prog) : PH;
+  c.fillStyle = "#2b59c3"; const d = Math.max(1.6 * u, s * 0.9);
+  for (const [q, r] of EDGE) if (r <= rows) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d);
+  if (prog >= 1 || st !== "c") { c.strokeStyle = "#2b59c3"; c.lineWidth = 1.5 * u; c.setLineDash([3 * u, 3 * u]);
+    for (const is of ISLES) { const [x, y] = isleXY(is); c.beginPath(); c.ellipse(x, y, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
+    c.setLineDash([]); }
+  drawStrokes(c, u);
+  if (st === "b") return;
+  const shown = st === "c" ? Math.floor(Math.max(0, prog - 1) / 0.35) : res.notes.length;
+  c.strokeStyle = c.fillStyle = "#d23f27"; c.lineWidth = 2.6 * u; c.font = `${30 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
+  res.notes.slice(0, shown).forEach((nt, i) => {
+    let x = nt.x, y = nt.y, r = nt.r; if (nt.isle) { [x, y] = isleXY(ISLES[0]); r = Math.max(16 * u, ISLES[0].rx * s * 1.1); }
+    if (r) penCircle(c, x, y, r, u, i * 31 + res.pct);
+    const left = x > W * 0.55, tw = c.measureText(nt.text).width;
+    let tx = r ? (left ? x - r * 1.2 - 6 * u - tw : x + r * 1.2 + 6 * u) : x - tw / 2, ty = r ? y - r * 0.4 : y;
+    tx = Math.min(W - tw - 8 * u, Math.max(8 * u, tx)); ty = Math.min(H - 18 * u, Math.max(20 * u, ty));
+    c.lineWidth = 6 * u; c.strokeStyle = "#fffdf8"; c.strokeText(nt.text, tx, ty); c.fillText(nt.text, tx, ty); c.lineWidth = 2.6 * u; c.strokeStyle = "#d23f27"; });
+}
+function render(prog) { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); scene(ctx, STYLE, prog, dpr, cv.width, cv.height); }
+function show() {
+  const { pct, prev, plays } = res, v = $("verdict"), fr = friend();
+  v.className = "verdict " + STYLE; v.hidden = false; $("vLabel").textContent = label(pct);
+  $("vSub").textContent = fr != null ? (pct > fr ? `친구 ${fr}% 이김 (+${pct - fr})` : pct === fr ? `친구 ${fr}%와 동점` : `친구 ${fr}%에게 짐 (${pct - fr})`)
+    : prev < 0 ? "첫 기록" : pct > prev ? `최고 갱신! (+${pct - prev})` : `내 최고 ${prev}%`;
+  $("share").hidden = false; $("idle").hidden = true; meLine(); islesLine(); report();
+  cancelAnimationFrame(anim);
+  if (STYLE !== "c" || matchMedia("(prefers-reduced-motion: reduce)").matches) { $("vScore").textContent = pct + "%"; return render(9); }
+  const t0 = performance.now(), dur = 900 + res.notes.length * 350;
+  const step = now => { const p = (now - t0) / 900; $("vScore").textContent = Math.round(pct * Math.min(1, p)) + "%"; render(p);
+    if (now - t0 < dur + 50) anim = requestAnimationFrame(step); };
+  anim = requestAnimationFrame(step);
+  setTimeout(() => { if (res) { $("vScore").textContent = pct + "%"; render(9); } }, dur + 400);   // resting state even if rAF is throttled
+}
+function report() {
+  const t = $("report"); t.hidden = STYLE !== "b"; if (t.hidden) return;
+  const n = res.notes.filter(x => !x.isle).map(x => x.text).join(" · ") || "크게 틀린 곳 없음";
+  t.innerHTML = `<tr><td>일치도 (겹침 ÷ 합침)</td><td>${(res.iou * 100).toFixed(1)}% → ${res.pct}점</td></tr>
+    <tr><td>세로 ÷ 가로 (진짜 = 1)</td><td>${res.shape.toFixed(2)}</td></tr><tr><td>진단</td><td style="font-family:var(--ui)">${n}</td></tr>
+    <tr><td>섬</td><td>${ISLES.filter(i => res.got[i.id]).map(i => i.name).join("·") || "없음"}</td></tr>`;
+}
+function meLine() { const b = store.get("lab.korea.best", -1), p = store.get("lab.korea.plays", 0); $("me").textContent = p ? `내 최고 ${b}% · ${p}판` : ""; }
+function islesLine() { const isl = store.get("lab.korea.isles", {}), k = ISLES.filter(i => isl[i.id]).length;
+  $("isles").innerHTML = `<span class="sub">섬 도감 ${k}/3</span>` + ISLES.map(i => `<span class="chip ${isl[i.id] ? "on" : ""}">${isl[i.id] ? "✓ " + i.name : "?"}</span>`).join(""); }
+function friend() { const v = new URLSearchParams(location.search).get("s"); return v && /^\d{1,3}$/.test(v) && +v <= 100 ? +v : null; }
+{ const f = friend(); if (f != null) { $("friend").textContent = `친구는 ${f}% 받았다. 이길 수 있나?`; $("friend").hidden = false; } }
+meLine(); islesLine();
+
+// ---- share card ----
+const pageUrl = () => location.origin && location.origin !== "null" ? location.origin + location.pathname : "";
+async function card() {
+  const W = 1080, H = 1350, c = document.createElement("canvas"); c.width = W; c.height = H; const g = c.getContext("2d");
+  g.fillStyle = "#fffdf8"; g.fillRect(0, 0, W, H); g.strokeStyle = "#dde2e7"; g.lineWidth = 2;
+  for (let x = 0; x <= W; x += 45) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke(); } for (let y = 0; y <= H; y += 45) { g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke(); }
+  g.fillStyle = "#1d2733"; g.font = '700 30px "IBM Plex Mono", monospace'; g.textBaseline = "top"; g.fillText("D:OT LAB · 실험 #001", 60, 56);
+  g.font = '92px "Nanum Pen Script", cursive'; g.fillText("한반도를 그릴 수 있나?", 60, 100);
+  // fit the drawing + real outline into the middle box
+  const pts = strokes.flat(), { X, Y } = res; pts.push([X(tg.c0), Y(tg.r0)], [X(tg.c1), Y(tg.r1)], isleXY(ISLES[0]));
+  const b = bbox(pts), bx = 70, by = 230, bw = 940, bh = 820, k = Math.min(bw / b.w, bh / b.h) * 0.9;
+  g.save(); g.translate(bx + bw / 2 - (b.x0 + b.w / 2) * k, by + bh / 2 - (b.y0 + b.h / 2) * k); g.scale(k, k);
+  g.textBaseline = "middle"; scene(g, STYLE === "b" ? "b" : "a", 9, 2.2 / k, (b.x1 + 40 / k), b.y1 + 40 / k); g.restore();
+  g.textBaseline = "alphabetic"; g.fillStyle = "#d23f27"; g.font = '700 150px "IBM Plex Mono", monospace'; g.fillText(res.pct + "%", 60, 1215);
+  g.font = '76px "Nanum Pen Script", cursive'; g.fillText(label(res.pct), 520, 1150);
+  g.fillStyle = "#56616e"; g.font = '600 32px "IBM Plex Sans KR", sans-serif';
+  g.fillText("섬 " + (ISLES.filter(i => res.got[i.id]).map(i => i.name + " ✓").join(" ") || "없음"), 520, 1210);
+  g.fillStyle = "#1d2733"; g.fillText("너도 그려 봐 → 지도 안 보고, 한 번에", 60, 1290);
+  return new Promise(ok => c.toBlob(ok, "image/png"));
+}
+const shareText = () => `한반도 그리기 ${res.pct}% — 「${label(res.pct)}」 이길 수 있나?` + (pageUrl() ? `\n${pageUrl()}?s=${res.pct}` : "");
+$("share").onclick = async () => {
+  if (!res) return; const blob = await card(), file = new File([blob], `korea-${res.pct}.png`, { type: "image/png" });
+  if (navigator.canShare && navigator.canShare({ files: [file] })) { try { await navigator.share({ files: [file], text: shareText() }); return; } catch (e) { if (e.name === "AbortError") return; } }
+  $("dlgImg").src = URL.createObjectURL(blob); $("copy").textContent = "링크 복사"; $("dlg").showModal();
+};
+$("copy").onclick = async () => { try { await navigator.clipboard.writeText(shareText()); $("copy").textContent = "복사됨"; } catch { $("copy").textContent = "복사 안 됨"; } };
+$("close").onclick = () => $("dlg").close();
+$("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
+if (MOCK) document.querySelectorAll("#mock button").forEach(bt => bt.onclick = () => {
+  document.querySelectorAll("#mock button").forEach(x => x.classList.toggle("on", x === bt)); STYLE = bt.dataset.s; if (res) show(); });
+</script>
+
+</body>
+</html>
