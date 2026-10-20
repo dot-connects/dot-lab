@@ -1,0 +1,16 @@
+{
+  "kind": "work",
+  "slug": "2026-10-21-draw-korea",
+  "title": "실험 #001 한반도를 그릴 수 있나?",
+  "link": "https://dot-connects.github.io/dot-lab/works/2026-10-21-draw-korea/site/",
+  "caption": "지도 안 보고 한반도 그릴 수 있어?\n\n손가락으로 한 번에 그리면 진짜 지도랑 겹쳐서 채점해 준다. 틀린 해안엔 빨간펜이 들어오고, 제주도 빼먹으면 바로 걸린다.\n\n이 그림은 55%. 너는?\n링크는 프로필에.",
+  "caption_threads": "지도 안 보고 한반도 그릴 수 있어?\n\n손가락으로 한 번에 그리면 진짜 지도랑 겹쳐서 채점해 준다. 틀린 해안엔 빨간펜, 제주도 빼먹으면 바로 걸림.\n\n이 그림은 55%. 너는?\nhttps://dot-connects.github.io/dot-lab/works/2026-10-21-draw-korea/site/",
+  "blog_html": "<p>지도 안 보고, 손가락(또는 마우스)으로 한반도 본토를 한 번에 그려 보세요. 손을 떼면 진짜 지도와 겹쳐서 채점합니다. 섬은 따로 그려도 됩니다.</p>\n<iframe src=\"https://dot-connects.github.io/dot-lab/works/2026-10-21-draw-korea/site/\" width=\"100%\" height=\"860\" style=\"border:0;max-width:520px\" loading=\"lazy\" title=\"한반도 그리기\"></iframe>\n<h3>채점은 이렇게 합니다</h3>\n<p>그린 모양의 넓이와 중심을 진짜 지도에 맞춘 뒤, 두 테두리가 평균 몇 km 떨어졌는지 잽니다(양쪽으로 재서 더 먼 쪽). 약 11 km 이하면 100%, 92 km 이상이면 0%입니다. 해안 16곳을 따로 재서 가장 많이 틀린 곳에 빨간펜을 답니다.</p>\n<p>지도: Natural Earth 1:10m 국경·해안선(본토). 제주·울릉·독도는 섬 중심 좌표로 판정하고 점수에는 넣지 않습니다.</p>",
+  "media": {
+    "reel": "out/reel.mp4",
+    "cover": "out/cover.png",
+    "card": "out/card.png"
+  },
+  "notes": "Reel is silent (content-system adds music). Code-drawn, no generated imagery. Friend-challenge links (?s=&d=) work on the Pages URL only.",
+  "status": "draft"
+}
