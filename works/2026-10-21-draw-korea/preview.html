@@ -112,9 +112,9 @@ const NOTE = {
     SW: ["전라도가 바다로", "남해안 증발"], SE: ["부산이 사라짐", "경상도 다이어트"] } };
 const pick = a => a[Math.floor(Math.random() * a.length)];
 // islands are not in the mask: centre coordinates, Jeju as an ellipse (73 x 31 km)
-const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2, tol: 30 },
-  { id: "ulleung", name: "울릉", at: cellOf(37.50, 130.86), rx: 1.4, ry: 1.1, tol: 16 },
-  { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5, tol: 14 }];
+const ISLES = [{ id: "jeju", name: "제주", at: cellOf(33.38, 126.55), rx: 9.5, ry: 3.2 },
+  { id: "ulleung", name: "울릉", at: cellOf(37.50, 130.86), rx: 1.4, ry: 1.1 },
+  { id: "dokdo", name: "독도", at: cellOf(37.24, 131.87), rx: .6, ry: .5 }];
 
 const pad = $("pad"), cv = $("padc"), ctx = cv.getContext("2d");
 let dpr = 1, strokes = [], cur = null, timer = 0, res = null;
@@ -184,11 +184,19 @@ async function score() {
       return { x: X(bc), y: Y(br), r: Math.min(34 * dpr, Math.max(18 * dpr, Math.sqrt(e.n) * s * 0.45)), text: pick(NOTE[k.startsWith("over") ? "over" : "miss"][k.replace(/^(over|miss)/, "")]), k }; });
   const shape = ((ur1 - ur0) * ASP / (uc1 - uc0 + 1)) / ((tg.r1 - tg.r0) * ASP / (tg.c1 - tg.c0 + 1));
   if (shape < 0.72) notes.push({ text: pick(["감자 반도", "너무 통통함"]) }); else if (shape > 1.45) notes.push({ text: pick(["멸치 반도", "너무 홀쭉함"]) });
-  // islands: every other stroke is matched to the nearest island in target cells
-  const got = {}, extra = [];
-  strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), small = Math.max(b.w, b.h) < 24 * s, cx = tg.cx + ((b.x0 + b.x1) / 2 - ux) / s, cy = tg.cy + ((b.y0 + b.y1) / 2 - uy) / (s * ASP);
-    let best = null, bd = 1e9; for (const is of ISLES) { const d = Math.hypot(cx - is.at[0], (cy - is.at[1]) * ASP); if (d < is.tol && d < bd) { bd = d; best = is; } }
-    if (best && small) got[best.id] = true; else if (small) extra.push({ x: (b.x0 + b.x1) / 2, y: (b.y0 + b.y1) / 2 }); });
+  // islands: judged against the player's own mainland box, not the fitted map — a drawn Jeju sits below a drawn
+  // peninsula even when the peninsula itself is off (real map: Jeju at 34% across / 110% down, Ulleung 103% / 63%).
+  const got = {}, extra = [], east = [];
+  strokes.forEach((st, i) => { if (i === mi) return; const b = bbox(st), cx = (b.x0 + b.x1) / 2, cy = (b.y0 + b.y1) / 2;
+    if (Math.max(b.w, b.h) > 0.5 * bb.w) return;   // a second mainland stroke, not an island
+    const rx = (cx - bb.x0) / bb.w, ry = (cy - bb.y0) / bb.h;
+    if (ry > 0.8 && rx < 0.8) got.jeju = true;
+    else if (rx > 0.6 && ry > 0.25 && ry < 0.85) east.push(cx);
+    else extra.push({ x: cx, y: cy }); });
+  // east of the mainland: two islands = Ulleung then Dokdo (west to east); one = the closer of the two on the map
+  east.sort((a, b) => a - b);
+  if (east.length > 1) got.ulleung = got.dokdo = true;
+  else if (east.length) { const c = tg.cx + (east[0] - ux) / s; got[Math.abs(c - ISLES[1].at[0]) <= Math.abs(c - ISLES[2].at[0]) ? "ulleung" : "dokdo"] = true; }
   if (!got.jeju) notes.push({ isle: "jeju", text: pick(["제주도 어디 감?", "제주도 빼먹음", "귤 섬 실종"]) });
   if (extra.length) notes.push({ x: extra[0].x, y: extra[0].y, r: 16 * dpr, text: "새 섬 발견?" });
   if (got.dokdo) notes.push({ good: true, text: "독도까지 챙김" }); else if (got.ulleung) notes.push({ good: true, text: "울릉도 챙김" });
