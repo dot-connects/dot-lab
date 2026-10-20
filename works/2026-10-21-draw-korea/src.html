@@ -47,9 +47,6 @@ button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .acts{display:flex;gap:8px;flex:none}
 .acts .btn:not(.main){min-height:44px;font-family:var(--hand);font-size:26px;padding:0 12px}
 .notes{font-size:13px;color:var(--muted)}
-.mock{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:13px;border:1.5px dashed var(--muted);border-radius:6px;padding:6px 8px}
-.mock button{font:inherit;font-size:13px;border:1.5px solid var(--ink);border-radius:12px;background:none;color:var(--ink);padding:3px 10px;cursor:pointer;min-height:32px}
-.mock button.on{background:var(--ink);color:var(--paper)}
 .isles{display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:14px}
 .isles .chip{border:1.5px solid var(--grid);border-radius:12px;padding:1px 9px;color:var(--muted)}
 .isles .chip.on{border-color:var(--green);color:var(--green);font-weight:700}
@@ -80,7 +77,6 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
   </div>
   <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
-  <div class="mock" id="mock"><span>정답 지도</span><button type="button" data-l="a" class="on">A 파란 면</button><button type="button" data-l="b">B 형광펜</button><button type="button" data-l="c">C 회색 그림자</button></div>
   <p class="sub">채점: 본토만, 넓이·중심을 맞춰 겹친 뒤 두 테두리가 평균 몇 km 떨어졌나. 약 10 km 이하 = 100%, 77 km 이상 = 0%. 대충 그린 타원 ≈ 30%. 섬은 점수 밖 도감. 지도: Natural Earth 1:10m 국경·해안선(본토), 섬은 중심 좌표.</p>
 </main>
 <dialog id="dlg"><p class="sub" style="margin:0 0 8px">이미지를 길게 눌러 저장 · 링크는 아래 버튼</p><img id="dlgImg" alt="내 한반도 결과 이미지">
@@ -94,7 +90,6 @@ const store = { get(k, d) { try { const v = localStorage.getItem(k); return v ==
 // ---- target: mainland mask, lon 124..131, lat 33..43.2, 160x233 cells, row 0 = north ----
 const PW = 160, PH = 233, PEN = Uint8Array.from(atob("__PENINSULA__"), c => c.charCodeAt(0));
 const T = new Uint8Array(PW * PH); for (let k = 0; k < PW * PH; k++) T[k] = (PEN[k >> 3] >> (k & 7)) & 1;
-let LOOK = "a";   // mockup round 2: answer-map look
 const ASP = 1.27;   // a cell is 3.83 km wide and 4.86 km tall at 38N
 const cellOf = (lat, lon) => [(lon - 124) / 7 * PW, (43.2 - lat) / 10.2 * PH];   // [c, r]
 const tg = (() => { let n = 0, sx = 0, sy = 0, r0 = PH, r1 = 0, c0 = PW, c1 = 0;
@@ -203,7 +198,9 @@ async function score() {
   Object.keys(got).forEach(k => isl[k] = true); store.set("lab.korea.isles", isl); store.set("lab.korea.plays", plays);
   if (pct > prev) store.set("lab.korea.best", pct);
   const mine = res = { pct, iou, gap, X, Y, s, U, notes, got, prev, plays, shape, area: n * 4 / (tg.n * s * s * ASP) };
-  await Promise.all(['30px "Nanum Pen Script"', '700 30px "IBM Plex Mono"'].map(f => document.fonts.load(f).catch(() => {})));
+  const glyphs = notes.map(x => x.text).join("") + label(pct) + "0123456789%";
+  await Promise.all([['30px "Nanum Pen Script"', glyphs], ['700 30px "IBM Plex Mono"', "0123456789%"], ['600 30px "IBM Plex Sans KR"', "섬제주울릉독도없음✓너그려봐지안보고한번에"]]
+    .map(([f, t]) => document.fonts.load(f, t).catch(() => {})));
   if (res === mine) show();
 }
 
@@ -231,15 +228,14 @@ const MASK = (() => { const m = document.createElement("canvas"); m.width = PW; 
   for (let k = 0; k < PW * PH; k++) if (T[k]) im.data.set([255, 255, 255, 255], k * 4); g.putImageData(im, 0, 0); return m; })();
 const tint = hex => { const m = document.createElement("canvas"); m.width = PW; m.height = PH; const g = m.getContext("2d");
   g.drawImage(MASK, 0, 0); g.globalCompositeOperation = "source-in"; g.fillStyle = hex; g.fillRect(0, 0, PW, PH); return m; };
-const MAPS = { a: tint("#7fa3e8"), c: tint("#b9c0c8") };
-// answer-map looks for mockup round 2: a = blue fill, b = highlighter outline, c = grey shadow
-function mapLayer(c, u, look, solid) {
+const BLUE = tint("#7fa3e8");
+// the real map as a light blue fill (operator pick, round 2); solid = opaque mask for the occupancy test
+function mapLayer(c, u, solid) {
   const { X, Y, s } = res, x = X(0) - s / 2, y = Y(0) - s * ASP / 2, w = PW * s, h = PH * s * ASP;
   if (solid) c.drawImage(MASK, x, y, w, h);
-  else if (look === "b") { c.globalAlpha = .85; c.fillStyle = "#f2c94c"; const d = Math.max(5 * u, s * 2.2); for (const [q, r] of EDGE) c.fillRect(X(q) - d / 2, Y(r) - d / 2, d, d); }
-  else { c.globalAlpha = look === "a" ? .45 : .6; c.drawImage(MAPS[look], x, y, w, h); }
+  else { c.globalAlpha = .45; c.drawImage(BLUE, x, y, w, h); }
   c.globalAlpha = 1;
-  const col = solid ? "#000" : look === "b" ? "#d39b00" : look === "a" ? "#2b59c3" : "#8a939d";
+  const col = solid ? "#000" : "#2b59c3";
   c.strokeStyle = col; c.lineWidth = (solid ? 6 : 1.5) * u; if (!solid) c.setLineDash([3 * u, 3 * u]);
   for (const is of ISLES) { const [ix, iy] = isleXY(is); c.beginPath(); c.ellipse(ix, iy, Math.max(4 * u, is.rx * s), Math.max(4 * u, is.ry * s * ASP), 0, 0, 7); c.stroke(); }
   c.setLineDash([]);
@@ -247,7 +243,7 @@ function mapLayer(c, u, look, solid) {
 // what is already drawn, as a mask, so the red-pen text can look for empty sea
 function occupancy(c, u) {
   const W = c.canvas.width, H = c.canvas.height, o = document.createElement("canvas"); o.width = W; o.height = H; const g = o.getContext("2d");
-  const m = c.getTransform(); g.setTransform(m); mapLayer(g, u, "a", true); drawStrokes(g, u * 3);
+  const m = c.getTransform(); g.setTransform(m); mapLayer(g, u, true); drawStrokes(g, u * 3);
   const d = g.getImageData(0, 0, W, H).data;
   return (ax, ay, bx, by) => { const x0 = Math.max(0, Math.floor(ax * m.a + m.e)), x1 = Math.min(W - 1, Math.ceil(bx * m.a + m.e)), y0 = Math.max(0, Math.floor(ay * m.d + m.f)), y1 = Math.min(H - 1, Math.ceil(by * m.d + m.f));
     for (let y = y0; y <= y1; y += 3) for (let x = x0; x <= x1; x += 3) if (d[(y * W + x) * 4 + 3]) return false; return true; };
@@ -255,7 +251,7 @@ function occupancy(c, u) {
 // draws the result in scene px; u = output px per css px of line weight; [x0,y0,x1,y1] = visible area for the notes
 function scene(c, u, x0, y0, x1, y1) {
   const { s } = res;
-  mapLayer(c, u, LOOK, false); drawStrokes(c, u);
+  mapLayer(c, u, false); drawStrokes(c, u);
   const free = occupancy(c, u), placed = [], th = 30 * u;
   const clear = (a, b, e, f) => a >= x0 + 4 * u && b >= y0 + 4 * u && e <= x1 - 4 * u && f <= y1 - 4 * u && free(a, b, e, f) && !placed.some(p => a < p[2] && e > p[0] && b < p[3] && f > p[1]);
   c.lineWidth = 2.6 * u; c.font = `${28 * u}px "Nanum Pen Script", cursive`; c.textBaseline = "middle";
@@ -266,10 +262,12 @@ function scene(c, u, x0, y0, x1, y1) {
     if (r) { penCircle(c, x, y, r, u, i * 31 + res.pct); placed.push([x - r * 1.2, y - r, x + r * 1.2, y + r]); }
     const tw = c.measureText(nt.text).width; let spot = null;
     // nearest empty spot around the mark: sideways first, then diagonals, then above/below
-    for (let dd = r + 6 * u; dd < 320 * u && !spot; dd += 10 * u)
+    // pass 1: close, with a leader line that stays in empty sea; pass 2: anywhere empty, line may cross
+    for (const strict of [true, false]) for (let dd = r + 6 * u; dd < (strict ? 170 : 400) * u && !spot; dd += 10 * u)
       for (const a of [0, Math.PI, -.45, Math.PI + .45, .45, Math.PI - .45, -Math.PI / 2, Math.PI / 2]) {
         const px = x + Math.cos(a) * dd, py = y + Math.sin(a) * dd, rx = Math.abs(Math.cos(a)) < .2 ? px - tw / 2 : Math.cos(a) > 0 ? px : px - tw;
-        if (clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; } }
+        const path = [.35, .55, .75, .95].every(t => { const q = r * 1.25 + (dd - r * 1.25) * t, lx = x + Math.cos(a) * q, ly = y + Math.sin(a) * q; return free(lx - 2 * u, ly - 2 * u, lx + 2 * u, ly + 2 * u); });
+        if ((!r || path || !strict) && clear(rx, py - th / 2, rx + tw, py + th / 2)) { spot = [rx, py, a, dd]; break; } }
     const [tx, ty] = spot || [Math.min(x1 - tw - 8 * u, Math.max(x0 + 8 * u, x + r * 1.2)), Math.min(y1 - 18 * u, Math.max(y0 + 20 * u, y - r))];
     placed.push([tx, ty - th / 2, tx + tw, ty + th / 2]);
     if (r && spot && spot[3] > r + 16 * u) { const a = spot[2], ex = Math.cos(a) > .2 ? tx - 3 * u : Math.cos(a) < -.2 ? tx + tw + 3 * u : tx + tw / 2;   // leader line
@@ -277,8 +275,7 @@ function scene(c, u, x0, y0, x1, y1) {
     c.lineWidth = 6 * u; c.strokeStyle = "#fffdf8"; c.strokeText(nt.text, tx, ty); c.fillText(nt.text, tx, ty); c.lineWidth = 2.6 * u; c.strokeStyle = col; });
 }
 function noteList() {
-  const key = { a: "파란 면", b: "노란 형광펜", c: "회색 그림자" }[LOOK];
-  $("notes").innerHTML = `테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남 · 검은 선 = 내 그림 · ${key} = 진짜`; $("notes").hidden = false; }
+  $("notes").textContent = `테두리 평균 ${Math.round(res.gap * 3.83)} km 어긋남 · 검은 선 = 내 그림 · 파란 면 = 진짜`; $("notes").hidden = false; }
 function render() {
   // zoom out only when something would fall off the pad (a big drawing pushes Jeju below the edge)
   const W = cv.width, H = cv.height, m = 10 * dpr, b = sceneBox();
@@ -332,6 +329,4 @@ $("close").onclick = () => $("dlg").close();
 $("again").onclick = () => { reset(); drawInk(); $("ghost").hidden = false; };
 $("dlg").addEventListener("close", () => URL.revokeObjectURL($("dlgImg").src));
 $("dlg").addEventListener("click", e => { if (e.target === $("dlg")) $("dlg").close(); });
-document.querySelectorAll("#mock button").forEach(bt => bt.onclick = () => {
-  document.querySelectorAll("#mock button").forEach(x => x.classList.toggle("on", x === bt)); LOOK = bt.dataset.l; if (res) { noteList(); render(); } });
 </script>
