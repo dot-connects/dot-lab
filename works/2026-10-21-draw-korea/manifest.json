@@ -12,5 +12,5 @@
     "card": "out/card.png"
   },
   "notes": "Reel is silent (content-system adds music). Code-drawn, no generated imagery. Friend-challenge links (?s=&d=) work on the Pages URL only. blog_html carries a plain <a> link too: content-system blog_html.py drops iframes unless the ingest re-adds the Pages embed (spec).",
-  "status": "draft"
+  "status": "ready"
 }
