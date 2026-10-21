@@ -42,9 +42,6 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(36px,10vw,46
 .btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
 .btn.main{flex:none;white-space:nowrap;font-family:var(--hand);font-size:28px;padding:2px 12px;min-height:44px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
 .btn:disabled{opacity:.35;box-shadow:none}
-.inapp{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 10px;padding:8px 10px;border:1.5px dashed var(--red);border-radius:4px;font-size:13px}
-.inapp[hidden]{display:none}
-.inapp .btn{flex:none;text-decoration:none;padding:6px 10px;font-size:13px}
 button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .sub{font-size:13px;color:var(--muted);line-height:1.45}
 .acts{display:flex;gap:8px;flex:none;margin-left:auto}
@@ -74,7 +71,6 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
 </style>
 
 <main>
-  <div class="inapp" id="inapp" hidden><span>앱 안에서는 아래로 그리면 창이 닫혀요</span><a class="btn" id="outside">브라우저로 열기</a></div>
   <div class="top"><span class="stamp">D:OT LAB · 실험 #001</span><span class="me" id="me"></span></div>
   <h1>한반도를 그릴 수 있나?</h1>
   <p class="q">지도 안 보고, 손가락으로 한반도를 그려 봐. 크기·위치는 상관없다.</p>
@@ -187,15 +183,6 @@ for (const t of ["touchstart", "touchmove"])
   pad.addEventListener(t, e => { if (!e.target.closest("button")) e.preventDefault(); }, { passive: false });
 // At scroll top the Threads in-app browser takes a downward drag as pull-down (close/refresh) before the page sees
 // it: up strokes drew, down strokes did not (operator 2026-10-21). One pixel below the top it leaves the drag alone.
-// Threads (UA "Barcelona") and Instagram still close their browser on a down drag on some phones: offer the real
-// browser. Android: an intent link opens Chrome; iOS: x-safari-https opens Safari.
-if (/Barcelona|Instagram/i.test(navigator.userAgent)) {
-  const here = location.href.replace(/^https?:\/\//, "");
-  $("outside").href = /Android/i.test(navigator.userAgent)
-    ? `intent://${here}#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(location.href)};end`
-    : `x-safari-https://${here}`;
-  $("inapp").hidden = false;
-}
 document.body.style.minHeight = "calc(100% + 2px)";
 const nudge = () => { if (scrollY < 1) scrollTo(0, 1); };
 addEventListener("load", nudge); addEventListener("scroll", nudge, { passive: true });
