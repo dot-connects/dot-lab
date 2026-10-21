@@ -15,7 +15,7 @@
 /* Lab-notebook palette (operator pick B, earth-stop round 1). Light only: the pad is paper. */
 :root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#b8341d;--blue:#2b59c3;--green:#25744c;--muted:#56616e;--card:#fffdf8;
   --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
-html,body{height:100%}
+html,body{height:100%;overscroll-behavior:none}
 [hidden]{display:none!important}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);-webkit-tap-highlight-color:transparent}
 main{max-width:520px;margin:0 auto;display:grid;gap:8px;padding-block:max(10px,env(safe-area-inset-top,0px)) 24px;
@@ -189,6 +189,11 @@ const lift = e => { if (!cur || !e.isPrimary) return; cur = null; timer = setTim
   const w = $("wait"), bar = $("waitbar"); w.hidden = false; w.classList.remove("go"); bar.style.transitionDuration = "0ms"; bar.style.width = "100%";
   void bar.offsetWidth; w.classList.add("go"); bar.style.transitionDuration = WAIT + "ms"; bar.style.width = "0"; };
 pad.addEventListener("pointerup", lift); pad.addEventListener("pointercancel", lift);
+// In-app browsers (Threads, Instagram) scroll or pull the page sheet on a finger drag despite touch-action:none;
+// only a cancelled touch event makes the WebView keep the gesture for the page.
+// The 다시/공유하기 buttons sit inside the pad: their touches stay native so the tap still clicks.
+for (const t of ["touchstart", "touchmove"])
+  pad.addEventListener(t, e => { if (!e.target.closest("button")) e.preventDefault(); }, { passive: false });
 function add(e) { const r = cv.getBoundingClientRect(); cur.push([(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]); drawInk(); }
 
 // ---- scoring ----
