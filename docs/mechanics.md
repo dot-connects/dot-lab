@@ -58,7 +58,7 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 | 5 | 손으로 찍는 인생네컷 | photo booth | hand-frame gesture shoots 4 cuts, frames swap with the trend | later (program) |
 | 6 | 내 방에 뭔가 잡기 | "2026 is the new 2016" / Pokemon GO feel, own creatures | flick to throw over the camera view -> caught /N | later |
 | 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | date slot (program) |
-| 9 | 우리 집 몬스터 잡기 | Pokemon GO | throw a ball at your pet/person on the camera; segmentation cuts them out of the view and they land in an in-phone dex -> caught /N | parked (ledger only) |
+| 9 | 우리 집 몬스터 잡기 | Pokemon GO | throw a ball at your pet/person on the camera; segmentation cuts them out of the view and they land in an in-phone dex -> caught /N. Operator 10-21 extension: a subject that stays still cannot be caught - keep recording while it moves (motion fills the catch gauge), then turn the clip into a 3D character that lives on the phone screen; if it works, swap skins to Chiikawa-style characters. Browser ceiling: cut-out living 2.5D sticker; true 3D needs a GPU server (new PC), staying on screen over other apps needs a native app (tap-trigger Android base) | parked (ledger only) |
 | 8 | 폰 두 대로 펼치는 폴드 | Fold "iPhone Duo" reel | two phones join one screen | hard (needs pairing server) |
 
 Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).
