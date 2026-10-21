@@ -1,0 +1,209 @@
+<title>달고나·붕어빵 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+/* layout: sticky tab bar, one game per tab filling the phone screen. Same lab-notebook kit as the earlier sketches (single light look). */
+:root{--paper:#f6f4ee;--grid:#dde2e7;--ink:#1d2733;--red:#e0482f;--blue:#2b59c3;--green:#2f8a5b;--muted:#5a6572;--card:#fffdf8;
+  --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+html,body{height:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
+.tabs{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--paper);display:grid;grid-template-columns:1fr 1fr;gap:6px;
+  padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1.5px solid var(--ink)}
+.tabs button{font:inherit;font-size:14px;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:7px 0;cursor:pointer}
+.tabs button.on{background:var(--ink);color:var(--paper)}
+.game{max-width:480px;margin:0 auto;display:grid;gap:10px;padding-block:12px 28px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h2{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(32px,9vw,42px);line-height:1;text-wrap:balance}
+.q{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
+.btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
+.btn.main{font-family:var(--hand);font-size:30px;padding:4px 14px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.stat{display:flex;justify-content:space-between;align-items:baseline;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.stat b{font-size:22px;color:var(--ink)}
+.board{position:relative;width:100%;max-width:100%;aspect-ratio:1/1;touch-action:none;user-select:none;-webkit-user-select:none}
+.board canvas{position:absolute;inset:0;width:100%;height:100%;border-radius:6px}
+.res{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;padding:12px 14px;display:grid;gap:6px}
+.res .label{font-family:var(--hand);font-size:clamp(30px,8.5vw,40px);color:var(--red);line-height:1}
+.res .big{font-family:var(--mono);font-size:clamp(28px,9vw,40px);font-weight:700;font-variant-numeric:tabular-nums;line-height:1.05}
+.res .why{font-size:14px}
+.bar{height:8px;background:var(--grid);border-radius:4px;overflow:hidden}.bar span{display:block;height:100%;background:var(--red);width:0}
+.note{font-size:12px;color:var(--muted)}
+@media (prefers-reduced-motion: reduce){*{transition:none!important}}
+</style>
+
+<nav class="tabs" id="tabs">
+  <button type="button" data-g="dal" class="on">달고나 뽑기</button><button type="button" data-g="fish">붕어빵 굽기</button>
+</nav>
+
+<section class="game" id="dal">
+  <h2>달고나, 안 깨고 뽑을 수 있나?</h2>
+  <p class="q">손가락이 바늘이다. 선을 따라 천천히 긁는다. 빨리 긁거나 선 밖을 찌르면 금이 간다.</p>
+  <div class="stat"><span>모양 <b id="dShape">별</b></span><span>뽑은 선 <b id="dPct">0%</b></span><span>최고 <b id="dBest">-</b></span></div>
+  <div class="bar"><span id="dStress"></span></div>
+  <div class="board" id="dBoard"><canvas id="dCv"></canvas></div>
+  <div class="res" id="dRes" hidden>
+    <div class="label" id="dLabel"></div>
+    <div class="big" id="dBig"></div>
+    <div class="why" id="dWhy"></div>
+  </div>
+  <div class="row"><button class="btn main" type="button" id="dAgain">다시</button><button class="btn" type="button" id="dNew">다른 모양</button></div>
+  <p class="note">빨간 막대 = 금 가는 정도. 거친 시안이라 그림은 아직 없다.</p>
+</section>
+
+<section class="game" id="fish" hidden>
+  <h2>30초, 붕어빵 몇 마리 노릇하게?</h2>
+  <p class="q">빈 틀을 누르면 반죽. 한 번 더 누르면 뒤집기. 또 누르면 꺼내기. 양면 다 노릇해야 점수.</p>
+  <div class="stat"><span>남은 시간 <b id="fTime">30.0</b></span><span>판 마리 <b id="fCount">0</b></span><span>최고 <b id="fBest">-</b></span></div>
+  <div class="board" id="fBoard" style="aspect-ratio:3/4"><canvas id="fCv"></canvas></div>
+  <div class="res" id="fRes" hidden>
+    <div class="label" id="fLabel"></div>
+    <div class="big" id="fBig"></div>
+    <div class="why" id="fWhy"></div>
+  </div>
+  <div class="row"><button class="btn main" type="button" id="fStart">시작</button></div>
+  <p class="note">색이 곧 익은 정도: 허연색 → 노릇 → 갈색 → 숯.</p>
+</section>
+
+<script>
+const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+document.getElementById('tabs').addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('on',x===b));
+  document.querySelectorAll('.game').forEach(s=>s.hidden=s.id!==b.dataset.g); if(b.dataset.g==='dal')D.fit(); else F.fit();});
+function setupCanvas(cv){const r=cv.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,3);cv.width=Math.round(r.width*dpr);cv.height=Math.round(r.height*dpr);
+  const c=cv.getContext('2d');c.setTransform(dpr,0,0,dpr,0,0);return {c,w:r.width,h:r.height};}
+
+/* ---------- dalgona ---------- */
+const D=(()=>{
+  const cv=document.getElementById('dCv'),board=document.getElementById('dBoard');
+  const SH={'세모':()=>[poly([[0,-.78],[.72,.5],[-.72,.5]],true)],'동그라미':()=>[circ(0,0,.62,0,Math.PI*2)],
+    '별':()=>{const p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?.33:.8;p.push([Math.cos(a)*r,Math.sin(a)*r+.05]);}return [poly(p,true)]},
+    '우산':()=>{const top=circ(0,.05,.72,Math.PI,Math.PI*2);const sc=[];for(let i=0;i<4;i++){const cx=.72-.18-i*.36;sc.push(...circ(cx,.05,.18,0,Math.PI).slice(1));}
+      return [top.concat(sc),[[0,.05],[0,.62]].concat(circ(-.13,.62,.13,0,Math.PI).slice(1))]}};
+  const NAMES=Object.keys(SH);
+  function circ(cx,cy,r,a0,a1){const n=Math.max(8,Math.round(Math.abs(a1-a0)*r*40)),p=[];for(let i=0;i<=n;i++){const a=a0+(a1-a0)*i/n;p.push([cx+Math.cos(a)*r,cy+Math.sin(a)*r]);}return p}
+  function poly(p,closed){return closed?p.concat([p[0]]):p}
+  let g,W,R,cx,cy,shape='별',samples=[],carved=[],stress=0,cause={speed:0,off:0},cracks=[],state='ready',t0=0,last=null,ptr=null,bubbles=[],broken=null;
+  const tol=()=>W*.035;
+  function build(){samples=[];const paths=SH[shape](),k=R*.62,step=W*.012;
+    for(const p of paths){for(let i=0;i<p.length-1;i++){const ax=cx+p[i][0]*k,ay=cy+p[i][1]*k,bx=cx+p[i+1][0]*k,by=cy+p[i+1][1]*k,L=Math.hypot(bx-ax,by-ay),n=Math.max(1,Math.round(L/step));
+      for(let j=0;j<n;j++)samples.push([ax+(bx-ax)*j/n,ay+(by-ay)*j/n]);}}
+    carved=samples.map(()=>false);}
+  function reset(newShape){if(newShape){let s;do{s=NAMES[Math.floor(Math.random()*NAMES.length)]}while(s===shape);shape=s;}
+    stress=0;cause={speed:0,off:0};cracks=[];state='ready';last=null;broken=null;fit();
+    document.getElementById('dShape').textContent=shape;document.getElementById('dRes').hidden=true;
+    const b=store.get('dal-best-'+shape);document.getElementById('dBest').textContent=b?b+'초':'-';ui();}
+  function fit(){const r=board.getBoundingClientRect();if(!r.width)return;const s=setupCanvas(cv);g=s.c;W=s.w;R=W*.45;cx=W/2;cy=W/2;
+    bubbles=[];let seed=7;const rnd=()=>(seed=(seed*16807)%2147483647)/2147483647;
+    for(let i=0;i<140;i++){const a=rnd()*Math.PI*2,d=Math.sqrt(rnd())*R*.95;bubbles.push([cx+Math.cos(a)*d,cy+Math.sin(a)*d,1+rnd()*W*.008]);}
+    const keep=carved.slice();build();if(keep.length===carved.length)carved=keep;draw();}
+  function pct(){return carved.filter(Boolean).length/carved.length}
+  function ui(){document.getElementById('dPct').textContent=Math.floor(pct()*100)+'%';document.getElementById('dStress').style.width=Math.min(100,stress)+'%';}
+  function nearest(x,y){let m=1e9,i0=-1;for(let i=0;i<samples.length;i++){const d=(samples[i][0]-x)**2+(samples[i][1]-y)**2;if(d<m){m=d;i0=i}}return [Math.sqrt(m),i0]}
+  function crackFrom(x,y,len,n){for(let k=0;k<n;k++){let a=Math.random()*Math.PI*2,px=x,py=y;const seg=[[px,py]];for(let s=0;s<6;s++){a+=(Math.random()-.5)*1.1;px+=Math.cos(a)*len/6;py+=Math.sin(a)*len/6;seg.push([px,py]);}cracks.push(seg);}}
+  function move(x,y,t){if(state==='done')return;if(state==='ready'){state='play';t0=t;}
+    if(!last){last=[x,y,t];return;}
+    const dx=x-last[0],dy=y-last[1],L=Math.hypot(dx,dy),dt=Math.max(1,t-last[2]),v=L/dt,vmax=W*.00065;
+    const steps=Math.max(1,Math.ceil(L/2));
+    for(let s=1;s<=steps;s++){const px=last[0]+dx*s/steps,py=last[1]+dy*s/steps,[d]=nearest(px,py),inDisk=Math.hypot(px-cx,py-cy)<R;
+      if(d<tol()){for(let i=0;i<samples.length;i++)if(!carved[i]&&Math.hypot(samples[i][0]-px,samples[i][1]-py)<tol())carved[i]=true;}
+      else if(inDisk){const add=(d-tol())/W*9;stress+=add;cause.off+=add;}}
+    if(v>vmax){const add=(v-vmax)/vmax*L/W*60;stress+=add;cause.speed+=add;}
+    stress=Math.max(0,stress-dt*.004);
+    if(stress>40&&Math.random()<.25&&cracks.length<8)crackFrom(x,y,W*.06,1);
+    last=[x,y,t];ptr=[x,y];
+    if(stress>=100){breakAt(x,y,t);return;}
+    if(pct()>=.97){win(t);return;}
+    ui();draw();}
+  function breakAt(x,y,t){state='done';broken=[x,y];crackFrom(x,y,R*1.3,5);ui();draw();
+    const p=Math.floor(pct()*100),why=cause.speed>cause.off?'speed':'off';
+    const label=p>=80?'다 와서 깨뜨린 사람':p<15?'첫 바늘에 와장창':why==='speed'?'성급한 손가락':'선은 장식이었다';
+    show(label,p+'%에서 깨짐',why==='speed'?'너무 빨리 긁었다. 금이 시작된 곳에 빨간 점.':'선 밖을 찔렀다. 금이 시작된 곳에 빨간 점.');}
+  function win(t){state='done';carved=carved.map(()=>true);ui();draw(true);
+    const sec=((t-t0)/1000).toFixed(1),k='dal-best-'+shape,b=store.get(k);if(!b||+sec<+b){store.set(k,sec);document.getElementById('dBest').textContent=sec+'초';}
+    show(+sec<10?'바늘의 신':+sec<20?'골목 고수':'인내의 아이콘',sec+'초 만에 뽑음',shape+' 성공. 다른 모양도 해 보자.');}
+  function show(l,b,w){document.getElementById('dLabel').textContent=l;document.getElementById('dBig').textContent=b;document.getElementById('dWhy').textContent=w;document.getElementById('dRes').hidden=false;}
+  function draw(won){if(!g)return;g.clearRect(0,0,W,W);
+    g.fillStyle='#2a2620';g.fillRect(0,0,W,W);
+    const gr=g.createRadialGradient(cx-R*.3,cy-R*.3,R*.1,cx,cy,R);gr.addColorStop(0,'#f2b85a');gr.addColorStop(.7,'#d98b2b');gr.addColorStop(1,'#b8681c');
+    g.fillStyle=gr;g.beginPath();g.arc(cx,cy,R,0,Math.PI*2);g.fill();
+    g.fillStyle='rgba(255,230,170,.35)';for(const b of bubbles){g.beginPath();g.arc(b[0],b[1],b[2],0,Math.PI*2);g.fill();}
+    if(won){g.save();g.beginPath();for(const s of samples)g.lineTo(s[0],s[1]);g.restore();}
+    g.lineCap='round';g.lineJoin='round';
+    g.strokeStyle='rgba(120,60,10,.55)';g.lineWidth=2;g.beginPath();let prev=null;
+    for(const s of samples){if(prev&&Math.hypot(s[0]-prev[0],s[1]-prev[1])>W*.03)g.moveTo(s[0],s[1]);else g.lineTo(s[0],s[1]);prev=s;}g.stroke();
+    g.strokeStyle='#4a2508';g.lineWidth=Math.max(3,W*.009);
+    for(let i=0;i<samples.length;i++){if(!carved[i])continue;const s=samples[i];g.beginPath();g.arc(s[0],s[1],g.lineWidth/2,0,Math.PI*2);g.fillStyle='#4a2508';g.fill();}
+    g.strokeStyle='rgba(40,20,5,.85)';g.lineWidth=1.2;for(const c of cracks){g.beginPath();c.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.stroke();}
+    if(broken){g.fillStyle='#e0482f';g.beginPath();g.arc(broken[0],broken[1],W*.018,0,Math.PI*2);g.fill();}
+    if(ptr&&state==='play'){g.strokeStyle='#cfd6dc';g.lineWidth=2;g.beginPath();g.moveTo(ptr[0],ptr[1]);g.lineTo(ptr[0]+W*.05,ptr[1]-W*.09);g.stroke();}
+    if(state==='ready'){g.fillStyle='rgba(255,253,248,.9)';g.font='600 '+Math.round(W*.04)+'px "IBM Plex Sans KR",sans-serif';g.textAlign='center';g.fillText('선 위에서 손가락을 끌어 보세요',cx,W-W*.03);}
+    if(won){g.fillStyle='rgba(47,138,91,.25)';g.beginPath();g.arc(cx,cy,R,0,Math.PI*2);g.fill();}}
+  const pos=e=>{const r=cv.getBoundingClientRect();return [e.clientX-r.left,e.clientY-r.top]};
+  cv.addEventListener('pointerdown',e=>{if(state==='done')return;cv.setPointerCapture(e.pointerId);const[x,y]=pos(e);last=[x,y,e.timeStamp];ptr=[x,y];move(x,y,e.timeStamp);});
+  cv.addEventListener('pointermove',e=>{if(!last)return;const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];for(const ev of evs){const[x,y]=pos(ev);move(x,y,ev.timeStamp);if(state==='done')break;}});
+  const up=()=>{last=null;ptr=null;draw();};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+  document.getElementById('dAgain').onclick=()=>reset(false);document.getElementById('dNew').onclick=()=>reset(true);
+  addEventListener('resize',()=>{if(!document.getElementById('dal').hidden)fit()});
+  return {fit,reset};
+})();
+
+/* ---------- bungeoppang ---------- */
+const F=(()=>{
+  const cv=document.getElementById('fCv'),board=document.getElementById('fBoard');
+  const RATE=1/6.5, ROUND=30;
+  let g,W,H,slots=[],state='ready',tLeft=ROUND,lastT=0,done=[],raf=0,pops=[];
+  const grade=d=>d<.35?['날것',0]:d<.55?['덜익음',25]:d<=.8?['노릇',50]:d<=.97?['진함',25]:['탐',0];
+  const COLS=[[0,[243,226,179]],[.45,[236,196,120]],[.68,[222,160,70]],[.9,[150,88,34]],[1.1,[40,28,20]]];
+  function col(d){d=Math.min(1.1,Math.max(0,d));for(let i=1;i<COLS.length;i++){if(d<=COLS[i][0]){const[a,ca]=COLS[i-1],[b,cb]=COLS[i],t=(d-a)/(b-a);return 'rgb('+ca.map((v,k)=>Math.round(v+(cb[k]-v)*t)).join(',')+')';}}return 'rgb(40,28,20)'}
+  function fit(){const r=board.getBoundingClientRect();if(!r.width)return;const s=setupCanvas(cv);g=s.c;W=s.w;H=s.h;
+    const pad=W*.05,sh=(H-pad*4)/3;slots=[0,1,2].map(i=>Object.assign(slots[i]||{st:'empty',a:0,b:0,flip:0},{x:pad,y:pad+i*(sh+pad),w:W-pad*2,h:sh}));draw();}
+  function start(){state='play';tLeft=ROUND;done=[];pops=[];slots.forEach(s=>Object.assign(s,{st:'empty',a:0,b:0,flip:0}));
+    document.getElementById('fRes').hidden=true;document.getElementById('fStart').textContent='한 판 더';lastT=performance.now();cancelAnimationFrame(raf);raf=requestAnimationFrame(tick);}
+  function tick(t){const dt=Math.min(.1,(t-lastT)/1000);lastT=t;
+    if(state==='play'){tLeft-=dt;for(const s of slots){if(s.st==='A')s.a+=dt*RATE;if(s.st==='B')s.b+=dt*RATE;if(s.flip>0)s.flip=Math.max(0,s.flip-dt*4);}
+      pops=pops.filter(p=>(p.t-=dt)>0);if(tLeft<=0){tLeft=0;end();}}
+    document.getElementById('fTime').textContent=tLeft.toFixed(1);document.getElementById('fCount').textContent=done.length;
+    draw();if(state==='play'||pops.length)raf=requestAnimationFrame(tick);}
+  function tap(x,y){if(state!=='play')return;const s=slots.find(s=>x>=s.x&&x<=s.x+s.w&&y>=s.y&&y<=s.y+s.h);if(!s)return;
+    if(s.st==='empty'){s.st='A';s.a=0;s.b=0;}
+    else if(s.st==='A'){s.st='B';s.flip=1;}
+    else if(s.st==='B'){const ga=grade(s.a),gb=grade(s.b),score=ga[1]+gb[1];done.push({score,ga:ga[0],gb:gb[0]});
+      pops.push({x:s.x+s.w/2,y:s.y+s.h/2,txt:score>=100?'완벽!':ga[0]+' / '+gb[0],good:score>=75,t:.9});s.st='empty';}}
+  function end(){state='over';const n=done.length,avg=n?Math.round(done.reduce((a,b)=>a+b.score,0)/n):0,
+    burnt=done.filter(d=>d.ga==='탐'||d.gb==='탐').length,raw=done.filter(d=>d.ga==='날것'||d.gb==='날것').length,
+    total=done.reduce((a,b)=>a+b.score,0),best=+(store.get('fish-best')||0);
+    if(total>best){store.set('fish-best',total);}
+    document.getElementById('fBest').textContent=Math.max(total,best);
+    const label=!n?'아직 개업 전':burnt>n/2?'숯 장인':raw>n/2?'반죽 애호가':avg>=85&&n>=6?'3대째 붕어빵집':n>=8?'손이 안 보임':avg>=70?'동네 단골집':'수습 사장님';
+    document.getElementById('fLabel').textContent=label;document.getElementById('fBig').textContent=total+'점';
+    document.getElementById('fWhy').textContent=n+'마리, 노릇도 평균 '+avg+'%'+(burnt?' · 태운 것 '+burnt:'')+(raw?' · 덜 익힌 것 '+raw:'');
+    document.getElementById('fRes').hidden=false;}
+  function fishPath(cx,cy,w,h,dir){const p=new Path2D(),bw=w*.36,bh=h*.36;
+    p.ellipse(cx-dir*w*.04,cy,bw,bh,0,0,Math.PI*2);
+    p.moveTo(cx+dir*(bw*.85),cy);p.lineTo(cx+dir*(bw*1.35),cy-bh*.75);p.quadraticCurveTo(cx+dir*bw*1.2,cy,cx+dir*(bw*1.35),cy+bh*.75);p.closePath();return p}
+  function draw(){if(!g)return;g.clearRect(0,0,W,H);g.fillStyle='#2b2f33';g.fillRect(0,0,W,H);
+    for(const s of slots){g.fillStyle='#16191c';g.beginPath();g.roundRect(s.x,s.y,s.w,s.h,s.h*.18);g.fill();
+      const cx=s.x+s.w/2,cy=s.y+s.h/2,dir=s.st==='B'?-1:1;
+      if(s.st==='empty'){g.strokeStyle='#3c4247';g.lineWidth=2;g.stroke(fishPath(cx,cy,s.w,s.h,1));
+        if(state==='play'){g.fillStyle='#8a939b';g.font='600 '+Math.round(s.h*.13)+'px "IBM Plex Sans KR",sans-serif';g.textAlign='center';g.fillText('눌러서 반죽',cx,cy+s.h*.05);}continue;}
+      const d=s.st==='A'?s.a:s.b;g.save();g.translate(cx,cy);g.scale(1-s.flip*1.6>0?1-s.flip*1.6:Math.abs(1-s.flip*1.6),1);g.translate(-cx,-cy);
+      const fp=fishPath(cx,cy,s.w,s.h,dir);g.fillStyle=col(d);g.fill(fp);g.strokeStyle='rgba(60,30,10,.5)';g.lineWidth=1.5;g.stroke(fp);
+      g.strokeStyle='rgba(90,45,15,.35)';for(let i=0;i<4;i++){g.beginPath();g.arc(cx-dir*s.w*.02+dir*i*s.w*.07,cy,s.h*.14,-.9,.9);g.stroke();}
+      g.fillStyle='#2b1d14';g.beginPath();g.arc(cx-dir*s.w*.27,cy-s.h*.08,s.h*.035,0,Math.PI*2);g.fill();g.restore();
+      if(d>.97&&state==='play'){g.fillStyle='rgba(200,200,200,'+(0.25+0.2*Math.sin(performance.now()/120))+')';g.beginPath();g.arc(cx+s.w*.1,s.y+s.h*.15,s.h*.12,0,Math.PI*2);g.fill();}
+      g.fillStyle='#cfd6dc';g.font='600 '+Math.round(s.h*.11)+'px "IBM Plex Sans KR",sans-serif';g.textAlign='left';
+      g.fillText(s.st==='A'?'앞면 굽는 중 · 누르면 뒤집기':'뒷면 굽는 중 · 누르면 꺼내기',s.x+s.h*.12,s.y+s.h*.9);
+      if(s.st==='B'){const ga=grade(s.a)[0];g.textAlign='right';g.fillStyle=ga==='노릇'?'#7fd3a3':'#ff9a85';g.fillText('앞면: '+ga,s.x+s.w-s.h*.12,s.y+s.h*.2);}}
+    for(const p of pops){g.globalAlpha=Math.min(1,p.t*2);g.fillStyle=p.good?'#7fd3a3':'#ff9a85';g.font='400 '+Math.round(W*.11)+'px "Nanum Pen Script",cursive';g.textAlign='center';g.fillText(p.txt,p.x,p.y-(.9-p.t)*40);g.globalAlpha=1;}
+    if(state==='ready'){g.fillStyle='rgba(0,0,0,.45)';g.fillRect(0,0,W,H);g.fillStyle='#fffdf8';g.font='400 '+Math.round(W*.1)+'px "Nanum Pen Script",cursive';g.textAlign='center';g.fillText('시작을 누르면 30초',W/2,H/2);}}
+  cv.addEventListener('pointerdown',e=>{const r=cv.getBoundingClientRect();tap(e.clientX-r.left,e.clientY-r.top);});
+  document.getElementById('fStart').onclick=start;
+  addEventListener('resize',()=>{if(!document.getElementById('fish').hidden)fit()});
+  const b=store.get('fish-best');if(b)document.getElementById('fBest').textContent=b;
+  return {fit};
+})();
+requestAnimationFrame(()=>{D.reset(false);});
+document.fonts&&document.fonts.ready.then(()=>{D.fit();});
+</script>

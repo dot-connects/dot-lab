@@ -41,3 +41,23 @@ failure, comparison, a funny label, the player's own input decides the result.
 
 Pick for the next three (Claude's view): 1 (Korean, physical, one number, 3-second reel hook), 4 (the guide's
 "whales in my room" with real input), 8 (streak, cheap to build, data-driven).
+
+## Known thing x device input (2026-10-21, operator)
+
+Study: docs/archive/2026-10-17-app-admob-research/23-build-creator-references.md (C:\DC\DD). Operator direction: a thing
+everyone knows (IP feel, nostalgia, fad, date) x an input the phone or laptop browser has (camera hand tracking,
+motion, mic), and the link plays at once - reference creators' builds are watch-only. Never real IP characters
+(e.g. Chiikawa): borrow the feel, draw our own. Order: 1 -> 2 -> 4.
+
+| # | Work | Known thing | Mechanic (verb -> score) | Status |
+|---|---|---|---|---|
+| 1 | 주사위 스테이크 6면 굽기 | Mario Party "Sizzling Stakes" feel | flick the phone to roll a cube, cook every face by sound/vibration -> seconds, none burnt | sketch works/2026-10-22-steak |
+| 2 | 허공 달고나 | Squid Game dalgona | camera fingertip traces the outline, shaking cracks it -> % carved | next |
+| 3 | 계란후라이 뒤집기 | flipping an egg | flick to toss, tilt to catch -> yolk intact streak | later |
+| 4 | 절대 안 지는 가위바위보 | Janken robot meme | camera reads your hand, AI answers at the last moment -> how long you last | next |
+| 5 | 손으로 찍는 인생네컷 | photo booth | hand-frame gesture shoots 4 cuts, frames swap with the trend | later (program) |
+| 6 | 내 방에 뭔가 잡기 | "2026 is the new 2016" / Pokemon GO feel, own creatures | flick to throw over the camera view -> caught /N | later |
+| 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | date slot (program) |
+| 8 | 폰 두 대로 펼치는 폴드 | Fold "iPhone Duo" reel | two phones join one screen | hard (needs pairing server) |
+
+Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).
