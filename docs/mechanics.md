@@ -46,8 +46,8 @@ Pick for the next three (Claude's view): 1 (Korean, physical, one number, 3-seco
 
 Study: docs/archive/2026-10-17-app-admob-research/23-build-creator-references.md (C:\DC\DD). Operator direction: a thing
 everyone knows (IP feel, nostalgia, fad, date) x an input the phone or laptop browser has (camera hand tracking,
-motion, mic), and the link plays at once - reference creators' builds are watch-only. Never real IP characters
-(e.g. Chiikawa): borrow the feel, draw our own. Order: 1 -> 2 -> 4.
+motion, mic), and the link plays at once - reference creators' builds are watch-only. IP characters are allowed
+(operator 10-21: no merchandise, lab concept); default to our own fan-art drawings, not ripped official assets. Order: 1 -> 2 -> 4.
 
 | # | Work | Known thing | Mechanic (verb -> score) | Status |
 |---|---|---|---|---|
@@ -58,6 +58,7 @@ motion, mic), and the link plays at once - reference creators' builds are watch-
 | 5 | 손으로 찍는 인생네컷 | photo booth | hand-frame gesture shoots 4 cuts, frames swap with the trend | later (program) |
 | 6 | 내 방에 뭔가 잡기 | "2026 is the new 2016" / Pokemon GO feel, own creatures | flick to throw over the camera view -> caught /N | later |
 | 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | date slot (program) |
+| 9 | 우리 집 몬스터 잡기 | Pokemon GO | throw a ball at your pet/person on the camera; segmentation cuts them out of the view and they land in an in-phone dex -> caught /N | strong, after steak |
 | 8 | 폰 두 대로 펼치는 폴드 | Fold "iPhone Duo" reel | two phones join one screen | hard (needs pairing server) |
 
 Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).

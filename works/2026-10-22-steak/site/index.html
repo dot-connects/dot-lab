@@ -6,8 +6,8 @@
 <title>주사위 스테이크</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Mono:wght@500;700&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
 <style>
-/* rough sketch: one phone screen. cube on a pan (CSS 3D), six-face map below, one big button. Lab-notebook kit. */
-:root{--paper:#f6f4ee;--ink:#1d2733;--red:#e0482f;--green:#2f8a5b;--muted:#5a6572;--card:#fffdf8;--pan:#25292d;
+/* sketch v2: pan stage (CSS 3D cube + canvas fx layer), six-face map, one big button. Lab-notebook kit around a dark kitchen stage. */
+:root{--paper:#f6f4ee;--ink:#1d2733;--red:#e0482f;--green:#2f8a5b;--muted:#5a6572;--card:#fffdf8;--pan:#23272b;
   --hand:"Nanum Pen Script",cursive;--mono:"IBM Plex Mono",ui-monospace,monospace;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
 html,body{height:100%}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);padding-top:env(safe-area-inset-top,0px)}
@@ -17,20 +17,34 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(32px,9vw,42p
 .q{margin:0;font-size:14px;line-height:1.5;color:var(--muted)}
 .stat{display:flex;justify-content:space-between;font-family:var(--mono);font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
 .stat b{font-size:22px;color:var(--ink)}
-.stage{position:relative;height:min(46vh,340px);background:radial-gradient(ellipse at 50% 72%,#3a3f44 0 34%,var(--pan) 35% 60%,#181b1e 61%);border-radius:8px;
-  perspective:700px;overflow:hidden;display:grid;place-items:center}
-.lift{transition:transform .22s ease-out}
-.lift.up{transform:translateY(-70px)}
-.view{transform-style:preserve-3d;transform:rotateX(-28deg) rotateY(-30deg)}
-.cube{--s:min(30vw,120px);width:var(--s);height:var(--s);position:relative;transform-style:preserve-3d;transition:transform .45s cubic-bezier(.3,.7,.3,1)}
-.face{position:absolute;inset:0;border-radius:10px;box-shadow:inset 0 0 0 2px rgba(0,0,0,.18),inset 0 0 18px rgba(0,0,0,.25);display:grid;place-items:center;
-  font-family:var(--mono);font-size:12px;color:rgba(255,255,255,.75);backface-visibility:hidden}
-.smoke{position:absolute;left:50%;bottom:22%;width:60%;height:30px;transform:translateX(-50%);background:radial-gradient(ellipse,rgba(255,255,255,.35),transparent 70%);filter:blur(6px);opacity:0;transition:opacity .3s}
+.stage{position:relative;height:min(48vh,360px);border-radius:10px;overflow:hidden;background:#15181b;perspective:800px;touch-action:manipulation}
+.panwrap{position:absolute;inset:0;will-change:transform}
+.pan{position:absolute;left:50%;top:66%;width:92%;aspect-ratio:2.3/1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(ellipse at 50% 45%,#454b51 0 30%,#33383d 52%,#26292d 66%,#101214 69%,#2c3135 71%,#191c1f 76%);
+  box-shadow:0 18px 30px rgba(0,0,0,.6),inset 0 -6px 14px rgba(0,0,0,.6)}
+.handle{position:absolute;left:94%;top:63%;width:26%;height:7%;border-radius:8px;background:linear-gradient(#2b2f33,#121416);transform:rotate(-8deg)}
+.heat{position:absolute;left:50%;top:66%;width:60%;aspect-ratio:2.3/1;transform:translate(-50%,-50%);border-radius:50%;
+  background:radial-gradient(ellipse,rgba(255,120,40,.18),transparent 65%);transition:opacity .4s}
+.shadow{position:absolute;left:50%;top:64%;width:34%;aspect-ratio:2.6/1;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(ellipse,rgba(0,0,0,.65),transparent 70%)}
+.glow{position:absolute;left:50%;top:64%;width:44%;aspect-ratio:2.6/1;transform:translate(-50%,-50%);border-radius:50%;
+  box-shadow:0 0 0 3px rgba(255,214,120,.9),0 0 28px rgba(255,190,90,.8);opacity:0;transition:opacity .15s}
+.anchor{position:absolute;left:50%;top:58%;width:0;height:0;transform-style:preserve-3d}
+.body{position:absolute;transform-style:preserve-3d;will-change:transform}
+.cube{--s:min(26vw,104px);position:absolute;width:var(--s);height:var(--s);left:calc(var(--s)/-2);top:calc(var(--s)/-2);transform-style:preserve-3d}
+.face{position:absolute;inset:0;border-radius:14%;backface-visibility:hidden;overflow:hidden;
+  background:var(--c);box-shadow:inset 0 0 0 1.5px rgba(40,10,10,.35),inset 0 0 22px rgba(30,5,5,.35)}
+.face::before{content:"";position:absolute;inset:0;opacity:var(--raw,1);
+  background:radial-gradient(ellipse at 30% 30%,rgba(255,236,230,.55) 0 6%,transparent 7%),radial-gradient(ellipse at 70% 62%,rgba(255,236,230,.45) 0 5%,transparent 6%),
+  repeating-linear-gradient(115deg,transparent 0 12%,rgba(255,225,215,.22) 12% 14%,transparent 14% 26%)}
+.face::after{content:"";position:absolute;inset:-10%;opacity:var(--sear,0);transform:rotate(45deg);
+  background:repeating-linear-gradient(90deg,transparent 0 15%,rgba(25,12,6,.78) 15% 21%,transparent 21% 33%)}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .map{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
-.map div{aspect-ratio:1/1;border-radius:6px;border:1.5px solid var(--ink);display:grid;place-items:center;font-family:var(--mono);font-size:12px;color:#fff;font-weight:700}
+.map div{aspect-ratio:1/1;border-radius:8px;border:1.5px solid var(--ink);display:grid;place-items:center;font-family:var(--mono);font-size:12px;color:#fff;font-weight:700;transition:background .2s}
 .map div.down{outline:3px solid var(--red);outline-offset:2px;color:var(--ink);background:var(--card)!important}
 .btn{font:inherit;border:1.5px solid var(--ink);border-radius:4px;background:none;color:var(--ink);padding:9px 12px;cursor:pointer}
 .btn.main{font-family:var(--hand);font-size:32px;padding:4px 16px;background:var(--ink);color:var(--paper);border:0;box-shadow:4px 4px 0 var(--red)}
+button:focus-visible{outline:3px solid var(--red);outline-offset:2px}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .pad{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
 .res{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;padding:12px 14px;display:grid;gap:6px}
@@ -46,8 +60,12 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(32px,9vw,42p
   <p class="q">폰이 프라이팬이다. 폰을 위로 툭 튕기면 고기가 뒤집힌다. 기울인 쪽으로 구른다. 바닥 면은 안 보인다. 소리와 진동으로 맞혀라.</p>
   <div class="stat"><span>시간 <b id="time">0.0</b></span><span>노릇한 면 <b id="done">0/6</b></span><span>최고 <b id="best">-</b></span></div>
   <div class="stage" id="stage">
-    <div class="lift" id="lift"><div class="view"><div class="cube" id="cube"></div></div></div>
-    <div class="smoke" id="smoke"></div>
+    <div class="panwrap" id="panwrap">
+      <div class="handle"></div><div class="pan"></div><div class="heat" id="heat"></div>
+      <div class="shadow" id="shadow"></div><div class="glow" id="glow"></div>
+      <div class="anchor"><div class="body" id="body"><div class="cube" id="cube"></div></div></div>
+    </div>
+    <canvas id="fx"></canvas>
   </div>
   <div class="map" id="map"></div>
   <div class="res" id="res" hidden><div class="label" id="label"></div><div class="big" id="big"></div><div id="why"></div></div>
@@ -61,68 +79,107 @@ h1{margin:0;font-family:var(--hand);font-weight:400;font-size:clamp(32px,9vw,42p
 </main>
 <script>
 const store={get(k){try{return localStorage.getItem(k)}catch(e){return null}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+const $=id=>document.getElementById(id);
 const NAMES=['위','아래','앞','뒤','오른','왼'];
 const NORMALS=[[0,-1,0],[0,1,0],[0,0,1],[0,0,-1],[1,0,0],[-1,0,0]];   // CSS space: y down, z toward viewer
 const PLACE=['rotateX(90deg)','rotateX(-90deg)','','rotateY(180deg)','rotateY(90deg)','rotateY(-90deg)'];
-const RATE=.17, GOOD=[.6,1.0], PERFECT=[.6,.85];
-// roll maps in CSS space: F = toward viewer (+z), B = away, R = +x, L = -x
-const ROLL={F:([x,y,z])=>[x,z,-y],B:([x,y,z])=>[x,-z,y],R:([x,y,z])=>[-y,x,z],L:([x,y,z])=>[y,-x,z]};
-const cube=document.getElementById('cube'),map=document.getElementById('map'),lift=document.getElementById('lift');
-let M=[[1,0,0],[0,1,0],[0,0,1]], cook=[0,0,0,0,0,0], state='ready', t0=0, last=0, air=0, cueDone=new Set(), audio=null;
-const faces=NAMES.map((n,i)=>{const f=document.createElement('div');f.className='face';f.textContent=n;cube.appendChild(f);return f});
+const RATE=.17, GOOD=[.6,1.0], PERFECT=[.6,.85], FLIP_MS=620;
+// roll = quarter turn about a world axis: F toward viewer (+z), B away, R = +x, L = -x
+const ROLL={F:['x',-1],B:['x',1],R:['z',1],L:['z',-1]};
+const VIEW='rotateX(-24deg) rotateY(-32deg)';
+const cube=$('cube'),body=$('body'),map=$('map'),stage=$('stage'),fx=$('fx');
+let M=I3(), cook=[0,0,0,0,0,0], state='ready', t0=0, last=0, flip=null, land=0, shake=0, cueDone=new Set(), audio=null;
+function I3(){return [[1,0,0],[0,1,0],[0,0,1]]}
+function rot(axis,a){const c=Math.cos(a),s=Math.sin(a);return axis==='x'?[[1,0,0],[0,c,-s],[0,s,c]]:axis==='y'?[[c,0,s],[0,1,0],[-s,0,c]]:[[c,-s,0],[s,c,0],[0,0,1]]}
+function mm(A,B){return A.map((r,i)=>[0,1,2].map(j=>A[i][0]*B[0][j]+A[i][1]*B[1][j]+A[i][2]*B[2][j]))}
+const snap=A=>A.map(r=>r.map(v=>Math.round(v)));
+const faces=NAMES.map(()=>{const f=document.createElement('div');f.className='face';cube.appendChild(f);return f});
 const cells=NAMES.map(n=>{const c=document.createElement('div');c.textContent=n;map.appendChild(c);return c});
-function layout(){const s=cube.offsetWidth||100;faces.forEach((f,i)=>f.style.transform=PLACE[i]+' translateZ('+s/2+'px)');}
-const mul=(A,v)=>[0,1,2].map(r=>A[r][0]*v[0]+A[r][1]*v[1]+A[r][2]*v[2]);
-function downFace(){let best=0,bi=0;NORMALS.forEach((n,i)=>{const w=mul(M,n)[1];if(w>best){best=w;bi=i}});return bi}
-function applyCube(){const c=M;cube.style.transform='matrix3d('+[c[0][0],c[1][0],c[2][0],0,c[0][1],c[1][1],c[2][1],0,c[0][2],c[1][2],c[2][2],0,0,0,0,1].join(',')+')';}
-const STOPS=[[0,[201,57,79]],[.35,[178,82,74]],[.7,[150,92,52]],[.95,[86,52,32]],[1.2,[30,20,16]]];
-function color(d){d=Math.min(1.2,Math.max(0,d));for(let i=1;i<STOPS.length;i++)if(d<=STOPS[i][0]){const[a,ca]=STOPS[i-1],[b,cb]=STOPS[i],t=(d-a)/(b-a);return 'rgb('+ca.map((v,k)=>Math.round(v+(cb[k]-v)*t))+')'}return 'rgb(30,20,16)'}
-function paint(){const dn=downFace();faces.forEach((f,i)=>f.style.background=color(cook[i]));
-  cells.forEach((c,i)=>{c.classList.toggle('down',i===dn&&state==='play');c.style.background=color(cook[i]);c.textContent=i===dn&&state==='play'?'?':(cook[i]>=GOOD[0]&&cook[i]<GOOD[1]?'✓':NAMES[i])});
-  document.getElementById('done').textContent=cook.filter(d=>d>=GOOD[0]&&d<GOOD[1]).length+'/6';
-  document.getElementById('smoke').style.opacity=state==='play'&&!air?Math.min(.9,cook[dn]*.8):0;}
-function roll(d){if(state!=='play'||air)return;air=1;lift.classList.add('up');
-  M=[[1,0,0],[0,1,0],[0,0,1]].map((_,r)=>[0,1,2].map(cI=>ROLL[d]([M[0][cI],M[1][cI],M[2][cI]])[r]));applyCube();
-  setTimeout(()=>lift.classList.remove('up'),220);setTimeout(()=>{air=0;paint()},480);}
-/* sizzle: filtered noise, louder while cooking, crackle when the bottom face turns golden */
+function layout(){const s=cube.offsetWidth||100;faces.forEach((f,i)=>f.style.transform=PLACE[i]+' translateZ('+s/2+'px)');
+  const r=stage.getBoundingClientRect(),d=Math.min(devicePixelRatio||1,2);fx.width=r.width*d;fx.height=r.height*d;fxc.setTransform(d,0,0,d,0,0);}
+function downOf(A){let best=0,bi=0;NORMALS.forEach((n,i)=>{const w=A[1][0]*n[0]+A[1][1]*n[1]+A[1][2]*n[2];if(w>best){best=w;bi=i}});return bi}
+const m3d=c=>'matrix3d('+[c[0][0],c[1][0],c[2][0],0,c[0][1],c[1][1],c[2][1],0,c[0][2],c[1][2],c[2][2],0,0,0,0,1].join(',')+')';
+const STOPS=[[0,[196,48,72]],[.3,[176,74,70]],[.6,[160,96,52]],[.85,[118,66,36]],[1,[70,42,26]],[1.2,[26,18,14]]];
+function color(d){d=Math.min(1.2,Math.max(0,d));for(let i=1;i<STOPS.length;i++)if(d<=STOPS[i][0]){const[a,ca]=STOPS[i-1],[b,cb]=STOPS[i],t=(d-a)/(b-a);return 'rgb('+ca.map((v,k)=>Math.round(v+(cb[k]-v)*t))+')'}return 'rgb(26,18,14)'}
+const okFace=d=>d>=GOOD[0]&&d<GOOD[1];
+function paintFaces(){faces.forEach((f,i)=>{const d=cook[i];f.style.setProperty('--c',color(d));f.style.setProperty('--raw',Math.max(0,1-d*1.6).toFixed(2));f.style.setProperty('--sear',Math.min(1,Math.max(0,(d-.3)/.35)).toFixed(2));});
+  const dn=downOf(M);cells.forEach((c,i)=>{const hide=i===dn&&state==='play';c.classList.toggle('down',hide);c.style.background=color(cook[i]);c.textContent=hide?'?':okFace(cook[i])?'✓':NAMES[i]});
+  $('done').textContent=cook.filter(okFace).length+'/6';}
+
+/* ---- fx canvas: sizzle bubbles, grease spatter, smoke ---- */
+const fxc=fx.getContext('2d');let parts=[];
+function emit(kind,n,o){const r=stage.getBoundingClientRect(),cx=r.width/2,cy=r.height*.64;for(let i=0;i<n;i++){
+  if(kind==='spit')parts.push({k:kind,x:cx+(Math.random()-.5)*r.width*.3,y:cy,vx:(Math.random()-.5)*160,vy:-120-Math.random()*220,life:.6+Math.random()*.4,t:0,s:1.5+Math.random()*2});
+  else if(kind==='smoke')parts.push({k:kind,x:cx+(Math.random()<.5?-1:1)*r.width*(.13+Math.random()*.1),y:cy-6,vx:(Math.random()-.5)*14,vy:-30-Math.random()*30,life:1.6+Math.random(),t:0,s:8+Math.random()*10,dark:o||0});
+  else if(kind==='fizz')parts.push({k:kind,x:cx+(Math.random()-.5)*r.width*.26,y:cy+(Math.random()-.5)*r.height*.06,life:.25+Math.random()*.25,t:0,s:1+Math.random()*1.8});}}
+function drawFx(dt){const r=stage.getBoundingClientRect();fxc.clearRect(0,0,r.width,r.height);parts=parts.filter(p=>(p.t+=dt)<p.life);
+  for(const p of parts){const a=1-p.t/p.life;
+    if(p.k==='spit'){p.vy+=600*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;fxc.fillStyle='rgba(255,236,180,'+a+')';fxc.beginPath();fxc.arc(p.x,p.y,p.s,0,7);fxc.fill();}
+    else if(p.k==='smoke'){p.x+=p.vx*dt;p.y+=p.vy*dt;p.s+=dt*18;const g=Math.round(220-p.dark*170);fxc.fillStyle='rgba('+g+','+g+','+g+','+(a*(.12+p.dark*.2))+')';fxc.beginPath();fxc.arc(p.x,p.y,p.s,0,7);fxc.fill();}
+    else{fxc.strokeStyle='rgba(255,240,200,'+a*.8+')';fxc.lineWidth=1;fxc.beginPath();fxc.arc(p.x,p.y,p.s+(1-a)*2,0,7);fxc.stroke();}}}
+
+/* ---- audio: looped sizzle noise + one-shot thud / ding ---- */
 function startAudio(){try{const A=new (window.AudioContext||window.webkitAudioContext)();const buf=A.createBuffer(1,A.sampleRate*2,A.sampleRate),d=buf.getChannelData(0);
-  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(Math.random()<.02?1:.35);const src=A.createBufferSource();src.buffer=buf;src.loop=true;
-  const hp=A.createBiquadFilter();hp.type='highpass';hp.frequency.value=2500;const gain=A.createGain();gain.gain.value=0;src.connect(hp).connect(gain).connect(A.destination);src.start();
+  for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*(Math.random()<.03?1:.3);const src=A.createBufferSource();src.buffer=buf;src.loop=true;
+  const hp=A.createBiquadFilter();hp.type='highpass';hp.frequency.value=2200;const gain=A.createGain();gain.gain.value=0;src.connect(hp).connect(gain).connect(A.destination);src.start();
   audio={A,gain,hp};}catch(e){audio=null}}
-function cue(){if(navigator.vibrate)navigator.vibrate([60,40,60]);if(audio){const{A}=audio,o=A.createOscillator(),g=A.createGain();o.frequency.value=1400;g.gain.setValueAtTime(.15,A.currentTime);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+.15);o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+.16);}}
-function tick(t){if(state!=='play')return;const dt=Math.min(.1,(t-last)/1000);last=t;
-  const dn=downFace();if(!air){cook[dn]+=dt*RATE;if(cook[dn]>=GOOD[0]&&!cueDone.has(dn)){cueDone.add(dn);cue();}}
-  if(audio)audio.gain.gain.value=air?0:.05+Math.min(.25,cook[dn]*.2);
-  document.getElementById('time').textContent=((t-t0)/1000).toFixed(1);
-  if(cook[dn]>=GOOD[1]&&!air)return end(false,dn,t);
-  if(cook.every(d=>d>=GOOD[0]))return end(true,-1,t);
-  paint();requestAnimationFrame(tick);}
-function end(win,burnt,t){state='over';if(audio)audio.gain.gain.value=0;paint();
-  const sec=((t-t0)/1000).toFixed(1),perfect=cook.filter(d=>d>=PERFECT[0]&&d<PERFECT[1]).length,ok=cook.filter(d=>d>=GOOD[0]&&d<GOOD[1]).length;
-  let label,big,why;
-  if(win){const b=store.get('steak-best');if(!b||+sec<+b){store.set('steak-best',sec)}document.getElementById('best').textContent=(store.get('steak-best')||sec)+'초';
-    label=perfect===6?'미디엄 장인':+sec<30?'불맛 스피드런':'느긋한 셰프';big=sec+'초, 6면 완성';why='완벽하게 노릇한 면 '+perfect+'개.';}
-  else{label=ok>=5?'마지막 한 면에 무너짐':ok===0?'숯불 그 자체':'한쪽만 사랑한 사람';big=NAMES[burnt]+' 면이 탔다';why=ok+'/6 면까지 노릇. 바닥은 소리가 바뀌면 뒤집자.';}
-  document.getElementById('label').textContent=label;document.getElementById('big').textContent=big;document.getElementById('why').textContent=why;
-  document.getElementById('res').hidden=false;document.getElementById('go').textContent='다시';}
+function tone(f,dur,vol,type){if(!audio)return;const{A}=audio,o=A.createOscillator(),g=A.createGain();o.type=type||'sine';o.frequency.setValueAtTime(f,A.currentTime);
+  if(type==='triangle')o.frequency.exponentialRampToValueAtTime(f*.4,A.currentTime+dur);g.gain.setValueAtTime(vol,A.currentTime);g.gain.exponentialRampToValueAtTime(.001,A.currentTime+dur);o.connect(g).connect(A.destination);o.start();o.stop(A.currentTime+dur+.02);}
+function cue(){if(navigator.vibrate)navigator.vibrate([50,40,50]);tone(1500,.12,.14);setTimeout(()=>tone(1900,.12,.12),110);
+  $('glow').style.opacity=1;setTimeout(()=>$('glow').style.opacity=0,420);}
+
+/* ---- flip: parabola up, quarter turn in the air, squash on landing ---- */
+function roll(d){if(state!=='play'||flip)return;const[ax,sg]=ROLL[d];flip={ax,sg,from:M,t:0};emit('spit',10);tone(220,.08,.1,'triangle');
+  if(audio)audio.gain.gain.value=0;}
+const ease=t=>t<.5?2*t*t:1-Math.pow(-2*t+2,2)/2;
+function render(dt){let h=0,A=M,sx=1,sy=1;
+  if(flip){flip.t+=dt*1000/FLIP_MS;const t=Math.min(1,flip.t);h=4*t*(1-t);A=mm(rot(flip.ax,flip.sg*Math.PI/2*ease(t)),flip.from);
+    if(t>=1){M=snap(mm(rot(flip.ax,flip.sg*Math.PI/2),flip.from));A=M;flip=null;land=1;shake=1;emit('spit',16);emit('fizz',20);tone(90,.18,.35,'triangle');if(navigator.vibrate)navigator.vibrate(25);paintFaces();}}
+  if(land>0){land=Math.max(0,land-dt*5);const k=Math.sin(land*Math.PI);sy=1-.16*k;sx=1+.1*k;}
+  const s=cube.offsetWidth||100,lift=h*s*1.7;
+  body.style.transform='translateY('+(-lift+(1-sy)*s*.5)+'px) '+VIEW+' scale3d('+sx+','+sy+','+sx+')';
+  cube.style.transform=m3d(A);
+  const sh=$('shadow');sh.style.transform='translate(-50%,-50%) scale('+(1-h*.45)+')';sh.style.opacity=1-h*.6;
+  if(shake>0){shake=Math.max(0,shake-dt*6);$('panwrap').style.transform='translateY('+(Math.sin(shake*20)*4*shake)+'px)';}else $('panwrap').style.transform='';}
+
+let prevT=performance.now();
+function loop(t){const dt=Math.min(.05,(t-prevT)/1000);prevT=t;
+  if(state==='play'&&!flip){const dn=downOf(M);cook[dn]+=dt*RATE;
+    if(cook[dn]>=GOOD[0]&&!cueDone.has(dn)){cueDone.add(dn);cue();}
+    if(Math.random()<dt*30)emit('fizz',1);if(Math.random()<dt*(2+cook[dn]*5))emit('smoke',1,Math.max(0,(cook[dn]-.8)*2.5));if(Math.random()<dt*2)emit('spit',1);
+    if(audio){audio.gain.gain.value=.05+Math.min(.22,cook[dn]*.2);audio.hp.frequency.value=2200+Math.max(0,cook[dn]-.6)*3000;}
+    $('time').textContent=((t-t0)/1000).toFixed(1);paintFaces();
+    if(cook[dn]>=GOOD[1])end(false,dn,t);else if(cook.every(d=>d>=GOOD[0]))end(true,-1,t);}
+  $('heat').style.opacity=state==='play'?1:.3;
+  render(dt);drawFx(dt);requestAnimationFrame(loop);}
+
+function end(win,burnt,t){state='over';if(audio)audio.gain.gain.value=0;paintFaces();
+  const sec=((t-t0)/1000).toFixed(1),perfect=cook.filter(d=>d>=PERFECT[0]&&d<PERFECT[1]).length,ok=cook.filter(okFace).length;let label,big,why;
+  if(win){const b=store.get('steak-best');if(!b||+sec<+b)store.set('steak-best',sec);$('best').textContent=store.get('steak-best')+'초';
+    label=perfect===6?'미디엄 장인':+sec<30?'불맛 스피드런':'느긋한 셰프';big=sec+'초, 6면 완성';why='완벽하게 노릇한 면 '+perfect+'개.';
+    tone(880,.15,.15);setTimeout(()=>tone(1320,.25,.15),140);flip={ax:'y',sg:4,from:M,t:0};}
+  else{label=ok>=5?'마지막 한 면에 무너짐':ok===0?'숯불 그 자체':'한쪽만 사랑한 사람';big=NAMES[burnt]+' 면이 탔다';why=ok+'/6 면까지 노릇. 바닥은 소리가 바뀌면 뒤집자.';
+    emit('smoke',26,1);tone(140,.5,.25,'sawtooth');}
+  $('label').textContent=label;$('big').textContent=big;$('why').textContent=why;$('res').hidden=false;$('go').textContent='다시';}
 async function start(){
   if(typeof DeviceMotionEvent!=='undefined'&&typeof DeviceMotionEvent.requestPermission==='function'){try{await DeviceMotionEvent.requestPermission()}catch(e){}}
   if(!audio)startAudio();else if(audio.A.state==='suspended')audio.A.resume();
-  M=[[1,0,0],[0,1,0],[0,0,1]];cook=[0,0,0,0,0,0];cueDone=new Set();air=0;applyCube();
-  document.getElementById('res').hidden=true;state='play';t0=last=performance.now();requestAnimationFrame(tick);}
+  M=I3();flip=null;cook=[0,0,0,0,0,0];cueDone=new Set();parts=[];paintFaces();
+  $('res').hidden=true;state='play';t0=performance.now();emit('spit',12);emit('fizz',24);}
+
 /* flick detection: spike in linear acceleration; direction from the horizontal part of the spike */
-let cool=0,peak=0,hp=[0,0,0],g0=null;
+let cool=0,peak=0,g0=null;
 addEventListener('devicemotion',e=>{let a=e.acceleration;
   if(!a||a.x==null){const g=e.accelerationIncludingGravity;if(!g||g.x==null)return;g0=g0||[g.x,g.y,g.z];g0=[.9*g0[0]+.1*g.x,.9*g0[1]+.1*g.y,.9*g0[2]+.1*g.z];a={x:g.x-g0[0],y:g.y-g0[1],z:g.z-g0[2]};}
-  const m=Math.hypot(a.x,a.y,a.z);peak=Math.max(peak*.98,m);document.getElementById('dbg').textContent='센서 최고 '+peak.toFixed(1)+' m/s²';
-  const now=performance.now();if(m>13&&now>cool){cool=now+700;const ax=Math.abs(a.x),ay=Math.abs(a.y);
+  const m=Math.hypot(a.x,a.y,a.z);peak=Math.max(peak*.98,m);$('dbg').textContent='센서 최고 '+peak.toFixed(1)+' m/s²';
+  const now=performance.now();if(m>13&&now>cool){cool=now+FLIP_MS+120;const ax=Math.abs(a.x),ay=Math.abs(a.y);
     roll(ax>ay&&ax>4?(a.x>0?'R':'L'):ay>4?(a.y>0?'B':'F'):'F');}});
-document.getElementById('pad').addEventListener('click',e=>{const b=e.target.closest('button');if(b)roll(b.dataset.d)});
+$('pad').addEventListener('click',e=>{const b=e.target.closest('button');if(b)roll(b.dataset.d)});
 addEventListener('keydown',e=>{const k={ArrowLeft:'L',ArrowRight:'R',ArrowUp:'B',ArrowDown:'F'}[e.key];if(k){e.preventDefault();roll(k)}});
-document.getElementById('go').onclick=start;
+$('go').onclick=start;
 addEventListener('resize',layout);
-const b=store.get('steak-best');if(b)document.getElementById('best').textContent=b+'초';
-layout();applyCube();paint();
+const b=store.get('steak-best');if(b)$('best').textContent=b+'초';
+layout();paintFaces();requestAnimationFrame(loop);
 </script>
 </body>
 </html>
