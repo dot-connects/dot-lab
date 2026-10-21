@@ -194,6 +194,12 @@ pad.addEventListener("pointerup", lift); pad.addEventListener("pointercancel", l
 // The 다시/공유하기 buttons sit inside the pad: their touches stay native so the tap still clicks.
 for (const t of ["touchstart", "touchmove"])
   pad.addEventListener(t, e => { if (!e.target.closest("button")) e.preventDefault(); }, { passive: false });
+// At scroll top the Threads in-app browser takes a downward drag as pull-down (close/refresh) before the page sees
+// it: up strokes drew, down strokes did not (operator 2026-10-21). One pixel below the top it leaves the drag alone.
+document.body.style.minHeight = "calc(100% + 2px)";
+const nudge = () => { if (scrollY < 1) scrollTo(0, 1); };
+addEventListener("load", nudge); addEventListener("scroll", nudge, { passive: true });
+pad.addEventListener("touchstart", nudge, { passive: true });
 function add(e) { const r = cv.getBoundingClientRect(); cur.push([(e.clientX - r.left) * dpr, (e.clientY - r.top) * dpr]); drawInk(); }
 
 // ---- scoring ----
