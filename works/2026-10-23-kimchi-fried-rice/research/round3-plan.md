@@ -47,3 +47,16 @@ Not in scope: new modes, characters, accounts/publishing (manifest stays draft).
   catch 10 + take-out 6. Failures with a cause line: torn (early), stuck (no shake), folded (90°/270°), on the rim,
   on the counter, burst (too high / hit the wall), on the screen (motion only), black lace (late).
   Twist: 1 in 5 orders "써니사이드업 · 뒤집지 마".
+
+## Plating (operator 10-24: pouring toward the handle is weird) — chef / motion / game debate, 2 rounds, converged
+- Plate on the RIGHT (the ladle-hand side), never toward the handle; it slides in from the right edge and stays half
+  visible there as the egg's target. Camera pan right 0.15 + zoom 1.06 while pouring.
+- The player pours: tilt the phone right past 20° → the wok rolls with it (max ~40°, 60 ms lag), food leaves over the
+  right rim onto the plate. Oiled fried rice falls in small clumps, not a thin stream (chef). Grains that miss land on
+  the counter, stay visible and cost points (cap -5). No input for 1.5 s → it pours itself (no bonus, no penalty).
+  Flicks are ignored here.
+- Then two quick shakes (2 × 90 ms), two ladle pats (2 × 120 ms, automatic: shapes the dome, matches the receipt),
+  plate squash + round high mound → '봉긋!' +2 (taken from the toss share so the total stays 100), '완성!' stamp,
+  wok back on the fire. Total 1.0–1.8 s.
+- Egg take-out later uses the same move: tilt right, slide the egg onto this plate.
+- Split vote: game wanted no ladle (adds time); chef + motion kept two short automatic pats.
