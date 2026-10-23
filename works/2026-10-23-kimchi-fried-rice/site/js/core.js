@@ -104,6 +104,6 @@
   };
 
   /* scoring bands, shared by rice.js stats and the result slip */
-  K.RICE_GOOD = [0.55, 1.3];
+  K.RICE_GOOD = [0.65, 1.3];
   K.EGG_GOOD = [0.6, 1.4];
 })();

@@ -2,7 +2,7 @@
 "use strict";
 (function () {
   const K = window.KFR, TAU = K.TAU, clamp = K.clamp;
-  const RICE_T = 12, EGG_MAX = 9;
+  const RICE_T = 12, EGG_MAX = 9, PLATE_T = 1.8; // plate: the rice is served, then the egg goes in
   const cv = document.getElementById("cv"), c = cv.getContext("2d");
   const app = document.getElementById("app"), intro = document.getElementById("intro"), resEl = document.getElementById("result");
   let W = 0, H = 0, vw = null;
@@ -37,13 +37,14 @@
      The tilt pivots on the rim opposite d, so on a forward toss the handle side barely moves. At rest the wok leans
      6° toward the cook and follows the phone tilt. */
   const DEG = Math.PI / 180, ease = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : K.smooth(k));
-  let lastPose = null;
+  let lastPose = null, plateLayer = null;
   function updatePose(dt) {
     const p = g.pose, a = g.tossAnim, tilt = K.Input.tilt;
     const eggAir = g.phase === "egg" && g.egg && g.egg.phase === "air";
     g.panU = K.lerp(g.panU || 0, eggAir ? tilt.u * 0.35 : g.phase === "egg" && g.egg && g.egg.phase !== "pan" ? (g.panU || 0) : 0, 0.2);
     let du = tilt.u * 0.03 + (g.panU || 0), dv = 0, lift = 0;
-    let pitch = -6 * DEG + tilt.v * 10 * DEG, roll = tilt.u * 12 * DEG, pu = 0, pv = 0;
+    let pitch = -6 * DEG - tilt.v * 10 * DEG, roll = -tilt.u * 12 * DEG, pu = 0, pv = 0; // tilt + = that side lower: the wok dips where the food flows
+    if (g.phase === "plate") pitch += 22 * DEG * Math.sin(Math.PI * Math.min(1, g.phaseT / 1.1));
     if (a) {
       const k = g.t - a.t0, s1 = a.s;
       if (k > 0.95) g.tossAnim = null;
@@ -86,7 +87,7 @@
       if (f.strength >= 0.9 && f.snap > 0.4) K.Fx.oilCatch(g.fx, f.strength);
       K.Audio.toss(f.strength, f.snap);
       if (f.strength >= 0.9) K.Audio.flare();
-    } else if (g.phase === "egg" && g.egg && K.Egg.inPan(g.egg)) {
+    } else if (g.phase === "egg" && g.egg && K.Egg.inPan(g.egg) && g.phaseT >= 0.8) {
       g.lastFlickT = g.t;
       startToss(f);
       K.Egg.toss(g.egg, Object.assign({}, f, { splatOK: K.Input.mode === "motion" }), g.t);
@@ -154,7 +155,14 @@
       if (g.started && g.phaseT >= RICE_T && (K.Rice.airborne(g.rice) === 0 || g.phaseT > RICE_T + 1)) {
         g.maxGap = Math.max(g.maxGap, RICE_T - g.lastRiceFlick);
         g.riceStats = K.Rice.stats(g.rice);
-        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); g.toast = null; K.Audio.ding();
+        g.phase = "plate"; g.phaseT = 0; g.toast = null; g.tossAnim = null; K.Audio.ding();
+      }
+    } else if (g.phase === "plate") {
+      contact = 0.3;
+      if (g.phaseT >= PLATE_T) {
+        // a rice-rhythm shake must not flip the fresh egg: motion waits for the hand to go still
+        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); K.Audio.land("egg-soft");
+        K.Input.armAfterRelease && K.Input.armAfterRelease();
       }
     } else if (g.phase === "egg") {
       K.Egg.update(g.egg, dt, ctx);
@@ -270,6 +278,10 @@
         c.restore();
         strokeText(K.Input.mode === "motion" ? "손목으로 휙!" : "휙 쓸어서 튕기기!", W / 2, vw.top * 0.95, 30, "#1F2A33");
       }
+    } else if (g.phase === "plate" && !g.demo) {
+      const k = clamp(g.phaseT / 0.25, 0, 1), sc = K.easeOutBack(k);
+      c.save(); c.translate(W / 2, vw.top * 0.75); c.scale(sc, sc); strokeText("볶음밥 완성!", 0, 0, 40, "#2BB673"); c.restore();
+      if (g.phaseT > 0.7) strokeText("이제 계란 프라이", W / 2, vw.top * 0.75 + 46, 26, "#1F2A33");
     } else if (g.phase === "egg" && !g.demo) {
       c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText(`2판 · 계란 뒤집기 · 주문: ${g.order.label}`, W / 2, top + 10);
       const e = g.egg, o = K.Egg.outcome(e);
@@ -321,9 +333,15 @@
     K.Stage.drawWok(c, vw, g.pose, g.contact || 0, fire);
     if (fire && K.Fx.drawRim) K.Fx.drawRim(c, fx, vw, g.pose);   // far-rim flare sits under the food
     if (g.phase === "rice" || g.phase === "result") {
-      if (K.Rice.drawResting && K.Rice.drawAirborne) {
-        K.Rice.drawResting(c, g.rice, vw, g.pose); K.Stage.drawFrontLip(c, vw, g.pose); K.Rice.drawAirborne(c, g.rice, vw, g.pose);
-      } else K.Rice.draw(c, g.rice, vw, g.pose);
+      K.Rice.drawResting(c, g.rice, vw, g.pose); K.Stage.drawFrontLip(c, vw, g.pose); K.Rice.drawAirborne(c, g.rice, vw, g.pose);
+    } else if (g.phase === "plate") {
+      // the rice pours out toward the cook and fades (drawn on a layer so one alpha covers it all)
+      const k = K.smooth(clamp((g.phaseT - 0.25) / 0.85, 0, 1));
+      if (!plateLayer || plateLayer[0].width !== cv.width) plateLayer = K.offscreen(W, H);
+      const [lc, lx] = plateLayer; lx.clearRect(0, 0, W, H);
+      K.Rice.drawResting(lx, g.rice, vw, g.pose);
+      c.globalAlpha = 1 - k; c.drawImage(lc, 0, k * vw.R * 0.6, W, H); c.globalAlpha = 1;
+      K.Stage.drawFrontLip(c, vw, g.pose);
     }
     if (g.phase === "egg") K.Egg.draw(c, g.egg, vw, g.pose);
     K.Stage.flashRim(c, vw, g.pose, g.rimFlash);

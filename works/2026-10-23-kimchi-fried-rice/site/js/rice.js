@@ -8,12 +8,11 @@
   const PILE = 0.55;          // pile radius at rest (world units)
   const MOUND = 0.18;         // pile height at its centre
   const G = K.G;
-  const RATE = 0.36;          // cook per second at layer 1, heat 1 (balance: see harness)
+  const RATE = 0.44;          // cook per second at layer 1, heat 1 (balance: see harness)
   const AIR = 0.03;           // flames lick the rice in the air (share of RATE)
   const SNAP_T = 0.15;        // game.js lip snap after the flick: the sheet launches here
-  const HANG = 0.08;          // apex hang (s)
-  const RELEASE = 0.8;        // the sheet holds together for this share of the airtime, then grains fly free
-  const READY = [0.3, 0.75, 1.15]; // readiness (contact s of the last toss's landed grains): early < [0] <= 불맛 <= [1] < 좋아 <= [2] < 눌었다
+  const STAGGER = 0.07;       // lip grains leave first, the near side of the band this much later (the peel-off wave)
+  const READY = [0.3, 0.6, 0.9]; // readiness (contact s of the last toss's landed grains): early < [0] <= 불맛 <= [1] < 좋아 <= [2] < 눌었다
   const SHEET = 0.8;               // launched share a 불맛 needs
   const LABELS = {
     perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["너무 빨라", "#1F2A33"],
@@ -69,7 +68,7 @@
     const s = {
       M, kind: new Uint8Array(M), n: new Uint8Array(M), st: new Uint8Array(M),
       u: F(), v: F(), h: F(), vu: F(), vv: F(), vh: F(), su: F(), sv: F(), hu: F(), hv: F(),
-      u0: F(), v0: F(), oa: F(), ob: F(), oz: F(), rank: F(),
+      u0: F(), v0: F(), dl: F(), rank: F(), hop: new Uint8Array(M),
       depth: F(), cook: F(), rest: F(), con: F(), rot: F(), spin: F(), key: F(), ph: F(),
       toss: new Int32Array(M), shape: [], ord: new Uint16Array(M),
       pc: [0, 0], sheets: [], cur: null, tossN: 0, prevId: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0,
@@ -134,62 +133,37 @@
       if (a < aMin) aMin = a; if (a > aMax) aMax = a;
     }
     const span = Math.max(0.05, aMax - aMin);
-    for (let i = 0; i < s.M; i++) if (s.st[i] === 1 && s.toss[i] === id) s.rank[i] = (s.u[i] * du + s.v[i] * dv - aMin) / span;
+    for (let i = 0; i < s.M; i++) if (s.st[i] === 1 && s.toss[i] === id) {
+      s.rank[i] = (s.u[i] * du + s.v[i] * dv - aMin) / span;
+      s.dl[i] = (1 - s.rank[i]) * STAGGER * (0.7 + 0.6 * Math.random());
+    }
     // centre flight: rise above the rim from strength + snap, lands on the -d half (too strong: past the far rim)
     const rise = 0.45 * Math.pow(str, 0.7) * (0.8 + 0.4 * snap); // apex above the rim
-    const aLand = 0.35 - 0.65 * Math.min(str, 1) - 2.0 * Math.max(0, str - 1); // centre landing along d (wok-local)
-    s.sheets.push({ id, tl: t + SNAP_T, du, dv, rise, aLand, str, snap, live: false });
+    const aLand = 0.5 - 0.65 * Math.min(str, 1) - 1.1 * Math.max(0, str - 1); // centre landing along d (wok-local)
+    // scatter: a lazy snap sprays the grains, an over-hard flick sprays them past the rim
+    const nz = 0.2 + 0.4 * (1 - snap) + 0.6 * Math.max(0, str - 1.1);
+    s.sheets.push({ id, tl: t + SNAP_T, du, dv, rise, aLand, str, snap, nz });
     s.cur = { id, t, str, gap: t - s.prevFlickT, readiness, landed, sheet: avail ? launched / avail : 0, launched, out: launched, spill: 0 };
     s.prevId = id; s.tosses++; s.prevFlickT = t;
     s.burnAtToss = stats(s).burnt; s.warned = false; s.burntWarned = false;
   }
 
-  /* launch the sheet: world positions now, offsets about the centre, analytic centre flight */
+  /* one grain leaves the lip: world position now, its own ballistic arc. The lip grains rise highest and land
+     farthest back (the pile rolls over), every grain with its own scatter so the food never moves as one block. */
   const _w = [0, 0, 0];
-  function launch(s, sh, pose) {
-    let n = 0, cx = 0, cy = 0, cz = 0;
-    for (let i = 0; i < s.M; i++) {
-      if (s.st[i] !== 1 || s.toss[i] !== sh.id) continue;
-      K.toWorld(pose, s.u[i], s.v[i], s.h[i], _w);
-      s.u[i] = _w[0]; s.v[i] = _w[1]; s.h[i] = _w[2];
-      cx += _w[0] * s.n[i]; cy += _w[1] * s.n[i]; cz += _w[2] * s.n[i]; n += s.n[i];
-    }
-    sh.live = true;
-    if (!n) { sh.done = true; return; }
-    cx /= n; cy /= n; cz /= n;
-    const du = sh.du, dv = sh.dv, a0 = cx * du + cy * dv;
-    sh.c0 = [cx, cy, Math.max(cz, K.RIM_H - 0.05)];
-    const vm = Math.hypot(pose.vdu || 0, pose.vdv || 0), vk = vm > 1 ? 1 / vm : 1; // capped: one-frame velocity spikes
-    sh.vw = [(pose.vdu || 0) * vk, (pose.vdv || 0) * vk, 0]; // the wok's push carries on (the hop's lift is already in the rise)
-    // the snap already lifts the lip (pitch about the far pivot): rise is counted from the rim, not from the lip
-    sh.rise = Math.max(0.08, K.RIM_H + sh.rise - sh.c0[2]);
-    sh.tu = Math.sqrt((2 * sh.rise) / G);
-    const hl = 0.22; // landing height (top of the pile)
-    sh.tf = Math.sqrt((2 * Math.max(0.05, sh.c0[2] + sh.rise - hl)) / G);
-    sh.T = sh.tu + HANG + sh.tf;
-    sh.L = a0 + (sh.vw[0] * du + sh.vw[1] * dv) * sh.T - sh.aLand; // lands at aLand however hard the wok was moving
-    for (let i = 0; i < s.M; i++) {
-      if (s.st[i] !== 1 || s.toss[i] !== sh.id) continue;
-      const ex = s.u[i] - cx, ey = s.v[i] - cy;
-      s.oa[i] = (ex * du + ey * dv) * 0.7; s.ob[i] = (-ex * dv + ey * du) * 0.8; s.oz[i] = (s.h[i] - cz) * 0.8;
-      s.st[i] = 2; s.vu[i] = s.vv[i] = s.vh[i] = 0;
-    }
-  }
-  /* sheet member position at time tau: centre arc (+ per-kind height/reach) + offset turned a half turn in (d, h) */
-  function sheetPos(s, sh, i, tau) {
-    const k = s.kind[i], tu = sh.tu, rise = sh.rise * KH[k];
-    let z, th;
-    if (tau < tu) { z = rise * (1 - ((tu - tau) / tu) ** 2); th = tau; }
-    else if (tau < tu + HANG) { z = rise; th = tu + 0.4 * (tau - tu); }
-    else { const tf = tau - tu - HANG; z = rise - 0.5 * G * tf * tf; th = tau - 0.6 * HANG; }
-    const Th = sh.T - 0.6 * HANG, fr = Math.min(1.4, th / Th);
-    const back = sh.L * KD[k] * Math.pow(fr, 1.8); // little drift while rising, then over and back
-    const ph = Math.PI * Math.min(1, tau / sh.T), c = Math.cos(ph), sn = Math.sin(ph);
-    const A = s.oa[i] * c - s.oz[i] * sn, Z = s.oa[i] * sn + s.oz[i] * c, B = s.ob[i] * (1 + 0.35 * tau / sh.T);
-    const along = A - back;
-    _w[0] = sh.c0[0] + sh.du * along - sh.dv * B + sh.vw[0] * tau;
-    _w[1] = sh.c0[1] + sh.dv * along + sh.du * B + sh.vw[1] * tau;
-    _w[2] = sh.c0[2] + z + Z + sh.vw[2] * tau;
+  function launchGrain(s, sh, i, pose) {
+    K.toWorld(pose, s.u[i], s.v[i], s.h[i], _w);
+    s.u[i] = _w[0]; s.v[i] = _w[1]; s.h[i] = _w[2];
+    const r = s.rank[i], k = s.kind[i], nz = sh.nz, du = sh.du, dv = sh.dv;
+    const rise = Math.max(0.08, K.RIM_H + sh.rise * KH[k] * (0.55 + 0.75 * r) * (1 + (Math.random() - 0.5) * nz) - s.h[i]);
+    const vh = Math.sqrt(2 * G * rise), T = vh / G + Math.sqrt((2 * Math.max(0.05, s.h[i] + rise - 0.22)) / G);
+    const a0 = s.u[i] * du + s.v[i] * dv, b0 = -s.u[i] * dv + s.v[i] * du;
+    const aT = sh.aLand * KD[k] - 0.25 * (r - 0.5) + (Math.random() - 0.5) * nz * 0.6;
+    const bT = b0 * (0.5 + 0.4 * Math.random()) + (Math.random() - 0.5) * nz * 0.6;
+    const va = (aT - a0) / T, vb = (bT - b0) / T;
+    s.vu[i] = du * va - dv * vb; s.vv[i] = dv * va + du * vb; s.vh[i] = vh;
+    s.spin[i] = (4 + 6 * Math.random()) * (Math.random() < 0.5 ? -1 : 1);
+    s.hop[i] = 0; s.st[i] = 4;
   }
 
   /* grains of an already graded toss that go over the rim late still make it a spill */
@@ -236,10 +210,9 @@
   function update(s, dt, ctx) {
     dt = Math.min(dt, 0.05);
     const pose = ctx.wokPose || K.WORLD;
-    for (const sh of s.sheets) if (!sh.live && ctx.t >= sh.tl) launch(s, sh, pose);
     const steps = dt > 1 / 50 ? 2 : 1;
     for (let k = 0; k < steps; k++) step(s, dt / steps, ctx, pose, ctx.t - dt + (dt * (k + 1)) / steps);
-    s.sheets = s.sheets.filter((sh) => !sh.live || (!sh.done && ctx.t - sh.tl < sh.T + 0.1));
+    s.sheets = s.sheets.filter((sh) => ctx.t - sh.tl < 1.6);
     if (s.cur && (s.cur.out <= 0 || ctx.t - s.cur.t > 1.6)) finish(s, ctx.t);
     // live cue: the last toss is down and its contact time is in the window
     let pn = 0, ln = 0, rs = 0, bot = 0, botHot = 0, inWok = 0, hu = 0, hv = 0;
@@ -273,7 +246,7 @@
   function step(s, dt, ctx, pose, t) {
     const heat = ctx.heat || K.heat, tilt = ctx.tilt || { u: 0, v: 0 };
     const tm = Math.min(1, Math.hypot(tilt.u, tilt.v)), sq = 1 - 0.3 * tm;
-    const pk = Math.min(1, dt * 2.5);
+    const pk = Math.min(1, dt * 6);
     s.pc[0] += (tilt.u * 0.45 - s.pc[0]) * pk; s.pc[1] += (tilt.v * 0.45 - s.pc[1]) * pk;
     const air = RATE * AIR * dt, damp = Math.exp(-5 * dt);
     let lN = 0, lU = 0, lV = 0, sN = 0, sU = 0, sV = 0;
@@ -281,8 +254,9 @@
       const st = s.st[i];
       if (st === 0) {
         const hh = heat(s.u[i], s.v[i]);
-        let dc = RATE * layer(s.depth[i]) * hh * dt;
-        if (s.cook[i] > 1.05 && s.con[i] < 1.5) dc *= 0.15; // a re-toss in time parks it near golden
+        // the metal re-heats the food after a toss: the sear builds up over ~0.6 s, so mashing leaves it pale
+        let dc = RATE * layer(s.depth[i]) * hh * (0.25 + 0.75 * Math.min(1, s.con[i] / 0.6)) * dt;
+        if (s.cook[i] > 1.05 && s.con[i] < 1.2) dc *= 0.4; // a re-toss in time parks it near golden
         s.cook[i] += dc; s.rest[i] += dt; s.con[i] += dt;
         let gu = s.pc[0] + s.hu[i] * sq, gv = s.pc[1] + s.hv[i] * sq;
         const gr = Math.hypot(gu, gv); if (gr > 0.9) { gu *= 0.9 / gr; gv *= 0.9 / gr; }
@@ -296,36 +270,31 @@
       } else if (st === 1) {
         // the push carries the food up the wall on the d side; the lip grains lead (band: 0.55 .. 0.9 along d)
         const sh = sheetOf(s, s.toss[i]); if (!sh) { s.st[i] = 0; continue; }
+        if (t >= sh.tl + s.dl[i]) { launchGrain(s, sh, i, pose); continue; }
         const k = K.smooth(clamp(1 - (sh.tl - t) / SNAP_T, 0, 1));
         const a0 = s.u0[i] * sh.du + s.v0[i] * sh.dv, b0 = -s.u0[i] * sh.dv + s.v0[i] * sh.du;
         const a = K.lerp(a0, 0.5 + 0.38 * s.rank[i], k), b = b0 * (1 - 0.3 * k);
         s.u[i] = sh.du * a - sh.dv * b; s.v[i] = sh.dv * a + sh.du * b;
         s.h[i] = K.surf(s.u[i], s.v[i]) + 0.02 + 0.06 * s.depth[i];
         s.cook[i] += RATE * layer(s.depth[i]) * dt * 0.5;
-      } else if (st === 2) {
-        const sh = sheetOf(s, s.toss[i]); s.cook[i] += air;
-        const tau = t - sh.tl, x0 = s.u[i], y0 = s.v[i], z0 = s.h[i];
-        sheetPos(s, sh, i, tau);
-        s.u[i] = _w[0]; s.v[i] = _w[1]; s.h[i] = _w[2];
-        s.vu[i] = (s.u[i] - x0) / dt; s.vv[i] = (s.v[i] - y0) / dt; s.vh[i] = (s.h[i] - z0) / dt;
-        s.rot[i] += Math.PI / sh.T * dt * (s.kind[i] === 1 ? 0.6 : 1.4);
-        K.toWok(pose, s.u[i], s.v[i], s.h[i], _l);
-        // last 20%: each grain flies on its own; also let go if a member already touches the pile
-        if (tau >= RELEASE * sh.T || (s.vh[i] < 0 && _l[2] < pileTop(s, _l[0], _l[1]) + 0.04)) s.st[i] = 4;
       } else if (st === 4) {
         s.cook[i] += air;
-        s.vh[i] -= G * dt;
+        s.vh[i] -= (Math.abs(s.vh[i]) < 0.8 ? 0.8 * G : G) * dt; // a short hang at the apex
         if (s.kind[i] === 2) { // scallion: light, flutters, slow fall
           if (s.vh[i] < -2.5) s.vh[i] = -2.5;
           s.ph[i] += dt * 14; s.u[i] += Math.sin(s.ph[i]) * 0.25 * dt;
         }
         s.u[i] += s.vu[i] * dt; s.v[i] += s.vv[i] * dt; s.h[i] += s.vh[i] * dt;
-        s.rot[i] += (s.kind[i] === 2 ? 6 : 3) * dt;
+        s.rot[i] += s.spin[i] * (s.kind[i] === 1 ? 0.4 : 1) * dt;
         if (s.vh[i] < 0) {
           K.toWok(pose, s.u[i], s.v[i], s.h[i], _l);
           const r2 = _l[0] * _l[0] + _l[1] * _l[1];
           if (r2 <= 1) {
-            if (_l[2] <= pileTop(s, _l[0], _l[1])) { land(s, i, _l[0], _l[1]); lN += s.n[i]; lU += s.u[i] * s.n[i]; lV += s.v[i] * s.n[i]; }
+            if (_l[2] <= pileTop(s, _l[0], _l[1])) {
+              // some grains bounce once off the pile before they settle
+              if (!s.hop[i] && Math.random() < 0.15) { s.hop[i] = 1; s.vh[i] = 0.5; s.vu[i] *= 0.5; s.vv[i] *= 0.5; continue; }
+              land(s, i, _l[0], _l[1]); lN += s.n[i]; lU += s.u[i] * s.n[i]; lV += s.v[i] * s.n[i];
+            }
           } else if (_l[2] < K.RIM_H) {
             s.st[i] = 3; // over the rim: falls on to the counter beyond it
             const r = Math.sqrt(r2); s.vu[i] += (_l[0] / r) * 0.6; s.vv[i] += (_l[1] / r) * 0.6;
@@ -350,7 +319,7 @@
     s.depth[i] = clamp(0.55 * (1 - s.depth[i]) + 0.45 * s.rank[i] + (Math.random() - 0.5) * 0.1, 0, 1);
     if (s.kind[i] === 2) s.depth[i] = Math.max(0.9, s.depth[i]);
     s.rest[i] = 0; s.con[i] = 0;
-    s.su[i] = s.vu[i] * 0.25; s.sv[i] = s.vv[i] * 0.25; // keeps rolling toward -d for a moment
+    s.su[i] = s.vu[i] * 0.5; s.sv[i] = s.vv[i] * 0.5; // keeps rolling toward -d for a moment
     if (sh) { // new home = old home mirrored across the line through the centre perpendicular to d (the roll-over)
       const hd = s.hu[i] * sh.du + s.hv[i] * sh.dv;
       s.hu[i] -= 2 * hd * sh.du; s.hv[i] -= 2 * hd * sh.dv;
@@ -449,13 +418,11 @@
   /* food on the wok (rides the pose): sauce bed, units far to near, then the airborne food's contact shadows */
   function drawResting(c, s, vw, pose) {
     const R = vw.R, M = s.M;
-    // sauce bed: one path, one colour -> a solid mound, no floor gaps
-    let cs = 0, cn = 0, rn = 0, mu = 0, mv = 0;
-    for (let i = 0; i < M; i++) if (s.kind[i] === 0) { rn++; if (s.st[i] === 0) { cs += s.cook[i]; cn++; mu += s.u[i]; mv += s.v[i]; } }
-    if (cn) { mu /= cn; mv /= cn; }
-    c.fillStyle = BED[qi(cn ? cs / cn : 0)]; c.globalAlpha = 0.78; c.beginPath();
-    const rr = 0.09 * R, pr = PILE * 0.85 * Math.sqrt(cn / rn) * R, pp = K.proj(vw, pose, mu, mv, K.surf(mu, mv) + 0.04);
-    if (cn > 0.3 * rn) { c.moveTo(pp[0] + pr, pp[1]); c.ellipse(pp[0], pp[1], pr, pr * vw.ct, 0, 0, TAU); } // the mound's footprint
+    let cs = 0, cn = 0;
+    for (let i = 0; i < M; i++) if (s.kind[i] === 0 && s.st[i] === 0) { cs += s.cook[i]; cn++; }
+    // a thin oily bed under each clump only: the grains read one by one, not as a single block
+    c.fillStyle = BED[qi(cn ? cs / cn : 0)]; c.globalAlpha = 0.4; c.beginPath();
+    const rr = 0.065 * R;
     for (let i = 0; i < M; i++) {
       if (s.st[i] > 1 || s.kind[i]) continue;
       const p = K.proj(vw, pose, s.u[i], s.v[i], s.h[i] - 0.03);
