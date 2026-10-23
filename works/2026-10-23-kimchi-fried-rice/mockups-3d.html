@@ -32,7 +32,7 @@
 </div>
 <div id="note"></div>
 <div class="bar" id="bot">
-  <button data-scene="rice">볶음밥 웍질</button><button data-scene="egg">계란 뒤집기</button><button data-egg="soft" hidden>살살 뒤집기</button><button data-egg="strong" hidden>세게 뒤집기</button><button id="slow">느리게</button>
+  <button data-scene="rice">볶음밥 웍질</button><button data-scene="plate">접시 담기</button><button data-scene="egg">계란 뒤집기</button><button data-egg="soft" hidden>살살 뒤집기</button><button data-egg="strong" hidden>세게 뒤집기</button><button id="slow">느리게</button>
 </div>
 <div id="vig"></div>
 <div id="hud"><div id="timer">12.0</div><div id="word">불맛!</div><div id="hint">세 번째 토스마다 '완벽' 예시: 슬로모션 동안 타이머도 같이 느려져요 (손해 없음)</div></div>
@@ -65,6 +65,7 @@ renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
 renderer.outputEncoding = T.sRGBEncoding;
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
 const camera = new T.PerspectiveCamera(30, 1, 0.1, 60);
+const camBase = new T.Vector3();
 function fit() {
   const w = innerWidth, h = innerHeight, asp = w / h;
   renderer.setSize(w, h, false); camera.aspect = asp;
@@ -72,7 +73,7 @@ function fit() {
   const half = Math.tan((camera.fov / 2) * DEG), needW = 1.32 / (half * asp), needH = 1.75 / half;
   const d = Math.max(needW, needH), a = 35 * DEG; // 35° away from straight down, from the cook's side
   camera.position.set(0, d * Math.cos(a), d * Math.sin(a) + 0.35);
-  camera.lookAt(0, -0.05, 0.35); camera.updateProjectionMatrix();
+  camera.lookAt(0, -0.05, 0.35); camera.updateProjectionMatrix(); camBase.copy(camera.position);
 }
 addEventListener("resize", fit);
 
@@ -215,6 +216,7 @@ function build(key) {
   for (const f of [rice, kimchi, pa]) wok.add(f.mesh);
 
   E = makeEgg();
+  PL = makePlate();
 
   // fire: additive flame sprites licking up around the wok's outer wall + glow light
   flames = [];
@@ -273,7 +275,8 @@ function wokPose(t) {
     z += back - fwd; y += 0.07 * bump + cushion;
     pitch += (4 + 12 * s) * DEG * bump - 3 * DEG * Math.max(0, Math.sin(Math.PI * clamp((k - 0.3) / 0.3, 0, 1)));
   }
-  pose.x = 0; pose.y = y; pose.z = z; pose.pitch = pitch; pose.roll = roll;
+  if (scn === "plate") { roll -= PS.roll; y += PS.lift; }
+  pose.x = scn === "plate" ? PS.x : 0; pose.y = y; pose.z = z; pose.pitch = pitch; pose.roll = roll;
 }
 function applyPose() {
   // pitch about the near (handle-side) rim: the far lip rises, the hand end barely moves
@@ -342,9 +345,9 @@ function drawFood(f) {
   for (let i = 0; i < f.n; i++) {
     const j = i * 3;
     dummy.position.set(f.p[j], f.p[j + 1], f.p[j + 2]);
-    if (f.st[i] === 2) dummy.position.applyMatrix4(inv); // the instanced mesh lives in the wok; flying food is stored in world space
+    if (f.st[i] >= 2) dummy.position.applyMatrix4(inv); // the instanced mesh lives in the wok; flying food is stored in world space
     dummy.rotation.copy(f.q[i]);
-    if (f.kind === 0 && f.st[i] !== 2) { dummy.rotation.x = 0; dummy.rotation.z = 0.15 * Math.sin(f.q[i].x); } // resting grains lie flat
+    if (f.kind === 0 && f.st[i] !== 2 && f.st[i] !== 5) { dummy.rotation.x = 0; dummy.rotation.z = 0.15 * Math.sin(f.q[i].x); } // resting grains lie flat
     if (f.kind === 1 && f.st[i] !== 2) { dummy.rotation.x = 0.2 * Math.sin(f.q[i].x); dummy.rotation.z = 0.2 * Math.sin(f.q[i].z); }
     dummy.scale.setScalar(1); dummy.updateMatrix(); f.mesh.setMatrixAt(i, dummy.matrix);
   }
@@ -567,6 +570,109 @@ function eggStep(dt) {
 }
 let esayT = 0; const _qx = new T.Quaternion(), _ax = new T.Vector3(1, 0, 0);
 function eggSay(txt) { const el = document.getElementById("esay"); el.textContent = txt; esayT = performance.now(); }
+/* ---------- plating: tilt right, the rice pours onto a plate on the right (never toward the handle) ----------
+   st 5 = falling out of the wok (world), 3 = on the plate (world, sliding to its spot on the mound), 4 = on the counter */
+let PL = null; const PS = { roll: 0, lift: 0, x: 0, t0: -99, tilt: 0, drag: null, phase: "", poured: 0, missed: 0, acc: 0, pats: 0, pan: 0 };
+function makePlate() {
+  const g = new T.Group(); scene.add(g);
+  const prof = [[0, 0], [0.42, 0], [0.47, 0.012], [0.58, 0.05], [0.68, 0.085], [0.7, 0.09], [0.69, 0.075], [0.56, 0.04], [0.42, 0.008], [0, 0.008]].map(([x, y]) => new T.Vector2(Math.max(0.001, x), y));
+  const cer = mat(S, S.chunky ? "#fffaf0" : "#f7f5f0", { std: { roughness: 0.25 }, phys: { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 } });
+  const dish = new T.Mesh(new T.LatheGeometry(prof, 64), cer); dish.castShadow = dish.receiveShadow = true; g.add(dish);
+  const rim = new T.Mesh(new T.TorusGeometry(0.665, 0.008, 6, 64), mat(S, "#2f5fa8", { std: { roughness: 0.3 } })); rim.rotation.x = Math.PI / 2; rim.position.y = 0.084; g.add(rim);
+  // ladle: steel bowl + handle, appears for the two pats
+  const steel = mat(S, "#b8c0c8", { std: { metalness: 0.9, roughness: 0.25 }, phys: { metalness: 1, roughness: 0.2 } });
+  const lad = new T.Group(); const bowl = new T.Mesh(new T.SphereGeometry(0.14, 20, 10, 0, TAU, Math.PI / 2, Math.PI / 2), steel); bowl.material.side = T.DoubleSide; lad.add(bowl);
+  const hd = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.8, 8), steel); hd.rotation.z = -1.1; hd.position.set(0.38, 0.22, 0); lad.add(hd);
+  lad.visible = false; scene.add(lad);
+  g.position.set(3.2, -0.6, 0.15); g.visible = false;
+  return { g, lad, cx: 1.32, cy: -0.6, cz: 0.12, n: 0 };
+}
+function plateMound(d) { // the heap grows with what has landed: wider and taller
+  const f = clamp(PL.n / 2600, 0, 1), R = 0.2 + 0.24 * f, H = 0.06 + 0.3 * f;
+  return d >= R ? 0 : H * (1 - (d / R) ** 2);
+}
+function pourClump(f, pick) {
+  // a clump of oiled rice lets go over the right rim together (chef: it falls in lumps, not a thread)
+  let seed = -1, best = -9;
+  for (let k = 0; k < 40; k++) { const i = (Math.random() * f.n) | 0; if (f.st[i] === 0 && f.p[i * 3] > best) { best = f.p[i * 3]; seed = i; } }
+  if (seed < 0) return 0;
+  const sx = f.p[seed * 3], sz = f.p[seed * 3 + 2], m4w = wok.matrixWorld;
+  v3.set(sx, 0, sz).applyMatrix4(m4w); const vx = rnd(0.35, 0.8), vy = rnd(-0.1, 0.25), vz = (PL.cz - v3.z) * 1.6 + rnd(-0.1, 0.1); let n = 0;
+  for (let i = 0; i < f.n && n < pick; i++) {
+    if (f.st[i] !== 0) continue; const j = i * 3;
+    if ((f.p[j] - sx) ** 2 + (f.p[j + 2] - sz) ** 2 > 0.03) continue;
+    v3.set(f.p[j], f.p[j + 1], f.p[j + 2]).applyMatrix4(m4w); f.p[j] = v3.x; f.p[j + 1] = v3.y; f.p[j + 2] = v3.z;
+    f.v[j] = vx + rnd(-0.12, 0.12); f.v[j + 1] = vy + rnd(-0.1, 0.1); f.v[j + 2] = vz + rnd(-0.1, 0.1);
+    f.spin[j] = rnd(-5, 5); f.spin[j + 1] = rnd(-3, 3); f.spin[j + 2] = rnd(-5, 5); f.st[i] = 5; n++;
+  }
+  return n;
+}
+function plateStep(dt) {
+  const k = t - PS.t0;
+  if (k < 0 || k > 6.2) { // start over with a full wok
+    PS.t0 = t; resetFood(); PS.poured = PS.missed = PS.acc = 0; PS.phase = "in"; PS.pats = 0; PL.n = 0; PS.tilt = 0; PS.doneT = 0;
+    PL.g.visible = true; PL.g.position.set(3.2, PL.cy, PL.cz); PL.g.scale.set(1, 1, 1); PL.lad.visible = false; eggSay("");
+    return;
+  }
+  const foods = [rice, kimchi, pa], total = rice.n + kimchi.n + pa.n;
+  // plate slides in from the right (easeOutQuint), later moves to the edge, half visible, to wait for the egg
+  const inK = 1 - (1 - clamp(k / 0.3, 0, 1)) ** 5;
+  let px = 3.2 + (PL.cx - 3.2) * inK;
+  if (PS.doneT) px = PL.cx + 0.6 * smooth((t - PS.doneT - 0.9) / 0.35);
+  PL.g.position.x = px; const PX = px, PY = PL.cy + 0.01, PZ = PL.cz;
+  // tilt: the player's drag (or the demo hand) → wok roll; past 20° the rice goes
+  let want = 0;
+  if (PS.phase === "in" && k > 0.3) { PS.phase = "tilt"; eggSay("→ 오른쪽으로 기울여!"); }
+  if (PS.phase === "tilt") want = PS.drag != null ? clamp(PS.drag, 0, 1) : clamp((k - 0.75) / 0.45, 0, 1);
+  PS.tilt += (want - PS.tilt) * Math.min(1, dt * 16);       // ~60 ms lag behind the hand
+  PS.roll = PS.tilt * 40 * DEG; PS.lift = 0.12 * PS.tilt; PS.x = 0.32 * PS.tilt;
+  PS.pan += ((scn === "plate" && !PS.doneT ? 0.6 : 0.3) - PS.pan) * Math.min(1, dt * 4);
+  if (PS.phase === "tilt") {
+    const ang = PS.roll / DEG;
+    // the pile slides to the low (right) wall first
+    for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0) { const j = i * 3, kk = Math.min(1, dt * 3 * PS.tilt); f.home[j] += ((0.35 + 0.3 * Math.abs(f.home[j])) - f.home[j]) * kk; f.home[j + 2] += (0.1 + 0.35 * (f.home[j + 2] - 0.1) - f.home[j + 2]) * kk; }
+    if (ang > 20) { PS.acc += dt * (ang - 20) * 1.6; while (PS.acc > 1) { PS.acc--; for (const f of foods) PS.poured += pourClump(f, f.kind === 0 ? (rnd(30, 70) | 0) : (rnd(2, 5) | 0)); } }
+    if (PS.poured > total * 0.97 || k > 3.4) { // the last grains: two shakes; then the ladle
+      PS.phase = "shake"; PS.ph0 = t; eggSay("");
+    }
+  }
+  if (PS.phase === "shake") {
+    const q = t - PS.ph0; PS.roll += 6 * DEG * Math.sin(q * 35) * (q < 0.18 ? 1 : 0);
+    if (q > 0.12 && q < 0.14) for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0 && f.p[i * 3] > 0.2) pourClump(f, 20);
+    if (q > 0.2) { PS.phase = "pat"; PS.ph0 = t; PL.lad.visible = true;
+      for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0) { const j = i * 3; f.home[j] = rnd(-0.15, 0.15); f.home[j + 2] = rnd(-0.1, 0.2); f.home[j + 1] = surf(f.home[j] ** 2 + f.home[j + 2] ** 2) + 0.015; } } // the few left-overs slide back to the bottom
+  }
+  if (PS.phase === "pat" || PS.phase === "done") PS.tilt += (0 - PS.tilt) * Math.min(1, dt * 8); // the wok goes back to the fire
+  if (PS.phase === "pat") {
+    const q = t - PS.ph0, top = PY + 0.03 + plateMound(0);
+    const tap = q < 0.12 ? Math.sin((q / 0.12) * Math.PI) : q < 0.24 ? Math.sin(((q - 0.12) / 0.12) * Math.PI) : 0;
+    PL.lad.position.set(PX + 0.02, top + 0.2 - 0.17 * tap, PZ); PL.lad.rotation.set(0, 0, 0.15);
+    if ((q > 0.06 && PS.pats === 0) || (q > 0.18 && PS.pats === 1)) { PS.pats++; PL.sq = 1; } // each pat squashes the heap round
+    if (q > 0.3) {
+      PS.phase = "done"; PS.doneT = t; PL.lad.visible = false;
+      const miss = PS.missed / total, okDome = miss < 0.05;
+      eggSay(`완성!${okDome ? "  봉긋! +2" : ""}  ·  흘림 ${PS.missed}알${PS.missed ? ` −${Math.min(5, Math.ceil(miss * 40))}점` : ""}`);
+    }
+  }
+  PL.sq = Math.max(0, (PL.sq || 0) - dt * 7);
+  PL.g.scale.set(1 + 0.05 * PL.sq, 1 - 0.08 * PL.sq, 1 + 0.05 * PL.sq);
+  // falling food: plate, counter, or (low pour) back into the wok
+  for (const f of foods) for (let i = 0; i < f.n; i++) {
+    const st = f.st[i], j = i * 3;
+    if (st === 5) {
+      f.v[j + 1] -= G * 0.8 * dt; for (let c = 0; c < 3; c++) f.p[j + c] += f.v[j + c] * dt;
+      f.q[i].x += f.spin[j] * dt; f.q[i].z += f.spin[j + 2] * dt;
+      const dx = f.p[j] - PX, dz = f.p[j + 2] - PZ, d = Math.hypot(dx, dz);
+      if (d < 0.6 && f.p[j + 1] <= PY + 0.03 + plateMound(d) && f.v[j + 1] < 0) {
+        f.st[i] = 3; PL.n++; const a = Math.random() * TAU, rr = Math.sqrt(Math.random()) * (0.2 + 0.24 * clamp(PL.n / 2600, 0, 1));
+        f.home[j] = Math.cos(a) * rr; f.home[j + 2] = Math.sin(a) * rr; f.home[j + 1] = rnd(0.55, 1);   // plate-local spot on the heap
+      } else if (f.p[j + 1] <= -0.61) { f.st[i] = 4; f.p[j + 1] = -0.61; PS.missed++; }
+    } else if (st === 3) { // slide to the spot on the heap (the plate may still be moving)
+      const tx = PX + f.home[j], tz = PZ + f.home[j + 2], ty = PY + 0.03 + plateMound(Math.hypot(f.home[j], f.home[j + 2])) * f.home[j + 1] * (1 - 0.1 * PS.pats);
+      f.p[j] += (tx - f.p[j]) * Math.min(1, dt * 12); f.p[j + 1] += (ty - f.p[j + 1]) * Math.min(1, dt * 12); f.p[j + 2] += (tz - f.p[j + 2]) * Math.min(1, dt * 12);
+    }
+  }
+}
 /* ---------- loop ---------- */
 let last = performance.now(), t = 0, fpsN = 0, fpsT = 0;
 function frame(now) {
@@ -587,11 +693,13 @@ function frame(now) {
   }
   wokPose(t); applyPose();
   let air = 0;
-  const showRice = scn === "rice";
+  const showRice = scn === "rice" || scn === "plate";
+  PL.g.visible = scn === "plate"; if (scn !== "plate") PL.lad.visible = false; else plateStep(dt);
+  camera.position.set(camBase.x + (scn === "plate" ? PS.pan : 0), camBase.y, camBase.z); camera.lookAt(scn === "plate" ? PS.pan : 0, -0.05, 0.35);
   for (const f of [rice, kimchi, pa]) { f.mesh.visible = showRice; if (showRice) { air += stepFood(f, t, dt); drawFood(f); } }
   bed.visible = false; { const k = clamp(air / (rice.n * 0.45), 0, 1); bed.scale.set(1 - 0.35 * k, 1 - 0.9 * k, 1 - 0.35 * k); } // the oily bed thins as the food leaves
   E.g.visible = !showRice; E.spat.visible = E.oil.visible = E.fizz.visible = !showRice; if (showRice) { E.pud.visible = false; for (const d of E.drips) d.visible = false; } else eggStep(dt);
-  document.getElementById("esay").style.opacity = !showRice && performance.now() - esayT < 1800 ? 1 : 0;
+  document.getElementById("esay").style.opacity = (scn === "egg" && performance.now() - esayT < 1800) || scn === "plate" ? 1 : 0;
   // fire: flicker, flare on the lip snap
   const flare = Math.exp(-Math.max(0, t - tossT0 - 0.15) * 5) * (t - tossT0 > 0.12 ? 1 : 0);
   fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 0.9 * flare);
@@ -613,7 +721,11 @@ function frame(now) {
 
 for (const b of document.querySelectorAll("[data-style]")) b.onclick = () => build(b.dataset.style);
 for (const b of document.querySelectorAll("[data-egg]")) b.onclick = () => { eggMode = b.dataset.egg; eggT0 = -99; for (const x of document.querySelectorAll("[data-egg]")) x.setAttribute("aria-pressed", x === b); };
-for (const b of document.querySelectorAll("[data-scene]")) b.onclick = () => { scn = b.dataset.scene; tossT0 = -9; eggT0 = -99; resetFood(); for (const x of document.querySelectorAll("[data-egg]")) x.hidden = scn !== "egg"; for (const x of document.querySelectorAll("[data-scene]")) x.setAttribute("aria-pressed", x === b); };
+// drag right on the screen = tilt the phone right (an artifact page cannot read the motion sensor)
+canvas.addEventListener("pointerdown", (e) => { if (scn === "plate") { PS.drag = 0; PS.dx0 = e.clientX; } });
+addEventListener("pointermove", (e) => { if (PS.drag != null) PS.drag = (e.clientX - PS.dx0) / 140; });
+addEventListener("pointerup", () => { PS.drag = null; });
+for (const b of document.querySelectorAll("[data-scene]")) b.onclick = () => { scn = b.dataset.scene; tossT0 = -9; eggT0 = -99; PS.t0 = -99; resetFood(); for (const x of document.querySelectorAll("[data-egg]")) x.hidden = scn !== "egg"; for (const x of document.querySelectorAll("[data-scene]")) x.setAttribute("aria-pressed", x === b); };
 document.getElementById("slow").onclick = (e) => { slow = slow === 1 ? 0.25 : 1; e.target.setAttribute("aria-pressed", slow !== 1); };
 document.querySelector('[data-scene="rice"]').setAttribute("aria-pressed", "true");
 build("B");
