@@ -92,3 +92,15 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
     ≥ 55/60 vs blind 0.85 s metronome ≤ 48.
   - Preview (touch only, Artifact blocks sensors): https://claude.ai/artifact/BFeZjB4jYU8eoVNnDWdMWd
   - Not done: real-phone check (axis signs, in-app motion events, feel), listening to the audio, reel.
+
+## 2026-10-24 — round 3: playtest fixes, review team, switch to real 3D
+- Operator playtest of round 2: too easy and lumpy (rice moved as one block), wok tilted against the food, egg
+  flipped on the rice rhythm, rice landed on the handle, egg tore on almost every flip, oil flare burned mid-pan.
+  Fixed in the 2D build (2e7a6bd, b7060ba): per-grain launch with rank/scatter, doneness depends on rhythm again
+  (bots: cue 58, 1.2 s 58, 1.0 s 38, 1.5 s 38, mash 23, 0.85 s 21, idle 7), tilt sign, 1.8 s plate pause + egg lock,
+  near-rim landing clamp, egg tear only when raw (old: strength >= 1.3 always burst), flare at the far lip.
+- Operator: "sellable quality"; review by 6 role agents (art, motion, physics/3D, game, programmer, chef).
+- Operator chose real 3D (three.js) and asked for art-style mockups: mockups-3d.html (A illustration / B photo-real /
+  C toy), https://claude.ai/artifact/Hx3M7xyEcEDvfP1VApF3iR
+- New requirements for the 3D build (operator 10-24): as smooth as possible, tilt more sensitive than expected,
+  tilting the phone far to one side spills the food.
