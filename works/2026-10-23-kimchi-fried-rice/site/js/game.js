@@ -251,6 +251,8 @@
       }
       if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
       if (E.ph === "pan" && E.cook > 1.58) eggFlick({ strength: 1.0, dirU: 0 }); // left too long: it gets flipped for you
+      const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
+      E.cue(g.t, E.cook < win[0] - 0.08 ? 0 : E.cook <= win[1] ? clamp((E.cook - win[0] + 0.08) / 0.12, 0, 1) : clamp(1 - (E.cook - win[1]) / 0.15, 0, 1));
       const ev = E.step({ t: g.t, dt, heat: 1 });
       if (ev === "plop") K.Audio.land("egg-soft");
       else if (ev) eggLanded(ev);

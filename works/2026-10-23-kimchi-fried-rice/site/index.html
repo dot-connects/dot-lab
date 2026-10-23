@@ -39,7 +39,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #hud.dim{opacity:.4}
 #timer{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%);font:38px "Black Han Sans",system-ui,sans-serif;background:#fff;border-radius:999px;padding:2px 22px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
 #timer.warn{background:var(--accent);color:#fff}
-#gauge{position:absolute;right:max(14px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 86px);width:22px;height:min(36vh,260px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
+#gauge{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 76px);width:16px;height:min(26vh,230px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
 #gauge::after{content:"불맛";position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font:13px "Black Han Sans",sans-serif;color:#fff;white-space:nowrap}
 #gaugeFill{position:absolute;inset:0;transform-origin:bottom;transform:scaleY(0);background:linear-gradient(0deg,#ff6a00,#ffb000 60%,#fff1a8);transition:transform .25s cubic-bezier(.2,1.4,.4,1)}
 #gauge.pulse{animation:gpulse .35s ease-out}

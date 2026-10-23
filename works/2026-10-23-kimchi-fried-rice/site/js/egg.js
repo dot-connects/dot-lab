@@ -63,11 +63,17 @@
     E.pud.material.vertexColors = true; W.scene.add(E.pud);
     E.drips = []; for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), E.yolkMat); d.scale.set(1, 0.3, 1.4); W.scene.add(d); E.drips.push(d); }
     E.bubbles = []; for (let i = 0; i < 12; i++) E.bubbles.push({ gk: 0, born: 1e9, life: 0, x: 0, z: 0, r: 0.04, h: 0 });
+    // ready glow: a warm ring that breathes around the egg while it is in the order's window (reads with the sound off)
+    E.halo = new T.Mesh(new T.RingGeometry(0.34, 0.5, 64), new T.MeshBasicMaterial({ color: lin("#ffc23a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
+    E.halo.rotation.x = -Math.PI / 2; W.wok.add(E.halo);
+    // the landing shadow: where the egg will come down, so the player can slide the wok under it
+    E.shadow = new T.Mesh(new T.CircleGeometry(0.34, 40), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
+    E.shadow.rotation.x = -Math.PI / 2; W.scene.add(E.shadow);
     hide();
   }
   E.build = build;
   function blister(b, t) { const a = Math.random() * TAU, tt = rnd(0.3, 0.9), r = tt * E.ER(a); Object.assign(b, { x: Math.cos(a) * r, z: Math.sin(a) * r, r: rnd(0.03, 0.06), h: rnd(0.012, 0.026), born: t + rnd(0, 1.2), life: rnd(1.0, 2.0) }); }
-  function hide() { E.g.visible = E.oil.visible = E.fizz.visible = E.spat.visible = E.pud.visible = false; for (const d of E.drips) d.visible = false; E.ph = "off"; }
+  function hide() { E.g.visible = E.oil.visible = E.fizz.visible = E.spat.visible = E.pud.visible = false; E.halo.material.opacity = 0; E.shadow.material.opacity = 0; for (const d of E.drips) d.visible = false; E.ph = "off"; }
   E.hide = hide;
 
   /* ---------- a new egg ---------- */
@@ -105,6 +111,16 @@
     return true;
   };
   // where the shadow is: the landing spot, so the player can steer the wok under it
+  E.cue = function (t, ready) { // 0..1: how ready for the order; drawn as the breathing ring
+    E.halo.position.set(E.sx, surf(E.sx * E.sx + (0.05 + E.sz) ** 2) + 0.012, 0.05 + E.sz);
+    E.halo.material.opacity = E.ph === "pan" ? ready * (0.35 + 0.25 * Math.sin(t * 7)) : 0;
+    const fl = E.flip;
+    if (E.ph === "air" && fl) {
+      _v.set(fl.p0.x + fl.drift.x, 0, fl.p0.z + fl.drift.z); _inv.copy(K.W.wok.matrixWorld).invert(); const w = _v.clone().applyMatrix4(_inv);
+      const r2 = w.x * w.x + w.z * w.z; w.y = r2 < 1 ? surf(r2) + 0.01 : -0.6; w.applyMatrix4(K.W.wok.matrixWorld);
+      E.shadow.position.copy(w); E.shadow.position.y = r2 < 1 ? w.y + 0.005 : -0.6; E.shadow.material.opacity = 0.15 + 0.3 * fl.f; E.shadow.scale.setScalar(0.7 + 0.3 * fl.f);
+    } else E.shadow.material.opacity = 0;
+  };
   E.target = function () { const fl = E.flip; return fl ? { x: fl.p0.x + fl.drift.x, z: fl.p0.z + fl.drift.z, f: fl.f } : null; };
 
   /* ---------- per step ---------- */
