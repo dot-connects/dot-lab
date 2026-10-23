@@ -1,0 +1,875 @@
+<title>김치볶음밥 한 그릇</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&display=swap">
+<style>
+  :root { --ink: #1F2A33; --paper: #fbf6ea; --accent: #E8481C; --mute: #5b6670; color-scheme: light; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #20262c; color: var(--ink); overflow: hidden; font-family: "Gowun Dodum", system-ui, sans-serif; }
+  #c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  .bar { position: fixed; left: 0; right: 0; display: flex; justify-content: center; gap: 6px; flex-wrap: wrap;
+    padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #top { top: calc(env(safe-area-inset-top, 0px) + 12px); }
+  #bot { bottom: calc(env(safe-area-inset-bottom, 0px) + 14px); }
+  button { font: 15px "Black Han Sans", system-ui, sans-serif; letter-spacing: .02em; border: 0; border-radius: 999px; padding: 9px 14px;
+    background: rgba(255,255,255,.88); color: var(--ink); box-shadow: 0 2px 8px rgba(0,0,0,.18); cursor: pointer; }
+  button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  #note { position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 62px); text-align: center; font-size: 14px;
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.6); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  #hud { position: fixed; left: 0; right: 0; top: calc(env(safe-area-inset-top, 0px) + 96px); display: flex; flex-direction: column; align-items: center; gap: 6px; pointer-events: none; }
+  #timer { font: 40px "Black Han Sans", system-ui, sans-serif; background: #fff; color: var(--ink); border-radius: 999px; padding: 2px 22px; box-shadow: 0 3px 10px rgba(0,0,0,.2); transition: background .15s, color .15s; }
+  #timer.slow { background: var(--accent); color: #fff; }
+  #word { font: 46px "Black Han Sans", system-ui, sans-serif; color: var(--accent); -webkit-text-stroke: 6px #fff; paint-order: stroke fill; opacity: 0; }
+  #word.pop { animation: pop .9s ease-out forwards; }
+  @keyframes pop { 0% { opacity: 0; transform: scale(.6) rotate(-4deg); } 12% { opacity: 1; transform: scale(1.18) rotate(-4deg); } 25% { transform: scale(1) rotate(-4deg); } 80% { opacity: 1; } 100% { opacity: 0; transform: translateY(-16px) rotate(-4deg); } }
+  #hint { max-width: min(92vw, 360px); text-align: center; text-wrap: balance; font-size: 13px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,.7); }
+  #vig { position: fixed; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(ellipse at 50% 45%, rgba(0,0,0,0) 40%, rgba(40,10,0,.75) 100%); }
+  .card { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(88vw, 360px); box-sizing: border-box;
+    background: var(--paper); border-radius: 18px; padding: 22px 20px 16px; box-shadow: 0 18px 50px rgba(0,0,0,.45); text-align: center; display: flex; flex-direction: column; gap: 10px; }
+  .card .lab { font-size: 12px; letter-spacing: .12em; color: var(--mute); }
+  .card h1 { margin: 0; font: 40px/1.05 "Black Han Sans", system-ui, sans-serif; color: var(--accent); text-wrap: balance; }
+  .ticket { border: 1.5px dashed #c9b99a; border-radius: 10px; padding: 8px; font-size: 15px; line-height: 1.5; }
+  .how { margin: 0; padding: 0 0 0 1.1em; text-align: left; font-size: 14px; line-height: 1.6; }
+  .row { display: flex; gap: 6px; justify-content: center; align-items: center; } .lbl { font-size: 13px; color: var(--mute); margin-right: 4px; }
+  .big { font-size: 22px; padding: 12px; background: var(--accent); color: #fff; }
+  .ghost { background: transparent; box-shadow: none; color: var(--mute); text-decoration: underline; padding: 4px; }
+  .small { font-size: 11.5px; color: var(--mute); }
+  #cue { font: 22px "Black Han Sans", system-ui, sans-serif; color: #fff; background: #2BB673; border-radius: 999px; padding: 2px 16px; opacity: 0; transition: opacity .08s; }
+  .slip { position: fixed; left: 50%; bottom: calc(env(safe-area-inset-bottom, 0px) + 10px); transform: translate(-50%, 110%); width: min(92vw, 380px); box-sizing: border-box;
+    background: #fffdf6; border-radius: 6px 6px 14px 14px; padding: 16px 18px 14px; box-shadow: 0 -6px 30px rgba(0,0,0,.35); transition: transform .5s cubic-bezier(.2,1.3,.4,1); }
+  .slip.up { transform: translate(-50%, 0); }
+  .slip .shop { font: 24px "Black Han Sans", system-ui, sans-serif; text-align: center; } .slip .meta { text-align: center; font-size: 12px; color: var(--mute); margin-bottom: 8px; }
+  .slip ul { list-style: none; margin: 0; padding: 8px 0; border-top: 1.5px dashed #d8cbb0; border-bottom: 1.5px dashed #d8cbb0; font-size: 14px; }
+  .slip li { display: flex; justify-content: space-between; padding: 2px 0; }
+  .slip .tot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+  .slip .score { font: 48px "Black Han Sans", system-ui, sans-serif; color: var(--accent); }
+  .slip .stamp { font: 20px "Black Han Sans", system-ui, sans-serif; color: #c81e1e; border: 3px solid #c81e1e; border-radius: 8px; padding: 2px 8px; transform: rotate(-8deg); }
+  .slip .near { font-size: 12.5px; color: var(--mute); text-align: right; } .slip .row { margin-top: 10px; }
+  [hidden] { display: none !important; }
+  #fps { position: fixed; right: 8px; bottom: 62px; font: 11px monospace; color: rgba(255,255,255,.55); }
+</style>
+<canvas id="c"></canvas>
+<div id="intro" class="card">
+  <div class="lab">D:OT lab · #002</div>
+  <h1>김치볶음밥<br>한 그릇</h1>
+  <div class="ticket"><b>D:OT 반점</b> 주문서<br>김치볶음밥 1 · 계란 <span id="ordEgg">반숙</span></div>
+  <ol class="how"><li>폰을 <b>위로 휙</b> → 밥이 뜹니다</li><li><b>"지금!"</b>에 맞춰 튕기면 불맛</li><li>계란도 휙 → 뒤집기</li></ol>
+  <div class="row"><span class="lbl">화풍</span><button data-style="B" aria-pressed="true">실사</button><button data-style="C">장난감</button></div>
+  <button id="go" class="big">불 켜기</button>
+  <button id="demo" class="ghost">자동 시연으로 보기</button>
+  <div class="small">이 미리보기에서는 화면을 <b>위로 쓸어 올리면</b> 폰을 튕긴 것으로 칩니다</div>
+</div>
+<div id="result" class="slip" hidden></div>
+<div id="note" hidden></div>
+<div id="vig"></div>
+<div id="hud"><div id="timer">12.0</div><div id="cue">지금!</div><div id="word">불맛!</div><div id="hint"></div></div>
+<div id="esay" style="position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 96px);text-align:center;font:22px 'Black Han Sans',system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))"></div>
+<div id="fps"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+"use strict";
+/* 3D mockup: one scene (wok, burner, fried rice toss, fried egg flip), three looks. Units: wok radius = 1 (≈18 cm).
+   Axes: x right, y up, z toward the cook (handle side). Far rim = -z. */
+const T = THREE, TAU = Math.PI * 2, DEG = Math.PI / 180;
+const lin = (h) => new T.Color(h).convertSRGBToLinear();
+const clamp = (v, a, b) => (v < a ? a : v > b ? b : v), smooth = (k) => { k = clamp(k, 0, 1); return k * k * (3 - 2 * k); };
+const surf = (r2) => 0.35 * r2;          // wok floor height at radius² (shallow bowl, rim at r = 1, h = .35)
+const rnd = (a, b) => a + Math.random() * (b - a);
+
+const STYLES = {
+  A: { name: "A 맛있는 일러스트", note: "지브리 음식처럼: 과장한 윤기·하이라이트, 따뜻한 빛, 외곽선", bg: "#f3e3c6", counter: "tile",
+       toon: true, outline: true, exposure: 1.0, grain: [0.055, 0.024], grainN: 2400 },
+  B: { name: "B 실사풍", note: "음식 사진처럼: 기름 반사, 강철 웍, 화구 불빛", bg: "#1b1f24", counter: "steel",
+       toon: false, outline: false, exposure: 1.05, grain: [0.048, 0.02], grainN: 3000, phys: true },
+  C: { name: "C 장난감풍", note: "닌텐도 미니게임처럼: 둥글고 큼직, 밝은 색, 부드러운 그림자", bg: "#bfe7dc", counter: "pastel",
+       toon: false, outline: false, exposure: 1.0, grain: [0.07, 0.034], grainN: 1600, chunky: true },
+};
+
+/* ---------- renderer / camera ---------- */
+const canvas = document.getElementById("c");
+const renderer = new T.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+renderer.outputEncoding = T.sRGBEncoding;
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
+const camera = new T.PerspectiveCamera(30, 1, 0.1, 60);
+const camBase = new T.Vector3();
+function fit() {
+  const w = innerWidth, h = innerHeight, asp = w / h;
+  renderer.setSize(w, h, false); camera.aspect = asp;
+  // the wok (Ø2 + handle) fills ~88% of the width on a phone, never more than ~55% of the height
+  const half = Math.tan((camera.fov / 2) * DEG), needW = 1.32 / (half * asp), needH = 1.75 / half;
+  const d = Math.max(needW, needH), a = 35 * DEG; // 35° away from straight down, from the cook's side
+  camera.position.set(0, d * Math.cos(a), d * Math.sin(a) + 0.35);
+  camera.lookAt(0, -0.05, 0.35); camera.updateProjectionMatrix(); camBase.copy(camera.position);
+}
+addEventListener("resize", fit);
+
+/* ---------- canvas textures ---------- */
+function canvasTex(w, h, draw, repeat) {
+  const cv = document.createElement("canvas"); cv.width = w; cv.height = h; draw(cv.getContext("2d"), w, h);
+  const t = new T.CanvasTexture(cv); t.encoding = T.sRGBEncoding; t.anisotropy = 4;
+  if (repeat) { t.wrapS = t.wrapT = T.RepeatWrapping; t.repeat.set(repeat, repeat); }
+  return t;
+}
+const flameTex = canvasTex(64, 128, (c, w, h) => { // teardrop tongue: blue root, orange body, tip fades out
+  const g = c.createLinearGradient(0, h, 0, 0);
+  g.addColorStop(0, "rgba(90,150,255,0)"); g.addColorStop(0.1, "rgba(90,150,255,.9)"); g.addColorStop(0.25, "rgba(255,190,90,.95)");
+  g.addColorStop(0.55, "rgba(255,120,30,.7)"); g.addColorStop(1, "rgba(255,70,0,0)");
+  c.fillStyle = g; c.filter = "blur(3px)"; c.beginPath(); c.moveTo(w / 2, 4);
+  c.bezierCurveTo(w * 0.62, h * 0.35, w * 0.9, h * 0.7, w / 2, h - 4); c.bezierCurveTo(w * 0.1, h * 0.7, w * 0.38, h * 0.35, w / 2, 4); c.fill();
+});
+const puffTex = canvasTex(64, 64, (c, w) => {
+  const g = c.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+  g.addColorStop(0, "rgba(255,255,255,.9)"); g.addColorStop(0.5, "rgba(255,255,255,.35)"); g.addColorStop(1, "rgba(255,255,255,0)");
+  c.fillStyle = g; c.fillRect(0, 0, w, w);
+});
+function counterTex(kind) {
+  if (kind === "steel") return canvasTex(512, 512, (c, w, h) => {
+    c.fillStyle = "#6f777e"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 2600; i++) { const y = Math.random() * h, v = 90 + Math.random() * 70; c.strokeStyle = `rgba(${v},${v + 6},${v + 10},.25)`; c.lineWidth = Math.random() * 1.4; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y + rnd(-2, 2)); c.stroke(); }
+  }, 3);
+  if (kind === "tile") return canvasTex(512, 512, (c, w, h) => {
+    c.fillStyle = "#b98a5c"; c.fillRect(0, 0, w, h); // warm wooden counter: planks with grain
+    for (let y = 0; y < 8; y++) { c.fillStyle = y % 2 ? "#c39467" : "#b2825a"; c.fillRect(0, y * 64 + 1, w, 62); }
+    for (let i = 0; i < 260; i++) { const y = Math.random() * h; c.strokeStyle = `rgba(90,55,30,${0.08 + Math.random() * 0.1})`; c.lineWidth = 1 + Math.random(); c.beginPath(); c.moveTo(0, y); c.bezierCurveTo(w * 0.3, y + rnd(-6, 6), w * 0.6, y + rnd(-6, 6), w, y + rnd(-4, 4)); c.stroke(); }
+  }, 2);
+  return canvasTex(256, 256, (c, w, h) => { c.fillStyle = "#9fd6c6"; c.fillRect(0, 0, w, h); c.fillStyle = "#93cdbc"; for (let i = 0; i < 8; i++) c.fillRect(0, i * 32, w, 16); }, 3);
+}
+function patinaTex() { // carbon-steel wok: blue-bronze heat tint in the middle, seasoned black toward the rim
+  return canvasTex(512, 512, (c, w, h) => {
+    const g = c.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2);
+    g.addColorStop(0, "#5a4a3c"); g.addColorStop(0.28, "#3d4654"); g.addColorStop(0.55, "#262b31"); g.addColorStop(1, "#16191c");
+    c.fillStyle = g; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 90; i++) { const r = 30 + i * 2.6; c.strokeStyle = `rgba(255,255,255,${0.012 + Math.random() * 0.02})`; c.lineWidth = 1; c.beginPath(); c.arc(w / 2, h / 2, r, 0, TAU); c.stroke(); }
+  });
+}
+
+/* ---------- build a look ---------- */
+let S, scene, wokPivot, wok, rice, kimchi, pa, bed, flames = [], fireLight, puffs = [], world;
+function mat(style, hex, o = {}) {
+  const color = lin(hex);
+  if (style.toon) {
+    const gm = new T.DataTexture(new Uint8Array([70, 150, 230, 255]), 4, 1, T.LuminanceFormat); gm.magFilter = gm.minFilter = T.NearestFilter; gm.needsUpdate = true;
+    return new T.MeshToonMaterial(Object.assign({ color, gradientMap: gm }, o.toon || {}));
+  }
+  if (style.phys && o.phys) return new T.MeshPhysicalMaterial(Object.assign({ color }, o.phys));
+  return new T.MeshStandardMaterial(Object.assign({ color, roughness: 0.55, metalness: 0 }, o.std || {}));
+}
+function outline(mesh, s, col) {
+  if (!S.outline) return;
+  const o = new T.Mesh(mesh.geometry, new T.MeshBasicMaterial({ color: lin(col || "#3a2414"), side: T.BackSide }));
+  o.scale.setScalar(s); mesh.add(o);
+}
+function polarDisc(R, rings, segs, height, colorAt, flip) { // a disc whose edge follows R(θ); y = height(t, θ)
+  const pos = [], col = [], idx = [];
+  for (let i = 0; i <= rings; i++) for (let j = 0; j < segs; j++) {
+    const t = i / rings, th = (j / segs) * TAU, r = t * R(th), x = Math.cos(th) * r, z = Math.sin(th) * r;
+    pos.push(x, height(t, th, r), z); const c = colorAt(t, th); col.push(c.r, c.g, c.b);
+  }
+  for (let i = 0; i < rings; i++) for (let j = 0; j < segs; j++) {
+    const a = i * segs + j, b = i * segs + ((j + 1) % segs), c2 = a + segs, d = b + segs;
+    if (flip) idx.push(a, c2, b, b, c2, d); else idx.push(a, b, c2, b, d, c2);
+  }
+  const g = new T.BufferGeometry(); g.setAttribute("position", new T.Float32BufferAttribute(pos, 3));
+  g.setAttribute("color", new T.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+}
+
+function build(key) {
+  S = STYLES[key];
+  if (scene) scene.traverse((o) => { if (o.geometry) o.geometry.dispose(); });
+  scene = new T.Scene(); scene.background = lin(S.bg);
+  renderer.toneMapping = S.phys ? T.ACESFilmicToneMapping : T.NoToneMapping; renderer.toneMappingExposure = S.exposure;
+  // environment for reflections: a dim room with two soft windows
+  const envScene = new T.Scene(); envScene.background = lin(S.phys ? "#262a2e" : S.bg);
+  const win = (x, y, z, w, h, c) => { const m = new T.Mesh(new T.PlaneGeometry(w, h), new T.MeshBasicMaterial({ color: lin(c), side: T.DoubleSide })); m.position.set(x, y, z); m.lookAt(0, 0, 0); envScene.add(m); };
+  win(-3, 4, 2, 4, 2, "#fff6e6"); win(4, 3, -2, 3, 3, "#ffd7a8"); win(0, -3, 0, 6, 6, "#ff7a2a");
+  const pm = new T.PMREMGenerator(renderer); scene.environment = pm.fromScene(envScene, 0.04).texture; pm.dispose();
+
+  // lights
+  scene.add(new T.HemisphereLight(lin(S.toon ? "#fff4e0" : "#e8eef5"), lin("#6a4a30"), S.phys ? 0.35 : 0.5));
+  const keyL = new T.DirectionalLight(lin("#fff1dc"), S.phys ? 1.6 : 0.85); keyL.position.set(-2.2, 5, 1.5);
+  keyL.castShadow = true; keyL.shadow.mapSize.set(1024, 1024); keyL.shadow.bias = -0.0008; keyL.shadow.radius = 4;
+  Object.assign(keyL.shadow.camera, { left: -2.4, right: 2.4, top: 2.4, bottom: -2.4, near: 1, far: 12 }); scene.add(keyL);
+  fireLight = new T.PointLight(lin("#ff8a2a"), 2.2, 4.5, 2); fireLight.position.set(0, -0.35, 0); scene.add(fireLight);
+
+  // counter + burner
+  const counter = new T.Mesh(new T.PlaneGeometry(14, 14), new T.MeshStandardMaterial({ map: counterTex(S.counter), roughness: S.counter === "steel" ? 0.35 : 0.8, metalness: S.counter === "steel" ? 0.6 : 0 }));
+  counter.rotation.x = -Math.PI / 2; counter.position.y = -0.62; counter.receiveShadow = true; scene.add(counter);
+  const ring = new T.Mesh(new T.TorusGeometry(0.62, 0.07, 10, 48), mat(S, "#2a2c2e", { std: { metalness: 0.6, roughness: 0.4 } }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = -0.56; scene.add(ring);
+  const hole = new T.Mesh(new T.CircleGeometry(0.58, 40), new T.MeshBasicMaterial({ color: lin("#120b08") })); hole.rotation.x = -Math.PI / 2; hole.position.y = -0.6; scene.add(hole);
+
+  // wok: lathe profile (inner bowl, rolled lip, outer skin), long wooden handle toward the cook, small ear at the far side
+  world = new T.Group(); scene.add(world);
+  wokPivot = new T.Group(); world.add(wokPivot);
+  wok = new T.Group(); wokPivot.add(wok);
+  const prof = [];
+  for (let i = 0; i <= 40; i++) { const r = i / 40; prof.push(new T.Vector2(Math.max(0.001, r), surf(r * r))); }
+  prof.push(new T.Vector2(1.03, 0.365), new T.Vector2(1.055, 0.35), new T.Vector2(1.04, 0.33));
+  for (let i = 40; i >= 0; i--) { const r = (i / 40) * 1.02; prof.push(new T.Vector2(Math.max(0.001, r), surf(r * r) - 0.03)); }
+  const wokMat = S.toon ? mat(S, "#2e3742") : S.phys
+    ? new T.MeshPhysicalMaterial({ color: lin("#3a4048"), metalness: 0.85, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 1.3 })
+    : new T.MeshStandardMaterial({ color: lin("#4a5d78"), roughness: 0.42, metalness: 0.25 });
+  wokMat.side = T.DoubleSide;
+  const bowl = new T.Mesh(new T.LatheGeometry(prof, 96), wokMat); bowl.castShadow = true; bowl.receiveShadow = true; wok.add(bowl);
+  if (S.outline) { const o = new T.Mesh(new T.TorusGeometry(1.045, 0.022, 8, 96), new T.MeshBasicMaterial({ color: lin("#2a1a10") })); o.rotation.x = Math.PI / 2; o.position.y = 0.355; wok.add(o); }
+  const steel = mat(S, "#9aa3ab", { std: { metalness: 0.9, roughness: 0.3 }, phys: { metalness: 1, roughness: 0.28 } });
+  const sock = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.42, 16), steel); sock.rotation.x = Math.PI / 2 - 12 * DEG; sock.position.set(0, 0.36, 1.2); wok.add(sock);
+  const wood = mat(S, S.chunky ? "#c9773a" : "#7b4a2a", { std: { roughness: 0.6 }, phys: { roughness: 0.55, clearcoat: 0.3 } });
+  const handle = new T.Mesh(new T.CylinderGeometry(0.06, 0.07, 1.0, 20), wood); handle.rotation.x = Math.PI / 2 - 12 * DEG; handle.position.set(0, 0.5, 1.88); handle.castShadow = true; wok.add(handle);
+  outline(handle, 1.06);
+  const ear = new T.Mesh(new T.TorusGeometry(0.09, 0.022, 8, 20, Math.PI), steel); ear.position.set(0, 0.36, -1.06); ear.rotation.set(-Math.PI / 2, 0, 0); wok.add(ear);
+
+  // sauce bed under the pile (keeps metal from showing between grains)
+  const sauce = S.chunky ? "#e96a32" : "#c9542a";
+  bed = new T.Mesh(polarDisc((th) => 0.68 + 0.04 * Math.sin(5 * th), 10, 64, (t, th, r) => surf(r * r) + 0.006 + 0.05 * Math.pow(1 - t * t, 0.8),
+    (t) => lin(t > 0.85 ? "#a8401c" : sauce)), mat(S, "#ffffff", { std: { vertexColors: true, roughness: 0.6 }, phys: { vertexColors: true, roughness: 0.4, clearcoat: 0.8, clearcoatRoughness: 0.3 }, toon: { vertexColors: true } }));
+  bed.material.vertexColors = true; bed.receiveShadow = true; wok.add(bed);
+
+  // food: instanced rice grains, kimchi leaves, scallion rings
+  const [gl, gw] = S.grain;
+  const grainGeo = new T.SphereGeometry(1, S.chunky ? 10 : 7, S.chunky ? 8 : 5); grainGeo.scale(gl, gw, gw);
+  const riceMat = mat(S, "#ffffff", { std: { roughness: S.chunky ? 0.45 : 0.5 }, phys: { roughness: 0.42, clearcoat: 0.9, clearcoatRoughness: 0.18, sheen: 0 } });
+  rice = makeFood(new T.InstancedMesh(grainGeo, riceMat, S.grainN), S.grainN, 0, (i) => {
+    const k = Math.random(); // orange-red sauced rice, some caramelised, some pale
+    return lin(k < 0.12 ? "#f2c08a" : k < 0.3 ? "#b4542a" : k < 0.65 ? "#e0743c" : "#d8622f");
+  });
+  const leaf = new T.Shape(); { const n = 7; for (let i = 0; i < n; i++) { const a = (i / n) * TAU, r = rnd(0.6, 1); i ? leaf.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.7) : leaf.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.7); } }
+  const leafGeo = new T.ShapeGeometry(leaf); leafGeo.rotateX(-Math.PI / 2); leafGeo.scale(S.chunky ? 0.07 : 0.055, 1, S.chunky ? 0.07 : 0.055);
+  const kimMat = mat(S, "#ffffff", { std: { side: T.DoubleSide, roughness: 0.35 }, phys: { side: T.DoubleSide, roughness: 0.3, clearcoat: 1, transmission: 0.0 }, toon: { side: T.DoubleSide } });
+  kimchi = makeFood(new T.InstancedMesh(leafGeo, kimMat, 140), 140, 1, () => lin(Math.random() < 0.3 ? "#f0a088" : Math.random() < 0.5 ? "#c4231c" : "#a81c18"));
+  const paGeo = new T.TorusGeometry(S.chunky ? 0.03 : 0.022, S.chunky ? 0.012 : 0.008, 6, 12); paGeo.rotateX(Math.PI / 2);
+  pa = makeFood(new T.InstancedMesh(paGeo, mat(S, "#ffffff", { std: { roughness: 0.4 } }), 70), 70, 2, () => lin(Math.random() < 0.3 ? "#d8efb0" : "#4fa83a"));
+  for (const f of [rice, kimchi, pa]) wok.add(f.mesh);
+
+  E = makeEgg();
+  PL = makePlate();
+
+  // fire: additive flame sprites licking up around the wok's outer wall + glow light
+  flames = [];
+  for (let i = 0; i < 46; i++) {
+    const sp = new T.Sprite(new T.SpriteMaterial({ map: flameTex, blending: T.AdditiveBlending, depthWrite: false, transparent: true, color: lin(S.phys ? "#ff9a50" : "#ffc890") }));
+    sp.userData = { a: (i / 46) * TAU + rnd(-0.05, 0.05), r: rnd(0.9, 1.06), ph: Math.random() * TAU, s: rnd(0.7, 1.2) };
+    scene.add(sp); flames.push(sp);
+  }
+  puffs = [];
+  for (let i = 0; i < 14; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { t: Math.random() * 2 }; scene.add(sp); puffs.push(sp); }
+
+  document.getElementById("note").textContent = S.note;
+  for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", b.dataset.style === key);
+  fit(); resetFood();
+}
+
+/* ---------- food state: wok-local home on the mound, or flying in world space ---------- */
+function makeFood(mesh, n, kind, colorFn) {
+  mesh.instanceMatrix.setUsage(T.DynamicDrawUsage); mesh.castShadow = kind === 0 && !S.chunky ? false : true; mesh.receiveShadow = true;
+  const f = { mesh, n, kind, st: new Uint8Array(n), home: new Float32Array(n * 3), p: new Float32Array(n * 3), v: new Float32Array(n * 3),
+    q: [], spin: new Float32Array(n * 3), rank: new Float32Array(n), dl: new Float32Array(n), depth: new Float32Array(n) };
+  for (let i = 0; i < n; i++) {
+    mesh.setColorAt(i, colorFn(i));
+    f.q.push(new T.Euler(Math.random() * TAU, Math.random() * TAU, Math.random() * TAU));
+  }
+  mesh.instanceColor.needsUpdate = true;
+  return f;
+}
+function homeOf(f, i) {
+  const a = Math.random() * TAU, r = 0.66 * Math.sqrt(Math.random()), x = Math.cos(a) * r, z = Math.sin(a) * r, rr = r / 0.66;
+  const d = f.kind === 2 ? rnd(0.75, 1) : f.kind === 1 ? rnd(0.3, 1) : Math.random();
+  f.depth[i] = d;
+  f.home[i * 3] = x; f.home[i * 3 + 1] = surf(r * r) + 0.015 + 0.11 * (1 - rr * rr) * d; f.home[i * 3 + 2] = z;
+}
+function resetFood() {
+  for (const f of [rice, kimchi, pa]) for (let i = 0; i < f.n; i++) {
+    homeOf(f, i); f.st[i] = 0; for (let k = 0; k < 3; k++) f.p[i * 3 + k] = f.home[i * 3 + k];
+  }
+}
+
+/* ---------- wok pose: chef timeline (Ko & Hu 2020 cycle ≈ .3 s, slowed for reading) ---------- */
+let tossT0 = -9, eggT0 = -9, scn = "rice", slow = 1, tossN = 0, perfect = false, clock = 12, tossS = 1, shimT0 = -9, hitstop = 0, eggMode = "auto";
+const timerEl = document.getElementById("timer"), wordEl = document.getElementById("word"), vigEl = document.getElementById("vig"), hudEl = document.getElementById("hud");
+const pose = { x: 0, y: 0, z: 0, pitch: 0, roll: 0 };
+function wokPose(t) {
+  const k = t - tossT0, s = tossS;
+  let z = 0, y = 0, pitch = -4 * DEG, roll = 0;
+  const ks = t - shimT0; if (ks >= 0 && ks < 0.8) roll += 5 * DEG * Math.sin(ks * 34) * Math.exp(-ks * 6); // cook's shake: loosen the egg
+  // idle: the cook's hand never stops — a slow small sway
+  pitch += Math.sin(t * 1.3) * 1.2 * DEG; roll = Math.sin(t * 0.9) * 1.5 * DEG;
+  if (k >= 0 && k < 1.2) {
+    const back = k < 0.07 ? Math.sin((k / 0.07) * Math.PI) * 0.05 : 0;                        // wind-up: pull toward the cook
+    const fwd = 0.42 * s * (smooth((k - 0.06) / 0.11) - smooth((k - 0.22) / 0.16));            // push away
+    const bump = smooth((k - 0.14) / 0.07) - smooth((k - 0.23) / 0.14);                        // lip snap: far lip flicks up
+    const cushion = k > 0.5 && k < 0.78 ? -0.035 * Math.sin(((k - 0.5) / 0.28) * Math.PI) : 0; // give a little as the food lands
+    z += back - fwd; y += 0.07 * bump + cushion;
+    pitch += (4 + 12 * s) * DEG * bump - 3 * DEG * Math.max(0, Math.sin(Math.PI * clamp((k - 0.3) / 0.3, 0, 1)));
+  }
+  if (scn === "plate" || scn === "take") { roll -= SIDE * PS.roll; y += PS.lift; }
+  pose.x = scn === "plate" || scn === "take" ? PS.x : 0; pose.y = y; pose.z = z; pose.pitch = pitch; pose.roll = roll;
+}
+function applyPose() {
+  // pitch about the near (handle-side) rim: the far lip rises, the hand end barely moves
+  wokPivot.position.set(pose.x, pose.y, pose.z + 0.95); wok.position.set(0, 0, -0.95);
+  wokPivot.rotation.set(pose.pitch, 0, pose.roll); world.updateMatrixWorld(true);
+}
+
+/* ---------- toss physics ---------- */
+const G = 40, m4 = new T.Matrix4(), inv = new T.Matrix4(), v3 = new T.Vector3(), dummy = new T.Object3D();
+function launch(t) {
+  // grains in the far half ride up and leave the lip in order (lip first); the near ones slosh
+  for (const f of [rice, kimchi, pa]) {
+    for (let i = 0; i < f.n; i++) {
+      if (f.st[i] !== 0) continue;
+      const along = -f.p[i * 3 + 2]; // toward the far lip
+      f.st[i] = 1; f.rank[i] = clamp((along + 0.75) / 1.5, 0, 1); f.dl[i] = (1 - f.rank[i]) * 0.12 * rnd(0.7, 1.3);
+    }
+  }
+}
+function release(f, i) {
+  m4.copy(wok.matrixWorld); v3.set(f.p[i * 3], f.p[i * 3 + 1], f.p[i * 3 + 2]).applyMatrix4(m4);
+  f.p[i * 3] = v3.x; f.p[i * 3 + 1] = v3.y; f.p[i * 3 + 2] = v3.z;
+  const r = f.rank[i], kh = [1, 0.85, 1.15][f.kind];
+  const rise = Math.max(0.12, 0.36 + (perfect ? 1.05 : 0.8) * kh * (0.3 + 0.9 * r) * rnd(0.75, 1.25) - v3.y);
+  const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, v3.y + rise - 0.2)) / G);
+  const zT = 0.1 + 0.3 * (r - 0.5) + rnd(-0.12, 0.12), xT = v3.x * rnd(0.5, 0.9) + rnd(-0.12, 0.12); // roll over: lip grains land nearest the cook
+  f.v[i * 3] = (xT - v3.x) / T0; f.v[i * 3 + 1] = vy; f.v[i * 3 + 2] = (zT - v3.z) / T0;
+  f.spin[i * 3] = rnd(-12, 12); f.spin[i * 3 + 1] = rnd(-6, 6); f.spin[i * 3 + 2] = rnd(-12, 12);
+  f.st[i] = 2;
+}
+function stepFood(f, t, dt) {
+  inv.copy(wok.matrixWorld).invert();
+  let air = 0;
+  for (let i = 0; i < f.n; i++) {
+    const j = i * 3;
+    if (f.st[i] === 0) { // settle toward home, wok-local
+      for (let k = 0; k < 3; k++) f.p[j + k] += (f.home[j + k] - f.p[j + k]) * Math.min(1, dt * 6);
+    } else if (f.st[i] === 1) { // riding up the far wall before the lip snap
+      const k = smooth((t - tossT0 - 0.04) / 0.13), z = f.home[j + 2] + (-0.55 - 0.35 * f.rank[i] - f.home[j + 2]) * k;
+      f.p[j + 2] = z; f.p[j] = f.home[j] * (1 - 0.3 * k); f.p[j + 1] = surf(z * z + f.p[j] * f.p[j]) + 0.03 + 0.04 * f.depth[i];
+      if (t - tossT0 >= 0.17 + f.dl[i]) release(f, i);
+    } else if (f.st[i] === 2) {
+      air++;
+      f.v[j + 1] -= (Math.abs(f.v[j + 1]) < 1 ? 0.75 : 1) * G * dt;
+      for (let k = 0; k < 3; k++) f.p[j + k] += f.v[j + k] * dt;
+      f.q[i].x += f.spin[j] * dt; f.q[i].y += f.spin[j + 1] * dt; f.q[i].z += f.spin[j + 2] * dt;
+      if (f.v[j + 1] < 0) {
+        v3.set(f.p[j], f.p[j + 1], f.p[j + 2]).applyMatrix4(inv);
+        const r2 = v3.x * v3.x + v3.z * v3.z, top = surf(r2) + 0.03 + 0.08 * Math.max(0, 1 - r2 / 0.44);
+        if (r2 < 1 && v3.y <= top) {
+          f.st[i] = 0; f.p[j] = v3.x; f.p[j + 1] = v3.y; f.p[j + 2] = v3.z;
+          // new home anywhere on the mound, a little toward the cook (the pile rolled over); bottom comes up
+          { const a = Math.random() * TAU, r = 0.66 * Math.sqrt(Math.random()); f.home[j] = Math.cos(a) * r; f.home[j + 2] = Math.sin(a) * r * 0.85 + 0.08; }
+          f.depth[i] = clamp(1 - f.depth[i] + rnd(-0.1, 0.1), 0, 1);
+          const rr = Math.min(1, (f.home[j] ** 2 + f.home[j + 2] ** 2) / 0.44);
+          f.home[j + 1] = surf(f.home[j] ** 2 + f.home[j + 2] ** 2) + 0.02 + 0.085 * (1 - rr) * (0.35 + 0.65 * f.depth[i]);
+        }
+      }
+    }
+  }
+  return air;
+}
+function drawFood(f) {
+  const wm = wok.matrixWorld;
+  inv.copy(wm).invert();
+  for (let i = 0; i < f.n; i++) {
+    const j = i * 3;
+    dummy.position.set(f.p[j], f.p[j + 1], f.p[j + 2]);
+    if (f.st[i] >= 2) dummy.position.applyMatrix4(inv); // the instanced mesh lives in the wok; flying food is stored in world space
+    dummy.rotation.copy(f.q[i]);
+    if (f.kind === 0 && f.st[i] !== 2 && f.st[i] !== 5) { dummy.rotation.x = 0; dummy.rotation.z = 0.15 * Math.sin(f.q[i].x); } // resting grains lie flat
+    if (f.kind === 1 && f.st[i] !== 2) { dummy.rotation.x = 0.2 * Math.sin(f.q[i].x); dummy.rotation.z = 0.2 * Math.sin(f.q[i].z); }
+    dummy.scale.setScalar(1); dummy.updateMatrix(); f.mesh.setMatrixAt(i, dummy.matrix);
+  }
+  f.mesh.instanceMatrix.needsUpdate = true;
+}
+
+/* ---------- the egg: a live height field ----------
+   White = polar grid draped on the wok floor; every frame its height (thick albumen ring, puff, bubbles, lace curl,
+   ripples, in-flight bend) and its colour (clear -> white from the edge in, golden -> brown lace) are recomputed.
+   Underside = second grid, golden, with a rounded dome where the yolk sits: after the flip that dome is what you see.
+   Yolk = its own mesh on a spring (wobbles on the drop, the shake, the toss and the landing). A hard landing bursts it. */
+const YU = 0.05, YV = -0.04;   // yolk centre in egg-local x / z
+let E = null;
+function makeEgg() {
+  const g = new T.Group(); world.add(g);
+  const LN = 180, lump = new Float32Array(LN);
+  for (let i = 0; i < LN; i++) lump[i] = Math.random() < 0.06 ? -rnd(0.02, 0.05) : rnd(-0.015, 0.02); // gentle lace notches
+  for (let k = 0; k < 4; k++) for (let i = 0; i < LN; i++) lump[i] = (lump[i] + lump[(i + 1) % LN] + lump[(i + LN - 1) % LN]) / 3;
+  const ER = (th) => { const f = ((((th / TAU) % 1) + 1) % 1) * LN, i = f | 0, w = f - i;
+    return 0.5 * (1 + 0.16 * Math.sin(th + 0.7) + 0.08 * Math.sin(2 * th + 2) + 0.05 * Math.sin(5 * th) + lump[i] * (1 - w) + lump[(i + 1) % LN] * w); };
+  const RN = 18, SN = 96, N = (RN + 1) * SN;
+  const vx = new Float32Array(N), vz = new Float32Array(N), vt = new Float32Array(N), vd = new Float32Array(N), vn = new Float32Array(N);
+  for (let i = 0; i <= RN; i++) for (let j = 0; j < SN; j++) {
+    const k = i * SN + j, t = Math.pow(i / RN, 0.85), th = (j / SN) * TAU, r = t * ER(th);
+    vx[k] = Math.cos(th) * r; vz[k] = Math.sin(th) * r; vt[k] = t; vn[k] = Math.random();
+    vd[k] = Math.hypot(vx[k] - YU, vz[k] - YV);
+  }
+  const grid = (down) => {
+    const idx = [];
+    for (let i = 0; i < RN; i++) for (let j = 0; j < SN; j++) {
+      const a = i * SN + j, b = i * SN + ((j + 1) % SN), c = a + SN, d = b + SN;
+      if (down) idx.push(a, c, b, b, c, d); else idx.push(a, b, c, b, d, c);
+    }
+    const geo = new T.BufferGeometry();
+    geo.setAttribute("position", new T.BufferAttribute(new Float32Array(N * 3), 3).setUsage(T.DynamicDrawUsage));
+    geo.setAttribute("color", new T.BufferAttribute(new Float32Array(N * 3), 3).setUsage(T.DynamicDrawUsage));
+    geo.setIndex(idx); return geo;
+  };
+  const eggMat = () => { const m = mat(S, "#ffffff", { std: { vertexColors: true, roughness: 0.3 }, phys: { vertexColors: true, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15 }, toon: { vertexColors: true } }); m.vertexColors = true; return m; };
+  const top = new T.Mesh(grid(false), eggMat()); top.castShadow = true; g.add(top);
+  top.geometry.setAttribute("aSet", new T.BufferAttribute(new Float32Array(N), 1).setUsage(T.DynamicDrawUsage));
+  if (!S.toon) top.material.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aSet; varying float vSet;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSet = aSet;");
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vSet;")
+      .replace("#include <roughnessmap_fragment>", "float roughnessFactor = mix(0.04, 0.55, vSet);")
+      .replace("#include <tonemapping_fragment>",
+        "float frE = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 2.5);\n" +
+        "gl_FragColor.rgb += (1.0 - vSet) * (0.06 + frE * 0.45) * vec3(0.8, 0.82, 0.85);\n#include <tonemapping_fragment>");
+  };
+  const bot = new T.Mesh(grid(true), eggMat()); g.add(bot);
+  const yolkMat = mat(S, "#ffa412", { std: { roughness: 0.18 }, phys: { roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04 } });
+  const yolk = new T.Mesh(new T.SphereGeometry(0.175, 40, 20, 0, TAU, 0, Math.PI / 2), yolkMat); yolk.castShadow = true; g.add(yolk);
+  if (!S.toon) yolkMat.onBeforeCompile = (sh) => { // light soaks into the yolk: its rim goes deep orange
+    sh.fragmentShader = sh.fragmentShader.replace("#include <tonemapping_fragment>",
+      "float ndvY = saturate(dot(normal, normalize(vViewPosition)));\ngl_FragColor.rgb = mix(gl_FragColor.rgb * vec3(0.95, 0.42, 0.12), gl_FragColor.rgb, pow(ndvY, 0.55));\n#include <tonemapping_fragment>");
+  };
+  // lace: a ring past the white's edge whose noise texture is eaten away as it crisps, so the wok shows through the holes
+  const laceTex = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1400; i++) { const v = (Math.random() * 255) | 0; c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(Math.random() * w, Math.random() * h, rnd(2, 9), 0, TAU); c.fill(); }
+    c.filter = "blur(2px)"; c.drawImage(c.canvas, 0, 0);
+  });
+  laceTex.wrapS = T.RepeatWrapping; laceTex.encoding = T.LinearEncoding;
+  const LR = 4, lpos = [], luv = [], lidx = [];
+  for (let i = 0; i <= LR; i++) for (let j = 0; j <= SN; j++) {
+    const v = i / LR, th = (j / SN) * TAU, r = ER(th) * (0.93 + 0.2 * v), x = Math.cos(th) * r, z = Math.sin(th) * r;
+    lpos.push(x, surf(r * r) + 0.006 + 0.012 * v * v, z); luv.push((j / SN) * 6, v);
+  }
+  for (let i = 0; i < LR; i++) for (let j = 0; j < SN; j++) { const a = i * (SN + 1) + j, b = a + 1, c2 = a + SN + 1, d = c2 + 1; lidx.push(a, b, c2, b, d, c2); }
+  const lgeo = new T.BufferGeometry(); lgeo.setAttribute("position", new T.Float32BufferAttribute(lpos, 3)); lgeo.setAttribute("uv", new T.Float32BufferAttribute(luv, 2)); lgeo.setIndex(lidx); lgeo.computeVertexNormals();
+  const laceMat = mat(S, "#e7ac5c", { std: { map: laceTex, roughness: 0.35, side: T.DoubleSide }, phys: { map: laceTex, roughness: 0.3, clearcoat: 0.6, side: T.DoubleSide }, toon: { map: laceTex, side: T.DoubleSide } });
+  const uLace = { value: 0 };
+  laceMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uLace = uLace;
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uLace;")
+      .replace("#include <map_fragment>", "float nz = texture2D(map, vUv).r;\nif (nz < 1.0 - uLace * (1.25 - vUv.y)) discard;\ndiffuseColor.rgb *= mix(0.55, 1.15, nz);");
+  };
+  const lace = new T.Mesh(lgeo, laceMat); lace.visible = false; // the noise ring read as confetti and holes
+  // oil: an invisible disc that only adds reflections (sheen), tiny oil bubbles fizzing around the egg, spatter streaks
+  const oilMat = new T.MeshStandardMaterial({ color: 0x000000, roughness: 0.06, metalness: 0, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: 0.45 });
+  const oil = new T.Mesh(polarDisc((th) => ER(th) * 1.2, 6, 64, (t, th, r) => surf(r * r) + 0.003, () => new T.Color(0, 0, 0)), oilMat); wok.add(oil); // the oil stays in the wok
+  const fizz = new T.InstancedMesh(new T.SphereGeometry(1, 8, 4, 0, TAU, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: lin("#3a3226"), roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 }), 60);
+  fizz.instanceMatrix.setUsage(T.DynamicDrawUsage); wok.add(fizz);
+  const fz = []; for (let i = 0; i < 60; i++) { const a = Math.random() * TAU; fz.push({ a, r: ER(a) * rnd(0.98, 1.4), ph: Math.random() * TAU, sp: rnd(6, 14), s: rnd(0.006, 0.014) }); }
+  const spat = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: lin("#fff3d6"), transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
+  spat.geometry.setAttribute("position", new T.BufferAttribute(new Float32Array(48 * 6), 3).setUsage(T.DynamicDrawUsage)); spat.frustumCulled = false; world.add(spat);
+  const drops = []; for (let i = 0; i < 48; i++) drops.push({ life: 0, p: new T.Vector3(), v: new T.Vector3() });
+  // burst: a runny puddle that spreads from the yolk over the white, plus drips on the wok
+  const pud = new T.Mesh(polarDisc((th) => 0.26 * (1 + 0.25 * Math.sin(3 * th + 1) + 0.15 * Math.sin(7 * th)), 6, 64, () => 0, () => lin("#ffb21c")),
+    mat(S, "#ffffff", { std: { vertexColors: true, roughness: 0.12 }, phys: { vertexColors: true, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 }, toon: { vertexColors: true } }));
+  pud.material.vertexColors = true; pud.visible = false; world.add(pud);
+  const drips = [];
+  for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), yolkMat); d.scale.set(1, 0.3, 1.4); d.visible = false; world.add(d); drips.push(d); }
+  const bubbles = [];
+  // blisters: steam under the white puffs a bubble up, it holds, then sags (chef: 2-10 s, 1-3 cm, 5 mm high)
+  const blister = (b) => { const a = Math.random() * TAU, tt = rnd(0.3, 0.9), r = tt * ER(a); Object.assign(b, { x: Math.cos(a) * r, z: Math.sin(a) * r, r: rnd(0.03, 0.06), h: rnd(0.012, 0.026), born: t + rnd(0, 1.2), life: rnd(1.0, 2.0) }); return b; };
+  for (let i = 0; i < 12; i++) bubbles.push(blister({}));
+  bubbles.respawn = blister;
+  return { g, top, bot, yolk, yolkMat, pud, drips, bubbles, N, vx, vz, vt, vd, vn, ER, lace, laceMat, uLace, oil, fizz, fz, spat, drops, sx: 0, svx: 0, ox: 0, oz: 0.05,
+    cook: 0, waves: [], flip: null, flipped: false, burst: false, burstT: 0, bend: 0,
+    y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, k0: 0, n: 0, strongNext: false };
+}
+const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#e9b867"), C_DOME = lin("#f3d79a");
+const _c = new T.Color();
+function eggShape(dt, tNow) {
+  const e = E, P = e.top.geometry.attributes.position.array, Cc = e.top.geometry.attributes.color.array;
+  const Pb = e.bot.geometry.attributes.position.array, Cb = e.bot.geometry.attributes.color.array;
+  e.waves = e.waves.filter((w) => tNow - w.t0 < 2);
+  const cookK = clamp(e.cook, 0, 1), A = e.top.geometry.attributes.aSet.array; // raw jiggles slow and long, cooked is springy
+  for (const b of e.bubbles) {
+    const a = tNow - b.born; b.gk = a < 0 ? 0 : smooth(a / 0.3) * (1 - smooth((a - b.life + 0.5) / 0.5));
+    if (a > b.life && e.cook > 0.15 && e.cook < 1.05 && !e.flip) e.bubbles.respawn(b); else if (a > b.life) b.gk = 0;
+  }
+  for (let k = 0; k < e.N; k++) {
+    const x = e.vx[k], z = e.vz[k], t = e.vt[k], d = e.vd[k], n = e.vn[k], r2 = x * x + z * z;
+    // local "done": the white sets from the thin edge inward, the thick ring by the yolk last
+    const set = clamp((e.cook * 1.2 - (1 - t) * 0.75 - Math.exp(-(((d - 0.2) / 0.12) ** 2)) * 0.25) / 0.3, 0, 1);
+    let thick = 0.008 + 0.028 * Math.exp(-(((d - 0.19) / 0.13) ** 2)) + 0.018 * Math.max(0, 1 - d / 0.22);
+    thick *= (1 + 0.45 * set) * (t > 0.9 ? 0.4 + 0.6 * (1 - t) / 0.1 : 1);
+    let bub = 0;
+    for (const b of e.bubbles) { if (b.gk > 0) { const q = ((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r); if (q < 4) bub += b.h * b.gk * Math.exp(-q); } }
+    const lace = t > 0.84 ? 0.02 * smooth((t - 0.84) / 0.16) * clamp((e.cook - 0.75) * 2, 0, 1) * n : 0;
+    let wob = 0;
+    for (const w of e.waves) { const tau = tNow - w.t0; wob += w.a * 0.014 * (1.25 - 0.55 * cookK) * Math.exp(-(2.6 + 4 * cookK) * tau) * Math.sin(17 * d - (19 + 16 * cookK) * tau) * (1 - 0.4 * t); }
+    const bend = -e.bend * z * z * 0.9;   // the trailing halves lag in the air: the egg cups
+    const sq = 1 - 0.5 * e.sq.s;
+    const j = k * 3;
+    P[j] = x * (1 + 0.12 * e.sq.s); P[j + 2] = z * (1 + 0.12 * e.sq.s);
+    const dr = e.onPlate ? plateMound(Math.hypot(P[j], P[j + 2])) * 0.95 : surf((P[j] + e.ox) ** 2 + (P[j + 2] + e.oz) ** 2);
+    P[j + 1] = dr + (thick + bub) * sq + lace + wob + bend;
+    // colour: clear grey-gloss -> white, then golden -> brown lace at the very edge
+    A[k] = set; _c.copy(C_RAW).lerp(C_SET, set);
+    const br = clamp((e.cook - 0.55) * 1.8, 0, 1) * smooth((t - 0.78) / 0.2) * (0.8 + 0.35 * n);
+    if (br > 0) { _c.lerp(C_GOLD, Math.min(1, br * 1.4)); _c.lerp(C_BROWN, clamp((br - 0.55) * 1.6, 0, 0.85)); }
+    Cc[j] = _c.r; Cc[j + 1] = _c.g; Cc[j + 2] = _c.b;
+    // underside: thin golden skin, a rounded dome under the yolk (deflated if it burst), browner toward the lace
+    const dome = 0.085 * Math.exp(-((d / 0.165) ** 2)) * (e.burst ? 0.35 : 1);
+    Pb[j] = P[j]; Pb[j + 2] = P[j + 2];
+    Pb[j + 1] = -0.014 - (e.onPlate ? plateMound(Math.hypot(P[j], P[j + 2])) * 0.95 : surf((P[j] + e.ox) ** 2 + (e.oz - P[j + 2]) ** 2)) - dome * (1 - 0.3 * e.sq.s) - wob * 0.8 - bend - lace * 0.5;
+    _c.copy(C_UNDER).lerp(C_DOME, Math.exp(-((d / 0.16) ** 2)) * 0.8).lerp(C_BROWN, clamp(t * t * 0.75 + (n - 0.5) * 0.35, 0, 0.9));
+    Cb[j] = _c.r; Cb[j + 1] = _c.g; Cb[j + 2] = _c.b;
+  }
+  for (const m of [e.top, e.bot]) { const g = m.geometry; g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; }
+  if (!e.flipped) e.top.geometry.computeVertexNormals(); if (e.flipped || e.flip) e.bot.geometry.computeVertexNormals(); // only the face you can see
+  e.top.geometry.attributes.aSet.needsUpdate = true;
+  // lace crisps (golden -> brown -> black past 1.25), oil fizz calms down as the egg dries out
+  e.uLace.value = clamp((e.cook - 0.45) * 1.4, 0, 1);
+  e.laceMat.color.copy(lin("#f0c070")).lerp(lin("#9a5a26"), clamp((e.cook - 0.7) * 1.6, 0, 1)).lerp(lin("#3a2414"), clamp((e.cook - 1.2) * 4, 0, 1));
+  const fzK = e.flip && !e.flipped ? 0 : clamp(1.2 - e.cook * 0.6, 0.3, 1);
+  e.fz.forEach((f, i) => { const sc = f.s * fzK * Math.max(0, Math.sin(tNow * f.sp + f.ph)); dummy.position.set(Math.cos(f.a) * f.r, surf(f.r * f.r) + 0.002, Math.sin(f.a) * f.r); dummy.rotation.set(0, 0, 0); dummy.scale.set(sc, sc * 0.7, sc); dummy.updateMatrix(); e.fizz.setMatrixAt(i, dummy.matrix); });
+  e.fizz.instanceMatrix.needsUpdate = true;
+  // hot-oil spatter: short streaks on parabolas
+  const sp = e.spat.geometry.attributes.position.array;
+  e.drops.forEach((d, i) => { d.life -= dt; if (d.life > 0) { d.v.y -= 12 * dt; d.p.addScaledVector(d.v, dt); }
+    const o = i * 6; if (d.life > 0) { sp[o] = d.p.x; sp[o + 1] = d.p.y; sp[o + 2] = d.p.z; sp[o + 3] = d.p.x - d.v.x * 0.025; sp[o + 4] = d.p.y - d.v.y * 0.025; sp[o + 5] = d.p.z - d.v.z * 0.025; } else sp.fill(0, o, o + 6); });
+  e.spat.geometry.attributes.position.needsUpdate = true;
+  // yolk: spring around its seat; a film of white creeps over it as it cooks
+  const Y = e.y, kS = 140, dS = 7;
+  for (const c of ["x", "z", "h"]) { const vk = "v" + c; Y[vk] += (-kS * Y[c] - dS * Y[vk]) * dt; Y[c] += Y[vk] * dt; }
+  e.sq.v += (-260 * e.sq.s - 14 * e.sq.v) * dt; e.sq.s += e.sq.v * dt;
+  const ys = 1 - 0.35 * e.sq.s + Y.h * 4;
+  e.yolk.position.set(YU + Y.x, surf((YU + e.ox) ** 2 + (YV + e.oz) ** 2) + 0.03 * (1 + 0.45 * clamp(e.cook, 0, 1)), YV + Y.z);
+  e.yolk.scale.set(1 + 0.25 * e.sq.s - Y.h * 2, clamp(0.5 * ys, 0.25, 0.7), 1 + 0.25 * e.sq.s - Y.h * 2);
+  e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.95) * 1.2, 0, 0.55));
+  e.yolk.visible = !e.flipped && !(e.flip && e.flip.f > 0.5);
+}
+function spatter(n) {
+  let c = 0; for (const d of E.drops) { if (d.life > 0) continue; const a = Math.random() * TAU, r = E.ER(a) * rnd(0.8, 1.1);
+    d.p.set(Math.cos(a) * r, 0.03, Math.sin(a) * r); E.g.localToWorld(d.p); d.v.set(Math.cos(a) * rnd(0.6, 1.6), rnd(1.2, 2.6), Math.sin(a) * rnd(0.6, 1.6)); d.life = rnd(0.25, 0.5); if (++c >= n) break; }
+}
+function jolt(a, yolkKick) { E.waves.push({ t0: t, a }); E.y.vx += rnd(-1, 1) * yolkKick; E.y.vz += rnd(-1, 1) * yolkKick; E.y.vh += yolkKick * 0.4; }
+/* egg loop (game time since the egg went in): drop 0–.4 s, cook to golden by ~4.4 s with a shake at 2.6 s,
+   flip (soft / hard alternate unless picked), land, hold, start over */
+function eggStep(dt) {
+  const e = E, k = t - eggT0;
+  if (k < 0 || k > 1e5) { // new egg (startEgg sets eggT0 far in the past)
+    eggT0 = t; e.n++; e.cook = 0; e.flipped = false; e.burst = false; e.flip = null; e.bend = 0; e.waves.length = 0;
+    e.strong = eggMode === "auto" ? e.n % 2 === 0 : eggMode === "strong"; e.pud.visible = false; for (const d of e.drips) d.visible = false;
+    e.dropped = false; e.shook = false; e.shook2 = false; e.sx = 0; e.svx = 0; for (const b of e.bubbles) e.bubbles.respawn(b);
+    return eggStep(0);
+  }
+  const wm = wok.matrixWorld;
+  e.svx += (-5 * e.sx - 2.2 * e.svx) * dt; e.sx += e.svx * dt;   // a loose egg slides on the oil and drifts back
+  e.ox = e.sx; e.oz = 0.05; v3.set(e.ox, 0, e.oz).applyMatrix4(wm); // group origin on the wok's floor plane under the egg
+  e.g.position.copy(v3); e.rot = 0; // orientation = the wok's own (pitch AND roll) times the flip, as a quaternion
+  e.oil.position.set(e.sx, 0, 0.05); e.fizz.position.set(e.sx, 0, 0.05);
+  if (k < 2.5 && Math.random() < dt * 14 * (1 - k / 2.5)) spatter(1);
+  if (!e.flip || e.flipped) e.cook = Math.min(1.3, e.cook + dt * (e.flipped ? 0.05 : 0.27));
+  if (k < 0.32) { const f = k / 0.32; e.g.position.y += 0.7 * (1 - f * f); e.sq.s = 0; }
+  else if (!e.dropped) { e.dropped = true; jolt(0.9, 1.2); e.sq.v = 9; spatter(14); }
+  // the cook's test: shake the wok. Raw (first 5–8 s for real) the egg is stuck and only ripples; set, it slides
+  if (k > 1.3 && !e.shook) { e.shook = true; shimT0 = t; jolt(0.8, 1.4); eggSay("아직 붙어 있어…"); }
+  if (k > 3.5 && !e.shook2) { e.shook2 = true; shimT0 = t; jolt(0.5, 1.2); e.svx = 0.9; eggSay("스르륵 — 지금 뒤집어!"); }
+  if (FLOW.auto && k > 4.7 && !FLOW.flipReq) FLOW.flipReq = { strong: false };
+  if (FLOW.flipReq && !e.flip) { e.strong = FLOW.flipReq.strong; e.flipCook = e.cook; e.flip = { t0: t, f: 0, strong: e.strong }; tossT0 = t; tossS = e.strong ? 1.25 : 0.55; jolt(0.4, 0.8); }
+  if (e.flip && !e.flipped) {
+    const fl = e.flip, dur = fl.strong ? 0.62 : 0.42, rise = fl.strong ? 1.0 : 0.36;
+    fl.f = clamp((t - fl.t0 - 0.12) / dur, 0, 1);
+    const f = fl.f, rot = Math.PI * (0.5 - 0.5 * Math.cos(Math.PI * f)); // S-curve: edge-on near the apex
+    e.g.position.y += rise * 4 * f * (1 - f) + (f > 0 ? 0.02 : 0); e.g.position.z -= 0.12 * Math.sin(Math.PI * f);
+    e.rot = rot; e.bend = 0.16 * Math.sin(Math.PI * f) * (fl.strong ? 1.5 : 1);
+    if (f >= 1) {
+      e.flipped = true; e.landT = t; e.bend = 0; e.sq.v = fl.strong ? 16 : 8; jolt(fl.strong ? 1.8 : 0.9, 0); hitstop = fl.strong ? 0.12 : 0.06; spatter(fl.strong ? 20 : 10);
+      eggSay(fl.strong ? "터졌다!" : `${(176 + Math.random() * 3) | 0}°!`);
+      if (fl.strong) { e.burst = true; e.burstT = t; }
+    }
+  }
+  if (e.flipped) e.rot = Math.PI;
+  wok.getWorldQuaternion(e.g.quaternion); e.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, e.rot));
+  e.g.updateMatrixWorld(true);
+  // burst: the yolk runs out through the tear, spreads on top and drips onto the wok
+  if (e.burst) {
+    const b = clamp((t - e.burstT) / 1.6, 0, 1), bb = Math.sqrt(b); // runny yolk: fast first, then slows like honey
+    v3.set(YU, -0.014 - surf((YU + e.ox) ** 2 + (e.oz - YV) ** 2) - 0.03, YV); e.g.localToWorld(v3);
+    e.pud.visible = true; e.pud.position.set(v3.x, v3.y + 0.022, v3.z + 0.05 * bb); e.pud.rotation.set(pose.pitch, rnd(-0.002, 0.002), pose.roll); e.pud.scale.set(0.3 + 1.0 * bb, 1, 0.3 + 1.3 * bb);
+    e.drips.forEach((d, i) => { const a = 0.6 + i * 0.5, rr = 0.55 + 0.1 * i; v3.set(Math.cos(a) * rr * 0.5, 0, 0.05 + Math.sin(a) * rr); v3.applyMatrix4(wm);
+      d.visible = b > 0.15 * (i + 1); d.position.set(v3.x, v3.y + 0.01, v3.z); d.scale.set(1 + i * 0.3, 0.3, 1.2 + bb); });
+  }
+  eggShape(dt, t);
+  return k;
+}
+let esayT = 0; const _qx = new T.Quaternion(), _ax = new T.Vector3(1, 0, 0);
+function eggSay(txt) { const el = document.getElementById("esay"); el.textContent = txt; esayT = performance.now(); }
+/* ---------- plating (automatic): the wok rolls toward a plate on the LEFT and the rice pours over that lip ----------
+   st 5 = falling out of the wok (world), 3 = on the plate (world, sliding to its spot on the mound), 4 = on the counter */
+const SIDE = -1; // the plate side: -1 = left of the wok
+let PL = null; const PS = { roll: 0, lift: 0, x: 0, t0: -99, tilt: 0, drag: null, phase: "", poured: 0, missed: 0, acc: 0, pats: 0, pan: 0 };
+function makePlate() {
+  const g = new T.Group(); scene.add(g);
+  const prof = [[0, 0], [0.42, 0], [0.47, 0.012], [0.58, 0.05], [0.68, 0.085], [0.7, 0.09], [0.69, 0.075], [0.56, 0.04], [0.42, 0.008], [0, 0.008]].map(([x, y]) => new T.Vector2(Math.max(0.001, x), y));
+  const cer = mat(S, S.chunky ? "#fffaf0" : "#f7f5f0", { std: { roughness: 0.25 }, phys: { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 } });
+  const dish = new T.Mesh(new T.LatheGeometry(prof, 64), cer); dish.castShadow = dish.receiveShadow = true; g.add(dish);
+  const rim = new T.Mesh(new T.TorusGeometry(0.665, 0.008, 6, 64), mat(S, "#2f5fa8", { std: { roughness: 0.3 } })); rim.rotation.x = Math.PI / 2; rim.position.y = 0.084; g.add(rim);
+  // ladle: steel bowl + handle, appears for the two pats
+  const steel = mat(S, "#b8c0c8", { std: { metalness: 0.9, roughness: 0.25 }, phys: { metalness: 1, roughness: 0.2 } });
+  const lad = new T.Group(); const bowl = new T.Mesh(new T.SphereGeometry(0.14, 20, 10, 0, TAU, Math.PI / 2, Math.PI / 2), steel); bowl.material.side = T.DoubleSide; lad.add(bowl);
+  const hd = new T.Mesh(new T.CylinderGeometry(0.014, 0.014, 0.8, 8), steel); hd.rotation.z = 1.1 * SIDE; hd.position.set(-0.38 * SIDE, 0.22, 0); lad.add(hd);
+  lad.visible = false; scene.add(lad);
+  g.position.set(SIDE * 3.2, -0.6, 0.15); g.visible = false;
+  return { g, lad, cx: SIDE * 1.32, cy: -0.6, cz: 0.12, n: 0 };
+}
+function plateMound(d) { // the heap grows with what has landed: wider and taller
+  const f = clamp(PL.n / 2600, 0, 1), R = 0.2 + 0.24 * f, H = 0.06 + 0.3 * f;
+  return d >= R ? 0 : H * (1 - (d / R) ** 2);
+}
+function pourClump(f, pick, minX) {
+  // a clump that has slid up to the low lip lets go over it together (chef: oiled rice falls in lumps, not a thread).
+  // It leaves FROM the lip, so nothing passes through the wok's wall.
+  let seed = -1, best = -9;
+  for (let k = 0; k < 40; k++) { const i = (Math.random() * f.n) | 0; if (f.st[i] === 0 && SIDE * f.p[i * 3] > best) { best = SIDE * f.p[i * 3]; seed = i; } }
+  if (seed < 0 || best < (minX == null ? 0.78 : minX)) return 0;
+  const sz = f.p[seed * 3 + 2], m4w = wok.matrixWorld;
+  v3.set(SIDE, 0, sz).applyMatrix4(m4w);
+  const vx = SIDE * rnd(0.3, 0.7), vy = rnd(0, 0.3), vz = (PL.cz - v3.z) * 1.6 + rnd(-0.1, 0.1); let n = 0;
+  for (let i = 0; i < f.n && n < pick; i++) {
+    if (f.st[i] !== 0) continue; const j = i * 3;
+    if (SIDE * f.p[j] < best - 0.25 || Math.abs(f.p[j + 2] - sz) > 0.18) continue;
+    const lz = clamp(f.p[j + 2], -0.3, 0.3);
+    v3.set(SIDE * Math.sqrt(Math.max(0, 1.02 - lz * lz)), K_RIM + 0.02 + rnd(0, 0.04), lz).applyMatrix4(m4w); // on the lip
+    f.p[j] = v3.x; f.p[j + 1] = v3.y; f.p[j + 2] = v3.z;
+    f.v[j] = vx + rnd(-0.1, 0.1); f.v[j + 1] = vy + rnd(-0.08, 0.08); f.v[j + 2] = vz + rnd(-0.08, 0.08);
+    f.spin[j] = rnd(-5, 5); f.spin[j + 1] = rnd(-3, 3); f.spin[j + 2] = rnd(-5, 5); f.st[i] = 5; n++;
+  }
+  return n;
+}
+const K_RIM = 0.355;
+function plateStep(dt) {
+  const k = t - PS.t0;
+  if (k < 0) { // start over with a full wok
+    PS.t0 = t; resetFood(); PS.poured = PS.missed = PS.acc = 0; PS.phase = "in"; PS.pats = 0; PL.n = 0; PS.tilt = 0; PS.doneT = 0;
+    PL.g.visible = true; PL.g.position.set(SIDE * 3.2, PL.cy, PL.cz); PL.g.scale.set(1, 1, 1); PL.lad.visible = false; eggSay("");
+    return;
+  }
+  const foods = [rice, kimchi, pa], total = rice.n + kimchi.n + pa.n;
+  // plate slides in from the right (easeOutQuint), later moves to the edge, half visible, to wait for the egg
+  const inK = 1 - (1 - clamp(k / 0.3, 0, 1)) ** 5;
+  let px = SIDE * 3.2 + (PL.cx - SIDE * 3.2) * inK;
+  if (PS.doneT) px = PL.cx + SIDE * 0.6 * smooth((t - PS.doneT - 0.9) / 0.35);
+  PL.g.position.x = px; const PX = px, PY = PL.cy + 0.01, PZ = PL.cz;
+  // tilt: the player's drag (or the demo hand) → wok roll; past 20° the rice goes
+  let want = 0;
+  if (PS.phase === "in" && k > 0.3) PS.phase = "tilt";
+  if (PS.phase === "tilt") want = clamp((k - 0.45) / 0.35, 0, 1);
+  PS.tilt += (want - PS.tilt) * Math.min(1, dt * 16);
+  PS.roll = PS.tilt * 40 * DEG; PS.lift = 0.12 * PS.tilt; PS.x = SIDE * 0.32 * PS.tilt;
+  PS.pan += (SIDE * (scn === "plate" && !PS.doneT ? 0.6 : 0.3) - PS.pan) * Math.min(1, dt * 4);
+  if (PS.phase === "tilt") {
+    const ang = PS.roll / DEG;
+    // the pile slides to the low (right) wall first
+    for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0) { const j = i * 3, kk = Math.min(1, dt * 3 * PS.tilt); f.home[j] += (SIDE * (0.72 + 0.22 * Math.abs(f.home[j])) - f.home[j]) * kk; f.home[j + 1] = surf(f.home[j] ** 2 + f.home[j + 2] ** 2) + 0.02; f.home[j + 2] += (0.1 + 0.35 * (f.home[j + 2] - 0.1) - f.home[j + 2]) * kk; }
+    if (ang > 20) { PS.acc += dt * (ang - 20) * 1.6; while (PS.acc > 1) { PS.acc--; for (const f of foods) PS.poured += pourClump(f, f.kind === 0 ? (rnd(30, 70) | 0) : (rnd(2, 5) | 0)); } }
+    if (PS.poured > total * 0.97 || k > 3.4) { // the last grains: two shakes; then the ladle
+      PS.phase = "shake"; PS.ph0 = t; eggSay("");
+    }
+  }
+  if (PS.phase === "shake") {
+    const q = t - PS.ph0; PS.roll += 6 * DEG * Math.sin(q * 35) * (q < 0.18 ? 1 : 0);
+    if (q > 0.12 && q < 0.14) for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0 && SIDE * f.p[i * 3] > 0.2) pourClump(f, 20, 0.3);
+    if (q > 0.2) { PS.phase = "pat"; PS.ph0 = t; PL.lad.visible = true;
+      for (const f of foods) for (let i = 0; i < f.n; i++) if (f.st[i] === 0) { const j = i * 3; f.home[j] = rnd(-0.15, 0.15); f.home[j + 2] = rnd(-0.1, 0.2); f.home[j + 1] = surf(f.home[j] ** 2 + f.home[j + 2] ** 2) + 0.015; } } // the few left-overs slide back to the bottom
+  }
+  if (PS.phase === "pat" || PS.phase === "done") PS.tilt += (0 - PS.tilt) * Math.min(1, dt * 8); // the wok goes back to the fire
+  if (PS.phase === "pat") {
+    const q = t - PS.ph0, top = PY + 0.03 + plateMound(0);
+    const tap = q < 0.12 ? Math.sin((q / 0.12) * Math.PI) : q < 0.24 ? Math.sin(((q - 0.12) / 0.12) * Math.PI) : 0;
+    PL.lad.position.set(PX - 0.02 * SIDE, top + 0.2 - 0.17 * tap, PZ); PL.lad.rotation.set(0, 0, -0.15 * SIDE);
+    if ((q > 0.06 && PS.pats === 0) || (q > 0.18 && PS.pats === 1)) { PS.pats++; PL.sq = 1; } // each pat squashes the heap round
+    if (q > 0.3) {
+      PS.phase = "done"; PS.doneT = t; PL.lad.visible = false;
+      eggSay("볶음밥 완성! 이제 계란");
+    }
+  }
+  PL.sq = Math.max(0, (PL.sq || 0) - dt * 7);
+  PL.g.scale.set(1 + 0.05 * PL.sq, 1 - 0.08 * PL.sq, 1 + 0.05 * PL.sq);
+  // falling food: plate, counter, or (low pour) back into the wok
+  for (const f of foods) for (let i = 0; i < f.n; i++) {
+    const st = f.st[i], j = i * 3;
+    if (st === 5) {
+      f.v[j + 1] -= G * 0.8 * dt; for (let c = 0; c < 3; c++) f.p[j + c] += f.v[j + c] * dt;
+      f.q[i].x += f.spin[j] * dt; f.q[i].z += f.spin[j + 2] * dt;
+      const dx = f.p[j] - PX, dz = f.p[j + 2] - PZ, d = Math.hypot(dx, dz);
+      if (d < 0.6 && f.p[j + 1] <= PY + 0.03 + plateMound(d) && f.v[j + 1] < 0) {
+        f.st[i] = 3; PL.n++; const a = Math.random() * TAU, rr = Math.sqrt(Math.random()) * (0.2 + 0.24 * clamp(PL.n / 2600, 0, 1));
+        f.home[j] = Math.cos(a) * rr; f.home[j + 2] = Math.sin(a) * rr; f.home[j + 1] = rnd(0.55, 1);   // plate-local spot on the heap
+      } else if (f.p[j + 1] <= -0.61) { f.st[i] = 4; f.p[j + 1] = -0.61; PS.missed++; }
+    } else if (st === 3) { // slide to the spot on the heap (the plate may still be moving)
+      const tx = PX + f.home[j], tz = PZ + f.home[j + 2], ty = PY + 0.03 + plateMound(Math.hypot(f.home[j], f.home[j + 2])) * f.home[j + 1] * (1 - 0.1 * PS.pats);
+      f.p[j] += (tx - f.p[j]) * Math.min(1, dt * 12); f.p[j + 1] += (ty - f.p[j + 1]) * Math.min(1, dt * 12); f.p[j + 2] += (tz - f.p[j + 2]) * Math.min(1, dt * 12);
+    }
+  }
+}
+/* ---------- the whole game, start to end (mockup): intro → rice 12 s → plate → egg → take-out → garnish → receipt ---------- */
+const FLOW = { ph: "intro", t0: 0, auto: false, started: false, nextGap: 1.2, grades: [], maxGap: 0, flipReq: null, cue: false, garn: null };
+const cueEl = document.getElementById("cue"), hintEl = document.getElementById("hint"), introEl = document.getElementById("intro"), resEl = document.getElementById("result");
+function setPh(ph) { FLOW.ph = ph; FLOW.t0 = t; }
+function startGame(auto) {
+  FLOW.auto = auto; FLOW.started = false; FLOW.grades = []; FLOW.maxGap = 0; FLOW.flipReq = null; clock = 12; tossT0 = -9; perfect = false;
+  resetFood(); PS.pan = 0; introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); PL.g.visible = false; E.onPlate = false;
+  if (FLOW.garn) { FLOW.garn.visible = false; } setPh("rice"); hintEl.textContent = auto ? "자동 시연 중" : "화면을 위로 휙 쓸어 올려!";
+}
+function word(txt, col) { wordEl.textContent = txt; wordEl.style.color = col; wordEl.classList.remove("pop"); void wordEl.offsetWidth; wordEl.classList.add("pop"); }
+function doToss(str) {
+  if (FLOW.ph !== "rice" || clock <= 0 || t - tossT0 < 0.3) return;
+  const gap = t - tossT0;
+  if (!FLOW.started) { FLOW.started = true; hintEl.textContent = FLOW.auto ? "자동 시연 중" : ""; }
+  else {
+    FLOW.maxGap = Math.max(FLOW.maxGap, gap);
+    const g = gap < 0.9 ? "early" : gap < 1.0 ? "good" : gap <= 1.6 ? "perfect" : gap <= 2.2 ? "good" : "late";
+    FLOW.grades.push(g);
+    if (g === "perfect") word("불맛!", "#E8481C"); else if (g === "good") word("좋아", "#2BB673"); else if (g === "early") word("너무 빨라", "#1F2A33"); else word("눌었다", "#8A5A2B");
+    perfect = g === "perfect";
+  }
+  tossT0 = t; tossS = clamp(str, 0.6, 1.4); tossN++; launch(t);
+  FLOW.nextGap = rnd(0.95, 1.7); // the demo hand is good, not perfect
+}
+function startPlate() {
+  setPh("plate"); PS.t0 = t; PS.poured = PS.missed = PS.acc = 0; PS.phase = "in"; PS.pats = 0; PL.n = 0; PS.tilt = 0; PS.doneT = 0;
+  PL.g.visible = true; PL.g.position.set(SIDE * 3.2, PL.cy, PL.cz); PL.g.scale.set(1, 1, 1); PL.lad.visible = false; cueEl.style.opacity = 0;
+}
+function startEgg() { setPh("egg"); eggT0 = -1e9; E.onPlate = false; hintEl.textContent = ""; }
+function startTake() { setPh("take"); E.take = { p0: E.g.position.clone(), q0: E.g.quaternion.clone() }; E.pud.visible = false; for (const d of E.drips) d.visible = false; }
+const _q1 = new T.Quaternion(), _qFlat = new T.Quaternion().setFromAxisAngle(new T.Vector3(1, 0, 0), Math.PI), _v4 = new T.Vector3();
+function takeStep(dt) {
+  const k = (t - FLOW.t0) / 1.1, e = E;
+  // the wok rolls toward the plate and the egg slides over the lip onto the rice, golden side up
+  PS.tilt = 0.55 * Math.sin(Math.PI * Math.min(1, k / 0.85)); PS.roll = PS.tilt * 40 * DEG; PS.lift = 0.12 * PS.tilt; PS.x = SIDE * 0.32 * PS.tilt;
+  const lip = _v4.set(SIDE * 0.9, K_RIM + 0.05, 0.05).applyMatrix4(wok.matrixWorld).clone();
+  const top = new T.Vector3(PL.g.position.x, PL.cy + 0.04, PL.cz);
+  if (k < 0.45) { e.g.position.lerpVectors(e.take.p0, lip, smooth(k / 0.45)); wok.getWorldQuaternion(e.g.quaternion); e.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, Math.PI)); }
+  else { const f = clamp((k - 0.45) / 0.55, 0, 1); e.g.position.lerpVectors(lip, top, f); e.g.position.y += 0.3 * Math.sin(Math.PI * f); wok.getWorldQuaternion(_q1); _q1.multiply(_qx.setFromAxisAngle(_ax, Math.PI)); e.g.quaternion.copy(_q1).slerp(_qFlat, f); }
+  if (k >= 1) { e.onPlate = true; e.ox = e.oz = 0; e.g.position.copy(top); e.g.quaternion.copy(_qFlat); jolt(0.8, 0); e.sq.v = 8; hitstop = 0.06; startGarnish(); }
+  e.g.updateMatrixWorld(true); eggShape(dt, t);
+}
+function startGarnish() {
+  setPh("garnish");
+  if (!FLOW.garn) { // 김가루 flakes + sesame, one instanced mesh each
+    const g = new T.Group(); scene.add(g);
+    const kim = new T.InstancedMesh(new T.PlaneGeometry(0.022, 0.014), new T.MeshStandardMaterial({ color: lin("#1c2a1c"), roughness: 0.35, side: T.DoubleSide }), 110);
+    const ses = new T.InstancedMesh(new T.SphereGeometry(1, 8, 6), new T.MeshStandardMaterial({ color: lin("#f0e2bd"), roughness: 0.5 }), 80);
+    g.add(kim, ses); FLOW.garn = g; g.userData = { kim, ses, pts: [] };
+  }
+  const G2 = FLOW.garn; G2.visible = true; G2.userData.pts = [];
+  for (let i = 0; i < 190; i++) { const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * 0.42; G2.userData.pts.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, d: rnd(0, 0.5), rx: rnd(0, TAU), ry: rnd(0, TAU) }); }
+  if (G2.parent !== scene) scene.add(G2);
+}
+function garnishStep() {
+  const G2 = FLOW.garn, { kim, ses, pts } = G2.userData, k = t - FLOW.t0;
+  pts.forEach((q, i) => {
+    const f = clamp((k - q.d) / 0.45, 0, 1), d = Math.hypot(q.x, q.z);
+    const land = PL.cy + 0.04 + plateMound(d) * 0.95 + (d < 0.46 ? 0.11 * Math.max(0, 1 - (d / 0.5) ** 2) + 0.02 : 0); // on the egg / rice
+    dummy.position.set(PL.g.position.x + q.x, land + 0.9 * (1 - f) ** 2, PL.cz + q.z);
+    dummy.rotation.set(q.rx + (1 - f) * 6, q.ry, 0);
+    if (i < 110) { dummy.scale.set(1, 1, 1); dummy.rotation.x = -Math.PI / 2 + 0.3 * Math.sin(q.rx); dummy.updateMatrix(); kim.setMatrixAt(i, dummy.matrix); }
+    else { dummy.scale.set(0.008, 0.005, 0.013); dummy.updateMatrix(); ses.setMatrixAt(i - 110, dummy.matrix); }
+  });
+  kim.instanceMatrix.needsUpdate = ses.instanceMatrix.needsUpdate = true;
+  if (k > 1.3 && FLOW.ph === "garnish") showResult();
+}
+function score() {
+  const gs = FLOW.grades, n = gs.length || 1, per = gs.filter((g) => g === "perfect").length, good = gs.filter((g) => g === "good").length;
+  const early = gs.filter((g) => g === "early").length, late = gs.filter((g) => g === "late").length + (FLOW.maxGap > 2.2 ? 1 : 0);
+  const done = clamp(Math.round(30 - 3 * early - 6 * late - (gs.length < 6 ? 8 : 0)), 6, 30), fire = Math.min(20, per * 2 + good);
+  const e = E, flip = e.flipped ? 22 : 8, yolk = e.burst ? 3 : 12, sear = e.flipCook >= 0.9 && e.flipCook <= 1.25 ? 6 : 3;
+  return { done, fire, flip, yolk, sear, total: done + fire + flip + yolk + sear };
+}
+function showResult() {
+  setPh("result"); const r = score();
+  const grades = [[95, "불맛 장인"], [85, "동네 중국집 에이스"], [70, "자취 3년 차"], [0, "엄마 부르기"]], tag = grades.find((g) => r.total >= g[0])[1];
+  const next = grades.slice().reverse().find((g) => g[0] > r.total);
+  resEl.innerHTML = `<div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1 · 계란 반숙</div>
+    <ul><li><span>밥 익힘</span><span>${r.done} / 30</span></li><li><span>불맛 (박자·높이)</span><span>${r.fire} / 20</span></li>
+    <li><span>계란 뒤집기</span><span>${r.flip} / 22</span></li><li><span>노른자</span><span>${r.yolk} / 12</span></li><li><span>바삭한 바닥</span><span>${r.sear} / 6</span></li></ul>
+    <div class="tot"><span class="stamp">${tag}</span><span class="score">${r.total}<small style="font-size:20px">점</small></span></div>
+    ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - r.total}점</div>` : ""}
+    <div class="row"><button class="big" id="again">한 번 더</button><button id="home">처음으로</button></div>`;
+  resEl.hidden = false; requestAnimationFrame(() => resEl.classList.add("up"));
+  document.getElementById("again").onclick = () => startGame(FLOW.auto);
+  document.getElementById("home").onclick = () => { resEl.hidden = true; introEl.hidden = false; setPh("intro"); PL.g.visible = false; if (FLOW.garn) FLOW.garn.visible = false; resetFood(); };
+}
+// input: a fast upward swipe = a phone flick (an artifact page cannot read the motion sensor); space bar on a desk
+let sw = null;
+canvas.addEventListener("pointerdown", (e) => { sw = { y: e.clientY, t: performance.now() }; });
+addEventListener("pointerup", (e) => {
+  if (!sw) return; const dy = sw.y - e.clientY, ms = performance.now() - sw.t; sw = null;
+  if (dy > 40 && ms < 400) flickIn(clamp(dy / ms / 1.1, 0.4, 1.8));
+});
+addEventListener("keydown", (e) => { if (e.code === "Space") flickIn(1); });
+function flickIn(str) {
+  if (FLOW.auto) return;
+  if (FLOW.ph === "rice") doToss(str);
+  else if (FLOW.ph === "egg" && t - eggT0 > 0.8 && !E.flip) FLOW.flipReq = { strong: str > 1.35 };
+}
+/* ---------- loop ---------- */
+let last = performance.now(), t = 0, fpsN = 0, fpsT = 0;
+function frame(now) {
+  // bullet time on a perfect toss: the whole game clock slows (food, wok, fire AND the countdown), so it costs nothing
+  const kk = t - tossT0;
+  const ts = !perfect || scn !== "rice" ? 1 : kk < 0.17 ? 1 : kk < 0.22 ? 1 - 0.75 * smooth((kk - 0.17) / 0.05) : kk < 0.4 ? 0.25 : kk < 0.52 ? 0.25 + 0.75 * smooth((kk - 0.4) / 0.12) : 1;
+  let dt = Math.min(0.033, (now - last) / 1000) * slow * ts; last = now;
+  if (hitstop > 0) { hitstop -= dt; dt = 0; }
+  t += dt;
+  const ph = FLOW.ph;
+  scn = ph === "plate" ? "plate" : ph === "egg" ? "egg" : ph === "take" ? "take" : ph === "garnish" || ph === "result" ? "final" : "rice";
+  hudEl.style.visibility = ph === "rice" ? "visible" : "hidden";
+  if (ph === "rice") {
+    const gap = t - tossT0; FLOW.cue = FLOW.started && clock > 0 && gap >= 1.0 && gap <= 1.6; cueEl.style.opacity = FLOW.cue ? 1 : 0;
+    if (FLOW.auto && clock > 0 && (!FLOW.started ? t - FLOW.t0 > 1.0 : gap > FLOW.nextGap)) doToss(1);
+    if (FLOW.started) { clock = Math.max(0, clock - dt); if (clock <= 0 && t - tossT0 > 0.95) startPlate(); }
+  } else cueEl.style.opacity = 0;
+  timerEl.textContent = clock.toFixed(1); timerEl.classList.toggle("slow", ts < 0.9);
+  vigEl.style.opacity = ((1 - ts) / 0.75 * 0.7).toFixed(2);
+  wokPose(t); applyPose();
+  // the plate is there from the plating on; the camera keeps it in view, then closes in on the dish
+  const plateOn = ph === "plate" || ph === "egg" || ph === "take" || ph === "garnish" || ph === "result";
+  PL.g.visible = plateOn; if (ph !== "plate") PL.lad.visible = false;
+  if (ph === "plate" || ph === "egg") plateStep(dt);
+  if (ph === "plate" && PS.doneT && t - PS.doneT > 1.4) startEgg();
+  const close = ph === "garnish" || ph === "result" ? smooth((t - (ph === "garnish" ? FLOW.t0 : FLOW.t0 - 1.3)) / 1.0) : 0;
+  const tgt = _v4.set(PL.g.position.x, PL.cy + 0.15, PL.cz);
+  camera.position.set(camBase.x + PS.pan, camBase.y, camBase.z).lerp(new T.Vector3(tgt.x, tgt.y + 3.1, tgt.z + 2.3), close);
+  camera.lookAt(new T.Vector3(PS.pan, -0.05, 0.35).lerp(new T.Vector3(tgt.x, tgt.y - (ph === "result" ? 0.55 : 0.1), tgt.z), close));
+  if (ph === "intro") PS.pan = 0;
+  for (const f of [rice, kimchi, pa]) { f.mesh.visible = true; stepFood(f, t, dt); drawFood(f); }
+  bed.visible = false;
+  const eggOn = ph === "egg" || ph === "take" || ph === "garnish" || ph === "result";
+  E.g.visible = eggOn; E.spat.visible = E.oil.visible = E.fizz.visible = ph === "egg";
+  if (!eggOn) { E.pud.visible = false; for (const d of E.drips) d.visible = false; }
+  if (ph === "egg") { eggStep(dt); if (E.flipped && t - E.landT > 1.3) startTake(); }
+  else if (ph === "take") takeStep(dt);
+  else if (ph === "garnish" || ph === "result") { eggShape(dt, t); garnishStep(); }
+  if (FLOW.garn) FLOW.garn.visible = ph === "garnish" || ph === "result";
+  document.getElementById("esay").style.opacity = (ph === "egg" || ph === "plate") && performance.now() - esayT < 1800 ? 1 : 0;
+  // fire: flicker, flare on the lip snap
+  const flare = Math.exp(-Math.max(0, t - tossT0 - 0.15) * 5) * (t - tossT0 > 0.12 ? 1 : 0);
+  fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 0.9 * flare);
+  for (const sp of flames) {
+    const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.22 * flare) * u.s;
+    const r = u.r + 0.08 * flare;
+    sp.position.set(Math.cos(a) * r, -0.3 + h * 0.5 + surf(r * r) * 0.5, Math.sin(a) * r + pose.z * 0.5);
+    sp.scale.set(0.2 * u.s, h, 1); sp.material.opacity = (S.phys ? 0.45 : 0.6) + 0.2 * Math.sin(t * 21 + u.ph);
+  }
+  // steam off the hot food
+  for (const p of puffs) {
+    const u = p.userData; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4); u.z = rnd(-0.3, 0.3); }
+    const k = u.t / 2; p.position.set((u.x || 0) + Math.sin(t + u.t * 3) * 0.05, 0.25 + k * 1.1, (u.z || 0)); p.scale.setScalar(0.25 + k * 0.6);
+    p.material.opacity = (scn === "rice" ? 0.22 : scn === "egg" ? 0.14 : 0) * Math.sin(Math.PI * k);
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+
+for (const b of document.querySelectorAll("[data-style]")) b.onclick = () => { build(b.dataset.style); for (const x of document.querySelectorAll("[data-style]")) x.setAttribute("aria-pressed", x === b); };
+document.getElementById("go").onclick = () => startGame(false);
+document.getElementById("demo").onclick = () => startGame(true);
+build("B");
+requestAnimationFrame(frame);
+</script>
