@@ -65,3 +65,16 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   스위치가 Web Audio 를 끄므로 열 신호는 그림만으로 충분해야 함(`navigator.audioSession.type='playback'` 시도). 공유 이미지 —
   주문서 canvas → `navigator.share({files})`, 인앱은 이미지 길게 눌러 저장 대체.
 - 2026-10-23 operator: fire looked awkward, wok toss should feel like a Chinese chef. Fire rebuilt as particles (soft flame sprites rising around the rim from behind the wok, flare on each toss, oil-catch flame inside the wok on strong tosses). Toss = wok pushes forward and lifts (~0.34 s), rice slides up the far wall and peels off as a sheet that curls back toward the handle; too strong spills on the near side. Balance: 0.85 s rhythm 91, 2.5 s 79, idle 23, 0.3 s rhythm now 84% rice good (realistic: Ko & Hu's 0.3 s cycle), too strong 7.
+- 2026-10-23 운영자: 서브에이전트 독립 리뷰 + 실제 플레이 반복 요청, 그리고 "폰 기울기에 따라 볶음밥이랑 계란이 움직여야".
+  플레이테스트(14판, 실제 드래그 입력): 밥 판 실력 차 작음, 계란은 화면상 웍 안인데 놓침(판정 .32 vs 그려진 웍 ~1.0),
+  튕김 세기를 첫 문턱 순간으로 잼, 결과 그릇 계란 앞뒷면이 보상과 반대, 다시 시작 튕김이 첫 튕김으로 먹힘, 밥이 한 줄로 모임,
+  불이 동그란 얼룩. 반영(시안 2 v4):
+  - 기울기: 밥 무더기가 모양을 유지한 채 낮은 쪽으로 쏠림, 불은 가운데가 가장 셈(1.15 − 0.6r²) → 벽 쪽 밥은 덜 익음.
+    계란은 바닥이 익어야(익힘 .45~) 미끄러지고 벽에 튕김, 던질 때 미끄러지던 속도 + 기울기로 날아감, 공중에선 기울기로 웍을
+    조금(±.35) 옮김. 받는 반경 .62. 시안 입력: 누른 채 천천히 끌기 = 기울기, 화면 오른쪽 아래 수평계.
+  - 튕김 세기 = 쓸기 중 최고 속도(쓸기가 끝날 때 발사), 다시 시작 뒤 손을 한 번 떼야 튕김 인정.
+  - 결과 그릇: 항상 노른자 면, 성공 = 흰자 다 익고 가장자리 노릇, 실패 = 덜 익은 흰자, 접힘 = 반달. 쏟은 만큼 밥 무더기가 작아짐.
+    도장은 합계 줄 왼쪽(그림 안 가림), "(계란 없음)"은 배경 알약.
+  - 불: 끝이 뾰족한 불꽃 혀(겹친 물방울 3겹), 튕길 때 먼 쪽 테두리 위로 넘어오는 불, 웍 그림은 한 번 그려 캐시.
+  - 날 밥 색을 김치 양념 쪽으로, 밥 320알 무더기 반경 .66, 튕길 때 먼 벽 위치를 깊이별로 흩음.
+  밸런스(헤드리스 정책): 0.85초 90 · 2.5초 76 · 가만히 26 · 0.3초 48(밥 64%) · 너무 세게 50(쏟음 79%).

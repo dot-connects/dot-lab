@@ -3,7 +3,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Song+Myung&family=IBM+Plex+Sans+KR:wght@400;600&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
 <style>
-/* layout: header, then the phone beside a side column (colour ramp, view angle); stacks on a phone */
+/* layout: header, then the phone beside a side column (colour ramp); stacks on a phone */
 :root{
   --bg:#eef0f2; --fg:#1d2329; --muted:#56616b; --line:#d3d9de; --chip:#e1e6ea; --accent:#c2410c; --card:#ffffff;
   --body:"IBM Plex Sans KR",system-ui,sans-serif; --disp:"Do Hyeon","IBM Plex Sans KR",sans-serif;
@@ -29,13 +29,10 @@ h1{font-family:var(--disp);font-weight:400;font-size:clamp(28px,6vw,40px);margin
 .ramp canvas{width:100%;aspect-ratio:1;display:block;border-radius:10px}
 .ramp span{display:block;text-align:center;font-size:12px;color:var(--muted);margin-top:4px}
 .ramp .rowlab{grid-column:1/-1;font-size:13px;font-weight:600;margin-top:4px}
-.seg{display:flex;gap:6px;flex-wrap:wrap}
-.seg button{flex:1 1 0;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:600 14px var(--body);cursor:pointer}
-.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
-.seg button:focus-visible,.again:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+.again:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
 /* result: the C order slip laid on the B steel counter */
 .result{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;
-  background:linear-gradient(135deg,#eef1f3,#cfd6dc);color:#2a1a14}
+  background:linear-gradient(135deg,#eef1f3,#cfd6dc);color:#2a1a14;touch-action:none}
 .slip{background:#fbf6ea;width:100%;padding:18px 16px 18px;font-family:"Nanum Gothic Coding",monospace;position:relative;transform:rotate(-1.2deg);
   box-shadow:0 10px 22px rgba(30,40,50,.28);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
 .slip .shop{font-family:"Song Myung",serif;font-size:22px;text-align:center}
@@ -43,24 +40,23 @@ h1{font-family:var(--disp);font-weight:400;font-size:clamp(28px,6vw,40px);margin
 .slip canvas{width:100%;aspect-ratio:4/3;display:block}
 .slip ul{margin:0;padding:0;list-style:none;font-size:13px}
 .slip li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0}
-.slip .total{display:flex;justify-content:space-between;font-weight:700;font-size:19px;margin-top:8px}
-.slip .stamp{position:absolute;right:10px;top:58px;transform:rotate(-12deg);border:3px solid #c81e1e;color:#c81e1e;
-  font-family:"Song Myung",serif;font-size:19px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.7)}
+.slip .total{display:flex;justify-content:space-between;align-items:baseline;font-weight:700;font-size:19px;margin:2px 0 6px}
 .slip .big{font-size:44px;line-height:1}.slip .big small{font-size:18px;margin-left:2px}
-.slip .total{align-items:baseline;margin:2px 0 6px}
+.slip .stamp{display:inline-block;transform:rotate(-7deg);font-weight:400;border:3px solid #c81e1e;color:#c81e1e;
+  font-family:"Song Myung",serif;font-size:19px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.75)}
+.slip .stamp.rec{position:absolute;top:60px;right:10px;transform:rotate(10deg);font-size:22px}
 .slip .formula{font-size:10.5px;color:#7a6b5c;margin-top:8px;line-height:1.4}
-.slip .stamp.rec{top:auto;bottom:70px;right:14px;transform:rotate(8deg);font-size:22px}
 .result .hint{font-size:12px;color:#56616b}
 .again{border:0;border-radius:999px;padding:10px 22px;font:600 15px var(--body);cursor:pointer;min-height:44px;background:#1f2a33;color:#fff}
 </style>
 
 <header>
   <h1>김치볶음밥 한 그릇 · 시안 2</h1>
-  <p class="lede">고정: B 화면 + C 주문서. 이번에 바꾼 것: 팬 손잡이가 화면 아래(손 쪽)로 오고, 위에서 살짝 비스듬히 내려다보는 입체 시점. 밥알과 계란은 날것 → 윤기 도는 주황 → 노릇 → 짙은 갈색 → 검정으로 조금씩 변합니다.</p>
+  <p class="lede">고정: B 화면(35°, 손잡이가 손 쪽) + C 주문서. 이번 판: 폰을 기울이면 밥과 계란이 그쪽으로 미끄러집니다. 불은 웍 가운데가 가장 세서, 밥을 벽 쪽으로 쏠리게 하면 덜 익고 가운데에 두면 빨리 익습니다. 계란은 바닥이 익어야 미끄러지기 시작합니다.</p>
   <ul class="how">
-    <li>손대지 않으면 자동 시연 (4~8초에 일부러 쉬어 타는 모습)</li>
-    <li>위로 휙 드래그 = 튕기기</li>
-    <li>계란 판: 옆으로 드래그 = 팬 이동</li>
+    <li>손대지 않으면 자동 시연</li>
+    <li>빠르게 위로 쓸기 = 튕기기 (실제: 손목 튕기기)</li>
+    <li>누른 채 천천히 끌기 = 기울이기 (실제: 폰 기울기)</li>
   </ul>
 </header>
 
@@ -69,7 +65,7 @@ h1{font-family:var(--disp);font-weight:400;font-size:clamp(28px,6vw,40px);margin
   <div class="side">
     <section>
       <h2>색 변화</h2>
-      <p>게임과 같은 색 함수로 그렸습니다. 점수는 '딱 좋음'과 '노릇' 칸을 맛있게 익은 것으로 셉니다(익힘 0.55~1.3). 파도 넣었습니다.</p>
+      <p>게임과 같은 색 함수로 그렸습니다. 점수는 '딱 좋음'과 '노릇' 칸을 맛있게 익은 것으로 셉니다(익힘 0.55~1.3).</p>
       <div class="ramp" id="ramp" style="margin-top:10px"></div>
     </section>
   </div>
@@ -77,40 +73,45 @@ h1{font-family:var(--disp);font-weight:400;font-size:clamp(28px,6vw,40px);margin
 
 <script>
 "use strict";
-/* ---------- game engine (world: toss axis x -1..1 runs far<->near, z sideways, y up from wok bottom) ---------- */
-const G=12, RATE=.2, N=260, RICE_T=12, TAU=Math.PI*2;
+/* ---------- game engine (world: x runs near(-) to far(+) along the toss, z sideways, y up from the wok bottom) ---------- */
+const G=12, RATE=.2, N=320, RICE_T=12, TAU=Math.PI*2, PILE=.66, EGG_R=.3, CATCH=.62;
 const ys=x=>.35*x*x;
 const rnd=(a,b)=>a+Math.random()*(b-a);
 const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
 const THETA=35*Math.PI/180;   // view angle away from straight down (operator 10-23)
 
+function home(p){const a=rnd(0,TAU),r=Math.sqrt(Math.random())*PILE;p.hx=Math.cos(a)*r;p.hz=Math.sin(a)*r}
 function newGame(manual){
   const grains=[];
   for(let i=0;i<N;i++){
-    const a=rnd(0,TAU), rr=Math.sqrt(Math.random())*.62, x=Math.cos(a)*rr, kind=Math.random();
-    grains.push({x,y:ys(x),vx:0,vy:0,z:Math.sin(a)*rr,air:false,depth:Math.random(),
-      cook:0,spilled:false,rot:rnd(0,Math.PI),kimchi:kind<.12,pa:kind>.95,shape:Math.random()});
+    const kind=Math.random(), p={vx:0,vy:0,vz:0,air:false,depth:Math.random(),cook:0,spilled:false,rot:rnd(0,Math.PI),
+      kimchi:kind<.12,pa:kind>.95,shape:Math.random()};
+    home(p);p.x=p.hx;p.z=p.hz;p.y=ys(p.x);grains.push(p);
   }
-  return {t:0,phase:'rice',grains,parts:[],fire:[],flare:0,toss:null,flickFx:0,lastFlick:-9,manual,started:!manual,flicks:0,lastRiceFlick:0,maxGap:0,egg:null,pan:0,panT:0,panLock:0,res:null,phaseT:0};
+  return {t:0,phase:'rice',grains,parts:[],fire:[],flare:0,toss:null,lastFlick:-9,manual,started:!manual,flicks:0,lastRiceFlick:0,maxGap:0,
+    tilt:{x:0,y:0},tiltT:{x:0,y:0},egg:null,pan:0,res:null,phaseT:0};
 }
 
+/* s = flick strength, side = sideways lean of the flick (real build: wrist tilt at the flick) */
 function flick(g,s,side=0){
   if(g.t-g.lastFlick<.22) return;
-  g.lastFlick=g.t; g.flickFx=1;
   if(g.phase==='rice'){
     if(g.phaseT>=RICE_T) return;
+    g.lastFlick=g.t;
     if(!g.started){g.started=true;g.phaseT=0}
     g.maxGap=Math.max(g.maxGap,g.phaseT-g.lastRiceFlick);g.lastRiceFlick=g.phaseT;g.flicks++;
     g.toss={t0:g.t,s}; g.flare=Math.min(1.6,g.flare+s);
-    if(s>=.85) for(let i=0;i<34;i++) g.fire.push(flame(rnd(-.45,.45),rnd(-.3,.45),.1,s,true));   /* oil catches: flame into the wok */
+    if(s>=.85) for(let i=0;i<30;i++) g.fire.push(flame(rnd(-.45,.45),rnd(-.25,.45),.1,s,'in'));   /* oil catches: flame into the wok */
+    for(let i=0;i<14;i++) g.fire.push(flame(rnd(-.7,.7),rnd(.85,1),.3,s,'rim'));                   /* flames lick over the far rim */
     for(const p of g.grains){
       if(p.air||p.spilled||p.pend) continue;
-      p.pend=s; p.launch=g.t+(.62-clamp(p.x,-.62,.62))*.11;   /* far grains leave first, the sheet peels toward you */
+      p.pend=s; p.lip=.6+.25*(1-p.depth); p.launch=g.t+(.7-clamp(p.x,-.7,.7))*.1;   /* far grains leave first: the sheet peels toward you */
     }
   } else if(g.phase==='egg' && g.egg.state==='pan'){
     const e=g.egg;
-    g.toss={t0:g.t,s}; g.flare=Math.min(1.6,g.flare+s*.6);
-    e.state='air'; e.s=s; e.cookAtToss=e.cook; e.vy=2.2+3*s; e.w=5.2*s; e.vx=clamp(side,-1,1)*.9; g.panLock=g.t+.3;  /* real build: side = wrist tilt */
+    g.lastFlick=g.t; g.toss={t0:g.t,s}; g.flare=Math.min(1.6,g.flare+s*.6);
+    e.state='air'; e.s=s; e.cookAtToss=e.cook; e.vy=2.2+3*s; e.w=5.2*s;
+    e.vx=e.svx*.9+g.tilt.x*.45+side*.25; e.vdp=e.svdp*.9;   /* it leaves with the slide it had, plus the lean */
   }
 }
 
@@ -123,25 +124,26 @@ function emit(g,dt){
   if(g.parts.length>420) return;
   if(g.phase==='rice') for(const p of g.grains){
     if(p.air||p.spilled) continue;
-    if(p.cook>.25&&p.cook<.95&&Math.random()<dt*.35) puff(g,p.z,p.x,p.y,p.cook,.95);
-    if(p.cook>=.95&&Math.random()<dt*(1.4*(p.cook-.95)+.45)) puff(g,p.z,p.x,p.y,p.cook,.95);
+    if(p.cook>.25&&p.cook<.95&&Math.random()<dt*.3) puff(g,p.z,p.x,p.y,p.cook,.95);
+    if(p.cook>=.95&&Math.random()<dt*(1.2*(p.cook-.95)+.4)) puff(g,p.z,p.x,p.y,p.cook,.95);
   }
   if(g.phase==='egg'&&g.egg.state==='pan'){
     const e=g.egg;
-    if(e.cook>.2&&Math.random()<dt*(e.cook<1.5?6:10+8*(e.cook-1.5))) puff(g,e.x+rnd(-.25,.25),rnd(-.2,.2),.06,e.cook,1.5);
+    if(e.cook>.2&&Math.random()<dt*(e.cook<1.5?6:10+8*(e.cook-1.5))) puff(g,e.x+rnd(-.25,.25),e.dp+rnd(-.2,.2),.06,e.cook,1.5);
   }
 }
 
-/* ---------- burner fire: many short-lived soft flames rising around the wok ---------- */
-function flame(hz,dp,y,s,inside){return {hz,dp,y,vy:rnd(.7,1.2)*(inside?1.4+s:1),vh:rnd(-.15,.15),age:0,life:rnd(.35,.6)*(inside?.7:1),size:rnd(.14,.24)*(inside?1:1),inside}}
+/* ---------- burner fire: short-lived flame tongues rising around the wok ---------- */
+function flame(hz,dp,y,s,kind){return {hz,dp,y,vy:rnd(.7,1.2)*(kind==='in'?1.4+s:kind==='rim'?.9+s*.4:1),vh:rnd(-.15,.15),age:0,
+  life:rnd(.35,.6)*(kind==='in'?.7:kind==='rim'?.6:1),size:rnd(.15,.25)*(kind==='rim'?1.1:1),kind,flip:Math.random()<.5}}
 function stepFire(g,dt){
   g.flare=Math.max(0,g.flare-dt*2.2);
   if(g.phase!=='result'){
     let n=(110+300*g.flare)*dt;
-    while(n>0){ if(Math.random()<n){let a=rnd(0,TAU);while(Math.sin(a)<-.3)a=rnd(0,TAU);const r=rnd(.98,1.12);g.fire.push(flame(Math.cos(a)*r,Math.sin(a)*r*.9,rnd(-.25,-.05),g.flare,false))} n-=1 }
+    while(n>0){ if(Math.random()<n){let a=rnd(0,TAU);while(Math.sin(a)<-.3)a=rnd(0,TAU);const r=rnd(.98,1.12);g.fire.push(flame(Math.cos(a)*r,Math.sin(a)*r*.9,rnd(-.25,-.05),g.flare,'ring'))} n-=1 }
   }
   for(const f of g.fire){f.age+=dt;f.y+=f.vy*dt*(1+g.flare*.6);f.hz+=f.vh*dt+Math.sin(f.age*14+f.dp*9)*.25*dt;
-    if(!f.inside){const r=Math.hypot(f.hz,f.dp)||1;f.hz+=f.hz/r*.18*dt;f.dp+=f.dp/r*.18*dt}}
+    if(f.kind==='ring'){const r=Math.hypot(f.hz,f.dp)||1;f.hz+=f.hz/r*.18*dt;f.dp+=f.dp/r*.18*dt}}
   g.fire=g.fire.filter(f=>f.age<f.life);
 }
 
@@ -161,17 +163,17 @@ function finish(g){
   const rice=60-pts.burnt-pts.raw-pts.spill;
   const lines=[];
   if(pts.burnt) lines.push([`탄 밥 ${Math.round(st.burnt*100)}% · `+(g.maxGap>=1.5?`최대 ${g.maxGap.toFixed(1)}초 안 튕김`:'바닥에 붙은 밥'),-pts.burnt]);
-  if(pts.raw) lines.push([`덜 익은 밥 ${Math.round(st.raw*100)}%`+(g.flicks>18?` · 튕김 ${g.flicks}번, 너무 잦음 (맛있는 리듬 ${GOOD_FLICKS}번)`:''),-pts.raw]);
+  if(pts.raw) lines.push([`덜 익은 밥 ${Math.round(st.raw*100)}% · `+(g.flicks>18?`튕김 ${g.flicks}번, 너무 잦음 (맛있는 리듬 ${GOOD_FLICKS}번)`:'벽 쪽에 쏠림'),-pts.raw]);
   if(pts.spill) lines.push([`쏟은 밥 ${Math.round(st.spill*100)}% · 너무 세게 튕김`,-pts.spill]);
   lines.sort((a,b)=>a[1]-b[1]);
   let flip=0,yolk=0,sear=0,flipped=false,folded=false,burst=false,eggLines=[];
-  if(e.state==='miss') eggLines.push(['계란 놓침 · 팬을 밑으로',-40]);
+  if(e.state==='miss') eggLines.push([`계란 놓침 · ${Math.abs(e.svx)>.25?'미끄러지는 중에 던짐':'기울여서 팬을 밑으로'}`,-40]);
   else if(e.state==='stuck'){yolk=12;eggLines.push(['계란을 안 던짐 · 바닥 탐',-28])}
   else{
     const r=((e.rot%TAU)+TAU)%TAU, d=Math.abs(r-Math.PI);
     if(d<.8){flip=22;flipped=true}
-    else if(d>Math.PI-.8){flip=6;eggLines.push([e.s>1?'한 바퀴 돌아 날 면이 위로 · 살살':'덜 돌아 안 뒤집힘 · 조금 세게',-16])}
-    else{flip=10;folded=true;eggLines.push(['반으로 접힘',-12])}
+    else if(d>Math.PI-.8){flip=6;eggLines.push([r>Math.PI?'한 바퀴 돌아 날 면이 위로 · 살살':'덜 돌아 안 뒤집힘 · 조금 세게',-16])}
+    else{flip=10;folded=true;eggLines.push([r<Math.PI?'덜 돌아 반으로 접힘 · 조금 세게':'더 돌아 반으로 접힘 · 살살',-12])}
     if(e.s>1.2){burst=true;eggLines.push(['노른자 터짐 · 너무 세게',-12])} else yolk=12;
     if(e.cookAtToss>=.6&&e.cookAtToss<=1.4) sear=6; else eggLines.push([e.cookAtToss<.6?'너무 일찍 던짐 · 흰자가 덜 익음':'늦게 던짐 · 밑면이 탐',-6]);
   }
@@ -191,57 +193,79 @@ function finish(g){
 }
 
 function step(g,dt){
-  g.t+=dt; g.phaseT+=dt; g.flickFx=Math.max(0,g.flickFx-dt*4);
+  g.t+=dt; g.phaseT+=dt;
+  g.tilt.x+=(g.tiltT.x-g.tilt.x)*Math.min(1,dt*8); g.tilt.y+=(g.tiltT.y-g.tilt.y)*Math.min(1,dt*8);
   stepFire(g,dt);
   if(g.phase==='rice'){
     if(!g.started){g.phaseT=0;emit(g,0);return}   /* the clock waits for the first flick */
-    if(!g.manual){ /* scripted demo: toss, idle so it starts to burn, toss again */
+    if(!g.manual){ /* scripted demo: toss, then rest with a slow slosh so it starts to burn, then toss again */
       const t=g.phaseT;
       if((t<3.5||t>8.5)&&t%.85<dt) flick(g,rnd(.75,1.05));
+      g.tiltT.x=t>=3.5&&t<=8.5?Math.sin((t-3.5)*1.6)*.55:0; g.tiltT.y=0;
     }
+    const tx=g.tilt.y*.55, tz=g.tilt.x*.55, sq=1-.3*Math.min(1,Math.hypot(g.tilt.x,g.tilt.y));
     for(const p of g.grains){
-      if(p.spilled){ if(p.air){p.vy-=G*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<=-.12){p.y=-.12;p.air=false}} continue }
+      if(p.spilled){ if(p.air){p.vy-=G*dt;p.x+=p.vx*dt;p.z+=p.vz*dt;p.y+=p.vy*dt;if(p.y<=-.12){p.y=-.12;p.air=false}} continue }
+      const heat=RATE*(1.6*(1-p.depth)**2+.05)*(1.15-.6*(p.x*p.x+p.z*p.z));   /* bottom layer sears; centre of the wok is hottest */
       if(p.air){
         p.vy-=G*dt; p.x+=p.vx*dt; p.z+=p.vz*dt; p.y+=p.vy*dt; p.rot+=dt*6;
-        p.cook+=RATE*.1*dt;   /* flames reach the rice in the air too, gently */
+        p.cook+=RATE*.05*dt;   /* flames reach the rice in the air too, gently */
         if(p.vy<0){
-          if(Math.abs(p.x)<=1&&p.y<=ys(p.x)){p.y=ys(p.x);p.air=false;p.depth=Math.random();p.vz=0;
-            p.z=rnd(-1,1)*Math.sqrt(Math.max(.02,.42-p.x*p.x))}
-          else if(Math.abs(p.x)>1&&p.y<.3){p.spilled=true}
+          if(Math.hypot(p.x,p.z)<=1&&p.y<=ys(p.x)){p.y=ys(p.x);p.air=false;p.depth=Math.random();p.vz=0;home(p)}
+          else if(Math.hypot(p.x,p.z)>1&&p.y<.3){p.spilled=true;p.sx=p.x*rnd(1.05,1.3);p.sz=p.z+rnd(-.25,.25)}
         }
       } else if(p.pend){
-        p.cook+=RATE*(1.6*(1-p.depth)**2+.05)*dt;
-        p.x+=(.72-p.x)*Math.min(1,dt*12); p.y=ys(p.x);   /* the push slides the rice up the far wall */
+        p.cook+=heat*dt;
+        p.x+=(p.lip-p.x)*Math.min(1,dt*12); p.y=ys(p.x);   /* the push slides the rice up the far wall */
         if(g.t>=p.launch){
           const s=p.pend; p.pend=0; p.air=true;
           p.vy=s*4*(.75+.5*Math.random())*(1-.3*p.depth);
-          p.vx=-(1.05+1.1*(Math.random()-.5))*s;          /* curls back over toward the handle */
-          p.vz=(Math.random()-.5)*.35*s-p.z*.6;
+          p.vx=-(1+.9*(Math.random()-.5))*s;          /* curls back over toward the handle */
+          p.vz=(Math.random()-.5)*.35*s-p.z*.6+g.tilt.x*.4;
         }
       } else {
-        p.cook+=RATE*(1.6*(1-p.depth)**2+.05)*dt; /* bottom layer sears, top layer barely warms */
-        const rr=Math.hypot(p.x,p.z);if(rr>.5){const k=.4*dt/rr;p.x-=p.x*k;p.z-=p.z*k;p.y=ys(p.x)}   /* rice slides back into a round pile */
+        p.cook+=heat*dt;
+        /* the pile keeps its shape and slides toward the low side of the tilted wok */
+        const gx=p.hx*sq+tx, gz=p.hz*sq+tz, k=Math.min(1,dt*2.2);
+        p.x+=(gx-p.x)*k; p.z+=(gz-p.z)*k;
+        const r=Math.hypot(p.x,p.z); if(r>.95){p.x*=.95/r;p.z*=.95/r}
+        p.y=ys(p.x);
       }
     }
     emit(g,dt);
-    if(g.phaseT>=RICE_T&&(!g.grains.some(p=>p.air&&!p.spilled)||g.phaseT>RICE_T+1)){g.maxGap=Math.max(g.maxGap,RICE_T-g.lastRiceFlick);g.phase='egg';g.phaseT=0;g.parts=[];g.egg={x:0,y:.06,vx:0,vy:0,rot:0,w:0,cook:0,state:'drop',s:0};g.pan=0;g.panT=0}
+    if(g.phaseT>=RICE_T&&(!g.grains.some(p=>p.air&&!p.spilled)||g.phaseT>RICE_T+1)){
+      g.maxGap=Math.max(g.maxGap,RICE_T-g.lastRiceFlick);g.phase='egg';g.phaseT=0;g.parts=[];
+      g.egg={x:0,dp:0,rx:0,rdp:0,svx:0,svdp:0,y:.06,vx:0,vdp:0,vy:0,rot:0,w:0,cook:0,state:'drop',s:0};g.pan=0;
+    }
   } else if(g.phase==='egg'){
     const e=g.egg;
-    g.pan+=(g.panT-g.pan)*Math.min(1,dt*10);
-    if(e.state==='drop'){e.cook=0;if(g.phaseT>.4)e.state='pan'}
+    g.pan+=(g.tilt.x*.35-g.pan)*Math.min(1,dt*10);   /* leaning the phone shifts the wok a little under the egg */
+    if(!g.manual){ /* demo: tilt the egg back to the middle, toss when it sits still */
+      if(e.state==='pan'||e.state==='drop'){g.tiltT.x=clamp(-e.rx*2.2-e.svx*.8,-.8,.8);g.tiltT.y=clamp(-e.rdp*2.2,-.8,.8);
+        if(e.cook>=1&&Math.abs(e.rx)<.12&&Math.abs(e.svx)<.15) flick(g,rnd(.82,.98));}
+      else if(e.state==='air') g.tiltT.x=clamp((e.x)/.35,-1,1);
+    }
+    if(e.state==='drop'){e.cook=0;if(g.phaseT>.4){e.state='pan';if(!g.manual){e.rx=rnd(-.3,.3)}}}
     if(e.state==='pan'){
-      e.cook+=dt*.55; e.x=g.pan;
-      if(!g.manual&&e.cook>=1) flick(g,rnd(.82,.98),rnd(-.6,.6));
+      e.cook+=dt*.55;
+      if(e.cook>.45){   /* the bottom sets, then the egg slides with the tilt and bounces off the wall */
+        e.svx+=g.tilt.x*2.6*dt; e.svdp+=g.tilt.y*2.6*dt;
+        const fr=Math.max(0,1-2*dt); e.svx*=fr; e.svdp*=fr;
+        e.rx+=e.svx*dt; e.rdp+=e.svdp*dt;
+        const r=Math.hypot(e.rx,e.rdp), lim=.97-EGG_R-.05;
+        if(r>lim){e.rx*=lim/r;e.rdp*=lim/r;e.svx*=-.35;e.svdp*=-.35}
+      }
+      e.x=g.pan+e.rx; e.dp=e.rdp;
       if(e.cook>2.4&&e.state==='pan'){e.cookAtToss=e.cook;e.state='stuck';e.s=0;e.rot=0;g.phaseT=0}
     } else if(e.state==='air'){
-      e.vy-=G*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
-      if(!g.manual) g.panT=clamp(e.x,-.8,.8);
+      e.vy-=G*dt; e.x+=e.vx*dt; e.dp+=e.vdp*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
       if(e.vy<0&&e.y<=.06){
-        if(Math.abs(e.x-g.pan)<.32){e.y=.06;e.state='landed';e.x=g.pan+(e.x-g.pan)*.5;g.phaseT=0}
+        if(Math.hypot(e.x-g.pan,e.dp)<CATCH){e.y=.06;e.state='landed';e.rx=e.x-g.pan;e.rdp=e.dp;g.phaseT=0}
         else {e.state='miss';g.phaseT=0}
       }
-    } else if(e.state==='miss'){
-      e.vy-=G*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
+    } else if(e.state==='landed'){e.x=g.pan+e.rx}
+    else if(e.state==='miss'){
+      e.vy-=G*dt; e.x+=e.vx*dt; e.dp+=e.vdp*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
     }
     emit(g,dt);
     if((e.state==='landed'||e.state==='miss'||e.state==='stuck')&&g.phaseT>1.1){finish(g);g.phase='result';g.phaseT=0}
@@ -253,8 +277,9 @@ function step(g,dt){
 }
 
 /* ---------- colours: raw -> glossy -> golden -> burnt, one gradual ramp ---------- */
-const RICE=[[0,[240,198,178]],[.35,[238,140,96]],[.7,[228,94,44]],[1.0,[214,104,38]],[1.25,[180,98,40]],[1.45,[112,64,40]],[1.75,[42,36,33]]];
+const RICE=[[0,[234,150,118]],[.35,[232,112,70]],[.7,[224,86,38]],[1.0,[210,100,36]],[1.25,[178,96,40]],[1.45,[112,64,40]],[1.75,[42,36,33]]];
 const KIM=[[0,[208,64,52]],[.6,[200,44,30]],[1.0,[178,52,26]],[1.3,[134,50,28]],[1.5,[72,38,30]],[1.75,[36,30,28]]];
+const PA=[[0,[132,196,92]],[.8,[104,168,64]],[1.3,[86,116,44]],[1.6,[52,52,32]],[1.8,[34,32,28]]];
 const EGG_EDGE=[[0,[255,255,255]],[.8,[250,244,230]],[1.1,[238,200,132]],[1.5,[198,130,66]],[1.9,[112,68,42]],[2.4,[46,37,33]]];
 const EGG_UNDER=[[0,[252,248,240]],[.6,[244,216,160]],[1.0,[228,172,98]],[1.4,[186,118,60]],[1.9,[98,62,42]],[2.4,[42,34,30]]];
 function lerpStops(st,v){
@@ -267,9 +292,8 @@ function lerpStops(st,v){
 }
 const rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
 const gloss=cook=>cook<.4||cook>1.3?0:.6*Math.sin(Math.PI*(cook-.4)/.9);   // shine peaks mid-range, gone once it chars
-
-const PA=[[0,[132,196,92]],[.8,[104,168,64]],[1.3,[86,116,44]],[1.6,[52,52,32]],[1.8,[34,32,28]]];
 const grainCol=p=>lerpStops(p.kimchi?KIM:p.pa?PA:RICE,p.cook);
+
 function drawGrain(c,x,y,sc,p){
   const col=grainCol(p);
   c.save();c.translate(x,y);c.rotate(p.rot);c.fillStyle=rgb(col);
@@ -286,11 +310,10 @@ function drawGrain(c,x,y,sc,p){
 /* fried egg seen from above at the view angle. top=true draws the yolk side, else the browned underside */
 function drawEgg(c,x,y,r,squash,cook,top,opts={}){
   c.save();c.translate(x,y);c.scale(1,squash);
-  const edge=lerpStops(EGG_EDGE,cook);
-  // lacy rim: a few bumps so the edge reads as fried, not a flat disc
-  const set=clamp(cook/.7,0,1);               // whites turn from clear to opaque
+  if(opts.half){c.beginPath();c.rect(-r*1.2,-r*1.2,r*2.4,r*1.25);c.clip()}   /* folded: only a half-moon shows */
+  const edge=lerpStops(EGG_EDGE,cook), set=clamp(cook/.7,0,1);   // whites turn from clear to opaque
   c.fillStyle=rgb(top?edge:lerpStops(EGG_UNDER,cook),top?.3+.7*set:1);
-  c.beginPath();
+  c.beginPath();   // lacy rim: a few bumps so the edge reads as fried, not a flat disc
   for(let i=0;i<=18;i++){const a=i/18*TAU,rr=r*(1+.06*Math.sin(i*2.7));i?c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr*.92):c.moveTo(rr,0)}
   c.fill();
   if(top){
@@ -307,25 +330,47 @@ function drawEgg(c,x,y,r,squash,cook,top,opts={}){
   c.restore();
 }
 
-/* ---------- cached art: brushed-steel counter, soft smoke puffs in 8 shades ---------- */
-let counterCv=null;
+/* ---------- cached art ---------- */
+const DPR=()=>Math.min(2,devicePixelRatio||1);
+let counterCv=null, wokCv=null;
 function counter(W,H){
   if(counterCv&&counterCv.w===W&&counterCv.h===H) return counterCv.cv;
-  const cv=document.createElement('canvas'),dpr=Math.min(2,devicePixelRatio||1);cv.width=W*dpr;cv.height=H*dpr;
+  const cv=document.createElement('canvas'),dpr=DPR();cv.width=W*dpr;cv.height=H*dpr;
   const x=cv.getContext('2d');x.scale(dpr,dpr);
   const bg=x.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#eef1f3');bg.addColorStop(1,'#c9d1d8');x.fillStyle=bg;x.fillRect(0,0,W,H);
   x.strokeStyle='rgba(255,255,255,.35)';x.lineWidth=1;
   for(let i=-W;i<H;i+=5){x.beginPath();x.moveTo(0,i);x.lineTo(W,i+W*.08);x.stroke()}
   counterCv={cv,w:W,h:H};return cv;
 }
-const FLAME=[[255,246,200],[255,178,60],[255,96,28]].map(([r,g_,b])=>{const cv=document.createElement('canvas');cv.width=cv.height=64;
-  const x=cv.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,`rgba(${r},${g_},${b},1)`);gr.addColorStop(.45,`rgba(${r},${g_},${b},.55)`);gr.addColorStop(1,`rgba(${r},${g_},${b},0)`);
-  x.fillStyle=gr;x.fillRect(0,0,64,64);return cv});
+/* the wok (outer wall with warm reflection, rim, interior shading), drawn once around its own centre */
+function wokArt(R,ct,D){
+  if(wokCv&&wokCv.R===R) return wokCv;
+  const pad=4, w=R*2.1+pad*2, top=R*1.04*ct+pad, h=top+R*ct*1.25+D*1.6+pad;
+  const cv=document.createElement('canvas'),dpr=DPR();cv.width=w*dpr;cv.height=h*dpr;
+  const c=cv.getContext('2d');c.scale(dpr,dpr);const cx=w/2,cy=top;
+  const wall=()=>{c.beginPath();c.moveTo(cx-R*1.04,cy);c.bezierCurveTo(cx-R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy);c.closePath()};
+  c.fillStyle='#1f2023';wall();c.fill();
+  const wl=c.createLinearGradient(0,cy,0,cy+R*ct+D*1.6);wl.addColorStop(0,'rgba(255,110,40,0)');wl.addColorStop(1,'rgba(255,110,40,.35)');c.fillStyle=wl;wall();c.fill();
+  c.fillStyle='#3d4046';c.beginPath();c.ellipse(cx,cy,R*1.04,R*1.04*ct,0,0,TAU);c.fill();
+  const ig=c.createRadialGradient(cx,cy+D*.6,R*.05,cx,cy+D*.3,R);ig.addColorStop(0,'#4b4e54');ig.addColorStop(.6,'#2e3034');ig.addColorStop(1,'#1b1c1f');
+  c.fillStyle=ig;c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.fill();
+  c.save();c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.clip();
+  const lw=c.createLinearGradient(0,cy-R*ct,0,cy);lw.addColorStop(0,'rgba(255,255,255,.14)');lw.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=lw;c.fillRect(cx-R,cy-R*ct,2*R,R*ct);c.restore();
+  c.strokeStyle='rgba(255,255,255,.18)';c.lineWidth=1.5;c.beginPath();c.ellipse(cx,cy,R*1.03,R*1.03*ct,0,Math.PI*1.05,Math.PI*1.95);c.stroke();
+  wokCv={cv,R,w,h,ox:cx,oy:cy};return wokCv;
+}
+/* flame tongue: three nested teardrops, red outside, yellow-white core, pointed tip */
+const FLAME=(()=>{const cv=document.createElement('canvas');cv.width=48;cv.height=128;const x=cv.getContext('2d');
+  const tear=(w,h,col)=>{x.fillStyle=col;x.beginPath();x.moveTo(24,124);x.bezierCurveTo(24-w,124,24-w*.9,124-h*.45,24,124-h);x.bezierCurveTo(24+w*.9,124-h*.45,24+w,124,24,124);x.fill()};
+  x.globalAlpha=.45;tear(23,122,'#ff5a1f');x.globalAlpha=.75;tear(17,96,'#ff8c2a');x.globalAlpha=.85;tear(11,64,'#ffc04a');x.globalAlpha=.9;tear(6,34,'#fff4c8');
+  return cv})();
 function drawFire(c,list,P,R){
   for(const f of list){
-    const k=f.age/f.life, [x,y]=P(f.hz,f.dp,f.y), sz=f.size*R*(1-k*.6), w=f.inside?sz*1.6:sz*1.05, h=f.inside?sz*2.6:sz*3.8;
-    c.globalAlpha=Math.min(1,(1-k)*1.1);c.drawImage(FLAME[k<.3?1:2],x-w/2,y-h*.8,w,h);
-    if(k<.5){c.globalCompositeOperation='lighter';c.globalAlpha=(1-k*2)*.7;c.drawImage(FLAME[0],x-w*.28,y-h*.55,w*.56,h*.6);c.globalCompositeOperation='source-over'}
+    const k=f.age/f.life, [x,y]=P(f.hz,f.dp,f.y), sz=f.size*R*(1-k*.5);
+    const w=sz*(f.kind==='in'?1.3:.95), h=sz*(f.kind==='in'?3:3.6)*(1-k*.3), sway=Math.sin(f.age*20+f.hz*7)*.15;
+    c.save();c.translate(x,y);c.rotate(sway);if(f.flip)c.scale(-1,1);
+    c.globalAlpha=Math.min(1,(1-k)*1.3);c.drawImage(FLAME,-w/2,-h,w,h);c.restore();
   }
   c.globalAlpha=1;
 }
@@ -333,10 +378,10 @@ const PUFF=[...Array(8)].map((_,i)=>{const shade=i===7?255:Math.round(30+i*14),c
   const x=cv.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,`rgba(${shade},${shade},${shade},1)`);gr.addColorStop(1,`rgba(${shade},${shade},${shade},0)`);
   x.fillStyle=gr;x.fillRect(0,0,64,64);return cv});
 
-/* ---------- the B view, tilted, handle toward the player's hand ---------- */
+/* ---------- the B view, tilted 35°, handle toward the player's hand ---------- */
 function view(W,H){
   const R=W*.43, ct=Math.cos(THETA), st=Math.sin(THETA);
-  return {R,ct,st,cx:W/2,cy:H*.47,hf:st*1.2+.3};
+  return {R,ct,st,cx:W/2,cy:H*.47,hf:st+.15};
 }
 /* share of food touching the hot metal: what the sizzle and the bottom glow follow */
 function onPan(g){
@@ -346,12 +391,12 @@ function onPan(g){
 }
 function render(c,W,H,g){
   const v=view(W,H), {R,ct,st,hf}=v, pan=g.phase==='egg'?g.pan:0;
-  // chef's toss: push forward and up, then pull back (Ko & Hu: one cycle about 0.3 s)
-  const tk=g.toss?clamp((g.t-g.toss.t0)/.34,0,1):1, ts=g.toss?g.toss.s:0;
-  const push=Math.sin(Math.PI*tk)*R*.13*ts, lift=Math.max(0,Math.sin(Math.PI*tk*1.3))*R*.05*ts;
-  const cx=v.cx+pan*R, cy=v.cy-push-lift;
+  // chef's toss: push forward and up, then pull back (Ko & Hu: one cycle about 0.3 s); the far lip rises
+  const tk=g.toss?clamp((g.t-g.toss.t0)/.34,0,1):1, ts=g.toss?g.toss.s:0, sw=Math.sin(Math.PI*tk);
+  const push=sw*R*.15*ts, lift=Math.max(0,Math.sin(Math.PI*tk*1.3))*R*.06*ts, lean=1+sw*.1*ts;
+  const cx=v.cx+pan*R+g.tilt.x*R*.04, cy=v.cy-push-lift;
   const D=.35*R*st;                                   // how far the bowl bottom sits below the rim on screen
-  const P=(hz,dp,y)=>[cx+hz*R, cy-dp*R*ct+(.35-y)*R*st-(y>.35?(y-.35)*R*(hf-st):0)];
+  const P=(hz,dp,y)=>[cx+hz*R, cy-dp*R*ct*lean+(.35-y)*R*st-(y>.35?(y-.35)*R*(hf-st):0)];
   c.drawImage(counter(W,H),0,0,W,H);
   const fire=g.phase!=='result';
   if(fire){
@@ -360,10 +405,12 @@ function render(c,W,H,g){
     c.fillStyle=glow;c.fillRect(0,0,W,H);
     // burner flames hug the wok: drawn before the body, so only the ones rising past its wall show
     const Pf=(hz,dp,y)=>[v.cx+(pan+hz)*R, v.cy+D*1.7-dp*R*ct*.9-y*R*1.1];
-    drawFire(c,g.fire.filter(f=>!f.inside),Pf,R);
+    drawFire(c,g.fire.filter(f=>f.kind==='ring'),Pf,R);
   }
-  // shadow under the wok stays on the burner while the wok moves
   c.fillStyle='rgba(20,30,40,.18)';c.beginPath();c.ellipse(v.cx+pan*R+R*.05,v.cy+D*2.1,R*.95,R*ct*.9,0,0,TAU);c.fill();
+  const k=R/100;
+  // spilled rice lies scattered on the counter, under the handle
+  if(g.phase!=='egg') for(const p of g.grains) if(p.spilled&&!p.air){const [x,y]=P(p.sz,clamp(p.sx,-1.5,1.5),-.12);drawGrain(c,x,y+D*.8,k,p)}
   // handle: toward the bottom edge, widening as it comes nearer
   const hx=cx, hy0=cy+R*ct-4, hy1=H+12, nw=R*.1;
   c.fillStyle='#55585e';c.beginPath();c.moveTo(hx-nw*.5,hy0);c.lineTo(hx+nw*.5,hy0);c.lineTo(hx+nw*.62,hy0+R*.32);c.lineTo(hx-nw*.62,hy0+R*.32);c.fill();
@@ -372,41 +419,29 @@ function render(c,W,H,g){
   c.moveTo(hx-R*.09,hy0+R*.3);c.lineTo(hx+R*.09,hy0+R*.3);c.lineTo(hx+R*.17,hy1);c.lineTo(hx-R*.17,hy1);c.closePath();c.fill();
   c.fillStyle='rgba(255,255,255,.12)';c.fillRect(hx-R*.04,hy0+R*.34,R*.03,hy1-hy0);
   c.fillStyle='#c9ccd1';c.beginPath();c.arc(hx,hy0+R*.38,R*.025,0,TAU);c.fill();
-  // wok body: outer wall below the front rim, rim ring, interior
-  c.fillStyle='#1f2023';c.beginPath();c.moveTo(cx-R*1.04,cy);
-  c.bezierCurveTo(cx-R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy);c.closePath();c.fill();
-  if(fire){const wl=c.createLinearGradient(0,cy,0,cy+R*ct+D*1.6);wl.addColorStop(0,'rgba(255,110,40,0)');wl.addColorStop(1,'rgba(255,110,40,.35)');
-    c.fillStyle=wl;c.beginPath();c.moveTo(cx-R*1.04,cy);c.bezierCurveTo(cx-R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy);c.closePath();c.fill();
-    }
-  c.fillStyle='#3d4046';c.beginPath();c.ellipse(cx,cy,R*1.04,R*1.04*ct,0,0,TAU);c.fill();
-  const ig=c.createRadialGradient(cx,cy+D*.6,R*.05,cx,cy+D*.3,R);
-  ig.addColorStop(0,'#4b4e54');ig.addColorStop(.6,'#2e3034');ig.addColorStop(1,'#1b1c1f');
-  c.fillStyle=ig;c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.fill();
-  // far inner wall catches the light
-  c.save();c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.clip();
-  const lw=c.createLinearGradient(0,cy-R*ct,0,cy);lw.addColorStop(0,'rgba(255,255,255,.14)');lw.addColorStop(1,'rgba(255,255,255,0)');
-  c.fillStyle=lw;c.fillRect(cx-R,cy-R*ct,2*R,R*ct);
-  if(g.phase!=='result'){const hg=c.createRadialGradient(cx,cy+D*.5,0,cx,cy+D*.5,R*.62);hg.addColorStop(0,`rgba(255,110,40,${.08+.3*onPan(g)})`);hg.addColorStop(1,'rgba(255,110,40,0)');c.fillStyle=hg;c.fillRect(cx-R,cy-R,2*R,2*R)}
-  c.restore();
-  c.strokeStyle='rgba(255,255,255,.18)';c.lineWidth=1.5;c.beginPath();c.ellipse(cx,cy,R*1.03,R*1.03*ct,0,Math.PI*1.05,Math.PI*1.95);c.stroke();
-  const k=R/100;
+  // wok body from the cache; the far lip rising during a toss stretches it a little upward
+  const wa=wokArt(R,ct,D);
+  c.drawImage(wa.cv,cx-wa.ox,cy-wa.oy*lean,wa.w,wa.oy*lean+(wa.h-wa.oy));
+  if(fire){c.save();c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct*lean,0,0,TAU);c.clip();
+    const hg=c.createRadialGradient(cx,cy+D*.5,0,cx,cy+D*.5,R*.62);hg.addColorStop(0,`rgba(255,110,40,${.08+.3*onPan(g)})`);hg.addColorStop(1,'rgba(255,110,40,0)');
+    c.fillStyle=hg;c.fillRect(cx-R,cy-R,2*R,2*R);c.restore();
+    drawFire(c,g.fire.filter(f=>f.kind==='rim'),P,R);
+  }
   if(g.phase==='rice'||g.phase==='result'){
-    // spilled rice lies on the counter
-    for(const p of g.grains) if(p.spilled&&!p.air){const [x,y]=P(p.z,clamp(p.x,-1.35,1.35)*1.05,-.12);drawGrain(c,x,y+D*.8,k,p)}
     const list=g.grains.filter(p=>!(p.spilled&&!p.air)).sort((a,b)=>b.x-a.x||a.y-b.y);
     for(const p of list){
-      const h=Math.max(0,p.y-ys(p.x)), sc=k*(1+h*.6);
+      const h=Math.max(0,p.y-ys(p.x)), sc=k*(1+h*1.1);
       if(h>.02){const [sx,sy]=P(p.z,p.x,ys(p.x));c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(sx,sy,3.2*k,1.8*k*ct+.6,0,0,TAU);c.fill()}
-      const [x,y]=P(p.z,p.x,p.y);drawGrain(c,x,y,sc,p);
+      const [x,y]=P(p.z,p.x,p.y);drawGrain(c,x,Math.max(H*.2,y),sc,p);
     }
   } else if(g.egg){
     const e=g.egg, h=Math.max(0,e.y-.06), cs=Math.cos(e.rot), sc=1+h*.5;
-    if(e.state!=='miss'){const [sx,sy]=P(e.x-pan,0,.02);c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(sx,sy,R*.3,R*.27*ct,0,0,TAU);c.fill()}
-    const [x,y]=P(e.x-pan,0,e.y);
+    if(e.state!=='miss'){const [sx,sy]=P(e.x-pan,e.dp,.02);c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(sx,sy,R*EGG_R,R*EGG_R*.9*ct,0,0,TAU);c.fill()}
+    const [x,y]=P(e.x-pan,e.dp,e.y);
     const cook=e.state==='pan'||e.state==='drop'?e.cook:(e.cookAtToss||e.cook);
-    drawEgg(c,x,y,R*.3*sc,Math.max(.06,Math.abs(cs))*ct,cook,cs>=0);
+    drawEgg(c,x,y,R*EGG_R*sc,Math.max(.06,Math.abs(cs))*ct,cook,cs>=0);
   }
-  if(fire) drawFire(c,g.fire.filter(f=>f.inside),P,R);
+  if(fire) drawFire(c,g.fire.filter(f=>f.kind==='in'),P,R);
   // smoke and steam rise up the screen and spread
   for(const s of g.parts){
     const kk=s.age/s.life, r=(s.r0+(s.r1-s.r0)*kk)*R*1.2;
@@ -416,7 +451,10 @@ function render(c,W,H,g){
   }
   c.globalAlpha=1;
   if(g.phase==='rice'){const s=riceStats(g);if(s.burnt>.03){c.fillStyle=`rgba(60,58,56,${Math.min(.45,s.burnt*1.2)})`;c.fillRect(0,0,W,H)}}
-  // HUD
+  hud(c,W,H,g);
+}
+
+function hud(c,W,H,g){
   c.fillStyle='rgba(238,241,243,.88)';c.fillRect(0,0,W,H*.19);
   c.textAlign='center';
   if(g.phase==='rice'){
@@ -426,8 +464,8 @@ function render(c,W,H,g){
     c.fillStyle='#c5ced6';c.fillRect(W*.15,H*.165,W*.7,5);c.fillStyle='#ea580c';c.fillRect(W*.15,H*.165,W*.7*(left/RICE_T),5);
   } else if(g.phase==='egg'){
     const e=g.egg;let msg='계란 익는 중…';
-    if(e.state==='pan'&&e.cook>=.6) msg=e.cook>1.4?'바닥 탄다!':'지금 던져!';
-    if(e.state==='air') msg='팬을 밑으로!'; if(e.state==='landed') msg='착지!'; if(e.state==='miss') msg='아…'; if(e.state==='stuck') msg='안 던졌다…';
+    if(e.state==='pan'&&e.cook>=.6) msg=e.cook>1.4?'바닥 탄다!':Math.abs(e.svx)+Math.abs(e.svdp)>.25?'가운데로 모아!':'지금 던져!';
+    if(e.state==='air') msg='기울여서 받아!'; if(e.state==='landed') msg='착지!'; if(e.state==='miss') msg='아…'; if(e.state==='stuck') msg='안 던졌다…';
     c.fillStyle='#56616b';c.font='15px "Do Hyeon"';c.fillText('2판 · 계란 뒤집기',W/2,H*.055);
     c.fillStyle='#1f2a33';c.font=`${Math.round(W*.1)}px "Do Hyeon"`;c.fillText(msg,W/2,H*.055+W*.12);
   }
@@ -440,41 +478,54 @@ function render(c,W,H,g){
     c.strokeStyle='#1f2a33';c.lineWidth=2.5;c.beginPath();c.moveTo(W/2+W*.13,H*.45);c.lineTo(W/2+W*.13,H*.36);c.lineTo(W/2+W*.1,H*.385);c.moveTo(W/2+W*.13,H*.36);c.lineTo(W/2+W*.16,H*.385);c.stroke();
   }
   if(g.phase==='rice'){
-    const tip=!g.manual?'자동 시연 중 · 만지면 직접':g.started?'위로 휙 드래그 = 튕기기':'폰을 위로 휙! 튕기면 시작';
+    const tip=!g.manual?'자동 시연 중 · 만지면 직접':g.started?'튕기기 · 누른 채 끌면 기울이기':'폰을 위로 휙! 튕기면 시작';
     c.font='14px "Do Hyeon"';const tw=c.measureText(tip).width+22;
     c.fillStyle='rgba(31,42,51,.78)';c.beginPath();c.roundRect(W/2-tw/2,H*.215,tw,26,13);c.fill();
     c.fillStyle='#fff';c.fillText(tip,W/2,H*.215+18);
+  }
+  if(g.phase!=='result'){ /* spirit level: the bubble drifts to the high side */
+    const lx=W*.86, ly=H*.9, lr=W*.075;
+    c.fillStyle='rgba(31,42,51,.72)';c.beginPath();c.arc(lx,ly,lr,0,TAU);c.fill();
+    c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1;c.beginPath();c.arc(lx,ly,lr*.35,0,TAU);c.stroke();
+    c.fillStyle='#a3e635';c.beginPath();c.arc(lx-g.tilt.x*lr*.6,ly+g.tilt.y*lr*.6,lr*.28,0,TAU);c.fill();
+    c.fillStyle='#56616b';c.font='12px "Do Hyeon"';c.fillText('기울기',lx,ly-lr-5);
   }
 }
 
 /* ---------- result bowl, same tilted view ---------- */
 function drawBowl(cv,g){
-  const dpr=Math.min(2,devicePixelRatio||1), W=cv.clientWidth||260, H=W*.75;
+  const dpr=DPR(), W=cv.clientWidth||260, H=W*.75;
   cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);
-  const res=g.res, ct=Math.cos(THETA), cx=W/2, cy=H*.5, r=W*.36, k=W/300;
+  const res=g.res, ct=Math.cos(THETA), cx=W/2, cy=H*.52, r=W*.36, k=W/300;
   // bowl body + rim (porcelain, blue line)
   c.fillStyle='#e6e1d6';c.beginPath();c.moveTo(cx-r,cy);c.bezierCurveTo(cx-r*.9,cy+r*.95,cx+r*.9,cy+r*.95,cx+r,cy);c.closePath();c.fill();
   c.strokeStyle='#2563eb';c.lineWidth=2.5;c.beginPath();c.moveTo(cx-r*.93,cy+r*.18);c.bezierCurveTo(cx-r*.7,cy+r*.62,cx+r*.7,cy+r*.62,cx+r*.93,cy+r*.18);c.stroke();
   c.fillStyle='#fffdf8';c.beginPath();c.ellipse(cx,cy,r,r*ct,0,0,TAU);c.fill();
-  // rice mound from the grains actually cooked this round
-  const kept=g.grains.filter(p=>!p.spilled);
-  // mound base in the average colour, then the grains piled on it
-  const n=Math.max(1,kept.length), base=[214,98,40], mh=r*.38*Math.min(1,n/N+.3);
+  // rice mound from the grains actually cooked this round; spilled rice is missing from the bowl
+  const kept=g.grains.filter(p=>!p.spilled), share=kept.length/N, mh=r*.45*share;
+  const base=[214,98,40];
   const mg=c.createRadialGradient(cx-r*.2,cy-mh,r*.1,cx,cy-mh*.3,r);mg.addColorStop(0,rgb(base.map(v=>Math.min(255,v+25))));mg.addColorStop(1,rgb(base.map(v=>v*.7)));
-  c.fillStyle=mg;c.beginPath();c.ellipse(cx,cy,r*.9,r*.9*ct,0,0,Math.PI);c.bezierCurveTo(cx-r*.9,cy-mh*1.5,cx+r*.9,cy-mh*1.5,cx+r*.9,cy);c.fill();
+  const mr=r*(.5+.4*share);
+  c.fillStyle=mg;c.beginPath();c.ellipse(cx,cy,mr,mr*ct,0,0,Math.PI);c.bezierCurveTo(cx-mr,cy-mh*1.5,cx+mr,cy-mh*1.5,cx+mr,cy);c.fill();
   const pts=[];for(let rep=0;rep<2;rep++)for(const p of kept){const a=Math.random()*TAU,d=Math.sqrt(Math.random());pts.push({p,a,d})}
   pts.sort((u,w)=>Math.sin(u.a)*u.d-Math.sin(w.a)*w.d);
-  for(const {p,a,d} of pts){const lift=(1-d*d)*mh;drawGrain(c,cx+Math.cos(a)*d*r*.86,cy+Math.sin(a)*d*r*.86*ct-lift,k*1.05,p)}
-  if(res.miss){c.fillStyle='#6b5d4f';c.font='14px "IBM Plex Sans KR"';c.textAlign='center';c.fillText('(계란 없음)',cx,cy-r*.42);return}
-  if(res.folded){drawEgg(c,cx,cy-r*.4,r*.38,ct*.5,res.eggCook,true,{burst:res.burst});return}
-  drawEgg(c,cx,cy-r*.4,r*.4,ct,res.eggCook,!res.flipped,{burst:res.burst});
+  for(const {p,a,d} of pts){const lift=(1-d*d)*mh;drawGrain(c,cx+Math.cos(a)*d*mr*.95,cy+Math.sin(a)*d*mr*.95*ct-lift,k*1.05,p)}
+  const ey=cy-mh-r*.08;
+  if(res.miss){
+    c.font='13px "IBM Plex Sans KR"';c.textAlign='center';const t='(계란 없음)',tw=c.measureText(t).width+16;
+    c.fillStyle='rgba(251,246,234,.92)';c.beginPath();c.roundRect(cx-tw/2,ey-16,tw,24,12);c.fill();
+    c.fillStyle='#6b5d4f';c.fillText(t,cx,ey+1);return;
+  }
+  /* always yolk side up: a good flip shows set whites with golden lace, a missed flip shows runny whites */
+  const look=res.flipped?Math.max(res.eggCook,.9)+.25:res.stuck?res.eggCook:res.eggCook*.35;
+  drawEgg(c,cx,ey,r*.42,ct,look,true,{burst:res.burst,half:res.folded});
 }
 
 function showResult(ph,g,best,record){
   const el=ph.querySelector('.result'), r=g.res;
   const lines=r.lines.map(([k,v])=>`<li><span>${k}</span><span>${v}</span></li>`).join('');
-  el.innerHTML=`<div class="slip"><div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1</div><div class="stamp">${r.tag}</div>${record?'<div class="stamp rec">신기록</div>':''}<canvas></canvas>
-    <div class="total"><span>합계</span><span class="big">${r.total}<small>점</small></span></div>
+  el.innerHTML=`<div class="slip"><div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1</div>${record?'<div class="stamp rec">신기록</div>':''}<canvas></canvas>
+    <div class="total"><span class="stamp">${r.tag}</span><span class="big">${r.total}<small>점</small></span></div>
     <ul><li><span>밥 볶기 ${r.rice}/60 · 계란 ${r.egg}/40</span><span>최고 ${best||'—'}</span></li>${lines}</ul>
     <div class="formula">밥 = 맛있게 익은 비율 × 60 · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6</div></div>
     ${g.manual?'<button class="again" type="button">다시 볶기</button><div class="hint">위로 튕겨도 다시 시작</div>':'<div class="hint">화면을 누르면 직접 해 보기</div>'}`;
@@ -486,32 +537,39 @@ function showResult(ph,g,best,record){
 /* ---------- wire the phone ---------- */
 const ph=document.getElementById('phone'), cv=ph.querySelector('canvas'), c=cv.getContext('2d');
 let g=newGame(false), W=0, H=0, best=(()=>{try{return +localStorage.getItem('kfr-best')||0}catch(e){return 0}})(), last=performance.now(), shown=false;
-const fit=()=>{const dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;c.setTransform(dpr,0,0,dpr,0,0)};
+const fit=()=>{const dpr=DPR();W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;c.setTransform(dpr,0,0,dpr,0,0)};
 new ResizeObserver(fit).observe(cv);fit();
 ph._restart=manual=>{g=newGame(manual);shown=false;ph.querySelector('.result').hidden=true};
-/* drag stand-in for the phone sensors: a fast upward stroke = flick (its sideways lean = wrist tilt),
-   a slow sideways drag moves the pan by how far the finger travels, not where it is */
-let hist=[], lastX=0;
+/* pointer stand-in for the phone sensors (real build: devicemotion flick + deviceorientation tilt):
+   a fast upward stroke = flick, strength from the stroke's peak speed, fired when the stroke ends;
+   holding and dragging slowly = tilt, measured from where the finger went down (rice follows the finger) */
+let hist=[], down=null, stroke=null, needUp=false;
 const resEl=ph.querySelector('.result');
 resEl.addEventListener('click',()=>{if(!g.manual) ph._restart(true)});
+const fire_=()=>{
+  if(!stroke) return;
+  const s=stroke; stroke=null;
+  if(g.phase==='result'){if(g.manual){ph._restart(true);needUp=true}}
+  else flick(g,clamp(s.peak/4,.35,1.6),clamp(s.side,-1,1));
+};
 for(const el of [cv,resEl]){
   el.addEventListener('pointerdown',e=>{
     if(el===cv&&!g.manual) ph._restart(true);
-    hist=[[e.clientY,e.clientX,performance.now()]];lastX=e.clientX;
+    hist=[[e.clientY,e.clientX,performance.now()]];down={x:e.clientX,y:e.clientY};stroke=null;
   });
   el.addEventListener('pointermove',e=>{
     if(!hist.length) return;
     const now=performance.now();hist.push([e.clientY,e.clientX,now]);hist=hist.filter(h=>now-h[2]<90);
     const [y0,x0,t0]=hist[0], dtm=Math.max(16,now-t0), v=-(e.clientY-y0)/dtm*1000/H, vx=(e.clientX-x0)/dtm*1000/W;
-    if(g.phase==='egg'&&g.t>g.panLock&&v<1) g.panT=clamp(g.panT+(e.clientX-lastX)/W*2.4,-.85,.85);
-    lastX=e.clientX;
-    if(v>1.6){
-      if(g.phase==='result'){if(g.manual) ph._restart(true)}
-      else flick(g,clamp(v/3.2,.35,1.6),clamp(vx/v,-1,1));
-      hist=[[e.clientY,e.clientX,now]];
+    if(needUp) return;
+    if(v>1.6){ if(!stroke||v>stroke.peak) stroke={peak:v,side:vx/v} }
+    else if(stroke&&v<stroke.peak*.5){ fire_(); down={x:e.clientX,y:e.clientY} }
+    else if(!stroke&&g.manual&&g.phase!=='result'){
+      g.tiltT.x=clamp((e.clientX-down.x)/(W*.3),-1,1); g.tiltT.y=clamp(-(e.clientY-down.y)/(H*.15),-1,1);
     }
   });
-  el.addEventListener('pointerup',()=>{hist=[]});el.addEventListener('pointercancel',()=>{hist=[]});
+  const up=()=>{if(!needUp) fire_(); hist=[];stroke=null;needUp=false;g.tiltT.x=0;g.tiltT.y=0};
+  el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
 }
 function frame(now){
   const dt=Math.min(.033,(now-last)/1000);last=now;
@@ -530,15 +588,14 @@ function drawRamp(){
   const box=document.getElementById('ramp');box.innerHTML='';
   const add=(label,draw)=>{const d=document.createElement('div'),cv2=document.createElement('canvas'),s=document.createElement('span');
     s.textContent=label;d.append(cv2,s);box.append(d);
-    const dpr=Math.min(2,devicePixelRatio||1),w=cv2.clientWidth||60;cv2.width=w*dpr;cv2.height=w*dpr;const x=cv2.getContext('2d');x.scale(dpr,dpr);
+    const dpr=DPR(),w=cv2.clientWidth||60;cv2.width=w*dpr;cv2.height=w*dpr;const x=cv2.getContext('2d');x.scale(dpr,dpr);
     x.fillStyle='#2e3034';x.fillRect(0,0,w,w);draw(x,w)};
   const lab=t=>{const d=document.createElement('div');d.className='rowlab';d.textContent=t;box.append(d)};
-  lab('밥알 · 김치');
+  lab('밥알 · 김치 · 파');
   for(const [v,l] of STEPS) add(l,(x,w)=>{for(let i=0;i<18;i++){const p={cook:v,rot:i*.9,kimchi:i%5===0,pa:i%7===3,shape:(i*.37)%1};drawGrain(x,w*(.18+.64*((i*7)%16)/15),w*(.2+.6*((i*11)%16)/15),w/40,p)}});
   lab('계란후라이 (윗면 / 뒤집은 밑면)');
   for(const [v,l] of EGG_STEPS) add(l,(x,w)=>{drawEgg(x,w*.33,w*.36,w*.25,1,v,true);drawEgg(x,w*.68,w*.66,w*.22,1,v,false)});
 }
-
 
 document.fonts.ready.then(()=>{drawRamp();requestAnimationFrame(frame)});
 </script>
