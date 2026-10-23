@@ -57,6 +57,7 @@ Not in scope: new modes, characters, accounts/publishing (manifest stays draft).
   Flicks are ignored here.
 - Then two quick shakes (2 × 90 ms), two ladle pats (2 × 120 ms, automatic: shapes the dome, matches the receipt),
   plate squash + round high mound → '봉긋!' +2 (taken from the toss share so the total stays 100), '완성!' stamp,
-  wok back on the fire. Total 1.0–1.8 s.
+  wok back on the fire. Total ~1.4 s if the player pours at once, ~2.4 s when it auto-pours (pats or the auto-pour
+  delay can be cut if that feels slow).
 - Egg take-out later uses the same move: tilt right, slide the egg onto this plate.
 - Split vote: game wanted no ladle (adds time); chef + motion kept two short automatic pats.
