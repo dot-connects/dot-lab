@@ -91,7 +91,7 @@ function newGame(manual){
     grains.push({x,y:ys(x),vx:0,vy:0,z:Math.sin(a)*rr,air:false,depth:Math.random(),
       cook:0,spilled:false,rot:rnd(0,Math.PI),kimchi:kind<.12,pa:kind>.95,shape:Math.random()});
   }
-  return {t:0,phase:'rice',grains,parts:[],flickFx:0,lastFlick:-9,manual,started:!manual,flicks:0,lastRiceFlick:0,maxGap:0,egg:null,pan:0,panT:0,panLock:0,res:null,phaseT:0};
+  return {t:0,phase:'rice',grains,parts:[],fire:[],flare:0,toss:null,flickFx:0,lastFlick:-9,manual,started:!manual,flicks:0,lastRiceFlick:0,maxGap:0,egg:null,pan:0,panT:0,panLock:0,res:null,phaseT:0};
 }
 
 function flick(g,s,side=0){
@@ -101,14 +101,15 @@ function flick(g,s,side=0){
     if(g.phaseT>=RICE_T) return;
     if(!g.started){g.started=true;g.phaseT=0}
     g.maxGap=Math.max(g.maxGap,g.phaseT-g.lastRiceFlick);g.lastRiceFlick=g.phaseT;g.flicks++;
+    g.toss={t0:g.t,s}; g.flare=Math.min(1.6,g.flare+s);
+    if(s>=.85) for(let i=0;i<34;i++) g.fire.push(flame(rnd(-.45,.45),rnd(-.3,.45),.1,s,true));   /* oil catches: flame into the wok */
     for(const p of g.grains){
-      if(p.air||p.spilled) continue;
-      p.air=true;
-      p.vy=s*4*(.7+.6*Math.random())*(1-.35*p.depth);
-      p.vx=(Math.random()-.5)*.9*s*s+p.x*.1*s;
+      if(p.air||p.spilled||p.pend) continue;
+      p.pend=s; p.launch=g.t+(.62-clamp(p.x,-.62,.62))*.11;   /* far grains leave first, the sheet peels toward you */
     }
   } else if(g.phase==='egg' && g.egg.state==='pan'){
     const e=g.egg;
+    g.toss={t0:g.t,s}; g.flare=Math.min(1.6,g.flare+s*.6);
     e.state='air'; e.s=s; e.cookAtToss=e.cook; e.vy=2.2+3*s; e.w=5.2*s; e.vx=clamp(side,-1,1)*.9; g.panLock=g.t+.3;  /* real build: side = wrist tilt */
   }
 }
@@ -129,6 +130,19 @@ function emit(g,dt){
     const e=g.egg;
     if(e.cook>.2&&Math.random()<dt*(e.cook<1.5?6:10+8*(e.cook-1.5))) puff(g,e.x+rnd(-.25,.25),rnd(-.2,.2),.06,e.cook,1.5);
   }
+}
+
+/* ---------- burner fire: many short-lived soft flames rising around the wok ---------- */
+function flame(hz,dp,y,s,inside){return {hz,dp,y,vy:rnd(.7,1.2)*(inside?1.4+s:1),vh:rnd(-.15,.15),age:0,life:rnd(.35,.6)*(inside?.7:1),size:rnd(.14,.24)*(inside?1:1),inside}}
+function stepFire(g,dt){
+  g.flare=Math.max(0,g.flare-dt*2.2);
+  if(g.phase!=='result'){
+    let n=(110+300*g.flare)*dt;
+    while(n>0){ if(Math.random()<n){let a=rnd(0,TAU);while(Math.sin(a)<-.3)a=rnd(0,TAU);const r=rnd(.98,1.12);g.fire.push(flame(Math.cos(a)*r,Math.sin(a)*r*.9,rnd(-.25,-.05),g.flare,false))} n-=1 }
+  }
+  for(const f of g.fire){f.age+=dt;f.y+=f.vy*dt*(1+g.flare*.6);f.hz+=f.vh*dt+Math.sin(f.age*14+f.dp*9)*.25*dt;
+    if(!f.inside){const r=Math.hypot(f.hz,f.dp)||1;f.hz+=f.hz/r*.18*dt;f.dp+=f.dp/r*.18*dt}}
+  g.fire=g.fire.filter(f=>f.age<f.life);
 }
 
 function riceStats(g){
@@ -178,6 +192,7 @@ function finish(g){
 
 function step(g,dt){
   g.t+=dt; g.phaseT+=dt; g.flickFx=Math.max(0,g.flickFx-dt*4);
+  stepFire(g,dt);
   if(g.phase==='rice'){
     if(!g.started){g.phaseT=0;emit(g,0);return}   /* the clock waits for the first flick */
     if(!g.manual){ /* scripted demo: toss, idle so it starts to burn, toss again */
@@ -187,12 +202,21 @@ function step(g,dt){
     for(const p of g.grains){
       if(p.spilled){ if(p.air){p.vy-=G*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<=-.12){p.y=-.12;p.air=false}} continue }
       if(p.air){
-        p.vy-=G*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.rot+=dt*6;
+        p.vy-=G*dt; p.x+=p.vx*dt; p.z+=p.vz*dt; p.y+=p.vy*dt; p.rot+=dt*6;
         p.cook+=RATE*.1*dt;   /* flames reach the rice in the air too, gently */
         if(p.vy<0){
-          if(Math.abs(p.x)<=1&&p.y<=ys(p.x)){p.y=ys(p.x);p.air=false;p.depth=Math.random();
+          if(Math.abs(p.x)<=1&&p.y<=ys(p.x)){p.y=ys(p.x);p.air=false;p.depth=Math.random();p.vz=0;
             p.z=rnd(-1,1)*Math.sqrt(Math.max(.02,.42-p.x*p.x))}
           else if(Math.abs(p.x)>1&&p.y<.3){p.spilled=true}
+        }
+      } else if(p.pend){
+        p.cook+=RATE*(1.6*(1-p.depth)**2+.05)*dt;
+        p.x+=(.72-p.x)*Math.min(1,dt*12); p.y=ys(p.x);   /* the push slides the rice up the far wall */
+        if(g.t>=p.launch){
+          const s=p.pend; p.pend=0; p.air=true;
+          p.vy=s*4*(.75+.5*Math.random())*(1-.3*p.depth);
+          p.vx=-(1.05+1.1*(Math.random()-.5))*s;          /* curls back over toward the handle */
+          p.vz=(Math.random()-.5)*.35*s-p.z*.6;
         }
       } else {
         p.cook+=RATE*(1.6*(1-p.depth)**2+.05)*dt; /* bottom layer sears, top layer barely warms */
@@ -294,6 +318,17 @@ function counter(W,H){
   for(let i=-W;i<H;i+=5){x.beginPath();x.moveTo(0,i);x.lineTo(W,i+W*.08);x.stroke()}
   counterCv={cv,w:W,h:H};return cv;
 }
+const FLAME=[[255,246,200],[255,178,60],[255,96,28]].map(([r,g_,b])=>{const cv=document.createElement('canvas');cv.width=cv.height=64;
+  const x=cv.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,`rgba(${r},${g_},${b},1)`);gr.addColorStop(.45,`rgba(${r},${g_},${b},.55)`);gr.addColorStop(1,`rgba(${r},${g_},${b},0)`);
+  x.fillStyle=gr;x.fillRect(0,0,64,64);return cv});
+function drawFire(c,list,P,R){
+  for(const f of list){
+    const k=f.age/f.life, [x,y]=P(f.hz,f.dp,f.y), sz=f.size*R*(1-k*.6), w=f.inside?sz*1.6:sz*1.05, h=f.inside?sz*2.6:sz*3.8;
+    c.globalAlpha=Math.min(1,(1-k)*1.1);c.drawImage(FLAME[k<.3?1:2],x-w/2,y-h*.8,w,h);
+    if(k<.5){c.globalCompositeOperation='lighter';c.globalAlpha=(1-k*2)*.7;c.drawImage(FLAME[0],x-w*.28,y-h*.55,w*.56,h*.6);c.globalCompositeOperation='source-over'}
+  }
+  c.globalAlpha=1;
+}
 const PUFF=[...Array(8)].map((_,i)=>{const shade=i===7?255:Math.round(30+i*14),cv=document.createElement('canvas');cv.width=cv.height=64;
   const x=cv.getContext('2d'),gr=x.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,`rgba(${shade},${shade},${shade},1)`);gr.addColorStop(1,`rgba(${shade},${shade},${shade},0)`);
   x.fillStyle=gr;x.fillRect(0,0,64,64);return cv});
@@ -311,32 +346,24 @@ function onPan(g){
 }
 function render(c,W,H,g){
   const v=view(W,H), {R,ct,st,hf}=v, pan=g.phase==='egg'?g.pan:0;
-  const jolt=g.flickFx*R*.05, cx=v.cx+pan*R, cy=v.cy-jolt;
+  // chef's toss: push forward and up, then pull back (Ko & Hu: one cycle about 0.3 s)
+  const tk=g.toss?clamp((g.t-g.toss.t0)/.34,0,1):1, ts=g.toss?g.toss.s:0;
+  const push=Math.sin(Math.PI*tk)*R*.13*ts, lift=Math.max(0,Math.sin(Math.PI*tk*1.3))*R*.05*ts;
+  const cx=v.cx+pan*R, cy=v.cy-push-lift;
   const D=.35*R*st;                                   // how far the bowl bottom sits below the rim on screen
   const P=(hz,dp,y)=>[cx+hz*R, cy-dp*R*ct+(.35-y)*R*st-(y>.35?(y-.35)*R*(hf-st):0)];
   c.drawImage(counter(W,H),0,0,W,H);
   const fire=g.phase!=='result';
-  // flames lick up the outer wall: back half before the wok, front half over its wall
-  const flames=front=>{
-    for(let i=0;i<34;i++){
-      const a=i/34*TAU, sa=Math.sin(a); if(front!==(sa>.15)) continue;
-      const f=.55+.45*Math.sin(g.t*23+i*2.3)*Math.sin(g.t*9+i);
-      const bx=cx+Math.cos(a)*R*1.0, by=cy+D*1.7+sa*R*.75*ct;
-      const fh=R*(.5+.35*f)*(.7+.6*Math.abs(Math.cos(a))), fw=R*.1;
-      const fg=c.createLinearGradient(0,by,0,by-fh);
-      fg.addColorStop(0,'rgba(255,90,20,.95)');fg.addColorStop(.12,'rgba(255,110,20,.95)');fg.addColorStop(.7,'rgba(255,190,50,.75)');fg.addColorStop(1,'rgba(255,230,140,0)');
-      c.fillStyle=fg;c.beginPath();c.moveTo(bx-fw,by);
-      c.quadraticCurveTo(bx-fw*.9,by-fh*.55,bx+Math.sin(g.t*7+i)*fw*.7,by-fh);c.quadraticCurveTo(bx+fw*.9,by-fh*.55,bx+fw,by);c.fill();
-    }
-  };
   if(fire){
-    const glow=c.createRadialGradient(cx,cy+D*1.6,R*.3,cx,cy+D*1.6,R*1.6);
-    glow.addColorStop(0,'rgba(255,110,30,.6)');glow.addColorStop(1,'rgba(255,120,40,0)');
+    const glow=c.createRadialGradient(v.cx,v.cy+D*1.6,R*.3,v.cx,v.cy+D*1.6,R*1.5);
+    glow.addColorStop(0,`rgba(255,120,40,${.32+.25*Math.min(1,g.flare)})`);glow.addColorStop(1,'rgba(255,120,40,0)');
     c.fillStyle=glow;c.fillRect(0,0,W,H);
-    flames(false);
+    // burner flames hug the wok: drawn before the body, so only the ones rising past its wall show
+    const Pf=(hz,dp,y)=>[v.cx+(pan+hz)*R, v.cy+D*1.7-dp*R*ct*.9-y*R*1.1];
+    drawFire(c,g.fire.filter(f=>!f.inside),Pf,R);
   }
-  // shadow under the wok
-  c.fillStyle='rgba(20,30,40,.18)';c.beginPath();c.ellipse(cx+R*.05,cy+D*2.1,R*.95,R*ct*.9,0,0,TAU);c.fill();
+  // shadow under the wok stays on the burner while the wok moves
+  c.fillStyle='rgba(20,30,40,.18)';c.beginPath();c.ellipse(v.cx+pan*R+R*.05,v.cy+D*2.1,R*.95,R*ct*.9,0,0,TAU);c.fill();
   // handle: toward the bottom edge, widening as it comes nearer
   const hx=cx, hy0=cy+R*ct-4, hy1=H+12, nw=R*.1;
   c.fillStyle='#55585e';c.beginPath();c.moveTo(hx-nw*.5,hy0);c.lineTo(hx+nw*.5,hy0);c.lineTo(hx+nw*.62,hy0+R*.32);c.lineTo(hx-nw*.62,hy0+R*.32);c.fill();
@@ -379,6 +406,7 @@ function render(c,W,H,g){
     const cook=e.state==='pan'||e.state==='drop'?e.cook:(e.cookAtToss||e.cook);
     drawEgg(c,x,y,R*.3*sc,Math.max(.06,Math.abs(cs))*ct,cook,cs>=0);
   }
+  if(fire) drawFire(c,g.fire.filter(f=>f.inside),P,R);
   // smoke and steam rise up the screen and spread
   for(const s of g.parts){
     const kk=s.age/s.life, r=(s.r0+(s.r1-s.r0)*kk)*R*1.2;

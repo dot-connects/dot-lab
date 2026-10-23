@@ -64,3 +64,4 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   `accelerationIncludingGravity` high-pass, Threads·IG iOS 인앱 권한 실폰 확인, 드래그 대체 항상 켬. 소리 — iPhone 무음
   스위치가 Web Audio 를 끄므로 열 신호는 그림만으로 충분해야 함(`navigator.audioSession.type='playback'` 시도). 공유 이미지 —
   주문서 canvas → `navigator.share({files})`, 인앱은 이미지 길게 눌러 저장 대체.
+- 2026-10-23 operator: fire looked awkward, wok toss should feel like a Chinese chef. Fire rebuilt as particles (soft flame sprites rising around the rim from behind the wok, flare on each toss, oil-catch flame inside the wok on strong tosses). Toss = wok pushes forward and lifts (~0.34 s), rice slides up the far wall and peels off as a sheet that curls back toward the handle; too strong spills on the near side. Balance: 0.85 s rhythm 91, 2.5 s 79, idle 23, 0.3 s rhythm now 84% rice good (realistic: Ko & Hu's 0.3 s cycle), too strong 7.
