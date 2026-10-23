@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>김치볶음밥 한 그릇 · D:OT lab</title>
+<meta name="description" content="폰이 웍이다. 손목으로 튕겨 김치볶음밥을 볶고, 계란후라이를 뒤집어 얹어 한 그릇 점수를 받는다.">
+<meta property="og:title" content="김치볶음밥 한 그릇">
+<meta property="og:description" content="폰을 웍처럼 튕겨서 볶아 봐. 불맛 장인 될 수 있어?">
+<meta name="theme-color" content="#1d2329">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gowun+Dodum&family=Do+Hyeon&family=Song+Myung&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<style>
+:root{--ink:#1f2a33;--paper:#fbf6ea;--red:#c81e1e;--steel1:#eef1f3;--steel2:#c9d1d8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#stage{position:fixed;inset:0;display:flex;justify-content:center;align-items:center}
+#app{position:relative;height:100%;width:min(100%,calc(100dvh*0.5));max-width:560px;background:var(--steel1);overflow:hidden;touch-action:none}
+#app>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+[hidden]{display:none!important}
+.layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;
+  padding-top:max(22px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom));color:var(--ink);text-align:center;font-family:"Do Hyeon",system-ui,sans-serif}
+#intro{background:linear-gradient(180deg,rgba(238,241,243,.0) 0%,rgba(238,241,243,.92) 38%,rgba(238,241,243,.97) 100%);justify-content:flex-end;padding-bottom:max(44px,env(safe-area-inset-bottom))}
+#intro h1{margin:0;font-size:42px;line-height:1.05;font-weight:400;letter-spacing:.01em}
+#intro p{margin:0;font-size:18px;color:#4b5761;line-height:1.35}
+.btn{border:0;border-radius:999px;padding:14px 30px;font:400 22px "Do Hyeon",system-ui,sans-serif;cursor:pointer;min-height:52px;background:#ea580c;color:#fff;
+  box-shadow:0 6px 0 #9a3412,0 10px 18px rgba(0,0,0,.18);transition:transform .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #9a3412}
+.btn.ghost{background:transparent;color:#4b5761;box-shadow:none;font-size:16px;min-height:44px;padding:8px 16px}
+.btn:focus-visible{outline:3px solid #1f2a33;outline-offset:3px}
+#result{background:linear-gradient(135deg,#eef1f3,#cfd6dc);justify-content:center;touch-action:none}
+.slip{background:var(--paper);width:100%;max-width:400px;padding:18px 16px;font-family:"Nanum Gothic Coding",monospace;position:relative;transform:rotate(-1.2deg);text-align:left;
+  box-shadow:0 10px 22px rgba(30,40,50,.28);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
+.slip .shop{font-family:"Song Myung",serif;font-size:24px;text-align:center}
+.slip .meta{text-align:center;font-size:11px;color:#6b5d4f;margin-bottom:4px}
+.slip canvas{width:100%;aspect-ratio:4/3;display:block}
+.slip ul{margin:0;padding:0;list-style:none;font-size:13px}
+.slip li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0}
+.slip .total{display:flex;justify-content:space-between;align-items:center;margin:2px 0 6px}
+.slip .big{font-weight:700;font-size:48px;line-height:1}.slip .big small{font-size:18px;margin-left:2px}
+.stamp{display:inline-block;transform:rotate(-7deg) scale(1);border:3px solid var(--red);color:var(--red);font-family:"Song Myung",serif;font-size:20px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.75)}
+.stamp.rec{position:absolute;top:58px;right:10px;transform:rotate(10deg);font-size:22px}
+.stamp.pop{animation:stamp .38s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes stamp{0%{transform:rotate(-7deg) scale(2.4);opacity:0}100%{transform:rotate(-7deg) scale(1);opacity:1}}
+.slip .near{font-family:"Black Han Sans",sans-serif;font-size:22px;color:#E8481C;text-align:right;margin:-2px 0 6px}
+.slip .formula{font-size:10.5px;color:#7a6b5c;margin-top:8px;line-height:1.4}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hint{font-size:14px;color:#56616b}
+#toast{position:absolute;left:50%;top:24%;transform:translateX(-50%);pointer-events:none}
+@media (prefers-reduced-motion:reduce){.stamp.pop{animation:none}}
+</style>
+</head>
+<body>
+<div id="stage"><div id="app">
+  <canvas id="cv" aria-label="웍 화면"></canvas>
+  <div id="intro" class="layer">
+    <h1>김치볶음밥<br>한 그릇</h1>
+    <p>폰이 웍이에요. 손잡이 잡듯 쥐고<br>손목으로 휙! 튕겨서 볶아요.</p>
+    <button id="go" class="btn" type="button">불 켜기</button>
+    <button id="touchMode" class="btn ghost" type="button">센서 없이 손가락으로 하기</button>
+  </div>
+  <div id="result" class="layer" hidden></div>
+</div></div>
+<script src="js/core.js"></script>
+<script src="js/stage.js"></script>
+<script src="js/fx.js"></script>
+<script src="js/input.js"></script>
+<script src="js/rice.js"></script>
+<script src="js/egg.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

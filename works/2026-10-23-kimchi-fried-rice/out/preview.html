@@ -1,0 +1,2262 @@
+<title>김치볶음밥 한 그릇 · D:OT lab</title>
+<meta name="description" content="폰이 웍이다. 손목으로 튕겨 김치볶음밥을 볶고, 계란후라이를 뒤집어 얹어 한 그릇 점수를 받는다.">
+<meta property="og:title" content="김치볶음밥 한 그릇">
+<meta property="og:description" content="폰을 웍처럼 튕겨서 볶아 봐. 불맛 장인 될 수 있어?">
+<meta name="theme-color" content="#1d2329">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gowun+Dodum&family=Do+Hyeon&family=Song+Myung&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<style>
+:root{--ink:#1f2a33;--paper:#fbf6ea;--red:#c81e1e;--steel1:#eef1f3;--steel2:#c9d1d8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-behavior:none;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+#stage{position:fixed;inset:0;display:flex;justify-content:center;align-items:center}
+#app{position:relative;height:100%;width:min(100%,calc(100dvh*0.5));max-width:560px;background:var(--steel1);overflow:hidden;touch-action:none}
+#app>canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+[hidden]{display:none!important}
+.layer{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;
+  padding-top:max(22px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom));color:var(--ink);text-align:center;font-family:"Do Hyeon",system-ui,sans-serif}
+#intro{background:linear-gradient(180deg,rgba(238,241,243,.0) 0%,rgba(238,241,243,.92) 38%,rgba(238,241,243,.97) 100%);justify-content:flex-end;padding-bottom:max(44px,env(safe-area-inset-bottom))}
+#intro h1{margin:0;font-size:42px;line-height:1.05;font-weight:400;letter-spacing:.01em}
+#intro p{margin:0;font-size:18px;color:#4b5761;line-height:1.35}
+.btn{border:0;border-radius:999px;padding:14px 30px;font:400 22px "Do Hyeon",system-ui,sans-serif;cursor:pointer;min-height:52px;background:#ea580c;color:#fff;
+  box-shadow:0 6px 0 #9a3412,0 10px 18px rgba(0,0,0,.18);transition:transform .08s}
+.btn:active{transform:translateY(4px);box-shadow:0 2px 0 #9a3412}
+.btn.ghost{background:transparent;color:#4b5761;box-shadow:none;font-size:16px;min-height:44px;padding:8px 16px}
+.btn:focus-visible{outline:3px solid #1f2a33;outline-offset:3px}
+#result{background:linear-gradient(135deg,#eef1f3,#cfd6dc);justify-content:center;touch-action:none}
+.slip{background:var(--paper);width:100%;max-width:400px;padding:18px 16px;font-family:"Nanum Gothic Coding",monospace;position:relative;transform:rotate(-1.2deg);text-align:left;
+  box-shadow:0 10px 22px rgba(30,40,50,.28);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
+.slip .shop{font-family:"Song Myung",serif;font-size:24px;text-align:center}
+.slip .meta{text-align:center;font-size:11px;color:#6b5d4f;margin-bottom:4px}
+.slip canvas{width:100%;aspect-ratio:4/3;display:block}
+.slip ul{margin:0;padding:0;list-style:none;font-size:13px}
+.slip li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0}
+.slip .total{display:flex;justify-content:space-between;align-items:center;margin:2px 0 6px}
+.slip .big{font-weight:700;font-size:48px;line-height:1}.slip .big small{font-size:18px;margin-left:2px}
+.stamp{display:inline-block;transform:rotate(-7deg) scale(1);border:3px solid var(--red);color:var(--red);font-family:"Song Myung",serif;font-size:20px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.75)}
+.stamp.rec{position:absolute;top:58px;right:10px;transform:rotate(10deg);font-size:22px}
+.stamp.pop{animation:stamp .38s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes stamp{0%{transform:rotate(-7deg) scale(2.4);opacity:0}100%{transform:rotate(-7deg) scale(1);opacity:1}}
+.slip .near{font-family:"Black Han Sans",sans-serif;font-size:22px;color:#E8481C;text-align:right;margin:-2px 0 6px}
+.slip .formula{font-size:10.5px;color:#7a6b5c;margin-top:8px;line-height:1.4}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.hint{font-size:14px;color:#56616b}
+#toast{position:absolute;left:50%;top:24%;transform:translateX(-50%);pointer-events:none}
+@media (prefers-reduced-motion:reduce){.stamp.pop{animation:none}}
+</style>
+
+
+<div id="stage"><div id="app">
+  <canvas id="cv" aria-label="웍 화면"></canvas>
+  <div id="intro" class="layer">
+    <h1>김치볶음밥<br>한 그릇</h1>
+    <p>폰이 웍이에요. 손잡이 잡듯 쥐고<br>손목으로 휙! 튕겨서 볶아요.</p>
+    <button id="go" class="btn" type="button">불 켜기</button>
+    <button id="touchMode" class="btn ghost" type="button">센서 없이 손가락으로 하기</button>
+  </div>
+  <div id="result" class="layer" hidden></div>
+</div></div>
+<script>
+/* core.js — shared constants, math, projection, colour ramps (see CONTRACT.md) */
+"use strict";
+(function () {
+  const K = (window.KFR = window.KFR || {});
+  const TAU = Math.PI * 2;
+  K.TAU = TAU;
+  K.G = 12;
+  K.THETA = (35 * Math.PI) / 180; // view angle away from straight down (operator 10-23)
+  K.RIM_H = 0.35;
+
+  K.rnd = (a, b) => a + Math.random() * (b - a);
+  K.clamp = (v, a, b) => (v < a ? a : v > b ? b : v);
+  K.lerp = (a, b, k) => a + (b - a) * k;
+  K.smooth = (k) => k * k * (3 - 2 * k);
+  K.easeOutBack = (k) => 1 + 2.7 * Math.pow(k - 1, 3) + 1.7 * Math.pow(k - 1, 2);
+
+  /* the wok floor: a shallow bowl, rim at r = 1 */
+  K.surf = (u, v) => 0.35 * (u * u + v * v);
+  /* slope of the floor at (u, v): what gravity pulls food along */
+  K.slope = (u, v) => [0.7 * u, 0.7 * v];
+  /* flame heat on the floor: hottest at the centre, cool at the rim */
+  K.heat = (u, v) => Math.max(0.05, 1.18 - 0.65 * (u * u + v * v));
+
+  K.view = function (W, H) {
+    const R = W * 0.43, ct = Math.cos(K.THETA), st = Math.sin(K.THETA);
+    return { W, H, R, ct, st, cx: W / 2, cy: H * 0.47, D: 0.35 * R * st };
+  };
+  K.restPose = () => ({ du: 0, dv: 0, lift: 0, lean: 0, t: 0 });
+
+  /* world (u sideways, v depth, h height) -> screen px. The wok rim sits on the ellipse (cx, cy, R, R*ct).
+     A point at height h is drawn (RIM_H - h) * R * st below the rim plane; above the rim, height reads
+     a bit taller so tosses look generous. pose moves the whole wok. */
+  K.proj = function (vw, pose, u, v, h) {
+    const lean = 1 + (pose.lean || 0) * 0.12;
+    const x = vw.cx + (u + (pose.du || 0)) * vw.R;
+    let y = vw.cy - (v + (pose.dv || 0)) * vw.R * vw.ct * lean + (K.RIM_H - h - (pose.lift || 0)) * vw.R * vw.st;
+    if (h > K.RIM_H) y -= (h - K.RIM_H) * vw.R * 0.15;
+    return [x, y];
+  };
+  /* size multiplier for something at height h (closer to the camera = a touch bigger) */
+  K.scaleAt = (h) => 1 + Math.max(0, h) * 0.55;
+
+  /* ---------- colour ramps: raw -> glossy -> golden -> burnt ---------- */
+  function ramp(stops) {
+    return function (v) {
+      if (v <= stops[0][0]) return stops[0][1];
+      for (let i = 1; i < stops.length; i++)
+        if (v <= stops[i][0]) {
+          const [a, ca] = stops[i - 1], [b, cb] = stops[i], k = (v - a) / (b - a);
+          return [ca[0] + (cb[0] - ca[0]) * k, ca[1] + (cb[1] - ca[1]) * k, ca[2] + (cb[2] - ca[2]) * k];
+        }
+      return stops[stops.length - 1][1];
+    };
+  }
+  K.ramp = ramp;
+  K.col = {
+    /* art bible: raw #F4EEE2 -> sauced #E8743A -> glossy #F0552A -> golden #D98A2B -> burnt #5A2A14 -> char #231510 */
+    rice: ramp([[0, [244, 238, 226]], [0.3, [232, 116, 58]], [0.75, [240, 85, 42]], [1.1, [217, 138, 43]], [1.3, [176, 98, 36]], [1.5, [90, 42, 20]], [1.75, [35, 21, 16]]]),
+    kimchi: ramp([[0, [215, 38, 30]], [0.7, [200, 36, 28]], [1.1, [168, 35, 26]], [1.35, [120, 34, 22]], [1.55, [64, 28, 20]], [1.75, [35, 21, 16]]]),
+    scallion: ramp([[0, [111, 191, 58]], [0.8, [92, 168, 52]], [1.3, [70, 112, 40]], [1.6, [48, 50, 30]], [1.8, [34, 30, 24]]]),
+    eggWhite: ramp([[0, [236, 238, 232]], [0.7, [255, 255, 252]], [1.6, [252, 248, 238]], [2.4, [236, 226, 206]]]),
+    eggEdge: ramp([[0, [255, 255, 255]], [0.8, [250, 244, 230]], [1.1, [238, 200, 132]], [1.5, [198, 130, 66]], [1.9, [112, 68, 42]], [2.4, [46, 37, 33]]]),
+    eggUnder: ramp([[0, [252, 248, 240]], [0.6, [244, 216, 160]], [1.0, [228, 172, 98]], [1.4, [186, 118, 60]], [1.9, [98, 62, 42]], [2.4, [42, 34, 30]]]),
+    yolk: ramp([[0, [255, 178, 28]], [1.2, [255, 170, 34]], [1.8, [240, 180, 80]], [2.4, [226, 186, 120]]]),
+  };
+  K.rgb = (c, a = 1) => `rgba(${c[0] | 0},${c[1] | 0},${c[2] | 0},${a})`;
+  K.gloss = (cook) => (cook < 0.4 || cook > 1.3 ? 0 : 0.6 * Math.sin((Math.PI * (cook - 0.4)) / 0.9));
+  K.DPR = () => Math.min(1.5, window.devicePixelRatio || 1);   // 1.5 keeps a full-screen canvas at 60 fps on mid phones
+  /* make an offscreen canvas of css size w x h at device pixel ratio, returns [canvas, ctx] */
+  K.offscreen = function (w, h) {
+    const cv = document.createElement("canvas"), d = K.DPR();
+    cv.width = Math.max(1, Math.ceil(w * d)); cv.height = Math.max(1, Math.ceil(h * d));
+    const c = cv.getContext("2d"); c.scale(d, d);
+    return [cv, c];
+  };
+
+  /* scoring bands, shared by rice.js stats and the result slip */
+  K.RICE_GOOD = [0.55, 1.3];
+  K.EGG_GOOD = [0.6, 1.4];
+})();
+
+</script>
+<script>
+/* stage.js — counter, carbon-steel wok, handle, heat glow (art bible §2). Cached art, cheap per frame. */
+"use strict";
+(function () {
+  const K = window.KFR, TAU = K.TAU;
+  let counterCache = null, wokCache = null;
+
+  function counter(W, H) {
+    if (counterCache && counterCache.W === W && counterCache.H === H) return counterCache.cv;
+    const [cv, c] = K.offscreen(W, H);
+    const bg = c.createLinearGradient(0, 0, 0, H);
+    bg.addColorStop(0, "#E9EDF0"); bg.addColorStop(1, "#C3CBD2");
+    c.fillStyle = bg; c.fillRect(0, 0, W, H);
+    // subtle horizontal brushing
+    for (let y = 0; y < H; y += 2) {
+      c.fillStyle = `rgba(255,255,255,${0.05 + 0.1 * Math.abs(Math.sin(y * 12.9898) * 43758.5453 % 1)})`;
+      c.fillRect(0, y, W, 1);
+    }
+    for (let i = 0; i < 40; i++) {
+      c.fillStyle = "rgba(142,153,163,.08)";
+      c.fillRect(0, Math.random() * H, W, 1);
+    }
+    // a vignette pulls the eye to the wok
+    const vg = c.createRadialGradient(W / 2, H * 0.47, W * 0.3, W / 2, H * 0.47, H * 0.75);
+    vg.addColorStop(0, "rgba(0,0,0,0)"); vg.addColorStop(1, "rgba(40,50,60,.22)");
+    c.fillStyle = vg; c.fillRect(0, 0, W, H);
+    counterCache = { W, H, cv };
+    return cv;
+  }
+
+  /* the wok around its own rim centre; returns {cv, w, h, ox, oy} */
+  function wokArt(vw) {
+    if (wokCache && wokCache.R === vw.R) return wokCache;
+    const R = vw.R, ct = vw.ct, D = vw.D, pad = 6;
+    const w = R * 2.16 + pad * 2, top = R * 1.05 * ct + pad, h = top + R * ct * 1.25 + D * 1.7 + pad;
+    const [cv, c] = K.offscreen(w, h);
+    const cx = w / 2, cy = top;
+    const wall = () => {
+      c.beginPath(); c.moveTo(cx - R * 1.04, cy);
+      c.bezierCurveTo(cx - R * 1.04, cy + R * ct * 1.25 + D * 1.6, cx + R * 1.04, cy + R * ct * 1.25 + D * 1.6, cx + R * 1.04, cy);
+      c.closePath();
+    };
+    // outer wall: blue-black with a warm underglow from the fire
+    const wg = c.createLinearGradient(cx - R, 0, cx + R, 0);
+    wg.addColorStop(0, "#15181B"); wg.addColorStop(0.35, "#2A3440"); wg.addColorStop(0.7, "#1E2226"); wg.addColorStop(1, "#121416");
+    c.fillStyle = wg; wall(); c.fill();
+    const glow = c.createLinearGradient(0, cy, 0, cy + R * ct + D * 1.6);
+    glow.addColorStop(0, "rgba(255,110,40,0)"); glow.addColorStop(1, "rgba(255,110,40,.42)");
+    c.fillStyle = glow; wall(); c.fill();
+    // rim ring
+    c.fillStyle = "#3a434d"; c.beginPath(); c.ellipse(cx, cy, R * 1.045, R * 1.045 * ct, 0, 0, TAU); c.fill();
+    c.strokeStyle = "#11141a"; c.lineWidth = 1; c.beginPath(); c.ellipse(cx, cy, R * 1.045, R * 1.045 * ct, 0, 0, TAU); c.stroke();
+    c.strokeStyle = "rgba(201,211,220,.85)"; c.lineWidth = Math.max(1.2, R * 0.012);
+    c.beginPath(); c.ellipse(cx, cy, R * 1.03, R * 1.03 * ct, 0, (200 / 180) * Math.PI, (340 / 180) * Math.PI); c.stroke();
+    // interior: patina bowl
+    const ig = c.createRadialGradient(cx - R * 0.05, cy + D * 0.55, R * 0.04, cx, cy + D * 0.3, R);
+    ig.addColorStop(0, "#3A4350"); ig.addColorStop(0.6, "#2A3440"); ig.addColorStop(1, "#15181B");
+    c.fillStyle = ig; c.beginPath(); c.ellipse(cx, cy, R * 0.98, R * 0.98 * ct, 0, 0, TAU); c.fill();
+    c.save(); c.beginPath(); c.ellipse(cx, cy, R * 0.98, R * 0.98 * ct, 0, 0, TAU); c.clip();
+    // straw/blue heat tint ring (seasoned carbon steel)
+    const ht = c.createRadialGradient(cx, cy + D * 0.45, R * 0.5, cx, cy + D * 0.45, R * 0.85);
+    ht.addColorStop(0, "rgba(59,74,107,0)"); ht.addColorStop(0.5, "rgba(59,74,107,.28)"); ht.addColorStop(0.8, "rgba(106,90,58,.22)"); ht.addColorStop(1, "rgba(106,90,58,0)");
+    c.fillStyle = ht; c.fillRect(cx - R, cy - R, R * 2, R * 2);
+    // faint seasoning rings
+    c.strokeStyle = "rgba(255,255,255,.035)"; c.lineWidth = 1;
+    for (const rr of [0.3, 0.55, 0.78]) { c.beginPath(); c.ellipse(cx, cy + D * (1 - rr) * 0.7, R * rr, R * rr * ct, 0, 0, TAU); c.stroke(); }
+    // far inner wall catches the key light, plus a soft specular crescent upper-left
+    const lw = c.createLinearGradient(0, cy - R * ct, 0, cy);
+    lw.addColorStop(0, "rgba(255,255,255,.13)"); lw.addColorStop(1, "rgba(255,255,255,0)");
+    c.fillStyle = lw; c.fillRect(cx - R, cy - R * ct, R * 2, R * ct);
+    c.strokeStyle = "rgba(255,255,255,.12)"; c.lineWidth = R * 0.12; c.lineCap = "round";
+    c.beginPath(); c.ellipse(cx, cy + D * 0.2, R * 0.78, R * 0.78 * ct, 0, Math.PI * 1.08, Math.PI * 1.32); c.stroke();
+    c.restore();
+    wokCache = { R, cv, w, h, ox: cx, oy: cy };
+    return wokCache;
+  }
+
+  function handle(c, vw, x0, y0, H) {
+    const R = vw.R, nw = R * 0.1;
+    // steel neck + rivets
+    c.fillStyle = "#4a5058";
+    c.beginPath(); c.moveTo(x0 - nw * 0.5, y0); c.lineTo(x0 + nw * 0.5, y0); c.lineTo(x0 + nw * 0.62, y0 + R * 0.32); c.lineTo(x0 - nw * 0.62, y0 + R * 0.32); c.fill();
+    c.fillStyle = "rgba(255,255,255,.18)"; c.fillRect(x0 - nw * 0.4, y0, nw * 0.18, R * 0.32);
+    // wood grip, widening toward the viewer
+    const y1 = y0 + R * 0.3, y2 = H + 12;
+    const g = c.createLinearGradient(x0 - R * 0.2, 0, x0 + R * 0.2, 0);
+    g.addColorStop(0, "#4a2a16"); g.addColorStop(0.4, "#A0673C"); g.addColorStop(0.62, "#8a5530"); g.addColorStop(1, "#3e2412");
+    c.fillStyle = g; c.beginPath();
+    c.moveTo(x0 - R * 0.09, y1); c.lineTo(x0 + R * 0.09, y1); c.lineTo(x0 + R * 0.17, y2); c.lineTo(x0 - R * 0.17, y2); c.closePath(); c.fill();
+    c.strokeStyle = "rgba(60,30,12,.35)"; c.lineWidth = 1;
+    for (let i = -2; i <= 2; i++) { c.beginPath(); c.moveTo(x0 + i * R * 0.025, y1 + 4); c.lineTo(x0 + i * R * 0.05, y2); c.stroke(); }
+    c.fillStyle = "#c9ccd1";
+    for (const yy of [y0 + R * 0.08, y0 + R * 0.24]) { c.beginPath(); c.arc(x0, yy, R * 0.022, 0, TAU); c.fill(); }
+  }
+
+  /* draws everything below the food: counter, burner glow, wok shadow, handle, wok body, live heat glow */
+  K.Stage = {
+    drawCounter(c, vw) { c.drawImage(counter(vw.W, vw.H), 0, 0, vw.W, vw.H); },
+    drawUnderGlow(c, vw, flare) {
+      const g = c.createRadialGradient(vw.cx, vw.cy + vw.D * 1.6, vw.R * 0.3, vw.cx, vw.cy + vw.D * 1.6, vw.R * 1.55);
+      g.addColorStop(0, `rgba(255,120,40,${0.3 + 0.25 * Math.min(1, flare)})`); g.addColorStop(1, "rgba(255,120,40,0)");
+      c.fillStyle = g; c.fillRect(0, 0, vw.W, vw.H);
+    },
+    drawWok(c, vw, pose, contact, fire) {
+      const [cx, cy] = K.proj(vw, pose, 0, 0, K.RIM_H);
+      // shadow stays on the burner; it shrinks when the wok lifts
+      const sh = 1 - Math.min(0.25, (pose.lift || 0) * 2);
+      c.fillStyle = "rgba(20,30,40,.2)"; c.beginPath();
+      c.ellipse(vw.cx + vw.R * 0.05, vw.cy + vw.D * 2.1, vw.R * 0.95 * sh, vw.R * vw.ct * 0.9 * sh, 0, 0, TAU); c.fill();
+      handle(c, vw, cx, cy + vw.R * vw.ct - 4, vw.H);
+      const wa = wokArt(vw), lean = 1 + (pose.lean || 0) * 0.12;
+      c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy * lean, wa.w, wa.oy * lean + (wa.h - wa.oy));
+      if (fire) { // the floor glows where food is on the metal
+        c.save(); c.beginPath(); c.ellipse(cx, cy, vw.R * 0.97, vw.R * 0.97 * vw.ct * lean, 0, 0, TAU); c.clip();
+        const g = c.createRadialGradient(cx, cy + vw.D * 0.5, 0, cx, cy + vw.D * 0.5, vw.R * 0.62);
+        g.addColorStop(0, `rgba(255,110,40,${0.08 + 0.3 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
+        c.fillStyle = g; c.fillRect(cx - vw.R, cy - vw.R, vw.R * 2, vw.R * 2); c.restore();
+      }
+    },
+    /* rim highlight flash when food lands */
+    flashRim(c, vw, pose, a) {
+      if (a <= 0) return;
+      const [cx, cy] = K.proj(vw, pose, 0, 0, K.RIM_H), lean = 1 + (pose.lean || 0) * 0.12;
+      c.strokeStyle = `rgba(255,236,200,${a})`; c.lineWidth = 2;
+      c.beginPath(); c.ellipse(cx, cy, vw.R * 1.03, vw.R * 1.03 * vw.ct * lean, 0, Math.PI, TAU); c.stroke();
+    },
+    reset() { counterCache = null; wokCache = null; },
+  };
+})();
+
+</script>
+<script>
+/* fx.js — burner flames, rim flare, oil catch, steam, smoke, oil spatter, screen shake + KFR.Audio (see CONTRACT.md) */
+"use strict";
+(function () {
+  const K = window.KFR, TAU = K.TAU, rnd = K.rnd, clamp = K.clamp;
+
+  /* ---------- sprites: rendered once, only drawImage per frame ---------- */
+  const FW = 48, FH = 128; // flame sprite css px; the base sits at the bottom centre
+  let SPR = null;
+
+  /* teardrop tongue with a hooked tip; curl < 0 hooks left, > 0 right */
+  function flameSprite(curl, blue) {
+    const [cv, c] = K.offscreen(FW, FH);
+    const bx = FW / 2, by = FH - 3;
+    const tongue = (w, h, lift, fill, alpha) => {
+      const b = by - lift, tx = bx + curl * w * 0.95, ty = by - h;
+      c.globalAlpha = alpha;
+      c.beginPath(); c.moveTo(bx, b);
+      c.bezierCurveTo(bx - w * 0.68, b + 1, bx - w * (0.5 - curl * 0.25), b - h * 0.5, tx, ty);
+      c.bezierCurveTo(bx + w * (0.3 + curl * 0.35), b - h * 0.48, bx + w * 0.68, b + 1, bx, b);
+      c.fillStyle = fill; c.fill();
+    };
+    const h = FH - 8, w = FW * 0.72;
+    const g = c.createLinearGradient(0, by, 0, by - h);
+    if (blue) { g.addColorStop(0, "rgba(47,107,255,.95)"); g.addColorStop(0.1, "rgba(127,180,255,.95)"); g.addColorStop(0.2, "#FF7A1A"); }
+    else { g.addColorStop(0, "rgba(255,122,26,0)"); g.addColorStop(0.18, "#FF7A1A"); }
+    g.addColorStop(0.75, "#FF8A24"); g.addColorStop(1, "rgba(255,110,20,.7)");
+    c.shadowColor = "rgba(255,110,30,.6)"; c.shadowBlur = 9;
+    tongue(w, h, 0, g, 1);
+    c.shadowBlur = 0;
+    tongue(w * 0.66, h * 0.7, h * 0.11, "#FFC24A", 1);
+    c.globalCompositeOperation = "lighter";
+    tongue(w * 0.36, h * 0.42, h * 0.15, "#FFF2C2", 0.75);
+    return cv;
+  }
+  function softSprite(r, g, b, a0) {
+    const [cv, c] = K.offscreen(64, 64);
+    const gr = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, `rgba(${r},${g},${b},${a0})`); gr.addColorStop(0.3, `rgba(${r},${g},${b},${a0 * 0.7})`); gr.addColorStop(0.65, `rgba(${r},${g},${b},${a0 * 0.2})`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+    c.fillStyle = gr; c.fillRect(0, 0, 64, 64);
+    return cv;
+  }
+  /* smoke: a lumpy billow of overlapping blobs, so it reads as curling smoke, not a steam disc */
+  function billowSprite(r, g, b) {
+    const [cv, c] = K.offscreen(96, 96);
+    const blobs = [[48, 52, 26], [34, 58, 18], [62, 60, 20], [42, 38, 17], [58, 36, 15], [50, 66, 16]];
+    for (const [x, y, rr] of blobs) {
+      const gr = c.createRadialGradient(x - rr * 0.25, y - rr * 0.3, 0, x, y, rr);
+      gr.addColorStop(0, `rgba(${r + 22},${g + 20},${b + 18},.55)`); gr.addColorStop(0.7, `rgba(${r},${g},${b},.35)`); gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+      c.fillStyle = gr; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
+    }
+    return cv;
+  }
+  function sprites() {
+    if (SPR) return SPR;
+    // smoke shades: light warm grey (just burning) -> art bible #4A4440 -> #2A2624 (charcoal)
+    const smoke = [[168, 160, 152], [138, 128, 120], [104, 96, 90], [74, 68, 64]].map((s) => billowSprite(s[0], s[1], s[2]));
+    SPR = {
+      burner: [-0.32, 0.12, 0.38].map((k) => flameSprite(k, true)),
+      lick: [-0.3, 0.3].map((k) => flameSprite(k, false)),
+      steam: softSprite(255, 255, 255, 1),
+      glow: softSprite(255, 160, 60, 1),
+      dot: softSprite(255, 236, 190, 1),
+      smoke,
+    };
+    return SPR;
+  }
+
+  /* ---------- state ---------- */
+  const N_TONGUE = 16, MAX_STEAM = 36, MAX_SMOKE = 56, MAX_SPAT = 48;
+  // burner ring in units of R relative to the rim centre (cx, cy); tuned against stage.js wok silhouette
+  const RING = { rx: 0.74, ry: 0.15, y: 0.84, ht: 0.7, wd: 0.27, lean: 0.68 };
+
+  function create() {
+    const tongues = [];
+    for (let i = 0; i < N_TONGUE; i++) {
+      const a = (TAU * (i + rnd(-0.3, 0.3))) / N_TONGUE;
+      const side = Math.abs(Math.cos(a)); // side tongues are the visible ones: make them the big ones
+      tongues.push({ a, size: rnd(0.75, 1.05) + 0.25 * side, spr: i % 3, flip: Math.random() < 0.5,
+        f1: rnd(7, 10), f2: rnd(13, 19), p1: rnd(0, TAU), p2: rnd(0, TAU) });
+    }
+    tongues.sort((p, q) => Math.sin(p.a) - Math.sin(q.a)); // far first
+    const licks = [];
+    for (let i = 0; i < 6; i++) licks.push({ phi: Math.PI * (0.18 + (0.64 * i) / 5) + rnd(-0.1, 0.1), size: rnd(0.6, 1.25),
+      spr: i % 2, f1: rnd(9, 13), p1: rnd(0, TAU), delay: rnd(0, 0.3), lean: rnd(-0.25, 0.25) });
+    return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, licks, parts: [], spat: [],
+      shake: { x: 0, y: 0 }, amp: 0, haze: 0, rimDrawn: false };
+  }
+
+  function kick(s, px) { s.amp = Math.min(4, Math.max(s.amp, px)); }
+
+  function flare(s, strength) {
+    const k = clamp((strength || 1) * 0.75, 0.2, 1);
+    s.flare = Math.max(s.flare, k);
+    kick(s, 1.6 + 0.9 * k);
+  }
+  function oilCatch(s, strength) {
+    s.oil = { t: 0, dur: 0.35, k: clamp(strength || 1, 0.6, 1.4) };
+    kick(s, 3);
+  }
+  /* hot oil pops where food lands; a landing also nudges the screen */
+  function spatter(s, u, v, n) {
+    n = Math.min(n || 6, 16);
+    for (let i = 0; i < n && s.spat.length < MAX_SPAT; i++) {
+      const a = rnd(0, TAU), sp = rnd(0.4, 1.4);
+      s.spat.push({ u: u + rnd(-0.08, 0.08), v: v + rnd(-0.08, 0.08), h: K.surf(u, v) + 0.03,
+        du: Math.cos(a) * sp, dv: Math.sin(a) * sp, dh: rnd(0.8, 2.2), age: rnd(-0.04, 0), life: 0.12, r: rnd(1, 1.5) });
+    }
+    if (n >= 6) kick(s, Math.min(2, n * 0.15));
+  }
+
+  function update(s, dt, ctx) {
+    ctx = ctx || {};
+    s.t += dt;
+    if (ctx.flare > 0) s.flare = Math.max(s.flare, ctx.flare);
+    s.flare = Math.max(0, s.flare - dt * 3.2); // ~0.3 s jump
+    s.flareLevel = s.flare;
+    if (s.oil && (s.oil.t += dt) > s.oil.dur) s.oil = null;
+    s.rimDrawn = false;
+    // shake: decaying wobble, two incommensurate sines so it never looks like a loop
+    s.amp *= Math.exp(-dt * 11);
+    if (s.amp < 0.05) s.amp = 0;
+    s.shake.x = s.amp * Math.sin(s.t * 71); s.shake.y = s.amp * Math.cos(s.t * 57);
+    s.haze += (clamp(((ctx.burning || 0) - 0.08) * 1.6, 0, 1) - s.haze) * Math.min(1, dt * 1.5);
+
+    // steam vs smoke from the hotspots. Emitters live in wok space; particles are handed off to the air at spawn.
+    const hs = ctx.steam || [], pose = ctx.wokPose || K.restPose();
+    let nSteam = 0, nSmoke = 0;
+    for (const p of s.parts) p.smoke ? nSmoke++ : nSteam++;
+    for (const h of hs) {
+      const cook = h.cook || 0;
+      if (cook < 0.95) {
+        if (nSteam < MAX_STEAM && Math.random() < dt * (0.5 + 1.1 * Math.min(1, cook + 0.3))) {
+          nSteam++; s.parts.push({ smoke: false, u: h.u, v: h.v, h: h.h || 0, pose, x: 0, y: 0, born: false,
+            vx: rnd(-0.08, 0.08), vy: rnd(0.9, 1.2), r0: rnd(0.05, 0.07), r1: rnd(0.15, 0.21), age: 0, life: rnd(0.7, 0.85), ph: rnd(0, TAU), rot: 0 });
+        }
+      } else {
+        const dark = clamp((cook - 0.95) / 0.8, 0, 1);
+        if (nSmoke < MAX_SMOKE && Math.random() < dt * (0.8 + 4 * dark)) {
+          nSmoke++; s.parts.push({ smoke: true, dark, u: h.u, v: h.v, h: h.h || 0, pose, x: 0, y: 0, born: false,
+            vx: rnd(-0.05, 0.05), vy: rnd(0.4, 0.55), r0: rnd(0.1, 0.14), r1: rnd(0.45, 0.65), age: 0, life: rnd(1.7, 2.2),
+            ph: rnd(0, TAU), rot: rnd(0, TAU), spin: rnd(-0.6, 0.6) });
+        }
+      }
+    }
+    for (let i = s.parts.length - 1; i >= 0; i--) {
+      const p = s.parts[i];
+      if ((p.age += dt) > p.life) { s.parts[i] = s.parts[s.parts.length - 1]; s.parts.pop(); }
+    }
+    for (let i = s.spat.length - 1; i >= 0; i--) {
+      const p = s.spat[i];
+      p.age += dt;
+      if (p.age > p.life) { s.spat[i] = s.spat[s.spat.length - 1]; s.spat.pop(); continue; }
+      if (p.age > 0) { p.u += p.du * dt; p.v += p.dv * dt; p.h += p.dh * dt; p.dh -= K.G * dt; }
+    }
+  }
+
+  /* one tongue: base at (x, y), leaning by `lean` rad */
+  function tongue(c, img, x, y, w, h, lean, flip, alpha) {
+    c.save(); c.translate(x, y); c.rotate(lean); if (flip) c.scale(-1, 1);
+    c.globalAlpha = alpha; c.drawImage(img, -w / 2, -h, w, h); c.restore();
+  }
+
+  /* burner ring under the wok: drawn before the wok body, so only what rises past its wall shows */
+  function drawBehind(c, s, vw) {
+    const S = sprites(), R = vw.R, t = s.t, f = s.flare;
+    const by = vw.cy + RING.y * R;
+    for (const q of s.tongues) {
+      const ca = Math.cos(q.a), sa = Math.sin(q.a);
+      const flick = 0.8 + 0.13 * Math.sin(q.f1 * t + q.p1) + 0.08 * Math.sin(q.f2 * t + q.p2);
+      const h = R * RING.ht * q.size * flick * (1 + 0.85 * f), w = R * RING.wd * q.size * (1 + 0.2 * f) * (1.1 - 0.15 * flick);
+      const sway = 0.06 * Math.sin(q.f2 * 0.5 * t + q.p1);
+      tongue(c, S.burner[q.spr], vw.cx + ca * RING.rx * R, by + sa * RING.ry * R, w, h, ca * RING.lean * (1 - 0.15 * f) + sway, q.flip, 1);
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* flare tongues licking up over the far rim; between the wok and the food if the game calls it, else in drawFront */
+  function drawRim(c, s, vw, pose) {
+    s.rimDrawn = true;
+    if (s.flare < 0.05) return;
+    const S = sprites(), R = vw.R;
+    for (const q of s.licks) {
+      const e = K.smooth(clamp(s.flare * 1.5 - q.delay, 0, 1));
+      if (e <= 0) continue;
+      const [x, y] = K.proj(vw, pose, Math.cos(q.phi) * 1.03, Math.sin(q.phi) * 1.03, K.RIM_H);
+      const flick = 0.85 + 0.15 * Math.sin(q.f1 * s.t + q.p1);
+      const h = R * 0.5 * q.size * flick * e, w = R * 0.27 * q.size * (0.6 + 0.4 * e);
+      tongue(c, S.lick[q.spr], x, y + h * 0.15, w, h, -Math.cos(q.phi) * 0.5 + q.lean, false, Math.min(1, e * 1.3));
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* rim flare (if not drawn yet), oil-catch fireball, steam, smoke, spatter: after the food */
+  function drawFront(c, s, vw, pose) {
+    const S = sprites(), R = vw.R;
+    if (!s.rimDrawn) drawRim(c, s, vw, pose);
+    if (s.oil) {
+      const k = s.oil.t / s.oil.dur, e = (k < 0.2 ? K.smooth(k / 0.2) : 1 - K.smooth((k - 0.2) / 0.8)) * s.oil.k;
+      const [x, y] = K.proj(vw, pose, 0, 0.05, 0.1);
+      c.globalCompositeOperation = "lighter";
+      const gr = R * 1.05 * e;
+      c.globalAlpha = 0.7; c.drawImage(S.glow, x - gr, y - gr * 0.8, gr * 2, gr * 1.6);
+      c.globalCompositeOperation = "source-over";
+      for (let i = 0; i < 6; i++) { // outer tongues first, the tall centre one last
+        const a = i * 2.4, rr = i === 5 ? 0 : 0.16 + 0.06 * (i % 2);
+        const [tx, ty] = K.proj(vw, pose, Math.cos(a) * rr, Math.sin(a) * rr * 0.8 + 0.05, 0.12);
+        const sz = (i === 5 ? 1.25 : 0.8) * (0.9 + 0.12 * Math.sin(i * 1.7 + s.oil.t * 30));
+        tongue(c, S.lick[i % 2], tx, ty, R * 0.5 * e * sz, R * 0.8 * e * sz, Math.cos(a) * rr * 2.2, i % 2 === 0, Math.min(1, e * 1.4));
+      }
+      c.globalAlpha = 1;
+    }
+    // steam and smoke: spawn point projected once, then they drift in screen space
+    for (const p of s.parts) {
+      if (!p.born) { const [x, y] = K.proj(vw, p.pose, p.u, p.v, p.h + 0.05); p.x = x; p.y = y; p.born = true; p.pose = null; }
+      const k = p.age / p.life, a = p.age;
+      const x = p.x + (p.vx * a + (p.smoke ? Math.sin(a * 1.7 + p.ph) * 0.06 * (0.3 + k) : Math.sin(a * 5 + p.ph) * 0.015)) * R;
+      const y = p.y - p.vy * R * a * (p.smoke ? 1 : 1 - 0.35 * k);
+      const r = R * (p.r0 + (p.r1 - p.r0) * Math.sqrt(k));
+      const fade = Math.min(1, p.age * (p.smoke ? 3 : 8)) * (1 - k);
+      if (p.smoke) {
+        c.globalAlpha = Math.min(0.35, (0.24 + 0.11 * p.dark) * fade * 1.6);
+        c.save(); c.translate(x, y); c.rotate(p.rot + p.spin * a);
+        c.drawImage(S.smoke[Math.min(3, (p.dark * 4) | 0)], -r, -r, r * 2, r * 2); c.restore();
+      } else {
+        c.globalAlpha = 0.34 * fade;
+        c.drawImage(S.steam, x - r * 0.7, y - r * 1.1, r * 1.4, r * 2.2); // tall wisp
+      }
+    }
+    // oil spatter: hot-white pops, 120 ms
+    for (const p of s.spat) {
+      if (p.age < 0) continue;
+      const k = p.age / p.life, [x, y] = K.proj(vw, pose, p.u, p.v, p.h), r = p.r * (1 + 0.7 * k);
+      c.globalAlpha = (1 - k * k) * 0.6; c.drawImage(S.dot, x - r * 3, y - r * 3, r * 6, r * 6);
+      c.globalAlpha = 1 - k * k; c.fillStyle = "#FFFBF0"; c.fillRect(x - r, y - r, r * 2, r * 2);
+    }
+    c.globalAlpha = 1;
+  }
+
+  K.Fx = { create, update, flare, oilCatch, spatter, kick, drawBehind, drawRim, drawFront };
+
+  /* ================= KFR.Audio: Web Audio, all procedural ================= */
+  const A = { ctx: null, out: null, muted: false, noise: null, crackle: null, siz: null, warn: null };
+
+  function makeBuffers(ac) {
+    const sr = ac.sampleRate, mk = (sec) => ac.createBuffer(1, Math.floor(sr * sec), sr);
+    A.noise = mk(2); const n = A.noise.getChannelData(0);
+    for (let i = 0; i < n.length; i++) n[i] = Math.random() * 2 - 1;
+    // sizzle bed: hiss with a slow random swell plus dense tiny pops
+    A.sizz = mk(3); const z = A.sizz.getChannelData(0);
+    let env = 0.5, tgt = 0.5, pop = 0, popA = 0;
+    for (let i = 0; i < z.length; i++) {
+      if (i % 600 === 0) tgt = rnd(0.25, 0.8);
+      env += (tgt - env) * 0.002;
+      if (Math.random() < 0.0016) { pop = 1; popA = rnd(0.4, 1); }
+      pop *= 0.93;
+      z[i] = (Math.random() * 2 - 1) * (env * 0.55 + pop * popA * 1.4);
+    }
+    // crackle: sparse sharp clicks only (burn warning, rice landing)
+    A.crackle = mk(2); const k = A.crackle.getChannelData(0);
+    let cl = 0, clA = 0;
+    for (let i = 0; i < k.length; i++) {
+      if (Math.random() < 0.0009) { cl = 1; clA = rnd(0.3, 1); }
+      cl *= 0.9;
+      k[i] = (Math.random() * 2 - 1) * cl * clA;
+    }
+  }
+
+  /* a looping bed: src -> highpass -> lowpass -> gain(0) -> out */
+  function bed(buf, hp, lp, rate) {
+    const ac = A.ctx, src = ac.createBufferSource(), h = ac.createBiquadFilter(), l = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = buf; src.loop = true; src.playbackRate.value = rate;
+    h.type = "highpass"; h.frequency.value = hp; l.type = "lowpass"; l.frequency.value = lp; g.gain.value = 0;
+    src.connect(h); h.connect(l); l.connect(g); g.connect(A.out); src.start();
+    return { g, l, level: 0 };
+  }
+
+  function unlock() {
+    try {
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch (e) {}
+      if (!A.ctx) {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        const ac = (A.ctx = new AC());
+        const comp = ac.createDynamicsCompressor();
+        comp.threshold.value = -14; comp.ratio.value = 4;
+        A.out = ac.createGain(); A.out.gain.value = A.muted ? 0 : 0.9;
+        A.out.connect(comp); comp.connect(ac.destination);
+        makeBuffers(ac);
+        A.siz = bed(A.sizz, 1500, 6000, 1);
+        A.warn = bed(A.crackle, 900, 4500, 0.8);
+        // iOS: play something inside the gesture
+        const s = ac.createBufferSource(); s.buffer = ac.createBuffer(1, 1, ac.sampleRate); s.connect(ac.destination); s.start();
+      }
+      if (A.ctx.state !== "running") A.ctx.resume();
+    } catch (e) {}
+  }
+
+  /* everything below no-ops before unlock and swallows errors: sound must never break the game */
+  const safe = (fn) => function () { if (!A.ctx) return; try { fn.apply(null, arguments); } catch (e) {} };
+  const now = () => A.ctx.currentTime;
+
+  /* filtered noise burst with a frequency sweep and an attack/decay envelope */
+  function burst(o) {
+    const ac = A.ctx, t = now() + (o.at || 0), d = o.dur;
+    const src = ac.createBufferSource(), f = ac.createBiquadFilter(), g = ac.createGain();
+    src.buffer = o.buf || A.noise; src.playbackRate.value = o.rate || 1;
+    f.type = o.type || "bandpass"; f.Q.value = o.q || 1;
+    f.frequency.setValueAtTime(o.f0, t); f.frequency.exponentialRampToValueAtTime(o.f1 || o.f0, t + d);
+    const at = o.attack || 0.004;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.gain, t + at); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    src.connect(f); f.connect(g); g.connect(A.out);
+    src.start(t, Math.random() * (src.buffer.duration - d - 0.1)); src.stop(t + d + 0.05);
+  }
+  function tone(o) {
+    const ac = A.ctx, t = now() + (o.at || 0), d = o.dur, osc = ac.createOscillator(), g = ac.createGain();
+    osc.type = o.type || "sine";
+    osc.frequency.setValueAtTime(o.f0, t); osc.frequency.exponentialRampToValueAtTime(o.f1 || o.f0, t + d);
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(o.gain, t + (o.attack || 0.003)); g.gain.exponentialRampToValueAtTime(0.0001, t + d);
+    osc.connect(g); g.connect(A.out); osc.start(t); osc.stop(t + d + 0.05);
+  }
+
+  K.Audio = {
+    unlock,
+    /* main heat cue: louder and brighter with food on the metal; drops fast when it all goes airborne */
+    sizzle: safe((level) => {
+      const l = clamp(+level || 0, 0, 1), b = A.siz;
+      if (Math.abs(l - b.level) < 0.01) return;
+      const tau = l < b.level ? 0.035 : 0.08;
+      b.level = l;
+      b.g.gain.setTargetAtTime(0.42 * Math.pow(l, 1.3), now(), tau);
+      b.l.frequency.setTargetAtTime(2200 + 7500 * l, now(), tau);
+    }),
+    toss: safe((strength, snap) => {
+      const s = clamp((strength || 1) / 1.6, 0.15, 1), p = clamp(snap || 0, 0, 1);
+      burst({ f0: 320, f1: 1500 + 900 * s, q: 1.1, dur: 0.2 + 0.12 * s, gain: 0.4 * s, attack: 0.07 }); // whoosh
+      burst({ f0: 2400, f1: 3900, q: 9, dur: 0.08 + 0.07 * p, gain: 0.16 + 0.22 * p, at: 0.01 }); // scrape on the burner ring
+      tone({ f0: 1870, dur: 0.3, gain: 0.03 + 0.05 * p, type: "triangle", at: 0.01 }); // steel ring
+      tone({ f0: 2950, dur: 0.18, gain: 0.02 + 0.03 * p, type: "sine", at: 0.01 });
+    }),
+    land: safe((kind) => {
+      if (kind === "egg-soft") {
+        tone({ f0: 190, f1: 85, dur: 0.13, gain: 0.35 });
+        burst({ type: "lowpass", f0: 1000, f1: 280, dur: 0.12, gain: 0.3 });
+        burst({ buf: A.sizz, type: "highpass", f0: 3000, dur: 0.35, gain: 0.25, at: 0.03, attack: 0.03 });
+      } else if (kind === "egg-splat") {
+        burst({ type: "lowpass", f0: 2000, f1: 240, q: 2, dur: 0.24, gain: 0.55, attack: 0.002 });
+        tone({ f0: 120, f1: 55, dur: 0.16, gain: 0.4 });
+        for (let i = 0; i < 3; i++) tone({ f0: rnd(650, 950), f1: rnd(260, 340), dur: 0.05, gain: 0.1, at: 0.03 + i * rnd(0.03, 0.06) });
+      } else if (kind === "spill") {
+        for (let i = 0; i < 9; i++) burst({ f0: rnd(2800, 5200), q: 5, dur: 0.025, gain: rnd(0.12, 0.28), at: rnd(0, 0.45), attack: 0.001 });
+      } else { // rice: a crackling burst of contact
+        burst({ buf: A.crackle, type: "highpass", f0: 2200, f1: 3800, dur: 0.4, gain: 0.9, rate: rnd(1.1, 1.4), attack: 0.003 });
+        burst({ buf: A.sizz, type: "highpass", f0: 3500, dur: 0.3, gain: 0.3, attack: 0.01 });
+        tone({ f0: 150, f1: 75, dur: 0.07, gain: 0.15 });
+      }
+    }),
+    flare: safe(() => { // gas whoomph
+      burst({ type: "lowpass", f0: 160, f1: 1100, q: 1.5, dur: 0.5, gain: 0.6, attack: 0.05 });
+      tone({ f0: 75, f1: 42, dur: 0.45, gain: 0.3, attack: 0.03 });
+    }),
+    ding: safe(() => { // kitchen-timer bell: inharmonic partials
+      [[1, 0.28], [2, 0.1], [2.76, 0.08], [5.4, 0.03]].forEach(([m, g]) => tone({ f0: 1320 * m, dur: 1.4 / Math.sqrt(m), gain: g }));
+    }),
+    stamp: safe(() => {
+      tone({ f0: 115, f1: 45, dur: 0.22, gain: 0.6 });
+      burst({ type: "lowpass", f0: 1400, f1: 200, dur: 0.08, gain: 0.5, attack: 0.001 });
+    }),
+    burnWarn: safe((level) => {
+      const l = clamp(+level || 0, 0, 1), b = A.warn;
+      if (Math.abs(l - b.level) < 0.01) return;
+      b.level = l;
+      b.g.gain.setTargetAtTime(0.5 * l, now(), 0.25);
+    }),
+    mute: (m) => {
+      A.muted = !!m;
+      try { if (A.ctx) A.out.gain.setTargetAtTime(A.muted ? 0 : 0.9, now(), 0.03); } catch (e) {}
+    },
+  };
+})();
+
+</script>
+<script>
+/* input.js — devicemotion flick + tilt, pointer fallback (input; spec: research/input.md, API: CONTRACT.md) */
+"use strict";
+(function () {
+  const K = (window.KFR = window.KFR || {});
+  const clamp01 = (x) => (x < 0 ? 0 : x > 1 ? 1 : x);
+  const clamp1 = (x) => (x < -1 ? -1 : x > 1 ? 1 : x);
+
+  /* motion constants (research/input.md §3, est — tune on a phone with ?debug + KFR.Input.debug) */
+  const TAU_G = 0.2, A_ON_MIN = 6, A_OFF = 2, A_MAX = 25, W_ON = 200, PULSE_MAX = 250;
+  const RISE_FAST = 40, RISE_SLOW = 180, K_ROT = 0.02, REFRACT = 300, CAL_MS = 1000, PROBE_MS = 1000;
+  /* tilt (§4) */
+  const DEAD = 0.035, FULL = 0.35, TILT_TAU = 80, FREEZE = 250;
+  /* touch: speeds in screen heights per second */
+  const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
+  const HINT = "Safari/Chrome에서 열면 폰을 흔들어서 할 수 있어요";
+
+  const I = (K.Input = {
+    mode: "touch", hint: "", debug: {}, onResultFlick: null,
+    start, requestPermission, useTouch, demoTilt, armAfterRelease,
+    _feed: (e) => { started = true; onMotion(e); },
+  });
+
+  let onFlickCb = null, appEl = null, started = false;
+
+  /* ---------- tilt: targets set by motion / touch / demo, EMA applied when the game polls ---------- */
+  const tilt = { u: 0, v: 0 };
+  let tu = 0, tv = 0, tiltLast = 0;
+  Object.defineProperty(I, "tilt", {
+    get() {
+      const now = performance.now(), dt = tiltLast ? now - tiltLast : 1000;
+      tiltLast = now;
+      const k = 1 - Math.exp(-dt / TILT_TAU);
+      tilt.u += (tu - tilt.u) * k; tilt.v += (tv - tilt.v) * k;
+      return tilt;
+    },
+  });
+  function demoTilt(u, v) { if (!started) { tu = u; tv = v; } }
+
+  /* ---------- flick out ---------- */
+  function emit(f) {
+    I.debug.last = f;
+    try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
+    const st = K.Game && K.Game.state;
+    if (st && st.phase === "result") { I.onResultFlick && I.onResultFlick(); return; }
+    onFlickCb && onFlickCb(f);
+  }
+
+  /* ---------- motion ---------- */
+  let g = null, g0 = null, sgn = 1, lastT = 0, aOn = A_ON_MIN;
+  let cal = null;            // {t0, n, gx, gy, gz, m, m2} while calibrating
+  let pulse = null, quietT = 0, lastFlick = -1e9, frozenUntil = 0, quietUntil = 0;
+  let gotMotion = false, probeDone = null;
+
+  function onMotion(e) {
+    const a = e.accelerationIncludingGravity;
+    if (!a || a.x == null) return;
+    if (!gotMotion) { gotMotion = true; I.mode = "motion"; probeDone && probeDone(); }
+    const t = e.timeStamp;
+    const dt = g ? Math.min(0.1, Math.max(0.001, (t - lastT) / 1000)) : 0;
+    lastT = t;
+    // device -> screen frame (layout may have auto-rotated). iOS reports aIG with the opposite sign to the spec on some
+    // versions: face-up z must be +g, so take the sign from the first sample.
+    const ang = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180;
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const rot = (x, y) => [x * ca - y * sa, x * sa + y * ca];
+    if (!g) sgn = a.z < -4 ? -1 : 1;
+    const [ax, ay] = rot(a.x * sgn, a.y * sgn), az = a.z * sgn;
+    if (!g) { g = [ax, ay, az]; g0 = g.slice(); cal = { t0: t, n: 0, gx: 0, gy: 0, gz: 0, m: 0, m2: 0 }; }
+    const k = dt / (TAU_G + dt);
+    g[0] += (ax - g[0]) * k; g[1] += (ay - g[1]) * k; g[2] += (az - g[2]) * k;
+    const ac = e.acceleration;
+    let lx, ly, lz;
+    if (ac && ac.x != null) { [lx, ly] = rot(ac.x * sgn, ac.y * sgn); lz = ac.z * sgn; }
+    else { lx = ax - g[0]; ly = ay - g[1]; lz = az - g[2]; }
+    const m = Math.hypot(lx, ly, lz);
+    const rr = e.rotationRate;
+    const [pitch, roll] = rr && rr.beta != null ? rot(rr.beta, rr.gamma) : [0, 0]; // about screen x (far lip up +), y
+
+    if (cal) {
+      cal.n++; cal.gx += g[0]; cal.gy += g[1]; cal.gz += g[2]; cal.m += m; cal.m2 += m * m;
+      if (t - cal.t0 >= CAL_MS) {
+        const n = cal.n, mu = cal.m / n, sd = Math.sqrt(Math.max(0, cal.m2 / n - mu * mu));
+        g0 = [cal.gx / n, cal.gy / n, cal.gz / n]; aOn = Math.max(A_ON_MIN, mu + 6 * sd);
+        I.debug.cal = { mu: +mu.toFixed(3), sd: +sd.toFixed(3), aOn: +aOn.toFixed(2), g0: g0.map((x) => +x.toFixed(2)) };
+        cal = null;
+      }
+    }
+
+    // flick pulse (§3)
+    if (!pulse && m < A_OFF) quietT = t;
+    const gate = m > aOn || Math.abs(pitch) > W_ON;
+    if (gate && t < quietUntil) quietUntil = t + 400; // armAfterRelease: wait for 400 ms of calm
+    if (!pulse && gate && t - lastFlick > REFRACT) {
+      pulse = { t0: t, tq: quietT, peak: m, tPeak: t, ix: 0, iy: 0, rx: 0, ry: 0 };
+      frozenUntil = t + FREEZE;
+    }
+    if (pulse) {
+      const p = pulse;
+      if (m > p.peak) { p.peak = m; p.tPeak = t; }
+      p.ix += lx * dt; p.iy += ly * dt; p.rx += pitch * dt; p.ry += roll * dt;
+      const fell = m < A_OFF || (p.peak > aOn && m < 0.5 * p.peak);
+      if ((t > p.t0 && fell && Math.abs(pitch) < W_ON) || t - p.t0 > PULSE_MAX) {
+        pulse = null; lastFlick = t;
+        const s01 = clamp01((p.peak - aOn) / (A_MAX - aOn));
+        const rise = p.tPeak - p.tq; // from leaving the noise floor, not from the gate: a slow push crosses A_ON late
+        const snap = clamp01(1 - (rise - RISE_FAST) / (RISE_SLOW - RISE_FAST));
+        let dx = p.ix + K_ROT * p.ry, dy = p.iy + K_ROT * p.rx;
+        const n = Math.hypot(dx, dy);
+        if (n < 0.25) { dx = 0; dy = 1; } else { dx /= n; dy /= n; } // mostly vertical pop: forward
+        I.debug.peak = +p.peak.toFixed(2); I.debug.rise = Math.round(rise); I.debug.dir = [+dx.toFixed(2), +dy.toFixed(2)];
+        I.debug.rejected = s01 < 0.2 && snap < 0.1;
+        if (!I.debug.rejected && started && t >= quietUntil)
+          emit({ strength: 0.3 + 1.3 * s01, snap, dirU: dx, dirV: dy });
+      }
+    }
+
+    // tilt from gravity delta (§4): + u = right side lower (g leans to -x), + v = far side lower (g leans to -y)
+    if (t >= frozenUntil) {
+      const zone = (x) => Math.sign(x) * clamp01((Math.abs(x) - DEAD) / (FULL - DEAD));
+      tu = zone(-(g[0] - g0[0]) / 9.81); tv = zone(-(g[1] - g0[1]) / 9.81);
+    }
+  }
+
+  /* ---------- touch / mouse ---------- */
+  let ptr = null, blockUntilUp = false;
+  function onDown(e) {
+    if (I.mode !== "touch" || ptr) return;
+    const r = appEl.getBoundingClientRect();
+    ptr = { id: e.pointerId, x0: e.clientX, y0: e.clientY, W: r.width, H: r.height, s: [[e.timeStamp, e.clientX, e.clientY]],
+      fast: null, fired: false, slowT: e.timeStamp, slowX: e.clientX, slowY: e.clientY };
+  }
+  function fire(p) {
+    const f = p.fast;
+    if ((f.y0 - f.y) / p.H < T_MIN_TRAVEL) { p.fast = null; return; } // a twitch, not a stroke
+    p.fired = true;
+    const s01 = clamp01((f.peak - T_ON) / (T_MAX - T_ON));
+    const snap = clamp01(1 - (f.tPeak - f.t0 - T_RISE_FAST) / (T_RISE_SLOW - T_RISE_FAST));
+    const dirU = clamp1((f.x - f.x0) / (f.y0 - f.y));
+    I.debug.peak = +f.peak.toFixed(2); I.debug.rise = Math.round(f.tPeak - f.t0); I.debug.dir = [+dirU.toFixed(2), 1];
+    if (started) emit({ strength: 0.3 + 1.3 * s01, snap, dirU, dirV: 1 });
+  }
+  function onMove(e) {
+    const p = ptr;
+    if (!p || e.pointerId !== p.id) return;
+    const t = e.timeStamp, x = e.clientX, y = e.clientY;
+    p.s.push([t, x, y]);
+    while (p.s.length > 2 && t - p.s[0][0] > 50) p.s.shift();
+    const a = p.s[0], vy = ((a[2] - y) / Math.max(8, t - a[0])) * 1000 / p.H; // upward speed, heights / s
+    if (p.fired || blockUntilUp) return; // after a flick: tilt holds until the finger lifts
+    if (p.fast) {
+      if (vy > p.fast.peak) { p.fast.peak = vy; p.fast.tPeak = t; }
+      p.fast.x = x; p.fast.y = y;
+      if (vy < 0.5 * p.fast.peak) fire(p);
+    } else if (vy > T_ON) {
+      p.fast = { t0: p.slowT, x0: p.slowX, y0: p.slowY, peak: vy, tPeak: t, x, y };
+    } else {
+      p.slowT = t; p.slowX = x; p.slowY = y;
+      tu = clamp1((x - p.x0) / (0.3 * p.W)); tv = clamp1((p.y0 - y) / (0.15 * p.H)); // drag down = toward the handle
+    }
+  }
+  function onUp(e) {
+    const p = ptr;
+    if (!p || e.pointerId !== p.id) return;
+    if (e.type === "pointerup" && p.fast && !p.fired && !blockUntilUp) fire(p);
+    ptr = null; blockUntilUp = false;
+    if (I.mode === "touch" && started) { tu = 0; tv = 0; }
+  }
+
+  /* ---------- API ---------- */
+  function start(onFlick, el) {
+    onFlickCb = onFlick; appEl = el;
+    el.addEventListener("pointerdown", onDown);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+  }
+  function useTouch() {
+    started = true; I.mode = "touch"; tu = 0; tv = 0;
+    window.removeEventListener("devicemotion", onMotion);
+  }
+  // Must be called synchronously from a tap (iOS). Resolves once motion events flow, or after the 1 s probe in touch mode.
+  function requestPermission() {
+    started = true; tu = 0; tv = 0;
+    const DM = window.DeviceMotionEvent;
+    let ask;
+    try {
+      ask = DM && typeof DM.requestPermission === "function" ? DM.requestPermission() : Promise.resolve(DM ? "granted" : "denied");
+    } catch (e) { ask = Promise.resolve("denied"); }
+    return Promise.resolve(ask).catch(() => "denied").then((r) => new Promise((res) => {
+      if (r !== "granted") { useTouch(); return res(); }
+      const timer = setTimeout(() => {
+        probeDone = null;
+        if (!gotMotion) { useTouch(); I.hint = HINT; }
+        res();
+      }, PROBE_MS);
+      probeDone = () => { probeDone = null; clearTimeout(timer); res(); };
+      window.addEventListener("devicemotion", onMotion);
+    }));
+  }
+  function armAfterRelease() {
+    blockUntilUp = !!ptr;
+    quietUntil = lastT + 400;
+  }
+})();
+
+</script>
+<script>
+/* rice.js — rice + kimchi + scallion: heat, tilt slide, wok-toss wave, landing, draw (see CONTRACT.md, DESIGN.md) */
+"use strict";
+(function () {
+  const K = window.KFR, TAU = K.TAU, clamp = K.clamp;
+
+  /* ---------- tuning ---------- */
+  const N_RICE = 220, N_KIMCHI = 26, N_PA = 13; // ~12% kimchi, ~6% scallion
+  const PILE = 0.58;          // pile radius at rest (world units)
+  const MOUND = 0.11;        // pile height at its centre
+  const G = 14;              // anim §1
+  const RATE = 0.34;         // cook per second for the contact layer at heat 1 (balance: see harness)
+  const AIR = 0.05;           // flames lick the rice in the air (share of RATE): keeps doneness from hinging on rhythm alone
+  const RAMP0 = 0.8;        // sear rate right after landing (rises to 1 over 0.4 s of contact): constant tossing stays pale
+  const V = 3.1;             // toss speed scale (strength 1 lip grain lands near the handle side, 1.5 spills)
+  const HEAT_C = K.heat(0, 0);
+  const READY = [0.25, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
+  const SHEET = 0.8;               // airborne share a 완벽 needs
+  const LABELS = {
+    perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["덜 익었어", "#C98A3E"],
+    late: ["탔다!", "#5A2A14"], weak: ["약해", "#6B7781"], spill: ["쏟았다!", "#C81E1E"],
+  };
+  const layer = (d) => 1.6 * (1 - d) * (1 - d) + 0.05; // bottom layer sears, top barely warms
+
+  /* deterministic hash so the bowl and shapes don't flicker */
+  const hash = (i) => { const s = Math.sin(i * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); };
+
+  /* ---------- colour LUT: no string building per frame ---------- */
+  const Q = 0.02, NQ = 100;
+  const LUT = [K.col.rice, K.col.kimchi, K.col.scallion].map((f) => {
+    const base = [], shade = [], lit = [], gl = [];
+    for (let q = 0; q < NQ; q++) {
+      const ck = q * Q, c = f(ck);
+      base.push(K.rgb(c)); shade.push(K.rgb([c[0] * 0.75, c[1] * 0.75, c[2] * 0.75]));
+      lit.push(K.rgb([Math.min(255, c[0] * 1.15 + 8), Math.min(255, c[1] * 1.15 + 8), Math.min(255, c[2] * 1.15 + 8)]));
+      gl.push(ck <= 1.2 ? K.gloss(ck) : 0); // art: spec only while glossy (.4–1.2)
+    }
+    return { base, shade, lit, gl };
+  });
+  const qi = (ck) => (ck <= 0 ? 0 : ck >= (NQ - 1) * Q ? NQ - 1 : (ck / Q) | 0);
+
+  /* ---------- projection (same formula as KFR.proj, inlined so the hot loop allocates nothing) ---------- */
+  let PX = 0, PY = 0;
+  function P(vw, pose, u, v, h) {
+    const lean = 1 + (pose.lean || 0) * 0.12;
+    PX = vw.cx + (u + (pose.du || 0)) * vw.R;
+    PY = vw.cy - (v + (pose.dv || 0)) * vw.R * vw.ct * lean + (K.RIM_H - h - (pose.lift || 0)) * vw.R * vw.st;
+    if (h > K.RIM_H) PY -= (h - K.RIM_H) * vw.R * 0.15;
+  }
+
+  /* ---------- state ---------- */
+  function create() {
+    const units = [];
+    // rice in clumps of 3–6 (art §2), kimchi and scallion as single pieces
+    let left = N_RICE;
+    while (left > 0) { const n = Math.min(left, 3 + ((Math.random() * 4) | 0)); units.push({ kind: 0, n }); left -= n; }
+    for (let i = 0; i < N_KIMCHI; i++) units.push({ kind: 1, n: 1 });
+    for (let i = 0; i < N_PA; i++) units.push({ kind: 2, n: 1 });
+    const M = units.length, F = () => new Float32Array(M);
+    const s = {
+      M, kind: new Uint8Array(M), n: new Uint8Array(M), st: new Uint8Array(M), // st: 0 pile, 1 sliding to the lip, 2 air, 3 spilled
+      u: F(), v: F(), h: F(), vu: F(), vv: F(), vh: F(), su: F(), sv: F(), hu: F(), hv: F(),
+      depth: F(), cook: F(), rest: F(), tl: F(), lift: F(), rot: F(), spin: F(), key: F(), hop: new Uint8Array(M),
+      toss: new Int32Array(M), shape: [], ord: new Uint16Array(M),
+      pc: [0, 0], slU: 0, slV: 1, sl: F(), cur: null, tossN: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0, readiness: 0, golden: false,
+      lastToss: null, events: [], total: N_RICE + N_KIMCHI + N_PA, hot: [],
+    };
+    for (let i = 0; i < M; i++) {
+      const un = units[i];
+      s.kind[i] = un.kind; s.n[i] = un.n; s.ord[i] = i;
+      const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * PILE;
+      s.hu[i] = Math.cos(a) * r; s.hv[i] = Math.sin(a) * r;
+      s.u[i] = s.hu[i]; s.v[i] = s.hv[i]; s.depth[i] = Math.random(); s.h[i] = groundH(s, i);
+      s.rot[i] = Math.random() * TAU; s.toss[i] = -1;
+      // member layout (in R units): grains overlap ~60% inside a small blob
+      const m = [];
+      for (let k = 0; k < un.n; k++) {
+        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.013 + Math.random() * 0.028 : 0;
+        m.push({ ox: Math.cos(ma) * mr, oy: Math.sin(ma) * mr * 0.8, rot: Math.random() * Math.PI, sz: 0.85 + Math.random() * 0.3, j: (Math.random() - 0.5) * 0.08 });
+      }
+      s.shape.push({ m, q: Math.random(), strip: un.kind === 2 && Math.random() < 0.35 });
+    }
+    return s;
+  }
+  function groundH(s, i) {
+    const rh2 = (s.hu[i] * s.hu[i] + s.hv[i] * s.hv[i]) / (PILE * PILE);
+    return K.surf(s.u[i], s.v[i]) + 0.012 + MOUND * s.depth[i] * Math.max(0.15, 1 - rh2);
+  }
+
+  /* ---------- toss: the sheet peels off the lip, lip grains highest, curls back over the pile ---------- */
+  function toss(s, f, t) {
+    if (s.cur) finish(s, t);
+    const str = clamp(f.strength || 1, 0.2, 1.8), snap = clamp(f.snap == null ? 0.5 : f.snap, 0, 1);
+    let du = 0.6 * clamp(f.dirU || 0, -1, 1), dv = 1;
+    const dl = Math.hypot(du, dv); du /= dl; dv /= dl;
+    const lipU = 0.92 * du, lipV = 0.92 * dv;
+    const reach = 0.5 + 1.1 * str, vSlide = 3 + 3 * str;
+    // readiness: heat the contact layer took since it last landed (centre-heat seconds)
+    let rs = 0, rn = 0, avail = 0, dMin = 9;
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] !== 0) continue;
+      avail += s.n[i];
+      if (s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+      const d = dist(s.u[i], s.v[i], lipU, lipV, du, dv);
+      if (d < dMin) dMin = d;
+    }
+    s.slU = du; s.slV = dv;
+    const id = ++s.tossN;
+    let launched = 0, mu = 0, mv = 0;
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] !== 0) continue;
+      const d = dist(s.u[i], s.v[i], lipU, lipV, du, dv);
+      if (d > reach) { // slosh toward the lip; the layers stir a little
+        s.su[i] += du * 0.5 * str; s.sv[i] += dv * 0.5 * str;
+        s.depth[i] = 0.5 * s.depth[i] + 0.5 * Math.random(); s.rest[i] *= 0.5; continue;
+      }
+      s.st[i] = 1; s.toss[i] = id; launched += s.n[i]; mu += s.u[i] * s.n[i]; mv += s.v[i] * s.n[i];
+      s.tl[i] = t + 0.07 + (d - dMin) / vSlide; // lip first, the rest peel off after it
+      // the push carries every grain up onto the far wall (order kept, band compressed): nothing launches from the near side
+      s.sl[i] = Math.max(0, d - (0.1 + 0.35 * (d - dMin))) / (s.tl[i] - t);
+      const lift = Math.exp(-(d - dMin) / 0.25);
+      s.lift[i] = lift;
+      // strength mostly throws farther back (too strong spills over the near rim), height grows slower
+      const vUp = V * Math.pow(str, 0.6) * (0.5 + 1.3 * lift) * (0.7 + 0.5 * snap);
+      const vBack = V * Math.pow(str, 1.4) * (0.45 + 0.2 * lift) * (1.1 - 0.3 * snap);
+      const nz = (0.1 + 0.3 * (1 - snap)) * V * str;
+      // velocities are stored now, applied at launch time
+      s.vu[i] = -du * vBack + (Math.random() - 0.5) * nz * 0.8 - s.u[i] * 0.25;
+      s.vv[i] = -dv * vBack + (Math.random() - 0.5) * nz * 0.6;
+      s.vh[i] = vUp + (Math.random() - 0.5) * nz * 0.5;
+      s.spin[i] = -vBack * 8 * (0.7 + 0.6 * Math.random()) * (du >= 0 ? 1 : -1);
+      s.hop[i] = 0;
+    }
+    s.cur = {
+      id, t, str, readiness: rn ? rs / rn : 0, sheet: avail ? launched / avail : 0, launched, out: launched,
+      spill: 0, u: launched ? mu / launched : 0, v: launched ? mv / launched : 0,
+    };
+    s.tosses++;
+  }
+  /* distance from the lip measured along the throw (sideways counts half) */
+  function dist(u, v, lu, lv, du, dv) {
+    const a = (lu - u) * du + (lv - v) * dv, p = (lu - u) * -dv + (lv - v) * du;
+    return Math.sqrt(Math.max(0, a) * Math.max(0, a) + 0.25 * p * p);
+  }
+
+  /* grains of an already graded toss that go over the rim late still make it a spill */
+  function lateSpill(s, id, n) {
+    const lt = s.lastToss;
+    if (!lt || lt.id !== id || lt.grade === "spill") return;
+    lt.late = (lt.late || 0) + n;
+    if (lt.late < 3) return;
+    s.wokhei = Math.max(0, s.wokhei - (lt.gain || 0)); s.combo = 0;
+    s.lastToss = { t: lt.t, label: LABELS.spill[0], color: LABELS.spill[1], shown: false, grade: "spill", id, lift: lt.lift, spill: lt.late / Math.max(1, lt.n), readiness: lt.readiness, combo: 0, u: lt.u, v: lt.v };
+  }
+
+  /* grade a toss once its grains are back (or the next toss starts) */
+  function finish(s, t) {
+    const c = s.cur; s.cur = null;
+    if (c.id === 1) { s.lastTossT = c.t; return; } // first toss of the round: readiness is ~0, no word, no combo change
+    const spillF = c.launched ? c.spill / c.launched : 0;
+    let g;
+    if (c.spill >= 3) g = "spill";
+    else if (c.sheet < 0.4) g = "weak";
+    // readiness = contact-layer seconds on the metal since landing. DESIGN's 0.6–1.0 s window is for a real 0.22 s
+    // flight; ours is ~0.7 s, so the window sits where the rhythm that also gives the best doneness lands (~1.0–1.15 s)
+    else if (c.readiness > READY[2]) g = "late";
+    else if (c.readiness < READY[0]) g = "early";
+    else if (c.readiness <= READY[1] && c.sheet >= SHEET) g = "perfect";
+    else g = "good";
+    if (c.t - s.lastTossT > 1.8 || g === "late" || g === "spill") s.combo = 0;
+    s.lastTossT = c.t;
+    let gain = 0;
+    if (g === "perfect" || g === "good") {
+      s.combo++;
+      const fac = Math.min(1.6, 1 + 0.2 * (s.combo - 1)), w0 = s.wokhei;
+      s.wokhei = Math.min(20, s.wokhei + (g === "perfect" ? 2 * fac : 1)); gain = s.wokhei - w0;
+    }
+    s.maxCombo = Math.max(s.maxCombo, s.combo);
+    const [label, color] = LABELS[g];
+    s.lastToss = {
+      t: c.t, label: label + (s.combo >= 2 && (g === "perfect" || g === "good") ? " x" + s.combo : ""), color, shown: false,
+      grade: g, id: c.id, n: c.launched, gain, lift: c.sheet, spill: spillF, readiness: c.readiness, combo: s.combo, u: c.u, v: c.v,
+    };
+  }
+
+  /* ---------- update ---------- */
+  function update(s, dt, ctx) {
+    dt = Math.min(dt, 0.05);
+    const steps = dt > 1 / 50 ? 2 : 1;
+    for (let k = 0; k < steps; k++) step(s, dt / steps, ctx);
+    if (s.cur && (s.cur.out <= 0 || ctx.t - s.cur.t > 1.6)) finish(s, ctx.t);
+    // live cue for the lead: same scale and window as the grade (완벽/좋음 = 0.25–0.7)
+    let rs = 0, rn = 0;
+    for (let i = 0; i < s.M; i++) if (s.st[i] === 0 && s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+    s.readiness = rn ? rs / rn : 0;
+    s.golden = s.readiness >= READY[0] && s.readiness <= READY[2];
+  }
+  function step(s, dt, ctx) {
+    const t = ctx.t, heat = ctx.heat || K.heat, tilt = ctx.tilt || { u: 0, v: 0 };
+    // the pile keeps its shape and slides toward the low side; squeezes a little against the wall
+    const tm = Math.min(1, Math.hypot(tilt.u, tilt.v)), sq = 1 - 0.3 * tm;
+    const pk = Math.min(1, dt * 2.5);
+    s.pc[0] += (tilt.u * 0.5 - s.pc[0]) * pk; s.pc[1] += (tilt.v * 0.5 - s.pc[1]) * pk;
+    const air = RATE * AIR * dt, damp = Math.exp(-6 * dt);
+    let lN = 0, lU = 0, lV = 0, sN = 0, sU = 0, sV = 0;
+    for (let i = 0; i < s.M; i++) {
+      const st = s.st[i];
+      if (st === 0) {
+        const hh = heat(s.u[i], s.v[i]);
+        // a grain that just landed was cooled in the air: the sear builds back up over ~0.5 s of contact
+        s.cook[i] += RATE * layer(s.depth[i]) * hh * (RAMP0 + (1 - RAMP0) * Math.min(1, s.rest[i] / 0.4)) * dt;
+        s.rest[i] += (hh / HEAT_C) * dt;
+        let gu = s.pc[0] + s.hu[i] * sq, gv = s.pc[1] + s.hv[i] * sq;
+        const gr = Math.hypot(gu, gv); if (gr > 0.9) { gu *= 0.9 / gr; gv *= 0.9 / gr; }
+        s.u[i] += s.su[i] * dt + (gu - s.u[i]) * Math.min(1, dt * 3);
+        s.v[i] += s.sv[i] * dt + (gv - s.v[i]) * Math.min(1, dt * 3);
+        s.su[i] *= damp; s.sv[i] *= damp;
+        const r = Math.hypot(s.u[i], s.v[i]); if (r > 0.95) { s.u[i] *= 0.95 / r; s.v[i] *= 0.95 / r; }
+        s.h[i] = groundH(s, i);
+        s.rot[i] += (s.su[i] + s.sv[i]) * dt * 2;
+      } else if (st === 1) {
+        // the push slides the rice up the wall toward the lip (not a lerp: constant speed)
+        s.u[i] += s.slU * s.sl[i] * dt; s.v[i] += s.slV * s.sl[i] * dt;
+        const r = Math.hypot(s.u[i], s.v[i]); if (r > 0.93) { s.u[i] *= 0.93 / r; s.v[i] *= 0.93 / r; }
+        s.h[i] = K.surf(s.u[i], s.v[i]) + 0.02 + 0.04 * s.depth[i];
+        if (t >= s.tl[i]) s.st[i] = 2;
+      } else if (st === 2) {
+        s.cook[i] += air;
+        const gg = Math.abs(s.vh[i]) < 0.8 ? G * 0.8 : G; // apex hang
+        s.vh[i] -= gg * dt;
+        s.u[i] += s.vu[i] * dt; s.v[i] += s.vv[i] * dt; s.h[i] += s.vh[i] * dt;
+        s.rot[i] += s.spin[i] * dt;
+        if (s.vh[i] < 0) {
+          const r2 = s.u[i] * s.u[i] + s.v[i] * s.v[i];
+          if (r2 <= 1) {
+            const floor = K.surf(s.u[i], s.v[i]) + 0.06; // lands on the pile, not under it
+            if (s.h[i] <= floor) {
+              if (!s.hop[i] && Math.random() < 0.15) { s.hop[i] = 1; s.h[i] = floor; s.vh[i] = 0.4; s.vu[i] *= 0.5; s.vv[i] *= 0.5; continue; }
+              land(s, i, sq);
+              lN += s.n[i]; lU += s.u[i] * s.n[i]; lV += s.v[i] * s.n[i];
+            }
+          } else if (s.h[i] < K.RIM_H) {
+            // over the rim: onto the counter
+            s.st[i] = 3; s.vh[i] = Math.min(s.vh[i], -1);
+            const r = Math.sqrt(r2); s.vu[i] += (s.u[i] / r) * 0.6; s.vv[i] += (s.v[i] / r) * 0.6;
+            if (s.toss[i] === (s.cur && s.cur.id)) { s.cur.spill += s.n[i]; s.cur.out -= s.n[i]; }
+            else lateSpill(s, s.toss[i], s.n[i]);
+            sN += s.n[i]; sU += s.u[i] * s.n[i]; sV += s.v[i] * s.n[i];
+          }
+        }
+      } else if (s.h[i] > -0.32) {
+        // spilled, still falling to the counter: scatters out in front of the wok
+        s.vh[i] -= G * dt; s.u[i] += s.vu[i] * dt; s.v[i] += s.vv[i] * dt; s.h[i] += s.vh[i] * dt; s.rot[i] += s.spin[i] * dt;
+        if (s.h[i] <= -0.32) { s.h[i] = -0.32; s.vu[i] = s.vv[i] = s.vh[i] = 0; }
+      }
+    }
+    if (lN) s.events.push({ type: "land", u: lU / lN, v: lV / lN, n: lN });
+    if (sN) s.events.push({ type: "spill", u: sU / sN, v: sV / sN, n: sN });
+    if (s.events.length > 60) s.events.splice(0, s.events.length - 60); // nobody drains: don't grow forever
+  }
+  function land(s, i, sq) {
+    s.st[i] = 0;
+    // depth flips: the seared bottom layer comes out on top (wave <-> burn mechanic)
+    s.depth[i] = clamp(1 - s.depth[i] + (Math.random() - 0.5) * 0.2, 0, 1);
+    s.rest[i] = 0;
+    s.su[i] = s.vu[i] * 0.5; s.sv[i] = s.vv[i] * 0.5; // inelastic: keep half the tangential speed, slide home
+    // new slot in the pile: half where it landed (keeps the overturn), half anywhere (the bowl pulls it back to the middle)
+    const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * PILE;
+    let hu = 0.5 * (s.u[i] - s.pc[0]) / sq + 0.5 * Math.cos(a) * r, hv = 0.5 * (s.v[i] - s.pc[1]) / sq + 0.5 * Math.sin(a) * r;
+    const hr = Math.hypot(hu, hv); if (hr > PILE) { hu *= PILE / hr; hv *= PILE / hr; }
+    s.hu[i] = hu; s.hv[i] = hv;
+    if (s.cur && s.toss[i] === s.cur.id) s.cur.out -= s.n[i];
+  }
+
+  /* ---------- queries ---------- */
+  function stats(s) {
+    let good = 0, burnt = 0, raw = 0, spill = 0;
+    for (let i = 0; i < s.M; i++) {
+      const n = s.n[i], c = s.cook[i];
+      if (s.st[i] === 3) spill += n;
+      else if (c > K.RICE_GOOD[1]) burnt += n;
+      else if (c < K.RICE_GOOD[0]) raw += n;
+      else good += n;
+    }
+    const T = s.total;
+    return { good: good / T, burnt: burnt / T, raw: raw / T, spill: spill / T };
+  }
+  function airborne(s) { let n = 0; for (let i = 0; i < s.M; i++) if (s.st[i] === 2) n += s.n[i]; return n; }
+  function contactShare(s) {
+    let on = 0, all = 0;
+    for (let i = 0; i < s.M; i++) { if (s.st[i] === 3) continue; all += s.n[i]; if (s.st[i] < 2) on += s.n[i]; }
+    return all ? on / all : 0;
+  }
+  function hotspots(s, k) {
+    const out = s.hot; out.length = 0;
+    const stride = Math.max(1, Math.floor(s.M / k));
+    for (let i = (s.tosses * 7) % stride; i < s.M && out.length < k; i += stride) {
+      if (s.st[i] > 1) continue;
+      out.push({ u: s.u[i], v: s.v[i], h: s.h[i], cook: s.cook[i] });
+    }
+    return out;
+  }
+
+  /* ---------- draw ---------- */
+  function drawUnit(c, s, i, x, y, R, sc, lit, sAng, sStr) {
+    const kind = s.kind[i], sh = s.shape[i], q = qi(s.cook[i]), L = LUT[kind];
+    if (kind === 0) {
+      const rx0 = 0.06 * R * sc, ry0 = 0.03 * R * sc;
+      const m = sh.m;
+      for (let k = 0; k < m.length; k++) {
+        const mm = m[k], ck = qi(s.cook[i] + mm.j);
+        // in the air the clump stretches along its velocity (volume kept)
+        let ox = mm.ox * R * sc, oy = mm.oy * R * sc, rot = mm.rot + s.rot[i] * 0.3, rx = rx0 * mm.sz, ry = ry0 * mm.sz;
+        if (sStr > 1) {
+          const ca = Math.cos(sAng), sa = Math.sin(sAng), along = (ox * ca + oy * sa) * (sStr * 1.6 - 0.6);
+          const perp = (-ox * sa + oy * ca) / sStr;
+          ox = along * ca - perp * sa; oy = along * sa + perp * ca;
+          rot = sAng + (mm.rot - 1.5) * 0.5; rx *= sStr; ry /= Math.sqrt(sStr);
+        }
+        const gx = x + ox, gy = y + oy;
+        c.fillStyle = lit ? L.lit[ck] : L.base[ck];
+        c.beginPath(); c.ellipse(gx, gy, rx, ry, rot, 0, TAU); c.fill();
+        c.fillStyle = L.shade[ck]; // lower-right shade sliver
+        c.beginPath(); c.ellipse(gx + rx * 0.1, gy + ry * 0.3, rx * 0.78, ry * 0.55, rot, 0, TAU); c.fill();
+        c.fillStyle = lit ? L.lit[ck] : L.base[ck]; c.beginPath(); c.ellipse(gx - rx * 0.06, gy - ry * 0.12, rx * 0.86, ry * 0.7, rot, 0, TAU); c.fill();
+        const gl = L.gl[ck];
+        if (gl > 0.05) { c.fillStyle = `rgba(255,246,232,${(gl * 1.4).toFixed(2)})`; c.beginPath(); c.arc(gx - rx * 0.35, gy - ry * 0.45, Math.max(0.8, 0.012 * R * sc * 0.6), 0, TAU); c.fill(); }
+      }
+    } else if (kind === 1) {
+      // torn kimchi leaf: uneven quad, lit edge top-left, pale rib on some; shrinks as it cooks
+      const z = 0.058 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
+      const px = [-1, -0.2, 0.3 + qq * 0.6, 1, 0.2, -0.3 - qq * 0.5], py = [-0.4, -0.75 + qq * 0.2, -0.85, 0.2 + (1 - qq) * 0.3, 0.7, 0.8];
+      c.fillStyle = lit ? L.lit[q] : L.base[q]; c.beginPath();
+      for (let k = 0; k < 6; k++) { const X = x + (px[k] * ca - py[k] * sa) * z, Y = y + (px[k] * sa + py[k] * ca) * z * 0.85; k ? c.lineTo(X, Y) : c.moveTo(X, Y); }
+      c.closePath(); c.fill();
+      c.strokeStyle = s.cook[i] < 1.2 ? "rgba(255,106,61,.9)" : "rgba(120,50,30,.6)"; c.lineWidth = 1;
+      c.beginPath(); c.moveTo(x + (px[0] * ca - py[0] * sa) * z, y + (px[0] * sa + py[0] * ca) * z * 0.85);
+      c.lineTo(x + (px[1] * ca - py[1] * sa) * z, y + (px[1] * sa + py[1] * ca) * z * 0.85); c.stroke();
+      if (qq > 0.6) { c.strokeStyle = "rgba(247,201,168,.45)"; c.lineWidth = 1.1 * sc; c.beginPath(); c.moveTo(x - ca * z * 0.6, y - sa * z * 0.5); c.lineTo(x + ca * z * 0.6, y + sa * z * 0.5); c.stroke(); }
+      const gl = L.gl[q];
+      if (gl > 0.05) { c.fillStyle = `rgba(255,240,225,${(gl * 0.9).toFixed(2)})`; c.beginPath(); c.arc(x - z * 0.3, y - z * 0.3, z * 0.16, 0, TAU); c.fill(); }
+    } else {
+      const z = 0.029 * R * sc;
+      if (sh.strip) {
+        c.strokeStyle = lit ? L.lit[q] : L.base[q]; c.lineWidth = z * 0.9; c.lineCap = "round";
+        const a = s.rot[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * z * 1.5, y - Math.sin(a) * z * 1.2); c.lineTo(x + Math.cos(a) * z * 1.5, y + Math.sin(a) * z * 1.2); c.stroke();
+      } else {
+        c.fillStyle = L.shade[q]; c.beginPath(); c.ellipse(x, y, z, z * 0.8, s.rot[i], 0, TAU); c.fill();
+        c.fillStyle = s.cook[i] < 1.3 ? "#CFE9A8" : "#6d6a4a"; c.beginPath(); c.ellipse(x, y, z * 0.5, z * 0.4, s.rot[i], 0, TAU); c.fill();
+      }
+    }
+  }
+
+  function draw(c, s, vw, pose) {
+    const R = vw.R, M = s.M, ord = s.ord, key = s.key, sn = Math.sin(K.THETA), cs = Math.cos(K.THETA);
+    // sauce bed under the pile: one path, uniform alpha (clump shadow, kills the confetti read)
+    c.fillStyle = "rgba(150,52,22,.45)"; c.beginPath();
+    for (let i = 0; i < M; i++) {
+      if (s.st[i] > 1) continue;
+      P(vw, pose, s.u[i], s.v[i], s.h[i] - 0.02 - 0.06 * s.depth[i]);
+      const rr = (s.kind[i] ? 0.065 : 0.095) * R;
+      c.moveTo(PX + rr + 2, PY + 2); c.ellipse(PX + 2, PY + 2, rr, rr * 0.7, 0, 0, TAU);
+    }
+    c.fill();
+    // airborne clumps cast a shadow on the floor; it shrinks and fades with height
+    c.fillStyle = "rgba(20,10,6,.1)"; c.beginPath();
+    for (let i = 0; i < M; i++) {
+      if (s.st[i] !== 2 || s.u[i] * s.u[i] + s.v[i] * s.v[i] > 0.9) continue;
+      const fl = K.surf(s.u[i], s.v[i]), up = Math.max(0, s.h[i] - fl), k = Math.max(0.2, 1 - up * 0.8);
+      P(vw, pose, s.u[i], s.v[i], fl);
+      const rr = 0.06 * R * k; c.moveTo(PX + rr, PY); c.ellipse(PX, PY, rr, rr * 0.6, 0, 0, TAU);
+    }
+    c.fill();
+    // depth sort toward the camera; the order barely changes frame to frame -> insertion sort is ~O(n)
+    for (let i = 0; i < M; i++) key[i] = -sn * s.v[i] + cs * s.h[i];
+    for (let i = 1; i < M; i++) {
+      const o = ord[i], kv = key[o]; let j = i - 1;
+      while (j >= 0 && key[ord[j]] > kv) { ord[j + 1] = ord[j]; j--; }
+      ord[j + 1] = o;
+    }
+    for (let n = 0; n < M; n++) {
+      const i = ord[n], st = s.st[i];
+      if (st === 3 && s.h[i] <= -0.32) continue; // on the counter: drawSpilled
+      P(vw, pose, s.u[i], s.v[i], s.h[i]);
+      const sc = K.scaleAt(s.h[i] - K.surf(s.u[i], s.v[i]));
+      let sAng = 0, sStr = 1;
+      if (st >= 2) {
+        const x0 = PX, y0 = PY;
+        P(vw, pose, s.u[i] + s.vu[i] * 0.03, s.v[i] + s.vv[i] * 0.03, s.h[i] + s.vh[i] * 0.03);
+        const dx = PX - x0, dy = PY - y0, sp = Math.hypot(s.vu[i], s.vv[i], s.vh[i]);
+        sAng = Math.atan2(dy, dx); sStr = 1 + 0.25 * Math.min(1, sp / 5);
+        PX = x0; PY = y0;
+      }
+      drawUnit(c, s, i, PX, PY, R, sc, st >= 2, sAng, sStr);
+    }
+  }
+
+  function drawSpilled(c, s, vw, pose) {
+    const R = vw.R, rest = K.restPose();
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] !== 3 || s.h[i] > -0.32) continue;
+      P(vw, rest, s.u[i], s.v[i], s.h[i]); // on the counter: it doesn't move with the wok
+      c.fillStyle = "rgba(30,40,50,.18)"; c.beginPath(); c.ellipse(PX + 1.5, PY + 2, 0.05 * R, 0.025 * R, 0, 0, TAU); c.fill();
+      drawUnit(c, s, i, PX, PY, R, 1, false, 0, 1);
+    }
+  }
+
+  /* bowl on the result slip: a heaped mound of what was kept, tasty base, burnt grains as dark specks */
+  function drawBowl(c, s, cx, cy, r, ct) {
+    let kept = 0, sum = 0, sn = 0;
+    for (let i = 0; i < s.M; i++) if (s.st[i] !== 3) { kept += s.n[i]; if (s.kind[i] === 0) { sum += clamp(s.cook[i], 0.65, 1.15) * s.n[i]; sn += s.n[i]; } }
+    const share = kept / s.total, mh = r * (0.2 + 0.32 * share), mr = r * (0.55 + 0.37 * share);
+    const base = K.col.rice(sn ? sum / sn : 0.9);
+    const g = c.createRadialGradient(cx - r * 0.2, cy - mh, r * 0.1, cx, cy - mh * 0.3, mr * 1.1);
+    g.addColorStop(0, K.rgb([Math.min(255, base[0] + 30), Math.min(255, base[1] + 30), Math.min(255, base[2] + 25)]));
+    g.addColorStop(1, K.rgb([base[0] * 0.7, base[1] * 0.7, base[2] * 0.7]));
+    c.fillStyle = g; c.beginPath(); c.ellipse(cx, cy, mr, mr * ct, 0, 0, Math.PI);
+    c.bezierCurveTo(cx - mr, cy - mh * 1.45, cx + mr, cy - mh * 1.45, cx + mr, cy); c.fill();
+    // every kept unit placed on the mound (deterministic), far ones first
+    const pts = [];
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] === 3) continue;
+      for (let rep = 0; rep < 3; rep++) { const a = hash(i * 3 + rep) * TAU, d = Math.sqrt(hash(i * 7 + rep + 0.5)) * 0.9; pts.push([i, a, d]); }
+    }
+    pts.sort((p1, p2) => Math.sin(p1[1]) * p1[2] - Math.sin(p2[1]) * p2[2]);
+    const fakeR = r * 0.8; // grains a bit finer than in the wok: the bowl reads as a heap, not stickers
+    for (const [i, a, d] of pts) {
+      const lift = (1 - d * d) * mh * 1.05, x = cx + Math.cos(a) * d * mr, y = cy + Math.sin(a) * d * mr * ct - lift;
+      drawUnit(c, s, i, x, y, fakeR, 1, false, 0, 1);
+    }
+    return cy - mh;
+  }
+
+  K.Rice = { create, toss, update, draw, drawSpilled, drawBowl, stats, airborne, contactShare, hotspots };
+})();
+
+</script>
+<script>
+/* egg.js — soft-body fried egg: cook, slide, toss/flip, fold/tear/burst, draw (see CONTRACT.md) */
+"use strict";
+(function () {
+  const K = (window.KFR = window.KFR || {});
+  const TAU = Math.PI * 2, PI = Math.PI, clamp = K.clamp, lerp = K.lerp;
+  const ER = 0.36;                 // egg radius, world units
+  const N = 3, SP = ER / N;        // 7x7 grid masked to a disk -> 37 particles
+  const DT = 1 / 120, ITER = 6;    // fixed-step PBD (anim §2)
+  const RATE = 0.25;               // bottom cook per s at heat 1: good window .6-1.4 ≈ 2-5 s at the centre
+  const CATCH = 0.62;
+  const WOK = [56, 64, 76];        // what shows through raw white
+  const LT = (() => { const l = [-0.35, 0.45, 0.82], m = Math.hypot(...l); return l.map((x) => x / m); })();
+  const AIRPOSE = { du: 0, dv: 0, lift: 0, lean: 0 };
+
+  const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
+  const rgbS = (c, s) => `rgb(${(c[0] * s) | 0},${(c[1] * s) | 0},${(c[2] * s) | 0})`;
+  const noise = (n) => Array.from({ length: n }, () => Math.random());
+  const fz = (x) => (1 - Math.exp(-0.8 * x)) / (1 - Math.exp(-0.8)); // spin slows a little in the air (drag)
+
+  /* ---------- build ---------- */
+  function create() {
+    const P = [], idx = {}, at = (i, j) => idx[i + "," + j];
+    for (let i = -N; i <= N; i++) for (let j = -N; j <= N; j++) {
+      if (i * i + j * j > 10.5) continue;
+      const a = i * SP, b = j * SP, h = K.surf(a, b);
+      idx[i + "," + j] = P.length;
+      P.push({ u: a, v: b, h, pu: a, pv: b, ph: h, a, b, rim: Math.hypot(a, b) / ER, cb: 0, ct: 0, nz: Math.random(),
+        layer: 0, e: 0, d: 0, n: 0, th: 0, thT: 0, side: 0 });
+    }
+    const C = [], T = [];
+    const add = (p, q, type) => { if (p !== undefined && q !== undefined) C.push({ p, q, L: Math.hypot(P[p].a - P[q].a, P[p].b - P[q].b), type, cut: false }); };
+    for (let i = -N - 1; i <= N; i++) for (let j = -N - 1; j <= N; j++) {
+      const p = at(i, j), r = at(i + 1, j), u = at(i, j + 1), q = at(i + 1, j + 1);
+      if (p !== undefined) { add(p, r, 0); add(p, u, 0); add(p, q, 1); add(p, at(i + 2, j), 2); add(p, at(i, j + 2), 2); }
+      add(r, u, 1);
+      // triangles, all counter-clockwise in (u, v): + normal = the top (yolk) face
+      const n = [p, r, q, u].filter((x) => x !== undefined).length;
+      if (n === 4) { T.push([p, r, q], [p, q, u]); }
+      else if (n === 3) T.push([p, r, q, u].filter((x) => x !== undefined));
+    }
+    const ring = P.map((p, i) => i).filter((i) => {
+      const a = Math.round(P[i].a / SP), b = Math.round(P[i].b / SP);
+      return [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([x, y]) => at(a + x, b + y) === undefined);
+    }).sort((i, j) => Math.atan2(P[i].b, P[i].a) - Math.atan2(P[j].b, P[j].a));
+    const interior = P.map((p, i) => i).filter((i) => P[i].rim < 0.75 && P[i].rim > 0.2);
+    return {
+      P, C, T: T.map((v) => ({ v, cut: false })), ring, centre: at(0, 0),
+      phase: "pan", t: 0, acc: 0, age: 0, calm: 0, u: 0, v: 0, su: 0, sv: 0, cookBottom: 0, cookTop: 0, cookAtToss: null,
+      du: 0, dv: 0, tilt: { u: 0, v: 0 }, heat: K.heat, rot: 0, res: null, landedNow: false, done: false, stuck: false,
+      sqT0: -9, yolk: { x: 0, y: 0, vx: 0, vy: 0, lu: 0, lv: 0 }, drops: [], air: null,
+      lace: noise(40), blob: noise(16),
+      craters: Array.from({ length: 13 }, () => ({ p: interior[(Math.random() * interior.length) | 0], ox: Math.random() - 0.5, oy: Math.random() - 0.5, s: 0.6 + Math.random() * 0.8 })),
+    };
+  }
+
+  /* ---------- PBD step (in the pan, wok-relative coordinates) ---------- */
+  function floorOf(p) { return K.surf(p.u, p.v) + (p.layer ? 0.03 : 0); }
+  function collide(p) {
+    const r = Math.hypot(p.u, p.v);
+    if (r > 0.97) { p.u *= 0.97 / r; p.v *= 0.97 / r; }
+    const f = floorOf(p);
+    if (p.h < f) {
+      // push out along the bowl normal so gravity slides food downhill
+      const [gu, gv] = K.slope(p.u, p.v), l2 = 1 + gu * gu + gv * gv, pen = (f - p.h) / l2;
+      p.u -= gu * pen; p.v -= gv * pen; p.h += pen;
+      p.h = Math.max(p.h, floorOf(p));
+    }
+  }
+  function pbd(s, h) {
+    const P = s.P, tl = s.tilt;
+    const gu = K.G * Math.sin(tl.u * 0.35), gv = K.G * Math.sin(tl.v * 0.35), h2 = h * h;
+    for (const p of P) {
+      const vu = (p.u - p.pu) * 0.996, vv = (p.v - p.pv) * 0.996, vh = (p.h - p.ph) * 0.996;
+      p.pu = p.u; p.pv = p.v; p.ph = p.h;
+      p.u += vu + gu * h2; p.v += vv + gv * h2; p.h += vh - K.G * h2;
+    }
+    const kb = 0.08 + 0.42 * clamp(s.cookBottom, 0, 1), ks = [0.95, 0.6, kb];
+    for (let it = 0; it < ITER; it++) {
+      for (const c of s.C) {
+        if (c.cut) continue;
+        const a = P[c.p], b = P[c.q], du = b.u - a.u, dv = b.v - a.v, dh = b.h - a.h, l = Math.hypot(du, dv, dh) || 1e-6;
+        const k = ((l - c.L) / l) * ks[c.type] * 0.5;
+        a.u += du * k; a.v += dv * k; a.h += dh * k; b.u -= du * k; b.v -= dv * k; b.h -= dh * k;
+      }
+      for (const p of P) collide(p);
+    }
+    const sticky = s.phase === "pan" && s.cookBottom < 0.45, damp = 1 - (s.res && s.res.torn ? 5 : 1.5) * h; // torn pieces stay apart
+    for (const p of P) {
+      if (p.h > floorOf(p) + 1e-4) continue;
+      if (sticky) { p.u = p.pu; p.v = p.pv; p.h = floorOf(p); continue; }
+      let vu = (p.u - p.pu) * damp, vv = (p.v - p.pv) * damp;
+      const r = Math.hypot(p.u, p.v);
+      if (r > 0.965) { // soft bounce off the wall
+        const nu = p.u / r, nv = p.v / r, vr = vu * nu + vv * nv;
+        if (vr > 0) { vu -= 1.35 * vr * nu; vv -= 1.35 * vr * nv; }
+      }
+      p.pu = p.u - vu; p.pv = p.v - vv;
+    }
+  }
+  function centroid(s) {
+    let u = 0, v = 0, h = 0;
+    for (const p of s.P) { u += p.u; v += p.v; h += p.h; }
+    const n = s.P.length; return [u / n, v / n, h / n];
+  }
+
+  /* ---------- toss: the flight is kinematic so the angle shown is the angle scored ---------- */
+  function toss(s, f, t) {
+    if (s.phase !== "pan" || s.done) return;
+    const st = clamp(f.strength || 1, 0.3, 1.6), snap = clamp(f.snap == null ? 0.5 : f.snap, 0, 1), dirU = f.dirU || 0;
+    s.cookAtToss = s.cookBottom;
+    const [cu, cv, ch] = centroid(s), tl = s.tilt;
+    let Du = 0.5 * dirU, Dv = 1; const m = Math.hypot(Du, Dv); Du /= m; Dv /= m;
+    const A = {
+      t: 0, st, snap, Du, Dv, Au: Dv, Av: -Du,
+      u0: cu + s.du, v0: cv + s.dv, h0: ch,
+      vu: s.su + 0.45 * tl.u + 0.25 * dirU, vv: s.sv + 0.45 * tl.v,
+      vh: 4.2 * st, rot: (PI * st * (0.6 + 0.6 * snap)) / 0.864,
+      soft: 1 - 0.6 * clamp(s.cookBottom / 1.2, 0, 1), splat: st > 1.4 && f.splatOK === true, decided: false, miss: false, fell: false, T: 1,
+    };
+    for (const p of s.P) {
+      const ru = p.u - cu, rv = p.v - cv;
+      p.e = ru * A.Au + rv * A.Av; p.d = ru * A.Du + rv * A.Dv; p.n = p.h - ch; p.layer = 0;
+    }
+    for (let tt = 0.05; tt < 3; tt += 1 / 240) { // predict touchdown for the spin curve
+      if (A.vh - K.G * tt > 0) continue;
+      const ru = A.u0 + A.vu * tt - s.du, rv = A.v0 + A.vv * tt - s.dv;
+      if (A.h0 + A.vh * tt - 0.5 * K.G * tt * tt <= K.surf(ru, rv) + 0.02) { A.T = tt; break; }
+    }
+    s.air = A; s.phase = "air"; s.tossT = t;
+  }
+  function kin(s, t) {
+    const A = s.air, x = t / A.T, th = A.rot * fz(x), sw = Math.sin(PI * Math.min(1, x)), soft = A.soft;
+    const cu = A.u0 + A.vu * t, cv = A.v0 + A.vv * t, ch = A.h0 + A.vh * t - 0.5 * K.G * t * t, vhn = A.vh - K.G * t;
+    // too strong: the egg shudders at the apex (the burst warning), ~±.12 s around it
+    const ta = (t - A.vh / K.G) / 0.12, shud = A.st > 1.1 ? clamp((A.st - 1.1) / 0.3, 0.4, 1) * Math.exp(-ta * ta) : 0;
+    for (const p of s.P) {
+      // trailing edge (d < 0) lags the spin, edges cup against the air and flutter
+      const lag = 0.6 * soft * sw * Math.pow(clamp(0.25 - p.d / ER, 0, 1.25), 1.4);
+      const ti = th - lag, c = Math.cos(ti), sn = Math.sin(ti), rr = (p.e * p.e + p.d * p.d) / (ER * ER);
+      const n = p.n * (1 - Math.min(1, t * 6)) - 0.03 * soft * rr * clamp(vhn * c, -6, 6) / 4 + 0.014 * soft * rr * Math.sin(17 * t + 6 * p.nz) * sw
+        + shud * 0.05 * rr * Math.sin(55 * t + 9 * p.nz) + shud * 0.03 * Math.sin(41 * t) * p.d / ER;
+      p.th = ti;
+      p.u = cu + p.e * A.Au + (p.d * c - n * sn) * A.Du;
+      p.v = cv + p.e * A.Av + (p.d * c - n * sn) * A.Dv;
+      p.h = ch + p.d * sn + n * c;
+    }
+    s.rot = th;
+    return [cu, cv, ch, vhn];
+  }
+
+  /* ---------- landing: decide the outcome, then show it physically ---------- */
+  function land(s, ru, rv, ch, vhn) {
+    const A = s.air, cook = s.cookAtToss, rot = s.rot;
+    const r = ((rot % TAU) + TAU) % TAU, d = Math.abs(r - PI), err = (d * 180) / PI;
+    const flipped = err <= 45, folded = !flipped && d <= PI - 0.8;
+    const impact = -vhn;
+    const vTear = 5 - 3 * Math.max(0, 1 - cook) - 1.5 * Math.max(0, cook - 1.4);
+    const torn = impact > vTear;
+    let burst = A.st > 1.2 || impact > 5.3 - (cook < 0.8 ? 0.7 : 0) - (folded ? 0.5 : 0);
+    s.res = { caught: true, flipped, folded, torn, burst, rot, angleErr: Math.round(err) * (rot > PI ? 1 : -1), angle: Math.round((rot * 180) / PI), impact, strength: A.st,
+      grade: flipped ? (err <= 12 ? "완벽" : "좋음") : folded ? "접힘" : "날면", u: ru, v: rv };
+    const base = Math.round(rot / PI) * PI;
+    for (const p of s.P) {
+      p.thT = base;
+      if (folded && !torn && Math.sign(p.d) * Math.sin(rot) > 0) { p.thT = base + (rot > base ? PI : -PI); p.layer = 1; }
+    }
+    A.land = [ru, rv, ch]; A.lt = 0; s.phase = "land"; s.sqT0 = s.t; s.landedNow = true; s.u = ru; s.v = rv;
+  }
+  function settleTween(s, dt) {
+    const A = s.air; A.lt += dt;
+    const k = K.smooth(Math.min(1, A.lt / 0.14));
+    const cu = A.land[0] + A.vu * 0.3 * A.lt, cv = A.land[1] + A.vv * 0.3 * A.lt, ch = lerp(A.land[2], K.surf(cu, cv) + 0.012, k);
+    for (const p of s.P) {
+      const ti = lerp(p.th, p.thT, k), c = Math.cos(ti), sn = Math.sin(ti), n = p.n * (1 - k) * 0.3 + (p.layer ? 0.03 : 0) * k;
+      p.u = cu + p.e * A.Au + (p.d * c - n * sn) * A.Du;
+      p.v = cv + p.e * A.Av + (p.d * c - n * sn) * A.Dv;
+      p.h = Math.max(ch + p.d * sn + n * c, floorOf(p));
+    }
+    s.u = cu; s.v = cv;
+    if (k < 1) return;
+    // hand over to PBD: the landed shape becomes the rest shape (keeps a fold folded)
+    for (const p of s.P) { p.pu = p.u - A.vu * 0.3 * DT; p.pv = p.v - A.vv * 0.3 * DT; p.ph = p.h; }
+    for (const c of s.C) { const a = s.P[c.p], b = s.P[c.q]; c.L = Math.hypot(a.u - b.u, a.v - b.v, a.h - b.h); }
+    const res = s.res, yc = s.P[s.centre];
+    if (res.torn) {
+      const ang = Math.random() * PI, nu = Math.cos(ang), nv = Math.sin(ang), off = (Math.random() < 0.5 ? -1 : 1) * K.rnd(0.06, 0.16);
+      const sd = (p) => (p.u - cu) * nu + (p.v - cv) * nv - off;
+      for (const c of s.C) if (sd(s.P[c.p]) * sd(s.P[c.q]) < 0) c.cut = true;
+      for (const t of s.T) { const ds = t.v.map((i) => sd(s.P[i])); if (Math.min(...ds) < 0 && Math.max(...ds) > 0) t.cut = true; }
+      for (const p of s.P) { const sg = Math.sign(sd(p)) || 1; p.u += nu * sg * 0.04; p.v += nv * sg * 0.04; p.pu = p.u - nu * sg * 0.35 * DT; p.pv = p.v - nv * sg * 0.35 * DT; }
+      if (Math.abs(sd(yc)) < 0.07) res.burst = true; // the tear ran through the yolk
+    }
+    if (res.burst) {
+      const topUp = !res.flipped;
+      for (let i = 0; i < 9; i++) {
+        const src = topUp ? yc : s.P[s.ring[(Math.random() * s.ring.length) | 0]], a = Math.random() * TAU, sp = K.rnd(0.15, 0.6);
+        s.drops.push({ u: src.u + Math.cos(a) * 0.03, v: src.v + Math.sin(a) * 0.03, vu: Math.cos(a) * sp, vv: Math.sin(a) * sp, r: K.rnd(0.035, 0.065), on: topUp });
+      }
+    }
+    s.phase = "landed"; s.age = 0; s.calm = 0;
+  }
+
+  /* ---------- update ---------- */
+  function update(s, dt, ctx) {
+    s.landedNow = false; s.t += dt;
+    const pose = ctx.wokPose || {};
+    s.du = pose.du || 0; s.dv = pose.dv || 0; s.tilt = ctx.tilt || { u: 0, v: 0 }; s.heat = ctx.heat || K.heat;
+    if (s.phase === "pan" || s.phase === "landed") {
+      s.acc = Math.min(s.acc + dt, 4 * DT);
+      while (s.acc >= DT) { pbd(s, DT); s.acc -= DT; }
+      // cooking: the face on the metal sears, the other side barely warms
+      const down = s.res && s.res.flipped ? "ct" : "cb", up = down === "cb" ? "ct" : "cb";
+      let cb = 0, ct = 0, vmax = 0;
+      for (const p of s.P) {
+        const hot = s.heat(p.u, p.v) * (p.h - floorOf(p) < 0.01 ? 1 : 0.3);
+        if (s.phase === "pan" || down === "ct") p[down] += hot * RATE * dt;
+        p[up] += hot * RATE * 0.22 * dt;
+        cb += p.cb; ct += p.ct;
+        vmax = Math.max(vmax, Math.hypot(p.u - p.pu, p.v - p.pv) / DT);
+      }
+      if (s.phase === "pan") s.cookBottom = cb / s.P.length;
+      s.cookTop = ct / s.P.length;
+      const [cu, cv] = centroid(s), y = s.yolk;
+      s.su = (cu - s.u) / dt; s.sv = (cv - s.v) / dt; s.u = cu; s.v = cv;
+      // yolk wobble: 4 Hz, ζ .2, driven by the egg's acceleration
+      const w = TAU * 4, au = (s.su - y.lu) / dt, av = (s.sv - y.lv) / dt; y.lu = s.su; y.lv = s.sv;
+      y.vx += (-w * w * y.x - 2 * 0.2 * w * y.vx - clamp(au, -30, 30) * 0.4) * dt; y.x += y.vx * dt;
+      y.vy += (-w * w * y.y - 2 * 0.2 * w * y.vy - clamp(av, -30, 30) * 0.4) * dt; y.y += y.vy * dt;
+      if (s.phase === "pan" && s.cookBottom >= 2.4) { s.stuck = true; s.done = true; }
+      if (s.phase === "landed") {
+        s.age += dt; s.calm = vmax < 0.05 ? s.calm + dt : 0;
+        if ((s.calm > 0.2 && s.age > 0.6) || s.age > 1.3) s.done = true;
+      }
+    } else if (s.phase === "air") {
+      const A = s.air; A.t += dt;
+      const [cu, cv, ch, vhn] = kin(s, A.t), ru = cu - s.du, rv = cv - s.dv;
+      s.u = cu; s.v = cv; s.su = A.vu; s.sv = A.vv;
+      if (A.splat) {
+        if (A.t > 0.26) { s.phase = "splatFly"; s.age = 0; s.res = { caught: false, splat: true, burst: true, rot: s.rot, impact: 9, u: cu, v: cv, angleErr: null, strength: A.st }; }
+      } else if (vhn < 0) {
+        if (!A.decided && ch < K.RIM_H + 0.02) { A.decided = true; A.miss = Math.hypot(ru, rv) > CATCH; }
+        if (A.miss) {
+          if (!A.fell && ch < -0.05) { A.fell = true; s.landedNow = true; s.res = { caught: false, rot: s.rot, impact: -vhn, u: ru, v: rv, angleErr: null, strength: A.st }; }
+          if (ch < -1.6 || A.t > A.T + 1.2) { s.done = true; if (!s.res) s.res = { caught: false, rot: s.rot }; }
+        } else if (A.decided && ch <= K.surf(ru, rv) + 0.02) land(s, ru, rv, ch, vhn);
+      }
+    } else if (s.phase === "land") settleTween(s, dt);
+    else if (s.phase === "splatFly") {
+      s.age += dt; kin(s, s.air.t += dt);
+      if (s.age > 0.22) { s.phase = "splat"; s.age = 0; s.landedNow = true; s.splatX = K.rnd(-0.08, 0.08); }
+    } else if (s.phase === "splat") { s.age += dt; if (s.age > 1.5) s.done = true; }
+    // burst yolk runs downhill (toward the wok centre) and with the tilt
+    for (const d of s.drops) {
+      const [gu, gv] = K.slope(d.u, d.v);
+      d.vu += (-gu * 3 + s.tilt.u * 2) * dt; d.vv += (-gv * 3 + s.tilt.v * 2) * dt;
+      d.vu *= 1 - 2.5 * dt; d.vv *= 1 - 2.5 * dt; d.u += d.vu * dt; d.v += d.vv * dt;
+      if (d.r < 0.09) d.r += 0.03 * dt; // spreads as it runs
+    }
+  }
+
+  /* ---------- draw ---------- */
+  function setOf(p) { return clamp((p.cb + 2 * p.ct) * (0.7 + 0.6 * p.rim) / 0.8, 0, 1); }
+  const X = [], Y = [], TL = [];
+  function draw(c, s, vw, pose) {
+    if (s.phase === "splat" || s.phase === "splatFly") return drawSplat(c, s, vw, pose);
+    const abs = s.phase === "air" || s.phase === "splatFly", pp = abs ? AIRPOSE : pose, P = s.P, R = vw.R;
+    const [cu, cv, ch] = centroid(s);
+    // shadow on the wok floor while airborne: the catch cue
+    if (abs && !(s.air && s.air.miss)) {
+      const ru = cu - s.du, rv = cv - s.dv;
+      if (Math.hypot(ru, rv) < 1) {
+        const fh = K.surf(ru, rv), k = clamp((ch - fh) / 1.4, 0, 1), [x, y] = K.proj(vw, pose, ru, rv, fh);
+        c.fillStyle = `rgba(8,12,18,${0.32 * (1 - 0.6 * k)})`;
+        c.beginPath(); c.ellipse(x, y, ER * R * (1 - 0.35 * k), ER * R * vw.ct * (1 - 0.35 * k), 0, 0, TAU); c.fill();
+      }
+    }
+    let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
+    let sc = abs ? K.scaleAt(Math.max(0, ch - 0.05)) : 1, tx = ox, ty = oy;
+    if (s.phase === "splatFly") { const k = s.age / 0.22; sc *= 1 + 3.2 * k * k; tx = lerp(ox, vw.W * 0.5, k); ty = lerp(oy, vw.H * 0.34, k); }
+    const ta = s.t - s.sqT0, sq = ta < 0.6 ? 1 - 0.25 * Math.exp(-0.35 * 50 * ta) * Math.cos(47 * ta) : 1;
+    const jig = s.phase === "pan" && s.cookBottom >= 0.6 && s.cookBottom <= 1.4, rip = s.phase === "landed" ? Math.exp(-6 * s.age) : 0;
+    for (let i = 0; i < P.length; i++) {
+      const p = P[i], q = K.proj(vw, pp, p.u, p.v, p.h);
+      let x = tx + (q[0] - ox) * sc / Math.sqrt(sq), y = ty + (q[1] - oy) * sc * sq;
+      if (jig) y += Math.sin(TAU * 2 * s.t + 5 * p.nz) * p.rim * p.rim * 1.2;
+      if (rip) y += Math.sin(30 * s.age + 7 * p.nz) * 3 * rip * p.rim * p.rim * p.rim;
+      X[i] = x; Y[i] = y;
+    }
+    // which face looks at us (signed screen area of the rim ring; counter-clockwise world reads negative on screen)
+    let area = 0;
+    for (let k = 0; k < s.ring.length; k++) { const i = s.ring[k], j = s.ring[(k + 1) % s.ring.length]; area += X[i] * Y[j] - X[j] * Y[i]; }
+    const topUp = area < 0, flat = PI * (ER * R * sc) ** 2 * vw.ct, vis = clamp(Math.abs(area / 2) / flat, 0, 1.3);
+    const res = s.res || {}, folded = !!res.folded && !res.torn && s.phase === "landed", torn = !!res.torn && s.phase === "landed";
+    c.save();
+    if (abs && s.air.miss) c.globalAlpha = clamp(1 + ch / 1.2, 0, 1);
+    const cbm = s.phase === "pan" ? s.cookBottom : s.cookAtToss || s.cookBottom;
+    // contact shadow + lace skirt (crispy brown edge) while the yolk face is up and flat
+    if (!abs && !folded && !torn) { ringPath(c, s, X, Y, tx, ty, 1.02, 0, 2.5, 3); c.fillStyle = "rgba(10,14,20,.28)"; c.fill(); }
+    if (topUp && !folded && vis > 0.3) {
+      const la = clamp((cbm - 0.5) / 0.3, 0, 1);
+      if (la > 0 && !torn) {
+        ringPath(c, s, X, Y, tx, ty, 1.06, 0.07, 0, 0);
+        c.fillStyle = K.rgb(K.col.eggEdge(cbm), la); c.fill();
+        c.strokeStyle = K.rgb(K.col.eggEdge(cbm + 0.35), la * 0.8); c.lineWidth = 1.2; c.stroke();
+      }
+    }
+    if (!folded && !torn && vis > 0.2) { // smooth silhouette under the facets
+      let set = 0, cb = 0; for (const p of P) { set += setOf(p); cb += p.cb; } set /= P.length; cb /= P.length;
+      const col = topUp ? mix(WOK, K.col.eggWhite(set * 0.75), 0.36 + 0.64 * set) : mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6);
+      ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(col, 0.95); c.fill();
+    }
+    // body: painter-sorted triangles, flat shaded, the winding picks the face
+    TL.length = 0;
+    const st = vw.st, ctv = vw.ct;
+    for (const t of s.T) {
+      if (t.cut) continue;
+      const [i, j, k] = t.v, a = P[i], b = P[j], d = P[k];
+      const cr = (X[j] - X[i]) * (Y[k] - Y[i]) - (Y[j] - Y[i]) * (X[k] - X[i]), top = cr < 0;
+      const e1 = [b.u - a.u, b.v - a.v, b.h - a.h], e2 = [d.u - a.u, d.v - a.v, d.h - a.h];
+      let nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nh = e1[0] * e2[1] - e1[1] * e2[0];
+      const nl = (top ? 1 : -1) / (Math.hypot(nx, ny, nh) || 1);
+      const shade = 0.9 + 0.13 * Math.max(0, (nx * LT[0] + ny * LT[1] + nh * LT[2]) * nl);
+      const rim = (a.rim + b.rim + d.rim) / 3, set = (setOf(a) + setOf(b) + setOf(d)) / 3;
+      const cb = (a.cb + b.cb + d.cb) / 3, ct = (a.ct + b.ct + d.ct) / 3;
+      let col;
+      if (top) {
+        col = mix(WOK, K.col.eggWhite(Math.max(set * 0.75, ct)), 0.36 + 0.64 * set);
+      } else {
+        const nz = (a.nz + b.nz + d.nz) / 3;
+        col = mix(WOK, K.col.eggUnder(cb), 0.45 + 0.55 * clamp(cb / 0.6, 0, 1));
+        col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75).map((x) => x * (0.92 + 0.16 * nz));
+      }
+      TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade) });
+    }
+    TL.sort((p, q) => p.z - q.z);
+    c.lineWidth = 1; c.lineJoin = "round";
+    for (const t of TL) {
+      c.fillStyle = c.strokeStyle = t.f;
+      c.beginPath(); c.moveTo(X[t.i], Y[t.i]); c.lineTo(X[t.j], Y[t.j]); c.lineTo(X[t.k], Y[t.k]); c.closePath(); c.fill(); c.stroke();
+    }
+    const y0 = s.P[s.centre], yx = X[s.centre] + s.yolk.x * R, yy = Y[s.centre] - s.yolk.y * R * ctv;
+    if (!topUp) {
+      // browned underside: bubble craters + the yolk bump
+      if (vis > 0.25) {
+        for (const cr of s.craters) {
+          const p = P[cr.p]; if (torn || folded) continue;
+          c.fillStyle = K.rgb(K.col.eggUnder(p.cb + 0.45), 0.55);
+          c.beginPath(); c.ellipse(X[cr.p] + cr.ox * 0.06 * R * sc, Y[cr.p] + cr.oy * 0.05 * R * sc, 0.013 * R * cr.s * sc, 0.009 * R * cr.s * sc * vis, 0, 0, TAU); c.fill();
+        }
+        if (!folded && !torn) { c.fillStyle = `rgba(255,236,190,${0.22 * vis})`; c.beginPath(); c.ellipse(yx, yy - 0.02 * R, 0.1 * R * sc, 0.08 * R * sc * vis, 0, 0, TAU); c.fill(); }
+      }
+    } else {
+      const set = setOf(y0);
+      if (set < 0.85) { // raw whites are glossy
+        c.fillStyle = `rgba(255,255,255,${0.35 * (1 - set)})`;
+        c.beginPath(); c.ellipse(yx - 0.16 * R * sc, yy - 0.06 * R * sc, 0.09 * R * sc, 0.035 * R * sc * vis, -0.3, 0, TAU); c.fill();
+      }
+      if (!res.burst || s.phase === "air" || s.phase === "land") drawYolk(c, yx, yy - (folded ? 0.03 * R : 0), 0.118 * R * sc * (folded ? 0.8 : 1), vis, s.cookTop, s.su, s.sv);
+      else { // deflated yolk skin
+        c.fillStyle = "rgba(242,138,0,.85)"; c.beginPath(); c.ellipse(yx, yy, 0.08 * R, 0.05 * R, 0.3, 0, TAU); c.fill();
+      }
+    }
+    c.restore();
+    // runny yolk droplets: overlapping circles (cheap metaball)
+    if (s.drops.length) {
+      const pts = s.drops.map((d) => [...K.proj(vw, pose, d.u, d.v, K.surf(d.u, d.v) + 0.04), d.r * R]);
+      c.fillStyle = "#E57E00"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r + 1.5, (r + 1.5) * ctv, 0, 0, TAU); c.fill(); }
+      c.fillStyle = "#FFB21A"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r, r * ctv, 0, 0, TAU); c.fill(); }
+      c.fillStyle = "rgba(255,240,190,.8)"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.3, r * 0.25, r * 0.15, 0, 0, TAU); c.fill(); }
+    }
+  }
+  /* closed smooth path through the rim ring, pushed out from (cx, cy); jag adds lace spikes between points */
+  function ringPath(c, s, X, Y, cx, cy, grow, jag, dx, dy) {
+    const R = s.ring, n = R.length, pts = [];
+    for (let k = 0; k < n; k++) {
+      const i = R[k], j = R[(k + 1) % n];
+      const g1 = grow + jag * (s.lace[(2 * k) % 40] - 0.3), g2 = grow * 1.035 + jag * (s.lace[(2 * k + 1) % 40] * 1.6 - 0.2);
+      pts.push([cx + (X[i] - cx) * g1 + dx, cy + (Y[i] - cy) * g1 + dy]);
+      const mx = (X[i] + X[j]) / 2, my = (Y[i] + Y[j]) / 2;
+      pts.push([cx + (mx - cx) * g2 + dx, cy + (my - cy) * g2 + dy]);
+    }
+    c.beginPath();
+    const m0 = [(pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2]; c.moveTo(m0[0], m0[1]);
+    for (let k = 1; k <= pts.length; k++) {
+      const p = pts[k % pts.length], q = pts[(k + 1) % pts.length];
+      c.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2);
+    }
+    c.closePath();
+  }
+  function drawYolk(c, x, y, r, vis, cook, su, sv) {
+    const sp = Math.hypot(su || 0, sv || 0), st = Math.min(1.5, 1 + (0.4 * sp) / 4);
+    const rx = r * Math.sqrt(st), ry = (r / Math.sqrt(st)) * clamp(0.3 + 0.62 * vis, 0.3, 0.92), dy = -0.25 * r * vis;
+    c.fillStyle = "rgba(150,100,30,.22)"; c.beginPath(); c.ellipse(x + 0.2 * r, y + 0.25 * r, rx, ry, 0, 0, TAU); c.fill();
+    const mid = K.col.yolk(cook * 1.2);
+    const g = c.createRadialGradient(x - 0.35 * r, y + dy - 0.4 * r, 0.1 * r, x, y + dy, Math.max(rx, ry));
+    g.addColorStop(0, "#FFE27A"); g.addColorStop(0.35, "#FFD04A"); g.addColorStop(0.75, K.rgb(mid)); g.addColorStop(1, "#F28A00");
+    c.fillStyle = g; c.beginPath(); c.ellipse(x, y + dy, rx, ry, 0, 0, TAU); c.fill();
+    c.fillStyle = "rgba(255,255,255,.9)"; c.beginPath(); c.ellipse(x - 0.38 * rx, y + dy - 0.42 * ry, 0.28 * rx, 0.15 * ry + 0.5, -0.5, 0, TAU); c.fill();
+    c.beginPath(); c.arc(x + 0.25 * rx, y + dy - 0.5 * ry, Math.max(0.8, 0.06 * r), 0, TAU); c.fill();
+  }
+  /* the egg hits the screen glass and slides down it */
+  function drawSplat(c, s, vw, pose) {
+    const fly = s.phase === "splatFly", t = fly ? 0 : s.age, W = vw.W, n = s.blob.length, cb = s.cookAtToss || 0;
+    let R = W * 0.36, cx = W * (0.5 + (s.splatX || 0)), cy = Math.min(vw.H * 0.72, vw.H * 0.34 + 22 * t + 34 * t * t), pop = t < 0.08 ? 0.8 + 2.5 * t : 1;
+    if (fly) { // rushing at the glass: grows from its place in the air to the splat
+      const k = s.age / 0.22, [cu, cv, ch] = centroid(s), [ex, ey] = K.proj(vw, AIRPOSE, cu, cv, ch);
+      cx = lerp(ex, cx, k); cy = lerp(ey, cy, k); pop = lerp(ER * vw.R * 1.2 / R, 0.75, k * k);
+    }
+    const blob = (rr) => {
+      c.beginPath();
+      const pts = s.blob.map((z, k) => { const a = (k / n) * TAU; return [cx + Math.cos(a) * rr * (0.8 + 0.35 * z), cy + Math.sin(a) * rr * (0.8 + 0.35 * z) * 0.92]; });
+      c.moveTo((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2);
+      for (let k = 1; k <= n; k++) { const p = pts[k % n], q = pts[(k + 1) % n]; c.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+      c.closePath();
+    };
+    c.save();
+    c.fillStyle = "rgba(0,0,0,.16)"; c.translate(4, 7); blob(R * pop); c.fill(); c.translate(-4, -7);
+    if (cb > 0.5) { c.fillStyle = K.rgb(K.col.eggEdge(cb), 0.95); blob(R * pop * 1.05); c.fill(); }
+    const g = c.createRadialGradient(cx - R * 0.2, cy - R * 0.25, R * 0.1, cx, cy, R * 1.1);
+    g.addColorStop(0, "#FFFDF6"); g.addColorStop(1, "#E9DFC9");
+    c.fillStyle = g; blob(R * pop); c.fill();
+    // drips of white running down the glass
+    const dl = Math.min(1, t * 0.9);
+    for (const [a, w, l] of [[0.35, 0.09, 0.55], [0.62, 0.07, 0.8], [0.15, 0.06, 0.4]]) {
+      const x = cx + (a - 0.4) * R * 1.6, y = cy + R * 0.7, L = R * l * dl;
+      c.beginPath(); c.moveTo(x - w * R, y); c.lineTo(x - w * R * 0.6, y + L); c.arc(x, y + L, w * R * 0.6, PI, 0, true); c.lineTo(x + w * R, y); c.fill();
+    }
+    // burst yolk smeared and running
+    const yx = cx + R * 0.06, yy = cy - R * 0.06, yl = R * (0.3 + 0.9 * Math.min(1, t * 0.8));
+    c.fillStyle = "#F28A00";
+    c.beginPath(); c.ellipse(yx, yy, R * 0.32, R * 0.27, 0.3, 0, TAU); c.fill();
+    c.beginPath(); c.moveTo(yx - R * 0.12, yy); c.quadraticCurveTo(yx - R * 0.06, yy + yl * 0.6, yx - R * 0.02, yy + yl); c.arc(yx + R * 0.03, yy + yl, R * 0.05, PI, 0, true); c.quadraticCurveTo(yx + R * 0.12, yy + yl * 0.5, yx + R * 0.14, yy); c.fill();
+    c.fillStyle = "#FFB21A";
+    c.beginPath(); c.ellipse(yx, yy, R * 0.28, R * 0.23, 0.3, 0, TAU); c.fill();
+    c.beginPath(); c.moveTo(yx - R * 0.08, yy); c.quadraticCurveTo(yx - R * 0.04, yy + yl * 0.6, yx, yy + yl); c.arc(yx + R * 0.03, yy + yl, R * 0.03, PI, 0, true); c.quadraticCurveTo(yx + R * 0.09, yy + yl * 0.5, yx + R * 0.1, yy); c.fill();
+    // glass glare
+    c.strokeStyle = "rgba(255,255,255,.6)"; c.lineCap = "round"; c.lineWidth = R * 0.05;
+    c.beginPath(); c.arc(cx, cy, R * 0.72, PI * 1.12, PI * 1.38); c.stroke();
+    c.lineWidth = R * 0.025; c.beginPath(); c.arc(yx, yy, R * 0.18, PI * 1.1, PI * 1.45); c.stroke();
+    c.restore();
+  }
+
+  /* ---------- the egg on the rice, result slip ---------- */
+  function drawOnRice(c, s, x, y, r, ct) {
+    const o = outcome(s), cb = o.cookBottom || 0;
+    const body = (dx, dy) => {
+      const lace = s.blob.map((z, k) => { const a = (k / s.blob.length) * TAU; return [x + dx + Math.cos(a) * r * (1.04 + 0.1 * z), y + dy + Math.sin(a) * r * ct * (1.04 + 0.1 * z)]; });
+      const wpts = s.blob.map((z, k) => { const a = (k / s.blob.length) * TAU; return [x + dx + Math.cos(a) * r * (0.9 + 0.1 * s.lace[k]), y + dy + Math.sin(a) * r * ct * (0.9 + 0.1 * s.lace[k])]; });
+      if (cb > 0.45) { smooth(c, lace); c.fillStyle = K.rgb(K.col.eggEdge(cb + 0.2)); c.fill(); c.strokeStyle = K.rgb(K.col.eggEdge(cb + 0.4), 0.8); c.lineWidth = 1; c.stroke(); }
+      smooth(c, wpts);
+      const g = c.createRadialGradient(x + dx - r * 0.25, y + dy - r * 0.3 * ct, r * 0.1, x + dx, y + dy, r * 1.05);
+      g.addColorStop(0, "#FFFDF6"); g.addColorStop(0.7, "#FBF5E8"); g.addColorStop(1, "#EADFC8");
+      c.fillStyle = g; c.fill();
+      if (!o.flipped || o.stuck) { // raw top: translucent, glossy whites round the yolk
+        c.fillStyle = "rgba(205,212,214,.55)"; c.beginPath(); c.ellipse(x + dx, y + dy - r * 0.05, r * 0.5, r * 0.4 * ct, 0.2, 0, TAU); c.fill();
+        c.fillStyle = "rgba(255,255,255,.7)"; c.beginPath(); c.ellipse(x + dx - r * 0.3, y + dy - r * 0.2 * ct, r * 0.18, r * 0.05, -0.4, 0, TAU); c.fill();
+      }
+    };
+    c.save();
+    if (o.folded) {
+      // half-moon: the fold edge faces us, browned lace on the curve, a yolk seam peeking out
+      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 1.06, r * 0.9 * ct, 0, PI, TAU); c.closePath();
+      c.fillStyle = K.rgb(K.col.eggEdge(Math.max(cb, 0.8))); c.fill();
+      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 0.97, r * 0.82 * ct, 0, PI, TAU);
+      c.quadraticCurveTo(x, y + r * 0.34 * ct, x - r * 0.97, y + r * 0.2 * ct);
+      const g = c.createLinearGradient(x, y - r * 0.7 * ct, x, y + r * 0.3 * ct); g.addColorStop(0, K.rgb(K.col.eggUnder(cb))); g.addColorStop(1, K.rgb(K.col.eggUnder(cb * 0.6)));
+      c.fillStyle = g; c.fill();
+      for (let k = 0; k < 7; k++) { c.fillStyle = K.rgb(K.col.eggUnder(cb + 0.45), 0.5); c.beginPath(); c.ellipse(x + (s.lace[k] - 0.5) * r * 1.3, y - s.lace[k + 7] * r * 0.5 * ct, r * 0.04, r * 0.03, 0, 0, TAU); c.fill(); }
+      c.fillStyle = o.burst ? "#FFB21A" : "#F7A21B"; c.beginPath(); c.ellipse(x + r * 0.05, y + r * 0.26 * ct, r * 0.3, r * 0.06, 0, 0, PI); c.fill();
+      if (o.burst) runny(c, x + r * 0.05, y + r * 0.3 * ct, r);
+    } else if (o.torn) {
+      for (const sg of [-1, 1]) {
+        c.save(); c.beginPath();
+        const jx = (k) => x + sg * 0.0 + (s.lace[k] - 0.5) * r * 0.25;
+        c.moveTo(x, y - r * 2);
+        for (let k = 0; k <= 8; k++) c.lineTo(jx(k) + k * r * 0.03, y - r + (k / 8) * r * 2);
+        c.lineTo(x + sg * r * 3, y + r * 2); c.lineTo(x + sg * r * 3, y - r * 2); c.closePath(); c.clip();
+        body(sg * r * 0.12, sg * r * 0.03);
+        c.restore();
+      }
+      if (o.burst) runny(c, x + r * 0.1, y - r * 0.05, r);
+      else drawYolk(c, x + r * 0.22, y - r * 0.08, r * 0.3, 0.85, o.cookTop, 0, 0);
+    } else {
+      body(0, 0);
+      if (o.burst) runny(c, x - r * 0.04, y - r * 0.08, r);
+      else {
+        drawYolk(c, x - r * 0.04, y - r * 0.08, r * 0.33, 0.85, o.flipped ? o.cookTop + 0.3 : 0, 0, 0);
+        if (!o.flipped) { c.fillStyle = "rgba(255,255,255,.55)"; c.beginPath(); c.ellipse(x + r * 0.12, y - r * 0.02, r * 0.07, r * 0.03, 0.5, 0, TAU); c.fill(); }
+      }
+    }
+    c.restore();
+  }
+  function runny(c, x, y, r) { // burst yolk running down the rice
+    c.fillStyle = "#F28A00";
+    c.beginPath(); c.ellipse(x, y, r * 0.3, r * 0.17, 0.15, 0, TAU); c.fill();
+    c.fillStyle = "#FFB21A";
+    c.beginPath(); c.ellipse(x, y, r * 0.26, r * 0.14, 0.15, 0, TAU); c.fill();
+    for (const [dx, l, w] of [[-0.15, 0.95, 0.07], [0.12, 0.7, 0.06], [0.28, 1.15, 0.05]]) {
+      const x0 = x + dx * r;
+      c.beginPath(); c.moveTo(x0 - w * r, y); c.quadraticCurveTo(x0 - w * r * 0.8, y + l * r * 0.6, x0, y + l * r); c.arc(x0 + w * r * 0.35, y + l * r, w * r * 0.6, PI, 0, true); c.quadraticCurveTo(x0 + w * r, y + l * r * 0.4, x0 + w * r, y); c.fill();
+    }
+    c.fillStyle = "rgba(255,245,200,.85)"; c.beginPath(); c.ellipse(x - r * 0.1, y - r * 0.05, r * 0.08, r * 0.03, -0.3, 0, TAU); c.fill();
+  }
+  function smooth(c, pts) {
+    const n = pts.length; c.beginPath();
+    c.moveTo((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2);
+    for (let k = 1; k <= n; k++) { const p = pts[k % n], q = pts[(k + 1) % n]; c.quadraticCurveTo(p[0], p[1], (p[0] + q[0]) / 2, (p[1] + q[1]) / 2); }
+    c.closePath();
+  }
+
+  /* ---------- queries ---------- */
+  function outcome(s) {
+    const r = s.res || {};
+    return {
+      done: s.done, caught: !!r.caught, flipped: !!r.flipped, rot: r.rot || 0, folded: !!r.folded, torn: !!r.torn, burst: !!r.burst,
+      splat: !!r.splat, angleErr: r.angleErr == null ? null : r.angleErr, angle: r.angle == null ? null : r.angle, grade: r.grade || null,
+      strength: s.air ? s.air.st : null,
+      cookTop: s.cookTop, cookBottom: s.cookAtToss == null ? s.cookBottom : s.cookAtToss, impact: r.impact || 0,
+      stuck: s.stuck, landedNow: s.landedNow, u: r.u == null ? s.u : r.u, v: r.v == null ? s.v : r.v,
+    };
+  }
+  function hotspots(s, k) {
+    if (s.phase !== "pan" && s.phase !== "landed") return [];
+    const out = [], step = Math.max(1, Math.floor(s.P.length / k));
+    for (let i = 0; i < s.P.length && out.length < k; i += step) { const p = s.P[i]; out.push({ u: p.u, v: p.v, h: p.h, cook: Math.max(p.cb, p.ct) }); }
+    return out;
+  }
+
+  K.Egg = {
+    create, toss, update, draw, drawOnRice, outcome, hotspots,
+    inPan: (s) => s.phase === "pan" && !s.done,
+    forceStuck(s) { if (s.phase === "pan") s.stuck = true; s.done = true; },
+  };
+})();
+
+</script>
+<script>
+/* game.js — flow, wok pose, HUD, scoring, result slip, attract demo (lead) */
+"use strict";
+(function () {
+  const K = window.KFR, TAU = K.TAU, clamp = K.clamp;
+  const RICE_T = 12, EGG_MAX = 9;
+  const cv = document.getElementById("cv"), c = cv.getContext("2d");
+  const app = document.getElementById("app"), intro = document.getElementById("intro"), resEl = document.getElementById("result");
+  let W = 0, H = 0, vw = null;
+  const fit = () => {
+    const d = K.DPR(); W = app.clientWidth; H = app.clientHeight;
+    cv.width = Math.round(W * d); cv.height = Math.round(H * d); c.setTransform(d, 0, 0, d, 0, 0);
+    vw = K.view(W, H); K.Stage.reset();
+  };
+  new ResizeObserver(fit).observe(app); fit();
+
+  let best = 0, bestAng = 0, taught = false;
+  try { best = +localStorage.getItem("kfr-best") || 0; bestAng = +localStorage.getItem("kfr-best-angle") || 0; taught = !!localStorage.getItem("kfr-taught"); } catch (e) {}
+
+  /* ---------- game state ---------- */
+  let g = null;
+  function newGame(demo) {
+    return {
+      demo, t: 0, phase: "rice", phaseT: 0, started: demo, rice: K.Rice.create({}), egg: null, fx: K.Fx.create(),
+      pose: K.restPose(), tossAnim: null, flicks: 0, lastRiceFlick: 0, maxGap: 0, toast: null, rimFlash: 0, res: null,
+      hitstop: 0, lastFlickT: -9, order: ORDERS[Math.floor(Math.random() * ORDERS.length)], words: [],
+    };
+  }
+
+  /* ---------- the wok's own motion: a chef's toss (Ko & Hu: one cycle ~0.3 s; push + lift, far lip rises) ---------- */
+  function startToss(f) {
+    g.tossAnim = { t0: g.t, s: f.strength, snap: f.snap, du: f.dirU || 0 };
+  }
+  function updatePose() {
+    const p = g.pose, a = g.tossAnim, tilt = K.Input.tilt;
+    const eggAir = g.phase === "egg" && g.egg && g.egg.phase === "air";
+    g.panU = K.lerp(g.panU || 0, eggAir ? tilt.u * 0.35 : g.phase === "egg" && g.egg && g.egg.phase !== "pan" ? (g.panU || 0) : 0, 0.2);
+    let du = tilt.u * 0.03 + (g.panU || 0), dv = 0, lift = 0, lean = 0;
+    if (a) {
+      const dur = 0.36 - 0.08 * a.snap, k = (g.t - a.t0) / dur;
+      if (k >= 1) g.tossAnim = null;
+      else {
+        // tiny pull back (anticipation), sharp push forward + up, settle back
+        const back = k < 0.15 ? -Math.sin((k / 0.15) * Math.PI) * 0.03 : 0;
+        const fwd = k >= 0.1 ? Math.sin(Math.PI * Math.min(1, (k - 0.1) / 0.9)) : 0;
+        dv = (back + fwd * 0.13) * a.s;
+        lift = Math.max(0, Math.sin(Math.PI * Math.min(1, k * 1.25))) * 0.06 * a.s;
+        lean = Math.sin(Math.PI * k) * (0.6 + 0.4 * a.snap) * a.s;
+        du += a.du * fwd * 0.06;
+      }
+    }
+    p.du = du; p.dv = dv; p.lift = lift; p.lean = lean; p.t = g.t;
+  }
+
+  /* ---------- input ---------- */
+  function onFlick(f) {
+    if (!g || g.demo) return;
+    if (g.phase === "result" || g.phase === "intro") return;
+    flick(f);
+  }
+  function flick(f) {
+    if (g.t - g.lastFlickT < 0.3) return;
+    if (g.phase === "rice") {
+      if (g.phaseT >= RICE_T && g.started) return;
+      if (!g.started) { g.started = true; g.phaseT = 0; }
+      g.lastFlickT = g.t;
+      g.maxGap = Math.max(g.maxGap, g.phaseT - g.lastRiceFlick); g.lastRiceFlick = g.phaseT; g.flicks++;
+      startToss(f);
+      K.Rice.toss(g.rice, f, g.t);
+      K.Fx.flare(g.fx, f.strength);
+      if (f.strength >= 0.9 && f.snap > 0.4) K.Fx.oilCatch(g.fx, f.strength);
+      K.Audio.toss(f.strength, f.snap);
+      if (f.strength >= 0.9) K.Audio.flare();
+    } else if (g.phase === "egg" && g.egg && K.Egg.inPan(g.egg)) {
+      g.lastFlickT = g.t;
+      startToss(f);
+      K.Egg.toss(g.egg, Object.assign({}, f, { splatOK: K.Input.mode === "motion" }), g.t);
+      K.Fx.flare(g.fx, f.strength * 0.6);
+      K.Audio.toss(f.strength, f.snap);
+    }
+  }
+
+  /* rice landing / spill events -> oil spatter, sound, a small kick */
+  function drainRiceEvents() {
+    const ev = g.rice.events; if (!ev || !ev.length) return;
+    for (const e of ev) {
+      if (e.type === "land" && e.n > 6) { K.Fx.spatter(g.fx, e.u, e.v, Math.min(10, ((e.n / 10) | 0) + 1)); K.Audio.land("rice"); g.rimFlash = Math.max(g.rimFlash, 0.5); }
+      if (e.type === "spill") { K.Audio.land("spill"); }
+    }
+    ev.length = 0;
+  }
+  /* ---------- toasts: one short line after each toss, pops in ---------- */
+  function toast(text, color) { g.toast = { text, color: color || "#1F2A33", t0: g.t }; }
+
+  /* ---------- demo autopilot (attract mode behind the intro) ---------- */
+  function demoDrive() {
+    const t = g.phaseT;
+    if (g.phase === "rice") {
+      if ((t < 3.5 || t > 8.5) && t % 0.8 < 1 / 60) flick({ strength: K.rnd(0.8, 1.05), snap: K.rnd(0.4, 0.8), dirU: 0, dirV: 1 });
+      K.Input.demoTilt(t >= 3.5 && t <= 8.5 ? Math.sin((t - 3.5) * 1.6) * 0.5 : 0, 0);
+    } else if (g.phase === "egg" && g.egg) {
+      const e = g.egg;
+      if (K.Egg.inPan(e)) {
+        K.Input.demoTilt(clamp(-e.u * 2.2 - (e.su || 0) * 0.8, -0.8, 0.8), clamp(-e.v * 2.2, -0.8, 0.8));
+        if (e.cookBottom >= 1 && Math.abs(e.u) < 0.12) flick({ strength: K.rnd(0.85, 0.95), snap: 0.6, dirU: 0, dirV: 1 });
+      } else K.Input.demoTilt(clamp((e.u || 0) / 0.35, -1, 1), 0);
+    }
+  }
+
+  /* ---------- step ---------- */
+  function step(dt) {
+    g.t += dt;
+    if (g.hitstop > 0) { g.hitstop -= dt; return; }
+    g.phaseT += dt;
+    if (g.demo) demoDrive();
+    updatePose();
+    const tilt = K.Input.tilt, ctx = { t: g.t, tilt, heat: K.heat, wokPose: g.pose };
+    let contact = 0, steam = [];
+    if (g.phase === "rice") {
+      if (!g.started) { g.phaseT = 0; }
+      else {
+        K.Rice.update(g.rice, dt, ctx);
+        const lt = g.rice.lastToss;
+        if (lt && !lt.shown && g.t - lt.t > 0.35) { lt.shown = true; if (lt.label) toast(lt.label, lt.color); }
+        drainRiceEvents();
+      }
+      contact = K.Rice.contactShare(g.rice);
+      if (!taught && !g.demo && g.started && g.rice.golden && g.flicks >= 1) {
+        taught = true; try { localStorage.setItem("kfr-taught", "1"); } catch (e) {}
+        toast("지금!", "#E8481C"); g.rimFlash = 1;
+      }
+      steam = g.started ? K.Rice.hotspots(g.rice, 24) : [];
+      if (g.started && g.phaseT >= RICE_T && (K.Rice.airborne(g.rice) === 0 || g.phaseT > RICE_T + 1)) {
+        g.maxGap = Math.max(g.maxGap, RICE_T - g.lastRiceFlick);
+        g.riceStats = K.Rice.stats(g.rice);
+        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); K.Audio.ding();
+      }
+    } else if (g.phase === "egg") {
+      K.Egg.update(g.egg, dt, ctx);
+      contact = K.Egg.inPan(g.egg) ? 1 : 0.2;
+      steam = K.Egg.hotspots(g.egg, 10);
+      const o = K.Egg.outcome(g.egg);
+      if (o.landedNow) {
+        g.hitstop = o.burst ? 0.09 : o.caught ? 0.06 : 0; g.rimFlash = 1;
+        if (o.caught) K.Fx.spatter(g.fx, o.u || 0, o.v || 0, 12);
+        K.Audio.land(o.burst || o.torn || o.splat ? "egg-splat" : "egg-soft");
+        try { navigator.vibrate && navigator.vibrate(30); } catch (e) {}
+        if (o.caught && o.angleErr != null && !o.folded) toast(`${Math.round(180 - Math.abs(o.angleErr))}°!`, Math.abs(o.angleErr) <= 12 ? "#2BB673" : "#1F2A33");
+        if (o.caught && o.flipped && Math.abs(o.angleErr || 99) <= 12 && !o.burst) K.Audio.ding();
+        else if (o.caught && o.folded) toast("접혔다…", "#E8481C");
+        else if (o.burst) toast("터졌다!", "#E8481C");
+      }
+      if ((o.done && g.phaseT > 0.3) || g.phaseT > EGG_MAX) {
+        if (!o.done) K.Egg.forceStuck && K.Egg.forceStuck(g.egg);
+        finish(); g.phase = "result"; g.phaseT = 0;
+      }
+    } else if (g.phase === "result") {
+      if (g.demo && g.phaseT > 6) g = newGame(true);
+    }
+    const burning = steam.filter((s) => s.cook > 1.3).length / Math.max(1, steam.length);
+    K.Fx.update(g.fx, dt, { flare: 0, burning, steam, wokPose: g.pose });
+    K.Audio.sizzle(g.phase === "result" ? 0 : (g.started ? contact : 0.15));
+    K.Audio.burnWarn(burning);
+    g.contact = contact;
+    g.rimFlash = Math.max(0, g.rimFlash - dt * 8);
+  }
+
+  /* ---------- scoring (DESIGN.md): rice 60 = doneness 40 + 불맛 20, egg 40 = flip 22 + yolk 12 + sear 6 ---------- */
+  const GOOD_FLICKS = "12~16";
+  const ORDERS = [
+    { id: "half", label: "계란 반숙", win: [0.5, 0.9], fire: 1, done: 1 },
+    { id: "full", label: "계란 완숙", win: [1.0, 1.4], fire: 1, done: 1 },
+    { id: "fire", label: "불맛 많이", win: K.EGG_GOOD, fire: 1.5, done: 0.75 },
+  ];
+  const GRADES = [[95, "불맛 장인"], [85, "동네 중국집 에이스"], [70, "자취 3년 차"], [0, "엄마 부르기"]];
+  function finish() {
+    const st = g.riceStats || K.Rice.stats(g.rice), o = K.Egg.outcome(g.egg), ord = g.order;
+    const doneness = Math.round(40 * st.good * ord.done);
+    const fireCap = Math.round(20 * ord.fire), fireP = Math.min(fireCap, Math.round((g.rice.wokhei || 0) * ord.fire));
+    const rice = Math.min(60, doneness + fireP);
+    const lines = [];
+    const lost = (v) => Math.round(v * 40 * ord.done);
+    if (st.burnt > 0.02) lines.push([`탄 밥 ${Math.round(st.burnt * 100)}% · ` + (g.maxGap >= 1.5 ? `최대 ${g.maxGap.toFixed(1)}초 안 튕김` : "바닥에 붙은 밥"), -lost(st.burnt)]);
+    if (st.raw > 0.02) lines.push([`덜 익은 밥 ${Math.round(st.raw * 100)}% · ` + (g.flicks > 22 ? `튕김 ${g.flicks}번, 너무 잦음 (맛있는 리듬 ${GOOD_FLICKS}번)` : "벽 쪽에 쏠림"), -lost(st.raw)]);
+    if (st.spill > 0.02) lines.push([`쏟은 밥 ${Math.round(st.spill * 100)}% · 너무 세게 튕김`, -lost(st.spill)]);
+    lines.sort((a, b) => a[1] - b[1]);
+    if (fireP < fireCap) lines.push([`불맛 ${fireP}/${fireCap} · 최고 콤보 x${g.rice.maxCombo || 0} (노릇할 때 튕기기)`, fireP - fireCap]);
+    let flip = 0, yolk = 0, sear = 0; const eggLines = [];
+    const ang = o.angleErr != null ? Math.round(180 - Math.abs(o.angleErr)) : null;
+    if (o.splat) eggLines.push(["계란이 화면에 붙음 · 너무 세게", -40]);
+    else if (!o.caught && !o.stuck) eggLines.push(["계란 놓침 · 기울여서 웍을 밑으로", -40]);
+    else if (o.stuck) { yolk = 12; eggLines.push(["계란을 안 던짐 · 바닥 탐", -28]); }
+    else {
+      const d = Math.abs(o.angleErr || 0);
+      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${ang}° 돎 (완벽 180°)`, -12]); }
+      else if (o.flipped && d <= 12) flip = 22;
+      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기 ${ang}° (완벽 ±12°)`, flip - 22]); }
+      else { flip = 6; eggLines.push([`안 뒤집힘 · ${o.rot > Math.PI ? "살살" : "조금 세게"}`, -16]); }
+      if (o.burst) eggLines.push([`노른자 터짐 · 세기 ${(o.strength || 0).toFixed(1)} (기준 1.2)`, -12]);
+      else if (o.torn) { yolk = 6; eggLines.push(["흰자 찢어짐 · 덜 익었을 때 던짐", -6]); }
+      else yolk = 12;
+      if (o.cookBottom >= ord.win[0] && o.cookBottom <= ord.win[1]) sear = 6;
+      else eggLines.push([o.cookBottom < ord.win[0] ? `일찍 던짐 · ${ord.label}엔 덜 익음` : `늦게 던짐 · ${ord.label}엔 너무 익음`, -6]);
+    }
+    const egg = flip + yolk + sear, total = rice + egg;
+    const perfectEgg = o.caught && o.flipped && Math.abs(o.angleErr || 99) <= 12 && !o.burst;
+    let tag;
+    if (o.splat) tag = "계란 화면 강타";
+    else if (!o.caught && !o.stuck) tag = rice >= 55 ? "밥만 국가대표" : "계란은 바닥이 먹음";
+    else if (o.stuck) tag = "계란 들러붙음";
+    else if (o.burst) tag = "노른자 대참사";
+    else if (total >= 100) tag = "사장님 나와 보세요";
+    else if (perfectEgg && rice < 35) tag = "계란만 국가대표";
+    else if (st.burnt > 0.25) tag = "화재경보기 울림";
+    else if (st.spill > 0.2) tag = "주방 바닥 볶음밥";
+    else if (st.raw > 0.3) tag = "김치밥 (볶음 아님)";
+    else if ((g.rice.maxCombo || 0) >= 6 && total < 95) tag = "불쇼 하는 사람";
+    else tag = GRADES.find(([s]) => total >= s)[1];
+    const next = GRADES.slice().reverse().find(([s]) => s > total);
+    const toPerfect = o.caught && !o.folded && o.angleErr != null ? Math.max(0, Math.round(Math.abs(o.angleErr) - 12)) : null;
+    g.res = { rice, egg, total, tag, ang, toPerfect, next: next ? next[0] - total : 0, nextName: next ? next[1] : "",
+      lines: lines.slice(0, 3).concat(eggLines.slice(0, 2)) };
+  }
+
+  /* ---------- HUD ---------- */
+  function pill(x, y, w, h, fill) { c.fillStyle = fill; c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, h / 2); c.fill(); }
+  function strokeText(t, x, y, size, ink, outline, font) {
+    c.font = `${size}px ${font || '"Black Han Sans"'}`; c.textAlign = "center"; c.textBaseline = "middle";
+    c.lineJoin = "round"; c.lineWidth = size * 0.22; c.strokeStyle = outline || "#fff"; c.strokeText(t, x, y);
+    c.fillStyle = ink; c.fillText(t, x, y);
+  }
+  function hud() {
+    const top = Math.max(18, H * 0.04);
+    if (g.phase === "rice" && !g.demo) {
+      const left = g.started ? Math.max(0, RICE_T - g.phaseT) : RICE_T, warn = left < 3 && g.started;
+      const pulse = warn ? 1 + 0.12 * Math.max(0, Math.sin((left % 1) * Math.PI)) : 1;
+      c.save(); c.translate(W / 2, top + 30); c.scale(pulse, pulse);
+      c.shadowColor = "rgba(0,0,0,.18)"; c.shadowBlur = 10; c.shadowOffsetY = 3;
+      pill(0, 0, 132, 56, warn ? "#E8481C" : "#fff"); c.shadowColor = "transparent";
+      c.font = '36px "Black Han Sans"'; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = warn ? "#fff" : "#1F2A33";
+      c.fillText(left.toFixed(1), 0, 2); c.restore();
+      c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText("1판 · 밥 볶기", W / 2, top + 72);
+      if (!g.started) {
+        // phone-flick loop until the first flick starts the clock
+        const k = (g.t % 1.1) / 1.1, s = Math.sin(Math.min(1, k * 2.2) * Math.PI);
+        c.save(); c.translate(W / 2, H * 0.3 - s * H * 0.05); c.rotate(-s * 0.35);
+        c.fillStyle = "#1F2A33"; c.beginPath(); c.roundRect(-W * 0.06, -W * 0.11, W * 0.12, W * 0.22, W * 0.02); c.fill();
+        c.fillStyle = "#E8481C"; c.beginPath(); c.roundRect(-W * 0.047, -W * 0.093, W * 0.094, W * 0.17, W * 0.012); c.fill();
+        c.restore();
+        strokeText(K.Input.mode === "motion" ? "손목으로 휙!" : "위로 휙 쓸어 올려!", W / 2, H * 0.205, 30, "#1F2A33");
+      }
+    } else if (g.phase === "egg" && !g.demo) {
+      c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText(`2판 · 계란 뒤집기 · 주문: ${g.order.label}`, W / 2, top + 10);
+      const e = g.egg, o = K.Egg.outcome(e);
+      let msg = "계란 익는 중…", col = "#1F2A33";
+      if (K.Egg.inPan(e)) {
+        if (e.cookBottom >= 0.6) { msg = e.cookBottom > 1.4 ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 던져!"; col = e.cookBottom > 1.4 ? "#E8481C" : "#1F2A33"; }
+      } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.1 ? "어어…!" : "기울여서 받아!";
+      else if (!o.done && e.phase !== "splat") msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : o.folded ? "접혔다…" : "앗…") : "아…";
+      else msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : "앗…") : "아…";
+      const k = clamp((g.t % 100) * 4, 0, 1);
+      strokeText(msg, W / 2, top + 48, 38, col);
+    }
+    if (g.demo) { /* nothing: intro layer covers the top */ }
+    // per-toss toast
+    if (g.toast) {
+      const k = (g.t - g.toast.t0) / 0.9;
+      if (k >= 1) g.toast = null;
+      else {
+        const s = k < 0.28 ? K.easeOutBack(k / 0.28) : 1, a = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
+        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.24); c.rotate(-0.035); c.scale(s, s);
+        strokeText(g.toast.text, 0, 0, 32, g.toast.color); c.restore();
+      }
+    }
+    // motion events never arrived (in-app browser / desktop): say once how to get the real thing
+    if (!g.demo && K.Input.mode === "touch" && K.Input.hint && g.phase === "rice" && !g.started) {
+      c.font = '15px "Gowun Dodum"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText(K.Input.hint, W / 2, H * 0.97);
+    }
+    // spirit level (bottom-right): the bubble drifts to the high side
+    if (g.phase !== "result" && !g.demo) {
+      const lx = W * 0.86, ly = H * 0.9, lr = W * 0.07, t = K.Input.tilt;
+      c.fillStyle = "rgba(31,42,51,.72)"; c.beginPath(); c.arc(lx, ly, lr, 0, TAU); c.fill();
+      c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1; c.beginPath(); c.arc(lx, ly, lr * 0.35, 0, TAU); c.stroke();
+      c.fillStyle = "#a3e635"; c.beginPath(); c.arc(lx - t.u * lr * 0.6, ly + t.v * lr * 0.6, lr * 0.28, 0, TAU); c.fill();
+    }
+  }
+
+  /* ---------- render ---------- */
+  function render() {
+    const fx = g.fx, sh = fx.shake || { x: 0, y: 0 };
+    c.save(); c.translate(sh.x, sh.y);
+    K.Stage.drawCounter(c, vw);
+    const fire = g.phase !== "result";
+    if (fire) { K.Stage.drawUnderGlow(c, vw, fx.flareLevel || 0); K.Fx.drawBehind(c, fx, vw, g.pose); }
+    if (g.phase !== "egg") K.Rice.drawSpilled && K.Rice.drawSpilled(c, g.rice, vw, g.pose);
+    K.Stage.drawWok(c, vw, g.pose, g.contact || 0, fire);
+    if (fire && K.Fx.drawRim) K.Fx.drawRim(c, fx, vw, g.pose);   // far-rim flare sits under the food
+    if (g.phase === "rice" || g.phase === "result") K.Rice.draw(c, g.rice, vw, g.pose);
+    if (g.phase === "egg") K.Egg.draw(c, g.egg, vw, g.pose);
+    K.Stage.flashRim(c, vw, g.pose, g.rimFlash);
+    K.Fx.drawFront(c, fx, vw, g.pose);
+    if (fx.haze > 0.01) { c.fillStyle = `rgba(52,48,46,${Math.min(0.45, fx.haze)})`; c.fillRect(-10, -10, W + 20, H + 20); }
+    c.restore();
+    hud();
+  }
+
+  /* ---------- result slip ---------- */
+  function showResult() {
+    const r = g.res, record = r.total > best && best > 0;
+    if (r.total > best) { best = r.total; try { localStorage.setItem("kfr-best", best); } catch (e) {} }
+    const angRecord = r.ang != null && r.ang > bestAng && bestAng > 0;
+    if (r.ang != null && r.ang > bestAng && r.ang <= 180) { bestAng = r.ang; try { localStorage.setItem("kfr-best-angle", bestAng); } catch (e) {} }
+    const near = r.toPerfect ? `완벽 뒤집기까지 ${r.toPerfect}°` : r.next ? `「${r.nextName}」까지 ${r.next}점` : "";
+    const lines = r.lines.map(([k, v]) => `<li><span>${k}</span><span>${v}</span></li>`).join("");
+    resEl.innerHTML = `<div class="slip" id="slip"><div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1 · ${g.order.label}</div>${record ? '<div class="stamp rec">신기록</div>' : ""}<canvas id="bowl"></canvas>
+      <div class="total"><span class="stamp" id="stamp" style="visibility:hidden">${r.tag}</span><span class="big"><span id="score">0</span><small>점</small></span></div>
+      ${near ? `<div class="near">${near}</div>` : ""}
+      <ul><li><span>밥 볶기 ${r.rice}/60 · 계란 ${r.egg}/40</span><span>최고 ${best}</span></li>
+      ${r.ang != null ? `<li><span>뒤집기 ${r.ang}°${angRecord ? " · 신기록" : ""}</span><span>최고 ${bestAng}°</span></li>` : ""}${lines}
+</ul>
+      <div class="formula">밥 = 맛있게 익은 비율 × 40 + 불맛 20 (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6</div></div>
+      <div class="row"><button class="btn" id="again" type="button">한 번 더</button><button class="btn ghost" id="share" type="button">자랑하기</button></div><div class="hint">폰을 휙 튕겨도 다시 시작</div>`;
+    resEl.hidden = false;
+    const bowl = document.getElementById("bowl"), bw = bowl.clientWidth || 300, bh = bw * 0.75;
+    const [bc, bx] = [bowl, bowl.getContext("2d")], d = K.DPR(); bc.width = bw * d; bc.height = bh * d; bx.scale(d, d);
+    drawBowl(bx, bw, bh);
+    // count up the score, then slam the stamp
+    const el = document.getElementById("score"), t0 = performance.now();
+    const tick = (now) => {
+      const k = Math.min(1, (now - t0) / 700); el.textContent = Math.round(r.total * K.smooth(k));
+      if (k < 1) requestAnimationFrame(tick);
+      else { const s = document.getElementById("stamp"); s.style.visibility = "visible"; s.classList.add("pop"); K.Audio.stamp(); }
+    };
+    requestAnimationFrame(tick);
+    document.getElementById("again").onclick = (e) => { e.stopPropagation(); restart(); };
+    document.getElementById("share").onclick = (e) => { e.stopPropagation(); share(); };
+  }
+
+  /* ---------- share: the order slip as a 1080x1350 picture ---------- */
+  function slipImage() {
+    const W2 = 1080, H2 = 1350, cv2 = document.createElement("canvas"); cv2.width = W2; cv2.height = H2;
+    const x = cv2.getContext("2d"), r = g.res;
+    const bg = x.createLinearGradient(0, 0, W2, H2); bg.addColorStop(0, "#eef1f3"); bg.addColorStop(1, "#c9d1d8");
+    x.fillStyle = bg; x.fillRect(0, 0, W2, H2);
+    x.save(); x.translate(W2 / 2, H2 / 2); x.rotate(-0.02);
+    const sw = 860, sh = 1150; x.shadowColor = "rgba(30,40,50,.3)"; x.shadowBlur = 40; x.shadowOffsetY = 18;
+    x.fillStyle = "#fbf6ea"; x.fillRect(-sw / 2, -sh / 2, sw, sh); x.shadowColor = "transparent";
+    x.textAlign = "center"; x.fillStyle = "#2a1a14";
+    x.font = '64px "Song Myung"'; x.fillText("D:OT 반점", 0, -sh / 2 + 100);
+    x.font = '26px "Nanum Gothic Coding"'; x.fillStyle = "#6b5d4f"; x.fillText(`주문 #002 · 김치볶음밥 1 · ${g.order.label}`, 0, -sh / 2 + 148);
+    const bw = 760, bh = 570, [bc] = [document.createElement("canvas")]; bc.width = bw; bc.height = bh;
+    const bx = bc.getContext("2d"); drawBowl(bx, bw, bh); x.drawImage(bc, -bw / 2, -sh / 2 + 170);
+    x.textAlign = "right"; x.fillStyle = "#2a1a14"; x.font = 'bold 150px "Nanum Gothic Coding"'; x.fillText(String(r.total), sw / 2 - 150, sh / 2 - 190);
+    x.font = '48px "Nanum Gothic Coding"'; x.fillText("점", sw / 2 - 90, sh / 2 - 190);
+    x.save(); x.translate(-sw / 2 + 230, sh / 2 - 240); x.rotate(-0.12);
+    x.font = '58px "Song Myung"'; const tw = x.measureText(r.tag).width + 50;
+    x.strokeStyle = "#c81e1e"; x.lineWidth = 8; x.strokeRect(-tw / 2, -50, tw, 90); x.fillStyle = "#c81e1e"; x.textAlign = "center"; x.fillText(r.tag, 0, 18); x.restore();
+    x.textAlign = "center"; x.fillStyle = "#6b5d4f"; x.font = '30px "Nanum Gothic Coding"';
+    x.fillText(`밥 ${r.rice}/60 · 계란 ${r.egg}/40` + (r.ang != null ? ` · 뒤집기 ${r.ang}°` : ""), 0, sh / 2 - 110);
+    x.fillText("너도 볶아 봐 → D:OT lab", 0, sh / 2 - 60);
+    x.restore();
+    return cv2;
+  }
+  function share() {
+    const cv2 = slipImage();
+    cv2.toBlob(async (blob) => {
+      try {
+        const file = new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], text: `김치볶음밥 한 그릇 ${g.res.total}점 「${g.res.tag}」 ${location.href.split("?")[0]}` });
+          return;
+        }
+      } catch (e) { if (e && e.name === "AbortError") return; }
+      // in-app browsers: show the picture to long-press and save
+      const url = URL.createObjectURL(blob), ov = document.createElement("div");
+      ov.className = "layer"; ov.style.background = "rgba(15,18,21,.92)"; ov.style.zIndex = 5;
+      ov.innerHTML = `<img alt="결과 주문서" style="max-width:100%;max-height:72%;border-radius:8px" src="${url}"><p style="color:#fff;margin:0;font-size:18px">이미지를 길게 눌러 저장하세요</p><button class="btn" type="button">닫기</button>`;
+      ov.querySelector("button").onclick = (e) => { e.stopPropagation(); ov.remove(); URL.revokeObjectURL(url); };
+      app.appendChild(ov);
+    }, "image/png");
+  }
+  function drawBowl(c2, w, h) {
+    const ct = Math.cos(K.THETA), cx = w / 2, cy = h * 0.55, r = w * 0.36;
+    c2.fillStyle = "#e6e1d6"; c2.beginPath(); c2.moveTo(cx - r, cy); c2.bezierCurveTo(cx - r * 0.9, cy + r * 0.95, cx + r * 0.9, cy + r * 0.95, cx + r, cy); c2.closePath(); c2.fill();
+    c2.strokeStyle = "#2563eb"; c2.lineWidth = 2.5; c2.beginPath(); c2.moveTo(cx - r * 0.93, cy + r * 0.18); c2.bezierCurveTo(cx - r * 0.7, cy + r * 0.62, cx + r * 0.7, cy + r * 0.62, cx + r * 0.93, cy + r * 0.18); c2.stroke();
+    c2.fillStyle = "#fffdf8"; c2.beginPath(); c2.ellipse(cx, cy, r, r * ct, 0, 0, TAU); c2.fill();
+    const top = K.Rice.drawBowl(c2, g.rice, cx, cy, r, ct);
+    const o = K.Egg.outcome(g.egg);
+    if (!o.caught && !o.stuck) {
+      c2.font = '13px "Gowun Dodum"'; c2.textAlign = "center"; const t = "(계란 없음)", tw = c2.measureText(t).width + 16;
+      c2.fillStyle = "rgba(251,246,234,.92)"; c2.beginPath(); c2.roundRect(cx - tw / 2, (top || cy - r * 0.4) - 16, tw, 24, 12); c2.fill();
+      c2.fillStyle = "#6b5d4f"; c2.fillText(t, cx, (top || cy - r * 0.4) + 1);
+    } else K.Egg.drawOnRice(c2, g.egg, cx, top || cy - r * 0.4, r * 0.42, ct);
+  }
+
+  function restart() {
+    resEl.hidden = true; g = newGame(false); K.Input.armAfterRelease && K.Input.armAfterRelease();
+  }
+
+  /* ---------- boot ---------- */
+  let last = performance.now(), shown = false;
+  function frame(now) {
+    const dt = Math.min(0.033, (now - last) / 1000); last = now;
+    step(dt);
+    if (g.phase === "result" && !shown && !g.demo) { shown = true; showResult(); }
+    if (g.phase !== "result") shown = false;
+    render();
+    requestAnimationFrame(frame);
+  }
+  function begin(useMotion) {
+    K.Audio.unlock();
+    const go = () => { intro.hidden = true; g = newGame(false); };
+    if (useMotion) K.Input.requestPermission().then(go, go); else { K.Input.useTouch(); go(); }
+  }
+  document.getElementById("go").onclick = () => begin(true);
+  document.getElementById("touchMode").onclick = () => begin(false);
+  resEl.addEventListener("click", (e) => { if (e.target === resEl) {} });
+  K.Input.start(onFlick, app);
+  g = newGame(true);
+  // a flick on the result slip restarts
+  K.Input.onResultFlick = () => { if (g && g.phase === "result" && !g.demo) restart(); };
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
+  K.Game = { get state() { return g; }, flick, newGame: (d) => (g = newGame(d)) };
+})();
+
+</script>
