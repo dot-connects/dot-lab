@@ -11,8 +11,8 @@
   Object.assign(K, { T, TAU, DEG, lin, clamp, smooth, rnd, surf, RIM: 0.355, SIDE: -1 /* the plate is on the left */ });
 
   const STYLES = {
-    real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.048, 0.02], grainN: 1800, phys: true },
-    toy: { bg: "#bfe7dc", counter: "pastel", exposure: 1.0, grain: [0.07, 0.034], grainN: 1100, chunky: true },
+    real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.038, 0.017], grainN: 2400, phys: true },
+    toy: { bg: "#bfe7dc", counter: "pastel", exposure: 1.0, grain: [0.06, 0.03], grainN: 1400, chunky: true },
   };
 
   /* ---------- renderer / camera ---------- */
@@ -138,8 +138,11 @@
     const handle = new T.Mesh(new T.CylinderGeometry(0.06, 0.07, 1.0, 20), wood); handle.rotation.x = Math.PI / 2 - 12 * DEG; handle.position.set(0, 0.5, 1.88); handle.castShadow = true; wok.add(handle);
     const ear = new T.Mesh(new T.TorusGeometry(0.09, 0.022, 8, 20, Math.PI), steel); ear.position.set(0, 0.36, -1.06); ear.rotation.set(-Math.PI / 2, 0, 0); wok.add(ear);
     // heat on the rim: a thin additive ring that warms up when the food has sat long enough (the diegetic "now")
-    W.rimGlow = new T.Mesh(new T.TorusGeometry(1.04, 0.03, 8, 96), new T.MeshBasicMaterial({ color: lin("#ff7a2a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
-    W.rimGlow.rotation.x = Math.PI / 2; W.rimGlow.position.y = 0.36; wok.add(W.rimGlow);
+    W.rimGlow = new T.Mesh(new T.TorusGeometry(1.04, 0.05, 8, 96), new T.MeshBasicMaterial({ color: lin("#ff7a2a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
+    W.rimGlow.rotation.x = Math.PI / 2; W.rimGlow.position.y = 0.37; wok.add(W.rimGlow);
+    // a soft halo on the inner wall so the colour reads even on a small, dark screen
+    W.rimHalo = new T.Mesh(new T.TorusGeometry(0.98, 0.13, 8, 96), new T.MeshBasicMaterial({ color: lin("#ff7a2a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
+    W.rimHalo.rotation.x = Math.PI / 2; W.rimHalo.position.y = 0.33; wok.add(W.rimHalo);
 
     // burner flames: short tongues on a ring just outside the wok wall
     W.flames = [];
@@ -207,7 +210,7 @@
       if (u.big) p.scale.setScalar((0.25 + k * 0.6) * (1 + 0.6 * u.big));
       p.material.color.setRGB(1 - o.smoke * 0.55, 1 - o.smoke * 0.6, 1 - o.smoke * 0.62);
     }
-    W.rimGlow.material.opacity = o.rim; if (o.rimCol) W.rimGlow.material.color.copy(o.rimCol);
+    W.rimGlow.material.opacity = o.rim; W.rimHalo.material.opacity = o.rim * 0.35; if (o.rimCol) { W.rimGlow.material.color.copy(o.rimCol); W.rimHalo.material.color.copy(o.rimCol); }
   };
   // a puff of white steam from the middle of the pile: "the rice is ready for the next toss"
   W.puffBurst = function (big) {

@@ -187,12 +187,12 @@
   /* take-out: the wok rolls toward the plate and the egg slides over the lip onto the rice */
   E.takeStep = function (t, k, plateTop) {
     const W = K.W;
-    if (!E.take) E.take = { p0: E.g.position.clone() };
+    if (!E.take) { E.take = { p0: E.g.position.clone() }; E.cook = Math.max(E.cook, 1.0); } // the top has set by now (it read as jelly)
     const lip = _v.set(K.SIDE * 0.9, K.RIM + 0.05, 0.05).applyMatrix4(W.wok.matrixWorld).clone();
-    const flipQ = new T.Quaternion().setFromAxisAngle(_ax, E.flipped ? Math.PI : 0);
+    const flipQ = new T.Quaternion().setFromAxisAngle(_ax, E.flipped ? Math.PI : 0), upQ = new T.Quaternion();
     if (k < 0.45) { E.g.position.lerpVectors(E.take.p0, lip, smooth(k / 0.45)); W.wok.getWorldQuaternion(E.g.quaternion); E.g.quaternion.multiply(flipQ); }
-    else { const f = clamp((k - 0.45) / 0.55, 0, 1); E.g.position.lerpVectors(lip, plateTop, f); E.g.position.y += 0.3 * Math.sin(Math.PI * f); W.wok.getWorldQuaternion(_q); _q.multiply(flipQ); E.g.quaternion.copy(_q).slerp(flipQ, f); }
-    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(flipQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
+    else { const f = clamp((k - 0.45) / 0.55, 0, 1); E.g.position.lerpVectors(lip, plateTop, f); E.g.position.y += 0.3 * Math.sin(Math.PI * f); W.wok.getWorldQuaternion(_q); _q.multiply(flipQ); E.g.quaternion.copy(_q).slerp(upQ, smooth(f)); if (f > 0.5 && E.flipped) E.flipped = false; }
+    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.flipped = false; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(upQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
     E.g.updateMatrixWorld(true);
     if (E.burst) burstStep(t, W.wok.matrixWorld);
     shape(1 / 60, t);
@@ -226,7 +226,7 @@
       for (const w of e.waves) { const tau = tNow - w.t0; wob += w.a * 0.014 * (1.25 - 0.55 * cookK) * Math.exp(-(2.6 + 4 * cookK) * tau) * Math.sin(17 * d - (19 + 16 * cookK) * tau) * (1 - 0.4 * t); }
       const bend = -e.bend * z * z * 0.9, sq = 1 - 0.5 * e.sq.s;
       let lift = 0;
-      if (e.fold && z > 0) { z = -z * 0.92 + 0.02; lift = 0.045; } // folded in half: the near half lies on the far half
+      if (e.fold && z > 0) { const rho = 0.05, a = z / rho; if (a < Math.PI) { lift = rho * (1 - Math.cos(a)); z = rho * Math.sin(a); } else { lift = 2 * rho; z = -(z - Math.PI * rho); } } // folded: the near half rolls over a rounded crease
       const j = k * 3;
       P[j] = x * (1 + 0.12 * e.sq.s); P[j + 2] = z * (1 + 0.12 * e.sq.s);
       P[j + 1] = drape(P[j], P[j + 2], false) + (thick + bub) * sq + lace + wob + bend + lift;
@@ -260,6 +260,6 @@
     e.yolk.position.set(YU + Y.x, drape(YU, YV, false) + 0.03 * (1 + 0.45 * clamp(e.cook, 0, 1)), YV + Y.z);
     e.yolk.scale.set(1 + 0.25 * e.sq.s - Y.h * 2, clamp(0.5 * ys, 0.25, 0.7), 1 + 0.25 * e.sq.s - Y.h * 2);
     e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.95) * 1.2, 0, 0.55));
-    e.yolk.visible = !e.flipped && !(e.ph === "air" && e.flip.f > 0.5) && !e.burst;
+    e.yolk.visible = !e.flipped && !e.fold && !(e.ph === "air" && e.flip.f > 0.5) && !e.burst;
   }
 })();

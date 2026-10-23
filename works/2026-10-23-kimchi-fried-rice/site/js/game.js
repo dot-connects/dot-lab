@@ -16,7 +16,7 @@
   let g = null;
   function newGame(auto) {
     return { ph: "intro", t: 0, phT: 0, auto, clock: RICE_T, started: false, lastFlick: -9, toss: null, tossN: 0,
-      fire: 0, combo: 0, maxCombo: 0, grades: [], perfects: 0, maxGap: 0, scorchSaid: -9,
+      fire: 0, combo: 0, maxCombo: 0, grades: [], counts: { perfect: 0, good: 0, early: 0, late: 0 }, perfects: 0, maxGap: 0, scorchSaid: -9,
       order: Math.random() < 0.5 ? "half" : "full", eggShakeT: -9, plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
       pose: { tilt: { u: 0, v: 0 } }, hei: 0, shim: -9, cam: 0, pan: 0, hit: 0 };
   }
@@ -65,13 +65,15 @@
     if (g.t - g.lastFlick < 0.3 || (g.started && g.clock <= 0)) return;
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
-    if (!g.started) { g.started = true; tip(""); }
+    if (!g.started) { g.started = true; tip(g.auto ? C.watching : C.rimTip); }
+    else if (g.tossN >= 3 && !g.auto) tip("");
     else {
       // readiness: how long the food has been back on the metal since the last toss came down
-      const back = F.toss && F.toss.done ? g.t - F.lastLand : -1;
+      const back = F.toss && F.toss.done && F.contact > 0.8 ? g.t - F.lastLand : -1; // rice still in the air = too early (mashing does not pay)
       g.maxGap = Math.max(g.maxGap, g.t - g.lastFlick);
-      const w = readyWin(), grade = back < 0 || back < w.open - 0.15 ? "early" : back < w.open ? "good" : back <= w.close ? "perfect" : back <= w.close + 0.5 ? "good" : "late";
-      score(grade, s, back < 0 ? 0 : 1 - (Math.abs(back - w.peak) / (w.close - w.open)) * 2);
+      const w = readyWin(), grade = back < w.open ? "early" : back < w.gold0 ? "good" : back <= w.gold1 ? "perfect" : back <= w.late ? "good" : "late";
+      g.counts[grade]++;
+      score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
     g.lastFlick = g.t; g.lastS = s; g.puffed = false;
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
@@ -83,7 +85,7 @@
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
-  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12); return { open: 0.3 + sh, peak: 0.62 + sh, close: 0.95 + sh }; }
+  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12); return { open: 0.25 + sh, gold0: 0.45 + sh, peak: 0.62 + sh, gold1: 0.79 + sh, late: 1.3 + sh }; }
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
@@ -99,7 +101,7 @@
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
       if (grade === "good") { // so-so keeps the combo, fills a little
-        g.fire = Math.min(FIRE_MAX, g.fire + 0.6 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
+        g.fire = Math.min(FIRE_MAX, g.fire + 0.3 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
         gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`; K.Food.fireTint = (g.fire / FIRE_MAX) * 0.22; return;
       }
       else if (grade === "early") word(C.early, "meh", C.earlySub);
@@ -124,7 +126,7 @@
     if (E.ph !== "pan" || g.t - E.t0 < 0.7) return;
     K.Audio.unlock();
     g.toss = { t0: g.t, s: clamp(f.strength || 1, 0.5, 1.2) * 0.7, du: 0, dv: 1 };
-    E.flipStart(f, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
+    E.flipStart(f, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5); if (!g.auto) tip(C.eggCatch);
   }
 
   /* ---------- phases ---------- */
@@ -147,7 +149,7 @@
   function startEgg() {
     setPh("egg"); hudEl.classList.remove("dim"); timerEl.hidden = true; gaugeEl.hidden = true; comboEl.textContent = "";
     K.Egg.start(g.t); K.Food.settle();
-    tip(C.eggTip(g.order));
+    tip(g.auto ? C.watching : C.eggTip(g.order, K.Input.mode !== "motion"));
   }
 
   /* ---------- the plate ---------- */
@@ -227,10 +229,11 @@
     if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
       const back = g.t - F.lastLand;
       const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
-      if (back < w.open) { rim = 0.12; rimCol.copy(RC.raw); }
-      else if (back <= w.close) { const kk = 1 - (Math.abs(back - w.peak) / (w.close - w.open)) * 2; rimCol.copy(RC.orange).lerp(RC.gold, clamp(kk, 0, 1)); rim = 0.55 + 0.4 * clamp(kk, 0, 1); if (!g.puffed) { g.puffed = true; W.puffBurst(1 + big); } }
-      else if (back <= w.close + 0.5) { rimCol.copy(RC.red); rim = 0.7; }
-      else { rimCol.copy(RC.red).lerp(RC.dark, clamp((back - w.close - 0.5) / 0.4, 0, 1)); rim = 0.5; }
+      if (F.contact < 0.8 || back < w.open) { rim = 0.15; rimCol.copy(RC.raw); }
+      else if (back < w.gold0) { rimCol.copy(RC.raw).lerp(RC.orange, (back - w.open) / (w.gold0 - w.open)); rim = 0.5; }
+      else if (back <= w.gold1) { rimCol.copy(RC.gold); rim = 1.0; if (!g.puffed) { g.puffed = true; W.puffBurst(1 + big); } }
+      else if (back <= w.late) { rimCol.copy(RC.orange).lerp(RC.red, (back - w.gold1) / (w.late - w.gold1)); rim = 0.75; }
+      else { rimCol.copy(RC.red).lerp(RC.dark, clamp((back - w.late) / 0.5, 0, 1)); rim = 0.55; }
       const b = F.bottom(); smoke = clamp((b.scorch - 0.04) * 6, 0, 1); steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
@@ -308,9 +311,9 @@
       <div class="why">${whyLine(s)}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div></div>`;
-    resEl.hidden = false; requestAnimationFrame(() => resEl.classList.add("up"));
-    const n = $("scoreN"), t0 = performance.now();
-    (function up() { const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
+    resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
+    const n = $("scoreN"), t0 = performance.now() + 1200;
+    (function up() { if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
     $("again").onclick = () => { K.Audio.unlock(); start(false); };
     $("share").onclick = share;
   }
@@ -321,8 +324,14 @@
     if (st.spill > 0.01) parts.push(`흘린 밥 ${Math.round(st.spill * 100)}%`);
     if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
     parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
-    if (s.r && s.r.burst) parts.push("노른자 터짐");
-    else if (s.r && !s.r.fold) parts.push(`계란 ${s.r.angle}°`);
+    const c = g.counts, n = c.perfect + c.good + c.early + c.late;
+    if (n) parts.push(`금빛에 휙 ${c.perfect}/${n}번` + (c.early > c.late && c.early > 1 ? " (너무 빨리 친 게 많음)" : c.late > 1 ? " (늦게 친 게 많음)" : ""));
+    const r = s.r, win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
+    if (r) {
+      if (r.cookAtFlip < win[0] - 0.05) parts.push("계란을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("계란을 너무 늦게 뒤집음");
+      if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : "너무 세게 쳐서 노른자 터짐"); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
+      if (r.where === "wall") parts.push("벽에서 받음"); else if (r.where === "out") parts.push("계란을 못 받음");
+    }
     return parts.join(" · ");
   }
   function share() {
@@ -331,12 +340,15 @@
       const src = W.renderer.domElement, cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1350;
       const c = cv.getContext("2d"), s = g.res, tier = C.tiers.find((x) => s.total >= x[0]);
       c.fillStyle = "#fbf6ea"; c.fillRect(0, 0, 1080, 1350);
-      const sw = src.width, sh = src.height, cw = Math.min(sw, sh * 0.9), ch = cw * 0.9;
-      c.drawImage(src, (sw - cw) / 2, 0, cw, ch, 60, 60, 960, 864);
+      // the dish fills the top (the result camera centres the plate in the upper half), the score and the stamp below
+      const sw = src.width, sh = src.height, cw = Math.min(sw, sh * 0.5);
+      c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 90, 50, 900, 900);
       c.textAlign = "center";
-      c.fillStyle = "#1f2a33"; c.font = "64px 'Black Han Sans', sans-serif"; c.fillText(C.shop, 540, 1010);
-      c.fillStyle = "#E8481C"; c.font = "160px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 540, 1180);
-      c.fillStyle = "#c81e1e"; c.font = "56px 'Black Han Sans', sans-serif"; c.fillText(tier[1], 540, 1272);
+      c.fillStyle = "#1f2a33"; c.font = "60px 'Black Han Sans', sans-serif"; c.fillText(`${C.shop} · 김치볶음밥 한 그릇`, 540, 1040);
+      c.fillStyle = "#E8481C"; c.font = "170px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 430, 1230);
+      c.save(); c.translate(820, 1180); c.rotate(-0.14); c.strokeStyle = c.fillStyle = "#c81e1e"; c.lineWidth = 8; c.font = "54px 'Black Han Sans', sans-serif";
+      const tw = c.measureText(tier[1]).width + 40; c.strokeRect(-tw / 2, -46, tw, 84); c.fillText(tier[1], 0, 14); c.restore();
+      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText("폰을 웍처럼 휙! · D:OT lab", 540, 1310);
       cv.toBlob((blob) => {
         const file = blob && new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text: `${s.total}점 · ${tier[1]}` }).catch(() => {});
@@ -366,7 +378,7 @@
   /* ---------- camera ---------- */
   const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3();
   function camera(dt) {
-    const pan = ["plate", "egg", "take"].includes(g.ph) ? SIDE * 0.32 : 0;
+    const pan = g.ph === "plate" || g.ph === "take" ? SIDE * 0.32 : g.ph === "egg" ? SIDE * 0.14 : 0; // the egg phase keeps the whole wok in view
     g.cam += ((["garnish", "result"].includes(g.ph) ? 1 : 0) - g.cam) * DAMP(0.35, dt);
     g.pan += (pan - g.pan) * DAMP(0.25, dt);
     const close = smooth(g.cam);

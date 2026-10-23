@@ -7,13 +7,13 @@
   const G = 40;                       // airtime ~0.45 s for a good toss (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.12;                    // static friction (×g): the pile holds at a small tilt, flows at a real one
-  const HK = 0.0075;                  // pile height per grain in a cell
+  const HK = 0.0095;                  // pile height per grain in a cell
   const NG = 26, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
   const COUNTER = -0.61;
   const F = (K.Food = { n: 0 });
 
   // colour ramps (chef): kimchi-stained raw → glossy red-orange → wok-hei brick → scorched → burnt
-  const RAMP = [[0, "#e8a571"], [0.45, "#dc6430"], [0.9, "#c9502a"], [1.2, "#b24822"], [1.5, "#6b3a1e"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
+  const RAMP = [[0, "#d9773f"], [0.45, "#cc552a"], [0.9, "#b8431f"], [1.2, "#9c3a1c"], [1.5, "#5e301a"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
   const KRAMP = [[0, "#d6301f"], [0.9, "#b8261c"], [1.4, "#7e1a12"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
   const PRAMP = [[0, "#5fb043"], [1.0, "#3f8a2c"], [1.5, "#4a4a22"], [1.9, "#262a1a"]].map(([k, c]) => [k, lin(c)]);
   const _c = new T.Color();
