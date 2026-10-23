@@ -1,470 +1,388 @@
-/* game.js — flow, wok pose, HUD, scoring, result slip, attract demo (lead) */
+/* game.js — the whole round: start screen → rice 12 s → plating (auto) → egg → take-out → garnish → receipt.
+   Owns the wok pose (phone tilt + the chef's toss), the clock (fixed 1/60 steps), scoring, words, HUD, sound cues. */
 "use strict";
 (function () {
-  const K = window.KFR, TAU = K.TAU, clamp = K.clamp;
-  const RICE_T = 12, EGG_MAX = 9, PLATE_T = 1.8; // plate: the rice is served, then the egg goes in
-  const cv = document.getElementById("cv"), c = cv.getContext("2d");
-  const app = document.getElementById("app"), intro = document.getElementById("intro"), resEl = document.getElementById("result");
-  let W = 0, H = 0, vw = null;
-  const fit = () => {
-    const d = K.DPR(); W = app.clientWidth; H = app.clientHeight;
-    cv.width = Math.round(W * d); cv.height = Math.round(H * d); c.setTransform(d, 0, 0, d, 0, 0);
-    vw = K.view(W, H); K.Stage.reset();
-  };
-  new ResizeObserver(fit).observe(app); fit();
+  const K = window.KFR, T = K.T, W = K.W, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, DEG = K.DEG, SIDE = K.SIDE;
+  const C = K.COPY;
+  const $ = (id) => document.getElementById(id);
+  const app = $("app"), introEl = $("intro"), hudEl = $("hud"), timerEl = $("timer"), wordEl = $("word"), subEl = $("sub"), gaugeEl = $("gauge"), gaugeFill = $("gaugeFill"), comboEl = $("combo"), resEl = $("result"), tipEl = $("tip");
+  const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
-  let best = 0, bestAng = 0, taught = false;
-  try { best = +localStorage.getItem("kfr-best") || 0; bestAng = +localStorage.getItem("kfr-best-angle") || 0; taught = !!localStorage.getItem("kfr-taught"); } catch (e) {}
+  const RICE_T = 12, MAXT = 40 * DEG;     // the wok follows the phone up to 40°: past ~35° the food goes over the rim
+  const FIRE_MAX = 25;
+  let style = store.get("kfr-style", "real"); if (!W.STYLES[style]) style = "real";
 
-  /* ---------- game state ---------- */
+  /* ---------- state ---------- */
   let g = null;
-  function newGame(demo) {
-    return {
-      demo, t: 0, phase: "rice", phaseT: 0, started: demo, rice: K.Rice.create({}), egg: null, fx: K.Fx.create(),
-      pose: K.restPose(), tossAnim: null, flicks: 0, lastRiceFlick: 0, maxGap: 0, toast: null, rimFlash: 0, res: null,
-      hitstop: 0, lastFlickT: -9, order: ORDERS[Math.floor(Math.random() * ORDERS.length)], words: [],
-    };
+  function newGame(auto) {
+    return { ph: "intro", t: 0, phT: 0, auto, clock: RICE_T, started: false, lastFlick: -9, toss: null, tossN: 0,
+      fire: 0, combo: 0, maxCombo: 0, grades: [], perfects: 0, maxGap: 0, scorchSaid: -9,
+      order: Math.random() < 0.5 ? "half" : "full", eggShakeT: -9, plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
+      pose: { tilt: { u: 0, v: 0 } }, hei: 0, shim: -9, cam: 0, pan: 0, hit: 0 };
   }
+  g = newGame(false);
 
-  /* ---------- the wok's own motion: a chef's toss (Ko & Hu: one cycle ~0.3 s; push + lift, far lip rises) ---------- */
-  function startToss(f) {
-    let du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV; const n = Math.hypot(du, dv) || 1;
-    if (Math.hypot(du, dv) < 0.2) { du = 0; dv = 1; } else { du /= n; dv /= n; }
-    g.tossAnim = { t0: g.t, s: f.strength, snap: f.snap == null ? 0.5 : f.snap, d: [du, dv] };
+  /* ---------- words ---------- */
+  function word(text, kind, sub) {
+    wordEl.textContent = text; wordEl.className = "word " + (kind || ""); void wordEl.offsetWidth; wordEl.classList.add("pop");
+    subEl.textContent = sub || ""; subEl.className = "sub"; void subEl.offsetWidth; if (sub) subEl.classList.add("pop");
   }
-  /* chef's toss (r2-chef + Ko & Hu): wind-up 0–50 ms (back), push 50–150 ms along d, lip snap 150–220 ms (the far lip
-     rises 5°+15°·s, the wok hops), pull back and level 220–350 ms, a small cushion when the food comes down ~0.7 s.
-     The tilt pivots on the rim opposite d, so on a forward toss the handle side barely moves. At rest the wok leans
-     6° toward the cook and follows the phone tilt. */
-  const DEG = Math.PI / 180, ease = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : K.smooth(k));
-  let lastPose = null, plateLayer = null;
+  function tip(text) { tipEl.textContent = text || ""; tipEl.hidden = !text; }
+
+  /* ---------- wok pose: phone tilt + the chef's toss ---------- */
+  const DAMP = (k, dt) => 1 - Math.exp(-dt / k);
   function updatePose(dt) {
-    const p = g.pose, a = g.tossAnim, tilt = K.Input.tilt;
-    const eggAir = g.phase === "egg" && g.egg && g.egg.phase === "air";
-    g.panU = K.lerp(g.panU || 0, eggAir ? tilt.u * 0.35 : g.phase === "egg" && g.egg && g.egg.phase !== "pan" ? (g.panU || 0) : 0, 0.2);
-    let du = tilt.u * 0.03 + (g.panU || 0), dv = 0, lift = 0;
-    let pitch = -6 * DEG - tilt.v * 10 * DEG, roll = -tilt.u * 12 * DEG, pu = 0, pv = 0; // tilt + = that side lower: the wok dips where the food flows
-    if (g.phase === "plate") pitch += 22 * DEG * Math.sin(Math.PI * Math.min(1, g.phaseT / 1.1));
+    const tl = K.Input.tilt, P = g.pose, pose = W.pose;
+    // the wok follows the phone fast (sensitive); the food then flows with real gravity in food.js
+    P.tilt.u += (tl.u - P.tilt.u) * DAMP(0.05, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(0.05, dt);
+    let pitch = -4 * DEG - P.tilt.v * MAXT, roll = -P.tilt.u * MAXT, x = P.tilt.u * 0.05, z = 0, y = 0;
+    pitch += Math.sin(g.t * 1.3) * 0.8 * DEG; roll += Math.sin(g.t * 0.9) * 1.0 * DEG; // the hand never quite stops
+    if (g.ph === "egg" && K.Egg.ph === "air") { x += P.tilt.u * 0.5; z += -P.tilt.v * 0.35; pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
+    const ks = g.t - g.shim; if (ks >= 0 && ks < 0.6) roll += 5 * DEG * Math.sin(ks * 34) * Math.exp(-ks * 6);
+    // the toss (motion review): push 0–90 ms, lip snap 90–140 ms, back with a small spring overshoot
+    const a = g.toss;
     if (a) {
-      const k = g.t - a.t0, s1 = a.s;
-      if (k > 0.95) g.tossAnim = null;
+      const k = g.t - a.t0, s = a.s;
+      if (k > 1.0) g.toss = null;
       else {
-        const back = k < 0.05 ? -Math.sin((k / 0.05) * Math.PI) * 0.03 : 0;
-        const fwd = 0.45 * s1 * (ease((k - 0.05) / 0.1) - ease((k - 0.22) / 0.13));
-        const amp = (5 + 15 * s1 * (0.6 + 0.4 * a.snap)) * DEG;
-        const bump = ease((k - 0.13) / 0.07) - ease((k - 0.22) / 0.12);
-        const hop = 0.06 * s1 * bump;
-        const cushion = k > 0.62 && k < 0.84 ? -0.03 * Math.sin(((k - 0.62) / 0.22) * Math.PI) : 0;
-        const over = k > 0.35 && k < 0.5 ? -0.06 * fwd : 0;   // overshoot on the return (follow-through)
-        du += (back + fwd) * a.d[0]; dv += (back + fwd + over) * a.d[1];
-        lift = hop + cushion;
-        pitch += amp * bump * a.d[1]; roll += amp * bump * a.d[0];
-        pu = -0.95 * a.d[0]; pv = -0.95 * a.d[1];
+        const fwd = 0.4 * s * (smooth(k / 0.09) - smooth((k - 0.14) / 0.18)) - 0.04 * s * Math.exp(-(((k - 0.42) / 0.08) ** 2));
+        const bump = smooth((k - 0.08) / 0.06) - smooth((k - 0.16) / 0.14);
+        const cushion = k > 0.5 && k < 0.78 ? -0.035 * Math.sin(((k - 0.5) / 0.28) * Math.PI) : 0;
+        x += a.du * fwd; z += -a.dv * fwd; y += 0.06 * bump + cushion;
+        pitch += (4 + 12 * s) * DEG * bump * a.dv; roll -= (4 + 12 * s) * DEG * bump * a.du;
       }
     }
-    // wok velocity (world units/s) for food that leaves it
-    if (lastPose && dt > 0) { p.vdu = (du - lastPose[0]) / dt; p.vdv = (dv - lastPose[1]) / dt; p.vlift = (lift - lastPose[2]) / dt; }
-    lastPose = [du, dv, lift];
-    p.du = du; p.dv = dv; p.lift = lift; p.pitch = pitch; p.roll = roll; p.pu = pu; p.pv = pv; p.t = g.t;
+    // plating / take-out: roll toward the plate on the left, lifted and shifted over it
+    if (g.ph === "plate" || g.ph === "take") { roll += g.plateK * MAXT; y += 0.12 * g.plateK; x += SIDE * 0.32 * g.plateK; pitch = -4 * DEG; }
+    pose.x = x; pose.y = y; pose.z = z; pose.pitch = pitch; pose.roll = roll;
+    W.applyPose();
   }
 
   /* ---------- input ---------- */
-  function onFlick(f) {
-    if (!g || g.demo) return;
-    if (g.phase === "result" || g.phase === "intro") return;
-    flick(f);
-  }
-  function flick(f) {
-    if (g.t - g.lastFlickT < 0.3) return;
-    if (g.phase === "rice") {
-      if (g.phaseT >= RICE_T && g.started) return;
-      if (!g.started) { g.started = true; g.phaseT = 0; }
-      g.lastFlickT = g.t;
-      g.maxGap = Math.max(g.maxGap, g.phaseT - g.lastRiceFlick); g.lastRiceFlick = g.phaseT; g.flicks++;
-      startToss(f);
-      K.Rice.toss(g.rice, f, g.t);
-      K.Fx.flare(g.fx, f.strength);
-      if (f.strength >= 0.9 && f.snap > 0.4) K.Fx.oilCatch(g.fx, f.strength);
-      K.Audio.toss(f.strength, f.snap);
-      if (f.strength >= 0.9) K.Audio.flare();
-    } else if (g.phase === "egg" && g.egg && K.Egg.inPan(g.egg) && g.phaseT >= 0.8) {
-      g.lastFlickT = g.t;
-      startToss(f);
-      K.Egg.toss(g.egg, Object.assign({}, f, { splatOK: K.Input.mode === "motion" }), g.t);
-      K.Fx.flare(g.fx, f.strength * 0.6);
-      K.Audio.toss(f.strength, f.snap);
-    }
-  }
-
-  /* rice landing / spill events -> oil spatter, sound, a small kick */
-  function drainRiceEvents() {
-    const ev = g.rice.events; if (!ev || !ev.length) return;
-    for (const e of ev) {
-      if (e.type === "land" && e.n > 6) { K.Fx.spatter(g.fx, e.u, e.v, Math.min(10, ((e.n / 10) | 0) + 1)); K.Audio.land("rice"); g.rimFlash = Math.max(g.rimFlash, 0.5); }
-      if (e.type === "spill") { K.Audio.land("spill"); }
-      if (e.type === "burning" && g.t - (g.burnWarnT || -9) > 2.5) { g.burnWarnT = g.t; toast("타고 있어!", "#E8481C"); K.Fx.burnCue && K.Fx.burnCue(g.fx, e.u || 0, e.v || 0); }
-      if (e.type === "burnt") toast("탔다!", "#5A2A14");
-    }
-    ev.length = 0;
-  }
-  /* ---------- toasts: one short line after each toss, pops in ---------- */
-  const WORD_COL = { "불맛": "#E8481C", "좋아": "#2BB673", "지금": "#E8481C", "덜 익": "#1F2A33", "약해": "#1F2A33", "탔다": "#5A2A14", "쏟았": "#5A2A14" };
-  function toast(text, color) {
-    const k = Object.keys(WORD_COL).find((w) => text.startsWith(w));
-    g.toast = { text, color: k ? WORD_COL[k] : color && !/^#(f|e)/i.test(color) ? color : "#1F2A33", t0: g.t };
-  }
-
-  /* ---------- demo autopilot (attract mode behind the intro) ---------- */
-  function demoDrive() {
-    const t = g.phaseT;
-    if (g.phase === "rice") {
-      if ((t < 3.5 || t > 8.5) && t % 1.1 < 1 / 60) { const a = [0, 0, 0.6, -0.6, Math.PI][(g.flicks || 0) % 5]; flick({ strength: K.rnd(0.85, 1.05), snap: K.rnd(0.4, 0.8), dirU: Math.sin(a), dirV: Math.cos(a) }); }
-      K.Input.demoTilt(t >= 3.5 && t <= 8.5 ? Math.sin((t - 3.5) * 1.6) * 0.5 : 0, 0);
-    } else if (g.phase === "egg" && g.egg) {
-      const e = g.egg;
-      if (K.Egg.inPan(e)) {
-        K.Input.demoTilt(clamp(-e.u * 2.2 - (e.su || 0) * 0.8, -0.8, 0.8), clamp(-e.v * 2.2, -0.8, 0.8));
-        if (e.cookBottom >= 1 && Math.abs(e.u) < 0.12) flick({ strength: K.rnd(0.85, 0.95), snap: 0.6, dirU: 0, dirV: 1 });
-      } else K.Input.demoTilt(clamp((e.u || 0) / 0.35, -1, 1), 0);
-    }
-  }
-
-  /* ---------- step ---------- */
-  function step(dt) {
-    g.t += dt;
-    if (g.hitstop > 0) { g.hitstop -= dt; return; }
-    g.phaseT += dt;
-    if (g.demo) demoDrive();
-    updatePose(dt);
-    const tilt = K.Input.tilt, ctx = { t: g.t, tilt, heat: K.heat, wokPose: g.pose };
-    let contact = 0, steam = [];
-    if (g.phase === "rice") {
-      if (!g.started) { g.phaseT = 0; }
-      else {
-        K.Rice.update(g.rice, dt, ctx);
-        const lt = g.rice.lastToss;
-        if (lt && !lt.shown && g.t - lt.t > 0.35) { lt.shown = true; if (lt.label) toast(lt.label, lt.color); }
-        drainRiceEvents();
-      }
-      contact = K.Rice.contactShare(g.rice);
-      if (!taught && !g.demo && g.started && g.rice.golden && g.flicks >= 1) {
-        taught = true; try { localStorage.setItem("kfr-taught", "1"); } catch (e) {}
-        toast("지금!", "#E8481C"); g.rimFlash = 1;
-      }
-      steam = g.started ? K.Rice.hotspots(g.rice, 24) : [];
-      if (g.started && g.phaseT >= RICE_T && (K.Rice.airborne(g.rice) === 0 || g.phaseT > RICE_T + 1)) {
-        g.maxGap = Math.max(g.maxGap, RICE_T - g.lastRiceFlick);
-        g.riceStats = K.Rice.stats(g.rice);
-        g.phase = "plate"; g.phaseT = 0; g.toast = null; g.tossAnim = null; K.Audio.ding();
-      }
-    } else if (g.phase === "plate") {
-      contact = 0.3;
-      if (g.phaseT >= PLATE_T) {
-        // a rice-rhythm shake must not flip the fresh egg: motion waits for the hand to go still
-        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); K.Audio.land("egg-soft");
-        K.Input.armAfterRelease && K.Input.armAfterRelease();
-      }
-    } else if (g.phase === "egg") {
-      K.Egg.update(g.egg, dt, ctx);
-      contact = K.Egg.inPan(g.egg) ? 1 : 0.2;
-      steam = K.Egg.hotspots(g.egg, 10);
-      const o = K.Egg.outcome(g.egg);
-      if (o.landedNow) {
-        g.hitstop = o.burst ? 0.09 : o.caught ? 0.06 : 0; g.rimFlash = 1;
-        if (o.caught) K.Fx.spatter(g.fx, o.u || 0, o.v || 0, 12);
-        K.Audio.land(o.burst || o.torn || o.splat ? "egg-splat" : "egg-soft");
-        try { navigator.vibrate && navigator.vibrate(30); } catch (e) {}
-        if (o.caught && o.angleErr != null && !o.folded) toast(`${Math.round(180 - Math.abs(o.angleErr))}°!`, Math.abs(o.angleErr) <= 12 ? "#2BB673" : "#1F2A33");
-        if (o.caught && o.flipped && Math.abs(o.angleErr || 99) <= 12 && !o.burst) K.Audio.ding();
-        else if (o.caught && o.folded) toast("접혔다…", "#E8481C");
-        else if (o.burst) toast("터졌다!", "#E8481C");
-      }
-      if ((o.done && (o.dwell !== false) && g.phaseT > 0.3) || g.phaseT > EGG_MAX + 1) {
-        if (!o.done) K.Egg.forceStuck && K.Egg.forceStuck(g.egg);
-        finish(); g.phase = "result"; g.phaseT = 0;
-      }
-    } else if (g.phase === "result") {
-      if (g.demo && g.phaseT > 6) g = newGame(true);
-    }
-    const burning = steam.filter((s) => s.cook > 1.3).length / Math.max(1, steam.length);
-    K.Fx.update(g.fx, dt, { flare: 0, burning, steam, wokPose: g.pose });
-    K.Audio.sizzle(g.phase === "result" ? 0 : (g.started ? contact : 0.15));
-    K.Audio.burnWarn(burning);
-    g.contact = contact;
-    g.rimFlash = Math.max(0, g.rimFlash - dt * 8);
-  }
-
-  /* ---------- scoring (DESIGN.md): rice 60 = doneness 40 + 불맛 20, egg 40 = flip 22 + yolk 12 + sear 6 ---------- */
-  const GOOD_FLICKS = "12~16";
-  const ORDERS = [
-    { id: "half", label: "계란 반숙", win: [0.5, 0.9], fire: 1, done: 1 },
-    { id: "full", label: "계란 완숙", win: [1.0, 1.4], fire: 1, done: 1 },
-    { id: "fire", label: "불맛 많이", win: K.EGG_GOOD, fire: 1.5, done: 0.75 },
-  ];
-  const GRADES = [[95, "불맛 장인"], [85, "동네 중국집 에이스"], [70, "자취 3년 차"], [0, "엄마 부르기"]];
-  function finish() {
-    const st = g.riceStats || K.Rice.stats(g.rice), o = K.Egg.outcome(g.egg), ord = g.order;
-    const doneness = Math.round(40 * st.good * ord.done);
-    const fireCap = Math.round(20 * ord.fire), fireP = Math.min(fireCap, Math.round((g.rice.wokhei || 0) * ord.fire));
-    const rice = Math.min(60, doneness + fireP);
-    const lines = [];
-    const lost = (v) => Math.round(v * 40 * ord.done);
-    if (st.burnt > 0.02) lines.push([`탄 밥 ${Math.round(st.burnt * 100)}% · ` + (g.maxGap >= 1.5 ? `최대 ${g.maxGap.toFixed(1)}초 안 튕김` : "바닥에 붙은 밥"), -lost(st.burnt)]);
-    if (st.raw > 0.02) lines.push([`덜 익은 밥 ${Math.round(st.raw * 100)}% · ` + (g.flicks > 22 ? `튕김 ${g.flicks}번, 너무 잦음 (맛있는 리듬 ${GOOD_FLICKS}번)` : "벽 쪽에 쏠림"), -lost(st.raw)]);
-    if (st.spill > 0.02) lines.push([`쏟은 밥 ${Math.round(st.spill * 100)}% · 너무 세게 튕김`, -lost(st.spill)]);
-    lines.sort((a, b) => a[1] - b[1]);
-    if (fireP < fireCap) lines.push([`불맛 ${fireP}/${fireCap} · 최고 콤보 x${g.rice.maxCombo || 0} (노릇할 때 튕기기)`, fireP - fireCap]);
-    let flip = 0, yolk = 0, sear = 0; const eggLines = [];
-    const ang = o.angleErr != null ? Math.round(180 - Math.abs(o.angleErr)) : null;
-    if (o.splat) eggLines.push(["계란이 화면에 붙음 · 너무 세게", -40]);
-    else if (!o.caught && !o.stuck) eggLines.push(["계란 놓침 · 기울여서 웍을 밑으로", -40]);
-    else if (o.stuck) { yolk = 12; eggLines.push(["계란을 안 던짐 · 바닥 탐", -28]); }
+  function onFlick(f) { if (g.auto || g.ph === "result") return; flick(f); }
+  function flick(f) { if (g.ph === "rice") riceFlick(f); else if (g.ph === "egg") eggFlick(f); }
+  function riceFlick(f) {
+    if (g.t - g.lastFlick < 0.3 || (g.started && g.clock <= 0)) return;
+    K.Audio.unlock();
+    const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
+    if (!g.started) { g.started = true; tip(""); }
     else {
-      const d = Math.abs(o.angleErr || 0);
-      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${(o.angleErr || 0) > 0 ? "살살" : "조금 세게"}`, -12]); }
-      else if (o.flipped && d <= 12) flip = 22;
-      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기가 ${(o.angleErr || 0) > 0 ? "더 돎 · 살살" : "덜 돎 · 조금 세게"}`, flip - 22]); }
-      else { flip = 6; eggLines.push([`안 뒤집힘 · ${o.rot > Math.PI ? "살살" : "조금 세게"}`, -16]); }
-      if (o.burst) eggLines.push([`노른자 터짐 · 세기 ${(o.strength || 0).toFixed(1)} (기준 1.2)`, -12]);
-      else if (o.torn) { yolk = 6; eggLines.push(["흰자 찢어짐 · 덜 익었을 때 던짐", -6]); }
-      else yolk = 12;
-      if (o.cookBottom >= ord.win[0] && o.cookBottom <= ord.win[1]) sear = 6;
-      else eggLines.push([o.cookBottom < ord.win[0] ? `일찍 던짐 · ${ord.label}엔 덜 익음` : `늦게 던짐 · ${ord.label}엔 너무 익음`, -6]);
+      // readiness: how long the food has been back on the metal since the last toss came down
+      const back = F.toss && F.toss.done ? g.t - F.lastLand : -1;
+      g.maxGap = Math.max(g.maxGap, g.t - g.lastFlick);
+      const grade = back < 0.15 ? "early" : back < 0.3 ? "good" : back <= 0.95 ? "perfect" : back <= 1.45 ? "good" : "late";
+      score(grade, s);
     }
-    const egg = flip + yolk + sear, total = rice + egg;
-    const perfectEgg = o.caught && o.flipped && Math.abs(o.angleErr || 99) <= 12 && !o.burst;
-    let tag;
-    if (o.splat) tag = "계란 화면 강타";
-    else if (!o.caught && !o.stuck) tag = rice >= 55 ? "밥만 국가대표" : "계란은 바닥이 먹음";
-    else if (o.stuck) tag = "계란 들러붙음";
-    else if (o.burst) tag = "노른자 대참사";
-    else if (total >= 100) tag = "사장님 나와 보세요";
-    else if (perfectEgg && rice < 35) tag = "계란만 국가대표";
-    else if (st.burnt > 0.25) tag = "화재경보기 울림";
-    else if (st.spill > 0.2) tag = "주방 바닥 볶음밥";
-    else if (st.raw > 0.3) tag = "김치밥 (볶음 아님)";
-    else if ((g.rice.maxCombo || 0) >= 6 && total < 95) tag = "불쇼 하는 사람";
-    else tag = GRADES.find(([s]) => total >= s)[1];
-    const next = GRADES.slice().reverse().find(([s]) => s > total);
-    const toPerfect = o.caught && !o.folded && o.angleErr != null ? Math.max(0, Math.round(Math.abs(o.angleErr) - 12)) : null;
-    g.res = { rice, egg, total, tag, ang, toPerfect, next: next ? next[0] - total : 0, nextName: next ? next[1] : "",
-      lines: lines.slice(0, 3).concat(eggLines.slice(0, 2)) };
+    g.lastFlick = g.t;
+    const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
+    g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
+    F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
+    g.tossN++;
+    K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
+    if (s > 1.55) word(C.tooHard, "bad");
+  }
+  /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
+  function score(grade, s) {
+    const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
+    g.grades.push(grade);
+    if (grade === "perfect") {
+      g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
+      const add = 2 * hm * (1 + Math.min(0.5, 0.1 * (g.combo - 1)));
+      g.fire = Math.min(FIRE_MAX, g.fire + add);
+      g.hei = 1; W.sparkBurst(10 + Math.min(20, g.combo * 3)); K.Audio.flare();
+      const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
+      word(C.perfect, "great", title ? title[1] : C.perfectSub);
+      comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
+    } else {
+      if (grade === "good") { g.fire = Math.min(FIRE_MAX, g.fire + 0.8 * hm); g.hei = Math.max(g.hei, 0.35); word(C.good, "ok"); }
+      else if (grade === "early") word(C.early, "meh", C.earlySub);
+      else word(C.late, "bad", C.lateSub);
+      if (g.combo >= 3) subEl.textContent = C.comboLost;
+      g.combo = 0; comboEl.textContent = ""; comboEl.className = "combo";
+    }
+    gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`;
+    gaugeEl.classList.toggle("hot", g.combo >= 3);
+  }
+  function eggFlick(f) {
+    const E = K.Egg;
+    if (E.ph !== "pan" || g.t - E.t0 < 0.7) return;
+    K.Audio.unlock();
+    g.toss = { t0: g.t, s: clamp(f.strength || 1, 0.5, 1.2) * 0.7, du: 0, dv: 1 };
+    E.flipStart(f, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
   }
 
-  /* ---------- HUD ---------- */
-  function pill(x, y, w, h, fill) { c.fillStyle = fill; c.beginPath(); c.roundRect(x - w / 2, y - h / 2, w, h, h / 2); c.fill(); }
-  function strokeText(t, x, y, size, ink, outline, font) {
-    c.font = `${size}px ${font || '"Black Han Sans"'}`; c.textAlign = "center"; c.textBaseline = "middle";
-    c.lineJoin = "round"; c.lineWidth = size * 0.22; c.strokeStyle = outline || "#fff"; c.strokeText(t, x, y);
-    c.fillStyle = ink; c.fillText(t, x, y);
+  /* ---------- phases ---------- */
+  function setPh(ph) { g.ph = ph; g.phT = 0; }
+  function start(auto) {
+    g = newGame(auto);
+    if (K.Egg.ph !== "off") K.Egg.hide();
+    K.Food.reset(); W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
+    introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
+    timerEl.hidden = false; gaugeEl.hidden = false;
+    gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
+    timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
+    setPh("rice");
+    tip(auto ? C.watching : K.Input.mode === "motion" ? C.tipMotion : C.tipTouch);
   }
-  function hud() {
-    const top = Math.max(14, vw.top * 0.2);
-    if (g.phase === "rice" && !g.demo) {
-      const left = g.started ? Math.max(0, RICE_T - g.phaseT) : RICE_T, warn = left < 3 && g.started;
-      const pulse = warn ? 1 + 0.12 * Math.max(0, Math.sin((left % 1) * Math.PI)) : 1;
-      c.save(); c.translate(W / 2, top + 30); c.scale(pulse, pulse);
-      c.shadowColor = "rgba(0,0,0,.18)"; c.shadowBlur = 10; c.shadowOffsetY = 3;
-      pill(0, 0, 132, 56, warn ? "#E8481C" : "#fff"); c.shadowColor = "transparent";
-      c.font = '36px "Black Han Sans"'; c.textAlign = "center"; c.textBaseline = "middle"; c.fillStyle = warn ? "#fff" : "#1F2A33";
-      c.fillText(left.toFixed(1), 0, 2); c.restore();
-      c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText("1판 · 밥 볶기", W / 2, top + 72);
-      if (!g.started) {
-        // phone-flick loop until the first flick starts the clock
-        const k = (g.t % 1.1) / 1.1, s = Math.sin(Math.min(1, k * 2.2) * Math.PI);
-        c.save(); c.translate(W / 2, vw.top + (vw.cy - vw.R * vw.ct - vw.top) * 0.45 - s * vw.R * 0.15); c.rotate(-s * 0.35);
-        c.fillStyle = "#1F2A33"; c.beginPath(); c.roundRect(-W * 0.06, -W * 0.11, W * 0.12, W * 0.22, W * 0.02); c.fill();
-        c.fillStyle = "#E8481C"; c.beginPath(); c.roundRect(-W * 0.047, -W * 0.093, W * 0.094, W * 0.17, W * 0.012); c.fill();
-        c.restore();
-        strokeText(K.Input.mode === "motion" ? "손목으로 휙!" : "휙 쓸어서 튕기기!", W / 2, vw.top * 0.95, 30, "#1F2A33");
+  function startPlate() {
+    setPh("plate"); hudEl.classList.add("dim"); tip("");
+    W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
+  }
+  function startEgg() {
+    setPh("egg"); hudEl.classList.remove("dim"); timerEl.hidden = true; gaugeEl.hidden = true; comboEl.textContent = "";
+    K.Egg.start(g.t); K.Food.settle();
+    tip(C.eggTip(g.order));
+  }
+
+  /* ---------- the plate ---------- */
+  let garn = null;
+  function plateStep(dt) {
+    const k = g.phT, pc = W.plateC, F = K.Food;
+    const inK = 1 - (1 - clamp(k / 0.3, 0, 1)) ** 5;
+    let px = SIDE * 3.2 + (pc.x - SIDE * 3.2) * inK;
+    if (g.doneT) px = pc.x + SIDE * 0.6 * smooth((g.t - g.doneT - 0.7) / 0.35);
+    W.plate.position.x = px;
+    if (g.ph === "plate") {
+      if (!g.poured) {
+        let left = 0; for (let i = 0; i < F.n; i++) if (F.st[i] <= 2) left++;
+        const want = k < 0.4 ? 0 : clamp((k - 0.4) / 0.35, 0, 1);
+        g.plateK += (want - g.plateK) * DAMP(0.06, dt);
+        if (k > 0.8 && (left < F.n * 0.03 || k > 3.4)) g.poured = g.t;
+      } else {
+        const q = g.t - g.poured;
+        if (q < 0.2 && g.shim < g.poured) g.shim = g.t; // two quick shakes for the last grains
+        g.plateK += (0 - g.plateK) * DAMP(0.08, dt);
+        // two ladle pats round the heap off
+        const top = pc.y + 0.04 + F.plateMound(0);
+        const tap = q < 0.25 ? 0 : q < 0.37 ? Math.sin(((q - 0.25) / 0.12) * Math.PI) : q < 0.49 ? Math.sin(((q - 0.37) / 0.12) * Math.PI) : 0;
+        W.ladle.visible = q > 0.2 && q < 0.6; W.ladle.position.set(px - 0.02 * SIDE, top + 0.2 - 0.17 * tap, pc.z); W.ladle.rotation.set(0, 0, -0.15 * SIDE);
+        if ((q > 0.31 && g.pats === 0) || (q > 0.43 && g.pats === 1)) { g.pats++; g.plateSq = 1; K.Audio.land("egg-soft"); }
+        if (q > 0.6 && !g.doneT) { g.doneT = g.t; K.Audio.ding(); word(C.plated, "ok"); }
+        if (g.doneT && g.t - g.doneT > 1.3) startEgg();
       }
-    } else if (g.phase === "plate" && !g.demo) {
-      const k = clamp(g.phaseT / 0.25, 0, 1), sc = K.easeOutBack(k);
-      c.save(); c.translate(W / 2, vw.top * 0.75); c.scale(sc, sc); strokeText("볶음밥 완성!", 0, 0, 40, "#2BB673"); c.restore();
-      if (g.phaseT > 0.7) strokeText("이제 계란 프라이", W / 2, vw.top * 0.75 + 46, 26, "#1F2A33");
-    } else if (g.phase === "egg" && !g.demo) {
-      c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText(`2판 · 계란 뒤집기 · 주문: ${g.order.label}`, W / 2, top + 10);
-      const e = g.egg, o = K.Egg.outcome(e);
-      let msg = "계란 익는 중…", col = "#1F2A33";
-      if (K.Egg.inPan(e)) {
-        const win = g.order.win;
-        if (e.cookBottom >= win[0]) { msg = e.cookBottom > win[1] ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 뒤집어!"; col = e.cookBottom > win[1] ? "#E8481C" : "#2BB673"; }
-        if (e.cookBottom >= win[0] && !g.eggCued) { g.eggCued = true; g.rimFlash = 1; K.Audio.ding(); }
-      } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.35 ? "어어…!" : "기울여서 받아!";
-      else if (!o.done && e.phase !== "splat") msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : o.folded ? "접혔다…" : "앗…") : "아…";
-      else msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : "앗…") : "아…";
-      const k = clamp((g.t % 100) * 4, 0, 1);
-      strokeText(msg, W / 2, top + 48, 38, col);
     }
-    if (g.demo) { /* nothing: intro layer covers the top */ }
-    // per-toss toast
-    if (g.toast) {
-      const k = (g.t - g.toast.t0) / 0.9;
-      if (k >= 1) g.toast = null;
-      else {
-        const s = k < 0.28 ? K.easeOutBack(k / 0.28) : 1, a = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
-        c.save(); c.globalAlpha = a; c.translate(W / 2, vw.top * 0.95); c.rotate(-0.035); c.scale(s, s);
-        strokeText(g.toast.text, 0, 0, 32, g.toast.color); c.restore();
+    g.plateSq = Math.max(0, (g.plateSq || 0) - dt * 7);
+    W.plate.scale.set(1 + 0.05 * g.plateSq, 1 - 0.08 * g.plateSq, 1 + 0.05 * g.plateSq);
+  }
+
+  /* ---------- garnish: 김가루 + 깨 ---------- */
+  function startGarnish() {
+    setPh("garnish"); tip("");
+    if (!garn || garn.parent !== W.scene) {
+      garn = new T.Group(); W.scene.add(garn);
+      const kim = new T.InstancedMesh(new T.PlaneGeometry(0.022, 0.014), new T.MeshStandardMaterial({ color: K.lin("#1c2a1c"), roughness: 0.35, side: T.DoubleSide }), 110);
+      const ses = new T.InstancedMesh(new T.SphereGeometry(1, 8, 6), new T.MeshStandardMaterial({ color: K.lin("#f0e2bd"), roughness: 0.5 }), 80);
+      garn.add(kim, ses); garn.userData = { kim, ses, pts: [] };
+    }
+    garn.visible = true; garn.userData.pts = [];
+    for (let i = 0; i < 190; i++) { const a = Math.random() * K.TAU, r = Math.sqrt(Math.random()) * 0.42; garn.userData.pts.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, d: rnd(0, 0.5), rx: rnd(0, K.TAU), ry: rnd(0, K.TAU) }); }
+  }
+  const dummy = new T.Object3D();
+  function garnishStep() {
+    const { kim, ses, pts } = garn.userData, k = g.phT, pc = W.plateC, egg = K.Egg.onPlate;
+    pts.forEach((q, i) => {
+      const f = clamp((k - q.d) / 0.45, 0, 1), d = Math.hypot(q.x, q.z);
+      const land = pc.y + 0.04 + K.Food.plateMound(d) * 0.95 + (egg && d < 0.46 ? 0.11 * Math.max(0, 1 - (d / 0.5) ** 2) + 0.02 : 0);
+      dummy.position.set(W.plate.position.x + q.x, land + 0.9 * (1 - f) ** 2, pc.z + q.z);
+      if (i < 110) { dummy.scale.set(1, 1, 1); dummy.rotation.set(-Math.PI / 2 + 0.3 * Math.sin(q.rx) + (1 - f) * 6, q.ry, 0); dummy.updateMatrix(); kim.setMatrixAt(i, dummy.matrix); }
+      else { dummy.scale.set(0.008, 0.005, 0.013); dummy.rotation.set(q.rx, q.ry, 0); dummy.updateMatrix(); ses.setMatrixAt(i - 110, dummy.matrix); }
+    });
+    kim.instanceMatrix.needsUpdate = ses.instanceMatrix.needsUpdate = true;
+  }
+
+  /* ---------- the step (fixed 1/60) ---------- */
+  function step(dt) {
+    g.t += dt; g.phT += dt;
+    if (g.auto) autoPlay();
+    updatePose(dt);
+    const F = K.Food, E = K.Egg;
+    if (g.ph === "rice" && g.started) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
+    const plateOn = ["plate", "egg", "take", "garnish", "result"].includes(g.ph);
+    W.plate.visible = plateOn;
+    const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.started ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
+      plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
+    const r = F.step(ctx);
+    if (r.landed > 30 && g.ph === "rice") K.Audio.land("rice");
+    if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad"); } }
+    if (plateOn && g.ph !== "result" && g.ph !== "garnish") plateStep(dt);
+    // the diegetic cue: the rim warms while the food is ready to go again; smoke when the bottom starts to scorch
+    let rim = 0, steam = 0.12, smoke = 0;
+    if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
+      const back = g.t - F.lastLand;
+      rim = back < 0.3 ? smooth(back / 0.3) * 0.6 : back <= 0.95 ? 0.6 : Math.max(0, 0.6 - (back - 0.95) * 0.9);
+      const b = F.bottom(); smoke = clamp((b.scorch - 0.04) * 6, 0, 1); steam = 0.18 + 0.2 * clamp(back, 0, 1);
+      if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
+    }
+    if (g.ph === "egg") steam = 0.1;
+    g.hei = Math.max(0, g.hei - dt * 2.2);
+    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, rim });
+    K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
+    K.Audio.burnWarn(smoke);
+    if (g.ph === "egg") {
+      // the cook's shake test: a quick wiggle of the phone loosens a set egg; a raw one stays stuck
+      const tl = K.Input.tilt, sp = Math.hypot(tl.u - (g.ltu || 0), tl.v - (g.ltv || 0)) / dt; g.ltu = tl.u; g.ltv = tl.v;
+      if (sp > 6 && g.t - g.eggShakeT > 0.7 && E.ph === "pan" && !g.auto) {
+        g.eggShakeT = g.t; g.shim = g.t; const res = E.shake(g.t, tl.u, tl.v);
+        if (res === "stuck") word(C.eggStuck, "meh"); else if (res === "slides") word(C.eggSlides, "ok");
       }
-    }
-    if (K.Input.slowHint && performance.now() - K.Input.slowHint < 900 && g.phase !== "result" && !g.demo) strokeText("더 빠르게!", W / 2, vw.top * 1.25, 26, "#E8481C");
-    // motion events never arrived (in-app browser / desktop): say once how to get the real thing
-    if (!g.demo && K.Input.mode === "touch" && K.Input.hint && g.phase === "rice" && !g.started) {
-      c.font = '15px "Gowun Dodum"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText(K.Input.hint, W / 2, H * 0.97);
-    }
-    // spirit level (bottom-right): the bubble drifts to the high side
-    if (g.phase !== "result" && !g.demo) {
-      const lr = Math.min(W, H, 520) * 0.06, lx = Math.min(W - lr * 1.6, vw.cx + vw.R * 1.45), ly = H - lr * 1.8, t = K.Input.tilt;
-      c.fillStyle = "rgba(31,42,51,.72)"; c.beginPath(); c.arc(lx, ly, lr, 0, TAU); c.fill();
-      c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1; c.beginPath(); c.arc(lx, ly, lr * 0.35, 0, TAU); c.stroke();
-      c.fillStyle = "#a3e635"; c.beginPath(); c.arc(lx - t.u * lr * 0.6, ly + t.v * lr * 0.6, lr * 0.28, 0, TAU); c.fill();
-      c.font = '13px "Jua"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText("기울기", lx, ly - lr - 8);
-    }
+      if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
+      if (E.ph === "pan" && E.cook > 1.58) eggFlick({ strength: 1.0, dirU: 0 }); // left too long: it gets flipped for you
+      const ev = E.step({ t: g.t, dt, heat: 1 });
+      if (ev === "plop") K.Audio.land("egg-soft");
+      else if (ev) eggLanded(ev);
+      if (E.ph === "landed" && g.t - E.landT > 1.4) { setPh("take"); g.takeT = g.t; }
+      else if (E.ph === "counter" && g.t - g.eggLandT > 1.6) startGarnish();
+    } else if (g.ph === "take") {
+      const k = (g.t - g.takeT) / 1.1;
+      g.plateK = 0.55 * Math.sin(Math.PI * Math.min(1, k / 0.85));
+      E.takeStep(g.t, k, new T.Vector3(W.plate.position.x, W.plateC.y + 0.04, W.plateC.z));
+      if (k >= 1) startGarnish();
+    } else if (g.ph === "garnish") {
+      E.idle(g.t, dt); garnishStep();
+      if (g.phT > 1.4) showResult();
+    } else if (g.ph === "result") E.idle(g.t, dt);
+  }
+  function eggLanded(ev) {
+    const E = K.Egg, r = E.res; g.eggLandT = g.t;
+    if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
+    g.hit = ev === "clean" && r.errDeg <= 12 && r.where === "centre" ? 0.09 : 0.05;
+    K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
+    if (ev === "burst") word(C.eggBurst, "bad");
+    else if (ev === "fold") word(C.eggFold, "meh");
+    else if (r.where === "wall") word(`${r.angle}°`, "ok", C.eggWall);
+    else word(`${r.angle}°!`, r.errDeg <= 12 ? "great" : "ok", r.errDeg <= 12 ? C.eggPerfect : C.eggGood);
+    if (ev === "clean" && r.errDeg <= 12) K.Audio.ding();
   }
 
-  /* ---------- render ---------- */
-  function render() {
-    const fx = g.fx, sh = fx.shake || { x: 0, y: 0 };
-    c.save(); c.translate(sh.x, sh.y);
-    K.Stage.drawCounter(c, vw);
-    const fire = g.phase !== "result";
-    if (fire) { K.Stage.drawUnderGlow(c, vw, fx.flareLevel || 0); K.Fx.drawBehind(c, fx, vw, g.pose); }
-    if (g.phase !== "egg") K.Rice.drawSpilled && K.Rice.drawSpilled(c, g.rice, vw, g.pose);
-    K.Stage.drawWok(c, vw, g.pose, g.contact || 0, fire);
-    if (fire && K.Fx.drawRim) K.Fx.drawRim(c, fx, vw, g.pose);   // far-rim flare sits under the food
-    if (g.phase === "rice" || g.phase === "result") {
-      K.Rice.drawResting(c, g.rice, vw, g.pose); K.Stage.drawFrontLip(c, vw, g.pose); K.Rice.drawAirborne(c, g.rice, vw, g.pose);
-    } else if (g.phase === "plate") {
-      // the rice pours out toward the cook and fades (drawn on a layer so one alpha covers it all)
-      const k = K.smooth(clamp((g.phaseT - 0.25) / 0.85, 0, 1));
-      if (!plateLayer || plateLayer[0].width !== cv.width) plateLayer = K.offscreen(W, H);
-      const [lc, lx] = plateLayer; lx.clearRect(0, 0, W, H);
-      K.Rice.drawResting(lx, g.rice, vw, g.pose);
-      c.globalAlpha = 1 - k; c.drawImage(lc, 0, k * vw.R * 0.6, W, H); c.globalAlpha = 1;
-      K.Stage.drawFrontLip(c, vw, g.pose);
+  /* ---------- scoring: rice 60 = doneness 25 + 불맛 25 + 안 흘리기 10, egg 40 = timing 12 + flip 14 + catch 10 + yolk 4 ---------- */
+  function finalScore() {
+    const st = K.Food.stats(), r = K.Egg.res;
+    const done = Math.max(0, Math.round(25 * clamp((st.good - 0.35) / 0.55, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
+    const fire = Math.round(g.fire);
+    const clean = Math.max(0, 10 - Math.round((st.spill * 100) / 1.5));
+    const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
+    let timing = 0, flip = 0, cat = 0, yolk = 0;
+    if (r) {
+      const c = r.cookAtFlip, off = c < win[0] ? win[0] - c : c > win[1] ? c - win[1] : 0;
+      timing = Math.round(12 * clamp(1 - off / 0.3, 0, 1));
+      flip = r.fold ? 3 : Math.round(14 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1));
+      cat = Math.round(10 * r.catchQ);
+      yolk = r.burst ? 0 : 4;
     }
-    if (g.phase === "egg") K.Egg.draw(c, g.egg, vw, g.pose);
-    K.Stage.flashRim(c, vw, g.pose, g.rimFlash);
-    K.Fx.drawFront(c, fx, vw, g.pose);
-    c.restore();
-    hud();
+    return { done, fire, clean, timing, flip, cat, yolk, total: done + fire + clean + timing + flip + cat + yolk, st, r };
   }
 
-  /* ---------- result slip ---------- */
+  /* ---------- result ---------- */
   function showResult() {
-    const r = g.res, record = r.total > best && best > 0;
-    if (r.total > best) { best = r.total; try { localStorage.setItem("kfr-best", best); } catch (e) {} }
-    const angRecord = r.ang != null && r.ang > bestAng && bestAng > 0;
-    if (r.ang != null && r.ang > bestAng && r.ang <= 180) { bestAng = r.ang; try { localStorage.setItem("kfr-best-angle", bestAng); } catch (e) {} }
-    const near = r.toPerfect ? `완벽 뒤집기까지 ${r.toPerfect}°` : r.next ? `「${r.nextName}」까지 ${r.next}점` : "";
-    const lines = r.lines.map(([k, v]) => `<li><span>${k}</span><span>${v}</span></li>`).join("");
-    resEl.innerHTML = `<div class="slip" id="slip"><div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1 · ${g.order.label}</div>${record ? '<div class="stamp rec">신기록</div>' : ""}<canvas id="bowl"></canvas>
-      <div class="total"><span class="stamp" id="stamp" style="visibility:hidden">${r.tag}</span><span class="big"><span id="score">0</span><small>점</small></span></div>
-      ${near ? `<div class="near">${near}</div>` : ""}
-      <ul><li><span>밥 볶기 ${r.rice}/60 · 계란 ${r.egg}/40</span><span>최고 ${best}</span></li>
-      ${r.ang != null ? `<li><span>뒤집기 ${r.ang}°${angRecord ? " · 신기록" : ""}</span><span>최고 ${bestAng}°</span></li>` : ""}${lines}
-</ul>
-      <div class="formula">밥 = 맛있게 익은 비율 × ${Math.round(40 * g.order.done)} + 불맛 ${Math.round(20 * g.order.fire)} (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6 (${g.order.label} ${g.order.win[0]}~${g.order.win[1]})</div></div>
-      <div class="row"><button class="btn" id="again" type="button">한 번 더</button><button class="btn ghost" id="share" type="button">자랑하기</button></div><div class="hint">폰을 휙 튕겨도 다시 시작</div>`;
-    resEl.hidden = false;
-    const bowl = document.getElementById("bowl"), bw = bowl.clientWidth || 300, bh = bw * 0.75;
-    const [bc, bx] = [bowl, bowl.getContext("2d")], d = K.DPR(); bc.width = bw * d; bc.height = bh * d; bx.scale(d, d);
-    drawBowl(bx, bw, bh);
-    // count up the score, then slam the stamp
-    const el = document.getElementById("score"), t0 = performance.now();
-    const tick = (now) => {
-      const k = Math.min(1, (now - t0) / 700); el.textContent = Math.round(r.total * K.smooth(k));
-      if (k < 1) requestAnimationFrame(tick);
-      else { const s = document.getElementById("stamp"); s.style.visibility = "visible"; s.classList.add("pop"); K.Audio.stamp(); }
-    };
-    requestAnimationFrame(tick);
-    document.getElementById("again").onclick = (e) => { e.stopPropagation(); restart(); };
-    document.getElementById("share").onclick = (e) => { e.stopPropagation(); share(); };
+    setPh("result"); hudEl.hidden = true; tip("");
+    const s = (g.res = finalScore());
+    const best = +store.get("kfr-best3d", 0), rec = s.total > best && best > 0;
+    if (s.total > best) store.set("kfr-best3d", s.total);
+    const tier = C.tiers.find((x) => s.total >= x[0]), next = C.tiers.slice().reverse().find((x) => x[0] > s.total);
+    const line = (a, b, c) => `<li><span>${a}</span><span>${b} / ${c}</span></li>`;
+    resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}</div>
+      ${rec ? `<div class="rec">신기록</div>` : ""}
+      <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
+      <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
+      <div class="why">${whyLine(s)}</div>
+      ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
+      <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div></div>`;
+    resEl.hidden = false; requestAnimationFrame(() => resEl.classList.add("up"));
+    const n = $("scoreN"), t0 = performance.now();
+    (function up() { const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
+    $("again").onclick = () => { K.Audio.unlock(); start(false); };
+    $("share").onclick = share;
   }
-
-  /* ---------- share: the order slip as a 1080x1350 picture ---------- */
-  function slipImage() {
-    const W2 = 1080, H2 = 1350, cv2 = document.createElement("canvas"); cv2.width = W2; cv2.height = H2;
-    const x = cv2.getContext("2d"), r = g.res;
-    const bg = x.createLinearGradient(0, 0, W2, H2); bg.addColorStop(0, "#eef1f3"); bg.addColorStop(1, "#c9d1d8");
-    x.fillStyle = bg; x.fillRect(0, 0, W2, H2);
-    x.save(); x.translate(W2 / 2, H2 / 2); x.rotate(-0.02);
-    const sw = 860, sh = 1150; x.shadowColor = "rgba(30,40,50,.3)"; x.shadowBlur = 40; x.shadowOffsetY = 18;
-    x.fillStyle = "#fbf6ea"; x.fillRect(-sw / 2, -sh / 2, sw, sh); x.shadowColor = "transparent";
-    x.textAlign = "center"; x.fillStyle = "#2a1a14";
-    x.font = '64px "Song Myung"'; x.fillText("D:OT 반점", 0, -sh / 2 + 100);
-    x.font = '26px "Nanum Gothic Coding"'; x.fillStyle = "#6b5d4f"; x.fillText(`주문 #002 · 김치볶음밥 1 · ${g.order.label}`, 0, -sh / 2 + 148);
-    const bw = 760, bh = 570, [bc] = [document.createElement("canvas")]; bc.width = bw; bc.height = bh;
-    const bx = bc.getContext("2d"); drawBowl(bx, bw, bh); x.drawImage(bc, -bw / 2, -sh / 2 + 170);
-    x.textAlign = "right"; x.fillStyle = "#2a1a14"; x.font = 'bold 150px "Nanum Gothic Coding"'; x.fillText(String(r.total), sw / 2 - 150, sh / 2 - 190);
-    x.font = '48px "Nanum Gothic Coding"'; x.fillText("점", sw / 2 - 90, sh / 2 - 190);
-    x.save(); x.translate(-sw / 2 + 230, sh / 2 - 240); x.rotate(-0.12);
-    x.font = '58px "Song Myung"'; const tw = x.measureText(r.tag).width + 50;
-    x.strokeStyle = "#c81e1e"; x.lineWidth = 8; x.strokeRect(-tw / 2, -50, tw, 90); x.fillStyle = "#c81e1e"; x.textAlign = "center"; x.fillText(r.tag, 0, 18); x.restore();
-    x.textAlign = "center"; x.fillStyle = "#6b5d4f"; x.font = '30px "Nanum Gothic Coding"';
-    x.fillText(`밥 ${r.rice}/60 · 계란 ${r.egg}/40` + (r.ang != null ? ` · 뒤집기 ${r.ang}°` : ""), 0, sh / 2 - 110);
-    x.fillText("너도 볶아 봐 → D:OT lab", 0, sh / 2 - 60);
-    x.restore();
-    return cv2;
+  function whyLine(s) {
+    const st = s.st, parts = [];
+    if (st.burnt > 0.08) parts.push(`탄 밥 ${Math.round(st.burnt * 100)}%`);
+    if (st.raw > 0.15) parts.push(`덜 익은 밥 ${Math.round(st.raw * 100)}%`);
+    if (st.spill > 0.01) parts.push(`흘린 밥 ${Math.round(st.spill * 100)}%`);
+    if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
+    if (g.maxCombo >= 3) parts.push(`불맛 ${g.maxCombo}연속`);
+    if (s.r && s.r.burst) parts.push("노른자 터짐");
+    else if (s.r && !s.r.fold) parts.push(`계란 ${s.r.angle}°`);
+    return parts.join(" · ");
   }
   function share() {
-    const cv2 = slipImage();
-    cv2.toBlob(async (blob) => {
-      try {
-        const file = new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({ files: [file], text: `김치볶음밥 한 그릇 ${g.res.total}점 「${g.res.tag}」 ${location.href.split("?")[0]}` });
-          return;
-        }
-      } catch (e) { if (e && e.name === "AbortError") return; }
-      // in-app browsers: show the picture to long-press and save
-      const url = URL.createObjectURL(blob), ov = document.createElement("div");
-      ov.className = "layer"; ov.style.background = "rgba(15,18,21,.92)"; ov.style.zIndex = 5;
-      ov.innerHTML = `<img alt="결과 주문서" style="max-width:100%;max-height:72%;border-radius:8px" src="${url}"><p style="color:#fff;margin:0;font-size:18px">이미지를 길게 눌러 저장하세요</p><button class="btn" type="button">닫기</button>`;
-      ov.querySelector("button").onclick = (e) => { e.stopPropagation(); ov.remove(); URL.revokeObjectURL(url); };
-      app.appendChild(ov);
-    }, "image/png");
-  }
-  function drawBowl(c2, w, h) {
-    const ct = Math.cos(K.THETA), cx = w / 2, cy = h * 0.55, r = w * 0.36;
-    c2.fillStyle = "#e6e1d6"; c2.beginPath(); c2.moveTo(cx - r, cy); c2.bezierCurveTo(cx - r * 0.9, cy + r * 0.95, cx + r * 0.9, cy + r * 0.95, cx + r, cy); c2.closePath(); c2.fill();
-    c2.strokeStyle = "#2563eb"; c2.lineWidth = 2.5; c2.beginPath(); c2.moveTo(cx - r * 0.93, cy + r * 0.18); c2.bezierCurveTo(cx - r * 0.7, cy + r * 0.62, cx + r * 0.7, cy + r * 0.62, cx + r * 0.93, cy + r * 0.18); c2.stroke();
-    c2.fillStyle = "#fffdf8"; c2.beginPath(); c2.ellipse(cx, cy, r, r * ct, 0, 0, TAU); c2.fill();
-    const top = K.Rice.drawBowl(c2, g.rice, cx, cy, r, ct);
-    const o = K.Egg.outcome(g.egg);
-    if (!o.caught && !o.stuck) {
-      c2.font = '13px "Gowun Dodum"'; c2.textAlign = "center"; const t = "(계란 없음)", tw = c2.measureText(t).width + 16;
-      c2.fillStyle = "rgba(251,246,234,.92)"; c2.beginPath(); c2.roundRect(cx - tw / 2, (top || cy - r * 0.4) - 16, tw, 24, 12); c2.fill();
-      c2.fillStyle = "#6b5d4f"; c2.fillText(t, cx, (top || cy - r * 0.4) + 1);
-    } else K.Egg.drawOnRice(c2, g.egg, cx, top || cy - r * 0.4, r * 0.42, ct);
+    try {
+      W.renderer.render(W.scene, W.camera);
+      const src = W.renderer.domElement, cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1350;
+      const c = cv.getContext("2d"), s = g.res, tier = C.tiers.find((x) => s.total >= x[0]);
+      c.fillStyle = "#fbf6ea"; c.fillRect(0, 0, 1080, 1350);
+      const sw = src.width, sh = src.height, cw = Math.min(sw, sh * 0.9), ch = cw * 0.9;
+      c.drawImage(src, (sw - cw) / 2, 0, cw, ch, 60, 60, 960, 864);
+      c.textAlign = "center";
+      c.fillStyle = "#1f2a33"; c.font = "64px 'Black Han Sans', sans-serif"; c.fillText(C.shop, 540, 1010);
+      c.fillStyle = "#E8481C"; c.font = "160px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 540, 1180);
+      c.fillStyle = "#c81e1e"; c.font = "56px 'Black Han Sans', sans-serif"; c.fillText(tier[1], 540, 1272);
+      cv.toBlob((blob) => {
+        const file = blob && new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
+        if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text: `${s.total}점 · ${tier[1]}` }).catch(() => {});
+        else { const ov = $("shareOv"); ov.querySelector("img").src = cv.toDataURL("image/png"); ov.hidden = false; }
+      });
+    } catch (e) {}
   }
 
-  function restart() {
-    resEl.hidden = true; g = newGame(false); K.Input.armAfterRelease && K.Input.armAfterRelease();
+  /* ---------- watch mode (구경하기): a decent cook plays itself ---------- */
+  function autoPlay() {
+    const F = K.Food, E = K.Egg;
+    if (g.ph === "rice") {
+      if (!g.started && g.phT > 1.0) flick({ strength: 1.1, dirU: 0, dirV: 1 });
+      else if (g.started && g.clock > 0 && F.toss && F.toss.done) {
+        if (!g.autoWait) g.autoWait = rnd(0.35, 1.1);
+        if (g.t - F.lastLand > g.autoWait) { g.autoWait = 0; flick({ strength: rnd(0.95, 1.35), dirU: 0, dirV: 1 }); }
+      }
+    } else if (g.ph === "egg") {
+      const win = g.order === "half" ? 0.62 : 0.95;
+      if (E.ph === "pan" && E.cook > 0.5 && !g.autoShook) { g.autoShook = true; g.shim = g.t; E.shake(g.t, 0.3, 0); word(C.eggSlides, "ok"); }
+      if (E.ph === "pan" && E.cook > win) eggFlick({ strength: 1.05, dirU: 0 });
+      if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.5, -1, 1), clamp(-tg.z / 0.35, -1, 1)); }
+      else K.Input.demoTilt(0, 0);
+    }
   }
 
-  /* ---------- boot ---------- */
-  let last = performance.now(), shown = false;
+  /* ---------- camera ---------- */
+  const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3();
+  function camera(dt) {
+    const pan = ["plate", "egg", "take"].includes(g.ph) ? SIDE * 0.32 : 0;
+    g.cam += ((["garnish", "result"].includes(g.ph) ? 1 : 0) - g.cam) * DAMP(0.35, dt);
+    g.pan += (pan - g.pan) * DAMP(0.25, dt);
+    const close = smooth(g.cam);
+    _tg.set(W.plate.position.x, W.plateC.y + 0.15, W.plateC.z);
+    _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
+    _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
+    W.camera.position.copy(_cp); W.camera.lookAt(_cl);
+  }
+  function hud() {
+    if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
+  }
+
+  /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */
+  let last = performance.now(), acc = 0;
   function frame(now) {
-    const dt = Math.min(0.033, (now - last) / 1000); last = now;
-    step(dt);
-    if (g.phase === "result" && !shown && !g.demo) { shown = true; showResult(); }
-    if (g.phase !== "result") shown = false;
-    render();
+    let dt = Math.min(0.1, (now - last) / 1000); last = now;
+    if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
+    acc += dt; let n = 0;
+    if (g.ph === "intro") { updatePose(dt); W.fx(now / 1000, dt, { hei: 0, heat: 1, lick: 0, steam: 0.12, smoke: 0, rim: 0 }); acc = 0; }
+    while (acc >= 1 / 60 && n++ < 6) { step(1 / 60); acc -= 1 / 60; }
+    if (n >= 6) acc = 0;
+    K.Food.draw(); camera(dt); hud();
+    W.renderer.render(W.scene, W.camera);
     requestAnimationFrame(frame);
   }
-  function begin(useMotion) {
-    K.Audio.unlock();
-    const go = () => { intro.hidden = true; g = newGame(false); };
-    if (useMotion) K.Input.requestPermission().then(go, go); else { K.Input.useTouch(); go(); }
-  }
-  document.getElementById("go").onclick = () => begin(true);
-  document.getElementById("touchMode").onclick = () => begin(false);
-  resEl.addEventListener("click", (e) => { if (e.target === resEl) {} });
+
+  /* ---------- start screen ---------- */
+  function setStyle(k) { style = k; store.set("kfr-style", k); W.build(k); for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", b.dataset.style === k); }
+  for (const b of document.querySelectorAll("[data-style]")) b.onclick = () => setStyle(b.dataset.style);
+  setStyle(style);
+  $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.go; $("watch").textContent = C.watchBtn;
+  $("go").onclick = () => { K.Audio.unlock(); const go = () => start(false); K.Input.requestPermission().then(go, go); };
+  $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
+  $("shareOv").onclick = () => { $("shareOv").hidden = true; };
   K.Input.start(onFlick, app);
-  g = newGame(true);
-  // a flick on the result slip restarts
-  K.Input.onResultFlick = () => { if (g && g.phase === "result" && !g.demo) restart(); };
-  (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => requestAnimationFrame(frame));
-  K.Game = { get state() { return g; }, flick, newGame: (d) => (g = newGame(d)) };
+  addEventListener("resize", () => W.fit());
+  document.addEventListener("visibilitychange", () => { if (document.hidden) K.Audio.suspend(); else K.Audio.resume(); last = performance.now(); });
+  K.Game = { get state() { return g; }, start, flick, finalScore };
+  requestAnimationFrame(frame);
 })();

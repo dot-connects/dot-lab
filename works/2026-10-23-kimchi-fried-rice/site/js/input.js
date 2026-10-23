@@ -9,7 +9,7 @@
   const TAU_G = 0.2, A_ON_MIN = 6, A_OFF = 2, A_MAX = 25, W_ON = 200, PULSE_MAX = 250;
   const RISE_FAST = 40, RISE_SLOW = 180, K_ROT = 0.02, REFRACT = 300, CAL_MS = 1000, PROBE_MS = 1000;
   /* tilt (§4) */
-  const DEAD = 0.035, FULL = 0.35, TILT_TAU = 80, FREEZE = 250;
+  const DEAD = 0.025, FULL = 0.22, TILT_TAU = 60, FREEZE = 250; // operator 10-24: more sensitive than expected
   /* touch: speeds in screen heights per second */
   const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
   const SLOW_TRAVEL = 0.15, SLOW_MIN = 0.3; // too-slow flick: > 15% of the height, peak 0.3..T_ON (a crawl is tilt)
