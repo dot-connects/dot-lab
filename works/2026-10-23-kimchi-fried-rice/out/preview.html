@@ -31,7 +31,8 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
 .slip .meta{text-align:center;font-size:11px;color:#6b5d4f;margin-bottom:4px}
 .slip canvas{width:100%;aspect-ratio:4/3;display:block}
 .slip ul{margin:0;padding:0;list-style:none;font-size:13px}
-.slip li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0}
+.slip li{display:flex;justify-content:space-between;align-items:baseline;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0;letter-spacing:0}
+.slip li span:last-child{flex:none;text-align:right}
 .slip .total{display:flex;justify-content:space-between;align-items:center;margin:2px 0 6px}
 .slip .big{font-weight:700;font-size:48px;line-height:1}.slip .big small{font-size:18px;margin-left:2px}
 .stamp{display:inline-block;transform:rotate(-7deg) scale(1);border:3px solid var(--red);color:var(--red);font-family:"Song Myung",serif;font-size:20px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.75)}
@@ -187,7 +188,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     wg.addColorStop(0, "#15181B"); wg.addColorStop(0.35, "#2A3440"); wg.addColorStop(0.7, "#1E2226"); wg.addColorStop(1, "#121416");
     c.fillStyle = wg; wall(); c.fill();
     const glow = c.createLinearGradient(0, cy, 0, cy + R * ct + D * 1.6);
-    glow.addColorStop(0, "rgba(255,110,40,0)"); glow.addColorStop(1, "rgba(255,110,40,.42)");
+    glow.addColorStop(0, "rgba(255,110,40,0)"); glow.addColorStop(0.6, "rgba(255,110,40,0)"); glow.addColorStop(1, "rgba(255,110,40,.15)");
     c.fillStyle = glow; wall(); c.fill();
     // rim ring
     c.fillStyle = "#3a434d"; c.beginPath(); c.ellipse(cx, cy, R * 1.045, R * 1.045 * ct, 0, 0, TAU); c.fill();
@@ -254,8 +255,8 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy * lean, wa.w, wa.oy * lean + (wa.h - wa.oy));
       if (fire) { // the floor glows where food is on the metal
         c.save(); c.beginPath(); c.ellipse(cx, cy, vw.R * 0.97, vw.R * 0.97 * vw.ct * lean, 0, 0, TAU); c.clip();
-        const g = c.createRadialGradient(cx, cy + vw.D * 0.5, 0, cx, cy + vw.D * 0.5, vw.R * 0.62);
-        g.addColorStop(0, `rgba(255,110,40,${0.08 + 0.3 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
+        const g = c.createRadialGradient(cx, cy + vw.D * 0.5, vw.R * 0.05, cx, cy + vw.D * 0.5, vw.R * 0.8);
+        g.addColorStop(0, `rgba(255,110,40,${0.05 + 0.15 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
         c.fillStyle = g; c.fillRect(cx - vw.R, cy - vw.R, vw.R * 2, vw.R * 2); c.restore();
       }
     },
@@ -353,10 +354,18 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
         f1: rnd(7, 10), f2: rnd(13, 19), p1: rnd(0, TAU), p2: rnd(0, TAU) });
     }
     tongues.sort((p, q) => Math.sin(p.a) - Math.sin(q.a)); // far first
+    // near-wall tongues: spread along the lower arc of the wok's outer wall (bezier t), gap where the handle neck is
+    const near = [];
+    for (let i = 0; i < 16; i++) {
+      let t = 0.1 + (0.8 * (i + rnd(0.15, 0.85))) / 16;
+      if (Math.abs(t - 0.5) < 0.05) t += t < 0.5 ? -0.05 : 0.05;
+      near.push({ t, size: rnd(0.65, 1.15), spr: i % 3, flip: Math.random() < 0.5,
+        f1: rnd(8, 11), f2: rnd(14, 20), p1: rnd(0, TAU), p2: rnd(0, TAU) });
+    }
     const licks = [];
     for (let i = 0; i < 6; i++) licks.push({ phi: Math.PI * (0.18 + (0.64 * i) / 5) + rnd(-0.1, 0.1), size: rnd(0.6, 1.25),
       spr: i % 2, f1: rnd(9, 13), p1: rnd(0, TAU), delay: rnd(0, 0.3), lean: rnd(-0.25, 0.25) });
-    return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, licks, parts: [], spat: [],
+    return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, near, licks, parts: [], spat: [],
       shake: { x: 0, y: 0 }, amp: 0, haze: 0, rimDrawn: false };
   }
 
@@ -390,6 +399,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     s.flareLevel = s.flare;
     if (s.oil && (s.oil.t += dt) > s.oil.dur) s.oil = null;
     s.rimDrawn = false;
+    s.burner = false;
     // shake: decaying wobble, two incommensurate sines so it never looks like a loop
     s.amp *= Math.exp(-dt * 11);
     if (s.amp < 0.05) s.amp = 0;
@@ -436,6 +446,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
 
   /* burner ring under the wok: drawn before the wok body, so only what rises past its wall shows */
   function drawBehind(c, s, vw) {
+    s.burner = true;
     const S = sprites(), R = vw.R, t = s.t, f = s.flare;
     const by = vw.cy + RING.y * R;
     for (const q of s.tongues) {
@@ -444,6 +455,21 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const h = R * RING.ht * q.size * flick * (1 + 0.85 * f), w = R * RING.wd * q.size * (1 + 0.2 * f) * (1.1 - 0.15 * flick);
       const sway = 0.06 * Math.sin(q.f2 * 0.5 * t + q.p1);
       tongue(c, S.burner[q.spr], vw.cx + ca * RING.rx * R, by + sa * RING.ry * R, w, h, ca * RING.lean * (1 - 0.15 * f) + sway, q.flip, 1);
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* tongues licking up the near wall from below: in front of the wall, under the rim line (the wall silhouette
+     is stage.js's bezier: rim corners at x = +-1.04R, control depth B) */
+  function drawNear(c, s, vw) {
+    const S = sprites(), R = vw.R, t = s.t, f = s.flare, B = R * vw.ct * 1.25 + vw.D * 1.6;
+    for (const q of s.near) {
+      const k = q.t, m = 1 - k;
+      const x = vw.cx + 1.04 * R * (-m * m * m - 3 * m * m * k + 3 * m * k * k + k * k * k);
+      const y = vw.cy + 3 * B * k * m + R * 0.05;
+      const flick = 0.8 + 0.13 * Math.sin(q.f1 * t + q.p1) + 0.08 * Math.sin(q.f2 * t + q.p2);
+      const h = R * 0.3 * q.size * flick * (1 + 0.7 * f), w = R * 0.15 * q.size * (1 + 0.15 * f);
+      tongue(c, S.burner[q.spr], x, y, w, h, ((x - vw.cx) / R) * 0.55, q.flip, 1);
     }
     c.globalAlpha = 1;
   }
@@ -468,6 +494,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   function drawFront(c, s, vw, pose) {
     const S = sprites(), R = vw.R;
     if (!s.rimDrawn) drawRim(c, s, vw, pose);
+    if (s.burner !== false) drawNear(c, s, vw);
     if (s.oil) {
       const k = s.oil.t / s.oil.dur, e = (k < 0.2 ? K.smooth(k / 0.2) : 1 - K.smooth((k - 0.2) / 0.8)) * s.oil.k;
       const [x, y] = K.proj(vw, pose, 0, 0.05, 0.1);
@@ -876,7 +903,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   const RAMP0 = 0.8;        // sear rate right after landing (rises to 1 over 0.4 s of contact): constant tossing stays pale
   const V = 3.1;             // toss speed scale (strength 1 lip grain lands near the handle side, 1.5 spills)
   const HEAT_C = K.heat(0, 0);
-  const READY = [0.25, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
+  const READY = [0.28, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
   const SHEET = 0.8;               // airborne share a 완벽 needs
   const LABELS = {
     perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["덜 익었어", "#C98A3E"],
@@ -937,7 +964,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       // member layout (in R units): grains overlap ~60% inside a small blob
       const m = [];
       for (let k = 0; k < un.n; k++) {
-        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.013 + Math.random() * 0.028 : 0;
+        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.006 + Math.random() * 0.016 : 0;
         m.push({ ox: Math.cos(ma) * mr, oy: Math.sin(ma) * mr * 0.8, rot: Math.random() * Math.PI, sz: 0.85 + Math.random() * 0.3, j: (Math.random() - 0.5) * 0.08 });
       }
       s.shape.push({ m, q: Math.random(), strip: un.kind === 2 && Math.random() < 0.35 });
@@ -1126,10 +1153,13 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     s.depth[i] = clamp(1 - s.depth[i] + (Math.random() - 0.5) * 0.2, 0, 1);
     s.rest[i] = 0;
     s.su[i] = s.vu[i] * 0.5; s.sv[i] = s.vv[i] * 0.5; // inelastic: keep half the tangential speed, slide home
-    // new slot in the pile: half where it landed (keeps the overturn), half anywhere (the bowl pulls it back to the middle)
+    // new slot anywhere in the full pile disc, on the side it landed on (keeps the overturn) 70% of the time
     const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * PILE;
-    let hu = 0.5 * (s.u[i] - s.pc[0]) / sq + 0.5 * Math.cos(a) * r, hv = 0.5 * (s.v[i] - s.pc[1]) / sq + 0.5 * Math.sin(a) * r;
-    const hr = Math.hypot(hu, hv); if (hr > PILE) { hu *= PILE / hr; hv *= PILE / hr; }
+    let hu = Math.cos(a) * r, hv = Math.sin(a) * r;
+    if (Math.random() < 0.7) {
+      if ((hu > 0) !== (s.u[i] > s.pc[0])) hu = -hu;
+      if ((hv > 0) !== (s.v[i] > s.pc[1])) hv = -hv;
+    }
     s.hu[i] = hu; s.hv[i] = hv;
     if (s.cur && s.toss[i] === s.cur.id) s.cur.out -= s.n[i];
   }
@@ -1167,7 +1197,8 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   function drawUnit(c, s, i, x, y, R, sc, lit, sAng, sStr) {
     const kind = s.kind[i], sh = s.shape[i], q = qi(s.cook[i]), L = LUT[kind];
     if (kind === 0) {
-      const rx0 = 0.06 * R * sc, ry0 = 0.03 * R * sc;
+      const rx0 = 0.0225 * R * sc, ry0 = 0.011 * R * sc; // capsule 0.045R x 0.022R (art §2)
+      c.lineCap = "round";
       const m = sh.m;
       for (let k = 0; k < m.length; k++) {
         const mm = m[k], ck = qi(s.cook[i] + mm.j);
@@ -1179,18 +1210,18 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
           ox = along * ca - perp * sa; oy = along * sa + perp * ca;
           rot = sAng + (mm.rot - 1.5) * 0.5; rx *= sStr; ry /= Math.sqrt(sStr);
         }
-        const gx = x + ox, gy = y + oy;
-        c.fillStyle = lit ? L.lit[ck] : L.base[ck];
-        c.beginPath(); c.ellipse(gx, gy, rx, ry, rot, 0, TAU); c.fill();
-        c.fillStyle = L.shade[ck]; // lower-right shade sliver
-        c.beginPath(); c.ellipse(gx + rx * 0.1, gy + ry * 0.3, rx * 0.78, ry * 0.55, rot, 0, TAU); c.fill();
-        c.fillStyle = lit ? L.lit[ck] : L.base[ck]; c.beginPath(); c.ellipse(gx - rx * 0.06, gy - ry * 0.12, rx * 0.86, ry * 0.7, rot, 0, TAU); c.fill();
+        const gx = x + ox, gy = y + oy, hl = Math.max(0, rx - ry), ca = Math.cos(rot) * hl, sa = Math.sin(rot) * hl;
+        // plain capsule: shade underneath (offset lower-right), base on top, spec dot upper-left
+        c.strokeStyle = L.shade[ck]; c.lineWidth = ry * 2;
+        c.beginPath(); c.moveTo(gx - ca + ry * 0.25, gy - sa + ry * 0.35); c.lineTo(gx + ca + ry * 0.25, gy + sa + ry * 0.35); c.stroke();
+        c.strokeStyle = lit ? L.lit[ck] : L.base[ck]; c.lineWidth = ry * 1.7;
+        c.beginPath(); c.moveTo(gx - ca, gy - sa); c.lineTo(gx + ca, gy + sa); c.stroke();
         const gl = L.gl[ck];
-        if (gl > 0.05) { c.fillStyle = `rgba(255,246,232,${(gl * 1.4).toFixed(2)})`; c.beginPath(); c.arc(gx - rx * 0.35, gy - ry * 0.45, Math.max(0.8, 0.012 * R * sc * 0.6), 0, TAU); c.fill(); }
+        if (gl > 0.05) { c.fillStyle = `rgba(255,246,232,${(gl * 1.4).toFixed(2)})`; c.beginPath(); c.arc(gx - rx * 0.35, gy - ry * 0.45, Math.max(0.7, ry * 0.4), 0, TAU); c.fill(); }
       }
     } else if (kind === 1) {
       // torn kimchi leaf: uneven quad, lit edge top-left, pale rib on some; shrinks as it cooks
-      const z = 0.058 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
+      const z = 0.04 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
       const px = [-1, -0.2, 0.3 + qq * 0.6, 1, 0.2, -0.3 - qq * 0.5], py = [-0.4, -0.75 + qq * 0.2, -0.85, 0.2 + (1 - qq) * 0.3, 0.7, 0.8];
       c.fillStyle = lit ? L.lit[q] : L.base[q]; c.beginPath();
       for (let k = 0; k < 6; k++) { const X = x + (px[k] * ca - py[k] * sa) * z, Y = y + (px[k] * sa + py[k] * ca) * z * 0.85; k ? c.lineTo(X, Y) : c.moveTo(X, Y); }
@@ -1202,7 +1233,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const gl = L.gl[q];
       if (gl > 0.05) { c.fillStyle = `rgba(255,240,225,${(gl * 0.9).toFixed(2)})`; c.beginPath(); c.arc(x - z * 0.3, y - z * 0.3, z * 0.16, 0, TAU); c.fill(); }
     } else {
-      const z = 0.029 * R * sc;
+      const z = 0.018 * R * sc;
       if (sh.strip) {
         c.strokeStyle = lit ? L.lit[q] : L.base[q]; c.lineWidth = z * 0.9; c.lineCap = "round";
         const a = s.rot[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * z * 1.5, y - Math.sin(a) * z * 1.2); c.lineTo(x + Math.cos(a) * z * 1.5, y + Math.sin(a) * z * 1.2); c.stroke();
@@ -1216,11 +1247,11 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   function draw(c, s, vw, pose) {
     const R = vw.R, M = s.M, ord = s.ord, key = s.key, sn = Math.sin(K.THETA), cs = Math.cos(K.THETA);
     // sauce bed under the pile: one path, uniform alpha (clump shadow, kills the confetti read)
-    c.fillStyle = "rgba(150,52,22,.45)"; c.beginPath();
+    c.fillStyle = "rgba(120,40,18,.12)"; c.beginPath();
     for (let i = 0; i < M; i++) {
-      if (s.st[i] > 1) continue;
+      if (s.st[i] > 1 || s.kind[i]) continue; // one soft shadow per rice clump
       P(vw, pose, s.u[i], s.v[i], s.h[i] - 0.02 - 0.06 * s.depth[i]);
-      const rr = (s.kind[i] ? 0.065 : 0.095) * R;
+      const rr = 0.045 * R;
       c.moveTo(PX + rr + 2, PY + 2); c.ellipse(PX + 2, PY + 2, rr, rr * 0.7, 0, 0, TAU);
     }
     c.fill();
@@ -1285,10 +1316,11 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       for (let rep = 0; rep < 3; rep++) { const a = hash(i * 3 + rep) * TAU, d = Math.sqrt(hash(i * 7 + rep + 0.5)) * 0.9; pts.push([i, a, d]); }
     }
     pts.sort((p1, p2) => Math.sin(p1[1]) * p1[2] - Math.sin(p2[1]) * p2[2]);
-    const fakeR = r * 0.8; // grains a bit finer than in the wok: the bowl reads as a heap, not stickers
+    const fakeR = r * 1.25; // grains a bit finer than in the wok: the bowl reads as a heap, not stickers
     for (const [i, a, d] of pts) {
       const lift = (1 - d * d) * mh * 1.05, x = cx + Math.cos(a) * d * mr, y = cy + Math.sin(a) * d * mr * ct - lift;
-      drawUnit(c, s, i, x, y, fakeR, 1, false, 0, 1);
+      const ck = s.cook[i]; if (ck > 1.5) s.cook[i] = 1.5; // burnt reads as #5A2A14 specks, not black flies
+      drawUnit(c, s, i, x, y, fakeR, 1, false, 0, 1); s.cook[i] = ck;
     }
     return cy - mh;
   }
@@ -1570,8 +1602,9 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const ru = cu - s.du, rv = cv - s.dv;
       if (Math.hypot(ru, rv) < 1) {
         const fh = K.surf(ru, rv), k = clamp((ch - fh) / 1.4, 0, 1), [x, y] = K.proj(vw, pose, ru, rv, fh);
-        c.fillStyle = `rgba(8,12,18,${0.32 * (1 - 0.6 * k)})`;
-        c.beginPath(); c.ellipse(x, y, ER * R * (1 - 0.35 * k), ER * R * vw.ct * (1 - 0.35 * k), 0, 0, TAU); c.fill();
+        const sr = ER * 0.8 * R * (1 - 0.35 * k), g = c.createRadialGradient(0, 0, 0, 0, 0, sr);
+        g.addColorStop(0, `rgba(8,12,18,${0.18 * (1 - 0.5 * k)})`); g.addColorStop(0.55, `rgba(8,12,18,${0.12 * (1 - 0.5 * k)})`); g.addColorStop(1, "rgba(8,12,18,0)");
+        c.save(); c.translate(x, y); c.scale(1, vw.ct); c.fillStyle = g; c.beginPath(); c.arc(0, 0, sr, 0, TAU); c.fill(); c.restore();
       }
     }
     let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
@@ -1604,10 +1637,24 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
         c.strokeStyle = K.rgb(K.col.eggEdge(cbm + 0.35), la * 0.8); c.lineWidth = 1.2; c.stroke();
       }
     }
-    if (!folded && !torn && vis > 0.2) { // smooth silhouette under the facets
-      let set = 0, cb = 0; for (const p of P) { set += setOf(p); cb += p.cb; } set /= P.length; cb /= P.length;
-      const col = topUp ? mix(WOK, K.col.eggWhite(set * 0.75), 0.36 + 0.64 * set) : mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6);
-      ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(col, 0.95); c.fill();
+    const smoothBody = !folded && !torn;
+    if (smoothBody) {
+      // seen edge-on: a side band gives the white its thickness
+      if (abs && vis < 0.6) { ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0.04 * R * sc * (1 - vis / 0.6)); c.fillStyle = "#EADFC8"; c.fill(); }
+      if (topUp) { // the white: one smooth shape, clear (raw) -> #FFFDF6 with an #EADFC8 shadow toward the rim
+        let sc0 = 0, n0 = 0, sr = 0, nr = 0, rad = 1;
+        for (const p of P) { if (p.rim < 0.45) { sc0 += setOf(p); n0++; } else if (p.rim > 0.8) { sr += setOf(p); nr++; } }
+        sc0 /= n0; sr /= nr;
+        const xc = X[s.centre], yc = Y[s.centre];
+        for (const i of s.ring) rad = Math.max(rad, Math.hypot(X[i] - xc, Y[i] - yc));
+        const g = c.createRadialGradient(xc - 0.18 * rad, yc - 0.2 * rad, 0, xc, yc, rad * 1.05);
+        const wc = (k, a, sh) => `rgba(${lerp(255, lerp(255, 234, sh), k) | 0},${lerp(255, lerp(253, 223, sh), k) | 0},${lerp(255, lerp(246, 200, sh), k) | 0},${0.35 + 0.65 * a})`;
+        g.addColorStop(0, wc(sc0, sc0, 0)); g.addColorStop(0.6, wc((sc0 + sr) / 2, (sc0 + sr) / 2, 0.15)); g.addColorStop(1, wc(sr, sr, 1));
+        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = g; c.fill();
+      } else {
+        let cb = 0; for (const p of P) cb += p.cb; cb /= P.length;
+        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6), 0.95); c.fill();
+      }
     }
     // body: painter-sorted triangles, flat shaded, the winding picks the face
     TL.length = 0;
@@ -1630,14 +1677,18 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
         col = mix(WOK, K.col.eggUnder(cb), 0.45 + 0.55 * clamp(cb / 0.6, 0, 1));
         col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75).map((x) => x * (0.92 + 0.16 * nz));
       }
-      TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade) });
+      TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade), top });
     }
     TL.sort((p, q) => p.z - q.z);
     c.lineWidth = 1; c.lineJoin = "round";
+    c.save();
+    if (smoothBody) { ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.clip(); } // no straight polygon edges on the silhouette
     for (const t of TL) {
+      if (smoothBody && topUp && t.top) continue;
       c.fillStyle = c.strokeStyle = t.f;
       c.beginPath(); c.moveTo(X[t.i], Y[t.i]); c.lineTo(X[t.j], Y[t.j]); c.lineTo(X[t.k], Y[t.k]); c.closePath(); c.fill(); c.stroke();
     }
+    c.restore();
     const y0 = s.P[s.centre], yx = X[s.centre] + s.yolk.x * R, yy = Y[s.centre] - s.yolk.y * R * ctv;
     if (!topUp) {
       // browned underside: bubble craters + the yolk bump
@@ -1652,8 +1703,9 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     } else {
       const set = setOf(y0);
       if (set < 0.85) { // raw whites are glossy
-        c.fillStyle = `rgba(255,255,255,${0.35 * (1 - set)})`;
+        c.fillStyle = `rgba(255,255,255,${0.6 * (1 - set)})`;
         c.beginPath(); c.ellipse(yx - 0.16 * R * sc, yy - 0.06 * R * sc, 0.09 * R * sc, 0.035 * R * sc * vis, -0.3, 0, TAU); c.fill();
+        c.beginPath(); c.ellipse(yx + 0.15 * R * sc, yy + 0.09 * R * sc, 0.05 * R * sc, 0.018 * R * sc * vis, -0.3, 0, TAU); c.fill();
       }
       if (!res.burst || s.phase === "air" || s.phase === "land") drawYolk(c, yx, yy - (folded ? 0.03 * R : 0), 0.118 * R * sc * (folded ? 0.8 : 1), vis, s.cookTop, s.su, s.sv);
       else { // deflated yolk skin
@@ -1969,7 +2021,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       if (g.started && g.phaseT >= RICE_T && (K.Rice.airborne(g.rice) === 0 || g.phaseT > RICE_T + 1)) {
         g.maxGap = Math.max(g.maxGap, RICE_T - g.lastRiceFlick);
         g.riceStats = K.Rice.stats(g.rice);
-        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); K.Audio.ding();
+        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); g.toast = null; K.Audio.ding();
       }
     } else if (g.phase === "egg") {
       K.Egg.update(g.egg, dt, ctx);
@@ -2028,9 +2080,9 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     else if (o.stuck) { yolk = 12; eggLines.push(["계란을 안 던짐 · 바닥 탐", -28]); }
     else {
       const d = Math.abs(o.angleErr || 0);
-      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${ang}° 돎 (완벽 180°)`, -12]); }
+      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${(o.angleErr || 0) > 0 ? "살살" : "조금 세게"}`, -12]); }
       else if (o.flipped && d <= 12) flip = 22;
-      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기 ${ang}° (완벽 ±12°)`, flip - 22]); }
+      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기가 ${(o.angleErr || 0) > 0 ? "더 돎 · 살살" : "덜 돎 · 조금 세게"}`, flip - 22]); }
       else { flip = 6; eggLines.push([`안 뒤집힘 · ${o.rot > Math.PI ? "살살" : "조금 세게"}`, -16]); }
       if (o.burst) eggLines.push([`노른자 터짐 · 세기 ${(o.strength || 0).toFixed(1)} (기준 1.2)`, -12]);
       else if (o.torn) { yolk = 6; eggLines.push(["흰자 찢어짐 · 덜 익었을 때 던짐", -6]); }
@@ -2104,7 +2156,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       if (k >= 1) g.toast = null;
       else {
         const s = k < 0.28 ? K.easeOutBack(k / 0.28) : 1, a = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
-        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.24); c.rotate(-0.035); c.scale(s, s);
+        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.2); c.rotate(-0.035); c.scale(s, s);
         strokeText(g.toast.text, 0, 0, 32, g.toast.color); c.restore();
       }
     }
@@ -2118,6 +2170,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       c.fillStyle = "rgba(31,42,51,.72)"; c.beginPath(); c.arc(lx, ly, lr, 0, TAU); c.fill();
       c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1; c.beginPath(); c.arc(lx, ly, lr * 0.35, 0, TAU); c.stroke();
       c.fillStyle = "#a3e635"; c.beginPath(); c.arc(lx - t.u * lr * 0.6, ly + t.v * lr * 0.6, lr * 0.28, 0, TAU); c.fill();
+      c.font = '13px "Jua"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText("기울기", lx, ly - lr - 8);
     }
   }
 

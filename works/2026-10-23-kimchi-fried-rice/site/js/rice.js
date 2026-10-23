@@ -13,7 +13,7 @@
   const RAMP0 = 0.8;        // sear rate right after landing (rises to 1 over 0.4 s of contact): constant tossing stays pale
   const V = 3.1;             // toss speed scale (strength 1 lip grain lands near the handle side, 1.5 spills)
   const HEAT_C = K.heat(0, 0);
-  const READY = [0.25, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
+  const READY = [0.28, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
   const SHEET = 0.8;               // airborne share a 완벽 needs
   const LABELS = {
     perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["덜 익었어", "#C98A3E"],
@@ -74,7 +74,7 @@
       // member layout (in R units): grains overlap ~60% inside a small blob
       const m = [];
       for (let k = 0; k < un.n; k++) {
-        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.013 + Math.random() * 0.028 : 0;
+        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.006 + Math.random() * 0.016 : 0;
         m.push({ ox: Math.cos(ma) * mr, oy: Math.sin(ma) * mr * 0.8, rot: Math.random() * Math.PI, sz: 0.85 + Math.random() * 0.3, j: (Math.random() - 0.5) * 0.08 });
       }
       s.shape.push({ m, q: Math.random(), strip: un.kind === 2 && Math.random() < 0.35 });
@@ -263,10 +263,13 @@
     s.depth[i] = clamp(1 - s.depth[i] + (Math.random() - 0.5) * 0.2, 0, 1);
     s.rest[i] = 0;
     s.su[i] = s.vu[i] * 0.5; s.sv[i] = s.vv[i] * 0.5; // inelastic: keep half the tangential speed, slide home
-    // new slot in the pile: half where it landed (keeps the overturn), half anywhere (the bowl pulls it back to the middle)
+    // new slot anywhere in the full pile disc, on the side it landed on (keeps the overturn) 70% of the time
     const a = Math.random() * TAU, r = Math.sqrt(Math.random()) * PILE;
-    let hu = 0.5 * (s.u[i] - s.pc[0]) / sq + 0.5 * Math.cos(a) * r, hv = 0.5 * (s.v[i] - s.pc[1]) / sq + 0.5 * Math.sin(a) * r;
-    const hr = Math.hypot(hu, hv); if (hr > PILE) { hu *= PILE / hr; hv *= PILE / hr; }
+    let hu = Math.cos(a) * r, hv = Math.sin(a) * r;
+    if (Math.random() < 0.7) {
+      if ((hu > 0) !== (s.u[i] > s.pc[0])) hu = -hu;
+      if ((hv > 0) !== (s.v[i] > s.pc[1])) hv = -hv;
+    }
     s.hu[i] = hu; s.hv[i] = hv;
     if (s.cur && s.toss[i] === s.cur.id) s.cur.out -= s.n[i];
   }
@@ -304,7 +307,8 @@
   function drawUnit(c, s, i, x, y, R, sc, lit, sAng, sStr) {
     const kind = s.kind[i], sh = s.shape[i], q = qi(s.cook[i]), L = LUT[kind];
     if (kind === 0) {
-      const rx0 = 0.06 * R * sc, ry0 = 0.03 * R * sc;
+      const rx0 = 0.0225 * R * sc, ry0 = 0.011 * R * sc; // capsule 0.045R x 0.022R (art §2)
+      c.lineCap = "round";
       const m = sh.m;
       for (let k = 0; k < m.length; k++) {
         const mm = m[k], ck = qi(s.cook[i] + mm.j);
@@ -316,18 +320,18 @@
           ox = along * ca - perp * sa; oy = along * sa + perp * ca;
           rot = sAng + (mm.rot - 1.5) * 0.5; rx *= sStr; ry /= Math.sqrt(sStr);
         }
-        const gx = x + ox, gy = y + oy;
-        c.fillStyle = lit ? L.lit[ck] : L.base[ck];
-        c.beginPath(); c.ellipse(gx, gy, rx, ry, rot, 0, TAU); c.fill();
-        c.fillStyle = L.shade[ck]; // lower-right shade sliver
-        c.beginPath(); c.ellipse(gx + rx * 0.1, gy + ry * 0.3, rx * 0.78, ry * 0.55, rot, 0, TAU); c.fill();
-        c.fillStyle = lit ? L.lit[ck] : L.base[ck]; c.beginPath(); c.ellipse(gx - rx * 0.06, gy - ry * 0.12, rx * 0.86, ry * 0.7, rot, 0, TAU); c.fill();
+        const gx = x + ox, gy = y + oy, hl = Math.max(0, rx - ry), ca = Math.cos(rot) * hl, sa = Math.sin(rot) * hl;
+        // plain capsule: shade underneath (offset lower-right), base on top, spec dot upper-left
+        c.strokeStyle = L.shade[ck]; c.lineWidth = ry * 2;
+        c.beginPath(); c.moveTo(gx - ca + ry * 0.25, gy - sa + ry * 0.35); c.lineTo(gx + ca + ry * 0.25, gy + sa + ry * 0.35); c.stroke();
+        c.strokeStyle = lit ? L.lit[ck] : L.base[ck]; c.lineWidth = ry * 1.7;
+        c.beginPath(); c.moveTo(gx - ca, gy - sa); c.lineTo(gx + ca, gy + sa); c.stroke();
         const gl = L.gl[ck];
-        if (gl > 0.05) { c.fillStyle = `rgba(255,246,232,${(gl * 1.4).toFixed(2)})`; c.beginPath(); c.arc(gx - rx * 0.35, gy - ry * 0.45, Math.max(0.8, 0.012 * R * sc * 0.6), 0, TAU); c.fill(); }
+        if (gl > 0.05) { c.fillStyle = `rgba(255,246,232,${(gl * 1.4).toFixed(2)})`; c.beginPath(); c.arc(gx - rx * 0.35, gy - ry * 0.45, Math.max(0.7, ry * 0.4), 0, TAU); c.fill(); }
       }
     } else if (kind === 1) {
       // torn kimchi leaf: uneven quad, lit edge top-left, pale rib on some; shrinks as it cooks
-      const z = 0.058 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
+      const z = 0.04 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
       const px = [-1, -0.2, 0.3 + qq * 0.6, 1, 0.2, -0.3 - qq * 0.5], py = [-0.4, -0.75 + qq * 0.2, -0.85, 0.2 + (1 - qq) * 0.3, 0.7, 0.8];
       c.fillStyle = lit ? L.lit[q] : L.base[q]; c.beginPath();
       for (let k = 0; k < 6; k++) { const X = x + (px[k] * ca - py[k] * sa) * z, Y = y + (px[k] * sa + py[k] * ca) * z * 0.85; k ? c.lineTo(X, Y) : c.moveTo(X, Y); }
@@ -339,7 +343,7 @@
       const gl = L.gl[q];
       if (gl > 0.05) { c.fillStyle = `rgba(255,240,225,${(gl * 0.9).toFixed(2)})`; c.beginPath(); c.arc(x - z * 0.3, y - z * 0.3, z * 0.16, 0, TAU); c.fill(); }
     } else {
-      const z = 0.029 * R * sc;
+      const z = 0.018 * R * sc;
       if (sh.strip) {
         c.strokeStyle = lit ? L.lit[q] : L.base[q]; c.lineWidth = z * 0.9; c.lineCap = "round";
         const a = s.rot[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * z * 1.5, y - Math.sin(a) * z * 1.2); c.lineTo(x + Math.cos(a) * z * 1.5, y + Math.sin(a) * z * 1.2); c.stroke();
@@ -353,11 +357,11 @@
   function draw(c, s, vw, pose) {
     const R = vw.R, M = s.M, ord = s.ord, key = s.key, sn = Math.sin(K.THETA), cs = Math.cos(K.THETA);
     // sauce bed under the pile: one path, uniform alpha (clump shadow, kills the confetti read)
-    c.fillStyle = "rgba(150,52,22,.45)"; c.beginPath();
+    c.fillStyle = "rgba(120,40,18,.12)"; c.beginPath();
     for (let i = 0; i < M; i++) {
-      if (s.st[i] > 1) continue;
+      if (s.st[i] > 1 || s.kind[i]) continue; // one soft shadow per rice clump
       P(vw, pose, s.u[i], s.v[i], s.h[i] - 0.02 - 0.06 * s.depth[i]);
-      const rr = (s.kind[i] ? 0.065 : 0.095) * R;
+      const rr = 0.045 * R;
       c.moveTo(PX + rr + 2, PY + 2); c.ellipse(PX + 2, PY + 2, rr, rr * 0.7, 0, 0, TAU);
     }
     c.fill();
@@ -422,10 +426,11 @@
       for (let rep = 0; rep < 3; rep++) { const a = hash(i * 3 + rep) * TAU, d = Math.sqrt(hash(i * 7 + rep + 0.5)) * 0.9; pts.push([i, a, d]); }
     }
     pts.sort((p1, p2) => Math.sin(p1[1]) * p1[2] - Math.sin(p2[1]) * p2[2]);
-    const fakeR = r * 0.8; // grains a bit finer than in the wok: the bowl reads as a heap, not stickers
+    const fakeR = r * 1.25; // grains a bit finer than in the wok: the bowl reads as a heap, not stickers
     for (const [i, a, d] of pts) {
       const lift = (1 - d * d) * mh * 1.05, x = cx + Math.cos(a) * d * mr, y = cy + Math.sin(a) * d * mr * ct - lift;
-      drawUnit(c, s, i, x, y, fakeR, 1, false, 0, 1);
+      const ck = s.cook[i]; if (ck > 1.5) s.cook[i] = 1.5; // burnt reads as #5A2A14 specks, not black flies
+      drawUnit(c, s, i, x, y, fakeR, 1, false, 0, 1); s.cook[i] = ck;
     }
     return cy - mh;
   }

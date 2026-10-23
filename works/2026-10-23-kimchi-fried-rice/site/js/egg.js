@@ -270,8 +270,9 @@
       const ru = cu - s.du, rv = cv - s.dv;
       if (Math.hypot(ru, rv) < 1) {
         const fh = K.surf(ru, rv), k = clamp((ch - fh) / 1.4, 0, 1), [x, y] = K.proj(vw, pose, ru, rv, fh);
-        c.fillStyle = `rgba(8,12,18,${0.32 * (1 - 0.6 * k)})`;
-        c.beginPath(); c.ellipse(x, y, ER * R * (1 - 0.35 * k), ER * R * vw.ct * (1 - 0.35 * k), 0, 0, TAU); c.fill();
+        const sr = ER * 0.8 * R * (1 - 0.35 * k), g = c.createRadialGradient(0, 0, 0, 0, 0, sr);
+        g.addColorStop(0, `rgba(8,12,18,${0.18 * (1 - 0.5 * k)})`); g.addColorStop(0.55, `rgba(8,12,18,${0.12 * (1 - 0.5 * k)})`); g.addColorStop(1, "rgba(8,12,18,0)");
+        c.save(); c.translate(x, y); c.scale(1, vw.ct); c.fillStyle = g; c.beginPath(); c.arc(0, 0, sr, 0, TAU); c.fill(); c.restore();
       }
     }
     let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
@@ -304,10 +305,24 @@
         c.strokeStyle = K.rgb(K.col.eggEdge(cbm + 0.35), la * 0.8); c.lineWidth = 1.2; c.stroke();
       }
     }
-    if (!folded && !torn && vis > 0.2) { // smooth silhouette under the facets
-      let set = 0, cb = 0; for (const p of P) { set += setOf(p); cb += p.cb; } set /= P.length; cb /= P.length;
-      const col = topUp ? mix(WOK, K.col.eggWhite(set * 0.75), 0.36 + 0.64 * set) : mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6);
-      ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(col, 0.95); c.fill();
+    const smoothBody = !folded && !torn;
+    if (smoothBody) {
+      // seen edge-on: a side band gives the white its thickness
+      if (abs && vis < 0.6) { ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0.04 * R * sc * (1 - vis / 0.6)); c.fillStyle = "#EADFC8"; c.fill(); }
+      if (topUp) { // the white: one smooth shape, clear (raw) -> #FFFDF6 with an #EADFC8 shadow toward the rim
+        let sc0 = 0, n0 = 0, sr = 0, nr = 0, rad = 1;
+        for (const p of P) { if (p.rim < 0.45) { sc0 += setOf(p); n0++; } else if (p.rim > 0.8) { sr += setOf(p); nr++; } }
+        sc0 /= n0; sr /= nr;
+        const xc = X[s.centre], yc = Y[s.centre];
+        for (const i of s.ring) rad = Math.max(rad, Math.hypot(X[i] - xc, Y[i] - yc));
+        const g = c.createRadialGradient(xc - 0.18 * rad, yc - 0.2 * rad, 0, xc, yc, rad * 1.05);
+        const wc = (k, a, sh) => `rgba(${lerp(255, lerp(255, 234, sh), k) | 0},${lerp(255, lerp(253, 223, sh), k) | 0},${lerp(255, lerp(246, 200, sh), k) | 0},${0.35 + 0.65 * a})`;
+        g.addColorStop(0, wc(sc0, sc0, 0)); g.addColorStop(0.6, wc((sc0 + sr) / 2, (sc0 + sr) / 2, 0.15)); g.addColorStop(1, wc(sr, sr, 1));
+        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = g; c.fill();
+      } else {
+        let cb = 0; for (const p of P) cb += p.cb; cb /= P.length;
+        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6), 0.95); c.fill();
+      }
     }
     // body: painter-sorted triangles, flat shaded, the winding picks the face
     TL.length = 0;
@@ -330,14 +345,18 @@
         col = mix(WOK, K.col.eggUnder(cb), 0.45 + 0.55 * clamp(cb / 0.6, 0, 1));
         col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75).map((x) => x * (0.92 + 0.16 * nz));
       }
-      TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade) });
+      TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade), top });
     }
     TL.sort((p, q) => p.z - q.z);
     c.lineWidth = 1; c.lineJoin = "round";
+    c.save();
+    if (smoothBody) { ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.clip(); } // no straight polygon edges on the silhouette
     for (const t of TL) {
+      if (smoothBody && topUp && t.top) continue;
       c.fillStyle = c.strokeStyle = t.f;
       c.beginPath(); c.moveTo(X[t.i], Y[t.i]); c.lineTo(X[t.j], Y[t.j]); c.lineTo(X[t.k], Y[t.k]); c.closePath(); c.fill(); c.stroke();
     }
+    c.restore();
     const y0 = s.P[s.centre], yx = X[s.centre] + s.yolk.x * R, yy = Y[s.centre] - s.yolk.y * R * ctv;
     if (!topUp) {
       // browned underside: bubble craters + the yolk bump
@@ -352,8 +371,9 @@
     } else {
       const set = setOf(y0);
       if (set < 0.85) { // raw whites are glossy
-        c.fillStyle = `rgba(255,255,255,${0.35 * (1 - set)})`;
+        c.fillStyle = `rgba(255,255,255,${0.6 * (1 - set)})`;
         c.beginPath(); c.ellipse(yx - 0.16 * R * sc, yy - 0.06 * R * sc, 0.09 * R * sc, 0.035 * R * sc * vis, -0.3, 0, TAU); c.fill();
+        c.beginPath(); c.ellipse(yx + 0.15 * R * sc, yy + 0.09 * R * sc, 0.05 * R * sc, 0.018 * R * sc * vis, -0.3, 0, TAU); c.fill();
       }
       if (!res.burst || s.phase === "air" || s.phase === "land") drawYolk(c, yx, yy - (folded ? 0.03 * R : 0), 0.118 * R * sc * (folded ? 0.8 : 1), vis, s.cookTop, s.su, s.sv);
       else { // deflated yolk skin

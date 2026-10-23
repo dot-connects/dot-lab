@@ -44,7 +44,7 @@
     wg.addColorStop(0, "#15181B"); wg.addColorStop(0.35, "#2A3440"); wg.addColorStop(0.7, "#1E2226"); wg.addColorStop(1, "#121416");
     c.fillStyle = wg; wall(); c.fill();
     const glow = c.createLinearGradient(0, cy, 0, cy + R * ct + D * 1.6);
-    glow.addColorStop(0, "rgba(255,110,40,0)"); glow.addColorStop(1, "rgba(255,110,40,.42)");
+    glow.addColorStop(0, "rgba(255,110,40,0)"); glow.addColorStop(0.6, "rgba(255,110,40,0)"); glow.addColorStop(1, "rgba(255,110,40,.15)");
     c.fillStyle = glow; wall(); c.fill();
     // rim ring
     c.fillStyle = "#3a434d"; c.beginPath(); c.ellipse(cx, cy, R * 1.045, R * 1.045 * ct, 0, 0, TAU); c.fill();
@@ -111,8 +111,8 @@
       c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy * lean, wa.w, wa.oy * lean + (wa.h - wa.oy));
       if (fire) { // the floor glows where food is on the metal
         c.save(); c.beginPath(); c.ellipse(cx, cy, vw.R * 0.97, vw.R * 0.97 * vw.ct * lean, 0, 0, TAU); c.clip();
-        const g = c.createRadialGradient(cx, cy + vw.D * 0.5, 0, cx, cy + vw.D * 0.5, vw.R * 0.62);
-        g.addColorStop(0, `rgba(255,110,40,${0.08 + 0.3 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
+        const g = c.createRadialGradient(cx, cy + vw.D * 0.5, vw.R * 0.05, cx, cy + vw.D * 0.5, vw.R * 0.8);
+        g.addColorStop(0, `rgba(255,110,40,${0.05 + 0.15 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
         c.fillStyle = g; c.fillRect(cx - vw.R, cy - vw.R, vw.R * 2, vw.R * 2); c.restore();
       }
     },

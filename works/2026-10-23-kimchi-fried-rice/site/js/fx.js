@@ -79,10 +79,18 @@
         f1: rnd(7, 10), f2: rnd(13, 19), p1: rnd(0, TAU), p2: rnd(0, TAU) });
     }
     tongues.sort((p, q) => Math.sin(p.a) - Math.sin(q.a)); // far first
+    // near-wall tongues: spread along the lower arc of the wok's outer wall (bezier t), gap where the handle neck is
+    const near = [];
+    for (let i = 0; i < 16; i++) {
+      let t = 0.1 + (0.8 * (i + rnd(0.15, 0.85))) / 16;
+      if (Math.abs(t - 0.5) < 0.05) t += t < 0.5 ? -0.05 : 0.05;
+      near.push({ t, size: rnd(0.65, 1.15), spr: i % 3, flip: Math.random() < 0.5,
+        f1: rnd(8, 11), f2: rnd(14, 20), p1: rnd(0, TAU), p2: rnd(0, TAU) });
+    }
     const licks = [];
     for (let i = 0; i < 6; i++) licks.push({ phi: Math.PI * (0.18 + (0.64 * i) / 5) + rnd(-0.1, 0.1), size: rnd(0.6, 1.25),
       spr: i % 2, f1: rnd(9, 13), p1: rnd(0, TAU), delay: rnd(0, 0.3), lean: rnd(-0.25, 0.25) });
-    return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, licks, parts: [], spat: [],
+    return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, near, licks, parts: [], spat: [],
       shake: { x: 0, y: 0 }, amp: 0, haze: 0, rimDrawn: false };
   }
 
@@ -116,6 +124,7 @@
     s.flareLevel = s.flare;
     if (s.oil && (s.oil.t += dt) > s.oil.dur) s.oil = null;
     s.rimDrawn = false;
+    s.burner = false;
     // shake: decaying wobble, two incommensurate sines so it never looks like a loop
     s.amp *= Math.exp(-dt * 11);
     if (s.amp < 0.05) s.amp = 0;
@@ -162,6 +171,7 @@
 
   /* burner ring under the wok: drawn before the wok body, so only what rises past its wall shows */
   function drawBehind(c, s, vw) {
+    s.burner = true;
     const S = sprites(), R = vw.R, t = s.t, f = s.flare;
     const by = vw.cy + RING.y * R;
     for (const q of s.tongues) {
@@ -170,6 +180,21 @@
       const h = R * RING.ht * q.size * flick * (1 + 0.85 * f), w = R * RING.wd * q.size * (1 + 0.2 * f) * (1.1 - 0.15 * flick);
       const sway = 0.06 * Math.sin(q.f2 * 0.5 * t + q.p1);
       tongue(c, S.burner[q.spr], vw.cx + ca * RING.rx * R, by + sa * RING.ry * R, w, h, ca * RING.lean * (1 - 0.15 * f) + sway, q.flip, 1);
+    }
+    c.globalAlpha = 1;
+  }
+
+  /* tongues licking up the near wall from below: in front of the wall, under the rim line (the wall silhouette
+     is stage.js's bezier: rim corners at x = +-1.04R, control depth B) */
+  function drawNear(c, s, vw) {
+    const S = sprites(), R = vw.R, t = s.t, f = s.flare, B = R * vw.ct * 1.25 + vw.D * 1.6;
+    for (const q of s.near) {
+      const k = q.t, m = 1 - k;
+      const x = vw.cx + 1.04 * R * (-m * m * m - 3 * m * m * k + 3 * m * k * k + k * k * k);
+      const y = vw.cy + 3 * B * k * m + R * 0.05;
+      const flick = 0.8 + 0.13 * Math.sin(q.f1 * t + q.p1) + 0.08 * Math.sin(q.f2 * t + q.p2);
+      const h = R * 0.3 * q.size * flick * (1 + 0.7 * f), w = R * 0.15 * q.size * (1 + 0.15 * f);
+      tongue(c, S.burner[q.spr], x, y, w, h, ((x - vw.cx) / R) * 0.55, q.flip, 1);
     }
     c.globalAlpha = 1;
   }
@@ -194,6 +219,7 @@
   function drawFront(c, s, vw, pose) {
     const S = sprites(), R = vw.R;
     if (!s.rimDrawn) drawRim(c, s, vw, pose);
+    if (s.burner !== false) drawNear(c, s, vw);
     if (s.oil) {
       const k = s.oil.t / s.oil.dur, e = (k < 0.2 ? K.smooth(k / 0.2) : 1 - K.smooth((k - 0.2) / 0.8)) * s.oil.k;
       const [x, y] = K.proj(vw, pose, 0, 0.05, 0.1);

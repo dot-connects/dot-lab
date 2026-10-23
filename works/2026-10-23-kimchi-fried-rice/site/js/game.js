@@ -132,7 +132,7 @@
       if (g.started && g.phaseT >= RICE_T && (K.Rice.airborne(g.rice) === 0 || g.phaseT > RICE_T + 1)) {
         g.maxGap = Math.max(g.maxGap, RICE_T - g.lastRiceFlick);
         g.riceStats = K.Rice.stats(g.rice);
-        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); K.Audio.ding();
+        g.phase = "egg"; g.phaseT = 0; g.egg = K.Egg.create(); g.toast = null; K.Audio.ding();
       }
     } else if (g.phase === "egg") {
       K.Egg.update(g.egg, dt, ctx);
@@ -191,9 +191,9 @@
     else if (o.stuck) { yolk = 12; eggLines.push(["계란을 안 던짐 · 바닥 탐", -28]); }
     else {
       const d = Math.abs(o.angleErr || 0);
-      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${ang}° 돎 (완벽 180°)`, -12]); }
+      if (o.folded) { flip = 10; eggLines.push([`반으로 접힘 · ${(o.angleErr || 0) > 0 ? "살살" : "조금 세게"}`, -12]); }
       else if (o.flipped && d <= 12) flip = 22;
-      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기 ${ang}° (완벽 ±12°)`, flip - 22]); }
+      else if (o.flipped) { flip = Math.round(22 - 0.25 * (d - 12)); eggLines.push([`뒤집기가 ${(o.angleErr || 0) > 0 ? "더 돎 · 살살" : "덜 돎 · 조금 세게"}`, flip - 22]); }
       else { flip = 6; eggLines.push([`안 뒤집힘 · ${o.rot > Math.PI ? "살살" : "조금 세게"}`, -16]); }
       if (o.burst) eggLines.push([`노른자 터짐 · 세기 ${(o.strength || 0).toFixed(1)} (기준 1.2)`, -12]);
       else if (o.torn) { yolk = 6; eggLines.push(["흰자 찢어짐 · 덜 익었을 때 던짐", -6]); }
@@ -267,7 +267,7 @@
       if (k >= 1) g.toast = null;
       else {
         const s = k < 0.28 ? K.easeOutBack(k / 0.28) : 1, a = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
-        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.24); c.rotate(-0.035); c.scale(s, s);
+        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.2); c.rotate(-0.035); c.scale(s, s);
         strokeText(g.toast.text, 0, 0, 32, g.toast.color); c.restore();
       }
     }
@@ -281,6 +281,7 @@
       c.fillStyle = "rgba(31,42,51,.72)"; c.beginPath(); c.arc(lx, ly, lr, 0, TAU); c.fill();
       c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1; c.beginPath(); c.arc(lx, ly, lr * 0.35, 0, TAU); c.stroke();
       c.fillStyle = "#a3e635"; c.beginPath(); c.arc(lx - t.u * lr * 0.6, ly + t.v * lr * 0.6, lr * 0.28, 0, TAU); c.fill();
+      c.font = '13px "Jua"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText("기울기", lx, ly - lr - 8);
     }
   }
 
