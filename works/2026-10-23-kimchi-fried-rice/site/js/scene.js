@@ -203,10 +203,15 @@
     for (const p of W.puffs) {
       const u = p.userData; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4); u.z = rnd(-0.3, 0.3); }
       const k = u.t / 2; p.position.set((u.x || 0) + Math.sin(t + u.t * 3) * 0.05, 0.25 + k * 1.1, u.z || 0); p.scale.setScalar(0.25 + k * 0.6);
-      p.material.opacity = o.steam * Math.sin(Math.PI * k);
+      p.material.opacity = (u.big && k < 0.5 ? Math.max(o.steam, 0.55 * u.big) : o.steam) * Math.sin(Math.PI * k); if (k >= 0.5) u.big = 0;
+      if (u.big) p.scale.setScalar((0.25 + k * 0.6) * (1 + 0.6 * u.big));
       p.material.color.setRGB(1 - o.smoke * 0.55, 1 - o.smoke * 0.6, 1 - o.smoke * 0.62);
     }
-    W.rimGlow.material.opacity = o.rim;
+    W.rimGlow.material.opacity = o.rim; if (o.rimCol) W.rimGlow.material.color.copy(o.rimCol);
+  };
+  // a puff of white steam from the middle of the pile: "the rice is ready for the next toss"
+  W.puffBurst = function (big) {
+    let c = 0; for (const p of W.puffs) { const u = p.userData; u.t = rnd(0, 0.15); u.x = rnd(-0.18, 0.18); u.z = rnd(-0.15, 0.15); u.big = big; if (++c >= 4) break; }
   };
   W.sparkBurst = function (n) {
     let c = 0; for (const sp of W.sparks) { const u = sp.userData; if (u.life > 0) continue;

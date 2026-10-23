@@ -50,7 +50,7 @@
     E.yolk = new T.Mesh(new T.SphereGeometry(0.13, 40, 20, 0, TAU, 0, Math.PI / 2), E.yolkMat); E.yolk.castShadow = true; g.add(E.yolk);
     // oil sheen (adds reflections only), fizz around the egg, spatter streaks
     E.oil = new T.Mesh(W.polarDisc((th) => ER(th) * 1.2, 6, 64, (t, th, r) => surf(r * r) + 0.003, () => new T.Color(0, 0, 0)),
-      new T.MeshStandardMaterial({ color: 0x000000, roughness: 0.06, metalness: 0, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: 0.45 }));
+      new T.MeshStandardMaterial({ color: 0x000000, roughness: 0.06, metalness: 0, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: S.phys ? 0.45 : 0.15 }));
     W.wok.add(E.oil);
     E.fizz = new T.InstancedMesh(new T.SphereGeometry(1, 8, 4, 0, TAU, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: lin("#3a3226"), roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 }), 60);
     E.fizz.instanceMatrix.setUsage(T.DynamicDrawUsage); W.wok.add(E.fizz);

@@ -206,7 +206,7 @@
       else dummy.rotation.set(0.2 * Math.sin(F.rx[i]), F.ry[i], 0.2 * Math.sin(F.rz[i]));
       dummy.updateMatrix(); m.setMatrixAt(mi, dummy.matrix);
       if (colorPass) {
-        const ck = F.cook[i] + F.tint[i], b = (ck * 25) | 0;
+        const ck = F.cook[i] + F.tint[i] + (k === 0 ? F.fireTint || 0 : 0), b = (ck * 25) | 0; // 불맛 shows: the rice darkens toward caramel
         if (b !== F.cb[i]) { F.cb[i] = b; ramp(k === 0 ? RAMP : k === 1 ? KRAMP : PRAMP, ck, _c); if (k === 2 && F.tint[i] > 0.04) _c.lerp(lin("#d8efb0"), 0.6); m.setColorAt(mi, _c); m.instanceColor.needsUpdate = true; }
       }
     }

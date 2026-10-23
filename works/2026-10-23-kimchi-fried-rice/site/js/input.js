@@ -35,7 +35,7 @@
       return tilt;
     },
   });
-  function demoTilt(u, v) { if (!started) { tu = u; tv = v; } }
+  function demoTilt(u, v) { tu = u; tv = v; } // watch mode and test scripts steer the wok
 
   /* ---------- flick out ---------- */
   function emit(f) {

@@ -4,16 +4,16 @@
   const K = (window.KFR = window.KFR || {});
   K.COPY = {
     shop: "00반점", shopSub: "영수증",
-    hook: "폰이 웍이에요.", how: "<b>위로 휙</b> 튕기면 볶아지고, <b>기울이면</b> 웍이 기울어요", go: "불 켜기", watchBtn: "먼저 구경하기",
+    hook: "12초 웍질, 몇 점 나올까?", how: "폰을 <b>위로 휙</b> → 밥이 뜬다<br><b>기울이면</b> → 웍이 따라 간다", go: "불 켜!", watchBtn: "구경만 할래",
     tipMotion: "폰을 위로 휙! 튕겨서 볶기", tipTouch: "화면을 위로 휙! 쓸어 올려서 볶기", watching: "구경 중…",
-    perfect: "불맛!", perfectSub: "+불맛", good: "좋아", early: "너무 빨라", earlySub: "아직 덜 볶였어", late: "늦었어", lateSub: "바닥이 눌어", tooHard: "너무 세!",
-    spill: "흘렸다!", scorch: "탄다 탄다!", comboLost: "연속 끊김",
-    combo: [[3, "웍질 좀 하네"], [5, "불맛 장인 모드"], [8, "중국집 사장님 등장"]],
+    perfect: "불맛 터짐!", perfectSub: "+불맛", good: "괜찮은데?", early: "아직 아니야", earlySub: "설익음", late: "눌었다…", lateSub: "바닥이 눌어붙음", tooHard: "너무 세!", goodChip: "고슬",
+    spill: "바닥에 밥!", scorch: "탄다 탄다!", comboLost: "연속 끊김",
+    combo: [[2, "불맛 UP"], [3, "웍질 장인"], [5, "불의 지배자"], [7, "웍신(神)"]],
     plated: "볶음밥 완성!",
     eggTip: (o) => `계란 ${o === "half" ? "반숙" : "완숙"} · 흔들어서 스르륵 미끄러지면 휙!`,
     eggStuck: "아직 붙어 있어", eggSlides: "스르륵~", eggBurning: "계란 탄다!",
     eggPerfect: "완벽하게 뒤집었다", eggGood: "뒤집었다", eggWall: "벽에 걸렸다", eggFold: "반으로 접혔다", eggBurst: "노른자 터짐!", eggOut: "계란이 바닥에…",
-    tiers: [[92, "불맛 장인"], [80, "동네 중국집 에이스"], [62, "자취 3년 차"], [0, "엄마 부르기"]],
+    tiers: [[92, "불맛 장인"], [80, "동네 중국집 에이스"], [62, "자취 3년 차"], [0, "엄마 불러와"]],
     again: "한 번 더", share: "자랑하기",
   };
 })();

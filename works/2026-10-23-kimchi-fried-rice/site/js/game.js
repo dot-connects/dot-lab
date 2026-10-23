@@ -70,10 +70,10 @@
       // readiness: how long the food has been back on the metal since the last toss came down
       const back = F.toss && F.toss.done ? g.t - F.lastLand : -1;
       g.maxGap = Math.max(g.maxGap, g.t - g.lastFlick);
-      const grade = back < 0.15 ? "early" : back < 0.3 ? "good" : back <= 0.95 ? "perfect" : back <= 1.45 ? "good" : "late";
-      score(grade, s);
+      const w = readyWin(), grade = back < 0 || back < w.open - 0.15 ? "early" : back < w.open ? "good" : back <= w.close ? "perfect" : back <= w.close + 0.5 ? "good" : "late";
+      score(grade, s, back < 0 ? 0 : 1 - (Math.abs(back - w.peak) / (w.close - w.open)) * 2);
     }
-    g.lastFlick = g.t;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false;
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
     F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
@@ -82,19 +82,26 @@
     if (s > 1.55) word(C.tooHard, "bad");
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
-  function score(grade, s) {
+  /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
+  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12); return { open: 0.3 + sh, peak: 0.62 + sh, close: 0.95 + sh }; }
+  function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
     if (grade === "perfect") {
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
-      const add = 2 * hm * (1 + Math.min(0.5, 0.1 * (g.combo - 1)));
+      const add = 2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.5, 0.1 * (g.combo - 1))); // dead centre pays most
       g.fire = Math.min(FIRE_MAX, g.fire + add);
-      g.hei = 1; W.sparkBurst(10 + Math.min(20, g.combo * 3)); K.Audio.flare();
+      g.hei = 1 + Math.min(0.6, 0.15 * (g.combo - 1)); W.sparkBurst(10 + Math.min(20, g.combo * 3)); K.Audio.flare(); g.punch = 1; ember();
+      try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
-      word(C.perfect, "great", title ? title[1] : C.perfectSub);
+      word(C.perfect, "great", title && g.combo >= 2 ? title[1] : C.perfectSub);
+      if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
-      if (grade === "good") { g.fire = Math.min(FIRE_MAX, g.fire + 0.8 * hm); g.hei = Math.max(g.hei, 0.35); word(C.good, "ok"); }
+      if (grade === "good") { // so-so keeps the combo, fills a little
+        g.fire = Math.min(FIRE_MAX, g.fire + 0.6 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
+        gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`; K.Food.fireTint = (g.fire / FIRE_MAX) * 0.22; return;
+      }
       else if (grade === "early") word(C.early, "meh", C.earlySub);
       else word(C.late, "bad", C.lateSub);
       if (g.combo >= 3) subEl.textContent = C.comboLost;
@@ -102,6 +109,15 @@
     }
     gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`;
     gaugeEl.classList.toggle("hot", g.combo >= 3);
+    K.Food.fireTint = (g.fire / FIRE_MAX) * 0.22;
+  }
+  /* an ember flies from the flame into the 불맛 gauge */
+  function ember() {
+    const e = document.createElement("i"); e.className = "ember"; app.appendChild(e);
+    const r = gaugeEl.getBoundingClientRect(), a = app.getBoundingClientRect();
+    e.style.left = a.width * 0.5 + "px"; e.style.top = a.height * 0.3 + "px";
+    requestAnimationFrame(() => requestAnimationFrame(() => { e.style.left = r.left - a.left + r.width / 2 + "px"; e.style.top = r.top - a.top + r.height * (1 - g.fire / FIRE_MAX) + "px"; e.style.opacity = "0.2"; }));
+    setTimeout(() => { e.remove(); gaugeEl.classList.remove("pulse"); void gaugeEl.offsetWidth; gaugeEl.classList.add("pulse"); }, 400);
   }
   function eggFlick(f) {
     const E = K.Egg;
@@ -116,7 +132,7 @@
   function start(auto) {
     g = newGame(auto);
     if (K.Egg.ph !== "off") K.Egg.hide();
-    K.Food.reset(); W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
+    K.Food.reset(); K.Food.fireTint = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
     timerEl.hidden = false; gaugeEl.hidden = false;
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
@@ -190,6 +206,7 @@
     kim.instanceMatrix.needsUpdate = ses.instanceMatrix.needsUpdate = true;
   }
 
+  const rimCol = new T.Color(), RC = { raw: K.lin("#ffffff"), orange: K.lin("#ff7a1a"), gold: K.lin("#ffd23a"), red: K.lin("#e0261a"), dark: K.lin("#2a120a") };
   /* ---------- the step (fixed 1/60) ---------- */
   function step(dt) {
     g.t += dt; g.phT += dt;
@@ -209,13 +226,17 @@
     let rim = 0, steam = 0.12, smoke = 0;
     if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
       const back = g.t - F.lastLand;
-      rim = back < 0.3 ? smooth(back / 0.3) * 0.6 : back <= 0.95 ? 0.6 : Math.max(0, 0.6 - (back - 0.95) * 0.9);
+      const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
+      if (back < w.open) { rim = 0.12; rimCol.copy(RC.raw); }
+      else if (back <= w.close) { const kk = 1 - (Math.abs(back - w.peak) / (w.close - w.open)) * 2; rimCol.copy(RC.orange).lerp(RC.gold, clamp(kk, 0, 1)); rim = 0.55 + 0.4 * clamp(kk, 0, 1); if (!g.puffed) { g.puffed = true; W.puffBurst(1 + big); } }
+      else if (back <= w.close + 0.5) { rimCol.copy(RC.red); rim = 0.7; }
+      else { rimCol.copy(RC.red).lerp(RC.dark, clamp((back - w.close - 0.5) / 0.4, 0, 1)); rim = 0.5; }
       const b = F.bottom(); smoke = clamp((b.scorch - 0.04) * 6, 0, 1); steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
     if (g.ph === "egg") steam = 0.1;
     g.hei = Math.max(0, g.hei - dt * 2.2);
-    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, rim });
+    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, rim, rimCol });
     K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
@@ -299,7 +320,7 @@
     if (st.raw > 0.15) parts.push(`덜 익은 밥 ${Math.round(st.raw * 100)}%`);
     if (st.spill > 0.01) parts.push(`흘린 밥 ${Math.round(st.spill * 100)}%`);
     if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
-    if (g.maxCombo >= 3) parts.push(`불맛 ${g.maxCombo}연속`);
+    parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
     if (s.r && s.r.burst) parts.push("노른자 터짐");
     else if (s.r && !s.r.fold) parts.push(`계란 ${s.r.angle}°`);
     return parts.join(" · ");
@@ -353,6 +374,7 @@
     _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
     _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
+    g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)); if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
   }
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
