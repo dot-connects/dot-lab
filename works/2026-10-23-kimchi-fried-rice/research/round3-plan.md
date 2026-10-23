@@ -61,3 +61,6 @@ Not in scope: new modes, characters, accounts/publishing (manifest stays draft).
   delay can be cut if that feels slow).
 - Egg take-out later uses the same move: tilt right, slide the egg onto this plate.
 - Split vote: game wanted no ladle (adds time); chef + motion kept two short automatic pats.
+
+- Operator 10-24 after the mockup: plating is AUTOMATIC (no player tilt, no plating score) and the plate comes from the
+  LEFT. Food must leave over the low lip (it slid through the wok wall in the first mockup).
