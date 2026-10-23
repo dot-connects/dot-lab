@@ -290,7 +290,7 @@
         const win = g.order.win;
         if (e.cookBottom >= win[0]) { msg = e.cookBottom > win[1] ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 뒤집어!"; col = e.cookBottom > win[1] ? "#E8481C" : "#2BB673"; }
         if (e.cookBottom >= win[0] && !g.eggCued) { g.eggCued = true; g.rimFlash = 1; K.Audio.ding(); }
-      } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.1 ? "어어…!" : "기울여서 받아!";
+      } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.35 ? "어어…!" : "기울여서 받아!";
       else if (!o.done && e.phase !== "splat") msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : o.folded ? "접혔다…" : "앗…") : "아…";
       else msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : "앗…") : "아…";
       const k = clamp((g.t % 100) * 4, 0, 1);

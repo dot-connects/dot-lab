@@ -131,7 +131,7 @@
       vu: (cu - w[0]) / Tp + 0.5 * s.su + 0.45 * tl.u - 0.15 * Du + WOK_CARRY * (pose.vdu || 0),
       vv: (cv - w[1]) / Tp + 0.5 * s.sv + 0.45 * tl.v - 0.15 * Dv + WOK_CARRY * (pose.vdv || 0),
       vh, rot,
-      soft: 1 - 0.6 * clamp(s.cookBottom / 1.2, 0, 1), splat: st > 1.4 && f.splatOK === true, decided: false, miss: false, fell: false, T: 1,
+      soft: 1 - 0.6 * clamp(s.cookBottom / 1.2, 0, 1), splat: st > 1.55 && f.splatOK === true, decided: false, miss: false, fell: false, T: 1,
     };
     for (const p of s.P) {
       const ru = p.u - cu, rv = p.v - cv;
@@ -148,7 +148,7 @@
     const A = s.air, x = t / A.T, th = A.th0 * Math.max(0, 1 - x) + A.rot * fz(x), sw = Math.sin(PI * Math.min(1, x)), soft = A.soft;
     const cu = A.u0 + A.vu * t, cv = A.v0 + A.vv * t, ch = A.h0 + A.vh * t - 0.5 * K.G * t * t, vhn = A.vh - K.G * t;
     // too strong: the egg shudders at the apex (the burst warning), ~±.12 s around it
-    const ta = (t - A.vh / K.G) / 0.12, shud = A.st > 1.1 ? clamp((A.st - 1.1) / 0.3, 0.4, 1) * Math.exp(-ta * ta) : 0;
+    const ta = (t - A.vh / K.G) / 0.12, shud = A.st > 1.35 ? clamp((A.st - 1.35) / 0.25, 0.4, 1) * Math.exp(-ta * ta) : 0;
     for (const p of s.P) {
       // trailing edge (d < 0) lags the spin, edges cup against the air and flutter
       const lag = 0.6 * soft * sw * Math.pow(clamp(0.25 - p.d / ER, 0, 1.25), 1.4);
@@ -171,11 +171,11 @@
     const A = s.air, cook = s.cookAtToss, rot = s.rot;
     const r = mod(rot, TAU), err = (Math.abs(r - PI) * 180) / PI, q = (mod(rot, PI) * 180) / PI;
     // tear: only an underdone white hit hard. Torn wins over folded everywhere.
-    const torn = cook < 0.75 && impact > 3.6 + 1.6 * cook;
+    const torn = cook < 0.45 && impact > 4.3 + 2 * cook; // a real wrist flick reads 1.1–1.4: only a raw white tears
     // fold: only a near-vertical landing of a still-soft white buckles; any other angle drapes onto its nearest face
     const folded = !torn && Math.abs(q - 90) < 35 && cook < 1.0;
     const base = Math.round(rot / PI) * PI, flipped = !folded && mod(Math.round(rot / PI), 2) === 1;
-    const burst = A.st > 1.2 || impact > 5.6 - (cook < 0.8 ? 0.6 : 0);
+    const burst = A.st > 1.5 || impact > 5.8 - (cook < 0.8 ? 0.4 : 0);
     s.res = { caught: true, flipped, folded, torn, burst, rot, angleErr: Math.round(err) * (r > PI ? 1 : -1), angle: Math.round((rot * 180) / PI), impact, strength: A.st,
       grade: flipped ? (err <= 12 ? "완벽" : err <= 45 ? "좋음" : "기움") : folded ? "접힘" : "날면", u: ru, v: rv,
       fs: r < PI ? 1 : -1 }; // fold: the half (sign of d) that ends on top

@@ -254,14 +254,16 @@
     if (s.burner !== false) drawNear(c, s, vw);
     if (s.oil) {
       const k = s.oil.t / s.oil.dur, e = (k < 0.2 ? K.smooth(k / 0.2) : 1 - K.smooth((k - 0.2) / 0.8)) * s.oil.k;
-      const [x, y] = K.proj(vw, pose, 0, 0.05, 0.1);
+      // the oil mist catches on the burner flame beyond the far lip: the flare rises behind the rim, never in the food
+      const [x, y] = K.proj(vw, pose, 0, 0.98, K.RIM_H + 0.05);
       c.globalCompositeOperation = "lighter";
       const gr = R * 1.05 * e;
       c.globalAlpha = 0.7; c.drawImage(S.glow, x - gr, y - gr * 0.8, gr * 2, gr * 1.6);
       c.globalCompositeOperation = "source-over";
       for (let i = 0; i < 6; i++) { // outer tongues first, the tall centre one last
-        const a = i * 2.4, rr = i === 5 ? 0 : 0.16 + 0.06 * (i % 2);
-        const [tx, ty] = K.proj(vw, pose, Math.cos(a) * rr, Math.sin(a) * rr * 0.8 + 0.05, 0.12);
+        const a = (i - 2.5) * 0.17 + Math.PI / 2; // tongues along the far rim arc
+        const [tx, ty] = K.proj(vw, pose, Math.cos(a) * 1.02, Math.sin(a) * 1.02, K.RIM_H);
+        const rr = i === 5 ? 0 : 0.1;
         const sz = (i === 5 ? 1.25 : 0.8) * (0.9 + 0.12 * Math.sin(i * 1.7 + s.oil.t * 30));
         tongue(c, S.lick[i % 2], tx, ty, R * 0.5 * e * sz, R * 0.8 * e * sz, Math.cos(a) * rr * 2.2, i % 2 === 0, Math.min(1, e * 1.4));
       }

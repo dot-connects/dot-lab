@@ -139,7 +139,7 @@
     }
     // centre flight: rise above the rim from strength + snap, lands on the -d half (too strong: past the far rim)
     const rise = 0.45 * Math.pow(str, 0.7) * (0.8 + 0.4 * snap); // apex above the rim
-    const aLand = 0.5 - 0.65 * Math.min(str, 1) - 1.1 * Math.max(0, str - 1); // centre landing along d (wok-local)
+    const aLand = 0.5 - 0.65 * Math.min(str, 1) - 0.4 * Math.max(0, str - 1); // centre landing along d (wok-local)
     // scatter: a lazy snap sprays the grains, an over-hard flick sprays them past the rim
     const nz = 0.2 + 0.4 * (1 - snap) + 0.6 * Math.max(0, str - 1.1);
     s.sheets.push({ id, tl: t + SNAP_T, du, dv, rise, aLand, str, snap, nz });
@@ -158,8 +158,9 @@
     const rise = Math.max(0.08, K.RIM_H + sh.rise * KH[k] * (0.55 + 0.75 * r) * (1 + (Math.random() - 0.5) * nz) - s.h[i]);
     const vh = Math.sqrt(2 * G * rise), T = vh / G + Math.sqrt((2 * Math.max(0.05, s.h[i] + rise - 0.22)) / G);
     const a0 = s.u[i] * du + s.v[i] * dv, b0 = -s.u[i] * dv + s.v[i] * du;
-    const aT = sh.aLand * KD[k] - 0.25 * (r - 0.5) + (Math.random() - 0.5) * nz * 0.6;
-    const bT = b0 * (0.5 + 0.4 * Math.random()) + (Math.random() - 0.5) * nz * 0.6;
+    // never back over the handle: a cook's toss comes home short of the near rim; an over-hard one sprays sideways
+    const aT = Math.max(-0.72, sh.aLand * KD[k] - 0.25 * (r - 0.5) + (Math.random() - 0.5) * nz * 0.6);
+    const bT = b0 * (0.5 + 0.4 * Math.random()) + (Math.random() - 0.5) * nz * 1.2;
     const va = (aT - a0) / T, vb = (bT - b0) / T;
     s.vu[i] = du * va - dv * vb; s.vv[i] = dv * va + du * vb; s.vh[i] = vh;
     s.spin[i] = (4 + 6 * Math.random()) * (Math.random() < 0.5 ? -1 : 1);
