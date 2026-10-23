@@ -21,24 +21,53 @@
   /* flame heat on the floor: hottest at the centre, cool at the rim */
   K.heat = (u, v) => Math.max(0.05, 1.18 - 0.65 * (u * u + v * v));
 
+  /* any aspect ratio: the wok is sized by the tighter of width and height, the HUD band keeps ~17% at the top */
   K.view = function (W, H) {
-    const R = W * 0.43, ct = Math.cos(K.THETA), st = Math.sin(K.THETA);
-    return { W, H, R, ct, st, cx: W / 2, cy: H * 0.47, D: 0.35 * R * st };
+    const R = Math.min(W * 0.43, H * 0.25), ct = Math.cos(K.THETA), st = Math.sin(K.THETA);
+    const top = Math.max(H * 0.17, 96), cy = Math.min(H * 0.47, top + R * 1.05 + (H - top - R * 2.4) * 0.35);
+    const vcy = Math.max(cy, top + R * ct + R * 0.6);
+    // height exaggeration fitted to the room above the wok, so a toss never flies into the HUD on short screens
+    const hx = K.clamp((vcy - R * ct - top - R * 0.1) / (R * 0.7) - st, 0.3, K.H_EXAG);
+    return { W, H, R, ct, st, cx: W / 2, cy: vcy, D: 0.35 * R * st, top, hx };
   };
-  K.restPose = () => ({ du: 0, dv: 0, lift: 0, lean: 0, t: 0 });
+  /* pose of the wok this frame (owned by game.js): translation (du, dv, lift) and a real tilt — pitch lifts the
+     +v side, roll lifts the +u side, both about the pivot (pu, pv) on the wok floor plane (the rim opposite the
+     toss, so the handle-side rim stays put on a forward toss). Velocities (vdu, vdv, vlift) are world units/s. */
+  K.restPose = () => ({ du: 0, dv: 0, lift: 0, pitch: 0, roll: 0, pu: 0, pv: 0, vdu: 0, vdv: 0, vlift: 0, t: 0 });
+  K.WORLD = K.restPose();   // airborne things are projected with this: they do not ride the wok
 
-  /* world (u sideways, v depth, h height) -> screen px. The wok rim sits on the ellipse (cx, cy, R, R*ct).
-     A point at height h is drawn (RIM_H - h) * R * st below the rim plane; above the rim, height reads
-     a bit taller so tosses look generous. pose moves the whole wok. */
+  /* wok-local point -> world point (applies the tilt about the pivot, then the translation) */
+  K.toWorld = function (pose, u, v, h, out) {
+    const p = pose.pitch || 0, r = pose.roll || 0, pu = pose.pu || 0, pv = pose.pv || 0;
+    const dvv = v - pv, duu = u - pu;
+    out = out || [0, 0, 0];
+    out[0] = pu + duu * Math.cos(r) + (pose.du || 0);
+    out[1] = pv + dvv * Math.cos(p) + (pose.dv || 0);
+    out[2] = h + dvv * Math.sin(p) + duu * Math.sin(r) + (pose.lift || 0);
+    return out;
+  };
+  /* world point -> wok-local (inverse of toWorld; small-angle safe) */
+  K.toWok = function (pose, x, y, z, out) {
+    const p = pose.pitch || 0, r = pose.roll || 0, pu = pose.pu || 0, pv = pose.pv || 0;
+    const du = (x - (pose.du || 0) - pu) / Math.cos(r), dv = (y - (pose.dv || 0) - pv) / Math.cos(p);
+    out = out || [0, 0, 0];
+    out[0] = pu + du; out[1] = pv + dv; out[2] = z - (pose.lift || 0) - dv * Math.sin(p) - du * Math.sin(r);
+    return out;
+  };
+  /* height above the rim is exaggerated on screen so a toss visibly rises before it comes back (round 2: .15 -> .5) */
+  K.H_EXAG = 1.0;
+  /* world (u sideways, v depth, h height) -> screen px. The rim sits on the ellipse (cx, cy, R, R*ct); a point at
+     height h is drawn (RIM_H - h)·R·st below the rim plane. Pass pose for things in the wok, K.WORLD for airborne. */
+  const _w = [0, 0, 0];
   K.proj = function (vw, pose, u, v, h) {
-    const lean = 1 + (pose.lean || 0) * 0.12;
-    const x = vw.cx + (u + (pose.du || 0)) * vw.R;
-    let y = vw.cy - (v + (pose.dv || 0)) * vw.R * vw.ct * lean + (K.RIM_H - h - (pose.lift || 0)) * vw.R * vw.st;
-    if (h > K.RIM_H) y -= (h - K.RIM_H) * vw.R * 0.15;
+    K.toWorld(pose, u, v, h, _w);
+    const x = vw.cx + _w[0] * vw.R;
+    let y = vw.cy - _w[1] * vw.R * vw.ct + (K.RIM_H - _w[2]) * vw.R * vw.st;
+    if (_w[2] > K.RIM_H) y -= (_w[2] - K.RIM_H) * vw.R * (vw.hx == null ? K.H_EXAG : vw.hx);
     return [x, y];
   };
-  /* size multiplier for something at height h (closer to the camera = a touch bigger) */
-  K.scaleAt = (h) => 1 + Math.max(0, h) * 0.55;
+  /* size multiplier for something at height h (closer to the camera = bigger, up to 1.5x) */
+  K.scaleAt = (h) => 1 + Math.min(0.32, Math.max(0, h - 0.1) * 0.5);
 
   /* ---------- colour ramps: raw -> glossy -> golden -> burnt ---------- */
   function ramp(stops) {

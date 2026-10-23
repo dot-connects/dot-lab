@@ -39,7 +39,7 @@ site/js/game.js      state machine, wok pose, stage (counter, wok, handle), HUD,
   to touch), `useTouch()` (force touch mode), `demoTilt(u, v)` (attract mode drives tilt; ignored once a real game
   started), `armAfterRelease()` (after a restart, ignore flicks until the finger lifts / the phone settles 300 ms),
   `KFR.Input.onResultFlick` (optional hook the lead sets; call it on a flick while `KFR.Game.state.phase==='result'`).
-- `KFR.Input.mode` = `'motion' | 'touch'`. Touch fallback: fast upward stroke = flick (strength from peak speed,
+- `KFR.Input.mode` = `'motion' | 'touch'`. Touch fallback: a fast stroke in any direction = flick (strength from peak speed,
   snap from how fast the peak is reached, dirU from sideways lean); press-and-drag slowly = tilt.
 
 ## Simulation modules
@@ -78,3 +78,23 @@ Every module: `create(opts)` → state object; `update(state, dt, ctx)`; `draw(c
 - Egg: `state.u, state.v` (position in the wok), `state.su, state.sv` (slide velocity), `state.cookBottom`;
   `outcome()` also returns `stuck` (never tossed and burnt), `landedNow` (true for exactly one update after landing or
   hitting the floor, plus `u, v` of the impact); `forceStuck(state)` ends the round as stuck.
+
+## Round 2 changes (2026-10-23, see research/round2-plan.md)
+- Pose: `{du, dv, lift, pitch, roll, pu, pv, vdu, vdv, vlift, t}`. pitch lifts the +v side and roll the +u side
+  about the pivot (pu, pv) (the rim opposite the toss direction); v* = wok velocity in world units/s. `lean` is gone.
+- `KFR.toWorld(pose,u,v,h,out)` / `KFR.toWok(pose,x,y,z,out)` convert wok-local ↔ world. `KFR.WORLD` = a still pose:
+  **airborne food is integrated and projected in world space** (`KFR.proj(view, KFR.WORLD, …)`), wok-resting food with
+  the pose. At launch add the wok velocity; test landing by converting to wok-local.
+- `KFR.H_EXAG` = 0.5 (height above the rim on screen). Any inline copy of the projection must match core.js exactly
+  (better: call KFR.proj).
+- `KFR.view(W,H)` sizes by min(W·.43, H·.25) and returns `top` (HUD band height). Works at every aspect ratio.
+- Flick `{strength, snap, dirU, dirV}`: (dirU, dirV) is a real 2-D direction in any direction (touch strokes in any
+  direction, motion keeps the sign). The toss goes up the wall on the side of d = normalize(dirU, dirV) and rolls
+  back toward −d.
+- game.js times the wok: wind-up 0–50 ms, push 50–150 ms along d, lip snap at 150 ms, catch at landing. Rice/egg get
+  `toss(state, flick, t)` at the flick and must launch the sheet when `t ≥ t0 + 0.15` (lip snap), ≤ 40 ms spread.
+- Rice: `state.events` adds `{type:'burning', share}` (bottom-layer share with cook > 1.0 while untossed ≥ 1.5 s) and
+  `{type:'burnt', delta}` (burnt share rose ≥ 3 pp since the last toss); `lastToss.label` only timing words:
+  "불맛!", "좋아", "너무 빨라", "눌었다", "약해", "쏟았다!" (+ " x3" combo). Never "탔다" from a toss.
+- Egg: `outcome().torn` wins over `folded` everywhere; `outcome().dwell` true once the egg has rested 0.8 s after landing
+  (the lead waits for it).

@@ -12,10 +12,11 @@
   const DEAD = 0.035, FULL = 0.35, TILT_TAU = 80, FREEZE = 250;
   /* touch: speeds in screen heights per second */
   const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
+  const SLOW_TRAVEL = 0.15, SLOW_MIN = 0.3; // too-slow flick: > 15% of the height, peak 0.3..T_ON (a crawl is tilt)
   const HINT = "Safari/Chrome에서 열면 폰을 흔들어서 할 수 있어요";
 
   const I = (K.Input = {
-    mode: "touch", hint: "", debug: {}, onResultFlick: null,
+    mode: "touch", hint: "", debug: {}, onResultFlick: null, slowHint: 0,
     start, requestPermission, useTouch, demoTilt, armAfterRelease,
     _feed: (e) => { started = true; onMotion(e); },
   });
@@ -127,17 +128,18 @@
     if (I.mode !== "touch" || ptr) return;
     const r = appEl.getBoundingClientRect();
     ptr = { id: e.pointerId, x0: e.clientX, y0: e.clientY, W: r.width, H: r.height, s: [[e.timeStamp, e.clientX, e.clientY]],
-      fast: null, fired: false, slowT: e.timeStamp, slowX: e.clientX, slowY: e.clientY };
+      fast: null, fired: false, vMax: 0, slowT: e.timeStamp, slowX: e.clientX, slowY: e.clientY };
   }
   function fire(p) {
     const f = p.fast;
-    if ((f.y0 - f.y) / p.H < T_MIN_TRAVEL) { p.fast = null; return; } // a twitch, not a stroke
+    const dx = f.x - f.x0, dy = f.y0 - f.y, n = Math.hypot(dx, dy); // screen up = +dy (forward)
+    if (n / p.H < T_MIN_TRAVEL) { p.fast = null; return; } // a twitch, not a stroke
     p.fired = true;
     const s01 = clamp01((f.peak - T_ON) / (T_MAX - T_ON));
     const snap = clamp01(1 - (f.tPeak - f.t0 - T_RISE_FAST) / (T_RISE_SLOW - T_RISE_FAST));
-    const dirU = clamp1((f.x - f.x0) / (f.y0 - f.y));
-    I.debug.peak = +f.peak.toFixed(2); I.debug.rise = Math.round(f.tPeak - f.t0); I.debug.dir = [+dirU.toFixed(2), 1];
-    if (started) emit({ strength: 0.3 + 1.3 * s01, snap, dirU, dirV: 1 });
+    const dirU = dx / n, dirV = dy / n;
+    I.debug.peak = +f.peak.toFixed(2); I.debug.rise = Math.round(f.tPeak - f.t0); I.debug.dir = [+dirU.toFixed(2), +dirV.toFixed(2)];
+    if (started) emit({ strength: 0.3 + 1.3 * s01, snap, dirU, dirV });
   }
   function onMove(e) {
     const p = ptr;
@@ -145,14 +147,16 @@
     const t = e.timeStamp, x = e.clientX, y = e.clientY;
     p.s.push([t, x, y]);
     while (p.s.length > 2 && t - p.s[0][0] > 50) p.s.shift();
-    const a = p.s[0], vy = ((a[2] - y) / Math.max(8, t - a[0])) * 1000 / p.H; // upward speed, heights / s
+    const a = p.s[0], dt = Math.max(8, t - a[0]);
+    const v = Math.hypot(x - a[1], y - a[2]) / dt * 1000 / p.H; // stroke speed in any direction, heights / s
+    if (v > p.vMax) p.vMax = v;
     if (p.fired || blockUntilUp) return; // after a flick: tilt holds until the finger lifts
     if (p.fast) {
-      if (vy > p.fast.peak) { p.fast.peak = vy; p.fast.tPeak = t; }
+      if (v > p.fast.peak) { p.fast.peak = v; p.fast.tPeak = t; }
       p.fast.x = x; p.fast.y = y;
-      if (vy < 0.5 * p.fast.peak) fire(p);
-    } else if (vy > T_ON) {
-      p.fast = { t0: p.slowT, x0: p.slowX, y0: p.slowY, peak: vy, tPeak: t, x, y };
+      if (v < 0.5 * p.fast.peak) fire(p);
+    } else if (v > T_ON) {
+      p.fast = { t0: p.slowT, x0: p.slowX, y0: p.slowY, peak: v, tPeak: t, x, y };
     } else {
       p.slowT = t; p.slowX = x; p.slowY = y;
       tu = clamp1((x - p.x0) / (0.3 * p.W)); tv = clamp1((p.y0 - y) / (0.15 * p.H)); // drag down = toward the handle
@@ -162,6 +166,10 @@
     const p = ptr;
     if (!p || e.pointerId !== p.id) return;
     if (e.type === "pointerup" && p.fast && !p.fired && !blockUntilUp) fire(p);
+    // a long purposeful stroke that never got fast enough: an attempted flick, tell the lead ("더 빠르게!")
+    if (e.type === "pointerup" && !p.fired && !blockUntilUp && started &&
+        Math.hypot(e.clientX - p.x0, e.clientY - p.y0) / p.H > SLOW_TRAVEL && p.vMax > SLOW_MIN && p.vMax < T_ON)
+      I.slowHint = performance.now();
     ptr = null; blockUntilUp = false;
     if (I.mode === "touch" && started) { tu = 0; tv = 0; }
   }

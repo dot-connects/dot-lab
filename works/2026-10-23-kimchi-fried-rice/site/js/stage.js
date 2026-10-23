@@ -92,6 +92,18 @@
     for (const yy of [y0 + R * 0.08, y0 + R * 0.24]) { c.beginPath(); c.arc(x0, yy, R * 0.022, 0, TAU); c.fill(); }
   }
 
+  /* the wok is cached drawn at rest; a real tilt (pitch/roll about the pivot) and the push are an affine map of
+     that rest picture: solve it from three rim points (centre, +u, +v) rest -> posed. Cheap and exact on the rim. */
+  const REST = K.restPose();
+  function poseTransform(c, vw, pose) {
+    const P0 = K.proj(vw, REST, 0, 0, K.RIM_H), Q0 = K.proj(vw, pose, 0, 0, K.RIM_H);
+    const Q1 = K.proj(vw, pose, 1, 0, K.RIM_H), Q2 = K.proj(vw, pose, 0, 1, K.RIM_H);
+    const ax = (Q1[0] - Q0[0]) / vw.R, ay = (Q1[1] - Q0[1]) / vw.R;               // image of a +x screen step
+    const bx = (Q2[0] - Q0[0]) / (-vw.R * vw.ct), by = (Q2[1] - Q0[1]) / (-vw.R * vw.ct);   // image of a +y step
+    c.transform(ax, ay, bx, by, Q0[0] - ax * P0[0] - bx * P0[1], Q0[1] - ay * P0[0] - by * P0[1]);
+    return P0;
+  }
+
   /* draws everything below the food: counter, burner glow, wok shadow, handle, wok body, live heat glow */
   K.Stage = {
     drawCounter(c, vw) { c.drawImage(counter(vw.W, vw.H), 0, 0, vw.W, vw.H); },
@@ -101,27 +113,42 @@
       c.fillStyle = g; c.fillRect(0, 0, vw.W, vw.H);
     },
     drawWok(c, vw, pose, contact, fire) {
-      const [cx, cy] = K.proj(vw, pose, 0, 0, K.RIM_H);
-      // shadow stays on the burner; it shrinks when the wok lifts
-      const sh = 1 - Math.min(0.25, (pose.lift || 0) * 2);
-      c.fillStyle = "rgba(20,30,40,.2)"; c.beginPath();
+      // shadow stays on the burner; it shrinks and fades as the wok lifts
+      const lift = Math.max(0, pose.lift || 0), sh = 1 - Math.min(0.25, lift * 2.5);
+      c.fillStyle = `rgba(20,30,40,${0.2 - Math.min(0.08, lift)})`; c.beginPath();
       c.ellipse(vw.cx + vw.R * 0.05, vw.cy + vw.D * 2.1, vw.R * 0.95 * sh, vw.R * vw.ct * 0.9 * sh, 0, 0, TAU); c.fill();
-      handle(c, vw, cx, cy + vw.R * vw.ct - 4, vw.H);
-      const wa = wokArt(vw), lean = 1 + (pose.lean || 0) * 0.12;
-      c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy * lean, wa.w, wa.oy * lean + (wa.h - wa.oy));
+      // the handle hangs from the posed near rim straight down to the hand (outside the tilt map, so it never gets cut)
+      const nr = K.proj(vw, pose, 0, -1, K.RIM_H);
+      handle(c, vw, nr[0], nr[1] - 4, vw.H);
+      c.save();
+      const [cx, cy] = poseTransform(c, vw, pose);
+      const wa = wokArt(vw);
+      c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy, wa.w, wa.h);
       if (fire) { // the floor glows where food is on the metal
-        c.save(); c.beginPath(); c.ellipse(cx, cy, vw.R * 0.97, vw.R * 0.97 * vw.ct * lean, 0, 0, TAU); c.clip();
+        c.save(); c.beginPath(); c.ellipse(cx, cy, vw.R * 0.97, vw.R * 0.97 * vw.ct, 0, 0, TAU); c.clip();
         const g = c.createRadialGradient(cx, cy + vw.D * 0.5, vw.R * 0.05, cx, cy + vw.D * 0.5, vw.R * 0.8);
         g.addColorStop(0, `rgba(255,110,40,${0.05 + 0.15 * contact})`); g.addColorStop(1, "rgba(255,110,40,0)");
         c.fillStyle = g; c.fillRect(cx - vw.R, cy - vw.R, vw.R * 2, vw.R * 2); c.restore();
       }
+      c.restore();
+    },
+    /* the near wall drawn again over resting food, so food in the wok sits behind it */
+    drawFrontLip(c, vw, pose) {
+      c.save();
+      const [cx, cy] = poseTransform(c, vw, pose), wa = wokArt(vw), R = vw.R, ct = vw.ct;
+      c.beginPath();
+      c.ellipse(cx, cy, R * 1.07, R * 1.07 * ct, 0, 0, Math.PI);          // outer edge, lower half
+      c.ellipse(cx, cy + R * 0.02, R * 0.93, R * 0.93 * ct, 0, Math.PI, 0, true);   // inner edge back
+      c.closePath(); c.clip();
+      c.drawImage(wa.cv, cx - wa.ox, cy - wa.oy, wa.w, wa.h);
+      c.restore();
     },
     /* rim highlight flash when food lands */
     flashRim(c, vw, pose, a) {
       if (a <= 0) return;
-      const [cx, cy] = K.proj(vw, pose, 0, 0, K.RIM_H), lean = 1 + (pose.lean || 0) * 0.12;
+      c.save(); const [cx, cy] = poseTransform(c, vw, pose);
       c.strokeStyle = `rgba(255,236,200,${a})`; c.lineWidth = 2;
-      c.beginPath(); c.ellipse(cx, cy, vw.R * 1.03, vw.R * 1.03 * vw.ct * lean, 0, Math.PI, TAU); c.stroke();
+      c.beginPath(); c.ellipse(cx, cy, vw.R * 1.03, vw.R * 1.03 * vw.ct, 0, Math.PI, TAU); c.stroke(); c.restore();
     },
     reset() { counterCache = null; wokCache = null; },
   };

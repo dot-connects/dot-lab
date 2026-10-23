@@ -66,7 +66,7 @@
   }
 
   /* ---------- state ---------- */
-  const N_TONGUE = 16, MAX_STEAM = 36, MAX_SMOKE = 56, MAX_SPAT = 48;
+  const N_TONGUE = 16, MAX_STEAM = 36, MAX_SMOKE = 22, MAX_SPAT = 48, HAZE_MAX = 0.15;
   // burner ring in units of R relative to the rim centre (cx, cy); tuned against stage.js wok silhouette
   const RING = { rx: 0.74, ry: 0.15, y: 0.84, ht: 0.7, wd: 0.27, lean: 0.68 };
 
@@ -91,7 +91,7 @@
     for (let i = 0; i < 6; i++) licks.push({ phi: Math.PI * (0.18 + (0.64 * i) / 5) + rnd(-0.1, 0.1), size: rnd(0.6, 1.25),
       spr: i % 2, f1: rnd(9, 13), p1: rnd(0, TAU), delay: rnd(0, 0.3), lean: rnd(-0.25, 0.25) });
     return { t: 0, flare: 0, flareLevel: 0, oil: null, tongues, near, licks, parts: [], spat: [],
-      shake: { x: 0, y: 0 }, amp: 0, haze: 0, rimDrawn: false };
+      shake: { x: 0, y: 0 }, amp: 0, haze: 0, rimDrawn: false, gap: 0, lick: 0, pose: K.restPose() };
   }
 
   function kick(s, px) { s.amp = Math.min(4, Math.max(s.amp, px)); }
@@ -116,11 +116,32 @@
     if (n >= 6) kick(s, Math.min(2, n * 0.15));
   }
 
+  /* a dark curl where rice starts to burn (the lead calls it on the 'burning' event) */
+  function burnCue(s, u, v) {
+    for (let i = 0; i < 3; i++) {
+      if (s.parts.length >= MAX_STEAM + MAX_SMOKE + 6) break;
+      s.parts.push({ smoke: true, dark: 0.3, u: u + rnd(-0.05, 0.05), v: v + rnd(-0.05, 0.05), h: K.surf(u, v), pose: s.pose,
+        x: 0, y: 0, born: false, vx: rnd(-0.04, 0.04) + (i - 1) * 0.06, vy: rnd(0.95, 1.15), r0: 0.07, r1: rnd(0.26, 0.34),
+        age: -i * 0.12, life: 1.3, ph: rnd(0, TAU), rot: rnd(0, TAU), spin: (i % 2 ? 1 : -1) * rnd(1.6, 2.4) });
+    }
+  }
+
+  /* how far the wok has moved off the burner (world units): lift, push and the tilt of the far side */
+  function gapOf(pose, u, v) {
+    const w = K.toWorld(pose, u, v, 0, _g);
+    return Math.max(0, w[2]) + 0.6 * Math.hypot(w[0] - u, w[1] - v);
+  }
+  const _g = [0, 0, 0];
+
   function update(s, dt, ctx) {
     ctx = ctx || {};
     s.t += dt;
     if (ctx.flare > 0) s.flare = Math.max(s.flare, ctx.flare);
-    s.flare = Math.max(0, s.flare - dt * 3.2); // ~0.3 s jump
+    s.flare = Math.max(0, s.flare - dt * 2.2); // ~0.45 s jump
+    // wok leaving the burner: a 0.2 s lick into the opening gap
+    const pose0 = ctx.wokPose || K.restPose(), gap = Math.max(gapOf(pose0, 0, 0.6), gapOf(pose0, 0, -0.6), gapOf(pose0, 0.6, 0), gapOf(pose0, -0.6, 0));
+    if (gap > 0.03 && s.gap <= 0.03) s.lick = 1;
+    s.gap = gap; s.lick = Math.max(0, s.lick - dt * 5); s.pose = pose0;
     s.flareLevel = s.flare;
     if (s.oil && (s.oil.t += dt) > s.oil.dur) s.oil = null;
     s.rimDrawn = false;
@@ -129,7 +150,7 @@
     s.amp *= Math.exp(-dt * 11);
     if (s.amp < 0.05) s.amp = 0;
     s.shake.x = s.amp * Math.sin(s.t * 71); s.shake.y = s.amp * Math.cos(s.t * 57);
-    s.haze += (clamp(((ctx.burning || 0) - 0.08) * 1.6, 0, 1) - s.haze) * Math.min(1, dt * 1.5);
+    s.haze += (HAZE_MAX * clamp(((ctx.burning || 0) - 0.08) * 1.6, 0, 1) - s.haze) * Math.min(1, dt * 1.5);
 
     // steam vs smoke from the hotspots. Emitters live in wok space; particles are handed off to the air at spawn.
     const hs = ctx.steam || [], pose = ctx.wokPose || K.restPose();
@@ -144,9 +165,9 @@
         }
       } else {
         const dark = clamp((cook - 0.95) / 0.8, 0, 1);
-        if (nSmoke < MAX_SMOKE && Math.random() < dt * (0.8 + 4 * dark)) {
+        if (nSmoke < MAX_SMOKE && Math.random() < dt * (0.4 + 2 * dark)) {
           nSmoke++; s.parts.push({ smoke: true, dark, u: h.u, v: h.v, h: h.h || 0, pose, x: 0, y: 0, born: false,
-            vx: rnd(-0.05, 0.05), vy: rnd(0.4, 0.55), r0: rnd(0.1, 0.14), r1: rnd(0.45, 0.65), age: 0, life: rnd(1.7, 2.2),
+            vx: rnd(-0.04, 0.04), vy: rnd(0.4, 0.55), r0: rnd(0.07, 0.1), r1: rnd(0.28, 0.4), age: 0, life: rnd(1.5, 1.9),
             ph: rnd(0, TAU), rot: rnd(0, TAU), spin: rnd(-0.6, 0.6) });
         }
       }
@@ -170,16 +191,27 @@
   }
 
   /* burner ring under the wok: drawn before the wok body, so only what rises past its wall shows */
-  function drawBehind(c, s, vw) {
+  /* the burner stays put; where the wok lifts/pushes off it, the tongues under that side flare into the gap */
+  function drawBehind(c, s, vw, pose) {
     s.burner = true;
-    const S = sprites(), R = vw.R, t = s.t, f = s.flare;
+    pose = pose || s.pose;
+    const S = sprites(), R = vw.R, t = s.t, f = s.flare, L = s.lick;
     const by = vw.cy + RING.y * R;
+    if (f > 0.05 || L > 0.05) { // hot bloom under the wok: the toss reads even where the tongues are hidden
+      const e = Math.max(f, L), gr = R * (0.9 + 0.5 * e);
+      c.globalCompositeOperation = "lighter"; c.globalAlpha = 0.55 * e;
+      c.drawImage(S.glow, vw.cx - gr * 1.3, by - gr * 0.9, gr * 2.6, gr * 1.4);
+      c.globalCompositeOperation = "source-over";
+    }
     for (const q of s.tongues) {
       const ca = Math.cos(q.a), sa = Math.sin(q.a);
+      const gp = clamp(gapOf(pose, ca * 0.6, sa * 0.6) * 6, 0, 1.2); // 0 at rest, ~1 on a full toss
+      const boost = 1 + 0.85 * f + 0.9 * gp + 0.6 * L * gp;
       const flick = 0.8 + 0.13 * Math.sin(q.f1 * t + q.p1) + 0.08 * Math.sin(q.f2 * t + q.p2);
-      const h = R * RING.ht * q.size * flick * (1 + 0.85 * f), w = R * RING.wd * q.size * (1 + 0.2 * f) * (1.1 - 0.15 * flick);
+      const h = R * RING.ht * q.size * flick * boost, w = R * RING.wd * q.size * (1 + 0.2 * f + 0.25 * gp) * (1.1 - 0.15 * flick);
       const sway = 0.06 * Math.sin(q.f2 * 0.5 * t + q.p1);
-      tongue(c, S.burner[q.spr], vw.cx + ca * RING.rx * R, by + sa * RING.ry * R, w, h, ca * RING.lean * (1 - 0.15 * f) + sway, q.flip, 1);
+      // a lifted wok no longer bends the tongues outward: they stand up into the opening
+      tongue(c, S.burner[q.spr], vw.cx + ca * RING.rx * R, by + sa * RING.ry * R, w, h, ca * RING.lean * (1 - 0.15 * f - 0.4 * Math.min(1, gp)) + sway, q.flip, 1);
     }
     c.globalAlpha = 1;
   }
@@ -193,7 +225,7 @@
       const x = vw.cx + 1.04 * R * (-m * m * m - 3 * m * m * k + 3 * m * k * k + k * k * k);
       const y = vw.cy + 3 * B * k * m + R * 0.05;
       const flick = 0.8 + 0.13 * Math.sin(q.f1 * t + q.p1) + 0.08 * Math.sin(q.f2 * t + q.p2);
-      const h = R * 0.3 * q.size * flick * (1 + 0.7 * f), w = R * 0.15 * q.size * (1 + 0.15 * f);
+      const g = Math.min(1, s.gap * 6), h = R * 0.3 * q.size * flick * (1 + 0.9 * f + 0.8 * g + 0.5 * s.lick), w = R * 0.15 * q.size * (1 + 0.25 * f + 0.2 * g);
       tongue(c, S.burner[q.spr], x, y, w, h, ((x - vw.cx) / R) * 0.55, q.flip, 1);
     }
     c.globalAlpha = 1;
@@ -209,7 +241,7 @@
       if (e <= 0) continue;
       const [x, y] = K.proj(vw, pose, Math.cos(q.phi) * 1.03, Math.sin(q.phi) * 1.03, K.RIM_H);
       const flick = 0.85 + 0.15 * Math.sin(q.f1 * s.t + q.p1);
-      const h = R * 0.5 * q.size * flick * e, w = R * 0.27 * q.size * (0.6 + 0.4 * e);
+      const h = R * 0.72 * q.size * flick * e, w = R * 0.32 * q.size * (0.6 + 0.4 * e);
       tongue(c, S.lick[q.spr], x, y + h * 0.15, w, h, -Math.cos(q.phi) * 0.5 + q.lean, false, Math.min(1, e * 1.3));
     }
     c.globalAlpha = 1;
@@ -242,7 +274,9 @@
       const x = p.x + (p.vx * a + (p.smoke ? Math.sin(a * 1.7 + p.ph) * 0.06 * (0.3 + k) : Math.sin(a * 5 + p.ph) * 0.015)) * R;
       const y = p.y - p.vy * R * a * (p.smoke ? 1 : 1 - 0.35 * k);
       const r = R * (p.r0 + (p.r1 - p.r0) * Math.sqrt(k));
-      const fade = Math.min(1, p.age * (p.smoke ? 3 : 8)) * (1 - k);
+      if (p.age < 0) continue;
+      const fade = Math.min(1, p.age * (p.smoke ? 3 : 8)) * (1 - k) * clamp((y - vw.H * 0.1) / (vw.H * 0.2), 0, 1);
+      if (fade <= 0.005) continue;
       if (p.smoke) {
         c.globalAlpha = Math.min(0.35, (0.24 + 0.11 * p.dark) * fade * 1.6);
         c.save(); c.translate(x, y); c.rotate(p.rot + p.spin * a);
@@ -251,6 +285,12 @@
         c.globalAlpha = 0.34 * fade;
         c.drawImage(S.steam, x - r * 0.7, y - r * 1.1, r * 1.4, r * 2.2); // tall wisp
       }
+    }
+    // burning haze: only around the wok, never a full-screen film
+    if (s.haze > 0.01) {
+      const [hx, hy] = K.proj(vw, pose, 0, 0, K.RIM_H);
+      c.globalAlpha = s.haze / HAZE_MAX * 0.35;
+      c.drawImage(S.smoke[3], hx - R * 1.4, hy - R * 1.6, R * 2.8, R * 2.2);
     }
     // oil spatter: hot-white pops, 120 ms
     for (const p of s.spat) {
@@ -262,7 +302,7 @@
     c.globalAlpha = 1;
   }
 
-  K.Fx = { create, update, flare, oilCatch, spatter, kick, drawBehind, drawRim, drawFront };
+  K.Fx = { create, update, flare, oilCatch, spatter, kick, burnCue, drawBehind, drawRim, drawFront };
 
   /* ================= KFR.Audio: Web Audio, all procedural ================= */
   const A = { ctx: null, out: null, muted: false, noise: null, crackle: null, siz: null, warn: null };

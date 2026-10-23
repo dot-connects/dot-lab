@@ -8,9 +8,9 @@
   const DT = 1 / 120, ITER = 6;    // fixed-step PBD (anim §2)
   const RATE = 0.25;               // bottom cook per s at heat 1: good window .6-1.4 ≈ 2-5 s at the centre
   const CATCH = 0.62;
+  const WOK_CARRY = 0.25;           // share of the wok's horizontal velocity the egg keeps at the lip snap
   const WOK = [56, 64, 76];        // what shows through raw white
   const LT = (() => { const l = [-0.35, 0.45, 0.82], m = Math.hypot(...l); return l.map((x) => x / m); })();
-  const AIRPOSE = { du: 0, dv: 0, lift: 0, lean: 0 };
 
   const mix = (a, b, k) => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
   const rgbS = (c, s) => `rgb(${(c[0] * s) | 0},${(c[1] * s) | 0},${(c[2] * s) | 0})`;
@@ -46,7 +46,7 @@
     return {
       P, C, T: T.map((v) => ({ v, cut: false })), ring, centre: at(0, 0),
       phase: "pan", t: 0, acc: 0, age: 0, calm: 0, u: 0, v: 0, su: 0, sv: 0, cookBottom: 0, cookTop: 0, cookAtToss: null,
-      du: 0, dv: 0, tilt: { u: 0, v: 0 }, heat: K.heat, rot: 0, res: null, landedNow: false, done: false, stuck: false,
+      pose: K.restPose(), pend: null, windT: 0, lh: 0, tilt: { u: 0, v: 0 }, heat: K.heat, rot: 0, res: null, landedNow: false, done: false, stuck: false,
       sqT0: -9, yolk: { x: 0, y: 0, vx: 0, vy: 0, lu: 0, lv: 0 }, drops: [], air: null,
       lace: noise(40), blob: noise(16),
       craters: Array.from({ length: 13 }, () => ({ p: interior[(Math.random() * interior.length) | 0], ox: Math.random() - 0.5, oy: Math.random() - 0.5, s: 0.6 + Math.random() * 0.8 })),
@@ -54,7 +54,7 @@
   }
 
   /* ---------- PBD step (in the pan, wok-relative coordinates) ---------- */
-  function floorOf(p) { return K.surf(p.u, p.v) + (p.layer ? 0.03 : 0); }
+  function floorOf(p) { return K.surf(p.u, p.v) + p.layer * 0.03; }
   function collide(p) {
     const r = Math.hypot(p.u, p.v);
     if (r > 0.97) { p.u *= 0.97 / r; p.v *= 0.97 / r; }
@@ -104,32 +104,48 @@
   }
 
   /* ---------- toss: the flight is kinematic so the angle shown is the angle scored ---------- */
+  // toss() arms it; the egg leaves at the lip snap (game.js times the wok: snap at t0 + 0.15 s)
   function toss(s, f, t) {
     if (s.phase !== "pan" || s.done) return;
-    const st = clamp(f.strength || 1, 0.3, 1.6), snap = clamp(f.snap == null ? 0.5 : f.snap, 0, 1), dirU = f.dirU || 0;
+    s.pend = f; s.windT = 0.15; s.phase = "wind";
+  }
+  function launch(s, pose) {
+    const f = s.pend; s.pend = null;
+    const st = clamp(f.strength || 1, 0.3, 1.6), snap = clamp(f.snap == null ? 0.5 : f.snap, 0, 1);
+    let Du = f.dirU || 0, Dv = f.dirV == null ? 1 : f.dirV; const m = Math.hypot(Du, Dv);
+    if (m < 0.2) { Du = 0; Dv = 1; } else { Du /= m; Dv /= m; }
     s.cookAtToss = s.cookBottom;
-    const [cu, cv, ch] = centroid(s), tl = s.tilt;
-    let Du = 0.5 * dirU, Dv = 1; const m = Math.hypot(Du, Dv); Du /= m; Dv /= m;
+    const [cu, cv, ch] = centroid(s), tl = s.tilt, w = K.toWorld(pose, cu, cv, ch, [0, 0, 0]);
+    // height from strength, spin from snap: a normal chef flick (st .9, snap .5) turns ~180°
+    const vh = 2.6 + 1.6 * st, rot = PI * (0.35 + 1.3 * snap) * (0.7 + 0.3 * st);
+    // the wok's own slope along d at the snap starts the spin (pitch lifts +v, roll lifts +u)
+    const th0 = (pose.pitch || 0) * Dv + (pose.roll || 0) * Du;
+    const Tp = (2 * vh) / K.G;
     const A = {
-      t: 0, st, snap, Du, Dv, Au: Dv, Av: -Du,
-      u0: cu + s.du, v0: cv + s.dv, h0: ch,
-      vu: s.su + 0.45 * tl.u + 0.25 * dirU, vv: s.sv + 0.45 * tl.v,
-      vh: 4.2 * st, rot: (PI * st * (0.6 + 0.6 * snap)) / 0.864,
+      t: 0, st, snap, Du, Dv, Au: Dv, Av: -Du, th0,
+      u0: w[0], v0: w[1], h0: w[2],
+      // world velocity: slide + tilt + a little roll-back toward -d + a quarter of the wok's push (the curved wall turns
+      // the rest into lift and sends the food back over the wok, which is pushed out ~.45 at the snap and returns:
+      // (local - world)/airtime cancels that push so the catch does not depend on strength).
+      // Vertical is vh only: the wok hop is already part of what the player's strength means.
+      vu: (cu - w[0]) / Tp + 0.5 * s.su + 0.45 * tl.u - 0.15 * Du + WOK_CARRY * (pose.vdu || 0),
+      vv: (cv - w[1]) / Tp + 0.5 * s.sv + 0.45 * tl.v - 0.15 * Dv + WOK_CARRY * (pose.vdv || 0),
+      vh, rot,
       soft: 1 - 0.6 * clamp(s.cookBottom / 1.2, 0, 1), splat: st > 1.4 && f.splatOK === true, decided: false, miss: false, fell: false, T: 1,
     };
     for (const p of s.P) {
       const ru = p.u - cu, rv = p.v - cv;
       p.e = ru * A.Au + rv * A.Av; p.d = ru * A.Du + rv * A.Dv; p.n = p.h - ch; p.layer = 0;
     }
-    for (let tt = 0.05; tt < 3; tt += 1 / 240) { // predict touchdown for the spin curve
+    for (let tt = 0.05; tt < 3; tt += 1 / 240) { // predict touchdown (wok-local, wok assumed still) for the spin curve
       if (A.vh - K.G * tt > 0) continue;
-      const ru = A.u0 + A.vu * tt - s.du, rv = A.v0 + A.vv * tt - s.dv;
-      if (A.h0 + A.vh * tt - 0.5 * K.G * tt * tt <= K.surf(ru, rv) + 0.02) { A.T = tt; break; }
+      if (ch + A.vh * tt - 0.5 * K.G * tt * tt <= K.surf(cu + A.vu * tt, cv + A.vv * tt) + 0.02) { A.T = tt; break; }
     }
-    s.air = A; s.phase = "air"; s.tossT = t;
+    s.air = A; s.phase = "air"; s.lh = ch;
   }
+  /* airborne: world space (drawn with K.WORLD) */
   function kin(s, t) {
-    const A = s.air, x = t / A.T, th = A.rot * fz(x), sw = Math.sin(PI * Math.min(1, x)), soft = A.soft;
+    const A = s.air, x = t / A.T, th = A.th0 * Math.max(0, 1 - x) + A.rot * fz(x), sw = Math.sin(PI * Math.min(1, x)), soft = A.soft;
     const cu = A.u0 + A.vu * t, cv = A.v0 + A.vv * t, ch = A.h0 + A.vh * t - 0.5 * K.G * t * t, vhn = A.vh - K.G * t;
     // too strong: the egg shudders at the apex (the burst warning), ~±.12 s around it
     const ta = (t - A.vh / K.G) / 0.12, shud = A.st > 1.1 ? clamp((A.st - 1.1) / 0.3, 0.4, 1) * Math.exp(-ta * ta) : 0;
@@ -149,39 +165,56 @@
   }
 
   /* ---------- landing: decide the outcome, then show it physically ---------- */
-  function land(s, ru, rv, ch, vhn) {
+  const FOLD_W = 0.1;              // half-width of the rounded crease (world units, ~2 grid rows across)
+  const mod = (a, m) => ((a % m) + m) % m;
+  function land(s, ru, rv, impact) {
     const A = s.air, cook = s.cookAtToss, rot = s.rot;
-    const r = ((rot % TAU) + TAU) % TAU, d = Math.abs(r - PI), err = (d * 180) / PI;
-    const flipped = err <= 45, folded = !flipped && d <= PI - 0.8;
-    const impact = -vhn;
-    const vTear = 5 - 3 * Math.max(0, 1 - cook) - 1.5 * Math.max(0, cook - 1.4);
-    const torn = impact > vTear;
-    let burst = A.st > 1.2 || impact > 5.3 - (cook < 0.8 ? 0.7 : 0) - (folded ? 0.5 : 0);
-    s.res = { caught: true, flipped, folded, torn, burst, rot, angleErr: Math.round(err) * (rot > PI ? 1 : -1), angle: Math.round((rot * 180) / PI), impact, strength: A.st,
-      grade: flipped ? (err <= 12 ? "완벽" : "좋음") : folded ? "접힘" : "날면", u: ru, v: rv };
-    const base = Math.round(rot / PI) * PI;
+    const r = mod(rot, TAU), err = (Math.abs(r - PI) * 180) / PI, q = (mod(rot, PI) * 180) / PI;
+    // tear: only an underdone white hit hard. Torn wins over folded everywhere.
+    const torn = cook < 0.75 && impact > 3.6 + 1.6 * cook;
+    // fold: only a near-vertical landing of a still-soft white buckles; any other angle drapes onto its nearest face
+    const folded = !torn && Math.abs(q - 90) < 35 && cook < 1.0;
+    const base = Math.round(rot / PI) * PI, flipped = !folded && mod(Math.round(rot / PI), 2) === 1;
+    const burst = A.st > 1.2 || impact > 5.6 - (cook < 0.8 ? 0.6 : 0);
+    s.res = { caught: true, flipped, folded, torn, burst, rot, angleErr: Math.round(err) * (r > PI ? 1 : -1), angle: Math.round((rot * 180) / PI), impact, strength: A.st,
+      grade: flipped ? (err <= 12 ? "완벽" : err <= 45 ? "좋음" : "기움") : folded ? "접힘" : "날면", u: ru, v: rv,
+      fs: r < PI ? 1 : -1 }; // fold: the half (sign of d) that ends on top
+    // target spin field psi(d) along the toss axis: flat = one angle; fold = the lower half lies yolk-up and the upper
+    // half bends over a rounded crease (smoothstep) onto it, yolk inside
+    const off = rot - r + (r < PI ? 0 : PI);
+    A.psiT = folded ? (d) => off + PI * K.smooth(clamp((d + FOLD_W) / (2 * FOLD_W), 0, 1)) : () => base;
+    A.slap = folded || Math.abs(rot - base) > 0.5; // the leading edge touches first, the rest slaps down
+    A.dur = A.slap ? 0.22 : 0.14;
+    A.land = [ru, rv]; A.lt = 0; s.phase = "land"; s.sqT0 = s.t; s.landedNow = true; s.u = ru; s.v = rv;
+  }
+  /* shape from the spin field: integrate (cos psi, sin psi) along d from the middle */
+  function shapeAt(s, kk) {
+    const A = s.air, rot = s.rot, M = 8;
+    let mx = 0, mh = 1e9;
     for (const p of s.P) {
-      p.thT = base;
-      if (folded && !torn && Math.sign(p.d) * Math.sin(rot) > 0) { p.thT = base + (rot > base ? PI : -PI); p.layer = 1; }
+      let x = 0, h = 0; const ds = p.d / M;
+      for (let i = 0; i < M; i++) { const ps = lerp(rot, A.psiT((i + 0.5) * ds), kk); x += Math.cos(ps) * ds; h += Math.sin(ps) * ds; }
+      p._x = x; p._h = h; mx += x; mh = Math.min(mh, h);
     }
-    A.land = [ru, rv, ch]; A.lt = 0; s.phase = "land"; s.sqT0 = s.t; s.landedNow = true; s.u = ru; s.v = rv;
+    return [mx / s.P.length, mh];
   }
   function settleTween(s, dt) {
-    const A = s.air; A.lt += dt;
-    const k = K.smooth(Math.min(1, A.lt / 0.14));
-    const cu = A.land[0] + A.vu * 0.3 * A.lt, cv = A.land[1] + A.vv * 0.3 * A.lt, ch = lerp(A.land[2], K.surf(cu, cv) + 0.012, k);
+    const A = s.air, res = s.res; A.lt += dt;
+    const k = Math.min(1, A.lt / A.dur), kk = A.slap ? k * k : K.smooth(k);
+    const cu = A.land[0] + A.vu * 0.3 * A.lt, cv = A.land[1] + A.vv * 0.3 * A.lt;
+    const [mx, mh] = shapeAt(s, kk), fl = res.folded ? lerp(1, 0.35, kk) : 1;
     for (const p of s.P) {
-      const ti = lerp(p.th, p.thT, k), c = Math.cos(ti), sn = Math.sin(ti), n = p.n * (1 - k) * 0.3 + (p.layer ? 0.03 : 0) * k;
-      p.u = cu + p.e * A.Au + (p.d * c - n * sn) * A.Du;
-      p.v = cv + p.e * A.Av + (p.d * c - n * sn) * A.Dv;
-      p.h = Math.max(ch + p.d * sn + n * c, floorOf(p));
+      const x = p._x - mx, n = p.n * (1 - k) * 0.3;
+      p.u = cu + p.e * A.Au + x * A.Du; p.v = cv + p.e * A.Av + x * A.Dv;
+      if (res.folded) p.layer = K.smooth(clamp((res.fs * p.d + FOLD_W) / (2 * FOLD_W), 0, 1)) * kk;
+      p.h = Math.max(K.surf(p.u, p.v) + 0.012 + (p._h - mh) * fl + n, floorOf(p));
     }
     s.u = cu; s.v = cv;
     if (k < 1) return;
     // hand over to PBD: the landed shape becomes the rest shape (keeps a fold folded)
     for (const p of s.P) { p.pu = p.u - A.vu * 0.3 * DT; p.pv = p.v - A.vv * 0.3 * DT; p.ph = p.h; }
     for (const c of s.C) { const a = s.P[c.p], b = s.P[c.q]; c.L = Math.hypot(a.u - b.u, a.v - b.v, a.h - b.h); }
-    const res = s.res, yc = s.P[s.centre];
+    const yc = s.P[s.centre];
     if (res.torn) {
       const ang = Math.random() * PI, nu = Math.cos(ang), nv = Math.sin(ang), off = (Math.random() < 0.5 ? -1 : 1) * K.rnd(0.06, 0.16);
       const sd = (p) => (p.u - cu) * nu + (p.v - cv) * nv - off;
@@ -201,11 +234,13 @@
   }
 
   /* ---------- update ---------- */
+  const _l = [0, 0, 0];
   function update(s, dt, ctx) {
     s.landedNow = false; s.t += dt;
-    const pose = ctx.wokPose || {};
-    s.du = pose.du || 0; s.dv = pose.dv || 0; s.tilt = ctx.tilt || { u: 0, v: 0 }; s.heat = ctx.heat || K.heat;
-    if (s.phase === "pan" || s.phase === "landed") {
+    const pose = (s.pose = ctx.wokPose || K.WORLD);
+    s.tilt = ctx.tilt || { u: 0, v: 0 }; s.heat = ctx.heat || K.heat;
+    const inP = s.phase === "pan" || s.phase === "wind";
+    if (inP || s.phase === "landed") {
       s.acc = Math.min(s.acc + dt, 4 * DT);
       while (s.acc >= DT) { pbd(s, DT); s.acc -= DT; }
       // cooking: the face on the metal sears, the other side barely warms
@@ -213,12 +248,12 @@
       let cb = 0, ct = 0, vmax = 0;
       for (const p of s.P) {
         const hot = s.heat(p.u, p.v) * (p.h - floorOf(p) < 0.01 ? 1 : 0.3);
-        if (s.phase === "pan" || down === "ct") p[down] += hot * RATE * dt;
+        if (inP || down === "ct") p[down] += hot * RATE * dt;
         p[up] += hot * RATE * 0.22 * dt;
         cb += p.cb; ct += p.ct;
         vmax = Math.max(vmax, Math.hypot(p.u - p.pu, p.v - p.pv) / DT);
       }
-      if (s.phase === "pan") s.cookBottom = cb / s.P.length;
+      if (inP) s.cookBottom = cb / s.P.length;
       s.cookTop = ct / s.P.length;
       const [cu, cv] = centroid(s), y = s.yolk;
       s.su = (cu - s.u) / dt; s.sv = (cv - s.v) / dt; s.u = cu; s.v = cv;
@@ -227,22 +262,24 @@
       y.vx += (-w * w * y.x - 2 * 0.2 * w * y.vx - clamp(au, -30, 30) * 0.4) * dt; y.x += y.vx * dt;
       y.vy += (-w * w * y.y - 2 * 0.2 * w * y.vy - clamp(av, -30, 30) * 0.4) * dt; y.y += y.vy * dt;
       if (s.phase === "pan" && s.cookBottom >= 2.4) { s.stuck = true; s.done = true; }
+      if (s.phase === "wind" && (s.windT -= dt) <= 0) launch(s, pose);
       if (s.phase === "landed") {
         s.age += dt; s.calm = vmax < 0.05 ? s.calm + dt : 0;
         if ((s.calm > 0.2 && s.age > 0.6) || s.age > 1.3) s.done = true;
       }
     } else if (s.phase === "air") {
       const A = s.air; A.t += dt;
-      const [cu, cv, ch, vhn] = kin(s, A.t), ru = cu - s.du, rv = cv - s.dv;
-      s.u = cu; s.v = cv; s.su = A.vu; s.sv = A.vv;
+      const [cu, cv, ch, vhn] = kin(s, A.t), L = K.toWok(pose, cu, cv, ch, _l), ru = L[0], rv = L[1], rh = L[2];
+      s.u = ru; s.v = rv; s.lh = rh; s.su = A.vu; s.sv = A.vv;
       if (A.splat) {
         if (A.t > 0.26) { s.phase = "splatFly"; s.age = 0; s.res = { caught: false, splat: true, burst: true, rot: s.rot, impact: 9, u: cu, v: cv, angleErr: null, strength: A.st }; }
       } else if (vhn < 0) {
-        if (!A.decided && ch < K.RIM_H + 0.02) { A.decided = true; A.miss = Math.hypot(ru, rv) > CATCH; }
+        if (!A.decided && rh < K.RIM_H + 0.02) { A.decided = true; A.miss = Math.hypot(ru, rv) > CATCH; }
         if (A.miss) {
-          if (!A.fell && ch < -0.05) { A.fell = true; s.landedNow = true; s.res = { caught: false, rot: s.rot, impact: -vhn, u: ru, v: rv, angleErr: null, strength: A.st }; }
-          if (ch < -1.6 || A.t > A.T + 1.2) { s.done = true; if (!s.res) s.res = { caught: false, rot: s.rot }; }
-        } else if (A.decided && ch <= K.surf(ru, rv) + 0.02) land(s, ru, rv, ch, vhn);
+          if (!A.fell && rh < -0.05) { A.fell = true; s.landedNow = true; s.res = { caught: false, rot: s.rot, impact: -vhn, u: ru, v: rv, angleErr: null, strength: A.st }; }
+          if (rh < -1.6 || A.t > A.T + 1.2) { s.done = true; if (!s.res) s.res = { caught: false, rot: s.rot }; }
+        // the lowest edge touches first (a vertical egg lands on its rim)
+        } else if (A.decided && rh - ER * Math.abs(Math.sin(s.rot)) <= K.surf(ru, rv) + 0.02) land(s, ru, rv, (pose.vlift || 0) - vhn);
       }
     } else if (s.phase === "land") settleTween(s, dt);
     else if (s.phase === "splatFly") {
@@ -263,21 +300,21 @@
   const X = [], Y = [], TL = [];
   function draw(c, s, vw, pose) {
     if (s.phase === "splat" || s.phase === "splatFly") return drawSplat(c, s, vw, pose);
-    const abs = s.phase === "air" || s.phase === "splatFly", pp = abs ? AIRPOSE : pose, P = s.P, R = vw.R;
+    const abs = s.phase === "air", pp = abs ? K.WORLD : pose, P = s.P, R = vw.R;
     const [cu, cv, ch] = centroid(s);
-    // shadow on the wok floor while airborne: the catch cue
-    if (abs && !(s.air && s.air.miss)) {
-      const ru = cu - s.du, rv = cv - s.dv;
-      if (Math.hypot(ru, rv) < 1) {
-        const fh = K.surf(ru, rv), k = clamp((ch - fh) / 1.4, 0, 1), [x, y] = K.proj(vw, pose, ru, rv, fh);
-        const sr = ER * 0.8 * R * (1 - 0.35 * k), g = c.createRadialGradient(0, 0, 0, 0, 0, sr);
-        g.addColorStop(0, `rgba(8,12,18,${0.18 * (1 - 0.5 * k)})`); g.addColorStop(0.55, `rgba(8,12,18,${0.12 * (1 - 0.5 * k)})`); g.addColorStop(1, "rgba(8,12,18,0)");
-        c.save(); c.translate(x, y); c.scale(1, vw.ct); c.fillStyle = g; c.beginPath(); c.arc(0, 0, sr, 0, TAU); c.fill(); c.restore();
+    const res = s.res || {}, after = s.phase === "landed" || s.phase === "land";
+    const folded = !!res.folded && !res.torn && after, torn = !!res.torn && s.phase === "landed";
+    // soft contact shadow on the wok floor: separates (key light upper-left) and shrinks as the egg rises
+    if (!(abs && s.air.miss) && (abs || s.phase === "land" || folded || torn)) {
+      const lu = abs ? s.u : cu, lv = abs ? s.v : cv, lh = abs ? s.lh : ch;
+      if (Math.hypot(lu, lv) < 1) {
+        const fh = K.surf(lu, lv), hh = Math.max(0, lh - fh), k = clamp(hh / 1.2, 0, 1);
+        const [x, y] = K.proj(vw, pose, lu + 0.13 * hh, lv - 0.16 * hh, fh), sr = ER * 1.2 * R * (1 - 0.45 * k), sy = sr * vw.ct;
+        c.globalAlpha = 0.32 - 0.24 * k; c.drawImage(shadowSprite(), x - sr, y - sy, 2 * sr, 2 * sy); c.globalAlpha = 1;
       }
     }
     let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
     let sc = abs ? Math.min(1.3, K.scaleAt(Math.max(0, ch - 0.05))) : 1, tx = ox, ty = oy;
-    if (s.phase === "splatFly") { const k = s.age / 0.22; sc *= 1 + 3.2 * k * k; tx = lerp(ox, vw.W * 0.5, k); ty = lerp(oy, vw.H * 0.34, k); }
     const ta = s.t - s.sqT0, sq = ta < 0.6 ? 1 - 0.25 * Math.exp(-0.35 * 50 * ta) * Math.cos(47 * ta) : 1;
     const jig = s.phase === "pan" && s.cookBottom >= 0.6 && s.cookBottom <= 1.4, rip = s.phase === "landed" ? Math.exp(-6 * s.age) : 0;
     for (let i = 0; i < P.length; i++) {
@@ -287,17 +324,17 @@
       if (rip) y += Math.sin(30 * s.age + 7 * p.nz) * 3 * rip * p.rim * p.rim * p.rim;
       X[i] = x; Y[i] = y;
     }
+    if (folded) { drawFold(c, s, X, Y, R); drawDrops(c, s, vw, pose); return; }
     // which face looks at us (signed screen area of the rim ring; counter-clockwise world reads negative on screen)
     let area = 0;
     for (let k = 0; k < s.ring.length; k++) { const i = s.ring[k], j = s.ring[(k + 1) % s.ring.length]; area += X[i] * Y[j] - X[j] * Y[i]; }
     const topUp = area < 0, flat = PI * (ER * R * sc) ** 2 * vw.ct, vis = clamp(Math.abs(area / 2) / flat, 0, 1.3);
-    const res = s.res || {}, folded = !!res.folded && !res.torn && s.phase === "landed", torn = !!res.torn && s.phase === "landed";
     c.save();
     if (abs && s.air.miss) c.globalAlpha = clamp(1 + ch / 1.2, 0, 1);
-    const cbm = s.phase === "pan" ? s.cookBottom : s.cookAtToss || s.cookBottom;
+    const cbm = s.phase === "pan" || s.phase === "wind" ? s.cookBottom : s.cookAtToss || s.cookBottom;
     // contact shadow + lace skirt (crispy brown edge) while the yolk face is up and flat
-    if (!abs && !folded && !torn) { ringPath(c, s, X, Y, tx, ty, 1.02, 0, 2.5, 3); c.fillStyle = "rgba(10,14,20,.28)"; c.fill(); }
-    if (topUp && !folded && vis > 0.3) {
+    if (!abs && s.phase !== "land" && !torn) { ringPath(c, s, X, Y, tx, ty, 1.02, 0, 2.5, 3); c.fillStyle = "rgba(10,14,20,.28)"; c.fill(); }
+    if (topUp && vis > 0.3) {
       const la = clamp((cbm - 0.55) / 0.35, 0, 1); // fades in from clear: no grey midtone
       if (la > 0 && !torn) {
         const burn = clamp((cbm - 1.1) / 0.5, 0, 1);
@@ -306,7 +343,7 @@
         c.strokeStyle = K.rgb(mix([138, 78, 30], K.col.eggEdge(cbm + 0.35), burn), la * 0.8); c.lineWidth = 1.2; c.stroke();
       }
     }
-    const smoothBody = !folded && !torn;
+    const smoothBody = !torn;
     if (smoothBody) {
       // seen edge-on: a side band gives the white its thickness
       if (abs && vis < 0.6) { ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0.04 * R * sc * (1 - vis / 0.6)); c.fillStyle = "#EADFC8"; c.fill(); }
@@ -319,7 +356,8 @@
         const g = c.createRadialGradient(xc - 0.18 * rad, yc - 0.2 * rad, 0, xc, yc, rad * 1.05);
         const wc = (k, a, sh) => `rgba(${lerp(255, lerp(255, 234, sh), k) | 0},${lerp(255, lerp(253, 223, sh), k) | 0},${lerp(255, lerp(246, 200, sh), k) | 0},${0.35 + 0.65 * a})`;
         g.addColorStop(0, wc(sc0, sc0, 0)); g.addColorStop(0.6, wc((sc0 + sr) / 2, (sc0 + sr) / 2, 0.15)); g.addColorStop(1, wc(sr, sr, 1));
-        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = g; c.fill();
+        ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = K.rgb(WOK); c.fill(); // lace must not show through raw white
+        c.fillStyle = g; c.fill();
       } else {
         let cb = 0; for (const p of P) cb += p.cb; cb /= P.length;
         ringPath(c, s, X, Y, tx, ty, 1, 0, 0, 0); c.fillStyle = rgbS(mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.6), 0.95); c.fill();
@@ -381,13 +419,64 @@
       }
     }
     c.restore();
-    // runny yolk droplets: overlapping circles (cheap metaball)
-    if (s.drops.length) {
-      const pts = s.drops.map((d) => [...K.proj(vw, pose, d.u, d.v, K.surf(d.u, d.v) + 0.04), d.r * R]);
-      c.fillStyle = "#E57E00"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r + 1.5, (r + 1.5) * ctv, 0, 0, TAU); c.fill(); }
-      c.fillStyle = "#FFB21A"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r, r * ctv, 0, 0, TAU); c.fill(); }
-      c.fillStyle = "rgba(255,240,190,.8)"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.3, r * 0.25, r * 0.15, 0, 0, TAU); c.fill(); }
+    drawDrops(c, s, vw, pose);
+  }
+  /* runny yolk droplets: overlapping circles (cheap metaball) */
+  function drawDrops(c, s, vw, pose) {
+    if (!s.drops.length) return;
+    const R = vw.R, ctv = vw.ct, pts = s.drops.map((d) => [...K.proj(vw, pose, d.u, d.v, K.surf(d.u, d.v) + 0.04), d.r * R]);
+    c.fillStyle = "#E57E00"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r + 1.5, (r + 1.5) * ctv, 0, 0, TAU); c.fill(); }
+    c.fillStyle = "#FFB21A"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x, y, r, r * ctv, 0, 0, TAU); c.fill(); }
+    c.fillStyle = "rgba(255,240,190,.8)"; for (const [x, y, r] of pts) { c.beginPath(); c.ellipse(x - r * 0.35, y - r * 0.3, r * 0.25, r * 0.15, 0, 0, TAU); c.fill(); }
+  }
+  /* soft round shadow, drawn once and scaled */
+  let SH = null;
+  function shadowSprite() {
+    if (SH) return SH;
+    const [cv, c] = K.offscreen(64, 64), g = c.createRadialGradient(32, 32, 0, 32, 32, 32);
+    g.addColorStop(0, "rgba(8,12,18,1)"); g.addColorStop(0.5, "rgba(8,12,18,.6)"); g.addColorStop(1, "rgba(8,12,18,0)");
+    c.fillStyle = g; c.fillRect(0, 0, 64, 64);
+    return (SH = cv);
+  }
+  /* folded egg: two smooth half-moons (yolk side inside) joined by a rounded crease roll — never polygon edges */
+  function drawFold(c, s, X, Y, R) {
+    const P = s.P, fs = s.res.fs, cb = s.cookAtToss || s.cookBottom, cut = SP * 0.55, sm = (i) => fs * P[i].d, n = s.ring.length;
+    const crease = P.map((p, i) => i).filter((i) => Math.abs(sm(i)) < cut).sort((a, b) => P[a].e - P[b].e).map((i) => [X[i], Y[i]]);
+    const half = (sel) => { // the ring arc of one half (contiguous in ring order), closed back along the crease
+      const ks = []; s.ring.forEach((i, k) => { if (sel(i)) ks.push(k); });
+      let j0 = ks.findIndex((k, j) => ks[(j + ks.length - 1) % ks.length] !== (k + n - 1) % n); if (j0 < 0) j0 = 0;
+      const arc = ks.slice(j0).concat(ks.slice(0, j0)).map((k) => [X[s.ring[k]], Y[s.ring[k]]]), e = arc[arc.length - 1];
+      const cr = Math.hypot(e[0] - crease[0][0], e[1] - crease[0][1]) < Math.hypot(e[0] - crease[crease.length - 1][0], e[1] - crease[crease.length - 1][1]) ? crease : crease.slice().reverse();
+      return arc.concat(cr.slice(1, -1));
+    };
+    const grow = (pts, g) => { let mx = 0, my = 0; for (const p of pts) { mx += p[0]; my += p[1]; } mx /= pts.length; my /= pts.length; return pts.map((p, k) => [mx + (p[0] - mx) * (g + 0.05 * (s.lace[k % 40] - 0.4)), my + (p[1] - my) * (g + 0.05 * (s.lace[k % 40] - 0.4))]); };
+    const bot = half((i) => sm(i) <= cut), top = half((i) => sm(i) >= -cut);
+    const lace = K.rgb(K.col.eggEdge(Math.max(cb, 0.85))), laceD = K.rgb(K.col.eggEdge(Math.max(cb, 0.85) + 0.35), 0.8);
+    c.save(); c.lineJoin = "round"; c.lineCap = "round";
+    // contact shadow + the lower half (yolk face up, mostly hidden)
+    c.fillStyle = "rgba(10,14,20,.28)"; smooth(c, bot.map((p) => [p[0] + 2.5, p[1] + 3])); c.fill();
+    c.fillStyle = lace; smooth(c, grow(bot, 1.07)); c.fill(); c.strokeStyle = laceD; c.lineWidth = 1.2; c.stroke();
+    let g = c.createLinearGradient(0, Math.min(...bot.map((p) => p[1])), 0, Math.max(...bot.map((p) => p[1])));
+    g.addColorStop(0, "#FFFDF6"); g.addColorStop(1, "#EADFC8"); c.fillStyle = g; smooth(c, bot); c.fill();
+    // the yolk bulges out of the fold
+    const yx = X[s.centre], yy = Y[s.centre];
+    if (!s.res.burst) { c.fillStyle = "#F28A00"; c.beginPath(); c.ellipse(yx, yy, 0.085 * R, 0.05 * R, 0, 0, TAU); c.fill(); c.fillStyle = "#FFC23A"; c.beginPath(); c.ellipse(yx - 0.01 * R, yy - 0.008 * R, 0.065 * R, 0.035 * R, 0, 0, TAU); c.fill(); }
+    // the upper half: its seared underside faces up, lace on its curve
+    const und = mix(K.col.eggUnder(cb), K.col.eggEdge(cb + 0.1), 0.45);
+    c.fillStyle = lace; smooth(c, grow(top, 1.06)); c.fill(); c.strokeStyle = laceD; c.stroke();
+    const tm = top[(top.length / 2) | 0]; g = c.createLinearGradient(yx, yy, tm[0], tm[1]);
+    g.addColorStop(0, rgbS(und, 1.08)); g.addColorStop(1, rgbS(und, 0.92)); c.fillStyle = g; smooth(c, top); c.fill();
+    for (const cr of s.craters) { // browned bubbles on the shown underside
+      if (fs * P[cr.p].d < cut) continue;
+      c.fillStyle = K.rgb(K.col.eggUnder(P[cr.p].cb + 0.45), 0.5);
+      c.beginPath(); c.ellipse(X[cr.p] + cr.ox * 0.05 * R, Y[cr.p] + cr.oy * 0.04 * R, 0.013 * R * cr.s, 0.009 * R * cr.s, 0, 0, TAU); c.fill();
     }
+    // the rounded crease: a soft roll with a highlight along it
+    c.beginPath(); c.moveTo(crease[0][0], crease[0][1]);
+    for (let k = 1; k < crease.length; k++) c.lineTo(crease[k][0], crease[k][1]);
+    c.strokeStyle = rgbS(und, 0.95); c.lineWidth = 0.06 * R; c.stroke();
+    c.strokeStyle = "rgba(255,246,222,.55)"; c.lineWidth = 0.022 * R; c.translate(0, -0.012 * R); c.stroke();
+    c.restore();
   }
   /* closed smooth path through the rim ring, pushed out from (cx, cy); jag adds lace spikes between points */
   function ringPath(c, s, X, Y, cx, cy, grow, jag, dx, dy) {
@@ -423,7 +512,7 @@
     const fly = s.phase === "splatFly", t = fly ? 0 : s.age, W = vw.W, n = s.blob.length, cb = s.cookAtToss || 0;
     let R = W * 0.36, cx = W * (0.5 + (s.splatX || 0)), cy = Math.min(vw.H * 0.72, vw.H * 0.34 + 22 * t + 34 * t * t), pop = t < 0.08 ? 0.8 + 2.5 * t : 1;
     if (fly) { // rushing at the glass: grows from its place in the air to the splat
-      const k = s.age / 0.22, [cu, cv, ch] = centroid(s), [ex, ey] = K.proj(vw, AIRPOSE, cu, cv, ch);
+      const k = s.age / 0.22, [cu, cv, ch] = centroid(s), [ex, ey] = K.proj(vw, K.WORLD, cu, cv, ch);
       cx = lerp(ex, cx, k); cy = lerp(ey, cy, k); pop = lerp(ER * vw.R * 1.2 / R, 0.75, k * k);
     }
     const blob = (rr) => {
@@ -477,18 +566,7 @@
       }
     };
     c.save();
-    if (o.folded) {
-      // half-moon: the fold edge faces us, browned lace on the curve, a yolk seam peeking out
-      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 1.06, r * 0.9 * ct, 0, PI, TAU); c.closePath();
-      c.fillStyle = K.rgb(K.col.eggEdge(Math.max(cb, 0.8))); c.fill();
-      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 0.97, r * 0.82 * ct, 0, PI, TAU);
-      c.quadraticCurveTo(x, y + r * 0.34 * ct, x - r * 0.97, y + r * 0.2 * ct);
-      const g = c.createLinearGradient(x, y - r * 0.7 * ct, x, y + r * 0.3 * ct); g.addColorStop(0, K.rgb(K.col.eggUnder(cb))); g.addColorStop(1, K.rgb(K.col.eggUnder(cb * 0.6)));
-      c.fillStyle = g; c.fill();
-      for (let k = 0; k < 7; k++) { c.fillStyle = K.rgb(K.col.eggUnder(cb + 0.45), 0.5); c.beginPath(); c.ellipse(x + (s.lace[k] - 0.5) * r * 1.3, y - s.lace[k + 7] * r * 0.5 * ct, r * 0.04, r * 0.03, 0, 0, TAU); c.fill(); }
-      c.fillStyle = o.burst ? "#FFB21A" : "#F7A21B"; c.beginPath(); c.ellipse(x + r * 0.05, y + r * 0.26 * ct, r * 0.3, r * 0.06, 0, 0, PI); c.fill();
-      if (o.burst) runny(c, x + r * 0.05, y + r * 0.3 * ct, r);
-    } else if (o.torn) {
+    if (o.torn) {
       for (const sg of [-1, 1]) {
         c.save(); c.beginPath();
         const jx = (k) => x + sg * 0.0 + (s.lace[k] - 0.5) * r * 0.25;
@@ -500,6 +578,17 @@
       }
       if (o.burst) runny(c, x + r * 0.1, y - r * 0.05, r);
       else drawYolk(c, x + r * 0.22, y - r * 0.08, r * 0.3, 0.85, o.cookTop, 0, 0);
+    } else if (o.folded) {
+      // half-moon: the fold edge faces us, browned lace on the curve, a yolk seam peeking out
+      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 1.06, r * 0.9 * ct, 0, PI, TAU); c.closePath();
+      c.fillStyle = K.rgb(K.col.eggEdge(Math.max(cb, 0.8))); c.fill();
+      c.beginPath(); c.ellipse(x, y + r * 0.2 * ct, r * 0.97, r * 0.82 * ct, 0, PI, TAU);
+      c.quadraticCurveTo(x, y + r * 0.34 * ct, x - r * 0.97, y + r * 0.2 * ct);
+      const g = c.createLinearGradient(x, y - r * 0.7 * ct, x, y + r * 0.3 * ct); g.addColorStop(0, K.rgb(K.col.eggUnder(cb))); g.addColorStop(1, K.rgb(K.col.eggUnder(cb * 0.6)));
+      c.fillStyle = g; c.fill();
+      for (let k = 0; k < 7; k++) { c.fillStyle = K.rgb(K.col.eggUnder(cb + 0.45), 0.5); c.beginPath(); c.ellipse(x + (s.lace[k] - 0.5) * r * 1.3, y - s.lace[k + 7] * r * 0.5 * ct, r * 0.04, r * 0.03, 0, 0, TAU); c.fill(); }
+      c.fillStyle = o.burst ? "#FFB21A" : "#F7A21B"; c.beginPath(); c.ellipse(x + r * 0.05, y + r * 0.26 * ct, r * 0.3, r * 0.06, 0, 0, PI); c.fill();
+      if (o.burst) runny(c, x + r * 0.05, y + r * 0.3 * ct, r);
     } else {
       body(0, 0);
       if (o.burst) runny(c, x - r * 0.04, y - r * 0.08, r);
@@ -532,15 +621,17 @@
   function outcome(s) {
     const r = s.res || {};
     return {
-      done: s.done, caught: !!r.caught, flipped: !!r.flipped, rot: r.rot || 0, folded: !!r.folded, torn: !!r.torn, burst: !!r.burst,
+      done: s.done, caught: !!r.caught, flipped: !!r.flipped, rot: r.rot || 0, folded: !!r.folded && !r.torn, torn: !!r.torn, burst: !!r.burst,
       splat: !!r.splat, angleErr: r.angleErr == null ? null : r.angleErr, angle: r.angle == null ? null : r.angle, grade: r.grade || null,
       strength: s.air ? s.air.st : null,
       cookTop: s.cookTop, cookBottom: s.cookAtToss == null ? s.cookBottom : s.cookAtToss, impact: r.impact || 0,
-      stuck: s.stuck, landedNow: s.landedNow, u: r.u == null ? s.u : r.u, v: r.v == null ? s.v : r.v,
+      stuck: s.stuck, landedNow: s.landedNow,
+      // the lead holds the slip until the egg has sat 0.8 s after landing
+      dwell: (s.phase === "landed" && s.age >= 0.8) || s.stuck || (s.done && !r.caught), u: r.u == null ? s.u : r.u, v: r.v == null ? s.v : r.v,
     };
   }
   function hotspots(s, k) {
-    if (s.phase !== "pan" && s.phase !== "landed") return [];
+    if (s.phase !== "pan" && s.phase !== "wind" && s.phase !== "landed") return [];
     const out = [], step = Math.max(1, Math.floor(s.P.length / k));
     for (let i = 0; i < s.P.length && out.length < k; i += step) { const p = s.P[i]; out.push({ u: p.u, v: p.v, h: p.h, cook: Math.max(p.cb, p.ct) }); }
     return out;

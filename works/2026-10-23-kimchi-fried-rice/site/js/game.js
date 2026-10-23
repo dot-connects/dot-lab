@@ -28,27 +28,43 @@
 
   /* ---------- the wok's own motion: a chef's toss (Ko & Hu: one cycle ~0.3 s; push + lift, far lip rises) ---------- */
   function startToss(f) {
-    g.tossAnim = { t0: g.t, s: f.strength, snap: f.snap, du: f.dirU || 0 };
+    let du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV; const n = Math.hypot(du, dv) || 1;
+    if (Math.hypot(du, dv) < 0.2) { du = 0; dv = 1; } else { du /= n; dv /= n; }
+    g.tossAnim = { t0: g.t, s: f.strength, snap: f.snap == null ? 0.5 : f.snap, d: [du, dv] };
   }
-  function updatePose() {
+  /* chef's toss (r2-chef + Ko & Hu): wind-up 0–50 ms (back), push 50–150 ms along d, lip snap 150–220 ms (the far lip
+     rises 5°+15°·s, the wok hops), pull back and level 220–350 ms, a small cushion when the food comes down ~0.7 s.
+     The tilt pivots on the rim opposite d, so on a forward toss the handle side barely moves. At rest the wok leans
+     6° toward the cook and follows the phone tilt. */
+  const DEG = Math.PI / 180, ease = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : K.smooth(k));
+  let lastPose = null;
+  function updatePose(dt) {
     const p = g.pose, a = g.tossAnim, tilt = K.Input.tilt;
     const eggAir = g.phase === "egg" && g.egg && g.egg.phase === "air";
     g.panU = K.lerp(g.panU || 0, eggAir ? tilt.u * 0.35 : g.phase === "egg" && g.egg && g.egg.phase !== "pan" ? (g.panU || 0) : 0, 0.2);
-    let du = tilt.u * 0.03 + (g.panU || 0), dv = 0, lift = 0, lean = 0;
+    let du = tilt.u * 0.03 + (g.panU || 0), dv = 0, lift = 0;
+    let pitch = -6 * DEG + tilt.v * 10 * DEG, roll = tilt.u * 12 * DEG, pu = 0, pv = 0;
     if (a) {
-      const dur = 0.36 - 0.08 * a.snap, k = (g.t - a.t0) / dur;
-      if (k >= 1) g.tossAnim = null;
+      const k = g.t - a.t0, s1 = a.s;
+      if (k > 0.95) g.tossAnim = null;
       else {
-        // tiny pull back (anticipation), sharp push forward + up, settle back
-        const back = k < 0.15 ? -Math.sin((k / 0.15) * Math.PI) * 0.03 : 0;
-        const fwd = k >= 0.1 ? Math.sin(Math.PI * Math.min(1, (k - 0.1) / 0.9)) : 0;
-        dv = (back + fwd * 0.13) * a.s;
-        lift = Math.max(0, Math.sin(Math.PI * Math.min(1, k * 1.25))) * 0.06 * a.s;
-        lean = Math.sin(Math.PI * k) * (0.6 + 0.4 * a.snap) * a.s;
-        du += a.du * fwd * 0.06;
+        const back = k < 0.05 ? -Math.sin((k / 0.05) * Math.PI) * 0.03 : 0;
+        const fwd = 0.45 * s1 * (ease((k - 0.05) / 0.1) - ease((k - 0.22) / 0.13));
+        const amp = (5 + 15 * s1 * (0.6 + 0.4 * a.snap)) * DEG;
+        const bump = ease((k - 0.13) / 0.07) - ease((k - 0.22) / 0.12);
+        const hop = 0.06 * s1 * bump;
+        const cushion = k > 0.62 && k < 0.84 ? -0.03 * Math.sin(((k - 0.62) / 0.22) * Math.PI) : 0;
+        const over = k > 0.35 && k < 0.5 ? -0.06 * fwd : 0;   // overshoot on the return (follow-through)
+        du += (back + fwd) * a.d[0]; dv += (back + fwd + over) * a.d[1];
+        lift = hop + cushion;
+        pitch += amp * bump * a.d[1]; roll += amp * bump * a.d[0];
+        pu = -0.95 * a.d[0]; pv = -0.95 * a.d[1];
       }
     }
-    p.du = du; p.dv = dv; p.lift = lift; p.lean = lean; p.t = g.t;
+    // wok velocity (world units/s) for food that leaves it
+    if (lastPose && dt > 0) { p.vdu = (du - lastPose[0]) / dt; p.vdv = (dv - lastPose[1]) / dt; p.vlift = (lift - lastPose[2]) / dt; }
+    lastPose = [du, dv, lift];
+    p.du = du; p.dv = dv; p.lift = lift; p.pitch = pitch; p.roll = roll; p.pu = pu; p.pv = pv; p.t = g.t;
   }
 
   /* ---------- input ---------- */
@@ -85,6 +101,8 @@
     for (const e of ev) {
       if (e.type === "land" && e.n > 6) { K.Fx.spatter(g.fx, e.u, e.v, Math.min(10, ((e.n / 10) | 0) + 1)); K.Audio.land("rice"); g.rimFlash = Math.max(g.rimFlash, 0.5); }
       if (e.type === "spill") { K.Audio.land("spill"); }
+      if (e.type === "burning" && g.t - (g.burnWarnT || -9) > 2.5) { g.burnWarnT = g.t; toast("타고 있어!", "#E8481C"); K.Fx.burnCue && K.Fx.burnCue(g.fx, e.u || 0, e.v || 0); }
+      if (e.type === "burnt") toast("탔다!", "#5A2A14");
     }
     ev.length = 0;
   }
@@ -99,7 +117,7 @@
   function demoDrive() {
     const t = g.phaseT;
     if (g.phase === "rice") {
-      if ((t < 3.5 || t > 8.5) && t % 0.8 < 1 / 60) flick({ strength: K.rnd(0.8, 1.05), snap: K.rnd(0.4, 0.8), dirU: 0, dirV: 1 });
+      if ((t < 3.5 || t > 8.5) && t % 1.1 < 1 / 60) { const a = [0, 0, 0.6, -0.6, Math.PI][(g.flicks || 0) % 5]; flick({ strength: K.rnd(0.85, 1.05), snap: K.rnd(0.4, 0.8), dirU: Math.sin(a), dirV: Math.cos(a) }); }
       K.Input.demoTilt(t >= 3.5 && t <= 8.5 ? Math.sin((t - 3.5) * 1.6) * 0.5 : 0, 0);
     } else if (g.phase === "egg" && g.egg) {
       const e = g.egg;
@@ -116,7 +134,7 @@
     if (g.hitstop > 0) { g.hitstop -= dt; return; }
     g.phaseT += dt;
     if (g.demo) demoDrive();
-    updatePose();
+    updatePose(dt);
     const tilt = K.Input.tilt, ctx = { t: g.t, tilt, heat: K.heat, wokPose: g.pose };
     let contact = 0, steam = [];
     if (g.phase === "rice") {
@@ -153,7 +171,7 @@
         else if (o.caught && o.folded) toast("접혔다…", "#E8481C");
         else if (o.burst) toast("터졌다!", "#E8481C");
       }
-      if ((o.done && g.phaseT > 0.3) || g.phaseT > EGG_MAX) {
+      if ((o.done && (o.dwell !== false) && g.phaseT > 0.3) || g.phaseT > EGG_MAX + 1) {
         if (!o.done) K.Egg.forceStuck && K.Egg.forceStuck(g.egg);
         finish(); g.phase = "result"; g.phaseT = 0;
       }
@@ -233,7 +251,7 @@
     c.fillStyle = ink; c.fillText(t, x, y);
   }
   function hud() {
-    const top = Math.max(18, H * 0.04);
+    const top = Math.max(14, vw.top * 0.2);
     if (g.phase === "rice" && !g.demo) {
       const left = g.started ? Math.max(0, RICE_T - g.phaseT) : RICE_T, warn = left < 3 && g.started;
       const pulse = warn ? 1 + 0.12 * Math.max(0, Math.sin((left % 1) * Math.PI)) : 1;
@@ -246,11 +264,11 @@
       if (!g.started) {
         // phone-flick loop until the first flick starts the clock
         const k = (g.t % 1.1) / 1.1, s = Math.sin(Math.min(1, k * 2.2) * Math.PI);
-        c.save(); c.translate(W / 2, H * 0.3 - s * H * 0.05); c.rotate(-s * 0.35);
+        c.save(); c.translate(W / 2, vw.top + (vw.cy - vw.R * vw.ct - vw.top) * 0.45 - s * vw.R * 0.15); c.rotate(-s * 0.35);
         c.fillStyle = "#1F2A33"; c.beginPath(); c.roundRect(-W * 0.06, -W * 0.11, W * 0.12, W * 0.22, W * 0.02); c.fill();
         c.fillStyle = "#E8481C"; c.beginPath(); c.roundRect(-W * 0.047, -W * 0.093, W * 0.094, W * 0.17, W * 0.012); c.fill();
         c.restore();
-        strokeText(K.Input.mode === "motion" ? "손목으로 휙!" : "위로 휙 쓸어 올려!", W / 2, H * 0.205, 30, "#1F2A33");
+        strokeText(K.Input.mode === "motion" ? "손목으로 휙!" : "휙 쓸어서 튕기기!", W / 2, vw.top * 0.95, 30, "#1F2A33");
       }
     } else if (g.phase === "egg" && !g.demo) {
       c.font = '16px "Jua"'; c.fillStyle = "#4b5761"; c.textAlign = "center"; c.fillText(`2판 · 계란 뒤집기 · 주문: ${g.order.label}`, W / 2, top + 10);
@@ -273,17 +291,18 @@
       if (k >= 1) g.toast = null;
       else {
         const s = k < 0.28 ? K.easeOutBack(k / 0.28) : 1, a = k > 0.75 ? 1 - (k - 0.75) / 0.25 : 1;
-        c.save(); c.globalAlpha = a; c.translate(W / 2, H * 0.2); c.rotate(-0.035); c.scale(s, s);
+        c.save(); c.globalAlpha = a; c.translate(W / 2, vw.top * 0.95); c.rotate(-0.035); c.scale(s, s);
         strokeText(g.toast.text, 0, 0, 32, g.toast.color); c.restore();
       }
     }
+    if (K.Input.slowHint && performance.now() - K.Input.slowHint < 900 && g.phase !== "result" && !g.demo) strokeText("더 빠르게!", W / 2, vw.top * 1.25, 26, "#E8481C");
     // motion events never arrived (in-app browser / desktop): say once how to get the real thing
     if (!g.demo && K.Input.mode === "touch" && K.Input.hint && g.phase === "rice" && !g.started) {
       c.font = '15px "Gowun Dodum"'; c.textAlign = "center"; c.fillStyle = "#4b5761"; c.fillText(K.Input.hint, W / 2, H * 0.97);
     }
     // spirit level (bottom-right): the bubble drifts to the high side
     if (g.phase !== "result" && !g.demo) {
-      const lx = W * 0.86, ly = H * 0.9, lr = W * 0.07, t = K.Input.tilt;
+      const lr = Math.min(W, H, 520) * 0.06, lx = Math.min(W - lr * 1.6, vw.cx + vw.R * 1.45), ly = H - lr * 1.8, t = K.Input.tilt;
       c.fillStyle = "rgba(31,42,51,.72)"; c.beginPath(); c.arc(lx, ly, lr, 0, TAU); c.fill();
       c.strokeStyle = "rgba(255,255,255,.35)"; c.lineWidth = 1; c.beginPath(); c.arc(lx, ly, lr * 0.35, 0, TAU); c.stroke();
       c.fillStyle = "#a3e635"; c.beginPath(); c.arc(lx - t.u * lr * 0.6, ly + t.v * lr * 0.6, lr * 0.28, 0, TAU); c.fill();
@@ -301,11 +320,14 @@
     if (g.phase !== "egg") K.Rice.drawSpilled && K.Rice.drawSpilled(c, g.rice, vw, g.pose);
     K.Stage.drawWok(c, vw, g.pose, g.contact || 0, fire);
     if (fire && K.Fx.drawRim) K.Fx.drawRim(c, fx, vw, g.pose);   // far-rim flare sits under the food
-    if (g.phase === "rice" || g.phase === "result") K.Rice.draw(c, g.rice, vw, g.pose);
+    if (g.phase === "rice" || g.phase === "result") {
+      if (K.Rice.drawResting && K.Rice.drawAirborne) {
+        K.Rice.drawResting(c, g.rice, vw, g.pose); K.Stage.drawFrontLip(c, vw, g.pose); K.Rice.drawAirborne(c, g.rice, vw, g.pose);
+      } else K.Rice.draw(c, g.rice, vw, g.pose);
+    }
     if (g.phase === "egg") K.Egg.draw(c, g.egg, vw, g.pose);
     K.Stage.flashRim(c, vw, g.pose, g.rimFlash);
     K.Fx.drawFront(c, fx, vw, g.pose);
-    if (fx.haze > 0.01) { c.fillStyle = `rgba(52,48,46,${Math.min(0.45, fx.haze)})`; c.fillRect(-10, -10, W + 20, H + 20); }
     c.restore();
     hud();
   }
