@@ -13,7 +13,7 @@
   const RAMP0 = 0.8;        // sear rate right after landing (rises to 1 over 0.4 s of contact): constant tossing stays pale
   const V = 3.1;             // toss speed scale (strength 1 lip grain lands near the handle side, 1.5 spills)
   const HEAT_C = K.heat(0, 0);
-  const READY = [0.28, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
+  const READY = [0.26, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
   const SHEET = 0.8;               // airborne share a 완벽 needs
   const LABELS = {
     perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["덜 익었어", "#C98A3E"],
@@ -61,7 +61,7 @@
       u: F(), v: F(), h: F(), vu: F(), vv: F(), vh: F(), su: F(), sv: F(), hu: F(), hv: F(),
       depth: F(), cook: F(), rest: F(), tl: F(), lift: F(), rot: F(), spin: F(), key: F(), hop: new Uint8Array(M),
       toss: new Int32Array(M), shape: [], ord: new Uint16Array(M),
-      pc: [0, 0], slU: 0, slV: 1, sl: F(), cur: null, tossN: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0, readiness: 0, golden: false,
+      pc: [0, 0], slU: 0, slV: 1, sl: F(), cur: null, tossN: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0, prevFlickT: -9, readiness: 0, golden: false,
       lastToss: null, events: [], total: N_RICE + N_KIMCHI + N_PA, hot: [],
     };
     for (let i = 0; i < M; i++) {
@@ -74,7 +74,7 @@
       // member layout (in R units): grains overlap ~60% inside a small blob
       const m = [];
       for (let k = 0; k < un.n; k++) {
-        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.006 + Math.random() * 0.016 : 0;
+        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.008 + Math.random() * 0.022 : 0;
         m.push({ ox: Math.cos(ma) * mr, oy: Math.sin(ma) * mr * 0.8, rot: Math.random() * Math.PI, sz: 0.85 + Math.random() * 0.3, j: (Math.random() - 0.5) * 0.08 });
       }
       s.shape.push({ m, q: Math.random(), strip: un.kind === 2 && Math.random() < 0.35 });
@@ -131,10 +131,10 @@
       s.hop[i] = 0;
     }
     s.cur = {
-      id, t, str, readiness: rn ? rs / rn : 0, sheet: avail ? launched / avail : 0, launched, out: launched,
+      id, t, str, gap: t - s.prevFlickT, readiness: rn ? rs / rn : 0, sheet: avail ? launched / avail : 0, launched, out: launched,
       spill: 0, u: launched ? mu / launched : 0, v: launched ? mv / launched : 0,
     };
-    s.tosses++;
+    s.tosses++; s.prevFlickT = t;
   }
   /* distance from the lip measured along the throw (sideways counts half) */
   function dist(u, v, lu, lv, du, dv) {
@@ -166,13 +166,15 @@
     else if (c.readiness < READY[0]) g = "early";
     else if (c.readiness <= READY[1] && c.sheet >= SHEET) g = "perfect";
     else g = "good";
-    if (c.t - s.lastTossT > 1.8 || g === "late" || g === "spill") s.combo = 0;
+    if (c.t - s.lastTossT > 1.8 || g === "late" || g === "spill" || g === "early") s.combo = 0;
     s.lastTossT = c.t;
     let gain = 0;
     if (g === "perfect" || g === "good") {
       s.combo++;
       const fac = Math.min(1.6, 1 + 0.2 * (s.combo - 1)), w0 = s.wokhei;
-      s.wokhei = Math.min(20, s.wokhei + (g === "perfect" ? 2 * fac : 1)); gain = s.wokhei - w0;
+      // mashing doesn't pay: a toss within 0.6 s of the previous one earns no 불맛
+      if (c.gap >= 0.6) s.wokhei = Math.min(20, s.wokhei + (g === "perfect" ? 2 * fac : 1));
+      gain = s.wokhei - w0;
     }
     s.maxCombo = Math.max(s.maxCombo, s.combo);
     const [label, color] = LABELS[g];
@@ -189,10 +191,15 @@
     for (let k = 0; k < steps; k++) step(s, dt / steps, ctx);
     if (s.cur && (s.cur.out <= 0 || ctx.t - s.cur.t > 1.6)) finish(s, ctx.t);
     // live cue for the lead: same scale and window as the grade (완벽/좋음 = 0.25–0.7)
-    let rs = 0, rn = 0;
-    for (let i = 0; i < s.M; i++) if (s.st[i] === 0 && s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+    let rs = 0, rn = 0, up = 0, all = 0;
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] === 3) continue;
+      all += s.n[i]; if (s.st[i] !== 0) up += s.n[i];
+      if (s.st[i] === 0 && s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+    }
     s.readiness = rn ? rs / rn : 0;
-    s.golden = s.readiness >= READY[0] && s.readiness <= READY[2];
+    // "now" only once the pile is back down (a few early landers don't make a cue)
+    s.golden = up <= 0.1 * all && s.readiness >= READY[0] && s.readiness <= READY[2];
   }
   function step(s, dt, ctx) {
     const t = ctx.t, heat = ctx.heat || K.heat, tilt = ctx.tilt || { u: 0, v: 0 };
@@ -307,7 +314,7 @@
   function drawUnit(c, s, i, x, y, R, sc, lit, sAng, sStr) {
     const kind = s.kind[i], sh = s.shape[i], q = qi(s.cook[i]), L = LUT[kind];
     if (kind === 0) {
-      const rx0 = 0.0225 * R * sc, ry0 = 0.011 * R * sc; // capsule 0.045R x 0.022R (art §2)
+      const rx0 = 0.0315 * R * sc, ry0 = 0.0154 * R * sc; // art §2 capsule 0.045R x 0.022R, x1.4 so 220 grains fill the 0.58 pile
       c.lineCap = "round";
       const m = sh.m;
       for (let k = 0; k < m.length; k++) {
@@ -331,7 +338,7 @@
       }
     } else if (kind === 1) {
       // torn kimchi leaf: uneven quad, lit edge top-left, pale rib on some; shrinks as it cooks
-      const z = 0.04 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
+      const z = 0.056 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
       const px = [-1, -0.2, 0.3 + qq * 0.6, 1, 0.2, -0.3 - qq * 0.5], py = [-0.4, -0.75 + qq * 0.2, -0.85, 0.2 + (1 - qq) * 0.3, 0.7, 0.8];
       c.fillStyle = lit ? L.lit[q] : L.base[q]; c.beginPath();
       for (let k = 0; k < 6; k++) { const X = x + (px[k] * ca - py[k] * sa) * z, Y = y + (px[k] * sa + py[k] * ca) * z * 0.85; k ? c.lineTo(X, Y) : c.moveTo(X, Y); }
@@ -343,7 +350,7 @@
       const gl = L.gl[q];
       if (gl > 0.05) { c.fillStyle = `rgba(255,240,225,${(gl * 0.9).toFixed(2)})`; c.beginPath(); c.arc(x - z * 0.3, y - z * 0.3, z * 0.16, 0, TAU); c.fill(); }
     } else {
-      const z = 0.018 * R * sc;
+      const z = 0.025 * R * sc;
       if (sh.strip) {
         c.strokeStyle = lit ? L.lit[q] : L.base[q]; c.lineWidth = z * 0.9; c.lineCap = "round";
         const a = s.rot[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * z * 1.5, y - Math.sin(a) * z * 1.2); c.lineTo(x + Math.cos(a) * z * 1.5, y + Math.sin(a) * z * 1.2); c.stroke();
@@ -361,7 +368,7 @@
     for (let i = 0; i < M; i++) {
       if (s.st[i] > 1 || s.kind[i]) continue; // one soft shadow per rice clump
       P(vw, pose, s.u[i], s.v[i], s.h[i] - 0.02 - 0.06 * s.depth[i]);
-      const rr = 0.045 * R;
+      const rr = 0.06 * R;
       c.moveTo(PX + rr + 2, PY + 2); c.ellipse(PX + 2, PY + 2, rr, rr * 0.7, 0, 0, TAU);
     }
     c.fill();

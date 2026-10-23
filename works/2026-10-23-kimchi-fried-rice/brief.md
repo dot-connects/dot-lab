@@ -78,3 +78,17 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   - 불: 끝이 뾰족한 불꽃 혀(겹친 물방울 3겹), 튕길 때 먼 쪽 테두리 위로 넘어오는 불, 웍 그림은 한 번 그려 캐시.
   - 날 밥 색을 김치 양념 쪽으로, 밥 320알 무더기 반경 .66, 튕길 때 먼 벽 위치를 깊이별로 흩음.
   밸런스(헤드리스 정책): 0.85초 90 · 2.5초 76 · 가만히 26 · 0.3초 48(밥 64%) · 너무 세게 50(쏟음 79%).
+- 2026-10-23 operator (away 1.5 h): "Nintendo-grade, team of subagents: design / animation / rules / principles, debate,
+  references; flick direction / strength / snap; lip rice higher, wave overturn; soft egg that folds, tears, bursts,
+  flops on landing". Team build (site/ = the real work, Pages):
+  - Research (4 parallel leads) → research/art.md, anim-physics.md, game-design.md, input.md.
+  - DESIGN.md (merged decisions) + CONTRACT.md (module API) → debate round with the game-design lead (first toss not
+    graded, splat only in motion mode, 「불맛 많이」 30/30, live flip angle + best-angle record, near-miss line).
+  - Builders in parallel, one file each: input.js (devicemotion flick strength/snap/dir + gravity tilt + touch
+    fallback), rice.js (lip-launch wave, depth flip on landing, per-toss grade + 불맛 combo), egg.js (PBD soft egg,
+    flop flight, fold/tear/burst/splat), fx.js (flames, rim flare, oil catch, steam vs smoke, spatter, procedural
+    audio); lead: core.js, stage.js, game.js (flow, pose, HUD, scoring, slip, share image), index.html.
+  - Checks: art critique (6 fixes) + playtest (6 rounds via in-page pointer events) → fixes; rice bots: cue reader
+    ≥ 55/60 vs blind 0.85 s metronome ≤ 48.
+  - Preview (touch only, Artifact blocks sensors): https://claude.ai/artifact/BFeZjB4jYU8eoVNnDWdMWd
+  - Not done: real-phone check (axis signs, in-app motion events, feel), listening to the audio, reel.

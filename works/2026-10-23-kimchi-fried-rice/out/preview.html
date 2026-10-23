@@ -903,7 +903,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   const RAMP0 = 0.8;        // sear rate right after landing (rises to 1 over 0.4 s of contact): constant tossing stays pale
   const V = 3.1;             // toss speed scale (strength 1 lip grain lands near the handle side, 1.5 spills)
   const HEAT_C = K.heat(0, 0);
-  const READY = [0.28, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
+  const READY = [0.26, 0.45, 0.7]; // readiness: early < [0] <= 완벽 <= [1] < 좋음 <= [2] < late
   const SHEET = 0.8;               // airborne share a 완벽 needs
   const LABELS = {
     perfect: ["불맛!", "#E8481C"], good: ["좋아", "#2BB673"], early: ["덜 익었어", "#C98A3E"],
@@ -951,7 +951,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       u: F(), v: F(), h: F(), vu: F(), vv: F(), vh: F(), su: F(), sv: F(), hu: F(), hv: F(),
       depth: F(), cook: F(), rest: F(), tl: F(), lift: F(), rot: F(), spin: F(), key: F(), hop: new Uint8Array(M),
       toss: new Int32Array(M), shape: [], ord: new Uint16Array(M),
-      pc: [0, 0], slU: 0, slV: 1, sl: F(), cur: null, tossN: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0, readiness: 0, golden: false,
+      pc: [0, 0], slU: 0, slV: 1, sl: F(), cur: null, tossN: 0, lastTossT: -9, combo: 0, maxCombo: 0, wokhei: 0, tosses: 0, prevFlickT: -9, readiness: 0, golden: false,
       lastToss: null, events: [], total: N_RICE + N_KIMCHI + N_PA, hot: [],
     };
     for (let i = 0; i < M; i++) {
@@ -964,7 +964,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       // member layout (in R units): grains overlap ~60% inside a small blob
       const m = [];
       for (let k = 0; k < un.n; k++) {
-        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.006 + Math.random() * 0.016 : 0;
+        const ma = Math.random() * TAU, mr = un.n > 1 ? 0.008 + Math.random() * 0.022 : 0;
         m.push({ ox: Math.cos(ma) * mr, oy: Math.sin(ma) * mr * 0.8, rot: Math.random() * Math.PI, sz: 0.85 + Math.random() * 0.3, j: (Math.random() - 0.5) * 0.08 });
       }
       s.shape.push({ m, q: Math.random(), strip: un.kind === 2 && Math.random() < 0.35 });
@@ -1021,10 +1021,10 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       s.hop[i] = 0;
     }
     s.cur = {
-      id, t, str, readiness: rn ? rs / rn : 0, sheet: avail ? launched / avail : 0, launched, out: launched,
+      id, t, str, gap: t - s.prevFlickT, readiness: rn ? rs / rn : 0, sheet: avail ? launched / avail : 0, launched, out: launched,
       spill: 0, u: launched ? mu / launched : 0, v: launched ? mv / launched : 0,
     };
-    s.tosses++;
+    s.tosses++; s.prevFlickT = t;
   }
   /* distance from the lip measured along the throw (sideways counts half) */
   function dist(u, v, lu, lv, du, dv) {
@@ -1056,13 +1056,15 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     else if (c.readiness < READY[0]) g = "early";
     else if (c.readiness <= READY[1] && c.sheet >= SHEET) g = "perfect";
     else g = "good";
-    if (c.t - s.lastTossT > 1.8 || g === "late" || g === "spill") s.combo = 0;
+    if (c.t - s.lastTossT > 1.8 || g === "late" || g === "spill" || g === "early") s.combo = 0;
     s.lastTossT = c.t;
     let gain = 0;
     if (g === "perfect" || g === "good") {
       s.combo++;
       const fac = Math.min(1.6, 1 + 0.2 * (s.combo - 1)), w0 = s.wokhei;
-      s.wokhei = Math.min(20, s.wokhei + (g === "perfect" ? 2 * fac : 1)); gain = s.wokhei - w0;
+      // mashing doesn't pay: a toss within 0.6 s of the previous one earns no 불맛
+      if (c.gap >= 0.6) s.wokhei = Math.min(20, s.wokhei + (g === "perfect" ? 2 * fac : 1));
+      gain = s.wokhei - w0;
     }
     s.maxCombo = Math.max(s.maxCombo, s.combo);
     const [label, color] = LABELS[g];
@@ -1079,10 +1081,15 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     for (let k = 0; k < steps; k++) step(s, dt / steps, ctx);
     if (s.cur && (s.cur.out <= 0 || ctx.t - s.cur.t > 1.6)) finish(s, ctx.t);
     // live cue for the lead: same scale and window as the grade (완벽/좋음 = 0.25–0.7)
-    let rs = 0, rn = 0;
-    for (let i = 0; i < s.M; i++) if (s.st[i] === 0 && s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+    let rs = 0, rn = 0, up = 0, all = 0;
+    for (let i = 0; i < s.M; i++) {
+      if (s.st[i] === 3) continue;
+      all += s.n[i]; if (s.st[i] !== 0) up += s.n[i];
+      if (s.st[i] === 0 && s.depth[i] < 0.35) { rs += Math.min(1.6, s.rest[i]) * s.n[i]; rn += s.n[i]; }
+    }
     s.readiness = rn ? rs / rn : 0;
-    s.golden = s.readiness >= READY[0] && s.readiness <= READY[2];
+    // "now" only once the pile is back down (a few early landers don't make a cue)
+    s.golden = up <= 0.1 * all && s.readiness >= READY[0] && s.readiness <= READY[2];
   }
   function step(s, dt, ctx) {
     const t = ctx.t, heat = ctx.heat || K.heat, tilt = ctx.tilt || { u: 0, v: 0 };
@@ -1197,7 +1204,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
   function drawUnit(c, s, i, x, y, R, sc, lit, sAng, sStr) {
     const kind = s.kind[i], sh = s.shape[i], q = qi(s.cook[i]), L = LUT[kind];
     if (kind === 0) {
-      const rx0 = 0.0225 * R * sc, ry0 = 0.011 * R * sc; // capsule 0.045R x 0.022R (art §2)
+      const rx0 = 0.0315 * R * sc, ry0 = 0.0154 * R * sc; // art §2 capsule 0.045R x 0.022R, x1.4 so 220 grains fill the 0.58 pile
       c.lineCap = "round";
       const m = sh.m;
       for (let k = 0; k < m.length; k++) {
@@ -1221,7 +1228,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       }
     } else if (kind === 1) {
       // torn kimchi leaf: uneven quad, lit edge top-left, pale rib on some; shrinks as it cooks
-      const z = 0.04 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
+      const z = 0.056 * R * sc * (1 - 0.15 * Math.min(1, s.cook[i])) * (0.85 + 0.3 * sh.q), a = s.rot[i], ca = Math.cos(a), sa = Math.sin(a), qq = sh.q;
       const px = [-1, -0.2, 0.3 + qq * 0.6, 1, 0.2, -0.3 - qq * 0.5], py = [-0.4, -0.75 + qq * 0.2, -0.85, 0.2 + (1 - qq) * 0.3, 0.7, 0.8];
       c.fillStyle = lit ? L.lit[q] : L.base[q]; c.beginPath();
       for (let k = 0; k < 6; k++) { const X = x + (px[k] * ca - py[k] * sa) * z, Y = y + (px[k] * sa + py[k] * ca) * z * 0.85; k ? c.lineTo(X, Y) : c.moveTo(X, Y); }
@@ -1233,7 +1240,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const gl = L.gl[q];
       if (gl > 0.05) { c.fillStyle = `rgba(255,240,225,${(gl * 0.9).toFixed(2)})`; c.beginPath(); c.arc(x - z * 0.3, y - z * 0.3, z * 0.16, 0, TAU); c.fill(); }
     } else {
-      const z = 0.018 * R * sc;
+      const z = 0.025 * R * sc;
       if (sh.strip) {
         c.strokeStyle = lit ? L.lit[q] : L.base[q]; c.lineWidth = z * 0.9; c.lineCap = "round";
         const a = s.rot[i]; c.beginPath(); c.moveTo(x - Math.cos(a) * z * 1.5, y - Math.sin(a) * z * 1.2); c.lineTo(x + Math.cos(a) * z * 1.5, y + Math.sin(a) * z * 1.2); c.stroke();
@@ -1251,7 +1258,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     for (let i = 0; i < M; i++) {
       if (s.st[i] > 1 || s.kind[i]) continue; // one soft shadow per rice clump
       P(vw, pose, s.u[i], s.v[i], s.h[i] - 0.02 - 0.06 * s.depth[i]);
-      const rr = 0.045 * R;
+      const rr = 0.06 * R;
       c.moveTo(PX + rr + 2, PY + 2); c.ellipse(PX + 2, PY + 2, rr, rr * 0.7, 0, 0, TAU);
     }
     c.fill();
@@ -1608,7 +1615,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       }
     }
     let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
-    let sc = abs ? K.scaleAt(Math.max(0, ch - 0.05)) : 1, tx = ox, ty = oy;
+    let sc = abs ? Math.min(1.3, K.scaleAt(Math.max(0, ch - 0.05))) : 1, tx = ox, ty = oy;
     if (s.phase === "splatFly") { const k = s.age / 0.22; sc *= 1 + 3.2 * k * k; tx = lerp(ox, vw.W * 0.5, k); ty = lerp(oy, vw.H * 0.34, k); }
     const ta = s.t - s.sqT0, sq = ta < 0.6 ? 1 - 0.25 * Math.exp(-0.35 * 50 * ta) * Math.cos(47 * ta) : 1;
     const jig = s.phase === "pan" && s.cookBottom >= 0.6 && s.cookBottom <= 1.4, rip = s.phase === "landed" ? Math.exp(-6 * s.age) : 0;
@@ -1630,11 +1637,12 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     // contact shadow + lace skirt (crispy brown edge) while the yolk face is up and flat
     if (!abs && !folded && !torn) { ringPath(c, s, X, Y, tx, ty, 1.02, 0, 2.5, 3); c.fillStyle = "rgba(10,14,20,.28)"; c.fill(); }
     if (topUp && !folded && vis > 0.3) {
-      const la = clamp((cbm - 0.5) / 0.3, 0, 1);
+      const la = clamp((cbm - 0.55) / 0.35, 0, 1); // fades in from clear: no grey midtone
       if (la > 0 && !torn) {
+        const burn = clamp((cbm - 1.1) / 0.5, 0, 1);
         ringPath(c, s, X, Y, tx, ty, 1.06, 0.07, 0, 0);
-        c.fillStyle = K.rgb(K.col.eggEdge(cbm), la); c.fill();
-        c.strokeStyle = K.rgb(K.col.eggEdge(cbm + 0.35), la * 0.8); c.lineWidth = 1.2; c.stroke();
+        c.fillStyle = K.rgb(mix([201, 138, 62], K.col.eggEdge(cbm), burn), la); c.fill();
+        c.strokeStyle = K.rgb(mix([138, 78, 30], K.col.eggEdge(cbm + 0.35), burn), la * 0.8); c.lineWidth = 1.2; c.stroke();
       }
     }
     const smoothBody = !folded && !torn;
@@ -1666,16 +1674,15 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const e1 = [b.u - a.u, b.v - a.v, b.h - a.h], e2 = [d.u - a.u, d.v - a.v, d.h - a.h];
       let nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nh = e1[0] * e2[1] - e1[1] * e2[0];
       const nl = (top ? 1 : -1) / (Math.hypot(nx, ny, nh) || 1);
-      const shade = 0.9 + 0.13 * Math.max(0, (nx * LT[0] + ny * LT[1] + nh * LT[2]) * nl);
+      const shade = 0.95 + 0.06 * Math.max(0, (nx * LT[0] + ny * LT[1] + nh * LT[2]) * nl);
       const rim = (a.rim + b.rim + d.rim) / 3, set = (setOf(a) + setOf(b) + setOf(d)) / 3;
       const cb = (a.cb + b.cb + d.cb) / 3, ct = (a.ct + b.ct + d.ct) / 3;
       let col;
       if (top) {
         col = mix(WOK, K.col.eggWhite(Math.max(set * 0.75, ct)), 0.36 + 0.64 * set);
       } else {
-        const nz = (a.nz + b.nz + d.nz) / 3;
         col = mix(WOK, K.col.eggUnder(cb), 0.45 + 0.55 * clamp(cb / 0.6, 0, 1));
-        col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75).map((x) => x * (0.92 + 0.16 * nz));
+        col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75); // no per-facet mottle: it read as seams
       }
       TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade), top });
     }
@@ -1978,7 +1985,11 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
     ev.length = 0;
   }
   /* ---------- toasts: one short line after each toss, pops in ---------- */
-  function toast(text, color) { g.toast = { text, color: color || "#1F2A33", t0: g.t }; }
+  const WORD_COL = { "불맛": "#E8481C", "좋아": "#2BB673", "지금": "#E8481C", "덜 익": "#1F2A33", "약해": "#1F2A33", "탔다": "#5A2A14", "쏟았": "#5A2A14" };
+  function toast(text, color) {
+    const k = Object.keys(WORD_COL).find((w) => text.startsWith(w));
+    g.toast = { text, color: k ? WORD_COL[k] : color && !/^#(f|e)/i.test(color) ? color : "#1F2A33", t0: g.t };
+  }
 
   /* ---------- demo autopilot (attract mode behind the intro) ---------- */
   function demoDrive() {
@@ -2142,7 +2153,9 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       const e = g.egg, o = K.Egg.outcome(e);
       let msg = "계란 익는 중…", col = "#1F2A33";
       if (K.Egg.inPan(e)) {
-        if (e.cookBottom >= 0.6) { msg = e.cookBottom > 1.4 ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 던져!"; col = e.cookBottom > 1.4 ? "#E8481C" : "#1F2A33"; }
+        const win = g.order.win;
+        if (e.cookBottom >= win[0]) { msg = e.cookBottom > win[1] ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 뒤집어!"; col = e.cookBottom > win[1] ? "#E8481C" : "#2BB673"; }
+        if (e.cookBottom >= win[0] && !g.eggCued) { g.eggCued = true; g.rimFlash = 1; K.Audio.ding(); }
       } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.1 ? "어어…!" : "기울여서 받아!";
       else if (!o.done && e.phase !== "splat") msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : o.folded ? "접혔다…" : "앗…") : "아…";
       else msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : "앗…") : "아…";
@@ -2207,7 +2220,7 @@ html,body{margin:0;height:100%;background:#0f1215;overflow:hidden;overscroll-beh
       <ul><li><span>밥 볶기 ${r.rice}/60 · 계란 ${r.egg}/40</span><span>최고 ${best}</span></li>
       ${r.ang != null ? `<li><span>뒤집기 ${r.ang}°${angRecord ? " · 신기록" : ""}</span><span>최고 ${bestAng}°</span></li>` : ""}${lines}
 </ul>
-      <div class="formula">밥 = 맛있게 익은 비율 × 40 + 불맛 20 (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6</div></div>
+      <div class="formula">밥 = 맛있게 익은 비율 × ${Math.round(40 * g.order.done)} + 불맛 ${Math.round(20 * g.order.fire)} (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6 (${g.order.label} ${g.order.win[0]}~${g.order.win[1]})</div></div>
       <div class="row"><button class="btn" id="again" type="button">한 번 더</button><button class="btn ghost" id="share" type="button">자랑하기</button></div><div class="hint">폰을 휙 튕겨도 다시 시작</div>`;
     resEl.hidden = false;
     const bowl = document.getElementById("bowl"), bw = bowl.clientWidth || 300, bh = bw * 0.75;

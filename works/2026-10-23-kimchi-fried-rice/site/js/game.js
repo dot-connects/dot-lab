@@ -89,7 +89,11 @@
     ev.length = 0;
   }
   /* ---------- toasts: one short line after each toss, pops in ---------- */
-  function toast(text, color) { g.toast = { text, color: color || "#1F2A33", t0: g.t }; }
+  const WORD_COL = { "불맛": "#E8481C", "좋아": "#2BB673", "지금": "#E8481C", "덜 익": "#1F2A33", "약해": "#1F2A33", "탔다": "#5A2A14", "쏟았": "#5A2A14" };
+  function toast(text, color) {
+    const k = Object.keys(WORD_COL).find((w) => text.startsWith(w));
+    g.toast = { text, color: k ? WORD_COL[k] : color && !/^#(f|e)/i.test(color) ? color : "#1F2A33", t0: g.t };
+  }
 
   /* ---------- demo autopilot (attract mode behind the intro) ---------- */
   function demoDrive() {
@@ -253,7 +257,9 @@
       const e = g.egg, o = K.Egg.outcome(e);
       let msg = "계란 익는 중…", col = "#1F2A33";
       if (K.Egg.inPan(e)) {
-        if (e.cookBottom >= 0.6) { msg = e.cookBottom > 1.4 ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 던져!"; col = e.cookBottom > 1.4 ? "#E8481C" : "#1F2A33"; }
+        const win = g.order.win;
+        if (e.cookBottom >= win[0]) { msg = e.cookBottom > win[1] ? "바닥 탄다!" : Math.abs(e.su || 0) + Math.abs(e.sv || 0) > 0.25 ? "가운데로 모아!" : "지금 뒤집어!"; col = e.cookBottom > win[1] ? "#E8481C" : "#2BB673"; }
+        if (e.cookBottom >= win[0] && !g.eggCued) { g.eggCued = true; g.rimFlash = 1; K.Audio.ding(); }
       } else if (e.phase === "air" || e.phase === "splatFly") msg = (o.strength || 0) > 1.1 ? "어어…!" : "기울여서 받아!";
       else if (!o.done && e.phase !== "splat") msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : o.folded ? "접혔다…" : "앗…") : "아…";
       else msg = o.caught ? (o.flipped && !o.burst ? "좋아!" : "앗…") : "아…";
@@ -318,7 +324,7 @@
       <ul><li><span>밥 볶기 ${r.rice}/60 · 계란 ${r.egg}/40</span><span>최고 ${best}</span></li>
       ${r.ang != null ? `<li><span>뒤집기 ${r.ang}°${angRecord ? " · 신기록" : ""}</span><span>최고 ${bestAng}°</span></li>` : ""}${lines}
 </ul>
-      <div class="formula">밥 = 맛있게 익은 비율 × 40 + 불맛 20 (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6</div></div>
+      <div class="formula">밥 = 맛있게 익은 비율 × ${Math.round(40 * g.order.done)} + 불맛 ${Math.round(20 * g.order.fire)} (노릇할 때 튕긴 만큼) · 계란 = 뒤집기 22 + 노른자 12 + 굽기 6 (${g.order.label} ${g.order.win[0]}~${g.order.win[1]})</div></div>
       <div class="row"><button class="btn" id="again" type="button">한 번 더</button><button class="btn ghost" id="share" type="button">자랑하기</button></div><div class="hint">폰을 휙 튕겨도 다시 시작</div>`;
     resEl.hidden = false;
     const bowl = document.getElementById("bowl"), bw = bowl.clientWidth || 300, bh = bw * 0.75;

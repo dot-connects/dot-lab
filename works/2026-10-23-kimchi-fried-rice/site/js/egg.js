@@ -276,7 +276,7 @@
       }
     }
     let [ox, oy] = K.proj(vw, pp, cu, cv, ch);
-    let sc = abs ? K.scaleAt(Math.max(0, ch - 0.05)) : 1, tx = ox, ty = oy;
+    let sc = abs ? Math.min(1.3, K.scaleAt(Math.max(0, ch - 0.05))) : 1, tx = ox, ty = oy;
     if (s.phase === "splatFly") { const k = s.age / 0.22; sc *= 1 + 3.2 * k * k; tx = lerp(ox, vw.W * 0.5, k); ty = lerp(oy, vw.H * 0.34, k); }
     const ta = s.t - s.sqT0, sq = ta < 0.6 ? 1 - 0.25 * Math.exp(-0.35 * 50 * ta) * Math.cos(47 * ta) : 1;
     const jig = s.phase === "pan" && s.cookBottom >= 0.6 && s.cookBottom <= 1.4, rip = s.phase === "landed" ? Math.exp(-6 * s.age) : 0;
@@ -298,11 +298,12 @@
     // contact shadow + lace skirt (crispy brown edge) while the yolk face is up and flat
     if (!abs && !folded && !torn) { ringPath(c, s, X, Y, tx, ty, 1.02, 0, 2.5, 3); c.fillStyle = "rgba(10,14,20,.28)"; c.fill(); }
     if (topUp && !folded && vis > 0.3) {
-      const la = clamp((cbm - 0.5) / 0.3, 0, 1);
+      const la = clamp((cbm - 0.55) / 0.35, 0, 1); // fades in from clear: no grey midtone
       if (la > 0 && !torn) {
+        const burn = clamp((cbm - 1.1) / 0.5, 0, 1);
         ringPath(c, s, X, Y, tx, ty, 1.06, 0.07, 0, 0);
-        c.fillStyle = K.rgb(K.col.eggEdge(cbm), la); c.fill();
-        c.strokeStyle = K.rgb(K.col.eggEdge(cbm + 0.35), la * 0.8); c.lineWidth = 1.2; c.stroke();
+        c.fillStyle = K.rgb(mix([201, 138, 62], K.col.eggEdge(cbm), burn), la); c.fill();
+        c.strokeStyle = K.rgb(mix([138, 78, 30], K.col.eggEdge(cbm + 0.35), burn), la * 0.8); c.lineWidth = 1.2; c.stroke();
       }
     }
     const smoothBody = !folded && !torn;
@@ -334,16 +335,15 @@
       const e1 = [b.u - a.u, b.v - a.v, b.h - a.h], e2 = [d.u - a.u, d.v - a.v, d.h - a.h];
       let nx = e1[1] * e2[2] - e1[2] * e2[1], ny = e1[2] * e2[0] - e1[0] * e2[2], nh = e1[0] * e2[1] - e1[1] * e2[0];
       const nl = (top ? 1 : -1) / (Math.hypot(nx, ny, nh) || 1);
-      const shade = 0.9 + 0.13 * Math.max(0, (nx * LT[0] + ny * LT[1] + nh * LT[2]) * nl);
+      const shade = 0.95 + 0.06 * Math.max(0, (nx * LT[0] + ny * LT[1] + nh * LT[2]) * nl);
       const rim = (a.rim + b.rim + d.rim) / 3, set = (setOf(a) + setOf(b) + setOf(d)) / 3;
       const cb = (a.cb + b.cb + d.cb) / 3, ct = (a.ct + b.ct + d.ct) / 3;
       let col;
       if (top) {
         col = mix(WOK, K.col.eggWhite(Math.max(set * 0.75, ct)), 0.36 + 0.64 * set);
       } else {
-        const nz = (a.nz + b.nz + d.nz) / 3;
         col = mix(WOK, K.col.eggUnder(cb), 0.45 + 0.55 * clamp(cb / 0.6, 0, 1));
-        col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75).map((x) => x * (0.92 + 0.16 * nz));
+        col = mix(col, K.col.eggEdge(cb + 0.1), Math.pow(rim, 3) * 0.75); // no per-facet mottle: it read as seams
       }
       TL.push({ i, j, k, z: (a.h + b.h + d.h) * ctv - (a.v + b.v + d.v) * st + (a.layer + b.layer + d.layer) * 0.5 + (top ? 0 : -1e-4), f: rgbS(col, shade), top });
     }

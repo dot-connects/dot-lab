@@ -1,0 +1,10 @@
+{
+  "kind": "work",
+  "slug": "2026-10-23-kimchi-fried-rice",
+  "title": "실험 #002 김치볶음밥 한 그릇",
+  "link": "https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/",
+  "caption": "폰이 웍이 된다.\n\n손잡이 잡듯 쥐고 손목으로 휙! 튕기면 김치볶음밥이 파도처럼 넘어간다. 노릇할 때 튕기면 불맛 콤보, 늦으면 탄다. 마지막엔 계란후라이 뒤집기.\n\n불맛 장인 될 수 있어?\n프로필 링크에서 바로 해 볼 수 있어.",
+  "caption_threads": "폰이 웍이 된다.\n\n손목으로 휙 튕기면 김치볶음밥이 파도처럼 넘어가고, 노릇할 때 튕기면 불맛 콤보. 마지막엔 계란후라이 뒤집기.\n\n불맛 장인 될 수 있어?\nhttps://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/",
+  "notes": "Phone motion (devicemotion) with a touch fallback; in-app browsers may not pass motion events (probed at runtime, falls back to touch). Sound is procedural. Team build: research/, DESIGN.md, CONTRACT.md. Not yet checked on a real phone.",
+  "status": "draft"
+}
