@@ -1,0 +1,456 @@
+<title>김치볶음밥 시안 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Song+Myung&family=IBM+Plex+Sans+KR:wght@400;600&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
+<style>
+/* layout: header, then the phone beside a side column (colour ramp, view angle); stacks on a phone */
+:root{
+  --bg:#eef0f2; --fg:#1d2329; --muted:#56616b; --line:#d3d9de; --chip:#e1e6ea; --accent:#c2410c; --card:#ffffff;
+  --body:"IBM Plex Sans KR",system-ui,sans-serif; --disp:"Do Hyeon","IBM Plex Sans KR",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#14181b;--fg:#e9edf0;--muted:#9aa5ae;--line:#2c3338;--chip:#232a2f;--accent:#fb923c;--card:#1c2226;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#14181b;--fg:#e9edf0;--muted:#9aa5ae;--line:#2c3338;--chip:#232a2f;--accent:#fb923c;--card:#1c2226;color-scheme:dark}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);line-height:1.55;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:28px 48px}
+header{max-width:1000px;margin:0 auto 26px}
+h1{font-family:var(--disp);font-weight:400;font-size:clamp(28px,6vw,40px);margin:0 0 6px;text-wrap:balance}
+.lede{color:var(--muted);margin:0;max-width:64ch}
+.how{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 0;padding:0;list-style:none}
+.how li{background:var(--chip);border-radius:999px;padding:4px 12px;font-size:13px}
+.wrap{max-width:1000px;margin:0 auto;display:flex;flex-wrap:wrap;gap:32px;justify-content:center;align-items:flex-start}
+.side{flex:1 1 340px;min-width:0;max-width:520px;display:flex;flex-direction:column;gap:22px}
+.side h2{font-family:var(--disp);font-weight:400;font-size:22px;margin:0 0 8px}
+.side p{margin:0;color:var(--muted);font-size:14px}
+.phone{position:relative;width:min(340px,82vw);aspect-ratio:9/18;border-radius:34px;overflow:hidden;flex:none;
+  box-shadow:0 0 0 7px #1b1918,0 0 0 8px #3b3633,0 18px 40px rgba(0,0,0,.28);background:#000}
+.phone>canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
+.ramp{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;background:var(--card);border-radius:14px;padding:12px;border:1px solid var(--line)}
+.ramp canvas{width:100%;aspect-ratio:1;display:block;border-radius:10px}
+.ramp span{display:block;text-align:center;font-size:12px;color:var(--muted);margin-top:4px}
+.ramp .rowlab{grid-column:1/-1;font-size:13px;font-weight:600;margin-top:4px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 0;min-height:44px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--fg);font:600 14px var(--body);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.seg button:focus-visible,.again:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+/* result: the C order slip laid on the B steel counter */
+.result{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:22px;
+  background:linear-gradient(135deg,#eef1f3,#cfd6dc);color:#2a1a14}
+.slip{background:#fbf6ea;width:100%;padding:18px 16px 18px;font-family:"Nanum Gothic Coding",monospace;position:relative;transform:rotate(-1.2deg);
+  box-shadow:0 10px 22px rgba(30,40,50,.28);clip-path:polygon(0 0,100% 0,100% calc(100% - 8px),95% 100%,90% calc(100% - 8px),85% 100%,80% calc(100% - 8px),75% 100%,70% calc(100% - 8px),65% 100%,60% calc(100% - 8px),55% 100%,50% calc(100% - 8px),45% 100%,40% calc(100% - 8px),35% 100%,30% calc(100% - 8px),25% 100%,20% calc(100% - 8px),15% 100%,10% calc(100% - 8px),5% 100%,0 calc(100% - 8px))}
+.slip .shop{font-family:"Song Myung",serif;font-size:22px;text-align:center}
+.slip .meta{text-align:center;font-size:11px;color:#6b5d4f;margin-bottom:6px}
+.slip canvas{width:100%;aspect-ratio:4/3;display:block}
+.slip ul{margin:0;padding:0;list-style:none;font-size:13px}
+.slip li{display:flex;justify-content:space-between;gap:8px;border-bottom:1px dashed #cdbfa6;padding:4px 0}
+.slip .total{display:flex;justify-content:space-between;font-weight:700;font-size:19px;margin-top:8px}
+.slip .stamp{position:absolute;right:10px;top:58px;transform:rotate(-12deg);border:3px solid #c81e1e;color:#c81e1e;
+  font-family:"Song Myung",serif;font-size:19px;padding:2px 10px;border-radius:8px;background:rgba(251,246,234,.7)}
+.again{border:0;border-radius:999px;padding:10px 22px;font:600 15px var(--body);cursor:pointer;min-height:44px;background:#1f2a33;color:#fff}
+</style>
+
+<header>
+  <h1>김치볶음밥 한 그릇 · 시안 2</h1>
+  <p class="lede">고정: B 화면 + C 주문서. 이번에 바꾼 것: 팬 손잡이가 화면 아래(손 쪽)로 오고, 위에서 살짝 비스듬히 내려다보는 입체 시점. 밥알과 계란은 날것 → 윤기 도는 주황 → 노릇 → 짙은 갈색 → 검정으로 조금씩 변합니다.</p>
+  <ul class="how">
+    <li>손대지 않으면 자동 시연 (4~8초에 일부러 쉬어 타는 모습)</li>
+    <li>위로 휙 드래그 = 튕기기</li>
+    <li>계란 판: 옆으로 드래그 = 팬 이동</li>
+  </ul>
+</header>
+
+<div class="wrap">
+  <div class="phone" id="phone"><canvas aria-label="게임 화면: 위에서 비스듬히 본 웍"></canvas><div class="result" hidden></div></div>
+  <div class="side">
+    <section>
+      <h2>색 변화</h2>
+      <p>게임과 같은 색 함수로 그렸습니다. 점수는 '딱 좋음'부터 '노릇'까지 칸만 맛있게 친 것으로 셉니다.</p>
+      <div class="ramp" id="ramp" style="margin-top:10px"></div>
+    </section>
+    <section>
+      <h2>시점 각도</h2>
+      <p>세워 볼수록 밥이 솟는 높이가 잘 보이고, 눕혀 볼수록 웍 안이 넓게 보입니다.</p>
+      <div class="seg" id="seg" style="margin-top:10px">
+        <button type="button" data-a="22" aria-pressed="false">살짝 (22°)</button>
+        <button type="button" data-a="35" aria-pressed="true">중간 (35°)</button>
+        <button type="button" data-a="50" aria-pressed="false">많이 (50°)</button>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+"use strict";
+/* ---------- game engine (world: toss axis x -1..1 runs far<->near, z sideways, y up from wok bottom) ---------- */
+const G=12, RATE=.2, N=210, RICE_T=12, TAU=Math.PI*2;
+const ys=x=>.35*x*x;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+let THETA=35*Math.PI/180;   // view angle away from straight down
+
+function newGame(manual){
+  const grains=[];
+  for(let i=0;i<N;i++){
+    const x=rnd(-.6,.6);
+    grains.push({x,y:ys(x),vx:0,vy:0,z:rnd(-1,1)*Math.sqrt(1-x*x)*.8,air:false,depth:Math.random(),
+      cook:0,spilled:false,rot:rnd(0,Math.PI),kimchi:Math.random()<.13});
+  }
+  return {t:0,phase:'rice',grains,parts:[],flickFx:0,lastFlick:-9,manual,egg:null,pan:0,panT:0,res:null,phaseT:0};
+}
+
+function flick(g,s){
+  if(g.t-g.lastFlick<.22) return;
+  g.lastFlick=g.t; g.flickFx=1;
+  if(g.phase==='rice'){
+    for(const p of g.grains){
+      if(p.air||p.spilled) continue;
+      p.air=true;
+      p.vy=s*4*(.7+.6*Math.random())*(1-.35*p.depth);
+      p.vx=(Math.random()-.5)*.9*s*s+p.x*.1*s;
+    }
+  } else if(g.phase==='egg' && g.egg.state==='pan'){
+    const e=g.egg;
+    e.state='air'; e.s=s; e.cookAtToss=e.cook; e.vy=2.2+3*s; e.w=5.2*s; e.vx=(Math.random()-.5)*.9;
+  }
+}
+
+/* particles carry screen-agnostic coords: hz sideways, dp far/near, y height */
+function puff(g,hz,dp,y,cook,burnAt){
+  if(cook<burnAt) g.parts.push({hz,dp,y,vx:rnd(-.05,.05),vy:rnd(.25,.45),age:0,life:rnd(1.2,1.8),r0:.02,r1:.11,dark:0});
+  else g.parts.push({hz,dp,y,vx:rnd(-.12,.12),vy:rnd(.35,.6),age:0,life:rnd(2.4,3.4),r0:.05,r1:rnd(.28,.42),dark:clamp((cook-burnAt+.15)/.6,.15,1)});
+}
+function emit(g,dt){
+  if(g.parts.length>420) return;
+  if(g.phase==='rice') for(const p of g.grains){
+    if(p.air||p.spilled) continue;
+    if(p.cook>.25&&p.cook<.95&&Math.random()<dt*.35) puff(g,p.z,p.x,p.y,p.cook,.95);
+    if(p.cook>=.95&&Math.random()<dt*(1.4*(p.cook-.95)+.45)) puff(g,p.z,p.x,p.y,p.cook,.95);
+  }
+  if(g.phase==='egg'&&g.egg.state==='pan'){
+    const e=g.egg;
+    if(e.cook>.2&&Math.random()<dt*(e.cook<1.5?6:10+8*(e.cook-1.5))) puff(g,e.x+rnd(-.25,.25),rnd(-.2,.2),.06,e.cook,1.5);
+  }
+}
+
+function riceStats(g){
+  let good=0,burnt=0,raw=0,spill=0;
+  for(const p of g.grains){
+    if(p.spilled){spill++;continue}
+    if(p.cook>1.3) burnt++; else if(p.cook<.55) raw++; else good++;
+  }
+  return {good:good/N,burnt:burnt/N,raw:raw/N,spill:spill/N};
+}
+
+function finish(g){
+  const st=riceStats(g), e=g.egg;
+  const rice=Math.round(60*st.good);
+  let egg=0, eggNote='', flipped=false, folded=false, burst=false;
+  if(e.state==='miss'){eggNote='계란 놓침';}
+  else{
+    const r=((e.rot%TAU)+TAU)%TAU, d=Math.abs(r-Math.PI);
+    if(d<.8){egg+=22;flipped=true}
+    else if(d>Math.PI-.8){egg+=6;eggNote='안 뒤집힘'}
+    else{egg+=10;folded=true;eggNote='반으로 접힘'}
+    if(e.s>1.2){burst=true;eggNote=eggNote||'노른자 터짐'} else egg+=12;
+    if(e.cookAtToss>=.6&&e.cookAtToss<=1.4) egg+=6; else eggNote=eggNote||(e.cookAtToss<.6?'너무 일찍 던짐':'바닥이 탐');
+  }
+  const total=rice+egg;
+  let tag;
+  if(e.state==='miss') tag='계란은 바닥이 먹음';
+  else if(total>=90) tag='불맛 장인';
+  else if(st.burnt>.25) tag='화재경보기 울림';
+  else if(st.spill>.2) tag='밥 반은 바닥에';
+  else if(st.raw>.3) tag='덜 볶은 김치밥';
+  else if(burst) tag='노른자 대참사';
+  else if(total>=75) tag='동네 중국집 에이스';
+  else if(total>=55) tag='자취 3년 차';
+  else tag='엄마 부르기';
+  const losses=[['탄 밥',st.burnt],['덜 익은 밥',st.raw],['쏟은 밥',st.spill]]
+    .filter(l=>l[1]>.02).sort((a,b)=>b[1]-a[1]).slice(0,2)
+    .map(([k,v])=>[`${k} ${Math.round(v*100)}%`,`-${Math.round(v*60)}`]);
+  if(eggNote) losses.push([`계란: ${eggNote}`,`-${40-egg}`]);
+  g.res={rice,egg,total,tag,losses:losses.slice(0,3),st,flipped,folded,burst,miss:e.state==='miss',eggCook:e.cookAtToss||0};
+}
+
+function step(g,dt){
+  g.t+=dt; g.phaseT+=dt; g.flickFx=Math.max(0,g.flickFx-dt*4);
+  if(g.phase==='rice'){
+    if(!g.manual){ /* scripted demo: toss, idle so it starts to burn, toss again */
+      const t=g.phaseT;
+      if((t<3.5||t>8.5)&&t%.85<dt) flick(g,rnd(.75,1.05));
+    }
+    for(const p of g.grains){
+      if(p.spilled){ if(p.air){p.vy-=G*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;if(p.y<=-.12){p.y=-.12;p.air=false}} continue }
+      if(p.air){
+        p.vy-=G*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; p.rot+=dt*6;
+        if(p.vy<0){
+          if(Math.abs(p.x)<=1&&p.y<=ys(p.x)){p.y=ys(p.x);p.air=false;p.depth=Math.random();
+            p.z=rnd(-1,1)*Math.sqrt(Math.max(0,1-p.x*p.x))*.8}
+          else if(Math.abs(p.x)>1&&p.y<.3){p.spilled=true}
+        }
+      } else {
+        p.cook+=RATE*(1.6*(1-p.depth)**2+.05)*dt; /* bottom layer sears, top layer barely warms */
+        if(Math.abs(p.x)>.6){p.x-=Math.sign(p.x)*.4*dt;p.y=ys(p.x)}
+      }
+    }
+    emit(g,dt);
+    if(g.phaseT>=RICE_T){g.phase='egg';g.phaseT=0;g.parts=[];g.egg={x:0,y:.06,vx:0,vy:0,rot:0,w:0,cook:0,state:'drop',s:0};g.pan=0;g.panT=0}
+  } else if(g.phase==='egg'){
+    const e=g.egg;
+    g.pan+=(g.panT-g.pan)*Math.min(1,dt*10);
+    if(e.state==='drop'){e.cook=0;if(g.phaseT>.4)e.state='pan'}
+    if(e.state==='pan'){
+      e.cook+=dt*.55; e.x=g.pan;
+      if(!g.manual&&e.cook>=1) flick(g,rnd(.82,.98));
+      if(e.cook>2.4&&e.state==='pan'){e.cookAtToss=e.cook;e.state='landed';e.s=0;e.rot=0;g.phaseT=0}
+    } else if(e.state==='air'){
+      e.vy-=G*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
+      if(!g.manual) g.panT=clamp(e.x,-.8,.8);
+      if(e.vy<0&&e.y<=.06){
+        if(Math.abs(e.x-g.pan)<.55){e.y=.06;e.state='landed';e.x=g.pan+(e.x-g.pan)*.5;g.phaseT=0}
+        else {e.state='miss';g.phaseT=0}
+      }
+    } else if(e.state==='miss'){
+      e.vy-=G*dt; e.x+=e.vx*dt; e.y+=e.vy*dt; e.rot+=e.w*dt;
+    }
+    emit(g,dt);
+    if((e.state==='landed'||e.state==='miss')&&g.phaseT>1.1){finish(g);g.phase='result';g.phaseT=0}
+  } else if(g.phase==='result'){
+    if(!g.manual&&g.phaseT>6) return 'restart';
+  }
+  for(const s of g.parts){s.age+=dt;s.hz+=s.vx*dt;s.y+=s.vy*dt*(1-s.age/s.life*.4)}
+  g.parts=g.parts.filter(s=>s.age<s.life);
+}
+
+/* ---------- colours: raw -> glossy -> golden -> burnt, one gradual ramp ---------- */
+const RICE=[[0,[240,198,178]],[.35,[238,140,96]],[.7,[228,94,44]],[1.0,[214,104,38]],[1.25,[180,98,40]],[1.45,[112,64,40]],[1.75,[42,36,33]]];
+const KIM=[[0,[208,64,52]],[.6,[200,44,30]],[1.0,[178,52,26]],[1.3,[134,50,28]],[1.5,[72,38,30]],[1.75,[36,30,28]]];
+const EGG_EDGE=[[0,[255,255,255]],[.8,[250,244,230]],[1.1,[238,200,132]],[1.5,[198,130,66]],[1.9,[112,68,42]],[2.4,[46,37,33]]];
+const EGG_UNDER=[[0,[252,248,240]],[.6,[244,216,160]],[1.0,[228,172,98]],[1.4,[186,118,60]],[1.9,[98,62,42]],[2.4,[42,34,30]]];
+function lerpStops(st,v){
+  if(v<=st[0][0]) return st[0][1];
+  for(let i=1;i<st.length;i++) if(v<=st[i][0]){
+    const [a,ca]=st[i-1],[b,cb]=st[i],k=(v-a)/(b-a);
+    return ca.map((c,j)=>Math.round(c+(cb[j]-c)*k));
+  }
+  return st[st.length-1][1];
+}
+const rgb=(c,a=1)=>`rgba(${c[0]},${c[1]},${c[2]},${a})`;
+const gloss=cook=>cook<.4||cook>1.3?0:.6*Math.sin(Math.PI*(cook-.4)/.9);   // shine peaks mid-range, gone once it chars
+
+function drawGrain(c,x,y,sc,p){
+  const col=lerpStops(p.kimchi?KIM:RICE,p.cook);
+  c.save();c.translate(x,y);c.rotate(p.rot);c.fillStyle=rgb(col);
+  if(p.kimchi){c.beginPath();c.roundRect(-4.4*sc,-3.2*sc,8.8*sc,6.4*sc,1.6*sc);c.fill()}
+  else{c.beginPath();c.ellipse(0,0,3.8*sc,2.2*sc,0,0,TAU);c.fill()}
+  const gl=gloss(p.cook);
+  if(gl>0){c.fillStyle=`rgba(255,255,255,${gl})`;c.beginPath();c.ellipse(-1.2*sc,-.7*sc,1.3*sc,.6*sc,0,0,TAU);c.fill()}
+  c.restore();
+}
+
+/* fried egg seen from above at the view angle. top=true draws the yolk side, else the browned underside */
+function drawEgg(c,x,y,r,squash,cook,top,opts={}){
+  c.save();c.translate(x,y);c.scale(1,squash);
+  const edge=lerpStops(EGG_EDGE,cook);
+  // lacy rim: a few bumps so the edge reads as fried, not a flat disc
+  const set=clamp(cook/.7,0,1);               // whites turn from clear to opaque
+  c.fillStyle=rgb(top?edge:lerpStops(EGG_UNDER,cook),top?.3+.7*set:1);
+  c.beginPath();
+  for(let i=0;i<=18;i++){const a=i/18*TAU,rr=r*(1+.06*Math.sin(i*2.7));i?c.lineTo(Math.cos(a)*rr,Math.sin(a)*rr*.92):c.moveTo(rr,0)}
+  c.fill();
+  if(top){
+    c.fillStyle=`rgba(255,255,255,${.2+.77*set})`;c.beginPath();c.ellipse(0,0,r*.86,r*.8,0,0,TAU);c.fill();
+    const yolk=cook>1.6?[236,178,80]:[255,176,30];
+    c.fillStyle=rgb(opts.burst?[245,158,11]:yolk);c.beginPath();c.arc(-r*.1,-r*.06,r*.33,0,TAU);c.fill();
+    if(!opts.burst){c.fillStyle='rgba(255,255,255,.55)';c.beginPath();c.ellipse(-r*.2,-r*.17,r*.1,r*.06,0,0,TAU);c.fill()}
+    else{c.fillStyle='rgb(245,158,11)';c.beginPath();c.moveTo(-r*.1,0);c.quadraticCurveTo(r*.35,r*.4,r*.3,r*.85);c.quadraticCurveTo(r*.1,r*.45,-r*.35,0);c.fill()}
+  } else {
+    c.fillStyle=rgb(lerpStops(EGG_UNDER,cook+.25),.7);
+    for(let i=0;i<9;i++){const a=i*1.7,d=r*(.3+.45*((i*37)%10)/10);c.beginPath();c.arc(Math.cos(a)*d,Math.sin(a)*d,r*.09,0,TAU);c.fill()}
+    c.fillStyle=rgb(lerpStops(EGG_UNDER,cook-.15),.9);c.beginPath();c.arc(-r*.1,-r*.06,r*.3,0,TAU);c.fill();
+  }
+  c.restore();
+}
+
+/* ---------- the B view, tilted, handle toward the player's hand ---------- */
+function view(W,H){
+  const R=W*.43, ct=Math.cos(THETA), st=Math.sin(THETA);
+  return {R,ct,st,cx:W/2,cy:H*.47,hf:st*1.2+.3};
+}
+function render(c,W,H,g){
+  const v=view(W,H), {R,ct,st,hf}=v, pan=g.phase==='egg'?g.pan:0;
+  const jolt=g.flickFx*R*.05, cx=v.cx+pan*R, cy=v.cy-jolt;
+  const D=.35*R*st;                                   // how far the bowl bottom sits below the rim on screen
+  const P=(hz,dp,y)=>[cx+hz*R, cy-dp*R*ct+(.35-y)*R*st-(y>.35?(y-.35)*R*(hf-st):0)];
+  // counter
+  const bg=c.createLinearGradient(0,0,W,H);bg.addColorStop(0,'#eef1f3');bg.addColorStop(1,'#c9d1d8');
+  c.fillStyle=bg;c.fillRect(0,0,W,H);
+  c.strokeStyle='rgba(255,255,255,.35)';c.lineWidth=1;
+  for(let i=-W;i<H;i+=5){c.beginPath();c.moveTo(0,i);c.lineTo(W,i+W*.08);c.stroke()}
+  // burner flames peeking out under the wok
+  if(g.phase!=='result') for(let i=0;i<22;i++){const a=i/22*TAU,f=.5+.5*Math.sin(g.t*20+i*2);
+    const fx=v.cx+Math.cos(a)*R*.8, fy=v.cy+D*1.6+Math.sin(a)*R*.8*ct;
+    c.fillStyle=`rgba(60,110,255,${.3+.3*f})`;c.beginPath();c.ellipse(fx,fy,3+2*f,(3+2*f)*ct,0,0,TAU);c.fill()}
+  // shadow under the wok
+  c.fillStyle='rgba(20,30,40,.18)';c.beginPath();c.ellipse(cx+R*.05,cy+D*2.1,R*.95,R*ct*.9,0,0,TAU);c.fill();
+  // handle: toward the bottom edge, widening as it comes nearer
+  const hx=cx, hy0=cy+R*ct-4, hy1=H+12, nw=R*.1;
+  c.fillStyle='#55585e';c.beginPath();c.moveTo(hx-nw*.5,hy0);c.lineTo(hx+nw*.5,hy0);c.lineTo(hx+nw*.62,hy0+R*.32);c.lineTo(hx-nw*.62,hy0+R*.32);c.fill();
+  const wg=c.createLinearGradient(hx-R*.2,0,hx+R*.2,0);wg.addColorStop(0,'#5a3820');wg.addColorStop(.45,'#8a5a34');wg.addColorStop(1,'#4a2e1a');
+  c.fillStyle=wg;c.beginPath();
+  c.moveTo(hx-R*.09,hy0+R*.3);c.lineTo(hx+R*.09,hy0+R*.3);c.lineTo(hx+R*.17,hy1);c.lineTo(hx-R*.17,hy1);c.closePath();c.fill();
+  c.fillStyle='rgba(255,255,255,.12)';c.fillRect(hx-R*.04,hy0+R*.34,R*.03,hy1-hy0);
+  c.fillStyle='#c9ccd1';c.beginPath();c.arc(hx,hy0+R*.38,R*.025,0,TAU);c.fill();
+  // wok body: outer wall below the front rim, rim ring, interior
+  c.fillStyle='#1f2023';c.beginPath();c.moveTo(cx-R*1.04,cy);
+  c.bezierCurveTo(cx-R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy+R*ct*1.25+D*1.6,cx+R*1.04,cy);c.closePath();c.fill();
+  c.fillStyle='#3d4046';c.beginPath();c.ellipse(cx,cy,R*1.04,R*1.04*ct,0,0,TAU);c.fill();
+  const ig=c.createRadialGradient(cx,cy+D*.6,R*.05,cx,cy+D*.3,R);
+  ig.addColorStop(0,'#4b4e54');ig.addColorStop(.6,'#2e3034');ig.addColorStop(1,'#1b1c1f');
+  c.fillStyle=ig;c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.fill();
+  // far inner wall catches the light
+  c.save();c.beginPath();c.ellipse(cx,cy,R*.97,R*.97*ct,0,0,TAU);c.clip();
+  const lw=c.createLinearGradient(0,cy-R*ct,0,cy);lw.addColorStop(0,'rgba(255,255,255,.14)');lw.addColorStop(1,'rgba(255,255,255,0)');
+  c.fillStyle=lw;c.fillRect(cx-R,cy-R*ct,2*R,R*ct);
+  if(g.phase!=='result'){const hg=c.createRadialGradient(cx,cy+D*.5,0,cx,cy+D*.5,R*.55);hg.addColorStop(0,'rgba(255,110,40,.2)');hg.addColorStop(1,'rgba(255,110,40,0)');c.fillStyle=hg;c.fillRect(cx-R,cy-R,2*R,2*R)}
+  c.restore();
+  c.strokeStyle='rgba(255,255,255,.18)';c.lineWidth=1.5;c.beginPath();c.ellipse(cx,cy,R*1.03,R*1.03*ct,0,Math.PI*1.05,Math.PI*1.95);c.stroke();
+  const k=R/100;
+  if(g.phase==='rice'||g.phase==='result'){
+    // spilled rice lies on the counter
+    for(const p of g.grains) if(p.spilled&&!p.air){const [x,y]=P(p.z,clamp(p.x,-1.35,1.35)*1.05,-.12);drawGrain(c,x,y+D*.8,k,p)}
+    const list=g.grains.filter(p=>!(p.spilled&&!p.air)).sort((a,b)=>b.x-a.x||a.y-b.y);
+    for(const p of list){
+      const h=Math.max(0,p.y-ys(p.x)), sc=k*(1+h*.6);
+      if(h>.02){const [sx,sy]=P(p.z,p.x,ys(p.x));c.fillStyle='rgba(0,0,0,.22)';c.beginPath();c.ellipse(sx,sy,3.2*k,1.8*k*ct+.6,0,0,TAU);c.fill()}
+      const [x,y]=P(p.z,p.x,p.y);drawGrain(c,x,y,sc,p);
+    }
+  } else if(g.egg){
+    const e=g.egg, h=Math.max(0,e.y-.06), cs=Math.cos(e.rot), sc=1+h*.5;
+    if(e.state!=='miss'){const [sx,sy]=P(e.x-pan,0,.02);c.fillStyle='rgba(0,0,0,.25)';c.beginPath();c.ellipse(sx,sy,R*.3,R*.27*ct,0,0,TAU);c.fill()}
+    const [x,y]=P(e.x-pan,0,e.y);
+    const cook=e.state==='pan'||e.state==='drop'?e.cook:(e.cookAtToss||e.cook);
+    drawEgg(c,x,y,R*.3*sc,Math.max(.06,Math.abs(cs))*ct,cook,cs>=0);
+  }
+  // smoke and steam rise up the screen and spread
+  for(const s of g.parts){
+    const kk=s.age/s.life, r=(s.r0+(s.r1-s.r0)*kk)*R*1.2;
+    const [x,y0]=P(s.hz,s.dp,.35), y=y0+(.35-s.y)*R*hf*1.1;
+    const shade=s.dark?Math.round(130-s.dark*100):255;
+    const a=(s.dark?.5:.38)*(1-kk)*Math.min(1,s.age*4);
+    const gr=c.createRadialGradient(x,y,0,x,y,r);
+    gr.addColorStop(0,`rgba(${shade},${shade},${shade},${a})`);gr.addColorStop(1,`rgba(${shade},${shade},${shade},0)`);
+    c.fillStyle=gr;c.beginPath();c.arc(x,y,r,0,TAU);c.fill();
+  }
+  if(g.phase==='rice'){const s=riceStats(g);if(s.burnt>.03){c.fillStyle=`rgba(60,58,56,${Math.min(.45,s.burnt*1.2)})`;c.fillRect(0,0,W,H)}}
+  // HUD
+  c.fillStyle='rgba(238,241,243,.88)';c.fillRect(0,0,W,H*.19);
+  c.textAlign='center';
+  if(g.phase==='rice'){
+    const left=Math.max(0,RICE_T-g.phaseT);
+    c.fillStyle='#56616b';c.font='15px "Do Hyeon"';c.fillText('1판 · 밥 볶기',W/2,H*.055);
+    c.fillStyle='#1f2a33';c.font=`${Math.round(W*.14)}px "Do Hyeon"`;c.fillText(left.toFixed(1),W/2,H*.055+W*.14);
+    c.fillStyle='#c5ced6';c.fillRect(W*.15,H*.165,W*.7,5);c.fillStyle='#ea580c';c.fillRect(W*.15,H*.165,W*.7*(left/RICE_T),5);
+  } else if(g.phase==='egg'){
+    const e=g.egg;let msg='계란 익는 중…';
+    if(e.state==='pan'&&e.cook>=.6) msg=e.cook>1.4?'바닥 탄다!':'지금 던져!';
+    if(e.state==='air') msg='팬을 밑으로!'; if(e.state==='landed') msg='착지!'; if(e.state==='miss') msg='아…';
+    c.fillStyle='#56616b';c.font='15px "Do Hyeon"';c.fillText('2판 · 계란 뒤집기',W/2,H*.055);
+    c.fillStyle='#1f2a33';c.font=`${Math.round(W*.1)}px "Do Hyeon"`;c.fillText(msg,W/2,H*.055+W*.12);
+  }
+  if(g.phase==='rice'){
+    const tip=g.manual?'위로 휙 드래그 = 튕기기':'자동 시연 중 · 만지면 직접';
+    c.font='14px "Do Hyeon"';const tw=c.measureText(tip).width+22;
+    c.fillStyle='rgba(31,42,51,.78)';c.beginPath();c.roundRect(W/2-tw/2,H*.215,tw,26,13);c.fill();
+    c.fillStyle='#fff';c.fillText(tip,W/2,H*.215+18);
+  }
+}
+
+/* ---------- result bowl, same tilted view ---------- */
+function drawBowl(cv,g){
+  const dpr=Math.min(2,devicePixelRatio||1), W=cv.clientWidth||260, H=W*.75;
+  cv.width=W*dpr;cv.height=H*dpr;const c=cv.getContext('2d');c.scale(dpr,dpr);
+  const res=g.res, ct=Math.cos(THETA), cx=W/2, cy=H*.5, r=W*.36, k=W/300;
+  // bowl body + rim (porcelain, blue line)
+  c.fillStyle='#e6e1d6';c.beginPath();c.moveTo(cx-r,cy);c.bezierCurveTo(cx-r*.9,cy+r*.95,cx+r*.9,cy+r*.95,cx+r,cy);c.closePath();c.fill();
+  c.strokeStyle='#2563eb';c.lineWidth=2.5;c.beginPath();c.moveTo(cx-r*.93,cy+r*.18);c.bezierCurveTo(cx-r*.7,cy+r*.62,cx+r*.7,cy+r*.62,cx+r*.93,cy+r*.18);c.stroke();
+  c.fillStyle='#fffdf8';c.beginPath();c.ellipse(cx,cy,r,r*ct,0,0,TAU);c.fill();
+  // rice mound from the grains actually cooked this round
+  const kept=g.grains.filter(p=>!p.spilled);
+  // mound base in the average colour, then the grains piled on it
+  const avg=[0,0,0];for(const p of kept){const q=lerpStops(p.kimchi?KIM:RICE,p.cook);avg[0]+=q[0];avg[1]+=q[1];avg[2]+=q[2]}
+  const n=Math.max(1,kept.length), base=avg.map(v=>Math.round(v/n)), mh=r*.38*Math.min(1,n/N+.3);
+  const mg=c.createRadialGradient(cx-r*.2,cy-mh,r*.1,cx,cy-mh*.3,r);mg.addColorStop(0,rgb(base.map(v=>Math.min(255,v+25))));mg.addColorStop(1,rgb(base.map(v=>v*.7)));
+  c.fillStyle=mg;c.beginPath();c.ellipse(cx,cy,r*.9,r*.9*ct,0,0,Math.PI);c.bezierCurveTo(cx-r*.9,cy-mh*1.5,cx+r*.9,cy-mh*1.5,cx+r*.9,cy);c.fill();
+  const pts=[];for(let rep=0;rep<3;rep++)for(const p of kept){const a=Math.random()*TAU,d=Math.sqrt(Math.random());pts.push({p,a,d})}
+  pts.sort((u,w)=>Math.sin(u.a)*u.d-Math.sin(w.a)*w.d);
+  for(const {p,a,d} of pts){const lift=(1-d*d)*mh;drawGrain(c,cx+Math.cos(a)*d*r*.86,cy+Math.sin(a)*d*r*.86*ct-lift,k*1.05,p)}
+  if(res.miss){c.fillStyle='#6b5d4f';c.font='14px "IBM Plex Sans KR"';c.textAlign='center';c.fillText('(계란 없음)',cx,cy-r*.42);return}
+  if(res.folded){drawEgg(c,cx,cy-r*.42,r*.36,ct*.5,res.eggCook,true,{burst:res.burst});return}
+  drawEgg(c,cx,cy-r*.42,r*.4,ct,res.eggCook,!res.flipped,{burst:res.burst});
+}
+
+function showResult(ph,g,best){
+  const el=ph.querySelector('.result'), r=g.res;
+  const lines=r.losses.map(([k,v])=>`<li><span>${k}</span><span>${v}</span></li>`).join('');
+  el.innerHTML=`<div class="slip"><div class="shop">D:OT 반점</div><div class="meta">주문 #002 · 김치볶음밥 1</div><div class="stamp">${r.tag}</div><canvas></canvas>
+    <ul><li><span>밥 볶기</span><span>${r.rice}/60</span></li><li><span>계란후라이</span><span>${r.egg}/40</span></li>${lines}<li><span>내 최고</span><span>${best}점</span></li></ul>
+    <div class="total"><span>합계</span><span>${r.total}점</span></div></div>${g.manual?'<button class="again" type="button">다시 볶기</button>':''}`;
+  el.hidden=false;
+  drawBowl(el.querySelector('canvas'),g);
+  const b=el.querySelector('.again'); if(b) b.onclick=()=>ph._restart(true);
+}
+
+/* ---------- wire the phone ---------- */
+const ph=document.getElementById('phone'), cv=ph.querySelector('canvas'), c=cv.getContext('2d');
+let g=newGame(false), W=0, H=0, best=0, last=performance.now(), shown=false;
+const fit=()=>{const dpr=Math.min(2,devicePixelRatio||1);W=cv.clientWidth;H=cv.clientHeight;cv.width=W*dpr;cv.height=H*dpr;c.setTransform(dpr,0,0,dpr,0,0)};
+new ResizeObserver(fit).observe(cv);fit();
+ph._restart=manual=>{g=newGame(manual);shown=false;ph.querySelector('.result').hidden=true};
+let hist=[];
+cv.addEventListener('pointerdown',e=>{
+  if(!g.manual||g.phase==='result') ph._restart(true);
+  cv.setPointerCapture(e.pointerId);hist=[[e.clientY,e.clientX,performance.now()]];
+});
+cv.addEventListener('pointermove',e=>{
+  if(!hist.length) return;
+  const now=performance.now();hist.push([e.clientY,e.clientX,now]);hist=hist.filter(h=>now-h[2]<90);
+  const r=cv.getBoundingClientRect();
+  if(g.phase==='egg') g.panT=clamp(((e.clientX-r.left)/r.width-.5)*2.4,-.85,.85);
+  const [y0,,t0]=hist[0], v=-(e.clientY-y0)/Math.max(16,now-t0)*1000/H;
+  if(v>1.6){flick(g,clamp(v/3.2,.35,1.6));hist=[[e.clientY,e.clientX,now]]}
+});
+const up=()=>{hist=[]};cv.addEventListener('pointerup',up);cv.addEventListener('pointercancel',up);
+function frame(now){
+  const dt=Math.min(.033,(now-last)/1000);last=now;
+  if(step(g,dt)==='restart') ph._restart(false);
+  if(g.phase==='result'&&!shown){shown=true;best=Math.max(best,g.res.total);showResult(ph,g,best)}
+  if(W&&H) render(c,W,H,g);
+  requestAnimationFrame(frame);
+}
+
+/* ---------- colour ramp, drawn with the game's own functions ---------- */
+const STEPS=[[0,'생'],[.4,'익는 중'],[.75,'딱 좋음'],[1.1,'노릇'],[1.4,'타기 시작'],[1.75,'탐']];
+const EGG_STEPS=[[0,'생'],[.4,'흰자 익음'],[.9,'딱 좋음'],[1.3,'노릇'],[1.8,'타기 시작'],[2.4,'탐']];
+function drawRamp(){
+  const box=document.getElementById('ramp');box.innerHTML='';
+  const add=(label,draw)=>{const d=document.createElement('div'),cv2=document.createElement('canvas'),s=document.createElement('span');
+    s.textContent=label;d.append(cv2,s);box.append(d);
+    const dpr=Math.min(2,devicePixelRatio||1),w=cv2.clientWidth||60;cv2.width=w*dpr;cv2.height=w*dpr;const x=cv2.getContext('2d');x.scale(dpr,dpr);
+    x.fillStyle='#2e3034';x.fillRect(0,0,w,w);draw(x,w)};
+  const lab=t=>{const d=document.createElement('div');d.className='rowlab';d.textContent=t;box.append(d)};
+  lab('밥알 · 김치');
+  for(const [v,l] of STEPS) add(l,(x,w)=>{for(let i=0;i<16;i++){const p={cook:v,rot:i*.9,kimchi:i%5===0};drawGrain(x,w*(.18+.64*((i*7)%16)/15),w*(.2+.6*((i*11)%16)/15),w/40,p)}});
+  lab('계란후라이 (윗면 / 뒤집은 밑면)');
+  for(const [v,l] of EGG_STEPS) add(l,(x,w)=>{drawEgg(x,w*.33,w*.36,w*.25,1,v,true);drawEgg(x,w*.68,w*.66,w*.22,1,v,false)});
+}
+
+document.getElementById('seg').addEventListener('click',e=>{
+  const b=e.target.closest('button');if(!b)return;
+  THETA=+b.dataset.a*Math.PI/180;
+  for(const x of e.currentTarget.querySelectorAll('button')) x.setAttribute('aria-pressed',x===b?'true':'false');
+  if(g.phase==='result') drawBowl(ph.querySelector('.result canvas'),g);
+});
+
+document.fonts.ready.then(()=>{drawRamp();requestAnimationFrame(frame)});
+</script>
