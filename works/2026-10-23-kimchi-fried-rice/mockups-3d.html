@@ -36,6 +36,7 @@
 </div>
 <div id="vig"></div>
 <div id="hud"><div id="timer">12.0</div><div id="word">불맛!</div><div id="hint">세 번째 토스마다 '완벽' 예시: 슬로모션 동안 타이머도 같이 느려져요 (손해 없음)</div></div>
+<div id="esay" style="position:fixed;left:0;right:0;top:calc(env(safe-area-inset-top,0px) + 96px);text-align:center;font:22px 'Black Han Sans',system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.6);pointer-events:none;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))"></div>
 <div id="fps"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script>
@@ -384,9 +385,54 @@ function makeEgg() {
   };
   const eggMat = () => { const m = mat(S, "#ffffff", { std: { vertexColors: true, roughness: 0.3 }, phys: { vertexColors: true, roughness: 0.25, clearcoat: 0.8, clearcoatRoughness: 0.15 }, toon: { vertexColors: true } }); m.vertexColors = true; return m; };
   const top = new T.Mesh(grid(false), eggMat()); top.castShadow = true; g.add(top);
+  top.geometry.setAttribute("aSet", new T.BufferAttribute(new Float32Array(N), 1).setUsage(T.DynamicDrawUsage));
+  if (!S.toon) top.material.onBeforeCompile = (sh) => {
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nattribute float aSet; varying float vSet;")
+      .replace("#include <begin_vertex>", "#include <begin_vertex>\nvSet = aSet;");
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying float vSet;")
+      .replace("#include <roughnessmap_fragment>", "float roughnessFactor = mix(0.04, 0.55, vSet);")
+      .replace("#include <tonemapping_fragment>",
+        "float frE = pow(1.0 - saturate(dot(normal, normalize(vViewPosition))), 2.5);\n" +
+        "gl_FragColor.rgb += (1.0 - vSet) * (0.06 + frE * 0.45) * vec3(0.8, 0.82, 0.85);\n#include <tonemapping_fragment>");
+  };
   const bot = new T.Mesh(grid(true), eggMat()); g.add(bot);
   const yolkMat = mat(S, "#ffa412", { std: { roughness: 0.18 }, phys: { roughness: 0.12, clearcoat: 1, clearcoatRoughness: 0.04 } });
   const yolk = new T.Mesh(new T.SphereGeometry(0.175, 40, 20, 0, TAU, 0, Math.PI / 2), yolkMat); yolk.castShadow = true; g.add(yolk);
+  if (!S.toon) yolkMat.onBeforeCompile = (sh) => { // light soaks into the yolk: its rim goes deep orange
+    sh.fragmentShader = sh.fragmentShader.replace("#include <tonemapping_fragment>",
+      "float ndvY = saturate(dot(normal, normalize(vViewPosition)));\ngl_FragColor.rgb = mix(gl_FragColor.rgb * vec3(0.95, 0.42, 0.12), gl_FragColor.rgb, pow(ndvY, 0.55));\n#include <tonemapping_fragment>");
+  };
+  // lace: a ring past the white's edge whose noise texture is eaten away as it crisps, so the wok shows through the holes
+  const laceTex = canvasTex(256, 256, (c, w, h) => {
+    c.fillStyle = "#000"; c.fillRect(0, 0, w, h);
+    for (let i = 0; i < 1400; i++) { const v = (Math.random() * 255) | 0; c.fillStyle = `rgb(${v},${v},${v})`; c.beginPath(); c.arc(Math.random() * w, Math.random() * h, rnd(2, 9), 0, TAU); c.fill(); }
+    c.filter = "blur(2px)"; c.drawImage(c.canvas, 0, 0);
+  });
+  laceTex.wrapS = T.RepeatWrapping; laceTex.encoding = T.LinearEncoding;
+  const LR = 4, lpos = [], luv = [], lidx = [];
+  for (let i = 0; i <= LR; i++) for (let j = 0; j <= SN; j++) {
+    const v = i / LR, th = (j / SN) * TAU, r = ER(th) * (0.93 + 0.2 * v), x = Math.cos(th) * r, z = Math.sin(th) * r;
+    lpos.push(x, surf(r * r) + 0.006 + 0.012 * v * v, z); luv.push((j / SN) * 6, v);
+  }
+  for (let i = 0; i < LR; i++) for (let j = 0; j < SN; j++) { const a = i * (SN + 1) + j, b = a + 1, c2 = a + SN + 1, d = c2 + 1; lidx.push(a, b, c2, b, d, c2); }
+  const lgeo = new T.BufferGeometry(); lgeo.setAttribute("position", new T.Float32BufferAttribute(lpos, 3)); lgeo.setAttribute("uv", new T.Float32BufferAttribute(luv, 2)); lgeo.setIndex(lidx); lgeo.computeVertexNormals();
+  const laceMat = mat(S, "#e7ac5c", { std: { map: laceTex, roughness: 0.35, side: T.DoubleSide }, phys: { map: laceTex, roughness: 0.3, clearcoat: 0.6, side: T.DoubleSide }, toon: { map: laceTex, side: T.DoubleSide } });
+  const uLace = { value: 0 };
+  laceMat.onBeforeCompile = (sh) => {
+    sh.uniforms.uLace = uLace;
+    sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nuniform float uLace;")
+      .replace("#include <map_fragment>", "float nz = texture2D(map, vUv).r;\nif (nz < 1.0 - uLace * (1.25 - vUv.y)) discard;\ndiffuseColor.rgb *= mix(0.55, 1.15, nz);");
+  };
+  const lace = new T.Mesh(lgeo, laceMat); g.add(lace);
+  // oil: an invisible disc that only adds reflections (sheen), tiny oil bubbles fizzing around the egg, spatter streaks
+  const oilMat = new T.MeshStandardMaterial({ color: 0x000000, roughness: 0.06, metalness: 0, transparent: true, blending: T.AdditiveBlending, depthWrite: false, envMapIntensity: 0.45 });
+  const oil = new T.Mesh(polarDisc((th) => ER(th) * 1.2, 6, 64, (t, th, r) => surf(r * r) + 0.003, () => new T.Color(0, 0, 0)), oilMat); wok.add(oil); // the oil stays in the wok
+  const fizz = new T.InstancedMesh(new T.SphereGeometry(1, 8, 4, 0, TAU, 0, Math.PI / 2), new T.MeshStandardMaterial({ color: lin("#3a3226"), roughness: 0.05, metalness: 0.2, transparent: true, opacity: 0.85 }), 60);
+  fizz.instanceMatrix.setUsage(T.DynamicDrawUsage); wok.add(fizz);
+  const fz = []; for (let i = 0; i < 60; i++) { const a = Math.random() * TAU; fz.push({ a, r: ER(a) * rnd(0.98, 1.4), ph: Math.random() * TAU, sp: rnd(6, 14), s: rnd(0.006, 0.014) }); }
+  const spat = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: lin("#fff3d6"), transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
+  spat.geometry.setAttribute("position", new T.BufferAttribute(new Float32Array(48 * 6), 3).setUsage(T.DynamicDrawUsage)); spat.frustumCulled = false; world.add(spat);
+  const drops = []; for (let i = 0; i < 48; i++) drops.push({ life: 0, p: new T.Vector3(), v: new T.Vector3() });
   // burst: a runny puddle that spreads from the yolk over the white, plus drips on the wok
   const pud = new T.Mesh(polarDisc((th) => 0.26 * (1 + 0.25 * Math.sin(3 * th + 1) + 0.15 * Math.sin(7 * th)), 6, 64, () => 0, () => lin("#ffb21c")),
     mat(S, "#ffffff", { std: { vertexColors: true, roughness: 0.12 }, phys: { vertexColors: true, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 }, toon: { vertexColors: true } }));
@@ -394,17 +440,25 @@ function makeEgg() {
   const drips = [];
   for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), yolkMat); d.scale.set(1, 0.3, 1.4); d.visible = false; world.add(d); drips.push(d); }
   const bubbles = [];
-  for (let i = 0; i < 22; i++) { const a = Math.random() * TAU, t = rnd(0.35, 0.92), r = t * ER(a); bubbles.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, r: rnd(0.025, 0.055), h: rnd(0.01, 0.022), t0: 0.25 + (1 - t) * 0.7 + rnd(0, 0.15) }); }
-  return { g, top, bot, yolk, yolkMat, pud, drips, bubbles, N, vx, vz, vt, vd, vn, ER,
+  // blisters: steam under the white puffs a bubble up, it holds, then sags (chef: 2-10 s, 1-3 cm, 5 mm high)
+  const blister = (b) => { const a = Math.random() * TAU, tt = rnd(0.3, 0.9), r = tt * ER(a); Object.assign(b, { x: Math.cos(a) * r, z: Math.sin(a) * r, r: rnd(0.03, 0.06), h: rnd(0.012, 0.026), born: t + rnd(0, 1.2), life: rnd(1.0, 2.0) }); return b; };
+  for (let i = 0; i < 12; i++) bubbles.push(blister({}));
+  bubbles.respawn = blister;
+  return { g, top, bot, yolk, yolkMat, pud, drips, bubbles, N, vx, vz, vt, vd, vn, ER, lace, laceMat, uLace, oil, fizz, fz, spat, drops, sx: 0, svx: 0,
     cook: 0, waves: [], flip: null, flipped: false, burst: false, burstT: 0, bend: 0,
     y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, k0: 0, n: 0, strongNext: false };
 }
-const C_RAW = lin("#8f948f"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#e9b867"), C_DOME = lin("#f3d79a");
+const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#e9b867"), C_DOME = lin("#f3d79a");
 const _c = new T.Color();
 function eggShape(dt, tNow) {
   const e = E, P = e.top.geometry.attributes.position.array, Cc = e.top.geometry.attributes.color.array;
   const Pb = e.bot.geometry.attributes.position.array, Cb = e.bot.geometry.attributes.color.array;
   e.waves = e.waves.filter((w) => tNow - w.t0 < 2);
+  const cookK = clamp(e.cook, 0, 1), A = e.top.geometry.attributes.aSet.array; // raw jiggles slow and long, cooked is springy
+  for (const b of e.bubbles) {
+    const a = tNow - b.born; b.gk = a < 0 ? 0 : smooth(a / 0.3) * (1 - smooth((a - b.life + 0.5) / 0.5));
+    if (a > b.life && e.cook > 0.15 && e.cook < 1.05 && !e.flip) e.bubbles.respawn(b); else if (a > b.life) b.gk = 0;
+  }
   for (let k = 0; k < e.N; k++) {
     const x = e.vx[k], z = e.vz[k], t = e.vt[k], d = e.vd[k], n = e.vn[k], r2 = x * x + z * z;
     // local "done": the white sets from the thin edge inward, the thick ring by the yolk last
@@ -412,28 +466,40 @@ function eggShape(dt, tNow) {
     let thick = 0.008 + 0.028 * Math.exp(-(((d - 0.19) / 0.13) ** 2)) + 0.018 * Math.max(0, 1 - d / 0.22);
     thick *= (1 + 0.45 * set) * (t > 0.9 ? 0.4 + 0.6 * (1 - t) / 0.1 : 1);
     let bub = 0;
-    for (const b of e.bubbles) { const gk = clamp((e.cook - b.t0) / 0.2, 0, 1); if (gk > 0) { const q = ((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r); if (q < 4) bub += b.h * gk * Math.exp(-q); } }
+    for (const b of e.bubbles) { if (b.gk > 0) { const q = ((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r); if (q < 4) bub += b.h * b.gk * Math.exp(-q); } }
     const lace = t > 0.84 ? 0.02 * smooth((t - 0.84) / 0.16) * clamp((e.cook - 0.75) * 2, 0, 1) * n : 0;
     let wob = 0;
-    for (const w of e.waves) { const tau = tNow - w.t0; wob += w.a * 0.014 * Math.exp(-3.2 * tau) * Math.sin(17 * d - 21 * tau) * (1 - 0.4 * t); }
+    for (const w of e.waves) { const tau = tNow - w.t0; wob += w.a * 0.014 * (1.25 - 0.55 * cookK) * Math.exp(-(2.6 + 4 * cookK) * tau) * Math.sin(17 * d - (19 + 16 * cookK) * tau) * (1 - 0.4 * t); }
     const bend = -e.bend * z * z * 0.9;   // the trailing halves lag in the air: the egg cups
     const sq = 1 - 0.5 * e.sq.s;
     const j = k * 3;
     P[j] = x * (1 + 0.12 * e.sq.s); P[j + 2] = z * (1 + 0.12 * e.sq.s);
     P[j + 1] = surf(r2) + (thick + bub) * sq + lace + wob + bend;
     // colour: clear grey-gloss -> white, then golden -> brown lace at the very edge
-    _c.copy(C_RAW).lerp(C_SET, set);
+    A[k] = set; _c.copy(C_RAW).lerp(C_SET, set);
     const br = clamp((e.cook - 0.7) * 2.2, 0, 1) * smooth((t - 0.8) / 0.18) * (0.55 + 0.9 * n);
     if (br > 0) _c.lerp(br > 0.6 && n > 0.5 ? C_BROWN : C_GOLD, Math.min(1, br));
     Cc[j] = _c.r; Cc[j + 1] = _c.g; Cc[j + 2] = _c.b;
     // underside: thin golden skin, a rounded dome under the yolk (deflated if it burst), browner toward the lace
-    const dome = 0.07 * Math.exp(-((d / 0.165) ** 2)) * (e.burst ? 0.35 : 1);
+    const dome = 0.085 * Math.exp(-((d / 0.165) ** 2)) * (e.burst ? 0.35 : 1);
     Pb[j] = P[j]; Pb[j + 2] = P[j + 2];
     Pb[j + 1] = -0.014 - surf(r2) - dome * (1 - 0.3 * e.sq.s) - wob * 0.8 - bend - lace * 0.5;
     _c.copy(C_UNDER).lerp(C_DOME, Math.exp(-((d / 0.16) ** 2)) * 0.8).lerp(C_BROWN, clamp(t * t * 0.75 + (n - 0.5) * 0.35, 0, 0.9));
     Cb[j] = _c.r; Cb[j + 1] = _c.g; Cb[j + 2] = _c.b;
   }
   for (const m of [e.top, e.bot]) { const g = m.geometry; g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; g.computeVertexNormals(); }
+  e.top.geometry.attributes.aSet.needsUpdate = true;
+  // lace crisps (golden -> brown -> black past 1.25), oil fizz calms down as the egg dries out
+  e.uLace.value = clamp((e.cook - 0.45) * 1.4, 0, 1);
+  e.laceMat.color.copy(lin("#f0c070")).lerp(lin("#9a5a26"), clamp((e.cook - 0.7) * 1.6, 0, 1)).lerp(lin("#3a2414"), clamp((e.cook - 1.2) * 4, 0, 1));
+  const fzK = e.flip && !e.flipped ? 0 : clamp(1.2 - e.cook * 0.6, 0.3, 1);
+  e.fz.forEach((f, i) => { const sc = f.s * fzK * Math.max(0, Math.sin(tNow * f.sp + f.ph)); dummy.position.set(Math.cos(f.a) * f.r, surf(f.r * f.r) + 0.002, Math.sin(f.a) * f.r); dummy.rotation.set(0, 0, 0); dummy.scale.set(sc, sc * 0.7, sc); dummy.updateMatrix(); e.fizz.setMatrixAt(i, dummy.matrix); });
+  e.fizz.instanceMatrix.needsUpdate = true;
+  // hot-oil spatter: short streaks on parabolas
+  const sp = e.spat.geometry.attributes.position.array;
+  e.drops.forEach((d, i) => { d.life -= dt; if (d.life > 0) { d.v.y -= 12 * dt; d.p.addScaledVector(d.v, dt); }
+    const o = i * 6; if (d.life > 0) { sp[o] = d.p.x; sp[o + 1] = d.p.y; sp[o + 2] = d.p.z; sp[o + 3] = d.p.x - d.v.x * 0.025; sp[o + 4] = d.p.y - d.v.y * 0.025; sp[o + 5] = d.p.z - d.v.z * 0.025; } else sp.fill(0, o, o + 6); });
+  e.spat.geometry.attributes.position.needsUpdate = true;
   // yolk: spring around its seat; a film of white creeps over it as it cooks
   const Y = e.y, kS = 140, dS = 7;
   for (const c of ["x", "z", "h"]) { const vk = "v" + c; Y[vk] += (-kS * Y[c] - dS * Y[vk]) * dt; Y[c] += Y[vk] * dt; }
@@ -444,25 +510,34 @@ function eggShape(dt, tNow) {
   e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.95) * 1.2, 0, 0.55));
   e.yolk.visible = !e.flipped && !(e.flip && e.flip.f > 0.5);
 }
+function spatter(n) {
+  let c = 0; for (const d of E.drops) { if (d.life > 0) continue; const a = Math.random() * TAU, r = E.ER(a) * rnd(0.8, 1.1);
+    d.p.set(Math.cos(a) * r, 0.03, Math.sin(a) * r); E.g.localToWorld(d.p); d.v.set(Math.cos(a) * rnd(0.6, 1.6), rnd(1.2, 2.6), Math.sin(a) * rnd(0.6, 1.6)); d.life = rnd(0.25, 0.5); if (++c >= n) break; }
+}
 function jolt(a, yolkKick) { E.waves.push({ t0: t, a }); E.y.vx += rnd(-1, 1) * yolkKick; E.y.vz += rnd(-1, 1) * yolkKick; E.y.vh += yolkKick * 0.4; }
 /* egg loop (game time since the egg went in): drop 0–.4 s, cook to golden by ~4.4 s with a shake at 2.6 s,
    flip (soft / hard alternate unless picked), land, hold, start over */
 function eggStep(dt) {
   const e = E, k = t - eggT0;
-  if (k < 0 || k > 7.6) { // new egg
+  if (k < 0 || k > 8.4) { // new egg
     eggT0 = t; e.n++; e.cook = 0; e.flipped = false; e.burst = false; e.flip = null; e.bend = 0; e.waves.length = 0;
     e.strong = eggMode === "auto" ? e.n % 2 === 0 : eggMode === "strong"; e.pud.visible = false; for (const d of e.drips) d.visible = false;
-    e.dropped = false; e.shook = false;
+    e.dropped = false; e.shook = false; e.shook2 = false; e.sx = 0; e.svx = 0; for (const b of e.bubbles) e.bubbles.respawn(b);
     return eggStep(0);
   }
   const wm = wok.matrixWorld;
-  v3.set(0, 0, 0.05).applyMatrix4(wm);
-  e.g.position.copy(v3); e.g.rotation.set(pose.pitch, 0, pose.roll);
+  e.svx += (-5 * e.sx - 2.2 * e.svx) * dt; e.sx += e.svx * dt;   // a loose egg slides on the oil and drifts back
+  v3.set(e.sx, surf(e.sx * e.sx), 0.05).applyMatrix4(wm);
+  e.g.position.copy(v3); e.g.rotation.set(pose.pitch, 0, pose.roll + Math.atan(0.7 * e.sx)); // off-centre it lies on the bowl's slope
+  e.oil.position.set(e.sx, 0, 0.05); e.fizz.position.set(e.sx, 0, 0.05);
+  if (k < 2.5 && Math.random() < dt * 14 * (1 - k / 2.5)) spatter(1);
   if (!e.flip || e.flipped) e.cook = Math.min(1.3, e.cook + dt * (e.flipped ? 0.05 : 0.27));
   if (k < 0.32) { const f = k / 0.32; e.g.position.y += 0.7 * (1 - f * f); e.sq.s = 0; }
-  else if (!e.dropped) { e.dropped = true; jolt(1.4, 1.2); e.sq.v = 9; }
-  if (k > 2.6 && !e.shook) { e.shook = true; shimT0 = t; jolt(0.7, 1.6); }
-  if (k > 4.4 && !e.flip) { e.flip = { t0: t, f: 0, strong: e.strong }; tossT0 = t; tossS = e.strong ? 1.25 : 0.55; jolt(0.4, 0.8); }
+  else if (!e.dropped) { e.dropped = true; jolt(0.9, 1.2); e.sq.v = 9; spatter(14); }
+  // the cook's test: shake the wok. Raw (first 5–8 s for real) the egg is stuck and only ripples; set, it slides
+  if (k > 1.3 && !e.shook) { e.shook = true; shimT0 = t; jolt(0.8, 1.4); eggSay("덜 익음: 흔들어도 붙어 있음"); }
+  if (k > 3.5 && !e.shook2) { e.shook2 = true; shimT0 = t; jolt(0.5, 1.2); e.svx = 0.9; eggSay("익음: 흔들면 스르륵 미끄러짐 → 뒤집을 때"); }
+  if (k > 5.0 && !e.flip) { e.flip = { t0: t, f: 0, strong: e.strong }; tossT0 = t; tossS = e.strong ? 1.25 : 0.55; jolt(0.4, 0.8); }
   if (e.flip && !e.flipped) {
     const fl = e.flip, dur = fl.strong ? 0.62 : 0.42, rise = fl.strong ? 1.0 : 0.36;
     fl.f = clamp((t - fl.t0 - 0.12) / dur, 0, 1);
@@ -470,7 +545,8 @@ function eggStep(dt) {
     e.g.position.y += rise * 4 * f * (1 - f) + (f > 0 ? 0.02 : 0); e.g.position.z -= 0.12 * Math.sin(Math.PI * f);
     e.g.rotation.x += rot; e.bend = 0.16 * Math.sin(Math.PI * f) * (fl.strong ? 1.5 : 1);
     if (f >= 1) {
-      e.flipped = true; e.bend = 0; e.sq.v = fl.strong ? 16 : 8; jolt(fl.strong ? 1.8 : 0.9, 0); hitstop = fl.strong ? 0.08 : 0.05;
+      e.flipped = true; e.bend = 0; e.sq.v = fl.strong ? 16 : 8; jolt(fl.strong ? 1.8 : 0.9, 0); hitstop = fl.strong ? 0.12 : 0.06; spatter(fl.strong ? 20 : 10);
+      eggSay(fl.strong ? "세게: 노른자 터짐" : "살살: 노른자가 둥글게 버팀");
       if (fl.strong) { e.burst = true; e.burstT = t; }
     }
   }
@@ -478,7 +554,7 @@ function eggStep(dt) {
   e.g.updateMatrixWorld(true);
   // burst: the yolk runs out through the tear, spreads on top and drips onto the wok
   if (e.burst) {
-    const b = clamp((t - e.burstT) / 0.7, 0, 1), bb = 1 - (1 - b) ** 3;
+    const b = clamp((t - e.burstT) / 1.6, 0, 1), bb = Math.sqrt(b); // runny yolk: fast first, then slows like honey
     v3.set(YU, -0.014 - surf(YU * YU + YV * YV) - 0.03, YV); e.g.localToWorld(v3);
     e.pud.visible = true; e.pud.position.set(v3.x, v3.y + 0.022, v3.z + 0.05 * bb); e.pud.rotation.set(pose.pitch, rnd(-0.002, 0.002), pose.roll); e.pud.scale.set(0.3 + 1.0 * bb, 1, 0.3 + 1.3 * bb);
     e.drips.forEach((d, i) => { const a = 0.6 + i * 0.5, rr = 0.55 + 0.1 * i; v3.set(Math.cos(a) * rr * 0.5, 0, 0.05 + Math.sin(a) * rr); v3.applyMatrix4(wm);
@@ -487,6 +563,8 @@ function eggStep(dt) {
   eggShape(dt, t);
   return k;
 }
+let esayT = 0;
+function eggSay(txt) { const el = document.getElementById("esay"); el.textContent = txt; esayT = performance.now(); }
 /* ---------- loop ---------- */
 let last = performance.now(), t = 0, fpsN = 0, fpsT = 0;
 function frame(now) {
@@ -510,7 +588,8 @@ function frame(now) {
   const showRice = scn === "rice";
   for (const f of [rice, kimchi, pa]) { f.mesh.visible = showRice; if (showRice) { air += stepFood(f, t, dt); drawFood(f); } }
   bed.visible = false; { const k = clamp(air / (rice.n * 0.45), 0, 1); bed.scale.set(1 - 0.35 * k, 1 - 0.9 * k, 1 - 0.35 * k); } // the oily bed thins as the food leaves
-  E.g.visible = !showRice; if (showRice) { E.pud.visible = false; for (const d of E.drips) d.visible = false; } else eggStep(dt);
+  E.g.visible = !showRice; E.spat.visible = E.oil.visible = E.fizz.visible = !showRice; if (showRice) { E.pud.visible = false; for (const d of E.drips) d.visible = false; } else eggStep(dt);
+  document.getElementById("esay").style.opacity = !showRice && performance.now() - esayT < 1800 ? 1 : 0;
   // fire: flicker, flare on the lip snap
   const flare = Math.exp(-Math.max(0, t - tossT0 - 0.15) * 5) * (t - tossT0 > 0.12 ? 1 : 0);
   fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 0.9 * flare);
