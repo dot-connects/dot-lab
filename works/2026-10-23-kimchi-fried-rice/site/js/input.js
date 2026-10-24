@@ -10,7 +10,7 @@
   const RISE_FAST = 40, RISE_SLOW = 180, K_ROT = 0.02, REFRACT = 300, CAL_MS = 1000, PROBE_MS = 1000;
   /* tilt (§4) */
   const DEAD = 0.03, FULL = 0.64, TILT_TAU = 30, FREEZE = 250; // gravity fallback: ~33 deg of phone = full tilt
-  const DEAD_DEG = 1.5, FULL_DEG = 40; // deviceorientation: the wok turns ~1.2x the phone (operator 10-24: 12 deg was full, too touchy)
+  const DEAD_DEG = 3, FULL_DEG = 40; // deviceorientation: the wok turns ~1.2x the phone (operator 10-24: 12 deg was full, too touchy)
   /* touch: speeds in screen heights per second */
   const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
   const SLOW_TRAVEL = 0.15, SLOW_MIN = 0.3; // too-slow flick: > 15% of the height, peak 0.3..T_ON (a crawl is tilt)
@@ -55,10 +55,11 @@
     if (e.beta == null || e.gamma == null || I.mode !== "motion") return;
     const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
     if (ang) { ori0 = null; return; } // landscape: leave it to the gravity path
-    if (!ori0) ori0 = [e.beta, e.gamma];
+    ori0 = true; // the orientation path owns the tilt (the gravity path stands down)
     if (performance.now() < frozenUntil) return;
     const zone = (x) => Math.sign(x) * clamp01((Math.abs(x) - DEAD_DEG) / (FULL_DEG - DEAD_DEG));
-    tu = zone(e.gamma - ori0[1]); tv = zone(-(e.beta - ori0[0]));
+    const gm = Math.abs(e.beta) > 90 ? -e.gamma : e.gamma; // past vertical gamma mirrors
+    tu = zone(gm); tv = zone(-Math.max(-90, Math.min(90, e.beta))); // absolute: flat on the ground = level wok
   }
 
   function onMotion(e) {
@@ -73,7 +74,7 @@
     const ang = ((screen.orientation && screen.orientation.angle) || window.orientation || 0) * Math.PI / 180;
     const ca = Math.cos(ang), sa = Math.sin(ang);
     const rot = (x, y) => [x * ca - y * sa, x * sa + y * ca];
-    if (!g) sgn = a.z < -4 ? -1 : 1;
+    if (!g) sgn = a.z + a.y < -4 ? -1 : 1; // face-up z = +g, upright y = +g
     const [ax, ay] = rot(a.x * sgn, a.y * sgn), az = a.z * sgn;
     if (!g) { g = [ax, ay, az]; g0 = g.slice(); cal = { t0: t, n: 0, gx: 0, gy: 0, gz: 0, m: 0, m2: 0 }; }
     const k = dt / (TAU_G + dt);
@@ -127,7 +128,7 @@
     // tilt from gravity delta (§4): + u = right side lower (g leans to -x), + v = far side lower (g leans to -y)
     if (t >= frozenUntil && !ori0) {
       const zone = (x) => Math.sign(x) * clamp01((Math.abs(x) - DEAD) / (FULL - DEAD));
-      tu = zone(-(g[0] - g0[0]) / 9.81); tv = zone(-(g[1] - g0[1]) / 9.81);
+      tu = zone(-g[0] / 9.81); tv = zone(-g[1] / 9.81); // absolute, like the orientation path
     }
   }
 

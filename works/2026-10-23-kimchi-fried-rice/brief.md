@@ -122,3 +122,16 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - Review team rv5 (casual, feel, systems, 3d-art, 3d-food); not applied: motion emit latency, matte burnt grains, flame
   ring/shadow tweaks, toy exposure, layout (bigger wok), red lost lines on the receipt.
 - Not verified: real-phone tilt feel, cue readability on a real screen, audio, mid-range Android fps.
+
+## Round 6 (2026-10-24)
+- Operator: drop the toy look; an intro instead of starting on the first toss; tilt level = phone flat on the ground;
+  the egg rarely flips ("did you try it?"); the forward toss doesn't read.
+- Measured before the fix (scripted flicks): only strength 0.9-1.1 flipped cleanly; 0.7 folded, 1.3 folded/burst, 1.5+ burst
+  — while rice rewards hard tosses. Decided with dec6-game/3d/input agents.
+- Done: toy look removed; intro 2.4 s (oil, rice drops in, kimchi, "볶아!"), clock after +0.5 s grace, first toss ungraded,
+  hint only after 1.5 s idle, tap skips from round 2; absolute tilt (deviceorientation beta/gamma from 0, gravity path from
+  [0,0,g], DEAD 3°), "폰을 바닥과 평평하게"; egg spin = π + clamp(s-1, ±0.6)·1.2 → clean 0.5-1.5 (≤34°), perfect 0.83-1.17,
+  s < 0.45 just hops (retry), burst s > 1.6 / wall > 1.4, drift ±0.22 / -(s-1)·0.15 ± 0.11, 0.15 s settle on landing;
+  flying rice: shadow proxy (octahedron, airborne only), velocity streaks, 1.3x brighter, G 40 → 30, camera 10° lower while cooking.
+- Checked: egg sweep with steering 0.5-1.5 all clean centre, 1.7 burst; watch run 81; touch 3 sizes; frame 16.7-17.8 ms.
+- Not verified: real-phone absolute tilt (most people hold the phone tipped toward them), intro timing feel, audio.

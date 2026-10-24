@@ -4,7 +4,7 @@
 "use strict";
 (function () {
   const K = window.KFR, T = K.T, TAU = K.TAU, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, surf = K.surf, lin = K.lin;
-  const G = 40;                       // airtime ~0.45 s for a good toss (Ko & Hu: a real cycle is ~0.3 s)
+  const G = 30;                       // airtime ~0.52 s: long enough to read the arc on a phone (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
   const HK = 0.009;                   // pile height per grain in a cell
@@ -21,18 +21,22 @@
 
   function build() {
     const W = K.W, S = W.S, M = W.mat;
-    if (F.meshes) for (const m of F.meshes) m.parent && m.parent.remove(m);
-    const nR = S.grainN, nK = S.chunky ? 110 : 160, nP = S.chunky ? 50 : 70, n = nR + nK + nP;
+    if (F.meshes) for (const m of F.meshes.concat(F.shadow)) m.parent && m.parent.remove(m);
+    const nR = S.grainN, nK = 160, nP = 70, n = nR + nK + nP;
     const [gl, gw] = S.grain;
-    const gGeo = new T.SphereGeometry(1, S.chunky ? 10 : 7, S.chunky ? 8 : 5); gGeo.scale(gl, gw, gw);
-    const rMesh = new T.InstancedMesh(gGeo, M(S, "#ffffff", { std: { roughness: S.chunky ? 0.45 : 0.5 }, phys: { roughness: 0.4, clearcoat: 0.9, clearcoatRoughness: 0.18 } }), nR);
+    const gGeo = new T.SphereGeometry(1, 7, 5); gGeo.scale(gl, gw, gw);
+    const rMesh = new T.InstancedMesh(gGeo, M(S, "#ffffff", { std: { roughness: 0.5 }, phys: { roughness: 0.4, clearcoat: 0.9, clearcoatRoughness: 0.18 } }), nR);
     const leaf = new T.Shape(); for (let i = 0; i < 7; i++) { const a = (i / 7) * TAU, r = rnd(0.6, 1); i ? leaf.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.7) : leaf.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.7); }
-    const lGeo = new T.ShapeGeometry(leaf); lGeo.rotateX(-Math.PI / 2); lGeo.scale(S.chunky ? 0.08 : 0.064, 1, S.chunky ? 0.08 : 0.064);
+    const lGeo = new T.ShapeGeometry(leaf); lGeo.rotateX(-Math.PI / 2); lGeo.scale(0.064, 1, 0.064);
     const kMesh = new T.InstancedMesh(lGeo, M(S, "#ffffff", { std: { side: T.DoubleSide, roughness: 0.35 }, phys: { side: T.DoubleSide, roughness: 0.3, clearcoat: 1 } }), nK);
-    const pGeo = new T.TorusGeometry(S.chunky ? 0.03 : 0.02, S.chunky ? 0.012 : 0.0075, 6, 12); pGeo.rotateX(Math.PI / 2);
+    const pGeo = new T.TorusGeometry(0.02, 0.0075, 6, 12); pGeo.rotateX(Math.PI / 2);
     const pMesh = new T.InstancedMesh(pGeo, M(S, "#ffffff", { std: { roughness: 0.4 } }), nP);
     F.meshes = [rMesh, kMesh, pMesh]; F.off = [0, nR, nR + nK]; F.cnt = [nR, nK, nP];
-    for (const m of F.meshes) { m.instanceMatrix.setUsage(T.DynamicDrawUsage); m.receiveShadow = true; m.castShadow = !!S.chunky; W.wok.add(m); m.frustumCulled = false; }
+    for (const m of F.meshes) { m.instanceMatrix.setUsage(T.DynamicDrawUsage); m.receiveShadow = true; W.wok.add(m); m.frustumCulled = false; }
+    // flying grains cast shadows (the height reads from above); a cheap octahedron proxy, only airborne grains are in it
+    const shGeo = new T.OctahedronGeometry(1, 0); shGeo.scale(gl, gw, gw); F.GL = gl;
+    F.shadow = new T.InstancedMesh(shGeo, new T.MeshBasicMaterial({ colorWrite: false, depthWrite: false }), nR);
+    F.shadow.castShadow = true; F.shadow.frustumCulled = false; F.shadow.instanceMatrix.setUsage(T.DynamicDrawUsage); W.wok.add(F.shadow);
     F.n = n;
     const A = (C) => new C(n);
     Object.assign(F, { kind: A(Uint8Array), st: A(Uint8Array), x: A(Float32Array), y: A(Float32Array), z: A(Float32Array), vx: A(Float32Array), vy: A(Float32Array), vz: A(Float32Array),
@@ -58,6 +62,17 @@
     heights(); for (let i = 0; i < F.n; i++) F.y[i] = groundY(i);
   }
   F.build = build; F.reset = reset;
+  // the intro: the wok starts empty, then the rice and the kimchi drop in from a bowl (they land through the air path)
+  F.hold = function () { for (let i = 0; i < F.n; i++) F.st[i] = 7; };
+  F.drop = function (kind) {
+    const wm = K.W.wok.matrixWorld;
+    for (let i = 0; i < F.n; i++) {
+      if (F.st[i] !== 7 || (kind === 0) !== (F.kind[i] === 0)) continue;
+      _v.set(F.x[i] * 0.7, K.RIM + 0.7 + rnd(0, 0.3), F.z[i] * 0.7 + 0.1).applyMatrix4(wm);
+      F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z; F.vx[i] = rnd(-0.2, 0.2); F.vy[i] = -rnd(0.5, 1.5); F.vz[i] = rnd(-0.2, 0.2);
+      F.sx[i] = rnd(-6, 6); F.sy[i] = rnd(-3, 3); F.sz[i] = rnd(-6, 6); F.st[i] = 2;
+    }
+  };
 
   /* ---------- the pile's height field ---------- */
   const cellIx = (x, z) => { const cx = clamp(((x + 1.1) / CELL) | 0, 0, NG - 1), cz = clamp(((z + 1.1) / CELL) | 0, 0, NG - 1); return cz * NG + cx; };
@@ -219,7 +234,7 @@
   F.settle = function () { for (let i = 0; i < F.n; i++) if (F.st[i] === 0) { F.x[i] *= 0.3; F.z[i] *= 0.3; } };
 
   /* ---------- draw ---------- */
-  const dummy = new T.Object3D();
+  const dummy = new T.Object3D(), _d = new T.Vector3(), _q2 = new T.Quaternion(), AX = new T.Vector3(1, 0, 0), ZERO = new T.Matrix4().makeScale(0, 0, 0);
   let frame = 0;
   F.draw = function () {
     const wm = K.W.wok.matrixWorld; _inv.copy(wm).invert(); frame++;
@@ -228,16 +243,24 @@
       const k = F.kind[i], mi = i - F.off[k], m = F.meshes[k], st = F.st[i];
       dummy.position.set(F.x[i], F.y[i], F.z[i]);
       if (st >= 2) dummy.position.applyMatrix4(_inv); // flying / plated / spilled food is stored in world space
-      if (st === 2 || st === 5 || st === 6) dummy.rotation.set(F.rx[i], F.ry[i], F.rz[i]);
-      else if (k === 0) dummy.rotation.set(0, F.ry[i], 0.15 * Math.sin(F.rx[i]));
+      dummy.scale.set(1, 1, 1);
+      if (st === 7) dummy.scale.set(0, 0, 0); // not in the wok yet
+      else if (st === 2 || st === 5 || st === 6) {
+        dummy.rotation.set(F.rx[i], F.ry[i], F.rz[i]);
+        if (k === 0 && st === 2) { // a fast grain streaks along its velocity: the arc reads as lines, not as dots that skip
+          _d.set(F.vx[i], F.vy[i], F.vz[i]); const sp = _d.length();
+          if (sp > 2) { _d.transformDirection(_inv); _q2.setFromUnitVectors(AX, _d); dummy.quaternion.slerp(_q2, clamp((sp - 2) / 2, 0, 1)); dummy.scale.x = 1 + Math.min(1.8, ((sp / 60) * 0.7) / (2 * F.GL)); }
+        }
+      } else if (k === 0) dummy.rotation.set(0, F.ry[i], 0.15 * Math.sin(F.rx[i]));
       else dummy.rotation.set(0.2 * Math.sin(F.rx[i]), F.ry[i], 0.2 * Math.sin(F.rz[i]));
-      dummy.updateMatrix(); m.setMatrixAt(mi, dummy.matrix);
+      dummy.updateMatrix(); m.setMatrixAt(mi, dummy.matrix); if (k === 0) F.shadow.setMatrixAt(mi, st === 2 ? dummy.matrix : ZERO);
       if (colorPass) {
-        const ck = F.cook[i] + F.tint[i] + (k === 0 ? F.fireTint || 0 : 0), b = (ck * 25) | 0; // 불맛 shows: the rice darkens toward caramel
-        if (b !== F.cb[i]) { F.cb[i] = b; ramp(k === 0 ? RAMP : k === 1 ? KRAMP : PRAMP, ck, _c); if (k === 0) _c.multiplyScalar(1 + F.tint[i]); if (k === 2 && F.tint[i] > 0.04) _c.lerp(lin("#d8efb0"), 0.6); m.setColorAt(mi, _c); m.instanceColor.needsUpdate = true; }
+        const ck = F.cook[i] + F.tint[i] + (k === 0 ? F.fireTint || 0 : 0), b = ((ck * 25) | 0) + (st === 2 ? 1000 : 0); // 불맛 shows: the rice darkens toward caramel; flying grains catch the light
+        if (b !== F.cb[i]) { F.cb[i] = b; ramp(k === 0 ? RAMP : k === 1 ? KRAMP : PRAMP, ck, _c); if (k === 0) _c.multiplyScalar((1 + F.tint[i]) * (st === 2 ? 1.3 : 1)); if (k === 2 && F.tint[i] > 0.04) _c.lerp(lin("#d8efb0"), 0.6); m.setColorAt(mi, _c); m.instanceColor.needsUpdate = true; }
       }
     }
     for (const m of F.meshes) m.instanceMatrix.needsUpdate = true;
+    F.shadow.instanceMatrix.needsUpdate = true;
   };
 
   /* ---------- scoring queries ---------- */

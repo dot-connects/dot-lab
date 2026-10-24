@@ -1,4 +1,4 @@
-/* scene.js — three.js world: renderer, camera fit, two looks (실사 / 장난감), counter, burner, wok, fire, plate.
+/* scene.js — three.js world: renderer, camera fit, one photo-real look, counter, burner, wok, fire, plate.
    Units: wok radius = 1 (≈18 cm). Axes: x right, y up, z toward the cook (handle side); the far rim is -z. */
 "use strict";
 (function () {
@@ -12,7 +12,6 @@
 
   const STYLES = {
     real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.038, 0.017], grainN: 2400, phys: true },
-    toy: { bg: "#2f3b66", counter: "pastel", exposure: 1.0, grain: [0.06, 0.03], grainN: 1400, chunky: true },
   };
 
   /* ---------- renderer / camera ---------- */
@@ -68,7 +67,6 @@
       c.fillStyle = "#3a3f45"; c.fillRect(0, 0, w, h);
       for (let i = 0; i < 900; i++) { const x = Math.random() * w, y = Math.random() * h, v = 70 + Math.random() * 40, a = Math.random() * Math.PI; c.strokeStyle = `rgba(${v},${v + 4},${v + 8},.08)`; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 40, y + Math.sin(a) * 40); c.stroke(); }
     }, 6);
-    return canvasTex(256, 256, (c, w, h) => { c.fillStyle = "#46568f"; c.fillRect(0, 0, w, h); c.fillStyle = "#3f4e86"; for (let i = 0; i < 8; i++) c.fillRect(0, i * 32, w, 16); }, 3);
   }
 
   /* ---------- helpers shared by food / egg ---------- */
@@ -109,7 +107,7 @@
 
     scene.add(new T.HemisphereLight(lin("#e8eef5"), lin("#6a4a30"), S.phys ? 0.35 : 0.5));
     const key0 = new T.DirectionalLight(lin("#fff1dc"), S.phys ? 1.6 : 0.85); key0.position.set(-2.2, 5, 1.5);
-    key0.castShadow = true; key0.shadow.mapSize.set(1024, 1024); key0.shadow.bias = -0.0008; key0.shadow.radius = 4;
+    key0.castShadow = true; key0.shadow.mapSize.set(1024, 1024); key0.shadow.bias = -0.0008; key0.shadow.radius = 2;
     Object.assign(key0.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 12 }); scene.add(key0);
     W.fireLight = new T.PointLight(lin("#ff8a2a"), 2.2, 4.5, 2); W.fireLight.position.set(0, -0.35, 0); scene.add(W.fireLight);
 
@@ -134,7 +132,7 @@
     const bowl = new T.Mesh(new T.LatheGeometry(prof, 96), wokMat); bowl.castShadow = true; bowl.receiveShadow = true; wok.add(bowl);
     const steel = mat(S, "#9aa3ab", { std: { metalness: 0.9, roughness: 0.3 }, phys: { metalness: 1, roughness: 0.28 } });
     const sock = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.42, 16), steel); sock.rotation.x = Math.PI / 2 - 12 * DEG; sock.position.set(0, 0.36, 1.2); wok.add(sock);
-    const wood = mat(S, S.chunky ? "#c9773a" : "#7b4a2a", { std: { roughness: 0.6 }, phys: { roughness: 0.55, clearcoat: 0.3 } });
+    const wood = mat(S, "#7b4a2a", { std: { roughness: 0.6 }, phys: { roughness: 0.55, clearcoat: 0.3 } });
     const handle = new T.Mesh(new T.CylinderGeometry(0.06, 0.07, 1.0, 20), wood); handle.rotation.x = Math.PI / 2 - 12 * DEG; handle.position.set(0, 0.5, 1.88); handle.castShadow = true; wok.add(handle);
     const ear = new T.Mesh(new T.TorusGeometry(0.09, 0.022, 8, 20, Math.PI), steel); ear.position.set(0, 0.36, -1.06); ear.rotation.set(-Math.PI / 2, 0, 0); wok.add(ear);
 
@@ -160,7 +158,7 @@
     // plate (left of the wok) + ladle
     const pg = (W.plate = new T.Group()); scene.add(pg);
     const pprof = [[0, 0], [0.42, 0], [0.47, 0.012], [0.58, 0.05], [0.68, 0.085], [0.7, 0.09], [0.69, 0.075], [0.56, 0.04], [0.42, 0.008], [0, 0.008]].map(([x, y]) => new T.Vector2(Math.max(0.001, x), y));
-    const cer = mat(S, S.chunky ? "#fffaf0" : "#f7f5f0", { std: { roughness: 0.25 }, phys: { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 } });
+    const cer = mat(S, "#f7f5f0", { std: { roughness: 0.25 }, phys: { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 } });
     const dish = new T.Mesh(new T.LatheGeometry(pprof, 64), cer); dish.castShadow = dish.receiveShadow = true; pg.add(dish);
     const prim = new T.Mesh(new T.TorusGeometry(0.665, 0.008, 6, 64), mat(S, "#2f5fa8", { std: { roughness: 0.3 } })); prim.rotation.x = Math.PI / 2; prim.position.y = 0.084; pg.add(prim);
     pg.visible = false;

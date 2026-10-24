@@ -10,7 +10,6 @@
 
   const RICE_T = 12, MAXT = 50 * DEG;     // the wok follows the phone up to 50°: the sticky rice flows past ~30° and goes over the rim near the end
   const FIRE_MAX = 25;
-  let style = store.get("kfr-style", "real"); if (!W.STYLES[style]) style = "real";
 
   /* ---------- state ---------- */
   let g = null;
@@ -29,6 +28,8 @@
   }
   const cueEl = $("startCue");
   function tip(text) { tipEl.textContent = text || ""; tipEl.hidden = !text; }
+  function cue(big, small, cls) { cueEl.className = cls || ""; $("scBig").textContent = big; $("scSmall").textContent = small || ""; cueEl.hidden = false; }
+  function hideCue() { if (cueEl.hidden) return; cueEl.classList.add("out"); setTimeout(() => { cueEl.hidden = true; cueEl.classList.remove("out"); }, 160); }
 
   /* ---------- wok pose: phone tilt + the chef's toss ---------- */
   const DAMP = (k, dt) => 1 - Math.exp(-dt / k);
@@ -39,7 +40,7 @@
     let pitch = -4 * DEG - P.tilt.v * MAXT, roll = -P.tilt.u * MAXT, x = P.tilt.u * 0.05, z = 0, y = 0;
     pitch += Math.sin(g.t * 1.3) * 0.8 * DEG; roll += Math.sin(g.t * 0.9) * 1.0 * DEG; // the hand never quite stops
     if (g.eggDip) { const k = (g.t - g.eggDip) / 0.16; if (k < 1) y -= 0.05 * Math.sin(Math.PI * k); }
-    if (g.ph === "egg" && K.Egg.ph === "air") { x += clamp(P.tilt.u * 0.9, -0.5, 0.5); z += clamp(-P.tilt.v * 0.65, -0.35, 0.35); pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
+    if (g.ph === "egg" && K.Egg.ph === "air" && !K.Egg.flip.hop) { x += clamp(P.tilt.u * 0.9, -0.5, 0.5); z += clamp(-P.tilt.v * 0.65, -0.35, 0.35); pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
     const ks = g.t - g.shim; if (ks >= 0 && ks < 0.6) roll += 5 * DEG * Math.sin(ks * 34) * Math.exp(-ks * 6);
     // the toss (motion review): push 0–90 ms, lip snap 90–140 ms, back with a small spring overshoot
     const a = g.toss;
@@ -64,10 +65,10 @@
   function onFlick(f) { if (g.auto || g.ph === "result") return; flick(f); }
   function flick(f) { if (g.ph === "rice") riceFlick(f); else if (g.ph === "egg") eggFlick(f); }
   function riceFlick(f) {
-    if (g.t - g.lastFlick < 0.3 || (g.started && g.clock <= 0)) return;
+    if (!g.started || g.t - g.lastFlick < 0.3 || g.clock <= 0) return; // the ingredients are still going in
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
-    if (!g.started) { g.started = true; tip(g.auto ? C.watching : C.rimTip); cueEl.classList.add("out"); setTimeout(() => { cueEl.hidden = true; cueEl.classList.remove("out"); }, 160); }
+    if (g.tossN === 0) { tip(g.auto ? C.watching : C.rimTip); hideCue(); }
     else {
       if (g.tossN >= 3 && !g.auto) tip("");
       // readiness: how long the food has been back on the metal since the last toss came down
@@ -142,18 +143,33 @@
   function start(auto) {
     g = newGame(auto);
     if (K.Egg.ph !== "off") K.Egg.hide();
-    K.Food.reset(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
+    K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
     timerEl.hidden = false; gaugeEl.hidden = false;
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
     tip(auto ? C.watching : "");
-    if (!auto) { // nothing moves until the first toss, so say so big, over the wok
-      const touch = K.Input.mode !== "motion", gg = g;
-      cueEl.className = touch ? "touch" : ""; $("scBig").textContent = touch ? C.cueTouch : C.cueMotion; $("scSmall").textContent = C.cueSmall; cueEl.hidden = false;
-      setTimeout(() => { if (g === gg && !g.started) { $("scBig").textContent = C.cueProd; cueEl.classList.add("fast"); } }, 4000);
+    g.introOn = true; g.introI = 0; g.skipOK = played && !auto; played = true;
+  }
+  let played = false;
+  /* the intro (operator 10-24: not a wait for the first toss): oil, rice, kimchi go in, "볶아!", then the clock */
+  function introStep() {
+    const k = g.phT, F = K.Food, I = C.intro;
+    if (g.introSkip) { g.introSkip = false; F.reset(); g.introI = I.length; g.phT = 2.4; }
+    while (g.introI < I.length && k >= I[g.introI][0]) {
+      const i = g.introI++;
+      cue(I[i][1], i < 3 ? C.introSmall : "", "intro");
+      if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(0); else if (i === 2) F.drop(1);
     }
+    if (k >= 0.95 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
+    if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.clockAt = g.t + 0.5; hideCue(); } // 0.5 s grace before the 12 s run
+  }
+  // no toss yet: the hint comes only now (1.5 s), and gets pushier at 4 s
+  function nudge() {
+    const w = g.t - g.goT, touch = K.Input.mode !== "motion";
+    if (w > 1.5 && !g.nudged) { g.nudged = 1; cue(touch ? C.cueTouch : C.cueMotion, C.cueSmall, touch ? "touch" : ""); }
+    if (w > 4 && g.nudged === 1) { g.nudged = 2; $("scBig").textContent = C.cueProd; cueEl.classList.add("fast"); }
   }
   function startPlate() {
     setPh("plate"); hudEl.classList.add("dim"); tip(""); K.Food.scorchVis = 0;
@@ -228,10 +244,12 @@
     if (g.auto) autoPlay();
     updatePose(dt);
     const F = K.Food, E = K.Egg;
-    if (g.ph === "rice" && g.started) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
+    if (g.ph === "rice" && g.introOn) introStep();
+    if (g.ph === "rice" && g.started && !g.auto && g.tossN === 0) nudge();
+    if (g.ph === "rice" && g.started && g.t >= g.clockAt) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
     const plateOn = ["plate", "egg", "take", "garnish", "result"].includes(g.ph);
     W.plate.visible = plateOn;
-    const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.started ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
+    const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.t >= g.clockAt ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
       plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
     const r = F.step(ctx);
     if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
@@ -256,7 +274,7 @@
     if (g.flareAt && g.t >= g.flareAt) { g.flareAt = 0; g.hei = 1 + Math.min(0.6, 0.15 * (g.flareN - 1)); W.sparkBurst(10 + Math.min(20, g.flareN * 3)); K.Audio.flare(); g.punch = 1; }
     g.hei = Math.max(0, g.hei - dt * 1.2);
     W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
-    K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
+    K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : g.introI ? 0.6 : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
       if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
@@ -280,6 +298,7 @@
   }
   function eggLanded(ev) {
     const E = K.Egg, r = E.res; g.eggLandT = g.t;
+    if (ev === "hop") { word(C.eggHop, "meh"); K.Audio.land("egg-soft"); if (E.ph === "landed") { g.flip2Done = false; g.res1 = null; } return; } // too soft: try again
     if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
     if (g.res1) { // the second landing
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
@@ -380,7 +399,7 @@
   function autoPlay() {
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice") {
-      if (!g.started && g.phT > 1.0) flick({ strength: 1.1, dirU: 0, dirV: 1 });
+      if (g.started && g.tossN === 0 && g.t - g.goT > 0.6) flick({ strength: 1.1, dirU: 0, dirV: 1 });
       else if (g.started && g.clock > 0 && F.toss && F.toss.done) {
         if (!g.autoWait) g.autoWait = rnd(0.35, 1.1);
         if (g.t - F.lastLand > g.autoWait) { g.autoWait = 0; flick({ strength: rnd(0.95, 1.35), dirU: 0, dirV: 1 }); }
@@ -395,15 +414,17 @@
   }
 
   /* ---------- camera ---------- */
-  const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3();
+  const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3(), _ax = new T.Vector3(1, 0, 0);
   function camera(dt) {
     const pan = g.ph === "plate" || g.ph === "take" ? SIDE * 0.32 : g.ph === "egg" ? SIDE * 0.14 : 0; // the egg phase keeps the whole wok in view
     g.cam += ((["garnish", "result"].includes(g.ph) ? 1 : 0) - g.cam) * DAMP(0.35, dt);
     g.pan += (pan - g.pan) * DAMP(0.25, dt);
     const close = smooth(g.cam);
+    g.camLow = (g.camLow || 0) + (((g.ph === "rice" && g.started) || g.ph === "egg" ? 1 : 0) - (g.camLow || 0)) * DAMP(0.6, dt);
     _tg.set(W.plate.position.x, W.plateC.y + 0.15, W.plateC.z);
     _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
     _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
+    if (g.camLow > 0.001) _cp.sub(_cl).applyAxisAngle(_ax, 10 * DEG * g.camLow * (1 - close)).add(_cl);
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
     g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)); if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
   }
@@ -426,14 +447,13 @@
   }
 
   /* ---------- start screen ---------- */
-  function setStyle(k) { style = k; store.set("kfr-style", k); W.build(k); for (const b of document.querySelectorAll("[data-style]")) b.setAttribute("aria-pressed", b.dataset.style === k); }
-  for (const b of document.querySelectorAll("[data-style]")) b.onclick = () => setStyle(b.dataset.style);
-  setStyle(style);
+  W.build("real"); K.Food.hold(); // the wok waits empty on the start screen
   $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.go; $("watch").textContent = C.watchBtn;
   $("go").onclick = () => { K.Audio.unlock(); const go = () => start(false); K.Input.requestPermission().then(go, go); };
   $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
   $("shareOv").onclick = () => { $("shareOv").hidden = true; };
   K.Input.start(onFlick, app);
+  app.addEventListener("pointerdown", () => { if (g.introOn && g.skipOK) g.introSkip = true; }); // from the 2nd round a tap skips the intro
   addEventListener("resize", () => W.fit());
   document.addEventListener("visibilitychange", () => { if (document.hidden) K.Audio.suspend(); else K.Audio.resume(); last = performance.now(); });
   K.Game = { get state() { return g; }, start, flick, finalScore };

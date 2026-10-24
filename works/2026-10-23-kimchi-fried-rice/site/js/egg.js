@@ -80,7 +80,7 @@
   E.start = function (t) {
     E.g.scale.setScalar(1);
     Object.assign(E, { ph: "drop", t0: t, cook: 0, waves: [], flip: null, flipped: false, burst: false, fold: 0, bend: 0, sx: 0, sz: 0, svx: 0, svz: 0, ox: 0, oz: 0.05,
-      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null });
+      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null, snap: null });
     for (const b of E.bubbles) blister(b, t);
     E.g.visible = E.oil.visible = E.fizz.visible = E.spat.visible = true; E.pud.visible = false; for (const d of E.drips) d.visible = false;
   };
@@ -97,12 +97,14 @@
   E.flipStart = function (f, t) {
     if (f.second && E.ph === "landed") { E.sx = E.ox; E.sz = E.oz - 0.05; } // flips again from where it lies
     else if (E.ph !== "pan") return false;
-    const s = clamp(f.strength || 1, 0.3, 1.9);
-    const rise = clamp(0.22 + 0.5 * (s - 0.35), 0.16, 1.0), vy = Math.sqrt(2 * GE * rise), dur = 2 * vy / GE;
-    const spin = Math.PI * clamp(s / 1.05, 0.3, 2.1);
+    const s = clamp(f.strength || 1, 0.3, 1.9), hop = s < 0.45; // too soft: it only jumps, try again (it keeps frying)
+    const rise = hop ? 0.1 : clamp(0.22 + 0.5 * (s - 0.35), 0.16, 1.0), vy = Math.sqrt(2 * GE * rise), dur = 2 * vy / GE;
+    // a half turn for any honest flick (0.5..1.5 lands within 34 deg, 0.83..1.17 within 12 = perfect)
+    const spin = hop ? 0 : Math.PI + clamp(s - 1, -0.6, 0.6) * 1.2;
     const W = K.W; _v.set(E.sx, 0, 0.05 + E.sz).applyMatrix4(W.wok.matrixWorld);
-    const drift = f.second ? { x: rnd(-0.06, 0.06), z: rnd(-0.05, 0.05) } : { x: (f.dirU || 0) * 0.5 + rnd(-0.4, 0.4), z: rnd(-0.25, 0.18) };
-    E.flip = { t0: t, s, rise, vy, dur, spin, p0: _v.clone(), drift, f: 0, cook: E.cook, base: E.flipped ? Math.PI : 0 };
+    // where it comes down: a little random, and a harder flick carries it further (-z): sliding the wok under it is the skill
+    const drift = f.second || hop ? { x: rnd(-0.06, 0.06), z: rnd(-0.05, 0.05) } : { x: (f.dirU || 0) * 0.3 + rnd(-0.22, 0.22), z: -(s - 1) * 0.15 + rnd(-0.12, 0.1) };
+    E.flip = { t0: t, s, rise, vy, dur, spin, hop, second: !!f.second, p0: _v.clone(), drift, f: 0, cook: E.cook, base: E.flipped ? Math.PI : 0 };
     E.ph = "air"; jolt(t, 0.4, 0.8);
     return true;
   };
@@ -154,6 +156,7 @@
     } else if (E.ph === "landed") {
       _v.set(E.ox, 0, E.oz).applyMatrix4(wm); E.g.position.copy(_v);
       W.wok.getWorldQuaternion(E.g.quaternion); if (E.flipped) E.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, Math.PI));
+      if (E.snap) { const k = (t - E.snap.t) / 0.15; if (k < 1) E.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, E.snap.a * (1 - smooth(k)))); else E.snap = null; }
       E.cook = Math.min(1.6, E.cook + dt * 0.04);
     }
     E.g.updateMatrixWorld(true);
@@ -165,6 +168,7 @@
   /* landing: where it fell relative to the wok (the catch), how far it turned (the flip), how hard (the yolk) */
   function land(t) {
     const fl = E.flip, W = K.W;
+    if (fl.hop) { E.ph = fl.second ? "landed" : "pan"; E.landT = t; jolt(t, 0.6, 0); spatter(6); return "hop"; }
     _inv.copy(W.wok.matrixWorld).invert(); _v.copy(E.g.position).applyMatrix4(_inv);
     const d = Math.hypot(_v.x, _v.z - 0.05), turn = fl.spin, err = Math.abs((((turn % TAU) + TAU) % TAU) - Math.PI), errDeg = (err * 180) / Math.PI;
     const raw = fl.cook < 0.42;
@@ -172,9 +176,11 @@
     if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.45; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;
     const fold = !flipped || errDeg > 40 || raw ? 1 : 0;
-    const burst = fl.s > 1.45 || (where === "wall" && fl.s > 1.25) || raw;
+    const burst = fl.s > 1.6 || (where === "wall" && fl.s > 1.4) || raw;
     E.res = { d, where, catchQ, errDeg: Math.round(errDeg), angle: Math.round(180 - errDeg), flipped, fold, burst, raw, cookAtFlip: fl.cook, s: fl.s };
     E.flipped = fl.base ? !flipped : flipped; E.fold = fold; E.bend = 0;
+    const rest = E.flipped ? Math.PI : 0, res = ((((fl.base + fl.spin - rest) % TAU) + TAU + Math.PI) % TAU) - Math.PI;
+    E.snap = Math.abs(res) < 1.25 ? { t, a: res } : null; // it settles flat over 0.15 s instead of jumping
     if (where === "out") { // off the wok: onto the counter
       E.onCounter = true; E.ph = "counter"; E.ox = 0; E.oz = 0;
       E.g.position.y = -0.6; E.g.quaternion.setFromAxisAngle(_ax, flipped ? Math.PI : 0); E.g.updateMatrixWorld(true);
