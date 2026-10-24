@@ -9,7 +9,8 @@
   const TAU_G = 0.2, A_ON_MIN = 6, A_OFF = 2, A_MAX = 25, W_ON = 200, PULSE_MAX = 250;
   const RISE_FAST = 40, RISE_SLOW = 180, K_ROT = 0.02, REFRACT = 300, CAL_MS = 1000, PROBE_MS = 1000;
   /* tilt (§4) */
-  const DEAD = 0.025, FULL = 0.22, TILT_TAU = 60, FREEZE = 250; // operator 10-24: more sensitive than expected
+  const DEAD = 0.03, FULL = 0.64, TILT_TAU = 30, FREEZE = 250; // gravity fallback: ~33 deg of phone = full tilt
+  const DEAD_DEG = 1.5, FULL_DEG = 40; // deviceorientation: the wok turns ~1.2x the phone (operator 10-24: 12 deg was full, too touchy)
   /* touch: speeds in screen heights per second */
   const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
   const SLOW_TRAVEL = 0.15, SLOW_MIN = 0.3; // too-slow flick: > 15% of the height, peak 0.3..T_ON (a crawl is tilt)
@@ -48,7 +49,17 @@
   let g = null, g0 = null, sgn = 1, lastT = 0, aOn = A_ON_MIN;
   let cal = null;            // {t0, n, gx, gy, gz, m, m2} while calibrating
   let pulse = null, quietT = 0, lastFlick = -1e9, frozenUntil = 0, quietUntil = 0;
-  let gotMotion = false, probeDone = null;
+  let gotMotion = false, probeDone = null, ori0 = null;
+  // fused attitude: smooth and immediate, unlike gravity from the accelerometer (which needs a low-pass and lags)
+  function onOrient(e) {
+    if (e.beta == null || e.gamma == null || I.mode !== "motion") return;
+    const ang = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
+    if (ang) { ori0 = null; return; } // landscape: leave it to the gravity path
+    if (!ori0) ori0 = [e.beta, e.gamma];
+    if (performance.now() < frozenUntil) return;
+    const zone = (x) => Math.sign(x) * clamp01((Math.abs(x) - DEAD_DEG) / (FULL_DEG - DEAD_DEG));
+    tu = zone(e.gamma - ori0[1]); tv = zone(-(e.beta - ori0[0]));
+  }
 
   function onMotion(e) {
     const a = e.accelerationIncludingGravity;
@@ -114,7 +125,7 @@
     }
 
     // tilt from gravity delta (§4): + u = right side lower (g leans to -x), + v = far side lower (g leans to -y)
-    if (t >= frozenUntil) {
+    if (t >= frozenUntil && !ori0) {
       const zone = (x) => Math.sign(x) * clamp01((Math.abs(x) - DEAD) / (FULL - DEAD));
       tu = zone(-(g[0] - g0[0]) / 9.81); tv = zone(-(g[1] - g0[1]) / 9.81);
     }
@@ -182,7 +193,7 @@
   }
   function useTouch() {
     started = true; I.mode = "touch"; tu = 0; tv = 0;
-    window.removeEventListener("devicemotion", onMotion);
+    window.removeEventListener("devicemotion", onMotion); window.removeEventListener("deviceorientation", onOrient); ori0 = null;
   }
   // Must be called synchronously from a tap (iOS). Resolves once motion events flow, or after the 1 s probe in touch mode.
   function requestPermission() {
@@ -200,7 +211,7 @@
         res();
       }, PROBE_MS);
       probeDone = () => { probeDone = null; clearTimeout(timer); res(); };
-      window.addEventListener("devicemotion", onMotion);
+      window.addEventListener("devicemotion", onMotion); window.addEventListener("deviceorientation", onOrient);
     }));
   }
   function armAfterRelease() {

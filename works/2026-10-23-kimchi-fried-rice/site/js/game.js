@@ -8,7 +8,7 @@
   const app = $("app"), introEl = $("intro"), hudEl = $("hud"), timerEl = $("timer"), wordEl = $("word"), subEl = $("sub"), gaugeEl = $("gauge"), gaugeFill = $("gaugeFill"), comboEl = $("combo"), resEl = $("result"), tipEl = $("tip");
   const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
-  const RICE_T = 12, MAXT = 40 * DEG;     // the wok follows the phone up to 40°: past ~35° the food goes over the rim
+  const RICE_T = 12, MAXT = 50 * DEG;     // the wok follows the phone up to 50°: the sticky rice flows past ~30° and goes over the rim near the end
   const FIRE_MAX = 25;
   let style = store.get("kfr-style", "real"); if (!W.STYLES[style]) style = "real";
 
@@ -35,10 +35,10 @@
   function updatePose(dt) {
     const tl = K.Input.tilt, P = g.pose, pose = W.pose;
     // the wok follows the phone fast (sensitive); the food then flows with real gravity in food.js
-    P.tilt.u += (tl.u - P.tilt.u) * DAMP(0.05, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(0.05, dt);
+    P.tilt.u += (tl.u - P.tilt.u) * DAMP(0.03, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(0.03, dt);
     let pitch = -4 * DEG - P.tilt.v * MAXT, roll = -P.tilt.u * MAXT, x = P.tilt.u * 0.05, z = 0, y = 0;
     pitch += Math.sin(g.t * 1.3) * 0.8 * DEG; roll += Math.sin(g.t * 0.9) * 1.0 * DEG; // the hand never quite stops
-    if (g.ph === "egg" && K.Egg.ph === "air") { x += P.tilt.u * 0.5; z += -P.tilt.v * 0.35; pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
+    if (g.ph === "egg" && K.Egg.ph === "air") { x += clamp(P.tilt.u * 0.9, -0.5, 0.5); z += clamp(-P.tilt.v * 0.65, -0.35, 0.35); pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
     const ks = g.t - g.shim; if (ks >= 0 && ks < 0.6) roll += 5 * DEG * Math.sin(ks * 34) * Math.exp(-ks * 6);
     // the toss (motion review): push 0–90 ms, lip snap 90–140 ms, back with a small spring overshoot
     const a = g.toss;
@@ -392,7 +392,7 @@
       if (E.ph === "pan" && E.cook > 0.5 && !g.autoShook) { g.autoShook = true; g.shim = g.t; E.shake(g.t, 0.3, 0); word(C.eggSlides, "ok"); }
       if (E.ph === "pan" && E.cook > win) eggFlick({ strength: 1.05, dirU: 0 });
       if (E.ph === "landed" && g.flip2Open && !g.flip2Done && g.t - E.landT > 0.7) eggFlick({ strength: 1.05, dirU: 0 });
-      if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.5, -1, 1), clamp(-tg.z / 0.35, -1, 1)); }
+      if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.9, -1, 1), clamp(-tg.z / 0.65, -1, 1)); }
       else K.Input.demoTilt(0, 0);
     }
   }

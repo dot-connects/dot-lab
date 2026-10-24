@@ -6,8 +6,8 @@
   const K = window.KFR, T = K.T, TAU = K.TAU, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, surf = K.surf, lin = K.lin;
   const G = 40;                       // airtime ~0.45 s for a good toss (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
-  const MU = 0.12;                    // static friction (×g): the pile holds at a small tilt, flows at a real one
-  const HK = 0.0095;                  // pile height per grain in a cell
+  const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
+  const HK = 0.0042;                  // pile height per grain in a cell
   const NG = 26, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
   const COUNTER = -0.61;
   const F = (K.Food = { n: 0 });
@@ -44,10 +44,13 @@
     for (const m of F.meshes) m.instanceColor.needsUpdate = true;
     reset();
   }
+  const NL = 9, lumps = () => Array.from({ length: NL }, () => { const a = Math.random() * TAU, r = 0.32 * Math.sqrt(Math.random()); return [Math.cos(a) * r, Math.sin(a) * r * 0.8]; });
+  let LUMP0 = lumps();
   function reset() {
+    LUMP0 = lumps();
     for (let i = 0; i < F.n; i++) {
-      const a = Math.random() * TAU, r = 0.62 * Math.sqrt(Math.random());
-      F.x[i] = Math.cos(a) * r; F.z[i] = Math.sin(a) * r; F.vx[i] = F.vz[i] = F.vy[i] = 0; F.st[i] = 0;
+      const L = LUMP0[i % NL], a = Math.random() * TAU, r = 0.2 * Math.sqrt(Math.random());
+      F.x[i] = L[0] + Math.cos(a) * r; F.z[i] = L[1] + Math.sin(a) * r; F.vx[i] = F.vz[i] = F.vy[i] = 0; F.st[i] = 0;
       F.depth[i] = F.kind[i] === 2 ? rnd(0.7, 1) : Math.random(); F.cook[i] = rnd(0, 0.08); F.tint[i] = rnd(-0.08, 0.08); F.cb[i] = -1;
       F.rx[i] = Math.random() * TAU; F.ry[i] = Math.random() * TAU; F.rz[i] = Math.random() * TAU;
     }
@@ -84,8 +87,10 @@
     _gx = ((b - a) * (1 - v) + (d - c) * v) / CELL; _gz = ((c - a) * (1 - u) + (d - b) * u) / CELL;
     return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
   }
-  function groundY(i) { return surf(F.x[i] ** 2 + F.z[i] ** 2) + 0.008 + Hat(F.x[i], F.z[i]) * (0.25 + 0.75 * F.depth[i]); }
-  F.pileTop = (x, z) => surf(x * x + z * z) + 0.01 + Hat(x, z);
+  // drawn taller than the physics pile (VIS): a low HK keeps the heap from spreading into a sheet, VIS makes it read as a mound
+  const VIS = 2.4;
+  function groundY(i) { return surf(F.x[i] ** 2 + F.z[i] ** 2) + 0.008 + Hat(F.x[i], F.z[i]) * VIS * (0.25 + 0.75 * F.depth[i]); }
+  F.pileTop = (x, z) => surf(x * x + z * z) + 0.01 + Hat(x, z) * VIS;
 
   /* ---------- toss ---------- */
   // f: { strength, dirU, dirV } — dir is the throw direction on screen (up = away from the cook)
@@ -100,7 +105,7 @@
       F.st[i] = 1; F.rank[i] = clamp((along + 0.75) / 1.5, 0, 1); F.dl[i] = (1 - F.rank[i]) * 0.12 * rnd(0.7, 1.3);
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
-    F.toss = { t, s, dx, dz, n, landed: 0, done: false, peak: 0 };
+    F.toss = { t, s, dx, dz, n, landed: 0, done: false, peak: 0, lumps: Array.from({ length: NL }, () => [rnd(-0.24, 0.24), rnd(-0.22, 0.22)]) };
     return n;
   };
   const _v = new T.Vector3(), _m = new T.Matrix4(), _inv = new T.Matrix4(), _q = new T.Quaternion(), _g = new T.Vector3();
@@ -114,7 +119,8 @@
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
     const over = Math.max(0, tz.s - 1.25) * 1.1;
     const a0 = _v.x * tz.dx + _v.z * tz.dz, b0 = -_v.x * tz.dz + _v.z * tz.dx;
-    const aT = -0.1 - 0.3 * (r - 0.5) - over + rnd(-0.12, 0.12) * (1 + over), bT = b0 * rnd(0.5, 0.9) + rnd(-0.12, 0.12) * (1 + over * 2);
+    const L = tz.lumps[i % NL]; // grains that stick together come down together
+    const aT = -0.1 - 0.2 * (r - 0.5) - over + L[0] + rnd(-0.07, 0.07) * (1 + over), bT = b0 * rnd(0.3, 0.6) + L[1] + rnd(-0.07, 0.07) * (1 + over * 2);
     const va = (aT - a0) / T0, vb = (bT - b0) / T0;
     F.vx[i] = tz.dx * va - tz.dz * vb; F.vz[i] = tz.dz * va + tz.dx * vb; F.vy[i] = vy;
     F.sx[i] = rnd(-12, 12); F.sy[i] = rnd(-6, 6); F.sz[i] = rnd(-12, 12);
@@ -141,8 +147,12 @@
         let ax = _g.x + _g.y * gx, az = _g.z + _g.y * gz; // tangential gravity minus the slope (g.y < 0 pulls downhill)
         if (ctx.pour) { ax += ctx.pour * 5; }
         const am = Math.hypot(ax, az);
-        if (am < MU * GS && Math.hypot(F.vx[i], F.vz[i]) < 0.05) { F.vx[i] *= 0.5; F.vz[i] *= 0.5; } // static: the pile holds
-        else { F.vx[i] += ax * dt; F.vz[i] += az * dt; }
+        if (am < MU * GS * (0.8 + 0.4 * F.depth[i]) && Math.hypot(F.vx[i], F.vz[i]) < 0.08) { F.vx[i] *= 0.5; F.vz[i] *= 0.5; } // static: the pile holds
+        else {
+          F.vx[i] += ax * dt; F.vz[i] += az * dt;
+          const sp = Math.hypot(F.vx[i], F.vz[i]); // kinetic friction: a sliding grain slows unless the wok is really tipped
+          if (sp > 1e-6) { const k = Math.max(0, sp - MUK * GS * dt) / sp; F.vx[i] *= k; F.vz[i] *= k; }
+        }
         F.vx[i] *= damp; F.vz[i] *= damp;
         F.x[i] += F.vx[i] * dt; F.z[i] += F.vz[i] * dt;
         const r = Math.hypot(F.x[i], F.z[i]);
