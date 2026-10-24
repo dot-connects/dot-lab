@@ -8,6 +8,14 @@
 <meta property="og:title" content="김치볶음밥 한 그릇">
 <meta property="og:description" content="폰을 웍처럼 튕겨서 볶아 봐. 불맛 장인 될 수 있어?">
 <meta name="theme-color" content="#1b1f24">
+<meta property="og:url" content="https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/">
+<meta property="og:type" content="website">
+<meta property="og:image" content="https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" type="image/png" href="icon.png">
+<link rel="apple-touch-icon" href="icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Gowun+Dodum&family=Nanum+Gothic+Coding:wght@400;700&display=swap">
@@ -34,6 +42,12 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #intro .hook{margin:0;font-size:16px;color:var(--ink)}
 #intro .how{margin:0;font-size:14.5px;line-height:1.55;color:var(--mute)}
 #intro .how b{color:var(--ink)}
+#intro .best{margin:0;font:15px "Black Han Sans",system-ui,sans-serif;color:var(--red)}#intro .best:empty{display:none}
+#go:disabled{opacity:.7;animation:none}
+#mute{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 16px);z-index:4;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font-size:18px;line-height:40px;padding:0}
+#hud:not([hidden]) ~ #mute{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
+#noGL{position:absolute;inset:0;z-index:9;background:#1b1f24;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:16px}#noGL b{font:24px "Black Han Sans",sans-serif}
+.slip .credit{margin-top:8px;font-size:11px;color:var(--mute);text-align:center}.slip .open{margin-top:6px;font-size:13px;color:var(--accent);text-align:center}
 /* HUD */
 #hud{position:absolute;inset:0;pointer-events:none}
 #hud.dim{opacity:.4}
@@ -126,10 +140,13 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
   <div id="intro">
     <h1>김치볶음밥<br>한 그릇</h1>
     <p class="hook" id="hook"></p>
+    <p class="best" id="best"></p>
     <p class="how" id="how"></p>
-    <button id="go" class="btn" type="button"></button>
+    <button id="go" class="btn" type="button" disabled></button>
     <button id="watch" class="btn ghost" type="button"></button>
   </div>
+  <button id="mute" type="button" aria-label="소리 끄기">🔊</button>
+  <div id="noGL" hidden><b>이 브라우저에선 3D가 안 돼요</b><span>Safari나 Chrome에서 열어 주세요</span></div>
   <div id="result" hidden></div>
   <div id="shareOv" hidden><img alt="결과 이미지"><div>이미지를 길게 눌러 저장하고, 링크도 같이 보내 주세요</div><div class="link"><span id="shareUrl"></span><button id="shareCopy" class="btn" type="button">링크 복사</button></div><div class="close">빈 곳을 탭하면 닫혀요</div></div>
 </div>

@@ -146,6 +146,7 @@
       b.level = l;
       b.g.gain.setTargetAtTime(0.5 * l, now(), 0.25);
     }),
+    isMuted: () => !!A.muted,
     mute: (m) => {
       A.muted = !!m;
       try { if (A.ctx) A.out.gain.setTargetAtTime(A.muted ? 0 : 0.9, now(), 0.03); } catch (e) {}

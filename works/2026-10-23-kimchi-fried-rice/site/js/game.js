@@ -13,11 +13,12 @@
   const FIRE_MAX = 25;
 
   /* ---------- state ---------- */
+  const todayOrder = () => { const d = new Date(); return (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % 2 ? "half" : "full"; };
   let g = null;
   function newGame(auto) {
     return { ph: "intro", t: 0, phT: 0, auto, clock: RICE_T, started: false, lastFlick: -9, toss: null, tossN: 0,
       fire: 0, combo: 0, maxCombo: 0, grades: [], counts: { perfect: 0, good: 0, early: 0, late: 0 }, perfects: 0, maxGap: 0, scorchSaid: -9,
-      order: Math.random() < 0.5 ? "half" : "full", plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
+      order: todayOrder(), plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
       pose: { tilt: { u: 0, v: 0 } }, hei: 0, shim: -9, cam: 0, pan: 0, hit: 0 };
   }
   g = newGame(false);
@@ -181,7 +182,7 @@
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
-    tip(auto ? C.watching : "");
+    tip(auto ? C.watching : K.Input.hint || ""); if (!auto && K.Input.hint) setTimeout(() => { if (g.ph === "rice" && g.tossN === 0) tip(""); }, 3000);
     g.introOn = true; g.introI = 0; g.skipOK = played && !auto; played = true;
   }
   let played = false;
@@ -406,11 +407,13 @@
       <div class="why">${whyLine(s)}</div>
       <div class="memo">사장님: ${memo(tier)}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
-      <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div></div>`;
+      ${best > 0 && !rec && best > s.total ? `<div class="near">내 최고 ${best}점</div>` : ""}
+      <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div>
+      ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
     resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
     const n = $("scoreN"), t0 = performance.now() + 1200;
     (function up() { if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
-    $("again").onclick = () => { K.Audio.unlock(); start(false); };
+    $("again").onclick = () => { K.Audio.unlock(); start(false); }; bestLine();
     $("share").onclick = share;
   }
   const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);
@@ -547,16 +550,23 @@
     if (n >= 6) acc = 0;
     K.Food.draw(); camera(dt); hud();
     W.renderer.render(W.scene, W.camera);
+    if (goEl.disabled) { goEl.disabled = false; goEl.textContent = C.go; } // ready: the first frame is on screen
     if (g.wantShot && g.t >= g.wantShot) { g.wantShot = 0; try { const im = new Image(); im.src = W.renderer.domElement.toDataURL("image/jpeg", 0.85); g.airShot = im; } catch (e) {} }
     requestAnimationFrame(frame);
   }
 
   /* ---------- start screen ---------- */
   W.build("real"); for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75; // the start screen cooks by itself (attract): show it golden
-  $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.go; $("watch").textContent = C.watchBtn;
+  function bestLine() { const b = +store.get("kfr-best3d", 0), t = b ? C.tiers.find((x) => b >= x[0]) : null; $("best").textContent = (b ? `내 최고 ${b}점 · 「${t[1]}」 · ` : "") + `오늘의 주문: 계란 ${todayOrder() === "half" ? "반숙" : "완숙"}`; }
+  bestLine();
+  $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.loading; $("watch").textContent = C.watchBtn;
   $("go").onclick = () => { K.Audio.unlock(); g.hei = 1.6; W.sparkBurst(24); g.punch = 1; K.Audio.flare(); const go = () => start(false); /* 불 켜: the fire answers the tap at once */ K.Input.requestPermission().then(go, go); };
   $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
   $("shareOv").onclick = () => { $("shareOv").hidden = true; };
+  const muteEl = $("mute"), setMute = (m) => { K.Audio.mute(m); muteEl.textContent = m ? "🔇" : "🔊"; muteEl.setAttribute("aria-label", m ? "소리 켜기" : "소리 끄기"); store.set("kfr-mute", m ? 1 : 0); };
+  muteEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
+  muteEl.onclick = (e) => { e.stopPropagation(); K.Audio.unlock(); setMute(!K.Audio.isMuted()); };
+  if (store.get("kfr-mute", 0) == 1) setMute(true);
   K.Input.start(onFlick, app);
   app.addEventListener("pointerdown", () => { if (g.introOn && g.skipOK) g.introSkip = true; }); // from the 2nd round a tap skips the intro
   addEventListener("resize", () => W.fit());

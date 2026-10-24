@@ -16,7 +16,10 @@
 
   /* ---------- renderer / camera ---------- */
   const canvas = document.getElementById("cv");
-  const renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" });
+  let renderer;
+  try { renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" }); }
+  catch (e) { document.getElementById("noGL").hidden = false; throw e; } // no WebGL: say so instead of a frozen grey page
+  canvas.addEventListener("webglcontextlost", () => location.reload());
   renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
   renderer.outputEncoding = T.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;

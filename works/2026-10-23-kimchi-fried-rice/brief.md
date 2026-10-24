@@ -166,3 +166,6 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   printed on the image.
 - Checked: sideways tosses visibly go sideways; scripted egg on the meters = 40/40 and "뒤집기 2/2"; attract frames;
   watch 82; touch 3 sizes 16.7 ms; no errors. Not heard: the audio. Share sheet untested on a real phone.
+- rv8-product (release gaps) applied: in-app browser hint shown (tip + result line), og/twitter meta + og.png + icon.png,
+  "불 올리는 중…" until the first frame, no-WebGL card + context-lost reload, mute toggle (remembered), best score and
+  today's order (date-seeded 반숙/완숙) on the start card, best on the receipt, credits line. Manifest captions updated.

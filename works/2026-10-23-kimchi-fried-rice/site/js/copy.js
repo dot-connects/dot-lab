@@ -12,6 +12,7 @@
     finale: "불기둥 피날레!", finaleSub: "사장님이 박수 침", finaleWeak: "마지막이 약했다", finaleCue: "마지막 한 방!", finaleCueSub: "제일 높게 휙",
     sideTable: "옆 테이블 서비스!", sideTableSub: "손님: 이거 안 시켰는데요", memoSpill: "그 밥값 네 월급에서 깐다",
     url: "https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/", urlShort: "dot-connects.github.io/dot-lab · 김치볶음밥 한 그릇", copied: "복사됨!",
+    loading: "불 올리는 중…", openInBrowser: "Safari·Chrome에서 열면 폰을 흔들어서 할 수 있어요", credit: "00반점 · D:OT lab · three.js (MIT) · Google Fonts (OFL)",
     fever: "불쇼!", feverSub: "4초간 불맛 x1.3",
     spill: "바닥에 밥!", spillSub: ["아이고 내 밥!", "그거 다 돈이야!", "바닥이 먹었다"], scorch: "불 끄라고!!", comboLost: "어허, 연속 끊김",
     combo: [[2, "불맛 UP"], [3, "웍질 장인"], [5, "불의 지배자"], [7, "웍신(神)"]],
