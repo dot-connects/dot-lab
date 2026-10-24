@@ -3,7 +3,7 @@
 D:OT lab — we take a strange question and actually build it.
 
 - Play: https://dot-connects.github.io/dot-lab/
-- Blog (one post per work): https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98
+- Blog (one post per work): [www.dotconnects.kr/search/label/실험](https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98)
 
 One folder per work under `works/<yyyy-mm-dd>-<slug>/`:
 
