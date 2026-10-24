@@ -4,7 +4,7 @@
 "use strict";
 (function () {
   const K = window.KFR, T = K.T, TAU = K.TAU, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, surf = K.surf, lin = K.lin;
-  const G = 30;                       // airtime ~0.52 s: long enough to read the arc on a phone (Ko & Hu: a real cycle is ~0.3 s)
+  const G = 38;                       // with the higher toss (hs) airtime ~0.55 s: the arc reads on a phone (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
   const HK = 0.009;                   // pile height per grain in a cell
@@ -13,7 +13,7 @@
   const F = (K.Food = { n: 0 });
 
   // colour ramps (chef): kimchi-stained raw → glossy red-orange → wok-hei brick → scorched → burnt
-  const RAMP = [[0, "#c8642e"], [0.45, "#b9481f"], [0.9, "#a63a1a"], [1.2, "#8c3318"], [1.5, "#5e301a"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
+  const RAMP = [[0, "#e9b08a"], [0.4, "#e2793c"], [0.8, "#c8501f"], [1.1, "#9a4a1e"], [1.4, "#5b2c16"], [1.75, "#1c120d"]].map(([k, c]) => [k, lin(c)]);
   const KRAMP = [[0, "#b8231a"], [0.9, "#b8261c"], [1.4, "#7e1a12"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
   const PRAMP = [[0, "#5fb043"], [1.0, "#3f8a2c"], [1.5, "#4a4a22"], [1.9, "#262a1a"]].map(([k, c]) => [k, lin(c)]);
   const _c = new T.Color();
@@ -58,7 +58,7 @@
       F.depth[i] = F.kind[i] === 2 ? rnd(0.7, 1) : Math.random(); F.cook[i] = rnd(0, 0.08); F.tint[i] = rnd(-0.08, 0.08); F.cb[i] = -1;
       F.rx[i] = Math.random() * TAU; F.ry[i] = Math.random() * TAU; F.rz[i] = Math.random() * TAU;
     }
-    F.toss = null; F.spilled = 0; F.plateMiss = 0; F.spillPan = 0; F.spillAir = 0; F.onPlate = 0; F.lastLand = -9; F.plateN = 0;
+    F.pile = new Map(); F.toss = null; F.spilled = 0; F.plateMiss = 0; F.spillPan = 0; F.spillAir = 0; F.onPlate = 0; F.lastLand = -9; F.plateN = 0;
     heights(); for (let i = 0; i < F.n; i++) F.y[i] = groundY(i);
   }
   F.build = build; F.reset = reset;
@@ -113,11 +113,12 @@
     let du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV; const nn = Math.hypot(du, dv);
     if (nn < 0.3 || dv < -0.2) { du = 0; dv = 1; } else { du /= nn; dv /= nn; }
     const s = clamp(f.strength || 1, 0.3, 1.8), dx = du, dz = -dv; // wok-local throw direction (forward = -z)
-    let n = 0;
+    let n = 0; const keep = 1 - clamp(0.55 + 0.35 * (s - 0.6) / 0.8, 0.55, 0.9);
     for (let i = 0; i < F.n; i++) {
       if (F.st[i] !== 0) continue;
-      const along = F.x[i] * dx + F.z[i] * dz;
-      F.st[i] = 1; F.rank[i] = clamp((along + 0.75) / 1.5, 0, 1); F.dl[i] = (1 - F.rank[i]) * 0.12 * rnd(0.7, 1.3);
+      const along = F.x[i] * dx + F.z[i] * dz, rk = clamp((along + 0.75) / 1.5, 0, 1);
+      if (rk < keep * rnd(0.6, 1.4)) { F.vx[i] += dx * 0.2 * s; F.vz[i] += dz * 0.2 * s; F.depth[i] = clamp(F.depth[i] + rnd(-0.35, 0.35), 0, 1); continue; } // the slosh stirs it too // the back of the pile sloshes forward a little
+      F.st[i] = 1; F.rank[i] = rk; F.dl[i] = (1 - F.rank[i]) * 0.12 * rnd(0.7, 1.3);
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
     F.toss = { t, s, dx, dz, n, landed: 0, done: false, peak: 0, lumps: Array.from({ length: NL }, () => [rnd(-0.24, 0.24), rnd(-0.22, 0.22)]) };
@@ -128,7 +129,7 @@
     const tz = F.toss, r = F.rank[i], kh = [1, 0.85, 1.15][F.kind[i]];
     _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(wm); F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z;
     // height grows with the flick (the operator: higher and flashier scores more); too hard flies over the rim
-    const hs = 0.45 + 0.55 * tz.s;
+    const hs = 0.7 + 0.9 * tz.s; // high enough to clear the rim and read from above
     const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.75, 1.25) - _v.y);
     const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, _v.y + rise - 0.2)) / G);
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
@@ -136,7 +137,7 @@
     const a0 = _v.x * tz.dx + _v.z * tz.dz, b0 = -_v.x * tz.dz + _v.z * tz.dx;
     const L = tz.lumps[i % NL]; // grains that stick together come down together
     // gaussian scatter around the lump (a uniform box landed the heap as a rectangle)
-    const ga = (Math.random() + Math.random() + Math.random() - 1.5) * 0.16, gb = (Math.random() + Math.random() + Math.random() - 1.5) * 0.16;
+    const ga = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22, gb = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22;
     const aT = -0.1 - 0.1 * (r - 0.5) - over + L[0] + ga * (1 + over), bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
     const va = (aT - a0) / T0, vb = (bT - b0) / T0;
     F.vx[i] = tz.dx * va - tz.dz * vb; F.vz[i] = tz.dz * va + tz.dx * vb; F.vy[i] = vy;
@@ -182,7 +183,7 @@
         F.y[i] += (groundY(i) - F.y[i]) * Math.min(1, dt * 14);
         // cooking: the layer on the metal sears, the top barely warms; the hot centre cooks fastest
         const heat = ctx.heat * Math.max(0.15, 1.15 - 0.65 * r * r), lay = (1 - F.depth[i]) ** 2 * 0.9 + 0.1;
-        F.cook[i] += 0.16 * heat * lay * dt + 0.24 * (F.scorchVis || 0) * F.depth[i] * dt; // scorching: smoke and heat brown the top too, so it reads from above
+        F.cook[i] += 0.2 * heat * lay * dt + 0.24 * (F.scorchVis || 0) * F.depth[i] * dt; // scorching: smoke and heat brown the top too, so it reads from above
       } else if (st === 1) { // riding up the far wall before the lip snap
         const k = smooth((t - tz.t - 0.04) / 0.13), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
         const aa = a + (0.55 + 0.35 * F.rank[i] - a) * k, bb = b * (1 - 0.3 * k);
@@ -198,7 +199,8 @@
         if (F.vy[i] < 0) {
           _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(_inv);
           const r2 = _v.x * _v.x + _v.z * _v.z;
-          if (r2 < 1 && _v.y <= F.pileTop(_v.x, _v.z)) {
+          if (r2 < 1 && _v.y <= F.pileTop(_v.x, _v.z) && F.vy[i] < -2.5 && Math.random() < 0.15) { F.vy[i] *= -0.3; F.vx[i] *= 0.5; F.vz[i] *= 0.5; }
+          else if (r2 < 1 && _v.y <= F.pileTop(_v.x, _v.z)) {
             // lands: wok-local again, keeps a little of its momentum (the pile sloshes), the seared side comes up
             F.st[i] = 0; F.x[i] = _v.x; F.z[i] = _v.z; F.y[i] = _v.y;
             _v.set(F.vx[i], 0, F.vz[i]).transformDirection(_inv); F.vx[i] = _v.x * 0.35; F.vz[i] = _v.z * 0.35;
@@ -213,7 +215,7 @@
           const d = Math.hypot(F.x[i] - P.x, F.z[i] - P.z);
           if (d < 0.6 && F.y[i] <= P.y + 0.03 + F.plateMound(d) && F.vy[i] < 0) { toPlate(i, P); continue; }
         }
-        if (F.y[i] <= COUNTER) { F.st[i] = 4; F.y[i] = COUNTER; if (P && P.on) F.plateMiss = (F.plateMiss || 0) + 1; else F.spilled++; } // the auto plating's misses are not the player's
+        if (F.y[i] <= COUNTER) { F.st[i] = 4; const ck = ((F.x[i] / 0.06) | 0) * 1000 + ((F.z[i] / 0.06) | 0), nn = (F.pile.get(ck) || 0) + 1; F.pile.set(ck, nn); F.y[i] = COUNTER + 0.011 * Math.min(nn, 12); if (P && P.on) F.plateMiss = (F.plateMiss || 0) + 1; else F.spilled++; } // the auto plating's misses are not the player's
       } else if (st === 3) { // on the plate: slide to its spot on the heap
         const P = ctx.plate; if (!P) continue;
         const tx = P.x + F.hx[i], tz2 = P.z + F.hz[i], ty = P.y + 0.03 + F.plateMound(Math.hypot(F.hx[i], F.hz[i])) * F.hh[i] * (1 - 0.1 * (P.pats || 0));
@@ -245,6 +247,7 @@
       if (st >= 2) dummy.position.applyMatrix4(_inv); // flying / plated / spilled food is stored in world space
       dummy.scale.set(1, 1, 1);
       if (st === 7) dummy.scale.set(0, 0, 0); // not in the wok yet
+      else if (st === 3) dummy.scale.setScalar(0.62); // on the plate: real-size grains for the close-up
       else if (st === 2 || st === 5 || st === 6) {
         dummy.rotation.set(F.rx[i], F.ry[i], F.rz[i]);
         if (k === 0 && st === 2) { // a fast grain streaks along its velocity: the arc reads as lines, not as dots that skip

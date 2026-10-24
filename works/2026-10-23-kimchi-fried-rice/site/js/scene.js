@@ -200,14 +200,14 @@
       u.life -= dt; u.v.y -= 2.5 * dt; u.p.addScaledVector(u.v, dt); sp.position.copy(u.p); const s = 0.05 * Math.min(1, u.life * 3); sp.scale.set(s, s, 1); sp.material.opacity = Math.min(1, u.life * 2.5);
     }
     for (const p of W.puffs) {
-      const u = p.userData; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4); u.z = rnd(-0.3, 0.3); }
+      const u = p.userData, sm0 = o.smoke || 0; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4) * (1 - 0.5 * sm0); u.z = rnd(-0.3, 0.3) * (1 - 0.5 * sm0); } // burning: a column, not a haze
       const k = u.t / 2, px = (u.x || 0) + Math.sin(t + u.t * 3) * 0.05, pz = u.z || 0, top = K.Food && K.Food.pileTop ? K.Food.pileTop(px, pz) : 0.25;
       _v.set(px, top + 0.05 + k * 1.1, pz).applyMatrix4(W.wok.matrixWorld); p.position.copy(_v); p.scale.setScalar(0.25 + k * 0.6);
       // burning: more of the puffs turn into dark smoke as it scorches (it only changed colour before, so it never read)
       const sm = o.smoke || 0, on = W.puffs.indexOf(p) < 4 + 10 * sm;
-      p.material.opacity = Math.max(o.steam, on ? Math.min(0.9, sm * 1.1) : 0) * Math.sin(Math.PI * Math.min(1, k * 1.3));
-      if (sm > 0) p.scale.setScalar((0.3 + k * 0.8) * (1 + 0.7 * sm));
-      p.material.color.setRGB(1 - sm * 0.5, 1 - sm * 0.53, 1 - sm * 0.55); // grey, not black: black smoke vanishes on the dark wok
+      p.material.opacity = Math.max(o.steam, on ? Math.min(0.95, sm * 1.4) : 0) * Math.sin(Math.PI * Math.min(1, k * 1.3));
+      if (sm > 0) p.scale.setScalar((0.4 + k * 1.2) * (1 + sm));
+      p.material.color.setRGB(1 - sm * 0.22, 1 - sm * 0.24, 1 - sm * 0.26); // light grey: only pale smoke reads on the dark wok
     }
     for (const p of W.wisps) {
       const u = p.userData; u.t += dt; if (u.t > 0.6) u.t -= 0.6;

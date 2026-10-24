@@ -135,3 +135,17 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   flying rice: shadow proxy (octahedron, airborne only), velocity streaks, 1.3x brighter, G 40 → 30, camera 10° lower while cooking.
 - Checked: egg sweep with steering 0.5-1.5 all clean centre, 1.7 burst; watch run 81; touch 3 sizes; frame 16.7-17.8 ms.
 - Not verified: real-phone absolute tilt (most people hold the phone tipped toward them), intro timing feel, audio.
+
+## Round 7 (2026-10-24)
+- Operator: show the 2 egg flips as numbers; when to toss/flip is unclear; let me toss back to back; the egg sits under
+  the plated rice; less fun than the first rough 2D version (rice barely bounces, burning/cooking/losing rice not felt).
+- Panel rv7 (bm, fun, game, byungmat, 3d, action; motion pending). Consensus: mashing was punished (air re-toss = early
+  + combo reset, ~9 tosses / 12 s), jitter made the beat unlearnable, zero shake/kick on a toss, progress invisible.
+- Done: grade = gap since the previous toss (perfect 0.45-0.9 s, no jitter, early keeps the combo, good builds it);
+  beat bar with a gold band under the clock; 불쇼 at 5 combo (4 s, wider band, x1.3); camera kick on every toss/landing/
+  spill, fire column on hard snappy tosses; front of the pile peels off as a sheet (55-90 %), higher (hs 0.7+0.9 s, G 38),
+  15 % bounce on landing; live 밥 % / 익음 % with -n% pops, +불맛 pops; spilled rice stacks on the counter; rice/lens
+  splats, yolk splat "계란 화면 강타!"; clear cook colour steps; pale smoke column from 1.6 s idle; egg: "뒤집기 0/2" in
+  the clock, doneness meter with the order's green band, 2nd flip 8 of 14; plated egg on top of the heap, plated grains
+  0.62x; 사장님 lines, receipt "바닥에 버린 밥 n알" + memo, share text.
+- Checked: scripted beat run (combo 5 → 불쇼), watch runs 80-97 (the bot is near perfect), no errors.

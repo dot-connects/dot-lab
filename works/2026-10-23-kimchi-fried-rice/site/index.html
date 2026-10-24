@@ -36,11 +36,30 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #timer{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%);font:38px "Black Han Sans",system-ui,sans-serif;background:#fff;border-radius:999px;padding:2px 22px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
 #timer.warn{background:var(--accent);color:#fff}
 #gauge{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 76px);width:16px;height:min(26vh,230px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
-#gauge::after{content:"불맛";position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font:13px "Black Han Sans",sans-serif;color:#fff;white-space:nowrap}
+#gauge::after{content:attr(data-label);position:absolute;left:50%;bottom:-24px;transform:translateX(-50%);font:13px "Black Han Sans",sans-serif;color:#fff;white-space:nowrap}
 #gaugeFill{position:absolute;inset:0;transform-origin:bottom;transform:scaleY(0);background:linear-gradient(0deg,#ff6a00,#ffb000 60%,#fff1a8);transition:transform .25s cubic-bezier(.2,1.4,.4,1)}
 #gauge.pulse{animation:gpulse .35s ease-out}
 @keyframes gpulse{0%{transform:scale(1.25)}100%{transform:scale(1)}}
 .ember{position:absolute;width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;background:radial-gradient(circle,#fff8d0,#ffb000 45%,rgba(255,90,0,0) 70%);pointer-events:none;transition:left .35s cubic-bezier(.5,0,.8,.6),top .35s cubic-bezier(.2,.6,.4,1),opacity .35s}
+#band{position:absolute;left:0;right:0;background:rgba(80,220,120,.55);border-top:2px solid #b6ffc9;border-bottom:2px solid #b6ffc9;display:none}
+#gauge.egg #band{display:block}#gauge.egg #gaugeFill{background:linear-gradient(0deg,#8e4e20,#e7ac5c 45%,#fff3c4)}
+#gauge{overflow:visible}#gaugeFill{border-radius:10px}
+#stats{position:absolute;left:max(10px,env(safe-area-inset-left));top:calc(env(safe-area-inset-top) + 16px);display:flex;flex-direction:column;gap:4px;font:17px "Black Han Sans",system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7)}
+#cookN.burnt{color:#ffb4a0}
+#beat{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%);width:min(62vw,260px);height:16px;border-radius:999px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.7)}
+#zone{position:absolute;top:0;bottom:0;background:#ffb000;border-radius:6px}
+#needle{position:absolute;top:-6px;bottom:-6px;width:6px;margin-left:-3px;background:#fff;border-radius:3px;box-shadow:0 0 6px rgba(0,0,0,.6)}
+#beat.in{box-shadow:0 0 16px 4px rgba(255,176,0,.9)}#beat.in #zone{background:#fff1a8}#beat.late #needle{background:#ff5a3c}
+.num{position:absolute;font:30px "Black Han Sans",system-ui,sans-serif;pointer-events:none;-webkit-text-stroke:5px #fff;paint-order:stroke fill;animation:numUp .9s ease-out forwards}
+.num.fire{right:40px;top:calc(env(safe-area-inset-top) + 120px);color:#E8481C}.num.rice{left:14px;top:calc(env(safe-area-inset-top) + 62px);color:#c81e1e;font-size:34px}
+@keyframes numUp{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.3)}30%{transform:scale(1)}100%{opacity:0;transform:translateY(-30px)}}
+.splat{position:absolute;pointer-events:none;transform:translate(-50%,-50%) rotate(var(--r));animation:splat .9s ease-in forwards}
+.splat.rice{width:26px;height:11px;border-radius:50%;background:radial-gradient(ellipse at 40% 35%,#ffd2a8,#d9642a 70%);box-shadow:0 2px 4px rgba(0,0,0,.35)}
+.splat.egg{width:62vw;height:52vw;border-radius:46% 54% 50% 50%/55% 45% 55% 45%;background:radial-gradient(circle at 50% 48%,#ffb21c 0 17%,#ffd36a 19%,rgba(255,250,235,.95) 24%,rgba(255,250,235,.9) 62%,rgba(255,250,235,0) 72%);animation:splatEgg 1.6s ease-in forwards}
+@keyframes splat{0%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1.8);opacity:0}12%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1);opacity:1}70%{opacity:1}100%{transform:translate(-50%,calc(-50% + 40px)) rotate(var(--r));opacity:0}}
+@keyframes splatEgg{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--r));opacity:0}10%{transform:translate(-50%,-50%) scale(1.08) rotate(0deg);opacity:1}18%{transform:translate(-50%,-50%) scale(1)}60%{transform:translate(-50%,-44%) scale(1,1.08)}100%{transform:translate(-50%,10%) scale(.95,1.3);opacity:0}}
+#result .floor{margin:6px 0 0;font-size:15px;color:var(--red)}#result .floor b{font-size:20px}
+#result .memo{margin:8px 0 0;font:19px "Black Han Sans",system-ui,sans-serif;color:var(--red);transform:rotate(-2deg)}
 #gauge.hot{box-shadow:0 0 18px 4px rgba(255,140,0,.85);border-color:#ffd27a}
 .word{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 21vh);transform:translateX(-50%);font:48px "Black Han Sans",system-ui,sans-serif;white-space:nowrap;-webkit-text-stroke:6px #fff;paint-order:stroke fill;opacity:0}
 .word.great{color:#E8481C}.word.ok{color:#22995e}.word.meh{color:#1f2a33}.word.bad{color:#7a3b16}
@@ -89,7 +108,9 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
   <canvas id="cv" aria-label="웍 화면"></canvas>
   <div id="hud" hidden>
     <div id="timer">12.0</div>
-    <div id="gauge" aria-label="불맛"><div id="gaugeFill"></div></div>
+    <div id="gauge" aria-label="불맛" data-label="불맛 0"><div id="gaugeFill"></div><div id="band"></div></div>
+    <div id="stats"><b id="riceN">밥 100%</b><b id="cookN">익음 0%</b></div>
+    <div id="beat" hidden><i id="zone"></i><i id="needle"></i></div>
     <div id="combo" class="combo"></div>
     <div id="word" class="word"></div>
     <div id="sub" class="sub"></div>

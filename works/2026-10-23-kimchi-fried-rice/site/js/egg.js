@@ -5,7 +5,7 @@
 (function () {
   const K = window.KFR, T = K.T, TAU = K.TAU, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, surf = K.surf, lin = K.lin;
   const YU = 0.04, YV = -0.03;   // yolk centre in egg-local x / z
-  const GE = 16;                 // egg gravity: a good flip ~0.5 s in the air
+  const GE = 16, PS = 0.78;     // PS: egg scale on the plate (the rice shows around it)                 // egg gravity: a good flip ~0.5 s in the air
   const E = (K.Egg = { ph: "off" });
   const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_BURNT = lin("#2a1a12"), C_UNDER = lin("#f2e9d3"), C_DOME = lin("#efcf8a");
   const _c = new T.Color(), _v = new T.Vector3(), _q = new T.Quaternion(), _qx = new T.Quaternion(), _ax = new T.Vector3(1, 0, 0), _inv = new T.Matrix4();
@@ -210,9 +210,9 @@
     const lip = _v.set(K.SIDE * 0.9, K.RIM + 0.05, 0.05).applyMatrix4(W.wok.matrixWorld).clone();
     const flipQ = new T.Quaternion().setFromAxisAngle(_ax, E.flipped ? Math.PI : 0), upQ = new T.Quaternion();
     if (k < 0.45) { E.g.position.lerpVectors(E.take.p0, lip, smooth(k / 0.45)); W.wok.getWorldQuaternion(E.g.quaternion); E.g.quaternion.multiply(flipQ); }
-    else { const f = clamp((k - 0.45) / 0.55, 0, 1); E.g.position.lerpVectors(lip, plateTop, f); E.g.position.y += 0.3 * Math.sin(Math.PI * f); W.wok.getWorldQuaternion(_q); _q.multiply(flipQ); E.g.quaternion.copy(_q).slerp(upQ, smooth(f)); if (f > 0.5 && E.flipped) E.flipped = false; }
+    else { const f = clamp((k - 0.45) / 0.55, 0, 1); E.g.position.lerpVectors(lip, _v.copy(plateTop).setY(plateTop.y + K.Food.plateMound(0) + 0.035), f); /* onto the top of the heap, not into it */ E.g.position.y += 0.3 * Math.sin(Math.PI * f); W.wok.getWorldQuaternion(_q); _q.multiply(flipQ); E.g.quaternion.copy(_q).slerp(upQ, smooth(f)); if (f > 0.5 && E.flipped) E.flipped = false; }
     // on the plate the egg shrinks a little so the rice shows around it
-    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.g.scale.setScalar(0.78); E.flipped = false; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(upQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
+    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.g.scale.setScalar(PS); E.flipped = false; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(upQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
     E.g.updateMatrixWorld(true);
     if (E.burst) burstStep(t, W.wok.matrixWorld);
     shape(1 / 60, t);
@@ -221,7 +221,7 @@
 
   /* ---------- the live shape ---------- */
   function drape(x, z, under) {
-    if (E.onPlate) return K.Food.plateMound(Math.hypot(x, z)) * 0.95;
+    if (E.onPlate) return (K.Food.plateMound(Math.hypot(x, z) * PS) + 0.035) / PS; // egg-local units: the group is scaled PS on the plate
     if (E.onCounter) return 0;
     return under ? surf((x + E.ox) ** 2 + (E.oz - z) ** 2) : surf((x + E.ox) ** 2 + (z + E.oz) ** 2);
   }

@@ -5,6 +5,7 @@
   const K = window.KFR, T = K.T, W = K.W, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, DEG = K.DEG, SIDE = K.SIDE;
   const C = K.COPY;
   const $ = (id) => document.getElementById(id);
+  const statsEl = $("stats"), riceEl = $("riceN"), cookEl = $("cookN"), beatEl = $("beat"), needleEl = $("needle"), zoneEl = $("zone"), bandEl = $("band");
   const app = $("app"), introEl = $("intro"), hudEl = $("hud"), timerEl = $("timer"), wordEl = $("word"), subEl = $("sub"), gaugeEl = $("gauge"), gaugeFill = $("gaugeFill"), comboEl = $("combo"), resEl = $("result"), tipEl = $("tip");
   const store = { get: (k, d) => { try { const v = localStorage.getItem(k); return v == null ? d : v; } catch (e) { return d; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} } };
 
@@ -65,20 +66,23 @@
   function onFlick(f) { if (g.auto || g.ph === "result") return; flick(f); }
   function flick(f) { if (g.ph === "rice") riceFlick(f); else if (g.ph === "egg") eggFlick(f); }
   function riceFlick(f) {
-    if (!g.started || g.t - g.lastFlick < 0.3 || g.clock <= 0) return; // the ingredients are still going in
+    if (!g.started || g.t - g.lastFlick < 0.18 || g.clock <= 0) return; // the ingredients are still going in
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
     if (g.tossN === 0) { tip(g.auto ? C.watching : C.rimTip); hideCue(); }
     else {
       if (g.tossN >= 3 && !g.auto) tip("");
-      // readiness: how long the food has been back on the metal since the last toss came down
-      const back = F.toss && F.toss.done && F.contact > 0.8 ? g.t - F.lastLand : -1; // rice still in the air = too early (mashing does not pay)
-      g.maxGap = Math.max(g.maxGap, g.t - g.lastFlick);
+      // operator 10-24: toss back to back. The grade is the beat: the gap since the previous toss (shown on the beat bar)
+      const back = g.t - g.lastFlick;
+      g.maxGap = Math.max(g.maxGap, back);
       const w = readyWin(), grade = back < w.open ? "early" : back < w.gold0 ? "good" : back <= w.gold1 ? "perfect" : back <= w.late ? "good" : "late";
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.landSnd = false; g.jit = (Math.random() - 0.5) * 0.4; // ±0.2 s: a metronome loses to reading the smoke
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.landSnd = false; g.landShk = false;
+    // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
+    g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s);
+    if (s >= 1.15 && (f.snap == null || f.snap > 0.4)) { g.hei = Math.max(g.hei, 0.9); W.sparkBurst(8); }
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
     F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
@@ -88,33 +92,52 @@
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
-  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12) + (g.jit || 0); return { open: 0.25 + sh, gold0: 0.45 + sh, peak: 0.62 + sh, gold1: 0.79 + sh, late: 1.3 + sh }; }
+  // fixed beat so the hand can learn it (no jitter); 불쇼 (fever) widens the sweet spot
+  function readyWin() { const fv = g.t < (g.fever || 0); return { open: 0.3, gold0: fv ? 0.38 : 0.45, peak: 0.65, gold1: fv ? 1.0 : 0.9, late: 1.3 }; }
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
     if (grade === "perfect") {
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
-      const add = 2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.5, 0.1 * (g.combo - 1))); // dead centre pays most
-      g.fire = Math.min(FIRE_MAX, g.fire + add);
+      const add = 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
+      g.fire = Math.min(FIRE_MAX, g.fire + add); popNum("+" + add.toFixed(1), "fire");
+      if (g.combo === 5) { g.fever = g.t + 4; word(C.fever, "great", C.feverSub); K.Audio.ding(); }
       g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
-      word(C.perfect, "great", title && g.combo >= 2 ? title[1] : C.perfectSub);
+      if (g.combo !== 5) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : pick(C.perfectSub));
       if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
       if (grade === "good") { // so-so keeps the combo, fills a little
-        g.fire = Math.min(FIRE_MAX, g.fire + 0.3 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
-        gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`; K.Food.fireTint = (g.fire / FIRE_MAX) * 0.22; return;
+        g.combo++; g.maxCombo = Math.max(g.maxCombo, g.combo); // old 2D: good builds the combo too
+        g.fire = Math.min(FIRE_MAX, g.fire + 0.5 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
+        comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; fireNum(); return;
       }
-      else if (grade === "early") word(C.early, "meh", C.earlySub);
-      else word(C.late, "bad", C.lateSub);
-      if (g.combo >= 3) subEl.textContent = C.comboLost;
+      else if (grade === "early") { g.fire = Math.min(FIRE_MAX, g.fire + 0.1); fireNum(); return; } // mashing: allowed, just no 불맛
+      else word(C.late, "bad", pick(C.lateSub));
+      if (g.combo >= 3) { subEl.textContent = C.comboLost; subEl.className = "sub"; void subEl.offsetWidth; subEl.classList.add("pop"); }
       g.combo = 0; comboEl.textContent = ""; comboEl.className = "combo";
     }
-    gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`;
-    gaugeEl.classList.toggle("hot", g.combo >= 3);
-    K.Food.fireTint = (g.fire / FIRE_MAX) * 0.22;
+    fireNum();
+  }
+  function fireNum() {
+    gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`; gaugeEl.classList.toggle("hot", g.combo >= 3);
+    gaugeEl.dataset.label = `불맛 ${Math.round(g.fire)}`; K.Food.fireTint = (g.fire / FIRE_MAX) * 0.4; // the rice visibly darkens toward caramel as 불맛 builds
+  }
+  const pick = (x) => (Array.isArray(x) ? x[(Math.random() * x.length) | 0] : x);
+  // a number that jumps out of the HUD: +불맛 on a perfect, -밥 on a spill
+  function popNum(text, kind) {
+    const e = document.createElement("i"); e.className = "num " + kind; e.textContent = text; app.appendChild(e); setTimeout(() => e.remove(), 900);
+  }
+  // the lens gets hit: rice grains or yolk stick to the screen for a moment (old 2D: 계란 화면 강타)
+  function splat(kind) {
+    const n = kind === "egg" ? 1 : 9;
+    for (let i = 0; i < n; i++) {
+      const e = document.createElement("i"); e.className = "splat " + kind; app.appendChild(e);
+      e.style.left = (kind === "egg" ? 50 : rnd(12, 88)) + "%"; e.style.top = (kind === "egg" ? 38 : rnd(20, 70)) + "%";
+      e.style.setProperty("--r", rnd(-80, 80) + "deg"); setTimeout(() => e.remove(), kind === "egg" ? 1600 : 900);
+    }
   }
   /* an ember flies from the flame into the 불맛 gauge */
   function ember() {
@@ -145,7 +168,7 @@
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
-    timerEl.hidden = false; gaugeEl.hidden = false;
+    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.textContent = "밥 100%"; cookEl.textContent = "익음 0%";
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
@@ -176,7 +199,10 @@
     W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
   }
   function startEgg() {
-    setPh("egg"); hudEl.classList.remove("dim"); timerEl.hidden = true; gaugeEl.hidden = true; comboEl.textContent = "";
+    setPh("egg"); hudEl.classList.remove("dim"); statsEl.hidden = true; beatEl.hidden = true; comboEl.textContent = ""; g.flips = 0;
+    timerEl.classList.remove("warn"); timerEl.textContent = C.flipCount(0);
+    const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15]; gaugeEl.classList.add("egg"); gaugeEl.dataset.label = C.eggGauge;
+    bandEl.style.bottom = (win[0] / 1.6) * 100 + "%"; bandEl.style.height = ((win[1] - win[0]) / 1.6) * 100 + "%";
     K.Egg.start(g.t); K.Food.settle();
     tip(g.auto ? C.watching : C.eggTip(g.order, K.Input.mode !== "motion"));
   }
@@ -253,27 +279,30 @@
       plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
     const r = F.step(ctx);
     if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
-    if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad"); } }
+    if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); g.shake = Math.max(g.shake || 0, 1.4); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad", pick(C.spillSub)); splat("rice"); try { navigator.vibrate && navigator.vibrate(60); } catch (e) {} } }
+    if (r.landed > 30 && g.ph === "rice" && !g.landShk) { g.landShk = true; g.shake = Math.max(g.shake || 0, 0.4); }
+    if (g.ph === "rice" && g.started && (g.statT = (g.statT || 0) + dt) > 0.2) { g.statT = 0; liveStats(); }
     if (plateOn && g.ph !== "result" && g.ph !== "garnish") plateStep(dt);
     // the diegetic cue: oil smoke rises from the edge of the pile and the sizzle turns to dry pops when the metal under it
     // is hot again; dark smoke when the bottom starts to scorch
     let wisp = 0, wispBig = 1, wispThick = 0, siz = 0.4, steam = 0.12, smoke = 0, flare = 0;
-    if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
-      const back = g.t - F.lastLand;
+    if (g.ph === "rice" && g.started && g.tossN > 0) {
+      const back = g.t - g.lastFlick;
       const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
       wispCol.copy(WC.white);
-      if (F.contact < 0.8 || back < w.open) { wisp = 0; siz = 0.4; }
+      if (back < w.open) { wisp = 0; siz = 0.4; }
       else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.3 * k; siz = 0.4 + 0.3 * k; }
       else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); K.Audio.pops(); } }
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
-      const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - w.late - 1.0) / 2.5, 0, 1)); F.scorchVis = smoke; // left on the metal: smoke from ~2.3 s, thick by ~5 s steam = 0.18 + 0.2 * clamp(back, 0, 1);
+      const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - 1.6) / 1.4, 0, 1)); F.scorchVis = smoke; // left alone: smoke from 1.6 s, thick by 3 s
+      steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
-    if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); } // a forgotten egg smokes
+    if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); gaugeFill.style.transform = `scaleY(${clamp(E.cook / 1.6, 0, 1).toFixed(3)})`; } // a forgotten egg smokes
     if (g.flareAt && g.t >= g.flareAt) { g.flareAt = 0; g.hei = 1 + Math.min(0.6, 0.15 * (g.flareN - 1)); W.sparkBurst(10 + Math.min(20, g.flareN * 3)); K.Audio.flare(); g.punch = 1; }
     g.hei = Math.max(0, g.hei - dt * 1.2);
-    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
+    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: (g.toss ? 1 : 0) + (g.t < (g.fever || 0) ? 0.8 : 0), steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
     K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : g.introI ? 0.6 : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
@@ -302,13 +331,16 @@
     if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
     if (g.res1) { // the second landing
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
+      if (ev === "burst") splat("egg");
+      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); g.flips = 2; timerEl.textContent = C.flipCount(2); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
       return;
     }
+    if (ev === "clean" && !g.eggAuto) { g.flips = 1; timerEl.textContent = C.flipCount(1); }
+    if (ev === "burst") { splat("egg"); K.Audio.land("egg-splat"); }
     if (ev === "clean" && E.flipped && !g.eggAuto) { g.flip2Open = true; if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500); }
     g.hit = ev === "burst" || (ev === "clean" && r.errDeg <= 12 && r.where === "centre") ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-    if (ev === "burst") word(C.eggBurst, "bad");
+    if (ev === "burst") word(C.eggBurst, "bad", C.eggBurstSub);
     else if (ev === "fold") word(C.eggFold, "meh");
     else if (r.where === "wall") word(`${r.angle}°`, "ok", C.eggWall);
     else word(`${r.angle}°!`, r.errDeg <= 12 ? "great" : "ok", r.errDeg <= 12 ? C.eggPerfect : C.eggGood);
@@ -326,7 +358,7 @@
     if (r) {
       const c = r.cookAtFlip, off = c < win[0] ? win[0] - c : c > win[1] ? c - win[1] : 0;
       timing = Math.round(12 * clamp(1 - off / 0.2, 0, 1));
-      flip = (r.fold ? 3 : Math.round(10 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1))) + (g.flip2Up ? 4 : 0); // 10 for the flip, 4 for turning it back yolk-up
+      flip = (r.fold ? 2 : Math.round(6 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1))) + (g.flip2Up ? 8 : 0); // 6 for the first flip, 8 for turning it back yolk-up
       cat = g.eggAuto ? 0 : Math.round(10 * r.catchQ);
       yolk = r.burst || (r2 && r2.burst) ? 0 : 4;
     }
@@ -344,8 +376,10 @@
     resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}</div>
       ${rec ? `<div class="rec">신기록</div>` : ""}
       <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
+      <div class="floor">바닥에 버린 밥 <b>${K.Food.spilled}</b>알</div>
       <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
       <div class="why">${whyLine(s)}</div>
+      <div class="memo">사장님: ${tier[2]}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div></div>`;
     resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
@@ -362,7 +396,7 @@
     if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
     parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
     const c = g.counts, n = c.perfect + c.good + c.early + c.late;
-    if (n) parts.push(`연기 날 때 휙 ${c.perfect}/${n}번` + (c.early > c.late && c.early > 1 ? " (너무 빨리 친 게 많음)" : c.late > 1 ? " (늦게 친 게 많음)" : ""));
+    if (n) parts.push(`금색 칸에 휙 ${c.perfect}/${n}번` + (c.late > 1 ? " (쉬다가 눌린 게 많음)" : ""));
     const r = s.r, win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
     if (r) {
       if (r.cookAtFlip < win[0] - 0.05) parts.push("계란을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("계란을 너무 늦게 뒤집음");
@@ -386,7 +420,7 @@
       c.fillStyle = "#E8481C"; c.font = "170px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 430, 1230);
       c.save(); c.translate(820, 1180); c.rotate(-0.14); c.strokeStyle = c.fillStyle = "#c81e1e"; c.lineWidth = 8; c.font = "54px 'Black Han Sans', sans-serif";
       const tw = c.measureText(tier[1]).width + 40; c.strokeRect(-tw / 2, -46, tw, 84); c.fillText(tier[1], 0, 14); c.restore();
-      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText("폰을 웍처럼 휙! · D:OT lab", 540, 1310);
+      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText(`${C.shop} 사장님 평: ${tier[2]} · 흘린 밥 ${K.Food.spilled}알`, 540, 1310);
       cv.toBlob((blob) => {
         const file = blob && new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
         if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text: `${s.total}점 · ${tier[1]}` }).catch(() => {});
@@ -400,9 +434,9 @@
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice") {
       if (g.started && g.tossN === 0 && g.t - g.goT > 0.6) flick({ strength: 1.1, dirU: 0, dirV: 1 });
-      else if (g.started && g.clock > 0 && F.toss && F.toss.done) {
-        if (!g.autoWait) g.autoWait = rnd(0.35, 1.1);
-        if (g.t - F.lastLand > g.autoWait) { g.autoWait = 0; flick({ strength: rnd(0.95, 1.35), dirU: 0, dirV: 1 }); }
+      else if (g.started && g.clock > 0 && g.tossN > 0) { // a decent cook: mostly on the beat, sometimes off
+        if (!g.autoWait) g.autoWait = rnd(0.4, 1.05);
+        if (g.t - g.lastFlick > g.autoWait) { g.autoWait = 0; flick({ strength: rnd(0.95, 1.35), dirU: 0, dirV: 1 }); }
       }
     } else if (g.ph === "egg") {
       const win = g.order === "half" ? 0.62 : 0.95;
@@ -426,10 +460,24 @@
     _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
     if (g.camLow > 0.001) _cp.sub(_cl).applyAxisAngle(_ax, 10 * DEG * g.camLow * (1 - close)).add(_cl);
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
+    g.shake = Math.max(0, (g.shake || 0) - dt * 4); const sk = 0.022 * Math.min(1.6, g.shake) * g.shake; // ≤ ~4 px
+    if (sk > 0.0005) W.camera.position.add(_a.set(rnd(-1, 1) * sk, rnd(-1, 1) * sk, 0));
     g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)); if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
   }
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
+    // the beat bar: the needle runs from the last toss, the gold band is when to toss again
+    beatEl.hidden = !(g.ph === "rice" && g.started && g.tossN > 0 && g.clock > 0);
+    if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.4, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
+      zoneEl.style.left = (w.gold0 / 1.4) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.4) * 100 + "%"; }
+  }
+  // 밥 % (how much is still yours) and 익음 % (cooked grains), live
+  function liveStats() {
+    const F = K.Food, st = F.stats(), left = Math.round(100 * (1 - st.spill));
+    let sum = 0, n = 0; for (let i = 0; i < F.n; i++) if (F.st[i] !== 4 && F.st[i] !== 7) { sum += Math.min(1, F.cook[i] / 0.9); n++; } // how far along it is, so it climbs every toss
+    const ck = Math.round((100 * sum) / Math.max(1, n));
+    if (g.riceLeft != null && left < g.riceLeft) popNum(`-${g.riceLeft - left}%`, "rice");
+    g.riceLeft = left; riceEl.textContent = `밥 ${left}%`; cookEl.textContent = `익음 ${ck}%`; cookEl.classList.toggle("burnt", st.burnt > 0.05);
   }
 
   /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */
