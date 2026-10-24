@@ -80,12 +80,12 @@
       // operator 10-24: toss back to back. The grade is the beat: the gap since the previous toss (shown on the beat bar)
       const back = g.t - g.lastFlick;
       g.maxGap = Math.max(g.maxGap, back);
-      const w = readyWin(), grade = back < w.open ? "early" : back < w.gold0 ? "good" : back <= w.gold1 ? "perfect" : back <= w.late ? "good" : "late";
+      const w = readyWin(), grade = (g.lastGrade = back < w.open ? "early" : back < w.gold0 ? "good" : back <= w.gold1 ? "perfect" : back <= w.late ? "good" : "late");
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
-    if (g.darkPh === "warn" && g.clock <= 4.4 && !g.cutAt) g.cutAt = g.t + 0.12;
-    if (g.darkPh === "dark") g.darkN = (g.darkN || 0) + 1;
+    if (g.darkPh === "warn" && g.clock <= 5.2 && !g.cutAt) g.cutAt = g.t + 0.12;
+    if (g.darkPh === "dark") { g.darkN = (g.darkN || 0) + 1; if (!g.onAt && g.clock <= 1.2) g.onAt = g.t + 0.2; }
     g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
     g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
@@ -94,27 +94,29 @@
     const du2 = clamp(du, -0.85, 0.85); g.lastDu = du2; g.tossSpill = 0;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: du2, dv: Math.sqrt(1 - du2 * du2) };
     // the finale: the first toss in the last 1.5 s goes 1.5x high, the camera looks up after it
-    const fin = !g.auto && !g.finaleDone && g.clock <= 1.5; if (fin) finale(s);
+    const fin = !g.auto && !g.finaleDone && (g.darkPh === "back" || g.darkPh === "over") && g.clock <= 1.3; if (fin) finale(s);
     F.launch({ strength: s, dirU: du, dirV: dv, lift: fin ? 1.5 : 1 }, g.t);
     g.tossN++;
     K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
   }
   function finale(s) {
+    const gold = g.lastGrade === "perfect";
     g.finaleDone = true; g.finaleT = g.t; hideCue();
-    g.hei = 1.6; W.sparkBurst(40); g.punch = 1; g.shake = 1.6; K.Audio.fever();
-    const bonus = 3 * clamp((s - 0.8) / 0.8, 0, 1); g.fire = Math.min(FIRE_MAX, g.fire + bonus); fireNum();
-    g.finaleWord = { at: g.t + 0.35, ok: bonus > 1 };
+    g.hei = 1.6; W.sparkBurst(40); g.punch = 1; g.shake = gold ? 0.5 : 1.6; K.Audio.fever();
+    const bonus = 3 * clamp((s - 0.8) / 0.8, 0, 1) * (gold ? 1 : 0.4); g.fire = Math.min(FIRE_MAX, g.fire + bonus); fireNum();
+    if (gold) { g.slowT = g.t; g.slowUsed = true; hudEl.classList.add("slow"); K.Audio.slow(true); }
+    g.finaleWord = { at: g.t + (gold ? 0.72 : 0.35), ok: gold }; // one success rule: the gold band
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
   // fixed beat so the hand can learn it (no jitter); 불쇼 (fever) widens the sweet spot
-  function readyWin() { const fv = g.t < (g.fever || 0); return { open: 0.35, gold0: fv ? 0.45 : 0.55, peak: 0.8, gold1: fv ? 1.25 : 1.1, late: 1.6 }; }
+  function readyWin() { const fv = g.t < (g.fever || 0), first = g.darkPh === "dark" && !g.darkN; return { open: 0.35, gold0: fv ? 0.45 : 0.55, peak: 0.8, gold1: fv || first ? 1.3 : 1.1, late: 1.6 }; } // the first toss in the dark may hesitate
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
     if (grade === "perfect") {
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
-      const add = (g.darkPh === "dark" ? 1.5 : 1) * 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
+      const add = (g.darkPh === "dark" ? 1.25 : 1) * 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
       g.fire = Math.min(FIRE_MAX, g.fire + add); popNum("+" + add.toFixed(1), "fire");
       if (g.combo === 5) { g.fever = g.t + 4; word(C.fever, "great", C.feverSub); K.Audio.fever(); } else K.Audio.perfect(g.combo);
       g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
@@ -181,7 +183,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
-    W.setDark(0); hudEl.classList.remove("dark"); K.Audio.darkFlag(false);
+    W.setDark(0); hudEl.classList.remove("dark", "slow"); K.Audio.darkFlag(false); K.Audio.slow(false);
     homeEl.hidden = false;
     K.Input.steerAfterFlick = false;
     W.renderer.toneMappingExposure = W.S.exposure;
@@ -298,12 +300,12 @@
     if (g.ph === "rice" && g.introOn) introStep();
     if (g.ph === "rice" && g.started) blackout();
     else if (g.darkPh && g.darkPh !== "over") lightsOn();
-    darkOv.style.opacity = (W.darkK * (1 - 0.55 * clamp(g.hei - 0.35, 0, 1))).toFixed(3); // a perfect's fire lifts the dark for a moment
+    darkOv.style.opacity = (W.darkK * (1 - 0.4 * clamp(g.hei - 0.35, 0, 1))).toFixed(3); // a perfect's fire lifts the dark for a moment
     if (g.finaleWord && g.t >= g.finaleWord.at) { const w = g.finaleWord; g.finaleWord = null; word(w.ok ? C.finale : C.finaleWeak, w.ok ? "great" : "meh", w.ok ? C.finaleSub : ""); }
     if (g.ph === "rice" && g.started && !g.auto && g.tossN === 0) nudge();
-    if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.5 && g.darkPh !== "dark") { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
+    if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.0 && g.darkPh !== "dark") { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
     if (g.finaleCue && !g.finaleDone && g.clock <= 0) { g.finaleDone = true; hideCue(); }
-    if (g.ph === "rice" && g.started && g.t >= g.clockAt) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
+    if (g.ph === "rice" && g.started && g.t >= g.clockAt) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0 && !g.slowT && (!g.finaleT || g.t - g.finaleT > 0.95)) startPlate(); }
     const plateOn = ["plate", "egg", "take", "garnish", "result"].includes(g.ph);
     W.plate.visible = plateOn;
     const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.t >= g.clockAt ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
@@ -325,7 +327,7 @@
       if (back < w.open) { wisp = 0; siz = 0.4; }
       else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.3 * k; siz = 0.4 + 0.3 * k; }
       else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); } }
-      if (!g.ticked && back >= w.gold0 - 0.04) { g.ticked = true; K.Audio.tick(); } // the beat is heard: 탁 at the band (output latency allowed for)
+      if (!g.ticked && back >= w.gold0 - 0.04) { g.ticked = true; if (g.darkPh !== "dark") K.Audio.tick(); } // the beat is heard: 탁 at the band (output latency allowed for)
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
       const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - 2.0) / 1.4, 0, 1)); F.scorchVis = smoke; // left alone: smoke from 2 s, thick by 3.4 s
@@ -336,6 +338,7 @@
     if (g.flareAt && g.t >= g.flareAt) { g.flareAt = 0; g.hei = 1 + Math.min(0.6, 0.15 * (g.flareN - 1)); W.sparkBurst(10 + Math.min(20, g.flareN * 3)); K.Audio.flare(); g.punch = 1; }
     g.hei = Math.max(0, g.hei - dt * 1.2);
     W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: (g.toss ? 1 : 0) + (g.t < (g.fever || 0) ? 0.8 : 0), steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
+    if (g.darkPh === "dark") siz = 0.55; // flat in the dark: the sizzle must not tick the beat
     K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : g.introI ? 0.6 : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
@@ -502,9 +505,9 @@
   const CUT = [[0, 0], [0.08, 1], [0.13, 0], [0.25, 0.4], [0.29, 0]]; // light level over the cut: it flickers, then dies
   function blackout() {
     const c = g.clock;
-    if (!g.darkPh && c <= 4.6) { g.darkPh = "warn"; g.darkT = g.t; K.Audio.buzz(); cue(C.blackWarn, "", "intro"); }
+    if (!g.darkPh && c <= 5.6) { g.darkPh = "warn"; g.darkT = g.t; K.Audio.buzz(); cue(C.blackWarn, "", "intro"); }
     if (g.darkPh === "warn") {
-      if (!g.cutAt && c <= 3.9) g.cutAt = g.t; // no toss came: cut anyway
+      if (!g.cutAt && c <= 4.9) g.cutAt = g.t; // no toss came: cut anyway
       W.setDark(g.t - g.darkT < 0.06 ? 0.3 : 0); // one dip of the tube light
       if (g.cutAt && g.t >= g.cutAt) { g.darkPh = "dark"; g.darkT = g.t; g.darkN = 0; g.darkPerf = 0; K.Audio.blackout(true); g.shake = Math.max(g.shake || 0, 0.3); cue(C.blackout, C.blackoutSub, "intro"); g.cueOffAt = g.t + 0.8; try { navigator.vibrate && navigator.vibrate([80, 40, 20]); } catch (e) {} }
     }
@@ -512,7 +515,8 @@
       const k = g.t - g.darkT; let L = 0; for (const [tt, v] of CUT) if (k >= tt) L = v;
       W.setDark(1 - L); hudEl.classList.toggle("dark", L < 0.5);
       if (g.cueOffAt && g.t >= g.cueOffAt) { g.cueOffAt = 0; hideCue(); }
-      if (c <= 1.8) lightsOn(true);
+      if (!g.onAt && c <= 0.9) g.onAt = g.t;
+      if (g.onAt && g.t >= g.onAt) lightsOn(true);
     }
     if (g.darkPh === "back") { const k = clamp((g.t - g.backT) / 0.4, 0, 1); W.renderer.toneMappingExposure = W.S.exposure + 0.25 * (1 - smooth(k)); if (k >= 1) g.darkPh = "over"; }
   }
@@ -521,9 +525,8 @@
     if (say || g.darkPh === "dark") K.Audio.blackout(false); else K.Audio.darkFlag(false);
     W.setDark(0); hudEl.classList.remove("dark"); g.backT = g.t; g.darkPh = say ? "back" : "over"; if (!say) W.renderer.toneMappingExposure = W.S.exposure;
     if (!say) return;
-    hideCue(); g.punch = 0.6; try { navigator.vibrate && navigator.vibrate([15, 30, 15]); } catch (e) {}
-    if ((g.darkPerf || 0) >= 2) W.sparkBurst(24);
-    word(C.lightsBack, "great", C.lightsBackSub(g.darkPerf || 0, g.darkN || 0));
+    g.punch = 0.6; try { navigator.vibrate && navigator.vibrate([15, 30, 15]); } catch (e) {}
+    if (!g.auto) { g.finaleCue = true; cue(C.finaleBack, C.lightsBackSub(g.darkPerf || 0, g.darkN || 0), "intro"); }
   }
   /* ---------- attract: a 4-beat loop at 0.85 s (inside the perfect band): front, left, right, 불쇼 ---------- */
   const titleEl = document.querySelector("#intro h1"), goEl = $("go");
@@ -551,11 +554,11 @@
     _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
     _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
     if (g.camLow > 0.001) _cp.sub(_cl).applyAxisAngle(_ax, 10 * DEG * g.camLow * (1 - close)).add(_cl);
-    if (g.finaleT) { const k = (g.t - g.finaleT) / 1.1; if (k < 1) _cl.y += 0.55 * Math.sin(Math.PI * k); }
+    if (g.finaleT) { const k = (g.t - g.finaleT) / (g.slowUsed ? 0.75 : 1.1); if (k < 1) _cl.y += 0.55 * Math.sin(Math.PI * k); }
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
     g.shake = Math.max(0, (g.shake || 0) - dt * 4); const sk = 0.022 * Math.min(1.6, g.shake) * g.shake; // ≤ ~4 px
     if (sk > 0.0005) W.camera.position.add(_a.set(rnd(-1, 1) * sk, rnd(-1, 1) * sk, 0));
-    g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)); if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
+    g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)) - 4 * (g.slowAmt || 0); // the slow-mo pushes in if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
   }
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
@@ -578,9 +581,16 @@
   function frame(now) {
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
-    acc += dt; let n = 0;
-    while (acc >= 1 / 60 && n++ < 2) { step(1 / 60); acc -= 1 / 60; } // at most 2 steps: a slow frame must not make the next one slower
-    if (n >= 2) acc = 0;
+    let n = 0;
+    if (g.slowT) {
+      const k = g.t - g.slowT, sc = k < 0.08 ? 1 : k < 0.2 ? 1 - 0.7 * smooth((k - 0.08) / 0.12) : k < 0.5 ? 0.3 : k < 0.66 ? 0.3 + 0.7 * smooth((k - 0.5) / 0.16) : 1;
+      g.slowAmt = (1 - sc) / 0.7;
+      if (k >= 0.66) { g.slowT = 0; g.slowAmt = 0; hudEl.classList.remove("slow"); K.Audio.slow(false); } else { step(Math.min(1 / 30, dt) * sc); acc = 0; }
+    } else {
+      acc += dt;
+      while (acc >= 1 / 60 && n++ < 2) { step(1 / 60); acc -= 1 / 60; } // at most 2 steps: a slow frame must not make the next one slower
+      if (n >= 2) acc = 0;
+    }
     K.Food.draw(); camera(dt); hud();
     W.renderer.render(W.scene, W.camera);
     if (goEl.disabled) { goEl.disabled = false; goEl.textContent = C.go; } // ready: the first frame is on screen

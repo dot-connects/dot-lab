@@ -49,7 +49,8 @@
         const comp = ac.createDynamicsCompressor();
         comp.threshold.value = -14; comp.ratio.value = 4;
         A.out = ac.createGain(); A.out.gain.value = A.muted ? 0 : 0.9;
-        A.out.connect(comp); comp.connect(ac.destination);
+        A.lp = ac.createBiquadFilter(); A.lp.type = "lowpass"; A.lp.frequency.value = 20000; // the slow-mo muffles everything
+        A.out.connect(A.lp); A.lp.connect(comp); comp.connect(ac.destination);
         makeBuffers(ac);
         A.siz = bed(A.sizz, 1500, 6000, 1);
         A.warn = bed(A.crackle, 900, 4500, 0.8);
@@ -94,7 +95,7 @@
       if (Math.abs(l - b.level) < 0.01) return;
       const tau = l < b.level ? 0.035 : 0.08;
       b.level = l;
-      b.g.gain.setTargetAtTime(0.42 * Math.pow(l, 1.3) * (A.dark ? 0.5 : 1), now(), tau); // dark: the room goes quiet, the 탁 stands out
+      b.g.gain.setTargetAtTime(0.42 * Math.pow(l, 1.3) * (A.dark ? 0.75 : 1), now(), tau); // dark: the room goes a little quieter
       b.l.frequency.setTargetAtTime(2200 + 7500 * l, now(), tau);
     }),
     toss: safe((strength, snap) => {
@@ -137,6 +138,11 @@
     perfect: safe((combo) => tone({ f0: 660 * Math.pow(2, (Math.min(combo || 1, 8) * 2) / 12), dur: 0.12, gain: 0.14, type: "triangle" })), // one step up per combo
     comboBreak: safe(() => tone({ f0: 330, f1: 220, dur: 0.15, gain: 0.16, type: "triangle" })),
     fever: safe(() => { burst({ type: "bandpass", f0: 250, f1: 2800, q: 0.7, dur: 0.9, gain: 0.75, attack: 0.08 }); burst({ type: "lowpass", f0: 700, dur: 3.5, gain: 0.18, attack: 0.2 }); }),
+    slow: safe((on) => {
+      A.lp.frequency.setTargetAtTime(on ? 900 : 20000, now(), on ? 0.05 : 0.06);
+      if (on) burst({ f0: 200, f1: 900, q: 0.9, dur: 0.9, gain: 0.35, attack: 0.25, at: 0.1 }); // a long slow whoosh
+      else { tone({ f0: 220, f1: 90, dur: 0.3, gain: 0.5, type: "triangle" }); }
+    }),
     darkFlag: (d) => { A.dark = !!d; if (A.siz) A.siz.level = -1; },
     buzz: safe(() => { tone({ f0: 120, dur: 0.35, gain: 0.05, type: "sawtooth" }); burst({ f0: 3200, q: 8, dur: 0.015, gain: 0.25, at: 0.05 }); burst({ f0: 3200, q: 8, dur: 0.015, gain: 0.2, at: 0.17 }); }),
     blackout: safe((on) => {

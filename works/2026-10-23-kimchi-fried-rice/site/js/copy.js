@@ -20,7 +20,7 @@
     howTouch: "화면을 <b>위로 쓸어</b> → 밥이 뜬다 · <b>옆으로 쓸면</b> → 옆으로<br>막대가 <b>금색 칸</b>에 올 때마다 쓸기 → 불맛",
     mashed: "연타! 콤보 끊김", egg2Early: "뒤집긴 했는데 이르다", egg2Late: "뒤집긴 했는데 늦었다",
     blackWarn: "사장님: 에어컨 켠다~", blackout: "정전!", blackoutSub: "감으로 휙",
-    blackPerfect: "감 살아있네!", lightsBack: "불 들어왔다!", lightsBackSub: (k, n) => `깜깜이 ${k}/${n} 불맛`,
+    finaleBack: "불 들어왔다 — 마지막 한 방!", blackPerfect: "감 살아있네!", lightsBack: "불 들어왔다!", lightsBackSub: (k, n) => `깜깜이 ${k}/${n} 불맛`,
     blackMemo: [[3, "눈 감고도 볶는다"], [2, "감은 있네"], [1, "전기세 내고 와"], [0, "불 켜고 다시 와"]],
     blackLine: (k, n) => `정전 중 금색 ${k}/${n}`, blackShare: (k, n) => ` 정전 웍질 ${k}/${n}`,
     fever: "불쇼!", feverSub: "4초간 불맛 x1.3",

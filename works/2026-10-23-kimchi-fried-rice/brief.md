@@ -208,3 +208,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   (overlay with a burner hole, opacity drops with hei); lights back in one switch-on (+0.55 exposure over 0.4 s),
   "불 들어왔다! 깜깜이 k/n 불맛", then the finale cue at 1.5 s. Receipt "정전 중 금색 k/n · memo", share text suffix.
 - Checked: frame mean 113 → 11 in the dark, back to 112; receipt line; no errors.
+- 정전 v2 (operator): lit 7 s → dark 4 s → lit 1 s; darker (frame mean 4-6); no 탁 in the dark. Panel p7-*:
+  lights come back on the beat (first toss after 1.2 s left + 0.2 s, forced 0.9 s); one line at the switch-on
+  ("불 들어왔다 — 마지막 한 방!" + 깜깜이 k/n); finale only after the lights; slow-mo (operator lifted the old "no
+  slow-mo" for this) only when the finale is in the gold band: live time scale 1 → 0.3 → 1 over 0.66 s game time, one
+  small step per frame, HUD hidden, fov -4, master lowpass 900 Hz + slow whoosh, landing at full speed with a thud;
+  plating waits for the word; dark weight 1.25x, first dark toss gold to 1.3 s; sizzle flat in the dark (it leaked
+  the band), room only -25 %.
+- Checked: in-page 0.8 s metronome → dark 5/5, slow-mo fired, plating followed; watch run ok.
