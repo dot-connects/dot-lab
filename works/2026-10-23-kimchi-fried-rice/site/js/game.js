@@ -120,7 +120,7 @@
       g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
-      if (g.darkPh === "dark") { g.darkPerf = (g.darkPerf || 0) + 1; word(C.blackPerfect, "dark"); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
+      if (g.darkPh === "dark") { g.darkPerf = (g.darkPerf || 0) + 1; word(C.blackPerfect, "dark"); W.sparkBurst(8); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
       else if (g.combo !== 5) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : pick(C.perfectSub));
       if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
@@ -514,7 +514,7 @@
       if (g.cueOffAt && g.t >= g.cueOffAt) { g.cueOffAt = 0; hideCue(); }
       if (c <= 1.8) lightsOn(true);
     }
-    if (g.darkPh === "back") { const k = clamp((g.t - g.backT) / 0.4, 0, 1); W.renderer.toneMappingExposure = W.S.exposure + 0.55 * (1 - smooth(k)); if (k >= 1) g.darkPh = "over"; }
+    if (g.darkPh === "back") { const k = clamp((g.t - g.backT) / 0.4, 0, 1); W.renderer.toneMappingExposure = W.S.exposure + 0.25 * (1 - smooth(k)); if (k >= 1) g.darkPh = "over"; }
   }
   // the return is a win, not a fault: one clean switch-on, a little overexposed, the gauge pops back
   function lightsOn(say) {

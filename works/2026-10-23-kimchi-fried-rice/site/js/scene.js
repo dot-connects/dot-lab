@@ -131,7 +131,7 @@
     const wokMat = S.phys
       ? new T.MeshPhysicalMaterial({ color: lin("#3a4048"), metalness: 0.85, roughness: 0.3, clearcoat: 0.5, clearcoatRoughness: 0.2, envMapIntensity: 1.3 })
       : new T.MeshStandardMaterial({ color: lin("#4a5d78"), roughness: 0.42, metalness: 0.25 });
-    wokMat.side = T.DoubleSide;
+    wokMat.side = T.DoubleSide; W.wokMat = wokMat;
     const bowl = new T.Mesh(new T.LatheGeometry(prof, 96), wokMat); bowl.castShadow = true; bowl.receiveShadow = true; wok.add(bowl);
     const steel = mat(S, "#9aa3ab", { std: { metalness: 0.9, roughness: 0.3 }, phys: { metalness: 1, roughness: 0.28 } });
     const sock = new T.Mesh(new T.CylinderGeometry(0.04, 0.05, 0.42, 16), steel); sock.rotation.x = Math.PI / 2 - 12 * DEG; sock.position.set(0, 0.36, 1.2); wok.add(sock);
@@ -187,7 +187,7 @@
   W.setDark = function (k) {
     W.darkK = k; if (!W.hemi) return;
     W.hemi.intensity = 0.35 + (0.03 - 0.35) * k; W.key.intensity = 1.6 + (0.04 - 1.6) * k;
-    W.scene.background.copy(BG_LIT).lerp(BG_DARK, k);
+    W.scene.background.copy(BG_LIT).lerp(BG_DARK, k); if (W.wokMat) W.wokMat.envMapIntensity = 1.3 + (0.12 - 1.3) * k; // uniforms only: no shader recompile at the cut
   };
 
   /* burner, wok hei, sparks, steam: one call per frame */
@@ -196,9 +196,9 @@
     const S = W.S;
     W.fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 1.4 * o.hei + 0.9 * (o.flare || 0)) * (1 + 0.5 * W.darkK);
     for (const sp of W.flames) {
-      const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.12 * o.lick + 0.16 * (o.flare || 0)) * u.s * o.heat;
+      const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.12 * o.lick + 0.16 * (o.flare || 0)) * u.s * o.heat * (1 + 0.3 * W.darkK);
       sp.position.set(Math.cos(a) * u.r, -0.3 + h * 0.5 + surf(u.r * u.r) * 0.5, Math.sin(a) * u.r + pose.z * 0.5);
-      sp.scale.set(0.2 * u.s, h, 1); sp.material.opacity = (S.phys ? 0.45 : 0.6) + 0.2 * Math.sin(t * 21 + u.ph);
+      sp.scale.set(0.2 * u.s, h, 1); sp.material.opacity = (S.phys ? 0.45 : 0.6) + 0.3 * W.darkK + 0.2 * Math.sin(t * 21 + u.ph);
     }
     // wok hei: tongues stand on the far lip (they ride the wok), big for o.hei, then shrink
     for (const sp of W.hei) {
