@@ -1,6 +1,6 @@
 # dot-lab
 
-그냥 시켜봄 — 궁금하면 그냥 해 봐요. (D:OT lab · Curious? Just try it.)
+그냥 시켜봄 — 이게 될까? 싶던 걸 일단 시켜 봅니다. (D:OT lab · Will this even work? We try it anyway.)
 
 - Play: https://dot-connects.github.io/dot-lab/
 - Blog (one post per work): [www.dotconnects.kr/search/label/실험](https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98)

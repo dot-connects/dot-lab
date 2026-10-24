@@ -2,57 +2,64 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>그냥 시켜봄 · D:OT lab</title>
-<meta name="description" content="궁금하면 그냥 해 봐요. 링크를 열면 폰에서 바로 노는 D:OT lab 작품 모음.">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<meta name="description" content="이게 될까? 싶던 걸 일단 시켜 봅니다. 링크를 열면 폰에서 바로 노는 D:OT lab 작품 모음.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=IBM+Plex+Mono:wght@600&display=swap">
 <style>
-:root{--paper:#f6f4ee;--ink:#1d2733;--red:#b8341d;--muted:#56616e;--grid:#dde2e7;--card:#fffdf8;color-scheme:light}
-html{background:var(--paper)}
-body{margin:0;min-height:100vh;word-break:keep-all;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;
-  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
-main{max-width:520px;margin:0 auto;padding:28px 18px 36px}
-h1{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:54px;line-height:1;margin:0}
-h1 span{color:var(--red)}
-.sub{display:inline-block;margin:8px 0 24px;padding:0 4px;background:var(--paper);color:var(--muted)}
-.works{display:grid;gap:22px}
-.work{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;transform:rotate(-.6deg)}
-.work:nth-child(even){transform:rotate(.7deg)}
-.work img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-bottom:1.5px solid var(--ink)}
-.work .t{padding:10px 14px 14px;display:grid;gap:2px}
-.work h2{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:32px;line-height:1.05;color:var(--red);margin:0}
-.work p{margin:0;font-size:14px;color:var(--muted)}
-.work .acts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
-.play{font-family:"Nanum Pen Script",cursive;font-size:24px;color:var(--red);text-decoration:none;border:2px solid var(--red);border-radius:50%;padding:0 12px}
-.read{font-size:14px;color:var(--ink)}
-.play:focus-visible,.read:focus-visible,footer a:focus-visible{outline:2px solid var(--red);outline-offset:3px}
-footer{margin-top:28px;display:grid;gap:6px;font-size:14px;color:var(--muted)}
-footer span{background:var(--paper);padding:0 4px;justify-self:start}
-footer a{color:var(--ink)}
-@media (prefers-reduced-motion:reduce){.work{transform:none!important}}
+:root{--bg:#fafbfc;--ink:#17202a;--muted:#4a5562;--soft:#5b6773;--blue:#2f6fe4;--line:#e3e8ee;
+  --sans:"IBM Plex Sans KR","Malgun Gothic",sans-serif;--mono:"IBM Plex Mono",ui-monospace,Consolas,monospace;color-scheme:light}
+html{background:var(--bg)}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font-family:var(--sans);word-break:keep-all}
+main{flex:1;width:100%;max-width:520px;margin:0 auto;box-sizing:border-box;padding:24px max(16px,env(safe-area-inset-right)) 8px max(16px,env(safe-area-inset-left))}
+.top{font:600 11.5px var(--mono);letter-spacing:.06em;color:var(--blue);margin-bottom:16px}
+h1{font-weight:700;font-size:28px;line-height:1.2;margin:0}
+h1 em{font-style:normal;color:var(--blue)}
+.sub{margin:4px 0 20px;color:var(--soft);font-size:14.5px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:22px 14px}
+.work{display:grid;gap:6px;align-content:start;min-width:0}
+.ic{display:block;position:relative;aspect-ratio:1;border-radius:20px;overflow:hidden;box-shadow:0 4px 12px rgba(23,32,42,.13)}
+.ic img{width:100%;height:100%;object-fit:cover;display:block}
+.ic .ov{position:absolute;inset:auto 0 0 0;padding:28px 10px 9px;background:linear-gradient(transparent,rgba(10,16,24,.8));color:#fff;font-weight:700;font-size:14px;line-height:1.25}
+.ic .new{position:absolute;left:8px;top:8px;font:700 10px var(--mono);background:var(--blue);color:#fff;border-radius:6px;padding:2px 6px;letter-spacing:.05em}
+.ic .no{position:absolute;right:8px;top:8px;font:600 10px var(--mono);background:rgba(255,255,255,.92);color:var(--ink);border-radius:6px;padding:2px 6px}
+.ic.soon{background:repeating-linear-gradient(45deg,#eef1f5 0 8px,#e4e9ef 8px 16px);box-shadow:none;border:1.5px dashed #c5ced8;display:grid;place-items:center;color:#7d8996;font:600 12px var(--mono)}
+.ds{margin:0;font-size:12.5px;color:var(--muted);line-height:1.45}
+.row{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.vb{font:600 10.5px var(--mono);color:var(--soft);letter-spacing:.03em}
+.rd{font-size:12px;font-weight:600;color:var(--blue);text-decoration:none}
+.note{margin:24px 0 0;font-size:12.5px;color:var(--soft);text-align:center}
+.dock{position:sticky;bottom:0;margin-top:18px;background:rgba(250,251,252,.94);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-top:1px solid var(--line)}
+.dock nav{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding:12px 16px calc(14px + env(safe-area-inset-bottom))}
+.dock a{display:grid;gap:4px;justify-items:center;font-size:11.5px;font-weight:600;color:var(--ink);text-decoration:none}
+.dock i{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font:700 13px var(--mono);font-style:normal;color:#fff}
+a:focus-visible{outline:2px solid var(--blue);outline-offset:3px;border-radius:8px}
 </style>
 </head>
 <body>
 <main>
-  <h1>그냥 <span>시켜봄</span></h1>
-  <p class="sub">궁금하면 그냥 해 봐요</p>
-  <div class="works">
+  <div class="top">D:OT LAB</div>
+  <h1>그냥 <em>시켜봄</em></h1>
+  <p class="sub">이게 될까? 싶던 걸 일단 시켜 봅니다</p>
+  <div class="grid">
     <article class="work">
-      <a href="works/2026-10-21-draw-korea/site/" aria-label="실험 #001 해 보기"><img src="thumbs/001.jpg" alt="손으로 그린 한반도와 빨간 펜 채점"></a>
-      <div class="t">
-        <h2>#001 한반도를 그릴 수 있나?</h2>
-        <p>지도 안 보고 손가락으로 그려서 채점받기 · 10-21</p>
-        <div class="acts">
-          <a class="play" href="works/2026-10-21-draw-korea/site/">해 보기 →</a>
-          <a class="read" href="https://www.dotconnects.kr/2026/10/001.html">블로그 해설</a>
-        </div>
-      </div>
+      <a class="ic" href="works/2026-10-21-draw-korea/site/"><img src="thumbs/001.jpg" alt="손으로 그린 한반도와 빨간 펜 채점"><span class="new">NEW</span><span class="no">001</span><span class="ov">한반도를 그릴 수 있나?</span></a>
+      <p class="ds">지도 안 보고 손가락으로 그리면 빨간 펜으로 채점해 줘요</p>
+      <div class="row"><span class="vb">손가락</span><a class="rd" href="https://www.dotconnects.kr/2026/10/001.html">해설 →</a></div>
     </article>
+    <div class="work" aria-hidden="true">
+      <div class="ic soon">NEXT</div>
+      <p class="ds">다음 작품 · 3~4일 뒤</p>
+    </div>
   </div>
-  <footer>
-    <span>작품마다 만든 과정은 <a href="https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98">D:OT 블로그</a>에</span>
-    <span>새 작품은 인스타 · Threads <a href="https://www.threads.com/@nerdai.lab">@nerdai.lab</a></span>
-  </footer>
+  <p class="note">작품마다 만든 과정은 블로그에 써요</p>
 </main>
+<div class="dock">
+  <nav>
+    <a href="https://www.instagram.com/nerdai.lab/"><i style="background:#d6336c">IG</i>인스타</a>
+    <a href="https://www.threads.com/@nerdai.lab"><i style="background:#17202a">@</i>Threads</a>
+    <a href="https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98"><i style="background:#2f6fe4">B</i>블로그</a>
+  </nav>
+</div>
 </body>
 </html>
