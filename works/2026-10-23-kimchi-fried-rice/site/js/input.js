@@ -146,6 +146,7 @@
     const dx = f.x - f.x0, dy = f.y0 - f.y, n = Math.hypot(dx, dy); // screen up = +dy (forward)
     if (n / p.H < T_MIN_TRAVEL) { p.fast = null; return; } // a twitch, not a stroke
     p.fired = true;
+    if (I.steerAfterFlick) { p.x0 = f.x; p.y0 = f.y; } // steer from where the flick ended, no jump
     const s01 = clamp01((f.peak - T_ON) / (T_MAX - T_ON));
     const snap = clamp01(1 - (f.tPeak - f.t0 - T_RISE_FAST) / (T_RISE_SLOW - T_RISE_FAST));
     let su = dx / n; if (Math.abs(su) < 0.3) su = 0; // a sideways swipe throws sideways, up/down swipes forward
@@ -162,6 +163,7 @@
     const a = p.s[0], dt = Math.max(16, t - a[0]); // a 70 ms window: one jittery sample no longer sets the strength
     const v = Math.hypot(x - a[1], y - a[2]) / dt * 1000 / p.H; // stroke speed in any direction, heights / s
     if (v > p.vMax) p.vMax = v;
+    if (p.fired && I.steerAfterFlick && !blockUntilUp) { tu = clamp1((x - p.x0) / (0.3 * p.W)); tv = clamp1((p.y0 - y) / (0.15 * p.H)); return; }
     if (p.fired || blockUntilUp) return; // after a flick: tilt holds until the finger lifts
     if (p.fast) {
       if (v > p.fast.peak) { p.fast.peak = v; p.fast.tPeak = t; }

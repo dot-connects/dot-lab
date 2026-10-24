@@ -26,7 +26,7 @@
     rimTip: "계속 휙휙! 바늘이 금색 칸에 올 때 휙 = 불맛",
     eggTip: (o) => (o === "half" ? "반숙" : "완숙") + " · 막대가 초록 칸에 오면 휙 → 다시 차서 초록이면 또 휙",
     flipCount: (n) => `뒤집기 ${n}/2`, eggSide1: "앞면", eggSide2: "뒷면", eggSide2Late: "노른자 굳는다!",
-    eggCatch: "기울여서 그림자 밑으로!", eggHop: "살짝 더 세게!",
+    eggCatch: "기울여서 그림자 밑으로!", eggCatchTouch: "손가락 떼지 말고 끌어서 그림자 밑으로!", eggHop: "살짝 더 세게!",
     intro: [[0, "기름 두르고…"], [0.6, "김치 먼저!"], [1.4, "찬밥 투하!"], [2.0, "볶아!"]], introSmall: "폰을 바닥과 평평하게",
     eggBurning: "계란 탄다!",
     eggPerfect: "완벽하게 뒤집었다", eggGood: "뒤집었다", eggWall: "벽에 걸렸다", eggFold: "반으로 접혔다", eggBurst: "노른자 터짐!", eggBurstSub: "계란 화면 강타!", eggOut: "계란이 바닥에…",

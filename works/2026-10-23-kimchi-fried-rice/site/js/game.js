@@ -171,12 +171,13 @@
     if (E.ph !== "pan" || g.t - E.t0 < 0.7) return;
     K.Audio.unlock();
     g.toss = { t0: g.t, s: clamp(f.strength || 1, 0.5, 1.2) * 0.7, du: 0, dv: 1 };
-    E.flipStart(f, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5); if (!g.auto) tip(C.eggCatch);
+    E.flipStart(f, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5); if (!g.auto) tip(K.Input.mode === "motion" ? C.eggCatch : C.eggCatchTouch);
   }
 
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
+    K.Input.steerAfterFlick = false;
     W.renderer.toneMappingExposure = W.S.exposure;
     const carry = g.hei; g = newGame(auto); g.hei = carry; // the tap's fire column carries over and hides the swap
     if (K.Egg.ph !== "off") K.Egg.hide();
@@ -216,7 +217,7 @@
   const eggWin2 = () => (g.order === "half" ? [0.2, 0.4] : [0.5, 0.8]); // 반숙: the yolk side sets fast, a short side 2
   function setBand(w, max) { bandEl.style.bottom = (w[0] / max) * 100 + "%"; bandEl.style.height = ((w[1] - w[0]) / max) * 100 + "%"; }
   function startEgg() {
-    setPh("egg"); hudEl.classList.remove("dim"); statsEl.hidden = true; beatEl.hidden = true; comboEl.textContent = ""; g.flips = 0;
+    setPh("egg"); K.Input.steerAfterFlick = true; hudEl.classList.remove("dim"); statsEl.hidden = true; beatEl.hidden = true; comboEl.textContent = ""; g.flips = 0;
     timerEl.classList.remove("warn"); timerEl.textContent = C.flipCount(0);
     gaugeEl.classList.add("egg"); gaugeEl.dataset.label = C.eggSide1; setBand(eggWin(), 1.6); g.tickSide = 0;
     K.Egg.start(g.t); K.Food.settle();
@@ -382,17 +383,19 @@
   /* ---------- scoring: rice 60 = doneness 25 + 불맛 25 + 안 흘리기 10, egg 40 = timing 12 + flip 14 + catch 10 + yolk 4 ---------- */
   function finalScore() {
     const st = K.Food.stats(), r = g.res1 || K.Egg.res, r2 = g.res1 ? K.Egg.res : null;
-    const done = Math.max(0, Math.round(25 * clamp((st.good - 0.45) / 0.5, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
+    // mashing (< 0.35 s gaps) stirs badly: it counts half for doneness and cleanliness (60 mashes scored 80 before)
+    const nT = g.counts.perfect + g.counts.good + g.counts.early + g.counts.late, mash = nT ? 1 - 0.5 * (g.counts.early / nT) : 1;
+    const done = Math.max(0, Math.round(mash * 25 * clamp((st.good - 0.45) / 0.5, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
     const fire = Math.round(g.fire);
-    const clean = Math.round(clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 0.8)));
+    const clean = Math.round(mash * clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 0.8)));
     // egg 40 = timing 7 + 5, flip 7 + 7, catch 6 + 4 (side 1 + side 2), yolk 4
     const off = (c, w) => (c < w[0] ? w[0] - c : c > w[1] ? c - w[1] : 0), ang = (x) => (x.fold ? 2 : 7 * clamp(1 - Math.max(0, x.errDeg - 8) / 50, 0, 1));
     let timing = 0, flip = 0, cat = 0, yolk = 0;
     if (r) {
       timing = 7 * clamp(1 - off(r.cookAtFlip, eggWin()) / 0.2, 0, 1) + (r2 && !g.egg2Auto ? 5 * clamp(1 - off(r2.cookAtFlip, eggWin2()) / 0.15, 0, 1) : 0);
-      flip = ang(r) + (r2 ? ang(r2) : 0);
+      flip = (g.eggAuto ? 0 : ang(r)) + (r2 && !g.egg2Auto ? ang(r2) : 0); // the flips the game made for you earn nothing
       cat = (g.eggAuto ? 0 : 6 * r.catchQ) + (r2 && !g.egg2Auto ? 4 * r2.catchQ : 0);
-      yolk = r.burst || (r2 && r2.burst) ? 0 : 4;
+      yolk = r.burst || (r2 && r2.burst) || (g.eggAuto && g.egg2Auto) ? 0 : 4;
       timing = Math.round(timing); flip = Math.round(flip); cat = Math.round(cat);
     }
     return { done, fire, clean, timing, flip, cat, yolk, total: done + fire + clean + timing + flip + cat + yolk, st, r };
@@ -403,8 +406,8 @@
     W.renderer.toneMappingExposure = 0.82; // the plate close-up blew out at 1.05
     setPh("result"); hudEl.hidden = true; tip("");
     const s = (g.res = finalScore());
-    const best = +store.get("kfr-best3d", 0), rec = s.total > best && best > 0;
-    if (s.total > best) store.set("kfr-best3d", s.total);
+    const best = +store.get("kfr-best3d", 0), rec = !g.auto && s.total > best && best > 0;
+    if (!g.auto && s.total > best) store.set("kfr-best3d", s.total);
     const tier = C.tiers.find((x) => s.total >= x[0]), next = C.tiers.slice().reverse().find((x) => x[0] > s.total);
     const line = (a, b, c) => `<li><span>${a}</span><span>${b} / ${c}</span></li>`;
     resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}</div>
@@ -422,7 +425,7 @@
     resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
     const n = $("scoreN"), t0 = performance.now() + 1200;
     (function up() { if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
-    $("again").onclick = () => { K.Audio.unlock(); start(false); }; bestLine();
+    $("again").onclick = () => { K.Audio.unlock(); const go = () => start(false); if (g.auto) K.Input.requestPermission().then(go, go); else go(); }; bestLine();
     $("share").onclick = share;
   }
   const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);

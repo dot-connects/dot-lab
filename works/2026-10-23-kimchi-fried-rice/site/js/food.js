@@ -136,7 +136,7 @@
     const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.85, 1.15) * (1 - 0.25 * tz.side) - _v.y); // a sideways throw flies flatter
     const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, _v.y + rise - 0.2)) / G);
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
-    const over = Math.max(0, tz.s - 1.25) * 1.1;
+    const over = tz.lift > 1 ? 0 : Math.max(0, tz.s - 1.25) * 1.1;
     const a0 = _v.x * tz.dx + _v.z * tz.dz, b0 = -_v.x * tz.dz + _v.z * tz.dx;
     const L = tz.lumps[i % NL]; // grains that stick together come down together
     // gaussian scatter around the lump (a uniform box landed the heap as a rectangle)

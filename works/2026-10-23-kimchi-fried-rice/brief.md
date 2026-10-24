@@ -193,3 +193,7 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   0.6x; result exposure 0.82, plate #ebe6dc, egg white #f1ebdd; orange start colour, burnt dark brown; soft wisps
   (≤ 0.5 opacity); touch strength over a 70 ms window, T_MAX 2.2; 불맛 label inside the screen.
 - Pending operator call: chef + designer say a fried egg is not flipped twice in a 중국집; proposal: 2nd action = basting.
+- fx-qa round applied: finale no longer spills (no overshoot when lift > 1); watch mode → "한 번 더" asks for motion
+  again; the bot's score is not saved as best; flips the game made earn 0; mashing counts half for doneness/clean;
+  touch can keep dragging to steer the flying egg; compact receipt under 740 px height.
+- Operator: keep two egg flips (basting is too hard).
