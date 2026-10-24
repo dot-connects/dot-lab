@@ -16,7 +16,7 @@
   const HINT = "Safari/Chrome에서 열면 폰을 흔들어서 할 수 있어요";
 
   const I = (K.Input = {
-    mode: "touch", hint: "", debug: {}, onResultFlick: null, slowHint: 0,
+    mode: "touch", hint: "", debug: {}, slowHint: 0,
     start, requestPermission, useTouch, demoTilt, armAfterRelease,
     _feed: (e) => { started = true; onMotion(e); },
   });
@@ -41,8 +41,6 @@
   function emit(f) {
     I.debug.last = f;
     try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
-    const st = K.Game && K.Game.state;
-    if (st && st.phase === "result") { I.onResultFlick && I.onResultFlick(); return; }
     onFlickCb && onFlickCb(f);
   }
 

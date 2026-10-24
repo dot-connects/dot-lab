@@ -58,16 +58,32 @@
 
   /* ---------- the pile's height field ---------- */
   const cellIx = (x, z) => { const cx = clamp(((x + 1.1) / CELL) | 0, 0, NG - 1), cz = clamp(((z + 1.1) / CELL) | 0, 0, NG - 1); return cz * NG + cx; };
+  // the grid shifts by a random sub-cell offset every step: grains feel their own deposit, and a fixed grid would
+  // pull them onto its lines (the checkerboard); a moving one averages that out
+  let GO = 0.5;
   function heights() {
+    GO = Math.random();
     const H = F.H, Hs = F.Hs; H.fill(0);
-    for (let i = 0; i < F.n; i++) if (F.st[i] === 0) { const c = cellIx(F.x[i], F.z[i]); F.cellOf[i] = c; H[c] += F.kind[i] === 1 ? 1.4 : 1; }
-    for (let cz = 0; cz < NG; cz++) for (let cx = 0; cx < NG; cx++) { // 3x3 blur
+    for (let i = 0; i < F.n; i++) if (F.st[i] === 0) {
+      F.cellOf[i] = cellIx(F.x[i], F.z[i]);
+      const m = F.kind[i] === 1 ? 1.4 : 1, fx = clamp((F.x[i] + 1.1) / CELL - GO, 0, NG - 1.001), fz = clamp((F.z[i] + 1.1) / CELL - GO, 0, NG - 1.001);
+      const cx = fx | 0, cz = fz | 0, u = fx - cx, v = fz - cz, j = cz * NG + cx;
+      H[j] += m * (1 - u) * (1 - v); H[j + 1] += m * u * (1 - v); H[j + NG] += m * (1 - u) * v; H[j + NG + 1] += m * u * v;
+    }
+    for (let cz = 0; cz < NG; cz++) for (let cx = 0; cx < NG; cx++) { // 3x3 blur, separable 1-2-1: its spectrum is never negative, a box blur's is and the grains formed clumps on a lattice
       let s = 0, w = 0;
-      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, z = cz + dz; if (x < 0 || z < 0 || x >= NG || z >= NG) continue; const k = dx || dz ? 1 : 2; s += H[z * NG + x] * k; w += k; }
+      for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) { const x = cx + dx, z = cz + dz; if (x < 0 || z < 0 || x >= NG || z >= NG) continue; const k = (2 - Math.abs(dx)) * (2 - Math.abs(dz)); s += H[z * NG + x] * k; w += k; }
       Hs[cz * NG + cx] = (s / w) * HK;
     }
   }
-  const Hat = (x, z) => F.Hs[cellIx(x, z)];
+  let _gx = 0, _gz = 0; // slope of the last Hat() sample
+  function Hat(x, z) {
+    const H = F.Hs, fx = clamp((x + 1.1) / CELL - GO, 0, NG - 1.001), fz = clamp((z + 1.1) / CELL - GO, 0, NG - 1.001);
+    const cx = fx | 0, cz = fz | 0, u = fx - cx, v = fz - cz, i = cz * NG + cx;
+    const a = H[i], b = H[i + 1], c = H[i + NG], d = H[i + NG + 1];
+    _gx = ((b - a) * (1 - v) + (d - c) * v) / CELL; _gz = ((c - a) * (1 - u) + (d - b) * u) / CELL;
+    return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
+  }
   function groundY(i) { return surf(F.x[i] ** 2 + F.z[i] ** 2) + 0.008 + Hat(F.x[i], F.z[i]) * (0.25 + 0.75 * F.depth[i]); }
   F.pileTop = (x, z) => surf(x * x + z * z) + 0.01 + Hat(x, z);
 
@@ -120,9 +136,8 @@
       const st = F.st[i];
       if (st === 0) {
         contact++;
-        const x = F.x[i], z = F.z[i], c = F.cellOf[i], cx = c % NG, cz = (c / NG) | 0;
-        const hL = H[cz * NG + Math.max(0, cx - 1)], hR = H[cz * NG + Math.min(NG - 1, cx + 1)], hU = H[Math.max(0, cz - 1) * NG + cx], hD = H[Math.min(NG - 1, cz + 1) * NG + cx];
-        const gx = 0.7 * x + (hR - hL) / (2 * CELL), gz = 0.7 * z + (hD - hU) / (2 * CELL);
+        const x = F.x[i], z = F.z[i]; Hat(x, z);
+        const gx = 0.7 * x + _gx, gz = 0.7 * z + _gz;
         let ax = _g.x + _g.y * gx, az = _g.z + _g.y * gz; // tangential gravity minus the slope (g.y < 0 pulls downhill)
         if (ctx.pour) { ax += ctx.pour * 5; }
         const am = Math.hypot(ax, az);

@@ -27,6 +27,7 @@
     wordEl.textContent = text; wordEl.className = "word " + (kind || ""); void wordEl.offsetWidth; wordEl.classList.add("pop");
     subEl.textContent = sub || ""; subEl.className = "sub"; void subEl.offsetWidth; if (sub) subEl.classList.add("pop");
   }
+  const cueEl = $("startCue");
   function tip(text) { tipEl.textContent = text || ""; tipEl.hidden = !text; }
 
   /* ---------- wok pose: phone tilt + the chef's toss ---------- */
@@ -65,9 +66,9 @@
     if (g.t - g.lastFlick < 0.3 || (g.started && g.clock <= 0)) return;
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
-    if (!g.started) { g.started = true; tip(g.auto ? C.watching : C.rimTip); }
-    else if (g.tossN >= 3 && !g.auto) tip("");
+    if (!g.started) { g.started = true; tip(g.auto ? C.watching : C.rimTip); cueEl.classList.add("out"); setTimeout(() => { cueEl.hidden = true; cueEl.classList.remove("out"); }, 160); }
     else {
+      if (g.tossN >= 3 && !g.auto) tip("");
       // readiness: how long the food has been back on the metal since the last toss came down
       const back = F.toss && F.toss.done && F.contact > 0.8 ? g.t - F.lastLand : -1; // rice still in the air = too early (mashing does not pay)
       g.maxGap = Math.max(g.maxGap, g.t - g.lastFlick);
@@ -75,17 +76,17 @@
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.jit = (Math.random() - 0.5) * 0.24;
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
-    F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
+    F.launch({ strength: s, dirU: du, dirV: dv }, g.t); W.puffClear();
     g.tossN++;
     K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
     if (s > 1.55) word(C.tooHard, "bad");
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
-  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12); return { open: 0.25 + sh, gold0: 0.45 + sh, peak: 0.62 + sh, gold1: 0.79 + sh, late: 1.3 + sh }; }
+  function readyWin() { const sh = clamp(0.12 * ((g.lastS || 1) - 1), -0.08, 0.12) + (g.jit || 0); return { open: 0.25 + sh, gold0: 0.45 + sh, peak: 0.62 + sh, gold1: 0.79 + sh, late: 1.3 + sh }; }
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
@@ -123,6 +124,12 @@
   }
   function eggFlick(f) {
     const E = K.Egg;
+    if (E.ph === "landed") { // the second flip: back to sunny side up
+      if (!g.flip2Open || g.flip2Done) return;
+      g.flip2Done = true; g.res1 = E.res; tip("");
+      E.flipStart({ strength: Math.min(f.strength || 1, 1.3), dirU: 0, second: true }, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
+      return;
+    }
     if (E.ph !== "pan" || g.t - E.t0 < 0.7) return;
     K.Audio.unlock();
     g.toss = { t0: g.t, s: clamp(f.strength || 1, 0.5, 1.2) * 0.7, du: 0, dv: 1 };
@@ -140,7 +147,12 @@
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
-    tip(auto ? C.watching : K.Input.mode === "motion" ? C.tipMotion : C.tipTouch);
+    tip(auto ? C.watching : "");
+    if (!auto) { // nothing moves until the first toss, so say so big, over the wok
+      const touch = K.Input.mode !== "motion", gg = g;
+      cueEl.className = touch ? "touch" : ""; $("scBig").textContent = touch ? C.cueTouch : C.cueMotion; $("scSmall").textContent = C.cueSmall; cueEl.hidden = false;
+      setTimeout(() => { if (g === gg && !g.started) { $("scBig").textContent = C.cueProd; cueEl.classList.add("fast"); } }, 4000);
+    }
   }
   function startPlate() {
     setPh("plate"); hudEl.classList.add("dim"); tip("");
@@ -250,13 +262,13 @@
         if (res === "stuck") word(C.eggStuck, "meh"); else if (res === "slides") word(C.eggSlides, "ok");
       }
       if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
-      if (E.ph === "pan" && E.cook > 1.58) eggFlick({ strength: 1.0, dirU: 0 }); // left too long: it gets flipped for you
+      if (E.ph === "pan" && E.cook > 1.58) { g.eggAuto = !g.auto; eggFlick({ strength: 0.65, dirU: 0 }); } // left too long: it gets flipped for you, badly
       const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
       E.cue(g.t, E.cook < win[0] - 0.08 ? 0 : E.cook <= win[1] ? clamp((E.cook - win[0] + 0.08) / 0.12, 0, 1) : clamp(1 - (E.cook - win[1]) / 0.15, 0, 1));
       const ev = E.step({ t: g.t, dt, heat: 1 });
       if (ev === "plop") K.Audio.land("egg-soft");
       else if (ev) eggLanded(ev);
-      if (E.ph === "landed" && g.t - E.landT > 1.4) { setPh("take"); g.takeT = g.t; }
+      if (E.ph === "landed" && g.t - E.landT > (g.flip2Open && !g.flip2Done ? 2.4 : 1.4)) { setPh("take"); g.takeT = g.t; }
       else if (E.ph === "counter" && g.t - g.eggLandT > 1.6) startGarnish();
     } else if (g.ph === "take") {
       const k = (g.t - g.takeT) / 1.1;
@@ -271,6 +283,12 @@
   function eggLanded(ev) {
     const E = K.Egg, r = E.res; g.eggLandT = g.t;
     if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
+    if (g.res1) { // the second landing
+      g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
+      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
+      return;
+    }
+    if (ev === "clean" && E.flipped && !g.eggAuto) { g.flip2Open = true; if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500); }
     g.hit = ev === "clean" && r.errDeg <= 12 && r.where === "centre" ? 0.09 : 0.05;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
     if (ev === "burst") word(C.eggBurst, "bad");
@@ -282,18 +300,18 @@
 
   /* ---------- scoring: rice 60 = doneness 25 + 불맛 25 + 안 흘리기 10, egg 40 = timing 12 + flip 14 + catch 10 + yolk 4 ---------- */
   function finalScore() {
-    const st = K.Food.stats(), r = K.Egg.res;
+    const st = K.Food.stats(), r = g.res1 || K.Egg.res, r2 = g.res1 ? K.Egg.res : null;
     const done = Math.max(0, Math.round(25 * clamp((st.good - 0.35) / 0.55, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
     const fire = Math.round(g.fire);
-    const clean = Math.max(0, 10 - Math.round((st.spill * 100) / 1.5));
+    const clean = Math.round(clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 1.5)));
     const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
     let timing = 0, flip = 0, cat = 0, yolk = 0;
     if (r) {
       const c = r.cookAtFlip, off = c < win[0] ? win[0] - c : c > win[1] ? c - win[1] : 0;
       timing = Math.round(12 * clamp(1 - off / 0.3, 0, 1));
-      flip = r.fold ? 3 : Math.round(14 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1));
-      cat = Math.round(10 * r.catchQ);
-      yolk = r.burst ? 0 : 4;
+      flip = (r.fold ? 3 : Math.round(10 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1))) + (g.flip2Up ? 4 : 0); // 10 for the flip, 4 for turning it back yolk-up
+      cat = g.eggAuto ? 0 : Math.round(10 * r.catchQ);
+      yolk = r.burst || (r2 && r2.burst) ? 0 : 4;
     }
     return { done, fire, clean, timing, flip, cat, yolk, total: done + fire + clean + timing + flip + cat + yolk, st, r };
   }
@@ -333,6 +351,7 @@
       if (r.cookAtFlip < win[0] - 0.05) parts.push("계란을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("계란을 너무 늦게 뒤집음");
       if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : "너무 세게 쳐서 노른자 터짐"); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
       if (r.where === "wall") parts.push("벽에서 받음"); else if (r.where === "out") parts.push("계란을 못 받음");
+      if (g.flip2Open && !g.flip2Up) parts.push(g.flip2Done ? "두 번째 뒤집기 실패" : "한 번 더 안 뒤집음");
     }
     return parts.join(" · ");
   }
@@ -372,6 +391,7 @@
       const win = g.order === "half" ? 0.62 : 0.95;
       if (E.ph === "pan" && E.cook > 0.5 && !g.autoShook) { g.autoShook = true; g.shim = g.t; E.shake(g.t, 0.3, 0); word(C.eggSlides, "ok"); }
       if (E.ph === "pan" && E.cook > win) eggFlick({ strength: 1.05, dirU: 0 });
+      if (E.ph === "landed" && g.flip2Open && !g.flip2Done && g.t - E.landT > 0.7) eggFlick({ strength: 1.05, dirU: 0 });
       if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.5, -1, 1), clamp(-tg.z / 0.35, -1, 1)); }
       else K.Input.demoTilt(0, 0);
     }

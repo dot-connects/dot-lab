@@ -5,7 +5,9 @@
   K.COPY = {
     shop: "00반점", shopSub: "영수증",
     hook: "12초 웍질, 몇 점 나올까?", how: "폰을 <b>위로 휙</b> → 밥이 뜬다<br>웍 테두리가 <b>금빛</b>일 때 휙 → 불맛", go: "불 켜!", watchBtn: "구경만 할래",
-    tipMotion: "폰을 위로 휙! 튕겨서 볶기", tipTouch: "화면을 위로 휙! 쓸어 올려서 볶기", watching: "구경 중…",
+    tipMotion: "폰을 위로 휙! 튕겨서 볶기", tipTouch: "화면을 위로 휙! 쓸어 올려서 볶기",
+    cueMotion: "폰을 위로 휙!", cueTouch: "화면을 위로 쓸어 올려!", cueSmall: "첫 휙에 12초 시작", cueProd: "불 식는다! 휙!",
+    flip2Tip: "한 번 더 휙! 노른자를 위로", eggYolkUp: "노른자 위로!", watching: "구경 중…",
     perfect: "불맛 터짐!", perfectSub: "+불맛", good: "괜찮은데?", early: "아직 아니야", earlySub: "설익음", late: "눌었다…", lateSub: "바닥이 눌어붙음", tooHard: "너무 세!", goodChip: "고슬",
     spill: "바닥에 밥!", scorch: "탄다 탄다!", comboLost: "연속 끊김",
     combo: [[2, "불맛 UP"], [3, "웍질 장인"], [5, "불의 지배자"], [7, "웍신(神)"]],

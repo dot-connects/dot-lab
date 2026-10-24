@@ -12,7 +12,7 @@
 
   const STYLES = {
     real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.038, 0.017], grainN: 2400, phys: true },
-    toy: { bg: "#bfe7dc", counter: "pastel", exposure: 1.0, grain: [0.06, 0.03], grainN: 1400, chunky: true },
+    toy: { bg: "#2f3b66", counter: "pastel", exposure: 1.0, grain: [0.06, 0.03], grainN: 1400, chunky: true },
   };
 
   /* ---------- renderer / camera ---------- */
@@ -68,7 +68,7 @@
       c.fillStyle = "#6f777e"; c.fillRect(0, 0, w, h);
       for (let i = 0; i < 2600; i++) { const y = Math.random() * h, v = 90 + Math.random() * 70; c.strokeStyle = `rgba(${v},${v + 6},${v + 10},.25)`; c.lineWidth = Math.random() * 1.4; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y + rnd(-2, 2)); c.stroke(); }
     }, 3);
-    return canvasTex(256, 256, (c, w, h) => { c.fillStyle = "#9fd6c6"; c.fillRect(0, 0, w, h); c.fillStyle = "#93cdbc"; for (let i = 0; i < 8; i++) c.fillRect(0, i * 32, w, 16); }, 3);
+    return canvasTex(256, 256, (c, w, h) => { c.fillStyle = "#46568f"; c.fillRect(0, 0, w, h); c.fillStyle = "#3f4e86"; for (let i = 0; i < 8; i++) c.fillRect(0, i * 32, w, 16); }, 3);
   }
 
   /* ---------- helpers shared by food / egg ---------- */
@@ -206,7 +206,7 @@
     for (const p of W.puffs) {
       const u = p.userData; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4); u.z = rnd(-0.3, 0.3); }
       const k = u.t / 2; p.position.set((u.x || 0) + Math.sin(t + u.t * 3) * 0.05, 0.25 + k * 1.1, u.z || 0); p.scale.setScalar(0.25 + k * 0.6);
-      p.material.opacity = (u.big && k < 0.5 ? Math.max(o.steam, 0.55 * u.big) : o.steam) * Math.sin(Math.PI * k); if (k >= 0.5) u.big = 0;
+      p.material.opacity = (u.big && k < 0.5 ? Math.max(o.steam, Math.min(0.7, 0.45 * u.big)) : o.steam) * Math.sin(Math.PI * k); if (k >= 0.5) u.big = 0;
       if (u.big) p.scale.setScalar((0.25 + k * 0.6) * (1 + 0.6 * u.big));
       p.material.color.setRGB(1 - o.smoke * 0.55, 1 - o.smoke * 0.6, 1 - o.smoke * 0.62);
     }
@@ -216,6 +216,8 @@
   W.puffBurst = function (big) {
     let c = 0; for (const p of W.puffs) { const u = p.userData; u.t = rnd(0, 0.15); u.x = rnd(-0.18, 0.18); u.z = rnd(-0.15, 0.15); u.big = big; if (++c >= 4) break; }
   };
+  // a new toss blows the ready puff away (it hung in the wok as a white smear under the flying rice)
+  W.puffClear = function () { for (const p of W.puffs) if (p.userData.big) { p.userData.big = 0; p.userData.t = 2; } };
   W.sparkBurst = function (n) {
     let c = 0; for (const sp of W.sparks) { const u = sp.userData; if (u.life > 0) continue;
       const a = rnd(-0.7, 0.7); u.p.set(Math.sin(a), K.RIM + 0.05, -Math.cos(a)).applyMatrix4(W.wok.matrixWorld);

@@ -7,7 +7,7 @@
   const YU = 0.04, YV = -0.03;   // yolk centre in egg-local x / z
   const GE = 16;                 // egg gravity: a good flip ~0.5 s in the air
   const E = (K.Egg = { ph: "off" });
-  const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#dc9a45"), C_DOME = lin("#efcf8a");
+  const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#f2e9d3"), C_DOME = lin("#efcf8a");
   const _c = new T.Color(), _v = new T.Vector3(), _q = new T.Quaternion(), _qx = new T.Quaternion(), _ax = new T.Vector3(1, 0, 0), _inv = new T.Matrix4();
   const dummy = new T.Object3D();
 
@@ -100,13 +100,14 @@
 
   /* the flip: ONE knob — the flick's strength sets height, airtime and spin; its side component drifts the egg */
   E.flipStart = function (f, t) {
-    if (E.ph !== "pan") return false;
+    if (f.second && E.ph === "landed") { E.sx = E.ox; E.sz = E.oz - 0.05; } // flips again from where it lies
+    else if (E.ph !== "pan") return false;
     const s = clamp(f.strength || 1, 0.3, 1.9);
     const rise = clamp(0.22 + 0.5 * (s - 0.35), 0.16, 1.0), vy = Math.sqrt(2 * GE * rise), dur = 2 * vy / GE;
     const spin = Math.PI * clamp(s / 1.05, 0.3, 2.1);
     const W = K.W; _v.set(E.sx, 0, 0.05 + E.sz).applyMatrix4(W.wok.matrixWorld);
-    const drift = { x: (f.dirU || 0) * 0.5 + rnd(-0.28, 0.28), z: rnd(-0.18, 0.12) };
-    E.flip = { t0: t, s, rise, vy, dur, spin, p0: _v.clone(), drift, f: 0, cook: E.cook };
+    const drift = f.second ? { x: rnd(-0.06, 0.06), z: rnd(-0.05, 0.05) } : { x: (f.dirU || 0) * 0.5 + rnd(-0.4, 0.4), z: rnd(-0.25, 0.18) };
+    E.flip = { t0: t, s, rise, vy, dur, spin, p0: _v.clone(), drift, f: 0, cook: E.cook, base: E.flipped ? Math.PI : 0 };
     E.ph = "air"; jolt(t, 0.4, 0.8);
     return true;
   };
@@ -147,10 +148,11 @@
       }
     } else if (E.ph === "air") {
       const fl = E.flip, tau = t - fl.t0 - 0.1; // the wok's lip snap comes first
+      if (tau < 0) fl.p0.set(E.sx, 0, 0.05 + E.sz).applyMatrix4(wm);
       fl.f = clamp(tau / fl.dur, 0, 1);
       const f = fl.f;
       E.g.position.set(fl.p0.x + fl.drift.x * f, fl.p0.y + Math.max(0, fl.vy * Math.max(0, tau) - 0.5 * GE * Math.max(0, tau) ** 2), fl.p0.z + fl.drift.z * f - 0.12 * Math.sin(Math.PI * f));
-      const rot = fl.spin * (0.5 - 0.5 * Math.cos(Math.PI * f)); // S-curve: edge-on near the apex
+      const rot = fl.base + fl.spin * (0.5 - 0.5 * Math.cos(Math.PI * f)); // S-curve: edge-on near the apex
       W.wok.getWorldQuaternion(E.g.quaternion); E.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, rot));
       E.bend = 0.16 * Math.sin(Math.PI * f) * (fl.s > 1.3 ? 1.5 : 1);
       if (f >= 1) event = land(t);
@@ -172,12 +174,12 @@
     const d = Math.hypot(_v.x, _v.z - 0.05), turn = fl.spin, err = Math.abs((((turn % TAU) + TAU) % TAU) - Math.PI), errDeg = (err * 180) / Math.PI;
     const raw = fl.cook < 0.42;
     let catchQ, where;
-    if (d < 0.3) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.7; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
+    if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.7; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;
     const fold = !flipped || errDeg > 40 || raw ? 1 : 0;
     const burst = fl.s > 1.45 || (where === "wall" && fl.s > 1.25) || raw;
     E.res = { d, where, catchQ, errDeg: Math.round(errDeg), angle: Math.round(180 - errDeg), flipped, fold, burst, raw, cookAtFlip: fl.cook, s: fl.s };
-    E.flipped = flipped; E.fold = fold; E.bend = 0;
+    E.flipped = fl.base ? !flipped : flipped; E.fold = fold; E.bend = 0;
     if (where === "out") { // off the wok: onto the counter
       E.onCounter = true; E.ph = "counter"; E.ox = 0; E.oz = 0;
       E.g.position.y = -0.6; E.g.quaternion.setFromAxisAngle(_ax, flipped ? Math.PI : 0); E.g.updateMatrixWorld(true);
@@ -253,8 +255,10 @@
       const dome = 0.07 * Math.exp(-((d / 0.13) ** 2)) * (e.burst ? 0.35 : 1);
       Pb[j] = P[j]; Pb[j + 2] = P[j + 2];
       Pb[j + 1] = -0.014 - drape(P[j], P[j + 2], true) - dome * (1 - 0.3 * e.sq.s) - wob * 0.8 - bend - lace * 0.5 - lift;
-      const under = clamp(e.cook * 0.9, 0.2, 1.3);
-      _c.copy(C_UNDER).lerp(C_DOME, Math.exp(-((d / 0.125) ** 2)) * 0.8).lerp(C_BROWN, clamp(t * t * 0.75 * under + (n - 0.5) * 0.35, 0, 0.9));
+      const under = clamp(e.cook * 1.25, 0.3, 1.4);
+      // the fried side: white with golden blotches and a crisp brown lace at the edge (an even tan read as a pancake)
+      _c.copy(C_UNDER).lerp(C_DOME, Math.exp(-((d / 0.125) ** 2)) * 0.7).lerp(C_GOLD, clamp((n - 0.45) * 1.6 * under, 0, 0.8))
+        .lerp(C_BROWN, clamp(smooth((t - 0.62) / 0.38) * (0.6 + 0.6 * n) * under, 0, 0.9));
       Cb[j] = _c.r; Cb[j + 1] = _c.g; Cb[j + 2] = _c.b;
     }
     for (const m of [e.top, e.bot]) { const g = m.geometry; g.attributes.position.needsUpdate = true; g.attributes.color.needsUpdate = true; }
@@ -276,6 +280,6 @@
     e.yolk.position.set(YU + Y.x, drape(YU, YV, false) + 0.03 * (1 + 0.45 * clamp(e.cook, 0, 1)), YV + Y.z);
     e.yolk.scale.set(1 + 0.25 * e.sq.s - Y.h * 2, clamp(0.5 * ys, 0.25, 0.7), 1 + 0.25 * e.sq.s - Y.h * 2);
     e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.95) * 1.2, 0, 0.55));
-    e.yolk.visible = !e.flipped && !e.fold && !(e.ph === "air" && e.flip.f > 0.5) && !e.burst;
+    e.yolk.visible = !(e.ph === "air" ? !!e.flip.base !== e.flip.f > 0.5 : e.flipped) && !e.fold && !e.burst;
   }
 })();
