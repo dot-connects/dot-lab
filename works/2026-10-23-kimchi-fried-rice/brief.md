@@ -216,3 +216,9 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   plating waits for the word; dark weight 1.25x, first dark toss gold to 1.3 s; sizzle flat in the dark (it leaked
   the band), room only -25 %.
 - Checked: in-page 0.8 s metronome → dark 5/5, slow-mo fired, plating followed; watch run ok.
+- Busy check (p7-clutter measured up to 8 HUD items at once, 9 things changing per toss; p7-casual read only the
+  wok, the big red words and the clock): perfect words only on the 1st perfect and combo titles; 익힘 % off the HUD;
+  the rice chip shows "흘린 밥 n알" only once something is lost; the tip leaves at the first perfect; one hint at a
+  time on the start; at the switch-on only "마지막 한 방!" (+ stats/gauge/combo hidden); the dark tally only on the
+  receipt as "깜깜할 때 금색 k번 (n번 중)"; tosses after the finale are ignored (they replaced its word);
+  "뒤집기 0/2" no longer wraps.

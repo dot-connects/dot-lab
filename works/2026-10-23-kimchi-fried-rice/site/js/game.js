@@ -71,12 +71,12 @@
   function onFlick(f) { if (g.auto || g.ph === "result") return; flick(f); }
   function flick(f) { if (g.ph === "rice") riceFlick(f); else if (g.ph === "egg") eggFlick(f); }
   function riceFlick(f) {
-    if (!g.started || g.t - g.lastFlick < 0.18 || g.clock <= 0) return; // the ingredients are still going in
+    if (!g.started || g.t - g.lastFlick < 0.18 || g.clock <= 0 || g.finaleDone) return; // the ingredients are still going in
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
     if (g.tossN === 0) { tip(g.auto ? C.watching : C.rimTip); hideCue(); }
     else {
-      if (g.tossN >= 3 && !g.auto) tip("");
+      if (!g.auto && (g.tossN >= 3 || g.perfects > 0)) tip("");
       // operator 10-24: toss back to back. The grade is the beat: the gap since the previous toss (shown on the beat bar)
       const back = g.t - g.lastFlick;
       g.maxGap = Math.max(g.maxGap, back);
@@ -123,7 +123,7 @@
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
       if (g.darkPh === "dark") { g.darkPerf = (g.darkPerf || 0) + 1; word(C.blackPerfect, "dark"); W.sparkBurst(8); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
-      else if (g.combo !== 5) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : pick(C.perfectSub));
+      else if (g.combo !== 5 && (g.perfects === 1 || C.combo.some((c) => c[0] === g.combo))) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : "");
       if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
@@ -183,7 +183,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
-    W.setDark(0); hudEl.classList.remove("dark", "slow"); K.Audio.darkFlag(false); K.Audio.slow(false);
+    W.setDark(0); hudEl.classList.remove("dark", "slow", "final"); K.Audio.darkFlag(false); K.Audio.slow(false);
     homeEl.hidden = false;
     K.Input.steerAfterFlick = false;
     W.renderer.toneMappingExposure = W.S.exposure;
@@ -191,11 +191,11 @@
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
-    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.textContent = "밥 100%"; cookEl.textContent = "익힘 0%";
+    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.hidden = true; cookEl.hidden = true;
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
-    tip(auto ? C.watching : K.Input.hint || ""); if (!auto && K.Input.hint) setTimeout(() => { if (g.ph === "rice" && g.tossN === 0) tip(""); }, 3000);
+    tip(auto ? C.watching : "");
     g.introOn = true; g.introI = 0; g.skipOK = played && !auto; played = true;
   }
   let played = false;
@@ -526,7 +526,7 @@
     W.setDark(0); hudEl.classList.remove("dark"); g.backT = g.t; g.darkPh = say ? "back" : "over"; if (!say) W.renderer.toneMappingExposure = W.S.exposure;
     if (!say) return;
     g.punch = 0.6; try { navigator.vibrate && navigator.vibrate([15, 30, 15]); } catch (e) {}
-    if (!g.auto) { g.finaleCue = true; cue(C.finaleBack, C.lightsBackSub(g.darkPerf || 0, g.darkN || 0), "intro"); }
+    if (!g.auto) { g.finaleCue = true; cue(C.finaleCue, "", "intro"); } hudEl.classList.add("final");
   }
   /* ---------- attract: a 4-beat loop at 0.85 s (inside the perfect band): front, left, right, 불쇼 ---------- */
   const titleEl = document.querySelector("#intro h1"), goEl = $("go");
@@ -572,8 +572,8 @@
     const F = K.Food, st = F.stats(), left = Math.round(100 * (1 - st.spill));
     let sum = 0, n = 0; for (let i = 0; i < F.n; i++) if (F.st[i] !== 4 && F.st[i] !== 7) { sum += Math.min(1, F.cook[i] / 0.9); n++; } // how far along it is, so it climbs every toss
     const ck = Math.round((100 * sum) / Math.max(1, n));
-    if (g.riceLeft != null && left < g.riceLeft) popNum(`-${g.riceLeft - left}%`, "rice");
-    g.riceLeft = left; riceEl.textContent = F.spilled ? `밥 ${left}% · -${F.spilled}알` : `밥 ${left}%`; cookEl.textContent = `익힘 ${ck}%`; cookEl.classList.toggle("burnt", st.burnt > 0.05);
+    if (g.riceLeft != null && left < g.riceLeft) popNum(`-${g.riceLeft - left}%`, "rice"); // the chip shows grains, the pop shows the share lost
+    g.riceLeft = left; riceEl.textContent = `흘린 밥 ${F.spilled}알`; riceEl.hidden = !F.spilled; cookEl.hidden = true; void ck;
   }
 
   /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */

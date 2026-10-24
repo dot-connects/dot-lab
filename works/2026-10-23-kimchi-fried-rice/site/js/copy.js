@@ -22,7 +22,7 @@
     blackWarn: "사장님: 에어컨 켠다~", blackout: "정전!", blackoutSub: "감으로 휙",
     finaleBack: "불 들어왔다 — 마지막 한 방!", blackPerfect: "감 살아있네!", lightsBack: "불 들어왔다!", lightsBackSub: (k, n) => `깜깜이 ${k}/${n} 불맛`,
     blackMemo: [[3, "눈 감고도 볶는다"], [2, "감은 있네"], [1, "전기세 내고 와"], [0, "불 켜고 다시 와"]],
-    blackLine: (k, n) => `정전 중 금색 ${k}/${n}`, blackShare: (k, n) => ` 정전 웍질 ${k}/${n}`,
+    blackLine: (k, n) => `깜깜할 때 금색 ${k}번 (${n}번 중)`, blackShare: (k, n) => ` 정전 웍질 ${k}/${n}`,
     fever: "불쇼!", feverSub: "4초간 불맛 x1.3",
     spill: "바닥에 밥!", spillSub: ["아이고 내 밥!", "그거 다 돈이야!", "바닥이 먹었다"], scorch: "불 끄라고!!", comboLost: "어허, 연속 끊김",
     combo: [[2, "불맛 UP"], [3, "웍질 좀 하네"], [5, "불판 에이스"], [7, "주방장 각"]],
