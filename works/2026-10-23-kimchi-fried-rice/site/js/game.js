@@ -185,7 +185,7 @@
     if (E.ph === "landed") { // the second flip: back to sunny side up
       if (!g.flip2Open || g.flip2Done) return;
       g.flip2Done = true; g.res1 = E.res; g.egg2Auto = !!f.auto2; tip("");
-      E.flipStart({ strength: Math.min(f.strength || 1, 1.3), dirU: 0, second: true }, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
+      E.flipStart({ strength: Math.min(f.strength || 1, 1.6), dirU: 0, second: true }, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
       return;
     }
     if (E.ph !== "pan" || g.t - E.t0 < 0.7) return;
@@ -401,20 +401,20 @@
     if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
     if (g.res1) { // the second landing
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-      if (ev === "burst" && E.res.s > 1.7) splat("egg");
+      if (ev === "burst" && E.res.s > 1.52) splat("egg");
       if (ev !== "burst") { g.flips = 2; timerEl.textContent = C.flipCount(2); }
       const w2 = eggWin2(), c2 = E.res.cookAtFlip, inBand = c2 >= w2[0] - 0.05 && c2 <= w2[1] + 0.05;
       if (g.flip2Up && inBand) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else if (g.flip2Up) word(c2 < w2[0] ? C.egg2Early : C.egg2Late, "meh"); else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
       return;
     }
     g.flips = 1; timerEl.textContent = C.flipCount(1);
-    if (ev === "burst") { if (r.s > 1.7) splat("egg"); g.shake = Math.max(g.shake || 0, 0.8); try { navigator.vibrate && navigator.vibrate([25, 30, 50]); } catch (e) {} } // the lens gag only for a really hard flip
+    if (ev === "burst") { if (r.s > 1.52) splat("egg"); g.shake = Math.max(g.shake || 0, 0.8); try { navigator.vibrate && navigator.vibrate([25, 30, 50]); } catch (e) {} } // the lens gag only for a really hard flip
     // side 2 always follows (operator: two flips): the meter empties, its band moves to side 2's window
     g.flip2Open = true; setBand(eggWin2(), 1.2); gaugeEl.dataset.label = C.eggSide2; gaugeEl.classList.remove("pulse"); void gaugeEl.offsetWidth; gaugeEl.classList.add("pulse");
     if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500);
     g.hit = ev === "burst" ? 0.11 : ev === "clean" && r.errDeg <= 12 && r.where === "centre" ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-    if (ev === "burst") word(C.eggBurst, "bad", pick(r.s > 1.7 ? C.eggLensSub : C.eggBurstSub));
+    if (ev === "burst") word(C.eggBurst, "bad", pick(r.s > 1.52 ? C.eggLensSub : C.eggBurstSub));
     else if (ev === "fold") word(C.eggFold, "meh");
     else if (r.where === "wall") word(`${r.angle}°`, "ok", C.eggWall);
     else word(`${r.angle}°!`, r.errDeg <= 12 ? "great" : "ok", r.errDeg <= 12 ? C.eggPerfect : C.eggGood);

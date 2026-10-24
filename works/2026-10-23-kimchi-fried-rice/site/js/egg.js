@@ -178,7 +178,7 @@
     if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.45; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;
     const fold = !flipped || errDeg > 40 || raw ? 1 : 0;
-    const burst = fl.s > 1.6 || (where === "wall" && fl.s > 1.4) || raw;
+    const burst = fl.s > 1.42 || (where === "wall" && fl.s > 1.25) || raw; // a real flick tops out at 1.6: the top ~12 % of the range bursts
     E.res = { d, where, catchQ, errDeg: Math.round(errDeg), angle: Math.round(180 - errDeg), flipped, fold, burst, raw, cookAtFlip: fl.second ? fl.cook2 : fl.cook, s: fl.s };
     E.nFlip++;
     E.flipped = fl.base ? !flipped : flipped; E.fold = fold; E.bend = 0;
