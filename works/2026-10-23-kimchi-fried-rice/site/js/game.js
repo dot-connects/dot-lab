@@ -114,9 +114,10 @@
   // the combo grows; it is decided at each toss and stays put while the needle runs (panel p9: physics + ux + game)
   function bandFor(s) {
     const L = (0.62 + 0.13 * clamp(s, 0.3, 1.8)) * Math.sqrt(38 / K.Food.G()), fv = g.t < (g.fever || 0);
-    const base = Math.max(0.3, 0.55 - 0.05 * Math.min(g.combo, 5));
-    let w = base + (fv ? 0.15 : 0);
-    if (g.darkPh === "dark") w = (g.winW || base) + 0.1; else if (g.darkPh === "back" || g.darkPh === "over") w = 0.55; else g.winW = base; // dark: frozen (without the 불쇼 bonus), a little wider; finale: easy
+    // width (p9-fair Monte Carlo: casual ~54 % perfect, skilled ~84 %, all-perfect ~7 %): narrows over the lit 7 s and with the combo
+    const tt = clamp((g.t - (g.goT || g.t)) / 7, 0, 1), base = (0.45 - 0.1 * tt) * (1 - 0.089 * Math.min(g.combo, 5));
+    let w = base; void fv; // 불쇼 pays in 불맛, it no longer widens the band
+    if (g.darkPh) w = g.winW || base; else g.winW = base; // dark and finale: the last lit band, frozen
     const gold0 = L - 0.08, gold1 = gold0 + w;
     return { open: L - 0.3, gold0, peak: L + 0.05, gold1, late: gold1 + 0.5 };
   }

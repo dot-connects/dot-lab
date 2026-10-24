@@ -233,3 +233,6 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   (L = (0.62 + 0.13 s)·√(38/G)), width 0.55 → 0.30 s as the combo grows (+0.15 in 불쇼); the tempo rises through
   gravity 38 → 50 over the lit 7 s (landings 0.67 → 0.59 s; never tossing into airborne rice); dark: width frozen
   (no 불쇼 bonus) + 0.1, first dark toss +0.2; finale 0.55; band turns orange at combo 3, red at 5, 0.15 s slide.
+- p9-fair Monte Carlo (6000 rounds): fixed band casual 88 % / skilled 99 % perfect; adopted widths (0.45 − 0.10·t/7) ×
+  (1 − 0.089·combo), no 불쇼 widening, dark/finale keep the last lit band → casual ~54 %, skilled ~84 %, all-perfect ~7 %.
+  Bot check: width 0.45 → 0.20 s, start 0.67 → 0.59 s.
