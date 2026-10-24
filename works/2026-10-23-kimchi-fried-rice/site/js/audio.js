@@ -106,32 +106,37 @@
     }),
     land: safe((kind) => {
       if (kind === "egg-soft") {
-        tone({ f0: 190, f1: 85, dur: 0.13, gain: 0.35 });
+        tone({ f0: 420, f1: 180, dur: 0.13, gain: 0.3, type: "triangle" }); // phone speakers drop below ~300 Hz
         burst({ type: "lowpass", f0: 1000, f1: 280, dur: 0.12, gain: 0.3 });
         burst({ buf: A.sizz, type: "highpass", f0: 3000, dur: 0.35, gain: 0.25, at: 0.03, attack: 0.03 });
       } else if (kind === "egg-splat") {
         burst({ type: "lowpass", f0: 2000, f1: 240, q: 2, dur: 0.24, gain: 0.55, attack: 0.002 });
-        tone({ f0: 120, f1: 55, dur: 0.16, gain: 0.4 });
+        tone({ f0: 280, f1: 120, dur: 0.16, gain: 0.4, type: "triangle" });
         for (let i = 0; i < 3; i++) tone({ f0: rnd(650, 950), f1: rnd(260, 340), dur: 0.05, gain: 0.1, at: 0.03 + i * rnd(0.03, 0.06) });
       } else if (kind === "spill") {
         for (let i = 0; i < 9; i++) burst({ f0: rnd(2800, 5200), q: 5, dur: 0.025, gain: rnd(0.12, 0.28), at: rnd(0, 0.45), attack: 0.001 });
+        burst({ type: "lowpass", f0: 1200, f1: 300, dur: 0.1, gain: 0.45, attack: 0.002 }); tone({ f0: 380, f1: 170, dur: 0.07, gain: 0.2, type: "triangle" }); // 투둑: it has weight
       } else { // rice: a crackling burst of contact
         burst({ buf: A.crackle, type: "highpass", f0: 2200, f1: 3800, dur: 0.4, gain: 0.9, rate: rnd(1.1, 1.4), attack: 0.003 });
         burst({ buf: A.sizz, type: "highpass", f0: 3500, dur: 0.3, gain: 0.3, attack: 0.01 });
-        tone({ f0: 150, f1: 75, dur: 0.07, gain: 0.15 });
+        tone({ f0: 320, f1: 150, dur: 0.08, gain: 0.25, type: "triangle" });
       }
     }),
     flare: safe(() => { // gas whoomph
-      burst({ type: "lowpass", f0: 160, f1: 1100, q: 1.5, dur: 0.5, gain: 0.6, attack: 0.05 });
-      tone({ f0: 75, f1: 42, dur: 0.45, gain: 0.3, attack: 0.03 });
+      burst({ type: "bandpass", f0: 300, f1: 2500, q: 0.7, dur: 0.6, gain: 0.6, attack: 0.05 });
     }),
     ding: safe(() => { // kitchen-timer bell: inharmonic partials
       [[1, 0.28], [2, 0.1], [2.76, 0.08], [5.4, 0.03]].forEach(([m, g]) => tone({ f0: 1320 * m, dur: 1.4 / Math.sqrt(m), gain: g }));
     }),
     stamp: safe(() => {
-      tone({ f0: 115, f1: 45, dur: 0.22, gain: 0.6 });
+      tone({ f0: 260, f1: 110, dur: 0.22, gain: 0.5, type: "triangle" }); burst({ f0: 2500, f1: 300, dur: 0.1, gain: 0.3, attack: 0.001 });
       burst({ type: "lowpass", f0: 1400, f1: 200, dur: 0.08, gain: 0.5, attack: 0.001 });
     }),
+    // the beat: one dry 탁 when the gold band opens; it ducks the sizzle so it cuts through (next sizzle() restores it)
+    tick: safe(() => { burst({ f0: 1100, q: 4, dur: 0.035, gain: 0.7, attack: 0.001 }); burst({ f0: 3200, q: 6, dur: 0.02, gain: 0.35, at: 0.012, attack: 0.001 }); A.siz.g.gain.setTargetAtTime(0.1, now(), 0.01); A.siz.level = -1; }),
+    perfect: safe((combo) => tone({ f0: 660 * Math.pow(2, (Math.min(combo || 1, 8) * 2) / 12), dur: 0.12, gain: 0.14, type: "triangle" })), // one step up per combo
+    comboBreak: safe(() => tone({ f0: 330, f1: 220, dur: 0.15, gain: 0.16, type: "triangle" })),
+    fever: safe(() => { burst({ type: "bandpass", f0: 250, f1: 2800, q: 0.7, dur: 0.9, gain: 0.75, attack: 0.08 }); burst({ type: "lowpass", f0: 700, dur: 3.5, gain: 0.18, attack: 0.2 }); }),
     pops: safe(() => { // dry crackle: the oil under the rice is hot again
       for (let i = 0; i < 6; i++) burst({ f0: rnd(2200, 4200), q: 5, dur: 0.03, gain: rnd(0.4, 0.6), at: i * rnd(0.05, 0.1), attack: 0.001 });
     }),

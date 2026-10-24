@@ -27,6 +27,10 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #intro{position:absolute;left:50%;bottom:max(18px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(92vw,380px);background:var(--paper);border-radius:20px;
   padding:20px 18px 12px;box-shadow:0 18px 50px rgba(0,0,0,.45);text-align:center;display:flex;flex-direction:column;gap:10px}
 #intro h1{margin:0;font:42px/1.02 "Black Han Sans",system-ui,sans-serif;color:var(--accent);text-wrap:balance}
+#intro h1.beat{animation:tBeat .18s ease-out}#intro h1.fever{animation:tFever .3s ease-out}
+@keyframes tBeat{0%{transform:scale(1.07)}100%{transform:scale(1)}}@keyframes tFever{0%{transform:scale(1.12) rotate(-3deg)}100%{transform:scale(1) rotate(0)}}
+#go{animation:goPulse .72s ease-in-out infinite;transition:box-shadow .2s}#go.glow{box-shadow:0 5px 0 #9a3412,0 0 18px 6px rgba(255,140,0,.75)}
+@keyframes goPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 #intro .hook{margin:0;font-size:16px;color:var(--ink)}
 #intro .how{margin:0;font-size:14.5px;line-height:1.55;color:var(--mute)}
 #intro .how b{color:var(--ink)}
@@ -99,7 +103,9 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 .slip .rec{position:absolute;right:14px;top:12px;font:16px "Black Han Sans",sans-serif;color:#fff;background:var(--red);border-radius:6px;padding:2px 8px;transform:rotate(8deg)}
 .row{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:8px}
 #shareOv{position:absolute;inset:0;background:rgba(15,18,21,.96);z-index:5;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;color:#fff;font-size:15px;padding:20px}
-#shareOv img{max-width:86vw;max-height:72vh;border-radius:8px}
+#shareOv img{max-width:86vw;max-height:62vh;border-radius:8px}
+#shareOv .link{display:flex;align-items:center;gap:8px;max-width:92vw}#shareOv #shareUrl{font-size:13px;word-break:break-all;-webkit-user-select:text;user-select:text;background:rgba(255,255,255,.1);padding:6px 8px;border-radius:6px}
+#shareOv #shareCopy{font-size:15px;min-height:40px;padding:6px 14px;white-space:nowrap}#shareOv .close{opacity:.6;font-size:13px}
 @media (prefers-reduced-motion:reduce){.word.pop,.word.great.pop,.sub.pop,.stamp.pop{animation-duration:.01s}}
 </style>
 </head>
@@ -125,7 +131,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
     <button id="watch" class="btn ghost" type="button"></button>
   </div>
   <div id="result" hidden></div>
-  <div id="shareOv" hidden><img alt="결과 이미지"><div>이미지를 길게 눌러 저장하세요 · 탭하면 닫혀요</div></div>
+  <div id="shareOv" hidden><img alt="결과 이미지"><div>이미지를 길게 눌러 저장하고, 링크도 같이 보내 주세요</div><div class="link"><span id="shareUrl"></span><button id="shareCopy" class="btn" type="button">링크 복사</button></div><div class="close">빈 곳을 탭하면 닫혀요</div></div>
 </div>
 <script src="js/three.min.js"></script>
 <script src="js/copy.js"></script>

@@ -152,3 +152,17 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - rv7-motion (measured): the toss flew as one slab and landed in 0.12 s; an air re-toss replaced the toss with an
   empty one. Fixed: lip peel-off delay 0.24 s, rise spread 0.55-1.45, empty launch keeps the toss, wok dip + kick on
   landing, FOV punch on every toss, plated egg 0.62x with a squash. Watch run 85.
+
+## Round 8 (2026-10-24)
+- Operator: rice doesn't fly sideways on a sideways flick; when to flip the egg each time is unclear; make it sellable;
+  the start screen wok is empty; the share must always carry the game link (all works, saved as a memory).
+- Panel rv8 (physics, egg, title, product, novel, sound). Done: sideways = x share of the 3D pulse (lift/pull = forward),
+  touch horizontal swipe, landing target moves to the thrown side (hard ones spill), flatter; egg side 1 / side 2 meters
+  (side 2 0.2/s, band 0.2-0.4 반숙 / 0.5-0.8 완숙), flip 2 required, auto at 1.18, 타닥 tick at each band, score
+  7+5 / 7+7 / 6+4 / 4; attract loop on the start screen (front-left-right-불쇼 at 0.72 s), title/button beat, the tap
+  lights a fire column that hides the swap; finale (last 1.5 s: 1.5x high, camera looks up, air shot for the share
+  image); 옆 테이블 서비스 on a big sideways spill; receipt floor 변상; tooHard word removed; sound: phone-speaker range,
+  beat tick, combo pitch steps, fever, spill thud; share: url in navigator.share, fallback overlay with link + copy, URL
+  printed on the image.
+- Checked: sideways tosses visibly go sideways; scripted egg on the meters = 40/40 and "뒤집기 2/2"; attract frames;
+  watch 82; touch 3 sizes 16.7 ms; no errors. Not heard: the audio. Share sheet untested on a real phone.

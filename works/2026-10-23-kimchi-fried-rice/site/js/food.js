@@ -111,7 +111,7 @@
   // f: { strength, dirU, dirV } — dir is the throw direction on screen (up = away from the cook)
   F.launch = function (f, t) {
     let du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV; const nn = Math.hypot(du, dv);
-    if (nn < 0.3 || dv < -0.2) { du = 0; dv = 1; } else { du /= nn; dv /= nn; }
+    if (nn < 0.3) { du = 0; dv = 1; } else { du /= nn; dv = Math.abs(dv) / nn; }
     const s = clamp(f.strength || 1, 0.3, 1.8), dx = du, dz = -dv; // wok-local throw direction (forward = -z)
     let n = 0; const keep = 1 - clamp(0.55 + 0.35 * (s - 0.6) / 0.8, 0.55, 0.9);
     for (let i = 0; i < F.n; i++) {
@@ -122,7 +122,7 @@
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
     if (!n) return 0; // all of it is still in the air: keep the toss in flight (it was replaced by an empty one)
-    F.toss = { t, s, dx, dz, n, landed: 0, done: false, peak: 0, lumps: Array.from({ length: NL }, () => [rnd(-0.24, 0.24), rnd(-0.22, 0.22)]) };
+    F.toss = { t, s, dx, dz, n, side: du * du, lift: f.lift || 1, landed: 0, done: false, peak: 0, lumps: Array.from({ length: NL }, () => [rnd(-0.24, 0.24), rnd(-0.22, 0.22)]) };
     return n;
   };
   const _v = new T.Vector3(), _m = new T.Matrix4(), _inv = new T.Matrix4(), _q = new T.Quaternion(), _g = new T.Vector3();
@@ -130,8 +130,8 @@
     const tz = F.toss, r = F.rank[i], kh = [1, 0.85, 1.15][F.kind[i]];
     _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(wm); F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z;
     // height grows with the flick (the operator: higher and flashier scores more); too hard flies over the rim
-    const hs = 0.7 + 0.9 * tz.s; // high enough to clear the rim and read from above
-    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.55, 1.45) - _v.y);
+    const hs = (0.7 + 0.9 * tz.s) * tz.lift; // high enough to clear the rim and read from above (the finale goes 1.5x)
+    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.55, 1.45) * (1 - 0.25 * tz.side) - _v.y); // a sideways throw flies flatter
     const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, _v.y + rise - 0.2)) / G);
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
     const over = Math.max(0, tz.s - 1.25) * 1.1;
@@ -139,7 +139,8 @@
     const L = tz.lumps[i % NL]; // grains that stick together come down together
     // gaussian scatter around the lump (a uniform box landed the heap as a rectangle)
     const ga = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22, gb = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22;
-    const aT = -0.1 - 0.1 * (r - 0.5) - over + L[0] + ga * (1 + over), bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
+    // forward: it rolls over and comes back near the middle; sideways: it carries to that side, a hard one over the rim
+    const aT = (-0.1 - 0.1 * (r - 0.5) - over + L[0] + ga * (1 + over)) * (1 - tz.side) + (0.25 + 0.35 * (tz.s - 0.6) + ga + 1.5 * over) * tz.side, bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
     const va = (aT - a0) / T0, vb = (bT - b0) / T0;
     F.vx[i] = tz.dx * va - tz.dz * vb; F.vz[i] = tz.dz * va + tz.dx * vb; F.vy[i] = vy;
     F.sx[i] = rnd(-12, 12); F.sy[i] = rnd(-6, 6); F.sz[i] = rnd(-12, 12);

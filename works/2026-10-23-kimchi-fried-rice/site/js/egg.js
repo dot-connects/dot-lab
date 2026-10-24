@@ -80,7 +80,7 @@
   E.start = function (t) {
     E.g.scale.setScalar(1);
     Object.assign(E, { ph: "drop", t0: t, cook: 0, waves: [], flip: null, flipped: false, burst: false, fold: 0, bend: 0, sx: 0, sz: 0, svx: 0, svz: 0, ox: 0, oz: 0.05,
-      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null, snap: null });
+      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null, snap: null, cook2: 0, nFlip: 0 });
     for (const b of E.bubbles) blister(b, t);
     E.g.visible = E.oil.visible = E.fizz.visible = E.spat.visible = true; E.pud.visible = false; for (const d of E.drips) d.visible = false;
   };
@@ -104,7 +104,7 @@
     const W = K.W; _v.set(E.sx, 0, 0.05 + E.sz).applyMatrix4(W.wok.matrixWorld);
     // where it comes down: a little random, and a harder flick carries it further (-z): sliding the wok under it is the skill
     const drift = f.second || hop ? { x: rnd(-0.06, 0.06), z: rnd(-0.05, 0.05) } : { x: (f.dirU || 0) * 0.3 + rnd(-0.22, 0.22), z: -(s - 1) * 0.15 + rnd(-0.12, 0.1) };
-    E.flip = { t0: t, s, rise, vy, dur, spin, hop, second: !!f.second, p0: _v.clone(), drift, f: 0, cook: E.cook, base: E.flipped ? Math.PI : 0 };
+    E.flip = { t0: t, s, rise, vy, dur, spin, hop, second: !!f.second, p0: _v.clone(), drift, f: 0, cook: E.cook, cook2: E.cook2, base: E.flipped ? Math.PI : 0 };
     E.ph = "air"; jolt(t, 0.4, 0.8);
     return true;
   };
@@ -158,6 +158,7 @@
       W.wok.getWorldQuaternion(E.g.quaternion); if (E.flipped) E.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, Math.PI));
       if (E.snap) { const k = (t - E.snap.t) / 0.15; if (k < 1) E.g.quaternion.multiply(_qx.setFromAxisAngle(_ax, E.snap.a * (1 - smooth(k)))); else E.snap = null; }
       E.cook = Math.min(1.6, E.cook + dt * 0.04);
+      if (E.nFlip === 1) E.cook2 = Math.min(1.2, E.cook2 + dt * 0.2); // side 2 fries: its own meter
     }
     E.g.updateMatrixWorld(true);
     if (E.burst) burstStep(t, wm);
@@ -177,7 +178,8 @@
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;
     const fold = !flipped || errDeg > 40 || raw ? 1 : 0;
     const burst = fl.s > 1.6 || (where === "wall" && fl.s > 1.4) || raw;
-    E.res = { d, where, catchQ, errDeg: Math.round(errDeg), angle: Math.round(180 - errDeg), flipped, fold, burst, raw, cookAtFlip: fl.cook, s: fl.s };
+    E.res = { d, where, catchQ, errDeg: Math.round(errDeg), angle: Math.round(180 - errDeg), flipped, fold, burst, raw, cookAtFlip: fl.second ? fl.cook2 : fl.cook, s: fl.s };
+    E.nFlip++;
     E.flipped = fl.base ? !flipped : flipped; E.fold = fold; E.bend = 0;
     const rest = E.flipped ? Math.PI : 0, res = ((((fl.base + fl.spin - rest) % TAU) + TAU + Math.PI) % TAU) - Math.PI;
     E.snap = Math.abs(res) < 1.25 ? { t, a: res } : null; // it settles flat over 0.15 s instead of jumping

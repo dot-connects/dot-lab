@@ -79,16 +79,24 @@
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.landSnd = false; g.landShk = false;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
     g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
     if (s >= 1.15 && (f.snap == null || f.snap > 0.4)) { g.hei = Math.max(g.hei, 0.9); W.sparkBurst(8); }
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
-    g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
-    F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
+    const du2 = clamp(du, -0.85, 0.85); g.lastDu = du2; g.tossSpill = 0;
+    g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: du2, dv: Math.sqrt(1 - du2 * du2) };
+    // the finale: the first toss in the last 1.5 s goes 1.5x high, the camera looks up after it
+    const fin = !g.auto && !g.finaleDone && g.clock <= 1.5; if (fin) finale(s);
+    F.launch({ strength: s, dirU: du, dirV: dv, lift: fin ? 1.5 : 1 }, g.t);
     g.tossN++;
     K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
-    if (s > 1.55) word(C.tooHard, "bad");
+  }
+  function finale(s) {
+    g.finaleDone = true; g.finaleT = g.t; g.wantShot = g.t + 0.42; hideCue();
+    g.hei = 1.6; W.sparkBurst(40); g.punch = 1; g.shake = 1.6; K.Audio.fever();
+    const bonus = 3 * clamp((s - 0.8) / 0.8, 0, 1); g.fire = Math.min(FIRE_MAX, g.fire + bonus); fireNum();
+    setTimeout(() => word(bonus > 1 ? C.finale : C.finaleWeak, bonus > 1 ? "great" : "meh", bonus > 1 ? C.finaleSub : ""), 350);
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
@@ -101,7 +109,7 @@
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
       const add = 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
       g.fire = Math.min(FIRE_MAX, g.fire + add); popNum("+" + add.toFixed(1), "fire");
-      if (g.combo === 5) { g.fever = g.t + 4; word(C.fever, "great", C.feverSub); K.Audio.ding(); }
+      if (g.combo === 5) { g.fever = g.t + 4; word(C.fever, "great", C.feverSub); K.Audio.fever(); } else K.Audio.perfect(g.combo);
       g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
@@ -116,6 +124,7 @@
       }
       else if (grade === "early") { g.fire = Math.min(FIRE_MAX, g.fire + 0.1); fireNum(); return; } // mashing: allowed, just no 불맛
       else word(C.late, "bad", pick(C.lateSub));
+      if (g.combo >= 2) K.Audio.comboBreak();
       if (g.combo >= 3) { subEl.textContent = C.comboLost; subEl.className = "sub"; void subEl.offsetWidth; subEl.classList.add("pop"); }
       g.combo = 0; comboEl.textContent = ""; comboEl.className = "combo";
     }
@@ -151,7 +160,7 @@
     const E = K.Egg;
     if (E.ph === "landed") { // the second flip: back to sunny side up
       if (!g.flip2Open || g.flip2Done) return;
-      g.flip2Done = true; g.res1 = E.res; tip("");
+      g.flip2Done = true; g.res1 = E.res; g.egg2Auto = !!f.auto2; tip("");
       E.flipStart({ strength: Math.min(f.strength || 1, 1.3), dirU: 0, second: true }, g.t); K.Audio.toss(f.strength || 1, f.snap || 0.5);
       return;
     }
@@ -164,7 +173,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
-    g = newGame(auto);
+    const carry = g.hei; g = newGame(auto); g.hei = carry; // the tap's fire column carries over and hides the swap
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
@@ -198,11 +207,13 @@
     setPh("plate"); hudEl.classList.add("dim"); tip(""); K.Food.scorchVis = 0;
     W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
   }
+  const eggWin = () => (g.order === "half" ? [0.5, 0.82] : [0.82, 1.15]);
+  const eggWin2 = () => (g.order === "half" ? [0.2, 0.4] : [0.5, 0.8]); // 반숙: the yolk side sets fast, a short side 2
+  function setBand(w, max) { bandEl.style.bottom = (w[0] / max) * 100 + "%"; bandEl.style.height = ((w[1] - w[0]) / max) * 100 + "%"; }
   function startEgg() {
     setPh("egg"); hudEl.classList.remove("dim"); statsEl.hidden = true; beatEl.hidden = true; comboEl.textContent = ""; g.flips = 0;
     timerEl.classList.remove("warn"); timerEl.textContent = C.flipCount(0);
-    const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15]; gaugeEl.classList.add("egg"); gaugeEl.dataset.label = C.eggGauge;
-    bandEl.style.bottom = (win[0] / 1.6) * 100 + "%"; bandEl.style.height = ((win[1] - win[0]) / 1.6) * 100 + "%";
+    gaugeEl.classList.add("egg"); gaugeEl.dataset.label = C.eggSide1; setBand(eggWin(), 1.6); g.tickSide = 0;
     K.Egg.start(g.t); K.Food.settle();
     tip(g.auto ? C.watching : C.eggTip(g.order, K.Input.mode !== "motion"));
   }
@@ -230,7 +241,7 @@
         const tap = q < 0.25 ? 0 : q < 0.37 ? Math.sin(((q - 0.25) / 0.12) * Math.PI) : q < 0.49 ? Math.sin(((q - 0.37) / 0.12) * Math.PI) : 0;
         W.ladle.visible = q > 0.2 && q < 0.6; W.ladle.position.set(px - 0.02 * SIDE, top + 0.2 - 0.17 * tap, pc.z); W.ladle.rotation.set(0, 0, -0.15 * SIDE);
         if ((q > 0.31 && g.pats === 0) || (q > 0.43 && g.pats === 1)) { g.pats++; g.plateSq = 1; K.Audio.land("egg-soft"); }
-        if (q > 0.6 && !g.doneT) { g.doneT = g.t; K.Audio.ding(); word(C.plated, "ok"); }
+        if (q > 0.6 && !g.doneT) { g.doneT = g.t; K.Audio.stamp(); word(C.plated, "ok"); }
         if (g.doneT && g.t - g.doneT > 1.3) startEgg();
       }
     }
@@ -268,10 +279,13 @@
   function step(dt) {
     g.t += dt; g.phT += dt;
     if (g.auto) autoPlay();
+    if (g.ph === "intro") attract();
     updatePose(dt);
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice" && g.introOn) introStep();
     if (g.ph === "rice" && g.started && !g.auto && g.tossN === 0) nudge();
+    if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.5) { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
+    if (g.finaleCue && !g.finaleDone && g.clock <= 0) { g.finaleDone = true; hideCue(); }
     if (g.ph === "rice" && g.started && g.t >= g.clockAt) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
     const plateOn = ["plate", "egg", "take", "garnish", "result"].includes(g.ph);
     W.plate.visible = plateOn;
@@ -279,6 +293,7 @@
       plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
     const r = F.step(ctx);
     if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
+    if (g.ph === "rice" && r.spilledNow) { g.tossSpill = (g.tossSpill || 0) + r.spilledNow; if (g.tossSpill > 120 && Math.abs(g.lastDu || 0) > 0.5 && !g.sideSaid) { g.sideSaid = g.t; g.spillSaid = g.t; word(C.sideTable, "bad", C.sideTableSub); } }
     if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); g.shake = Math.max(g.shake || 0, 1.4); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad", pick(C.spillSub)); splat("rice"); try { navigator.vibrate && navigator.vibrate(60); } catch (e) {} } }
     if (r.landed > 30 && g.ph === "rice" && !g.landShk) { g.landShk = true; g.shake = Math.max(g.shake || 0, 0.6); g.eggDip = g.t; } // the wok gives under the weight
     if (g.ph === "rice" && g.started && (g.statT = (g.statT || 0) + dt) > 0.2) { g.statT = 0; liveStats(); }
@@ -292,14 +307,15 @@
       wispCol.copy(WC.white);
       if (back < w.open) { wisp = 0; siz = 0.4; }
       else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.3 * k; siz = 0.4 + 0.3 * k; }
-      else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); K.Audio.pops(); } }
+      else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); } }
+      if (!g.ticked && back >= w.gold0 - 0.04) { g.ticked = true; K.Audio.tick(); } // the beat is heard: 탁 at the band (output latency allowed for)
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
       const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - 1.6) / 1.4, 0, 1)); F.scorchVis = smoke; // left alone: smoke from 1.6 s, thick by 3 s
       steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
-    if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); gaugeFill.style.transform = `scaleY(${clamp(E.cook / 1.6, 0, 1).toFixed(3)})`; } // a forgotten egg smokes
+    if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); } // a forgotten egg smokes
     if (g.flareAt && g.t >= g.flareAt) { g.flareAt = 0; g.hei = 1 + Math.min(0.6, 0.15 * (g.flareN - 1)); W.sparkBurst(10 + Math.min(20, g.flareN * 3)); K.Audio.flare(); g.punch = 1; }
     g.hei = Math.max(0, g.hei - dt * 1.2);
     W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: (g.toss ? 1 : 0) + (g.t < (g.fever || 0) ? 0.8 : 0), steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
@@ -308,12 +324,17 @@
     if (g.ph === "egg") {
       if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
       if (E.ph === "pan" && E.cook > 1.58) { g.eggAuto = !g.auto; eggFlick({ strength: 0.65, dirU: 0 }); } // left too long: it gets flipped for you, badly
-      const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
-      E.cue(g.t, E.cook < win[0] - 0.08 ? 0 : E.cook <= win[1] ? clamp((E.cook - win[0] + 0.08) / 0.12, 0, 1) : clamp(1 - (E.cook - win[1]) / 0.15, 0, 1));
+      if (E.ph === "landed" && g.flip2Open && !g.flip2Done && E.cook2 > 1.18) eggFlick({ strength: 0.65, dirU: 0, auto2: !g.auto });
+      if (E.ph === "landed" && g.flip2Open && !g.flip2Done && E.cook2 > 1.0 && !g.yolkSaid) { g.yolkSaid = true; word(C.eggSide2Late, "bad"); }
+      // one meter per side: side 1 = E.cook (0..1.6), side 2 = E.cook2 (0..1.2); its band is when to flip
+      const side2 = g.flip2Open && !g.flip2Done, win = side2 ? eggWin2() : eggWin(), c = side2 ? E.cook2 : E.cook, cmax = side2 ? 1.2 : 1.6;
+      if (!g.flip2Done) gaugeFill.style.transform = `scaleY(${clamp(c / cmax, 0, 1).toFixed(3)})`;
+      if (c >= win[0] && g.tickSide !== (side2 ? 2 : 1) && (side2 || E.ph === "pan")) { g.tickSide = side2 ? 2 : 1; K.Audio.tick(); setTimeout(() => K.Audio.tick(), 120); } // 타닥: flip now
+      E.cue(g.t, (side2 || E.ph === "pan") ? (c < win[0] - 0.08 ? 0 : c <= win[1] ? clamp((c - win[0] + 0.08) / 0.12, 0, 1) : clamp(1 - (c - win[1]) / 0.15, 0, 1)) : 0);
       const ev = E.step({ t: g.t, dt, heat: 1 });
       if (ev === "plop") K.Audio.land("egg-soft");
       else if (ev) eggLanded(ev);
-      if (E.ph === "landed" && g.t - E.landT > (g.flip2Open && !g.flip2Done ? 2.4 : 1.4)) { setPh("take"); g.takeT = g.t; }
+      if (E.ph === "landed" && (g.flip2Done || !g.flip2Open) && g.t - E.landT > 1.4) { setPh("take"); g.takeT = g.t; }
       else if (E.ph === "counter" && g.t - g.eggLandT > 1.6) startGarnish();
     } else if (g.ph === "take") {
       const k = (g.t - g.takeT) / 1.1;
@@ -332,19 +353,22 @@
     if (g.res1) { // the second landing
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
       if (ev === "burst") splat("egg");
-      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); g.flips = 2; timerEl.textContent = C.flipCount(2); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
+      if (ev !== "burst") { g.flips = 2; timerEl.textContent = C.flipCount(2); }
+      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
       return;
     }
-    if (ev === "clean" && !g.eggAuto) { g.flips = 1; timerEl.textContent = C.flipCount(1); }
+    g.flips = 1; timerEl.textContent = C.flipCount(1);
     if (ev === "burst") { splat("egg"); K.Audio.land("egg-splat"); }
-    if (ev === "clean" && E.flipped && !g.eggAuto) { g.flip2Open = true; if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500); }
+    // side 2 always follows (operator: two flips): the meter empties, its band moves to side 2's window
+    g.flip2Open = true; setBand(eggWin2(), 1.2); gaugeEl.dataset.label = C.eggSide2; gaugeEl.classList.remove("pulse"); void gaugeEl.offsetWidth; gaugeEl.classList.add("pulse");
+    if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500);
     g.hit = ev === "burst" || (ev === "clean" && r.errDeg <= 12 && r.where === "centre") ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
     if (ev === "burst") word(C.eggBurst, "bad", C.eggBurstSub);
     else if (ev === "fold") word(C.eggFold, "meh");
     else if (r.where === "wall") word(`${r.angle}°`, "ok", C.eggWall);
     else word(`${r.angle}°!`, r.errDeg <= 12 ? "great" : "ok", r.errDeg <= 12 ? C.eggPerfect : C.eggGood);
-    if (ev === "clean" && r.errDeg <= 12) K.Audio.ding();
+    if (ev === "clean" && r.errDeg <= 12) K.Audio.perfect(4);
   }
 
   /* ---------- scoring: rice 60 = doneness 25 + 불맛 25 + 안 흘리기 10, egg 40 = timing 12 + flip 14 + catch 10 + yolk 4 ---------- */
@@ -353,14 +377,15 @@
     const done = Math.max(0, Math.round(25 * clamp((st.good - 0.45) / 0.5, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
     const fire = Math.round(g.fire);
     const clean = Math.round(clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 0.8)));
-    const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
+    // egg 40 = timing 7 + 5, flip 7 + 7, catch 6 + 4 (side 1 + side 2), yolk 4
+    const off = (c, w) => (c < w[0] ? w[0] - c : c > w[1] ? c - w[1] : 0), ang = (x) => (x.fold ? 2 : 7 * clamp(1 - Math.max(0, x.errDeg - 8) / 50, 0, 1));
     let timing = 0, flip = 0, cat = 0, yolk = 0;
     if (r) {
-      const c = r.cookAtFlip, off = c < win[0] ? win[0] - c : c > win[1] ? c - win[1] : 0;
-      timing = Math.round(12 * clamp(1 - off / 0.2, 0, 1));
-      flip = (r.fold ? 2 : Math.round(6 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1))) + (g.flip2Up ? 8 : 0); // 6 for the first flip, 8 for turning it back yolk-up
-      cat = g.eggAuto ? 0 : Math.round(10 * r.catchQ);
+      timing = 7 * clamp(1 - off(r.cookAtFlip, eggWin()) / 0.2, 0, 1) + (r2 && !g.egg2Auto ? 5 * clamp(1 - off(r2.cookAtFlip, eggWin2()) / 0.15, 0, 1) : 0);
+      flip = ang(r) + (r2 ? ang(r2) : 0);
+      cat = (g.eggAuto ? 0 : 6 * r.catchQ) + (r2 && !g.egg2Auto ? 4 * r2.catchQ : 0);
       yolk = r.burst || (r2 && r2.burst) ? 0 : 4;
+      timing = Math.round(timing); flip = Math.round(flip); cat = Math.round(cat);
     }
     return { done, fire, clean, timing, flip, cat, yolk, total: done + fire + clean + timing + flip + cat + yolk, st, r };
   }
@@ -376,10 +401,10 @@
     resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}</div>
       ${rec ? `<div class="rec">신기록</div>` : ""}
       <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
-      <div class="floor">바닥에 버린 밥 <b>${K.Food.spilled}</b>알</div>
+      <div class="floor">바닥 밥 변상 <b>${K.Food.spilled}</b>알 × 10원 = <b>${(K.Food.spilled * 10).toLocaleString()}</b>원</div>
       <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
       <div class="why">${whyLine(s)}</div>
-      <div class="memo">사장님: ${tier[2]}</div>
+      <div class="memo">사장님: ${memo(tier)}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div></div>`;
     resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
@@ -388,6 +413,7 @@
     $("again").onclick = () => { K.Audio.unlock(); start(false); };
     $("share").onclick = share;
   }
+  const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);
   function whyLine(s) {
     const st = s.st, parts = [];
     if (st.burnt > 0.08) parts.push(`탄 밥 ${Math.round(st.burnt * 100)}%`);
@@ -397,15 +423,25 @@
     parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
     const c = g.counts, n = c.perfect + c.good + c.early + c.late;
     if (n) parts.push(`금색 칸에 휙 ${c.perfect}/${n}번` + (c.late > 1 ? " (쉬다가 눌린 게 많음)" : ""));
-    const r = s.r, win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
+    const r = s.r, win = eggWin(), r2 = g.res1 ? K.Egg.res : null;
     if (r) {
-      if (r.cookAtFlip < win[0] - 0.05) parts.push("계란을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("계란을 너무 늦게 뒤집음");
+      if (r.cookAtFlip < win[0] - 0.05) parts.push("앞면을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("앞면을 너무 늦게 뒤집음");
+      if (r2) { const w2 = eggWin2(); if (r2.cookAtFlip < w2[0] - 0.05) parts.push("뒷면을 너무 일찍 뒤집음"); else if (r2.cookAtFlip > w2[1] + 0.05) parts.push("뒷면을 너무 늦게 뒤집음"); }
       if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : "너무 세게 쳐서 노른자 터짐"); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
       if (r.where === "wall") parts.push("벽에서 받음"); else if (r.where === "out") parts.push("계란을 못 받음");
-      if (g.flip2Open && !g.flip2Up) parts.push(g.flip2Done ? "두 번째 뒤집기 실패" : "한 번 더 안 뒤집음");
+      if (g.flip2Open && !g.flip2Up) parts.push(g.egg2Auto ? "뒷면 방치" : "두 번째 뒤집기 실패");
     }
     return parts.join(" · ");
   }
+  // the link always goes with the brag, so whoever sees it can tap straight in (operator 10-24, every work)
+  const gameUrl = () => (/^https?:/.test(location.protocol) ? location.origin + location.pathname : C.url);
+  function showShare(cv, url) {
+    const ov = $("shareOv"); ov.querySelector("img").src = cv.toDataURL("image/png"); $("shareUrl").textContent = url; ov.hidden = false;
+  }
+  $("shareCopy").onclick = (e) => { e.stopPropagation(); const u = $("shareUrl").textContent, b = $("shareCopy");
+    const done = () => { b.textContent = C.copied; }; try { navigator.clipboard.writeText(u).then(done, () => selectUrl()); } catch (er) { selectUrl(); } };
+  function selectUrl() { const r = document.createRange(); r.selectNodeContents($("shareUrl")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+  $("shareUrl").onclick = (e) => { e.stopPropagation(); selectUrl(); };
   function share() {
     try {
       W.renderer.render(W.scene, W.camera);
@@ -414,17 +450,23 @@
       c.fillStyle = "#fbf6ea"; c.fillRect(0, 0, 1080, 1350);
       // the dish fills the top (the result camera centres the plate in the upper half), the score and the stamp below
       const sw = src.width, sh = src.height, cw = Math.min(sw, sh * 0.5);
-      c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 90, 50, 900, 900);
+      const air = g.airShot && g.airShot.complete && g.airShot.naturalWidth ? g.airShot : null;
+      if (air) { const aw = air.naturalWidth, ah = air.naturalHeight, acw = Math.min(aw, ah * 0.62); c.drawImage(air, (aw - acw) / 2, ah * 0.02, acw, acw, 90, 50, 900, 900);
+        c.save(); c.translate(610, 560); c.rotate(0.06); c.fillStyle = "#fff"; c.fillRect(-10, -10, 400, 400); c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 0, 0, 380, 380); c.restore(); }
+      else c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 90, 50, 900, 900);
       c.textAlign = "center";
       c.fillStyle = "#1f2a33"; c.font = "60px 'Black Han Sans', sans-serif"; c.fillText(`${C.shop} · 김치볶음밥 한 그릇`, 540, 1040);
       c.fillStyle = "#E8481C"; c.font = "170px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 430, 1230);
       c.save(); c.translate(820, 1180); c.rotate(-0.14); c.strokeStyle = c.fillStyle = "#c81e1e"; c.lineWidth = 8; c.font = "54px 'Black Han Sans', sans-serif";
       const tw = c.measureText(tier[1]).width + 40; c.strokeRect(-tw / 2, -46, tw, 84); c.fillText(tier[1], 0, 14); c.restore();
-      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText(`${C.shop} 사장님 평: ${tier[2]} · 흘린 밥 ${K.Food.spilled}알`, 540, 1310);
+      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText(`${C.shop} 사장님 평: ${memo(tier)} · 흘린 밥 ${K.Food.spilled}알`, 540, 1290);
+      c.fillStyle = "#1f2a33"; c.font = "28px 'Gowun Dodum', sans-serif"; c.fillText(C.urlShort, 540, 1334);
       cv.toBlob((blob) => {
         const file = blob && new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
-        if (file && navigator.canShare && navigator.canShare({ files: [file] })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text: `${s.total}점 · ${tier[1]}` }).catch(() => {});
-        else { const ov = $("shareOv"); ov.querySelector("img").src = cv.toDataURL("image/png"); ov.hidden = false; }
+        const url = gameUrl(), text = `${C.shop} 김치볶음밥 ${s.total}점 · ${tier[1]} — 너도 볶아 봐`;
+        if (file && navigator.canShare && navigator.canShare({ files: [file], url })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text, url }).catch(() => {});
+        else if (navigator.share) navigator.share({ title: "김치볶음밥 한 그릇", text, url }).catch(() => showShare(cv, url));
+        else showShare(cv, url);
       });
     } catch (e) {}
   }
@@ -436,17 +478,31 @@
       if (g.started && g.tossN === 0 && g.t - g.goT > 0.6) flick({ strength: 1.1, dirU: 0, dirV: 1 });
       else if (g.started && g.clock > 0 && g.tossN > 0) { // a decent cook: mostly on the beat, sometimes off
         if (!g.autoWait) g.autoWait = rnd(0.4, 1.05);
-        if (g.t - g.lastFlick > g.autoWait) { g.autoWait = 0; flick({ strength: rnd(0.95, 1.35), dirU: 0, dirV: 1 }); }
+        if (g.t - g.lastFlick > g.autoWait) { g.autoWait = 0; const sd = g.tossN % 4 === 3 ? (Math.random() < 0.5 ? -0.6 : 0.6) : 0; flick({ strength: rnd(0.95, 1.35), dirU: sd, dirV: Math.sqrt(1 - sd * sd) }); }
       }
     } else if (g.ph === "egg") {
       const win = g.order === "half" ? 0.62 : 0.95;
       if (E.ph === "pan" && E.cook > win) eggFlick({ strength: 1.05, dirU: 0 });
-      if (E.ph === "landed" && g.flip2Open && !g.flip2Done && g.t - E.landT > 0.7) eggFlick({ strength: 1.05, dirU: 0 });
+      const w2 = eggWin2(); if (E.ph === "landed" && g.flip2Open && !g.flip2Done && E.cook2 > (w2[0] + w2[1]) / 2) eggFlick({ strength: 1.05, dirU: 0 });
       if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.9, -1, 1), clamp(-tg.z / 0.65, -1, 1)); }
       else K.Input.demoTilt(0, 0);
     }
   }
 
+  /* ---------- attract: a 4-beat loop at 0.72 s (inside the perfect band): front, left, right, 불쇼 ---------- */
+  const titleEl = document.querySelector("#intro h1"), goEl = $("go");
+  function attract() {
+    const k = g.phT - 0.4, beat = Math.floor(k / 0.72), F = K.Food;
+    if (k < 0 || beat === g.aBeat) return;
+    g.aBeat = beat; const b = beat % 4, du = [0, -0.6, 0.6, 0][b];
+    if (b === 3 && F.spilled > 120) F.reset(); // keep the wok full (behind the fire)
+    g.toss = { t0: g.t, s: b === 3 ? 1 : 0.75, du, dv: Math.sqrt(1 - du * du) };
+    F.launch({ strength: b === 3 ? 1.45 : 1.05, dirU: du, dirV: Math.sqrt(1 - du * du) }, g.t);
+    g.shake = Math.max(g.shake || 0, 0.6); g.hei = Math.max(g.hei, 0.45);
+    if (b === 3) { g.flareAt = g.t + 0.12; g.flareN = 5; g.fever = g.t + 0.6; }
+    titleEl.classList.remove("beat", "fever"); void titleEl.offsetWidth; titleEl.classList.add(b === 3 ? "fever" : "beat");
+    goEl.classList.toggle("glow", b === 3);
+  }
   /* ---------- camera ---------- */
   const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3(), _ax = new T.Vector3(1, 0, 0);
   function camera(dt) {
@@ -454,11 +510,12 @@
     g.cam += ((["garnish", "result"].includes(g.ph) ? 1 : 0) - g.cam) * DAMP(0.35, dt);
     g.pan += (pan - g.pan) * DAMP(0.25, dt);
     const close = smooth(g.cam);
-    g.camLow = (g.camLow || 0) + (((g.ph === "rice" && g.started) || g.ph === "egg" ? 1 : 0) - (g.camLow || 0)) * DAMP(0.6, dt);
+    g.camLow = (g.camLow || 0) + (((g.ph === "rice" && g.started) || g.ph === "egg" || g.ph === "intro" ? 1 : 0) - (g.camLow || 0)) * DAMP(0.6, dt);
     _tg.set(W.plate.position.x, W.plateC.y + 0.15, W.plateC.z);
     _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
     _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
     if (g.camLow > 0.001) _cp.sub(_cl).applyAxisAngle(_ax, 10 * DEG * g.camLow * (1 - close)).add(_cl);
+    if (g.finaleT) { const k = (g.t - g.finaleT) / 1.1; if (k < 1) _cl.y += 0.55 * Math.sin(Math.PI * k); }
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
     g.shake = Math.max(0, (g.shake || 0) - dt * 4); const sk = 0.022 * Math.min(1.6, g.shake) * g.shake; // ≤ ~4 px
     if (sk > 0.0005) W.camera.position.add(_a.set(rnd(-1, 1) * sk, rnd(-1, 1) * sk, 0));
@@ -486,18 +543,18 @@
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
     acc += dt; let n = 0;
-    if (g.ph === "intro") { updatePose(dt); W.fx(now / 1000, dt, { hei: 0, heat: 1, lick: 0, steam: 0.12, smoke: 0, rim: 0 }); acc = 0; }
     while (acc >= 1 / 60 && n++ < 6) { step(1 / 60); acc -= 1 / 60; }
     if (n >= 6) acc = 0;
     K.Food.draw(); camera(dt); hud();
     W.renderer.render(W.scene, W.camera);
+    if (g.wantShot && g.t >= g.wantShot) { g.wantShot = 0; try { const im = new Image(); im.src = W.renderer.domElement.toDataURL("image/jpeg", 0.85); g.airShot = im; } catch (e) {} }
     requestAnimationFrame(frame);
   }
 
   /* ---------- start screen ---------- */
-  W.build("real"); K.Food.hold(); // the wok waits empty on the start screen
+  W.build("real"); for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75; // the start screen cooks by itself (attract): show it golden
   $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.go; $("watch").textContent = C.watchBtn;
-  $("go").onclick = () => { K.Audio.unlock(); const go = () => start(false); K.Input.requestPermission().then(go, go); };
+  $("go").onclick = () => { K.Audio.unlock(); g.hei = 1.6; W.sparkBurst(24); g.punch = 1; K.Audio.flare(); const go = () => start(false); /* 불 켜: the fire answers the tap at once */ K.Input.requestPermission().then(go, go); };
   $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
   $("shareOv").onclick = () => { $("shareOv").hidden = true; };
   K.Input.start(onFlick, app);

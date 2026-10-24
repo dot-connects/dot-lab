@@ -102,22 +102,23 @@
     const gate = m > aOn || Math.abs(pitch) > W_ON;
     if (gate && t < quietUntil) quietUntil = t + 400; // armAfterRelease: wait for 400 ms of calm
     if (!pulse && gate && t - lastFlick > REFRACT) {
-      pulse = { t0: t, tq: quietT, peak: m, tPeak: t, ix: 0, iy: 0, rx: 0, ry: 0 };
+      pulse = { t0: t, tq: quietT, peak: m, tPeak: t, ix: 0, iy: 0, iz: 0, rx: 0, ry: 0 };
       frozenUntil = t + FREEZE;
     }
     if (pulse) {
       const p = pulse;
       if (m > p.peak) { p.peak = m; p.tPeak = t; }
-      p.ix += lx * dt; p.iy += ly * dt; p.rx += pitch * dt; p.ry += roll * dt;
+      p.ix += lx * dt; p.iy += ly * dt; p.iz += lz * dt; p.rx += pitch * dt; p.ry += roll * dt;
       const fell = m < A_OFF || (p.peak > aOn && m < 0.5 * p.peak);
       if ((t > p.t0 && fell && Math.abs(pitch) < W_ON) || t - p.t0 > PULSE_MAX) {
         pulse = null; lastFlick = t;
         const s01 = clamp01((p.peak - aOn) / (A_MAX - aOn));
         const rise = p.tPeak - p.tq; // from leaving the noise floor, not from the gate: a slow push crosses A_ON late
         const snap = clamp01(1 - (rise - RISE_FAST) / (RISE_SLOW - RISE_FAST));
-        let dx = p.ix + K_ROT * p.ry, dy = p.iy + K_ROT * p.rx;
-        const n = Math.hypot(dx, dy);
-        if (n < 0.25) { dx = 0; dy = 1; } else { dx /= n; dy /= n; } // mostly vertical pop: forward
+        // a flat phone flicked up moves along z (screen normal): lifts and pulls count as forward, only x is sideways
+        const sx = p.ix + K_ROT * p.ry, N = Math.hypot(sx, p.iy + K_ROT * p.rx, p.iz);
+        let side = N > 0.15 ? sx / N : 0; if (Math.abs(side) < 0.3) side = 0;
+        const dx = side, dy = Math.sqrt(1 - side * side);
         I.debug.peak = +p.peak.toFixed(2); I.debug.rise = Math.round(rise); I.debug.dir = [+dx.toFixed(2), +dy.toFixed(2)];
         I.debug.rejected = s01 < 0.2 && snap < 0.1;
         if (!I.debug.rejected && started && t >= quietUntil)
@@ -147,7 +148,8 @@
     p.fired = true;
     const s01 = clamp01((f.peak - T_ON) / (T_MAX - T_ON));
     const snap = clamp01(1 - (f.tPeak - f.t0 - T_RISE_FAST) / (T_RISE_SLOW - T_RISE_FAST));
-    const dirU = dx / n, dirV = dy / n;
+    let su = dx / n; if (Math.abs(su) < 0.3) su = 0; // a sideways swipe throws sideways, up/down swipes forward
+    const dirU = su, dirV = Math.sqrt(1 - su * su);
     I.debug.peak = +f.peak.toFixed(2); I.debug.rise = Math.round(f.tPeak - f.t0); I.debug.dir = [+dirU.toFixed(2), +dirV.toFixed(2)];
     if (started) emit({ strength: 0.3 + 1.3 * s01, snap, dirU, dirV });
   }
