@@ -161,7 +161,7 @@
     // plate (left of the wok) + ladle
     const pg = (W.plate = new T.Group()); scene.add(pg);
     const pprof = [[0, 0], [0.42, 0], [0.47, 0.012], [0.58, 0.05], [0.68, 0.085], [0.7, 0.09], [0.69, 0.075], [0.56, 0.04], [0.42, 0.008], [0, 0.008]].map(([x, y]) => new T.Vector2(Math.max(0.001, x), y));
-    const cer = mat(S, "#f7f5f0", { std: { roughness: 0.25 }, phys: { roughness: 0.2, clearcoat: 1, clearcoatRoughness: 0.08 } });
+    const cer = mat(S, "#ebe6dc", { std: { roughness: 0.35 }, phys: { roughness: 0.35, clearcoat: 0.4, clearcoatRoughness: 0.15 } });
     const dish = new T.Mesh(new T.LatheGeometry(pprof, 64), cer); dish.castShadow = dish.receiveShadow = true; pg.add(dish);
     const prim = new T.Mesh(new T.TorusGeometry(0.665, 0.008, 6, 64), mat(S, "#2f5fa8", { std: { roughness: 0.3 } })); prim.rotation.x = Math.PI / 2; prim.position.y = 0.084; pg.add(prim);
     pg.visible = false;
@@ -218,8 +218,8 @@
       const k = u.t / 0.6, r = o.wispR || 0.5, wv = o.wisp || 0, big = o.wispBig || 1;
       const wx = Math.cos(u.a) * r, wz = Math.sin(u.a) * r * 0.9, top = K.Food && K.Food.pileTop ? K.Food.pileTop(wx * 0.8, wz * 0.8) : surf(r * r) + 0.06; // from the top of the heap, not inside it
       _v.set(wx, top + 0.12 + k * 0.6 * (0.5 + 0.5 * wv) * big, wz).applyMatrix4(W.wok.matrixWorld);
-      p.position.copy(_v); p.scale.set((0.14 + 0.2 * k) * big * (1 + 0.8 * (o.wispThick || 0)), (0.55 + 0.4 * k) * big, 1);
-      p.material.opacity = Math.min(1, wv * 1.5) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol); p.visible = p.material.opacity > 0.01;
+      const ws = (0.25 + 0.25 * k) * big * (1 + 0.5 * (o.wispThick || 0)); p.position.copy(_v); p.scale.set(ws, ws * 1.3, 1);
+      p.material.opacity = Math.min(0.5, wv * 0.8) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol); p.visible = p.material.opacity > 0.01;
     }
   };
   // the wisps restart from the metal together, so the moment they rise reads as one event

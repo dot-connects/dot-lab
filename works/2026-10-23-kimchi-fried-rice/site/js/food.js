@@ -13,7 +13,7 @@
   const F = (K.Food = { n: 0 });
 
   // colour ramps (chef): kimchi-stained raw → glossy red-orange → wok-hei brick → scorched → burnt
-  const RAMP = [[0, "#e9b08a"], [0.4, "#e2793c"], [0.8, "#c8501f"], [1.1, "#9a4a1e"], [1.4, "#5b2c16"], [1.75, "#1c120d"]].map(([k, c]) => [k, lin(c)]);
+  const RAMP = [[0, "#e2894c"], [0.4, "#d96a2e"], [0.8, "#c8501f"], [1.1, "#9a4a1e"], [1.4, "#6b3414"], [1.75, "#3e2010"]].map(([k, c]) => [k, lin(c)]);
   const KRAMP = [[0, "#b8231a"], [0.9, "#b8261c"], [1.4, "#7e1a12"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
   const PRAMP = [[0, "#5fb043"], [1.0, "#3f8a2c"], [1.5, "#4a4a22"], [1.9, "#262a1a"]].map(([k, c]) => [k, lin(c)]);
   const _c = new T.Color();
@@ -119,7 +119,8 @@
       if (F.st[i] !== 0) continue;
       const along = F.x[i] * dx + F.z[i] * dz, rk = clamp((along + 0.75) / 1.5, 0, 1);
       if (rk < keep * rnd(0.6, 1.4)) { F.vx[i] += dx * 0.2 * s; F.vz[i] += dz * 0.2 * s; F.depth[i] = clamp(F.depth[i] + rnd(-0.35, 0.35), 0, 1); continue; } // the slosh stirs it too // the back of the pile sloshes forward a little
-      F.st[i] = 1; F.hh[i] = F.y[i] - surf(F.x[i] ** 2 + F.z[i] ** 2); F.rank[i] = rk; // keeps its height over the metal (it dropped onto the floor in one frame) F.dl[i] = (1 - F.rank[i]) * 0.24 * rnd(0.6, 1.4); // peels off from the lip over ~0.3 s, not as one slab
+      // keeps its height over the metal (it dropped onto the floor in one frame); peels off from the lip, not as one slab
+      F.st[i] = 1; F.hh[i] = F.y[i] - surf(F.x[i] ** 2 + F.z[i] ** 2); F.rank[i] = rk; F.dl[i] = (1 - F.rank[i]) * 0.1 * rnd(0.6, 1.4);
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
     if (!n) return 0; // all of it is still in the air: keep the toss in flight (it was replaced by an empty one)
@@ -132,7 +133,7 @@
     _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(wm); F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z;
     // height grows with the flick (the operator: higher and flashier scores more); too hard flies over the rim
     const hs = (0.7 + 0.9 * tz.s) * tz.lift; // high enough to clear the rim and read from above (the finale goes 1.5x)
-    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.55, 1.45) * (1 - 0.25 * tz.side) - _v.y); // a sideways throw flies flatter
+    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.85, 1.15) * (1 - 0.25 * tz.side) - _v.y); // a sideways throw flies flatter
     const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, _v.y + rise - 0.2)) / G);
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
     const over = Math.max(0, tz.s - 1.25) * 1.1;
@@ -141,7 +142,7 @@
     // gaussian scatter around the lump (a uniform box landed the heap as a rectangle)
     const ga = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22, gb = (Math.random() + Math.random() + Math.random() - 1.5) * 0.22;
     // forward: it rolls over and comes back near the middle; sideways: it carries to that side, a hard one over the rim
-    const aT = (-0.1 - 0.1 * (r - 0.5) - over + L[0] + ga * (1 + over)) * (1 - tz.side) + (0.25 + 0.35 * (tz.s - 0.6) + ga + 1.5 * over) * tz.side, bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
+    const aT = (-0.1 - 0.3 * (r - 0.5) - over + L[0] + ga * (1 + over)) * (1 - tz.side) + (0.25 + 0.35 * (tz.s - 0.6) + ga + 1.5 * over) * tz.side, bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
     const va = (aT - a0) / T0, vb = (bT - b0) / T0;
     F.vx[i] = tz.dx * va - tz.dz * vb; F.vz[i] = tz.dz * va + tz.dx * vb; F.vy[i] = vy;
     F.sx[i] = rnd(-12, 12); F.sy[i] = rnd(-6, 6); F.sz[i] = rnd(-12, 12);
@@ -189,10 +190,10 @@
         F.cook[i] += 0.2 * heat * lay * dt + 0.24 * (F.scorchVis || 0) * F.depth[i] * dt; // scorching: smoke and heat brown the top too, so it reads from above
       } else if (st === 1) { // riding up the far wall before the lip snap
         // a short slide toward the lip over the grain's own delay (it used to shoot ~1 wok radius in 0.13 s and wait there)
-        const k = smooth((t - tz.t - 0.02) / (0.15 + F.dl[i])), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
+        const k = smooth((t - tz.t - 0.02) / (0.1 + F.dl[i])), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
         const aa = a + Math.max(0, Math.min(0.28, 0.55 + 0.35 * F.rank[i] - a)) * k, bb = b * (1 - 0.15 * k);
         F.x[i] = tz.dx * aa - tz.dz * bb; F.z[i] = tz.dz * aa + tz.dx * bb; F.y[i] = surf(F.x[i] ** 2 + F.z[i] ** 2) + Math.max(0.03 + 0.04 * F.depth[i], F.hh[i] * (1 - 0.6 * k));
-        if (t - tz.t >= 0.17 + F.dl[i]) release(i, wm);
+        if (t - tz.t >= 0.12 + F.dl[i]) release(i, wm);
       } else if (st === 2) {
         air++;
         F.vy[i] -= (Math.abs(F.vy[i]) < 1 ? 0.75 : 1) * G * dt;

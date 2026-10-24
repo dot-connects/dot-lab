@@ -12,7 +12,7 @@
   const DEAD = 0.03, FULL = 0.64, TILT_TAU = 30, FREEZE = 250; // gravity fallback: ~33 deg of phone = full tilt
   const DEAD_DEG = 3, FULL_DEG = 40; // deviceorientation: the wok turns ~1.2x the phone (operator 10-24: 12 deg was full, too touchy)
   /* touch: speeds in screen heights per second */
-  const T_ON = 0.8, T_MAX = 3.5, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
+  const T_ON = 0.8, T_MAX = 2.2, T_RISE_FAST = 30, T_RISE_SLOW = 220, T_MIN_TRAVEL = 0.03;
   const SLOW_TRAVEL = 0.15, SLOW_MIN = 0.3; // too-slow flick: > 15% of the height, peak 0.3..T_ON (a crawl is tilt)
   const HINT = "Safari/Chrome에서 열면 폰을 흔들어서 할 수 있어요";
 
@@ -158,8 +158,8 @@
     if (!p || e.pointerId !== p.id) return;
     const t = e.timeStamp, x = e.clientX, y = e.clientY;
     p.s.push([t, x, y]);
-    while (p.s.length > 2 && t - p.s[0][0] > 50) p.s.shift();
-    const a = p.s[0], dt = Math.max(8, t - a[0]);
+    while (p.s.length > 2 && t - p.s[0][0] > 70) p.s.shift();
+    const a = p.s[0], dt = Math.max(16, t - a[0]); // a 70 ms window: one jittery sample no longer sets the strength
     const v = Math.hypot(x - a[1], y - a[2]) / dt * 1000 / p.H; // stroke speed in any direction, heights / s
     if (v > p.vMax) p.vMax = v;
     if (p.fired || blockUntilUp) return; // after a flick: tilt holds until the finger lifts

@@ -27,6 +27,8 @@
 
   /* ---------- words ---------- */
   function word(text, kind, sub) {
+    if (g && kind !== "great" && g.t < (g.wordLock || 0)) return; // a big moment is not overwritten
+    if (g && kind === "great") g.wordLock = g.t + 0.8;
     wordEl.textContent = text; wordEl.className = "word " + (kind || ""); void wordEl.offsetWidth; wordEl.classList.add("pop");
     subEl.textContent = sub || ""; subEl.className = "sub"; void subEl.offsetWidth; if (sub) subEl.classList.add("pop");
   }
@@ -54,8 +56,7 @@
       else {
         const fwd = 0.4 * s * (smooth(k / 0.09) - smooth((k - 0.14) / 0.18)) - 0.04 * s * Math.exp(-(((k - 0.42) / 0.08) ** 2));
         const bump = smooth((k - 0.08) / 0.06) - smooth((k - 0.16) / 0.14);
-        const cushion = k > 0.5 && k < 0.78 ? -0.035 * Math.sin(((k - 0.5) / 0.28) * Math.PI) : 0;
-        x += a.du * fwd; z += -a.dv * fwd; y += 0.06 * bump + cushion;
+        x += a.du * fwd; z += -a.dv * fwd; y += 0.06 * bump;
         pitch += (4 + 12 * s) * DEG * bump * a.dv; roll -= (4 + 12 * s) * DEG * bump * a.du;
       }
     }
@@ -99,7 +100,7 @@
     g.finaleDone = true; g.finaleT = g.t; hideCue();
     g.hei = 1.6; W.sparkBurst(40); g.punch = 1; g.shake = 1.6; K.Audio.fever();
     const bonus = 3 * clamp((s - 0.8) / 0.8, 0, 1); g.fire = Math.min(FIRE_MAX, g.fire + bonus); fireNum();
-    setTimeout(() => word(bonus > 1 ? C.finale : C.finaleWeak, bonus > 1 ? "great" : "meh", bonus > 1 ? C.finaleSub : ""), 350);
+    g.finaleWord = { at: g.t + 0.35, ok: bonus > 1 };
   }
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
@@ -122,10 +123,10 @@
     } else {
       if (grade === "good") { // so-so keeps the combo, fills a little
         // good keeps the combo (only perfect builds it) and stays quiet: a word on every toss buried the real moments
-        g.fire = Math.min(FIRE_MAX, g.fire + 0.5 * hm); g.hei = Math.max(g.hei, 0.3); if (g.tossN < 4) word(C.good, "ok", C.goodChip);
+        g.fire = Math.min(FIRE_MAX, g.fire + 0.2 * hm); g.hei = Math.max(g.hei, 0.3); if (g.tossN < 4) word(C.good, "ok", C.goodChip);
         comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; fireNum(); return;
       }
-      else if (grade === "early") { g.fire = Math.min(FIRE_MAX, g.fire + 0.1); fireNum(); return; } // mashing: allowed, just no 불맛
+      else if (grade === "early") { if (g.combo >= 2) { K.Audio.comboBreak(); popNum(C.mashed, "fire"); } g.combo = 0; comboEl.textContent = ""; fireNum(); return; } // mashing breaks the run
       else word(C.late, "bad", pick(C.lateSub));
       if (g.combo >= 2) K.Audio.comboBreak();
       if (g.combo >= 3) { subEl.textContent = C.comboLost; subEl.className = "sub"; void subEl.offsetWidth; subEl.classList.add("pop"); }
@@ -176,6 +177,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
+    W.renderer.toneMappingExposure = W.S.exposure;
     const carry = g.hei; g = newGame(auto); g.hei = carry; // the tap's fire column carries over and hides the swap
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
@@ -269,10 +271,11 @@
     const { kim, ses, pts } = garn.userData, k = g.phT, pc = W.plateC, egg = K.Egg.onPlate;
     pts.forEach((q, i) => {
       const f = clamp((k - q.d) / 0.45, 0, 1), d = Math.hypot(q.x, q.z);
-      const land = pc.y + 0.04 + K.Food.plateMound(d) * 0.95 + (egg && d < 0.46 ? 0.11 * Math.max(0, 1 - (d / 0.5) ** 2) + 0.02 : 0);
+      const ed = Math.hypot(q.x - (K.Egg.plateOff || 0), q.z), onEgg = egg && ed < 0.24;
+      const land = pc.y + 0.035 + K.Food.plateMound(d) * 0.95 + (onEgg ? 0.035 + 0.05 * Math.max(0, 1 - (ed / 0.24) ** 2) : 0);
       dummy.position.set(W.plate.position.x + q.x, land + 0.9 * (1 - f) ** 2, pc.z + q.z);
       if (i < 110) { dummy.scale.set(1, 1, 1); dummy.rotation.set(-Math.PI / 2 + 0.3 * Math.sin(q.rx) + (1 - f) * 6, q.ry, 0); dummy.updateMatrix(); kim.setMatrixAt(i, dummy.matrix); }
-      else { dummy.scale.set(0.008, 0.005, 0.013); dummy.rotation.set(q.rx, q.ry, 0); dummy.updateMatrix(); ses.setMatrixAt(i - 110, dummy.matrix); }
+      else { dummy.scale.set(0.005, 0.003, 0.008); dummy.rotation.set(q.rx, q.ry, 0); dummy.updateMatrix(); ses.setMatrixAt(i - 110, dummy.matrix); }
     });
     kim.instanceMatrix.needsUpdate = ses.instanceMatrix.needsUpdate = true;
   }
@@ -286,6 +289,7 @@
     updatePose(dt);
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice" && g.introOn) introStep();
+    if (g.finaleWord && g.t >= g.finaleWord.at) { const w = g.finaleWord; g.finaleWord = null; word(w.ok ? C.finale : C.finaleWeak, w.ok ? "great" : "meh", w.ok ? C.finaleSub : ""); }
     if (g.ph === "rice" && g.started && !g.auto && g.tossN === 0) nudge();
     if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.5) { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
     if (g.finaleCue && !g.finaleDone && g.clock <= 0) { g.finaleDone = true; hideCue(); }
@@ -357,7 +361,8 @@
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
       if (ev === "burst") splat("egg");
       if (ev !== "burst") { g.flips = 2; timerEl.textContent = C.flipCount(2); }
-      if (g.flip2Up) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
+      const w2 = eggWin2(), c2 = E.res.cookAtFlip, inBand = c2 >= w2[0] - 0.05 && c2 <= w2[1] + 0.05;
+      if (g.flip2Up && inBand) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else if (g.flip2Up) word(c2 < w2[0] ? C.egg2Early : C.egg2Late, "meh"); else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
       return;
     }
     g.flips = 1; timerEl.textContent = C.flipCount(1);
@@ -395,6 +400,7 @@
 
   /* ---------- result ---------- */
   function showResult() {
+    W.renderer.toneMappingExposure = 0.82; // the plate close-up blew out at 1.05
     setPh("result"); hudEl.hidden = true; tip("");
     const s = (g.res = finalScore());
     const best = +store.get("kfr-best3d", 0), rec = s.total > best && best > 0;
@@ -493,7 +499,7 @@
   /* ---------- camera ---------- */
   const _cp = new T.Vector3(), _cl = new T.Vector3(), _tg = new T.Vector3(), _a = new T.Vector3(), _b = new T.Vector3(), _ax = new T.Vector3(1, 0, 0);
   function camera(dt) {
-    const pan = g.ph === "plate" || g.ph === "take" ? SIDE * 0.32 : g.ph === "egg" ? SIDE * 0.14 : 0; // the egg phase keeps the whole wok in view
+    const pan = g.ph === "plate" || g.ph === "take" ? SIDE * 0.6 : g.ph === "egg" ? SIDE * 0.14 : 0; // the egg phase keeps the whole wok in view
     g.cam += ((["garnish", "result"].includes(g.ph) ? 1 : 0) - g.cam) * DAMP(0.35, dt);
     g.pan += (pan - g.pan) * DAMP(0.25, dt);
     const close = smooth(g.cam);

@@ -185,3 +185,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   (s/img/s<n>-v1.jpg, bump VER on redesign: Kakao/Meta cache), JS redirect to ?vs=<n>; challenge hook on the start
   card and "친구 73 vs 나 79 — 이겼다!" on the receipt; in-app browsers get the touch how-to.
 - Egg brightness measured: frame mean 104-106 during the flip vs 118 while tossing (not an exposure jump; pending art review).
+- fx panel results applied: REGRESSION (my inline comment swallowed `F.dl = …`: the pile flew as one slab again) fixed
+  + a scan for code hidden behind `//`; release with the lip snap (0.12 s + dl ≤ 0.1), height tied to rank (rnd 0.85-1.15),
+  forward arch (aT -0.3·r), time-based landing cushion removed; combo: perfect builds, good keeps (fire 0.2), a mash
+  < 0.35 s breaks it; big words lock 0.8 s, finale word on game time; yolk-up praise only in side 2's band (matches the
+  receipt); plating/take pan SIDE·0.6; plated egg 0.55x, 0.2 s shrink, 0.1 off centre, garnish lands on rice/egg, sesame
+  0.6x; result exposure 0.82, plate #ebe6dc, egg white #f1ebdd; orange start colour, burnt dark brown; soft wisps
+  (≤ 0.5 opacity); touch strength over a 70 ms window, T_MAX 2.2; 불맛 label inside the screen.
+- Pending operator call: chef + designer say a fried egg is not flipped twice in a 중국집; proposal: 2nd action = basting.
