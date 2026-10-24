@@ -62,8 +62,8 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 .word.dark{color:#ffb347;-webkit-text-stroke:5px #2a1406}
 #timer{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%);font:38px "Black Han Sans",system-ui,sans-serif;white-space:nowrap;background:#fff;border-radius:999px;padding:2px 22px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
 #timer.warn{background:var(--accent);color:#fff}
-#gauge{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 76px);width:16px;height:min(26vh,230px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
-#gauge::after{content:attr(data-label);right:-4px;left:auto;transform:none;text-align:right;position:absolute;bottom:-24px;font:13px "Black Han Sans",sans-serif;color:#fff;white-space:nowrap}
+#gauge{position:absolute;right:max(16px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 90px);width:16px;height:min(26vh,230px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
+#gauge::after{content:attr(data-label);position:absolute;right:0;left:auto;bottom:-24px;transform:none;text-align:right;font:13px "Black Han Sans",sans-serif;color:#fff;white-space:nowrap}
 #gaugeFill{position:absolute;inset:0;transform-origin:bottom;transform:scaleY(0);background:linear-gradient(0deg,#ff6a00,#ffb000 60%,#fff1a8);transition:transform .25s cubic-bezier(.2,1.4,.4,1)}
 #gauge.pulse{animation:gpulse .35s ease-out}
 @keyframes gpulse{0%{transform:scale(1.25)}100%{transform:scale(1)}}
@@ -87,6 +87,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 @keyframes splat{0%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1.8);opacity:0}12%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1);opacity:1}70%{opacity:1}100%{transform:translate(-50%,calc(-50% + 40px)) rotate(var(--r));opacity:0}}
 @keyframes splatEgg{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--r));opacity:0}10%{transform:translate(-50%,-50%) scale(1.08) rotate(0deg);opacity:1}18%{transform:translate(-50%,-50%) scale(1)}60%{transform:translate(-50%,-44%) scale(1,1.08)}100%{transform:translate(-50%,10%) scale(.95,1.3);opacity:0}}
 #result .floor{margin:6px 0 0;font-size:15px;color:var(--red)}#result .floor b{font-size:20px}
+#result .floor,#result .memo{text-wrap:balance;word-break:keep-all}
 #result .memo{margin:8px 0 0;font:19px "Black Han Sans",system-ui,sans-serif;color:var(--red);transform:rotate(-2deg)}
 #gauge.hot{box-shadow:0 0 18px 4px rgba(255,140,0,.85);border-color:#ffd27a}
 .word{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 21vh);transform:translateX(-50%);font:48px "Black Han Sans",system-ui,sans-serif;white-space:nowrap;-webkit-text-stroke:6px #fff;paint-order:stroke fill;opacity:0}
@@ -108,7 +109,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #startCue.fast .ico{animation-duration:.6s}#startCue.intro .ico{display:none}#startCue.out{opacity:0;transition:opacity .15s}
 @keyframes flickUp{0%,45%{transform:translateY(22px)}60%{transform:translateY(0)}75%,100%{transform:translateY(22px)}}
 @keyframes scIn{from{opacity:0;transform:translateY(8px)}}
-#tip{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 62px);text-align:center;font:19px "Black Han Sans",system-ui,sans-serif;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.7);padding:0 16px;pointer-events:none}
+#tip{text-wrap:balance;font-size:clamp(15px,4.4vw,19px)!important;position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 62px);text-align:center;font:19px "Black Han Sans",system-ui,sans-serif;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.7);padding:0 16px;pointer-events:none}
 /* receipt */
 #result{position:absolute;left:50%;bottom:max(10px,env(safe-area-inset-bottom));transform:translate(-50%,110%);width:min(94vw,390px);transition:transform .5s cubic-bezier(.2,1.3,.4,1)}
 #result.up{transform:translate(-50%,0)}
