@@ -236,3 +236,9 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - p9-fair Monte Carlo (6000 rounds): fixed band casual 88 % / skilled 99 % perfect; adopted widths (0.45 − 0.10·t/7) ×
   (1 − 0.089·combo), no 불쇼 widening, dark/finale keep the last lit band → casual ~54 %, skilled ~84 %, all-perfect ~7 %.
   Bot check: width 0.45 → 0.20 s, start 0.67 → 0.59 s.
+- Round 12: wok held level on the start screen and through the ingredient drop, eased into the hand over 0.6 s after
+  볶아!; a live bubble level waits (flat 0.3 s, max 3 s) in motion mode. Yolk burst redone (p10 motion/vfx/chef):
+  0.11 s hit-stop with the yolk squashed, a small domed glossy pool (#e06200 → #f29a12, easeOutBack, ripple, 4 s ooze
+  toward the wok centre, dulls as it sets), 4 ballistic droplets that stick, a sizzle tail; the lens gag only for a
+  flip > 1.7 (three yolk drops in the top corners, 1.4 s); lines "괜찮아, 김볶은 어차피 비벼 먹어" / receipt
+  "노른자 터짐 — 셀프 비빔 서비스".

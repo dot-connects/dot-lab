@@ -114,6 +114,7 @@
         burst({ type: "lowpass", f0: 2000, f1: 240, q: 2, dur: 0.24, gain: 0.55, attack: 0.002 });
         tone({ f0: 280, f1: 120, dur: 0.16, gain: 0.4, type: "triangle" });
         for (let i = 0; i < 3; i++) tone({ f0: rnd(650, 950), f1: rnd(260, 340), dur: 0.05, gain: 0.1, at: 0.03 + i * rnd(0.03, 0.06) });
+        burst({ buf: A.sizz, type: "highpass", f0: 2500, dur: 1.4, gain: 0.35, at: 0.05, attack: 0.05 }); // it ends as a tasty sizzle, not a punishment
       } else if (kind === "spill") {
         for (let i = 0; i < 9; i++) burst({ f0: rnd(2800, 5200), q: 5, dur: 0.025, gain: rnd(0.12, 0.28), at: rnd(0, 0.45), attack: 0.001 });
         burst({ type: "lowpass", f0: 1200, f1: 300, dur: 0.1, gain: 0.45, attack: 0.002 }); tone({ f0: 380, f1: 170, dur: 0.07, gain: 0.2, type: "triangle" }); // 투둑: it has weight

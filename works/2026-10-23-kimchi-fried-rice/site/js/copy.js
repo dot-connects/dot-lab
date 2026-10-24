@@ -33,7 +33,7 @@
     eggCatch: "기울여서 그림자 밑으로!", eggCatchTouch: "손가락 떼지 말고 끌어서 그림자 밑으로!", eggHop: "살짝 더 세게!",
     intro: [[0, "기름 두르고…"], [0.6, "김치 먼저!"], [1.4, "찬밥 투하!"], [2.0, "볶아!"]], introSmall: "폰을 바닥과 평평하게", flatBig: "폰을 바닥에 눕혀요", flatSmall: "노란 점을 가운데로", flatOk: "좋아요, 그대로!",
     eggBurning: "계란 탄다!",
-    eggPerfect: "완벽하게 뒤집었다", eggGood: "뒤집었다", eggWall: "벽에 걸렸다", eggFold: "반으로 접혔다", eggBurst: "노른자 터짐!", eggBurstSub: "계란 화면 강타!", eggOut: "계란이 바닥에…",
+    eggPerfect: "완벽하게 뒤집었다", eggGood: "뒤집었다", eggWall: "벽에 걸렸다", eggFold: "반으로 접혔다", eggBurst: "노른자 터짐!", eggBurstSub: ["괜찮아, 김볶은 어차피 비벼 먹어", "노른자 셀프 비빔"], eggLensSub: ["렌즈가 반숙 먹음", "카메라도 배고팠다"], eggBurstReceipt: "노른자 터짐 — 셀프 비빔 서비스", eggOut: "계란이 바닥에…",
     tiers: [[92, "주방장", "내일부터 불 맡아"], [80, "불판 에이스", "다음 주부터 웍 잡아"], [65, "칼판", "칼질은 되네, 불은 아직"], [45, "면판 막내", "양파부터 까"], [0, "설거지 담당", "내일부터 철가방 들어"]],
     again: "한 번 더", share: "자랑하기", tryIt: "직접 해보기", watchedBy: "구경한 판 · 점수는 기록 안 됨",
   };

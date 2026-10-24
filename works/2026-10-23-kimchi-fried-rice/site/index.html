@@ -84,9 +84,9 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 @keyframes numUp{0%{opacity:0;transform:scale(.5)}15%{opacity:1;transform:scale(1.3)}30%{transform:scale(1)}100%{opacity:0;transform:translateY(-30px)}}
 .splat{position:absolute;pointer-events:none;transform:translate(-50%,-50%) rotate(var(--r));animation:splat .9s ease-in forwards}
 .splat.rice{width:26px;height:11px;border-radius:50%;background:radial-gradient(ellipse at 40% 35%,#ffd2a8,#d9642a 70%);box-shadow:0 2px 4px rgba(0,0,0,.35)}
-.splat.egg{width:62vw;height:52vw;border-radius:46% 54% 50% 50%/55% 45% 55% 45%;background:radial-gradient(circle at 50% 48%,#ffb21c 0 17%,#ffd36a 19%,rgba(255,250,235,.95) 24%,rgba(255,250,235,.9) 62%,rgba(255,250,235,0) 72%);animation:splatEgg 1.6s ease-in forwards}
+.splat.egg{border-radius:48% 52% 46% 54%/55% 50% 50% 45%;background:radial-gradient(circle at 36% 32%,#fff6 0 9%,#ffb21c 12%,#ff9a00 55%,#e07800 100%);box-shadow:0 3px 8px rgba(0,0,0,.25);animation:splatEgg 1.4s ease-in forwards}
 @keyframes splat{0%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1.8);opacity:0}12%{transform:translate(-50%,-50%) rotate(var(--r)) scale(1);opacity:1}70%{opacity:1}100%{transform:translate(-50%,calc(-50% + 40px)) rotate(var(--r));opacity:0}}
-@keyframes splatEgg{0%{transform:translate(-50%,-50%) scale(.2) rotate(var(--r));opacity:0}10%{transform:translate(-50%,-50%) scale(1.08) rotate(0deg);opacity:1}18%{transform:translate(-50%,-50%) scale(1)}60%{transform:translate(-50%,-44%) scale(1,1.08)}100%{transform:translate(-50%,10%) scale(.95,1.3);opacity:0}}
+@keyframes splatEgg{0%{transform:translate(-50%,-50%) scale(1.4);opacity:0}6%{transform:translate(-50%,-50%) scale(1);opacity:1}40%{transform:translate(-50%,-50%) scale(1,1.05)}100%{transform:translate(-50%,calc(-50% + 50px)) scale(.92,1.25);opacity:0}}
 #result .floor{margin:6px 0 0;font-size:15px;color:var(--red)}#result .floor b{font-size:20px}
 #result .floor,#result .memo{text-wrap:balance;word-break:keep-all}
 #result .memo{margin:8px 0 0;font:19px "Black Han Sans",system-ui,sans-serif;color:var(--red);transform:rotate(-2deg)}

@@ -58,10 +58,11 @@
     E.spat = new T.LineSegments(new T.BufferGeometry(), new T.LineBasicMaterial({ color: lin("#fff3d6"), transparent: true, blending: T.AdditiveBlending, depthWrite: false }));
     E.spat.geometry.setAttribute("position", new T.BufferAttribute(new Float32Array(48 * 6), 3).setUsage(T.DynamicDrawUsage)); E.spat.frustumCulled = false; W.scene.add(E.spat);
     E.drops = []; for (let i = 0; i < 48; i++) E.drops.push({ life: 0, p: new T.Vector3(), v: new T.Vector3() });
-    E.pud = new T.Mesh(W.polarDisc((th) => 0.24 * (1 + 0.25 * Math.sin(3 * th + 1) + 0.15 * Math.sin(7 * th)), 6, 64, () => 0, () => lin("#ffb21c")),
+    const cIn = lin("#e06200"), cOut = lin("#f29a12"); // darker in: ACES pushes saturated orange toward pale yellow
+    E.pud = new T.Mesh(W.polarDisc((th) => 0.16 * (1 + 0.2 * Math.sin(3 * th + 1) + 0.1 * Math.sin(7 * th)), 10, 64, (t) => 0.016 * Math.pow(Math.max(0, 1 - t * t), 0.6) + (t > 0.88 ? 0.003 : 0), (t) => cIn.clone().lerp(cOut, t * t)),
       M(S, "#ffffff", { std: { vertexColors: true, roughness: 0.12 }, phys: { vertexColors: true, roughness: 0.08, clearcoat: 1, clearcoatRoughness: 0.02 } }));
     E.pud.material.vertexColors = true; W.scene.add(E.pud);
-    E.drips = []; for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), E.yolkMat); d.scale.set(1, 0.3, 1.4); W.scene.add(d); E.drips.push(d); }
+    E.drips = []; for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), E.yolkMat); d.userData = {}; W.scene.add(d); E.drips.push(d); }
     E.bubbles = []; for (let i = 0; i < 12; i++) E.bubbles.push({ gk: 0, born: 1e9, life: 0, x: 0, z: 0, r: 0.04, h: 0 });
     // ready glow: a warm ring that breathes around the egg while it is in the order's window (reads with the sound off)
     E.halo = new T.Mesh(new T.RingGeometry(0.41, 0.58, 64), new T.MeshBasicMaterial({ color: lin("#ffc23a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
@@ -191,18 +192,44 @@
     }
     const k = where === "wall" ? 0.55 : 1; E.ox = _v.x * k; E.oz = _v.z * k + (1 - k) * 0.05; // a wall landing slides down
     E.ph = "landed"; E.landT = t; E.sq.v = burst ? 16 : 8; jolt(t, burst ? 1.8 : where === "wall" ? 1.3 : 0.9, 0); spatter(burst ? 20 : 10);
-    if (burst) { E.burst = true; E.burstT = t; }
+    if (burst) { E.burst = true; E.burstT = t; E.burstLast = t; E.pudSpin = rnd(-1, 1); for (const d of E.drips) d.userData = {}; setTimeout(() => spatter(8), 150); }
     return burst ? "burst" : fold ? "fold" : "clean";
   }
+  /* the burst (panel p10: motion + vfx + chef): the yolk squashes and tears (0-0.11 s, hit-stop), gushes out as a
+     glossy domed pool (easeOutBack to 0.31 s), ripples, then oozes toward the wok centre for ~4 s and dulls as it sets;
+     four droplets fly and stick flat. Small: a yolk is 15 ml, the pool stays under ~1.5x the yolk. */
+  const _bq = new T.Quaternion(), _by = new T.Vector3(0, 1, 0), _bo = new T.Vector3();
+  const backOut = (x) => 1 + 2.7 * (x - 1) ** 3 + 1.7 * (x - 1) ** 2;
   function burstStep(t, wm) {
-    const b = clamp((t - E.burstT) / 1.6, 0, 1), bb = Math.sqrt(b); // runny yolk: fast first, then slow like honey
+    const tau = t - E.burstT, dt = Math.min(0.05, Math.max(0, t - (E.burstLast || t))); E.burstLast = t;
+    const flat = E.onPlate || E.onCounter;
+    const r = tau < 0.08 ? 0 : tau < 0.31 ? 0.25 + 0.55 * backOut(clamp((tau - 0.08) / 0.23, 0, 1)) : 0.8 + 0.2 * (1 - (1 - clamp((tau - 0.31) / 0.9, 0, 1)) ** 4);
+    const k = flat ? 0 : clamp(1 - Math.exp(-(tau - 1.2) / 1.3), 0, 1), wob = 1 + 0.06 * Math.sin(9 * tau) * Math.exp(-2.5 * tau);
     _v.set(YU, E.flipped ? -0.014 - drape(YU, YV, true) - 0.03 : drape(YU, YV, false) + 0.03, YV); E.g.localToWorld(_v);
-    E.pud.visible = true; E.pud.position.set(_v.x, _v.y + 0.022, _v.z + 0.05 * bb);
+    E.pud.visible = r > 0;
+    // downhill = toward the wok centre: the pool's long axis turns that way and its centre slides down it
+    const dl = Math.hypot(E.ox, E.oz) || 1, ang = Math.atan2(-E.ox / dl, -E.oz / dl) + (E.pudSpin || 0) * 0.3;
     if (E.onPlate) E.pud.quaternion.identity(); else K.W.wok.getWorldQuaternion(E.pud.quaternion);
-    E.pud.scale.set(0.3 + 1.0 * bb, 1, 0.3 + 1.3 * bb);
-    if (E.onPlate || E.onCounter) { for (const d of E.drips) d.visible = false; return; }
-    E.drips.forEach((d, i) => { const a = 0.6 + i * 0.5, rr = 0.55 + 0.1 * i; _v.set(E.ox + Math.cos(a) * rr * 0.5, 0, E.oz + Math.sin(a) * rr); _v.applyMatrix4(wm);
-      d.visible = b > 0.15 * (i + 1); d.position.set(_v.x, _v.y + 0.01, _v.z); d.scale.set(1 + i * 0.3, 0.3, 1.2 + bb); });
+    E.pud.quaternion.multiply(_bq.setFromAxisAngle(_by, ang));
+    _bo.set(0, 0, 0.09 * k).applyQuaternion(E.pud.quaternion);
+    E.pud.position.set(_v.x + _bo.x, _v.y + 0.012 + _bo.y, _v.z + _bo.z);
+    const sx = Math.max(0.01, r * wob), sz = Math.max(0.01, (r * (1 + 0.6 * k)) / wob);
+    E.pud.scale.set(sx, clamp(1 / Math.sqrt(sx * sz), 0.6, 1.6), sz); // it keeps its volume: wider = thinner
+    E.pud.material.roughness = 0.08 + 0.25 * clamp((tau - 0.5) / 4, 0, 1); // it dulls as it sets
+    if (flat || E.take) { for (const d of E.drips) d.visible = false; return; } // the droplets stay behind in the wok, not on the plate
+    // droplets: ballistic from the tear, then they stick flat to the metal and ride the wok
+    E.drips.forEach((d) => {
+      const u = d.userData;
+      if (tau < 0.11) { d.visible = false; return; }
+      if (!u.live) { u.live = true; u.stuck = false; u.p = _v.clone(); const a = Math.random() * TAU, h = rnd(0.6, 1.2); u.v = new T.Vector3(Math.cos(a) * h, rnd(0.8, 1.3), Math.sin(a) * h); d.scale.set(0.5, 0.5, 0.5); }
+      d.visible = true;
+      if (!u.stuck) {
+        u.v.y -= 9.8 * dt; u.p.addScaledVector(u.v, dt); _inv.copy(wm).invert(); _bo.copy(u.p).applyMatrix4(_inv);
+        const g0 = surf(_bo.x * _bo.x + _bo.z * _bo.z) + 0.006;
+        if (u.v.y < 0 && _bo.y <= g0) { u.stuck = true; u.local = _bo.clone().setY(g0); d.scale.set(0.8, 0.12, 0.8); }
+        d.position.copy(u.p);
+      } else { _bo.copy(u.local).applyMatrix4(wm); d.position.copy(_bo); K.W.wok.getWorldQuaternion(d.quaternion); }
+    });
   }
 
   /* take-out: the wok rolls toward the plate and the egg slides over the lip onto the rice */
@@ -286,7 +313,8 @@
     const ys = 1 - 0.35 * e.sq.s + Y.h * 4;
     e.yolk.position.set(YU + Y.x, drape(YU, YV, false) + 0.03 * (1 + 0.45 * clamp(e.cook, 0, 1)), YV + Y.z);
     e.yolk.scale.set(1 + 0.25 * e.sq.s - Y.h * 2, clamp(0.5 * ys, 0.25, 0.7), 1 + 0.25 * e.sq.s - Y.h * 2);
+    const tearing = e.burst && tNow - e.burstT < 0.11; if (tearing) e.yolk.scale.set(1.45, 0.22, 1.45);
     e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.82) * 1.2, 0, 0.6));
-    e.yolk.visible = !(e.ph === "air" ? !!e.flip.base !== e.flip.f > 0.5 : e.flipped) && !e.fold && !e.burst;
+    e.yolk.visible = tearing || (!(e.ph === "air" ? !!e.flip.base !== e.flip.f > 0.5 : e.flipped) && !e.fold && !e.burst);
   }
 })();

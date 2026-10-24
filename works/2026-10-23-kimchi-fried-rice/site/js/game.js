@@ -164,10 +164,11 @@
   }
   // the lens gets hit: rice grains or yolk stick to the screen for a moment (old 2D: 계란 화면 강타)
   function splat(kind) {
-    const n = kind === "egg" ? 1 : 9;
+    const n = kind === "egg" ? 3 : 9;
     for (let i = 0; i < n; i++) {
       const e = document.createElement("i"); e.className = "splat " + kind; app.appendChild(e);
-      e.style.left = (kind === "egg" ? 50 : rnd(12, 88)) + "%"; e.style.top = (kind === "egg" ? 38 : rnd(20, 70)) + "%";
+      e.style.left = (kind === "egg" ? (i % 2 ? rnd(66, 90) : rnd(8, 32)) : rnd(12, 88)) + "%"; e.style.top = (kind === "egg" ? rnd(6, 22) : rnd(20, 70)) + "%";
+      if (kind === "egg") { const sz = rnd(10, 16); e.style.width = sz + "vw"; e.style.height = sz * rnd(0.85, 1.1) + "vw"; e.style.animationDelay = i * 0.04 + "s"; }
       e.style.setProperty("--r", rnd(-80, 80) + "deg"); setTimeout(() => e.remove(), kind === "egg" ? 1600 : 900);
     }
   }
@@ -400,20 +401,20 @@
     if (ev === "counter") { K.Audio.land("egg-splat"); word(C.eggOut, "bad"); return; }
     if (g.res1) { // the second landing
       g.flip2Up = ev === "clean" && !E.flipped; K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-      if (ev === "burst") splat("egg");
+      if (ev === "burst" && E.res.s > 1.7) splat("egg");
       if (ev !== "burst") { g.flips = 2; timerEl.textContent = C.flipCount(2); }
       const w2 = eggWin2(), c2 = E.res.cookAtFlip, inBand = c2 >= w2[0] - 0.05 && c2 <= w2[1] + 0.05;
       if (g.flip2Up && inBand) { word(C.eggYolkUp, "great"); K.Audio.ding(); } else if (g.flip2Up) word(c2 < w2[0] ? C.egg2Early : C.egg2Late, "meh"); else word(ev === "burst" ? C.eggBurst : C.eggFold, ev === "burst" ? "bad" : "meh");
       return;
     }
     g.flips = 1; timerEl.textContent = C.flipCount(1);
-    if (ev === "burst") { splat("egg"); K.Audio.land("egg-splat"); }
+    if (ev === "burst") { if (r.s > 1.7) splat("egg"); g.shake = Math.max(g.shake || 0, 0.8); try { navigator.vibrate && navigator.vibrate([25, 30, 50]); } catch (e) {} } // the lens gag only for a really hard flip
     // side 2 always follows (operator: two flips): the meter empties, its band moves to side 2's window
     g.flip2Open = true; setBand(eggWin2(), 1.2); gaugeEl.dataset.label = C.eggSide2; gaugeEl.classList.remove("pulse"); void gaugeEl.offsetWidth; gaugeEl.classList.add("pulse");
     if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500);
-    g.hit = ev === "burst" || (ev === "clean" && r.errDeg <= 12 && r.where === "centre") ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
+    g.hit = ev === "burst" ? 0.11 : ev === "clean" && r.errDeg <= 12 && r.where === "centre" ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
-    if (ev === "burst") word(C.eggBurst, "bad", C.eggBurstSub);
+    if (ev === "burst") word(C.eggBurst, "bad", pick(r.s > 1.7 ? C.eggLensSub : C.eggBurstSub));
     else if (ev === "fold") word(C.eggFold, "meh");
     else if (r.where === "wall") word(`${r.angle}°`, "ok", C.eggWall);
     else word(`${r.angle}°!`, r.errDeg <= 12 ? "great" : "ok", r.errDeg <= 12 ? C.eggPerfect : C.eggGood);
@@ -485,7 +486,7 @@
     if (r) {
       if (r.cookAtFlip < win[0] - 0.05) parts.push("앞면을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("앞면을 너무 늦게 뒤집음");
       if (r2) { const w2 = eggWin2(); if (r2.cookAtFlip < w2[0] - 0.05) parts.push("뒷면을 너무 일찍 뒤집음"); else if (r2.cookAtFlip > w2[1] + 0.05) parts.push("뒷면을 너무 늦게 뒤집음"); }
-      if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : "너무 세게 쳐서 노른자 터짐"); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
+      if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : C.eggBurstReceipt); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
       if (r.where === "wall") parts.push("벽에서 받음"); else if (r.where === "out") parts.push("계란을 못 받음");
       if (g.flip2Open && !g.flip2Up) parts.push(g.egg2Auto ? "뒷면 방치" : "두 번째 뒤집기 실패");
     }
