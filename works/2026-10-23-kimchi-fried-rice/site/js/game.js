@@ -411,7 +411,7 @@
     if (!g.auto && s.total > best) store.set("kfr-best3d", s.total);
     const tier = C.tiers.find((x) => s.total >= x[0]), next = C.tiers.slice().reverse().find((x) => x[0] > s.total);
     const line = (a, b, c) => `<li><span>${a}</span><span>${b} / ${c}</span></li>`;
-    resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}</div>
+    resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}${g.auto ? `<br>${C.watchedBy}` : ""}</div>
       ${rec ? `<div class="rec">신기록</div>` : ""}
       <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
       <div class="floor">바닥 밥 변상 <b>${K.Food.spilled}</b>알 × 10원 = <b>${(K.Food.spilled * 10).toLocaleString()}</b>원</div>
@@ -421,13 +421,13 @@
       <div class="memo">사장님: ${memo(tier)}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
       ${best > 0 && !rec && best > s.total ? `<div class="near">내 최고 ${best}점</div>` : ""}
-      <div class="row"><button class="btn" id="again" type="button">${C.again}</button><button class="btn ghost" id="share" type="button">${C.share}</button></div>
+      <div class="row"><button class="btn" id="again" type="button">${g.auto ? C.tryIt : C.again}</button>${g.auto ? "" : `<button class="btn ghost" id="share" type="button">${C.share}</button>`}</div>
       ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
     resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
     const n = $("scoreN"), t0 = performance.now() + 1200;
     (function up() { if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
     $("again").onclick = () => { K.Audio.unlock(); const go = () => start(false); if (g.auto) K.Input.requestPermission().then(go, go); else go(); }; bestLine();
-    $("share").onclick = share;
+    if (!g.auto) $("share").onclick = share; // the bot's dish is not yours to brag about
   }
   const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);
   function whyLine(s) {
