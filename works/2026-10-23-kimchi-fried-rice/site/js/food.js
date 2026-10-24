@@ -200,7 +200,7 @@
         F.vy[i] -= (Math.abs(F.vy[i]) < 1 ? 0.75 : 1) * G * dt;
         F.x[i] += F.vx[i] * dt; F.y[i] += F.vy[i] * dt; F.z[i] += F.vz[i] * dt;
         F.rx[i] += F.sx[i] * dt; F.ry[i] += F.sy[i] * dt; F.rz[i] += F.sz[i] * dt;
-        F.cook[i] += 0.01 * dt;
+        F.cook[i] += 0.08 * (ctx.heat || 0) * dt; // tossed through the flame it cooks too (wok hei): fast, perfect play left the rice raw
         if (tz) tz.peak = Math.max(tz.peak, F.y[i]);
         if (F.vy[i] < 0) {
           _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(_inv);

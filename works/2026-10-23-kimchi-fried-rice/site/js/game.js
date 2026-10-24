@@ -676,6 +676,8 @@
   app.addEventListener("pointerdown", () => { if (g.introOn && g.skipOK) g.introSkip = true; }); // from the 2nd round a tap skips the intro
   addEventListener("resize", () => W.fit());
   document.addEventListener("visibilitychange", () => { if (document.hidden) K.Audio.suspend(); else K.Audio.resume(); last = performance.now(); });
-  K.Game = { get state() { return g; }, start, flick, finalScore };
+  // capture only (?ts=0.0001 freezes the loop): advance exactly n fixed steps and draw one frame, for a smooth recorded reel
+  function tick(n) { for (let i = 0; i < n; i++) step(1 / 60); K.Food.draw(); camera(n / 60); hud(); W.renderer.render(W.scene, W.camera); }
+  K.Game = { get state() { return g; }, start, flick, finalScore, tick };
   requestAnimationFrame(frame);
 })();
