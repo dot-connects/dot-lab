@@ -86,7 +86,7 @@
     }
     if (g.darkPh === "warn" && g.clock <= 5.2 && !g.cutAt) g.cutAt = g.t + 0.12;
     if (g.darkPh === "dark") { g.darkN = (g.darkN || 0) + 1; if (g.clock <= 1.2) g.onAt = Math.min(g.onAt || 1e9, g.t + 0.2); }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.ticked = false; g.landSnd = false; g.landShk = false;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.win = bandFor(s); g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
     g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
     if (s >= 1.15 && (f.snap == null || f.snap > 0.4)) { g.hei = Math.max(g.hei, 0.9); W.sparkBurst(8); }
@@ -110,7 +110,17 @@
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
   // fixed beat so the hand can learn it (no jitter); 불쇼 (fever) widens the sweet spot
-  function readyWin() { const fv = g.t < (g.fever || 0), first = g.darkPh === "dark" && !g.darkN; return { open: 0.35, gold0: fv ? 0.45 : 0.55, peak: 0.8, gold1: fv || first ? 1.3 : 1.1, late: 1.6 }; } // the first toss in the dark may hesitate
+  // the gold band opens just before the rice lands (L, from the toss strength and today's gravity) and narrows as
+  // the combo grows; it is decided at each toss and stays put while the needle runs (panel p9: physics + ux + game)
+  function bandFor(s) {
+    const L = (0.62 + 0.13 * clamp(s, 0.3, 1.8)) * Math.sqrt(38 / K.Food.G()), fv = g.t < (g.fever || 0);
+    const base = Math.max(0.3, 0.55 - 0.05 * Math.min(g.combo, 5));
+    let w = base + (fv ? 0.15 : 0);
+    if (g.darkPh === "dark") w = (g.winW || base) + 0.1; else if (g.darkPh === "back" || g.darkPh === "over") w = 0.55; else g.winW = base; // dark: frozen (without the 불쇼 bonus), a little wider; finale: easy
+    const gold0 = L - 0.08, gold1 = gold0 + w;
+    return { open: L - 0.3, gold0, peak: L + 0.05, gold1, late: gold1 + 0.5 };
+  }
+  function readyWin() { const w = g.win || bandFor(1), first = g.darkPh === "dark" && !g.darkN; return first ? Object.assign({}, w, { gold1: w.gold1 + 0.2 }) : w; } // the first toss in the dark may hesitate
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
@@ -183,6 +193,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
+    K.Food.setG(38);
     W.setDark(0); hudEl.classList.remove("dark", "slow", "final"); K.Audio.darkFlag(false); K.Audio.slow(false);
     homeEl.hidden = false;
     K.Input.steerAfterFlick = false;
@@ -209,7 +220,7 @@
       if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(1); else if (i === 2) F.drop(0); // chef: kimchi first, then the cold rice
     }
     if (k >= 1.75 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
-    if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.lastFlick = g.t; g.clockAt = g.t + 0.5; hideCue(); } // the needle starts at 볶아! // 0.5 s grace before the 12 s run
+    if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.lastFlick = g.t; g.win = bandFor(1); g.clockAt = g.t + 0.5; hideCue(); } // the needle starts at 볶아! // 0.5 s grace before the 12 s run
   }
   // no toss yet: the hint comes only now (1.5 s), and gets pushier at 4 s
   function nudge() {
@@ -300,6 +311,7 @@
     updatePose(dt);
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice" && g.introOn) introStep();
+    if (g.ph === "rice" && g.started && !g.darkPh) K.Food.setG(38 + 12 * clamp((g.t - g.goT) / 7, 0, 1));
     if (g.ph === "rice" && g.started) blackout();
     else if (g.darkPh && g.darkPh !== "over") lightsOn();
     darkOv.style.opacity = (W.darkK * (1 - 0.4 * clamp(g.hei - 0.35, 0, 1))).toFixed(3); // a perfect's fire lifts the dark for a moment
@@ -568,7 +580,7 @@
     // the beat bar: the needle runs from the last toss, the gold band is when to toss again
     beatEl.hidden = !(g.ph === "rice" && g.started && g.clock > 0); // from the start: the needle waits at 0 for the first toss
     if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
-      zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; }
+      zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; beatEl.classList.toggle("c3", g.combo >= 3 && g.combo < 5); beatEl.classList.toggle("c5", g.combo >= 5); }
   }
   // 밥 % (how much is still yours) and 익음 % (cooked grains), live
   function liveStats() {
@@ -612,6 +624,7 @@
   // ⌂: back to the start screen from anywhere (the wok goes back to cooking by itself)
   const homeEl = $("home");
   function goHome() {
+    K.Food.setG(38);
     W.setDark(0); hudEl.classList.remove("dark", "slow", "final"); K.Audio.darkFlag(false); K.Audio.slow(false); cueEl.className = "";
     K.Input.steerAfterFlick = false; K.Input.demoTilt(0, 0);
     g = newGame(false);

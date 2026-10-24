@@ -228,3 +228,8 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   0.9 s left, motion again after watch mode, gauge label inside the screen; layout QA (6 viewports): label/edge/combo
   overlap, tip and receipt wrapping; egg QA: a second flip no longer counts as raw from side 1's doneness.
 - Checked: egg band + "뒤집기 2/2", ?vs share overlay, slow-mo, ⌂ restart; no errors.
+- Beat difficulty (operator: the band is always at the same timing, a bit easy). Measured airtime 0.65-0.83 s.
+  Panel p9 (game, physics, ux, fair): the band is set at each toss and stays put: it opens 0.08 s before the rice lands
+  (L = (0.62 + 0.13 s)·√(38/G)), width 0.55 → 0.30 s as the combo grows (+0.15 in 불쇼); the tempo rises through
+  gravity 38 → 50 over the lit 7 s (landings 0.67 → 0.59 s; never tossing into airborne rice); dark: width frozen
+  (no 불쇼 bonus) + 0.1, first dark toss +0.2; finale 0.55; band turns orange at combo 3, red at 5, 0.15 s slide.

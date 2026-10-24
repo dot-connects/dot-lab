@@ -4,13 +4,14 @@
 "use strict";
 (function () {
   const K = window.KFR, T = K.T, TAU = K.TAU, clamp = K.clamp, smooth = K.smooth, rnd = K.rnd, surf = K.surf, lin = K.lin;
-  const G = 38;                       // with the higher toss (hs) airtime ~0.55 s: the arc reads on a phone (Ko & Hu: a real cycle is ~0.3 s)
+  let G = 38;                       // with the higher toss (hs) airtime ~0.55 s: the arc reads on a phone (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
   const HK = 0.015;                   // pile height per grain in a cell (1400 bigger grains: same heap)
   const NG = 38, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
   const COUNTER = -0.61;
   const F = (K.Food = { n: 0 });
+  F.setG = (v) => { G = v; }; F.G = () => G; // game.js ramps it over the lit 7 s (faster tempo = quicker landings)
 
   // colour ramps (chef): kimchi-stained raw → glossy red-orange → wok-hei brick → scorched → burnt
   const RAMP = [[0, "#e2894c"], [0.4, "#d96a2e"], [0.8, "#c8501f"], [1.1, "#9a4a1e"], [1.4, "#6b3414"], [1.75, "#3e2010"]].map(([k, c]) => [k, lin(c)]);

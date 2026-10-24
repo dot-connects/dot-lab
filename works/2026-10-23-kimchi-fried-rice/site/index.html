@@ -75,7 +75,8 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #stats b{font-weight:400;background:rgba(14,16,19,.62);border-radius:9px;padding:2px 9px;letter-spacing:.02em}
 #cookN.burnt{color:#ffb4a0}
 #beat{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%);width:min(62vw,260px);height:16px;border-radius:999px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.7)}
-#zone{position:absolute;top:0;bottom:0;background:#ffb000;border-radius:6px}
+#zone{position:absolute;top:0;bottom:0;background:#ffb000;border-radius:6px;transition:left .15s,width .15s,background .2s}
+#beat.c3 #zone{background:#ff8a00}#beat.c5 #zone{background:#ff4d1a}
 #needle{position:absolute;top:-6px;bottom:-6px;width:6px;margin-left:-3px;background:#fff;border-radius:3px;box-shadow:0 0 6px rgba(0,0,0,.6)}
 #beat.in{box-shadow:0 0 16px 4px rgba(255,176,0,.9)}#beat.in #zone{background:#fff1a8}#beat.late #needle{background:#ff5a3c}
 .num{position:absolute;font:30px "Black Han Sans",system-ui,sans-serif;pointer-events:none;-webkit-text-stroke:5px #fff;paint-order:stroke fill;animation:numUp .9s ease-out forwards}
