@@ -7,7 +7,7 @@
   const YU = 0.04, YV = -0.03;   // yolk centre in egg-local x / z
   const GE = 16;                 // egg gravity: a good flip ~0.5 s in the air
   const E = (K.Egg = { ph: "off" });
-  const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_UNDER = lin("#f2e9d3"), C_DOME = lin("#efcf8a");
+  const C_RAW = lin("#666b70"), C_SET = lin("#fbfaf4"), C_GOLD = lin("#e7ac5c"), C_BROWN = lin("#8e4e20"), C_BURNT = lin("#2a1a12"), C_UNDER = lin("#f2e9d3"), C_DOME = lin("#efcf8a");
   const _c = new T.Color(), _v = new T.Vector3(), _q = new T.Quaternion(), _qx = new T.Quaternion(), _ax = new T.Vector3(1, 0, 0), _inv = new T.Matrix4();
   const dummy = new T.Object3D();
 
@@ -79,7 +79,7 @@
   /* ---------- a new egg ---------- */
   E.start = function (t) {
     Object.assign(E, { ph: "drop", t0: t, cook: 0, waves: [], flip: null, flipped: false, burst: false, fold: 0, bend: 0, sx: 0, sz: 0, svx: 0, svz: 0, ox: 0, oz: 0.05,
-      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, loose: false, take: null });
+      y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null });
     for (const b of E.bubbles) blister(b, t);
     E.g.visible = E.oil.visible = E.fizz.visible = E.spat.visible = true; E.pud.visible = false; for (const d of E.drips) d.visible = false;
   };
@@ -91,12 +91,6 @@
   }
   E.spatter = spatter;
 
-  /* the cook's shake test: raw, the egg is stuck and only ripples; once set it slides on the oil */
-  E.shake = function (t, du, dv) {
-    if (E.ph !== "pan") return null;
-    if (E.cook < 0.42) { jolt(t, 0.7, 1.2); return "stuck"; }
-    E.svx += du * 1.4; E.svz -= dv * 1.0; jolt(t, 0.4, 1.0); E.loose = true; return "slides";
-  };
 
   /* the flip: ONE knob — the flick's strength sets height, airtime and spin; its side component drifts the egg */
   E.flipStart = function (f, t) {
@@ -131,9 +125,9 @@
     let event = null;
     if (E.ph === "drop" || E.ph === "pan") {
       const k = t - E.t0;
-      // a loose egg slides on the oil toward the low side of the wok, then drifts back
+      // hot oil: the egg slides toward the low side of the wok from the start, then drifts back (operator 10-24)
       _q.setFromRotationMatrix(wm).invert(); _v.set(0, -1, 0).applyQuaternion(_q);
-      const g = E.loose || E.cook > 0.42 ? 2.6 : 0;
+      const g = 2.6;
       E.svx += (_v.x * g - 5 * E.sx) * dt; E.svz += (_v.z * g - 5 * E.sz) * dt;
       E.svx *= Math.exp(-2.2 * dt); E.svz *= Math.exp(-2.2 * dt);
       E.sx = clamp(E.sx + E.svx * dt, -0.4, 0.4); E.sz = clamp(E.sz + E.svz * dt, -0.35, 0.3);
@@ -239,7 +233,8 @@
       thick *= (1 + 0.45 * set) * (t > 0.9 ? 0.4 + 0.6 * (1 - t) / 0.1 : 1);
       let bub = 0;
       for (const b of e.bubbles) { if (b.gk > 0) { const q = ((x - b.x) ** 2 + (z - b.z) ** 2) / (b.r * b.r); if (q < 4) bub += b.h * b.gk * Math.exp(-q); } }
-      const lace = t > 0.84 ? 0.02 * smooth((t - 0.84) / 0.16) * clamp((e.cook - 0.75) * 2, 0, 1) * n : 0;
+      const lw = 0.1 + 0.25 * clamp((e.cook - 0.45) / 0.9, 0, 1); // the crisp edge widens as it fries: the flip cue
+      const lace = t > 1 - lw ? 0.02 * smooth((t - 1 + lw) / lw) * clamp((e.cook - 0.45) * 2.5, 0, 1) * n : 0;
       let wob = 0;
       for (const w of e.waves) { const tau = tNow - w.t0; wob += w.a * 0.014 * (1.25 - 0.55 * cookK) * Math.exp(-(2.6 + 4 * cookK) * tau) * Math.sin(17 * d - (19 + 16 * cookK) * tau) * (1 - 0.4 * t); }
       const bend = -e.bend * z * z * 0.9, sq = 1 - 0.5 * e.sq.s;
@@ -249,8 +244,10 @@
       P[j] = x * (1 + 0.12 * e.sq.s); P[j + 2] = z * (1 + 0.12 * e.sq.s);
       P[j + 1] = drape(P[j], P[j + 2], false) + (thick + bub) * sq + lace + wob + bend + lift;
       A[k] = set; _c.copy(C_RAW).lerp(C_SET, set);
-      const br = clamp((e.cook - 0.55) * 1.8, 0, 1) * smooth((t - 0.78) / 0.2) * (0.8 + 0.35 * n);
-      if (br > 0) { _c.lerp(C_GOLD, Math.min(1, br * 1.4)); _c.lerp(C_BROWN, clamp((br - 0.55) * 1.6, 0, 0.85)); }
+      // the edge: thin gold from ~0.45 (반숙 window from 0.5), wider and brown by ~0.85 (완숙), black past 1.15
+      const br = clamp((e.cook - 0.4) * 2.2, 0, 1) * smooth((t - 1 + lw) / Math.max(0.06, lw * 0.6)) * (0.8 + 0.35 * n);
+      if (br > 0) { _c.lerp(C_GOLD, Math.min(1, br * 1.4)); _c.lerp(C_BROWN, clamp((e.cook - 0.75) * 1.8, 0, 0.85) * smooth((t - 0.92 + 0.1 * lw) / 0.1)); }
+      const bt = clamp((e.cook - 1.15) / 0.3, 0, 1); if (bt > 0) _c.lerp(C_BURNT, bt * smooth((t - 0.55) / 0.4) * 0.9);
       Cc[j] = _c.r; Cc[j + 1] = _c.g; Cc[j + 2] = _c.b;
       const dome = 0.07 * Math.exp(-((d / 0.13) ** 2)) * (e.burst ? 0.35 : 1);
       Pb[j] = P[j]; Pb[j + 2] = P[j + 2];
@@ -279,7 +276,7 @@
     const ys = 1 - 0.35 * e.sq.s + Y.h * 4;
     e.yolk.position.set(YU + Y.x, drape(YU, YV, false) + 0.03 * (1 + 0.45 * clamp(e.cook, 0, 1)), YV + Y.z);
     e.yolk.scale.set(1 + 0.25 * e.sq.s - Y.h * 2, clamp(0.5 * ys, 0.25, 0.7), 1 + 0.25 * e.sq.s - Y.h * 2);
-    e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.95) * 1.2, 0, 0.55));
+    e.yolkMat.color.copy(lin("#ffa412")).lerp(lin("#ffd98a"), clamp((e.cook - 0.82) * 1.2, 0, 0.6));
     e.yolk.visible = !(e.ph === "air" ? !!e.flip.base !== e.flip.f > 0.5 : e.flipped) && !e.fold && !e.burst;
   }
 })();

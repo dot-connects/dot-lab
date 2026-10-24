@@ -7,8 +7,8 @@
   const G = 40;                       // airtime ~0.45 s for a good toss (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
-  const HK = 0.0042;                  // pile height per grain in a cell
-  const NG = 26, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
+  const HK = 0.009;                   // pile height per grain in a cell
+  const NG = 38, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
   const COUNTER = -0.61;
   const F = (K.Food = { n: 0 });
 
@@ -120,7 +120,9 @@
     const over = Math.max(0, tz.s - 1.25) * 1.1;
     const a0 = _v.x * tz.dx + _v.z * tz.dz, b0 = -_v.x * tz.dz + _v.z * tz.dx;
     const L = tz.lumps[i % NL]; // grains that stick together come down together
-    const aT = -0.1 - 0.2 * (r - 0.5) - over + L[0] + rnd(-0.07, 0.07) * (1 + over), bT = b0 * rnd(0.3, 0.6) + L[1] + rnd(-0.07, 0.07) * (1 + over * 2);
+    // gaussian scatter around the lump (a uniform box landed the heap as a rectangle)
+    const ga = (Math.random() + Math.random() + Math.random() - 1.5) * 0.16, gb = (Math.random() + Math.random() + Math.random() - 1.5) * 0.16;
+    const aT = -0.1 - 0.1 * (r - 0.5) - over + L[0] + ga * (1 + over), bT = b0 * 0.35 + L[1] + gb * (1 + over * 2);
     const va = (aT - a0) / T0, vb = (bT - b0) / T0;
     F.vx[i] = tz.dx * va - tz.dz * vb; F.vz[i] = tz.dz * va + tz.dx * vb; F.vy[i] = vy;
     F.sx[i] = rnd(-12, 12); F.sy[i] = rnd(-6, 6); F.sz[i] = rnd(-12, 12);
@@ -165,7 +167,7 @@
         F.y[i] += (groundY(i) - F.y[i]) * Math.min(1, dt * 14);
         // cooking: the layer on the metal sears, the top barely warms; the hot centre cooks fastest
         const heat = ctx.heat * Math.max(0.15, 1.15 - 0.65 * r * r), lay = (1 - F.depth[i]) ** 2 * 0.9 + 0.1;
-        F.cook[i] += 0.16 * heat * lay * dt;
+        F.cook[i] += 0.16 * heat * lay * dt + 0.24 * (F.scorchVis || 0) * F.depth[i] * dt; // scorching: smoke and heat brown the top too, so it reads from above
       } else if (st === 1) { // riding up the far wall before the lip snap
         const k = smooth((t - tz.t - 0.04) / 0.13), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
         const aa = a + (0.55 + 0.35 * F.rank[i] - a) * k, bb = b * (1 - 0.3 * k);

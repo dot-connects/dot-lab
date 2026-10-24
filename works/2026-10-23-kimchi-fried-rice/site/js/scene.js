@@ -137,12 +137,6 @@
     const wood = mat(S, S.chunky ? "#c9773a" : "#7b4a2a", { std: { roughness: 0.6 }, phys: { roughness: 0.55, clearcoat: 0.3 } });
     const handle = new T.Mesh(new T.CylinderGeometry(0.06, 0.07, 1.0, 20), wood); handle.rotation.x = Math.PI / 2 - 12 * DEG; handle.position.set(0, 0.5, 1.88); handle.castShadow = true; wok.add(handle);
     const ear = new T.Mesh(new T.TorusGeometry(0.09, 0.022, 8, 20, Math.PI), steel); ear.position.set(0, 0.36, -1.06); ear.rotation.set(-Math.PI / 2, 0, 0); wok.add(ear);
-    // heat on the rim: a thin additive ring that warms up when the food has sat long enough (the diegetic "now")
-    W.rimGlow = new T.Mesh(new T.TorusGeometry(1.04, 0.05, 8, 96), new T.MeshBasicMaterial({ color: lin("#ff7a2a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
-    W.rimGlow.rotation.x = Math.PI / 2; W.rimGlow.position.y = 0.37; wok.add(W.rimGlow);
-    // a soft halo on the inner wall so the colour reads even on a small, dark screen
-    W.rimHalo = new T.Mesh(new T.TorusGeometry(0.98, 0.13, 8, 96), new T.MeshBasicMaterial({ color: lin("#ff7a2a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false }));
-    W.rimHalo.rotation.x = Math.PI / 2; W.rimHalo.position.y = 0.33; wok.add(W.rimHalo);
 
     // burner flames: short tongues on a ring just outside the wok wall
     W.flames = [];
@@ -156,6 +150,10 @@
     for (let i = 0; i < 9; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: heiTex, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); sp.userData = { a: (i - 4) * 0.16, s: rnd(0.8, 1.2), ph: rnd(0, TAU) }; scene.add(sp); W.hei.push(sp); }
     W.sparks = [];
     for (let i = 0; i < 40; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: sparkTex, blending: T.AdditiveBlending, depthWrite: false, transparent: true, opacity: 0 })); sp.userData = { life: 0, p: new T.Vector3(), v: new T.Vector3() }; scene.add(sp); W.sparks.push(sp); }
+    // oil smoke: thin wisps from the edge of the pile when the metal under it is hot again (the cook's "now", operator 10-24:
+    // a glowing rim is not something a wok does)
+    W.wisps = [];
+    for (let i = 0; i < 8; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { a: (i / 8) * Math.PI * 2 + rnd(-0.3, 0.3), t: i * 0.1 }; scene.add(sp); W.wisps.push(sp); }
     W.puffs = [];
     for (let i = 0; i < 14; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { t: Math.random() * 2 }; scene.add(sp); W.puffs.push(sp); }
 
@@ -205,19 +203,25 @@
     }
     for (const p of W.puffs) {
       const u = p.userData; u.t += dt; if (u.t > 2) { u.t = 0; u.x = rnd(-0.4, 0.4); u.z = rnd(-0.3, 0.3); }
-      const k = u.t / 2; p.position.set((u.x || 0) + Math.sin(t + u.t * 3) * 0.05, 0.25 + k * 1.1, u.z || 0); p.scale.setScalar(0.25 + k * 0.6);
-      p.material.opacity = (u.big && k < 0.5 ? Math.max(o.steam, Math.min(0.7, 0.45 * u.big)) : o.steam) * Math.sin(Math.PI * k); if (k >= 0.5) u.big = 0;
-      if (u.big) p.scale.setScalar((0.25 + k * 0.6) * (1 + 0.6 * u.big));
-      p.material.color.setRGB(1 - o.smoke * 0.55, 1 - o.smoke * 0.6, 1 - o.smoke * 0.62);
+      const k = u.t / 2, px = (u.x || 0) + Math.sin(t + u.t * 3) * 0.05, pz = u.z || 0, top = K.Food && K.Food.pileTop ? K.Food.pileTop(px, pz) : 0.25;
+      _v.set(px, top + 0.05 + k * 1.1, pz).applyMatrix4(W.wok.matrixWorld); p.position.copy(_v); p.scale.setScalar(0.25 + k * 0.6);
+      // burning: more of the puffs turn into dark smoke as it scorches (it only changed colour before, so it never read)
+      const sm = o.smoke || 0, on = W.puffs.indexOf(p) < 4 + 10 * sm;
+      p.material.opacity = Math.max(o.steam, on ? Math.min(0.9, sm * 1.1) : 0) * Math.sin(Math.PI * Math.min(1, k * 1.3));
+      if (sm > 0) p.scale.setScalar((0.3 + k * 0.8) * (1 + 0.7 * sm));
+      p.material.color.setRGB(1 - sm * 0.5, 1 - sm * 0.53, 1 - sm * 0.55); // grey, not black: black smoke vanishes on the dark wok
     }
-    W.rimGlow.material.opacity = o.rim; W.rimHalo.material.opacity = o.rim * 0.35; if (o.rimCol) { W.rimGlow.material.color.copy(o.rimCol); W.rimHalo.material.color.copy(o.rimCol); }
+    for (const p of W.wisps) {
+      const u = p.userData; u.t += dt; if (u.t > 0.6) u.t -= 0.6;
+      const k = u.t / 0.6, r = o.wispR || 0.5, wv = o.wisp || 0, big = o.wispBig || 1;
+      const wx = Math.cos(u.a) * r, wz = Math.sin(u.a) * r * 0.9, top = K.Food && K.Food.pileTop ? K.Food.pileTop(wx * 0.8, wz * 0.8) : surf(r * r) + 0.06; // from the top of the heap, not inside it
+      _v.set(wx, top + 0.12 + k * 0.6 * (0.5 + 0.5 * wv) * big, wz).applyMatrix4(W.wok.matrixWorld);
+      p.position.copy(_v); p.scale.set((0.1 + 0.16 * k) * big * (1 + 0.8 * (o.wispThick || 0)), (0.45 + 0.35 * k) * big, 1);
+      p.material.opacity = Math.min(1, wv * 1.25) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol);
+    }
   };
-  // a puff of white steam from the middle of the pile: "the rice is ready for the next toss"
-  W.puffBurst = function (big) {
-    let c = 0; for (const p of W.puffs) { const u = p.userData; u.t = rnd(0, 0.15); u.x = rnd(-0.18, 0.18); u.z = rnd(-0.15, 0.15); u.big = big; if (++c >= 4) break; }
-  };
-  // a new toss blows the ready puff away (it hung in the wok as a white smear under the flying rice)
-  W.puffClear = function () { for (const p of W.puffs) if (p.userData.big) { p.userData.big = 0; p.userData.t = 2; } };
+  // the wisps restart from the metal together, so the moment they rise reads as one event
+  W.wispBurst = function () { for (const p of W.wisps) p.userData.t = rnd(0, 0.08); };
   W.sparkBurst = function (n) {
     let c = 0; for (const sp of W.sparks) { const u = sp.userData; if (u.life > 0) continue;
       const a = rnd(-0.7, 0.7); u.p.set(Math.sin(a), K.RIM + 0.05, -Math.cos(a)).applyMatrix4(W.wok.matrixWorld);

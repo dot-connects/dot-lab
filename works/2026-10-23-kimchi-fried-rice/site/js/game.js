@@ -17,7 +17,7 @@
   function newGame(auto) {
     return { ph: "intro", t: 0, phT: 0, auto, clock: RICE_T, started: false, lastFlick: -9, toss: null, tossN: 0,
       fire: 0, combo: 0, maxCombo: 0, grades: [], counts: { perfect: 0, good: 0, early: 0, late: 0 }, perfects: 0, maxGap: 0, scorchSaid: -9,
-      order: Math.random() < 0.5 ? "half" : "full", eggShakeT: -9, plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
+      order: Math.random() < 0.5 ? "half" : "full", plateK: 0, pats: 0, doneT: 0, poured: 0, res: null,
       pose: { tilt: { u: 0, v: 0 } }, hei: 0, shim: -9, cam: 0, pan: 0, hit: 0 };
   }
   g = newGame(false);
@@ -79,7 +79,7 @@
     g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.jit = (Math.random() - 0.5) * 0.24;
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
-    F.launch({ strength: s, dirU: du, dirV: dv }, g.t); W.puffClear();
+    F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
     g.tossN++;
     K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
     if (s > 1.55) word(C.tooHard, "bad");
@@ -141,7 +141,7 @@
   function start(auto) {
     g = newGame(auto);
     if (K.Egg.ph !== "off") K.Egg.hide();
-    K.Food.reset(); K.Food.fireTint = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
+    K.Food.reset(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
     timerEl.hidden = false; gaugeEl.hidden = false;
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
@@ -155,7 +155,7 @@
     }
   }
   function startPlate() {
-    setPh("plate"); hudEl.classList.add("dim"); tip("");
+    setPh("plate"); hudEl.classList.add("dim"); tip(""); K.Food.scorchVis = 0;
     W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
   }
   function startEgg() {
@@ -220,7 +220,7 @@
     kim.instanceMatrix.needsUpdate = ses.instanceMatrix.needsUpdate = true;
   }
 
-  const rimCol = new T.Color(), RC = { raw: K.lin("#ffffff"), orange: K.lin("#ff7a1a"), gold: K.lin("#ffd23a"), red: K.lin("#e0261a"), dark: K.lin("#2a120a") };
+  const wispCol = new T.Color(), WC = { white: K.lin("#f2f4f7"), grey: K.lin("#9a948c"), dark: K.lin("#6a625a") };
   /* ---------- the step (fixed 1/60) ---------- */
   function step(dt) {
     g.t += dt; g.phT += dt;
@@ -236,31 +236,27 @@
     if (r.landed > 30 && g.ph === "rice") K.Audio.land("rice");
     if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad"); } }
     if (plateOn && g.ph !== "result" && g.ph !== "garnish") plateStep(dt);
-    // the diegetic cue: the rim warms while the food is ready to go again; smoke when the bottom starts to scorch
-    let rim = 0, steam = 0.12, smoke = 0;
+    // the diegetic cue: oil smoke rises from the edge of the pile and the sizzle turns to dry pops when the metal under it
+    // is hot again; dark smoke when the bottom starts to scorch
+    let wisp = 0, wispBig = 1, wispThick = 0, siz = 0.4, steam = 0.12, smoke = 0;
     if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
       const back = g.t - F.lastLand;
       const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
-      if (F.contact < 0.8 || back < w.open) { rim = 0.15; rimCol.copy(RC.raw); }
-      else if (back < w.gold0) { rimCol.copy(RC.raw).lerp(RC.orange, (back - w.open) / (w.gold0 - w.open)); rim = 0.5; }
-      else if (back <= w.gold1) { rimCol.copy(RC.gold); rim = 1.0; if (!g.puffed) { g.puffed = true; W.puffBurst(1 + big); } }
-      else if (back <= w.late) { rimCol.copy(RC.orange).lerp(RC.red, (back - w.gold1) / (w.late - w.gold1)); rim = 0.75; }
-      else { rimCol.copy(RC.red).lerp(RC.dark, clamp((back - w.late) / 0.5, 0, 1)); rim = 0.55; }
-      const b = F.bottom(); smoke = clamp((b.scorch - 0.04) * 6, 0, 1); steam = 0.18 + 0.2 * clamp(back, 0, 1);
+      wispCol.copy(WC.white);
+      if (F.contact < 0.8 || back < w.open) { wisp = 0; siz = 0.4; }
+      else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.2 * k; siz = 0.4 + 0.3 * k; }
+      else if (back <= w.gold1) { wisp = 0.55 + 0.15 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 1; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); K.Audio.pops(); } }
+      else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
+      else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
+      const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - w.late - 1.0) / 2.5, 0, 1)); F.scorchVis = smoke; // left on the metal: smoke from ~2.3 s, thick by ~5 s steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
-    if (g.ph === "egg") steam = 0.1;
+    if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); } // a forgotten egg smokes
     g.hei = Math.max(0, g.hei - dt * 2.2);
-    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, rim, rimCol });
-    K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
+    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5 });
+    K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
-      // the cook's shake test: a quick wiggle of the phone loosens a set egg; a raw one stays stuck
-      const tl = K.Input.tilt, sp = Math.hypot(tl.u - (g.ltu || 0), tl.v - (g.ltv || 0)) / dt; g.ltu = tl.u; g.ltv = tl.v;
-      if (sp > 6 && g.t - g.eggShakeT > 0.7 && E.ph === "pan" && !g.auto) {
-        g.eggShakeT = g.t; g.shim = g.t; const res = E.shake(g.t, tl.u, tl.v);
-        if (res === "stuck") word(C.eggStuck, "meh"); else if (res === "slides") word(C.eggSlides, "ok");
-      }
       if (E.ph === "pan" && E.cook > 1.4 && !g.eggBurnSaid) { g.eggBurnSaid = true; word(C.eggBurning, "bad"); }
       if (E.ph === "pan" && E.cook > 1.58) { g.eggAuto = !g.auto; eggFlick({ strength: 0.65, dirU: 0 }); } // left too long: it gets flipped for you, badly
       const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
@@ -345,7 +341,7 @@
     if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
     parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
     const c = g.counts, n = c.perfect + c.good + c.early + c.late;
-    if (n) parts.push(`금빛에 휙 ${c.perfect}/${n}번` + (c.early > c.late && c.early > 1 ? " (너무 빨리 친 게 많음)" : c.late > 1 ? " (늦게 친 게 많음)" : ""));
+    if (n) parts.push(`연기 날 때 휙 ${c.perfect}/${n}번` + (c.early > c.late && c.early > 1 ? " (너무 빨리 친 게 많음)" : c.late > 1 ? " (늦게 친 게 많음)" : ""));
     const r = s.r, win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
     if (r) {
       if (r.cookAtFlip < win[0] - 0.05) parts.push("계란을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("계란을 너무 늦게 뒤집음");
@@ -389,7 +385,6 @@
       }
     } else if (g.ph === "egg") {
       const win = g.order === "half" ? 0.62 : 0.95;
-      if (E.ph === "pan" && E.cook > 0.5 && !g.autoShook) { g.autoShook = true; g.shim = g.t; E.shake(g.t, 0.3, 0); word(C.eggSlides, "ok"); }
       if (E.ph === "pan" && E.cook > win) eggFlick({ strength: 1.05, dirU: 0 });
       if (E.ph === "landed" && g.flip2Open && !g.flip2Done && g.t - E.landT > 0.7) eggFlick({ strength: 1.05, dirU: 0 });
       if (E.ph === "air") { const tg = E.target(); if (tg) K.Input.demoTilt(clamp(tg.x / 0.9, -1, 1), clamp(-tg.z / 0.65, -1, 1)); }
