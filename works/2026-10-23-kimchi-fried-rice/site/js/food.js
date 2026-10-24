@@ -13,8 +13,8 @@
   const F = (K.Food = { n: 0 });
 
   // colour ramps (chef): kimchi-stained raw → glossy red-orange → wok-hei brick → scorched → burnt
-  const RAMP = [[0, "#d9773f"], [0.45, "#cc552a"], [0.9, "#b8431f"], [1.2, "#9c3a1c"], [1.5, "#5e301a"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
-  const KRAMP = [[0, "#d6301f"], [0.9, "#b8261c"], [1.4, "#7e1a12"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
+  const RAMP = [[0, "#c8642e"], [0.45, "#b9481f"], [0.9, "#a63a1a"], [1.2, "#8c3318"], [1.5, "#5e301a"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
+  const KRAMP = [[0, "#b8231a"], [0.9, "#b8261c"], [1.4, "#7e1a12"], [1.9, "#2a1a12"]].map(([k, c]) => [k, lin(c)]);
   const PRAMP = [[0, "#5fb043"], [1.0, "#3f8a2c"], [1.5, "#4a4a22"], [1.9, "#262a1a"]].map(([k, c]) => [k, lin(c)]);
   const _c = new T.Color();
   function ramp(R, k, out) { if (k <= R[0][0]) return out.copy(R[0][1]); for (let i = 1; i < R.length; i++) if (k <= R[i][0]) return out.copy(R[i - 1][1]).lerp(R[i][1], (k - R[i - 1][0]) / (R[i][0] - R[i - 1][0])); return out.copy(R[R.length - 1][1]); }
@@ -22,12 +22,12 @@
   function build() {
     const W = K.W, S = W.S, M = W.mat;
     if (F.meshes) for (const m of F.meshes) m.parent && m.parent.remove(m);
-    const nR = S.grainN, nK = S.chunky ? 90 : 120, nP = S.chunky ? 50 : 70, n = nR + nK + nP;
+    const nR = S.grainN, nK = S.chunky ? 110 : 160, nP = S.chunky ? 50 : 70, n = nR + nK + nP;
     const [gl, gw] = S.grain;
     const gGeo = new T.SphereGeometry(1, S.chunky ? 10 : 7, S.chunky ? 8 : 5); gGeo.scale(gl, gw, gw);
     const rMesh = new T.InstancedMesh(gGeo, M(S, "#ffffff", { std: { roughness: S.chunky ? 0.45 : 0.5 }, phys: { roughness: 0.4, clearcoat: 0.9, clearcoatRoughness: 0.18 } }), nR);
     const leaf = new T.Shape(); for (let i = 0; i < 7; i++) { const a = (i / 7) * TAU, r = rnd(0.6, 1); i ? leaf.lineTo(Math.cos(a) * r, Math.sin(a) * r * 0.7) : leaf.moveTo(Math.cos(a) * r, Math.sin(a) * r * 0.7); }
-    const lGeo = new T.ShapeGeometry(leaf); lGeo.rotateX(-Math.PI / 2); lGeo.scale(S.chunky ? 0.07 : 0.05, 1, S.chunky ? 0.07 : 0.05);
+    const lGeo = new T.ShapeGeometry(leaf); lGeo.rotateX(-Math.PI / 2); lGeo.scale(S.chunky ? 0.08 : 0.064, 1, S.chunky ? 0.08 : 0.064);
     const kMesh = new T.InstancedMesh(lGeo, M(S, "#ffffff", { std: { side: T.DoubleSide, roughness: 0.35 }, phys: { side: T.DoubleSide, roughness: 0.3, clearcoat: 1 } }), nK);
     const pGeo = new T.TorusGeometry(S.chunky ? 0.03 : 0.02, S.chunky ? 0.012 : 0.0075, 6, 12); pGeo.rotateX(Math.PI / 2);
     const pMesh = new T.InstancedMesh(pGeo, M(S, "#ffffff", { std: { roughness: 0.4 } }), nP);
@@ -234,7 +234,7 @@
       dummy.updateMatrix(); m.setMatrixAt(mi, dummy.matrix);
       if (colorPass) {
         const ck = F.cook[i] + F.tint[i] + (k === 0 ? F.fireTint || 0 : 0), b = (ck * 25) | 0; // 불맛 shows: the rice darkens toward caramel
-        if (b !== F.cb[i]) { F.cb[i] = b; ramp(k === 0 ? RAMP : k === 1 ? KRAMP : PRAMP, ck, _c); if (k === 2 && F.tint[i] > 0.04) _c.lerp(lin("#d8efb0"), 0.6); m.setColorAt(mi, _c); m.instanceColor.needsUpdate = true; }
+        if (b !== F.cb[i]) { F.cb[i] = b; ramp(k === 0 ? RAMP : k === 1 ? KRAMP : PRAMP, ck, _c); if (k === 0) _c.multiplyScalar(1 + F.tint[i]); if (k === 2 && F.tint[i] > 0.04) _c.lerp(lin("#d8efb0"), 0.6); m.setColorAt(mi, _c); m.instanceColor.needsUpdate = true; }
       }
     }
     for (const m of F.meshes) m.instanceMatrix.needsUpdate = true;

@@ -18,7 +18,7 @@
     for (let i = 0; i < LN; i++) lump[i] = Math.random() < 0.06 ? -rnd(0.02, 0.05) : rnd(-0.015, 0.02);
     for (let k = 0; k < 4; k++) for (let i = 0; i < LN; i++) lump[i] = (lump[i] + lump[(i + 1) % LN] + lump[(i + LN - 1) % LN]) / 3;
     const ER = (E.ER = (th) => { const f = ((((th / TAU) % 1) + 1) % 1) * LN, i = f | 0, w = f - i;
-      return 0.36 * (1 + 0.16 * Math.sin(th + 0.7) + 0.08 * Math.sin(2 * th + 2) + 0.05 * Math.sin(5 * th) + lump[i] * (1 - w) + lump[(i + 1) % LN] * w); });
+      return 0.43 * (1 + 0.16 * Math.sin(th + 0.7) + 0.08 * Math.sin(2 * th + 2) + 0.05 * Math.sin(5 * th) + lump[i] * (1 - w) + lump[(i + 1) % LN] * w); });
     const RN = 18, SN = 96, N = (E.N = (RN + 1) * SN);
     E.vx = new Float32Array(N); E.vz = new Float32Array(N); E.vt = new Float32Array(N); E.vd = new Float32Array(N); E.vn = new Float32Array(N);
     for (let i = 0; i <= RN; i++) for (let j = 0; j < SN; j++) {
@@ -64,10 +64,10 @@
     E.drips = []; for (let i = 0; i < 4; i++) { const d = new T.Mesh(new T.SphereGeometry(0.05, 16, 8), E.yolkMat); d.scale.set(1, 0.3, 1.4); W.scene.add(d); E.drips.push(d); }
     E.bubbles = []; for (let i = 0; i < 12; i++) E.bubbles.push({ gk: 0, born: 1e9, life: 0, x: 0, z: 0, r: 0.04, h: 0 });
     // ready glow: a warm ring that breathes around the egg while it is in the order's window (reads with the sound off)
-    E.halo = new T.Mesh(new T.RingGeometry(0.34, 0.5, 64), new T.MeshBasicMaterial({ color: lin("#ffc23a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
+    E.halo = new T.Mesh(new T.RingGeometry(0.41, 0.58, 64), new T.MeshBasicMaterial({ color: lin("#ffc23a"), transparent: true, opacity: 0, blending: T.AdditiveBlending, depthWrite: false, side: T.DoubleSide }));
     E.halo.rotation.x = -Math.PI / 2; W.wok.add(E.halo);
     // the landing shadow: where the egg will come down, so the player can slide the wok under it
-    E.shadow = new T.Mesh(new T.CircleGeometry(0.34, 40), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
+    E.shadow = new T.Mesh(new T.CircleGeometry(0.41, 40), new T.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0, depthWrite: false }));
     E.shadow.rotation.x = -Math.PI / 2; W.scene.add(E.shadow);
     hide();
   }
@@ -78,6 +78,7 @@
 
   /* ---------- a new egg ---------- */
   E.start = function (t) {
+    E.g.scale.setScalar(1);
     Object.assign(E, { ph: "drop", t0: t, cook: 0, waves: [], flip: null, flipped: false, burst: false, fold: 0, bend: 0, sx: 0, sz: 0, svx: 0, svz: 0, ox: 0, oz: 0.05,
       y: { x: 0, z: 0, h: 0, vx: 0, vz: 0, vh: 0 }, sq: { s: 0, v: 0 }, res: null, onPlate: false, onCounter: false, take: null });
     for (const b of E.bubbles) blister(b, t);
@@ -168,7 +169,7 @@
     const d = Math.hypot(_v.x, _v.z - 0.05), turn = fl.spin, err = Math.abs((((turn % TAU) + TAU) % TAU) - Math.PI), errDeg = (err * 180) / Math.PI;
     const raw = fl.cook < 0.42;
     let catchQ, where;
-    if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.7; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
+    if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.45; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;
     const fold = !flipped || errDeg > 40 || raw ? 1 : 0;
     const burst = fl.s > 1.45 || (where === "wall" && fl.s > 1.25) || raw;
@@ -204,7 +205,8 @@
     const flipQ = new T.Quaternion().setFromAxisAngle(_ax, E.flipped ? Math.PI : 0), upQ = new T.Quaternion();
     if (k < 0.45) { E.g.position.lerpVectors(E.take.p0, lip, smooth(k / 0.45)); W.wok.getWorldQuaternion(E.g.quaternion); E.g.quaternion.multiply(flipQ); }
     else { const f = clamp((k - 0.45) / 0.55, 0, 1); E.g.position.lerpVectors(lip, plateTop, f); E.g.position.y += 0.3 * Math.sin(Math.PI * f); W.wok.getWorldQuaternion(_q); _q.multiply(flipQ); E.g.quaternion.copy(_q).slerp(upQ, smooth(f)); if (f > 0.5 && E.flipped) E.flipped = false; }
-    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.flipped = false; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(upQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
+    // on the plate the egg shrinks a little so the rice shows around it
+    if (k >= 1 && !E.onPlate) { E.onPlate = true; E.g.scale.setScalar(0.78); E.flipped = false; E.ox = E.oz = 0; E.g.position.copy(plateTop); E.g.quaternion.copy(upQ); jolt(t, 0.8, 0); E.sq.v = 8; E.ph = "plate"; E.oil.visible = E.fizz.visible = false; for (const d of E.drips) d.visible = false; }
     E.g.updateMatrixWorld(true);
     if (E.burst) burstStep(t, W.wok.matrixWorld);
     shape(1 / 60, t);

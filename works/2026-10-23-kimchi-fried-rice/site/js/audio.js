@@ -133,7 +133,7 @@
       burst({ type: "lowpass", f0: 1400, f1: 200, dur: 0.08, gain: 0.5, attack: 0.001 });
     }),
     pops: safe(() => { // dry crackle: the oil under the rice is hot again
-      for (let i = 0; i < 5; i++) burst({ f0: rnd(2600, 4800), q: 6, dur: 0.02, gain: rnd(0.18, 0.32), at: i * rnd(0.04, 0.09), attack: 0.001 });
+      for (let i = 0; i < 6; i++) burst({ f0: rnd(2200, 4200), q: 5, dur: 0.03, gain: rnd(0.4, 0.6), at: i * rnd(0.05, 0.1), attack: 0.001 });
     }),
     burnWarn: safe((level) => {
       const l = clamp(+level || 0, 0, 1), b = A.warn;

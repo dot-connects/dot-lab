@@ -38,6 +38,7 @@
     P.tilt.u += (tl.u - P.tilt.u) * DAMP(0.03, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(0.03, dt);
     let pitch = -4 * DEG - P.tilt.v * MAXT, roll = -P.tilt.u * MAXT, x = P.tilt.u * 0.05, z = 0, y = 0;
     pitch += Math.sin(g.t * 1.3) * 0.8 * DEG; roll += Math.sin(g.t * 0.9) * 1.0 * DEG; // the hand never quite stops
+    if (g.eggDip) { const k = (g.t - g.eggDip) / 0.16; if (k < 1) y -= 0.05 * Math.sin(Math.PI * k); }
     if (g.ph === "egg" && K.Egg.ph === "air") { x += clamp(P.tilt.u * 0.9, -0.5, 0.5); z += clamp(-P.tilt.v * 0.65, -0.35, 0.35); pitch *= 0.4; roll *= 0.4; } // slide the wok under the egg
     const ks = g.t - g.shim; if (ks >= 0 && ks < 0.6) roll += 5 * DEG * Math.sin(ks * 34) * Math.exp(-ks * 6);
     // the toss (motion review): push 0–90 ms, lip snap 90–140 ms, back with a small spring overshoot
@@ -76,7 +77,7 @@
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.jit = (Math.random() - 0.5) * 0.24;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.landSnd = false; g.jit = (Math.random() - 0.5) * 0.4; // ±0.2 s: a metronome loses to reading the smoke
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
     F.launch({ strength: s, dirU: du, dirV: dv }, g.t);
@@ -94,7 +95,7 @@
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
       const add = 2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.5, 0.1 * (g.combo - 1))); // dead centre pays most
       g.fire = Math.min(FIRE_MAX, g.fire + add);
-      g.hei = 1 + Math.min(0.6, 0.15 * (g.combo - 1)); W.sparkBurst(10 + Math.min(20, g.combo * 3)); K.Audio.flare(); g.punch = 1; ember();
+      g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
       word(C.perfect, "great", title && g.combo >= 2 ? title[1] : C.perfectSub);
@@ -233,27 +234,28 @@
     const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.started ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
       plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
     const r = F.step(ctx);
-    if (r.landed > 30 && g.ph === "rice") K.Audio.land("rice");
+    if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
     if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad"); } }
     if (plateOn && g.ph !== "result" && g.ph !== "garnish") plateStep(dt);
     // the diegetic cue: oil smoke rises from the edge of the pile and the sizzle turns to dry pops when the metal under it
     // is hot again; dark smoke when the bottom starts to scorch
-    let wisp = 0, wispBig = 1, wispThick = 0, siz = 0.4, steam = 0.12, smoke = 0;
+    let wisp = 0, wispBig = 1, wispThick = 0, siz = 0.4, steam = 0.12, smoke = 0, flare = 0;
     if (g.ph === "rice" && g.started && F.toss && F.toss.done) {
       const back = g.t - F.lastLand;
       const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
       wispCol.copy(WC.white);
       if (F.contact < 0.8 || back < w.open) { wisp = 0; siz = 0.4; }
-      else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.2 * k; siz = 0.4 + 0.3 * k; }
-      else if (back <= w.gold1) { wisp = 0.55 + 0.15 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 1; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); K.Audio.pops(); } }
+      else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.3 * k; siz = 0.4 + 0.3 * k; }
+      else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); K.Audio.pops(); } }
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
       const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - w.late - 1.0) / 2.5, 0, 1)); F.scorchVis = smoke; // left on the metal: smoke from ~2.3 s, thick by ~5 s steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
     if (g.ph === "egg") { steam = 0.1; smoke = clamp((E.cook - 1.15) / 0.3, 0, 1); } // a forgotten egg smokes
-    g.hei = Math.max(0, g.hei - dt * 2.2);
-    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5 });
+    if (g.flareAt && g.t >= g.flareAt) { g.flareAt = 0; g.hei = 1 + Math.min(0.6, 0.15 * (g.flareN - 1)); W.sparkBurst(10 + Math.min(20, g.flareN * 3)); K.Audio.flare(); g.punch = 1; }
+    g.hei = Math.max(0, g.hei - dt * 1.2);
+    W.fx(g.t, dt, { hei: g.hei, heat: g.ph === "result" || g.ph === "garnish" ? 0.6 : 1, lick: g.toss ? 1 : 0, steam: g.ph === "result" ? 0 : steam, smoke, wisp, wispCol, wispBig, wispThick, wispR: 0.5, flare });
     K.Audio.sizzle(g.ph === "rice" ? (g.started ? F.contact * siz : 0.2) : g.ph === "egg" ? (E.ph === "air" ? 0.1 : 0.55) : 0);
     K.Audio.burnWarn(smoke);
     if (g.ph === "egg") {
@@ -285,7 +287,7 @@
       return;
     }
     if (ev === "clean" && E.flipped && !g.eggAuto) { g.flip2Open = true; if (!g.auto) setTimeout(() => g.ph === "egg" && !g.flip2Done && tip(C.flip2Tip), 500); }
-    g.hit = ev === "clean" && r.errDeg <= 12 && r.where === "centre" ? 0.09 : 0.05;
+    g.hit = ev === "burst" || (ev === "clean" && r.errDeg <= 12 && r.where === "centre") ? 0.09 : 0.05; g.eggDip = g.t; g.punch = 0.6;
     K.Audio.land(ev === "burst" ? "egg-splat" : "egg-soft");
     if (ev === "burst") word(C.eggBurst, "bad");
     else if (ev === "fold") word(C.eggFold, "meh");
@@ -297,14 +299,14 @@
   /* ---------- scoring: rice 60 = doneness 25 + 불맛 25 + 안 흘리기 10, egg 40 = timing 12 + flip 14 + catch 10 + yolk 4 ---------- */
   function finalScore() {
     const st = K.Food.stats(), r = g.res1 || K.Egg.res, r2 = g.res1 ? K.Egg.res : null;
-    const done = Math.max(0, Math.round(25 * clamp((st.good - 0.35) / 0.55, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
+    const done = Math.max(0, Math.round(25 * clamp((st.good - 0.45) / 0.5, 0, 1) - 12 * clamp(st.burnt * 3, 0, 1)));
     const fire = Math.round(g.fire);
-    const clean = Math.round(clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 1.5)));
+    const clean = Math.round(clamp(g.tossN / 6, 0, 1) * Math.max(0, 10 - Math.round((st.spill * 100) / 0.8)));
     const win = g.order === "half" ? [0.5, 0.82] : [0.82, 1.15];
     let timing = 0, flip = 0, cat = 0, yolk = 0;
     if (r) {
       const c = r.cookAtFlip, off = c < win[0] ? win[0] - c : c > win[1] ? c - win[1] : 0;
-      timing = Math.round(12 * clamp(1 - off / 0.3, 0, 1));
+      timing = Math.round(12 * clamp(1 - off / 0.2, 0, 1));
       flip = (r.fold ? 3 : Math.round(10 * clamp(1 - Math.max(0, r.errDeg - 8) / 50, 0, 1))) + (g.flip2Up ? 4 : 0); // 10 for the flip, 4 for turning it back yolk-up
       cat = g.eggAuto ? 0 : Math.round(10 * r.catchQ);
       yolk = r.burst || (r2 && r2.burst) ? 0 : 4;

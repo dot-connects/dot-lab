@@ -65,9 +65,9 @@
   });
   function counterTex(kind) {
     if (kind === "steel") return canvasTex(512, 512, (c, w, h) => {
-      c.fillStyle = "#6f777e"; c.fillRect(0, 0, w, h);
-      for (let i = 0; i < 2600; i++) { const y = Math.random() * h, v = 90 + Math.random() * 70; c.strokeStyle = `rgba(${v},${v + 6},${v + 10},.25)`; c.lineWidth = Math.random() * 1.4; c.beginPath(); c.moveTo(0, y); c.lineTo(w, y + rnd(-2, 2)); c.stroke(); }
-    }, 3);
+      c.fillStyle = "#3a3f45"; c.fillRect(0, 0, w, h);
+      for (let i = 0; i < 900; i++) { const x = Math.random() * w, y = Math.random() * h, v = 70 + Math.random() * 40, a = Math.random() * Math.PI; c.strokeStyle = `rgba(${v},${v + 4},${v + 8},.08)`; c.lineWidth = 1; c.beginPath(); c.moveTo(x, y); c.lineTo(x + Math.cos(a) * 40, y + Math.sin(a) * 40); c.stroke(); }
+    }, 6);
     return canvasTex(256, 256, (c, w, h) => { c.fillStyle = "#46568f"; c.fillRect(0, 0, w, h); c.fillStyle = "#3f4e86"; for (let i = 0; i < 8; i++) c.fillRect(0, i * 32, w, 16); }, 3);
   }
 
@@ -113,7 +113,7 @@
     Object.assign(key0.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 12 }); scene.add(key0);
     W.fireLight = new T.PointLight(lin("#ff8a2a"), 2.2, 4.5, 2); W.fireLight.position.set(0, -0.35, 0); scene.add(W.fireLight);
 
-    const counter = new T.Mesh(new T.PlaneGeometry(16, 16), new T.MeshStandardMaterial({ map: counterTex(S.counter), roughness: S.counter === "steel" ? 0.35 : 0.8, metalness: S.counter === "steel" ? 0.6 : 0 }));
+    const counter = new T.Mesh(new T.PlaneGeometry(16, 16), new T.MeshStandardMaterial({ map: counterTex(S.counter), roughness: S.counter === "steel" ? 0.6 : 0.8, metalness: S.counter === "steel" ? 0.2 : 0 }));
     counter.rotation.x = -Math.PI / 2; counter.position.y = -0.62; counter.receiveShadow = true; scene.add(counter);
     const ring = new T.Mesh(new T.TorusGeometry(0.62, 0.07, 10, 48), mat(S, "#2a2c2e", { std: { metalness: 0.6, roughness: 0.4 } }));
     ring.rotation.x = Math.PI / 2; ring.position.y = -0.56; scene.add(ring);
@@ -153,7 +153,7 @@
     // oil smoke: thin wisps from the edge of the pile when the metal under it is hot again (the cook's "now", operator 10-24:
     // a glowing rim is not something a wok does)
     W.wisps = [];
-    for (let i = 0; i < 8; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { a: (i / 8) * Math.PI * 2 + rnd(-0.3, 0.3), t: i * 0.1 }; scene.add(sp); W.wisps.push(sp); }
+    for (let i = 0; i < 10; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { a: (i / 10) * Math.PI * 2 + rnd(-0.3, 0.3), t: i * 0.1 }; scene.add(sp); W.wisps.push(sp); }
     W.puffs = [];
     for (let i = 0; i < 14; i++) { const sp = new T.Sprite(new T.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0 })); sp.userData = { t: Math.random() * 2 }; scene.add(sp); W.puffs.push(sp); }
 
@@ -185,9 +185,9 @@
   const _v = new T.Vector3();
   W.fx = function (t, dt, o) {
     const S = W.S;
-    W.fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 1.4 * o.hei);
+    W.fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 1.4 * o.hei + 0.9 * (o.flare || 0));
     for (const sp of W.flames) {
-      const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.12 * o.lick) * u.s * o.heat;
+      const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.12 * o.lick + 0.16 * (o.flare || 0)) * u.s * o.heat;
       sp.position.set(Math.cos(a) * u.r, -0.3 + h * 0.5 + surf(u.r * u.r) * 0.5, Math.sin(a) * u.r + pose.z * 0.5);
       sp.scale.set(0.2 * u.s, h, 1); sp.material.opacity = (S.phys ? 0.45 : 0.6) + 0.2 * Math.sin(t * 21 + u.ph);
     }
@@ -216,8 +216,8 @@
       const k = u.t / 0.6, r = o.wispR || 0.5, wv = o.wisp || 0, big = o.wispBig || 1;
       const wx = Math.cos(u.a) * r, wz = Math.sin(u.a) * r * 0.9, top = K.Food && K.Food.pileTop ? K.Food.pileTop(wx * 0.8, wz * 0.8) : surf(r * r) + 0.06; // from the top of the heap, not inside it
       _v.set(wx, top + 0.12 + k * 0.6 * (0.5 + 0.5 * wv) * big, wz).applyMatrix4(W.wok.matrixWorld);
-      p.position.copy(_v); p.scale.set((0.1 + 0.16 * k) * big * (1 + 0.8 * (o.wispThick || 0)), (0.45 + 0.35 * k) * big, 1);
-      p.material.opacity = Math.min(1, wv * 1.25) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol);
+      p.position.copy(_v); p.scale.set((0.14 + 0.2 * k) * big * (1 + 0.8 * (o.wispThick || 0)), (0.55 + 0.4 * k) * big, 1);
+      p.material.opacity = Math.min(1, wv * 1.5) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol);
     }
   };
   // the wisps restart from the metal together, so the moment they rise reads as one event
