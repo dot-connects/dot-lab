@@ -1,6 +1,6 @@
 # dot-lab
 
-D:OT lab — we take a strange question and actually build it.
+그냥 시켜봄 — 궁금하면 그냥 해 봐요. (D:OT lab · Curious? Just try it.)
 
 - Play: https://dot-connects.github.io/dot-lab/
 - Blog (one post per work): [www.dotconnects.kr/search/label/실험](https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98)

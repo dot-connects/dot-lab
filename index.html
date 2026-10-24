@@ -3,26 +3,56 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>D:OT lab</title>
+<title>그냥 시켜봄 · D:OT lab</title>
+<meta name="description" content="궁금하면 그냥 해 봐요. 링크를 열면 폰에서 바로 노는 D:OT lab 작품 모음.">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
 <style>
-:root{--paper:#f6f4ee;--ink:#1d2733;--red:#b8341d;--muted:#56616e;--grid:#dde2e7;color-scheme:light}
-body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif}
-main{max-width:520px;margin:0 auto;padding:28px 16px}
-h1{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:48px;margin:0}
-p{color:var(--muted);margin:4px 0 20px}
-a{display:block;border:1.5px solid var(--ink);border-radius:4px;padding:14px 16px;color:var(--ink);text-decoration:none;background:#fffdf8}
-a b{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:30px;color:var(--red);display:block}
-footer{margin-top:24px;color:var(--muted);font-size:14px}
-footer a{display:inline;border:0;padding:0;background:none;text-decoration:underline}
+:root{--paper:#f6f4ee;--ink:#1d2733;--red:#b8341d;--muted:#56616e;--grid:#dde2e7;--card:#fffdf8;color-scheme:light}
+html{background:var(--paper)}
+body{margin:0;min-height:100vh;word-break:keep-all;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans KR","Malgun Gothic",sans-serif;
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+main{max-width:520px;margin:0 auto;padding:28px 18px 36px}
+h1{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:54px;line-height:1;margin:0}
+h1 span{color:var(--red)}
+.sub{display:inline-block;margin:8px 0 24px;padding:0 4px;background:var(--paper);color:var(--muted)}
+.works{display:grid;gap:22px}
+.work{background:var(--card);border:1.5px solid var(--ink);border-radius:4px;transform:rotate(-.6deg)}
+.work:nth-child(even){transform:rotate(.7deg)}
+.work img{display:block;width:100%;aspect-ratio:3/2;object-fit:cover;border-bottom:1.5px solid var(--ink)}
+.work .t{padding:10px 14px 14px;display:grid;gap:2px}
+.work h2{font-family:"Nanum Pen Script",cursive;font-weight:400;font-size:32px;line-height:1.05;color:var(--red);margin:0}
+.work p{margin:0;font-size:14px;color:var(--muted)}
+.work .acts{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:8px}
+.play{font-family:"Nanum Pen Script",cursive;font-size:24px;color:var(--red);text-decoration:none;border:2px solid var(--red);border-radius:50%;padding:0 12px}
+.read{font-size:14px;color:var(--ink)}
+.play:focus-visible,.read:focus-visible,footer a:focus-visible{outline:2px solid var(--red);outline-offset:3px}
+footer{margin-top:28px;display:grid;gap:6px;font-size:14px;color:var(--muted)}
+footer span{background:var(--paper);padding:0 4px;justify-self:start}
+footer a{color:var(--ink)}
+@media (prefers-reduced-motion:reduce){.work{transform:none!important}}
 </style>
 </head>
 <body>
 <main>
-  <h1>D:OT lab</h1>
-  <p>이상한 질문을 진짜로 만들어 본다.</p>
-  <a href="works/2026-10-21-draw-korea/site/"><b>실험 #001 한반도를 그릴 수 있나?</b>지도 안 보고 그려서 채점받기</a>
-  <footer>작품마다 만든 과정과 결과를 <a href="https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98">D:OT 블로그</a>에 써요.</footer>
+  <h1>그냥 <span>시켜봄</span></h1>
+  <p class="sub">궁금하면 그냥 해 봐요</p>
+  <div class="works">
+    <article class="work">
+      <a href="works/2026-10-21-draw-korea/site/" aria-label="실험 #001 해 보기"><img src="thumbs/001.jpg" alt="손으로 그린 한반도와 빨간 펜 채점"></a>
+      <div class="t">
+        <h2>#001 한반도를 그릴 수 있나?</h2>
+        <p>지도 안 보고 손가락으로 그려서 채점받기 · 10-21</p>
+        <div class="acts">
+          <a class="play" href="works/2026-10-21-draw-korea/site/">해 보기 →</a>
+          <a class="read" href="https://www.dotconnects.kr/2026/10/001.html">블로그 해설</a>
+        </div>
+      </div>
+    </article>
+  </div>
+  <footer>
+    <span>작품마다 만든 과정은 <a href="https://www.dotconnects.kr/search/label/%EC%8B%A4%ED%97%98">D:OT 블로그</a>에</span>
+    <span>새 작품은 인스타 · Threads <a href="https://www.threads.com/@nerdai.lab">@nerdai.lab</a></span>
+  </footer>
 </main>
 </body>
 </html>
