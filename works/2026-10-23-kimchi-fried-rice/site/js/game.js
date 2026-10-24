@@ -81,7 +81,7 @@
     }
     g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
-    g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s);
+    g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
     if (s >= 1.15 && (f.snap == null || f.snap > 0.4)) { g.hei = Math.max(g.hei, 0.9); W.sparkBurst(8); }
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     g.toss = { t0: g.t, s: clamp(s, 0.5, 1.4), du: clamp(du, -0.5, 0.5), dv: 1 };
@@ -280,7 +280,7 @@
     const r = F.step(ctx);
     if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
     if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); g.shake = Math.max(g.shake || 0, 1.4); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad", pick(C.spillSub)); splat("rice"); try { navigator.vibrate && navigator.vibrate(60); } catch (e) {} } }
-    if (r.landed > 30 && g.ph === "rice" && !g.landShk) { g.landShk = true; g.shake = Math.max(g.shake || 0, 0.4); }
+    if (r.landed > 30 && g.ph === "rice" && !g.landShk) { g.landShk = true; g.shake = Math.max(g.shake || 0, 0.6); g.eggDip = g.t; } // the wok gives under the weight
     if (g.ph === "rice" && g.started && (g.statT = (g.statT || 0) + dt) > 0.2) { g.statT = 0; liveStats(); }
     if (plateOn && g.ph !== "result" && g.ph !== "garnish") plateStep(dt);
     // the diegetic cue: oil smoke rises from the edge of the pile and the sizzle turns to dry pops when the metal under it

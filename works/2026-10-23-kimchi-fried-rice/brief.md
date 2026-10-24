@@ -149,3 +149,6 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   the clock, doneness meter with the order's green band, 2nd flip 8 of 14; plated egg on top of the heap, plated grains
   0.62x; 사장님 lines, receipt "바닥에 버린 밥 n알" + memo, share text.
 - Checked: scripted beat run (combo 5 → 불쇼), watch runs 80-97 (the bot is near perfect), no errors.
+- rv7-motion (measured): the toss flew as one slab and landed in 0.12 s; an air re-toss replaced the toss with an
+  empty one. Fixed: lip peel-off delay 0.24 s, rise spread 0.55-1.45, empty launch keeps the toss, wok dip + kick on
+  landing, FOV punch on every toss, plated egg 0.62x with a squash. Watch run 85.

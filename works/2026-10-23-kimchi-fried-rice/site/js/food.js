@@ -118,9 +118,10 @@
       if (F.st[i] !== 0) continue;
       const along = F.x[i] * dx + F.z[i] * dz, rk = clamp((along + 0.75) / 1.5, 0, 1);
       if (rk < keep * rnd(0.6, 1.4)) { F.vx[i] += dx * 0.2 * s; F.vz[i] += dz * 0.2 * s; F.depth[i] = clamp(F.depth[i] + rnd(-0.35, 0.35), 0, 1); continue; } // the slosh stirs it too // the back of the pile sloshes forward a little
-      F.st[i] = 1; F.rank[i] = rk; F.dl[i] = (1 - F.rank[i]) * 0.12 * rnd(0.7, 1.3);
+      F.st[i] = 1; F.rank[i] = rk; F.dl[i] = (1 - F.rank[i]) * 0.24 * rnd(0.6, 1.4); // peels off from the lip over ~0.3 s, not as one slab
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
+    if (!n) return 0; // all of it is still in the air: keep the toss in flight (it was replaced by an empty one)
     F.toss = { t, s, dx, dz, n, landed: 0, done: false, peak: 0, lumps: Array.from({ length: NL }, () => [rnd(-0.24, 0.24), rnd(-0.22, 0.22)]) };
     return n;
   };
@@ -130,7 +131,7 @@
     _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(wm); F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z;
     // height grows with the flick (the operator: higher and flashier scores more); too hard flies over the rim
     const hs = 0.7 + 0.9 * tz.s; // high enough to clear the rim and read from above
-    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.75, 1.25) - _v.y);
+    const rise = Math.max(0.12, K.RIM + hs * kh * (0.3 + 0.9 * r) * rnd(0.55, 1.45) - _v.y);
     const vy = Math.sqrt(2 * G * rise), T0 = vy / G + Math.sqrt((2 * Math.max(0.05, _v.y + rise - 0.2)) / G);
     // roll over: the lip grains land nearest the cook; an over-hard flick carries past the near rim
     const over = Math.max(0, tz.s - 1.25) * 1.1;

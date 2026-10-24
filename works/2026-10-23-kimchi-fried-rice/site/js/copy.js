@@ -6,7 +6,7 @@
     shop: "00반점", shopSub: "영수증",
     hook: "12초 웍질, 몇 점 나올까?", how: "폰을 <b>위로 휙</b> → 밥이 뜬다<br>밥 가장자리에 <b>연기</b>가 오를 때 휙 → 불맛<br><small>폰을 바닥과 평평하게 들면 웍도 평평</small>", go: "불 켜!", watchBtn: "구경만 할래",
     tipMotion: "폰을 위로 휙! 튕겨서 볶기", tipTouch: "화면을 위로 휙! 쓸어 올려서 볶기",
-    cueMotion: "폰을 위로 휙!", cueTouch: "화면을 위로 쓸어 올려!", cueSmall: "연기 오를 때마다 또 휙", cueProd: "불 식는다! 휙!",
+    cueMotion: "폰을 위로 휙!", cueTouch: "화면을 위로 쓸어 올려!", cueSmall: "위 막대 금색 칸마다 또 휙", cueProd: "불 식는다! 휙!",
     flip2Tip: "한 번 더 휙! 노른자를 위로", eggYolkUp: "노른자 위로!", watching: "구경 중…",
     perfect: "불맛 터짐!", perfectSub: ["어? 너 좀 하네?", "주방 들어와!", "+불맛"], good: "괜찮은데?", early: "아직 아니야", earlySub: "설익음", late: "눌었다…", lateSub: ["누룽지 서비스냐?", "손 놀지 마라"], tooHard: "너무 세!", goodChip: "고슬",
     fever: "불쇼!", feverSub: "4초간 불맛 x1.3",
