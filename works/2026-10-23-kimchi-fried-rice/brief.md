@@ -112,3 +112,13 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - Checkerboard root cause: the box blur's negative spectrum made grains clump on a lattice; 1-2-1 blur + bilinear
   deposit/sample on a jittered grid.
 - Expert sweep fixes: tosses after the 3rd were never graded; idle egg 28→7 of 40; vanishing egg at flip; per-toss window jitter.
+
+## Round 5 (2026-10-24)
+- Operator: rice still round/checkered, phone tilt too sensitive and laggy, yellow rim glow unreal, egg should flip on a
+  golden edge (slides from the start), neglect must visibly brown, smoke and burn; more game/3D reviewers.
+- Done (e65a698, 7490819, 4c46ff9): friction heap + lumps + gaussian landing; deviceorientation tilt (wok ~1.25x phone,
+  flow ~35°, spill ~42°); oil-smoke wisps + burner flare + pops replace the rim glow; egg lace gold→brown→black + smoke;
+  grey burn smoke ~2.3 s after landing; ±0.2 s cue jitter; less free points; one landing sound; egg dip; matte counter.
+- Review team rv5 (casual, feel, systems, 3d-art, 3d-food); not applied: motion emit latency, matte burnt grains, flame
+  ring/shadow tweaks, toy exposure, layout (bigger wok), red lost lines on the receipt.
+- Not verified: real-phone tilt feel, cue readability on a real screen, audio, mid-range Android fps.
