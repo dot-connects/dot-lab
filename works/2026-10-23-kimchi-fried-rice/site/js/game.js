@@ -177,6 +177,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
+    homeEl.hidden = false;
     K.Input.steerAfterFlick = false;
     W.renderer.toneMappingExposure = W.S.exposure;
     const carry = g.hei; g = newGame(auto); g.hei = carry; // the tap's fire column carries over and hides the swap
@@ -556,6 +557,19 @@
   $("go").onclick = () => { K.Audio.unlock(); g.hei = 1.6; W.sparkBurst(24); g.punch = 1; K.Audio.flare(); const go = () => start(false); /* 불 켜: the fire answers the tap at once */ K.Input.requestPermission().then(go, go); };
   $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
   $("shareOv").onclick = () => { $("shareOv").hidden = true; };
+  // ⌂: back to the start screen from anywhere (the wok goes back to cooking by itself)
+  const homeEl = $("home");
+  function goHome() {
+    K.Input.steerAfterFlick = false; K.Input.demoTilt(0, 0);
+    g = newGame(false);
+    if (K.Egg.ph !== "off") K.Egg.hide();
+    K.Food.reset(); for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75;
+    K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
+    resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = true; cueEl.hidden = true; $("shareOv").hidden = true; tip("");
+    introEl.hidden = false; homeEl.hidden = true; W.renderer.toneMappingExposure = W.S.exposure; bestLine();
+  }
+  homeEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
+  homeEl.onclick = (e) => { e.stopPropagation(); goHome(); };
   const muteEl = $("mute"), setMute = (m) => { K.Audio.mute(m); muteEl.textContent = m ? "🔇" : "🔊"; muteEl.setAttribute("aria-label", m ? "소리 켜기" : "소리 끄기"); store.set("kfr-mute", m ? 1 : 0); };
   muteEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
   muteEl.onclick = (e) => { e.stopPropagation(); K.Audio.unlock(); setMute(!K.Audio.isMuted()); };
