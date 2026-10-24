@@ -54,6 +54,10 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 /* HUD */
 #hud{position:absolute;inset:0;pointer-events:none}
 #hud.dim{opacity:.4}
+#hud #beat,#hud #stats,#hud #gauge,#hud #combo,#hud #timer{transition:opacity .08s}
+#hud.dark #beat,#hud.dark #stats,#hud.dark #gauge,#hud.dark #combo{opacity:0}#hud.dark #timer{opacity:.35}
+#darkOv{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(ellipse 46% 20% at 50% 58%,rgba(0,0,0,0) 0,rgba(0,0,0,.55) 45%,rgba(2,2,3,.93) 100%)}
+.word.dark{color:#ffb347;-webkit-text-stroke:5px #2a1406}
 #timer{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 14px);transform:translateX(-50%);font:38px "Black Han Sans",system-ui,sans-serif;background:#fff;border-radius:999px;padding:2px 22px;box-shadow:0 3px 10px rgba(0,0,0,.2)}
 #timer.warn{background:var(--accent);color:#fff}
 #gauge{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 76px);width:16px;height:min(26vh,230px);border-radius:12px;background:rgba(255,255,255,.18);border:2px solid rgba(255,255,255,.65);overflow:hidden}
@@ -131,6 +135,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 <body>
 <div id="app">
   <canvas id="cv" aria-label="웍 화면"></canvas>
+  <div id="darkOv"></div>
   <div id="hud" hidden>
     <div id="timer">12.0</div>
     <div id="gauge" aria-label="불맛" data-label="불맛 0"><div id="gaugeFill"></div><div id="band"></div></div>

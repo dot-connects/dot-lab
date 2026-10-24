@@ -197,3 +197,14 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   again; the bot's score is not saved as best; flips the game made earn 0; mashing counts half for doneness/clean;
   touch can keep dragging to steer the flying egg; compact receipt under 740 px height.
 - Operator: keep two egg flips (basting is too hard).
+
+## Round 10 (2026-10-24) — 정전
+- Operator: a watched round should not offer 한 번 더 / 자랑하기 (now "직접 해보기", not recorded); idea: the shop
+  lights go out near the end, the gauge too, toss by feel, only the burner glows.
+- Panel bo-* (game, light, motion, story, copy, idea, sound): all for it; consensus version built:
+  4.6 s left "사장님: 에어컨 켠다~" + buzz + one tube-light dip; cut on the first toss after 4.4 s (+0.12 s; forced at
+  3.9 s) with a flicker table and a breaker clunk; dark until 1.8 s left: beat bar/stats/gauge/combo hidden, clock 35 %,
+  only "감 살아있네!" speaks, the 탁 stays, the room sizzle halves, perfect = 1.5x 불맛 and the fire lifts the dark
+  (overlay with a burner hole, opacity drops with hei); lights back in one switch-on (+0.55 exposure over 0.4 s),
+  "불 들어왔다! 깜깜이 k/n 불맛", then the finale cue at 1.5 s. Receipt "정전 중 금색 k/n · memo", share text suffix.
+- Checked: frame mean 113 → 11 in the dark, back to 112; receipt line; no errors.

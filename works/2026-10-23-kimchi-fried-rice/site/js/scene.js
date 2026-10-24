@@ -108,8 +108,8 @@
     win(-3, 4, 2, 4, 2, "#fff6e6"); win(4, 3, -2, 3, 3, "#ffd7a8"); win(0, -3, 0, 6, 6, "#ff7a2a");
     const pm = new T.PMREMGenerator(renderer); scene.environment = pm.fromScene(env, 0.04).texture; pm.dispose();
 
-    scene.add(new T.HemisphereLight(lin("#e8eef5"), lin("#6a4a30"), S.phys ? 0.35 : 0.5));
-    const key0 = new T.DirectionalLight(lin("#fff1dc"), S.phys ? 1.6 : 0.85); key0.position.set(-2.2, 5, 1.5);
+    const hemi = (W.hemi = new T.HemisphereLight(lin("#e8eef5"), lin("#6a4a30"), S.phys ? 0.35 : 0.5)); scene.add(hemi);
+    const key0 = (W.key = new T.DirectionalLight(lin("#fff1dc"), S.phys ? 1.6 : 0.85)); key0.position.set(-2.2, 5, 1.5);
     key0.castShadow = true; key0.shadow.mapSize.set(1024, 1024); key0.shadow.bias = -0.0008; key0.shadow.radius = 2;
     Object.assign(key0.shadow.camera, { left: -3, right: 3, top: 3, bottom: -3, near: 1, far: 12 }); scene.add(key0);
     W.fireLight = new T.PointLight(lin("#ff8a2a"), 2.2, 4.5, 2); W.fireLight.position.set(0, -0.35, 0); scene.add(W.fireLight);
@@ -181,12 +181,20 @@
     W.pivot.rotation.set(pose.pitch, 0, pose.roll); W.world.updateMatrixWorld(true);
   }
   W.applyPose = applyPose;
+  // 정전: k = 0 lit .. 1 dark; only the burner lights the wok then
+  W.darkK = 0;
+  const BG_LIT = lin("#1b1f24"), BG_DARK = lin("#050608");
+  W.setDark = function (k) {
+    W.darkK = k; if (!W.hemi) return;
+    W.hemi.intensity = 0.35 + (0.03 - 0.35) * k; W.key.intensity = 1.6 + (0.04 - 1.6) * k;
+    W.scene.background.copy(BG_LIT).lerp(BG_DARK, k);
+  };
 
   /* burner, wok hei, sparks, steam: one call per frame */
   const _v = new T.Vector3();
   W.fx = function (t, dt, o) {
     const S = W.S;
-    W.fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 1.4 * o.hei + 0.9 * (o.flare || 0));
+    W.fireLight.intensity = (S.phys ? 3 : 2) * (0.85 + 0.15 * Math.sin(t * 31) * Math.sin(t * 17) + 1.4 * o.hei + 0.9 * (o.flare || 0)) * (1 + 0.5 * W.darkK);
     for (const sp of W.flames) {
       const u = sp.userData, a = u.a + Math.sin(t * 2 + u.ph) * 0.05, h = (0.2 + 0.08 * Math.sin(t * 13 + u.ph) + 0.12 * o.lick + 0.16 * (o.flare || 0)) * u.s * o.heat;
       sp.position.set(Math.cos(a) * u.r, -0.3 + h * 0.5 + surf(u.r * u.r) * 0.5, Math.sin(a) * u.r + pose.z * 0.5);

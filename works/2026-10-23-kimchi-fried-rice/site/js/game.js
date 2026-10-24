@@ -27,6 +27,7 @@
 
   /* ---------- words ---------- */
   function word(text, kind, sub) {
+    if (g && g.darkPh === "dark" && kind !== "dark") return; // in the dark only the 'it landed' word speaks
     if (g && kind !== "great" && g.t < (g.wordLock || 0)) return; // a big moment is not overwritten
     if (g && kind === "great") g.wordLock = g.t + 0.8;
     wordEl.textContent = text; wordEl.className = "word " + (kind || ""); void wordEl.offsetWidth; wordEl.classList.add("pop");
@@ -83,6 +84,8 @@
       g.counts[grade]++;
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
+    if (g.darkPh === "warn" && g.clock <= 4.4 && !g.cutAt) g.cutAt = g.t + 0.12;
+    if (g.darkPh === "dark") g.darkN = (g.darkN || 0) + 1;
     g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
     g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
@@ -111,13 +114,14 @@
     g.grades.push(grade);
     if (grade === "perfect") {
       g.combo++; g.perfects++; g.maxCombo = Math.max(g.maxCombo, g.combo);
-      const add = 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
+      const add = (g.darkPh === "dark" ? 1.5 : 1) * 1.2 * hm * (0.65 + 0.35 * clamp(q, 0, 1)) * (1 + Math.min(0.3, 0.06 * (g.combo - 1))) * (g.t < (g.fever || 0) ? 1.3 : 1); // dead centre pays most
       g.fire = Math.min(FIRE_MAX, g.fire + add); popNum("+" + add.toFixed(1), "fire");
       if (g.combo === 5) { g.fever = g.t + 4; word(C.fever, "great", C.feverSub); K.Audio.fever(); } else K.Audio.perfect(g.combo);
       g.flareAt = g.t + 0.2; g.flareN = g.combo; ember();
       try { if (navigator.vibrate) navigator.vibrate(C.combo.some((c) => c[0] === g.combo) ? [20, 40, 20] : 30); } catch (e) {}
       const title = C.combo.slice().reverse().find((c) => g.combo >= c[0]);
-      if (g.combo !== 5) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : pick(C.perfectSub));
+      if (g.darkPh === "dark") { g.darkPerf = (g.darkPerf || 0) + 1; word(C.blackPerfect, "dark"); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
+      else if (g.combo !== 5) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : pick(C.perfectSub));
       if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
@@ -129,7 +133,7 @@
       else if (grade === "early") { if (g.combo >= 2) { K.Audio.comboBreak(); popNum(C.mashed, "fire"); } g.combo = 0; comboEl.textContent = ""; fireNum(); return; } // mashing breaks the run
       else word(C.late, "bad", pick(C.lateSub));
       if (g.combo >= 2) K.Audio.comboBreak();
-      if (g.combo >= 3) { subEl.textContent = C.comboLost; subEl.className = "sub"; void subEl.offsetWidth; subEl.classList.add("pop"); }
+      if (g.combo >= 3 && g.darkPh !== "dark") { subEl.textContent = C.comboLost; subEl.className = "sub"; void subEl.offsetWidth; subEl.classList.add("pop"); }
       g.combo = 0; comboEl.textContent = ""; comboEl.className = "combo";
     }
     fireNum();
@@ -177,6 +181,7 @@
   /* ---------- phases ---------- */
   function setPh(ph) { g.ph = ph; g.phT = 0; }
   function start(auto) {
+    W.setDark(0); hudEl.classList.remove("dark"); K.Audio.darkFlag(false);
     homeEl.hidden = false;
     K.Input.steerAfterFlick = false;
     W.renderer.toneMappingExposure = W.S.exposure;
@@ -291,9 +296,12 @@
     updatePose(dt);
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice" && g.introOn) introStep();
+    if (g.ph === "rice" && g.started) blackout();
+    else if (g.darkPh && g.darkPh !== "over") lightsOn();
+    darkOv.style.opacity = (W.darkK * (1 - 0.55 * clamp(g.hei - 0.35, 0, 1))).toFixed(3); // a perfect's fire lifts the dark for a moment
     if (g.finaleWord && g.t >= g.finaleWord.at) { const w = g.finaleWord; g.finaleWord = null; word(w.ok ? C.finale : C.finaleWeak, w.ok ? "great" : "meh", w.ok ? C.finaleSub : ""); }
     if (g.ph === "rice" && g.started && !g.auto && g.tossN === 0) nudge();
-    if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.5) { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
+    if (g.ph === "rice" && !g.auto && !g.finaleDone && !g.finaleCue && g.clock > 0 && g.clock <= 1.5 && g.darkPh !== "dark") { g.finaleCue = true; cue(C.finaleCue, C.finaleCueSub, "intro"); }
     if (g.finaleCue && !g.finaleDone && g.clock <= 0) { g.finaleDone = true; hideCue(); }
     if (g.ph === "rice" && g.started && g.t >= g.clockAt) { g.clock = Math.max(0, g.clock - dt); if (g.clock <= 0 && g.t - g.lastFlick > 0.9 && F.air === 0) startPlate(); }
     const plateOn = ["plate", "egg", "take", "garnish", "result"].includes(g.ph);
@@ -414,6 +422,7 @@
     resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}${g.auto ? `<br>${C.watchedBy}` : ""}</div>
       ${rec ? `<div class="rec">신기록</div>` : ""}
       <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
+      ${g.darkN ? `<div class="floor">${C.blackLine(g.darkPerf || 0, g.darkN)} · ${blackMemo()}</div>` : ""}
       <div class="floor">바닥 밥 변상 <b>${K.Food.spilled}</b>알 × 10원 = <b>${(K.Food.spilled * 10).toLocaleString()}</b>원</div>
       <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
       ${vs != null ? `<div class="vs">${s.total > vs ? C.vsWin(vs, s.total) : s.total === vs ? C.vsTie(vs) : C.vsLose(vs, s.total)}</div>` : ""}
@@ -429,6 +438,7 @@
     $("again").onclick = () => { K.Audio.unlock(); const go = () => start(false); if (g.auto) K.Input.requestPermission().then(go, go); else go(); }; bestLine();
     if (!g.auto) $("share").onclick = share; // the bot's dish is not yours to brag about
   }
+  const blackMemo = () => { const n = g.darkN || 0, k = Math.round((3 * (g.darkPerf || 0)) / Math.max(1, n)); return C.blackMemo.find((x) => k >= x[0])[1]; };
   const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);
   function whyLine(s) {
     const st = s.st, parts = [];
@@ -463,7 +473,7 @@
   // score's receipt; it sends the visitor into the game with ?vs=<n>. Built by make_score_pages.py.
   function share() {
     const s = g.res, tier = C.tiers.find((x) => s.total >= x[0]), url = shareUrl(s.total);
-    const text = vs != null ? (s.total > vs ? C.shareWin(vs, s.total) : C.shareLose(vs, s.total)) : C.shareText(s.total, tier[1]);
+    const text = (vs != null ? (s.total > vs ? C.shareWin(vs, s.total) : C.shareLose(vs, s.total)) : C.shareText(s.total, tier[1])) + (g.darkN ? C.blackShare(g.darkPerf || 0, g.darkN) : "");
     if (navigator.share) navigator.share({ title: "김치볶음밥 한 그릇", text, url }).catch((e) => { if (!e || e.name !== "AbortError") showShare(s.total, url); });
     else showShare(s.total, url);
   }
@@ -486,6 +496,35 @@
     }
   }
 
+  /* ---------- 정전 (operator 10-24): the lights go out for the last ~3 tosses, the gauge with them; only the burner,
+     the 탁 and the fire on a perfect remain. They come back at 1.8 s left, into the finale. ---------- */
+  const darkOv = $("darkOv");
+  const CUT = [[0, 0], [0.08, 1], [0.13, 0], [0.25, 0.4], [0.29, 0]]; // light level over the cut: it flickers, then dies
+  function blackout() {
+    const c = g.clock;
+    if (!g.darkPh && c <= 4.6) { g.darkPh = "warn"; g.darkT = g.t; K.Audio.buzz(); cue(C.blackWarn, "", "intro"); }
+    if (g.darkPh === "warn") {
+      if (!g.cutAt && c <= 3.9) g.cutAt = g.t; // no toss came: cut anyway
+      W.setDark(g.t - g.darkT < 0.06 ? 0.3 : 0); // one dip of the tube light
+      if (g.cutAt && g.t >= g.cutAt) { g.darkPh = "dark"; g.darkT = g.t; g.darkN = 0; g.darkPerf = 0; K.Audio.blackout(true); g.shake = Math.max(g.shake || 0, 0.3); cue(C.blackout, C.blackoutSub, "intro"); g.cueOffAt = g.t + 0.8; try { navigator.vibrate && navigator.vibrate([80, 40, 20]); } catch (e) {} }
+    }
+    if (g.darkPh === "dark") {
+      const k = g.t - g.darkT; let L = 0; for (const [tt, v] of CUT) if (k >= tt) L = v;
+      W.setDark(1 - L); hudEl.classList.toggle("dark", L < 0.5);
+      if (g.cueOffAt && g.t >= g.cueOffAt) { g.cueOffAt = 0; hideCue(); }
+      if (c <= 1.8) lightsOn(true);
+    }
+    if (g.darkPh === "back") { const k = clamp((g.t - g.backT) / 0.4, 0, 1); W.renderer.toneMappingExposure = W.S.exposure + 0.55 * (1 - smooth(k)); if (k >= 1) g.darkPh = "over"; }
+  }
+  // the return is a win, not a fault: one clean switch-on, a little overexposed, the gauge pops back
+  function lightsOn(say) {
+    if (say || g.darkPh === "dark") K.Audio.blackout(false); else K.Audio.darkFlag(false);
+    W.setDark(0); hudEl.classList.remove("dark"); g.backT = g.t; g.darkPh = say ? "back" : "over"; if (!say) W.renderer.toneMappingExposure = W.S.exposure;
+    if (!say) return;
+    hideCue(); g.punch = 0.6; try { navigator.vibrate && navigator.vibrate([15, 30, 15]); } catch (e) {}
+    if ((g.darkPerf || 0) >= 2) W.sparkBurst(24);
+    word(C.lightsBack, "great", C.lightsBackSub(g.darkPerf || 0, g.darkN || 0));
+  }
   /* ---------- attract: a 4-beat loop at 0.85 s (inside the perfect band): front, left, right, 불쇼 ---------- */
   const titleEl = document.querySelector("#intro h1"), goEl = $("go");
   function attract() {
