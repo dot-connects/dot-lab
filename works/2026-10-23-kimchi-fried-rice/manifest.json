@@ -6,7 +6,7 @@
   "caption": "폰이 웍이 된다.\n\n12초 동안 손목으로 휙휙. 박자 맞추면 불쇼, 옆으로 털면 밥이 바닥으로 (한 알에 10원 변상).\n근데 중간에 불이 나간다.\n\n이 판은 84점, 불판 에이스. 주방장까지 8점.\n너는 몇 점? 댓글로 영수증 점수 남겨 줘.\n프로필 링크에서 바로 해 볼 수 있어.\n\n#김치볶음밥 #웍질 #폰게임 #불쇼",
   "caption_threads": "폰이 웍이 된다.\n\n12초 동안 손목으로 휙휙. 박자 맞추면 불쇼, 옆으로 털면 밥이 바닥으로 (한 알에 10원 변상).\n근데 중간에 불이 나간다.\n\n이 판은 84점, 불판 에이스. 주방장까지 8점.\n너는 몇 점? 점수 댓글로.\nhttps://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/",
   "notes": "Reel is silent (content-system adds music + narration). Recorded from the real game frame by frame (scripted play, real score 84). Code-drawn, no generated imagery. Share links /s/<n>/ carry a per-score receipt preview. Motion on Safari/Chrome, touch in in-app browsers.",
-  "status": "ready",
+  "status": "draft",
   "narration": "폰이 웍이 된다. <short pause> 박자 맞춰 휙, 다섯 번 이어지면 불쇼. <short pause> 근데 갑자기, 불이 나간다. <short pause> 이 판은 84점, 주방장까지 8점. <short pause> 너는 몇 점?",
   "blog_html": "<p>폰을 웍처럼 쥐고 위로 휙 튕겨서 12초 동안 김치볶음밥을 볶아 보세요. 움직이는 바늘이 금색 칸에 들 때 튕기면 불맛 콤보가 쌓이고, 5연속이면 불쇼가 터집니다. 중간에 가게 불이 나가면 감으로 볶아야 합니다. 마지막엔 계란후라이를 두 번 뒤집고, 00반점 영수증으로 점수를 받습니다.</p>\n<iframe src=\"https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/\" width=\"100%\" height=\"860\" style=\"border:0;max-width:520px\" loading=\"lazy\" title=\"김치볶음밥 한 그릇\"></iframe>\n<p><a href=\"https://dot-connects.github.io/dot-lab/works/2026-10-23-kimchi-fried-rice/site/\">김치볶음밥 한 그릇 바로 해 보기</a></p>\n<h3>점수는 이렇게 매깁니다</h3>\n<p>밥 60점(익힘 25 · 불맛 25 · 안 흘리기 10)과 계란 40점(타이밍 12 · 뒤집기 14 · 받기 10 · 노른자 4)입니다. 금색 칸은 밥이 웍에 떨어지기 직전에 열리고, 콤보가 쌓일수록 좁아지며, 시간이 갈수록 밥이 빨리 떨어집니다. Safari·Chrome에서 열면 폰을 기울이고 흔들어서, 앱 안 브라우저에서는 화면을 쓸어서 합니다.</p>",
   "media": {
