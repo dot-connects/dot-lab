@@ -75,7 +75,7 @@
     K.Audio.unlock();
     const s = clamp(f.strength || 1, 0.3, 1.8), F = K.Food;
     if (g.tossN === 0) { tip(g.auto ? C.watching : C.rimTip); hideCue(); }
-    else {
+    { // the first toss is graded too: the needle has been running since "볶아!"
       if (!g.auto && (g.tossN >= 3 || g.perfects > 0)) tip("");
       // operator 10-24: toss back to back. The grade is the beat: the gap since the previous toss (shown on the beat bar)
       const back = g.t - g.lastFlick;
@@ -209,7 +209,7 @@
       if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(1); else if (i === 2) F.drop(0); // chef: kimchi first, then the cold rice
     }
     if (k >= 1.75 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
-    if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.clockAt = g.t + 0.5; hideCue(); } // 0.5 s grace before the 12 s run
+    if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.lastFlick = g.t; g.clockAt = g.t + 0.5; hideCue(); } // the needle starts at 볶아! // 0.5 s grace before the 12 s run
   }
   // no toss yet: the hint comes only now (1.5 s), and gets pushier at 4 s
   function nudge() {
@@ -322,7 +322,7 @@
     // the diegetic cue: oil smoke rises from the edge of the pile and the sizzle turns to dry pops when the metal under it
     // is hot again; dark smoke when the bottom starts to scorch
     let wisp = 0, wispBig = 1, wispThick = 0, siz = 0.4, steam = 0.12, smoke = 0, flare = 0;
-    if (g.ph === "rice" && g.started && g.tossN > 0) {
+    if (g.ph === "rice" && g.started) {
       const back = g.t - g.lastFlick;
       const w = readyWin(), big = g.tossN <= 2 ? 1 : 0; // the first two tosses show the cue bigger
       wispCol.copy(WC.white);
@@ -488,7 +488,7 @@
   function autoPlay() {
     const F = K.Food, E = K.Egg;
     if (g.ph === "rice") {
-      if (g.started && g.tossN === 0 && g.t - g.goT > 0.6) flick({ strength: 1.1, dirU: 0, dirV: 1 });
+      if (g.started && g.tossN === 0 && g.t - g.goT > 0.8) flick({ strength: 1.1, dirU: 0, dirV: 1 });
       else if (g.started && g.clock > 0 && g.tossN > 0) { // a decent cook: mostly on the beat, sometimes off
         if (!g.autoWait) g.autoWait = rnd(0.5, 1.25);
         if (g.t - g.lastFlick > g.autoWait) { g.autoWait = 0; const sd = g.tossN % 4 === 3 ? (Math.random() < 0.5 ? -0.6 : 0.6) : 0; flick({ strength: rnd(0.95, 1.35), dirU: sd, dirV: Math.sqrt(1 - sd * sd) }); }
@@ -567,7 +567,7 @@
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
     // the beat bar: the needle runs from the last toss, the gold band is when to toss again
     beatEl.hidden = !(g.ph === "rice" && g.started && g.clock > 0); // from the start: the needle waits at 0 for the first toss
-    if (!beatEl.hidden) { const w = readyWin(), b = g.tossN > 0 ? g.t - g.lastFlick : 0; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
+    if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
       zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; }
   }
   // 밥 % (how much is still yours) and 익음 % (cooked grains), live
