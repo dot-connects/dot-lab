@@ -172,7 +172,7 @@
     if (fl.hop) { E.ph = fl.second ? "landed" : "pan"; E.landT = t; jolt(t, 0.6, 0); spatter(6); return "hop"; }
     _inv.copy(W.wok.matrixWorld).invert(); _v.copy(E.g.position).applyMatrix4(_inv);
     const d = Math.hypot(_v.x, _v.z - 0.05), turn = fl.spin, err = Math.abs((((turn % TAU) + TAU) % TAU) - Math.PI), errDeg = (err * 180) / Math.PI;
-    const raw = fl.cook < 0.42;
+    const raw = fl.second ? false : fl.cook < 0.42; // side 2 tears only on side 1's doneness; a second flip is never 'raw'
     let catchQ, where;
     if (d < 0.22) { catchQ = 1; where = "centre"; } else if (d < 0.45) { catchQ = 0.45; where = "near"; } else if (d < 0.86) { catchQ = 0.35; where = "wall"; } else { catchQ = 0; where = "out"; }
     const flipped = errDeg < 70 && turn > Math.PI * 0.6;

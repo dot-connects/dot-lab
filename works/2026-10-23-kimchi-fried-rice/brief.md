@@ -222,3 +222,9 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   time on the start; at the switch-on only "마지막 한 방!" (+ stats/gauge/combo hidden); the dark tally only on the
   receipt as "깜깜할 때 금색 k번 (n번 중)"; tosses after the finale are ignored (they replaced its word);
   "뒤집기 0/2" no longer wraps.
+- Round 11 QA (p8-*): egg meter hidden by the leaked "final" class (fixed in startPlate); beat bar from the first
+  second; start copy "12초 웍질. 근데 불이 좀…" + two plain lines; review: a `//` hid the fov update (punch and slow-mo
+  zoom were dead), goHome now resets dark/slow/lowpass, stale result timers guarded; rice QA: lights never later than
+  0.9 s left, motion again after watch mode, gauge label inside the screen; layout QA (6 viewports): label/edge/combo
+  overlap, tip and receipt wrapping; egg QA: a second flip no longer counts as raw from side 1's doneness.
+- Checked: egg band + "뒤집기 2/2", ?vs share overlay, slow-mo, ⌂ restart; no errors.
