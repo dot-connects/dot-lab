@@ -28,7 +28,7 @@
   /* ---------- words ---------- */
   function word(text, kind, sub) {
     if (g && g.darkPh === "dark" && kind !== "dark") return; // in the dark only the 'it landed' word speaks
-    if (g && kind !== "great" && g.t < (g.wordLock || 0)) return; // a big moment is not overwritten
+    if (g && kind !== "great" && kind !== "dark" && g.t < (g.wordLock || 0)) return; // a big moment is not overwritten
     if (g && kind === "great") g.wordLock = g.t + 0.8;
     wordEl.textContent = text; wordEl.className = "word " + (kind || ""); void wordEl.offsetWidth; wordEl.classList.add("pop");
     subEl.textContent = sub || ""; subEl.className = "sub"; void subEl.offsetWidth; if (sub) subEl.classList.add("pop");
@@ -218,6 +218,7 @@
     if (w > 4 && g.nudged === 1) { g.nudged = 2; $("scBig").textContent = C.cueProd; cueEl.classList.add("fast"); }
   }
   function startPlate() {
+    hudEl.classList.remove("final", "slow", "dark"); // the egg needs its meter back (it stayed hidden after the finale)
     setPh("plate"); hudEl.classList.add("dim"); tip(""); K.Food.scorchVis = 0;
     W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
   }
@@ -435,9 +436,10 @@
       ${best > 0 && !rec && best > s.total ? `<div class="near">내 최고 ${best}점</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${g.auto ? C.tryIt : C.again}</button>${g.auto ? "" : `<button class="btn ghost" id="share" type="button">${C.share}</button>`}</div>
       ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
-    resEl.hidden = false; setTimeout(() => resEl.classList.add("up"), 900); // the finished dish gets a moment first
+    const gg = g; // a restart within 2 s must not let this round's slide-in / stamp fire into the next
+    resEl.hidden = false; setTimeout(() => { if (g === gg) resEl.classList.add("up"); }, 900); // the finished dish gets a moment first
     const n = $("scoreN"), t0 = performance.now() + 1200;
-    (function up() { if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
+    (function up() { if (g !== gg) return; if (performance.now() < t0) return requestAnimationFrame(up); const k = Math.min(1, (performance.now() - t0) / 900); n.textContent = Math.round(s.total * smooth(k)); if (k < 1) requestAnimationFrame(up); else { K.Audio.stamp(); const st = resEl.querySelector(".stamp"); if (st) st.classList.add("pop"); } })();
     $("again").onclick = () => { K.Audio.unlock(); const go = () => start(false); if (g.auto) K.Input.requestPermission().then(go, go); else go(); }; bestLine();
     if (!g.auto) $("share").onclick = share; // the bot's dish is not yours to brag about
   }
@@ -558,13 +560,13 @@
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
     g.shake = Math.max(0, (g.shake || 0) - dt * 4); const sk = 0.022 * Math.min(1.6, g.shake) * g.shake; // ≤ ~4 px
     if (sk > 0.0005) W.camera.position.add(_a.set(rnd(-1, 1) * sk, rnd(-1, 1) * sk, 0));
-    g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)) - 4 * (g.slowAmt || 0); // the slow-mo pushes in if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
+    g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)) - 4 * (g.slowAmt || 0); /* the slow-mo pushes in */ if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
   }
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
     // the beat bar: the needle runs from the last toss, the gold band is when to toss again
-    beatEl.hidden = !(g.ph === "rice" && g.started && g.tossN > 0 && g.clock > 0);
-    if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
+    beatEl.hidden = !(g.ph === "rice" && g.started && g.clock > 0); // from the start: the needle waits at 0 for the first toss
+    if (!beatEl.hidden) { const w = readyWin(), b = g.tossN > 0 ? g.t - g.lastFlick : 0; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
       zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; }
   }
   // 밥 % (how much is still yours) and 익음 % (cooked grains), live
@@ -609,6 +611,7 @@
   // ⌂: back to the start screen from anywhere (the wok goes back to cooking by itself)
   const homeEl = $("home");
   function goHome() {
+    W.setDark(0); hudEl.classList.remove("dark", "slow", "final"); K.Audio.darkFlag(false); K.Audio.slow(false); cueEl.className = "";
     K.Input.steerAfterFlick = false; K.Input.demoTilt(0, 0);
     g = newGame(false);
     if (K.Egg.ph !== "off") K.Egg.hide();

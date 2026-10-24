@@ -4,9 +4,9 @@
   const K = (window.KFR = window.KFR || {});
   K.COPY = {
     shop: "00반점", shopSub: "영수증",
-    hook: "12초 웍질, 몇 점 나올까?", how: "폰을 <b>위로 휙</b> → 밥이 뜬다 · <b>옆으로 휙</b> → 옆으로<br>막대가 <b>금색 칸</b>에 올 때마다 휙 → 불맛<br><small>폰을 바닥과 평평하게 들면 웍도 평평</small>", go: "불 켜!", watchBtn: "구경만 할래",
+    hook: "12초 웍질. 근데 불이 좀…", how: "폰을 <b>위로 휙</b> 튕기면 밥이 뜬다<br>움직이는 바늘이 <b>금색 칸</b>에 들 때 휙 → 불맛", go: "불 켜!", watchBtn: "구경만 할래",
     tipMotion: "폰을 위로 휙! 튕겨서 볶기", tipTouch: "화면을 위로 휙! 쓸어 올려서 볶기",
-    cueMotion: "폰을 위로 휙!", cueTouch: "화면을 위로 쓸어 올려!", cueSmall: "위 막대 금색 칸마다 또 휙", cueProd: "불 식는다! 휙!",
+    cueMotion: "폰을 위로 휙!", cueTouch: "화면을 위로 쓸어 올려!", cueSmall: "바늘이 금색 칸에 들 때 또 휙", cueProd: "불 식는다! 휙!",
     flip2Tip: "뒷면 익는 중… 초록 칸에서 한 번 더 휙", eggYolkUp: "노른자 위로!", watching: "구경 중…",
     perfect: "불맛 터짐!", perfectSub: ["어? 너 좀 하네?", "주방 들어와!", "+불맛"], good: "괜찮은데?", early: "아직 아니야", earlySub: "설익음", late: "눌었다…", lateSub: ["누룽지 서비스냐?", "손 놀지 마라"], tooHard: "너무 세!", goodChip: "고슬",
     finale: "불기둥 피날레!", finaleSub: "사장님이 박수 침", finaleWeak: "마지막이 약했다", finaleCue: "마지막 한 방!", finaleCueSub: "제일 높게 휙",
@@ -17,7 +17,7 @@
     shareText: (n, t) => `00반점 김치볶음밥 ${n}점 「${t}」 나왔다. 이겨 볼 사람?`,
     shareWin: (v, n) => `친구 ${v}점을 ${n}점으로 눌렀다. 다음 도전자?`, shareLose: (v, n) => `친구 ${v}점… 나는 ${n}점. 복수해 줄 사람?`,
     vsHook: (v) => `친구가 ${v}점 받았다! 이겨 봐`, vsWin: (v, n) => `친구 ${v} vs 나 ${n} — 이겼다!`, vsTie: (v) => `친구 ${v} vs 나 ${v} — 비겼다`, vsLose: (v, n) => `친구 ${v} vs 나 ${n} — 졌다…`,
-    howTouch: "화면을 <b>위로 쓸어</b> → 밥이 뜬다 · <b>옆으로 쓸면</b> → 옆으로<br>막대가 <b>금색 칸</b>에 올 때마다 쓸기 → 불맛",
+    howTouch: "화면을 <b>위로 쓸어 올리면</b> 밥이 뜬다<br>움직이는 바늘이 <b>금색 칸</b>에 들 때 쓸기 → 불맛",
     mashed: "연타! 콤보 끊김", egg2Early: "뒤집긴 했는데 이르다", egg2Late: "뒤집긴 했는데 늦었다",
     blackWarn: "사장님: 에어컨 켠다~", blackout: "정전!", blackoutSub: "감으로 휙",
     finaleBack: "불 들어왔다 — 마지막 한 방!", blackPerfect: "감 살아있네!", lightsBack: "불 들어왔다!", lightsBackSub: (k, n) => `깜깜이 ${k}/${n} 불맛`,

@@ -146,7 +146,7 @@
     darkFlag: (d) => { A.dark = !!d; if (A.siz) A.siz.level = -1; },
     buzz: safe(() => { tone({ f0: 120, dur: 0.35, gain: 0.05, type: "sawtooth" }); burst({ f0: 3200, q: 8, dur: 0.015, gain: 0.25, at: 0.05 }); burst({ f0: 3200, q: 8, dur: 0.015, gain: 0.2, at: 0.17 }); }),
     blackout: safe((on) => {
-      A.dark = !!on; A.siz.level = -1;
+      A.dark = !!on; if (A.siz) A.siz.level = -1;
       if (on) { tone({ f0: 300, f1: 110, dur: 0.14, gain: 0.6, type: "triangle" }); burst({ type: "lowpass", f0: 1800, f1: 200, dur: 0.06, gain: 0.6, attack: 0.001 }); tone({ f0: 240, f1: 150, dur: 0.6, gain: 0.06, type: "sawtooth", at: 0.05 }); }
       else { [0, 0.07, 0.16].forEach((x) => burst({ f0: 3200, q: 8, dur: 0.015, gain: 0.3, at: x })); tone({ f0: 150, f1: 240, dur: 0.4, gain: 0.05, type: "sawtooth", at: 0.2 }); }
     }),
