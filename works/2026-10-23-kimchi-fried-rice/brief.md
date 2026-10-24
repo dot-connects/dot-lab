@@ -104,3 +104,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   C toy), https://claude.ai/artifact/Hx3M7xyEcEDvfP1VApF3iR
 - New requirements for the 3D build (operator 10-24): as smooth as possible, tilt more sensitive than expected,
   tilting the phone far to one side spills the food.
+
+## Round 4 (2026-10-24)
+- Operator: rice looked like a checkerboard; flip the egg twice?; say how the game starts (or start on 불 켜); toy mint bg off.
+- Decided with subagents: start stays on the first toss (iOS motion permission, fair 12 s) + a big cue over the wok;
+  second flip is optional (back yolk-up = 4 of the 14 flip points), not required (tempo); toy bg indigo #2f3b66.
+- Checkerboard root cause: the box blur's negative spectrum made grains clump on a lattice; 1-2-1 blur + bilinear
+  deposit/sample on a jittered grid.
+- Expert sweep fixes: tosses after the 3rd were never graded; idle egg 28→7 of 40; vanishing egg at flip; per-toss window jitter.
