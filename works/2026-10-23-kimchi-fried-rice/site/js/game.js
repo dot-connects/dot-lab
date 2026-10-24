@@ -15,6 +15,21 @@
   /* ---------- state ---------- */
   const vs = (() => { const m = /[?&]vs=(\d{1,3})/.exec(location.search); return m ? Math.min(100, +m[1]) : null; })(); // a friend's score from a shared link
   const inApp = /KAKAOTALK|Instagram|Barcelona|FBAN|FBAV|Line\//i.test(navigator.userAgent); // in-app browsers rarely pass motion: teach touch first
+  // cue prototypes (operator 10-24: eyes stay on the bar, not the wok): ?cue=a approach ring in the wok, ?cue=c the fire is the cue
+  const cueMode = (/[?&]cue=([ac])/.exec(location.search) || [])[1] || "";
+  let ringM = null;
+  function approachRing() {
+    if (!ringM) { ringM = new T.Mesh(new T.RingGeometry(0.93, 1, 96), new T.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0, depthTest: false, side: T.DoubleSide, toneMapped: false })); ringM.rotation.x = -Math.PI / 2; ringM.renderOrder = 5; }
+    if (ringM.parent !== W.wok) W.wok.add(ringM);
+    const on = g.ph === "rice" && g.started && g.clock > 0 && g.darkPh !== "dark";
+    if (!on) { ringM.material.opacity = 0; return; }
+    const w = readyWin(), b = g.t - g.lastFlick, R0 = 1.0, R1 = 0.64; // it closes from the rim onto the pile edge, exactly as the band opens
+    const k = clamp(b / w.gold0, 0, 1), r = b < w.gold0 ? R0 + (R1 - R0) * k * k : R1;
+    ringM.scale.set(r, r, r); ringM.position.y = K.surf(r * r) + 0.1;
+    const inB = b >= w.gold0 && b <= w.gold1, late = b > w.gold1;
+    ringM.material.color.set(inB ? 0xffc23a : late ? 0xff4d2a : 0xffffff);
+    ringM.material.opacity = late ? Math.max(0, 0.7 - (b - w.gold1) * 2) : inB ? 0.95 : 0.25 + 0.45 * k;
+  }
   const todayOrder = () => { const d = new Date(); return (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % 2 ? "half" : "full"; };
   let g = null;
   function newGame(auto) {
@@ -88,9 +103,9 @@
     }
     if (g.darkPh === "warn" && g.clock <= 5.2 && !g.cutAt) g.cutAt = g.t + 0.12;
     if (g.darkPh === "dark") { g.darkN = (g.darkN || 0) + 1; if (g.clock <= 1.2) g.onAt = Math.min(g.onAt || 1e9, g.t + 0.2); }
-    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.win = bandFor(s); g.ticked = false; g.landSnd = false; g.landShk = false;
+    g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.cFlare = false; g.win = bandFor(s); g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
-    g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
+    g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, (cueMode === "c" ? 0.12 : 0.3) + 0.25 * s * (cueMode === "c" ? 0.4 : 1)); /* C: the toss itself flares less, so the band's flare stands out */ g.punch = Math.max(g.punch || 0, 0.5);
     if (s >= 1.15 && (f.snap == null || f.snap > 0.4)) { g.hei = Math.max(g.hei, 0.9); W.sparkBurst(8); }
     const du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV;
     const du2 = clamp(du, -0.85, 0.85); g.lastDu = du2; g.tossSpill = 0;
@@ -355,7 +370,7 @@
       wispCol.copy(WC.white);
       if (back < w.open) { wisp = 0; siz = 0.4; }
       else if (back < w.gold0) { const k = (back - w.open) / (w.gold0 - w.open); wisp = 0.3 * k; siz = 0.4 + 0.3 * k; }
-      else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = 1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6; wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); } }
+      else if (back <= w.gold1) { wisp = 0.65 + 0.2 * (1 - Math.abs(back - w.peak) / (w.gold1 - w.peak)); siz = 0.55; flare = (1 - clamp((back - w.gold0) / 0.25, 0, 1) * 0.6) * (cueMode === "c" ? 2.6 : 1); if (cueMode === "c" && !g.cFlare) { g.cFlare = true; g.hei = Math.max(g.hei, 0.95); W.sparkBurst(10); K.Audio.pops(); } /* C: the band opens with a fire column off the lip */ wispBig = 1 + 0.5 * big; if (!g.puffed) { g.puffed = true; W.wispBurst(); } }
       if (!g.ticked && back >= w.gold0 - 0.04) { g.ticked = true; if (g.darkPh !== "dark") K.Audio.tick(); } // the beat is heard: 탁 at the band (output latency allowed for)
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
@@ -593,7 +608,8 @@
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
     // the beat bar: the needle runs from the last toss, the gold band is when to toss again
-    beatEl.hidden = !(g.ph === "rice" && g.started && g.clock > 0); // from the start: the needle waits at 0 for the first toss
+    beatEl.hidden = !!cueMode || !(g.ph === "rice" && g.started && g.clock > 0);
+    if (cueMode === "a") approachRing(); // from the start: the needle waits at 0 for the first toss
     if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
       zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; beatEl.classList.toggle("c3", g.combo >= 3 && g.combo < 5); beatEl.classList.toggle("c5", g.combo >= 5); }
   }
@@ -608,8 +624,9 @@
 
   /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */
   let last = performance.now(), acc = 0;
+  const TS = +((/[?&]ts=([\d.]+)/.exec(location.search) || [])[1] || 1);
   function frame(now) {
-    let dt = Math.min(0.1, (now - last) / 1000); last = now;
+    let dt = Math.min(0.1, (now - last) / 1000) * TS; last = now; // TS: ?ts=0.25 slows the whole game (for capturing frames only)
     if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
     let n = 0;
     if (g.slowT) {
