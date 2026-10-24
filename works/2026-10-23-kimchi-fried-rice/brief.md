@@ -169,3 +169,19 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - rv8-product (release gaps) applied: in-app browser hint shown (tip + result line), og/twitter meta + og.png + icon.png,
   "불 올리는 중…" until the first frame, no-WebGL card + context-lost reload, mute toggle (remembered), best score and
   today's order (date-seeded 반숙/완숙) on the start card, best on the receipt, credits line. Manifest captions updated.
+
+## Round 9 (2026-10-24)
+- Operator: grains teleport then wave back on a toss; some rice always stays in the wok for the egg; egg flip screen too
+  bright; the beat is too fast; share a LINK (not a picture) whose preview shows my receipt; too many grains (loss not
+  felt); what is the line under 밥 %; start over with fresh eyes — many agents.
+- Fresh-eyes panel fx-* (player, qa, design, art, viral, feel, chef, perf), no design log given.
+- Fixed: the lip ride (grains shot ~1 radius in 0.13 s and dropped from the heap top to the metal in one frame) → a
+  short slide over each grain's delay keeping its height; re-toss releases riders first (frame log: no grain > 16 u/s);
+  the ladle sweeps every leftover grain onto the plate; beat 0.55-1.1 s (late 1.6, smoke 2 s, attract 0.85 s);
+  1400 bigger grains (HK 0.015) + "-n알" live; "익힘 %" on a dark chip; good keeps but no longer builds the combo and is
+  quiet after toss 3; chef copy (김치 먼저 → 찬밥 투하, kitchen-rank titles); perf: ≤ 2 steps per frame, DPR 1.5,
+  hidden sprites skipped, shader warm-up, rice sim skipped once plated.
+- Share: link only; static s/0..100/ pages (make_score_pages.py, Pillow) with a per-score receipt preview
+  (s/img/s<n>-v1.jpg, bump VER on redesign: Kakao/Meta cache), JS redirect to ?vs=<n>; challenge hook on the start
+  card and "친구 73 vs 나 79 — 이겼다!" on the receipt; in-app browsers get the touch how-to.
+- Egg brightness measured: frame mean 104-106 during the flip vs 118 while tossing (not an exposure jump; pending art review).

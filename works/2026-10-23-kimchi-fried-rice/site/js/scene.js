@@ -11,7 +11,7 @@
   Object.assign(K, { T, TAU, DEG, lin, clamp, smooth, rnd, surf, RIM: 0.355, SIDE: -1 /* the plate is on the left */ });
 
   const STYLES = {
-    real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.038, 0.017], grainN: 2400, phys: true },
+    real: { bg: "#1b1f24", counter: "steel", exposure: 1.05, grain: [0.046, 0.021], grainN: 1400, phys: true },
   };
 
   /* ---------- renderer / camera ---------- */
@@ -20,7 +20,7 @@
   try { renderer = new T.WebGLRenderer({ canvas, antialias: true, powerPreference: "high-performance" }); }
   catch (e) { document.getElementById("noGL").hidden = false; throw e; } // no WebGL: say so instead of a frozen grey page
   canvas.addEventListener("webglcontextlost", () => location.reload());
-  renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+  renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1)); // 44 % fewer pixels than 2x: mid phones stay at 60 fps
   renderer.outputEncoding = T.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   const camera = new T.PerspectiveCamera(30, 1, 0.1, 60);
@@ -196,10 +196,10 @@
     for (const sp of W.hei) {
       const u = sp.userData, h = o.hei * (0.55 + 0.25 * Math.sin(t * 19 + u.ph)) * u.s;
       _v.set(Math.sin(u.a) * 1.0, K.RIM + h * 0.42, -Math.cos(u.a) * 1.0).applyMatrix4(W.wok.matrixWorld);
-      sp.position.copy(_v); sp.scale.set(0.34 * u.s * (0.6 + o.hei * 0.6), Math.max(0.001, h), 1); sp.material.opacity = Math.min(1, o.hei * 1.4);
+      sp.position.copy(_v); sp.scale.set(0.34 * u.s * (0.6 + o.hei * 0.6), Math.max(0.001, h), 1); sp.material.opacity = Math.min(1, o.hei * 1.4); sp.visible = sp.material.opacity > 0.01;
     }
     for (const sp of W.sparks) {
-      const u = sp.userData; if (u.life <= 0) { sp.material.opacity = 0; continue; }
+      const u = sp.userData; sp.visible = u.life > 0; if (u.life <= 0) { sp.material.opacity = 0; continue; }
       u.life -= dt; u.v.y -= 2.5 * dt; u.p.addScaledVector(u.v, dt); sp.position.copy(u.p); const s = 0.05 * Math.min(1, u.life * 3); sp.scale.set(s, s, 1); sp.material.opacity = Math.min(1, u.life * 2.5);
     }
     for (const p of W.puffs) {
@@ -211,6 +211,7 @@
       p.material.opacity = Math.max(o.steam, on ? Math.min(0.95, sm * 1.4) : 0) * Math.sin(Math.PI * Math.min(1, k * 1.3));
       if (sm > 0) p.scale.setScalar((0.4 + k * 1.2) * (1 + sm));
       p.material.color.setRGB(1 - sm * 0.22, 1 - sm * 0.24, 1 - sm * 0.26); // light grey: only pale smoke reads on the dark wok
+      p.visible = p.material.opacity > 0.01;
     }
     for (const p of W.wisps) {
       const u = p.userData; u.t += dt; if (u.t > 0.6) u.t -= 0.6;
@@ -218,7 +219,7 @@
       const wx = Math.cos(u.a) * r, wz = Math.sin(u.a) * r * 0.9, top = K.Food && K.Food.pileTop ? K.Food.pileTop(wx * 0.8, wz * 0.8) : surf(r * r) + 0.06; // from the top of the heap, not inside it
       _v.set(wx, top + 0.12 + k * 0.6 * (0.5 + 0.5 * wv) * big, wz).applyMatrix4(W.wok.matrixWorld);
       p.position.copy(_v); p.scale.set((0.14 + 0.2 * k) * big * (1 + 0.8 * (o.wispThick || 0)), (0.55 + 0.4 * k) * big, 1);
-      p.material.opacity = Math.min(1, wv * 1.5) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol);
+      p.material.opacity = Math.min(1, wv * 1.5) * Math.sin(Math.PI * k); if (o.wispCol) p.material.color.copy(o.wispCol); p.visible = p.material.opacity > 0.01;
     }
   };
   // the wisps restart from the metal together, so the moment they rise reads as one event

@@ -7,7 +7,7 @@
   const G = 38;                       // with the higher toss (hs) airtime ~0.55 s: the arc reads on a phone (Ko & Hu: a real cycle is ~0.3 s)
   const GS = 7;                       // gravity for sliding on the floor
   const MU = 0.55, MUK = 0.35; // rice is sticky: it heaps (~35 deg) instead of levelling like a liquid; once it slides, it drags
-  const HK = 0.009;                   // pile height per grain in a cell
+  const HK = 0.015;                   // pile height per grain in a cell (1400 bigger grains: same heap)
   const NG = 38, CELL = 2.2 / NG;     // height grid over [-1.1, 1.1]²
   const COUNTER = -0.61;
   const F = (K.Food = { n: 0 });
@@ -113,12 +113,13 @@
     let du = f.dirU || 0, dv = f.dirV == null ? 1 : f.dirV; const nn = Math.hypot(du, dv);
     if (nn < 0.3) { du = 0; dv = 1; } else { du /= nn; dv = Math.abs(dv) / nn; }
     const s = clamp(f.strength || 1, 0.3, 1.8), dx = du, dz = -dv; // wok-local throw direction (forward = -z)
+    if (F.toss) { const wm = K.W.wok.matrixWorld; for (let i = 0; i < F.n; i++) if (F.st[i] === 1) release(i, wm); }
     let n = 0; const keep = 1 - clamp(0.55 + 0.35 * (s - 0.6) / 0.8, 0.55, 0.9);
     for (let i = 0; i < F.n; i++) {
       if (F.st[i] !== 0) continue;
       const along = F.x[i] * dx + F.z[i] * dz, rk = clamp((along + 0.75) / 1.5, 0, 1);
       if (rk < keep * rnd(0.6, 1.4)) { F.vx[i] += dx * 0.2 * s; F.vz[i] += dz * 0.2 * s; F.depth[i] = clamp(F.depth[i] + rnd(-0.35, 0.35), 0, 1); continue; } // the slosh stirs it too // the back of the pile sloshes forward a little
-      F.st[i] = 1; F.rank[i] = rk; F.dl[i] = (1 - F.rank[i]) * 0.24 * rnd(0.6, 1.4); // peels off from the lip over ~0.3 s, not as one slab
+      F.st[i] = 1; F.hh[i] = F.y[i] - surf(F.x[i] ** 2 + F.z[i] ** 2); F.rank[i] = rk; // keeps its height over the metal (it dropped onto the floor in one frame) F.dl[i] = (1 - F.rank[i]) * 0.24 * rnd(0.6, 1.4); // peels off from the lip over ~0.3 s, not as one slab
       F.hx[i] = F.x[i]; F.hz[i] = F.z[i]; n++;
     }
     if (!n) return 0; // all of it is still in the air: keep the toss in flight (it was replaced by an empty one)
@@ -187,9 +188,10 @@
         const heat = ctx.heat * Math.max(0.15, 1.15 - 0.65 * r * r), lay = (1 - F.depth[i]) ** 2 * 0.9 + 0.1;
         F.cook[i] += 0.2 * heat * lay * dt + 0.24 * (F.scorchVis || 0) * F.depth[i] * dt; // scorching: smoke and heat brown the top too, so it reads from above
       } else if (st === 1) { // riding up the far wall before the lip snap
-        const k = smooth((t - tz.t - 0.04) / 0.13), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
-        const aa = a + (0.55 + 0.35 * F.rank[i] - a) * k, bb = b * (1 - 0.3 * k);
-        F.x[i] = tz.dx * aa - tz.dz * bb; F.z[i] = tz.dz * aa + tz.dx * bb; F.y[i] = surf(F.x[i] ** 2 + F.z[i] ** 2) + 0.03 + 0.04 * F.depth[i];
+        // a short slide toward the lip over the grain's own delay (it used to shoot ~1 wok radius in 0.13 s and wait there)
+        const k = smooth((t - tz.t - 0.02) / (0.15 + F.dl[i])), a = F.hx[i] * tz.dx + F.hz[i] * tz.dz, b = -F.hx[i] * tz.dz + F.hz[i] * tz.dx;
+        const aa = a + Math.max(0, Math.min(0.28, 0.55 + 0.35 * F.rank[i] - a)) * k, bb = b * (1 - 0.15 * k);
+        F.x[i] = tz.dx * aa - tz.dz * bb; F.z[i] = tz.dz * aa + tz.dx * bb; F.y[i] = surf(F.x[i] ** 2 + F.z[i] ** 2) + Math.max(0.03 + 0.04 * F.depth[i], F.hh[i] * (1 - 0.6 * k));
         if (t - tz.t >= 0.17 + F.dl[i]) release(i, wm);
       } else if (st === 2) {
         air++;
@@ -235,6 +237,7 @@
   }
   F.plateMound = function (d) { const f = clamp(F.onPlate / (F.n * 0.85), 0, 1), R = 0.2 + 0.24 * f, Hh = 0.06 + 0.3 * f; return d >= R ? 0 : Hh * (1 - (d / R) ** 2); };
   // what is left in the wok after the pour slides back to the bottom
+  F.sweep = function (P) { const wm = K.W.wok.matrixWorld; for (let i = 0; i < F.n; i++) if (F.st[i] === 0 || F.st[i] === 1) { _v.set(F.x[i], F.y[i], F.z[i]).applyMatrix4(wm); F.x[i] = _v.x; F.y[i] = _v.y; F.z[i] = _v.z; toPlate(i, P); } };
   F.settle = function () { for (let i = 0; i < F.n; i++) if (F.st[i] === 0) { F.x[i] *= 0.3; F.z[i] *= 0.3; } };
 
   /* ---------- draw ---------- */
@@ -249,7 +252,7 @@
       if (st >= 2) dummy.position.applyMatrix4(_inv); // flying / plated / spilled food is stored in world space
       dummy.scale.set(1, 1, 1);
       if (st === 7) dummy.scale.set(0, 0, 0); // not in the wok yet
-      else if (st === 3) dummy.scale.setScalar(0.62); // on the plate: real-size grains for the close-up
+      else if (st === 3) dummy.scale.setScalar(0.75); // on the plate: real-size grains for the close-up
       else if (st === 2 || st === 5 || st === 6) {
         dummy.rotation.set(F.rx[i], F.ry[i], F.rz[i]);
         if (k === 0 && st === 2) { // a fast grain streaks along its velocity: the arc reads as lines, not as dots that skip

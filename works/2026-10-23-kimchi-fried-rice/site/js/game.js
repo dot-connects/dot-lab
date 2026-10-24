@@ -13,6 +13,8 @@
   const FIRE_MAX = 25;
 
   /* ---------- state ---------- */
+  const vs = (() => { const m = /[?&]vs=(\d{1,3})/.exec(location.search); return m ? Math.min(100, +m[1]) : null; })(); // a friend's score from a shared link
+  const inApp = /KAKAOTALK|Instagram|Barcelona|FBAN|FBAV|Line\//i.test(navigator.userAgent); // in-app browsers rarely pass motion: teach touch first
   const todayOrder = () => { const d = new Date(); return (d.getFullYear() * 372 + d.getMonth() * 31 + d.getDate()) % 2 ? "half" : "full"; };
   let g = null;
   function newGame(auto) {
@@ -94,7 +96,7 @@
     K.Audio.toss(s, f.snap == null ? 0.5 : f.snap);
   }
   function finale(s) {
-    g.finaleDone = true; g.finaleT = g.t; g.wantShot = g.t + 0.42; hideCue();
+    g.finaleDone = true; g.finaleT = g.t; hideCue();
     g.hei = 1.6; W.sparkBurst(40); g.punch = 1; g.shake = 1.6; K.Audio.fever();
     const bonus = 3 * clamp((s - 0.8) / 0.8, 0, 1); g.fire = Math.min(FIRE_MAX, g.fire + bonus); fireNum();
     setTimeout(() => word(bonus > 1 ? C.finale : C.finaleWeak, bonus > 1 ? "great" : "meh", bonus > 1 ? C.finaleSub : ""), 350);
@@ -102,7 +104,7 @@
   /* one toss's worth: timing × height; perfect tosses build a combo, the 불맛 meter fills */
   /* the ready window moves with the pile: a higher toss cools the rice, so it needs a little longer back on the metal */
   // fixed beat so the hand can learn it (no jitter); 불쇼 (fever) widens the sweet spot
-  function readyWin() { const fv = g.t < (g.fever || 0); return { open: 0.3, gold0: fv ? 0.38 : 0.45, peak: 0.65, gold1: fv ? 1.0 : 0.9, late: 1.3 }; }
+  function readyWin() { const fv = g.t < (g.fever || 0); return { open: 0.35, gold0: fv ? 0.45 : 0.55, peak: 0.8, gold1: fv ? 1.25 : 1.1, late: 1.6 }; }
   function score(grade, s, q) {
     const hm = 0.65 + 0.35 * clamp((s - 0.55) / 0.75, 0, 1); // higher and flashier pays more (operator)
     g.grades.push(grade);
@@ -119,8 +121,8 @@
       comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
       if (grade === "good") { // so-so keeps the combo, fills a little
-        g.combo++; g.maxCombo = Math.max(g.maxCombo, g.combo); // old 2D: good builds the combo too
-        g.fire = Math.min(FIRE_MAX, g.fire + 0.5 * hm); g.hei = Math.max(g.hei, 0.3); word(C.good, "ok", g.tossN < 4 ? C.goodChip : "");
+        // good keeps the combo (only perfect builds it) and stays quiet: a word on every toss buried the real moments
+        g.fire = Math.min(FIRE_MAX, g.fire + 0.5 * hm); g.hei = Math.max(g.hei, 0.3); if (g.tossN < 4) word(C.good, "ok", C.goodChip);
         comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; fireNum(); return;
       }
       else if (grade === "early") { g.fire = Math.min(FIRE_MAX, g.fire + 0.1); fireNum(); return; } // mashing: allowed, just no 불맛
@@ -178,7 +180,7 @@
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
-    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.textContent = "밥 100%"; cookEl.textContent = "익음 0%";
+    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.textContent = "밥 100%"; cookEl.textContent = "익힘 0%";
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
@@ -193,9 +195,9 @@
     while (g.introI < I.length && k >= I[g.introI][0]) {
       const i = g.introI++;
       cue(I[i][1], i < 3 ? C.introSmall : "", "intro");
-      if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(0); else if (i === 2) F.drop(1);
+      if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(1); else if (i === 2) F.drop(0); // chef: kimchi first, then the cold rice
     }
-    if (k >= 0.95 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
+    if (k >= 1.75 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
     if (k >= 2.4) { g.introOn = false; g.started = true; g.goT = g.t; g.clockAt = g.t + 0.5; hideCue(); } // 0.5 s grace before the 12 s run
   }
   // no toss yet: the hint comes only now (1.5 s), and gets pushier at 4 s
@@ -232,7 +234,7 @@
         let left = 0; for (let i = 0; i < F.n; i++) if (F.st[i] <= 2) left++;
         const want = k < 0.4 ? 0 : clamp((k - 0.4) / 0.35, 0, 1);
         g.plateK += (want - g.plateK) * DAMP(0.06, dt);
-        if (k > 0.8 && (left < F.n * 0.03 || k > 3.4)) g.poured = g.t;
+        if (k > 0.8 && (left < F.n * 0.03 || k > 3.4)) { g.poured = g.t; F.sweep({ x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z }); } // the ladle scrapes the rest out
       } else {
         const q = g.t - g.poured;
         if (q < 0.2 && g.shim < g.poured) g.shim = g.t; // two quick shakes for the last grains
@@ -292,7 +294,7 @@
     W.plate.visible = plateOn;
     const ctx = { t: g.t, dt, pour: g.ph === "plate" && !g.poured && g.phT > 0.6 ? SIDE * clamp((g.phT - 0.6) / 0.5, 0, 1) : 0, heat: g.ph === "rice" ? (g.t >= g.clockAt ? 1 : 0) : g.ph === "plate" ? 0.2 : 0,
       plate: plateOn ? { x: W.plate.position.x, y: W.plateC.y + 0.01, z: W.plateC.z, on: true, pats: g.pats } : null };
-    const r = F.step(ctx);
+    const r = g.ph === "egg" && g.phT > 0.6 || g.ph === "take" || g.ph === "garnish" || g.ph === "result" ? { landed: 0, spilledNow: 0 } : F.step(ctx); // plated: nothing moves
     if (r.landed > 30 && g.ph === "rice" && !g.landSnd) { g.landSnd = true; K.Audio.land("rice"); }
     if (g.ph === "rice" && r.spilledNow) { g.tossSpill = (g.tossSpill || 0) + r.spilledNow; if (g.tossSpill > 120 && Math.abs(g.lastDu || 0) > 0.5 && !g.sideSaid) { g.sideSaid = g.t; g.spillSaid = g.t; word(C.sideTable, "bad", C.sideTableSub); } }
     if (r.spilledNow > 4 && g.ph === "rice") { K.Audio.land("spill"); g.shake = Math.max(g.shake || 0, 1.4); if (g.t - (g.spillSaid || -9) > 1.5) { g.spillSaid = g.t; word(C.spill, "bad", pick(C.spillSub)); splat("rice"); try { navigator.vibrate && navigator.vibrate(60); } catch (e) {} } }
@@ -312,7 +314,7 @@
       if (!g.ticked && back >= w.gold0 - 0.04) { g.ticked = true; K.Audio.tick(); } // the beat is heard: 탁 at the band (output latency allowed for)
       else if (back <= w.late) { const k = (back - w.gold1) / (w.late - w.gold1); wisp = 0.6; wispCol.lerp(WC.grey, k); wispThick = k; siz = 0.6; }
       else { wisp = 0.6 * (1 - clamp((back - w.late) / 1.2, 0, 0.6)); wispCol.copy(WC.grey).lerp(WC.dark, clamp((back - w.late) / 0.8, 0, 1)); wispThick = 1; siz = 0.55; }
-      const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - 1.6) / 1.4, 0, 1)); F.scorchVis = smoke; // left alone: smoke from 1.6 s, thick by 3 s
+      const b = F.bottom(); smoke = Math.max(clamp((b.scorch - 0.04) * 6, 0, 1), clamp((back - 2.0) / 1.4, 0, 1)); F.scorchVis = smoke; // left alone: smoke from 2 s, thick by 3.4 s
       steam = 0.18 + 0.2 * clamp(back, 0, 1);
       if (smoke > 0.4 && g.t - g.scorchSaid > 2.5) { g.scorchSaid = g.t; word(C.scorch, "bad"); }
     }
@@ -404,6 +406,7 @@
       <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
       <div class="floor">바닥 밥 변상 <b>${K.Food.spilled}</b>알 × 10원 = <b>${(K.Food.spilled * 10).toLocaleString()}</b>원</div>
       <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
+      ${vs != null ? `<div class="vs">${s.total > vs ? C.vsWin(vs, s.total) : s.total === vs ? C.vsTie(vs) : C.vsLose(vs, s.total)}</div>` : ""}
       <div class="why">${whyLine(s)}</div>
       <div class="memo">사장님: ${memo(tier)}</div>
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
@@ -438,40 +441,21 @@
   }
   // the link always goes with the brag, so whoever sees it can tap straight in (operator 10-24, every work)
   const gameUrl = () => (/^https?:/.test(location.protocol) ? location.origin + location.pathname : C.url);
-  function showShare(cv, url) {
-    const ov = $("shareOv"); ov.querySelector("img").src = cv.toDataURL("image/png"); $("shareUrl").textContent = url; ov.hidden = false;
+  const shareUrl = (n) => gameUrl() + "s/" + clamp(Math.round(n), 0, 100) + "/";
+  function showShare(n, url) { // no share sheet: the preview card and the link to copy
+    const ov = $("shareOv"); ov.querySelector("img").src = `s/img/s${clamp(Math.round(n), 0, 100)}-${C.cardVer}.jpg`; $("shareUrl").textContent = url; $("shareCopy").textContent = C.copyLink; ov.hidden = false;
   }
   $("shareCopy").onclick = (e) => { e.stopPropagation(); const u = $("shareUrl").textContent, b = $("shareCopy");
     const done = () => { b.textContent = C.copied; }; try { navigator.clipboard.writeText(u).then(done, () => selectUrl()); } catch (er) { selectUrl(); } };
   function selectUrl() { const r = document.createRange(); r.selectNodeContents($("shareUrl")); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
   $("shareUrl").onclick = (e) => { e.stopPropagation(); selectUrl(); };
+  // operator 10-24: share a LINK, not a picture. Each score has its own static page (s/<n>/) whose preview is that
+  // score's receipt; it sends the visitor into the game with ?vs=<n>. Built by make_score_pages.py.
   function share() {
-    try {
-      W.renderer.render(W.scene, W.camera);
-      const src = W.renderer.domElement, cv = document.createElement("canvas"); cv.width = 1080; cv.height = 1350;
-      const c = cv.getContext("2d"), s = g.res, tier = C.tiers.find((x) => s.total >= x[0]);
-      c.fillStyle = "#fbf6ea"; c.fillRect(0, 0, 1080, 1350);
-      // the dish fills the top (the result camera centres the plate in the upper half), the score and the stamp below
-      const sw = src.width, sh = src.height, cw = Math.min(sw, sh * 0.5);
-      const air = g.airShot && g.airShot.complete && g.airShot.naturalWidth ? g.airShot : null;
-      if (air) { const aw = air.naturalWidth, ah = air.naturalHeight, acw = Math.min(aw, ah * 0.62); c.drawImage(air, (aw - acw) / 2, ah * 0.02, acw, acw, 90, 50, 900, 900);
-        c.save(); c.translate(610, 560); c.rotate(0.06); c.fillStyle = "#fff"; c.fillRect(-10, -10, 400, 400); c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 0, 0, 380, 380); c.restore(); }
-      else c.drawImage(src, (sw - cw) / 2, sh * 0.04, cw, cw, 90, 50, 900, 900);
-      c.textAlign = "center";
-      c.fillStyle = "#1f2a33"; c.font = "60px 'Black Han Sans', sans-serif"; c.fillText(`${C.shop} · 김치볶음밥 한 그릇`, 540, 1040);
-      c.fillStyle = "#E8481C"; c.font = "170px 'Black Han Sans', sans-serif"; c.fillText(`${s.total}점`, 430, 1230);
-      c.save(); c.translate(820, 1180); c.rotate(-0.14); c.strokeStyle = c.fillStyle = "#c81e1e"; c.lineWidth = 8; c.font = "54px 'Black Han Sans', sans-serif";
-      const tw = c.measureText(tier[1]).width + 40; c.strokeRect(-tw / 2, -46, tw, 84); c.fillText(tier[1], 0, 14); c.restore();
-      c.fillStyle = "#8a7a66"; c.font = "34px 'Gowun Dodum', sans-serif"; c.fillText(`${C.shop} 사장님 평: ${memo(tier)} · 흘린 밥 ${K.Food.spilled}알`, 540, 1290);
-      c.fillStyle = "#1f2a33"; c.font = "28px 'Gowun Dodum', sans-serif"; c.fillText(C.urlShort, 540, 1334);
-      cv.toBlob((blob) => {
-        const file = blob && new File([blob], "kimchi-fried-rice.png", { type: "image/png" });
-        const url = gameUrl(), text = `${C.shop} 김치볶음밥 ${s.total}점 · ${tier[1]} — 너도 볶아 봐`;
-        if (file && navigator.canShare && navigator.canShare({ files: [file], url })) navigator.share({ files: [file], title: "김치볶음밥 한 그릇", text, url }).catch(() => {});
-        else if (navigator.share) navigator.share({ title: "김치볶음밥 한 그릇", text, url }).catch(() => showShare(cv, url));
-        else showShare(cv, url);
-      });
-    } catch (e) {}
+    const s = g.res, tier = C.tiers.find((x) => s.total >= x[0]), url = shareUrl(s.total);
+    const text = vs != null ? (s.total > vs ? C.shareWin(vs, s.total) : C.shareLose(vs, s.total)) : C.shareText(s.total, tier[1]);
+    if (navigator.share) navigator.share({ title: "김치볶음밥 한 그릇", text, url }).catch((e) => { if (!e || e.name !== "AbortError") showShare(s.total, url); });
+    else showShare(s.total, url);
   }
 
   /* ---------- watch mode (구경하기): a decent cook plays itself ---------- */
@@ -480,7 +464,7 @@
     if (g.ph === "rice") {
       if (g.started && g.tossN === 0 && g.t - g.goT > 0.6) flick({ strength: 1.1, dirU: 0, dirV: 1 });
       else if (g.started && g.clock > 0 && g.tossN > 0) { // a decent cook: mostly on the beat, sometimes off
-        if (!g.autoWait) g.autoWait = rnd(0.4, 1.05);
+        if (!g.autoWait) g.autoWait = rnd(0.5, 1.25);
         if (g.t - g.lastFlick > g.autoWait) { g.autoWait = 0; const sd = g.tossN % 4 === 3 ? (Math.random() < 0.5 ? -0.6 : 0.6) : 0; flick({ strength: rnd(0.95, 1.35), dirU: sd, dirV: Math.sqrt(1 - sd * sd) }); }
       }
     } else if (g.ph === "egg") {
@@ -492,10 +476,10 @@
     }
   }
 
-  /* ---------- attract: a 4-beat loop at 0.72 s (inside the perfect band): front, left, right, 불쇼 ---------- */
+  /* ---------- attract: a 4-beat loop at 0.85 s (inside the perfect band): front, left, right, 불쇼 ---------- */
   const titleEl = document.querySelector("#intro h1"), goEl = $("go");
   function attract() {
-    const k = g.phT - 0.4, beat = Math.floor(k / 0.72), F = K.Food;
+    const k = g.phT - 0.4, beat = Math.floor(k / 0.85), F = K.Food;
     if (k < 0 || beat === g.aBeat) return;
     g.aBeat = beat; const b = beat % 4, du = [0, -0.6, 0.6, 0][b];
     if (b === 3 && F.spilled > 120) F.reset(); // keep the wok full (behind the fire)
@@ -528,8 +512,8 @@
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
     // the beat bar: the needle runs from the last toss, the gold band is when to toss again
     beatEl.hidden = !(g.ph === "rice" && g.started && g.tossN > 0 && g.clock > 0);
-    if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.4, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
-      zoneEl.style.left = (w.gold0 / 1.4) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.4) * 100 + "%"; }
+    if (!beatEl.hidden) { const w = readyWin(), b = g.t - g.lastFlick; needleEl.style.left = clamp(b / 1.8, 0, 1) * 100 + "%"; beatEl.classList.toggle("in", b >= w.gold0 && b <= w.gold1); beatEl.classList.toggle("late", b > w.late);
+      zoneEl.style.left = (w.gold0 / 1.8) * 100 + "%"; zoneEl.style.width = ((w.gold1 - w.gold0) / 1.8) * 100 + "%"; }
   }
   // 밥 % (how much is still yours) and 익음 % (cooked grains), live
   function liveStats() {
@@ -537,7 +521,7 @@
     let sum = 0, n = 0; for (let i = 0; i < F.n; i++) if (F.st[i] !== 4 && F.st[i] !== 7) { sum += Math.min(1, F.cook[i] / 0.9); n++; } // how far along it is, so it climbs every toss
     const ck = Math.round((100 * sum) / Math.max(1, n));
     if (g.riceLeft != null && left < g.riceLeft) popNum(`-${g.riceLeft - left}%`, "rice");
-    g.riceLeft = left; riceEl.textContent = `밥 ${left}%`; cookEl.textContent = `익음 ${ck}%`; cookEl.classList.toggle("burnt", st.burnt > 0.05);
+    g.riceLeft = left; riceEl.textContent = F.spilled ? `밥 ${left}% · -${F.spilled}알` : `밥 ${left}%`; cookEl.textContent = `익힘 ${ck}%`; cookEl.classList.toggle("burnt", st.burnt > 0.05);
   }
 
   /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */
@@ -546,20 +530,20 @@
     let dt = Math.min(0.1, (now - last) / 1000); last = now;
     if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
     acc += dt; let n = 0;
-    while (acc >= 1 / 60 && n++ < 6) { step(1 / 60); acc -= 1 / 60; }
-    if (n >= 6) acc = 0;
+    while (acc >= 1 / 60 && n++ < 2) { step(1 / 60); acc -= 1 / 60; } // at most 2 steps: a slow frame must not make the next one slower
+    if (n >= 2) acc = 0;
     K.Food.draw(); camera(dt); hud();
     W.renderer.render(W.scene, W.camera);
     if (goEl.disabled) { goEl.disabled = false; goEl.textContent = C.go; } // ready: the first frame is on screen
-    if (g.wantShot && g.t >= g.wantShot) { g.wantShot = 0; try { const im = new Image(); im.src = W.renderer.domElement.toDataURL("image/jpeg", 0.85); g.airShot = im; } catch (e) {} }
     requestAnimationFrame(frame);
   }
 
   /* ---------- start screen ---------- */
-  W.build("real"); for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75; // the start screen cooks by itself (attract): show it golden
+  W.build("real"); try { const hid = []; W.scene.traverse((o) => { if (!o.visible) { hid.push(o); o.visible = true; } }); W.renderer.compile(W.scene, W.camera); hid.forEach((o) => (o.visible = false)); } catch (e) {}
+  for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75; // the start screen cooks by itself (attract): show it golden
   function bestLine() { const b = +store.get("kfr-best3d", 0), t = b ? C.tiers.find((x) => b >= x[0]) : null; $("best").textContent = (b ? `내 최고 ${b}점 · 「${t[1]}」 · ` : "") + `오늘의 주문: 계란 ${todayOrder() === "half" ? "반숙" : "완숙"}`; }
   bestLine();
-  $("hook").textContent = C.hook; $("how").innerHTML = C.how; $("go").textContent = C.loading; $("watch").textContent = C.watchBtn;
+  $("hook").textContent = vs != null ? C.vsHook(vs) : C.hook; $("how").innerHTML = inApp ? C.howTouch : C.how; $("go").textContent = C.loading; $("watch").textContent = C.watchBtn;
   $("go").onclick = () => { K.Audio.unlock(); g.hei = 1.6; W.sparkBurst(24); g.punch = 1; K.Audio.flare(); const go = () => start(false); /* 불 켜: the fire answers the tap at once */ K.Input.requestPermission().then(go, go); };
   $("watch").onclick = () => { K.Audio.unlock(); K.Input.useTouch(); start(true); };
   $("shareOv").onclick = () => { $("shareOv").hidden = true; };

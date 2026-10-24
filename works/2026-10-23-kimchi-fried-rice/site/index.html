@@ -37,7 +37,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #intro h1{margin:0;font:42px/1.02 "Black Han Sans",system-ui,sans-serif;color:var(--accent);text-wrap:balance}
 #intro h1.beat{animation:tBeat .18s ease-out}#intro h1.fever{animation:tFever .3s ease-out}
 @keyframes tBeat{0%{transform:scale(1.07)}100%{transform:scale(1)}}@keyframes tFever{0%{transform:scale(1.12) rotate(-3deg)}100%{transform:scale(1) rotate(0)}}
-#go{animation:goPulse .72s ease-in-out infinite;transition:box-shadow .2s}#go.glow{box-shadow:0 5px 0 #9a3412,0 0 18px 6px rgba(255,140,0,.75)}
+#go{animation:goPulse .85s ease-in-out infinite;transition:box-shadow .2s}#go.glow{box-shadow:0 5px 0 #9a3412,0 0 18px 6px rgba(255,140,0,.75)}
 @keyframes goPulse{0%,100%{transform:scale(1)}50%{transform:scale(1.04)}}
 #intro .hook{margin:0;font-size:16px;color:var(--ink)}
 #intro .how{margin:0;font-size:14.5px;line-height:1.55;color:var(--mute)}
@@ -47,6 +47,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #mute{position:absolute;right:max(10px,env(safe-area-inset-right));top:calc(env(safe-area-inset-top) + 16px);z-index:4;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font-size:18px;line-height:40px;padding:0}
 #hud:not([hidden]) ~ #mute{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
 #noGL{position:absolute;inset:0;z-index:9;background:#1b1f24;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:16px}#noGL b{font:24px "Black Han Sans",sans-serif}
+.slip .vs{margin-top:6px;font:20px "Black Han Sans",system-ui,sans-serif;color:var(--ink);text-align:center}
 .slip .credit{margin-top:8px;font-size:11px;color:var(--mute);text-align:center}.slip .open{margin-top:6px;font-size:13px;color:var(--accent);text-align:center}
 /* HUD */
 #hud{position:absolute;inset:0;pointer-events:none}
@@ -62,7 +63,8 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #band{position:absolute;left:0;right:0;background:rgba(80,220,120,.55);border-top:2px solid #b6ffc9;border-bottom:2px solid #b6ffc9;display:none}
 #gauge.egg #band{display:block}#gauge.egg #gaugeFill{background:linear-gradient(0deg,#8e4e20,#e7ac5c 45%,#fff3c4)}
 #gauge{overflow:visible}#gaugeFill{border-radius:10px}
-#stats{position:absolute;left:max(10px,env(safe-area-inset-left));top:calc(env(safe-area-inset-top) + 16px);display:flex;flex-direction:column;gap:4px;font:17px "Black Han Sans",system-ui,sans-serif;color:#fff;text-shadow:0 2px 6px rgba(0,0,0,.7)}
+#stats{position:absolute;left:max(10px,env(safe-area-inset-left));top:calc(env(safe-area-inset-top) + 14px);display:flex;flex-direction:column;align-items:flex-start;gap:5px;font:19px "Black Han Sans","Malgun Gothic",system-ui,sans-serif;color:#fff}
+#stats b{font-weight:400;background:rgba(14,16,19,.62);border-radius:9px;padding:2px 9px;letter-spacing:.02em}
 #cookN.burnt{color:#ffb4a0}
 #beat{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 70px);transform:translateX(-50%);width:min(62vw,260px);height:16px;border-radius:999px;background:rgba(255,255,255,.2);border:2px solid rgba(255,255,255,.7)}
 #zone{position:absolute;top:0;bottom:0;background:#ffb000;border-radius:6px}
@@ -129,7 +131,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
   <div id="hud" hidden>
     <div id="timer">12.0</div>
     <div id="gauge" aria-label="불맛" data-label="불맛 0"><div id="gaugeFill"></div><div id="band"></div></div>
-    <div id="stats"><b id="riceN">밥 100%</b><b id="cookN">익음 0%</b></div>
+    <div id="stats"><b id="riceN">밥 100%</b><b id="cookN">익힘 0%</b></div>
     <div id="beat" hidden><i id="zone"></i><i id="needle"></i></div>
     <div id="combo" class="combo"></div>
     <div id="word" class="word"></div>
@@ -148,7 +150,7 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
   <button id="mute" type="button" aria-label="소리 끄기">🔊</button>
   <div id="noGL" hidden><b>이 브라우저에선 3D가 안 돼요</b><span>Safari나 Chrome에서 열어 주세요</span></div>
   <div id="result" hidden></div>
-  <div id="shareOv" hidden><img alt="결과 이미지"><div>이미지를 길게 눌러 저장하고, 링크도 같이 보내 주세요</div><div class="link"><span id="shareUrl"></span><button id="shareCopy" class="btn" type="button">링크 복사</button></div><div class="close">빈 곳을 탭하면 닫혀요</div></div>
+  <div id="shareOv" hidden><img alt="결과 이미지"><div>이 링크를 보내면 내 점수 영수증이 미리보기로 떠요</div><div class="link"><span id="shareUrl"></span><button id="shareCopy" class="btn" type="button">링크 복사</button></div><div class="close">빈 곳을 탭하면 닫혀요</div></div>
 </div>
 <script src="js/three.min.js"></script>
 <script src="js/copy.js"></script>
