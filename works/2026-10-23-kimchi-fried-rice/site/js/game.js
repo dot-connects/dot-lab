@@ -85,7 +85,7 @@
       score(grade, s, 1 - Math.abs(back - w.peak) / (w.gold1 - w.peak));
     }
     if (g.darkPh === "warn" && g.clock <= 5.2 && !g.cutAt) g.cutAt = g.t + 0.12;
-    if (g.darkPh === "dark") { g.darkN = (g.darkN || 0) + 1; if (!g.onAt && g.clock <= 1.2) g.onAt = g.t + 0.2; }
+    if (g.darkPh === "dark") { g.darkN = (g.darkN || 0) + 1; if (g.clock <= 1.2) g.onAt = Math.min(g.onAt || 1e9, g.t + 0.2); }
     g.lastFlick = g.t; g.lastS = s; g.puffed = false; g.ticked = false; g.landSnd = false; g.landShk = false;
     // every toss hits: the camera kicks, the burner flares; a hard snappy one throws a fire column (old 2D kick/oilCatch)
     g.shake = Math.max(g.shake || 0, 0.5 + 0.5 * s); g.hei = Math.max(g.hei, 0.3 + 0.25 * s); g.punch = Math.max(g.punch || 0, 0.5);
@@ -218,6 +218,7 @@
     if (w > 4 && g.nudged === 1) { g.nudged = 2; $("scBig").textContent = C.cueProd; cueEl.classList.add("fast"); }
   }
   function startPlate() {
+    comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     hudEl.classList.remove("final", "slow", "dark"); // the egg needs its meter back (it stayed hidden after the finale)
     setPh("plate"); hudEl.classList.add("dim"); tip(""); K.Food.scorchVis = 0;
     W.plate.visible = true; W.plate.position.set(SIDE * 3.2, W.plateC.y, W.plateC.z); W.plate.scale.set(1, 1, 1);
@@ -511,13 +512,13 @@
     if (g.darkPh === "warn") {
       if (!g.cutAt && c <= 4.9) g.cutAt = g.t; // no toss came: cut anyway
       W.setDark(g.t - g.darkT < 0.06 ? 0.3 : 0); // one dip of the tube light
-      if (g.cutAt && g.t >= g.cutAt) { g.darkPh = "dark"; g.darkT = g.t; g.darkN = 0; g.darkPerf = 0; K.Audio.blackout(true); g.shake = Math.max(g.shake || 0, 0.3); cue(C.blackout, C.blackoutSub, "intro"); g.cueOffAt = g.t + 0.8; try { navigator.vibrate && navigator.vibrate([80, 40, 20]); } catch (e) {} }
+      if (g.cutAt && g.t >= g.cutAt) { wordEl.textContent = ""; subEl.textContent = ""; g.darkPh = "dark"; g.darkT = g.t; g.darkN = 0; g.darkPerf = 0; K.Audio.blackout(true); g.shake = Math.max(g.shake || 0, 0.3); cue(C.blackout, C.blackoutSub, "intro"); g.cueOffAt = g.t + 0.8; try { navigator.vibrate && navigator.vibrate([80, 40, 20]); } catch (e) {} }
     }
     if (g.darkPh === "dark") {
       const k = g.t - g.darkT; let L = 0; for (const [tt, v] of CUT) if (k >= tt) L = v;
       W.setDark(1 - L); hudEl.classList.toggle("dark", L < 0.5);
       if (g.cueOffAt && g.t >= g.cueOffAt) { g.cueOffAt = 0; hideCue(); }
-      if (!g.onAt && c <= 0.9) g.onAt = g.t;
+      if (c <= 0.9) g.onAt = Math.min(g.onAt || 1e9, g.t); // never later than 0.9 s left
       if (g.onAt && g.t >= g.onAt) lightsOn(true);
     }
     if (g.darkPh === "back") { const k = clamp((g.t - g.backT) / 0.4, 0, 1); W.renderer.toneMappingExposure = W.S.exposure + 0.25 * (1 - smooth(k)); if (k >= 1) g.darkPh = "over"; }

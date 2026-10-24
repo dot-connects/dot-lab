@@ -202,7 +202,7 @@
   }
   // Must be called synchronously from a tap (iOS). Resolves once motion events flow, or after the 1 s probe in touch mode.
   function requestPermission() {
-    started = true; tu = 0; tv = 0;
+    started = true; tu = 0; tv = 0; gotMotion = false; // after watch mode (touch) the motion path must be able to take over again
     const DM = window.DeviceMotionEvent;
     let ask;
     try {
