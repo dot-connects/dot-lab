@@ -40,10 +40,12 @@
 
   /* ---------- wok pose: phone tilt + the chef's toss ---------- */
   const DAMP = (k, dt) => 1 - Math.exp(-dt / k);
+  const LEVEL = { u: 0, v: 0 };
   function updatePose(dt) {
-    const tl = K.Input.tilt, P = g.pose, pose = W.pose;
+    const tl = g.ph === "intro" || g.introOn ? LEVEL : K.Input.tilt, P = g.pose, pose = W.pose; // the start screen and the ingredient drop keep the wok level
+
     // the wok follows the phone fast (sensitive); the food then flows with real gravity in food.js
-    P.tilt.u += (tl.u - P.tilt.u) * DAMP(0.03, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(0.03, dt);
+    const tk = g.goT && g.t - g.goT < 0.6 ? 0.2 : 0.03; P.tilt.u += (tl.u - P.tilt.u) * DAMP(tk, dt); P.tilt.v += (tl.v - P.tilt.v) * DAMP(tk, dt); // eases from level into the hand after 볶아!
     let pitch = -4 * DEG - P.tilt.v * MAXT, roll = -P.tilt.u * MAXT, x = P.tilt.u * 0.05, z = 0, y = 0;
     pitch += Math.sin(g.t * 1.3) * 0.8 * DEG; roll += Math.sin(g.t * 0.9) * 1.0 * DEG; // the hand never quite stops
     if (g.eggDip) { const k = (g.t - g.eggDip) / 0.16; if (k < 1) y -= 0.05 * Math.sin(Math.PI * k); }
@@ -214,10 +216,21 @@
   /* the intro (operator 10-24: not a wait for the first toss): oil, rice, kimchi go in, "볶아!", then the clock */
   function introStep() {
     const k = g.phT, F = K.Food, I = C.intro;
-    if (g.introSkip) { g.introSkip = false; F.reset(); g.introI = I.length; g.phT = 2.4; }
+    if (g.introSkip) { g.introSkip = false; F.reset(); g.introI = I.length; g.phT = 2.4; g.flatGo = true; }
+    // hold the phone flat first (operator 10-24): a live bubble level; the drop starts once it is flat for 0.3 s (3 s at most)
+    const lvlOn = K.Input.mode === "motion" && !g.auto;
+    if (lvlOn) {
+      const t = K.Input.tilt, d = Math.hypot(t.u, t.v), ok = d < 0.12, sc = d > 1 ? 1 / d : 1;
+      lvlDot.style.transform = `translate(${-t.u * sc * 31}px,${t.v * sc * 31}px)`; lvlDot.parentNode.classList.toggle("ok", ok); // the bubble floats to the high side
+      if (!g.flatGo) {
+        g.flatT = ok ? (g.flatT || 0) + 1 / 60 : 0; g.waitT = (g.waitT || 0) + 1 / 60;
+        if (g.flatT >= 0.3 || g.waitT >= 3) g.flatGo = true;
+        else { g.phT = 0; if (!g.flatCued) { g.flatCued = true; cue(C.flatBig, C.flatSmall, "intro level"); } return; }
+      }
+    }
     while (g.introI < I.length && k >= I[g.introI][0]) {
       const i = g.introI++;
-      cue(I[i][1], i < 3 ? C.introSmall : "", "intro");
+      cue(I[i][1], i < 3 ? (lvlOn ? C.flatOk : C.introSmall) : "", lvlOn && i < 3 ? "intro level" : "intro");
       if (i === 0) K.Audio.pops(); else if (i === 1) F.drop(1); else if (i === 2) F.drop(0); // chef: kimchi first, then the cold rice
     }
     if (k >= 1.75 && !g.introThud) { g.introThud = true; K.Audio.land("rice"); }
@@ -517,7 +530,7 @@
 
   /* ---------- 정전 (operator 10-24): the lights go out for the last ~3 tosses, the gauge with them; only the burner,
      the 탁 and the fire on a perfect remain. They come back at 1.8 s left, into the finale. ---------- */
-  const darkOv = $("darkOv");
+  const darkOv = $("darkOv"), lvlDot = $("lvlDot");
   const CUT = [[0, 0], [0.08, 1], [0.13, 0], [0.25, 0.4], [0.29, 0]]; // light level over the cut: it flickers, then dies
   function blackout() {
     const c = g.clock;
