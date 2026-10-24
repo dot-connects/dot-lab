@@ -24,14 +24,14 @@
   renderer.outputEncoding = T.sRGBEncoding;
   renderer.shadowMap.enabled = true; renderer.shadowMap.type = T.PCFSoftShadowMap;
   const camera = new T.PerspectiveCamera(30, 1, 0.1, 60);
-  const camBase = new T.Vector3(), camLook = new T.Vector3(0, -0.05, 0.35);
+  const camBase = new T.Vector3(), camLook = new T.Vector3(0, -0.05, -0.25); // aim past the wok centre so it sits mid-screen and the rice column clears the beat bar
   function fit() {
     const w = canvas.clientWidth || innerWidth, h = canvas.clientHeight || innerHeight, asp = w / h;
     renderer.setSize(w, h, false); camera.aspect = asp;
     // any aspect: the wok + handle fill ~88% of the width on a tall phone, and never more than ~57% of the height
     const half = Math.tan((camera.fov / 2) * DEG), needW = 1.32 / (half * asp), needH = 1.75 / half;
     const d = Math.max(needW, needH), a = 35 * DEG; // 35° away from straight down, from the cook's side
-    camBase.set(0, d * Math.cos(a), d * Math.sin(a) + 0.35);
+    camBase.set(0, d * Math.cos(a), d * Math.sin(a) + camLook.z);
     camera.position.copy(camBase); camera.lookAt(camLook); camera.updateProjectionMatrix();
   }
 

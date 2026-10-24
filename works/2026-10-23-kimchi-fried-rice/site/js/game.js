@@ -597,7 +597,7 @@
     g.camLow = (g.camLow || 0) + (((g.ph === "rice" && g.started) || g.ph === "egg" || g.ph === "intro" ? 1 : 0) - (g.camLow || 0)) * DAMP(0.6, dt);
     _tg.set(W.plate.position.x, W.plateC.y + 0.15, W.plateC.z);
     _cp.set(W.camBase.x + g.pan, W.camBase.y, W.camBase.z).lerp(_a.copy(_tg).add(_b.set(0, 3.1, 2.3)), close);
-    _cl.set(g.pan, -0.05, 0.35).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
+    _cl.set(g.pan + W.camLook.x, W.camLook.y, W.camLook.z).lerp(_a.copy(_tg).add(_b.set(0, g.ph === "result" ? -0.6 : -0.1, 0)), close);
     if (g.camLow > 0.001) _cp.sub(_cl).applyAxisAngle(_ax, 10 * DEG * g.camLow * (1 - close)).add(_cl);
     if (g.finaleT) { const k = (g.t - g.finaleT) / (g.slowUsed ? 0.75 : 1.1); if (k < 1) _cl.y += 0.55 * Math.sin(Math.PI * k); }
     W.camera.position.copy(_cp); W.camera.lookAt(_cl);
