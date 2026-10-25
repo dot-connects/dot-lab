@@ -269,4 +269,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   averaged (`rec2.py ... blur`) for motion blur; the blackout plays 1x and shorter (it was black stills), still
   plate/receipt stretches are trimmed, dissolves touch only the game panel. Opening adds a looping phone-flick glyph
   ("휙!") over the title card. take6 = 73점, 495 grains spilled; 26.7 s (`edl6.json`).
+- Round 17 (2026-10-25, reel v7): a review panel (marketer, designer, a 17- and a 26-year-old subagent) scored v6
+  interest 6 / complexity 7 / want-to-play 5 / watch-to-end 4-5: up to 11 HUD items at once, a slow empty-wok start,
+  a blackout that reads as a broken video, an unreadable receipt, no reason to tap the link. v7 records with the HUD
+  hidden (`rec2.py ... clean`: timer only while cooking, big words kept), opens on the bare wok + phone-flick glyph,
+  prep at 1.5x, blackout ~0.5 s, one egg shot, receipt zooms (5,450원 line, then 77점), and ends on a drawn challenge
+  card (77점 넘을 수 있어? / 주방장은 92점 / 설치 없이 폰으로 12초 / 프로필 링크에서 바로 해 보기). The bot now aims
+  the finale at the gold peak once the lights are back (it missed gold in one take). 21.4 s (`edl7.json`, take8).
 

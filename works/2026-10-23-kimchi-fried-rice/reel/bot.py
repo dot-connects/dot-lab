@@ -3,7 +3,7 @@ import sys
 BOT = """window.__bot=()=>{const G=KFR.Game,g=G.state,E=KFR.Egg;
  if(g.ph==='intro'&&!window.__went){if(g.t<(window.__goAt||0))return;window.__went=1;document.getElementById('go').click();return}
  if(g.ph==='rice'&&g.started&&g.clock>0&&!g.finaleDone&&g.win){const b=g.t-g.lastFlick;window.__n=window.__n||0;
-   const last=(g.darkPh==='back'||g.darkPh==='over')&&g.clock<=1.3;if(window.__tg===undefined)window.__tg=g.win.peak+(last?0:(Math.random()-0.5)*0.16); // the finale toss lands in gold: the reel needs the slow-mo
+   const last=(g.darkPh==='back'||g.darkPh==='over')&&g.clock<=1.3;if(last&&!window.__lastAim){window.__lastAim=1;window.__tg=undefined;}if(window.__tg===undefined)window.__tg=g.win.peak+(last?0:(Math.random()-0.5)*0.16); // the finale toss lands in gold: the reel needs the slow-mo
    if(b>=window.__tg){window.__n++;const sp=window.__n===4?(window.__spill||[0.7,1.15]):null,side=sp?sp[0]:0;const fin=g.darkPh==='back'||g.darkPh==='over';
      G.flick({strength:fin?1.35:(sp?sp[1]:1.15),dirU:side,dirV:Math.sqrt(1-side*side)});window.__tg=undefined;}}
  if(g.ph==='egg'){const half=g.order==='half';

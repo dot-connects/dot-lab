@@ -10,6 +10,8 @@ from playwright.sync_api import sync_playwright
 CSS = """#mute,#home,#tip,#sub,#stats,#scSmall,.open,.credit{display:none!important}
 #gauge::after{display:none!important}
 .word{bottom:41.5vh!important}"""
+CLEAN_CSS = """#gauge,#beat,#combo,.num,#startCue,#hud:not([data-ph=rice]) #timer{display:none!important}
+#intro{opacity:0!important}"""
 FLICK = """(()=>{const G=KFR.Game,f=G.flick;window.__fl=0;G.flick=(o)=>{window.__fl=(o&&o.strength)||1;return f(o)}})()"""
 LOG = """[KFR.Game.state.ph,+KFR.Game.state.clock.toFixed(2),KFR.Game.state.darkPh||'',KFR.Game.state.combo,KFR.Game.state.tossN,KFR.Egg.ph,!!KFR.Game.state.slowT,window.__fl,document.getElementById('word').textContent,(document.querySelector('#scBig')||{}).textContent||'',KFR.Food.spilled]"""
 
@@ -19,6 +21,7 @@ SEED = int(sys.argv[4]) if len(sys.argv) > 4 else 0  # seeded Math.random: takes
 PROBE = len(sys.argv) > 5 and sys.argv[5] == "probe"
 BLUR = "blur" in sys.argv[5:]
 GO_AT = 1.4 if "title" in sys.argv[5:] else 0  # hold the title card (its own attract tosses) before the tap
+CLEAN = "clean" in sys.argv[5:]  # v7: only the timer and the big words; no gauge, beat bar, combo, +/- pops, cue bubbles, title card
 RNG = "(()=>{let a=%d>>>0;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}})();"
 for f in out.glob("f*.png"): f.unlink()
 with sync_playwright() as p:
@@ -26,7 +29,8 @@ with sync_playwright() as p:
     pg = br.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2.5)
     errs = []; pg.on("pageerror", lambda e: errs.append(str(e))); pg.add_init_script(INIT + (RNG % SEED if SEED else ""))
     pg.goto(SITE + "?ts=0.0001"); pg.wait_for_timeout(1500)
-    pg.add_style_tag(content=CSS); pg.evaluate(BOT); pg.evaluate(f"window.__goAt={GO_AT}"); SPILL and pg.evaluate(f"window.__spill=[{SPILL}]"); pg.evaluate(FLICK)
+    # goAt and spill before BOT: evaluate() calls the returned bot once right away
+    pg.add_style_tag(content=CSS + (CLEAN_CSS if CLEAN else "")); pg.evaluate(f"window.__goAt={GO_AT}"); SPILL and pg.evaluate(f"window.__spill=[{SPILL}]"); pg.evaluate(BOT); pg.evaluate(FLICK)
     log = open(out / "timeline.jsonl", "w", encoding="utf-8")
     for i in range(n):
         gt = i / 30

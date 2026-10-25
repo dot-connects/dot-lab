@@ -7,17 +7,18 @@ Same frame as v3 (top band with fixed title + one yellow caption, 975x1350 game 
   flicks           up-chevron at each logged flick
   counter          spill badge from the timeline ("흘린 밥 N알 · N원")
   freeze           seconds to hold the last frame
-  zoom [z0, z1, y] push-in over the segment, centred at panel height fraction y
+  zoom [z0, z1, y, x] push-in over the segment, centred at panel height fraction y (or source px row if > 1), source px column x
   xf               cross-dissolve frames into this part (default: 5 at a cut, 0 when it continues the moment)
+  card             the drawn last card (score to beat, phone flick, link button) over the dimmed frame
   phone [x, y]     looping phone-flick glyph centred at frame px (the opening: how you play)
   flash            white flash at the start (lights back on)
   y0 [a, b]        source crop top in px, eased from a to b over the first 0.8 s (the receipt sits below the panel)
   end + ring       ending: a yellow ring around one receipt line, ring = [[t, src_y_top, src_y_bottom], ...]
   title [t, text]  swap the fixed top title from t on (the ending's link line)
 """
-import json, shutil, subprocess, sys
+import json, math, shutil, subprocess, sys
 from pathlib import Path
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 from compose3 import f, centered, arrow, mask, BG, YEL, WHITE, DIM, PX, PY, PW, PH, TITLE
 
 
@@ -26,10 +27,11 @@ def cap_font(d, text, size=104):
     return size
 
 
-def frame(src_im, cap, k, zoom=1.0, zy=0.5, y0=0, title=TITLE):
+def frame(src_im, cap, k, zoom=1.0, zy=0.5, y0=0, title=TITLE, zx=PW / 2):
     im = Image.new("RGB", (1080, 1920), BG); d = ImageDraw.Draw(im)
     if zoom > 1.001:
-        w, h = PW / zoom, PH / zoom; cy = PH * zy; x0 = (PW - w) / 2; y0 = min(max(0, cy - h / 2), PH - h)
+        w, h = PW / zoom, PH / zoom; cy = zy if zy > 1 else y0 + PH * zy; x0 = min(max(0, zx - w / 2), PW - w)  # zy > 1: absolute source px row
+        y0 = min(max(0, cy - h / 2), src_im.height - h)
         panel = src_im.crop((int(x0), int(y0), int(x0 + w), int(y0 + h))).resize((PW, PH), Image.LANCZOS)
     else:
         panel = src_im.crop((0, int(y0), PW, int(y0) + PH))
@@ -121,6 +123,26 @@ def phone(im, lt, cx, cy):
     return Image.alpha_composite(im.convert("RGBA"), ov).convert("RGB")
 
 
+def challenge(im, lt, score):
+    """The last card, drawn over the dimmed receipt: the score to beat, how you play, where the link is."""
+    k = min(1, lt / 0.25); box = (PX, PY, PX + PW, PY + PH)
+    im.paste(Image.blend(im.crop(box), im.crop(box).filter(ImageFilter.GaussianBlur(18)), k), box[:2])  # the receipt fades back
+    al = int(225 * k)
+    im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(16, 10, 8, al)))
+    if lt < 0.15: return im
+    d = ImageDraw.Draw(im)
+    centered(d, PY + 90, f"{score}점, 넘을 수 있어?", f(92), WHITE, 4)
+    centered(d, PY + 215, "주방장은 92점", f(70), YEL, 3)
+    im = phone(im, lt, 540, PY + 720); d = ImageDraw.Draw(im)
+    centered(d, PY + 1000, "설치 없이 폰으로 12초", f(62), WHITE, 3)
+    if lt > 0.5:
+        pulse = 1 + 0.04 * math.sin(lt * 7)
+        bw, bh = int(860 * pulse), int(150 * pulse); x0 = 540 - bw // 2; y0 = PY + 1130
+        d.rounded_rectangle((x0, y0, x0 + bw, y0 + bh), 75, fill=(232, 72, 28))
+        centered(d, y0 + bh // 2 - 40, "프로필 링크에서 바로 해 보기", f(int(64 * pulse)), WHITE)  # Black Han Sans has no arrow glyph
+    return im
+
+
 def END(im, lt, seg, score):
     """Receipt ending: a yellow box rings receipt lines in turn, seg["ring"] = [[t, src_y_top, src_y_bottom], ...]."""
     on = [r for r in seg["ring"] if lt >= r[0]]
@@ -160,12 +182,12 @@ def build(frames_dir, edl, out_mp4, score):
             lt = i / 30
             cap, _ = caption_at(seg, st)
             if cap != prev_cap: prev_cap = cap; cap_t = out_t
-            zoom, zy = 1.0, 0.5
-            if z: q = min(1, (st - a) / max(1e-6, b - a)); q = q * q * (3 - 2 * q); zoom = z[0] + (z[1] - z[0]) * q; zy = z[2]
+            zoom, zy, zx = 1.0, 0.5, PW / 2
+            if z: q = min(1, (st - a) / max(1e-6, b - a)); q = q * q * (3 - 2 * q); zoom = z[0] + (z[1] - z[0]) * q; zy = z[2]; zx = z[3] if len(z) > 3 else PW / 2
             y0 = 0
             if seg.get("y0"): q = min(1, i / 24); q = q * q * (3 - 2 * q); y0 = seg["y0"][0] + (seg["y0"][1] - seg["y0"][0]) * q
             title = seg["title"][1] if seg.get("title") and lt >= seg["title"][0] else TITLE
-            im = frame(at(st, cur_sp), cap, out_t - cap_t, zoom, zy, y0, title)
+            im = frame(at(st, cur_sp), cap, out_t - cap_t, zoom, zy, y0, title, zx)
             seg["_y0"] = y0
             idx = min(len(src) - 1, int(round(st * 30)))
             if seg.get("flicks"):
@@ -187,6 +209,7 @@ def build(frames_dir, edl, out_mp4, score):
                 al = int(200 * (1 - lt / 0.25)); im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(255, 250, 235, al)))
             if seg.get("phone"): im = phone(im, lt, *seg["phone"])
             if seg.get("end"): im = END(im, lt, seg, score)
+            if seg.get("card"): im = challenge(im, lt, score)
             if i < xf:  # dissolve the game panel only; the caption band switches cleanly
                 box = (0, PY, 1080, PY + PH); im.paste(Image.blend(last_im.crop(box), im.crop(box), (i + 1) / (xf + 1)), box[:2])
             im.save(tmp / f"o{n:05d}.png"); n += 1; out_t += 1 / 30; i += 1
