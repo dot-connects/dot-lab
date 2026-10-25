@@ -126,12 +126,12 @@ def phone(im, lt, cx, cy):
 def challenge(im, lt, score):
     """The last card, drawn over the dimmed receipt: the score to beat, how you play, where the link is."""
     k = min(1, lt / 0.25); box = (PX, PY, PX + PW, PY + PH)
-    im.paste(Image.blend(im.crop(box), im.crop(box).filter(ImageFilter.GaussianBlur(18)), k), box[:2])  # the receipt fades back
-    al = int(225 * k)
+    im.paste(Image.blend(im.crop(box), im.crop(box).filter(ImageFilter.GaussianBlur(40)), k), box[:2], MASK)  # the receipt fades back
+    al = int(242 * k)
     im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(16, 10, 8, al)))
     if lt < 0.15: return im
     d = ImageDraw.Draw(im)
-    centered(d, PY + 90, f"{score}점, 넘을 수 있어?", f(92), WHITE, 4)
+    centered(d, PY + 90, f"이 판은 {score}점", f(92), WHITE, 4)  # the question itself is the top caption
     centered(d, PY + 215, "주방장은 92점", f(70), YEL, 3)
     im = phone(im, lt, 540, PY + 720); d = ImageDraw.Draw(im)
     centered(d, PY + 1000, "설치 없이 폰으로 12초", f(62), WHITE, 3)
@@ -150,7 +150,11 @@ def END(im, lt, seg, score):
     t, ya, yb = on[-1]
     k = min(1, (lt - t) / 0.2); pad = int(14 * (1 - k)) + 6
     top = PY + ya - seg["_y0"] - pad; bot = PY + yb - seg["_y0"] + pad
-    return over(im, lambda o: o.rounded_rectangle((PX + 24 - pad, top, PX + PW - 24 + pad, bot), 22, outline=YEL + (int(255 * k),), width=10))
+    def spot(o):  # the rest of the receipt sinks back so the ringed line is the only thing to read
+        dim = (12, 8, 6, int(170 * k))
+        o.rectangle((PX, PY, PX + PW, top), fill=dim); o.rectangle((PX, bot, PX + PW, PY + PH), fill=dim)
+        o.rounded_rectangle((PX + 24 - pad, top, PX + PW - 24 + pad, bot), 22, outline=YEL + (int(255 * k),), width=10)
+    return over(im, spot)
 
 
 XF = 5  # frames of cross-dissolve at a real cut

@@ -276,4 +276,10 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   prep at 1.5x, blackout ~0.5 s, one egg shot, receipt zooms (5,450원 line, then 77점), and ends on a drawn challenge
   card (77점 넘을 수 있어? / 주방장은 92점 / 설치 없이 폰으로 12초 / 프로필 링크에서 바로 해 보기). The bot now aims
   the finale at the gold peak once the lights are back (it missed gold in one take). 21.4 s (`edl7.json`, take8).
+  Second panel pass on v7: interest 7 / complexity 4 / want-to-play 6 / watch-to-end 6-7. Fixed after it: the receipt
+  zoom cut letters off at the edges, so the receipt stays whole and a spotlight (yellow ring, the rest dimmed) moves
+  from the 5,450원 line to 77점; the last card no longer repeats the top question ("이 판은 77점"), its background
+  blur no longer leaks the 77 or the corners; prep 1.8x, plate 2.6x, egg-on-rice 2x. 20.7 s.
+  Still open from the panel: the empty-wok prep at 1.5-3 s (kept: the operator asked for the prep order), and the
+  drawn button cannot be tapped.
 
