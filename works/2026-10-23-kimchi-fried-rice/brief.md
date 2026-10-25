@@ -293,3 +293,7 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   Panel on the first cut: complexity 4 -> 3 for everyone, want-to-play 6 -> 6-7; all four asked for the goal up
   front (the small grey "12초 안에 한 그릇" was unreadable), so the top caption now carries it. Also moved the spill
   badge under the beat bar (it sat on the in-game words) and ended the 정전 card at the blackout.
+  Operator on that cut: card-to-card jumps felt abrupt, text and the in-game prep words (기름/김치/밥) went by too
+  fast, and the blackout tosses looked frantic. Now: cuts dissolve over 12 frames (was 5), story cards fade in 0.4 s,
+  hold ~2 s, sharpen over 0.5 s, the game behind them runs at 0.6x; prep plays at 0.55x (each step ~1.3 s on screen);
+  the blackout plays at real speed with two tosses; receipt at 0.7x and the last card holds 1.2 s. 31.1 s.

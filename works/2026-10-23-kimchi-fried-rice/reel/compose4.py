@@ -128,8 +128,8 @@ def say(im, lt, seg):
     """Story text over the game, which keeps playing blurred behind it; when the text leaves, the game comes back sharp.
     seg["say"] = [[text, "w" | "y"], ...] lines, seg["say_t"] = seconds the text holds."""
     T = seg.get("say_t", 1.6); box = (PX, PY, PX + PW, PY + PH)
-    k = 1.0 if lt < T else max(0.0, 1 - (lt - T) / 0.3)
-    if lt < 0.25: k = min(k, lt / 0.25)
+    k = 1.0 if lt < T else max(0.0, 1 - (lt - T) / 0.5)  # slow in, slow out: the eye gets time to land
+    if lt < 0.4: k = min(k, lt / 0.4)
     if k <= 0: return im
     q = k * k * (3 - 2 * k)
     blur = im.crop(box).filter(ImageFilter.GaussianBlur(int(3 + 11 * q)))  # panel: shapes and fire colours stay readable
@@ -184,7 +184,7 @@ def END(im, lt, seg, score):
     return over(im, spot)
 
 
-XF = 5  # frames of cross-dissolve at a real cut
+XF = 12  # frames of cross-dissolve at a real cut (5 read as a jump cut)
 RAMP = 0.22  # per-frame easing toward a new speed when the next part continues the same moment
 
 
