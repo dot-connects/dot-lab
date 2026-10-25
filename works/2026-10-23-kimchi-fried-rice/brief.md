@@ -250,3 +250,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   caption above a 975x1350 game panel, so captions never sit on the game; tip/stats/gauge label/buttons hidden in
   capture; hook = 불쇼, flick chevrons, ending = big score + "주방장까지 N점" + "영수증 점수 댓글로"; narration 1:1
   with the captions. 14.5 s from an 86-point take. Tools in `reel/`. Manifest stays draft until the operator OKs it.
+- Round 14 (2026-10-25): the operator saw the first egg-flip words over the tilted wok and its handle, the title card
+  hiding the wok, and a reel that skipped the prep. Egg-phase words now sit under the flip counter (`#hud[data-ph=egg]`);
+  on the title screen the camera view shifts (and shrinks if needed) so the wok sits above the card, easing back to
+  mid-screen at 불 켜!. Reel v4 from a reel-editor x game-marketer debate: 1 s spill hook "한 알에 10원!" with a
+  counter, quick rewind, then the real order: 기름/김치/찬밥/볶아, tosses, an over-swing spill, 불쇼, blackout,
+  gold slow-mo, plate, egg, egg on the rice, receipt 75점 with "너도 한번 도전해 볼래?" + comment/link box over the
+  plate. 23.8 s; card.png re-cut from the same take. Manifest stays draft until the operator OKs it.
+

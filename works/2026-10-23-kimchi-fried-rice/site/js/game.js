@@ -55,6 +55,7 @@
 
   /* ---------- wok pose: phone tilt + the chef's toss ---------- */
   const DAMP = (k, dt) => 1 - Math.exp(-dt / k);
+  const TITLE_FIT = 0.62; // share of the screen height the title-screen wok + rice column need
   const LEVEL = { u: 0, v: 0 };
   function updatePose(dt) {
     const tl = g.ph === "intro" || g.introOn ? LEVEL : K.Input.tilt, P = g.pose, pose = W.pose; // the start screen and the ingredient drop keep the wok level
@@ -210,7 +211,7 @@
   }
 
   /* ---------- phases ---------- */
-  function setPh(ph) { g.ph = ph; g.phT = 0; }
+  function setPh(ph) { g.ph = ph; g.phT = 0; hudEl.dataset.ph = ph; }
   function start(auto) {
     K.Food.setG(38);
     W.setDark(0); hudEl.classList.remove("dark", "slow", "final"); K.Audio.darkFlag(false); K.Audio.slow(false);
@@ -604,6 +605,16 @@
     g.shake = Math.max(0, (g.shake || 0) - dt * 4); const sk = 0.022 * Math.min(1.6, g.shake) * g.shake; // ≤ ~4 px
     if (sk > 0.0005) W.camera.position.add(_a.set(rnd(-1, 1) * sk, rnd(-1, 1) * sk, 0));
     g.punch = Math.max(0, (g.punch || 0) - dt / 0.12); const fov = 30 - 2 * Math.sin(Math.PI * Math.min(1, g.punch)) - 4 * (g.slowAmt || 0); /* the slow-mo pushes in */ if (W.camera.fov !== fov) { W.camera.fov = fov; W.camera.updateProjectionMatrix(); }
+    titleView(dt);
+  }
+  // the title card covers the lower half (operator 10-25): the wok rises (and shrinks if it must) into the space above it; the game keeps it mid-screen
+  function titleView(dt) {
+    const on = g.ph === "intro" && !introEl.hidden ? 1 : 0, C0 = W.camera;
+    g.lift = g.lift == null ? on : g.lift + (on - g.lift) * DAMP(0.3, dt);
+    if (g.lift < 0.001) { if (C0.view && C0.view.enabled) { C0.zoom = 1; C0.clearViewOffset(); } return; }
+    const w = innerWidth, h = innerHeight, room = Math.max(h * 0.3, introEl.getBoundingClientRect().top - 10), k = smooth(g.lift);
+    const z = Math.min(1, room / (h * TITLE_FIT)); C0.zoom = 1 - (1 - z) * k;
+    C0.setViewOffset(w, h, 0, (h / 2 - room * 0.6) * k, w, h); // wok centre at 60% of the free space: the rice column has room above
   }
   function hud() {
     if (g.ph === "rice") { timerEl.textContent = g.clock.toFixed(1); timerEl.classList.toggle("warn", g.started && g.clock < 3); }
