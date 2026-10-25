@@ -9,6 +9,7 @@ Same frame as v3 (top band with fixed title + one yellow caption, 975x1350 game 
   freeze           seconds to hold the last frame
   zoom [z0, z1, y] push-in over the segment, centred at panel height fraction y
   xf               cross-dissolve frames into this part (default: 5 at a cut, 0 when it continues the moment)
+  phone [x, y]     looping phone-flick glyph centred at frame px (the opening: how you play)
   flash            white flash at the start (lights back on)
   y0 [a, b]        source crop top in px, eased from a to b over the first 0.8 s (the receipt sits below the panel)
   end + ring       ending: a yellow ring around one receipt line, ring = [[t, src_y_top, src_y_bottom], ...]
@@ -80,6 +81,46 @@ def sampler(src):
     return at
 
 
+def phone_glyph():
+    """A phone held like a wok handle: dark body, the wok on its screen."""
+    g = Image.new("RGBA", (190, 330)); d = ImageDraw.Draw(g)
+    d.rounded_rectangle((6, 6, 184, 324), 34, fill=(24, 22, 26, 255), outline=(255, 255, 255, 255), width=9)
+    d.rounded_rectangle((22, 34, 168, 296), 18, fill=(70, 74, 82, 255))
+    d.ellipse((40, 118, 150, 212), fill=(28, 30, 36, 255), outline=(150, 156, 168, 255), width=4)
+    for x, y in ((70, 150), (88, 140), (104, 156), (82, 168), (120, 146), (96, 176), (112, 170), (66, 172)):
+        d.ellipse((x, y, x + 13, y + 8), fill=(240, 120, 60, 255))
+    d.rounded_rectangle((80, 16, 110, 22), 3, fill=(80, 80, 90, 255))
+    return g
+
+
+PHONE = None
+
+
+def phone(im, lt, cx, cy):
+    """Flick loop (0.7 s): the phone dips back, snaps up with ghost trails and 휙!, settles. Draws on im."""
+    global PHONE
+    if PHONE is None: PHONE = phone_glyph().resize((266, 462), Image.LANCZOS)
+    ov = Image.new("RGBA", (1080, 1920)); o = ImageDraw.Draw(ov)
+    c = (lt % 0.7) / 0.7
+    def pose(c):
+        if c < 0.35: q = c / 0.35; return 30 * q, -14 * q  # dip: down and tilted back
+        if c < 0.5: q = (c - 0.35) / 0.15; q = 1 - (1 - q) ** 3; return 30 - 190 * q, -14 + 26 * q  # snap up
+        q = (c - 0.5) / 0.5; q = q * q * (3 - 2 * q); return -160 + 160 * q, 12 - 12 * q  # settle
+    def put(dy, ang, alpha):
+        g = PHONE.rotate(ang, resample=Image.BICUBIC, expand=True)
+        if alpha < 255: g.putalpha(g.getchannel("A").point(lambda v: v * alpha // 255))
+        ov.alpha_composite(g, (int(cx - g.width / 2), int(cy + dy - g.height / 2)))
+    if 0.36 < c < 0.62:
+        for back, al in ((0.08, 70), (0.04, 120)):
+            dy, ang = pose(max(0, c - back)); put(dy, ang, al)
+        a = int(255 * (1 - abs(c - 0.47) / 0.15))
+        for k in range(3):
+            x = cx + 150 + k * 26; o.arc((x - 60, cy - 330 + k * 40, x + 60, cy - 60 + k * 40), 240, 360, fill=(255, 210, 80, max(0, a)), width=14)
+        o.text((cx + 150, cy - 420), "휙!", font=f(110), fill=(255, 210, 80, max(0, a)), stroke_width=5, stroke_fill=(30, 20, 10, max(0, a)))
+    dy, ang = pose(c); put(dy, ang, 255)
+    return Image.alpha_composite(im.convert("RGBA"), ov).convert("RGB")
+
+
 def END(im, lt, seg, score):
     """Receipt ending: a yellow box rings receipt lines in turn, seg["ring"] = [[t, src_y_top, src_y_bottom], ...]."""
     on = [r for r in seg["ring"] if lt >= r[0]]
@@ -144,8 +185,10 @@ def build(frames_dir, edl, out_mp4, score):
                     im = over(im, badge)
             if seg.get("flash") and lt < 0.25:
                 al = int(200 * (1 - lt / 0.25)); im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(255, 250, 235, al)))
+            if seg.get("phone"): im = phone(im, lt, *seg["phone"])
             if seg.get("end"): im = END(im, lt, seg, score)
-            if i < xf: im = Image.blend(last_im, im, (i + 1) / (xf + 1))
+            if i < xf:  # dissolve the game panel only; the caption band switches cleanly
+                box = (0, PY, 1080, PY + PH); im.paste(Image.blend(last_im.crop(box), im.crop(box), (i + 1) / (xf + 1)), box[:2])
             im.save(tmp / f"o{n:05d}.png"); n += 1; out_t += 1 / 30; i += 1
             last_im = im
             if cur_sp: st += cur_sp / 30

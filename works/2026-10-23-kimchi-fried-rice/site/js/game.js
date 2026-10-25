@@ -641,9 +641,7 @@
     if (g.hit > 0) { g.hit -= dt; dt = 0; } // hit-stop on a clean egg landing
     let n = 0;
     if (g.slowT) {
-      const k = g.t - g.slowT, sc = k < 0.08 ? 1 : k < 0.2 ? 1 - 0.7 * smooth((k - 0.08) / 0.12) : k < 0.5 ? 0.3 : k < 0.66 ? 0.3 + 0.7 * smooth((k - 0.5) / 0.16) : 1;
-      g.slowAmt = (1 - sc) / 0.7;
-      if (k >= 0.66) { g.slowT = 0; g.slowAmt = 0; hudEl.classList.remove("slow"); K.Audio.slow(false); } else { step(Math.min(1 / 30, dt) * sc); acc = 0; }
+      if (slowStep(dt)) acc = 0;
     } else {
       acc += dt;
       while (acc >= 1 / 60 && n++ < 2) { step(1 / 60); acc -= 1 / 60; } // at most 2 steps: a slow frame must not make the next one slower
@@ -688,7 +686,14 @@
   addEventListener("resize", () => W.fit());
   document.addEventListener("visibilitychange", () => { if (document.hidden) K.Audio.suspend(); else K.Audio.resume(); last = performance.now(); });
   // capture only (?ts=0.0001 freezes the loop): advance exactly n fixed steps and draw one frame, for a smooth recorded reel
-  function tick(n) { for (let i = 0; i < n; i++) step(1 / 60); K.Food.draw(); camera(n / 60); hud(); W.renderer.render(W.scene, W.camera); }
+  // the gold finale's slow-mo: game time runs at 30% for a moment; false once it is over
+  function slowStep(dt) {
+    const k = g.t - g.slowT, sc = k < 0.08 ? 1 : k < 0.2 ? 1 - 0.7 * smooth((k - 0.08) / 0.12) : k < 0.5 ? 0.3 : k < 0.66 ? 0.3 + 0.7 * smooth((k - 0.5) / 0.16) : 1;
+    g.slowAmt = (1 - sc) / 0.7;
+    if (k >= 0.66) { g.slowT = 0; g.slowAmt = 0; hudEl.classList.remove("slow"); K.Audio.slow(false); return false; }
+    step(Math.min(1 / 30, dt) * sc); return true;
+  }
+  function tick(n) { for (let i = 0; i < n; i++) if (!(g.slowT && slowStep(1 / 60))) step(1 / 60); /* frame capture plays the slow-mo too */ K.Food.draw(); camera(n / 60); hud(); W.renderer.render(W.scene, W.camera); }
   K.Game = { get state() { return g; }, start, flick, finalScore, tick };
   requestAnimationFrame(frame);
 })();

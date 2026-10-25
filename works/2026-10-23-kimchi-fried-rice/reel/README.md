@@ -12,3 +12,4 @@ is a sideways over-swing for the spill beat; the last toss aims at the gold peak
 seeded Math.random, but takes are only roughly repeatable, so check `timeline.jsonl` after recording), then
 `python compose4.py take4 edl4.json reel4.mp4 75`. `rec2.py ... probe` runs a take without screenshots.
 v5: `python compose4.py take4 edl5.json reel5.mp4 75` (same take, smoother joins, receipt ending).
+v6: `python rec2.py take6 44 "0.92,1.58" 4 blur title` then `python compose4.py take6 edl6.json reel6.mp4 73`.

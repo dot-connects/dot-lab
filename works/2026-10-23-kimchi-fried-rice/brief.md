@@ -263,4 +263,10 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   "밥값 5,640원 물어냄" -> "75점. 주방장은 92점" -> "너도 한번 도전해 볼래?", top title becomes "링크는 프로필에".
   Smoothness: parts that continue the same moment no longer cut (speed eases between them), sped-up parts average
   the frames they skip and slowed parts blend neighbours, real cuts dissolve over 5 frames. 24.8 s (`edl5.json`).
+- Round 16 (2026-10-25, reel v6): the operator saw stutter in the blackout and the slow-mo and asked for a phone-swing
+  motion graphic up front. Cause: `KFR.Game.tick` (frame capture) skipped the slow-mo, so the "slow" part was real
+  speed stretched 0.6x; now tick runs the same `slowStep` as the live loop. Takes are shot as two 1/60 s frames
+  averaged (`rec2.py ... blur`) for motion blur; the blackout plays 1x and shorter (it was black stills), still
+  plate/receipt stretches are trimmed, dissolves touch only the game panel. Opening adds a looping phone-flick glyph
+  ("휙!") over the title card. take6 = 73점, 495 grains spilled; 26.7 s (`edl6.json`).
 
