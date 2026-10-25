@@ -242,3 +242,11 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   toward the wok centre, dulls as it sets), 4 ballistic droplets that stick, a sizzle tail; the lens gag only for a
   flip > 1.7 (three yolk drops in the top corners, 1.4 s); lines "괜찮아, 김볶은 어차피 비벼 먹어" / receipt
   "노른자 터짐 — 셀프 비빔 서비스".
+- Round 13 (2026-10-25, reel v3): the operator saw the wok crowded at the top of the reel (rice column over the beat
+  gauge) and captions colliding with in-game words. p14-layout measured it: the camera aimed in front of the wok;
+  camLook z 0.35 → −0.25 (one value now, game.js no longer hardcodes it) puts the rim mid-screen and normal tosses
+  58 px under the beat bar at 390x844 (360x640 still overlaps; the gold finale still covers the timer on purpose);
+  words 21vh → 14vh. Reel panel (p14 ads/social/local/captions): title band with a fixed title + one changing yellow
+  caption above a 975x1350 game panel, so captions never sit on the game; tip/stats/gauge label/buttons hidden in
+  capture; hook = 불쇼, flick chevrons, ending = big score + "주방장까지 N점" + "영수증 점수 댓글로"; narration 1:1
+  with the captions. 14.5 s from an 86-point take. Tools in `reel/`. Manifest stays draft until the operator OKs it.
