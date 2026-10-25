@@ -9,6 +9,7 @@ Same frame as v3 (top band with fixed title + one yellow caption, 975x1350 game 
   freeze           seconds to hold the last frame
   zoom [z0, z1, y, x] push-in over the segment, centred at panel height fraction y (or source px row if > 1), source px column x
   xf               cross-dissolve frames into this part (default: 5 at a cut, 0 when it continues the moment)
+  say / say_t      story lines over the blurred, still-running game for say_t s, then the game sharpens
   card             the drawn last card (score to beat, phone flick, link button) over the dimmed frame
   phone [x, y]     looping phone-flick glyph centred at frame px (the opening: how you play)
   flash            white flash at the start (lights back on)
@@ -123,6 +124,32 @@ def phone(im, lt, cx, cy):
     return Image.alpha_composite(im.convert("RGBA"), ov).convert("RGB")
 
 
+def say(im, lt, seg):
+    """Story text over the game, which keeps playing blurred behind it; when the text leaves, the game comes back sharp.
+    seg["say"] = [[text, "w" | "y"], ...] lines, seg["say_t"] = seconds the text holds."""
+    T = seg.get("say_t", 1.6); box = (PX, PY, PX + PW, PY + PH)
+    k = 1.0 if lt < T else max(0.0, 1 - (lt - T) / 0.3)
+    if lt < 0.25: k = min(k, lt / 0.25)
+    if k <= 0: return im
+    q = k * k * (3 - 2 * k)
+    blur = im.crop(box).filter(ImageFilter.GaussianBlur(int(3 + 11 * q)))  # panel: shapes and fire colours stay readable
+    im.paste(Image.blend(im.crop(box), blur, min(1, q * 1.4)), box[:2], MASK)
+    im = over(im, lambda o: o.rounded_rectangle(box, 40, fill=(14, 9, 7, int(115 * q))))
+    lines = seg["say"]; sizes = [56 if col == "s" else 96 for _, col in lines]  # "s": a small line under the story
+    total = sum(int(sz * 1.25) for sz in sizes); y = PY + PH // 2 - total // 2 - 40
+    if seg.get("say_phone"): y -= 230  # the flicking phone (and its 휙!) gets the lower half
+    a = int(255 * q); ov = Image.new("RGBA", (1080, 1920)); o = ImageDraw.Draw(ov)
+    for (text, col), sz in zip(lines, sizes):
+        fnt = f(sz)
+        while o.textlength(text, font=fnt) > PW - 80: sz -= 4; fnt = f(sz)
+        w = o.textlength(text, font=fnt); rise = int(18 * (1 - q))
+        o.text(((1080 - w) / 2, y + rise), text, font=fnt, fill=(YEL if col == "y" else DIM if col == "s" else WHITE) + (a,), stroke_width=5, stroke_fill=(20, 12, 8, a))
+        y += int(sz * 1.25)
+    im = Image.alpha_composite(im.convert("RGBA"), ov).convert("RGB")
+    if seg.get("say_phone"): im = Image.blend(im, phone(im, lt, *seg["say_phone"]), q)  # the phone leaves with the text
+    return im
+
+
 def challenge(im, lt, score):
     """The last card, drawn over the dimmed receipt: the score to beat, how you play, where the link is."""
     k = min(1, lt / 0.25); box = (PX, PY, PX + PW, PY + PH)
@@ -205,7 +232,7 @@ def build(frames_dir, edl, out_mp4, score):
                     pop = 1 + 0.25 * max(0, 1 - held / 6) if held else 1  # the freeze punches the badge
                     def badge(o, nsp=nsp, pop=pop):
                         txt = f"흘린 밥 {nsp}알 = {nsp * 10:,}원"; fs = f(int(64 * pop)); w = o.textlength(txt, font=fs)  # Black Han Sans has no middle dot
-                        x0 = (1080 - w) / 2 - 36; y0 = PY + PH - 130  # under the in-game word line
+                        x0 = (1080 - w) / 2 - 36; y0 = PY + 170  # under the beat bar, clear of the in-game word line
                         o.rounded_rectangle((x0, y0, x0 + w + 72, y0 + 64 * pop + 44), 28, fill=(12, 8, 6, 225))
                         o.text((x0 + 36, y0 + 16), txt, font=fs, fill=YEL + (255,))
                     im = over(im, badge)
@@ -214,6 +241,7 @@ def build(frames_dir, edl, out_mp4, score):
             if seg.get("phone"): im = phone(im, lt, *seg["phone"])
             if seg.get("end"): im = END(im, lt, seg, score)
             if seg.get("card"): im = challenge(im, lt, score)
+            if seg.get("say"): im = say(im, lt, seg)
             if i < xf:  # dissolve the game panel only; the caption band switches cleanly
                 box = (0, PY, 1080, PY + PH); im.paste(Image.blend(last_im.crop(box), im.crop(box), (i + 1) / (xf + 1)), box[:2])
             im.save(tmp / f"o{n:05d}.png"); n += 1; out_t += 1 / 30; i += 1

@@ -282,4 +282,14 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   blur no longer leaks the 77 or the corners; prep 1.8x, plate 2.6x, egg-on-rice 2x. 20.7 s.
   Still open from the panel: the empty-wok prep at 1.5-3 s (kept: the operator asked for the prep order), and the
   drawn button cannot be tapped.
-
+- Round 18 (2026-10-26, reel v8): the operator found v7 "too fast, only shaking, no idea what/how/why" and picked
+  storyboard B with the game kept running blurred behind the text, in their own words. A reel editor and a game
+  marketer debated the beats with the review panel. v8 = four story cards over the blurred, moving game, each followed
+  by the same moment sharp: 폰을 흔들어서 / 볶음밥을 볶아요 (+ phone-flick glyph, top caption 주방장 92점 넘기면
+  성공!) -> prep + tosses with the beat bar visible (`rec2.py ... beat`) -> 흘리면 밥 한 알에 / 10원씩 물어내요! ->
+  와르르 with the counter badge -> 정전 때도 / 박자 맞춰 볶고 -> blackout, flash, gold slow-mo -> 계란까지 구우면 /
+  볶음밥 한 그릇 뚝딱! -> egg flip, egg on rice -> receipt spotlight -> challenge card. Spill per take is not stable
+  (take9 1,295 grains left an empty plate, take10 9); take11 = 76점, 580 grains. 23.9 s (`edl8.json`).
+  Panel on the first cut: complexity 4 -> 3 for everyone, want-to-play 6 -> 6-7; all four asked for the goal up
+  front (the small grey "12초 안에 한 그릇" was unreadable), so the top caption now carries it. Also moved the spill
+  badge under the beat bar (it sat on the in-game words) and ended the 정전 card at the blackout.

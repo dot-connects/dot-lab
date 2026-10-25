@@ -22,6 +22,7 @@ PROBE = len(sys.argv) > 5 and sys.argv[5] == "probe"
 BLUR = "blur" in sys.argv[5:]
 GO_AT = 1.4 if "title" in sys.argv[5:] else 0  # hold the title card (its own attract tosses) before the tap
 CLEAN = "clean" in sys.argv[5:]  # v7: only the timer and the big words; no gauge, beat bar, combo, +/- pops, cue bubbles, title card
+if "beat" in sys.argv[5:]: CLEAN_CSS = CLEAN_CSS.replace("#beat,", "")  # v8: keep the needle bar, the reel explains 박자 with it
 RNG = "(()=>{let a=%d>>>0;Math.random=()=>{a=(a+0x6D2B79F5)>>>0;let t=a;t=Math.imul(t^t>>>15,t|1);t^=t+Math.imul(t^t>>>7,t|61);return((t^t>>>14)>>>0)/4294967296}})();"
 for f in out.glob("f*.png"): f.unlink()
 with sync_playwright() as p:
