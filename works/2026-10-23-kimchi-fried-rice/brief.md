@@ -257,4 +257,10 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   the video was): the real order 기름/김치/찬밥/볶아, tosses, an over-swing spill, 불쇼, blackout,
   gold slow-mo, plate, egg, egg on the rice, receipt 75점 with "너도 한번 도전해 볼래?" + comment/link box over the
   plate. 22.8 s; card.png re-cut from the same take. Manifest stays draft until the operator OKs it.
+- Round 15 (2026-10-25, reel v5): the operator found the receipt cut off and the video choppy, and asked for a real
+  opening and closing hook. Opening = the game's own title card (wok above it, fire) with "폰이 웍이 된다", easing
+  into the prep; ending = the whole receipt in the panel, yellow rings on "바닥 밥 변상 5,640원" then on 75점, captions
+  "밥값 5,640원 물어냄" -> "75점. 주방장은 92점" -> "너도 한번 도전해 볼래?", top title becomes "링크는 프로필에".
+  Smoothness: parts that continue the same moment no longer cut (speed eases between them), sped-up parts average
+  the frames they skip and slowed parts blend neighbours, real cuts dissolve over 5 frames. 24.8 s (`edl5.json`).
 

@@ -11,3 +11,4 @@ v4 (round 14) keeps the v3 frame and cuts the whole game flow: `python rec2.py t
 is a sideways over-swing for the spill beat; the last toss aims at the gold peak so the slow-mo fires; seed 4 =
 seeded Math.random, but takes are only roughly repeatable, so check `timeline.jsonl` after recording), then
 `python compose4.py take4 edl4.json reel4.mp4 75`. `rec2.py ... probe` runs a take without screenshots.
+v5: `python compose4.py take4 edl5.json reel5.mp4 75` (same take, smoother joins, receipt ending).
