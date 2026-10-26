@@ -297,3 +297,9 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   fast, and the blackout tosses looked frantic. Now: cuts dissolve over 12 frames (was 5), story cards fade in 0.4 s,
   hold ~2 s, sharpen over 0.5 s, the game behind them runs at 0.6x; prep plays at 0.55x (each step ~1.3 s on screen);
   the blackout plays at real speed with two tosses; receipt at 0.7x and the last card holds 1.2 s. 31.1 s.
+  Operator again: still choppy scene to scene. The take is one continuous game, so v8 now has no cuts at all: the
+  dull stretches (blackout tail 2.4x, egg prep 6x, second flip 3x, plating and receipt slide 2.2x) are fast-forwarded
+  with eased speed changes instead of being cut out, and the view pans down onto the receipt. Measured frame-to-frame
+  jumps: the receipt spotlight blinked off when it moved lines (now glides), the spotlight dropped when the last card
+  started (now carried under it), the card and its button popped in (whole card fades 0.5 s), the lights-on flash
+  softened. Only jump left is the game's own lights-on moment. 35.5 s.

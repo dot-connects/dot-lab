@@ -152,22 +152,19 @@ def say(im, lt, seg):
 
 def challenge(im, lt, score):
     """The last card, drawn over the dimmed receipt: the score to beat, how you play, where the link is."""
-    k = min(1, lt / 0.25); box = (PX, PY, PX + PW, PY + PH)
-    im.paste(Image.blend(im.crop(box), im.crop(box).filter(ImageFilter.GaussianBlur(40)), k), box[:2], MASK)  # the receipt fades back
-    al = int(242 * k)
-    im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(16, 10, 8, al)))
-    if lt < 0.15: return im
+    k = min(1, lt / 0.5); k = k * k * (3 - 2 * k); box = (PX, PY, PX + PW, PY + PH); base = im.copy()  # the whole card fades in
+    im.paste(im.crop(box).filter(ImageFilter.GaussianBlur(40)), box[:2], MASK)  # the receipt sinks back
+    im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(16, 10, 8, 242)))
     d = ImageDraw.Draw(im)
     centered(d, PY + 90, f"이 판은 {score}점", f(92), WHITE, 4)  # the question itself is the top caption
     centered(d, PY + 215, "주방장은 92점", f(70), YEL, 3)
     im = phone(im, lt, 540, PY + 720); d = ImageDraw.Draw(im)
     centered(d, PY + 1000, "설치 없이 폰으로 12초", f(62), WHITE, 3)
-    if lt > 0.5:
-        pulse = 1 + 0.04 * math.sin(lt * 7)
-        bw, bh = int(860 * pulse), int(150 * pulse); x0 = 540 - bw // 2; y0 = PY + 1130
-        d.rounded_rectangle((x0, y0, x0 + bw, y0 + bh), 75, fill=(232, 72, 28))
-        centered(d, y0 + bh // 2 - 40, "프로필 링크에서 바로 해 보기", f(int(64 * pulse)), WHITE)  # Black Han Sans has no arrow glyph
-    return im
+    pulse = 1 + 0.04 * math.sin(lt * 7)
+    bw, bh = int(860 * pulse), int(150 * pulse); x0 = 540 - bw // 2; y0 = PY + 1130
+    d.rounded_rectangle((x0, y0, x0 + bw, y0 + bh), 75, fill=(232, 72, 28))
+    centered(d, y0 + bh // 2 - 40, "프로필 링크에서 바로 해 보기", f(int(64 * pulse)), WHITE)  # Black Han Sans has no arrow glyph
+    return Image.blend(base, im, k)
 
 
 def END(im, lt, seg, score):
@@ -175,7 +172,10 @@ def END(im, lt, seg, score):
     on = [r for r in seg["ring"] if lt >= r[0]]
     if not on: return im
     t, ya, yb = on[-1]
-    k = min(1, (lt - t) / 0.2); pad = int(14 * (1 - k)) + 6
+    k = min(1, (lt - t) / 0.4); k = k * k * (3 - 2 * k)
+    if len(on) > 1:  # the ring glides from the previous line instead of blinking out and in
+        ya = on[-2][1] + (ya - on[-2][1]) * k; yb = on[-2][2] + (yb - on[-2][2]) * k; k = 1
+    pad = int(14 * (1 - k)) + 6
     top = PY + ya - seg["_y0"] - pad; bot = PY + yb - seg["_y0"] + pad
     def spot(o):  # the rest of the receipt sinks back so the ringed line is the only thing to read
         dim = (12, 8, 6, int(170 * k))
@@ -237,7 +237,7 @@ def build(frames_dir, edl, out_mp4, score):
                         o.text((x0 + 36, y0 + 16), txt, font=fs, fill=YEL + (255,))
                     im = over(im, badge)
             if seg.get("flash") and lt < 0.25:
-                al = int(200 * (1 - lt / 0.25)); im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(255, 250, 235, al)))
+                al = int(120 * (1 - lt / 0.25)); im = over(im, lambda o: o.rounded_rectangle((PX, PY, PX + PW, PY + PH), 40, fill=(255, 250, 235, al)))
             if seg.get("phone"): im = phone(im, lt, *seg["phone"])
             if seg.get("end"): im = END(im, lt, seg, score)
             if seg.get("card"): im = challenge(im, lt, score)
