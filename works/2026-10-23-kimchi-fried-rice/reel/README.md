@@ -15,3 +15,4 @@ v5: `python compose4.py take4 edl5.json reel5.mp4 75` (same take, smoother joins
 v6: `python rec2.py take6 44 "0.92,1.58" 4 blur title` then `python compose4.py take6 edl6.json reel6.mp4 73`.
 v7: `python rec2.py take8 45 "0.92,1.58" 4 blur title clean` then `python compose4.py take8 edl7.json reel7.mp4 77`.
 v8: `python rec2.py take11 45 "0.92,1.58" 4 blur title clean beat` then `python compose4.py take11 edl8.json reel8.mp4 76` (spill varies per take; keep one with 300-700 grains).
+voice: `voice_take.py <dir>` makes one real lab-voice take of `<dir>/lines.json` (one TTS call) and cuts it on its pauses; `voice_track.py plan.json <dir>` places the clips (`[[at, clip, text]]`, see `voice_plan.json`; clips stay local) into `out/voice.wav` and mixes a preview the way content-system does. Run both from content-system with its venv.

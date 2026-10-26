@@ -316,3 +316,12 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   drafted, then cross-critiqued and merged (16 lines, 0.5 s clear after every line); two fresh gamer reviewers (16, 25)
   then cut the lines that repeat captions (김치/밥, 계란도 휙), the 오천 원 that clashed with the 5,660원 badge, and
   unclear words (금색). 13 lines: the voice reacts and gives the why, the captions carry the rest.
+- Round 21 (2026-10-26, narration v4): the operator wrote the narration (폰을 흔들어서 볶음밥을 만들어 봐 … 너도 한번
+  볶아 볼래?) and asked whether the voice was being matched against the video. It was not: lines were placed by
+  syllable estimates and only checked after the bot re-voiced them. Now the lab makes one real take
+  (`reel/voice_take.py`), cuts it on its own pauses, has reel-editor and game-marketer place the lines on the measured
+  lengths, mixes a preview exactly as the bot does (`reel/voice_track.py`), checks every word's time with whisper
+  against the frame under it, and ships the finished track as `out/voice.wav` (content-system mixes it, no TTS at
+  ingest). Two fresh gamer reviewers moved 정전이 onto the blackout, 계란 onto the egg, 한 그릇 뚝딱 onto the full
+  plate, and asked for one line on the score: 주방장은 구십이 점! (second take). Re-rendered the egg captions
+  (한 번 더 휙! during the second flip, 밥 위에 착! when the egg reaches the plate).
