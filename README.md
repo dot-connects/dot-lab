@@ -22,6 +22,10 @@ Spec: `content-system/docs/superpowers/specs/2026-10-20-daily-lab-channel-design
 input verb, and "해설 →" to its blog post. Move the `NEW` badge to it and keep the `NEXT` placeholder last.
 content-system holds a ready manifest whose work is not linked from `index.html` and retries each tick until it is (`lab_work.listed`).
 
+**Back to the list (2026-10-26).** Every work links the root list (`href="../../../"`) twice: a small
+"‹ 시켜본 것들" chip in the top-left of the start screen (hidden while playing, so a stray tap can't leave the game),
+and "시켜본 것 더 보기 →" under the result's retry/share buttons. #001 and #002 show both.
+
 **Touch input inside Threads / Instagram.** Most players open the link inside the app's own browser. With only
 `touch-action: none` the drawing pad scrolled the page, and at scroll top Threads took every downward drag as
 "close the browser" (up strokes drew, down strokes closed the window). Both fixes are needed on any work that

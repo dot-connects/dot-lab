@@ -479,6 +479,7 @@
       ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
       ${best > 0 && !rec && best > s.total ? `<div class="near">내 최고 ${best}점</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${g.auto ? C.tryIt : C.again}</button>${g.auto ? "" : `<button class="btn ghost" id="share" type="button">${C.share}</button>`}</div>
+      <a class="more" href="../../../">시켜본 것 더 보기 →</a>
       ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
     const gg = g; // a restart within 2 s must not let this round's slide-in / stamp fire into the next
     resEl.hidden = false; setTimeout(() => { if (g === gg) resEl.classList.add("up"); }, 900); // the finished dish gets a moment first
@@ -676,6 +677,7 @@
     introEl.hidden = false; homeEl.hidden = true; W.renderer.toneMappingExposure = W.S.exposure; bestLine();
   }
   homeEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
+  $("back").addEventListener("pointerdown", (e) => e.stopPropagation());
   homeEl.onclick = (e) => { e.stopPropagation(); goHome(); };
   const muteEl = $("mute"), setMute = (m) => { K.Audio.mute(m); muteEl.textContent = m ? "🔇" : "🔊"; muteEl.setAttribute("aria-label", m ? "소리 켜기" : "소리 끄기"); store.set("kfr-mute", m ? 1 : 0); };
   muteEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
