@@ -1,0 +1,10 @@
+name = "dot-lab-booth"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+ORIGINS = "https://dot-connects.github.io,http://127.0.0.1:8799"
+
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "dot-lab-booth"
