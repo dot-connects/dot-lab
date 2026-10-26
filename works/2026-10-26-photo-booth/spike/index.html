@@ -117,8 +117,14 @@ $("bCam").onclick = async () => {
   set("cam", "wait", "권한 요청 중");
   $("camMsg").textContent = "카메라 권한을 요청하는 중…";
   const t0 = performance.now();
+  // some in-app browsers never answer the request: say so after 5 s and offer the way out
+  const stall = setTimeout(() => {
+    set("cam", "bad", `${app}: 5초 동안 응답 없음`);
+    $("camMsg").innerHTML = `이 앱(${app}) 안에서는 카메라가 열리지 않아요. 맨 아래 <b>크롬(외부 브라우저)에서 열기</b>를 눌러 보세요.`;
+  }, 5000);
   try {
     stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user", width: { ideal: 720 }, height: { ideal: 960 } }, audio: false });
+    clearTimeout(stall);
     cam.srcObject = stream;
     await cam.play();
     await new Promise(r => cam.readyState >= 2 ? r() : cam.onloadeddata = r);
@@ -127,6 +133,7 @@ $("bCam").onclick = async () => {
     $("bCam").disabled = true;
     $("camMsg").textContent = "";
   } catch (e) {
+    clearTimeout(stall);
     set("cam", "bad", `${e.name}: ${e.message}`);
     $("camMsg").textContent = e.name === "NotAllowedError"
       ? `카메라가 막혔어요 (${e.message}). 화면 위에 떠 있는 다른 앱을 끄고, 주소창 왼쪽 아이콘 → 권한 → 카메라를 '허용'(또는 재설정)한 뒤 새로고침해 주세요.`
