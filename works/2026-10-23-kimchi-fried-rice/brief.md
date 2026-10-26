@@ -310,3 +310,9 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
 - Round 19 (2026-10-26, narration): the operator heard the TTS run off the cuts (one read of every caption from
   0.6 s). Narration is now six timed lines, each placed on its beat (content-system f4c2977 supports `narration` as
   [{at, say, check}], still one TTS call, whisper-split): 0.4 / 6.4 / 10.6 / 15.9 / 18.0 / 29.6 s.
+- Round 20 (2026-10-26, narration v3): the operator heard clipped endings between the 정전 card and the slow-mo and
+  found six lines too quiet. Whisper on the posted mix heard "맞춰" as "받쳐" and "방" as "박": whisper ends lines
+  early, so lab clips now keep 0.15/0.4 s margins (content-system 7631126). Script: reel-editor and game-marketer each
+  drafted, then cross-critiqued and merged (16 lines, 0.5 s clear after every line); two fresh gamer reviewers (16, 25)
+  then cut the lines that repeat captions (김치/밥, 계란도 휙), the 오천 원 that clashed with the 5,660원 badge, and
+  unclear words (금색). 13 lines: the voice reacts and gives the why, the captions carry the rest.
