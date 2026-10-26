@@ -16,7 +16,7 @@ failure, comparison, a funny label, the player's own input decides the result.
 | bracket vote between two cards | avoid: no reaction | sketches |
 | type recall against a list (Sporcle) | rejected: "no fun" (operator 2026-10-20) | was candidate 5, Seoul 25 gu |
 | estimate a number on a log slider | sketch liked ("OK") | candidate 9 |
-| flick to toss, tilt/drag to catch -> one-bowl score /100 | **in design** (#002, operator picked 2026-10-23) | works/2026-10-23-kimchi-fried-rice |
+| flick to toss, tilt/drag to catch -> one-bowl score /100 | **used** (#002 ready 2026-10-26, operator picked 2026-10-23) | works/2026-10-23-kimchi-fried-rice |
 | flick to flip a cube, cook all faces | dropped: "too close to Mario Party" (operator 2026-10-23) | works/2026-10-22-steak |
 
 ## Candidates (each a different mechanic; 2026-10-20)
@@ -55,9 +55,9 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 |---|---|---|---|---|
 | 1 | 주사위 스테이크 6면 굽기 | Mario Party "Sizzling Stakes" feel | flick the phone to roll a cube, cook every face by sound/vibration -> seconds, none burnt | dropped 10-23: too close to Mario Party |
 | 2 | 허공 달고나 | Squid Game dalgona | camera fingertip traces the outline, shaking cracks it -> % carved | parked (ledger only) |
-| 3 | 계란후라이 뒤집기 + 웍질 볶음밥 | flipping an egg, 중국집 wok toss | flick to toss rice (bottom burns if idle, too hard spills), then toss and catch a fried egg -> one-bowl score /100 | **#002 in design** works/2026-10-23-kimchi-fried-rice |
+| 3 | 계란후라이 뒤집기 + 웍질 볶음밥 | flipping an egg, 중국집 wok toss | flick to toss rice (bottom burns if idle, too hard spills), then toss and catch a fried egg -> one-bowl score /100 | **#002 ready** works/2026-10-23-kimchi-fried-rice |
 | 4 | 절대 안 지는 가위바위보 | Janken robot meme | camera reads your hand, AI answers at the last moment -> how long you last | parked (ledger only) |
-| 5 | 손으로 찍는 인생네컷 | photo booth | hand-frame gesture shoots 4 cuts, frames swap with the trend | later (program) |
+| 5 | 손으로 찍는 인생네컷 | photo booth, 셋로그 (2 s clips, 2026) | hand-frame gesture shoots 4 cuts, frames swap with the trend. 10-26 brainstorm: (a) memory mode - 4 cuts each keep the 2 s before the shutter, saved as a moving 4-cut strip (mp4) + image; (b) pose-hole relay - friend's pose outline (~150 chars in the link, no face) becomes a hole, fit your body -> overlap %, default set for solo play. No backend: photos/video travel as saved files, only outlines fit a link. First: in-app camera/record/save spike | **brainstorming** (operator picked 10-26) |
 | 6 | 내 방에 뭔가 잡기 | "2026 is the new 2016" / Pokemon GO feel, own creatures | flick to throw over the camera view -> caught /N | later |
 | 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | date slot (program) |
 | 9 | 우리 집 몬스터 잡기 | Pokemon GO | throw a ball at your pet/person on the camera; segmentation cuts them out of the view and they land in an in-phone dex -> caught /N. Operator 10-21 extension: a subject that stays still cannot be caught - keep recording while it moves (motion fills the catch gauge), then turn the clip into a 3D character that lives on the phone screen; if it works, swap skins to Chiikawa-style characters. Browser ceiling: cut-out living 2.5D sticker; true 3D needs a GPU server (new PC), staying on screen over other apps needs a native app (tap-trigger Android base) | parked (ledger only) |
