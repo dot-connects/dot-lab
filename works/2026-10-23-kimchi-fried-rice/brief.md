@@ -305,3 +305,5 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   softened. Only jump left is the game's own lights-on moment. 35.5 s.
   Operator: drop the oil step (no motion), kimchi and rice at real speed. The oil now passes under the opening card;
   prep plays 1x from 김치 먼저. 33.2 s.
+  Operator: the wok sat too low, mostly in the egg part. The view rises 30 px while cooking (timer and beat bar stay
+  in frame) and eases to 130 px under the egg card. Operator called this the final cut.
