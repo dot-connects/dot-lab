@@ -20,6 +20,7 @@ Spec: `content-system/docs/superpowers/specs/2026-10-20-daily-lab-channel-design
 **Index tile (2026-10-24).** Add the work to `index.html` as the first `article.work`: a square
 `thumbs/<NNN>.jpg` (600×600, no title text in the crop), the title on the image, one-line description, the
 input verb, and "해설 →" to its blog post. Move the `NEW` badge to it and keep the `NEXT` placeholder last.
+content-system skips a ready manifest whose work is not linked from `index.html` (`lab_work.check`).
 
 **Touch input inside Threads / Instagram.** Most players open the link inside the app's own browser. With only
 `touch-action: none` the drawing pad scrolled the page, and at scroll top Threads took every downward drag as
