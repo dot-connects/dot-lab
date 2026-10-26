@@ -51,6 +51,27 @@ Then the operator opens the Threads post on the phone.
 **Pages cache.** GitHub Pages sends `max-age=600`: a phone can show the previous build for ~10 minutes after the
 deploy. Wait that long (or close the in-app window) before judging a fix on the phone.
 
+**Blog post (`blog_html`, T-0174 3b, 2026-10-26).** The post is the only part Google reads (it never reads inside
+the iframe), so it must explain the work, not just link it. Reader = players; a short dev note goes last. Model posts:
+[#001](https://www.dotconnects.kr/2026/10/001.html), [#002](https://www.dotconnects.kr/2026/10/2026-10-23-kimchi-fried-rice.html).
+Required:
+- Title = the search phrase first, the number last: `지도 안 보고 한반도 그리기 테스트, 몇 점 나올까? (실험 #001)`.
+- Lead with a real result from the work (a measured score, a funny fail line), what you do, how long, which device.
+- A big "바로 해 보기" link near the top; the iframe goes **last** ("여기서 바로 해 보기") — a drawing pad high in the
+  post eats the page scroll on phones.
+- Scoring in plain words + a small table; every number checked against the work's code, not the brief (#002's brief
+  had outdated weights).
+- "만든 이야기": what failed first and what changed, with a source link for any data or research used.
+- Links: the other works' posts (at least one; add the new post to older posts' "다른 실험") + the list page, and the
+  work folder on GitHub.
+- Screenshots: list up to 8 png in `shots` (paths inside the work folder) and put `<p>[[shot-1]]</p>`… where they go.
+Guidance (skip what doesn't fit the work): tips derived from the scoring, one "왜 내 점수가 낮지?" section,
+1,800–2,500 Korean chars, `<h2>` sections. Never invent an experience; say who measured what.
+
+**After a work (or tool review) is published, never edit its manifest.** content-system keys it by the manifest's
+hash: a changed manifest of a posted one is now skipped (no second reel), so the edit does nothing. Fix the live blog
+post instead.
+
 **Manifest.** `status: "ready"` is what content-system ingests (one story per manifest content; editing a ready
 manifest replaces the unpublished story). `narration` (optional) is voiced in the lab voice over the lab music;
 the Instagram `caption` ends with "프로필 링크에서 바로 해 볼 수 있어." (captions are not clickable; the profile
