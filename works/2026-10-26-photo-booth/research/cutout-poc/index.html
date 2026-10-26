@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>누끼 품질 실험</title>
+<style>
+:root{--bg:#f6f4f1;--card:#fff;--ink:#1d1b22;--sub:#5f5a66;--line:#e2ddd6;--accent:#6a4cc4}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,sans-serif}
+main{max-width:1400px;margin:0 auto;padding:12px 16px 40px;display:flex;flex-direction:column;gap:10px}
+h1{font-size:19px;margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select{font:inherit;border:1px solid var(--line);border-radius:8px;padding:7px 10px;background:#fff;color:var(--ink)}
+button.go{background:var(--accent);color:#fff;border:0;font-weight:700}
+label{display:inline-flex;gap:4px;align-items:center}
+input[type=range]{width:90px}
+#stat{font:12px/1.4 ui-monospace,monospace;white-space:pre-wrap;background:#fff;border:1px solid var(--line);border-radius:8px;padding:8px;margin:0}
+.grid{display:grid;grid-template-columns:90px repeat(4,1fr);gap:6px;align-items:center}
+.grid b{font-size:12px}
+.grid canvas{width:100%;height:auto;border-radius:6px;display:block;background:#000}
+.zoom .grid canvas{image-rendering:pixelated}
+.hd{font-size:12px;color:var(--sub);text-align:center}
+#src{display:none}
+</style>
+</head>
+<body>
+<main>
+  <h1>누끼 품질 실험 (전 · 후 · 고화질 스틸)</h1>
+  <div class="row">
+    <button data-src="media/hair2.jpg">사진: 검은 머리 · 흰 벽</button>
+    <button data-src="media/hair1.jpg">사진: 붉은 머리 · 어두운 배경</button>
+    <button data-src="media/interview.mp4">영상: 인터뷰 6초</button>
+    <button id="bCam">카메라</button>
+    <label>파일 <input id="file" type="file" accept="image/*,video/*"></label>
+  </div>
+  <div class="row">
+    <label>실시간 모델 <select id="model">
+      <option value="square">selfie 256×256 (249 KB)</option>
+      <option value="landscape">selfie landscape 144×256 (250 KB)</option>
+      <option value="hair">selfie + hair 512 합치기 (+782 KB)</option>
+      <option value="multi">selfie_multiclass 256 (16.4 MB)</option>
+    </select></label>
+    <label>반경 <input id="radius" type="range" min="1" max="12" value="4"><span id="radiusV"></span></label>
+    <label>eps <input id="eps" type="range" min="-4" max="-1" step="0.25" value="-3"><span id="epsV"></span></label>
+    <label>lo <input id="lo" type="range" min="0" max="0.6" step="0.05" value="0.15"><span id="loV"></span></label>
+    <label>hi <input id="hi" type="range" min="0.4" max="1" step="0.05" value="0.85"><span id="hiV"></span></label>
+    <label><input id="temporal" type="checkbox" checked> 깜빡임 억제</label>
+    <label><input id="decontam" type="checkbox" checked> 배경색 번짐 제거</label>
+  </div>
+  <div class="row">
+    <button id="bRvm" class="go">고화질 스틸 (RVM) 지금 프레임</button>
+    <label><input id="rvmLive" type="checkbox"> RVM 매 프레임 (영상용 측정)</label>
+    <label>RVM 축소비 <select id="ratio"><option>0.25</option><option>0.4</option><option selected>0.5</option><option>0.6</option><option>1</option></select></label>
+    <label>반복 <select id="passes"><option>1</option><option selected>2</option><option>3</option></select></label>
+  </div>
+  <pre id="stat">사진이나 영상을 고르세요.</pre>
+  <div class="grid" id="grid">
+    <span></span><span class="hd">흰 배경</span><span class="hd">진한 보라</span><span class="hd">복잡한 무늬</span><span class="hd">알파</span>
+  </div>
+  <video id="src" playsinline muted loop></video>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.22.0/dist/tf.min.js" integrity="sha384-vE8hbVJ4lezako5rlvE7bY0BVzWlFhZncPlckrqNwcUQpVtgbENTgZ8TBbnPjZre" crossorigin="anonymous"></script>
+<script type="module">
+import { createRefiner } from "./refine.js";
+
+const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const GCS = "https://storage.googleapis.com/mediapipe-models/image_segmenter";
+const URLS = {
+  square: `${GCS}/selfie_segmenter/float16/1/selfie_segmenter.tflite`,
+  landscape: `${GCS}/selfie_segmenter_landscape/float16/1/selfie_segmenter_landscape.tflite`,
+  multi: `${GCS}/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite`,
+  hair: `${GCS}/hair_segmenter/float32/1/hair_segmenter.tflite`,
+};
+const RVM = "models/rvm/model.json";   // GitHub release asset has no CORS: self-host (GPL-3.0, see cutout.md)
+const MAX = 960;                       // stills are at most 960 px on the long side
+const $ = id => document.getElementById(id);
+const Q = new URLSearchParams(location.search);
+const R = window.__r = {};             // numbers for the headless run
+const say = () => { $("stat").textContent = JSON.stringify(R, null, 1).replace(/[{}"]/g, ""); };
+
+// ---------- rows x backgrounds ----------
+const ROWS = [["before", "전: 지금 앱"], ["after", "후: 가이드 필터"], ["rvm", "고화질: RVM"]];
+const COLS = ["white", "purple", "busy", "alpha"];
+const tiles = {};
+for (const [k, label] of ROWS) {
+  const b = document.createElement("b"); b.textContent = label; $("grid").append(b);
+  tiles[k] = COLS.map(() => { const c = document.createElement("canvas"); $("grid").append(c); return c; });
+}
+let W = 0, H = 0;
+const frame = document.createElement("canvas"), fctx = frame.getContext("2d", { willReadFrequently: false });
+const bgs = {};
+function makeBgs() {
+  for (const k of ["white", "purple", "busy"]) {
+    const c = bgs[k] = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    if (k === "white") { x.fillStyle = "#fff"; x.fillRect(0, 0, W, H); }
+    if (k === "purple") { x.fillStyle = "#2a1740"; x.fillRect(0, 0, W, H); }
+    if (k === "busy") {
+      const cols = ["#ffcf3f", "#2bb3a3", "#ff5d73", "#3d5afe", "#9ccc65"];
+      for (let i = -H; i < W; i += 24) { x.fillStyle = cols[(i / 24 + 99) % 5 | 0]; x.beginPath();
+        x.moveTo(i, 0); x.lineTo(i + 24, 0); x.lineTo(i + 24 + H, H); x.lineTo(i + H, H); x.fill(); }
+      x.fillStyle = "#fff"; for (let y = 10; y < H; y += 36) for (let xx = (y / 36 % 2) * 18; xx < W; xx += 36) { x.beginPath(); x.arc(xx, y, 5, 0, 7); x.fill(); }
+    }
+  }
+}
+const crop = Q.get("crop") && Q.get("crop").split(",").map(Number);   // x,y,w,h as fractions; zoom 3x
+if (crop) document.body.classList.add("zoom");
+const full = document.createElement("canvas"), fullx = full.getContext("2d");
+function show(row, cut) {
+  tiles[row].forEach((t, i) => {
+    full.width = W; full.height = H;
+    if (COLS[i] === "alpha") { fullx.clearRect(0, 0, W, H);
+      fullx.drawImage(cut, 0, 0, W, H); fullx.globalCompositeOperation = "source-in";
+      fullx.fillStyle = "#fff"; fullx.fillRect(0, 0, W, H); fullx.globalCompositeOperation = "destination-over";
+      fullx.fillStyle = "#000"; fullx.fillRect(0, 0, W, H); fullx.globalCompositeOperation = "source-over"; }
+    else { fullx.drawImage(bgs[COLS[i]], 0, 0); fullx.drawImage(cut, 0, 0, W, H); }
+    const x = t.getContext("2d");
+    if (crop) {
+      const [cx, cy, cw, ch] = [crop[0] * W, crop[1] * H, crop[2] * W, crop[3] * H].map(Math.round);
+      t.width = cw * 3; t.height = ch * 3; x.imageSmoothingEnabled = false; x.drawImage(full, cx, cy, cw, ch, 0, 0, cw * 3, ch * 3);
+    } else { t.width = W; t.height = H; x.drawImage(full, 0, 0); }
+  });
+}
+
+// ---------- segmenters ----------
+let vision, segs = {}, curModel = Q.get("model") || "square";
+$("model").value = curModel;
+async function seg(name) {
+  if (segs[name]) return segs[name];
+  const t0 = performance.now();
+  const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+  vision = vision || await FilesetResolver.forVisionTasks(MP + "/wasm");
+  const mk = d => ImageSegmenter.createFromOptions(vision, { baseOptions: { modelAssetPath: URLS[name], delegate: d },
+    runningMode: "VIDEO", outputConfidenceMasks: true, outputCategoryMask: false });
+  let d = "GPU"; try { segs[name] = await mk("GPU"); } catch { d = "CPU"; segs[name] = await mk("CPU"); }
+  R["load_" + name] = `${d} ${Math.round(performance.now() - t0)}ms`;
+  return segs[name];
+}
+let ts = 0;
+function run(s, src) {   // -> {data: Float32Array copy of every mask, n, w, h}
+  let out;
+  s.segmentForVideo(src, ts = Math.max(ts + 1, performance.now()), res => {
+    const m = res.confidenceMasks;
+    out = { n: m.length, w: m[0].width, h: m[0].height, masks: m.map(x => x.getAsFloat32Array().slice()) };
+  });
+  return out;
+}
+// person probability for the chosen model
+async function personMask(src) {
+  const sq = run(await seg(curModel === "multi" ? "multi" : curModel === "landscape" ? "landscape" : "square"), src);
+  R.masks = `${sq.n} x ${sq.w}x${sq.h}`;
+  let p = sq.n === 1 ? sq.masks[0] : curModel === "multi" ? sq.masks[0].map(v => 1 - v) : sq.masks[sq.n - 1];
+  if (sq.n === 2 && curModel !== "multi") R.polarity = `bg ${sq.masks[0][(sq.h >> 1) * sq.w + (sq.w >> 1)].toFixed(2)} / person ${sq.masks[1][(sq.h >> 1) * sq.w + (sq.w >> 1)].toFixed(2)} at centre`;
+  if (curModel === "hair") {      // union with the 512x512 hair mask, resampled onto the selfie grid
+    const h = run(await seg("hair"), src), hm = h.masks[h.n - 1];
+    p = p.slice();
+    for (let y = 0; y < sq.h; y++) for (let x = 0; x < sq.w; x++) {
+      const v = hm[((y * h.h / sq.h) | 0) * h.w + ((x * h.w / sq.w) | 0)];
+      const i = y * sq.w + x; if (v > p[i]) p[i] = v;
+    }
+  }
+  return { data: p, width: sq.w, height: sq.h };
+}
+
+// ---------- before: the spike's pipeline (alpha canvas, destination-in) ----------
+const mc = document.createElement("canvas"), mctx = mc.getContext("2d"), cut0 = document.createElement("canvas"), c0 = cut0.getContext("2d");
+function before(m) {
+  if (mc.width !== m.width || mc.height !== m.height) { mc.width = m.width; mc.height = m.height; }
+  const img = mctx.createImageData(m.width, m.height);
+  for (let i = 0; i < m.data.length; i++) img.data[i * 4 + 3] = 255 * m.data[i];
+  mctx.putImageData(img, 0, 0);
+  cut0.width = W; cut0.height = H;
+  c0.globalCompositeOperation = "copy"; c0.drawImage(frame, 0, 0);
+  c0.globalCompositeOperation = "destination-in"; c0.drawImage(mc, 0, 0, W, H);
+  return cut0;
+}
+
+// ---------- after: refine.js ----------
+const refiner = createRefiner();
+const rgl = refiner.canvas.getContext("webgl2"), px = new Uint8Array(4);
+const dbg = rgl.getExtension("WEBGL_debug_renderer_info");
+R.gpu = dbg ? rgl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) : "?";
+const opts = () => ({ radius: +$("radius").value, eps: 10 ** +$("eps").value, lo: +$("lo").value, hi: +$("hi").value,
+  temporal: $("temporal").checked ? 0.5 : 0, decontam: $("decontam").checked ? 1 : 0 });
+for (const id of ["radius", "eps", "lo", "hi"]) { const f = () => $(id + "V").textContent = id === "eps" ? (10 ** +$(id).value).toExponential(0) : $(id).value; $(id).oninput = () => { f(); if (still) process(); }; f(); }
+for (const id of ["temporal", "decontam"]) $(id).onchange = () => still && process();
+$("model").onchange = async () => { curModel = $("model").value; refiner.reset(); if (still) process(); };
+
+// ---------- RVM (TF.js, WebGL backend) ----------
+let rvm, rec = null;
+const rvmCut = document.createElement("canvas");
+async function rvmRun(keepState) {
+  if (!rvm) { const t0 = performance.now(); await tf.setBackend("webgl"); rvm = await tf.loadGraphModel(RVM);
+    R.load_rvm = `${tf.getBackend()} ${Math.round(performance.now() - t0)}ms`; }
+  const t0 = performance.now();
+  const src = tf.tidy(() => tf.browser.fromPixels(frame).expandDims(0).div(255));
+  const dr = tf.scalar(+$("ratio").value);
+  if (!keepState || !rec) { rec && tf.dispose(rec); rec = [0, 0, 0, 0].map(() => tf.scalar(0)); }
+  let fgr, pha;
+  for (let i = 0; i < (keepState ? 1 : +$("passes").value); i++) {   // still: re-run on itself to warm the recurrent state
+    fgr && tf.dispose([fgr, pha]);
+    const o = await rvm.executeAsync({ src, r1i: rec[0], r2i: rec[1], r3i: rec[2], r4i: rec[3], downsample_ratio: dr },
+      ["fgr", "pha", "r1o", "r2o", "r3o", "r4o"]);
+    tf.dispose(rec); [fgr, pha, ...rec] = o;
+  }
+  const rgba = tf.tidy(() => tf.concat([fgr, pha], -1).squeeze(0).clipByValue(0, 1));
+  rvmCut.width = W; rvmCut.height = H;
+  await tf.browser.toPixels(rgba, rvmCut);
+  tf.dispose([src, dr, fgr, pha, rgba]);
+  return performance.now() - t0;
+}
+$("bRvm").onclick = async () => { const ms = await rvmRun(false); R.rvm_ms = Math.round(ms); show("rvm", rvmCut); say(); };
+
+// ---------- sources ----------
+const vid = $("src"); let still = null, loop = false, avg = {}, seen = 0;
+function setFrameSize(sw, sh) {
+  const s = Math.min(1, MAX / Math.max(sw, sh)); W = Math.round(sw * s / 2) * 2; H = Math.round(sh * s / 2) * 2;
+  frame.width = W; frame.height = H; makeBgs(); R.size = `${W}x${H}`;
+}
+async function process() {
+  fctx.drawImage(still || vid, 0, 0, W, H);
+  const t0 = performance.now();
+  const m = await personMask(frame);
+  const t1 = performance.now();
+  show("before", before(m));
+  const t2 = performance.now();
+  refiner.refine(frame, m, opts()); rgl.readPixels(0, 0, 1, 1, rgl.RGBA, rgl.UNSIGNED_BYTE, px);   // sync for honest ms
+  const t3 = performance.now();
+  show("after", refiner.canvas);
+  let tr = 0;
+  if (!still && $("rvmLive").checked) { tr = await rvmRun(true); show("rvm", rvmCut); }
+  seen++;   // first 5 frames compile shaders: keep them out of the averages
+  const add = (k, v) => { if (!still && seen <= 5) return; const a = avg[k] = avg[k] || [0, 0]; a[0] += v; a[1]++; R[k] = +(a[0] / a[1]).toFixed(1); };
+  add("seg_ms", t1 - t0); add("before_ms", t2 - t1); add("refine_ms", t3 - t2); if (tr) add("rvm_live_ms", tr);
+  R.frames = seen;
+  say();
+}
+async function tick() {
+  if (!loop) return;
+  if (vid.readyState >= 2) await process();
+  const n = +(Q.get("frames") || 0);
+  if (n && R.frames >= n) { loop = false; window.__done = true; return; }
+  requestAnimationFrame(tick);
+}
+async function open(url, isVideo) {
+  loop = false; still = null; avg = {}; seen = 0; refiner.reset(); rec && tf.dispose(rec); rec = null;
+  for (const k of Object.keys(R)) if (/_ms|frames/.test(k)) delete R[k];
+  if (isVideo) {
+    vid.srcObject = null; vid.src = url; await vid.play(); await new Promise(r => vid.readyState >= 2 ? r() : vid.onloadeddata = r);
+    setFrameSize(vid.videoWidth, vid.videoHeight); loop = true; tick();
+  } else {
+    const img = new Image(); img.src = url; await img.decode(); still = img;
+    setFrameSize(img.naturalWidth, img.naturalHeight); await process();
+  }
+}
+document.querySelectorAll("[data-src]").forEach(b => b.onclick = () => open(b.dataset.src, /\.(mp4|webm)$/.test(b.dataset.src)));
+$("file").onchange = e => { const f = e.target.files[0]; if (f) open(URL.createObjectURL(f), f.type.startsWith("video")); };
+$("bCam").onclick = async () => {
+  loop = false; still = null; avg = {}; seen = 0; refiner.reset();
+  vid.src = ""; vid.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, aspectRatio: { ideal: 4 / 3 } } });
+  await vid.play(); await new Promise(r => vid.readyState >= 2 ? r() : vid.onloadeddata = r);
+  setFrameSize(vid.videoWidth, vid.videoHeight); loop = true; tick();
+};
+
+// headless: ?src=media/hair2.jpg&rvm=1[&crop=..][&model=..]  or  ?src=media/interview.mp4&frames=90[&rvmLive=1]
+(async () => {
+  try {
+    const s = Q.get("src"); if (!s) return;
+    if (Q.get("rvmLive")) $("rvmLive").checked = true;
+    if (Q.get("ratio")) $("ratio").value = Q.get("ratio");
+    await open(s, /\.(mp4|webm)$/.test(s));
+    if (Q.get("rvm")) { await $("bRvm").onclick(); R.rvm_ms2 = Math.round(await rvmRun(false)); show("rvm", rvmCut); say(); }
+    if (!Q.get("frames")) window.__done = true;
+  } catch (e) { R.error = String(e && e.stack || e); say(); window.__done = true; }
+})();
+</script>
+</body>
+</html>

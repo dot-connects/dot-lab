@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>compose dev</title>
+<!-- Dev harness for compose/frames/filters. Test media in dev-media/ (made with ?prep=1); both are deleted before ship. -->
+<style>
+  body { margin: 0; padding: 12px; font: 14px system-ui, sans-serif; background: #eee; color: #222; }
+  select, button { font: inherit; margin: 0 4px 8px 0; }
+  img, video { width: 300px; display: inline-block; vertical-align: top; margin-right: 8px; box-shadow: 0 2px 8px #0003; }
+  #log { white-space: pre-wrap; font: 12px monospace; }
+</style>
+<div>
+  <select id="bg"></select><select id="fr"></select><select id="fi"></select>
+  <button id="go">사진</button><button id="rec">영상</button>
+</div>
+<img id="out" alt=""><video id="vout" controls muted playsinline loop></video>
+<div id="log"></div>
+<script type="module">
+import { BACKGROUNDS, drawStrip, recordMovingStrip, loadClip, LAYOUT } from "./js/compose.js";
+import { FRAMES } from "./js/frames.js";
+import { FILTERS } from "./js/filters.js";
+
+const $ = id => document.getElementById(id);
+const log = s => { $("log").textContent += s + "\n"; console.log(s); };
+const MEDIA = "dev-media/";
+const q = new URLSearchParams(location.search);
+
+// ---------- prep: real footage -> Cut files ([raw|matte] clip, raw jpg, cut png) via MediaPipe ----------
+async function prep() {
+  const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+  const MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
+  const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+  const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
+  const mk = d => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate: d },
+    runningMode: "VIDEO", outputConfidenceMasks: true, outputCategoryMask: false });
+  let seg; try { seg = await mk("GPU"); } catch { seg = await mk("CPU"); }
+  const out = {};
+  const mc = document.createElement("canvas"), mx = mc.getContext("2d");
+  let ts = 0;
+  const matte = (v, personAt) => {            // latest mask -> mc (white person on black); polarity from a known person pixel
+    seg.segmentForVideo(v, ++ts * 33, res => {
+      const masks = res.confidenceMasks, m = masks[masks.length - 1];
+      const a = m.getAsFloat32Array(), w = m.width, h = m.height;
+      const inv = a[Math.floor(personAt[1] * h) * w + Math.floor(personAt[0] * w)] < 0.5;
+      if (mc.width !== w) { mc.width = w; mc.height = h; }
+      const img = mx.createImageData(w, h);
+      for (let i = 0; i < a.length; i++) { const g = 255 * (inv ? 1 - a[i] : a[i]); img.data.set([g, g, g, 255], i * 4); }
+      mx.putImageData(img, 0, 0);
+    });
+  };
+  for (const side of ["a", "b"]) {
+    const personAt = side === "a" ? [0.33, 0.55] : [0.66, 0.55];
+    const v = document.createElement("video"); v.muted = true; v.playsInline = true; v.src = MEDIA + `src-${side}.mp4`;
+    await new Promise(r => (v.onloadeddata = r));
+    const W = v.videoWidth, H = v.videoHeight;
+    const T0 = [0.4, 2.4, 4.4, 5.9];
+    for (let k = 0; k < 4; k++) {
+      // masks frame by frame (seek), clip is built from them with ffmpeg: hstack(src trim, masks) -> H.264
+      let fr;   // ffmpeg-extracted frames (headless does not repaint a paused video after a seek)
+      for (let f = 1; f <= 60; f++) {
+        const src = MEDIA + `frames/${side}${k + 1}-${String(f).padStart(2, "0")}.jpg`;
+        fr = await img(src).catch(() => img(src + "?r")).catch(() => img(src + "?rr"));
+        matte(fr, personAt);
+        out[`m-${side}${k + 1}-${String(f).padStart(2, "0")}.png`] = mc.toDataURL("image/png").split(",")[1];
+      }
+      // stills at the shutter (last clip frame)
+      const still = document.createElement("canvas"); still.width = W; still.height = H; const sx = still.getContext("2d");
+      sx.drawImage(fr, 0, 0);
+      out[`${side}${k + 1}-raw.jpg`] = still.toDataURL("image/jpeg", 0.9).split(",")[1];
+      const al = document.createElement("canvas"); al.width = W; al.height = H; const ax = al.getContext("2d");
+      ax.drawImage(mc, 0, 0, W, H);
+      const id = ax.getImageData(0, 0, W, H); for (let i = 0; i < id.data.length; i += 4) id.data[i + 3] = id.data[i]; ax.putImageData(id, 0, 0);
+      sx.globalCompositeOperation = "destination-in"; sx.drawImage(al, 0, 0);
+      out[`${side}${k + 1}-cut.png`] = still.toDataURL("image/png").split(",")[1];
+      log(`${side}${k + 1} done`);
+    }
+  }
+  return out;
+}
+
+// ---------- load the prepared Cuts ----------
+const img = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function side(s) {
+  const cuts = [];
+  for (let k = 1; k <= 4; k++) {
+    const blob = await (await fetch(MEDIA + `${s}${k}-clip.mp4`)).blob();
+    cuts.push({ raw: await img(MEDIA + `${s}${k}-raw.jpg`), cut: await img(MEDIA + `${s}${k}-cut.png`), clip: await loadClip(URL.createObjectURL(blob)) });
+  }
+  return { cuts };
+}
+let A, B;
+async function media() { if (!A) [A, B] = await Promise.all([side("a"), side("b")]); return { a: A, b: B }; }
+const blobImg = async blob => img(URL.createObjectURL(blob));
+
+// contact sheet: rows x cols of strips scaled by `scale`, with labels
+async function sheet(items, cols, scale) {
+  const w = LAYOUT.W * scale, h = LAYOUT.H * scale, pad = 10, lab = 26;
+  const rows = Math.ceil(items.length / cols);
+  const cv = document.createElement("canvas"); cv.width = cols * (w + pad) + pad; cv.height = rows * (h + pad + lab) + pad;
+  const x = cv.getContext("2d"); x.fillStyle = "#d9d4cf"; x.fillRect(0, 0, cv.width, cv.height);
+  x.font = "600 16px system-ui"; x.fillStyle = "#222";
+  const m = await media();
+  for (let n = 0; n < items.length; n++) {
+    const it = items[n], c = n % cols, r = Math.floor(n / cols);
+    const im = await blobImg(await drawStrip({ ...m, ...it, date: "2026.10.26" }));
+    x.drawImage(im, pad + c * (w + pad), pad + lab + r * (h + pad + lab), w, h);
+    x.fillText(`${it.frame} / ${it.filter} / ${it.bg}`, pad + c * (w + pad), pad + 18 + r * (h + pad + lab));
+  }
+  return cv.toDataURL("image/png").split(",")[1];
+}
+// one cell at full size per (bg, filter): filter look check
+async function cellSheet(bgs, filters, cell = 0) {
+  const m = await media(), { CW, CH, M, GAP } = LAYOUT, lab = 24;
+  const cv = document.createElement("canvas"); cv.width = filters.length * CW; cv.height = bgs.length * (CH + lab);
+  const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height); x.font = "600 16px system-ui"; x.fillStyle = "#222";
+  for (let r = 0; r < bgs.length; r++) for (let c = 0; c < filters.length; c++) {
+    const im = await blobImg(await drawStrip({ ...m, bg: bgs[r], frame: "black", filter: filters[c], date: "2026.10.26" }));
+    x.drawImage(im, M, M + cell * (CH + GAP), CW, CH, c * CW, r * (CH + lab) + lab, CW, CH);
+    x.fillText(`${bgs[r]} / ${filters[c]}`, c * CW + 6, r * (CH + lab) + 18);
+  }
+  return cv.toDataURL("image/png").split(",")[1];
+}
+async function strips(items) {      // full-size JPGs, named frame-filter-bg.jpg
+  const m = await media(), files = {};
+  for (const it of items) {
+    const bl = await drawStrip({ ...m, ...it, date: "2026.10.26" });
+    const bytes = new Uint8Array(await bl.arrayBuffer());
+    let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    files[`${it.frame}-${it.filter}-${it.bg}.jpg`] = btoa(bin);
+  }
+  return files;
+}
+async function record(opts) {
+  const m = await media(), t0 = performance.now();
+  let ticks = 0;
+  const { blob, type } = await recordMovingStrip({ ...m, ...opts, date: "2026.10.26", onProgress: () => ticks++ });
+  const bytes = new Uint8Array(await blob.arrayBuffer());
+  let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return { type, ticks, size: blob.size, ms: Math.round(performance.now() - t0), b64: btoa(bin) };
+}
+window.dev = { prep, media, sheet, strips, cellSheet, record, FRAMES: FRAMES.map(f => f.id), FILTERS: FILTERS.map(f => f.id), BGS: BACKGROUNDS.map(b => b.id) };
+
+// manual UI
+for (const [id, list] of [["bg", BACKGROUNDS], ["fr", FRAMES], ["fi", FILTERS]])
+  for (const o of list) $(id).add(new Option(o.label, o.id));
+$("go").onclick = async () => { const m = await media(); $("out").src = URL.createObjectURL(await drawStrip({ ...m, bg: $("bg").value, frame: $("fr").value, filter: $("fi").value })); };
+$("rec").onclick = async () => { const m = await media(); const r = await recordMovingStrip({ ...m, bg: $("bg").value, frame: $("fr").value, filter: $("fi").value });
+  $("vout").src = URL.createObjectURL(r.blob); log(`${r.type} ${r.blob.size}`); };
+window.devReady = true;
+</script>
+</html>

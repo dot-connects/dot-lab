@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>capture harness</title>
+<style>
+body{margin:0;background:#f3f1ee;color:#1d1b22;font:13px/1.4 system-ui,sans-serif}
+main{padding:8px;display:flex;flex-direction:column;gap:8px}
+#stage{position:relative;width:100%;background:#2a1640}
+#stage canvas{width:100%;display:block}
+#tick{position:absolute;inset:0;display:grid;place-items:center;font:700 80px system-ui;color:#fff;text-shadow:0 2px 8px #000}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:4px}
+.grid img,.grid video{width:100%;display:block}
+.checker{background:repeating-conic-gradient(#bbb 0 25%,#fff 0 50%) 0 0/16px 16px}
+.purple{background:#2a1640}
+pre{white-space:pre-wrap;font:11px ui-monospace,monospace;margin:0}
+h2{font-size:13px;margin:4px 0 0}
+</style>
+</head>
+<body>
+<main>
+  <div id="stage"><canvas id="out"></canvas><div id="tick"></div></div>
+  <button id="go">카메라 + 네 컷</button>
+  <pre id="log"></pre>
+  <h2>raw</h2><div class="grid" id="raw"></div>
+  <h2>cut · checker</h2><div class="grid" id="cutC"></div>
+  <h2>cut · purple</h2><div class="grid" id="cutP"></div>
+  <h2>clips</h2><div class="grid" id="clips"></div>
+</main>
+<video id="cam" playsinline muted style="position:absolute;left:0;top:0;width:2px;opacity:0"></video>
+<script type="module">
+import { startCam, camState, bindZoomFocus } from "./js/camera.js";
+import { loadSegmenter, segmentFrame, drawCutout, drawMatte, stats, TUNE, prefetchStill } from "./js/segment.js";
+const Q = new URLSearchParams(location.search);
+for (const [k, v] of Q) if (k in TUNE) TUNE[k] = +v;   // tuning runs: ?lo=0.4&hi=0.9, ?still=0 (live matte only)
+import { shootFour } from "./js/capture.js";
+import { app, inApp } from "./js/env.js";
+const $ = id => document.getElementById(id);
+const video = $("cam"), out = $("out"), ctx = out.getContext("2d");
+const log = s => { $("log").textContent += s + "\n"; };
+const R = window.result = { app, inApp };
+// main-thread stalls (the multiclass warm-up is a synchronous GPU call): every long task, with its start time
+const longT = R.longTasks = [];
+try { new PerformanceObserver(l => l.getEntries().forEach(e => longT.push([Math.round(e.startTime), Math.round(e.duration)])))
+  .observe({ type: "longtask", buffered: true }); } catch {}
+const gaps = R.frameGaps = [];      // rAF gaps > 250 ms: [start, ms] (what a frozen preview looks like)
+let lastF = 0; (function f(t) { if (lastF && t - lastF > 250) gaps.push([Math.round(lastF), Math.round(t - lastF)]); lastF = t; requestAnimationFrame(f); })(0);
+
+function preview() {
+  const w = video.videoWidth, h = video.videoHeight;
+  if (out.width !== w) { out.width = w; out.height = h; }
+  segmentFrame(video);
+  ctx.fillStyle = "#2a1640"; ctx.fillRect(0, 0, w, h);
+  drawCutout(ctx, video, w, h, camState.mirror);
+  requestAnimationFrame(preview);
+}
+
+// polarity probe: matte brightness at the frame centre vs the top corners
+function probe() {
+  const c = Object.assign(document.createElement("canvas"), { width: 64, height: 48 }), x = c.getContext("2d");
+  drawMatte(x, 64, 48, false);
+  const d = x.getImageData(0, 0, 64, 48).data, at = (px, py) => d[(py * 64 + px) * 4];
+  return { centre: at(32, 30), topLeft: at(2, 2), topRight: at(61, 2) };
+}
+
+async function run() {
+  $("go").disabled = true;
+  const t0 = performance.now();
+  await startCam(video);
+  bindZoomFocus($("stage"));
+  const stillP = prefetchStill();    // what app.js does right after the camera is on
+  R.camAt = Math.round(performance.now());
+  R.video = `${video.videoWidth}x${video.videoHeight}`;
+  await loadSegmenter();
+  R.loadMs = Math.round(performance.now() - t0);
+  requestAnimationFrame(preview);
+  await new Promise(r => setTimeout(r, 1500));
+  if (Q.has("waitStill")) { await stillP; R.stillAt = Math.round(performance.now()); }   // A/B runs: every cut on multiclass
+  R.probe = probe();
+  R.masks = stats.masks; R.mask = `${stats.maskW}x${stats.maskH}`; R.delegate = stats.delegate; R.webgl = stats.webgl;
+  log(JSON.stringify(R));
+  const cuts = await shootFour({ video, onTick: n => { $("tick").textContent = n || ""; },
+    onCut: i => log(`cut ${i + 1} done`) });
+  $("tick").textContent = "";
+  const ms = stats.ms.slice(-60);
+  R.segMs = +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1);
+  R.still = { ...stats.still, cuts: stats.still.cuts.map(({ live, ...c }) => c) };
+  window.cuts = cuts;                // A/B runs: cuts[i].cut vs stats.still.cuts[i].live (?both)
+  R.cuts = [];
+  for (const c of cuts) {
+    const u = URL.createObjectURL;
+    const img = (src, parent) => { const i = new Image(); i.src = src; $(parent).append(i); return i; };
+    const raw = img(u(c.raw), "raw"); img(u(c.cut), "cutC").parentElement; img(u(c.cut), "cutP");
+    await raw.decode();
+    const v = Object.assign(document.createElement("video"), { muted: true, playsInline: true, loop: false, src: u(c.clip) });
+    $("clips").append(v);
+    await new Promise(r => v.onloadedmetadata = r);
+    let dur = v.duration;
+    if (!isFinite(dur)) { const t = performance.now(); await v.play(); await new Promise(r => v.onended = r); dur = (performance.now() - t) / 1000; }
+    v.loop = true; v.play();
+    R.cuts.push({ raw: c.raw.size, cut: c.cut.size, clip: c.clip.size, clipType: c.clipType,
+      still: `${raw.naturalWidth}x${raw.naturalHeight}`, clipWH: `${v.videoWidth}x${v.videoHeight}`, dur: +dur.toFixed(2) });
+  }
+  document.querySelectorAll("#cutC img").forEach(i => i.classList.add("checker"));
+  document.querySelectorAll("#cutP img").forEach(i => i.classList.add("purple"));
+  log(JSON.stringify(R.cuts, null, 0));
+  log(`segMs ${R.segMs}`);
+  window.done = true;
+}
+$("go").onclick = run;
+if (new URLSearchParams(location.search).has("auto")) run().catch(e => { R.error = e.stack || String(e); log(R.error); window.done = true; });
+</script>
+</body>
+</html>
