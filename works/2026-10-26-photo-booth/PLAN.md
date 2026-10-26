@@ -2,390 +2,268 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** A phone web work where A shoots four cuts (each with the 2 s before the shutter), shares one link, B opens it and
-shoots beside A's cut-out; once both are done each saves a 4-cut image and a moving 4-cut video with a chosen background.
+**Goal:** A shoots four cuts (each with the 2 s before the shutter) and shares a link; B shoots beside A's cut-out; then
+anyone with the link saves a 4-cut image and a moving 4-cut video on a chosen background.
 
-**Architecture:** Static client on GitHub Pages (`site/`, ES modules, no build) does all camera, cut-out (MediaPipe
-selfie_segmenter) and compositing on the phone. A small Cloudflare Worker (`worker/`) only issues link ids and write
-tokens, enforces size caps and the A-then-B order, and proxies R2 reads/writes; R2 lifecycle deletes everything after 7
-days. In-app browsers shoot; saving happens in Chrome (in-app saves were measured to fail).
+**Architecture:** Static client on GitHub Pages (`site/`, ES modules, no build) does camera, cut-out (MediaPipe
+selfie_segmenter) and compositing on the phone. A Cloudflare Worker (`worker/`) only stores files in R2, checks write
+tokens and the A-then-B order; R2 lifecycle deletes after 7 days. In-app browsers shoot; saving happens in Chrome
+(in-app saves were measured to fail).
 
-**Tech Stack:** vanilla JS (ES modules), Canvas 2D, MediaRecorder, `@mediapipe/tasks-vision@0.10.14` (jsDelivr),
-Cloudflare Workers + R2 (wrangler 4), Node 24 `node:test` for Worker tests, headless Chrome + CDP for runs.
+**Tech Stack:** vanilla JS, Canvas 2D, WebGL, MediaRecorder, MediaPipe tasks-vision 0.10.14, Cloudflare Workers + R2.
 
-**Spec:** `works/2026-10-26-photo-booth/brief.md` (read first). Spike with measured code: `spike/index.html`.
+**Spec:** `works/2026-10-26-photo-booth/brief.md`. Measured code: `spike/index.html`. Review log:
+`C:\DC\DD\docs\archive\2026-10-26-photo-booth-plan-review\`.
 
 ## Global Constraints
 
-- Claude creates no accounts and posts nothing. Cloudflare account + `wrangler login`: operator, via
-  `scripts/wizard-cloudflare.bat`. No secret, token or account credential in the repo.
-- Every CDN URL pinned: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14`, model
-  `https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/latest/selfie_segmenter.tflite`.
-- Link lifetime 7 days (R2 lifecycle + Worker check). Caps: 3 MB per file, 30 MB per link. Only the camera can make a
-  photo (no file upload, so nobody composites a stranger's picture).
-- Camera: never crop the frame (stage aspect = video aspect), widest zoom on start, mirror is a toggle (front on, back off),
-  front/back switch, pinch zoom + tap focus only where `getCapabilities()` offers them. Everything saved = what the
-  preview showed.
-- In-app (Threads/Instagram/KakaoTalk UA): shooting stays in-app; every save button becomes "크롬에서 열어 저장하기"
-  (`kakaotalk://web/openExternal?url=` / `intent://…#Intent;scheme=https;package=com.android.chrome;end`). Camera
-  request with no answer in 5 s → same Chrome button.
-- In-app touch fixes from `dot-lab/README.md` ("Touch input inside Threads / Instagram") on every element that reads
-  drags or pinches.
-- UI copy Korean, short, from the user's side. No score.
-- Tests only where wrong is expensive (global CLAUDE.md): the Worker's state machine and boundary checks. Layout,
-  colours and UI glue are verified by running (headless Chrome 430 px + CDP fake camera, then the operator's phone).
+- Claude creates no accounts and posts nothing. Cloudflare account + `wrangler login` done by the operator
+  (`scripts/wizard-cloudflare.bat`, 2026-10-26; `npx wrangler@4 whoami` OK). No token or credential in the repo.
+- No encryption (operator 2026-10-26). Disclose instead: the landing and the upload button say "올리면 이 링크를 가진
+  사람은 7일 동안 볼 수 있어요. 7일 뒤 자동 삭제". Only the camera makes photos (no file upload).
+- Pinned URLs: `https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14`, model
+  `https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite`
+  (same bytes as `latest`, ETag 3b2e3e1c…, checked 10-26).
+- Camera: never crop (stage aspect = video aspect), widest zoom on start, mirror toggle (front on, back off), front/back
+  switch, pinch zoom + tap focus only where `getCapabilities()` offers them. Saved = what the preview showed.
+- In-app (Threads/Instagram/KakaoTalk UA): shoot in-app; saves become "크롬에서 열어 저장하기" (`chromeUrl`). iOS in-app
+  has no hand-off: show "공유 메뉴 → Safari로 열기" text. Camera request with no answer in 5 s → same hand-off.
+- README "Touch input inside Threads / Instagram" fixes on the stage (pinch, tap).
+- UI copy Korean, short, no score. Footer text: `따로 같이 네컷 · YYYY.MM.DD` (no names, no place names).
+- Tests only for the Worker (state machine + boundary checks). Everything else is verified by running: headless Chrome
+  430 px + CDP fake camera + CDP touch, then the operator's phone.
+
+## Shared numbers (sources)
+
+| What | Value | Source |
+|---|---|---|
+| Strip canvas | 600 × 1800 px | 2 × 6 in photo-booth strip at 300 dpi (the format of the 50 reference strips) |
+| Strip layout | margin 24, gap 16, footer 200 → cell 552 × 382 | our layout; cell = (1800 − 24 − 200 − 3·16) / 4 |
+| Cell fill | center-crop the 4:3 camera frame to 552:382 | our rule; same crop in preview and save |
+| Person placement | as shot: each cut-out keeps its position in its own camera frame | our rule (preview = save) |
+| Pre-roll | 2.0 s, recorder starts at countdown "2", stops at the shutter | brief |
+| Moving strip | 6 s = each 2 s clip looped 3× | our rule |
+| Link life / caps | 7 days; 3 MB per file; 12 files per side | brief + Worker |
 
 ## File map
 
-```
-works/2026-10-26-photo-booth/
-  mockups/app/index.html      Task 1  three app-screen directions, live camera (served by Pages: Artifacts cannot open a camera)
-  worker/src/index.js         Task 2  routes + state machine
-  worker/test/worker.test.js  Task 2  node:test with an in-memory R2 fake
-  worker/wrangler.toml        Task 3
-  site/index.html             Task 4+ screens (landing, shoot, upload, share/wait, done, expired)
-  site/js/env.js              Task 4  in-app detection, Chrome hand-off URL
-  site/js/camera.js           Task 4  startCam / flip / mirror / zoom / focus (from spike)
-  site/js/segment.js          Task 4  loadSegmenter, cutFrame(video, mirror) -> canvas with alpha
-  site/js/capture.js          Task 4  shootFour(): countdown, 2 s pre-roll clips (raw + green key), stills (jpg + png)
-  site/js/compose.js          Task 5  drawStrip(), recordMovingStrip() with background / frame choice, chroma key
-  site/js/api.js              Task 6  Worker client
-  site/js/app.js              Task 6  screen flow, roles A/B from ?s=<id>
-  manifest.json               Task 7
-```
+`mockups/app/index.html` (T1) · `worker/{package.json, src/index.js, test/worker.test.js}` (T2) · `worker/wrangler.toml`
+(T3) · `site/index.html`, `site/js/{env,camera,segment,capture}.js` (T4) · `site/js/compose.js` (T5) ·
+`site/js/{api,app}.js` (T6) · `manifest.json`, `out/`, `reel/`, `site/sample-strip.jpg` (T8).
+
+Order and gates: T1 ‖ T2 → T3 → T4 → (T1 pick) → T5 → T6 → T7 → T8. T4 does not wait for the pick; T5's colours,
+frames and backgrounds do.
 
 ---
 
-### Task 1: App-screen mockups with a live camera (operator picks)
+### Task 1: App-screen mockups on a live camera (operator picks)
 
-**Files:** Create `mockups/app/index.html` (single file, inline CSS/JS, reuses spike camera + segment code).
+**Files:** `mockups/app/index.html` (one file, inline CSS/JS, spike camera + segment code).
 
-Gate: nothing after Task 2 starts until the operator picks. Rule: look at real references first (memory
-`feedback_look_at_real_references_first`) — the 50 Naver 4-cut photos in `scratchpad/ref` and the promo mockup.
+- [ ] Three directions as tabs, each with the shooting scene (live cut-out; A sees the dashed "친구 자리" on the right
+  40 % of the frame; B sees A standing; 3-2-1; 1/4; thumbnails; mirror/flip) and the done scene (strip + background
+  chips + frame chips + two save buttons + the 7-day disclosure line). A "부스": dark curtain, flash at shutter.
+  B "다이어리": paper, stickers. C "필름": viewfinder, LED date.
+- [ ] Five preset backgrounds as Canvas functions: 보라 부스, 분홍 부스, 흰 벽, 흑백, 하늘.
+- [ ] Headless 430 px with fake camera; screenshots at dpr 2, crops checked at full size; body text contrast ≥ 4.5:1.
+- [ ] Commit, push, give the operator the Pages URL `…/works/2026-10-26-photo-booth/mockups/app/`; record the pick in
+  `brief.md` "시안".
 
-- [ ] **Step 1:** Build three directions on one page, switchable by tabs, each with two scenes driven by the real camera:
-  shooting (live cut-out, A's "친구 자리" dashed spot or B's view with A standing, 3-2-1, 1/4, thumbnails, mirror/flip
-  buttons) and done (strip preview + background chips + frame chips + two save buttons).
-  - A "부스": dark curtain booth, big countdown, flash-white at shutter.
-  - B "다이어리": light paper, hand-drawn stickers, rounded.
-  - C "필름": film-camera viewfinder, date stamp in orange LED digits.
-- [ ] **Step 2:** Draw 8 preset backgrounds as Canvas functions (no images): 보라 부스, 분홍 부스, 흰 벽, 흑백,
-  하늘, 노을, 별밤, 체크 커튼. Shown as chips in every direction.
-- [ ] **Step 3:** Run headless Chrome 430 px with `--use-fake-device-for-media-stream` (driver
-  `scratchpad/drive.mjs` pattern), screenshot each direction at dpr 2, inspect crops at full size, measure text contrast
-  (≥ 4.5:1 body).
-- [ ] **Step 4:** Commit, push, wait for Pages, send the operator
-  `https://dot-connects.github.io/dot-lab/works/2026-10-26-photo-booth/mockups/app/` — ask which direction and which
-  backgrounds. Record the answer in `brief.md` "시안" section.
+### Task 2: Worker (TDD)
 
-### Task 2: Worker state machine (TDD)
+**Files:** `worker/package.json`, `worker/test/worker.test.js`, `worker/src/index.js`.
 
-**Files:** Create `worker/src/index.js`, `worker/test/worker.test.js`, `worker/package.json` (`{"type":"module"}`).
-
-**Interfaces — Produces (used by `site/js/api.js`):**
+**API (Produces, used by `site/js/api.js`):**
 ```
-POST /s                         -> 201 {id, token, expires}                        (A)
-POST /s/:id/join                -> 201 {token} | 409 {error:"taken"|"not-ready"}   (B)
-PUT  /s/:id/:side/:name   (Authorization: Bearer <token>) body=file -> 204
-POST /s/:id/:side/done    (Authorization)  -> 204 | 400 {error:"missing", names:[...]}
-GET  /s/:id                     -> 200 {a:{done}, b:{joined, done}, expires} | 404 | 410
-GET  /s/:id/:side/:name         -> 200 file (readable by anyone holding the id, once uploaded) | 404 | 410
-side = "a" | "b";  name = `${cut}-${kind}`, cut 1..4, kind in raw.jpg | cut.png | raw.mp4 | key.mp4
+Tokens are made by the client: 32 random bytes, base64url (43 chars). The Worker stores only SHA-256.
+POST /s              {token}                       -> 201 {id, expires}                    (A)
+PUT  /s/:id/:side/:name  Authorization: Bearer <token>, Content-Type matching name -> 204
+POST /s/:id/:side/done   Authorization              -> 204 | 400 {error:"missing", names} | 409 {error:"taken"|"not-ready"|"done"}
+GET  /s/:id                                         -> 200 {a:{done}, b:{done}, expires} | 404 | 410
+GET  /s/:id/:side/:name                             -> 200 body, stored Content-Type, no-store | 404 (b before b.done) | 410
+side a|b; name = `${cut}-raw.jpg` (image/jpeg) | `${cut}-cut.png` (image/png) | `${cut}-clip` (video/mp4 | video/webm), cut 1..4
 ```
-Storage layout in R2: `s/<id>/meta.json`, `s/<id>/<side>/<name>`. meta = `{created, a:{tokenHash, done}, b:{tokenHash|null, done}, bytes}`.
-Token = 32 random bytes base64url; only its SHA-256 is stored. id = 16 random bytes base64url (22 chars).
+There is no join step. Any B token may upload once A is done; B's files go to a staging folder named by the token hash
+(`s/<id>/b-<hash16>/`), and `POST …/b/done` claims the B slot with compare-and-set. An abandoned or failed B upload
+never blocks the link; if two friends both finish, the first `done` wins and the other gets `taken`. Staging leftovers
+die with the 7-day lifecycle. Meta writes (create, A done, B done) use `onlyIf: {etagMatches}`; file PUTs never write meta.
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: failing tests** `worker/test/worker.test.js`:
 
-```js
-// worker/test/worker.test.js
-import { test } from "node:test";
-import assert from "node:assert/strict";
-import worker from "../src/index.js";
+→ `PLAN-task2-code.md` § worker/test/worker.test.js (copy verbatim).
 
-function fakeR2() {
-  const m = new Map();
-  return {
-    m,
-    async get(k) { const v = m.get(k); return v && { body: v.body, size: v.body.byteLength,
-      httpMetadata: v.meta, async json() { return JSON.parse(new TextDecoder().decode(v.body)); } }; },
-    async put(k, body, opt = {}) { const b = typeof body === "string" ? new TextEncoder().encode(body)
-      : new Uint8Array(await new Response(body).arrayBuffer()); m.set(k, { body: b, meta: opt.httpMetadata }); },
-    async head(k) { return m.has(k) ? { size: m.get(k).body.byteLength } : null; },
-  };
-}
-const env = () => ({ BUCKET: fakeR2(), ORIGIN: "https://dot-connects.github.io", NOW: undefined });
-const call = (e, method, path, { token, body } = {}) => worker.fetch(new Request("https://w.test" + path,
-  { method, body, headers: token ? { Authorization: "Bearer " + token } : {} }), e);
-const NAMES = [1, 2, 3, 4].flatMap(c => ["raw.jpg", "cut.png", "raw.mp4", "key.mp4"].map(k => `${c}-${k}`));
-async function upAll(e, id, side, token) {
-  for (const n of NAMES) assert.equal((await call(e, "PUT", `/s/${id}/${side}/${n}`, { token, body: "x" })).status, 204);
-}
+- [ ] **Step 2:** `node --test worker/test/worker.test.js` from the work folder (a directory argument fails on Node 24).
+  Expected FAIL: cannot find `../src/index.js`.
+- [ ] **Step 3: implement** `worker/src/index.js`:
 
-test("A creates, uploads 16 files, marks done; B can then join once", async () => {
-  const e = env();
-  const { id, token } = await (await call(e, "POST", "/s")).json();
-  assert.equal(id.length, 22);
-  assert.equal((await call(e, "POST", `/s/${id}/join`)).status, 409);          // A not done yet
-  await upAll(e, id, "a", token);
-  assert.equal((await call(e, "POST", `/s/${id}/a/done`, { token })).status, 204);
-  const j = await call(e, "POST", `/s/${id}/join`);
-  assert.equal(j.status, 201);
-  assert.equal((await call(e, "POST", `/s/${id}/join`)).status, 409);          // second friend refused
-  const st = await (await call(e, "GET", `/s/${id}`)).json();
-  assert.deepEqual([st.a.done, st.b.joined, st.b.done], [true, true, false]);
-});
+→ `PLAN-task2-code.md` § worker/src/index.js (copy verbatim).
+- [ ] **Step 4:** run the tests; expected 5 pass. Mutation check: drop the `onlyIf` option → "the first finished friend
+  wins" must fail (checked 10-26 on this code). Fix code, not tests; list any deviation.
+- [ ] **Step 5:** independent review of the `git diff` (the side that did not write it), one round, fix Highs.
+- [ ] **Step 6:** commit `feat(photo-booth): worker for links, client tokens, staged B uploads, caps`.
 
-test("done is refused while a file is missing and names the gaps", async () => {
-  const e = env();
-  const { id, token } = await (await call(e, "POST", "/s")).json();
-  await call(e, "PUT", `/s/${id}/a/1-raw.jpg`, { token, body: "x" });
-  const r = await call(e, "POST", `/s/${id}/a/done`, { token });
-  assert.equal(r.status, 400);
-  assert.equal((await r.json()).names.length, 15);
-});
+Departures from the brief, recorded there in this task: no per-IP limit on `POST /s` (cost bound: 12 × 3 MB per upload
+folder, Class A alert set by the operator); no per-link byte counter.
 
-test("writes need the side's own token, a known name, and stay under the caps", async () => {
-  const e = env();
-  const { id, token } = await (await call(e, "POST", "/s")).json();
-  assert.equal((await call(e, "PUT", `/s/${id}/a/1-raw.jpg`, { body: "x" })).status, 401);
-  assert.equal((await call(e, "PUT", `/s/${id}/b/1-raw.jpg`, { token, body: "x" })).status, 403);
-  assert.equal((await call(e, "PUT", `/s/${id}/a/evil.html`, { token, body: "x" })).status, 400);
-  assert.equal((await call(e, "PUT", `/s/${id}/a/5-raw.jpg`, { token, body: "x" })).status, 400);
-  const big = new Uint8Array(3 * 1024 * 1024 + 1);
-  assert.equal((await call(e, "PUT", `/s/${id}/a/1-raw.mp4`, { token, body: big })).status, 413);
-});
+### Task 3: Deploy + real-browser smoke
 
-test("a finished side cannot be overwritten", async () => {
-  const e = env();
-  const { id, token } = await (await call(e, "POST", "/s")).json();
-  await upAll(e, id, "a", token);
-  await call(e, "POST", `/s/${id}/a/done`, { token });
-  assert.equal((await call(e, "PUT", `/s/${id}/a/1-raw.jpg`, { token, body: "y" })).status, 409);
-});
-
-test("links older than 7 days answer 410", async () => {
-  const e = env();
-  const { id } = await (await call(e, "POST", "/s")).json();
-  e.NOW = Date.now() + 7 * 864e5 + 1000;
-  assert.equal((await call(e, "GET", `/s/${id}`)).status, 410);
-});
-
-test("unknown id is 404 and CORS allows only the Pages origin", async () => {
-  const e = env();
-  const r = await call(e, "GET", "/s/AAAAAAAAAAAAAAAAAAAAAA");
-  assert.equal(r.status, 404);
-  assert.equal(r.headers.get("Access-Control-Allow-Origin"), "https://dot-connects.github.io");
-});
-```
-
-- [ ] **Step 2:** Run `node --test worker/test/` from the work folder. Expected: FAIL, `Cannot find module '../src/index.js'`.
-- [ ] **Step 3: Implement** `worker/src/index.js`:
-
-```js
-const DAY = 864e5, LIFE = 7 * DAY, MAX_FILE = 3 * 1024 * 1024, MAX_LINK = 30 * 1024 * 1024;
-const KINDS = ["raw.jpg", "cut.png", "raw.mp4", "key.mp4"];
-const NAMES = [1, 2, 3, 4].flatMap(c => KINDS.map(k => `${c}-${k}`));
-const TYPES = { jpg: "image/jpeg", png: "image/png", mp4: "video/mp4" };
-
-const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const rand = n => b64u(crypto.getRandomValues(new Uint8Array(n)));
-const sha = async s => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
-
-export default {
-  async fetch(req, env) {
-    const cors = { "Access-Control-Allow-Origin": env.ORIGIN, "Access-Control-Allow-Headers": "Authorization",
-      "Access-Control-Allow-Methods": "GET,POST,PUT,OPTIONS" };
-    const json = (status, obj) => new Response(obj === undefined ? null : JSON.stringify(obj),
-      { status, headers: { ...cors, "Content-Type": "application/json" } });
-    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
-    const now = env.NOW ?? Date.now();
-    const p = new URL(req.url).pathname.split("/").filter(Boolean);   // ["s", id, side|join|done, name]
-    if (p[0] !== "s") return json(404, { error: "not-found" });
-
-    if (req.method === "POST" && p.length === 1) {
-      const id = rand(16), token = rand(32);
-      const meta = { created: now, a: { tokenHash: await sha(token), done: false }, b: { tokenHash: null, done: false }, bytes: 0 };
-      await env.BUCKET.put(`s/${id}/meta.json`, JSON.stringify(meta));
-      return json(201, { id, token, expires: now + LIFE });
-    }
-
-    const id = p[1];
-    if (!/^[A-Za-z0-9_-]{22}$/.test(id || "")) return json(404, { error: "not-found" });
-    const metaObj = await env.BUCKET.get(`s/${id}/meta.json`);
-    if (!metaObj) return json(404, { error: "not-found" });
-    const meta = await metaObj.json();
-    if (now - meta.created > LIFE) return json(410, { error: "expired" });
-    const save = () => env.BUCKET.put(`s/${id}/meta.json`, JSON.stringify(meta));
-
-    if (req.method === "GET" && p.length === 2)
-      return json(200, { a: { done: meta.a.done }, b: { joined: !!meta.b.tokenHash, done: meta.b.done }, expires: meta.created + LIFE });
-
-    if (req.method === "POST" && p[2] === "join" && p.length === 3) {
-      if (!meta.a.done) return json(409, { error: "not-ready" });
-      if (meta.b.tokenHash) return json(409, { error: "taken" });
-      const token = rand(32);
-      meta.b.tokenHash = await sha(token); await save();
-      return json(201, { token });
-    }
-
-    const side = p[2];
-    if (side !== "a" && side !== "b") return json(404, { error: "not-found" });
-
-    if (req.method === "GET" && p.length === 4) {
-      if (!NAMES.includes(p[3])) return json(400, { error: "name" });
-      const o = await env.BUCKET.get(`s/${id}/${side}/${p[3]}`);
-      if (!o) return json(404, { error: "not-found" });
-      return new Response(o.body, { headers: { ...cors, "Content-Type": TYPES[p[3].split(".").pop()],
-        "Cache-Control": "private, max-age=604800" } });
-    }
-
-    // writes
-    const auth = (req.headers.get("Authorization") || "").replace(/^Bearer /, "");
-    if (!auth) return json(401, { error: "token" });
-    if (!meta[side].tokenHash || (await sha(auth)) !== meta[side].tokenHash) return json(403, { error: "token" });
-    if (meta[side].done) return json(409, { error: "done" });
-
-    if (req.method === "POST" && p[3] === "done" && p.length === 4) {
-      const missing = [];
-      for (const n of NAMES) if (!(await env.BUCKET.head(`s/${id}/${side}/${n}`))) missing.push(n);
-      if (missing.length) return json(400, { error: "missing", names: missing });
-      meta[side].done = true; await save();
-      return json(204);
-    }
-
-    if (req.method === "PUT" && p.length === 4) {
-      if (!NAMES.includes(p[3])) return json(400, { error: "name" });
-      const body = new Uint8Array(await req.arrayBuffer());
-      if (body.byteLength > MAX_FILE) return json(413, { error: "file-too-big" });
-      if (meta.bytes + body.byteLength > MAX_LINK) return json(413, { error: "link-full" });
-      await env.BUCKET.put(`s/${id}/${side}/${p[3]}`, body, { httpMetadata: { contentType: TYPES[p[3].split(".").pop()] } });
-      meta.bytes += body.byteLength; await save();
-      return json(204);
-    }
-    return json(405, { error: "method" });
-  },
-};
-```
-  Note: `meta.bytes` counts re-uploads of the same name twice; accepted (cap is a guard, 30 MB vs ~6 MB per side).
-  The brief's per-IP limit on link creation is left out of v1: per-link caps + the billing alert bound the cost; add a
-  Workers rate-limit binding if the dashboard shows abuse.
-- [ ] **Step 4:** Run `node --test worker/test/`. Expected: 6 pass.
-- [ ] **Step 5:** Independent review (Worker = boundary/state code): fresh Claude subagent or Codex per usage, input
-  `git diff`, one round. Fix Highs.
-- [ ] **Step 6:** Commit `feat(photo-booth): worker for link ids, write tokens, caps and A-then-B order`.
-
-### Task 3: Deploy the Worker and bucket
-
-Precondition: operator finished `scripts/wizard-cloudflare.bat` (`npx wrangler@4 whoami` shows the account).
-
-**Files:** Create `worker/wrangler.toml`:
+**Files:** `worker/wrangler.toml`:
 ```toml
 name = "dot-lab-booth"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 [vars]
-ORIGIN = "https://dot-connects.github.io"
+ORIGINS = "https://dot-connects.github.io,http://127.0.0.1:8799"
 [[r2_buckets]]
 binding = "BUCKET"
 bucket_name = "dot-lab-booth"
 ```
-- [ ] **Step 1:** `npx wrangler@4 r2 bucket create dot-lab-booth`
-- [ ] **Step 2:** Lifecycle: `npx wrangler@4 r2 bucket lifecycle add dot-lab-booth expire-7d s/ --expire-days 7`
-  (check `npx wrangler@4 r2 bucket lifecycle --help` first; the exact flag names are not verified).
-- [ ] **Step 3:** `npx wrangler@4 deploy` from `worker/`. Note the `*.workers.dev` URL in `brief.md`.
-- [ ] **Step 4: Smoke** with Node: POST /s → PUT 16 one-byte files → done → join → GET status → GET one file.
-  Expected 201/204/201/200/200. Then check the R2 dashboard lists the lifecycle rule.
-- [ ] **Step 5:** Commit `chore(photo-booth): deploy config for the booth worker`.
+- [ ] `npx wrangler@4 r2 bucket create dot-lab-booth`
+- [ ] `npx wrangler@4 r2 bucket lifecycle add dot-lab-booth expire-7d s/ --expire-days 7 -y`, then
+  `npx wrangler@4 r2 bucket lifecycle list dot-lab-booth` shows the rule.
+- [ ] `npx wrangler@4 deploy` from `worker/`; put the `*.workers.dev` URL in `brief.md` and as `WORKER` in `site/js/api.js`.
+  If wrangler asks to register a workers.dev subdomain, stop and ask the operator.
+- [ ] Smoke in headless Chrome from `http://127.0.0.1:8799` (a browser, so CORS preflight with `Content-Type` is real):
+  create → 12 PUTs with real types → A done → 12 B PUTs → B done → status → GET one file into a blob. All 2xx.
+  Then real-R2 compare-and-set: 10 B tokens upload one full set each, fire 10 `done` at once → exactly one 204.
+- [ ] Remove the untracked `.wrangler/` from the repo root and add `.wrangler/` to `.gitignore`. Commit.
 
-### Task 4: Capture engine (camera, cut-out, four cuts with pre-roll)
+### Task 4: Capture engine
 
-**Files:** Create `site/js/env.js`, `site/js/camera.js`, `site/js/segment.js`, `site/js/capture.js`, a bare
-`site/index.html` that runs `shootFour()` and shows the 16 results (temporary harness, replaced in Task 6).
+**Files:** `site/js/env.js`, `camera.js`, `segment.js`, `capture.js`, harness `site/index.html`.
 
-**Interfaces — Produces:**
+**Produces:**
 ```js
 // env.js
-export const app;                       // "Threads" | "Instagram" | "KakaoTalk" | "Facebook" | "브라우저"
-export const inApp;                     // boolean
-export function chromeUrl(url): string  // kakaotalk://web/openExternal?url=… | intent://… | url
-// camera.js  (spike code, moved)
-export async function startCam(video, facing = "user"): {stream, track, front, caps}
-export const state = {mirror: boolean, front: boolean};
-export function bindZoomFocus(stageEl, track, caps): void      // pinch + tap focus, no-op without caps
+export const app, inApp, isIOS;            // app: "Threads"|"Instagram"|"KakaoTalk"|"Facebook"|"브라우저"
+export function chromeUrl(url);            // Kakao: kakaotalk://web/openExternal?url=… ; Android: intent://…;package=com.android.chrome;end ; else url
+// camera.js
+export async function startCam(video, facing = "user");   // -> {track, front, caps}; 5 s stall -> throws Error("stall")
+export const camState = { mirror: true, front: true };
+export function bindZoomFocus(stageEl, track, caps);       // pinch + tap focus; README touch fixes
 // segment.js
-export async function loadSegmenter(): void
-export function cutFrame(video, mirror, outCanvas): void          // outCanvas gets the person with alpha
+export async function loadSegmenter();
+export function drawMatte(video, mirror, matteCanvas);     // white person on black, same size as video
 // capture.js
-export async function shootFour({video, preview, mirror, onTick}): Cut[]
-//   Cut = {raw: Blob(jpeg), cut: Blob(png), rawClip: Blob(mp4|webm), keyClip: Blob(mp4|webm)}
-//   countdown 3 s per cut; recorders start at "2" and stop at the shutter -> 2 s clips;
-//   keyClip = cut-out drawn over pure #00ff00 at the same size; stills taken at the shutter frame.
+export async function shootFour({ video, stage, onTick, onCut });
+// -> Cut[4], Cut = { raw: Blob(jpeg), cut: Blob(png), clip: Blob, clipType: "video/mp4"|"video/webm" }
+// onTick(n, secondsLeft) for the countdown UI; onCut(i, cut) after each shutter (retake = call shootOne(i) again)
+export async function shootOne(i, opts);                   // same as one step of shootFour
 ```
-- [ ] **Step 1:** Move spike camera code into `camera.js` (startCam, flip, mirror, zoom, focus, 5 s stall) and spike
-  segmentation into `segment.js`. Keep the centre-vs-corner mask direction check from the spike.
-- [ ] **Step 2:** Write `capture.js`: one rAF loop draws `raw` (mirrored per state) and `key` (green + cut-out) canvases;
-  two `MediaRecorder(canvas.captureStream(30))` per cut; mime pick order from spike (`video/mp4;codecs=avc1` first).
-- [ ] **Step 3:** Run headless with fake camera (`drive.mjs`): `shootFour` returns 4 cuts, each blob non-empty, clip
-  durations ~2 s (read `video.duration` after load; webm may report Infinity — then accept size > 0 and note it).
-- [ ] **Step 4:** Push, operator runs the harness once in Threads (in-app) and once in Chrome: 4 cuts, clips play,
-  mirror toggled cut looks mirrored. Record in `brief.md` 실측.
-- [ ] **Step 5:** Commit `feat(photo-booth): capture engine with 2 s pre-roll clips and cut-outs`.
+Every frame is first centre-cropped to 4:3 (some cameras ignore the 4:3 request and give 16:9), so preview, overlay and
+saves share one frame shape. One recorder per cut: a canvas of two halves, each half the 4:3 frame scaled to at most
+640 × 480 (even sizes; 1280 × 480 total stays under H.264 level 4.1), left = mirrored raw, right = matte.
+`videoBitsPerSecond: 2_500_000` (2 s ≈ 0.6 MB, under the 3 MB cap). Recorder starts at countdown "2", stops at the
+shutter; mime order from the spike (`video/mp4;codecs=avc1`, `video/mp4`, `video/webm;codecs=vp9`, `video/webm`).
+`raw` = the 4:3 frame at the shutter scaled to at most 960 × 720 (JPEG 0.9), `cut` = the same size with the matte as
+alpha (PNG). Any blob over 3 MB before upload → re-encode smaller (JPEG 0.8 / PNG at 720 × 540) instead of a 413 loop.
 
-### Task 5: Compose (strip image + moving strip video)
+- [ ] Move spike camera/segment code without the spike's first-frame `flip` guess (A and B stand off-centre): pin the
+  mask polarity from the selfie_segmenter model card / one fake-camera run, as a constant. Add `drawMatte` (alpha → grey).
+- [ ] `capture.js` as above.
+- [ ] Headless fake camera: 4 cuts, each blob > 0, clip `videoWidth` = 2 × `videoHeight` × 4/3, ≤ 1280.
+- [ ] Phone, Threads in-app and Chrome: 4 cuts; each clip plays 1.6–2.2 s (`video.duration`; if webm reports Infinity,
+  play to end and time it); left half mirrored when the toggle is on. Pass = all four lines true; record in `brief.md`.
+- [ ] Commit.
 
-**Files:** Create `site/js/compose.js`; harness page `site/compose-test.html` with two sets of saved cuts (from Task 4
-run, saved to `site/test-cuts/` — delete before ship).
+### Task 5: Compose
 
-**Interfaces — Produces:**
+**Files:** `site/js/compose.js`. Harness: a button on `site/index.html` that composes the cuts just shot as both A and B
+(no saved test files).
+
+**Produces:**
 ```js
-export const BACKGROUNDS;  // [{id, label, draw(ctx,w,h)}] from Task 1 pick + "a" (A's raw) + "b" (B's raw)
-export const FRAMES;       // [{id, label, color, ink}] from Task 1 pick
-export async function drawStrip({a: Cut[], b: Cut[], bg, frame, footer}): Blob   // jpeg, 2x6 ratio (600x1800)
-export async function recordMovingStrip({a, b, bg, frame, footer, seconds = 6}): Blob  // mp4|webm
-//  bg "a": A's raw frame + B's cut-out; "b": B's raw + A's cut-out; preset: both cut-outs over draw().
-//  video: 8 <video> elements loop, keyClip pixels with g > 150 && r < 100 && b < 100 -> transparent
-//  (tune on real clips; soften 1 px), drawn per frame into the strip canvas, recorded 30 fps.
+export const BACKGROUNDS;   // [{id:"a"|"b"|<preset>, label, draw?(ctx,w,h)}], presets from the T1 pick
+export const FRAMES;        // [{id, label, color, ink}] from the T1 pick
+export const LAYOUT = { W: 600, H: 1800, M: 24, GAP: 16, FOOT: 200, CW: 552, CH: 382 };
+export function cellRect(i);                                  // -> {x, y, w, h}
+export function cropRect(frameW, frameH);                     // centre crop of the camera frame to CW:CH
+export async function loadClip(blobUrl);                      // -> HTMLVideoElement, muted, playsinline, ready
+export function drawCell(ctx, i, { aRaw, aCut, bRaw, bCut, bg });   // images or video halves, bg rule below
+export async function drawStrip({ a, b, bg, frame, date }) ;  // -> Blob jpeg
+export async function recordMovingStrip({ a, b, bg, frame, date }); // -> {blob, type}; 6 s
 ```
-People placement: A left, B right, each scaled so the cut-out's alpha bounding box height = 80 % of the cell height,
-bottoms on the cell bottom. Bounding box from the png alpha once per cut.
-- [ ] **Step 1:** Implement `drawStrip` and check the four bg modes in the harness, screenshot at dpr 2, inspect edges.
-- [ ] **Step 2:** Implement `recordMovingStrip`; check the output plays 6 s, both people move, no green fringe at
-  full size (crop 3x). If fringe shows, shrink the key mask by 1 px before drawing.
-- [ ] **Step 3:** Commit `feat(photo-booth): strip image and moving strip video with background choice`.
+Background rule per cell: "a" → A's raw frame, then B's cut-out; "b" → B's raw, then A's cut-out; preset → `draw()`,
+then A's and B's cut-outs. Cut-outs keep their own frame positions (A stood left of the dashed spot, B saw A and stood
+right). Video: one WebGL program per strip turns a clip into an RGBA cell — colour from the left half, alpha from the
+right half's green channel remapped for H.264 limited range: `a = clamp((g − 24/255) · 255/207, 0, 1)` — and the 2D strip
+canvas draws that WebGL canvas per cell (no `getImageData` per frame). The remap is an edge threshold (the browser
+already hands WebGL full-range RGB). Context `premultipliedAlpha: true`, so the shader outputs `vec4(rgb * a, a)`;
+check edges on the white and the dark 보라 preset.
 
-### Task 6: Flow (roles, upload, join, B's live view, done, save, expiry)
+- [ ] `drawStrip`, all bg modes; screenshot dpr 2, crop edges 3×.
+- [ ] `recordMovingStrip` at 600 × 1800, `videoBitsPerSecond: 4_000_000`; on recorder error retry with webm, then fall back
+  to the JPG save with "이 폰에서는 영상 저장이 안 돼요". Plays 6 s, both people move, no ghost of the raw background on a white preset. Phone check
+  first: 8 clips decoding at once on the operator's phone. If cells freeze or drift, record clips at 320 × 240 halves
+  (Task 4 constant) and re-check; report before inventing another path.
+- [ ] Commit.
 
-**Files:** `site/index.html` (real screens from the Task 1 pick), `site/js/api.js`, `site/js/app.js`.
+### Task 6: Flow
 
-**Interfaces — Consumes:** Worker API (Task 2), capture (Task 4), compose (Task 5). **Produces:**
-```js
-// api.js  (WORKER = the workers.dev URL from Task 3)
-export async function create(): {id, token, expires}
-export async function join(id): {token} | {error}
-export async function put(id, side, name, blob, token): void      // retries 2x on network error
-export async function done(id, side, token): void
-export async function status(id): {a:{done}, b:{joined, done}, expires} | {error: "expired"|"not-found"}
-export const fileUrl = (id, side, name) => `${WORKER}/s/${id}/${side}/${name}`;
-```
-Role and token: A's token kept in `localStorage["booth:"+id]`; B's after join, same key. URL `site/?s=<id>`.
-- [ ] **Step 1:** Screens: landing (A: [먼저 찍기]; B: "옆자리를 비워 뒀어요" + [바로 찍기]), shoot, uploading
-  (progress n/16), share (A: Web Share text+url if `navigator.share`, else copy button; in-app shows the link to copy),
-  waiting (A reopening before B done: "친구가 아직 안 찍었어요"), done (strip + bg/frame chips + saves), expired.
-- [ ] **Step 2:** B's shoot view: A's cut `n-cut.png` (and `n-key.mp4` playing, keyed) drawn on the left of the live
-  preview so B can stand beside A.
-- [ ] **Step 3:** Saves appear only when `status().b.done`. Chrome → `drawStrip`/`recordMovingStrip`, then
-  `<a download>` of the blob. Only https downloads were measured in Chrome; if a blob download fails on the phone, use a
-  `data:` URL for the image and keep the video as blob (report back before inventing more).
-  In-app → one button "크롬에서 열어 저장하기" = `chromeUrl(location.href)`.
-- [ ] **Step 4:** One-phone end-to-end on the operator's phone: A in Chrome, B in KakaoTalk (link sent to self), both
-  save in Chrome. Then a second link with B in Threads.
-- [ ] **Step 5:** Commit `feat(photo-booth): link flow from first shot to both saves`.
+**Files:** `site/index.html`, `site/js/api.js`, `site/js/app.js`.
+
+**api.js** (`WORKER` from T3): `create(token)`, `put(id, side, name, blob, type, token)`,
+`done(id, side, token)`, `status(id)`, `getBlobUrl(id, side, name)` — media are always fetched to a blob URL (no
+tainted canvas, no Range needed). Uploads run one file at a time; `put` retries 2× on network errors only.
+
+**Roles** (stored as `localStorage["booth:"+id] = JSON {role: "a"|"b", token}`; after `create`, `history.replaceState`
+puts `?s=<id>` in the URL so a reload finds A's row):
+
+| URL / state | Shows |
+|---|---|
+| no `?s=` | A landing → shoot → create(token) → upload 12 → done → share screen with the link |
+| `?s=`, role a, `!a.done` | blobs in memory → "다시 올리기" (missing names from `done`); none → "다시 찍기" |
+| `?s=`, `!a.done`, role b or none | "아직 친구가 올리는 중이에요" (A reopened a half-uploaded link elsewhere) |
+| `?s=`, `a.done && !b.done`, role a | waiting: "친구가 아직 안 찍었어요" + the link again |
+| `?s=`, `a.done && !b.done`, role b or none | B landing: A's cut 1, "친구가 옆자리를 비워 뒀어요", [바로 찍기]; small link "내가 보낸 링크예요" → waiting screen (A opening its own link in another app or Chrome never shoots by accident) |
+| B mid-upload, failure | blobs in memory → "다시 올리기"; reload or another browser → B shoots again (staging, slot still free) |
+| `?s=`, `b.done` (any browser) | done screen: compose + saves (this is how A and B save in Chrome) |
+| B's `done` → 409 taken | "다른 친구가 먼저 찍었어요" + the done screen |
+| 404 / 410 | "없거나 7일이 지나 사라진 링크예요" + [새로 찍기] (404 also covers links the lifecycle already deleted) |
+
+There is no slot until B's `done`, so a peek, a camera stall, a hand-off to Chrome or a killed in-app browser never
+blocks the link.
+
+- [ ] Screens per the T1 pick; the disclosure line on the landing and next to the upload button.
+- [ ] Shoot preview shows the strip-cell crop (dimmed bands, about 4 % top and bottom), so the preview is what gets saved.
+- [ ] Share screen, from a tap on [링크 보내기] (share needs a gesture): `navigator.share({url, text})` if present → `navigator.clipboard.writeText` → the link as
+  large selectable text with "길게 눌러 복사". Each step falls to the next on rejection; the link text is always visible.
+- [ ] Inside a frame (`top !== self`, e.g. the blog embed): show only the title, `site/sample-strip.jpg` (placeholder = the promo hero strip until
+  Task 8 replaces it) and "새 탭에서 열기"
+  (content-system rebuilds blog iframes without `allow="camera"`, so the camera can never open there).
+- [ ] B's shoot view draws A's cut `n-cut.png` (and A's clip, looping) at A's frame position over B's live preview, so
+  B stands beside A.
+- [ ] Done screen: render first (progress), then show the save buttons; changing background or frame re-renders
+  (image at once, video on [영상 만들기], about 6 s); each button calls `click()` on an `<a download>`
+  from its own tap. Names `ttaro-gachi-<date>.jpg` and `.mp4`/`.webm` from the clip type. In-app → one
+  "크롬에서 열어 저장하기" (Android) or the Safari text (iOS).
+- [ ] Upload failure keeps the blobs in memory and shows "다시 올리기"; a reload loses them (note in the copy).
+- [ ] One-phone run: A in Threads (the real entry path: reel → profile link), B in KakaoTalk (link sent to self), both
+  save in Chrome. Second link: A in Chrome, B in Threads. In the KakaoTalk B run, watch the overlay of A's looping clip
+  next to the live cut-out and the recorder (all at once in a WebView): no freeze, fps noted.
+  Pass = both files in the gallery, the video plays from the gallery and attaches to an Instagram story, B stands next
+  to A in all 4 cells, the video moves in all 8 halves. Blob downloads in Chrome are measured here for the first time.
+- [ ] Commit.
 
 ### Task 7: Ship checks
 
-- [ ] Headless 430 px: first screen readable in 2 s on throttled 4G (CDP `Network.emulateNetworkConditions`), segmenter
-  loads only after [찍기]. Contrast ≥ 4.5:1 on every text.
-- [ ] `manifest.json` and index tile per `dot-lab/README.md` "Before a work ships"; OG image = promo hero strip.
-- [ ] Delete `site/test-cuts/`, `site/compose-test.html`; spike stays as a measured record.
-- [ ] Update `brief.md` 결과, `docs/mechanics.md` (#003 row), commit and push.
+- [ ] Throttled 4G (CDP `Network.emulateNetworkConditions`): first screen readable ≤ 2 s; the segmenter loads only after
+  the first tap.
+- [ ] CDP touch (`Input.dispatchTouchEvent`): pinch and tap on the stage keep `scrollY` ≥ 1 and the page does not scroll.
+- [ ] Contrast ≥ 4.5:1 on every text, both frames of each screen.
+- [ ] iOS: borrow one iPhone for one run (Safari + one in-app). If none, the brief says so.
+- [ ] Operator plays it twice with a friend → "한 번 더 하고 싶은가" answered in `brief.md` 결과.
+
+### Task 8: Reel, manifest, blog, index tile
+
+- [ ] Ask the operator how to film the reel (two real people needed): proposal = screen-record A in Chrome and B in
+  KakaoTalk on one phone + the saved moving strip. Build with `tools/record_reel.py` patterns and the reel rules in
+  `C:\DC\DD\references\techniques.md` §2.
+- [ ] `manifest.json` per `content-system/src/content_system/lab_work.py` and #002's file: `slug`, `title` (one line),
+  `link` (the Pages URL, reachable), `media.reel`, `cover`, `card`, caption ending "프로필 링크에서 바로 해 볼 수 있어.",
+  `caption_threads` ending with the work URL, `blog_html` whose iframe `src` equals `link` (content-system rebuilds it;
+  the work shows its framed view there). Set `status: "ready"` last: editing a ready manifest replaces the story.
+- [ ] `thumbs/003.jpg` 600×600 (no title text), `index.html` tile first with `href="works/2026-10-26-photo-booth/site/"`,
+  NEW badge moved, NEXT last; the work's start
+  screen gets the "‹ 시켜본 것들" chip and the done screen "시켜본 것 더 보기 →" (README).
+- [ ] `docs/mechanics.md` #003 row → used; `brief.md` 결과; commit, push.
