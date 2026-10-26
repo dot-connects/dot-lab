@@ -307,3 +307,6 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   prep plays 1x from 김치 먼저. 33.2 s.
   Operator: the wok sat too low, mostly in the egg part. The view rises 30 px while cooking (timer and beat bar stay
   in frame) and eases to 130 px under the egg card. Operator called this the final cut.
+- Round 19 (2026-10-26, narration): the operator heard the TTS run off the cuts (one read of every caption from
+  0.6 s). Narration is now six timed lines, each placed on its beat (content-system f4c2977 supports `narration` as
+  [{at, say, check}], still one TTS call, whisper-split): 0.4 / 6.4 / 10.6 / 15.9 / 18.0 / 29.6 s.
