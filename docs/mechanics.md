@@ -2,7 +2,7 @@
 
 Operator rule (2026-10-20): every work uses a mechanic no earlier work used. Reusing a liked mechanic with a new
 subject ("draw an apple") is a reskin and does not ship. A mechanic = the hand's verb + what decides the score.
-Replay recipe (docs/archive/2026-10-17-app-admob-research/20): 0-tap retry, one number + best, a visible reason for
+Score is optional (operator 2026-10-26); a work can leave a keepsake instead. Replay recipe (docs/archive/2026-10-17-app-admob-research/20): 0-tap retry, one number + best, a visible reason for
 failure, comparison, a funny label, the player's own input decides the result.
 
 ## Ledger

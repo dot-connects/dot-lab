@@ -1,0 +1,204 @@
+<title>따로 같이 네컷</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&family=Do+Hyeon&display=swap">
+<style>
+/* Layout: one column read on a phone; each step = a small phone screen beside its caption, like a booth's instruction card */
+:root{
+  --bg:#f6f4f1; --paper:#ffffff; --ink:#1d1b22; --sub:#5d5965; --line:#dcd7d0;
+  --me:#e4573d; --friend:#2f6fd6; --booth:#2a2730; --flag:#fff2c7; --flag-ink:#6a4d00;
+  --display:"Do Hyeon","IBM Plex Sans KR",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#17161b; --paper:#222128; --ink:#efedf2; --sub:#a9a4b2; --line:#3a3842;
+  --me:#ff7a5f; --friend:#6aa0ff; --booth:#0e0d11; --flag:#3d3214; --flag-ink:#f3d98a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#17161b; --paper:#222128; --ink:#efedf2; --sub:#a9a4b2; --line:#3a3842;
+  --me:#ff7a5f; --friend:#6aa0ff; --booth:#0e0d11; --flag:#3d3214; --flag-ink:#f3d98a; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:560px;margin:0 auto;padding-block:28px 48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-direction:column;gap:28px}
+h1{font-family:var(--display);font-weight:400;font-size:40px;line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:400;font-size:24px;margin:0 0 4px;text-wrap:balance}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--sub);font-weight:600}
+.lead{margin:8px 0 0;color:var(--sub)}
+.who{display:inline-flex;gap:6px;align-items:center;font-weight:700}
+.dot{width:10px;height:10px;border-radius:50%;display:inline-block}
+.dot.me{background:var(--me)} .dot.fr{background:var(--friend)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;margin-top:10px}
+
+.step{display:grid;grid-template-columns:132px 1fr;gap:16px;align-items:start}
+.step>div:last-child{min-width:0}
+.step p{margin:4px 0 0}
+.step ul{margin:6px 0 0;padding-left:18px;color:var(--sub);font-size:14px}
+.tag{font-size:12px;font-weight:700;padding:2px 8px;border-radius:99px;color:#fff;display:inline-block}
+.tag.me{background:var(--me)} .tag.fr{background:var(--friend)}
+
+/* phone */
+.phone{width:132px;aspect-ratio:9/19;background:var(--booth);border-radius:20px;padding:8px;box-sizing:border-box;
+  display:flex;flex-direction:column;gap:5px;max-width:100%}
+.scr{flex:1;border-radius:13px;overflow:hidden;position:relative;background:#3b3744;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:4px;color:#fff;font-size:10px}
+.room-a{background:linear-gradient(180deg,#c9b8a3 0 62%,#9c8670 62%)}
+.room-b{background:linear-gradient(180deg,#a9c3c9 0 58%,#6f8f8a 58%)}
+.big{font-family:var(--display);font-size:46px;line-height:1;color:#fff;text-shadow:0 2px 8px #0006}
+.rec{position:absolute;top:7px;left:7px;font-size:9px;background:#0007;padding:1px 5px;border-radius:6px}
+.rec::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff4d4d;margin-right:3px;vertical-align:1px}
+.btn{background:#fff;color:#111;border-radius:99px;padding:3px 10px;font-weight:700;font-size:10px}
+.chat{align-items:stretch;justify-content:flex-end;padding:8px;background:#b6c8d6;gap:6px}
+.bubble{align-self:flex-end;background:#ffe54d;border-radius:8px;padding:4px}
+.bubble .strip{width:40px}
+
+/* 4-cut strip */
+.strip{background:#fff;padding:5px 5px 14px;border-radius:2px;display:flex;flex-direction:column;gap:4px;
+  box-shadow:0 1px 3px #0003;width:62px;position:relative}
+.strip::after{content:"2026.10";position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:6px;color:#999;letter-spacing:.1em}
+.cell{aspect-ratio:4/3;position:relative;overflow:hidden;border-radius:1px}
+.cell svg{position:absolute;bottom:0;height:88%}
+.cell .m{left:8%;color:var(--me)} .cell .f{right:8%;color:var(--friend)}
+.cell .ghost{right:8%;color:#fff;opacity:.55}
+.cell .ghost path,.cell .ghost circle{fill:none;stroke:#fff;stroke-width:5;stroke-dasharray:7 6}
+.strip.big2{width:118px;padding:7px 7px 18px;gap:5px}
+.strip.big2::after{font-size:8px}
+.live .cell:first-child::before{content:"";position:absolute;inset:0;border:2px solid #ff4d4d;z-index:1}
+
+.out{display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap}
+.out figure{margin:0;display:flex;flex-direction:column;gap:6px;align-items:center;font-size:13px;color:var(--sub)}
+.playing{position:relative}
+.playing::before{content:"▶ 2초씩 움직임";position:absolute;top:-22px;left:0;right:0;text-align:center;font-size:11px;font-weight:700;color:var(--ink)}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:16px}
+.card h2{font-size:20px}
+.card ul{margin:8px 0 0;padding-left:18px}
+.card li+li{margin-top:6px}
+.ask{background:var(--flag);color:var(--flag-ink);border-color:transparent}
+.ask li b{color:inherit}
+.ask .q{display:block;font-weight:700}
+.bgs{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 8px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;border:1px solid var(--line);background:var(--paper);border-radius:99px;padding:3px 10px 3px 4px}
+.chip i{width:18px;height:18px;border-radius:50%;border:1px solid var(--line);display:inline-block}
+.chip:first-child{border-color:var(--ink);font-weight:700}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+@media (max-width:380px){.step{grid-template-columns:112px 1fr}.phone{width:112px}}
+</style>
+
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="p" viewBox="0 0 60 80"><circle cx="30" cy="20" r="14" fill="currentColor"/><path d="M4 80c0-22 11-38 26-38s26 16 26 38z" fill="currentColor"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">D:OT LAB · 작품 #003 설명서 (가제)</div>
+    <h1>따로 같이 네컷</h1>
+    <p class="lead">멀리 있는 친구와 <b>같은 칸에 같이 서 있는</b> 네컷을 만든다. 내가 먼저 찍어서 보내면, 친구가 내 사진 속에 들어와 찍는다. 컷마다 셔터 직전 2초 영상도 같이 남는다.</p>
+    <div class="legend"><span class="who"><span class="dot me"></span>나 (먼저 찍는 사람)</span><span class="who"><span class="dot fr"></span>친구 (받아서 채우는 사람)</span></div>
+  </header>
+
+  <hr>
+
+  <section class="step">
+    <div class="phone"><div class="scr room-a">
+      <span class="rec">2초 녹화 중</span>
+      <svg style="position:absolute;bottom:0;left:12%;height:46%;color:var(--me)"><use href="#p"/></svg>
+      <span class="big">3</span>
+      <span style="position:absolute;bottom:6px;right:6px;font-size:9px;background:#0007;padding:1px 5px;border-radius:6px">2 / 4</span>
+    </div></div>
+    <div>
+      <span class="tag me">나</span>
+      <h2>1. 네컷 찍기</h2>
+      <p>링크를 열면 전면 카메라가 켜진다. 3초 카운트다운이 끝날 때마다 찰칵, 네 번.</p>
+      <ul>
+        <li>카운트다운 동안의 2초는 영상으로 같이 저장</li>
+        <li>친구 자리는 비워 두고 한쪽에 선다 (화면에 빈자리 표시)</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="phone"><div class="scr chat">
+      <div style="font-size:9px;color:#334">친구와의 채팅</div>
+      <div style="align-self:flex-end;background:#ffe54d;color:#222;border-radius:8px;padding:5px 7px;font-size:9px;line-height:1.4">우리 네컷 찍자 😆<br><u>dot-lab/…/booth#a8f3</u></div>
+    </div></div>
+    <div>
+      <span class="tag me">나</span>
+      <h2>2. 링크만 보내기</h2>
+      <p>내가 찍힌 네컷이 곧 템플릿. 찍고 나면 링크가 생기고, 그 링크 하나만 카톡·DM으로 보낸다.</p>
+      <ul>
+        <li>사진·2초 영상은 7일 동안만 맡아 뒀다가 자동 삭제</li>
+        <li>이 단계에선 아직 저장 버튼이 없다. 친구가 찍어야 열린다</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="step">
+    <div class="phone"><div class="scr room-a" style="justify-content:flex-start;padding-top:18px">
+      <span class="rec">2초 녹화 중</span>
+      <svg style="position:absolute;bottom:0;left:8%;height:46%;color:var(--me)"><use href="#p"/></svg>
+      <svg style="position:absolute;bottom:0;right:8%;height:50%;color:var(--friend)"><use href="#p"/></svg>
+      <span style="background:#0008;padding:2px 6px;border-radius:6px;font-size:9px;margin-top:8px">1 / 4 · 친구 사진 위에 내가 들어감</span>
+      <span class="big" style="margin-top:14px">2</span>
+    </div></div>
+    <div>
+      <span class="tag fr">친구</span>
+      <h2>3. 친구 사진 속에 들어가기</h2>
+      <p>링크를 열면 바로 카메라가 켜진다. 칸마다 친구가 이미 서 있고, 내 카메라 화면에서 <b>나만 오려져</b>(누끼) 그 옆에 실시간으로 겹친다.</p>
+      <ul>
+        <li>자리 잡고 카운트다운, 찰칵. 네 칸 반복</li>
+        <li>여기서도 직전 2초 영상이 같이 남는다</li>
+        <li>둘 다 누끼라서 배경은 따로 고른다 (아래 4번)</li>
+      </ul>
+    </div>
+  </section>
+
+  <section>
+    <span class="tag fr">친구</span> <span class="tag me">나</span>
+    <h2 style="margin-top:8px">4. 배경 고르고 각자 저장</h2>
+    <p style="margin:4px 0 8px">둘 다 찍은 순간 저장 버튼이 열린다. 나는 같은 링크를 다시 열면 완성본이 보인다.</p>
+    <div class="bgs">
+      <span class="chip"><i class="room-a"></i>보낸 사람 배경</span>
+      <span class="chip"><i class="room-b"></i>받은 사람 배경</span>
+      <span class="chip"><i style="background:#fff"></i>흰색</span>
+      <span class="chip"><i style="background:linear-gradient(135deg,#ffd1dc,#c8e7ff)"></i>준비된 배경</span>
+    </div>
+    <p style="margin:0 0 30px;font-size:13px;color:var(--sub)">[사진 저장] [영상 저장]은 각자 자기 폰에. 7일 뒤 링크는 만료.</p>
+    <div class="out">
+      <figure>
+        <div class="strip big2">
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+        </div>
+        네컷 이미지
+      </figure>
+      <figure class="playing">
+        <div class="strip big2 live">
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+          <div class="cell room-a"><svg class="m" viewBox="0 0 60 80"><use href="#p"/></svg><svg class="f" viewBox="0 0 60 80"><use href="#p"/></svg></div>
+        </div>
+        움직이는 네컷 (mp4)
+      </figure>
+    </div>
+  </section>
+
+  <div class="card">
+    <h2>이번 작품에 없는 것</h2>
+    <ul>
+      <li>점수 (이번엔 남기는 게 목적)</li>
+      <li>회원가입·로그인 (링크가 곧 방. 맡긴 사진은 7일 뒤 삭제)</li>
+      <li>포즈 구멍 맞추기 게임 → 다음 작품. 이번에 만든 누끼·촬영 엔진을 그대로 씀</li>
+    </ul>
+  </div>
+
+  <div class="card ask">
+    <h2>남은 확인</h2>
+    <ul>
+      <li><span class="q">움직이는 네컷 = 둘의 2초 누끼 영상을 같은 배경 위에</span>무거우면 사진만 같이 찍히고 영상은 각자 따로 남는 쪽으로 내립니다.</li>
+      <li><span class="q">운영자 몫: Cloudflare 무료 계정</span>계정만 만들어 주시면 저장소·자동 삭제 설정은 제가 합니다.</li>
+      <li><span class="q">아직 확인 안 됨</span>인스타·스레드·카톡 안에서 카메라·녹화·저장·누끼가 되는지. 실험 페이지로 먼저 확인합니다.</li>
+    </ul>
+  </div>
+</div>

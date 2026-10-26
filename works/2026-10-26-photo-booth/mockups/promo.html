@@ -1,0 +1,289 @@
+<title>따로 같이 네컷</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=IBM+Plex+Sans+KR:wght@400;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: phone-first promo page. Hero = two strips held up against a wall (how people post 네컷), then four phone screens, then choices. */
+:root{
+  --wall:#e9e3df; --bg:#fbf8f6; --paper:#ffffff; --ink:#221e26; --sub:#676070; --line:#e4dcd7;
+  --accent:#7b5cd6; --accent-ink:#ffffff; --me:#e0563f; --fr:#2f6fd6; --ok:#1f9d63;
+  --display:"Black Han Sans","IBM Plex Sans KR",system-ui,sans-serif;
+  --body:"IBM Plex Sans KR",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --wall:#2a2630; --bg:#18161c; --paper:#232029; --ink:#f1eef4; --sub:#aaa3b3; --line:#38333f;
+  --accent:#a48cf0; --accent-ink:#17131f; --ok:#4fcf93; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --wall:#2a2630; --bg:#18161c; --paper:#232029; --ink:#f1eef4; --sub:#aaa3b3; --line:#38333f;
+  --accent:#a48cf0; --accent-ink:#17131f; --ok:#4fcf93; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.in{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:var(--display);font-weight:400;margin:0;text-wrap:balance;letter-spacing:-.01em}
+h2{font-size:28px;line-height:1.2}
+p{margin:0}
+.sub{color:var(--sub)}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--sub)}
+
+/* hero */
+.hero{background:var(--wall);padding-block:28px 34px;overflow:hidden}
+.hero .in{display:flex;flex-direction:column;gap:14px}
+.hero h1{font-size:52px;line-height:1.02}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.held{display:flex;justify-content:center;align-items:flex-start;gap:5%;padding:14px 0 26px}
+.held .strip{width:40%;max-width:190px}
+.held .strip:first-child{transform:rotate(-6deg)}
+.held .strip:last-child{transform:rotate(5deg);margin-top:28px}
+.cta{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--accent);color:var(--accent-ink);
+  font-weight:700;font-size:16px;border-radius:14px;padding:14px 20px;border:0;text-decoration:none;width:100%;box-sizing:border-box}
+.facts{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:13px;color:var(--sub)}
+.facts span::before{content:"✓ ";color:var(--ok);font-weight:700}
+
+/* strip */
+.strip{--frame:#141216;--logo:#f3f0f5;background:var(--frame);padding:7% 7% 0;border-radius:3px;box-shadow:0 10px 24px #0000002e,0 2px 4px #00000024;
+  display:flex;flex-direction:column;gap:5%;box-sizing:border-box}
+.strip[data-frame="white"]{--frame:#fdfdfd;--logo:#2a2530}
+.strip[data-frame="pink"]{--frame:#f5b9c8;--logo:#5b2335}
+.strip .cells{display:flex;flex-direction:column;gap:5px}
+.strip svg.cell{display:block;width:100%;height:auto;aspect-ratio:4/3;border-radius:1px}
+.strip .foot{display:flex;flex-direction:column;align-items:center;padding:8px 0 10px;color:var(--logo);gap:1px}
+.strip .foot b{font-family:var(--display);font-weight:400;font-size:13px;letter-spacing:.02em;white-space:nowrap}
+.strip .foot i{font-style:normal;font-family:var(--mono);font-size:7.5px;opacity:.75;letter-spacing:.04em;white-space:nowrap}
+
+section{padding-block:40px 8px}
+.sechead{display:flex;flex-direction:column;gap:6px;margin-bottom:20px}
+
+/* phones */
+.phones{display:grid;grid-template-columns:1fr 1fr;gap:18px 14px}
+.ph{display:flex;flex-direction:column;gap:10px;min-width:0}
+.ph p{font-size:14px}
+.ph .who{font-size:12px;font-weight:700;display:inline-flex;align-items:center;gap:6px}
+.ph .who::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--c)}
+.dev{background:#111014;border-radius:26px;padding:7px;aspect-ratio:9/19;box-sizing:border-box;max-width:100%}
+.scr{position:relative;width:100%;height:100%;border-radius:20px;overflow:hidden;background:#000;color:#fff;font-size:11px}
+.scr svg.full{position:absolute;inset:0;width:100%;height:100%}
+.topbar{position:absolute;top:10px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;font-weight:700;z-index:2}
+.pill{background:#0009;border-radius:99px;padding:2px 8px;font-size:10px}
+.rec::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:#ff4b4b;margin-right:4px;vertical-align:1px}
+.count{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--display);font-size:64px;line-height:1;text-shadow:0 3px 14px #0007;z-index:2}
+.spot{position:absolute;right:5%;bottom:13%;width:40%;height:36%;border:2px dashed #fffc;border-radius:46% 46% 10px 10px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:8px;font-size:10px;font-weight:700;box-sizing:border-box;z-index:2;text-shadow:0 1px 3px #000a}
+.shutter{position:absolute;left:0;right:0;bottom:12px;display:flex;justify-content:center;align-items:center;gap:14px;z-index:2}
+.shutter .b{width:40px;height:40px;border-radius:50%;border:3px solid #fff;box-sizing:border-box;display:grid;place-items:center}
+.shutter .b::after{content:"";width:28px;height:28px;border-radius:50%;background:#fff}
+.thumbs{display:flex;gap:3px}
+.thumbs span{width:16px;height:12px;border-radius:2px;background:#ffffff40;border:1px solid #fff8}
+.thumbs span.on{background:#fff}
+.chat{background:#b7c9d8;color:#1d2530;display:flex;flex-direction:column;justify-content:flex-end;gap:7px;padding:10px;box-sizing:border-box;height:100%}
+.chat .name{font-size:10px;color:#3a4756;font-weight:600}
+.bub{align-self:flex-end;background:#fff176;border-radius:12px 12px 2px 12px;padding:6px 9px;font-size:11px;max-width:85%}
+.card{align-self:flex-end;background:#fff;border-radius:12px;overflow:hidden;width:86%;box-shadow:0 1px 2px #0002}
+.card .og{background:#e9e3df;display:flex;justify-content:center;padding:8px 0}
+.card .og .strip{width:42%;padding:5% 5% 0;gap:3%}
+.card .og .strip .cells{gap:2px}
+.card .og .strip .foot{padding:3px 0 5px}
+.card .og .strip .foot b{font-size:7px}
+.card .og .strip .foot i{display:none}
+.card .t{padding:6px 8px 8px;font-size:10px;line-height:1.35}
+.card .t b{display:block;font-size:11px}
+.card .t span{color:#6b6476}
+.reply{align-self:flex-start;background:#fff;border-radius:12px 12px 12px 2px;padding:6px 9px;font-size:11px}
+.done{background:var(--paper);color:var(--ink);height:100%;display:flex;flex-direction:column;align-items:center;gap:8px;padding:12px 10px;box-sizing:border-box}
+.done .strip{width:40%}
+.done .strip .foot i{display:none}
+.done .strip .foot b{font-size:9px}
+.done .row{display:flex;gap:4px;flex-wrap:wrap;justify-content:center}
+.done .dotbg{width:16px;height:16px;border-radius:50%;border:1px solid var(--line)}
+.done .dotbg.on{outline:2px solid var(--ink);outline-offset:1px}
+.done .btns{display:flex;flex-direction:column;gap:5px;width:100%;margin-top:auto}
+.done .btns span{background:var(--accent);color:var(--accent-ink);border-radius:9px;padding:6px;text-align:center;font-weight:700;font-size:10.5px}
+.done .btns span.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.done .ok{font-size:10px;color:var(--ok);font-weight:700}
+
+/* pickers */
+.picker{display:flex;flex-direction:column;gap:18px}
+.stage{background:var(--wall);border-radius:18px;padding:22px 0;display:flex;justify-content:center}
+.stage .strip{width:52%;max-width:220px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips .lbl{width:100%;font-size:12px;font-weight:700;color:var(--sub)}
+.chip{appearance:none;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:99px;padding:6px 12px 6px 6px;
+  display:inline-flex;align-items:center;gap:8px;font:inherit;font-size:14px;cursor:pointer}
+.chip i{width:22px;height:22px;border-radius:50%;border:1px solid #0002;display:inline-block}
+.chip[aria-pressed="true"]{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink);font-weight:700}
+.chip:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* moving strip */
+.moving{display:grid;grid-template-columns:44% 1fr;gap:18px;align-items:center}
+.moving>div{min-width:0}
+.moving .strip{width:100%}
+.lock{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.lock span{border-radius:12px;padding:10px 12px;font-weight:700;font-size:14px;display:flex;flex-direction:column;gap:2px}
+.lock .off{background:var(--paper);border:1px dashed var(--line);color:var(--sub)}
+.lock .on{background:var(--accent);color:var(--accent-ink)}
+.lock small{font-weight:400;opacity:.85}
+
+.blink{animation:blink 3.2s infinite;transform-box:fill-box;transform-origin:center}
+.bob{animation:bob 2s ease-in-out infinite alternate}
+.bob2{animation:bob 2.4s ease-in-out infinite alternate-reverse}
+@keyframes blink{0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(.1)}}
+@keyframes bob{from{transform:translateY(0) rotate(0)}to{transform:translateY(-2px) rotate(1.5deg)}}
+@media (prefers-reduced-motion:reduce){.blink,.bob,.bob2{animation:none}}
+
+footer{padding-block:40px 48px}
+footer .in{display:flex;flex-direction:column;gap:14px}
+.note{font-size:12px;color:var(--sub);border-top:1px solid var(--line);padding-top:14px}
+@media (max-width:380px){.hero h1{font-size:44px}.held{height:360px}.count{font-size:52px}}
+</style>
+
+<div class="hero">
+  <div class="in">
+    <div class="kicker">D:OT LAB · 그냥 시켜봄 #003</div>
+    <h1>멀리 있어도<br><em>한 칸에.</em></h1>
+    <p class="sub">따로 같이 네컷. 내가 먼저 찍고 링크를 보내면, 친구가 열자마자 내 옆에 서서 찍는다. 찍기 직전 2초까지 같이 남는다.</p>
+    <div class="held" id="held"></div>
+    <a class="cta" href="#how">링크 만들고 먼저 찍기</a>
+    <div class="facts"><span>회원가입 없음</span><span>무료</span><span>사진은 7일 뒤 자동 삭제</span></div>
+  </div>
+</div>
+
+<section id="how"><div class="in">
+  <div class="sechead">
+    <div class="kicker">HOW IT WORKS</div>
+    <h2>링크 하나면 둘이 된다</h2>
+  </div>
+  <div class="phones" id="phones"></div>
+</div></section>
+
+<section><div class="in picker">
+  <div class="sechead" style="margin:0">
+    <div class="kicker">BACKGROUND · FRAME</div>
+    <h2>배경은 누구 걸로 할까</h2>
+    <p class="sub">둘 다 오려 내서 합치니까 배경은 마지막에 고른다. 눌러 보세요.</p>
+  </div>
+  <div class="stage"><div id="pick"></div></div>
+  <div class="chips" id="bgchips" role="group" aria-label="배경"><span class="lbl">배경</span></div>
+  <div class="chips" id="framechips" role="group" aria-label="프레임"><span class="lbl">프레임</span></div>
+</div></section>
+
+<section><div class="in">
+  <div class="moving">
+    <div id="mov"></div>
+    <div>
+      <div class="kicker">2 SEC BEFORE</div>
+      <h2>셔터 직전 2초도<br>같이 남는다</h2>
+      <p class="sub" style="margin-top:8px">카운트다운 동안 웃음 참다 터지는 그 2초. 네 칸이 각자 움직이는 영상으로 저장된다.</p>
+      <div class="lock">
+        <span class="off">사진 저장 · 영상 저장 <small>친구가 찍으면 열려요</small></span>
+        <span class="on">사진 저장 · 영상 저장 <small>둘 다 찍었어요</small></span>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="in">
+  <a class="cta" href="#how">링크 만들고 먼저 찍기</a>
+  <p class="note">시안입니다. 사람은 일러스트로 그렸고, 실제로는 각자의 카메라 사진이 들어갑니다. 링크는 7일 동안만 열리고 그 뒤 사진·영상은 지워집니다.</p>
+</div></footer>
+
+<script>
+const INK="#2a2230", SKIN="#f6d7c3";
+const BG={
+  mine:{label:"내 방 (보낸 사람)",dot:"#f1d3bd",draw:(h=120,w=160)=>`<rect width="${w}" height="${h}" fill="#f2d6c2"/><rect x="${w-56}" y="${h-108}" width="40" height="34" fill="#cfe6f5" stroke="#fff" stroke-width="3"/><line x1="${w-36}" y1="${h-108}" x2="${w-36}" y2="${h-74}" stroke="#fff" stroke-width="2"/><rect x="14" y="${h-102}" width="20" height="26" fill="#f7b267" opacity=".8"/><rect x="0" y="${h-22}" width="${w}" height="22" fill="#e2bfa6"/>`},
+  friend:{label:"친구 카페 (받은 사람)",dot:"#cfe3dc",draw:(h=120,w=160)=>`<rect width="${w}" height="${h}" fill="#cfe3dc"/><g transform="translate(0 ${h-120})"><rect x="0" y="40" width="${w}" height="4" fill="#a9c7bd"/><rect x="${w-42}" y="24" width="10" height="16" rx="2" fill="#f4f1e8"/><rect x="${w-28}" y="28" width="10" height="12" rx="2" fill="#e9a68e"/><path d="M20 120 L22 92 L38 92 L40 120Z" fill="#c98b62"/><path d="M30 92 C14 76 12 64 26 70 C24 58 34 56 32 70 C40 58 48 66 36 92Z" fill="#5f9e6e"/></g>`},
+  white:{label:"흰색",dot:"#ffffff",draw:(h=120,w=160)=>`<rect width="${w}" height="${h}" fill="#f7f7f8"/>`},
+  booth:{label:"보라 부스",dot:"#b9a6e6",draw:(h=120,w=160)=>`<defs><linearGradient id="bg-booth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c7b6ef"/><stop offset="1" stop-color="#a893df"/></linearGradient></defs><rect width="${w}" height="${h}" fill="url(#bg-booth)"/>`}
+};
+const FRAMES={black:{label:"블랙",dot:"#141216"},white:{label:"화이트",dot:"#fdfdfd"},pink:{label:"핑크",dot:"#f5b9c8"}};
+const ME={hair:"#2b2028",shirt:"#e0563f",long:true}, FR={hair:"#8a5a3b",shirt:"#4d7fe0",long:false};
+// pose per cut: [tilt me, tilt friend, gesture]
+const POSES=[[-8,8,"v"],[10,-10,"cheek"],[-14,14,"lean"],[0,0,"laugh"]];
+
+function face(p,tilt,g,anim){
+  const back=p.long?`<path d="M-24 -6 C-28 -34 28 -34 24 -6 L25 28 L13 28 L13 4 L-13 4 L-13 28 L-25 28Z" fill="${p.hair}" stroke="${INK}" stroke-width="1.6" stroke-linejoin="round"/>`:"";
+  const bang=p.long?`<path d="M-20 -4 C-22 -30 22 -30 20 -4 C12 -15 -2 -17 -20 -4Z" fill="${p.hair}" stroke="${INK}" stroke-width="1.6"/>`
+                   :`<path d="M-21 2 C-25 -30 25 -30 21 2 C17 -9 8 -14 -4 -12 C-12 -12 -18 -6 -21 2Z" fill="${p.hair}" stroke="${INK}" stroke-width="1.6"/>`;
+  const mouth=g==="laugh"?`<path d="M-6 10 Q0 19 6 10Z" fill="#b8434b" stroke="${INK}" stroke-width="1.4"/>`:`<path d="M-5 11 Q0 15.5 5 11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+  const eyes=g==="laugh"?`<path d="M-10 2 Q-7 -1 -4 2 M4 2 Q7 -1 10 2" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+                       :`<g class="${anim?"blink":""}"><ellipse cx="-7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/><ellipse cx="7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/></g>`;
+  return `<g transform="translate(0 -60) rotate(${tilt})">${back}<ellipse rx="18" ry="21" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>${bang}${eyes}
+    <ellipse cx="-11" cy="8" rx="4" ry="2.4" fill="#f19a9a" opacity=".7"/><ellipse cx="11" cy="8" rx="4" ry="2.4" fill="#f19a9a" opacity=".7"/>${mouth}</g>`;
+}
+function hand(x,y,kind){
+  if(kind==="v") return `<g transform="translate(${x} ${y})"><path d="M-3 0 L-6 -13 M3 0 L6 -13" stroke="${INK}" stroke-width="5.6" stroke-linecap="round"/><path d="M-3 0 L-6 -13 M3 0 L6 -13" stroke="${SKIN}" stroke-width="3.4" stroke-linecap="round"/><circle r="6" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/></g>`;
+  return `<g transform="translate(${x} ${y})"><circle r="6" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/></g>`;
+}
+function person(p,x,tilt,g,side,anim,cls){
+  const lean=g==="lean"?side*-4:0;
+  let hands="";
+  if(g==="v") hands=hand(side*-20,-34,"v");
+  if(g==="cheek") hands=hand(-17,-52,"c")+hand(17,-52,"c");
+  return `<g transform="translate(${x+lean} 122)"><g class="${cls||""}">
+    <path d="M-30 0 C-30 -24 -18 -34 0 -34 C18 -34 30 -24 30 0Z" fill="${p.shirt}" stroke="${INK}" stroke-width="1.6"/>
+    <rect x="-6" y="-42" width="12" height="10" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>
+    ${face(p,tilt,g,anim)}${hands}</g></g>`;
+}
+// what: "both" | "me" | "spot"
+function cellSVG(bg,i,opt={}){
+  const [tm,tf,g]=POSES[i%4], anim=!!opt.anim, what=opt.what||"both";
+  let s=`<svg class="cell" viewBox="0 0 160 120" xmlns="http://www.w3.org/2000/svg">${BG[bg].draw()}`;
+  if(what!=="none") s+=person(ME,58,tm,g,-1,anim,anim?"bob":"");
+  if(what==="both") s+=person(FR,104,tf,g,1,anim,anim?"bob2":"");
+  return s+`</svg>`;
+}
+function strip(bg,frame,opt={}){
+  const cells=[0,1,2,3].map(i=>cellSVG(bg,i,opt)).join("");
+  return `<div class="strip" data-frame="${frame}"><div class="cells">${cells}</div>
+    <div class="foot"><b>따로 같이 네컷</b><i>${opt.foot||"SEOUL ↔ BUSAN"}</i></div></div>`;
+}
+
+document.getElementById("held").innerHTML=strip("booth","black")+strip("mine","white");
+
+// phones
+function cam(bg,what,count,n,mode){
+  const sv=`<svg class="full" viewBox="0 0 120 254" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">${BG[bg].draw(254,120)}<g transform="translate(-34 102) scale(1.25)">${person(ME,58,-8,"v",-1,true,"bob")}${what==="both"?person(FR,104,8,"v",1,true,"bob2"):""}</g></svg>`;
+  const th=[0,1,2,3].map(k=>`<span class="${k<n-1?"on":""}"></span>`).join("");
+  return `<div class="dev"><div class="scr">${sv}
+    <div class="topbar"><span class="pill rec">2초 녹화</span><span class="pill">${n} / 4</span></div>
+    <div class="count">${count}</div>
+    ${what==="spot"?`<div class="spot">친구 자리</div>`:""}
+    ${mode==="friend"?`<div class="topbar" style="top:32px;justify-content:center"><span class="pill">친구가 먼저 서 있어요</span></div>`:""}
+    <div class="shutter"><div class="thumbs">${th}</div><div class="b"></div><div class="thumbs" style="visibility:hidden">${th}</div></div>
+  </div></div>`;
+}
+const half=`<div class="strip" data-frame="black"><div class="cells">${[0,1,2,3].map(i=>cellSVG("mine",i,{what:"me"})).join("")}</div><div class="foot"><b>따로 같이 네컷</b><i></i></div></div>`;
+const chat=`<div class="dev"><div class="scr"><div class="chat">
+  <div class="name">지민</div>
+  <div class="bub">부산 가서도 네컷은 찍어야지 😆</div>
+  <div class="card"><div class="og">${half}</div><div class="t"><b>옆자리를 비워 뒀어요</b><span>열면 바로 촬영 · 7일 남음</span></div></div>
+  <div class="reply">ㅋㅋㅋ 지금 찍는다</div>
+</div></div></div>`;
+const done=`<div class="dev"><div class="scr"><div class="done">
+  <div class="ok">둘 다 찍었어요</div>
+  ${strip("booth","black",{foot:"2026.10.26"})}
+  <div class="row">${Object.entries(BG).map(([k,v])=>`<span class="dotbg ${k==="booth"?"on":""}" style="background:${v.dot}"></span>`).join("")}</div>
+  <div class="btns"><span>사진 저장</span><span class="alt">영상 저장 (움직이는 네컷)</span></div>
+</div></div></div>`;
+const P=[
+  {c:"var(--me)",who:"나",body:cam("mine","spot",3,2),t:"<b>1. 먼저 찍기.</b> 옆에 친구 자리를 비워 두고 네 번 찰칵."},
+  {c:"var(--me)",who:"나",body:chat,t:"<b>2. 링크만 보내기.</b> 사진은 링크 안에 맡겨 둔다."},
+  {c:"var(--fr)",who:"친구",body:cam("mine","both",2,1,"friend"),t:"<b>3. 열면 바로 촬영.</b> 내가 이미 서 있고, 친구는 오려져서 옆에 선다."},
+  {c:"var(--fr)",who:"둘 다",body:done,t:"<b>4. 배경 고르고 각자 저장.</b> 둘 다 찍어야 열린다."}
+];
+document.getElementById("phones").innerHTML=P.map(p=>`<div class="ph" style="--c:${p.c}"><span class="who">${p.who}</span>${p.body}<p>${p.t}</p></div>`).join("");
+
+// picker
+let curBg="mine",curFrame="black";
+function renderPick(){document.getElementById("pick").innerHTML=strip(curBg,curFrame);}
+function chips(id,map,get,set){
+  const box=document.getElementById(id);
+  for(const [k,v] of Object.entries(map)){
+    const b=document.createElement("button");b.className="chip";b.type="button";b.id=id+"-"+k;
+    b.innerHTML=`<i style="background:${v.dot}"></i>${v.label}`;
+    b.setAttribute("aria-pressed",String(get()===k));
+    b.onclick=()=>{set(k);box.querySelectorAll(".chip").forEach(c=>c.setAttribute("aria-pressed",String(c===b)));renderPick();};
+    box.appendChild(b);
+  }
+}
+chips("bgchips",BG,()=>curBg,k=>curBg=k);
+chips("framechips",FRAMES,()=>curFrame,k=>curFrame=k);
+renderPick();
+document.getElementById("mov").innerHTML=strip("friend","pink",{anim:true,foot:"▶ 2초씩 반복"});
+</script>
