@@ -22,7 +22,7 @@ button:disabled{opacity:.4}
 .stage{position:relative;width:100%;aspect-ratio:3/4;border-radius:12px;overflow:hidden;
   background:repeating-conic-gradient(#ddd 0 25%,#fff 0 50%) 0 0/20px 20px}
 .stage video,.stage canvas{position:absolute;inset:0;width:100%;height:100%;object-fit:contain}
-#out{display:none}
+
 video.play{width:100%;border-radius:10px;background:#000}
 img.shot{width:100%;border-radius:10px}
 #log{display:flex;flex-direction:column;gap:6px;font-size:13px}
@@ -42,19 +42,22 @@ textarea{width:100%;height:150px;font:12px/1.4 ui-monospace,monospace;border:1px
   <div class="card">
     <h2>1. 카메라</h2>
     <div class="stage" id="stage"><video id="cam" playsinline muted autoplay></video><canvas id="out"></canvas></div>
-    <div class="row"><button id="bCam">카메라 켜기</button><button id="bFlip" class="alt" disabled>전면/후면 바꾸기</button></div>
+    <div class="row"><button id="bCam">카메라 켜기</button><button id="bFlip" class="alt" disabled>전면/후면 바꾸기</button><button id="bMirror" class="alt" disabled>좌우반전 켬</button></div>
+    <label class="sub" id="zoomRow" hidden>줌 <input id="zoom" type="range" step="0.1" style="width:70%;vertical-align:middle"> <span id="zoomVal"></span></label>
+    <p class="sub">화면을 두 손가락으로 벌리면 줌, 한 번 누르면 그 자리에 초점(지원하는 폰만).</p>
     <p class="sub" id="camMsg"></p>
   </div>
 
   <div class="card">
     <h2>2. 실시간 누끼</h2>
     <p class="sub">켜면 위 화면이 사람만 남고 보라 배경으로 바뀝니다. 머리카락 가장자리를 봐 주세요.</p>
-    <div class="row"><button id="bSeg" disabled>누끼 켜기</button><button id="bBg" class="alt" disabled>배경 바꾸기</button></div>
+    <div class="row"><button id="bSeg" disabled>누끼 켜기/끄기</button><button id="bBg" class="alt" disabled>배경 바꾸기</button></div>
   </div>
 
   <div class="card">
     <h2>3. 2초 녹화</h2>
-    <div class="row"><button id="bRecCam" disabled>카메라 그대로 2초</button><button id="bRecCut" class="alt" disabled>누끼 화면 2초</button></div>
+    <p class="sub">지금 위에 보이는 화면 그대로(좌우반전·누끼 포함) 2초를 녹화합니다.</p>
+    <div class="row"><button id="bRec" disabled>지금 화면 2초 녹화</button></div>
     <video id="clip" class="play" controls playsinline hidden></video>
   </div>
 
@@ -93,8 +96,8 @@ const MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/s
 const $ = id => document.getElementById(id);
 const cam = $("cam"), out = $("out");
 const R = {};          // key -> [status, text]
-const ORDER = ["env","cam","model","seg","recCam","recCut","shotShare","shotDl","clipShare","clipDl","hold"];
-const NAMES = {env:"환경",cam:"카메라",model:"누끼 모델",seg:"누끼 속도",recCam:"녹화(원본)",recCut:"녹화(누끼)",
+const ORDER = ["env","cam","caps","focus","model","seg","recCam","recCut","shotShare","shotDl","clipShare","clipDl","hold"];
+const NAMES = {env:"환경",cam:"카메라",caps:"줌·초점",focus:"탭 초점",model:"누끼 모델",seg:"누끼 속도",recCam:"녹화(원본)",recCut:"녹화(누끼)",
   shotShare:"사진 공유",shotDl:"사진 다운",clipShare:"영상 공유",clipDl:"영상 다운",hold:"길게 눌러"};
 
 function set(k, st, text){ R[k] = [st, text]; render(); }
@@ -110,8 +113,8 @@ const app = /Instagram/.test(ua) ? "Instagram" : /Barcelona|Threads/i.test(ua) ?
   : /KAKAOTALK/i.test(ua) ? "KakaoTalk" : /FBAN|FBAV/.test(ua) ? "Facebook" : "브라우저";
 set("env", "ok", `${app} · ${/iPhone|iPad/.test(ua) ? "iOS" : /Android/.test(ua) ? "Android" : "PC"} · ${screen.width}x${screen.height}`);
 
-// 1. camera: keep the camera's own aspect (no crop) and ask for its widest zoom
-let stream, front = true;
+// 1. camera: keep the camera's own aspect (no crop), widest zoom, mirror as an option
+let stream, track, front = true, mirror = true, caps = {}, running = false;
 async function startCam(facing){
   set("cam", "wait", "권한 요청 중");
   $("camMsg").textContent = "카메라 권한을 요청하는 중…";
@@ -126,23 +129,28 @@ async function startCam(facing){
     stream = await navigator.mediaDevices.getUserMedia({ audio: false,
       video: { facingMode: { ideal: facing }, aspectRatio: { ideal: 4 / 3 }, width: { ideal: 1280 } } });
     clearTimeout(stall);
-    const track = stream.getVideoTracks()[0];
-    let zoom = "줌 조절 불가";
-    const caps = track.getCapabilities ? track.getCapabilities() : {};
+    track = stream.getVideoTracks()[0];
+    caps = track.getCapabilities ? track.getCapabilities() : {};
     if (caps.zoom) {
       try { await track.applyConstraints({ advanced: [{ zoom: caps.zoom.min }] }); } catch {}
-      zoom = `줌 ${caps.zoom.min}~${caps.zoom.max} 중 ${track.getSettings().zoom}`;
-    }
+      const z = $("zoom"); z.min = caps.zoom.min; z.max = caps.zoom.max; z.step = caps.zoom.step || 0.1;
+      z.value = track.getSettings().zoom ?? caps.zoom.min; $("zoomVal").textContent = `${(+z.value).toFixed(1)}x`;
+      $("zoomRow").hidden = false;
+    } else $("zoomRow").hidden = true;
+    set("caps", caps.zoom ? "ok" : "bad",
+      `줌 ${caps.zoom ? `${caps.zoom.min}~${caps.zoom.max}` : "없음"} · 초점 ${caps.focusMode ? caps.focusMode.join("/") : "없음"} · 탭초점 ${"pointsOfInterest" in caps ? "있음" : "없음"}`);
     front = (track.getSettings().facingMode || facing) !== "environment";
+    mirror = front; $("bMirror").textContent = mirror ? "좌우반전 켬" : "좌우반전 끔";
     cam.srcObject = stream;
     await cam.play();
     await new Promise(r => cam.readyState >= 2 ? r() : cam.onloadeddata = r);
     $("stage").style.aspectRatio = `${cam.videoWidth} / ${cam.videoHeight}`;
-    cam.style.transform = front ? "scaleX(-1)" : "none";
-    set("cam", "ok", `${front ? "전면" : "후면"} · ${cam.videoWidth}x${cam.videoHeight} · ${zoom} · ${Math.round(performance.now() - t0)}ms`);
-    for (const id of ["bSeg","bRecCam","bShotShare","bShotDl","bFlip"]) $(id).disabled = false;
+    cam.style.visibility = "hidden"; out.style.display = "block";
+    set("cam", "ok", `${front ? "전면" : "후면"} · ${cam.videoWidth}x${cam.videoHeight} · ${Math.round(performance.now() - t0)}ms`);
+    for (const id of ["bSeg","bRec","bShotShare","bShotDl","bFlip","bMirror"]) $(id).disabled = false;
     $("bCam").disabled = true;
     $("camMsg").textContent = "";
+    if (!running) { running = true; requestAnimationFrame(frame); }
   } catch (e) {
     clearTimeout(stall);
     set("cam", "bad", `${e.name}: ${e.message}`);
@@ -153,6 +161,37 @@ async function startCam(facing){
 }
 $("bCam").onclick = () => startCam("user");
 $("bFlip").onclick = () => startCam(front ? "environment" : "user");
+$("bMirror").onclick = () => { mirror = !mirror; $("bMirror").textContent = mirror ? "좌우반전 켬" : "좌우반전 끔"; };
+
+async function setZoom(v){
+  if (!caps.zoom) return;
+  v = Math.min(caps.zoom.max, Math.max(caps.zoom.min, v));
+  try { await track.applyConstraints({ advanced: [{ zoom: v }] }); } catch {}
+  $("zoom").value = v; $("zoomVal").textContent = `${v.toFixed(1)}x`;
+}
+$("zoom").oninput = e => setZoom(+e.target.value);
+// pinch to zoom, tap to focus
+const stageEl = $("stage"); let pinch = null, moved = false;
+const dist = t => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+stageEl.addEventListener("touchstart", e => {
+  moved = false;
+  if (e.touches.length === 2) { e.preventDefault(); pinch = { d: dist(e.touches), z: +$("zoom").value || 1 }; }
+}, { passive: false });
+stageEl.addEventListener("touchmove", e => {
+  moved = true;
+  if (pinch && e.touches.length === 2) { e.preventDefault(); setZoom(pinch.z * dist(e.touches) / pinch.d); }
+}, { passive: false });
+stageEl.addEventListener("touchend", e => { if (e.touches.length < 2) pinch = null; });
+stageEl.addEventListener("click", async e => {
+  if (!track || moved) return;
+  const r = stageEl.getBoundingClientRect();
+  let x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+  if (mirror) x = 1 - x;
+  try {
+    await track.applyConstraints({ advanced: [{ pointsOfInterest: [{ x, y }], focusMode: "single-shot" }] });
+    set("focus", "ok", `(${x.toFixed(2)}, ${y.toFixed(2)}) 적용 · 초점 모드 ${track.getSettings().focusMode ?? "?"}`);
+  } catch (err) { set("focus", "bad", `${err.name}: ${err.message}`); }
+});
 
 // 2. segmentation
 let seg, segOn = false, flip = null, bgIdx = 0, times = [];
@@ -172,10 +211,15 @@ async function loadSeg(){
   set("model", "ok", `${delegate} · ${Math.round(performance.now() - t0)}ms`);
 }
 
+// one loop draws the preview; recordings and photos take this canvas, so they match the screen
+function drawMirrored(c2, src, w, h){
+  c2.save(); if (mirror) { c2.translate(w, 0); c2.scale(-1, 1); } c2.drawImage(src, 0, 0, w, h); c2.restore();
+}
 function frame(){
-  if (!segOn) return;
   const w = cam.videoWidth, h = cam.videoHeight;
-  if (out.width !== w) { out.width = cut.width = w; out.height = cut.height = h; }
+  if (!w) { requestAnimationFrame(frame); return; }
+  if (out.width !== w || out.height !== h) { out.width = cut.width = w; out.height = cut.height = h; }
+  if (!segOn) { drawMirrored(ctx, cam, w, h); requestAnimationFrame(frame); return; }
   const t0 = performance.now();
   seg.segmentForVideo(cam, t0, res => {
     const m = res.confidenceMasks[res.confidenceMasks.length - 1];
@@ -190,10 +234,8 @@ function frame(){
     mctx.putImageData(img, 0, 0);
   });
   times.push(performance.now() - t0);
-  cctx.globalCompositeOperation = "copy";
-  cctx.save(); if (front) cctx.scale(-1, 1); cctx.drawImage(cam, front ? -w : 0, 0, w, h); cctx.restore();
-  cctx.globalCompositeOperation = "destination-in";
-  cctx.save(); if (front) cctx.scale(-1, 1); cctx.drawImage(mc, front ? -w : 0, 0, w, h); cctx.restore();
+  cctx.globalCompositeOperation = "copy"; drawMirrored(cctx, cam, w, h);
+  cctx.globalCompositeOperation = "destination-in"; drawMirrored(cctx, mc, w, h);
   ctx.fillStyle = BGS[bgIdx]; ctx.fillRect(0, 0, w, h);
   ctx.drawImage(cut, 0, 0);
   if (times.length === 60) {
@@ -204,18 +246,19 @@ function frame(){
 }
 
 $("bSeg").onclick = async () => {
+  if (segOn) { segOn = false; return; }
   $("bSeg").disabled = true;
   try {
     if (!seg) await loadSeg();
-    segOn = true; times = []; out.style.display = "block"; cam.style.visibility = "hidden";
+    segOn = true; times = [];
     set("seg", "wait", "측정 중");
-    $("bBg").disabled = false; $("bRecCut").disabled = false;
-    requestAnimationFrame(frame);
+    $("bBg").disabled = false;
   } catch (e) { set("model", "bad", `${e.name}: ${e.message}`); }
+  $("bSeg").disabled = false;
 };
 $("bBg").onclick = () => { bgIdx = (bgIdx + 1) % BGS.length; };
 
-// 3. 2-second recording
+// 3. 2-second recording of the preview canvas
 let clipBlob = null;
 function pickMime(){
   for (const t of ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"])
@@ -236,26 +279,18 @@ async function rec2(src, key){
     await Promise.race([done, new Promise((_, rej) => setTimeout(() => rej(new Error("onstop 안 옴")), 4000))]);
     clipBlob = new Blob(chunks, { type: (r.mimeType || mime || "video/webm").split(";")[0] });
     const v = $("clip"); v.hidden = false; v.src = URL.createObjectURL(clipBlob); v.play().catch(() => {});
-    set(key, clipBlob.size > 0 ? "ok" : "bad", `${clipBlob.type} · ${(clipBlob.size / 1024).toFixed(0)}KB`);
+    set(key, clipBlob.size > 0 ? "ok" : "bad", `${mirror ? "반전" : "원본 방향"} · ${clipBlob.type} · ${(clipBlob.size / 1024).toFixed(0)}KB`);
     $("bClipShare").disabled = $("bClipDl").disabled = false;
   } catch (e) { set(key, "bad", `${e.name}: ${e.message}`); }
 }
-$("bRecCam").onclick = () => rec2(stream, "recCam");
-$("bRecCut").onclick = () => {
-  if (!out.captureStream) { set("recCut", "bad", "canvas.captureStream 없음"); return; }
-  rec2(out.captureStream(30), "recCut");
+$("bRec").onclick = () => {
+  const key = segOn ? "recCut" : "recCam";
+  if (!out.captureStream) { set(key, "bad", "canvas.captureStream 없음"); return; }
+  rec2(out.captureStream(30), key);
 };
 
 // 4. saving
-function snap(){
-  return new Promise(res => {
-    const c = document.createElement("canvas"), src = segOn ? out : cam;
-    c.width = src.videoWidth || src.width; c.height = src.videoHeight || src.height;
-    const x = c.getContext("2d");
-    if (!segOn) { if (front) x.scale(-1, 1); x.drawImage(cam, front ? -c.width : 0, 0); } else x.drawImage(out, 0, 0);
-    c.toBlob(b => res(b), "image/jpeg", 0.9);
-  });
-}
+const snap = () => new Promise(res => out.toBlob(b => res(b), "image/jpeg", 0.9));
 async function shareFile(blob, name, key){
   const f = new File([blob], name, { type: blob.type });
   if (!navigator.canShare || !navigator.canShare({ files: [f] })) { set(key, "bad", "파일 공유 미지원"); return; }
