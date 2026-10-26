@@ -58,6 +58,8 @@
 → 한 사람 약 5.5MB, 한 링크(둘) 약 11MB. 무료 10GB면 7일 동안 약 900링크. 넘으면 GB당 월 $0.015.
 
 ## 서버 (Worker, 최소)
+- 배포: https://dot-lab-booth.dotconnects.workers.dev (10-26, 서브도메인 dotlab 은 이미 사용 중이라 운영자 승인 대안 dotconnects). R2 `dot-lab-booth`, lifecycle `expire-7d` (s/, 7일).
+- 계획 리뷰 뒤 바뀐 점: join 없음 — B 는 토큰 해시 폴더에 올리고 `done` 이 자리를 차지(먼저 끝낸 친구). IP당 생성 제한·링크당 용량 누적은 뺌(12파일 × 3MB 상한 + 운영자 Class A 알림).
 - `POST /s` → 새 링크 `id`(추측 불가 22자) + 보낸 사람 쓰기 토큰.
 - `POST /s/:id/join` → 받은 사람 쓰기 토큰(첫 1명만. 이미 있으면 "이미 누가 찍었어요").
 - `PUT /s/:id/{a|b}/{cut}-{kind}` (토큰 필요) / `GET` 같은 경로 / `GET /s/:id` 상태(a 완료, b 완료, 만료일).

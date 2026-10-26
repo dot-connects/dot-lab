@@ -90,6 +90,7 @@ export default {
       if (!NAMES.includes(p[3])) return json(400, { error: "name" });
       const type = (req.headers.get("Content-Type") || "").split(";")[0].trim();
       if (!typeOk(p[3], type)) return json(415, { error: "type" });
+      if (+(req.headers.get("Content-Length") || 0) > MAX_FILE) return json(413, { error: "file-too-big" });
       const body = new Uint8Array(await req.arrayBuffer());
       if (body.byteLength === 0) return json(400, { error: "empty" });
       if (body.byteLength > MAX_FILE) return json(413, { error: "file-too-big" });
