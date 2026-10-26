@@ -10,9 +10,10 @@ const PERSON = 0;
 import { createRefiner } from "./refine.js";
 // engine 0 = joint bilateral below (default: kept braids on person-a, A/B 10-26), 1 = research guided filter
 // (refine.js, copied from research/cutout-poc; softer, lost braid tips and smeared on motion blur)
-// still = 0 keeps every shutter cut on the live matte (A/B runs); slo/shi = refine.js levels for the multiclass still
+// still = 1 (opt-in via ?still=1) cuts the shutter frame with selfie_multiclass; off by default: on the PC it tied the
+// live matte on quality while its 12 s load + 14 s first GPU run froze the preview (10-27). slo/shi = refine.js levels.
 export const TUNE = { engine: 0, ema: 0.6, lo: 0.4, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
-  still: 1, slo: 0.15, shi: 0.85, scpu: 0 };
+  still: new URLSearchParams(location.search).get("still") === "1" ? 1 : 0, slo: 0.15, shi: 0.85, scpu: 0 };
 export const stats = { delegate: "", ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
   still: { state: "", delegate: "", loadMs: 0, warmMs: 0, heldMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [] } };
 

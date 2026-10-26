@@ -1,6 +1,6 @@
 // One cut = countdown 3-2-1, a 2 s side-by-side clip [raw | matte] from "2" to the shutter, then the stills.
 import { camState, frameRect } from "./camera.js";
-import { segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, cutStill, stillBusy, stillWarm, stats } from "./segment.js";
+import { TUNE, segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, cutStill, stillBusy, stillWarm, stats } from "./segment.js";
 
 export const CLIP_MAX = { w: 640, h: 480 };
 export const STILL_MAX = { w: 960, h: 720 };
@@ -90,9 +90,9 @@ async function shrinkClip(blob) {
 }
 
 export async function shootOne(i, { video, onTick }) {
-  prefetchStill();                   // no-op when app.js already started it after the camera came on
-  // an HQ-model warm-up in flight stalls the GPU for seconds: let it finish before the countdown (<= 20 s)
-  await Promise.race([stillWarm(), sleep(20000)]);
+  prefetchStill();                   // no-op unless ?still=1, or when app.js already started it
+  // an HQ-model warm-up in flight stalls the GPU for seconds: let it finish before the countdown (<= 20 s, ?still=1 only)
+  if (TUNE.still) await Promise.race([stillWarm(), sleep(20000)]);
   stillBusy(true);
   try { return await shootOneNow(i, { video, onTick }); } finally { stillBusy(false); }
 }
