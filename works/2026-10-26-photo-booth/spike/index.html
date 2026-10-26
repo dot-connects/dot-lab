@@ -68,6 +68,18 @@ textarea{width:100%;height:150px;font:12px/1.4 ui-monospace,monospace;border:1px
   </div>
 
   <div class="card">
+    <h2>5. 서버 주소(https) 파일 저장</h2>
+    <p class="sub">완성본이 서버에 올라간 상황을 흉내 냅니다. 카메라 없이 바로 해 볼 수 있어요. 사진첩에 들어갔는지 확인해 주세요.</p>
+    <div class="row"><a id="aJpg" href="sample.jpg" download="dot-lab-sample.jpg"><button class="alt" tabindex="-1">사진 다운로드</button></a>
+      <a id="aMp4" href="sample.mp4" download="dot-lab-sample.mp4"><button class="alt" tabindex="-1">영상 다운로드</button></a></div>
+    <p class="sub">아래 두 사진을 각각 길게 눌러 저장해 보세요. (왼쪽 = 서버 주소, 오른쪽 = 페이지 안에서 만든 사진)</p>
+    <div class="row"><img id="imgHttps" class="shot" src="sample.jpg" alt="서버 주소 사진"><img id="imgData" class="shot" alt="페이지 안에서 만든 사진"></div>
+    <p class="sub">영상 오른쪽 아래 메뉴(⋮)에 다운로드가 있으면 눌러 보세요.</p>
+    <video class="play" src="sample.mp4" controls playsinline></video>
+    <div class="row"><a id="aExt" href="#"><button tabindex="-1">크롬(외부 브라우저)에서 열기</button></a></div>
+  </div>
+
+  <div class="card">
     <h2>결과</h2>
     <div id="log"></div>
     <textarea id="txt" readonly></textarea>
@@ -236,6 +248,20 @@ $("bShotDl").onclick = async () => {
 };
 $("bClipShare").onclick = () => clipBlob && shareFile(clipBlob, "dot-lab-test." + ext(clipBlob), "clipShare");
 $("bClipDl").onclick = () => clipBlob && download(clipBlob, "dot-lab-test." + ext(clipBlob), "clipDl");
+
+// 5. https files: the page can only see that a link was tapped, the operator checks the gallery
+NAMES.httpJpg = "https 사진"; NAMES.httpMp4 = "https 영상"; NAMES.ext = "외부 열기";
+ORDER.push("httpJpg", "httpMp4", "ext");
+$("aJpg").onclick = () => set("httpJpg", "wait", "눌림 · 사진첩 확인");
+$("aMp4").onclick = () => set("httpMp4", "wait", "눌림 · 사진첩 확인");
+fetch("sample.jpg").then(r => r.blob()).then(b => {
+  const fr = new FileReader(); fr.onload = () => { $("imgData").src = fr.result; }; fr.readAsDataURL(b);
+});
+const here = location.href.split("#")[0];
+$("aExt").href = app === "KakaoTalk" ? "kakaotalk://web/openExternal?url=" + encodeURIComponent(here)
+  : /Android/.test(ua) ? `intent://${here.replace(/^https?:\/\//, "")}#Intent;scheme=https;package=com.android.chrome;end`
+  : here;
+$("aExt").onclick = () => set("ext", "wait", `${app}에서 눌림 · 크롬으로 넘어갔는지 확인`);
 
 $("bCopy").onclick = async () => {
   try { await navigator.clipboard.writeText($("txt").value); $("bCopy").textContent = "복사됨"; }
