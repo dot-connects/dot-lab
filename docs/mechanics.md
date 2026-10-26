@@ -38,6 +38,7 @@ failure, comparison, a funny label, the player's own input decides the result.
 | 14 | 지옥철 버티기 | one-thumb dodge | stations survived | endless | none |
 | 15 | 한식 조합 도감 | combine two -> discover | found /N | collection | own recipe tree (large) |
 | 16 | 이삿짐 트럭 싣기 | pack boxes into a fixed space | fill % | new boxes | 1-ton truck size (source) |
+| 17 | 착시 이기기 (2026-10-26) | slide until two parts look equal | % fooled | new illusion each round, best | classic illusions with a measurable truth (Müller-Lyer, checker shadow, colour contrast); feed post = the illusion still as hook, share card = % fooled + link |
 | 17 | 3초 보고 없어진 것 | memorise a shelf, find the missing item | found count | shelf grows | own drawings |
 | 18 | 내 하루 24시간 나누기 | split a fixed total across sliders | distance from the national average | change and compare | time-use survey (source) |
 
