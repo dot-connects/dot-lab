@@ -303,3 +303,5 @@ Overcooked 류: 탄 음식은 채도를 빼고, 연기는 흰색(익음) → 짙
   jumps: the receipt spotlight blinked off when it moved lines (now glides), the spotlight dropped when the last card
   started (now carried under it), the card and its button popped in (whole card fades 0.5 s), the lights-on flash
   softened. Only jump left is the game's own lights-on moment. 35.5 s.
+  Operator: drop the oil step (no motion), kimchi and rice at real speed. The oil now passes under the opening card;
+  prep plays 1x from 김치 먼저. 33.2 s.
