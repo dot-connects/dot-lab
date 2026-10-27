@@ -34,3 +34,6 @@ works/2026-10-26-photo-booth/research/pet-matting/prof*/
 works/2026-10-26-photo-booth/research/pet-matting/out/masks/
 works/2026-10-26-photo-booth/research/pet-matting/out/*.png
 .dev.vars
+works/2026-10-26-photo-booth/research/round5-video/out/
+works/2026-10-26-photo-booth/research/round5-video/e2e/fast-*.png
+works/2026-10-26-photo-booth/research/round5-video/e2e/strip-*.jpg

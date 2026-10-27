@@ -73,6 +73,48 @@ function recorder(stream, bps) {
   } };
 }
 
+// Clip recorder on WebCodecs (same shape as recorder()): every frame the loop draws is encoded with the camera's own
+// frame time, so the clip has all of them at their real spacing. MediaRecorder on the canvas stream kept 30-60 % of
+// the frames pushed to it (headless 10-27, fake camera) and stamps them with the wall clock. null -> MediaRecorder.
+let clipCfg = null;
+async function frameRecorder(canvas, bps) {
+  const { width, height } = canvas;
+  clipCfg ||= (async () => {
+    if (!window.VideoEncoder || !window.VideoFrame) return null;
+    for (const codec of ["avc1.42e01f", "avc1.4d401f", "avc1.640028"]) {
+      const c = { codec, width, height, bitrate: bps, framerate: 30, avc: { format: "avc" } };
+      if ((await VideoEncoder.isConfigSupported(c).catch(() => null))?.supported) return c;
+    }
+    return null;
+  })();
+  const cfg = await clipCfg;
+  if (!cfg || cfg.width !== width || cfg.height !== height) return null;
+  const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+  // fragmented: what MediaRecorder writes too, and what compose.js reads frame by frame
+  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: 30 },
+    fastStart: "fragmented", firstTimestampBehavior: "offset" });
+  let failed = null, paused = false, n = 0, last = -1, done = false;
+  const enc = new VideoEncoder({ output: (c, m) => { if (!done) muxer.addVideoChunk(c, m); }, error: e => { failed = e; } });
+  enc.configure(cfg);
+  return { rec: { pause() { paused = true; }, resume() { paused = false; } }, started: Promise.resolve(), late: false, drops: 0, n: 0,
+    // us = the frame's time in microseconds (only increasing ones are kept)
+    push(us) {
+      if (paused || failed || enc.state !== "configured" || us <= last) return;
+      if (enc.encodeQueueSize > 8) { this.drops++; return; }    // a stuck encoder drops frames rather than queueing seconds
+      last = us; const f = new VideoFrame(canvas, { timestamp: Math.round(us) });
+      enc.encode(f, { keyFrame: n++ % 60 === 0 }); f.close(); this.n = n;
+    },
+    async stop() {
+      paused = true;
+      if (!(await Promise.race([enc.flush().then(() => true, () => false), sleep(STOP_MAX)]))) this.late = true;
+      done = true;
+      if (enc.state !== "closed") enc.close();
+      if (failed || !n) return new Blob([], { type: "video/mp4" });   // empty -> shootOne's straight retry
+      muxer.finalize();
+      return new Blob([muxer.target.buffer], { type: "video/mp4" });
+    } };
+}
+
 // The first recorder of a page took 3.7 s to start (headless 10-26, a warm one ~0.3-0.9 s): warm the encoder at import.
 const warm = (async () => {
   const c = Object.assign(document.createElement("canvas"), { width: 64, height: 48 }), x = c.getContext("2d");
@@ -119,20 +161,39 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = f
   const r = frameRect(video), { w, h } = fit(r, CLIP_MAX);
   const clipC = Object.assign(document.createElement("canvas"), { width: 2 * w, height: h });
   const cctx = clipC.getContext("2d");
-  let on = true;
-  const loop = () => {
+  // The raw half takes every camera frame (requestVideoFrameCallback, one recorder frame each); the model runs at most
+  // a third of the time and the matte half holds its last mask in between. Segmenting every frame tied the clip to the
+  // model's speed (headless 10-27: 5-14 distinct fps at segMs ~45), a stutter in every moving strip; the HQ moving cut
+  // (clipmatte.js) redoes the matte later anyway.
+  let on = true, segAt = -1e9, segMs = 0, push = () => {}, mt = null;
+  const fs = { frames: 0, segs: 0, segMs: 0, drawMs: 0 };    // per-shot loop stats (dev pages)
+  const vfc = "requestVideoFrameCallback" in video;
+  const loop = (now, m) => {
     if (!on) return;
-    segmentFrame(video);
+    const t = performance.now();
+    if (t - segAt >= 3 * segMs && segmentFrame(video)) { segAt = t; segMs = performance.now() - t; fs.segs++; fs.segMs += segMs; }
+    const t1 = performance.now();
     place(cctx, video, r, 0, w, h, (cx, fw, fh) => drawRaw(cx, video, fw, fh, mirror));
     place(cctx, video, r, w, w, h, (cx, fw, fh) => drawMatte(cx, fw, fh, mirror));
-    requestAnimationFrame(loop);
+    fs.frames++; fs.drawMs += performance.now() - t1;
+    mt ??= m?.mediaTime > 0;         // the camera's frame time when the browser gives one (rVFC), else the clock
+    push(mt ? m.mediaTime * 1e6 : performance.now() * 1000);
+    if (vfc) video.requestVideoFrameCallback(loop); else requestAnimationFrame(loop);
   };
 
-  await warm;
   // The encoder starts paused at the first number and has every second before "2" to come up: waiting for it at "3"
   // held that number up to 2.5 s on a phone (operator 10-27: "3에서 끊겼다가 2"). Recording runs from "2".
+  // The straight retry of an empty clip goes to MediaRecorder: a second WebCodecs failure would end the shoot.
+  let R = straight ? null : await frameRecorder(clipC, 2_500_000).catch(() => null);
+  if (R) push = us => R.push(us);
+  else {
+    await warm;
+    let stream = clipC.captureStream(0);
+    const track = stream.getVideoTracks()[0];
+    if (track?.requestFrame) push = () => track.requestFrame(); else { stream.getTracks().forEach(t => t.stop()); stream = clipC.captureStream(30); }
+    R = recorder(stream, 2_500_000);
+  }
   loop();
-  const R = recorder(clipC.captureStream(30), 2_500_000);
   if (!straight) R.rec.pause();
   // ponytail: stop is only honoured before "3"; a press during 3-2-1 lets that shot finish (the caller stops after it)
   for (let n = seconds; n > 2; n--) {
@@ -159,7 +220,8 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = f
   const t3 = performance.now();
   if (clip.size > CAP) clip = await shrinkClip(clip);
   stats.still.cuts[i] = { path: "live", clipStopMs: Math.round(t1 - t0), cutMs: Math.round(t2 - t1), encodeMs: Math.round(t3 - t2),
-    pauseMs: Math.round(performance.now() - t0), ...(R.late && { stopLate: true }) };
+    pauseMs: Math.round(performance.now() - t0), ...(R.late && { stopLate: true }),
+    loop: { frames: fs.frames, encoded: R.n, drops: R.drops, segs: fs.segs, segMs: Math.round(fs.segMs / (fs.segs || 1)), drawMs: Math.round(fs.drawMs / (fs.frames || 1)) } };
   return { raw, cut, clip, clipType: clip.type };
 }
 
