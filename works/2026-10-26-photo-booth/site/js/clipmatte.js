@@ -97,7 +97,7 @@ export async function clipMatte(v, onKey) {
 // All clips of a strip, one after another (one model session): Map<video, matte>, filled as each clip finishes.
 // onProgress(0..1). Clips that fail stay out of the map (their fast matte is used).
 export async function clipMattes(videos, onProgress) {
-  const out = new Map(), list = [...new Set(videos)];
+  const out = new Map(), list = [...new Set(videos)].filter(Boolean);
   for (const [i, v] of list.entries()) {
     try { out.set(v, await clipMatte(v, (k, n) => onProgress?.((i + Math.min(1, k / n)) / list.length))); }
     catch (e) { console.warn("[clipmatte]", e); if (/still-/.test(e?.message)) break; }   // model off / failed: none will work

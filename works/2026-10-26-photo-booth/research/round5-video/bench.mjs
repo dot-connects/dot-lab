@@ -57,6 +57,15 @@ if (what === "capture") {
     }
     for (let k = 1; k <= n; k++) { const f = fs.readdirSync(dir).find(x => x.startsWith(`${arg}${k}-clip`)); console.log(fps(dir + f, "clip")); }
   } finally { b.close(); }
+} else if (what === "clipok") {      // capture.js clipOk on every clip of dev-media/r5/<tag>, plus an empty blob
+  const b = await browser(null);
+  try {
+    await b.send("Page.navigate", { url: SITE + "dev-compose.html" }); await until(b, `window.devReady === true`, 20000);
+    const dir = `dev-media/r5/${tag}/`, files = fs.readdirSync(SITE_DIR + dir).filter(f => f.includes("-clip"));
+    console.log(await b.ev(`(async () => { const { clipOk } = await import("./js/capture.js"); const out = {};
+      for (const f of ${JSON.stringify(files)}) { const bl = await (await fetch("${dir}" + f)).blob(); out[f] = [bl.size, await clipOk(new Blob([bl], { type: "video/mp4" }))]; }
+      out.empty = await clipOk(new Blob([], { type: "video/mp4" })); return JSON.stringify(out); })()`));
+  } finally { b.close(); }
 } else if (what === "strip") {
   const b = await browser(null);
   try {
@@ -69,7 +78,7 @@ if (what === "capture") {
       const C = await import("./js/compose.js");
       const img = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
       const side = async s => ({ cuts: await Promise.all([1, 2, 3, 4].map(async k => ({ raw: await img("${dir}" + s + k + "-raw.jpg"),
-        cut: await img("${dir}" + s + k + "-cut.png"), clip: await C.loadClip(URL.createObjectURL(await (await fetch("${dir}" + ({ a: ${JSON.stringify([1, 2, 3, 4].map(k => clip("a", k)))}, b: ${JSON.stringify([1, 2, 3, 4].map(k => clip("b", k)))} })[s][k - 1])).blob()))}))) });
+        cut: await img("${dir}" + s + k + "-cut.png"), clip: await Promise.race([new Promise(r => setTimeout(r, 8000, null)), C.loadClip(URL.createObjectURL(await (await fetch("${dir}" + ({ a: ${JSON.stringify([1, 2, 3, 4].map(k => clip("a", k)))}, b: ${JSON.stringify([1, 2, 3, 4].map(k => clip("b", k)))} })[s][k - 1])).blob())).catch(() => null)])}))) });   // like app.js loadClips: a clip that will not load = null
       const a = await side("a"), b = await side("b");
       ${mode === "mr" ? "window.__noWebCodecs = true;" : ""}
       let mattes = null, hqMs = 0;

@@ -93,8 +93,8 @@ async function frameRecorder(canvas, bps) {
   // fragmented: what MediaRecorder writes too, and what compose.js reads frame by frame
   const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: 30 },
     fastStart: "fragmented", firstTimestampBehavior: "offset" });
-  let failed = null, paused = false, n = 0, last = -1, done = false;
-  const enc = new VideoEncoder({ output: (c, m) => { if (!done) muxer.addVideoChunk(c, m); }, error: e => { failed = e; } });
+  let failed = null, paused = false, n = 0, last = -1, done = false, out = 0;
+  const enc = new VideoEncoder({ output: (c, m) => { if (!done) { muxer.addVideoChunk(c, m); out++; } }, error: e => { failed = e; } });
   enc.configure(cfg);
   return { rec: { pause() { paused = true; }, resume() { paused = false; } }, started: Promise.resolve(), late: false, drops: 0, n: 0,
     // us = the frame's time in microseconds (only increasing ones are kept)
@@ -106,10 +106,17 @@ async function frameRecorder(canvas, bps) {
     },
     async stop() {
       paused = true;
-      if (!(await Promise.race([enc.flush().then(() => true, () => false), sleep(STOP_MAX)]))) this.late = true;
+      // like MediaRecorder: with encoded chunks in hand wait STOP_MAX for the rest, with none yet up to STOP_EMPTY. A busy
+      // phone can take > 1.5 s to hand out the first chunk: the clip was finalized as a bare MP4 header (B's shot 5,
+      // merged e2e 10-27, "0 KB", no retry) and the strip video died on it.
+      const flushed = enc.state === "configured" ? enc.flush().then(() => true, () => false) : Promise.resolve(false);
+      if (!(await Promise.race([flushed, sleep(STOP_MAX)]))) {
+        this.late = true;
+        if (!out) await Promise.race([flushed, sleep(STOP_EMPTY - STOP_MAX)]);
+      }
       done = true;
       if (enc.state !== "closed") enc.close();
-      if (failed || !n) return new Blob([], { type: "video/mp4" });   // empty -> shootOne's straight retry
+      if (!out) return new Blob([], { type: "video/mp4" });   // empty -> shootOne's straight retry (a partial clip is kept)
       muxer.finalize();
       return new Blob([muxer.target.buffer], { type: "video/mp4" });
     } };
@@ -148,12 +155,29 @@ export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
   // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
   // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
   // recording straight through the countdown (no pause/resume), and never return an empty clip.
+  // Round 5: "empty" = any clip that will not play (a 0-byte one, or an MP4 with no frames), not only size 0.
   const c = await shootOneNow(i, { video, onTick, seconds, stop });
-  if (c.clip.size) return c;
+  if (await clipOk(c.clip)) return c;
   const again = await shootOneNow(i, { video, onTick, seconds: 3 }, true);
   stats.still.cuts[i].retried = true;
-  if (!again.clip.size) throw new Error("clip-empty");
+  if (!(await clipOk(again.clip))) throw new Error("clip-empty");
   return again;
+}
+// fragmented MP4 (ours, MediaRecorder on Chrome): >= 5 frames in its tables. Anything else must actually play for 0.1 s:
+// Chrome fires loadeddata even for an MP4 header with no frames (10-27), so "it loads" proves nothing.
+export async function clipOk(blob) {
+  if (!blob?.size) return false;
+  const { readFmp4 } = await import("./compose.js");
+  const m = /mp4/.test(blob.type) ? readFmp4(await blob.arrayBuffer()) : null;
+  if (m) return m.samples.length >= 5;
+  return new Promise(res => {
+    const v = Object.assign(document.createElement("video"), { muted: true, playsInline: true, preload: "auto" }), u = URL.createObjectURL(blob);
+    let iv = 0;
+    const end = ok => { clearTimeout(t); clearInterval(iv); v.onloadeddata = v.onerror = v.onended = null; v.pause(); v.removeAttribute("src"); v.load(); URL.revokeObjectURL(u); res(ok); };
+    const t = setTimeout(() => end(false), 4000);
+    v.onloadeddata = () => { v.play().catch(() => end(false)); iv = setInterval(() => v.currentTime > 0.1 && end(true), 50); };
+    v.onerror = v.onended = () => end(false); v.src = u;
+  });
 }
 
 async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = false) {
