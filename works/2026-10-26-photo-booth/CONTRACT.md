@@ -135,3 +135,24 @@ Cut-out: stills (the 4 shutter photos) get a heavy high-quality model; live prev
   `bgAllowed(layout)` -> BACKGROUNDS ids; drops "a" once A is moved (A would show twice); drawCell falls back to "b".
   `drawCell(ctx, rect, i, { a, b, bg, t, layout, outline })`. `createClipAlpha().draw/still(src, { ..., outline, time })`
   returns a canvas with `.pad` px of margin when an outline is set (no outline: unchanged, pad 0).
+
+## Round 4 (2026-10-27, operator: "실제 인생네컷처럼 8장 찍고 4장 고르기", 10 s per shot, B also 8 -> 4)
+Research: research/booth-flow.md (Photoism: 8 shots, 8-10 s timer, pick 4, no retake; QR = strip + session video).
+- Shooting: one tap starts 8 shots in a row, 10 s countdown each (big number, beeps 3-2-1, "n/8", last-shot thumbnail),
+  2 s pre-roll clip per shot as before. No per-shot retake; one "전체 다시 찍기" allowed.
+- Pick 4 of 8: grid of 8, tap to add/remove, order badges 1-4 = strip order, no time limit, "이 4장으로" when 4 chosen.
+- A uploads only the 4 picked (same 12 names, cuts 1-4 in pick order).
+- B's 8 shots: shot j shows A's cut (j % 4) floating (A's 4 picked cuts cycle twice). B picks 4; cell i = B's pick i
+  + A's cut pairs[i] where pairs[i] = (shot index of pick i) % 4. B uploads pairs.json = [4 ints 0..3] (Worker live,
+  9 tests) — repeats allowed.
+- compose.js: `drawStrip/recordMovingStrip/drawCell({ ..., pairs })` — pairs = null (identity) or [4 ints]; A media for
+  cell i = a.cuts[pairs[i]]; layout (B's move of A) applies per cell the same way.
+- HQ cut-out (MODNet) runs only on the 4 picked stills, after the pick (progress shown), not during shooting.
+- segment.js speed (research/cutout-speed/, research/round4-engine/): MODNet input 512x384, model self-hosted at
+  site/models/modnet.onnx (LICENSE-MODNET.txt) + Cache Storage "booth-modnet-v1" (bump the name when the file changes).
+  `prefetchStill()` -> Promise<boolean> = download (or cache) + session in the worker, no camera, no warm-up; call on
+  the landing page and/or while shooting (state "loaded"). `warmStill()` -> Promise<boolean> = the first real-size run
+  (WebGPU shader compile: the page freezes ~3-10 s), once, after the 8th shot ("8장 준비 중"); state "ready".
+  `cutStill(canvas)` keeps its signature, warms up itself if needed, calls are queued in order (one at a time).
+  `cutStills(canvases, onEach?)` -> Promise<(canvas|null)[]>, onEach(i, canvas|null, error) as each lands (null = keep
+  the live matte). `stillBusy()` is a no-op kept for old callers. No WebGPU / failure: state "failed", cuts throw.

@@ -31,15 +31,17 @@ h2{font-size:13px;margin:4px 0 0}
 <video id="cam" playsinline muted style="position:absolute;left:0;top:0;width:2px;opacity:0"></video>
 <script type="module">
 import { startCam, camState, bindZoomFocus } from "./js/camera.js";
-import { loadSegmenter, segmentFrame, drawCutout, drawMatte, stats, TUNE, prefetchStill } from "./js/segment.js";
+import { loadSegmenter, segmentFrame, drawCutout, drawMatte, stats, TUNE, prefetchStill, warmStill, cutStill } from "./js/segment.js";
 const Q = new URLSearchParams(location.search);
 for (const [k, v] of Q) if (k in TUNE) TUNE[k] = +v;   // tuning runs: ?lo=0.4&hi=0.9, ?still=0 (live matte only), ?scpu=1 (WASM)
+// ?landing = what the landing page does: start the HQ still model at page load, before any camera
+const landP = Q.has("landing") ? prefetchStill() : null;
 import { shootFour } from "./js/capture.js";
 import { app, inApp } from "./js/env.js";
 const $ = id => document.getElementById(id);
 const video = $("cam"), out = $("out"), ctx = out.getContext("2d");
 const log = s => { $("log").textContent += s + "\n"; };
-const R = window.result = { app, inApp };
+const R = window.result = { app, inApp }; window.stats = stats;
 // main-thread stalls (the HQ still model's warm-up shares the GPU): every long task, with its start time
 const longT = R.longTasks = [];
 try { new PerformanceObserver(l => l.getEntries().forEach(e => longT.push([Math.round(e.startTime), Math.round(e.duration)])))
@@ -69,7 +71,7 @@ async function run() {
   const t0 = performance.now();
   await startCam(video);
   bindZoomFocus($("stage"));
-  const stillP = prefetchStill();    // what app.js does right after the camera is on
+  const stillP = landP || prefetchStill();    // without ?landing: what app.js did right after the camera is on
   R.camAt = Math.round(performance.now());
   R.video = `${video.videoWidth}x${video.videoHeight}`;
   await loadSegmenter();
@@ -80,9 +82,25 @@ async function run() {
   R.probe = probe();
   R.masks = stats.masks; R.mask = `${stats.maskW}x${stats.maskH}`; R.delegate = stats.delegate; R.webgl = stats.webgl;
   log(JSON.stringify(R));
+  R.shootAt = [Math.round(performance.now())];
   const cuts = await shootFour({ video, onTick: n => { $("tick").textContent = n || ""; },
     onCut: i => log(`cut ${i + 1} done`) });
   $("tick").textContent = "";
+  R.shootAt.push(Math.round(performance.now()));
+  R.shootGaps = gaps.filter(([t]) => t >= R.shootAt[0] && t <= R.shootAt[1]);   // frozen preview while shooting
+  R.shootLong = longT.filter(([t]) => t >= R.shootAt[0] && t <= R.shootAt[1]);
+  if (Q.has("pick")) {               // Round 4: the HQ cut runs after the pick on the 4 picked stills (here: the 4 shots)
+    R.pick = { t0: Math.round(performance.now()), ms: [] };
+    await warmStill();                // what the Pick screen does when it opens
+    R.pick.warmMs = Math.round(performance.now() - R.pick.t0); R.pick.warmGaps = gaps.filter(([t]) => t >= R.pick.t0);
+    for (const c of cuts) {
+      const im = await createImageBitmap(c.raw), cv = Object.assign(document.createElement("canvas"), { width: im.width, height: im.height });
+      cv.getContext("2d").drawImage(im, 0, 0);
+      const t = performance.now(); await cutStill(cv);
+      R.pick.ms.push({ total: Math.round(performance.now() - t), model: stats.still.modelMs, refine: stats.still.refineMs, wh: stats.still.modelWH });
+    }
+    R.pick.gaps = gaps.filter(([t]) => t >= R.pick.t0 + R.pick.warmMs);
+  }
   const ms = stats.ms.slice(-60);
   R.segMs = +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1); R.held = stats.held;   // frames where the dropout guard kept the previous matte
   R.still = { ...stats.still, cuts: stats.still.cuts.map(({ live, ...c }) => c) };
@@ -108,8 +126,9 @@ async function run() {
   log(`segMs ${R.segMs}`);
   window.done = true;
 }
-$("go").onclick = run;
-if (new URLSearchParams(location.search).has("auto")) run().catch(e => { R.error = e.stack || String(e); log(R.error); window.done = true; });
+const go = () => run().catch(e => { R.error = e.stack || String(e); log(R.error); window.done = true; });
+$("go").onclick = go;
+if (new URLSearchParams(location.search).has("auto")) go();
 </script>
 </body>
 </html>

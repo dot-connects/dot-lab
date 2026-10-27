@@ -1,13 +1,15 @@
-// One cut = countdown 3-2-1, a 2 s side-by-side clip [raw | matte] from "2" to the shutter, then the stills.
+// One cut = countdown N..1 (default 3), a 2 s side-by-side clip [raw | matte] from "2" to the shutter, then the stills.
+// The HQ (MODNet) cut runs later, only on the picked stills: hqCut().
 import { camState, frameRect } from "./camera.js";
-import { segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, cutStill, stillBusy, stats, keepLargest } from "./segment.js";
+import * as SEG from "./segment.js";
+import { segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, stillWarm, cutStill, stats, keepLargest } from "./segment.js";
 
 export const CLIP_MAX = { w: 640, h: 480 };
 export const STILL_MAX = { w: 960, h: 720 };
 const CAP = 3 * 1024 * 1024;
+const STOP_MAX = 1500, STOP_EMPTY = 6000;   // ms the shutter waits for the recorder's last chunk (see recorder)
 const MIMES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"];
-const FAST = new URLSearchParams(location.search).has("fast");   // tests only: shortens the "3" second
-const BOTH = new URLSearchParams(location.search).has("both");   // tests only: also keep the live-matte PNG in stats
+const FAST = new URLSearchParams(location.search).has("fast");   // tests only: shortens the "3" second and the ones before it
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 // 4:3 size under max, width a multiple of 8 so both sides are even
@@ -55,9 +57,18 @@ function recorder(stream, bps) {
   const started = new Promise(res => rec.onstart = res);
   const stopped = new Promise(res => rec.onstop = res);
   rec.start(250);
-  return { rec, started, async stop() {
-    rec.stop();
-    await Promise.race([stopped, sleep(4000).then(() => { throw new Error("recorder-stop"); })]);
+  // stop never holds the shot rhythm for long: with data in hand it waits STOP_MAX for the last chunk, then the clip
+  // is what the 250 ms chunks gave so far (a late encoder flush took 6.8 s once on shot 3, 10-27). With nothing yet
+  // (encoder slow to start) it waits up to STOP_EMPTY; still empty -> shootOne's straight retry.
+  return { rec, started, late: false, async stop() {
+    if (rec.state !== "inactive") rec.stop();
+    const t0 = performance.now();
+    let done = false; stopped.then(() => done = true);
+    while (!done) {
+      const ms = performance.now() - t0;
+      if (ms > (chunks.length ? STOP_MAX : STOP_EMPTY)) { this.late = true; break; }
+      await sleep(50);
+    }
     return new Blob(chunks, { type: (rec.mimeType || mime || "video/webm").split(";")[0] });
   } };
 }
@@ -83,29 +94,27 @@ async function shrinkClip(blob) {
   const loop = () => { if (!on) return; ctx.drawImage(v, 0, 0, c.width, c.height); requestAnimationFrame(loop); };
   loop();
   const R = recorder(c.captureStream(30), 1_000_000);
-  await new Promise(r => v.onended = r);
+  await Promise.race([new Promise(r => v.onended = r), sleep(5000)]);
   const out = await R.stop();
   on = false; URL.revokeObjectURL(v.src);
-  return out;
+  return out.size ? out : blob;
 }
 
-export async function shootOne(i, { video, onTick }) {
-  prefetchStill();                   // no-op when loadSegmenter already started it (or ?still=0)
-  stillBusy(true);                   // the countdown never waits on the HQ model (a model not warm by now stays off)
-  try {
-    // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
-    // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
-    // recording straight through the countdown (no pause/resume), and never return an empty clip.
-    const c = await shootOneNow(i, { video, onTick });
-    if (c.clip.size) return c;
-    const again = await shootOneNow(i, { video, onTick }, true);
-    stats.still.cuts[i].retried = true;
-    if (!again.clip.size) throw new Error("clip-empty");
-    return again;
-  } finally { stillBusy(false); }
+// seconds: countdown length (Round 4: 10). stop(): checked during the seconds before "3"; true -> throws "stopped".
+export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
+  // no prefetchStill here: its session create can freeze the page ~4.5 s (the landing page starts it).
+  // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
+  // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
+  // recording straight through the countdown (no pause/resume), and never return an empty clip.
+  const c = await shootOneNow(i, { video, onTick, seconds, stop });
+  if (c.clip.size) return c;
+  const again = await shootOneNow(i, { video, onTick, seconds: 3 }, true);
+  stats.still.cuts[i].retried = true;
+  if (!again.clip.size) throw new Error("clip-empty");
+  return again;
 }
 
-async function shootOneNow(i, { video, onTick }, straight = false) {
+async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = false) {
   const mirror = camState.mirror;
   const r = frameRect(video), { w, h } = fit(r, CLIP_MAX);
   const clipC = Object.assign(document.createElement("canvas"), { width: 2 * w, height: h });
@@ -120,6 +129,12 @@ async function shootOneNow(i, { video, onTick }, straight = false) {
   };
 
   await warm;
+  // ponytail: stop is only honoured before "3"; a press during 3-2-1 lets that shot finish (the caller stops after it)
+  for (let n = seconds; n > 3; n--) {
+    if (stop?.()) throw new Error("stopped");
+    onTick?.(n); await sleep(FAST ? 300 : 1000);
+  }
+  if (stop?.()) throw new Error("stopped");
   onTick?.(3);
   loop();
   const R = recorder(clipC.captureStream(30), 2_500_000);
@@ -131,31 +146,47 @@ async function shootOneNow(i, { video, onTick }, straight = false) {
   if (!straight) R.rec.resume();
   await sleep(1000);
   onTick?.(1); await sleep(1000);
-  const clipP = R.stop();             // shutter
+  const clipP = R.stop();             // shutter (resolves within STOP_MAX)
   on = false;
   const t0 = performance.now();
   const { rawC, liveC } = stills(video, mirror);
   const rawP = toBlob(rawC, "image/jpeg", 0.9);
   let clip = await clipP;
   const t1 = performance.now();
-  // the HQ cut runs after the recorder stopped (never inside the countdown); not ready or failed = live matte
-  let cutC = liveC, path = "live";
-  if (stillReady()) try { cutC = await cutStill(rawC); path = "modnet"; } catch (e) { path = "live:" + (e?.message || e); }
-  else path = "live:" + (stats.still.state || "off");
-  keepLargest(cutC);                 // a passer-by or a second face in the frame is not cut out with the person
+  keepLargest(liveC);                // a passer-by or a second face in the frame is not cut out with the person
   const t2 = performance.now();
-  let raw = await rawP, cut = await toBlob(cutC, "image/png");
-  if (raw.size > CAP || cut.size > CAP) { raw = await toBlob(small(rawC), "image/jpeg", 0.8); cut = await toBlob(small(cutC), "image/png"); }
+  let raw = await rawP, cut = await toBlob(liveC, "image/png");
+  if (raw.size > CAP || cut.size > CAP) { raw = await toBlob(small(rawC), "image/jpeg", 0.8); cut = await toBlob(small(liveC), "image/png"); }
   const t3 = performance.now();
   if (clip.size > CAP) clip = await shrinkClip(clip);
-  stats.still.cuts[i] = { path, clipStopMs: Math.round(t1 - t0), cutMs: Math.round(t2 - t1), encodeMs: Math.round(t3 - t2),
-    pauseMs: Math.round(performance.now() - t0), ...(BOTH && { live: await toBlob(liveC, "image/png") }) };
+  stats.still.cuts[i] = { path: "live", clipStopMs: Math.round(t1 - t0), cutMs: Math.round(t2 - t1), encodeMs: Math.round(t3 - t2),
+    pauseMs: Math.round(performance.now() - t0), ...(R.late && { stopLate: true }) };
   return { raw, cut, clip, clipType: clip.type };
 }
 
 export async function shootFour({ video, onTick, onCut }) {
   const cuts = [];
-  stillBusy(true);                   // no warm-up may start in the gaps between the four cuts
-  try { for (let i = 0; i < 4; i++) { cuts[i] = await shootOne(i, { video, onTick }); onCut?.(i, cuts[i]); } } finally { stillBusy(false); }
+  for (let i = 0; i < 4; i++) { cuts[i] = await shootOne(i, { video, onTick }); onCut?.(i, cuts[i]); }
   return cuts;
+}
+
+// After the pick (Round 4): the picks show their live cut at once; the HQ cuts replace them in the background.
+// hqReady: waits (up to `wait` ms) for the still model to load + warm -> true when hqCut can run.
+// The Pick screen already started warmStill (the one GPU freeze); this joins it.
+export async function hqReady(wait = 60000) {
+  if (stillReady()) return true;
+  return !!await Promise.race([SEG.warmStill ? SEG.warmStill() : prefetchStill().then(() => stillWarm()).then(stillReady), sleep(wait)]);
+}
+export const hqState = () => stats.still.state || "off";
+// The HQ cut of one picked still, same size as cut.raw (PNG). Throws when the model is not ready or fails; the caller
+// then keeps cut.cut (the live matte).
+export async function hqCut(cut) {
+  const bmp = await createImageBitmap(cut.raw);
+  const c = Object.assign(document.createElement("canvas"), { width: bmp.width, height: bmp.height });
+  c.getContext("2d").drawImage(bmp, 0, 0); bmp.close?.();
+  const out = await cutStill(c);
+  keepLargest(out);
+  const png = await toBlob(out, "image/png");
+  if (!png || png.size > CAP) throw new Error("still-size");
+  return png;
 }

@@ -191,16 +191,60 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 @keyframes flash { 0% { opacity: 0; } 8% { opacity: .95; } 100% { opacity: 0; } }
 .camwait { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 16px; z-index: 6; background: #2e2230; }
 
-.thumbs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; height: 56px; }
-.th { appearance: none; border: 2px dashed #d9a9bd; background: var(--paper); border-radius: 12px; height: 56px; padding: 0; position: relative; overflow: hidden; cursor: pointer; }
-.th span { font-family: var(--title); color: var(--sub); font-size: 17px; }
-.th.has { border: 2px solid var(--paper); box-shadow: 0 3px 10px #c2587a26; background-size: cover; background-position: center; }
-.th.has span { position: absolute; right: 5px; bottom: 2px; color: #fff; font-size: 14px; text-shadow: 0 1px 3px #000; }
-.th.now { border-color: var(--pink); border-style: solid; }
-.th.land { animation: land .3s var(--spring); }
+/* 8 shots: progress pips under the stage, the last shot as a small thumbnail in the stage corner */
+.pips { display: flex; justify-content: center; gap: 8px; height: 14px; align-items: center; }
+.pips i { width: 10px; height: 10px; border-radius: 50%; background: #ead3dd; transition: background-color .2s, transform .2s var(--spring); }
+.pips i.has { background: var(--pink); }
+.pips i.now { background: var(--deep); transform: scale(1.35); }
+.last { position: absolute; right: 10px; bottom: 10px; width: 26%; aspect-ratio: 552 / 382; object-fit: cover; object-position: 50% 12.5%;
+  border: 3px solid #fff; border-radius: 8px; box-shadow: 0 6px 16px #0005; z-index: 3; pointer-events: none; }
+.last.land { animation: land .3s var(--spring); }
 @keyframes land { from { transform: scale(.6) translateY(-16px); opacity: .3; } }
-.th.has::after { content: "다시"; position: absolute; left: 4px; top: 3px; font-size: 13px; color: #fff; background: #2e2230d9; border-radius: 999px; padding: 0 7px; opacity: 0; }
-.shooting-done .th.has::after { opacity: 1; }
+.stopbtn { display: none; appearance: none; border: 0; height: 56px; margin-top: 14px; padding: 0 26px; border-radius: 999px; background: var(--ink); color: #fff;
+  font: 19px var(--title); box-shadow: var(--shadow); cursor: pointer; }
+.busy .shutter { display: none; }
+.busy .controls .stopbtn { display: block; pointer-events: auto; }
+.stopbtn:focus-visible { outline: 3px solid var(--deep); outline-offset: 3px; }
+
+/* pick 4 of 8: grid on the left, the strip as it fills on the right */
+.pickhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.pickhead h2 { font-size: 26px; }
+.pickfine { text-align: left; margin-top: -4px; }
+.pickbody { display: flex; gap: 12px; align-items: flex-start; }
+.pickgrid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.pk { appearance: none; border: 0; padding: 0; position: relative; aspect-ratio: 552 / 382; border-radius: 10px; overflow: hidden; background: #2e2230; cursor: pointer;
+  box-shadow: 0 0 0 0 var(--pink); transition: box-shadow .15s, transform 160ms var(--spring); }
+.pk canvas, .pickstrip .mc canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.fadein { animation: fade .45s ease-out; }
+.pk.pending::after { content: "다듬는 중"; position: absolute; right: 5px; bottom: 5px; font-size: 12px; line-height: 1.6; color: #fff; background: #2e2230d9; border-radius: 999px; padding: 0 8px; }
+.prep { position: absolute; inset: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+  background: #fff4f8f0; color: var(--ink); font: 22px var(--title); animation: fade .2s ease-out; }
+.prep svg { width: 54px; height: 50px; fill: var(--pink); }
+.pk img, .pickstrip .mc img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 12.5%; display: block; }
+.pk[aria-pressed="true"] { box-shadow: 0 0 0 4px var(--pink); }
+.pk:active { transform: scale(.95); }
+.pk:focus-visible { outline: 3px solid var(--deep); outline-offset: 3px; }
+.pk:disabled { cursor: default; }
+.badge { position: absolute; top: 5px; left: 5px; min-width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--pink); color: var(--pink-ink); font: 18px var(--title); box-shadow: 0 2px 6px #0004; }
+.badge:empty { display: none; }
+.pickstrip { width: 92px; flex: none; background: var(--paper); border-radius: 8px; padding: 6px 6px 0; display: flex; flex-direction: column; gap: 5px; box-shadow: 0 10px 24px #c2587a33; }
+.pickstrip .mc { background: #2e2230; border-radius: 4px; }
+.pickstrip .mc.empty { background: var(--pink-soft); display: grid; place-items: center; }
+.pickstrip .mc.empty span { font: 18px var(--title); color: var(--pink-ink); }
+.pickstrip .mfoot { font-size: 10px; padding: 4px 0 6px; }
+/* HQ cut-out: a dismissable note under the counter, a progress chip over the review, the upload choice */
+.hqnote { appearance: none; border: 0; align-self: flex-start; display: flex; align-items: center; gap: 8px; margin-top: -8px; background: var(--butter); color: var(--ink);
+  font-size: 14px; border-radius: 999px; padding: 4px 6px 4px 12px; cursor: pointer; }
+.hqnote i { font-style: normal; width: 20px; height: 20px; display: grid; place-items: center; border-radius: 50%; background: #fff; font-size: 11px; }
+.busy .hqnote { display: none; }
+.hqchip { position: absolute; top: 12px; left: 12px; z-index: 3; background: #2e2230d9; color: #fff; border-radius: 999px; padding: 4px 12px 4px 10px; font-size: 14px; }
+.hqchip::before { content: ""; display: inline-block; width: 10px; height: 10px; margin-right: 7px; vertical-align: -1px; border-radius: 50%;
+  border: 2px solid #fff; border-right-color: transparent; animation: spin .8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.hqask { background: var(--paper); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow); text-align: center; display: flex; flex-direction: column; gap: 10px; }
+.hqask .row { display: flex; gap: 8px; }
+.hqask .cta { font-size: 17px; padding: 13px 10px; }
 .hint { text-align: center; color: var(--ink); font-size: 16px; }
 /* A's choice before the link exists: may the friend move me? (off = fixed, like a booth celeb frame) */
 .switch { display: flex; align-items: center; gap: 12px; background: var(--paper); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow); cursor: pointer; }

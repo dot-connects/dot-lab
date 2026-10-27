@@ -1,7 +1,7 @@
 // Module worker: runs one ONNX person-matting model (onnxruntime-web, WebGPU then WASM) on a still.
-// Messages in : { id, load: spec, eps: ["webgpu", "wasm"] }  -> { id, ep, fetchMs, createMs, bytes }
+// Messages in : { id, load: spec, eps: ["webgpu", "wasm"] }  -> { id, ep, cached, fetchMs, createMs, bytes }
 //               { id, img: ImageBitmap }                      -> { id, data: Uint8Array alpha, width, height, ms }
-// spec = { url, size: { short, div } | { w, h }, mean: [3], std: [3], out: "alpha"|"sigmoid"|"minmax"|"softmax2" }
+// spec = { url, cache?: Cache Storage name, size: { short, div } | { w, h }, mean: [3], std: [3], out: "alpha"|"sigmoid"|"minmax"|"softmax2" }
 // Errors come back as { id, error }.
 import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.mjs";
 ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
@@ -28,12 +28,23 @@ function fromHalf(h) {
   return e === 0 ? s * m * 2 ** -24 : e === 31 ? s * Infinity : s * (1 + m / 1024) * 2 ** (e - 15);
 }
 
+// the model bytes: Cache Storage first (spec.cache = cache name; bump it when the model file changes), then the network
+async function fetchModel(s) {
+  const t0 = performance.now();
+  const box = s.cache && self.caches ? await caches.open(s.cache).catch(() => null) : null;
+  let res = await box?.match(s.url).catch(() => null), cached = !!res;
+  if (!res) {
+    res = await fetch(s.url, { cache: "force-cache" });
+    if (!res.ok) throw new Error("model http " + res.status);
+    if (box) await box.put(s.url, res.clone()).catch(() => {});   // quota / private mode: just not cached
+  }
+  const buf = new Uint8Array(await res.arrayBuffer());
+  return { buf, cached, fetchMs: Math.round(performance.now() - t0), bytes: buf.length };
+}
+
 async function load(m) {
   spec = m.load;
-  const t0 = performance.now();
-  const res = await fetch(spec.url, { cache: "force-cache" });
-  if (!res.ok) throw new Error("model http " + res.status);
-  const buf = new Uint8Array(await res.arrayBuffer());
+  const { buf, cached, fetchMs } = await fetchModel(spec);
   const t1 = performance.now();
   let err;
   for (const ep of m.eps) {
@@ -41,7 +52,7 @@ async function load(m) {
     try {
       sess = await ort.InferenceSession.create(buf, { executionProviders: [ep], graphOptimizationLevel: "all" });
       inName = sess.inputNames[0]; outName = sess.outputNames[0];
-      return { ep, fetchMs: Math.round(t1 - t0), createMs: Math.round(performance.now() - t1), bytes: buf.length };
+      return { ep, cached, fetchMs, createMs: Math.round(performance.now() - t1), bytes: buf.length };
     } catch (e) { err = ep + ": " + (e?.message || e); }
   }
   throw new Error(err || "no execution provider");

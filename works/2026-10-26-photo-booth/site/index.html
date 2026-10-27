@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>따로 같이 네컷</title>
-<meta name="description" content="내 옆자리 비워 뒀어. 링크 열면 바로 내 옆에 서서 네컷을 찍어. 30초 · 가입 없음.">
+<meta name="description" content="내 옆자리 비워 뒀어. 링크 열면 바로 내 옆에 서서 네컷을 찍어. 8장 찍고 4장 고르기 · 가입 없음.">
 <meta property="og:title" content="내 옆자리 비워 뒀어 · 따로 같이 네컷">
-<meta property="og:description" content="링크 열면 바로 내 옆에 서서 찍어. 30초면 돼 · 가입 없음">
+<meta property="og:description" content="링크 열면 바로 내 옆에 서서 찍어. 2분이면 돼 · 가입 없음">
 <meta property="og:image" content="https://dot-connects.github.io/dot-lab/works/2026-10-26-photo-booth/site/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -119,7 +119,7 @@
     <p class="kicker">따로 같이 네컷</p>
     <h1>친구가 옆자리를<br><em>비워 뒀어요</em></h1>
     <div class="peekwrap"><div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot"><svg class="bob"><use href="#heart"/></svg><span>친구 옆에 서면 돼</span></div></div><svg class="burst" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#burst"/></svg></div>
-    <p class="lead">친구 옆에 서서 네 번 찍으면 완성!<br>30초 · 가입 없음 · 카메라만 켜면 돼</p>
+    <p class="lead">친구 옆에 서서 8장 찍고 4장 고르면 완성!<br>2분 · 가입 없음 · 카메라만 켜면 돼</p>
   </div>
   <div class="bottom">
     <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
@@ -132,10 +132,11 @@
 <!-- shoot -->
 <section class="screen" id="s-shoot" hidden>
   <div class="shoothead">
-    <span class="step" id="step">1 / 4</span>
+    <span class="step" id="step">1 / 8</span>
     <p class="pose" id="pose">준비됐어?</p>
     <button class="sound" type="button" data-act="sound" aria-pressed="true"><svg><use href="#i-sound"/></svg><span>소리</span></button>
   </div>
+  <button class="hqnote" id="hqNote" type="button" data-act="hideHqNote" hidden><span>사진은 찍은 뒤 고급 누끼로 다듬어져요</span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
     <div class="frame" id="frame">
@@ -148,32 +149,52 @@
     <div class="mover" id="mover" hidden></div>
     <button class="hintchip" id="hintChip" type="button" data-act="hideHint" hidden><span id="hintText"></span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
     <button class="resetchip" id="layReset" type="button" data-act="layReset" hidden>원래 자리</button>
-    <p class="stagehint" id="shootHint">셔터 한 번이면 네 컷을 이어서 찍어</p>
+    <p class="stagehint" id="shootHint">셔터 한 번이면 8장을 이어서 찍어 · 한 장에 10초</p>
+    <img class="last" id="lastShot" alt="방금 찍은 사진" hidden>
     <div class="rec" id="rec" hidden>2초 녹화</div>
+    <div class="hqchip" id="hqChip" role="status" hidden></div>
+    <div class="prep" id="prepOv" role="status" hidden><svg class="bob"><use href="#heart"/></svg><b id="prepText">8장 준비 중…</b></div>
     <div class="count" id="count" aria-live="assertive"></div>
     <div class="flash" id="flash"></div>
     <div class="camwait" id="camwait">카메라 켜는 중…</div>
   </div>
-  <div class="thumbs" id="thumbs" aria-label="찍은 컷">
-    <button class="th" data-i="0" disabled><span>1</span></button>
-    <button class="th" data-i="1" disabled><span>2</span></button>
-    <button class="th" data-i="2" disabled><span>3</span></button>
-    <button class="th" data-i="3" disabled><span>4</span></button>
-  </div>
+  <div class="pips" id="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="controls" id="controls">
     <button class="tool" data-act="mirror" aria-pressed="true"><i><svg><use href="#i-mirror"/></svg></i><span>좌우반전</span></button>
-    <button class="shutter" data-act="shoot" aria-label="네 컷 찍기"></button>
+    <button class="shutter" data-act="shoot" aria-label="8장 이어서 찍기"></button>
+    <button class="stopbtn" type="button" data-act="stop">멈추기</button>
     <button class="tool" data-act="flip"><i><svg><use href="#i-flip"/></svg></i><span>앞/뒤 카메라</span></button>
   </div>
   <div class="bottom" id="shootDone" hidden>
-    <p class="hint">다시 찍고 싶은 컷은 위에서 눌러 줘</p>
+    <p class="hint" id="doneHint">고른 4장이야. 이대로 올릴까?</p>
     <label class="switch" id="movableBox" hidden>
       <input type="checkbox" id="movable" role="switch">
       <span class="sw-text"><b>친구가 나를 옮기고 크기 바꿀 수 있게</b><small id="movableSub"></small></span>
       <span class="knob" aria-hidden="true"></span>
     </label>
     <button class="cta" data-act="upload">이대로 올리기</button>
+    <div class="hqask" id="hqAsk" role="alertdialog" aria-label="고화질 누끼" hidden>
+      <p>고화질 누끼가 아직 만들어지는 중이야</p>
+      <div class="row"><button class="cta" type="button" id="hqWaitBtn" data-act="hqWait">조금만 기다리기</button><button class="cta alt" type="button" data-act="hqNow">지금 올리기</button></div>
+    </div>
     <div data-trust></div>
+  </div>
+</section>
+
+<!-- pick 4 of 8 -->
+<section class="screen" id="s-pick" hidden>
+  <div class="pickhead">
+    <h2>맘에 드는 <em>4장</em> 골라 줘</h2>
+    <span class="step" id="pickCount">0 / 4</span>
+  </div>
+  <p class="fine pickfine">누른 순서대로 위에서부터 들어가 · 다시 누르면 빠져</p>
+  <div class="pickbody">
+    <div class="pickgrid" id="pickGrid" role="group" aria-label="찍은 8장"></div>
+    <div class="pickstrip" id="pickStrip" aria-label="고른 순서 미리보기"></div>
+  </div>
+  <div class="bottom">
+    <button class="cta" data-act="pickDone" id="pickDone" disabled>이 4장으로</button>
+    <button class="textlink" data-act="reshoot" id="reshoot">전체 다시 찍기 (한 번만)</button>
   </div>
 </section>
 

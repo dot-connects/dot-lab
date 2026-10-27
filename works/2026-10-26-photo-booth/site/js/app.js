@@ -7,7 +7,9 @@ const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const Q = new URLSearchParams(location.search);
 const MOCK = Q.has("mock");                         // dev: no MediaPipe, placeholder cut-outs
-const POSES = ["둘 다 브이!", "반쪽 하트", "서로 쳐다보기", "마음대로!"];
+// Round 4 (booth style): one tap shoots 8 in a row, SECS each; then pick 4 (tap order = strip order)
+const SHOTS = 8, SECS = Q.has("fast") ? 4 : 10;      // ?fast = tests only
+const POSES = ["브이!", "반쪽 하트", "꽃받침", "깜짝 놀란 척", "윙크 한 번", "볼 빵빵", "친구 쪽 쳐다보기", "마음대로!"];
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
 const CELL = 552 / 382;                             // strip cell aspect (compose LAYOUT CW:CH)
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -26,12 +28,15 @@ let env = { app: "브라우저", inApp: false, isIOS: false, framed: top !== sel
 // ---- state --------------------------------------------------------------------------------------------------------
 const S = {
   id: Q.get("s"), side: null, token: null,      // side = what this page shoots/uploads ("a" | "b")
-  cuts: [], sent: new Set(), ghost: [],          // local Cuts, uploaded names, A's cut-out URLs (B's overlay)
+  cuts: [], sent: new Set(), ghost: [],          // the 4 picked Cuts (strip order), uploaded names, A's cut-out URLs (B's overlay)
+  shots: [], shotUrls: [], pick: [], pairs: null, // all 8 shots + their raw URLs until the pick; B: A's cut per cell
+  stop: false, redo: false, hq: [],              // 멈추기 pressed; 전체 다시 찍기 used (once per page); HQ cut path per cell
   cam: null, cap: null, bound: false, busy: false,
   movable: false, lay: { x: 0, y: 0, scale: 1 },  // A's choice (opts.movable); B's placement of A, fractions of the cell
 };
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
 const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
+const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 10초";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}`;
 const token = () => S.token || api.loadRole(S.id)?.token;
 
@@ -111,7 +116,7 @@ function sparkle(host, { n = 3, dist = 24, size = 18, x = 0.5, y = 0.5 } = {}) {
 // ---- routing (PLAN Task 6) ----------------------------------------------------------------------------------------
 async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
-  if (!S.id) return show("landA");
+  if (!S.id) { show("landA"); return prefetchHQ(); }
   let st;
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
@@ -122,7 +127,7 @@ async function route() {
     if (role === "a") return msg({ title: "올리다 멈췄어", text: "찍은 사진이 이 화면에 남아 있지 않아. 새로 찍어 줘.", btn: "다시 찍기", onBtn: fresh });
     return msg({ title: "아직 친구가 올리는 중이에요", text: "조금 뒤에 이 링크를 다시 열어 줘.", btn: "다시 확인", onBtn: route });
   }
-  if (!st.b.done) return role === "a" ? shareScreen(true) : landB();
+  if (!st.b.done) return role === "a" ? shareScreen(true) : (landB(), prefetchHQ());
   return doneScreen();
 }
 function expired(why) {
@@ -134,6 +139,14 @@ addEventListener("visibilitychange", () => {
   if (!document.hidden && document.body.dataset.screen === "share" && !$("recheck").hidden) route();
 });
 
+// The HQ still model (MODNet) loads + warms on the landing page once it has painted, so it is ready by the pick
+// and its first GPU run never lands inside a countdown. No camera needed.
+function prefetchHQ() {
+  if (MOCK || S.prefetched) return;
+  S.prefetched = true;
+  const go = () => load("segment").then(m => m.prefetchStill?.()).catch(e => console.warn("[booth] prefetch", e));
+  "requestIdleCallback" in window ? requestIdleCallback(go, { timeout: 3000 }) : setTimeout(go, 1200);
+}
 async function landB() {
   show("landB");
   // A's cut-outs for the peek and for B's overlay, fetched while B reads the screen
@@ -145,26 +158,25 @@ async function landB() {
 
 // ---- shoot --------------------------------------------------------------------------------------------------------
 async function startShoot(side) {
-  S.side = side; S.cuts = []; S.sent.clear();
+  S.side = side; S.sent.clear();
   show("shoot");
-  $("s-shoot").classList.remove("shooting-done");
-  $("controls").hidden = false; $("shootDone").hidden = true; $("shootHint").hidden = false; $("review").hidden = true;
+  resetShoot();
   S.lay = { x: 0, y: 0, scale: 1 }; applyLay();
   const hint = side === "a" ? HINT_A : S.movable ? HINT_B : "";
   $("hintText").textContent = hint; $("hintChip").hidden = !hint || S.hintOff === side;
   $("mover").hidden = side !== "b" || !S.movable;
   $("movableBox").hidden = side !== "a"; movableSub();
-  for (const t of $$(".th")) { t.className = "th"; t.style.backgroundImage = ""; t.disabled = true; }
   setSound(soundOn);
-  setCut(0);
   $("camwait").hidden = false; $("camwait").textContent = "카메라 켜는 중…";
   try { if (soundOn) ctxA(); } catch {}
   const video = $("video");
   try {
     S.cam ||= await load("camera");
+    await S.cam.startCam(video);
+    // after the camera, not alongside it: with the HQ model already on the GPU (landing prefetch) MediaPipe's GPU
+    // init froze getUserMedia past the 5 s stall limit (headless 10-27, 3 of 3 runs)
     const segP = MOCK ? null : load("segment").then(m => m.loadSegmenter());
     segP?.catch(() => {});
-    await S.cam.startCam(video);
     fitStage();
     $("camwait").textContent = "배경 지우개 준비 중…";
     S.cap ||= MOCK ? mockCapture(S.cam) : await load("capture", mockCapture(S.cam));
@@ -178,7 +190,7 @@ async function startShoot(side) {
     video.addEventListener("resize", fitStage);
   }
   if (side === "b") {
-    await S.ghostP; setCut(0, false); loadGhostClips();
+    await S.ghostP; setCut(S.shots.length, false); loadGhostClips();
     if (S.movable && !S.anchors) load("compose").then(async C => {
       S.anchors = C.layoutAnchor && await Promise.all(S.ghost.map(u => u && loadImg(u).then(i => C.layoutAnchor(i))));
       applyLay();
@@ -187,6 +199,17 @@ async function startShoot(side) {
 }
 // Lay the camera out so the strip-cell crop (the whole photo) spans the stage width and sits in its middle.
 // The crop is compose's cellCrop: full width, a quarter of the spare height taken from the top.
+// fresh shoot screen: no shots, shutter ready (start, and 전체 다시 찍기)
+function resetShoot() {
+  S.shotUrls.forEach(u => URL.revokeObjectURL(u));
+  S.cuts = []; S.shots = []; S.shotUrls = []; S.pick = []; S.pairs = null; S.hq = [];
+  S.gen = (S.gen || 0) + 1; S.hqBusy = false; $("hqChip").hidden = true; $("prepOv").hidden = true;   // an older HQ run stops
+  $("s-shoot").classList.remove("shooting-done");
+  $("controls").hidden = false; $("shootDone").hidden = true; $("review").hidden = true; $("pips").hidden = false;
+  $("shootHint").hidden = false; $("shootHint").textContent = HINT_SHOOT; $("lastShot").hidden = true;
+  $("hqNote").hidden = MOCK || !!S.hqNoteOff;
+  setCut(0);
+}
 function fitStage() {
   const v = $("video"), st = $("stage");
   if (!v.videoWidth || !S.cam) return;
@@ -210,7 +233,7 @@ const isMoved = l => Math.abs(l.x) > 0.002 || Math.abs(l.y) > 0.002 || Math.abs(
 const layOf = () => S.side === "b" && S.movable && isMoved(S.lay)
   ? { a: Object.fromEntries(Object.entries(S.lay).map(([k, v]) => [k, Math.round(v * 1e4) / 1e4])) } : null;
 function applyLay() {
-  const c = S.cropIn, { x, y, scale } = S.lay, an = S.anchors?.[S.cutIdx] || { x: 0.5, y: 1 };
+  const c = S.cropIn, { x, y, scale } = S.lay, an = S.anchors?.[S.cutIdx % 4] || { x: 0.5, y: 1 };
   for (const el of [$("ghost"), $("ghostClip")]) {
     el.style.transformOrigin = c ? `${c.x + an.x * c.w}px ${c.y + an.y * c.h}px` : "";
     el.style.transform = c && isMoved(S.lay) ? `translate(${x * c.w}px, ${y * c.h}px) scale(${scale})` : "";
@@ -272,7 +295,7 @@ function ghostLoop(tick) {
   if (S.looping && !tick) return;
   S.looping = true;
   if (document.body.dataset.screen !== "shoot") { S.looping = false; return S.ghostClips?.forEach(v => v.pause()); }
-  const v = S.ghostClips?.[S.cutIdx];
+  const v = S.ghostClips?.[S.cutIdx % 4];
   if (v && !$("ghostClip").hidden) { if (v.paused) v.play().catch(() => {}); if (v.readyState >= 2) S.ca.draw(v); }
   requestAnimationFrame(() => ghostLoop(true));
 }
@@ -292,114 +315,263 @@ function handoff(title, text) {
     btn2: "여기서 다시 해 보기", onBtn2: () => startShoot(S.side) });
 }
 
+// shot i of 8; B sees A's cut (i % 4): A's four picked cuts float twice around
 function setCut(i, pop = true) {
   S.cutIdx = i;
-  $("step").textContent = `${i + 1} / 4`;
-  const p = $("pose"); p.textContent = POSES[i];
+  $("step").textContent = `${Math.min(i + 1, SHOTS)} / ${SHOTS}`;
+  const p = $("pose"); p.textContent = POSES[i] || POSES[0];
   if (pop) restart(p, "pop");
-  const g = $("ghost"), src = S.side === "b" && S.ghost[i], clip = S.side === "b" && S.ca && S.ghostClips?.[i];
-  S.ghostClips?.forEach((v, k) => k !== i && v.pause());
+  const k = i % 4, g = $("ghost"), src = S.side === "b" && S.ghost[k], clip = S.side === "b" && S.ca && S.ghostClips?.[k];
+  S.ghostClips?.forEach((v, n) => n !== k && v.pause());
   $("ghostClip").hidden = !clip;
   g.hidden = !src || !!clip; if (src) g.src = src;
-  $$(".th").forEach((t, k) => t.classList.toggle("now", k === i));
+  $$("#pips i").forEach((t, n) => { t.className = n < i ? "has" : n === i ? "now" : ""; });
   applyLay();
 }
 function onTick(n) {
   const c = $("count");
   c.textContent = n; restart(c, "go");
-  pip(n === 1 ? 1320 : 880, n === 1 ? 0.12 : 0.04);
+  if (n <= 3) pip(n === 1 ? 1320 : 880, n === 1 ? 0.12 : 0.04);   // beeps on 3-2-1 only
   if (n === 2) $("rec").hidden = false;
   if (n === 1) setTimeout(flash, 1000);
 }
 async function shootIdx(i) {
   setCut(i);
-  const cut = await S.cap.shootOne(i, { video: $("video"), onTick });
+  const cut = await S.cap.shootOne(i, { video: $("video"), onTick, seconds: SECS, stop: () => S.stop });
   $("count").textContent = ""; $("rec").hidden = true;
-  S.cuts[i] = cut;
-  // "짠": the captured photo pops over the crop for 350 ms with a little star burst, then lands in its thumbnail
-  const snap = $("snap"), url = URL.createObjectURL(cut.raw);
+  S.shots[i] = cut;
+  // "짠": the captured photo pops over the crop for 350 ms with a little star burst, then lands as the last-shot thumbnail
+  const snap = $("snap"), url = S.shotUrls[i] = URL.createObjectURL(cut.raw);
   snap.src = url; snap.hidden = false; restart(snap, "pop");
   if (S.cropBox) sparkle($("stage"), { n: 3, x: (S.cropBox.x + S.cropBox.w * 0.82) / $("stage").clientWidth, y: (S.cropBox.y + S.cropBox.h * 0.2) / $("stage").clientHeight });
   await sleep(350);
   snap.hidden = true;
-  const t = $$(".th")[i];
-  t.classList.add("has"); t.style.backgroundImage = `url(${url})`; restart(t, "land");
+  const last = $("lastShot"); last.src = url; last.hidden = false; restart(last, "land");
 }
-// First shutter only: give the MODNet still model (26 MB, loads after the camera is on) up to 10 s to be ready, with a
-// skip button. Shooting during its first GPU run would freeze the clip, so a warm-up already running is let finish.
-async function waitHQ() {
-  if (MOCK || S.cuts.some(Boolean)) return;
-  const seg = await load("segment").catch(() => null);
-  if (!seg?.TUNE?.still || seg.stillReady?.() || ["failed", "late"].includes(seg.stats?.still?.state)) return;
-  const hint = $("shootHint"), was = hint.textContent, t0 = performance.now();
-  hint.hidden = false;
-  hint.innerHTML = '<span id="hqText">고화질 누끼 준비 중…</span> <button type="button" id="hqSkip">그냥 찍기</button>';
-  let skip; const skipped = new Promise(r => { skip = r; });
-  $("hqSkip").onclick = () => skip();
-  const iv = setInterval(() => { const left = Math.max(0, 10 - Math.floor((performance.now() - t0) / 1000)); $("hqText").textContent = `고화질 누끼 준비 중… ${left}초`; }, 500);
-  try {
-    await Promise.race([seg.prefetchStill(), skipped, sleep(10000)]);
-    await Promise.race([seg.stillWarm(), sleep(15000)]);
-  } finally { clearInterval(iv); hint.textContent = was; hint.hidden = true; }
-}
-async function runShoot(only) {
+// One tap shoots the rest of the 8 (after 멈추기 it goes on from the next shot), then the pick.
+async function runShoot() {
   if (S.busy || !S.cap) return;
-  S.busy = true; document.body.classList.add("busy");
-  if (only == null) await waitHQ();
+  S.busy = true; S.stop = false; document.body.classList.add("busy");
   $("shootHint").hidden = true; $("shootDone").hidden = true; $("review").hidden = true;
-  $("s-shoot").classList.remove("shooting-done");
-  $$(".th").forEach(t => t.disabled = true);
   try {
-    for (const i of only != null ? [only] : [0, 1, 2, 3].filter(k => !S.cuts[k])) {
+    for (let i = S.shots.length; i < SHOTS && !S.stop; i++) {
       await shootIdx(i);
-      if (only == null && i < 3) await sleep(250);
+      if (i < SHOTS - 1 && !S.stop) await sleep(250);
     }
   } catch (e) {
-    console.warn("[booth] shoot", e);
-    toast("앗, 찍다가 멈췄어. 셔터를 다시 눌러 줘");
+    if (e?.message !== "stopped") { console.warn("[booth] shoot", e); toast("앗, 찍다가 멈췄어. 셔터를 다시 눌러 줘"); }
   } finally {
     S.busy = false; document.body.classList.remove("busy");
     $("count").textContent = ""; $("rec").hidden = true;
   }
-  const all = [0, 1, 2, 3].every(k => S.cuts[k]);
-  $$(".th").forEach((t, k) => { t.disabled = !S.cuts[k] || !all; t.classList.remove("now"); });
-  if (!all) return setCut([0, 1, 2, 3].find(k => !S.cuts[k]));
+  const n = S.shots.length;
+  if (n < SHOTS) {
+    setCut(n, false);
+    $("shootHint").textContent = n ? `${n}장 찍었어. 셔터를 누르면 ${n + 1}번째부터 이어서 찍어` : HINT_SHOOT;
+    $("shootHint").hidden = false;
+    return;
+  }
+  prepAndPick();
+}
+
+// ---- HQ cut-out of all 8 shots (operator 10-27): starts right after shot 8, before the pick ------------------------
+// warmStill (the one GPU freeze) then cutStill shot by shot, 1..8; after the pick only the 4 picked still pending.
+// Each finished cut replaces the live one in place (grid cell / review cell crossfade). Stops once the upload starts:
+// files cannot change after `done` (Worker 409).
+async function upgradeAll() {
+  const gen = S.gen, shots = S.shots.slice();
+  if (!S.cap.hqCut) return;
+  S.hqBusy = true; S.hq = [];
+  const t0 = performance.now();
+  try {
+    if (!await S.cap.hqReady()) { S.hq.push("live:" + S.cap.hqState()); return; }
+    S.hq.push(`ready ${Math.round(performance.now() - t0)}ms`);
+    for (;;) {
+      if (gen !== S.gen || S.hqFrozen) break;
+      const c = (S.cuts.length ? S.cuts : shots).find(x => !x.hq && !x.hqFail);
+      if (!c) break;
+      const t1 = performance.now(), j = shots.indexOf(c) + 1;
+      try {
+        const png = await S.cap.hqCut(c);
+        if (gen !== S.gen || S.hqFrozen) break;
+        c.cut = png; c.hq = true; S.hq.push(`${j}:${Math.round(performance.now() - t1)}ms`);
+      } catch (e) { c.hqFail = true; S.hq.push(`${j}:live ${e?.message || e}`); console.warn("[booth] hq cut", j, e); }
+      if (gen === S.gen) onHQ(c, shots);
+    }
+  } finally {
+    if (gen === S.gen) { S.hqBusy = false; S.hq.push(`total ${Math.round(performance.now() - t0)}ms`); onHQ(null, shots); }
+  }
+}
+// progress everywhere it shows: the "8장 준비 중" overlay, the grid cell (+ its 다듬는 중 badge), the review chip
+function onHQ(c, shots) {
+  $("prepText").textContent = `8장 준비 중… ${shots.filter(x => x.hq).length}/8`;
+  const j = S.shots.indexOf(c);
+  if (j >= 0 && document.body.dataset.screen === "pick") paintCell(j, true);
+  if (!c) $$("#pickGrid .pk").forEach(b => b.classList.remove("pending"));
+  const k = S.cuts.indexOf(c);
+  if (k >= 0) swapCell(k).catch(() => {});
+  hqChip();
+}
+function hqChip() {
+  const left = S.cuts.filter(x => !x.hq && !x.hqFail).length;
+  $("hqChip").hidden = !(S.hqBusy && left && S.cuts.length);
+  $("hqChip").textContent = `누끼 다듬는 중 ${4 - left}/4`;
+}
+// After shot 8: a short "8장 준비 중" (at most 5 s, less when all 8 are done), then the pick.
+async function prepAndPick() {
+  S.hqFrozen = false;
+  if (S.cap.hqCut) {
+    $("prepText").textContent = "8장 준비 중… 0/8"; $("prepOv").hidden = false;
+    S.hqP = upgradeAll();
+    await Promise.race([S.hqP, sleep(5000)]);
+    $("prepOv").hidden = true;
+  }
+  pickScreen();
+}
+
+// ---- pick 4 of 8 (no time limit; tap order = strip order; one 전체 다시 찍기) -----------------------------------------
+// One cell composed like the result: the cut-out on the default booth background; on B's phone B + the paired A cut
+// in front (B's move of A applied). The strip crop is compose's cellCrop.
+const BG = "booth-pink";
+async function cellCanvas(cut, ai, w = 552, h = 382) {
+  const c = Object.assign(document.createElement("canvas"), { width: w, height: h }), x = c.getContext("2d");
+  const C = await load("compose", mockCompose);
+  const ru = URL.createObjectURL(cut.raw), cu = URL.createObjectURL(cut.cut);
+  const [raw, cutImg] = await Promise.all([loadImg(ru), loadImg(cu)]).finally(() => { URL.revokeObjectURL(ru); URL.revokeObjectURL(cu); });
+  if (S.side === "b" && ai != null && S.ghost[ai] && C.drawCell) {
+    const aImg = await loadImg(S.ghost[ai]);
+    C.drawCell(x, { x: 0, y: 0, w, h }, 0, { a: { cuts: [{ raw: aImg, cut: aImg, clip: null }] },
+      b: { cuts: [{ raw, cut: cutImg, clip: null }] }, bg: BG, layout: layOf() });
+  } else {
+    const B = C.BACKGROUNDS?.find(b => b.id === BG);
+    if (B?.draw) B.draw(x, w, h); else { x.fillStyle = "#ffc2d6"; x.fillRect(0, 0, w, h); }
+    const sw = cutImg.naturalWidth, sh = sw / CELL;
+    x.drawImage(cutImg, 0, (cutImg.naturalHeight - sh) / 2 * 0.25, sw, sh, 0, 0, w, h);
+  }
+  return c;
+}
+function pickScreen() {
+  S.pick = []; S.cellCv = [];
+  show("pick");
+  $("reshoot").hidden = S.redo;
+  $("pickGrid").replaceChildren(...S.shots.map((_, j) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pk" });
+    b.setAttribute("aria-label", `${j + 1}번째 사진`);
+    b.innerHTML = `<img alt="" src="${S.shotUrls[j]}"><b class="badge" aria-hidden="true"></b>`;   // raw until composed
+    b.onclick = () => togglePick(j);
+    return b;
+  }));
+  paintPick();
+  (async () => { for (let j = 0; j < S.shots.length; j++) await paintCell(j, false); })().catch(e => console.warn("[booth] grid", e));
+}
+async function paintCell(j, fade) {
+  const shot = S.shots[j], b = $$("#pickGrid .pk")[j];
+  if (!shot || !b) return;
+  const cv = await cellCanvas(shot, S.side === "b" ? j % 4 : null);
+  if (S.shots[j] !== shot) return;
+  const old = [...b.querySelectorAll("img, canvas")];
+  cv.className = fade && !calm() ? "fadein" : "";
+  b.insertBefore(cv, b.querySelector(".badge"));
+  setTimeout(() => old.forEach(o => o.remove()), fade ? 500 : 0);
+  b.classList.toggle("pending", S.hqBusy && !shot.hq && !shot.hqFail);
+  S.cellCv[j] = cv; paintStrip();
+}
+function togglePick(j) {
+  const k = S.pick.indexOf(j);
+  if (k >= 0) S.pick.splice(k, 1);
+  else if (S.pick.length < 4) S.pick.push(j);
+  else return toast("4장까지만 골라. 뺄 사진을 먼저 눌러 줘");
+  paintPick();
+}
+function paintPick() {
+  $$("#pickGrid .pk").forEach((b, j) => {
+    const k = S.pick.indexOf(j);
+    b.setAttribute("aria-pressed", k >= 0); b.querySelector(".badge").textContent = k >= 0 ? k + 1 : "";
+  });
+  $("pickCount").textContent = `${S.pick.length} / 4`;
+  $("pickDone").disabled = S.pick.length !== 4;
+  paintStrip();
+}
+function paintStrip() {
+  const box = $("pickStrip");
+  box.replaceChildren(...[0, 1, 2, 3].map(k => {
+    const j = S.pick[k], d = document.createElement("div");
+    if (j == null) { d.className = "mc empty"; d.innerHTML = `<span>${k + 1}</span>`; return d; }
+    d.className = "mc";
+    const src = S.cellCv[j];
+    if (src) { const c = Object.assign(document.createElement("canvas"), { width: 184, height: 127 }); c.getContext("2d").drawImage(src, 0, 0, 184, 127); d.append(c); }
+    else d.innerHTML = `<img alt="" src="${S.shotUrls[j]}">`;
+    return d;
+  }), Object.assign(document.createElement("div"), { className: "mfoot", textContent: "따로 같이 네컷" }));
+}
+function pickDone() {
+  if (S.pick.length !== 4) return;
+  const keep = S.pick.slice();
+  S.cuts = keep.map(j => S.shots[j]);
+  S.pairs = S.side === "b" ? keep.map(j => j % 4) : null;
+  // the 4 unpicked shots go now (8 stills + 8 clips are a lot for a phone); the picked URLs stay for the review
+  S.shotUrls.forEach((u, j) => keep.includes(j) || URL.revokeObjectURL(u));
+  S.shots.forEach((c, j) => { if (!keep.includes(j)) { c.raw = c.cut = c.clip = null; c.hqFail = true; } });
+  S.shots = []; S.shotUrls = keep.map(j => S.shotUrls[j]); S.cellCv = [];
+  show("shoot");
   $("s-shoot").classList.add("shooting-done");
-  $("controls").hidden = true; $("shootDone").hidden = false;
-  $("step").textContent = "4 / 4"; $("pose").textContent = "다 찍었어! 맘에 들어?"; restart($("pose"), "pop");
+  $("controls").hidden = true; $("shootDone").hidden = false; $("pips").hidden = true; $("lastShot").hidden = true;
+  $("shootHint").hidden = true; $("hqNote").hidden = true; $("hqAsk").hidden = true;
+  $("step").textContent = "4 / 4"; $("pose").textContent = "다 골랐어! 맘에 들어?"; restart($("pose"), "pop");
   $("ghost").hidden = true; $("ghostClip").hidden = true; S.cutIdx = null;
+  hqChip();
   review().catch(e => console.warn("[booth] review", e));
 }
-// "맘에 들어?": B sees the four cells as the strip will (A + B on the default booth), A sees its own crops.
+function reshoot() {
+  if (S.redo) return;
+  S.redo = true;
+  show("shoot");
+  resetShoot();
+  if (S.side === "b") ghostLoop();
+}
+
+// "맘에 들어?": the four cells composed like the strip (B: B's pick + its paired A in front).
+const reviewCell = i => cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null);
+function paintRev(c, i, alpha = 1) {
+  const R = $("review"), x = R.getContext("2d"), { ox, oy, cw, ch, g, d } = S.revGeo;
+  const px = ox + (i % 2) * (cw + g), py = oy + (i >> 1) * (ch + g);
+  x.save(); x.beginPath(); x.roundRect(px, py, cw, ch, 10 * d); x.clip();
+  x.globalAlpha = alpha; x.drawImage(c, px, py, cw, ch); x.restore();
+}
 async function review() {
-  const cells = await Promise.all([0, 1, 2, 3].map(async i => {
-    const c = document.createElement("canvas"); c.width = 552; c.height = 382;
-    const x = c.getContext("2d"), raw = await loadImg(URL.createObjectURL(S.cuts[i].raw));
-    if (S.side === "b" && S.ghost[i]) {
-      const C = await load("compose", mockCompose);
-      const aImg = await loadImg(S.ghost[i]), bCut = await loadImg(URL.createObjectURL(S.cuts[i].cut));
-      const a = { cuts: [] }, b = { cuts: [] };
-      a.cuts[i] = { raw: aImg, cut: aImg, clip: null }; b.cuts[i] = { raw, cut: bCut, clip: null };
-      if (C.drawCell) C.drawCell(x, { x: 0, y: 0, w: 552, h: 382 }, i, { a, b, bg: "booth-pink", layout: layOf() });
-      else { x.drawImage(raw, 0, 0, 552, 382); x.drawImage(aImg, 0, 0, 552, 382); }
-    } else {
-      const sw = raw.naturalWidth, sh = sw / CELL;
-      x.drawImage(raw, 0, (raw.naturalHeight - sh) / 2 * 0.25, sw, sh, 0, 0, 552, 382);   // compose's cellCrop
-    }
-    return c;
-  }));
-  if (!$("s-shoot").classList.contains("shooting-done")) return;   // a retake started meanwhile
-  cells.forEach((c, i) => { $$(".th")[i].style.backgroundImage = `url(${c.toDataURL("image/jpeg", 0.8)})`; });
+  const cells = await Promise.all([0, 1, 2, 3].map(reviewCell));
+  if (!$("s-shoot").classList.contains("shooting-done")) return;
   const R = $("review"), st = $("stage"), d = devicePixelRatio || 1;
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
   const x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
-  const ox = (R.width - 2 * cw - g) / 2, oy = (R.height - 2 * ch - g) / 2;
+  S.revGeo = { ox: (R.width - 2 * cw - g) / 2, oy: (R.height - 2 * ch - g) / 2, cw, ch, g, d };
   x.fillStyle = "#2e2230"; x.fillRect(0, 0, R.width, R.height);
-  cells.forEach((c, i) => {
-    x.save(); x.beginPath(); x.roundRect(ox + (i % 2) * (cw + g), oy + (i >> 1) * (ch + g), cw, ch, 10 * d); x.clip();
-    x.drawImage(c, ox + (i % 2) * (cw + g), oy + (i >> 1) * (ch + g), cw, ch); x.restore();
-  });
+  cells.forEach((c, i) => paintRev(c, i));
   R.hidden = false;
+}
+// an HQ cut arrived for picked cell i: crossfade that cell
+async function swapCell(i) {
+  if ($("review").hidden || !S.revGeo) return;
+  const c = await reviewCell(i);
+  if (calm()) return paintRev(c, i);
+  const t0 = performance.now();
+  const step = () => {
+    const k = (performance.now() - t0) / 450;
+    paintRev(c, i, k >= 1 ? 1 : 0.18);       // repeated low-alpha draws converge on the new cell
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+// 올리기 while a picked cut is still being refined: ask (wait up to 20 s, or upload the live cuts now)
+function askUpload() {
+  if (!S.hqBusy || !S.cuts.some(c => !c.hq && !c.hqFail)) return upload();
+  $("hqAsk").hidden = false;
+}
+async function hqWait() {
+  const b = $("hqWaitBtn"); b.disabled = true; b.textContent = "기다리는 중…";
+  await Promise.race([S.hqP, sleep(20000)]);
+  b.disabled = false; b.textContent = "조금만 기다리기";
+  upload();
 }
 
 // ---- upload -------------------------------------------------------------------------------------------------------
@@ -408,6 +580,7 @@ function fileOf(name) {
   return name.endsWith(".jpg") ? [c.raw, "image/jpeg"] : name.endsWith(".png") ? [c.cut, "image/png"] : [c.clip, c.clipType];
 }
 async function upload() {
+  S.hqFrozen = true; $("hqAsk").hidden = true;    // the picks are final from here (no HQ swap mid-upload)
   show("upload");
   $("upRetry").hidden = true;
   const size = n => fileOf(n)[0].size, total = NAMES.reduce((s, n) => s + size(n), 0);
@@ -437,6 +610,7 @@ async function upload() {
       }
       const lay = layOf();      // B's placement of A, before `done` so A's device finds it
       if (lay) await api.put(S.id, "b", "layout.json", new Blob([JSON.stringify(lay)], { type: "application/json" }), "application/json", S.token);
+      if (S.side === "b" && S.pairs) await api.put(S.id, "b", "pairs.json", new Blob([JSON.stringify(S.pairs)], { type: "application/json" }), "application/json", S.token);
       const r = await api.done(S.id, S.side, S.token);
       if (r.ok) break;
       if (r.missing) { r.missing.forEach(n => S.sent.delete(n)); continue; }
@@ -483,7 +657,7 @@ function shareScreen(waiting) {
   $("s-share").querySelector(".del").hidden = !token();
   myStrip().catch(() => {});
 }
-const SHARE_TEXT = "내 옆자리 비워 뒀어 · 30초면 돼 · 가입 없음";
+const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음";
 async function share() {
   const url = shareUrl();
   if (navigator.share) {
@@ -519,7 +693,7 @@ async function del(box, yes) {
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
-  layout: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
+  layout: null, pairs: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
 // fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
 const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
@@ -528,6 +702,14 @@ async function loadLayout() {
   if (!S.movable) return null;
   if (S.side === "b" && S.cuts.length === 4) return layOf();
   try { return await (await fetch(await api.blobUrl(S.id, "b", "layout.json"))).json(); } catch { return null; }
+}
+// B's cell i = B's pick i + A's cut pairs[i] (pairs.json; none = identity, e.g. Round 3 links)
+async function loadPairs() {
+  if (S.side === "b" && S.cuts.length === 4) return S.pairs;
+  try {
+    const p = await (await fetch(await api.blobUrl(S.id, "b", "pairs.json"))).json();
+    return Array.isArray(p) && p.length === 4 && p.every(v => Number.isInteger(v) && v >= 0 && v < 4) ? p : null;
+  } catch { return null; }
 }
 const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 
@@ -561,8 +743,8 @@ async function doneScreen(note = "") {
   $("s-done").querySelector(".del").hidden = !token();
   try {
     [C, FR, FI] = await Promise.all([load("compose", mockCompose), load("frames", mockFrames), load("filters", mockFilters)]);
-    [D.media, D.layout] = await Promise.all([
-      Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadLayout()]);
+    [D.media, D.layout, D.pairs] = await Promise.all([
+      Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadLayout(), loadPairs()]);
   } catch (e) {
     console.warn("[booth] done", e);
     return msg({ title: "앗, 사진을 못 불러왔어", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: () => doneScreen(note) });
@@ -664,7 +846,7 @@ function changed(minis) {
   if (!env.inApp) { setVid(); vT = setTimeout(videoJob, 700); }
 }
 const opts = (o = {}) => ({ a: D.media.a, b: D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), layout: D.layout, outline: D.outline, ...o });
+  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, ...o });
 const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline)].join("|");
 async function render(minis = []) {
   const seq = ++D.seq;
@@ -782,6 +964,8 @@ const ACT = {
   mine: () => shareScreen(true),
   recheck: () => route(),
   shoot: () => runShoot(),
+  stop: () => { if (S.busy) { S.stop = true; $("shootHint").textContent = "이번 장까지만 찍고 멈출게"; $("shootHint").hidden = false; } },
+  pickDone, reshoot,
   sound: () => setSound(!soundOn),
   mirror: () => {
     if (!S.cam || S.busy) return;
@@ -795,7 +979,8 @@ const ACT = {
     $("camwait").hidden = true;
     fitStage(); syncMirror();
   },
-  upload, retryUpload: upload, share, copy,
+  upload: askUpload, retryUpload: upload, hqWait, hqNow: () => upload(), share, copy,
+  hideHqNote: () => { $("hqNote").hidden = true; S.hqNoteOff = true; },
   savePhoto: () => D.photo && download(D.photo, fileName("jpg")),
   saveVideo: () => D.video?.key === vkey() && download(D.video.blob, fileName(extOf(D.video.type))),
   saveStory: () => {
@@ -812,8 +997,6 @@ document.addEventListener("click", e => {
   if (b?.dataset.act === "del" || b?.dataset.act === "delYes" || b?.dataset.act === "delNo")
     return del(b.closest(".del"), b.dataset.act === "del" ? null : b.dataset.act === "delYes");
   if (b && ACT[b.dataset.act]) ACT[b.dataset.act]();
-  const th = e.target.closest(".th");
-  if (th && !th.disabled && !S.busy) { $("controls").hidden = false; runShoot(+th.dataset.i); }
 });
 
 // ---- boot ---------------------------------------------------------------------------------------------------------

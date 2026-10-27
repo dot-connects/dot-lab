@@ -416,13 +416,13 @@ const alphas = new WeakMap();
 const clipFrames = new Map();
 // one person's source for cell i: video halves when t is set and a clip exists, else the stills; cut(o) -> canvas
 // (with canvas.pad px of margin when o.outline is set)
-function sources(p, i, t) {
+function sources(p, i, t, slot = i) {
   const c = p.cuts[i];
   if (!alphas.has(p)) alphas.set(p, createClipAlpha({ choke: CHOKE }));
   const alpha = alphas.get(p);
   if (t != null && c.clip) {
     const f = clipFrames.get(c.clip) || c.clip, w = (f.videoWidth || f.width) >> 1, h = f.videoHeight || f.height;
-    return { raw: f, rawW: w, rawH: h, cut: o => alpha.draw(f, { ...o, slot: i }), cutW: w, cutH: h };
+    return { raw: f, rawW: w, rawH: h, cut: o => alpha.draw(f, { ...o, slot }), cutW: w, cutH: h };
   }
   const W = o => o.naturalWidth || o.videoWidth || o.width, H = o => o.naturalHeight || o.videoHeight || o.height;
   return { raw: c.raw, rawW: W(c.raw), rawH: H(c.raw), cut: o => alpha.still(c.cut, o), cutW: W(c.cut), cutH: H(c.cut) };
@@ -452,9 +452,13 @@ export function layoutAnchor(cutImg, aspect = L.CW / L.CH) {
 }
 // bg "a" is A's raw frame: once B moved A, A would be in it twice, so it is not offered (drawCell falls back to "b")
 export const bgAllowed = layout => BACKGROUNDS.map(b => b.id).filter(id => id !== "a" || !layoutOf(layout));
+// Round 4: pairs[i] = which of A's 4 cuts goes in cell i (B picked 4 of 8 shots, shot j floated A's cut j % 4; repeats
+// allowed). pairs.json comes from the other phone: anything but 4 ints 0..3 = identity.
+const pairsOf = p => (Array.isArray(p) && p.length === 4 && p.every(k => Number.isInteger(k) && k >= 0 && k <= 3) ? p : [0, 1, 2, 3]);
 
-export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null }) {
-  const { w, h } = rect, aspect = w / h;
+export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null }) {
+  const { w, h } = rect, aspect = w / h, ia = pairsOf(pairs)[i];   // A's cut for this cell; B's is cut i
+  const at = p => (p === a ? ia : i);
   const back = canvas("back", w, h), bx = back.getContext("2d");
   const lay = layoutOf(layout), ol = outlineOf(outline);
   let B = typeof bg === "string" ? BACKGROUNDS.find(x => x.id === bg) : bg;
@@ -463,21 +467,21 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
   // again on top of it (A so that B never covers A; B only to carry the outline).
   const self = B.draw ? null : B.id === "a" ? a : b;
   const people = B.id === "b" && !ol ? [a] : [b, a];
-  const gains = matchLuma(a.cuts[i].cut, b.cuts[i].cut, B.draw ? null : B.id);
+  const gains = matchLuma(a.cuts[ia].cut, b.cuts[i].cut, B.draw ? null : B.id);
   let tint;
   if (B.draw) { const pc = preset(B, w, h); bx.drawImage(pc, 0, 0); tint = pc.tint; }
   else {
-    const s = sources(self, i, t), r = cellCrop(s.rawW, s.rawH, aspect);
+    const s = sources(self, at(self), t, i), r = cellCrop(s.rawW, s.rawH, aspect);
     bx.drawImage(s.raw, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
   }
   for (const p of people) {
-    const s = sources(p, i, t), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
+    const s = sources(p, at(p), t, i), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
     const Lp = p === a ? lay : null, sc = Lp ? Lp.scale : 1;
     const cut = s.cut({ gain: gains[p === a ? 0 : 1], tint, time: t || 0, outline: ol && { ...ol, px: ol.px / (k * sc), cs: k * sc } });
     // source px -> cell px: the crop, then (A only) scale about the anchor and shift
     let m = k, ex = -r.sx * k, ey = -r.sy * k;
     if (Lp) {
-      const an = layoutAnchor(p.cuts[i].cut, aspect), ax = an.x * w, ay = an.y * h;
+      const an = layoutAnchor(p.cuts[ia].cut, aspect), ax = an.x * w, ay = an.y * h;
       m = k * sc; ex = ax * (1 - sc) + sc * ex + Lp.x * w; ey = ay * (1 - sc) + sc * ey + Lp.y * h;
     }
     const P = cut.pad || 0, per = canvas("per", w, h), px = per.getContext("2d");
@@ -522,12 +526,12 @@ async function prepare({ frame, date, caption = "" }) {
   if (F.over) { over = document.createElement("canvas"); over.width = L.W; over.height = L.H; F.over(over.getContext("2d"), L, o); }
   return { F, rects, base, over };
 }
-function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null }, t) {
+function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null, pairs = null }, t) {
   filt ||= createFilter();
   ctx.drawImage(st.base, 0, 0);
   st.rects.forEach((r, i) => {
     const cell = canvas("cell", r.w, r.h), cx = cell.getContext("2d");
-    drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t: t == null ? null : t, layout, outline });
+    drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t: t == null ? null : t, layout, outline, pairs });
     const out = filt.apply(cell, filter, 1, i + 1);
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, st.F.radius || 0); ctx.clip();
     ctx.drawImage(out, r.x, r.y); ctx.restore();
@@ -535,10 +539,10 @@ function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline 
   if (st.over) ctx.drawImage(st.over, 0, 0);
 }
 
-export async function drawStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null }) {
+export async function drawStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null }) {
   const st = await prepare({ frame, date, caption });
   const cv = document.createElement("canvas"); cv.width = L.W; cv.height = L.H;
-  paint(cv.getContext("2d"), st, { a, b, bg, filter, layout, outline }, null);
+  paint(cv.getContext("2d"), st, { a, b, bg, filter, layout, outline, pairs }, null);
   return new Promise((res, rej) => cv.toBlob(bl => (bl ? res(bl) : rej(new Error("toBlob"))), "image/jpeg", 0.92));
 }
 
@@ -570,10 +574,15 @@ const SECONDS = 6, FPS = 30, BPS = 4_000_000;
 const FADE = 0.001;
 const HOLD = 0.3;                      // the last 0.3 s holds the finished photo strip
 const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells do not loop on the same frame
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, format = "strip", onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, format = "strip", onProgress }) {
   if (!window.MediaRecorder) throw new Error("no MediaRecorder");
-  const vids = [...a.cuts, ...b.cuts].map(c => c.clip);
-  if (vids.some(v => !v)) throw new Error("missing clip");
+  // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
+  // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
+  const P = pairsOf(pairs), vids = [], phase = [];
+  for (const [n, c] of [0, 1, 2, 3].flatMap(i => [[i, a.cuts[P[i]]], [i, b.cuts[i]]])) {
+    if (!c.clip) throw new Error("missing clip");
+    if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); }
+  }
   const st = await prepare({ frame, date, caption });
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
@@ -581,7 +590,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
   const mp4 = ["video/mp4;codecs=avc1", "video/mp4"].find(ok), webm = ["video/webm;codecs=vp9", "video/webm"].find(ok);
   let lastErr = new Error("no recorder type");
   for (const type of [mp4, webm].filter(Boolean)) {
-    try { return { blob: await recordOnce(cv, st, story, vids, type, { a, b, bg, filter, layout, outline }, onProgress), type: type.split(";")[0] }; }
+    try { return { blob: await recordOnce(cv, st, story, vids, phase, type, { a, b, bg, filter, layout, outline, pairs }, onProgress), type: type.split(";")[0] }; }
     catch (e) { lastErr = e; }
   }
   throw lastErr;
@@ -624,7 +633,7 @@ function warmEncoder(type, w, h) {
   return warmed.get(key);
 }
 
-async function recordOnce(cv, st, story, vids, type, opts, onProgress) {
+async function recordOnce(cv, st, story, vids, phase, type, opts, onProgress) {
   await warmEncoder(type, cv.width, cv.height);
   const ctx = cv.getContext("2d");
   const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
@@ -632,7 +641,7 @@ async function recordOnce(cv, st, story, vids, type, opts, onProgress) {
   const still = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
   paint(still.getContext("2d"), st, opts, null);
   // start every clip at its cell's phase and wait until all of them show that frame
-  vids.forEach((v, n) => { v.loop = true; v.muted = true; v.pause(); v.currentTime = Math.min(PHASE[n % 4], (v.duration || 1) * 0.5); });
+  vids.forEach((v, n) => { v.loop = true; v.muted = true; v.pause(); v.currentTime = Math.min(phase[n], (v.duration || 1) * 0.5); });
   await Promise.all(vids.map(v => (v.readyState >= 2 && !v.seeking ? null : new Promise(r => v.addEventListener("seeked", r, { once: true })))));
   const states = vids.map(clipState);
   const frame = t => {
