@@ -152,6 +152,8 @@ async function landB() {
   // A's cut-outs for the peek and for B's overlay, fetched while B reads the screen
   S.ghostP = Promise.all([1, 2, 3, 4].map(c => api.blobUrl(S.id, "a", `${c}-cut.png`).catch(() => null)))
     .then(g => S.ghost = g);
+  S.ghostP.then(ghostLook).then(() => S.cutIdx != null && document.body.dataset.screen === "shoot" && setCut(S.cutIdx, false))
+    .catch(e => console.warn("[booth] A's look", e));   // Round 5: A's 보정 on the overlay, in the background
   const g = await S.ghostP;
   if (g[0]) $("peekImg").src = g[0];
 }
@@ -296,8 +298,17 @@ function ghostLoop(tick) {
   S.looping = true;
   if (document.body.dataset.screen !== "shoot") { S.looping = false; return S.ghostClips?.forEach(v => v.pause()); }
   const v = S.ghostClips?.[S.cutIdx % 4];
-  if (v && !$("ghostClip").hidden) { if (v.paused) v.play().catch(() => {}); if (v.readyState >= 2) S.ca.draw(v); }
+  if (v && !$("ghostClip").hidden) { if (v.paused) v.play().catch(() => {}); if (v.readyState >= 2) S.ca.draw(ghostFrame(v)); }
   requestAnimationFrame(() => ghostLoop(true));
+}
+// Round 5: with A's look the clip frame goes through beautyFx on a canvas first
+function ghostFrame(v) {
+  if (!S.ghostFx) return v;
+  const c = S.gfc ||= document.createElement("canvas");
+  if (c.width !== v.videoWidth || c.height !== v.videoHeight) { c.width = v.videoWidth; c.height = v.videoHeight; }
+  c.getContext("2d").drawImage(v, 0, 0);
+  S.ghostFx(c, v.currentTime * 1000, v);
+  return c;
 }
 function camError(e) {
   console.warn("[booth] camera", e);
@@ -433,11 +444,10 @@ async function prepAndPick() {
 // One cell composed like the result: the cut-out on the default booth background; on B's phone B + the paired A cut
 // in front (B's move of A applied). The strip crop is compose's cellCrop.
 const BG = "booth-pink";
-async function cellCanvas(cut, ai, w = 552, h = 382) {
+async function cellCanvas(cut, ai, look = null, w = 552, h = 382) {   // look: Round 5 보정 (review only; the grid stays plain)
   const c = Object.assign(document.createElement("canvas"), { width: w, height: h }), x = c.getContext("2d");
   const C = await load("compose", mockCompose);
-  const ru = URL.createObjectURL(cut.raw), cu = URL.createObjectURL(cut.cut);
-  const [raw, cutImg] = await Promise.all([loadImg(ru), loadImg(cu)]).finally(() => { URL.revokeObjectURL(ru); URL.revokeObjectURL(cu); });
+  const [raw0, cut0] = await cutImgs(cut), { raw, cut: cutImg } = await withLook(raw0, cut0, look);
   if (S.side === "b" && ai != null && S.ghost[ai] && C.drawCell) {
     const aImg = await loadImg(S.ghost[ai]);
     C.drawCell(x, { x: 0, y: 0, w, h }, 0, { a: { cuts: [{ raw: aImg, cut: aImg, clip: null }] },
@@ -445,8 +455,8 @@ async function cellCanvas(cut, ai, w = 552, h = 382) {
   } else {
     const B = C.BACKGROUNDS?.find(b => b.id === BG);
     if (B?.draw) B.draw(x, w, h); else { x.fillStyle = "#ffc2d6"; x.fillRect(0, 0, w, h); }
-    const sw = cutImg.naturalWidth, sh = sw / CELL;
-    x.drawImage(cutImg, 0, (cutImg.naturalHeight - sh) / 2 * 0.25, sw, sh, 0, 0, w, h);
+    const sw = cutImg.naturalWidth || cutImg.width, sh = sw / CELL;
+    x.drawImage(cutImg, 0, ((cutImg.naturalHeight || cutImg.height) - sh) / 2 * 0.25, sw, sh, 0, 0, w, h);
   }
   return c;
 }
@@ -520,6 +530,7 @@ function pickDone() {
   $("step").textContent = "4 / 4"; $("pose").textContent = "다 골랐어! 맘에 들어?"; restart($("pose"), "pop");
   $("ghost").hidden = true; $("ghostClip").hidden = true; S.cutIdx = null;
   hqChip();
+  reviewLook();      // Round 5 보정
   review().catch(e => console.warn("[booth] review", e));
 }
 function reshoot() {
@@ -531,7 +542,7 @@ function reshoot() {
 }
 
 // "맘에 들어?": the four cells composed like the strip (B: B's pick + its paired A in front).
-const reviewCell = i => cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null);
+const reviewCell = i => cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null, S.beautyReady ? S.look : null);
 function paintRev(c, i, alpha = 1) {
   const R = $("review"), x = R.getContext("2d"), { ox, oy, cw, ch, g, d } = S.revGeo;
   const px = ox + (i % 2) * (cw + g), py = oy + (i >> 1) * (ch + g);
@@ -539,8 +550,9 @@ function paintRev(c, i, alpha = 1) {
   x.globalAlpha = alpha; x.drawImage(c, px, py, cw, ch); x.restore();
 }
 async function review() {
+  const seq = S.revSeq = (S.revSeq || 0) + 1;      // a newer 보정 pick wins
   const cells = await Promise.all([0, 1, 2, 3].map(reviewCell));
-  if (!$("s-shoot").classList.contains("shooting-done")) return;
+  if (!$("s-shoot").classList.contains("shooting-done") || seq !== S.revSeq) return;
   const R = $("review"), st = $("stage"), d = devicePixelRatio || 1;
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
   const x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
@@ -572,6 +584,94 @@ async function hqWait() {
   await Promise.race([S.hqP, sleep(20000)]);
   b.disabled = false; b.textContent = "조금만 기다리기";
   upload();
+}
+
+// ---- face retouch (Round 5, beauty.js) ----------------------------------------------------------------------------
+// S.look = this phone's picks (review screen, uploaded as look.json); the done screen keeps D.look = { a, b }, each
+// side defaulting to its look.json. Beautified stills are cached per (cut-out image, look), landmarks per image.
+const LOOK0 = { skin: 1, slim: 0, eye: 0 };
+const LOOK_ROWS = [["skin", "피부"], ["slim", "갸름"], ["eye", "눈"]], LOOK_LV = ["안 함", "살짝", "많이"];
+S.look = { ...LOOK0 };
+const beautyMod = () => S.beautyP ||= load("beauty");
+const blobImg = b => { const u = URL.createObjectURL(b); return loadImg(u).finally(() => URL.revokeObjectURL(u)); };
+const imgMemo = new WeakMap();          // Cut -> its decoded [raw, cut] (renewed when the HQ cut replaces cut.cut)
+function cutImgs(c) {
+  let m = imgMemo.get(c);
+  if (!m || m.cut !== c.cut) imgMemo.set(c, m = { cut: c.cut, p: Promise.all([blobImg(c.raw), blobImg(c.cut)]) });
+  return m.p;
+}
+const looked = new WeakMap();           // cut-out image -> Map(look key -> Promise<{ raw, cut }>)
+async function withLook(raw, cut, look) {
+  const B = await beautyMod().catch(() => null);
+  if (!B?.lookOn(look)) return { raw, cut };
+  let m = looked.get(cut);
+  if (!m) looked.set(cut, m = new Map());
+  const k = B.lookKey(look);
+  if (!m.has(k)) m.set(k, B.beautyStill(raw, cut, look));
+  return m.get(k);
+}
+async function fetchLook(side) {
+  try {
+    const l = await (await fetch(await api.blobUrl(S.id, side, "look.json"))).json();
+    return LOOK_ROWS.every(([k]) => [0, 1, 2].includes(l?.[k])) ? l : { ...LOOK0 };
+  } catch { return { ...LOOK0 }; }
+}
+// three rows of 안 함 / 살짝 / 많이 into `box`; onPick(newLook)
+function lookRows(box, look, onPick, title = "") {
+  box.replaceChildren(...(title ? [Object.assign(document.createElement("h3"), { textContent: title })] : []),
+    ...LOOK_ROWS.map(([k, label]) => {
+      const row = Object.assign(document.createElement("div"), { className: "lrow" });
+      row.append(Object.assign(document.createElement("span"), { textContent: label }), ...LOOK_LV.map((t, v) => {
+        const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: t });
+        b.setAttribute("aria-pressed", look[k] === v); b.setAttribute("aria-label", `${label} ${t}`);
+        b.onclick = () => { if (look[k] !== v) onPick({ ...look, [k]: v }); };
+        return b;
+      }));
+      return row;
+    }));
+}
+// review: my picks re-render with the new look (cached, so flipping back is instant)
+function reviewLook() {
+  // the review shows plain cells until the face model is up (first visit: download + GPU compile), then re-renders
+  if (!S.beautyReady && !S.beautyWait) S.beautyWait = beautyMod().then(B => B.prefetchBeauty()).then(ok => {
+    S.beautyReady = ok;
+    if (ok) review().catch(e => console.warn("[booth] review", e));
+  }).catch(e => console.warn("[booth] beauty", e));
+  lookRows($("lookMine"), S.look, l => { S.look = l; reviewLook(); review().catch(e => console.warn("[booth] review", e)); }, "보정");
+}
+// B's overlay of A: A's cut-outs (and clips, see ghostLoop) with A's look
+async function ghostLook() {
+  S.aLook = await fetchLook("a");
+  const B = await beautyMod().catch(() => null);
+  if (!B?.lookOn(S.aLook)) return;
+  S.ghostFx = await B.beautyFx(S.aLook);
+  S.ghost = await Promise.all(S.ghost.map(async u => {
+    if (!u) return u;
+    try { const i = await loadImg(u), r = await withLook(i, i, S.aLook);
+      return URL.createObjectURL(await new Promise(res => r.cut.toBlob(res, "image/png"))); } catch { return u; }
+  }));
+}
+// done: D.look per side -> D.view (beautified stills, the clips stay the originals) + D.fx for the moving strip
+async function applyLooks() {
+  const B = await beautyMod().catch(() => null), look = D.look;
+  const view = Object.fromEntries(await Promise.all(["a", "b"].map(async s => [s, { cuts: await Promise.all(D.media[s].cuts.map(async p => {
+    const r = await withLook(p.raw, p.cut, look[s]);
+    return { raw: r.raw, cut: r.cut, get clip() { return p.clip; } };
+  })) }])));
+  if (D.look !== look) return;          // a newer pick is already on its way
+  D.view = view;
+  // the clip fx (VIDEO landmarker + its GPU warm-up) only gates the moving strip, not the photo
+  D.fxP = (async () => { const fx = B ? { a: await B.beautyFx(look.a), b: await B.beautyFx(look.b) } : null; if (D.look === look) D.fx = fx; })()
+    .catch(e => console.warn("[booth] beauty fx", e));
+}
+function buildLook() {
+  const role = api.loadRole(S.id)?.role;
+  const name = s => role ? (s === role ? "나" : "친구") : s === "a" ? "보낸 사람" : "받은 사람";
+  const order = role === "b" ? ["b", "a"] : ["a", "b"];
+  order.forEach((s, n) => lookRows($(n ? "lookB" : "lookA"), D.look[s], async l => {
+    D.look = { ...D.look, [s]: l }; buildLook();
+    await applyLooks(); changed(["frame", "filter"]);
+  }, name(s)));
 }
 
 // ---- upload -------------------------------------------------------------------------------------------------------
@@ -611,6 +711,7 @@ async function upload() {
       const lay = layOf();      // B's placement of A, before `done` so A's device finds it
       if (lay) await api.put(S.id, "b", "layout.json", new Blob([JSON.stringify(lay)], { type: "application/json" }), "application/json", S.token);
       if (S.side === "b" && S.pairs) await api.put(S.id, "b", "pairs.json", new Blob([JSON.stringify(S.pairs)], { type: "application/json" }), "application/json", S.token);
+      await api.put(S.id, S.side, "look.json", new Blob([JSON.stringify(S.look)], { type: "application/json" }), "application/json", S.token);   // Round 5 보정
       const r = await api.done(S.id, S.side, S.token);
       if (r.ok) break;
       if (r.missing) { r.missing.forEach(n => S.sent.delete(n)); continue; }
@@ -745,6 +846,10 @@ async function doneScreen(note = "") {
     [C, FR, FI] = await Promise.all([load("compose", mockCompose), load("frames", mockFrames), load("filters", mockFilters)]);
     [D.media, D.layout, D.pairs] = await Promise.all([
       Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadLayout(), loadPairs()]);
+    // Round 5 보정: each side's look.json (my own picks when I just shot)
+    D.look ||= Object.fromEntries(await Promise.all(["a", "b"].map(async s =>
+      [s, S.side === s && S.cuts.length === 4 ? { ...S.look } : await fetchLook(s)])));
+    await applyLooks();
   } catch (e) {
     console.warn("[booth] done", e);
     return msg({ title: "앗, 사진을 못 불러왔어", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: () => doneScreen(note) });
@@ -813,6 +918,7 @@ function buildTiles() {
   }));
   $("caption").value = D.caption; capCount();
   buildOutline();
+  buildLook();
 }
 // 테두리: 없음 + colours, then style and width (dimmed while 없음)
 function buildOutline() {
@@ -845,9 +951,9 @@ function changed(minis) {
   clearTimeout(vT);
   if (!env.inApp) { setVid(); vT = setTimeout(videoJob, 700); }
 }
-const opts = (o = {}) => ({ a: D.media.a, b: D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, ...o });
-const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline)].join("|");
+const opts = (o = {}) => ({ a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
+  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, ...o });
+const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look)].join("|");
 async function render(minis = []) {
   const seq = ++D.seq;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
@@ -927,6 +1033,8 @@ async function videoJob() {
       const kind = D.video?.key !== key ? "video" : D.wantStory && D.story?.key !== key ? "story" : null;
       if (!kind) break;
       setVid(kind, 0);
+      await D.fxP;                                  // Round 5: the 보정 fx for this look
+      if (key !== vkey()) continue;
       const res = await C.recordMovingStrip(opts({ format: kind === "story" ? "story" : "strip",
         onProgress: p => key === vkey() && setVid(kind, p) }));
       if (key !== vkey()) continue;

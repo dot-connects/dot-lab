@@ -1,0 +1,72 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>beauty bench</title>
+<!-- faces/ (not committed; all public domain, US House official portraits on Wikimedia Commons):
+     f1 Young Kim 117th (cropped), f2 Andy Kim 117th, f3 Grace Meng 118th, f4 Marilyn Strickland 117th,
+     f5 Michelle Steel 117th, f6 Ted W. Lieu official photo; pa/pb = scratchpad media person-a/b-2s.jpg (VOA, public
+     domain); h1/h2 = research/cutout-poc/media/hair1/hair2.jpg. duo = f2 + f3 side by side (two faces in one photo).
+     Run: node scratchpad/r5-beauty-bench.mjs "<query>" <out.jpg>  (served from the worktree root on :8803) -->
+
+<body style="margin:0;background:#222;color:#eee;font:14px sans-serif">
+<script type="module">
+// Before/after face crops at levels 0/1/2 + timings (round 5 beauty). ?cols=all|parts
+import { beautyStill, beautyFx, facesOf, stats, prefetchBeauty } from "../../site/js/beauty.js";
+const Q = new URLSearchParams(location.search);
+const NAMES = (Q.get("faces") || "f1,f2,f3,f4,f5,f6,pa,pb,h1,h2,duo").split(",");
+const load = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+const COLS = Q.get("cols") === "parts"
+  ? [["원본", { skin: 0, slim: 0, eye: 0 }], ["피부 1", { skin: 1, slim: 0, eye: 0 }], ["피부 2", { skin: 2, slim: 0, eye: 0 }],
+     ["갸름 1", { skin: 0, slim: 1, eye: 0 }], ["갸름 2", { skin: 0, slim: 2, eye: 0 }], ["눈 1", { skin: 0, slim: 0, eye: 1 }], ["눈 2", { skin: 0, slim: 0, eye: 2 }]]
+  : [["원본 (0)", { skin: 0, slim: 0, eye: 0 }], ["자연 (1)", { skin: 1, slim: 1, eye: 1 }], ["진하게 (2)", { skin: 2, slim: 2, eye: 2 }]];
+const CW = +(Q.get("cw") || 420);
+async function source(n) {
+  if (n !== "duo") return load(`faces/${n}.jpg`);
+  const [a, b] = await Promise.all([load("faces/f2.jpg"), load("faces/f3.jpg")]);   // two people in one photo
+  const h = 720, wa = a.width * h / a.height, wb = b.width * h / b.height;
+  const c = Object.assign(document.createElement("canvas"), { width: Math.round(wa + wb), height: h });
+  const x = c.getContext("2d"); x.drawImage(a, 0, 0, wa, h); x.drawImage(b, wa, 0, wb, h);
+  return c;
+}
+const t0 = performance.now(); await prefetchBeauty(); const loadMs = Math.round(performance.now() - t0);
+const rows = [];
+for (const n of NAMES) {
+  const img = await source(n), faces = await facesOf(img);
+  const W = img.naturalWidth || img.width, H = img.naturalHeight || img.height;
+  let box = { x: 0, y: 0, w: W, h: H };
+  if (faces.length) {
+    let x0 = 1, y0 = 1, x1 = 0, y1 = 0;
+    for (const f of faces) for (const p of f) { x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y); x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y); }
+    const cx = (x0 + x1) / 2 * W, cy = (y0 + y1) / 2 * H, s = (y1 - y0) * H * 1.45, sw = Math.max(s, (x1 - x0) * W * 1.25);
+    box = { x: cx - sw / 2, y: cy - s / 2, w: sw, h: s };
+  }
+  const outs = [];
+  for (const [, look] of COLS) outs.push((await beautyStill(img, img, look)).raw);
+  rows.push({ n, faces: faces.length, box, outs, W, H });
+}
+const rh = Math.round(CW * Math.max(...rows.map(r => r.box.h / r.box.w)));
+const sheet = Object.assign(document.createElement("canvas"), { width: COLS.length * CW, height: 30 + rows.reduce((s, r) => s + Math.round(CW * r.box.h / r.box.w) + 24, 0) });
+const x = sheet.getContext("2d");
+x.fillStyle = "#222"; x.fillRect(0, 0, sheet.width, sheet.height); x.fillStyle = "#fff"; x.font = "20px sans-serif";
+COLS.forEach(([t], i) => x.fillText(t, i * CW + 8, 22));
+let y = 30;
+for (const r of rows) {
+  const h = Math.round(CW * r.box.h / r.box.w);
+  r.outs.forEach((o, i) => x.drawImage(o, r.box.x, r.box.y, r.box.w, r.box.h, i * CW, y, CW - 4, h));
+  x.fillText(`${r.n} faces=${r.faces}`, 8, y + h + 18); y += h + 24;
+}
+// clip frame fx: [raw | white matte] 640x480 halves
+const fxMs = [];
+{
+  const img = await load("faces/f3.jpg"), fr = Object.assign(document.createElement("canvas"), { width: 1280, height: 480 });
+  const fx = await beautyFx({ skin: 2, slim: 2, eye: 2 }), fc = fr.getContext("2d");
+  const key = {};   // stands in for the clip's <video>
+  for (let k = 0; k < 120; k++) {   // two loops of a 2 s clip: the second one hits the landmark cache
+    fc.drawImage(img, 0, 0, img.width, img.width * 0.75, 0, 0, 640, 480); fc.fillStyle = "#fff"; fc.fillRect(640, 0, 640, 480);
+    const t = performance.now(); fx(fr, (k % 60) * 1000 / 30, key); fxMs.push(+(performance.now() - t).toFixed(1));
+  }
+  window.fxFrame = fr.toDataURL("image/jpeg", 0.9);
+}
+window.result = { loadMs, stillMs: stats.stillMs, detectMs: stats.detectMs, fxMs, faces: rows.map(r => [r.n, r.faces]) };
+window.sheet = sheet.toDataURL("image/jpeg", 0.92);
+document.title = "done";
+</script>

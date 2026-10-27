@@ -366,3 +366,12 @@ body[data-screen="done"] .toast { top: auto; bottom: 150px; }
 }
 
 .stagehint button { font: inherit; font-size: 14px; margin-left: 6px; border: 0; border-radius: 999px; padding: 3px 10px; background: #fff; color: #2e2230; cursor: pointer; }
+
+/* ---- Round 5 beauty: 보정 rows (review + done tab) ---- */
+.tabs { grid-template-columns: none; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.look { display: flex; flex-direction: column; gap: 6px; }
+.look h3 { margin: 4px 0 0; font: 15px var(--title); color: var(--sub); }
+.look .lrow { display: grid; grid-template-columns: 44px 1fr 1fr 1fr; gap: 6px; align-items: center; }
+.look .lrow > span { font: 16px var(--title); color: var(--ink); }
+.look .pill { min-height: 36px; padding: 0 6px; font-size: 15px; }
+#lookMine { background: var(--paper); border-radius: 18px; padding: 10px 12px; box-shadow: var(--shadow); }
