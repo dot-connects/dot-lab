@@ -4,6 +4,7 @@
 // the whole cell. Frame art goes under and over the cells.
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
+import { drawStickers, stickersReady } from "./stickers.js";
 
 export const LAYOUT = { W: 600, H: 1800, M: 24, GAP: 16, FOOT: 200, CW: 552, CH: 382 };
 const L = LAYOUT;
@@ -516,7 +517,17 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
 
 // ---------- strip ----------
 let filt = null;
-async function prepare({ frame, date, caption = "" }) {
+// frame art per (frame, date, caption): drawn once, so a filter / bg change or a mini tile reuses it
+const prepCache = new Map();
+function prepare(o) {
+  const F = frameOf(o.frame), key = `${F.id}|${fmtDate(o.date)}|${o.caption || ""}`;
+  if (!prepCache.has(key)) {
+    if (prepCache.size > 24) prepCache.delete(prepCache.keys().next().value);
+    prepCache.set(key, prepareNow(o).catch(e => { prepCache.delete(key); throw e; }));
+  }
+  return prepCache.get(key);
+}
+async function prepareNow({ frame, date, caption = "" }) {
   const F = frameOf(frame);
   await loadFrameFonts(F, caption);
   const rects = cellRects(F), d = fmtDate(date), o = { date: d, caption, cellRects: rects };
@@ -526,23 +537,70 @@ async function prepare({ frame, date, caption = "" }) {
   if (F.over) { over = document.createElement("canvas"); over.width = L.W; over.height = L.H; F.over(over.getContext("2d"), L, o); }
   return { F, rects, base, over };
 }
-function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null, pairs = null }, t) {
+// Still cells are cached (Round 5, decorate speed): the composite by what it depends on (people, bg, layout, outline,
+// pairs, size) and the filtered cell by that + filter, so a frame change recomposites nothing and a filter change only
+// re-runs the filter. Video frames (t set) never touch the caches.
+const ids = new WeakMap();
+let nid = 0;
+const oid = o => (o == null ? "-" : typeof o !== "object" ? String(o) : ids.get(o) ?? (ids.set(o, ++nid), nid));
+const lru = (m, max) => { while (m.size > max) m.delete(m.keys().next().value); };
+const cellCache = new Map(), filtCache = new Map();
+function cellKey(i, r, { a, b, bg, layout, outline, pairs }) {
+  const ia = pairsOf(pairs)[i], pa = a.cuts[ia], pb = b.cuts[i];
+  return [i, r.w, r.h, typeof bg === "string" ? bg : bg?.id, JSON.stringify(layoutOf(layout)), JSON.stringify(outline || null), ia,
+    oid(a), oid(b), oid(pa), oid(pb), oid(pa.raw), oid(pa.cut), oid(pb.raw), oid(pb.cut)].join("|");
+}
+function stillCell(r, i, o) {
+  const key = cellKey(i, r, o), fk = key + "|" + o.filter;
+  let out = filtCache.get(fk);
+  if (out) { filtCache.delete(fk); filtCache.set(fk, out); return out; }     // most recent last
+  let cell = cellCache.get(key);
+  if (!cell) {
+    cell = Object.assign(document.createElement("canvas"), { width: r.w, height: r.h });
+    drawCell(cell.getContext("2d"), { x: 0, y: 0, w: r.w, h: r.h }, i, { ...o, t: null });
+    cellCache.set(key, cell); lru(cellCache, 12);
+  } else { cellCache.delete(key); cellCache.set(key, cell); }
+  const f = filt.apply(cell, o.filter, 1, i + 1);
+  if (f === cell) return cell;
+  out = Object.assign(document.createElement("canvas"), { width: r.w, height: r.h });
+  out.getContext("2d").drawImage(f, 0, 0);
+  filtCache.set(fk, out); lru(filtCache, 16);
+  return out;
+}
+function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null, pairs = null, stickers = null }, t) {
   filt ||= createFilter();
   ctx.drawImage(st.base, 0, 0);
   st.rects.forEach((r, i) => {
-    const cell = canvas("cell", r.w, r.h), cx = cell.getContext("2d");
-    drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t: t == null ? null : t, layout, outline, pairs });
-    const out = filt.apply(cell, filter, 1, i + 1);
+    let out;
+    if (t == null) out = stillCell(r, i, { a, b, bg, filter, layout, outline, pairs });
+    else {
+      const cell = canvas("cell", r.w, r.h), cx = cell.getContext("2d");
+      drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t, layout, outline, pairs });
+      out = filt.apply(cell, filter, 1, i + 1);
+    }
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, st.F.radius || 0); ctx.clip();
     ctx.drawImage(out, r.x, r.y); ctx.restore();
   });
   if (st.over) ctx.drawImage(st.over, 0, 0);
+  if (stickers?.length) drawStickers(ctx, stickers);
 }
 
-export async function drawStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null }) {
-  const st = await prepare({ frame, date, caption });
-  const cv = document.createElement("canvas"); cv.width = L.W; cv.height = L.H;
-  paint(cv.getContext("2d"), st, { a, b, bg, filter, layout, outline, pairs }, null);
+// The still strip on a canvas. scale < 1 = a small preview (mini tiles); cell = k: only cell k (filter tiles).
+// `into` paints an existing canvas (the done screen's preview) instead of a new one.
+export async function stripCanvas(o, { scale = 1, cell = null, into = null } = {}) {
+  const st = await prepare(o);
+  if (o.stickers?.length) await stickersReady(o.stickers);
+  const r = cell == null ? { x: 0, y: 0, w: L.W, h: L.H } : st.rects[cell];
+  const cv = into || document.createElement("canvas"), w = Math.round(r.w * scale), h = Math.round(r.h * scale);
+  if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
+  const x = cv.getContext("2d");
+  x.setTransform(scale, 0, 0, scale, -r.x * scale, -r.y * scale);
+  paint(x, st, o, null);
+  x.setTransform(1, 0, 0, 1, 0, 0);
+  return cv;
+}
+export async function drawStrip(o) {
+  const cv = await stripCanvas(o);
   return new Promise((res, rej) => cv.toBlob(bl => (bl ? res(bl) : rej(new Error("toBlob"))), "image/jpeg", 0.92));
 }
 
@@ -574,7 +632,7 @@ const SECONDS = 6, FPS = 30, BPS = 4_000_000;
 const FADE = 0.001;
 const HOLD = 0.3;                      // the last 0.3 s holds the finished photo strip
 const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells do not loop on the same frame
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, format = "strip", onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, stickers = null, format = "strip", onProgress, signal = null }) {
   if (!window.MediaRecorder) throw new Error("no MediaRecorder");
   // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
@@ -584,14 +642,15 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
     if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); }
   }
   const st = await prepare({ frame, date, caption });
+  if (stickers?.length) await stickersReady(stickers);
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
   const ok = t => MediaRecorder.isTypeSupported(t);
   const mp4 = ["video/mp4;codecs=avc1", "video/mp4"].find(ok), webm = ["video/webm;codecs=vp9", "video/webm"].find(ok);
   let lastErr = new Error("no recorder type");
   for (const type of [mp4, webm].filter(Boolean)) {
-    try { return { blob: await recordOnce(cv, st, story, vids, phase, type, { a, b, bg, filter, layout, outline, pairs }, onProgress), type: type.split(";")[0] }; }
-    catch (e) { lastErr = e; }
+    try { return { blob: await recordOnce(cv, st, story, vids, phase, type, { a, b, bg, filter, layout, outline, pairs, stickers, signal }, onProgress), type: type.split(";")[0] }; }
+    catch (e) { if (e.name === "AbortError") throw e; lastErr = e; }
   }
   throw lastErr;
 }
@@ -678,6 +737,7 @@ async function recordOnce(cv, st, story, vids, phase, type, opts, onProgress) {
       const tick = () => {
         const t = (performance.now() - t0) / 1000;
         if (failed) return done();
+        if (opts.signal?.aborted) { failed = new DOMException("aborted", "AbortError"); return done(); }   // deco R5: a change mid-recording
         frame(Math.min(t, SECONDS)); push();
         onProgress?.(Math.min(1, t / SECONDS));
         if (t >= SECONDS) return setTimeout(done, 100);    // one more held frame reaches the encoder

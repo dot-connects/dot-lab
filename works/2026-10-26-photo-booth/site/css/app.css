@@ -311,7 +311,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .dots { display: flex; gap: 6px; } .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--pink); animation: dot 1s ease-in-out infinite; }
 .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 50% { transform: translateY(-8px); } }
-.tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--pink-soft); border-radius: 999px; padding: 4px; gap: 4px; }
+.tabs { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--pink-soft); border-radius: 999px; padding: 4px; gap: 4px; }
 .tabs button { appearance: none; border: 0; background: none; border-radius: 999px; padding: 9px 0; font-family: var(--title); font-size: 17px; color: var(--pink-ink); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--paper); box-shadow: 0 2px 8px #c2587a26; color: var(--deep); }
 .panel.row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 32px 8px 2px; margin-right: -16px; scroll-snap-type: x proximity; scrollbar-width: none; overscroll-behavior-x: contain; min-height: 120px; }
@@ -375,3 +375,54 @@ body[data-screen="done"] .toast { top: auto; bottom: 150px; }
 .look .lrow > span { font: 16px var(--title); color: var(--ink); }
 .look .pill { min-height: 36px; padding: 0 6px; font-size: 15px; }
 #lookMine { background: var(--paper); border-radius: 18px; padding: 10px 12px; box-shadow: var(--shadow); }
+
+/* ---- Round 5 deco: notices, preview canvas, stickers, zoom viewer ---- */
+.decnote { display: flex; gap: 8px; align-items: flex-start; text-align: left; font-size: 15px; line-height: 1.45; color: var(--ink); background: var(--lav); border-radius: 14px; padding: 10px 14px; word-break: keep-all; }
+.decnote svg { width: 18px; height: 18px; flex: none; margin-top: 2px; fill: var(--deep); }
+.decnote b { color: var(--deep); font-weight: 700; }
+.preview canvas#stripImg { width: 100%; height: 100%; display: block; }
+.tile .mini { overflow: hidden; }
+.tile .mini canvas { width: 100%; height: 100%; display: block; }
+.preview { cursor: zoom-in; }
+/* the "making" veil only shows when a render takes longer than ~150 ms (no flash on every tap) */
+.making { animation: makingIn .2s ease .15s both; }
+@keyframes makingIn { from { opacity: 0; } }
+.zoomtag { position: absolute; right: 6px; bottom: 6px; width: 26px; height: 26px; padding: 4px; border-radius: 50%; background: #2e2230b3; color: #fff; pointer-events: none; z-index: 1; }
+body[data-tab="sticker"] .preview { cursor: default; }
+body[data-tab="sticker"] .zoomtag { display: none; }
+.tabs button { font-size: 16px; white-space: nowrap; min-width: 0; }
+@media (max-width: 400px) { .tabs button { font-size: 14px; } }
+
+.stk { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+body[data-tab="sticker"] .stk { pointer-events: auto; touch-action: none; }
+.stk-i { position: absolute; aspect-ratio: 1; transform: translate(-50%, -50%) rotate(var(--r, 0rad)); touch-action: none; }
+.stk-i:focus { outline: none; }
+.stk-i img { width: 100%; height: 100%; display: block; pointer-events: none; user-select: none; -webkit-user-drag: none; }
+.stk-i.sel { outline: 2px dashed #fff; box-shadow: 0 0 0 1px var(--deep), inset 0 0 0 1px var(--deep); border-radius: 4px; }
+/* stickers need a bigger strip to grab; the picker is one row so it stays above the save bar */
+body[data-tab="sticker"] .previewwrap { height: 58svh; }
+body[data-tab="sticker"] .donetitle { display: none; }
+.stkhint { font-size: 13px; line-height: 1.35; color: var(--sub); margin-left: 4px; }
+.stk-x, .stk-h { position: absolute; width: 22px; height: 22px; border-radius: 50%; border: 2px solid #fff; display: grid; place-items: center; padding: 0;
+  font: 700 13px/1 system-ui, sans-serif; color: #fff; background: var(--deep); box-shadow: 0 2px 6px #2e223066; cursor: pointer; transform: translate(-50%, -50%) rotate(calc(-1 * var(--r, 0rad))); }
+.stk-x { left: 100%; top: 0; }
+.stk-h { left: 100%; top: 100%; background: var(--ink); cursor: nwse-resize; }
+.stk-h svg { width: 14px; height: 14px; }
+.stk-x::before { content: ""; position: absolute; inset: -8px; }   /* 38 px touch target; the handle stays small so the sticker itself is grabbable */
+.stk-h svg { width: 12px; height: 12px; }
+#stkSets { flex-wrap: nowrap; }
+.stkgrid { display: grid; grid-auto-flow: column; grid-template-rows: 64px; grid-auto-columns: 64px; gap: 8px; overflow-x: auto; padding: 4px 32px 6px 2px;
+  margin-right: -16px; scrollbar-width: none; overscroll-behavior-x: contain; }
+.stkgrid::-webkit-scrollbar { display: none; }
+.stkgrid button { appearance: none; border: 0; border-radius: 16px; background: var(--paper); box-shadow: inset 0 0 0 2px var(--line); padding: 6px; cursor: pointer; display: grid; place-items: center; }
+.stkgrid button:active { transform: scale(.92); }
+.stkgrid button:focus-visible { outline: 3px solid var(--deep); outline-offset: 2px; }
+.stkgrid img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+.stkgrid .emo { font: 32px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
+
+.zoom { position: fixed; inset: 0; z-index: 20; background: #1b1418f2; touch-action: none; overflow: hidden; }
+.zoomstage { position: absolute; inset: 0; display: grid; place-items: center; transform-origin: 50% 50%; will-change: transform; }
+.zoomstage img, .zoomstage video { max-width: 100%; max-height: 100%; display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
+.zoomx { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 46px; height: 46px; border-radius: 50%; border: 0; background: #ffffffeb; color: var(--ink); font-size: 20px; cursor: pointer; box-shadow: 0 2px 10px #0006; }
+.zoomx:focus-visible { outline: 3px solid var(--pink); outline-offset: 3px; }
+.zoomhint { position: absolute; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); margin: 0 auto; width: fit-content; max-width: calc(100% - 32px); text-align: center; font-size: 14px; color: #fff; background: #2e2230d9; border-radius: 999px; padding: 6px 14px; pointer-events: none; }

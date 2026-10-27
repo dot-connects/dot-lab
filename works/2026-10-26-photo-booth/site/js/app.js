@@ -794,7 +794,8 @@ async function del(box, yes) {
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
-  layout: null, pairs: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
+  layout: null, pairs: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
+  stickers: [], sel: -1, pkey: null };   // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
 // fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
 const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
@@ -857,7 +858,7 @@ async function doneScreen(note = "") {
   buildTiles();
   await render(["frame", "filter"]);
   if (!D.revealed) reveal();
-  if (!inApp) videoJob();
+  if (!inApp) { clearTimeout(vT); vT = setTimeout(videoJob, VIDEO_IDLE); }
 }
 const rectsOf = f => C.cellRects?.(f) || [0, 1, 2, 3].map(i => ({ x: 24, y: 24 + i * 398, w: 552, h: 382 }));
 function reveal() {          // first time only: the print slides out, then the four cells appear 90 ms apart
@@ -944,61 +945,76 @@ function buildOutline() {
       b.textContent = s.label; b.dataset.id = s.id; b.disabled = !D.outline; return b;
     }));
 }
-// a choice changed: redraw the photo now, the thumbnails that depend on it, and the moving strip a moment later
+// a choice changed: redraw the photo now, the thumbnails that depend on it, and the moving strip once the choosing
+// stops (Round 5: the recorder competed with every tap; it now starts after VIDEO_IDLE ms without a change)
 let vT;
+const VIDEO_IDLE = 2000;
 function changed(minis) {
   render(minis);
-  clearTimeout(vT);
-  if (!env.inApp) { setVid(); vT = setTimeout(videoJob, 700); }
+  later();
+}
+function later() {          // the saved photo soon, the moving strip after the choosing stops
+  photoJob();
+  clearTimeout(vT); D.vac?.abort();
+  if (!env.inApp) { setVid(); vT = setTimeout(videoJob, VIDEO_IDLE); }
 }
 const opts = (o = {}) => ({ a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, ...o });
-const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look)].join("|");
+  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers, ...o });
+const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers)].join("|");
+// the strip as an image: compose paints a canvas (cells cached), no JPEG round trip; stickers are not in it (they are
+// the DOM layer on top while choosing) but are in D.photo and the video
+const stripOf = async o => C.stripCanvas ? C.stripCanvas(o) : createImageBitmap(await C.drawStrip(o));
 async function render(minis = []) {
   const seq = ++D.seq;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
-  setSave(false);
-  let blob;
-  try { blob = await C.drawStrip(opts()); }
+  let cv;
+  try { cv = await stripOf(opts({ stickers: null })); }
   catch (e) { console.warn("[booth] drawStrip", e); if (seq === D.seq) $("makingText").textContent = "앗, 네컷을 못 만들었어"; return; }
   if (seq !== D.seq) return;
-  D.photo = blob;
-  const img = $("stripImg");
-  if (img.src) URL.revokeObjectURL(img.src);
-  img.src = URL.createObjectURL(blob);
-  await img.decode().catch(() => {});
-  if (seq !== D.seq) return;
+  $("stripImg").getContext("2d").drawImage(cv, 0, 0, 600, 1800);
   showStill();
   $("making").hidden = true;
-  setSave(true);
-  for (const k of minis) renderMinis(k);
+  photoJob();
+  if (minis.length) setTimeout(() => minis.forEach(renderMinis), 60);   // after the photo has painted
 }
 function showStill() {
-  if (D.video?.key === vkey()) return showVideo();
-  $("stripImg").hidden = false; $("stripVid").hidden = true; $("stripVid").pause();
+  if (D.video?.key === vkey() && D.tab !== "sticker") return showVideo();
+  $("stripImg").hidden = false; $("stripVid").hidden = true; $("stripVid").pause(); $("stk").hidden = false;
 }
 function showVideo() {
   const v = $("stripVid");
   if (v.dataset.key !== D.video.key) { if (v.src) URL.revokeObjectURL(v.src); v.src = URL.createObjectURL(D.video.blob); v.dataset.key = D.video.key; }
-  v.hidden = false; $("stripImg").hidden = true; v.play().catch(() => {});
+  v.hidden = false; $("stripImg").hidden = true; $("stk").hidden = true; v.play().catch(() => {});   // stickers are in the video
 }
-async function renderMinis(kind) {          // tile previews, one at a time after the main strip
+// the JPEG to save, with stickers, made shortly after the last change (toBlob encodes off the main thread)
+let pT;
+function photoJob() {
+  clearTimeout(pT);          // the button stays on: a tap before the JPEG is ready makes it on the spot (savePhoto)
+  pT = setTimeout(async () => {
+    const key = vkey();
+    try { const bl = await C.drawStrip(opts()); if (key === vkey()) { D.photo = bl; D.pkey = key; setSave(true); } }
+    catch (e) { console.warn("[booth] photo", e); }
+  }, 250);
+}
+// tile previews at their own size (Round 5: were whole 600x1800 JPEGs), one per task so taps stay responsive
+async function renderMinis(kind) {
   const seq = D.mseq[kind] = (D.mseq[kind] || 0) + 1;
-  const box = kind === "frame" ? $("frameChips") : $("filterChips");
+  const box = kind === "frame" ? $("frameChips") : $("filterChips"), d = Math.min(devicePixelRatio || 1, 2);
   for (const b of box.querySelectorAll(".tile")) {
     if (seq !== D.mseq[kind]) return;
-    const o = kind === "frame" ? { frame: FR.FRAMES.find(x => x.id === b.dataset.id) } : { filter: b.dataset.id };
+    const o = opts({ stickers: null, ...(kind === "frame" ? { frame: FR.FRAMES.find(x => x.id === b.dataset.id) } : { filter: b.dataset.id }) });
     try {
-      const blob = await C.drawStrip(opts(o));
-      const m = b.querySelector(".mini"), old = m.dataset.url;
-      m.dataset.url = URL.createObjectURL(blob); m.style.backgroundImage = `url(${m.dataset.url})`;
-      if (kind === "filter") {          // show cell 1 only
-        const r = rectsOf(D.frame)[0], s = 64 / r.w;
-        m.style.backgroundSize = `${600 * s}px auto`; m.style.backgroundPosition = `${-r.x * s}px ${-r.y * s}px`;
+      const m = b.querySelector(".mini");
+      let cv;
+      if (C.stripCanvas) cv = await C.stripCanvas(o, kind === "frame" ? { scale: 64 * d / 600 } : { scale: 64 * d / rectsOf(D.frame)[0].w, cell: 0 });
+      else {          // mock compose: the old full-size path
+        cv = Object.assign(document.createElement("canvas"), { width: 600, height: 1800 });
+        cv.getContext("2d").drawImage(await createImageBitmap(await C.drawStrip(o)), 0, 0);
       }
-      if (old) URL.revokeObjectURL(old);
+      if (seq !== D.mseq[kind]) return;
+      m.replaceChildren(cv); m.style.backgroundImage = "none";
     } catch {}
-    await sleep(30);
+    await sleep(0);
   }
 }
 function setSave(on) { document.querySelector('[data-act="savePhoto"]').disabled = !on; }
@@ -1035,15 +1051,17 @@ async function videoJob() {
       setVid(kind, 0);
       await D.fxP;                                  // Round 5: the 보정 fx for this look
       if (key !== vkey()) continue;
-      const res = await C.recordMovingStrip(opts({ format: kind === "story" ? "story" : "strip",
+      D.vac = new AbortController();      // deco R5: a change stops the recording (later()); it restarts after VIDEO_IDLE
+      const res = await C.recordMovingStrip(opts({ format: kind === "story" ? "story" : "strip", signal: D.vac.signal,
         onProgress: p => key === vkey() && setVid(kind, p) }));
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       if (kind === "story") D.wantStory = false;
-      if (kind === "video" && !$("stripImg").hidden) showVideo();
+      if (kind === "video" && !$("stripImg").hidden && D.tab !== "sticker") showVideo();
       if (kind === "story") toast("스토리용 영상 완성! 버튼을 누르면 저장돼");
     }
   } catch (e) {
+    if (e?.name === "AbortError") return;
     console.warn("[booth] video", e);
     D.noVideo = true;
     $("saveBtns").querySelector(".vidrow").hidden = true;
@@ -1064,7 +1082,219 @@ for (const t of $$("[data-tab]")) t.onclick = () => {
   D.tab = t.dataset.tab;
   $$("[data-tab]").forEach(x => x.setAttribute("aria-selected", x === t));
   $$("[data-panel]").forEach(p => p.hidden = p.dataset.panel !== D.tab);
+  stickerTab();
 };
+
+// ---- stickers (Round 5 deco) ---------------------------------------------------------------------------------------
+// While choosing, stickers are DOM over the preview (moving one never re-renders the strip); compose bakes them into
+// D.photo and the moving strip (opts.stickers, strip px). Drag = move, two fingers = size + angle, corner handle =
+// the same with one finger, × = delete. Pointer events, so CDP touch, real touch and a mouse all work.
+let ST = null;
+const STK_MAX = 30, STK_S = { lo: 40, hi: 900 };
+function stickerTab() {
+  document.body.dataset.tab = D.tab;
+  if (D.tab !== "sticker") { if (D.sel >= 0) { D.sel = -1; paintStk(); } if (D.media) showStill(); return; }
+  if (D.media) showStill();          // the still + the editable layer, not the video
+  buildStickers().catch(e => console.warn("[booth] stickers", e));
+}
+async function buildStickers(set = $("stkGrid").dataset.set || "svg") {
+  ST ||= await import("./stickers.js");
+  if ($("stkGrid").dataset.set === set) return;
+  $("stkGrid").dataset.set = set;
+  $$("#stkSets .pill").forEach(p => p.setAttribute("aria-pressed", p.dataset.set === set));
+  const list = set === "svg" ? ST.DRAWN.map(d => ({ id: d.id, label: d.label })) : ST.EMOJI.map(e => ({ id: e, label: e }));
+  $("stkGrid").replaceChildren(...list.map(s => {
+    const b = Object.assign(document.createElement("button"), { type: "button" });
+    b.setAttribute("aria-label", `${s.label} 붙이기`);
+    if (set === "emoji") b.innerHTML = `<span class="emo" aria-hidden="true">${s.id}</span>`;
+    else { const i = new Image(); i.alt = ""; b.append(i); ST.stickerUrl("svg", s.id).then(u => i.src = u).catch(() => {}); }
+    b.onclick = () => addSticker(set, s.id);
+    return b;
+  }));
+}
+for (const p of $$("#stkSets .pill")) p.onclick = () => buildStickers(p.dataset.set);
+function addSticker(kind, id) {
+  if (D.stickers.length >= STK_MAX) return toast(`스티커는 ${STK_MAX}개까지 붙일 수 있어`);
+  const n = D.stickers.length, j = ((n % 5) - 2) * 26;          // a little apart, so taps in a row do not stack exactly
+  D.stickers.push({ kind, id, x: 300 + j, y: 900 + j, s: kind === "emoji" ? 140 : 170, r: 0 });
+  D.sel = D.stickers.length - 1;
+  paintStk(); later();
+}
+function placeStk(el, s) {
+  Object.assign(el.style, { left: `${s.x / 6}%`, top: `${s.y / 18}%`, width: `${s.s / 6}%` });
+  el.style.setProperty("--r", `${s.r}rad`);
+}
+function paintStk() {
+  $("stk").replaceChildren(...D.stickers.map((s, i) => {
+    const el = Object.assign(document.createElement("div"), { className: "stk-i" + (i === D.sel ? " sel" : "") });
+    el.dataset.i = i;
+    // focusable, so Chrome's touch adjustment (taps snap to the nearest tappable node) keeps a touch on the sticker on
+    // the sticker instead of snapping it to the small ✕ / handle next to it (CDP touch, 10-27)
+    el.tabIndex = -1;
+    const img = new Image(); img.alt = ""; el.append(img);
+    ST?.stickerUrl(s.kind, s.id).then(u => img.src = u).catch(() => {});
+    if (i === D.sel) el.insertAdjacentHTML("beforeend", '<span class="stk-x" aria-hidden="true">✕</span>'
+      + '<span class="stk-h" aria-hidden="true"><svg viewBox="0 0 16 16"><path d="M3 9a5 5 0 0 0 8.5 3.5M13 7A5 5 0 0 0 4.5 3.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round"/><path d="M12 9.5v3.5H8.5M4 6.5V3h3.5" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>');
+    placeStk(el, s);
+    return el;
+  }));
+}
+function bindStk() {
+  const L = $("stk"), pts = new Map();
+  let g = null, moved = false, miss = false;
+  const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const k = () => 600 / L.clientWidth;          // strip px per CSS px
+  const begin = handle => {
+    const s = D.stickers[D.sel];
+    g = s && pts.size ? { s0: { ...s }, p0: [...pts.values()].map(p => ({ ...p })), handle: handle ?? g?.handle ?? false } : null;
+    if (g && pts.size > 1) g.handle = false;
+  };
+  // hit test by coordinates, not e.target: Chrome's touch adjustment snapped a touch on the sticker to the ✕ next to
+  // it (CDP touch, 10-27). ✕ / handle first (selected sticker), then the stickers top-down in their rotated boxes.
+  const near = (sel, x, y) => { const el = L.querySelector(sel); if (!el) return false;
+    const r = el.getBoundingClientRect(); return Math.hypot(x - r.x - r.width / 2, y - r.y - r.height / 2) < 18; };
+  const hit = (x, y) => {
+    if (D.sel >= 0 && near(".stk-x", x, y)) return "x";
+    if (D.sel >= 0 && near(".stk-h", x, y)) return "h";
+    const R = L.getBoundingClientRect(), K = k();
+    for (let i = D.stickers.length - 1; i >= 0; i--) {
+      const s = D.stickers[i], dx = x - R.x - s.x / K, dy = y - R.y - s.y / K, c = Math.cos(-s.r), sn = Math.sin(-s.r);
+      if (Math.max(Math.abs(dx * c - dy * sn), Math.abs(dx * sn + dy * c)) <= s.s / K / 2) return i;
+    }
+    return null;
+  };
+  L.addEventListener("pointerdown", e => {
+    if (D.tab !== "sticker" || e.pointerType === "mouse" && e.button) return;
+    const h = pts.size ? null : hit(e.clientX, e.clientY);
+    if (h === "x") {           // delete on press: touchmove is cancelled here, so no click is relied on
+      e.preventDefault(); D.stickers.splice(D.sel, 1); D.sel = -1; paintStk(); later(); return;
+    }
+    if (!pts.size) {
+      miss = h == null;          // off every sticker: a second finger still pinches the selected one; a lone tap deselects
+      if (miss && D.sel < 0) return;
+      if (!miss && h !== "h" && h !== D.sel) { D.sel = h; paintStk(); }
+    }
+    L.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    begin(pts.size === 1 ? h === "h" : false);
+    if (miss && pts.size === 1) g = null;
+  });
+  // the ✕ is not a button (a button next to the sticker is what touch adjustment snapped to); keyboard: Delete
+  addEventListener("keydown", e => {
+    if (D.tab === "sticker" && D.sel >= 0 && (e.key === "Delete" || e.key === "Backspace") && !e.target.closest("input")) {
+      D.stickers.splice(D.sel, 1); D.sel = -1; paintStk(); later();
+    }
+  });
+  L.addEventListener("pointermove", e => {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const s = D.stickers[D.sel], { s0, p0 } = g, now = [...pts.values()], K = k();
+    if (!s) return;
+    if (g.handle) {                              // one finger on the corner: size + angle about the centre
+      const r = L.getBoundingClientRect(), cx = r.left + s0.x / K, cy = r.top + s0.y / K;
+      const a = Math.atan2(p0[0].y - cy, p0[0].x - cx), b = Math.atan2(now[0].y - cy, now[0].x - cx);
+      const d0 = Math.hypot(p0[0].x - cx, p0[0].y - cy), d1 = Math.hypot(now[0].x - cx, now[0].y - cy);
+      s.s = cl(s0.s * (d0 ? d1 / d0 : 1), STK_S.lo, STK_S.hi); s.r = s0.r + b - a;
+    } else if (now.length > 1 && p0.length > 1) {   // two fingers: move by the midpoint, size by the spread, turn by the angle
+      const m0 = { x: (p0[0].x + p0[1].x) / 2, y: (p0[0].y + p0[1].y) / 2 }, m1 = { x: (now[0].x + now[1].x) / 2, y: (now[0].y + now[1].y) / 2 };
+      const d0 = Math.hypot(p0[1].x - p0[0].x, p0[1].y - p0[0].y), d1 = Math.hypot(now[1].x - now[0].x, now[1].y - now[0].y);
+      const a0 = Math.atan2(p0[1].y - p0[0].y, p0[1].x - p0[0].x), a1 = Math.atan2(now[1].y - now[0].y, now[1].x - now[0].x);
+      s.x = cl(s0.x + (m1.x - m0.x) * K, 0, 600); s.y = cl(s0.y + (m1.y - m0.y) * K, 0, 1800);
+      s.s = cl(s0.s * (d0 ? d1 / d0 : 1), STK_S.lo, STK_S.hi); s.r = s0.r + a1 - a0;
+    } else {
+      s.x = cl(s0.x + (now[0].x - p0[0].x) * K, 0, 600); s.y = cl(s0.y + (now[0].y - p0[0].y) * K, 0, 1800);
+    }
+    moved = true;
+    const el = L.querySelector(`.stk-i[data-i="${D.sel}"]`); if (el) placeStk(el, s);
+  });
+  const end = e => {
+    if (!pts.delete(e.pointerId)) return;
+    if (pts.size) { begin(false); if (miss && pts.size === 1) g = null; return; }
+    g = null;
+    if (moved) { moved = false; later(); }
+    else if (miss) { D.sel = -1; paintStk(); }   // a tap on the photo: let go of the selection
+    miss = false;
+  };
+  L.addEventListener("pointerup", end); L.addEventListener("pointercancel", end);
+  // in-app browsers scroll / zoom the page under a finger anyway unless touchmove is cancelled (README touch fixes)
+  L.addEventListener("touchmove", e => { if (D.tab === "sticker") e.preventDefault(); }, { passive: false });
+  L.addEventListener("wheel", e => {             // a computer: the wheel resizes the selected one
+    const s = D.stickers[D.sel]; if (D.tab !== "sticker" || !s) return;
+    e.preventDefault(); s.s = cl(s.s * Math.exp(-e.deltaY / 600), STK_S.lo, STK_S.hi);
+    const el = L.querySelector(`.stk-i[data-i="${D.sel}"]`); if (el) placeStk(el, s);
+    clearTimeout(L.wT); L.wT = setTimeout(later, 300);
+  }, { passive: false });
+}
+bindStk();
+
+// ---- zoom viewer (Round 5 deco): tap the strip -> full screen, pinch / drag / double-tap 2x, ✕ or swipe down ------
+const Z = { s: 1, x: 0, y: 0 };
+async function openZoom() {
+  if (D.tab === "sticker" || !$("making").hidden || !D.media) return;
+  const vid = !$("stripVid").hidden && D.video?.key === vkey();
+  let el;
+  if (vid) el = Object.assign(document.createElement("video"), { src: $("stripVid").src, muted: true, loop: true, playsInline: true, autoplay: true });
+  else {
+    const bl = D.pkey === vkey() && D.photo ? D.photo : await C.drawStrip(opts());
+    el = new Image(); el.alt = "완성된 네컷 크게 보기"; el.src = URL.createObjectURL(bl);
+    el.onload = () => setTimeout(() => URL.revokeObjectURL(el.src), 1000);
+  }
+  if (vid) { el.setAttribute("playsinline", ""); el.play?.().catch(() => {}); }
+  Object.assign(Z, { s: 1, x: 0, y: 0 }); zoomApply();
+  $("zoomStage").replaceChildren(el);
+  $("zoom").hidden = false; $("zoom").style.opacity = 1;
+  $("zoom").querySelector(".zoomx").focus({ preventScroll: true });
+}
+function closeZoom() {
+  $("zoom").hidden = true; $("zoomStage").replaceChildren();
+}
+function zoomApply(fade = 1) {
+  $("zoomStage").style.transform = `translate(${Z.x}px, ${Z.y}px) scale(${Z.s})`;
+  $("zoom").style.opacity = fade;
+}
+function bindZoom() {
+  const box = $("zoom"), pts = new Map();
+  let g = null, lastTap = { t: 0, x: 0, y: 0 }, down = null;
+  const rel = p => { const r = box.getBoundingClientRect(); return { x: p.x - r.left - r.width / 2, y: p.y - r.top - r.height / 2 }; };
+  const mid = () => { const p = [...pts.values()]; return p.length > 1
+    ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) } : { ...p[0], d: 0 }; };
+  const begin = () => { g = pts.size ? { z: { ...Z }, at: mid() } : null; };
+  box.addEventListener("pointerdown", e => {
+    if (e.target.closest(".zoomx")) return;
+    box.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); begin();
+    if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() };
+  });
+  box.addEventListener("pointermove", e => {
+    if (!g || !pts.has(e.pointerId)) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = mid(), k = g.at.d && now.d ? now.d / g.at.d : 1, s = Math.min(5, Math.max(1, g.z.s * k)), kk = s / g.z.s;
+    const p0 = rel(g.at), p1 = rel(now);
+    // keep the point under the fingers under the fingers: t = p1 - (p0 - t0) * k
+    Z.s = s; Z.x = p1.x - (p0.x - g.z.x) * kk; Z.y = p1.y - (p0.y - g.z.y) * kk;
+    if (g.z.s <= 1.01 && pts.size === 1) { Z.x = 0; Z.y = Math.max(0, p1.y - p0.y); }   // at 1x a drag only pulls down
+    zoomApply(g.z.s <= 1.01 && pts.size === 1 ? 1 - Math.min(0.6, Z.y / 400) : 1);
+  });
+  const end = e => {
+    const at = pts.get(e.pointerId);              // last move position (a touchend may carry no coordinates)
+    if (!pts.delete(e.pointerId)) return;
+    if (pts.size) return begin();
+    const z0 = g?.z; g = null;
+    if (z0 && z0.s <= 1.01 && Z.y > 110) return closeZoom();                       // swiped down
+    const t = performance.now(), quick = down && t - down.t < 300 && Math.hypot(at.x - down.x, at.y - down.y) < 12;
+    if (quick && t - lastTap.t < 350 && Math.hypot(at.x - lastTap.x, at.y - lastTap.y) < 30) {   // double tap
+      const p = rel(at);
+      if (Z.s > 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 }); else Object.assign(Z, { s: 2, x: -p.x, y: -p.y });
+      lastTap.t = 0;
+    } else if (quick) lastTap = { t, x: at.x, y: at.y };
+    if (Z.s <= 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 });
+    zoomApply();
+  };
+  box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
+  box.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
+  box.addEventListener("wheel", e => { e.preventDefault(); Z.s = Math.min(5, Math.max(1, Z.s * Math.exp(-e.deltaY / 400))); if (Z.s <= 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 }); zoomApply(); }, { passive: false });
+  addEventListener("keydown", e => { if (e.key === "Escape" && !box.hidden) closeZoom(); });
+  $("preview").addEventListener("click", () => openZoom().catch(e => console.warn("[booth] zoom", e)));
+}
+bindZoom();
 
 const ACT = {
   startA: () => startShoot("a"),
@@ -1089,7 +1319,11 @@ const ACT = {
   },
   upload: askUpload, retryUpload: upload, hqWait, hqNow: () => upload(), share, copy,
   hideHqNote: () => { $("hqNote").hidden = true; S.hqNoteOff = true; },
-  savePhoto: () => D.photo && download(D.photo, fileName("jpg")),
+  savePhoto: async () => {
+    if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
+    download(D.photo, fileName("jpg"));
+  },
+  zoomClose: () => closeZoom(),
   saveVideo: () => D.video?.key === vkey() && download(D.video.blob, fileName(extOf(D.video.type))),
   saveStory: () => {
     if (D.story?.key === vkey()) return download(D.story.blob, fileName(extOf(D.story.type), "-story"));
