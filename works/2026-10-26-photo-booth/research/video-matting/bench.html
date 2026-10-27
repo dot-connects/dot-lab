@@ -1,0 +1,53 @@
+<!doctype html><html><head><meta charset="utf-8"><title>video matting bench</title></head><body><pre id="log"></pre>
+<script type="module">
+// ?mode=modnet&size=512x384&n=60  |  ?mode=bgm&size=640x480&n=10&plate=out/plate_a.png  |  ?mode=selfie (exports 256 masks of 4 clips)
+const Q = new URLSearchParams(location.search), mode = Q.get("mode"), n = +(Q.get("n") || 60);
+const [W, H] = (Q.get("size") || "512x384").split("x").map(Number);
+const out = window.out = { mode, size: Q.get("size"), files: {} };
+const img = async src => { const i = new Image(); i.src = src; await i.decode(); return i; };
+const fname = (c, k) => `media/${c}/${String(k).padStart(3, "0")}.jpg`;
+let last = performance.now(), maxGap = 0;
+setInterval(() => { const t = performance.now(); maxGap = Math.max(maxGap, t - last); last = t; }, 8);
+try {
+  if (mode === "selfie") {
+    const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+    const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+    const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
+    const seg = await ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath:
+      "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite", delegate: "GPU" },
+      runningMode: "VIDEO", outputConfidenceMasks: true, outputCategoryMask: false });
+    const sm = Object.assign(document.createElement("canvas"), { width: 256, height: 192 }), sx = sm.getContext("2d");
+    let ts = 1; const ms = [];
+    for (const [c, s] of [["a", 1], ["a", 121], ["b", 1], ["b", 121]]) {
+      const all = new Uint8Array(60 * 256 * 192);
+      for (let k = 0; k < 60; k++) {
+        sx.drawImage(await img(fname(c, s + k)), 0, 0, 256, 192);
+        const t0 = performance.now();
+        seg.segmentForVideo(sm, ts += 33, r => { const a = r.confidenceMasks[0].getAsFloat32Array(); for (let i = 0; i < a.length; i++) all[k * a.length + i] = a[i] * 255 + 0.5; });
+        ms.push(performance.now() - t0);
+      }
+      let b = ""; for (let i = 0; i < all.length; i += 8192) b += String.fromCharCode(...all.subarray(i, i + 8192));
+      out.files[`out/selfie_${c}${s}.u8`] = btoa(b);
+    }
+    out.selfieMs = ms.slice(5).reduce((a, b) => a + b) / (ms.length - 5);
+  } else {
+    const w = new Worker("vm-worker.js", { type: "module" }); let wid = 0; const cb = new Map();
+    w.onmessage = ({ data }) => { cb.get(data.id)?.(data); cb.delete(data.id); };
+    const call = (m, tr = []) => new Promise((res, rej) => { const id = ++wid; cb.set(id, d => d.error ? rej(new Error(d.error)) : res(d)); w.postMessage({ ...m, id }, tr); });
+    const bgm = mode === "bgm";
+    out.load = await call({ load: { url: bgm ? "models/bgmv2_mnv2_hd.onnx" : "models/modnet.onnx", ep: Q.get("ep") || "webgpu" } });
+    const plate = bgm ? await img(Q.get("plate") || fname("a", 1)) : null;
+    const runOne = async k => {
+      const imgs = [await createImageBitmap(await img(fname("a", k)))];
+      if (bgm) imgs.push(await createImageBitmap(plate));
+      return call({ imgs, w: W, h: H, names: bgm ? ["src", "bgr"] : out.load.inputs.slice(0, 1), norm: bgm ? "unit" : "modnet", outs: [bgm ? "pha" : out.load.outputs[0]] }, imgs);
+    };
+    let t = performance.now(); maxGap = 0; const f = await runOne(1); out.first = { ms: Math.round(performance.now() - t), gap: Math.round(maxGap) };
+    const runs = []; maxGap = 0; t = performance.now();
+    for (let k = 2; k < 2 + n; k++) { const r = await runOne(k); runs.push(r.ms); out.det = `${r.prep}/${r.run}`; out.dims = r.dims; }
+    out.total = Math.round(performance.now() - t); out.per = Math.round(out.total / n); out.med = runs.sort((a, b) => a - b)[n >> 1]; out.gap = Math.round(maxGap);
+  }
+} catch (e) { out.error = String(e?.message || e); }
+document.getElementById("log").textContent = JSON.stringify({ ...out, files: Object.keys(out.files) });
+window.done = true;
+</script></body></html>

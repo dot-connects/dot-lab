@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>필름 합체 두 시점</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#f1f1ee;color:#222;font:15px/1.5 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.wrap{max-width:860px;margin:0 auto;padding:24px 16px 60px}
+.page-h h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em}
+.page-h p{color:#555;margin-top:6px;font-size:14px;max-width:760px}
+.flow{margin-top:12px;font:500 12px/1.7 'Space Grotesk','Noto Sans KR',monospace;background:#fff;border:1px solid #ccc;padding:10px 12px;white-space:pre-line;max-width:760px}
+.flow b{background:#d6ff3d;padding:0 3px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:34px 26px;margin-top:24px}
+.concept{min-width:0}
+.ch{display:flex;align-items:baseline;gap:8px;margin-bottom:8px;flex-wrap:wrap}
+.ch .no{font:700 13px 'Space Grotesk';background:#111;color:#fff;padding:0 8px}
+.ch h2{font-size:18px;font-weight:900;letter-spacing:-.02em}
+.ch .rp{margin-left:auto;display:flex;gap:4px}
+.ch .rp button,.seg button{font-size:12px;font-weight:700;border:1.5px solid #111;padding:1px 7px;background:#fff}
+.ch .rp button[aria-pressed=true],.seg button[aria-pressed=true]{background:#111;color:#fff}
+.seg{display:flex;align-items:center;gap:0;margin:0 auto 8px;max-width:330px;font-size:12px}
+.seg span{margin-right:6px;color:#555;font-weight:700}
+.seg button+button{border-left:0}
+.note{max-width:330px;margin:10px auto 0;font-size:12.5px;line-height:1.5;background:#fff;border-left:4px solid #d6ff3d;padding:6px 9px;color:#333}
+.lines{list-style:none;margin:10px auto 0;font-size:13px;color:#333;max-width:340px}
+.lines li{margin-top:4px;padding-left:60px;text-indent:-60px}
+.lines b{display:inline-block;width:56px;text-indent:0;color:#000;font-weight:900}
+.lines li.rk b{color:#b00}
+
+/* ===== phone + clean tokens (from cover-story3) ===== */
+.phone{--ink:#0d0d0d;--acc:#d6ff3d;
+ width:100%;max-width:330px;margin:0 auto;aspect-ratio:9/16;container-type:inline-size;position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(0,0,0,.25);box-shadow:0 6px 20px rgba(0,0,0,.14);background:#fff}
+.nt,.nt *{transition:none!important}
+.scr{position:absolute;inset:0;font-size:4cqw;line-height:1.25;background:#fff;color:var(--ink);display:flex;flex-direction:column;padding:5cqw;overflow:hidden}
+.scr svg{display:block}
+.top{display:flex;justify-content:space-between;font:700 3cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.18em;border-bottom:.6cqw solid #000;padding-bottom:2cqw;flex:none}
+.hl{font-size:10.5cqw;line-height:1.02;font-weight:900;letter-spacing:-.05em;margin:3cqw 0;flex:none}
+mark{background:var(--acc);color:#000;padding:0 1.4cqw}
+.stage{flex:1;position:relative;min-height:0}
+.cta{flex:none;margin-top:3cqw;display:flex;justify-content:space-between;align-items:center;width:100%;background:#000;color:#fff;font-weight:900;font-size:5cqw;padding:3.4cqw 4cqw;text-align:left;position:relative;z-index:5}
+.cta:active{transform:translateY(.4cqw)}
+.cta .r{display:flex;align-items:center;gap:2cqw;font:700 2.8cqw 'Space Grotesk','Noto Sans KR';color:#aaa;letter-spacing:.04em}
+.cta .r i{width:5cqw;height:5cqw;background:var(--acc);display:block}
+.km{flex:none;margin-top:2.6cqw;display:flex;justify-content:space-between;align-items:baseline;gap:2cqw;font-size:3.3cqw;border-top:.4cqw solid #000;padding-top:1.6cqw}
+.km .d{font:700 3.6cqw 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.km .d b{font-size:5.4cqw}
+.km .t{color:#222;font-weight:700;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.grid9{background:linear-gradient(90deg,transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(#e3e3e3,#c4c4c4)}
+/* white sticker edge: marks the front person (A) so the overlap reads */
+.cut{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.stamp{position:absolute;background:var(--acc);color:#000;font:900 8cqw 'Noto Sans KR';padding:.3cqw 2.6cqw;border:.7cqw solid #000;white-space:nowrap;z-index:30;opacity:0;transform:rotate(-8deg) scale(1.8);transition:transform .4s cubic-bezier(.3,1.7,.5,1),opacity .15s;pointer-events:none;right:0;top:40%}
+.stamp.on{opacity:1;transform:rotate(-8deg) scale(1)}
+.toast{position:absolute;left:50%;bottom:24cqw;transform:translate(-50%,30%);opacity:0;background:#000;color:var(--acc);font-size:3.2cqw;font-weight:700;padding:1.4cqw 3cqw;z-index:60;transition:transform .3s,opacity .3s;white-space:nowrap;border:.5cqw solid var(--acc);pointer-events:none}
+.toast.on{transform:translate(-50%,0);opacity:1}
+.pn{position:absolute;z-index:6;width:6.4cqw;height:6.4cqw;border-radius:50%;background:var(--acc);border:.6cqw solid #000;display:grid;place-items:center;font:700 3.4cqw/1 'Space Grotesk';color:#000;transform:scale(0);transition:transform .35s cubic-bezier(.3,1.7,.5,1)}
+.pk>.pn{transform:scale(1)}
+
+/* ===== film + merge ===== */
+.st{overflow:hidden}
+.st .film{position:absolute;top:-2cqw;bottom:-2cqw;background:#000;transition:left .5s,right .5s,opacity .4s}
+.st .film:before,.st .film:after{content:"";position:absolute;top:0;bottom:0;width:2.4cqw;background:repeating-linear-gradient(#000 0 1.4cqw,#fff 1.4cqw 3.8cqw,#000 3.8cqw 5.2cqw);background-size:100% 5.2cqw;background-position:0 var(--sp,0)}
+.st .film:before{left:1.2cqw}.st .film:after{right:1.2cqw}
+.st.snap .film,.st.nofilm .film{opacity:0}
+.st .gate{position:absolute;z-index:7;pointer-events:none;transition:opacity .3s}
+.st .gate i{position:absolute;width:6cqw;height:6cqw;border:0 solid var(--acc)}
+.st .gate i:nth-child(1){left:0;top:0;border-left-width:.8cqw;border-top-width:.8cqw}
+.st .gate i:nth-child(2){right:0;top:0;border-right-width:.8cqw;border-top-width:.8cqw}
+.st .gate i:nth-child(3){left:0;bottom:0;border-left-width:.8cqw;border-bottom-width:.8cqw}
+.st .gate i:nth-child(4){right:0;bottom:0;border-right-width:.8cqw;border-bottom-width:.8cqw}
+.st.wide .gate{opacity:0}
+.st .back{position:absolute;background:#000;z-index:1;opacity:0;transform:scaleY(.9);transition:opacity .2s,transform .3s cubic-bezier(.3,1.6,.5,1)}
+.st.snap .back{opacity:1;transform:none}
+.st .back .foot{position:absolute;left:2cqw;right:2cqw;bottom:1.2cqw;display:flex;justify-content:space-between;color:var(--acc);font:700 2.5cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.06em}
+.st .fr{position:absolute;z-index:3}
+.st.tr .fr{transition:left .55s cubic-bezier(.3,1.15,.5,1),top .55s cubic-bezier(.3,1.15,.5,1),width .55s,height .55s,transform .55s cubic-bezier(.3,1.3,.5,1),opacity .35s}
+.st.snap .fr{transition-duration:.26s;transition-timing-function:cubic-bezier(.5,0,.6,1.6)}
+.st .fr .cell{position:absolute;inset:0;overflow:hidden}
+.cell .pp{position:absolute;bottom:-7%;height:94%;width:auto;overflow:visible;transition:opacity .2s}
+.cell .L{transform:scaleX(-1)}
+.cell .gh{position:absolute;bottom:-6%;height:88%;width:auto;transition:opacity .25s}
+.st .fr .fl{position:absolute;inset:0;background:#fff;opacity:0;z-index:4}
+.st .fr>em{position:absolute;left:0;top:0;z-index:5;background:#000;color:#fff;font:700 2.4cqw 'Space Grotesk';padding:0 1cqw;font-style:normal}
+.st .fr.ex>em{background:var(--acc);color:#000}
+.st .fr.pk{outline:.9cqw solid var(--acc);outline-offset:.1cqw;z-index:4}
+.st .fr .pn{right:-2cqw;top:-2cqw}
+.st.dimmed .fr:not(.pk){opacity:.3}
+.st.lift .fr .pn,.st.lift .fr>em{opacity:0;transition:opacity .2s}
+.st.lift .fr.pk{outline-color:transparent;box-shadow:0 2cqw 4cqw rgba(0,0,0,.35)}
+.st.snap .fr.pk{box-shadow:none}
+.st .seam{position:absolute;height:.8cqw;background:var(--acc);z-index:9;opacity:0}
+/* name tags: who is who, on every frame */
+.fr .tg{position:absolute;bottom:1.2cqw;z-index:5;font:900 3cqw/1.2 'Noto Sans KR';padding:.1cqw 1.3cqw;opacity:0;transition:opacity .2s;white-space:nowrap;font-style:normal}
+.fr .tg.me-t{background:var(--acc);color:#000;box-shadow:0 0 0 .4cqw #000}
+.fr .tg.fd-t{background:#000;color:#fff;box-shadow:0 0 0 .4cqw #fff}
+.fr .tg.l{left:1.4cqw}.fr .tg.r{right:1.4cqw}
+/* v1: I shoot first (A, front, left), friend fills in later (B, behind) */
+.v1 .fr .me,.v1 .fr .fd,.v1 .fr .g-fd{opacity:0}
+.v1 .fr.ex .me,.v1 .fr.wait .g-fd,.v1 .fr.ex2 .fd{opacity:1}
+.v1 .fr.ex .g-me,.v1 .fr.ex2 .g-fd{opacity:0}
+.v1 .fr.ex .me-t,.v1 .fr.ex2 .fd-t{opacity:1}
+/* v2: friend already shot (A, front, left), I fill in behind (B) */
+.v2 .fr .me{opacity:0}
+.v2 .fr.ex .me{opacity:1}
+.v2 .fr.ex .g-me{opacity:0}
+.v2 .fr .fd-t,.v2 .fr.ex .me-t{opacity:1}
+.send{position:absolute;left:50%;z-index:12;background:#000;color:#fff;font-weight:900;font-size:4cqw;padding:1.6cqw 3cqw;display:flex;gap:1.8cqw;align-items:center;white-space:nowrap;border:.6cqw solid var(--acc);opacity:0;pointer-events:none}
+.send svg{width:6cqw;height:6cqw}
+.send small{font:700 2.6cqw 'Space Grotesk','Noto Sans KR';background:var(--acc);color:#000;padding:0 1.2cqw}
+.arr{position:absolute;left:50%;top:1cqw;z-index:12;transform:translate(-50%,-140%);background:#000;color:#fff;font-weight:900;font-size:3.4cqw;padding:1.2cqw 2.8cqw;white-space:nowrap;transition:transform .35s cubic-bezier(.3,1.5,.5,1);pointer-events:none;font-style:normal}
+.arr:before{content:"";display:inline-block;width:2cqw;height:2cqw;border-radius:50%;background:var(--acc);margin-right:1.6cqw;vertical-align:.2cqw}
+.arr.on{transform:translate(-50%,0)}
+
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="page-h">
+<h1>필름 + 합체 · 두 가지 시점</h1>
+<p>고른 2번 시안을 두 갈래로 나눴어요. 왼쪽은 처음 온 사람(곧 A가 될 나)이 보는 표지, 오른쪽은 링크를 받은 친구(B)가 보는 표지입니다. 둘 다 겹치면 먼저 찍은 A가 앞이고, 두 사람 모두 칸마다 포즈가 달라요.</p>
+<div class="flow"><b>A</b> 먼저 찍는 사람 ─▶ 8장 찍고 4장 고르기 ─▶ 링크 보내기
+<b>B</b> 링크 연 친구 ─▶ A의 4컷이 두 번 돌며 8장 ─▶ 4장 고르기 ─▶ 네컷
+겹치는 곳은 언제나 A가 앞</div>
+</header>
+
+<div class="grid">
+
+<article class="concept" data-c="1">
+ <div class="ch"><span class="no">2-1</span><h2>처음 온 사람이 보는 표지</h2><span class="rp"><button data-a="re">다시 재생</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>FILM · 8</span></div>
+  <h1 class="hl">따로 <mark>같이</mark> 네컷</h1>
+  <div class="stage st v1">
+   <div class="film"></div>
+   <div class="back"><div class="foot"><span>따로 같이 네컷</span><span>2026.10.27</span></div></div>
+   <div class="gate"><i></i><i></i><i></i><i></i></div>
+   <div class="send"><svg viewBox="0 0 24 24"><path d="M2 11L22 2L15 22L11 13Z" fill="#d6ff3d" stroke="#d6ff3d" stroke-width="1.2" stroke-linejoin="round"/><path d="M11 13L22 2" stroke="#000" stroke-width="1.6"/></svg><span>친구에게 보내기</span><small>링크</small></div>
+   <i class="arr">친구 도착 · 내 뒤에 서요</i>
+   <i class="stamp">착!</i>
+  </div>
+  <div class="km"><span class="d">찍은 칸 <b>0</b>/8</span><span class="t">내가 먼저 찍어요</span></div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r">8장 · 4컷 · 링크<i></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>필름에 내가 먼저 찍힙니다. 칸마다 포즈를 바꿔 8장, 4장에 번호가 붙고, "친구에게 보내기" 종이비행기가 날아가요. 친구가 와서 고른 4칸 빈자리를 내 뒤로 채우면 "착!" 네컷이 됩니다.</li>
+  <li><b>강점</b>"내가 A가 된다"와 "A는 앞"이 이야기 순서 그대로 보입니다. 처음 온 사람이 할 일(찍고 → 보내기)을 표지가 다 알려 줘요.</li>
+  <li class="rk"><b>위험</b>장면이 다섯 번 바뀌어(찍기·고르기·보내기·채우기·착) 11초로 깁니다. 친구가 채우는 2×2 칸이 폰에선 작아요.</li>
+ </ul>
+</article>
+
+<article class="concept" data-c="2">
+ <div class="ch"><span class="no">2-2</span><h2>링크 받은 친구가 보는 표지</h2><span class="rp"><button data-a="re">다시 재생</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>FROM 친구</span></div>
+  <h1 class="hl">따로 <mark>같이</mark> 네컷</h1>
+  <div class="stage st v2">
+   <div class="film"></div>
+   <div class="back"><div class="foot"><span>따로 같이 네컷</span><span>2026.10.27</span></div></div>
+   <div class="gate"><i></i><i></i><i></i><i></i></div>
+   <i class="stamp">착!</i>
+  </div>
+  <div class="km"><span class="d">찍은 칸 <b>0</b>/8</span><span class="t">친구가 먼저 찍어 뒀어요</span></div>
+  <button class="cta" type="button"><span>바로 찍기</span><span class="r">친구 옆 8장<i></i></span></button>
+ </div></div>
+ <div class="seg" style="margin-top:10px" role="group" aria-label="친구 표현"><span>친구</span><button data-m="draw" aria-pressed="true">그림</button><button data-m="photo" aria-pressed="false">실제 사진 느낌</button></div>
+ <p class="note">실제 앱에서는 이 친구 그림 대신, 링크를 보낸 친구가 고른 <b>진짜 누끼 4장</b>이 그대로 들어갑니다. 위 [실제 사진 느낌]으로 미리 볼 수 있어요.</p>
+ <ul class="lines">
+  <li><b>아이디어</b>필름에 친구 사진 4장이 두 번씩 이미 찍혀 있고, 옆에 점선 "나" 자리가 비어 있어요. 찰칵마다 다른 포즈의 내가 친구 뒤로 들어가고, 8장 중 4장이 "착!" 네컷이 됩니다.</li>
+  <li><b>강점</b>링크를 연 순간 "내 친구가 날 기다린다"가 첫 장면입니다. 진짜 친구 얼굴이 들어가면 누르고 싶은 마음이 가장 큽니다.</li>
+  <li class="rk"><b>위험</b>친구 누끼가 흐리거나 어두우면 표지가 같이 칙칙해져요. 내가 뒤라서 포즈가 일부 가립니다(규칙대로지만 아쉬울 수 있어요).</li>
+ </ul>
+</article>
+
+</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+var SK='#e9bf9e',SKD='#b98563',LIME='#d6ff3d';
+function clamp(x){return x<0?0:x>1?1:x;}
+function eo(x){x=clamp(x);return 1-Math.pow(1-x,3);}
+function eio(x){x=clamp(x);return x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;}
+function tog(el,c,on){if(el.classList.contains(c)!==!!on)el.classList.toggle(c,!!on);}
+function txt(el,s){if(el.textContent!==s)el.textContent=s;}
+function flashOp(t,times,d){var o=0;for(var i=0;i<times.length;i++){var x=t-times[i];if(x>=0&&x<d)o=Math.max(o,1-x/d);}return o;}
+
+// ---------- people (drawn facing left = toward the partner when standing on the right; the left person is mirrored) ----------
+function arm(d,c){return '<path d="'+d+'" fill="none" stroke="#111" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"/><path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>';}
+function fing(x1,y1,x2,y2){var d='M'+x1+' '+y1+'L'+x2+' '+y2;return '<path d="'+d+'" stroke="'+SKD+'" stroke-width="5.8" stroke-linecap="round"/><path d="'+d+'" stroke="'+SK+'" stroke-width="3.4" stroke-linecap="round"/>';}
+var EYE={
+ dot:'<circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="59" cy="54" r="2.4" fill="#2a1e1e"/>',
+ side:'<circle cx="38" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="56" cy="54" r="2.4" fill="#2a1e1e"/>',
+ wink:'<circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><path d="M55 55Q59 50 63 55" stroke="#2a1e1e" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+ happy:'<path d="M37 56Q41 50 45 56M55 56Q59 50 63 56" stroke="#2a1e1e" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+ wide:'<circle cx="41" cy="54" r="3.8" fill="#fff" stroke="#2a1e1e" stroke-width="1.2"/><circle cx="59" cy="54" r="3.8" fill="#fff" stroke="#2a1e1e" stroke-width="1.2"/><circle cx="41" cy="54" r="1.8" fill="#2a1e1e"/><circle cx="59" cy="54" r="1.8" fill="#2a1e1e"/>'
+};
+var MOUTH={
+ smile:'<path d="M43 64Q50 70 57 64" stroke="#b5584f" stroke-width="2.2" fill="none" stroke-linecap="round"/>',
+ open:'<path d="M42 63Q50 75 58 63Z" fill="#7a2e2e"/>',
+ grin:'<path d="M42 63Q50 72 58 63Z" fill="#fff" stroke="#7a2e2e" stroke-width="1.8" stroke-linejoin="round"/>',
+ o:'<ellipse cx="50" cy="67" rx="3.6" ry="4.6" fill="#7a2e2e"/>',
+ flat:'<path d="M45 66L55 65" stroke="#b5584f" stroke-width="2.2" stroke-linecap="round"/>'
+};
+var BLUSH='<ellipse cx="34" cy="62" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/><ellipse cx="66" cy="62" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/>';
+var HEART='<path transform="translate(60 14) scale(.75)" d="M12 21.5C3 15 1 10 1 7a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 3-2 8-11 14.5Z" fill="'+LIME+'" stroke="#111" stroke-width="2"/>';
+// pose data: arms (paths), hands [x,y,r] or [x,y,rx,ry,rot], fingers [x1,y1,x2,y2]
+var POSES=[
+ {n:'브이',e:'wink',m:'smile',arms:['M82 114Q92 86 84 64'],hands:[[84,59,6]],fing:[[81,55,76,42],[87,55,92,42]]},
+ {n:'머리 하트',e:'happy',m:'open',arms:['M24 100C4 70 6 22 46 8','M76 100C96 70 94 22 54 8'],hands:[[46,8,5.4],[54,8,5.4]]},
+ {n:'기대기',e:'dot',m:'grin',rot:-13,arms:['M30 106Q12 94 4 76'],hands:[[4,72,6]]},
+ {n:'놀람',e:'wide',m:'o',brow:1,arms:['M20 114Q16 88 27 72','M80 114Q84 88 73 72'],hands:[[28,67,7],[72,67,7]]},
+ {n:'손가락 하트',e:'happy',m:'smile',arms:['M76 116Q80 98 64 86'],hands:[[62,84,5.6]],fing:[[60,80,57,71],[64,80,61,70]],x:HEART},
+ {n:'쟤 봐',e:'side',m:'open',arms:['M24 104Q4 90 -14 80'],hands:[[-16,79,5.6]],fing:[[-18,77,-30,72]]},
+ {n:'엄지척',e:'happy',m:'grin',arms:['M22 118Q20 100 34 93','M78 118Q80 100 66 93'],hands:[[35,91,6],[65,91,6]],fing:[[35,87,35,77],[65,87,65,77]]},
+ {n:'시크',e:'side',m:'flat',rot:4,arms:['M68 118Q72 98 54 83'],hands:[[52,81,6.2]]},
+ {n:'꽃받침',e:'happy',m:'smile',arms:['M18 118Q20 98 32 86','M82 118Q80 98 68 86'],hands:[[39,80,9,5.6,32],[61,80,9,5.6,-32]]},
+ {n:'머리 위 브이',e:'wink',m:'grin',rot:6,arms:['M80 112Q100 72 74 28'],hands:[[72,25,5.8]],fing:[[69,21,64,8],[74,21,77,8]]}
+];
+function limbs(p,sleeve,photo){
+ var s='';
+ p.arms.forEach(function(d){s+=photo?'<path d="'+d+'" fill="none" stroke="#3d3e48" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/>':arm(d,sleeve);});
+ var hf=photo?'fill="url(#pgSk)"':'fill="'+SK+'" stroke="'+SKD+'" stroke-width="1.3"';
+ (p.hands||[]).forEach(function(h){s+=h.length===3?'<circle cx="'+h[0]+'" cy="'+h[1]+'" r="'+h[2]+'" '+hf+'/>':'<ellipse cx="'+h[0]+'" cy="'+h[1]+'" rx="'+h[2]+'" ry="'+h[3]+'" transform="rotate('+h[4]+' '+h[0]+' '+h[1]+')" '+hf+'/>';});
+ (p.fing||[]).forEach(function(f){s+=photo?'<path d="M'+f[0]+' '+f[1]+'L'+f[2]+' '+f[3]+'" stroke="#e0ab8a" stroke-width="4" stroke-linecap="round"/>':fing(f[0],f[1],f[2],f[3]);});
+ if(p.x&&!photo)s+=p.x;
+ return s;
+}
+function wrap(g,rot){return rot?'<g transform="rotate('+rot+' 50 118)">'+g+'</g>':g;}
+// 나: short brown hair, round glasses, white striped tee
+function meG(p){
+ return '<path d="M8 120C8 92 28 84 50 84C72 84 92 92 92 120Z" fill="#fff" stroke="#111" stroke-width="1.8"/>'+
+  '<path d="M15 101H85M11 110H89" stroke="#111" stroke-width="2.6"/>'+
+  '<path d="M40 85L50 97L60 85Z" fill="'+SK+'"/>'+
+  '<rect x="42" y="70" width="16" height="18" rx="6" fill="'+SK+'"/>'+
+  '<ellipse cx="50" cy="50" rx="22" ry="26" fill="'+SK+'"/>'+
+  '<path d="M26 50C22 22 38 12 52 13C68 13 80 26 74 50C70 38 62 33 50 33C40 33 32 40 26 50Z" fill="#4a3426"/>'+
+  EYE[p.e]+(p.brow?'<path d="M34 41Q40 35 46 40M54 40Q60 35 66 41" stroke="#4a3426" stroke-width="2.4" fill="none" stroke-linecap="round"/>':'')+
+  '<g fill="none" stroke="#111" stroke-width="1.8"><circle cx="41" cy="54" r="7.4"/><circle cx="59" cy="54" r="7.4"/><path d="M48.4 53Q50 51.6 51.6 53"/></g>'+
+  MOUTH[p.m]+BLUSH+limbs(p,'#fff');
+}
+// 친구: long black hair, black top, lime hair clip
+function frG(p){
+ return '<path d="M24 54C20 20 38 10 50 10C66 10 80 22 76 54L82 96C70 100 66 92 66 80L34 80C34 92 30 100 18 96Z" fill="#111"/>'+
+  '<path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z" fill="#111"/>'+
+  '<rect x="42" y="70" width="16" height="18" rx="6" fill="'+SK+'"/>'+
+  '<ellipse cx="50" cy="50" rx="22" ry="26" fill="'+SK+'"/>'+
+  '<path d="M27 48C29 26 44 21 52 24C62 22 74 30 73 48C64 40 42 36 27 48Z" fill="#111"/>'+
+  '<rect x="59" y="28" width="12" height="4.4" rx="2" fill="'+LIME+'" stroke="#111" stroke-width="1.3" transform="rotate(-24 65 30)"/>'+
+  EYE[p.e]+(p.brow?'<path d="M34 41Q40 35 46 40M54 40Q60 35 66 41" stroke="#111" stroke-width="2.4" fill="none" stroke-linecap="round"/>':'')+
+  MOUTH[p.m]+BLUSH+limbs(p,'#2c2c2c');
+}
+// 친구, "실제 사진 느낌": soft-gradient blurred cut-out standing in for the friend's real picked cut-out (preview only)
+var PG_DEFS='<defs><radialGradient id="pgSk" cx=".42" cy=".36" r=".72"><stop offset="0" stop-color="#f7dcc6"/><stop offset=".65" stop-color="#e4b08f"/><stop offset="1" stop-color="#c48a69"/></radialGradient>'+
+ '<linearGradient id="pgHr" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#4a3a33"/><stop offset=".5" stop-color="#1d1615"/><stop offset="1" stop-color="#0d0a0a"/></linearGradient>'+
+ '<linearGradient id="pgTp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a6d7c"/><stop offset=".6" stop-color="#34353f"/><stop offset="1" stop-color="#1c1d24"/></linearGradient>'+
+ '<filter id="pgBl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".65"/></filter></defs>';
+function frPhotoG(p){
+ var ex=p.e==='side'?-3:0,ey=p.e==='happy'?'1':'1.7';
+ return PG_DEFS+'<g filter="url(#pgBl)">'+
+  '<path d="M24 54C20 20 38 10 50 10C66 10 80 22 76 54L82 96C70 100 66 92 66 80L34 80C34 92 30 100 18 96Z" fill="url(#pgHr)"/>'+
+  '<path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z" fill="url(#pgTp)"/>'+
+  '<rect x="42" y="70" width="16" height="18" rx="6" fill="#d39f7f"/>'+
+  '<ellipse cx="50" cy="50" rx="22" ry="26" fill="url(#pgSk)"/>'+
+  '<path d="M27 48C29 26 44 21 52 24C62 22 74 30 73 48C64 40 42 36 27 48Z" fill="url(#pgHr)"/>'+
+  '<ellipse cx="'+(41+ex)+'" cy="54" rx="2.6" ry="'+ey+'" fill="#2b1f1c"/><ellipse cx="'+(59+ex)+'" cy="54" rx="2.6" ry="'+ey+'" fill="#2b1f1c"/>'+
+  '<path d="M38 50Q41 48.6 44 50M56 50Q59 48.6 62 50" stroke="#6b4a3c" stroke-width="1.2" fill="none" opacity=".7"/>'+
+  '<path d="M48.5 58Q50 61 51.5 58" stroke="#c4876a" stroke-width="1.2" fill="none"/>'+
+  '<ellipse cx="50" cy="66" rx="'+(p.m==='o'?3:5)+'" ry="'+(p.m==='open'||p.m==='o'?3.2:1.8)+'" fill="#c0605a" opacity=".85"/>'+
+  '<ellipse cx="35" cy="61" rx="5" ry="3" fill="#ff9a8a" opacity=".22"/><ellipse cx="65" cy="61" rx="5" ry="3" fill="#ff9a8a" opacity=".22"/>'+
+  limbs(p,null,true)+'</g>';
+}
+// side: 'L' = left & mirrored, 'R' = right; front adds the white sticker edge
+function person(kind,pi,side,x,rj,cls,photo){
+ var p=POSES[pi],g=kind==='me'?meG(p):photo?frPhotoG(p):frG(p);
+ return '<svg class="pp '+side+' '+cls+'" style="'+(side==='L'?'left':'right')+':'+x+'%" viewBox="0 0 100 120" overflow="visible">'+wrap(g,(p.rot||0)+(rj||0))+'</svg>';
+}
+function ghost(label,side,x,cls){
+ return '<svg class="gh '+cls+'" style="'+(side==='L'?'left':'right')+':'+x+'%" viewBox="0 0 100 120"><g fill="'+(label==='나'?'rgba(214,255,61,.5)':'rgba(255,255,255,.55)')+'" stroke="#111" stroke-width="2.4" stroke-dasharray="5 4"><ellipse cx="50" cy="50" rx="22" ry="26"/><path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z"/></g><text x="50" y="'+(label==='나'?59:57)+'" text-anchor="middle" font-size="'+(label==='나'?22:15)+'" font-weight="900" font-family="Noto Sans KR" fill="#111">'+label+'</text></svg>';
+}
+// edge insets in % per shot: small jitter so every frame looks freely posed, small enough that the back person's face stays visible
+var XM1=[9,7,10,8,9,6,8,7],XM2=[10,8,11,9,10,7,9,8],XF=[6,8,5,7],RJ=[0,3,-2,0,2,-3,1,-1];
+var DATE='2026.10.27';
+
+// shared film geometry (cqw units)
+function geo(st,phone){
+ var pw=phone.getBoundingClientRect().width/100,b=st.getBoundingClientRect();
+ var W=b.width/pw,H=b.height/pw,g={W:W,H:H};
+ g.fw=Math.min(58,W-26);g.fh=g.fw*.66;g.pitch=g.fh+3.4;g.gy=(H-g.fh)/2;g.fx=(W-g.fw)/2;
+ g.cw=(W-2.4-5)/2;g.ch=Math.min(g.cw*.62,(H-5-3*2.2)/4);g.sy0=(H-(4*g.ch+3*2.2))/2;
+ g.sw=Math.min(46,W*.56);g.ih=Math.min(g.sw*.6,(H-4-1.6*3-6.5)/4);g.stH=4*g.ih+3*1.6+2+7;g.sTop=(H-g.stH)/2;g.sx=(W-g.sw)/2;
+ return g;
+}
+function filmPos(t,E){var m=.12;
+ if(t<E(0)-m)return -1.3+1.3*eio(t/(E(0)-m));
+ for(var k=1;k<8;k++){if(t<E(k)-m){var s=E(k-1)+m;return t<s?k-1:k-1+eio((t-s)/(E(k)-m-s));}}
+ return 7;}
+function common(self,r){
+ self.r=r;self.st=r.querySelector('.st');
+ self.film=self.st.querySelector('.film');self.gate=self.st.querySelector('.gate');
+ self.back=self.st.querySelector('.back');self.stamp=self.st.querySelector('.stamp');
+ self.cb=r.querySelector('.km b');self.ct=r.querySelector('.km .t');self.fade=[self.st];
+}
+function addFrames(self,cellFn,pick){
+ var h='';
+ for(var i=0;i<8;i++){var j=pick.indexOf(i);
+  h+='<div class="fr"><div class="cell grid9">'+cellFn(i)+'</div><i class="fl"></i><em>0'+(i+1)+'</em>'+(j>=0?'<b class="pn">'+(j+1)+'</b>':'')+self.tags+'</div>';}
+ for(var s=0;s<3;s++)h+='<i class="seam"></i>';
+ self.st.insertAdjacentHTML('beforeend',h);
+ self.frs=[].slice.call(self.st.querySelectorAll('.fr'));self.fls=self.frs.map(function(f){return f.querySelector('.fl');});
+ self.seams=[].slice.call(self.st.querySelectorAll('.seam'));
+}
+function km(self,lab,num,den,text){
+ txt(self.cb,String(num));var d=self.cb.parentNode.firstChild;if(d.nodeValue!==lab)d.nodeValue=lab;
+ var e=self.cb.nextSibling;if(e.nodeValue!==den)e.nodeValue=den;txt(self.ct,text);
+}
+function filmFrame(self,g,t,E,wide){
+ var p=filmPos(t,E);
+ self.film.style.setProperty('--sp',(-p*g.pitch).toFixed(2)+'cqw');
+ var fm=wide?0:g.fx-4;self.film.style.left=fm+'cqw';self.film.style.right=fm+'cqw';
+ self.gate.style.cssText='top:'+(g.gy-1.4)+'cqw;height:'+(g.fh+2.8)+'cqw;left:'+(g.fx-1.4)+'cqw;right:'+(g.fx-1.4)+'cqw';
+ return p;
+}
+function stripPos(g,j,lift){var ROT=[-5,4,-3,5],o={w:g.sw-4,h:g.ih,x:g.sx+2,y:g.sTop+2+j*(g.ih+1.6),tr:'none'};
+ if(lift){o.y+=(j-1.5)*6;o.x+=(j%2?4:-4);o.tr='rotate('+ROT[j]+'deg) scale(1.04)';}return o;}
+function place(f,x,y,w,h,tr,op){f.style.cssText='left:'+x.toFixed(2)+'cqw;top:'+y.toFixed(2)+'cqw;width:'+w.toFixed(2)+'cqw;height:'+h.toFixed(2)+'cqw;transform:'+tr+';opacity:'+op;}
+function seams(self,g,on,t0,t){var so=on?clamp(1-(t-t0)/.6):0;
+ self.seams.forEach(function(s,i){s.style.cssText='left:'+(g.sx+1)+'cqw;width:'+(g.sw-2)+'cqw;top:'+(g.sTop+2+(i+1)*(g.ih+1.6)-1.2).toFixed(2)+'cqw;opacity:'+so.toFixed(3);});}
+function backBox(self,g){self.back.style.cssText='left:'+g.sx+'cqw;width:'+g.sw+'cqw;top:'+g.sTop+'cqw;height:'+g.stH+'cqw';}
+
+// ===== 2-1: I shoot first (I am A: left, front) =====
+var ME1=[0,1,2,3,4,5,6,7];      // 8 different poses of me
+var PICK1=[0,1,3,5];             // V, head heart, surprised, point
+var FR1=[9,8,4,7];               // friend's pose in each picked frame: peace-on-head, cheek, finger heart, chic
+var V1={L:11.2,TF:10.7,
+ E:function(k){return .75+k*.46;},
+ FF:function(j){return 7.25+j*.36;},
+ tags:'<i class="tg l me-t">나</i><i class="tg r fd-t">친구</i>',
+ init:function(r){
+  common(this,r);
+  addFrames(this,function(i){var j=PICK1.indexOf(i);
+   // DOM order = paint order: friend (B) first, me (A) last -> I am always in front
+   return (j>=0?ghost('친구','R',XF[j],'g-fd')+person('fr',FR1[j],'R',XF[j],-RJ[i],'fd'):'')+
+    ghost('나','L',XM1[i],'g-me')+person('me',ME1[i],'L',XM1[i],RJ[i],'me cut');},PICK1);
+  this.send=this.st.querySelector('.send');this.arr=this.st.querySelector('.arr');
+ },
+ render:function(t){
+  var g=geo(this.st,this.r),E=this.E,FF=this.FF,n=0,et=[],k;
+  for(k=0;k<8;k++){et.push(E(k));if(t>=E(k))n++;}
+  var ph=t<4.3?0:t<5.85?1:t<8.75?2:t<9.25?3:4; // film, sheet, pair+friend, lift, snap
+  tog(this.st,'tr',t>=4.25);tog(this.st,'wide',ph>=1);tog(this.st,'lift',ph>=3);tog(this.st,'snap',ph>=4);
+  tog(this.st,'dimmed',t>=5.45&&ph===1);tog(this.st,'nofilm',ph>=2);
+  var p=filmFrame(this,g,t,E,ph>=1);
+  backBox(this,g);
+  var pw=(g.W-5-2.4)/2,phh=Math.min(pw*.72,(g.H-14-3)/2),py0=Math.max(9,(g.H-(2*phh+3))/2+2);
+  var self=this,np=0,nf=0;
+  this.frs.forEach(function(f,i){
+   var j=PICK1.indexOf(i),x,y,w,h,tr='none',op=1;
+   if(ph===0){x=g.fx;y=g.gy+(i-p)*g.pitch;w=g.fw;h=g.fh;}
+   else if(ph===1||j<0){x=2.5+(i%2)*(g.cw+2.4);y=g.sy0+Math.floor(i/2)*(g.ch+2.2);w=g.cw;h=g.ch;if(ph>=2){y+=10;op=0;}}
+   else if(ph===2){x=2.5+(j%2)*(pw+2.4);y=py0+Math.floor(j/2)*(phh+3);w=pw;h=phh;}
+   else{var s=stripPos(g,j,ph===3);x=s.x;y=s.y;w=s.w;h=s.h;tr=s.tr;}
+   place(f,x,y,w,h,tr,op);
+   tog(f,'ex',t>=E(i));
+   var pk=j>=0&&t>=4.7+j*.22;if(pk)np++;tog(f,'pk',pk);
+   tog(f,'wait',j>=0&&t>=6.0);
+   var e2=j>=0&&t>=FF(j);if(e2)nf++;tog(f,'ex2',e2);
+   self.fls[i].style.opacity=flashOp(t,j>=0?[E(i),FF(j)]:[E(i)],.42).toFixed(3);
+  });
+  // paper plane: pops in between the 2x2 rows, then flies off up-right
+  var so=eo((t-6.05)/.3),fly=eio((t-6.75)/.45);
+  this.send.style.top=(py0+phh+1.5)+'cqw';
+  this.send.style.opacity=(ph===2&&t>=6.05?so*(1-fly):0).toFixed(3);
+  this.send.style.transform='translate(calc(-50% + '+(fly*44).toFixed(1)+'cqw),calc(-50% - '+(fly*70).toFixed(1)+'cqw)) rotate('+(-fly*18).toFixed(1)+'deg) scale('+(.7+.3*so-.4*fly).toFixed(3)+')';
+  tog(this.arr,'on',t>=7.05&&ph===2);
+  seams(this,g,ph===4,9.25,t);
+  tog(this.stamp,'on',t>=9.35);
+  if(ph===0)km(this,'찍은 칸 ',n,'/8',t<E(0)?'처음 온 내가 A, 먼저 찍어요':'포즈 바꿔 가며 찰칵');
+  else if(ph===1)km(this,t>=4.7?'고른 칸 ':'찍은 칸 ',t>=4.7?np:n,t>=4.7?'/4':'/8','8칸 중 4칸 고르기');
+  else if(ph===2)km(this,'친구 칸 ',nf,'/4',t<7.05?'링크로 친구에게 보내기':'친구는 내 뒤로, 나는 앞');
+  else km(this,'네컷 ',4,'/4',ph===3?'고른 4칸 꺼내는 중':'착! 둘이 같이 네컷');
+ }
+};
+
+// ===== 2-2: I opened the friend's link (friend is A: left, front; I am B: behind) =====
+// In the real app the friend here is the friend's REAL picked cut-outs (4 PNGs), not this illustration.
+// Shot j shows the friend's cut j%4, so each cut appears twice across the 8 shots.
+var FR2=[8,9,2,4];               // friend's 4 picked cuts: cheek, peace-on-head, lean, finger heart
+var ME2=[0,3,5,6,1,7,4,2];       // my 8 different poses
+var PICK2=[0,3,5,6];             // -> friend cuts 0,3,1,2 (all different in the strip)
+var V2={L:9.4,TF:9.0,
+ E:function(k){return .8+k*.47;},
+ tags:'<i class="tg l fd-t">친구</i><i class="tg r me-t">나</i>',
+ init:function(r){
+  common(this,r);this.photo=false;
+  var self=this;
+  addFrames(this,function(i){return self.cellHTML(i);},PICK2);
+ },
+ // DOM order = paint order: me (B) first, friend (A) last -> friend always in front
+ cellHTML:function(i){return ghost('나','R',XM2[i],'g-me')+person('me',ME2[i],'R',XM2[i],RJ[i],'me')+person('fr',FR2[i%4],'L',XF[i%4],0,'fd cut',this.photo);},
+ setPhoto:function(on){var self=this;this.photo=on;this.frs.forEach(function(f,i){f.querySelector('.cell').innerHTML=self.cellHTML(i);});},
+ render:function(t){
+  var g=geo(this.st,this.r),E=this.E,n=0,et=[],k;
+  for(k=0;k<8;k++){et.push(E(k));if(t>=E(k))n++;}
+  var ph=t<4.4?0:t<6.0?1:t<6.55?2:3; // film, sheet, lift, snap
+  tog(this.st,'tr',t>=4.35);tog(this.st,'wide',ph>=1);tog(this.st,'lift',ph>=2);tog(this.st,'snap',ph>=3);
+  tog(this.st,'dimmed',t>=5.6&&ph===1);
+  var p=filmFrame(this,g,t,E,ph>=1);
+  backBox(this,g);
+  var self=this,np=0;
+  this.frs.forEach(function(f,i){
+   var j=PICK2.indexOf(i),x,y,w,h,tr='none',op=1;
+   if(ph===0){x=g.fx;y=g.gy+(i-p)*g.pitch;w=g.fw;h=g.fh;}
+   else if(ph===1||j<0){x=2.5+(i%2)*(g.cw+2.4);y=g.sy0+Math.floor(i/2)*(g.ch+2.2);w=g.cw;h=g.ch;if(ph>=2){y+=10;op=0;}}
+   else{var s=stripPos(g,j,ph===2);x=s.x;y=s.y;w=s.w;h=s.h;tr=s.tr;}
+   place(f,x,y,w,h,tr,op);
+   tog(f,'ex',t>=E(i));
+   var pk=j>=0&&t>=4.85+j*.22;if(pk)np++;tog(f,'pk',pk);
+   self.fls[i].style.opacity=flashOp(t,[E(i)],.42).toFixed(3);
+  });
+  seams(this,g,ph===3,6.55,t);
+  tog(this.stamp,'on',t>=6.65);
+  if(ph===0)km(this,'찍은 칸 ',n,'/8',t<E(0)?'친구가 먼저 찍어 뒀어요':'친구 뒤 빈자리에 내가 찰칵');
+  else if(ph===1)km(this,t>=4.85?'고른 칸 ':'찍은 칸 ',t>=4.85?np:n,t>=4.85?'/4':'/8','8칸 중 4칸 고르기');
+  else km(this,'네컷 ',4,'/4',ph===2?'고른 4칸 꺼내는 중':'착! 친구랑 같이 네컷');
+ }
+};
+
+var IMPL={1:V1,2:V2};
+
+function Stage(art){
+ var self=this;this.impl=Object.create(IMPL[art.dataset.c]);
+ this.phone=art.querySelector('.phone');this.impl.init(this.phone);
+ this.thBtn=art.querySelector('[data-a=th]');
+ var toast=document.createElement('div');toast.className='toast';toast.textContent='카메라 화면으로 (시안 범위 밖)';this.phone.appendChild(toast);
+ art.querySelector('.cta').addEventListener('click',function(){toast.classList.add('on');clearTimeout(self.tt);self.tt=setTimeout(function(){toast.classList.remove('on');},1500);});
+ art.querySelector('[data-a=re]').addEventListener('click',function(){self.thumb=false;self.thBtn.setAttribute('aria-pressed','false');self.restart();});
+ this.thBtn.addEventListener('click',function(){self.thumb=!self.thumb;self.thBtn.setAttribute('aria-pressed',String(self.thumb));if(self.thumb||RM)self.snap(self.impl.TF,1);else self.restart();});
+ [].forEach.call(art.querySelectorAll('.seg button'),function(b,_,all){b.addEventListener('click',function(){
+  [].forEach.call(art.querySelectorAll('.seg button'),function(o){o.setAttribute('aria-pressed',String(o===b));});
+  self.impl.setPhoto(b.dataset.m==='photo');
+  if(self.thumb||RM)self.snap(self.impl.TF,1);
+ });});
+ if(RM){this.snap(this.impl.TF,1);}else this.restart();
+}
+Stage.prototype.snap=function(t,op){
+ var ph=this.phone;ph.classList.add('nt');this.impl.render(t);this.setOp(op);void ph.offsetWidth;
+ requestAnimationFrame(function(){requestAnimationFrame(function(){ph.classList.remove('nt');});});
+};
+Stage.prototype.setOp=function(o){this.impl.fade.forEach(function(el){el.style.opacity=o.toFixed(3);});};
+Stage.prototype.restart=function(){if(RM){this.snap(this.impl.TF,1);return;}this.t0=performance.now();this.snap(0,0);};
+Stage.prototype.frame=function(now){
+ if(this.thumb||RM)return;
+ var L=this.impl.L,t=(now-this.t0)/1000;
+ if(t>=L){this.t0=now;this.snap(0,0);return;}
+ this.impl.render(t);
+ this.setOp(Math.min(1,t/.3,(L-t)/.4));
+};
+var stages=[].slice.call(document.querySelectorAll('.concept')).map(function(a){return new Stage(a);});
+function loop(now){stages.forEach(function(s){s.frame(now);});requestAnimationFrame(loop);}
+requestAnimationFrame(loop);
+addEventListener('resize',function(){stages.forEach(function(s){if(s.thumb||RM)s.snap(s.impl.TF,1);});});
+window.__restartAll=function(){var n=performance.now();stages.forEach(function(s){s.thumb=false;s.t0=n;s.snap(0,0);});};
+window.__thumbAll=function(){stages.forEach(function(s){s.thumb=true;s.snap(s.impl.TF,1);});};
+window.__t=function(){return stages.map(function(s){return ((performance.now()-s.t0)/1000).toFixed(2);}).join(' ');};
+window.__photo=function(on){stages[1].impl.setPhoto(on);};
+})();
+</script>
+</body>
+</html>
