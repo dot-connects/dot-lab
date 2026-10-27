@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>따로 같이 네컷 로딩 커버 5</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#f1f1ee;color:#222;font:15px/1.5 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.wrap{max-width:1280px;margin:0 auto;padding:24px 16px 60px}
+.page-h h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em}
+.page-h p{color:#555;margin-top:6px;font-size:14px;max-width:760px}
+.flow{margin-top:12px;font:500 12px/1.6 'Space Grotesk','Noto Sans KR',monospace;background:#fff;border:1px solid #ccc;padding:10px 12px;white-space:pre;overflow-x:auto;max-width:760px}
+
+/* sticky control bar */
+.ctl{position:sticky;top:0;z-index:20;background:#f1f1eeee;backdrop-filter:blur(6px);border-bottom:2px solid #111;margin:18px -16px 0;padding:10px 16px;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ctl .sp{border:2px solid #111;padding:4px 10px;font-weight:700;font-size:13px;background:#fff}
+.ctl .sp[aria-pressed=true]{background:#111;color:#fff;box-shadow:inset 0 -4px 0 #d6ff3d}
+.ctl .rs{border:2px solid #111;background:#d6ff3d;padding:4px 10px;font-weight:900;font-size:13px}
+.ctl .st{font:700 12px 'Space Grotesk','Noto Sans KR';color:#333;flex-basis:100%}
+.ctl .st b{background:#111;color:#d6ff3d;padding:0 6px;margin-left:4px}
+
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:34px 22px;margin-top:22px}
+.concept{min-width:0}
+.ch{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+.ch .no{font:700 13px 'Space Grotesk';background:#111;color:#fff;padding:0 8px}
+.ch h2{font-size:18px;font-weight:900;letter-spacing:-.02em}
+.ch .rp{margin-left:auto;display:flex;gap:4px}
+.ch .rp button{font-size:12px;font-weight:700;border:1.5px solid #111;padding:1px 7px;background:#fff}
+.ch .rp button[aria-pressed=true]{background:#111;color:#fff}
+.lines{list-style:none;margin-top:10px;font-size:13px;color:#333}
+.lines li{margin-top:4px;padding-left:60px;text-indent:-60px}
+.lines b{display:inline-block;width:56px;text-indent:0;color:#000;font-weight:900}
+.lines li.rk b{color:#b00}
+
+/* ===== phone (clean tokens from concepts5 #1) ===== */
+.phone{--ink:#0d0d0d;--acc:#d6ff3d;--sk:#e9bf9e;--sa:#111;--ha:#111;--sb:#fff;--hb:#4a3426;
+ width:100%;max-width:320px;margin:0 auto;aspect-ratio:9/16;container-type:inline-size;position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(0,0,0,.25);box-shadow:0 6px 20px rgba(0,0,0,.14);background:#fff}
+.scr{position:absolute;inset:0;font-size:4cqw;line-height:1.25;background:#fff;color:var(--ink);display:flex;flex-direction:column;padding:5cqw 5cqw 5cqw;overflow:hidden}
+.scr svg{display:block}
+.mono{font-family:'Space Grotesk',sans-serif;font-weight:700}
+.top{display:flex;justify-content:space-between;font:700 3cqw 'Space Grotesk';letter-spacing:.18em;border-bottom:.6cqw solid #000;padding-bottom:2cqw;flex:none}
+.hl{font-size:10.5cqw;line-height:1.02;font-weight:900;letter-spacing:-.05em;margin:3cqw 0 3cqw;flex:none}
+mark{background:var(--acc);color:#000;padding:0 1.4cqw}
+.stage{flex:1;position:relative;min-height:0}
+.cta{flex:none;margin-top:3cqw;display:flex;justify-content:space-between;align-items:center;width:100%;background:#000;color:#fff;font-weight:900;font-size:5cqw;padding:3.4cqw 4cqw;text-align:left;position:relative;z-index:5}
+.cta:active{transform:translateY(.4cqw)}
+.cta .r{display:flex;align-items:center;gap:2cqw;font:700 2.8cqw 'Space Grotesk','Noto Sans KR';color:#aaa;letter-spacing:.06em}
+.sq{width:5cqw;height:5cqw;border:.6cqw solid var(--acc);position:relative;display:block}
+.sq b{position:absolute;left:0;right:0;bottom:0;background:var(--acc);height:0}
+.cta.rdy .sq{animation:sqpop .5s cubic-bezier(.3,1.6,.5,1)}
+@keyframes sqpop{40%{transform:scale(1.5)}}
+.pa{--shirt:var(--sa);--hair:var(--ha)}
+.pb{--shirt:var(--sb);--hair:var(--hb)}
+.cut{filter:drop-shadow(1.2px 0 0 #fff) drop-shadow(-1.2px 0 0 #fff) drop-shadow(0 1.2px 0 #fff) drop-shadow(0 -1.2px 0 #fff) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.grid9{background:linear-gradient(90deg,transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(#e3e3e3,#c4c4c4)}
+/* mini people cell (from concepts5) */
+.cell{position:relative;overflow:hidden;background:#d4d4d4}
+.cell .pa,.cell .pb{position:absolute;bottom:-4%;height:auto;width:46%}
+.cell .pa{left:5%;transform:translateX(calc(var(--dx)*1%)) rotate(calc(var(--r)*1deg))}
+.cell .pb{right:5%;transform:translateX(calc(var(--dx)*-1%)) rotate(calc(var(--r)*-.6deg))}
+.stamp{position:absolute;background:var(--acc);color:#000;font:900 7cqw 'Noto Sans KR';padding:.3cqw 2.6cqw;border:.7cqw solid #000;white-space:nowrap;z-index:6}
+
+/* ===== 1 착! 합체 ===== */
+.s1 .side{position:absolute;top:50%;font:700 2.8cqw 'Space Grotesk';letter-spacing:.3em;writing-mode:vertical-rl;transform:translateY(-50%);color:#999}
+.s1 .side.l{left:0;transform:translateY(-50%) rotate(180deg)}.s1 .side.r{right:0}
+.s1 .strip{position:absolute;left:50%;top:0;bottom:0;width:52cqw;transform:translateX(-50%);background:#000;padding:1.6cqw;display:grid;grid-template-rows:repeat(4,1fr) 5cqw;gap:1.2cqw}
+.s1 .cl{position:relative;background:#262626;outline:.4cqw dashed #555;outline-offset:-1.2cqw}
+.s1 .cl>em{position:absolute;left:1.4cqw;top:1cqw;font:700 2.6cqw 'Space Grotesk';color:#777;font-style:normal}
+.s1 .h{position:absolute;top:0;bottom:0;width:50%;overflow:hidden;transition:transform .55s cubic-bezier(.3,1.35,.5,1),opacity .3s;z-index:2}
+.s1 .h.a{left:0;background:#d9d9d9;transform:translateX(-80cqw)}
+.s1 .h.b{right:0;background:#cdcdcd;transform:translateX(80cqw)}
+.s1 .h svg{position:absolute;bottom:-14%;width:80%;left:12%}
+.s1 .h.b svg{left:8%}
+.s1 .h i{position:absolute;top:.8cqw;font:700 2.2cqw 'Space Grotesk';background:#000;color:#fff;padding:0 1cqw;font-style:normal;letter-spacing:.1em}
+.s1 .h.a i{left:.8cqw}.s1 .h.b i{right:.8cqw}
+.s1 .cl.peek .h.a{transform:translateX(-27cqw) rotate(-5deg);animation:pkA 1.4s ease-in-out infinite}
+.s1 .cl.peek .h.b{transform:translateX(27cqw) rotate(5deg);animation:pkB 1.4s ease-in-out infinite}
+@keyframes pkA{50%{transform:translateX(-24cqw) rotate(-2deg)}}
+@keyframes pkB{50%{transform:translateX(24cqw) rotate(2deg)}}
+.s1 .cl.on{outline-color:transparent}
+.s1 .cl.on .h{transform:none;animation:none}
+.s1 .cl.on .h i{opacity:0;transition:opacity .3s .5s}
+.s1 .cl .seam{position:absolute;left:50%;top:0;bottom:0;width:.5cqw;margin-left:-.25cqw;background:var(--acc);z-index:3;opacity:0}
+.s1 .cl.hit .seam{animation:seam .7s ease-out}
+@keyframes seam{0%{opacity:1;transform:scaleY(.2)}40%{opacity:1;transform:scaleY(1.1)}100%{opacity:0}}
+.s1 .cl .stamp{left:50%;top:50%;font-size:5cqw;transform:translate(-50%,-50%) rotate(-6deg) scale(0);opacity:0}
+.s1 .cl.hit .stamp{animation:chak .8s cubic-bezier(.3,1.6,.5,1) forwards}
+@keyframes chak{0%{opacity:0;transform:translate(-50%,-50%) rotate(-6deg) scale(2)}25%{opacity:1;transform:translate(-50%,-50%) rotate(-6deg) scale(1)}80%{opacity:1}100%{opacity:0;transform:translate(-50%,-50%) rotate(-6deg) scale(1)}}
+.s1 .foot{display:flex;justify-content:space-between;align-items:center;color:var(--acc);font:700 2.4cqw 'Space Grotesk';letter-spacing:.14em}
+.s1 .big{right:4cqw;bottom:2cqw;font-size:8cqw;transform:rotate(-8deg) scale(0);opacity:0;transition:transform .45s cubic-bezier(.3,1.7,.5,1),opacity .2s}
+.s1.fin .big{transform:rotate(-8deg) scale(1);opacity:1}
+.km{flex:none;margin-top:2.6cqw;display:flex;justify-content:space-between;align-items:baseline;font-size:3.3cqw;border-top:.4cqw solid #000;padding-top:1.6cqw}
+.km .d{font:700 3.6cqw 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.km .d b{display:inline-block;min-width:8.5cqw;text-align:right;font-size:5.4cqw}
+.km .d b.z{background:var(--acc)}
+.km .t{color:#555;text-align:right}
+
+/* ===== 2 부스 입장 ===== */
+.s2 .sign{position:absolute;left:0;right:0;top:0;height:14cqw;border:.7cqw solid #000;background:#fff;display:flex;align-items:center;justify-content:center;gap:.4cqw;font-size:8cqw;font-weight:900;letter-spacing:-.04em}
+.s2 .sign span{color:#d2d2d2;transition:color .3s}
+.s2 .sign span.on{color:#000}
+.s2 .sign .sp{width:2.4cqw}
+.s2 .sign .ok{position:absolute;right:-1cqw;top:8cqw;font-size:4.6cqw;transform:rotate(8deg) scale(0);transition:transform .4s cubic-bezier(.3,1.7,.5,1)}
+.s2.open .sign .ok{transform:rotate(8deg) scale(1)}
+.s2 .bulbs{position:absolute;left:0;right:0;top:15.6cqw;display:flex;gap:1.2cqw;justify-content:center}
+.s2 .bulbs i{width:5.4cqw;height:1.6cqw;background:#ddd;transition:background .25s,box-shadow .25s}
+.s2 .bulbs i.on{background:var(--acc);box-shadow:0 0 2cqw var(--acc)}
+.s2 .booth{position:absolute;left:4cqw;right:4cqw;top:19.6cqw;bottom:33cqw;border:1.4cqw solid #000;border-bottom-width:3cqw;overflow:hidden}
+.s2 .inside{position:absolute;inset:0}
+.s2 .inside svg{position:absolute;bottom:-9cqw;width:38cqw}
+.s2 .inside .a{left:3cqw}.s2 .inside .b{right:3cqw}
+.s2.open .inside svg{animation:wave 1.6s ease-in-out infinite}
+.s2.open .inside .b{animation-delay:-.8s}
+@keyframes wave{50%{transform:translateY(-2cqw) rotate(-3deg)}}
+.s2 .cur{position:absolute;top:0;bottom:0;width:50.5%;background:repeating-linear-gradient(90deg,#0b0b0b 0 3.2cqw,#222 3.2cqw 4cqw,#0b0b0b 4cqw 6.4cqw);border-bottom:2cqw solid var(--acc);transition:transform 1.1s cubic-bezier(.6,0,.2,1)}
+.s2 .cur.l{left:0;transform-origin:0 0}.s2 .cur.r{right:0}
+.s2 .cur.l:after,.s2 .cur.r:after{content:"";position:absolute;top:0;width:1.4cqw;bottom:0;background:#333}
+.s2 .cur.l:after{right:0}.s2 .cur.r:after{left:0}
+.s2:not(.open) .cur{animation:sway 3s ease-in-out infinite}
+@keyframes sway{50%{margin-top:-.5cqw}}
+.s2 .lcd{position:absolute;left:4cqw;right:4cqw;bottom:26.4cqw;background:#000;color:var(--acc);font:700 3cqw 'Space Grotesk';letter-spacing:.12em;display:flex;justify-content:space-between;padding:1.4cqw 2.4cqw}
+.s2 .log{position:absolute;left:4cqw;right:4cqw;height:25cqw;bottom:0;list-style:none;font-size:3.4cqw;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.s2 .log li{display:flex;gap:2cqw;padding:.7cqw 0;border-bottom:.3cqw solid #e2e2e2;animation:lin .35s ease-out}
+.s2 .log li:nth-last-child(n+3){opacity:.4}
+.s2 .log li i{font:700 3cqw 'Space Grotesk';font-style:normal;color:#999;min-width:7cqw}
+.s2 .log li.now b{font-weight:700}
+.s2 .log li.now:after{content:"_";animation:blink 1s steps(1) infinite;font-weight:900}
+.s2 .log li.fin{background:var(--acc);padding-left:1.4cqw;font-weight:900}
+@keyframes lin{from{transform:translateY(60%);opacity:0}}
+@keyframes blink{50%{opacity:0}}
+
+/* ===== 3 필름 장전 ===== */
+.s3 .sheet{position:absolute;inset:0 0 13cqw;background:#000;padding:2cqw 7cqw;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);gap:1.6cqw;overflow:hidden}
+.s3 .sheet:before,.s3 .sheet:after{content:"";position:absolute;top:0;bottom:0;width:2.6cqw;background:repeating-linear-gradient(#000 0 1.6cqw,#fff 1.6cqw 4cqw,#000 4cqw 5.6cqw);background-size:100% 5.6cqw}
+.s3 .sheet:before{left:2.2cqw}.s3 .sheet:after{right:2.2cqw}
+.s3 .slot{position:relative;border:.4cqw dashed #444}
+.s3 .slot .cell{position:absolute;inset:0;transform:translateX(110cqw) rotate(6deg);transition:transform .5s cubic-bezier(.3,1.25,.5,1),opacity .4s}
+.s3 .slot.in .cell{transform:none}
+.s3 .slot.wait:after{content:"감는 중";position:absolute;inset:0;display:grid;place-items:center;font-size:3cqw;color:#888;animation:breathe 1.6s ease-in-out infinite}
+@keyframes breathe{50%{color:#ddd}}
+.s3 .slot .n{position:absolute;left:0;top:0;z-index:3;background:var(--acc);color:#000;font:700 3cqw 'Space Grotesk';padding:0 1.2cqw}
+.s3 .slot svg.ring{position:absolute;inset:-1cqw;width:calc(100% + 2cqw);height:calc(100% + 2cqw);z-index:4;overflow:visible;pointer-events:none}
+.s3 .slot svg.ring rect{fill:none;stroke:var(--acc);stroke-width:4;stroke-dasharray:420;stroke-dashoffset:420;opacity:0;transition:stroke-dashoffset .5s ease-out,opacity .1s}
+.s3 .slot.pk svg.ring rect{stroke-dashoffset:0;opacity:1}
+.s3 .slot .pn{position:absolute;right:-1cqw;bottom:-1cqw;z-index:5;width:6.4cqw;height:6.4cqw;border-radius:50%;background:var(--acc);border:.6cqw solid #000;display:grid;place-items:center;font:700 3.4cqw 'Space Grotesk';transform:scale(0);transition:transform .35s cubic-bezier(.3,1.7,.5,1) .3s}
+.s3 .slot.pk .pn{transform:scale(1)}
+.s3.dim .slot:not(.pk) .cell{opacity:.3}
+.s3 .cap{position:absolute;left:0;right:0;bottom:0;height:11cqw;display:flex;justify-content:space-between;align-items:center;font-size:3.4cqw;border-top:.4cqw solid #000;gap:2cqw}
+.s3 .cap .c{font:700 3.4cqw 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.s3 .cap .c b{font-size:5.6cqw}
+.s3 .cap .t{color:#444;text-align:right;transition:opacity .25s}
+.s3h{line-height:1.14!important}
+.hl .l2{color:#cfcfcf;transition:color .4s}
+.hl .l2 mark{background:transparent;color:inherit;transition:background .4s}
+.hl.go .l2{color:#000}.hl.go .l2 mark{background:var(--acc)}
+
+/* ===== 4 오늘의 포즈 ===== */
+.s4 .deck{position:absolute;left:3cqw;right:3cqw;top:1cqw;bottom:18cqw;touch-action:pan-y;user-select:none;-webkit-user-select:none}
+.s4 .card{position:absolute;inset:0;background:#fff;border:.7cqw solid #000;padding:3cqw;display:flex;flex-direction:column;transition:transform .5s cubic-bezier(.3,1.1,.5,1),opacity .4s;will-change:transform}
+.s4 .card .hd{display:flex;justify-content:space-between;font:700 3cqw 'Space Grotesk';letter-spacing:.14em}
+.s4 .card .hd b{background:#000;color:var(--acc);padding:0 1.4cqw}
+.s4 .card .ill{flex:1;margin:2.4cqw 0;position:relative;overflow:hidden}
+.s4 .card .ill .pa,.s4 .card .ill .pb{width:44%}
+.s4 .card .gl{position:absolute;z-index:3;color:var(--acc);width:13cqw;height:13cqw;stroke:#000;stroke-width:1.2}
+.s4 .card .gl.t{width:auto;height:auto;font:700 9cqw 'Space Grotesk';color:#000;background:var(--acc);padding:0 2cqw;border:.6cqw solid #000}
+.s4 .card h3{font-size:8cqw;line-height:1.05;font-weight:900;letter-spacing:-.04em}
+.s4 .card p{font-size:3.3cqw;color:#555;margin-top:1cqw}
+.s4 .card.rd{background:var(--acc)}
+.s4 .card.rd .ill{background:#000;display:grid;grid-template-columns:1fr 1fr;grid-template-rows:repeat(4,1fr);gap:1cqw;padding:1.4cqw}
+.s4 .card.rd .ill .cell{position:relative}
+.s4 .card.rd .ill .cell .pa,.s4 .card.rd .ill .cell .pb{width:40%}
+.s4 .card.rd .ill .cell i{position:absolute;left:0;top:0;z-index:3;background:var(--acc);font:700 2.2cqw 'Noto Sans KR';font-style:normal;padding:0 .8cqw}
+.s4 .nav{position:absolute;left:0;right:0;bottom:0;height:15cqw;display:flex;align-items:center;gap:2.4cqw}
+.s4 .nav button{width:10cqw;height:10cqw;border:.6cqw solid #000;font:700 5cqw 'Space Grotesk';display:grid;place-items:center;flex:none}
+.s4 .meter{flex:1;min-width:0}
+.s4 .meter .seg{display:flex;gap:1cqw}
+.s4 .meter .seg i{flex:1;height:2.2cqw;background:#e2e2e2;transition:background .3s}
+.s4 .meter .seg i.on{background:#000}
+.s4 .meter .seg i.cur{outline:.5cqw solid #000;outline-offset:.4cqw}
+.s4.done .meter .seg i.on{background:var(--acc)}
+.s4 .meter p{font-size:3cqw;color:#555;margin-top:1.2cqw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s4 .toast{position:absolute;left:50%;top:4cqw;transform:translate(-50%,-40%);opacity:0;background:#000;color:var(--acc);font-size:3.2cqw;font-weight:700;padding:1.2cqw 3cqw;z-index:30;transition:transform .4s cubic-bezier(.3,1.4,.5,1),opacity .3s;white-space:nowrap;border:.5cqw solid var(--acc)}
+.s4 .toast.on{transform:translate(-50%,0);opacity:1}
+
+/* ===== 5 티켓 발권 ===== */
+.s5 .slot{position:absolute;left:0;right:0;top:0;height:9cqw;background:#000;display:flex;align-items:center;justify-content:space-between;padding:0 3cqw;z-index:3}
+.s5 .slot .led{font:700 2.8cqw 'Space Grotesk';color:var(--acc);letter-spacing:.16em}
+.s5 .slot .led.bl{animation:blink 1s steps(1) infinite}
+.s5 .slot .gap{position:absolute;left:8cqw;right:8cqw;bottom:-.4cqw;height:1.4cqw;background:#333;border-radius:1cqw}
+.s5 .well{position:absolute;left:0;right:0;top:9cqw;bottom:0;overflow:hidden}
+.s5 .tk{position:relative;margin:0 5cqw;background:#fff;border:.6cqw solid #000;border-top:0;transform:translateY(-102%);transition:transform 1s cubic-bezier(.4,0,.2,1)}
+.s5 .tk.out{transform:none}
+.s5 .tk .row{display:flex;justify-content:space-between;align-items:baseline;padding:1.6cqw 3.4cqw;border-bottom:.3cqw dashed #bbb;font-size:3.4cqw;min-height:8cqw;gap:2cqw}
+.s5 .tk .row>*{transition:opacity .25s}
+.s5 .tk .row:not(.in)>*{opacity:0}
+.s5 .tk .row small{font:700 2.4cqw 'Space Grotesk';letter-spacing:.16em;color:#888}
+.s5 .tk .row b{font:700 4cqw 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.s5 .tk .h1{font-size:5.6cqw;font-weight:900;letter-spacing:-.04em;display:block}
+.s5 .tk .r0{display:block;background:#000;color:#fff;border:0}
+.s5 .tk .r0 small{color:var(--acc)}
+.s5 .tk .perf{height:0;border-top:.6cqw dashed #000;margin:0 -.6cqw;position:relative}
+.s5 .tk .perf:before,.s5 .tk .perf:after{content:"";position:absolute;top:-2.4cqw;width:4.4cqw;height:4.4cqw;border-radius:50%;background:#fff;border:.6cqw solid #000}
+.s5 .tk .perf:before{left:-2.8cqw}.s5 .tk .perf:after{right:-2.8cqw}
+.s5 .tk .rin{display:block}
+.s5 .tk .rin label{display:block;font:700 2.4cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.1em;color:#000}
+.s5 .tk .rin input{width:100%;border:0;border-bottom:.6cqw solid #000;font:700 4.2cqw 'Noto Sans KR';padding:1cqw 0;outline:0;background:linear-gradient(transparent 60%,#d6ff3d55 60%);border-radius:0;color:#000}
+.s5 .tk .rin input:focus{background:linear-gradient(transparent 60%,var(--acc) 60%)}
+.s5 .chips{display:flex;gap:1.4cqw;margin-top:1.4cqw;flex-wrap:nowrap;overflow:hidden}
+.s5 .chips button{border:.4cqw solid #000;font-size:2.8cqw;padding:.3cqw 1.6cqw;white-space:nowrap;font-weight:700}
+.s5 .bc{display:flex;align-items:flex-end;gap:.5cqw;height:10cqw;padding:1.8cqw 3.4cqw 1cqw}
+.s5 .bc i{flex:1;background:#000;height:100%;transform:scaleY(0);transform-origin:bottom;transition:transform .2s}
+.s5 .bc i.w{flex:.4}
+.s5 .bc i.on{transform:none}
+.s5 .tk .no{display:flex;justify-content:space-between;font:700 2.4cqw 'Space Grotesk';letter-spacing:.14em;padding:0 3.4cqw 1.6cqw;color:#888}
+.s5 .tk .stamp{left:20cqw;bottom:5cqw;font-size:5.6cqw;transform:rotate(-12deg) scale(0);opacity:0;transition:transform .4s cubic-bezier(.3,1.7,.5,1),opacity .2s}
+.s5.done .tk .stamp{transform:rotate(-12deg) scale(1);opacity:1}
+.s5 .pv{position:absolute;left:5cqw;right:5cqw;bottom:0;background:#000;padding:1.4cqw;color:var(--acc);font:700 2.8cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.04em}
+.s5 .pv .g4{display:grid;grid-template-columns:repeat(4,1fr);gap:1cqw;height:15cqw}
+.s5 .pv .ft{display:flex;justify-content:space-between;gap:2cqw;padding:1.2cqw .6cqw 0}
+.s5 .pv .ft span{color:#888;white-space:nowrap}
+.s5 .pv b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.s5 .tk .rin input::placeholder{color:#9a9a9a}
+
+/* ===== overlay: what happens after an early tap ===== */
+.ov{position:absolute;inset:0;z-index:40;background:#fff;transform:translateY(102%);transition:transform .4s cubic-bezier(.3,1,.4,1);display:flex;flex-direction:column}
+.ov.on{transform:none}
+.ov .bar{height:12cqw;background:#000;color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 4cqw;font:700 3.2cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.12em;flex:none}
+.ov .bar button{color:#fff;font-size:5cqw}
+.ov .cam{flex:1;position:relative;overflow:hidden}
+.ov .cam .me{position:absolute;left:50%;bottom:-10cqw;width:76cqw;margin-left:-38cqw;opacity:0;transition:opacity .6s}
+.ov.live .cam .me{opacity:1}
+.ov .ring{position:absolute;left:50%;bottom:16cqw;width:44cqw;height:54cqw;margin-left:-22cqw;border:.8cqw dashed #fff;border-radius:50%;opacity:0;transition:opacity .4s}
+.ov.live .ring{opacity:1}
+.ov .tip{position:absolute;left:0;right:0;top:4cqw;text-align:center;color:#fff;font-weight:700;font-size:3.6cqw;opacity:0;transition:opacity .4s;text-shadow:0 0 2cqw #0006}
+.ov.live .tip{opacity:1}
+.ov .dlg{position:absolute;left:6cqw;right:6cqw;top:12cqw;background:#fff;border:.7cqw solid #000;box-shadow:1.4cqw 1.4cqw 0 #000;padding:4cqw;font-size:3.6cqw;transition:opacity .3s,transform .3s}
+.ov.live .dlg{opacity:0;transform:translateY(-6cqw);pointer-events:none}
+.ov .dlg p{font-weight:700}
+.ov .dlg small{display:block;color:#666;font-size:3cqw;margin-top:1cqw}
+.ov .dlg .bt{display:flex;gap:2cqw;margin-top:3cqw}
+.ov .dlg .bt button{flex:1;border:.6cqw solid #000;padding:2cqw;font-weight:900}
+.ov .dlg .bt button.y{background:#000;color:#fff}
+.ov .dlg .bt button.y.auto{animation:press 2s linear forwards}
+@keyframes press{90%{box-shadow:inset 0 -100cqw 0 #333}}
+.ov .foot{flex:none;background:#000;color:#fff;padding:3.4cqw 4cqw 4cqw}
+.ov .foot .ln{display:flex;justify-content:space-between;font-size:3.2cqw}
+.ov .foot .pr{height:1.2cqw;background:#333;margin-top:2cqw;position:relative}
+.ov .foot .pr b{position:absolute;left:0;top:0;bottom:0;background:var(--acc)}
+.ov .go{display:block;width:100%;margin-top:3cqw;background:#333;color:#888;font-weight:900;font-size:4.6cqw;padding:3cqw;text-align:center;transition:background .3s,color .3s}
+.ov .go.ok{background:var(--acc);color:#000}
+.ov .skip{display:block;margin:2cqw auto 0;font-size:3cqw;color:#aaa;text-decoration:underline}
+.ov .done-note{font-size:2.8cqw;color:#aaa;margin-top:1.6cqw;text-align:center}
+
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+<defs>
+<symbol id="pA" viewBox="0 0 100 120">
+ <path d="M24 54C20 20 38 10 50 10C66 10 80 22 76 54L82 96C70 100 66 92 66 80L34 80C34 92 30 100 18 96Z" fill="var(--hair,#333)"/>
+ <path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z" fill="var(--shirt,#888)"/>
+ <rect x="42" y="70" width="16" height="18" rx="6" fill="var(--sk,#f2c9a5)"/>
+ <ellipse cx="50" cy="50" rx="22" ry="26" fill="var(--sk,#f2c9a5)"/>
+ <path d="M27 48C29 26 44 21 52 24C62 22 74 30 73 48C64 40 42 36 27 48Z" fill="var(--hair,#333)"/>
+ <circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="59" cy="54" r="2.4" fill="#2a1e1e"/>
+ <path d="M43 63Q50 69 57 63" stroke="#b5584f" stroke-width="2" fill="none" stroke-linecap="round"/>
+ <ellipse cx="35" cy="61" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/><ellipse cx="65" cy="61" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/>
+</symbol>
+<symbol id="pB" viewBox="0 0 100 120">
+ <path d="M8 120C8 92 28 84 50 84C72 84 92 92 92 120Z" fill="var(--shirt,#888)"/>
+ <path d="M40 84L50 98L60 84Z" fill="var(--sk,#f2c9a5)"/>
+ <rect x="42" y="70" width="16" height="18" rx="6" fill="var(--sk,#f2c9a5)"/>
+ <ellipse cx="50" cy="50" rx="22" ry="26" fill="var(--sk,#f2c9a5)"/>
+ <path d="M26 50C22 22 38 12 52 13C68 13 80 26 74 50C70 38 62 33 50 33C40 33 32 40 26 50Z" fill="var(--hair,#333)"/>
+ <circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="59" cy="54" r="2.4" fill="#2a1e1e"/>
+ <path d="M43 63Q50 68 57 63" stroke="#b5584f" stroke-width="2" fill="none" stroke-linecap="round"/>
+ <ellipse cx="35" cy="61" rx="4" ry="2.6" fill="#ff8a8a" opacity=".3"/><ellipse cx="65" cy="61" rx="4" ry="2.6" fill="#ff8a8a" opacity=".3"/>
+</symbol>
+<symbol id="heart" viewBox="0 0 24 24"><path d="M12 21.5C3 15 1 10 1 7a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 3-2 8-11 14.5Z"/></symbol>
+<symbol id="star" viewBox="0 0 24 24"><path d="M12 0C13 8 16 11 24 12C16 13 13 16 12 24C11 16 8 13 0 12C8 11 11 8 12 0Z"/></symbol>
+</defs>
+</svg>
+
+<div class="wrap">
+<header class="page-h">
+<h1>로딩 커버 시안 5 · 포토이즘 클린</h1>
+<p>고화질 누끼 모델(26MB + 첫 GPU 실행)이 커버 뒤에서 받아지는 동안 기다린다는 느낌이 없게 하는 다섯 가지. 위에서 폰 속도를 고르면 다섯 개가 함께 다시 재생됩니다. [먼저 찍기]는 처음부터 눌러져요. 눌러 보면 다음 화면(카메라 허용)이 남은 시간을 이어서 씁니다.</p>
+<div class="flow">모델 진행률 ──▶ 커버 모션의 진행 (각 시안의 방식)
+   준비 끝   ──▶ 마지막 장면 + [먼저 찍기] 칸이 라임으로 꽉 참
+   18초 상한 ──▶ 고화질을 기다리지 않음 · 기본 누끼로 시작 (준비되면 조용히 교체)
+   먼저 탭   ──▶ 카메라 허용 화면 → 얼굴 맞추기 → 준비되면 [촬영 시작]</div>
+</header>
+
+<div class="ctl" role="group" aria-label="폰 속도">
+ <button class="sp" data-sp="4" aria-pressed="false">빠른 폰 (4초)</button>
+ <button class="sp" data-sp="10" aria-pressed="true">보통 (10초)</button>
+ <button class="sp" data-sp="20" aria-pressed="false">느린 폰 (20초)</button>
+ <button class="sp" data-sp="0" aria-pressed="false">재방문 (0초)</button>
+ <button class="rs" id="restart">처음부터</button>
+ <span class="st" id="gst">경과 0.0s · 모델 0% · 준비 전</span>
+</div>
+
+<div class="grid">
+
+<!-- ===== 1 ===== -->
+<article class="concept" data-c="1">
+ <div class="ch"><span class="no">1</span><h2>착! 합체</h2><span class="rp"><button data-a="re">다시</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>NO.001</span></div>
+  <h1 class="hl">따로 <mark>같이</mark> 네컷</h1>
+  <div class="stage s1">
+   <span class="side l">SEOUL</span><span class="side r">BUSAN</span>
+   <div class="strip"></div>
+   <i class="stamp big">착!</i>
+  </div>
+  <div class="km"><span class="d">서울 ↔ 부산 <b>325</b>km</span><span class="t">부산에서 오는 중</span></div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r"><em class="x"></em><i class="sq"><b></b></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>서울 반쪽과 부산 반쪽이 칸마다 날아와 "착" 붙고, 네 번 붙으면 네컷이 됩니다. 아래 거리(325km → 0km)가 곧 준비 상태.</li>
+  <li><b>시간</b>한 칸 붙을 때마다 진행률을 씁니다. 다음 반쪽이 칸 옆에서 들썩이며 기다리고, 마지막 "착!"은 준비 신호에 맞춰 터집니다. 빨리 끝나면 연속으로 착착착.</li>
+  <li class="rk"><b>위험</b>느린 폰에선 마지막 칸이 몇 초 비어 "멈췄나?" 싶을 수 있어요. 거리 숫자가 계속 줄어야 버팁니다.</li>
+ </ul>
+</article>
+
+<!-- ===== 2 ===== -->
+<article class="concept" data-c="2">
+ <div class="ch"><span class="no">2</span><h2>부스 입장</h2><span class="rp"><button data-a="re">다시</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>BOOTH 01</span></div>
+  <div class="stage s2">
+   <div class="sign"></div>
+   <div class="bulbs"></div>
+   <div class="booth grid9">
+    <div class="inside"><svg class="a pa cut" viewBox="0 0 100 120"><use href="#pA"/></svg><svg class="b pb cut" viewBox="0 0 100 120"><use href="#pB"/></svg></div>
+    <div class="cur l"></div><div class="cur r"></div>
+   </div>
+   <div class="lcd"><span class="k">BOOTING</span><span class="v">0%</span></div>
+   <ul class="log"></ul>
+  </div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r"><em class="x"></em><i class="sq"><b></b></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>부스 간판 글자와 전구가 하나씩 켜지고, 준비가 끝나면 커튼이 열리며 둘이 손을 흔듭니다.</li>
+  <li><b>시간</b>진행률이 간판 글자, 전구, 커튼 틈을 움직입니다. 점검 문구("거울 닦는 중")가 하나씩 쌓이고, 늦어지면 문구가 더 붙어요.</li>
+  <li class="rk"><b>위험</b>"부팅"이 대놓고 기다림이라 문구가 재미없으면 로딩 화면처럼 보입니다. 서비스 설명은 거의 못 해요.</li>
+ </ul>
+</article>
+
+<!-- ===== 3 ===== -->
+<article class="concept" data-c="3">
+ <div class="ch"><span class="no">3</span><h2>필름 장전</h2><span class="rp"><button data-a="re">다시</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>8 → 4</span></div>
+  <h1 class="hl s3h"><span class="l1"><mark>8장</mark> 찍고</span><br><span class="l2">그중 <mark>4장</mark> 고르기</span></h1>
+  <div class="stage s3">
+   <div class="sheet"></div>
+   <div class="cap"><span class="c">장전 <b>0</b>/8</span><span class="t">타이머가 알아서 찍어요</span></div>
+  </div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r"><em class="x"></em><i class="sq"><b></b></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>필름 여덟 칸이 한 장씩 장전되고, 다 차면 그중 네 칸에 라임 테두리가 그려집니다. "8장 찍고 4장 고르기"를 보여 주며 설명해요.</li>
+  <li><b>시간</b>장전되는 칸 수가 곧 진행률(1칸 = 12%)이고, 8번째 칸은 준비 신호를 기다립니다. 설명 문구가 칸마다 바뀌어 읽을거리가 됩니다.</li>
+  <li class="rk"><b>위험</b>숫자 "3/8"이 진행 바처럼 읽혀 느린 폰에선 기다림이 더 또렷해질 수 있어요. 재방문엔 설명이 군더더기입니다.</li>
+ </ul>
+</article>
+
+<!-- ===== 4 ===== -->
+<article class="concept" data-c="4">
+ <div class="ch"><span class="no">4</span><h2>오늘의 포즈</h2><span class="rp"><button data-a="re">다시</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>POSE BOOK</span></div>
+  <h1 class="hl">오늘 찍을 <mark>포즈 8</mark></h1>
+  <div class="stage s4">
+   <div class="toast">찍을 준비 끝 · 언제든 시작</div>
+   <div class="deck"></div>
+   <div class="nav"><button type="button" data-n="-1" aria-label="이전 포즈">‹</button><div class="meter"><div class="seg"></div><p>넘겨 보세요 · 카메라 준비 중</p></div><button type="button" data-n="1" aria-label="다음 포즈">›</button></div>
+  </div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r"><em class="x"></em><i class="sq"><b></b></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>여덟 번 찍을 포즈 카드가 저절로 넘어가고 손으로 넘겨 볼 수도 있습니다. 준비가 끝나면 "찍을 준비 끝" 카드가 맨 위에 올라와요.</li>
+  <li><b>시간</b>포즈 예습은 실제로 쓸모 있는 일이라 기다림처럼 느껴지지 않아요. 카드 8장 아래 칸 8개가 진행률이고, 넘겨 보는 중이면 화면을 빼앗지 않고 알림만 띄웁니다.</li>
+  <li class="rk"><b>위험</b>커버에서 "두 사람이 따로 찍는다"는 핵심이 약해요. 카드가 많아 첫 3초 안에 앱이 뭔지 안 보일 수 있습니다.</li>
+ </ul>
+</article>
+
+<!-- ===== 5 ===== -->
+<article class="concept" data-c="5">
+ <div class="ch"><span class="no">5</span><h2>티켓 발권</h2><span class="rp"><button data-a="re">다시</button><button data-a="th" aria-pressed="false">썸네일</button></span></div>
+ <div class="phone"><div class="scr">
+  <div class="top"><span>D:OT LAB</span><span>TICKET</span></div>
+  <h1 class="hl">따로 <mark>같이</mark> 네컷</h1>
+  <div class="stage s5">
+   <div class="slot"><span class="led bl">PRINTING</span><span class="led nm">NO.0427</span><i class="gap"></i></div>
+   <div class="well"><div class="tk">
+    <div class="row r0 in"><small>ADMIT TWO · 2인 입장권</small><span class="h1">서울 ↔ 부산</span></div>
+    <div class="row"><small>DATE</small><b>2026.10.27</b></div>
+    <div class="row"><small>SEAT</small><b>A 서울 · B 부산</b></div>
+    <div class="row rin"><label>네컷 아래에 넣을 한마디</label><input type="text" maxlength="18" placeholder="예: 서울↔부산 우정 1일차" aria-label="네컷 아래에 넣을 한마디"><div class="chips"><button type="button">보고 싶다</button><button type="button">우정 1일차</button><button type="button">따로 또 같이</button></div></div>
+    <div class="row"><small>SHOTS</small><b>8장 → 4컷</b></div>
+    <div class="perf"></div>
+    <div class="bc"></div>
+    <div class="no"><span>DOT-LAB</span><span>0427-AB</span></div>
+    <i class="stamp">발권 완료</i>
+   </div></div>
+   <div class="pv"><div class="g4"></div><div class="ft"><span>네컷 미리보기</span><b>한마디를 적어 보세요</b></div></div>
+  </div>
+  <button class="cta" type="button"><span>먼저 찍기</span><span class="r"><em class="x"></em><i class="sq"><b></b></i></span></button>
+ </div></div>
+ <ul class="lines">
+  <li><b>아이디어</b>부스 표가 인쇄돼 나오는 동안 네컷 아래에 넣을 한마디를 적습니다. 바코드가 다 찍히면 "발권 완료" 도장이 찍혀요.</li>
+  <li><b>시간</b>1초 만에 입력칸이 열려 바로 할 일이 생깁니다. 줄 인쇄와 바코드가 진행률을 따르고, 적은 글은 결과 네컷에 그대로 들어가 버리는 시간이 없어요.</li>
+  <li class="rk"><b>위험</b>입력칸이 있으면 폰 키보드가 올라와 화면을 가립니다. 안 적는 사람에겐 표가 그냥 장식이고, 상대(B)는 A의 문구를 바꿀 수 없어요.</li>
+ </ul>
+</article>
+
+</div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var CAP=18;            // seconds: after this the CTA path stops waiting for the HQ model
+var SPEED=10;          // simulated time-to-ready in seconds; 0 = revisit (cached)
+var RM=matchMedia('(prefers-reduced-motion:reduce)').matches;
+var gT0=performance.now();
+
+// Simulated readiness: download ~78% of the time (known bytes -> 0..86%), then GPU warm-up creeps 86..97%.
+function sim(t){
+  if(SPEED===0) return {p:1,ready:true,capped:false,done:true};
+  var R=SPEED, dl=R*.78, p;
+  if(t>=R) p=1; else if(t<dl) p=.86*(t/dl); else p=.86+.11*(1-Math.exp(-(t-dl)/(R*.08)));
+  var ready=t>=R, capped=!ready&&t>=CAP;
+  return {p:p,ready:ready,capped:capped,done:ready||capped};
+}
+var FINAL={p:1,ready:true,capped:false,done:true};
+function clamp(x){return x<0?0:x>1?1:x;}
+function svgP(cls,id,style){return '<svg class="'+cls+'" viewBox="0 0 100 120"'+(style?' style="'+style+'"':'')+'><use href="#'+id+'"/></svg>';}
+var DX=[0,2,-2,3,-1,1,-3,2], R=[-3,2,-1,3,-2,1,0,-2];
+function mini(i){var s='--dx:'+DX[i%8]+';--r:'+R[i%8];return svgP('pa cut','pA',s)+svgP('pb','pB',s);}
+
+// ===== concept 1: halves merge into a strip, km counter = readiness =====
+var C1={
+  init:function(r){
+    this.st=r.querySelector('.s1');var h='';
+    for(var i=0;i<4;i++){var s='--dx:'+DX[i]+';--r:'+R[i];
+      h+='<div class="cl"><em>0'+(i+1)+'</em><div class="h a"><i>SEOUL</i>'+svgP('pa cut','pA','transform:rotate('+R[i]+'deg)')+'</div><div class="h b"><i>BUSAN</i>'+svgP('pb cut','pB','transform:rotate('+(-R[i])+'deg)')+'</div><b class="seam"></b><i class="stamp">착!</i></div>';}
+    h+='<div class="foot"><span>DOT LAB</span><span>26.10.27</span></div>';
+    this.st.querySelector('.strip').innerHTML=h;
+    this.cells=[].slice.call(this.st.querySelectorAll('.cl'));
+    this.kmB=r.querySelector('.km b');this.kmT=r.querySelector('.km .t');
+  },
+  reset:function(){this.m=[null,null,null,null];},
+  tick:function(t,s){
+    var m=this.m, gap=s.done?.45:1.2, th=[0,.3,.6];
+    if(m[0]==null&&t>=(s.done?.15:.5)) m[0]=t;
+    for(var i=1;i<4;i++){
+      if(m[i]==null&&m[i-1]!=null&&t>=m[i-1]+gap&&(i<3?(s.p>=th[i]||s.done):s.done)){m[i]=t;break;}
+    }
+    var next=m.indexOf(null);
+    this.cells.forEach(function(c,i){
+      var cls='cl';
+      if(m[i]!=null){cls+=' on';if(t-m[i]<.8)cls+=' hit';}
+      else if(i===next&&t>.2)cls+=' peek';
+      if(c.className!==cls)c.className=cls;
+    });
+    var fin=m[3]!=null&&t>=m[3]+.2;
+    this.st.classList.toggle('fin',fin);
+    var km=fin?0:Math.max(1,Math.round(325*(1-s.p)));
+    this.kmB.textContent=km;this.kmB.classList.toggle('z',fin);
+    this.kmT.textContent=fin?(s.ready?'도착! 바로 찍어요':'도착 · 기본 모드'):s.done?'거의 붙었어요':s.p<.5?'부산에서 오는 중':s.p<.86?'반쯤 왔어요':'거의 다 왔어요';
+  },
+  final:function(){this.m=[-9,-8,-7,-6];this.tick(100,FINAL);}
+};
+
+// ===== concept 2: booth boots, curtain opens on ready =====
+var C2={
+  TXT:['따','로',' ','같','이',' ','네','컷'],
+  LOG:[[0,'부스 전원 ON'],[.1,'조명 예열'],[.25,'배경 격자 펴기'],[.45,'거울 닦는 중'],[.62,'카메라 렌즈 닦기'],[.78,'누끼 가위 가는 중'],[.86,'마지막 점검']],
+  EXTRA:['서울 쪽 의자 높이 맞추기','부산 쪽 조명 한 칸 더','포즈 연습 한 번 더','커튼 주름 펴기','셔터 소리 고르기'],
+  init:function(r){
+    this.st=r.querySelector('.s2');
+    var h='';this.TXT.forEach(function(c){h+=c===' '?'<i class="sp"></i>':'<span>'+c+'</span>';});
+    this.st.querySelector('.sign').innerHTML=h+'<i class="stamp ok">입장 OK</i>';
+    this.letters=[].slice.call(this.st.querySelectorAll('.sign span'));
+    var b='';for(var i=0;i<10;i++)b+='<i></i>';this.st.querySelector('.bulbs').innerHTML=b;
+    this.bulbs=[].slice.call(this.st.querySelectorAll('.bulbs i'));
+    this.cl=this.st.querySelector('.cur.l');this.cr=this.st.querySelector('.cur.r');
+    this.lk=this.st.querySelector('.lcd .k');this.lv=this.st.querySelector('.lcd .v');
+    this.log=this.st.querySelector('.log');
+  },
+  reset:function(){this.n=0;this.tE=null;this.key='';this.tO=null;},
+  tick:function(t,s){
+    var p=s.p, nl=this.letters.length;
+    var lit=s.done?nl:Math.floor(clamp(p/.9)*nl);
+    this.letters.forEach(function(e,i){e.classList.toggle('on',i<lit);});
+    var nb=s.done?10:Math.floor(p*10);
+    this.bulbs.forEach(function(e,i){e.classList.toggle('on',i<nb);});
+    if(s.done&&this.tO==null) this.tO=t+(SPEED===0?.2:.5);
+    var open=this.tO!=null&&t>=this.tO;
+    this.st.classList.toggle('open',open);
+    var gap=open?102:p*9;
+    this.cl.style.transform='translateX('+(-gap)+'%)';this.cr.style.transform='translateX('+gap+'%)';
+    this.lk.textContent=open?(s.ready?'OPEN':'OPEN · BASIC'):'BOOTING';
+    this.lv.textContent=open?'입장하세요':Math.round(p*100)+'%';
+    // log lines
+    var lines=[];
+    this.LOG.forEach(function(l){if(p>=l[0]||s.done)lines.push(l[1]);});
+    if(!s.done&&p>=.86){if(this.tE==null)this.tE=t;var k=Math.floor((t-this.tE)/2.4);for(var j=0;j<k&&j<this.EXTRA.length;j++)lines.push(this.EXTRA[j]);}
+    if(SPEED===0) lines=['부스 전원 ON','지난번 그대로'];
+    if(open) lines.push(s.ready?'입장하세요':'기본 모드로 입장');
+    var key=lines.join('|');
+    if(key!==this.key){
+      this.key=key;var vis=lines.slice(-4),h='';
+      vis.forEach(function(l,i){var last=i===vis.length-1;var fin=last&&open;
+        h+='<li class="'+(fin?'fin':last?'now':'')+'"><i>'+(fin?'▶':last?'··':'OK')+'</i><b>'+l+'</b></li>';});
+      this.log.innerHTML=h;
+    }
+  },
+  final:function(){this.reset();this.tO=0;this.tick(100,FINAL);}
+};
+
+// ===== concept 3: 8 frames load, 4 get circled =====
+var C3={
+  PICK:[1,2,5,6],
+  init:function(r){
+    this.st=r.querySelector('.s3');this.hl=r.querySelector('.hl');var h='';
+    for(var i=0;i<8;i++){var pk=this.PICK.indexOf(i);
+      h+='<div class="slot"><div class="cell">'+mini(i)+'<b class="n">0'+(i+1)+'</b></div>'+
+        '<svg class="ring" viewBox="0 0 100 60" preserveAspectRatio="none"><rect x="1" y="1" width="98" height="58" vector-effect="non-scaling-stroke" pathLength="420"/></svg>'+
+        (pk>=0?'<b class="pn">'+(pk+1)+'</b>':'')+'</div>';}
+    this.st.querySelector('.sheet').innerHTML=h;
+    this.slots=[].slice.call(this.st.querySelectorAll('.slot'));
+    this.cB=this.st.querySelector('.cap b');this.cT=this.st.querySelector('.cap .t');this.cC=this.st.querySelector('.cap .c');
+  },
+  reset:function(){this.f=[];this.tP=null;this.cap='';},
+  tick:function(t,s){
+    var f=this.f, k=f.length, gap=s.done?.22:.45;
+    if(k<8){
+      var need=k<7?(k+1)/8*.86:2;
+      var last=k?f[k-1]:-1;
+      if(t>=(k?last+gap:(s.done?.1:.3))&&(s.p>=need-.11||s.done))f.push(t);
+    }
+    k=f.length;
+    if(k===8&&this.tP==null)this.tP=t+.35;
+    var tP=this.tP,PK=this.PICK;
+    this.slots.forEach(function(e,i){
+      e.classList.toggle('in',i<k);
+      e.classList.toggle('wait',i===k&&k===7);
+      var pi=PK.indexOf(i);
+      e.classList.toggle('pk',tP!=null&&pi>=0&&t>=tP+pi*.3);
+    });
+    var picked=tP!=null&&t>=tP+3*.3+.3;
+    this.st.classList.toggle('dim',picked);
+    this.hl.classList.toggle('go',tP!=null&&t>=tP);
+    this.cB.textContent=k;
+    var cap=picked?(s.ready?'고른 4장이 네컷이 돼요':'준비 끝 · 기본 모드'):k<=2?'타이머가 알아서 찍어요':k<=4?'찍을 때마다 포즈를 바꿔요':k<=6?'멀리 있는 친구도 같은 순서로':k===7?'마지막 한 장 감는 중':'다 찍으면 고르기';
+    if(cap!==this.cap){this.cap=cap;this.cT.textContent=cap;}
+    this.cC.innerHTML=picked?'<b>4</b>/8 고름':'장전 <b>'+k+'</b>/8';
+  },
+  final:function(){this.f=[0,0,0,0,0,0,0,0];this.tP=-9;this.cap='';this.tick(100,FINAL);}
+};
+
+// ===== concept 4: pose deck =====
+var C4={
+  POSES:[['브이','둘 다 같은 손으로','V',null],['볼 하트','서울은 왼쪽, 부산은 오른쪽 볼','heart',null],['머리 맞대기','화면 가운데 쪽으로 기울이기',null,null],['놀란 척','입 크게, 눈 크게','!',null],['손가락 하트','손끝을 화면 가운데로','heart',null],['턱 괴기','시크하게 카메라 보기',null,null],['등 맞대기','서로 바깥쪽 보기','star',null],['점프 대신 까치발','폰은 그대로, 키만 쑥','star',null]],
+  init:function(r){
+    var self=this;this.st=r.querySelector('.s4');this.deck=this.st.querySelector('.deck');
+    var h='',N=this.POSES.length;
+    this.POSES.forEach(function(p,i){
+      var g=p[2]==null?'':p[2]==='V'||p[2]==='!'?'<i class="gl t" style="left:41%;top:12%">'+p[2]+'</i>':'<svg class="gl" style="left:43%;top:10%"><use href="#'+p[2]+'"/></svg>';
+      var tilt=i===2?'--dx:12;--r:9':i===6?'--dx:-6;--r:-10':'--dx:'+DX[i]+';--r:'+R[i]*2;
+      h+='<div class="card"><div class="hd"><b>POSE 0'+(i+1)+'</b><span>/0'+N+'</span></div><div class="ill cell grid9">'+svgP('pa cut','pA',tilt)+svgP('pb','pB',tilt)+g+'</div><h3>'+p[0]+'</h3><p>'+p[1]+'</p></div>';});
+    h+='<div class="card rd"><div class="hd"><b>READY</b><span>8/8</span></div><div class="ill">'+this.POSES.map(function(p,i){return '<div class="cell">'+mini(i)+'<i>'+(i+1)+' '+p[0]+'</i></div>';}).join('')+'</div><h3>찍을 준비 끝</h3><p>이 순서로 8장, 아래를 누르면 시작</p></div>';
+    this.deck.innerHTML=h;
+    this.cards=[].slice.call(this.deck.querySelectorAll('.card:not(.rd)'));this.rd=this.deck.querySelector('.card.rd');
+    var s='';for(var i=0;i<N;i++)s+='<i></i>';this.st.querySelector('.seg').innerHTML=s;
+    this.segs=[].slice.call(this.st.querySelectorAll('.seg i'));this.mp=this.st.querySelector('.meter p');this.toast=this.st.querySelector('.toast');
+    this.st.querySelectorAll('.nav button').forEach(function(b){b.addEventListener('click',function(){self.go(+b.dataset.n);});});
+    var x0=null;
+    this.deck.addEventListener('pointerdown',function(e){x0=e.clientX;});
+    this.deck.addEventListener('pointerup',function(e){if(x0==null)return;var dx=e.clientX-x0;x0=null;if(Math.abs(dx)>24)self.go(dx<0?1:-1);});
+    this.deck.addEventListener('pointercancel',function(){x0=null;});
+  },
+  go:function(d){this.cur=(this.cur+d+this.cards.length)%this.cards.length;this.tU=this.now;this.tA=this.now;if(this.rdOn){this.rdOn=false;this.rdGone=true;}},
+  reset:function(){this.cur=0;this.tA=0;this.tU=-99;this.now=0;this.rdOn=false;this.rdGone=false;this.tT=null;this.tR=null;},
+  tick:function(t,s){
+    this.now=t;var N=this.cards.length,self=this;
+    var browsing=t-this.tU<4;
+    if(!browsing&&!this.rdOn&&t-this.tA>=1.7&&t>.9){this.cur=(this.cur+1)%N;this.tA=t;}
+    if(s.done&&this.tR==null){this.tR=t;if(browsing&&t>.5){this.tT=t;}else{this.rdOn=true;}}
+    this.cards.forEach(function(c,i){
+      var rel=(i-self.cur+N)%N,tr,z,op=1;
+      if(rel===N-1){tr='translate(-125%,-4%) rotate(-14deg)';z=1;op=0;}
+      else if(rel<3){tr='translate('+rel*2.2+'cqw,'+rel*2.2+'cqw) rotate('+(rel*1.6)+'deg)';z=20-rel;}
+      else{tr='translate(4.4cqw,4.4cqw) rotate(3.2deg)';z=10;op=0;}
+      c.style.transform=tr;c.style.zIndex=z;c.style.opacity=op;
+    });
+    this.rd.style.zIndex=25;
+    this.rd.style.transform=this.rdOn?'none':this.rdGone?'translate(-125%,-4%) rotate(-14deg)':'translate(125%,-4%) rotate(14deg)';
+    this.rd.style.opacity=this.rdOn?1:0;
+    var nOn=s.done?N:Math.floor(s.p*N),cur=this.cur;
+    this.segs.forEach(function(e,i){e.classList.toggle('on',i<nOn);e.classList.toggle('cur',!self.rdOn&&i===cur);});
+    this.st.classList.toggle('done',s.done);
+    this.toast.classList.toggle('on',this.tT!=null&&t-this.tT<3);
+    this.toast.textContent=s.ready?'찍을 준비 끝 · 언제든 시작':'기본 모드로 시작할 수 있어요';
+    this.mp.textContent=s.done?(this.rdOn?'옆으로 넘기면 포즈 다시 보기':'준비 끝 · 계속 넘겨 봐도 돼요'):'넘겨 보세요 · 카메라 준비 중';
+  },
+  final:function(){this.reset();this.tR=0;this.rdOn=true;this.tick(100,FINAL);}
+};
+
+// ===== concept 5: ticket prints; caption field is the productive task =====
+var C5={
+  init:function(r){
+    var self=this;this.st=r.querySelector('.s5');this.tk=this.st.querySelector('.tk');
+    this.rows=[].slice.call(this.tk.querySelectorAll('.row'));
+    var b='',W=[1,0,1,1,0,1,0,0,1,1,0,1,0,1,1,0,1,0,0,1,1,0,1,0,1,1,0,0,1,0,1,1,0,1,0,1,0,0,1,1];
+    W.forEach(function(w){b+='<i'+(w?'':' class="w"')+'></i>';});this.tk.querySelector('.bc').innerHTML=b;
+    this.bars=[].slice.call(this.tk.querySelectorAll('.bc i'));
+    this.st.querySelector('.pv .g4').innerHTML=[1,3,4,6].map(function(i){return '<div class="cell">'+mini(i)+'</div>';}).join('');
+    this.led=this.st.querySelector('.slot .led');this.in=this.tk.querySelector('input');this.pv=this.st.querySelector('.pv b');
+    this.in.addEventListener('input',function(){self.upd();});
+    this.tk.querySelectorAll('.chips button').forEach(function(c){c.addEventListener('click',function(){self.in.value=c.textContent;self.upd();});});
+  },
+  upd:function(){var v=this.in.value.trim();this.pv.textContent=v||'한마디를 적어 보세요';},
+  reset:function(){this.rt=[];this.in.value='';this.upd();},
+  // row order: 0 header, 1 date, 2 seat, 3 input, 4 shots
+  EX:['예: 서울↔부산 우정 1일차','예: 다음엔 진짜 같이 찍자','예: 2026 가을, 따로 같이'],
+  TH:[[0,0],[.4,.1],[.7,.25],[1.2,0],[1.6,.5]],
+  tick:function(t,s){
+    var fast=SPEED===0;
+    this.tk.classList.toggle('out',t>=(fast?0:.15));
+    var self=this;
+    this.rows.forEach(function(r,i){var th=self.TH[i];var ok=t>=(fast?.3+i*.12:th[0])&&(s.p>=th[1]||s.done);r.classList.toggle('in',ok);});
+    var nb=s.done?this.bars.length:Math.floor(this.bars.length*clamp((s.p-.3)/.7));
+    if(t<1.6&&!fast)nb=0;
+    this.bars.forEach(function(e,i){e.classList.toggle('on',i<nb);});
+    var stamped=s.done&&t>=(fast?.9:0)&&nb===this.bars.length;
+    this.st.classList.toggle('done',stamped);
+    this.st.querySelector('.tk .stamp').textContent=s.ready?'발권 완료':'기본 발권';
+    this.led.textContent=stamped?(s.ready?'READY':'READY · BASIC'):s.p>.86?'INK DRYING':'PRINTING';
+    this.led.classList.toggle('bl',!stamped);
+    var ex=this.EX[Math.floor(t/2.6)%this.EX.length];if(this.in.placeholder!==ex)this.in.placeholder=ex;
+  },
+  final:function(){this.rt=[];this.in.value='서울↔부산 우정 1일차';this.upd();this.tick(100,FINAL);}
+};
+
+var IMPL={1:C1,2:C2,3:C3,4:C4,5:C5};
+
+// ===== stage wrapper: clock, CTA fill, replay, thumbnail, early-tap overlay =====
+function Stage(art){
+  var self=this;this.art=art;this.impl=Object.create(IMPL[art.dataset.c]);
+  this.phone=art.querySelector('.phone');this.impl.init(this.phone);
+  this.cta=art.querySelector('.cta');this.fill=this.cta.querySelector('.sq b');this.x=this.cta.querySelector('.x');
+  this.thBtn=art.querySelector('[data-a=th]');
+  art.querySelector('[data-a=re]').addEventListener('click',function(){self.restart();});
+  this.thBtn.addEventListener('click',function(){self.thumb=!self.thumb;self.thBtn.setAttribute('aria-pressed',self.thumb);if(self.thumb){self.closeOv();self.impl.final();self.paintCta(FINAL);}else self.restart();});
+  // overlay
+  var ov=document.createElement('div');ov.className='ov';
+  ov.innerHTML='<div class="bar"><button type="button" class="bk" aria-label="닫기">←</button><span>CAMERA</span><span class="mono">A · 서울</span></div>'+
+    '<div class="cam grid9"><p class="tip">얼굴을 점선 안에 맞춰 주세요</p><span class="ring"></span>'+svgP('me pa','pA')+
+    '<div class="dlg"><p>dot-connects.github.io에서 카메라를 사용하려고 합니다</p><small>브라우저 기본 창이에요. 허용해야 찍을 수 있어요.</small><div class="bt"><button type="button">차단</button><button type="button" class="y">허용</button></div></div></div>'+
+    '<div class="foot"><div class="ln"><span class="a">고화질 누끼 준비 중</span><span class="mono b">0%</span></div><div class="pr"><b></b></div><button type="button" class="go">촬영 시작</button><button type="button" class="skip">기다리지 않고 기본 누끼로 시작</button><p class="done-note"></p></div>';
+  this.phone.appendChild(ov);this.ov=ov;
+  this.cta.addEventListener('click',function(){self.openOv();});
+  ov.querySelector('.bk').addEventListener('click',function(){self.closeOv();});
+  ov.querySelector('.y').addEventListener('click',function(){self.allowed=true;});
+  ov.querySelector('.go').addEventListener('click',function(){if(self.ovS&&self.ovS.done)self.flash('촬영 화면으로 (시안 범위 밖)');});
+  ov.querySelector('.skip').addEventListener('click',function(){self.flash('기본 누끼로 촬영 시작 (고화질은 준비되면 교체)');});
+  this.restart();
+}
+Stage.prototype.restart=function(){
+  this.t0=performance.now();this.thumb=false;this.thBtn.setAttribute('aria-pressed','false');
+  this.closeOv();this.impl.reset();this.cta.classList.remove('rdy');this.wasDone=false;
+  if(RM){this.impl.final();this.paintCta(FINAL);}
+};
+Stage.prototype.openOv=function(){this.ovOn=true;this.ovT=this.t;this.allowed=false;this.ov.classList.add('on');this.ov.classList.remove('live');this.ov.querySelector('.y').classList.add('auto');this.ov.querySelector('.done-note').textContent='';};
+Stage.prototype.closeOv=function(){this.ovOn=false;this.ov.classList.remove('on','live');};
+Stage.prototype.flash=function(m){this.ov.querySelector('.done-note').textContent=m;};
+Stage.prototype.paintCta=function(s){
+  this.fill.style.height=(s.p*100)+'%';
+  this.x.textContent=s.capped?'기본':'';
+  if(s.done&&!this.wasDone){this.cta.classList.add('rdy');}
+  this.wasDone=s.done;
+};
+Stage.prototype.frame=function(now){
+  if(this.thumb||RM)return;
+  var t=(now-this.t0)/1000;this.t=t;var s=sim(t);
+  this.impl.tick(t,s);this.paintCta(s);
+  if(this.ovOn){
+    var ot=t-this.ovT;
+    if(ot>=2.2)this.allowed=true;   // mockup: auto-allow so time-lapse shows the camera step
+    var live=this.allowed;
+    this.ov.classList.toggle('live',live);
+    var a=this.ov.querySelector('.foot .a'),b=this.ov.querySelector('.foot .b'),go=this.ov.querySelector('.go'),sk=this.ov.querySelector('.skip');
+    this.ov.querySelector('.pr b').style.width=(s.p*100)+'%';
+    a.textContent=s.ready?'고화질 누끼 ON':s.capped?'기본 누끼로 시작해요':live?'고화질 누끼 준비 중':'카메라 허용을 기다려요';
+    b.textContent=s.ready?'READY':Math.round(s.p*100)+'%';
+    var ok=live&&s.done;go.classList.toggle('ok',ok);
+    go.textContent=ok?(s.ready?'촬영 시작':'기본 누끼로 촬영 시작'):'카메라 켜는 중';
+    sk.style.display=(live&&!s.done)?'block':'none';
+    this.ovS=ok?s:null;
+  }
+};
+
+var stages=[].slice.call(document.querySelectorAll('.concept')).map(function(a){return new Stage(a);});
+var gst=document.getElementById('gst');
+function loop(now){
+  stages.forEach(function(st){st.frame(now);});
+  var t=(now-gT0)/1000,s=sim(t);
+  gst.innerHTML='경과 '+t.toFixed(1)+'s · 모델 '+Math.round(s.p*100)+'% · '+(s.ready?'<b>준비 끝</b>':s.capped?'<b>상한 '+CAP+'초 · 기본 누끼</b>':'준비 전 (상한 '+CAP+'초)');
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+function restartAll(){gT0=performance.now();stages.forEach(function(st){st.restart();});}
+document.querySelectorAll('.ctl .sp').forEach(function(b){b.addEventListener('click',function(){
+  SPEED=+b.dataset.sp;document.querySelectorAll('.ctl .sp').forEach(function(x){x.setAttribute('aria-pressed',x===b);});restartAll();});});
+document.getElementById('restart').addEventListener('click',restartAll);
+window.__setSpeed=function(v){SPEED=v;restartAll();};
+window.__tap=function(i){stages[i].openOv();};
+})();
+</script>
+</body>
+</html>
