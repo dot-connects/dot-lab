@@ -1,0 +1,249 @@
+<title>따로 같이 네컷 표지 모션</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Black+Han+Sans&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: three 9:16 cover stages side by side (stacked on phones), each a looping motion concept with its still-frame note */
+:root{
+  --bg:#fff7f3; --paper:#ffffff; --ink:#2e2230; --sub:#6d5f6f; --line:#f1dfe4;
+  --pink:#ff7eb6; --pink-ink:#c2185b; --me:#ff8a65; --fr:#64a8ff; --skin:#f6d7c3; --hair:#2b2028; --hair2:#8a5a3b; --lineart:#2e2230;
+  --title:"Jua","Gowun Dodum",system-ui,sans-serif; --body:"Gowun Dodum",system-ui,-apple-system,"Apple SD Gothic Neo",sans-serif;
+  --block:"Black Han Sans","Jua",system-ui,sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1d171f;--paper:#2a222c;--ink:#f6eef3;--sub:#c3b3bf;--line:#3b303d;--pink-ink:#ff9cc8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1d171f;--paper:#2a222c;--ink:#f6eef3;--sub:#c3b3bf;--line:#3b303d;--pink-ink:#ff9cc8;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.6}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:28px}
+header{display:flex;flex-direction:column;gap:8px;max-width:640px}
+.eyebrow{font-size:13px;color:var(--sub);letter-spacing:.04em}
+h1{font-family:var(--title);font-weight:400;font-size:38px;line-height:1.1;margin:0;text-wrap:balance}
+h1 em{font-style:normal;color:var(--pink-ink)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:26px;align-items:start}
+.concept{display:flex;flex-direction:column;gap:12px;min-width:0}
+.concept h2{font-family:var(--title);font-weight:400;font-size:23px;margin:0;display:flex;gap:10px;align-items:center}
+.concept h2 i{font-style:normal;font-family:var(--mono);font-size:13px;background:var(--pink);color:#fff;border-radius:99px;padding:1px 9px}
+.concept p{margin:0;font-size:14px;color:var(--sub)}
+.concept ul{margin:0;padding-left:18px;font-size:14px;color:var(--sub)}
+.controls{display:flex;gap:8px}
+.controls button{font:inherit;font-size:13px;border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:99px;padding:5px 12px;cursor:pointer}
+.controls button:focus-visible{outline:2px solid var(--pink);outline-offset:2px}
+
+/* stage: fixed 9:16 world, scaled to the column */
+.stage{position:relative;width:100%;max-width:330px;aspect-ratio:9/16;border-radius:28px;overflow:hidden;box-shadow:0 14px 30px #2e22302a;container-type:inline-size}
+.stage *{box-sizing:border-box}
+.paused .stage *, .paused .stage{animation-play-state:paused!important}
+.lbl{position:absolute;font-family:var(--title);color:#2e2230}
+svg.p{display:block;width:100%;height:100%}
+
+/* ===== A. 착! 합체 ===== */
+.A{background:radial-gradient(120% 70% at 50% 100%,#ffd6e6,#fff3f7 60%)}
+.A .dots{position:absolute;inset:0;background:radial-gradient(circle at 1px 1px,#f6b8cf 1.2px,transparent 1.8px) 0 0/16px 16px;opacity:.6}
+.A .chip{position:absolute;top:8%;font-family:var(--title);font-size:5.2cqw;background:#fff;border-radius:99px;padding:.6% 4%;box-shadow:0 2px 6px #0001;color:#2e2230}
+.A .chip.l{left:7%;animation:chipL 6s infinite}
+.A .chip.r{right:7%;animation:chipR 6s infinite}
+.A .half{position:absolute;top:22%;width:40%;aspect-ratio:3/4;background:#fff;border-radius:6%;padding:3%;box-shadow:0 8px 18px #c2185b22}
+.A .half .cell{width:100%;height:100%;border-radius:4%;overflow:hidden;background:linear-gradient(#c9b6ef,#a993df)}
+.A .half.l{left:10%;animation:halfL 6s cubic-bezier(.34,1.4,.64,1) infinite}
+.A .half.r{right:10%;animation:halfR 6s cubic-bezier(.34,1.4,.64,1) infinite}
+.A .half.r .cell{background:linear-gradient(#c9b6ef,#a993df)}
+.A .burst{position:absolute;left:50%;top:38%;width:44%;aspect-ratio:1;transform:translate(-50%,-50%) scale(0);animation:burst 6s infinite}
+.A .strip{position:absolute;left:50%;top:7%;width:28%;transform:translateX(-50%);background:#fff;border-radius:3%;padding:3% 3% 0;box-shadow:0 12px 26px #c2185b33;opacity:0;animation:stripIn 6s infinite}
+.A .strip .c{aspect-ratio:4/3;border-radius:3%;overflow:hidden;margin-bottom:3%;background:linear-gradient(#c9b6ef,#a993df)}
+.A .strip .c:nth-child(2){background:linear-gradient(#ffc6da,#ff9dbf)}
+.A .strip .c:nth-child(3){background:linear-gradient(#bfe2ff,#9ccbff)}
+.A .strip .c:nth-child(4){background:linear-gradient(#ffe2b8,#ffc98a)}
+.A .strip .foot{font-family:var(--title);font-size:3cqw;text-align:center;padding:2% 0 4%;color:#2e2230}
+.A .strip .c{transform:scale(.6);opacity:0;animation:cellPop 6s infinite}
+.A .strip .c:nth-child(2){animation-delay:.09s}.A .strip .c:nth-child(3){animation-delay:.18s}.A .strip .c:nth-child(4){animation-delay:.27s}
+.A .title{position:absolute;left:0;right:0;bottom:15%;text-align:center;font-family:var(--title);font-size:9.6cqw;line-height:1.15;color:#2e2230}
+.A .title span{display:inline-block;opacity:0;transform:translateY(40%);animation:letter 6s infinite}
+.A .title em{font-style:normal;color:#e0458e}
+.A .cta{position:absolute;left:12%;right:12%;bottom:5%;height:7.5%;border-radius:99px;background:#ff7eb6;color:#fff;font-family:var(--title);font-size:5.4cqw;display:grid;place-items:center;box-shadow:0 6px 14px #ff7eb666;animation:ctaPulse 6s infinite}
+@keyframes chipL{0%,8%{opacity:0;transform:translateY(-30%)}14%,62%{opacity:1;transform:none}70%,100%{opacity:0}}
+@keyframes chipR{0%,10%{opacity:0;transform:translateY(-30%)}16%,62%{opacity:1;transform:none}70%,100%{opacity:0}}
+@keyframes halfL{0%{transform:translateX(-150%) rotate(-10deg);opacity:1}18%{transform:translateX(-150%) rotate(-10deg);opacity:1}34%{transform:translateX(36%) rotate(-3deg);opacity:1}40%{transform:translateX(31%) rotate(0);opacity:1}48%,100%{transform:translateX(31%) scale(.5);opacity:0}}
+@keyframes halfR{0%{transform:translateX(150%) rotate(10deg);opacity:1}20%{transform:translateX(150%) rotate(10deg);opacity:1}35%{transform:translateX(-36%) rotate(3deg);opacity:1}40%{transform:translateX(-31%) rotate(0);opacity:1}48%,100%{transform:translateX(-31%) scale(.5);opacity:0}}
+@keyframes burst{0%,38%{transform:translate(-50%,-50%) scale(0);opacity:1}46%{transform:translate(-50%,-50%) scale(1.1);opacity:1}56%,100%{transform:translate(-50%,-50%) scale(1.4);opacity:0}}
+@keyframes stripIn{0%,44%{opacity:0;transform:translateX(-50%) translateY(6%) scale(.9)}52%,92%{opacity:1;transform:translateX(-50%)}100%{opacity:0}}
+@keyframes cellPop{0%,47%{transform:scale(.6);opacity:0}54%,92%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes letter{0%,56%{opacity:0;transform:translateY(40%)}62%,94%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes ctaPulse{0%,64%{transform:scale(.9);opacity:0}70%{transform:scale(1.04);opacity:1}74%,94%{transform:none;opacity:1}100%{opacity:0}}
+
+/* ===== B. 인화 중 ===== */
+.B{background:#1b1520}
+.B .curtain{position:absolute;inset:0 0 auto;height:30%;background:repeating-linear-gradient(90deg,#7a1f45 0 7%,#9a2c59 7% 14%);box-shadow:0 10px 20px #0008;animation:curtain 7s infinite}
+.B .curtain::after{content:"";position:absolute;left:0;right:0;bottom:-6px;height:12px;background:radial-gradient(circle at 6px 0,#7a1f45 6px,transparent 6.5px) 0 0/12px 12px}
+.B .count{position:absolute;left:0;right:0;top:34%;text-align:center;font-family:var(--block);font-size:42cqw;line-height:1;color:#fff;opacity:0}
+.B .count.n3{animation:cnt 7s infinite}
+.B .count.n2{animation:cnt 7s infinite .6s}
+.B .count.n1{animation:cnt 7s infinite 1.2s}
+.B .flash{position:absolute;inset:0;background:#fff3f8;opacity:0;animation:flash 7s infinite}
+.B .slot{position:absolute;left:24%;right:24%;top:30%;height:1.6%;border-radius:99px;background:#000;box-shadow:inset 0 2px 4px #000,0 1px 0 #ffffff22;opacity:0;animation:slot 7s infinite}
+.B .print{position:absolute;left:28%;width:44%;top:31%;height:62%;overflow:hidden;opacity:0;animation:slotShow 7s infinite}
+.B .paper{position:absolute;left:0;right:0;top:0;background:#fffdfb;padding:4% 4% 0;transform:translateY(-102%);animation:printDown 7s infinite cubic-bezier(.3,.7,.3,1)}
+.B .paper .c{aspect-ratio:4/3;margin-bottom:4%;border-radius:2%;overflow:hidden;filter:grayscale(1) blur(3px) brightness(1.4);animation:develop 7s infinite}
+.B .paper .c:nth-child(1){background:linear-gradient(#ffd0e1,#ffadc9)}
+.B .paper .c:nth-child(2){background:linear-gradient(#e2d5ff,#c3afef);animation-delay:.12s}
+.B .paper .c:nth-child(3){background:linear-gradient(#ffd0e1,#ffadc9);animation-delay:.24s}
+.B .paper .c:nth-child(4){background:linear-gradient(#e2d5ff,#c3afef);animation-delay:.36s}
+.B .paper .foot{font-family:var(--title);font-size:4cqw;text-align:center;padding:3% 0 6%;color:#2e2230;line-height:1.2}
+.B .paper .foot small{display:block;font-family:var(--mono);font-size:2.6cqw;color:#8b7a87}
+.B .title{position:absolute;left:0;right:0;top:9%;text-align:center;font-family:var(--title);color:#fff;font-size:8.4cqw;line-height:1.2;opacity:0;animation:bTitle 7s infinite}
+.B .title em{font-style:normal;color:#ff9cc8}
+.B .stamp{position:absolute;right:9%;bottom:20%;width:24%;aspect-ratio:1;border-radius:50%;border:2px dashed #ff9cc8;color:#ff9cc8;display:grid;place-items:center;text-align:center;font-family:var(--title);font-size:3.6cqw;line-height:1.1;transform:rotate(-14deg) scale(0);animation:stamp 7s infinite}
+@keyframes curtain{0%,6%{height:100%}16%,100%{height:30%}}
+@keyframes cnt{0%,8%{opacity:0;transform:scale(1.5)}11%{opacity:1;transform:scale(.94)}14%{transform:none;opacity:1}18%,100%{opacity:0;transform:scale(.8)}}
+@keyframes flash{0%,27%{opacity:0}28%{opacity:1}33%,100%{opacity:0}}
+@keyframes slot{0%,30%{opacity:0}34%,95%{opacity:1}100%{opacity:0}}
+@keyframes slotShow{0%,31%{opacity:0}32%,95%{opacity:1}100%{opacity:0}}
+@keyframes printDown{0%,34%{transform:translateY(-102%)}62%,95%{transform:translateY(2%)}100%{transform:translateY(2%)}}
+@keyframes develop{0%,46%{filter:grayscale(1) blur(3px) brightness(1.5)}70%,100%{filter:none}}
+@keyframes bTitle{0%,64%{opacity:0;transform:translateY(-10%)}72%,95%{opacity:1;transform:none}100%{opacity:0}}
+@keyframes stamp{0%,74%{transform:rotate(-14deg) scale(0)}79%{transform:rotate(-14deg) scale(1.2)}82%,95%{transform:rotate(-14deg) scale(1)}100%{transform:rotate(-14deg) scale(1);opacity:0}}
+
+/* ===== C. 링크 한 통 ===== */
+.C{background:linear-gradient(160deg,#e7f1ff,#fde8f3 55%,#fff6d9)}
+.C .holo{position:absolute;inset:-20%;background:conic-gradient(from 0deg,#ffd1ec55,#c9e7ff55,#fff2b355,#ffd1ec55);filter:blur(30px);animation:spin 12s linear infinite}
+.C .bub{position:absolute;right:8%;top:12%;width:70%;background:#ffe94d;border-radius:18px 18px 4px 18px;padding:4% 5%;font-size:4.6cqw;color:#2e2230;box-shadow:0 6px 14px #0001;transform-origin:100% 100%;transform:scale(0);animation:bub 7s infinite}
+.C .card{position:absolute;right:8%;top:24%;width:70%;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 8px 20px #2e22301f;transform-origin:100% 0;transform:scale(0);animation:card 7s infinite}
+.C .card .og{height:36cqw;background:linear-gradient(#ffd6e6,#ffeef5);display:grid;place-items:center}
+.C .card .og .mini{width:30%;height:85%;background:#fff;border-radius:4px;padding:3%;display:flex;flex-direction:column;gap:4%;box-shadow:0 2px 6px #0001}
+.C .card .og .mini i{flex:1;border-radius:2px;background:linear-gradient(90deg,#c9b6ef 50%,#fff 50%);border:1px dashed #e0458e66}
+.C .card .t{padding:3% 5% 4%;font-size:3.8cqw;line-height:1.3;color:#2e2230}
+.C .card .t b{display:block;font-family:var(--title);font-weight:400;font-size:4.4cqw}
+.C .tap{position:absolute;left:58%;top:40%;width:13%;aspect-ratio:1;border-radius:50%;border:3px solid #e0458e;opacity:0;animation:tap 7s infinite}
+.C .vf{position:absolute;left:13%;right:13%;top:8%;aspect-ratio:3/4;border-radius:20px;background:#2e2230;overflow:hidden;transform:scale(.2) rotate(8deg);opacity:0;animation:vf 7s infinite}
+.C .vf .room{position:absolute;inset:0;background:linear-gradient(#f2d6c2 0 70%,#e2bfa6 70%)}
+.C .vf .spot{position:absolute;right:8%;bottom:6%;width:40%;height:62%;border:3px dashed #fff;border-radius:46% 46% 10px 10px}
+.C .vf .me{position:absolute;left:10%;bottom:0;width:44%}
+.C .vf .fr{position:absolute;right:10%;bottom:0;width:42%;transform:translateY(-140%) rotate(-12deg);animation:drop 7s infinite cubic-bezier(.34,1.56,.64,1)}
+.C .vf .rec{position:absolute;left:5%;top:5%;font-family:var(--mono);font-size:3cqw;color:#fff;background:#0007;border-radius:99px;padding:1% 3%}
+.C .sticker{position:absolute;font-family:var(--block);color:#fff;-webkit-text-stroke:2px #e0458e;paint-order:stroke;transform:scale(0) rotate(-12deg);animation:stick 7s infinite}
+.C .sticker.s1{left:8%;top:12%;font-size:11cqw}
+.C .title{position:absolute;left:0;right:0;bottom:12%;text-align:center;font-family:var(--title);font-size:8.6cqw;line-height:1.15;color:#2e2230;opacity:0;animation:cTitle 7s infinite}
+.C .title em{font-style:normal;color:#e0458e;background:linear-gradient(transparent 62%,#fff27a 62%)}
+.C .cta{position:absolute;left:14%;right:14%;bottom:4%;height:7%;border-radius:99px;background:#2e2230;color:#fff;font-family:var(--title);font-size:5cqw;display:grid;place-items:center;opacity:0;animation:cTitle 7s infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes bub{0%,4%{transform:scale(0)}10%{transform:scale(1.06)}13%,40%{transform:none;opacity:1}46%,100%{transform:scale(.9);opacity:0}}
+@keyframes card{0%,12%{transform:scale(0)}19%{transform:scale(1.04)}22%,40%{transform:none;opacity:1}46%,100%{transform:scale(.9);opacity:0}}
+@keyframes tap{0%,30%{opacity:0;transform:scale(.4)}33%{opacity:1;transform:scale(.8)}40%{opacity:0;transform:scale(1.8)}100%{opacity:0}}
+@keyframes vf{0%,42%{transform:scale(.2) rotate(8deg);opacity:0}50%{transform:scale(1.03) rotate(-1deg);opacity:1}54%,95%{transform:none;opacity:1}100%{opacity:0}}
+@keyframes drop{0%,56%{transform:translateY(-140%) rotate(-12deg)}66%,95%{transform:none}100%{transform:none}}
+@keyframes stick{0%,64%{transform:scale(0) rotate(-12deg)}69%{transform:scale(1.25) rotate(-8deg)}72%,95%{transform:scale(1) rotate(-10deg)}100%{transform:scale(1) rotate(-10deg);opacity:0}}
+@keyframes cTitle{0%,72%{opacity:0;transform:translateY(12%)}78%,95%{opacity:1;transform:none}100%{opacity:0}}
+
+/* reduced motion: show the final still (the cover frame) */
+@media (prefers-reduced-motion: reduce){
+  .stage *, .stage{animation:none!important}
+  .A .half,.A .burst,.A .chip{display:none}.A .strip,.A .strip .c,.A .title span,.A .cta{opacity:1;transform:none}.A .strip{transform:translateX(-50%)}
+  .B .count,.B .flash{display:none}.B .curtain{height:30%}.B .print,.B .slot,.B .title{opacity:1}.B .paper{transform:translateY(2%)}.B .paper .c{filter:none}.B .stamp{transform:rotate(-14deg)}
+  .C .bub,.C .card,.C .tap{display:none}.C .vf,.C .title,.C .cta{opacity:1;transform:none}.C .vf .fr{transform:none}.C .sticker{transform:rotate(-10deg)}
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">D:OT LAB · 그냥 시켜봄 #003 · 표지 시안</div>
+    <h1>표지 모션<br><em>세 가지 컨셉</em></h1>
+    <p>앱 첫 화면이자 릴스·블로그 표지로 쓸 9:16 화면입니다. 각각 6~7초마다 반복돼요. 고른 컨셉의 마지막 장면을 정지 썸네일로 씁니다.</p>
+  </header>
+
+  <div class="grid" id="grid">
+    <article class="concept" id="cA">
+      <h2><i>A</i>착! 합체</h2>
+      <div class="stage A" role="img" aria-label="서울과 부산의 반쪽 사진이 양쪽에서 날아와 가운데서 부딪히고, 한 장의 네컷이 되는 모션">
+        <div class="dots"></div>
+        <div class="chip l">📍 서울</div><div class="chip r">부산 📍</div>
+        <div class="half l"><div class="cell" data-p="me"></div></div>
+        <div class="half r"><div class="cell" data-p="fr"></div></div>
+        <svg class="burst" viewBox="-50 -50 100 100" aria-hidden="true"></svg>
+        <div class="strip"><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="foot">따로 같이 네컷</div></div>
+        <div class="title" data-split="멀리 있어도|*한 칸에♥"></div>
+        <div class="cta">먼저 찍기</div>
+      </div>
+      <p>두 사람의 반쪽이 각자 도시에서 날아와 가운데서 "착" 붙고, 그대로 네컷이 됩니다. "따로 → 같이"를 한 동작으로 보여 줘요.</p>
+      <ul><li>장점: 3초 안에 개념이 이해됨, 릴스 첫 장면으로 강함</li><li>톤: 지금 앱(크림+핑크)과 그대로 이어짐</li></ul>
+    </article>
+
+    <article class="concept" id="cB">
+      <h2><i>B</i>인화 중…</h2>
+      <div class="stage B" role="img" aria-label="부스 커튼이 걷히고 3, 2, 1 카운트다운과 플래시 뒤 슬롯에서 네컷이 인화되어 내려오는 모션">
+        <div class="curtain"></div>
+        <div class="count n3">3</div><div class="count n2">2</div><div class="count n1">1</div>
+        <div class="slot"></div>
+        <div class="print"><div class="paper"><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="c" data-p="both"></div><div class="foot">따로 같이 네컷<small>SEOUL ↔ BUSAN</small></div></div></div>
+        <div class="flash"></div>
+        <div class="title">멀리 있어도<br><em>한 칸에 인화</em></div>
+        <div class="stamp">7일<br>한정</div>
+      </div>
+      <p>진짜 부스처럼 커튼, 3·2·1, 플래시, 그리고 슬롯에서 사진이 흑백에서 컬러로 현상되며 내려옵니다. 인생네컷을 아는 사람에게 바로 꽂히는 향수 버전.</p>
+      <ul><li>장점: 부스 경험을 그대로 옮겨 "그거구나"가 빠름</li><li>톤: 어두운 부스 + 핑크 커튼, 다른 두 안보다 무드 있음</li></ul>
+    </article>
+
+    <article class="concept" id="cC">
+      <h2><i>C</i>링크 한 통</h2>
+      <div class="stage C" role="img" aria-label="채팅에 링크가 도착하고 누르면 카메라가 열리며, 비어 있던 친구 자리에 친구가 툭 떨어져 들어오는 모션">
+        <div class="holo"></div>
+        <div class="bub">내 옆자리 비워 뒀어 ♥</div>
+        <div class="card"><div class="og"><div class="mini"><i></i><i></i><i></i><i></i></div></div><div class="t"><b>따로 같이 네컷</b>열면 바로 내 옆에 서서 찍어</div></div>
+        <div class="tap"></div>
+        <div class="vf"><div class="room"></div><div class="me" data-p="me-full"></div><div class="spot"></div><div class="fr" data-p="fr-full"></div><div class="rec">● 2초 녹화</div></div>
+        <div class="sticker s1">착!</div>
+        <div class="title">링크 하나면<br><em>둘이 한 칸</em></div>
+        <div class="cta">링크 만들기</div>
+      </div>
+      <p>카톡 같은 채팅에 링크가 도착하고, 누르면 카메라가 열리며 비어 있던 자리에 친구가 툭 떨어집니다. 친구한테 "보내는" 놀이라는 걸 강조해요.</p>
+      <ul><li>장점: 공유 고리(보내기 → 열기)가 주인공, 바이럴용</li><li>톤: 홀로그램 파스텔 + Y2K 스티커, 10대 취향</li></ul>
+    </article>
+  </div>
+  <div class="controls"><button type="button" id="pause">일시정지</button><button type="button" id="restart">처음부터</button></div>
+</div>
+
+<script>
+const INK="#2e2230", SKIN="#f6d7c3";
+function face(long, hair, tilt, laugh){
+  const back = long ? `<path d="M-24 -6 C-28 -34 28 -34 24 -6 L25 28 L13 28 L13 4 L-13 4 L-13 28 L-25 28Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>` : "";
+  const bang = long ? `<path d="M-20 -4 C-22 -30 22 -30 20 -4 C12 -15 -2 -17 -20 -4Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>`
+                    : `<path d="M-21 2 C-25 -30 25 -30 21 2 C17 -9 8 -14 -4 -12 C-12 -12 -18 -6 -21 2Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>`;
+  const eyes = laugh ? `<path d="M-10 2 Q-7 -1 -4 2 M4 2 Q7 -1 10 2" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+                     : `<ellipse cx="-7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/><ellipse cx="7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/>`;
+  const mouth = laugh ? `<path d="M-6 10 Q0 19 6 10Z" fill="#b8434b" stroke="${INK}" stroke-width="1.4"/>` : `<path d="M-5 11 Q0 15.5 5 11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+  return `<g transform="translate(0 -60) rotate(${tilt})">${back}<ellipse rx="18" ry="21" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>${bang}${eyes}<ellipse cx="-11" cy="8" rx="4" ry="2.4" fill="#f19a9a" opacity=".7"/><ellipse cx="11" cy="8" rx="4" ry="2.4" fill="#f19a9a" opacity=".7"/>${mouth}</g>`;
+}
+function person(x, who, tilt, laugh){
+  const me = who === "me";
+  return `<g transform="translate(${x} 122)"><path d="M-30 0 C-30 -24 -18 -34 0 -34 C18 -34 30 -24 30 0Z" fill="${me ? "#ff8a65" : "#64a8ff"}" stroke="${INK}" stroke-width="1.6"/><rect x="-6" y="-42" width="12" height="10" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>${face(me, me ? "#2b2028" : "#8a5a3b", tilt, laugh)}</g>`;
+}
+const poses = [[-8,8,false],[10,-10,false],[-14,14,false],[0,0,true]];
+let k = 0;
+document.querySelectorAll("[data-p]").forEach(el => {
+  const t = el.dataset.p, [a, b, l] = poses[k++ % 4];
+  let body = "", vb = "0 0 160 120";
+  if (t === "both") body = person(58, "me", a, l) + person(104, "fr", b, l);
+  if (t === "me") { vb = "20 0 90 120"; body = person(62, "me", -6, false); }
+  if (t === "fr") { vb = "52 0 90 120"; body = person(96, "fr", 6, false); }
+  if (t === "me-full") { vb = "-40 0 80 124"; body = person(0, "me", -6, false); }
+  if (t === "fr-full") { vb = "-40 0 80 124"; body = person(0, "fr", 6, true); }
+  el.innerHTML = `<svg class="p" viewBox="${vb}" preserveAspectRatio="xMidYMax meet">${body}</svg>`;
+});
+// burst rays for concept A
+const burst = document.querySelector(".A .burst");
+burst.innerHTML = Array.from({length: 12}, (_, i) => {
+  const r = i * 30, c = i % 2 ? "#ffd84d" : "#ff7eb6";
+  return `<rect x="-2" y="-46" width="4" height="${i % 2 ? 14 : 20}" rx="2" fill="${c}" transform="rotate(${r})"/>`;
+}).join("") + `<path d="M0 -14 L4 -4 14 0 4 4 0 14 -4 4 -14 0 -4 -4Z" fill="#ffd84d"/>`;
+// split title letters for concept A
+document.querySelectorAll("[data-split]").forEach(el => {
+  let d = 0;
+  el.innerHTML = el.dataset.split.split("|").map(line => {
+    const em = line.startsWith("*"), txt = em ? line.slice(1) : line;
+    const spans = [...txt].map(ch => `<span style="animation-delay:${(d++ * 0.04).toFixed(2)}s">${ch === " " ? "&nbsp;" : ch}</span>`).join("");
+    return em ? `<em>${spans}</em>` : spans;
+  }).join("<br>");
+});
+const grid = document.getElementById("grid"), pauseBtn = document.getElementById("pause");
+pauseBtn.onclick = () => { const p = grid.classList.toggle("paused"); pauseBtn.textContent = p ? "다시 재생" : "일시정지"; };
+document.getElementById("restart").onclick = () => {
+  document.querySelectorAll(".stage").forEach(s => { const c = s.cloneNode(true); s.replaceWith(c); });
+  grid.classList.remove("paused"); pauseBtn.textContent = "일시정지";
+};
+</script>
