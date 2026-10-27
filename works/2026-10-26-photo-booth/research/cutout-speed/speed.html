@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>cutout speed bench</title>
+<style>body{margin:0;background:#f3f1ee;font:12px system-ui}pre{white-space:pre-wrap}canvas{max-width:100%;display:block}</style></head>
+<body><pre id="log"></pre><div id="out"></div>
+<script type="module">
+// ?model=model.onnx&sizes=672x512,512x384&half=0&warm=none|tiny|real&reps=3&cfg={json}&sheet=1&tag=x&prefetch=1
+const Q = new URLSearchParams(location.search), T0 = performance.now();
+const sizes = (Q.get("sizes") || "672x512").split(",").map(s => s.split("x").map(Number));
+const reps = +(Q.get("reps") || 3), warm = Q.get("warm") || "none", half = Q.get("half") === "1";
+const cfg = JSON.parse(Q.get("cfg") || "{}");
+const url = Q.get("url") || ("models/" + (Q.get("model") || "model.onnx"));
+const W = 960, H = 720;
+const IMGS = [
+  { n: "person-a", src: "media/person-a-2s.jpg", c: [0, 0, 640, 480], hair: [270, 260, 107, 80] },
+  { n: "person-b", src: "media/person-b-2s.jpg", c: [0, 0, 640, 480], hair: [215, 420, 107, 80] },
+  { n: "hair1", src: "media/hair1.jpg", c: [0, 60, 1280, 960], hair: [520, 20, 107, 80] },
+  { n: "hair2", src: "media/hair2.jpg", c: [0, 100, 1280, 960], hair: [300, 60, 107, 80] },
+];
+const mk = (w, h) => Object.assign(document.createElement("canvas"), { width: w, height: h });
+const stills = [];
+for (const im of IMGS) { const i = new Image(); i.src = im.src; await i.decode(); const c = mk(W, H); c.getContext("2d").drawImage(i, ...im.c, 0, 0, W, H); stills.push({ ...im, canvas: c }); }
+
+// main-thread freeze monitor: longest gap between 8 ms timer ticks and rAF frames inside a phase
+let last = performance.now(), maxGap = 0, lastR = performance.now(), maxR = 0;
+setInterval(() => { const n = performance.now(); maxGap = Math.max(maxGap, n - last); last = n; }, 8);
+(function raf() { requestAnimationFrame(t => { const n = performance.now(); maxR = Math.max(maxR, n - lastR); lastR = n; raf(); }); })();
+const phase = async (f) => { maxGap = 0; maxR = 0; last = lastR = performance.now(); const t = performance.now(); const r = await f(); return { r, ms: Math.round(performance.now() - t), gap: Math.round(maxGap), rafGap: Math.round(maxR) }; };
+
+const w = new Worker("speed-worker.js", { type: "module" }); let wid = 0; const cb = new Map();
+w.onmessage = ({ data }) => { cb.get(data.id)?.(data); cb.delete(data.id); };
+w.onerror = e => console.log("worker err " + e.message);
+const call = (m, tr = []) => new Promise((res, rej) => { const id = ++wid; cb.set(id, d => d.error ? rej(new Error(d.error)) : res(d)); w.postMessage({ ...m, id }, tr); });
+const out = window.out = { url, cfg, sizes: Q.get("sizes"), half, warm, files: {}, runs: {} };
+try {
+  let bytes;
+  if (Q.get("prefetch") === "1") { const t = performance.now(); bytes = new Uint8Array(await (await fetch(url)).arrayBuffer()); out.prefetchMs = Math.round(performance.now() - t); }
+  const L = await phase(() => call({ load: { url, bytes, ...cfg } }));
+  out.load = L.r; out.createPhase = { ms: L.ms, gap: L.gap, rafGap: L.rafGap };
+  const run = async (c, [sw, sh]) => { const b = await createImageBitmap(c); return call({ img: b, w: sw, h: sh, half }, [b]); };
+  if (warm === "tiny") { const p = await phase(() => run(mk(96, 72), [128, 96])); out.warmTiny = { ms: p.ms, gap: p.gap, rafGap: p.rafGap }; }
+  if (warm === "real") { const p = await phase(() => run(mk(96, 72), sizes[0])); out.warmReal = { ms: p.ms, gap: p.gap, rafGap: p.rafGap }; }
+  out.readyAt = Math.round(performance.now() - T0);
+  const sheetRows = stills.map(() => []);
+  let first = true;
+  for (const sz of sizes) {
+    const key = sz.join("x"); out.runs[key] = {};
+    for (const [i, st] of stills.entries()) {
+      const times = [], det = []; let m;
+      for (let r = 0; r < reps; r++) {
+        const p = await phase(() => run(st.canvas, sz)); m = p.r; times.push(p.ms);
+        if (first) { out.firstRun = { ms: p.ms, gap: p.gap, rafGap: p.rafGap, detail: `prep ${m.prep} run ${m.runMs} read ${m.readMs}` }; out.firstAt = Math.round(performance.now() - T0); first = false; }
+        det.push(`${m.prep}/${m.runMs}/${m.readMs}`);
+      }
+      out.runs[key][st.n] = { ms: times, det };
+      if (Q.get("sheet") === "1") {
+        const a = mk(m.width, m.height), ax = a.getContext("2d"), id = ax.createImageData(m.width, m.height);
+        for (let k = 0; k < m.data.length; k++) { id.data[k * 4] = id.data[k * 4 + 1] = id.data[k * 4 + 2] = 255; id.data[k * 4 + 3] = m.data[k]; }
+        ax.putImageData(id, 0, 0);
+        const o = mk(W, H), x = o.getContext("2d"); x.drawImage(st.canvas, 0, 0); x.globalCompositeOperation = "destination-in"; x.imageSmoothingQuality = "high"; x.drawImage(a, 0, 0, W, H);
+        sheetRows[i].push({ label: `${Q.get("tag") || ""} ${key}${half ? " fp16" : ""}\n${times.at(-1)} ms`, cut: o, alpha: m });
+      }
+    }
+  }
+  if (Q.get("sheet") === "1") {
+    const TW = 320, TH = 240, LBL = 150;
+    for (const [i, st] of stills.entries()) {
+      const rows = sheetRows[i], s = mk(LBL + 3 * TW, rows.length * TH), x = s.getContext("2d");
+      x.fillStyle = "#fff"; x.fillRect(0, 0, s.width, s.height);
+      rows.forEach((r, k) => {
+        const y = k * TH; x.fillStyle = "#111"; x.font = "15px sans-serif"; r.label.split("\n").forEach((l, j) => x.fillText(l, 6, y + 22 + j * 18));
+        const t = mk(W, H), tx = t.getContext("2d"); tx.fillStyle = "#2a1640"; tx.fillRect(0, 0, W, H); tx.drawImage(r.cut, 0, 0);
+        x.drawImage(t, LBL, y, TW, TH);
+        const [hx, hy, hw, hh] = st.hair; x.imageSmoothingEnabled = false; x.drawImage(t, hx, hy, hw, hh, LBL + TW, y, TW, TH);
+        // alpha-only hair crop (grey) to see matte softness
+        const al = mk(W, H), alx = al.getContext("2d"); alx.fillStyle = "#000"; alx.fillRect(0, 0, W, H);
+        const g = mk(r.alpha.width, r.alpha.height), gx = g.getContext("2d"), gi = gx.createImageData(g.width, g.height);
+        for (let k = 0; k < r.alpha.data.length; k++) { const v = r.alpha.data[k]; gi.data[k * 4] = gi.data[k * 4 + 1] = gi.data[k * 4 + 2] = v; gi.data[k * 4 + 3] = 255; }
+        gx.putImageData(gi, 0, 0); alx.imageSmoothingQuality = "high"; alx.drawImage(g, 0, 0, W, H);
+        x.drawImage(al, hx, hy, hw, hh, LBL + 2 * TW, y, TW, TH); x.imageSmoothingEnabled = true;
+        x.strokeStyle = "#999"; x.strokeRect(LBL, y, 3 * TW, TH);
+      });
+      out.files[`${Q.get("tag") || "sheet"}-${st.n}.png`] = s.toDataURL("image/png").split(",")[1];
+    }
+  }
+} catch (e) { out.error = String(e?.message || e); }
+document.getElementById("log").textContent = JSON.stringify({ ...out, files: Object.keys(out.files) }, null, 1);
+window.done = true;
+</script></body></html>
