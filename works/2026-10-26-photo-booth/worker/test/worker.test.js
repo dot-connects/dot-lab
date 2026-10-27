@@ -133,3 +133,23 @@ test("delete now: only A's or the finished B's token wipes every file and the li
   const ok = await call(e, "OPTIONS", "/s", { origin: PAGES });
   assert.match(ok.headers.get("Access-Control-Allow-Methods"), /DELETE/);
 });
+
+test("A's option travels with the link; B may add a small optional layout.json", async () => {
+  const e = env();
+  const r = await call(e, "POST", "/s", { body: JSON.stringify({ token: tok("a"), opts: { movable: true, junk: "x" } }), type: "application/json" });
+  const { id } = await r.json();
+  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: true });
+  await upAll(e, id, "a", tok("a"));
+  await done(e, id, "a", tok("a"));
+  const lay = JSON.stringify({ a: { x: 0.1, y: -0.05, scale: 1.2 } });
+  const put = (name, body, type) => call(e, "PUT", `/s/${id}/b/${name}`, { token: tok("b"), body, type });
+  assert.equal((await put("layout.json", lay, "text/plain")).status, 415);
+  assert.equal((await put("layout.json", "x".repeat(4097), "application/json")).status, 413);
+  assert.equal((await put("layout.json", lay, "application/json")).status, 204);
+  assert.equal((await call(e, "PUT", `/s/${id}/a/layout.json`, { token: tok("a"), body: lay, type: "application/json" })).status, 409);  // A is done
+  await upAll(e, id, "b", tok("b"));
+  assert.equal((await done(e, id, "b", tok("b"))).status, 204);                     // layout is optional for done
+  assert.equal(await (await call(e, "GET", `/s/${id}/b/layout.json`)).text(), lay);
+  const id2 = await newLink(e);
+  assert.deepEqual((await (await call(e, "GET", `/s/${id2}`)).json()).opts, { movable: false });  // default: fixed like a booth
+});

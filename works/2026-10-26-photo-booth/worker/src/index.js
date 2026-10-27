@@ -1,6 +1,8 @@
 const LIFE = 7 * 864e5, MAX_FILE = 3 * 1024 * 1024;
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
-const typeOk = (name, t) => name.endsWith(".jpg") ? t === "image/jpeg" : name.endsWith(".png") ? t === "image/png"
+// optional per-side files: B's placement of A when A allowed moving (not required for `done`)
+const OPTIONAL = ["layout.json"], MAX_JSON = 4096;
+const typeOk = (name, t) => name.endsWith(".json") ? t === "application/json" : name.endsWith(".jpg") ? t === "image/jpeg" : name.endsWith(".png") ? t === "image/png"
   : t === "video/mp4" || t === "video/webm";
 const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const sha = async s => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
@@ -23,12 +25,12 @@ export default {
     if (p[0] !== "s") return json(404, { error: "not-found" });
 
     if (req.method === "POST" && p.length === 1) {
-      let token = null;
-      try { token = (await req.json()).token; } catch {}
+      let token = null, opts = {};
+      try { const b = await req.json(); token = b.token; opts = b.opts || {}; } catch {}
       if (!TOKEN.test(token || "")) return json(400, { error: "token" });
       const id = b64u(crypto.getRandomValues(new Uint8Array(16)));
       await env.BUCKET.put(`s/${id}/meta.json`, JSON.stringify({ created: now,
-        a: { tokenHash: await sha(token), done: false }, b: { tokenHash: null, done: false } }));
+        a: { tokenHash: await sha(token), done: false }, b: { tokenHash: null, done: false }, opts: { movable: opts.movable === true } }));
       return json(201, { id, expires: now + LIFE });
     }
 
@@ -43,7 +45,7 @@ export default {
     const meta = cur.meta;
 
     if (req.method === "GET" && p.length === 2)
-      return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE });
+      return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE, opts: meta.opts || { movable: false } });
 
     // "지금 삭제": A, or the friend whose shots are in the strip, wipes the whole link (staging folders included)
     if (req.method === "DELETE" && p.length === 2) {
@@ -66,7 +68,7 @@ export default {
     if ((side !== "a" && side !== "b") || p.length !== 4) return json(404, { error: "not-found" });
 
     if (req.method === "GET") {
-      if (!NAMES.includes(p[3])) return json(400, { error: "name" });
+      if (!NAMES.includes(p[3]) && !OPTIONAL.includes(p[3])) return json(400, { error: "name" });
       if (side === "b" && !meta.b.done) return json(404, { error: "not-found" });
       const dir = side === "a" ? `s/${id}/a` : bDir(id, meta.b.tokenHash);
       const o = await env.BUCKET.get(`${dir}/${p[3]}`);
@@ -104,13 +106,13 @@ export default {
     }
 
     if (req.method === "PUT") {
-      if (!NAMES.includes(p[3])) return json(400, { error: "name" });
+      if (!NAMES.includes(p[3]) && !(side === "b" && OPTIONAL.includes(p[3]))) return json(400, { error: "name" });
       const type = (req.headers.get("Content-Type") || "").split(";")[0].trim();
       if (!typeOk(p[3], type)) return json(415, { error: "type" });
       if (+(req.headers.get("Content-Length") || 0) > MAX_FILE) return json(413, { error: "file-too-big" });
       const body = new Uint8Array(await req.arrayBuffer());
       if (body.byteLength === 0) return json(400, { error: "empty" });
-      if (body.byteLength > MAX_FILE) return json(413, { error: "file-too-big" });
+      if (body.byteLength > (p[3].endsWith(".json") ? MAX_JSON : MAX_FILE)) return json(413, { error: "file-too-big" });
       await env.BUCKET.put(`${dir}/${p[3]}`, body, { httpMetadata: { contentType: type } });
       return json(204);
     }

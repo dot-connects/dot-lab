@@ -106,3 +106,20 @@ Screens: landing (A / B variants), shoot, upload, share, waiting, done, expired,
   `matchLuma(aCut, bCut)` optional helper used inside compose to even out the two people's brightness.
 - api.js: `deleteLink(id, token)` -> DELETE /s/:id (A's token, or the finished B's) -> { ok } | { error }.
 - Worker: DELETE /s/:id live (6 tests).
+
+## Round 3 (2026-10-27, operator after the walkthrough)
+Operator: no left/right split. A shoots the full frame freely (only a soft hint "친구 자리를 생각해서 한쪽으로 비켜서
+찍어 줘", no dashed spot). B's camera is the full frame and A floats over it like a Photoism celeb frame. A is ALWAYS in
+front of B. A's position is fixed by default; before sharing, A can switch on "친구가 나를 옮기고 크기 바꿀 수 있게".
+Sticker outline around both cut-outs: colour chips, styles solid | dotted | glitter, width thin | normal | thick.
+Cut-out: stills (the 4 shutter photos) get a heavy high-quality model; live preview + clips keep the light path.
+
+- Worker (live, 7 tests): `POST /s {token, opts:{movable}}`; `GET /s/:id` -> `{..., opts:{movable}}` (default false).
+  Optional side-b file `layout.json` (application/json, <= 4 KB, not needed for done): `{ a: { x, y, scale } }` =
+  B's placement of A, x/y = offset as a fraction of the frame width/height, scale = factor (1 = as shot).
+- api.js: `create(token, opts)`, `status()` returns `opts`, `put(..., "layout.json", blob, "application/json")`.
+- compose.js: `drawStrip/recordMovingStrip({ ..., layout, outline })`; `layout` as above (null = as shot);
+  `outline` = null | { color: "#ffffff"…, style: "solid"|"dotted"|"glitter", width: "thin"|"normal"|"thick" }
+  applied to both cut-outs (in bg "a"/"b" the raw person also gets its cut drawn on top so it can carry the outline).
+  Draw order everywhere: background -> B -> A (A in front).
+- capture.js: `Cut.cut` comes from the HQ still model when ready (fallback: live matte), same names.
