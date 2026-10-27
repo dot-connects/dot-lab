@@ -1,0 +1,70 @@
+<!doctype html><meta charset="utf-8"><title>matte bench</title><script type="module">
+// Cut every test case with one still pipeline of the real site code and score it against the ground truth.
+//   ?p=live  : the fast path (selfie_segmenter 256 + joint bilateral, segment.js drawCutout) + keepLargest
+//   ?p=hq    : segment.js cutStill (MODNet ...) + keepLargest  == capture.js hqCut without the PNG step
+//   &tag=xx  : name for the output files (default = p); &only=a,b ; any other site query (?still=0 ...) passes through
+// out.rows[i] = { n, iou, fp, fn, far, edge, ms }  and  files cut/<tag>-<case>.png (RGBA cut-out)
+//   iou  : IoU at alpha 0.5
+//   fp   : background kept, sum(a * (1 - gt)) / sum(gt)          ("background left around the person")
+//   far  : the part of fp more than 16 px from any GT pixel        (separate background blobs, a passer-by)
+//   fn   : person lost, sum((1 - a) * gt) / sum(gt), excluding a 3 px band at the GT edge ("arms/hands cut off")
+//   edge : mean |a - gt| in the band where GT is soft or within 8 px of the GT edge   ("rough hair / edges")
+import { CASES, W, H, mk, loadCase } from "./cases.js";
+const Q = new URLSearchParams(location.search), P = Q.get("p") || "hq", TAG = Q.get("tag") || P;
+const out = window.out = { p: P, tag: TAG, rows: [], files: {} };
+
+// min/max filter of a binary mask (square, separable)
+function morph(b, r, max) {
+  const t = new Uint8Array(b.length), o = new Uint8Array(b.length);
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let v = max ? 0 : 1; for (let k = Math.max(0, x - r); k <= Math.min(W - 1, x + r); k++) v = max ? v | b[y * W + k] : v & b[y * W + k]; t[y * W + x] = v; }
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    let v = max ? 0 : 1; for (let k = Math.max(0, y - r); k <= Math.min(H - 1, y + r); k++) v = max ? v | t[k * W + x] : v & t[k * W + x]; o[y * W + x] = v; }
+  return o;
+}
+export function score(a, gt) {
+  const n = W * H, bin = new Uint8Array(n);
+  let gs = 0, inter = 0, uni = 0, fp = 0, far = 0, fn = 0, es = 0, en = 0;
+  for (let k = 0; k < n; k++) bin[k] = gt[k] >= 0.5 ? 1 : 0;
+  const near = morph(bin, 16, true), d8 = morph(bin, 8, true), e8 = morph(bin, 8, false), d3 = morph(bin, 3, true), e3 = morph(bin, 3, false);
+  for (let k = 0; k < n; k++) {
+    const g = gt[k], v = a[k];
+    gs += g;
+    const A = v >= 0.5, G = g >= 0.5; if (A && G) inter++; if (A || G) uni++;
+    fp += v * (1 - g); if (!near[k]) far += v;
+    if (e3[k] || !d3[k]) fn += (1 - v) * g;
+    if ((d8[k] && !e8[k]) || (g > 0.02 && g < 0.98)) { es += Math.abs(v - g); en++; }
+  }
+  const pc = x => +(100 * x / gs).toFixed(2);
+  return { iou: +(inter / uni).toFixed(4), fp: pc(fp), far: pc(far), fn: pc(fn), edge: +(es / en).toFixed(4) };
+}
+const alphaOf = c => { const p = c.getContext("2d", { willReadFrequently: true }).getImageData(0, 0, W, H).data, a = new Float32Array(W * H);
+  for (let k = 0; k < a.length; k++) a[k] = p[k * 4 + 3] / 255; return a; };
+
+try {
+  const S = await import("../../site/js/segment.js");
+  let cut;
+  if (P === "live") {
+    await S.loadSegmenter();
+    cut = async frame => {
+      const v = Object.assign(frame, { videoWidth: W, videoHeight: H, currentTime: 0 });
+      for (let i = 0; i < 6; i++) { v.currentTime = Math.random(); S.segmentFrame(v); }   // EMA settles on the still scene
+      const o = mk(); S.drawCutout(o.getContext("2d"), v, W, H, false); return S.keepLargest(o);
+    };
+  } else {
+    for (const k of ["slo", "shi"]) if (Q.has(k)) S.TUNE[k] = +Q.get(k);
+    out.warm = await S.warmStill(); out.still0 = JSON.parse(JSON.stringify(S.stats.still));
+    cut = async frame => S.keepLargest(await S.cutStill(frame));
+  }
+  const only = Q.get("only")?.split(",");
+  for (const c of CASES) {
+    if (only && !only.includes(c.n)) continue;
+    const { frame, gt } = await loadCase(c), t0 = performance.now();
+    const o = await cut(frame), ms = Math.round(performance.now() - t0);
+    out.rows.push({ n: c.n, ...score(alphaOf(o), gt), ms });
+    out.files[`cut/${TAG}-${c.n}.png`] = o.toDataURL("image/png").split(",")[1];
+  }
+  out.still = JSON.parse(JSON.stringify(S.stats.still));
+} catch (e) { out.error = String(e?.stack || e); }
+window.done = true;
+</script>

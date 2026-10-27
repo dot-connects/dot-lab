@@ -1,0 +1,63 @@
+<!doctype html><meta charset="utf-8"><title>GT</title><body style="margin:0;background:#888">
+<script type="module">
+// Pseudo ground truth: BiRefNet-lite 1024 (MIT, research/pet-matting/models) on every real frame and layer source -> gt/<key>.png
+// (written by drive.mjs from window.out.files). ?sheet=1 instead draws frame | gt-over-checker for every case to check by eye.
+import { CASES, GT_KEYS, W, H, mk, loadCase } from "./cases.js";
+import { resample, morph } from "../pet-matting/stills.js";
+const Q = new URLSearchParams(location.search), out = window.out = { files: {}, rows: [] };
+try {
+  if (Q.get("sheet")) {
+    const s = 320, sh = 240, c = mk(3 * s, CASES.length * sh), x = c.getContext("2d");
+    for (const [i, cs] of CASES.entries()) {
+      const { frame, gt } = await loadCase(cs);
+      x.drawImage(frame, 0, i * sh, s, sh);
+      const g = mk(), gx = g.getContext("2d"), d = gx.createImageData(W, H);
+      for (let k = 0; k < gt.length; k++) { const v = gt[k] * 255; d.data.set([v, v, v, 255], k * 4); }
+      gx.putImageData(d, 0, 0); x.drawImage(g, s, i * sh, s, sh);
+      const o = mk(), ox = o.getContext("2d"); ox.fillStyle = "#e33"; ox.fillRect(0, 0, W, H); ox.globalAlpha = 1;
+      ox.drawImage(frame, 0, 0);   // person over red: GT alpha cut
+      const id = ox.getImageData(0, 0, W, H);
+      for (let k = 0; k < gt.length; k++) { const a = gt[k]; for (let j = 0; j < 3; j++) id.data[k * 4 + j] = id.data[k * 4 + j] * a + [230, 50, 50][j] * (1 - a); }
+      ox.putImageData(id, 0, 0); x.drawImage(o, 2 * s, i * sh, s, sh);
+    }
+    out.files["gt-sheet.png"] = c.toDataURL("image/png").split(",")[1];
+  } else {
+    // IS-Net general-use 1024 (Apache-2.0) U MODNet 512 (each catches what the other drops) -> binary -> trimap (eroded fg /
+    // dilated unknown band) -> ViTMatte-S (Apache-2.0): the pet study's fur recipe, used here offline only for ground truth.
+    // (BiRefNet-lite fp16 returns near-zero masks on ORT WebGPU, also in the pet study: not used.)
+    const worker = () => { const w = new Worker("../pet-matting/pm-worker.js", { type: "module" }), cb = new Map(); let id = 0;
+      w.onmessage = ({ data }) => { cb.get(data.id)(data); cb.delete(data.id); };
+      return (m, tr = []) => new Promise((res, rej) => { const i = ++id; cb.set(i, d => d.error ? rej(new Error(d.error)) : res(d)); w.postMessage({ ...m, id: i }, tr); }); };
+    const abs = u => new URL(u, location.href).href;
+    const isn = worker(), mod = worker(), vit = worker(), SH = +(Q.get("short") || 512), rE = Math.round(SH / 64), rD = Math.round(SH / 40);
+    out.load = [await isn({ load: { url: abs("models/isnet-general-use-floor.onnx"), size: { w: 1024, h: 1024 }, mean: [.5, .5, .5], std: [1, 1, 1], out: "minmax" }, eps: ["webgpu"] }),
+      await mod({ load: { url: abs("../../site/models/modnet.onnx"), size: { short: 512, div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha" }, eps: ["webgpu"] }),
+      await vit({ load: { url: abs("models/vitmatte-s-d646.onnx"), size: { short: SH, div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha" }, eps: ["webgpu"] })];
+    const bir = async b => { const [x, y] = [await isn({ img: b }), await mod({ img: await createImageBitmap(b) })], r = resample(y, x.width, x.height);
+      return { data: x.data.map((v, j) => Math.max(v, r.data[j])), width: x.width, height: x.height }; };
+    for (const key of Q.get("only")?.split(",") || GT_KEYS) {
+      const cs = CASES.find(c => c.n === key), im = new Image(); im.src = "media/" + (cs ? cs.src : key); await im.decode();
+      const src = cs ? mk() : mk(im.naturalWidth, im.naturalHeight);
+      cs ? src.getContext("2d").drawImage(im, ...cs.crop, 0, 0, W, H) : src.getContext("2d").drawImage(im, 0, 0);
+      const m0 = await bir(await createImageBitmap(src));
+      const k = SH / Math.min(src.width, src.height), r = v => Math.max(32, Math.round(v * k / 32) * 32), iw = r(src.width), ih = r(src.height);
+      const bm = resample(m0, iw, ih), bin = bm.data.map(v => v >= 128 ? 255 : 0);
+      const fg = morph(bin, iw, ih, rE, false), dl = morph(bin, iw, ih, rD, true), tri = new Uint8Array(iw * ih);
+      for (let j = 0; j < tri.length; j++) tri[j] = fg[j] ? 255 : dl[j] ? 128 : 0;
+      const t0 = performance.now(), m = await vit({ img: await createImageBitmap(src), trimap: tri });
+      const a = mk(m.width, m.height), ax = a.getContext("2d"), d = ax.createImageData(m.width, m.height);
+      for (let j = 0; j < m.data.length; j++) { const v = m.data[j]; d.data.set([v, v, v, 255], j * 4); }
+      ax.putImageData(d, 0, 0);
+      const o = mk(src.width, src.height), ox = o.getContext("2d"); ox.imageSmoothingQuality = "high"; ox.drawImage(a, 0, 0, o.width, o.height);
+      out.files[`gt/${key}.png`] = o.toDataURL("image/png").split(",")[1];
+      const tc = mk(iw, ih), tx = tc.getContext("2d"), td = tx.createImageData(iw, ih);
+      for (let j = 0; j < tri.length; j++) td.data.set([tri[j], tri[j], tri[j], 255], j * 4);
+      tx.putImageData(td, 0, 0); out.files[`gt/tri/${key}.png`] = tc.toDataURL("image/png").split(",")[1];
+      let s0 = 0, s1 = 0, s2 = 0; for (const v of m0.data) s0 += v; for (const v of tri) s1 += v; for (const v of m.data) s2 += v;
+      out.rows.push({ key, in: `${iw}x${ih}`, ms: Math.round(performance.now() - t0), bir: `${m0.width}x${m0.height} ${(s0 / m0.data.length).toFixed(1)}`,
+        tri: (s1 / tri.length).toFixed(1), vit: `${m.width}x${m.height} ${(s2 / m.data.length).toFixed(1)}` });
+    }
+  }
+} catch (e) { out.error = String(e?.stack || e); }
+window.done = true;
+</script>

@@ -1,0 +1,344 @@
+[
+ {
+  "p": "hq",
+  "tag": "slo25",
+  "rows": [
+   {
+    "n": "person-a",
+    "iou": 0.9947,
+    "fp": 0.83,
+    "far": 0.03,
+    "fn": 0.24,
+    "edge": 0.0511,
+    "ms": 1298
+   },
+   {
+    "n": "hair1",
+    "iou": 0.988,
+    "fp": 0.5,
+    "far": 0,
+    "fn": 0.75,
+    "edge": 0.1326,
+    "ms": 959
+   },
+   {
+    "n": "hair2",
+    "iou": 0.9937,
+    "fp": 0.69,
+    "far": 0,
+    "fn": 0.47,
+    "edge": 0.0734,
+    "ms": 960
+   },
+   {
+    "n": "hold-dog",
+    "iou": 0.984,
+    "fp": 0.57,
+    "far": 0,
+    "fn": 0.7,
+    "edge": 0.1014,
+    "ms": 1191
+   },
+   {
+    "n": "hold-cat",
+    "iou": 0.9854,
+    "fp": 0.71,
+    "far": 0,
+    "fn": 0.97,
+    "edge": 0.0676,
+    "ms": 991
+   },
+   {
+    "n": "arms-books",
+    "iou": 0.9766,
+    "fp": 1.59,
+    "far": 0.04,
+    "fn": 0.41,
+    "edge": 0.0682,
+    "ms": 1102
+   },
+   {
+    "n": "far-person",
+    "iou": 0.9626,
+    "fp": 0.34,
+    "far": 0,
+    "fn": 2.77,
+    "edge": 0.1597,
+    "ms": 955
+   },
+   {
+    "n": "dog-beside",
+    "iou": 0.9537,
+    "fp": 2.69,
+    "far": 0.46,
+    "fn": 1.51,
+    "edge": 0.1877,
+    "ms": 1011
+   }
+  ],
+  "warm": true,
+  "still0": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "path": "webgpu",
+   "loadMs": 6113,
+   "warmMs": 13767,
+   "segMs": 0,
+   "refineMs": 0,
+   "error": "",
+   "cuts": [],
+   "hq": [],
+   "pet": "GPU",
+   "model": "modnet",
+   "cached": false,
+   "fetchMs": 1148,
+   "createMs": 4617,
+   "bytes": 25888640,
+   "loadedAt": 6317,
+   "readyAt": 20083
+  },
+  "still": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "path": "webgpu",
+   "loadMs": 6113,
+   "warmMs": 13767,
+   "segMs": 860,
+   "refineMs": 139,
+   "error": "",
+   "cuts": [],
+   "hq": [
+    {
+     "path": "webgpu",
+     "ms": 1221,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 951,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 952,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 1175,
+     "pet": true
+    },
+    {
+     "path": "webgpu",
+     "ms": 976,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 1095,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 944,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 999,
+     "pet": true
+    }
+   ],
+   "pet": "GPU",
+   "model": "modnet",
+   "cached": false,
+   "fetchMs": 1148,
+   "createMs": 4617,
+   "bytes": 25888640,
+   "loadedAt": 6317,
+   "readyAt": 20083,
+   "modelMs": 859,
+   "modelWH": "512x384",
+   "petMs": 138
+  },
+  "url_q": "p=hq&slo=0.25&shi=0.9&tag=slo25",
+  "logs": [
+   "log: I1027 14:05:13.178000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL",
+   "warning: W1027 14:05:13.184000 1880752 gl_context.cc:1060] OpenGL error checking is disabled",
+   "log: Graph successfully started running.",
+   "log: I1027 14:05:28.333000 1880752 segmentation_postprocessor_gl.cc:380] SOFTMAX activation function chosen on GPU",
+   "warning: W1027 14:05:31.560000 1880752 reusable_pool.h:143] Maximum number of pooled buffers reached. Consider increasing MultiPoolOptions.keep_count"
+  ]
+ },
+ {
+  "p": "hq",
+  "tag": "slo35",
+  "rows": [
+   {
+    "n": "person-a",
+    "iou": 0.9929,
+    "fp": 0.65,
+    "far": 0.02,
+    "fn": 0.26,
+    "edge": 0.0654,
+    "ms": 1007
+   },
+   {
+    "n": "hair1",
+    "iou": 0.9863,
+    "fp": 0.36,
+    "far": 0,
+    "fn": 0.86,
+    "edge": 0.1536,
+    "ms": 943
+   },
+   {
+    "n": "hair2",
+    "iou": 0.992,
+    "fp": 0.51,
+    "far": 0,
+    "fn": 0.52,
+    "edge": 0.0909,
+    "ms": 913
+   },
+   {
+    "n": "hold-dog",
+    "iou": 0.9825,
+    "fp": 0.53,
+    "far": 0,
+    "fn": 0.74,
+    "edge": 0.1105,
+    "ms": 973
+   },
+   {
+    "n": "hold-cat",
+    "iou": 0.9846,
+    "fp": 0.52,
+    "far": 0,
+    "fn": 1.08,
+    "edge": 0.0753,
+    "ms": 899
+   },
+   {
+    "n": "arms-books",
+    "iou": 0.9749,
+    "fp": 1.43,
+    "far": 0.04,
+    "fn": 0.45,
+    "edge": 0.0755,
+    "ms": 979
+   },
+   {
+    "n": "far-person",
+    "iou": 0.9614,
+    "fp": 0.3,
+    "far": 0,
+    "fn": 2.81,
+    "edge": 0.1679,
+    "ms": 1005
+   },
+   {
+    "n": "dog-beside",
+    "iou": 0.9529,
+    "fp": 2.47,
+    "far": 0.45,
+    "fn": 1.6,
+    "edge": 0.1944,
+    "ms": 1070
+   }
+  ],
+  "warm": true,
+  "still0": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "path": "webgpu",
+   "loadMs": 3816,
+   "warmMs": 3518,
+   "segMs": 0,
+   "refineMs": 0,
+   "error": "",
+   "cuts": [],
+   "hq": [],
+   "pet": "GPU",
+   "model": "modnet",
+   "cached": true,
+   "fetchMs": 448,
+   "createMs": 2849,
+   "bytes": 25888640,
+   "loadedAt": 3916,
+   "readyAt": 7434
+  },
+  "still": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "path": "webgpu",
+   "loadMs": 3816,
+   "warmMs": 3518,
+   "segMs": 916,
+   "refineMs": 141,
+   "error": "",
+   "cuts": [],
+   "hq": [
+    {
+     "path": "webgpu",
+     "ms": 989,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 936,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 906,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 963,
+     "pet": true
+    },
+    {
+     "path": "webgpu",
+     "ms": 887,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 971,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 997,
+     "pet": false
+    },
+    {
+     "path": "webgpu",
+     "ms": 1056,
+     "pet": true
+    }
+   ],
+   "pet": "GPU",
+   "model": "modnet",
+   "cached": true,
+   "fetchMs": 448,
+   "createMs": 2849,
+   "bytes": 25888640,
+   "loadedAt": 3916,
+   "readyAt": 7434,
+   "modelMs": 904,
+   "modelWH": "512x384",
+   "petMs": 139
+  },
+  "url_q": "p=hq&slo=0.35&shi=0.9&tag=slo35",
+  "logs": [
+   "log: I1027 14:05:55.121000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL",
+   "warning: W1027 14:05:55.127000 1880752 gl_context.cc:1060] OpenGL error checking is disabled",
+   "log: Graph successfully started running.",
+   "log: I1027 14:06:01.077000 1880752 segmentation_postprocessor_gl.cc:380] SOFTMAX activation function chosen on GPU",
+   "warning: W1027 14:06:01.161000 1880752 reusable_pool.h:143] Maximum number of pooled buffers reached. Consider increasing MultiPoolOptions.keep_count"
+  ]
+ }
+]

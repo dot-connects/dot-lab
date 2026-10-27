@@ -1,0 +1,246 @@
+[
+ {
+  "p": "live",
+  "tag": "live",
+  "rows": [
+   {
+    "n": "person-a",
+    "iou": 0.9842,
+    "fp": 1.54,
+    "far": 0.06,
+    "fn": 0.35,
+    "edge": 0.1335,
+    "ms": 753
+   },
+   {
+    "n": "hair1",
+    "iou": 0.989,
+    "fp": 0.83,
+    "far": 0,
+    "fn": 0.68,
+    "edge": 0.1347,
+    "ms": 225
+   },
+   {
+    "n": "hair2",
+    "iou": 0.9936,
+    "fp": 0.46,
+    "far": 0,
+    "fn": 0.32,
+    "edge": 0.1004,
+    "ms": 199
+   },
+   {
+    "n": "hold-dog",
+    "iou": 0.976,
+    "fp": 1.52,
+    "far": 0.48,
+    "fn": 1.17,
+    "edge": 0.1424,
+    "ms": 206
+   },
+   {
+    "n": "hold-cat",
+    "iou": 0.9879,
+    "fp": 0.98,
+    "far": 0.04,
+    "fn": 0.38,
+    "edge": 0.098,
+    "ms": 188
+   },
+   {
+    "n": "arms-books",
+    "iou": 0.8918,
+    "fp": 2.23,
+    "far": 0,
+    "fn": 6.86,
+    "edge": 0.2021,
+    "ms": 352
+   },
+   {
+    "n": "far-person",
+    "iou": 0.7664,
+    "fp": 29.03,
+    "far": 25.14,
+    "fn": 0.79,
+    "edge": 0.2915,
+    "ms": 344
+   },
+   {
+    "n": "dog-beside",
+    "iou": 0.6652,
+    "fp": 2.35,
+    "far": 0.32,
+    "fn": 30.08,
+    "edge": 0.3697,
+    "ms": 183
+   }
+  ],
+  "still": {
+   "state": "loaded",
+   "delegate": "webgpu",
+   "loadMs": 19266,
+   "warmMs": 0,
+   "segMs": 0,
+   "refineMs": 0,
+   "error": "",
+   "cuts": [],
+   "model": "modnet",
+   "cached": false,
+   "fetchMs": 1105,
+   "createMs": 17513,
+   "bytes": 25888640,
+   "loadedAt": 20032
+  },
+  "url_q": "p=live",
+  "logs": [
+   "log: I1027 13:08:33.003000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL",
+   "warning: W1027 13:08:33.010000 1880752 gl_context.cc:1060] OpenGL error checking is disabled",
+   "log: Graph successfully started running.",
+   "log: I1027 13:08:37.278000 1880752 segmentation_postprocessor_gl.cc:388] NONE activation function chosen on GPU"
+  ]
+ },
+ {
+  "p": "hq",
+  "tag": "hq",
+  "rows": [
+   {
+    "n": "person-a",
+    "iou": 0.9947,
+    "fp": 1.34,
+    "far": 0.04,
+    "fn": 0.28,
+    "edge": 0.0391,
+    "ms": 1092
+   },
+   {
+    "n": "hair1",
+    "iou": 0.9893,
+    "fp": 0.9,
+    "far": 0.01,
+    "fn": 0.76,
+    "edge": 0.1175,
+    "ms": 1009
+   },
+   {
+    "n": "hair2",
+    "iou": 0.9939,
+    "fp": 1.4,
+    "far": 0.01,
+    "fn": 0.52,
+    "edge": 0.0685,
+    "ms": 959
+   },
+   {
+    "n": "hold-dog",
+    "iou": 0.9858,
+    "fp": 0.72,
+    "far": 0,
+    "fn": 0.66,
+    "edge": 0.085,
+    "ms": 884
+   },
+   {
+    "n": "hold-cat",
+    "iou": 0.9848,
+    "fp": 1.43,
+    "far": 0.01,
+    "fn": 0.86,
+    "edge": 0.0854,
+    "ms": 890
+   },
+   {
+    "n": "arms-books",
+    "iou": 0.9784,
+    "fp": 2.01,
+    "far": 0.05,
+    "fn": 0.39,
+    "edge": 0.0568,
+    "ms": 1158
+   },
+   {
+    "n": "far-person",
+    "iou": 0.964,
+    "fp": 0.45,
+    "far": 0,
+    "fn": 2.72,
+    "edge": 0.143,
+    "ms": 1127
+   },
+   {
+    "n": "dog-beside",
+    "iou": 0.683,
+    "fp": 2.07,
+    "far": 0.48,
+    "fn": 29,
+    "edge": 0.2726,
+    "ms": 1142
+   }
+  ],
+  "warm": true,
+  "still0": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "loadMs": 6611,
+   "warmMs": 9633,
+   "segMs": 0,
+   "refineMs": 0,
+   "error": "",
+   "cuts": [],
+   "model": "modnet",
+   "cached": true,
+   "fetchMs": 489,
+   "createMs": 5375,
+   "bytes": 25888640,
+   "loadedAt": 28110,
+   "readyAt": 37743
+  },
+  "still": {
+   "state": "ready",
+   "delegate": "webgpu",
+   "loadMs": 6611,
+   "warmMs": 9633,
+   "segMs": 1130,
+   "refineMs": 1,
+   "error": "",
+   "cuts": [],
+   "model": "modnet",
+   "cached": true,
+   "fetchMs": 489,
+   "createMs": 5375,
+   "bytes": 25888640,
+   "loadedAt": 28110,
+   "readyAt": 37743,
+   "modelMs": 1129,
+   "modelWH": "512x384"
+  },
+  "url_q": "p=hq",
+  "logs": []
+ },
+ {
+  "p": "hq",
+  "tag": "hqwasm",
+  "rows": [],
+  "warm": true,
+  "still0": {
+   "state": "ready",
+   "delegate": "wasm",
+   "loadMs": 6260,
+   "warmMs": 12226,
+   "segMs": 0,
+   "refineMs": 0,
+   "error": "",
+   "cuts": [],
+   "model": "modnet",
+   "cached": true,
+   "fetchMs": 370,
+   "createMs": 4694,
+   "bytes": 25888640,
+   "loadedAt": 6815,
+   "readyAt": 19042
+  },
+  "error": "Error: still-timeout\n    at http://127.0.0.1:8802/works/2026-10-26-photo-booth/site/js/segment.js:320:72",
+  "url_q": "p=hq&scpu=1&tag=hqwasm",
+  "logs": []
+ }
+]
