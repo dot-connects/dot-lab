@@ -89,7 +89,7 @@ async function frameRecorder(canvas, bps) {
   })();
   const cfg = await clipCfg;
   if (!cfg || cfg.width !== width || cfg.height !== height) return null;
-  const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+  const { Muxer, ArrayBufferTarget } = await imp("./vendor/mp4-muxer.mjs");
   // fragmented: what MediaRecorder writes too, and what compose.js reads frame by frame
   const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: 30 },
     fastStart: "fragmented", firstTimestampBehavior: "offset" });
@@ -149,6 +149,13 @@ async function shrinkClip(blob) {
   return out.size ? out : blob;
 }
 
+// a module fetch is sometimes cancelled mid-shoot under load (B's compose.js, headless 10-28: "Failed to fetch
+// dynamically imported module" and the whole shoot stopped); retry once as is, then under a fresh URL
+async function imp(url) {
+  let err;
+  for (const q of ["", "", `?r=${Date.now()}`]) { try { return await import(url + q); } catch (e) { err = e; await sleep(400); } }
+  throw err;
+}
 // seconds: countdown length (Round 5: 5). stop(): checked during the seconds before "3"; true -> throws "stopped".
 export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
   // no prefetchStill here: its session create can freeze the page ~4.5 s (the landing page starts it).
@@ -167,7 +174,7 @@ export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
 // Chrome fires loadeddata even for an MP4 header with no frames (10-27), so "it loads" proves nothing.
 export async function clipOk(blob) {
   if (!blob?.size) return false;
-  const { readFmp4 } = await import("./compose.js");
+  const { readFmp4 } = await imp("./compose.js");
   const m = /mp4/.test(blob.type) ? readFmp4(await blob.arrayBuffer()) : null;
   if (m) return m.samples.length >= 5;
   return new Promise(res => {

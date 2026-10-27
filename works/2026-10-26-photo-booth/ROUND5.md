@@ -33,3 +33,17 @@ Operator feedback, verbatim intent:
 - Headless Chrome A/B walk: `C:\Users\ehdck\AppData\Local\Temp\claude\C--DC-DD\dd5f501f-171a-4f5a-9d24-ee18560f566d\scratchpad\e2e-r4.mjs`
   (copy it, change SITE port + OUT). Fake cameras in `...\scratchpad\media\person-a-noflash.y4m`, `person-b-pos.y4m`.
   `?fast` = 4 s shots for tests. 430x932 dpr 2, CDP touch.
+
+## Status (2026-10-28, merged on main)
+
+All seven items merged (beauty, deco, matte, video branches) and the A→B headless walk passes: 5 s countdown, look per
+side, stickers, zoom, frame-exact video 6.000 s / 30 fps per cell, story, pairs, delete, cached revisit. Worker with
+look.json deployed (version 9e27e0cd).
+
+Open, check on a real phone (`?debug` shows the still-matte path):
+- Under heavy load headless Chrome sometimes cancels B's `compose.js` fetch (net::ERR_ABORTED, canceled) and the
+  failed URL stays failed in the module map. `load()` and capture's `imp()` retry (as is, then `?r=`), so the shoot and
+  the moving strip survive; `clipmatte.js` imports compose statically, so the HQ moving cut is lost in that run.
+- Camera-rate clips: gain unproven on PC (CPU-bound); HQ moving cut takes 1-3 min on a phone, no progress shown.
+- WASM still-matte fallback: ~40 s for the 4 picks on a phone (estimate).
+- Disabled "이 4장으로" / "저장하기" text contrast 2.44:1.

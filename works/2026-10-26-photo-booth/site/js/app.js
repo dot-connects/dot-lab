@@ -20,8 +20,14 @@ const DATE = `${today.getFullYear()}.${pad(today.getMonth() + 1)}.${pad(today.ge
 // ---- modules ------------------------------------------------------------------------------------------------------
 async function load(name, mock) {
   if (MOCK && mock) return mock;
-  try { return await import(`./${name}.js`); }
-  catch (e) { console.warn(`[booth] ${name}.js unavailable, using placeholder:`, e.message); if (mock) return mock; throw e; }
+  // a module fetch fails now and then under load (B's camera.js, headless 10-28) and a failed URL can stay failed in the
+  // module map: retry once as is, then once under a fresh URL
+  let err;
+  for (const q of ["", "", `?r=${Date.now()}`]) {
+    try { return await import(`./${name}.js${q}`); }
+    catch (e) { err = e; await sleep(400); }
+  }
+  console.warn(`[booth] ${name}.js unavailable, using placeholder:`, err.message); if (mock) return mock; throw err;
 }
 let env = { app: "브라우저", inApp: false, isIOS: false, framed: top !== self, chromeUrl: u => u };
 
