@@ -632,39 +632,224 @@ const SECONDS = 6, FPS = 30, BPS = 4_000_000;
 const FADE = 0.001;
 const HOLD = 0.3;                      // the last 0.3 s holds the finished photo strip
 const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells do not loop on the same frame
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, stickers = null, format = "strip", onProgress, signal = null }) {
-  if (!window.MediaRecorder) throw new Error("no MediaRecorder");
+// fx = { a, b } (Round 5, beauty.js): fx[side](frame, tMs, video) edits each decoded clip frame in place before the
+// cut-out and compositing; frame = that clip's own canvas [raw | matte] (the same object all recording), tMs = the
+// frame's clip time (repeats on every loop), video = the clip element (a stable cache key across recordings).
+// signal (AbortSignal): an abort stops the render within a frame and rejects with DOMException "AbortError".
+// mattes (clipmatte.js clipMattes): Map<clip video, HQ moving cut>; frame-exact path only, other clips keep their matte.
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
   // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
-  const P = pairsOf(pairs), vids = [], phase = [];
-  for (const [n, c] of [0, 1, 2, 3].flatMap(i => [[i, a.cuts[P[i]]], [i, b.cuts[i]]])) {
+  const P = pairsOf(pairs), vids = [], phase = [], fxs = [];
+  for (const [n, c, side] of [0, 1, 2, 3].flatMap(i => [[i, a.cuts[P[i]], "a"], [i, b.cuts[i], "b"]])) {
     if (!c.clip) throw new Error("missing clip");
-    if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); }
+    if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); fxs.push(fx?.[side] || null); }
   }
   const st = await prepare({ frame, date, caption });
   if (stickers?.length) await stickersReady(stickers);
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
+  const o = { a, b, bg, filter, layout, outline, pairs, stickers, signal, mattes };
+  // frame-exact first: output frame n is painted for t = n/30 s and encoded with that timestamp, so a busy phone only
+  // renders slower; the real-time MediaRecorder path drops frames under load (10-27 phone: the saved strip stuttered)
+  const cfg = await encoderConfig(cv.width, cv.height);
+  if (cfg && window.VideoDecoder) {
+    try { return { blob: await renderOffline(cv, st, story, vids, phase, fxs, cfg, o, onProgress), type: "video/mp4" }; }
+    catch (e) { if (e?.name === "AbortError") throw e; console.warn("[compose] offline render failed, real-time fallback", e); }
+  }
+  if (!window.MediaRecorder) throw new Error("no MediaRecorder");
   const ok = t => MediaRecorder.isTypeSupported(t);
   const mp4 = ["video/mp4;codecs=avc1", "video/mp4"].find(ok), webm = ["video/webm;codecs=vp9", "video/webm"].find(ok);
   let lastErr = new Error("no recorder type");
   for (const type of [mp4, webm].filter(Boolean)) {
-    try { return { blob: await recordOnce(cv, st, story, vids, phase, type, { a, b, bg, filter, layout, outline, pairs, stickers, signal }, onProgress), type: type.split(";")[0] }; }
-    catch (e) { if (e.name === "AbortError") throw e; lastErr = e; }
+    try { return { blob: await recordOnce(cv, st, story, vids, phase, fxs, type, o, onProgress), type: type.split(";")[0] }; }
+    catch (e) { if (e?.name === "AbortError") throw e; lastErr = e; }
   }
   throw lastErr;
 }
 
+// ---------- frame-exact render: WebCodecs H.264 + mp4-muxer (MIT, vendored in js/vendor) ----------
+export const renderStats = {};   // last offline render: ms, frames decoded per clip (dev pages, tests)
+async function encoderConfig(w, h) {
+  if (window.__noWebCodecs || !window.VideoEncoder || !window.VideoFrame) return null;   // __noWebCodecs: tests of the fallback
+  for (const codec of ["avc1.640028", "avc1.4d0028", "avc1.42e028"]) {   // level 4.0 fits 1080x1920
+    const c = { codec, width: w, height: h, bitrate: BPS, framerate: FPS, avc: { format: "avc" } };
+    if ((await VideoEncoder.isConfigSupported(c).catch(() => null))?.supported) return c;
+  }
+  return null;
+}
+
+// Our recorded clips (MediaRecorder / capture.js MP4: one H.264 track, moov + moof/mdat fragments) -> decoder config +
+// samples. null for anything else (WebM from older browsers, plain MP4): the real-time path takes those.
+// The other person's clip is untrusted input: every box must fit in its parent, sample tables in their box, samples in
+// the file, at most MAX_SAMPLES; anything off -> null.
+const MAX_SAMPLES = 1200;            // 10 s at 120 fps; our clips are ~60
+export function readFmp4(buf) {
+  try { return parseFmp4(buf); } catch { return null; }
+}
+function parseFmp4(buf) {
+  const d = new DataView(buf), u8 = new Uint8Array(buf), out = { samples: [], ts: 0, trex: [0, 0, 0] };
+  const bad = () => { throw new Error("mp4"); };
+  const kids = (s, e, f, depth = 0) => {
+    if (depth > 8) bad();
+    for (let o = s; o + 8 <= e;) {
+      let n = d.getUint32(o), h = 8; const t = String.fromCharCode(...u8.subarray(o + 4, o + 8));
+      if (n === 1) { if (o + 16 > e) bad(); n = Number(d.getBigUint64(o + 8)); h = 16; } else if (n === 0) n = e - o;
+      if (n < h || o + n > e) bad();
+      f(t, o + h, o + n, o, depth + 1); o += n;
+    }
+  };
+  const need = (p, k, e) => { if (p + k > e) bad(); };
+  const walk = (t, s, e, o, depth) => {
+    if (["moov", "trak", "mdia", "minf", "stbl", "mvex"].includes(t)) return kids(s, e, walk, depth);
+    if (t === "mdhd") { const v1 = u8[s] === 1; need(s, v1 ? 24 : 16, e); out.ts = d.getUint32(s + (v1 ? 20 : 12)); }
+    else if (t === "trex") { need(s, 24, e); out.trex = [d.getUint32(s + 12), d.getUint32(s + 16), d.getUint32(s + 20)]; }
+    else if (t === "stsd") { need(s, 8, e); kids(s + 8, e, (t2, s2, e2) => {
+      if (t2 !== "avc1") return;
+      need(s2, 78, e2);
+      out.w = d.getUint16(s2 + 24); out.h = d.getUint16(s2 + 26);
+      kids(s2 + 78, e2, (t3, s3, e3) => { if (t3 === "avcC") out.desc = u8.slice(s3, e3); }, depth + 2);
+    }, depth + 1); }
+    else if (t === "moof") kids(s, e, (t2, s2, e2) => {
+      if (t2 !== "traf") return;
+      let base = o, dts = 0, [dd, ds, df] = out.trex;
+      kids(s2, e2, (t3, p, e3) => {
+        if (!["tfhd", "tfdt", "trun"].includes(t3)) return;
+        need(p, 4, e3);
+        const fl = d.getUint32(p) & 0xffffff; p += 4;
+        if (t3 === "tfhd") {
+          need(p, 4 + (fl & 1 ? 8 : 0) + (fl & 2 ? 4 : 0) + (fl & 8 ? 4 : 0) + (fl & 0x10 ? 4 : 0) + (fl & 0x20 ? 4 : 0), e3);
+          p += 4;
+          if (fl & 1) { base = Number(d.getBigUint64(p)); p += 8; }
+          if (fl & 2) p += 4;
+          if (fl & 8) { dd = d.getUint32(p); p += 4; }
+          if (fl & 0x10) { ds = d.getUint32(p); p += 4; }
+          if (fl & 0x20) df = d.getUint32(p);
+        } else if (t3 === "tfdt") { const v1 = u8[p - 4] === 1; need(p, v1 ? 8 : 4, e3); dts = v1 ? Number(d.getBigUint64(p)) : d.getUint32(p); }
+        else {
+          need(p, 4 + (fl & 1 ? 4 : 0) + (fl & 4 ? 4 : 0), e3);
+          const n = d.getUint32(p); p += 4;
+          const per = 4 * [0x100, 0x200, 0x400, 0x800].filter(b => fl & b).length;
+          if (out.samples.length + n > MAX_SAMPLES) bad();
+          let at = base + (fl & 1 ? d.getInt32(p) : 0); if (fl & 1) p += 4;
+          let first = null; if (fl & 4) { first = d.getUint32(p); p += 4; }
+          need(p, n * per, e3);
+          for (let i = 0; i < n; i++) {
+            const dur = fl & 0x100 ? d.getUint32((p += 4) - 4) : dd, size = fl & 0x200 ? d.getUint32((p += 4) - 4) : ds;
+            let f = fl & 0x400 ? d.getUint32((p += 4) - 4) : df; if (i === 0 && first != null) f = first;
+            const cto = fl & 0x800 ? d.getInt32((p += 4) - 4) : 0;
+            if (!size || at < 0 || at + size > buf.byteLength) bad();
+            out.samples.push({ data: u8.subarray(at, at + size), pts: dts + cto, key: !(f & 0x10000) });
+            at += size; dts += dur;
+          }
+        }
+      }, depth + 1);
+    }, depth);
+  };
+  kids(0, buf.byteLength, walk);
+  const S = out.samples;
+  if (!out.desc || out.desc.length < 7 || !out.ts || !S.length || !S[0].key) return null;
+  if (!(out.w > 0 && out.w <= 4096 && out.h > 0 && out.h <= 4096)) return null;
+  const hx = k => out.desc[k].toString(16).padStart(2, "0");
+  return { config: { codec: `avc1.${hx(1)}${hx(2)}${hx(3)}`, codedWidth: out.w, codedHeight: out.h, description: out.desc },
+    samples: S.map(s => ({ ...s, us: Math.round(s.pts * 1e6 / out.ts) })) };
+}
+
+// One clip decoded frame by frame (WebCodecs), looping, starting at `phase` s; at most a few frames held at once.
+// frame = the clip's own canvas (fx edits it in place), advance() = one output frame later. A ~30 fps clip moves exactly
+// one frame per output frame: a recorded clip's timestamps jitter by up to half a frame, and sampling them by time
+// repeats one frame and skips the next. Slower clips keep time (their frames repeat).
+async function clipSource(v, phase, fx, hq) {
+  const mp4 = readFmp4(await (await fetch(v.currentSrc || v.src)).arrayBuffer());
+  if (!mp4 || !(await VideoDecoder.isConfigSupported(mp4.config).catch(() => null))?.supported) throw new Error("clip not decodable");
+  const S = mp4.samples, N = S.length, us = S.map(s => s.us).sort((x, y) => x - y);
+  const span = (us[N - 1] - us[0]) * N / Math.max(1, N - 1) / 1e6 || N / FPS, r = N / (span * FPS);
+  const step = Math.abs(r - 1) < 0.05 ? 1 : Math.min(2, r);
+  const q = [];
+  let failed = null, wake = null, k = 0, skip = us[0] + phase * 1e6 - 1000;   // frames before the phase: decoded, dropped
+  const dec = new VideoDecoder({ output: f => {
+    if (f.timestamp < skip) f.close(); else q.push(f);
+    wake?.();
+  }, error: e => { failed = e; wake?.(); } });
+  dec.configure(mp4.config);
+  const feed = async () => {          // keep ~2 frames ready; at the end, flush and start over at the first (key) sample
+    while (q.length < 2 && !failed) {
+      if (k === N) { await dec.flush(); k = 0; skip = -Infinity; continue; }
+      if (dec.decodeQueueSize < 3) { const s = S[k++]; dec.decode(new EncodedVideoChunk({ type: s.key ? "key" : "delta", timestamp: s.us, data: s.data })); continue; }
+      await new Promise(res => { wake = res; setTimeout(res, 50); }); wake = null;
+    }
+    if (failed) throw failed;
+  };
+  const frame = Object.assign(document.createElement("canvas"), { width: mp4.config.codedWidth, height: mp4.config.codedHeight });
+  const fctx = frame.getContext("2d");
+  const take = async () => {
+    await feed();
+    const f = q.shift();
+    if (frame.width !== f.displayWidth || frame.height !== f.displayHeight) { frame.width = f.displayWidth; frame.height = f.displayHeight; }
+    fctx.drawImage(f, 0, 0); const t = f.timestamp; f.close();
+    hq?.apply(frame, t);             // the HQ moving cut (clipmatte.js) replaces the matte half, before any fx warp
+    fx?.(frame, t / 1000, v);
+    src.n++;
+  };
+  let acc = 0;
+  const src = { frame, n: 0, step, async advance() { acc += step; while (acc >= 1) { acc -= 1; await take(); } },
+    close() { q.forEach(f => f.close()); q.length = 0; if (dec.state !== "closed") dec.close(); } };
+  await take();
+  return src;
+}
+
+async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgress) {
+  const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+  const t0 = performance.now(), ctx = cv.getContext("2d");
+  const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
+  const still = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
+  paint(still.getContext("2d"), st, opts, null);
+  const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: cv.width, height: cv.height, frameRate: FPS },
+    fastStart: "in-memory", firstTimestampBehavior: "offset" });
+  let failed = null;
+  const enc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { failed = e; } });
+  enc.configure(cfg);
+  const srcs = [];
+  try {
+    for (let n = 0; n < vids.length; n++) srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n])));
+    const N = SECONDS * FPS;
+    for (let n = 0; n < N; n++) {
+      if (failed) throw failed;
+      opts.signal?.throwIfAborted();
+      if (n) for (const s of srcs) await s.advance();
+      const t = n / FPS;
+      srcs.forEach((s, k) => clipFrames.set(vids[k], s.frame));
+      if (t < SECONDS - HOLD) paint(sctx, st, opts, t); else sctx.drawImage(still, 0, 0);   // the last 0.3 s hold the photo strip
+      if (story) { ctx.drawImage(story.c, 0, 0); ctx.drawImage(strip, story.ox, story.oy, story.sw, story.sh); }
+      const f = new VideoFrame(cv, { timestamp: Math.round(n * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
+      enc.encode(f, { keyFrame: n % (2 * FPS) === 0 }); f.close();
+      while (enc.encodeQueueSize > 3 && !failed) await new Promise(r => setTimeout(r, 4));   // a few frames in flight, never 180
+      onProgress?.(n / N);
+    }
+    await enc.flush();
+    if (failed) throw failed;
+    muxer.finalize();
+    Object.assign(renderStats, { ms: Math.round(performance.now() - t0), frames: N, decoded: srcs.map(s => s.n), step: srcs.map(s => +s.step.toFixed(3)),
+      hq: vids.filter(v => opts.mattes?.has(v)).length });
+    onProgress?.(1);
+    return new Blob([muxer.target.buffer], { type: "video/mp4" });
+  } finally {
+    if (enc.state !== "closed") enc.close();
+    srcs.forEach(s => s.close());
+    clipFrames.clear();
+  }
+}
+
 // Per clip: a copy of the frame shown last tick; when the clip wraps, that copy fades out over the new frames.
-function clipState(v) {
+function clipState(v, fx) {
   const mk = () => Object.assign(document.createElement("canvas"), { width: v.videoWidth, height: v.videoHeight });
-  return { v, last: mk(), snap: mk(), out: mk(), prevT: v.currentTime, wrapAt: -1 };
+  return { v, fx, last: mk(), snap: mk(), out: mk(), prevT: v.currentTime, wrapAt: -1, drawn: -1 };
 }
 function tickClip(c, t) {
   const ct = c.v.currentTime;
   if (ct + 0.05 < c.prevT) { [c.last, c.snap] = [c.snap, c.last]; c.wrapAt = t; }   // wrapped: keep the old last frame
   c.prevT = ct;
-  c.last.getContext("2d").drawImage(c.v, 0, 0);
+  if (ct !== c.drawn) { c.drawn = ct; c.last.getContext("2d").drawImage(c.v, 0, 0); c.fx?.(c.last, ct * 1000, c.v); }
   const k = (t - c.wrapAt) / FADE;
   if (c.wrapAt < 0 || k >= 1) return c.last;
   const x = c.out.getContext("2d");
@@ -692,7 +877,7 @@ function warmEncoder(type, w, h) {
   return warmed.get(key);
 }
 
-async function recordOnce(cv, st, story, vids, phase, type, opts, onProgress) {
+async function recordOnce(cv, st, story, vids, phase, fxs, type, opts, onProgress) {
   await warmEncoder(type, cv.width, cv.height);
   const ctx = cv.getContext("2d");
   const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
@@ -702,7 +887,7 @@ async function recordOnce(cv, st, story, vids, phase, type, opts, onProgress) {
   // start every clip at its cell's phase and wait until all of them show that frame
   vids.forEach((v, n) => { v.loop = true; v.muted = true; v.pause(); v.currentTime = Math.min(phase[n], (v.duration || 1) * 0.5); });
   await Promise.all(vids.map(v => (v.readyState >= 2 && !v.seeking ? null : new Promise(r => v.addEventListener("seeked", r, { once: true })))));
-  const states = vids.map(clipState);
+  const states = vids.map((v, n) => clipState(v, fxs[n]));
   const frame = t => {
     states.forEach(s => clipFrames.set(s.v, tickClip(s, t)));
     paint(sctx, st, opts, t);
@@ -747,6 +932,7 @@ async function recordOnce(cv, st, story, vids, phase, type, opts, onProgress) {
     });
     rec.stop(); await stopped;
     stream.getTracks().forEach(tr => tr.stop());
+    opts.signal?.throwIfAborted();
     if (failed) throw failed;
     const blob = new Blob(chunks, { type: type.split(";")[0] });
     if (!blob.size) throw new Error("empty recording");

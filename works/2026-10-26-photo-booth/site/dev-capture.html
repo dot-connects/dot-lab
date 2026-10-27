@@ -52,9 +52,8 @@ let lastF = 0; (function f(t) { if (lastF && t - lastF > 250) gaps.push([Math.ro
 function preview() {
   const w = video.videoWidth, h = video.videoHeight;
   if (out.width !== w) { out.width = w; out.height = h; }
-  segmentFrame(video);
-  ctx.fillStyle = "#2a1640"; ctx.fillRect(0, 0, w, h);
-  drawCutout(ctx, video, w, h, camState.mirror);
+  if (Q.has("app")) ctx.drawImage(video, 0, 0, w, h);   // ?app: raw preview like app.js (only capture.js segments)
+  else { segmentFrame(video); ctx.fillStyle = "#2a1640"; ctx.fillRect(0, 0, w, h); drawCutout(ctx, video, w, h, camState.mirror); }
   requestAnimationFrame(preview);
 }
 

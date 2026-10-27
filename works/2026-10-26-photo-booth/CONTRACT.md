@@ -156,3 +156,13 @@ Research: research/booth-flow.md (Photoism: 8 shots, 8-10 s timer, pick 4, no re
   `cutStill(canvas)` keeps its signature, warms up itself if needed, calls are queued in order (one at a time).
   `cutStills(canvases, onEach?)` -> Promise<(canvas|null)[]>, onEach(i, canvas|null, error) as each lands (null = keep
   the live matte). `stillBusy()` is a no-op kept for old callers. No WebGPU / failure: state "failed", cuts throw.
+
+## Round 5 video (2026-10-27, research/round5-video/)
+- compose.js `recordMovingStrip({ ..., fx, signal, mattes })`: frame-exact WebCodecs render (H.264 + vendored
+  `js/vendor/mp4-muxer.mjs` 5.2.2, MIT) when VideoEncoder/VideoDecoder exist and the clips are fragmented MP4; else the
+  MediaRecorder path as before. `fx[side](frame, tMs, video)` per decoded clip frame (frame = that clip's own canvas
+  [raw | matte], tMs = clip time, repeats each loop). `signal` abort -> DOMException "AbortError". `mattes` = Map from
+  clipmatte.js. `renderStats` = last render's ms / frames per clip. `readFmp4(buf)` exported.
+- capture.js: clips recorded with WebCodecs (fragmented MP4, camera frame times) when available, MediaRecorder otherwise
+  and for the empty-clip retry. Cut.clipType stays "video/mp4" | "video/webm".
+- clipmatte.js `clipMattes(videos, onProgress) -> Map<video, matte>` (HQ moving cut); segment.js `matteFrame(bitmap)`.

@@ -411,6 +411,16 @@ export async function cutStills(canvases, onEach) {
   }
   return out;
 }
+// Round 5 moving cut (clipmatte.js): the model's alpha of one clip frame (bitmap, transferred), no refine, queued with
+// the stills on the same session -> { data: Uint8Array, width, height }. Throws like cutStill when the model is off.
+export function matteFrame(bitmap) {
+  const p = cutQ.then(async () => {
+    if (!stillReady() && !(await warmStill())) { bitmap.close(); throw new Error("still-" + (stats.still.state || "off")); }
+    return wcall({ img: bitmap }, [bitmap], 6000);
+  });
+  cutQ = p.catch(() => {});
+  return p;
+}
 async function cutOne(canvas4x3) {
   if (!stillReady() && !(await warmStill())) throw new Error("still-" + (stats.still.state || "off"));
   const S = stats.still, t0 = performance.now(), run = async () => { const b = await bitmap(canvas4x3); return wcall({ img: b }, [b], STILL_MS[S.delegate] || 15000); };
