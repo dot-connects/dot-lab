@@ -56,3 +56,13 @@ The video key changes when it lands and the strip video is made again.
 - `zoom-fast-vs-hq-base.png` (fast, HQ at t 0.4 s; fast, HQ at 2.0 s): HQ keeps the braids on top and at the side
   that the fast matte flattens; edges a little softer.
 - Cost: MODNet ~0.9 s per keyframe in headless (96-128 s for 8 clips of 2-5 s); the render with HQ 27 s vs 14 s.
+
+## Empty clip bug (merged e2e, 10-27)
+
+B's shot 5 came out "0 KB" (a bare MP4 header): under load the WebCodecs flush took > STOP_MAX, the recorder finalized
+with no chunks, `clip.size > 0` so no retry, and loadClips' one rejected clip dropped the whole video + story.
+Fixed: the recorder waits up to STOP_EMPTY while it has no chunk (MediaRecorder rule), `clipOk` (>= 5 frames in the
+fMP4 tables, else must play 0.1 s: Chrome fires loadeddata for a frameless MP4) decides the retry, and a clip that does
+not load / decode leaves that person still in its cell (`bench.mjs bad strip a`: b2 = 700-byte header -> 6.0 s strip,
+cells 30 fps; MediaRecorder path no longer hangs on it). Merged A->B walk on 8801: B's 8 clips 24-57 frames, video and
+story both made.

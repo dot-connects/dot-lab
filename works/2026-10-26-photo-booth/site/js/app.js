@@ -829,9 +829,13 @@ async function loadClips() {
   for (const side of ["a", "b"]) await Promise.all(D.media[side].cuts.map(async (p, k) => {
     const local = S.side === side && S.cuts.length === 4;
     const v = Object.assign(document.createElement("video"), { muted: true, playsInline: true, loop: true, preload: "auto" });
-    v.src = local ? URL.createObjectURL(S.cuts[k].clip) : await api.blobUrl(S.id, side, `${k + 1}-clip`);
-    await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error("clip")); });
-    p.clip = v;
+    // one clip that will not load (merged e2e 10-27: B's empty shot-5 clip) leaves that person still in its cell instead
+    // of dropping the whole moving strip
+    try {
+      v.src = local ? URL.createObjectURL(S.cuts[k].clip) : await api.blobUrl(S.id, side, `${k + 1}-clip`);
+      await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error("clip")); setTimeout(() => rej(new Error("clip-timeout")), 10000); });
+      p.clip = v;
+    } catch (e) { console.warn("[booth] clip", side, k + 1, e); p.clip = null; }
   }));
   D.clips = true;
 }

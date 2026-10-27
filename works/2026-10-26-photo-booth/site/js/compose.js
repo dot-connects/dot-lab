@@ -415,13 +415,16 @@ function preset(bg, w, h) {
 const alphas = new WeakMap();
 // clip frames for the moving strip (crossfaded at the loop seam), keyed by video; empty outside recordMovingStrip
 const clipFrames = new Map();
+// clips that would not load or decode: their cells use the stills (one bad clip must not cost the whole video)
+const badClips = new WeakSet();
+const clipUsable = v => !!v && !badClips.has(v) && !v.error && v.readyState >= 2;
 // one person's source for cell i: video halves when t is set and a clip exists, else the stills; cut(o) -> canvas
 // (with canvas.pad px of margin when o.outline is set)
 function sources(p, i, t, slot = i) {
   const c = p.cuts[i];
   if (!alphas.has(p)) alphas.set(p, createClipAlpha({ choke: CHOKE }));
   const alpha = alphas.get(p);
-  if (t != null && c.clip) {
+  if (t != null && clipUsable(c.clip)) {
     const f = clipFrames.get(c.clip) || c.clip, w = (f.videoWidth || f.width) >> 1, h = f.videoHeight || f.height;
     return { raw: f, rawW: w, rawH: h, cut: o => alpha.draw(f, { ...o, slot }), cutW: w, cutH: h };
   }
@@ -642,7 +645,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
   const P = pairsOf(pairs), vids = [], phase = [], fxs = [];
   for (const [n, c, side] of [0, 1, 2, 3].flatMap(i => [[i, a.cuts[P[i]], "a"], [i, b.cuts[i], "b"]])) {
-    if (!c.clip) throw new Error("missing clip");
+    if (!clipUsable(c.clip)) continue;            // no / broken clip: that person stays still in this cell
     if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); fxs.push(fx?.[side] || null); }
   }
   const st = await prepare({ frame, date, caption });
@@ -760,7 +763,10 @@ function parseFmp4(buf) {
 // one frame per output frame: a recorded clip's timestamps jitter by up to half a frame, and sampling them by time
 // repeats one frame and skips the next. Slower clips keep time (their frames repeat).
 async function clipSource(v, phase, fx, hq) {
-  const mp4 = readFmp4(await (await fetch(v.currentSrc || v.src)).arrayBuffer());
+  const buf = await (await fetch(v.currentSrc || v.src)).arrayBuffer(), mp4 = readFmp4(buf);
+  // not an MP4 at all (WebM): the real-time path plays it. An MP4 we cannot read or decode: a broken clip (that cell's still)
+  const tag = buf.byteLength >= 8 ? String.fromCharCode(...new Uint8Array(buf, 4, 4)) : "";
+  if (!mp4 && tag !== "ftyp") throw Object.assign(new Error("clip not MP4"), { notMp4: true });
   if (!mp4 || !(await VideoDecoder.isConfigSupported(mp4.config).catch(() => null))?.supported) throw new Error("clip not decodable");
   const S = mp4.samples, N = S.length, us = S.map(s => s.us).sort((x, y) => x - y);
   const span = (us[N - 1] - us[0]) * N / Math.max(1, N - 1) / 1e6 || N / FPS, r = N / (span * FPS);
@@ -811,14 +817,19 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
   enc.configure(cfg);
   const srcs = [];
   try {
-    for (let n = 0; n < vids.length; n++) srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n])));
+    for (let n = 0; n < vids.length; n++) {
+      // a WebM clip -> the real-time path for all; an MP4 we cannot read or decode (e.g. a header with no frames, which
+      // a <video> still "loads") -> that cell's still
+      try { srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n]))); }
+      catch (e) { if (e?.notMp4 || e?.name === "AbortError") throw e; badClips.add(vids[n]); srcs.push(null); console.warn("[compose] clip skipped", e); }
+    }
     const N = SECONDS * FPS;
     for (let n = 0; n < N; n++) {
       if (failed) throw failed;
       opts.signal?.throwIfAborted();
-      if (n) for (const s of srcs) await s.advance();
+      if (n) for (const s of srcs) await s?.advance();
       const t = n / FPS;
-      srcs.forEach((s, k) => clipFrames.set(vids[k], s.frame));
+      srcs.forEach((s, k) => s && clipFrames.set(vids[k], s.frame));
       if (t < SECONDS - HOLD) paint(sctx, st, opts, t); else sctx.drawImage(still, 0, 0);   // the last 0.3 s hold the photo strip
       if (story) { ctx.drawImage(story.c, 0, 0); ctx.drawImage(strip, story.ox, story.oy, story.sw, story.sh); }
       const f = new VideoFrame(cv, { timestamp: Math.round(n * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
@@ -829,13 +840,13 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
     await enc.flush();
     if (failed) throw failed;
     muxer.finalize();
-    Object.assign(renderStats, { ms: Math.round(performance.now() - t0), frames: N, decoded: srcs.map(s => s.n), step: srcs.map(s => +s.step.toFixed(3)),
+    Object.assign(renderStats, { ms: Math.round(performance.now() - t0), frames: N, decoded: srcs.map(s => s?.n ?? null), step: srcs.map(s => s && +s.step.toFixed(3)),
       hq: vids.filter(v => opts.mattes?.has(v)).length });
     onProgress?.(1);
     return new Blob([muxer.target.buffer], { type: "video/mp4" });
   } finally {
     if (enc.state !== "closed") enc.close();
-    srcs.forEach(s => s.close());
+    srcs.forEach(s => s?.close());
     clipFrames.clear();
   }
 }
@@ -886,7 +897,8 @@ async function recordOnce(cv, st, story, vids, phase, fxs, type, opts, onProgres
   paint(still.getContext("2d"), st, opts, null);
   // start every clip at its cell's phase and wait until all of them show that frame
   vids.forEach((v, n) => { v.loop = true; v.muted = true; v.pause(); v.currentTime = Math.min(phase[n], (v.duration || 1) * 0.5); });
-  await Promise.all(vids.map(v => (v.readyState >= 2 && !v.seeking ? null : new Promise(r => v.addEventListener("seeked", r, { once: true })))));
+  await Promise.all(vids.map(v => (v.readyState >= 2 && !v.seeking ? null
+    : Promise.race([new Promise(r => v.addEventListener("seeked", r, { once: true })), new Promise(r => setTimeout(r, 3000))]))));   // a broken clip never seeks
   const states = vids.map((v, n) => clipState(v, fxs[n]));
   const frame = t => {
     states.forEach(s => clipFrames.set(s.v, tickClip(s, t)));
@@ -911,7 +923,8 @@ async function recordOnce(cv, st, story, vids, phase, fxs, type, opts, onProgres
     const started = new Promise(r => (rec.onstart = r));
     // play() can take ~1.5 s and the encoder ~1-4 s to start (headless 10-27): both before the clock starts,
     // or the strip opens on a frozen frame / loses its first second
-    await Promise.all(vids.map(v => v.play()));
+    // a broken clip may never settle play(): it just stays on its frame
+    await Promise.all(vids.map(v => Promise.race([v.play().catch(() => {}), new Promise(r => setTimeout(r, 3000))])));
     // the encoder needs a frame before it fires onstart; the clock starts only then.
     // ponytail: a slow encoder start (headless 1080x1920: ~5 s even warmed) opens the file on that first frame;
     // starting paused did not help (onstart came even later); fix only if a phone shows it
