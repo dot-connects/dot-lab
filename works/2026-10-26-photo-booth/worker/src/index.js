@@ -7,6 +7,13 @@ const typeOk = (name, t) => name.endsWith(".json") ? t === "application/json" : 
 const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const sha = async s => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
+const num = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
+function cleanLayout(bytes) {
+  try {
+    const a = JSON.parse(new TextDecoder().decode(bytes))?.a;
+    return a && num(a.x, -1, 1) && num(a.y, -1, 1) && num(a.scale, 0.3, 3) ? { a: { x: a.x, y: a.y, scale: a.scale } } : null;
+  } catch { return null; }
+}
 // B uploads into a staging folder named by its token hash; `done` claims the B slot, so an abandoned upload never blocks it
 const bDir = (id, hash) => `s/${id}/b-${hash.slice(0, 16)}`;
 
@@ -110,9 +117,15 @@ export default {
       const type = (req.headers.get("Content-Type") || "").split(";")[0].trim();
       if (!typeOk(p[3], type)) return json(415, { error: "type" });
       if (+(req.headers.get("Content-Length") || 0) > MAX_FILE) return json(413, { error: "file-too-big" });
-      const body = new Uint8Array(await req.arrayBuffer());
+      let body = new Uint8Array(await req.arrayBuffer());
       if (body.byteLength === 0) return json(400, { error: "empty" });
       if (body.byteLength > (p[3].endsWith(".json") ? MAX_JSON : MAX_FILE)) return json(413, { error: "file-too-big" });
+      if (p[3] === "layout.json") {                        // only when A allowed moving; keep just {a:{x,y,scale}} in range
+        if (!meta.opts?.movable) return json(403, { error: "fixed" });
+        const lay = cleanLayout(body);
+        if (!lay) return json(400, { error: "layout" });
+        body = new TextEncoder().encode(JSON.stringify(lay));
+      }
       await env.BUCKET.put(`${dir}/${p[3]}`, body, { httpMetadata: { contentType: type } });
       return json(204);
     }

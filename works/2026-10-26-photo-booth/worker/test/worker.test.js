@@ -153,3 +153,20 @@ test("A's option travels with the link; B may add a small optional layout.json",
   const id2 = await newLink(e);
   assert.deepEqual((await (await call(e, "GET", `/s/${id2}`)).json()).opts, { movable: false });  // default: fixed like a booth
 });
+
+test("layout.json only when A allowed moving, only {a:{x,y,scale}} in range, stored re-serialised", async () => {
+  const e = env();
+  const fixed = await newLink(e);
+  await upAll(e, fixed, "a", tok("a")); await done(e, fixed, "a", tok("a"));
+  const lay = JSON.stringify({ a: { x: 0.1, y: -0.05, scale: 1.2 } });
+  assert.equal((await call(e, "PUT", `/s/${fixed}/b/layout.json`, { token: tok("b"), body: lay, type: "application/json" })).status, 403);
+  const r = await call(e, "POST", "/s", { body: JSON.stringify({ token: tok("a"), opts: { movable: true } }), type: "application/json" });
+  const { id } = await r.json();
+  await upAll(e, id, "a", tok("a")); await done(e, id, "a", tok("a"));
+  const put = body => call(e, "PUT", `/s/${id}/b/layout.json`, { token: tok("b"), body, type: "application/json" });
+  for (const bad of ["{", "[]", '{"a":{"x":"1","y":0,"scale":1}}', '{"a":{"x":3,"y":0,"scale":1}}', '{"a":{"x":0,"y":0,"scale":9}}'])
+    assert.equal((await put(bad)).status, 400, bad);
+  assert.equal((await put('{"a":{"x":0.25,"y":0,"scale":1.5},"evil":"<script>"}')).status, 204);
+  await upAll(e, id, "b", tok("b")); await done(e, id, "b", tok("b"));
+  assert.equal(await (await call(e, "GET", `/s/${id}/b/layout.json`)).text(), '{"a":{"x":0.25,"y":0,"scale":1.5}}');
+});
