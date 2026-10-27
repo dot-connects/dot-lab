@@ -34,3 +34,10 @@ works/2026-10-26-photo-booth/research/pet-matting/prof*/
 works/2026-10-26-photo-booth/research/pet-matting/out/masks/
 works/2026-10-26-photo-booth/research/pet-matting/out/*.png
 .dev.vars
+works/2026-10-26-photo-booth/research/round5-matte/media/
+works/2026-10-26-photo-booth/research/round5-matte/models/
+works/2026-10-26-photo-booth/research/round5-matte/gt/
+works/2026-10-26-photo-booth/research/round5-matte/cut/
+works/2026-10-26-photo-booth/research/round5-matte/tmp-*.png
+works/2026-10-26-photo-booth/research/round5-matte/walk*/
+works/2026-10-26-photo-booth/research/round5-matte/*.log

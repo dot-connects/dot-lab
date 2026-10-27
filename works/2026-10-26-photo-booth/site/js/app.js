@@ -388,6 +388,8 @@ async function upgradeAll() {
     S.hq.push(`ready ${Math.round(performance.now() - t0)}ms`);
     for (;;) {
       if (gen !== S.gen || S.hqFrozen) break;
+      // WASM (no WebGPU, Round 5): seconds per still, so only the 4 picked ones are cut, once they are picked
+      if (S.cap.hqPath?.() === "wasm" && !S.cuts.length) { await sleep(300); continue; }
       const c = (S.cuts.length ? S.cuts : shots).find(x => !x.hq && !x.hqFail);
       if (!c) break;
       const t1 = performance.now(), j = shots.indexOf(c) + 1;
@@ -473,7 +475,7 @@ async function paintCell(j, fade) {
   cv.className = fade && !calm() ? "fadein" : "";
   b.insertBefore(cv, b.querySelector(".badge"));
   setTimeout(() => old.forEach(o => o.remove()), fade ? 500 : 0);
-  b.classList.toggle("pending", S.hqBusy && !shot.hq && !shot.hqFail);
+  b.classList.toggle("pending", S.hqBusy && !shot.hq && !shot.hqFail && S.cap.hqPath?.() !== "wasm");
   S.cellCv[j] = cv; paintStrip();
 }
 function togglePick(j) {
@@ -569,7 +571,7 @@ function askUpload() {
 }
 async function hqWait() {
   const b = $("hqWaitBtn"); b.disabled = true; b.textContent = "기다리는 중…";
-  await Promise.race([S.hqP, sleep(20000)]);
+  await Promise.race([S.hqP, sleep(S.cap.hqPath?.() === "wasm" ? 45000 : 20000)]);   // WASM: ~9 s per still on a phone CPU
   b.disabled = false; b.textContent = "조금만 기다리기";
   upload();
 }

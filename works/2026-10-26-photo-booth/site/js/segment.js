@@ -11,11 +11,15 @@ import { createRefiner } from "./refine.js";
 // engine 0 = joint bilateral below (default: kept braids on person-a, A/B 10-26), 1 = research guided filter
 // (refine.js, copied from research/cutout-poc; softer, lost braid tips and smeared on motion blur)
 // still = 1 (default; ?still=0 turns it off) cuts each shutter still with MODNet (see the stills section below);
-// slo/shi = its linear alpha levels, scpu = 1 forces the WASM backend (tests only: 9-15 s per still).
+// slo/shi = its linear alpha levels (0.15/0.9: less grey fog round the hair than 0.03/0.97, same edge error; round5-matte),
+// scpu = 1 forces the WASM backend (what a phone without WebGPU gets; ?scpu=1),
+// pet = 1 adds cats/dogs from DeepLab-v3 to the HQ cut (?pet=0 turns it off).
+const QS = new URLSearchParams(location.search);
 export const TUNE = { engine: 0, ema: 0.6, lo: 0.3, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
-  still: new URLSearchParams(location.search).get("still") === "0" ? 0 : 1, slo: 0.03, shi: 0.97, scpu: 0 };
+  still: QS.get("still") === "0" ? 0 : 1, slo: 0.15, shi: 0.9, scpu: QS.has("scpu") ? 1 : 0, pet: QS.get("pet") === "0" ? 0 : 1 };
+// still.path = which cut the stills get: "webgpu" | "wasm" (MODNet) | "live" (fast selfie matte: HQ off / failed)
 export const stats = { delegate: "", warmMs: 0, held: 0, ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
-  still: { state: "", delegate: "", loadMs: 0, warmMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [] } };
+  still: { state: "", delegate: "", path: "live", loadMs: 0, warmMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [], hq: [], pet: "" } };
 
 let seg = null, lastTime = -1, lastTs = 0, ema = null, emaSum = 0, held = 0, m8 = null, mw = 0, mh = 0, ready = false;
 // The model input is 256 px anyway: feed it a 256-wide copy so the mask comes back at 256x192 instead of the video size
@@ -94,7 +98,9 @@ export function hasMatte() { return ready; }
 
 // Stills: keep only the largest person (+ any at least 40 % of its size), so a passer-by is not cut out too.
 // Works on a 64x48 copy of the alpha (4-connected BFS, < 1 ms), dilated one cell and smoothed back up.
-export function keepLargest(c) {
+// pet: a canvas whose alpha marks cats/dogs (cutStill sets it as c.pet): a blob with a pet in it is kept at any size, so a
+// dog sitting beside the person is not deleted as a passer-by (pet study 10-27).
+export function keepLargest(c, pet = c.pet) {
   const W = 64, H = 48, s = Object.assign(document.createElement("canvas"), { width: W, height: H });
   const x = s.getContext("2d", { willReadFrequently: true });
   x.drawImage(c, 0, 0, W, H);
@@ -110,7 +116,13 @@ export function keepLargest(c) {
     area.push(n);
   }
   if (area.length <= 2) return c;                       // zero or one person: nothing to drop
-  const max = Math.max(...area), keep = area.map(n => n >= 0.4 * max);
+  const petHit = new Int32Array(area.length);
+  if (pet) {
+    x.clearRect(0, 0, W, H); x.drawImage(pet, 0, 0, W, H);
+    const q = x.getImageData(0, 0, W, H).data;
+    for (let i = 0; i < W * H; i++) if (q[i * 4 + 3] >= 128) petHit[lab[i]]++;
+  }
+  const max = Math.max(...area), keep = area.map((n, id) => n >= 0.4 * max || petHit[id] >= 2);
   if (keep.slice(1).every(Boolean)) return c;
   for (let i = 0; i < W * H; i++) {
     const ix = i % W, iy = (i / W) | 0;
@@ -303,11 +315,17 @@ export function drawCutout(ctx, video, w, h, mirror) {
 // Round 4: prefetchStill() = download (or Cache Storage) + session, no camera needed: call it on the landing page and/or
 // while shooting. warmStill() = the first real-size run, which compiles the WebGPU shaders and freezes the page for a
 // few seconds: call it when the Pick screen opens. cutStill then runs on the 4 picked stills (it warms up itself when
-// warmStill was not called). When anything fails / there is no WebGPU, the picked stills keep the live matte. WASM runs 9-15 s per still on the PC (single thread without cross-origin isolation): not used.
+// warmStill was not called). When anything fails, the picked stills keep the live matte (stats.still.path = "live").
 // MODNet's alpha already follows hair, so refine.js runs with guide 0 (linear levels + edge colour decontamination).
 // 512x384 input (short side 384): 0.81-0.9 s per still instead of 1.33-1.5 s at 672x512, same look (research/cutout-speed/)
 const STILL_MODEL = { url: new URL("../models/modnet.onnx", import.meta.url).href, cache: "booth-modnet-v1",
-  size: { short: 384, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha" };
+  size: { short: +QS.get("sshort") || 384, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha" };   // ?sshort= bench only
+// No WebGPU (many Android phones, in-app browsers) or a WebGPU error: WASM instead of the live matte (Round 5: the phone's
+// stills all had the live matte's leftover background, lost hands and rough hair). Same fp32 model (Xenova's int8 export is
+// 2x faster but cut half a head of hair and most of a held dog: research/round5-matte/), single thread (no cross-origin
+// isolation), smaller input. Time per still and the size choice: research/round5-matte/.
+const STILL_WASM = { ...STILL_MODEL, size: { short: +QS.get("wshort") || 256, div: 32 } };   // ?wshort= for the bench only
+const STILL_MS = { webgpu: 15000, wasm: 60000 };   // per-still timeout (the old 6 s cut a slow phone GPU back to the live matte)
 // The first WebGPU run compiles shaders (3-10 s on a PC iGPU) and stalls the GPU process meanwhile (no new frames
 // anywhere on the page, any canvas readback waits: 10-27): that is warmStill(), never during shooting.
 let stillW = null, stillRef = null, stillP = null, warmP = null, stillOk = false, wid = 0, warming = null;
@@ -331,11 +349,23 @@ export async function loadStillSegmenter() {
   stillW = new Worker(new URL("./matting-worker.js", import.meta.url), { type: "module" });
   stillW.onmessage = ({ data }) => { const f = wcb.get(data.id); wcb.delete(data.id); f?.(data); };
   stillW.onerror = e => { e.preventDefault(); for (const f of wcb.values()) f({ error: "worker: " + (e.message || "load") }); wcb.clear(); };
-  const L = await wcall({ load: STILL_MODEL, eps: TUNE.scpu ? ["wasm"] : ["webgpu"] });
+  loadPet();
+  const gpu = !TUNE.scpu && await navigator.gpu?.requestAdapter().catch(() => null);
+  let L = gpu && await wcall({ load: STILL_MODEL, eps: ["webgpu"] }).catch(e => { S.gpuError = String(e?.message || e); return null; });
+  if (!L) { if (!gpu && !TUNE.scpu) S.gpuError ||= "no webgpu adapter"; L = await wcall({ load: STILL_WASM, eps: ["wasm"] }); }
   S.delegate = L.ep; S.cached = L.cached; S.fetchMs = L.fetchMs; S.createMs = L.createMs; S.bytes = L.bytes;
   S.loadMs = Math.round(performance.now() - t0); S.state = "loaded"; S.loadedAt = Math.round(performance.now());   // ms since page load
 }
-const fail = e => { stats.still.state = "failed"; stats.still.error = String(e?.message || e); stillW?.terminate(); return false; };
+// WebGPU loaded but its run failed (driver, lost device): the same worker reloads with WASM, once
+async function toWasm(e) {
+  const S = stats.still;
+  if (S.delegate !== "webgpu") throw e;
+  S.gpuError = String(e?.message || e);
+  const L = await wcall({ load: STILL_WASM, eps: ["wasm"] });
+  S.delegate = L.ep; S.bytes = L.bytes;
+  if (stillOk) S.path = L.ep;
+}
+const fail = e => { const S = stats.still; S.state = "failed"; S.path = "live"; S.error = String(e?.message || e); stillW?.terminate(); return false; };
 
 // Starts the background load (download or cache + session) once; no camera, no freeze. Resolves true when the session
 // is up, false when stills cannot use the HQ model.
@@ -350,13 +380,15 @@ export function warmStill() {
     if (!ok) return false;
     const S = stats.still, t0 = performance.now();
     S.state = "warming";
-    warming = (async () => {   // 4:3 like every still, so the warm-up compiles the same 512x384 shapes
+    const run = async () => {   // 4:3 like every still, so the warm-up compiles the same 512x384 shapes
       const w = Object.assign(document.createElement("canvas"), { width: 96, height: 72 }), b = await bitmap(w);
       stillRef.refine(w, await wcall({ img: b }, [b]), { temporal: 0, guide: 0 });
-    })();
+      if (petP && TUNE.pet) await petP.then(() => pet && petMask(w));   // DeepLab's first GPU run compiles too (~6 s)
+    };
+    warming = run().catch(async e => { await toWasm(e); await run(); });
     try { await warming; } finally { warming = null; }
     S.warmMs = Math.round(performance.now() - t0);
-    stillOk = true; S.state = "ready"; S.readyAt = Math.round(performance.now());
+    stillOk = true; S.state = "ready"; S.path = S.delegate; S.readyAt = Math.round(performance.now());
     return true;
   }).catch(fail);
 }
@@ -381,11 +413,71 @@ export async function cutStills(canvases, onEach) {
 }
 async function cutOne(canvas4x3) {
   if (!stillReady() && !(await warmStill())) throw new Error("still-" + (stats.still.state || "off"));
-  const S = stats.still, t0 = performance.now(), b = await bitmap(canvas4x3);
-  const m = await wcall({ img: b }, [b], 6000), t1 = performance.now();
+  const S = stats.still, t0 = performance.now(), run = async () => { const b = await bitmap(canvas4x3); return wcall({ img: b }, [b], STILL_MS[S.delegate] || 15000); };
+  const m = await run().catch(async e => { if (/timeout/.test(e.message)) throw e; await toWasm(e); return run(); }), t1 = performance.now();
+  const pm = addPet(canvas4x3, m);
   const g = stillRef.refine(canvas4x3, m, { temporal: 0, guide: 0, lo: TUNE.slo, hi: TUNE.shi });
   const o = Object.assign(document.createElement("canvas"), { width: canvas4x3.width, height: canvas4x3.height });
   o.getContext("2d").drawImage(g, 0, 0);   // own copy: the refiner canvas is reused by the next cut
+  if (pm) o.pet = pm;                      // keepLargest keeps the blobs a pet is in
   S.segMs = Math.round(t1 - t0); S.modelMs = m.ms; S.modelWH = `${m.width}x${m.height}`; S.refineMs = Math.round(performance.now() - t1);
+  S.hq.push({ path: S.delegate, ms: Math.round(performance.now() - t0), pet: !!pm });
   return o;
 }
+
+// ---- pets: MediaPipe DeepLab-v3 (Apache-2.0, 2.8 MB, PASCAL VOC classes) cat + dog, added to MODNet's person alpha --------
+// MODNet is a portrait model: a dog held up or sitting beside comes out partly or not at all (research/pet-matting/).
+// The pet probability (cat + dog, at DeepLab's 257 px) is snapped to the photo's edges by refine.js's guided filter and
+// max-ed into the MODNet alpha before the usual levels + decontamination. ~130 ms per still after a ~6 s first run.
+const DEEPLAB = "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite";
+const CAT = 8, DOG = 12;
+let pet = null, petP = null, petRef = null;
+function loadPet() {
+  if (!TUNE.pet) return;
+  petP ||= (async () => {
+    const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+    const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
+    const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: DEEPLAB, delegate },
+      runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+    try { pet = await mk("GPU"); stats.still.pet = "GPU"; } catch { pet = await mk("CPU"); stats.still.pet = "CPU"; }
+    petRef = createRefiner();
+  })().catch(e => { pet = null; stats.still.pet = "failed: " + (e?.message || e); });
+}
+// cat + dog probability at the still's size, or null when no pixel reaches 0.3 (no pet in the photo)
+function petMask(c) {
+  let out = null;
+  pet.segment(c, r => {
+    const M = r.confidenceMasks, a = M[CAT].getAsFloat32Array(), b = M[DOG].getAsFloat32Array(), d = new Float32Array(a.length);
+    let hit = false;
+    for (let i = 0; i < d.length; i++) { d[i] = Math.min(1, a[i] + b[i]); hit ||= d[i] >= 0.3; }
+    if (hit) out = { data: d, width: M[CAT].width, height: M[CAT].height };
+  });
+  return out;
+}
+// m (MODNet alpha, Uint8 at model size) gets max(m, guided pet alpha); returns the pet canvas (alpha = pet) or null
+function addPet(canvas4x3, m) {
+  if (!pet || !petRef || !TUNE.pet) return null;
+  try {
+    const t0 = performance.now(), p = petMask(canvas4x3);
+    if (!p) return null;
+    const g = petRef.refine(canvas4x3, p, { temporal: 0, guide: 1, lo: 0.15, hi: 0.85, width: m.width, height: m.height });
+    const c = Object.assign(document.createElement("canvas"), { width: m.width, height: m.height }), x = c.getContext("2d", { willReadFrequently: true });
+    x.drawImage(g, 0, 0);
+    const q = x.getImageData(0, 0, m.width, m.height).data;
+    for (let i = 0; i < m.data.length; i++) m.data[i] = Math.max(m.data[i], q[i * 4 + 3]);
+    stats.still.petMs = Math.round(performance.now() - t0);
+    return c;
+  } catch (e) { stats.still.pet = "error: " + (e?.message || e); return null; }
+}
+
+// ---- ?debug: a corner badge with the cut-out path, so a phone run tells which path its stills took --------------------
+if (QS.has("debug")) setInterval(() => {
+  const b = document.getElementById("segDebug") || document.body?.appendChild(Object.assign(document.createElement("div"), { id: "segDebug" }));
+  if (!b) return;
+  b.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;font:11px/1.35 monospace;background:#000c;color:#7f7;" +
+    "padding:3px 6px;border-radius:4px;pointer-events:none;white-space:pre;max-width:96vw;overflow:hidden";
+  const S = stats.still, ms = stats.ms.length ? Math.round(stats.ms.reduce((s, v) => s + v, 0) / stats.ms.length) : 0;
+  b.textContent = `live ${stats.delegate || "-"} ${ms}ms webgl ${stats.webgl ? 1 : 0}\n` +
+    `still ${S.path} (${S.state || "-"} ${S.delegate || "-"}) ${S.segMs}ms pet ${S.pet || "-"}\n` +
+    `hq ${S.hq.slice(-4).map(c => (c.path === "wasm" ? "cpu" : "gpu") + ":" + c.ms + (c.pet ? "+pet" : "")).join(" ")}` + (S.error || S.gpuError ? `\n${S.error || S.gpuError}` : "");
+}, 500);

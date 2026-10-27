@@ -1,0 +1,19 @@
+<!doctype html><meta charset="utf-8"><title>speed main</title><script type="module">
+// MODNet fp32 on ORT-web WASM in the PAGE thread (CDP CPU throttling slows the page's threads, not a dedicated worker's),
+// so THROTTLE=4 gives a phone-class estimate of the worker's per-still time. ?w=352&h=256&n=3
+import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.mjs";
+ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+const Q = new URLSearchParams(location.search), w = +(Q.get("w") || 352), h = +(Q.get("h") || 256), out = window.out = { w, h, ms: [] };
+try {
+  const buf = new Uint8Array(await (await fetch("../../site/models/modnet.onnx")).arrayBuffer());
+  const s = await ort.InferenceSession.create(buf, { executionProviders: ["wasm"], graphOptimizationLevel: "all" });
+  out.threads = ort.env.wasm.numThreads; out.coi = self.crossOriginIsolated;
+  const t = new Float32Array(3 * w * h).map(() => Math.random() - 0.5);
+  for (let i = 0; i < +(Q.get("n") || 3); i++) {
+    const t0 = performance.now();
+    await s.run({ [s.inputNames[0]]: new ort.Tensor("float32", t, [1, 3, h, w]) });
+    out.ms.push(Math.round(performance.now() - t0));
+  }
+} catch (e) { out.error = String(e?.stack || e); }
+window.done = true;
+</script>

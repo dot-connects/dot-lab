@@ -177,6 +177,7 @@ export async function hqReady(wait = 60000) {
   return !!await Promise.race([SEG.warmStill ? SEG.warmStill() : prefetchStill().then(() => stillWarm()).then(stillReady), sleep(wait)]);
 }
 export const hqState = () => stats.still.state || "off";
+export const hqPath = () => stats.still.path;   // "webgpu" | "wasm" | "live" (segment.js)
 // The HQ cut of one picked still, same size as cut.raw (PNG). Throws when the model is not ready or fails; the caller
 // then keeps cut.cut (the live matte).
 export async function hqCut(cut) {

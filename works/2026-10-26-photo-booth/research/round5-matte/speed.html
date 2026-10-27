@@ -1,0 +1,21 @@
+<!doctype html><meta charset="utf-8"><title>speed</title><script type="module">
+// MODNet per-still time through the site's matting-worker: ?ep=wasm|webgpu&m=fp32|q8&short=384&n=3
+// (run under drive.mjs with THROTTLE=4 for a mid phone CPU)
+import { CASES, loadCase } from "./cases.js";
+const Q = new URLSearchParams(location.search), out = window.out = { q: location.search, ms: [] };
+try {
+  const url = Q.get("m") === "q8" ? new URL("models/modnet-q8.onnx", location.href).href : new URL("../../site/models/modnet.onnx", location.href).href;
+  const w = new Worker("../../site/js/matting-worker.js", { type: "module" }), cb = new Map(); let id = 0;
+  w.onmessage = ({ data }) => { cb.get(data.id)(data); cb.delete(data.id); };
+  const call = (m, tr = []) => new Promise((res, rej) => { const i = ++id; cb.set(i, d => d.error ? rej(new Error(d.error)) : res(d)); w.postMessage({ ...m, id: i }, tr); });
+  const t0 = performance.now();
+  out.load = await call({ load: { url, size: { short: +(Q.get("short") || 384), div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha" }, eps: [Q.get("ep") || "wasm"] });
+  out.loadMs = Math.round(performance.now() - t0);
+  for (const c of CASES.slice(0, +(Q.get("n") || 3))) {
+    const { frame } = await loadCase(c, ".", false), t = performance.now();
+    const m = await call({ img: await createImageBitmap(frame) });
+    out.ms.push(Math.round(performance.now() - t)); out.wh = `${m.width}x${m.height}`;
+  }
+} catch (e) { out.error = String(e?.stack || e); }
+window.done = true;
+</script>

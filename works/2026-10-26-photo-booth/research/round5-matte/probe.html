@@ -1,0 +1,13 @@
+<!doctype html><meta charset="utf-8"><title>probe</title><script type="module">
+// WebGPU / WebGL2 probe + the real site's HQ still load: which path does this browser take?
+const out = window.out = {};
+try {
+  out.gpu = !!navigator.gpu; out.adapter = !!(navigator.gpu && await navigator.gpu.requestAdapter());
+  const gl = document.createElement("canvas").getContext("webgl2"); out.webgl2 = !!gl;
+  out.halfFloat = !!(gl && (gl.getExtension("EXT_color_buffer_float") || gl.getExtension("EXT_color_buffer_half_float")));
+  const S = await import("../../site/js/segment.js");
+  const t0 = performance.now(); out.prefetch = await S.prefetchStill(); out.warm = await S.warmStill();
+  out.still = JSON.parse(JSON.stringify(S.stats.still)); out.ms = Math.round(performance.now() - t0);
+} catch (e) { out.error = String(e); }
+window.done = true;
+</script>

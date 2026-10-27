@@ -1,0 +1,29 @@
+<!doctype html><meta charset="utf-8"><title>sheet</title><script type="module">
+// ?tags=live,hq,new[&only=a,b][&crop=x,y,w,h][&name=file] -> sheet: one row per case, columns = GT then each tag's cut-out over a
+// pink booth background (cut/<tag>-<case>.png from bench.html). Labels on top.
+import { CASES, W, H, mk, loadCase } from "./cases.js";
+const Q = new URLSearchParams(location.search), tags = Q.get("tags").split(","), only = Q.get("only")?.split(",");
+const cr = (Q.get("crop") || `0,0,${W},${H}`).split(",").map(Number), cw = 320, ch = Math.round(cw * cr[3] / cr[2]), top = 22;
+const out = window.out = { files: {} };
+try {
+  const cs = CASES.filter(c => !only || only.includes(c.n)), cols = ["GT", ...tags];
+  const s = mk(cols.length * cw, top + cs.length * ch), x = s.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, s.width, s.height); x.fillStyle = "#000"; x.font = "bold 15px system-ui";
+  cols.forEach((t, i) => x.fillText(t, i * cw + 6, 16));
+  const img = async u => { const i = new Image(); i.src = u; await i.decode(); return i; };
+  for (const [r, c] of cs.entries()) {
+    const { frame, gt } = await loadCase(c), y = top + r * ch;
+    const g = mk(), gx = g.getContext("2d"), d = gx.createImageData(W, H);
+    const fp = frame.getContext("2d").getImageData(0, 0, W, H).data;
+    for (let k = 0; k < gt.length; k++) d.data.set([fp[k * 4], fp[k * 4 + 1], fp[k * 4 + 2], gt[k] * 255], k * 4);
+    gx.putImageData(d, 0, 0);
+    for (const [i, src] of [g, ...await Promise.all(tags.map(t => img(`cut/${t}-${c.n}.png`).catch(() => null)))].entries()) {
+      x.fillStyle = "#f6c8d8"; x.fillRect(i * cw, y, cw, ch);
+      if (src) x.drawImage(src, ...cr, i * cw, y, cw, ch);
+      x.fillStyle = "#000"; x.font = "12px system-ui"; if (i === 0) x.fillText(c.n, 4, y + ch - 6);
+    }
+  }
+  out.files[`${Q.get("name") || "sheet-" + tags.join("-")}.png`] = s.toDataURL("image/png").split(",")[1];
+} catch (e) { out.error = String(e?.stack || e); }
+window.done = true;
+</script>
