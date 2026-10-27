@@ -620,54 +620,77 @@ async function encoderConfig(w, h) {
   return null;
 }
 
-// Our recorded clips (MediaRecorder MP4: one H.264 track, moov + moof/mdat fragments) -> decoder config + samples.
-// null for anything else (WebM from older browsers, plain MP4): the real-time path takes those.
+// Our recorded clips (MediaRecorder / capture.js MP4: one H.264 track, moov + moof/mdat fragments) -> decoder config +
+// samples. null for anything else (WebM from older browsers, plain MP4): the real-time path takes those.
+// The other person's clip is untrusted input: every box must fit in its parent, sample tables in their box, samples in
+// the file, at most MAX_SAMPLES; anything off -> null.
+const MAX_SAMPLES = 1200;            // 10 s at 120 fps; our clips are ~60
 export function readFmp4(buf) {
+  try { return parseFmp4(buf); } catch { return null; }
+}
+function parseFmp4(buf) {
   const d = new DataView(buf), u8 = new Uint8Array(buf), out = { samples: [], ts: 0, trex: [0, 0, 0] };
-  const kids = (s, e, f) => { for (let o = s; o + 8 <= e;) {
-    let n = d.getUint32(o), h = 8; const t = String.fromCharCode(...u8.subarray(o + 4, o + 8));
-    if (n === 1) { n = Number(d.getBigUint64(o + 8)); h = 16; } else if (n === 0) n = e - o;
-    if (n < h) return; f(t, o + h, o + n, o); o += n; } };
-  const walk = (t, s, e, o) => {
-    if (["moov", "trak", "mdia", "minf", "stbl", "mvex"].includes(t)) return kids(s, e, walk);
-    if (t === "mdhd") out.ts = d.getUint32(s + (u8[s] === 1 ? 20 : 12));
-    else if (t === "trex") out.trex = [d.getUint32(s + 12), d.getUint32(s + 16), d.getUint32(s + 20)];
-    else if (t === "stsd") kids(s + 8, e, (t2, s2, e2) => {
+  const bad = () => { throw new Error("mp4"); };
+  const kids = (s, e, f, depth = 0) => {
+    if (depth > 8) bad();
+    for (let o = s; o + 8 <= e;) {
+      let n = d.getUint32(o), h = 8; const t = String.fromCharCode(...u8.subarray(o + 4, o + 8));
+      if (n === 1) { if (o + 16 > e) bad(); n = Number(d.getBigUint64(o + 8)); h = 16; } else if (n === 0) n = e - o;
+      if (n < h || o + n > e) bad();
+      f(t, o + h, o + n, o, depth + 1); o += n;
+    }
+  };
+  const need = (p, k, e) => { if (p + k > e) bad(); };
+  const walk = (t, s, e, o, depth) => {
+    if (["moov", "trak", "mdia", "minf", "stbl", "mvex"].includes(t)) return kids(s, e, walk, depth);
+    if (t === "mdhd") { const v1 = u8[s] === 1; need(s, v1 ? 24 : 16, e); out.ts = d.getUint32(s + (v1 ? 20 : 12)); }
+    else if (t === "trex") { need(s, 24, e); out.trex = [d.getUint32(s + 12), d.getUint32(s + 16), d.getUint32(s + 20)]; }
+    else if (t === "stsd") { need(s, 8, e); kids(s + 8, e, (t2, s2, e2) => {
       if (t2 !== "avc1") return;
+      need(s2, 78, e2);
       out.w = d.getUint16(s2 + 24); out.h = d.getUint16(s2 + 26);
-      kids(s2 + 78, e2, (t3, s3, e3) => { if (t3 === "avcC") out.desc = u8.slice(s3, e3); });
-    });
+      kids(s2 + 78, e2, (t3, s3, e3) => { if (t3 === "avcC") out.desc = u8.slice(s3, e3); }, depth + 2);
+    }, depth + 1); }
     else if (t === "moof") kids(s, e, (t2, s2, e2) => {
       if (t2 !== "traf") return;
       let base = o, dts = 0, [dd, ds, df] = out.trex;
       kids(s2, e2, (t3, p, e3) => {
+        if (!["tfhd", "tfdt", "trun"].includes(t3)) return;
+        need(p, 4, e3);
         const fl = d.getUint32(p) & 0xffffff; p += 4;
         if (t3 === "tfhd") {
+          need(p, 4 + (fl & 1 ? 8 : 0) + (fl & 2 ? 4 : 0) + (fl & 8 ? 4 : 0) + (fl & 0x10 ? 4 : 0) + (fl & 0x20 ? 4 : 0), e3);
           p += 4;
           if (fl & 1) { base = Number(d.getBigUint64(p)); p += 8; }
           if (fl & 2) p += 4;
           if (fl & 8) { dd = d.getUint32(p); p += 4; }
           if (fl & 0x10) { ds = d.getUint32(p); p += 4; }
           if (fl & 0x20) df = d.getUint32(p);
-        } else if (t3 === "tfdt") dts = u8[p - 4] === 1 ? Number(d.getBigUint64(p)) : d.getUint32(p);
-        else if (t3 === "trun") {
+        } else if (t3 === "tfdt") { const v1 = u8[p - 4] === 1; need(p, v1 ? 8 : 4, e3); dts = v1 ? Number(d.getBigUint64(p)) : d.getUint32(p); }
+        else {
+          need(p, 4 + (fl & 1 ? 4 : 0) + (fl & 4 ? 4 : 0), e3);
           const n = d.getUint32(p); p += 4;
+          const per = 4 * [0x100, 0x200, 0x400, 0x800].filter(b => fl & b).length;
+          if (out.samples.length + n > MAX_SAMPLES) bad();
           let at = base + (fl & 1 ? d.getInt32(p) : 0); if (fl & 1) p += 4;
           let first = null; if (fl & 4) { first = d.getUint32(p); p += 4; }
+          need(p, n * per, e3);
           for (let i = 0; i < n; i++) {
             const dur = fl & 0x100 ? d.getUint32((p += 4) - 4) : dd, size = fl & 0x200 ? d.getUint32((p += 4) - 4) : ds;
             let f = fl & 0x400 ? d.getUint32((p += 4) - 4) : df; if (i === 0 && first != null) f = first;
             const cto = fl & 0x800 ? d.getInt32((p += 4) - 4) : 0;
+            if (!size || at < 0 || at + size > buf.byteLength) bad();
             out.samples.push({ data: u8.subarray(at, at + size), pts: dts + cto, key: !(f & 0x10000) });
             at += size; dts += dur;
           }
         }
-      });
-    });
+      }, depth + 1);
+    }, depth);
   };
   kids(0, buf.byteLength, walk);
   const S = out.samples;
-  if (!out.desc || !out.ts || !S.length || !S[0].key || S.some(s => s.data.length !== s.data.byteLength || !s.data.length)) return null;
+  if (!out.desc || out.desc.length < 7 || !out.ts || !S.length || !S[0].key) return null;
+  if (!(out.w > 0 && out.w <= 4096 && out.h > 0 && out.h <= 4096)) return null;
   const hx = k => out.desc[k].toString(16).padStart(2, "0");
   return { config: { codec: `avc1.${hx(1)}${hx(2)}${hx(3)}`, codedWidth: out.w, codedHeight: out.h, description: out.desc },
     samples: S.map(s => ({ ...s, us: Math.round(s.pts * 1e6 / out.ts) })) };
