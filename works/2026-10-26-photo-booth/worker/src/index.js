@@ -1,13 +1,20 @@
 const LIFE = 7 * 864e5, MAX_FILE = 3 * 1024 * 1024;
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
 // optional per-side files: B's placement of A when A allowed moving (not required for `done`)
-const OPTIONAL = ["layout.json"], MAX_JSON = 4096;
+const OPTIONAL = ["layout.json", "pairs.json"], MAX_JSON = 4096;
 const typeOk = (name, t) => name.endsWith(".json") ? t === "application/json" : name.endsWith(".jpg") ? t === "image/jpeg" : name.endsWith(".png") ? t === "image/png"
   : t === "video/mp4" || t === "video/webm";
 const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const sha = async s => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))));
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const num = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
+// B shoots 8 and keeps 4; each kept cell pairs with one of A's 4 cuts (repeats allowed)
+function cleanPairs(bytes) {
+  try {
+    const a = JSON.parse(new TextDecoder().decode(bytes));
+    return Array.isArray(a) && a.length === 4 && a.every(v => Number.isInteger(v) && v >= 0 && v <= 3) ? a : null;
+  } catch { return null; }
+}
 function cleanLayout(bytes) {
   try {
     const a = JSON.parse(new TextDecoder().decode(bytes))?.a;
@@ -125,6 +132,11 @@ export default {
         const lay = cleanLayout(body);
         if (!lay) return json(400, { error: "layout" });
         body = new TextEncoder().encode(JSON.stringify(lay));
+      }
+      if (p[3] === "pairs.json") {
+        const pairs = cleanPairs(body);
+        if (!pairs) return json(400, { error: "pairs" });
+        body = new TextEncoder().encode(JSON.stringify(pairs));
       }
       await env.BUCKET.put(`${dir}/${p[3]}`, body, { httpMetadata: { contentType: type } });
       return json(204);

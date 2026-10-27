@@ -170,3 +170,13 @@ test("layout.json only when A allowed moving, only {a:{x,y,scale}} in range, sto
   await upAll(e, id, "b", tok("b")); await done(e, id, "b", tok("b"));
   assert.equal(await (await call(e, "GET", `/s/${id}/b/layout.json`)).text(), '{"a":{"x":0.25,"y":0,"scale":1.5}}');
 });
+
+test("pairs.json: B's 4 cells say which of A's cuts each pairs with; 4 ints 0..3, any link", async () => {
+  const e = env(); const id = await aDone(e);                                    // a fixed link: pairs still allowed
+  const put = body => call(e, "PUT", `/s/${id}/b/pairs.json`, { token: tok("b"), body, type: "application/json" });
+  for (const bad of ["[0,1,2]", "[0,1,2,4]", "[0,1,2,1.5]", '{"a":1}', "x"]) assert.equal((await put(bad)).status, 400, bad);
+  assert.equal((await put("[2, 0, 0, 3]")).status, 204);
+  assert.equal((await call(e, "PUT", `/s/${id}/a/pairs.json`, { token: tok("a"), body: "[0,1,2,3]", type: "application/json" })).status, 409);
+  await upAll(e, id, "b", tok("b")); await done(e, id, "b", tok("b"));
+  assert.equal(await (await call(e, "GET", `/s/${id}/b/pairs.json`)).text(), "[2,0,0,3]");
+});
