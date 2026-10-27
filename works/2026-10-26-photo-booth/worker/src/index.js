@@ -2,6 +2,8 @@ const LIFE = 7 * 864e5, MAX_FILE = 3 * 1024 * 1024;
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
 // optional per-side files: B's placement of A when A allowed moving (not required for `done`)
 const OPTIONAL = ["layout.json", "pairs.json"], MAX_JSON = 4096;
+// either side's face retouch picks (look.json), uploaded with its own photos
+const BOTH = ["look.json"];
 const typeOk = (name, t) => name.endsWith(".json") ? t === "application/json" : name.endsWith(".jpg") ? t === "image/jpeg" : name.endsWith(".png") ? t === "image/png"
   : t === "video/mp4" || t === "video/webm";
 const b64u = a => btoa(String.fromCharCode(...a)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
@@ -13,6 +15,12 @@ function cleanPairs(bytes) {
   try {
     const a = JSON.parse(new TextDecoder().decode(bytes));
     return Array.isArray(a) && a.length === 4 && a.every(v => Number.isInteger(v) && v >= 0 && v <= 3) ? a : null;
+  } catch { return null; }
+}
+function cleanLook(bytes) {
+  try {
+    const o = JSON.parse(new TextDecoder().decode(bytes)), lv = v => Number.isInteger(v) && v >= 0 && v <= 2;
+    return o && !Array.isArray(o) && lv(o.skin) && lv(o.slim) && lv(o.eye) ? { skin: o.skin, slim: o.slim, eye: o.eye } : null;
   } catch { return null; }
 }
 function cleanLayout(bytes) {
@@ -82,7 +90,7 @@ export default {
     if ((side !== "a" && side !== "b") || p.length !== 4) return json(404, { error: "not-found" });
 
     if (req.method === "GET") {
-      if (!NAMES.includes(p[3]) && !OPTIONAL.includes(p[3])) return json(400, { error: "name" });
+      if (!NAMES.includes(p[3]) && !OPTIONAL.includes(p[3]) && !BOTH.includes(p[3])) return json(400, { error: "name" });
       if (side === "b" && !meta.b.done) return json(404, { error: "not-found" });
       const dir = side === "a" ? `s/${id}/a` : bDir(id, meta.b.tokenHash);
       const o = await env.BUCKET.get(`${dir}/${p[3]}`);
@@ -120,7 +128,7 @@ export default {
     }
 
     if (req.method === "PUT") {
-      if (!NAMES.includes(p[3]) && !(side === "b" && OPTIONAL.includes(p[3]))) return json(400, { error: "name" });
+      if (!NAMES.includes(p[3]) && !BOTH.includes(p[3]) && !(side === "b" && OPTIONAL.includes(p[3]))) return json(400, { error: "name" });
       const type = (req.headers.get("Content-Type") || "").split(";")[0].trim();
       if (!typeOk(p[3], type)) return json(415, { error: "type" });
       if (+(req.headers.get("Content-Length") || 0) > MAX_FILE) return json(413, { error: "file-too-big" });
@@ -132,6 +140,11 @@ export default {
         const lay = cleanLayout(body);
         if (!lay) return json(400, { error: "layout" });
         body = new TextEncoder().encode(JSON.stringify(lay));
+      }
+      if (p[3] === "look.json") {
+        const look = cleanLook(body);
+        if (!look) return json(400, { error: "look" });
+        body = new TextEncoder().encode(JSON.stringify(look));
       }
       if (p[3] === "pairs.json") {
         const pairs = cleanPairs(body);

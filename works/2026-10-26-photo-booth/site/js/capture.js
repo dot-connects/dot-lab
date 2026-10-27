@@ -100,7 +100,7 @@ async function shrinkClip(blob) {
   return out.size ? out : blob;
 }
 
-// seconds: countdown length (Round 4: 10). stop(): checked during the seconds before "3"; true -> throws "stopped".
+// seconds: countdown length (Round 5: 5). stop(): checked during the seconds before "3"; true -> throws "stopped".
 export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
   // no prefetchStill here: its session create can freeze the page ~4.5 s (the landing page starts it).
   // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
@@ -129,18 +129,17 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = f
   };
 
   await warm;
-  // ponytail: stop is only honoured before "3"; a press during 3-2-1 lets that shot finish (the caller stops after it)
-  for (let n = seconds; n > 3; n--) {
-    if (stop?.()) throw new Error("stopped");
-    onTick?.(n); await sleep(FAST ? 300 : 1000);
-  }
-  if (stop?.()) throw new Error("stopped");
-  onTick?.(3);
+  // The encoder starts paused at the first number and has every second before "2" to come up: waiting for it at "3"
+  // held that number up to 2.5 s on a phone (operator 10-27: "3에서 끊겼다가 2"). Recording runs from "2".
   loop();
   const R = recorder(clipC.captureStream(30), 2_500_000);
-  if (!straight) R.rec.pause();      // the encoder starts during "3", recording runs from "2"
-  await sleep(FAST ? 200 : 1000);
-  // a slow encoder (first recorder of a page: up to ~4 s headless) gets up to 1.5 s more before "2", not a dead clip
+  if (!straight) R.rec.pause();
+  // ponytail: stop is only honoured before "3"; a press during 3-2-1 lets that shot finish (the caller stops after it)
+  for (let n = seconds; n > 2; n--) {
+    if (n > 3 && stop?.()) { on = false; R.stop().catch(() => {}); throw new Error("stopped"); }
+    onTick?.(n); await sleep(FAST && n > 3 ? 300 : FAST ? 200 : 1000);
+  }
+  // only a very slow encoder still waits here (first recorder of a page: up to ~4 s headless), not a dead clip
   await Promise.race([R.started, sleep(1500)]);
   onTick?.(2);
   if (!straight) R.rec.resume();

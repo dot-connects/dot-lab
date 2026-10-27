@@ -180,3 +180,16 @@ test("pairs.json: B's 4 cells say which of A's cuts each pairs with; 4 ints 0..3
   await upAll(e, id, "b", tok("b")); await done(e, id, "b", tok("b"));
   assert.equal(await (await call(e, "GET", `/s/${id}/b/pairs.json`)).text(), "[2,0,0,3]");
 });
+
+test("look.json: each side's face retouch, ints 0..2 for skin/slim/eye, stored re-serialised", async () => {
+  const e = env(); const id = await newLink(e);
+  const put = (side, token, body) => call(e, "PUT", `/s/${id}/${side}/look.json`, { token, body, type: "application/json" });
+  for (const bad of ['{"skin":3,"slim":0,"eye":0}', '{"skin":1,"slim":-1,"eye":0}', '{"skin":1,"slim":1}', '{"skin":1.5,"slim":0,"eye":0}', "[1,1,1]", "x"])
+    assert.equal((await put("a", tok("a"), bad)).status, 400, bad);
+  assert.equal((await put("a", tok("a"), '{"skin":2,"slim":1,"eye":0,"x":"<script>"}')).status, 204);
+  await upAll(e, id, "a", tok("a")); await done(e, id, "a", tok("a"));
+  assert.equal(await (await call(e, "GET", `/s/${id}/a/look.json`)).text(), '{"skin":2,"slim":1,"eye":0}');
+  assert.equal((await put("b", tok("b"), '{"skin":1,"slim":1,"eye":1}')).status, 204);
+  await upAll(e, id, "b", tok("b")); await done(e, id, "b", tok("b"));
+  assert.equal(await (await call(e, "GET", `/s/${id}/b/look.json`)).text(), '{"skin":1,"slim":1,"eye":1}');
+});

@@ -8,7 +8,7 @@ const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const Q = new URLSearchParams(location.search);
 const MOCK = Q.has("mock");                         // dev: no MediaPipe, placeholder cut-outs
 // Round 4 (booth style): one tap shoots 8 in a row, SECS each; then pick 4 (tap order = strip order)
-const SHOTS = 8, SECS = Q.has("fast") ? 4 : 10;      // ?fast = tests only
+const SHOTS = 8, SECS = Q.has("fast") ? 4 : 5;      // 5 s each (operator 10-27); ?fast = tests only
 const POSES = ["브이!", "반쪽 하트", "꽃받침", "깜짝 놀란 척", "윙크 한 번", "볼 빵빵", "친구 쪽 쳐다보기", "마음대로!"];
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
 const CELL = 552 / 382;                             // strip cell aspect (compose LAYOUT CW:CH)
@@ -36,7 +36,7 @@ const S = {
 };
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
 const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
-const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 10초";
+const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 5초";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}`;
 const token = () => S.token || api.loadRole(S.id)?.token;
 
