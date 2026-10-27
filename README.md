@@ -57,14 +57,15 @@ the iframe), so it must explain the work, not just link it. Reader = players; a 
 Required:
 - Title = the search phrase first, the number last: `지도 안 보고 한반도 그리기 테스트, 몇 점 나올까? (실험 #001)`.
 - Lead with a real result from the work (a measured score, a funny fail line), what you do, how long, which device.
-- A big "바로 해 보기" link near the top; the iframe goes **last** ("여기서 바로 해 보기") — a drawing pad high in the
-  post eats the page scroll on phones.
+- A big "바로 해 보기" link near the top and **no iframe** — an embedded drawing pad eats the page scroll on phones
+  (operator 2026-10-27 dropped the bottom embed too).
 - Scoring in plain words + a small table; every number checked against the work's code, not the brief (#002's brief
   had outdated weights).
 - "만든 이야기": what failed first and what changed, with a source link for any data or research used.
 - Links: the other works' posts (at least one; add the new post to older posts' "다른 실험") + the list page, and the
   work folder on GitHub.
-- Screenshots: list up to 8 png in `shots` (paths inside the work folder) and put `<p>[[shot-1]]</p>`… where they go.
+- Screenshots: list up to 8 png in `shots` (paths inside the work folder) and put `<p>[[shot-1]]</p>`… where they go;
+  2–3 is enough, and keep them small on a phone (the model posts cap them at 300 px wide).
 Guidance (skip what doesn't fit the work): tips derived from the scoring, one "왜 내 점수가 낮지?" section,
 1,800–2,500 Korean chars, `<h2>` sections. Never invent an experience; say who measured what.
 
