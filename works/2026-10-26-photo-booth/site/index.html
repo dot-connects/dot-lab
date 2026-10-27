@@ -4,11 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>따로 같이 네컷</title>
-<meta name="description" content="멀리 있어도 한 칸에. 내가 먼저 찍고 링크를 보내면 친구가 내 옆에 서서 찍는 네컷.">
+<meta name="description" content="내 옆자리 비워 뒀어. 링크 열면 바로 내 옆에 서서 네컷을 찍어. 30초 · 가입 없음.">
+<meta property="og:title" content="내 옆자리 비워 뒀어 · 따로 같이 네컷">
+<meta property="og:description" content="링크 열면 바로 내 옆에 서서 찍어. 30초면 돼 · 가입 없음">
+<meta property="og:image" content="https://dot-connects.github.io/dot-lab/works/2026-10-26-photo-booth/site/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="D:OT lab">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="theme-color" content="#fff8f3">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
@@ -17,6 +25,11 @@
   <symbol id="fr" viewBox="0 0 60 70"><path d="M8 70c0-16 9-24 22-24s22 8 22 24z" fill="#8fc4ff"/><circle cx="30" cy="28" r="17" fill="#ffe1cf"/><path d="M13 30c-4-24 38-24 34 0l-3-8c-8 2-20 2-28-4z" fill="#8a5a3b"/><circle cx="24" cy="31" r="2" fill="#3b2a33"/><circle cx="36" cy="31" r="2" fill="#3b2a33"/><path d="M25 36q5 5 10 0z" fill="#e8577f"/><circle cx="20" cy="36" r="3" fill="#ffadc9"/><circle cx="40" cy="36" r="3" fill="#ffadc9"/></symbol>
   <symbol id="heart" viewBox="0 0 24 22"><path d="M12 21S1 14 1 7a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 7-11 14-11 14z"/></symbol>
   <symbol id="star" viewBox="0 0 24 24"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12C7 11 11 7 12 0z"/></symbol>
+  <symbol id="i-mirror" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 3"/><path d="M9 7 3 17h6z"/><path d="M15 7l6 10h-6z" fill="currentColor"/></g></symbol>
+  <symbol id="i-flip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13a2.8 2.8 0 0 1 4.8-1.8M14.5 13a2.8 2.8 0 0 1-4.8 1.8"/><path d="M14.6 9.6v1.8h-1.8M9.4 16.4v-1.8h1.8"/></g></symbol>
+  <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M16 9l5 6M21 9l-5 6"/></g></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></g></symbol>
 </svg>
 
 <template id="ministrip">
@@ -29,36 +42,52 @@
   </div>
 </template>
 
+<template id="trust">
+  <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제</span></p>
+</template>
+
+<template id="del">
+  <div class="del">
+    <button class="textlink" type="button" data-act="del">사진 지금 삭제</button>
+    <div class="delask" role="alertdialog" aria-label="삭제 확인" hidden>
+      <p><b>정말 지울까?</b><br>둘 다 이 링크로 사진을 다시 못 봐. 저장해 둔 파일은 폰에 남아.</p>
+      <div class="row"><button class="cta danger" type="button" data-act="delYes">지우기</button><button class="cta alt" type="button" data-act="delNo">취소</button></div>
+    </div>
+  </div>
+</template>
+
 <main id="app">
 
 <!-- A landing -->
 <section class="screen" id="s-landA" hidden>
-  <a class="backchip" href="../../../">‹ 시켜본 것들</a>
+  <a class="backchip" href="../../../">‹ D:OT lab</a>
   <div class="hero">
-    <p class="kicker">D:OT LAB · 그냥 시켜봄 #003</p>
+    <p class="kicker">원격 인생네컷 · 무료 · 가입 없음</p>
     <h1>멀리 있어도<br><em>한 칸에</em><svg class="deco h1"><use href="#heart"/></svg></h1>
     <div class="heroart"><div data-ministrip class="tilt-l"></div><svg class="deco s1"><use href="#star"/></svg><svg class="deco s2"><use href="#heart"/></svg></div>
     <p class="lead">내가 먼저 네컷을 찍고 링크를 보내면,<br>친구가 열자마자 내 옆에 서서 찍어.</p>
   </div>
   <div class="bottom">
+    <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
     <button class="cta" data-act="startA">먼저 찍기</button>
-    <p class="fine">올리면 이 링크를 가진 사람은 7일 동안 볼 수 있어요 · 7일 뒤 자동 삭제</p>
+    <div data-trust></div>
   </div>
 </section>
 
 <!-- B landing -->
 <section class="screen" id="s-landB" hidden>
-  <a class="backchip" href="../../../">‹ 시켜본 것들</a>
+  <a class="backchip" href="../../../">‹ D:OT lab</a>
   <div class="hero">
     <p class="kicker">따로 같이 네컷</p>
     <h1>친구가 옆자리를<br><em>비워 뒀어요</em></h1>
-    <div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot">네 자리</div></div>
-    <p class="lead">친구 옆에 서서 네 번 찍으면 완성!</p>
+    <div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot"><svg class="bob"><use href="#heart"/></svg><span>여기 네 자리 ♥</span></div></div>
+    <p class="lead">친구 옆에 서서 네 번 찍으면 완성!<br>30초 · 가입 없음 · 카메라만 켜면 돼</p>
   </div>
   <div class="bottom">
+    <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
     <button class="cta" data-act="startB">바로 찍기</button>
-    <p class="fine">올리면 이 링크를 가진 사람은 7일 동안 볼 수 있어요 · 7일 뒤 자동 삭제</p>
-    <button class="textlink" data-act="mine">내가 보낸 링크예요</button>
+    <div data-trust></div>
+    <button class="textlink" data-act="mine">내가 보낸 링크면 여기</button>
   </div>
 </section>
 
@@ -67,13 +96,18 @@
   <div class="shoothead">
     <span class="step" id="step">1 / 4</span>
     <p class="pose" id="pose">준비됐어?</p>
+    <button class="sound" type="button" data-act="sound" aria-pressed="true"><svg><use href="#i-sound"/></svg><span>소리</span></button>
   </div>
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
-    <img id="ghost" alt="" hidden>
-    <canvas id="ghostClip" hidden></canvas>
-    <div class="spot" id="spot" hidden><span>친구 자리</span></div>
-    <div class="band top"></div><div class="band bot"></div>
+    <div class="frame" id="frame">
+      <img id="ghost" alt="" hidden>
+      <canvas id="ghostClip" hidden></canvas>
+      <div class="crop" id="crop"><div class="spot" id="spot" hidden><span>친구 자리</span></div></div>
+    </div>
+    <canvas class="review" id="review" hidden></canvas>
+    <img class="snap" id="snap" alt="" hidden>
+    <p class="stagehint" id="shootHint">셔터 한 번이면 네 컷을 이어서 찍어</p>
     <div class="rec" id="rec" hidden>2초 녹화</div>
     <div class="count" id="count" aria-live="assertive"></div>
     <div class="flash" id="flash"></div>
@@ -85,52 +119,54 @@
     <button class="th" data-i="2" disabled><span>3</span></button>
     <button class="th" data-i="3" disabled><span>4</span></button>
   </div>
-  <p class="hint" id="shootHint">셔터를 누르면 3초 뒤에 찍어. 네 컷 이어서!</p>
   <div class="controls" id="controls">
-    <button class="round" data-act="mirror" aria-label="좌우반전" aria-pressed="true"><span>좌우</span></button>
-    <button class="shutter" data-act="shoot" aria-label="찍기"></button>
-    <button class="round" data-act="flip" aria-label="카메라 전환"><span>전환</span></button>
+    <button class="tool" data-act="mirror" aria-pressed="true"><i><svg><use href="#i-mirror"/></svg></i><span>좌우반전</span></button>
+    <button class="shutter" data-act="shoot" aria-label="네 컷 찍기"></button>
+    <button class="tool" data-act="flip"><i><svg><use href="#i-flip"/></svg></i><span>앞/뒤 카메라</span></button>
   </div>
   <div class="bottom" id="shootDone" hidden>
-    <button class="cta" data-act="upload">올리기</button>
-    <p class="fine">다시 찍고 싶은 컷은 위에서 눌러 · 올리면 이 링크를 가진 사람은 7일 동안 볼 수 있어요 · 7일 뒤 자동 삭제</p>
+    <p class="hint">다시 찍고 싶은 컷은 위에서 눌러 줘</p>
+    <button class="cta" data-act="upload">이대로 올리기</button>
+    <div data-trust></div>
   </div>
 </section>
 
 <!-- upload -->
 <section class="screen center" id="s-upload" hidden>
   <div class="uploadart"><svg class="bob"><use href="#heart"/></svg></div>
-  <h2 id="upTitle">올리는 중…</h2>
-  <div class="bar"><i id="upBar"></i></div>
-  <p class="count-sm" id="upCount">0 / 12</p>
+  <h2 id="upTitle">올리는 중… 0%</h2>
+  <div class="bar" id="upBarBox"><i id="upBar"></i></div>
+  <p class="lead" id="upSub">사진 4장이랑 짧은 영상을 올리고 있어</p>
   <div class="bottom" id="upRetry" hidden>
     <p class="err" id="upErr">앗, 올리다 끊겼어.</p>
     <button class="cta" data-act="retryUpload">다시 올리기</button>
     <p class="fine">이 화면을 닫거나 새로고침하면 찍은 사진이 사라져요</p>
   </div>
+  <div data-trust></div>
 </section>
 
-<!-- share (A) -->
+<!-- share (A) + waiting (A reopens its own link) -->
 <section class="screen" id="s-share" hidden>
   <div class="hero">
-    <h1>다 올렸어!<br><em>친구한테 보내자</em></h1>
-    <div class="heroart"><div data-ministrip class="tilt-r half"></div><svg class="deco s1"><use href="#star"/></svg></div>
-    <p class="lead">친구가 이 링크를 열면 네 옆에 서서 찍어.<br>둘 다 찍으면 사진이랑 영상이 열려.</p>
+    <h1 id="shareTitle">다 올렸어!<br><em>친구한테 보내자</em></h1>
+    <div class="heroart" id="myStrip"></div>
+    <p class="lead" id="shareLead">친구가 이 링크를 열면 네 옆 빈자리에 서서 찍어.<br>둘 다 찍으면 사진이랑 영상이 열려.</p>
   </div>
   <div class="bottom">
-    <button class="cta" data-act="share">링크 보내기</button>
-    <p class="ok" id="shareOk" hidden></p>
-    <div class="linkbox" id="linkBox" hidden><p class="fine">길게 눌러 복사</p><p class="link" id="linkText"></p></div>
-    <p class="fine">링크는 7일 동안 열려요 · 같은 링크를 다시 열면 친구가 찍었는지 보여요</p>
+    <button class="cta" data-act="share">친구한테 링크 보내기</button>
+    <button class="cta alt" id="recheck" data-act="recheck" hidden>친구가 찍었는지 다시 확인</button>
+    <button class="textlink" data-act="copy" id="copyBtn">링크 복사</button>
+    <div class="linkbox" id="linkBox" hidden><p class="fine">복사가 안 되면 길게 눌러 복사</p><p class="link" id="linkText"></p></div>
+    <div data-trust></div>
+    <div data-del></div>
   </div>
 </section>
 
-<!-- waiting (A) / message -->
+<!-- message -->
 <section class="screen center" id="s-msg" hidden>
   <div class="msgart" id="msgArt"><svg><use href="#star"/></svg></div>
   <h2 id="msgTitle"></h2>
   <p class="lead" id="msgText"></p>
-  <div class="linkbox" id="msgLink" hidden><p class="fine">길게 눌러 복사</p><p class="link"></p></div>
   <div class="bottom">
     <button class="cta" id="msgBtn"></button>
     <button class="textlink" id="msgBtn2" hidden></button>
@@ -139,34 +175,48 @@
 
 <!-- done -->
 <section class="screen" id="s-done" hidden>
-  <div class="donehead">
-    <h1><em>짠, 완성!</em><svg class="deco h1"><use href="#heart"/></svg></h1>
-    <p class="fine" id="doneNote"></p>
+  <div class="previewwrap">
+    <div class="preview" id="preview">
+      <img id="stripImg" alt="완성된 네컷" hidden>
+      <video id="stripVid" playsinline muted loop hidden></video>
+      <div class="veils" id="veils"></div>
+      <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
+    </div>
+    <p class="donetitle"><em>짠, 완성!</em></p>
   </div>
-  <div class="preview" id="preview">
-    <img id="stripImg" alt="완성된 네컷" hidden>
-    <video id="stripVid" playsinline muted loop hidden></video>
-    <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
+  <p class="donenote" id="doneNote" hidden></p>
+  <div class="tabs" role="tablist" aria-label="꾸미기">
+    <button role="tab" data-tab="bg" aria-selected="false">배경</button>
+    <button role="tab" data-tab="frame" aria-selected="true">프레임</button>
+    <button role="tab" data-tab="filter" aria-selected="false">필터</button>
+    <button role="tab" data-tab="caption" aria-selected="false">문구</button>
   </div>
-  <div class="pick">
-    <p class="lbl">배경</p>
-    <div class="chips" id="bgChips" role="group" aria-label="배경"></div>
-    <p class="lbl">프레임</p>
-    <div class="carousel" id="frameChips" role="group" aria-label="프레임"></div>
-    <p class="lbl">필터</p>
-    <div class="chips" id="filterChips" role="group" aria-label="필터"></div>
+  <div class="panel row" data-panel="bg" id="bgChips" role="tabpanel" aria-label="배경" hidden></div>
+  <div class="panel row" data-panel="frame" id="frameChips" role="tabpanel" aria-label="프레임"></div>
+  <div class="panel row" data-panel="filter" id="filterChips" role="tabpanel" aria-label="필터" hidden></div>
+  <div class="panel" data-panel="caption" role="tabpanel" aria-label="문구" hidden>
+    <label class="caplbl" for="caption">한 줄 문구 <span id="capCount">0 / 16</span></label>
+    <input id="caption" type="text" maxlength="16" placeholder="예: D+100, 우리 오늘" enterkeyhint="done" autocomplete="off">
+    <p class="fine">비워 두면 ‘따로 같이 네컷’이 들어가</p>
   </div>
-  <div class="bottom" id="saveBox">
-    <div class="savebtns" id="saveBtns">
-      <button class="cta" data-act="savePhoto" disabled>사진 저장</button>
-      <button class="cta alt" data-act="makeVideo" disabled>영상 만들기</button>
+  <div class="savebar" id="saveBox">
+    <div id="saveBtns">
+      <button class="cta" data-act="savePhoto" disabled>저장하기</button>
+      <div class="vidrow">
+        <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo" disabled><i class="ring"></i><span>영상도 저장</span></button>
+        <button class="cta alt vbtn" id="storyBtn" data-act="saveStory" disabled><i class="ring"></i><span>스토리용 영상</span></button>
+      </div>
     </div>
     <div id="inappSave" hidden>
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>
       <p class="fine" id="iosText" hidden>이 앱 안에서는 저장이 안 돼요. 오른쪽 위 공유 메뉴 → Safari로 열기 → 같은 화면에서 저장해 줘</p>
     </div>
-    <p class="fine">이 링크는 7일 뒤 자동 삭제</p>
+  </div>
+  <div class="after">
+    <button class="cta alt" data-act="again">다른 친구랑도 찍기</button>
     <a class="morelink" href="../../../">시켜본 것 더 보기 →</a>
+    <div data-trust></div>
+    <div data-del></div>
   </div>
 </section>
 

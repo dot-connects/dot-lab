@@ -53,7 +53,7 @@ export const mockCompose = {
     { id: "booth-pink", label: "분홍 부스", draw: (c, w, h) => { c.fillStyle = "#ffc2d6"; c.fillRect(0, 0, w, h); } },
     { id: "white-wall", label: "흰 벽", draw: (c, w, h) => { c.fillStyle = "#f6f4f2"; c.fillRect(0, 0, w, h); } },
   ],
-  async drawStrip({ a, b, bg, frame, date }) {
+  async drawStrip({ a, b, bg, frame, date, caption }) {
     const c = canvas(L.W, L.H), ctx = c.getContext("2d");
     ctx.fillStyle = frame?.color || "#fff"; ctx.fillRect(0, 0, L.W, L.H);
     const pre = this.BACKGROUNDS.find(x => x.id === bg);
@@ -67,7 +67,7 @@ export const mockCompose = {
       ctx.restore();
     }
     ctx.fillStyle = frame?.ink || "#2e2230"; ctx.textAlign = "center";
-    ctx.font = '44px "Jua"'; ctx.fillText("따로 같이 네컷", L.W / 2, L.H - 110);
+    ctx.font = '44px "Jua"'; ctx.fillText(caption || "따로 같이 네컷", L.W / 2, L.H - 110);
     ctx.font = '28px "Gowun Dodum"'; ctx.fillText(date, L.W / 2, L.H - 62);
     return toBlob(c, "image/jpeg", 0.92);
   },
@@ -80,5 +80,5 @@ export const mockFrames = { FRAMES: [
 ] };
 export const mockFilters = { FILTERS: [
   { id: "original", label: "원본" }, { id: "bbosasi", label: "뽀샤시" }, { id: "mono", label: "흑백" },
-  { id: "warm", label: "웜" }, { id: "cool", label: "쿨" }, { id: "film", label: "필름" },
+  { id: "warm", label: "따뜻" }, { id: "cool", label: "시원" }, { id: "film", label: "필름" },
 ] };

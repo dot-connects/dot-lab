@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>frames dev</title>
+<!-- Dev harness for frames.js + filters.js (contact sheets). Deleted before ship with dev-compose.html and dev-media/. -->
+<body style="margin:0;background:#ddd">
+<script type="module">
+import { LAYOUT as L, cellRects, drawCell, loadClip } from "./js/compose.js";
+import { FRAMES, loadFrameFonts } from "./js/frames.js";
+import { FILTERS, createFilter } from "./js/filters.js";
+
+const MEDIA = "dev-media/";
+const img = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function side(s) {
+  const cuts = [];
+  for (let k = 1; k <= 4; k++) cuts.push({ raw: await img(MEDIA + `${s}${k}-raw.jpg`), cut: await img(MEDIA + `${s}${k}-cut.png`), clip: null });
+  return { cuts };
+}
+let M;
+const media = async () => (M ||= { a: await side("a"), b: await side("b") });
+const filt = createFilter();
+let prev = null;   // previous filters.js, staged in dev-media/ for a side-by-side
+const cv = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+
+// one strip, same order as compose.paint: frame.draw -> cells (filtered, clipped) -> frame.over
+async function strip({ frame, filter = "original", bg = "booth-pink", caption = "", date = "2026.10.27", f = filt }) {
+  const F = FRAMES.find(x => x.id === frame), m = await media();
+  await loadFrameFonts(F, caption);
+  const out = cv(L.W, L.H), ctx = out.getContext("2d"), rects = cellRects(F);
+  F.draw(ctx, L, { date, caption, cellRects: rects });
+  rects.forEach((r, i) => {
+    const cell = cv(r.w, r.h);
+    drawCell(cell.getContext("2d"), { x: 0, y: 0, w: r.w, h: r.h }, i, { a: m.a, b: m.b, bg, t: null });
+    const o = f.apply(cell, filter, 1, i + 1);
+    ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, F.radius || 0); ctx.clip(); ctx.drawImage(o, r.x, r.y); ctx.restore();
+  });
+  if (F.over) F.over(ctx, L, { date, caption, cellRects: rects });
+  return out;
+}
+// grid of strips: rows = filters, cols = frames
+async function frameSheet({ frames = FRAMES.map(f => f.id), filters = ["original", "bbosasi", "mono"], caption = "", scale = 0.3, bg = "booth-pink" }) {
+  const w = L.W * scale, h = L.H * scale, pad = 8, lab = 22;
+  const s = cv(frames.length * (w + pad) + pad, filters.length * (h + pad + lab) + pad), x = s.getContext("2d");
+  x.fillStyle = "#cfc9c3"; x.fillRect(0, 0, s.width, s.height); x.font = "600 14px system-ui"; x.fillStyle = "#222";
+  for (let r = 0; r < filters.length; r++) for (let c = 0; c < frames.length; c++) {
+    const st = await strip({ frame: frames[c], filter: filters[r], caption, bg });
+    x.drawImage(st, pad + c * (w + pad), pad + lab + r * (h + pad + lab), w, h);
+    x.fillText(`${frames[c]} / ${filters[r]}`, pad + c * (w + pad), pad + 16 + r * (h + pad + lab));
+  }
+  return s.toDataURL("image/png").split(",")[1];
+}
+// full-size cell 0 per (bg, filter); withPrev adds the previous filters.js row under each bg
+async function cellSheet({ bgs = ["a", "b", "booth-pink", "white-wall"], filters = FILTERS.map(f => f.id), withPrev = true, cell = 0 }) {
+  if (withPrev && !prev) prev = (await import("./dev-media/filters-prev.js")).createFilter();
+  const m = await media(), CW = L.CW, CH = L.CH, lab = 22, rows = [];
+  for (const bg of bgs) { rows.push([bg, filt, "new"]); if (withPrev) rows.push([bg, prev, "prev"]); }
+  const s = cv(filters.length * CW, rows.length * (CH + lab)), x = s.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, s.width, s.height); x.font = "600 16px system-ui"; x.fillStyle = "#222";
+  for (let r = 0; r < rows.length; r++) for (let c = 0; c < filters.length; c++) {
+    const [bg, f, tag] = rows[r], src = cv(CW, CH);
+    drawCell(src.getContext("2d"), { x: 0, y: 0, w: CW, h: CH }, cell, { a: m.a, b: m.b, bg, t: null });
+    x.drawImage(f.apply(src, filters[c], 1, 1), c * CW, r * (CH + lab) + lab);
+    x.fillText(`${bg} / ${filters[c]} / ${tag}`, c * CW + 6, r * (CH + lab) + 17);
+  }
+  return s.toDataURL("image/png").split(",")[1];
+}
+// GPU vs CPU path on one cell: max abs channel difference (grain excluded by using filters with grain 0)
+async function parity(id = "bbosasi") {
+  const m = await media(), src = cv(L.CW, L.CH);
+  drawCell(src.getContext("2d"), { x: 0, y: 0, w: L.CW, h: L.CH }, 0, { a: m.a, b: m.b, bg: "booth-pink", t: null });
+  const read = c => { const t = cv(c.width, c.height), tx = t.getContext("2d"); tx.drawImage(c, 0, 0); return tx.getImageData(0, 0, c.width, c.height).data; };
+  const g = read(filt.apply(src, id, 1, 1)), c = read(createFilter({ cpu: true }).apply(src, id, 1, 1));
+  let max = 0, sum = 0; for (let i = 0; i < g.length; i += 4) for (let j = 0; j < 3; j++) { const d = Math.abs(g[i + j] - c[i + j]); max = Math.max(max, d); sum += d; }
+  return { max, mean: +(sum / (g.length * 0.75)).toFixed(2) };
+}
+const png = async c => c.toDataURL("image/png").split(",")[1];
+window.dev = { strip: async o => png(await strip(o)), frameSheet, cellSheet, parity, FRAMES: FRAMES.map(f => f.id) };
+window.devReady = true;
+</script>

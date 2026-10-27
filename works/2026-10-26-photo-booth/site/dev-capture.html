@@ -73,7 +73,7 @@ async function run() {
   R.camAt = Math.round(performance.now());
   R.video = `${video.videoWidth}x${video.videoHeight}`;
   await loadSegmenter();
-  R.loadMs = Math.round(performance.now() - t0);
+  R.loadMs = Math.round(performance.now() - t0); R.warmMs = stats.warmMs;   // first GPU call, paid inside loadSegmenter
   requestAnimationFrame(preview);
   await new Promise(r => setTimeout(r, 1500));
   if (Q.has("waitStill")) { await stillP; R.stillAt = Math.round(performance.now()); }   // A/B runs: every cut on multiclass
@@ -84,7 +84,7 @@ async function run() {
     onCut: i => log(`cut ${i + 1} done`) });
   $("tick").textContent = "";
   const ms = stats.ms.slice(-60);
-  R.segMs = +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1);
+  R.segMs = +(ms.reduce((a, b) => a + b, 0) / ms.length).toFixed(1); R.held = stats.held;   // frames where the dropout guard kept the previous matte
   R.still = { ...stats.still, cuts: stats.still.cuts.map(({ live, ...c }) => c) };
   window.cuts = cuts;                // A/B runs: cuts[i].cut vs stats.still.cuts[i].live (?both)
   R.cuts = [];

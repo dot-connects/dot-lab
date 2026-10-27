@@ -12,12 +12,21 @@ import { createRefiner } from "./refine.js";
 // (refine.js, copied from research/cutout-poc; softer, lost braid tips and smeared on motion blur)
 // still = 1 (opt-in via ?still=1) cuts the shutter frame with selfie_multiclass; off by default: on the PC it tied the
 // live matte on quality while its 12 s load + 14 s first GPU run froze the preview (10-27). slo/shi = refine.js levels.
-export const TUNE = { engine: 0, ema: 0.6, lo: 0.4, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
+export const TUNE = { engine: 0, ema: 0.6, lo: 0.3, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
   still: new URLSearchParams(location.search).get("still") === "1" ? 1 : 0, slo: 0.15, shi: 0.85, scpu: 0 };
-export const stats = { delegate: "", ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
+export const stats = { delegate: "", warmMs: 0, held: 0, ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
   still: { state: "", delegate: "", loadMs: 0, warmMs: 0, heldMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [] } };
 
-let seg = null, lastTime = -1, lastTs = 0, ema = null, m8 = null, mw = 0, mh = 0, ready = false;
+let seg = null, lastTime = -1, lastTs = 0, ema = null, emaSum = 0, held = 0, m8 = null, mw = 0, mh = 0, ready = false;
+// The model input is 256 px anyway: feed it a 256-wide copy so the mask comes back at 256x192 instead of the video size
+// (a 1280x960 phone frame read back 4.9 MB of floats per frame). The bilateral pass upsamples it against the full frame.
+const small = document.createElement("canvas"), smallX = small.getContext("2d");
+function toSmall(video) {
+  const w = 256, h = Math.round(256 * video.videoHeight / video.videoWidth);
+  if (small.width !== w || small.height !== h) { small.width = w; small.height = h; }
+  smallX.drawImage(video, 0, 0, w, h);
+  return small;
+}
 
 export async function loadSegmenter() {
   if (seg) return seg;
@@ -26,6 +35,13 @@ export async function loadSegmenter() {
   const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate },
     runningMode: "VIDEO", outputConfidenceMasks: true, outputCategoryMask: false });
   try { seg = await mk("GPU"); stats.delegate = "GPU"; } catch { seg = await mk("CPU"); stats.delegate = "CPU"; }
+  // warm-up: the first GPU call compiles the shaders (~10 s on a PC iGPU). Pay it here, behind the "누끼 준비 중" wait,
+  // not on the first preview frame. Same 256x192 input size as segmentFrame, so nothing is compiled again later.
+  const t0 = performance.now(), w = Object.assign(document.createElement("canvas"), { width: 256, height: 192 });
+  w.getContext("2d").fillRect(0, 0, 256, 192);
+  lastTs = performance.now();
+  seg.segmentForVideo(w, lastTs, r => r.confidenceMasks[PERSON].getAsFloat32Array());
+  stats.warmMs = Math.round(performance.now() - t0);
   return seg;
 }
 
@@ -35,20 +51,28 @@ export function segmentFrame(video, tsMs = performance.now()) {
   lastTime = video.currentTime;
   const ts = Math.max(tsMs, lastTs + 1); lastTs = ts;
   const t0 = performance.now();
-  seg.segmentForVideo(video, ts, res => {
+  seg.segmentForVideo(toSmall(video), ts, res => {
     stats.masks = res.confidenceMasks.length;
     const m = res.confidenceMasks[PERSON], a = m.getAsFloat32Array();
     if (m.width !== mw || m.height !== mh || !ema) {
       mw = stats.maskW = m.width; mh = stats.maskH = m.height;
-      ema = Float32Array.from(a); m8 = new Uint8Array(a.length);
+      ema = Float32Array.from(a); m8 = new Uint8Array(a.length); emaSum = 0; held = 0;
     }
+    // dropout guard: the person losing over 60 % of their area in one frame is a model miss (a flash, a blur), not
+    // motion; keep the previous matte for up to 3 frames instead of cutting the person out of the clip (10-27 ghost)
+    let sum = 0;
+    for (let i = 0; i < a.length; i++) sum += a[i];
+    if (emaSum > 0.02 * a.length && sum < 0.4 * emaSum && held < 3) { held++; stats.held++; return; }
+    held = 0;
     const k0 = TUNE.ema;
+    let es = 0;
     for (let i = 0; i < a.length; i++) {
       const d = Math.abs(a[i] - ema[i]);
       const k = d >= 0.25 ? 0 : k0 * (1 - 4 * d);  // big change = real motion: follow it now (no ghost)
       const v = ema[i] = ema[i] * k + a[i] * (1 - k);
-      m8[i] = v * 255 + 0.5;
+      es += v; m8[i] = v * 255 + 0.5;
     }
+    emaSum = es;
   });
   if (TUNE.engine === 1 && guided()) {
     const s = Math.min(1, TUNE.maxSide / Math.max(video.videoWidth, video.videoHeight));
@@ -62,6 +86,42 @@ export function segmentFrame(video, tsMs = performance.now()) {
 }
 
 export function hasMatte() { return ready; }
+
+// Stills: keep only the largest person (+ any at least 40 % of its size), so a passer-by is not cut out too.
+// Works on a 64x48 copy of the alpha (4-connected BFS, < 1 ms), dilated one cell and smoothed back up.
+export function keepLargest(c) {
+  const W = 64, H = 48, s = Object.assign(document.createElement("canvas"), { width: W, height: H });
+  const x = s.getContext("2d", { willReadFrequently: true });
+  x.drawImage(c, 0, 0, W, H);
+  const d = x.getImageData(0, 0, W, H), px = d.data, lab = new Int32Array(W * H), area = [0];
+  for (let i = 0; i < W * H; i++) {
+    if (lab[i] || px[i * 4 + 3] < 128) continue;
+    const id = area.length, q = [i]; lab[i] = id; let n = 0;
+    while (q.length) {
+      const j = q.pop(), jx = j % W; n++;
+      for (const k of [jx > 0 && j - 1, jx < W - 1 && j + 1, j - W, j + W])
+        if (k !== false && k >= 0 && k < W * H && !lab[k] && px[k * 4 + 3] >= 128) { lab[k] = id; q.push(k); }
+    }
+    area.push(n);
+  }
+  if (area.length <= 2) return c;                       // zero or one person: nothing to drop
+  const max = Math.max(...area), keep = area.map(n => n >= 0.4 * max);
+  if (keep.slice(1).every(Boolean)) return c;
+  for (let i = 0; i < W * H; i++) {
+    const ix = i % W, iy = (i / W) | 0;
+    let on = false;
+    for (let dy = -1; dy <= 1 && !on; dy++) for (let dx = -1; dx <= 1 && !on; dx++) {
+      const X = ix + dx, Y = iy + dy;
+      on = X >= 0 && X < W && Y >= 0 && Y < H && keep[lab[Y * W + X]] && lab[Y * W + X] > 0;
+    }
+    px[i * 4] = px[i * 4 + 1] = px[i * 4 + 2] = 255; px[i * 4 + 3] = on ? 255 : 0;
+  }
+  x.putImageData(d, 0, 0);
+  const cx = c.getContext("2d");
+  cx.save(); cx.globalCompositeOperation = "destination-in"; cx.imageSmoothingQuality = "high";
+  cx.drawImage(s, 0, 0, c.width, c.height); cx.restore();
+  return c;
+}
 
 let gref = null;   // EMA above already smooths, so refine.js runs with temporal 0
 function guided() {
