@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>Pet matting run</title>
+<style>body{margin:0;background:#f3f1ee;font:12px system-ui}pre{white-space:pre-wrap}</style></head>
+<body><pre id="log"></pre>
+<script type="module">
+// ?m=KEY&reps=3[&only=a,b][&ep=webgpu|wasm][&rE=6&rD=10]  -> window.out = { key, load, rows, files: {"masks/KEY-IMG.png": b64} }, window.done
+import { loadStills, loadMask, resample, morph, mk } from "./stills.js";
+const Q = new URLSearchParams(location.search), key = Q.get("m"), reps = +(Q.get("reps") || 3);
+const IMN = [.485, .456, .406], ISD = [.229, .224, .225];
+const SPECS = {
+  modnet:   { url: "../../site/models/modnet.onnx", size: { short: 384, div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha" },
+  u2netp:   { url: "models/u2netp-floor.onnx", size: { w: 320, h: 320 }, mean: IMN, std: ISD, out: "minmax" },
+  silueta:  { url: "models/silueta-floor.onnx", size: { w: 320, h: 320 }, mean: IMN, std: ISD, out: "minmax" },
+  isnet:    { url: "models/isnet-general-use-floor.onnx", size: { w: 1024, h: 1024 }, mean: [.5, .5, .5], std: [1, 1, 1], out: "minmax" },
+  biref512: { url: "models/birefnet-lite512-fp16.onnx", size: { w: 512, h: 512 }, mean: IMN, std: ISD, out: "sigmoid" },
+  biref1024:{ url: "models/birefnet-lite-fp16.onnx", size: { w: 1024, h: 1024 }, mean: IMN, std: ISD, out: "sigmoid" },
+  vitq8:    { url: "models/vitmatte-s-d646-q8.onnx", size: { short: +(Q.get("short") || 384), div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha", trimap: 1 },
+  vit32:    { url: "models/vitmatte-s-d646.onnx", size: { short: +(Q.get("short") || 384), div: 32 }, mean: [.5, .5, .5], std: [.5, .5, .5], out: "alpha", trimap: 1 },
+};
+const DEEPLAB = "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite";
+const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const log = s => { document.getElementById("log").textContent += s + "\n"; };
+const out = window.out = { key, rows: [], files: {} };
+
+function png(m, rgb) {   // m: {data,width,height} or rgb: [r,g,b] Uint8Arrays
+  const w = m.width, h = m.height, c = mk(w, h), x = c.getContext("2d"), id = x.createImageData(w, h);
+  for (let k = 0; k < w * h; k++) {
+    id.data[k * 4] = rgb ? rgb[0][k] : m.data[k]; id.data[k * 4 + 1] = rgb ? rgb[1][k] : m.data[k];
+    id.data[k * 4 + 2] = rgb ? rgb[2][k] : m.data[k]; id.data[k * 4 + 3] = 255;
+  }
+  x.putImageData(id, 0, 0); return c.toDataURL("image/png").split(",")[1];
+}
+
+let wid = 0;
+async function onnxRunner(spec) {
+  const w = new Worker("pm-worker.js", { type: "module" }), cb = new Map();
+  w.onmessage = ({ data }) => { cb.get(data.id)?.(data); cb.delete(data.id); };
+  w.onerror = e => { for (const f of cb.values()) f({ error: "worker " + e.message }); };
+  const call = (m, tr = []) => new Promise((res, rej) => { const id = ++wid; cb.set(id, d => d.error ? rej(new Error(d.error)) : res(d)); w.postMessage({ ...m, id }, tr); });
+  const info = await call({ load: spec, eps: Q.get("ep") === "wasm" ? ["wasm"] : ["webgpu"] });
+  return { info, run: async (c, trimap) => { const b = await createImageBitmap(c); return call({ img: b, trimap }, trimap ? [b, trimap.buffer] : [b]); } };
+}
+async function selfieRunner() {
+  const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+  const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
+  const seg = await ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite", delegate: "GPU" },
+    runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+  return { info: { ep: "mp-GPU" }, run: async c => { let o; seg.segment(small(c), r => { const m = r.confidenceMasks[0], a = m.getAsFloat32Array();
+    o = { data: Uint8Array.from(a, v => v * 255 + .5), width: m.width, height: m.height }; }); return o; } };
+}
+// live path feeds a 256-wide copy (site/js/segment.js toSmall)
+const sm = mk(256, 256);
+function small(c) { sm.width = 256; sm.height = Math.round(256 * c.height / c.width); sm.getContext("2d").drawImage(c, 0, 0, sm.width, sm.height); return sm; }
+async function deeplabRunner() {
+  const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+  const files = await FilesetResolver.forVisionTasks(MP + "/wasm"), t0 = performance.now();
+  const seg = await ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: DEEPLAB, delegate: Q.get("ep") === "wasm" ? "CPU" : "GPU" },
+    runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+  return { info: { ep: "mp-" + (Q.get("ep") === "wasm" ? "CPU" : "GPU"), createMs: Math.round(performance.now() - t0), labels: seg.getLabels?.() },
+    run: async c => { let o; seg.segment(key === "dl256" ? small(c) : c, r => {
+      const M = r.confidenceMasks, g = i => M[i].getAsFloat32Array(), P = g(15), C = g(8), D = g(12), B = g(0), n = P.length;
+      const R = new Uint8Array(n), G = new Uint8Array(n), Bl = new Uint8Array(n);
+      for (let k = 0; k < n; k++) { R[k] = P[k] * 255 + .5; G[k] = Math.min(1, C[k] + D[k]) * 255 + .5; Bl[k] = Math.max(0, 1 - B[k] - P[k] - C[k] - D[k]) * 255 + .5; }
+      o = { rgb: [R, G, Bl], width: M[0].width, height: M[0].height, n: M.length }; }); return o; } };
+}
+
+// trimap at the model input size from MODNet (person) U DeepLab cat+dog: fg = eroded union, unknown = dilated band
+async function trimapFor(st, iw, ih) {
+  const mo = resample(await loadMask(`out/masks/modnet-${st.n}.png`), iw, ih);
+  const pe = resample(await loadMask(`out/masks/deeplab-${st.n}.png`, 1), iw, ih);
+  const n = iw * ih, b = new Uint8Array(n);
+  for (let k = 0; k < n; k++) b[k] = Math.max(mo.data[k], pe.data[k]) >= 128 ? 255 : 0;
+  const fg = morph(b, iw, ih, +(Q.get("rE") || 6), false), dl = morph(b, iw, ih, +(Q.get("rD") || 10), true), t = new Uint8Array(n);
+  for (let k = 0; k < n; k++) t[k] = fg[k] ? 255 : dl[k] ? 128 : 0;
+  return t;
+}
+
+try {
+  const stills = await loadStills(Q.get("only")?.split(","));
+  const t0 = performance.now();
+  const spec = SPECS[key], R = key === "deeplab" || key === "dl256" ? await deeplabRunner() : key === "selfie" ? await selfieRunner() : await onnxRunner(spec);
+  out.load = { ...R.info, loadMs: Math.round(performance.now() - t0) }; log(JSON.stringify(out.load));
+  for (const st of stills) {
+    const times = []; let m;
+    for (let r = 0; r < reps; r++) {
+      const t = performance.now();
+      let tri;
+      if (spec?.trimap) { const s = spec.size, k = s.short / Math.min(st.W, st.H), rr = v => Math.round(v * k / s.div) * s.div; tri = await trimapFor(st, rr(st.W), rr(st.H)); }
+      const triCopy = tri?.slice();
+      m = await R.run(st.canvas, tri);
+      times.push(Math.round(performance.now() - t));
+      if (r === 0 && tri) out.files[`masks/trimap-${st.n}.png`] = png({ data: triCopy, width: m.width, height: m.height });
+    }
+    out.rows.push({ n: st.n, times, mask: `${m.width}x${m.height}`, inW: m.inW, inH: m.inH });
+    log(st.n + " " + times.join(" "));
+    out.files[`masks/${key}${Q.get("tag") || ""}-${st.n}.png`] = m.rgb ? png(m, m.rgb) : png(m);
+  }
+} catch (e) { out.error = String(e?.stack || e); log("ERR " + out.error); }
+window.done = true;
+</script></body></html>

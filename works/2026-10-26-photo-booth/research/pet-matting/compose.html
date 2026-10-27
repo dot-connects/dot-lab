@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><title>Pet matting sheets</title>
+<style>body{margin:0;background:#f3f1ee;font:12px system-ui}pre{white-space:pre-wrap}canvas{max-width:100%;display:block}</style></head>
+<body><pre id="log"></pre><div id="out"></div>
+<script type="module">
+// Reads out/masks/*.png (from run.html) and builds one sheet per still: rows = pipelines, cols = white | purple | busy |
+// 3x crop A | 3x crop B (on purple). ?rows=cur,A,...&only=img,...&tag=x   -> window.out.files {"sheet-TAG-IMG.png"}, .stats
+import { loadStills, loadMask, resample, morph, mk } from "./stills.js";
+import { createRefiner } from "../../site/js/refine.js";
+const Q = new URLSearchParams(location.search);
+const log = s => { document.getElementById("log").textContent += s + "\n"; };
+const ref = createRefiner();
+const CROPS = JSON.parse(Q.get("crops") || "{}");   // { img: [[x,y],[x,y]] } centres in still px
+const lo = +(Q.get("lo") || 0.03), hi = +(Q.get("hi") || 0.97);
+
+const alphaOf = c => { const x = mk(c.width, c.height), xx = x.getContext("2d", { willReadFrequently: true }); xx.drawImage(c, 0, 0);
+  const p = xx.getImageData(0, 0, c.width, c.height).data, d = new Uint8Array(c.width * c.height); for (let k = 0; k < d.length; k++) d[k] = p[k * 4 + 3]; return d; };
+const cut = (st, d, o = {}) => { const g = ref.refine(st.canvas, { data: d, width: st.W, height: st.H }, { temporal: 0, guide: 0, lo, hi, ...o });
+  const c = mk(st.W, st.H); c.getContext("2d").drawImage(g, 0, 0); return c; };
+const maxOf = (...a) => { const o = new Uint8Array(a[0].length); for (let k = 0; k < o.length; k++) { let v = 0; for (const x of a) v = Math.max(v, x[k]); o[k] = v; } return o; };
+const mul = (a, r) => Uint8Array.from(a, (v, k) => (v * r[k] / 255 + .5) | 0);
+const blur = (d, w, h, r) => { const c = mk(w, h), x = c.getContext("2d", { willReadFrequently: true }), id = x.createImageData(w, h);
+  for (let k = 0; k < d.length; k++) { id.data[k * 4 + 3] = d[k]; } x.putImageData(id, 0, 0);
+  const c2 = mk(w, h), x2 = c2.getContext("2d", { willReadFrequently: true }); x2.filter = `blur(${r}px)`; x2.drawImage(c, 0, 0); return alphaOf(c2); };
+
+async function M(name, st, ch = 0) {
+  try { return resample(await loadMask(`out/masks/${name}-${st.n}.png`, ch), st.W, st.H, 0).data; } catch { return null; }
+}
+
+const BG = {
+  white: (x, W, H) => { x.fillStyle = "#fff"; x.fillRect(0, 0, W, H); },
+  purple: (x, W, H) => { x.fillStyle = "#2a1640"; x.fillRect(0, 0, W, H); },
+  busy: (x, W, H) => {
+    const cs = ["#ff5a8a", "#ffd23f", "#3bceac", "#0ead69", "#540d6e", "#ee4266"];
+    for (let i = 0; i < 24; i++) { x.fillStyle = cs[i % 6]; x.fillRect(i * 40, 0, 40, H); }
+    for (let i = 0; i < 40; i++) { x.fillStyle = cs[(i * 7) % 6]; x.beginPath(); x.arc((i * 137) % W, (i * 89) % H, 30 + (i % 5) * 12, 0, 7); x.fill(); }
+  },
+};
+const CW = 240, CH = 240, LBL = 130, CR = [107, 80];
+function sheet(st, rows, crops) {
+  const s = mk(LBL + 5 * CW, rows.length * CH), x = s.getContext("2d");
+  x.fillStyle = "#fff"; x.fillRect(0, 0, s.width, s.height);
+  rows.forEach((r, k) => {
+    const y = k * CH;
+    x.fillStyle = "#111"; x.font = "14px sans-serif"; r.label.split("\n").forEach((l, j) => x.fillText(l, 6, y + 20 + j * 17));
+    const fit = Math.min(CW / st.W, CH / st.H), fw = st.W * fit, fh = st.H * fit;
+    ["white", "purple", "busy"].forEach((b, j) => {
+      const t = mk(st.W, st.H), tx = t.getContext("2d"); BG[b](tx, st.W, st.H); tx.drawImage(r.cut, 0, 0);
+      x.drawImage(t, LBL + j * CW + (CW - fw) / 2, y + (CH - fh) / 2, fw, fh);
+    });
+    crops.forEach(([cx, cy], j) => {
+      const t = mk(st.W, st.H), tx = t.getContext("2d"); BG.purple(tx, st.W, st.H); tx.drawImage(r.cut, 0, 0);
+      const [w, h] = CR, sx = Math.max(0, Math.min(st.W - w, cx - w / 2)), sy = Math.max(0, Math.min(st.H - h, cy - h / 2));
+      x.imageSmoothingEnabled = false; x.drawImage(t, sx, sy, w, h, LBL + (3 + j) * CW, y + (CH - 3 * h) / 2, 3 * w, 3 * h); x.imageSmoothingEnabled = true;
+    });
+    x.strokeStyle = "#999"; x.strokeRect(LBL, y, 5 * CW, CH);
+  });
+  return s;
+}
+// crop centres: top of the pet region and top of the person matte (overridable with ?crops=)
+function autoCrops(st, mod, pet) {
+  const top = (d, th) => { for (let y = 0; y < st.H; y++) { let sx = 0, n = 0; for (let x = 0; x < st.W; x++) if (d[y * st.W + x] >= th) { sx += x; n++; } if (n > 3) return [sx / n, y + 25]; } return [st.W / 2, st.H / 2]; };
+  const a = pet ? top(pet, 128) : null, b = top(mod, 128);
+  return CROPS[st.n] || (a ? [a, b] : [b, [b[0] - 60, b[1] + 120]]);
+}
+
+const want = (Q.get("rows") || "cur,A,Bu2netp,Bsilueta,Bisnet,Bbiref512,biref512,Cvitq8,Cvit32,C2vit32").split(",");
+const out = window.out = { files: {}, stats: [] };
+for (const st of await loadStills(Q.get("only")?.split(","))) {
+  const mod = await M("modnet", st), dl = await M("deeplab", st, 1);   // G = cat + dog
+  const petBin = Uint8Array.from(dl, v => v >= 77 ? 255 : 0);           // >= 0.3
+  const region = blur(morph(petBin, st.W, st.H, 24, true), st.W, st.H, 6);
+  const hasPet = petBin.some(v => v);
+  const rows = [], S = { n: st.n, pet: st.pet, petPx: petBin.reduce((s, v) => s + (v ? 1 : 0), 0) };
+  for (const r of want) {
+    let a, label;
+    if (r === "cur") { a = mod; label = "현재 MODNet"; }
+    else if (r === "A") {
+      const g = alphaOf(ref.refine(st.canvas, { data: dl, width: st.W, height: st.H }, { temporal: 0, guide: 1, lo: 0.15, hi: 0.85 }));
+      a = maxOf(mod, g); label = "A MODNet∪DeepLab\n+guided";
+    }
+    else if (r === "L") {   // live path: selfie_segmenter U DeepLab(256 input) cat+dog, guided
+      const s = await M("selfie", st), d = await M("dl256", st, 1); if (!s || !d) continue;
+      const g = alphaOf(ref.refine(st.canvas, { data: d, width: st.W, height: st.H }, { temporal: 0, guide: 1, lo: 0.15, hi: 0.85 }));
+      a = maxOf(s, g); label = "L 라이브 selfie\n∪DeepLab256";
+    }
+    else if (r[0] === "B") { const x = await M(r.slice(1), st); if (!x) continue; a = maxOf(mod, mul(x, region)); label = "B MODNet∪\n" + r.slice(1) + "∩pet"; }
+    else if (r.startsWith("C2")) { const x = await M(r.slice(2), st); if (!x) continue; a = maxOf(mod, mul(x, region)); label = "C2 MODNet∪\n" + r.slice(2) + "∩pet"; }
+    else if (r[0] === "C") { a = await M(r.slice(1), st); if (!a) continue; label = "C trimap→\n" + r.slice(1); }
+    else { a = await M(r, st); if (!a) continue; label = r + " 단독"; }
+    // numbers: pet kept = share of DeepLab pet px (>=0.3) with alpha >= 0.5; person drift = mean |a - MODNet| outside the pet region
+    let keep = 0, drift = 0, dn = 0;
+    for (let k = 0; k < a.length; k++) { if (petBin[k] && a[k] >= 128) keep++; if (!region[k]) { drift += Math.abs(a[k] - mod[k]); dn++; } }
+    S[r] = { petKept: hasPet ? +(keep / S.petPx).toFixed(3) : null, drift: +(drift / dn / 255).toFixed(4) };
+    rows.push({ label: label + (hasPet ? `\npet ${Math.round(100 * keep / S.petPx)}%` : "") + `\nΔ ${(100 * drift / dn / 255).toFixed(1)}%`, cut: cut(st, a) });
+  }
+  out.stats.push(S); log(JSON.stringify(S));
+  const s = sheet(st, rows, autoCrops(st, mod, hasPet ? dl : null));
+  document.getElementById("out").append(s);
+  out.files[`sheet-${Q.get("tag") || "all"}-${st.n}.png`] = s.toDataURL("image/png").split(",")[1];
+}
+window.done = true;
+</script></body></html>
