@@ -693,7 +693,7 @@ async function del(box, yes) {
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
-  layout: null, pairs: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
+  layout: null, pairs: null, outline: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
 // fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
 const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
@@ -846,8 +846,8 @@ function changed(minis) {
   if (!env.inApp) { setVid(); vT = setTimeout(videoJob, 700); }
 }
 const opts = (o = {}) => ({ a: D.media.a, b: D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, ...o });
-const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline)].join("|");
+  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, mattes: D.mattes, ...o });
+const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), D.mattes ? "hq" : ""].join("|");
 async function render(minis = []) {
   const seq = ++D.seq;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
@@ -917,11 +917,21 @@ function setVid(which = "video", p = null) {
     else { span.textContent = D.wantStory ? "스토리 영상 기다리는 중" : idle; b.disabled = D.wantStory; }
   }
 }
+// Round 5: the HQ moving cut (clipmatte.js, MODNet on ~10 fps of every clip) runs once in the background after the
+// clips load; when it lands the video key changes and the strip video is made again with it (fast matte until then).
+let hqcP = null;
+function hqClips() {
+  const media = D.media;
+  hqcP ||= load("clipmatte").then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip))))
+    .then(m => { if (m.size && D.media === media) { D.mattes = m; videoJob(); } })
+    .catch(e => console.warn("[booth] hq clips", e));
+}
 async function videoJob() {
   if (D.vjob || D.noVideo) return;
   D.vjob = true;
   try {
     if (!D.clips) await loadClips();
+    hqClips();
     for (;;) {
       const key = vkey();
       const kind = D.video?.key !== key ? "video" : D.wantStory && D.story?.key !== key ? "story" : null;
