@@ -94,3 +94,15 @@ export function loadRole(id); export function saveRole(id, role, token);   // lo
 
 ## app.js + index.html
 Screens: landing (A / B variants), shoot, upload, share, waiting, done, expired, framed. Role table: PLAN Task 6.
+
+## Round 2 additions (2026-10-27, after the 11-reviewer pass — research/review/*.md)
+- frames.js: `frame.draw(ctx, layout, { date, caption, cellRects })` — `caption` = optional one-line user text (<= 16
+  chars, e.g. "D+100", "우리 오늘") drawn in the footer in the frame's style; when empty the footer shows "따로 같이 네컷".
+  FRAMES order = display order, first = default: white, pink, check, coquette, strawberry, sky, film, duo, black,
+  minimal, chrome, purikura, + new wanted (지명수배 meme), vs (게임 VS) frames.
+- compose.js: `drawStrip({ ..., caption })`, `recordMovingStrip({ ..., caption, format = "strip" | "story" })`
+  ("story" = 1080x1920, strip centred on a soft backdrop that matches the frame, for Instagram stories).
+  `createClipAlpha({ choke = 0 })` — app.js uses `{ choke: 2 }` for B's overlay of A (edge decontaminated), compose `{ choke: 0 }`.
+  `matchLuma(aCut, bCut)` optional helper used inside compose to even out the two people's brightness.
+- api.js: `deleteLink(id, token)` -> DELETE /s/:id (A's token, or the finished B's) -> { ok } | { error }.
+- Worker: DELETE /s/:id live (6 tests).

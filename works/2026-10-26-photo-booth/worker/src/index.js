@@ -13,7 +13,7 @@ export default {
     const allowed = env.ORIGINS.split(",");
     const origin = req.headers.get("Origin");
     const cors = { "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0], "Vary": "Origin",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Max-Age": "86400" };
     const json = (status, obj) => new Response(obj === undefined ? null : JSON.stringify(obj),
       { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -44,6 +44,23 @@ export default {
 
     if (req.method === "GET" && p.length === 2)
       return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE });
+
+    // "지금 삭제": A, or the friend whose shots are in the strip, wipes the whole link (staging folders included)
+    if (req.method === "DELETE" && p.length === 2) {
+      const auth = (req.headers.get("Authorization") || "").replace(/^Bearer /, "");
+      if (!TOKEN.test(auth)) return json(401, { error: "token" });
+      const h = await sha(auth);
+      if (h !== meta.a.tokenHash && !(meta.b.done && h === meta.b.tokenHash)) return json(403, { error: "token" });
+      const keys = [];                                     // list everything first, then delete (no paging under deletes)
+      let cursor;
+      do {
+        const page = await env.BUCKET.list({ prefix: `s/${id}/`, cursor });
+        keys.push(...page.objects.map(o => o.key));
+        cursor = page.truncated ? page.cursor : undefined;
+      } while (cursor);
+      for (let i = 0; i < keys.length; i += 1000) await env.BUCKET.delete(keys.slice(i, i + 1000));
+      return json(204);
+    }
 
     const side = p[2];
     if ((side !== "a" && side !== "b") || p.length !== 4) return json(404, { error: "not-found" });

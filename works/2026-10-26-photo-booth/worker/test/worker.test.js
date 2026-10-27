@@ -9,6 +9,14 @@ function fakeR2() {
   return {
     async get(k) { const v = m.get(k); return v ? obj(v) : null; },
     async head(k) { const v = m.get(k); return v ? { etag: v.etag, size: v.body.byteLength } : null; },
+    async list({ prefix = "", cursor } = {}) {             // 2 keys per page, so paging is exercised
+      const keys = [...m.keys()].filter(k => k.startsWith(prefix)).sort();
+      const start = cursor ? +cursor : 0, page = keys.slice(start, start + 2);
+      const more = start + 2 < keys.length;
+      return { objects: page.map(key => ({ key })), truncated: more, cursor: more ? String(start + 2) : undefined };
+    },
+    async delete(keys) { for (const k of [].concat(keys)) m.delete(k); },
+    m,
     async put(k, body, opt = {}) {
       await null;                                   // yield, so concurrent callers interleave
       const cur = m.get(k);
@@ -107,4 +115,21 @@ test("expiry, unknown ids, CORS", async () => {
   assert.match(ok.headers.get("Access-Control-Allow-Headers"), /Content-Type/);
   const bad = await call(e, "OPTIONS", "/s", { origin: "https://evil.test" });
   assert.equal(bad.headers.get("Access-Control-Allow-Origin"), PAGES);
+});
+
+test("delete now: only A's or the finished B's token wipes every file and the link", async () => {
+  const e = env(); const id = await aDone(e);
+  await upAll(e, id, "b", tok("q"), "Q");                                              // abandoned staging
+  await upAll(e, id, "b", tok("b"), "B");
+  assert.equal((await done(e, id, "b", tok("b"))).status, 204);
+  const del = token => call(e, "DELETE", `/s/${id}`, { token });
+  assert.equal((await del(undefined)).status, 401);
+  assert.equal((await del(tok("q"))).status, 403);                                     // a loser cannot delete
+  assert.equal((await del(tok("b"))).status, 204);
+  assert.equal([...e.BUCKET.m.keys()].filter(k => k.startsWith(`s/${id}/`)).length, 0);
+  assert.equal((await call(e, "GET", `/s/${id}`)).status, 404);
+  const id2 = await newLink(e);
+  assert.equal((await call(e, "DELETE", `/s/${id2}`, { token: tok("a") })).status, 204);  // A before anyone finished
+  const ok = await call(e, "OPTIONS", "/s", { origin: PAGES });
+  assert.match(ok.headers.get("Access-Control-Allow-Methods"), /DELETE/);
 });
