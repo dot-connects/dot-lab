@@ -123,3 +123,15 @@ Cut-out: stills (the 4 shutter photos) get a heavy high-quality model; live prev
   applied to both cut-outs (in bg "a"/"b" the raw person also gets its cut drawn on top so it can carry the outline).
   Draw order everywhere: background -> B -> A (A in front).
 - capture.js: `Cut.cut` comes from the HQ still model when ready (fallback: live matte), same names.
+- compose.js Round 3 API (implemented 10-27, sheets in research/round3-compose/):
+  `OUTLINE_COLORS` = [{ id, label, color: "#rrggbb" }] (흰색 분홍 노랑 하늘 민트 보라 검정), `OUTLINE_STYLES` =
+  [{ id: "solid"|"dotted"|"glitter", label: 실선|점선|반짝이 }], `OUTLINE_WIDTHS` = [{ id: "thin"|"normal"|"thick",
+  label: 얇게|보통|두껍게, px: 6|10|16 (strip px, independent of B's scale of A) }]. `outline.color` = hex (chip id also
+  accepted); unknown values fall back to white / solid / normal.
+  `layoutAnchor(cutImg)` -> { x, y } = A's centre-bottom as fractions of the cell (the strip crop of the camera frame;
+  y may be a little > 1). Layout maths, cell space: A is scaled by `scale` about the anchor, then shifted by
+  (x * cell width, y * cell height) — CSS on a cell-sized box: `transform-origin: anchor; transform: translate(x*w, y*h)
+  scale(scale)`. Values are clamped (x, y to [-1, 1], scale to [0.25, 3]); |x|,|y| <= 0.002 and |scale-1| <= 0.005 = as shot.
+  `bgAllowed(layout)` -> BACKGROUNDS ids; drops "a" once A is moved (A would show twice); drawCell falls back to "b".
+  `drawCell(ctx, rect, i, { a, b, bg, t, layout, outline })`. `createClipAlpha().draw/still(src, { ..., outline, time })`
+  returns a canvas with `.pad` px of margin when an outline is set (no outline: unchanged, pad 0).

@@ -17,7 +17,7 @@
 <img id="out" alt=""><video id="vout" controls muted playsinline loop></video>
 <div id="log"></div>
 <script type="module">
-import { BACKGROUNDS, drawStrip, recordMovingStrip, loadClip, LAYOUT } from "./js/compose.js";
+import { BACKGROUNDS, drawStrip, recordMovingStrip, loadClip, LAYOUT, OUTLINE_COLORS, OUTLINE_STYLES, OUTLINE_WIDTHS, bgAllowed, layoutAnchor } from "./js/compose.js";
 import { FRAMES } from "./js/frames.js";
 import { FILTERS } from "./js/filters.js";
 
@@ -149,6 +149,22 @@ async function record(opts) {
   let bin = ""; for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
   return { type, ticks, size: blob.size, ms: Math.round(performance.now() - t0), b64: btoa(bin) };
 }
+// Round 3: one cell per item at k x size, labelled; items are drawStrip options (+ label). Returns png + ms per strip.
+async function grid(items, { cols = 3, cell = 0, k = 1, frame = "white" } = {}) {
+  const m = await media(), { M, CW, CH, GAP } = LAYOUT, lab = 22, rows = Math.ceil(items.length / cols);
+  const cv = document.createElement("canvas"); cv.width = cols * CW * k; cv.height = rows * (CH * k + lab);
+  const x = cv.getContext("2d"); x.fillStyle = "#fff"; x.fillRect(0, 0, cv.width, cv.height); x.font = "600 15px system-ui"; x.fillStyle = "#222";
+  const ms = [];
+  for (let n = 0; n < items.length; n++) {
+    const { label, ...it } = items[n], c = n % cols, r = Math.floor(n / cols), t0 = performance.now();
+    const bl = await drawStrip({ ...m, frame, filter: "original", date: "2026.10.26", ...it });
+    ms.push(Math.round(performance.now() - t0));
+    const im = await blobImg(bl);
+    x.drawImage(im, M, M + cell * (CH + GAP), CW, CH, c * CW * k, r * (CH * k + lab) + lab, CW * k, CH * k);
+    x.fillText(label || "", c * CW * k + 6, r * (CH * k + lab) + 16);
+  }
+  return { png: cv.toDataURL("image/png").split(",")[1], ms };
+}
 // keepLargest self-check: a big and a small blob -> the small one goes; two similar blobs -> both stay
 async function checkKeepLargest() {
   const { keepLargest } = await import("./js/segment.js");
@@ -160,7 +176,7 @@ async function checkKeepLargest() {
   r.pass = r.bigKept === 255 && r.smallDropped === 0 && r.bothKept.every(v => v === 255);
   return r;
 }
-window.dev = { prep, checkKeepLargest, cellCrop, media, sheet, strips, cellSheet, record, FRAMES: FRAMES.map(f => f.id), FILTERS: FILTERS.map(f => f.id), BGS: BACKGROUNDS.map(b => b.id) };
+window.dev = { grid, bgAllowed, layoutAnchor, OUTLINE_COLORS, OUTLINE_STYLES, OUTLINE_WIDTHS, prep, checkKeepLargest, cellCrop, media, sheet, strips, cellSheet, record, FRAMES: FRAMES.map(f => f.id), FILTERS: FILTERS.map(f => f.id), BGS: BACKGROUNDS.map(b => b.id) };
 
 // manual UI
 for (const [id, list] of [["bg", BACKGROUNDS], ["fr", FRAMES], ["fi", FILTERS]])

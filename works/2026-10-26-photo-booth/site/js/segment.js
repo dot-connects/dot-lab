@@ -10,12 +10,12 @@ const PERSON = 0;
 import { createRefiner } from "./refine.js";
 // engine 0 = joint bilateral below (default: kept braids on person-a, A/B 10-26), 1 = research guided filter
 // (refine.js, copied from research/cutout-poc; softer, lost braid tips and smeared on motion blur)
-// still = 1 (opt-in via ?still=1) cuts the shutter frame with selfie_multiclass; off by default: on the PC it tied the
-// live matte on quality while its 12 s load + 14 s first GPU run froze the preview (10-27). slo/shi = refine.js levels.
+// still = 1 (default; ?still=0 turns it off) cuts each shutter still with MODNet (see the stills section below);
+// slo/shi = its linear alpha levels, scpu = 1 forces the WASM backend (tests only: 9-15 s per still).
 export const TUNE = { engine: 0, ema: 0.6, lo: 0.3, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
-  still: new URLSearchParams(location.search).get("still") === "1" ? 1 : 0, slo: 0.15, shi: 0.85, scpu: 0 };
+  still: new URLSearchParams(location.search).get("still") === "0" ? 0 : 1, slo: 0.03, shi: 0.97, scpu: 0 };
 export const stats = { delegate: "", warmMs: 0, held: 0, ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
-  still: { state: "", delegate: "", loadMs: 0, warmMs: 0, heldMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [] } };
+  still: { state: "", delegate: "", loadMs: 0, warmMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [] } };
 
 let seg = null, lastTime = -1, lastTs = 0, ema = null, emaSum = 0, held = 0, m8 = null, mw = 0, mh = 0, ready = false;
 // The model input is 256 px anyway: feed it a 256-wide copy so the mask comes back at 256x192 instead of the video size
@@ -30,6 +30,7 @@ function toSmall(video) {
 
 export async function loadSegmenter() {
   if (seg) return seg;
+  prefetchStill();   // HQ still model: download + session in its worker while the camera starts (app.js calls this then)
   const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate },
@@ -48,6 +49,10 @@ export async function loadSegmenter() {
 // Runs the model once per video frame (callers may share one video: the same frame is not segmented twice).
 export function segmentFrame(video, tsMs = performance.now()) {
   if (!seg || !video.videoWidth || video.currentTime === lastTime) return false;
+  // while the HQ still model compiles its WebGPU shaders (~10 s cold on a PC iGPU) the GPU is busy, and this model's
+  // synchronous mask readback would block the main thread for the whole time (frozen preview, 10-27): keep the last
+  // matte instead until the warm-up is done
+  if (warming) return false;
   lastTime = video.currentTime;
   const ts = Math.max(tsMs, lastTs + 1); lastTs = ts;
   const t0 = performance.now();
@@ -292,40 +297,20 @@ export function drawCutout(ctx, video, w, h, mirror) {
   ctx.drawImage(t, 0, 0);
 }
 
-// ---- shutter stills: selfie_multiclass_256x256 + refine.js guided filter (research/cutout.md) ----------------------
-// 16.4 MB, so it loads in the background after the camera is on; until it is ready (or if it fails) the shutter keeps
-// the live matte. multiclass has no person channel: person = 1 - confidenceMasks[0] (background).
-// The model runs in a worker: its first GPU call compiles shaders for ~14 s, and on the main thread that froze the
-// preview and stretched a countdown clip to 16 s (headless 10-26). Classic worker: tasks-vision loads its wasm with
-// importScripts, which module workers do not have.
-const MODEL_STILL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite";
-const WORKER_SRC = `let seg;
-onmessage = async ({ data: m }) => {
-  try {
-    if (m.load) {
-      const { FilesetResolver, ImageSegmenter } = await import(m.mp + "/vision_bundle.mjs");
-      const files = await FilesetResolver.forVisionTasks(m.mp + "/wasm");
-      const mk = d => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: m.model, delegate: d },
-        runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
-      let d = m.delegate;
-      try { seg = await mk(d); } catch { d = "CPU"; seg = await mk(d); }
-      return postMessage({ id: m.id, delegate: d });
-    }
-    let out;
-    seg.segment(m.img, r => {
-      const bg = r.confidenceMasks[0], a = bg.getAsFloat32Array(), u = new Uint8Array(a.length);
-      for (let i = 0; i < a.length; i++) u[i] = (1 - a[i]) * 255 + 0.5;
-      out = { id: m.id, data: u, width: bg.width, height: bg.height };
-    });
-    m.img.close();
-    postMessage(out, [out.data.buffer]);
-  } catch (e) { postMessage({ id: m.id, error: String((e && e.message) || e) }); }
-};`;
-// The worker keeps the main thread free, but the GPU process still compiles for ~14 s and the live segmenter's
-// readback waits on it (main-thread stall 7-10 s, headless 10-26). So the warm-up never starts while a shoot runs
-// (stillBusy), and a shoot that starts mid-warm-up waits for it first (stillWarm) instead of freezing inside a clip.
-let stillW = null, stillRef = null, stillP = null, stillOk = false, wid = 0, warming = null, shooting = 0;
-export function stillBusy(on) { shooting += on ? 1 : -1; }
+// ---- shutter stills: MODNet portrait matting (Apache-2.0) + refine.js decontamination (research/cutout-hq/) --------
+// ~26 MB ONNX on onnxruntime-web WebGPU, in a module worker so the preview never waits on it. Loads in the background
+// from loadSegmenter on; until it is ready, or when it fails / there is no WebGPU, the shutter keeps the
+// live matte. WASM runs 9-15 s per still on the PC (single thread without cross-origin isolation): not used.
+// MODNet's alpha already follows hair, so refine.js runs with guide 0 (linear levels + edge colour decontamination).
+const STILL_MODEL = { url: "https://huggingface.co/Xenova/modnet/resolve/fa2fa546052fba4c08921230a26cc69a333fca12/onnx/model.onnx",
+  size: { short: 512, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha" };
+// The first WebGPU run compiles shaders (3-10 s on a PC iGPU): pay it in the warm-up, never inside a countdown clip.
+// Cold, that compile also stalls the GPU process for ~10 s (no new frames anywhere on the page, and any canvas readback
+// waits: 10-27), so it only runs before the first shot of the page. A model that is ready only after shooting began is
+// never warmed (state "late"): a 10 s freeze over the review/upload screens costs more than live-matte stills. A shoot
+// that starts mid-warm-up does not wait for it: that cut keeps the live matte (stillWarm is only a hint for tests).
+let stillW = null, stillRef = null, stillP = null, stillOk = false, wid = 0, warming = null, shooting = 0, shot = false;
+export function stillBusy(on) { shooting += on ? 1 : -1; if (on) shot = true; }
 export const stillWarm = () => warming || Promise.resolve();
 const wcb = new Map();
 function wcall(msg, transfer = [], ms = 0) {
@@ -339,42 +324,42 @@ const bitmap = c => createImageBitmap(c);
 
 export async function loadStillSegmenter() {
   const S = stats.still, t0 = performance.now();
-  S.state = "loading";
+  S.state = "loading"; S.model = "modnet";
   stillRef = createRefiner();   // throws without WebGL2 + float targets: stills stay on the live matte
-  stillW = new Worker(URL.createObjectURL(new Blob([WORKER_SRC], { type: "text/javascript" })));
+  stillW = new Worker(new URL("./matting-worker.js", import.meta.url), { type: "module" });
   stillW.onmessage = ({ data }) => { const f = wcb.get(data.id); wcb.delete(data.id); f?.(data); };
-  stillW.onerror = e => { e.preventDefault(); for (const f of wcb.values()) f({ error: "worker: " + e.message }); wcb.clear(); };
-  S.delegate = (await wcall({ load: 1, mp: MP, model: MODEL_STILL, delegate: TUNE.scpu ? "CPU" : "GPU" })).delegate;
+  stillW.onerror = e => { e.preventDefault(); for (const f of wcb.values()) f({ error: "worker: " + (e.message || "load") }); wcb.clear(); };
+  const L = await wcall({ load: STILL_MODEL, eps: TUNE.scpu ? ["wasm"] : ["webgpu"] });
+  S.delegate = L.ep; S.fetchMs = L.fetchMs; S.createMs = L.createMs; S.bytes = L.bytes;
   const t1 = performance.now(); S.loadMs = Math.round(t1 - t0);
-  // first GPU call compiles the shaders (10-24 s on an iGPU): pay it now, in the worker, not at the first shutter
-  while (shooting) await new Promise(r => setTimeout(r, 300));
+  if (shot) throw new Error("late");
   const t2 = performance.now();
-  warming = (async () => {
+  warming = (async () => {   // 4:3 like every still, so the warm-up compiles the same 672x512 shapes
     const w = Object.assign(document.createElement("canvas"), { width: 96, height: 72 }), b = await bitmap(w);
-    stillRef.refine(w, await wcall({ img: b }, [b]), { temporal: 0 });
+    stillRef.refine(w, await wcall({ img: b }, [b]), { temporal: 0, guide: 0 });
   })();
   try { await warming; } finally { warming = null; }
-  S.warmMs = Math.round(performance.now() - t2); S.heldMs = Math.round(t2 - t1);
+  S.warmMs = Math.round(performance.now() - t2);
   stillOk = true; S.state = "ready";
 }
 
-// Starts the background load once; resolves true when stills can use multiclass, false when they cannot.
+// Starts the background load once; resolves true when stills can use the HQ model, false when they cannot.
 export function prefetchStill() {
   if (!TUNE.still) return Promise.resolve(false);
   return stillP ||= loadStillSegmenter().then(() => true, e => {
-    stats.still.state = "failed"; stats.still.error = String(e?.message || e); stillW?.terminate(); return false; });
+    stats.still.state = e?.message === "late" ? "late" : "failed"; stats.still.error = String(e?.message || e); stillW?.terminate(); return false; });
 }
 export const stillReady = () => stillOk && !!TUNE.still;
 
-// canvas4x3: the still as saved (mirrored as previewed) -> new canvas, person with refined, decontaminated alpha.
-// Throws when not ready, on a model error or after 3 s (callers then keep the live matte for that cut).
+// canvas4x3: the still as saved (mirrored as previewed) -> new canvas, person with matted, decontaminated alpha.
+// Throws when not ready, on a model error or after 6 s (callers then keep the live matte for that cut).
 export async function cutStill(canvas4x3) {
   if (!stillReady()) throw new Error("still-not-ready");
   const S = stats.still, t0 = performance.now(), b = await bitmap(canvas4x3);
-  const m = await wcall({ img: b }, [b], 3000), t1 = performance.now();
-  const g = stillRef.refine(canvas4x3, m, { temporal: 0, lo: TUNE.slo, hi: TUNE.shi });
+  const m = await wcall({ img: b }, [b], 6000), t1 = performance.now();
+  const g = stillRef.refine(canvas4x3, m, { temporal: 0, guide: 0, lo: TUNE.slo, hi: TUNE.shi });
   const o = Object.assign(document.createElement("canvas"), { width: canvas4x3.width, height: canvas4x3.height });
   o.getContext("2d").drawImage(g, 0, 0);   // own copy: the refiner canvas is reused by the next cut
-  S.segMs = Math.round(t1 - t0); S.refineMs = Math.round(performance.now() - t1);
+  S.segMs = Math.round(t1 - t0); S.modelMs = m.ms; S.refineMs = Math.round(performance.now() - t1);
   return o;
 }

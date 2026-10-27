@@ -95,15 +95,48 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .ministrip.real { width: 168px; transform: rotate(-4deg); background: var(--pink-soft); }
 .ministrip.real .mc { background: #2e2230; }
 .ministrip.real img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mspot { position: absolute; right: 5%; bottom: 0; width: 38%; height: 80%; border: 2px dashed #fff; border-bottom: 0; border-radius: 48% 48% 0 0; background: #ffffff2e; }
 
-/* B landing peek: A's cut-out on the pink booth, a dashed spot with a bobbing heart */
+/* landing A cover, concept "착! 합체" (mockups/cover-motion.html .A): plays once (~1.6 s), then the strip idles.
+   Every animation ends on the still frame (fill: both), so reduced motion (.01ms durations below) shows the final cover. */
+.pop i { display: inline-block; font-style: normal; animation: letter .42s var(--spring) calc(.05s + var(--i) * .04s) both; }
+@keyframes letter { from { opacity: 0; transform: translateY(40%) scale(.8); } }
+.cover { margin: 0 -16px; overflow-x: clip; pointer-events: none; }
+.cover .chip { position: absolute; top: 8px; font-family: var(--title); font-size: 16px; color: var(--ink); background: var(--paper); border-radius: 999px; padding: 3px 12px; box-shadow: 0 3px 10px #c2587a26; animation: chipIn .35s ease-out both; }
+.cover .chip.l { left: 20px; } .cover .chip.r { right: 20px; animation-delay: .08s; }
+@keyframes chipIn { from { opacity: 0; transform: translateY(-8px); } }
+.cover .half { position: absolute; top: 50%; margin-top: -84px; width: 112px; aspect-ratio: 3 / 4; background: var(--paper); border-radius: 12px; padding: 7px; box-shadow: 0 8px 18px #c2185b22; }
+.cover .half.l { left: calc(50% - 112px); animation: halfL 1.2s cubic-bezier(.3, 1.2, .6, 1) .1s both; }
+.cover .half.r { left: 50%; animation: halfR 1.2s cubic-bezier(.3, 1.2, .6, 1) .16s both; }
+.cover .hc { width: 100%; height: 100%; border-radius: 8px; overflow: hidden; background: var(--pink-soft); }
+.cover .half.r .hc { background: var(--sky); }
+.cover .hc svg, .cover .mc svg { display: block; width: 100%; height: 100%; }
+@keyframes halfL { 0% { transform: translateX(-270px) rotate(-12deg); } 45% { transform: translateX(7px) rotate(-3deg); } 55%, 68% { transform: none; opacity: 1; } 100% { transform: scale(.5); opacity: 0; } }
+@keyframes halfR { 0% { transform: translateX(270px) rotate(12deg); } 45% { transform: translateX(-7px) rotate(3deg); } 55%, 68% { transform: none; opacity: 1; } 100% { transform: scale(.5); opacity: 0; } }
+.burst { position: absolute; left: 50%; top: 50%; width: 200px; height: 200px; margin: -100px; pointer-events: none; z-index: 2; animation: burst .7s ease-out .66s both; }
+@keyframes burst { 0% { transform: scale(0); opacity: 1; } 40% { transform: scale(1.1); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.ministrip.cv { rotate: -5deg; animation: stripIn .5s var(--spring) .95s both, idle 2.6s ease-in-out 1.6s infinite alternate; }
+@keyframes stripIn { from { opacity: 0; transform: translateY(12px) scale(.86); } }
+@keyframes idle { to { translate: 0 -5px; } }
+.cv .mc { animation: cellPop .36s var(--spring) 1.05s both; }
+.cv .mc:nth-child(2) { animation-delay: 1.13s; } .cv .mc:nth-child(3) { animation-delay: 1.21s; } .cv .mc:nth-child(4) { animation-delay: 1.29s; }
+@keyframes cellPop { from { opacity: 0; transform: scale(.6); } }
+.cover .deco.s1 { top: 34%; left: 9%; } .cover .deco.s2 { bottom: 9%; right: 12%; }
+/* the real CTA nudges once when the strip lands (scale, so :active's transform still works) */
+.cta.nudge { animation: nudge .5s ease-out 1.5s both; }
+@keyframes nudge { 40% { scale: 1.05; } }
+/* landing B: A's first cut drops in with the same burst */
+.peekwrap { position: relative; }
+.peekwrap .peek { animation: cardDrop .6s var(--spring) .1s both; }
+.peekwrap .burst { width: 240px; height: 240px; margin: -120px; animation-delay: .5s; }
+@keyframes cardDrop { from { opacity: 0; transform: translateY(-36px) rotate(-4deg) scale(.92); } }
+
+/* B landing peek: A's cut-out on the pink booth, a small chip with a bobbing heart (no fixed side for the friend) */
 .peek { position: relative; border-radius: var(--r); overflow: hidden; box-shadow: var(--shadow); aspect-ratio: 552 / 382;
   background: radial-gradient(circle at 50% 40%, #fff0f4, #ffd2de 55%, #ef9fb6); }
 .peek img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.peekspot { position: absolute; right: 5%; bottom: 0; width: 38%; height: 82%; border: 3px dashed #fff; border-bottom: 0; border-radius: 48% 48% 0 0;
-  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--pink-ink); font-family: var(--title); font-size: 18px; background: #ffffff59; }
-.peekspot svg { width: 30px; height: 28px; fill: var(--deep); }
+.peekspot { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; white-space: nowrap;
+  color: var(--pink-ink); font-family: var(--title); font-size: 17px; background: #fffffff0; border-radius: 999px; padding: 4px 14px 4px 10px; box-shadow: 0 4px 12px #c2587a33; }
+.peekspot svg { width: 20px; height: 18px; fill: var(--deep); }
 
 /* shoot */
 .shoothead { display: flex; align-items: center; gap: 10px; min-height: 44px; }
@@ -125,9 +158,17 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .frame #ghost, .frame #ghostClip { position: absolute; inset: 0; width: 100%; height: 100%; }
 /* the strip-cell crop: dashed box, outside dimmed */
 .crop { position: absolute; border-radius: 6px; box-shadow: 0 0 0 100vmax #fff4f833; outline: 2px dashed #ffffffe6; outline-offset: -4px; }
-.spot { position: absolute; right: 5%; bottom: 0; width: 38%; height: 84%; border: 3px dashed #fffe; border-bottom: 0; border-radius: 48% 48% 0 0;
-  display: flex; align-items: flex-end; justify-content: center; padding-bottom: 12px; }
-.spot span { font-family: var(--title); font-size: 17px; color: #fff; background: #2e2230b3; border-radius: 999px; padding: 2px 12px; }
+/* B moves / resizes A (when A allowed it): a layer over the camera that takes the drag and the pinch */
+.mover { position: absolute; inset: 0; z-index: 1; cursor: grab; touch-action: none; }
+.mover:active { cursor: grabbing; }
+.hintchip { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; width: max-content; max-width: calc(100% - 24px);
+  appearance: none; border: 0; display: flex; align-items: center; gap: 8px; background: #fffffff2; color: var(--ink); font: 15px/1.35 var(--body);
+  border-radius: 999px; padding: 7px 10px 7px 14px; box-shadow: 0 6px 18px #2e223033; cursor: pointer; text-align: left; animation: fade .25s ease-out; }
+.hintchip i { font-style: normal; width: 22px; height: 22px; flex: none; display: grid; place-items: center; border-radius: 50%; background: var(--pink-soft); color: var(--pink-ink); font-size: 12px; }
+.resetchip { position: absolute; top: 12px; right: 12px; z-index: 3; appearance: none; border: 0; background: #2e2230d9; color: #fff; font: 15px var(--title);
+  border-radius: 999px; padding: 6px 14px; cursor: pointer; }
+.busy .hintchip, .shooting-done :is(.hintchip, .resetchip, .mover) { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .review { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; animation: fade .2s ease-out; }
 .snap { position: absolute; object-fit: cover; z-index: 3; border-radius: 6px; box-shadow: 0 10px 30px #0006; pointer-events: none; }
 .snap.pop { animation: snap .35s cubic-bezier(.2, 1.6, .4, 1); }
@@ -161,6 +202,17 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .th.has::after { content: "다시"; position: absolute; left: 4px; top: 3px; font-size: 13px; color: #fff; background: #2e2230d9; border-radius: 999px; padding: 0 7px; opacity: 0; }
 .shooting-done .th.has::after { opacity: 1; }
 .hint { text-align: center; color: var(--ink); font-size: 16px; }
+/* A's choice before the link exists: may the friend move me? (off = fixed, like a booth celeb frame) */
+.switch { display: flex; align-items: center; gap: 12px; background: var(--paper); border-radius: 18px; padding: 12px 14px; box-shadow: var(--shadow); cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+.sw-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.sw-text b { font-family: var(--title); font-weight: 400; font-size: 17px; line-height: 1.3; }
+.sw-text small { font-size: 14px; color: var(--sub); line-height: 1.4; word-break: keep-all; }
+.knob { flex: none; width: 52px; height: 32px; border-radius: 999px; background: #e6d6dd; position: relative; transition: background-color .18s; }
+.knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 2px 6px #2e223040; transition: transform .2s var(--spring); }
+.switch input:checked ~ .knob { background: var(--pink); }
+.switch input:checked ~ .knob::after { transform: translateX(20px); }
+.switch input:focus-visible ~ .knob { outline: 3px solid var(--deep); outline-offset: 3px; }
 .controls { display: flex; justify-content: center; align-items: flex-start; gap: 22px; padding: 2px 0 4px; }
 .tool { appearance: none; border: 0; background: none; padding: 0; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; color: var(--ink); cursor: pointer; }
 .tool i { width: 56px; height: 56px; border-radius: 50%; background: var(--paper); box-shadow: var(--shadow); display: grid; place-items: center; transition: background-color .18s; }
@@ -215,7 +267,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .dots { display: flex; gap: 6px; } .dots i { width: 10px; height: 10px; border-radius: 50%; background: var(--pink); animation: dot 1s ease-in-out infinite; }
 .dots i:nth-child(2) { animation-delay: .15s; } .dots i:nth-child(3) { animation-delay: .3s; }
 @keyframes dot { 50% { transform: translateY(-8px); } }
-.tabs { display: grid; grid-template-columns: repeat(4, 1fr); background: var(--pink-soft); border-radius: 999px; padding: 4px; gap: 4px; }
+.tabs { display: grid; grid-template-columns: repeat(5, 1fr); background: var(--pink-soft); border-radius: 999px; padding: 4px; gap: 4px; }
 .tabs button { appearance: none; border: 0; background: none; border-radius: 999px; padding: 9px 0; font-family: var(--title); font-size: 17px; color: var(--pink-ink); cursor: pointer; }
 .tabs button[aria-selected="true"] { background: var(--paper); box-shadow: 0 2px 8px #c2587a26; color: var(--deep); }
 .panel.row { display: flex; gap: 12px; overflow-x: auto; padding: 4px 32px 8px 2px; margin-right: -16px; scroll-snap-type: x proximity; scrollbar-width: none; overscroll-behavior-x: contain; min-height: 120px; }
@@ -235,12 +287,22 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 #caption:focus { outline: none; box-shadow: inset 0 0 0 2px var(--pink); }
 #caption::placeholder { color: #8a7a87; }
 .panel .fine { text-align: left; }
+/* 테두리: colour dots (없음 first), then style and width pills */
+.pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pill { appearance: none; border: 0; min-height: 40px; padding: 0 16px; border-radius: 999px; background: var(--paper); color: var(--ink); font: 16px var(--title);
+  box-shadow: inset 0 0 0 2px var(--line); cursor: pointer; transition: box-shadow .16s, opacity .2s; }
+.pill[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--pink); background: var(--pink-soft); color: var(--pink-ink); }
+.pill.sw { width: 40px; padding: 0; background: var(--c); box-shadow: inset 0 0 0 1px #2e22302e, 0 2px 6px #c2587a26; }
+.pill.sw[aria-pressed="true"] { box-shadow: 0 0 0 3px var(--paper), 0 0 0 5px var(--pink); background: var(--c); }
+.pill:disabled { opacity: .6; cursor: default; }
+.pill:focus-visible { outline: 3px solid var(--deep); outline-offset: 3px; }
 .savebar { position: sticky; bottom: 0; z-index: 3; margin: 0 -16px; padding: 14px 16px max(10px, env(safe-area-inset-bottom)); background: linear-gradient(#fff8f300, var(--bg) 14px); }
 #saveBtns { display: flex; flex-direction: column; gap: 8px; }
 .savebar .cta { padding-top: 13px; padding-bottom: 13px; }
 .vidrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .cta.vbtn { font-size: 17px; padding: 11px 8px; white-space: nowrap; position: relative; overflow: hidden;
   background: linear-gradient(90deg, var(--pink-soft) calc(var(--p, 0) * 1%), var(--paper) 0); }
+.cta.vbtn:disabled { opacity: 1; color: var(--sub); box-shadow: inset 0 0 0 2px var(--pink-soft); }   /* was opacity .5 = 2.95:1 */
 .cta.vbtn.rendering { font-size: 14px; font-family: var(--body); opacity: 1 !important; color: var(--ink); }
 .vbtn .ring { display: none; vertical-align: -4px; margin-right: 6px; width: 18px; height: 18px; border-radius: 50%; flex: none; transition: background .12s linear;
   background: conic-gradient(var(--deep) calc(var(--p, 0) * 1%), #c22d6c33 0); -webkit-mask: radial-gradient(circle, #0000 5px, #000 6px); mask: radial-gradient(circle, #0000 5px, #000 6px); }
@@ -258,3 +320,5 @@ body[data-screen="done"] .toast { top: auto; bottom: 150px; }
   .flash.on { animation: flashCalm .12s linear !important; }
   @keyframes flashCalm { from { opacity: .6; } to { opacity: 0; } }
 }
+
+.stagehint button { font: inherit; font-size: 14px; margin-left: 6px; border: 0; border-radius: 999px; padding: 3px 10px; background: #fff; color: #2e2230; cursor: pointer; }

@@ -8,9 +8,10 @@ export const newToken = () => b64u(crypto.getRandomValues(new Uint8Array(32)));
 const url = (...p) => `${WORKER}/s/${p.map(encodeURIComponent).join("/")}`;
 const body = async r => { try { return await r.json(); } catch { return {}; } };
 
-export async function create(token) {
+// opts.movable: B may move / resize A (Round 3); status() echoes it back as `opts`
+export async function create(token, opts = {}) {
   const r = await fetch(`${WORKER}/s`, { method: "POST", headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ token }) });
+    body: JSON.stringify({ token, opts: { movable: opts.movable === true } }) });
   if (r.status !== 201) throw new Error(`create ${r.status}`);
   return r.json();
 }

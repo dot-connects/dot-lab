@@ -33,14 +33,14 @@ h2{font-size:13px;margin:4px 0 0}
 import { startCam, camState, bindZoomFocus } from "./js/camera.js";
 import { loadSegmenter, segmentFrame, drawCutout, drawMatte, stats, TUNE, prefetchStill } from "./js/segment.js";
 const Q = new URLSearchParams(location.search);
-for (const [k, v] of Q) if (k in TUNE) TUNE[k] = +v;   // tuning runs: ?lo=0.4&hi=0.9, ?still=0 (live matte only)
+for (const [k, v] of Q) if (k in TUNE) TUNE[k] = +v;   // tuning runs: ?lo=0.4&hi=0.9, ?still=0 (live matte only), ?scpu=1 (WASM)
 import { shootFour } from "./js/capture.js";
 import { app, inApp } from "./js/env.js";
 const $ = id => document.getElementById(id);
 const video = $("cam"), out = $("out"), ctx = out.getContext("2d");
 const log = s => { $("log").textContent += s + "\n"; };
 const R = window.result = { app, inApp };
-// main-thread stalls (the multiclass warm-up is a synchronous GPU call): every long task, with its start time
+// main-thread stalls (the HQ still model's warm-up shares the GPU): every long task, with its start time
 const longT = R.longTasks = [];
 try { new PerformanceObserver(l => l.getEntries().forEach(e => longT.push([Math.round(e.startTime), Math.round(e.duration)])))
   .observe({ type: "longtask", buffered: true }); } catch {}
@@ -76,7 +76,7 @@ async function run() {
   R.loadMs = Math.round(performance.now() - t0); R.warmMs = stats.warmMs;   // first GPU call, paid inside loadSegmenter
   requestAnimationFrame(preview);
   await new Promise(r => setTimeout(r, 1500));
-  if (Q.has("waitStill")) { await stillP; R.stillAt = Math.round(performance.now()); }   // A/B runs: every cut on multiclass
+  if (Q.has("waitStill")) { await stillP; R.stillAt = Math.round(performance.now()); }   // A/B runs: every cut on the HQ model
   R.probe = probe();
   R.masks = stats.masks; R.mask = `${stats.maskW}x${stats.maskH}`; R.delegate = stats.delegate; R.webgl = stats.webgl;
   log(JSON.stringify(R));

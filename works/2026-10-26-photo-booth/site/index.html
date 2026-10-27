@@ -24,6 +24,7 @@
   <symbol id="me" viewBox="0 0 60 70"><path d="M8 70c0-16 9-24 22-24s22 8 22 24z" fill="#ff7eb6"/><circle cx="30" cy="28" r="17" fill="#ffe1cf"/><path d="M12 28c-2-20 38-20 36 0-6-9-18-11-36 0z" fill="#3b2a33"/><circle cx="24" cy="31" r="2" fill="#3b2a33"/><circle cx="36" cy="31" r="2" fill="#3b2a33"/><path d="M26 37q4 3 8 0" stroke="#3b2a33" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="36" r="3" fill="#ffadc9"/><circle cx="40" cy="36" r="3" fill="#ffadc9"/></symbol>
   <symbol id="fr" viewBox="0 0 60 70"><path d="M8 70c0-16 9-24 22-24s22 8 22 24z" fill="#8fc4ff"/><circle cx="30" cy="28" r="17" fill="#ffe1cf"/><path d="M13 30c-4-24 38-24 34 0l-3-8c-8 2-20 2-28-4z" fill="#8a5a3b"/><circle cx="24" cy="31" r="2" fill="#3b2a33"/><circle cx="36" cy="31" r="2" fill="#3b2a33"/><path d="M25 36q5 5 10 0z" fill="#e8577f"/><circle cx="20" cy="36" r="3" fill="#ffadc9"/><circle cx="40" cy="36" r="3" fill="#ffadc9"/></symbol>
   <symbol id="heart" viewBox="0 0 24 22"><path d="M12 21S1 14 1 7a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 7-11 14-11 14z"/></symbol>
+  <defs><g id="burst"><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(30)"/><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6" transform="rotate(60)"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(90)"/><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6" transform="rotate(120)"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(150)"/><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6" transform="rotate(180)"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(210)"/><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6" transform="rotate(240)"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(270)"/><rect x="-2" y="-46" width="4" height="20" rx="2" fill="#ff7eb6" transform="rotate(300)"/><rect x="-2" y="-46" width="4" height="14" rx="2" fill="#ffcf4d" transform="rotate(330)"/><path d="M0 -14 L4 -4 14 0 4 4 0 14 -4 4 -14 0 -4 -4Z" fill="#ffcf4d"/></g></defs>
   <symbol id="star" viewBox="0 0 24 24"><path d="M12 0c1 7 5 11 12 12-7 1-11 5-12 12-1-7-5-11-12-12C7 11 11 7 12 0z"/></symbol>
   <symbol id="i-mirror" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 3"/><path d="M9 7 3 17h6z"/><path d="M15 7l6 10h-6z" fill="currentColor"/></g></symbol>
   <symbol id="i-flip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13a2.8 2.8 0 0 1 4.8-1.8M14.5 13a2.8 2.8 0 0 1-4.8 1.8"/><path d="M14.6 9.6v1.8h-1.8M9.4 16.4v-1.8h1.8"/></g></symbol>
@@ -63,14 +64,51 @@
   <a class="backchip" href="../../../">‹ D:OT lab</a>
   <div class="hero">
     <p class="kicker">원격 인생네컷 · 무료 · 가입 없음</p>
-    <h1>멀리 있어도<br><em>한 칸에</em><svg class="deco h1"><use href="#heart"/></svg></h1>
-    <div class="heroart"><div data-ministrip class="tilt-l"></div><svg class="deco s1"><use href="#star"/></svg><svg class="deco s2"><use href="#heart"/></svg></div>
+    <h1 class="pop" aria-label="멀리 있어도 한 칸에"><span aria-hidden="true"><i style="--i:0">멀</i><i style="--i:1">리</i> <i style="--i:2">있</i><i style="--i:3">어</i><i style="--i:4">도</i><br><em><i style="--i:5">한</i> <i style="--i:6">칸</i><i style="--i:7">에</i></em><svg class="deco h1"><use href="#heart"/></svg></span></h1>
+    <!-- concept A "착! 합체": two halves fly in, collide with a burst, become the strip (CSS only, plays once, then idles) -->
+    <div class="heroart cover" aria-hidden="true">
+      <span class="chip l">📍 서울</span><span class="chip r">부산 📍</span>
+      <div class="half l"><div class="hc" data-p="me"></div></div>
+      <div class="half r"><div class="hc" data-p="fr"></div></div>
+      <svg class="burst" viewBox="-50 -50 100 100"><use href="#burst"/></svg>
+      <div class="ministrip cv"><div class="mc t1" data-p="both"></div><div class="mc t2" data-p="both"></div><div class="mc t3" data-p="both"></div><div class="mc t4" data-p="both"></div><div class="mfoot">따로 같이 네컷</div></div>
+      <svg class="deco s1"><use href="#star"/></svg><svg class="deco s2"><use href="#heart"/></svg>
+    </div>
+    <script>
+    // people for the cover (from mockups/cover-motion.html person()/face()); inline so they paint before app.js arrives
+    (() => {
+      const INK = "#2e2230", SKIN = "#ffe1cf";
+      const face = (long, hair, tilt, laugh) => {
+        const back = long ? `<path d="M-24 -6 C-28 -34 28 -34 24 -6 L25 28 L13 28 L13 4 L-13 4 L-13 28 L-25 28Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>` : "";
+        const bang = long ? `<path d="M-20 -4 C-22 -30 22 -30 20 -4 C12 -15 -2 -17 -20 -4Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>`
+          : `<path d="M-21 2 C-25 -30 25 -30 21 2 C17 -9 8 -14 -4 -12 C-12 -12 -18 -6 -21 2Z" fill="${hair}" stroke="${INK}" stroke-width="1.6"/>`;
+        const eyes = laugh ? `<path d="M-10 2 Q-7 -1 -4 2 M4 2 Q7 -1 10 2" fill="none" stroke="${INK}" stroke-width="1.8" stroke-linecap="round"/>`
+          : `<ellipse cx="-7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/><ellipse cx="7" cy="2" rx="2.1" ry="2.6" fill="${INK}"/>`;
+        const mouth = laugh ? `<path d="M-6 10 Q0 19 6 10Z" fill="#b8434b" stroke="${INK}" stroke-width="1.4"/>`
+          : `<path d="M-5 11 Q0 15.5 5 11" fill="none" stroke="${INK}" stroke-width="1.6" stroke-linecap="round"/>`;
+        return `<g transform="translate(0 -60) rotate(${tilt})">${back}<ellipse rx="18" ry="21" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>${bang}${eyes}<ellipse cx="-11" cy="8" rx="4" ry="2.4" fill="#ffadc9"/><ellipse cx="11" cy="8" rx="4" ry="2.4" fill="#ffadc9"/>${mouth}</g>`;
+      };
+      const person = (x, me, tilt, laugh) => `<g transform="translate(${x} 122)"><path d="M-30 0 C-30 -24 -18 -34 0 -34 C18 -34 30 -24 30 0Z" fill="${me ? "#ff7eb6" : "#8fc4ff"}" stroke="${INK}" stroke-width="1.6"/><rect x="-6" y="-42" width="12" height="10" fill="${SKIN}" stroke="${INK}" stroke-width="1.6"/>${face(me, me ? "#3b2a33" : "#8a5a3b", tilt, laugh)}</g>`;
+      const poses = [[-8, 8, false], [10, -10, false], [-14, 14, false], [0, 0, true]];
+      let k = 0;
+      for (const el of document.querySelectorAll(".cover [data-p]")) {
+        const t = el.dataset.p;
+        let vb = "0 0 160 120", body;
+        if (t === "both") { const [a, b, l] = poses[k++ % 4]; body = person(58, true, a, l) + person(104, false, b, l); }
+        else if (t === "me") { vb = "20 0 90 120"; body = person(62, true, -6, false); }
+        else { vb = "52 0 90 120"; body = person(96, false, 6, false); }
+        el.innerHTML = `<svg class="pp" viewBox="${vb}" preserveAspectRatio="xMidYMax meet">${body}</svg>`;
+      }
+      // no ?s= link and not framed: this is landing A, show it before the module chain loads (app.js route() agrees)
+      if (!new URLSearchParams(location.search).get("s") && top === self) { document.getElementById("s-landA").hidden = false; document.body.dataset.screen = "landA"; }
+    })();
+    </script>
     <p class="lead">내가 먼저 네컷을 찍고 링크를 보내면,<br>친구가 열자마자 내 옆에 서서 찍어.</p>
   </div>
   <div class="bottom">
     <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
-    <button class="cta" data-act="startA">먼저 찍기</button>
-    <div data-trust></div>
+    <button class="cta nudge" data-act="startA">먼저 찍기</button>
+    <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제</span></p>
   </div>
 </section>
 
@@ -80,12 +118,12 @@
   <div class="hero">
     <p class="kicker">따로 같이 네컷</p>
     <h1>친구가 옆자리를<br><em>비워 뒀어요</em></h1>
-    <div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot"><svg class="bob"><use href="#heart"/></svg><span>여기 네 자리 ♥</span></div></div>
+    <div class="peekwrap"><div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot"><svg class="bob"><use href="#heart"/></svg><span>친구 옆에 서면 돼</span></div></div><svg class="burst" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#burst"/></svg></div>
     <p class="lead">친구 옆에 서서 네 번 찍으면 완성!<br>30초 · 가입 없음 · 카메라만 켜면 돼</p>
   </div>
   <div class="bottom">
     <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
-    <button class="cta" data-act="startB">바로 찍기</button>
+    <button class="cta nudge" data-act="startB">바로 찍기</button>
     <div data-trust></div>
     <button class="textlink" data-act="mine">내가 보낸 링크면 여기</button>
   </div>
@@ -103,10 +141,13 @@
     <div class="frame" id="frame">
       <img id="ghost" alt="" hidden>
       <canvas id="ghostClip" hidden></canvas>
-      <div class="crop" id="crop"><div class="spot" id="spot" hidden><span>친구 자리</span></div></div>
+      <div class="crop" id="crop"></div>
     </div>
     <canvas class="review" id="review" hidden></canvas>
     <img class="snap" id="snap" alt="" hidden>
+    <div class="mover" id="mover" hidden></div>
+    <button class="hintchip" id="hintChip" type="button" data-act="hideHint" hidden><span id="hintText"></span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
+    <button class="resetchip" id="layReset" type="button" data-act="layReset" hidden>원래 자리</button>
     <p class="stagehint" id="shootHint">셔터 한 번이면 네 컷을 이어서 찍어</p>
     <div class="rec" id="rec" hidden>2초 녹화</div>
     <div class="count" id="count" aria-live="assertive"></div>
@@ -126,6 +167,11 @@
   </div>
   <div class="bottom" id="shootDone" hidden>
     <p class="hint">다시 찍고 싶은 컷은 위에서 눌러 줘</p>
+    <label class="switch" id="movableBox" hidden>
+      <input type="checkbox" id="movable" role="switch">
+      <span class="sw-text"><b>친구가 나를 옮기고 크기 바꿀 수 있게</b><small id="movableSub"></small></span>
+      <span class="knob" aria-hidden="true"></span>
+    </label>
     <button class="cta" data-act="upload">이대로 올리기</button>
     <div data-trust></div>
   </div>
@@ -189,11 +235,17 @@
     <button role="tab" data-tab="bg" aria-selected="false">배경</button>
     <button role="tab" data-tab="frame" aria-selected="true">프레임</button>
     <button role="tab" data-tab="filter" aria-selected="false">필터</button>
+    <button role="tab" data-tab="outline" aria-selected="false">테두리</button>
     <button role="tab" data-tab="caption" aria-selected="false">문구</button>
   </div>
   <div class="panel row" data-panel="bg" id="bgChips" role="tabpanel" aria-label="배경" hidden></div>
   <div class="panel row" data-panel="frame" id="frameChips" role="tabpanel" aria-label="프레임"></div>
   <div class="panel row" data-panel="filter" id="filterChips" role="tabpanel" aria-label="필터" hidden></div>
+  <div class="panel" data-panel="outline" role="tabpanel" aria-label="테두리" hidden>
+    <div class="pills colors" id="olColors" aria-label="테두리 색"></div>
+    <div class="pills" id="olStyles" aria-label="테두리 모양"></div>
+    <div class="pills" id="olWidths" aria-label="테두리 두께"></div>
+  </div>
   <div class="panel" data-panel="caption" role="tabpanel" aria-label="문구" hidden>
     <label class="caplbl" for="caption">한 줄 문구 <span id="capCount">0 / 16</span></label>
     <input id="caption" type="text" maxlength="16" placeholder="예: D+100, 우리 오늘" enterkeyhint="done" autocomplete="off">

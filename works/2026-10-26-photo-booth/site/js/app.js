@@ -28,7 +28,10 @@ const S = {
   id: Q.get("s"), side: null, token: null,      // side = what this page shoots/uploads ("a" | "b")
   cuts: [], sent: new Set(), ghost: [],          // local Cuts, uploaded names, A's cut-out URLs (B's overlay)
   cam: null, cap: null, bound: false, busy: false,
+  movable: false, lay: { x: 0, y: 0, scale: 1 },  // A's choice (opts.movable); B's placement of A, fractions of the cell
 };
+const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
+const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}`;
 const token = () => S.token || api.loadRole(S.id)?.token;
 
@@ -113,6 +116,7 @@ async function route() {
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
   if (st.error) return expired(st.error);
+  S.movable = !!st.opts?.movable;
   const role = api.loadRole(S.id)?.role;
   if (!st.a.done) {
     if (role === "a") return msg({ title: "올리다 멈췄어", text: "찍은 사진이 이 화면에 남아 있지 않아. 새로 찍어 줘.", btn: "다시 찍기", onBtn: fresh });
@@ -145,7 +149,11 @@ async function startShoot(side) {
   show("shoot");
   $("s-shoot").classList.remove("shooting-done");
   $("controls").hidden = false; $("shootDone").hidden = true; $("shootHint").hidden = false; $("review").hidden = true;
-  $("spot").hidden = side !== "a";
+  S.lay = { x: 0, y: 0, scale: 1 }; applyLay();
+  const hint = side === "a" ? HINT_A : S.movable ? HINT_B : "";
+  $("hintText").textContent = hint; $("hintChip").hidden = !hint || S.hintOff === side;
+  $("mover").hidden = side !== "b" || !S.movable;
+  $("movableBox").hidden = side !== "a"; movableSub();
   for (const t of $$(".th")) { t.className = "th"; t.style.backgroundImage = ""; t.disabled = true; }
   setSound(soundOn);
   setCut(0);
@@ -165,28 +173,85 @@ async function startShoot(side) {
   $("camwait").hidden = true;
   syncMirror();
   if (!S.bound) {
-    S.cam.bindZoomFocus($("stage")); S.bound = true;
+    S.cam.bindZoomFocus($("stage")); bindMover(); S.bound = true;
     new ResizeObserver(fitStage).observe($("stage"));
     video.addEventListener("resize", fitStage);
   }
-  if (side === "b") { await S.ghostP; setCut(0, false); loadGhostClips(); }
+  if (side === "b") {
+    await S.ghostP; setCut(0, false); loadGhostClips();
+    if (S.movable && !S.anchors) load("compose").then(async C => {
+      S.anchors = C.layoutAnchor && await Promise.all(S.ghost.map(u => u && loadImg(u).then(i => C.layoutAnchor(i))));
+      applyLay();
+    }).catch(e => console.warn("[booth] layout anchors", e));
+  }
 }
-// Lay the camera out so the strip-cell crop spans the stage width (portrait phones show the whole frame around it).
+// Lay the camera out so the strip-cell crop (the whole photo) spans the stage width and sits in its middle.
+// The crop is compose's cellCrop: full width, a quarter of the spare height taken from the top.
 function fitStage() {
   const v = $("video"), st = $("stage");
   if (!v.videoWidth || !S.cam) return;
   const W = st.clientWidth, H = st.clientHeight, fr = S.cam.frameRect(v);
-  const cw = fr.sw / fr.sh > CELL ? fr.sh * CELL : fr.sw, ch = cw / CELL;
+  const cw = fr.sw / fr.sh > CELL ? fr.sh * CELL : fr.sw, ch = cw / CELL, cx = (fr.sw - cw) / 2, cy = (fr.sh - ch) / 2 * 0.25;
   const k = Math.min(W / cw, (H * 0.92) / ch);
-  const left = W / 2 - (fr.sx + fr.sw / 2) * k, top = H / 2 - (fr.sy + fr.sh / 2) * k;
-  const px = (el, x, y, w, h) => Object.assign(el.style, { left: x + "px", top: y + "px", width: w + "px", height: h + "px" });
-  px(v, left, top, v.videoWidth * k, v.videoHeight * k);
-  px($("frame"), left + fr.sx * k, top + fr.sy * k, fr.sw * k, fr.sh * k);
-  px($("crop"), (fr.sw - cw) / 2 * k, (fr.sh - ch) / 2 * k, cw * k, ch * k);
-  const c = $("crop").getBoundingClientRect(), s = st.getBoundingClientRect();
-  S.cropBox = { x: c.left - s.left, y: c.top - s.top, w: c.width, h: c.height };
-  px($("snap"), S.cropBox.x, S.cropBox.y, S.cropBox.w, S.cropBox.h);
+  const left = W / 2 - (fr.sx + cx + cw / 2) * k, top = H / 2 - (fr.sy + cy + ch / 2) * k;
+  const px = (el, b) => Object.assign(el.style, { left: b.x + "px", top: b.y + "px", width: b.w + "px", height: b.h + "px" });
+  px(v, { x: left, y: top, w: v.videoWidth * k, h: v.videoHeight * k });
+  px($("frame"), { x: left + fr.sx * k, y: top + fr.sy * k, w: fr.sw * k, h: fr.sh * k });
+  S.cropIn = { x: cx * k, y: cy * k, w: cw * k, h: ch * k };                  // crop inside #frame
+  px($("crop"), S.cropIn);
+  S.cropBox = { x: left + (fr.sx + cx) * k, y: top + (fr.sy + cy) * k, w: cw * k, h: ch * k };   // crop inside the stage
+  px($("snap"), S.cropBox);
+  applyLay();
 }
+// ---- B moves / resizes A (only when A allowed it). Same maths as compose: scale about A's anchor (compose
+// layoutAnchor = A's centre-bottom in the cell, per cut), then shift by (x * cell width, y * cell height).
+const LIM = { xy: 0.8, lo: 0.4, hi: 2.5 };
+const isMoved = l => Math.abs(l.x) > 0.002 || Math.abs(l.y) > 0.002 || Math.abs(l.scale - 1) > 0.005;
+const layOf = () => S.side === "b" && S.movable && isMoved(S.lay)
+  ? { a: Object.fromEntries(Object.entries(S.lay).map(([k, v]) => [k, Math.round(v * 1e4) / 1e4])) } : null;
+function applyLay() {
+  const c = S.cropIn, { x, y, scale } = S.lay, an = S.anchors?.[S.cutIdx] || { x: 0.5, y: 1 };
+  for (const el of [$("ghost"), $("ghostClip")]) {
+    el.style.transformOrigin = c ? `${c.x + an.x * c.w}px ${c.y + an.y * c.h}px` : "";
+    el.style.transform = c && isMoved(S.lay) ? `translate(${x * c.w}px, ${y * c.h}px) scale(${scale})` : "";
+  }
+  $("layReset").hidden = !(S.side === "b" && S.movable && isMoved(S.lay));
+}
+function setLay(l) {
+  const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  S.lay = { x: cl(l.x, -LIM.xy, LIM.xy), y: cl(l.y, -LIM.xy, LIM.xy), scale: cl(l.scale, LIM.lo, LIM.hi) };
+  applyLay();
+}
+// Pointer events (touch + mouse), one finger drags, two fingers pinch; the wheel resizes on a computer.
+// The layer swallows its touches so the stage's camera pinch-zoom doesn't fire too (README in-app fixes kept here).
+function bindMover() {
+  const m = $("mover"), pts = new Map();
+  let g = null;
+  const mid = () => { const p = [...pts.values()]; return p.length > 1
+    ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) } : { ...p[0], d: 0 }; };
+  const begin = () => { g = pts.size ? { lay: { ...S.lay }, at: mid() } : null; };
+  m.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button) return;
+    m.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); begin();
+    $("hintChip").hidden = true;
+  });
+  m.addEventListener("pointermove", e => {
+    if (!g || !pts.has(e.pointerId) || !S.cropBox) return;
+    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const now = mid(), k = g.at.d && now.d ? now.d / g.at.d : 1;
+    setLay({ x: g.lay.x + (now.x - g.at.x) / S.cropBox.w, y: g.lay.y + (now.y - g.at.y) / S.cropBox.h, scale: g.lay.scale * k });
+  });
+  const end = e => { pts.delete(e.pointerId); begin(); };
+  m.addEventListener("pointerup", end); m.addEventListener("pointercancel", end);
+  m.addEventListener("wheel", e => { e.preventDefault(); setLay({ ...S.lay, scale: S.lay.scale * Math.exp(-e.deltaY / 600) }); }, { passive: false });
+  for (const t of ["touchstart", "touchmove", "touchend"])
+    m.addEventListener(t, e => { e.stopPropagation(); if (t !== "touchend") e.preventDefault(); if (scrollY < 1) scrollTo(0, 1); }, { passive: false });
+}
+function movableSub() {
+  $("movableSub").textContent = $("movable").checked ? "친구가 끌어서 옮기고 크기를 바꿀 수 있어"
+    : "꺼 두면 찍은 자리에 고정돼 (셀럽 프레임처럼)";
+}
+$("movable").addEventListener("change", movableSub);
 function syncMirror() {
   $("video").classList.toggle("mirror", S.cam.camState.mirror);
   document.querySelector('[data-act="mirror"]').setAttribute("aria-pressed", S.cam.camState.mirror);
@@ -198,7 +263,7 @@ async function loadGhostClips() {
     const C = await load("compose"), ca = C.createClipAlpha({ choke: 2 });
     S.ghostClips = await Promise.all([1, 2, 3, 4].map(async c => C.loadClip(await api.blobUrl(S.id, "a", `${c}-clip`))));
     ca.canvas.id = "ghostClip"; $("ghostClip").replaceWith(ca.canvas);
-    S.ca = ca;
+    S.ca = ca; applyLay();
     if (S.cutIdx != null) setCut(S.cutIdx, false);
     ghostLoop();
   } catch (e) { console.warn("[booth] A clip overlay unavailable, using the still", e); }
@@ -237,6 +302,7 @@ function setCut(i, pop = true) {
   $("ghostClip").hidden = !clip;
   g.hidden = !src || !!clip; if (src) g.src = src;
   $$(".th").forEach((t, k) => t.classList.toggle("now", k === i));
+  applyLay();
 }
 function onTick(n) {
   const c = $("count");
@@ -259,9 +325,27 @@ async function shootIdx(i) {
   const t = $$(".th")[i];
   t.classList.add("has"); t.style.backgroundImage = `url(${url})`; restart(t, "land");
 }
+// First shutter only: give the MODNet still model (26 MB, loads after the camera is on) up to 10 s to be ready, with a
+// skip button. Shooting during its first GPU run would freeze the clip, so a warm-up already running is let finish.
+async function waitHQ() {
+  if (MOCK || S.cuts.some(Boolean)) return;
+  const seg = await load("segment").catch(() => null);
+  if (!seg?.TUNE?.still || seg.stillReady?.() || ["failed", "late"].includes(seg.stats?.still?.state)) return;
+  const hint = $("shootHint"), was = hint.textContent, t0 = performance.now();
+  hint.hidden = false;
+  hint.innerHTML = '<span id="hqText">고화질 누끼 준비 중…</span> <button type="button" id="hqSkip">그냥 찍기</button>';
+  let skip; const skipped = new Promise(r => { skip = r; });
+  $("hqSkip").onclick = () => skip();
+  const iv = setInterval(() => { const left = Math.max(0, 10 - Math.floor((performance.now() - t0) / 1000)); $("hqText").textContent = `고화질 누끼 준비 중… ${left}초`; }, 500);
+  try {
+    await Promise.race([seg.prefetchStill(), skipped, sleep(10000)]);
+    await Promise.race([seg.stillWarm(), sleep(15000)]);
+  } finally { clearInterval(iv); hint.textContent = was; hint.hidden = true; }
+}
 async function runShoot(only) {
   if (S.busy || !S.cap) return;
   S.busy = true; document.body.classList.add("busy");
+  if (only == null) await waitHQ();
   $("shootHint").hidden = true; $("shootDone").hidden = true; $("review").hidden = true;
   $("s-shoot").classList.remove("shooting-done");
   $$(".th").forEach(t => t.disabled = true);
@@ -296,11 +380,11 @@ async function review() {
       const aImg = await loadImg(S.ghost[i]), bCut = await loadImg(URL.createObjectURL(S.cuts[i].cut));
       const a = { cuts: [] }, b = { cuts: [] };
       a.cuts[i] = { raw: aImg, cut: aImg, clip: null }; b.cuts[i] = { raw, cut: bCut, clip: null };
-      if (C.drawCell) C.drawCell(x, { x: 0, y: 0, w: 552, h: 382 }, i, { a, b, bg: "booth-pink" });
+      if (C.drawCell) C.drawCell(x, { x: 0, y: 0, w: 552, h: 382 }, i, { a, b, bg: "booth-pink", layout: layOf() });
       else { x.drawImage(raw, 0, 0, 552, 382); x.drawImage(aImg, 0, 0, 552, 382); }
     } else {
       const sw = raw.naturalWidth, sh = sw / CELL;
-      x.drawImage(raw, 0, (raw.naturalHeight - sh) / 2, sw, sh, 0, 0, 552, 382);
+      x.drawImage(raw, 0, (raw.naturalHeight - sh) / 2 * 0.25, sw, sh, 0, 0, 552, 382);   // compose's cellCrop
     }
     return c;
   }));
@@ -336,7 +420,8 @@ async function upload() {
   try {
     if (S.side === "a" && !S.token) {
       const tk = api.newToken();
-      const { id } = await api.create(tk);
+      S.movable = $("movable").checked;
+      const { id } = await api.create(tk, { movable: S.movable });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
       history.replaceState(null, "", `?s=${id}${MOCK ? "&mock=1" : ""}`);
@@ -350,6 +435,8 @@ async function upload() {
         await api.put(S.id, S.side, n, blob, type, S.token);
         S.sent.add(n);
       }
+      const lay = layOf();      // B's placement of A, before `done` so A's device finds it
+      if (lay) await api.put(S.id, "b", "layout.json", new Blob([JSON.stringify(lay)], { type: "application/json" }), "application/json", S.token);
       const r = await api.done(S.id, S.side, S.token);
       if (r.ok) break;
       if (r.missing) { r.missing.forEach(n => S.sent.delete(n)); continue; }
@@ -375,13 +462,13 @@ async function upload() {
 }
 
 // ---- share (A) ----------------------------------------------------------------------------------------------------
-// A's own four crops as a mini strip with the dashed friend spot on the right of each cell
+// A's own four crops as a mini strip
 async function myStrip() {
   const urls = S.cuts.length === 4 ? S.cuts.map(c => URL.createObjectURL(c.raw))
     : await Promise.all([1, 2, 3, 4].map(c => api.blobUrl(S.id, "a", `${c}-raw.jpg`).catch(() => null)));
   const strip = Object.assign(document.createElement("div"), { className: "ministrip real" });
   strip.setAttribute("aria-hidden", "true");
-  strip.innerHTML = urls.map(u => `<div class="mc"><img alt="" src="${u || ""}"><span class="mspot"></span></div>`).join("")
+  strip.innerHTML = urls.map(u => `<div class="mc"><img alt="" src="${u || ""}"></div>`).join("")
     + `<div class="mfoot">따로 같이 네컷</div>`;
   const star = '<svg class="deco s1"><use href="#star"/></svg><svg class="deco s2"><use href="#heart"/></svg>';
   $("myStrip").innerHTML = star; $("myStrip").prepend(strip);
@@ -390,7 +477,7 @@ function shareScreen(waiting) {
   show("share");
   $("shareTitle").innerHTML = waiting ? "친구가 아직<br><em>안 찍었어요</em>" : "다 올렸어!<br><em>친구한테 보내자</em>";
   $("shareLead").innerHTML = waiting ? "이 링크를 친구한테 보내 줘.<br>친구가 찍으면 이 링크에서 바로 열려."
-    : "친구가 이 링크를 열면 네 옆 빈자리에 서서 찍어.<br>둘 다 찍으면 사진이랑 영상이 열려.";
+    : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>${S.movable ? "친구가 너를 옮기고 크기를 바꿀 수 있어." : "너는 찍은 자리에 고정돼."}<br>둘 다 찍으면 사진이랑 영상이 열려.`;
   $("recheck").hidden = !waiting;
   $("linkText").textContent = shareUrl(); $("linkBox").hidden = true;
   $("s-share").querySelector(".del").hidden = !token();
@@ -431,7 +518,17 @@ async function del(box, yes) {
 
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
-  wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame" };
+  wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
+  layout: null, outline: null, ol: { color: "#ffffff", style: "solid", width: "normal" } };   // ol = last outline picks
+// fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
+const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
+const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
+const OL_WIDTHS = [{ id: "thin", label: "얇게" }, { id: "normal", label: "보통" }, { id: "thick", label: "두껍게" }];
+async function loadLayout() {
+  if (!S.movable) return null;
+  if (S.side === "b" && S.cuts.length === 4) return layOf();
+  try { return await (await fetch(await api.blobUrl(S.id, "b", "layout.json"))).json(); } catch { return null; }
+}
 const loadImg = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
 
 async function sideMedia(side) {
@@ -464,7 +561,8 @@ async function doneScreen(note = "") {
   $("s-done").querySelector(".del").hidden = !token();
   try {
     [C, FR, FI] = await Promise.all([load("compose", mockCompose), load("frames", mockFrames), load("filters", mockFilters)]);
-    D.media = Object.fromEntries(await Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])));
+    [D.media, D.layout] = await Promise.all([
+      Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadLayout()]);
   } catch (e) {
     console.warn("[booth] done", e);
     return msg({ title: "앗, 사진을 못 불러왔어", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: () => doneScreen(note) });
@@ -508,8 +606,14 @@ function bgSwatch(bg) {
   bg.draw(c.getContext("2d"), 64, 64);
   return `center / cover url(${c.toDataURL()})`;
 }
+// A moved by B no longer lines up with A's own room: compose says which backgrounds still work
+function bgOk(id) {
+  if (C.bgAllowed) { const r = C.bgAllowed(D.layout); return Array.isArray(r) ? r.includes(id) : typeof r === "boolean" ? id !== "a" || r : r?.[id] ?? true; }
+  return !(id === "a" && D.layout && isMoved(D.layout.a));
+}
 function buildTiles() {
-  const bgs = C.BACKGROUNDS, frames = FR.FRAMES, filters = FI.FILTERS;
+  const bgs = C.BACKGROUNDS.filter(b => bgOk(b.id)), frames = FR.FRAMES, filters = FI.FILTERS;
+  if (D.bg && !bgs.includes(D.bg)) D.bg = null;
   D.bg ??= bgs.find(b => b.id === "booth-pink") || bgs[0];
   D.frame ??= frames[0];
   $("bgChips").replaceChildren(...bgs.map(bg => {
@@ -526,6 +630,31 @@ function buildTiles() {
     t.dataset.id = f.id; return t;
   }));
   $("caption").value = D.caption; capCount();
+  buildOutline();
+}
+// 테두리: 없음 + colours, then style and width (dimmed while 없음)
+function buildOutline() {
+  const norm = x => typeof x === "string" ? { id: x, label: "", color: x } : { id: x.id, label: x.label || "", color: x.color || x.id };
+  const colors = (C.OUTLINE_COLORS || OL_COLORS).map(norm), styles = (C.OUTLINE_STYLES || OL_STYLES).map(norm);
+  const widths = (C.OUTLINE_WIDTHS || OL_WIDTHS).map(norm);
+  const pick = () => { changed(["frame", "filter"]); buildOutline(); };
+  const pill = (on, onPick, cls = "") => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill " + cls });
+    b.setAttribute("aria-pressed", on);
+    b.onclick = () => { if (!on) onPick(); };
+    return b;
+  };
+  const none = pill(!D.outline, () => { D.outline = null; pick(); }, "none");
+  none.textContent = "없음";
+  $("olColors").replaceChildren(none, ...colors.map(c => {
+    const b = pill(D.outline?.color === c.color, () => { D.ol.color = c.color; D.outline = { ...D.ol }; pick(); }, "sw");
+    b.style.setProperty("--c", c.color); b.setAttribute("aria-label", c.label || c.color); return b;
+  }));
+  for (const [box, list, key] of [["olStyles", styles, "style"], ["olWidths", widths, "width"]])
+    $(box).replaceChildren(...list.map(s => {
+      const b = pill(D.ol[key] === s.id, () => { D.ol[key] = s.id; if (D.outline) D.outline = { ...D.ol }; pick(); }, key);
+      b.textContent = s.label; b.dataset.id = s.id; b.disabled = !D.outline; return b;
+    }));
 }
 // a choice changed: redraw the photo now, the thumbnails that depend on it, and the moving strip a moment later
 let vT;
@@ -535,8 +664,8 @@ function changed(minis) {
   if (!env.inApp) { setVid(); vT = setTimeout(videoJob, 700); }
 }
 const opts = (o = {}) => ({ a: D.media.a, b: D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), ...o });
-const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim()].join("|");
+  caption: D.caption.trim(), layout: D.layout, outline: D.outline, ...o });
+const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline)].join("|");
 async function render(minis = []) {
   const seq = ++D.seq;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
@@ -674,6 +803,8 @@ const ACT = {
     D.wantStory = true; setVid(); videoJob();
   },
   toChrome: () => location.href = env.chromeUrl(shareUrl()),
+  hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
+  layReset: () => setLay({ x: 0, y: 0, scale: 1 }),
   again: fresh,
 };
 document.addEventListener("click", e => {

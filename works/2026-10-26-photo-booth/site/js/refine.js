@@ -12,7 +12,8 @@
 //                 alpha = smoothstep(lo, hi, alpha)   (lo up = erode, hi down = dilate/harden)
 //                 rgb   = C - (1 - alpha) * B         (B = local background colour -> no halo/spill)
 // opts: { radius=4 (work px), eps=1e-3, workWidth=320, lo=0.15, hi=0.85, temporal=0.5 (0 = off),
-//         decontam=1 (0 = off), width, height (output size, default = source size) }
+//         decontam=1 (0 = off), guide=1 (0 = keep the mask's own alpha: a matting model's hair strands, which the
+//         guided step would smooth away; linear levels lo..hi + decontamination still run), width, height (output size) }
 // mask.data: Float32Array 0..1 or Uint8Array 0..255, row 0 = top, value = person probability.
 
 const VS = `#version 300 es
@@ -55,11 +56,12 @@ void main(){
 }`;
 
 const FINAL = HEAD + `
-uniform sampler2D frame, ab, bg; uniform float lo, hi, decon; out vec4 o;
+uniform sampler2D frame, ab, bg, mask; uniform float lo, hi, decon, guide; out vec4 o;
 void main(){
   vec3 c = texture(frame, uv).rgb;
   vec2 k = texture(ab, uv).xy;
-  float a = smoothstep(lo, hi, k.x * luma(c) + k.y);
+  float a = guide > 0.5 ? smoothstep(lo, hi, k.x * luma(c) + k.y)
+                        : clamp((texture(mask, uv).r - lo) / (hi - lo), 0.0, 1.0);   // linear: keeps faint strands
   vec4 g = texture(bg, uv);
   vec3 B = g.a > 0.01 ? g.rgb / g.a : c;
   vec3 f = clamp(c - (1.0 - a) * B, 0.0, a);       // premultiplied foreground, spill removed
@@ -134,7 +136,7 @@ export function createRefiner(canvas = document.createElement("canvas")) {
   }
 
   function refine(src, mask, o = {}) {
-    const { radius = 4, eps = 1e-3, workWidth = 320, lo = 0.15, hi = 0.85, temporal = 0.5, decontam = 1 } = o;
+    const { radius = 4, eps = 1e-3, workWidth = 320, lo = 0.15, hi = 0.85, temporal = 0.5, decontam = 1, guide = 1 } = o;
     const sw = src.videoWidth || src.naturalWidth || src.width, sh = src.videoHeight || src.naturalHeight || src.height;
     const ow = o.width || sw, oh = o.height || sh;
     const ww = Math.min(sw, workWidth), wh = Math.round(ww * sh / sw);
@@ -169,8 +171,8 @@ export function createRefiner(canvas = document.createElement("canvas")) {
     blur(T.D, T.EFb, radius);
     // 4. full-res alpha + decontaminated colour, straight to the canvas
     gl.useProgram(P.fin.p);
-    bindTex(0, frameT, P.fin.u.frame); bindTex(1, T.E, P.fin.u.ab); bindTex(2, T.GB, P.fin.u.bg);
-    gl.uniform1f(P.fin.u.lo, lo); gl.uniform1f(P.fin.u.hi, hi); gl.uniform1f(P.fin.u.decon, decontam);
+    bindTex(0, frameT, P.fin.u.frame); bindTex(1, T.E, P.fin.u.ab); bindTex(2, T.GB, P.fin.u.bg); bindTex(3, maskT, P.fin.u.mask);
+    gl.uniform1f(P.fin.u.guide, guide); gl.uniform1f(P.fin.u.lo, lo); gl.uniform1f(P.fin.u.hi, hi); gl.uniform1f(P.fin.u.decon, decontam);
     gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, W, H);
     gl.clearColor(0, 0, 0, 0); gl.clear(gl.COLOR_BUFFER_BIT);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);

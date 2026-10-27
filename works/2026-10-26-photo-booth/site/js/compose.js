@@ -1,6 +1,7 @@
 // Compose the 4-cut strip (JPG) and the moving strip (MP4/WebM) from both people's media.
-// Cell = background (A's raw | B's raw | preset) + the other person's cut-out (both on a preset), positions as shot,
-// light wrap on the cut-out edges, then the filter over the whole cell. Frame art goes under and over the cells.
+// Cell = background (A's raw | B's raw | preset), then B's cut-out, then A's (A always in front), positions as shot
+// unless B moved A (layout); optional sticker outline on both; light wrap on plain cut-out edges, then the filter over
+// the whole cell. Frame art goes under and over the cells.
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
 
@@ -68,64 +69,282 @@ export async function loadClip(blobUrl) {
 }
 
 
+// ---------- sticker outline (Round 3): chips for the UI, colour as hex (or a chip id) in `outline.color` ----------
+export const OUTLINE_COLORS = [
+  { id: "white", label: "흰색", color: "#ffffff" },
+  { id: "pink", label: "분홍", color: "#ff8fb6" },
+  { id: "yellow", label: "노랑", color: "#ffd84a" },
+  { id: "sky", label: "하늘", color: "#78c6ff" },
+  { id: "mint", label: "민트", color: "#7fe3c4" },
+  { id: "lavender", label: "보라", color: "#b79cff" },
+  { id: "black", label: "검정", color: "#222222" },
+];
+export const OUTLINE_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
+// px = band width in strip px (cells are 552x382 in the 600x1800 strip), whatever B's scale of A is
+export const OUTLINE_WIDTHS = [{ id: "thin", label: "얇게", px: 6 }, { id: "normal", label: "보통", px: 10 }, { id: "thick", label: "두껍게", px: 16 }];
+function outlineOf(o) {
+  if (!o) return null;
+  const w = OUTLINE_WIDTHS.find(x => x.id === o.width) || OUTLINE_WIDTHS[1];
+  const style = OUTLINE_STYLES.some(s => s.id === o.style) ? o.style : "solid";
+  const hex = /^#[0-9a-f]{6}$/i.test(o.color || "") ? o.color : OUTLINE_COLORS.find(c => c.id === o.color)?.color || "#ffffff";
+  return { style, px: w.px, color: hex, rgb: [1, 3, 5].map(k => parseInt(hex.slice(k, k + 2), 16) / 255) };
+}
+// The sticker shape is the person's alpha blurred (Gaussian, sigma = width / ZB) and cut at TH = the level a straight
+// edge reaches `width` px out: a round offset that also rounds the concave corners (neck, armpits) like a die cut.
+// The blur runs at 1/2-1/4 resolution and is upsampled bilinearly, so a clip frame stays cheap.
+const erf = x => { const s = Math.sign(x), t = 1 / (1 + 0.3275911 * Math.abs(x));
+  return s * (1 - ((((1.061405429 * t - 1.453152027) * t + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-x * x)); };
+const Phi = x => 0.5 * (1 + erf(x / Math.SQRT2));
+const ZB = 1.9, TH = 1 - Phi(ZB);
+const STICKER_SHADOW = 3;   // drop shadow offset (strip px) under solid / glitter stickers
+
+// iso-lines of a top-down row-major field at level t (marching squares), chained into polylines in grid coords
+function isolines(F, w, h, t) {
+  const pt = new Map(), adj = new Map();
+  const at = k => { if (!pt.has(k)) { const i = k >> 1, x = i % w, y = (i / w) | 0, v = F[i], u = (t - v) / (F[i + (k & 1 ? w : 1)] - v);
+    pt.set(k, k & 1 ? [x, y + u] : [x + u, y]); } return pt.get(k); };
+  const nb = k => adj.get(k) || (adj.set(k, []), adj.get(k));
+  const link = (p, q) => { at(p); at(q); nb(p).push(q); nb(q).push(p); };
+  for (let y = 0; y < h - 1; y++) for (let x = 0; x < w - 1; x++) {
+    const i = y * w + x, c = (F[i] > t) | (F[i + 1] > t) << 1 | (F[i + w + 1] > t) << 2 | (F[i + w] > t) << 3;
+    if (c === 0 || c === 15) continue;
+    const T = i << 1, R = (i + 1) << 1 | 1, Bt = (i + w) << 1, Lf = i << 1 | 1, e = [];
+    if ((c & 1) !== (c >> 1 & 1)) e.push(T);
+    if ((c >> 1 & 1) !== (c >> 2 & 1)) e.push(R);
+    if ((c >> 2 & 1) !== (c >> 3 & 1)) e.push(Bt);
+    if ((c >> 3 & 1) !== (c & 1)) e.push(Lf);
+    if (e.length === 2) link(e[0], e[1]);
+    else if ((c === 5) === ((F[i] + F[i + 1] + F[i + w] + F[i + w + 1]) / 4 > t)) { link(T, R); link(Bt, Lf); }   // saddle
+    else { link(T, Lf); link(R, Bt); }
+  }
+  const seen = new Set(), lines = [];
+  const walk = s => {
+    const pts = [pt.get(s)]; seen.add(s);
+    let prev = -1, cur = s;
+    for (;;) {
+      const nx = adj.get(cur).find(k => k !== prev && !seen.has(k));
+      if (nx == null) break;
+      seen.add(nx); pts.push(pt.get(nx)); prev = cur; cur = nx;
+    }
+    lines.push({ pts, closed: pts.length > 2 && adj.get(cur).includes(s) });
+  };
+  for (const [k, v] of adj) if (v.length === 1 && !seen.has(k)) walk(k);   // open ends (field cut by the grid edge) first
+  for (const k of adj.keys()) if (!seen.has(k)) walk(k);
+  return lines;
+}
+// evenly spaced points along a polyline, about `step` apart (closed lines get an exact whole number)
+function along({ pts, closed }, step) {
+  const P = closed ? [...pts, pts[0]] : pts, cum = [0];
+  for (let j = 1; j < P.length; j++) cum.push(cum[j - 1] + Math.hypot(P[j][0] - P[j - 1][0], P[j][1] - P[j - 1][1]));
+  const len = cum[cum.length - 1], n = Math.round(len / step), out = [];
+  if (n < 1) return out;
+  for (let j = 0, s = 0; j < n; j++) {
+    const d = (j + 0.5) * len / n;
+    while (cum[s + 1] < d) s++;
+    const u = (d - cum[s]) / (cum[s + 1] - cum[s] || 1);
+    out.push([P[s][0] + u * (P[s + 1][0] - P[s][0]), P[s][1] + u * (P[s + 1][1] - P[s][1])]);
+  }
+  return out;
+}
+
 // ---------- cut-out alpha on the GPU: one shader for clips ([raw | matte] side by side) and stills (RGBA) ----------
 // choke : alpha = min of 4 taps at +-choke px (erosion as a min, not a product, so soft edges stay soft)
 // decon : edge pixels (0 < a < 0.98) take the a^4-weighted colour of the solid person around them, so the old wall
 //         colour never shows at the edge (same math as segment.js FS_DRAW)
 // gain / tint : brightness match between the two people and a light backdrop colour cast (compose only)
-// Output is premultiplied. Texture edges clamp, so a person cut by the frame edge is not eroded there.
+// outline : { style, px (band width in source px), rgb, color, cs (strip px per source px) } -> sticker under the person.
+//   The output canvas then grows by `pad` px on every side (canvas.pad) so the band is not cut at the frame edge;
+//   dotted returns a 2D canvas (dots placed along the field's iso-line on the CPU, then the person on top).
+// time : seconds, glitter twinkle. Output is premultiplied. Texture edges clamp, so a person cut by the frame edge is
+// not eroded there.
 export function createClipAlpha({ choke = 0 } = {}) {
   const cv = document.createElement("canvas");
-  const gl = cv.getContext("webgl", { premultipliedAlpha: true, preserveDrawingBuffer: true, alpha: true });
+  const opt = { premultipliedAlpha: true, preserveDrawingBuffer: true, alpha: true };
+  const gl = cv.getContext("webgl2", opt) || cv.getContext("webgl", opt);   // GLSL 100 shaders run on both
   if (!gl) throw new Error("webgl");
+  const gl2 = typeof WebGL2RenderingContext !== "undefined" && gl instanceof WebGL2RenderingContext;
   const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o);
     if (!gl.getShaderParameter(o, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(o)); return o; };
-  const pr = gl.createProgram();
-  gl.attachShader(pr, sh(gl.VERTEX_SHADER, "attribute vec2 p; varying vec2 uv; void main(){ uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }"));
-  gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, `precision highp float; varying vec2 uv; uniform sampler2D v;
-    uniform float hx, ck, side, gain; uniform vec2 px; uniform vec3 tint;
+  const HEAD = `precision highp float; varying vec2 uv; uniform sampler2D v, f;
+    uniform float hx, side, sg; uniform vec4 pm; uniform vec2 lo;
+    vec2 S(vec2 u){ return u * pm.xy + pm.zw; }          // padded output uv -> source uv
     float A(vec2 q){
+      if (q.x < 0.0 || q.y < 0.0 || q.x > 1.0 || q.y > 1.0) return 0.0;
       if (side < 0.5) return texture2D(v, q).a;
       float g = texture2D(v, vec2(max(0.5 + q.x * 0.5, 0.5 + hx), q.y)).g;
       return clamp((g - 16.0 / 255.0) * 255.0 / 219.0, 0.0, 1.0);   // limited-range video: 16..235
     }
     vec3 C(vec2 q){ return side < 0.5 ? texture2D(v, q).rgb : texture2D(v, vec2(clamp(q.x * 0.5, 0.0, 0.5 - hx), q.y)).rgb; }
+    vec4 pk(float x){ x = clamp(x, 0.0, 1.0) * 255.0; return vec4(floor(x) / 255.0, fract(x), 0.0, 1.0); }   // 16-bit in RG
+    float un(vec2 q){ vec4 c = texture2D(f, q); return c.r + c.g / 255.0; }
+    float K(float x){ return abs(x) > 3.0 * sg + 0.5 ? 0.0 : exp(-x * x / (2.0 * sg * sg)); }
+    float h1(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+`;
+  const FS_H = `void main(){ float s = 0.0, n = 0.0;
+      for (int i = -12; i <= 12; i++) { float x = float(i), w = K(x); s += w * A(S(uv + vec2(x * lo.x, 0.0))); n += w; }
+      gl_FragColor = pk(s / n); }`;
+  const FS_V = `void main(){ float s = 0.0, n = 0.0;
+      for (int i = -12; i <= 12; i++) { float x = float(i), w = K(x); s += w * un(uv + vec2(0.0, x * lo.y)); n += w; }
+      gl_FragColor = pk(s / n); }`;
+  const FS_M = `uniform float ck, gain, sty, th, cs, tm, sd; uniform vec2 px, op, ps; uniform vec3 tint, oc;
     void main(){
-      float a = A(uv);
-      if (ck > 0.0) a = min(a, min(min(A(uv + vec2(ck * px.x, 0.0)), A(uv - vec2(ck * px.x, 0.0))),
-                                   min(A(uv + vec2(0.0, ck * px.y)), A(uv - vec2(0.0, ck * px.y)))));
-      vec3 c = C(uv);
+      vec2 q = S(uv);
+      float a = A(q);
+      if (ck > 0.0) a = min(a, min(min(A(q + vec2(ck * px.x, 0.0)), A(q - vec2(ck * px.x, 0.0))),
+                                   min(A(q + vec2(0.0, ck * px.y)), A(q - vec2(0.0, ck * px.y)))));
+      vec3 c = C(q);
       if (a > 0.0 && a < 0.98) {
         vec3 s = vec3(0.0); float ws = 0.0;
         for (int y = -2; y <= 2; y++) for (int x = -2; x <= 2; x++) {
-          vec2 q = uv + vec2(float(x), float(y)) * 2.0 * px;
-          float b = A(q); b *= b; b *= b;
-          s += b * C(q); ws += b;
+          vec2 r = q + vec2(float(x), float(y)) * 2.0 * px;
+          float b = A(r); b *= b; b *= b;
+          s += b * C(r); ws += b;
         }
         if (ws > 0.05) c = s / ws;
       }
       c = min(c * gain, 1.0) * tint;
-      gl_FragColor = vec4(c * a, a);
-    }`));
-  gl.linkProgram(pr); gl.useProgram(pr);
+      vec4 o = vec4(c * a, a);
+      // 1 solid, 2 glitter (3 dotted: the dots come from the CPU); nothing to do under the opaque person
+      if (sty > 0.5 && sty < 2.5 && a < 0.995) {
+        float b = un(uv), ba = b > th ? 1.0 : 0.0;
+        if (b > th * 0.3 && b < th * 3.0) {                                  // 1 px anti-aliased band edge
+          float g = 0.5 * length(vec2(un(uv + vec2(op.x, 0.0)) - un(uv - vec2(op.x, 0.0)), un(uv + vec2(0.0, op.y)) - un(uv - vec2(0.0, op.y))));
+          ba = clamp((b - th) / max(g, 1e-6) + 0.5, 0.0, 1.0);
+        }
+        vec4 L = vec4(0.0, 0.0, 0.0, 0.3 * smoothstep(th * 0.06, th, un(uv + vec2(0.0, sd))));   // soft drop shadow
+        vec3 col = oc; float st = 0.0;
+        if (sty > 1.5 && b > th * 0.003) {   // star arms reach a few px past the band
+          // glitter: 2 px flakes in close tones of the colour, ~1 in 5 a glint (white with a faint rainbow) that
+          // twinkles, plus small 4-point stars centred on the band (all in strip px, so B's scale of A keeps the size)
+          vec2 p = uv * ps * cs, cell = floor(p / 2.0);
+          float r = h1(cell), r2 = h1(cell + 17.0), tw = 0.5 + 0.5 * sin(tm * 6.0 + 6.283 * r2);
+          col = min(oc * (0.8 + 0.3 * r) + 0.04, 1.0);
+          vec3 glint = mix(vec3(1.0), 0.6 + 0.4 * cos(6.283 * (r2 + vec3(0.0, 0.33, 0.67))), 0.3);
+          col = mix(col, glint, step(0.8, r) * (0.35 + 0.65 * tw));
+          // stars: one candidate per 12 px cell (3x3 neighbours, so arms cross cells), kept when its centre is on the band
+          for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++) {
+            vec2 id = floor(p / 12.0) + vec2(float(i), float(j));
+            if (h1(id + 9.9) > 0.3) continue;
+            vec2 sc = (id + vec2(h1(id + 3.1), h1(id + 5.3))) * 12.0, su = sc / cs / ps;
+            if (un(su) < th || A(S(su)) > 0.3) continue;
+            float sr = 3.5 + 3.5 * h1(id + 7.7); vec2 d = abs(p - sc);
+            float s1 = max(0.0, 1.0 - d.x / sr) * exp(-d.y * 1.3) + max(0.0, 1.0 - d.y / sr) * exp(-d.x * 1.3) + 0.5 * exp(-dot(d, d) / 2.5);
+            st = max(st, clamp(s1, 0.0, 1.0) * (0.6 + 0.4 * sin(tm * 4.0 + 6.283 * h1(id + 1.3))));
+          }
+        }
+        L = vec4(col * ba, ba) + (1.0 - ba) * L;
+        L = vec4(vec3(st), st) + (1.0 - st) * L;
+        o = o + (1.0 - a) * L;
+      }
+      gl_FragColor = o;
+    }`;
+  const prog = fs => {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sh(gl.VERTEX_SHADER, "attribute vec2 p; varying vec2 uv; void main(){ uv = p * 0.5 + 0.5; gl_Position = vec4(p, 0.0, 1.0); }"));
+    gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, HEAD + fs));
+    gl.bindAttribLocation(pr, 0, "p"); gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(pr));
+    gl.useProgram(pr); gl.uniform1i(gl.getUniformLocation(pr, "v"), 0); gl.uniform1i(gl.getUniformLocation(pr, "f"), 1);
+    const loc = {};
+    pr.set = u => { for (const [n, val] of Object.entries(u)) {
+      const l = n in loc ? loc[n] : (loc[n] = gl.getUniformLocation(pr, n));
+      if (l == null) continue;
+      if (typeof val === "number") gl.uniform1f(l, val); else gl[`uniform${val.length}fv`](l, val);
+    } };
+    return pr;
+  };
+  const PH = prog(FS_H), PV = prog(FS_V), PM = prog(FS_M);
   gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(pr, "p"); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  gl.bindTexture(gl.TEXTURE_2D, gl.createTexture());
-  for (const [k, val] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
-    [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, val);
+  gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+  const tex = () => { const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    for (const [k, val] of [[gl.TEXTURE_MIN_FILTER, gl.LINEAR], [gl.TEXTURE_MAG_FILTER, gl.LINEAR],
+      [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE]]) gl.texParameteri(gl.TEXTURE_2D, k, val);
+    return t; };
+  const srcTex = tex(), ft = [tex(), tex()], fb = [gl.createFramebuffer(), gl.createFramebuffer()];
+  let fw = 0, fh = 0, buf = null;
+  const fbos = (w, h) => {
+    if (fw === w && fh === h) return;
+    fw = w; fh = h;
+    ft.forEach((t, k) => { gl.bindTexture(gl.TEXTURE_2D, t); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, fb[k]); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); });
+  };
   gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
   gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);   // stills: straight colour, alpha in .a
-  const U = n => gl.getUniformLocation(pr, n), u = { hx: U("hx"), px: U("px"), side: U("side"), gain: U("gain"), tint: U("tint") };
-  gl.uniform1f(U("ck"), choke);
-  const run = (src, sw, w, h, isSide, { gain = 1, tint = [1, 1, 1] } = {}) => {
-    if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
-    gl.viewport(0, 0, w, h);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
-    gl.uniform1f(u.side, isSide); gl.uniform1f(u.hx, 0.5 / sw); gl.uniform2f(u.px, 1 / w, 1 / h);
-    gl.uniform1f(u.gain, gain); gl.uniform3f(u.tint, tint[0], tint[1], tint[2]);
+  // one pass: program, target framebuffer (null = canvas), size, uniforms, texture on unit 1 (never the target's own)
+  const pass = (pr, target, w, h, u, t1) => {
+    gl.useProgram(pr); pr.set(u);
+    gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, t1); gl.activeTexture(gl.TEXTURE0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, target); gl.viewport(0, 0, w, h);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    return cv;
+  };
+  const dc = document.createElement("canvas");
+  const run = (src, sw, w, h, isSide, { gain = 1, tint = [1, 1, 1], outline = null, time = 0, slot = null } = {}) => {
+    const ol = outline, sg = ol ? ol.px / ZB : 0, P = ol ? Math.ceil(ol.px + 3 * sg + 4) : 0, cw = w + 2 * P, ch = h + 2 * P;
+    if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
+    gl.bindTexture(gl.TEXTURE_2D, srcTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src);
+    const base = { side: isSide, hx: 0.5 / sw, pm: [cw / w, ch / h, -P / w, -P / h], px: [1 / w, 1 / h] };
+    const sty = ol ? { solid: 1, glitter: 2, dotted: 3 }[ol.style] : 0;
+    let dots = null;
+    if (ol) {
+      // blur at 1/f resolution with sigma ~2-3 texels there: separable, <= 25 taps per pass
+      // (dotted only needs the iso-line for the dot centres: a 1/4+ grid keeps the CPU readback and marching small)
+      const f = Math.max(sty === 3 ? 4 : 2, Math.round(sg / 2.5)), lw = Math.ceil(cw / f), lh = Math.ceil(ch / f), u = { lo: [1 / lw, 1 / lh], sg: sg * lw / cw };
+      fbos(lw, lh); gl.bindTexture(gl.TEXTURE_2D, srcTex);   // fbos() used unit 0
+      pass(PH, fb[0], lw, lh, { ...base, ...u }, ft[1]);
+      pass(PV, fb[1], lw, lh, u, ft[0]);
+      if (sty === 3) dots = gl2 && slot != null ? lateDots(slot, lw, lh, cw, ch, ol, time) : dotsFrom(readSync(lw, lh), lw, lh, cw, ch, ol);
+    }
+    pass(PM, null, cw, ch, { ...base, ck: choke, gain, tint, sty, th: TH, cs: ol?.cs || 1, tm: time,
+      sd: ol ? STICKER_SHADOW / (ol.cs || 1) / ch : 0, op: [1 / cw, 1 / ch], ps: [cw, ch], oc: ol?.rgb || [1, 1, 1] }, ft[1]);
+    if (!dots) { cv.pad = P; return cv; }
+    if (dc.width !== cw || dc.height !== ch) { dc.width = cw; dc.height = ch; }
+    const x = dc.getContext("2d");
+    x.clearRect(0, 0, cw, ch); x.fillStyle = ol.color; x.beginPath();
+    for (const [X, Y] of dots) { x.moveTo(X + ol.px / 2, Y); x.arc(X, Y, ol.px / 2, 0, Math.PI * 2); }
+    x.fill(); x.drawImage(cv, 0, 0);
+    dc.pad = P;
+    return dc;
+  };
+  // the field in the bound framebuffer, read now (a readPixels stall: ~13 ms in headless, x 8 people per frame)
+  const readSync = (lw, lh) => {
+    buf = buf?.length === lw * lh * 4 ? buf : new Uint8Array(lw * lh * 4);
+    gl.readPixels(0, 0, lw, lh, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+    return buf;
+  };
+  // moving strip (WebGL2): per cell `slot`, this frame's field goes to a pixel buffer behind a fence and the dots come
+  // from the last field that has landed (one frame late, no stall); the first frame of a run reads synchronously
+  const late = new Map();
+  const lateDots = (slot, lw, lh, cw, ch, ol, time) => {
+    let s = late.get(slot);
+    if (!s) late.set(slot, s = { pbo: gl.createBuffer(), sync: null, time: -9, n: 0, dots: null });
+    const same = time - s.time > 0 && time - s.time < 0.2 && s.n === lw * lh;   // the same run, same size
+    let dots = same ? s.dots : null;
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, s.pbo);
+    const landed = s.sync && gl.getSyncParameter(s.sync, gl.SYNC_STATUS) === gl.SIGNALED;
+    if (same && landed) {
+      buf = buf?.length === lw * lh * 4 ? buf : new Uint8Array(lw * lh * 4);
+      gl.getBufferSubData(gl.PIXEL_PACK_BUFFER, 0, buf);
+      dots = dotsFrom(buf, lw, lh, cw, ch, ol);
+    }
+    if (s.sync && (landed || !same)) { gl.deleteSync(s.sync); s.sync = null; }
+    if (!s.sync) {
+      if (s.n !== lw * lh) gl.bufferData(gl.PIXEL_PACK_BUFFER, lw * lh * 4, gl.STREAM_READ);
+      gl.readPixels(0, 0, lw, lh, gl.RGBA, gl.UNSIGNED_BYTE, 0);
+      s.sync = gl.fenceSync(gl.SYNC_GPU_COMMANDS_COMPLETE, 0); gl.flush();
+    }
+    gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
+    if (!dots) dots = dotsFrom(readSync(lw, lh), lw, lh, cw, ch, ol);
+    Object.assign(s, { time, n: lw * lh, dots });
+    return dots;
+  };
+  // dots from a field readback: centres on the iso-line half a band out, diameter = band width, ~1.75 widths apart
+  const dotsFrom = (buf, lw, lh, cw, ch, ol) => {
+    const F = new Float32Array(lw * lh);
+    for (let y = 0; y < lh; y++) for (let x = 0; x < lw; x++) { const k = ((lh - 1 - y) * lw + x) * 4; F[y * lw + x] = buf[k] / 255 + buf[k + 1] / 65025; }
+    const gx = cw / lw, gy = ch / lh;
+    return isolines(F, lw, lh, 1 - Phi(ZB / 2)).flatMap(l => along({ pts: l.pts.map(([x, y]) => [(x + 0.5) * gx, (y + 0.5) * gy]), closed: l.closed }, ol.px * 1.75));
   };
   return {
     canvas: cv,
@@ -137,9 +356,11 @@ export function createClipAlpha({ choke = 0 } = {}) {
 }
 
 // ---------- matching the two people ----------
-// mean luma of the face area of a cut-out: rows 15-55 % and the middle third of the person's bounding box, a > 0.5
+// mean luma of the face area of a cut-out: rows 15-55 % and the middle third of the person's bounding box, a > 0.5;
+// also the person's centre-bottom (fractions of the image), the anchor of B's scaling of A
 const lumaCache = new WeakMap();
-function faceLuma(img) {
+const faceLuma = img => cutStats(img).L;
+function cutStats(img) {
   if (lumaCache.has(img)) return lumaCache.get(img);
   const W = 64, H = 48, c = Object.assign(document.createElement("canvas"), { width: W, height: H }), x = c.getContext("2d", { willReadFrequently: true });
   x.drawImage(img, 0, 0, W, H);
@@ -153,9 +374,9 @@ function faceLuma(img) {
       const i = (y * W + k) * 4; if (d[i + 3] > 128) { s += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
     }
   }
-  const L = n > 8 ? s / n : null;
-  lumaCache.set(img, L);
-  return L;
+  const st = { L: n > 8 ? s / n : null, cx: x1 >= 0 ? (x0 + x1 + 1) / 2 / W : 0.5, by: x1 >= 0 ? (y1 + 1) / H : 1 };
+  lumaCache.set(img, st);
+  return st;
 }
 const clampG = g => Math.min(1.35, Math.max(0.85, g));
 // Gains for two cut-outs on a preset: both move toward their mean, pulled 30 % toward a booth-ish face luma (0.42).
@@ -188,19 +409,23 @@ function preset(bg, w, h) {
   }
   return presetCache.get(key);
 }
-let alpha = null;
+// one GL cut-out per person: A and B pad differently once B scales A, and a shared canvas would be reallocated
+// twice per cell
+const alphas = new WeakMap();
 // clip frames for the moving strip (crossfaded at the loop seam), keyed by video; empty outside recordMovingStrip
 const clipFrames = new Map();
-// one person's source for cell i: video halves when t is set and a clip exists, else the stills
-function sources(p, i, t, o) {
+// one person's source for cell i: video halves when t is set and a clip exists, else the stills; cut(o) -> canvas
+// (with canvas.pad px of margin when o.outline is set)
+function sources(p, i, t) {
   const c = p.cuts[i];
-  alpha ||= createClipAlpha({ choke: CHOKE });
+  if (!alphas.has(p)) alphas.set(p, createClipAlpha({ choke: CHOKE }));
+  const alpha = alphas.get(p);
   if (t != null && c.clip) {
     const f = clipFrames.get(c.clip) || c.clip, w = (f.videoWidth || f.width) >> 1, h = f.videoHeight || f.height;
-    return { raw: f, rawW: w, rawH: h, cut: () => alpha.draw(f, o), cutW: w, cutH: h };
+    return { raw: f, rawW: w, rawH: h, cut: o => alpha.draw(f, { ...o, slot: i }), cutW: w, cutH: h };
   }
   const W = o => o.naturalWidth || o.videoWidth || o.width, H = o => o.naturalHeight || o.videoHeight || o.height;
-  return { raw: c.raw, rawW: W(c.raw), rawH: H(c.raw), cut: () => alpha.still(c.cut, o), cutW: W(c.cut), cutH: H(c.cut) };
+  return { raw: c.raw, rawW: W(c.raw), rawH: H(c.raw), cut: o => alpha.still(c.cut, o), cutW: W(c.cut), cutH: H(c.cut) };
 }
 // The camera frame is 4:3 and the cell wider: crop mostly from the bottom so the head keeps its headroom.
 const cellCrop = (w, h, aspect) => { const r = cropRect(w, h, aspect); r.sy *= 0.25; return r; };
@@ -209,22 +434,57 @@ const CHOKE = 1;       // px the cut-out edge is eroded (min) before compositing
 const TINT = 0.07;     // backdrop colour cast on cut-outs over presets
 const SHADOW = { a: 0.10, blur: 16, dy: 6 };   // soft contact shadow, lower half of the cell only
 
-export function drawCell(ctx, rect, i, { a, b, bg, t = null }) {
+// ---------- B's placement of A (Round 3) ----------
+// layout = { a: { x, y, scale } }: in the cell (= the strip crop of the camera frame), A is scaled by `scale` about
+// layoutAnchor(A's cut) and then shifted by (x * cell width, y * cell height). CSS equivalent on a cell-sized box:
+// transform-origin: anchor; transform: translate(x*w, y*h) scale(scale). layout.json comes from the other phone: clamped.
+const num = (v, lo, hi, d) => (Number.isFinite(+v) && v !== null && v !== "" ? Math.min(hi, Math.max(lo, +v)) : d);
+function layoutOf(l) {
+  const a = l && l.a;
+  if (!a) return null;
+  const r = { x: num(a.x, -1, 1, 0), y: num(a.y, -1, 1, 0), scale: num(a.scale, 0.25, 3, 1) };
+  return Math.abs(r.x) > 0.002 || Math.abs(r.y) > 0.002 || Math.abs(r.scale - 1) > 0.005 ? r : null;
+}
+// A's centre-bottom as fractions of the cell (y can be a little > 1: the crop cuts the bottom of the camera frame)
+export function layoutAnchor(cutImg, aspect = L.CW / L.CH) {
+  const st = cutStats(cutImg), w = cutImg.naturalWidth || cutImg.width, h = cutImg.naturalHeight || cutImg.height, r = cellCrop(w, h, aspect);
+  return { x: (st.cx * w - r.sx) / r.sw, y: (st.by * h - r.sy) / r.sh };
+}
+// bg "a" is A's raw frame: once B moved A, A would be in it twice, so it is not offered (drawCell falls back to "b")
+export const bgAllowed = layout => BACKGROUNDS.map(b => b.id).filter(id => id !== "a" || !layoutOf(layout));
+
+export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null }) {
   const { w, h } = rect, aspect = w / h;
   const back = canvas("back", w, h), bx = back.getContext("2d");
-  const B = typeof bg === "string" ? BACKGROUNDS.find(x => x.id === bg) : bg;
-  const people = B.id === "a" ? [b] : B.id === "b" ? [a] : [a, b];
+  const lay = layoutOf(layout), ol = outlineOf(outline);
+  let B = typeof bg === "string" ? BACKGROUNDS.find(x => x.id === bg) : bg;
+  if (B.id === "a" && lay) B = BACKGROUNDS[1];
+  // draw order background -> B -> A: A is always in front. The person who is the background gets their cut drawn
+  // again on top of it (A so that B never covers A; B only to carry the outline).
+  const self = B.draw ? null : B.id === "a" ? a : b;
+  const people = B.id === "b" && !ol ? [a] : [b, a];
   const gains = matchLuma(a.cuts[i].cut, b.cuts[i].cut, B.draw ? null : B.id);
   let tint;
   if (B.draw) { const pc = preset(B, w, h); bx.drawImage(pc, 0, 0); tint = pc.tint; }
   else {
-    const s = sources(B.id === "a" ? a : b, i, t), r = cellCrop(s.rawW, s.rawH, aspect);
+    const s = sources(self, i, t), r = cellCrop(s.rawW, s.rawH, aspect);
     bx.drawImage(s.raw, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
   }
   for (const p of people) {
-    const s = sources(p, i, t, { gain: gains[p === a ? 0 : 1], tint }), r = cellCrop(s.cutW, s.cutH, aspect);
-    const per = canvas("per", w, h), px = per.getContext("2d");
-    px.clearRect(0, 0, w, h); px.drawImage(s.cut(), r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
+    const s = sources(p, i, t), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
+    const Lp = p === a ? lay : null, sc = Lp ? Lp.scale : 1;
+    const cut = s.cut({ gain: gains[p === a ? 0 : 1], tint, time: t || 0, outline: ol && { ...ol, px: ol.px / (k * sc), cs: k * sc } });
+    // source px -> cell px: the crop, then (A only) scale about the anchor and shift
+    let m = k, ex = -r.sx * k, ey = -r.sy * k;
+    if (Lp) {
+      const an = layoutAnchor(p.cuts[i].cut, aspect), ax = an.x * w, ay = an.y * h;
+      m = k * sc; ex = ax * (1 - sc) + sc * ex + Lp.x * w; ey = ay * (1 - sc) + sc * ey + Lp.y * h;
+    }
+    const P = cut.pad || 0, per = canvas("per", w, h), px = per.getContext("2d");
+    px.clearRect(0, 0, w, h);
+    px.setTransform(m, 0, 0, m, ex - m * P, ey - m * P); px.drawImage(cut, 0, 0); px.setTransform(1, 0, 0, 1, 0, 0);
+    // a sticker carries its own drop shadow and stays a crisp cut; a raw person's own cut sits exactly on itself
+    if (ol || p === self) { bx.drawImage(per, 0, 0); continue; }
     // contact shadow: the silhouette's shadow only (person drawn off-canvas), faded in toward the shoulders
     const sh = canvas("shadow", w, h), sx = sh.getContext("2d");
     sx.clearRect(0, 0, w, h);
@@ -262,12 +522,12 @@ async function prepare({ frame, date, caption = "" }) {
   if (F.over) { over = document.createElement("canvas"); over.width = L.W; over.height = L.H; F.over(over.getContext("2d"), L, o); }
   return { F, rects, base, over };
 }
-function paint(ctx, st, { a, b, bg, filter = "original" }, t) {
+function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null }, t) {
   filt ||= createFilter();
   ctx.drawImage(st.base, 0, 0);
   st.rects.forEach((r, i) => {
     const cell = canvas("cell", r.w, r.h), cx = cell.getContext("2d");
-    drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t: t == null ? null : t });
+    drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t: t == null ? null : t, layout, outline });
     const out = filt.apply(cell, filter, 1, i + 1);
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, st.F.radius || 0); ctx.clip();
     ctx.drawImage(out, r.x, r.y); ctx.restore();
@@ -275,10 +535,10 @@ function paint(ctx, st, { a, b, bg, filter = "original" }, t) {
   if (st.over) ctx.drawImage(st.over, 0, 0);
 }
 
-export async function drawStrip({ a, b, bg, frame, filter, date, caption }) {
+export async function drawStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null }) {
   const st = await prepare({ frame, date, caption });
   const cv = document.createElement("canvas"); cv.width = L.W; cv.height = L.H;
-  paint(cv.getContext("2d"), st, { a, b, bg, filter }, null);
+  paint(cv.getContext("2d"), st, { a, b, bg, filter, layout, outline }, null);
   return new Promise((res, rej) => cv.toBlob(bl => (bl ? res(bl) : rej(new Error("toBlob"))), "image/jpeg", 0.92));
 }
 
@@ -310,7 +570,7 @@ const SECONDS = 6, FPS = 30, BPS = 4_000_000;
 const FADE = 0.001;
 const HOLD = 0.3;                      // the last 0.3 s holds the finished photo strip
 const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells do not loop on the same frame
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, format = "strip", onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, format = "strip", onProgress }) {
   if (!window.MediaRecorder) throw new Error("no MediaRecorder");
   const vids = [...a.cuts, ...b.cuts].map(c => c.clip);
   if (vids.some(v => !v)) throw new Error("missing clip");
@@ -321,7 +581,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
   const mp4 = ["video/mp4;codecs=avc1", "video/mp4"].find(ok), webm = ["video/webm;codecs=vp9", "video/webm"].find(ok);
   let lastErr = new Error("no recorder type");
   for (const type of [mp4, webm].filter(Boolean)) {
-    try { return { blob: await recordOnce(cv, st, story, vids, type, { a, b, bg, filter }, onProgress), type: type.split(";")[0] }; }
+    try { return { blob: await recordOnce(cv, st, story, vids, type, { a, b, bg, filter, layout, outline }, onProgress), type: type.split(";")[0] }; }
     catch (e) { lastErr = e; }
   }
   throw lastErr;

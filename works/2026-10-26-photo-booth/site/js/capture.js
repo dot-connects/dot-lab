@@ -1,6 +1,6 @@
 // One cut = countdown 3-2-1, a 2 s side-by-side clip [raw | matte] from "2" to the shutter, then the stills.
 import { camState, frameRect } from "./camera.js";
-import { TUNE, segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, cutStill, stillBusy, stillWarm, stats, keepLargest } from "./segment.js";
+import { segmentFrame, drawMatte, drawCutout, prefetchStill, stillReady, cutStill, stillBusy, stats, keepLargest } from "./segment.js";
 
 export const CLIP_MAX = { w: 640, h: 480 };
 export const STILL_MAX = { w: 960, h: 720 };
@@ -90,10 +90,8 @@ async function shrinkClip(blob) {
 }
 
 export async function shootOne(i, { video, onTick }) {
-  prefetchStill();                   // no-op unless ?still=1, or when app.js already started it
-  // an HQ-model warm-up in flight stalls the GPU for seconds: let it finish before the countdown (<= 20 s, ?still=1 only)
-  if (TUNE.still) await Promise.race([stillWarm(), sleep(20000)]);
-  stillBusy(true);
+  prefetchStill();                   // no-op when loadSegmenter already started it (or ?still=0)
+  stillBusy(true);                   // the countdown never waits on the HQ model (a model not warm by now stays off)
   try {
     // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
     // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
@@ -142,7 +140,8 @@ async function shootOneNow(i, { video, onTick }, straight = false) {
   const t1 = performance.now();
   // the HQ cut runs after the recorder stopped (never inside the countdown); not ready or failed = live matte
   let cutC = liveC, path = "live";
-  if (stillReady()) try { cutC = await cutStill(rawC); path = "multiclass"; } catch (e) { path = "live:" + (e?.message || e); }
+  if (stillReady()) try { cutC = await cutStill(rawC); path = "modnet"; } catch (e) { path = "live:" + (e?.message || e); }
+  else path = "live:" + (stats.still.state || "off");
   keepLargest(cutC);                 // a passer-by or a second face in the frame is not cut out with the person
   const t2 = performance.now();
   let raw = await rawP, cut = await toBlob(cutC, "image/png");
