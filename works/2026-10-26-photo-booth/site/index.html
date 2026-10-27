@@ -120,6 +120,7 @@
     <h1>친구가 옆자리를<br><em>비워 뒀어요</em></h1>
     <div class="peekwrap"><div class="peek"><img id="peekImg" alt="친구가 찍은 첫 번째 컷"><div class="peekspot"><svg class="bob"><use href="#heart"/></svg><span>친구 옆에 서면 돼</span></div></div><svg class="burst" viewBox="-50 -50 100 100" aria-hidden="true"><use href="#burst"/></svg></div>
     <p class="lead">친구 옆에 서서 8장 찍고 4장 고르면 완성!<br>2분 · 가입 없음 · 카메라만 켜면 돼</p>
+    <p class="decnote"><svg aria-hidden="true"><use href="#star"/></svg><span>다 찍고 올리면 <b>너도 친구도</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>
   </div>
   <div class="bottom">
     <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
@@ -218,6 +219,7 @@
     <h1 id="shareTitle">다 올렸어!<br><em>친구한테 보내자</em></h1>
     <div class="heroart" id="myStrip"></div>
     <p class="lead" id="shareLead">친구가 이 링크를 열면 네 옆 빈자리에 서서 찍어.<br>둘 다 찍으면 사진이랑 영상이 열려.</p>
+    <p class="decnote"><svg aria-hidden="true"><use href="#star"/></svg><span>친구가 찍어 올리면 <b>둘 다</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>
   </div>
   <div class="bottom">
     <button class="cta" data-act="share">친구한테 링크 보내기</button>
@@ -244,8 +246,10 @@
 <section class="screen" id="s-done" hidden>
   <div class="previewwrap">
     <div class="preview" id="preview">
-      <img id="stripImg" alt="완성된 네컷" hidden>
+      <canvas id="stripImg" width="600" height="1800" role="img" aria-label="완성된 네컷" hidden></canvas><!-- canvas since Round 5: painted directly, no JPEG round trip -->
       <video id="stripVid" playsinline muted loop hidden></video>
+      <div class="stk" id="stk" aria-label="붙인 스티커"></div>
+      <svg class="zoomtag" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       <div class="veils" id="veils"></div>
       <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
     </div>
@@ -258,6 +262,7 @@
     <button role="tab" data-tab="filter" aria-selected="false">필터</button>
     <button role="tab" data-tab="outline" aria-selected="false">테두리</button>
     <button role="tab" data-tab="caption" aria-selected="false">문구</button>
+    <button role="tab" data-tab="sticker" aria-selected="false">스티커</button>
   </div>
   <div class="panel row" data-panel="bg" id="bgChips" role="tabpanel" aria-label="배경" hidden></div>
   <div class="panel row" data-panel="frame" id="frameChips" role="tabpanel" aria-label="프레임"></div>
@@ -271,6 +276,15 @@
     <label class="caplbl" for="caption">한 줄 문구 <span id="capCount">0 / 16</span></label>
     <input id="caption" type="text" maxlength="16" placeholder="예: D+100, 우리 오늘" enterkeyhint="done" autocomplete="off">
     <p class="fine">비워 두면 ‘따로 같이 네컷’이 들어가</p>
+  </div>
+  <!-- Round 5 deco: stickers -->
+  <div class="panel" data-panel="sticker" role="tabpanel" aria-label="스티커" hidden>
+    <div class="pills" id="stkSets" aria-label="스티커 종류">
+      <button class="pill" type="button" data-set="svg" aria-pressed="true">그린 스티커</button>
+      <button class="pill" type="button" data-set="emoji" aria-pressed="false">이모지</button>
+      <p class="stkhint" id="stkHint">끌어서 옮기고<br>두 손가락으로 크기·각도</p>
+    </div>
+    <div class="stkgrid" id="stkGrid" role="group" aria-label="붙일 스티커"></div>
   </div>
   <div class="savebar" id="saveBox">
     <div id="saveBtns">
@@ -304,6 +318,12 @@
 </section>
 
 </main>
+<!-- Round 5 deco: full-screen viewer for the strip (pinch / drag / double-tap, swipe down to close) -->
+<div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="크게 보기" hidden>
+  <div class="zoomstage" id="zoomStage"></div>
+  <button class="zoomx" type="button" data-act="zoomClose" aria-label="닫기">✕</button>
+  <p class="zoomhint">두 손가락으로 확대 · 두 번 탭하면 2배 · 아래로 밀면 닫혀</p>
+</div>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="module" src="js/app.js"></script>
 </body>
