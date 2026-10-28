@@ -13,17 +13,17 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | 5 | B's shoot: A is a STILL cut-out (A's picked still for that slot), never a moving clip. Photos are the product; the moving strip is only a final download option | flow | done 624fce5 |
 | 6 | B's 8→4 pick: background choice A's / B's / none | flow | done 624fce5 |
 | 7 | Layer order top→bottom: A, B, background (A's / B's / none). Bug: with A's bg, B disappears | flow | no repro headless; likely the old moving preview (B drawn by clip matte), gone with still-only decorate — check on phone |
-| 8 | Camera: already widest zoom. Shoot view shows ONLY the area that ends up in the cell (operator pick: cropped view) | layout | merged (worker deploy + phone check pending) |
-| 9 | A picks 가로/세로 mode first. 가로 = today's tall strip of 4 wide photos; 세로 = 4 tall photos side by side in one wide strip. B follows A's mode. Portrait phone hold both ways (operator confirmed) | layout | merged (worker deploy + phone check pending) |
+| 8 | Camera: already widest zoom. Shoot view shows ONLY the area that ends up in the cell (operator pick: cropped view) | layout | done, phone check pending |
+| 9 | A picks 가로/세로 mode first. 가로 = today's tall strip of 4 wide photos; 세로 = 4 tall photos side by side in one wide strip. B follows A's mode. Portrait phone hold both ways (operator confirmed) | layout | done, worker deployed, phone check pending |
 | 10 | B's shoot view: option (a) B's real camera background with A's cut-out over it, or (b) A's background + A + B cut-out (order of #7) | flow | done 624fce5 |
 | 11 | Retouch and decorate: inline pinch zoom + two-finger pan on the photo; the controls under it stay put (no fullscreen viewer) | zoom | merged 7255b7c |
 | 12 | Decorate shows stills; video is only a download option | flow | done 624fce5 |
 | 13 | Video download button warns up front that the moving cut can stutter / lose the person at times | flow | done 624fce5 |
-| 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | picked: film = screens3 concept 1, cute = cute3 concept 3; reskin running |
+| 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | done (film = screens3 concept 1, cute = cute3 concept 3) |
 | 15 | During the 5 s countdown: front/back switch and mirror stay usable. 8 shots continuous, no stop button | flow | done 624fce5 |
 | + | Shutter: web capture is silent; add our own shutter sound + flash per shot (etiquette + feedback) | flow | done 624fce5 |
 | + | Pets: care a lot — stills (done), moving cut (r6-engine), live/B-shoot preview | engine | done db5949e (filter 약/중/강 + 그레이 chip UI: lead) |
-| + | First screen: A picks UI theme 필름레일 (screens3 concept 1) or 귀여운 (new, polished from the pre-reskin look); B follows A (operator 2026-10-28) | r6-ui-film (picker, worker ui, film reskin, filter levels) + r6-ui-cute (말랑 부스 = cute3 concept 3, operator pick 10-28) | running |
+| + | First screen: A picks UI theme 필름레일 (screens3 concept 1) or 귀여운 (new, polished from the pre-reskin look); B follows A (operator 2026-10-28) | r6-ui-film + r6-ui-cute (말랑 부스 = cute3 concept 3, operator pick 10-28) | done, worker e3237da5; e2e 4 shape×theme green (cute b-ghost crop diff 11-13 vs 35-44 wrong: white surround, visually equal) |
 
 ## Carried from the audit (2026-10-28)
 
@@ -36,6 +36,6 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | Save photo + video at once; toggle copy; video "0%" label; outline default (r3 review #5-#7) | r6-zoom | merged 7255b7c |
 | Delete public dev-*.html + dev-media before launch | lead | |
 | Two-viewpoint film cover | merged e518116 | done |
-| Clean reskin | WIP in e518116, finish after #14 pick | |
+| Clean reskin | film theme | done |
 
 Deferred on purpose: reels / list tile / manifest (after phone check), ViTMatte fur model (52-104 MB, after phone check).
