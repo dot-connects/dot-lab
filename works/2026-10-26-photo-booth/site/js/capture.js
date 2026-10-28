@@ -157,15 +157,16 @@ async function imp(url) {
   throw err;
 }
 // seconds: countdown length (Round 5: 5). stop(): checked during the seconds before "3"; true -> throws "stopped".
-export async function shootOne(i, { video, onTick, seconds = 3, stop }) {
+// hold(): a promise to wait for before the stills (a camera switch in flight, Round 6); onTick(0) = the shutter itself
+export async function shootOne(i, { video, onTick, seconds = 3, stop, hold }) {
   // no prefetchStill here: its session create can freeze the page ~4.5 s (the landing page starts it).
   // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
   // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
   // recording straight through the countdown (no pause/resume), and never return an empty clip.
   // Round 5: "empty" = any clip that will not play (a 0-byte one, or an MP4 with no frames), not only size 0.
-  const c = await shootOneNow(i, { video, onTick, seconds, stop });
+  const c = await shootOneNow(i, { video, onTick, seconds, stop, hold });
   if (await clipOk(c.clip)) return c;
-  const again = await shootOneNow(i, { video, onTick, seconds: 3 }, true);
+  const again = await shootOneNow(i, { video, onTick, seconds: 3, hold }, true);
   stats.still.cuts[i].retried = true;
   if (!(await clipOk(again.clip))) throw new Error("clip-empty");
   return again;
@@ -187,28 +188,34 @@ export async function clipOk(blob) {
   });
 }
 
-async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = false) {
-  const mirror = camState.mirror;
-  const r = frameRect(video), { w, h } = fit(r, CLIP_MAX);
+async function shootOneNow(i, { video, onTick, seconds = 3, stop, hold }, straight = false) {
+  // Round 6: mirror and front/back can change mid-countdown, so both are read per frame (and again at the shutter);
+  // the clip keeps the size it started with
+  const { w, h } = fit(frameRect(video), CLIP_MAX);
   const clipC = Object.assign(document.createElement("canvas"), { width: 2 * w, height: h });
   const cctx = clipC.getContext("2d");
   // The raw half takes every camera frame (requestVideoFrameCallback, one recorder frame each); the model runs at most
   // a third of the time and the matte half holds its last mask in between. Segmenting every frame tied the clip to the
   // model's speed (headless 10-27: 5-14 distinct fps at segMs ~45), a stutter in every moving strip; the HQ moving cut
   // (clipmatte.js) redoes the matte later anyway.
-  let on = true, segAt = -1e9, segMs = 0, push = () => {}, mt = null;
+  let on = true, segAt = -1e9, segMs = 0, push = () => {}, mt = null, tPrev = -1, tOff = 0;
   const fs = { frames: 0, segs: 0, segMs: 0, drawMs: 0 };    // per-shot loop stats (dev pages)
   const vfc = "requestVideoFrameCallback" in video;
   const loop = (now, m) => {
     if (!on) return;
     const t = performance.now();
     if (t - segAt >= 3 * segMs && segmentFrame(video)) { segAt = t; segMs = performance.now() - t; fs.segs++; fs.segMs += segMs; }
-    const t1 = performance.now();
-    place(cctx, video, r, 0, w, h, (cx, fw, fh) => drawRaw(cx, video, fw, fh, mirror));
-    place(cctx, video, r, w, w, h, (cx, fw, fh) => drawMatte(cx, fw, fh, mirror));
-    fs.frames++; fs.drawMs += performance.now() - t1;
-    mt ??= m?.mediaTime > 0;         // the camera's frame time when the browser gives one (rVFC), else the clock
-    push(mt ? m.mediaTime * 1e6 : performance.now() * 1000);
+    const t1 = performance.now(), r = frameRect(video), mirror = camState.mirror;
+    if (r.sw) {
+      place(cctx, video, r, 0, w, h, (cx, fw, fh) => drawRaw(cx, video, fw, fh, mirror));
+      place(cctx, video, r, w, w, h, (cx, fw, fh) => drawMatte(cx, fw, fh, mirror));
+      fs.frames++; fs.drawMs += performance.now() - t1;
+      mt ??= m?.mediaTime > 0;         // the camera's frame time when the browser gives one (rVFC), else the clock
+      // a new camera (front/back switch) restarts its media time near 0: keep the clip's timestamps going up
+      const ts = mt && m ? m.mediaTime * 1e6 : performance.now() * 1000;
+      if (ts + tOff <= tPrev) tOff = tPrev + 33333 - ts;
+      tPrev = ts + tOff; push(tPrev);
+    }
     if (vfc) video.requestVideoFrameCallback(loop); else requestAnimationFrame(loop);
   };
 
@@ -239,8 +246,11 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop }, straight = f
   onTick?.(1); await sleep(1000);
   const clipP = R.stop();             // shutter (resolves within STOP_MAX)
   on = false;
+  await hold?.();                     // a camera switch still in flight: the still waits for the new camera
+  if (video.readyState < 2) await Promise.race([new Promise(r => video.addEventListener("loadeddata", r, { once: true })), sleep(3000)]);
+  onTick?.(0);
   const t0 = performance.now();
-  const { rawC, liveC } = stills(video, mirror);
+  const { rawC, liveC } = stills(video, camState.mirror);
   const rawP = toBlob(rawC, "image/jpeg", 0.9);
   let clip = await clipP;
   const t1 = performance.now();

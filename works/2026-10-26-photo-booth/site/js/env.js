@@ -5,6 +5,7 @@ export const app = /Instagram/.test(ua) ? "Instagram"
   : /Barcelona|Threads/i.test(ua) ? "Threads"
   : /KAKAOTALK/i.test(ua) ? "KakaoTalk"
   : /FBAN|FBAV/.test(ua) ? "Facebook"
+  : /; wv\)/.test(ua) ? "앱"             // any other Android WebView (Round 6 #3)
   : "브라우저";
 export const inApp = app !== "브라우저";
 export const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
