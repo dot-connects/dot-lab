@@ -2,7 +2,6 @@
    Lavender dotted paper, Dongle titles + Gowun Dodum body, chunky 3D pill buttons, the pink booth mascot.
    Everything is scoped under body[data-ui="cute"], so the film theme (app.css) is untouched. js/cute.js adds the
    mascot header (.uihead) and the landing booth. Sizes are px for a 430 px phone (the mockup's cqw x 4.3). */
-@import url("https://fonts.googleapis.com/css2?family=Dongle:wght@400;700&family=Gowun+Dodum&display=swap");
 
 html:has(> body[data-ui="cute"]) { background: #f1eaff; }
 body[data-ui="cute"] {

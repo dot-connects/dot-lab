@@ -668,3 +668,8 @@ body[data-ui="film"] .tabs button[aria-selected="true"] { background: #000; colo
 .pills.lv .pill { flex: 1; max-width: 88px; }
 /* two-line titles: the lime mark sits on its own line box so it never covers the line above (mockup .hl mark) */
 body[data-ui="film"] h1 em { display: inline-block; line-height: 1.08; margin-top: 4px; }
+
+/* topbar tag per UI theme (film default; cute.css styles the rest) */
+.ui-cute { display: none; }
+body[data-ui="cute"] .ui-cute { display: inline; }
+body[data-ui="cute"] .ui-film { display: none; }

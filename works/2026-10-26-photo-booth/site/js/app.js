@@ -662,7 +662,7 @@ async function review() {
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
   const CELL = cellAsp(), x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
   S.revGeo = { ox: (R.width - 2 * cw - g) / 2, oy: (R.height - 2 * ch - g) / 2, cw, ch, g, d };
-  x.fillStyle = "#000"; x.fillRect(0, 0, R.width, R.height);
+  x.fillStyle = getComputedStyle(st).getPropertyValue("--rev-bg").trim() || "#000"; x.fillRect(0, 0, R.width, R.height);   // cute: white
   cells.forEach((c, i) => paintRev(c, i));
   R.hidden = false;
 }
