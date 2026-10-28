@@ -155,13 +155,12 @@ function prefetchHQ() {
 }
 async function landB() {
   show("landB");
-  // A's cut-outs for the peek and for B's overlay, fetched while B reads the screen
+  // A's cut-outs for the cover and for B's overlay, fetched while B reads the screen
   S.ghostP = Promise.all([1, 2, 3, 4].map(c => api.blobUrl(S.id, "a", `${c}-cut.png`).catch(() => null)))
     .then(g => S.ghost = g);
   S.ghostP.then(ghostLook).then(() => S.cutIdx != null && document.body.dataset.screen === "shoot" && setCut(S.cutIdx, false))
     .catch(e => console.warn("[booth] A's look", e));   // Round 5: A's 보정 on the overlay, in the background
-  const g = await S.ghostP;
-  if (g[0]) $("peekImg").src = g[0];
+  window.__coverReal?.(await S.ghostP);   // the B cover swaps its drawn friend for A's real cut-outs (index.html)
 }
 
 // ---- shoot --------------------------------------------------------------------------------------------------------
@@ -565,7 +564,7 @@ async function review() {
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
   const x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
   S.revGeo = { ox: (R.width - 2 * cw - g) / 2, oy: (R.height - 2 * ch - g) / 2, cw, ch, g, d };
-  x.fillStyle = "#2e2230"; x.fillRect(0, 0, R.width, R.height);
+  x.fillStyle = "#000"; x.fillRect(0, 0, R.width, R.height);
   cells.forEach((c, i) => paintRev(c, i));
   R.hidden = false;
 }
