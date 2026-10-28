@@ -14,3 +14,4 @@ Every item must ship; status updated by the lead on merge.
 | 8 | B's face retouch does not change the photos on B's review screen | bug — r7-fix | running |
 | 9 | Decorate 보정 tab: some options make my photo disappear | bug — r7-fix | running |
 | 10 | Phone gets hot and lags | r7-perf measures first; fixes after r7-fix merges | study running |
+| 11 | Comfortable on every phone, any aspect ratio | every screen mockup shown at 360x640, 375x667, 390x844, 412x915, 430x932; layout rules by viewport ratio, not fixed px (operator) — r7-cam first, then each screen | running |
