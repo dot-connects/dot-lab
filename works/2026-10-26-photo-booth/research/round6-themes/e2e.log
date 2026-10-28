@@ -1,0 +1,185 @@
+00:23:58 a connected
+00:24:02 shot 01-a-landing
+00:24:07 HQ on landing (no tap): {"state":"loaded","loadMs":6401,"warmMs":0,"err":"","cached":false,"fetchMs":3385,"createMs":2721}
+00:24:22 shot 02-a-shoot-ready
+00:24:22 contrast a shoot: 12 texts, min 13.09 ok skipped(over photo): 친구 자리를 생각해서 한쪽으로 비켜서 찍어  | ✕ | 알림 닫기 | 셔터 한 번이면 8장을 이어서 찍어 · 한 
+00:24:22 hq note: 사진은 찍은 뒤 고급 누끼로 다듬어져요✕알림 닫기
+00:24:22 A HQ before shooting: {"state":"loaded","loadMs":6401,"warmMs":0,"err":"","cached":false,"fetchMs":3385,"createMs":2721}
+00:24:23 shot 02-a-countdown
+00:24:23 countdown text: 2 step 1 / 8 pose 브이!
+00:24:32 stopped at 3 hint: 3장 찍었어. 셔터를 누르면 4번째부터 이어서 찍어
+00:24:33 shot 02-a-stopped
+00:24:34 shot 02-a-shot4-lastthumb
+00:24:34 ghost on shot 4: {"cutIdx":3,"step":"4 / 8","ghostSrcIdx":-1,"clipShown":false}
+00:24:54 02-a HQ at pick open: {"hq":[],"done":0,"busy":true}
+00:24:58 shot 02-a-pick-open
+00:25:04 02-a HQ of 8 (shot:ms): ["ready 8241ms","1:907ms","2:909ms","3:874ms","4:795ms","5:796ms","6:720ms","7:746ms","8:925ms","total 14916ms"] segment stats: {"state":"ready","loadMs":6401,"warmMs":8241,"err":"","cached":false,"fetchMs":3385,"createMs":2721}
+00:25:04 02-a 8 shots, tap -> pick: 32543 ms; sizes KB: [[26,140,504],[26,134,512],[25,138,581],[26,136,594],[23,130,510],[25,130,487],[26,134,550],[26,137,547]] stills px: 640x480 per-shot stats: [["live",130,0],["live",148,0],["live",72,0],["live",113,0],["live",125,0],["live",92,0],["live",89,0],["live",87,0]]
+00:25:05 shot 03-a-reshoot
+00:25:36 03-a HQ at pick open: {"hq":["ready 0ms","1:956ms","2:847ms","3:813ms","4:793ms","5:806ms"],"done":5,"busy":true}
+00:25:37 shot 03-a-pick-open
+00:25:38 03-a HQ of 8 (shot:ms): ["ready 0ms","1:956ms","2:847ms","3:813ms","4:793ms","5:806ms","6:972ms","7:884ms","8:875ms","total 6946ms"] segment stats: {"state":"ready","loadMs":6401,"warmMs":8241,"err":"","cached":false,"fetchMs":3385,"createMs":2721}
+00:25:38 03-a 8 shots, tap -> pick: 30957 ms; sizes KB: [[26,137,584],[23,130,536],[25,131,627],[26,134,558],[26,139,595],[26,135,581],[24,131,539],[25,130,601]] stills px: 640x480 per-shot stats: [["live",84,0],["live",61,0],["live",107,0],["live",49,0],["live",107,0],["live",65,0],["live",71,0],["live",94,0]]
+00:25:38 reshoot hidden on 2nd pick: true
+00:25:39 shot 04-a-pick-empty
+00:25:39 contrast 04-a pick: 10 texts, min 2.44 FAIL [{"t":"이 4장으로","ratio":2.44,"size":"21px"}] 
+00:25:39 pick: done disabled? true reshoot shown? false
+00:25:41 shot 04-a-pick-2
+00:25:42 after removing 2nd: [5,7,2] disabled: true
+00:25:42 pick order: [5,7,2,0] want [5,7,2,0] badges: 4-3--1-2 done enabled: true
+00:25:43 shot 04-a-pick-4
+00:25:43 04-a pick -> review (live cuts): 349 ms; chip: - pairs: null shots dropped: 0 cuts: 4
+00:25:44 shot 04-a-review-live
+00:25:56 shot 04-a-review-look-default
+00:25:59 shot 04-a-review-look-picked
+00:25:59 04-a look: {"skin":1,"slim":2,"eye":2} beauty stats: {"still":[35,21,16,16,47,19,20,18,14,30,17,18],"det":[405,292,72,92,47,19,20,18,14,30,17,18]}
+00:25:59 contrast 04-a look: 21 texts, min 6.67 ok 
+00:26:00 shot 04-a-review
+00:26:00 contrast 04-a review: 21 texts, min 6.67 ok 
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/1-raw.jpg {"requestId":"5780.323","timestamp":251484.586556,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/1-cut.png {"requestId":"5780.324","timestamp":251484.643225,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/1-clip {"requestId":"5780.325","timestamp":251484.777844,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/2-raw.jpg {"requestId":"5780.326","timestamp":251484.844403,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/2-cut.png {"requestId":"5780.327","timestamp":251484.901899,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/2-clip {"requestId":"5780.328","timestamp":251485.004097,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/3-raw.jpg {"requestId":"5780.329","timestamp":251485.081416,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/3-cut.png {"requestId":"5780.330","timestamp":251485.134507,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/3-clip {"requestId":"5780.331","timestamp":251485.244917,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/4-raw.jpg {"requestId":"5780.332","timestamp":251485.30049,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/4-cut.png {"requestId":"5780.333","timestamp":251485.369893,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/4-clip {"requestId":"5780.334","timestamp":251485.480387,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/look.json {"requestId":"5780.335","timestamp":251485.528701,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL a http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/a/done {"requestId":"5780.336","timestamp":251485.61589,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+00:26:04 shot 05-a-share
+00:26:04 A picked shots [5,7,2,0] link http://127.0.0.1:8802/works/2026-10-26-photo-booth/site/?s=WTOT7aaRqZzUD-PRjuaFGQ
+00:26:05 b connected
+00:26:09 shot 06-b-landing
+00:26:38 shot 07-b-shoot-ready
+00:26:42 shot 07-b-shoot-ghost-look
+00:26:42 B sees A's look: {"skin":1,"slim":2,"eye":2} ghost fx: true ghost urls: blob:http://127.0.0.1:8802/5d7 blob:http://127.0.0.1:8802/1d5 blob:http://127.0.0.1:8802/658 blob:http://127.0.0.1:8802/5c5
+00:26:44 shot 07-b-countdown
+00:26:44 countdown text: 2 step 1 / 8 pose 브이!
+00:26:55 shot 07-b-shot4-lastthumb
+00:26:55 ghost on shot 4: {"cutIdx":3,"step":"4 / 8","ghostSrcIdx":3,"clipShown":true}
+00:27:12 B ghost per shot (shot->A cut): 4->0 5->1 6->2 7->3
+00:27:21 07-b HQ at pick open: {"hq":[],"done":0,"busy":true}
+00:27:30 shot 07-b-pick-open
+00:27:39 07-b HQ of 8 (shot:ms): ["ready 13821ms","1:2584ms","2:998ms","3:999ms","4:973ms","5:987ms","6:1046ms","7:976ms","8:971ms","total 23373ms"] segment stats: {"state":"ready","loadMs":28947,"warmMs":13819,"err":"","cached":false,"fetchMs":4275,"createMs":23091}
+00:27:40 07-b 8 shots, tap -> pick: 39014 ms; sizes KB: [[23,131,301],[25,139,272],[24,133,232],[25,136,206],[23,131,139],[24,133,276],[23,131,321],[24,137,389]] stills px: 640x480 per-shot stats: [["live",289,0],["live",274,0],["live",206,0],["live",823,0],["live",2743,0],["live",262,0],["live",234,0],["live",539,0]]
+00:27:41 shot 08-b-pick-empty
+00:27:41 contrast 08-b pick: 11 texts, min 2.44 FAIL [{"t":"이 4장으로","ratio":2.44,"size":"21px"}] 
+00:27:41 pick: done disabled? true reshoot shown? true
+00:27:42 shot 08-b-pick-2
+00:27:43 after removing 2nd: [6,3,4] disabled: true
+00:27:44 pick order: [6,3,4,1] want [6,3,4,1] badges: -4-23-1- done enabled: true
+00:27:44 shot 08-b-pick-4
+00:27:47 08-b pick -> review (live cuts): 2269 ms; chip: - pairs: [2,3,0,1] shots dropped: 0 cuts: 4
+00:27:48 shot 08-b-review-live
+00:27:51 shot 08-b-review-look-default
+00:27:54 shot 08-b-review-look-picked
+00:27:54 08-b look: {"skin":2,"slim":0,"eye":1} beauty stats: {"still":[95,57,41,27,38,21,23,19,14,14,14,16,11,12,10,12],"det":[13101,13149,13189,13216,144,89.9,452.6,81,201.8,103,55.6,94.2]}
+00:27:54 contrast 08-b look: 19 texts, min 6.67 ok 
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/1-raw.jpg {"requestId":"38920.342","timestamp":251597.824596,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/1-cut.png {"requestId":"38920.343","timestamp":251597.882242,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/1-clip {"requestId":"38920.344","timestamp":251597.966721,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/2-raw.jpg {"requestId":"38920.345","timestamp":251598.025612,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/2-cut.png {"requestId":"38920.346","timestamp":251598.112742,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+00:27:55 ask shown: false
+00:27:55 B expected pairs: [2,3,0,1]
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/2-clip {"requestId":"38920.347","timestamp":251598.18654,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/3-raw.jpg {"requestId":"38920.348","timestamp":251598.240417,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/3-cut.png {"requestId":"38920.349","timestamp":251598.314717,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/3-clip {"requestId":"38920.350","timestamp":251598.394723,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/4-raw.jpg {"requestId":"38920.351","timestamp":251598.463928,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/4-cut.png {"requestId":"38920.352","timestamp":251598.53627,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/4-clip {"requestId":"38920.353","timestamp":251598.789228,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/pairs.json {"requestId":"38920.354","timestamp":251598.862359,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/look.json {"requestId":"38920.355","timestamp":251598.930521,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b http://127.0.0.1:8787/s/WTOT7aaRqZzUD-PRjuaFGQ/b/done {"requestId":"38920.356","timestamp":251599.064472,"type":"Fetch","errorText":"net::ERR_ABORTED","canceled":true}
+00:27:58 pairs.json on worker: 200 [2,3,0,1] D.pairs: [2,3,0,1]
+00:28:01 shot 09-b-done
+00:28:01 contrast done: 37 texts, min 5.14 ok 
+00:28:01 theme clean {"theme":"clean","frame":"white","font":"clean","outline":null,"pressed":"true,false,false"}
+00:28:03 shot 12-b-theme-clean-frame
+00:28:03 contrast theme clean: 37 texts, min 5.14 ok 
+00:28:04 sticker set clean 10
+00:28:05 stickers ["svg:c-check"]
+00:28:06 shot 12-b-theme-clean-sticker
+00:28:07 shot 12-b-theme-clean-caption
+NETFAIL b b:http://127.0.0.1:8802/ba0de98c-4429-45cc-b47f-c1cb6c49bd9f {"requestId":"38920.1311","timestamp":251645.138146,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+NETFAIL b b:http://127.0.0.1:8802/ba0de98c-4429-45cc-b47f-c1cb6c49bd9f {"requestId":"38920.1312","timestamp":251645.849052,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+00:28:44 theme video clean {"dur":6,"type":"video/mp4","size":3154448,"w":600,"h":1800} wait ms 35978
+00:28:46 theme y2k {"theme":"y2k","frame":"purikura","font":"y2k","outline":{"color":"#ff8fb6","style":"glitter","width":"normal"},"pressed":"false,true,false"}
+00:28:47 shot 12-b-theme-y2k-frame
+00:28:47 contrast theme y2k: 37 texts, min 5.14 ok 
+00:28:49 sticker set y2k 20
+00:28:50 stickers ["svg:c-check","svg:star"]
+00:28:50 shot 12-b-theme-y2k-sticker
+00:28:51 shot 12-b-theme-y2k-caption
+NETFAIL b b:http://127.0.0.1:8802/17ff2ec7-c34a-488a-9bc9-2a1db3ee5fda {"requestId":"38920.1375","timestamp":251668.597204,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+00:29:06 theme video y2k {"dur":6,"type":"video/mp4","size":3155382,"w":600,"h":1800} wait ms 14588
+NETFAIL b b:http://127.0.0.1:8802/17ff2ec7-c34a-488a-9bc9-2a1db3ee5fda {"requestId":"38920.1376","timestamp":251669.573027,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+00:29:08 theme diary {"theme":"diary","frame":"note","font":"diary","outline":{"color":"#ffffff","style":"dotted","width":"normal"},"pressed":"false,false,true"}
+00:29:10 shot 12-b-theme-diary-frame
+00:29:10 contrast theme diary: 37 texts, min 5.14 ok 
+00:29:11 sticker set diary 11
+00:29:12 stickers ["svg:c-check","svg:star","svg:d-tape-pink"]
+00:29:13 shot 12-b-theme-diary-sticker
+00:29:13 shot 12-b-theme-diary-caption
+NETFAIL b b:http://127.0.0.1:8802/a21adede-4f44-4855-8b1c-4cd0c695fc07 {"requestId":"38920.1422","timestamp":251693.936271,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+00:29:32 theme video diary {"dur":6,"type":"video/mp4","size":3124082,"w":600,"h":1800} wait ms 17746
+NETFAIL b b:http://127.0.0.1:8802/a21adede-4f44-4855-8b1c-4cd0c695fc07 {"requestId":"38920.1423","timestamp":251694.798323,"type":"Media","errorText":"net::ERR_ABORTED","canceled":true}
+00:30:02 decorate speed ms: .theme-y2k 252 | .theme-diary 303 | .theme-clean 192 | #frameChips .tile:nth-child(2) 3 | #frameChips .tile:nth-child(3) 4 | .theme-diary 341 | .theme-y2k 199 | .theme-clean 102 | #olColors .pill:nth-child(3) 61 | #olColors .pill:nth-child(5) 24 | #olColors .pill:nth-child(1) 70
+00:30:02 look.json a/b on worker: 200 {"skin":1,"slim":2,"eye":2} | 200 {"skin":2,"slim":0,"eye":1} D.look: {"a":{"skin":1,"slim":2,"eye":2},"b":{"skin":2,"slim":0,"eye":1}}
+00:30:03 shot 09-b-done-looktab
+00:30:04 done 보정 change -> strip ms: 1073 D.look: {"a":{"skin":0,"slim":2,"eye":2},"b":{"skin":2,"slim":0,"eye":1}}
+00:30:05 done 보정 change 2 -> strip ms: 315
+00:30:07 shot 09-b-done-look-changed
+00:30:07 video: {"key":"booth-pink|note|original||{\"color\":\"#ffffff\",\"style\":\"dotted\",\"width\":\"normal\"}|{\"a\":{\"skin\":1,\"slim\":2,\"eye\":2},\"b\":{\"skin\":2,\"slim\":0,\"eye\":1}}|[{\"kind\":\"svg\",\"id\":\"c-check\",\"x\":248,\"y\":848,\"s\":170,\"r\":0},{\"kind\":\"svg\",\"id\":\"star\",\"x\":274,\"y\":874,\"s\":170,\"r\":0},{\"kind\":\"svg\",\"id\":\"d-tape-pink\",\"x\":300,\"y\":900,\"s\":170,\"r\":0}]||diary|diary","size":3124082,"type":"video/mp4"}
+00:30:34 story: {"size":1865983}
+00:30:35 pair check (cell: diff vs a.cuts[pairs[i]], diff vs identity): 0:0/4.89 1:0/3.98 2:0/4.88 3:0/3.99
+00:30:35 B logs:
+log: I1028 00:26:12.155000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:26:12.166000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+warning: W1028 00:26:12.522000 1880752 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+log: I1028 00:26:12.768000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:26:12.770000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+log: I1028 00:26:24.382000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:26:24.383000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+log: I1028 00:26:28.221000 1880752 segmentation_postprocessor_gl.cc:388] NONE activation function chosen on GPU
+warning: W1028 00:26:34.153000 1880752 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+log: I1028 00:26:34.396000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:26:34.399000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+log: I1028 00:27:27.678000 1880752 segmentation_postprocessor_gl.cc:380] SOFTMAX activation function chosen on GPU
+warning: W1028 00:27:30.077000 1880752 reusable_pool.h:143] Maximum number of pooled buffers reached. Consider increasing MultiPoolOptions.keep_count
+00:30:42 A D.pairs: [2,3,0,1]
+00:30:44 shot 10-a-done
+00:30:46 deleted ok
+00:30:46 ERROR themes run: done (no cached revisit)
+00:30:46 A logs:
+warning: W1028 00:24:11.844000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+log: I1028 00:24:15.716000 1880752 segmentation_postprocessor_gl.cc:388] NONE activation function chosen on GPU
+log: I1028 00:24:56.595000 1880752 segmentation_postprocessor_gl.cc:380] SOFTMAX activation function chosen on GPU
+warning: W1028 00:24:57.859000 1880752 reusable_pool.h:143] Maximum number of pooled buffers reached. Consider increasing MultiPoolOptions.keep_count
+warning: W1028 00:25:44.565000 1880752 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+log: I1028 00:25:44.736000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:25:44.737000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+warning: W1028 00:30:37.806000 1880752 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+log: I1028 00:30:37.983000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:30:37.986000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
+warning: W1028 00:30:39.834000 1880752 face_landmarker_graph.cc:180] Sets FaceBlendshapesGraph acceleration to xnnpack by default.
+log: I1028 00:30:40.036000 1880752 gl_context.cc:374] GL version: 3.0 (OpenGL ES 3.0 (WebGL 2.0 (OpenGL ES 3.0 Chromium))), renderer: WebKit WebGL
+warning: W1028 00:30:40.037000 1880752 gl_context.cc:1060] OpenGL error checking is disabled
+log: Graph successfully started running.
+error: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.
