@@ -7,9 +7,10 @@ const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 const Q = new URLSearchParams(location.search);
 const MOCK = Q.has("mock");                         // dev: no MediaPipe, placeholder cut-outs
-// Round 4 (booth style): one tap shoots 8 in a row, SECS each; then pick 4 (tap order = strip order)
-const SHOTS = 8, SECS = Q.has("fast") ? 4 : 5;      // 5 s each (operator 10-27); ?fast = tests only
-const POSES = ["브이!", "반쪽 하트", "꽃받침", "깜짝 놀란 척", "윙크 한 번", "볼 빵빵", "친구 쪽 쳐다보기", "마음대로!"];
+// Round 4 (booth style): one tap shoots SHOTS in a row, SECS each; then pick 4 (tap order = strip order).
+// Round 7: 6 shots (was 8, operator 10-28); B's shot j floats A's cut j % 4
+const SHOTS = 6, SECS = Q.has("fast") ? 4 : 5;      // 5 s each (operator 10-27); ?fast = tests only
+const POSES = ["브이!", "반쪽 하트", "꽃받침", "깜짝 놀란 척", "윙크 한 번", "마음대로!"];
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
 // strip cell aspect per shape (compose LAYOUTS CW:CH): 가로 = wide cells, 세로 = tall 3:4 cells (Round 6 #9)
 const CELLS = { wide: 552 / 382, tall: 426 / 568 };
@@ -39,11 +40,10 @@ let env = { app: "브라우저", inApp: false, isIOS: false, framed: top !== sel
 const S = {
   id: Q.get("s"), side: null, token: null,      // side = what this page shoots/uploads ("a" | "b")
   cuts: [], sent: new Set(), ghost: [],          // the 4 picked Cuts (strip order), uploaded names, A's cut-out URLs (B's overlay)
-  shots: [], shotUrls: [], pick: [], pairs: null, // all 8 shots + their raw URLs until the pick; B: A's cut per cell
+  shots: [], shotUrls: [], pick: [], pairs: null, // all SHOTS shots + their raw URLs until the pick; B: A's cut per cell
   redo: false, hq: [],                           // 전체 다시 찍기 used (once per page); HQ cut path per cell
   view: "a", pickBg: null, flipP: null,           // B's shoot view (Round 6 #10); pick-screen background; camera switch in flight
   cam: null, cap: null, bound: false, busy: false,
-  movable: false, lay: { x: 0, y: 0, scale: 1 },  // A's choice (opts.movable); B's placement of A, fractions of the cell
   shape: "wide",                                 // A's 가로 ("wide") / 세로 ("tall") pick, B follows it (opts.shape)
   ui: document.body.dataset.ui === "cute" ? "cute" : "film",   // A's UI theme (screen 0), B follows it (opts.ui); index.html sets it from ?ui= before paint
 };
@@ -57,8 +57,7 @@ function setUi(u) {
   document.body.dataset.ui = S.ui;
 }
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
-const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
-const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 5초";
+const HINT_SHOOT = `셔터 한 번이면 ${SHOTS}장을 이어서 찍어 · 한 장에 5초`;
 // the link carries a cute theme in the query too, so B's page (and the Chrome hand-off) paints in it before the Worker answers
 const uiQ = () => S.ui === "cute" ? "&ui=cute" : "";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}${uiQ()}`;
@@ -88,7 +87,7 @@ function paintHead(sec, name) {
   if (!h) return;
   if (S.ui !== "film" || B.step == null) return h.replaceChildren();
   const k = +B.step, tall = S.shape === "tall";
-  const tag = { mode: "모양", shoot: k === 2 ? "보정" : S.side === "b" ? "친구 옆" : `${tall ? "세로" : "가로"} · 8장`, pick: "8장 → 4장", upload: "올리기",
+  const tag = { mode: "모양", shoot: k === 2 ? "보정" : S.side === "b" ? "친구 옆" : `${tall ? "세로" : "가로"} · ${SHOTS}장`, pick: `${SHOTS}장 → 4장`, upload: "올리기",
     share: { wait: "내 링크", done: "완성" }[S.shareMode] || "링크", handoff: "크롬으로", done: `${tall ? "세로" : "가로"} 네컷` }[name] || "";
   h.innerHTML = (sec.querySelector(".topbar") ? "" : `<div class="utop"><span>D:OT LAB</span><span>${tag}</span></div>`)
     + `<div class="rail">${RAIL[B.flow].map((l, i) => `<u class="${i < k ? "dn" : i === k ? "on" : ""}">${l}</u>`).join("")}</div>`;
@@ -167,7 +166,6 @@ async function route() {
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
   if (st.error) return expired(st.error);
-  S.movable = !!st.opts?.movable;
   setShape(st.opts?.shape);
   setUi(st.opts?.ui ?? S.ui);        // a Worker without opts.ui (before Round 6) keeps the link's ?ui=
   const role = api.loadRole(S.id)?.role;
@@ -237,11 +235,9 @@ async function startShoot(side) {
   S.side = side; S.sent.clear();
   show("shoot");
   resetShoot();
-  S.lay = { x: 0, y: 0, scale: 1 }; applyLay();
-  const hint = side === "a" ? HINT_A : S.movable ? HINT_B : "";
+  // Round 7: nobody moves A any more, so B has no hint (no mover); a chip with no text never shows
+  const hint = side === "a" ? HINT_A : "";
   $("hintText").textContent = hint; $("hintChip").hidden = !hint || S.hintOff === side;
-  $("mover").hidden = side !== "b" || !S.movable;
-  $("movableBox").hidden = side !== "a"; movableSub();
   setSound(soundOn);
   $("camwait").hidden = false; $("camwait").textContent = "카메라 켜는 중…";
   try { ctxA(); } catch {}          // in the tap: the shutter sound plays even with the beeps off
@@ -262,17 +258,13 @@ async function startShoot(side) {
   $("camwait").hidden = true;
   syncMirror();
   if (!S.bound) {
-    S.cam.bindZoomFocus($("stage")); bindMover(); S.bound = true;
+    S.cam.bindZoomFocus($("stage")); S.bound = true;
     new ResizeObserver(fitStage).observe($("stage"));
     video.addEventListener("resize", fitStage);
   }
   $("viewPick").hidden = side !== "b";
   if (side === "b") {
     await S.ghostP; await S.ghostRawP; setView(S.view);
-    if (S.movable && !S.anchors) load("compose").then(async C => {
-      S.anchors = C.layoutAnchor && await Promise.all(S.ghost.map(u => u && loadImg(u).then(i => C.layoutAnchor(i, cellAsp()))));
-      applyLay();
-    }).catch(e => console.warn("[booth] layout anchors", e));
   }
 }
 // Lay the camera out so the strip-cell crop (the whole photo) spans the stage width and sits in its middle.
@@ -304,58 +296,8 @@ function fitStage() {
   px($("crop"), S.cropIn);
   S.cropBox = { x: left + (fr.sx + cx) * k, y: top + (fr.sy + cy) * k, w: cw * k, h: ch * k };   // crop inside the stage
   px($("snap"), S.cropBox);
-  applyLay();
 }
-// ---- B moves / resizes A (only when A allowed it). Same maths as compose: scale about A's anchor (compose
-// layoutAnchor = A's centre-bottom in the cell, per cut), then shift by (x * cell width, y * cell height).
-const LIM = { xy: 0.8, lo: 0.4, hi: 2.5 };
 const isMoved = l => Math.abs(l.x) > 0.002 || Math.abs(l.y) > 0.002 || Math.abs(l.scale - 1) > 0.005;
-const layOf = () => S.side === "b" && S.movable && isMoved(S.lay)
-  ? { a: Object.fromEntries(Object.entries(S.lay).map(([k, v]) => [k, Math.round(v * 1e4) / 1e4])) } : null;
-function applyLay() {
-  const c = S.cropIn, { x, y, scale } = S.lay, an = S.anchors?.[S.cutIdx % 4] || { x: 0.5, y: 1 };
-  for (const el of [$("ghost")]) {
-    el.style.transformOrigin = c ? `${c.x + an.x * c.w}px ${c.y + an.y * c.h}px` : "";
-    el.style.transform = c && isMoved(S.lay) ? `translate(${x * c.w}px, ${y * c.h}px) scale(${scale})` : "";
-  }
-  $("layReset").hidden = !(S.side === "b" && S.movable && isMoved(S.lay));
-}
-function setLay(l) {
-  const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  S.lay = { x: cl(l.x, -LIM.xy, LIM.xy), y: cl(l.y, -LIM.xy, LIM.xy), scale: cl(l.scale, LIM.lo, LIM.hi) };
-  applyLay();
-}
-// Pointer events (touch + mouse), one finger drags, two fingers pinch; the wheel resizes on a computer.
-// The layer swallows its touches so the stage's camera pinch-zoom doesn't fire too (README in-app fixes kept here).
-function bindMover() {
-  const m = $("mover"), pts = new Map();
-  let g = null;
-  const mid = () => { const p = [...pts.values()]; return p.length > 1
-    ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) } : { ...p[0], d: 0 }; };
-  const begin = () => { g = pts.size ? { lay: { ...S.lay }, at: mid() } : null; };
-  m.addEventListener("pointerdown", e => {
-    if (e.pointerType === "mouse" && e.button) return;
-    m.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); begin();
-    $("hintChip").hidden = true;
-  });
-  m.addEventListener("pointermove", e => {
-    if (!g || !pts.has(e.pointerId) || !S.cropBox) return;
-    pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const now = mid(), k = g.at.d && now.d ? now.d / g.at.d : 1;
-    setLay({ x: g.lay.x + (now.x - g.at.x) / S.cropBox.w, y: g.lay.y + (now.y - g.at.y) / S.cropBox.h, scale: g.lay.scale * k });
-  });
-  const end = e => { pts.delete(e.pointerId); begin(); };
-  m.addEventListener("pointerup", end); m.addEventListener("pointercancel", end);
-  m.addEventListener("wheel", e => { e.preventDefault(); setLay({ ...S.lay, scale: S.lay.scale * Math.exp(-e.deltaY / 600) }); }, { passive: false });
-  for (const t of ["touchstart", "touchmove", "touchend"])
-    m.addEventListener(t, e => { e.stopPropagation(); if (t !== "touchend") e.preventDefault(); if (scrollY < 1) scrollTo(0, 1); }, { passive: false });
-}
-function movableSub() {
-  // review r3 #5: say who moves what, in plain words
-  $("movableSub").textContent = $("movable").checked ? "켜 두면 친구가 사진 속 나를 끌어서 옮기고 크기도 바꿀 수 있어"
-    : "꺼 두면 내가 찍힌 자리 그대로 들어가";
-}
-$("movable").addEventListener("change", movableSub);
 function syncMirror() {
   $("video").classList.toggle("mirror", S.cam.camState.mirror);
   document.querySelector('[data-act="mirror"]').setAttribute("aria-pressed", S.cam.camState.mirror);
@@ -404,7 +346,7 @@ function handoff(title, text) {
     btn2: "여기서 다시 해 보기", onBtn2: () => startShoot(S.side) });
 }
 
-// shot i of 8; B sees A's cut (i % 4): A's four picked cuts float twice around
+// shot i of SHOTS; B sees A's cut (i % 4): A's four picked cuts, then the first ones again
 function setCut(i, pop = true) {
   S.cutIdx = i;
   $("step").textContent = `${Math.min(i + 1, SHOTS)} / ${SHOTS}`;
@@ -415,7 +357,6 @@ function setCut(i, pop = true) {
   g.hidden = !src; if (src) g.src = src;
   $("ghostBg").hidden = !room; if (room) $("ghostBg").src = room;
   $$("#pips i").forEach((t, n) => { t.className = n < i ? "has" : n === i ? "now" : ""; });
-  applyLay();
 }
 function onTick(n) {
   const c = $("count");
@@ -437,7 +378,7 @@ async function shootIdx(i) {
   snap.hidden = true;
   const last = $("lastShot"); last.src = url; last.hidden = false; restart(last, "land");
 }
-// One tap shoots the 8 straight through (Round 6: no stop button), then the pick. After an error it goes on from the
+// One tap shoots all SHOTS straight through (Round 6: no stop button), then the pick. After an error it goes on from the
 // next shot.
 async function runShoot() {
   if (S.busy || !S.cap) return;
@@ -464,8 +405,8 @@ async function runShoot() {
   prepAndPick();
 }
 
-// ---- HQ cut-out of all 8 shots (operator 10-27): starts right after shot 8, before the pick ------------------------
-// warmStill (the one GPU freeze) then cutStill shot by shot, 1..8; after the pick only the 4 picked still pending.
+// ---- HQ cut-out of all shots (operator 10-27): starts right after the last shot, before the pick ---------------------
+// warmStill (the one GPU freeze) then cutStill shot by shot, 1..SHOTS; after the pick only the 4 picked still pending.
 // Each finished cut replaces the live one in place (grid cell / review cell crossfade). Stops once the upload starts:
 // files cannot change after `done` (Worker 409).
 async function upgradeAll() {
@@ -494,9 +435,9 @@ async function upgradeAll() {
     if (gen === S.gen) { S.hqBusy = false; S.hq.push(`total ${Math.round(performance.now() - t0)}ms`); onHQ(null, shots); }
   }
 }
-// progress everywhere it shows: the "8장 준비 중" overlay, the grid cell (+ its 다듬는 중 badge), the review chip
+// progress everywhere it shows: the "6장 준비 중" overlay, the grid cell (+ its 다듬는 중 badge), the review chip
 function onHQ(c, shots) {
-  $("prepText").textContent = `8장 준비 중… ${shots.filter(x => x.hq).length}/8`;
+  $("prepText").textContent = `${SHOTS}장 준비 중… ${shots.filter(x => x.hq).length}/${SHOTS}`;
   const j = S.shots.indexOf(c);
   if (j >= 0 && document.body.dataset.screen === "pick") paintCell(j, true);
   if (!c) $$("#pickGrid .pk").forEach(b => b.classList.remove("pending"));
@@ -509,11 +450,11 @@ function hqChip() {
   $("hqChip").hidden = !(S.hqBusy && left && S.cuts.length);
   $("hqChip").textContent = `누끼 다듬는 중 ${4 - left}/4`;
 }
-// After shot 8: a short "8장 준비 중" (at most 5 s, less when all 8 are done), then the pick.
+// After the last shot: a short "6장 준비 중" (at most 5 s, less when all are done), then the pick.
 async function prepAndPick() {
   S.hqFrozen = false;
   if (S.cap.hqCut) {
-    $("prepText").textContent = "8장 준비 중… 0/8"; $("prepOv").hidden = false;
+    $("prepText").textContent = `${SHOTS}장 준비 중… 0/${SHOTS}`; $("prepOv").hidden = false;
     S.hqP = upgradeAll();
     await Promise.race([S.hqP, sleep(5000)]);
     $("prepOv").hidden = true;
@@ -521,7 +462,7 @@ async function prepAndPick() {
   pickScreen();
 }
 
-// ---- pick 4 of 8 (no time limit; tap order = strip order; one 전체 다시 찍기) -----------------------------------------
+// ---- pick 4 of SHOTS (no time limit; tap order = strip order; one 전체 다시 찍기) -----------------------------------------
 // One cell composed like the result, on the pick screen's background (Round 6 #1/#6): A = own room on / off, B = the
 // friend's room / mine / none; "none" = the plain booth backdrop. On B's phone B + the paired A cut in front (B's move
 // of A applied), layer order A, B, background (#7). The strip crop is compose's cellCrop.
@@ -535,7 +476,7 @@ async function cellCanvas(cut, ai, look = null) {   // look: Round 5 보정 (rev
   if (S.side === "b" && ai != null && S.ghost[ai] && C.drawCell) {
     const aCut = await loadImg(S.ghost[ai]), aRaw = S.ghostRaw?.[ai] ? await loadImg(S.ghostRaw[ai]) : aCut;
     C.drawCell(x, { x: 0, y: 0, w, h }, 0, { a: { cuts: [{ raw: aRaw, cut: aCut, clip: null }] },
-      b: { cuts: [{ raw, cut: cutImg, clip: null }] }, bg, layout: layOf() });
+      b: { cuts: [{ raw, cut: cutImg, clip: null }] }, bg });
   } else {
     const B = C.BACKGROUNDS?.find(b => b.id === bg), img = bg === "a" ? raw : cutImg;
     if (bg !== "a") { if (B?.draw) B.draw(x, w, h); else { x.fillStyle = "#ffc2d6"; x.fillRect(0, 0, w, h); } }
@@ -545,15 +486,17 @@ async function cellCanvas(cut, ai, look = null) {   // look: Round 5 보정 (rev
   }
   return c;
 }
-function pickBgRow() {
+// the background buttons: the pick screen (#pickBg, redraws the grid) and the retouch review (#revBg, Round 7 #3,
+// redraws the four cells); one S.pickBg, so the pick's choice carries over (and on into decorate)
+function pickBgRow(box = "pickBg", redraw = () => (async () => { for (let j = 0; j < S.shots.length; j++) await paintCell(j, false); })()) {
   S.pickBg ??= S.side === "b" ? (S.view === "b" ? "a" : "b") : "a";     // B: what the shoot view showed
-  $("pickBg").replaceChildren(...PICK_BG[S.side].map(([v, label]) => {
+  $(box).replaceChildren(...PICK_BG[S.side].map(([v, label]) => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: label });
     b.dataset.bg = v; b.setAttribute("aria-pressed", S.pickBg === v);
     b.onclick = () => {
       if (S.pickBg === v) return;
-      S.pickBg = v; pickBgRow();
-      (async () => { for (let j = 0; j < S.shots.length; j++) await paintCell(j, false); })().catch(e => console.warn("[booth] grid", e));
+      S.pickBg = v; pickBgRow(box, redraw);
+      redraw().catch(e => console.warn("[booth] bg redraw", e));
     };
     return b;
   }));
@@ -620,7 +563,7 @@ function pickDone() {
   const keep = S.pick.slice();
   S.cuts = keep.map(j => S.shots[j]);
   S.pairs = S.side === "b" ? keep.map(j => j % 4) : null;
-  // the 4 unpicked shots go now (8 stills + 8 clips are a lot for a phone); the picked URLs stay for the review
+  // the unpicked shots go now (stills + clips are a lot for a phone); the picked URLs stay for the review
   S.shotUrls.forEach((u, j) => keep.includes(j) || URL.revokeObjectURL(u));
   S.shots.forEach((c, j) => { if (!keep.includes(j)) { c.raw = c.cut = c.clip = null; c.hqFail = true; } });
   S.shots = []; S.shotUrls = keep.map(j => S.shotUrls[j]); S.cellCv = [];
@@ -633,6 +576,7 @@ function pickDone() {
   $("stage").classList.remove("viewb"); S.cutIdx = null;
   hqChip();
   S.revQ = 1; RZ.reset();
+  pickBgRow("revBg", review);
   reviewLook();      // Round 5 보정
   review().catch(e => console.warn("[booth] review", e));
 }
@@ -785,9 +729,10 @@ function buildLook() {
 // D.own[me] = 4 x { x, y, scale } (fractions of the cell; compose `own`, same maths as B's move of A). Only this phone's
 // own side, kept on this device per link (localStorage), never uploaded. 보정 tab: a lone finger on a cell moves me, the
 // slider sizes me; the target is all 4 cells or one (touching another cell then switches to it).
-const OWN_LIM = { xy: 0.6, lo: 0.5, hi: 1.5 };
+const OWN_LIM = { xy: 0.6, lo: 0.5, hi: 1.5 }, OWN_IN = 0.15, OWN_Y = 0.3;   // anchor x kept in [0.15, 0.85] of the cell
 const ownKey = () => `booth:own:${S.id}`;
-const mySide = () => { const r = me(); return r === "a" || r === "b" ? r : null; };
+// Round 7: only B sizes / places itself (A moved over A's own room showed A twice, operator 10-28)
+const mySide = () => me() === "b" ? "b" : null;
 const ownTargets = () => (D.ownCell >= 0 ? [D.ownCell] : [0, 1, 2, 3]);
 function ownList() { const s = mySide(); return D.own[s] ||= [0, 1, 2, 3].map(() => ({ x: 0, y: 0, scale: 1 })); }
 function ownLoad() {
@@ -805,12 +750,16 @@ function ownWhen(e) {
   const rs = rectsOf(D.frame), j = rs.findIndex(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   if (j < 0) return false;
   if (D.ownCell >= 0 && D.ownCell !== j) { D.ownCell = j; buildOwn(); }
-  ownG = { w: rs[j].w * k, h: rs[j].h * k, start: JSON.stringify(ownList()) };
+  // Round 7 #9: a drag pushed me right out of the cell (B stands near an edge: +0.44 of the cell and I was gone). My
+  // anchor (centre-bottom, compose layoutAnchor) stays inside the middle of each cell
+  const an = rs.map((r, i) => C.layoutAnchor?.(D.media.b.cuts[i].cut, r.w / r.h) || { x: 0.5, y: 1 });
+  ownG = { w: rs[j].w * k, h: rs[j].h * k, an, start: JSON.stringify(ownList()) };
   return true;
 }
 function ownMove(dx, dy) {
-  const l = ownList(), c = v => Math.min(OWN_LIM.xy, Math.max(-OWN_LIM.xy, v));
-  for (const j of ownTargets()) l[j] = { ...l[j], x: c(l[j].x + dx / ownG.w), y: c(l[j].y + dy / ownG.h) };
+  const l = ownList(), c = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  for (const j of ownTargets()) { const ax = ownG.an[j].x;
+    l[j] = { ...l[j], x: c(l[j].x + dx / ownG.w, Math.max(-OWN_LIM.xy, OWN_IN - ax), Math.min(OWN_LIM.xy, 1 - OWN_IN - ax)), y: c(l[j].y + dy / ownG.h, -OWN_Y, OWN_Y) }; }
   ownPaint();
 }
 function ownCancel() { D.own[mySide()] = JSON.parse(ownG.start); ownG = null; ownPaint(); }
@@ -871,8 +820,8 @@ async function upload() {
   try {
     if (S.side === "a" && !S.token) {
       const tk = api.newToken();
-      S.movable = $("movable").checked;
-      const { id } = await api.create(tk, { movable: S.movable, shape: S.shape, ui: S.ui });
+      // Round 7: no opts.movable (Worker default false), so the Worker refuses layout.json for new links
+      const { id } = await api.create(tk, { shape: S.shape, ui: S.ui });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
       history.replaceState(null, "", `?s=${id}${uiQ()}${MOCK ? "&mock=1" : ""}`);
@@ -886,8 +835,6 @@ async function upload() {
         await api.put(S.id, S.side, n, blob, type, S.token);
         S.sent.add(n);
       }
-      const lay = layOf();      // B's placement of A, before `done` so A's device finds it
-      if (lay) await api.put(S.id, "b", "layout.json", new Blob([JSON.stringify(lay)], { type: "application/json" }), "application/json", S.token);
       if (S.side === "b" && S.pairs) await api.put(S.id, "b", "pairs.json", new Blob([JSON.stringify(S.pairs)], { type: "application/json" }), "application/json", S.token);
       await api.put(S.id, S.side, "look.json", new Blob([JSON.stringify(S.look)], { type: "application/json" }), "application/json", S.token);   // Round 5 보정
       const r = await api.done(S.id, S.side, S.token);
@@ -936,7 +883,7 @@ function shareScreen(mode) {
   $("shareTitle").innerHTML = waiting ? "친구가 아직<br><em>안 찍었어요</em>" : fin ? "완성됐어!<br><em>친구한테 알려 주자</em>" : "다 올렸어!<br><em>친구한테 보내자</em>";
   $("shareLead").innerHTML = waiting ? "이 링크를 친구한테 보내 줘.<br>친구가 찍으면 이 링크에서 바로 열려."
     : fin ? "이 링크를 보내면 친구도 우리 네컷을 열어 봐.<br>꾸미기는 각자 폰에서 따로, 저장도 각자 해."
-    : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>${S.movable ? "친구가 너를 옮기고 크기를 바꿀 수 있어." : "너는 찍은 자리에 고정돼."}<br>둘 다 찍으면 사진이랑 영상이 열려.`;
+    : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>너는 찍은 자리 그대로 들어가.<br>둘 다 찍으면 사진이랑 영상이 열려.`;
   $("recheck").hidden = !waiting;
   $("testB").hidden = !(TEST_B && waiting);
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
@@ -985,7 +932,7 @@ async function del(box, yes) {
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
-  layout: null, pairs: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
+  pairs: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
   outline: { color: "#ffffff", style: "solid", width: "normal" },   // review r3 #7: white solid normal by default (clean theme)
   stickers: [], sel: -1, pkey: null,     // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
   own: null, ownCell: -1, ownMoved: false,   // Round 6: my own size / place per cell (app.js "my own size")
@@ -994,11 +941,6 @@ const D = { bg: null, frame: null, filter: "original", caption: "", media: null,
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
 const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
 const OL_WIDTHS = [{ id: "thin", label: "얇게" }, { id: "normal", label: "보통" }, { id: "thick", label: "두껍게" }];
-async function loadLayout() {
-  if (!S.movable) return null;
-  if (S.side === "b" && S.cuts.length === 4) return layOf();
-  try { return await (await fetch(await api.blobUrl(S.id, "b", "layout.json"))).json(); } catch { return null; }
-}
 // B's cell i = B's pick i + A's cut pairs[i] (pairs.json; none = identity, e.g. Round 3 links)
 async function loadPairs() {
   if (S.side === "b" && S.cuts.length === 4) return S.pairs;
@@ -1045,8 +987,9 @@ async function doneScreen(note = "") {
   $("s-done").querySelector(".del").hidden = !token();
   try {
     [C, FR, FI] = await Promise.all([load("compose", mockCompose), load("frames", mockFrames), load("filters", mockFilters)]);
-    [D.media, D.layout, D.pairs] = await Promise.all([
-      Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadLayout(), loadPairs()]);
+    // Round 7: an old link's layout.json (B's move of A) is never read
+    [D.media, D.pairs] = await Promise.all([
+      Promise.all(["a", "b"].map(async s => [s, await sideMedia(s)])).then(Object.fromEntries), loadPairs()]);
     // Round 5 보정: each side's look.json (my own picks when I just shot)
     D.look ||= Object.fromEntries(await Promise.all(["a", "b"].map(async s =>
       [s, S.side === s && S.cuts.length === 4 ? { ...S.look } : await fetchLook(s)])));
@@ -1098,12 +1041,8 @@ function bgSwatch(bg) {
   bg.draw(c.getContext("2d"), 64, 64);
   return `center / cover url(${c.toDataURL()})`;
 }
-// A moved by B no longer lines up with A's own room: compose says which backgrounds still work
-function bgOk(id) {
-  if (C.bgAllowed) { const r = C.bgAllowed(D.layout); return Array.isArray(r) ? r.includes(id) : typeof r === "boolean" ? id !== "a" || r : r?.[id] ?? true; }
-  return !(id === "a" && D.layout && isMoved(D.layout.a));
-}
-const bgOkOwn = id => bgOk(id) && !D.own?.[id]?.some(isMoved);
+// my own room behind a moved me would show me twice
+const bgOkOwn = id => !D.own?.[id]?.some(isMoved);
 function buildTiles() {
   const bgs = C.BACKGROUNDS.filter(b => bgOkOwn(b.id)), frames = FR.FRAMES, filters = FI.FILTERS;
   if (D.bg && !bgs.includes(D.bg)) D.bg = null;
@@ -1221,7 +1160,7 @@ function later() {          // the saved photo soon, the moving strip after the 
   if (D.wantVideo || D.wantStory) vT = setTimeout(videoJob, VIDEO_IDLE);
 }
 const opts = (o = {}) => ({ shape: S.shape, a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), font: D.font, layout: D.layout, pairs: D.pairs, own: D.own, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
+  caption: D.caption.trim(), font: D.font, pairs: D.pairs, own: D.own, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
   mattes: D.mattes, ...o });
 const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers), JSON.stringify(D.own),
   D.mattes ? "hq" : "", D.theme, D.font].join("|");
@@ -1600,6 +1539,7 @@ const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip
 const ACT = {
   pickUi: b => { setUi(b.dataset.ui); show("landA"); },   // screen 0: A's theme, then A's cover
   startA: () => modeScreen(),
+  toTheme: () => show("theme"),            // Round 7 #2: "‹ 테마" on A's cover and the mode pick
   modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
   mine: () => shareScreen("wait"),
@@ -1625,7 +1565,7 @@ const ACT = {
     const busy = S.busy, v = $("video"), front = S.cam.camState.front;
     if (!busy) { $("camwait").hidden = false; $("camwait").textContent = "카메라 바꾸는 중…"; }
     // mid-run the countdown goes on; the shutter waits for this (capture hold) and a failed switch goes back to the
-    // camera it came from, so the 8 shots keep running
+    // camera it came from, so the shots keep running
     S.flipP = S.cam.flipCam(v)
       .catch(e => busy ? S.cam.startCam(v, front ? "user" : "environment") : Promise.reject(e))
       .then(() => { fitStage(); syncMirror(); }, e => camError(e))
@@ -1655,7 +1595,6 @@ const ACT = {
   },
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
-  layReset: () => setLay({ x: 0, y: 0, scale: 1 }),
   again: fresh,
 };
 document.addEventListener("click", e => {

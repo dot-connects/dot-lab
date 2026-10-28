@@ -70,6 +70,9 @@ body[data-ui="cute"] .topbar { border-bottom: 0; padding-bottom: 0; }
 body[data-ui="cute"] :is(.backchip, .topbar > span) { font: 700 25px/1 var(--title); letter-spacing: 0; color: var(--ink); background: #fff; border-radius: 99px;
   padding: 5px 13px 1px; box-shadow: 0 3px 10px #6b3fc424; }
 body[data-ui="cute"] .topbar > span { background: var(--soft); box-shadow: none; }
+/* Round 7 #2: "‹ 테마" = the same white pill as the back link, a little squish when pressed (concept 3 buttons) */
+body[data-ui="cute"] button.backchip { min-height: 0; margin: 0; padding: 5px 15px 1px 11px; box-shadow: 0 3px 0 #e4dbfa, 0 3px 10px #6b3fc424; transition: transform 160ms var(--spring, ease); }
+body[data-ui="cute"] button.backchip:active { transform: translateY(2px) scale(.96); box-shadow: 0 1px 0 #e4dbfa; }
 body[data-ui="cute"] .trust { color: var(--sub); }
 body[data-ui="cute"] .trust svg { color: var(--deep); }
 body[data-ui="cute"] .camnote { border: 0; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px #6b3fc41f; }
@@ -158,7 +161,6 @@ body[data-ui="cute"] .stagehint { background: #fff; color: var(--ink); font-weig
 body[data-ui="cute"] .stagehint button { background: var(--acc); color: var(--acc-ink); border-radius: 99px; font-weight: 400; }
 body[data-ui="cute"] .hintchip { border: 0; border-radius: 99px; background: #fff; color: var(--ink); font-weight: 400; box-shadow: 0 3px 10px #6b3fc433; }
 body[data-ui="cute"] .hintchip i { background: var(--soft); color: var(--ink); border-radius: 50%; }
-body[data-ui="cute"] .resetchip { border: 0; border-radius: 99px; background: var(--deep); color: #fff; }
 body[data-ui="cute"] :is(.rec, .hqchip) { background: #fff; color: var(--ink); border-radius: 99px; box-shadow: 0 3px 10px #6b3fc433; }
 body[data-ui="cute"] .hqchip::before { border-color: var(--deep); border-right-color: transparent; }
 body[data-ui="cute"] .snap { border-radius: 10px; box-shadow: 0 0 0 4px #fff, 0 6px 14px 4px #6b3fc444; }
@@ -178,11 +180,8 @@ body[data-ui="cute"].busy .shutter, body[data-ui="cute"] .busy .shutter { backgr
 body[data-ui="cute"] .viewpick { margin-top: 0; }
 /* after shooting: 보정 + upload */
 body[data-ui="cute"] .hint { color: var(--ink); font: 700 30px/1 var(--title); }
-body[data-ui="cute"] :is(.switch, #lookMine, .hqask, .linkbox, .delask) { border: 0; border-radius: 17px; background: #fff; box-shadow: 0 5px 0 #e4dbfa, 0 9px 17px #6b3fc41f; }
-body[data-ui="cute"] .hqask, body[data-ui="cute"] .sw-text b { font-weight: 400; }
-body[data-ui="cute"] .knob { border: 0; border-radius: 99px; background: var(--soft); }
-body[data-ui="cute"] .knob::after { border-radius: 50%; background: #fff; box-shadow: 0 2px 4px #2a214040; top: 6px; left: 6px; }
-body[data-ui="cute"] .switch input:checked ~ .knob { background: var(--acc); }
+body[data-ui="cute"] :is(#lookMine, .hqask, .linkbox, .delask) { border: 0; border-radius: 17px; background: #fff; box-shadow: 0 5px 0 #e4dbfa, 0 9px 17px #6b3fc41f; }
+body[data-ui="cute"] .hqask { font-weight: 400; }
 body[data-ui="cute"] .look h3 { font: 700 30px/.9 var(--title); }
 body[data-ui="cute"] .look .lrow > span { font-weight: 400; }
 body[data-ui="cute"] :is(.hqask, .delask) .cta { font-size: 28px; padding: 10px 10px 6px; }
@@ -197,7 +196,7 @@ body[data-ui="cute"] .pill.sw { border-radius: 50%; background: var(--c); box-sh
 body[data-ui="cute"] .pill.sw[aria-pressed="true"] { background: var(--c); box-shadow: inset 0 0 0 2px #2a214033, 0 0 0 3px #fff, 0 0 0 6px var(--deep); }
 body[data-ui="cute"] .pill:disabled { background: #ece6fb; color: #574c6e; }
 
-/* ---- pick 4 of 8 ---- */
+/* ---- pick 4 of 6 ---- */
 body[data-ui="cute"] :is(.pickbody, .vf) { margin: 0 -8px; }
 body[data-ui="cute"] .pickhead { border-bottom: 0; padding-bottom: 0; }
 body[data-ui="cute"] .pickhead h2 { font-size: 44px; }

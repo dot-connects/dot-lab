@@ -89,6 +89,8 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 /* landing top bar (mockups .top): back link left, a mono label right, a thick rule under it */
 .topbar { display: flex; justify-content: space-between; align-items: center; border-bottom: var(--b) solid var(--line); padding-bottom: 6px; font: 700 13px var(--num); letter-spacing: .14em; }
 .topbar .backchip { padding: 2px 0; }
+/* Round 7 #2: "‹ 테마" (A's cover, mode pick) is a button styled like the back link, with a finger-sized hit area */
+button.backchip { appearance: none; border: 0; background: none; cursor: pointer; min-height: 40px; margin: -8px 0; padding-right: 16px; }
 
 /* decorations: lime with a black line, like the people art */
 .deco { position: absolute; fill: var(--acc); stroke: #000; stroke-width: 1.6px; pointer-events: none; overflow: visible; }
@@ -221,17 +223,12 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .viewpick { justify-content: center; margin-top: 8px; }
 /* the strip-cell crop (Round 6 #8): only it shows, everything outside is covered, so the view is exactly the cell */
 .crop { position: absolute; box-shadow: 0 0 0 100vmax #1a1a1a; outline: 2px solid #ffffffd9; outline-offset: -2px; }
-/* B moves / resizes A (when A allowed it): a layer over the camera that takes the drag and the pinch */
-.mover { position: absolute; inset: 0; z-index: 1; cursor: grab; touch-action: none; }
-.mover:active { cursor: grabbing; }
 /* a white chip carries its own dark text: film's dark shoot screen sets --ink to white (Round 7 #6: white on white) */
 .hintchip { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; width: max-content; max-width: calc(100% - 24px);
   appearance: none; border: 2px solid #000; display: flex; align-items: center; gap: 8px; background: #fff; color: #0d0d0d; font: 700 15px/1.35 var(--body);
   padding: 6px 6px 6px 12px; cursor: pointer; text-align: left; animation: fade .25s ease-out; }
 .hintchip i { font-style: normal; width: 22px; height: 22px; flex: none; display: grid; place-items: center; background: var(--acc); color: #000; font-size: 12px; }
-.resetchip { position: absolute; top: 12px; right: 12px; z-index: 3; appearance: none; border: 2px solid #fff; background: #000; color: #fff; font: 700 15px var(--body);
-  padding: 5px 12px; cursor: pointer; }
-.busy .hintchip, .shooting-done :is(.hintchip, .resetchip, .mover) { display: none; }
+.busy .hintchip, .shooting-done .hintchip { display: none; }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 .review { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2; animation: fade .2s ease-out; }
 .snap { position: absolute; object-fit: cover; z-index: 3; box-shadow: 0 0 0 3px #fff, 6px 6px 0 3px #000; pointer-events: none; }
@@ -256,7 +253,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 @keyframes flash { 0% { opacity: 0; } 8% { opacity: .95; } 100% { opacity: 0; } }
 .camwait { position: absolute; inset: 0; display: grid; place-items: center; color: #fff; font-size: 16px; font-weight: 700; z-index: 6; background: #000; }
 
-/* 8 shots: progress ticks under the stage (mockup .ticks), the last shot as a small thumbnail in the stage corner */
+/* 6 shots: progress ticks under the stage (mockup .ticks), the last shot as a small thumbnail in the stage corner */
 .pips { display: flex; justify-content: center; gap: 6px; height: 14px; align-items: center; }
 .pips i { width: 28px; height: 8px; background: #d4d4d4; transition: background-color .2s, transform .2s var(--spring); }
 .pips i.has { background: #000; }
@@ -266,7 +263,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .last.land { animation: land .3s var(--spring); }
 @keyframes land { from { transform: scale(.6) translateY(-16px); opacity: .3; } }
 
-/* pick 4 of 8: grid on the left, the strip as it fills on the right */
+/* pick 4 of 6: grid on the left, the strip as it fills on the right */
 .pickhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: var(--b) solid var(--line); padding-bottom: 8px; }
 .pickhead h2 { font-size: 25px; }
 .pickfine { text-align: left; margin-top: -4px; }
@@ -307,17 +304,6 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .hqask .cta { font-size: 16px; padding: 13px 10px; }
 .hqask .cta::after { display: none; }
 .hint { text-align: center; color: var(--ink); font-size: 16px; font-weight: 700; }
-/* A's choice before the link exists: may the friend move me? (off = fixed, like a booth celeb frame) */
-.switch { display: flex; align-items: center; gap: 12px; background: var(--paper); border: var(--b) solid var(--line); padding: 10px 12px; cursor: pointer; }
-.switch input { position: absolute; opacity: 0; width: 1px; height: 1px; }
-.sw-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
-.sw-text b { font-weight: 900; font-size: 16px; line-height: 1.3; letter-spacing: -.02em; }
-.sw-text small { font-size: 14px; color: var(--sub); line-height: 1.4; word-break: keep-all; }
-.knob { flex: none; width: 54px; height: 32px; background: #fff; border: var(--b) solid #000; position: relative; transition: background-color .18s; }
-.knob::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; background: #000; transition: transform .2s var(--spring); }
-.switch input:checked ~ .knob { background: var(--acc); }
-.switch input:checked ~ .knob::after { transform: translateX(22px); }
-.switch input:focus-visible ~ .knob { outline: 3px solid var(--ink); outline-offset: 3px; }
 .controls { display: flex; justify-content: center; align-items: flex-start; gap: 22px; padding: 2px 0 4px; }
 .tool { appearance: none; border: 0; background: none; padding: 0; width: 84px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 14px; font-weight: 700; color: var(--ink); cursor: pointer; }
 .tool i { width: 56px; height: 56px; background: var(--paper); border: var(--b) solid #000; display: grid; place-items: center; transition: background-color .18s; }
@@ -325,7 +311,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .tool[aria-pressed="true"] i { background: var(--acc); color: #000; }
 /* the one round thing: a booth shutter, lime with a black ring */
 .shutter { appearance: none; width: 84px; height: 84px; border-radius: 50%; border: 6px solid #fff; background: var(--acc); box-shadow: 0 0 0 4px #000, 4px 6px 0 4px #000; cursor: pointer; flex: none; }
-.busy .shutter { pointer-events: none; }   /* 8 shots run straight through; mirror + flip stay usable (Round 6) */
+.busy .shutter { pointer-events: none; }   /* the shots run straight through; mirror + flip stay usable (Round 6) */
 .busy .shutter { background: #e4e4e4; }
 
 /* upload */
@@ -533,7 +519,7 @@ body[data-tab="sticker"] .donetitle { display: none; }
 /* 세로: shoot thumbnail, pick grid + strip, mini strips, the decorate preview and frame tiles */
 body[data-shape="tall"] .last { width: 20%; aspect-ratio: 3 / 4; }
 body[data-shape="tall"] .pickbody { flex-direction: column; align-items: stretch; }
-body[data-shape="tall"] .pickgrid { grid-template-columns: repeat(4, 1fr); }
+body[data-shape="tall"] .pickgrid { grid-template-columns: repeat(3, 1fr); }   /* 6 shots: 3 x 2 */
 body[data-shape="tall"] .pk { aspect-ratio: 3 / 4; }
 body[data-shape="tall"] .pickstrip { width: auto; display: grid; grid-template-columns: repeat(4, 1fr); padding: 5px 5px 0; }
 body[data-shape="tall"] .pickstrip .mc, body[data-shape="tall"] .ministrip .mc { aspect-ratio: 3 / 4; }
@@ -635,13 +621,13 @@ body[data-ui="film"].busy .shutter { background: conic-gradient(var(--acc) 0 25%
 body[data-ui="film"] #s-shoot:not(.shooting-done) .pill { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
 body[data-ui="film"] #s-shoot:not(.shooting-done) .pill[aria-pressed="true"] { background: var(--acc); color: #000; box-shadow: inset 0 0 0 3px var(--acc); }
 
-/* pick 4 of 8 (A-5 / B-4): background as one segmented bar, the 8 in the film, picked = black + lime frame, number top right */
+/* pick 4 of 6 (A-5 / B-4): background as one segmented bar (also on the retouch review), the 6 in the film, picked = black + lime frame, number top right */
 body[data-ui="film"] .pickhead { border-bottom: 0; padding-bottom: 0; }
-body[data-ui="film"] #pickBg { flex-wrap: nowrap; gap: 0; }
-body[data-ui="film"] #pickBg::before { content: "배경"; font-weight: 900; font-size: 15px; margin-right: 10px; }
-body[data-ui="film"] #pickBg .pill { flex: 1; white-space: nowrap; padding: 0 6px; box-shadow: inset 0 0 0 2px #000; }
-body[data-ui="film"] #pickBg .pill + .pill { margin-left: -2px; }
-body[data-ui="film"] #pickBg .pill[aria-pressed="true"] { background: #000; color: #fff; }
+body[data-ui="film"] :is(#pickBg, #revBg) { flex-wrap: nowrap; gap: 0; }
+body[data-ui="film"] :is(#pickBg, #revBg)::before { content: "배경"; font-weight: 900; font-size: 15px; margin-right: 10px; }
+body[data-ui="film"] :is(#pickBg, #revBg) .pill { flex: 1; white-space: nowrap; padding: 0 6px; box-shadow: inset 0 0 0 2px #000; }
+body[data-ui="film"] :is(#pickBg, #revBg) .pill + .pill { margin-left: -2px; }
+body[data-ui="film"] :is(#pickBg, #revBg) .pill[aria-pressed="true"] { background: #000; color: #fff; }
 body[data-ui="film"] .pickgrid { border: solid transparent; border-width: 8px 22px; background: var(--film); gap: 7px; }
 body[data-ui="film"] .pickgrid:has(.pk[aria-pressed="true"]) .pk:not([aria-pressed="true"]) { opacity: .55; }
 body[data-ui="film"] .pk[aria-pressed="true"] { box-shadow: none; }
