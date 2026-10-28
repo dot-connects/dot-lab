@@ -16,7 +16,7 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | 8 | Camera: already widest zoom. Shoot view shows ONLY the area that ends up in the cell (operator pick: cropped view) | layout | merged (worker deploy + phone check pending) |
 | 9 | A picks 가로/세로 mode first. 가로 = today's tall strip of 4 wide photos; 세로 = 4 tall photos side by side in one wide strip. B follows A's mode. Portrait phone hold both ways (operator confirmed) | layout | merged (worker deploy + phone check pending) |
 | 10 | B's shoot view: option (a) B's real camera background with A's cut-out over it, or (b) A's background + A + B cut-out (order of #7) | flow | done 624fce5 |
-| 11 | Retouch and decorate: inline pinch zoom + two-finger pan on the photo; the controls under it stay put (no fullscreen viewer) | zoom | r6-zoom running |
+| 11 | Retouch and decorate: inline pinch zoom + two-finger pan on the photo; the controls under it stay put (no fullscreen viewer) | zoom | merged 7255b7c |
 | 12 | Decorate shows stills; video is only a download option | flow | done 624fce5 |
 | 13 | Video download button warns up front that the moving cut can stutter / lose the person at times | flow | done 624fce5 |
 | 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | mockups/screens3.html fceac70 — awaiting pick |
@@ -31,9 +31,9 @@ Every item below must ship; none may be dropped. Status column is updated by the
 |---|---|---|
 | Result themes 클린/Y2K/다이어리 | r6-themes | done a47e4d7 |
 | Filters: soft 뽀샤시, two B&W, 3 strengths; light/colour match A↔B; pets in moving cut | r6-engine | done db5949e |
-| HQ moving cut progress display | r6-zoom | running |
-| Shrink/move my own cut-out (promise 1196) | r6-zoom | running |
-| Save photo + video at once; toggle copy; video "0%" label; outline default (r3 review #5-#7) | r6-zoom | running |
+| HQ moving cut progress display | r6-zoom | merged 7255b7c |
+| Shrink/move my own cut-out (promise 1196) | r6-zoom | merged 7255b7c |
+| Save photo + video at once; toggle copy; video "0%" label; outline default (r3 review #5-#7) | r6-zoom | merged 7255b7c |
 | Delete public dev-*.html + dev-media before launch | lead | |
 | Two-viewpoint film cover | merged e518116 | done |
 | Clean reskin | WIP in e518116, finish after #14 pick | |
