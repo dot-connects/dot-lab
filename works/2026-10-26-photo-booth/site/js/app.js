@@ -45,24 +45,53 @@ const S = {
   cam: null, cap: null, bound: false, busy: false,
   movable: false, lay: { x: 0, y: 0, scale: 1 },  // A's choice (opts.movable); B's placement of A, fractions of the cell
   shape: "wide",                                 // A's 가로 ("wide") / 세로 ("tall") pick, B follows it (opts.shape)
+  ui: document.body.dataset.ui === "cute" ? "cute" : "film",   // A's UI theme (screen 0), B follows it (opts.ui); index.html sets it from ?ui= before paint
 };
 function setShape(sh) {
   S.shape = sh === "tall" ? "tall" : "wide";
   document.body.dataset.shape = S.shape;          // CSS: pick grid, review, previews, mini strips per shape
 }
+// UI theme: "film" = 필름레일 (app.css), "cute" = 말랑 부스 (css/cute.css + js/cute.js style everything under body[data-ui="cute"])
+function setUi(u) {
+  S.ui = u === "cute" ? "cute" : "film";
+  document.body.dataset.ui = S.ui;
+}
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
 const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
 const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 5초";
-const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}`;
+// the link carries a cute theme in the query too, so B's page (and the Chrome hand-off) paints in it before the Worker answers
+const uiQ = () => S.ui === "cute" ? "&ui=cute" : "";
+const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}${uiQ()}`;
 const token = () => S.token || api.loadRole(S.id)?.token;
 
 // ---- screens ------------------------------------------------------------------------------------------------------
-function show(name) {
-  const from = document.body.dataset.screen;
+// UI hooks (index.html top comment, CONTRACT "UI themes"): body[data-screen], body[data-flow] = a | b | c (c = decorate in
+// Chrome), body[data-step] = 0..3 on the 4-step tracker (absent on landings / messages), a "booth:screen" event after
+// each change. Film draws its rail into the screen's .uihead; with cute the .uihead is left empty for cute.js.
+const STEPS = { mode: 0, shoot: 0, pick: 1, upload: 3, share: 3, handoff: 3, done: 3 };
+const RAIL = { a: ["찍기", "고르기", "보정", "보내기"], b: ["찍기", "고르기", "보정", "완성"], c: ["찍기", "고르기", "보정", "꾸미기"] };
+function show(name, step = STEPS[name]) {
+  const from = document.body.dataset.screen, sec = $("s-" + name), B = document.body.dataset;
   for (const s of $$(".screen")) s.hidden = s.id !== "s-" + name;
-  document.body.dataset.screen = name;
-  $("s-" + name).classList.toggle("slide", name === "shoot" && from !== "shoot");   // land -> shoot slides, the rest fades
+  B.screen = name;
+  B.flow = name === "done" || name === "handoff" ? "c" : /^(theme|landA|mode)$/.test(name) ? "a" : name === "landB" ? "b"
+    : name === "share" ? (S.shareMode === "done" ? "b" : "a") : S.side || "a";
+  if (step == null) delete B.step; else B.step = step;
+  paintHead(sec, name);
+  sec.classList.toggle("slide", name === "shoot" && from !== "shoot");   // land -> shoot slides, the rest fades
   if (scrollY > 1) scrollTo(0, 1);
+  queueMicrotask(() => document.dispatchEvent(new CustomEvent("booth:screen")));   // after the caller has filled the screen
+}
+// film (screens3 concept 1): "D:OT LAB · tag" + the film rail (done steps white, this one lime)
+function paintHead(sec, name) {
+  const h = sec.querySelector(".uihead"), B = document.body.dataset;
+  if (!h) return;
+  if (S.ui !== "film" || B.step == null) return h.replaceChildren();
+  const k = +B.step, tall = S.shape === "tall";
+  const tag = { mode: "모양", shoot: k === 2 ? "보정" : S.side === "b" ? "친구 옆" : `${tall ? "세로" : "가로"} · 8장`, pick: "8장 → 4장", upload: "올리기",
+    share: { wait: "내 링크", done: "완성" }[S.shareMode] || "링크", handoff: "크롬으로", done: `${tall ? "세로" : "가로"} 네컷` }[name] || "";
+  h.innerHTML = (sec.querySelector(".topbar") ? "" : `<div class="utop"><span>D:OT LAB</span><span>${tag}</span></div>`)
+    + `<div class="rail">${RAIL[B.flow].map((l, i) => `<u class="${i < k ? "dn" : i === k ? "on" : ""}">${l}</u>`).join("")}</div>`;
 }
 let toastT;
 function toast(text, ms = 2600) {
@@ -133,13 +162,14 @@ function sparkle(host, { n = 3, dist = 24, size = 18, x = 0.5, y = 0.5 } = {}) {
 // ---- routing (PLAN Task 6) ----------------------------------------------------------------------------------------
 async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
-  if (!S.id) { show("landA"); return prefetchHQ(); }
+  if (!S.id) { show("theme"); return prefetchHQ(); }
   let st;
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
   if (st.error) return expired(st.error);
   S.movable = !!st.opts?.movable;
   setShape(st.opts?.shape);
+  setUi(st.opts?.ui ?? S.ui);        // a Worker without opts.ui (before Round 6) keeps the link's ?ui=
   const role = api.loadRole(S.id)?.role;
   if (!st.a.done) {
     if (role === "a") return msg({ title: "올리다 멈췄어", text: "찍은 사진이 이 화면에 남아 있지 않아. 새로 찍어 줘.", btn: "다시 찍기", onBtn: fresh });
@@ -594,7 +624,7 @@ function pickDone() {
   S.shotUrls.forEach((u, j) => keep.includes(j) || URL.revokeObjectURL(u));
   S.shots.forEach((c, j) => { if (!keep.includes(j)) { c.raw = c.cut = c.clip = null; c.hqFail = true; } });
   S.shots = []; S.shotUrls = keep.map(j => S.shotUrls[j]); S.cellCv = [];
-  show("shoot");
+  show("shoot", 2);      // 보정
   $("s-shoot").classList.add("shooting-done");
   $("controls").hidden = true; $("shootDone").hidden = false; $("pips").hidden = true; $("lastShot").hidden = true;
   $("shootHint").hidden = true; $("hqNote").hidden = true; $("hqAsk").hidden = true;
@@ -842,10 +872,10 @@ async function upload() {
     if (S.side === "a" && !S.token) {
       const tk = api.newToken();
       S.movable = $("movable").checked;
-      const { id } = await api.create(tk, { movable: S.movable, shape: S.shape });
+      const { id } = await api.create(tk, { movable: S.movable, shape: S.shape, ui: S.ui });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
-      history.replaceState(null, "", `?s=${id}${MOCK ? "&mock=1" : ""}`);
+      history.replaceState(null, "", `?s=${id}${uiQ()}${MOCK ? "&mock=1" : ""}`);
     }
     if (S.side === "b" && !S.token) { S.token = api.newToken(); api.saveRole(S.id, "b", S.token); }
     for (let round = 0; round < 2; round++) {
@@ -1088,13 +1118,28 @@ function buildTiles() {
   }));
   buildFrames();
   $("filterChips").replaceChildren(...filters.map(f => {
-    const t = tile("filter", f.label, f.id === D.filter, () => { D.filter = f.id; changed(["frame"]); });
+    // a filter first picked starts at 중; switching between filters keeps the strength
+    const t = tile("filter", f.label, f.id === fBase().id, () => { D.filter = fId(f.id, fBase().id === "original" ? 1 : fBase().level); filterLv(); changed(["frame", "filter"]); });
     t.dataset.id = f.id; return t;
   }));
+  filterLv();
   $("caption").value = D.caption; capCount();
   buildOutline();
   buildLook();
   buildThemes();
+}
+// filter strength 약/중/강 (filters.js FILTER_LEVELS: the level rides in the id, "bbosasi:1"); hidden on 원본
+const fBase = () => FI.parseFilter ? FI.parseFilter(D.filter) : { id: D.filter, level: 2 };
+const fId = (id, lv) => FI.filterId ? FI.filterId(id, lv) : id;
+function filterLv() {
+  const box = $("filterLv"), { id, level } = fBase();
+  box.hidden = !FI.FILTER_LEVELS || id === "original";
+  box.replaceChildren(...(FI.FILTER_LEVELS || []).map((L, k) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: L.label });
+    b.dataset.lv = k; b.setAttribute("aria-pressed", k === level);
+    b.onclick = () => { if (k !== fBase().level) { D.filter = fId(fBase().id, k); filterLv(); changed(["frame", "filter"]); } };
+    return b;
+  }));
 }
 // the current theme's frames first, then the rest (each theme's own order)
 function buildFrames() {
@@ -1218,7 +1263,7 @@ async function renderMinis(kind) {
   const box = kind === "frame" ? $("frameChips") : $("filterChips"), d = Math.min(devicePixelRatio || 1, 2);
   for (const b of box.querySelectorAll(".tile")) {
     if (seq !== D.mseq[kind]) return;
-    const o = opts({ stickers: null, ...(kind === "frame" ? { frame: FR.FRAMES.find(x => x.id === b.dataset.id) } : { filter: b.dataset.id }) });
+    const o = opts({ stickers: null, ...(kind === "frame" ? { frame: FR.FRAMES.find(x => x.id === b.dataset.id) } : { filter: fId(b.dataset.id, fBase().level) }) });
     try {
       const m = b.querySelector(".mini");
       let cv;
@@ -1553,6 +1598,7 @@ const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip
   onEnd: z => { if (z.s > 1.5 && S.revQ !== 2) { S.revQ = 2; review().catch(e => console.warn("[booth] review", e)); } } });
 
 const ACT = {
+  pickUi: b => { setUi(b.dataset.ui); show("landA"); },   // screen 0: A's theme, then A's cover
   startA: () => modeScreen(),
   modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
@@ -1616,7 +1662,7 @@ document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
   if (b?.dataset.act === "del" || b?.dataset.act === "delYes" || b?.dataset.act === "delNo")
     return del(b.closest(".del"), b.dataset.act === "del" ? null : b.dataset.act === "delYes");
-  if (b && ACT[b.dataset.act]) ACT[b.dataset.act]();
+  if (b && ACT[b.dataset.act]) ACT[b.dataset.act](b);
 });
 
 // ---- boot ---------------------------------------------------------------------------------------------------------

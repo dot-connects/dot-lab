@@ -1,6 +1,8 @@
 /* 따로 같이 네컷 — app shell, "포토이즘 클린" (mockups/concepts5.html .c1, approved 2026-10-27):
    white + black, one lime accent, Noto Sans KR 900 titles + Space Grotesk numbers/labels, square corners, thick black
-   outlines, the booth grid. Cute comes from motion and the people art, not colour. Results keep their own themes. */
+   outlines, the booth grid. Cute comes from motion and the people art, not colour. Results keep their own themes.
+   Round 6: this is the base + the 필름레일 UI theme (body[data-ui="film"], screens3.html concept 1, at the end of this file);
+   the 말랑 부스 theme lives in css/cute.css under body[data-ui="cute"]. */
 :root {
   --bg: #ffffff; --paper: #ffffff; --ink: #0d0d0d; --sub: #444444; --line: #0d0d0d; --soft: #f1f1f1;
   --acc: #d6ff3d; --red: #b3001b;
@@ -540,3 +542,129 @@ body[data-shape="tall"] .ministrip.real img { position: absolute; inset: 0; }   
 body[data-shape="tall"] .previewwrap { height: auto; }
 body[data-shape="tall"] .preview { flex: none; width: 100%; aspect-ratio: 1800 / 800; }
 body[data-shape="tall"] .tile.frame .mini { width: 108px; aspect-ratio: 1800 / 800; }
+
+/* ===== Round 6 UI themes: hooks (both themes) ===== */
+.vf { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+/* .uihead = the theme's head slot, first in every screen; empty = no space (film fills it on step screens, cute.js may) */
+.uihead:empty { display: none; }
+.topbar { order: -2; } .uihead { order: -1; }          /* a screen's own top bar stays above the head */
+.screen.center { position: relative; }
+.screen.center > .uihead { position: absolute; top: var(--pt); left: var(--pl); right: var(--pr); }
+.screen.center:has(> .uihead:not(:empty)) { padding-top: calc(var(--pt) + 124px); }   /* the centred content starts under the head */
+
+/* ===== screen 0: A picks the UI theme (mockups/cute3.html 0). Neutral, works with neither theme's sheet ===== */
+#s-theme { gap: 14px; }
+.themeh { font-size: 30px; margin-top: 6px; }
+.tcards { flex: 1; min-height: 420px; display: flex; flex-direction: column; gap: 14px; container-type: inline-size; }
+.tcard { appearance: none; border: 0; flex: 1; min-height: 0; position: relative; overflow: hidden; border-radius: 22px; display: flex; align-items: flex-end;
+  justify-content: space-between; padding: 16px 20px; cursor: pointer; text-align: left; transition: transform 160ms var(--spring); }
+.tcard:active { transform: scale(.97); }
+.tcard:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; box-shadow: 0 0 0 3px var(--acc); }
+.tcard .lab { position: relative; z-index: 5; display: flex; align-items: center; gap: 10px; }
+.tcard .go { position: relative; z-index: 5; width: 46px; height: 46px; display: grid; place-items: center; font-size: 28px; line-height: 1; }
+/* film: a film strip running sideways through a lime gate, sprockets top and bottom */
+.tc-film { background: #000; color: #fff; }
+.tc-film .lab { font: 900 30px var(--title); letter-spacing: -.04em; }
+.tc-film .lab i { width: 20px; height: 20px; background: var(--acc); display: block; }
+.tc-film .go { background: var(--acc); color: #000; font-weight: 900; }
+.tc-film .rails { position: absolute; inset: 0; }
+.tc-film .rails::before, .tc-film .rails::after { content: ""; position: absolute; left: 0; right: 0; height: 12px;
+  background: repeating-linear-gradient(90deg, #000 0 7px, #fff 7px 18px, #000 18px 25px); animation: t0spr 3s linear infinite; }
+.tc-film .rails::before { top: 6px; } .tc-film .rails::after { bottom: 6px; }
+@keyframes t0spr { to { background-position: -75px 0; } }
+.tc-film .rl { position: absolute; top: 50%; margin-top: calc(-22cqw - 24px); left: 0; display: flex; gap: 10px; animation: t0rl 14s linear infinite; }
+.tc-film .rl .mc { width: 64cqw; flex: none; }
+@keyframes t0rl { to { transform: translateX(calc(-4 * (64cqw + 10px))); } }
+.tc-film .gate { position: absolute; top: 50%; margin-top: calc(-22cqw - 28px); left: 50%; width: calc(64cqw + 8px); aspect-ratio: 552 / 382; transform: translateX(-50%); border: 4px solid var(--acc); z-index: 3; }
+.tc-film::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(#0000, #000 75%); z-index: 4; }
+/* cute: concept 3's booth mascot on lavender dots (cute.css owns the rest of that look) */
+.tc-cute { background: radial-gradient(circle at 1px 1px, #d9ccfb 1px, transparent 1.6px) 0 0 / 16px 16px, linear-gradient(#f6f1ff, #efe6ff);
+  color: #2a2140; box-shadow: inset 0 0 0 2px #e2d6fb; }
+.tc-cute .lab { font: 700 56px/.8 "Dongle", var(--title); padding-top: 8px; }
+.tc-cute .lab svg { width: 28px; height: 26px; fill: #ff8fbd; margin-top: -8px; }
+.tc-cute .go { background: #ff8fbd; color: #3a1230; border-radius: 50%; box-shadow: 0 4px 12px #c2587a40; font-weight: 700; }
+.tc-cute .pv { position: absolute; inset: 0; pointer-events: none; }
+.tc-cute .mas { position: absolute; right: 8%; top: 12px; width: 30cqw; height: 32cqw; animation: t0wob 2.4s ease-in-out infinite; }
+@keyframes t0wob { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(-3px); } }
+.tc-cute .tw { position: absolute; width: 26px; height: 26px; animation: twinkle 2.4s ease-in-out infinite; }
+.tc-cute .st { left: 12%; top: 16%; fill: #ffcf4d; }
+.tc-cute .ht { left: 34%; top: 7%; fill: #ff8fbd; animation-delay: .6s; }
+.themesub { text-align: center; color: #3d3540; }
+
+/* ===== Round 6 film theme = 필름레일 (mockups/screens3.html concept 1): the cover's black film runs through every screen
+   as the 4-step rail on top and the frame around every photo. Only under body[data-ui="film"]; cute.css styles "cute". ===== */
+/* head: "D:OT LAB · tag" over the film rail (done = white, now = lime) */
+.utop { display: flex; justify-content: space-between; font: 700 13px var(--num); letter-spacing: .18em; border-bottom: var(--b) solid currentColor; padding-bottom: 6px; }
+.rail { margin-top: 10px; background: #000; padding: 11px 8px; display: flex; gap: 7px; position: relative; }
+.rail::before, .rail::after { content: ""; position: absolute; left: 0; right: 0; height: 5px; background: repeating-linear-gradient(90deg, #000 0 5px, #fff 5px 13px, #000 13px 18px); }
+.rail::before { top: 3px; } .rail::after { bottom: 3px; }
+.rail u { text-decoration: none; flex: 1; text-align: center; font-size: 14px; font-weight: 700; line-height: 1.3; padding: 5px 0; background: #2b2b2b; color: #cccccc; white-space: nowrap; }
+.rail u.dn { background: #fff; color: #000; }
+.rail u.on { background: var(--acc); color: #000; font-weight: 900; }
+body[data-ui="film"] {
+  /* the film frame: black, sprocket holes down both sides (a background in the border area: the photo inside keeps its box) */
+  --spr: repeating-linear-gradient(#000 0 5px, #fff 5px 14px, #000 14px 19px);
+  --film: var(--spr) left 6px top 0 / 9px 100% no-repeat border-box, var(--spr) right 6px top 0 / 9px 100% no-repeat border-box, #000;
+}
+@keyframes sprRun { to { background-position: left 6px top 19px, right 6px top 19px, 0 0; } }
+
+/* shoot: a dark booth (mockup A-3 / B-3); the review after the pick (보정, A-6) is light again */
+body[data-ui="film"]:has(#s-shoot:not([hidden]):not(.shooting-done)) { background: #000; }
+body[data-ui="film"] #s-shoot:not(.shooting-done) { background: #000; color: #fff; --ink: #fff; --sub: #cfcfcf; --line: #fff; }
+body[data-ui="film"] .uihead:not(:empty) ~ .shoothead { margin-top: 0; padding-top: 2px; min-height: 0; }
+body[data-ui="film"] #s-shoot.shooting-done .shoothead { background: none; color: var(--ink); padding-bottom: 0; }
+body[data-ui="film"] #s-shoot.shooting-done .pose { font-size: 25px; letter-spacing: -.045em; }
+body[data-ui="film"] #s-shoot.shooting-done .sound { display: none; }
+body[data-ui="film"] .stage { outline: 0; background: #000; }
+body[data-ui="film"] .vf { padding: 8px 22px; background: var(--film); }
+body[data-ui="film"].busy .vf { animation: sprRun 1.2s linear infinite; }
+body[data-ui="film"] .crop { box-shadow: 0 0 0 100vmax #000; outline: 0;
+  --g: linear-gradient(var(--acc), var(--acc));
+  background: var(--g) left top / 26px 4px, var(--g) left top / 4px 26px, var(--g) right top / 26px 4px, var(--g) right top / 4px 26px,
+    var(--g) left bottom / 26px 4px, var(--g) left bottom / 4px 26px, var(--g) right bottom / 26px 4px, var(--g) right bottom / 4px 26px;
+  background-repeat: no-repeat; z-index: 1; }
+body[data-ui="film"] .pips { gap: 6px; height: 12px; }
+body[data-ui="film"] .pips i { flex: 1; max-width: 48px; height: 10px; background: #444; }
+body[data-ui="film"] .pips i.has { background: var(--acc); }
+body[data-ui="film"] .pips i.now { background: #fff; box-shadow: none; transform: none; animation: blink 1s steps(1) infinite; }
+body[data-ui="film"] #s-shoot .tool i { background: none; border-color: #fff; color: #fff; }
+body[data-ui="film"] #s-shoot .tool[aria-pressed="true"] i { background: var(--acc); border-color: var(--acc); color: #000; }
+body[data-ui="film"] .shutter { border-color: #fff; box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff; }
+body[data-ui="film"].busy .shutter { background: conic-gradient(var(--acc) 0 25%, #222 0); animation: spin 1s linear infinite; }
+body[data-ui="film"] #s-shoot:not(.shooting-done) .pill { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
+body[data-ui="film"] #s-shoot:not(.shooting-done) .pill[aria-pressed="true"] { background: var(--acc); color: #000; box-shadow: inset 0 0 0 3px var(--acc); }
+
+/* pick 4 of 8 (A-5 / B-4): background as one segmented bar, the 8 in the film, picked = black + lime frame, number top right */
+body[data-ui="film"] .pickhead { border-bottom: 0; padding-bottom: 0; }
+body[data-ui="film"] #pickBg { flex-wrap: nowrap; gap: 0; }
+body[data-ui="film"] #pickBg::before { content: "배경"; font-weight: 900; font-size: 15px; margin-right: 10px; }
+body[data-ui="film"] #pickBg .pill { flex: 1; white-space: nowrap; padding: 0 6px; box-shadow: inset 0 0 0 2px #000; }
+body[data-ui="film"] #pickBg .pill + .pill { margin-left: -2px; }
+body[data-ui="film"] #pickBg .pill[aria-pressed="true"] { background: #000; color: #fff; }
+body[data-ui="film"] .pickgrid { border: solid transparent; border-width: 8px 22px; background: var(--film); gap: 7px; }
+body[data-ui="film"] .pickgrid:has(.pk[aria-pressed="true"]) .pk:not([aria-pressed="true"]) { opacity: .55; }
+body[data-ui="film"] .pk[aria-pressed="true"] { box-shadow: none; }
+body[data-ui="film"] .pk[aria-pressed="true"]::before { content: ""; position: absolute; inset: 0; z-index: 1; border: 4px solid #000; outline: 4px solid var(--acc); outline-offset: -8px; pointer-events: none; }
+body[data-ui="film"] .pk .badge { left: auto; right: 0; z-index: 2; border-right: 0; border-left: 3px solid #000; }
+
+/* retouch review (A-6 / B-5): the four cells in the film */
+body[data-ui="film"] #s-shoot.shooting-done .stage { min-height: 40svh; }
+
+/* share / wait / B's finish (A-7, A-8, B-6): the strip stands upright in the film */
+body[data-ui="film"] #myStrip .ministrip.real { transform: none; box-shadow: none; padding: 8px 22px 0; background: var(--film); }
+body[data-ui="film"] #myStrip .deco { display: none; }
+
+/* decorate (C-2 / C-3): the preview sits in the film, tabs = one black underline with the chosen tab black */
+body[data-ui="film"] .uihead:not(:empty) + .previewwrap { margin-top: 0; }
+body[data-ui="film"] .previewwrap { background: #ececec; }
+body[data-ui="film"] .preview { box-shadow: 0 0 0 3px #000; }
+body[data-ui="film"] .previewwrap::before, body[data-ui="film"] .previewwrap::after { content: ""; position: absolute; top: 0; bottom: 0; width: 22px; background: var(--spr) center top / 9px 100% no-repeat, #000; }
+body[data-ui="film"] .previewwrap::before { left: 0; } body[data-ui="film"] .previewwrap::after { right: 0; }
+body[data-ui="film"] .previewwrap { border-top: 8px solid #000; border-bottom: 8px solid #000; padding-left: calc(var(--pl) + 10px); padding-right: calc(var(--pr) + 10px); }
+body[data-ui="film"] .tabs { background: none; padding: 0; gap: 0; border-bottom: var(--b) solid #000; }
+body[data-ui="film"] .tabs button { color: #333; font-weight: 700; padding: 8px 0; }
+body[data-ui="film"] .tabs button[aria-selected="true"] { background: #000; color: #fff; font-weight: 900; }
+.pills.lv { flex-wrap: nowrap; padding: 0 4px; }
+.pills.lv .pill { flex: 1; max-width: 88px; }
+/* two-line titles: the lime mark sits on its own line box so it never covers the line above (mockup .hl mark) */
+body[data-ui="film"] h1 em { display: inline-block; line-height: 1.08; margin-top: 4px; }
