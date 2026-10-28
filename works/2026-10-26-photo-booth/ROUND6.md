@@ -19,11 +19,11 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | 11 | Retouch and decorate: inline pinch zoom + two-finger pan on the photo; the controls under it stay put (no fullscreen viewer) | zoom | merged 7255b7c |
 | 12 | Decorate shows stills; video is only a download option | flow | done 624fce5 |
 | 13 | Video download button warns up front that the moving cut can stutter / lose the person at times | flow | done 624fce5 |
-| 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | mockups/screens3.html fceac70 — awaiting pick |
+| 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | picked: film = screens3 concept 1, cute = cute3 concept 3; reskin running |
 | 15 | During the 5 s countdown: front/back switch and mirror stay usable. 8 shots continuous, no stop button | flow | done 624fce5 |
 | + | Shutter: web capture is silent; add our own shutter sound + flash per shot (etiquette + feedback) | flow | done 624fce5 |
 | + | Pets: care a lot — stills (done), moving cut (r6-engine), live/B-shoot preview | engine | done db5949e (filter 약/중/강 + 그레이 chip UI: lead) |
-| + | First screen: A picks UI theme 필름레일 (screens3 concept 1) or 귀여운 (new, polished from the pre-reskin look); B follows A (operator 2026-10-28) | r6-cute mockups → lead | mockups running |
+| + | First screen: A picks UI theme 필름레일 (screens3 concept 1) or 귀여운 (new, polished from the pre-reskin look); B follows A (operator 2026-10-28) | r6-ui-film (picker, worker ui, film reskin, filter levels) + r6-ui-cute (말랑 부스 = cute3 concept 3, operator pick 10-28) | running |
 
 ## Carried from the audit (2026-10-28)
 
