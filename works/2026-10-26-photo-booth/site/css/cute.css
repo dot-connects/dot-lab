@@ -270,3 +270,22 @@ body[data-ui="cute"] .tc-film {
   body[data-ui="cute"] :is(.cu-mas, .cu-box, .cu-lamp, .cu-dots i, .cu-flash) { animation: none !important; }
   body[data-ui="cute"] .cu-out { transition: none !important; }
 }
+
+/* ---- Round 7 #4 camera (camera3.html layout 1): the mascot + a bubble with count and pose, the curtain over the cell,
+   a white sheet for the panel. app.css owns the sizes. ---- */
+body[data-ui="cute"] #s-shoot:not(.shooting-done) > .uihead:not(:empty) { display: flex; position: absolute; top: var(--pt); left: var(--pl); height: 46px; align-items: center; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) > .uihead .cu-bub { display: none; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .shoothead { position: relative; margin: 0 0 10px 52px; min-height: 46px; padding: 0 6px 0 10px; gap: 8px;
+  background: #fff; border-radius: 16px; box-shadow: 0 4px 12px #6b3fc426; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .shoothead::before { content: ""; position: absolute; left: -9px; top: 50%; margin-top: -7px; border: 7px solid transparent; border-right: 10px solid #fff; border-left: 0; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .step { font-size: 28px; padding: 3px 12px 0; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .pose { font-size: 32px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .sound { box-shadow: inset 0 0 0 2px var(--soft); }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .cellf { --bt: 22px;
+  background: radial-gradient(circle at 50% 0, var(--cur) 7px, transparent 7.5px) 0 13px / 14.6px 8px repeat-x,
+    linear-gradient(var(--cur), var(--cur)) 0 6px / 100% 7.2px no-repeat, linear-gradient(#fff, #fff) 0 0 / 100% 22px no-repeat; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) :is(.stage, .crop) { border-radius: 0 0 16px 16px; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .shootpanel { margin-top: 12px; background: #fff; border-radius: 26px 26px 0 0; box-shadow: 0 -5px 0 #e6dcff, 0 -10px 24px #6b3fc426; }
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .stagehint { box-shadow: none; }
+/* the holder card rule above carries an id inside :is(), so the camera's own .vf box is restated here at that weight */
+body[data-ui="cute"] #s-shoot:not(.shooting-done) .vf { margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0; background: none; border-radius: 0; box-shadow: none; }

@@ -287,7 +287,8 @@ function fitStage() {
   if (!v.videoWidth || !S.cam) return;
   const W = st.clientWidth, H = st.clientHeight, fr = S.cam.frameRect(v), CELL = cellAsp();
   const cw = fr.sw / fr.sh > CELL ? fr.sh * CELL : fr.sw, ch = cw / CELL, cx = (fr.sw - cw) / 2, cy = (fr.sh - ch) / 2 * 0.25;
-  const k = Math.min(W / cw, (H * 0.92) / ch);
+  // while shooting the stage is the cell's own shape (camera3 layout 1), so the crop fills it; the 보정 review keeps a margin
+  const k = Math.min(W / cw, (H * ($("s-shoot").classList.contains("shooting-done") ? 0.92 : 1)) / ch);
   const left = W / 2 - (fr.sx + cx + cw / 2) * k, top = H / 2 - (fr.sy + cy + ch / 2) * k;
   const px = (el, b) => Object.assign(el.style, { left: b.x + "px", top: b.y + "px", width: b.w + "px", height: b.h + "px" });
   px(v, { x: left, y: top, w: v.videoWidth * k, h: v.videoHeight * k });
@@ -400,6 +401,7 @@ async function runShoot() {
     setCut(n, false);
     $("shootHint").textContent = n ? `${n}장 찍었어. 셔터를 누르면 ${n + 1}번째부터 이어서 찍어` : HINT_SHOOT;
     $("shootHint").hidden = false;
+    if (n) $("hintChip").hidden = $("hqNote").hidden = true;   // the panel shows one note: "n장 찍었어" wins over the start notes
     return;
   }
   prepAndPick();

@@ -462,8 +462,8 @@ kick();
     <p class="pose" id="pose">준비됐어?</p>
     <button class="sound" type="button" data-act="sound" aria-pressed="true"><svg><use href="#i-sound"/></svg><span>소리</span></button>
   </div>
-  <button class="hqnote" id="hqNote" type="button" data-act="hideHqNote" hidden><span>사진은 찍은 뒤 고급 누끼로 다듬어져요</span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
-  <div class="vf"><!-- the viewfinder's frame (film: sprockets); #stage keeps its own box -->
+  <div class="vf"><!-- the viewfinder's frame; .cellf = the strip cell + its film bands / cute curtain (camera3 layout 1) -->
+  <div class="cellf">
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
     <div class="frame" id="frame">
@@ -475,8 +475,6 @@ kick();
     <canvas class="review" id="review" hidden></canvas>
     <b class="zchip" id="revZoom" aria-live="polite" hidden></b>
     <img class="snap" id="snap" alt="" hidden>
-    <button class="hintchip" id="hintChip" type="button" data-act="hideHint" hidden><span id="hintText"></span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
-    <p class="stagehint" id="shootHint">셔터 한 번이면 6장을 이어서 찍어 · 한 장에 5초</p>
     <img class="last" id="lastShot" alt="방금 찍은 사진" hidden>
     <div class="rec" id="rec" hidden>2초 녹화</div>
     <div class="hqchip" id="hqChip" role="status" hidden></div>
@@ -484,8 +482,14 @@ kick();
     <div class="count" id="count" aria-live="assertive"></div>
     <div class="flash" id="flash"></div>
     <div class="camwait" id="camwait">카메라 켜는 중…</div>
-  </div></div>
+  </div></div></div>
+  <!-- the bottom panel while shooting: progress, notes, B's view pick, buttons (camera3 layout 1, operator pick) -->
+  <div class="shootpanel">
   <div class="pips" id="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <button class="hintchip" id="hintChip" type="button" data-act="hideHint" hidden><span id="hintText"></span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
+  <button class="hqnote" id="hqNote" type="button" data-act="hideHqNote" hidden><span>사진은 찍은 뒤 고급 누끼로 다듬어져요</span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
+  <p class="stagehint" id="shootHint">셔터 한 번이면 6장을 이어서 찍어 · 한 장에 5초</p>
+
   <div class="pills viewpick" id="viewPick" role="group" aria-label="찍을 때 보기" hidden>
     <button class="pill" type="button" data-view="a" aria-pressed="true">내 카메라 배경</button>
     <button class="pill" type="button" data-view="b" aria-pressed="false">친구 배경에 같이</button>
@@ -494,6 +498,7 @@ kick();
     <button class="tool" data-act="mirror" aria-pressed="true"><i><svg><use href="#i-mirror"/></svg></i><span>좌우반전</span></button>
     <button class="shutter" data-act="shoot" aria-label="6장 이어서 찍기"></button>
     <button class="tool" data-act="flip"><i><svg><use href="#i-flip"/></svg></i><span>앞/뒤 카메라</span></button>
+  </div>
   </div>
   <div class="bottom" id="shootDone" hidden>
     <p class="hint" id="doneHint">고른 4장이야. 이대로 올릴까?</p>

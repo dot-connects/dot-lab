@@ -660,3 +660,43 @@ body[data-ui="film"] h1 em { display: inline-block; line-height: 1.08; margin-to
 .ui-cute { display: none; }
 body[data-ui="cute"] .ui-cute { display: inline; }
 body[data-ui="cute"] .ui-film { display: none; }
+
+/* ===== Round 7 #4: the camera = mockups/camera3.html layout 1 (operator pick 2026-10-28). One head line (count, pose,
+   sound), the cell as wide as the screen (as tall as the space allows), everything else in a bottom panel. Only while
+   shooting: the 보정 review (.shooting-done) keeps the layout above. .vf is a size container, so the cell is
+   min(100% width, spare height x cell aspect) on every phone. ===== */
+.shootpanel { display: contents; }
+.cellf { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
+#s-shoot:not(.shooting-done) { height: 100svh; height: 100dvh; min-height: 0; gap: 0; position: relative; overflow: hidden; }
+#s-shoot:not(.shooting-done) > .uihead { display: none; }
+#s-shoot:not(.shooting-done) .vf { flex: 1 1 0; min-height: 0; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0;
+  background: none; border-radius: 0; box-shadow: none; animation: none; display: grid; place-items: center; container-type: size; }
+#s-shoot:not(.shooting-done) .cellf { --asp: 552 / 382; --bt: 0px; --bb: 0px; flex: none; display: block; padding: var(--bt) 0 var(--bb);
+  width: min(100cqw, calc((100cqh - var(--bt) - var(--bb)) * var(--asp))); }
+body[data-shape="tall"] #s-shoot:not(.shooting-done) .cellf { --asp: 426 / 568; }
+#s-shoot:not(.shooting-done) .stage { flex: none; width: 100%; height: auto; aspect-ratio: var(--asp); min-height: 0; max-height: none; outline: 0; }
+#s-shoot:not(.shooting-done) .shootpanel { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none;
+  margin: 0 calc(-1 * var(--pr)) calc(-1 * var(--pb)) calc(-1 * var(--pl)); padding: 14px var(--pr) var(--pb) var(--pl); }
+#s-shoot:not(.shooting-done) .shootpanel > * { margin: 0; }
+#s-shoot:not(.shooting-done) .pips { align-self: stretch; }
+#s-shoot:not(.shooting-done) :is(.hintchip, .stagehint) { position: static; transform: none; max-width: 100%; }
+#s-shoot:not(.shooting-done) .stagehint { background: none; padding: 0; font-size: 14px; }
+#s-shoot:not(.shooting-done) .hqnote { align-self: center; }
+@media (max-height: 700px) {
+  #s-shoot:not(.shooting-done) .shootpanel { gap: 6px; padding-top: 10px; }
+  #s-shoot:not(.shooting-done) .shutter { width: 72px; height: 72px; }
+  #s-shoot:not(.shooting-done) .tool i { width: 48px; height: 48px; }
+  #s-shoot:not(.shooting-done) .tool { font-size: 13px; }
+}
+/* film: the black head bar, film bands above and below the cell (they run while shooting), a black panel under a white line */
+body[data-ui="film"] #s-shoot:not(.shooting-done) .shoothead { margin-top: calc(-1 * var(--pt)); padding-top: calc(var(--pt) - 6px); min-height: 58px; }
+body[data-ui="film"] #s-shoot:not(.shooting-done) .cellf { --bt: 14px; --bb: 14px;
+  --h: linear-gradient(90deg, #000 0 5px, #fff 5px 14px, #000 14px);
+  background: var(--h) 0 3px / 19px 8px repeat-x, var(--h) 0 calc(100% - 3px) / 19px 8px repeat-x, #000; }
+body[data-ui="film"].busy #s-shoot:not(.shooting-done) .cellf { animation: sprRunH 1.2s linear infinite; }
+@keyframes sprRunH { to { background-position: 19px 3px, 19px calc(100% - 3px), 0 0; } }
+body[data-ui="film"] #s-shoot:not(.shooting-done) .shootpanel { border-top: 2px solid #fff; }
+@media (max-height: 700px) { body[data-ui="film"] #s-shoot:not(.shooting-done) .shoothead { min-height: 46px; padding-bottom: 6px; } }
+/* one note at a time in the panel (the mockup's single hint box): closing one with ✕ shows the next */
+#s-shoot:not(.shooting-done) #hintChip:not([hidden]) ~ :is(#hqNote, #shootHint),
+#s-shoot:not(.shooting-done) #hqNote:not([hidden]) ~ #shootHint { display: none; }
