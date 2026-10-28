@@ -508,7 +508,7 @@ function head(k,s){
  if(k===1)return top(s.tag)+'<div class="trk">'+L.map(function(l,i){return '<u class="'+(i<s.step?'dn':i===s.step?'on':'')+'">'+(i<s.step?HS:'')+l+'</u>';}).join('')+'</div>';
  if(k===2)return top(s.tag)+'<div class="tapes">'+L.map(function(l,i){return '<u class="'+(i<s.step?'dn':i===s.step?'on':'')+'">'+l+'</u>';}).join('')+'</div>';
  var d='';for(var i=0;i<4;i++)d+='<i class="'+(i<s.step?'dn':i===s.step?'on':'')+'"></i>';
- return '<div class="mhead">'+mascot(s.ex)+'<div class="bub"><div><b>'+L[s.step]+'</b><small>'+s.tag+'</small></div><span class="dots">'+d+'</span></div></div>';}
+ return '<div class="mhead">'+mascot(s.ex)+'<div class="bub"><div><b>'+L[s.step]+'</b>'+(s.tag!==L[s.step]?'<small>'+s.tag+'</small>':'')+'</div><span class="dots">'+d+'</span></div></div>';}
 function screen(k,s){return '<div class="scr'+(s.cls?' '+s.cls:'')+'">'+(s.iab?'<div class="iab"><b>✕</b><span>dot-connects.github.io/lab/네컷</span><b>⋮</b></div>':'')+head(k,s)+s.body+'</div>';}
 
 // ---------- screens ----------
