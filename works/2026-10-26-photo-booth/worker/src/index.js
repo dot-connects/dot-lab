@@ -11,7 +11,9 @@ const sha = async s => b64u(new Uint8Array(await crypto.subtle.digest("SHA-256",
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 // A's 가로/세로 pick (Round 6 #9): wide = 4 wide cells in a tall strip, tall = 4 tall cells side by side; B follows it
 const SHAPES = ["wide", "tall"];
-const optsOf = o => ({ movable: o?.movable === true, shape: SHAPES.includes(o?.shape) ? o.shape : "wide" });
+// A's UI theme (필름레일 / 말랑 부스, Round 6): B's whole flow follows it; links made before it read as film
+const UIS = ["film", "cute"];
+const optsOf = o => ({ movable: o?.movable === true, shape: SHAPES.includes(o?.shape) ? o.shape : "wide", ui: UIS.includes(o?.ui) ? o.ui : "film" });
 const num = (v, lo, hi) => typeof v === "number" && Number.isFinite(v) && v >= lo && v <= hi;
 // B shoots 8 and keeps 4; each kept cell pairs with one of A's 4 cuts (repeats allowed)
 function cleanPairs(bytes) {
@@ -54,6 +56,7 @@ export default {
       try { const b = await req.json(); token = b.token; opts = b.opts || {}; } catch {}
       if (!TOKEN.test(token || "")) return json(400, { error: "token" });
       if (opts?.shape !== undefined && !SHAPES.includes(opts.shape)) return json(400, { error: "shape" });
+      if (opts?.ui !== undefined && !UIS.includes(opts.ui)) return json(400, { error: "ui" });
       const id = b64u(crypto.getRandomValues(new Uint8Array(16)));
       await env.BUCKET.put(`s/${id}/meta.json`, JSON.stringify({ created: now,
         a: { tokenHash: await sha(token), done: false }, b: { tokenHash: null, done: false }, opts: optsOf(opts) }));

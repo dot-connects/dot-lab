@@ -1,4 +1,15 @@
 <!doctype html>
+<!-- UI themes (Round 6, CONTRACT.md "UI themes"): A picks 필름 / 귀여운 on screen 0 (#s-theme); B's flow follows it (Worker opts.ui).
+  Hooks for a theme stylesheet / script (css/cute.css + js/cute.js style everything under body[data-ui="cute"]):
+  - body[data-ui]     "film" | "cute"; set before first paint from ?ui=cute (share + hand-off links carry it), then from the Worker
+  - body[data-screen] theme | landA | mode | landB | shoot | pick | upload | share | handoff | msg | done | framed
+  - body[data-flow]   "a" (A shoots first) | "b" (the friend) | "c" (decorate in Chrome)
+  - body[data-step]   "0".."3" on the 4-step tracker, absent on landings / theme / messages:
+                      a: 찍기·고르기·보정·보내기, b: 찍기·고르기·보정·완성, c (decorate / hand-off): 꾸미기 = 3
+                      (shoot = 0, pick = 1, the 보정 review on the shoot screen = 2, upload / share / hand-off / done = 3)
+  - .uihead           first child of every .screen, aria-hidden; film fills it with its rail, with cute it stays empty
+  - "booth:screen"    CustomEvent on document after every screen change (fired once the screen is filled)
+  Other ids / classes are used by app.js and the e2e driver: restyle them, do not rename or move them. -->
 <html lang="ko">
 <head>
 <meta charset="utf-8">
@@ -16,10 +27,12 @@
 <meta name="theme-color" content="#ffffff">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" media="print" onload="this.media='all'">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&family=Dongle:wght@700&display=swap" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="css/app.css">
+<link rel="stylesheet" href="css/cute.css">
 </head>
 <body>
+<script>document.body.dataset.ui = /[?&]ui=cute(&|$)/.test(location.search) ? "cute" : "film";</script>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="me" viewBox="0 0 60 70"><path d="M8 70c0-16 9-24 22-24s22 8 22 24z" fill="#111"/><circle cx="30" cy="28" r="17" fill="#ffe1cf"/><path d="M12 28c-2-20 38-20 36 0-6-9-18-11-36 0z" fill="#3b2a33"/><circle cx="24" cy="31" r="2" fill="#3b2a33"/><circle cx="36" cy="31" r="2" fill="#3b2a33"/><path d="M26 37q4 3 8 0" stroke="#3b2a33" stroke-width="2" fill="none" stroke-linecap="round"/><circle cx="20" cy="36" r="3" fill="#ff9a8a" opacity=".45"/><circle cx="40" cy="36" r="3" fill="#ff9a8a" opacity=".45"/></symbol>
   <symbol id="fr" viewBox="0 0 60 70"><path d="M8 70c0-16 9-24 22-24s22 8 22 24z" fill="#fff" stroke="#111" stroke-width="1.6"/><circle cx="30" cy="28" r="17" fill="#ffe1cf"/><path d="M13 30c-4-24 38-24 34 0l-3-8c-8 2-20 2-28-4z" fill="#8a5a3b"/><circle cx="24" cy="31" r="2" fill="#3b2a33"/><circle cx="36" cy="31" r="2" fill="#3b2a33"/><path d="M25 36q5 5 10 0z" fill="#e8577f"/><circle cx="20" cy="36" r="3" fill="#ff9a8a" opacity=".45"/><circle cx="40" cy="36" r="3" fill="#ff9a8a" opacity=".45"/></symbol>
@@ -58,8 +71,32 @@
 
 <main id="app">
 
+<!-- screen 0: A picks the UI theme (mockups/cute3.html 0); B follows it -->
+<section class="screen" id="s-theme" hidden>
+  <div class="uihead" aria-hidden="true"></div>
+  <div class="topbar"><a class="backchip" href="../../../">‹ D:OT LAB</a><span aria-hidden="true">테마</span></div>
+  <h2 class="themeh">어떤 느낌으로 찍을까?</h2>
+  <div class="tcards" role="group" aria-label="화면 느낌">
+    <button class="tcard tc-film" type="button" data-act="pickUi" data-ui="film">
+      <span class="rails" aria-hidden="true"></span>
+      <span class="rl" aria-hidden="true"><span class="mc t1"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t2"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span><span class="mc t3"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t4"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span><span class="mc t1"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t2"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span><span class="mc t3"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t4"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span><span class="mc t1"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t2"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span><span class="mc t3"><svg class="p l"><use href="#fr"/></svg><svg class="p r"><use href="#me"/></svg></span><span class="mc t4"><svg class="p l"><use href="#me"/></svg><svg class="p r"><use href="#fr"/></svg></span></span>
+      <span class="gate" aria-hidden="true"></span>
+      <span class="lab"><i aria-hidden="true"></i>필름</span><span class="go" aria-hidden="true">›</span>
+    </button>
+    <button class="tcard tc-cute" type="button" data-act="pickUi" data-ui="cute">
+      <span class="pv" aria-hidden="true">
+        <svg class="mas" viewBox="0 0 60 64"><circle cx="30" cy="6" r="4" fill="#ffe27a" stroke="#2a2140" stroke-width="2"/><rect x="4" y="10" width="52" height="50" rx="15" fill="#ff9cc4" stroke="#2a2140" stroke-width="2.4"/><path d="M9 18h42v5q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0z" fill="#c45fd9" stroke="#2a2140" stroke-width="2" stroke-linejoin="round"/><path d="M18 39q4-5 8 0M34 39q4-5 8 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="15" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><ellipse cx="45" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><path d="M25 46q5 5 10 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="18" y="53" width="24" height="3" rx="1.5" fill="#5b2a49"/></svg>
+        <svg class="tw st"><use href="#star"/></svg><svg class="tw ht"><use href="#heart"/></svg>
+      </span>
+      <span class="lab">귀여운<svg aria-hidden="true"><use href="#heart"/></svg></span><span class="go" aria-hidden="true">›</span>
+    </button>
+  </div>
+  <p class="lead themesub">친구도 같은 느낌으로 봐</p>
+</section>
+
 <!-- A landing -->
 <section class="screen land" id="s-landA" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="topbar"><a class="backchip" href="../../../">‹ D:OT LAB</a><span aria-hidden="true">FILM · 8</span></div>
   <div class="hero">
     <p class="kicker">원격 인생네컷 · 무료 · 가입 없음</p>
@@ -88,6 +125,7 @@
 
 <!-- A picks 가로 / 세로 before shooting (Round 6 #9, mockups/screens3.html A-2); the friend shoots the same shape -->
 <section class="screen" id="s-mode" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="topbar"><a class="backchip" href="../../../">‹ D:OT LAB</a><span aria-hidden="true">모양</span></div>
   <div class="hero">
     <h2>어떤 <em>네컷</em>으로 찍을까?</h2>
@@ -106,6 +144,7 @@
 
 <!-- B landing -->
 <section class="screen land" id="s-landB" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="topbar"><a class="backchip" href="../../../">‹ D:OT LAB</a><span aria-hidden="true">FROM 친구</span></div>
   <div class="hero">
     <h1>친구가 옆자리를<br><em>비워 뒀어요</em></h1>
@@ -409,20 +448,22 @@ function kick(){stages.forEach(function(s){var v=!s.sec.hidden;if(v&&!s.vis){s.v
 var mo=new MutationObserver(kick);stages.forEach(function(s){mo.observe(s.sec,{attributes:true,attributeFilter:['hidden']});});
 addEventListener('resize',function(){stages.forEach(function(s){if(s.vis&&RM)s.snap(s.impl.TF,1);});});
 window.__coverReal=function(urls){stages.forEach(function(s){if(s.impl.setReal)s.impl.setReal(urls);});};
-// no ?s= link and not framed: this is landing A, show it before the module chain loads (app.js route() agrees)
-if(!new URLSearchParams(location.search).get('s')&&top===self){document.getElementById('s-landA').hidden=false;document.body.dataset.screen='landA';}
+// no ?s= link and not framed: this is A's screen 0 (theme pick), show it before the module chain loads (app.js route() agrees)
+if(!new URLSearchParams(location.search).get('s')&&top===self){document.getElementById('s-theme').hidden=false;document.body.dataset.screen='theme';document.body.dataset.flow='a';}
 kick();
 })();
 </script>
 
 <!-- shoot -->
 <section class="screen" id="s-shoot" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="shoothead">
     <span class="step" id="step">1 / 8</span>
     <p class="pose" id="pose">준비됐어?</p>
     <button class="sound" type="button" data-act="sound" aria-pressed="true"><svg><use href="#i-sound"/></svg><span>소리</span></button>
   </div>
   <button class="hqnote" id="hqNote" type="button" data-act="hideHqNote" hidden><span>사진은 찍은 뒤 고급 누끼로 다듬어져요</span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
+  <div class="vf"><!-- the viewfinder's frame (film: sprockets); #stage keeps its own box -->
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
     <div class="frame" id="frame">
@@ -445,7 +486,7 @@ kick();
     <div class="count" id="count" aria-live="assertive"></div>
     <div class="flash" id="flash"></div>
     <div class="camwait" id="camwait">카메라 켜는 중…</div>
-  </div>
+  </div></div>
   <div class="pips" id="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
   <div class="pills viewpick" id="viewPick" role="group" aria-label="찍을 때 보기" hidden>
     <button class="pill" type="button" data-view="a" aria-pressed="true">내 카메라 배경</button>
@@ -476,6 +517,7 @@ kick();
 
 <!-- pick 4 of 8 -->
 <section class="screen" id="s-pick" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="pickhead">
     <h2>맘에 드는 <em>4장</em> 골라 줘</h2>
     <span class="step" id="pickCount">0 / 4</span>
@@ -494,6 +536,7 @@ kick();
 
 <!-- upload -->
 <section class="screen center" id="s-upload" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="uploadart"><svg class="bob"><use href="#heart"/></svg></div>
   <h2 id="upTitle">올리는 중… 0%</h2>
   <div class="bar" id="upBarBox"><i id="upBar"></i></div>
@@ -508,6 +551,7 @@ kick();
 
 <!-- share (A) + waiting (A reopens its own link) -->
 <section class="screen" id="s-share" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="hero">
     <h1 id="shareTitle">다 올렸어!<br><em>친구한테 보내자</em></h1>
     <div class="heroart" id="myStrip"></div>
@@ -528,6 +572,7 @@ kick();
 
 <!-- hand-off (Round 6 #3): the finished strip is decorated + saved in Chrome / Safari, not inside a messenger app -->
 <section class="screen center" id="s-handoff" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="msgart"><svg><use href="#star"/></svg></div>
   <h2>크롬에서 열어 꾸며 줘</h2>
   <p class="lead" id="hoText">이 앱 안에서는 꾸미고 저장하기가 잘 안 돼요.<br>크롬에서 같은 링크가 열려요.</p>
@@ -541,6 +586,7 @@ kick();
 
 <!-- message -->
 <section class="screen center" id="s-msg" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="msgart" id="msgArt"><svg><use href="#star"/></svg></div>
   <h2 id="msgTitle"></h2>
   <p class="lead" id="msgText"></p>
@@ -552,6 +598,7 @@ kick();
 
 <!-- done -->
 <section class="screen" id="s-done" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="previewwrap">
     <div class="preview" id="preview">
       <!-- Round 6 #11: the zoomed layer (two fingers zoom / pan in place) -->
@@ -592,7 +639,10 @@ kick();
   </div>
   <div class="panel row" data-panel="bg" id="bgChips" role="tabpanel" aria-label="배경" hidden></div>
   <div class="panel row" data-panel="frame" id="frameChips" role="tabpanel" aria-label="프레임"></div>
-  <div class="panel row" data-panel="filter" id="filterChips" role="tabpanel" aria-label="필터" hidden></div>
+  <div class="panel" data-panel="filter" role="tabpanel" aria-label="필터" hidden>
+    <div class="panel row" id="filterChips" role="group" aria-label="필터 종류"></div>
+    <div class="pills lv" id="filterLv" role="group" aria-label="필터 세기" hidden></div>
+  </div>
   <div class="panel" data-panel="outline" role="tabpanel" aria-label="테두리" hidden>
     <div class="pills colors" id="olColors" aria-label="테두리 색"></div>
     <div class="pills" id="olStyles" aria-label="테두리 모양"></div>
@@ -641,6 +691,7 @@ kick();
 
 <!-- framed (blog embed) -->
 <section class="screen" id="s-framed" hidden>
+  <div class="uihead" aria-hidden="true"></div>
   <div class="hero">
     <h1>따로 같이 <em>네컷</em></h1>
     <div class="heroart"><div data-ministrip class="tilt-l"></div></div>
@@ -652,5 +703,6 @@ kick();
 </main>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="module" src="js/app.js"></script>
+<script type="module" src="js/cute.js"></script>
 </body>
 </html>

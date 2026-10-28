@@ -138,7 +138,7 @@ test("A's option travels with the link; B may add a small optional layout.json",
   const e = env();
   const r = await call(e, "POST", "/s", { body: JSON.stringify({ token: tok("a"), opts: { movable: true, junk: "x" } }), type: "application/json" });
   const { id } = await r.json();
-  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: true, shape: "wide" });
+  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: true, shape: "wide", ui: "film" });
   await upAll(e, id, "a", tok("a"));
   await done(e, id, "a", tok("a"));
   const lay = JSON.stringify({ a: { x: 0.1, y: -0.05, scale: 1.2 } });
@@ -151,7 +151,7 @@ test("A's option travels with the link; B may add a small optional layout.json",
   assert.equal((await done(e, id, "b", tok("b"))).status, 204);                     // layout is optional for done
   assert.equal(await (await call(e, "GET", `/s/${id}/b/layout.json`)).text(), lay);
   const id2 = await newLink(e);
-  assert.deepEqual((await (await call(e, "GET", `/s/${id2}`)).json()).opts, { movable: false, shape: "wide" });  // default: fixed like a booth, wide cells
+  assert.deepEqual((await (await call(e, "GET", `/s/${id2}`)).json()).opts, { movable: false, shape: "wide", ui: "film" });  // default: fixed like a booth, wide cells
 });
 
 test("layout.json only when A allowed moving, only {a:{x,y,scale}} in range, stored re-serialised", async () => {
@@ -201,15 +201,33 @@ test("shape: A's 가로/세로 pick travels with the link, enum only, legacy lin
   const r = await mk({ shape: "tall", movable: true, junk: "<script>" });
   assert.equal(r.status, 201);
   const { id } = await r.json();
-  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: true, shape: "tall" });
+  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: true, shape: "tall", ui: "film" });
   assert.equal(new TextDecoder().decode(e.BUCKET.m.get(`s/${id}/meta.json`).body).includes("junk"), false);   // stored re-serialised
   const w = await (await mk({ shape: "wide" })).json();
-  assert.deepEqual((await (await call(e, "GET", `/s/${w.id}`)).json()).opts, { movable: false, shape: "wide" });
+  assert.deepEqual((await (await call(e, "GET", `/s/${w.id}`)).json()).opts, { movable: false, shape: "wide", ui: "film" });
   // a link made before shapes existed (meta.opts without shape, or no opts at all) opens as wide
   for (const opts of [{ movable: true }, undefined]) {
     const old = await newLink(e), k = `s/${old}/meta.json`, m = JSON.parse(new TextDecoder().decode(e.BUCKET.m.get(k).body));
     if (opts) m.opts = opts; else delete m.opts;
     await e.BUCKET.put(k, JSON.stringify(m));
-    assert.deepEqual((await (await call(e, "GET", `/s/${old}`)).json()).opts, { movable: !!opts, shape: "wide" });
+    assert.deepEqual((await (await call(e, "GET", `/s/${old}`)).json()).opts, { movable: !!opts, shape: "wide", ui: "film" });
   }
+});
+
+test("ui: A's 필름/귀여운 theme travels with the link like shape, enum only, legacy links read as film", async () => {
+  const e = env();
+  const mk = opts => call(e, "POST", "/s", { body: JSON.stringify({ token: tok("a"), opts }), type: "application/json" });
+  for (const bad of ["Cute", "pink", "", 1, null, ["cute"], { v: "cute" }]) assert.equal((await mk({ ui: bad })).status, 400, JSON.stringify(bad));
+  const r = await mk({ ui: "cute", shape: "tall", junk: "<script>" });
+  assert.equal(r.status, 201);
+  const { id } = await r.json();
+  assert.deepEqual((await (await call(e, "GET", `/s/${id}`)).json()).opts, { movable: false, shape: "tall", ui: "cute" });
+  assert.equal(new TextDecoder().decode(e.BUCKET.m.get(`s/${id}/meta.json`).body).includes("junk"), false);
+  const f = await (await mk({ ui: "film" })).json();
+  assert.deepEqual((await (await call(e, "GET", `/s/${f.id}`)).json()).opts, { movable: false, shape: "wide", ui: "film" });
+  // a link made before themes existed opens as film
+  const old = await newLink(e), k = `s/${old}/meta.json`, m = JSON.parse(new TextDecoder().decode(e.BUCKET.m.get(k).body));
+  m.opts = { movable: true, shape: "tall" };
+  await e.BUCKET.put(k, JSON.stringify(m));
+  assert.deepEqual((await (await call(e, "GET", `/s/${old}`)).json()).opts, { movable: true, shape: "tall", ui: "film" });
 });

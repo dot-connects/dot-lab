@@ -169,3 +169,24 @@ Research: research/booth-flow.md (Photoism: 8 shots, 8-10 s timer, pick 4, no re
 - capture.js: clips recorded with WebCodecs (fragmented MP4, camera frame times) when available, MediaRecorder otherwise
   and for the empty-clip retry. Cut.clipType stays "video/mp4" | "video/webm".
 - clipmatte.js `clipMattes(videos, onProgress) -> Map<video, matte>` (HQ moving cut); segment.js `matteFrame(bitmap)`.
+
+## Round 6 UI themes (2026-10-28, operator: A picks the look first, B follows)
+- Screen 0 (`#s-theme`, mockups/cute3.html 0): two live cards 필름 / 귀여운 -> `body.dataset.ui = "film" | "cute"`, then A's cover.
+  `film` = 필름레일 (screens3.html concept 1) in `css/app.css` under `body[data-ui="film"]`; `cute` = 말랑 부스 (cute3.html
+  concept 3) only in `css/cute.css` + `js/cute.js` (index.html links both), styling everything under `body[data-ui="cute"]`.
+- Worker: `POST /s {token, opts:{movable, shape, ui}}`, `ui` enum "film" | "cute" (anything else 400), stored re-serialised,
+  `GET /s/:id` echoes `opts.ui`, links made before it read "film". api.js `create(token, { ..., ui })`.
+- The link carries cute in the query too (`?s=<id>&ui=cute`, film links stay `?s=<id>`), as does the Chrome hand-off
+  (`&me=&bg=&ui=cute`): an inline script in `<body>` sets `body.dataset.ui` from it before first paint; route() then takes
+  the Worker's `opts.ui` (B, A's own wait screen, done / decorate).
+- Hooks (also the comment at the top of index.html), stable for both themes:
+  `body[data-ui]`; `body[data-screen]` (theme | landA | mode | landB | shoot | pick | upload | share | handoff | msg | done |
+  framed); `body[data-flow]` = "a" | "b" | "c" (c = decorate in Chrome, incl. the hand-off); `body[data-step]` = "0".."3" on
+  the 4-step tracker (a: 찍기·고르기·보정·보내기, b: 찍기·고르기·보정·완성, c: 꾸미기 = 3; shoot 0, pick 1, the 보정 review
+  on the shoot screen 2, upload / share / hand-off / done 3; absent on theme, landings, messages); one
+  `<div class="uihead" aria-hidden="true">` first in every `.screen` (film fills it with "D:OT LAB · tag" + the rail, with
+  cute it stays empty for cute.js; `:empty` = display none); `document` event `booth:screen` after every screen change
+  (dispatched in a microtask, so the screen's text is set). Ids / classes the e2e uses keep their names and places.
+- Decorate filter tab: chips compare `parseFilter(D.filter).id`; a 약/중/강 pill row `#filterLv` under them (filters.js
+  `FILTER_LEVELS`, `filterId`), 중 when a filter is first picked, the level kept when switching filters, hidden on 원본; the
+  filter tile previews render at the current level.
