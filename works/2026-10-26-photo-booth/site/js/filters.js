@@ -7,6 +7,7 @@ export const FILTERS = [
   { id: "original", label: "원본" },
   { id: "bbosasi", label: "뽀샤시" },
   { id: "mono", label: "흑백" },
+  { id: "gray", label: "그레이" },
   { id: "warm", label: "따뜻" },
   { id: "cool", label: "시원" },
   { id: "film", label: "필름" },
@@ -16,13 +17,23 @@ export const FILTERS = [
 // point, gamma, contrast, curve: extra tone points [[in,out]...] (0..255), sat, shadow: rgb added in the shadows
 // (0..255, x (1-l)^2), satBg: saturation off skin (brightening clips the backdrop's top channel; this gives the colour back),
 // smooth: [skin, rest] bilateral-smoothing mix, glow: [threshold 0..1, alpha, alpha multiplier off skin (default 1)],
-// grain: sigma (0..255), vig: corner darkening, gray: mono mix weights.
+// grain: sigma (0..255), vig: corner darkening, gray: mono mix weights,
+// skinCap: on skin, output luma <= source luma x skinCap + 0.03 (rgb scaled, so the skin keeps its chroma; +0.3 stop
+// = 1.23: dark skin brightened past that went grey, round-3 review #3).
 const P = {
-  bbosasi: { exp: 1.09, mul: [1.05, 1.0, 0.975], lift: [0.06, 0.045, 0.04], cap: 0.97, gamma: 0.88, contrast: 0.93,
-    sat: 1.14, satBg: 1.5, shadow: [14, 6, 4], smooth: [0.9, 0.2], glow: [0.45, 0.34, 0.45], grain: 0, vig: 0 },
-  mono: { mono: true, gray: [0.35, 0.55, 0.10], exp: 1.06, mul: [1, 1, 1], lift: 0.02, cap: 1, gamma: 1, contrast: 1.04,
-    curve: [[0, 0], [48, 44], [96, 104], [160, 184], [255, 255]], sat: 0, shadow: [0, 0, 0], smooth: [0.3, 0.1],
+  // round 3 (photographer, photo artist): no milky veil. Black point near black (warm), no flattening contrast, less
+  // glow (its 16 px blur haloed dark faces next to a bright backdrop), 35 % skin texture kept, +0.3 stop skin cap.
+  bbosasi: { exp: 1.08, mul: [1.04, 1.0, 0.975], lift: [0.025, 0.018, 0.014], cap: 0.97, gamma: 0.9, contrast: 1.0,
+    sat: 1.12, satBg: 1.35, shadow: [10, 4, 3], smooth: [0.65, 0.15], glow: [0.55, 0.24, 0.4], grain: 0, vig: 0, skinCap: 1.23 },
+  // 흑백 = the contrasty booth "signature" mono: red-heavy mix (dark skin opens up), real black point, S-curve, grit
+  mono: { mono: true, gray: [0.45, 0.45, 0.10], exp: 1.05, mul: [1, 1, 1], lift: 0, cap: 1, gamma: 1, contrast: 1.1,
+    curve: [[0, 0], [40, 30], [96, 100], [170, 196], [255, 255]], sat: 0, shadow: [0, 0, 0], smooth: [0.3, 0.1],
     glow: [0.7, 0.10], grain: 11, vig: 0.14 },
+  // 그레이 = the soft one: lifted black (~L* 10), white at 242, gentle S, fine grain, cool shadows / warm highlights
+  // (the tint survives because sat is 1 on an already grey image)
+  gray: { mono: true, gray: [0.40, 0.50, 0.10], exp: 1.04, mul: [1.02, 1, 0.97], lift: 0.09, cap: 0.95, gamma: 0.97,
+    contrast: 0.97, curve: [[0, 0], [64, 60], [128, 130], [192, 198], [255, 255]], sat: 1, shadow: [-3, 1, 7],
+    smooth: [0.5, 0.1], glow: [0.7, 0.08], grain: 8, vig: 0.06 },
   warm: { exp: 1.05, mul: [1.06, 1.0, 0.91], lift: 0.02, cap: 1, gamma: 0.97, contrast: 1.0, sat: 1.06,
     shadow: [4, 1, 0], smooth: [0.35, 0.1], glow: [0.75, 0.12], grain: 0, vig: 0.05 },
   cool: { exp: 1.04, mul: [0.97, 1.0, 1.04], lift: 0.02, cap: 1, gamma: 0.97, contrast: 1.0, sat: 1.05,
@@ -69,7 +80,7 @@ const FS = `precision mediump float;
 varying vec2 uv;
 uniform sampler2D src, blurL, lut;
 uniform vec2 size, texL;
-uniform float smoothSkin, smoothRest, mono, sat, satBg, glowT, glowA, glowBg, grain, vig, seed, strength;
+uniform float smoothSkin, smoothRest, mono, sat, satBg, glowT, glowA, glowBg, grain, vig, seed, strength, skinCap;
 uniform vec3 shadow, gray;
 float luma(vec3 c){ return dot(c, vec3(0.2126, 0.7152, 0.0722)); }
 float h(vec2 q){ return fract(sin(dot(q, vec2(12.9898, 78.233)) + seed) * 43758.5453); }
@@ -96,6 +107,7 @@ void main(){
   if (mono > 0.5) g = vec3(dot(g, gray));
   g *= smoothstep(glowT - 0.2, glowT + 0.15, luma(g));
   c = 1.0 - (1.0 - c) * (1.0 - g * glowA * mix(glowBg, 1.0, sk));   // backdrop keeps its colour
+  if (skinCap > 0.0) { float lc = luma(o.rgb) * skinCap + 0.03, lo = luma(c); if (lo > lc) c *= mix(1.0, lc / lo, sk); }
   vec2 px = floor(uv * size);
   float n = (h(px) + h(px + 17.3) - 1.0) * 1.22;
   float m = 1.0 - 0.6 * pow(abs(2.0 * luma(c) - 1.0), 2.0);
@@ -155,7 +167,7 @@ function glFilter() {
     gl.uniform1f(u("smoothSkin"), p.smooth[0]); gl.uniform1f(u("smoothRest"), p.smooth[1]);
     gl.uniform1f(u("mono"), p.mono ? 1 : 0); gl.uniform1f(u("sat"), p.sat); gl.uniform1f(u("satBg"), p.satBg ?? p.sat);
     gl.uniform1f(u("glowT"), p.glow[0]); gl.uniform1f(u("glowA"), p.glow[1]); gl.uniform1f(u("glowBg"), p.glow[2] ?? 1); gl.uniform1f(u("grain"), p.grain);
-    gl.uniform1f(u("vig"), p.vig); gl.uniform1f(u("seed"), seed); gl.uniform1f(u("strength"), strength);
+    gl.uniform1f(u("vig"), p.vig); gl.uniform1f(u("seed"), seed); gl.uniform1f(u("strength"), strength); gl.uniform1f(u("skinCap"), p.skinCap || 0);
     gl.uniform3f(u("shadow"), p.shadow[0] / 255, p.shadow[1] / 255, p.shadow[2] / 255);
     const gr = p.gray || [0.3, 0.6, 0.1]; gl.uniform3f(u("gray"), gr[0], gr[1], gr[2]);
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
@@ -202,6 +214,7 @@ function cpuFilter() {
       if (p.mono) { const m = gr[0] * g[0] + gr[1] * g[1] + gr[2] * g[2]; g = [m, m, m]; }
       const gk = sm(p.glow[0] - 0.2, p.glow[0] + 0.15, lu(g));
       c = c.map((v, j) => 1 - (1 - v) * (1 - g[j] * gk * p.glow[1] * ((p.glow[2] ?? 1) + (1 - (p.glow[2] ?? 1)) * sk)));
+      if (p.skinCap) { const lc = lu([o[i] / 255, o[i + 1] / 255, o[i + 2] / 255]) * p.skinCap + 0.03, lo = lu(c); if (lo > lc) c = c.map(v => v * (1 + (lc / lo - 1) * sk)); }
       const n = (rnd() + rnd() - 1) * 1.22 * p.grain / 255 * (1 - 0.6 * Math.pow(Math.abs(2 * lu(c) - 1), 2));
       const px = X / w - 0.5, py = Y / h - 0.5;
       const v = 1 - p.vig * sm(0.12, 0.5, px * px + py * py);
@@ -213,6 +226,13 @@ function cpuFilter() {
   };
 }
 
+// Strength (round-3 review #3: 3 steps, 약/중/강): a filter id may carry a level, "bbosasi:0" | ":1" | ":2", the mix
+// of the filtered cell over the unfiltered one. A bare id = 강 (1.0, the look before levels existed). The level rides in
+// the id, so the still cache, the video key and the moving strip all follow it with no other change.
+export const FILTER_LEVELS = [{ label: "약", mix: 0.45 }, { label: "중", mix: 0.7 }, { label: "강", mix: 1 }];
+export const filterId = (id, level) => (id === "original" || level == null || level === 2 ? id : `${id}:${level}`);
+export const parseFilter = fid => { const [id, l] = String(fid || "original").split(":"); return { id, level: FILTER_LEVELS[l] ? +l : 2 }; };
+
 // apply() returns a canvas that is reused by the next call: draw it before applying again.
 // createFilter({ cpu: true }) forces the ImageData path (dev check that both paths match).
 export function createFilter({ cpu = false } = {}) {
@@ -220,8 +240,9 @@ export function createFilter({ cpu = false } = {}) {
   if (!cpu) try { run = glFilter(); } catch (e) { run = null; }
   run ||= cpuFilter();
   return {
-    apply(srcCanvas, id, strength = 1, seed = 0) {
-      const p = P[id];
+    apply(srcCanvas, fid, strength = 1, seed = 0) {
+      const { id, level } = parseFilter(fid), p = P[id];
+      strength *= FILTER_LEVELS[level].mix;
       if (!p || strength <= 0) return srcCanvas;
       return run(srcCanvas, p, id, Math.min(1, strength), seed);
     },
