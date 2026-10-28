@@ -215,8 +215,6 @@ async function landB() {
   // A's raw photos: A's room for B's view (b) and the pick screen's 친구 배경
   S.ghostRawP = Promise.all([1, 2, 3, 4].map(c => api.blobUrl(S.id, "a", `${c}-raw.jpg`).catch(() => null)))
     .then(g => S.ghostRaw = g);
-  S.ghostP.then(() => S.ghostRawP).then(ghostLook).then(() => S.cutIdx != null && document.body.dataset.screen === "shoot" && setCut(S.cutIdx, false))
-    .catch(e => console.warn("[booth] A's look", e));   // Round 5: A's 보정 on the overlay, in the background
   window.__coverReal?.(await S.ghostP);   // the B cover swaps its drawn friend for A's real cut-outs (index.html)
 }
 
@@ -265,6 +263,10 @@ async function startShoot(side) {
   $("viewPick").hidden = side !== "b";
   if (side === "b") {
     await S.ghostP; await S.ghostRawP; setView(S.view);
+    // Round 5: A's 보정 on the overlay, in the background. Not during B's cover: the face landmarker's load + GPU compile
+    // took the cover to ~1.5 fps (perf study #5); now it runs once the camera is up and the overlay swaps when done
+    S.lookP ||= ghostLook().then(() => S.cutIdx != null && document.body.dataset.screen === "shoot" && setCut(S.cutIdx, false))
+      .catch(e => console.warn("[booth] A's look", e));
   }
 }
 // Lay the camera out so the strip-cell crop (the whole photo) spans the stage width and sits in its middle.
@@ -323,11 +325,13 @@ function liveLoop() {
     if (v.videoWidth && S.seg && S.cam) {
       const fr = S.cam.frameRect(v), w = 480, h = Math.round(w * fr.sh / fr.sw), k = w / fr.sw, x = c.getContext("2d");
       if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
-      if (!S.busy) S.seg.segmentFrame(v);          // while shooting, capture's loop runs the model (same matte)
+      // while shooting, capture's loop runs the model (same matte); otherwise every 2nd camera frame (15/s): view b fps 10 -> 20 (perf study #3)
+      if (!S.busy && (S.liveN = (S.liveN || 0) + 1) % 2) S.seg.segmentFrame(v);
       x.clearRect(0, 0, w, h); x.save(); x.translate(-fr.sx * k, -fr.sy * k);
       S.seg.drawCutout(x, v, v.videoWidth * k, v.videoHeight * k, S.cam.camState.mirror); x.restore();
     }
-    requestAnimationFrame(step);
+    // one redraw per new camera frame, not per display frame
+    if (v.requestVideoFrameCallback) v.requestVideoFrameCallback(step); else requestAnimationFrame(step);
   };
   step();
 }
@@ -504,6 +508,8 @@ function pickBgRow(box = "pickBg", redraw = () => (async () => { for (let j = 0;
   }));
 }
 function pickScreen() {
+  // the camera (the phone's biggest steady heat source) is off for the pick + 보정; reshoot turns it back on (perf study #4)
+  $("video").srcObject?.getTracks().forEach(t => t.stop());
   S.pick = []; S.cellCv = [];
   show("pick");
   $("reshoot").hidden = S.redo;
@@ -587,7 +593,11 @@ function reshoot() {
   S.redo = true;
   show("shoot");
   resetShoot();
-  if (S.side === "b") { $("viewPick").hidden = false; setView(S.view); }
+  $("camwait").hidden = false; $("camwait").textContent = "카메라 켜는 중…";
+  S.cam.startCam($("video"), S.cam.camState.front ? "user" : "environment").then(() => {
+    $("camwait").hidden = true; syncMirror(); fitStage();
+    if (S.side === "b") { $("viewPick").hidden = false; setView(S.view); }
+  }, camError);
 }
 
 // "맘에 들어?": the four cells composed like the strip (B: B's pick + its paired A in front).

@@ -388,7 +388,6 @@ export async function loadStillSegmenter() {
   stillW = new Worker(new URL("./matting-worker.js", import.meta.url), { type: "module" });
   stillW.onmessage = ({ data }) => { const f = wcb.get(data.id); wcb.delete(data.id); f?.(data); };
   stillW.onerror = e => { e.preventDefault(); for (const f of wcb.values()) f({ error: "worker: " + (e.message || "load") }); wcb.clear(); };
-  loadPet();
   const gpu = !TUNE.scpu && await navigator.gpu?.requestAdapter().catch(() => null);
   let L = gpu && await wcall({ load: STILL_MODEL, eps: ["webgpu"] }).catch(e => { S.gpuError = String(e?.message || e); return null; });
   if (!L) { if (!gpu && !TUNE.scpu) S.gpuError ||= "no webgpu adapter"; L = await wcall({ load: STILL_WASM, eps: ["wasm"] }); }
@@ -422,7 +421,7 @@ export function warmStill() {
     const run = async () => {   // 4:3 like every still, so the warm-up compiles the same 512x384 shapes
       const w = Object.assign(document.createElement("canvas"), { width: 96, height: 72 }), b = await bitmap(w);
       stillRef.refine(w, await wcall({ img: b }, [b]), { temporal: 0, guide: 0 });
-      if (petP && TUNE.pet) await petP.then(() => pet && petMask(w));   // DeepLab's first GPU run compiles too (~6 s)
+      if (TUNE.pet) createImageBitmap(w).then(petMap);   // the pet worker loads + compiles behind the same wait
     };
     warming = run().catch(async e => { await toWasm(e); await run(); });
     try { await warming; } finally { warming = null; }
@@ -464,7 +463,7 @@ async function cutOne(canvas4x3) {
   if (!stillReady() && !(await warmStill())) throw new Error("still-" + (stats.still.state || "off"));
   const S = stats.still, t0 = performance.now(), run = async () => { const b = await bitmap(canvas4x3); return wcall({ img: b }, [b], STILL_MS[S.delegate] || 15000); };
   const m = await run().catch(async e => { if (/timeout/.test(e.message)) throw e; await toWasm(e); return run(); }), t1 = performance.now();
-  const pm = addPet(canvas4x3, m);
+  const pm = addPet(canvas4x3, m, await petMap(await createImageBitmap(canvas4x3)));
   const g = stillRef.refine(canvas4x3, m, { temporal: 0, guide: 0, lo: TUNE.slo, hi: TUNE.shi });
   const o = Object.assign(document.createElement("canvas"), { width: canvas4x3.width, height: canvas4x3.height });
   o.getContext("2d").drawImage(g, 0, 0);   // own copy: the refiner canvas is reused by the next cut
@@ -478,41 +477,16 @@ async function cutOne(canvas4x3) {
 // MODNet is a portrait model: a dog held up or sitting beside comes out partly or not at all (research/pet-matting/).
 // The pet probability (cat + dog, at DeepLab's 257 px) is snapped to the photo's edges by refine.js's guided filter and
 // max-ed into the MODNet alpha before the usual levels + decontamination. ~130 ms per still after a ~6 s first run.
-const DEEPLAB = "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite";
-const CAT = 8, DOG = 12;
-let pet = null, petP = null, petRef = null;
-function loadPet() {
-  if (!TUNE.pet) return;
-  petP ||= (async () => {
-    const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
-    const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
-    const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: DEEPLAB, delegate },
-      runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
-    try { pet = await mk("GPU"); stats.still.pet = "GPU"; } catch { pet = await mk("CPU"); stats.still.pet = "CPU"; }
-    petRef = createRefiner();
-  })().catch(e => { pet = null; stats.still.pet = "failed: " + (e?.message || e); });
-}
-// cat + dog probability at the still's size, or null when no pixel reaches 0.3 (no pet in the photo)
-// (the page's own DeepLab: stills only; clip keyframes and the live cut go through petMap / pet-worker.js)
-function petMask(c) {
-  let out = null;
-  pet.segment(c, r => {
-    const M = r.confidenceMasks, a = M[CAT].getAsFloat32Array(), b = M[DOG].getAsFloat32Array(), d = new Float32Array(a.length);
-    let hit = false;
-    for (let i = 0; i < d.length; i++) { d[i] = Math.min(1, a[i] + b[i]); hit ||= d[i] >= 0.3; }
-    if (hit) out = { data: d, width: M[CAT].width, height: M[CAT].height };
-  });
-  return out;
-}
+// Stills, clip keyframes and the live cut all use pet-worker.js (petMap): the page's own DeepLab ran each still
+// synchronously and froze the pick ~8 s (research/perf-study.md #2).
+let petRef = null;
 // m (MODNet alpha, Uint8 at model size) gets max(m, guided pet alpha); returns the pet canvas (alpha = pet) or null.
 // Also clipmatte.js on each HQ moving-cut keyframe (canvas4x3 = a canvas of that frame's raw half, p = its petMap result).
-export function addPet(canvas4x3, m, p = undefined) {
-  if (!TUNE.pet || (p === undefined && !pet)) return null;
+export function addPet(canvas4x3, m, p) {
+  if (!TUNE.pet || !p) return null;
   try {
     petRef ||= createRefiner();
     const t0 = performance.now();
-    if (p === undefined) p = petMask(canvas4x3);
-    if (!p) return null;
     const g = petRef.refine(canvas4x3, p, { temporal: 0, guide: 1, lo: 0.15, hi: 0.85, width: m.width, height: m.height });
     const c = Object.assign(document.createElement("canvas"), { width: m.width, height: m.height }), x = c.getContext("2d", { willReadFrequently: true });
     x.drawImage(g, 0, 0);

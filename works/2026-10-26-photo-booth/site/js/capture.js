@@ -133,10 +133,10 @@ const warm = (async () => {
   let on = true;
   const l = () => { if (on) { x.fillStyle = `hsl(${performance.now() % 360},50%,50%)`; x.fillRect(0, 0, 64, 48); requestAnimationFrame(l); } };
   l();
-  const R = recorder(c.captureStream(30), 200_000);
+  const st = c.captureStream(30), R = recorder(st, 200_000);
   await Promise.race([R.started, sleep(6000)]);
   await R.stop().catch(() => {});
-  on = false;
+  on = false; st.getTracks().forEach(t => t.stop());   // no idle canvas track left for the page
 })().catch(() => {});
 
 // Over the cap: play the clip once into a smaller canvas at a lower bitrate (real time, ~2 s).
