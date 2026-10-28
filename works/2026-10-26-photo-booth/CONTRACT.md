@@ -190,3 +190,17 @@ Research: research/booth-flow.md (Photoism: 8 shots, 8-10 s timer, pick 4, no re
 - Decorate filter tab: chips compare `parseFilter(D.filter).id`; a 약/중/강 pill row `#filterLv` under them (filters.js
   `FILTER_LEVELS`, `filterId`), 중 when a filter is first picked, the level kept when switching filters, hidden on 원본; the
   filter tile previews render at the current level.
+
+## Round 7 (2026-10-28, operator phone run; ROUND7.md)
+- 6 shots per side (was 8), still pick 4; pick grid 2x3 (세로 3x2). B's shot j floats A's cut j % 4; pairs.json unchanged
+  (4 ints 0..3). The Worker never counted shots (only the 4 picks are uploaded), so 8-shot links read as before.
+- Nobody moves or scales A (A over A's own room showed A twice). Gone: B's mover, the "친구가 내 위치를 바꿀 수 있게"
+  switch, B's layout.json upload, A's own size / place in decorate. B keeps its own size / place (`own.b`; a drag keeps
+  B's anchor in the middle 70 % of the cell). New links are created without `opts.movable` (Worker default false), so
+  the Worker refuses layout.json for them (403 "fixed"); an old movable link may still hold one, the Worker keeps
+  accepting it unchanged and the app never reads it. compose.js ignores `layout` and `own.a`; `bgAllowed()` = all ids.
+- compose.js keeps one cut-out GL context per side ("a" / "b") for the page, not one per person object (fresh person
+  objects per pick / review cell and per 보정 change went past Chrome's live WebGL limit, which drops the oldest contexts
+  silently: the face landmarker, so B's 보정 did nothing).
+- `#revBg` on the 보정 review = the pick screen's background pills (same `S.pickBg`); `[data-act="toTheme"]` "‹ 테마" on
+  `#s-landA` and `#s-mode` only.

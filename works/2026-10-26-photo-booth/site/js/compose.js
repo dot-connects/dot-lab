@@ -1,6 +1,6 @@
 // Compose the 4-cut strip (JPG) and the moving strip (MP4/WebM) from both people's media.
 // Cell = background (A's raw | B's raw | preset), then B's cut-out, then A's (A always in front), positions as shot
-// unless B moved A (layout); optional sticker outline on both; light wrap on plain cut-out edges, then the filter over
+// (B may size / place itself, `own.b`; A never moves); optional sticker outline on both; light wrap on plain cut-out edges, then the filter over
 // the whole cell. Frame art goes under and over the cells.
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
@@ -441,9 +441,11 @@ function preset(bg, w, h) {
   }
   return presetCache.get(key);
 }
-// one GL cut-out per person: A and B pad differently once B scales A, and a shared canvas would be reallocated
-// twice per cell
-const alphas = new WeakMap();
+// one GL cut-out per side for the page ("a" / "b": they pad differently with an outline, and one shared canvas would be
+// reallocated twice per cell). Round 7: not per person object - app.js makes fresh person objects for every pick /
+// review cell and every 보정 pick, and one context each went past Chrome's live WebGL limit, which silently drops the
+// oldest contexts (the face landmarker / beauty warp: B's 보정 did nothing, a 보정 pick blanked a person)
+const alphas = {};
 // clip frames for the moving strip (crossfaded at the loop seam), keyed by video; empty outside recordMovingStrip
 const clipFrames = new Map();
 // clips that would not load or decode: their cells use the stills (one bad clip must not cost the whole video)
@@ -451,10 +453,8 @@ const badClips = new WeakSet();
 const clipUsable = v => !!v && !badClips.has(v) && !v.error && v.readyState >= 2;
 // one person's source for cell i: video halves when t is set and a clip exists, else the stills; cut(o) -> canvas
 // (with canvas.pad px of margin when o.outline is set)
-function sources(p, i, t, slot = i) {
-  const c = p.cuts[i];
-  if (!alphas.has(p)) alphas.set(p, createClipAlpha({ choke: CHOKE }));
-  const alpha = alphas.get(p);
+function sources(p, i, t, slot, side) {
+  const c = p.cuts[i], alpha = alphas[side] ||= createClipAlpha({ choke: CHOKE });
   if (t != null && clipUsable(c.clip)) {
     const f = clipFrames.get(c.clip) || c.clip, w = (f.videoWidth || f.width) >> 1, h = f.videoHeight || f.height;
     return { raw: f, rawW: w, rawH: h, cut: o => alpha.draw(f, { ...o, slot }), cutW: w, cutH: h };
@@ -469,10 +469,10 @@ const CHOKE = 1;       // px the cut-out edge is eroded (min) before compositing
 const TINT = 0.07;     // backdrop colour cast on cut-outs over presets
 const SHADOW = { a: 0.10, blur: 16, dy: 6 };   // soft contact shadow, lower half of the cell only
 
-// ---------- B's placement of A (Round 3) ----------
-// layout = { a: { x, y, scale } }: in the cell (= the strip crop of the camera frame), A is scaled by `scale` about
-// layoutAnchor(A's cut) and then shifted by (x * cell width, y * cell height). CSS equivalent on a cell-sized box:
-// transform-origin: anchor; transform: translate(x*w, y*h) scale(scale). layout.json comes from the other phone: clamped.
+// ---------- a person's own size / place (Round 6; Round 3's B-moves-A is gone since Round 7) ----------
+// p = { x, y, scale }: in the cell (= the strip crop of the camera frame), the person is scaled by `scale` about
+// layoutAnchor(their cut) and then shifted by (x * cell width, y * cell height). CSS equivalent on a cell-sized box:
+// transform-origin: anchor; transform: translate(x*w, y*h) scale(scale). Values are clamped.
 const num = (v, lo, hi, d) => (Number.isFinite(+v) && v !== null && v !== "" ? Math.min(hi, Math.max(lo, +v)) : d);
 function layoutOf(l) {
   const a = l && l.a;
@@ -485,22 +485,22 @@ export function layoutAnchor(cutImg, aspect = L.CW / L.CH) {
   const st = cutStats(cutImg), w = cutImg.naturalWidth || cutImg.width, h = cutImg.naturalHeight || cutImg.height, r = cellCrop(w, h, aspect);
   return { x: (st.cx * w - r.sx) / r.sw, y: (st.by * h - r.sy) / r.sh };
 }
-// bg "a" is A's raw frame: once B moved A, A would be in it twice, so it is not offered (drawCell falls back to "b")
-export const bgAllowed = layout => BACKGROUNDS.map(b => b.id).filter(id => id !== "a" || !layoutOf(layout));
+// Round 7: nobody moves A any more (A over A's own room showed A twice), so every background is allowed; `layout`
+// (old links' layout.json) is ignored everywhere
+export const bgAllowed = () => BACKGROUNDS.map(b => b.id);
 // Round 4: pairs[i] = which of A's 4 cuts goes in cell i (B picked 4 of 8 shots, shot j floated A's cut j % 4; repeats
 // allowed). pairs.json comes from the other phone: anything but 4 ints 0..3 = identity.
 const pairsOf = p => (Array.isArray(p) && p.length === 4 && p.every(k => Number.isInteger(k) && k >= 0 && k <= 3) ? p : [0, 1, 2, 3]);
 
-// Round 6: own = { a: [p x4] | null, b: [...] }, each side's own size / place per cell (same maths as layout; A's adds
-// to B's move of A). A person whose own room is the background and who moved there would show twice: that cell falls
-// back to the first background whose person stayed put (or a preset).
-const ownOf = (own, side, i) => layoutOf({ a: own?.[side]?.[i] });
-const join = (p, q) => (!p ? q : !q ? p : { x: p.x + q.x, y: p.y + q.y, scale: p.scale * q.scale });
+// Round 6: own = { b: [p x4] | null }, B's own size / place per cell (same maths as the old layout). Round 7: A is never
+// placed (own.a and layout are ignored). B moved over B's own room would show twice: that cell falls back to the first
+// background whose person stayed put (or a preset).
+const ownOf = (own, side, i) => (side === "b" ? layoutOf({ a: own?.b?.[i] }) : null);
 export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null, own = null }) {
   const { w, h } = rect, aspect = w / h, ia = pairsOf(pairs)[i];   // A's cut for this cell; B's is cut i
   const at = p => (p === a ? ia : i);
   const back = canvas("back", w, h), bx = back.getContext("2d");
-  const lay = layoutOf(layout), ol = outlineOf(outline), place = { a: join(lay, ownOf(own, "a", i)), b: ownOf(own, "b", i) };
+  const ol = outlineOf(outline), place = { a: null, b: ownOf(own, "b", i) };
   let B = typeof bg === "string" ? BACKGROUNDS.find(x => x.id === bg) : bg;
   if (!B.draw && place[B.id]) B = BACKGROUNDS.find(x => x.draw || !place[x.id]);
   // draw order background -> B -> A: A is always in front. The person who is the background gets their cut drawn
@@ -511,11 +511,11 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
   let tint;
   if (B.draw) { const pc = preset(B, w, h); bx.drawImage(pc, 0, 0); tint = pc.tint; }
   else {
-    const s = sources(self, at(self), t, i), r = cellCrop(s.rawW, s.rawH, aspect);
+    const s = sources(self, at(self), t, i, B.id), r = cellCrop(s.rawW, s.rawH, aspect);
     bx.drawImage(s.raw, r.sx, r.sy, r.sw, r.sh, 0, 0, w, h);
   }
   for (const p of people) {
-    const s = sources(p, at(p), t, i), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
+    const s = sources(p, at(p), t, i, p === a ? "a" : "b"), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
     const Lp = place[p === a ? "a" : "b"], sc = Lp ? Lp.scale : 1;
     const cut = s.cut({ gain: gains[p === a ? 0 : 1], tint, time: t || 0, outline: ol && { ...ol, px: ol.px / (k * sc), cs: k * sc } });
     // source px -> cell px: the crop, then (A only) scale about the anchor and shift
@@ -589,7 +589,7 @@ const lru = (m, max) => { while (m.size > max) m.delete(m.keys().next().value); 
 const cellCache = new Map(), filtCache = new Map(), miniCache = new Map();
 function cellKey(i, r, { a, b, bg, layout, outline, pairs, own }) {
   const ia = pairsOf(pairs)[i], pa = a.cuts[ia], pb = b.cuts[i];
-  return [i, r.w, r.h, typeof bg === "string" ? bg : bg?.id, JSON.stringify(layoutOf(layout)), JSON.stringify(outline || null), ia, JSON.stringify([ownOf(own, "a", i), ownOf(own, "b", i)]),
+  return [i, r.w, r.h, typeof bg === "string" ? bg : bg?.id, JSON.stringify(outline || null), ia, JSON.stringify([ownOf(own, "a", i), ownOf(own, "b", i)]),
     oid(a), oid(b), oid(pa), oid(pb), oid(pa.raw), oid(pa.cut), oid(pb.raw), oid(pb.cut)].join("|");
 }
 function stillCell(r, i, o, scale = 1) {
