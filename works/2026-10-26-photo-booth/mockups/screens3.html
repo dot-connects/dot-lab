@@ -1,0 +1,529 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>네컷 전 화면 시안</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#f1f1ee;color:#222;font:15px/1.5 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 16px 60px}
+.page-h h1{font-size:clamp(22px,4vw,30px);font-weight:900;letter-spacing:-.02em}
+.page-h p{color:#444;margin-top:6px;font-size:14px;max-width:760px}
+.ktabs{position:sticky;top:0;z-index:50;background:#f1f1ee;display:flex;gap:6px;padding:12px 0 10px;margin-top:10px;border-bottom:2px solid #111}
+.ktabs button{flex:1;border:2px solid #111;background:#fff;font-weight:900;font-size:14px;padding:8px 4px;line-height:1.2}
+.ktabs button small{display:block;font:700 11px 'Space Grotesk','Noto Sans KR';color:#444}
+.ktabs button[aria-pressed=true]{background:#111;color:#fff}
+.ktabs button[aria-pressed=true] small{color:#d6ff3d}
+.idea{margin:14px 0 4px;background:#fff;border-left:5px solid #d6ff3d;padding:8px 12px;font-size:14px;max-width:760px}
+.idea b{font-weight:900}
+.kset[hidden]{display:none}
+.flow-h{margin:30px 0 4px;font-size:19px;font-weight:900;display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.flow-h .no{font:700 13px 'Space Grotesk';background:#111;color:#fff;padding:0 8px}
+.flow-h span.s{font-size:13px;font-weight:400;color:#444}
+.row{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:26px 22px;margin-top:12px}
+figure{min-width:0}
+figcaption{max-width:360px;margin:8px auto 0;font-size:13px;color:#333;line-height:1.45}
+figcaption b{font:700 12px 'Space Grotesk';background:#111;color:#fff;padding:0 6px;margin-right:6px}
+
+/* ===== phone ===== */
+.phone{--ink:#0d0d0d;--acc:#d6ff3d;width:100%;max-width:360px;margin:0 auto;aspect-ratio:9/16;container-type:inline-size;position:relative;overflow:hidden;border-radius:18px;border:1px solid rgba(0,0,0,.25);box-shadow:0 6px 20px rgba(0,0,0,.14);background:#fff}
+.scr{position:absolute;inset:0;font-size:4cqw;line-height:1.3;background:#fff;color:var(--ink);display:flex;flex-direction:column;padding:5cqw;overflow:hidden}
+.scr.dark{background:#000;color:#fff}
+.scr svg{display:block}
+.top{display:flex;justify-content:space-between;font:700 3cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.18em;border-bottom:.6cqw solid currentColor;padding-bottom:2cqw;flex:none}
+.hl{font-size:10.5cqw;line-height:1.18;font-weight:900;letter-spacing:-.05em;margin:3cqw 0;flex:none}
+.h2{font-size:6.6cqw;line-height:1.25;font-weight:900;letter-spacing:-.04em;margin:3.4cqw 0 2.4cqw;flex:none}
+mark{background:var(--acc);color:#000;padding:0 1.2cqw}
+.hl mark{display:inline-block;line-height:1.08}
+.sub{font-size:3.4cqw;color:#444;flex:none}
+.dark .sub{color:#ccc}
+.body{flex:1;min-height:0;position:relative;display:flex;flex-direction:column}
+.cta{flex:none;margin-top:3cqw;display:flex;justify-content:space-between;align-items:center;width:100%;background:#000;color:#fff;font-weight:900;font-size:4.8cqw;padding:3.4cqw 4cqw;text-align:left}
+.cta .r{display:flex;align-items:center;gap:2cqw;font:700 2.9cqw 'Space Grotesk','Noto Sans KR';color:#bbb;letter-spacing:.04em}
+.cta .r i{width:5cqw;height:5cqw;background:var(--acc);display:block}
+.cta.alt{background:#fff;color:#000;border:.7cqw solid #000;margin-top:2cqw}
+.cta.alt .r{color:#444}
+.cta.lime{background:var(--acc);color:#000;border:.7cqw solid #000}
+.cta.lime .r{color:#000}.cta.lime .r i{background:#000}
+.tl{flex:none;margin-top:2.4cqw;align-self:center;font-size:3.4cqw;font-weight:700;text-decoration:underline;text-underline-offset:.8cqw;color:#222}
+.tl.sm{font-size:3cqw;font-weight:400;color:#444}
+.km{flex:none;margin-top:2.6cqw;display:flex;justify-content:space-between;align-items:baseline;gap:2cqw;font-size:3.3cqw;border-top:.4cqw solid #000;padding-top:1.6cqw}
+.km .d{font:700 3.6cqw 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.km .d b{font-size:5.4cqw}
+.km .t{font-weight:700;white-space:nowrap}
+
+/* ===== cells, backgrounds, people ===== */
+.cell{position:relative;overflow:hidden;width:100%;aspect-ratio:4/3;background:#ddd}
+.cell.t{aspect-ratio:3/4}
+.bgG{background:linear-gradient(90deg,transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(transparent 33%,rgba(255,255,255,.6) 33% 33.4%,transparent 33.4% 66%,rgba(255,255,255,.6) 66% 66.4%,transparent 66.4%),linear-gradient(#e3e3e3,#c4c4c4)}
+/* A's room: warm wall + window; B's room: cool wall + shelf + plant */
+.bgA{background:linear-gradient(#f3d9b9 0 70%,#c9946a 70%)}
+.bgA:before{content:"";position:absolute;left:12%;top:10%;width:30%;height:38%;background:linear-gradient(#cfe9ff,#9fd0f5);border:.8cqw solid #fff;box-shadow:0 0 0 .3cqw #c9a07a}
+.bgB{background:linear-gradient(#c6dce8 0 74%,#8aa7b8 74%)}
+.bgB:before{content:"";position:absolute;right:8%;top:22%;width:40%;height:3%;background:#6d5745;box-shadow:0 -1.4cqw 0 -.2cqw #e36f5b}
+.bgB:after{content:"";position:absolute;left:6%;bottom:22%;width:16%;height:30%;background:radial-gradient(circle at 50% 30%,#4f9a5c 0 45%,transparent 46%),linear-gradient(transparent 60%,#b0643f 60%)}
+.bgN{background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0 0/3cqw 3cqw}
+.offlay{position:absolute;inset:0;z-index:1;background:repeating-conic-gradient(#e6e6e6 0 25%,#fff 0 50%) 0 0/3cqw 3cqw;animation:bgoff 4s steps(1) infinite}
+@keyframes bgoff{0%,49%{opacity:0}50%,100%{opacity:1}}
+.cell .pp{position:absolute;bottom:-7%;height:94%;width:auto;overflow:visible;z-index:2}
+.cell.t .pp{height:70%;bottom:-5%}
+.cell .pp.a{z-index:3}
+.cell .L{transform:scaleX(-1)}
+.cell .gh{position:absolute;bottom:-6%;height:88%;width:auto;z-index:2}
+.cell.t .gh{height:66%}
+.cut{filter:drop-shadow(1px 0 0 #fff) drop-shadow(-1px 0 0 #fff) drop-shadow(0 1px 0 #fff) drop-shadow(0 -1px 0 #fff) drop-shadow(0 1px 2px rgba(0,0,0,.35))}
+.pn{position:absolute;right:0;top:0;z-index:6;width:6.4cqw;height:6.4cqw;background:var(--acc);border-left:.6cqw solid #000;border-bottom:.6cqw solid #000;display:grid;place-items:center;font:700 3.6cqw/1 'Space Grotesk';color:#000}
+.cell .tg{display:none;position:absolute;bottom:1.2cqw;z-index:6;font:900 3cqw/1.2 'Noto Sans KR';padding:.1cqw 1.3cqw;font-style:normal;white-space:nowrap}
+.k2 .cell .tg{display:block}
+.cell .tg.me{background:var(--acc);color:#000;box-shadow:0 0 0 .4cqw #000}
+.cell .tg.fd{background:#000;color:#fff;box-shadow:0 0 0 .4cqw #fff}
+.cell .tg.l{left:1.4cqw}.cell .tg.r{right:1.4cqw}
+.g8 .cell .tg{font-size:2.4cqw;bottom:.8cqw}
+.no8{position:absolute;left:0;top:0;z-index:6;background:#000;color:#fff;font:700 2.6cqw 'Space Grotesk';padding:0 1cqw}
+
+/* ===== landing film (cover) ===== */
+.fstage{flex:1;position:relative;min-height:0;overflow:hidden}
+.film{position:absolute;top:0;bottom:0;left:16%;right:16%;background:#000;overflow:hidden}
+.film:before,.film:after{content:"";position:absolute;top:0;bottom:0;width:2.4cqw;z-index:2;background:repeating-linear-gradient(#000 0 1.4cqw,#fff 1.4cqw 3.8cqw,#000 3.8cqw 5.2cqw);animation:spr 6.4s linear infinite}
+.film:before{left:1.2cqw}.film:after{right:1.2cqw}
+@keyframes spr{to{background-position:0 -41.6cqw}}
+.reel{position:absolute;left:6cqw;right:6cqw;top:0;display:flex;flex-direction:column;gap:3cqw;animation:reel 12.8s linear infinite}
+@keyframes reel{to{transform:translateY(-50%)}}
+.reel .cell{flex:none}
+.gatec{position:absolute;left:calc(16% + 4.6cqw);right:calc(16% + 4.6cqw);top:50%;transform:translateY(-50%);aspect-ratio:4/3;z-index:4;pointer-events:none}
+.gatec i,.vg i{position:absolute;width:6cqw;height:6cqw;border:0 solid var(--acc)}
+.vg i:nth-child(1),.gatec i:nth-child(1){left:0;top:0;border-left-width:.8cqw;border-top-width:.8cqw}
+.vg i:nth-child(2),.gatec i:nth-child(2){right:0;top:0;border-right-width:.8cqw;border-top-width:.8cqw}
+.vg i:nth-child(3),.gatec i:nth-child(3){left:0;bottom:0;border-left-width:.8cqw;border-bottom-width:.8cqw}
+.vg i:nth-child(4),.gatec i:nth-child(4){right:0;bottom:0;border-right-width:.8cqw;border-bottom-width:.8cqw}
+.stamp{position:absolute;right:2cqw;top:38%;z-index:8;background:var(--acc);color:#000;font:900 8cqw 'Noto Sans KR';padding:.3cqw 2.6cqw;border:.7cqw solid #000;transform:rotate(-8deg);white-space:nowrap}
+
+/* ===== mode pick ===== */
+.modes{display:grid;grid-template-columns:1fr 1fr;gap:3cqw;flex:1;min-height:0}
+.mode{border:.7cqw solid #000;padding:3cqw;display:flex;flex-direction:column;align-items:center;gap:2.4cqw;text-align:center;background:#fff}
+.mode.on{background:var(--acc)}
+.mode b{font-size:5cqw;font-weight:900}
+.mode small{font-size:3cqw;color:#333}
+.mode .dia{flex:1;display:grid;place-items:center;min-height:0;width:100%}
+.mstrip{background:#000;padding:1.4cqw;display:grid;gap:1cqw}
+.mstrip.tall{width:22cqw;grid-template-rows:repeat(4,auto)}
+.mstrip.wide{width:36cqw;grid-template-columns:repeat(4,1fr)}
+.mstrip .cell .pp{height:90%}
+
+/* ===== camera ===== */
+.camtop{flex:none;display:flex;justify-content:space-between;align-items:center;font:700 3.2cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.06em}
+.camtop .cnt{background:var(--acc);color:#000;padding:.6cqw 2.4cqw;font-size:5cqw;letter-spacing:0}
+.camtop .snd{border:.5cqw solid #fff;padding:.4cqw 2cqw;font:700 3cqw 'Noto Sans KR';letter-spacing:0}
+.vfwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+.vfwrap>.fw{width:100%}
+.vf{position:relative;width:100%}
+.vf .cell{background-clip:padding-box}
+.cd{position:absolute;inset:0;z-index:7;display:grid;place-items:center;font:700 40cqw/1 'Space Grotesk';color:transparent;-webkit-text-stroke:.9cqw #fff;text-shadow:0 0 3cqw rgba(0,0,0,.25);animation:pulse 1s ease-out infinite}
+@keyframes pulse{0%{transform:scale(1.25);opacity:.2}30%{opacity:1}100%{transform:scale(1)}}
+.flash{position:absolute;inset:0;z-index:8;background:#fff;opacity:0;animation:flash 3s infinite}
+@keyframes flash{0%,86%{opacity:0}88%{opacity:1}100%{opacity:0}}
+.ticks{flex:none;display:flex;gap:1.4cqw;margin-top:3cqw}
+.ticks i{flex:1;height:2.4cqw;background:#444}
+.ticks i.on{background:var(--acc)}
+.ticks i.now{background:#fff;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{background:#444}}
+.ctl{flex:none;display:flex;justify-content:space-between;align-items:center;margin-top:4cqw;padding:0 2cqw}
+.tool{display:flex;flex-direction:column;align-items:center;gap:1cqw;font-size:3cqw;font-weight:700;color:#fff;width:20cqw}
+.tool i{width:12cqw;height:12cqw;border:.6cqw solid #fff;display:grid;place-items:center}
+.tool i svg{width:6.4cqw;height:6.4cqw}
+.tool.on i{background:var(--acc);border-color:var(--acc)}
+.tool.on i svg path,.tool.on i svg circle{stroke:#000}
+.ring{width:20cqw;height:20cqw;border-radius:50%;border:1.2cqw solid #fff;display:grid;place-items:center;position:relative}
+.ring:before{content:"";position:absolute;inset:-1.2cqw;border-radius:50%;border:1.2cqw solid var(--acc);clip-path:polygon(50% 50%,50% 0,100% 0,100% 100%,0 100%,0 60%);animation:ringgo 1s linear infinite}
+@keyframes ringgo{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.ring b{font:700 7cqw 'Space Grotesk';color:#fff}
+
+/* ===== progress (8장 준비 중) ===== */
+.dev>div{animation:develop 4s ease-out infinite;animation-delay:calc(var(--i)*.4s)}
+@keyframes develop{0%{filter:brightness(0) ;opacity:.15}20%{filter:brightness(.3)}35%,100%{filter:none;opacity:1}}
+.bar{flex:none;height:3cqw;border:.6cqw solid #000;margin-top:3cqw;position:relative}
+.g8.dev .cell{opacity:1}
+.bar i{position:absolute;left:0;top:0;bottom:0;width:62%;background:var(--acc);animation:bar 4s linear infinite}
+@keyframes bar{from{width:5%}to{width:100%}}
+
+/* ===== pick ===== */
+.seg{flex:none;display:flex;align-items:stretch;font-size:3.3cqw;font-weight:700;margin-bottom:2.4cqw}
+.seg span{align-self:center;margin-right:2cqw;font-weight:900}
+.seg u{text-decoration:none;flex:1;text-align:center;border:.6cqw solid #000;padding:1.2cqw .4cqw;background:#fff;color:#000;white-space:nowrap}
+.seg u+u{border-left:0}
+.seg u.on{background:#000;color:#fff}
+.seg.flip u:nth-of-type(2){background:#000;color:#fff}
+.seg.flip u:nth-of-type(1){animation:segon 4s steps(1) infinite}
+.seg.flip u:nth-of-type(2){animation:segon 4s steps(1) infinite reverse}
+@keyframes segon{0%,49%{background:#000;color:#fff}50%,100%{background:#fff;color:#000}}
+.body>.fw,.hero>.fw{height:100%;align-self:center;max-width:100%}
+.g8{height:100%;aspect-ratio:1/1.56;max-width:100%;display:grid;grid-template-columns:1fr 1fr;gap:1.8cqw;align-content:center;margin:0 auto}
+.hs{height:100%;aspect-ratio:1/3.25;grid-template-rows:repeat(4,1fr)}
+.hs.ft{aspect-ratio:1/3.45;grid-template-rows:repeat(4,1fr) auto}
+.hs .foot{font-size:2.2cqw;justify-content:center}.hs .foot span+span{display:none}
+.g8 .cell{opacity:.5}
+.g8 .cell.pk{opacity:1;outline:.9cqw solid #000;outline-offset:-.9cqw}
+.g8 .cell.pk:after{content:"";position:absolute;inset:0;border:.9cqw solid var(--acc);z-index:5;pointer-events:none;margin:.9cqw}
+
+/* ===== retouch / zoom ===== */
+.zoombox{position:relative;overflow:hidden;flex:none}
+.zoombox .zin{transform:scale(var(--z,2));transform-origin:var(--ox,30%) var(--oy,40%);animation:pinch 5s ease-in-out infinite}
+@keyframes pinch{0%,12%{transform:scale(1)}40%,80%{transform:scale(var(--z,2))}100%{transform:scale(1)}}
+.zchip{position:absolute;right:1.6cqw;top:1.6cqw;z-index:9;background:#000;color:#fff;font:700 3cqw 'Space Grotesk';padding:.4cqw 1.6cqw}
+.fing{position:absolute;z-index:9;width:9cqw;height:9cqw;border-radius:50%;background:rgba(255,255,255,.45);border:.5cqw solid rgba(0,0,0,.5);animation:f1 5s ease-in-out infinite}
+.fing.f2{animation-name:f2}
+@keyframes f1{0%,12%{left:36%;top:44%}40%,80%{left:18%;top:26%}100%{left:36%;top:44%}}
+@keyframes f2{0%,12%{left:50%;top:56%}40%,80%{left:66%;top:70%}100%{left:50%;top:56%}}
+.thumbs{flex:none;display:grid;grid-template-columns:repeat(4,1fr);gap:1.6cqw;margin-top:2.4cqw}
+.thumbs .cell{opacity:.5}.thumbs .cell.on{opacity:1;outline:.8cqw solid #000;outline-offset:-.8cqw}
+.sliders{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:3cqw;margin-top:2cqw}
+.sl{display:grid;grid-template-columns:20cqw 1fr 8cqw;align-items:center;gap:2cqw;font-size:3.5cqw;font-weight:700}
+.sl em{font:700 3.2cqw 'Space Grotesk';font-style:normal;text-align:right}
+.sl i{height:1.6cqw;background:#ddd;position:relative}
+.sl i:before{content:"";position:absolute;left:0;top:0;bottom:0;width:var(--v);background:#000}
+.sl i:after{content:"";position:absolute;left:var(--v);top:50%;width:5cqw;height:5cqw;background:var(--acc);border:.6cqw solid #000;transform:translate(-50%,-50%)}
+
+/* ===== share / strips ===== */
+.vstrip{background:#000;padding:1.6cqw;display:grid;gap:1.2cqw}
+.vstrip .foot{display:flex;justify-content:space-between;white-space:nowrap;overflow:hidden;gap:1cqw;color:var(--acc);font:700 2.6cqw 'Space Grotesk','Noto Sans KR';letter-spacing:.06em;padding:.4cqw .4cqw 0}
+.hero{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;position:relative}
+.wait .cell .pp.a{opacity:.35}
+
+/* ===== in-app bar / chrome ===== */
+.iab{flex:none;margin:-5cqw -5cqw 4cqw;background:#f2f2f2;border-bottom:.3cqw solid #ccc;display:flex;align-items:center;gap:3cqw;padding:3cqw 4cqw;font-size:3.2cqw;color:#333}
+.iab b{font-size:4.4cqw;font-weight:400}
+.iab span{flex:1;font-family:'Space Grotesk',sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.k3 .iab{margin:0}
+.spin{width:12cqw;height:12cqw;border:1.2cqw solid #ddd;border-top-color:#000;border-radius:50%;animation:ringgo 1s linear infinite;margin:0 auto}
+
+/* ===== decorate ===== */
+.fw.full{width:100%;height:100%;display:flex;flex-direction:column}
+.deco{flex:1;min-height:0;position:relative;overflow:hidden;display:flex;align-items:center;justify-content:center;background:#ececec}
+.deco .zin{height:100%;display:flex;align-items:center;justify-content:center}
+.tabs{flex:none;display:flex;gap:0;overflow:hidden;margin-top:2.4cqw;border-bottom:.6cqw solid #000}
+.tabs u{text-decoration:none;flex:none;font-size:3.5cqw;font-weight:700;padding:1.6cqw 2.2cqw;color:#333;white-space:nowrap}
+.tabs u.on{background:#000;color:#fff}
+.opts{flex:none;display:flex;gap:2cqw;margin-top:2.4cqw}
+.opts i{flex:1;height:10cqw;border:.6cqw solid #000;display:grid;place-items:center;font:700 2.8cqw 'Noto Sans KR';font-style:normal}
+.opts i.on{outline:.8cqw solid var(--acc);outline-offset:.2cqw}
+
+/* ===== save sheet ===== */
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:20}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:21;background:#fff;padding:5cqw;border-top:1.2cqw solid #000;animation:sheetup 3.6s cubic-bezier(.3,1.3,.5,1) infinite}
+@keyframes sheetup{0%{transform:translateY(100%)}18%,100%{transform:none}}
+.sheet h3{font-size:6cqw;font-weight:900;letter-spacing:-.03em}
+.warn{margin-top:3cqw;border-left:1.4cqw solid #000;background:#f4f4f0;padding:2cqw 2.6cqw;font-size:3.1cqw;letter-spacing:-.02em;line-height:1.45;color:#222}
+
+/* ============ concept 1: film rail ============ */
+.rail{flex:none;margin-top:2.6cqw;background:#000;padding:2.4cqw 2cqw;display:flex;gap:1.6cqw;position:relative}
+.rail:before,.rail:after{content:"";position:absolute;left:0;right:0;height:1.2cqw;background:repeating-linear-gradient(90deg,#000 0 1.2cqw,#fff 1.2cqw 3cqw,#000 3cqw 4.2cqw)}
+.rail:before{top:.5cqw}.rail:after{bottom:.5cqw}
+.rail u{text-decoration:none;flex:1;text-align:center;font-size:3cqw;font-weight:700;padding:1.2cqw 0;background:#2b2b2b;color:#ccc;white-space:nowrap}
+.rail u.dn{background:#fff;color:#000}
+.rail u.on{background:var(--acc);color:#000;font-weight:900}
+.k1 .fw{background:#000;padding:2cqw 5cqw;position:relative}
+.k1 .fw:before,.k1 .fw:after{content:"";position:absolute;top:0;bottom:0;width:2.2cqw;background:repeating-linear-gradient(#000 0 1.2cqw,#fff 1.2cqw 3.2cqw,#000 3.2cqw 4.4cqw);z-index:3}
+.k1 .fw:before{left:1.4cqw}.k1 .fw:after{right:1.4cqw}
+.k1 .fw.run:before,.k1 .fw.run:after{animation:spr2 1.2s linear infinite}
+@keyframes spr2{to{background-position:0 -8.8cqw}}
+.vg{position:absolute;inset:-1.4cqw;z-index:9;pointer-events:none}
+
+/* ============ concept 2: merge seam ============ */
+.mm{flex:none;margin-top:2.6cqw;display:flex;align-items:center;gap:0;font-size:3.1cqw;font-weight:900}
+.mm .h{flex:1;display:flex;gap:.8cqw;align-items:center}
+.mm .h.b{flex-direction:row-reverse}
+.mm .h u{text-decoration:none;flex:1;height:3.4cqw;border:.5cqw solid currentColor;background:transparent}
+.mm .h.a u.f{background:currentColor}
+.mm .h.b u.f{background:currentColor}
+.mm .h u.e{border-style:dashed}
+.mm .nm{flex:none;font-weight:900;padding:0 1.6cqw;white-space:nowrap}
+.mm .seam{flex:none;width:1.6cqw;height:7cqw;background:#bbb;margin:0 1.2cqw;position:relative}
+.mm.joined .seam{background:var(--acc);box-shadow:0 0 0 .5cqw #000}
+.mm.joined .h.a{animation:mgL 3.2s cubic-bezier(.3,1.4,.5,1) infinite}
+.mm.joined .h.b{animation:mgR 3.2s cubic-bezier(.3,1.4,.5,1) infinite}
+@keyframes mgL{0%{transform:translateX(-6cqw)}25%,100%{transform:none}}
+@keyframes mgR{0%{transform:translateX(6cqw)}25%,100%{transform:none}}
+.dark .mm .seam{background:#555}
+.k2 .fw{border:.8cqw solid #000;position:relative}
+.dark.k2x .fw,.k2 .dark .fw{border-color:#fff}
+.k2 .fw:after{content:"";position:absolute;left:50%;top:-2.6cqw;bottom:-2.6cqw;width:1.2cqw;background:var(--acc);transform:translateX(-50%);z-index:9;box-shadow:0 0 0 .4cqw #000;opacity:0}
+.k2 .fw.seamed:after{animation:seamin 3.2s ease-out infinite}
+@keyframes seamin{0%,20%{opacity:0;transform:translateX(-50%) scaleY(0)}35%,85%{opacity:1;transform:translateX(-50%) scaleY(1)}100%{opacity:0}}
+.k2 .slA .pp.a{animation:slideA 3s cubic-bezier(.3,1.35,.5,1) infinite}
+@keyframes slideA{0%,8%{translate:-70cqw 0}30%,100%{translate:0 0}}
+.k2 .slB .pp.b{animation:slideB 3s cubic-bezier(.3,1.35,.5,1) infinite}
+@keyframes slideB{0%,8%{translate:70cqw 0}30%,100%{translate:0 0}}
+.k2 .vstrip.join>.cell:nth-child(odd){animation:joinL 4s cubic-bezier(.3,1.3,.5,1) infinite}
+.k2 .vstrip.join>.cell:nth-child(even){animation:joinR 4s cubic-bezier(.3,1.3,.5,1) infinite}
+@keyframes joinL{0%{transform:translateX(-30%);opacity:0}25%,100%{transform:none;opacity:1}}
+@keyframes joinR{0%{transform:translateX(30%);opacity:0}25%,100%{transform:none;opacity:1}}
+.k2 .vstrip{gap:1.2cqw;background:#000}
+.k2 .vstrip.lime{background:var(--acc);border:.6cqw solid #000}
+.k2 .vstrip.lime .foot{color:#000}
+
+/* ============ concept 3: booth machine ============ */
+.k3 .scr{padding:0}
+.k3 .scr>.in{flex:1;min-height:0;display:flex;flex-direction:column;padding:4cqw 5cqw 3cqw}
+.panel{flex:none;background:#0d0d0d;color:#fff;padding:3.2cqw 5cqw 2.6cqw;display:flex;justify-content:space-between;align-items:center;border-bottom:1cqw solid var(--acc)}
+.panel .brand{font:700 3.2cqw 'Space Grotesk';letter-spacing:.2em}
+.panel .brand small{display:block;font:700 2.8cqw 'Noto Sans KR';letter-spacing:0;color:#ccc;margin-top:.4cqw}
+.panel .ro{display:flex;gap:.8cqw}
+.panel .ro u{text-decoration:none;width:7cqw;height:9cqw;background:#1f2a00;color:var(--acc);font:700 5.6cqw/9cqw 'Space Grotesk';text-align:center;border:.3cqw solid #3a4a00}
+.panel .ro i{font:700 5cqw/9cqw 'Space Grotesk';color:var(--acc);font-style:normal}
+.panel .ro u.lbl{width:auto;padding:0 1.6cqw;font:900 3.2cqw/9cqw 'Noto Sans KR'}
+.slot{flex:none;height:12cqw;background:#0d0d0d;position:relative;display:flex;align-items:center;justify-content:center;gap:3cqw}
+.slot:before{content:"";position:absolute;left:12cqw;right:12cqw;top:2.2cqw;height:1.4cqw;background:#000;box-shadow:inset 0 .4cqw 0 #333}
+.slot .ms{position:absolute;left:50%;top:2.8cqw;transform:translateX(-50%);display:flex;gap:.6cqw;background:#fff;padding:.8cqw;animation:print 3.2s ease-out infinite}
+.slot .ms u{text-decoration:none;width:8cqw;height:5.6cqw;background:#3a3a3a}
+.slot .ms u.f{background:var(--acc)}
+@keyframes print{0%{clip-path:inset(0 0 100% 0)}30%,100%{clip-path:inset(0 0 0 0)}}
+.k3 .fw{border:2.6cqw solid #0d0d0d;outline:.5cqw solid var(--acc);outline-offset:-1.6cqw;position:relative;background:#0d0d0d}
+.k3 .fw:before{content:"";position:absolute;left:50%;top:-2cqw;width:1.6cqw;height:1.6cqw;border-radius:50%;background:var(--acc);transform:translateX(-50%);z-index:9}
+.k3 .dark .fw{border-color:#2a2a2a;background:#2a2a2a}
+
+@media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="page-h">
+<h1>따로 같이 네컷 · 모든 화면 시안 3개</h1>
+<p>고른 표지(필름 + 합체, 두 시점)를 표지 밖의 모든 화면으로 이어 간 세 가지 방법입니다. 위 탭으로 시안을 바꾸고, 각 시안마다 A 흐름 → B 흐름 → 크롬 꾸미기·저장 순서로 같은 화면을 그렸어요. A는 긴 검은 머리, B는 갈색 단발에 둥근 안경. 겹치면 언제나 A가 앞입니다.</p>
+</header>
+<nav class="ktabs" role="group" aria-label="시안">
+ <button data-k="1" aria-pressed="true">1 필름 레일<small>FILM RAIL</small></button>
+ <button data-k="2" aria-pressed="false">2 합체 솔기<small>MERGE SEAM</small></button>
+ <button data-k="3" aria-pressed="false">3 부스 기계<small>BOOTH PANEL</small></button>
+</nav>
+<div id="out"></div>
+</div>
+
+<script>
+(function(){
+'use strict';
+var SK='#e9bf9e',SKD='#b98563',LIME='#d6ff3d';
+// ---------- people (from cover-film2) ----------
+function arm(d,c){return '<path d="'+d+'" fill="none" stroke="#111" stroke-width="11.5" stroke-linecap="round" stroke-linejoin="round"/><path d="'+d+'" fill="none" stroke="'+c+'" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>';}
+function fing(x1,y1,x2,y2){var d='M'+x1+' '+y1+'L'+x2+' '+y2;return '<path d="'+d+'" stroke="'+SKD+'" stroke-width="5.8" stroke-linecap="round"/><path d="'+d+'" stroke="'+SK+'" stroke-width="3.4" stroke-linecap="round"/>';}
+var EYE={dot:'<circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="59" cy="54" r="2.4" fill="#2a1e1e"/>',side:'<circle cx="38" cy="54" r="2.4" fill="#2a1e1e"/><circle cx="56" cy="54" r="2.4" fill="#2a1e1e"/>',wink:'<circle cx="41" cy="54" r="2.4" fill="#2a1e1e"/><path d="M55 55Q59 50 63 55" stroke="#2a1e1e" stroke-width="2.2" fill="none" stroke-linecap="round"/>',happy:'<path d="M37 56Q41 50 45 56M55 56Q59 50 63 56" stroke="#2a1e1e" stroke-width="2.2" fill="none" stroke-linecap="round"/>',wide:'<circle cx="41" cy="54" r="3.8" fill="#fff" stroke="#2a1e1e" stroke-width="1.2"/><circle cx="59" cy="54" r="3.8" fill="#fff" stroke="#2a1e1e" stroke-width="1.2"/><circle cx="41" cy="54" r="1.8" fill="#2a1e1e"/><circle cx="59" cy="54" r="1.8" fill="#2a1e1e"/>'};
+var MOUTH={smile:'<path d="M43 64Q50 70 57 64" stroke="#b5584f" stroke-width="2.2" fill="none" stroke-linecap="round"/>',open:'<path d="M42 63Q50 75 58 63Z" fill="#7a2e2e"/>',grin:'<path d="M42 63Q50 72 58 63Z" fill="#fff" stroke="#7a2e2e" stroke-width="1.8" stroke-linejoin="round"/>',o:'<ellipse cx="50" cy="67" rx="3.6" ry="4.6" fill="#7a2e2e"/>',flat:'<path d="M45 66L55 65" stroke="#b5584f" stroke-width="2.2" stroke-linecap="round"/>'};
+var BLUSH='<ellipse cx="34" cy="62" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/><ellipse cx="66" cy="62" rx="4" ry="2.6" fill="#ff8a8a" opacity=".35"/>';
+var HEART='<path transform="translate(60 14) scale(.75)" d="M12 21.5C3 15 1 10 1 7a5.5 5.5 0 0 1 11-1 5.5 5.5 0 0 1 11 1c0 3-2 8-11 14.5Z" fill="'+LIME+'" stroke="#111" stroke-width="2"/>';
+var POSES=[
+ {e:'wink',m:'smile',arms:['M82 114Q92 86 84 64'],hands:[[84,59,6]],fing:[[81,55,76,42],[87,55,92,42]]},
+ {e:'happy',m:'open',arms:['M24 100C4 70 6 22 46 8','M76 100C96 70 94 22 54 8'],hands:[[46,8,5.4],[54,8,5.4]]},
+ {e:'dot',m:'grin',rot:-13,arms:['M30 106Q12 94 4 76'],hands:[[4,72,6]]},
+ {e:'wide',m:'o',brow:1,arms:['M20 114Q16 88 27 72','M80 114Q84 88 73 72'],hands:[[28,67,7],[72,67,7]]},
+ {e:'happy',m:'smile',arms:['M76 116Q80 98 64 86'],hands:[[62,84,5.6]],fing:[[60,80,57,71],[64,80,61,70]],x:HEART},
+ {e:'side',m:'open',arms:['M24 104Q4 90 -14 80'],hands:[[-16,79,5.6]],fing:[[-18,77,-30,72]]},
+ {e:'happy',m:'grin',arms:['M22 118Q20 100 34 93','M78 118Q80 100 66 93'],hands:[[35,91,6],[65,91,6]],fing:[[35,87,35,77],[65,87,65,77]]},
+ {e:'side',m:'flat',rot:4,arms:['M68 118Q72 98 54 83'],hands:[[52,81,6.2]]},
+ {e:'happy',m:'smile',arms:['M18 118Q20 98 32 86','M82 118Q80 98 68 86'],hands:[[39,80,9,5.6,32],[61,80,9,5.6,-32]]},
+ {e:'wink',m:'grin',rot:6,arms:['M80 112Q100 72 74 28'],hands:[[72,25,5.8]],fing:[[69,21,64,8],[74,21,77,8]]}
+];
+function limbs(p,sleeve,photo){var s='';
+ p.arms.forEach(function(d){s+=photo?'<path d="'+d+'" fill="none" stroke="#3d3e48" stroke-width="9.5" stroke-linecap="round" stroke-linejoin="round"/>':arm(d,sleeve);});
+ var hf=photo?'fill="url(#pgSk)"':'fill="'+SK+'" stroke="'+SKD+'" stroke-width="1.3"';
+ (p.hands||[]).forEach(function(h){s+=h.length===3?'<circle cx="'+h[0]+'" cy="'+h[1]+'" r="'+h[2]+'" '+hf+'/>':'<ellipse cx="'+h[0]+'" cy="'+h[1]+'" rx="'+h[2]+'" ry="'+h[3]+'" transform="rotate('+h[4]+' '+h[0]+' '+h[1]+')" '+hf+'/>';});
+ (p.fing||[]).forEach(function(f){s+=photo?'<path d="M'+f[0]+' '+f[1]+'L'+f[2]+' '+f[3]+'" stroke="#e0ab8a" stroke-width="4" stroke-linecap="round"/>':fing(f[0],f[1],f[2],f[3]);});
+ if(p.x&&!photo)s+=p.x;return s;}
+function wrapR(g,rot){return rot?'<g transform="rotate('+rot+' 50 118)">'+g+'</g>':g;}
+// B: brown bob, round glasses, striped tee
+function bG(p){return '<path d="M8 120C8 92 28 84 50 84C72 84 92 92 92 120Z" fill="#fff" stroke="#111" stroke-width="1.8"/><path d="M15 101H85M11 110H89" stroke="#111" stroke-width="2.6"/><path d="M40 85L50 97L60 85Z" fill="'+SK+'"/><rect x="42" y="70" width="16" height="18" rx="6" fill="'+SK+'"/><ellipse cx="50" cy="50" rx="22" ry="26" fill="'+SK+'"/><path d="M26 50C22 22 38 12 52 13C68 13 80 26 74 50C70 38 62 33 50 33C40 33 32 40 26 50Z" fill="#4a3426"/>'+EYE[p.e]+(p.brow?'<path d="M34 41Q40 35 46 40M54 40Q60 35 66 41" stroke="#4a3426" stroke-width="2.4" fill="none" stroke-linecap="round"/>':'')+'<g fill="none" stroke="#111" stroke-width="1.8"><circle cx="41" cy="54" r="7.4"/><circle cx="59" cy="54" r="7.4"/><path d="M48.4 53Q50 51.6 51.6 53"/></g>'+MOUTH[p.m]+BLUSH+limbs(p,'#fff');}
+// A: long black hair, black top, lime clip
+function aG(p){return '<path d="M24 54C20 20 38 10 50 10C66 10 80 22 76 54L82 96C70 100 66 92 66 80L34 80C34 92 30 100 18 96Z" fill="#111"/><path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z" fill="#111"/><rect x="42" y="70" width="16" height="18" rx="6" fill="'+SK+'"/><ellipse cx="50" cy="50" rx="22" ry="26" fill="'+SK+'"/><path d="M27 48C29 26 44 21 52 24C62 22 74 30 73 48C64 40 42 36 27 48Z" fill="#111"/><rect x="59" y="28" width="12" height="4.4" rx="2" fill="'+LIME+'" stroke="#111" stroke-width="1.3" transform="rotate(-24 65 30)"/>'+EYE[p.e]+(p.brow?'<path d="M34 41Q40 35 46 40M54 40Q60 35 66 41" stroke="#111" stroke-width="2.4" fill="none" stroke-linecap="round"/>':'')+MOUTH[p.m]+BLUSH+limbs(p,'#2c2c2c');}
+// A as a real still photo (B's side sees A's real picked cut-outs)
+var PGD='<defs><radialGradient id="pgSk" cx=".42" cy=".36" r=".72"><stop offset="0" stop-color="#f7dcc6"/><stop offset=".65" stop-color="#e4b08f"/><stop offset="1" stop-color="#c48a69"/></radialGradient><linearGradient id="pgHr" x1="0" y1="0" x2=".3" y2="1"><stop offset="0" stop-color="#4a3a33"/><stop offset=".5" stop-color="#1d1615"/><stop offset="1" stop-color="#0d0a0a"/></linearGradient><linearGradient id="pgTp" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6a6d7c"/><stop offset=".6" stop-color="#34353f"/><stop offset="1" stop-color="#1c1d24"/></linearGradient><filter id="pgBl" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation=".65"/></filter></defs>';
+function aPhG(p){var ex=p.e==='side'?-3:0,ey=p.e==='happy'?'1':'1.7';
+ return '<g filter="url(#pgBl)"><path d="M24 54C20 20 38 10 50 10C66 10 80 22 76 54L82 96C70 100 66 92 66 80L34 80C34 92 30 100 18 96Z" fill="url(#pgHr)"/><path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z" fill="url(#pgTp)"/><rect x="42" y="70" width="16" height="18" rx="6" fill="#d39f7f"/><ellipse cx="50" cy="50" rx="22" ry="26" fill="url(#pgSk)"/><path d="M27 48C29 26 44 21 52 24C62 22 74 30 73 48C64 40 42 36 27 48Z" fill="url(#pgHr)"/><ellipse cx="'+(41+ex)+'" cy="54" rx="2.6" ry="'+ey+'" fill="#2b1f1c"/><ellipse cx="'+(59+ex)+'" cy="54" rx="2.6" ry="'+ey+'" fill="#2b1f1c"/><path d="M48.5 58Q50 61 51.5 58" stroke="#c4876a" stroke-width="1.2" fill="none"/><ellipse cx="50" cy="66" rx="'+(p.m==='o'?3:5)+'" ry="'+(p.m==='open'||p.m==='o'?3.2:1.8)+'" fill="#c0605a" opacity=".85"/>'+limbs(p,null,true)+'</g>';}
+function person(kind,pi,side,x,cls,photo){var p=POSES[pi],g=kind==='A'?(photo?aPhG(p):aG(p)):bG(p);
+ return '<svg class="pp '+side+' '+cls+'" style="'+(side==='L'?'left':'right')+':'+x+'%" viewBox="0 0 100 120" overflow="visible">'+wrapR(g,p.rot||0)+'</svg>';}
+function ghost(label,side,x){return '<svg class="gh" style="'+(side==='L'?'left':'right')+':'+x+'%" viewBox="0 0 100 120"><g fill="'+(label==='나'?'rgba(214,255,61,.6)':'rgba(255,255,255,.6)')+'" stroke="#111" stroke-width="2.4" stroke-dasharray="5 4"><ellipse cx="50" cy="50" rx="22" ry="26"/><path d="M10 120C10 92 28 84 50 84C72 84 90 92 90 120Z"/></g><text x="50" y="'+(label==='나'?59:57)+'" text-anchor="middle" font-size="'+(label==='나'?22:15)+'" font-weight="900" font-family="Noto Sans KR" fill="#111">'+label+'</text></svg>';}
+// one photo cell. DOM order = paint order: bg, B, A -> A always in front
+function cell(o){
+ var t=o.t,xa=t?-14:8,xb=t?-14:8;
+ var h='<div class="cell'+(t?' t':'')+' bg'+(o.bg||'G')+(o.cls?' '+o.cls:'')+'"'+(o.st?' style="'+o.st+'"':'')+'>';
+ if(o.flip)h+='<i class="offlay"></i>';
+ if(o.b!=null)h+=person('B',o.b,'R',xb,'b'+(o.bcut?' cut':''));
+ if(o.bg2)h+=ghost('나','R',t?-14:-2);
+ if(o.a!=null)h+=person('A',o.a,'L',xa,'a'+(o.acut?' cut':''),o.aph);
+ if(o.ag)h+=ghost('친구','R',t?-14:-2);
+ if(o.tg){if(o.tg[0])h+='<i class="tg l '+(o.tg[0]==='나'?'me':'fd')+'">'+o.tg[0]+'</i>';if(o.tg[1])h+='<i class="tg r '+(o.tg[1]==='나'?'me':'fd')+'">'+o.tg[1]+'</i>';}
+ if(o.no)h+='<i class="no8">0'+o.no+'</i>';
+ if(o.pn)h+='<b class="pn">'+o.pn+'</b>';
+ return h+'</div>';}
+function top(tag){return '<div class="top"><span>D:OT LAB</span><span>'+tag+'</span></div>';}
+function cta(t,r,cls){return '<button class="cta'+(cls?' '+cls:'')+'" type="button"><span>'+t+'</span><span class="r">'+(r||'')+'<i></i></span></button>';}
+function fw(inner,cls){return '<div class="fw'+(cls?' '+cls:'')+'">'+inner+'</div>';}
+var IC={mirror:'<svg viewBox="0 0 24 24"><path d="M12 3v18M9 6L3 12l6 6zM15 6l6 6-6 6z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg>',
+ flip:'<svg viewBox="0 0 24 24"><path d="M4 8h3l2-3h6l2 3h3v11H4z" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round"/><path d="M9 13a3 3 0 0 1 5.5-1.6M15 13a3 3 0 0 1-5.5 1.6" fill="none" stroke="#fff" stroke-width="1.8"/></svg>'};
+
+// ---------- concept devices ----------
+var LBL={A:['찍기','고르기','보정','보내기'],B:['찍기','고르기','보정','완성'],C:['찍기','고르기','보정','꾸미기']};
+function rail(flow,step){if(step<0)return '';
+ return '<div class="rail">'+LBL[flow].map(function(l,i){return '<u class="'+(i<step?'dn':i===step?'on':'')+'">'+l+'</u>';}).join('')+'</div>';}
+function meter(flow,step){
+ // left = A half, right = B half; the viewer is "나"
+ var aFill=flow==='A'?step+1:4,bFill=flow==='A'?0:flow==='B'?step+1:4;
+ if(step<0){aFill=flow==='B'?4:0;bFill=0;}
+ var seg=function(n,empty){var s='';for(var i=0;i<4;i++)s+='<u class="'+(i<n?'f':empty?'e':'')+'"></u>';return s;};
+ var an=flow==='A'?'나':'친구',bn=flow==='A'?'친구':'나';
+ return '<div class="mm'+(flow==='C'?' joined':'')+'"><span class="nm">'+an+'</span><span class="h a">'+seg(aFill)+'</span><i class="seam"></i><span class="h b">'+seg(bFill,flow==='A')+'</span><span class="nm">'+bn+'</span></div>';}
+function panel(tag,flow,step){
+ var lbl=step<0?(flow==='B'?'대기':'준비'):LBL[flow][step];
+ return '<div class="panel"><span class="brand">D:OT BOOTH<small>'+tag+'</small></span><span class="ro"><u>'+(step<0?0:step+1)+'</u><i>/</i><u>4</u><u class="lbl">'+lbl+'</u></span></div>';}
+function slot(flow,step){var n=step<0?0:flow==='C'?4:step+1,s='';for(var i=0;i<4;i++)s+='<u class="'+(i<n?'f':'')+'"></u>';
+ return '<div class="slot"><div class="ms">'+s+'</div></div>';}
+// compose one phone screen for concept k
+function screen(k,s){
+ var dark=s.dark?' dark':'',body=s.body;
+ if(k===3)return '<div class="scr'+dark+'">'+panel(s.tag,s.flow,s.step)+'<div class="in">'+(s.pre||'')+body+'</div>'+slot(s.flow,s.step)+'</div>';
+ var dev=k===1?(s.step>=0?rail(s.flow,s.step):''):meter(s.flow,s.step);
+ return '<div class="scr'+dark+'">'+(s.pre||'')+top(s.tag)+dev+body+'</div>';}
+
+// ---------- screens ----------
+var POSE8=[0,1,2,3,4,5,6,7],PICKA=[0,1,3,5],APICK=[0,1,3,5]; // A's 4 kept poses
+var BP=[6,3,5,0,1,7,4,2],PICKB=[0,3,5,6];
+function reel(cellFn){var h='';for(var r=0;r<2;r++)for(var i=0;i<8;i++)h+=cellFn(i);return '<div class="reel">'+h+'</div>';}
+function landing(flow){
+ var A=flow==='A';
+ var frames=reel(function(i){return A?cell({a:POSE8[i],no:i+1}):cell({a:APICK[i%4],aph:1,acut:1,bg2:1,no:i+1});});
+ return {flow:flow,step:-1,tag:A?'FILM · 8':'FROM 친구',
+  body:'<h1 class="hl">따로 <mark>같이</mark> 네컷</h1><div class="fstage"><div class="film">'+frames+'</div><div class="gatec"><i></i><i></i><i></i><i></i></div></div>'+
+   '<div class="km"><span class="d">찍은 칸 <b>0</b>/8</span><span class="t">'+(A?'내가 먼저 찍어요':'친구가 먼저 찍어 뒀어요')+'</span></div>'+
+   (A?cta('먼저 찍기','8장 · 4컷 · 링크'):cta('바로 찍기','친구 옆 8장'))};}
+function modePick(){
+ var tall='',wide='';for(var i=0;i<4;i++){tall+=cell({a:POSE8[i]});wide+=cell({a:POSE8[i],t:1});}
+ return {flow:'A',step:0,tag:'모양',
+  body:'<h2 class="h2">어떤 <mark>네컷</mark>으로 찍을까?</h2><div class="body"><div class="modes">'+
+   '<div class="mode on"><b>가로</b><div class="dia"><div class="mstrip tall">'+tall+'</div></div><small>가로 사진 4장<br>길게 한 줄</small></div>'+
+   '<div class="mode"><b>세로</b><div class="dia"><div class="mstrip wide">'+wide+'</div></div><small>세로 사진 4장<br>옆으로 한 줄</small></div>'+
+   '</div></div><p class="sub" style="margin-top:2.4cqw">친구도 같은 모양으로 찍어</p>'+cta('가로로 찍기','다음')};}
+function camera(flow,k){
+ var A=flow==='A',n=A?3:5;
+ var c=A?cell({bg:'A',a:2,tg:['나']}):cell({bg:'B',b:BP[4],a:APICK[0],aph:1,acut:1,cls:k===2?'slA':'',tg:['친구','나']});
+ var vf='<div class="vf">'+c+'<div class="cd">3</div><i class="flash"></i>'+(k===1?'<div class="vg"><i></i><i></i><i></i><i></i></div>':'')+'</div>';
+ var ticks='';for(var i=0;i<8;i++)ticks+='<i class="'+(i<n-1?'on':i===n-1?'now':'')+'"></i>';
+ return {flow:flow,step:0,tag:A?'가로 · 1/2':'친구 옆',dark:1,
+  body:'<div class="camtop" style="margin-top:3cqw"><span class="cnt">'+n+' / 8</span><span class="snd">소리 켬</span></div>'+
+   '<div class="vfwrap">'+fw(vf,'run'+(k===2&&!A?' seamed':''))+'</div>'+
+   '<div class="ticks">'+ticks+'</div>'+
+   '<div class="ctl"><span class="tool on"><i>'+IC.mirror+'</i>좌우반전</span><span class="ring"><b>3</b></span><span class="tool"><i>'+IC.flip+'</i>앞/뒤</span></div>'};}
+function preparing(){
+ var h='';for(var i=0;i<8;i++)h+='<div style="--i:'+i+'">'+cell({bg:'A',a:POSE8[i]})+'</div>';
+ return {flow:'A',step:0,tag:'8 / 8',
+  body:'<h2 class="h2"><mark>8장</mark> 준비 중</h2><div class="body">'+fw('<div class="g8 dev">'+h+'</div>')+'</div><div class="bar"><i></i></div><p class="sub" style="margin-top:2cqw">사람만 오려 내는 중 · 잠깐이면 돼</p>'};}
+function pickA(){
+ var h='';for(var i=0;i<8;i++){var j=PICKA.indexOf(i);h+=cell({bg:'A',flip:1,a:POSE8[i],no:i+1,pn:j>=0?j+1:0,cls:j>=0?'pk':'',tg:['나']});}
+ return {flow:'A',step:1,tag:'4 / 4',
+  body:'<h2 class="h2">맘에 드는 <mark>4장</mark> 골라 줘</h2><div class="seg flip"><span>배경</span><u>켜기</u><u>끄기</u></div><div class="body">'+fw('<div class="g8">'+h+'</div>')+'</div>'+cta('이 4장으로','4 / 4')+'<button class="tl sm" type="button">전체 다시 찍기 (한 번만)</button>'};}
+function retouch(flow){
+ var A=flow==='A';
+ var big=A?cell({bg:'A',a:0,tg:['나']}):cell({bg:'A',b:BP[0],a:APICK[0],acut:1,tg:['친구','나']});
+ var th='';for(var i=0;i<4;i++)th+=A?cell({bg:'A',a:APICK[i],cls:i===0?'on':''}):cell({bg:'A',b:BP[PICKB[i]],a:APICK[i],cls:i===0?'on':''});
+ var ox=A?'26%':'74%';
+ return {flow:flow,step:2,tag:'1 / 4',
+  body:'<h2 class="h2">내 얼굴만 <mark>다듬기</mark></h2>'+fw('<div class="zoombox"><div class="zin" style="--ox:'+ox+';--oy:38%;--z:1.8">'+big+'</div><span class="zchip">1.8×</span><i class="fing"></i><i class="fing f2"></i></div>')+
+   '<div class="thumbs">'+th+'</div>'+
+   '<div class="sliders"><div class="sl">피부 결<i style="--v:60%"></i><em>60</em></div><div class="sl">갸름하게<i style="--v:30%"></i><em>30</em></div><div class="sl">눈 크게<i style="--v:20%"></i><em>20</em></div></div>'+
+   cta('다음',A?'링크 만들기':'완성하기')};}
+function strip4(o){var h='';for(var i=0;i<4;i++)h+=cell(o(i));return h;}
+function shareA(k){
+ var s=strip4(function(i){return {bg:'A',a:APICK[i],ag:1};});
+ return {flow:'A',step:3,tag:'링크',
+  body:'<h1 class="hl" style="font-size:9cqw">다 올렸어!<br><mark>친구한테 보내자</mark></h1><div class="hero">'+fw('<div class="vstrip hs ft">'+s+'<div class="foot"><span>따로 같이 네컷</span><span>1/2</span></div></div>')+'</div>'+
+   cta('친구한테 링크 보내기','카톡 · 인스타')+'<button class="tl" type="button">링크 복사</button>'};}
+function waitA(){
+ var s=strip4(function(i){return {bg:'A',a:APICK[i],ag:1};});
+ return {flow:'A',step:3,tag:'내 링크',
+  body:'<h1 class="hl" style="text-align:center;font-size:9cqw">친구가 아직<br><mark>안 찍었어요</mark></h1><div class="hero">'+fw('<div class="vstrip hs wait">'+s+'</div>')+'</div><button class="tl sm" type="button">직접 찍어 보기(테스트용)</button>'};}
+function viewPick(){
+ var a=cell({bg:'B',b:BP[0],a:APICK[0],aph:1,acut:1,tg:['친구','나']}),b=cell({bg:'A',b:BP[0],bcut:1,a:APICK[0],aph:1,tg:['친구','나']});
+ return {flow:'B',step:0,tag:'보는 법',
+  body:'<h2 class="h2">어떻게 보면서 <mark>찍을까?</mark></h2><div class="body" style="gap:3cqw;justify-content:center">'+
+   '<div class="mode on" style="flex-direction:row;padding:2.4cqw;text-align:left"><div style="width:42cqw;flex:none">'+fw(a)+'</div><div><b style="font-size:4.4cqw">내 배경 위에<br>친구</b><br><small>내 방 그대로</small></div></div>'+
+   '<div class="mode" style="flex-direction:row;padding:2.4cqw;text-align:left"><div style="width:42cqw;flex:none">'+fw(b)+'</div><div><b style="font-size:4.4cqw">친구 배경 위에<br>우리 둘</b><br><small>친구 방에 같이</small></div></div>'+
+   '</div><p class="sub" style="margin-top:2cqw">찍은 뒤에도 배경은 바꿀 수 있어</p>'+cta('이렇게 찍기','8장')};}
+function pickB(){
+ var h='';for(var i=0;i<8;i++){var j=PICKB.indexOf(i);h+=cell({bg:'A',b:BP[i],a:APICK[i%4],acut:1,no:i+1,pn:j>=0?j+1:0,cls:j>=0?'pk':'',tg:['친구','나']});}
+ return {flow:'B',step:1,tag:'4 / 4',
+  body:'<h2 class="h2">맘에 드는 <mark>4장</mark> 골라 줘</h2><div class="seg"><span>배경</span><u class="on">친구 배경</u><u>내 배경</u><u>없음</u></div><div class="body">'+fw('<div class="g8">'+h+'</div>')+'</div>'+cta('이 4장으로','4 / 4')};}
+function doneB(k){
+ var s=strip4(function(i){return {bg:'A',b:BP[PICKB[i]],a:APICK[i],acut:1};});
+ return {flow:'B',step:3,tag:'완성',
+  body:'<h1 class="hl" style="font-size:9cqw">완성됐어!<br><mark>친구한테 알려 주자</mark></h1><div class="hero">'+fw('<div class="vstrip hs ft join'+(k===2?' lime':'')+'">'+s+'<div class="foot"><span>따로 같이 네컷</span><span>2026.10.28</span></div></div>')+'<i class="stamp">착!</i></div>'+
+   cta('“완성됐어” 보내기','친구에게')+cta('나도 꾸미러 가기','크롬','alt')};}
+function handoff(){
+ return {flow:'C',step:3,tag:'크롬으로',pre:'',
+  body:'<div class="hero" style="flex-direction:column;gap:4cqw;text-align:center"><div class="spin"></div><h2 class="h2" style="margin:0">크롬에서 <mark>여는 중</mark></h2><p class="sub">꾸미기와 저장은 크롬에서 해</p></div>'+cta('크롬에서 열기','안 열리면')+'<button class="tl" type="button">주소 복사</button>',
+  iab:1};}
+var TABS=['테마','배경','프레임','필터','테두리','문구','스티커','보정'];
+function tabs(on){return '<div class="tabs">'+TABS.map(function(t){return '<u class="'+(t===on?'on':'')+'">'+t+'</u>';}).join('')+'</div>';}
+function decorate(mode,k,sheet){
+ var tall=mode==='가로',s=strip4(function(i){return {bg:'A',b:BP[PICKB[i]],a:APICK[i],acut:1,t:!tall};});
+ var st='<div class="vstrip'+(tall?' hs':'')+(k===2?' lime':'')+'" style="'+(tall?'height:100%;aspect-ratio:1/3.35;grid-template-rows:repeat(4,1fr) auto':'width:92%;grid-template-columns:repeat(4,1fr)')+'">'+s+'<div class="foot" style="'+(tall?'':'grid-column:1/-1')+'"><span>따로 같이 네컷</span><span>2026.10.28</span></div></div>';
+ var z=tall?'1.0×':'1.6×';
+ var deco='<div class="deco"><div class="zin" style="width:100%;'+(tall?'padding:3cqw 0;--z:1':'--z:1.6;--ox:30%;--oy:50%;transform:scale(1.6);transform-origin:30% 50%;animation:pinch 5s ease-in-out infinite')+'">'+st+'</div><span class="zchip">'+z+'</span>'+(tall?'':'<i class="fing" style="animation-name:f1"></i><i class="fing f2"></i>')+'</div>';
+ var opts=sheet?'':'<div class="opts"><i class="on" style="background:#000;color:#fff">블랙</i><i style="background:#fff">화이트</i><i style="background:'+LIME+'">라임</i><i style="background:repeating-linear-gradient(90deg,#fff 0 1cqw,#000 1cqw 2.4cqw) top/100% 1.6cqw no-repeat,repeating-linear-gradient(90deg,#fff 0 1cqw,#000 1cqw 2.4cqw) bottom/100% 1.6cqw no-repeat,#000;color:#fff">필름</i></div>';
+ var b={flow:'C',step:3,tag:mode+' 네컷',
+  body:'<div class="body" style="margin-top:2.4cqw">'+fw(deco,'full')+'</div>'+tabs('프레임')+opts+cta('저장','사진 · 움직이는 네컷')};
+ if(sheet)b.body+='<i class="dim"></i><div class="sheet"><h3>저장하기</h3>'+cta('사진 저장','PNG','lime')+'<p class="warn">움직이는 네컷은 가끔 끊기거나 사람이 잠깐 사라질 수 있어요.</p>'+cta('움직이는 네컷 다운로드','MP4','alt')+'</div>';
+ return b;}
+
+var LIST=[
+ ['A','A 흐름','먼저 찍는 사람',[
+  ['A-1',function(){return landing('A');},'표지 2-1. 필름 위로 내가 8번 포즈를 바꿔 지나가요'],
+  ['A-2',modePick,'가로·세로 먼저 고르기. 친구도 이 모양을 따라가요'],
+  ['A-3',function(k){return camera('A',k);},'카메라: 칸에 들어갈 부분만 보여요. 5초 세는 동안에도 좌우반전·앞/뒤가 눌리고, 멈추기 버튼 없이 8장 이어서, 찍을 때마다 하얗게 번쩍'],
+  ['A-4',preparing,'8장 준비 중'],
+  ['A-5',pickA,'8장에서 4장. 배경 켜기/끄기를 눌러 보며 고르기(시안에선 4초마다 저절로 바뀜)'],
+  ['A-6',function(){return retouch('A');},'내 얼굴 다듬기: 사진 위에서 바로 두 손가락 확대·이동, 아래 조절은 그대로'],
+  ['A-7',function(k){return shareA(k);},'링크 보내기. 친구 자리는 점선'],
+  ['A-8',waitA,'A가 자기 링크를 다시 열면: 이 문구와 작은 테스트 버튼만']]],
+ ['B','B 흐름','링크를 받은 친구',[
+  ['B-1',function(){return landing('B');},'표지 2-2. 필름 칸마다 A의 진짜 사진과 내 점선 자리'],
+  ['B-2',viewPick,'찍을 때 볼 화면 고르기'],
+  ['B-3',function(k){return camera('B',k);},'카메라: A는 그 칸의 정지 사진(흰 테두리)으로 앞에, 나는 실시간으로 뒤에'],
+  ['B-4',pickB,'8장에서 4장. 배경 3가지(친구·내 배경·없음)'],
+  ['B-5',function(){return retouch('B');},'내 얼굴만 다듬기(친구 얼굴은 손대지 않음)'],
+  ['B-6',function(k){return doneB(k);},'완성: A에게 "완성됐어" 링크 보내기, 나도 크롬에서 꾸미기']]],
+ ['C','공통','크롬에서 각자 꾸미고 저장',[
+  ['C-1',handoff,'카톡·스레드·인스타 안에서 열면 크롬으로 넘기는 화면'],
+  ['C-2',function(k){return decorate('가로',k);},'꾸미기 · 가로 결과(세로로 긴 한 줄). 정지 사진만, 탭 8개'],
+  ['C-3',function(k){return decorate('세로',k);},'꾸미기 · 세로 결과(옆으로 긴 한 줄). 사진 위 두 손가락 확대, 아래는 그대로'],
+  ['C-4',function(k){return decorate('가로',k,1);},'저장 시트: 사진 저장, 그리고 누르기 전에 미리 알리는 움직이는 네컷 안내']]]
+];
+var IDEA={
+ 1:'<b>필름 레일</b> — 표지의 검은 필름이 화면마다 위쪽 진행 막대(찍기·고르기·보정·보내기 4칸)와 사진 테두리가 됩니다. 사진은 언제나 구멍 뚫린 필름 안에 있어요.',
+ 2:'<b>합체 솔기</b> — 위쪽 막대가 나 반쪽 + 친구 반쪽이고, 가운데 라임 솔기에서 만나요. 친구 사진은 왼쪽에서 밀려와 "착" 붙고, 마지막엔 양쪽이 합쳐져 라임 띠 네컷이 됩니다.',
+ 3:'<b>부스 기계</b> — 화면이 사진관 기계 한 대: 위에 숫자판(단계 n/4), 사진은 두꺼운 창 안, 맨 아래 출력구에서 단계마다 네컷이 한 칸씩 인쇄돼 나와요.'};
+
+function build(k){
+ var h='<p class="idea">'+IDEA[k]+'</p>';
+ LIST.forEach(function(g){
+  h+='<h2 class="flow-h"><span class="no">'+g[0]+'</span>'+g[1]+'<span class="s">'+g[2]+'</span></h2><div class="row">';
+  g[3].forEach(function(sc){var s=sc[1](k);
+   var inner=screen(k,s);
+   if(s.iab)inner=inner.replace('<div class="scr">','<div class="scr"><div class="iab"><b>✕</b><span>dot-connects.github.io/lab/네컷</span><b>⋮</b></div>');
+   h+='<figure><div class="phone k'+k+'">'+inner+'</div><figcaption><b>'+sc[0]+'</b>'+sc[2]+'</figcaption></figure>';});
+  h+='</div>';});
+ return '<section class="kset" data-k="'+k+'"'+'>'+h+'</section>';}
+document.body.insertAdjacentHTML('afterbegin','<svg width="0" height="0" style="position:absolute" aria-hidden="true">'+PGD+'</svg>');
+var out=document.getElementById('out');
+out.innerHTML=build(1)+build(2)+build(3);
+var btns=[].slice.call(document.querySelectorAll('.ktabs button'));
+function show(k){btns.forEach(function(b){b.setAttribute('aria-pressed',String(b.dataset.k===k));});
+ [].forEach.call(document.querySelectorAll('.kset'),function(s){s.hidden=s.dataset.k!==k;});}
+btns.forEach(function(b){b.addEventListener('click',function(){show(b.dataset.k);history.replaceState(null,'','#c'+b.dataset.k);});});
+function fromHash(){show((location.hash.match(/c([123])/)||[0,'1'])[1]);}
+addEventListener('hashchange',fromHash);fromHash();
+})();
+</script>
+</body>
+</html>
