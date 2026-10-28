@@ -13,8 +13,8 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | 5 | B's shoot: A is a STILL cut-out (A's picked still for that slot), never a moving clip. Photos are the product; the moving strip is only a final download option | flow | done 624fce5 |
 | 6 | B's 8→4 pick: background choice A's / B's / none | flow | done 624fce5 |
 | 7 | Layer order top→bottom: A, B, background (A's / B's / none). Bug: with A's bg, B disappears | flow | no repro headless; likely the old moving preview (B drawn by clip matte), gone with still-only decorate — check on phone |
-| 8 | Camera: already widest zoom. Shoot view shows ONLY the area that ends up in the cell (operator pick: cropped view) | layout | r6-layout running |
-| 9 | A picks 가로/세로 mode first. 가로 = today's tall strip of 4 wide photos; 세로 = 4 tall photos side by side in one wide strip. B follows A's mode. Portrait phone hold both ways (operator confirmed) | layout | r6-layout running |
+| 8 | Camera: already widest zoom. Shoot view shows ONLY the area that ends up in the cell (operator pick: cropped view) | layout | merged (worker deploy + phone check pending) |
+| 9 | A picks 가로/세로 mode first. 가로 = today's tall strip of 4 wide photos; 세로 = 4 tall photos side by side in one wide strip. B follows A's mode. Portrait phone hold both ways (operator confirmed) | layout | merged (worker deploy + phone check pending) |
 | 10 | B's shoot view: option (a) B's real camera background with A's cut-out over it, or (b) A's background + A + B cut-out (order of #7) | flow | done 624fce5 |
 | 11 | Retouch and decorate: inline pinch zoom + two-finger pan on the photo; the controls under it stay put (no fullscreen viewer) | zoom | r6-zoom running |
 | 12 | Decorate shows stills; video is only a download option | flow | done 624fce5 |
