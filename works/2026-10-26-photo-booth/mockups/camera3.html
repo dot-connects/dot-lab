@@ -158,7 +158,7 @@ body[data-th=film] .tc-cute,body[data-th=cute] .tc-film{display:none}
     <tr><td>B 미리보기</td><td>354×245 · 21.6%</td><td>354×472 · 41.7%</td><td>398×275 · 27.3%</td><td>381×508 · 48.3%</td></tr>
     <tr><td>나머지</td><td colspan="4">단계 표시 121(필름)·73(말랑) + 숫자·포즈 줄 49·36 + 필름 구멍/카드 테두리 좌우 22·16 + 칸 밖 빈 부분 + 진행 점 12~18 + (B) 보기 버튼 40~48 + 셔터 줄 90</td></tr>
   </table></div>
-  <p class="lead">세 시안 모두 화면 크기에 맞춰 계산돼요: 미리보기는 남는 높이 안에서 칸 비율을 지키며 가로 끝까지, 짧은 화면(700px 미만)은 헤더·버튼이 줄어요. 시안마다 430×932 네 장면 + 360×640, 375×667(아이폰 SE), 390×844, 412×915에서 A 세로·B 가로. 그림 밑 숫자와 "겹침·잘림 없음"은 페이지가 직접 재서 적은 거예요. 카메라 위 글씨는 밝은 방·어두운 방 둘 다 대비 4.8:1 이상(글자를 지우고 뒤 픽셀을 실측).</p>
+  <p class="lead">세 시안 모두 화면 크기에 맞춰 계산돼요: 미리보기는 남는 높이 안에서 칸 비율을 지키며 가로 끝까지, 짧은 화면(700px 미만)은 헤더·버튼이 줄어요. 시안마다 430×932 네 장면 + 360×640, 375×667(아이폰 SE), 390×844, 412×915에서 A 세로·A 가로·B 가로(3번 가로는 눕힌 640×360 ~ 932×430 화면). 그림 밑 숫자와 "겹침·잘림 없음"은 페이지가 직접 재서 적은 거예요. 카메라 위 글씨는 밝은 방·어두운 방 둘 다 대비 4.8:1 이상(글자를 지우고 뒤 픽셀을 실측).</p>
   <div class="tgl" role="group" aria-label="테마"><button type="button" data-th="film">필름 레일</button><button type="button" data-th="cute">말랑 부스</button></div>
   <div id="out"></div>
 </div>
@@ -405,7 +405,7 @@ LAY.forEach(function(L){
     out+='<div class="tc-'+t+'"><p class="th">'+(t==='film'?'필름 레일':'말랑 부스')+' · 430×932</p><div class="row">';
     KINDS.forEach(function(k){out+=frame(L,t,k,MAIN);});
     out+='</div><p class="th">'+(t==='film'?'필름 레일':'말랑 부스')+' · 다른 화면 (360×640 · 375×667 SE · 390×844 · 412×915)</p><div class="row">';
-    OTHER.forEach(function(sz){out+=frame(L,t,'A세로',sz)+frame(L,t,'B가로',sz);});
+    OTHER.forEach(function(sz){out+=frame(L,t,'A세로',sz)+frame(L,t,'A가로',sz)+frame(L,t,'B가로',sz);});
     out+='</div></div>';
   });
   out+='</section>';
