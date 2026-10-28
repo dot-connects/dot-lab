@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>고르기 화면 고르기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&family=Dongle:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 따로 같이 네컷 — pick (6 -> 4) screen, 3 layouts x 2 themes x 2 phone sizes. Frames are real CSS px (430x932 or
+   360x640); CSS zoom shrinks them to fit. Everything in a frame is placed by the layout functions below from the
+   frame's own size, so the small phone gets its own measurements, not a scaled copy. */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#ecebef;color:#1d1b22;font:15px/1.55 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:1500px;margin:0 auto;padding:22px 16px 60px}
+h1{font:900 26px/1.25 'Noto Sans KR';letter-spacing:-.03em}
+.bar{position:sticky;top:0;z-index:5;background:#ecebef;padding:10px 0;margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.tgl{display:flex;gap:8px}
+.tgl button{flex:1;max-width:220px;font:700 15px 'Noto Sans KR';padding:9px;border:2px solid #1d1b22;background:#fff;color:#1d1b22;cursor:pointer}
+.tgl button[aria-pressed=true]{background:#1d1b22;color:#fff}
+.swipe{font-size:13px;color:#4a4652;margin-top:6px}
+@media (min-width:900px){.swipe{display:none}}
+.three{display:flex;gap:16px;margin-top:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px}
+.three > div{flex:none;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+.three h2{font:900 20px/1.3 'Noto Sans KR';display:flex;gap:8px;align-items:baseline;letter-spacing:-.02em}
+.three h2 .no{font:700 14px 'Space Grotesk';background:#1d1b22;color:#fff;padding:1px 10px;border-radius:99px}
+.three .one{font-size:14px;color:#3d3a45;max-width:var(--fw)}
+figcaption{margin-top:6px;font:500 13px/1.45 'Space Grotesk','Noto Sans KR';color:#4a4652}
+figcaption .bad{color:#b3001b;font-weight:700}
+
+/* ---------------- phone frame ---------------- */
+.fr{position:relative;overflow:hidden;border-radius:26px;box-shadow:0 0 0 1px #0000001f,0 10px 28px #00000022;word-break:keep-all}
+.fr *{position:absolute}
+.fr .fl{position:static}
+svg.sc{display:block;width:100%;height:100%}
+.cell{overflow:hidden}
+
+/* film: white paper, black ink, lime, film rail */
+.fr.film{background:#fff;color:#0d0d0d;font-family:'Noto Sans KR',sans-serif}
+.film .brand{font:700 15px/20px 'Space Grotesk';letter-spacing:.2em;white-space:nowrap}
+.film .tag{font:700 15px/20px 'Space Grotesk','Noto Sans KR';white-space:nowrap}
+.film .rule{background:#0d0d0d}
+.film .rail{background:repeating-linear-gradient(90deg,#fff 0 9px,transparent 9px 19px) 8px 3px/calc(100% - 16px) 6px no-repeat,repeating-linear-gradient(90deg,#fff 0 9px,transparent 9px 19px) 8px calc(100% - 3px)/calc(100% - 16px) 6px no-repeat,#000;display:flex;gap:6px;padding:12px 10px}
+.film .rail.c{padding:10px 8px;background-size:calc(100% - 16px) 4px}
+.film .tb{flex:1;display:grid;place-items:center;font:700 15px/1 'Noto Sans KR';background:#2a2a2a;color:#c4c4c4;white-space:nowrap}
+.film .rail.c .tb{font-size:13px}
+.film .tb.done{background:#fff;color:#000}
+.film .tb.now{background:#d6ff3d;color:#000;font-weight:900}
+.film .ttl{font:900 25px/1.25 'Noto Sans KR';letter-spacing:-.03em;white-space:nowrap;display:flex;align-items:center}
+.film .ttl em{position:static;font-style:normal;background:#d6ff3d;padding:0 4px;margin:0 5px}
+.film .cnt{font:700 22px/1 'Space Grotesk';background:#d6ff3d;color:#000;display:grid;place-items:center}
+.film .fine{font:400 14px/20px 'Noto Sans KR';color:#444;white-space:nowrap}
+.film .pills{display:flex;align-items:stretch}
+.film .pills .lab{font:900 15px 'Noto Sans KR';width:46px;align-self:center;flex:none}
+.film .pl{flex:1;display:grid;place-items:center;border:3px solid #000;margin-left:-3px;font:700 15px 'Noto Sans KR';background:#fff;color:#000;white-space:nowrap}
+.film .pl.on{background:#000;color:#fff;font-weight:900}
+.film .gbg{background:repeating-linear-gradient(#fff 0 9px,transparent 9px 19px) 4px 8px/8px calc(100% - 16px) no-repeat,repeating-linear-gradient(#fff 0 9px,transparent 9px 19px) calc(100% - 4px) 8px/8px calc(100% - 16px) no-repeat,#000}
+.film .hbg{background:repeating-linear-gradient(90deg,#fff 0 9px,transparent 9px 19px) 8px 3px/calc(100% - 16px) 6px no-repeat,repeating-linear-gradient(90deg,#fff 0 9px,transparent 9px 19px) 8px calc(100% - 3px)/calc(100% - 16px) 6px no-repeat,#000}
+.film .pk{background:#222}
+.film .pk.dim > svg{opacity:.55}
+.film .pk.on::after{content:"";position:absolute;inset:0;border:4px solid #000;outline:4px solid #d6ff3d;outline-offset:-8px}
+.film .bd{right:0;top:0;min-width:32px;height:32px;display:grid;place-items:center;background:#d6ff3d;color:#000;font:700 19px/1 'Space Grotesk';border-left:3px solid #000;border-bottom:3px solid #000;z-index:2}
+.film .bd.s{min-width:20px;height:20px;font-size:13px;border-width:0 0 2px 2px}
+.film .pk.now{outline:3px solid #fff;outline-offset:-3px}
+.film .ms{background:#000}
+.film .mc{background:#222;display:grid;place-items:center;overflow:hidden}
+.film .mc span{position:static;font:700 15px 'Space Grotesk';color:#d6ff3d}
+.film .mf{font:700 9px/12px 'Space Grotesk','Noto Sans KR';letter-spacing:.12em;text-align:center;color:#d6ff3d;white-space:nowrap}
+.film .cta{background:#000;color:#fff;font:900 19px/1 'Noto Sans KR';letter-spacing:-.02em;display:grid;place-items:center;padding-right:22px;white-space:nowrap}
+.film .cta::after{content:"";position:absolute;right:14px;top:50%;width:14px;height:14px;margin-top:-7px;background:#d6ff3d}
+.film .cta.off{background:#e4e4e4;color:#4a4a4a}
+.film .cta.off::after{background:#bdbdbd}
+.film .tl{font:400 15px/26px 'Noto Sans KR';color:#0d0d0d;text-align:center;white-space:nowrap}
+.film .tl u{position:static;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:4px}
+.film .sheet{background:#fff;border-top:3px solid #000}
+.film .nav{background:#000000a6;color:#fff}
+.film .pb{background:#fff;color:#000;border:3px solid #000;font:700 24px/1 'Space Grotesk'}
+.film .pb.on{background:#d6ff3d}
+.film .chip{background:#000000a6;color:#fff;font:700 15px/1 'Space Grotesk';padding:6px 10px}
+
+/* cute: lavender dotted paper, pink curtain, mascot, Dongle + Gowun Dodum */
+.fr.cute{background:radial-gradient(circle at 1px 1px,#d9ccfb 1px,transparent 1.6px) 0 0/17px 17px,linear-gradient(#f6f1ff,#efe6ff);color:#2a2140;font-family:'Gowun Dodum',sans-serif}
+.cute .cur{height:22px;background:radial-gradient(circle at 50% 0,#ff8fbd 7px,transparent 7.5px) 0 13px/14.6px 8px repeat-x,linear-gradient(#ff8fbd,#ff8fbd) 0 6px/100% 7.2px no-repeat,#fff;border-radius:16px 16px 0 0}
+.cute .bub{background:#fff;border-radius:16px;box-shadow:0 4px 12px #6b3fc426;display:flex;align-items:center;justify-content:space-between;padding:0 14px}
+.cute .bub::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-7px;border:7px solid transparent;border-right:10px solid #fff;border-left:0}
+.cute .bt{position:static;font:700 30px/1 'Dongle';padding-top:4px}
+.cute .dots{position:static;display:flex;gap:7px;align-items:center}
+.cute .dots i{position:static;width:12px;height:12px;border-radius:50%;background:#e6dcff}
+.cute .dots i.done{background:#ff8fbd}
+.cute .dots i.now{background:#5a31ab;transform:scale(1.35)}
+.cute .ttl{font:700 44px/1 'Dongle';white-space:nowrap;padding-top:6px}
+.cute .ttl em{position:static;font-style:normal;color:#5a31ab}
+.cute .cnt{font:700 30px/1 'Dongle';background:#e6dcff;border-radius:99px;display:grid;place-items:center;padding-top:4px}
+.cute .fine{font:400 14px/20px 'Gowun Dodum';color:#574c6e;white-space:nowrap}
+.cute .pills{background:#e6dcff;border-radius:99px;padding:4px;display:flex;gap:4px}
+.cute .pl{flex:1;border-radius:99px;display:grid;place-items:center;font:400 15px 'Gowun Dodum';color:#2a2140;white-space:nowrap}
+.cute .pl.on{background:#fff;color:#5a31ab;box-shadow:0 3px 8px #c2587a26,inset 0 0 0 2px #5a31ab}
+.cute .card{background:#fff;border-radius:22px;box-shadow:0 6px 0 #e6dcff,0 10px 24px #6b3fc426}
+.cute .pk{border-radius:9px;background:#f3e6ec}
+.cute .pk.on{box-shadow:0 0 0 4px #ff6aa8}
+.cute .pk.now{outline:3px solid #5a31ab;outline-offset:2px}
+.cute .bd{top:5px;left:5px;width:32px;height:32px;border-radius:50%;background:#5a31ab;color:#fff;font:700 28px/1 'Dongle';display:grid;place-items:center;padding-top:4px;box-shadow:0 2px 5px #0004;z-index:2}
+.cute .bd.s{top:3px;left:3px;width:20px;height:20px;font-size:19px;padding-top:3px}
+.cute .ms{background:#fff;border-radius:8px;box-shadow:0 4px 12px #c2587a33}
+.cute .mc{background:#e6dcff;border-radius:4px;display:grid;place-items:center;overflow:hidden}
+.cute .mc span{position:static;font:700 22px/1 'Dongle';color:#5a31ab;padding-top:3px}
+.cute .mf{font:700 15px/12px 'Dongle';text-align:center;color:#2a2140;white-space:nowrap}
+.cute .cta{border-radius:99px;background:linear-gradient(#ffffff70,#ffffff00 55%),#ff8fbd;color:#3a1230;font:700 34px/1 'Dongle';display:grid;place-items:center;padding-top:5px;box-shadow:0 5px 0 #d9578f,0 10px 13px #6b3fc433;white-space:nowrap}
+.cute .cta.off{background:#ece6fb;color:#574c6e;box-shadow:0 5px 0 #d8cff0}
+.cute .tl{font:400 15px/26px 'Gowun Dodum';color:#2a2140;text-align:center;white-space:nowrap}
+.cute .tl u{position:static;text-decoration:underline;text-decoration-color:#5a31ab;text-decoration-thickness:2px;text-underline-offset:4px}
+.cute .sheet{background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -5px 0 #e6dcff,0 -10px 24px #6b3fc426}
+.cute .nav{background:#2a2140bd;color:#fff}
+.cute .pb{background:#fff;color:#5a31ab;border:3px solid #5a31ab;border-radius:50%;font:700 34px/1 'Dongle';padding-top:5px}
+.cute .pb.on{background:#5a31ab;color:#fff;border-color:#fff;box-shadow:0 2px 6px #0005}
+.cute .chip{background:#2a2140bd;color:#fff;font:400 15px/1 'Gowun Dodum';padding:6px 11px;border-radius:99px}
+.nav{border-radius:50%;display:grid;place-items:center}
+.nav svg{position:static;width:20px;height:20px}
+.pb{display:grid;place-items:center}
+.scrimB{background:linear-gradient(#00000000,#00000099)}
+.cute .scrimB{background:linear-gradient(#2a214000,#2a2140a6)}
+.c .tl,.fr.small .tl{font-size:14px}
+.fr.small .fine{font-size:13px}
+</style>
+</head>
+<body data-th="film" data-k="A가로" data-sz="big">
+<div class="wrap">
+  <h1>고르기 화면 — 셋 중 하나만 골라 주세요</h1>
+  <div class="bar">
+    <div class="tgl" role="group" aria-label="테마"><button type="button" data-th="film">필름 레일</button><button type="button" data-th="cute">말랑 부스</button></div>
+    <div class="tgl" role="group" aria-label="장면"><button type="button" data-k="A가로">A · 가로 (2장 고름)</button><button type="button" data-k="A세로">A · 세로 (4장 고름)</button><button type="button" data-k="B가로">B · 가로 (친구 배경, 3장)</button></div>
+    <div class="tgl" role="group" aria-label="폰 크기"><button type="button" data-sz="big">큰 폰 430×932</button><button type="button" data-sz="small">작은 폰 360×640</button></div>
+  </div>
+  <p class="swipe">옆으로 밀면 2·3번이 나와요</p>
+  <div class="three" id="out"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="mas" viewBox="0 0 60 64"><circle cx="30" cy="6" r="4" fill="#ffe27a" stroke="#2a2140" stroke-width="2"/><rect x="4" y="10" width="52" height="50" rx="15" fill="#ff9cc4" stroke="#2a2140" stroke-width="2.4"/><path d="M9 18h42v5q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0z" fill="#c45fd9" stroke="#2a2140" stroke-width="2" stroke-linejoin="round"/><path d="M18 39q4-5 8 0M34 39q4-5 8 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="15" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><ellipse cx="45" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><path d="M25 46q5 5 10 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="18" y="53" width="24" height="3" rx="1.5" fill="#5b2a49"/></symbol>
+  <symbol id="i-l" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-r" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<script>
+(function(){
+var W=430,H=932,C=false;               // the screen being drawn (CSS px); C = short screen (< 700 px): folded head, smaller buttons
+var AW=552/382, AT=3/4;                // cell aspect: 가로, 세로
+var uid=0;
+function P(x,y,w,h){return 'left:'+Math.round(x)+'px;top:'+Math.round(y)+'px;'+(w!=null?'width:'+Math.round(w)+'px;':'')+(h!=null?'height:'+Math.round(h)+'px;':'');}
+
+// ---- fake photos: a room + people (A dark hair / black top, B brown hair / white top); from camera3.html ----
+function person(w,h,cx,s,o){
+  var k=s/120, x=cx*w-50*k, y=h-108*k, hair=o.b?'#8a5a3b':'#3b2a33', shirt=o.b?'#f4f4f4':'#151515';
+  var body='<path d="M8 124C8 94 28 84 50 84C72 84 92 94 92 124Z"/><ellipse cx="50" cy="50" rx="22" ry="26"/>';
+  var g='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') scale('+k.toFixed(3)+')">';
+  if(o.cut) g+='<g fill="#fff" stroke="#fff" stroke-width="9" stroke-linejoin="round">'+body+'<path d="M27 46c-3-30 49-30 46 0-7-12-24-15-46 0z"/></g>';
+  g+='<path d="M8 124C8 94 28 84 50 84C72 84 92 94 92 124Z" fill="'+shirt+'"'+(o.b?' stroke="#c9c9c9" stroke-width="1.5"':'')+'/>'+
+     '<rect x="42" y="70" width="16" height="18" fill="#f1cdb6"/><ellipse cx="50" cy="50" rx="22" ry="26" fill="#ffe1cf"/>'+
+     (o.b?'<path d="M27 52c-5-34 51-34 46 0l-4-11c-10 3-26 3-38-6z" fill="'+hair+'"/>':'<path d="M27 46c-3-30 49-30 46 0-7-12-24-15-46 0z" fill="'+hair+'"/>')+
+     '<circle cx="42" cy="52" r="2.6" fill="#3b2a33"/><circle cx="58" cy="52" r="2.6" fill="#3b2a33"/>'+
+     (o.wink?'<path d="M55 52h6" stroke="#3b2a33" stroke-width="2.6" stroke-linecap="round"/>':'')+
+     '<path d="'+(o.o?'M46 62q4 5 8 0q-4-4-8 0z':'M43 61q7 6 14 0')+'" stroke="#3b2a33" stroke-width="2.6" fill="'+(o.o?'#3b2a33':'none')+'" stroke-linecap="round"/>'+
+     '<circle cx="36" cy="59" r="4" fill="#ff9a8a" opacity=".45"/><circle cx="64" cy="59" r="4" fill="#ff9a8a" opacity=".45"/>';
+  if(o.v) g+='<g transform="translate(70 70) rotate(-12)"><rect x="-6" y="0" width="12" height="24" rx="6" fill="#ffe1cf"/><rect x="-7" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(-14)"/><rect x="2" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(14)"/></g>';
+  return g+'</g>';
+}
+// bg: light = A's room, dark = B's room, pink = the plain booth backdrop (배경 없음 / 배경 끄기)
+function art(w,h,bg,people){
+  var id='s'+(uid++), dark=bg==='dark', s='<svg class="sc" viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs>'+
+    '<linearGradient id="'+id+'w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+(dark?'#2b2634':bg==='pink'?'#ffd9e6':'#f8f6f1')+'"/><stop offset="1" stop-color="'+(dark?'#17141d':bg==='pink'?'#f5b5cc':'#e6e0d4')+'"/></linearGradient>'+
+    '<radialGradient id="'+id+'l"><stop offset="0" stop-color="#ffd58a" stop-opacity=".75"/><stop offset="1" stop-color="#ffd58a" stop-opacity="0"/></radialGradient></defs>'+
+    '<rect width="'+w+'" height="'+h+'" fill="url(#'+id+'w)"/>';
+  if(dark){
+    s+='<circle cx="'+(w*.82)+'" cy="'+(h*.24)+'" r="'+(h*.34)+'" fill="url(#'+id+'l)"/>'+
+       '<path d="M'+(w*.77)+' '+(h*.14)+'h'+(w*.1)+'l'+(w*.03)+' '+(h*.09)+'h'+(-w*.16)+'z" fill="#f2c477"/>'+
+       '<rect x="'+(w*.06)+'" y="'+(h*.1)+'" width="'+(w*.2)+'" height="'+(h*.26)+'" fill="#3d3549"/>';
+  }else if(bg==='pink'){
+    for(var i=1;i<3;i++) s+='<path d="M'+(w*i/3)+' 0V'+h+'M0 '+(h*i/3)+'H'+w+'" stroke="#ffffff99" stroke-width="'+Math.max(1,w/180)+'"/>';
+  }else{
+    s+='<rect x="'+(w*.58)+'" y="'+(h*.05)+'" width="'+(w*.38)+'" height="'+(h*.5)+'" fill="#ffffff" stroke="#d9d2c4" stroke-width="'+Math.max(1,w/90)+'"/>'+
+       '<path d="M'+(w*.77)+' '+(h*.05)+'v'+(h*.5)+'M'+(w*.58)+' '+(h*.3)+'h'+(w*.38)+'" stroke="#d9d2c4" stroke-width="'+Math.max(1,w/90)+'"/>'+
+       '<rect x="'+(w*.06)+'" y="'+(h*.12)+'" width="'+(w*.18)+'" height="'+(h*.22)+'" fill="#f0c9b8" stroke="#c9b9a6" stroke-width="'+Math.max(1,w/120)+'"/>'+
+       '<path d="M'+(w*.03)+' '+h+'v'+(-h*.2)+'q'+(w*.05)+' '+(-h*.12)+' '+(w*.1)+' 0v'+(h*.2)+'z" fill="#9ccf8f"/>';
+  }
+  var big=Math.min(h*.86,w*(h>w?.95:.6));          // a tall cell is a close-up: one person fills more of the width
+  people.forEach(function(p){s+=person(w,h,p.cx,big*(p.s||1),p);});
+  return s+'</svg>';
+}
+// shot j of 6 as the pick screen composes it: A alone (room or booth backdrop); B = B + A's paired cut-out (j % 4) in front
+function shot(w,h,o,j){
+  var bg=o.bg==='a'?o.roomA:o.bg==='b'?'dark':'pink', d=[-.03,0,.03,-.01,.02,0][j];
+  if(o.b) return art(w,h,bg,[{cx:.68+d,s:.92,b:1,v:j%2,o:j===3},{cx:.3+[0,.02,-.02,.01][j%4],cut:1,wink:j%4===2}]);
+  return art(w,h,bg,[{cx:.34+d,v:j%2===1,wink:j===2,o:j===4}]);
+}
+
+// ---- the scenes ----
+function K(k){
+  var o={k:k, wide:k!=='A세로', b:k==='B가로', bg:'a', roomA:k==='A세로'?'dark':'light'};
+  o.picks=k==='A가로'?[1,4]:k==='A세로'?[2,0,5,3]:[0,3,4];
+  o.view=k==='A세로'?5:k==='B가로'?2:1;     // layout 3: the photo shown big
+  o.asp=o.wide?AW:AT;
+  return o;
+}
+var PH=function(){return C?38:44;}, CH=function(){return C?48:56;};
+
+// ---- shared parts: each returns html; .k = checked for clipping / overlap, data-n = its name in the caption ----
+function head(t){
+  if(t==='film'){
+    var s='';
+    if(!C) s+='<div class="brand k" data-n="로고" style="'+P(16,12)+'">D:OT LAB</div><div class="tag k" data-n="단계" style="right:16px;top:12px">6장 → 4장</div><div class="rule" style="'+P(16,40,W-32,3)+'"></div>';
+    var y=C?8:52, h=C?40:52;
+    s+='<div class="rail k'+(C?' c':'')+'" data-n="단계줄" style="'+P(16,y,W-32,h)+'"><b class="tb fl done">찍기</b><b class="tb fl now">고르기</b><b class="tb fl">보정</b><b class="tb fl">보내기</b></div>';
+    return {html:s,h:y+h};
+  }
+  var ms=C?32:42, bh=C?38:46, y=C?8:12, mh=Math.round(ms*64/60);
+  return {html:'<svg class="mas k" data-n="마스코트" style="'+P(16,y+(bh-mh)/2,ms,mh)+'"><use href="#mas"/></svg>'+
+    '<div class="bub k" data-n="말풍선" style="'+P(ms+30,y,W-ms-46,bh)+'"><b class="bt">고르기</b><span class="dots"><i class="done"></i><i class="now"></i><i></i><i></i></span></div>',h:y+bh};
+}
+function titleRow(t,y,o){
+  var th=t==='film'?(C?36:44):(C?42:50), cw=t==='film'?(C?70:80):(C?76:86);
+  var fs=t==='film'?(C?21:25):(C?38:44);
+  return {html:'<h2 class="ttl k" data-n="제목" style="'+P(16,y,W-32-cw-8,th)+';font-size:'+fs+'px">맘에 드는<em>4장</em>골라 줘</h2>'.replace('<em>',t==='film'?'<em>':' <em>').replace('</em>',t==='film'?'</em>':'</em> ')+
+    '<div class="cnt k" data-n="숫자" style="'+P(W-16-cw,y+(t==='film'?0:2),cw,t==='film'?th:th-4)+(C&&t==='film'?';font-size:19px':'')+'">'+o.picks.length+' / 4</div>',y:y+th};
+}
+function fine(y,o){return '<p class="fine k" data-n="안내" style="'+P(16,y,W-32,20)+'">누른 순서대로 '+(o.wide?'위에서':'왼쪽')+'부터 들어가 · 다시 누르면 빠져</p>';}
+function pills(t,x,y,w,o){
+  var L=o.b?[['a','친구 배경'],['b','내 배경'],['none','배경 없음']]:[['a','배경 켜기'],['none','배경 끄기']];
+  return '<div class="pills k" data-n="배경 버튼" style="'+P(x,y,w,PH())+'">'+(t==='film'?'<b class="lab fl">배경</b>':'')+
+    L.map(function(l){return '<b class="pl fl'+(l[0]===o.bg?' on':'')+'"'+(t==='film'&&l===L[0]?' style="margin-left:0"':'')+'>'+l[1]+'</b>';}).join('')+'</div>';
+}
+// one shot cell (grid or thumb): picked = order badge; film dims the others once something is picked
+function pk(t,x,y,w,h,o,j,small,cls){
+  var n=o.picks.indexOf(j);
+  return '<div class="pk cell k'+(n>=0?' on':o.picks.length&&t==='film'?' dim':'')+(cls||'')+'" data-n="사진'+(j+1)+'" style="'+P(x,y,w,h)+'">'+shot(w,h,o,j)+
+    (n>=0?'<b class="bd'+(small?' s':'')+'">'+(n+1)+'</b>':'')+'</div>';
+}
+// 6 cells fitted into a box, centred: 2 x 3 or 3 x 2, whichever gives the bigger photo on this screen
+function grid(t,bx,by,bw,bh,o,gap,cls){
+  function size(c,r){return Math.floor(Math.min((bw-gap*(c-1))/c,(bh-gap*(r-1))/r*o.asp));}
+  var cols=size(2,3)>=size(3,2)?2:3, rows=6/cols, cw=size(cols,rows), ch=Math.round(cw/o.asp);
+  var gw=cols*cw+(cols-1)*gap, gh=rows*ch+(rows-1)*gap, gx=bx+Math.round((bw-gw)/2), gy=by+Math.round((bh-gh)/2), s='';
+  for(var j=0;j<6;j++) s+=pk(t,gx+(j%cols)*(cw+gap),gy+Math.floor(j/cols)*(ch+gap),cw,ch,o,j,false,j===0?' main'+(cls||''):cls);
+  return {html:s,x:gx,y:gy,w:gw,h:gh};
+}
+// the mini strip: 4 slots in tap order (empty = its number) + "따로 같이 네컷"
+function strip(t,x,y,o,sw,sh){
+  var pad=4, g=4, fh=13, w=pad*2+4*sw+3*g, h=pad+sh+fh+2, s='<div class="ms k" data-n="미리 띠" style="'+P(x,y,w,h)+'">';
+  for(var k=0;k<4;k++) s+='<div class="mc" style="'+P(pad+k*(sw+g),pad,sw,sh)+'">'+(k<o.picks.length?shot(sw,sh,o,o.picks[k]):'<span>'+(k+1)+'</span>')+'</div>';
+  return {html:s+'<div class="mf" style="'+P(0,pad+sh+1,w,fh)+'">따로 같이 네컷</div></div>',w:w,h:h};
+}
+function cta(x,y,w,o){return '<div class="cta k'+(o.picks.length===4?'':' off')+'" data-n="이 4장으로" style="'+P(x,y,w,CH())+'">이 4장으로</div>';}
+function link(x,y,w){return '<div class="tl k" data-n="다시 찍기" style="'+P(x,y,w,26)+'"><u>전체 다시 찍기 (한 번만)</u></div>';}
+// the bottom: [mini strip | CTA] in one row, the reshoot link under it; returns the row's top
+function bottomRow(t,o){
+  var GB=C?8:16, ly=H-GB-26, cy=ly-(C?4:8)-CH();
+  var sh=CH()-19, sw=Math.round(sh*o.asp), st=strip(t,16,cy+(CH()-(sh+19))/2,o,sw,sh);
+  return {html:st.html+cta(16+st.w+10,cy,W-32-st.w-10,o)+link(0,ly,W),y:cy};
+}
+function top3(t,o){            // head, title + counter, fine print
+  var hd=head(t), y=hd.h+(C?8:14), s=hd.html, tr=titleRow(t,y,o);
+  s+=tr.html; y=tr.y+(C?2:6);
+  s+=fine(y,o); return {html:s,y:y+20};
+}
+
+// =================== layout 1: the grid fills the width and the height that is left; the strip sits beside the CTA ===================
+function L1(t,o){
+  var tp=top3(t,o), s=tp.html, y=tp.y+(C?8:12);
+  s+=pills(t,16,y,W-32,o); y+=PH()+(C?10:14);
+  var br=bottomRow(t,o), bot=br.y-(C?10:16);
+  if(t==='film'){
+    var g=grid(t,18,y+8,W-36,bot-y-16,o,7);
+    s+='<div class="gbg" style="'+P(0,g.y-8,W,g.h+16)+'"></div>'+g.html;
+  }else{
+    var g2=grid(t,18,y+30,W-36,bot-y-38,o,8);
+    s+='<div class="card" style="'+P(8,g2.y-30,W-16,g2.h+38)+'"></div><div class="cur" style="'+P(8,g2.y-30,W-16)+'"></div>'+g2.html;
+  }
+  return s+br.html;
+}
+
+// =================== layout 2: photos edge to edge; background buttons, a bigger strip and the CTA in a bottom sheet ===================
+function L2(t,o){
+  var tp=top3(t,o), s=tp.html, y=tp.y+(C?8:12);
+  var GB=C?8:16, cy=H-GB-CH(), lw=W<400?150:170;
+  var sh=o.wide?(C?42:60):(C?58:84), sw=Math.round(sh*o.asp);
+  var sty=cy-(C?10:14)-(sh+19), py=sty-(C?8:12)-PH(), shy=py-(C?10:14);
+  var st=strip(t,0,0,o,sw,sh);
+  s+='<div class="sheet" style="'+P(0,shy,W,H-shy+30)+'"></div>'+pills(t,16,py,W-32,o)+strip(t,Math.round((W-st.w)/2),sty,o,sw,sh).html+
+     link(8,cy+(CH()-26)/2,lw)+cta(16+lw,cy,W-32-lw,o);
+  var band=t==='film'?12:22, top=y+band, bot=shy-(t==='film'?12:4)-(C?4:8);
+  var g=grid(t,0,top,W,bot-top,o,3);
+  if(t==='film') s+='<div class="hbg" style="'+P(0,g.y-12,W,g.h+24)+'"></div>';
+  else s+='<div class="cur" style="'+P(g.x,g.y-22,g.w)+';border-radius:0"></div>';
+  return s+g.html;
+}
+
+// =================== layout 3: one shot big (tap it = in / out, ‹ › or the 6 thumbs to move), strip beside the CTA ===================
+function L3(t,o){
+  var tp=top3(t,o), s=tp.html, y=tp.y+(C?8:12);
+  s+=pills(t,16,y,W-32,o); y+=PH()+(C?10:14);
+  var br=bottomRow(t,o), gap=t==='film'?4:6, curH=t==='film'?0:22, fb=t==='film'?10:0, m=C?10:14;
+  // the thumbs: 3 x 2 when the big shot already fills the width and that height is left over, else one row of 6
+  var cols=6, tw=Math.floor((W-32-5*gap)/6), th=Math.round(tw/o.asp);
+  var tw3=Math.floor((W-32-2*gap)/3), th3=Math.round(tw3/o.asp), full=Math.round((W-32)/o.asp);
+  if(br.y-(C?12:18)-2*fb-(2*th3+gap)-m-curH-y>=full) cols=3, tw=tw3, th=th3;
+  var rows=6/cols, tH=rows*th+(rows-1)*gap, ty=br.y-(C?12:18)-tH-fb;
+  if(t==='film') s+='<div class="hbg" style="'+P(0,ty-10,W,tH+20)+'"></div>';
+  for(var j=0;j<6;j++) s+=pk(t,16+(j%cols)*(tw+gap),ty+Math.floor(j/cols)*(th+gap),tw,th,o,j,cols===6,j===o.view?' now':'');
+  var room=ty-fb-m-y-curH;
+  var vw=Math.floor(Math.min(W-32,room*o.asp)), vh=Math.round(vw/o.asp), vx=Math.round((W-vw)/2), vy=y+curH+Math.round((room-vh)/2);
+  if(curH) s+='<div class="cur" style="'+P(vx,vy-22,vw)+'"></div>';
+  var n=o.picks.indexOf(o.view), pb=C?44:52;
+  s+='<div class="cell big main k" data-n="큰 사진" style="'+P(vx,vy,vw,vh)+(t==='cute'?';border-radius:0 0 14px 14px':'')+'">'+shot(vw,vh,o,o.view)+
+     '<div class="scrimB" style="'+P(0,vh-46,vw,46)+'"></div>'+
+     '<b class="pb k'+(n>=0?' on':'')+'" data-n="넣기" style="'+P(vw-pb-10,10,pb,pb)+'">'+(n>=0?n+1:'+')+'</b>'+
+     '<b class="nav k" data-n="이전" style="'+P(8,vh/2-20,40,40)+'"><svg><use href="#i-l"/></svg></b>'+
+     '<b class="nav k" data-n="다음" style="'+P(vw-48,vh/2-20,40,40)+'"><svg><use href="#i-r"/></svg></b>'+
+     '<b class="chip k" data-n="몇 번째" style="'+P(10,vh-38)+'">'+(o.view+1)+' / 6</b></div>';
+  return s+br.html;
+}
+
+// ---- checks: every .k inside the screen (and inside its photo if it sits on one), no two overlapping, no text running out ----
+function check(fr){
+  var R=fr.getBoundingClientRect(), bad=[], ks=[].slice.call(fr.querySelectorAll('.k'));
+  function inside(r,B){return r.left>=B.left-1&&r.top>=B.top-1&&r.right<=B.right+1&&r.bottom<=B.bottom+1;}
+  ks.forEach(function(e){
+    var r=e.getBoundingClientRect(), cell=e.parentElement.closest('.cell');
+    if(!inside(r,R)) bad.push('잘림 '+e.dataset.n);
+    else if(cell&&!inside(r,cell.getBoundingClientRect())) bad.push('사진 밖 '+e.dataset.n);
+    if(e.scrollWidth>e.clientWidth+1&&!e.matches('.cell,.mas')) bad.push('글자 넘침 '+e.dataset.n);
+  });
+  for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){
+    var a=ks[i], b=ks[j];
+    if(a.contains(b)||b.contains(a)) continue;
+    if(a.parentElement.closest('.cell')!==b.parentElement.closest('.cell')) continue;
+    var p=a.getBoundingClientRect(), q=b.getBoundingClientRect();
+    var ox=Math.min(p.right,q.right)-Math.max(p.left,q.left), oy=Math.min(p.bottom,q.bottom)-Math.max(p.top,q.top);
+    if(ox>1&&oy>1) bad.push('겹침 '+a.dataset.n+'/'+b.dataset.n);
+  }
+  return bad;
+}
+
+// ---- page ----
+var LAY=[
+  {f:L1,no:'1',name:'꽉 찬 격자',one:'6장이 폭과 남은 높이를 다 씀. 네컷 띠는 버튼 옆으로 내려 한 줄 아낌.'},
+  {f:L2,no:'2',name:'사진 끝까지 + 아래 판',one:'사진은 화면 가장자리까지. 배경·네컷 띠·버튼은 아래 판에 모아 엄지로.'},
+  {f:L3,no:'3',name:'한 장씩 크게',one:'한 장을 크게 보고 누르면 넣기·빼기. 아래 6칸이나 ‹ ›로 넘김.'}
+];
+var SIZES={big:[430,932],small:[360,640]};
+function frame(L,t,k,sz){
+  W=SIZES[sz][0];H=SIZES[sz][1];C=H<700;
+  return '<figure><div class="slot" style="width:'+W+'px;height:'+H+'px"><div class="fr '+t+(C?' c small':'')+'" style="width:'+W+'px;height:'+H+'px">'+L.f(t,K(k))+
+    '</div></div><figcaption></figcaption></figure>';
+}
+var out=document.getElementById('out');
+function draw(){
+  var b=document.body.dataset, s='';
+  LAY.forEach(function(L){s+='<div><h2><span class="no">'+L.no+'</span>'+L.name+'</h2>'+frame(L,b.th,b.k,b.sz)+'<p class="one">'+L.one+'</p></div>';});
+  out.innerHTML=s;
+  var fw=SIZES[b.sz][0], fh=SIZES[b.sz][1];
+  var top=out.getBoundingClientRect().top+scrollY, zh=(innerHeight-Math.min(top,innerHeight*.35)-120)/fh;
+  var z=Math.min(1,zh,innerWidth>=900?(Math.min(innerWidth,1500)-64)/(3*fw):(innerWidth-56)/fw);
+  [].forEach.call(out.querySelectorAll('figure'),function(f){
+    f.style.width=(fw*z)+'px'; f.parentElement.style.setProperty('--fw',(fw*z)+'px'); f.querySelector('.slot').style.zoom=z;
+    var fr=f.querySelector('.fr'), m=fr.querySelector('.main'), bad=check(fr);
+    f.querySelector('figcaption').innerHTML=(m.classList.contains('big')?'큰 사진 ':'사진 한 장 ')+m.offsetWidth+'×'+m.offsetHeight+' · 화면의 '+
+      (m.offsetWidth*m.offsetHeight/(fw*fh)*100).toFixed(1)+'% · '+(bad.length?'<span class="bad">'+bad.join(', ')+'</span>':'겹침·잘림 없음');
+  });
+}
+var q=new URLSearchParams(location.search);
+var OK={th:['film','cute'],k:['A가로','A세로','B가로'],sz:['big','small']};   // only known values reach innerHTML
+Object.keys(OK).forEach(function(a){var v=q.get(a);if(OK[a].indexOf(v)>=0)document.body.dataset[a]=v;});
+function sync(){[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  var a=b.dataset.th?'th':b.dataset.k?'k':'sz'; b.setAttribute('aria-pressed',b.dataset[a]===document.body.dataset[a]);});}
+[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  b.onclick=function(){var a=b.dataset.th?'th':b.dataset.k?'k':'sz';document.body.dataset[a]=b.dataset[a];sync();draw();};
+});
+sync();
+(document.fonts&&document.fonts.ready||Promise.resolve()).then(draw);draw();addEventListener('resize',draw);
+})();
+</script>
+</body>
+</html>

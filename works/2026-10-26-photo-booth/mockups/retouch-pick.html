@@ -1,0 +1,410 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>보정 화면 고르기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&family=Dongle:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 따로 같이 네컷 — retouch review (#s-shoot.shooting-done), 3 layouts x 2 themes x 2 phone sizes. Frames are real CSS px
+   (430x932 or 360x640); CSS zoom shrinks all of them by the same factor, so the small phone also looks smaller. */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#ecebef;color:#1d1b22;font:15px/1.55 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:1500px;margin:0 auto;padding:22px 16px 60px}
+h1{font:900 26px/1.25 'Noto Sans KR';letter-spacing:-.03em}
+h2{font:900 20px/1.3 'Noto Sans KR';display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;letter-spacing:-.02em}
+h2 .no{font:700 14px 'Space Grotesk';background:#1d1b22;color:#fff;padding:1px 10px;border-radius:99px}
+figcaption{margin-top:6px;font-size:13px;line-height:1.45}
+figcaption .m{display:block;color:#4a4652;font-family:'Space Grotesk','Noto Sans KR';font-weight:500}
+.bad{display:block;color:#b3001b;font-weight:700}
+.bar{position:sticky;top:0;z-index:5;background:#ecebef;padding:10px 0;margin-top:12px;display:flex;flex-direction:column;gap:8px}
+.tgl{display:flex;gap:8px}
+.tgl button{flex:1;max-width:220px;font:700 15px 'Noto Sans KR';padding:9px;border:2px solid #1d1b22;background:#fff;color:#1d1b22;cursor:pointer}
+.tgl button[aria-pressed=true]{background:#1d1b22;color:#fff}
+.three{display:flex;gap:16px;margin-top:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px;align-items:flex-start}
+.three > div{flex:none;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+.three .one{font-size:14px;color:#3d3a45;max-width:var(--fw)}
+.swipe{font-size:13px;color:#4a4652;margin-top:6px}
+@media (min-width:900px){.swipe{display:none}}
+
+/* ---------------- phone frame ---------------- */
+.fr{position:relative;overflow:hidden;border-radius:26px;box-shadow:0 0 0 1px #0000001f,0 10px 28px #00000022;word-break:keep-all}
+.fr *{position:absolute}
+.fr .fl{position:static}
+svg.sc{display:block;width:100%;height:100%}
+
+/* film: black booth, lime, sprocket holes */
+.fr.film{background:#000;color:#fff;font-family:'Noto Sans KR',sans-serif}
+.film .spr{height:14px;background:#000 repeating-linear-gradient(90deg,#000 0 5px,#fff 5px 14px,#000 14px 19px) 0 3px/100% 8px no-repeat}
+.film .sprv{width:14px;background:#000 repeating-linear-gradient(#000 0 5px,#fff 5px 14px,#000 14px 19px) 3px 0/8px 100% no-repeat}
+.film .stp{display:flex;gap:4px}
+.film .stp span{flex:1;text-align:center;font:700 12px/24px 'Noto Sans KR';background:#fff;color:#000}
+.film .stp span.now{background:#d6ff3d}
+.film .stp span.next{background:#2b2b2b;color:#ddd}
+.film .step{font:700 20px/1 'Space Grotesk';background:#d6ff3d;color:#000;padding:6px 11px 5px}
+.film .pose{font:900 23px/1.2 'Noto Sans KR';letter-spacing:-.04em;color:#fff;white-space:nowrap}
+.film .pose.sm{font-size:19px}
+.film .sound{display:flex;align-items:center;gap:4px;border:2px solid #fff;background:#000;color:#fff;font:700 14px 'Noto Sans KR';padding:6px 10px 6px 8px;white-space:nowrap}
+.fr .sound svg{position:static;width:20px;height:20px}
+.sound.ico .fl{display:none}
+.film .pill{font:700 15px 'Noto Sans KR';background:#000;color:#fff;box-shadow:inset 0 0 0 2px #fff;white-space:nowrap;display:grid;place-items:center;text-align:center}
+.film .pill.on{background:#d6ff3d;color:#000;box-shadow:inset 0 0 0 3px #d6ff3d}
+.film .tab{font:700 15px/1.15 'Noto Sans KR';background:#000;color:#fff;box-shadow:inset 0 0 0 2px #6a6a6a;display:grid;place-content:center;text-align:center;white-space:nowrap}
+.tab small{display:block}
+.film .tab small{font:500 12px 'Noto Sans KR';color:#cfcfcf}
+.film .tab.on{background:#fff;color:#000;box-shadow:none}
+.film .tab.on small{color:#333}
+.film .lab{font:900 15px 'Noto Sans KR';color:#fff;display:flex;align-items:center}
+.film .hint{font:700 15px/1.35 'Noto Sans KR';color:#fff;text-align:center}
+.film .chip{background:#000000b3;color:#fff;font:700 14px/1.3 'Noto Sans KR';padding:6px 11px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+.film .chip.lime{background:#d6ff3d;color:#000}
+.film .cta{background:#d6ff3d;color:#000;font:900 19px 'Noto Sans KR';display:grid;place-items:center}
+.film .trust{font:400 12px/1.4 'Noto Sans KR';color:#bdbdbd}
+.film .sheet{background:#000;border-top:2px solid #fff}
+.film .grid{background:#000}
+.film .sub{border-radius:8px;overflow:hidden}
+.film .thumb{outline:2px solid #555;outline-offset:-2px;overflow:hidden}
+.film .thumb.now{outline:3px solid #d6ff3d;outline-offset:-3px}
+.film .ask{background:#fff;color:#000;border:3px solid #d6ff3d;font:700 15px/1.35 'Noto Sans KR';text-align:center}
+.film .ask .pill{box-shadow:inset 0 0 0 2px #000;background:#fff;color:#000}
+.film .ask .pill.on{background:#000;color:#fff;box-shadow:none}
+.film .round{border-radius:50%;background:#000000b3;color:#fff;border:2px solid #fff;font:700 13px/1.15 'Noto Sans KR';display:grid;place-items:center;text-align:center}
+.film .knob{border-radius:50%;background:#d6ff3d;color:#000;border:3px solid #000;font:700 16px 'Space Grotesk';display:grid;place-items:center}
+.film .press{outline:3px solid #fff;outline-offset:3px}
+
+/* cute: lavender dotted paper, pink curtain, mascot, Dongle + Gowun Dodum */
+.fr.cute{background:radial-gradient(circle at 1px 1px,#d9ccfb 1px,transparent 1.6px) 0 0/17px 17px,linear-gradient(#f6f1ff,#efe6ff);color:#2a2140;font-family:'Gowun Dodum',sans-serif}
+.cute .cur{height:22px;background:radial-gradient(circle at 50% 0,#ff8fbd 7px,transparent 7.5px) 0 13px/14.6px 8px repeat-x,linear-gradient(#ff8fbd,#ff8fbd) 0 6px/100% 7.2px no-repeat,#fff}
+.cute .mas{width:42px;height:45px}
+.cute .bub{background:#fff;border-radius:16px;box-shadow:0 4px 12px #6b3fc426;display:flex;align-items:center;gap:8px;padding:0 10px}
+.cute .bub::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-7px;border:7px solid transparent;border-right:10px solid #fff;border-left:0}
+.cute .step{font:700 28px/1 'Dongle';background:#e6dcff;color:#2a2140;border-radius:99px;padding:5px 12px 0;white-space:nowrap}
+.cute .pose{font:700 30px/.9 'Dongle';color:#2a2140;padding-top:4px;white-space:nowrap}
+.cute .pose.sm{font-size:24px}
+.cute .bub.sm{gap:5px;padding:0 7px}
+.cute .bub.sm .step{font-size:23px;padding:4px 8px 0}
+.cute .sound{display:flex;align-items:center;gap:4px;border-radius:99px;background:#fff;color:#2a2140;font:400 14px 'Gowun Dodum';padding:7px 12px 7px 9px;box-shadow:0 3px 10px #6b3fc424;white-space:nowrap}
+.cute .pill{font:400 15px 'Gowun Dodum';border-radius:99px;background:#fff;color:#2a2140;box-shadow:0 3px 0 #d6c6f6;white-space:nowrap;display:grid;place-items:center;text-align:center}
+.cute .pill.on{background:#5a31ab;color:#fff;box-shadow:0 3px 0 #3d1f7c}
+.cute .tab{font:400 15px/1.15 'Gowun Dodum';border-radius:14px;background:#efe8ff;color:#2a2140;display:grid;place-content:center;text-align:center;white-space:nowrap}
+.cute .tab small{font:400 12px 'Gowun Dodum';color:#5b4f75}
+.cute .tab.on{background:#fff;box-shadow:0 0 0 2px #5a31ab}
+.cute .lab{font:400 15px 'Gowun Dodum';color:#2a2140;display:flex;align-items:center}
+.cute .hint{font:700 25px/20px 'Dongle';color:#2a2140;text-align:center;padding-top:2px}
+.cute .chip{background:#2a2140c4;color:#fff;font:400 14px/1.3 'Gowun Dodum';padding:6px 12px;border-radius:99px;display:flex;gap:6px;align-items:center;white-space:nowrap}
+.cute .chip.lime{background:#5a31ab;color:#fff}
+.cute .cta{border-radius:99px;background:linear-gradient(#ffffff70,#ffffff00 55%),#ff8fbd;color:#2a2140;font:700 32px/1 'Dongle';display:grid;place-items:center;padding-top:4px;box-shadow:0 5px 0 #d9578f}
+.cute .trust{font:400 12px/1.4 'Gowun Dodum';color:#4a3f63}
+.cute .sheet{background:#fff;border-radius:26px 26px 0 0;box-shadow:0 -5px 0 #e6dcff,0 -10px 24px #6b3fc426}
+.cute .grid{background:#fff;border-radius:0 0 16px 16px}
+.cute .sub{border-radius:10px;overflow:hidden}
+.cute .thumb{border-radius:9px;overflow:hidden;box-shadow:0 3px 0 #d6c6f6}
+.cute .thumb.now{box-shadow:0 0 0 3px #5a31ab}
+.cute .ask{background:#fff;color:#2a2140;border-radius:20px;box-shadow:0 6px 22px #6b3fc444;font:400 15px/1.35 'Gowun Dodum';text-align:center}
+.cute .ask .pill{box-shadow:0 3px 0 #d6c6f6,inset 0 0 0 2px #e6dcff}
+.cute .ask .pill.on{box-shadow:0 3px 0 #3d1f7c}
+.cute .round{border-radius:50%;background:#2a2140c4;color:#fff;border:2px solid #fff;font:400 13px/1.15 'Gowun Dodum';display:grid;place-items:center;text-align:center}
+.cute .knob{border-radius:50%;background:#fff;color:#5a31ab;border:3px solid #5a31ab;font:700 16px 'Space Grotesk';display:grid;place-items:center}
+.cute .press{outline:3px solid #ff8fbd;outline-offset:3px}
+.cute .cell.rnd{border-radius:0 0 16px 16px}
+.cell{overflow:hidden}
+.row-c{display:flex;gap:6px}
+.row-c > .fl{flex:1;height:100%}
+.row-c > .lab{flex:none}
+.scrimT{background:linear-gradient(#000000a6,#00000000)}
+.scrimB{background:linear-gradient(#00000000,#000000c0 30%)}
+.cute .scrimT{background:linear-gradient(#2a2140b0,#2a214000)}
+.cute .scrimB{background:linear-gradient(#2a214000,#2a2140c8 30%)}
+.film .scrimB .pill:not(.on){background:#000000a6}
+.split{border-left:3px solid #fff;box-shadow:0 0 0 1px #0004}
+</style>
+</head>
+<body data-th="film" data-k="aw" data-sz="big">
+<div class="wrap">
+  <h1>보정 화면 — 셋 중 하나만 골라 주세요</h1>
+  <div class="bar">
+    <div class="tgl" role="group" aria-label="테마"><button type="button" data-th="film">필름 레일</button><button type="button" data-th="cute">말랑 부스</button></div>
+    <div class="tgl" role="group" aria-label="장면"><button type="button" data-k="aw">A · 가로</button><button type="button" data-k="at">A · 세로</button><button type="button" data-k="bw">B · 가로 (친구 배경)</button><button type="button" data-k="ask">A · 올리기 → 누끼 대기</button></div>
+    <div class="tgl" role="group" aria-label="폰 크기"><button type="button" data-sz="big">큰 폰 430×932</button><button type="button" data-sz="small">작은 폰 360×640</button></div>
+  </div>
+  <p class="swipe">옆으로 밀면 2·3번이 나와요</p>
+  <div class="three" id="out"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></g></symbol>
+  <symbol id="mas" viewBox="0 0 60 64"><circle cx="30" cy="6" r="4" fill="#ffe27a" stroke="#2a2140" stroke-width="2"/><rect x="4" y="10" width="52" height="50" rx="15" fill="#ff9cc4" stroke="#2a2140" stroke-width="2.4"/><path d="M9 18h42v5q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0z" fill="#c45fd9" stroke="#2a2140" stroke-width="2" stroke-linejoin="round"/><path d="M18 39q4-5 8 0M34 39q4-5 8 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="15" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><ellipse cx="45" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><path d="M25 46q5 5 10 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="18" y="53" width="24" height="3" rx="1.5" fill="#5b2a49"/></symbol>
+</svg>
+
+<script>
+(function(){
+var W=430,H=932,C=false;               // the screen being drawn (CSS px); C = short screen (< 700 px): no step rail, smaller buttons
+var AW=552/382, AT=3/4;                // cell aspect: 가로, 세로
+var ITEMS=[['skin','피부'],['slim','갸름'],['eye','눈']], LV=['안 함','살짝','많이'];
+var HINT='고른 4장이야. 이대로 올릴까?', POSE='다 골랐어! 맘에 들어?';
+var TRUST='D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제';
+var uid=0;
+function P(x,y,w,h){return 'left:'+Math.round(x)+'px;top:'+Math.round(y)+'px;'+(w!=null?'width:'+Math.round(w)+'px;':'')+(h!=null?'height:'+Math.round(h)+'px;':'');}
+
+// ---- fake photos: A dark hair / black top, B brown hair / white top; L = 보정 {skin, slim, eye} 0..2 ----
+function person(w,h,cx,s,o){
+  var k=s/120, x=cx*w-50*k, y=h-108*k, hair=o.b?'#8a5a3b':'#3b2a33', shirt=o.b?'#f4f4f4':'#151515', L=o.L||{skin:0,slim:0,eye:0};
+  var rx=22-1.8*L.slim, ry=26-.6*L.slim, face=['#f0c8b2','#ffdcc8','#ffe6d8'][L.skin], er=2.6+.7*L.eye;
+  var g='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') scale('+k.toFixed(3)+')">';
+  g+='<path d="M8 124C8 94 28 84 50 84C72 84 92 94 92 124Z" fill="'+shirt+'"'+(o.b?' stroke="#c9c9c9" stroke-width="1.5"':'')+'/>'+
+     '<rect x="42" y="70" width="16" height="18" fill="#f1cdb6"/><ellipse cx="50" cy="50" rx="'+rx+'" ry="'+ry+'" fill="'+face+'"/>';
+  if(L.skin<2) g+='<g fill="#b9735f" opacity="'+(L.skin?'.3':'.7')+'"><circle cx="38" cy="43" r="1.6"/><circle cx="62" cy="46" r="1.4"/><circle cx="57" cy="66" r="1.5"/><circle cx="40" cy="64" r="1.2"/></g>';
+  if(L.skin) g+='<ellipse cx="44" cy="38" rx="8" ry="4" fill="#fff" opacity="'+(.18*L.skin)+'"/>';
+  g+=(o.b?'<path d="M27 52c-5-34 51-34 46 0l-4-11c-10 3-26 3-38-6z" fill="'+hair+'"/>':'<path d="M27 46c-3-30 49-30 46 0-7-12-24-15-46 0z" fill="'+hair+'"/>')+
+     '<circle cx="42" cy="52" r="'+er+'" fill="#3b2a33"/><circle cx="58" cy="52" r="'+er+'" fill="#3b2a33"/>'+
+     (L.eye?'<circle cx="43" cy="51" r="'+(.5+.35*L.eye)+'" fill="#fff"/><circle cx="59" cy="51" r="'+(.5+.35*L.eye)+'" fill="#fff"/>':'')+
+     '<path d="M43 62q7 6 14 0" stroke="#3b2a33" stroke-width="2.6" fill="none" stroke-linecap="round"/>'+
+     '<circle cx="'+(36+1.2*L.slim)+'" cy="59" r="4" fill="#ff9a8a" opacity=".45"/><circle cx="'+(64-1.2*L.slim)+'" cy="59" r="4" fill="#ff9a8a" opacity=".45"/>';
+  if(o.v) g+='<g transform="translate(70 70) rotate(-12)"><rect x="-6" y="0" width="12" height="24" rx="6" fill="#ffe1cf"/><rect x="-7" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(-14)"/><rect x="2" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(14)"/></g>';
+  return g+'</g>';
+}
+// one composed cell, like the strip: c = {kind: light|pink, b (B's turn: A's cut-out in front), cx, v, L, aL}; vb = crop
+function scene(w,h,c,vb){
+  var id='s'+(uid++), s='<svg class="sc" viewBox="'+(vb||'0 0 '+w+' '+h)+'" preserveAspectRatio="'+(vb?'xMidYMid slice':'none')+'" xmlns="http://www.w3.org/2000/svg"><defs>'+
+    '<linearGradient id="'+id+'w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="'+(c.kind==='pink'?'#ffd3e2':'#f8f6f1')+'"/><stop offset="1" stop-color="'+(c.kind==='pink'?'#f3a3c0':'#e6e0d4')+'"/></linearGradient></defs>'+
+    '<rect width="'+w+'" height="'+h+'" fill="url(#'+id+'w)"/>';
+  if(c.kind!=='pink'){
+    s+='<rect x="'+(w*.58)+'" y="'+(h*.05)+'" width="'+(w*.38)+'" height="'+(h*.5)+'" fill="#ffffff" stroke="#d9d2c4" stroke-width="5"/>'+
+       '<path d="M'+(w*.77)+' '+(h*.05)+'v'+(h*.5)+'M'+(w*.58)+' '+(h*.3)+'h'+(w*.38)+'" stroke="#d9d2c4" stroke-width="5"/>'+
+       '<rect x="'+(w*.06)+'" y="'+(h*.12)+'" width="'+(w*.18)+'" height="'+(h*.22)+'" fill="#f0c9b8" stroke="#c9b9a6" stroke-width="4"/>'+
+       '<path d="M'+(w*.03)+' '+h+'v'+(-h*.2)+'q'+(w*.05)+' '+(-h*.12)+' '+(w*.1)+' 0v'+(h*.2)+'z" fill="#9ccf8f"/>';
+  }
+  var big=Math.min(h*.86,w*(w<h?.85:.6));
+  if(c.b) s+=person(w,h,.66,big*.9,{b:1,v:c.v,L:c.L})+person(w,h,.31,big,{L:c.aL});
+  else s+=person(w,h,c.cx,big,{v:c.v,L:c.L});
+  return s+'</svg>';
+}
+// where the retouched face sits in a w x h cell (for the face zoom)
+function faceAt(w,h,o){
+  var big=Math.min(h*.86,w*(w<h?.85:.6)), s=o.b?big*.9:big, k=s/120, cx=o.b?.66:.34;
+  return {x:cx*w, y:h-108*k+50*k, r:26*k};
+}
+var NO={skin:0,slim:0,eye:0};
+function cellSvg(w,h,o,i,before,vb){
+  return scene(w,h,{kind:o.bgk,b:o.b,cx:[.34,.37,.31,.35][i],v:i%2===1,L:before?NO:o.look,aL:{skin:1,slim:0,eye:0}},vb);
+}
+
+// ---- scenes ----
+function K(k){
+  var o={k:k,wide:k!=='at',b:k==='bw',ask:k==='ask',bgk:k==='at'?'pink':'light',hq:k==='aw'};
+  o.bgs=o.b?[['친구 배경',1],['내 배경',0],['배경 없음',0]]:[['배경 켜기',k!=='at'],['배경 끄기',k==='at']];
+  o.look={aw:{skin:2,slim:0,eye:0},at:{skin:1,slim:0,eye:1},bw:{skin:1,slim:2,eye:0},ask:{skin:1,slim:0,eye:0}}[k];
+  o.chg={aw:'skin',at:'eye',bw:'slim',ask:'skin'}[k];
+  return o;
+}
+
+// ---- shared pieces (every .k is checked for overlap / clipping) ----
+var PH=function(){return C?38:46;};      // button height
+var CTAH=function(){return C?48:56;};
+var GB=function(){return C?8:14;};       // bottom inset (gesture bar)
+var TRH=34;                              // trust line: 2 lines of 12 px
+function mascot(x,y,sz){return '<svg class="mas k" data-n="마스코트" style="'+P(x,y,sz,Math.round(sz*64/60))+'"><use href="#mas"/></svg>';}
+function sound(st){return '<div class="sound k'+(W<400?' ico':'')+'" data-n="소리" style="'+st+'"><svg><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>';}
+// step rail (film, tall screens) + the one-line head: 4 / 4 · 다 골랐어! 맘에 들어? · sound
+function top(t){
+  var s='', y=0, film=t==='film', head=C?46:56;
+  if(film&&!C){ s+='<div class="stp k" data-n="단계" style="'+P(16,10,W-32,24)+'"><span class="fl">찍기</span><span class="fl">고르기</span><span class="fl now">보정</span><span class="fl next">보내기</span></div>'; y=38; }
+  var sy='right:14px;top:'+(y+Math.round((head-36)/2))+'px';
+  if(film){
+    s+='<div class="step k" data-n="숫자" style="'+P(16,y+Math.round((head-31)/2))+'">4 / 4</div><div class="pose k'+(W<400?' sm':'')+'" data-n="포즈" style="'+P(90,y+Math.round((head-(W<400?23:28))/2))+'">'+POSE+'</div>'+sound(sy);
+  }else{
+    var ms=C?34:40, bx=ms+24, bw=W-bx-(W<400?66:118), bh=C?40:44;
+    s+=mascot(12,y+Math.round((head-ms*64/60)/2),ms)+'<div class="bub k'+(W<400?' sm':'')+'" data-n="말풍선" style="'+P(bx,y+Math.round((head-bh)/2),bw,bh)+'"><span class="step fl">4 / 4</span><span class="pose fl'+(W<400?' sm':'')+'">'+POSE+'</span></div>'+sound(sy);
+  }
+  return {s:s,y:y+head};
+}
+function trust(y){return '<div class="trust k" data-n="안내문" style="'+P(16,y,W-32,TRH)+'">'+TRUST+'</div>';}
+function cta(y){return '<div class="cta k" data-n="올리기" style="'+P(16,y,W-32,CTAH())+'">이대로 올리기</div>';}
+function hint(y){return '<div class="hint k" data-n="힌트" style="'+P(16,y,W-32,20)+'">'+HINT+'</div>';}
+function bgRow(x,y,w,o,h){
+  return '<div class="row-c" style="'+P(x,y,w,h||PH())+'">'+o.bgs.map(function(b,i){return '<div class="pill fl k'+(b[1]?' on':'')+'" data-n="배경'+i+'">'+b[0]+'</div>';}).join('')+'</div>';
+}
+function levelRow(x,y,w,o,h){
+  var v=o.look[o.chg];
+  return '<div class="row-c" style="'+P(x,y,w,h||PH())+'">'+LV.map(function(t,i){return '<div class="pill fl k'+(i===v?' on press':'')+'" data-n="단계'+i+'">'+t+'</div>';}).join('')+'</div>';
+}
+function tabRow(x,y,w,o,h){
+  return '<div class="row-c" style="'+P(x,y,w,h||PH())+'">'+ITEMS.map(function(it){return '<div class="tab fl k'+(it[0]===o.chg?' on':'')+'" data-n="'+it[1]+'">'+it[1]+'<small class="fl">'+LV[o.look[it[0]]]+'</small></div>';}).join('')+'</div>';
+}
+var ASKH=function(){return C?96:108;};
+function ask(x,y,w){
+  return '<div class="ask k" data-n="누끼대기" style="'+P(x,y,w,ASKH())+'"><p class="fl" style="padding:'+(C?10:14)+'px 10px 0">고화질 누끼가 아직 만들어지는 중이야</p>'+
+    '<div class="row-c" style="'+P(10,C?44:54,w-20,C?40:44)+'"><div class="pill fl on">조금만 기다리기</div><div class="pill fl">지금 올리기</div></div></div>';
+}
+function hqChip(x,y){return '<div class="chip k" data-n="누끼칩" style="'+P(x,y)+'">누끼 다듬는 중 3/4</div>';}
+function bands(t,x,y,w,h){
+  if(t==='film') return '<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+h,W)+'"></div>';
+  return '<div class="cur" style="'+P(x,y-22,w)+'"></div>';
+}
+// the bottom: trust line, CTA; returns {s, y} with y = the CTA's top
+function foot(){
+  var y=H-GB()-TRH, s=trust(y); y-=8+CTAH(); s+=cta(y);
+  return {s:s,y:y};
+}
+
+// =================== layout 1: the four cells as big as the width allows + a two-row 보정 bar ===================
+function L1(t,o){
+  var film=t==='film', a=o.wide?AW:AT, T=top(t), s=T.s, F=foot(), yb=F.y; s+=F.s;
+  if(o.ask){ yb-=10+ASKH(); s+=ask(16,yb,W-32); }
+  else{
+    yb-=10+PH(); s+=levelRow(16,yb,W-32,o);
+    yb-=6+PH(); s+=tabRow(16,yb,W-32,o);
+    yb-=10+PH(); s+=bgRow(16,yb,W-32,o);
+    if(!C){ yb-=8+20; s+=hint(yb); }
+  }
+  var sheetY=yb-12; s='<div class="sheet" style="'+P(0,sheetY,W,H-sheetY+30)+'"></div>'+s;
+  var bT=film?14:22, bB=film?14:0, pad=film?0:8, g=6, room=sheetY-8-T.y-bT-bB-8;
+  var cw=Math.floor(Math.min((W-16-2*pad-g)/2,((room-2*pad-g)/2)*a)), ch=Math.round(cw/a), gw=2*cw+g+2*pad, gh=2*ch+g+2*pad;
+  var x=Math.round((W-gw)/2), y=T.y+8+bT+Math.round((room-gh)/2);
+  s+=bands(t,x,y,gw,gh);
+  var cells='';
+  for(var i=0;i<4;i++) cells+='<div class="sub" style="'+P(pad+(i%2)*(cw+g),pad+(i>>1)*(ch+g),cw,ch)+'">'+cellSvg(cw,ch,o,i)+'</div>';
+  if(o.hq) cells+=hqChip(pad+8,pad+8);
+  cells+='<div class="round k" data-n="원본" style="'+P(gw/2-30,gh/2-30,60,60)+'">원본<br>보기</div>';
+  s+='<div class="cell grid k" data-n="사진" data-main="네 칸" data-one="'+cw+'×'+ch+'" style="'+P(x,y,gw,gh)+'">'+cells+'</div>';
+  return s;
+}
+
+// =================== layout 2: one photo big, split 원본 | 보정, the four as a switcher row ===================
+function L2(t,o){
+  var film=t==='film', a=o.wide?AW:AT, T=top(t), s=T.s, F=foot(), yb=F.y; s+=F.s;
+  var rh=C?36:42;
+  if(o.ask){ yb-=10+ASKH(); s+=ask(16,yb,W-32); }
+  else{
+    for(var r=2;r>=0;r--){
+      var it=ITEMS[r], v=o.look[it[0]];
+      yb-=(r===2?10:6)+rh;
+      s+='<div class="row-c" style="'+P(16,yb,W-32,rh)+'"><div class="lab fl k" data-n="이름'+r+'" style="width:44px">'+it[1]+'</div>'+
+        LV.map(function(tx,i){return '<div class="pill fl k'+(i===v?' on':'')+(i===v&&it[0]===o.chg?' press':'')+'" data-n="'+it[1]+i+'">'+tx+'</div>';}).join('')+'</div>';
+    }
+    yb-=10+rh; s+=bgRow(16,yb,W-32,o,rh);
+    if(!C){ yb-=8+20; s+=hint(yb); }
+  }
+  var sheetY=yb-12; s='<div class="sheet" style="'+P(0,sheetY,W,H-sheetY+30)+'"></div>'+s;
+  var bT=film?14:22, bB=film?14:0, room=sheetY-8-T.y-bT-bB-8, g=6, bw, bh, x, y, th, tw, thumbs='';
+  if(o.wide){             // thumbs in a row under the photo
+    tw=Math.floor((W-16-3*g)/4); th=Math.round(tw/a);
+    if(th>(C?52:72)){ th=C?52:72; tw=Math.round(th*a); }
+    bw=Math.floor(Math.min(W-16,(room-th-10)*a)); bh=Math.round(bw/a);
+    x=Math.round((W-bw)/2); y=T.y+8+bT+Math.round((room-bh-th-10)/2);
+    var tx=Math.round((W-4*tw-3*g)/2), ty=y+bh+bB+10;
+    for(var i=0;i<4;i++) thumbs+='<div class="thumb k'+(i?'':' now')+'" data-n="칸'+(i+1)+'" style="'+P(tx+i*(tw+g),ty,tw,th)+'">'+cellSvg(tw,th,o,i)+'</div>';
+  }else{                  // tall: thumbs in a column to the right
+    bh=Math.floor(Math.min(room,(W-24+4.5*a-8)/(1.25*a))); bw=Math.round(bh*a); th=Math.floor((bh-3*g)/4); tw=Math.round(th*a);
+    x=Math.round((W-bw-8-tw)/2); y=T.y+8+bT+Math.round((room-bh)/2);
+    for(var j=0;j<4;j++) thumbs+='<div class="thumb k'+(j?'':' now')+'" data-n="칸'+(j+1)+'" style="'+P(x+bw+8,y+j*(th+g),tw,th)+'">'+cellSvg(tw,th,o,j)+'</div>';
+  }
+  if(film) s+='<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+bh,W)+'"></div>';
+  else s+='<div class="cur" style="'+P(x,y-22,bw)+'"></div>';
+  var sx=Math.round(faceAt(bw,bh,o).x);      // the split runs through the retouched face
+  var cam=cellSvg(bw,bh,o,0,true)+'<div style="'+P(0,0,bw,bh)+';clip-path:inset(0 0 0 '+sx+'px)">'+cellSvg(bw,bh,o,0)+'</div>'+
+    '<div class="split" style="'+P(sx-1.5,0,0,bh)+'"></div>'+
+    '<div class="chip k" data-n="원본표" style="'+P(8,8)+'">원본</div><div class="chip lime k" data-n="보정표" style="right:8px;top:8px">보정</div>'+
+    '<div class="knob k" data-n="손잡이" style="'+P(sx-20,bh*.18,40,40)+'">⇆</div>';
+  if(o.hq) cam+=hqChip(8,bh-40);
+  s+='<div class="cell k'+(film?'':' rnd')+'" data-n="사진" data-main="큰 사진" style="'+P(x,y,bw,bh)+'">'+cam+'</div>'+thumbs;
+  return s;
+}
+
+// =================== layout 3: face zoom, the whole screen is the face; 보정 floats under the thumb ===================
+function L3(t,o){
+  var film=t==='film', a=o.wide?AW:AT, T=top(t), s=T.s, F=foot(); s+=F.s;
+  var px=film?14:8, py=T.y+(film?4:22), pw=W-2*px, ph=F.y-10-py;
+  if(film) s+='<div class="sprv" style="'+P(0,py,14,ph)+'"></div><div class="sprv" style="'+P(W-14,py,14,ph)+'"></div>';
+  else s+='<div class="cur" style="'+P(px,py-22,pw)+'"></div>';
+  // the crop: the retouched face in the middle of the upper half, about 2x
+  var cw=552, ch=Math.round(cw/a), f=faceAt(cw,ch,o), vw=Math.min(cw,f.r*(o.b?5.2:4.4),(ch-f.y)/.6*pw/ph), vh=vw*ph/pw;
+  if(vh>ch){ vh=ch; vw=vh*pw/ph; }
+  var vx=Math.max(0,Math.min(cw-vw,f.x-vw/2)), vy=Math.max(0,Math.min(ch-vh,f.y-vh*.38));
+  var zoom=(cw/vw).toFixed(1);
+  var cam=cellSvg(cw,ch,o,0,false,vx.toFixed(1)+' '+vy.toFixed(1)+' '+vw.toFixed(1)+' '+vh.toFixed(1));
+  cam+='<div class="scrimT" style="'+P(0,0,pw,96)+'"></div>';
+  var mh=C?34:40, mw=Math.round(mh*a), mg=5;
+  for(var i=0;i<4;i++) cam+='<div class="thumb k'+(i?'':' now')+'" data-n="칸'+(i+1)+'" style="'+P(10+i*(mw+mg),10,mw,mh)+'">'+cellSvg(mw,mh,o,i)+'</div>';
+  cam+='<div class="chip k" data-n="확대" style="right:10px;top:'+(10+Math.round((mh-30)/2))+'px">'+zoom+'×</div>';
+  if(o.hq) cam+=hqChip(10,10+mh+8);
+  var rh=PH(), bh2=C?34:40, gap=8, by=ph-12;
+  if(o.ask){
+    cam+='<div class="scrimB" style="'+P(0,ph-ASKH()-60,pw,ASKH()+60)+'"></div>'+ask(10,ph-12-ASKH(),pw-20);
+  }else{
+    var lvY=by-rh, tbY=lvY-6-rh, bgY=tbY-gap-bh2;
+    cam+='<div class="scrimB" style="'+P(0,bgY-40,pw,ph-bgY+40)+'"></div>'+
+      bgRow(10,bgY,pw-20,o,bh2)+tabRow(10,tbY,pw-20,o)+levelRow(10,lvY,pw-20,o);
+    cam+='<div class="round k" data-n="원본" style="'+P(pw-10-58,bgY-14-58,58,58)+'">원본<br>보기</div>';
+  }
+  s+='<div class="cell k'+(film?'':' rnd')+'" data-n="사진" data-main="얼굴 확대" style="'+P(px,py,pw,ph)+'">'+cam+'</div>';
+  return s;
+}
+
+// ---- checks: every .k inside the screen (and inside the picture if it sits on it), no two overlapping ----
+function check(fr){
+  var R=fr.getBoundingClientRect(), bad=[], ks=[].slice.call(fr.querySelectorAll('.k'));
+  function inside(r,B){return r.left>=B.left-1&&r.top>=B.top-1&&r.right<=B.right+1&&r.bottom<=B.bottom+1;}
+  ks.forEach(function(e){
+    var r=e.getBoundingClientRect(), cell=e.parentElement.closest('.cell');
+    if(!inside(r,R)) bad.push('잘림 '+e.dataset.n);
+    else if(cell&&!inside(r,cell.getBoundingClientRect())) bad.push('사진 밖 '+e.dataset.n);
+    if(e.scrollWidth>e.clientWidth+1&&!e.matches('.cell,.mas,.thumb')) bad.push('글자 넘침 '+e.dataset.n);
+    [].forEach.call(e.querySelectorAll('.fl'),function(c){ if(c.scrollWidth>c.clientWidth+1) bad.push('글자 넘침 '+e.dataset.n); });
+  });
+  for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){
+    var a=ks[i], b=ks[j];
+    if(a.contains(b)||b.contains(a)) continue;
+    if(a.parentElement.closest('.cell')!==b.parentElement.closest('.cell')) continue;   // the picture's own layer
+    var p=a.getBoundingClientRect(), q=b.getBoundingClientRect();
+    var ox=Math.min(p.right,q.right)-Math.max(p.left,q.left), oy=Math.min(p.bottom,q.bottom)-Math.max(p.top,q.top);
+    if(ox>1&&oy>1) bad.push('겹침 '+a.dataset.n+'/'+b.dataset.n);
+  }
+  return bad;
+}
+
+// ---- page ----
+var LAY=[
+  {f:L1,no:'1',name:'네 칸 크게 + 보정 두 줄',one:'네 칸이 폭 끝까지. 보정은 피부·갸름·눈 탭 + 안 함·살짝·많이 한 줄. 가운데 "원본"을 꾹 누르면 보정 전.'},
+  {f:L2,no:'2',name:'한 장 크게 + 원본|보정 반반',one:'고른 한 장이 크게, 왼쪽 반은 원본 오른쪽 반은 보정(손잡이로 밀기). 네 장은 옆 줄에서 바꿈.'},
+  {f:L3,no:'3',name:'얼굴 확대 + 엄지 아래 보정',one:'얼굴에 맞춰 확대한 사진이 화면 전체. 배경·보정 버튼은 사진 아래쪽 엄지 자리에 떠 있음.'}
+];
+var SIZE={big:[430,932],small:[360,640]};
+function frame(L,t,k,sz){
+  W=SIZE[sz][0];H=SIZE[sz][1];C=H<700;
+  return '<figure><div class="slot" style="width:'+W+'px;height:'+H+'px"><div class="fr '+t+(C?' cmp':'')+'" style="width:'+W+'px;height:'+H+'px">'+L.f(t,K(k))+
+    '</div></div><figcaption><span class="m"></span></figcaption></figure>';
+}
+var out=document.getElementById('out');
+function draw(){
+  var d=document.body.dataset, s='';
+  LAY.forEach(function(L){s+='<div><h2><span class="no">'+L.no+'</span>'+L.name+'</h2>'+frame(L,d.th,d.k,d.sz)+'<p class="one">'+L.one+'</p></div>';});
+  out.innerHTML=s;
+  var top=out.getBoundingClientRect().top+scrollY, zh=(innerHeight-Math.min(top,innerHeight*.35)-110)/932;
+  var z=Math.min(1,zh,innerWidth>=900?(Math.min(innerWidth,1500)-64)/(3*430):(innerWidth-56)/430);
+  [].forEach.call(out.querySelectorAll('figure'),function(f){
+    var fr=f.querySelector('.fr'), fw=fr.offsetWidth;
+    f.style.width=(fw*z)+'px'; f.parentElement.style.setProperty('--fw',(Math.max(fw,300)*z)+'px'); f.querySelector('.slot').style.zoom=z;
+    var m=fr.querySelector('[data-main]'), w=m.offsetWidth, h=m.offsetHeight, bad=check(fr);
+    f.querySelector('.m').innerHTML=(m.dataset.one?'한 칸 '+m.dataset.one+' · ':'')+m.dataset.main+' '+w+'×'+h+' · 화면의 '+(w*h/(fw*fr.offsetHeight)*100).toFixed(0)+'%'+
+      (bad.length?'<span class="bad">'+bad.join(', ')+'</span>':' · 겹침·잘림 없음');
+  });
+}
+var q=new URLSearchParams(location.search);
+var OK={th:['film','cute'],k:['aw','at','bw','ask'],sz:['big','small']};   // only known values reach innerHTML
+Object.keys(OK).forEach(function(a){ var v=q.get(a); if(OK[a].indexOf(v)>=0) document.body.dataset[a]=v; });
+function sync(){[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  var a=b.dataset.th?'th':b.dataset.k?'k':'sz'; b.setAttribute('aria-pressed',b.dataset[a]===document.body.dataset[a]);});}
+[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  b.onclick=function(){var a=b.dataset.th?'th':b.dataset.k?'k':'sz'; document.body.dataset[a]=b.dataset[a]; sync(); draw();};
+});
+sync();
+if(document.fonts) Promise.all(["700 30px Dongle","15px 'Gowun Dodum'","900 23px 'Noto Sans KR'","700 15px 'Noto Sans KR'","700 20px 'Space Grotesk'"].map(function(f){return document.fonts.load(f,'다 골랐어4');})).then(draw,draw);
+draw(); addEventListener('resize',draw);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>보내기 화면 고르기</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&family=Dongle:wght@400;700&family=Gowun+Dodum&display=swap" rel="stylesheet">
+<style>
+/* 따로 같이 네컷 — share screens (A sends the link, A waits, B finished, in-app hand-off), 3 layouts x 2 themes.
+   Frames are real px (430x932 or 360x640); the strip is sized by JS to the box the layout leaves it, like the app would. */
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:#ecebef;color:#1d1b22;font:15px/1.55 'Noto Sans KR',system-ui,sans-serif;overflow-x:hidden}
+.wrap{max-width:1500px;margin:0 auto;padding:22px 16px 60px}
+h1{font:900 26px/1.25 'Noto Sans KR';letter-spacing:-.03em}
+h2{font:900 20px/1.3 'Noto Sans KR';display:flex;gap:8px;align-items:baseline;flex-wrap:wrap;letter-spacing:-.02em}
+h2 .no{font:700 14px 'Space Grotesk';background:#1d1b22;color:#fff;padding:1px 10px;border-radius:99px}
+.bar{position:sticky;top:0;z-index:5;background:#ecebef;padding:10px 0;margin-top:12px;display:flex;flex-wrap:wrap;gap:8px 22px}
+.tgl{display:flex;flex-wrap:wrap;gap:6px}
+.tgl button{font:700 14px 'Noto Sans KR';padding:7px 12px;border:2px solid #1d1b22;background:#fff;color:#1d1b22;cursor:pointer;white-space:nowrap}
+.tgl button[aria-pressed=true]{background:#1d1b22;color:#fff}
+.three{display:flex;gap:16px;margin-top:8px;overflow-x:auto;scroll-snap-type:x mandatory;padding-bottom:10px}
+.three > div{flex:none;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+.three .one{font-size:14px;color:#3d3a45;max-width:var(--fw)}
+figcaption{margin-top:6px;font:500 13px/1.45 'Space Grotesk','Noto Sans KR';color:#4a4652;max-width:var(--fw)}
+figcaption .bad{color:#b3001b;font-weight:700}
+.swipe{font-size:13px;color:#4a4652;margin-top:6px}
+@media (min-width:900px){.swipe{display:none}}
+.slot{zoom:var(--z,1)}
+
+/* ---------------- phone frame ---------------- */
+.fr{position:relative;overflow:hidden;border-radius:26px;box-shadow:0 0 0 1px #0000001f,0 10px 28px #00000022;display:flex;flex-direction:column;word-break:keep-all}
+.fr button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.bd{flex:1 1 0;min-height:0;display:flex;flex-direction:column;padding:0 16px 14px}
+.sbox{flex:1 1 0;min-height:0;min-width:0;display:grid;place-items:center}
+.dock{flex:none;display:flex;flex-direction:column;gap:10px;padding-top:12px}
+.links{display:flex;flex-wrap:wrap;justify-content:center;gap:4px 22px}
+.tl{text-decoration:underline;text-underline-offset:5px;text-decoration-thickness:2px;font-size:16px!important;padding:4px 2px}
+.cta{height:56px;width:100%;position:relative;display:grid;place-items:center}
+.trust{display:flex;gap:7px;align-items:flex-start;justify-content:center;font-size:13px;line-height:1.45;text-align:left}
+.trust svg{width:16px;height:16px;flex:none;margin-top:2px}
+.lead{font-size:16px;line-height:1.5}
+.note{display:flex;gap:10px;align-items:flex-start;font-size:14px;line-height:1.45;padding:9px 12px}
+.note svg{width:20px;height:20px;flex:none;margin-top:1px}
+.link{font:500 13px/1.35 'Space Grotesk',monospace;word-break:break-all}
+.fr.cmp .cta{height:48px}
+.fr.cmp .lead{font-size:14.5px}
+.fr.cmp .note{font-size:13px;padding:7px 10px}
+.fr.cmp .tl{font-size:14.5px!important;padding:2px}
+.fr.cmp .trust{font-size:12px}
+.fr.cmp .dock{gap:7px;padding-top:9px}
+
+/* film: white paper, black film bars, lime */
+.fr.film{background:#fff;color:#000;font-family:'Noto Sans KR',sans-serif}
+.film .hd{flex:none;margin:12px 16px 0;height:46px;background:#000;display:flex;align-items:center;gap:10px;padding:0 8px;
+  --h:repeating-linear-gradient(90deg,#000 0 5px,#fff 5px 11px,#000 11px 15px)}
+.film .hd::before,.film .hd::after{content:"";position:absolute;left:0;right:0;height:4px;background:var(--h)}
+.film .hd{position:relative}.film .hd::before{top:3px}.film .hd::after{bottom:3px}
+.film .logo{font:700 13px 'Space Grotesk';letter-spacing:.12em;color:#d6ff3d;white-space:nowrap}
+.film .tabs{margin-left:auto;display:flex;gap:4px}
+.film .tabs i{font:700 13px/1 'Noto Sans KR';font-style:normal;background:#fff;color:#000;padding:6px 8px;white-space:nowrap}
+.film .tabs i.on{background:#d6ff3d}
+.film .ttl{font:900 32px/1.32 'Noto Sans KR';padding-bottom:4px;letter-spacing:-.04em;margin-top:14px}
+.film .ttl em{font-style:normal;background:#d6ff3d;padding:0 6px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.film.cmp .ttl{font-size:25px;margin-top:10px}
+.film .lead{color:#333}
+.film .note{background:#d6ff3d;border:2px solid #000}
+.film .cta{background:#000;color:#fff;font:900 18px 'Noto Sans KR';letter-spacing:-.02em}
+.film .cta::after{content:"";position:absolute;right:16px;top:50%;width:16px;height:16px;margin-top:-8px;background:#d6ff3d}
+.film .cta.alt{background:#fff;color:#000;box-shadow:inset 0 0 0 3px #000}
+.film .cta.alt::after{display:none}
+.film.cmp .cta{font-size:16px}
+.film .tl{font-weight:500}
+.film .tl.red{color:#b3001b}
+.film .trust{color:#444}
+.film .strip{background:#000}
+.film .strip .mfoot{color:#d6ff3d;font:700 13px 'Noto Sans KR';letter-spacing:.2em}
+.film .strip .sp{position:absolute;top:0;bottom:0;width:16px;background:repeating-linear-gradient(#000 0 5px,#fff 5px 13px,#000 13px 18px) 4px 0/8px 100% no-repeat}
+.film .card{border:3px solid #000;box-shadow:6px 6px 0 #d6ff3d}
+.film .lrow{border-top:2px solid #000}
+.film .copy{background:#d6ff3d;color:#000;border:2px solid #000!important;font:700 14px 'Noto Sans KR'!important}
+
+/* cute: lavender dotted paper, mascot, Dongle + Gowun Dodum */
+.fr.cute{background:radial-gradient(circle at 1px 1px,#d9ccfb 1px,transparent 1.6px) 0 0/17px 17px,linear-gradient(#f6f1ff,#efe6ff);color:#2a2140;font-family:'Gowun Dodum',sans-serif}
+.cute .hd{flex:none;margin:12px 14px 0;height:50px;display:flex;align-items:center;gap:12px}
+.cute .hd svg{width:42px;height:45px;flex:none}
+.cute .bub{flex:1;height:44px;background:#fff;border-radius:16px;box-shadow:0 4px 12px #6b3fc426;display:flex;align-items:center;padding:0 14px;position:relative}
+.cute .bub::before{content:"";position:absolute;left:-9px;top:50%;margin-top:-7px;border:7px solid transparent;border-right:10px solid #fff;border-left:0}
+.cute .bub b{font:700 28px/1 'Dongle';padding-top:4px}
+.cute .dots{margin-left:auto;display:flex;gap:7px}
+.cute .dots i{width:12px;height:12px;border-radius:50%;background:#ff8fbd}
+.cute .dots i.on{background:#5a31ab}
+.cute.cmp .hd{height:44px;margin-top:8px}.cute.cmp .hd svg{width:36px;height:38px}.cute.cmp .bub{height:38px}
+.cute .ttl{font:700 48px/1.1 'Dongle';margin-top:12px;padding:2px 0 4px}
+.cute .ttl em{font-style:normal;color:#5a31ab;display:inline-block}
+.cute.cmp .ttl{font-size:38px;margin-top:8px}
+.cute .lead{color:#3e3458}
+.cute .note{background:#fff;border:2px solid #ffc3dc;border-radius:14px}
+.cute .note svg{color:#ff8fbd}
+.cute .note b{color:#5a31ab;font-weight:400}
+.cute .cta{border-radius:99px;font:700 30px/1 'Dongle';padding-top:5px;background:linear-gradient(#ffb3d2,#ff8fbd);color:#2a2140;box-shadow:0 5px 0 #d9578f,0 10px 20px #6b3fc433}
+.cute .cta.alt{background:#fff;box-shadow:0 5px 0 #d6c6f6,0 10px 20px #6b3fc422}
+.cute.cmp .cta{font-size:27px}
+.cute .tl{text-decoration-color:#5a31ab}
+.cute .tl.red{color:#a3195b}
+.cute .trust{color:#4f4566}
+.cute .trust svg{color:#5a31ab}
+.cute .strip{background:#fff;border-radius:10px;box-shadow:0 5px 0 #d6c6f6,0 12px 24px #6b3fc433}
+.cute .strip .mc{border-radius:6px}
+.cute .strip .mfoot{color:#2a2140;font:700 22px 'Dongle';padding-top:3px}
+.cute .card{background:#fff;border-radius:22px;box-shadow:0 6px 0 #d6c6f6,0 14px 28px #6b3fc42e}
+.cute .card .cur{height:20px;flex:none;border-radius:22px 22px 0 0;background:radial-gradient(circle at 50% 0,#ff8fbd 7px,transparent 7.5px) 0 12px/14.6px 8px repeat-x,linear-gradient(#ff8fbd,#ff8fbd) 0 5px/100% 7.2px no-repeat,#fff}
+.cute .lrow{border-top:2px dashed #d6c6f6}
+.cute .copy{background:#e6dcff;border-radius:99px;font:400 14px 'Gowun Dodum'!important}
+
+.strip{position:relative;flex:none}
+.strip .mc{position:absolute;overflow:hidden;background:#ddd}
+.strip .mc svg{display:block;width:100%;height:100%}
+.strip .mfoot{position:absolute;left:0;right:0;bottom:0;display:grid;place-items:center;white-space:nowrap}
+
+/* layout 2: strip on the long side */
+.mid{flex:1 1 0;min-height:0;display:flex;gap:14px;margin-top:12px}
+.mid.row{flex-direction:row}
+.mid.col{flex-direction:column}
+.mid .sbox{flex:none}
+.side{flex:1 1 0;min-width:0;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:12px}
+.side .ttl{margin-top:0}
+.film .side .ttl{font-size:26px}
+.cute .side .ttl{font-size:40px}
+.film.cmp .side .ttl{font-size:22px}
+.cute.cmp .side .ttl{font-size:34px}
+.side .lead{font-size:15px}
+.cmp .side .lead{font-size:13.5px}
+.bleed{margin:0 -16px}
+
+/* layout 3: strip + link + send button = one card */
+.card{flex:1 1 0;min-height:0;display:flex;flex-direction:column;margin-top:12px;overflow:hidden}
+.card .sbox{padding:12px}
+.lrow{flex:none;display:flex;gap:10px;align-items:center;padding:10px 12px}
+.lrow .link{flex:1;min-width:0}
+.copy{flex:none;padding:8px 12px!important;white-space:nowrap}
+.card .cta{flex:none;width:auto;border-radius:0!important;box-shadow:none!important}
+.cute .card .cta{border-radius:0 0 20px 20px!important}
+.under{flex:none;display:flex;flex-direction:column;gap:8px;padding-top:12px}
+.under .lead{font-size:14px;text-align:center}
+.cmp .under .lead{font-size:13px}
+.center{text-align:center}
+/* scrollers: layout 1 = the middle under a fixed dock, layout 3 = the whole body under a first-screen card */
+.scr{flex:1 1 0;min-height:0;overflow-y:auto;display:flex;flex-direction:column;scrollbar-width:none}
+.bd.scroll{overflow-y:auto;scrollbar-width:none}
+.scr .sbox{flex:1 0 auto}
+.more{-webkit-mask-image:linear-gradient(#000 calc(100% - 34px),transparent);mask-image:linear-gradient(#000 calc(100% - 34px),transparent)}
+</style>
+</head>
+<body data-th="film" data-k="sent" data-sz="big" data-sh="wide">
+<div class="wrap">
+  <h1>보내기 화면 — 셋 중 하나만 골라 주세요</h1>
+  <div class="bar">
+    <div class="tgl" role="group" aria-label="테마"><button type="button" data-th="film">필름 레일</button><button type="button" data-th="cute">말랑 부스</button></div>
+    <div class="tgl" role="group" aria-label="장면"><button type="button" data-k="sent">A · 링크 보내기</button><button type="button" data-k="wait">A · 친구 기다리는 중</button><button type="button" data-k="done">B · 다 찍었어</button><button type="button" data-k="ho">카톡 안 브라우저</button></div>
+    <div class="tgl" role="group" aria-label="모양"><button type="button" data-sh="wide">가로 네컷</button><button type="button" data-sh="tall">세로 네컷</button></div>
+    <div class="tgl" role="group" aria-label="크기"><button type="button" data-sz="big">큰 폰 430×932</button><button type="button" data-sz="small">작은 폰 360×640</button></div>
+  </div>
+  <p class="swipe">옆으로 밀면 2·3번이 나와요</p>
+  <div class="three" id="out"></div>
+</div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></g></symbol>
+  <symbol id="star" viewBox="0 0 24 24"><path d="M12 1.5C13 8 16 11 22.5 12 16 13 13 16 12 22.5 11 16 8 13 1.5 12 8 11 11 8 12 1.5Z" fill="currentColor"/></symbol>
+  <symbol id="mas" viewBox="0 0 60 64"><circle cx="30" cy="6" r="4" fill="#ffe27a" stroke="#2a2140" stroke-width="2"/><rect x="4" y="10" width="52" height="50" rx="15" fill="#ff9cc4" stroke="#2a2140" stroke-width="2.4"/><path d="M9 18h42v5q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0q-5.25 5-10.5 0z" fill="#c45fd9" stroke="#2a2140" stroke-width="2" stroke-linejoin="round"/><path d="M18 39q4-5 8 0M34 39q4-5 8 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><ellipse cx="15" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><ellipse cx="45" cy="45" rx="4" ry="2.6" fill="#ff5f9e" opacity=".6"/><path d="M25 46q5 5 10 0" stroke="#2a2140" stroke-width="2.4" fill="none" stroke-linecap="round"/><rect x="18" y="53" width="24" height="3" rx="1.5" fill="#5b2a49"/></symbol>
+</svg>
+
+<script>
+(function(){
+var W=430,H=932;
+var AW=552/382, AT=3/4;                // cell aspect: 가로, 세로
+var uid=0;
+var URL_A='https://dot-connects.github.io/dot-lab/works/2026-10-26-photo-booth/site/?s=31e99308PgDMIU';
+
+// ---- fake photos: A dark hair / black top, B brown hair / white top (copied from camera3.html) ----
+function person(w,h,cx,s,o){
+  var k=s/120, x=cx*w-50*k, y=h-108*k, hair=o.b?'#8a5a3b':'#3b2a33', shirt=o.b?'#f4f4f4':'#151515';
+  var g='<g transform="translate('+x.toFixed(1)+' '+y.toFixed(1)+') scale('+k.toFixed(3)+')">';
+  g+='<path d="M8 124C8 94 28 84 50 84C72 84 92 94 92 124Z" fill="'+shirt+'"'+(o.b?' stroke="#c9c9c9" stroke-width="1.5"':'')+'/>'+
+     '<rect x="42" y="70" width="16" height="18" fill="#f1cdb6"/><ellipse cx="50" cy="50" rx="22" ry="26" fill="#ffe1cf"/>'+
+     (o.b?'<path d="M27 52c-5-34 51-34 46 0l-4-11c-10 3-26 3-38-6z" fill="'+hair+'"/>':'<path d="M27 46c-3-30 49-30 46 0-7-12-24-15-46 0z" fill="'+hair+'"/>')+
+     '<circle cx="42" cy="52" r="2.6" fill="#3b2a33"/><circle cx="58" cy="52" r="2.6" fill="#3b2a33"/>'+
+     '<path d="M43 61q7 6 14 0" stroke="#3b2a33" stroke-width="2.6" fill="none" stroke-linecap="round"/>'+
+     '<circle cx="36" cy="59" r="4" fill="#ff9a8a" opacity=".45"/><circle cx="64" cy="59" r="4" fill="#ff9a8a" opacity=".45"/>';
+  if(o.v) g+='<g transform="translate(70 70) rotate(-12)"><rect x="-6" y="0" width="12" height="24" rx="6" fill="#ffe1cf"/><rect x="-7" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(-14)"/><rect x="2" y="-20" width="5" height="24" rx="2.5" fill="#ffe1cf" transform="rotate(14)"/></g>';
+  return g+'</g>';
+}
+// one strip cell: A's room; who = 'a' (A on the left, the friend's spot empty) or 'ab' (both)
+function scene(w,h,who,i){
+  var id='s'+(uid++), s='<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg"><defs>'+
+    '<linearGradient id="'+id+'w" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8f6f1"/><stop offset="1" stop-color="#e6e0d4"/></linearGradient></defs>'+
+    '<rect width="'+w+'" height="'+h+'" fill="url(#'+id+'w)"/>'+
+    '<rect x="'+(w*.58)+'" y="'+(h*.05)+'" width="'+(w*.38)+'" height="'+(h*.5)+'" fill="#fff" stroke="#d9d2c4" stroke-width="'+Math.max(1,w*.012)+'"/>'+
+    '<rect x="'+(w*.06)+'" y="'+(h*.12)+'" width="'+(w*.18)+'" height="'+(h*.22)+'" fill="#f0c9b8" stroke="#c9b9a6" stroke-width="'+Math.max(1,w*.01)+'"/>';
+  var big=Math.min(h*.82,w*(who==='ab'?.46:.56));
+  if(who==='ab') s+=person(w,h,.7,big*.95,{b:1,v:i%2===0});
+  s+=person(w,h,.3,big,{v:i%2===1});
+  return s+'</svg>';
+}
+// the strip: 가로 = 4 wide cells in a column, 세로 = 4 tall cells in a row (as the saved strip.jpg), foot "따로 같이 네컷"
+function strip(t,shape,who,bw,bh){
+  var film=t==='film', side=film?16:8, top=film?6:8, gap=film?5:6, foot=film?28:30, cw, ch, w, h, s='';
+  // wrap rule: 가로 = 1 column (the saved strip) or 2x2, 세로 = 4 in a row (the saved strip) or 2x2 — whichever gives bigger cells
+  var asp=shape==='wide'?AW:AT, best=null;
+  (shape==='wide'?[1,2]:[4,2]).forEach(function(c){
+    var r=4/c, x=(bw-2*side-(c-1)*gap)/c;
+    if(top+r*(x/asp)+(r-1)*gap+foot>bh) x=(bh-top-foot-(r-1)*gap)/r*asp;
+    if(!best||x>best.x+1) best={x:x,c:c,r:r};
+  });
+  var c=best.c, r=best.r; cw=Math.floor(best.x); ch=Math.floor(cw/asp);
+  w=2*side+c*cw+(c-1)*gap; h=top+r*ch+(r-1)*gap+foot;
+  for(var i=0;i<4;i++) s+='<div class="mc" style="left:'+(side+(i%c)*(cw+gap))+'px;top:'+(top+Math.floor(i/c)*(ch+gap))+'px;width:'+cw+'px;height:'+ch+'px">'+scene(cw,ch,who,i)+'</div>';
+  if(film) s+='<i class="sp" style="left:0"></i><i class="sp" style="right:0"></i>';
+  var fs=Math.min(film?13:22,Math.floor((w-2*side)/(film?9:5.2)));
+  s+='<div class="mfoot" style="height:'+foot+'px;font-size:'+fs+'px">따로 같이 네컷</div>';
+  return {html:'<div class="strip k" data-n="띠" style="width:'+w+'px;height:'+h+'px">'+s+'</div>',w:w,h:h,cw:cw,ch:ch,grid:c+'×'+r};
+}
+
+// ---- the four scenes (copy from index.html / app.js shareScreen, handoffScreen) ----
+var SC={
+  sent:{tab:'보내기',title:['다 올렸어!','친구한테 보내자'],lead:['친구가 이 링크를 열면 네 옆에 서서 찍어.','너는 찍은 자리 그대로 들어가.','둘 다 찍으면 사진이랑 영상이 열려.'],
+    note:1,ctas:[['친구한테 링크 보내기','']],links:[],trust:1,del:1,who:'a',url:URL_A},
+  wait:{tab:'보내기',title:['친구가 아직','안 찍었어요'],lead:['이 링크를 친구한테 보내 줘.','친구가 찍으면 이 링크에서 바로 열려.'],
+    note:1,ctas:[['친구한테 링크 보내기',''],['친구가 찍었는지 다시 확인','alt']],links:['직접 찍어 보기(테스트용)'],trust:1,del:1,who:'a',url:URL_A},
+  done:{tab:'완성',title:['완성됐어!','친구한테 알려 주자'],lead:['이 링크를 보내면 친구도 우리 네컷을 열어 봐.','꾸미기는 각자 폰에서 따로, 저장도 각자 해.'],
+    note:0,ctas:[['꾸미러 가기',''],['완성됐어 링크 보내기','alt']],links:[],trust:1,del:1,who:'ab',url:URL_A},
+  ho:{tab:'꾸미기',title:['크롬에서 열어','꾸며 줘'],lead:['이 앱 안에서는 꾸미고 저장하기가 잘 안 돼요.','크롬에서 같은 링크가 열려요.'],
+    note:0,ctas:[['크롬에서 열기','']],links:[],trust:0,del:0,who:'ab',url:URL_A+'&me=a',copyOnly:1}
+};
+
+function head(t,o){
+  if(t==='film') return '<div class="hd k" data-n="머리"><b class="logo">D:OT LAB</b><div class="tabs"><i>찍기</i><i>고르기</i><i>보정</i><i class="on">'+o.tab+'</i></div></div>';
+  return '<div class="hd k" data-n="머리"><svg><use href="#mas"/></svg><div class="bub"><b>'+o.tab+'</b><span class="dots"><i></i><i></i><i></i><i class="on"></i></span></div></div>';
+}
+function ttl(o,one){return '<h3 class="ttl k" data-n="제목">'+o.title[0]+(one?' ':'<br>')+'<em>'+o.title[1]+'</em></h3>';}
+function lead(o,cls){return '<p class="lead k '+(cls||'')+'" data-n="설명">'+o.lead.join('<br>')+'</p>';}
+function note(o){return o.note?'<p class="note k" data-n="꾸미기 안내"><svg><use href="#star"/></svg><span>친구가 찍어 올리면 <b>둘 다</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>':'';}
+function cta(c){return '<button class="cta k '+c[1]+'" data-n="'+c[0]+'">'+c[0]+'</button>';}
+function trust(o){return o.trust?'<p class="trust k" data-n="7일 삭제"><svg><use href="#i-lock"/></svg><span>D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제</span></p>':'';}
+function links(o,copy){
+  var a=o.links.slice(); if(copy) a.push('링크 복사');
+  var s=a.map(function(x){return '<button class="tl k" data-n="'+x+'">'+x+'</button>';}).join('');
+  if(o.del) s+='<button class="tl red k" data-n="삭제">사진 지금 삭제</button>';
+  return s?'<div class="links">'+s+'</div>':'';
+}
+
+// =================== layout 1: top to bottom, the buttons pinned in a bottom dock, the strip takes what is left ===================
+function L1(t,o){
+  return '<div class="bd'+(o===SC.ho?' center':'')+'"><div class="scr">'+ttl(o,CMP)+'<div class="sbox" data-fit="1" style="margin:12px 0"></div>'+lead(o)+(o.note?'<div style="height:10px;flex:none"></div>':'')+note(o)+
+    '</div><div class="dock">'+o.ctas.map(cta).join('')+links(o,1)+trust(o)+'</div></div>';
+}
+// =================== layout 2: the strip runs along the long side (가로 = full-height column on the left, 세로 = full width) ===================
+function L2(t,o,shape){
+  var row=shape==='wide';
+  var side='<div class="side">'+(row?ttl(o,false):'')+lead(o)+note(o)+'</div>';
+  return '<div class="bd">'+(row?'':ttl(o,CMP))+'<div class="mid '+(row?'row':'col')+'"><div class="sbox'+(row?'':' bleed')+'" data-fit="2"></div>'+side+'</div>'+
+    '<div class="dock">'+o.ctas.map(cta).join('')+links(o,1)+trust(o)+'</div></div>';
+}
+// =================== layout 3: one card = strip + the link + the send button; the link is always on screen ===================
+function L3(t,o){
+  // the card's own button is always the one that sends this link (B: 완성됐어 링크 보내기); the other one sits right under the card
+  var main=o===SC.done?[o.ctas[1][0],'']:o.ctas[0], rest=o===SC.done?[[o.ctas[0][0],'alt']]:o.ctas.slice(1);
+ return '<div class="bd scroll">'+ttl(o,true)+'<div class="card k" data-n="카드">'+(t==='cute'?'<div class="cur"></div>':'')+'<div class="sbox" data-fit="3"></div>'+
+    '<div class="lrow"><p class="link k" data-n="링크">'+o.url.replace('https://','')+'</p><button class="copy k" data-n="링크 복사">복사</button></div>'+cta(main)+'</div>'+
+    '<div class="under">'+rest.map(cta).join('')+lead(o)+note(o)+links(o,0)+trust(o)+'</div></div>';
+}
+
+// ---- fit: draw the strip into the box its layout left (layout 2 also gives the side text the room it needs) ----
+function fitStrip(fr,t,shape,o){
+  var box=fr.querySelector('.sbox'), kind=box.dataset.fit, st;
+  if(kind==='2'&&shape==='wide'){
+    var mid=fr.querySelector('.mid'), side=fr.querySelector('.side'), mh=mid.clientHeight, bw=Math.round(W*.48);
+    for(var n=0;n<12;n++){
+      st=strip(t,shape,o.who,bw,mh); box.style.width=st.w+'px'; box.innerHTML=st.html;
+      if(side.scrollHeight<=side.clientHeight+1&&side.scrollWidth<=side.clientWidth+1) break;
+      bw=Math.round(bw*.92);
+    }
+    return st;
+  }
+  if(kind==='2'){                                          // 세로 strip spans the screen; the text under it keeps the room it needs
+    var side2=fr.querySelector('.side'), mid2=fr.querySelector('.mid');
+    side2.style.flex='none'; var need=side2.offsetHeight; side2.style.flex='';
+    box.style.flex='none'; st=strip(t,shape,o.who,W-8,mid2.clientHeight-need-14); box.style.height=st.h+'px'; box.innerHTML=st.html;
+    return st;
+  }
+  if(kind==='1'){                                          // strip keeps 55% of the screen (or all the scroller shows under the title); the text below scrolls
+    var scr=fr.querySelector('.scr'), want=Math.min(Math.round(H*.55),scr.clientHeight-fr.querySelector('.ttl').offsetHeight-24-46);   // ~2 lines of text peek out
+    if(box.clientHeight<want){box.style.flex='none';box.style.height=want+'px';}
+  }
+  if(kind==='3'){                                          // the card is the first screen; the rest sits under it
+    var bd=fr.querySelector('.bd'), tt=fr.querySelector('.ttl'), card=fr.querySelector('.card');
+    card.style.flex='none'; card.style.height=(bd.clientHeight-tt.offsetHeight-parseFloat(getComputedStyle(tt).marginTop)-12-14-46)+'px';   // ~2 lines peek under it
+  }
+  st=strip(t,shape,o.who,box.clientWidth-(kind==='3'?24:0),box.clientHeight-(kind==='3'?24:0)); box.innerHTML=st.html;
+  if(kind==='3'){box.style.flex='none';box.style.height=(st.h+24)+'px';card.style.height='auto';}   // the card hugs the strip; the text moves up
+  return st;
+}
+
+// ---- checks: every .k inside the screen, no two overlapping, no text running out of its box ----
+function check(fr){
+  var R=fr.getBoundingClientRect(), bad=[], ks=[].slice.call(fr.querySelectorAll('.k'));
+  function inside(r,B){return r.left>=B.left-1&&r.top>=B.top-1&&r.right<=B.right+1&&r.bottom<=B.bottom+1;}
+  function sc(e){return e.parentElement.closest('.scr,.bd.scroll');}
+  ks.forEach(function(e){
+    var r=e.getBoundingClientRect();
+    if(!inside(r,R)&&!sc(e)) bad.push('잘림 '+e.dataset.n);
+    if(sc(e)&&(r.left<R.left-1||r.right>R.right+1)) bad.push('잘림 '+e.dataset.n);
+    // 6 px: Dongle's glyph box hangs a few px under its line box (ink, not a clipped line)
+    if(!e.matches('.strip,.card')&&(e.scrollWidth>e.clientWidth+1||e.scrollHeight>e.clientHeight+6)) bad.push('글자 넘침 '+e.dataset.n);
+  });
+  [].forEach.call(fr.querySelectorAll('.bd:not(.scroll),.side,.card,.under'),function(b){if(b.scrollHeight>b.clientHeight+1) bad.push('넘침 '+b.className);});
+  for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){
+    var a=ks[i], b=ks[j];
+    if(a.contains(b)||b.contains(a)) continue;
+    if(sc(a)!==sc(b)) continue;                            // a scroller clips its own content
+    var p=a.getBoundingClientRect(), q=b.getBoundingClientRect();
+    var ox=Math.min(p.right,q.right)-Math.max(p.left,q.left), oy=Math.min(p.bottom,q.bottom)-Math.max(p.top,q.top);
+    if(ox>1&&oy>1) bad.push('겹침 '+a.dataset.n+'/'+b.dataset.n);
+  }
+  return bad;
+}
+
+// ---- page ----
+var LAY=[
+  {f:L1,no:'1',name:'위에서 아래로 + 버튼 바닥 고정'},
+  {f:L2,no:'2',name:'띠를 긴 쪽에 길게'},
+  {f:L3,no:'3',name:'사진·링크·버튼을 한 장 카드로'}
+];
+var ONE={'1':'보내기 버튼은 늘 화면 바닥(엄지 자리)에 고정. 띠는 남은 높이만큼 커짐.',
+  '2':'가로 네컷은 띠를 왼쪽에 화면 높이만큼 세우고 글은 옆에. 세로 네컷은 띠를 화면 폭 끝까지.',
+  '3':'띠 아래에 보낼 링크가 늘 보이고, 보내기 버튼이 카드에 붙어 있음. "보내는 것 = 이 카드".'};
+var CMP=false, P=new URLSearchParams(location.search);
+// query params end up in innerHTML: only known values are taken (k: the scene keys of SC)
+var OK={th:['film','cute'],sz:['big','small'],sh:['wide','tall']};
+['th','k','sz','sh'].forEach(function(a){var v=P.get(a);if(v&&(a==='k'?Object.prototype.hasOwnProperty.call(SC,v):OK[a].indexOf(v)>=0))document.body.dataset[a]=v;});
+var out=document.getElementById('out');
+function draw(){
+  var d=document.body.dataset, t=d.th, o=SC[d.k], shape=d.sh;
+  W=d.sz==='small'?360:430; H=d.sz==='small'?640:932; CMP=H<700;
+  var s='';
+  LAY.forEach(function(L){s+='<div><h2><span class="no">'+L.no+'</span>'+L.name+'</h2><figure><div class="slot"><div class="fr '+t+(CMP?' cmp':'')+'" style="width:'+W+'px;height:'+H+'px">'+head(t,o)+L.f(t,o,shape)+
+    '</div></div><figcaption></figcaption></figure><p class="one">'+ONE[L.no]+'</p></div>';});
+  out.innerHTML=s;
+  // measure at zoom 1, then zoom the frames to fit (the 932 phone sets the scale, so the small phone looks small)
+  [].forEach.call(out.querySelectorAll('figure'),function(f){
+    var fr=f.querySelector('.fr'), st=fitStrip(fr,t,shape,o), bad=check(fr), a=st.w*st.h/(W*H)*100;
+    [].forEach.call(fr.querySelectorAll('.scr,.bd.scroll'),function(x){x.classList.toggle('more',x.scrollHeight>x.clientHeight+1);});
+    f.querySelector('figcaption').innerHTML='띠 '+st.w+'×'+st.h+' · 화면의 '+a.toFixed(0)+'% · 한 칸 '+st.cw+'×'+st.ch+(st.grid==='2×2'?' (2×2로 접음)':'')+' · '+
+      (bad.length?'<span class="bad">'+bad.join(', ')+'</span>':'겹침·잘림 없음')+
+      ([].some.call(fr.querySelectorAll('.scr,.bd.scroll'),function(x){return x.scrollHeight>x.clientHeight+1;})?' · 설명은 아래로 밀어서 봄':'');
+  });
+  var top=out.getBoundingClientRect().top+scrollY, zh=(innerHeight-Math.min(top,innerHeight*.35)-110)/932;
+  var z=Math.min(1,zh,innerWidth>=900?(Math.min(innerWidth,1500)-64)/(3*430):(innerWidth-56)/430);
+  [].forEach.call(out.querySelectorAll('figure'),function(f){
+    f.style.width=(W*z)+'px'; f.parentElement.style.setProperty('--fw',(430*z)+'px'); f.querySelector('.slot').style.zoom=z;
+  });
+}
+function bind(attr){
+  [].forEach.call(document.querySelectorAll('.tgl button[data-'+attr+']'),function(b){
+    b.onclick=function(){document.body.dataset[attr]=b.dataset[attr];sync();draw();};
+  });
+}
+function sync(){[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  var a=['th','k','sz','sh'].filter(function(x){return b.dataset[x];})[0]; b.setAttribute('aria-pressed',b.dataset[a]===document.body.dataset[a]);});}
+['th','k','sz','sh'].forEach(bind);sync();
+(document.fonts&&document.fonts.ready?document.fonts.ready:Promise.resolve()).then(draw);draw();
+addEventListener('resize',draw);
+// ?all=1: run every theme x scene x shape x size and print the captions (verification only)
+if(P.get('all'))(document.fonts?document.fonts.ready:Promise.resolve()).then(function(){
+  var d=document.body.dataset, log=[];
+  ['film','cute'].forEach(function(th){Object.keys(SC).forEach(function(k){['wide','tall'].forEach(function(sh){['big','small'].forEach(function(sz){
+    d.th=th;d.k=k;d.sh=sh;d.sz=sz;draw();
+    log.push(th+' '+k+' '+sh+' '+sz+' :: '+[].map.call(out.querySelectorAll('figcaption'),function(c){return c.textContent;}).join(' | '));
+  });});});});
+  var pre=document.createElement('pre');pre.id='all';pre.textContent=log.join(String.fromCharCode(10));document.body.appendChild(pre);
+});
+})();
+</script>
+</body>
+</html>
