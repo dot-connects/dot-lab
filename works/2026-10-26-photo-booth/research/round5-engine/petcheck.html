@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>pet check</title>
+<!-- One fake-camera scene, pet union off vs on, in all three cuts: live preview, HQ still, HQ moving cut.
+     Run with a pet y4m as the fake camera. -> window.result { coverage %, sheet } -->
+<body>
+<video id="v" muted playsinline autoplay></video>
+<script type="module">
+import { loadSegmenter, segmentFrame, drawCutout, prefetchStill, warmStill, cutStill, TUNE, stats } from "../../site/js/segment.js";
+import { shootOne } from "../../site/js/capture.js";
+import { clipMatte } from "../../site/js/clipmatte.js";
+const v = document.getElementById("v"), out = { cover: {}, sheets: {} }, sleep = ms => new Promise(r => setTimeout(r, ms));
+const mk = (w, h) => Object.assign(document.createElement("canvas"), { width: w, height: h });
+const cover = c => { const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data; let s = 0; for (let i = 3; i < d.length; i += 4) s += d[i]; return +(100 * s / 255 / (d.length / 4)).toFixed(1); };
+const checker = (c, label) => { const o = mk(c.width, c.height), x = o.getContext("2d");
+  for (let y = 0; y < o.height; y += 16) for (let k = 0; k < o.width; k += 16) { x.fillStyle = (y + k) / 16 % 2 ? "#c8c8c8" : "#fff"; x.fillRect(k, y, 16, 16); }
+  x.drawImage(c, 0, 0); x.fillStyle = "#000a"; x.fillRect(0, 0, 230, 22); x.fillStyle = "#fff"; x.font = "14px sans-serif"; x.fillText(label, 6, 16); return o; };
+// [raw | matte] canvas -> cut-out (raw with the matte half as alpha)
+const halfCut = f => { const w = f.width >> 1, h = f.height, c = mk(w, h), x = c.getContext("2d"), d = f.getContext("2d").getImageData(0, 0, f.width, h).data, im = x.createImageData(w, h);
+  for (let y = 0; y < h; y++) for (let k = 0; k < w; k++) { const i = (y * w + k) * 4, j = (y * f.width + k) * 4, m = (y * f.width + w + k) * 4;
+    im.data[i] = d[j]; im.data[i + 1] = d[j + 1]; im.data[i + 2] = d[j + 2]; im.data[i + 3] = Math.max(0, Math.min(255, (d[m + 1] - 16) * 255 / 219)); }
+  x.putImageData(im, 0, 0); return c; };
+const cells = [];
+try {
+  v.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  await v.play();
+  await loadSegmenter(); await prefetchStill(); await warmStill();
+  const W = v.videoWidth, H = v.videoHeight;
+  // live: 3 s of preview each way (the pet worker needs a moment for its first map)
+  for (const pet of [0, 1]) {
+    TUNE.pet = pet; const c = mk(W, H), x = c.getContext("2d"), t0 = performance.now();
+    await new Promise(done => { const tick = () => { if (segmentFrame(v)) { x.clearRect(0, 0, W, H); drawCutout(x, v, W, H, false); }
+      performance.now() - t0 < 4000 ? v.requestVideoFrameCallback(tick) : done(); }; v.requestVideoFrameCallback(tick); });
+    out.cover["live" + pet] = cover(c); cells.push(checker(c, `live ${pet ? "+pet" : "person"} ${out.cover["live" + pet]}%`));
+  }
+  // one real shot (live cut + clip + raw), pets on as in the app
+  TUNE.pet = 1;
+  const trace = []; const tr = setInterval(() => trace.push(stats.petLive), 100);
+  const shot = await shootOne(0, { video: v, onTick() {}, seconds: 3 });
+  clearInterval(tr); out.petTrace = trace.map(x => (x === "pet" ? "P" : x === "none" ? "." : "?")).join("");
+  const sv = Object.assign(document.createElement("video"), { muted: true, src: URL.createObjectURL(shot.clip) }); await new Promise(r => sv.onloadeddata = r);
+  out.fastCover = [];
+  for (let t = 0.05; t < sv.duration; t += 0.2) { sv.currentTime = t; await new Promise(r => sv.onseeked = r); const f = mk(sv.videoWidth, sv.videoHeight); f.getContext("2d").drawImage(sv, 0, 0); out.fastCover.push(cover(halfCut(f))); }
+  const raw = await createImageBitmap(shot.raw), rc = mk(raw.width, raw.height); rc.getContext("2d").drawImage(raw, 0, 0);
+  for (const pet of [0, 1]) {
+    TUNE.pet = pet; const c = await cutStill(rc);
+    out.cover["still" + pet] = cover(c); cells.push(checker(c, `HQ still ${pet ? "+pet" : "person"} ${out.cover["still" + pet]}%`));
+  }
+  const cv = Object.assign(document.createElement("video"), { muted: true, src: URL.createObjectURL(shot.clip) });
+  await new Promise(r => cv.onloadeddata = r);
+  cv.currentTime = cv.duration / 2; await new Promise(r => cv.onseeked = r);
+  for (const pet of [0, 1]) {
+    TUNE.pet = pet; const t0 = performance.now(), m = await clipMatte(cv);
+    out["movingMs" + pet] = Math.round(performance.now() - t0);
+    const f = mk(cv.videoWidth, cv.videoHeight); f.getContext("2d").drawImage(cv, 0, 0);
+    if (pet === 0) { const fc = halfCut(f); out.cover.fast = cover(fc); cells.push(checker(fc, `fast matte (recorded) ${out.cover.fast}%`)); }
+    m.apply(f, Math.round(cv.currentTime * 1e6));
+    const c = halfCut(f); out.cover["moving" + pet] = cover(c); cells.push(checker(c, `HQ moving ${pet ? "+pet" : "person"} ${out.cover["moving" + pet]}%`));
+  }
+  const cw = 480, s = mk(cw * 2, Math.ceil(cells.length / 2) * cw * 3 / 4), sx = s.getContext("2d");
+  // order: live0 live1 still0 still1 fast moving0 moving1 -> rows of 2 (fast gets its own row start)
+  const grid = [cells[0], cells[1], cells[2], cells[3], cells[5], cells[6], cells[4]];
+  s.height = 4 * cw * 3 / 4;
+  grid.forEach((c, k) => sx.drawImage(c, (k % 2) * cw, Math.floor(k / 2) * cw * 3 / 4, cw, cw * 3 / 4));
+  out.sheets.check = s.toDataURL("image/png");
+  out.pet = stats.still.pet; out.petLive = stats.petLive;
+} catch (e) { out.error = String(e?.stack || e); }
+window.result = out;
+</script>

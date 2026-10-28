@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>live cut pet bench</title>
+<!-- The live (preview) cut on the fake camera, pet union off then on: fps + per-frame ms, and a snapshot of each. -> window.result -->
+<body>
+<video id="v" muted playsinline autoplay></video>
+<script type="module">
+import { loadSegmenter, segmentFrame, drawCutout, prefetchStill, warmStill, TUNE, stats } from "../../site/js/segment.js";
+const v = document.getElementById("v"), out = { runs: {}, sheets: {} }, SEC = +(new URLSearchParams(location.search).get("sec") || 10);
+try {
+  v.srcObject = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+  await v.play();
+  await loadSegmenter(); await prefetchStill(); await warmStill();
+  out.pet = stats.still.pet; setTimeout(() => console.log("petLive", stats.petLive), 8000);
+  const W = v.videoWidth, H = v.videoHeight, snaps = [];
+  for (const pet of [0, 1, 0, 1, 0, 1]) {
+    TUNE.pet = pet; stats.ms.length = 0;
+    const c = Object.assign(document.createElement("canvas"), { width: W, height: H }), x = c.getContext("2d");
+    let frames = 0, petMs = 0, petRuns = 0; const t0 = performance.now();
+    await new Promise(done => {
+      const tick = () => {
+        if (segmentFrame(v)) { frames++; x.clearRect(0, 0, W, H); drawCutout(x, v, W, H, false); if (pet && stats.petLiveMs != null) { petMs += stats.petLiveMs; petRuns++; stats.petLiveMs = null; } }
+        if (performance.now() - t0 < SEC * 1000) v.requestVideoFrameCallback(tick); else done();
+      };
+      v.requestVideoFrameCallback(tick);
+    });
+    const ms = stats.ms.slice().sort((p, q) => p - q);
+    const k = `${pet ? "pet" : "person"}${out.runs[pet ? "pet" : "person"] ? "2" : ""}`;
+    out.runs[k] = { fps: +(frames / SEC).toFixed(1), msMedian: +ms[ms.length >> 1].toFixed(1), msP90: +ms[Math.floor(ms.length * 0.9)].toFixed(1), petRuns, petMsAvg: petRuns ? +(petMs / petRuns).toFixed(1) : 0 };
+    if (!out.runs[k + "x"] && snaps.length < 2) { const o = Object.assign(document.createElement("canvas"), { width: W, height: H }), ox = o.getContext("2d");
+      for (let y = 0; y < H; y += 16) for (let q = 0; q < W; q += 16) { ox.fillStyle = (y + q) / 16 % 2 ? "#c8c8c8" : "#fff"; ox.fillRect(q, y, 16, 16); }
+      ox.drawImage(c, 0, 0); ox.fillStyle = "#000a"; ox.fillRect(0, 0, 160, 22); ox.fillStyle = "#fff"; ox.font = "14px sans-serif"; ox.fillText(pet ? "live + pet" : "live person only", 6, 16); snaps.push(o); }
+  }
+  const s = Object.assign(document.createElement("canvas"), { width: W * 2, height: H });
+  snaps.forEach((c, k) => s.getContext("2d").drawImage(c, k * W, 0));
+  out.sheets.live = s.toDataURL("image/png");
+} catch (e) { out.error = String(e?.stack || e); }
+out.petLive = stats.petLive; window.result = out;
+</script>

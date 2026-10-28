@@ -1,0 +1,67 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>clip matte bench</title>
+<!-- HQ moving cut with / without the DeepLab cat+dog union. ?clips=a0,b1,... (media/<name>-clip) -> window.result -->
+<body>
+<script type="module">
+import { clipMatte } from "../../site/js/clipmatte.js";
+import { TUNE, warmStill, stats } from "../../site/js/segment.js";
+const QS = new URLSearchParams(location.search), names = (QS.get("clips") || "").split(",").filter(Boolean);
+const vid = async name => {
+  const v = Object.assign(document.createElement("video"), { muted: true, playsInline: true, src: URL.createObjectURL(await (await fetch(`media/${name}-clip`)).blob()) });
+  await new Promise((r, j) => { v.onloadeddata = r; v.onerror = j; });
+  return v;
+};
+// [raw | fast matte] canvas of the clip at t s (seek), the frame clipMatte.apply rebuilds
+const frameAt = async (v, t) => {
+  v.currentTime = t; await new Promise(r => v.onseeked = r);
+  const c = Object.assign(document.createElement("canvas"), { width: v.videoWidth, height: v.videoHeight });
+  c.getContext("2d").drawImage(v, 0, 0); return c;
+};
+const alphaOf = c => { const w = c.width >> 1, d = c.getContext("2d").getImageData(w, 0, w, c.height).data, a = new Uint8Array(w * c.height);
+  for (let i = 0; i < a.length; i++) a[i] = Math.max(0, Math.min(255, (d[i * 4 + 1] - 16) * 255 / 219)); return a; };
+// the raw half over a checker with alpha from the rebuilt matte, for the eye
+const show = (c, label) => {
+  const w = c.width >> 1, h = c.height, o = Object.assign(document.createElement("canvas"), { width: w, height: h }), x = o.getContext("2d");
+  for (let y = 0; y < h; y += 16) for (let k = 0; k < w; k += 16) { x.fillStyle = (y + k) / 16 % 2 ? "#c8c8c8" : "#fff"; x.fillRect(k, y, 16, 16); }
+  const raw = c.getContext("2d").getImageData(0, 0, w, h), a = alphaOf(c), t = Object.assign(document.createElement("canvas"), { width: w, height: h });
+  for (let i = 0; i < a.length; i++) raw.data[i * 4 + 3] = a[i];
+  t.getContext("2d").putImageData(raw, 0, 0); x.drawImage(t, 0, 0);
+  x.fillStyle = "#000a"; x.fillRect(0, 0, 150, 22); x.fillStyle = "#fff"; x.font = "14px sans-serif"; x.fillText(label, 6, 16);
+  return o;
+};
+const out = { clips: [], sheets: {} };
+try {
+  console.log("warm…");
+  if (!(await warmStill())) throw new Error("model off: " + stats.still.error);
+  for (const name of names) {
+    console.log("clip", name, stats.still.state, stats.still.delegate, stats.still.pet);
+    const v = await vid(name), r = { name, dur: +v.duration.toFixed(2) };
+    const runs = {};
+    for (const pet of [0, 1]) {
+      TUNE.pet = pet; const t0 = performance.now(); let petMs = 0;
+      const m = await clipMatte(v, (k, N) => { console.log("key", pet, k, N, Math.round(performance.now() - t0)); if (pet) petMs += stats.still.petMs || 0; stats.still.petMs = 0; });
+      runs[pet] = m; r[pet ? "msPet" : "ms"] = Math.round(performance.now() - t0); r.keys = m.keys;
+      if (pet) r.petMsSum = petMs;
+    }
+    // rebuilt mattes at 6 times through the clip: mean |alpha diff| (0..255) and the share of pixels that changed > 32
+    let diff = 0, big = 0, n = 0;
+    const sheet = [];
+    for (const f of [0.05, 0.2, 0.35, 0.5, 0.65, 0.8]) {
+      const t = f * v.duration, base = await frameAt(v, t), us = Math.round(t * 1e6);
+      const c0 = await frameAt(v, t), c1 = await frameAt(v, t);
+      runs[0].apply(c0, us); runs[1].apply(c1, us);
+      const a0 = alphaOf(c0), a1 = alphaOf(c1);
+      for (let i = 0; i < a0.length; i++) { const d = Math.abs(a0[i] - a1[i]); diff += d; big += d > 32; n++; }
+      if (f === 0.35 || f === 0.65) sheet.push(show(base, "fast (recorded)"), show(c0, "HQ person"), show(c1, "HQ person+pet"));
+    }
+    r.meanDiff = +(diff / n).toFixed(3); r.changedPct = +(100 * big / n).toFixed(2);
+    const W = sheet[0].width, H = sheet[0].height, s = Object.assign(document.createElement("canvas"), { width: W * 3, height: H * 2 });
+    sheet.forEach((c, k) => s.getContext("2d").drawImage(c, (k % 3) * W, Math.floor(k / 3) * H));
+    out.sheets[name] = s.toDataURL("image/png");
+    out.clips.push(r);
+  }
+  out.pet = stats.still.pet;
+} catch (e) { out.error = String(e?.stack || e); }
+window.result = out;
+</script>
