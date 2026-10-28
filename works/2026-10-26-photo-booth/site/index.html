@@ -258,6 +258,7 @@
     <p class="donetitle"><em>짠, 완성!</em></p>
   </div>
   <p class="donenote" id="doneNote" hidden></p>
+  <div class="themes" id="themeRow" role="group" aria-label="테마" hidden></div><!-- result themes: frame + outline + font + stickers in one tap -->
   <div class="tabs" role="tablist" aria-label="꾸미기">
     <button role="tab" data-tab="bg" aria-selected="false">배경</button>
     <button role="tab" data-tab="frame" aria-selected="true">프레임</button>
@@ -283,11 +284,14 @@
     <label class="caplbl" for="caption">한 줄 문구 <span id="capCount">0 / 16</span></label>
     <input id="caption" type="text" maxlength="16" placeholder="예: D+100, 우리 오늘" enterkeyhint="done" autocomplete="off">
     <p class="fine">비워 두면 ‘따로 같이 네컷’이 들어가</p>
+    <div class="pills" id="capFonts" aria-label="글씨체" hidden></div>
   </div>
   <!-- Round 5 deco: stickers -->
   <div class="panel" data-panel="sticker" role="tabpanel" aria-label="스티커" hidden>
     <div class="pills" id="stkSets" aria-label="스티커 종류">
-      <button class="pill" type="button" data-set="svg" aria-pressed="true">그린 스티커</button>
+      <button class="pill" type="button" data-set="clean" aria-pressed="true">클린</button>
+      <button class="pill" type="button" data-set="y2k" aria-pressed="false">Y2K</button>
+      <button class="pill" type="button" data-set="diary" aria-pressed="false">다이어리</button>
       <button class="pill" type="button" data-set="emoji" aria-pressed="false">이모지</button>
       <p class="stkhint" id="stkHint">끌어서 옮기고<br>두 손가락으로 크기·각도</p>
     </div>

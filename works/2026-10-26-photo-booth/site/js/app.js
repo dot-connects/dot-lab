@@ -803,7 +803,8 @@ async function del(box, yes) {
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
   layout: null, pairs: null, outline: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
-  stickers: [], sel: -1, pkey: null };   // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
+  stickers: [], sel: -1, pkey: null,     // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
+  theme: "clean", font: "clean" };       // result theme + caption font (frames.js THEMES / CAPTION_FONTS), per device
 // fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
 const OL_STYLES = [{ id: "solid", label: "실선" }, { id: "dotted", label: "점선" }, { id: "glitter", label: "반짝이" }];
@@ -921,10 +922,7 @@ function buildTiles() {
     t.querySelector(".mini").style.background = bgSwatch(bg);
     return t;
   }));
-  $("frameChips").replaceChildren(...frames.map(f => {
-    const t = tile("frame", f.label, f === D.frame, () => { D.frame = f; changed(["filter"]); });
-    t.dataset.id = f.id; return t;
-  }));
+  buildFrames();
   $("filterChips").replaceChildren(...filters.map(f => {
     const t = tile("filter", f.label, f.id === D.filter, () => { D.filter = f.id; changed(["frame"]); });
     t.dataset.id = f.id; return t;
@@ -932,6 +930,45 @@ function buildTiles() {
   $("caption").value = D.caption; capCount();
   buildOutline();
   buildLook();
+  buildThemes();
+}
+// the current theme's frames first, then the rest (each theme's own order)
+function buildFrames() {
+  const frames = [...FR.FRAMES].sort((x, y) => (y.theme === D.theme) - (x.theme === D.theme));
+  $("frameChips").replaceChildren(...frames.map(f => {
+    const t = tile("frame", f.label, f === D.frame, () => { D.frame = f; changed(["filter"]); });
+    t.dataset.id = f.id; return t;
+  }));
+  $("frameChips").scrollLeft = 0;
+}
+// Result themes: one tap = the theme's first frame + outline + caption font + sticker set; each tab can change them after
+function buildThemes() {
+  const themes = FR.THEMES || [];
+  $("themeRow").hidden = !themes.length;
+  $("themeRow").replaceChildren(...themes.map(t => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "theme theme-" + t.id });
+    b.setAttribute("aria-pressed", t.id === D.theme);
+    b.innerHTML = `<i aria-hidden="true"></i><span></span>`; b.querySelector("span").textContent = t.label;
+    b.onclick = () => t.id !== D.theme && applyTheme(t);
+    return b;
+  }));
+  const fonts = FR.CAPTION_FONTS || [];
+  $("capFonts").hidden = !fonts.length;
+  $("capFonts").replaceChildren(...fonts.map(f => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill capfont", textContent: f.label });
+    b.style.fontFamily = `"${f.family}", var(--title)`; b.style.fontWeight = f.weight;
+    b.setAttribute("aria-pressed", f.id === D.font);
+    b.onclick = () => { if (f.id === D.font) return; D.font = f.id; buildThemes(); changed(["frame"]); };
+    return b;
+  }));
+}
+function applyTheme(t) {
+  D.theme = t.id; D.font = t.font;
+  D.frame = FR.FRAMES.find(f => f.id === t.frames[0]) || D.frame;
+  if (t.outline) { D.ol = { ...D.ol, ...t.outline }; D.outline = { ...D.ol }; } else D.outline = null;
+  buildFrames(); buildOutline(); buildThemes();
+  if ($("stkGrid").dataset.set && $("stkGrid").dataset.set !== "emoji") buildStickers(t.stickers).catch(() => {});
+  changed(["frame", "filter"]);
 }
 // 테두리: 없음 + colours, then style and width (dimmed while 없음)
 function buildOutline() {
@@ -971,10 +1008,10 @@ function later() {          // the saved photo soon, the moving strip after the 
   if (!env.inApp) { setVid(); vT = setTimeout(videoJob, VIDEO_IDLE); }
 }
 const opts = (o = {}) => ({ a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
+  caption: D.caption.trim(), font: D.font, layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
   mattes: D.mattes, ...o });
 const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers),
-  D.mattes ? "hq" : ""].join("|");
+  D.mattes ? "hq" : "", D.theme, D.font].join("|");
 // the strip as an image: compose paints a canvas (cells cached), no JPEG round trip; stickers are not in it (they are
 // the DOM layer on top while choosing) but are in D.photo and the video
 const stripOf = async o => C.stripCanvas ? C.stripCanvas(o) : createImageBitmap(await C.drawStrip(o));
@@ -1121,18 +1158,20 @@ function stickerTab() {
   if (D.media) showStill();          // the still + the editable layer, not the video
   buildStickers().catch(e => console.warn("[booth] stickers", e));
 }
-async function buildStickers(set = $("stkGrid").dataset.set || "svg") {
+// set = a theme id (drawn stickers of that theme; frames.js THEMES[].stickers) or "emoji"
+async function buildStickers(set = $("stkGrid").dataset.set || FR.THEMES?.find(t => t.id === D.theme)?.stickers || "y2k") {
   ST ||= await import("./stickers.js");
   if ($("stkGrid").dataset.set === set) return;
   $("stkGrid").dataset.set = set;
   $$("#stkSets .pill").forEach(p => p.setAttribute("aria-pressed", p.dataset.set === set));
-  const list = set === "svg" ? ST.DRAWN.map(d => ({ id: d.id, label: d.label })) : ST.EMOJI.map(e => ({ id: e, label: e }));
+  const list = set === "emoji" ? ST.EMOJI.map(e => ({ id: e, label: e }))
+    : ST.DRAWN.filter(d => (d.set || "y2k") === set).map(d => ({ id: d.id, label: d.label }));
   $("stkGrid").replaceChildren(...list.map(s => {
     const b = Object.assign(document.createElement("button"), { type: "button" });
     b.setAttribute("aria-label", `${s.label} 붙이기`);
     if (set === "emoji") b.innerHTML = `<span class="emo" aria-hidden="true">${s.id}</span>`;
     else { const i = new Image(); i.alt = ""; b.append(i); ST.stickerUrl("svg", s.id).then(u => i.src = u).catch(() => {}); }
-    b.onclick = () => addSticker(set, s.id);
+    b.onclick = () => addSticker(set === "emoji" ? "emoji" : "svg", s.id);
     return b;
   }));
 }

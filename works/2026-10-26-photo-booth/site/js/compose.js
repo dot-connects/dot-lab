@@ -523,17 +523,17 @@ let filt = null;
 // frame art per (frame, date, caption): drawn once, so a filter / bg change or a mini tile reuses it
 const prepCache = new Map();
 function prepare(o) {
-  const F = frameOf(o.frame), key = `${F.id}|${fmtDate(o.date)}|${o.caption || ""}`;
+  const F = frameOf(o.frame), key = `${F.id}|${fmtDate(o.date)}|${o.caption || ""}|${o.font || ""}`;
   if (!prepCache.has(key)) {
     if (prepCache.size > 24) prepCache.delete(prepCache.keys().next().value);
     prepCache.set(key, prepareNow(o).catch(e => { prepCache.delete(key); throw e; }));
   }
   return prepCache.get(key);
 }
-async function prepareNow({ frame, date, caption = "" }) {
+async function prepareNow({ frame, date, caption = "", font = null }) {
   const F = frameOf(frame);
-  await loadFrameFonts(F, caption);
-  const rects = cellRects(F), d = fmtDate(date), o = { date: d, caption, cellRects: rects };
+  await loadFrameFonts(F, caption, font);
+  const rects = cellRects(F), d = fmtDate(date), o = { date: d, caption, cellRects: rects, font };
   const base = document.createElement("canvas"); base.width = L.W; base.height = L.H;
   F.draw(base.getContext("2d"), L, o);
   let over = null;
@@ -640,7 +640,7 @@ const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells
 // frame's clip time (repeats on every loop), video = the clip element (a stable cache key across recordings).
 // signal (AbortSignal): an abort stops the render within a frame and rejects with DOMException "AbortError".
 // mattes (clipmatte.js clipMattes): Map<clip video, HQ moving cut>; frame-exact path only, other clips keep their matte.
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, font = null, layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
   // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
   const P = pairsOf(pairs), vids = [], phase = [], fxs = [];
@@ -648,7 +648,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
     if (!clipUsable(c.clip)) continue;            // no / broken clip: that person stays still in this cell
     if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); fxs.push(fx?.[side] || null); }
   }
-  const st = await prepare({ frame, date, caption });
+  const st = await prepare({ frame, date, caption, font });
   if (stickers?.length) await stickersReady(stickers);
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
