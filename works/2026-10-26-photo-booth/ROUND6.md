@@ -22,14 +22,15 @@ Every item below must ship; none may be dropped. Status column is updated by the
 | 14 | Mockups of ALL screens, 3 concepts, each keeping the cover concept (film + 합체, clean) — operator picks before the reskin is finished | mockups | mockups/screens3.html fceac70 — awaiting pick |
 | 15 | During the 5 s countdown: front/back switch and mirror stay usable. 8 shots continuous, no stop button | flow | done 624fce5 |
 | + | Shutter: web capture is silent; add our own shutter sound + flash per shot (etiquette + feedback) | flow | done 624fce5 |
-| + | Pets: care a lot — stills (done), moving cut (r6-engine), live/B-shoot preview | engine | |
+| + | Pets: care a lot — stills (done), moving cut (r6-engine), live/B-shoot preview | engine | done db5949e (filter 약/중/강 + 그레이 chip UI: lead) |
+| + | First screen: A picks UI theme 필름레일 (screens3 concept 1) or 귀여운 (new, polished from the pre-reskin look); B follows A (operator 2026-10-28) | r6-cute mockups → lead | mockups running |
 
 ## Carried from the audit (2026-10-28)
 
 | Item | Owner | Status |
 |---|---|---|
 | Result themes 클린/Y2K/다이어리 | r6-themes | done a47e4d7 |
-| Filters: soft 뽀샤시, two B&W, 3 strengths; light/colour match A↔B; pets in moving cut | r6-engine (running) | |
+| Filters: soft 뽀샤시, two B&W, 3 strengths; light/colour match A↔B; pets in moving cut | r6-engine | done db5949e |
 | HQ moving cut progress display | r6-zoom | running |
 | Shrink/move my own cut-out (promise 1196) | r6-zoom | running |
 | Save photo + video at once; toggle copy; video "0%" label; outline default (r3 review #5-#7) | r6-zoom | running |
