@@ -4,7 +4,7 @@ Every item must ship; status updated by the lead on merge.
 
 | # | Item | Decision / owner | Status |
 |---|---|---|---|
-| 1 | Works on iPhone, especially Chrome (WebKit) | r7-ios audit → fixes; final check on a real iPhone by the operator | audit done (research/ios-audit.md), fixes after r7-fix merge with the perf fixes |
+| 1 | Works on iPhone, especially Chrome (WebKit) | r7-ios audit → fixes; final check on a real iPhone by the operator | fixes applied (save via share sheet into Photos, photo+video in one sheet; no HQ moving cut on WASM; ort.wasm bundle without WebGPU; temp canvases freed; DeepLab CPU on iOS; iOS permission copy; iOS WebView = in-app; KakaoTalk iOS "Safari에서 열기"). Silent mode: shutter stays silent (flash only). Real-iPhone check pending |
 | 2 | Back to the theme pick from the cover | "‹ 테마" before shooting only (operator) — r7-fix | done (r7-fix merge), phone check pending |
 | 3 | Retouch screen: background on/off (B: friend's / mine / none) | same buttons as the pick, choice carries over — r7-fix | done (r7-fix merge), phone check pending |
 | 4 | Camera preview too small; then every screen's UI one by one | 3 mockups per screen, operator picks, apply, next screen. Order: camera A → camera B → pick → retouch → share → decorate — r7-cam (camera3.html) | camera A+B = camera3 layout 1 (operator pick), shipped 20f97bd; pick / retouch / share / decorate: 3 mockups each published (mockups/*-pick.html), waiting for picks |

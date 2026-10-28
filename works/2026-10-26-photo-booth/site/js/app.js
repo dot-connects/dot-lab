@@ -187,7 +187,11 @@ function openOut(url) { S.handoffUrl = env.chromeUrl(url); location.href = S.han
 function handoffScreen() {
   show("handoff");
   $("hoLink").textContent = decoUrl(); $("hoBox").hidden = true;
-  $("hoText").hidden = env.isIOS; $("hoIOS").hidden = !env.isIOS; $("hoGo").hidden = env.isIOS;   // iOS: no way to force Safari
+  $("hoText").hidden = env.isIOS; $("hoIOS").hidden = !env.isIOS;
+  // iOS: no way to force Safari, except KakaoTalk's openExternal, reported to work only from a tap (ios-audit #7)
+  const kakaoIOS = env.isIOS && env.app === "KakaoTalk";
+  $("hoGo").hidden = env.isIOS && !kakaoIOS;
+  if (kakaoIOS) $("hoGo").textContent = "Safari에서 열기";
   if (!env.isIOS && !S.hoTried) { S.hoTried = true; openOut(decoUrl()); }    // try once at once; the button stays
 }
 function expired(why) {
@@ -340,7 +344,7 @@ function camError(e) {
   if (e?.message === "stall" || e?.name === "NotReadableError" && env.inApp)
     return handoff("카메라가 대답을 안 해", "이 앱에서 카메라가 멈췄어. 크롬에서 열면 바로 돼.");
   if (e?.name === "NotAllowedError")
-    return msg({ title: "앗, 카메라가 안 켜져", text: "카메라 권한을 허용해 줘. 주소창 옆 자물쇠 → 카메라 → 허용.",
+    return msg({ title: "앗, 카메라가 안 켜져", text: env.isIOS ? "카메라 권한을 허용해 줘. 주소창 왼쪽 aA(또는 ⋯) → 웹사이트 설정 → 카메라 → 허용." : "카메라 권한을 허용해 줘. 주소창 옆 자물쇠 → 카메라 → 허용.",
       btn: "다시 해 보기", onBtn: () => startShoot(S.side) });
   msg({ title: "앗, 카메라가 안 켜져", text: "다른 앱이 카메라를 쓰고 있으면 끄고 다시 해 줘.", btn: "다시 해 보기", onBtn: () => startShoot(S.side) });
 }
@@ -1231,10 +1235,20 @@ async function renderMinis(kind) {
   }
 }
 function setSave(on) { document.querySelector('[data-act="savePhoto"]').disabled = !on; }
-function download(blob, name) {
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
-  document.body.append(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+// iPhone: a download lands in Files, not Photos; the share sheet offers "이미지 저장 / 비디오 저장" (ios-audit #1).
+// It needs the tap's user activation: when that is gone (a long render before it) or sharing fails, it downloads.
+// files: [blob, name] pairs, so the photo and the video go out in one sheet.
+async function download(...files) {
+  const fs = env.isIOS && navigator.canShare && files.map(([b, n]) => new File([b], n, { type: b.type }));
+  if (fs && navigator.canShare({ files: fs })) {
+    try { return await navigator.share({ files: fs }); }
+    catch (e) { if (e?.name === "AbortError") return; }
+  }
+  for (const [blob, name] of files) {
+    const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
+    document.body.append(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
+  }
 }
 const fileName = (ext, tag = "") => `ttaro-gachi-${DATE.replace(/\./g, "")}${tag}.${ext}`;
 const extOf = type => type.includes("mp4") ? "mp4" : "webm";
@@ -1263,9 +1277,11 @@ let hqcP = null;
 function hqClips() {
   const media = D.media;
   if (hqcP) return;
-  D.hqProg = 0;
-  hqcP = load("clipmatte").then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); }))
-    .then(m => { if (m.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; videoJob(); } })
+  // only with WebGPU: on WASM (iOS 18, any WebGPU failure) it is ~160 MODNet runs = minutes of full CPU and an iPhone
+  // tab-kill risk (research/ios-audit.md #2); the fast matte stays
+  hqcP = load("segment").then(G => G.prefetchStill().then(ok => ok && G.stats.still.delegate === "webgpu"))
+    .then(gpu => gpu && (D.hqProg = 0, load("clipmatte")).then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); })))
+    .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; videoJob(); } })
     .catch(e => console.warn("[booth] hq clips", e))
     .finally(() => { D.hqProg = null; hqLine(); });
 }
@@ -1294,7 +1310,8 @@ async function videoJob() {
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       if (kind === "story") { D.wantStory = false; toast("스토리용 영상 완성! 버튼을 누르면 저장돼"); }
-      else if (D.autoVid) { D.wantVideo = false; D.autoVid = false; download(res.blob, fileName(extOf(res.type))); toast("움직이는 네컷도 저장했어!"); }
+      // iPhone saves through the share sheet, which needs a tap: there the button saves it
+      else if (D.autoVid && !env.isIOS) { D.wantVideo = false; D.autoVid = false; download([res.blob, fileName(extOf(res.type))]); toast("움직이는 네컷도 저장했어!"); }
       else { D.wantVideo = false; toast("움직이는 네컷 완성! 버튼을 누르면 저장돼"); }
     }
   } catch (e) {
@@ -1587,22 +1604,24 @@ const ACT = {
   hideHqNote: () => { $("hqNote").hidden = true; S.hqNoteOff = true; },
   savePhoto: async () => {
     if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
-    download(D.photo, fileName("jpg"));
+    download([D.photo, fileName("jpg")]);
   },
   // Round 6 (review r3 #6): the photo now, the moving strip as soon as it is made (one tap for both)
   ownReset: () => { if (mySide()) { D.own[mySide()] = null; ownCommit(); } },
   saveBoth: async () => {
-    await ACT.savePhoto();
-    if (D.video?.key === vkey()) return download(D.video.blob, fileName(extOf(D.video.type)));
+    if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
+    const photo = [D.photo, fileName("jpg")];
+    if (D.video?.key === vkey()) return download(photo, [D.video.blob, fileName(extOf(D.video.type))]);
+    download(photo);
     D.wantVideo = true; D.autoVid = true; setVid(); videoJob();
-    toast("사진 저장했어! 영상은 다 만들어지면 바로 저장돼", 3200);
+    toast(env.isIOS ? "사진 저장했어! 영상은 다 만들어지면 영상 버튼으로 저장해 줘" : "사진 저장했어! 영상은 다 만들어지면 바로 저장돼", 3200);
   },
   saveVideo: () => {
-    if (D.video?.key === vkey()) return download(D.video.blob, fileName(extOf(D.video.type)));
+    if (D.video?.key === vkey()) return download([D.video.blob, fileName(extOf(D.video.type))]);
     D.wantVideo = true; setVid(); videoJob();
   },
   saveStory: () => {
-    if (D.story?.key === vkey()) return download(D.story.blob, fileName(extOf(D.story.type), "-story"));
+    if (D.story?.key === vkey()) return download([D.story.blob, fileName(extOf(D.story.type), "-story")]);
     D.wantStory = true; setVid(); videoJob();
   },
   toChrome: () => openOut(decoUrl()),

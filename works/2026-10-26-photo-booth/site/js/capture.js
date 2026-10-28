@@ -34,6 +34,9 @@ function drawRaw(ctx, video, w, h, mirror) {
 }
 
 const toBlob = (c, type, q) => new Promise(res => c.toBlob(res, type, q));
+// iPhone caps the page's total canvas memory and blanks canvases past it (research/ios-audit.md #3): temporary
+// canvases give their pixels back as soon as they are done
+const free = (...cs) => cs.forEach(c => { if (c) c.width = c.height = 0; });
 
 // At the shutter: the raw still and the live-matte cut-out of the same frame (the fallback cut), as canvases.
 function stills(video, mirror) {
@@ -136,7 +139,7 @@ const warm = (async () => {
   const st = c.captureStream(30), R = recorder(st, 200_000);
   await Promise.race([R.started, sleep(6000)]);
   await R.stop().catch(() => {});
-  on = false; st.getTracks().forEach(t => t.stop());   // no idle canvas track left for the page
+  on = false; st.getTracks().forEach(t => t.stop()); free(c);   // no idle canvas track left for the page
 })().catch(() => {});
 
 // Over the cap: play the clip once into a smaller canvas at a lower bitrate (real time, ~2 s).
@@ -150,7 +153,7 @@ async function shrinkClip(blob) {
   const R = recorder(c.captureStream(30), 1_000_000);
   await Promise.race([new Promise(r => v.onended = r), sleep(5000)]);
   const out = await R.stop();
-  on = false; URL.revokeObjectURL(v.src);
+  on = false; URL.revokeObjectURL(v.src); free(c);
   return out.size ? out : blob;
 }
 
@@ -262,7 +265,8 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop, hold }, straig
   keepLargest(liveC);                // a passer-by or a second face in the frame is not cut out with the person
   const t2 = performance.now();
   let raw = await rawP, cut = await toBlob(liveC, "image/png");
-  if (raw.size > CAP || cut.size > CAP) { raw = await toBlob(small(rawC), "image/jpeg", 0.8); cut = await toBlob(small(liveC), "image/png"); }
+  if (raw.size > CAP || cut.size > CAP) { const sr = small(rawC), sl = small(liveC); raw = await toBlob(sr, "image/jpeg", 0.8); cut = await toBlob(sl, "image/png"); free(sr, sl); }
+  free(rawC, liveC);
   const t3 = performance.now();
   if (clip.size > CAP) clip = await shrinkClip(clip);
   stats.still.cuts[i] = { path: "live", clipStopMs: Math.round(t1 - t0), cutMs: Math.round(t2 - t1), encodeMs: Math.round(t3 - t2),
@@ -292,7 +296,7 @@ export async function hqCut(cut) {
   const bmp = await createImageBitmap(cut.raw);
   const c = Object.assign(document.createElement("canvas"), { width: bmp.width, height: bmp.height });
   c.getContext("2d").drawImage(bmp, 0, 0); bmp.close?.();
-  const out = await cutStill(c);
+  const out = await cutStill(c).finally(() => free(c));
   keepLargest(out);
   // a busy GPU (headless runs side by side, 10-28) gave an all-transparent cut with no error: the person vanished from
   // every cell (round 6 #7). Under 0.5 % alpha = no person found: throw, so the caller keeps the live cut.
@@ -300,8 +304,9 @@ export async function hqCut(cut) {
   px.drawImage(out, 0, 0, 64, 48);
   const d = px.getImageData(0, 0, 64, 48).data;
   let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 128) n++;
-  if (n < 0.005 * 64 * 48) throw new Error("still-empty");
-  const png = await toBlob(out, "image/png");
+  free(p);
+  if (n < 0.005 * 64 * 48) { free(out, out.pet); throw new Error("still-empty"); }
+  const png = await toBlob(out, "image/png"); free(out, out.pet);
   if (!png || png.size > CAP) throw new Error("still-size");
   return png;
 }

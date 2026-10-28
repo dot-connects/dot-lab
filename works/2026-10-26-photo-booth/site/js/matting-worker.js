@@ -3,9 +3,10 @@
 //               { id, img: ImageBitmap }                      -> { id, data: Uint8Array alpha, width, height, ms }
 // spec = { url, cache?: Cache Storage name, size: { short, div } | { w, h }, mean: [3], std: [3], out: "alpha"|"sigmoid"|"minmax"|"softmax2" }
 // Errors come back as { id, error }.
-import * as ort from "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/ort.webgpu.min.mjs";
-ort.env.wasm.wasmPaths = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
-ort.env.logLevel = "error";
+// onnxruntime is loaded with the first model: the WebGPU bundle only where WebGPU is (its wasm is 21.9 MB); no WebGPU
+// (iOS 18, older phones) gets the plain WASM bundle, 11 MB less (research/ios-audit.md #5)
+const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+let ort = null;
 
 let sess = null, spec = null, inName = "", outName = "", f16 = false;
 
@@ -47,6 +48,11 @@ async function load(m) {
   const { buf, cached, fetchMs } = await fetchModel(spec);
   const t1 = performance.now();
   let err;
+  if (!ort) {
+    const gpu = m.eps.includes("webgpu") && !!(self.navigator?.gpu && await navigator.gpu.requestAdapter().catch(() => null));
+    ort = await import(ORT + (gpu ? "ort.webgpu.min.mjs" : "ort.wasm.min.mjs"));
+    ort.env.wasm.wasmPaths = ORT; ort.env.logLevel = "error";
+  }
   for (const ep of m.eps) {
     if (ep === "webgpu" && !(self.navigator && navigator.gpu && await navigator.gpu.requestAdapter())) { err = "no webgpu adapter"; continue; }
     try {

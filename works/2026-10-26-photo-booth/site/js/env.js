@@ -6,9 +6,11 @@ export const app = /Instagram/.test(ua) ? "Instagram"
   : /KAKAOTALK/i.test(ua) ? "KakaoTalk"
   : /FBAN|FBAV/.test(ua) ? "Facebook"
   : /; wv\)/.test(ua) ? "앱"             // any other Android WebView (Round 6 #3)
+  : isIOSua() && !/Safari\//.test(ua) ? "앱"   // iOS WebViews (Naver, Band, Line...) carry no "wv"; Safari and Chrome (CriOS) carry Safari/
   : "브라우저";
+function isIOSua() { return /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1); }
 export const inApp = app !== "브라우저";
-export const isIOS = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
+export const isIOS = isIOSua();
 export const framed = (() => { try { return top !== self; } catch { return true; } })();
 
 // Measured on the operator's phone 10-26 (spike): both hand-offs open Chrome with the same URL.

@@ -17,6 +17,8 @@ const segP = (async () => {
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: DEEPLAB, delegate },
     runningMode: "IMAGE", outputConfidenceMasks: true, outputCategoryMask: false });
+  // iOS: MediaPipe's GPU delegate scrambles multiclass categories (mediapipe #6142, research/ios-audit.md #4): CPU there
+  if (/iPhone|iPad|iPod/.test(navigator.userAgent)) return await mk("CPU");
   try { return await mk("GPU"); } catch { return await mk("CPU"); }
 })();
 onmessage = async ({ data: { id, img } }) => {
