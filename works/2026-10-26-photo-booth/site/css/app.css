@@ -224,8 +224,9 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 /* B moves / resizes A (when A allowed it): a layer over the camera that takes the drag and the pinch */
 .mover { position: absolute; inset: 0; z-index: 1; cursor: grab; touch-action: none; }
 .mover:active { cursor: grabbing; }
+/* a white chip carries its own dark text: film's dark shoot screen sets --ink to white (Round 7 #6: white on white) */
 .hintchip { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); z-index: 3; width: max-content; max-width: calc(100% - 24px);
-  appearance: none; border: 2px solid #000; display: flex; align-items: center; gap: 8px; background: #fff; color: var(--ink); font: 700 15px/1.35 var(--body);
+  appearance: none; border: 2px solid #000; display: flex; align-items: center; gap: 8px; background: #fff; color: #0d0d0d; font: 700 15px/1.35 var(--body);
   padding: 6px 6px 6px 12px; cursor: pointer; text-align: left; animation: fade .25s ease-out; }
 .hintchip i { font-style: normal; width: 22px; height: 22px; flex: none; display: grid; place-items: center; background: var(--acc); color: #000; font-size: 12px; }
 .resetchip { position: absolute; top: 12px; right: 12px; z-index: 3; appearance: none; border: 2px solid #fff; background: #000; color: #fff; font: 700 15px var(--body);
