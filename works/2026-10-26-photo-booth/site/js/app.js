@@ -298,8 +298,9 @@ function bindMover() {
     m.addEventListener(t, e => { e.stopPropagation(); if (t !== "touchend") e.preventDefault(); if (scrollY < 1) scrollTo(0, 1); }, { passive: false });
 }
 function movableSub() {
-  $("movableSub").textContent = $("movable").checked ? "친구가 끌어서 옮기고 크기를 바꿀 수 있어"
-    : "꺼 두면 찍은 자리에 고정돼 (셀럽 프레임처럼)";
+  // review r3 #5: say who moves what, in plain words
+  $("movableSub").textContent = $("movable").checked ? "켜 두면 친구가 사진 속 나를 끌어서 옮기고 크기도 바꿀 수 있어"
+    : "꺼 두면 내가 찍힌 자리 그대로 들어가";
 }
 $("movable").addEventListener("change", movableSub);
 function syncMirror() {
@@ -574,6 +575,7 @@ function pickDone() {
   $("ghost").hidden = true; $("ghostBg").hidden = true; $("liveCut").hidden = true; $("viewPick").hidden = true;
   $("stage").classList.remove("viewb"); S.cutIdx = null;
   hqChip();
+  S.revQ = 1; RZ.reset();
   reviewLook();      // Round 5 보정
   review().catch(e => console.warn("[booth] review", e));
 }
@@ -586,7 +588,9 @@ function reshoot() {
 }
 
 // "맘에 들어?": the four cells composed like the strip (B: B's pick + its paired A in front).
-const reviewCell = i => cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null, S.beautyReady ? S.look : null);
+// S.revQ = 2 once the view was zoomed past 1.5x (RZ): cells and canvas at twice the pixels, so faces stay sharp
+const reviewCell = i => { const q = S.revQ || 1;
+  return cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null, S.beautyReady ? S.look : null, 552 * q, 382 * q); };
 function paintRev(c, i, alpha = 1) {
   const R = $("review"), x = R.getContext("2d"), { ox, oy, cw, ch, g, d } = S.revGeo;
   const px = ox + (i % 2) * (cw + g), py = oy + (i >> 1) * (ch + g);
@@ -597,7 +601,7 @@ async function review() {
   const seq = S.revSeq = (S.revSeq || 0) + 1;      // a newer 보정 pick wins
   const cells = await Promise.all([0, 1, 2, 3].map(reviewCell));
   if (!$("s-shoot").classList.contains("shooting-done") || seq !== S.revSeq) return;
-  const R = $("review"), st = $("stage"), d = devicePixelRatio || 1;
+  const R = $("review"), st = $("stage"), d = (devicePixelRatio || 1) * (S.revQ || 1);
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
   const x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
   S.revGeo = { ox: (R.width - 2 * cw - g) / 2, oy: (R.height - 2 * ch - g) / 2, cw, ch, g, d };
@@ -718,7 +722,78 @@ function buildLook() {
     D.look = { ...D.look, [s]: l }; buildLook();
     await applyLooks(); changed(["frame", "filter"]);
   }, name(s)));
+  buildOwn();
 }
+// ---- my own size / place per cell (Round 6, promise 1196: "my face came out too big") ------------------------------
+// D.own[me] = 4 x { x, y, scale } (fractions of the cell; compose `own`, same maths as B's move of A). Only this phone's
+// own side, kept on this device per link (localStorage), never uploaded. 보정 tab: a lone finger on a cell moves me, the
+// slider sizes me; the target is all 4 cells or one (touching another cell then switches to it).
+const OWN_LIM = { xy: 0.6, lo: 0.5, hi: 1.5 };
+const ownKey = () => `booth:own:${S.id}`;
+const mySide = () => { const r = me(); return r === "a" || r === "b" ? r : null; };
+const ownTargets = () => (D.ownCell >= 0 ? [D.ownCell] : [0, 1, 2, 3]);
+function ownList() { const s = mySide(); return D.own[s] ||= [0, 1, 2, 3].map(() => ({ x: 0, y: 0, scale: 1 })); }
+function ownLoad() {
+  const s = mySide(), num = v => Number.isFinite(v);
+  try {
+    const l = JSON.parse(localStorage.getItem(ownKey()));
+    if (s && Array.isArray(l) && l.length === 4 && l.every(p => num(p?.x) && num(p?.y) && num(p?.scale))) return { [s]: l };
+  } catch {}
+  return {};
+}
+let ownG = null, ownBusy = false, ownAgain = false;
+function ownWhen(e) {
+  if (D.tab !== "look" || !mySide() || !D.media) return false;
+  const R = $("previewIn").getBoundingClientRect(), k = R.width / 600, x = (e.clientX - R.left) / k, y = (e.clientY - R.top) / k;
+  const rs = rectsOf(D.frame), j = rs.findIndex(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
+  if (j < 0) return false;
+  if (D.ownCell >= 0 && D.ownCell !== j) { D.ownCell = j; buildOwn(); }
+  ownG = { w: rs[j].w * k, h: rs[j].h * k, start: JSON.stringify(ownList()) };
+  return true;
+}
+function ownMove(dx, dy) {
+  const l = ownList(), c = v => Math.min(OWN_LIM.xy, Math.max(-OWN_LIM.xy, v));
+  for (const j of ownTargets()) l[j] = { ...l[j], x: c(l[j].x + dx / ownG.w), y: c(l[j].y + dy / ownG.h) };
+  ownPaint();
+}
+function ownCancel() { D.own[mySide()] = JSON.parse(ownG.start); ownG = null; ownPaint(); }
+function ownEnd() { if (ownG && JSON.stringify(ownList()) !== ownG.start) ownCommit(); ownG = null; }
+async function ownPaint() {          // live redraw while dragging / sliding, one at a time
+  if (ownBusy) { ownAgain = true; return; }
+  ownBusy = true;
+  try { do { ownAgain = false; await render(); } while (ownAgain); } finally { ownBusy = false; }
+}
+function ownCommit() {
+  const s = mySide(), moved = ownList().some(isMoved);
+  try { localStorage.setItem(ownKey(), JSON.stringify(moved ? D.own[s] : null)); } catch {}
+  if (!moved) D.own[s] = null;
+  // my own room behind a moved me would show me twice: that background goes away (compose falls back per cell too)
+  if (moved !== !!D.ownMoved) {
+    D.ownMoved = moved;
+    const bg = D.bg; buildTiles();
+    if (D.bg !== bg) toast("내 배경에선 내가 두 번 보여서 배경을 바꿨어");
+  }
+  buildOwn(); changed(["frame", "filter"]);
+}
+function buildOwn() {
+  const s = mySide(), l = s && D.own?.[s];
+  $("ownBox").hidden = !s;
+  if (!s) return;
+  $("ownCells").replaceChildren(...[-1, 0, 1, 2, 3].map(j => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: j < 0 ? "4칸 모두" : `${j + 1}칸` });
+    b.setAttribute("aria-pressed", D.ownCell === j);
+    b.onclick = () => { D.ownCell = j; buildOwn(); };
+    return b;
+  }));
+  $("ownSize").value = Math.round((l?.[ownTargets()[0]]?.scale ?? 1) * 100);
+  $("ownReset").disabled = !l?.some(isMoved);
+}
+$("ownSize").addEventListener("input", e => {
+  const l = ownList(), v = Math.min(OWN_LIM.hi, Math.max(OWN_LIM.lo, e.target.value / 100));
+  for (const j of ownTargets()) l[j] = { ...l[j], scale: v };
+  ownPaint();
+});
+$("ownSize").addEventListener("change", () => ownCommit());
 
 // ---- upload -------------------------------------------------------------------------------------------------------
 function fileOf(name) {
@@ -853,8 +928,10 @@ async function del(box, yes) {
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
   wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
-  layout: null, pairs: null, outline: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
+  layout: null, pairs: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
+  outline: { color: "#ffffff", style: "solid", width: "normal" },   // review r3 #7: white solid normal by default (clean theme)
   stickers: [], sel: -1, pkey: null,     // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
+  own: null, ownCell: -1, ownMoved: false,   // Round 6: my own size / place per cell (app.js "my own size")
   theme: "clean", font: "clean" };       // result theme + caption font (frames.js THEMES / CAPTION_FONTS), per device
 // fallbacks until compose.js exports its own lists (CONTRACT Round 3 `outline`)
 const OL_COLORS = ["#ffffff", "#ff7eb6", "#ffd84d", "#8fd3ff", "#b79cff", "#2e2230"];
@@ -883,7 +960,8 @@ async function sideMedia(side) {
     return { raw, cut, clip: null };
   })) };
 }
-async function loadClips() {
+async function loadClips(onStep = () => {}) {
+  let n = 0;
   for (const side of ["a", "b"]) await Promise.all(D.media[side].cuts.map(async (p, k) => {
     const local = S.side === side && S.cuts.length === 4;
     const v = Object.assign(document.createElement("video"), { muted: true, playsInline: true, loop: true, preload: "auto" });
@@ -894,6 +972,7 @@ async function loadClips() {
       await new Promise((res, rej) => { v.onloadeddata = res; v.onerror = () => rej(new Error("clip")); setTimeout(() => rej(new Error("clip-timeout")), 10000); });
       p.clip = v;
     } catch (e) { console.warn("[booth] clip", side, k + 1, e); p.clip = null; }
+    onStep(++n);
   }));
   D.clips = true;
 }
@@ -915,6 +994,8 @@ async function doneScreen(note = "") {
     D.look ||= Object.fromEntries(await Promise.all(["a", "b"].map(async s =>
       [s, S.side === s && S.cuts.length === 4 ? { ...S.look } : await fetchLook(s)])));
     await applyLooks();
+    D.own ||= { a: null, b: null, ...ownLoad() };
+    D.ownMoved = !!D.own[mySide()]?.some(isMoved);
   } catch (e) {
     console.warn("[booth] done", e);
     return msg({ title: "앗, 사진을 못 불러왔어", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: () => doneScreen(note) });
@@ -963,8 +1044,9 @@ function bgOk(id) {
   if (C.bgAllowed) { const r = C.bgAllowed(D.layout); return Array.isArray(r) ? r.includes(id) : typeof r === "boolean" ? id !== "a" || r : r?.[id] ?? true; }
   return !(id === "a" && D.layout && isMoved(D.layout.a));
 }
+const bgOkOwn = id => bgOk(id) && !D.own?.[id]?.some(isMoved);
 function buildTiles() {
-  const bgs = C.BACKGROUNDS.filter(b => bgOk(b.id)), frames = FR.FRAMES, filters = FI.FILTERS;
+  const bgs = C.BACKGROUNDS.filter(b => bgOkOwn(b.id)), frames = FR.FRAMES, filters = FI.FILTERS;
   if (D.bg && !bgs.includes(D.bg)) D.bg = null;
   // Round 6: my pick-screen background (this page, or carried in the hand-off link) is the starting one
   const pb = S.pickBg || Q.get("bg");
@@ -1037,7 +1119,10 @@ function buildOutline() {
   };
   const none = pill(!D.outline, () => { D.outline = null; pick(); }, "none");
   none.textContent = "없음";
-  $("olColors").replaceChildren(none, ...colors.map(c => {
+  // review r3 #7: no black glitter (read as noise on faces); picking 반짝이 on black turns the colour white
+  const dark = hex => parseInt(hex.slice(1), 16) < 0x444444;
+  if (D.ol.style === "glitter" && dark(D.ol.color)) { D.ol.color = "#ffffff"; if (D.outline) D.outline = { ...D.ol }; }
+  $("olColors").replaceChildren(none, ...colors.filter(c => !(D.ol.style === "glitter" && dark(c.color))).map(c => {
     const b = pill(D.outline?.color === c.color, () => { D.ol.color = c.color; D.outline = { ...D.ol }; pick(); }, "sw");
     b.style.setProperty("--c", c.color); b.setAttribute("aria-label", c.label || c.color); return b;
   }));
@@ -1062,9 +1147,9 @@ function later() {          // the saved photo soon, the moving strip after the 
   if (D.wantVideo || D.wantStory) vT = setTimeout(videoJob, VIDEO_IDLE);
 }
 const opts = (o = {}) => ({ a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
-  caption: D.caption.trim(), font: D.font, layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
+  caption: D.caption.trim(), font: D.font, layout: D.layout, pairs: D.pairs, own: D.own, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
   mattes: D.mattes, ...o });
-const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers),
+const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers), JSON.stringify(D.own),
   D.mattes ? "hq" : "", D.theme, D.font].join("|");
 // the strip as an image: compose paints a canvas (cells cached), no JPEG round trip; stickers are not in it (they are
 // the DOM layer on top while choosing) but are in D.photo and the video
@@ -1127,54 +1212,68 @@ const fileName = (ext, tag = "") => `ttaro-gachi-${DATE.replace(/\./g, "")}${tag
 const extOf = type => type.includes("mp4") ? "mp4" : "webm";
 
 // Moving strip + story cut: made only when their button is tapped (Round 6 #12), then the button saves it.
+// p: 0..1 = the render's real progress (compose counts opening the clips too), a string = the step before it
+// (review r3 #5: the button sat at "0%" through the clip loading and the 보정 warm-up)
 const LINES = ["영상 만드는 중", "프레임 끼우는 중", "리본 묶는 중", "반짝이 뿌리는 중"];
 function setVid(which = "video", p = null) {
   for (const [id, kind, ready, idle, wait] of [["vidBtn", "video", "움직이는 네컷 저장", "움직이는 네컷 다운로드", "움직이는 네컷 기다리는 중"],
     ["storyBtn", "story", "스토리 영상 저장", "스토리용 영상", "스토리 영상 기다리는 중"]]) {
     const b = $(id), span = b.querySelector("span"), cur = D[kind]?.key === vkey();
-    const making = which === kind && p != null;
-    b.classList.toggle("rendering", making); b.style.setProperty("--p", making ? Math.round(p * 100) : 0);
-    if (making) { span.textContent = `${LINES[Math.floor(performance.now() / 2000) % LINES.length]} ${Math.round(p * 100)}%`; b.disabled = true; continue; }
+    const making = which === kind && p != null, pct = typeof p === "number" ? Math.max(1, Math.round(p * 100)) : 0;
+    b.classList.toggle("rendering", making); b.style.setProperty("--p", making ? pct : 0);
+    if (making) { span.textContent = typeof p === "string" ? p : `${LINES[Math.floor(performance.now() / 2000) % LINES.length]} ${pct}%`; b.disabled = true; continue; }
     if (cur) { span.textContent = ready; b.disabled = false; continue; }
     const want = kind === "video" ? D.wantVideo : D.wantStory;
     span.textContent = want ? wait : idle; b.disabled = !!want;
   }
+  hqLine();
 }
 // Round 5: the HQ moving cut (clipmatte.js, MODNet on ~10 fps of every clip) runs once in the background after the
 // clips load; when it lands the video key changes and the strip video is made again with it (fast matte until then).
+// Round 6: its progress shows under the video buttons ("n/4 다듬는 중", 1-3 min on a phone) instead of a silent wait.
 let hqcP = null;
 function hqClips() {
   const media = D.media;
-  hqcP ||= load("clipmatte").then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip))))
+  if (hqcP) return;
+  D.hqProg = 0;
+  hqcP = load("clipmatte").then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); }))
     .then(m => { if (m.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; videoJob(); } })
-    .catch(e => console.warn("[booth] hq clips", e));
+    .catch(e => console.warn("[booth] hq clips", e))
+    .finally(() => { D.hqProg = null; hqLine(); });
+}
+function hqLine() {
+  const on = D.hqProg != null && !D.noVideo;
+  $("vidHq").hidden = !on;
+  if (on) $("vidHq").textContent = `움직이는 누끼 ${Math.min(4, Math.floor(D.hqProg * 4))}/4 다듬는 중 · 끝나면 영상이 더 깔끔해져`;
 }
 async function videoJob() {
   if (D.vjob || D.noVideo) return;
   D.vjob = true;
   try {
-    if (!D.clips) await loadClips();
+    if (!D.clips) await loadClips(n => setVid(D.wantVideo ? "video" : "story", `영상 준비 중 ${n}/8`));
     hqClips();
     for (;;) {
       const key = vkey();
       const kind = D.wantVideo && D.video?.key !== key ? "video" : D.wantStory && D.story?.key !== key ? "story" : null;
       if (!kind) break;
-      setVid(kind, 0);
+      setVid(kind, "보정 준비 중");
       await D.fxP;                                  // Round 5: the 보정 fx for this look
       if (key !== vkey()) continue;
+      setVid(kind, 0);
       D.vac = new AbortController();      // deco R5: a change stops the recording (later()); it restarts after VIDEO_IDLE
       const res = await C.recordMovingStrip(opts({ format: kind === "story" ? "story" : "strip", signal: D.vac.signal,
         onProgress: p => key === vkey() && setVid(kind, p) }));
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       if (kind === "story") { D.wantStory = false; toast("스토리용 영상 완성! 버튼을 누르면 저장돼"); }
+      else if (D.autoVid) { D.wantVideo = false; D.autoVid = false; download(res.blob, fileName(extOf(res.type))); toast("움직이는 네컷도 저장했어!"); }
       else { D.wantVideo = false; toast("움직이는 네컷 완성! 버튼을 누르면 저장돼"); }
     }
   } catch (e) {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e);
     D.noVideo = true;
-    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true;
+    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("saveBoth").hidden = true;
     toast("이 폰에서는 영상 저장이 안 돼요. 사진으로 저장해 줘", 3500);
   } finally { D.vjob = false; setVid(); }
 }
@@ -1251,11 +1350,15 @@ function paintStk() {
     return el;
   }));
 }
+// Round 6 #11 rule: a touch that lands on a sticker (or its handle) is the sticker's, and a second finger then sizes and
+// turns it; a touch anywhere else is the view's (DZ): two fingers zoom / pan, a lone tap lets go of the selection.
+let stkOwns = () => false;
 function bindStk() {
   const L = $("stk"), pts = new Map();
-  let g = null, moved = false, miss = false;
+  let g = null, moved = false;
+  stkOwns = id => pts.has(id);
   const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const k = () => 600 / L.clientWidth;          // strip px per CSS px
+  const k = () => 600 / L.getBoundingClientRect().width;          // strip px per screen px (the view may be zoomed)
   const begin = handle => {
     const s = D.stickers[D.sel];
     g = s && pts.size ? { s0: { ...s }, p0: [...pts.values()].map(p => ({ ...p })), handle: handle ?? g?.handle ?? false } : null;
@@ -1276,19 +1379,15 @@ function bindStk() {
     return null;
   };
   L.addEventListener("pointerdown", e => {
-    if (D.tab !== "sticker" || e.pointerType === "mouse" && e.button) return;
+    if (D.tab !== "sticker" || e.pointerType === "mouse" && e.button || DZ.busy()) return;
     const h = pts.size ? null : hit(e.clientX, e.clientY);
+    if (!pts.size && h == null) return;          // off every sticker: the view's touch
     if (h === "x") {           // delete on press: touchmove is cancelled here, so no click is relied on
       e.preventDefault(); D.stickers.splice(D.sel, 1); D.sel = -1; paintStk(); later(); return;
     }
-    if (!pts.size) {
-      miss = h == null;          // off every sticker: a second finger still pinches the selected one; a lone tap deselects
-      if (miss && D.sel < 0) return;
-      if (!miss && h !== "h" && h !== D.sel) { D.sel = h; paintStk(); }
-    }
+    if (!pts.size && h !== "h" && h !== D.sel) { D.sel = h; paintStk(); }
     L.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
     begin(pts.size === 1 ? h === "h" : false);
-    if (miss && pts.size === 1) g = null;
   });
   // the ✕ is not a button (a button next to the sticker is what touch adjustment snapped to); keyboard: Delete
   addEventListener("keydown", e => {
@@ -1320,11 +1419,9 @@ function bindStk() {
   });
   const end = e => {
     if (!pts.delete(e.pointerId)) return;
-    if (pts.size) { begin(false); if (miss && pts.size === 1) g = null; return; }
+    if (pts.size) return begin(false);
     g = null;
     if (moved) { moved = false; later(); }
-    else if (miss) { D.sel = -1; paintStk(); }   // a tap on the photo: let go of the selection
-    miss = false;
   };
   L.addEventListener("pointerup", end); L.addEventListener("pointercancel", end);
   // in-app browsers scroll / zoom the page under a finger anyway unless touchmove is cancelled (README touch fixes)
@@ -1338,69 +1435,88 @@ function bindStk() {
 }
 bindStk();
 
-// ---- zoom viewer (Round 5 deco): tap the strip -> full screen, pinch / drag / double-tap 2x, ✕ or swipe down ------
-const Z = { s: 1, x: 0, y: 0 };
-async function openZoom() {
-  if (D.tab === "sticker" || !$("making").hidden || !D.media) return;
-  const bl = D.pkey === vkey() && D.photo ? D.photo : await C.drawStrip(opts());
-  const el = new Image(); el.alt = "완성된 네컷 크게 보기"; el.src = URL.createObjectURL(bl);
-  el.onload = () => setTimeout(() => URL.revokeObjectURL(el.src), 1000);
-  Object.assign(Z, { s: 1, x: 0, y: 0 }); zoomApply();
-  $("zoomStage").replaceChildren(el);
-  $("zoom").hidden = false; $("zoom").style.opacity = 1;
-  $("zoom").querySelector(".zoomx").focus({ preventScroll: true });
-}
-function closeZoom() {
-  $("zoom").hidden = true; $("zoomStage").replaceChildren();
-}
-function zoomApply(fade = 1) {
-  $("zoomStage").style.transform = `translate(${Z.x}px, ${Z.y}px) scale(${Z.s})`;
-  $("zoom").style.opacity = fade;
-}
-function bindZoom() {
-  const box = $("zoom"), pts = new Map();
-  let g = null, lastTap = { t: 0, x: 0, y: 0 }, down = null;
-  const rel = p => { const r = box.getBoundingClientRect(); return { x: p.x - r.left - r.width / 2, y: p.y - r.top - r.height / 2 }; };
-  const mid = () => { const p = [...pts.values()]; return p.length > 1
+// ---- inline pinch zoom (Round 6 #11): on the photo itself, the controls under it never move ----------------------
+// Two fingers zoom 1x-5x about their midpoint and pan; one finger pans once zoomed (unless `one` takes it); a double tap
+// resets (or 2x at the tap). The view is clamped to its box; the shift is kept as a fraction of the box, so a resize
+// (the sticker tab's taller preview) keeps the same view. `skip(e)`: a touch something else owns (a sticker).
+// `one`: { when(e), move(dx, dy), cancel(), end() } takes a lone finger instead (own person drag); a second finger
+// cancels it and becomes a view pinch. Pointer events + cancelled touches (README in-app fixes): CDP, real touch, mouse.
+function zoomer({ box, host = box, inner, chip, skip = () => false, one = null, onTap = () => {}, onEnd = () => {}, stop = false }) {
+  const z = { s: 1, fx: 0, fy: 0 }, pts = new Map();
+  let g = null, down = null, lastTap = { t: 0, x: 0, y: 0 }, mode = null;
+  const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+  const apply = () => {
+    const W = box.clientWidth, H = box.clientHeight;
+    if (z.s < 1.02) Object.assign(z, { s: 1, fx: 0, fy: 0 });
+    z.fx = cl(z.fx, 1 - z.s, 0); z.fy = cl(z.fy, 1 - z.s, 0);
+    inner.style.transform = z.s > 1 ? `translate(${z.fx * W}px, ${z.fy * H}px) scale(${z.s})` : "";
+    inner.style.setProperty("--zs", z.s);
+    chip.hidden = z.s <= 1; chip.textContent = `${z.s.toFixed(1)}×`;
+  };
+  const rel = p => { const r = box.getBoundingClientRect(); return { x: p.x - r.left, y: p.y - r.top }; };
+  const mid = () => { const p = [...pts.values()].map(rel); return p.length > 1
     ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) } : { ...p[0], d: 0 }; };
-  const begin = () => { g = pts.size ? { z: { ...Z }, at: mid() } : null; };
-  box.addEventListener("pointerdown", e => {
-    if (e.target.closest(".zoomx")) return;
-    box.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY }); begin();
-    if (pts.size === 1) down = { x: e.clientX, y: e.clientY, t: performance.now() };
+  const now = () => ({ s: z.s, tx: z.fx * box.clientWidth, ty: z.fy * box.clientHeight });
+  const begin = () => { g = pts.size ? { ...now(), m: mid() } : null; };
+  // zoom to s keeping the content point that was under box point m0 (view g0) under box point m1
+  const to = (s, m0, m1, g0 = now()) => {
+    const cx = (m0.x - g0.tx) / g0.s, cy = (m0.y - g0.ty) / g0.s;
+    z.s = cl(s, 1, 5); z.fx = (m1.x - cx * z.s) / box.clientWidth; z.fy = (m1.y - cy * z.s) / box.clientHeight;
+  };
+  host.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button || pts.size >= 2 || skip(e)) return;
+    host.setPointerCapture(e.pointerId); pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (pts.size === 1) { down = { x: e.clientX, y: e.clientY, t: performance.now() }; mode = one?.when(e) ? "one" : "view"; }
+    else { down = null; if (mode === "one") one.cancel(); mode = "view"; }
+    begin();
   });
-  box.addEventListener("pointermove", e => {
+  host.addEventListener("pointermove", e => {
     if (!g || !pts.has(e.pointerId)) return;
+    const p0 = pts.get(e.pointerId);
     pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const now = mid(), k = g.at.d && now.d ? now.d / g.at.d : 1, s = Math.min(5, Math.max(1, g.z.s * k)), kk = s / g.z.s;
-    const p0 = rel(g.at), p1 = rel(now);
-    // keep the point under the fingers under the fingers: t = p1 - (p0 - t0) * k
-    Z.s = s; Z.x = p1.x - (p0.x - g.z.x) * kk; Z.y = p1.y - (p0.y - g.z.y) * kk;
-    if (g.z.s <= 1.01 && pts.size === 1) { Z.x = 0; Z.y = Math.max(0, p1.y - p0.y); }   // at 1x a drag only pulls down
-    zoomApply(g.z.s <= 1.01 && pts.size === 1 ? 1 - Math.min(0.6, Z.y / 400) : 1);
+    if (mode === "one") return one.move(e.clientX - p0.x, e.clientY - p0.y);
+    if (pts.size === 1 && g.s <= 1) return;
+    const m = mid();
+    to(pts.size > 1 && g.m.d ? g.s * m.d / g.m.d : g.s, g.m, m, g);
+    apply();
   });
   const end = e => {
-    const at = pts.get(e.pointerId);              // last move position (a touchend may carry no coordinates)
+    const at = pts.get(e.pointerId);
     if (!pts.delete(e.pointerId)) return;
     if (pts.size) return begin();
-    const z0 = g?.z; g = null;
-    if (z0 && z0.s <= 1.01 && Z.y > 110) return closeZoom();                       // swiped down
+    g = null;
     const t = performance.now(), quick = down && t - down.t < 300 && Math.hypot(at.x - down.x, at.y - down.y) < 12;
-    if (quick && t - lastTap.t < 350 && Math.hypot(at.x - lastTap.x, at.y - lastTap.y) < 30) {   // double tap
-      const p = rel(at);
-      if (Z.s > 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 }); else Object.assign(Z, { s: 2, x: -p.x, y: -p.y });
+    if (mode === "one") one.end();
+    if (quick && t - lastTap.t < 350 && Math.hypot(at.x - lastTap.x, at.y - lastTap.y) < 30) {     // double tap
+      if (z.s > 1) Object.assign(z, { s: 1, fx: 0, fy: 0 }); else { const p = rel(at); to(2, p, p); }
       lastTap.t = 0;
-    } else if (quick) lastTap = { t, x: at.x, y: at.y };
-    if (Z.s <= 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 });
-    zoomApply();
+    } else if (quick) { lastTap = { t, x: at.x, y: at.y }; onTap(at); }
+    mode = null; apply(); onEnd(z);
   };
-  box.addEventListener("pointerup", end); box.addEventListener("pointercancel", end);
-  box.addEventListener("touchmove", e => e.preventDefault(), { passive: false });
-  box.addEventListener("wheel", e => { e.preventDefault(); Z.s = Math.min(5, Math.max(1, Z.s * Math.exp(-e.deltaY / 400))); if (Z.s <= 1.01) Object.assign(Z, { s: 1, x: 0, y: 0 }); zoomApply(); }, { passive: false });
-  addEventListener("keydown", e => { if (e.key === "Escape" && !box.hidden) closeZoom(); });
-  $("preview").addEventListener("click", () => openZoom().catch(e => console.warn("[booth] zoom", e)));
+  host.addEventListener("pointerup", end); host.addEventListener("pointercancel", end);
+  for (const t of ["touchstart", "touchmove", "touchend"])
+    host.addEventListener(t, e => {
+      if (stop) e.stopPropagation();          // the shoot stage's camera pinch / tap-to-focus stay out of it
+      if (t !== "touchend" && !e.target.closest("button")) e.preventDefault();
+      if (scrollY < 1) scrollTo(0, 1);
+    }, { passive: false });
+  host.addEventListener("wheel", e => {         // a computer: the wheel zooms about the pointer
+    if (e.defaultPrevented) return;            // the sticker layer's wheel resized a sticker
+    e.preventDefault(); const p = rel({ x: e.clientX, y: e.clientY });
+    to(z.s * Math.exp(-e.deltaY / 400), p, p); apply(); clearTimeout(host.zT); host.zT = setTimeout(() => onEnd(z), 300);
+  }, { passive: false });
+  new ResizeObserver(apply).observe(box);
+  return { z, apply, busy: () => pts.size > 0, reset: () => { Object.assign(z, { s: 1, fx: 0, fy: 0 }); apply(); } };
 }
-bindZoom();
+// the decorate preview: stickers own their touches on the sticker tab; the 보정 tab's lone finger moves my own person
+const DZ = zoomer({ box: $("preview"), inner: $("previewIn"), chip: $("zoomChip"),
+  skip: e => D.tab === "sticker" && stkOwns(e.pointerId),
+  one: { when: e => ownWhen(e), move: (dx, dy) => ownMove(dx, dy), cancel: () => ownCancel(), end: () => ownEnd() },
+  onTap: () => { if (D.tab === "sticker" && D.sel >= 0) { D.sel = -1; paintStk(); } },
+  onEnd: z => { $("preview").querySelector(".zoomtag").style.display = z.s > 1 ? "none" : ""; } });
+// the retouch review (A and B before upload): sharper cells once zoomed in
+const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip: $("revZoom"), stop: true,
+  onEnd: z => { if (z.s > 1.5 && S.revQ !== 2) { S.revQ = 2; review().catch(e => console.warn("[booth] review", e)); } } });
 
 const ACT = {
   startA: () => startShoot("a"),
@@ -1440,7 +1556,14 @@ const ACT = {
     if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
     download(D.photo, fileName("jpg"));
   },
-  zoomClose: () => closeZoom(),
+  // Round 6 (review r3 #6): the photo now, the moving strip as soon as it is made (one tap for both)
+  ownReset: () => { if (mySide()) { D.own[mySide()] = null; ownCommit(); } },
+  saveBoth: async () => {
+    await ACT.savePhoto();
+    if (D.video?.key === vkey()) return download(D.video.blob, fileName(extOf(D.video.type)));
+    D.wantVideo = true; D.autoVid = true; setVid(); videoJob();
+    toast("사진 저장했어! 영상은 다 만들어지면 바로 저장돼", 3200);
+  },
   saveVideo: () => {
     if (D.video?.key === vkey()) return download(D.video.blob, fileName(extOf(D.video.type)));
     D.wantVideo = true; setVid(); videoJob();

@@ -460,13 +460,18 @@ export const bgAllowed = layout => BACKGROUNDS.map(b => b.id).filter(id => id !=
 // allowed). pairs.json comes from the other phone: anything but 4 ints 0..3 = identity.
 const pairsOf = p => (Array.isArray(p) && p.length === 4 && p.every(k => Number.isInteger(k) && k >= 0 && k <= 3) ? p : [0, 1, 2, 3]);
 
-export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null }) {
+// Round 6: own = { a: [p x4] | null, b: [...] }, each side's own size / place per cell (same maths as layout; A's adds
+// to B's move of A). A person whose own room is the background and who moved there would show twice: that cell falls
+// back to the first background whose person stayed put (or a preset).
+const ownOf = (own, side, i) => layoutOf({ a: own?.[side]?.[i] });
+const join = (p, q) => (!p ? q : !q ? p : { x: p.x + q.x, y: p.y + q.y, scale: p.scale * q.scale });
+export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null, own = null }) {
   const { w, h } = rect, aspect = w / h, ia = pairsOf(pairs)[i];   // A's cut for this cell; B's is cut i
   const at = p => (p === a ? ia : i);
   const back = canvas("back", w, h), bx = back.getContext("2d");
-  const lay = layoutOf(layout), ol = outlineOf(outline);
+  const lay = layoutOf(layout), ol = outlineOf(outline), place = { a: join(lay, ownOf(own, "a", i)), b: ownOf(own, "b", i) };
   let B = typeof bg === "string" ? BACKGROUNDS.find(x => x.id === bg) : bg;
-  if (B.id === "a" && lay) B = BACKGROUNDS[1];
+  if (!B.draw && place[B.id]) B = BACKGROUNDS.find(x => x.draw || !place[x.id]);
   // draw order background -> B -> A: A is always in front. The person who is the background gets their cut drawn
   // again on top of it (A so that B never covers A; B only to carry the outline).
   const self = B.draw ? null : B.id === "a" ? a : b;
@@ -480,12 +485,12 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
   }
   for (const p of people) {
     const s = sources(p, at(p), t, i), r = cellCrop(s.cutW, s.cutH, aspect), k = w / r.sw;
-    const Lp = p === a ? lay : null, sc = Lp ? Lp.scale : 1;
+    const Lp = place[p === a ? "a" : "b"], sc = Lp ? Lp.scale : 1;
     const cut = s.cut({ gain: gains[p === a ? 0 : 1], tint, time: t || 0, outline: ol && { ...ol, px: ol.px / (k * sc), cs: k * sc } });
     // source px -> cell px: the crop, then (A only) scale about the anchor and shift
     let m = k, ex = -r.sx * k, ey = -r.sy * k;
     if (Lp) {
-      const an = layoutAnchor(p.cuts[ia].cut, aspect), ax = an.x * w, ay = an.y * h;
+      const an = layoutAnchor(p.cuts[at(p)].cut, aspect), ax = an.x * w, ay = an.y * h;
       m = k * sc; ex = ax * (1 - sc) + sc * ex + Lp.x * w; ey = ay * (1 - sc) + sc * ey + Lp.y * h;
     }
     const P = cut.pad || 0, per = canvas("per", w, h), px = per.getContext("2d");
@@ -542,26 +547,43 @@ async function prepareNow({ frame, date, caption = "", font = null }) {
 }
 // Still cells are cached (Round 5, decorate speed): the composite by what it depends on (people, bg, layout, outline,
 // pairs, size) and the filtered cell by that + filter, so a frame change recomposites nothing and a filter change only
-// re-runs the filter. Video frames (t set) never touch the caches.
+// re-runs the filter. Video frames (t set) never touch the caches. Round 6 #5: tiles (scale < 1) keep their own small
+// copies (miniCache), so the frame tiles' 7 cell sizes no longer push the photo's cells out (a theme tap went 0.10-0.34 s).
+// Memory: cellCache 16 + filtCache 16 full cells (552x382 RGBA, 0.84 MB each) ~ 27 MB; miniCache 160 tiles (~40 KB each:
+// 7 cell sizes x 4 + 6 filter tiles = 34 per look, three themes ~ 100) ~ 6 MB.
 const ids = new WeakMap();
 let nid = 0;
 const oid = o => (o == null ? "-" : typeof o !== "object" ? String(o) : ids.get(o) ?? (ids.set(o, ++nid), nid));
 const lru = (m, max) => { while (m.size > max) m.delete(m.keys().next().value); };
-const cellCache = new Map(), filtCache = new Map();
-function cellKey(i, r, { a, b, bg, layout, outline, pairs }) {
+const cellCache = new Map(), filtCache = new Map(), miniCache = new Map();
+function cellKey(i, r, { a, b, bg, layout, outline, pairs, own }) {
   const ia = pairsOf(pairs)[i], pa = a.cuts[ia], pb = b.cuts[i];
-  return [i, r.w, r.h, typeof bg === "string" ? bg : bg?.id, JSON.stringify(layoutOf(layout)), JSON.stringify(outline || null), ia,
+  return [i, r.w, r.h, typeof bg === "string" ? bg : bg?.id, JSON.stringify(layoutOf(layout)), JSON.stringify(outline || null), ia, JSON.stringify([ownOf(own, "a", i), ownOf(own, "b", i)]),
     oid(a), oid(b), oid(pa), oid(pb), oid(pa.raw), oid(pa.cut), oid(pb.raw), oid(pb.cut)].join("|");
 }
-function stillCell(r, i, o) {
+function stillCell(r, i, o, scale = 1) {
   const key = cellKey(i, r, o), fk = key + "|" + o.filter;
+  if (scale < 1) {
+    const mk = fk + "|" + scale.toFixed(4);
+    let m = miniCache.get(mk);
+    if (m) miniCache.delete(mk);
+    else {
+      let cell = cellCache.get(key);
+      if (!cell) { cell = canvas("mini", r.w, r.h); drawCell(cell.getContext("2d"), { x: 0, y: 0, w: r.w, h: r.h }, i, { ...o, t: null }); }
+      const f = filt.apply(cell, o.filter, 1, i + 1);
+      m = Object.assign(document.createElement("canvas"), { width: Math.max(1, Math.round(r.w * scale)), height: Math.max(1, Math.round(r.h * scale)) });
+      m.getContext("2d").drawImage(f, 0, 0, m.width, m.height);
+    }
+    miniCache.set(mk, m); lru(miniCache, 160);
+    return m;
+  }
   let out = filtCache.get(fk);
   if (out) { filtCache.delete(fk); filtCache.set(fk, out); return out; }     // most recent last
   let cell = cellCache.get(key);
   if (!cell) {
     cell = Object.assign(document.createElement("canvas"), { width: r.w, height: r.h });
     drawCell(cell.getContext("2d"), { x: 0, y: 0, w: r.w, h: r.h }, i, { ...o, t: null });
-    cellCache.set(key, cell); lru(cellCache, 12);
+    cellCache.set(key, cell); lru(cellCache, 16);
   } else { cellCache.delete(key); cellCache.set(key, cell); }
   const f = filt.apply(cell, o.filter, 1, i + 1);
   if (f === cell) return cell;
@@ -570,19 +592,19 @@ function stillCell(r, i, o) {
   filtCache.set(fk, out); lru(filtCache, 16);
   return out;
 }
-function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null, pairs = null, stickers = null }, t) {
+function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline = null, pairs = null, own = null, stickers = null }, t, scale = 1) {
   filt ||= createFilter();
   ctx.drawImage(st.base, 0, 0);
   st.rects.forEach((r, i) => {
     let out;
-    if (t == null) out = stillCell(r, i, { a, b, bg, filter, layout, outline, pairs });
+    if (t == null) out = stillCell(r, i, { a, b, bg, filter, layout, outline, pairs, own }, scale);
     else {
       const cell = canvas("cell", r.w, r.h), cx = cell.getContext("2d");
-      drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t, layout, outline, pairs });
+      drawCell(cx, { x: 0, y: 0, w: r.w, h: r.h }, i, { a, b, bg, t, layout, outline, pairs, own });
       out = filt.apply(cell, filter, 1, i + 1);
     }
     ctx.save(); ctx.beginPath(); ctx.roundRect(r.x, r.y, r.w, r.h, st.F.radius || 0); ctx.clip();
-    ctx.drawImage(out, r.x, r.y); ctx.restore();
+    ctx.drawImage(out, r.x, r.y, r.w, r.h); ctx.restore();
   });
   if (st.over) ctx.drawImage(st.over, 0, 0);
   if (stickers?.length) drawStickers(ctx, stickers);
@@ -598,7 +620,7 @@ export async function stripCanvas(o, { scale = 1, cell = null, into = null } = {
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const x = cv.getContext("2d");
   x.setTransform(scale, 0, 0, scale, -r.x * scale, -r.y * scale);
-  paint(x, st, o, null);
+  paint(x, st, o, null, scale);
   x.setTransform(1, 0, 0, 1, 0, 0);
   return cv;
 }
@@ -640,7 +662,7 @@ const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells
 // frame's clip time (repeats on every loop), video = the clip element (a stable cache key across recordings).
 // signal (AbortSignal): an abort stops the render within a frame and rejects with DOMException "AbortError".
 // mattes (clipmatte.js clipMattes): Map<clip video, HQ moving cut>; frame-exact path only, other clips keep their matte.
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, font = null, layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, font = null, layout = null, outline = null, pairs = null, own = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
   // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
   const P = pairsOf(pairs), vids = [], phase = [], fxs = [];
@@ -652,7 +674,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
   if (stickers?.length) await stickersReady(stickers);
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
-  const o = { a, b, bg, filter, layout, outline, pairs, stickers, signal, mattes };
+  const o = { a, b, bg, filter, layout, outline, pairs, own, stickers, signal, mattes };
   // frame-exact first: output frame n is painted for t = n/30 s and encoded with that timestamp, so a busy phone only
   // renders slower; the real-time MediaRecorder path drops frames under load (10-27 phone: the saved strip stuttered)
   const cfg = await encoderConfig(cv.width, cv.height);
@@ -804,6 +826,7 @@ async function clipSource(v, phase, fx, hq) {
   return src;
 }
 
+const PREP = 0.1;     // share of the progress spent opening the clips (a phone sat at "0%" through it, review r3 #5)
 async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgress) {
   const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
   const t0 = performance.now(), ctx = cv.getContext("2d");
@@ -820,7 +843,7 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
     for (let n = 0; n < vids.length; n++) {
       // a WebM clip -> the real-time path for all; an MP4 we cannot read or decode (e.g. a header with no frames, which
       // a <video> still "loads") -> that cell's still
-      try { srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n]))); }
+      try { srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n]))); onProgress?.(PREP * (n + 1) / vids.length); }
       catch (e) { if (e?.notMp4 || e?.name === "AbortError") throw e; badClips.add(vids[n]); srcs.push(null); console.warn("[compose] clip skipped", e); }
     }
     const N = SECONDS * FPS;
@@ -835,7 +858,7 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
       const f = new VideoFrame(cv, { timestamp: Math.round(n * 1e6 / FPS), duration: Math.round(1e6 / FPS) });
       enc.encode(f, { keyFrame: n % (2 * FPS) === 0 }); f.close();
       while (enc.encodeQueueSize > 3 && !failed) await new Promise(r => setTimeout(r, 4));   // a few frames in flight, never 180
-      onProgress?.(n / N);
+      onProgress?.(PREP + (1 - PREP) * n / N);
     }
     await enc.flush();
     if (failed) throw failed;
