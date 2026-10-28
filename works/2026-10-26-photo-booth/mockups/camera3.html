@@ -37,6 +37,7 @@ figcaption .m{display:block;color:#4a4652;font-family:'Space Grotesk','Noto Sans
 /* ---------------- phone frame ---------------- */
 .fr{width:430px;height:932px;position:relative;overflow:hidden;border-radius:26px;box-shadow:0 0 0 1px #0000001f,0 10px 28px #00000022}
 .fr.land{width:932px;height:430px;transform:translateX(430px) rotate(90deg);transform-origin:0 0}
+.fr{word-break:keep-all}
 .fr *{position:absolute}
 .fr .fl{position:static}
 .ab{position:absolute}
@@ -125,12 +126,31 @@ svg.sc{display:block}
 .film .ovlab .tool i{background:#000000a6}
 .film .ovlab .tool.on i{background:#d6ff3d}
 .cute .ovlab .tool{color:#fff;text-shadow:0 1px 3px #2a2140}
+/* other screen sizes: short screens fold the header and shrink the buttons; text on chips wraps instead of running off */
+.cmp .row-c{gap:14px}
+.cmp .tool{width:74px;font-size:13px}
+.cmp .tool i{width:48px!important;height:48px!important}
+.cmp .tool svg{width:22px;height:22px}
+.cmp .shutter{width:72px!important;height:72px!important}
+.tiny .sound .fl,.tiny .snd,.sound.ico .fl{display:none}
+.fr .chip,.fr .hintbox{width:max-content;max-width:calc(100% - 24px);white-space:normal;text-wrap:balance}
+.fr .cc{white-space:nowrap}
+.row-c.col{flex-direction:column;align-items:stretch}
+.row-c.col .pill{text-align:center;padding:7px 6px!important;font-size:13px!important}
+.rail{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+.cute .cell.rland{border-radius:0 18px 18px 0}
+.rule{max-width:780px;margin-top:6px;font-size:14px;background:#fff;border-left:4px solid #1d1b22;padding:6px 10px}
+.bad{display:block;color:#b3001b;font-weight:700}
+.tgl{position:sticky;top:0;z-index:5;display:flex;gap:8px;background:#ecebef;padding:10px 0;margin-top:14px}
+.tgl button{flex:1;max-width:220px;font:700 15px 'Noto Sans KR';padding:9px;border:2px solid #1d1b22;background:#fff;color:#1d1b22;cursor:pointer}
+.tgl button[aria-pressed=true]{background:#1d1b22;color:#fff}
+body[data-th=film] .tc-cute,body[data-th=cute] .tc-film{display:none}
 </style>
 </head>
-<body>
+<body data-th="film">
 <div class="wrap">
   <h1>찍기 화면 시안 3개 — 따로 같이 네컷</h1>
-  <p class="lead">카메라 미리보기를 키우는 세 가지 배치. 미리보기에는 네컷 칸에 실제로 들어가는 부분만 보여요(가로 552:382, 세로 3:4). 6장 연속, 한 장에 5초. 각 시안마다 필름·말랑 부스 두 테마, A 가로 · A 세로 · B 가로(친구 배경에 같이) · 카운트다운.</p>
+  <p class="lead">카메라 미리보기를 키우는 세 가지 배치. 미리보기에는 네컷 칸에 실제로 들어가는 부분만 보여요(가로 552:382, 세로 3:4). 6장 연속, 한 장에 5초. 위 버튼으로 필름·말랑 부스 테마를 바꿔 봐요.</p>
   <p class="th">지금 화면 (430×932, 헤드리스 실측)</p>
   <div class="tw"><table class="nowt">
     <tr><th></th><th>필름 가로</th><th>필름 세로</th><th>말랑 가로</th><th>말랑 세로</th></tr>
@@ -138,7 +158,8 @@ svg.sc{display:block}
     <tr><td>B 미리보기</td><td>354×245 · 21.6%</td><td>354×472 · 41.7%</td><td>398×275 · 27.3%</td><td>381×508 · 48.3%</td></tr>
     <tr><td>나머지</td><td colspan="4">단계 표시 121(필름)·73(말랑) + 숫자·포즈 줄 49·36 + 필름 구멍/카드 테두리 좌우 22·16 + 칸 밖 빈 부분 + 진행 점 12~18 + (B) 보기 버튼 40~48 + 셔터 줄 90</td></tr>
   </table></div>
-  <p class="lead">세 시안 모두 미리보기가 화면 가로 끝까지 가요(가로 칸은 폭이 상한이라 세로로 세운 폰에선 430×298이 최대). 카메라 위 글씨는 밝은 방·어두운 방 둘 다 대비 4.8:1 이상(글자를 지우고 뒤 픽셀을 실측). 실제 폰은 주소창 때문에 화면이 ~740px 정도로 짧아서, 세로 칸 크기를 그대로 지키는 건 3번(버튼이 사진 위)이고, 어림으로 1번은 약 370×490으로 줄고 2번은 딱 맞아요.</p>
+  <p class="lead">세 시안 모두 화면 크기에 맞춰 계산돼요: 미리보기는 남는 높이 안에서 칸 비율을 지키며 가로 끝까지, 짧은 화면(700px 미만)은 헤더·버튼이 줄어요. 시안마다 430×932 네 장면 + 360×640, 375×667(아이폰 SE), 390×844, 412×915에서 A 세로·B 가로. 그림 밑 숫자와 "겹침·잘림 없음"은 페이지가 직접 재서 적은 거예요. 카메라 위 글씨는 밝은 방·어두운 방 둘 다 대비 4.8:1 이상(글자를 지우고 뒤 픽셀을 실측).</p>
+  <div class="tgl" role="group" aria-label="테마"><button type="button" data-th="film">필름 레일</button><button type="button" data-th="cute">말랑 부스</button></div>
   <div id="out"></div>
 </div>
 
@@ -151,8 +172,8 @@ svg.sc{display:block}
 
 <script>
 (function(){
-var W=430,H=932, CW=430, HW=Math.round(430*382/552), HT=Math.round(430*568/426);   // 298, 573
-var LW=Math.round(430*552/382);                                                     // 가로 on its side: 621 x 430
+var W=430,H=932,C=false,TINY=false;   // the screen being drawn (CSS px); C = short screen (< 700 px): folded header, smaller buttons
+var AW=552/382, AT=426/568;            // cell aspect: 가로, 세로
 var POSES=["브이!","반쪽 하트","꽃받침","깜짝 놀란 척","윙크 한 번","볼 빵빵"];
 var HINT_A="친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘", HINT_SHOOT="셔터 한 번이면 6장을 이어서 찍어 · 한 장에 5초";
 var uid=0;
@@ -199,168 +220,220 @@ function scene(w,h,kind){
 function thumbScene(w,h){return scene(w,h,'light');}
 
 // ---- shared bits ----
-function pips(n,now){var s='';for(var i=0;i<6;i++)s+='<i class="'+(i<now?'has':i===now?'now':'')+'"></i>';return s;}
-function tool(kind,on){return '<div class="tool fl'+(on?' on':'')+'"><i><svg><use href="#i-'+kind+'"/></svg></i><span class="fl">'+(kind==='mirror'?'좌우반전':'앞/뒤 카메라')+'</span></div>';}
-function controls(busy){return '<div class="shutter fl'+(busy?' busy':'')+'" aria-label="6장 이어서 찍기"></div>';}
-function ctrlRow(x,y,w,busy,cls){return '<div class="row-c '+(cls||'')+'" style="'+P(x,y,w)+'">'+tool('mirror',1)+controls(busy)+tool('flip',0)+'</div>';}
-function sound(){return '<div class="sound"><svg><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>';}
-function pills(x,y,w){return '<div class="row-c" style="'+P(x,y,w)+';gap:8px"><div class="pill fl">내 카메라 배경</div><div class="pill fl on">친구 배경에 같이</div></div>';}
-function mascot(x,y,sz){return '<svg class="mas" style="'+P(x,y,sz,sz*64/60)+'"><use href="#mas"/></svg>';}
-// a kind = A가로 | A세로 | B가로 | 카운트다운: what the camera shows + which shot it is
+function fit(a,mw,mh){var w=Math.floor(Math.min(mw,mh*a));return {w:w,h:Math.round(w/a)};}
+function pips(now){var s='';for(var i=0;i<6;i++)s+='<i class="'+(i<now?'has':i===now?'now':'')+'"></i>';return s;}
+function tool(kind,on){return '<div class="tool fl k'+(on?' on':'')+'" data-n="'+(kind==='mirror'?'좌우반전':'앞/뒤')+'"><i><svg><use href="#i-'+kind+'"/></svg></i><span class="fl">'+(kind==='mirror'?'좌우반전':'앞/뒤 카메라')+'</span></div>';}
+function shutter(busy){return '<div class="shutter fl k'+(busy?' busy':'')+'" data-n="셔터" aria-label="6장 이어서 찍기"></div>';}
+function ctrlRow(x,y,w,busy,cls){return '<div class="row-c '+(cls||'')+'" style="'+P(x,y,w)+'">'+tool('mirror',1)+shutter(busy)+tool('flip',0)+'</div>';}
+function sound(st,cls){return '<div class="sound k'+(cls||'')+'" data-n="소리" style="'+st+'"><svg><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>';}
+function pills(x,y,w,col){return '<div class="row-c'+(col?' col':'')+'" style="'+P(x,y,w)+';gap:8px"><div class="pill fl k" data-n="보기1">내 카메라 배경</div><div class="pill fl on k" data-n="보기2">친구 배경에 같이</div></div>';}
+function mascot(x,y,sz){return '<svg class="mas k" data-n="마스코트" style="'+P(x,y,sz,Math.round(sz*64/60))+'"><use href="#mas"/></svg>';}
+function hintbox(y){return '<div class="hintbox k" data-n="힌트" style="left:50%;transform:translateX(-50%);top:'+y+'px">'+HINT_A+'<i>✕</i></div>';}
+function camChips(o){        // counter + pose, sound: on the camera, top
+  return '<div class="scrimT" style="left:0;top:0;width:100%;height:64px"></div>'+
+    '<div class="ov chip cc k" data-n="숫자칩" style="'+P(12,12)+';padding:0"><span class="step fl">'+(o.idx+1)+' / 6</span><span class="pose fl" style="padding:0 14px 0 10px;color:#fff">'+o.pose+'</span></div>'+
+    '<div class="ov chip k" data-n="소리칩" style="right:12px;top:14px;padding:7px 11px 7px 8px"><svg style="position:static;width:20px;height:20px"><use href="#i-sound"/></svg><span class="fl snd">소리 켬</span></div>';
+}
+var CTRL=function(){return C?80:94;};          // the button row: tool icon + label, or the shutter (+ cute 3D edge)
+var HA=function(){return W<400?60:40;};         // HINT_A box: 2 lines under 400 px
+var HS=function(){return W<400?42:22;};         // 셔터 한 번이면… : 2 lines under 400 px
+var GAP=function(){return C?12:22;};            // bottom inset under the buttons (gesture bar)
+
 function K(kind){
   var o={kind:kind, wide:kind!=='A세로'&&kind!=='카운트다운', idx:0, scene:'light', b:kind==='B가로', count:kind==='카운트다운'};
   if(kind==='A세로')o.scene='dark';
   if(kind==='B가로')o.scene='bv';
   if(o.count){o.idx=2;o.scene='pose';}
-  o.ch=o.wide?HW:HT; o.pose=POSES[o.idx]; o.a=kind==='A가로'||kind==='A세로';
+  o.pose=POSES[o.idx]; o.a=kind==='A가로'||kind==='A세로';
   return o;
 }
-// stuff that sits on the camera in every layout: the countdown number, 2초 녹화, the last shot
 function onCam(o,t,cw,ch,opt){
   var s='';
   if(o.count){
     s+='<div class="count" style="'+P(0,0,cw,ch)+';display:grid;place-items:center">2</div>';
-    s+='<div class="rec" style="left:50%;transform:translateX(-50%);top:'+((opt&&opt.recY)||12)+'px">2초 녹화</div>';
-    if(!(opt&&opt.noLast)) s+='<div class="last" style="'+P(12,ch-12-(opt&&opt.lastB||0)-88,66,88)+'">'+thumbScene(66,88)+'</div>';
+    s+='<div class="rec k" data-n="녹화" style="left:50%;transform:translateX(-50%);top:'+((opt&&opt.recY)||12)+'px">2초 녹화</div>';
+    if(!(opt&&opt.noLast)) s+='<div class="last k" data-n="방금" style="'+P(12,ch-12-(opt&&opt.lastB||0)-88,66,88)+'">'+thumbScene(66,88)+'</div>';
   }
   if(t==='film') s+='<div class="crn"></div>';
   return s;
 }
+function cellDiv(x,y,c,inner,cls){return '<div class="cell k'+(cls||'')+'" data-n="미리보기" style="'+P(x,y,c.w,c.h)+'">'+inner+'</div>';}
+function bands(t,x,y,c,bottom){       // film: holes above (and below) the picture; cute: the curtain above it
+  if(t==='film') return '<div class="spr" style="'+P(0,y-14,W)+'"></div>'+(bottom?'<div class="spr" style="'+P(0,y+c.h,W)+'"></div>':'');
+  return '<div class="cur" style="'+P(x,y-22,c.w)+'"></div>';
+}
 
 // =================== layout 1: one-line header + bottom panel, nothing on the camera but the countdown ===================
 function L1(t,o){
-  var s='', ch=o.ch, film=t==='film';
-  // header strip
+  var s='', film=t==='film', a=o.wide?AW:AT, head=C?46:58;
   if(film){
-    s+='<div style="'+P(16,12,null,null)+'" class="step">'+(o.idx+1)+' / 6</div><div class="pose" style="'+P(88,13)+'">'+o.pose+'</div>'+
-       '<div style="right:16px;top:10px" class="sound"><svg><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>';
+    s+='<div class="step k" data-n="숫자" style="'+P(16,Math.round((head-31)/2))+'">'+(o.idx+1)+' / 6</div><div class="pose k" data-n="포즈" style="'+P(90,Math.round((head-28)/2))+'">'+o.pose+'</div>'+
+       sound('right:14px;top:'+Math.round((head-36)/2)+'px');
   }else{
-    s+=mascot(12,8,42)+'<div class="bub" style="'+P(66,8,256,46)+'"><span class="step fl">'+(o.idx+1)+' / 6</span><span class="pose fl">'+o.pose+'</span></div>'+
-       '<div style="right:14px;top:12px" class="sound"><svg><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>';
+    var ms=C?34:42, bw=W-(ms+24)-(TINY?58:124);
+    s+=mascot(12,Math.round((head-ms*64/60)/2),ms)+'<div class="bub k" data-n="말풍선" style="'+P(ms+24,Math.round((head-(C?40:46))/2),bw,C?40:46)+'"><span class="step fl">'+(o.idx+1)+' / 6</span><span class="pose fl">'+o.pose+'</span></div>'+
+       sound('right:14px;top:'+Math.round((head-36)/2)+'px');
   }
-  var top=62;                                    // first px under the header
-  var sheetH=o.b?262:216, sheetY=H-sheetH;
-  var y=o.wide? Math.round(top+(sheetY-top-(ch+36))/2)+18 : top+(film?14:22);
-  if(!o.wide) sheetY=y+ch+(film?14:0), sheetH=H-sheetY;
-  // frame around the cell
-  if(film) s+='<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+ch,W)+'"></div>';
-  else s+='<div class="cur" style="'+P(0,y-22,W)+'"></div>';
-  s+='<div class="cell'+(film?'':' rnd')+'" style="'+P(0,y,CW,ch)+'">'+scene(CW,ch,o.scene)+onCam(o,t,CW,ch)+'</div>';
-  // the A hint and the shoot hint sit outside the cell (on the wide shape there is room above / below)
-  if(o.a&&o.wide) s+='<div class="hintbox" style="left:50%;transform:translateX(-50%);top:'+(y-(film?14:22)-50)+'px">'+HINT_A+'<i>✕</i></div>';
-  // bottom panel
-  s+='<div class="sheet" style="'+P(0,sheetY,W,sheetH+30)+'"></div>';
-  var py=sheetY+(film?20:22);
-  s+='<div class="pips" style="'+P(24,py,W-48,14)+'">'+pips(6,o.idx)+'</div>';
-  py+=30;
-  if(o.a&&!o.wide) s+='<div class="hintbox" style="left:50%;transform:translateX(-50%);top:'+py+'px">'+HINT_A+'<i>✕</i></div>', py+=48;
-  if(o.a&&o.wide) s+='<div class="hint" style="'+P(16,py,W-32)+'">'+HINT_SHOOT+'</div>', py+=36;
-  if(o.b) s+=pills(0,py,W), py+=58;
-  s+=ctrlRow(0,Math.max(py+4,H-118),W,o.count);
+  var bT=film?14:22, bB=film?14:0;
+  var sh=16+14+14+(o.a?HA()+10:0)+(o.b?54:0)+CTRL()+GAP(), sy=H-sh;   // the panel is as tall as what it holds
+  var room=sy-head-bT-bB, c=fit(a,W,room), x=Math.round((W-c.w)/2), y=head+bT+Math.round((room-c.h)/2);
+  s+=bands(t,x,y,c,true)+cellDiv(x,y,c,scene(c.w,c.h,o.scene)+onCam(o,t,c.w,c.h),film?'':' rnd');
+  if(o.a&&o.wide&&y-bT-head>=HS()+16) s+='<div class="hint k" data-n="안내" style="'+P(16,head+Math.round((y-bT-head-HS())/2),W-32)+'">'+HINT_SHOOT+'</div>';
+  s+='<div class="sheet" style="'+P(0,sy,W,sh+30)+'"></div>';
+  var py=sy+16;
+  s+='<div class="pips k" data-n="점" style="'+P(24,py,W-48,14)+'">'+pips(o.idx)+'</div>'; py+=28;
+  if(o.a) s+=hintbox(py), py+=HA()+10;
+  if(o.b) s+=pills(0,py,W), py+=54;
+  s+=ctrlRow(0,H-CTRL()-GAP(),W,o.count);
   return s;
 }
 
 // =================== layout 2: counter, pose, sound, dots inside the camera picture ===================
 function L2(t,o){
-  var s='', ch=o.ch, film=t==='film';
-  var y=o.wide?(film?120:130):(film?30:78);
-  if(film) s+='<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+ch,W)+'"></div>';
-  else s+='<div class="cur" style="'+P(0,y-22,W)+'"></div>'+mascot(10,y-22-40,40);
-  var cam=scene(CW,ch,o.scene)+'<div class="scrimT" style="'+P(0,0,CW,64)+'"></div>'+
-    '<div class="ov chip cc" style="'+P(12,12)+';padding:0;'+(film?'':'border-radius:99px;')+'"><span class="step fl">'+(o.idx+1)+' / 6</span><span class="pose fl" style="padding:0 14px 0 10px;color:#fff">'+o.pose+'</span></div>'+
-    '<div class="ov chip" style="right:12px;top:14px;padding:7px 11px 7px 8px"><svg style="position:static;width:20px;height:20px"><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>'+
-    '<div class="scrimB" style="'+P(0,ch-40,CW,40)+'"></div><div class="pips" style="'+P(60,ch-24,CW-120,14)+'">'+pips(6,o.idx)+'</div>';
-  if(o.a) cam+='<div class="chip" style="left:50%;transform:translateX(-50%);top:62px">'+HINT_A+'<i>✕</i></div>';
-  cam+=onCam(o,t,CW,ch,{recY:62,lastB:30});
-  s+='<div class="cell'+(film?'':' rnd')+'" style="'+P(0,y,CW,ch)+'">'+cam+'</div>';
-  var py=y+ch+(film?30:24);
-  if(o.a) s+='<div class="hint" style="'+P(16,py,W-32)+'">'+HINT_SHOOT+'</div>', py+=40;
+  var s='', film=t==='film', a=o.wide?AW:AT, m=film?8:10, bT=film?14:22, bB=film?14:0, cy0=H-CTRL()-GAP();
+  var below=(o.a?HS()+14:0)+(o.b?54:0)+14;
+  var room=cy0-below-m-bT-bB, c=fit(a,W,room), x=Math.round((W-c.w)/2), y=m+bT+Math.round((room-c.h)/2);
+  s+=bands(t,x,y,c,true);
+  if(!film&&y-bT>=52) s+=mascot(10,y-22-44,42);        // the mascot only when there is height to spare
+  var cam=scene(c.w,c.h,o.scene)+camChips(o)+'<div class="scrimB" style="'+P(0,c.h-40,c.w,40)+'"></div><div class="pips k" data-n="점" style="'+P(60,c.h-24,c.w-120,14)+'">'+pips(o.idx)+'</div>';
+  var ty=t==='cute'?74:62;
+  if(o.a) cam+=hintbox(ty);
+  cam+=onCam(o,t,c.w,c.h,{recY:ty,lastB:30});
+  s+=cellDiv(x,y,c,cam,film?'':' rnd');
+  var py=y+c.h+bB+14;
+  if(o.a) s+='<div class="hint k" data-n="안내" style="'+P(16,py,W-32)+'">'+HINT_SHOOT+'</div>', py+=HS()+14;
   if(o.b) s+=pills(0,py,W);
-  s+=ctrlRow(0,H-130,W,o.count);
+  s+=ctrlRow(0,cy0,W,o.count);
   return s;
 }
 
-// =================== layout 3: camera-app — controls float on the picture, the 6 shots fill a strip ===================
-function strip(t,x,y,w,o,cols){
-  var s='', n=6, gap=8, c=cols||6, tw, th, rows=Math.ceil(n/c);
-  var asp=o.wide?552/382:426/568;
-  tw=Math.floor((w-gap*(c-1))/c); th=Math.round(tw/asp);
-  for(var i=0;i<n;i++){
-    var cx=x+(i%c)*(tw+gap), cy=y+Math.floor(i/c)*(th+gap);
-    s+='<div class="thumb'+(i===o.idx?' now':'')+'" style="'+P(cx,cy,tw,th)+'">'+(i<o.idx?thumbScene(tw,th):'')+'</div>';
-  }
+// =================== layout 3: camera-app — buttons float on the picture, the 6 shots fill a strip ===================
+function strip(x,y,w,o,cols){
+  var s='', n=6, gap=8, c=cols||6, rows=Math.ceil(n/c), asp=o.wide?AW:AT, tw=Math.floor((w-gap*(c-1))/c), th=Math.round(tw/asp);
+  for(var i=0;i<n;i++) s+='<div class="thumb k'+(i===o.idx?' now':'')+'" data-n="칸'+(i+1)+'" style="'+P(x+(i%c)*(tw+gap),y+Math.floor(i/c)*(th+gap),tw,th)+'">'+(i<o.idx?thumbScene(tw,th):'')+'</div>';
   return {html:s,h:rows*th+(rows-1)*gap};
 }
 function L3(t,o){
-  var s='', film=t==='film';
   if(o.wide) return L3land(t,o);
-  var ch=HT, st, y=H-ch-(film?14:0), sy;
-  // the 6-shot strip right above the camera: film = a strip of film, cute = little cards next to the mascot
-  if(film){ st=strip(t,16,0,W-32,o); sy=y-14-st.h-4; st=strip(t,16,sy,W-32,o); s+='<div class="spr" style="'+P(0,sy-18,W)+'"></div>'+st.html+'<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+ch,W)+'"></div>'; }
-  else { st=strip(t,64,0,W-80,o); sy=y-22-14-st.h; st=strip(t,64,sy,W-80,o); s+=mascot(10,sy+st.h/2-22,42)+st.html+'<div class="cur" style="'+P(0,y-22,W)+'"></div>'; }
-  var cam=scene(CW,ch,o.scene)+'<div class="scrimT" style="'+P(0,0,CW,64)+'"></div>'+
-    '<div class="ov chip cc" style="'+P(12,12)+';padding:0;'+(film?'':'border-radius:99px;')+'"><span class="step fl">'+(o.idx+1)+' / 6</span><span class="pose fl" style="padding:0 14px 0 10px;color:#fff">'+o.pose+'</span></div>'+
-    '<div class="ov chip" style="right:12px;top:14px;padding:7px 11px 7px 8px"><svg style="position:static;width:20px;height:20px"><use href="#i-sound"/></svg><span class="fl">소리 켬</span></div>'+
-    '<div class="scrimB" style="'+P(0,ch-170,CW,170)+'"></div>'+ctrlRow(0,ch-128,CW,o.count,'ovlab');
-  if(o.a) cam+='<div class="chip" style="left:50%;transform:translateX(-50%);top:62px">'+HINT_A+'<i>✕</i></div>';
-  cam+=onCam(o,t,CW,ch,{recY:62,noLast:1});
-  s+='<div class="cell'+(film?'':' rnd')+'" style="'+P(0,y,CW,ch)+'">'+cam+'</div>';
-  if(o.a) s+='<div class="hint" style="'+P(16,Math.round(sy/2)-30,W-32)+'">'+HINT_SHOOT+'</div>';
+  var s='', film=t==='film', bB=film?14:0;
+  var sx=film?16:64, sw=film?W-32:W-80, th=strip(0,0,sw,o).h, block=film?18+th+4+14:th+14+22;
+  var c=fit(AT,W,H-bB-block-8), x=Math.round((W-c.w)/2), y=H-bB-c.h, sy=film?y-14-4-th:y-22-14-th;
+  if(film) s+='<div class="spr" style="'+P(0,sy-18,W)+'"></div>'+strip(sx,sy,sw,o).html+'<div class="spr" style="'+P(0,y-14,W)+'"></div><div class="spr" style="'+P(0,y+c.h,W)+'"></div>';
+  else s+=mascot(10,sy+Math.round(th/2)-22,42)+strip(sx,sy,sw,o).html+bands(t,x,y,c);
+  var cam=scene(c.w,c.h,o.scene)+camChips(o)+'<div class="scrimB" style="'+P(0,c.h-CTRL()-70,c.w,CTRL()+70)+'"></div>'+ctrlRow(0,c.h-CTRL()-(C?18:34),c.w,o.count,'ovlab');
+  var ty=t==='cute'?74:62;
+  if(o.a) cam+=hintbox(ty);
+  cam+=onCam(o,t,c.w,c.h,{recY:ty,noLast:1});
+  s+=cellDiv(x,y,c,cam,film?'':' rnd');
+  var top=(film?sy-18:sy)-8;
+  if(o.a&&top>=HS()+16) s+='<div class="hint k" data-n="안내" style="'+P(16,Math.round((top-HS())/2),W-32)+'">'+HINT_SHOOT+'</div>';
   return s;
 }
-// 가로 = the phone on its side: a 932 x 430 screen, the cell full height on the left, a column on the right
+// 가로 = the phone on its side: an H x W screen, the cell on the left, a rail of buttons on the right edge (thumb)
 function L3land(t,o){
-  var s='', film=t==='film', LH=430, cw=LW, colX=cw+(film?14:0), colW=932-colX;
-  var cam=scene(cw,LH,o.scene);
-  if(o.a) cam+='<div class="chip" style="left:50%;transform:translateX(-50%);top:12px">'+HINT_A+'<i>✕</i></div>';
-  cam+=onCam(o,t,cw,LH,{recY:12,noLast:1});
-  s+='<div class="cell" style="'+P(0,0,cw,LH)+(film?'':';border-radius:0 18px 18px 0')+'">'+cam+'</div>';
-  if(film) s+='<div class="sprv" style="'+P(cw,0,14,LH)+'"></div>';
-  var x=colX+16, cwid=colW-32;
-  if(film) s+='<div class="step" style="'+P(x,14)+'">'+(o.idx+1)+' / 6</div><div class="pose" style="'+P(x+72,15)+'">'+o.pose+'</div>';
-  else s+=mascot(x-4,10,36)+'<div class="bub" style="'+P(x+44,10,cwid-44-76,42)+';gap:8px;padding:0 8px"><span class="step fl" style="font-size:26px;padding:4px 10px 0">'+(o.idx+1)+' / 6</span><span class="pose fl" style="font-size:30px">'+o.pose+'</span></div>';
-  s+='<div class="sound" style="right:14px;top:12px;padding:7px 9px"><svg><use href="#i-sound"/></svg></div>';
-  var st=strip(t,x,66,cwid,o,3);
-  s+=st.html;
-  var py=66+st.h+(o.b?14:22);
-  if(o.b) s+='<div class="row-c" style="'+P(colX,py,colW)+';gap:6px"><div class="pill fl" style="padding:8px 11px;font-size:14px">내 카메라 배경</div><div class="pill fl on" style="padding:8px 11px;font-size:14px">친구 배경에 같이</div></div>';
-  else s+='<div class="hint" style="'+P(x,py,cwid)+';font-size:14px;text-wrap:balance">'+HINT_SHOOT+'</div>';
-  s+='<div class="row-c" style="'+P(colX,LH-124,colW)+';gap:14px">'+tool('mirror',1)+controls(o.count)+tool('flip',0)+'</div>';
+  var s='', film=t==='film', LG=H, SH=W, RAIL=92, COLMIN=216;
+  var c=fit(AW,LG-COLMIN-(film?14:0),SH), y=Math.round((SH-c.h)/2), colX=c.w+(film?14:0);
+  var cam=scene(c.w,c.h,o.scene);
+  if(o.a) cam+=hintbox(12);
+  cam+=onCam(o,t,c.w,c.h,{recY:12,noLast:1});
+  s+=cellDiv(0,y,c,cam,film?'':' rland');
+  if(film) s+='<div class="sprv" style="'+P(c.w,0,14,SH)+'"></div>';
+  var x0=colX+12, ws=LG-RAIL-x0-4, py=12;
+  // counter + pose: one line when the column is wide, two when narrow
+  var two=ws<200;
+  if(film) s+='<div class="step k" data-n="숫자" style="'+P(x0,py)+'">'+(o.idx+1)+' / 6</div><div class="pose k" data-n="포즈" style="'+(two?P(x0,py+38):P(x0+72,py+1))+'">'+o.pose+'</div>';
+  else s+='<div class="bub k" data-n="말풍선" style="'+P(x0,py,ws,two?80:44)+';'+(two?'flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;padding:4px 10px':'gap:8px;padding:0 8px')+'"><span class="step fl" style="font-size:26px;padding:4px 10px 0">'+(o.idx+1)+' / 6</span><span class="pose fl" style="font-size:30px">'+o.pose+'</span></div>';
+  py+=two?84:52;
+  var st=strip(x0,py,ws,o,ws<200?2:3); s+=st.html; py+=st.h+12;
+  if(o.b) s+=pills(x0,py,ws,ws<260);
+  else s+='<div class="hint k" data-n="안내" style="'+P(x0,py,ws)+';font-size:13px;text-wrap:balance">'+HINT_SHOOT+'</div>';
+  // the rail: sound on top, the mascot (cute), then mirror / shutter / flip centred
+  var rx=LG-RAIL;
+  s+=sound('left:'+(rx+(RAIL-44)/2)+'px;top:10px;padding:7px 9px',' ico');
+  if(!film) s+=mascot(rx+(RAIL-32)/2,58,32);
+  s+='<div class="rail" style="'+P(rx,film?56:100,RAIL,SH-(film?56:100)-8)+'">'+tool('mirror',1)+shutter(o.count)+tool('flip',0)+'</div>';
   return s;
+}
+
+// ---- checks: every .k inside the screen (and inside the picture if it sits on it), no two overlapping ----
+function check(fr){
+  var R=fr.getBoundingClientRect(), bad=[], ks=[].slice.call(fr.querySelectorAll('.k'));
+  function inside(r,B){return r.left>=B.left-1&&r.top>=B.top-1&&r.right<=B.right+1&&r.bottom<=B.bottom+1;}
+  ks.forEach(function(e){
+    var r=e.getBoundingClientRect(), cell=e.parentElement.closest('.cell');
+    if(!inside(r,R)) bad.push('잘림 '+e.dataset.n);
+    else if(cell&&!inside(r,cell.getBoundingClientRect())) bad.push('사진 밖 '+e.dataset.n);
+    if(e.scrollWidth>e.clientWidth+1&&!e.matches('.cell,.mas')) bad.push('글자 넘침 '+e.dataset.n);
+  });
+  for(var i=0;i<ks.length;i++)for(var j=i+1;j<ks.length;j++){
+    var a=ks[i], b=ks[j];
+    if(a.contains(b)||b.contains(a)) continue;
+    if(a.parentElement.closest('.cell')!==b.parentElement.closest('.cell')) continue;   // the picture's own layer
+    var p=a.getBoundingClientRect(), q=b.getBoundingClientRect();
+    var ox=Math.min(p.right,q.right)-Math.max(p.left,q.left), oy=Math.min(p.bottom,q.bottom)-Math.max(p.top,q.top);
+    if(ox>1&&oy>1) bad.push('겹침 '+a.dataset.n+'/'+b.dataset.n);
+  }
+  var sh=fr.querySelector('.shutter').getBoundingClientRect(), land=fr.classList.contains('land');
+  var pos=Math.round(((sh.top+sh.bottom)/2-R.top)/R.height*100);
+  return {bad:bad,pos:pos,land:land};
 }
 
 // ---- page ----
 var LAY=[
-  {f:L1,no:'1',name:'한 줄 머리 + 아래 판',desc:'위는 숫자·포즈·소리 <b>한 줄</b>, 미리보기는 <b>화면 가로 끝까지</b>, 진행 점·보기 버튼·셔터는 <b>아래 판</b>에. 카메라 위에는 카운트다운만 얹어서 글씨가 안 묻힘. 4단계 표시는 찍는 동안 접음(필름 구멍은 미리보기 위아래로, 말랑은 커튼 + 마스코트가 포즈를 말함).'},
-  {f:L2,no:'2',name:'숫자·포즈를 사진 안에',desc:'숫자·포즈·소리·진행 점을 <b>미리보기 안</b>에 반투명 띠로 얹고, 밖에는 셔터 줄만. 머리 줄이 통째로 빠져서 세로 미리보기를 위로 붙이고 셔터를 엄지 자리로 내림. 글씨 뒤에는 어두운 띠를 깔아 밝은 방에서도 읽힘.'},
-  {f:L3,no:'3',name:'카메라 앱처럼 + 가로는 눕혀서',desc:'세로: 미리보기를 <b>화면 아래에 붙이고</b> 좌우반전·셔터·앞/뒤가 <b>그 위에 떠 있음</b>(엄지 자리), 바로 위에 찍힌 사진이 <b>6칸에 쌓임</b>(진행 점 대신). 화면이 짧은 폰에서도 미리보기 크기가 그대로. 가로: <b>폰을 옆으로 눕혀서</b> 찍음 → 미리보기가 화면 높이를 다 씀(그림은 폰을 눕힌 모습 그대로, 이 페이지를 볼 때도 폰을 돌려 보면 실제 크기). 가로를 고르면 "폰을 옆으로 눕혀 줘" 안내 한 장이 새로 필요하고, 자동 회전이 잠긴 폰에서는 안 돌아감.'}
+  {f:L1,no:'1',name:'한 줄 머리 + 아래 판',desc:'위는 숫자·포즈·소리 <b>한 줄</b>, 미리보기는 <b>화면 가로 끝까지</b>, 진행 점·보기 버튼·셔터는 <b>아래 판</b>에. 카메라 위에는 카운트다운만 얹어서 글씨가 안 묻힘. 4단계 표시는 찍는 동안 접음(필름 구멍은 미리보기 위아래로, 말랑은 커튼 + 마스코트가 포즈를 말함).',
+   rule:'미리보기 = min(100vw, (100dvh − 헤더 − 아래 판) × 칸 비율) · 아래 판은 담긴 것만큼(점·힌트·보기 버튼·버튼 줄) · 100dvh < 700px이면 헤더 58→46px, 셔터 84→72px.'},
+  {f:L2,no:'2',name:'숫자·포즈를 사진 안에',desc:'숫자·포즈·소리·진행 점을 <b>미리보기 안</b>에 반투명 띠로 얹고, 밖에는 셔터 줄만. 머리 줄이 통째로 빠져서 미리보기가 위로 붙고 셔터는 엄지 자리. 글씨 뒤에는 어두운 띠를 깔아 밝은 방에서도 읽힘.',
+   rule:'미리보기 = min(100vw, (100dvh − 버튼 줄 − 안내·보기 버튼) × 칸 비율) · 사진 위 띠는 높이 고정 · 마스코트는 미리보기 위로 52px 이상 남을 때만 · 100dvh < 700px이면 버튼 줄 94→80px.'},
+  {f:L3,no:'3',name:'카메라 앱처럼 + 가로는 눕혀서',desc:'세로: 미리보기를 <b>화면 아래에 붙이고</b> 좌우반전·셔터·앞/뒤가 <b>그 위에 떠 있음</b>(엄지 자리), 바로 위에 찍힌 사진이 <b>6칸에 쌓임</b>(진행 점 대신). 가로: <b>폰을 옆으로 눕혀서</b> 찍음 → 미리보기가 화면 높이를 다 씀(그림은 폰을 눕힌 모습 그대로, 폰을 돌려 보면 실제 크기). 가로를 고르면 "폰을 옆으로 눕혀 줘" 안내 한 장이 새로 필요하고, 자동 회전이 잠긴 폰에서는 안 돌아감.',
+   rule:'세로: 미리보기 = 아래에 붙인 min(100vw, (100dvh − 6칸 줄) × 3/4), 버튼은 미리보기 아래 띠에 떠서 늘 엄지 자리 · 가로(눕힘): 미리보기 = min(100dvh, (100vw − 216px) ÷ 칸 비율) 높이, 오른쪽 끝 92px 세로 줄에 버튼 · 좁은 쪽 칸이 200px 아래면 숫자·포즈 두 줄, 6칸은 2열.'}
 ];
+var MAIN=[430,932], OTHER=[[360,640],[375,667],[390,844],[412,915]];
 var KINDS=['A가로','A세로','B가로','카운트다운'];
+var NAME={A가로:'A · 가로',A세로:'A · 세로',B가로:'B · 가로 (친구 배경에 같이)',카운트다운:'카운트다운 · 세로 3/6'};
+function frame(L,t,k,size){
+  W=size[0];H=size[1];C=H<700;TINY=W<380;
+  var o=K(k), land=L.f===L3&&o.wide;
+  if(land) C=true;                                // on its side the short side is under 700
+  var fw=land?H:W, fh=land?W:H;
+  return '<figure data-w="'+W+'" data-h="'+H+'"><div class="slot" style="width:'+W+'px;height:'+H+'px"><div class="fr '+t+(land?' land':'')+(C?' cmp':'')+(TINY?' tiny':'')+'" style="width:'+fw+'px;height:'+fh+'px'+(land?';transform:translateX('+W+'px) rotate(90deg)':'')+'">'+L.f(t,o)+
+    '</div></div><figcaption><b>'+NAME[k]+'</b> · '+W+'×'+H+(k==='A세로'?' · 어두운 방':k==='B가로'?'':' · 밝은 방')+'<span class="m"></span></figcaption></figure>';
+}
 var out='';
 LAY.forEach(function(L){
-  out+='<section><h2><span class="no">'+L.no+'</span>'+L.name+'</h2><p class="desc">'+L.desc+'</p>';
+  out+='<section><h2><span class="no">'+L.no+'</span>'+L.name+'</h2><p class="desc">'+L.desc+'</p><p class="rule"><b>규칙</b> '+L.rule+'</p>';
   ['film','cute'].forEach(function(t){
-    out+='<p class="th">'+(t==='film'?'필름 레일':'말랑 부스')+'</p><div class="row">';
-    KINDS.forEach(function(k){
-      var o=K(k), land=L.f===L3&&o.wide;
-      out+='<figure><div class="slot"><div class="fr '+t+(land?' land':'')+'" data-land="'+(land?1:0)+'">'+L.f(t,o)+'</div></div><figcaption><b>'+
-        ({A가로:'A · 가로',A세로:'A · 세로',B가로:'B · 가로 (친구 배경에 같이)',카운트다운:'카운트다운 · 세로 3/6'})[k]+'</b>'+
-        (k==='A세로'?' · 어두운 방':k==='카운트다운'||k==='A가로'?' · 밝은 방':'')+'<span class="m"></span></figcaption></figure>';
-    });
-    out+='</div>';
+    out+='<div class="tc-'+t+'"><p class="th">'+(t==='film'?'필름 레일':'말랑 부스')+' · 430×932</p><div class="row">';
+    KINDS.forEach(function(k){out+=frame(L,t,k,MAIN);});
+    out+='</div><p class="th">'+(t==='film'?'필름 레일':'말랑 부스')+' · 다른 화면 (360×640 · 375×667 SE · 390×844 · 412×915)</p><div class="row">';
+    OTHER.forEach(function(sz){out+=frame(L,t,'A세로',sz)+frame(L,t,'B가로',sz);});
+    out+='</div></div>';
   });
   out+='</section>';
 });
 document.getElementById('out').innerHTML=out;
-// caption numbers come from the boxes themselves
-[].forEach.call(document.querySelectorAll('figure'),function(f){
-  var fr=f.querySelector('.fr'), c=fr.querySelector('.cell'), land=fr.dataset.land==='1';
-  var w=c.offsetWidth, h=c.offsetHeight, vw=land?932:430, vh=land?430:932;
-  f.querySelector('.m').textContent='미리보기 '+w+'×'+h+' · 화면의 '+(w*h/(vw*vh)*100).toFixed(1)+'%';
+function fitZoom(){[].forEach.call(document.querySelectorAll('figure'),function(f){
+  var w=+f.dataset.w, z=Math.min(1,(innerWidth-32)/w);
+  f.style.width=(w*z)+'px'; f.querySelector('.slot').style.zoom=z;});}
+fitZoom(); addEventListener('resize',fitZoom);
+// caption numbers + checks come from the boxes themselves (each theme measured while it is shown)
+var bodyTh=document.body.dataset.th;
+['film','cute'].forEach(function(t){
+  document.body.dataset.th=t;
+  [].forEach.call(document.querySelectorAll('.tc-'+t+' figure'),function(f){
+    var fr=f.querySelector('.fr'), c=fr.querySelector('.cell'), w=c.offsetWidth, h=c.offsetHeight, ck=check(fr);
+    var vw=fr.offsetWidth, vh=fr.offsetHeight;
+    f.querySelector('.m').innerHTML='미리보기 '+w+'×'+h+' · 화면의 '+(w*h/(vw*vh)*100).toFixed(1)+'% · 셔터 '+(ck.land?'왼→오른 ':'위→아래 ')+ck.pos+'%'+
+      (ck.bad.length?'<span class="bad">'+ck.bad.join(', ')+'</span>':' · 겹침·잘림 없음');
+    f.dataset.bad=ck.bad.length;
+  });
 });
-function fit(){document.documentElement.style.setProperty('--z',Math.min(1,(innerWidth-32)/430));}
-fit(); addEventListener('resize',fit);
+document.body.dataset.th=bodyTh;
+[].forEach.call(document.querySelectorAll('.tgl button'),function(b){
+  b.setAttribute('aria-pressed',b.dataset.th===document.body.dataset.th);
+  b.onclick=function(){document.body.dataset.th=b.dataset.th;[].forEach.call(document.querySelectorAll('.tgl button'),function(x){x.setAttribute('aria-pressed',x===b);});};
+});
 })();
 </script>
+
 </body>
 </html>
