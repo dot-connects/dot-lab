@@ -5,7 +5,7 @@
 // = "fuse" in research/video-matting/analyze.py. compose.js recordMovingStrip({ mattes }) applies it; no mattes = the
 // recorded fast matte as before.
 import { readFmp4 } from "./compose.js";
-import { matteFrame } from "./segment.js";
+import { matteFrame, addPet, petMap } from "./segment.js";
 
 const KEY_US = 100_000;              // keyframe spacing
 const M0 = 0.05 * 255, M1 = 0.25 * 255;   // fast-matte motion (blurred |diff|) where the fast matte takes over, research values
@@ -36,8 +36,9 @@ export async function clipMatte(v, onKey) {
   const mp4 = readFmp4(await (await fetch(v.currentSrc || v.src)).arrayBuffer());
   if (!mp4) throw new Error("clip not decodable");
   const K = { t: [], hq: [], fast: [] }, pend = [];
-  let err = null, next = -Infinity, w = 0, h = 0, lw = 0, lh = 0;
+  let err = null, petOn = false, next = -Infinity, w = 0, h = 0, lw = 0, lh = 0;
   const cx = Object.assign(document.createElement("canvas"), { width: 1, height: 1 }).getContext("2d", { willReadFrequently: true });
+  const rc = document.createElement("canvas");
   const dec = new VideoDecoder({ output: f => pend.push(f), error: e => { err = e; } });
   dec.configure(mp4.config);
   const N = Math.ceil((mp4.samples.at(-1).us - mp4.samples[0].us) / KEY_US) + 1;
@@ -47,7 +48,16 @@ export async function clipMatte(v, onKey) {
       try {
         if (f.timestamp < next) continue;
         next = f.timestamp + KEY_US;
-        const m = await matteFrame(await createImageBitmap(f, 0, 0, f.displayWidth >> 1, f.displayHeight));
+        // the raw half on a 2D canvas: MediaPipe's GPU graph aborted (wasm "Failed to create buffer", page hung) on an
+        // ImageBitmap made from a VideoFrame; the stills hand it a canvas too
+        const rw = f.displayWidth >> 1, rh = f.displayHeight;
+        if (rc.width !== rw || rc.height !== rh) { rc.width = rw; rc.height = rh; }
+        rc.getContext("2d").drawImage(f, 0, 0, rw, rh, 0, 0, rw, rh);
+        const m = await matteFrame(await createImageBitmap(rc));
+        // cats / dogs as in the stills (max into MODNet's alpha): every keyframe while a pet is in the clip, every 3rd as a
+        // probe while none is (DeepLab ~80 ms a keyframe on a PC, ~10 % of the HQ moving cut: research/round5-engine/).
+        // DeepLab runs in pet-worker.js: on the page it aborted MediaPipe's shared GPU pool (face landmarker) mid-decorate.
+        if (petOn || K.t.length % 3 === 0) petOn = !!addPet(rc, m, await petMap(await createImageBitmap(rc)));
         if (!w) { w = m.width; h = m.height; lw = Math.ceil(w / LO); lh = Math.ceil(h / LO); cx.canvas.width = lw; cx.canvas.height = lh; }
         K.t.push(f.timestamp); K.hq.push(m.data); K.fast.push(fastAlpha(f, cx, lw, lh));
         onKey?.(K.t.length, N);

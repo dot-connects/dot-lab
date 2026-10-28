@@ -13,14 +13,41 @@ import { createRefiner } from "./refine.js";
 // still = 1 (default; ?still=0 turns it off) cuts each shutter still with MODNet (see the stills section below);
 // slo/shi = its linear alpha levels (0.15/0.9: less grey fog round the hair than 0.03/0.97, same edge error; round5-matte),
 // scpu = 1 forces the WASM backend (what a phone without WebGPU gets; ?scpu=1),
-// pet = 1 adds cats/dogs from DeepLab-v3 to the HQ cut (?pet=0 turns it off).
+// pet = 1 adds cats/dogs from DeepLab-v3 to the HQ cut, the HQ moving cut and the live cut (?pet=0 turns it off);
+// petEvery = live cut: a pet map every n frames at most (?petevery= bench only).
 const QS = new URLSearchParams(location.search);
 export const TUNE = { engine: 0, ema: 0.6, lo: 0.3, hi: 0.85, sigmaR: 0.08, maxSide: 960, glo: 0.15, ghi: 0.85,
-  still: QS.get("still") === "0" ? 0 : 1, slo: 0.15, shi: 0.9, scpu: QS.has("scpu") ? 1 : 0, pet: QS.get("pet") === "0" ? 0 : 1 };
+  still: QS.get("still") === "0" ? 0 : 1, slo: 0.15, shi: 0.9, scpu: QS.has("scpu") ? 1 : 0, pet: QS.get("pet") === "0" ? 0 : 1, petEvery: +QS.get("petevery") || 8 };
 // still.path = which cut the stills get: "webgpu" | "wasm" (MODNet) | "live" (fast selfie matte: HQ off / failed)
 export const stats = { delegate: "", warmMs: 0, held: 0, ms: [], maskW: 0, maskH: 0, masks: 0, webgl: false,
   still: { state: "", delegate: "", path: "live", loadMs: 0, warmMs: 0, segMs: 0, refineMs: 0, error: "", cuts: [], hq: [], pet: "" } };
 
+// live pet map every TUNE.petEvery-th frame at most: 8 = -2 % preview fps, 4 = -6 % (pet study said 3-4; research/round5-engine/)
+let petN = 99, petMiss = 0, petLive = null, petW = null, petBusy = false, petId = 0, petLate = 0;
+const petCb = new Map();
+// pet-worker.js (DeepLab cat + dog off the page's MediaPipe): bitmap (transferred) -> { data, width, height } | null.
+// Resolves null when pets are off or the worker failed.
+export function petMap(bitmap) {
+  if (petW === null) try {
+    petW = new Worker(new URL("./pet-worker.js", import.meta.url));
+    petW.onmessage = ({ data }) => { const f = petCb.get(data.id); petCb.delete(data.id); f?.(data); };
+    petW.onerror = e => { e.preventDefault(); petW.terminate(); petW = false; petLive = null; stats.petLive = "failed: " + (e.message || "load");
+      for (const f of petCb.values()) f({ error: "worker" }); petCb.clear(); };
+  } catch { petW = false; }
+  if (!petW || !TUNE.pet) { bitmap.close(); return Promise.resolve(null); }
+  return new Promise(res => {
+    const id = ++petId;
+    // a worker that stops answering (a wasm abort inside it raises no error event) must not hold up the HQ moving cut:
+    // 3 s and that run is "no pet"; 3 silent runs in a row and pets are off for the page
+    const t = setTimeout(() => { if (!petCb.delete(id)) return; res(null);
+      if (++petLate >= 3 && petW) { petW.terminate(); petW = false; petLive = null; stats.petLive = "failed: no answer"; } }, 3000);
+    petCb.set(id, d => { clearTimeout(t); petLate = 0; if (d.error) stats.petLive = "error: " + d.error; else stats.petLiveMs = d.ms; res(d.data ? d : null); });
+    petW.postMessage({ id, img: bitmap }, [bitmap]);
+  });
+}
+// a pet does not vanish between two runs: DeepLab missed a close-up dog face 1 run in 3 and the clip's matte blinked
+// (selfie-dog check), so a live map holds through 2 misses (~0.6 s) before it is dropped
+const livePet = p => { petBusy = false; petMiss = p ? 0 : petMiss + 1; if (p || petMiss > 2) petLive = p; if (petW) stats.petLive = p ? "pet" : "none"; };
 let seg = null, lastTime = -1, lastTs = 0, ema = null, emaSum = 0, held = 0, m8 = null, mw = 0, mh = 0, ready = false;
 // The model input is 256 px anyway: feed it a 256-wide copy so the mask comes back at 256x192 instead of the video size
 // (a 1280x960 phone frame read back 4.9 MB of floats per frame). The bilateral pass upsamples it against the full frame.
@@ -59,10 +86,22 @@ export function segmentFrame(video, tsMs = performance.now()) {
   if (warming) return false;
   lastTime = video.currentTime;
   const ts = Math.max(tsMs, lastTs + 1); lastTs = ts;
-  const t0 = performance.now();
-  seg.segmentForVideo(toSmall(video), ts, res => {
+  const t0 = performance.now(), sm = toSmall(video);
+  // pets in the live cut too (B's live cut-out over A's background keeps a dog beside B): DeepLab cat+dog on the same
+  // 256 px copy in pet-worker.js, a new run when the last one is back and TUNE.petEvery frames went by; the last pet map is
+  // max-ed into the person confidence on every frame (carry-over: a moving pet's map is ~8 frames + one run late)
+  if (TUNE.pet && petW !== false && petN++ >= TUNE.petEvery && !petBusy) {
+    petN = 0; petBusy = true;
+    createImageBitmap(sm).then(petMap).then(livePet, () => { petBusy = false; });
+  }
+  seg.segmentForVideo(sm, ts, res => {
     stats.masks = res.confidenceMasks.length;
     const m = res.confidenceMasks[PERSON], a = m.getAsFloat32Array();
+    if (petLive && TUNE.pet) {   // nearest sample: both maps are of the same 256 px frame
+      const P = petLive, kx = P.width / m.width, ky = P.height / m.height;
+      for (let y = 0, i = 0; y < m.height; y++) { const ro = Math.min(P.height - 1, (y * ky) | 0) * P.width;
+        for (let x = 0; x < m.width; x++, i++) a[i] = Math.max(a[i], P.data[ro + Math.min(P.width - 1, (x * kx) | 0)]); }
+    }
     if (m.width !== mw || m.height !== mh || !ema) {
       mw = stats.maskW = m.width; mh = stats.maskH = m.height;
       ema = Float32Array.from(a); m8 = new Uint8Array(a.length); emaSum = 0; held = 0;
@@ -454,6 +493,7 @@ function loadPet() {
   })().catch(e => { pet = null; stats.still.pet = "failed: " + (e?.message || e); });
 }
 // cat + dog probability at the still's size, or null when no pixel reaches 0.3 (no pet in the photo)
+// (the page's own DeepLab: stills only; clip keyframes and the live cut go through petMap / pet-worker.js)
 function petMask(c) {
   let out = null;
   pet.segment(c, r => {
@@ -464,11 +504,14 @@ function petMask(c) {
   });
   return out;
 }
-// m (MODNet alpha, Uint8 at model size) gets max(m, guided pet alpha); returns the pet canvas (alpha = pet) or null
-function addPet(canvas4x3, m) {
-  if (!pet || !petRef || !TUNE.pet) return null;
+// m (MODNet alpha, Uint8 at model size) gets max(m, guided pet alpha); returns the pet canvas (alpha = pet) or null.
+// Also clipmatte.js on each HQ moving-cut keyframe (canvas4x3 = a canvas of that frame's raw half, p = its petMap result).
+export function addPet(canvas4x3, m, p = undefined) {
+  if (!TUNE.pet || (p === undefined && !pet)) return null;
   try {
-    const t0 = performance.now(), p = petMask(canvas4x3);
+    petRef ||= createRefiner();
+    const t0 = performance.now();
+    if (p === undefined) p = petMask(canvas4x3);
     if (!p) return null;
     const g = petRef.refine(canvas4x3, p, { temporal: 0, guide: 1, lo: 0.15, hi: 0.85, width: m.width, height: m.height });
     const c = Object.assign(document.createElement("canvas"), { width: m.width, height: m.height }), x = c.getContext("2d", { willReadFrequently: true });
@@ -487,7 +530,7 @@ if (QS.has("debug")) setInterval(() => {
   b.style.cssText = "position:fixed;left:4px;bottom:4px;z-index:99999;font:11px/1.35 monospace;background:#000c;color:#7f7;" +
     "padding:3px 6px;border-radius:4px;pointer-events:none;white-space:pre;max-width:96vw;overflow:hidden";
   const S = stats.still, ms = stats.ms.length ? Math.round(stats.ms.reduce((s, v) => s + v, 0) / stats.ms.length) : 0;
-  b.textContent = `live ${stats.delegate || "-"} ${ms}ms webgl ${stats.webgl ? 1 : 0}\n` +
+  b.textContent = `live ${stats.delegate || "-"} ${ms}ms webgl ${stats.webgl ? 1 : 0} pet ${stats.petLive || "-"}\n` +
     `still ${S.path} (${S.state || "-"} ${S.delegate || "-"}) ${S.segMs}ms pet ${S.pet || "-"}\n` +
     `hq ${S.hq.slice(-4).map(c => (c.path === "wasm" ? "cpu" : "gpu") + ":" + c.ms + (c.pet ? "+pet" : "")).join(" ")}` + (S.error || S.gpuError ? `\n${S.error || S.gpuError}` : "");
 }, 500);

@@ -152,7 +152,7 @@ function along({ pts, closed }, step) {
 // choke : alpha = min of 4 taps at +-choke px (erosion as a min, not a product, so soft edges stay soft)
 // decon : edge pixels (0 < a < 0.98) take the a^4-weighted colour of the solid person around them, so the old wall
 //         colour never shows at the edge (same math as segment.js FS_DRAW)
-// gain / tint : brightness match between the two people and a light backdrop colour cast (compose only)
+// gain / tint : per-channel light match between the two people (matchLight) and a light backdrop colour cast (compose only)
 // outline : { style, px (band width in source px), rgb, color, cs (strip px per source px) } -> sticker under the person.
 //   The output canvas then grows by `pad` px on every side (canvas.pad) so the band is not cut at the frame edge;
 //   dotted returns a 2D canvas (dots placed along the field's iso-line on the CPU, then the person on top).
@@ -187,7 +187,7 @@ export function createClipAlpha({ choke = 0 } = {}) {
   const FS_V = `void main(){ float s = 0.0, n = 0.0;
       for (int i = -12; i <= 12; i++) { float x = float(i), w = K(x); s += w * un(uv + vec2(0.0, x * lo.y)); n += w; }
       gl_FragColor = pk(s / n); }`;
-  const FS_M = `uniform float ck, gain, sty, th, cs, tm, sd; uniform vec2 px, op, ps; uniform vec3 tint, oc;
+  const FS_M = `uniform float ck, sty, th, cs, tm, sd; uniform vec2 px, op, ps; uniform vec3 tint, oc, gain;
     void main(){
       vec2 q = S(uv);
       float a = A(q);
@@ -280,7 +280,7 @@ export function createClipAlpha({ choke = 0 } = {}) {
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
   };
   const dc = document.createElement("canvas");
-  const run = (src, sw, w, h, isSide, { gain = 1, tint = [1, 1, 1], outline = null, time = 0, slot = null } = {}) => {
+  const run = (src, sw, w, h, isSide, { gain = [1, 1, 1], tint = [1, 1, 1], outline = null, time = 0, slot = null } = {}) => {
     const ol = outline, sg = ol ? ol.px / ZB : 0, P = ol ? Math.ceil(ol.px + 3 * sg + 4) : 0, cw = w + 2 * P, ch = h + 2 * P;
     if (cv.width !== cw || cv.height !== ch) { cv.width = cw; cv.height = ch; }
     gl.bindTexture(gl.TEXTURE_2D, srcTex);
@@ -360,7 +360,6 @@ export function createClipAlpha({ choke = 0 } = {}) {
 // mean luma of the face area of a cut-out: rows 15-55 % and the middle third of the person's bounding box, a > 0.5;
 // also the person's centre-bottom (fractions of the image), the anchor of B's scaling of A
 const lumaCache = new WeakMap();
-const faceLuma = img => cutStats(img).L;
 function cutStats(img) {
   if (lumaCache.has(img)) return lumaCache.get(img);
   const W = 64, H = 48, c = Object.assign(document.createElement("canvas"), { width: W, height: H }), x = c.getContext("2d", { willReadFrequently: true });
@@ -369,26 +368,45 @@ function cutStats(img) {
   let x0 = W, x1 = -1, y0 = H, y1 = -1;
   for (let y = 0; y < H; y++) for (let k = 0; k < W; k++) if (d[(y * W + k) * 4 + 3] > 128) { x0 = Math.min(x0, k); x1 = Math.max(x1, k); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
   let s = 0, n = 0;
+  const rgb = [0, 0, 0];
   if (x1 >= 0) {
     const bw = x1 - x0 + 1, bh = y1 - y0 + 1;
     for (let y = Math.floor(y0 + 0.15 * bh); y <= y0 + 0.55 * bh; y++) for (let k = Math.floor(x0 + bw / 3); k <= x0 + 2 * bw / 3; k++) {
-      const i = (y * W + k) * 4; if (d[i + 3] > 128) { s += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; }
+      const i = (y * W + k) * 4; if (d[i + 3] > 128) { s += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2]; n++; for (let j = 0; j < 3; j++) rgb[j] += d[i + j]; }
     }
   }
-  const st = { L: n > 8 ? s / n : null, cx: x1 >= 0 ? (x0 + x1 + 1) / 2 / W : 0.5, by: x1 >= 0 ? (y1 + 1) / H : 1 };
+  const st = { L: n > 8 ? s / n : null, rgb: n > 8 ? rgb.map(v => v / n) : null, cx: x1 >= 0 ? (x0 + x1 + 1) / 2 / W : 0.5, by: x1 >= 0 ? (y1 + 1) / H : 1 };
   lumaCache.set(img, st);
   return st;
 }
 const clampG = g => Math.min(1.35, Math.max(0.85, g));
-// Gains for two cut-outs on a preset: both move toward their mean, pulled 30 % toward a booth-ish face luma (0.42).
+const WB = { pull: 0.6, max: 0.06 };   // white balance: each side moves 60 % of the way to the shared colour, <= 6 % a channel
+// One person's light, once per side: the face area's mean luma and rgb over all 4 of their cuts (cutStats, alpha > 0.5)
+const sideCache = new WeakMap();
+function sideLight(p) {
+  if (sideCache.has(p)) return sideCache.get(p);
+  const st = p.cuts.map(c => c?.cut && cutStats(c.cut)).filter(x => x?.L), n = st.length;
+  const r = n ? { L: st.reduce((s, x) => s + x.L, 0) / n, rgb: [0, 1, 2].map(j => st.reduce((s, x) => s + x.rgb[j], 0) / n) } : null;
+  sideCache.set(p, r);
+  return r;
+}
+// Review #1 (round 3): A and B shot on different phones in different rooms read as two stickers. Per-channel gains for
+// the two people, computed once per side (sideLight), so every still and every video frame of a side gets the same
+// ones. Luma: both move toward their mean, pulled 30 % toward a booth-ish face luma (0.42), 0.85..1.35. White balance:
+// the face's r/g and b/g move toward the two sides' geometric mean, bounded (WB), at the same luma.
 // fixed = "a" | "b": that person is in the raw backdrop (cannot change), so only the other one moves toward it.
-export function matchLuma(aCut, bCut, fixed = null) {
-  const La = faceLuma(aCut), Lb = faceLuma(bCut);
-  if (!La || !Lb) return [1, 1];
-  if (fixed === "a") return [1, clampG(La / Lb)];
-  if (fixed === "b") return [clampG(Lb / La), 1];
-  const t = 0.7 * (La + Lb) / 2 + 0.3 * 0.42 * 255;
-  return [clampG(t / La), clampG(t / Lb)];
+export function matchLight(a, b, fixed = null) {
+  const A = sideLight(a), B = sideLight(b), one = [1, 1, 1];
+  if (!A || !B) return [one, one];
+  const t = fixed === "a" ? A.L : fixed === "b" ? B.L : 0.7 * (A.L + B.L) / 2 + 0.3 * 0.42 * 255;
+  const ch = (X, Y, move) => {   // X's rgb gains toward Y's chromaticity
+    if (!move) return one;
+    const k = fixed ? WB.pull : WB.pull / 2;   // both move: each goes half the way, so they meet at the same point
+    const f = [0, 2].map(j => Math.min(1 + WB.max, Math.max(1 - WB.max, ((Y.rgb[j] / Y.rgb[1]) / (X.rgb[j] / X.rgb[1])) ** k)));
+    const g = [f[0], 1, f[1]], lum = 0.299 * g[0] + 0.587 + 0.114 * g[2], G = clampG(t / X.L);
+    return g.map(v => v / lum * G);
+  };
+  return [ch(A, B, fixed !== "a"), ch(B, A, fixed !== "b")];
 }
 
 // ---------- cells ----------
@@ -471,7 +489,7 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
   // again on top of it (A so that B never covers A; B only to carry the outline).
   const self = B.draw ? null : B.id === "a" ? a : b;
   const people = B.id === "b" && !ol ? [a] : [b, a];
-  const gains = matchLuma(a.cuts[ia].cut, b.cuts[i].cut, B.draw ? null : B.id);
+  const gains = matchLight(a, b, B.draw ? null : B.id);
   let tint;
   if (B.draw) { const pc = preset(B, w, h); bx.drawImage(pc, 0, 0); tint = pc.tint; }
   else {
