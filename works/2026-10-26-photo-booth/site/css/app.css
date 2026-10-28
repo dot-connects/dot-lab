@@ -214,7 +214,9 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .stage video { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
 .stage video.mirror { transform: scaleX(-1); }
 .stage .frame { position: absolute; inset: 0; pointer-events: none; }
-.frame #ghost, .frame #ghostClip { position: absolute; inset: 0; width: 100%; height: 100%; }
+.frame #ghost, .frame #ghostBg, .frame #liveCut { position: absolute; inset: 0; width: 100%; height: 100%; }
+.stage.viewb video { opacity: 0; }   /* B's view (b): A's room + B's live cut-out replace the camera picture */
+.viewpick { justify-content: center; margin-top: 8px; }
 /* the strip-cell crop: dashed box, outside dimmed */
 .crop { position: absolute; box-shadow: 0 0 0 100vmax #ffffff33; outline: 2px dashed #ffffffe6; outline-offset: -4px; }
 /* B moves / resizes A (when A allowed it): a layer over the camera that takes the drag and the pinch */
@@ -260,11 +262,6 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
   border: 3px solid #fff; outline: 2px solid #000; z-index: 3; pointer-events: none; }
 .last.land { animation: land .3s var(--spring); }
 @keyframes land { from { transform: scale(.6) translateY(-16px); opacity: .3; } }
-.stopbtn { display: none; appearance: none; border: 0; height: 56px; margin-top: 14px; padding: 0 26px; background: #000; color: #fff;
-  font: 900 19px var(--title); cursor: pointer; }
-.busy .shutter { display: none; }
-.busy .controls .stopbtn { display: block; pointer-events: auto; }
-.stopbtn:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; box-shadow: 0 0 0 3px var(--acc); }
 
 /* pick 4 of 8: grid on the left, the strip as it fills on the right */
 .pickhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: var(--b) solid var(--line); padding-bottom: 8px; }
@@ -325,8 +322,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .tool[aria-pressed="true"] i { background: var(--acc); color: #000; }
 /* the one round thing: a booth shutter, lime with a black ring */
 .shutter { appearance: none; width: 84px; height: 84px; border-radius: 50%; border: 6px solid #fff; background: var(--acc); box-shadow: 0 0 0 4px #000, 4px 6px 0 4px #000; cursor: pointer; flex: none; }
-.busy .controls button { pointer-events: none; }
-.busy .tool { opacity: .4; }
+.busy .shutter { pointer-events: none; }   /* 8 shots run straight through; mirror + flip stay usable (Round 6) */
 .busy .shutter { background: #e4e4e4; }
 
 /* upload */

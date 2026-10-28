@@ -408,8 +408,9 @@ kick();
   <div class="stage" id="stage">
     <video id="video" playsinline muted></video>
     <div class="frame" id="frame">
+      <img id="ghostBg" alt="" hidden>
+      <canvas id="liveCut" hidden></canvas>
       <img id="ghost" alt="" hidden>
-      <canvas id="ghostClip" hidden></canvas>
       <div class="crop" id="crop"></div>
     </div>
     <canvas class="review" id="review" hidden></canvas>
@@ -427,10 +428,13 @@ kick();
     <div class="camwait" id="camwait">카메라 켜는 중…</div>
   </div>
   <div class="pips" id="pips" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+  <div class="pills viewpick" id="viewPick" role="group" aria-label="찍을 때 보기" hidden>
+    <button class="pill" type="button" data-view="a" aria-pressed="true">내 카메라 배경</button>
+    <button class="pill" type="button" data-view="b" aria-pressed="false">친구 배경에 같이</button>
+  </div>
   <div class="controls" id="controls">
     <button class="tool" data-act="mirror" aria-pressed="true"><i><svg><use href="#i-mirror"/></svg></i><span>좌우반전</span></button>
     <button class="shutter" data-act="shoot" aria-label="8장 이어서 찍기"></button>
-    <button class="stopbtn" type="button" data-act="stop">멈추기</button>
     <button class="tool" data-act="flip"><i><svg><use href="#i-flip"/></svg></i><span>앞/뒤 카메라</span></button>
   </div>
   <div class="bottom" id="shootDone" hidden>
@@ -458,6 +462,7 @@ kick();
     <span class="step" id="pickCount">0 / 4</span>
   </div>
   <p class="fine pickfine">누른 순서대로 위에서부터 들어가 · 다시 누르면 빠져</p>
+  <div class="pills" id="pickBg" role="group" aria-label="배경 미리보기"></div>
   <div class="pickbody">
     <div class="pickgrid" id="pickGrid" role="group" aria-label="찍은 8장"></div>
     <div class="pickstrip" id="pickStrip" aria-label="고른 순서 미리보기"></div>
@@ -488,15 +493,30 @@ kick();
     <h1 id="shareTitle">다 올렸어!<br><em>친구한테 보내자</em></h1>
     <div class="heroart" id="myStrip"></div>
     <p class="lead" id="shareLead">친구가 이 링크를 열면 네 옆 빈자리에 서서 찍어.<br>둘 다 찍으면 사진이랑 영상이 열려.</p>
-    <p class="decnote"><svg aria-hidden="true"><use href="#star"/></svg><span>친구가 찍어 올리면 <b>둘 다</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>
+    <p class="decnote" id="decNote"><svg aria-hidden="true"><use href="#star"/></svg><span>친구가 찍어 올리면 <b>둘 다</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>
   </div>
   <div class="bottom">
-    <button class="cta" data-act="share">친구한테 링크 보내기</button>
+    <button class="cta" id="goDeco" data-act="goDeco" hidden>꾸미러 가기</button>
+    <button class="cta" id="shareBtn" data-act="share">친구한테 링크 보내기</button>
     <button class="cta alt" id="recheck" data-act="recheck" hidden>친구가 찍었는지 다시 확인</button>
+    <button class="textlink" id="testB" data-act="testB" hidden>직접 찍어 보기(테스트용)</button>
     <button class="textlink" data-act="copy" id="copyBtn">링크 복사</button>
     <div class="linkbox" id="linkBox" hidden><p class="fine">복사가 안 되면 길게 눌러 복사</p><p class="link" id="linkText"></p></div>
     <div data-trust></div>
     <div data-del></div>
+  </div>
+</section>
+
+<!-- hand-off (Round 6 #3): the finished strip is decorated + saved in Chrome / Safari, not inside a messenger app -->
+<section class="screen center" id="s-handoff" hidden>
+  <div class="msgart"><svg><use href="#star"/></svg></div>
+  <h2>크롬에서 열어 꾸며 줘</h2>
+  <p class="lead" id="hoText">이 앱 안에서는 꾸미고 저장하기가 잘 안 돼요.<br>크롬에서 같은 링크가 열려요.</p>
+  <p class="lead" id="hoIOS" hidden>오른쪽 위(또는 아래) ⋯ 메뉴 → ‘Safari로 열기’<br>(‘다른 브라우저로 열기’)를 눌러 줘.<br>안 보이면 링크를 복사해서 Safari에 붙여 넣어 줘.</p>
+  <div class="bottom">
+    <button class="cta" id="hoGo" data-act="toChrome">크롬에서 열기</button>
+    <button class="textlink" id="hoCopy" data-act="hoCopy">링크 복사</button>
+    <div class="linkbox" id="hoBox" hidden><p class="fine">복사가 안 되면 길게 눌러 복사</p><p class="link" id="hoLink"></p></div>
   </div>
 </section>
 
@@ -568,9 +588,10 @@ kick();
     <div id="saveBtns">
       <button class="cta" data-act="savePhoto" disabled>저장하기</button>
       <div class="vidrow">
-        <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo" disabled><i class="ring"></i><span>영상도 저장</span></button>
-        <button class="cta alt vbtn" id="storyBtn" data-act="saveStory" disabled><i class="ring"></i><span>스토리용 영상</span></button>
+        <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo"><i class="ring"></i><span>움직이는 네컷 다운로드</span></button>
+        <button class="cta alt vbtn" id="storyBtn" data-act="saveStory"><i class="ring"></i><span>스토리용 영상</span></button>
       </div>
+      <p class="fine" id="vidNote">움직이는 네컷은 가끔 끊기거나 사람이 잠깐 안 보일 수 있어요</p>
     </div>
     <div id="inappSave" hidden>
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>
