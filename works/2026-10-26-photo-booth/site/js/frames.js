@@ -701,7 +701,7 @@ const ALL = [
 // Result themes (2026-10-27): one tap sets frame (the first of `frames`), sticker outline, sticker set and caption font;
 // every tab stays changeable after. frames = the theme's frames in display order; each frame is in exactly one theme.
 export const THEMES = [
-  { id: "clean", label: "클린", font: "clean", stickers: "clean", outline: null, color: LIME,
+  { id: "clean", label: "클린", font: "clean", stickers: "clean", outline: { color: "#ffffff", style: "solid", width: "normal" }, color: LIME,
     frames: ["white", "lime", "black", "minimal", "film", "wanted", "vs"] },
   { id: "y2k", label: "Y2K", font: "y2k", stickers: "y2k", outline: { color: "#ff8fb6", style: "glitter", width: "normal" }, color: "#e9d9ff",
     frames: ["purikura", "chrome", "pink", "sky", "duo", "birthday"] },

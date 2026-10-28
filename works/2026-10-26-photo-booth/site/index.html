@@ -432,6 +432,7 @@ kick();
       <div class="crop" id="crop"></div>
     </div>
     <canvas class="review" id="review" hidden></canvas>
+    <b class="zchip" id="revZoom" aria-live="polite" hidden></b>
     <img class="snap" id="snap" alt="" hidden>
     <div class="mover" id="mover" hidden></div>
     <button class="hintchip" id="hintChip" type="button" data-act="hideHint" hidden><span id="hintText"></span><i aria-hidden="true">✕</i><span class="sr">알림 닫기</span></button>
@@ -459,7 +460,7 @@ kick();
     <p class="hint" id="doneHint">고른 4장이야. 이대로 올릴까?</p>
     <label class="switch" id="movableBox" hidden>
       <input type="checkbox" id="movable" role="switch">
-      <span class="sw-text"><b>친구가 나를 옮기고 크기 바꿀 수 있게</b><small id="movableSub"></small></span>
+      <span class="sw-text"><b>친구가 내 위치를 바꿀 수 있게</b><small id="movableSub"></small></span>
       <span class="knob" aria-hidden="true"></span>
     </label>
     <!-- Round 5 beauty: 보정 on my own 4 picks before upload (app.js "face retouch") -->
@@ -553,9 +554,13 @@ kick();
 <section class="screen" id="s-done" hidden>
   <div class="previewwrap">
     <div class="preview" id="preview">
-      <canvas id="stripImg" width="600" height="1800" role="img" aria-label="완성된 네컷" hidden></canvas><!-- canvas since Round 5: painted directly, no JPEG round trip -->
-      <video id="stripVid" playsinline muted loop hidden></video>
-      <div class="stk" id="stk" aria-label="붙인 스티커"></div>
+      <!-- Round 6 #11: the zoomed layer (two fingers zoom / pan in place) -->
+      <div class="zin" id="previewIn">
+        <canvas id="stripImg" width="600" height="1800" role="img" aria-label="완성된 네컷" hidden></canvas><!-- canvas since Round 5: painted directly, no JPEG round trip -->
+        <video id="stripVid" playsinline muted loop hidden></video>
+        <div class="stk" id="stk" aria-label="붙인 스티커"></div>
+      </div>
+      <b class="zchip" id="zoomChip" aria-live="polite" hidden></b>
       <svg class="zoomtag" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       <div class="veils" id="veils"></div>
       <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
@@ -576,6 +581,14 @@ kick();
   <div class="panel" data-panel="look" role="tabpanel" aria-label="보정" hidden>
     <div class="look" id="lookA" role="group"></div>
     <div class="look" id="lookB" role="group"></div>
+    <!-- Round 6: my own size / place per cell (app.js "my own size") -->
+    <div class="look own" id="ownBox" role="group" aria-label="내 크기·위치" hidden>
+      <h3>내 크기·위치</h3>
+      <div class="pills" id="ownCells" aria-label="바꿀 칸"></div>
+      <label class="ownsize"><span>크기</span><input type="range" id="ownSize" min="50" max="150" step="1" value="100"></label>
+      <p class="fine">사진 속 내 칸을 한 손가락으로 끌면 옮겨져 · 두 손가락은 확대</p>
+      <button class="pill" type="button" id="ownReset" data-act="ownReset">원래대로</button>
+    </div>
   </div>
   <div class="panel row" data-panel="bg" id="bgChips" role="tabpanel" aria-label="배경" hidden></div>
   <div class="panel row" data-panel="frame" id="frameChips" role="tabpanel" aria-label="프레임"></div>
@@ -605,11 +618,13 @@ kick();
   <div class="savebar" id="saveBox">
     <div id="saveBtns">
       <button class="cta" data-act="savePhoto" disabled>저장하기</button>
+      <button class="cta alt" id="saveBoth" data-act="saveBoth">사진 + 영상 한 번에</button>
       <div class="vidrow">
         <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo"><i class="ring"></i><span>움직이는 네컷 다운로드</span></button>
         <button class="cta alt vbtn" id="storyBtn" data-act="saveStory"><i class="ring"></i><span>스토리용 영상</span></button>
       </div>
       <p class="fine" id="vidNote">움직이는 네컷은 가끔 끊기거나 사람이 잠깐 안 보일 수 있어요</p>
+      <p class="fine" id="vidHq" role="status" hidden></p>
     </div>
     <div id="inappSave" hidden>
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>
@@ -635,12 +650,6 @@ kick();
 </section>
 
 </main>
-<!-- Round 5 deco: full-screen viewer for the strip (pinch / drag / double-tap, swipe down to close) -->
-<div class="zoom" id="zoom" role="dialog" aria-modal="true" aria-label="크게 보기" hidden>
-  <div class="zoomstage" id="zoomStage"></div>
-  <button class="zoomx" type="button" data-act="zoomClose" aria-label="닫기">✕</button>
-  <p class="zoomhint">두 손가락으로 확대 · 두 번 탭하면 2배 · 아래로 밀면 닫혀</p>
-</div>
 <div class="toast" id="toast" role="status" hidden></div>
 <script type="module" src="js/app.js"></script>
 </body>

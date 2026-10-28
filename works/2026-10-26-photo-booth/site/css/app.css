@@ -447,7 +447,6 @@ body[data-screen="done"] .toast { top: auto; bottom: 150px; }
 .preview canvas#stripImg { width: 100%; height: 100%; display: block; }
 .tile .mini { overflow: hidden; }
 .tile .mini canvas { width: 100%; height: 100%; display: block; }
-.preview { cursor: zoom-in; }
 /* the "making" veil only shows when a render takes longer than ~150 ms (no flash on every tap) */
 .making { animation: makingIn .2s ease .15s both; }
 @keyframes makingIn { from { opacity: 0; } }
@@ -484,12 +483,17 @@ body[data-tab="sticker"] .donetitle { display: none; }
 .stkgrid img { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
 .stkgrid .emo { font: 32px/1 "Apple Color Emoji", "Segoe UI Emoji", "Noto Color Emoji", sans-serif; }
 
-.zoom { position: fixed; inset: 0; z-index: 20; background: #000000f2; touch-action: none; overflow: hidden; }
-.zoomstage { position: absolute; inset: 0; display: grid; place-items: center; transform-origin: 50% 50%; will-change: transform; }
-.zoomstage img, .zoomstage video { max-width: 100%; max-height: 100%; display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
-.zoomx { position: absolute; top: max(14px, env(safe-area-inset-top)); right: 14px; width: 46px; height: 46px; border: var(--b) solid #000; background: var(--acc); color: #000; font-size: 20px; font-weight: 900; cursor: pointer; }
-.zoomx:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
-.zoomhint { position: absolute; left: 16px; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); margin: 0 auto; width: fit-content; max-width: calc(100% - 32px); text-align: center; font-size: 14px; font-weight: 700; color: #fff; background: #000; border: 2px solid #fff; padding: 6px 12px; pointer-events: none; }
+/* Round 6 #11: inline pinch zoom (app.js zoomer); the chip shows the scale, the ✕ / handle keep their size */
+.zin { position: absolute; inset: 0; transform-origin: 0 0; }
+.review { transform-origin: 0 0; }
+.preview { touch-action: none; }
+.zchip { position: absolute; top: 8px; right: 8px; z-index: 3; background: #000; color: #fff; font: 700 13px var(--num); padding: 2px 8px; pointer-events: none; }
+.zin .stk-x, .zin .stk-h { transform: translate(-50%, -50%) rotate(calc(-1 * var(--r, 0rad))) scale(calc(1 / var(--zs, 1))); }
+.own .pills { flex-wrap: nowrap; gap: 6px; }
+.own .pills .pill { flex: 1; padding: 0 4px; white-space: nowrap; }
+.ownsize { display: grid; grid-template-columns: 44px 1fr; align-items: center; font-weight: 900; font-size: 15px; }
+.ownsize input { width: 100%; accent-color: var(--ink); }
+#ownReset { align-self: flex-start; min-height: 36px; padding: 0 14px; }
 
 /* ===== Result themes (클린 / Y2K / 다이어리): theme row on the decorate screen, caption font pills, sticker set pills ===== */
 .themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
