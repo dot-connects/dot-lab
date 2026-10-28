@@ -1,5 +1,6 @@
 // Camera: 4:3 ideal, widest zoom, mirror follows the facing, pinch zoom + tap focus where the track offers them.
-export const camState = { mirror: true, front: true, track: null, caps: {} };
+// shape (Round 6 #9): "wide" (가로) keeps the centre 4:3 of the camera, "tall" (세로) the centre 3:4.
+export const camState = { mirror: true, front: true, track: null, caps: {}, shape: "wide" };
 let stream = null;
 
 export async function startCam(video, facing = "user") {
@@ -33,11 +34,11 @@ export async function flipCam(video) {
   return startCam(video, camState.front ? "environment" : "user");
 }
 
-// Centre 4:3 crop of the current video (some cameras ignore the 4:3 request and give 16:9).
-export function frameRect(video) {
-  const vw = video.videoWidth, vh = video.videoHeight;
-  if (vw * 3 > vh * 4) { const sw = Math.round(vh * 4 / 3); return { sx: (vw - sw) >> 1, sy: 0, sw, sh: vh }; }
-  const sh = Math.round(vw * 3 / 4);
+// Centre 4:3 (wide) or 3:4 (tall) crop of the current video (some cameras ignore the 4:3 request and give 16:9).
+export function frameRect(video, shape = camState.shape) {
+  const vw = video.videoWidth, vh = video.videoHeight, [p, q] = shape === "tall" ? [3, 4] : [4, 3];
+  if (vw * q > vh * p) { const sw = Math.round(vh * p / q); return { sx: (vw - sw) >> 1, sy: 0, sw, sh: vh }; }
+  const sh = Math.round(vw * q / p);
   return { sx: 0, sy: (vh - sh) >> 1, sw: vw, sh };
 }
 

@@ -11,7 +11,11 @@ const MOCK = Q.has("mock");                         // dev: no MediaPipe, placeh
 const SHOTS = 8, SECS = Q.has("fast") ? 4 : 5;      // 5 s each (operator 10-27); ?fast = tests only
 const POSES = ["브이!", "반쪽 하트", "꽃받침", "깜짝 놀란 척", "윙크 한 번", "볼 빵빵", "친구 쪽 쳐다보기", "마음대로!"];
 const NAMES = [1, 2, 3, 4].flatMap(c => [`${c}-raw.jpg`, `${c}-cut.png`, `${c}-clip`]);
-const CELL = 552 / 382;                             // strip cell aspect (compose LAYOUT CW:CH)
+// strip cell aspect per shape (compose LAYOUTS CW:CH): 가로 = wide cells, 세로 = tall 3:4 cells (Round 6 #9)
+const CELLS = { wide: 552 / 382, tall: 426 / 568 };
+const cellAsp = () => CELLS[S.shape] || CELLS.wide;
+// a cell-sized canvas for the pick grid / review, per shape
+const cellPx = () => S.shape === "tall" ? { w: 426, h: 568 } : { w: 552, h: 382 };
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const today = new Date(), pad = n => String(n).padStart(2, "0");
@@ -40,7 +44,12 @@ const S = {
   view: "a", pickBg: null, flipP: null,           // B's shoot view (Round 6 #10); pick-screen background; camera switch in flight
   cam: null, cap: null, bound: false, busy: false,
   movable: false, lay: { x: 0, y: 0, scale: 1 },  // A's choice (opts.movable); B's placement of A, fractions of the cell
+  shape: "wide",                                 // A's 가로 ("wide") / 세로 ("tall") pick, B follows it (opts.shape)
 };
+function setShape(sh) {
+  S.shape = sh === "tall" ? "tall" : "wide";
+  document.body.dataset.shape = S.shape;          // CSS: pick grid, review, previews, mini strips per shape
+}
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
 const HINT_B = "친구를 끌어서 옮기고, 두 손가락으로 크기를 바꿔 봐";
 const HINT_SHOOT = "셔터 한 번이면 8장을 이어서 찍어 · 한 장에 5초";
@@ -130,6 +139,7 @@ async function route() {
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
   if (st.error) return expired(st.error);
   S.movable = !!st.opts?.movable;
+  setShape(st.opts?.shape);
   const role = api.loadRole(S.id)?.role;
   if (!st.a.done) {
     if (role === "a") return msg({ title: "올리다 멈췄어", text: "찍은 사진이 이 화면에 남아 있지 않아. 새로 찍어 줘.", btn: "다시 찍기", onBtn: fresh });
@@ -182,6 +192,16 @@ async function landB() {
   window.__coverReal?.(await S.ghostP);   // the B cover swaps its drawn friend for A's real cut-outs (index.html)
 }
 
+// ---- A picks 가로 / 세로 first (Round 6 #9, mockups/screens3.html A-2); the link carries it and B follows ----------
+function modeScreen() {
+  show("mode");
+  for (const b of $$("#modes .mode")) {
+    b.setAttribute("aria-checked", b.dataset.shape === S.shape);
+    b.onclick = () => { setShape(b.dataset.shape); modeScreen(); };
+  }
+  $("modeGoText").textContent = S.shape === "tall" ? "세로로 찍기" : "가로로 찍기";
+}
+
 // ---- shoot --------------------------------------------------------------------------------------------------------
 async function startShoot(side) {
   S.side = side; S.sent.clear();
@@ -198,6 +218,7 @@ async function startShoot(side) {
   const video = $("video");
   try {
     S.cam ||= await load("camera");
+    S.cam.camState.shape = S.shape;    // the camera frame (and every still / clip) is 4:3 for 가로, 3:4 for 세로
     await S.cam.startCam(video);
     // after the camera, not alongside it: with the HQ model already on the GPU (landing prefetch) MediaPipe's GPU
     // init froze getUserMedia past the 5 s stall limit (headless 10-27, 3 of 3 runs)
@@ -219,13 +240,15 @@ async function startShoot(side) {
   if (side === "b") {
     await S.ghostP; await S.ghostRawP; setView(S.view);
     if (S.movable && !S.anchors) load("compose").then(async C => {
-      S.anchors = C.layoutAnchor && await Promise.all(S.ghost.map(u => u && loadImg(u).then(i => C.layoutAnchor(i))));
+      S.anchors = C.layoutAnchor && await Promise.all(S.ghost.map(u => u && loadImg(u).then(i => C.layoutAnchor(i, cellAsp()))));
       applyLay();
     }).catch(e => console.warn("[booth] layout anchors", e));
   }
 }
 // Lay the camera out so the strip-cell crop (the whole photo) spans the stage width and sits in its middle.
-// The crop is compose's cellCrop: full width, a quarter of the spare height taken from the top.
+// The crop is compose's cellCrop on the stored frame (camera.js frameRect): full width, a quarter of the spare height
+// taken from the top (or the centre width, when the frame is wider than the cell). Round 6 #8: only the crop shows,
+// everything outside it is covered (.crop), so what is on screen is exactly what lands in the cell.
 // fresh shoot screen: no shots, shutter ready (start, and 전체 다시 찍기)
 function resetShoot() {
   S.shotUrls.forEach(u => URL.revokeObjectURL(u));
@@ -240,7 +263,7 @@ function resetShoot() {
 function fitStage() {
   const v = $("video"), st = $("stage");
   if (!v.videoWidth || !S.cam) return;
-  const W = st.clientWidth, H = st.clientHeight, fr = S.cam.frameRect(v);
+  const W = st.clientWidth, H = st.clientHeight, fr = S.cam.frameRect(v), CELL = cellAsp();
   const cw = fr.sw / fr.sh > CELL ? fr.sh * CELL : fr.sw, ch = cw / CELL, cx = (fr.sw - cw) / 2, cy = (fr.sh - ch) / 2 * 0.25;
   const k = Math.min(W / cw, (H * 0.92) / ch);
   const left = W / 2 - (fr.sx + cx + cw / 2) * k, top = H / 2 - (fr.sy + cy + ch / 2) * k;
@@ -324,8 +347,8 @@ function liveLoop() {
   const step = () => {
     if (S.view !== "b" || S.side !== "b" || document.body.dataset.screen !== "shoot" || $("s-shoot").classList.contains("shooting-done")) { S.liveOn = false; return; }
     if (v.videoWidth && S.seg && S.cam) {
-      const fr = S.cam.frameRect(v), w = 480, h = 360, k = w / fr.sw, x = c.getContext("2d");
-      if (c.width !== w) { c.width = w; c.height = h; }
+      const fr = S.cam.frameRect(v), w = 480, h = Math.round(w * fr.sh / fr.sw), k = w / fr.sw, x = c.getContext("2d");
+      if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
       if (!S.busy) S.seg.segmentFrame(v);          // while shooting, capture's loop runs the model (same matte)
       x.clearRect(0, 0, w, h); x.save(); x.translate(-fr.sx * k, -fr.sy * k);
       S.seg.drawCutout(x, v, v.videoWidth * k, v.videoHeight * k, S.cam.camState.mirror); x.restore();
@@ -473,7 +496,8 @@ async function prepAndPick() {
 // of A applied), layer order A, B, background (#7). The strip crop is compose's cellCrop.
 const PICK_BG = { a: [["a", "배경 켜기"], ["none", "배경 끄기"]], b: [["a", "친구 배경"], ["b", "내 배경"], ["none", "배경 없음"]] };
 const bgId = v => !v || v === "none" ? "booth-pink" : v;
-async function cellCanvas(cut, ai, look = null, w = 552, h = 382) {   // look: Round 5 보정 (review only; the grid stays plain)
+async function cellCanvas(cut, ai, look = null) {   // look: Round 5 보정 (review only; the grid stays plain)
+  const { w, h } = cellPx(), CELL = cellAsp();
   const c = Object.assign(document.createElement("canvas"), { width: w, height: h }), x = c.getContext("2d");
   const C = await load("compose", mockCompose);
   const [raw0, cut0] = await cutImgs(cut), { raw, cut: cutImg } = await withLook(raw0, cut0, look), bg = bgId(S.pickBg);
@@ -484,8 +508,9 @@ async function cellCanvas(cut, ai, look = null, w = 552, h = 382) {   // look: R
   } else {
     const B = C.BACKGROUNDS?.find(b => b.id === bg), img = bg === "a" ? raw : cutImg;
     if (bg !== "a") { if (B?.draw) B.draw(x, w, h); else { x.fillStyle = "#ffc2d6"; x.fillRect(0, 0, w, h); } }
-    const sw = img.naturalWidth || img.width, sh = sw / CELL;
-    x.drawImage(img, 0, ((img.naturalHeight || img.height) - sh) / 2 * 0.25, sw, sh, 0, 0, w, h);
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;   // compose cellCrop
+    if (iw / ih > CELL) { const sw = ih * CELL; x.drawImage(img, (iw - sw) / 2, 0, sw, ih, 0, 0, w, h); }
+    else { const sh = iw / CELL; x.drawImage(img, 0, (ih - sh) / 2 * 0.25, iw, sh, 0, 0, w, h); }
   }
   return c;
 }
@@ -506,6 +531,7 @@ function pickScreen() {
   S.pick = []; S.cellCv = [];
   show("pick");
   $("reshoot").hidden = S.redo;
+  document.querySelector(".pickfine").textContent = `누른 순서대로 ${S.shape === "tall" ? "왼쪽" : "위에서"}부터 들어가 · 다시 누르면 빠져`;
   pickBgRow();
   $("pickGrid").replaceChildren(...S.shots.map((_, j) => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "pk" });
@@ -552,7 +578,8 @@ function paintStrip() {
     if (j == null) { d.className = "mc empty"; d.innerHTML = `<span>${k + 1}</span>`; return d; }
     d.className = "mc";
     const src = S.cellCv[j];
-    if (src) { const c = Object.assign(document.createElement("canvas"), { width: 184, height: 127 }); c.getContext("2d").drawImage(src, 0, 0, 184, 127); d.append(c); }
+    const { w, h } = S.shape === "tall" ? { w: 120, h: 160 } : { w: 184, h: 127 };
+    if (src) { const c = Object.assign(document.createElement("canvas"), { width: w, height: h }); c.getContext("2d").drawImage(src, 0, 0, w, h); d.append(c); }
     else d.innerHTML = `<img alt="" src="${S.shotUrls[j]}">`;
     return d;
   }), Object.assign(document.createElement("div"), { className: "mfoot", textContent: "따로 같이 네컷" }));
@@ -599,7 +626,7 @@ async function review() {
   if (!$("s-shoot").classList.contains("shooting-done") || seq !== S.revSeq) return;
   const R = $("review"), st = $("stage"), d = devicePixelRatio || 1;
   R.width = st.clientWidth * d; R.height = st.clientHeight * d;
-  const x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
+  const CELL = cellAsp(), x = R.getContext("2d"), g = 8 * d, cw = Math.min((R.width - 3 * g) / 2, ((R.height - 3 * g) / 2) * CELL), ch = cw / CELL;
   S.revGeo = { ox: (R.width - 2 * cw - g) / 2, oy: (R.height - 2 * ch - g) / 2, cw, ch, g, d };
   x.fillStyle = "#000"; x.fillRect(0, 0, R.width, R.height);
   cells.forEach((c, i) => paintRev(c, i));
@@ -740,7 +767,7 @@ async function upload() {
     if (S.side === "a" && !S.token) {
       const tk = api.newToken();
       S.movable = $("movable").checked;
-      const { id } = await api.create(tk, { movable: S.movable });
+      const { id } = await api.create(tk, { movable: S.movable, shape: S.shape });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
       history.replaceState(null, "", `?s=${id}${MOCK ? "&mock=1" : ""}`);
@@ -924,13 +951,15 @@ async function doneScreen(note = "") {
   if (!D.revealed) reveal();
   setVid();
 }
-const rectsOf = f => C.cellRects?.(f) || [0, 1, 2, 3].map(i => ({ x: 24, y: 24 + i * 398, w: 552, h: 382 }));
+const rectsOf = f => C.cellRects?.(f, S.shape) || [0, 1, 2, 3].map(i => ({ x: 24, y: 24 + i * 398, w: 552, h: 382 }));
+// the strip's size in strip px for this link's shape (stickers, preview canvas, veils)
+const stripWH = () => S.shape === "tall" ? { W: 1800, H: 800 } : { W: 600, H: 1800 };
 function reveal() {          // first time only: the print slides out, then the four cells appear 90 ms apart
   D.revealed = true;
   if (calm()) return;
-  const p = $("preview");
+  const p = $("preview"), { W, H } = stripWH();
   $("veils").innerHTML = rectsOf(D.frame).map((r, i) =>
-    `<i style="left:${r.x / 6}%;top:${r.y / 18}%;width:${r.w / 6}%;height:${r.h / 18}%;--i:${i}"></i>`).join("");
+    `<i style="left:${r.x / W * 100}%;top:${r.y / H * 100}%;width:${r.w / W * 100}%;height:${r.h / H * 100}%;--i:${i}"></i>`).join("");
   restart(p, "print");
   setTimeout(() => sparkle($("s-done").querySelector(".previewwrap"), { n: 6, dist: 70, size: 22, y: 0.45 }), 1100);
 }
@@ -1061,7 +1090,7 @@ function later() {          // the saved photo soon, the moving strip after the 
   setVid();
   if (D.wantVideo || D.wantStory) vT = setTimeout(videoJob, VIDEO_IDLE);
 }
-const opts = (o = {}) => ({ a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
+const opts = (o = {}) => ({ shape: S.shape, a: D.view?.a || D.media.a, b: D.view?.b || D.media.b, bg: D.bg.id, frame: D.frame, filter: D.filter, date: DATE,
   caption: D.caption.trim(), font: D.font, layout: D.layout, pairs: D.pairs, outline: D.outline, fx: D.fx || { a: null, b: null }, stickers: D.stickers,
   mattes: D.mattes, ...o });
 const vkey = () => [D.bg.id, D.frame.id, D.filter, D.caption.trim(), JSON.stringify(D.outline), JSON.stringify(D.look), JSON.stringify(D.stickers),
@@ -1076,7 +1105,9 @@ async function render(minis = []) {
   try { cv = await stripOf(opts({ stickers: null })); }
   catch (e) { console.warn("[booth] drawStrip", e); if (seq === D.seq) $("makingText").textContent = "앗, 네컷을 못 만들었어"; return; }
   if (seq !== D.seq) return;
-  $("stripImg").getContext("2d").drawImage(cv, 0, 0, 600, 1800);
+  const el = $("stripImg");
+  if (el.width !== cv.width || el.height !== cv.height) { el.width = cv.width; el.height = cv.height; }
+  el.getContext("2d").drawImage(cv, 0, 0, cv.width, cv.height);
   showStill();
   $("making").hidden = true;
   photoJob();
@@ -1106,7 +1137,8 @@ async function renderMinis(kind) {
     try {
       const m = b.querySelector(".mini");
       let cv;
-      if (C.stripCanvas) cv = await C.stripCanvas(o, kind === "frame" ? { scale: 64 * d / 600 } : { scale: 64 * d / rectsOf(D.frame)[0].w, cell: 0 });
+      // mini width in CSS px (64; a 세로 strip's frame tile is wider, css)
+      if (C.stripCanvas) cv = await C.stripCanvas(o, kind === "frame" ? { scale: (m.clientWidth || 64) * d / stripWH().W } : { scale: 64 * d / rectsOf(D.frame)[0].w, cell: 0 });
       else {          // mock compose: the old full-size path
         cv = Object.assign(document.createElement("canvas"), { width: 600, height: 1800 });
         cv.getContext("2d").drawImage(await createImageBitmap(await C.drawStrip(o)), 0, 0);
@@ -1228,12 +1260,14 @@ for (const p of $$("#stkSets .pill")) p.onclick = () => buildStickers(p.dataset.
 function addSticker(kind, id) {
   if (D.stickers.length >= STK_MAX) return toast(`스티커는 ${STK_MAX}개까지 붙일 수 있어`);
   const n = D.stickers.length, j = ((n % 5) - 2) * 26;          // a little apart, so taps in a row do not stack exactly
-  D.stickers.push({ kind, id, x: 300 + j, y: 900 + j, s: kind === "emoji" ? 140 : 170, r: 0 });
+  const { W, H } = stripWH();
+  D.stickers.push({ kind, id, x: W / 2 + j, y: H / 2 + j, s: kind === "emoji" ? 140 : 170, r: 0 });
   D.sel = D.stickers.length - 1;
   paintStk(); later();
 }
 function placeStk(el, s) {
-  Object.assign(el.style, { left: `${s.x / 6}%`, top: `${s.y / 18}%`, width: `${s.s / 6}%` });
+  const { W, H } = stripWH();
+  Object.assign(el.style, { left: `${s.x / W * 100}%`, top: `${s.y / H * 100}%`, width: `${s.s / W * 100}%` });
   el.style.setProperty("--r", `${s.r}rad`);
 }
 function paintStk() {
@@ -1255,7 +1289,7 @@ function bindStk() {
   const L = $("stk"), pts = new Map();
   let g = null, moved = false, miss = false;
   const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
-  const k = () => 600 / L.clientWidth;          // strip px per CSS px
+  const k = () => stripWH().W / L.clientWidth;  // strip px per CSS px
   const begin = handle => {
     const s = D.stickers[D.sel];
     g = s && pts.size ? { s0: { ...s }, p0: [...pts.values()].map(p => ({ ...p })), handle: handle ?? g?.handle ?? false } : null;
@@ -1310,10 +1344,10 @@ function bindStk() {
       const m0 = { x: (p0[0].x + p0[1].x) / 2, y: (p0[0].y + p0[1].y) / 2 }, m1 = { x: (now[0].x + now[1].x) / 2, y: (now[0].y + now[1].y) / 2 };
       const d0 = Math.hypot(p0[1].x - p0[0].x, p0[1].y - p0[0].y), d1 = Math.hypot(now[1].x - now[0].x, now[1].y - now[0].y);
       const a0 = Math.atan2(p0[1].y - p0[0].y, p0[1].x - p0[0].x), a1 = Math.atan2(now[1].y - now[0].y, now[1].x - now[0].x);
-      s.x = cl(s0.x + (m1.x - m0.x) * K, 0, 600); s.y = cl(s0.y + (m1.y - m0.y) * K, 0, 1800);
+      s.x = cl(s0.x + (m1.x - m0.x) * K, 0, stripWH().W); s.y = cl(s0.y + (m1.y - m0.y) * K, 0, stripWH().H);
       s.s = cl(s0.s * (d0 ? d1 / d0 : 1), STK_S.lo, STK_S.hi); s.r = s0.r + a1 - a0;
     } else {
-      s.x = cl(s0.x + (now[0].x - p0[0].x) * K, 0, 600); s.y = cl(s0.y + (now[0].y - p0[0].y) * K, 0, 1800);
+      s.x = cl(s0.x + (now[0].x - p0[0].x) * K, 0, stripWH().W); s.y = cl(s0.y + (now[0].y - p0[0].y) * K, 0, stripWH().H);
     }
     moved = true;
     const el = L.querySelector(`.stk-i[data-i="${D.sel}"]`); if (el) placeStk(el, s);
@@ -1403,7 +1437,8 @@ function bindZoom() {
 bindZoom();
 
 const ACT = {
-  startA: () => startShoot("a"),
+  startA: () => modeScreen(),
+  modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
   mine: () => shareScreen("wait"),
   testB: () => { landB(); prefetchHQ(); },          // TEST_B: A shoots the friend's side on this phone
@@ -1464,4 +1499,5 @@ document.addEventListener("click", e => {
 // ---- boot ---------------------------------------------------------------------------------------------------------
 try { env = await import("./env.js"); } catch {}
 window.__booth = { S, D, MOCK };   // dev handle for the headless checks
+setShape(S.shape);
 route();

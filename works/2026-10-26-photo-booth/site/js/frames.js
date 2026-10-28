@@ -1,7 +1,9 @@
-// Strip frames, drawn procedurally on the 600 x 1800 canvas. Each frame:
+// Strip frames, drawn procedurally on the strip canvas: 600 x 1800 (wide cells, 가로) or 1800 x 800 (tall cells, 세로;
+// compose.js LAYOUTS). Each frame draws for both: positions come from L (W, H, M) and cellRects, never fixed 600 / 1800.
 //   draw(ctx, L, { date, caption, cellRects, font })  background, cell borders, footer (cells are drawn after this)
 //   over(ctx, L, { date, caption, cellRects })  optional stickers on top of the cells (corners only, never faces)
-//   rects                                       optional cell rects (same 552:382 aspect as the default, so preview crop holds)
+//   rects                                       optional { wide, tall } cell rects, each with its shape's cell aspect
+//                                               (552:382 / 3:4) so the camera view's crop holds
 //   radius                                      cell corner radius; color = chip swatch.
 // Footer: the caption (one line, <= 16 chars, fallback 따로 같이 네컷) + the date (YYYY.MM.DD), styled per frame.
 // FRAMES order = display order, first = default (CONTRACT.md "Round 2 additions").
@@ -248,18 +250,28 @@ const vgrad = (ctx, W, H, stops) => {
   const g = ctx.createLinearGradient(0, 0, 0, H); stops.forEach((c, i) => g.addColorStop(i / (stops.length - 1), c));
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
 };
-const footY = (L, rects) => { const b = rects[3].y + rects[3].h; return b + (L.H - b) / 2; };
-// 4 stacked rects of width w (default cell aspect), centred, starting at y0 with gap g
+const footY = (L, rects) => { const b = Math.max(...rects.map(r => r.y + r.h)); return b + (L.H - b) / 2; };
+const tallStrip = L => L.W > L.H;
+// 4 stacked rects of width w (wide cell aspect), centred in the 600 strip, starting at y0 with gap g
 const stack = (w, y0, g) => { const h = Math.round(w * 382 / 552), x = (600 - w) / 2;
   return [0, 1, 2, 3].map(i => ({ x, y: y0 + i * (h + g), w, h })); };
+// 4 tall rects (3:4, h a multiple of 4) side by side, centred in the 1800 strip, at y0 with gap g
+const row = (h, y0, g) => { const w = h * 3 / 4, x0 = (1800 - 4 * w - 3 * g) / 2;
+  return [0, 1, 2, 3].map(i => ({ x: x0 + i * (w + g), y: y0, w, h })); };
+// where a mark between cell i and i + 1 goes (in the gap, at the cells' middle)
+const between = (c, i) => c[i + 1].x > c[i].x + c[i].w
+  ? { x: (c[i].x + c[i].w + c[i + 1].x) / 2, y: c[i].y + c[i].h / 2 }
+  : { x: c[i].x + c[i].w / 2, y: (c[i].y + c[i].h + c[i + 1].y) / 2 };
+const mid = r => r.x + r.w / 2;
 
-// film strip: narrower cells between sprocket rails
-const FILM_GAP = 24, FILM_RECTS = stack(500, 36, FILM_GAP);
-const WANTED_RECTS = stack(480, 176, 14);
-const VS_RECTS = stack(500, 132, 14);
+// film strip: narrower cells between sprocket rails (wide: rails left and right; tall: top and bottom)
+const FILM_GAP = 24, FILM_RECTS = { wide: stack(500, 36, FILM_GAP), tall: row(520, 44, FILM_GAP) };
+const WANTED_RECTS = { wide: stack(480, 176, 14), tall: row(428, 176, 14) };
+const VS_RECTS = { wide: stack(500, 132, 14), tall: row(424, 132, 14) };   // tall: the VS + caption + date block needs ~240 px
 const MONO = '500 22px "IBM Plex Mono"';
 const LIME = "#d6ff3d", GROT = '700 18px "Space Grotesk"';
-const NOTE_RECTS = stack(500, 50, 34), GRID_RECTS = stack(516, 44, 26), SCRAP_RECTS = stack(508, 40, 30);
+const NOTE_RECTS = { wide: stack(500, 50, 34), tall: row(540, 50, 34) }, GRID_RECTS = { wide: stack(516, 44, 26), tall: row(548, 44, 26) },
+  SCRAP_RECTS = { wide: stack(508, 40, 30), tall: row(536, 40, 30) };
 
 const ALL = [
   {
@@ -286,8 +298,8 @@ const ALL = [
       const y = footY(L, cellRects);
       text(ctx, cap(caption), L.W / 2, y - 14, cf(font, '54px "Jua"'), { fill: "#fff", stroke: [["#ee6f97", 8]], max: 360 });
       text(ctx, date, L.W / 2, y + 42, '26px "Jua"', { fill: "#d94a76", ls: 2 });
-      heart(ctx, 80, y - 18, 32, "#ff8fb1", "#fff", 5, -0.25);
-      heart(ctx, L.W - 80, y - 18, 32, "#ff8fb1", "#fff", 5, 0.25);
+      heart(ctx, L.W / 2 - 220, y - 18, 32, "#ff8fb1", "#fff", 5, -0.25);
+      heart(ctx, L.W / 2 + 220, y - 18, 32, "#ff8fb1", "#fff", 5, 0.25);
     },
     over(ctx, L, { cellRects: c }) {
       heart(ctx, c[0].x + c[0].w - 8, c[0].y + 6, 40, "#ff7aa2", "#fff", 6, 0.2);
@@ -308,14 +320,15 @@ const ALL = [
       borders(ctx, cellRects, 8, 4, "#fff", "#c0406a30");
       const y = footY(L, cellRects);
       ctx.save(); ctx.fillStyle = "#fff"; ctx.shadowColor = "#c0406a30"; ctx.shadowBlur = 10; ctx.shadowOffsetY = 3;
-      ctx.beginPath(); ctx.roundRect(90, y - 64, L.W - 180, 128, 18); ctx.fill(); ctx.restore();
+      const bx = L.W / 2 - 210;                     // a 420 px label under the cells, both shapes
+      ctx.beginPath(); ctx.roundRect(bx, y - 64, 420, 128, 18); ctx.fill(); ctx.restore();
       ctx.save(); ctx.setLineDash([9, 7]); ctx.strokeStyle = "#f28fae"; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.roundRect(99, y - 55, L.W - 198, 110, 12); ctx.stroke(); ctx.restore();
+      ctx.beginPath(); ctx.roundRect(bx + 9, y - 55, 402, 110, 12); ctx.stroke(); ctx.restore();
       text(ctx, cap(caption), L.W / 2, y - 14, cf(font, '52px "Jua"'), { fill: "#d6406e", max: 370 });
       text(ctx, date, L.W / 2, y + 32, '26px "Jua"', { fill: "#e0688f", ls: 2 });
     },
     over(ctx, L, { cellRects: c }) {
-      bow(ctx, L.W / 2, c[0].y - 2, 86, "#ff8fb0", "#d6406e");
+      bow(ctx, mid(c[0]), c[0].y - 2, 86, "#ff8fb0", "#d6406e");
     },
   },
   {
@@ -341,7 +354,7 @@ const ALL = [
       text(ctx, date, L.W / 2, y + 56, '700 24px "Gowun Batang"', { fill: "#c25d7d", ls: 3 });
     },
     over(ctx, L, { cellRects: c }) {
-      bow(ctx, L.W / 2, c[0].y - 4, 96, "#f7a6ba", "#c95c7c");
+      bow(ctx, mid(c[0]), c[0].y - 4, 96, "#f7a6ba", "#c95c7c");
       bow(ctx, c[2].x + 6, c[2].y - 6, 54, "#f7a6ba", "#c95c7c");
       bow(ctx, c[3].x + c[3].w - 6, c[3].y - 6, 54, "#f7a6ba", "#c95c7c");
     },
@@ -356,7 +369,7 @@ const ALL = [
       }
       borders(ctx, cellRects, 6, 12, "#fff", "#e2384f30");
       const y = footY(L, cellRects);
-      ctx.save(); ctx.fillStyle = "#fffffff0"; ctx.beginPath(); ctx.roundRect(70, y - 64, L.W - 140, 128, 64); ctx.fill(); ctx.restore();
+      ctx.save(); ctx.fillStyle = "#fffffff0"; ctx.beginPath(); ctx.roundRect(L.W / 2 - 230, y - 64, 460, 128, 64); ctx.fill(); ctx.restore();
       text(ctx, cap(caption), L.W / 2, y - 14, cf(font, '52px "Jua"'), { fill: "#e2384f", max: 390 });
       text(ctx, date, L.W / 2, y + 34, '26px "Jua"', { fill: "#5f9338", ls: 2 });
     },
@@ -390,7 +403,8 @@ const ALL = [
     draw(ctx, L, { date, caption, cellRects, font }) {
       ctx.fillStyle = "#1b1a19"; ctx.fillRect(0, 0, L.W, L.H);
       ctx.fillStyle = "#f4efe6";
-      for (let y = 12; y < L.H - 10; y += 40) for (const x of [16, L.W - 32]) { ctx.beginPath(); ctx.roundRect(x, y, 16, 22, 4); ctx.fill(); }
+      if (tallStrip(L)) for (let x = 12; x < L.W - 10; x += 40) for (const y of [12, L.H - 28]) { ctx.beginPath(); ctx.roundRect(x, y, 22, 16, 4); ctx.fill(); }
+      else for (let y = 12; y < L.H - 10; y += 40) for (const x of [16, L.W - 32]) { ctx.beginPath(); ctx.roundRect(x, y, 16, 22, 4); ctx.fill(); }
       cellRects.forEach((c, i) => {
         text(ctx, `▸ ${i + 1}A`, c.x + 2, c.y + c.h + FILM_GAP / 2, '500 14px "IBM Plex Mono"', { fill: "#ffb347", align: "left", ls: 1 });
         text(ctx, "TG 400", c.x + c.w - 2, c.y + c.h + FILM_GAP / 2, '500 14px "IBM Plex Mono"', { fill: "#ffb347b0", align: "right", ls: 2 });
@@ -417,7 +431,7 @@ const ALL = [
       text(ctx, `${t} · ${date}`, L.W / 2, y + 44, cf(font, '28px "Jua"'), { fill: "#4a4450", stroke: [["#fff", 6]], ls: 1, max: 540 });
     },
     over(ctx, L, { cellRects: c }) {
-      for (let i = 0; i < 3; i++) heart(ctx, L.W / 2, c[i].y + c[i].h + 8, 26, "#ff7a8e", "#fff", 5);
+      for (let i = 0; i < 3; i++) { const p = between(c, i); heart(ctx, p.x, p.y, 26, "#ff7a8e", "#fff", 5); }
     },
   },
   {
@@ -480,8 +494,8 @@ const ALL = [
       t.addColorStop(0, "#ff8cc6"); t.addColorStop(1, "#a98bff");
       text(ctx, cap(caption), L.W / 2, y - 14, cf(font, '58px "Jua"'), { fill: "#fff", stroke: [[t, 12]], max: 350, shadow: ["#a98bff55", 8, 3] });
       text(ctx, date, L.W / 2, y + 44, '26px "Jua"', { fill: "#8b6fe0", ls: 3 });
-      star5(ctx, 74, y - 20, 22, "#fff1a8", "#fff", 5, -0.2);
-      heart(ctx, L.W - 74, y - 20, 34, "#ffb6d9", "#fff", 5, 0.2);
+      star5(ctx, L.W / 2 - 226, y - 20, 22, "#fff1a8", "#fff", 5, -0.2);
+      heart(ctx, L.W / 2 + 226, y - 20, 34, "#ffb6d9", "#fff", 5, 0.2);
     },
     over(ctx, L, { cellRects: c }) {
       star5(ctx, c[0].x + c[0].w - 14, c[0].y + 14, 30, "#fff1a8", "#fff", 6, 0.2);
@@ -567,8 +581,9 @@ const ALL = [
       }
       borders(ctx, cellRects, 7, 12, "#fff", "#e0a04040");
       const y = footY(L, cellRects);
-      balloon(ctx, 62, y - 40, 54, "#ff8fab", -0.12); balloon(ctx, 104, y - 20, 44, "#7fd1ff", 0.1);
-      balloon(ctx, L.W - 62, y - 40, 54, "#ffd166", 0.12); balloon(ctx, L.W - 104, y - 20, 44, "#c7a6ff", -0.1);
+      const cx = L.W / 2;
+      balloon(ctx, cx - 238, y - 40, 54, "#ff8fab", -0.12); balloon(ctx, cx - 196, y - 20, 44, "#7fd1ff", 0.1);
+      balloon(ctx, cx + 238, y - 40, 54, "#ffd166", 0.12); balloon(ctx, cx + 196, y - 20, 44, "#c7a6ff", -0.1);
       text(ctx, "HAPPY BIRTHDAY", L.W / 2, y - 60, '24px "Jua"', { fill: "#f08a5d", ls: 4 });
       text(ctx, cap(caption), L.W / 2, y - 6, cf(font, '52px "Jua"'), { fill: "#e2557a", stroke: [["#fff", 7]], max: 340 });
       text(ctx, date, L.W / 2, y + 48, '26px "Jua"', { fill: "#c98a2a", ls: 2 });
@@ -619,11 +634,13 @@ const ALL = [
       doodleSpark(ctx, L.W / 2 + 120, y - 74, 12, "#4a3a36"); doodleSpark(ctx, L.W / 2 + 144, y - 56, 7, "#4a3a36");
     },
     over(ctx, L, { cellRects: c }) {
-      tape(ctx, L.W / 2, c[0].y - 6, 140, 36, -0.04, "#f6b6c6", "dots");
+      tape(ctx, mid(c[0]), c[0].y - 6, 140, 36, -0.04, "#f6b6c6", "dots");
       tape(ctx, c[1].x + 14, c[1].y + 6, 110, 32, -0.72, "#a9dcc6", "stripe");
-      tape(ctx, c[1].x + c[1].w - 14, c[1].y + c[1].h - 6, 110, 32, -0.72, "#a9dcc6", "stripe");
+      // the second corner tape: bottom-right in the wide strip; bottom-left in the tall one (bottom-right sat on the footer)
+      if (tallStrip(L)) tape(ctx, c[1].x + 14, c[1].y + c[1].h - 6, 110, 32, 0.72, "#a9dcc6", "stripe");
+      else tape(ctx, c[1].x + c[1].w - 14, c[1].y + c[1].h - 6, 110, 32, -0.72, "#a9dcc6", "stripe");
       tape(ctx, c[2].x + c[2].w - 16, c[2].y + 4, 110, 32, 0.7, "#ffde8a", "check");
-      tape(ctx, L.W / 2 + 70, c[3].y - 4, 130, 36, 0.05, "#cbb8f0", "dots");
+      tape(ctx, mid(c[3]) + 70, c[3].y - 4, 130, 36, 0.05, "#cbb8f0", "dots");
     },
   },
   {
@@ -642,8 +659,8 @@ const ALL = [
       ctx.beginPath(); ctx.roundRect(-w / 2, -14, w, 34, 6); ctx.fill(); ctx.restore();
       text(ctx, s, L.W / 2, y - 14, f, { fill: "#24357a", max: 440 });
       text(ctx, date, L.W / 2, y + 48, '700 30px "Gaegu"', { fill: "#d9534f", ls: 3 });
-      star5(ctx, 50, y - 54, 22, "#fff27a", "#24357a", 3, -0.2);
-      doodleHeart(ctx, L.W - 52, y + 40, 34, "#d9534f", null, 0.2);
+      star5(ctx, L.W / 2 - 250, y - 54, 22, "#fff27a", "#24357a", 3, -0.2);
+      doodleHeart(ctx, L.W / 2 + 248, y + 40, 34, "#d9534f", null, 0.2);
     },
     over(ctx, L, { cellRects: c }) {
       star5(ctx, c[0].x + c[0].w - 4, c[0].y + 4, 26, "#fff27a", "#24357a", 3, 0.2);
@@ -670,7 +687,7 @@ const ALL = [
       text(ctx, cap(caption), L.W / 2, y - 22, cf(font, '700 50px "Gaegu"'), { fill: "#3d2b22", max: 420 });
       text(ctx, date, L.W / 2, y + 30, '700 28px "Gaegu"', { fill: "#8a5a3f", ls: 3 });
       tape(ctx, L.W / 2 - 230, y - 50, 80, 28, -0.6, "#f6b6c6", "stripe");
-      stamp(ctx, L.W - 74, y + 46, 40, "#d6455d", "LOVE", -0.25);
+      stamp(ctx, L.W / 2 + 226, y + 46, 40, "#d6455d", "LOVE", -0.25);
     },
     over(ctx, L, { cellRects: c }) {
       bow(ctx, c[0].x + 18, c[0].y + 4, 74, "#f7a6ba", "#c95c7c");
