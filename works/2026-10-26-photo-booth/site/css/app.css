@@ -217,8 +217,8 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .frame #ghost, .frame #ghostBg, .frame #liveCut { position: absolute; inset: 0; width: 100%; height: 100%; }
 .stage.viewb video { opacity: 0; }   /* B's view (b): A's room + B's live cut-out replace the camera picture */
 .viewpick { justify-content: center; margin-top: 8px; }
-/* the strip-cell crop: dashed box, outside dimmed */
-.crop { position: absolute; box-shadow: 0 0 0 100vmax #ffffff33; outline: 2px dashed #ffffffe6; outline-offset: -4px; }
+/* the strip-cell crop (Round 6 #8): only it shows, everything outside is covered, so the view is exactly the cell */
+.crop { position: absolute; box-shadow: 0 0 0 100vmax #1a1a1a; outline: 2px solid #ffffffd9; outline-offset: -2px; }
 /* B moves / resizes A (when A allowed it): a layer over the camera that takes the drag and the pinch */
 .mover { position: absolute; inset: 0; z-index: 1; cursor: grab; touch-action: none; }
 .mover:active { cursor: grabbing; }
@@ -505,3 +505,34 @@ body[data-tab="sticker"] .donetitle { display: none; }
   box-shadow: inset 0 0 0 1px #e3d2b4; }
 #stkSets .pill { padding: 0 12px; flex: none; }
 .capfont { font-size: 18px; }
+
+/* ===== Round 6 #9: 가로 / 세로 shape (body[data-shape]) ===== */
+/* A-2: pick the shape first */
+.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 6px; }
+.mode { appearance: none; border: var(--b) solid #000; padding: 14px 10px; display: flex; flex-direction: column; align-items: center; gap: 12px;
+  text-align: center; background: var(--paper); color: var(--ink); cursor: pointer; min-height: 260px; transition: transform 160ms var(--spring); }
+.mode[aria-checked="true"] { background: var(--acc); box-shadow: 5px 5px 0 #000; }
+.mode:active { transform: scale(.96); }
+.mode:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.mode b { font: 900 24px var(--title); letter-spacing: -.04em; }
+.mode small { font-size: 13px; line-height: 1.4; color: #222; }
+.mode .dia { flex: 1; display: grid; place-items: center; width: 100%; }
+.mstrip { background: #000; padding: 4px; display: grid; gap: 3px; }
+.mstrip i { display: block; background: radial-gradient(circle at 50% 40%, #0d0d0d 0 13%, transparent 14%), radial-gradient(ellipse 34% 30% at 50% 100%, #0d0d0d 0 98%, transparent 100%), #f4efe6; }
+.mstrip.w { width: 58px; grid-template-rows: repeat(4, auto); padding-bottom: 14px; }
+.mstrip.w i { aspect-ratio: 552 / 382; }
+.mstrip.t { width: 132px; grid-template-columns: repeat(4, 1fr); padding-bottom: 10px; }
+.mstrip.t i { aspect-ratio: 3 / 4; }
+/* 세로: shoot thumbnail, pick grid + strip, mini strips, the decorate preview and frame tiles */
+body[data-shape="tall"] .last { width: 20%; aspect-ratio: 3 / 4; }
+body[data-shape="tall"] .pickbody { flex-direction: column; align-items: stretch; }
+body[data-shape="tall"] .pickgrid { grid-template-columns: repeat(4, 1fr); }
+body[data-shape="tall"] .pk { aspect-ratio: 3 / 4; }
+body[data-shape="tall"] .pickstrip { width: auto; display: grid; grid-template-columns: repeat(4, 1fr); padding: 5px 5px 0; }
+body[data-shape="tall"] .pickstrip .mc, body[data-shape="tall"] .ministrip .mc { aspect-ratio: 3 / 4; }
+body[data-shape="tall"] .pickstrip .mfoot, body[data-shape="tall"] .ministrip.real .mfoot { grid-column: 1 / -1; }
+body[data-shape="tall"] .ministrip.real { width: 260px; display: grid; grid-template-columns: repeat(4, 1fr); align-items: start; align-self: center; }
+body[data-shape="tall"] .ministrip.real img { position: absolute; inset: 0; }   /* the photo's own height must not size the row */
+body[data-shape="tall"] .previewwrap { height: auto; }
+body[data-shape="tall"] .preview { flex: none; width: 100%; aspect-ratio: 1800 / 800; }
+body[data-shape="tall"] .tile.frame .mini { width: 108px; aspect-ratio: 1800 / 800; }

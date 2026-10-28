@@ -12,10 +12,14 @@ const MIMES = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "v
 const FAST = new URLSearchParams(location.search).has("fast");   // tests only: shortens the "3" second and the ones before it
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-// 4:3 size under max, width a multiple of 8 so both sides are even
-function fit(r, max) { const w = Math.floor(Math.min(r.sw, max.w) / 8) * 8; return { w, h: w * 3 / 4 }; }
+// 4:3 size under max, width a multiple of 8 so both sides are even. A 3:4 frame (세로, camera.js frameRect) gets the same
+// box turned: height <= max.w, width a multiple of 24 so the height (w * 4 / 3) is a whole, even number.
+function fit(r, max) {
+  if (r.sw < r.sh) { const w = Math.floor(Math.min(r.sw, max.w * 3 / 4) / 24) * 24; return { w, h: w * 4 / 3 }; }
+  const w = Math.floor(Math.min(r.sw, max.w) / 8) * 8; return { w, h: w * 3 / 4 };
+}
 
-// Draw the full camera frame so that its centre 4:3 crop r lands on (x, 0, W, H) of ctx, clipped to that box.
+// Draw the full camera frame so that its centre crop r (4:3, or 3:4 for 세로) lands on (x, 0, W, H) of ctx, clipped to that box.
 function place(ctx, video, r, x, W, H, fn) {
   const k = W / r.sw;
   ctx.save();
@@ -41,8 +45,9 @@ function stills(video, mirror) {
   place(lx, video, r, 0, w, h, (cx, fw, fh) => drawCutout(cx, video, fw, fh, mirror));
   return { rawC, liveC };
 }
-const small = c => { const s = Object.assign(document.createElement("canvas"), { width: 720, height: 540 });
-  s.getContext("2d").drawImage(c, 0, 0, 720, 540); return s; };
+const small = c => { const [w, h] = c.width < c.height ? [540, 720] : [720, 540];
+  const s = Object.assign(document.createElement("canvas"), { width: w, height: h });
+  s.getContext("2d").drawImage(c, 0, 0, w, h); return s; };
 
 function pickMime() {
   return MIMES.find(t => window.MediaRecorder && MediaRecorder.isTypeSupported(t)) || "";

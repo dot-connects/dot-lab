@@ -10,9 +10,9 @@ file first. All modules are ES modules under `site/js/`, no build step, no npm. 
 ```js
 // One shot of one person. Produced by capture.js, uploaded by app.js, consumed by compose.js.
 Cut = {
-  raw: Blob,            // image/jpeg, 4:3, <= 960x720, mirrored as previewed
+  raw: Blob,            // image/jpeg, 4:3, <= 960x720 (shape tall: 3:4, <= 720x960), mirrored as previewed
   cut: Blob,            // image/png, same size, person with alpha (refined matte)
-  clip: Blob,           // side-by-side [raw | matte] 2 s, each half 4:3 <= 640x480, even sizes
+  clip: Blob,           // side-by-side [raw | matte] 2 s, each half 4:3 <= 640x480 (tall: 3:4 <= 480x640), even sizes
   clipType: "video/mp4" | "video/webm",
 }
 // What compose needs per person; app.js builds it from local Cuts or from Worker downloads.
@@ -35,7 +35,7 @@ export const camState;  // { mirror: boolean, front: boolean, track, caps }
 export async function startCam(video, facing = "user");  // getUserMedia 4:3 ideal, widest zoom; 5 s no answer -> throws Error("stall"); NotAllowedError passes through
 export async function flipCam(video);                      // front <-> back, mirror default follows
 export function bindZoomFocus(stageEl);                     // pinch zoom + tap focus if caps allow; README in-app touch fixes
-export function frameRect(video);                           // centre 4:3 crop rect of the current video {sx, sy, sw, sh}
+export function frameRect(video, shape = camState.shape);   // centre 4:3 (wide) / 3:4 (tall) crop rect of the current video {sx, sy, sw, sh}
 ```
 
 ## segment.js
@@ -71,8 +71,10 @@ export async function loadFrameFonts(frame);   // document.fonts.load for the fr
 ## compose.js
 ```js
 export const LAYOUT;     // { W: 600, H: 1800, M: 24, GAP: 16, FOOT: 200, CW: 552, CH: 382 } (frames may override cell rects, e.g. film)
+export const LAYOUTS;    // Round 6 #9: { wide: LAYOUT, tall: { W: 1800, H: 800, M: 24, GAP: 16, FOOT: 208, CW: 426, CH: 568 } }
+                         // every strip/video/story call takes opts.shape ("wide" default | "tall"); frame.rects = { wide, tall }
 export const BACKGROUNDS; // [{ id: "a"|"b"|"booth-purple"|"booth-pink"|"white-wall"|"mono"|"sky", label, draw?(ctx,w,h) }]
-export function cellRects(frame);                      // 4 rects
+export function cellRects(frame, shape = "wide");      // 4 rects (tall: side by side)
 export function cropRect(w, h);                        // centre crop of a 4:3 frame to CW:CH
 export function drawCell(ctx, rect, i, { a, b, bg, t });  // t = clip time or null for stills; bg rule from PLAN Task 5
 export async function drawStrip({ a, b, bg, frame, filter, date });         // -> Blob image/jpeg 600x1800
@@ -115,6 +117,7 @@ Sticker outline around both cut-outs: colour chips, styles solid | dotted | glit
 Cut-out: stills (the 4 shutter photos) get a heavy high-quality model; live preview + clips keep the light path.
 
 - Worker (live, 7 tests): `POST /s {token, opts:{movable}}`; `GET /s/:id` -> `{..., opts:{movable}}` (default false).
+  Round 6 #9 (not deployed yet): `opts.shape` "wide" | "tall" (anything else 400), GET echoes it, links without it read "wide".
   Optional side-b file `layout.json` (application/json, <= 4 KB, not needed for done): `{ a: { x, y, scale } }` =
   B's placement of A, x/y = offset as a fraction of the frame width/height, scale = factor (1 = as shot).
 - api.js: `create(token, opts)`, `status()` returns `opts`, `put(..., "layout.json", blob, "application/json")`.

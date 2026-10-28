@@ -6,7 +6,17 @@ import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
 import { drawStickers, stickersReady } from "./stickers.js";
 
-export const LAYOUT = { W: 600, H: 1800, M: 24, GAP: 16, FOOT: 200, CW: 552, CH: 382 };
+// Round 6 #9: A picks the shape first and B follows it (link opts.shape).
+//   wide = 가로: 4 wide cells stacked in a tall 2x6 in strip (600 x 1800).
+//   tall = 세로: 4 portrait 3:4 cells side by side (1800 x 800). The footer band keeps the wide strip's ~200 px, so every
+//          frame's caption block fits unchanged; 1800 = the same 6 in at 300 dpi.
+export const LAYOUTS = {
+  wide: { W: 600, H: 1800, M: 24, GAP: 16, FOOT: 200, CW: 552, CH: 382, shape: "wide" },
+  tall: { W: 1800, H: 800, M: 24, GAP: 16, FOOT: 208, CW: 426, CH: 568, shape: "tall" },
+};
+export const LAYOUT = LAYOUTS.wide;
+export const layoutFor = shape => LAYOUTS[shape] || LAYOUTS.wide;
+export const cellAspect = shape => layoutFor(shape).CW / layoutFor(shape).CH;
 const L = LAYOUT;
 
 // ---------- preset backgrounds: soft studio paper, lit from the front-top, darker floor and corners ----------
@@ -52,9 +62,12 @@ const fmtDate = d => {
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}.${String(d.getDate()).padStart(2, "0")}`;
 };
 
-export function cellRects(frame) {
-  const f = frame && frameOf(frame);
-  return f?.rects || [0, 1, 2, 3].map(i => ({ x: L.M, y: L.M + i * (L.CH + L.GAP), w: L.CW, h: L.CH }));
+// frame.rects = { wide?: [4 rects], tall?: [4 rects] } (frames with their own cell layout), else the shape's default
+export function cellRects(frame, shape = "wide") {
+  const f = frame && frameOf(frame), Ls = layoutFor(shape), own = f?.rects?.[Ls.shape];
+  if (own) return own;
+  return [0, 1, 2, 3].map(i => Ls.shape === "tall" ? { x: Ls.M + i * (Ls.CW + Ls.GAP), y: Ls.M, w: Ls.CW, h: Ls.CH }
+    : { x: Ls.M, y: Ls.M + i * (Ls.CH + Ls.GAP), w: Ls.CW, h: Ls.CH });
 }
 export function cropRect(w, h, aspect = L.CW / L.CH) {
   if (w / h > aspect) { const sw = h * aspect; return { sx: (w - sw) / 2, sy: 0, sw, sh: h }; }
@@ -541,22 +554,22 @@ let filt = null;
 // frame art per (frame, date, caption): drawn once, so a filter / bg change or a mini tile reuses it
 const prepCache = new Map();
 function prepare(o) {
-  const F = frameOf(o.frame), key = `${F.id}|${fmtDate(o.date)}|${o.caption || ""}|${o.font || ""}`;
+  const F = frameOf(o.frame), key = `${F.id}|${fmtDate(o.date)}|${o.caption || ""}|${o.font || ""}|${layoutFor(o.shape).shape}`;
   if (!prepCache.has(key)) {
     if (prepCache.size > 24) prepCache.delete(prepCache.keys().next().value);
     prepCache.set(key, prepareNow(o).catch(e => { prepCache.delete(key); throw e; }));
   }
   return prepCache.get(key);
 }
-async function prepareNow({ frame, date, caption = "", font = null }) {
-  const F = frameOf(frame);
+async function prepareNow({ frame, date, caption = "", font = null, shape = "wide" }) {
+  const F = frameOf(frame), L = layoutFor(shape);
   await loadFrameFonts(F, caption, font);
-  const rects = cellRects(F), d = fmtDate(date), o = { date: d, caption, cellRects: rects, font };
+  const rects = cellRects(F, L.shape), d = fmtDate(date), o = { date: d, caption, cellRects: rects, font };
   const base = document.createElement("canvas"); base.width = L.W; base.height = L.H;
   F.draw(base.getContext("2d"), L, o);
   let over = null;
   if (F.over) { over = document.createElement("canvas"); over.width = L.W; over.height = L.H; F.over(over.getContext("2d"), L, o); }
-  return { F, rects, base, over };
+  return { F, rects, base, over, L };
 }
 // Still cells are cached (Round 5, decorate speed): the composite by what it depends on (people, bg, layout, outline,
 // pairs, size) and the filtered cell by that + filter, so a frame change recomposites nothing and a filter change only
@@ -611,7 +624,7 @@ function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline 
 export async function stripCanvas(o, { scale = 1, cell = null, into = null } = {}) {
   const st = await prepare(o);
   if (o.stickers?.length) await stickersReady(o.stickers);
-  const r = cell == null ? { x: 0, y: 0, w: L.W, h: L.H } : st.rects[cell];
+  const r = cell == null ? { x: 0, y: 0, w: st.L.W, h: st.L.H } : st.rects[cell];
   const cv = into || document.createElement("canvas"), w = Math.round(r.w * scale), h = Math.round(r.h * scale);
   if (cv.width !== w || cv.height !== h) { cv.width = w; cv.height = h; }
   const x = cv.getContext("2d");
@@ -634,7 +647,7 @@ async function storyBack(st) {
   const wash = x.createLinearGradient(0, 0, 0, H);
   wash.addColorStop(0, "rgba(255,255,255,0.62)"); wash.addColorStop(1, "rgba(255,255,255,0.35)");
   x.fillStyle = wash; x.fillRect(0, 0, W, H);
-  const s = (H * 0.84) / L.H, sw = L.W * s, sh = L.H * s, ox = (W - sw) / 2, oy = (H - sh) / 2 - 40;
+  const L = st.L, s = Math.min((H * 0.84) / L.H, (W * 0.9) / L.W), sw = L.W * s, sh = L.H * s, ox = (W - sw) / 2, oy = (H - sh) / 2 - 40;
   x.save(); x.shadowColor = "rgba(0,0,0,0.22)"; x.shadowBlur = 40; x.shadowOffsetY = 14;
   x.fillStyle = "#fff"; x.fillRect(ox, oy, sw, sh); x.restore();
   const m = Object.assign(document.createElement("canvas"), { width: 1, height: 1 }), mx = m.getContext("2d", { willReadFrequently: true });
@@ -658,7 +671,7 @@ const PHASE = [0, 0.12, 0.24, 0.36];   // per-cell start offsets: the four cells
 // frame's clip time (repeats on every loop), video = the clip element (a stable cache key across recordings).
 // signal (AbortSignal): an abort stops the render within a frame and rejects with DOMException "AbortError".
 // mattes (clipmatte.js clipMattes): Map<clip video, HQ moving cut>; frame-exact path only, other clips keep their matte.
-export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, font = null, layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
+export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption, font = null, shape = "wide", layout = null, outline = null, pairs = null, stickers = null, format = "strip", fx = null, signal = null, mattes = null, onProgress }) {
   // the clips the cells use, each once with its first cell's phase: two cells showing the same A cut share one video and
   // read the same frame per tick (seeking it twice, or two loop-seam states, would break one of them)
   const P = pairsOf(pairs), vids = [], phase = [], fxs = [];
@@ -666,7 +679,7 @@ export async function recordMovingStrip({ a, b, bg, frame, filter, date, caption
     if (!clipUsable(c.clip)) continue;            // no / broken clip: that person stays still in this cell
     if (!vids.includes(c.clip)) { vids.push(c.clip); phase.push(PHASE[n]); fxs.push(fx?.[side] || null); }
   }
-  const st = await prepare({ frame, date, caption, font });
+  const st = await prepare({ frame, date, caption, font, shape }), L = st.L;
   if (stickers?.length) await stickersReady(stickers);
   const story = format === "story" ? await storyBack(st) : null;
   const cv = document.createElement("canvas"); cv.width = story ? STORY.W : L.W; cv.height = story ? STORY.H : L.H;
@@ -824,7 +837,7 @@ async function clipSource(v, phase, fx, hq) {
 
 async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgress) {
   const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
-  const t0 = performance.now(), ctx = cv.getContext("2d");
+  const t0 = performance.now(), ctx = cv.getContext("2d"), L = st.L;
   const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
   const still = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
   paint(still.getContext("2d"), st, opts, null);
@@ -908,7 +921,7 @@ function warmEncoder(type, w, h) {
 
 async function recordOnce(cv, st, story, vids, phase, fxs, type, opts, onProgress) {
   await warmEncoder(type, cv.width, cv.height);
-  const ctx = cv.getContext("2d");
+  const ctx = cv.getContext("2d"), L = st.L;
   const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
   const show = () => { if (story) { ctx.drawImage(story.c, 0, 0); ctx.drawImage(strip, story.ox, story.oy, story.sw, story.sh); } };
   const still = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
