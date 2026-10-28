@@ -294,6 +294,13 @@ export async function hqCut(cut) {
   c.getContext("2d").drawImage(bmp, 0, 0); bmp.close?.();
   const out = await cutStill(c);
   keepLargest(out);
+  // a busy GPU (headless runs side by side, 10-28) gave an all-transparent cut with no error: the person vanished from
+  // every cell (round 6 #7). Under 0.5 % alpha = no person found: throw, so the caller keeps the live cut.
+  const p = Object.assign(document.createElement("canvas"), { width: 64, height: 48 }), px = p.getContext("2d", { willReadFrequently: true });
+  px.drawImage(out, 0, 0, 64, 48);
+  const d = px.getImageData(0, 0, 64, 48).data;
+  let n = 0; for (let k = 3; k < d.length; k += 4) if (d[k] > 128) n++;
+  if (n < 0.005 * 64 * 48) throw new Error("still-empty");
   const png = await toBlob(out, "image/png");
   if (!png || png.size > CAP) throw new Error("still-size");
   return png;
