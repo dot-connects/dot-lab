@@ -15,3 +15,11 @@ Every item must ship; status updated by the lead on merge.
 | 9 | Decorate 보정 tab: some options make my photo disappear | bug — r7-fix | done (r7-fix merge), phone check pending |
 | 10 | Phone gets hot and lags | r7-perf measures first; fixes after r7-fix merges | fixes 1-5 + warm-up track stop applied (shared ctx in r7-fix; stills pets via pet-worker; live cut 15 fps on new frames; camera off on pick + 보정, back on reshoot; A's look on B after the camera). Open: HQ on picked 4 vs all 6 (operator) |
 | 11 | Comfortable on every phone, any aspect ratio | every screen mockup shown at 360x640, 375x667, 390x844, 412x915, 430x932; layout rules by viewport ratio, not fixed px (operator) — r7-cam first, then each screen | running |
+
+## 2026-10-29 화면 시안 적용 (운영자 선택 2·1·2·3)
+- 고르기 2 (사진 끝까지 + 아래 판) — 4a20740
+- 보정 1 (네 칸 크게 + 탭·단계 두 줄 + 원본 보기 꾹) — 560f5f9
+- 보내기 2 (띠를 긴 쪽에 길게) — 944103c. 남은 것: 완성/크롬 안내 화면의 A+B 띠
+- 꾸미기 3 (편집 앱 + 아이콘 독 + 서랍, 영상·⋯ 시트) — bae2565
+- 테마 고르기 시안 3개: mockups/theme-pick.html (선택 대기)
+- 검수: 각 화면 5개 크기 겹침·잘림 0, e2e 가로필름·세로말랑 98/0
