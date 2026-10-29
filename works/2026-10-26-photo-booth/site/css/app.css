@@ -878,3 +878,10 @@ body[data-shape="tall"] .tile.frame { width: 112px; }
 body[data-shape="tall"] .drawer .panel.row { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; row-gap: 14px; }
 body[data-shape="tall"] .drawer .stkgrid { grid-auto-flow: row; grid-template-rows: none; grid-auto-rows: 64px; grid-template-columns: repeat(auto-fill, 64px);
   overflow: visible; margin-right: 0; padding-right: 2px; }
+/* Round 7: the both-of-us strip (app.js pairStrip) draws canvases; on the hand-off screen it sits where the star was */
+.ministrip.real canvas { width: 100%; height: 100%; display: block; }
+body[data-shape="tall"] .ministrip.real canvas { position: absolute; inset: 0; }
+#hoStrip { padding: 0; align-self: stretch; }
+#hoStrip .ministrip.real { transform: none; width: min(150px, calc((42svh - 53px) * .3613 + 14px)); }
+body[data-shape="tall"] #hoStrip .ministrip.real { width: min(300px, 100%); }
+body[data-ui="film"] #hoStrip .ministrip.real { box-shadow: none; outline: 3px solid var(--acc); outline-offset: 3px; }

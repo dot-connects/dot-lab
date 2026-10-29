@@ -193,6 +193,9 @@ function handoffScreen() {
   $("hoGo").hidden = env.isIOS && !kakaoIOS;
   if (kakaoIOS) $("hoGo").textContent = "Safari에서 열기";
   if (!env.isIOS && !S.hoTried) { S.hoTried = true; openOut(decoUrl()); }    // try once at once; the button stays
+  // the strip with both of us in place of the star; the star stays if the photos do not load
+  $("hoStrip").hidden = true;
+  pairStrip($("hoStrip")).then(() => { $("hoStrip").hidden = false; $("hoArt").hidden = true; }, e => console.warn("[booth] strip", e));
 }
 function expired(why) {
   msg(why === "expired"
@@ -917,6 +920,21 @@ async function myStrip() {
   const star = '<svg class="deco s1"><use href="#star"/></svg><svg class="deco s2"><use href="#heart"/></svg>';
   $("myStrip").innerHTML = star; $("myStrip").prepend(strip);
 }
+// Round 7 (operator 10-29): the strip with both of us, on B's 완성 share and the Chrome hand-off. Both sides' stills,
+// A paired and drawn as on decorate (compose drawCell), on the pick-screen background
+async function pairStrip(box) {
+  const C = await load("compose", mockCompose);
+  const [a, b, pairs] = await Promise.all([sideMedia("a"), sideMedia("b"), loadPairs()]);
+  const { w, h } = cellPx(), bg = bgId(S.pickBg || Q.get("bg")), mk = (tag, cls) => Object.assign(document.createElement(tag), { className: cls });
+  const strip = mk("div", "ministrip real");
+  strip.setAttribute("aria-hidden", "true");
+  strip.append(...[0, 1, 2, 3].map(i => {
+    const mc = mk("div", "mc"), c = Object.assign(mk("canvas", ""), { width: w, height: h });
+    C.drawCell(c.getContext("2d"), { x: 0, y: 0, w, h }, i, { a, b, bg, pairs });
+    mc.append(c); return mc;
+  }), Object.assign(mk("div", "mfoot"), { textContent: "따로 같이 네컷" }));
+  box.replaceChildren(strip);
+}
 // ponytail: the test button on A's waiting screen (operator pick, ROUND6 #2); set false at launch
 const TEST_B = true;
 // mode: "wait" = A reopened A's own link before the friend shot, "sent" = A just uploaded, "done" = B finished and
@@ -936,7 +954,7 @@ function shareScreen(mode) {
   $("shareBtn").className = fin ? "cta alt" : "cta";
   $("linkText").textContent = shareUrl(); $("linkBox").hidden = true;
   $("s-share").querySelector(".del").hidden = !token();
-  myStrip().catch(() => {});
+  (fin ? pairStrip($("myStrip")) : myStrip()).catch(e => { console.warn("[booth] strip", e); if (fin) myStrip().catch(() => {}); });
 }
 const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음";
 const DONE_TEXT = "완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어";
