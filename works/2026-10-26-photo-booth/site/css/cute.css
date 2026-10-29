@@ -307,3 +307,9 @@ body[data-ui="cute"] .ltab small { color: #5b4f75; }
 body[data-ui="cute"] .ltab[aria-pressed="true"] { background: #fff; color: var(--ink); box-shadow: 0 0 0 2px var(--deep); }
 body[data-ui="cute"] .origbtn { background: #2a2140c4; font-family: var(--body); font-weight: 400; }
 body[data-ui="cute"] .origbtn[aria-pressed="true"] { background: var(--deep); color: #fff; border-color: #fff; }
+
+/* ---- share, layout 2: the strip is its own white card here (mockup), no curtain holder around it ---- */
+body[data-ui="cute"] #s-share #myStrip { background: none; box-shadow: none; border-radius: 0; padding: 0; }
+body[data-ui="cute"] #s-share #shareTitle { font-size: 40px; }
+body[data-ui="cute"][data-shape="tall"] #s-share #shareTitle { font-size: 44px; }
+@media (max-height: 700px) { body[data-ui="cute"] #s-share #shareTitle, body[data-ui="cute"][data-shape="tall"] #s-share #shareTitle { font-size: 34px; } }

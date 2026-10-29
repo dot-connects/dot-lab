@@ -772,3 +772,41 @@ body[data-ui="film"] .ltab[aria-pressed="true"] { background: #fff; color: #000;
 body[data-ui="film"] .ltab[aria-pressed="true"] small { color: #333; }
 body[data-ui="film"] #shootDone > .cta { background: var(--acc); color: #000; }
 body[data-ui="film"] #shootDone > .cta::after { display: none; }
+
+/* ===== Round 7: share = mockups/share-pick.html layout 2 (operator pick 2026-10-29). The strip runs along the long side:
+   가로 = the saved 1 x 4 column at full height with the words beside it, 세로 = 2 x 2 as wide as the screen with the words
+   under it. Buttons stay at the bottom; nothing scrolls on a normal phone. .hero is a size container, so the strip's
+   width is worked out from the height it gets (cells 552:382 / 3:4, plus the strip's padding and foot). ===== */
+#s-share { height: 100svh; height: 100dvh; min-height: 0; overflow-y: auto; gap: 12px; }
+#s-share .hero { flex: 1 1 0; min-height: 280px; padding-top: 0; container-type: size; display: grid; gap: 10px 14px;
+  grid-template-columns: auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto auto auto minmax(0, 1fr); }
+#s-share .hero > * { margin: 0; min-width: 0; }
+#s-share #myStrip { --sx: 14px; --sy: 56px; grid-column: 1; grid-row: 1 / -1; align-self: center; padding: 0; min-height: 0;
+  width: min(52cqw, calc((100cqh - var(--sy)) * .3613 + var(--sx))); }
+#s-share #shareTitle { grid-column: 2; grid-row: 2; font-size: 26px; }
+#s-share #shareLead { grid-column: 2; grid-row: 3; font-size: 15px; }
+#s-share #decNote { grid-column: 2; grid-row: 4; }
+#s-share #myStrip .ministrip.real { width: 100%; transform: none; }
+#s-share #myStrip .deco { display: none; }
+body[data-shape="tall"] #s-share .hero { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto; }
+body[data-shape="tall"] #s-share #shareTitle { grid-column: 1; grid-row: 1; font-size: 30px; }
+body[data-shape="tall"] #s-share #myStrip { --sy: 46px; grid-column: 1; grid-row: 2; justify-self: center; align-self: stretch; container-type: size; width: 100%; }
+body[data-shape="tall"] #s-share #myStrip .ministrip.real { grid-template-columns: 1fr 1fr; margin: 0 auto;
+  width: min(100cqw, calc((100cqh - var(--sy)) * .75 + 5px + var(--sx))); }
+/* a short box (small phones) gets more from 4 in a row than from 2 x 2 */
+@container (min-aspect-ratio: 4 / 3) {
+  body[data-shape="tall"] #s-share #myStrip .ministrip.real { grid-template-columns: repeat(4, 1fr); width: min(100cqw, calc((100cqh - var(--sy)) * 3 + 15px + var(--sx))); }
+}
+body[data-shape="tall"] #s-share #shareLead { grid-column: 1; grid-row: 3; }
+body[data-shape="tall"] #s-share #decNote { grid-column: 1; grid-row: 4; }
+#s-share .bottom { flex: none; gap: 8px; }
+.sharelinks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 18px; }
+.sharelinks .del:has(.delask:not([hidden])) { flex-basis: 100%; }
+#s-share .trust { font-size: 12px; }
+@media (max-height: 700px) {
+  #s-share #shareLead { display: none; }
+  #s-share #shareTitle { font-size: 22px; }
+  body[data-shape="tall"] #s-share #shareTitle { font-size: 24px; }
+  #s-share .bottom .cta { padding-top: 13px; padding-bottom: 13px; }
+}
+body[data-ui="film"] #s-share #myStrip { --sx: 44px; --sy: 58px; }
