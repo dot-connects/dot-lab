@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>dev: 메이킹 영상</title>
+<!-- Dev harness for the 메이킹 영상 (Round 8 B) on dev-media; deleted before ship with the other dev pages.
+     ?ui=cute|film &shape=wide|tall &frame=<id>. window.__mk = { blob, type, ms } when done. -->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&family=Jua&display=swap">
+<style>body{font:14px system-ui;margin:12px} video{width:270px;border:1px solid #ccc}</style>
+</head><body>
+<p id="st">rendering…</p><video id="v" controls loop muted playsinline></video>
+<script type="module">
+import { recordMaking, loadClip } from "./js/compose.js";
+import { FRAMES } from "./js/frames.js";
+const q = new URLSearchParams(location.search), MEDIA = "dev-media/", CLIPS = q.has("frag") ? "dev-media/frag/" : MEDIA;   // frag: fMP4 like a recorded clip
+const img = src => new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; });
+async function side(s) {
+  const cuts = [];
+  for (let k = 1; k <= 4; k++) {
+    const blob = await (await fetch(CLIPS + `${s}${k}-clip.mp4`)).blob();
+    cuts.push({ raw: await img(MEDIA + `${s}${k}-raw.jpg`), cut: await img(MEDIA + `${s}${k}-cut.png`), clip: await loadClip(URL.createObjectURL(blob)) });
+  }
+  return { cuts };
+}
+const [a, b] = await Promise.all([side("a"), side("b")]);
+const ui = q.get("ui") === "cute" ? "cute" : "film", t0 = performance.now();
+const frame = FRAMES.find(f => f.id === q.get("frame")) || FRAMES[0];
+const r = await recordMaking({ a, b, bg: "a", frame, filter: q.get("filter") || "original", date: "2026.10.30", caption: "D+100",
+  shape: q.get("shape") || "wide", ui, onProgress: p => { document.getElementById("st").textContent = Math.round(p * 100) + "%"; } });
+window.__mk = { blob: r.blob, type: r.type, ms: Math.round(performance.now() - t0) };
+document.getElementById("v").src = URL.createObjectURL(r.blob);
+document.getElementById("st").textContent = `done ${r.type} ${r.blob.size} B ${window.__mk.ms} ms`;
+</script>
+</body></html>

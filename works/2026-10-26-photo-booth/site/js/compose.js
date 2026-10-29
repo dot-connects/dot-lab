@@ -5,6 +5,7 @@
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
 import { drawStickers, stickersReady } from "./stickers.js";
+import { MAKING, ROW_T, ROW_DUR, drawMaking, makingFonts, makingDate } from "./making.js";
 
 // Round 6 #9: A picks the shape first and B follows it (link opts.shape).
 //   wide = 가로: 4 wide cells stacked in a tall 2x6 in strip (600 x 1800).
@@ -902,6 +903,117 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
     if (enc.state !== "closed") enc.close();
     srcs.forEach(s => s?.close());
     clipFrames.clear();
+  }
+}
+
+// ---------- the 메이킹 영상 (Round 8 B, making.js draws it): both people's raw clips row by row, then the strip ----------
+// Each row plays the last ROW_DUR s of its clip's raw half (the room, not the cut-out) with that person's 보정 and the
+// strip's filter, one row = two decoders at a time; a clip that will not decode shows its raw photo instead (no motion).
+// Frame-exact (WebCodecs) where it can; else real time through MediaRecorder with the photos only.
+export async function recordMaking({ a, b, bg, frame, filter = "original", date, caption, font = null, shape = "wide", layout = null, outline = null, pairs = null, own = null, stickers = null, fx = null, ui = "film", signal = null, onProgress }) {
+  filt ||= createFilter();
+  const st = await prepare({ frame, date, caption, font, shape }), L = st.L;
+  if (stickers?.length) await stickersReady(stickers);
+  const strip = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
+  paint(strip.getContext("2d"), st, { a, b, bg, filter, layout, outline, pairs, own, stickers }, null);
+  await Promise.all(makingFonts(ui).map(f => document.fonts.load(f, "따로 같이 네컷 착! 2026. 10. 30").catch(() => null)));
+  const P = pairsOf(pairs), rows = [0, 1, 2, 3].map(i => [a.cuts[P[i]], b.cuts[i]]), fxs = [fx?.a || null, fx?.b || null];
+  const cells = [[null, null, null, null], [null, null, null, null]];
+  // person k, row i <- a clip frame (raw = its left half) or the raw photo, then the filter
+  const put = (k, i, img, half) => {
+    const w = half ? img.width / 2 : img.width, h = img.height;
+    let c = cells[k][i];
+    if (!c || c.width !== w || c.height !== h) c = cells[k][i] = Object.assign(document.createElement("canvas"), { width: w, height: h });
+    const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h, 0, 0, w, h);
+    const f = filt.apply(c, filter, 1, i + 1);
+    if (f !== c) x.drawImage(f, 0, 0, w, h);
+  };
+  const cv = Object.assign(document.createElement("canvas"), { width: MAKING.W, height: MAKING.H }), ctx = cv.getContext("2d");
+  const look = { ui, cells, strip, date: makingDate() }, N = Math.round(MAKING.L * MAKING.FPS);
+  const cfg = await encoderConfig(cv.width, cv.height);
+  if (cfg && window.VideoDecoder) {
+    try { return { blob: await makingOffline(), type: "video/mp4" }; }
+    catch (e) { if (e?.name === "AbortError") throw e; console.warn("[compose] making: offline render failed, real-time fallback", e); }
+  }
+  return makingRealtime();
+
+  async function makingOffline() {
+    const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+    const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: cv.width, height: cv.height, frameRate: MAKING.FPS },
+      fastStart: "in-memory", firstTimestampBehavior: "offset" });
+    let failed = null, row = -1, srcs = [null, null];
+    const enc = new VideoEncoder({ output: (ch, meta) => muxer.addVideoChunk(ch, meta), error: e => { failed = e; } });
+    enc.configure(cfg);
+    const closeRow = () => { srcs.forEach(s => s?.close()); srcs = [null, null]; };
+    try {
+      for (let n = 0; n < N; n++) {
+        if (failed) throw failed;
+        signal?.throwIfAborted();
+        const t = n / MAKING.FPS, i = ROW_T.findIndex(t0 => t >= t0 && t < t0 + ROW_DUR);
+        if (i !== row) {
+          closeRow(); row = i;
+          if (i >= 0) for (const k of [0, 1]) {
+            const c = rows[i][k], v = c.clip;
+            if (clipUsable(v)) try { srcs[k] = await clipSource(v, Math.max(0, (v.duration || 2) - ROW_DUR), fxs[k], null); }
+              catch (e) { if (e?.name === "AbortError") throw e; console.warn("[compose] making: clip shown still", e); }
+            if (!srcs[k]) put(k, i, c.raw, false);
+          }
+        } else if (i >= 0) for (const s of srcs) await s?.advance();
+        if (i >= 0) srcs.forEach((s, k) => s && put(k, i, s.frame, true));
+        drawMaking(ctx, t, look);
+        const f = new VideoFrame(cv, { timestamp: Math.round(n * 1e6 / MAKING.FPS), duration: Math.round(1e6 / MAKING.FPS) });
+        enc.encode(f, { keyFrame: n % (2 * MAKING.FPS) === 0 }); f.close();
+        while (enc.encodeQueueSize > 3 && !failed) await new Promise(r => setTimeout(r, 4));
+        onProgress?.(n / N);
+      }
+      await enc.flush();
+      if (failed) throw failed;
+      muxer.finalize();
+      onProgress?.(1);
+      return new Blob([muxer.target.buffer], { type: "video/mp4" });
+    } finally { closeRow(); if (enc.state !== "closed") enc.close(); }
+  }
+
+  // ponytail: no WebCodecs (older iOS) = photos only, painted in real time; add <video> seeking if a phone needs motion here
+  async function makingRealtime() {
+    if (!window.MediaRecorder) throw new Error("no MediaRecorder");
+    const ok = t => MediaRecorder.isTypeSupported(t);
+    const type = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(ok);
+    if (!type) throw new Error("no recorder type");
+    await warmEncoder(type, cv.width, cv.height);
+    rows.forEach((r, i) => r.forEach((c, k) => put(k, i, c.raw, false)));
+    const shown = [[null, null, null, null], [null, null, null, null]];
+    const frameAt = t => {
+      cells.forEach((row, k) => row.forEach((c, i) => { shown[k][i] = t >= ROW_T[i] ? c : null; }));
+      drawMaking(ctx, t, { ...look, cells: shown });
+    };
+    let stream = cv.captureStream(0), track = stream.getVideoTracks()[0];
+    if (!track?.requestFrame) { stream.getTracks().forEach(tr => tr.stop()); stream = cv.captureStream(MAKING.FPS); track = null; }
+    frameAt(0);
+    const rec = new MediaRecorder(stream, { mimeType: type, videoBitsPerSecond: BPS }), chunks = [];
+    let failed = null;
+    rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+    rec.onerror = e => { failed = e.error || new Error("recorder"); };
+    const stopped = new Promise(r => (rec.onstop = r)), started = new Promise(r => (rec.onstart = r));
+    rec.start(1000); track?.requestFrame();
+    await Promise.race([started, new Promise(r => setTimeout(r, 10000))]);
+    const t0 = performance.now();
+    await new Promise(done => {
+      const tick = () => {
+        const t = (performance.now() - t0) / 1000;
+        if (failed) return done();
+        if (signal?.aborted) { failed = new DOMException("aborted", "AbortError"); return done(); }
+        frameAt(Math.min(t, MAKING.L)); track?.requestFrame();
+        onProgress?.(Math.min(1, t / MAKING.L));
+        if (t >= MAKING.L) return setTimeout(done, 100);
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    });
+    rec.stop(); await stopped;
+    stream.getTracks().forEach(tr => tr.stop());
+    if (failed) throw failed;
+    return { blob: new Blob(chunks, { type: type.split(";")[0] }), type: type.split(";")[0] };
   }
 }
 

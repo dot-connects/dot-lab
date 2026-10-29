@@ -61,6 +61,8 @@ const HINT_SHOOT = `셔터 한 번이면 ${SHOTS}장을 이어서 찍어 · 한 
 // the link carries a cute theme in the query too, so B's page (and the Chrome hand-off) paints in it before the Worker answers
 const uiQ = () => S.ui === "cute" ? "&ui=cute" : "";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}${uiQ()}`;
+// Round 8 A: B's 완성 link goes through done.html, whose own og image says the strip is ready, then on to the app
+const sendUrl = () => S.shareMode === "done" ? `${location.origin}${location.pathname.replace(/[^/]*$/, "done.html")}?s=${S.id}${uiQ()}` : shareUrl();
 
 // ---- screens ------------------------------------------------------------------------------------------------------
 // UI hooks (index.html top comment, CONTRACT "UI themes"): body[data-screen], body[data-flow] = a | b | c (c = decorate in
@@ -953,14 +955,14 @@ function shareScreen(mode) {
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
   $("shareBtn").textContent = fin ? "완성됐어 링크 보내기" : "친구한테 링크 보내기";
   $("shareBtn").className = fin ? "cta alt" : "cta";
-  $("linkText").textContent = shareUrl(); $("linkBox").hidden = true;
+  $("linkText").textContent = sendUrl(); $("linkBox").hidden = true;
   (fin ? pairStrip($("myStrip")) : myStrip()).catch(e => { console.warn("[booth] strip", e); if (fin) myStrip().catch(() => {}); });
 }
 const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음";
 const DONE_TEXT = "완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어";
 const shareText = () => S.shareMode === "done" ? DONE_TEXT : SHARE_TEXT;
 async function share() {
-  const url = shareUrl();
+  const url = sendUrl();
   if (navigator.share) {
     try { await navigator.share({ title: "따로 같이 네컷", text: shareText(), url });
       return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
@@ -971,7 +973,7 @@ async function share() {
 async function copy() {
   const b = $("copyBtn");
   $("linkBox").hidden = false;
-  try { await navigator.clipboard.writeText(`${shareText()}\n${shareUrl()}`); }
+  try { await navigator.clipboard.writeText(`${shareText()}\n${sendUrl()}`); }
   catch { return toast("아래 링크를 길게 눌러 복사해 줘"); }
   b.textContent = "복사했어! ♥"; b.classList.add("copied");
   setTimeout(() => { b.textContent = "링크 복사"; b.classList.remove("copied"); }, 1500);
@@ -1277,8 +1279,8 @@ const extOf = type => type.includes("mp4") ? "mp4" : "webm";
 // (review r3 #5: the button sat at "0%" through the clip loading and the 보정 warm-up)
 const LINES = ["영상 만드는 중", "프레임 끼우는 중", "리본 묶는 중", "반짝이 뿌리는 중"];
 function setVid(which = "video", p = null) {
-  for (const [id, kind, ready, idle, wait] of [["vidBtn", "video", "움직이는 네컷 저장", "움직이는 네컷 다운로드", "움직이는 네컷 기다리는 중"],
-    ["storyBtn", "story", "스토리 영상 저장", "스토리용 영상", "스토리 영상 기다리는 중"]]) {
+  for (const [id, kind, ready, idle, wait] of [["vidBtn", "video", "움직이는 네컷 저장", "움직이는 네컷", "기다리는 중"],
+    ["storyBtn", "story", "메이킹 영상 저장", "메이킹 영상", "기다리는 중"]]) {
     const b = $(id), span = b.querySelector("span"), cur = D[kind]?.key === vkey();
     const making = which === kind && p != null, pct = typeof p === "number" ? Math.max(1, Math.round(p * 100)) : 0;
     b.classList.toggle("rendering", making); b.style.setProperty("--p", making ? pct : 0);
@@ -1326,12 +1328,14 @@ async function videoJob() {
       if (key !== vkey()) continue;
       setVid(kind, 0);
       D.vac = new AbortController();      // deco R5: a change stops the recording (later()); it restarts after VIDEO_IDLE
-      const res = await C.recordMovingStrip(opts({ format: kind === "story" ? "story" : "strip", signal: D.vac.signal,
-        onProgress: p => key === vkey() && setVid(kind, p) }));
+      // Round 8 B: the second video is the 메이킹 영상 (making.js), in this link's UI theme
+      const onProgress = p => key === vkey() && setVid(kind, p);
+      const res = kind === "story" ? await C.recordMaking(opts({ ui: S.ui, signal: D.vac.signal, onProgress }))
+        : await C.recordMovingStrip(opts({ format: "strip", signal: D.vac.signal, onProgress }));
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       D[kind === "video" ? "wantVideo" : "wantStory"] = false;
-      const name = kind === "video" ? "움직이는 네컷" : "스토리용 영상";
+      const name = kind === "video" ? "움직이는 네컷" : "메이킹 영상";
       // operator 10-29: the tap that asked for it also saves it, no second tap. iPhone saves through the share sheet,
       // which needs a fresh tap (D.auto is never set there), so there the button saves it. A re-render nobody tapped
       // for (the HQ cut landing) is not saved again.
@@ -1342,16 +1346,27 @@ async function videoJob() {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e);
     D.noVideo = true;
-    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("dVid").hidden = true; sheet(null);
+    $("saveBtns").querySelector(".vidrow").hidden = true; $("dVid").hidden = true; sheet(null);
     toast("이 폰에서는 영상 저장이 안 돼요. 사진으로 저장해 줘", 3500);
   } finally { D.vjob = false; setVid(); }
 }
 
 // one tap on a video button: saves it if it is made for this look, else starts it and (not on iPhone) saves it when done
-const saveKind = kind => download([D[kind].blob, fileName(extOf(D[kind].type), kind === "story" ? "-story" : "")]);
+const saveKind = kind => download([D[kind].blob, fileName(extOf(D[kind].type), kind === "story" ? "-making" : "")]);
 function saveVid(kind) {
   if (D[kind]?.key === vkey()) return saveKind(kind);
   D[kind === "video" ? "wantVideo" : "wantStory"] = true; D.auto[kind] = !env.isIOS; setVid(); videoJob();
+}
+
+// Round 8 C: the save sheet's card previews (the strip as it is now, my first shot) and the bubble's link. The copy runs
+// in the tap that opened the sheet; the link is the work's start page, never this pair's link (their photos)
+function saveSheet() {
+  try { $("vidPv").src = $("stripImg").toDataURL("image/jpeg", .7); } catch {}
+  const mine = D.media?.[me() || "a"]?.cuts?.[0]?.raw;
+  if (mine) $("mkPv").src = mine.src;
+  const link = location.origin + location.pathname;
+  const said = ok => $("saveLink").innerHTML = ok ? "<em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아" : `링크도 붙여 주면 더 좋아 <em>${link.replace(/^https?:\/\//, "")}</em>`;
+  try { navigator.clipboard.writeText(link).then(() => said(true), () => said(false)); } catch { said(false); }
 }
 
 // ---- actions ------------------------------------------------------------------------------------------------------
@@ -1660,7 +1675,7 @@ const ACT = {
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
   again: fresh,
-  dsheet: b => sheet(b.dataset.sheet),
+  dsheet: b => { sheet(b.dataset.sheet); if (b.dataset.sheet === "save") saveSheet(); },
   dsheetClose: () => sheet(null),
 };
 document.addEventListener("click", e => {

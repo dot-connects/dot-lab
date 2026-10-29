@@ -673,13 +673,16 @@ kick();
   <div class="dscrim" id="dScrim" data-act="dsheetClose" hidden></div>
   <!-- the 영상 sheet (moving strip / story) and the ⋯ sheet (again, more, trust) -->
   <div class="dsheet" id="saveBox" data-sheetid="save" hidden>
+    <!-- Round 8 C (mockups/r8/making.html C): two video cards + the "자랑해 줘" bubble; the work's own link is copied as
+         the sheet opens (the pair's link would put both people's photos on a public post) -->
     <div id="saveBtns">
+      <p class="savehead">영상 2개 받아 가!</p>
       <div class="vidrow">
-        <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo"><i class="ring"></i><span>움직이는 네컷 다운로드</span></button>
-        <button class="cta alt vbtn" id="storyBtn" data-act="saveStory"><i class="ring"></i><span>스토리용 영상</span></button>
+        <button class="vtile vbtn" id="vidBtn" data-act="saveVideo"><i class="pv"><img id="vidPv" alt=""></i><b class="vl"><i class="ring"></i><span>움직이는 네컷</span></b><small>네 칸이 살아 움직여요</small></button>
+        <button class="vtile vbtn bonus" id="storyBtn" data-act="saveStory"><i class="ribbon">보너스</i><i class="pv mk"><img id="mkPv" alt=""></i><b class="vl"><i class="ring"></i><span>메이킹 영상</span></b><small>따로 찍은 순간까지</small></button>
       </div>
-      <p class="fine" id="vidNote">움직이는 네컷은 가끔 끊기거나 사람이 잠깐 안 보일 수 있어요</p>
       <p class="fine" id="vidHq" role="status" hidden></p>
+      <p class="savebubble"><b>SNS에 올려서 자랑해 줘 🙌</b><span id="saveLink"><em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아</span></p>
     </div>
     <div id="inappSave" hidden>
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>

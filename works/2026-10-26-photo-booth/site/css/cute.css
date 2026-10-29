@@ -251,6 +251,16 @@ body[data-ui="cute"] .savebar { background: linear-gradient(#f4efff00, #f2ebff 1
 body[data-ui="cute"] .cta.vbtn { font-size: 26px; background: linear-gradient(90deg, #ffd0e4 calc(var(--p, 0) * 1%), #fff 0); }
 body[data-ui="cute"] .cta.vbtn:disabled { color: #574c6e; box-shadow: 0 5px 0 #d8cff0; }
 body[data-ui="cute"] .cta.vbtn.rendering { font-size: 22px; color: var(--ink); box-shadow: 0 5px 0 var(--lav3d); }
+body[data-ui="cute"] .savehead { font-family: var(--title); font-weight: 400; }
+body[data-ui="cute"] .vtile { border-radius: 16px; box-shadow: inset 0 0 0 2.5px var(--ink); background: linear-gradient(0deg, #ffd0e4 calc(var(--p, 0) * 1%), #fff 0); }
+body[data-ui="cute"] .vtile.bonus { background: linear-gradient(0deg, #ffd0e4 calc(var(--p, 0) * 1%), #fff4c2 0); }
+body[data-ui="cute"] .vtile .pv { border-radius: 10px; background: #ffe3ec; }
+body[data-ui="cute"] .vtile .pv.mk { background: #2a1a24; }
+body[data-ui="cute"] .vtile .vl { font-weight: 400; font-size: 19px; }
+body[data-ui="cute"] .vtile .ribbon { background: var(--deep); color: #fff; font-weight: 400; border-radius: 6px; }
+body[data-ui="cute"] .savebubble { border-radius: 16px; background: #2a1a24; }
+body[data-ui="cute"] .savebubble::before { border-bottom-color: #2a1a24; }
+body[data-ui="cute"] .savebubble em { color: #ffb3d1; }
 body[data-ui="cute"] .vbtn .ring { background: conic-gradient(var(--deep) calc(var(--p, 0) * 1%), #5a31ab33 0); }
 
 /* screen 0 stays neutral: the film card keeps film's own colours and type even when ?ui=cute picked this sheet */

@@ -386,7 +386,30 @@ button.backchip { appearance: none; border: 0; background: none; cursor: pointer
 .savebar { position: sticky; bottom: 0; z-index: 3; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 14px var(--pr) max(10px, env(safe-area-inset-bottom)) var(--pl); background: linear-gradient(#ffffff00, var(--bg) 14px); }
 #saveBtns { display: flex; flex-direction: column; gap: 8px; }
 .savebar .cta { padding-top: 14px; padding-bottom: 14px; }
-.vidrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.vidrow { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* Round 8 C: two video cards (preview + name + one line), a 보너스 ribbon on the making video, a black bubble under */
+.savehead { margin: 0; text-align: center; font-family: var(--title); font-weight: 900; font-size: 21px; letter-spacing: -.03em; }
+.vtile { appearance: none; position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 8px 12px;
+  font: inherit; color: var(--ink); text-align: center; cursor: pointer; border: 0; box-shadow: inset 0 0 0 var(--b) var(--line);
+  background: linear-gradient(0deg, var(--acc) calc(var(--p, 0) * 1%), var(--paper) 0); }
+.vtile.bonus { background: linear-gradient(0deg, var(--acc) calc(var(--p, 0) * 1%), #fff6c9 0); }
+.vtile .pv { display: grid; place-items: center; width: 100%; aspect-ratio: 9 / 13; overflow: hidden; background: var(--soft); }
+.vtile .pv img { max-width: 72%; max-height: 92%; box-shadow: 0 2px 6px #0003; }
+.vtile .pv.mk { background: #0d0d0d; }
+.vtile .pv.mk img { max-width: 88%; max-height: none; box-shadow: none; }
+.vtile .pv img:not([src]) { visibility: hidden; }
+.vtile .vl { display: flex; align-items: center; justify-content: center; font-family: var(--title); font-weight: 900; font-size: 17px; letter-spacing: -.03em; line-height: 1.2; }
+.vtile small { font-size: 12px; line-height: 1.35; color: var(--sub); }
+.vtile.rendering .vl { font-size: 14px; }
+.vtile:disabled { cursor: default; }
+.vtile:disabled:not(.rendering) .vl { color: #4a4a4a; }
+.vtile .ribbon { position: absolute; z-index: 1; right: -6px; top: -10px; background: #000; color: var(--acc); font-style: normal; font-weight: 900; font-size: 13px; padding: 4px 9px; transform: rotate(6deg); }
+.vtile:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+.savebubble { position: relative; margin: 10px 0 0; background: #0d0d0d; color: #fff; padding: 12px 14px; text-align: center; }
+.savebubble::before { content: ""; position: absolute; left: 50%; bottom: 100%; margin-left: -9px; border: 9px solid transparent; border-bottom-color: #0d0d0d; }
+.savebubble b { display: block; font-size: 17px; line-height: 1.35; }
+.savebubble span { display: block; font-size: 13px; line-height: 1.45; color: #e6e6e6; margin-top: 2px; }
+.savebubble em { font-style: normal; color: var(--acc); font-weight: 700; word-break: break-all; }
 .cta.vbtn { font-size: 16px; padding: 11px 8px; white-space: nowrap; position: relative; overflow: hidden;
   background: linear-gradient(90deg, var(--acc) calc(var(--p, 0) * 1%), var(--paper) 0); }
 .cta.vbtn:disabled { color: #4a4a4a; box-shadow: inset 0 0 0 var(--b) #9a9a9a; }   /* 8.9:1 on white */
