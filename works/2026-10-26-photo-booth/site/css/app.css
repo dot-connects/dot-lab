@@ -596,8 +596,8 @@ body[data-ui="film"] {
 @keyframes sprRun { to { background-position: left 6px top 19px, right 6px top 19px, 0 0; } }
 
 /* shoot: a dark booth (mockup A-3 / B-3); the review after the pick (보정, A-6) is light again */
-body[data-ui="film"]:has(#s-shoot:not([hidden]):not(.shooting-done)) { background: #000; }
-body[data-ui="film"] #s-shoot:not(.shooting-done) { background: #000; color: #fff; --ink: #fff; --sub: #cfcfcf; --line: #fff; }
+body[data-ui="film"]:has(#s-shoot:not([hidden])) { background: #000; }
+body[data-ui="film"] #s-shoot { background: #000; color: #fff; --ink: #fff; --sub: #cfcfcf; --line: #fff; }
 body[data-ui="film"] .uihead:not(:empty) ~ .shoothead { margin-top: 0; padding-top: 2px; min-height: 0; }
 body[data-ui="film"] #s-shoot.shooting-done .shoothead { background: none; color: var(--ink); padding-bottom: 0; }
 body[data-ui="film"] #s-shoot.shooting-done .pose { font-size: 25px; letter-spacing: -.045em; }
@@ -618,8 +618,8 @@ body[data-ui="film"] #s-shoot .tool i { background: none; border-color: #fff; co
 body[data-ui="film"] #s-shoot .tool[aria-pressed="true"] i { background: var(--acc); border-color: var(--acc); color: #000; }
 body[data-ui="film"] .shutter { border-color: #fff; box-shadow: 0 0 0 4px #000, 0 0 0 7px #fff; }
 body[data-ui="film"].busy .shutter { background: conic-gradient(var(--acc) 0 25%, #222 0); animation: spin 1s linear infinite; }
-body[data-ui="film"] #s-shoot:not(.shooting-done) .pill { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
-body[data-ui="film"] #s-shoot:not(.shooting-done) .pill[aria-pressed="true"] { background: var(--acc); color: #000; box-shadow: inset 0 0 0 3px var(--acc); }
+body[data-ui="film"] #s-shoot .pill { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
+body[data-ui="film"] #s-shoot .pill[aria-pressed="true"] { background: var(--acc); color: #000; box-shadow: inset 0 0 0 3px var(--acc); }
 
 /* pick 4 of 6 (A-5 / B-4): background as one segmented bar (also on the retouch review), the 6 in the film, picked = black + lime frame, number top right */
 body[data-ui="film"] .pickhead { border-bottom: 0; padding-bottom: 0; }
@@ -635,7 +635,6 @@ body[data-ui="film"] .pk[aria-pressed="true"]::before { content: ""; position: a
 body[data-ui="film"] .pk .badge { left: auto; right: 0; z-index: 2; border-right: 0; border-left: 3px solid #000; }
 
 /* retouch review (A-6 / B-5): the four cells in the film */
-body[data-ui="film"] #s-shoot.shooting-done .stage { min-height: 40svh; }
 
 /* share / wait / B's finish (A-7, A-8, B-6): the strip stands upright in the film */
 body[data-ui="film"] #myStrip .ministrip.real { transform: none; box-shadow: none; padding: 8px 22px 0; background: var(--film); }
@@ -667,14 +666,14 @@ body[data-ui="cute"] .ui-film { display: none; }
    min(100% width, spare height x cell aspect) on every phone. ===== */
 .shootpanel { display: contents; }
 .cellf { flex: 1 1 auto; display: flex; flex-direction: column; min-height: 0; }
-#s-shoot:not(.shooting-done) { height: 100svh; height: 100dvh; min-height: 0; gap: 0; position: relative; overflow: hidden; }
+#s-shoot { height: 100svh; height: 100dvh; min-height: 0; gap: 0; position: relative; overflow: hidden; }
 #s-shoot:not(.shooting-done) > .uihead { display: none; }
-#s-shoot:not(.shooting-done) .vf { flex: 1 1 0; min-height: 0; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0;
+#s-shoot .vf { flex: 1 1 0; min-height: 0; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0;
   background: none; border-radius: 0; box-shadow: none; animation: none; display: grid; place-items: center; container-type: size; }
-#s-shoot:not(.shooting-done) .cellf { --asp: 552 / 382; --bt: 0px; --bb: 0px; flex: none; display: block; padding: var(--bt) 0 var(--bb);
+#s-shoot .cellf { --asp: 552 / 382; --bt: 0px; --bb: 0px; flex: none; display: block; padding: var(--bt) 0 var(--bb);
   width: min(100cqw, calc((100cqh - var(--bt) - var(--bb)) * var(--asp))); }
-body[data-shape="tall"] #s-shoot:not(.shooting-done) .cellf { --asp: 426 / 568; }
-#s-shoot:not(.shooting-done) .stage { flex: none; width: 100%; height: auto; aspect-ratio: var(--asp); min-height: 0; max-height: none; outline: 0; }
+body[data-shape="tall"] #s-shoot .cellf { --asp: 426 / 568; }
+#s-shoot .stage { flex: none; width: 100%; height: auto; aspect-ratio: var(--asp); min-height: 0; max-height: none; outline: 0; }
 #s-shoot:not(.shooting-done) .shootpanel { display: flex; flex-direction: column; align-items: center; gap: 10px; flex: none;
   margin: 0 calc(-1 * var(--pr)) calc(-1 * var(--pb)) calc(-1 * var(--pl)); padding: 14px var(--pr) var(--pb) var(--pl); }
 #s-shoot:not(.shooting-done) .shootpanel > * { margin: 0; }
@@ -690,7 +689,7 @@ body[data-shape="tall"] #s-shoot:not(.shooting-done) .cellf { --asp: 426 / 568; 
 }
 /* film: the black head bar, film bands above and below the cell (they run while shooting), a black panel under a white line */
 body[data-ui="film"] #s-shoot:not(.shooting-done) .shoothead { margin-top: calc(-1 * var(--pt)); padding-top: calc(var(--pt) - 6px); min-height: 58px; }
-body[data-ui="film"] #s-shoot:not(.shooting-done) .cellf { --bt: 14px; --bb: 14px;
+body[data-ui="film"] #s-shoot .cellf { --bt: 14px; --bb: 14px;
   --h: linear-gradient(90deg, #000 0 5px, #fff 5px 14px, #000 14px);
   background: var(--h) 0 3px / 19px 8px repeat-x, var(--h) 0 calc(100% - 3px) / 19px 8px repeat-x, #000; }
 body[data-ui="film"].busy #s-shoot:not(.shooting-done) .cellf { animation: sprRunH 1.2s linear infinite; }
@@ -733,3 +732,43 @@ body[data-ui="film"] #s-pick .pickgrid { --bt: 12px; --bb: 12px;
   --h: linear-gradient(90deg, #000 0 8px, #fff 8px 17px, #000 17px);
   background: var(--h) 0 3px / 19px 6px repeat-x, var(--h) 0 calc(100% - 3px) / 19px 6px repeat-x, #000; }
 body[data-ui="film"] .picksheet { background: #fff; border-top: 3px solid #000; }
+
+/* ===== Round 7: the 보정 review = mockups/retouch-pick.html layout 1 (operator pick 2026-10-29). The camera's sizing
+   above (one cell box as big as the space allows) holds the four, everything else sits in a bottom sheet: hint,
+   background, 피부·갸름·눈 tabs + 안 함·살짝·많이 for the open tab, upload. Film stays dark like the camera. ===== */
+#s-shoot.shooting-done { gap: 8px; }
+#shootDone { flex: none; width: auto; align-self: stretch; gap: 8px; margin: 0 calc(-1 * var(--pr)) calc(-1 * var(--pb)) calc(-1 * var(--pl)); padding: 12px var(--pr) var(--pb) var(--pl); }
+#shootDone .hint { margin: 0; font-size: 15px; font-weight: 700; }
+#shootDone .trust { font-size: 12px; }
+#lookMine { border: 0; padding: 0; background: none; gap: 6px; }
+.ltabs, .llv { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ltab { appearance: none; border: 0; border-radius: 0; min-height: 46px; display: grid; place-content: center; cursor: pointer; text-align: center;
+  font: 700 15px/1.15 var(--body); background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); }
+.ltab small { display: block; font-size: 12px; font-weight: 500; color: var(--sub); }
+.ltab[aria-pressed="true"] { background: var(--ink); color: var(--paper); box-shadow: none; }
+.ltab[aria-pressed="true"] small { color: inherit; }
+.llv .pill { min-height: 46px; }
+.ltab:focus-visible { outline: 3px solid var(--acc); outline-offset: 2px; }
+/* hold = the four without 보정 (app.js revOrig) */
+.origbtn { position: absolute; left: 50%; top: 50%; z-index: 4; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 50%; border: 2px solid #fff;
+  background: #000000b3; color: #fff; font: 700 13px/1.15 var(--body); cursor: pointer; padding: 0;
+  touch-action: none; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+.origbtn[aria-pressed="true"] { background: var(--acc); color: #000; border-color: #000; }
+@media (max-height: 700px) {
+  #shootDone { gap: 6px; padding-top: 8px; }
+  #shootDone .hint { display: none; }
+  #shootDone :is(.ltab, .pill) { min-height: 38px; }
+  #shootDone .cta { padding-top: 12px; padding-bottom: 12px; }
+}
+body[data-ui="film"] #s-shoot.shooting-done .utop { display: none; }
+body[data-ui="film"] #s-shoot.shooting-done .rail { margin-top: 0; }
+body[data-ui="film"] #shootDone { background: #000; border-top: 2px solid #fff; }
+body[data-ui="film"] #revBg::before { content: none; }
+body[data-ui="film"] #s-shoot #revBg .pill { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #fff; }
+body[data-ui="film"] #s-shoot #revBg .pill[aria-pressed="true"] { background: var(--acc); color: #000; box-shadow: inset 0 0 0 3px var(--acc); }
+body[data-ui="film"] .ltab { background: #000; color: #fff; box-shadow: inset 0 0 0 2px #6a6a6a; }
+body[data-ui="film"] .ltab small { color: #cfcfcf; }
+body[data-ui="film"] .ltab[aria-pressed="true"] { background: #fff; color: #000; box-shadow: none; }
+body[data-ui="film"] .ltab[aria-pressed="true"] small { color: #333; }
+body[data-ui="film"] #shootDone > .cta { background: var(--acc); color: #000; }
+body[data-ui="film"] #shootDone > .cta::after { display: none; }

@@ -283,7 +283,7 @@ function resetShoot() {
   S.cuts = []; S.shots = []; S.shotUrls = []; S.pick = []; S.pairs = null; S.hq = [];
   S.gen = (S.gen || 0) + 1; S.hqBusy = false; $("hqChip").hidden = true; $("prepOv").hidden = true;   // an older HQ run stops
   $("s-shoot").classList.remove("shooting-done");
-  $("controls").hidden = false; $("shootDone").hidden = true; $("review").hidden = true; $("pips").hidden = false;
+  $("controls").hidden = false; $("shootDone").hidden = true; $("review").hidden = true; $("revOrig").hidden = true; $("pips").hidden = false;
   $("shootHint").hidden = false; $("shootHint").textContent = HINT_SHOOT; $("lastShot").hidden = true;
   $("hqNote").hidden = MOCK || !!S.hqNoteOff;
   setCut(0);
@@ -392,7 +392,7 @@ async function shootIdx(i) {
 async function runShoot() {
   if (S.busy || !S.cap) return;
   S.busy = true; document.body.classList.add("busy");
-  $("shootHint").hidden = true; $("shootDone").hidden = true; $("review").hidden = true;
+  $("shootHint").hidden = true; $("shootDone").hidden = true; $("review").hidden = true; $("revOrig").hidden = true;
   try {
     for (let i = S.shots.length; i < SHOTS; i++) {
       await shootIdx(i);
@@ -607,7 +607,7 @@ function reshoot() {
 // "맘에 들어?": the four cells composed like the strip (B: B's pick + its paired A in front).
 // S.revQ = 2 once the view was zoomed past 1.5x (RZ): cells and canvas at twice the pixels, so faces stay sharp
 const reviewCell = i => { const q = S.revQ || 1;
-  return cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null, S.beautyReady ? S.look : null, 552 * q, 382 * q); };
+  return cellCanvas(S.cuts[i], S.side === "b" ? S.pairs?.[i] ?? i : null, S.beautyReady && !S.revOrig ? S.look : null, 552 * q, 382 * q); };
 function paintRev(c, i, alpha = 1) {
   const R = $("review"), x = R.getContext("2d"), { ox, oy, cw, ch, g, d } = S.revGeo;
   const px = ox + (i % 2) * (cw + g), py = oy + (i >> 1) * (ch + g);
@@ -625,6 +625,7 @@ async function review() {
   x.fillStyle = getComputedStyle(st).getPropertyValue("--rev-bg").trim() || "#000"; x.fillRect(0, 0, R.width, R.height);   // cute: white
   cells.forEach((c, i) => paintRev(c, i));
   R.hidden = false;
+  $("revOrig").hidden = !S.beautyReady || !LOOK_ROWS.some(([k]) => S.look[k]);   // nothing to compare without a look
 }
 // an HQ cut arrived for picked cell i: crossfade that cell
 async function swapCell(i) {
@@ -695,6 +696,26 @@ function lookRows(box, look, onPick, title = "") {
       return row;
     }));
 }
+// review (retouch mockup 1): a row of 피부·갸름·눈 tabs (each shows its level) + 안 함·살짝·많이 for the open tab
+function lookTabs(box, look, onPick) {
+  const cur = S.lookTab ||= LOOK_ROWS[0][0], label = LOOK_ROWS.find(r => r[0] === cur)[1];
+  const row = cls => Object.assign(document.createElement("div"), { className: cls });
+  const tabs = row("ltabs"), lv = row("llv");
+  tabs.append(...LOOK_ROWS.map(([k, l]) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "ltab" });
+    b.dataset.k = k; b.setAttribute("aria-pressed", k === cur);
+    b.append(l, Object.assign(document.createElement("small"), { textContent: LOOK_LV[look[k]] }));
+    b.onclick = () => { if (S.lookTab !== k) { S.lookTab = k; lookTabs(box, look, onPick); } };
+    return b;
+  }));
+  lv.append(...LOOK_LV.map((t, v) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: t });
+    b.setAttribute("aria-pressed", look[cur] === v); b.setAttribute("aria-label", `${label} ${t}`);
+    b.onclick = () => { if (look[cur] !== v) onPick({ ...look, [cur]: v }); };
+    return b;
+  }));
+  box.replaceChildren(tabs, lv);
+}
 // review: my picks re-render with the new look (cached, so flipping back is instant)
 function reviewLook() {
   // the review shows plain cells until the face model is up (first visit: download + GPU compile), then re-renders
@@ -702,7 +723,7 @@ function reviewLook() {
     S.beautyReady = ok;
     if (ok) review().catch(e => console.warn("[booth] review", e));
   }).catch(e => console.warn("[booth] beauty", e));
-  lookRows($("lookMine"), S.look, l => { S.look = l; reviewLook(); review().catch(e => console.warn("[booth] review", e)); }, "보정");
+  lookTabs($("lookMine"), S.look, l => { S.look = l; reviewLook(); review().catch(e => console.warn("[booth] review", e)); });
 }
 // B's overlay of A: A's cut-outs and raw photos with A's look (the same warp on both, so they still line up)
 async function ghostLook() {
@@ -1564,6 +1585,14 @@ const DZ = zoomer({ box: $("preview"), inner: $("previewIn"), chip: $("zoomChip"
 // the retouch review (A and B before upload): sharper cells once zoomed in
 const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip: $("revZoom"), stop: true,
   onEnd: z => { if (z.s > 1.5 && S.revQ !== 2) { S.revQ = 2; review().catch(e => console.warn("[booth] review", e)); } } });
+// 원본 보기: held = the four without 보정; the pinch zoom under it never sees the press
+{ const b = $("revOrig"), hold = on => {
+    if (S.revOrig === on) return;
+    S.revOrig = on; b.setAttribute("aria-pressed", on); review().catch(e => console.warn("[booth] review", e));
+  };
+  b.addEventListener("pointerdown", e => { e.stopPropagation(); e.preventDefault(); b.setPointerCapture?.(e.pointerId); hold(true); });
+  for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(t, e => { e.stopPropagation(); hold(false); });
+  b.addEventListener("contextmenu", e => e.preventDefault()); }
 
 const ACT = {
   pickUi: b => { setUi(b.dataset.ui); show("landA"); },   // screen 0: A's theme, then A's cover
