@@ -50,9 +50,6 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .err { color: var(--red); font-size: 16px; font-weight: 700; text-align: center; }
 .trust { display: flex; gap: 8px; align-items: flex-start; justify-content: center; color: var(--sub); font-size: 14px; line-height: 1.45; text-align: left; max-width: 380px; align-self: center; }
 .trust svg { width: 18px; height: 18px; flex: none; margin-top: 1px; color: var(--ink); }
-.camnote { display: flex; gap: 8px; align-items: center; justify-content: center; font-size: 15px; color: var(--ink); background: var(--paper); border: 2px solid var(--line); padding: 8px 12px; }
-.camnote svg { width: 22px; height: 22px; flex: none; color: var(--ink); }
-.camnote b { background: var(--acc); padding: 0 3px; }
 
 .hero { display: flex; flex-direction: column; gap: 14px; flex: 1; padding-top: 8px; }
 .bottom { display: flex; flex-direction: column; gap: 12px; align-items: stretch; width: 100%; margin-top: auto; }
@@ -335,20 +332,13 @@ button.backchip { appearance: none; border: 0; background: none; cursor: pointer
 #myStrip .deco.s1 { top: 14%; left: 14%; } #myStrip .deco.s2 { bottom: 12%; right: 16%; }
 
 /* delete */
-.del { display: flex; flex-direction: column; align-items: center; }
-.del .textlink { color: var(--red); font-size: 15px; }
-.delask { background: var(--paper); border: var(--b) solid var(--line); padding: 14px; width: 100%; text-align: center; display: flex; flex-direction: column; gap: 12px; animation: fade .2s; }
-.delask p { font-size: 16px; }
-.delask .row { display: flex; gap: 10px; }
-.delask .cta { padding: 13px 16px; font-size: 17px; }
-.delask .cta::after { display: none; }
 
 /* done */
 .previewwrap { position: sticky; top: 0; z-index: 3; height: 46svh; margin: calc(-1 * var(--pt)) calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 12px var(--pr) 6px var(--pl);
   background: var(--grid); border-bottom: var(--b) solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 6px; padding-bottom: 12px; }
 .preview { position: relative; flex: 1; min-height: 0; aspect-ratio: 600 / 1800; background: var(--paper); box-shadow: 0 0 0 3px #000, 6px 6px 0 3px #000; overflow: hidden; }
 .preview img, .preview video { width: 100%; height: 100%; display: block; object-fit: cover; }
-.preview.print { animation: print .7s cubic-bezier(.22, .9, .3, 1) both; }
+.preview.print { animation: print .7s cubic-bezier(.22, .9, .3, 1) backwards; }   /* not "both": a held end transform would beat the zoom (#preview inline transform) */
 @keyframes print { from { transform: translateY(-30%); clip-path: inset(0 0 100% 0); } to { transform: none; clip-path: inset(-12px); } }
 .veils i { position: absolute; background: #fff; opacity: 0; pointer-events: none; }
 .print .veils i { animation: veil .25s ease-out both; animation-delay: calc(.7s + var(--i) * 90ms); }
@@ -476,6 +466,8 @@ body[data-tab="sticker"] .donetitle { display: none; }
 .zin { position: absolute; inset: 0; transform-origin: 0 0; }
 .review { transform-origin: 0 0; }
 .preview { touch-action: none; }
+#preview { transform-origin: 0 0; }
+#preview.zoomed { z-index: 20; }   /* the whole box grows over the drawer and the dock while zoomed */
 .zchip { position: absolute; top: 8px; right: 8px; z-index: 3; background: #000; color: #fff; font: 700 13px var(--num); padding: 2px 8px; pointer-events: none; }
 .zin .stk-x, .zin .stk-h { transform: translate(-50%, -50%) rotate(calc(-1 * var(--r, 0rad))) scale(calc(1 / var(--zs, 1))); }
 .own .pills { flex-wrap: nowrap; gap: 6px; }
@@ -484,18 +476,7 @@ body[data-tab="sticker"] .donetitle { display: none; }
 .ownsize input { width: 100%; accent-color: var(--ink); }
 #ownReset { align-self: flex-start; min-height: 36px; padding: 0 14px; }
 
-/* ===== Result themes (클린 / Y2K / 다이어리): theme row on the decorate screen, caption font pills, sticker set pills ===== */
-.themes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.theme { appearance: none; border: 0; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 48px; padding: 6px 8px; border-radius: 14px;
-  background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px var(--line); font: 16px var(--title); cursor: pointer; white-space: nowrap; }
-.theme i { flex: none; width: 30px; height: 30px; border-radius: 8px; }
-.theme[aria-pressed="true"] { box-shadow: inset 0 0 0 2.5px var(--ink); }
-.theme:active { transform: scale(.95); }
-.theme:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-.theme-clean i { background: linear-gradient(#fff 0 60%, #151515 60% 67%, #d6ff3d 67%); box-shadow: inset 0 0 0 2px #151515; }
-.theme-y2k i { background: linear-gradient(135deg, #ffc4e4, #dccdff 40%, #bfe8ff 70%, #cff8e6); box-shadow: inset 0 0 0 2px #fff, 0 0 0 1px #c9b6ff; }
-.theme-diary i { background: linear-gradient(-12deg, transparent 36%, #f3a6bbe6 36% 60%, transparent 60%), radial-gradient(#d9c39c 1.2px, transparent 1.6px) 0 0 / 7px 7px, #fbf3e4;
-  box-shadow: inset 0 0 0 1px #e3d2b4; }
+/* ===== caption font pills, sticker set pills ===== */
 #stkSets .pill { padding: 0 12px; flex: none; }
 .capfont { font-size: 18px; }
 
@@ -802,7 +783,6 @@ body[data-shape="tall"] #s-share #shareLead { grid-column: 1; grid-row: 3; }
 body[data-shape="tall"] #s-share #decNote { grid-column: 1; grid-row: 4; }
 #s-share .bottom { flex: none; gap: 8px; }
 .sharelinks { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; column-gap: 18px; }
-.sharelinks .del:has(.delask:not([hidden])) { flex-basis: 100%; }
 #s-share .trust { font-size: 12px; }
 @media (max-height: 700px) {
   #s-share #shareLead { display: none; }
@@ -848,7 +828,7 @@ body[data-shape="tall"] .drawer { flex: 1 1 0; min-height: 0; max-height: none; 
 .lcyc .dots i { width: 7px; height: 7px; background: #0003; outline: 0; animation: none; border-radius: 50%; }
 .lcyc .dots i.f { background: #000; }
 .lcyc:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
-/* the dock: 8 tabs as icon + word */
+/* the dock: 7 tabs as icon + word */
 #s-done .dock { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; border: 0; border-radius: 0; box-shadow: none;
   margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 4px var(--pr) max(6px, env(safe-area-inset-bottom)) var(--pl); background: #000; }
 #s-done .dock button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 5px; border-radius: 0; box-shadow: none;

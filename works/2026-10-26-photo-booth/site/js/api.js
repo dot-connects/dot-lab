@@ -51,13 +51,6 @@ export async function status(id) {
   return r.json();
 }
 
-// "지금 삭제": A's token, or the finished B's. A link that is already gone counts as deleted.
-export async function deleteLink(id, token) {
-  const r = await fetch(url(id), { method: "DELETE", headers: { Authorization: `Bearer ${token}` } });
-  if (r.status === 204 || r.status === 404 || r.status === 410) return { ok: true };
-  return { error: (await body(r)).error || `http-${r.status}` };
-}
-
 export async function blobUrl(id, side, name) {
   const r = await fetch(url(id, side, name), { cache: "no-store" });
   if (!r.ok) throw new Error(`get ${name} ${r.status}`);

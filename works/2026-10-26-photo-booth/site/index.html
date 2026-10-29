@@ -41,9 +41,7 @@
   <symbol id="i-mirror" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18" stroke-dasharray="2 3"/><path d="M9 7 3 17h6z"/><path d="M15 7l6 10h-6z" fill="currentColor"/></g></symbol>
   <symbol id="i-flip" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><path d="M9.5 13a2.8 2.8 0 0 1 4.8-1.8M14.5 13a2.8 2.8 0 0 1-4.8 1.8"/><path d="M14.6 9.6v1.8h-1.8M9.4 16.4v-1.8h1.8"/></g></symbol>
   <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M16 9l5 6M21 9l-5 6"/></g></symbol>
-  <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></g></symbol>
-  <symbol id="i-theme" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2-1.2 1.3-2.3-.8-1.2 0-2.7 1.4-2.7H17a4 4 0 0 0 4-4c0-5-4-9-9-9z"/></g><circle cx="7.5" cy="11" r="1.5" fill="currentColor"/><circle cx="11" cy="7" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8" r="1.5" fill="currentColor"/></symbol>
   <symbol id="i-bg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 17l5-5 4 4 3-3 6 6"/></g><circle cx="16" cy="9" r="1.8" fill="currentColor"/></symbol>
   <symbol id="i-frame" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2.5" width="12" height="19"/><path d="M8.5 5h7v4h-7zM8.5 11h7v4h-7z"/></g></symbol>
   <symbol id="i-filter" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="5.5"/><circle cx="15" cy="9" r="5.5"/><circle cx="12" cy="14.5" r="5.5"/></g></symbol>
@@ -64,17 +62,7 @@
 </template>
 
 <template id="trust">
-  <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제</span></p>
-</template>
-
-<template id="del">
-  <div class="del">
-    <button class="textlink" type="button" data-act="del">사진 지금 삭제</button>
-    <div class="delask" role="alertdialog" aria-label="삭제 확인" hidden>
-      <p><b>정말 지울까?</b><br>둘 다 이 링크로 사진을 다시 못 봐. 저장해 둔 파일은 폰에 남아.</p>
-      <div class="row"><button class="cta danger" type="button" data-act="delYes">지우기</button><button class="cta alt" type="button" data-act="delNo">취소</button></div>
-    </div>
-  </div>
+  <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab · 사진은 7일 뒤 자동 삭제</span></p>
 </template>
 
 <main id="app">
@@ -124,9 +112,8 @@
     <p class="lead">내가 먼저 네컷을 찍고 링크를 보내면,<br>친구가 열자마자 내 옆에 서서 찍어.</p>
   </div>
   <div class="bottom">
-    <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
     <button class="cta nudge" data-act="startA"><span>먼저 찍기</span><span class="r" aria-hidden="true">6장 · 4컷 · 링크</span></button>
-    <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab이 만든 무료 실험 · 사진은 이 링크로만 열리고 7일 뒤 자동 삭제</span></p>
+    <p class="trust"><svg><use href="#i-lock"/></svg><span>D:OT lab · 사진은 7일 뒤 자동 삭제</span></p>
   </div>
 </section>
 
@@ -170,7 +157,6 @@
     <p class="decnote"><svg aria-hidden="true"><use href="#star"/></svg><span>다 찍고 올리면 <b>너도 친구도</b> 프레임·필터·스티커·보정으로 꾸며서 <b>각자 저장</b>할 수 있어</span></p>
   </div>
   <div class="bottom">
-    <p class="camnote"><svg><use href="#i-cam"/></svg><span>다음에 <b>카메라 허용</b>을 눌러 줘</span></p>
     <button class="cta nudge" data-act="startB"><span>바로 찍기</span><span class="r" aria-hidden="true">친구 옆 6장</span></button>
     <div data-trust></div>
     <button class="textlink" data-act="mine">내가 보낸 링크면 여기</button>
@@ -575,7 +561,6 @@ kick();
     <div class="sharelinks">
       <button class="textlink" id="testB" data-act="testB" hidden>직접 찍어 보기(테스트용)</button>
       <button class="textlink" data-act="copy" id="copyBtn">링크 복사</button>
-      <div data-del></div>
     </div>
     <div class="linkbox" id="linkBox" hidden><p class="fine">복사가 안 되면 길게 눌러 복사</p><p class="link" id="linkText"></p></div>
     <div data-trust></div>
@@ -627,7 +612,6 @@ kick();
         <video id="stripVid" playsinline muted loop hidden></video>
         <div class="stk" id="stk" aria-label="붙인 스티커"></div>
       </div>
-      <b class="zchip" id="zoomChip" aria-live="polite" hidden></b>
       <svg class="zoomtag" aria-hidden="true" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M15 15l5 5M8 10.5h5M10.5 8v5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       <div class="veils" id="veils"></div>
       <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
@@ -635,9 +619,6 @@ kick();
   </div>
   <p class="donenote" id="doneNote" hidden></p>
   <div class="drawer" id="drawer">
-  <div class="panel" data-panel="theme" role="tabpanel" aria-label="테마" hidden>
-    <div class="themes" id="themeRow" role="group" aria-label="테마" hidden></div><!-- result themes: frame + outline + font + stickers in one tap -->
-  </div>
   <div class="panel" data-panel="look" role="tabpanel" aria-label="보정" hidden>
     <div class="pills lwho" id="lookWho" role="group" aria-label="누구 보정"></div>
     <div class="look" id="lookA" role="group"></div>
@@ -681,7 +662,6 @@ kick();
   </div>
   </div>
   <div class="tabs dock" role="tablist" aria-label="꾸미기">
-    <button role="tab" data-tab="theme" aria-selected="false"><svg aria-hidden="true"><use href="#i-theme"/></svg>테마</button>
     <button role="tab" data-tab="bg" aria-selected="false"><svg aria-hidden="true"><use href="#i-bg"/></svg>배경</button>
     <button role="tab" data-tab="frame" aria-selected="true"><svg aria-hidden="true"><use href="#i-frame"/></svg>프레임</button>
     <button role="tab" data-tab="filter" aria-selected="false"><svg aria-hidden="true"><use href="#i-filter"/></svg>필터</button>
@@ -691,10 +671,9 @@ kick();
     <button role="tab" data-tab="look" aria-selected="false"><svg aria-hidden="true"><use href="#i-look"/></svg>보정</button>
   </div>
   <div class="dscrim" id="dScrim" data-act="dsheetClose" hidden></div>
-  <!-- the 영상 sheet (save video / both) and the ⋯ sheet (again, more, trust, delete) -->
+  <!-- the 영상 sheet (moving strip / story) and the ⋯ sheet (again, more, trust) -->
   <div class="dsheet" id="saveBox" data-sheetid="save" hidden>
     <div id="saveBtns">
-      <button class="cta alt" id="saveBoth" data-act="saveBoth">사진 + 영상 한 번에</button>
       <div class="vidrow">
         <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo"><i class="ring"></i><span>움직이는 네컷 다운로드</span></button>
         <button class="cta alt vbtn" id="storyBtn" data-act="saveStory"><i class="ring"></i><span>스토리용 영상</span></button>
@@ -712,7 +691,6 @@ kick();
     <button class="cta alt" data-act="again">다른 친구랑도 찍기</button>
     <a class="morelink" href="../../../">시켜본 것 더 보기 →</a>
     <div data-trust></div>
-    <div data-del></div>
     <button class="textlink" type="button" data-act="dsheetClose">닫기</button>
   </div>
 </section>

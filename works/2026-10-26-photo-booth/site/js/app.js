@@ -61,7 +61,6 @@ const HINT_SHOOT = `셔터 한 번이면 ${SHOTS}장을 이어서 찍어 · 한 
 // the link carries a cute theme in the query too, so B's page (and the Chrome hand-off) paints in it before the Worker answers
 const uiQ = () => S.ui === "cute" ? "&ui=cute" : "";
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}${uiQ()}`;
-const token = () => S.token || api.loadRole(S.id)?.token;
 
 // ---- screens ------------------------------------------------------------------------------------------------------
 // UI hooks (index.html top comment, CONTRACT "UI themes"): body[data-screen], body[data-flow] = a | b | c (c = decorate in
@@ -107,7 +106,6 @@ const fresh = () => location.href = location.pathname + (MOCK ? "?mock=1" : "");
 
 for (const el of $$("[data-ministrip]")) el.append($("ministrip").content.cloneNode(true));
 for (const el of $$("[data-trust]")) el.replaceWith($("trust").content.cloneNode(true));
-for (const el of $$("[data-del]")) el.replaceWith($("del").content.cloneNode(true));
 
 // ---- sound (WebAudio, behind the toggle) + flash + sparkle --------------------------------------------------------
 let audio, soundOn = (() => { try { return localStorage.getItem("booth:sound") !== "0"; } catch { return true; } })();
@@ -953,7 +951,6 @@ function shareScreen(mode) {
   $("shareBtn").textContent = fin ? "완성됐어 링크 보내기" : "친구한테 링크 보내기";
   $("shareBtn").className = fin ? "cta alt" : "cta";
   $("linkText").textContent = shareUrl(); $("linkBox").hidden = true;
-  $("s-share").querySelector(".del").hidden = !token();
   (fin ? pairStrip($("myStrip")) : myStrip()).catch(e => { console.warn("[booth] strip", e); if (fin) myStrip().catch(() => {}); });
 }
 const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음";
@@ -977,24 +974,9 @@ async function copy() {
   setTimeout(() => { b.textContent = "링크 복사"; b.classList.remove("copied"); }, 1500);
 }
 
-// ---- delete -------------------------------------------------------------------------------------------------------
-async function del(box, yes) {
-  const ask = box.querySelector(".delask");
-  if (yes == null) { ask.hidden = false; box.querySelector('[data-act="del"]').hidden = true; return ask.querySelector(".danger").focus(); }
-  if (!yes) { ask.hidden = true; box.querySelector('[data-act="del"]').hidden = false; return; }
-  const btn = ask.querySelector(".danger"); btn.disabled = true; btn.textContent = "지우는 중…";
-  let r;
-  try { r = await api.deleteLink(S.id, token()); } catch { r = { error: "network" }; }
-  btn.disabled = false; btn.textContent = "지우기";
-  if (!r.ok) return toast(r.error === "network" ? "인터넷이 끊겼나 봐. 다시 눌러 줘" : "이 폰에서는 지울 수 없는 링크야");
-  D.video = D.story = null; D.vkeyWanted = null;
-  msg({ title: "삭제됐어", text: "사진·영상을 서버에서 지웠어. 이 링크는 이제 안 열려. 저장해 둔 파일은 폰에 그대로 있어.",
-    btn: "새로 찍기", onBtn: fresh });
-}
-
 // ---- done ---------------------------------------------------------------------------------------------------------
 const D = { bg: null, frame: null, filter: "original", caption: "", media: null, photo: null, video: null, story: null,
-  wantStory: false, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
+  wantStory: false, auto: { video: false, story: false }, seq: 0, mseq: {}, clips: false, vjob: false, revealed: false, tab: "frame",
   pairs: null, mattes: null, ol: { color: "#ffffff", style: "solid", width: "normal" },   // ol = last outline picks
   outline: { color: "#ffffff", style: "solid", width: "normal" },   // review r3 #7: white solid normal by default (clean theme)
   stickers: [], sel: -1, pkey: null,     // Round 5 deco: stickers (strip px, ROUND5.md), selected one, key of D.photo
@@ -1050,7 +1032,6 @@ async function doneScreen(note = "") {
   document.querySelector("#s-done .dsave").hidden = inApp; $("dVid").hidden = false; $("dVid").textContent = inApp ? "저장하기" : "영상";
   sheet(null);
   if (inApp) { $("iosText").hidden = !env.isIOS; document.querySelector('[data-act="toChrome"]').hidden = env.isIOS; }
-  $("s-done").querySelector(".del").hidden = !token();
   try {
     [C, FR, FI] = await Promise.all([load("compose", mockCompose), load("frames", mockFrames), load("filters", mockFilters)]);
     // Round 7: an old link's layout.json (B's move of A) is never read
@@ -1131,7 +1112,7 @@ function buildTiles() {
   $("caption").value = D.caption; capCount();
   buildOutline();
   buildLook();
-  buildThemes();
+  buildFonts();
 }
 // filter strength 약/중/강 (filters.js FILTER_LEVELS: the level rides in the id, "bbosasi:1"); hidden on 원본
 const fBase = () => FI.parseFilter ? FI.parseFilter(D.filter) : { id: D.filter, level: 2 };
@@ -1155,34 +1136,17 @@ function buildFrames() {
   }));
   $("frameChips").scrollLeft = 0;
 }
-// Result themes: one tap = the theme's first frame + outline + caption font + sticker set; each tab can change them after
-function buildThemes() {
-  const themes = FR.THEMES || [];
-  $("themeRow").hidden = !themes.length; document.querySelector('[data-tab="theme"]').hidden = !themes.length;
-  $("themeRow").replaceChildren(...themes.map(t => {
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "theme theme-" + t.id });
-    b.setAttribute("aria-pressed", t.id === D.theme);
-    b.innerHTML = `<i aria-hidden="true"></i><span></span>`; b.querySelector("span").textContent = t.label;
-    b.onclick = () => t.id !== D.theme && applyTheme(t);
-    return b;
-  }));
+// caption font pills (frames.js CAPTION_FONTS); the decorate 테마 row is gone (operator 10-29: the frames already carry the themes)
+function buildFonts() {
   const fonts = FR.CAPTION_FONTS || [];
   $("capFonts").hidden = !fonts.length;
   $("capFonts").replaceChildren(...fonts.map(f => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "pill capfont", textContent: f.label });
     b.style.fontFamily = `"${f.family}", var(--title)`; b.style.fontWeight = f.weight;
     b.setAttribute("aria-pressed", f.id === D.font);
-    b.onclick = () => { if (f.id === D.font) return; D.font = f.id; buildThemes(); changed(["frame"]); };
+    b.onclick = () => { if (f.id === D.font) return; D.font = f.id; buildFonts(); changed(["frame"]); };
     return b;
   }));
-}
-function applyTheme(t) {
-  D.theme = t.id; D.font = t.font;
-  D.frame = FR.FRAMES.find(f => f.id === t.frames[0]) || D.frame;
-  if (t.outline) { D.ol = { ...D.ol, ...t.outline }; D.outline = { ...D.ol }; } else D.outline = null;
-  buildFrames(); buildOutline(); buildThemes();
-  if ($("stkGrid").dataset.set && $("stkGrid").dataset.set !== "emoji") buildStickers(t.stickers).catch(() => {});
-  changed(["frame", "filter"]);
 }
 // 테두리: 없음 + colours, then style and width (dimmed while 없음)
 function buildOutline() {
@@ -1300,7 +1264,9 @@ async function download(...files) {
     setTimeout(() => URL.revokeObjectURL(a.href), 60_000);
   }
 }
-const fileName = (ext, tag = "") => `ttaro-gachi-${DATE.replace(/\./g, "")}${tag}.${ext}`;
+// time to the second, read at save time (operator 10-29: a second save of the same day asked to overwrite)
+const fileName = (ext, tag = "") => { const d = new Date();
+  return `ttaro-gachi-${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${tag}.${ext}`; };
 const extOf = type => type.includes("mp4") ? "mp4" : "webm";
 
 // Moving strip + story cut: made only when their button is tapped (Round 6 #12), then the button saves it.
@@ -1361,18 +1327,28 @@ async function videoJob() {
         onProgress: p => key === vkey() && setVid(kind, p) }));
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
-      if (kind === "story") { D.wantStory = false; toast("스토리용 영상 완성! 버튼을 누르면 저장돼"); }
-      // iPhone saves through the share sheet, which needs a tap: there the button saves it
-      else if (D.autoVid && !env.isIOS) { D.wantVideo = false; D.autoVid = false; download([res.blob, fileName(extOf(res.type))]); toast("움직이는 네컷도 저장했어!"); }
-      else { D.wantVideo = false; toast("움직이는 네컷 완성! 버튼을 누르면 저장돼"); }
+      D[kind === "video" ? "wantVideo" : "wantStory"] = false;
+      const name = kind === "video" ? "움직이는 네컷" : "스토리용 영상";
+      // operator 10-29: the tap that asked for it also saves it, no second tap. iPhone saves through the share sheet,
+      // which needs a fresh tap (D.auto is never set there), so there the button saves it. A re-render nobody tapped
+      // for (the HQ cut landing) is not saved again.
+      if (D.auto[kind]) { D.auto[kind] = false; saveKind(kind); toast(`${name} 저장했어!`); }
+      else toast(`${name} 완성! 버튼을 누르면 저장돼`);
     }
   } catch (e) {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e);
     D.noVideo = true;
-    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("saveBoth").hidden = true; $("dVid").hidden = true; sheet(null);
+    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("dVid").hidden = true; sheet(null);
     toast("이 폰에서는 영상 저장이 안 돼요. 사진으로 저장해 줘", 3500);
   } finally { D.vjob = false; setVid(); }
+}
+
+// one tap on a video button: saves it if it is made for this look, else starts it and (not on iPhone) saves it when done
+const saveKind = kind => download([D[kind].blob, fileName(extOf(D[kind].type), kind === "story" ? "-story" : "")]);
+function saveVid(kind) {
+  if (D[kind]?.key === vkey()) return saveKind(kind);
+  D[kind === "video" ? "wantVideo" : "wantStory"] = true; D.auto[kind] = !env.isIOS; setVid(); videoJob();
 }
 
 // ---- actions ------------------------------------------------------------------------------------------------------
@@ -1542,10 +1518,12 @@ bindStk();
 // ---- inline pinch zoom (Round 6 #11): on the photo itself, the controls under it never move ----------------------
 // Two fingers zoom 1x-5x about their midpoint and pan; one finger pans once zoomed (unless `one` takes it); a double tap
 // resets (or 2x at the tap). The view is clamped to its box; the shift is kept as a fraction of the box, so a resize
-// (the sticker tab's taller preview) keeps the same view. `skip(e)`: a touch something else owns (a sticker).
+// (the sticker tab's taller preview) keeps the same view. inner === box: the box itself grows over the page (the
+// decorate preview, operator 10-29: a fixed box with only the photo growing inside was hard to see); its untransformed
+// place is then read from its offset parent. `skip(e)`: a touch something else owns (a sticker).
 // `one`: { when(e), move(dx, dy), cancel(), end() } takes a lone finger instead (own person drag); a second finger
 // cancels it and becomes a view pinch. Pointer events + cancelled touches (README in-app fixes): CDP, real touch, mouse.
-function zoomer({ box, host = box, inner, chip, skip = () => false, one = null, onTap = () => {}, onEnd = () => {}, stop = false }) {
+function zoomer({ box, host = box, inner, chip = null, skip = () => false, one = null, onTap = () => {}, onEnd = () => {}, stop = false }) {
   const z = { s: 1, fx: 0, fy: 0 }, pts = new Map();
   let g = null, down = null, lastTap = { t: 0, x: 0, y: 0 }, mode = null;
   const cl = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -1554,10 +1532,12 @@ function zoomer({ box, host = box, inner, chip, skip = () => false, one = null, 
     if (z.s < 1.02) Object.assign(z, { s: 1, fx: 0, fy: 0 });
     z.fx = cl(z.fx, 1 - z.s, 0); z.fy = cl(z.fy, 1 - z.s, 0);
     inner.style.transform = z.s > 1 ? `translate(${z.fx * W}px, ${z.fy * H}px) scale(${z.s})` : "";
-    inner.style.setProperty("--zs", z.s);
-    chip.hidden = z.s <= 1; chip.textContent = `${z.s.toFixed(1)}×`;
+    inner.style.setProperty("--zs", z.s); inner.classList.toggle("zoomed", z.s > 1);
+    if (chip) { chip.hidden = z.s <= 1; chip.textContent = `${z.s.toFixed(1)}×`; }
   };
-  const rel = p => { const r = box.getBoundingClientRect(); return { x: p.x - r.left, y: p.y - r.top }; };
+  const at0 = () => { if (inner !== box) return box.getBoundingClientRect();
+    const o = box.offsetParent, r = o.getBoundingClientRect(); return { left: r.left + o.clientLeft + box.offsetLeft, top: r.top + o.clientTop + box.offsetTop }; };
+  const rel = p => { const r = at0(); return { x: p.x - r.left, y: p.y - r.top }; };
   const mid = () => { const p = [...pts.values()].map(rel); return p.length > 1
     ? { x: (p[0].x + p[1].x) / 2, y: (p[0].y + p[1].y) / 2, d: Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) } : { ...p[0], d: 0 }; };
   const now = () => ({ s: z.s, tx: z.fx * box.clientWidth, ty: z.fy * box.clientHeight });
@@ -1613,7 +1593,7 @@ function zoomer({ box, host = box, inner, chip, skip = () => false, one = null, 
   return { z, apply, busy: () => pts.size > 0, reset: () => { Object.assign(z, { s: 1, fx: 0, fy: 0 }); apply(); } };
 }
 // the decorate preview: stickers own their touches on the sticker tab; the 보정 tab's lone finger moves my own person
-const DZ = zoomer({ box: $("preview"), inner: $("previewIn"), chip: $("zoomChip"),
+const DZ = zoomer({ box: $("preview"), inner: $("preview"),
   skip: e => D.tab === "sticker" && stkOwns(e.pointerId),
   one: { when: e => ownWhen(e), move: (dx, dy) => ownMove(dx, dy), cancel: () => ownCancel(), end: () => ownEnd() },
   onTap: () => { if (D.tab === "sticker" && D.sel >= 0) { D.sel = -1; paintStk(); } },
@@ -1671,24 +1651,9 @@ const ACT = {
     if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
     download([D.photo, fileName("jpg")]);
   },
-  // Round 6 (review r3 #6): the photo now, the moving strip as soon as it is made (one tap for both)
   ownReset: () => { if (mySide()) { D.own[mySide()] = null; ownCommit(); } },
-  saveBoth: async () => {
-    if (D.pkey !== vkey()) { const key = vkey(); D.photo = await C.drawStrip(opts()); D.pkey = key; }
-    const photo = [D.photo, fileName("jpg")];
-    if (D.video?.key === vkey()) return download(photo, [D.video.blob, fileName(extOf(D.video.type))]);
-    download(photo);
-    D.wantVideo = true; D.autoVid = true; setVid(); videoJob();
-    toast(env.isIOS ? "사진 저장했어! 영상은 다 만들어지면 영상 버튼으로 저장해 줘" : "사진 저장했어! 영상은 다 만들어지면 바로 저장돼", 3200);
-  },
-  saveVideo: () => {
-    if (D.video?.key === vkey()) return download([D.video.blob, fileName(extOf(D.video.type))]);
-    D.wantVideo = true; setVid(); videoJob();
-  },
-  saveStory: () => {
-    if (D.story?.key === vkey()) return download([D.story.blob, fileName(extOf(D.story.type), "-story")]);
-    D.wantStory = true; setVid(); videoJob();
-  },
+  saveVideo: () => saveVid("video"),
+  saveStory: () => saveVid("story"),
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
   again: fresh,
@@ -1697,8 +1662,6 @@ const ACT = {
 };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");
-  if (b?.dataset.act === "del" || b?.dataset.act === "delYes" || b?.dataset.act === "delNo")
-    return del(b.closest(".del"), b.dataset.act === "del" ? null : b.dataset.act === "delYes");
   if (b && ACT[b.dataset.act]) ACT[b.dataset.act](b);
 });
 

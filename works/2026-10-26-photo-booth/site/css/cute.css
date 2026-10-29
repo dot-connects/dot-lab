@@ -62,10 +62,9 @@ body[data-ui="cute"] .cta.danger { background: #b3124a; color: #fff; box-shadow:
 body[data-ui="cute"] .cta:disabled { background: #ece6fb; color: #574c6e; box-shadow: 0 5px 0 #d8cff0; }
 body[data-ui="cute"] .cta:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--pink3d); }
 body[data-ui="cute"] .cta.alt:active { box-shadow: 0 2px 0 var(--lav3d); }
-body[data-ui="cute"] :is(.cta, .tool, .shutter, .th, .tile, .sound, .textlink, .tabs button, .pill, .pk, .mode, .theme):focus-visible { outline: 3px solid var(--deep); outline-offset: 3px; box-shadow: 0 0 0 3px #fff; }
+body[data-ui="cute"] :is(.cta, .tool, .shutter, .th, .tile, .sound, .textlink, .tabs button, .pill, .pk, .mode):focus-visible { outline: 3px solid var(--deep); outline-offset: 3px; box-shadow: 0 0 0 3px #fff; }
 body[data-ui="cute"] .textlink, body[data-ui="cute"] .morelink { color: var(--ink); font: 15px var(--body); text-decoration-color: var(--deep); }
 body[data-ui="cute"] .textlink.copied { background: var(--soft); border-radius: 99px; font-weight: 400; }
-body[data-ui="cute"] .del .textlink { color: var(--red); }
 body[data-ui="cute"] .topbar { border-bottom: 0; padding-bottom: 0; }
 body[data-ui="cute"] :is(.backchip, .topbar > span) { font: 700 25px/1 var(--title); letter-spacing: 0; color: var(--ink); background: #fff; border-radius: 99px;
   padding: 5px 13px 1px; box-shadow: 0 3px 10px #6b3fc424; }
@@ -75,9 +74,6 @@ body[data-ui="cute"] button.backchip { min-height: 0; margin: 0; padding: 5px 15
 body[data-ui="cute"] button.backchip:active { transform: translateY(2px) scale(.96); box-shadow: 0 1px 0 #e4dbfa; }
 body[data-ui="cute"] .trust { color: var(--sub); }
 body[data-ui="cute"] .trust svg { color: var(--deep); }
-body[data-ui="cute"] .camnote { border: 0; border-radius: 16px; background: #fff; box-shadow: 0 4px 12px #6b3fc41f; }
-body[data-ui="cute"] .camnote svg { color: var(--deep); }
-body[data-ui="cute"] .camnote b { background: #ffe0ee; border-radius: 6px; padding: 0 4px; font-weight: 400; }
 body[data-ui="cute"] .decnote { background: #fff; color: var(--ink); border: 0; border-radius: 16px; box-shadow: inset 0 0 0 2px #ffd0e4; }
 body[data-ui="cute"] .decnote svg { fill: var(--acc); }
 body[data-ui="cute"] .decnote b { color: var(--deep); font-weight: 400; }
@@ -180,11 +176,11 @@ body[data-ui="cute"].busy .shutter, body[data-ui="cute"] .busy .shutter { backgr
 body[data-ui="cute"] .viewpick { margin-top: 0; }
 /* after shooting: 보정 + upload */
 body[data-ui="cute"] .hint { color: var(--ink); font: 700 30px/1 var(--title); }
-body[data-ui="cute"] :is(#lookMine, .hqask, .linkbox, .delask) { border: 0; border-radius: 17px; background: #fff; box-shadow: 0 5px 0 #e4dbfa, 0 9px 17px #6b3fc41f; }
+body[data-ui="cute"] :is(#lookMine, .hqask, .linkbox) { border: 0; border-radius: 17px; background: #fff; box-shadow: 0 5px 0 #e4dbfa, 0 9px 17px #6b3fc41f; }
 body[data-ui="cute"] .hqask { font-weight: 400; }
 body[data-ui="cute"] .look h3 { font: 700 30px/.9 var(--title); }
 body[data-ui="cute"] .look .lrow > span { font-weight: 400; }
-body[data-ui="cute"] :is(.hqask, .delask) .cta { font-size: 28px; padding: 10px 10px 6px; }
+body[data-ui="cute"] .hqask .cta { font-size: 28px; padding: 10px 10px 6px; }
 
 /* ---- pills (pick backgrounds, look levels, outline, sticker sets ...) ---- */
 body[data-ui="cute"] .pills:not(.colors) { background: var(--soft); border-radius: 99px; padding: 4px; gap: 4px; }
@@ -240,8 +236,6 @@ body[data-ui="cute"] .tile { color: var(--ink); }
 body[data-ui="cute"] .tile .mini { border-radius: 9px; box-shadow: 0 4px 9px #c2587a26; }
 body[data-ui="cute"] .tile[aria-pressed="true"] { color: var(--deep); font-weight: 400; }
 body[data-ui="cute"] .tile[aria-pressed="true"] .mini { box-shadow: 0 0 0 4px var(--deep), 0 4px 9px #c2587a26; }
-body[data-ui="cute"] .theme { border-radius: 99px; background: #fff; box-shadow: 0 4px 10px #6b3fc41f; font: 700 26px/1 var(--title); padding-top: 9px; }
-body[data-ui="cute"] .theme[aria-pressed="true"] { box-shadow: inset 0 0 0 3px var(--deep), 0 4px 10px #6b3fc41f; color: var(--deep); }
 body[data-ui="cute"] .caplbl { font: 700 28px/1 var(--title); align-items: baseline; }
 body[data-ui="cute"] .caplbl span { font: 14px var(--body); }
 body[data-ui="cute"] #caption { border: 0; border-radius: 14px; box-shadow: inset 0 0 0 2px #d6c6f6; }
