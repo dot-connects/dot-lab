@@ -854,7 +854,7 @@ async function clipSource(v, phase, fx, hq) {
   let acc = 0;
   const src = { frame, n: 0, step, async advance() { acc += step; while (acc >= 1) { acc -= 1; await take(); } },
     close() { q.forEach(f => f.close()); q.length = 0; if (dec.state !== "closed") dec.close(); } };
-  await take();
+  try { await take(); } catch (e) { src.close(); throw e; }       // no decoder left open behind a clip that fails here
   return src;
 }
 
@@ -978,10 +978,17 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
   async function makingRealtime() {
     if (!window.MediaRecorder) throw new Error("no MediaRecorder");
     const ok = t => MediaRecorder.isTypeSupported(t);
-    const type = ["video/mp4;codecs=avc1", "video/mp4", "video/webm;codecs=vp9", "video/webm"].find(ok);
-    if (!type) throw new Error("no recorder type");
-    await warmEncoder(type, cv.width, cv.height);
+    const types = [["video/mp4;codecs=avc1", "video/mp4"].find(ok), ["video/webm;codecs=vp9", "video/webm"].find(ok)].filter(Boolean);
     rows.forEach((r, i) => r.forEach((c, k) => put(k, i, c.raw, false)));
+    let lastErr = new Error("no recorder type");
+    for (const type of types) {
+      try { return await makingOnce(type); }
+      catch (e) { if (e?.name === "AbortError") throw e; lastErr = e; }
+    }
+    throw lastErr;
+  }
+  async function makingOnce(type) {
+    await warmEncoder(type, cv.width, cv.height);
     const shown = [[null, null, null, null], [null, null, null, null]];
     const frameAt = t => {
       cells.forEach((row, k) => row.forEach((c, i) => { shown[k][i] = t >= ROW_T[i] ? c : null; }));
@@ -1003,7 +1010,8 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
         const t = (performance.now() - t0) / 1000;
         if (failed) return done();
         if (signal?.aborted) { failed = new DOMException("aborted", "AbortError"); return done(); }
-        frameAt(Math.min(t, MAKING.L)); track?.requestFrame();
+        try { frameAt(Math.min(t, MAKING.L)); } catch (e) { failed = e; return done(); }
+        track?.requestFrame();
         onProgress?.(Math.min(1, t / MAKING.L));
         if (t >= MAKING.L) return setTimeout(done, 100);
         requestAnimationFrame(tick);

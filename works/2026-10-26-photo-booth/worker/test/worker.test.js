@@ -280,3 +280,12 @@ test("CORS lets the page send X-Device", async () => {
   const r = await call(env(), "OPTIONS", "/s");
   assert.match(r.headers.get("Access-Control-Allow-Headers"), /X-Device/);
 });
+
+test("A and B with one fingerprint: status names neither", async () => {
+  const e = env(); const id = await linkFrom(e, "1.2.3.4", PHONE);
+  await upAll(e, id, "a", tok("a"));
+  assert.equal((await done(e, id, "a", tok("a"))).status, 204);
+  await upAll(e, id, "b", tok("b"));
+  assert.equal((await call(e, "POST", `/s/${id}/b/done`, { token: tok("b"), ip: "1.2.3.4", dev: PHONE })).status, 204);
+  assert.equal(await mine(e, id, "1.2.3.4", PHONE), null);
+});

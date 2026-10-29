@@ -1330,8 +1330,16 @@ async function videoJob() {
       D.vac = new AbortController();      // deco R5: a change stops the recording (later()); it restarts after VIDEO_IDLE
       // Round 8 B: the second video is the 메이킹 영상 (making.js), in this link's UI theme
       const onProgress = p => key === vkey() && setVid(kind, p);
-      const res = kind === "story" ? await C.recordMaking(opts({ ui: S.ui, signal: D.vac.signal, onProgress }))
-        : await C.recordMovingStrip(opts({ format: "strip", signal: D.vac.signal, onProgress }));
+      let res;
+      if (kind === "video") res = await C.recordMovingStrip(opts({ format: "strip", signal: D.vac.signal, onProgress }));
+      else try { res = await C.recordMaking(opts({ ui: S.ui, signal: D.vac.signal, onProgress })); }
+        catch (e) {                    // review r8 M3: a failed bonus video must not take the moving strip down with it
+          if (e?.name === "AbortError") throw e;
+          console.warn("[booth] making", e);
+          D.wantStory = false; D.auto.story = false; $("storyBtn").hidden = true;
+          toast("이 폰에서는 메이킹 영상을 못 만들었어요", 3000);
+          continue;
+        }
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       D[kind === "video" ? "wantVideo" : "wantStory"] = false;

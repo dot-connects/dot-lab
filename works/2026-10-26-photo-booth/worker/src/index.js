@@ -88,7 +88,9 @@ export default {
 
     if (req.method === "GET" && p.length === 2) {
       const dev = await devOf(req, id);
-      const mine = dev && dev === meta.a.dev ? "a" : dev && meta.b.done && dev === meta.b.dev ? "b" : null;
+      // both sides from one fingerprint (a friend on my Wi-Fi with my phone model): cannot tell, say nothing
+      const same = meta.b.done && meta.a.dev && meta.a.dev === meta.b.dev;
+      const mine = !dev || same ? null : dev === meta.a.dev ? "a" : meta.b.done && dev === meta.b.dev ? "b" : null;
       return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE, opts: optsOf(meta.opts), mine });
     }
 
