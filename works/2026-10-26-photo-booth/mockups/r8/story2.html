@@ -1,0 +1,344 @@
+<title>네컷 스토리·저장 시안 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* layout: one column of rows; each row = 3 mockups side by side (swipe on a phone). Single light look, colours explicit. */
+:root{
+  --bg:#ecebef; --ink:#1d1b22; --sub:#4a4652; --pink:#ff7eb6; --deep:#c2276a; --lime:#d6ff3d; --cellA:#ffc9dc; --cellB:#c9e2ff;
+  --jua:'Jua','Noto Sans KR',system-ui,sans-serif; --hand:'Gaegu','Jua',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1500px;margin:0 auto;padding-block:22px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:900 24px/1.3 var(--body);letter-spacing:-.03em;text-wrap:balance}
+h2{font:900 19px/1.3 var(--body);margin-top:34px;letter-spacing:-.02em;text-wrap:balance}
+.lead{color:var(--sub);margin-top:6px;max-width:62ch}
+.row{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:12px 2px}
+.row > figure{flex:none;width:min-content;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+figcaption{font:500 13px/1.5 var(--body);color:var(--sub)}
+figcaption b{color:var(--ink);font-weight:900;font-size:14px;display:block}
+.swipe{font-size:13px;color:var(--sub)}
+@media (min-width:1100px){.swipe{display:none}}
+.replay{align-self:flex-start;font:700 12px var(--body);border:1.5px solid var(--ink);background:#fff;padding:3px 10px;border-radius:99px;cursor:pointer}
+
+/* ---------- story frames: 100cqw = 1080 px of the real export ---------- */
+.st{position:relative;width:280px;aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:14px;box-shadow:0 8px 22px #00000026;background:#ffeef4}
+.st *{position:absolute}
+.st :is(b,em,br,.cap b){position:static}
+.st b.foot{position:absolute}
+.cell{overflow:visible;background:var(--cellA);border-radius:.6cqw}
+.cell img{width:100%;height:100%;object-fit:cover;left:0;top:0;will-change:transform,opacity}
+.cell .gh{inset:8% 6% 0 54%;border:.5cqw dashed #ffffffd0;border-bottom:0;border-radius:40% 40% 0 0}
+.cell .fl{inset:0;background:#fff;opacity:0;border-radius:inherit}
+.tag{font:400 4.2cqw/1 var(--jua);padding:1.4cqw 2.8cqw;border-radius:99px;white-space:nowrap}
+.tag.me{background:var(--lime);color:#000;box-shadow:0 0 0 .5cqw #000}
+.tag.fd{background:#000;color:#fff;box-shadow:0 0 0 .5cqw #fff}
+.hook{left:5cqw;right:5cqw;text-align:center;font:700 11cqw/1 var(--hand);color:var(--ink)}
+.hook em{font-style:normal;background:linear-gradient(transparent 58%,#ffd84d 58%)}
+.cap{left:0;right:0;text-align:center;font:400 6.4cqw/1.15 var(--jua);color:var(--ink)}
+.stamp{font:400 7cqw/1 var(--jua);color:#fff;background:var(--deep);padding:1.6cqw 3.6cqw;border:.7cqw solid #fff;white-space:nowrap}
+.brand{left:0;right:0;text-align:center;font:400 4.2cqw var(--jua);color:#8a6475}
+.cnt{font:700 4.4cqw/1 var(--body);color:#fff;background:#000c;padding:1cqw 2.4cqw;border-radius:99px;font-variant-numeric:tabular-nums}
+/* the Instagram link sticker the uploader adds (not in the video) */
+.igs{left:50%;bottom:6%;transform:translateX(-50%);background:#fff;color:#1d1b22;font:700 3.9cqw/1 var(--body);padding:2.6cqw 4.4cqw;border-radius:2.4cqw;box-shadow:0 1cqw 3cqw #0000003a;white-space:nowrap;outline:.5cqw dashed #ffffffcc;outline-offset:1.2cqw;z-index:50}
+.igs i{font-style:normal;color:#3b82f6;position:static}
+
+/* ---------- save sheets ---------- */
+.ph{width:330px;background:#fff8fb;border-radius:22px;padding:18px 16px 20px;display:flex;flex-direction:column;gap:12px;box-shadow:0 8px 22px #0000001f}
+.ph h3{font:400 20px/1.2 var(--jua);text-align:center}
+.vb{border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:12px;display:flex;gap:12px;align-items:center;text-align:left;font:inherit;color:inherit}
+.vb .tn{width:54px;flex:none;border-radius:6px;overflow:hidden;background:#ffe3ec;position:relative}
+.vb .tn img{display:block;width:100%}
+.vb .tx{display:flex;flex-direction:column;gap:2px;min-width:0}
+.vb .tx b{font:400 18px/1.15 var(--jua)}
+.vb .tx small{font:400 12.5px/1.4 var(--body);color:var(--sub)}
+.vb.bonus{background:#fff4c2;position:relative}
+.ribbon{position:absolute;right:-6px;top:-10px;background:var(--deep);color:#fff;font:400 13px/1 var(--jua);padding:5px 9px;border-radius:6px;transform:rotate(6deg)}
+.ask{font:700 17px/1.3 var(--hand);color:var(--deep);text-align:center}
+.ask small{display:block;font:400 12.5px/1.45 var(--body);color:var(--sub);margin-top:2px}
+.ask.box{background:#fff;border:1.5px dashed var(--deep);border-radius:12px;padding:10px 12px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;position:relative}
+.tile .pv{width:100%;aspect-ratio:9/16;border-radius:8px;overflow:hidden;background:#ffe3ec;display:grid;place-items:center}
+.tile .pv img{max-height:92%;max-width:70%;box-shadow:0 2px 6px #0003}
+.tile b{font:400 16px/1.15 var(--jua)}
+.tile small{font:400 11.5px/1.35 var(--body);color:var(--sub)}
+.tile.bonus{background:#fff4c2}
+.note{position:relative;align-self:center;background:var(--ink);color:#fff;font:700 16px/1.3 var(--hand);padding:10px 14px;border-radius:14px;text-align:center}
+.note:after{content:"";position:absolute;left:50%;top:100%;margin-left:-8px;border:8px solid transparent;border-top-color:var(--ink)}
+.toast{align-self:center;background:var(--ink);color:#fff;font:400 12.5px/1.4 var(--body);padding:7px 13px;border-radius:99px}
+
+/* ---------- waiting screen (bottom) ---------- */
+.wait{width:330px;background:#fff;border-radius:22px;padding:18px 16px 22px;display:flex;flex-direction:column;gap:12px;align-items:stretch;box-shadow:0 8px 22px #0000001f}
+.wait .big{font:400 22px/1.25 var(--jua);text-align:center}
+.wait .sm{font-size:13px;color:var(--sub);text-align:center}
+.wait .cta{background:var(--ink);color:#fff;font:900 16px var(--body);padding:14px;border-radius:12px;text-align:center}
+.wait .cta.alt{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.wait .fl{font:700 14.5px/1.4 var(--body);color:var(--ink);text-align:center;text-decoration:underline;text-underline-offset:3px;padding:8px}
+.wait .fl.chip{text-decoration:none;background:#f1eef4;border-radius:99px}
+.wait .fl small{display:block;font-weight:400;font-size:12px;color:var(--sub);text-decoration:none}
+@media (prefers-reduced-motion:reduce){.replay{display:none}}
+</style>
+
+<div class="wrap">
+  <h1>스토리 영상 · 저장 화면 시안 2</h1>
+  <p class="lead">사진은 개발용 샘플이에요. 세 영상 모두 "내가 먼저 딱딱딱딱 → 친구가 나중에 채움 → 착! → 같이 안 찍음" 흐름이에요. 길이는 9초 반복.</p>
+
+  <h2>B. 스토리(보너스) 영상</h2>
+  <p class="swipe">옆으로 넘겨 보기 →</p>
+  <div class="row">
+    <figure>
+      <div class="st" id="v1"></div>
+      <button class="replay" data-r="v1">처음부터</button>
+      <figcaption><b>1. 필름 촬영</b>표지처럼 검은 필름 위에서 내가 딱딱딱딱 4장 → 같은 칸에 친구가 딱딱딱딱 → 흰 네컷으로 착! → 손글씨 "우리 이거 같이 안 찍음"</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="v2"></div>
+      <button class="replay" data-r="v2">처음부터</button>
+      <figcaption><b>2. 위아래 따로</b>위는 내 화면(분홍)에서 4번 찰칵, 아래는 친구 화면(하늘)에서 4번 찰칵. 두 화면이 빠지면서 네컷이 핀에 매달려 흔들림</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="v3"></div>
+      <button class="replay" data-r="v3">처음부터</button>
+      <figcaption><b>3. 두 폰에서 날아옴</b>왼쪽 내 폰, 오른쪽 친구 폰. 찰칵할 때마다 사진이 가운데 네컷 칸으로 날아가 꽂힘. 친구 폰은 나중에 켜짐</figcaption>
+    </figure>
+  </div>
+  <p class="lead">아래 흰 링크 스티커(점선)는 영상에 들어가지 않아요. 올리는 사람이 인스타에서 붙이는 자리라 비워 둬요.</p>
+
+  <h2>C. 저장 화면 (영상 두 개)</h2>
+  <p class="swipe">옆으로 넘겨 보기 →</p>
+  <div class="row">
+    <figure>
+      <div class="ph">
+        <h3>영상으로 저장</h3>
+        <div class="vb"><span class="tn"><img src="strip-pink.jpg" alt=""></span><span class="tx"><b>움직이는 네컷</b><small>네 칸이 살아서 움직여요</small></span></div>
+        <div class="vb bonus"><span class="ribbon">보너스</span><span class="tn"><img src="strip-film.jpg" alt=""></span><span class="tx"><b>메이킹 영상</b><small>우리가 따로 찍은 과정 · 스토리 크기</small></span></div>
+        <p class="ask">스토리에 올려 주면 진짜 힘나요!<small>메이킹 영상을 저장하면 링크가 복사돼요. 스토리에서 링크 스티커로 붙여 주세요</small></p>
+      </div>
+      <figcaption><b>1. 메이킹 영상</b>스토리 영상을 "메이킹"으로. 버튼 두 개는 같은 모양, 보너스는 노란 바탕 + 리본. 부탁은 버튼 밑 손글씨</figcaption>
+    </figure>
+    <figure>
+      <div class="ph">
+        <h3>영상 2개 받아 가!</h3>
+        <div class="two">
+          <div class="tile"><span class="pv"><img src="strip-pink.jpg" alt=""></span><b>움직이는 네컷</b><small>프사·배경용</small></div>
+          <div class="tile bonus"><span class="ribbon">보너스</span><span class="pv"><img src="strip-film.jpg" alt=""></span><b>비하인드</b><small>스토리 크기 9:16</small></div>
+        </div>
+        <p class="ask box">✋ 부탁 하나<small>비하인드를 스토리에 올리고 링크 스티커를 붙여 주세요. 링크는 저장할 때 복사돼요</small></p>
+      </div>
+      <figcaption><b>2. 카드 두 장</b>둘 다 미리보기가 보이는 카드라 "둘 다 받아야지"가 됨. 부탁은 점선 상자로 따로</figcaption>
+    </figure>
+    <figure>
+      <div class="ph">
+        <p class="note">스토리에 올려서 자랑해 줘 🙌<br><span style="font-size:13px;font-weight:400;font-family:var(--body)">링크 스티커 붙여 주면 더 좋아</span></p>
+        <div class="vb"><span class="tn"><img src="strip-pink.jpg" alt=""></span><span class="tx"><b>움직이는 네컷</b><small>저장하면 바로 폰에</small></span></div>
+        <div class="vb bonus"><span class="ribbon">보너스</span><span class="tn"><img src="strip-film.jpg" alt=""></span><span class="tx"><b>우리 촬영 현장</b><small>따로 찍은 장면까지 · 9:16</small></span></div>
+        <p class="toast">링크 복사했어! 스토리에 붙여 줘</p>
+      </div>
+      <figcaption><b>3. 말풍선 부탁</b>부탁을 맨 위 말풍선으로 먼저 보여 주고, 버튼은 그 아래. 보너스 이름은 "우리 촬영 현장"</figcaption>
+    </figure>
+  </div>
+
+  <h2>2번. 기다리는 중 화면의 "친구가 보낸 링크면" 버튼</h2>
+  <div class="row">
+    <figure>
+      <div class="wait">
+        <p class="big">친구가 찍기를 기다리는 중</p>
+        <p class="sm">친구가 다 찍으면 이 링크에서 같이 꾸밀 수 있어</p>
+        <div class="cta">링크 다시 보내기</div>
+        <div class="fl">혹시 친구가 보낸 링크야? 여기서 찍기 →</div>
+      </div>
+      <figcaption><b>밑줄 글씨 버튼 (추천)</b>다른 버튼보다 작지만 굵은 글씨 + 밑줄이라 눈에 보여요. 크기는 지금의 보조 링크와 같아요</figcaption>
+    </figure>
+    <figure>
+      <div class="wait">
+        <p class="big">친구가 찍기를 기다리는 중</p>
+        <p class="sm">친구가 다 찍으면 이 링크에서 같이 꾸밀 수 있어</p>
+        <div class="cta">링크 다시 보내기</div>
+        <div class="fl chip">친구가 보낸 링크면 여기<small>내가 찍을 차례로 넘어가요</small></div>
+      </div>
+      <figcaption><b>회색 알약</b>배경을 깔아서 버튼인 걸 더 분명히. 설명 한 줄 같이</figcaption>
+    </figure>
+  </div>
+</div>
+
+<script>
+// Three 9 s story timelines, drawn per frame from t (seconds). Positions in cqw of a 9:16 frame (100 x 177.8).
+(() => {
+  "use strict";
+  const RM = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const L = 9, H = 177.8;
+  const A = ["a1", "a2", "a3", "a4"], B = ["b1", "b2", "b3", "b4"];
+  const cl = x => Math.min(1, Math.max(0, x)), eo = x => 1 - Math.pow(1 - cl(x), 3);
+  const back = x => { x = cl(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const flash = (t, at) => { const d = t - at; return d >= 0 && d < .35 ? 1 - d / .35 : 0; };
+  const el = (p, tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html) e.innerHTML = html; p.appendChild(e); return e; };
+  const box = (e, x, y, w, h) => Object.assign(e.style, { left: x + "cqw", top: y + "cqw", width: w + "cqw", height: h + "cqw" });
+  // a strip of four cells: A in front (left), B behind (right); returns handles
+  function strip(root, x, y, w, pad, gap, frameCls) {
+    const fr = el(root, "div", frameCls), cw = w - 2 * pad, ch = cw * 0.75, h = 2 * pad + 4 * ch + 3 * gap + cw * 0.18;
+    box(fr, x, y, w, h);
+    const cells = [0, 1, 2, 3].map(i => {
+      const c = el(fr, "div", "cell"); box(c, pad, pad + i * (ch + gap), cw, ch);
+      const gh = el(c, "i", "gh"), b = el(c, "img"); b.src = B[i] + "-cut.png"; b.alt = "";
+      const a = el(c, "img"); a.src = A[i] + "-cut.png"; a.alt = "";
+      const f = el(c, "i", "fl");
+      return { c, gh, a, b, f };
+    });
+    const foot = el(fr, "b", "foot"); Object.assign(foot.style, { left: 0, right: 0, bottom: pad * .6 + "cqw", textAlign: "center", font: `400 ${cw * .1}cqw var(--jua)` });
+    foot.textContent = "따로 같이 네컷";
+    return { fr, cells, h, foot };
+  }
+  function sticker(root) { el(root, "div", "igs", "<i>🔗</i> 따로 같이 네컷"); }
+
+  // ---- 1. film: shoot me x4 on black film, friend x4 into the same frames, snap to a white strip ----
+  function v1(root) {
+    root.style.background = "#ffeef4";
+    const cap = el(root, "div", "cap"); cap.style.top = "9cqw";
+    const S = strip(root, 26, 30, 48, 3.2, 2.2, "film");
+    Object.assign(S.fr.style, { background: "#111", borderRadius: ".8cqw", boxShadow: "0 2cqw 5cqw #0003" });
+    const holes = [el(S.fr, "i"), el(S.fr, "i")];
+    holes.forEach((h, k) => Object.assign(h.style, { top: 0, bottom: 0, width: "1.6cqw", [k ? "right" : "left"]: ".7cqw",
+      background: "repeating-linear-gradient(#111 0 1.2cqw,#fff 1.2cqw 3cqw,#111 3cqw 4.2cqw)" }));
+    const tagMe = el(root, "span", "tag me"), tagFd = el(root, "span", "tag fd");
+    tagMe.textContent = "나 · 먼저"; tagFd.textContent = "친구 · 나중에";
+    const cnt = el(root, "span", "cnt"); cnt.style.right = "6cqw"; cnt.style.top = "31cqw";
+    const hook = el(root, "div", "hook", "우리 이거<br><em>같이 안 찍음</em>"); hook.style.top = "3cqw";
+    const stamp = el(root, "div", "stamp"); stamp.textContent = "착!"; stamp.style.left = "64cqw"; stamp.style.top = "112cqw";
+    const brand = el(root, "div", "brand"); brand.style.bottom = "1.6%"; brand.textContent = "따로 같이 네컷 · D:OT lab";
+    sticker(root);
+    const TA = [.7, 1.15, 1.6, 2.05], TB = [3.3, 3.75, 4.2, 4.65], SNAP = 5.3;
+    return t => {
+      S.cells.forEach((c, i) => {
+        const ina = t >= TA[i], inb = t >= TB[i];
+        c.a.style.opacity = ina ? 1 : 0; c.a.style.transform = ina ? `scale(${1 + .08 * flash(t, TA[i])})` : "";
+        c.b.style.opacity = inb ? 1 : 0; c.b.style.transform = inb ? `translateY(${(1 - eo((t - TB[i]) / .3)) * 8}cqw)` : "";
+        c.gh.style.opacity = inb ? 0 : 1;
+        c.f.style.opacity = Math.max(flash(t, TA[i]), flash(t, TB[i]));
+        c.c.style.background = t < 2.7 ? "var(--cellA)" : `color-mix(in srgb, var(--cellA) ${100 - 100 * cl((t - 2.7) / .4)}%, var(--cellB))`;
+      });
+      const snap = cl((t - SNAP) / .35);
+      S.fr.style.background = snap ? "#fff" : "#111";
+      S.fr.style.transform = `rotate(${-3 * eo((t - SNAP) / .5)}deg) scale(${1 + .06 * Math.sin(Math.PI * snap)})`;
+      holes.forEach(h => h.style.opacity = 1 - snap);
+      S.foot.style.color = snap ? "#c2276a" : "transparent";
+      const p1 = t < 3 ? 1 : 0;
+      cap.innerHTML = t < 2.8 ? "내가 먼저 <b style='color:#c2276a'>딱딱딱딱</b>" : t < SNAP ? "친구는 나중에, 다른 데서" : "";
+      cap.style.opacity = t < SNAP ? 1 : 0;
+      tagMe.style.left = "6cqw"; tagMe.style.top = "31cqw"; tagMe.style.opacity = t > .3 && t < 2.9 ? 1 : 0;
+      tagFd.style.left = "6cqw"; tagFd.style.top = "31cqw"; tagFd.style.opacity = t > 2.9 && t < SNAP ? 1 : 0;
+      const n = t < 2.8 ? TA.filter(x => t >= x).length : TB.filter(x => t >= x).length;
+      cnt.textContent = (t < 2.8 ? "나 " : "친구 ") + n + "/4"; cnt.style.opacity = t > .4 && t < SNAP ? 1 : 0;
+      hook.style.opacity = eo((t - SNAP - .3) / .4); hook.style.transform = `rotate(-3deg) translateY(${(1 - eo((t - SNAP - .3) / .4)) * 4}cqw)`;
+      const s = cl((t - SNAP - .15) / .3); stamp.style.opacity = s; stamp.style.transform = `rotate(-10deg) scale(${1.8 - .8 * eo(s * 1.5)})`;
+    };
+  }
+
+  // ---- 2. split: my screen (top) shoots 4, friend's screen (bottom) shoots 4, then the strip swings on a pin ----
+  function v2(root) {
+    root.style.background = "#ffeef4";
+    const halves = [["var(--cellA)", A, "나 · 먼저", "me"], ["var(--cellB)", B, "친구 · 나중에", "fd"]].map(([bg, set, label, k], h) => {
+      const hv = el(root, "div"); box(hv, 0, h * H / 2, 100, H / 2); hv.style.background = bg; hv.style.overflow = "hidden";
+      const im = el(hv, "img"); im.alt = ""; box(im, 0, 0, 100, H / 2); im.style.objectFit = "cover";
+      const tg = el(hv, "span", "tag " + k); tg.textContent = label; tg.style.left = "5cqw"; tg.style.top = "5cqw";
+      const dots = el(hv, "div"); Object.assign(dots.style, { right: "5cqw", top: "5.6cqw", display: "flex", gap: "1.6cqw" });
+      const ds = [0, 1, 2, 3].map(() => { const d = el(dots, "i"); Object.assign(d.style, { position: "static", width: "3.6cqw", height: "3.6cqw", borderRadius: "50%", border: ".6cqw solid #000", display: "block" }); return d; });
+      const fl = el(hv, "i"); Object.assign(fl.style, { inset: 0, background: "#fff", opacity: 0 });
+      const dim = el(hv, "div"); Object.assign(dim.style, { inset: 0, background: "#000", opacity: 0, display: "grid", placeItems: "center", color: "#fff", font: "400 6cqw var(--jua)" });
+      dim.textContent = h ? "친구 폰은 나중에 켜져요" : "";
+      return { hv, im, ds, fl, dim, set };
+    });
+    const pinWrap = el(root, "div"); box(pinWrap, 31, 44, 38, 0);
+    const S = strip(pinWrap, 0, 0, 38, 2.6, 1.8, "paper");
+    Object.assign(S.fr.style, { background: "#fff", boxShadow: "0 2.4cqw 5cqw #0003", transformOrigin: "50% -4%" });
+    S.cells.forEach(c => { c.gh.style.display = "none"; c.c.style.background = "var(--cellA)"; });
+    const pin = el(S.fr, "i"); Object.assign(pin.style, { left: "50%", top: "-3.4cqw", width: "5cqw", height: "5cqw", marginLeft: "-2.5cqw", borderRadius: "50%", background: "#c2276a", boxShadow: "0 .6cqw 0 #8a1748" });
+    const hook = el(root, "div", "hook", "우리 이거<br><em>같이 안 찍음</em>"); hook.style.top = "8cqw";
+    const note = el(root, "div"); Object.assign(note.style, { right: "4cqw", top: "92cqw", font: "700 6.4cqw/1.05 var(--hand)", color: "#c2276a", transform: "rotate(8deg)", textAlign: "center" });
+    note.innerHTML = "각자<br>폰으로<br>↙";
+    const brand = el(root, "div", "brand"); brand.style.bottom = "1.6%"; brand.textContent = "따로 같이 네컷 · D:OT lab";
+    sticker(root);
+    const T = [[.5, .95, 1.4, 1.85], [2.9, 3.35, 3.8, 4.25]], OUT = 5;
+    return t => {
+      halves.forEach((h, k) => {
+        const n = T[k].filter(x => t >= x).length, last = Math.max(0, n - 1);
+        h.im.src = h.set[last] + "-cut.png";
+        h.im.style.objectPosition = k ? "100% 100%" : "0% 100%";
+        if (k) Object.assign(h.im.style, { transform: "scale(1.5)", transformOrigin: "85% 100%" });
+        h.ds.forEach((d, i) => d.style.background = i < n ? (k ? "#000" : "var(--lime)") : "transparent");
+        h.fl.style.opacity = Math.max(...T[k].map(x => flash(t, x)));
+        h.dim.style.opacity = k && t < 2.6 ? .55 : 0;
+        const o = eo((t - OUT) / .5);
+        h.hv.style.transform = `translateX(${(k ? 1 : -1) * o * 105}%)`;
+      });
+      const s = cl((t - OUT - .15) / .5);
+      S.fr.style.opacity = s;
+      S.fr.style.transform = `translateY(${(1 - back(s)) * -40}cqw) rotate(${t > OUT + .6 ? 4 * Math.sin((t - OUT - .6) * 2.1) : 0}deg)`;
+      [hook, note].forEach((e, i) => { const q = eo((t - OUT - .6 - i * .3) / .4); e.style.opacity = q; });
+      hook.style.transform = "rotate(-3deg)";
+    };
+  }
+
+  // ---- 3. two phones: each shot flies from its phone into the strip; the friend's phone lights up later ----
+  function v3(root) {
+    root.style.background = "#fff3f7";
+    const hook = el(root, "div", "hook", "우리 이거<br><em>같이 안 찍음</em>"); hook.style.top = "5cqw";
+    const cap = el(root, "div", "cap"); cap.style.top = "10cqw";
+    const S = strip(root, 32, 30, 36, 2.4, 1.6, "paper");
+    Object.assign(S.fr.style, { background: "#fff", boxShadow: "0 2cqw 5cqw #0002" });
+    const phones = [["나", 2, "me"], ["친구", 76, "fd"]].map(([n, x, k]) => {
+      const p = el(root, "div"); box(p, x, 70, 22, 40);
+      Object.assign(p.style, { background: "#1d1b22", borderRadius: "3.4cqw", padding: "1.4cqw", boxShadow: "0 1.4cqw 3cqw #0003" });
+      const sc = el(p, "div"); Object.assign(sc.style, { inset: "1.4cqw", borderRadius: "2.2cqw", background: k === "me" ? "var(--cellA)" : "var(--cellB)", overflow: "hidden" });
+      const im = el(sc, "img"); im.alt = ""; Object.assign(im.style, { height: "100%", width: "auto", left: "50%", transform: "translateX(-50%)", bottom: 0 });
+      const fl = el(sc, "i"); Object.assign(fl.style, { inset: 0, background: "#fff", opacity: 0 });
+      const off = el(sc, "i"); Object.assign(off.style, { inset: 0, background: "#000", opacity: 0 });
+      const tg = el(root, "span", "tag " + k); tg.textContent = n; tg.style.left = (x + 11) + "cqw"; tg.style.top = "113cqw"; tg.style.transform = "translateX(-50%)";
+      return { p, im, fl, off, tg, x };
+    });
+    const stamp = el(root, "div", "stamp"); stamp.textContent = "착!"; stamp.style.left = "60cqw"; stamp.style.top = "125cqw";
+    const brand = el(root, "div", "brand"); brand.style.bottom = "1.6%"; brand.textContent = "따로 같이 네컷 · D:OT lab";
+    sticker(root);
+    const TA = [.6, 1.1, 1.6, 2.1], TB = [3.2, 3.7, 4.2, 4.7], FLY = .45, END = 5.5;
+    return t => {
+      const [pm, pf] = phones;
+      const na = TA.filter(x => t >= x).length, nb = TB.filter(x => t >= x).length;
+      pm.im.src = A[Math.max(0, na - 1)] + "-cut.png"; pm.im.style.objectPosition = "0 0";
+      pf.im.src = B[Math.max(0, nb - 1)] + "-cut.png";
+      pm.fl.style.opacity = Math.max(...TA.map(x => flash(t, x)));
+      pf.fl.style.opacity = Math.max(...TB.map(x => flash(t, x)));
+      pf.off.style.opacity = t < 2.7 ? .8 : t < 3 ? .8 * (1 - (t - 2.7) / .3) : 0;
+      phones.forEach(p => { p.p.style.opacity = 1 - eo((t - END + .2) / .4); p.tg.style.opacity = p.p.style.opacity; });
+      S.cells.forEach((c, i) => {
+        // fly from the phone (dx in cell widths) into the cell
+        const fa = eo((t - TA[i]) / FLY), fb = eo((t - TB[i]) / FLY);
+        c.a.style.opacity = t >= TA[i] ? 1 : 0; c.b.style.opacity = t >= TB[i] ? 1 : 0;
+        c.a.style.transform = `translate(${(1 - fa) * -95}%, ${(1 - fa) * (110 - i * 35)}%) scale(${.5 + .5 * fa})`;
+        c.b.style.transform = `translate(${(1 - fb) * 95}%, ${(1 - fb) * (110 - i * 35)}%) scale(${.5 + .5 * fb})`;
+        c.gh.style.opacity = t >= TB[i] + FLY ? 0 : 1;
+        c.c.style.zIndex = (t >= TA[i] && t < TA[i] + FLY) || (t >= TB[i] && t < TB[i] + FLY) ? 5 : 1;
+      });
+      S.foot.style.color = "#c2276a";
+      const e = eo((t - END) / .6);
+      S.fr.style.transformOrigin = "50% 0"; S.fr.style.transform = `translateY(${2 * e}cqw) scale(${1 + .06 * e}) rotate(${-3 * e}deg)`;
+      cap.innerHTML = t < 2.9 ? "내 폰에서 먼저 딱딱딱딱" : t < END ? "친구 폰은 나중에, 다른 데서" : "";
+      cap.style.opacity = t > .2 && t < END ? 1 : 0;
+      hook.style.opacity = eo((t - END - .3) / .4); hook.style.transform = "rotate(-3deg)";
+      const s = cl((t - END - .2) / .3); stamp.style.opacity = s; stamp.style.transform = `rotate(-10deg) scale(${1.8 - .8 * eo(s * 1.5)})`;
+    };
+  }
+
+  const stages = { v1, v2, v3 }, run = {};
+  for (const id in stages) { const root = document.getElementById(id); run[id] = { draw: stages[id](root), t0: performance.now() }; }
+  document.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => { run[b.dataset.r].t0 = performance.now(); }));
+  const fz = /^#t(\d+)$/.exec(location.hash);              // local check: #t35 = frozen at 3.5 s
+  if (fz) { for (const id in run) run[id].draw(+fz[1] / 10); return; }
+  if (RM) { for (const id in run) run[id].draw(L - .1); return; }
+  for (const id in run) run[id].draw(L - .1);              // resting frame first (thumbnails, slow loads)
+  const loop = now => { for (const id in run) run[id].draw(((now - run[id].t0) / 1000) % L); requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+})();
+</script>
