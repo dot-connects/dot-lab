@@ -1,0 +1,232 @@
+<title>필름레일 배경색</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* layout: one column, a row of 3 story frames. Single light look; all three share the pink world, decor differs. */
+:root{
+  --bg:#ecebef; --ink:#1d1b22; --sub:#4a4652;
+  --blush:#fff0f5; --rose:#ffd6e5; --pink:#ff7eb6; --deep:#c2276a; --plum:#3a1f2d; --gold:#ffc93c;
+  --jua:'Jua','Noto Sans KR',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1500px;margin:0 auto;padding-block:22px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:900 24px/1.3 var(--body);letter-spacing:-.03em;text-wrap:balance}
+.lead{color:var(--sub);margin-top:6px;max-width:66ch}
+.row{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:14px 2px}
+.row > figure{flex:none;width:min-content;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+figcaption{font:500 13px/1.5 var(--body);color:var(--sub)}
+figcaption b{color:var(--ink);font-weight:900;font-size:14px;display:block}
+.swipe{font-size:13px;color:var(--sub)}
+@media (min-width:1100px){.swipe{display:none}}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl button{font:700 12px var(--body);border:1.5px solid var(--ink);background:#fff;padding:3px 10px;border-radius:99px;cursor:pointer}
+.ctl span{font:500 12px var(--body);color:var(--sub);font-variant-numeric:tabular-nums}
+
+/* ---------- story (100cqw = 1080 px) ---------- */
+.st{position:relative;width:300px;aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:16px;box-shadow:0 10px 26px #00000026}
+.st *{position:absolute}
+.st video,.st img{display:block;object-fit:cover}
+.st.clean{background:radial-gradient(circle at 50% 38%,#fff 0,var(--blush) 55%,var(--rose) 100%)}
+.st.clean:before{content:"";position:absolute;inset:0;background:radial-gradient(#ff7eb633 .5cqw,transparent .6cqw) 0 0/6cqw 6cqw;opacity:.55}
+.st.scrap{background:#fff6f9}
+.st.scrap:before{content:"";position:absolute;inset:0;background:linear-gradient(#ffc2d822 .25cqw,transparent .25cqw) 0 0/100% 5cqw,linear-gradient(90deg,#ffc2d822 .25cqw,transparent .25cqw) 0 0/5cqw 100%}
+.st.booth{background:radial-gradient(ellipse at 50% 30%,#ffe4ee 0,#ffb3cf 70%,#f58cb4 100%)}
+.title{left:0;right:0;top:21cqw;text-align:center;font:400 9.4cqw/1 var(--jua);color:var(--plum)}
+.title i{position:static;font-style:normal;color:var(--pink);font-size:.6em;vertical-align:.25em;margin:0 2cqw}
+.booth .title{color:#fff;text-shadow:0 .6cqw 0 var(--deep),0 0 3cqw #c2276a88}
+.booth .title i{color:var(--gold)}
+.roll{background:#fff;border-radius:1.4cqw;box-shadow:0 1.8cqw 4cqw #c2276a24,0 0 0 .3cqw #ffd0e0}
+.fr{overflow:hidden;border-radius:.8cqw;background:var(--rose)}
+.fr > *{inset:0;width:100%;height:100%}
+.fr .gh{inset:14% 30% 0;width:auto;height:auto;border:.5cqw dashed #ffffffd8;border-bottom:0;border-radius:50% 50% 0 0}
+.fr .ring{inset:0;border:.9cqw solid var(--pink);border-radius:.8cqw;opacity:0}
+.fl{background:#fff;opacity:0;pointer-events:none}
+.stamp{font:400 8.6cqw/1 var(--jua);padding:1.6cqw 3.8cqw;border-radius:2cqw;white-space:nowrap;background:var(--deep);color:#fff;border:.7cqw solid #fff;box-shadow:0 1cqw 2.4cqw #c2276a55}
+.spark{color:var(--gold);font-size:6.4cqw;line-height:1}
+.fin{background:#fff;padding:2.2cqw;box-shadow:0 2cqw 5cqw rgba(200,60,120,.25),0 0 0 .3cqw #ffd0e0;transform-origin:50% -3%}
+.fin img{position:static;width:100%}
+.pin{left:50%;top:-3.6cqw;width:5.4cqw;height:5.4cqw;margin-left:-2.7cqw;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff9cc6,var(--deep) 60%);box-shadow:0 .7cqw 0 #8a1748}
+.date{left:0;right:0;text-align:center;font:400 5.6cqw/1 var(--jua);color:var(--deep);letter-spacing:.12em}
+.date:before,.date:after{content:"";position:static;display:inline-block;width:7cqw;height:.4cqw;background:var(--pink);vertical-align:middle;margin:0 2.6cqw;opacity:.6}
+.booth .date{color:var(--plum);text-shadow:0 0 2cqw #fff,0 0 1cqw #fff}
+.booth .date:before,.booth .date:after{background:var(--plum)}
+/* scrapbook */
+.tape{width:16cqw;height:5cqw;background:repeating-linear-gradient(45deg,#ffd84d99 0 1.4cqw,#fff3 1.4cqw 2.8cqw);box-shadow:0 .3cqw .6cqw #0001}
+.ddak{font:400 6.4cqw/1 var(--jua);color:#fff;background:var(--deep);padding:1.4cqw 2.6cqw;border-radius:2cqw;white-space:nowrap;box-shadow:.6cqw .6cqw 0 var(--plum)}
+.stk{font-size:7cqw;line-height:1}
+.conf{width:2.2cqw;height:3.2cqw;border-radius:.4cqw}
+/* booth lights */
+.bulb{width:3.2cqw;height:3.2cqw;border-radius:50%;background:#ffe9a8;box-shadow:0 0 1.6cqw #ffd84d}
+.dot4{width:3.4cqw;height:3.4cqw;border-radius:50%;border:.6cqw solid #fff;background:transparent}
+/* film rail: white paper, black film, one lime accent, square corners (the app's 필름레일 theme) */
+.st.film{background:var(--fbg,#fff);border-radius:16px}
+.st.film:before{opacity:var(--fgrid,1);content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent 33%,#0000000a 33% 33.3%,transparent 33.3% 66%,#0000000a 66% 66.3%,transparent 66.3%),linear-gradient(transparent 33%,#0000000a 33% 33.2%,transparent 33.2% 66%,#0000000a 66% 66.2%,transparent 66.2%)}
+.film .title{font:900 10cqw/1 'Noto Sans KR',system-ui,sans-serif;color:var(--fink,#0d0d0d);letter-spacing:-.05em}
+.film .title i{display:none}
+.film .title em{position:static;font-style:normal;background:#d6ff3d;color:#0d0d0d;padding:0 1.4cqw}
+.film .roll{background:#0d0d0d;box-shadow:0 0 0 .5cqw var(--fedge,transparent)!important;border-radius:0;box-shadow:none}
+.film .roll:before,.film .roll:after{content:"";position:absolute;top:0;bottom:0;width:1.6cqw;background:repeating-linear-gradient(#0d0d0d 0 1.2cqw,#fff 1.2cqw 3cqw,#0d0d0d 3cqw 4.2cqw)}
+.film .roll:before{left:.5cqw}.film .roll:after{right:.5cqw}
+.film .fr{border-radius:0;background:#222}
+.film .fr .gh{border-color:#ffffff55}
+.film .fr .ring{border:0;border-radius:0;background:linear-gradient(#d6ff3d,#d6ff3d) 0 0/5cqw .9cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 0 0/.9cqw 5cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 100% 0/5cqw .9cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 100% 0/.9cqw 5cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 0 100%/5cqw .9cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 0 100%/.9cqw 5cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 100% 100%/5cqw .9cqw no-repeat,linear-gradient(#d6ff3d,#d6ff3d) 100% 100%/.9cqw 5cqw no-repeat}
+.film .stamp{font:900 8.4cqw/1 'Noto Sans KR',system-ui,sans-serif;background:#d6ff3d;color:#000;border:.8cqw solid #000;border-radius:0;box-shadow:1.2cqw 1.2cqw 0 #000}
+.film .fin{background:#0d0d0d;padding:1.2cqw;border-radius:0;box-shadow:2cqw 2cqw 0 var(--fshadow,#d6ff3d),0 0 0 .5cqw var(--fedge,#0d0d0d)}
+.film .pin{border-radius:0;width:12cqw;height:4.4cqw;margin-left:-6cqw;top:-2.6cqw;background:#d6ff3d;box-shadow:0 0 0 .5cqw #000}
+.film .date{font:700 4.6cqw/1 'Space Grotesk','Noto Sans KR',monospace;color:#d6ff3d;background:#0d0d0d;box-shadow:0 0 0 .5cqw var(--fedge,transparent);left:0;right:0;margin:0 auto;width:fit-content;padding:2cqw 3.6cqw;letter-spacing:.1em;white-space:nowrap}
+.film .date:before,.film .date:after{display:none}
+#k4 .title em{background:#0d0d0d;color:#d6ff3d}
+#k4 .sq{background:#0d0d0d;box-shadow:none}
+.sq{width:3cqw;height:3cqw;background:#d6ff3d;box-shadow:0 0 0 .5cqw #000}
+@media (prefers-reduced-motion:reduce){.ctl button{display:none}}
+</style>
+
+<div class="wrap">
+  <h1>필름레일 배경색</h1>
+  <p class="lead">지금은 흰색이에요. 같은 영상에 배경색만 바꿔 봤어요. 필름은 검정, 강조는 연두 그대로예요.</p>
+  <p class="swipe">옆으로 넘겨 보기 →</p>
+  <div class="row">
+    <figure>
+      <div class="st film" id="k1" style="--fbg:#e8dcc6;--fink:#0d0d0d;--fedge:transparent;--fshadow:#d6ff3d;--fgrid:1"></div>
+      <div class="ctl"><button data-r="k1">처음부터</button><span id="k1t"></span></div>
+      <figcaption><b>크래프트지</b>필름 봉투·인화지 상자 같은 누런 종이색. 연두가 덜 튀고 따뜻해요</figcaption>
+    </figure>
+    <figure>
+      <div class="st film" id="k2" style="--fbg:#cfd0cc;--fink:#0d0d0d;--fedge:transparent;--fshadow:#d6ff3d;--fgrid:1"></div>
+      <div class="ctl"><button data-r="k2">처음부터</button><span id="k2t"></span></div>
+      <figcaption><b>콘크리트 회색</b>현상소 벽 같은 차분한 회색. 검은 필름과 연두가 가장 또렷해요</figcaption>
+    </figure>
+    <figure>
+      <div class="st film" id="k3" style="--fbg:#141414;--fink:#ffffff;--fedge:#3a3a3a;--fshadow:#d6ff3d;--fgrid:.0"></div>
+      <div class="ctl"><button data-r="k3">처음부터</button><span id="k3t"></span></div>
+      <figcaption><b>암실 검정</b>사진 현상하는 암실. 필름이 테두리로만 구분되고 연두가 제일 빛나요</figcaption>
+    </figure>
+    <figure>
+      <div class="st film" id="k4" style="--fbg:#d6ff3d;--fink:#0d0d0d;--fedge:transparent;--fshadow:#0d0d0d;--fgrid:.6"></div>
+      <div class="ctl"><button data-r="k4">처음부터</button><span id="k4t"></span></div>
+      <figcaption><b>연두 한가득</b>앱의 강조색을 바탕으로. 가장 눈에 띄고, 그림자는 검정으로</figcaption>
+    </figure>
+  </div>
+</div>
+
+<script>
+// Two ~9 s stories (one per UI theme) drawn from t (s). Row k's cell i plays the LAST 1 s of its 2 s pre-shutter clip at T[i] for both
+// people at once, then freezes on the shutter still with a flash. Decor differs per variant.
+(() => {
+  "use strict";
+  const RM = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fz = /^#t(\d+)$/.exec(location.hash);          // local check only: #t35 = frozen at 3.5 s
+  const A = ["a1", "a2", "a3", "a4"], B = ["b1", "b2", "b3", "b4"], L = 9.2, DUR = 1;
+  const T = [.6, 1.6, 2.6, 3.6], TOUCH = 4.75, RUSH = 5.15, SNAP = 5.43;
+  const cl = x => Math.min(1, Math.max(0, x)), eo = x => 1 - Math.pow(1 - cl(x), 3);
+  const flash = (t, at, d = .35) => { const k = t - at; return k >= 0 && k < d ? 1 - k / d : 0; };
+  const el = (p, tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; p.appendChild(e); return e; };
+  const box = (e, x, y, w, h) => Object.assign(e.style, { left: x + "cqw", top: y + "cqw", width: w + "cqw", height: h + "cqw" });
+  const rnd = s => () => (s = (s * 16807) % 2147483647) / 2147483647;   // seeded, so confetti is the same every loop
+
+  function clipFrame(p, id) {
+    const f = el(p, "div", "fr");
+    el(f, "i", "gh");
+    const still = el(f, "img"); still.src = id + "-still.jpg"; still.alt = "";
+    const v = el(f, "video"); Object.assign(v, { src: id + "-raw.mp4", playsInline: true, preload: "auto" }); v.muted = true;
+    const ring = el(f, "i", "ring");
+    const fl = el(f, "i", "fl"); fl.style.inset = 0;
+    let on = false, primed = false;
+    return { f, draw: (t, t0) => {
+      const playing = t >= t0 && t < t0 + DUR, after = t >= t0 + DUR;
+      if (!fz && !primed && t >= t0 - .5 && t < t0) { primed = true; try { v.currentTime = 2 - DUR; v.pause(); } catch {} }
+      if (t < t0 - .5) primed = false;
+      if (playing && !fz) {
+        if (!on) { on = true; if (!primed) try { v.currentTime = Math.max(0, 2 - DUR + (t - t0)); } catch {} v.play().catch(() => {}); }
+        v.style.opacity = 1; still.style.opacity = 0;
+      } else {
+        if (on) { on = false; primed = false; v.pause(); }
+        v.style.opacity = 0; still.style.opacity = after || (playing && fz) ? 1 : 0;
+      }
+      ring.style.opacity = playing ? 1 : 0;
+      f.style.transform = `scale(${1 + .05 * flash(t, t0 + DUR, .25)})`;
+      fl.style.opacity = flash(t, t0 + DUR);
+    } };
+  }
+
+  // the shared body: title, two rolls shooting in step, the snap, the hanging strip, the date
+  function base(root, opt = {}) {
+    const RW = 38, RX = [10.5, 51.5], RY = opt.ry ?? 36, CH = 24, PITCH = 26.6;
+    const title = el(root, "div", "title", "<i>✦</i>따로 같이 네컷<i>✦</i>");
+    const rolls = [0, 1].map(k => {
+      const r = el(root, "div", "roll"); box(r, RX[k], RY, RW, 4 * PITCH + 5);
+      const frames = (k ? B : A).map((id, i) => { const c = clipFrame(r, id); box(c.f, 3, 3 + i * PITCH, RW - 6, CH); return c; });
+      return { r, frames };
+    });
+    const fin = el(root, "div", "fin"); box(fin, 29.5, 35, 41, 0); fin.style.height = "auto";
+    const fimg = el(fin, "img"); fimg.src = "strip-pink.jpg"; fimg.alt = "";
+    el(fin, "i", "pin");
+    const date = el(root, "div", "date"); date.style.top = "153cqw";
+    const d = new Date(); date.textContent = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, "0")}. ${String(d.getDate()).padStart(2, "0")}`;
+    const stamp = el(root, "div", "stamp"); stamp.textContent = "착!"; stamp.style.left = "66cqw"; stamp.style.top = "104cqw";
+    const all = el(root, "i", "fl"); all.style.inset = 0; all.style.zIndex = 20;
+    const veil = el(root, "i"); Object.assign(veil.style, { inset: 0, background: opt.veil || "var(--blush)", opacity: 0, zIndex: 30 });
+    const gap = RX[1] - RX[0] - RW, toCenter = (RX[1] - RX[0]) / 2;
+    return { rolls, fin, all, RY, PITCH, CH, RX, RW, draw(t) {
+      title.style.opacity = eo(t / .4);
+      rolls.forEach((ro, k) => {
+        ro.frames.forEach((c, i) => c.draw(t, T[i]));
+        const touch = eo((t - TOUCH) / .25) * gap / 2, rush = Math.pow(cl((t - RUSH) / (SNAP - RUSH)), 3) * (toCenter - gap / 2);
+        ro.r.style.transform = `translate(${(k ? -1 : 1) * (touch + rush)}cqw, ${(1 - eo(t / .5)) * 8}cqw) scale(${1 + .03 * eo((t - TOUCH) / .25)})`;
+        ro.r.style.opacity = t < SNAP ? eo(t / .5) : 0;
+      });
+      const on = t >= SNAP, q = t - SNAP;
+      fin.style.opacity = on ? 1 : 0;
+      const shake = on && q < .07 ? (q < .035 ? 1.2 : -1.2) : 0;
+      const sway = q > .3 ? 4 * Math.sin((q - .3) * 2.6) * Math.exp(-(q - .3) * .55) : 0;
+      fin.style.transform = `translateX(${shake}cqw) scale(${on ? 1.06 - .06 * eo(q / .25) : 1}) rotate(${sway}deg)`;
+      all.style.opacity = flash(t, SNAP, .4) * .9;
+      stamp.style.opacity = on ? Math.min(cl(q / .15), 1 - cl((q - .8) / .3)) : 0;
+      stamp.style.transform = `rotate(8deg) scale(${1.7 - .7 * eo(q / .25)})`;
+      date.style.opacity = eo((q - .7) / .5); date.style.transform = `translateY(${(1 - eo((q - .7) / .5)) * 3}cqw)`;
+      veil.style.opacity = cl((t - (L - .3)) / .3);
+      return { on, q, sway };
+    } };
+  }
+
+  // ---------- 1. clean ----------
+  function s1(root) {
+    const b = base(root);
+    const sparks = [[12, 42], [84, 56], [14, 126], [83, 138], [50, 31]].map(([x, y]) => { const s = el(root, "i", "spark"); s.textContent = "✦"; s.style.left = x + "cqw"; s.style.top = y + "cqw"; return s; });
+    return t => {
+      const { q } = b.draw(t);
+      sparks.forEach((sp, i) => { const k = q - .25 - i * .1; sp.style.opacity = k > 0 ? .55 + .45 * Math.sin(k * 3 + i) : 0; sp.style.transform = `scale(${k > 0 ? .75 + .25 * Math.sin(k * 3.4 + i) : 0}) rotate(${k * 30}deg)`; });
+    };
+  }
+
+  // ---------- 2. film rail ----------
+  function s2(root) {
+    const b = base(root, { veil: getComputedStyle(root).getPropertyValue("--fbg").trim() || "#fff" });
+    root.querySelector(".title").innerHTML = "따로 <em>같이</em> 네컷";
+    b.fin.querySelector("img").src = "strip-film.jpg";
+    b.all.style.background = root.id === "k4" ? "#fff" : "#d6ff3d";
+    root.querySelector(".date").style.top = "159cqw";          // the snap flashes lime on white paper
+    const sq = [[12, 44], [84, 58], [13, 128], [84, 140]].map(([x, y]) => { const e = el(root, "i", "sq"); e.style.left = x + "cqw"; e.style.top = y + "cqw"; return e; });
+    return t => {
+      const { q } = b.draw(t);
+      sq.forEach((e, i) => { const k = q - .25 - i * .1; e.style.opacity = k > 0 ? 1 : 0; e.style.transform = `rotate(${45 + 90 * Math.floor(k * 2.5 + i)}deg) scale(${k > 0 ? .6 + .4 * eo(k / .2) : 0})`; });
+    };
+  }
+
+  const make = { k1: s2, k2: s2, k3: s2, k4: s2 }, run = {};
+  for (const id in make) run[id] = { draw: make[id](document.getElementById(id)), t0: performance.now(), lab: document.getElementById(id + "t") };
+  document.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => { run[b.dataset.r].t0 = performance.now(); }));
+  if (fz) { for (const id in run) run[id].draw(+fz[1] / 10); return; }
+  if (RM) { for (const id in run) run[id].draw(L - .4); return; }
+  for (const id in run) run[id].draw(L - .4);
+  const loop = now => {
+    for (const id in run) { const r = run[id], t = ((now - r.t0) / 1000) % L; r.draw(t); r.lab.textContent = t.toFixed(1) + " / " + L + "초"; }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
