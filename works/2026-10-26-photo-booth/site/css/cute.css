@@ -313,3 +313,20 @@ body[data-ui="cute"] #s-share #myStrip { background: none; box-shadow: none; bor
 body[data-ui="cute"] #s-share #shareTitle { font-size: 40px; }
 body[data-ui="cute"][data-shape="tall"] #s-share #shareTitle { font-size: 44px; }
 @media (max-height: 700px) { body[data-ui="cute"] #s-share #shareTitle, body[data-ui="cute"][data-shape="tall"] #s-share #shareTitle { font-size: 34px; } }
+
+/* ---- decorate, layout 3 (app.css owns the sizes): round ⋯, pill buttons, a white dock and sheet ---- */
+body[data-ui="cute"] .dmore { border-radius: 50%; background: #fff; box-shadow: 0 3px 10px #6b3fc424; color: var(--ink); }
+body[data-ui="cute"] .dtop .cta { font-size: 26px; padding-top: 4px; }
+body[data-ui="cute"] .dtop .dsave { padding-right: 16px; }
+body[data-ui="cute"] .donetitle { font-size: 30px; }
+body[data-ui="cute"] .lcyc { border-radius: 16px; background: #fff; color: var(--ink); box-shadow: 0 3px 0 #d6c6f6; font-family: var(--body); }
+body[data-ui="cute"] .lcyc b { font-weight: 400; }
+body[data-ui="cute"] .lcyc:is([data-v="1"], [data-v="2"]) { background: #fff; color: var(--ink); box-shadow: inset 0 0 0 2px var(--deep), 0 3px 0 #d6c6f6; }
+body[data-ui="cute"] .lcyc .dots i { background: #e6dcff; }
+body[data-ui="cute"] .lcyc .dots i.f { background: var(--deep); }
+body[data-ui="cute"] #s-done .dock { background: #fff; border-radius: 22px 22px 0 0; box-shadow: 0 -4px 14px #6b3fc41f; }
+body[data-ui="cute"] #s-done .dock button { color: var(--ink); font: 700 17px/1 var(--title); border-radius: 12px; padding-top: 6px; }
+body[data-ui="cute"] #s-done .dock button[aria-selected="true"] { background: var(--soft); color: var(--deep); }
+body[data-ui="cute"] .dsheet { background: #fff; border-radius: 26px 26px 0 0; box-shadow: 0 -5px 0 #e6dcff, 0 -10px 24px #6b3fc426; }
+body[data-ui="cute"] .dscrim { background: #2a214066; }
+@media (max-height: 700px) { body[data-ui="cute"] #s-done .dock button { font-size: 15px; } body[data-ui="cute"] .dtop .cta { font-size: 22px; } }

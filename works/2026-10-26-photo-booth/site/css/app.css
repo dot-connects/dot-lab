@@ -810,3 +810,70 @@ body[data-shape="tall"] #s-share #decNote { grid-column: 1; grid-row: 4; }
   #s-share .bottom .cta { padding-top: 13px; padding-bottom: 13px; }
 }
 body[data-ui="film"] #s-share #myStrip { --sx: 44px; --sy: 58px; }
+
+/* ===== Round 7: decorate = mockups/deco-pick.html layout 3 "editor app" (operator pick 2026-10-29). One screen, no page
+   scroll: a top bar (⋯ · 짠, 완성! · 영상 · 저장하기), the strip as big as the space allows, a drawer with the open tab,
+   an icon dock. The 영상 and ⋯ sheets slide up over the dock (app.js sheet()). 가로 strips (a 1:3 column) leave
+   height over, so the drawer is one row; 세로 strips are short, so the drawer takes the rest. ===== */
+#s-done { height: 100svh; height: 100dvh; min-height: 0; overflow: hidden; gap: 8px; padding-top: max(8px, env(safe-area-inset-top)); padding-bottom: 0; position: relative; }
+#s-done > .uihead { display: none; }
+.dtop { display: flex; align-items: center; gap: 8px; flex: none; min-height: 44px; }
+.dtop .donetitle { flex: 1; min-width: 0; margin: 0; text-align: center; white-space: nowrap; }
+body[data-tab="sticker"] #s-done .donetitle { display: block; }
+.dmore { appearance: none; border: 0; width: 42px; height: 42px; flex: none; display: grid; place-items: center; padding: 0; cursor: pointer;
+  background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px #000; font: 900 18px/1 var(--body); }
+.dmore:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+.dtop .cta { width: auto; flex: none; min-height: 42px; padding: 0 14px; font-size: 16px; white-space: nowrap; }
+.dtop .dsave { padding-right: 32px; }
+.dtop .dsave::after { right: 10px; width: 12px; height: 12px; margin-top: -6px; }
+#s-done .previewwrap { position: relative; top: auto; z-index: auto; flex: 1 1 0; min-height: 0; height: auto; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl));
+  padding: 8px; display: grid; place-items: center; gap: 0; container-type: size; }
+#s-done .preview { flex: none; height: auto; width: min(100cqw, calc(100cqh / 3)); }
+body[data-shape="tall"] #s-done .previewwrap { flex: none; container-type: inline-size; }
+body[data-shape="tall"] #s-done .preview { width: 100%; }
+#s-done .donenote { flex: none; font-size: 14px; margin: 0; }
+.drawer { flex: none; max-height: 36svh; overflow: hidden auto; overscroll-behavior: contain; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 2px var(--pr) 6px var(--pl); }
+body[data-shape="tall"] .drawer { flex: 1 1 0; min-height: 0; max-height: none; }
+.drawer .panel.row { min-height: 0; padding-bottom: 4px; }
+/* 보정: 나 · 친구 (· 내 크기·위치) on top, then one tap-to-step button per row */
+.lwho { flex-wrap: nowrap; gap: 6px; }
+.lwho .pill { flex: 1; min-width: 0; padding: 0 6px; white-space: nowrap; }
+#s-done .look:not(.own) { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.lcyc { appearance: none; border: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5px; cursor: pointer;
+  background: var(--paper); color: var(--ink); box-shadow: inset 0 0 0 2px #000; font: 15px/1.1 var(--body); }
+.lcyc b { font-weight: 900; }
+.lcyc[data-v="1"], .lcyc[data-v="2"] { box-shadow: inset 0 0 0 3px #000; background: var(--acc); color: #000; }
+.lcyc .dots { gap: 4px; }
+.lcyc .dots i { width: 7px; height: 7px; background: #0003; outline: 0; animation: none; border-radius: 50%; }
+.lcyc .dots i.f { background: #000; }
+.lcyc:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+/* the dock: 8 tabs as icon + word */
+#s-done .dock { flex: none; display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; border: 0; border-radius: 0; box-shadow: none;
+  margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 4px var(--pr) max(6px, env(safe-area-inset-bottom)) var(--pl); background: #000; }
+#s-done .dock button { display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 6px 0 5px; border-radius: 0; box-shadow: none;
+  font: 700 11px/1.1 var(--body); color: #fff; background: none; min-width: 0; white-space: nowrap; }
+#s-done .dock svg { width: 22px; height: 22px; }
+#s-done .dock button[aria-selected="true"] { background: var(--acc); color: #000; }
+/* the two sheets */
+.dscrim { position: absolute; inset: 0; z-index: 20; background: #0007; animation: fade .2s ease-out; }
+.dsheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; max-height: 82%; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;
+  padding: 18px var(--pr) max(16px, env(safe-area-inset-bottom)) var(--pl); background: var(--paper); box-shadow: 0 -3px 0 #000; animation: sheetIn .22s ease-out; }
+.dsheet .cta { padding-top: 14px; padding-bottom: 14px; }
+@keyframes sheetIn { from { transform: translateY(24%); opacity: 0; } }
+@media (max-height: 700px) {
+  #s-done { gap: 6px; }
+  .dtop { min-height: 38px; }
+  .dmore, .dtop .cta { min-height: 38px; height: 38px; }
+  .dmore { width: 38px; }
+  .drawer { max-height: 32svh; }
+  .lcyc { min-height: 48px; }
+  #s-done .dock svg { width: 20px; height: 20px; }
+  #s-done .dock button { font-size: 10px; padding: 4px 0; }
+}
+body[data-ui="film"] #s-done .previewwrap { border-top-width: 0; border-bottom-width: 0; }
+body[data-ui="film"] #s-done .previewwrap { padding: 8px 30px; }
+/* 세로: the strip is short, so the drawer gets the rest of the screen and its rows wrap into a grid (mockup 3 "grid") */
+body[data-shape="tall"] .tile.frame { width: 112px; }
+body[data-shape="tall"] .drawer .panel.row { flex-wrap: wrap; overflow: visible; margin-right: 0; padding-right: 0; row-gap: 14px; }
+body[data-shape="tall"] .drawer .stkgrid { grid-auto-flow: row; grid-template-rows: none; grid-auto-rows: 64px; grid-template-columns: repeat(auto-fill, 64px);
+  overflow: visible; margin-right: 0; padding-right: 2px; }

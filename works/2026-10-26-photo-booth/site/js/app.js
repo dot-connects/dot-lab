@@ -682,19 +682,17 @@ async function fetchLook(side) {
     return LOOK_ROWS.every(([k]) => [0, 1, 2].includes(l?.[k])) ? l : { ...LOOK0 };
   } catch { return { ...LOOK0 }; }
 }
-// three rows of 안 함 / 살짝 / 많이 into `box`; onPick(newLook)
-function lookRows(box, look, onPick, title = "") {
-  box.replaceChildren(...(title ? [Object.assign(document.createElement("h3"), { textContent: title })] : []),
-    ...LOOK_ROWS.map(([k, label]) => {
-      const row = Object.assign(document.createElement("div"), { className: "lrow" });
-      row.append(Object.assign(document.createElement("span"), { textContent: label }), ...LOOK_LV.map((t, v) => {
-        const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: t });
-        b.setAttribute("aria-pressed", look[k] === v); b.setAttribute("aria-label", `${label} ${t}`);
-        b.onclick = () => { if (look[k] !== v) onPick({ ...look, [k]: v }); };
-        return b;
-      }));
-      return row;
-    }));
+// decorate (deco mockup 3): one button per row (피부·갸름·눈); a tap steps 안 함 → 살짝 → 많이 → 안 함
+function lookCycle(box, look, onPick) {
+  box.replaceChildren(...LOOK_ROWS.map(([k, label]) => {
+    const v = look[k], b = Object.assign(document.createElement("button"), { type: "button", className: "lcyc" });
+    b.dataset.k = k; b.dataset.v = v; b.setAttribute("aria-label", `${label} ${LOOK_LV[v]}`);
+    b.innerHTML = `<span><b></b> <span></span></span><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>`;
+    b.querySelector("b").textContent = label; b.querySelector("span span").textContent = LOOK_LV[v];
+    b.querySelectorAll(".dots i").forEach((d, n) => d.classList.toggle("f", n <= v));
+    b.onclick = () => onPick({ ...look, [k]: (v + 1) % LOOK_LV.length });
+    return b;
+  }));
 }
 // review (retouch mockup 1): a row of 피부·갸름·눈 tabs (each shows its level) + 안 함·살짝·많이 for the open tab
 function lookTabs(box, look, onPick) {
@@ -756,10 +754,20 @@ function buildLook() {
   const role = me();
   const name = s => role ? (s === role ? "나" : "친구") : s === "a" ? "보낸 사람" : "받은 사람";
   const order = role === "b" ? ["b", "a"] : ["a", "b"];
-  order.forEach((s, n) => lookRows($(n ? "lookB" : "lookA"), D.look[s], async l => {
-    D.look = { ...D.look, [s]: l }; buildLook();
-    await applyLooks(); changed(["frame", "filter"]);
-  }, name(s)));
+  // who: 나 · 친구 (· 내 크기·위치 for B), one of them open in the drawer at a time
+  const who = [...order.map(name), ...(mySide() ? ["내 크기·위치"] : [])];
+  D.lookWho = Math.min(D.lookWho ?? 0, who.length - 1);
+  $("lookWho").replaceChildren(...who.map((t, n) => {
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: t });
+    b.dataset.who = n; b.setAttribute("aria-pressed", D.lookWho === n);
+    b.onclick = () => { if (D.lookWho !== n) { D.lookWho = n; buildLook(); } };
+    return b;
+  }));
+  order.forEach((s, n) => {
+    const box = $(n ? "lookB" : "lookA");
+    box.hidden = D.lookWho !== n;
+    lookCycle(box, D.look[s], async l => { D.look = { ...D.look, [s]: l }; buildLook(); await applyLooks(); changed(["frame", "filter"]); });
+  });
   buildOwn();
 }
 // ---- my own size / place per cell (Round 6, promise 1196: "my face came out too big") ------------------------------
@@ -820,7 +828,7 @@ function ownCommit() {
 }
 function buildOwn() {
   const s = mySide(), l = s && D.own?.[s];
-  $("ownBox").hidden = !s;
+  $("ownBox").hidden = !s || D.lookWho !== 2;
   if (!s) return;
   $("ownCells").replaceChildren(...[-1, 0, 1, 2, 3].map(j => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: j < 0 ? "4칸 모두" : `${j + 1}칸` });
@@ -1020,6 +1028,9 @@ async function doneScreen(note = "") {
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
   const inApp = env.inApp;
   $("saveBtns").hidden = inApp; $("inappSave").hidden = !inApp;
+  // in an app browser the top bar's 저장하기 can't save: the sheet's "open in Chrome" takes its place
+  document.querySelector("#s-done .dsave").hidden = inApp; $("dVid").hidden = false; $("dVid").textContent = inApp ? "저장하기" : "영상";
+  sheet(null);
   if (inApp) { $("iosText").hidden = !env.isIOS; document.querySelector('[data-act="toChrome"]').hidden = env.isIOS; }
   $("s-done").querySelector(".del").hidden = !token();
   try {
@@ -1129,7 +1140,7 @@ function buildFrames() {
 // Result themes: one tap = the theme's first frame + outline + caption font + sticker set; each tab can change them after
 function buildThemes() {
   const themes = FR.THEMES || [];
-  $("themeRow").hidden = !themes.length;
+  $("themeRow").hidden = !themes.length; document.querySelector('[data-tab="theme"]').hidden = !themes.length;
   $("themeRow").replaceChildren(...themes.map(t => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "theme theme-" + t.id });
     b.setAttribute("aria-pressed", t.id === D.theme);
@@ -1339,12 +1350,17 @@ async function videoJob() {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e);
     D.noVideo = true;
-    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("saveBoth").hidden = true;
+    $("saveBtns").querySelector(".vidrow").hidden = true; $("vidNote").hidden = true; $("saveBoth").hidden = true; $("dVid").hidden = true; sheet(null);
     toast("이 폰에서는 영상 저장이 안 돼요. 사진으로 저장해 줘", 3500);
   } finally { D.vjob = false; setVid(); }
 }
 
 // ---- actions ------------------------------------------------------------------------------------------------------
+// decorate's two sheets over the dock: "save" (영상) and "more" (⋯); null closes both
+function sheet(id) {
+  for (const x of $$("#s-done .dsheet")) x.hidden = x.dataset.sheetid !== id;
+  $("dScrim").hidden = !id;
+}
 function capCount() { $("capCount").textContent = `${[...$("caption").value].length} / 16`; }
 let capT;
 $("caption").addEventListener("input", () => {
@@ -1656,6 +1672,8 @@ const ACT = {
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
   again: fresh,
+  dsheet: b => sheet(b.dataset.sheet),
+  dsheetClose: () => sheet(null),
 };
 document.addEventListener("click", e => {
   const b = e.target.closest("[data-act]");

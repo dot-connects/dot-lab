@@ -43,6 +43,14 @@
   <symbol id="i-sound" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h4l5-4v14l-5-4H4z" fill="currentColor"/><path class="on" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="off" d="M16 9l5 6M21 9l-5 6"/></g></symbol>
   <symbol id="i-cam" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></g></symbol>
   <symbol id="i-lock" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="5" y="10" width="14" height="10" rx="3"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></g></symbol>
+  <symbol id="i-theme" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3a9 9 0 1 0 0 18c1.6 0 2-1.2 1.3-2.3-.8-1.2 0-2.7 1.4-2.7H17a4 4 0 0 0 4-4c0-5-4-9-9-9z"/></g><circle cx="7.5" cy="11" r="1.5" fill="currentColor"/><circle cx="11" cy="7" r="1.5" fill="currentColor"/><circle cx="15.5" cy="8" r="1.5" fill="currentColor"/></symbol>
+  <symbol id="i-bg" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 17l5-5 4 4 3-3 6 6"/></g><circle cx="16" cy="9" r="1.8" fill="currentColor"/></symbol>
+  <symbol id="i-frame" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="2.5" width="12" height="19"/><path d="M8.5 5h7v4h-7zM8.5 11h7v4h-7z"/></g></symbol>
+  <symbol id="i-filter" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="9" r="5.5"/><circle cx="15" cy="9" r="5.5"/><circle cx="12" cy="14.5" r="5.5"/></g></symbol>
+  <symbol id="i-outline" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="3 2.6"/></symbol>
+  <symbol id="i-caption" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 6h14M12 6v13M8 19h8"/></g></symbol>
+  <symbol id="i-sticker" viewBox="0 0 24 24"><path d="M12 2.8l2.7 5.6 6.1.8-4.5 4.2 1.1 6.1L12 16.6l-5.4 2.9 1.1-6.1-4.5-4.2 6.1-.8z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+  <symbol id="i-look" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="12" r="7.5"/><path d="M8 11h.01M14 11h.01M8.5 15q2.5 2 5 0"/><path d="M19.5 2.5v4M17.5 4.5h4"/></g></symbol>
 </svg>
 
 <template id="ministrip">
@@ -604,6 +612,13 @@ kick();
 <!-- done -->
 <section class="screen" id="s-done" hidden>
   <div class="uihead" aria-hidden="true"></div>
+  <!-- Round 7: decorate = mockups/deco-pick.html layout 3 (editor app): top bar, the strip, a one-row drawer, an icon dock -->
+  <div class="dtop">
+    <button class="dmore" type="button" data-act="dsheet" data-sheet="more" aria-label="더 보기">⋯</button>
+    <p class="donetitle"><em>짠, 완성!</em></p>
+    <button class="cta alt dvid" type="button" id="dVid" data-act="dsheet" data-sheet="save">영상</button>
+    <button class="cta dsave" data-act="savePhoto" disabled>저장하기</button>
+  </div>
   <div class="previewwrap">
     <div class="preview" id="preview">
       <!-- Round 6 #11: the zoomed layer (two fingers zoom / pan in place) -->
@@ -617,20 +632,14 @@ kick();
       <div class="veils" id="veils"></div>
       <div class="making" id="making"><span class="dots"><i></i><i></i><i></i></span><b id="makingText">네컷 만드는 중</b></div>
     </div>
-    <p class="donetitle"><em>짠, 완성!</em></p>
   </div>
   <p class="donenote" id="doneNote" hidden></p>
-  <div class="themes" id="themeRow" role="group" aria-label="테마" hidden></div><!-- result themes: frame + outline + font + stickers in one tap -->
-  <div class="tabs" role="tablist" aria-label="꾸미기">
-    <button role="tab" data-tab="bg" aria-selected="false">배경</button>
-    <button role="tab" data-tab="frame" aria-selected="true">프레임</button>
-    <button role="tab" data-tab="filter" aria-selected="false">필터</button>
-    <button role="tab" data-tab="outline" aria-selected="false">테두리</button>
-    <button role="tab" data-tab="caption" aria-selected="false">문구</button>
-    <button role="tab" data-tab="sticker" aria-selected="false">스티커</button>
-    <button role="tab" data-tab="look" aria-selected="false">보정</button>
+  <div class="drawer" id="drawer">
+  <div class="panel" data-panel="theme" role="tabpanel" aria-label="테마" hidden>
+    <div class="themes" id="themeRow" role="group" aria-label="테마" hidden></div><!-- result themes: frame + outline + font + stickers in one tap -->
   </div>
   <div class="panel" data-panel="look" role="tabpanel" aria-label="보정" hidden>
+    <div class="pills lwho" id="lookWho" role="group" aria-label="누구 보정"></div>
     <div class="look" id="lookA" role="group"></div>
     <div class="look" id="lookB" role="group"></div>
     <!-- Round 6: my own size / place per cell (app.js "my own size") -->
@@ -670,9 +679,21 @@ kick();
     </div>
     <div class="stkgrid" id="stkGrid" role="group" aria-label="붙일 스티커"></div>
   </div>
-  <div class="savebar" id="saveBox">
+  </div>
+  <div class="tabs dock" role="tablist" aria-label="꾸미기">
+    <button role="tab" data-tab="theme" aria-selected="false"><svg aria-hidden="true"><use href="#i-theme"/></svg>테마</button>
+    <button role="tab" data-tab="bg" aria-selected="false"><svg aria-hidden="true"><use href="#i-bg"/></svg>배경</button>
+    <button role="tab" data-tab="frame" aria-selected="true"><svg aria-hidden="true"><use href="#i-frame"/></svg>프레임</button>
+    <button role="tab" data-tab="filter" aria-selected="false"><svg aria-hidden="true"><use href="#i-filter"/></svg>필터</button>
+    <button role="tab" data-tab="outline" aria-selected="false"><svg aria-hidden="true"><use href="#i-outline"/></svg>테두리</button>
+    <button role="tab" data-tab="caption" aria-selected="false"><svg aria-hidden="true"><use href="#i-caption"/></svg>문구</button>
+    <button role="tab" data-tab="sticker" aria-selected="false"><svg aria-hidden="true"><use href="#i-sticker"/></svg>스티커</button>
+    <button role="tab" data-tab="look" aria-selected="false"><svg aria-hidden="true"><use href="#i-look"/></svg>보정</button>
+  </div>
+  <div class="dscrim" id="dScrim" data-act="dsheetClose" hidden></div>
+  <!-- the 영상 sheet (save video / both) and the ⋯ sheet (again, more, trust, delete) -->
+  <div class="dsheet" id="saveBox" data-sheetid="save" hidden>
     <div id="saveBtns">
-      <button class="cta" data-act="savePhoto" disabled>저장하기</button>
       <button class="cta alt" id="saveBoth" data-act="saveBoth">사진 + 영상 한 번에</button>
       <div class="vidrow">
         <button class="cta alt vbtn" id="vidBtn" data-act="saveVideo"><i class="ring"></i><span>움직이는 네컷 다운로드</span></button>
@@ -685,12 +706,14 @@ kick();
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>
       <p class="fine" id="iosText" hidden>이 앱 안에서는 저장이 안 돼요. 오른쪽 위 공유 메뉴 → Safari로 열기 → 같은 화면에서 저장해 줘</p>
     </div>
+    <button class="textlink" type="button" data-act="dsheetClose">닫기</button>
   </div>
-  <div class="after">
+  <div class="dsheet after" data-sheetid="more" hidden>
     <button class="cta alt" data-act="again">다른 친구랑도 찍기</button>
     <a class="morelink" href="../../../">시켜본 것 더 보기 →</a>
     <div data-trust></div>
     <div data-del></div>
+    <button class="textlink" type="button" data-act="dsheetClose">닫기</button>
   </div>
 </section>
 
