@@ -836,8 +836,12 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
     wake?.();
   }, error: e => { failed = e; wake?.(); } });
   dec.configure(mp4.config);
+  // fromEnd (the making rows) holds the last frame at the end instead of looping: a row that wants one frame more
+  // than its window holds would otherwise end on the clip's first frame (review r8 /done r2 M1)
+  let ended = false;
   const feed = async () => {          // keep ~2 frames ready; at the end, flush and start over at the first (key) sample
     while (q.length < 2 && !failed) {
+      if (k === N && fromEnd != null) { if (!ended) { ended = true; await dec.flush(); } break; }
       if (k === N) { await dec.flush(); k = 0; skip = -Infinity; continue; }
       if (dec.decodeQueueSize < 3) { const s = S[k++]; dec.decode(new EncodedVideoChunk({ type: s.key ? "key" : "delta", timestamp: s.us, data: s.data })); continue; }
       await new Promise(res => { wake = res; setTimeout(res, 50); }); wake = null;
@@ -849,6 +853,7 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
   const take = async () => {
     await feed();
     const f = q.shift();
+    if (!f) return;                  // past the end of a held clip: keep the last frame
     if (frame.width !== f.displayWidth || frame.height !== f.displayHeight) { frame.width = f.displayWidth; frame.height = f.displayHeight; }
     fctx.drawImage(f, 0, 0); const t = f.timestamp; f.close();
     hq?.apply(frame, t);             // the HQ moving cut (clipmatte.js) replaces the matte half, before any fx warp
