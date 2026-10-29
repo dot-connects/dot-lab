@@ -1,0 +1,182 @@
+<title>메이킹 영상 A안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* layout: one column; the story at phone size with its beat sheet beside it (stacks on a phone). Single light look. */
+:root{
+  --bg:#ecebef; --ink:#1d1b22; --sub:#4a4652;
+  --blush:#fff0f5; --rose:#ffd6e5; --pink:#ff7eb6; --deep:#c2276a; --plum:#3a1f2d; --gold:#ffc93c;
+  --jua:'Jua','Noto Sans KR',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:980px;margin:0 auto;padding-block:22px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:900 24px/1.3 var(--body);letter-spacing:-.03em;text-wrap:balance}
+.lead{color:var(--sub);margin-top:6px;max-width:66ch}
+.stage{display:flex;flex-wrap:wrap;gap:22px 28px;margin-top:16px;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl button{font:700 12px var(--body);border:1.5px solid var(--ink);background:#fff;padding:3px 10px;border-radius:99px;cursor:pointer}
+.ctl span{font:500 12px var(--body);color:var(--sub);font-variant-numeric:tabular-nums}
+.beats{flex:1 1 300px;min-width:0;background:#fff;border-radius:14px;padding:14px 16px}
+.beats h2{font:900 16px var(--body)}
+.beats ol{list-style:none;margin-top:8px;display:grid;gap:6px}
+.beats li{display:grid;grid-template-columns:76px 1fr;gap:8px;font-size:14px}
+.beats li b{font-variant-numeric:tabular-nums;color:var(--deep)}
+.beats li.on{background:var(--blush);border-radius:6px}
+.beats p{margin-top:10px;font-size:13px;color:var(--sub)}
+
+/* ---------- the story (100cqw = 1080 px) ---------- */
+.st{position:relative;width:340px;max-width:calc(100vw - 32px);aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:16px;box-shadow:0 10px 26px #00000026;
+  background:radial-gradient(circle at 50% 38%,#fff 0,var(--blush) 55%,var(--rose) 100%)}
+.st:before{content:"";position:absolute;inset:0;background:radial-gradient(#ff7eb633 .5cqw,transparent .6cqw) 0 0/6cqw 6cqw;opacity:.55}
+.st *{position:absolute}
+.st video,.st img{display:block;object-fit:cover}
+.title{left:0;right:0;top:9cqw;text-align:center;font:400 9.4cqw/1 var(--jua);color:var(--plum)}
+.title i{position:static;font-style:normal;color:var(--pink);font-size:.6em;vertical-align:.25em;margin:0 2cqw}
+.roll{background:#fff;border-radius:1.4cqw;box-shadow:0 1.8cqw 4cqw #c2276a24,0 0 0 .3cqw #ffd0e0}
+.fr{overflow:hidden;border-radius:.8cqw;background:var(--rose)}
+.fr > *{inset:0;width:100%;height:100%}
+.fr .gh{inset:14% 30% 0;width:auto;height:auto;border:.5cqw dashed #ffffffd8;border-bottom:0;border-radius:50% 50% 0 0}
+.fr .ring{inset:0;border:.9cqw solid var(--pink);border-radius:.8cqw;opacity:0}
+.fl{background:#fff;opacity:0;pointer-events:none}
+.tag{font:400 4.6cqw/1 var(--jua);padding:1.6cqw 3.6cqw;border-radius:99px;white-space:nowrap;transform:translateX(-50%)}
+.tag.me{background:var(--deep);color:#fff}
+.tag.fd{background:#fff;color:var(--deep);box-shadow:0 0 0 .5cqw var(--deep)}
+.stamp{font:400 8.6cqw/1 var(--jua);padding:1.6cqw 3.8cqw;border-radius:2cqw;white-space:nowrap;background:var(--deep);color:#fff;border:.7cqw solid #fff;box-shadow:0 1cqw 2.4cqw #c2276a55}
+.spark{color:var(--gold);font-size:6.4cqw;line-height:1}
+.fin{background:#fff;padding:2.2cqw;box-shadow:0 2cqw 5cqw rgba(200,60,120,.25),0 0 0 .3cqw #ffd0e0;transform-origin:50% -3%}
+.fin img{position:static;width:100%}
+.pin{left:50%;top:-3.6cqw;width:5.4cqw;height:5.4cqw;margin-left:-2.7cqw;border-radius:50%;background:radial-gradient(circle at 35% 35%,#ff9cc6,var(--deep) 60%);box-shadow:0 .7cqw 0 #8a1748}
+.date{left:0;right:0;text-align:center;font:400 5.6cqw/1 var(--jua);color:var(--deep);letter-spacing:.12em}
+.date:before,.date:after{content:"";position:static;display:inline-block;width:7cqw;height:.4cqw;background:var(--pink);vertical-align:middle;margin:0 2.6cqw;opacity:.6}
+@media (prefers-reduced-motion:reduce){.ctl button{display:none}}
+</style>
+
+<div class="wrap">
+  <h1>메이킹 영상 A안</h1>
+  <p class="lead">나 네 칸, 친구 네 칸이 위에서부터 한 칸씩 딱 1초만 움직이고 착! 마지막에 흔들리는 네컷 아래 저장한 날짜. 사진·영상은 개발용 샘플이고, 실제로는 꾸민 네컷과 고른 필터·보정이 그대로 들어가요.</p>
+  <div class="stage">
+    <div class="col">
+      <div class="st" id="mk"></div>
+      <div class="ctl"><button id="re">처음부터</button><span id="tt"></span></div>
+    </div>
+    <div class="beats">
+      <h2>흐름 (12.8초)</h2>
+      <ol id="beats">
+        <li data-a="0" data-b="0.5"><b>0 – 0.5초</b><span>제목, 흰 띠 두 줄이 올라옴</span></li>
+        <li data-a="0.5" data-b="4.5"><b>0.5 – 4.5초</b><span>내 띠: 1번 칸부터 1초씩 움직이고 찰칵, 다음 칸</span></li>
+        <li data-a="4.5" data-b="8.75"><b>4.7 – 8.7초</b><span>"친구"가 톡 튀고, 친구 띠가 같은 리듬으로 1초씩</span></li>
+        <li data-a="8.75" data-b="9.48"><b>8.75 – 9.5초</b><span>두 띠가 맞닿아 칸끼리 짝지어진 모습 → 가운데로 확 붙음</span></li>
+        <li data-a="9.48" data-b="12.8"><b>9.5 – 12.8초</b><span>착! (번쩍 + 흔들 + 도장 1초), 꾸민 네컷이 핀에 매달려 흔들림, 아래 저장한 날짜</span></li>
+      </ol>
+      <p>소리: 칸마다 "찰칵", 착! 에 "착" 한 번 + 짧은 반짝 소리. 영상 길이는 칸 8개 × 1초라 고정이에요.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// One 12.8 s story drawn from t (s). Each cell plays the LAST 1 s of its 2 s pre-shutter clip, then freezes on the
+// shutter still with a flash; cells go top to bottom, mine first, then the friend's.
+(() => {
+  "use strict";
+  const RM = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fz = /^#t(\d+)$/.exec(location.hash);          // local check only: #t35 = frozen at 3.5 s
+  const A = ["a1", "a2", "a3", "a4"], B = ["b1", "b2", "b3", "b4"], L = 12.8, DUR = 1;
+  const TA = [.5, 1.5, 2.5, 3.5], TB = [4.7, 5.7, 6.7, 7.7];
+  const cl = x => Math.min(1, Math.max(0, x)), eo = x => 1 - Math.pow(1 - cl(x), 3), eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+  const back = x => { x = cl(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const flash = (t, at, d = .35) => { const k = t - at; return k >= 0 && k < d ? 1 - k / d : 0; };
+  const el = (p, tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; p.appendChild(e); return e; };
+  const box = (e, x, y, w, h) => Object.assign(e.style, { left: x + "cqw", top: y + "cqw", width: w + "cqw", height: h + "cqw" });
+
+  function clipFrame(p, id) {
+    const f = el(p, "div", "fr");
+    el(f, "i", "gh");
+    const still = el(f, "img"); still.src = id + "-still.jpg"; still.alt = "";
+    const v = el(f, "video"); Object.assign(v, { src: id + "-raw.mp4", playsInline: true, preload: "auto" }); v.muted = true;
+    const ring = el(f, "i", "ring");
+    const fl = el(f, "i", "fl"); fl.style.inset = 0;
+    let on = false, primed = false;
+    return { f, draw: (t, t0) => {
+      const playing = t >= t0 && t < t0 + DUR, after = t >= t0 + DUR;
+      // seek 0.5 s ahead and hold, so the cell's first frame is there when its second starts (review: phones seek late)
+      if (!fz && !primed && t >= t0 - .5 && t < t0) { primed = true; try { v.currentTime = 2 - DUR; v.pause(); } catch {} }
+      if (t < t0 - .5) primed = false;
+      if (playing && !fz) {
+        if (!on) { on = true; if (!primed) try { v.currentTime = Math.max(0, 2 - DUR + (t - t0)); } catch {} v.play().catch(() => {}); }
+        v.style.opacity = 1; still.style.opacity = 0;
+      } else {
+        if (on) { on = false; primed = false; v.pause(); }
+        v.style.opacity = 0; still.style.opacity = after || (playing && fz) ? 1 : 0;
+      }
+      ring.style.opacity = playing ? 1 : 0;
+      f.style.transform = `scale(${1 + .05 * flash(t, t0 + DUR, .25)})`;
+      fl.style.opacity = flash(t, t0 + DUR);
+    } };
+  }
+
+  // layout (cqw of a 100 x 177.8 frame): title at 12 % of the height, clear of Instagram's top bar
+  const RW = 38, RX = [10.5, 51.5], RY = 40, CH = 24, PITCH = 26.6;
+  const root = document.getElementById("mk");
+  const title = el(root, "div", "title", "<i>✦</i>따로 같이 네컷<i>✦</i>"); title.style.top = "21cqw";
+  const rolls = [0, 1].map(k => {
+    const r = el(root, "div", "roll"); box(r, RX[k], RY, RW, 4 * PITCH + 5);
+    r.style.transition = "filter .2s";
+    const frames = (k ? B : A).map((id, i) => { const c = clipFrame(r, id); box(c.f, 3, 3 + i * PITCH, RW - 6, CH); return c; });
+    const tg = el(root, "span", "tag " + (k ? "fd" : "me")); tg.textContent = k ? "친구" : "나";
+    tg.style.left = (RX[k] + RW / 2) + "cqw"; tg.style.top = "32.5cqw";
+    return { r, frames, tg };
+  });
+  // the finished strip: height-bound (a 1:3 strip), so 41cqw wide is the most that leaves room for title and date
+  const fin = el(root, "div", "fin"); box(fin, 29.5, 35, 41, 0); fin.style.height = "auto";
+  const fimg = el(fin, "img"); fimg.src = "strip-pink.jpg"; fimg.alt = "";
+  el(fin, "i", "pin");
+  const date = el(root, "div", "date"); date.style.top = "153cqw";
+  const d = new Date(); date.textContent = `${d.getFullYear()}. ${String(d.getMonth() + 1).padStart(2, "0")}. ${String(d.getDate()).padStart(2, "0")}`;
+  const stamp = el(root, "div", "stamp"); stamp.textContent = "착!"; stamp.style.left = "66cqw"; stamp.style.top = "104cqw";
+  const sparks = [[12, 42], [84, 56], [14, 126], [83, 138], [50, 31]].map(([x, y]) => { const s = el(root, "i", "spark"); s.textContent = "✦"; s.style.left = x + "cqw"; s.style.top = y + "cqw"; return s; });
+  const all = el(root, "i", "fl"); all.style.inset = 0;
+  const veil = el(root, "i"); Object.assign(veil.style, { inset: 0, background: "var(--blush)", opacity: 0 });   // loop seam
+
+  // snap: touch edge to edge (8.75-9.0), hold the pairs 0.2 s, rush to the centre with ease-in, hard cut to the strip
+  const TOUCH = 8.75, RUSH = 9.2, SNAP = 9.48;
+  function draw(t) {
+    title.style.opacity = eo(t / .4);
+    const gap = RX[1] - RX[0] - RW, toCenter = (RX[1] - RX[0]) / 2;
+    rolls.forEach((ro, k) => {
+      ro.frames.forEach((c, i) => c.draw(t, (k ? TB : TA)[i]));
+      const touch = eo((t - TOUCH) / .25) * gap / 2, rush = Math.pow(cl((t - RUSH) / (SNAP - RUSH)), 3) * (toCenter - gap / 2);
+      ro.r.style.transform = `translate(${(k ? -1 : 1) * (touch + rush)}cqw, ${(1 - eo(t / .5)) * 8}cqw) scale(${1 + .03 * eo((t - TOUCH) / .25)})`;
+      ro.r.style.opacity = t < SNAP ? eo(t / .5) : 0;
+      ro.r.style.filter = k && t < TB[0] - .2 ? "saturate(.35) brightness(1.06)" : "";
+      ro.tg.style.opacity = Math.min(eo(t / .5), t < TOUCH ? 1 : 0);
+      const pop = k ? 1 + .15 * Math.sin(Math.PI * cl((t - TB[0] + .2) / .2)) : 1;
+      ro.tg.style.transform = `translateX(-50%) scale(${pop})`;
+    });
+    const on = t >= SNAP, k = t - SNAP;
+    fin.style.opacity = on ? 1 : 0;
+    const shake = on && k < .07 ? (k < .035 ? 1.2 : -1.2) : 0;
+    const sway = k > .3 ? 4 * Math.sin((k - .3) * 2.6) * Math.exp(-(k - .3) * .55) : 0;
+    fin.style.transform = `translateX(${shake}cqw) scale(${on ? 1.06 - .06 * eo(k / .25) : 1}) rotate(${sway}deg)`;
+    all.style.opacity = flash(t, SNAP, .4) * .9;
+    stamp.style.opacity = on ? Math.min(cl(k / .15), 1 - cl((k - .8) / .3)) : 0;
+    stamp.style.transform = `rotate(8deg) scale(${1.7 - .7 * eo(k / .25)})`;
+    sparks.forEach((sp, i) => { const q = k - .25 - i * .1; sp.style.opacity = q > 0 ? .55 + .45 * Math.sin(q * 3 + i) : 0; sp.style.transform = `scale(${q > 0 ? .75 + .25 * Math.sin(q * 3.4 + i) : 0}) rotate(${q * 30}deg)`; });
+    date.style.opacity = eo((k - .7) / .5); date.style.transform = `translateY(${(1 - eo((k - .7) / .5)) * 3}cqw)`;
+    veil.style.opacity = cl((t - (L - .3)) / .3);
+    document.querySelectorAll("#beats li").forEach(li => li.classList.toggle("on", t >= +li.dataset.a && t < +li.dataset.b));
+  }
+  let t0 = performance.now();
+  document.getElementById("re").addEventListener("click", () => { t0 = performance.now(); });
+  if (fz) return draw(+fz[1] / 10);
+  if (RM) return draw(L - .2);
+  draw(L - .2);
+  const tt = document.getElementById("tt");
+  const loop = now => { const t = ((now - t0) / 1000) % L; draw(t); tt.textContent = t.toFixed(1) + " / " + L + "초"; requestAnimationFrame(loop); };
+  requestAnimationFrame(loop);
+})();
+</script>
