@@ -1,0 +1,322 @@
+<title>메이킹 영상 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Gaegu:wght@700&family=Noto+Sans+KR:wght@400;700;900&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+/* layout: one column; a consensus note, then a row of 3 story frames, then the save sheet. Single light look. */
+:root{
+  --bg:#ecebef; --ink:#1d1b22; --sub:#4a4652; --pink:#ff7eb6; --deep:#c2276a; --lime:#d6ff3d; --stamp:#ff9a3c; --paper:#f6efe4;
+  --cellA:#ffc9dc; --cellB:#c9e2ff;
+  --jua:'Jua','Noto Sans KR',system-ui,sans-serif; --hand:'Gaegu','Jua',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+  --mono:'Space Grotesk','Noto Sans KR',monospace;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1500px;margin:0 auto;padding-block:22px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:900 24px/1.3 var(--body);letter-spacing:-.03em;text-wrap:balance}
+h2{font:900 19px/1.3 var(--body);margin-top:30px;letter-spacing:-.02em;text-wrap:balance}
+.lead{color:var(--sub);margin-top:6px;max-width:66ch}
+.agree{margin-top:12px;background:#fff;border-radius:12px;padding:12px 14px;max-width:720px;font-size:14px}
+.agree ul{padding-left:18px;display:grid;gap:3px;margin-top:4px}
+.row{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:12px 2px}
+.row > figure{flex:none;width:min-content;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+figcaption{font:500 13px/1.5 var(--body);color:var(--sub)}
+figcaption b{color:var(--ink);font-weight:900;font-size:14px;display:block}
+.swipe{font-size:13px;color:var(--sub)}
+@media (min-width:1100px){.swipe{display:none}}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl button{font:700 12px var(--body);border:1.5px solid var(--ink);background:#fff;padding:3px 10px;border-radius:99px;cursor:pointer}
+.ctl span{font:500 12px var(--mono);color:var(--sub);font-variant-numeric:tabular-nums}
+
+/* ---------- story frames (100cqw = 1080 px) ---------- */
+.st{position:relative;width:290px;aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:14px;box-shadow:0 8px 22px #00000026}
+.st *{position:absolute}
+.st :is(b,em,br,s,span.in){position:static}
+.st video,.st img{display:block;object-fit:cover}
+.fr{overflow:hidden;background:#222}
+.fr > *{inset:0;width:100%;height:100%}
+.fl{background:#fff;opacity:0;pointer-events:none}
+.ds{font:700 3.3cqw/1 var(--mono);color:var(--stamp);text-shadow:0 0 1cqw #ff6a0088;letter-spacing:.04em;white-space:nowrap;right:2cqw;bottom:1.6cqw;left:auto;top:auto;width:auto;height:auto}
+.hook{left:5cqw;right:5cqw;text-align:center;font:700 10.5cqw/1.05 var(--hand)}
+.chip{font:700 4.6cqw/1 var(--mono);padding:1.6cqw 3cqw;border-radius:99px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wm{font:700 2.4cqw/1 var(--mono);letter-spacing:.08em;white-space:nowrap;opacity:.75}
+.stamp{font:400 8cqw/1 var(--jua);padding:1.4cqw 3.4cqw;border:.7cqw solid #000;white-space:nowrap}
+.cell{overflow:hidden;border-radius:.4cqw}
+.cell img{inset:0;width:100%;height:100%}
+.igs{left:50%;bottom:6%;transform:translateX(-50%);background:#fff;color:#1d1b22;font:700 3.9cqw/1 var(--body);padding:2.6cqw 4.4cqw;border-radius:2.4cqw;box-shadow:0 1cqw 3cqw #0000003a;white-space:nowrap;outline:.5cqw dashed #ffffffcc;outline-offset:1.2cqw;z-index:50;opacity:.9}
+
+/* ---------- save sheet ---------- */
+.ph{width:340px;background:#fff8fb;border-radius:22px;padding:18px 16px 22px;display:flex;flex-direction:column;gap:14px;box-shadow:0 8px 22px #0000001f}
+.ph h3{font:400 21px/1.2 var(--jua);text-align:center}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tile{border:2.5px solid var(--ink);border-radius:14px;background:#fff;padding:10px;display:flex;flex-direction:column;gap:8px;align-items:center;text-align:center;position:relative;font:inherit;color:inherit}
+.tile .pv{width:100%;aspect-ratio:9/16;border-radius:8px;overflow:hidden;background:#ffe3ec;display:grid;place-items:center;position:relative}
+.tile .pv img{max-height:92%;max-width:70%;box-shadow:0 2px 6px #0003}
+.tile .pv.mk{background:#111}
+.tile .pv.mk img{max-width:86%;max-height:none;box-shadow:none;border-radius:3px}
+.tile .pv.mk i{position:absolute;left:8px;top:8px;font:700 10px var(--mono);color:var(--stamp);font-style:normal}
+.tile b{font:400 17px/1.15 var(--jua)}
+.tile small{font:400 11.5px/1.35 var(--body);color:var(--sub)}
+.tile.bonus{background:#fff4c2}
+.ribbon{position:absolute;right:-6px;top:-10px;background:var(--deep);color:#fff;font:400 13px/1 var(--jua);padding:5px 9px;border-radius:6px;transform:rotate(6deg)}
+.bubble{position:relative;align-self:stretch;background:var(--ink);color:#fff;border-radius:16px;padding:12px 14px;text-align:center;margin-top:6px}
+.bubble:before{content:"";position:absolute;left:50%;bottom:100%;margin-left:-9px;border:9px solid transparent;border-bottom-color:var(--ink)}
+.bubble b{display:block;font:700 19px/1.3 var(--hand)}
+.bubble span{display:block;font:400 13px/1.45 var(--body);color:#e9e4ee;margin-top:3px}
+.bubble span em{font-style:normal;color:var(--lime);font-weight:700}
+@media (prefers-reduced-motion:reduce){.ctl button{display:none}}
+</style>
+
+<div class="wrap">
+  <h1>메이킹 영상 · 저장 화면 시안</h1>
+  <p class="lead">마케팅·사진·디자인 담당 셋이 두 라운드 토론한 결과로 만든 세 안이에요. 사진과 2초 영상은 개발용 샘플, 날짜는 예시(실제로는 두 사람이 찍은 시각)예요.</p>
+  <div class="agree"><b>셋이 합의한 것</b>
+    <ul>
+      <li>찍기 직전 2초 영상(자세 잡다 웃는 순간)이 주인공. 셔터 순간에서 끝나고, 웃음이 터지는 칸 하나는 2초 전부</li>
+      <li>처음엔 두 사람의 진짜 방을 그대로 보여 주고, 합쳐지는 순간에만 배경을 지움</li>
+      <li>실제 촬영 시각을 필름 날짜 도장처럼. 같은 날 찍었으면 시각만 (지어낸 거리·이름은 안 씀)</li>
+      <li>끝은 완성 네컷에 3초 이상 머묾. "너도 해 봐" 같은 광고 문구 없이 네컷 안 작은 워터마크만</li>
+      <li>12초 이하, 아래 15%는 링크 스티커 자리로 비움</li>
+    </ul>
+  </div>
+
+  <h2>B. 메이킹 영상</h2>
+  <p class="swipe">옆으로 넘겨 보기 →</p>
+  <div class="row">
+    <figure>
+      <div class="st" id="m1"></div>
+      <div class="ctl"><button data-r="m1">처음부터</button><span id="m1t"></span></div>
+      <figcaption><b>1. 딱딱딱딱 → 착! (리듬, 12초)</b>표지 그대로. 왼쪽 필름에 내 2초가 딱딱딱딱, 날짜가 넘어가고 오른쪽 필름에 친구가 딱딱딱딱(2번 칸은 2초 전부). 두 필름이 붙으며 착!</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="m2"></div>
+      <div class="ctl"><button data-r="m2">처음부터</button><span id="m2t"></span></div>
+      <figcaption><b>2. 각자의 방 (대비, 10초)</b>위는 내 방, 아래는 친구 방에서 2초가 동시에. 같이 찰칵 하면 방이 사라지고 둘이 한 칸으로. "따로"가 "같이"로 바뀌고 나머지 칸이 딱딱딱 붙음</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="m3"></div>
+      <div class="ctl"><button data-r="m3">처음부터</button><span id="m3t"></span></div>
+      <figcaption><b>3. 셔터 1초 전 (감정, 11초)</b>한 칸을 크게. 내 2초를 끝까지, 친구 2초를 끝까지 보여 주고 사진 두 장이 겹쳐 한 칸이 됨. 뒤로 빠지며 네컷 전체. 잔잔한 음악 위주</figcaption>
+    </figure>
+  </div>
+  <p class="lead">흰 점선 스티커는 영상에 안 들어가요. 올리는 사람이 인스타에서 붙이는 링크 스티커 자리예요.</p>
+
+  <h2>C. 저장 화면</h2>
+  <div class="row">
+    <figure>
+      <div class="ph">
+        <h3>영상 2개 받아 가!</h3>
+        <div class="two">
+          <div class="tile"><span class="pv"><img src="strip-pink.jpg" alt=""></span><b>움직이는 네컷</b><small>네 칸이 살아 움직여요</small></div>
+          <div class="tile bonus"><span class="ribbon">보너스</span><span class="pv mk"><i>10.26 21:14</i><img src="a2-still.jpg" alt=""></span><b>메이킹 영상</b><small>따로 찍은 순간까지 · 9:16</small></div>
+        </div>
+        <p class="bubble"><b>SNS에 올려서 자랑해 줘 🙌</b><span><em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아</span></p>
+      </div>
+      <figcaption><b>2번 카드 + 3번 검은 말풍선</b>말풍선은 영상 두 개 밑, 꼬리는 위로. 이 화면을 열 때 링크를 복사해 둬서 "링크 복사했어!"가 사실이 돼요</figcaption>
+    </figure>
+  </div>
+</div>
+
+<script>
+// Three story timelines drawn from t (s). Clips are the real dev samples' raw halves (the 2 s before the shutter);
+// a clip segment plays the LAST `dur` seconds of its clip and freezes on the shutter still.
+(() => {
+  "use strict";
+  const RM = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fz = /^#t(\d+)$/.exec(location.hash);          // local check only: #t35 = frozen at 3.5 s, stills instead of video
+  const A = ["a1", "a2", "a3", "a4"], B = ["b1", "b2", "b3", "b4"];
+  const DA = "10.26 21:14", DB = "10.28 08:02";
+  const cl = x => Math.min(1, Math.max(0, x)), eo = x => 1 - Math.pow(1 - cl(x), 3), eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+  const back = x => { x = cl(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const flash = (t, at, d = .35) => { const k = t - at; return k >= 0 && k < d ? 1 - k / d : 0; };
+  const el = (p, tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; p.appendChild(e); return e; };
+  const box = (e, x, y, w, h) => Object.assign(e.style, { left: x + "cqw", top: y + "cqw", width: w + "cqw", height: h + "cqw" });
+
+  // a frame holding one clip: video (plays a segment) + still (shutter frame) + flash + date stamp
+  function clipFrame(p, id, date) {
+    const f = el(p, "div", "fr");
+    const still = el(f, "img"); still.src = id + "-still.jpg"; still.alt = "";
+    const v = el(f, "video"); Object.assign(v, { src: id + "-raw.mp4", muted: true, playsInline: true, preload: "auto" }); v.muted = true;
+    const fl = el(f, "i", "fl"); fl.style.inset = 0;
+    const ds = el(f, "i", "ds"); ds.textContent = date;
+    let on = false;
+    // state: "off" (blank), "play" (segment [t0, t0+dur)), "still" (after)
+    const draw = (t, t0, dur) => {
+      const playing = t >= t0 && t < t0 + dur, after = t >= t0 + dur;
+      if (playing && !fz) {
+        if (!on) { on = true; try { v.currentTime = Math.max(0, 2 - dur + (t - t0)); v.play().catch(() => {}); } catch {} }
+        v.style.opacity = 1; still.style.opacity = 0;
+      } else {
+        if (on) { on = false; v.pause(); }
+        v.style.opacity = 0; still.style.opacity = after || (playing && fz) ? 1 : 0;
+      }
+      f.style.background = t >= t0 ? "#222" : "#151018";
+      fl.style.opacity = flash(t, t0 + dur);
+      ds.style.opacity = after ? 1 : 0;
+    };
+    return { f, draw, reset: () => { on = false; v.pause(); } };
+  }
+  // a merged cell: friend (B) behind, me (A) in front, on a theme colour
+  function mergedCell(p, i, bg) {
+    const c = el(p, "div", "cell"); c.style.background = bg;
+    const b = el(c, "img"); b.src = B[i] + "-cut.png"; b.alt = "";
+    const a = el(c, "img"); a.src = A[i] + "-cut.png"; a.alt = "";
+    return c;
+  }
+  function sticker(root) { el(root, "div", "igs", "🔗 따로 같이 네컷"); }
+
+  // ---------- 1. rhythm: two film rolls, 딱딱딱딱 x2, rolls merge -> 착! ----------
+  function m1(root) {
+    root.style.background = "#0e0b10";
+    const L = 12;
+    const hook = el(root, "div", "hook", "우리 이거<br><em style='font-style:normal;background:linear-gradient(transparent 60%,#d6ff3d 60%);color:#000;padding:0 1cqw'>같이 안 찍음</em>");
+    hook.style.color = "#fff"; hook.style.top = "8cqw";
+    const rolls = [0, 1].map(k => {
+      const r = el(root, "div"); box(r, k ? 52 : 8, 30, 40, 4 * 28 + 6);
+      Object.assign(r.style, { background: "#000", borderRadius: ".6cqw" });
+      [0, 1].forEach(s => { const h = el(r, "i"); Object.assign(h.style, { top: 0, bottom: 0, width: "1.6cqw", [s ? "right" : "left"]: ".6cqw", background: "repeating-linear-gradient(#000 0 1.2cqw,#fff 1.2cqw 3cqw,#000 3cqw 4.2cqw)" }); });
+      const frames = (k ? B : A).map((id, i) => { const c = clipFrame(r, id, k ? DB : DA); box(c.f, 3.4, 3 + i * 28, 33.2, 25); return c; });
+      const tag = el(root, "span", "chip"); tag.textContent = k ? "친구" : "나";
+      Object.assign(tag.style, k ? { background: "#fff", color: "#000" } : { background: "var(--lime)", color: "#000" });
+      tag.style.left = (k ? 72 : 28) + "cqw"; tag.style.top = "24cqw"; tag.style.transform = "translateX(-50%)";
+      return { r, frames, tag };
+    });
+    const chip = el(root, "div", "chip"); Object.assign(chip.style, { left: "50%", top: "11cqw", transform: "translateX(-50%)", background: "#fff", color: "#000" });
+    // the finished strip
+    const fin = el(root, "div"); box(fin, 30, 31, 40, 0); Object.assign(fin.style, { height: "auto", background: "#fff", padding: "1.4cqw", boxShadow: "0 2cqw 6cqw #0008" });
+    const img = el(fin, "img"); img.src = "strip-film.jpg"; img.alt = ""; Object.assign(img.style, { position: "static", width: "100%" });
+    const wm = el(fin, "i", "wm"); wm.textContent = "그냥 시켜봄"; Object.assign(wm.style, { right: "2.6cqw", bottom: "2.2cqw", color: "#fff" });
+    const stamp = el(root, "div", "stamp"); stamp.textContent = "착!"; Object.assign(stamp.style, { left: "60cqw", top: "128cqw", background: "var(--lime)", color: "#000" });
+    const flashAll = el(root, "i", "fl"); flashAll.style.inset = 0;
+    sticker(root);
+    const TA = [1.4, 2.05, 2.7, 3.35], TB = [4.6, 5.25, 7.3, 7.95], DUR = [.6, .6, .6, .6], HERO = 1;   // friend's cell 2 runs 2 s
+    const DB_ = [.6, 2, .6, .6], SNAP = 9.0;
+    return {
+      L, draw: t => {
+        hook.style.opacity = t < 1.3 ? eo(t / .5) : Math.max(0, 1 - (t - 1.3) / .3);
+        if (t >= SNAP + .3) { hook.style.opacity = eo((t - SNAP - .3) / .5); hook.style.top = "4cqw"; } else hook.style.top = "8cqw";
+        rolls.forEach((ro, k) => {
+          ro.frames.forEach((c, i) => c.draw(t, k ? TB[i] : TA[i], k ? DB_[i] : DUR[i]));
+          ro.tag.style.opacity = t > 1.2 && t < SNAP ? 1 : 0;
+          ro.tag.style.top = "24cqw";
+          const m = eio((t - SNAP + .5) / .5);
+          ro.r.style.transform = `translateX(${(k ? -1 : 1) * m * 22}cqw)`;
+          ro.r.style.opacity = Math.min(cl((t - 1.1) / .3), 1 - cl((t - SNAP) / .15));
+          ro.r.style.filter = k === 1 && t < 4.4 ? "brightness(.45)" : "";
+        });
+        const showChip = t > 3.9 && t < SNAP - .3;
+        chip.style.opacity = showChip ? 1 : 0;
+        chip.innerHTML = t < 4.3 ? DA : `<span class="in" style="opacity:.55">${DA}</span> → ${DB}`;
+        const s = cl((t - SNAP) / .3);
+        fin.style.opacity = s; fin.style.transform = `scale(${1.08 - .08 * back(s)}) rotate(${-2 * s}deg) translateX(${t > SNAP && t < SNAP + .06 ? 1.2 : 0}cqw)`;
+        flashAll.style.opacity = flash(t, SNAP, .4) * .9;
+        stamp.style.opacity = cl((t - SNAP - .1) / .2); stamp.style.transform = `rotate(-9deg) scale(${1.7 - .7 * eo((t - SNAP - .1) / .3)})`;
+      }
+    };
+  }
+
+  // ---------- 2. contrast: two rooms -> one cell -> strip ----------
+  function m2(root) {
+    root.style.background = "#ffeef4";
+    const L = 10;
+    const halves = [0, 1].map(k => {
+      const c = clipFrame(root, k ? "b1" : "a1", k ? DB : DA); box(c.f, 0, k ? 88.9 : 0, 100, 88.9);
+      return c;
+    });
+    const word = el(root, "div"); Object.assign(word.style, { left: "50%", top: "88.9cqw", transform: "translate(-50%,-50%) rotate(-4deg)", font: "700 15cqw/1 var(--hand)", color: "#fff", background: "var(--deep)", padding: "1cqw 5cqw", borderRadius: "3cqw", whiteSpace: "nowrap", zIndex: 5 });
+    // the one cell the two people meet in
+    const one = el(root, "div"); box(one, 10, 60, 80, 60); Object.assign(one.style, { borderRadius: "1cqw", overflow: "hidden", background: "var(--cellA)" });
+    const ob = el(one, "img"); ob.src = "b1-cut.png"; ob.alt = ""; Object.assign(ob.style, { inset: 0, width: "100%", height: "100%" });
+    const oa = el(one, "img"); oa.src = "a1-cut.png"; oa.alt = ""; Object.assign(oa.style, { inset: 0, width: "100%", height: "100%" });
+    // the strip that grows around it
+    const strip = el(root, "div"); box(strip, 30, 26, 40, 0); Object.assign(strip.style, { height: "auto", background: "#fff", padding: "1.6cqw", boxShadow: "0 2cqw 5cqw #c2276a33" });
+    const sImg = el(strip, "img"); sImg.src = "strip-pink.jpg"; sImg.alt = ""; Object.assign(sImg.style, { position: "static", width: "100%" });
+    const wm = el(strip, "i", "wm"); wm.textContent = "그냥 시켜봄"; Object.assign(wm.style, { right: "2.6cqw", bottom: "2.4cqw", color: "#a3486f" });
+    const dates = el(root, "div", "chip"); Object.assign(dates.style, { left: "50%", top: "8cqw", transform: "translateX(-50%)", background: "#fff", color: "#5a3a4a" });
+    dates.textContent = "10.26 · 10.28";
+    const hook = el(root, "div", "hook", "따로 찍고,<br>같이 나옴"); Object.assign(hook.style, { top: "4cqw", color: "#2a1a24", fontSize: "9cqw" });
+    const flashAll = el(root, "i", "fl"); flashAll.style.inset = 0;
+    sticker(root);
+    const SHOT = 2.6, MEET = 3.6, GROW = 4.6, FIN = 6.2;
+    return {
+      L, draw: t => {
+        halves.forEach((h, k) => { h.draw(t, .4, 2.2); const out = eo((t - SHOT - .2) / .6); h.f.style.opacity = 1 - out; h.f.style.transform = `translateY(${(k ? 1 : -1) * out * 30}%)`; });
+        flashAll.style.opacity = flash(t, SHOT, .45);
+        word.innerHTML = t < SHOT + .5 ? "따로" : "같이";
+        word.style.opacity = t < 5.2 ? 1 : 0;
+        word.style.background = t < SHOT + .5 ? "var(--deep)" : "#2a1a24";
+        word.style.top = t < SHOT + .5 ? "88.9cqw" : "52cqw";
+        // cut-outs slide in from their halves into one cell
+        const m = eo((t - SHOT - .2) / .8);
+        one.style.opacity = t > SHOT + .1 && t < FIN + .2 ? 1 : 0;
+        oa.style.transform = `translate(${(1 - m) * -40}%, ${(1 - m) * -60}%)`;
+        ob.style.transform = `translate(${(1 - m) * 40}%, ${(1 - m) * 60}%)`;
+        // the cell shrinks into the strip's first slot while the strip appears
+        const g = eio((t - GROW) / 1.2);
+        box(one, 10 + g * (31.6 - 10), 60 + g * (27.6 - 60), 80 - g * (80 - 36.8), 60 - g * (60 - 27.6));
+        strip.style.opacity = cl((t - GROW - .6) / .5);
+        strip.style.transform = t > FIN ? `rotate(${2.5 * Math.sin((t - FIN) * 1.6)}deg)` : "";
+        strip.style.transformOrigin = "50% 0";
+        dates.style.opacity = t > FIN ? eo((t - FIN) / .4) : 0; dates.style.top = "150cqw";
+        hook.style.opacity = t > FIN + .3 ? eo((t - FIN - .3) / .5) : 0;
+      }
+    };
+  }
+
+  // ---------- 3. emotion: one big cell, my full 2 s, friend's full 2 s, two prints overlap, pull back ----------
+  function m3(root) {
+    root.style.background = "var(--paper)";
+    const L = 11;
+    const head = el(root, "div"); Object.assign(head.style, { left: 0, right: 0, top: "9cqw", textAlign: "center", font: "500 4.6cqw var(--mono)", color: "#6b5d4d", letterSpacing: ".16em" });
+    head.textContent = "셔터 1초 전";
+    const big = [0, 1].map(k => { const c = clipFrame(root, k ? "b2" : "a2", k ? DB : DA); box(c.f, 8, 40, 84, 63); c.f.style.boxShadow = "0 2cqw 5cqw #0003"; c.f.style.border = "1.6cqw solid #fff"; return c; });
+    const who = el(root, "div"); Object.assign(who.style, { left: 0, right: 0, top: "110cqw", textAlign: "center", font: "700 7cqw var(--hand)", color: "#3a2f26" });
+    const merged = el(root, "div"); box(merged, 8, 40, 84, 63); Object.assign(merged.style, { border: "1.6cqw solid #fff", boxShadow: "0 2cqw 5cqw #0003", overflow: "hidden" });
+    const mc = mergedCell(merged, 1, "var(--cellA)"); Object.assign(mc.style, { inset: 0 });
+    const strip = el(root, "div"); box(strip, 31, 24, 38, 0); Object.assign(strip.style, { height: "auto", background: "#fff", padding: "1.6cqw", boxShadow: "0 2cqw 5cqw #0002", transform: "rotate(-2deg)" });
+    const sImg = el(strip, "img"); sImg.src = "strip-pink.jpg"; sImg.alt = ""; Object.assign(sImg.style, { position: "static", width: "100%" });
+    const wm = el(strip, "i", "wm"); wm.textContent = "그냥 시켜봄"; Object.assign(wm.style, { right: "2.6cqw", bottom: "2.4cqw", color: "#a3486f" });
+    const end = el(root, "div"); Object.assign(end.style, { left: 0, right: 0, top: "150cqw", textAlign: "center", font: "700 6.6cqw/1.1 var(--hand)", color: "#3a2f26" });
+    end.textContent = "따로 찍고, 같이 나옴";
+    sticker(root);
+    const TA = .8, TB = 3.4, OVER = 5.8, PULL = 7.2;
+    return {
+      L, draw: t => {
+        big[0].draw(t, TA, 2); big[1].draw(t, TB, 2);
+        // after each clip the print slides aside: mine to the left, the friend's to the right, then they overlap
+        const o = eo((t - OVER) / .7);
+        big[0].f.style.opacity = t < TB - .1 || t >= OVER ? (t >= PULL ? 1 - cl((t - PULL) / .3) : 1) : 0;
+        big[1].f.style.opacity = t >= TB - .1 ? (t >= PULL ? 1 - cl((t - PULL) / .3) : 1) : 0;
+        big[0].f.style.transform = `translate(${-o * 20}cqw, ${o * 4}cqw) rotate(${-o * 7}deg) scale(${1 - o * .45})`;
+        big[1].f.style.transform = `translate(${o * 20}cqw, ${-o * 2}cqw) rotate(${o * 6}deg) scale(${1 - o * .45})`;
+        who.textContent = t < TB - .1 ? "나" : t < OVER ? "친구" : "";
+        who.style.opacity = t > TA && t < OVER ? 1 : 0;
+        const mg = cl((t - OVER - .7) / .5);
+        merged.style.opacity = t < PULL + .9 ? mg : 1 - cl((t - PULL - .9) / .3);
+        const p = eio((t - PULL) / 1.2);
+        box(merged, 8 + p * (32.6 - 8), 40 + p * (25.6 - 40), 84 - p * (84 - 34.8), 63 - p * (63 - 26));
+        strip.style.opacity = cl((t - PULL - .5) / .6);
+        head.style.opacity = t < PULL ? 1 : 0;
+        end.style.opacity = t > PULL + 1 ? eo((t - PULL - 1) / .6) : 0;
+      }
+    };
+  }
+
+  const make = { m1, m2, m3 }, run = {};
+  for (const id in make) { const s = make[id](document.getElementById(id)); run[id] = { ...s, t0: performance.now(), lab: document.getElementById(id + "t") }; }
+  document.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => {
+    const r = run[b.dataset.r]; r.t0 = performance.now();
+    document.getElementById(b.dataset.r).querySelectorAll("video").forEach(v => v.pause());
+  }));
+  if (fz) { for (const id in run) run[id].draw(+fz[1] / 10); return; }
+  if (RM) { for (const id in run) run[id].draw(run[id].L - .2); return; }
+  for (const id in run) run[id].draw(run[id].L - .2);       // resting frame first
+  const loop = now => {
+    for (const id in run) { const r = run[id], t = ((now - r.t0) / 1000) % r.L; r.draw(t); r.lab.textContent = t.toFixed(1) + " / " + r.L + "초"; }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
