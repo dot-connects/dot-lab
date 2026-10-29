@@ -289,3 +289,10 @@ body[data-ui="cute"] #s-shoot:not(.shooting-done) .shootpanel { margin-top: 12px
 body[data-ui="cute"] #s-shoot:not(.shooting-done) .stagehint { box-shadow: none; }
 /* the holder card rule above carries an id inside :is(), so the camera's own .vf box is restated here at that weight */
 body[data-ui="cute"] #s-shoot:not(.shooting-done) .vf { margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0; background: none; border-radius: 0; box-shadow: none; }
+
+/* ---- pick 4 of 6, layout 2 (app.css owns the sizes): no holder card, the curtain over the 6, a white sheet ---- */
+body[data-ui="cute"] #s-pick .pickbody { margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 0; background: none; border-radius: 0; box-shadow: none; }
+body[data-ui="cute"] #s-pick .pickgrid { --bt: 22px;
+  background: radial-gradient(circle at 50% 0, var(--cur) 7px, transparent 7.5px) 0 13px / 14.6px 8px repeat-x,
+    linear-gradient(var(--cur), var(--cur)) 0 6px / 100% 7.2px no-repeat, linear-gradient(#fff, #fff) 0 0 / 100% 22px no-repeat; }
+body[data-ui="cute"] .picksheet { background: #fff; border-radius: 26px 26px 0 0; box-shadow: 0 -5px 0 #e6dcff, 0 -10px 24px #6b3fc426; }

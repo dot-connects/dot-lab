@@ -700,3 +700,36 @@ body[data-ui="film"] #s-shoot:not(.shooting-done) .shootpanel { border-top: 2px 
 /* one note at a time in the panel (the mockup's single hint box): closing one with ✕ shows the next */
 #s-shoot:not(.shooting-done) #hintChip:not([hidden]) ~ :is(#hqNote, #shootHint),
 #s-shoot:not(.shooting-done) #hqNote:not([hidden]) ~ #shootHint { display: none; }
+
+/* ===== Round 7: pick 4 of 6 = mockups/pick-pick.html layout 2 (operator pick 2026-10-29). The 6 run edge to edge in the
+   height left; background buttons, the strip (4 in a row) and [reshoot | CTA] sit in a bottom sheet for the thumb.
+   .pickbody is a size container, so the grid is min(full width, spare height x cell aspect) on every phone. ===== */
+#s-pick { height: 100svh; height: 100dvh; min-height: 0; overflow: hidden; gap: 10px; }
+#s-pick .pickbody { flex: 1 1 0; min-height: 0; display: grid; place-items: center; container-type: size;
+  margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); }
+#s-pick .pickgrid { --c: 2; --r: 3; --asp: 552 / 382; --g: 3px; --bt: 0px; --bb: 0px; flex: none; gap: var(--g); border: 0;
+  padding: var(--bt) 0 var(--bb); grid-template-columns: repeat(var(--c), 1fr);
+  width: min(100cqw, calc((100cqh - var(--bt) - var(--bb) - (var(--r) - 1) * var(--g)) / var(--r) * var(--asp) * var(--c) + (var(--c) - 1) * var(--g))); }
+body[data-shape="tall"] #s-pick .pickgrid { --c: 3; --r: 2; --asp: 3 / 4; }
+.picksheet { display: flex; flex-direction: column; gap: 12px; flex: none;
+  margin: 0 calc(-1 * var(--pr)) calc(-1 * var(--pb)) calc(-1 * var(--pl)); padding: 14px var(--pr) var(--pb) var(--pl); }
+#s-pick .pickstrip { --sw: 87px; width: auto; align-self: center; display: grid; grid-template-columns: repeat(4, var(--sw)); gap: 4px; padding: 4px 4px 0; }
+body[data-shape="tall"] #s-pick .pickstrip { --sw: 63px; }
+#s-pick .pickstrip .mfoot { grid-column: 1 / -1; padding: 2px 0 3px; }
+.picksheet .bottom { flex-direction: row; align-items: center; gap: 10px; margin: 0; }
+.picksheet .bottom .cta { flex: 1; min-width: 0; white-space: nowrap; padding-left: 12px; padding-right: 40px; }
+.picksheet .bottom .textlink { flex: none; white-space: nowrap; padding: 8px 4px; }
+@media (max-height: 700px) {
+  #s-pick { gap: 6px; }
+  .picksheet { gap: 8px; padding-top: 10px; }
+  #s-pick .pickstrip { --sw: 61px; }
+  body[data-shape="tall"] #s-pick .pickstrip { --sw: 44px; }
+  .picksheet .bottom .cta { min-height: 48px; padding-top: 12px; padding-bottom: 12px; }
+  body[data-ui="film"] #s-pick .utop { display: none; }   /* the mockup's folded head on short screens */
+  body[data-ui="film"] #s-pick .rail { margin-top: 0; }
+}
+/* film: sprocket bands above and below the 6, a white sheet under a black line */
+body[data-ui="film"] #s-pick .pickgrid { --bt: 12px; --bb: 12px;
+  --h: linear-gradient(90deg, #000 0 8px, #fff 8px 17px, #000 17px);
+  background: var(--h) 0 3px / 19px 6px repeat-x, var(--h) 0 calc(100% - 3px) / 19px 6px repeat-x, #000; }
+body[data-ui="film"] .picksheet { background: #fff; border-top: 3px solid #000; }

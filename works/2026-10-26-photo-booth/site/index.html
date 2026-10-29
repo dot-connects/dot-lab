@@ -523,14 +523,16 @@ kick();
     <span class="step" id="pickCount">0 / 4</span>
   </div>
   <p class="fine pickfine">누른 순서대로 위에서부터 들어가 · 다시 누르면 빠져</p>
-  <div class="pills" id="pickBg" role="group" aria-label="배경 미리보기"></div>
   <div class="pickbody">
     <div class="pickgrid" id="pickGrid" role="group" aria-label="찍은 6장"></div>
-    <div class="pickstrip" id="pickStrip" aria-label="고른 순서 미리보기"></div>
   </div>
-  <div class="bottom">
-    <button class="cta" data-act="pickDone" id="pickDone" disabled>이 4장으로</button>
-    <button class="textlink" data-act="reshoot" id="reshoot">전체 다시 찍기 (한 번만)</button>
+  <div class="picksheet">
+    <div class="pills" id="pickBg" role="group" aria-label="배경 미리보기"></div>
+    <div class="pickstrip" id="pickStrip" aria-label="고른 순서 미리보기"></div>
+    <div class="bottom">
+      <button class="textlink" data-act="reshoot" id="reshoot">전체 다시 찍기 (한 번만)</button>
+      <button class="cta" data-act="pickDone" id="pickDone" disabled>이 4장으로</button>
+    </div>
   </div>
 </section>
 
