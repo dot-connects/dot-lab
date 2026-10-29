@@ -32,7 +32,7 @@ const tok = c => c.repeat(43);
 const call = (e, method, path, { token, body, type, origin = PAGES, ip, dev } = {}) => {
   const headers = { Origin: origin };
   if (ip) headers["CF-Connecting-IP"] = ip;
-  if (dev) headers["X-Device"] = dev;
+  if (dev) path += (path.includes("?") ? "&" : "?") + "d=" + encodeURIComponent(dev);
   if (token) headers.Authorization = "Bearer " + token;
   if (type) headers["Content-Type"] = type;
   return worker.fetch(new Request("https://w.test" + path, { method, body, headers }), e);
@@ -276,9 +276,9 @@ test("B's done records B's device, so B's own link reads mine=b after B is done"
   assert.equal(await mine(e, id, "1.2.3.4", PHONE), "a");
 });
 
-test("CORS lets the page send X-Device", async () => {
+test("the device rides in the query, so CORS needs no new header (an old Worker ignores it)", async () => {
   const r = await call(env(), "OPTIONS", "/s");
-  assert.match(r.headers.get("Access-Control-Allow-Headers"), /X-Device/);
+  assert.equal(r.headers.get("Access-Control-Allow-Headers"), "Authorization, Content-Type");
 });
 
 test("A and B with one fingerprint: status names neither", async () => {

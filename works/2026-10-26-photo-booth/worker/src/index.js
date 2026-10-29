@@ -36,7 +36,7 @@ function cleanLayout(bytes) {
 }
 // Round 8 D: "is this my own link?" across browsers on one phone (Chrome vs a messenger's in-app browser keep separate
 // storage). Key = the network (IPv4, or the IPv6 /64 so a rotated privacy address still matches) + the page's screen
-// string (X-Device: "WxH@dpr|os", sorted W<=H), hashed with the link id; null without a device header.
+// string (?d=WxH@dpr|os, sorted W<=H: a query, so no CORS preflight), hashed with the link id; null without it.
 function netOf(ip) {
   if (!ip.includes(":")) return ip;
   const [l, r = ""] = ip.split("::"), L = l ? l.split(":") : [], R = r ? r.split(":") : [];
@@ -44,7 +44,7 @@ function netOf(ip) {
   return full.slice(0, 4).map(h => parseInt(h || "0", 16).toString(16)).join(":") + "::/64";
 }
 async function devOf(req, id) {
-  const dev = (req.headers.get("X-Device") || "").slice(0, 64), ip = req.headers.get("CF-Connecting-IP") || "";
+  const dev = (new URL(req.url).searchParams.get("d") || "").slice(0, 64), ip = req.headers.get("CF-Connecting-IP") || "";
   return dev && ip ? sha(`${id}|${netOf(ip)}|${dev}`) : null;
 }
 // B uploads into a staging folder named by its token hash; `done` claims the B slot, so an abandoned upload never blocks it
@@ -55,7 +55,7 @@ export default {
     const allowed = env.ORIGINS.split(",");
     const origin = req.headers.get("Origin");
     const cors = { "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0], "Vary": "Origin",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Max-Age": "86400" };
     const json = (status, obj) => new Response(obj === undefined ? null : JSON.stringify(obj),
       { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
