@@ -167,17 +167,19 @@ async function route() {
   setShape(st.opts?.shape);
   setUi(st.opts?.ui ?? S.ui);        // a Worker without opts.ui (before Round 6) keeps the link's ?ui=
   const role = api.loadRole(S.id)?.role;
+  // Round 8 D: no role in this browser, but the Worker knows this phone made a side (my own link opened in KakaoTalk)
+  S.mine = role ? null : st.mine || null;
   if (!st.a.done) {
     if (role === "a") return msg({ title: "올리다 멈췄어", text: "찍은 사진이 이 화면에 남아 있지 않아. 새로 찍어 줘.", btn: "다시 찍기", onBtn: fresh });
     return msg({ title: "아직 친구가 올리는 중이에요", text: "조금 뒤에 이 링크를 다시 열어 줘.", btn: "다시 확인", onBtn: route });
   }
-  if (!st.b.done) return role === "a" ? shareScreen("wait") : (landB(), prefetchHQ());
+  if (!st.b.done) return (role || S.mine) === "a" ? shareScreen("wait") : (landB(), prefetchHQ());
   return decorate();
 }
 // Round 6 #3/#4: the finished strip is decorated in Chrome (Safari on iPhone), each side on its own device; inside a
 // messenger's in-app browser the page hands off first
 const decorate = (note = "") => env.inApp ? handoffScreen() : doneScreen(note);
-const me = () => api.loadRole(S.id)?.role || Q.get("me");
+const me = () => api.loadRole(S.id)?.role || Q.get("me") || S.mine;
 // the hand-off link carries who I am and my pick-screen background (labels + default bg in Chrome; no token). Query,
 // not hash: the Android intent:// link needs the fragment for #Intent;...;end
 const decoUrl = () => shareUrl() + (me() ? `&me=${me()}${S.pickBg ? "&bg=" + S.pickBg : ""}` : "");
@@ -947,6 +949,7 @@ function shareScreen(mode) {
     : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>너는 찍은 자리 그대로 들어가.<br>둘 다 찍으면 사진이랑 영상이 열려.`;
   $("recheck").hidden = !waiting;
   $("testB").hidden = !(TEST_B && waiting);
+  $("notMine").hidden = !(waiting && S.mine === "a");     // recognised by the Worker, not by this browser: a way out
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
   $("shareBtn").textContent = fin ? "완성됐어 링크 보내기" : "친구한테 링크 보내기";
   $("shareBtn").className = fin ? "cta alt" : "cta";
@@ -1616,7 +1619,7 @@ const ACT = {
   toTheme: () => show("theme"),            // Round 7 #2: "‹ 테마" on A's cover and the mode pick
   modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
-  mine: () => shareScreen("wait"),
+  notMine: () => { S.mine = null; landB(); prefetchHQ(); },   // the Worker guessed wrong: a friend on my Wi-Fi with my phone
   testB: () => { landB(); prefetchHQ(); },          // TEST_B: A shoots the friend's side on this phone
   goDeco: () => decorate(),
   hoCopy: async () => {

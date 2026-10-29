@@ -79,6 +79,7 @@ body[data-screen="framed"] .bottom { margin-top: 24px; }
 .cta .r { display: flex; align-items: center; gap: 8px; font: 700 13px var(--num); letter-spacing: .04em; color: #bdbdbd; }
 .cta .r::after { content: ""; width: 16px; height: 16px; background: var(--acc); }
 :is(.cta, .tool, .shutter, .th, .tile, .sound, .textlink, .tabs button):focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; box-shadow: 0 0 0 3px var(--acc); }
+#notMine { font-weight: 700; }
 .textlink { appearance: none; background: none; border: 0; color: var(--ink); font-size: 15px; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 4px; padding: 8px; cursor: pointer; align-self: center; }
 .textlink.copied { text-decoration: none; background: var(--acc); font-weight: 900; }
 .backchip, .morelink { align-self: flex-start; font: 700 13px var(--num); letter-spacing: .14em; color: var(--ink); text-decoration: none; padding: 4px 0; }

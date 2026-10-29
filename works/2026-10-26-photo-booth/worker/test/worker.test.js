@@ -29,8 +29,10 @@ function fakeR2() {
 const PAGES = "https://dot-connects.github.io";
 const env = () => ({ BUCKET: fakeR2(), ORIGINS: `${PAGES},http://127.0.0.1:8799` });
 const tok = c => c.repeat(43);
-const call = (e, method, path, { token, body, type, origin = PAGES } = {}) => {
+const call = (e, method, path, { token, body, type, origin = PAGES, ip, dev } = {}) => {
   const headers = { Origin: origin };
+  if (ip) headers["CF-Connecting-IP"] = ip;
+  if (dev) headers["X-Device"] = dev;
   if (token) headers.Authorization = "Bearer " + token;
   if (type) headers["Content-Type"] = type;
   return worker.fetch(new Request("https://w.test" + path, { method, body, headers }), e);
@@ -230,4 +232,51 @@ test("ui: A's 필름/귀여운 theme travels with the link like shape, enum only
   m.opts = { movable: true, shape: "tall" };
   await e.BUCKET.put(k, JSON.stringify(m));
   assert.deepEqual((await (await call(e, "GET", `/s/${old}`)).json()).opts, { movable: true, shape: "tall", ui: "film" });
+});
+
+// Round 8 D: the same phone opening its own link in another browser (Chrome -> KakaoTalk in-app) has no localStorage
+// role; the Worker recognises it by (IP, screen) and says whose link it is.
+const PHONE = "412x915@2.625|android", PHONE2 = "390x844@3|ios";
+async function linkFrom(e, ip, dev) {
+  const r = await call(e, "POST", "/s", { body: JSON.stringify({ token: tok("a") }), type: "application/json", ip, dev });
+  assert.equal(r.status, 201); return (await r.json()).id;
+}
+const mine = async (e, id, ip, dev) => (await (await call(e, "GET", `/s/${id}`, { ip, dev })).json()).mine;
+
+test("status says mine=a only for the creator's IP + screen", async () => {
+  const e = env(); const id = await linkFrom(e, "1.2.3.4", PHONE);
+  assert.equal(await mine(e, id, "1.2.3.4", PHONE), "a");
+  assert.equal(await mine(e, id, "1.2.3.5", PHONE), null);              // another network
+  assert.equal(await mine(e, id, "1.2.3.4", PHONE2), null);             // another phone on the same Wi-Fi
+  assert.equal(await mine(e, id, "1.2.3.4", undefined), null);          // no device header
+});
+
+test("IPv6 compares the /64 network, so a rotated privacy address still matches", async () => {
+  const e = env(); const id = await linkFrom(e, "2001:db8:aa:1::5", PHONE);
+  assert.equal(await mine(e, id, "2001:0db8:00aa:0001:9:8:7:6", PHONE), "a");
+  assert.equal(await mine(e, id, "2001:db8:aa:2::5", PHONE), null);
+});
+
+test("a link made without a device header never matches", async () => {
+  const e = env(); const id = await linkFrom(e, "1.2.3.4", undefined);
+  assert.equal(await mine(e, id, "1.2.3.4", undefined), null);
+  assert.equal(await mine(e, id, "1.2.3.4", PHONE), null);
+});
+
+test("B's done records B's device, so B's own link reads mine=b after B is done", async () => {
+  const e = env(); const id = await linkFrom(e, "1.2.3.4", PHONE);
+  await call(e, "PUT", `/s/${id}/a/1-raw.jpg`, { token: tok("a"), body: "x", type: "image/jpeg" });
+  await upAll(e, id, "a", tok("a"));
+  assert.equal((await done(e, id, "a", tok("a"))).status, 204);
+  await upAll(e, id, "b", tok("b"));
+  assert.equal(await mine(e, id, "9.9.9.9", PHONE2), null);             // not before B is done
+  const r = await call(e, "POST", `/s/${id}/b/done`, { token: tok("b"), ip: "9.9.9.9", dev: PHONE2 });
+  assert.equal(r.status, 204);
+  assert.equal(await mine(e, id, "9.9.9.9", PHONE2), "b");
+  assert.equal(await mine(e, id, "1.2.3.4", PHONE), "a");
+});
+
+test("CORS lets the page send X-Device", async () => {
+  const r = await call(env(), "OPTIONS", "/s");
+  assert.match(r.headers.get("Access-Control-Allow-Headers"), /X-Device/);
 });

@@ -34,6 +34,19 @@ function cleanLayout(bytes) {
     return a && num(a.x, -1, 1) && num(a.y, -1, 1) && num(a.scale, 0.3, 3) ? { a: { x: a.x, y: a.y, scale: a.scale } } : null;
   } catch { return null; }
 }
+// Round 8 D: "is this my own link?" across browsers on one phone (Chrome vs a messenger's in-app browser keep separate
+// storage). Key = the network (IPv4, or the IPv6 /64 so a rotated privacy address still matches) + the page's screen
+// string (X-Device: "WxH@dpr|os", sorted W<=H), hashed with the link id; null without a device header.
+function netOf(ip) {
+  if (!ip.includes(":")) return ip;
+  const [l, r = ""] = ip.split("::"), L = l ? l.split(":") : [], R = r ? r.split(":") : [];
+  const full = [...L, ...Array(Math.max(0, 8 - L.length - R.length)).fill("0"), ...R];
+  return full.slice(0, 4).map(h => parseInt(h || "0", 16).toString(16)).join(":") + "::/64";
+}
+async function devOf(req, id) {
+  const dev = (req.headers.get("X-Device") || "").slice(0, 64), ip = req.headers.get("CF-Connecting-IP") || "";
+  return dev && ip ? sha(`${id}|${netOf(ip)}|${dev}`) : null;
+}
 // B uploads into a staging folder named by its token hash; `done` claims the B slot, so an abandoned upload never blocks it
 const bDir = (id, hash) => `s/${id}/b-${hash.slice(0, 16)}`;
 
@@ -42,7 +55,7 @@ export default {
     const allowed = env.ORIGINS.split(",");
     const origin = req.headers.get("Origin");
     const cors = { "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0], "Vary": "Origin",
-      "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+      "Access-Control-Allow-Headers": "Authorization, Content-Type, X-Device", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Max-Age": "86400" };
     const json = (status, obj) => new Response(obj === undefined ? null : JSON.stringify(obj),
       { status, headers: { ...cors, "Content-Type": "application/json", "Cache-Control": "no-store" } });
@@ -59,7 +72,7 @@ export default {
       if (opts?.ui !== undefined && !UIS.includes(opts.ui)) return json(400, { error: "ui" });
       const id = b64u(crypto.getRandomValues(new Uint8Array(16)));
       await env.BUCKET.put(`s/${id}/meta.json`, JSON.stringify({ created: now,
-        a: { tokenHash: await sha(token), done: false }, b: { tokenHash: null, done: false }, opts: optsOf(opts) }));
+        a: { tokenHash: await sha(token), done: false, dev: await devOf(req, id) }, b: { tokenHash: null, done: false }, opts: optsOf(opts) }));
       return json(201, { id, expires: now + LIFE });
     }
 
@@ -73,8 +86,11 @@ export default {
     if (now - cur.meta.created > LIFE) return json(410, { error: "expired" });
     const meta = cur.meta;
 
-    if (req.method === "GET" && p.length === 2)
-      return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE, opts: optsOf(meta.opts) });
+    if (req.method === "GET" && p.length === 2) {
+      const dev = await devOf(req, id);
+      const mine = dev && dev === meta.a.dev ? "a" : dev && meta.b.done && dev === meta.b.dev ? "b" : null;
+      return json(200, { a: { done: meta.a.done }, b: { done: meta.b.done }, expires: meta.created + LIFE, opts: optsOf(meta.opts), mine });
+    }
 
     // "지금 삭제": A, or the friend whose shots are in the strip, wipes the whole link (staging folders included)
     if (req.method === "DELETE" && p.length === 2) {
@@ -126,7 +142,7 @@ export default {
       if (missing.length) return json(400, { error: "missing", names: missing });
       for (let i = 0; i < 3; i++) {                        // compare-and-set on meta.json
         if (side === "b" && cur.meta.b.done) return cur.meta.b.tokenHash === h ? json(204) : json(409, { error: "taken" });
-        if (side === "a") cur.meta.a.done = true; else cur.meta.b = { tokenHash: h, done: true };
+        if (side === "a") cur.meta.a.done = true; else cur.meta.b = { tokenHash: h, done: true, dev: await devOf(req, id) };
         if (await store(cur.meta, cur.etag)) return json(204);
         cur = await load();
         if (!cur) return json(404, { error: "not-found" });
