@@ -793,7 +793,7 @@ function ownLoad() {
 }
 let ownG = null, ownBusy = false, ownAgain = false;
 function ownWhen(e) {
-  if (D.tab !== "look" || !mySide() || !D.media) return false;
+  if (D.tab !== "look" || D.lookWho !== 2 || !mySide() || !D.media) return false;   // only on the 내 크기·위치 segment
   const R = $("previewIn").getBoundingClientRect(), k = R.width / stripWH().W, x = (e.clientX - R.left) / k, y = (e.clientY - R.top) / k;
   const rs = rectsOf(D.frame), j = rs.findIndex(r => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h);
   if (j < 0) return false;
@@ -1329,7 +1329,9 @@ function hqClips() {
   if (hqcP) return;
   // only with WebGPU: on WASM (iOS 18, any WebGPU failure) it is ~160 MODNet runs = minutes of full CPU and an iPhone
   // tab-kill risk (research/ios-audit.md #2); the fast matte stays
-  hqcP = load("segment").then(G => G.prefetchStill().then(ok => ok && G.stats.still.delegate === "webgpu"))
+  // no WebGPU adapter: stop before prefetchStill, which would build the WASM session just to be thrown away
+  hqcP = Promise.resolve(navigator.gpu?.requestAdapter()).catch(() => null)
+    .then(ad => ad && load("segment").then(G => G.prefetchStill().then(ok => ok && G.stats.still.delegate === "webgpu")))
     .then(gpu => gpu && (D.hqProg = 0, load("clipmatte")).then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); })))
     .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; videoJob(); } })
     .catch(e => console.warn("[booth] hq clips", e))
