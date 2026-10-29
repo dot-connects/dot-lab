@@ -497,7 +497,8 @@ const pairsOf = p => (Array.isArray(p) && p.length === 4 && p.every(k => Number.
 // placed (own.a and layout are ignored). B moved over B's own room would show twice: that cell falls back to the first
 // background whose person stayed put (or a preset).
 const ownOf = (own, side, i) => (side === "b" ? layoutOf({ a: own?.b?.[i] }) : null);
-export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null, own = null }) {
+// solo = "a" | "b": only that person over the background (the 메이킹 영상 rows, Round 8); null = both
+export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outline = null, pairs = null, own = null, solo = null }) {
   const { w, h } = rect, aspect = w / h, ia = pairsOf(pairs)[i];   // A's cut for this cell; B's is cut i
   const at = p => (p === a ? ia : i);
   const back = canvas("back", w, h), bx = back.getContext("2d");
@@ -507,7 +508,7 @@ export function drawCell(ctx, rect, i, { a, b, bg, t = null, layout = null, outl
   // draw order background -> B -> A: A is always in front. The person who is the background gets their cut drawn
   // again on top of it (A so that B never covers A; B only to carry the outline).
   const self = B.draw ? null : B.id === "a" ? a : b;
-  const people = B.id === "b" && !ol ? [a] : [b, a];
+  const people = solo ? [solo === "a" ? a : b] : B.id === "b" && !ol ? [a] : [b, a];
   const gains = matchLight(a, b, B.draw ? null : B.id);
   let tint;
   if (B.draw) { const pc = preset(B, w, h); bx.drawImage(pc, 0, 0); tint = pc.tint; }
@@ -907,10 +908,11 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
 }
 
 // ---------- the 메이킹 영상 (Round 8 B, making.js draws it): both people's raw clips row by row, then the strip ----------
-// Each row plays the last ROW_DUR s of its clip's raw half (the room, not the cut-out) with that person's 보정 and the
-// strip's filter, one row = two decoders at a time; a clip that will not decode shows its raw photo instead (no motion).
+// Each row plays the last ROW_DUR s of its clip: that person alone, cut out over the strip's chosen background (operator
+// 10-30: not the real room, which a public post would show), with their 보정, size / place and the strip's filter; one
+// row = two decoders at a time; a clip that will not decode shows the person's still instead (no motion).
 // Frame-exact (WebCodecs) where it can; else real time through MediaRecorder with the photos only.
-export async function recordMaking({ a, b, bg, frame, filter = "original", date, caption, font = null, shape = "wide", layout = null, outline = null, pairs = null, own = null, stickers = null, fx = null, ui = "film", signal = null, onProgress }) {
+export async function recordMaking({ a, b, bg, frame, filter = "original", date, caption, font = null, shape = "wide", layout = null, outline = null, pairs = null, own = null, stickers = null, fx = null, mattes = null, ui = "film", signal = null, onProgress }) {
   filt ||= createFilter();
   const st = await prepare({ frame, date, caption, font, shape }), L = st.L;
   if (stickers?.length) await stickersReady(stickers);
@@ -918,15 +920,15 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
   paint(strip.getContext("2d"), st, { a, b, bg, filter, layout, outline, pairs, own, stickers }, null);
   await Promise.all(makingFonts(ui).map(f => document.fonts.load(f, "따로 같이 네컷 착! 2026. 10. 30").catch(() => null)));
   const P = pairsOf(pairs), rows = [0, 1, 2, 3].map(i => [a.cuts[P[i]], b.cuts[i]]), fxs = [fx?.a || null, fx?.b || null];
-  const cells = [[null, null, null, null], [null, null, null, null]];
-  // person k, row i <- a clip frame (raw = its left half) or the raw photo, then the filter
-  const put = (k, i, img, half) => {
-    const w = half ? img.width / 2 : img.width, h = img.height;
-    let c = cells[k][i];
-    if (!c || c.width !== w || c.height !== h) c = cells[k][i] = Object.assign(document.createElement("canvas"), { width: w, height: h });
-    const x = c.getContext("2d"); x.drawImage(img, 0, 0, w, h, 0, 0, w, h);
+  const cells = [[null, null, null, null], [null, null, null, null]], CW = 552, CHt = 414;   // the rows' 4:3 cells
+  // a room background holds its own person (B alone over A's room would show A too): the rows then use the theme's booth
+  const soloBg = BACKGROUNDS.find(x => x.id === (typeof bg === "string" ? bg : bg?.id))?.draw ? bg : ui === "cute" ? "booth-pink" : "white-wall";
+  // person k, row i: drawn alone over the background (t = null: their still), then the filter
+  const put = (k, i, t) => {
+    const c = cells[k][i] ||= Object.assign(document.createElement("canvas"), { width: CW, height: CHt }), x = c.getContext("2d");
+    drawCell(x, { x: 0, y: 0, w: CW, h: CHt }, i, { a, b, bg: soloBg, t, outline, pairs, own, solo: k ? "b" : "a" });
     const f = filt.apply(c, filter, 1, i + 1);
-    if (f !== c) x.drawImage(f, 0, 0, w, h);
+    if (f !== c) x.drawImage(f, 0, 0, CW, CHt);
   };
   const cv = Object.assign(document.createElement("canvas"), { width: MAKING.W, height: MAKING.H }), ctx = cv.getContext("2d");
   const look = { ui, cells, strip, date: makingDate() }, N = Math.round(MAKING.L * MAKING.FPS);
@@ -954,12 +956,12 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
           closeRow(); row = i;
           if (i >= 0) for (const k of [0, 1]) {
             const c = rows[i][k], v = c.clip;
-            if (clipUsable(v)) try { srcs[k] = await clipSource(v, Math.max(0, (v.duration || 2) - ROW_DUR), fxs[k], null); }
+            if (clipUsable(v)) try { srcs[k] = await clipSource(v, Math.max(0, (v.duration || 2) - ROW_DUR), fxs[k], mattes?.get(v)); }
               catch (e) { if (e?.name === "AbortError") throw e; console.warn("[compose] making: clip shown still", e); }
-            if (!srcs[k]) put(k, i, c.raw, false);
+            if (!srcs[k]) put(k, i, null);
           }
         } else if (i >= 0) for (const s of srcs) await s?.advance();
-        if (i >= 0) srcs.forEach((s, k) => s && put(k, i, s.frame, true));
+        if (i >= 0) srcs.forEach((s, k) => { if (s) { clipFrames.set(rows[i][k].clip, s.frame); put(k, i, t); } });
         drawMaking(ctx, t, look);
         const f = new VideoFrame(cv, { timestamp: Math.round(n * 1e6 / MAKING.FPS), duration: Math.round(1e6 / MAKING.FPS) });
         enc.encode(f, { keyFrame: n % (2 * MAKING.FPS) === 0 }); f.close();
@@ -971,7 +973,7 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
       muxer.finalize();
       onProgress?.(1);
       return new Blob([muxer.target.buffer], { type: "video/mp4" });
-    } finally { closeRow(); if (enc.state !== "closed") enc.close(); }
+    } finally { closeRow(); if (enc.state !== "closed") enc.close(); clipFrames.clear(); }
   }
 
   // ponytail: no WebCodecs (older iOS) = photos only, painted in real time; add <video> seeking if a phone needs motion here
@@ -979,7 +981,7 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
     if (!window.MediaRecorder) throw new Error("no MediaRecorder");
     const ok = t => MediaRecorder.isTypeSupported(t);
     const types = [["video/mp4;codecs=avc1", "video/mp4"].find(ok), ["video/webm;codecs=vp9", "video/webm"].find(ok)].filter(Boolean);
-    rows.forEach((r, i) => r.forEach((c, k) => put(k, i, c.raw, false)));
+    rows.forEach((r, i) => r.forEach((c, k) => put(k, i, null)));
     let lastErr = new Error("no recorder type");
     for (const type of types) {
       try { return await makingOnce(type); }
