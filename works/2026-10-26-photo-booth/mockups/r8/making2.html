@@ -1,0 +1,238 @@
+<title>메이킹 영상 시안 2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+/* layout: one column, a row of 3 story frames. Single light look; the stories share the pink "cute" world. */
+:root{
+  --bg:#ecebef; --ink:#1d1b22; --sub:#4a4652; --pink:#ff7eb6; --deep:#c2276a; --blush:#ffeef4; --cellA:#ffc9dc;
+  --jua:'Jua','Noto Sans KR',system-ui,sans-serif; --body:'Noto Sans KR',system-ui,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--ink);font:15px/1.55 var(--body)}
+.wrap{max-width:1500px;margin:0 auto;padding-block:22px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font:900 24px/1.3 var(--body);letter-spacing:-.03em;text-wrap:balance}
+.lead{color:var(--sub);margin-top:6px;max-width:66ch}
+.row{display:flex;gap:18px;overflow-x:auto;scroll-snap-type:x mandatory;padding:14px 2px}
+.row > figure{flex:none;width:min-content;scroll-snap-align:center;display:flex;flex-direction:column;gap:8px}
+figcaption{font:500 13px/1.5 var(--body);color:var(--sub)}
+figcaption b{color:var(--ink);font-weight:900;font-size:14px;display:block}
+.swipe{font-size:13px;color:var(--sub)}
+@media (min-width:1100px){.swipe{display:none}}
+.ctl{display:flex;gap:6px;align-items:center}
+.ctl button{font:700 12px var(--body);border:1.5px solid var(--ink);background:#fff;padding:3px 10px;border-radius:99px;cursor:pointer}
+.ctl span{font:500 12px var(--body);color:var(--sub);font-variant-numeric:tabular-nums}
+
+.st{position:relative;width:290px;aspect-ratio:9/16;container-type:inline-size;overflow:hidden;border-radius:14px;box-shadow:0 8px 22px #00000026;background:var(--blush)}
+.st *{position:absolute}
+.st video,.st img{display:block;object-fit:cover}
+.fr{overflow:hidden;background:#f7d6e3}
+.fr > *{inset:0;width:100%;height:100%}
+.fl{background:#fff;opacity:0;pointer-events:none}
+.title{left:0;right:0;text-align:center;font:400 9.6cqw/1 var(--jua);color:#2a1a24;letter-spacing:-.01em}
+.tag{font:400 4.6cqw/1 var(--jua);padding:1.6cqw 3.4cqw;border-radius:99px;white-space:nowrap}
+.tag.me{background:var(--deep);color:#fff}
+.tag.fd{background:#fff;color:var(--deep);box-shadow:0 0 0 .5cqw var(--deep)}
+.stamp{font:400 8.4cqw/1 var(--jua);padding:1.6cqw 3.6cqw;border-radius:2cqw;white-space:nowrap;background:var(--deep);color:#fff;border:.7cqw solid #fff;box-shadow:0 1cqw 2cqw #c2276a55}
+.spark{color:#ffc93c;font-size:7cqw;line-height:1}
+.cell{overflow:hidden;border-radius:.5cqw;background:var(--cellA)}
+.cell img{inset:0;width:100%;height:100%}
+@media (prefers-reduced-motion:reduce){.ctl button{display:none}}
+</style>
+
+<div class="wrap">
+  <h1>메이킹 영상 시안 2</h1>
+  <p class="lead">1번 리듬(딱딱딱딱 → 착!) + 2번 분홍 분위기. 날짜·링크 자리 없음, 글씨는 "따로 같이 네컷"만. 사진·영상은 개발용 샘플이에요.</p>
+  <p class="swipe">옆으로 넘겨 보기 →</p>
+  <div class="row">
+    <figure>
+      <div class="st" id="n1"></div>
+      <div class="ctl"><button data-r="n1">처음부터</button><span id="n1t"></span></div>
+      <figcaption><b>A. 분홍 두 줄 (11초)</b>1번 그대로, 검은 필름 대신 분홍 사진 띠 두 줄. 내 띠에 딱딱딱딱, 친구 띠에 딱딱딱딱(2번 칸은 2초 전부). 두 띠가 붙으며 착! 완성 네컷이 핀에 매달려 흔들려요</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="n2"></div>
+      <div class="ctl"><button data-r="n2">처음부터</button><span id="n2t"></span></div>
+      <figcaption><b>B. 한 줄에서 바뀜 (11초)</b>띠는 처음부터 한 줄. 칸마다 내 방 2초가 딱, 같은 칸이 친구 방 2초로 딱. 마지막에 방이 지워지며 네 칸이 차례로 둘이 함께인 칸으로 바뀌고 착!</figcaption>
+    </figure>
+    <figure>
+      <div class="st" id="n3"></div>
+      <div class="ctl"><button data-r="n3">처음부터</button><span id="n3t"></span></div>
+      <figcaption><b>C. 위아래 가로 띠 (11초)</b>2번처럼 위는 나, 아래는 친구. 가로 띠가 옆으로 흐르며 딱딱딱딱. 두 띠가 가운데로 접히며 세로 네컷으로 착!</figcaption>
+    </figure>
+  </div>
+</div>
+
+<script>
+// Three 11 s story timelines drawn from t (s). A clip segment plays the LAST `dur` s of the 2 s pre-shutter clip,
+// then freezes on the shutter still with a flash.
+(() => {
+  "use strict";
+  const RM = matchMedia("(prefers-reduced-motion:reduce)").matches;
+  const fz = /^#t(\d+)$/.exec(location.hash);          // local check only: #t35 = frozen at 3.5 s
+  const A = ["a1", "a2", "a3", "a4"], B = ["b1", "b2", "b3", "b4"], L = 11;
+  const cl = x => Math.min(1, Math.max(0, x)), eo = x => 1 - Math.pow(1 - cl(x), 3), eio = x => { x = cl(x); return x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2; };
+  const back = x => { x = cl(x); const c = 1.7; return 1 + (c + 1) * Math.pow(x - 1, 3) + c * Math.pow(x - 1, 2); };
+  const flash = (t, at, d = .35) => { const k = t - at; return k >= 0 && k < d ? 1 - k / d : 0; };
+  const el = (p, tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; p.appendChild(e); return e; };
+  const box = (e, x, y, w, h) => Object.assign(e.style, { left: x + "cqw", top: y + "cqw", width: w + "cqw", height: h + "cqw" });
+
+  function clipFrame(p, id) {
+    const f = el(p, "div", "fr");
+    const still = el(f, "img"); still.src = id + "-still.jpg"; still.alt = "";
+    const v = el(f, "video"); Object.assign(v, { src: id + "-raw.mp4", playsInline: true, preload: "auto" }); v.muted = true;
+    const fl = el(f, "i", "fl"); fl.style.inset = 0;
+    let on = false;
+    const draw = (t, t0, dur) => {
+      const playing = t >= t0 && t < t0 + dur, after = t >= t0 + dur;
+      if (playing && !fz) {
+        if (!on) { on = true; try { v.currentTime = Math.max(0, 2 - dur + (t - t0)); v.play().catch(() => {}); } catch {} }
+        v.style.opacity = 1; still.style.opacity = 0;
+      } else {
+        if (on) { on = false; v.pause(); }
+        v.style.opacity = 0; still.style.opacity = after || (playing && fz) ? 1 : 0;
+      }
+      fl.style.opacity = flash(t, t0 + dur);
+    };
+    return { f, draw };
+  }
+  function mergedCell(p, i) {
+    const c = el(p, "div", "cell");
+    const b = el(c, "img"); b.src = B[i] + "-cut.png"; b.alt = "";
+    const a = el(c, "img"); a.src = A[i] + "-cut.png"; a.alt = "";
+    return c;
+  }
+  // the finished strip hanging from a pin, swaying; returns { s, draw(t, t0) }
+  function finished(root, x, y, w) {
+    const s = el(root, "div"); box(s, x, y, w, 0);
+    Object.assign(s.style, { height: "auto", background: "#fff", padding: "1.5cqw", boxShadow: "0 2.4cqw 5cqw #c2276a33", transformOrigin: "50% -3%" });
+    const img = el(s, "img"); img.src = "strip-pink.jpg"; img.alt = ""; Object.assign(img.style, { position: "static", width: "100%" });
+    const pin = el(s, "i"); Object.assign(pin.style, { left: "50%", top: "-3.4cqw", width: "5cqw", height: "5cqw", marginLeft: "-2.5cqw", borderRadius: "50%", background: "var(--deep)", boxShadow: "0 .6cqw 0 #8a1748" });
+    return { s, draw: (t, t0) => {
+      const k = cl((t - t0) / .35);
+      s.style.opacity = k;
+      s.style.transform = `scale(${1.1 - .1 * back(k)}) rotate(${t > t0 + .4 ? 3 * Math.sin((t - t0 - .4) * 1.9) : 0}deg)`;
+    } };
+  }
+  function title(root, top) { const e = el(root, "div", "title"); e.textContent = "따로 같이 네컷"; e.style.top = top + "cqw"; return e; }
+  function stamp(root, x, y) { const e = el(root, "div", "stamp"); e.textContent = "착!"; e.style.left = x + "cqw"; e.style.top = y + "cqw"; return e; }
+  const stampDraw = (e, t, t0) => { e.style.opacity = cl((t - t0) / .2); e.style.transform = `rotate(-9deg) scale(${1.7 - .7 * eo((t - t0) / .3)})`; };
+  function sparks(root, pts) { return pts.map(([x, y]) => { const s = el(root, "i", "spark"); s.textContent = "✦"; s.style.left = x + "cqw"; s.style.top = y + "cqw"; return s; }); }
+  const sparkDraw = (ss, t, t0) => ss.forEach((s, i) => { const k = t - t0 - i * .12; s.style.opacity = k > 0 ? Math.max(0, 1 - Math.abs(Math.sin(k * 2.2)) * .7) : 0; s.style.transform = `scale(${k > 0 ? .7 + .3 * Math.sin(k * 3) : 0})`; });
+
+  // the beat shared by all three: my 4 at .6 s each, friend's 4 with cell 2 the full 2 s, then 착
+  const TA = [.7, 1.35, 2.0, 2.65], DA = .6;
+  const TB = [3.6, 4.25, 4.9, 7.0], DBs = [.6, 2.0, .6, .6];     // friend cell 2 = 4.25..6.25, the laugh
+  const SNAP = 7.9;
+
+  // ---------- A. two pink strips side by side ----------
+  function n1(root) {
+    const strips = [0, 1].map(k => {
+      const r = el(root, "div"); box(r, k ? 52 : 8, 30, 40, 4 * 28 + 8);
+      Object.assign(r.style, { background: "#fff", borderRadius: "1cqw", boxShadow: "0 1.6cqw 4cqw #c2276a26" });
+      const frames = (k ? B : A).map((id, i) => { const c = clipFrame(r, id); box(c.f, 3, 3 + i * 28, 34, 25.5); c.f.style.borderRadius = ".6cqw"; return c; });
+      const tg = el(root, "span", "tag " + (k ? "fd" : "me")); tg.textContent = k ? "친구" : "나";
+      tg.style.left = (k ? 72 : 28) + "cqw"; tg.style.top = "21cqw"; tg.style.transform = "translateX(-50%)";
+      return { r, frames, tg };
+    });
+    const fin = finished(root, 30, 34, 40), t1 = title(root, 9), st = stamp(root, 60, 128);
+    const sp = sparks(root, [[14, 40], [80, 60], [18, 130], [78, 150]]);
+    const all = el(root, "i", "fl"); all.style.inset = 0;
+    return t => {
+      strips.forEach((s, k) => {
+        s.frames.forEach((c, i) => c.draw(t, k ? TB[i] : TA[i], k ? DBs[i] : DA));
+        const m = eio((t - SNAP + .45) / .45);
+        s.r.style.transform = `translateX(${(k ? -1 : 1) * m * 22}cqw)`;
+        s.r.style.opacity = Math.min(cl((t - .2) / .3), 1 - cl((t - SNAP) / .12));
+        s.r.style.filter = k && t < 3.4 ? "saturate(.3) brightness(1.08)" : "";
+        s.tg.style.opacity = t > .3 && t < SNAP ? 1 : 0;
+      });
+      fin.draw(t, SNAP); all.style.opacity = flash(t, SNAP, .4) * .9;
+      stampDraw(st, t, SNAP + .1); sparkDraw(sp, t, SNAP + .3);
+      t1.style.opacity = t < SNAP ? 1 : 1; t1.style.top = "9cqw";
+    };
+  }
+
+  // ---------- B. one strip: each cell goes my room -> friend's room -> the two of us ----------
+  function n2(root) {
+    const r = el(root, "div"); box(r, 26, 30, 48, 4 * 33 + 10);
+    Object.assign(r.style, { background: "#fff", borderRadius: "1cqw", boxShadow: "0 2cqw 5cqw #c2276a2e", transformOrigin: "50% -3%" });
+    const pin = el(r, "i"); Object.assign(pin.style, { left: "50%", top: "-3.4cqw", width: "5cqw", height: "5cqw", marginLeft: "-2.5cqw", borderRadius: "50%", background: "var(--deep)", boxShadow: "0 .6cqw 0 #8a1748", zIndex: 3 });
+    const cells = [0, 1, 2, 3].map(i => {
+      const slot = el(r, "div"); box(slot, 2.6, 2.6 + i * 33, 42.8, 31); Object.assign(slot.style, { overflow: "hidden", borderRadius: ".6cqw", background: "#f7d6e3" });
+      const a = clipFrame(slot, A[i]), b = clipFrame(slot, B[i]);
+      [a.f, b.f].forEach(f => Object.assign(f.style, { inset: 0 }));
+      const m = mergedCell(slot, i); m.style.inset = 0;
+      const fl = el(slot, "i", "fl"); fl.style.inset = 0;
+      return { a, b, m, fl };
+    });
+    const who = el(root, "span", "tag me"); who.style.left = "50%"; who.style.top = "21cqw"; who.style.transform = "translateX(-50%)";
+    const t1 = title(root, 8), st = stamp(root, 62, 138);
+    const sp = sparks(root, [[10, 50], [84, 70], [12, 140], [84, 150]]);
+    const TM = [7.75, 8.0, 8.25, 8.5], SN = 8.8;              // each cell turns into "the two of us", 딱딱딱딱
+    return t => {
+      cells.forEach((c, i) => {
+        c.a.draw(t, TA[i], DA);
+        c.b.draw(t, TB[i], DBs[i]);
+        c.a.f.style.opacity = t < TB[i] ? 1 : 0;
+        c.b.f.style.opacity = t >= TB[i] && t < TM[i] ? 1 : 0;
+        c.m.style.opacity = t >= TM[i] ? 1 : 0;
+        c.m.style.transform = t >= TM[i] ? `scale(${1 + .06 * flash(t, TM[i], .3)})` : "";
+        c.fl.style.opacity = flash(t, TM[i], .3);
+      });
+      const phase = t < 3.5 ? "나" : t < 7.7 ? "친구" : "";
+      who.textContent = phase; who.className = "tag " + (phase === "친구" ? "fd" : "me"); who.style.opacity = phase ? 1 : 0;
+      r.style.transform = t > SN + .4 ? `rotate(${3 * Math.sin((t - SN - .4) * 1.9)}deg)` : `scale(${1 + .04 * flash(t, SN, .4)})`;
+      stampDraw(st, t, SN); sparkDraw(sp, t, SN + .2);
+    };
+  }
+
+  // ---------- C. two horizontal strips, top = me, bottom = friend, fold into one vertical strip ----------
+  function n3(root) {
+    const rows = [0, 1].map(k => {
+      const band = el(root, "div"); box(band, 0, k ? 100 : 46, 100, 36);
+      Object.assign(band.style, { background: k ? "#fff" : "var(--deep)" });
+      const track = el(band, "div"); box(track, 0, 3, 4 * 46 + 6, 30);
+      const frames = (k ? B : A).map((id, i) => { const c = clipFrame(track, id); box(c.f, 6 + i * 46, 0, 42, 30); c.f.style.borderRadius = ".8cqw"; return c; });
+      const tg = el(root, "span", "tag " + (k ? "fd" : "me")); tg.textContent = k ? "친구" : "나";
+      tg.style.left = "6cqw"; tg.style.top = (k ? 92 : 38) + "cqw";
+      return { band, track, frames, tg, k };
+    });
+    const fin = finished(root, 30, 34, 40), t1 = title(root, 9), st = stamp(root, 60, 128);
+    const sp = sparks(root, [[12, 44], [82, 62], [16, 132], [80, 148]]);
+    const all = el(root, "i", "fl"); all.style.inset = 0;
+    return t => {
+      rows.forEach(ro => {
+        const T = ro.k ? TB : TA, D = ro.k ? DBs : [DA, DA, DA, DA];
+        ro.frames.forEach((c, i) => c.draw(t, T[i], D[i]));
+        // the band slides left so the frame being shot sits in view
+        const n = T.filter(x => t >= x).length, idx = Math.max(0, n - 1);
+        const prev = Math.max(0, idx - 1), seg = cl((t - T[idx]) / .3);
+        const pos = (prev + (idx - prev) * eo(seg)) * 46;
+        ro.track.style.transform = `translateX(${-Math.min(pos, 4 * 46 + 6 - 100)}cqw)`;
+        const f = eio((t - SNAP + .45) / .45);
+        ro.band.style.transform = `translateY(${(ro.k ? -1 : 1) * f * 27}cqw) scaleY(${1 - f * .9})`;
+        ro.band.style.opacity = Math.min(cl((t - .2) / .3), 1 - cl((t - SNAP) / .12));
+        ro.band.style.filter = ro.k && t < 3.4 ? "saturate(.3) brightness(1.06)" : "";
+        ro.tg.style.opacity = t > .3 && t < SNAP ? 1 : 0;
+      });
+      fin.draw(t, SNAP); all.style.opacity = flash(t, SNAP, .4) * .9;
+      stampDraw(st, t, SNAP + .1); sparkDraw(sp, t, SNAP + .3);
+    };
+  }
+
+  const make = { n1, n2, n3 }, run = {};
+  for (const id in make) run[id] = { draw: make[id](document.getElementById(id)), t0: performance.now(), lab: document.getElementById(id + "t") };
+  document.querySelectorAll("[data-r]").forEach(b => b.addEventListener("click", () => { run[b.dataset.r].t0 = performance.now(); }));
+  if (fz) { for (const id in run) run[id].draw(+fz[1] / 10); return; }
+  if (RM) { for (const id in run) run[id].draw(L - .2); return; }
+  for (const id in run) run[id].draw(L - .2);
+  const loop = now => {
+    for (const id in run) { const r = run[id], t = ((now - r.t0) / 1000) % L; r.draw(t); r.lab.textContent = t.toFixed(1) + " / " + L + "초"; }
+    requestAnimationFrame(loop);
+  };
+  requestAnimationFrame(loop);
+})();
+</script>
