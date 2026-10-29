@@ -817,7 +817,9 @@ function parseFmp4(buf) {
 // frame = the clip's own canvas (fx edits it in place), advance() = one output frame later. A ~30 fps clip moves exactly
 // one frame per output frame: a recorded clip's timestamps jitter by up to half a frame, and sampling them by time
 // repeats one frame and skips the next. Slower clips keep time (their frames repeat).
-async function clipSource(v, phase, fx, hq) {
+// fromEnd (s): start that long before the clip's last frame, read from its samples (a fragmented MP4's <video>.duration
+// can be Infinity, review r8 /done M1); phase is ignored then
+async function clipSource(v, phase, fx, hq, fromEnd = null) {
   const buf = await (await fetch(v.currentSrc || v.src)).arrayBuffer(), mp4 = readFmp4(buf);
   // not an MP4 at all (WebM): the real-time path plays it. An MP4 we cannot read or decode: a broken clip (that cell's still)
   const tag = buf.byteLength >= 8 ? String.fromCharCode(...new Uint8Array(buf, 4, 4)) : "";
@@ -827,7 +829,8 @@ async function clipSource(v, phase, fx, hq) {
   const span = (us[N - 1] - us[0]) * N / Math.max(1, N - 1) / 1e6 || N / FPS, r = N / (span * FPS);
   const step = Math.abs(r - 1) < 0.05 ? 1 : Math.min(2, r);
   const q = [];
-  let failed = null, wake = null, k = 0, skip = us[0] + phase * 1e6 - 1000;   // frames before the phase: decoded, dropped
+  const start = fromEnd == null ? us[0] + phase * 1e6 : Math.max(us[0], us[N - 1] + span * 1e6 / N - fromEnd * 1e6);
+  let failed = null, wake = null, k = 0, skip = start - 1000;   // frames before the start: decoded, dropped
   const dec = new VideoDecoder({ output: f => {
     if (f.timestamp < skip) f.close(); else q.push(f);
     wake?.();
@@ -956,7 +959,7 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
           closeRow(); row = i;
           if (i >= 0) for (const k of [0, 1]) {
             const c = rows[i][k], v = c.clip;
-            if (clipUsable(v)) try { srcs[k] = await clipSource(v, Math.max(0, (v.duration || 2) - ROW_DUR), fxs[k], mattes?.get(v)); }
+            if (clipUsable(v)) try { srcs[k] = await clipSource(v, 0, fxs[k], mattes?.get(v), ROW_DUR); }
               catch (e) { if (e?.name === "AbortError") throw e; console.warn("[compose] making: clip shown still", e); }
             if (!srcs[k]) put(k, i, null);
           }

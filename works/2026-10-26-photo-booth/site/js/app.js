@@ -1370,8 +1370,9 @@ function saveVid(kind) {
 // in the tap that opened the sheet; the link is the work's start page, never this pair's link (their photos)
 function saveSheet() {
   try { $("vidPv").src = $("stripImg").toDataURL("image/jpeg", .7); } catch {}
-  const mine = D.media?.[me() || "a"]?.cuts?.[0]?.raw;
+  const mine = D.media?.[me() || "a"]?.cuts?.[0]?.cut;          // the cut-out: the making video shows no rooms
   if (mine) $("mkPv").src = mine.src;
+  if (env.inApp) return;                 // the in-app sheet hides the bubble: do not overwrite the clipboard unseen
   const link = location.origin + location.pathname;
   const said = ok => $("saveLink").innerHTML = ok ? "<em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아" : `링크도 붙여 주면 더 좋아 <em>${link.replace(/^https?:\/\//, "")}</em>`;
   try { navigator.clipboard.writeText(link).then(() => said(true), () => said(false)); } catch { said(false); }
