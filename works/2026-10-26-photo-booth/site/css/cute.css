@@ -330,3 +330,5 @@ body[data-ui="cute"] #s-done .dock button[aria-selected="true"] { background: va
 body[data-ui="cute"] .dsheet { background: #fff; border-radius: 26px 26px 0 0; box-shadow: 0 -5px 0 #e6dcff, 0 -10px 24px #6b3fc426; }
 body[data-ui="cute"] .dscrim { background: #2a214066; }
 @media (max-height: 700px) { body[data-ui="cute"] #s-done .dock button { font-size: 15px; } body[data-ui="cute"] .dtop .cta { font-size: 22px; } }
+/* the theme cards keep their own look under either sheet */
+body[data-ui="cute"] .tc-film .ministrip .mc { border-radius: 0; background: var(--grid); }

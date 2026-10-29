@@ -23,3 +23,4 @@ Every item must ship; status updated by the lead on merge.
 - 꾸미기 3 (편집 앱 + 아이콘 독 + 서랍, 영상·⋯ 시트) — bae2565
 - 테마 고르기 시안 3개: mockups/theme-pick.html (선택 대기)
 - 검수: 각 화면 5개 크기 겹침·잘림 0, e2e 가로필름·세로말랑 98/0
+- 테마 고르기 1 (반반 카드 + 나올 네컷 띠) 적용, e2e 98/0

@@ -540,43 +540,44 @@ body[data-shape="tall"] .tile.frame .mini { width: 108px; aspect-ratio: 1800 / 8
 .screen.center:has(> .uihead:not(:empty)) { padding-top: calc(var(--pt) + 124px); }   /* the centred content starts under the head */
 
 /* ===== screen 0: A picks the UI theme (mockups/cute3.html 0). Neutral, works with neither theme's sheet ===== */
-#s-theme { gap: 14px; }
-.themeh { font-size: 30px; margin-top: 6px; }
-.tcards { flex: 1; min-height: 420px; display: flex; flex-direction: column; gap: 14px; container-type: inline-size; }
-.tcard { appearance: none; border: 0; flex: 1; min-height: 0; position: relative; overflow: hidden; border-radius: 22px; display: flex; align-items: flex-end;
-  justify-content: space-between; padding: 16px 20px; cursor: pointer; text-align: left; transition: transform 160ms var(--spring); }
+#s-theme { gap: 10px; }
+/* Round 7: theme-pick layout 1 — two upright cards side by side, each with the strip that theme makes */
+.themeh { font-size: 30px; margin-top: 6px; text-wrap: balance; }
+.themelead { color: #3d3540; font-size: 15px; margin-top: -4px; }
+.tcards { flex: 1; min-height: 360px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 8px; }
+.tcard { appearance: none; border: 0; min-height: 0; position: relative; overflow: hidden; border-radius: 20px; cursor: pointer; text-align: center;
+  display: grid; grid-template-rows: minmax(0, 1fr) auto auto; justify-items: center; gap: 10px; padding: 16px 14px 14px; transition: transform 160ms var(--spring); }
 .tcard:active { transform: scale(.97); }
 .tcard:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; box-shadow: 0 0 0 3px var(--acc); }
-.tcard .lab { position: relative; z-index: 5; display: flex; align-items: center; gap: 10px; }
-.tcard .go { position: relative; z-index: 5; width: 46px; height: 46px; display: grid; place-items: center; font-size: 28px; line-height: 1; }
-/* film: a film strip running sideways through a lime gate, sprockets top and bottom */
+.tstrip { width: 100%; height: 100%; min-height: 0; container-type: size; display: grid; place-items: center; }
+/* the strip's width from the height it gets: 4 cells 552:382 + padding and foot (cute adds the 20 px curtain) */
+.tstrip .ministrip { width: min(calc(100cqw - 12px), calc((100cqh - 52px) * .3613 + 14px)); box-shadow: none; }
+.tc-cute .tstrip .ministrip { width: min(calc(100cqw - 12px), calc((100cqh - 72px) * .3613 + 14px)); }
+.tcard .lab { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.tcard .one { font-size: 13px; line-height: 1.35; min-height: 2.7em; }
+/* film: a black card with sprocket columns down both sides, the strip in a lime gate */
 .tc-film { background: #000; color: #fff; }
-.tc-film .lab { font: 900 30px var(--title); letter-spacing: -.04em; }
-.tc-film .lab i { width: 20px; height: 20px; background: var(--acc); display: block; }
-.tc-film .go { background: var(--acc); color: #000; font-weight: 900; }
-.tc-film .rails { position: absolute; inset: 0; }
-.tc-film .rails::before, .tc-film .rails::after { content: ""; position: absolute; left: 0; right: 0; height: 12px;
-  background: repeating-linear-gradient(90deg, #000 0 7px, #fff 7px 18px, #000 18px 25px); animation: t0spr 3s linear infinite; }
-.tc-film .rails::before { top: 6px; } .tc-film .rails::after { bottom: 6px; }
-@keyframes t0spr { to { background-position: -75px 0; } }
-.tc-film .rl { position: absolute; top: 50%; margin-top: calc(-22cqw - 24px); left: 0; display: flex; gap: 10px; animation: t0rl 14s linear infinite; }
-.tc-film .rl .mc { width: 64cqw; flex: none; }
-@keyframes t0rl { to { transform: translateX(calc(-4 * (64cqw + 10px))); } }
-.tc-film .gate { position: absolute; top: 50%; margin-top: calc(-22cqw - 28px); left: 50%; width: calc(64cqw + 8px); aspect-ratio: 552 / 382; transform: translateX(-50%); border: 4px solid var(--acc); z-index: 3; }
-.tc-film::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%; background: linear-gradient(#0000, #000 75%); z-index: 4; }
-/* cute: concept 3's booth mascot on lavender dots (cute.css owns the rest of that look) */
+.tc-film::before, .tc-film::after { content: ""; position: absolute; top: 0; bottom: 0; width: 10px; background: repeating-linear-gradient(#000 0 6px, #fff 6px 14px, #000 14px 20px) 2px 0 / 6px 100%;
+  animation: t0vspr 2.4s linear infinite; }
+.tc-film::before { left: 2px; } .tc-film::after { right: 2px; }
+@keyframes t0vspr { to { background-position: 2px 40px; } }
+.tc-film .ministrip { outline: 3px solid var(--acc); outline-offset: 3px; }
+.tc-film .lab { font: 900 22px/1 var(--title); letter-spacing: -.03em; }
+.tc-film .lab i { width: 16px; height: 16px; background: var(--acc); display: block; }
+.tc-film .one { color: #d0d0d0; }
+/* cute: lavender dots, the strip as a white card under a pink curtain */
 .tc-cute { background: radial-gradient(circle at 1px 1px, #d9ccfb 1px, transparent 1.6px) 0 0 / 16px 16px, linear-gradient(#f6f1ff, #efe6ff);
   color: #2a2140; box-shadow: inset 0 0 0 2px #e2d6fb; }
-.tc-cute .lab { font: 700 56px/.8 "Dongle", var(--title); padding-top: 8px; }
-.tc-cute .lab svg { width: 28px; height: 26px; fill: #ff8fbd; margin-top: -8px; }
-.tc-cute .go { background: #ff8fbd; color: #3a1230; border-radius: 50%; box-shadow: 0 4px 12px #c2587a40; font-weight: 700; }
-.tc-cute .pv { position: absolute; inset: 0; pointer-events: none; }
-.tc-cute .mas { position: absolute; right: 8%; top: 12px; width: 30cqw; height: 32cqw; animation: t0wob 2.4s ease-in-out infinite; }
-@keyframes t0wob { 0%, 100% { transform: rotate(-3deg); } 50% { transform: rotate(3deg) translateY(-3px); } }
-.tc-cute .tw { position: absolute; width: 26px; height: 26px; animation: twinkle 2.4s ease-in-out infinite; }
-.tc-cute .st { left: 12%; top: 16%; fill: #ffcf4d; }
-.tc-cute .ht { left: 34%; top: 7%; fill: #ff8fbd; animation-delay: .6s; }
-.themesub { text-align: center; color: #3d3540; }
+.tc-cute .ministrip { position: relative; background: #fff; border-radius: 10px; padding-top: 20px; box-shadow: 0 5px 0 #d6c6f6, 0 10px 18px #6b3fc42e; }
+.tc-cute .ministrip::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 18px; border-radius: 10px 10px 0 0;
+  background: radial-gradient(circle at 50% 0, #ff8fbd 5px, transparent 5.5px) 0 9px / 10.4px 6px repeat-x, linear-gradient(#ff8fbd, #ff8fbd) 0 4px / 100% 5px no-repeat; }
+.tc-cute .mc { border-radius: 5px; background: radial-gradient(circle at 50% 40%, #fff0f4, #ffd2de 60%, #f6b3c6); }
+.tc-cute .mfoot { font: 700 15px/1 "Dongle", var(--title); letter-spacing: 0; color: #2a2140; padding: 4px 0 7px; }
+.tc-cute .lab { font: 700 40px/.8 "Dongle", var(--title); padding-top: 6px; }
+.tc-cute .lab svg { width: 22px; height: 20px; fill: #ff8fbd; margin-top: -6px; }
+.tc-cute .one { font-family: "Gowun Dodum", var(--body); color: #4a3f63; }
+.themesub { text-align: center; color: #3d3540; font-size: 14px; }
+@media (max-height: 700px) { .themeh { font-size: 24px; } .tcards { min-height: 300px; } .tcard .one { display: none; } }
 
 /* ===== Round 6 film theme = 필름레일 (mockups/screens3.html concept 1): the cover's black film runs through every screen
    as the 4-step rail on top and the frame around every photo. Only under body[data-ui="film"]; cute.css styles "cute". ===== */
