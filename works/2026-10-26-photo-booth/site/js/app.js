@@ -434,8 +434,8 @@ async function upgradeAll() {
     S.hq.push(`ready ${Math.round(performance.now() - t0)}ms`);
     for (;;) {
       if (gen !== S.gen || S.hqFrozen) break;
-      // WASM (no WebGPU, Round 5): seconds per still, so only the 4 picked ones are cut, once they are picked
-      if (S.cap.hqPath?.() === "wasm" && !S.cuts.length) { await sleep(300); continue; }
+      // WASM (no WebGPU): ~9 s per still, all SHOTS too (operator 10-30: the cut-out backgrounds wait for them); once the
+      // 4 are picked those go first
       const c = (S.cuts.length ? S.cuts : shots).find(x => !x.hq && !x.hqFail);
       if (!c) break;
       const t1 = performance.now(), j = shots.indexOf(c) + 1;
@@ -459,6 +459,8 @@ function onHQ(c, shots) {
   const k = S.cuts.indexOf(c);
   if (k >= 0) swapCell(k).catch(() => {});
   hqChip();
+  if (document.body.dataset.screen === "pick") pickBgRow();      // only the row on screen: one S.pickBg, one redraw
+  else if (!$("review").hidden) pickBgRow("revBg", review);
 }
 function hqChip() {
   const left = S.cuts.filter(x => !x.hq && !x.hqFail).length;
@@ -503,14 +505,29 @@ async function cellCanvas(cut, ai, look = null) {   // look: Round 5 보정 (rev
 }
 // the background buttons: the pick screen (#pickBg, redraws the grid) and the retouch review (#revBg, Round 7 #3,
 // redraws the four cells); one S.pickBg, so the pick's choice carries over (and on into decorate)
+// Operator 10-30: the rough live cut-outs looked broken, so the photos show as shot (rawBg) and the cut-out backgrounds
+// stay locked ("배경 끄기 3/6") until every shot has its HQ cut (or failed it). Untouched, the row then moves to the
+// side's own default (B: the friend's room).
+const rawBg = () => S.side === "b" ? "b" : "a";
+const bgWant = () => S.side === "b" ? (S.view === "b" ? "a" : "b") : "a";     // B: what the shoot view showed
 function pickBgRow(box = "pickBg", redraw = () => (async () => { for (let j = 0; j < S.shots.length; j++) await paintCell(j, false); })()) {
-  S.pickBg ??= S.side === "b" ? (S.view === "b" ? "a" : "b") : "a";     // B: what the shoot view showed
+  const list = box === "revBg" ? S.cuts : S.shots, done = list.filter(x => x.hq || x.hqFail).length;
+  const ready = !S.hqBusy || done === list.length;
+  if (S.pickBg == null) { S.pickBg = ready ? bgWant() : rawBg(); S.bgAuto = !ready; }
+  else if (!ready && S.pickBg !== rawBg()) { S.pickBg = rawBg(); S.bgAuto = true; }
+  else if (ready && S.bgAuto) {
+    S.bgAuto = false;
+    if (S.pickBg !== bgWant()) { S.pickBg = bgWant(); redraw().catch(e => console.warn("[booth] bg redraw", e)); }
+  }
   $(box).replaceChildren(...PICK_BG[S.side].map(([v, label]) => {
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: label });
+    const wait = !ready && v !== rawBg();
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill" + (wait ? " wait" : ""),
+      textContent: wait ? `${label} ${done}/${list.length}` : label, disabled: wait });
     b.dataset.bg = v; b.setAttribute("aria-pressed", S.pickBg === v);
+    if (wait) b.setAttribute("aria-label", `${label}: 누끼 다듬는 중 ${done}/${list.length}`);
     b.onclick = () => {
       if (S.pickBg === v) return;
-      S.pickBg = v; pickBgRow(box, redraw);
+      S.pickBg = v; S.bgAuto = false; pickBgRow(box, redraw);
       redraw().catch(e => console.warn("[booth] bg redraw", e));
     };
     return b;
@@ -543,7 +560,7 @@ async function paintCell(j, fade) {
   cv.className = fade && !calm() ? "fadein" : "";
   b.insertBefore(cv, b.querySelector(".badge"));
   setTimeout(() => old.forEach(o => o.remove()), fade ? 500 : 0);
-  b.classList.toggle("pending", S.hqBusy && !shot.hq && !shot.hqFail && S.cap.hqPath?.() !== "wasm");
+  b.classList.toggle("pending", bg !== rawBg() && S.hqBusy && !shot.hq && !shot.hqFail);   // the photo as shot needs no badge
   S.cellCv[j] = cv; paintStrip();
 }
 function togglePick(j) {
