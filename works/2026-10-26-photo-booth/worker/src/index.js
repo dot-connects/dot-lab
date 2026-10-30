@@ -54,7 +54,8 @@ export default {
   async fetch(req, env) {
     const allowed = env.ORIGINS.split(",");
     const origin = req.headers.get("Origin");
-    const cors = { "Access-Control-Allow-Origin": allowed.includes(origin) ? origin : allowed[0], "Vary": "Origin",
+    const ok = allowed.includes(origin) || (!!env.ORIGIN_RE && !!origin && new RegExp(env.ORIGIN_RE).test(origin));
+    const cors = { "Access-Control-Allow-Origin": ok ? origin : allowed[0], "Vary": "Origin",
       "Access-Control-Allow-Headers": "Authorization, Content-Type", "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
       "Access-Control-Max-Age": "86400" };
     const json = (status, obj) => new Response(obj === undefined ? null : JSON.stringify(obj),

@@ -294,13 +294,15 @@ test("A and B with one fingerprint: status names neither", async () => {
 test("wrangler.toml ORIGINS lets the Toss mini-app hosts in, and nothing else under tossmini.com", async () => {
   const { readFileSync } = await import("node:fs");
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
-  const ORIGINS = /^ORIGINS\s*=\s*"([^"]+)"/m.exec(toml)[1];
-  const e = { BUCKET: fakeR2(), ORIGINS }, allowed = ORIGINS.split(",");
+  const ORIGINS = /^ORIGINS\s*=\s*"([^"]+)"/m.exec(toml)[1], ORIGIN_RE = /^ORIGIN_RE\s*=\s*'([^']+)'/m.exec(toml)[1];
+  const e = { BUCKET: fakeR2(), ORIGINS, ORIGIN_RE }, allowed = ORIGINS.split(",");
   for (const o of ["https://ttarogachi-test.private-web.tossmini.com", "https://ttarogachi-test.private-apps.tossmini.com",
-    "https://ttarogachi.apps.tossmini.com", PAGES]) {
+    "https://ttarogachi.apps.tossmini.com", "https://ttarogachi-test.some-new-host.tossmini.com", PAGES]) {
     const r = await call(e, "OPTIONS", "/s", { origin: o });
     assert.equal(r.headers.get("Access-Control-Allow-Origin"), o, o);
   }
-  const r = await call(e, "OPTIONS", "/s", { origin: "https://evil.apps.tossmini.com" });
-  assert.equal(r.headers.get("Access-Control-Allow-Origin"), allowed[0]);
+  for (const o of ["https://evil.apps.tossmini.com", "https://ttarogachi-testx.apps.tossmini.com", "https://ttarogachi.apps.tossmini.com.evil.io"]) {
+    const r = await call(e, "OPTIONS", "/s", { origin: o });
+    assert.equal(r.headers.get("Access-Control-Allow-Origin"), allowed[0], o);
+  }
 });
