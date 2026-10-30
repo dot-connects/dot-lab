@@ -180,7 +180,10 @@ Say ''
 $app = Ask 'AIT_APP_NAME' '콘솔에 입력한 appName 을 그대로 적어 주세요:'
 while (-not $app) { $app = Read-Host '  appName 이 비어 있어요. 다시 적어 주세요' }
 $app = $app.Trim()
-if ($app -notmatch '^[a-z][a-z0-9-]{1,40}$') { Warn "'$app' 은 소문자·숫자·하이픈 외 글자가 있어요. 콘솔과 똑같은지 다시 확인해 주세요." }
+while ($app -notmatch '^[a-z][a-z0-9-]{1,40}$') {
+  Warn "'$app' 은 영문 소문자로 시작하고 소문자·숫자·하이픈(-)만 써야 해요."
+  $app = (Read-Host '  콘솔에 입력한 appName 을 다시 적어 주세요').Trim()
+}
 Write-Env 'AIT_APP_NAME' $app
 Wait-Enter
 

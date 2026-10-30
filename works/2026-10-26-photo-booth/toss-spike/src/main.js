@@ -53,7 +53,8 @@ async function cam() {
   const v = $("preview");
   v.muted = true; v.playsInline = true; v.srcObject = stream;
   await v.play();
-  if (!v.videoWidth) await new Promise(r => v.addEventListener("loadeddata", r, { once: true }));
+  if (!v.videoWidth && v.readyState < 2)
+    await Promise.race([new Promise(r => v.addEventListener("loadeddata", r, { once: true })), new Promise((_, j) => setTimeout(() => j(new Error("no camera frame in 8 s")), 8000))]);
   const s = stream.getVideoTracks()[0].getSettings();
   log(`camera ok ${v.videoWidth}x${v.videoHeight} ${s.frameRate ?? "?"}fps in ${Math.round(performance.now() - t0)}ms`);
   badge("cam", true);
