@@ -1257,12 +1257,16 @@ function setSave(on) { document.querySelector('[data-act="savePhoto"]').disabled
 // iPhone: a download lands in Files, not Photos; the share sheet offers "이미지 저장 / 비디오 저장" (ios-audit #1).
 // It needs the tap's user activation: when that is gone (a long render before it) or sharing fails, it downloads.
 // files: [blob, name] pairs, so the photo and the video go out in one sheet.
+// tapAt / dlAt: the last touch and the last download (videoJob's auto-save needs a touch in between)
+let tapAt = 0, dlAt = 0;
+addEventListener("pointerdown", () => { tapAt = performance.now(); }, true);
 async function download(...files) {
   const fs = env.isIOS && navigator.canShare && files.map(([b, n]) => new File([b], n, { type: b.type }));
   if (fs && navigator.canShare({ files: fs })) {
     try { return await navigator.share({ files: fs }); }
     catch (e) { if (e?.name === "AbortError") return; }
   }
+  dlAt = performance.now();
   for (const [blob, name] of files) {
     const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
     document.body.append(a); a.click(); a.remove();
@@ -1347,7 +1351,12 @@ async function videoJob() {
       // operator 10-29: the tap that asked for it also saves it, no second tap. iPhone saves through the share sheet,
       // which needs a fresh tap (D.auto is never set there), so there the button saves it. A re-render nobody tapped
       // for (the HQ cut landing) is not saved again.
-      if (D.auto[kind]) { D.auto[kind] = false; saveKind(kind); toast(`${name} 저장했어!`); }
+      // Android Chrome lets a page download once per touch: a second save with no touch since the last one (both buttons
+      // tapped, both renders landing later) asks "여러 파일 다운로드" and, refused, blocks every download of the tab
+      // (operator 10-30). Then the button saves it on its own tap.
+      const auto = D.auto[kind] && tapAt > dlAt;
+      D.auto[kind] = false;
+      if (auto) { saveKind(kind); toast(`${name} 저장했어!`); }
       else toast(`${name} 완성! 버튼을 누르면 저장돼`);
     }
   } catch (e) {

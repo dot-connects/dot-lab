@@ -166,16 +166,21 @@ async function imp(url) {
 }
 // seconds: countdown length (Round 5: 5). stop(): checked during the seconds before "3"; true -> throws "stopped".
 // hold(): a promise to wait for before the stills (a camera switch in flight, Round 6); onTick(0) = the shutter itself
+let straightOnly = false;
 export async function shootOne(i, { video, onTick, seconds = 3, stop, hold }) {
   // no prefetchStill here: its session create can freeze the page ~4.5 s (the landing page starts it).
   // A recorder whose encoder had not started by the shutter returns an empty clip (0 bytes: seen 10-27 on cut 1 of
   // a full run and cut 4 of a review run); the Worker rejects it and the upload stalls. Shoot that cut once more,
   // recording straight through the countdown (no pause/resume), and never return an empty clip.
   // Round 5: "empty" = any clip that will not play (a 0-byte one, or an MP4 with no frames), not only size 0.
-  const c = await shootOneNow(i, { video, onTick, seconds, stop, hold });
+  // After one failed clip every later shot records straight from "3" (operator 10-30: Instagram's in-app browser on
+  // Android failed every shot, so each one counted 5-1 and then 3-2-1 again).
+  const c = await shootOneNow(i, { video, onTick, seconds, stop, hold }, straightOnly);
   if (await clipOk(c.clip)) return c;
+  const first = `${straightOnly ? "straight" : c.rec} ${c.clip.type || "?"} ${c.clip.size}B`;
+  straightOnly = true;
   const again = await shootOneNow(i, { video, onTick, seconds: 3, hold }, true);
-  stats.still.cuts[i].retried = true;
+  stats.still.cuts[i].retried = first;
   if (!(await clipOk(again.clip))) throw new Error("clip-empty");
   return again;
 }
@@ -230,22 +235,27 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop, hold }, straig
   // The encoder starts paused at the first number and has every second before "2" to come up: waiting for it at "3"
   // held that number up to 2.5 s on a phone (operator 10-27: "3에서 끊겼다가 2"). Recording runs from "2".
   // The straight retry of an empty clip goes to MediaRecorder: a second WebCodecs failure would end the shoot.
+  // straight: recording starts at "3" (a 3 s clip, as the retry always had), never paused
   let R = straight ? null : await frameRecorder(clipC, 2_500_000).catch(() => null);
-  if (R) push = us => R.push(us);
-  else {
+  const path = R ? "webcodecs" : "mediarecorder";
+  const mr = async () => {
     await warm;
     let stream = clipC.captureStream(0);
     const track = stream.getVideoTracks()[0];
     if (track?.requestFrame) push = () => track.requestFrame(); else { stream.getTracks().forEach(t => t.stop()); stream = clipC.captureStream(30); }
     R = recorder(stream, 2_500_000);
-  }
+  };
+  if (R) push = us => R.push(us);
+  else if (!straight) await mr();
   loop();
   if (!straight) R.rec.pause();
   // ponytail: stop is only honoured before "3"; a press during 3-2-1 lets that shot finish (the caller stops after it)
   for (let n = seconds; n > 2; n--) {
-    if (n > 3 && stop?.()) { on = false; R.stop().catch(() => {}); throw new Error("stopped"); }
+    if (n > 3 && stop?.()) { on = false; R?.stop().catch(() => {}); throw new Error("stopped"); }
+    if (n === 3 && !R) await mr();
     onTick?.(n); await sleep(FAST && n > 3 ? 300 : FAST ? 200 : 1000);
   }
+  if (!R) await mr();                 // a countdown shorter than 3
   // only a very slow encoder still waits here (first recorder of a page: up to ~4 s headless), not a dead clip
   await Promise.race([R.started, sleep(1500)]);
   onTick?.(2);
@@ -272,7 +282,7 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop, hold }, straig
   stats.still.cuts[i] = { path: "live", clipStopMs: Math.round(t1 - t0), cutMs: Math.round(t2 - t1), encodeMs: Math.round(t3 - t2),
     pauseMs: Math.round(performance.now() - t0), ...(R.late && { stopLate: true }),
     loop: { frames: fs.frames, encoded: R.n, drops: R.drops, segs: fs.segs, segMs: Math.round(fs.segMs / (fs.segs || 1)), drawMs: Math.round(fs.drawMs / (fs.frames || 1)) } };
-  return { raw, cut, clip, clipType: clip.type };
+  return { raw, cut, clip, clipType: clip.type, rec: path };
 }
 
 export async function shootFour({ video, onTick, onCut }) {

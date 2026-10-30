@@ -491,7 +491,9 @@ body[data-tab="sticker"] .donetitle { display: none; }
 .review { transform-origin: 0 0; }
 .preview { touch-action: none; }
 #preview { transform-origin: 0 0; }
-#preview.zoomed { z-index: 20; }   /* the whole box grows over the drawer and the dock while zoomed */
+/* the whole box grows while zoomed, but only inside the white area: the top bar, the drawer and the dock stay over it
+   (operator 10-30) */
+#s-done .previewwrap { overflow: clip; }
 .zchip { position: absolute; top: 8px; right: 8px; z-index: 3; background: #000; color: #fff; font: 700 13px var(--num); padding: 2px 8px; pointer-events: none; }
 .zin .stk-x, .zin .stk-h { transform: translate(-50%, -50%) rotate(calc(-1 * var(--r, 0rad))) scale(calc(1 / var(--zs, 1))); }
 .own .pills { flex-wrap: nowrap; gap: 6px; }
