@@ -1,0 +1,12 @@
+# media stays local (AI stills, takes, fonts, voice): large; the scripts and README rebuild the reel from them
+ai/
+fonts/
+sfx/
+voice*/
+take*/
+prof-*/
+out/
+*.m4a
+*-video.mp4
+x.mp4
+__pycache__/
