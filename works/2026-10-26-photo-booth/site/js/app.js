@@ -1,11 +1,14 @@
 // App shell: screens + role routing (PLAN Task 6 role table). Capture/compose modules load on demand,
 // so the first screen needs only this file + api.js, and MediaPipe loads after the first tap.
 import * as api from "./api.js";
+import * as P from "./platform.js";
+import { adOk, needsRetry, start as adStart, step as adStep } from "./adgate.js";
 import { mockCapture, mockCompose, mockFrames, mockFilters } from "./ui.js";
 
 const $ = id => document.getElementById(id);
 const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
-const Q = new URLSearchParams(location.search);
+// Toss: the launch link (?s=) comes in Environment.initialURL, read once (platform-toss.js entryQuery)
+const Q = P.entryQuery?.() ?? new URLSearchParams(location.search);
 const MOCK = Q.has("mock");                         // dev: no MediaPipe, placeholder cut-outs
 // Round 4 (booth style): one tap shoots SHOTS in a row, SECS each; then pick 4 (tap order = strip order).
 // Round 7: 6 shots (was 8, operator 10-28); B's shot j floats A's cut j % 4
@@ -59,7 +62,7 @@ function setUi(u) {
 const HINT_A = "친구 자리를 생각해서 한쪽으로 비켜서 찍어 줘";
 const HINT_SHOOT = `셔터 한 번이면 ${SHOTS}장을 이어서 찍어 · 한 장에 5초`;
 // the link carries a cute theme in the query too, so B's page (and the Chrome hand-off) paints in it before the Worker answers
-const uiQ = () => S.ui === "cute" ? "&ui=cute" : "";
+const uiQ = () => (S.ui === "cute" ? "&ui=cute" : "") + P.tossQ;
 const shareUrl = () => `${location.origin}${location.pathname}?s=${S.id}${uiQ()}`;
 // Round 8 A: B's 완성 link goes through done.html, whose own og image says the strip is ready, then on to the app
 const sendUrl = () => S.shareMode === "done" ? `${location.origin}${location.pathname.replace(/[^/]*$/, "done.html")}?s=${S.id}${uiQ()}` : shareUrl();
@@ -104,7 +107,7 @@ function msg({ title, text = "", btn, onBtn, btn2, onBtn2 }) {
   $("msgBtn2").hidden = !btn2; $("msgBtn2").textContent = btn2 || ""; $("msgBtn2").onclick = onBtn2 || null;
   show("msg");
 }
-const fresh = () => location.href = location.pathname + (MOCK ? "?mock=1" : "");
+const fresh = () => location.href = location.pathname + (MOCK ? "?mock=1" : P.tossQ ? "?" + P.tossQ.slice(1) : "");
 
 for (const el of $$("[data-ministrip]")) el.append($("ministrip").content.cloneNode(true));
 for (const el of $$("[data-trust]")) el.replaceWith($("trust").content.cloneNode(true));
@@ -161,7 +164,7 @@ function sparkle(host, { n = 3, dist = 24, size = 18, x = 0.5, y = 0.5 } = {}) {
 // ---- routing (PLAN Task 6) ----------------------------------------------------------------------------------------
 async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
-  if (!S.id) { show("theme"); return prefetchHQ(); }
+  if (!S.id) { if (P.id === "toss") { setUi("cute"); show("landA"); } else show("theme"); return prefetchHQ(); }
   let st;
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
@@ -346,6 +349,8 @@ function liveLoop() {
 }
 function camError(e) {
   console.warn("[booth] camera", e);
+  if (P.id === "toss") return msg({ title: "앗, 카메라가 안 켜져", btn: "다시 해 보기", onBtn: () => startShoot(S.side),
+    text: e?.name === "NotAllowedError" ? "토스 앱 설정에서 카메라 권한을 켜 줘. 휴대폰 설정 → 애플리케이션 → 토스 → 권한 → 카메라." : "다른 앱이 카메라를 쓰고 있으면 끄고 다시 해 줘." });
   if (e?.message === "stall" || e?.name === "NotReadableError" && env.inApp)
     return handoff("카메라가 대답을 안 해", "이 앱에서 카메라가 멈췄어. 크롬에서 열면 바로 돼.");
   if (e?.name === "NotAllowedError")
@@ -971,6 +976,7 @@ const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없�
 const DONE_TEXT = "완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어";
 const shareText = () => S.shareMode === "done" ? DONE_TEXT : SHARE_TEXT;
 async function share() {
+  if (P.id === "toss") { await P.shareLink(S.id); return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
   const url = sendUrl();
   if (navigator.share) {
     try { await navigator.share({ title: "따로 같이 네컷", text: shareText(), url });
@@ -980,6 +986,7 @@ async function share() {
   copy();
 }
 async function copy() {
+  if (P.id === "toss") return share();
   const b = $("copyBtn");
   $("linkBox").hidden = false;
   try { await navigator.clipboard.writeText(`${shareText()}\n${sendUrl()}`); }
@@ -1038,6 +1045,7 @@ async function loadClips(onStep = () => {}) {
 let C, FR, FI;
 async function doneScreen(note = "") {
   show("done");
+  if (P.id === "toss") P.loadAd();           // preload: the ad is ready when a video tile is tapped
   $("doneNote").textContent = note; $("doneNote").hidden = !note;
   $("making").hidden = false; $("makingText").textContent = "네컷 만드는 중";
   const inApp = env.inApp;
@@ -1146,7 +1154,9 @@ function buildFrames() {
   const frames = [...FR.FRAMES].sort((x, y) => (y.theme === D.theme) - (x.theme === D.theme));
   $("frameChips").replaceChildren(...frames.map(f => {
     const t = tile("frame", f.label, f === D.frame, () => { D.frame = f; changed(["filter"]); });
-    t.dataset.id = f.id; return t;
+    t.dataset.id = f.id;
+    if (lockedFrame(f)) { t.classList.add("locked"); t.insertAdjacentHTML("beforeend", '<i class="lk">토스</i>'); t.onclick = () => tossHint(`${f.label} 프레임은 토스에서 열려요`); }
+    return t;
   }));
   $("frameChips").scrollLeft = 0;
 }
@@ -1270,6 +1280,14 @@ function setSave(on) { document.querySelector('[data-act="savePhoto"]').disabled
 let tapAt = 0, dlAt = 0;
 addEventListener("pointerdown", () => { tapAt = performance.now(); }, true);
 async function download(...files) {
+  if (P.id === "toss") {
+    if (D.sending) return toast("보내는 중이야, 조금만 기다려 줘");
+    D.sending = files[0][1]; setVid();
+    try { for (const [blob, name] of files) await P.save(blob, name); }
+    catch (e) { console.warn("[booth] toss save", e); toast("저장이 안 됐어요. 다시 눌러 줘"); }
+    finally { D.sending = null; setVid(); }
+    return;
+  }
   const fs = env.isIOS && navigator.canShare && files.map(([b, n]) => new File([b], n, { type: b.type }));
   if (fs && navigator.canShare({ files: fs })) {
     try { return await navigator.share({ files: fs }); }
@@ -1294,10 +1312,12 @@ const LINES = ["영상 만드는 중", "프레임 끼우는 중", "리본 묶는
 function setVid(which = "video", p = null) {
   for (const [id, kind, ready, idle, wait] of [["vidBtn", "video", "움직이는 네컷 저장", "움직이는 네컷", "기다리는 중"],
     ["storyBtn", "story", "메이킹 영상 저장", "메이킹 영상", "기다리는 중"]]) {
-    const b = $(id), span = b.querySelector("span"), cur = D[kind]?.key === vkey();
+    const b = $(id), span = b.querySelector(".vl span"), cur = D[kind]?.key === vkey();
+    if (kind === "story" && P.makingLocked) { b.disabled = false; continue; }
     const making = which === kind && p != null, pct = typeof p === "number" ? Math.max(1, Math.round(p * 100)) : 0;
     b.classList.toggle("rendering", making); b.style.setProperty("--p", making ? pct : 0);
     if (making) { span.textContent = typeof p === "string" ? p : `${LINES[Math.floor(performance.now() / 2000) % LINES.length]} ${pct}%`; b.disabled = true; continue; }
+    if (cur && P.id === "toss") { span.textContent = sendingKind() === kind ? "보내는 중…" : adOk(D.ad) ? "보내기·저장" : idle; b.disabled = false; continue; }
     if (cur) { span.textContent = ready; b.disabled = false; continue; }
     const want = kind === "video" ? D.wantVideo : D.wantStory;
     span.textContent = want ? wait : idle; b.disabled = !!want;
@@ -1317,7 +1337,7 @@ function hqClips() {
   hqcP = Promise.resolve(navigator.gpu?.requestAdapter()).catch(() => null)
     .then(ad => ad && load("segment").then(G => G.prefetchStill().then(ok => ok && G.stats.still.delegate === "webgpu")))
     .then(gpu => gpu && (D.hqProg = 0, load("clipmatte")).then(M => M.clipMattes(["a", "b"].flatMap(s => media[s].cuts.map(c => c.clip)), p => { D.hqProg = p; hqLine(); })))
-    .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; videoJob(); } })
+    .then(m => { if (m?.size && D.media === media) { D.mattes = m; if (D.video) D.wantVideo = true; if (P.id === "toss" && D.story) D.wantStory = true; videoJob(); } })
     .catch(e => console.warn("[booth] hq clips", e))
     .finally(() => { D.hqProg = null; hqLine(); });
 }
@@ -1370,7 +1390,13 @@ async function videoJob() {
     }
   } catch (e) {
     if (e?.name === "AbortError") return;
-    console.warn("[booth] video", e);
+    console.warn("[booth] video", e?.name, e?.message, "hidden", document.hidden);
+    if (P.id === "toss" && !D.vretried && (document.hidden || e?.name === "QuotaExceededError" || /reclaim/i.test(e?.message || ""))) {
+      D.vretried = true;
+      const again = () => { if (document.hidden) return; removeEventListener("visibilitychange", again); videoJob(); };
+      addEventListener("visibilitychange", again); queueMicrotask(again);
+      return;
+    }
     D.noVideo = true;
     $("saveBtns").querySelector(".vidrow").hidden = true; $("dVid").hidden = true; sheet(null);
     toast("이 폰에서는 영상 저장이 안 돼요. 사진으로 저장해 줘", 3500);
@@ -1380,6 +1406,7 @@ async function videoJob() {
 // one tap on a video button: saves it if it is made for this look, else starts it and (not on iPhone) saves it when done
 const saveKind = kind => download([D[kind].blob, fileName(extOf(D[kind].type), kind === "story" ? "-making" : "")]);
 function saveVid(kind) {
+  if (P.id === "toss") return tossVid(kind);
   if (D[kind]?.key === vkey()) return saveKind(kind);
   D[kind === "video" ? "wantVideo" : "wantStory"] = true; D.auto[kind] = !env.isIOS; setVid(); videoJob();
 }
@@ -1390,7 +1417,7 @@ function saveSheet() {
   try { $("vidPv").src = $("stripImg").toDataURL("image/jpeg", .7); } catch {}
   const mine = D.media?.[me() || "a"]?.cuts?.[0]?.cut;          // the cut-out: the making video shows no rooms
   if (mine) $("mkPv").src = mine.src;
-  if (env.inApp) return;                 // the in-app sheet hides the bubble: do not overwrite the clipboard unseen
+  if (env.inApp || P.id === "toss") return;   // in-app: the bubble is hidden; Toss: no web links (review item 10)
   const link = location.origin + location.pathname;
   const said = ok => $("saveLink").innerHTML = ok ? "<em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아" : `링크도 붙여 주면 더 좋아 <em>${link.replace(/^https?:\/\//, "")}</em>`;
   try { navigator.clipboard.writeText(link).then(() => said(true), () => said(false)); } catch { said(false); }
@@ -1446,7 +1473,7 @@ async function buildStickers(set = $("stkGrid").dataset.set || FR.THEMES?.find(t
     return b;
   }));
 }
-for (const p of $$("#stkSets .pill")) p.onclick = () => buildStickers(p.dataset.set);
+for (const p of $$("#stkSets .pill")) p.onclick = () => lockedSet(p.dataset.set) ? tossHint(`${p.textContent} 스티커는 토스에서 열려요`) : buildStickers(p.dataset.set);
 function addSticker(kind, id) {
   if (D.stickers.length >= STK_MAX) return toast(`스티커는 ${STK_MAX}개까지 붙일 수 있어`);
   const n = D.stickers.length, j = ((n % 5) - 2) * 26;          // a little apart, so taps in a row do not stack exactly
@@ -1655,6 +1682,53 @@ const RZ = zoomer({ box: $("stage"), host: $("review"), inner: $("review"), chip
   for (const t of ["pointerup", "pointercancel", "lostpointercapture"]) b.addEventListener(t, e => { e.stopPropagation(); hold(false); });
   b.addEventListener("contextmenu", e => e.preventDefault()); }
 
+// Toss build: one rewarded ad while both videos are made (PLAN-toss.md Task 8). Tapping a tile asks first (#adNote);
+// the ad and the renders run together; a tile saves once the ad paid out and its render is for the current look.
+D.ad = adStart();
+const sendingKind = () => !D.sending ? null : D.sending.includes("-making") ? "story" : /\.(mp4|webm)$/.test(D.sending) ? "video" : "photo";
+function adUi() { $("adNote").hidden = true; $("adRetry").hidden = !needsRetry(D.ad); setVid(); }
+function tossVid(kind) {
+  if (adOk(D.ad)) {
+    if (D[kind]?.key === vkey()) return saveKind(kind);
+    D[kind === "video" ? "wantVideo" : "wantStory"] = true; setVid(); videoJob();
+    return toast("만들고 있어! 다 되면 버튼을 눌러 줘");
+  }
+  if (needsRetry(D.ad)) return adRun();
+  $("adNote").hidden = false;
+}
+async function adRun() {
+  $("adNote").hidden = true; D.ad = adStep(D.ad, "retry"); adUi();
+  D.wantVideo = D.video?.key !== vkey(); D.wantStory = D.story?.key !== vkey(); setVid(); videoJob();
+  const r = await Promise.race([P.loadAd(), sleep(5000).then(() => "late")]);
+  if (r !== "loaded") { console.warn("[booth] ad", r); D.ad = adStep(D.ad, "failed"); return adUi(); }
+  P.showAd(ev => { D.ad = adStep(D.ad, ev); adUi(); });
+}
+if (P.onBack) {
+  let last = 0;
+  P.onBack(() => {
+    if ($$("#s-done .dsheet").some(x => !x.hidden)) return sheet(null);
+    const sc = document.body.dataset.screen;
+    if (sc === "upload" || (sc === "shoot" && S.busy)) return;          // no half-done state
+    if (sc === "mode") return show("landA");
+    if (/^(done|share|pick|shoot)$/.test(sc) && performance.now() - last > 2000) { last = performance.now(); return toast("한 번 더 누르면 닫혀요"); }
+    P.close();
+  });
+}
+
+// web build: what only the Toss mini-app has (making video, Y2K / 다이어리 themes) opens this sheet instead
+function tossHint(title) { $("tossTitle").textContent = title; sheet("toss"); }
+const lockedFrame = f => P.decoLocked && f.theme && f.theme !== "clean";
+const lockedSet = s => P.decoLocked && (s === "y2k" || s === "diary");
+if (P.makingLocked) {
+  const b = $("storyBtn");
+  b.classList.add("locked"); b.querySelector(".ribbon").textContent = "토스 전용";
+  b.querySelector(".pv").insertAdjacentHTML("beforeend", '<i class="lockveil"><span>미리보기만</span></i>');
+  b.querySelector("small").textContent = "토스에서 받을 수 있어요";
+  b.querySelector(".vl span").textContent = "메이킹 영상";
+  $("saveBtns").querySelector(".savehead").textContent = "영상 받아 가!";
+}
+if (P.decoLocked) for (const p of $$("#stkSets .pill")) if (lockedSet(p.dataset.set)) p.classList.add("locked");
+
 const ACT = {
   pickUi: b => { setUi(b.dataset.ui); show("landA"); },   // screen 0: A's theme, then A's cover
   startA: () => modeScreen(),
@@ -1698,7 +1772,8 @@ const ACT = {
   },
   ownReset: () => { if (mySide()) { D.own[mySide()] = null; ownCommit(); } },
   saveVideo: () => saveVid("video"),
-  saveStory: () => saveVid("story"),
+  adGo: () => adRun(), adRetry: () => adRun(),
+  saveStory: () => P.makingLocked ? tossHint("메이킹 영상은 토스에서 받아요") : saveVid("story"),
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
   again: fresh,

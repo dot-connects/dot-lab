@@ -683,11 +683,28 @@ kick();
         <button class="vtile vbtn bonus" id="storyBtn" data-act="saveStory"><i class="ribbon">보너스</i><i class="pv mk"><img id="mkPv" alt=""></i><b class="vl"><i class="ring"></i><span>메이킹 영상</span></b><small>따로 찍은 순간까지</small></button>
       </div>
       <p class="fine" id="vidHq" role="status" hidden></p>
+      <!-- Toss build only (Task 8): asked before the one ad that pays for both videos -->
+      <div class="adnote" id="adNote" hidden>
+        <b>만드는 동안 광고 하나만 봐 줄래?</b>
+        <span>그사이에 다 만들어 둘게! 광고가 이 앱을 무료로 지켜 줘요</span>
+        <button class="cta" type="button" data-act="adGo">좋아, 2개 다 만들어 줘</button>
+      </div>
+      <p class="adretry" id="adRetry" hidden>광고가 끝나야 저장할 수 있어요 <button class="textlink" type="button" data-act="adRetry">다시 보기</button></p>
       <p class="savebubble"><b>SNS에 올려서 자랑해 줘 🙌</b><span id="saveLink"><em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아</span></p>
     </div>
     <div id="inappSave" hidden>
       <button class="cta" data-act="toChrome">크롬에서 열어 저장하기</button>
       <p class="fine" id="iosText" hidden>이 앱 안에서는 저장이 안 돼요. 오른쪽 위 공유 메뉴 → Safari로 열기 → 같은 화면에서 저장해 줘</p>
+    </div>
+    <button class="textlink" type="button" data-act="dsheetClose">닫기</button>
+  </div>
+  <!-- web build only (platform.js decoLocked / makingLocked): what the Toss mini-app has -->
+  <div class="dsheet tosshint" data-sheetid="toss" hidden>
+    <p class="savehead" id="tossTitle">토스에서 열려요</p>
+    <div class="tossbox">
+      <b>토스에서 하면 워터마크 없이 받아요</b>
+      <ul><li>메이킹 영상까지</li><li>프레임·스티커 전부</li><li>앱 설치 없이, 토스 앱 안에서</li></ul>
+      <p class="tosssearch">토스 앱에서 「따로 같이 네컷」을 검색해 줘</p>
     </div>
     <button class="textlink" type="button" data-act="dsheetClose">닫기</button>
   </div>

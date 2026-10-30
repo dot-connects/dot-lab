@@ -97,7 +97,7 @@ async function frameRecorder(canvas, bps) {
   })();
   const cfg = await clipCfg;
   if (!cfg || cfg.width !== width || cfg.height !== height) return null;
-  const { Muxer, ArrayBufferTarget } = await imp("./vendor/mp4-muxer.mjs");
+  const { Muxer, ArrayBufferTarget } = await imp("./vendor/mp4-muxer.js");
   // fragmented: what MediaRecorder writes too, and what compose.js reads frame by frame
   const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width, height, frameRate: 30 },
     fastStart: "fragmented", firstTimestampBehavior: "offset" });

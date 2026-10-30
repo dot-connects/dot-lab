@@ -38,6 +38,31 @@ Four lenses (zoom-out, naive implementer, failure, rules). Log: `docs/archive/20
 14. **Phone checklist adds:** `document.hidden` + frames/s logged during the ad (render behind the ad); memory peak (both renders + HQ matte + ad, watch for white screen); back on every screen; save times for photo / moving / making.
 15. **Wizard:** manual `.ait` upload in the console is the main path (it worked for the spike); the deploy key (console → workspace → 키 → API 키 발급, then `npx ait token add` once, `npx ait deploy`) is an optional stage that, once done, lets Claude upload future builds. Claude never runs `ait deploy` without the key the operator registered.
 
+## Plan-review round 2 changes (2026-10-31, binding; override round 1 where they differ)
+Log: `docs/archive/2026-10-31-toss-plan-review/round2.md`.
+16. **Web changes stay dormant until the mini-app is public.** `platform.js` web: `tossLive = false` → `watermark`, `makingLocked`, `decoLocked` are all `tossLive || preview` where `preview = new URLSearchParams(location.search).has("toss")`. Live users keep today's app; the operator tests the web version with `?toss=1` (the flag rides along on share links via `uiQ()`-style param). Flip `tossLive = true` on release day.
+17. **Entry link once:** `Q` = `location.search` if it has `s`, else `initialURL`'s params only when `sessionStorage["booth:entry"]` is unset (set it after reading). `fresh()` / 다시 찍기 then land on a clean start.
+18. **Bundle budget (must stay < 100 MB):** ORT: only `ort.webgpu.min.mjs`, `ort.wasm.min.mjs`, `ort-wasm-simd-threaded.jsep.mjs`, `ort-wasm-simd-threaded.mjs`, `ort-wasm-simd-threaded.jsep.wasm`, `ort-wasm-simd-threaded.wasm`. MediaPipe: `vision_bundle.mjs`, `vision_bundle.cjs`, and from `wasm/` only the simd files. **Fonts are NOT self-hosted in this test build** (12 Korean families ≈ 30-50 MB); the private test needs no review. Before P3 submission: subset the canvas fonts to KS X 1001 Hangul with `pyftsubset` (task note in I-0054). `check.mjs` allows `fonts.googleapis.com` / `fonts.gstatic.com` `<link>`/CSS only. Print per-folder sizes.
+19. **No raw `.mjs` in the Toss bundle** (Toss host MIME untested): copy as `.js`; ORT gets `wasmPaths = { mjs: <base>/ort-wasm-simd-threaded.jsep.js (or .js), wasm: <base>/…wasm }` per the chosen bundle; MediaPipe `import(MP + "/vision_bundle.js")` via a `P.MP_BUNDLE` name (web keeps `.mjs`).
+20. **Platform paths at runtime:** `platform-toss.js` builds library/model URLs from `document.baseURI` (no `new URL(…, import.meta.url)` literals, so Vite lib mode inlines nothing).
+21. **Workers keep today's CDN URLs as defaults** when no base arrives (cached old `segment.js` during the Pages window). Workers never import `platform.js`.
+22. **Back:** every screen not in the done/share/wait/sheet rules calls `closeView()` on back, except shoot/upload (ignored while busy).
+23. **Toss camera errors:** `camError` in Toss shows `토스 앱 설정에서 카메라 권한을 켜 줘` and no Chrome button; the `stall` path shows `다시 시도` only.
+24. **Ad edge cases:** tap while loading → wait for `loaded` up to 5 s, then `earned = true`; `failedToShow` / show `onError` → `earned = true`.
+25. **Watermark side from stickers:** right by default; left when any sticker's box overlaps the right footer corner, or for `WM_SIDE` frames. The side is part of the per-render key, so the cached sticker canvas follows.
+26. **Stub detection:** real Toss = `loadFullScreenAd.isSupported()` inside try → true; otherwise stubs (headless/local).
+27. **B test tomorrow:** link opening between two phones may not work before release. Test path: A in Toss on the operator's phone; B through the **web** link with `?toss=1` on a second device (same Worker). If a Toss share link opens on the second phone with the test app, also try that. Report which worked.
+
+## Plan-review round 3 changes (2026-10-31, binding)
+28. **B test path:** the `ttarogachi-test` build's share message also carries the web link `…/site/?s=<id>&toss=1` (flag `P.debugWebLink`, true only when `VITE_AIT_APP_NAME` ends in `-test`); strip before P3.
+29. **Render behind the ad:** in Toss, a `videoJob` error while `document.hidden`, or a codec-reclaim error (`QuotaExceededError` / message contains `reclaim`), waits for `visibilitychange` to visible and retries once instead of setting `D.noVideo`. Log `e.name` + `document.hidden`.
+30. **Toss origins are guesses:** the Worker also accepts `ORIGIN_RE` (new var, `^https://ttarogachi(-test)?\.[a-z-]+\.tossmini\.com$`); the phone log prints `location.origin`. Redeploy.
+31. **`?toss=1` sticks:** `tossQ` is appended in `shareUrl`, `sendUrl`, `fresh()` and the `replaceState` at `app.js:886`.
+32. **HQ landing in Toss:** `hqClips` also sets `wantStory` when `D.story` exists (both stay saveable after the ad).
+33. `check.mjs` looks for the `"toss"` literal in `dist/js/platform.js`; the lib build uses `publicDir: false`.
+34. Stubs per function: `saveBase64Data.isSupported()`, `loadFullScreenAd.isSupported()`, `getTossShareLink` in try.
+35. Keep `site/js/vendor/mp4-muxer.mjs` as a copy for a week (cached old pages request it).
+
 ## File map
 | File | Change |
 |---|---|

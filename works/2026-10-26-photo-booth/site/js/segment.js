@@ -2,8 +2,8 @@
 // Refinement per frame: temporal EMA on the confidence (motion-adaptive, so moving edges do not ghost),
 // then a joint bilateral filter guided by the full-res frame (the 256 px mask snaps to real colour edges),
 // then smoothstep levels; the soft remainder of the smoothstep is the ~1-2 px feather.
-const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-const MODEL = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_segmenter/float16/1/selfie_segmenter.tflite";
+import { MP, MP_BUNDLE, MODELS, ORT_LOAD } from "./platform.js";
+const MODEL = MODELS.selfie;
 // selfie_segmenter has a single output: confidenceMasks[0] = person probability (model card; pinned by a fake-camera
 // run 10-26: centre of person-a 0.99+, wall corners < 0.01). No polarity guess.
 const PERSON = 0;
@@ -29,7 +29,7 @@ const petCb = new Map();
 // Resolves null when pets are off or the worker failed.
 export function petMap(bitmap) {
   if (petW === null) try {
-    petW = new Worker(new URL("./pet-worker.js", import.meta.url));
+    petW = new Worker(new URL(`./pet-worker.js?${new URLSearchParams({ mp: MP, deeplab: MODELS.deeplab })}`, import.meta.url));
     petW.onmessage = ({ data }) => { const f = petCb.get(data.id); petCb.delete(data.id); f?.(data); };
     petW.onerror = e => { e.preventDefault(); petW.terminate(); petW = false; petLive = null; stats.petLive = "failed: " + (e.message || "load");
       for (const f of petCb.values()) f({ error: "worker" }); petCb.clear(); };
@@ -62,7 +62,7 @@ function toSmall(video) {
 export async function loadSegmenter() {
   if (seg) return seg;
   prefetchStill();   // HQ still model (no-op when the landing page already started it)
-  const { FilesetResolver, ImageSegmenter } = await import(MP + "/vision_bundle.mjs");
+  const { FilesetResolver, ImageSegmenter } = await import(MP_BUNDLE);
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const mk = delegate => ImageSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: MODEL, delegate },
     runningMode: "VIDEO", outputConfidenceMasks: true, outputCategoryMask: false });
@@ -358,7 +358,7 @@ export function drawCutout(ctx, video, w, h, mirror) {
 // MODNet's alpha already follows hair, so refine.js runs with guide 0 (linear levels + edge colour decontamination).
 // 512x384 input (short side 384): 0.81-0.9 s per still instead of 1.33-1.5 s at 672x512, same look (research/cutout-speed/)
 const STILL_MODEL = { url: new URL("../models/modnet.onnx", import.meta.url).href, cache: "booth-modnet-v1",
-  size: { short: +QS.get("sshort") || 384, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha" };   // ?sshort= bench only
+  size: { short: +QS.get("sshort") || 384, div: 32 }, mean: [0.5, 0.5, 0.5], std: [0.5, 0.5, 0.5], out: "alpha", ort: ORT_LOAD };   // ?sshort= bench only
 // No WebGPU (many Android phones, in-app browsers) or a WebGPU error: WASM instead of the live matte (Round 5: the phone's
 // stills all had the live matte's leftover background, lost hands and rough hair). Same fp32 model (Xenova's int8 export is
 // 2x faster but cut half a head of hair and most of a held dog: research/round5-matte/), single thread (no cross-origin

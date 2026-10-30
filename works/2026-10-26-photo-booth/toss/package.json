@@ -1,0 +1,22 @@
+{
+  "name": "photo-booth-toss",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "assemble": "node scripts/assemble.mjs",
+    "build": "node scripts/assemble.mjs && vite build && node scripts/check.mjs && ait build",
+    "preview": "node scripts/assemble.mjs && vite build && node scripts/check.mjs && node scripts/serve.mjs"
+  },
+  "dependencies": {
+    "@apps-in-toss/web-framework": "3.0.4",
+    "@mediapipe/tasks-vision": "0.10.14",
+    "onnxruntime-web": "1.22.0"
+  },
+  "devDependencies": {
+    "vite": "^6.2.0"
+  },
+  "overrides": {
+    "baseline-browser-mapping": "2.10.40"
+  }
+}

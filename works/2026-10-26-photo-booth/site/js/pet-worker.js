@@ -5,8 +5,10 @@
 // with the face landmarker on the page (that pool aborted mid-decorate when DeepLab ran there on clip frames, 10-28).
 // in : { id, img: ImageBitmap (transferred) }  ->  out: { id, data: Float32Array cat+dog, width, height, ms }
 //      | { id, data: null } (no pet >= 0.3) | { id, error }
-const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
-const DEEPLAB = "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite";
+// bases come as query params (segment.js, from platform.js); the CDN defaults cover a cached older segment.js
+const QP = new URL(self.location.href).searchParams;
+const MP = QP.get("mp") || "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const DEEPLAB = QP.get("deeplab") || "https://storage.googleapis.com/mediapipe-models/image_segmenter/deeplab_v3/float32/1/deeplab_v3.tflite";
 const CAT = 8, DOG = 12;
 const segP = (async () => {
   // the CDN serves .cjs with a non-JS MIME type, which importScripts refuses: load it as a JS blob instead

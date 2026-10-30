@@ -4,7 +4,7 @@
 // its midline, more toward the jaw; eye = local magnify), then on the photo only an edge-preserving (bilateral) blur inside a feathered skin
 // mask (face oval minus eyes/brows/lips) and a lift + slight pink tone. Cut-outs get the same warp and RGB treatment,
 // their alpha only follows the warp. No face found / no WebGL: the input comes back unchanged.
-const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+import { MP, MP_BUNDLE } from "./platform.js";
 const MODEL = { url: new URL("../models/face_landmarker.task", import.meta.url).href, cache: "booth-face-v1" };
 export const DEFAULT_LOOK = { skin: 1, slim: 0, eye: 0 };
 // per level 0/1/2. blur/feather = fractions of the face width; sr = bilateral colour sigma; mix = how much of the
@@ -41,7 +41,7 @@ async function modelBytes() {
 }
 let visionP, filesP, bytesP, imageLM, videoLM, fxWarm = false;
 async function landmarker(mode) {
-  visionP ||= import(MP + "/vision_bundle.mjs");
+  visionP ||= import(MP_BUNDLE);
   const { FilesetResolver, FaceLandmarker } = await visionP;
   filesP ||= FilesetResolver.forVisionTasks(MP + "/wasm");
   const [files, bytes] = await Promise.all([filesP, bytesP ||= modelBytes()]);

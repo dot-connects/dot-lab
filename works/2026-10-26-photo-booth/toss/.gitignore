@@ -1,0 +1,8 @@
+node_modules/
+dist/
+public/vendor/
+public/models/
+*.ait
+.granite/
+ait.local
+cache/

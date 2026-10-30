@@ -5,7 +5,9 @@
 // Errors come back as { id, error }.
 // onnxruntime is loaded with the first model: the WebGPU bundle only where WebGPU is (its wasm is 21.9 MB); no WebGPU
 // (iOS 18, older phones) gets the plain WASM bundle, 11 MB less (research/ios-audit.md #5)
+// spec.ort = { webgpu|wasm: { url, paths } } from platform.js (the Toss build has its own copies); CDN default for an older page
 const ORT = "https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/";
+const ORT_DEFAULT = { webgpu: { url: ORT + "ort.webgpu.min.mjs", paths: ORT }, wasm: { url: ORT + "ort.wasm.min.mjs", paths: ORT } };
 let ort = null;
 
 let sess = null, spec = null, inName = "", outName = "", f16 = false;
@@ -50,8 +52,9 @@ async function load(m) {
   let err;
   if (!ort) {
     const gpu = m.eps.includes("webgpu") && !!(self.navigator?.gpu && await navigator.gpu.requestAdapter().catch(() => null));
-    ort = await import(ORT + (gpu ? "ort.webgpu.min.mjs" : "ort.wasm.min.mjs"));
-    ort.env.wasm.wasmPaths = ORT; ort.env.logLevel = "error";
+    const b = (spec.ort || ORT_DEFAULT)[gpu ? "webgpu" : "wasm"];
+    ort = await import(b.url);
+    ort.env.wasm.wasmPaths = b.paths; ort.env.logLevel = "error";
   }
   for (const ep of m.eps) {
     if (ep === "webgpu" && !(self.navigator && navigator.gpu && await navigator.gpu.requestAdapter())) { err = "no webgpu adapter"; continue; }

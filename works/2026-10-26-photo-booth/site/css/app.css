@@ -455,7 +455,7 @@ body[data-screen="done"] .toast { top: auto; bottom: 150px; }
 /* the "making" veil only shows when a render takes longer than ~150 ms (no flash on every tap) */
 .making { animation: makingIn .2s ease .15s both; }
 @keyframes makingIn { from { opacity: 0; } }
-.zoomtag { position: absolute; right: 6px; bottom: 6px; width: 26px; height: 26px; padding: 4px; background: #000; color: var(--acc); pointer-events: none; z-index: 1; }
+.zoomtag { position: absolute; right: 6px; top: 6px;   /* top: the web watermark sits bottom right */ width: 26px; height: 26px; padding: 4px; background: #000; color: var(--acc); pointer-events: none; z-index: 1; }
 body[data-tab="sticker"] .preview { cursor: default; }
 body[data-tab="sticker"] .zoomtag { display: none; }
 .tabs button { font-size: 16px; white-space: nowrap; min-width: 0; }
@@ -893,3 +893,27 @@ body[data-shape="tall"] .ministrip.real canvas { position: absolute; inset: 0; }
 #hoStrip .ministrip.real { transform: none; width: min(150px, calc((42svh - 53px) * .3613 + 14px)); }
 body[data-shape="tall"] #hoStrip .ministrip.real { width: min(300px, 100%); }
 body[data-ui="film"] #hoStrip .ministrip.real { box-shadow: none; outline: 3px solid var(--acc); outline-offset: 3px; }
+
+/* web build: Toss-only items (PLAN-toss.md Task 3-4): visible, badged, a tap opens the .tosshint sheet */
+.tile.locked { position: relative; }
+.tile.locked .mini { opacity: .55; }
+.tile .lk, .vtile .lockveil span { font-style: normal; font-weight: 900; font-size: 11px; line-height: 1; color: #fff; background: #1b64da; padding: 3px 6px; border-radius: 99px; }
+.tile .lk { position: absolute; top: 4px; right: 4px; z-index: 1; }
+#stkSets .pill.locked { color: #4a4a4a; }
+#stkSets .pill.locked::after { content: " · 토스"; color: #1b64da; font-weight: 900; }
+.vtile.locked .ribbon { background: #1b64da; color: #fff; }
+.vtile .lockveil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13, 13, 13, .35); }
+.vtile .lockveil span { font-size: 13px; padding: 6px 11px; background: #fff; color: #0d0d0d; }
+.vtile .pv { position: relative; }
+.tosshint .tossbox { display: grid; gap: 8px; padding: 14px; background: #eef4ff; color: #0d0d0d; border-radius: 14px; }
+.tosshint .tossbox b { font-size: 16px; line-height: 1.35; }
+.tosshint .tossbox ul { margin: 0; padding-left: 18px; font-size: 14px; color: #2b3a55; }
+.tosshint .tosssearch { margin: 0; font-weight: 900; font-size: 15px; color: #1b64da; }
+
+/* Toss build (body[data-platform="toss"], set by toss/scripts/assemble.mjs): the ad note, and no web-only controls */
+.adnote { display: grid; gap: 6px; padding: 14px; margin-top: 10px; background: #0d0d0d; color: #fff; text-align: center; }
+.adnote b { font-size: 17px; line-height: 1.35; }
+.adnote span { font-size: 13px; line-height: 1.45; color: #e6e6e6; }
+.adnote .cta { margin-top: 6px; }
+.adretry { margin: 8px 0 0; text-align: center; font-size: 14px; font-weight: 700; color: #0d0d0d; }
+body[data-platform="toss"] :is(.morelink, #inappSave, #openTab, #saveLink, [data-act="toTheme"], #linkBox) { display: none !important; }

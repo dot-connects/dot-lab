@@ -7,7 +7,7 @@ import {
   setClipboardText, share, showFullScreenAd,
 } from "@apps-in-toss/web-framework";
 import { FilesetResolver, ImageSegmenter } from "@mediapipe/tasks-vision";
-import { ArrayBufferTarget, Muxer } from "../../site/js/vendor/mp4-muxer.mjs";
+import { ArrayBufferTarget, Muxer } from "../../site/js/vendor/mp4-muxer.js";
 
 const $ = id => document.getElementById(id);
 const BASE = new URL("./", location.href).href;

@@ -5,6 +5,8 @@
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
 import { drawStickers, stickersReady } from "./stickers.js";
+import * as P from "./platform.js";
+import { drawWatermark, watermarkReady, watermarkSide } from "./watermark.js";
 import { MAKING, ROW_T, ROW_DUR, drawMaking, makingFonts, makingDate } from "./making.js";
 
 // Round 6 #9: A picks the shape first and B follows it (link opts.shape).
@@ -571,6 +573,7 @@ function prepare(o) {
 async function prepareNow({ frame, date, caption = "", font = null, shape = "wide" }) {
   const F = frameOf(frame), L = layoutFor(shape);
   await loadFrameFonts(F, caption, font);
+  if (P.watermark) await watermarkReady();
   const rects = cellRects(F, L.shape), d = fmtDate(date), o = { date: d, caption, cellRects: rects, font };
   const base = document.createElement("canvas"); base.width = L.W; base.height = L.H;
   F.draw(base.getContext("2d"), L, o);
@@ -641,6 +644,8 @@ function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline 
   });
   if (st.over) ctx.drawImage(st.over, 0, 0);
   if (stickers?.length) drawStickers(ctx, stickers);
+  // web build only, and not on the mini tiles (scale ~0.2): the "토스에서 검색" sticker (watermark.js)
+  if (P.watermark && scale >= 0.5) drawWatermark(ctx, st.L, watermarkSide(st.L, st.F.id, stickers));
 }
 
 // The still strip on a canvas. scale < 1 = a small preview (mini tiles); cell = k: only cell k (filter tiles).
@@ -684,7 +689,7 @@ async function storyBack(st) {
   return { c, ox, oy, sw, sh };
 }
 
-const SECONDS = 6, FPS = 30, BPS = 4_000_000;
+const SECONDS = 6, FPS = 30, BPS = P.videoBps || 4_000_000;   // Toss: lower (its save bridge is slow)
 // loop-seam crossfade per clip (s); ~0 = hard loop like a booth live photo: a 0.2 s fade showed the cut-out
 // half see-through for a frame or two, the "ghost" four reviewers flagged (lead, 10-27). Kept > 0 to avoid / 0.
 const FADE = 0.001;
@@ -869,7 +874,7 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
 
 const PREP = 0.1;     // share of the progress spent opening the clips (a phone sat at "0%" through it, review r3 #5)
 async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgress) {
-  const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+  const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.js");
   const t0 = performance.now(), ctx = cv.getContext("2d"), L = st.L;
   const strip = story ? Object.assign(document.createElement("canvas"), { width: L.W, height: L.H }) : cv, sctx = strip.getContext("2d");
   const still = Object.assign(document.createElement("canvas"), { width: L.W, height: L.H });
@@ -948,7 +953,7 @@ export async function recordMaking({ a, b, bg, frame, filter = "original", date,
   return makingRealtime();
 
   async function makingOffline() {
-    const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.mjs");
+    const { Muxer, ArrayBufferTarget } = await import("./vendor/mp4-muxer.js");
     const muxer = new Muxer({ target: new ArrayBufferTarget(), video: { codec: "avc", width: cv.width, height: cv.height, frameRate: MAKING.FPS },
       fastStart: "in-memory", firstTimestampBehavior: "offset" });
     let failed = null, row = -1, srcs = [null, null];
