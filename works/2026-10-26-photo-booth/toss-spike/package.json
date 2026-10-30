@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "vendor": "node scripts/vendor.mjs",
-    "dev": "npm run vendor && vite dev --host",
+    "dev": "npm run vendor && vite dev",
     "build": "npm run vendor && vite build && ait build",
     "deploy": "ait deploy"
   },
