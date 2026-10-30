@@ -289,3 +289,18 @@ test("A and B with one fingerprint: status names neither", async () => {
   assert.equal((await call(e, "POST", `/s/${id}/b/done`, { token: tok("b"), ip: "1.2.3.4", dev: PHONE })).status, 204);
   assert.equal(await mine(e, id, "1.2.3.4", PHONE), null);
 });
+
+// the deployed origin list is the wrangler.toml var, not the test env above: read it from there
+test("wrangler.toml ORIGINS lets the Toss mini-app hosts in, and nothing else under tossmini.com", async () => {
+  const { readFileSync } = await import("node:fs");
+  const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
+  const ORIGINS = /^ORIGINS\s*=\s*"([^"]+)"/m.exec(toml)[1];
+  const e = { BUCKET: fakeR2(), ORIGINS }, allowed = ORIGINS.split(",");
+  for (const o of ["https://ttarogachi-test.private-web.tossmini.com", "https://ttarogachi-test.private-apps.tossmini.com",
+    "https://ttarogachi.apps.tossmini.com", PAGES]) {
+    const r = await call(e, "OPTIONS", "/s", { origin: o });
+    assert.equal(r.headers.get("Access-Control-Allow-Origin"), o, o);
+  }
+  const r = await call(e, "OPTIONS", "/s", { origin: "https://evil.apps.tossmini.com" });
+  assert.equal(r.headers.get("Access-Control-Allow-Origin"), allowed[0]);
+});
