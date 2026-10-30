@@ -522,8 +522,8 @@ function pickBgRow(box = "pickBg", redraw = () => (async () => { for (let j = 0;
 }
 function pickHq() {
   const done = S.shots.filter(x => x.hq || x.hqFail).length, on = S.hqBusy && done < S.shots.length;
-  $("pickHq").hidden = !on;
-  if (on) $("pickHq").textContent = `정밀 누끼 작업 중… ${done}/${S.shots.length} · 끝나면 저절로 바뀌어`;
+  $("pickHq").classList.toggle("off", !on);
+  if (on) $("pickHq").textContent = `정밀 누끼 작업 중… ${done}/${S.shots.length}`;   // one line on a 360 px phone
 }
 function pickScreen() {
   // the camera (the phone's biggest steady heat source) is off for the pick + 보정; reshoot turns it back on (perf study #4)
@@ -661,7 +661,7 @@ function askUpload() {
 }
 async function hqWait() {
   const b = $("hqWaitBtn"); b.disabled = true; b.textContent = "기다리는 중…";
-  await Promise.race([S.hqP, sleep(S.cap.hqPath?.() === "wasm" ? 45000 : 20000)]);   // WASM: ~9 s per still on a phone CPU
+  await Promise.race([S.hqP, sleep(S.cap.hqPath?.() === "webgpu" ? 20000 : 60000)]);   // WASM: ~9 s per still on a phone CPU, + the unpicked one in flight
   b.disabled = false; b.textContent = "조금만 기다리기";
   upload();
 }

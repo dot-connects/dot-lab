@@ -240,6 +240,9 @@ async function shootOneNow(i, { video, onTick, seconds = 3, stop, hold }, straig
   const path = R ? "webcodecs" : "mediarecorder";
   const mr = async () => {
     await warm;
+    try { mk(); } catch (e) { on = false; throw e; }       // the frame loop may already run (straight: made at "3")
+  };
+  const mk = () => {
     let stream = clipC.captureStream(0);
     const track = stream.getVideoTracks()[0];
     if (track?.requestFrame) push = () => track.requestFrame(); else { stream.getTracks().forEach(t => t.stop()); stream = clipC.captureStream(30); }

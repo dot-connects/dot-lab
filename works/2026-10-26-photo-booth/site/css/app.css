@@ -265,7 +265,8 @@ button.backchip { appearance: none; border: 0; background: none; cursor: pointer
 .pickhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: var(--b) solid var(--line); padding-bottom: 8px; }
 .pickhead h2 { font-size: 25px; }
 .pickfine { text-align: left; margin-top: -4px; }
-.pickhq { margin: 6px 0 0; text-align: center; }   /* "정밀 누끼 작업 중 3/6" under the background buttons */
+.pickhq { margin: 6px 0 0; text-align: center; min-height: 1.5em; }   /* "정밀 누끼 작업 중 3/6" under the background buttons */
+.pickhq.off { visibility: hidden; }   /* keeps its line: the grid does not jump under a finger when it goes */
 .pickbody { display: flex; gap: 12px; align-items: flex-start; }
 .pickgrid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pk { appearance: none; border: 0; padding: 0; position: relative; aspect-ratio: 552 / 382; overflow: hidden; background: #222; cursor: pointer;
