@@ -265,6 +265,7 @@ button.backchip { appearance: none; border: 0; background: none; cursor: pointer
 .pickhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; border-bottom: var(--b) solid var(--line); padding-bottom: 8px; }
 .pickhead h2 { font-size: 25px; }
 .pickfine { text-align: left; margin-top: -4px; }
+.pickhq { margin: 6px 0 0; text-align: center; }   /* "정밀 누끼 작업 중 3/6" under the background buttons */
 .pickbody { display: flex; gap: 12px; align-items: flex-start; }
 .pickgrid { flex: 1; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .pk { appearance: none; border: 0; padding: 0; position: relative; aspect-ratio: 552 / 382; overflow: hidden; background: #222; cursor: pointer;
@@ -382,8 +383,6 @@ button.backchip { appearance: none; border: 0; background: none; cursor: pointer
 .pill.sw { width: 40px; padding: 0; background: var(--c); box-shadow: inset 0 0 0 2px #000; }
 .pill.sw[aria-pressed="true"] { box-shadow: inset 0 0 0 2px #000, 0 0 0 3px #fff, 0 0 0 6px #000; background: var(--c); }
 .pill:disabled { background: #e4e4e4; color: #4a4a4a; cursor: default; }
-.pill.wait { animation: pillwait 1.2s ease-in-out infinite alternate; }   /* a cut-out background waiting for the HQ cuts */
-@keyframes pillwait { to { filter: brightness(1.07); } }   /* the label keeps its contrast */
 .pill:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 .savebar { position: sticky; bottom: 0; z-index: 3; margin: 0 calc(-1 * var(--pr)) 0 calc(-1 * var(--pl)); padding: 14px var(--pr) max(10px, env(safe-area-inset-bottom)) var(--pl); background: linear-gradient(#ffffff00, var(--bg) 14px); }
 #saveBtns { display: flex; flex-direction: column; gap: 8px; }

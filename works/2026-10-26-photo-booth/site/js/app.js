@@ -459,8 +459,7 @@ function onHQ(c, shots) {
   const k = S.cuts.indexOf(c);
   if (k >= 0) swapCell(k).catch(() => {});
   hqChip();
-  if (document.body.dataset.screen === "pick") pickBgRow();      // only the row on screen: one S.pickBg, one redraw
-  else if (!$("review").hidden) pickBgRow("revBg", review);
+  pickHq();
 }
 function hqChip() {
   const left = S.cuts.filter(x => !x.hq && !x.hqFail).length;
@@ -505,33 +504,26 @@ async function cellCanvas(cut, ai, look = null) {   // look: Round 5 보정 (rev
 }
 // the background buttons: the pick screen (#pickBg, redraws the grid) and the retouch review (#revBg, Round 7 #3,
 // redraws the four cells); one S.pickBg, so the pick's choice carries over (and on into decorate)
-// Operator 10-30: the rough live cut-outs looked broken, so the photos show as shot (rawBg) and the cut-out backgrounds
-// stay locked ("배경 끄기 3/6") until every shot has its HQ cut (or failed it). Untouched, the row then moves to the
-// side's own default (B: the friend's room).
-const rawBg = () => S.side === "b" ? "b" : "a";
-const bgWant = () => S.side === "b" ? (S.view === "b" ? "a" : "b") : "a";     // B: what the shoot view showed
+// Operator 10-30: every background works at once on the fast live cut-outs; the HQ cuts land cell by cell (onHQ fades
+// them in) while the line under the buttons counts them ("정밀 누끼 작업 중 3/6").
+const rawBg = () => S.side === "b" ? "b" : "a";       // the photo as shot: no cut-out in it
 function pickBgRow(box = "pickBg", redraw = () => (async () => { for (let j = 0; j < S.shots.length; j++) await paintCell(j, false); })()) {
-  const list = box === "revBg" ? S.cuts : S.shots, done = list.filter(x => x.hq || x.hqFail).length;
-  const ready = !S.hqBusy || done === list.length;
-  if (S.pickBg == null) { S.pickBg = ready ? bgWant() : rawBg(); S.bgAuto = !ready; }
-  else if (!ready && S.pickBg !== rawBg()) { S.pickBg = rawBg(); S.bgAuto = true; }
-  else if (ready && S.bgAuto) {
-    S.bgAuto = false;
-    if (S.pickBg !== bgWant()) { S.pickBg = bgWant(); redraw().catch(e => console.warn("[booth] bg redraw", e)); }
-  }
+  S.pickBg ??= S.side === "b" ? (S.view === "b" ? "a" : "b") : "a";     // B: what the shoot view showed
   $(box).replaceChildren(...PICK_BG[S.side].map(([v, label]) => {
-    const wait = !ready && v !== rawBg();
-    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill" + (wait ? " wait" : ""),
-      textContent: wait ? `${label} ${done}/${list.length}` : label, disabled: wait });
+    const b = Object.assign(document.createElement("button"), { type: "button", className: "pill", textContent: label });
     b.dataset.bg = v; b.setAttribute("aria-pressed", S.pickBg === v);
-    if (wait) b.setAttribute("aria-label", `${label}: 누끼 다듬는 중 ${done}/${list.length}`);
     b.onclick = () => {
       if (S.pickBg === v) return;
-      S.pickBg = v; S.bgAuto = false; pickBgRow(box, redraw);
+      S.pickBg = v; pickBgRow(box, redraw);
       redraw().catch(e => console.warn("[booth] bg redraw", e));
     };
     return b;
   }));
+}
+function pickHq() {
+  const done = S.shots.filter(x => x.hq || x.hqFail).length, on = S.hqBusy && done < S.shots.length;
+  $("pickHq").hidden = !on;
+  if (on) $("pickHq").textContent = `정밀 누끼 작업 중… ${done}/${S.shots.length} · 끝나면 저절로 바뀌어`;
 }
 function pickScreen() {
   // the camera (the phone's biggest steady heat source) is off for the pick + 보정; reshoot turns it back on (perf study #4)
@@ -540,7 +532,7 @@ function pickScreen() {
   show("pick");
   $("reshoot").hidden = S.redo;
   document.querySelector(".pickfine").textContent = `누른 순서대로 ${S.shape === "tall" ? "왼쪽" : "위에서"}부터 들어가 · 다시 누르면 빠져`;
-  pickBgRow();
+  pickBgRow(); pickHq();
   $("pickGrid").replaceChildren(...S.shots.map((_, j) => {
     const b = Object.assign(document.createElement("button"), { type: "button", className: "pk" });
     b.setAttribute("aria-label", `${j + 1}번째 사진`);
