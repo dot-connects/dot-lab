@@ -33,6 +33,23 @@ Reviews: Claude r8 (High 0; Medium 2 + Low 3 fixed), /done r1 High 1 (live CORS)
   in another browser, and the "내가 보낸 링크면 여기" button is gone: A opening their own link in KakaoTalk lands on
   the friend's camera. Links made before the deploy never match (no `a.dev`).
 - Fingerprint limits: iCloud Private Relay / CGNAT IP changes miss; same Wi-Fi + same iPhone model matches (escape link).
-- Android: tapping both video cards — the second auto-download has no fresh tap; Chrome may ask about multiple downloads.
 - WebM clips (old browsers) → making rows show stills. No WebCodecs → making = stills in real time.
 - Not run on an iPhone.
+
+## Phone test fixes (10-30)
+| Operator report | Cause | Fix | Commit |
+|---|---|---|---|
+| Instagram (Android): 5-4-3-2-1 then 3-2-1 again, every shot | each shot's clip came out empty → shootOne's straight retry | after one empty clip the page records straight (MediaRecorder from "3", no pause); only shot 1 repeats. `stats.still.cuts[i].retried` = what failed (path, type, size) | 072e772 |
+| Decorate zoom covered the top bar and menus | Round 6 #11 grew the box over the page (z-index 20) | `#s-done .previewwrap { overflow: clip }`: grows and pans inside the white area only | 072e772 |
+| Chrome: second video "여러 파일 다운로드" prompt, then nothing downloads | the second auto-save ran with no touch since the first; refused = the tab blocks downloads | auto-save only with a pointerdown after the last download, else "버튼을 누르면 저장돼" | 072e772 |
+| Pick (KakaoTalk A): two cells' cut-outs broken | not uploaded — the fast live cut-out of unpicked shots; the 4 uploaded HQ cuts were clean (checked from R2) | all backgrounds usable at once; HQ for all 6 even on WASM (was: picked 4 only); line "정밀 누끼 작업 중… n/6" under the buttons; cells swap as each lands. A locked-until-HQ version (e024fb9) was dropped: ~1 min on a WASM phone | e024fb9, c2c82c0 |
+
+Verified headless: broken VideoEncoder stub → shot 1 `5432103210`, shots 2-3 `543210`; live link zoom 1×→5× stays in the
+white area (https://claude.ai/artifact/KP7BokcujisDm66QPfe6fi); pick on `?scpu` (WASM) line 0/6→hidden, grid fixed;
+B pick after A upload. Local runs: serve the site on 8799 (wrangler.toml ORIGINS), give B another screen size (else
+the Worker's `mine` sends B to A's wait screen). The download fix was not run on a phone.
+/done review: r1 High 0 (Medium 2, Low 5) · r2 High 0 (Low 3); fixed: recorder failure stops the frame loop,
+steady line, WASM upload wait 60 s, one-line text (9a7ef07). Left: reshoot during an in-flight WASM cut shares CPU;
+`straightOnly` stays for the page; B without ghost on "내 배경" shows no badge; clip cuts the preview shadow 1 px;
+a failed straight shot still counts 3-2-1 once more.
+
