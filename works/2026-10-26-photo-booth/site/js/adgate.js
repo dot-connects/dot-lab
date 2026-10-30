@@ -1,4 +1,4 @@
-// Toss build: may the user save the videos yet? One rewarded ad per decorate visit pays for both videos and every
+// Toss build: may the user save the videos yet? One rewarded ad per page load pays for both videos and every
 // later re-render; saving also needs the render for the current look (app.js checks D[kind].key === vkey()).
 // Events: "earned" (userEarnedReward), "dismissed" (ad closed), "failed" (nothing to show: load / show failed, which
 // never blocks the user, operator 10-31), "retry" (다시 보기 tapped).

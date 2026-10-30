@@ -899,8 +899,11 @@ body[data-ui="film"] #hoStrip .ministrip.real { box-shadow: none; outline: 3px s
 .tile.locked .mini { opacity: .55; }
 .tile .lk, .vtile .lockveil span { font-style: normal; font-weight: 900; font-size: 11px; line-height: 1; color: #fff; background: #1b64da; padding: 3px 6px; border-radius: 99px; }
 .tile .lk { position: absolute; top: 4px; right: 4px; z-index: 1; }
-#stkSets .pill.locked { color: #4a4a4a; }
-#stkSets .pill.locked::after { content: " · 토스"; color: #1b64da; font-weight: 900; }
+#stkSets .pill.locked { position: relative; color: #4a4a4a; }
+/* a corner badge, not a suffix: a wider pill squeezed the drag hint into a one-word column (Codex review 10-31) */
+#stkSets .pill.locked::after { content: "토스"; position: absolute; top: -8px; right: -4px; font-size: 10px; line-height: 1; font-weight: 900;
+  color: #fff; background: #1b64da; padding: 3px 5px; border-radius: 99px; }
+#stkSets:has(.pill.locked) { padding-top: 9px; overflow: visible; }
 .vtile.locked .ribbon { background: #1b64da; color: #fff; }
 .vtile .lockveil { position: absolute; inset: 0; display: grid; place-items: center; background: rgba(13, 13, 13, .35); }
 .vtile .lockveil span { font-size: 13px; padding: 6px 11px; background: #fff; color: #0d0d0d; }

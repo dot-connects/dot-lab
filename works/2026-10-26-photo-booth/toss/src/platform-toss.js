@@ -55,8 +55,7 @@ export async function shareLink(sid) {
   try { link = await getTossShareLink(`intoss://${APP}/?s=${sid}`); } catch (e) { console.warn("[toss] share link", e); }
   const web = debugWebLink ? `\n(시험용 웹 링크) ${WEB}?s=${sid}&ui=cute&toss=1` : "";
   const message = `따로 같이 네컷 같이 찍자! 내 옆자리 비워 뒀어 ${link}${web}`;
-  try { await share({ message }); } catch (e) { console.log("[toss stub] share", message, e?.message); }
-  return link;
+  try { await share({ message }); return true; } catch (e) { console.log("[toss stub] share", message, e?.message); return !link; }
 }
 
 // rewarded ad (test id until launch). loadAd resolves "loaded" | "failed"; showAd's onEvent gets

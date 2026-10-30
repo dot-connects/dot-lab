@@ -976,7 +976,7 @@ const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없�
 const DONE_TEXT = "완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어";
 const shareText = () => S.shareMode === "done" ? DONE_TEXT : SHARE_TEXT;
 async function share() {
-  if (P.id === "toss") { await P.shareLink(S.id); return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
+  if (P.id === "toss") { if (!await P.shareLink(S.id)) return; return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
   const url = sendUrl();
   if (navigator.share) {
     try { await navigator.share({ title: "따로 같이 네컷", text: shareText(), url });
@@ -1386,13 +1386,15 @@ async function videoJob() {
       const auto = D.auto[kind] && tapAt > dlAt;
       D.auto[kind] = false;
       if (auto) { saveKind(kind); toast(`${name} 저장했어!`); }
-      else toast(`${name} 완성! 버튼을 누르면 저장돼`);
+      else toast(P.id === "toss" ? (adOk(D.ad) ? `${name} 완성! 보내기·저장을 눌러 줘` : `${name} 완성!`) : `${name} 완성! 버튼을 누르면 저장돼`);
     }
   } catch (e) {
     if (e?.name === "AbortError") return;
     console.warn("[booth] video", e?.name, e?.message, "hidden", document.hidden);
-    if (P.id === "toss" && !D.vretried && (document.hidden || e?.name === "QuotaExceededError" || /reclaim/i.test(e?.message || ""))) {
-      D.vretried = true;
+    // hidden (the ad or the share sheet covers the app): always wait and go again; a codec reclaim while visible: once
+    const reclaim = e?.name === "QuotaExceededError" || /reclaim/i.test(e?.message || "");
+    if (P.id === "toss" && (document.hidden || (reclaim && !D.vretried))) {
+      if (!document.hidden) D.vretried = true;
       const again = () => { if (document.hidden) return; removeEventListener("visibilitychange", again); videoJob(); };
       addEventListener("visibilitychange", again); queueMicrotask(again);
       return;
@@ -1688,6 +1690,7 @@ D.ad = adStart();
 const sendingKind = () => !D.sending ? null : D.sending.includes("-making") ? "story" : /\.(mp4|webm)$/.test(D.sending) ? "video" : "photo";
 function adUi() { $("adNote").hidden = true; $("adRetry").hidden = !needsRetry(D.ad); setVid(); }
 function tossVid(kind) {
+  if (D.adBusy) return;                      // an ad is loading / showing: one at a time (review: two showAd on one ad)
   if (adOk(D.ad)) {
     if (D[kind]?.key === vkey()) return saveKind(kind);
     D[kind === "video" ? "wantVideo" : "wantStory"] = true; setVid(); videoJob();
@@ -1697,11 +1700,13 @@ function tossVid(kind) {
   $("adNote").hidden = false;
 }
 async function adRun() {
+  if (D.adBusy) return;
+  D.adBusy = true;
   $("adNote").hidden = true; D.ad = adStep(D.ad, "retry"); adUi();
   D.wantVideo = D.video?.key !== vkey(); D.wantStory = D.story?.key !== vkey(); setVid(); videoJob();
   const r = await Promise.race([P.loadAd(), sleep(5000).then(() => "late")]);
-  if (r !== "loaded") { console.warn("[booth] ad", r); D.ad = adStep(D.ad, "failed"); return adUi(); }
-  P.showAd(ev => { D.ad = adStep(D.ad, ev); adUi(); });
+  if (r !== "loaded") { console.warn("[booth] ad", r); D.ad = adStep(D.ad, "failed"); D.adBusy = false; return adUi(); }
+  P.showAd(ev => { D.ad = adStep(D.ad, ev); if (ev !== "earned") D.adBusy = false; adUi(); });
 }
 if (P.onBack) {
   let last = 0;
@@ -1710,7 +1715,7 @@ if (P.onBack) {
     const sc = document.body.dataset.screen;
     if (sc === "upload" || (sc === "shoot" && S.busy)) return;          // no half-done state
     if (sc === "mode") return show("landA");
-    if (/^(done|share|pick|shoot)$/.test(sc) && performance.now() - last > 2000) { last = performance.now(); return toast("한 번 더 누르면 닫혀요"); }
+    if (/^(done|share|pick|shoot|msg|landB)$/.test(sc) && performance.now() - last > 2000) { last = performance.now(); return toast("한 번 더 누르면 닫혀요"); }
     P.close();
   });
 }
