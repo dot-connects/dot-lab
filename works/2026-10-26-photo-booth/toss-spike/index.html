@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>따로 같이 네컷 · 토스 시험판</title>
+<style>
+  :root { color-scheme: light; --ink: #191f28; --sub: #4e5968; --line: #e5e8eb; --pink: #ff6fa5; --ok: #0a7a3d; --bad: #c62828; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.5 system-ui, -apple-system, "Apple SD Gothic Neo", sans-serif; color: var(--ink); background: #fff; }
+  main { max-width: 480px; margin: 0 auto; padding: 16px 16px 48px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; } .sub { color: var(--sub); margin: 0 0 14px; font-size: 13px; }
+  section { border-top: 1px solid var(--line); padding: 14px 0; }
+  h2 { font-size: 16px; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; }
+  .badge { font-size: 12px; padding: 1px 8px; border-radius: 99px; background: #f2f4f6; color: var(--sub); font-weight: 600; }
+  .badge.ok { background: #e3f6ea; color: var(--ok); } .badge.bad { background: #fdecec; color: var(--bad); }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 12px; padding: 11px 14px; background: var(--pink); color: #fff; margin: 0 6px 6px 0; }
+  button.ghost { background: #f2f4f6; color: var(--ink); } button:disabled { opacity: .4; }
+  video, img { width: 100%; border-radius: 12px; background: #f2f4f6; display: block; }
+  #preview { aspect-ratio: 4/3; object-fit: cover; transform: scaleX(-1); }
+  .row { display: flex; gap: 8px; } .row > * { flex: 1; min-width: 0; }
+  pre { white-space: pre-wrap; word-break: break-all; font-size: 12px; background: #f9fafb; border-radius: 10px; padding: 10px; margin: 8px 0 0; max-height: 260px; overflow: auto; }
+  .note { font-size: 13px; color: var(--sub); margin: 4px 0 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>토스 시험판</h1>
+  <p class="sub">위에서부터 차례로 눌러 주세요. 끝나면 맨 아래 "결과 복사"를 눌러 붙여 주시면 돼요.</p>
+
+  <section><h2>0. 환경 <span class="badge" id="b-env">-</span></h2><pre id="env"></pre></section>
+
+  <section>
+    <h2>1. 카메라 화면 <span class="badge" id="b-cam">-</span></h2>
+    <video id="preview" playsinline webkit-playsinline muted></video>
+    <p class="note">버튼을 눌러야 카메라가 켜져요 (iOS 는 탭 안에서만 열린다는 보고가 있어요).</p>
+    <button id="cam">카메라 켜기</button>
+  </section>
+
+  <section>
+    <h2>2. 녹화 <span class="badge" id="b-rec">-</span></h2>
+    <p class="note">두 방식을 각각 시험해요. 녹화된 영상이 아래에서 재생되면 성공이에요.</p>
+    <button id="rec-mr" disabled>MediaRecorder 2초</button><button id="rec-wc" disabled>WebCodecs 2초</button>
+    <button id="rec-long" class="ghost" disabled>8초 (큰 파일)</button>
+    <video id="clip" playsinline webkit-playsinline controls loop muted></video>
+  </section>
+
+  <section>
+    <h2>3. 저장 <span class="badge" id="b-save">-</span></h2>
+    <p class="note">저장한 뒤 갤러리(또는 파일 앱)에서 보이는지, 재생되는지 직접 봐 주세요.</p>
+    <button id="save-vid" disabled>영상 저장 (마지막 녹화)</button><button id="save-png" disabled>사진 저장</button>
+  </section>
+
+  <section>
+    <h2>4. 누끼 <span class="badge" id="b-cut">-</span></h2>
+    <button id="cut-fast" disabled>빠른 누끼 1장</button><button id="cut-hq" disabled>정밀 누끼 1장 (26MB)</button>
+    <p class="note">정밀 누끼 뒤에 화면이 하얗게 되면 메모리 부족이에요.</p>
+  </section>
+
+  <section>
+    <h2>5. 보상형 광고 (테스트) <span class="badge" id="b-ad">-</span></h2>
+    <button id="ad" disabled>광고 불러오는 중…</button>
+  </section>
+
+  <section>
+    <h2>6. 공유 링크 <span class="badge" id="b-share">-</span></h2>
+    <p class="note">intoss:// 링크는 정식 출시 뒤에만 열려요. 지금은 링크가 만들어지는지만 봐요.</p>
+    <button id="share" class="ghost">공유 링크 만들기</button>
+  </section>
+
+  <section>
+    <h2>기록</h2>
+    <button id="copy" class="ghost">결과 복사</button>
+    <pre id="log"></pre>
+  </section>
+</main>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
