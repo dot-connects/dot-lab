@@ -4,3 +4,4 @@ public/vendor/
 public/models/
 *.ait
 .granite/
+ait.local
