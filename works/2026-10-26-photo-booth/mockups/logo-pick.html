@@ -1,0 +1,41 @@
+<title>따로 같이 네컷 로고</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&family=Dongle:wght@700&display=swap">
+<style>
+/* Layout: one block per candidate, large picture first, then real list size on Toss light and dark rows. */
+:root { --bg: #f4efff; --paper: #fff; --ink: #2a2140; --sub: #574c6e; --line: #e0d6f5; --title: "Dongle", "Noto Sans KR", sans-serif; --body: "Noto Sans KR", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1b1529; --paper: #261d3a; --ink: #f4efff; --sub: #c4b9dc; --line: #3d3058; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #1b1529; --paper: #261d3a; --ink: #f4efff; --sub: #c4b9dc; --line: #3d3058; color-scheme: dark; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.6 var(--body); }
+main { max-width: 560px; margin: 0 auto; padding-block: 28px 48px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font: 700 46px/1 var(--title); margin: 0; }
+h2 { font: 700 36px/1 var(--title); margin: 0; }
+p { margin: 0; color: var(--sub); }
+header, #list { display: grid; gap: 6px; }
+#list { gap: 22px; }
+section { background: var(--paper); border: 1px solid var(--line); border-radius: 18px; padding: 18px; display: grid; gap: 12px; }
+.big { width: 100%; height: auto; display: block; border-radius: 22%; }
+.rows { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.row { display: flex; align-items: center; gap: 10px; padding: 12px; border-radius: 12px; min-width: 0; }
+.row.l { background: #fff; color: #191f28; border: 1px solid var(--line); }
+.row.d { background: #17171c; color: #fff; }
+.row img { width: 48px; height: 48px; border-radius: 12px; flex: none; }
+.row b { font-size: 13px; line-height: 1.3; min-width: 0; }
+</style>
+<main>
+  <header>
+    <h1>따로 같이 네컷 로고</h1>
+    <p>Codex 가 만든 시안 4개예요. 하나를 고르면 그 그림으로 다크모드 로고를 만들어요.</p>
+  </header>
+  <div id="list"></div>
+</main>
+<script>
+const C = [
+  ["split", "1. 맞닿은 폴라로이드", "한 장을 가운데에서 나눠 보라색과 분홍색 친구가 맞닿아 있어요. 따로인데 같이라는 뜻이 가장 잘 보여요. 추천."],
+  ["heart", "2. 하트로 만나는 두 띠", "각자의 사진 띠가 가운데에서 하트 하나가 돼요. 이야기는 분명하지만 작게 보면 그림이 복잡해요."],
+  ["booth", "3. 말랑 부스", "두 친구가 부스 안에 있고 사진이 나오는 장면이에요. 앱 분위기에 가장 가까워요."],
+  ["strip", "4. 핀에 걸린 네컷", "네컷 사진이라는 건 바로 보이지만 그림이 세로로 좁아서 작게 보면 약해요."],
+];
+document.getElementById("list").innerHTML = C.map(([f, t, d]) => `<section><h2>${t}</h2><p>${d}</p><img class="big" src="logo/${f}-600.png" alt="${t}">
+  <div class="rows"><div class="row l"><img src="logo/${f}-600.png" alt=""><b>따로 같이 네컷</b></div><div class="row d"><img src="logo/${f}-600.png" alt=""><b>따로 같이 네컷</b></div></div></section>`).join("");
+</script>
