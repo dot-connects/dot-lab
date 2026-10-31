@@ -162,9 +162,17 @@ function sparkle(host, { n = 3, dist = 24, size = 18, x = 0.5, y = 0.5 } = {}) {
 }
 
 // ---- routing (PLAN Task 6) ----------------------------------------------------------------------------------------
+// Toss has no address bar and reloads the mini-app when it comes back from another app (phone test 10-31): A's link is
+// kept here so the first screen can return to it. A session expires after 7 days, like the link.
+function lastA() {
+  try { const o = JSON.parse(localStorage.getItem("booth:lastA")); return o && Date.now() - o.at < 7 * 864e5 ? o.id : null; } catch { return null; }
+}
 async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
-  if (!S.id) { if (P.id === "toss") { setUi("cute"); show("landA"); } else show("theme"); return prefetchHQ(); }
+  if (!S.id) {
+    if (P.id === "toss") { setUi("cute"); show("landA"); $("resumeA").hidden = !lastA(); } else show("theme");
+    return prefetchHQ();
+  }
   let st;
   try { st = await api.status(S.id); }
   catch { return msg({ title: "앗, 연결이 안 돼", text: "인터넷 연결을 확인하고 다시 해 줘.", btn: "다시 해 보기", onBtn: route }); }
@@ -888,6 +896,7 @@ async function upload() {
       const { id } = await api.create(tk, { shape: S.shape, ui: S.ui });
       S.id = id; S.token = tk;
       api.saveRole(id, "a", tk);
+      if (P.id === "toss") try { localStorage.setItem("booth:lastA", JSON.stringify({ id, at: Date.now() })); } catch {}
       history.replaceState(null, "", `?s=${id}${uiQ()}${MOCK ? "&mock=1" : ""}`);
     }
     if (S.side === "b" && !S.token) { S.token = api.newToken(); api.saveRole(S.id, "b", S.token); }
@@ -1738,6 +1747,7 @@ if (P.decoLocked) for (const p of $$("#stkSets .pill")) if (lockedSet(p.dataset.
 const ACT = {
   pickUi: b => { setUi(b.dataset.ui); show("landA"); },   // screen 0: A's theme, then A's cover
   startA: () => modeScreen(),
+  resumeA: () => { S.id = lastA(); route(); },
   toTheme: () => show("theme"),            // Round 7 #2: "‹ 테마" on A's cover and the mode pick
   modeGo: () => startShoot("a"),
   startB: () => startShoot("b"),
