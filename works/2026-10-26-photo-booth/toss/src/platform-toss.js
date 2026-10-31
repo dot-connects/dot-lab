@@ -60,7 +60,7 @@ export async function shareLink(sid) {
 
 // rewarded ad (test id until launch). loadAd resolves "loaded" | "failed"; showAd's onEvent gets
 // "earned" | "dismissed" | "failed" (failedToShow / onError: the user is not blocked by our ad supply, operator 10-31)
-const AD_ID = "ait-ad-test-rewarded-id";
+const AD_ID = debugWebLink ? "ait-ad-test-rewarded-id" : import.meta.env.VITE_AIT_AD_ID;
 let adP = null;
 export function loadAd() {
   if (!sup(loadFullScreenAd)) return Promise.resolve("failed");

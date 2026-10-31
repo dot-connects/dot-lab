@@ -44,10 +44,43 @@ for (const [f, urls] of [["matting-worker.js", ["https://cdn.jsdelivr.net/npm/on
   writeFileSync(`${OUT}/js/${f}`, s);
 }
 
+// Google Fonts, bundled: each stylesheet with its unicode-range slices (woff2), so glyphs still load on demand
+const FONT_UA = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36";
+mkdirSync("cache/fonts", { recursive: true }); mkdirSync(`${OUT}/vendor/fonts`, { recursive: true });
+async function bundleFonts(url, name) {
+  const cached = `cache/fonts/${name}.css`;
+  let css = existsSync(cached) ? readFileSync(cached, "utf8") : "";
+  if (!css) {
+    const r = await fetch(url, { headers: { "User-Agent": FONT_UA } });
+    if (!r.ok) throw new Error(`font css ${name} http ${r.status}`);
+    css = await r.text(); writeFileSync(cached, css);
+  }
+  const urls = [...new Set([...css.matchAll(/url\((https:[^)]+)\)/g)].map(m => m[1]))];
+  for (let i = 0; i < urls.length; i += 12) await Promise.all(urls.slice(i, i + 12).map(async u => {
+    const f = `${u.split("/").slice(-3).join("-")}`.replace(/[^\w.-]/g, "_");
+    if (!existsSync(`cache/fonts/${f}`)) {
+      const r = await fetch(u); if (!r.ok) throw new Error(`font ${u} http ${r.status}`);
+      writeFileSync(`cache/fonts/${f}`, Buffer.from(await r.arrayBuffer()));
+    }
+    cpSync(`cache/fonts/${f}`, `${OUT}/vendor/fonts/${f}`);
+    css = css.replaceAll(u, f);
+  }));
+  writeFileSync(`${OUT}/vendor/fonts/${name}.css`, css);
+}
+const framesJs = `${OUT}/js/frames.js`, fs0 = readFileSync(framesJs, "utf8");
+const fontDecl = /const FONT_CSS = ([\s\S]*?);\r?\n/.exec(fs0);
+if (!fontDecl) throw new Error("frames.js FONT_CSS changed: update assemble.mjs");
+await bundleFonts(fontDecl[1].replace(/"\s*\+\s*"/g, "").replace(/^"|"$/g, ""), "frames");
+writeFileSync(framesJs, fs0.replace(fontDecl[0], 'const FONT_CSS = "vendor/fonts/frames.css";\n'));
+
 // the mini-app is the 말랑 부스 theme only (light-mode rule): the pre-paint ui script always says cute
 const html = `${OUT}/index.html`, src = readFileSync(html, "utf8");
 const UI = 'document.body.dataset.ui = /[?&]ui=cute(&|$)/.test(location.search) ? "cute" : "film";';
 if (!src.includes(UI)) throw new Error("index.html ui script changed: update assemble.mjs");
-writeFileSync(html, src.replace(UI, 'document.body.dataset.ui = "cute"; document.body.dataset.platform = "toss";'));
+const uiFont = /<link rel="stylesheet" href="(https:\/\/fonts\.googleapis\.com[^"]+)"[^>]*>/.exec(src);
+if (!uiFont) throw new Error("index.html font link changed: update assemble.mjs");
+await bundleFonts(uiFont[1].replaceAll("&amp;", "&"), "ui");
+writeFileSync(html, src.replace(UI, 'document.body.dataset.ui = "cute"; document.body.dataset.platform = "toss";')
+  .replace(uiFont[0], '<link rel="stylesheet" href="vendor/fonts/ui.css">').replace(/<link rel="preconnect"[^>]*>\r?\n/g, ""));
 rmSync(`${OUT}/done.html`, { force: true });       // the web 완성 link page: Toss shares its own link
 console.log("assemble ok");

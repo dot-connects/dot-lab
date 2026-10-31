@@ -9,11 +9,13 @@ const files = walk(OUT);
 
 const plat = readFileSync(join(OUT, "js/platform.js"), "utf8");
 if (!plat.includes('"toss"')) bad.push("dist/js/platform.js is not the Toss build");
-if (/adGroupId|AD_ID/.test(plat) && !plat.includes("ait-ad-test-rewarded-id")) bad.push("ad id is not the test id");
-for (const m of plat.matchAll(/ait-ad-[\w-]+/g)) if (m[0] !== "ait-ad-test-rewarded-id") bad.push("unexpected ad id " + m[0]);
+// a test build (-test appName) keeps the test ad; a release build must be given the real one (AIT_AD_ID)
+const release = !/-test$/.test(process.env.AIT_APP_NAME ?? "ttarogachi-test");
+if (release && !process.env.AIT_AD_ID) bad.push("release build needs AIT_AD_ID");
+if (!plat.includes("ait-ad-test-rewarded-id")) bad.push("test ad id missing");
 
-// our own files: no eval, no remote module/script/fetch except the Worker and Google Fonts CSS (fonts are not code)
-const OK = /^https:\/\/(dot-lab-booth\.dotconnects\.workers\.dev|fonts\.googleapis\.com|fonts\.gstatic\.com)/;
+// our own files: no eval, no remote module/script/fetch except the Worker; fonts are bundled
+const OK = /^https:\/\/(dot-lab-booth\.dotconnects\.workers\.dev)/;
 for (const f of files.filter(f => /\.(js|html|css)$/.test(f) && !/[\\/]vendor[\\/]/.test(f) && !f.endsWith(join("js", "platform.js")))) {
   const s = readFileSync(f, "utf8");
   if (/\beval\(|new Function\(/.test(s)) bad.push(`${f}: eval / new Function`);

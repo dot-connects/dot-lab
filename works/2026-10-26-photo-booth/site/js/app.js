@@ -961,7 +961,7 @@ async function pairStrip(box) {
   box.replaceChildren(strip);
 }
 // ponytail: the test button on A's waiting screen (operator pick, ROUND6 #2); set false at launch
-const TEST_B = true;
+const TEST_B = P.id !== "toss" || P.debugWebLink;
 // mode: "wait" = A reopened A's own link before the friend shot, "sent" = A just uploaded, "done" = B finished and
 // sends the 완성됐어 link back to A (Round 6 #3)
 function shareScreen(mode) {
