@@ -2,11 +2,12 @@
 // exports plus save/share/ad functions. Workers never import this file (the Toss one bundles the SDK, which needs window).
 const preview = new URLSearchParams(location.search).has("toss");
 export const id = "web";
-// The web build's Toss nudges (watermark, Toss-only making video, locked themes) stay off until the mini-app is public;
-// ?toss=1 previews them (the flag rides along on share links). Flip on release day.
-export const tossLive = false;
+// The mini-app is public (2026-11-01), so the web build carries the Toss watermark.
+// The locks (Toss-only making video, locked themes) stay off (operator 11-01: reach comes first, flip tossLocks to bring them back).
+// ?toss=1 previews the locks too (the flag rides along on share links).
+export const tossLive = true, tossLocks = false;
 export const tossQ = preview ? "&toss=1" : "";
-export const watermark = tossLive || preview, makingLocked = watermark, decoLocked = watermark;
+export const watermark = tossLive || preview, makingLocked = tossLocks || preview, decoLocked = makingLocked;
 export const tossUrl = "";   // the mini-app link once it is live; "" = the hint says to search in Toss
 export const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 export const MP_BUNDLE = MP + "/vision_bundle.mjs";
