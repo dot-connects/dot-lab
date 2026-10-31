@@ -49,6 +49,8 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
 #home{position:absolute;right:calc(max(10px,env(safe-area-inset-right)) + 48px);top:calc(env(safe-area-inset-top) + 16px);z-index:4;width:40px;height:40px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font-size:22px;line-height:40px;padding:0}
 #back{position:absolute;left:max(10px,env(safe-area-inset-left));top:calc(env(safe-area-inset-top) + 16px);z-index:4;height:40px;padding:0 14px;border-radius:999px;background:rgba(0,0,0,.35);color:#fff;font:600 14px "Gowun Dodum",system-ui,sans-serif;line-height:40px;text-decoration:none}
 #intro[hidden] ~ #back{display:none}
+#lang{position:absolute;right:calc(max(10px,env(safe-area-inset-right)) + 48px);top:calc(env(safe-area-inset-top) + 14px);z-index:4;width:44px;height:44px;border-radius:50%;background:rgba(0,0,0,.35);color:#fff;font:600 14px "Gowun Dodum",system-ui,sans-serif;padding:0}
+#intro[hidden] ~ #lang{display:none}
 .slip .more{display:block;margin-top:8px;font-size:14px;color:var(--ink);text-align:center;text-underline-offset:3px}
 #hud:not([hidden]) ~ #home{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px)}
 #noGL{position:absolute;inset:0;z-index:9;background:#1b1f24;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:16px}#noGL b{font:24px "Black Han Sans",sans-serif}
@@ -171,14 +173,15 @@ button{font:18px "Black Han Sans",system-ui,sans-serif;letter-spacing:.02em;bord
     <button id="watch" class="btn ghost" type="button"></button>
   </div>
   <a id="back" href="../../../">‹ 시켜본 것들</a>
+  <button id="lang" type="button"></button>
   <button id="home" type="button" aria-label="첫 화면" hidden>⌂</button>
   <button id="mute" type="button" aria-label="소리 끄기">🔊</button>
   <div id="noGL" hidden><b>이 브라우저에선 3D가 안 돼요</b><span>Safari나 Chrome에서 열어 주세요</span></div>
   <div id="result" hidden></div>
   <div id="shareOv" hidden><img alt="결과 이미지"><div>이 링크를 보내면 내 점수 영수증이 미리보기로 떠요</div><div class="link"><span id="shareUrl"></span><button id="shareCopy" class="btn" type="button">링크 복사</button></div><div class="close">빈 곳을 탭하면 닫혀요</div></div>
 </div>
-<script src="js/three.min.js"></script>
 <script src="js/copy.js"></script>
+<script src="js/three.min.js"></script>
 <script src="js/scene.js"></script>
 <script src="js/audio.js"></script>
 <script src="js/input.js"></script>

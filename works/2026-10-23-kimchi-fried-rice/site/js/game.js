@@ -154,12 +154,12 @@
       if (g.darkPh === "dark") { g.darkPerf = (g.darkPerf || 0) + 1; word(C.blackPerfect, "dark"); W.sparkBurst(8); try { navigator.vibrate && navigator.vibrate(15); } catch (e) {} }
       else if (g.combo !== 5 && (g.perfects === 1 || C.combo.some((c) => c[0] === g.combo))) word(C.perfect, "great", title && g.combo >= 2 ? title[1] : "");
       if (title && g.combo >= (g.bestTitleN || 0)) { g.bestTitleN = g.combo; g.bestTitle = title[1]; }
-      comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
+      comboEl.textContent = g.combo >= 2 ? C.comboN(g.combo) : ""; comboEl.className = "combo"; void comboEl.offsetWidth; if (g.combo >= 2) comboEl.classList.add("pop");
     } else {
       if (grade === "good") { // so-so keeps the combo, fills a little
         // good keeps the combo (only perfect builds it) and stays quiet: a word on every toss buried the real moments
         g.fire = Math.min(FIRE_MAX, g.fire + 0.2 * hm); g.hei = Math.max(g.hei, 0.3); if (g.tossN < 4) word(C.good, "ok", C.goodChip);
-        comboEl.textContent = g.combo >= 2 ? `${g.combo} 연속` : ""; fireNum(); return;
+        comboEl.textContent = g.combo >= 2 ? C.comboN(g.combo) : ""; fireNum(); return;
       }
       else if (grade === "early") { if (g.combo >= 2) { K.Audio.comboBreak(); popNum(C.mashed, "fire"); } g.combo = 0; comboEl.textContent = ""; fireNum(); return; } // mashing breaks the run
       else word(C.late, "bad", pick(C.lateSub));
@@ -171,7 +171,7 @@
   }
   function fireNum() {
     gaugeFill.style.transform = `scaleY(${(g.fire / FIRE_MAX).toFixed(3)})`; gaugeEl.classList.toggle("hot", g.combo >= 3);
-    gaugeEl.dataset.label = `불맛 ${Math.round(g.fire)}`; K.Food.fireTint = (g.fire / FIRE_MAX) * 0.4; // the rice visibly darkens toward caramel as 불맛 builds
+    gaugeEl.dataset.label = C.fireN(Math.round(g.fire)); K.Food.fireTint = (g.fire / FIRE_MAX) * 0.4; // the rice visibly darkens toward caramel as 불맛 builds
   }
   const pick = (x) => (Array.isArray(x) ? x[(Math.random() * x.length) | 0] : x);
   // a number that jumps out of the HUD: +불맛 on a perfect, -밥 on a spill
@@ -222,7 +222,7 @@
     if (K.Egg.ph !== "off") K.Egg.hide();
     K.Food.reset(); K.Food.hold(); K.Food.fireTint = 0; K.Food.scorchVis = 0; W.plate.visible = false; W.ladle.visible = false; if (garn) garn.visible = false;
     introEl.hidden = true; resEl.hidden = true; resEl.classList.remove("up"); hudEl.hidden = false; hudEl.classList.remove("dim");
-    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = "불맛 0"; g.riceLeft = null; riceEl.hidden = true; cookEl.hidden = true;
+    timerEl.hidden = false; gaugeEl.hidden = false; statsEl.hidden = false; gaugeEl.classList.remove("egg"); gaugeEl.dataset.label = C.fireN(0); g.riceLeft = null; riceEl.hidden = true; cookEl.hidden = true;
     gaugeFill.style.transform = "scaleY(0)"; comboEl.textContent = ""; wordEl.textContent = ""; subEl.textContent = "";
     timerEl.textContent = RICE_T.toFixed(1); timerEl.classList.remove("warn");
     setPh("rice");
@@ -467,19 +467,19 @@
     if (!g.auto && s.total > best) store.set("kfr-best3d", s.total);
     const tier = C.tiers.find((x) => s.total >= x[0]), next = C.tiers.slice().reverse().find((x) => x[0] > s.total);
     const line = (a, b, c) => `<li><span>${a}</span><span>${b} / ${c}</span></li>`;
-    resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · 김치볶음밥 1 · 계란 ${g.order === "half" ? "반숙" : "완숙"}${g.auto ? `<br>${C.watchedBy}` : ""}</div>
-      ${rec ? `<div class="rec">신기록</div>` : ""}
-      <ul>${line("밥 익힘", s.done, 25)}${line("불맛 (박자·높이)", s.fire, 25)}${line("안 흘리기", s.clean, 10)}${line("계란 타이밍", s.timing, 12)}${line("뒤집기", s.flip, 14)}${line("받기", s.cat, 10)}${line("노른자", s.yolk, 4)}</ul>
+    resEl.innerHTML = `<div class="slip"><div class="shop">${C.shop}</div><div class="meta">${C.shopSub} · ${C.rItem(g.order)}${g.auto ? `<br>${C.watchedBy}` : ""}</div>
+      ${rec ? `<div class="rec">${C.rRec}</div>` : ""}
+      <ul>${line(C.rDone, s.done, 25)}${line(C.rFire, s.fire, 25)}${line(C.rClean, s.clean, 10)}${line(C.rTiming, s.timing, 12)}${line(C.rFlip, s.flip, 14)}${line(C.rCatch, s.cat, 10)}${line(C.rYolk, s.yolk, 4)}</ul>
       ${g.darkN ? `<div class="floor">${C.blackLine(g.darkPerf || 0, g.darkN)} · ${blackMemo()}</div>` : ""}
-      <div class="floor">바닥 밥 변상 <b>${K.Food.spilled}</b>알 × 10원 = <b>${(K.Food.spilled * 10).toLocaleString()}</b>원</div>
-      <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>점</small></span></div>
+      <div class="floor">${C.rFloor(K.Food.spilled, (K.Food.spilled * 10).toLocaleString())}</div>
+      <div class="tot"><span class="stamp">${tier[1]}</span><span class="score"><b id="scoreN">0</b><small>${C.pts}</small></span></div>
       ${vs != null ? `<div class="vs">${s.total > vs ? C.vsWin(vs, s.total) : s.total === vs ? C.vsTie(vs) : C.vsLose(vs, s.total)}</div>` : ""}
       <div class="why">${whyLine(s)}</div>
-      <div class="memo">사장님: ${memo(tier)}</div>
-      ${next ? `<div class="near">「${next[1]}」까지 ${next[0] - s.total}점</div>` : ""}
-      ${best > 0 && !rec && best > s.total ? `<div class="near">내 최고 ${best}점</div>` : ""}
+      <div class="memo">${C.boss}${memo(tier)}</div>
+      ${next ? `<div class="near">${C.toNext(next[1], next[0] - s.total)}</div>` : ""}
+      ${best > 0 && !rec && best > s.total ? `<div class="near">${C.myBest(best)}</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${g.auto ? C.tryIt : C.again}</button>${g.auto ? "" : `<button class="btn ghost" id="share" type="button">${C.share}</button>`}</div>
-      <a class="more" href="../../../">시켜본 것 더 보기 →</a>
+      <a class="more" href="../../../">${C.more}</a>
       ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
     const gg = g; // a restart within 2 s must not let this round's slide-in / stamp fire into the next
     resEl.hidden = false; setTimeout(() => { if (g === gg) resEl.classList.add("up"); }, 900); // the finished dish gets a moment first
@@ -492,20 +492,20 @@
   const memo = (tier) => (K.Food.spilled > 300 ? C.memoSpill : tier[2]);
   function whyLine(s) {
     const st = s.st, parts = [];
-    if (st.burnt > 0.08) parts.push(`탄 밥 ${Math.round(st.burnt * 100)}%`);
-    if (st.raw > 0.15) parts.push(`덜 익은 밥 ${Math.round(st.raw * 100)}%`);
-    if (st.spill > 0.01) parts.push(`흘린 밥 ${Math.round(st.spill * 100)}%`);
-    if (g.maxGap > 2.2) parts.push(`최대 ${g.maxGap.toFixed(1)}초 안 볶음`);
-    parts.push(`불맛 ${Math.round((g.fire / FIRE_MAX) * 100)}%`); if (g.maxCombo >= 2) parts.push(`최고 콤보 x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
+    if (st.burnt > 0.08) parts.push(C.whyBurnt(Math.round(st.burnt * 100)));
+    if (st.raw > 0.15) parts.push(C.whyRaw(Math.round(st.raw * 100)));
+    if (st.spill > 0.01) parts.push(C.whySpill(Math.round(st.spill * 100)));
+    if (g.maxGap > 2.2) parts.push(C.whyGap(g.maxGap.toFixed(1)));
+    parts.push(C.whyFire(Math.round((g.fire / FIRE_MAX) * 100))); if (g.maxCombo >= 2) parts.push(`${C.whyCombo} x${g.maxCombo}${g.bestTitle ? " " + g.bestTitle : ""}`);
     const c = g.counts, n = c.perfect + c.good + c.early + c.late;
-    if (n) parts.push(`금색 칸에 휙 ${c.perfect}/${n}번` + (c.late > 1 ? " (쉬다가 눌린 게 많음)" : ""));
+    if (n) parts.push(C.whyGold(c.perfect, n) + (c.late > 1 ? C.whyLate : ""));
     const r = s.r, win = eggWin(), r2 = g.res1 ? K.Egg.res : null;
     if (r) {
-      if (r.cookAtFlip < win[0] - 0.05) parts.push("앞면을 너무 일찍 뒤집음"); else if (r.cookAtFlip > win[1] + 0.05) parts.push("앞면을 너무 늦게 뒤집음");
-      if (r2) { const w2 = eggWin2(); if (r2.cookAtFlip < w2[0] - 0.05) parts.push("뒷면을 너무 일찍 뒤집음"); else if (r2.cookAtFlip > w2[1] + 0.05) parts.push("뒷면을 너무 늦게 뒤집음"); }
-      if (r.burst) parts.push(r.raw ? "덜 익어서 찢어짐" : C.eggBurstReceipt); else if (r.fold) parts.push("반으로 접힘"); else parts.push(`계란 ${r.angle}°`);
-      if (r.where === "wall") parts.push("벽에서 받음"); else if (r.where === "out") parts.push("계란을 못 받음");
-      if (g.flip2Open && !g.flip2Up) parts.push(g.egg2Auto ? "뒷면 방치" : "두 번째 뒤집기 실패");
+      if (r.cookAtFlip < win[0] - 0.05) parts.push(C.whyFrontEarly); else if (r.cookAtFlip > win[1] + 0.05) parts.push(C.whyFrontLate);
+      if (r2) { const w2 = eggWin2(); if (r2.cookAtFlip < w2[0] - 0.05) parts.push(C.whyBackEarly); else if (r2.cookAtFlip > w2[1] + 0.05) parts.push(C.whyBackLate); }
+      if (r.burst) parts.push(r.raw ? C.whyTorn : C.eggBurstReceipt); else if (r.fold) parts.push(C.whyFold); else parts.push(C.whyAngle(r.angle));
+      if (r.where === "wall") parts.push(C.whyWall); else if (r.where === "out") parts.push(C.whyMiss);
+      if (g.flip2Open && !g.flip2Up) parts.push(g.egg2Auto ? C.whyLeft : C.whyFlip2);
     }
     return parts.join(" · ");
   }
@@ -524,7 +524,7 @@
   function share() {
     const s = g.res, tier = C.tiers.find((x) => s.total >= x[0]), url = shareUrl(s.total);
     const text = (vs != null ? (s.total > vs ? C.shareWin(vs, s.total) : C.shareLose(vs, s.total)) : C.shareText(s.total, tier[1])) + (g.darkN ? C.blackShare(g.darkPerf || 0, g.darkN) : "");
-    if (navigator.share) navigator.share({ title: "김치볶음밥 한 그릇", text, url }).catch((e) => { if (!e || e.name !== "AbortError") showShare(s.total, url); });
+    if (navigator.share) navigator.share({ title: C.title, text, url }).catch((e) => { if (!e || e.name !== "AbortError") showShare(s.total, url); });
     else showShare(s.total, url);
   }
 
@@ -631,7 +631,7 @@
     let sum = 0, n = 0; for (let i = 0; i < F.n; i++) if (F.st[i] !== 4 && F.st[i] !== 7) { sum += Math.min(1, F.cook[i] / 0.9); n++; } // how far along it is, so it climbs every toss
     const ck = Math.round((100 * sum) / Math.max(1, n));
     if (g.riceLeft != null && left < g.riceLeft) popNum(`-${g.riceLeft - left}%`, "rice"); // the chip shows grains, the pop shows the share lost
-    g.riceLeft = left; riceEl.textContent = `흘린 밥 ${F.spilled}알`; riceEl.hidden = !F.spilled; cookEl.hidden = true; void ck;
+    g.riceLeft = left; riceEl.textContent = C.spilledN(F.spilled); riceEl.hidden = !F.spilled; cookEl.hidden = true; void ck;
   }
 
   /* ---------- loop: fixed 1/60 steps so game time never stretches on a slow phone ---------- */
@@ -657,7 +657,7 @@
   /* ---------- start screen ---------- */
   W.build("real"); try { const hid = []; W.scene.traverse((o) => { if (!o.visible) { hid.push(o); o.visible = true; } }); W.renderer.compile(W.scene, W.camera); hid.forEach((o) => (o.visible = false)); } catch (e) {}
   for (let i = 0; i < K.Food.n; i++) K.Food.cook[i] = 0.75; // the start screen cooks by itself (attract): show it golden
-  function bestLine() { const b = +store.get("kfr-best3d", 0), t = b ? C.tiers.find((x) => b >= x[0]) : null; $("best").textContent = (b ? `내 최고 ${b}점 · 「${t[1]}」 · ` : "") + `오늘의 주문: 계란 ${todayOrder() === "half" ? "반숙" : "완숙"}`; }
+  function bestLine() { const b = +store.get("kfr-best3d", 0), t = b ? C.tiers.find((x) => b >= x[0]) : null; $("best").textContent = (b ? C.bestLine(b, t[1]) : "") + C.order(todayOrder()); }
   bestLine();
   $("hook").textContent = vs != null ? C.vsHook(vs) : C.hook; $("how").innerHTML = inApp ? C.howTouch : C.how; $("go").textContent = C.loading; $("watch").textContent = C.watchBtn;
   $("go").onclick = () => { K.Audio.unlock(); g.hei = 1.6; W.sparkBurst(24); g.punch = 1; K.Audio.flare(); const go = () => start(false); /* 불 켜: the fire answers the tap at once */ K.Input.requestPermission().then(go, go); };
@@ -679,7 +679,7 @@
   homeEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
   $("back").addEventListener("pointerdown", (e) => e.stopPropagation());
   homeEl.onclick = (e) => { e.stopPropagation(); goHome(); };
-  const muteEl = $("mute"), setMute = (m) => { K.Audio.mute(m); muteEl.textContent = m ? "🔇" : "🔊"; muteEl.setAttribute("aria-label", m ? "소리 켜기" : "소리 끄기"); store.set("kfr-mute", m ? 1 : 0); };
+  const muteEl = $("mute"), setMute = (m) => { K.Audio.mute(m); muteEl.textContent = m ? "🔇" : "🔊"; muteEl.setAttribute("aria-label", m ? C.muteOn : C.muteOff); store.set("kfr-mute", m ? 1 : 0); };
   muteEl.addEventListener("pointerdown", (e) => e.stopPropagation()); // not a flick
   muteEl.onclick = (e) => { e.stopPropagation(); K.Audio.unlock(); setMute(!K.Audio.isMuted()); };
   if (store.get("kfr-mute", 0) == 1) setMute(true);
