@@ -963,7 +963,8 @@ function shareScreen(mode) {
   $("shareLead").innerHTML = waiting ? "이 링크를 친구한테 보내 줘.<br>친구가 찍으면 이 링크에서 바로 열려."
     : fin ? "이 링크를 보내면 친구도 우리 네컷을 열어 봐.<br>꾸미기는 각자 폰에서 따로, 저장도 각자 해."
     : `친구가 이 링크를 열면 네 옆에 서서 찍어.<br>너는 찍은 자리 그대로 들어가.<br>둘 다 찍으면 사진이랑 영상이 열려.`;
-  $("recheck").hidden = !waiting;
+  // Toss has no link to reopen: A checks right here, from the first share screen on (phone test 10-31)
+  $("recheck").hidden = !(waiting || P.id === "toss" && mode === "sent");
   $("testB").hidden = !(TEST_B && waiting);
   $("notMine").hidden = !(waiting && S.mine === "a");     // recognised by the Worker, not by this browser: a way out
   $("goDeco").hidden = !fin; $("decNote").hidden = fin;
@@ -1792,6 +1793,7 @@ document.addEventListener("click", e => {
 
 // ---- boot ---------------------------------------------------------------------------------------------------------
 try { env = await import("./env.js"); } catch {}
+if (P.id === "toss") env = { ...env, inApp: false };   // the mini-app is the destination: no hand-off to Chrome, it saves through Toss
 window.__booth = { S, D, MOCK };   // dev handle for the headless checks
 setShape(S.shape);
 route();
