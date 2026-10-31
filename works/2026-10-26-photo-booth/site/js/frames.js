@@ -12,7 +12,8 @@ const FONT_CSS = "https://fonts.googleapis.com/css2?family=Black+Han+Sans&family
   "&family=Gowun+Batang:wght@700&family=IBM+Plex+Sans+KR:wght@500;700&family=IBM+Plex+Mono:wght@500" +
   "&family=Rye&family=Press+Start+2P&family=Noto+Sans+KR:wght@900&family=Gaegu:wght@700&family=Gamja+Flower" +
   "&family=Space+Grotesk:wght@700&display=block";
-const TITLE = "따로 같이 네컷";
+import { EN, tr } from "./i18n.js";
+const TITLE = tr("따로 같이 네컷");
 // Korean Google Fonts are split by unicode-range: load exactly the glyphs we draw (fixed strings + digits + caption).
 const SAMPLE = TITLE + "우리둘 따로같이 네컷 지명수배 현상금 생일 축하 오늘의 기록 우리만의 다이어리 dear us WANTED REWARD HAPPY BIRTHDAY TG PHOTO " +
   "DIARY ▸AVSP·★♥♡ 0123456789.+-D";
@@ -424,10 +425,10 @@ const ALL = [
       ctx.beginPath(); ctx.moveTo(L.W / 2, 0); ctx.lineTo(L.W / 2, L.H); ctx.stroke(); ctx.restore();
       borders(ctx, cellRects, 5, 8, "#fff");
       const y = footY(L, cellRects);
-      text(ctx, "따로", L.W / 4, y - 20, '58px "Jua"', { fill: "#e8664f", stroke: [["#fff", 9]] });
-      text(ctx, "같이", L.W * 3 / 4, y - 20, '58px "Jua"', { fill: "#3f7fd6", stroke: [["#fff", 9]] });
+      text(ctx, tr("따로"), L.W / 4, y - 20, '58px "Jua"', { fill: "#e8664f", stroke: [["#fff", 9]] });
+      text(ctx, tr("같이"), L.W * 3 / 4, y - 20, EN ? '44px "Jua"' : '58px "Jua"', { fill: "#3f7fd6", stroke: [["#fff", 9]] });
       heart(ctx, L.W / 2, y - 20, 36, "#ff7a8e", "#fff", 6);
-      const t = typeof caption === "string" && caption.trim() ? caption.trim() : "네컷";
+      const t = typeof caption === "string" && caption.trim() ? caption.trim() : EN ? TITLE : "네컷";
       text(ctx, `${t} · ${date}`, L.W / 2, y + 44, cf(font, '28px "Jua"'), { fill: "#4a4450", stroke: [["#fff", 6]], ls: 1, max: 540 });
     },
     over(ctx, L, { cellRects: c }) {
@@ -519,10 +520,10 @@ const ALL = [
       ctx.strokeStyle = "#3b2412"; ctx.lineWidth = 4; ctx.strokeRect(12, 12, L.W - 24, L.H - 24);
       ctx.lineWidth = 1.5; ctx.strokeRect(20, 20, L.W - 40, L.H - 40);
       text(ctx, "WANTED", L.W / 2, 82, '92px "Rye"', { fill: "#3b2412", ls: 2, max: 520 });
-      text(ctx, "★ 지명수배 ★", L.W / 2, 146, '30px "Black Han Sans"', { fill: "#7a2a14", ls: 6 });
+      text(ctx, tr("★ 지명수배 ★"), L.W / 2, 146, '30px "Black Han Sans"', { fill: "#7a2a14", ls: 6 });
       borders(ctx, cellRects, 4, 0, "#3b2412");
       const y = footY(L, cellRects);
-      text(ctx, "현상금  REWARD", L.W / 2, y - 66, '24px "Black Han Sans"', { fill: "#7a2a14", ls: 4 });
+      text(ctx, tr("현상금  REWARD"), L.W / 2, y - 66, '24px "Black Han Sans"', { fill: "#7a2a14", ls: 4 });
       text(ctx, cap(caption), L.W / 2, y - 8, cf(font, '54px "Black Han Sans"'), { fill: "#3b2412", max: 500 });
       ctx.fillStyle = "#3b2412"; ctx.fillRect(L.W / 2 - 150, y + 30, 300, 2);
       text(ctx, date, L.W / 2, y + 60, MONO, { fill: "#3b2412d0", ls: 4 });
@@ -626,7 +627,7 @@ const ALL = [
       for (let y = 12; y < L.H; y += 24) for (let x = 12; x < L.W; x += 24) { ctx.beginPath(); ctx.arc(x, y, 1.5, 0, 7); ctx.fill(); }
       borders(ctx, cellRects, 10, 0, "#fffdf8", "#7a5a3038");
       const y = footY(L, cellRects);
-      text(ctx, "오늘의 기록", L.W / 2, y - 70, '32px "Gamja Flower"', { fill: "#b0707f", ls: 2 });
+      text(ctx, tr("오늘의 기록"), L.W / 2, y - 70, '32px "Gamja Flower"', { fill: "#b0707f", ls: 2 });
       text(ctx, cap(caption), L.W / 2, y - 14, cf(font, '700 50px "Gaegu"'), { fill: "#4a3a36", max: 470 });
       squiggle(ctx, L.W / 2 - 120, L.W / 2 + 120, y + 30, "#f08fa8", 3);
       text(ctx, date, L.W / 2, y + 66, '700 30px "Gaegu"', { fill: "#7a6358", ls: 3 });

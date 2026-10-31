@@ -3,6 +3,7 @@
 // freezes on the shutter with a flash; the strips touch, rush together, hard cut to the decorated strip ("착!"), which
 // hangs and sways above the save date. Only text: the title and the date. Two looks: "cute" (말랑부스) and "film".
 // This file only draws a frame from t; compose.js recordMaking feeds it the clip frames and encodes.
+import { EN, tr } from "./i18n.js";
 export const MAKING = { W: 1080, H: 1920, L: 9.2, FPS: 30 };
 export const ROW_T = [0.6, 1.6, 2.6, 3.6], ROW_DUR = 1;
 const TOUCH = 4.75, RUSH = 5.15, SNAP = 5.43;
@@ -40,12 +41,12 @@ function title(x, th, ui) {
   x.save(); x.textAlign = "center"; x.textBaseline = "top"; x.font = th.titleFont; x.fillStyle = th.ink;
   const y = 21 * U;
   if (ui === "cute") {
-    x.fillText("따로 같이 네컷", MAKING.W / 2, y);
-    const w = x.measureText("따로 같이 네컷").width;
+    x.fillText(tr("따로 같이 네컷"), MAKING.W / 2, y);
+    const w = x.measureText(tr("따로 같이 네컷")).width;
     x.font = `400 ${5.6 * U}px Jua, sans-serif`; x.fillStyle = th.accent;
     x.fillText("✦", MAKING.W / 2 - w / 2 - 4 * U, y + 1.6 * U); x.fillText("✦", MAKING.W / 2 + w / 2 + 4 * U, y + 1.6 * U);
   } else {                                                          // "같이" on a lime block, the app's em style
-    const parts = ["따로 ", "같이", " 네컷"], ws = parts.map(p => x.measureText(p).width), tot = ws.reduce((s, v) => s + v);
+    const parts = EN ? ["Apart ", "Together", ""] : ["따로 ", "같이", " 네컷"], ws = parts.map(p => x.measureText(p).width), tot = ws.reduce((s, v) => s + v);
     let px = MAKING.W / 2 - tot / 2; x.textAlign = "left";
     parts.forEach((p, k) => {
       if (k === 1) { x.fillStyle = th.accent; x.fillRect(px - 1.2 * U, y - 0.6 * U, ws[k] + 2.4 * U, 11.6 * U); x.fillStyle = th.ink; }
@@ -143,7 +144,7 @@ function stamp(x, th, ui, q, b) {
   const s = 1.7 - 0.7 * eo(q / 0.25);
   x.save(); x.globalAlpha = a; x.translate((b.l + b.w - 3) * U, (b.t + b.h * 0.62) * U); x.rotate(8 * Math.PI / 180); x.scale(s, s);
   x.font = th.stampFont; x.textAlign = "center"; x.textBaseline = "middle";
-  const tw = x.measureText("착!").width, bw = tw + 7.6 * U, bh = 11.8 * U;
+  const tw = x.measureText(tr("착!")).width, bw = tw + 7.6 * U, bh = 11.8 * U;
   if (ui === "cute") {
     x.fillStyle = "#fff"; rr(x, -bw / 2 - 0.7 * U, -bh / 2 - 0.7 * U, bw + 1.4 * U, bh + 1.4 * U, 2.4 * U); x.fill();
     x.fillStyle = th.deep; rr(x, -bw / 2, -bh / 2, bw, bh, 2 * U); x.fill(); x.fillStyle = "#fff";
@@ -152,7 +153,7 @@ function stamp(x, th, ui, q, b) {
     x.fillRect(-bw / 2 - 0.8 * U, -bh / 2 - 0.8 * U, bw + 1.6 * U, bh + 1.6 * U);
     x.fillStyle = th.accent; x.fillRect(-bw / 2, -bh / 2, bw, bh); x.fillStyle = "#000";
   }
-  x.fillText("착!", 0, 0.4 * U);
+  x.fillText(tr("착!"), 0, 0.4 * U);
   x.restore();
 }
 const SPARKS = [[12, 44], [84, 58], [13, 128], [84, 140]];

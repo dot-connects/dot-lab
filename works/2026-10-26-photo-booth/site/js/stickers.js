@@ -2,6 +2,7 @@
 // curated emoji set (system emoji font). Each one is rasterised once to a square canvas of R px; compose.paint draws
 // opts.stickers = [{ kind: "svg"|"emoji", id, x, y, s, r }] (strip px, x/y = centre, s = size, r = radians) on top.
 // Words on the drawn ones are canvas text in Jua (an SVG used as an image cannot load web fonts).
+import { tr } from "./i18n.js";
 import { fontCss } from "./frames.js";
 
 const R = 320;
@@ -29,9 +30,9 @@ export const DRAWN = [
     <circle cx="50" cy="56" r="6" fill="${PINK}"/><circle cx="28" cy="60" r="4" fill="${SKY}"/><circle cx="72" cy="60" r="4" fill="${SKY}"/>` },
   { id: "flower", label: "꽃", svg: `<g fill="#ffc2d6" ${W}>${[0, 72, 144, 216, 288].map(a => `<ellipse cx="50" cy="27" rx="17" ry="22" transform="rotate(${a} 50 50)"/>`).join("")}</g>
     <g fill="#ffc2d6">${[0, 72, 144, 216, 288].map(a => `<ellipse cx="50" cy="27" rx="17" ry="22" transform="rotate(${a} 50 50)"/>`).join("")}</g><circle cx="50" cy="50" r="13" fill="${BUTTER}"/>` },
-  { id: "chalkak", label: "찰칵", svg: bubble(BUTTER), text: ["찰칵!", 50, 30, INK] },
-  { id: "best", label: "최고", svg: bubble(SKY), text: ["최고", 50, 32, INK] },
-  { id: "friend", label: "우정", svg: bubble(LAV), text: ["우정", 50, 32, INK] },
+  { id: "chalkak", label: "찰칵", svg: bubble(BUTTER), text: [tr("찰칵!"), 50, 30, INK] },
+  { id: "best", label: "최고", svg: bubble(SKY), text: [tr("최고"), 50, 32, INK] },
+  { id: "friend", label: "우정", svg: bubble(LAV), text: [tr("우정"), 50, 32, INK] },
   { id: "love-bubble", label: "♥ 말풍선", svg: `${bubble("#fff")}<path d="M50 63s-13-8-13-17a6.5 6.5 0 0 1 13-2 6.5 6.5 0 0 1 13 2c0 9-13 17-13 17z" fill="${PINK}"/>`, edge: true },
   { id: "arrow", label: "화살표", svg: `<path d="M14 80C24 40 50 24 80 26" fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round"/><path d="M66 12 84 26 68 42" fill="none" stroke="#fff" stroke-width="15" stroke-linecap="round" stroke-linejoin="round"/>
     <path d="M14 80C24 40 50 24 80 26" fill="none" stroke="${DEEP}" stroke-width="6" stroke-linecap="round" stroke-dasharray="1 0"/><path d="M66 12 84 26 68 42" fill="none" stroke="${DEEP}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>` },
@@ -83,11 +84,11 @@ const THEMED = [
   { set: "diary", id: "d-stamp", label: "도장", svg: `<circle cx="50" cy="50" r="40" fill="#fffaf2" ${W}/><g fill="none" stroke="#d6455d" opacity=".9"><circle cx="50" cy="50" r="36" stroke-width="4"/><circle cx="50" cy="50" r="29" stroke-width="2" stroke-dasharray="3 3"/></g>`,
     text: ["LOVE", 52, 20, "#d6455d", -14, "Black Han Sans", 400] },
   { set: "diary", id: "d-today", label: "오늘", svg: `<rect x="12" y="28" width="76" height="44" rx="3" fill="#fffaf0" ${W} transform="rotate(-6 50 50)"/><rect x="14" y="30" width="72" height="40" fill="none" stroke="#e7b9a5" stroke-width="1.5" stroke-dasharray="4 3" transform="rotate(-6 50 50)"/>`
-    + `<path d="M34 22l32 4-1 10-32-4z" fill="#a9dcc6" opacity=".85"/>`, text: ["오늘", 53, 30, INKD, -6, "Gaegu", 700] },
+    + `<path d="M34 22l32 4-1 10-32-4z" fill="#a9dcc6" opacity=".85"/>`, text: [tr("오늘"), 53, 30, INKD, -6, "Gaegu", 700] },
   { set: "diary", id: "d-flower", label: "들꽃", svg: inkBoth([0, 60, 120, 180, 240, 300].map(a => `<ellipse cx="50" cy="28" rx="11" ry="18" transform="rotate(${a} 50 50)"/>`).join(""), "#fff", 3)
     + `<circle cx="50" cy="50" r="11" ${ink("#ffd36b", 3)}/>` },
   { set: "diary", id: "d-ribbon", label: "리본", svg: inkBoth(`<path d="M50 50 16 30c-7 6-7 34 0 40z"/><path d="M50 50 84 30c7 6 7 34 0 40z"/><path d="M46 54 34 88l9-3 5 8 4-34z"/><path d="M54 54l12 34-9-3-5 8-4-34z"/><circle cx="50" cy="50" r="8"/>`, "#ffc2d4", 3) },
-  { set: "diary", id: "d-like", label: "좋아", svg: inkBoth(`<path d="M24 74a16 16 0 0 1-2-32 20 20 0 0 1 36-12 16 16 0 0 1 26 10 17 17 0 0 1-4 34z" transform="translate(50 52) scale(.86) translate(-54 -52)"/>`, "#fff", 3.5), text: ["좋아", 55, 26, "#e0607e", -4, "Gaegu", 700] },
+  { set: "diary", id: "d-like", label: "좋아", svg: inkBoth(`<path d="M24 74a16 16 0 0 1-2-32 20 20 0 0 1 36-12 16 16 0 0 1 26 10 17 17 0 0 1-4 34z" transform="translate(50 52) scale(.86) translate(-54 -52)"/>`, "#fff", 3.5), text: [tr("좋아"), 55, 26, "#e0607e", -4, "Gaegu", 700] },
 ];
 DRAWN.push(...THEMED);
 export const EMOJI = ["😀", "😆", "🥰", "😍", "😘", "😎", "🤪", "😜", "🥹", "😭", "🤭", "🙈", "❤️", "💖", "💕", "💘", "✨", "⭐", "🌈", "☀️",

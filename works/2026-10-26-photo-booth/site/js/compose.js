@@ -5,6 +5,7 @@
 import { createFilter } from "./filters.js";
 import { FRAMES, loadFrameFonts } from "./frames.js";
 import { drawStickers, stickersReady } from "./stickers.js";
+import { EN, tr } from "./i18n.js";
 import * as P from "./platform.js";
 import { drawWatermark, watermarkReady, watermarkSide } from "./watermark.js";
 import { MAKING, ROW_T, ROW_DUR, drawMaking, makingFonts, makingDate } from "./making.js";
@@ -573,7 +574,7 @@ function prepare(o) {
 async function prepareNow({ frame, date, caption = "", font = null, shape = "wide" }) {
   const F = frameOf(frame), L = layoutFor(shape);
   await loadFrameFonts(F, caption, font);
-  if (P.watermark) await watermarkReady();
+  if (P.watermark && !EN) await watermarkReady();     // the Toss app is Korean-only: no nudge on the English web
   const rects = cellRects(F, L.shape), d = fmtDate(date), o = { date: d, caption, cellRects: rects, font };
   const base = document.createElement("canvas"); base.width = L.W; base.height = L.H;
   F.draw(base.getContext("2d"), L, o);
@@ -645,7 +646,7 @@ function paint(ctx, st, { a, b, bg, filter = "original", layout = null, outline 
   if (st.over) ctx.drawImage(st.over, 0, 0);
   if (stickers?.length) drawStickers(ctx, stickers);
   // web build only, and not on the mini tiles (scale ~0.2): the "토스에서 검색" sticker (watermark.js)
-  if (P.watermark && scale >= 0.5) drawWatermark(ctx, st.L, watermarkSide(st.L, st.F.id, stickers));
+  if (P.watermark && !EN && scale >= 0.5) drawWatermark(ctx, st.L, watermarkSide(st.L, st.F.id, stickers));
 }
 
 // The still strip on a canvas. scale < 1 = a small preview (mini tiles); cell = k: only cell k (filter tiles).
@@ -685,7 +686,7 @@ async function storyBack(st) {
   await document.fonts.load('600 34px "Jua"', "따로 같이 네컷").catch(() => null);
   x.font = '34px "Jua", system-ui, sans-serif'; x.textAlign = "center"; x.textBaseline = "middle";
   x.fillStyle = dark ? "rgba(255,255,255,0.8)" : "rgba(40,30,45,0.55)";
-  x.fillText("따로 같이 네컷", W / 2, oy + sh + (H - oy - sh) / 2);
+  x.fillText(tr("따로 같이 네컷"), W / 2, oy + sh + (H - oy - sh) / 2);
   return { c, ox, oy, sw, sh };
 }
 

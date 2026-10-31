@@ -1,6 +1,7 @@
 // App shell: screens + role routing (PLAN Task 6 role table). Capture/compose modules load on demand,
 // so the first screen needs only this file + api.js, and MediaPipe loads after the first tap.
 import * as api from "./api.js";
+import { tr } from "./i18n.js";
 import * as P from "./platform.js";
 import { adOk, needsRetry, start as adStart, step as adStep } from "./adgate.js";
 import { mockCapture, mockCompose, mockFrames, mockFilters } from "./ui.js";
@@ -982,14 +983,14 @@ function shareScreen(mode) {
   $("linkText").textContent = sendUrl(); $("linkBox").hidden = true;
   (fin ? pairStrip($("myStrip")) : myStrip()).catch(e => { console.warn("[booth] strip", e); if (fin) myStrip().catch(() => {}); });
 }
-const SHARE_TEXT = "내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음";
-const DONE_TEXT = "완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어";
+const SHARE_TEXT = tr("내 옆자리 비워 뒀어 · 2분이면 돼 · 가입 없음");
+const DONE_TEXT = tr("완성됐어! 우리 네컷 열어 봐 · 크롬에서 열면 꾸미고 저장할 수 있어");
 const shareText = () => S.shareMode === "done" ? DONE_TEXT : SHARE_TEXT;
 async function share() {
   if (P.id === "toss") { if (!await P.shareLink(S.id)) return; return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
   const url = sendUrl();
   if (navigator.share) {
-    try { await navigator.share({ title: "따로 같이 네컷", text: shareText(), url });
+    try { await navigator.share({ title: tr("따로 같이 네컷"), text: shareText(), url });
       return toast(S.shareMode === "done" ? "보냈어! 이제 꾸미러 가자" : "보냈어! 친구가 찍으면 이 링크에서 열려"); }
     catch (e) { if (e.name === "AbortError") return; }
   }
