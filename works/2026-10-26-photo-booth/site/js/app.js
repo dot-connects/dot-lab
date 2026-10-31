@@ -1383,6 +1383,7 @@ async function videoJob() {
           toast("이 폰에서는 메이킹 영상을 못 만들었어요", 3000);
           continue;
         }
+      if (P.debugWebLink && C.renderStats?.skipped) { toast(`[시험] 멈춘 칸 ${C.renderStats.skipped}`, 6000); C.renderStats.skipped = ""; }
       if (key !== vkey()) continue;
       D[kind] = { key, ...res };
       D[kind === "video" ? "wantVideo" : "wantStory"] = false;

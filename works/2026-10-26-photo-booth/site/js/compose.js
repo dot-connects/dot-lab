@@ -830,6 +830,9 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
   const tag = buf.byteLength >= 8 ? String.fromCharCode(...new Uint8Array(buf, 4, 4)) : "";
   if (!mp4 && tag !== "ftyp") throw Object.assign(new Error("clip not MP4"), { notMp4: true });
   if (!mp4 || !(await VideoDecoder.isConfigSupported(mp4.config).catch(() => null))?.supported) throw new Error("clip not decodable");
+  // Toss: eight clips at once while an ad may hold a hardware decoder; the last cell lost out and froze (phone test 10-31)
+  const soft = { ...mp4.config, hardwareAcceleration: "prefer-software" };
+  const dcfg = P.id === "toss" && (await VideoDecoder.isConfigSupported(soft).catch(() => null))?.supported ? soft : mp4.config;
   const S = mp4.samples, N = S.length, us = S.map(s => s.us).sort((x, y) => x - y);
   const span = (us[N - 1] - us[0]) * N / Math.max(1, N - 1) / 1e6 || N / FPS, r = N / (span * FPS);
   const step = Math.abs(r - 1) < 0.05 ? 1 : Math.min(2, r);
@@ -840,7 +843,7 @@ async function clipSource(v, phase, fx, hq, fromEnd = null) {
     if (f.timestamp < skip) f.close(); else q.push(f);
     wake?.();
   }, error: e => { failed = e; wake?.(); } });
-  dec.configure(mp4.config);
+  dec.configure(dcfg);
   // fromEnd (the making rows) holds the last frame at the end instead of looping: a row that wants one frame more
   // than its window holds would otherwise end on the clip's first frame (review r8 /done r2 M1)
   let ended = false;
@@ -889,8 +892,11 @@ async function renderOffline(cv, st, story, vids, phase, fxs, cfg, opts, onProgr
     for (let n = 0; n < vids.length; n++) {
       // a WebM clip -> the real-time path for all; an MP4 we cannot read or decode (e.g. a header with no frames, which
       // a <video> still "loads") -> that cell's still
-      try { srcs.push(await clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n]))); onProgress?.(PREP * (n + 1) / vids.length); }
-      catch (e) { if (e?.notMp4 || e?.name === "AbortError") throw e; badClips.add(vids[n]); srcs.push(null); console.warn("[compose] clip skipped", e); }
+      const open = () => clipSource(vids[n], phase[n], fxs[n], opts.mattes?.get(vids[n]));
+      try { srcs.push(await open().catch(async e => {          // a decoder may be free a moment later: once more before the still
+        if (e?.notMp4 || e?.name === "AbortError") throw e;
+        await new Promise(r => setTimeout(r, 500)); return open(); })); onProgress?.(PREP * (n + 1) / vids.length); }
+      catch (e) { if (e?.notMp4 || e?.name === "AbortError") throw e; badClips.add(vids[n]); srcs.push(null); renderStats.skipped = `${n}: ${e?.name} ${e?.message}`; console.warn("[compose] clip skipped", e); }
     }
     const N = SECONDS * FPS;
     for (let n = 0; n < N; n++) {
