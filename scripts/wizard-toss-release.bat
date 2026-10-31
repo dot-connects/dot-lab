@@ -154,13 +154,13 @@ Wait-Enter
 Stage '정식 앱 이름'
 Open-Url $Console
 Step '콘솔에서 시험 앱(따로 같이 네컷 테스트)의 appName 을 바꿀 수 있는지 봐요.'
-Step '바꿀 수 없으면 새 앱을 등록해요. 표시 이름 = 따로 같이 네컷, appName = ttarogachi'
+Step '바꿀 수 없으면 새 앱을 등록해요. 표시 이름 = 따로 같이 네컷, appName = duo-4cut'
 Step '표시 이름에 "테스트"가 없어야 해요.'
-$app = Ask 'AIT_APP_NAME' '정식 appName (ttarogachi 권장):'
-if (-not $app) { $app = 'ttarogachi' }
+$app = Ask 'AIT_APP_NAME' '정식 appName (duo-4cut):'
+if (-not $app) { $app = 'duo-4cut' }
 $app = $app.Trim(); Write-Env 'AIT_APP_NAME' $app
 if ($app -match '-test$') { Warn 'appName 이 -test 로 끝나면 정식 파일이 안 만들어져요. 다시 실행해 주세요.'; $script:Skipped += '정식 appName'; Finish; return }
-if ($app -ne 'ttarogachi') { Warn "appName 이 $app 이면 사진 서버(Worker)가 이 앱을 막아요. 여기서 멈추고 Claude 에게 appName 을 알려 주세요."; $script:Skipped += 'Worker 허용 주소'; Finish; return }
+if ($app -ne 'duo-4cut') { Warn "appName 이 $app 이면 사진 서버(Worker)가 이 앱을 막아요. 여기서 멈추고 Claude 에게 appName 을 알려 주세요."; $script:Skipped += 'Worker 허용 주소'; Finish; return }
 Wait-Enter
 
 Stage '광고 ID'
