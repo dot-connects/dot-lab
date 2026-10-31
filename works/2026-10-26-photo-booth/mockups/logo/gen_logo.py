@@ -46,5 +46,5 @@ def run(key: str) -> None:
     shutil.copy(max(imgs, key=lambda q: q.stat().st_mtime), dest)
     print("ok", key, round(time.time() - started), "s", flush=True)
 
-with ThreadPoolExecutor(4) as ex:
+with ThreadPoolExecutor(1 if "split-dark" in sys.argv else 4) as ex:   # the dark logo edits split.png: run in order
     list(ex.map(run, sys.argv[1:] or list(IDEAS)))
