@@ -1428,7 +1428,7 @@ function saveVid(kind) {
 function saveSheet() {
   try { $("vidPv").src = $("stripImg").toDataURL("image/jpeg", .7); } catch {}
   const mine = D.media?.[me() || "a"]?.cuts?.[0]?.cut;          // the cut-out: the making video shows no rooms
-  if (mine) $("mkPv").src = mine.src;
+  if (mine && !P.makingLocked) $("mkPv").src = mine.src;   // web: no preview of the Toss-only video (operator 10-31)
   if (env.inApp || P.id === "toss") return;   // in-app: the bubble is hidden; Toss: no web links (review item 10)
   const link = location.origin + location.pathname;
   const said = ok => $("saveLink").innerHTML = ok ? "<em>링크 복사했어!</em> 링크도 붙여 주면 더 좋아" : `링크도 붙여 주면 더 좋아 <em>${link.replace(/^https?:\/\//, "")}</em>`;
@@ -1737,8 +1737,8 @@ const lockedSet = s => P.decoLocked && (s === "y2k" || s === "diary");
 if (P.makingLocked) {
   const b = $("storyBtn");
   b.classList.add("locked"); b.querySelector(".ribbon").textContent = "토스 전용";
-  b.querySelector(".pv").insertAdjacentHTML("beforeend", '<i class="lockveil"><span>미리보기만</span></i>');
-  b.querySelector("small").textContent = "토스에서 받을 수 있어요";
+  b.querySelector(".pv").insertAdjacentHTML("beforeend", '<i class="lockveil"><span>토스에서 확인하세요</span></i>');
+  b.querySelector("small").hidden = true;   // the ribbon already says it
   b.querySelector(".vl span").textContent = "메이킹 영상";
   $("saveBtns").querySelector(".savehead").textContent = "영상 받아 가!";
 }
@@ -1789,7 +1789,7 @@ const ACT = {
   ownReset: () => { if (mySide()) { D.own[mySide()] = null; ownCommit(); } },
   saveVideo: () => saveVid("video"),
   adGo: () => adRun(), adRetry: () => adRun(),
-  saveStory: () => P.makingLocked ? tossHint("메이킹 영상은 토스에서 받아요") : saveVid("story"),
+  saveStory: () => P.makingLocked ? tossHint("메이킹 영상은 토스에서 확인하세요") : saveVid("story"),
   toChrome: () => openOut(decoUrl()),
   hideHint: () => { $("hintChip").hidden = true; S.hintOff = S.side; },
   again: fresh,
