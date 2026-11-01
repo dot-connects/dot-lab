@@ -69,4 +69,34 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 | 12 | 내 사인 만들기 + 받아쓰기 | personal signature, company name | operator 2026-11-01: a signature that only spells the name is not special. Six structures from real signatures, mapped to Hangul: long ㅡ as backbone (Joseon sugyeol), dots plus one long slash (Picasso), first letter holds the rest (Bowie), initial-consonant seal (Dürer), half-turn reading such as 문 to 곰 (ambigram), name hidden in a picture (munjado). Then trace and write from memory. Plain stroke joining was rejected as scrawl; plain fonts as too much of just a name. Operator's picks from 41 real signatures share an even felt-tip line, a big first letter, a wave for the rest and one long stroke. Motifs chosen: a letter becomes the number (ㄱ as 7), a long stroke ends in a drawing. Inputs chosen: name written by hand (slant, size, speed measured), birthday, handedness, mood (loop, slash, long stroke), MBTI as the emphasised hook, hobby, job. Favourite colour dropped. Stopped after about 10 rounds: joined strokes, fonts, generated one-line pen, refined handwriting, font plus pulled strokes, six layouts from Kmong structures, per-name emphasis. Final verdict on 60 samples: feels like lines drawn over a name. A professional redraws the letters and the stroke as one form for that name; free automatic rules did not reach it. Revisit only with a new letter source such as a licensed cursive jamo set or per-name design by a person | **parked** (operator 2026-11-01, not good enough) |
 | 13 | 갤럭시 StandBy + 폴드 무드등 | iPhone StandBy, iPhone Duo wake glow | charging folded Fold8 shows clock·music·calendar·photo pages on the cover screen; slightly opened inner screen is a mood light, Samsung alarm brings it up. Native Android app (Kotlin); first build is a measuring APK on Fold8 (cover DreamService, hinge angle, alarm moment). Personal use + channel intro reel. Research: `C:\DC\DD\ideas\applied\I-0053-galaxy-standby-moodlight.md` | parked (operator 2026-10-29) |
 
+## Parked 2026-11-01 (from docs/archive/2026-11-01-lab-references in C:\DC\DD)
+
+Complaints, small twists and trends. Not picked yet.
+
+| Work | Reference | Mechanic |
+|---|---|---|
+| 가짜 X 닫기 | fake close buttons, hidden reject buttons | thumb-hunt the real close -> time, fakes hit, thumb reach map |
+| 합격 염주 | 석가머니 beads app, 수능 | friend's photo as a bead, roll by finger -> wish card |
+| 포차 건배 | 온라인 담타, SlapMac | knock two phones -> sound, strength |
+| 정확히 반 접기 | Center This Div | drag to the exact centre -> error rank |
+| 가짜 택배 조회 | 음식만안와요 | "delivered" but the door is empty, find clues -> ending |
+| 찐친 동시 탭 | 친한 친구 이름 대기 | choose at the same moment with a friend -> match or betrayal; needs a server |
+| 해지 미로 | subscription dark patterns | find the cancel path -> receipt of steps and seconds |
+| 썩어 가는 짤 | KakaoTalk image compression | each friend's pass degrades the photo -> people passed; needs a server |
+
+## Useless programs (2026-11-01)
+
+Rule from Chindogu: it really works, and nobody needs it.
+
+| Work | Reference | Mechanic |
+|---|---|---|
+| 폰 멍때리기 대회 | 한강 멍때리기 대회 | leave the phone still while fake alerts tempt you -> seconds held |
+| 폰 재우기 | lullaby | rock the phone gently, shush at the mic -> it falls asleep, too rough wakes it; check overlap with #002 shaking |
+| 임금님 귀는 당나귀 귀 | Korean folk tale | shout a secret at the mic, only loudness is measured, nothing is kept -> hole depth |
+| 손으로 돌리는 충전기 | crank flashlight | crank a circle by finger -> real energy needed for 1% of battery |
+| 손으로 돌리는 시계 | wind-up clock | time moves only while you wind it -> how far behind you are |
+| 로딩 밀어 주기 | a bar stuck at 99% | push the bar by hand, it slips back -> how long you lasted |
+| 초정밀 사물 판별기 | Not Hotdog (from memory) | point the camera, long serious analysis -> "이것은 컵입니다" |
+| 모두의 버튼 | One Million Checkboxes, r/thebutton (from memory) | one nationwide counter; needs a server |
+
 Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).
