@@ -84,6 +84,22 @@ Complaints, small twists and trends. Not picked yet.
 | 해지 미로 | subscription dark patterns | find the cancel path -> receipt of steps and seconds |
 | 썩어 가는 짤 | KakaoTalk image compression | each friend's pass degrades the photo -> people passed; needs a server |
 
+## Problem-solving tools (2026-11-01)
+
+Operator 2026-11-01: try solving real inconveniences ahead of fun. Replay here means using it again next time. Evidence: docs/archive/2026-11-01-lab-references/04 and 05 in C:\DC\DD.
+
+| Work | Inconvenience | Tool | Evidence |
+|---|---|---|---|
+| 모임 결산 한 장 | treasurer's spreadsheet goes unopened, gets screenshotted anyway | enter money in and out, attach receipts -> one image for the group chat + read-only link | 12 posts on 4 sites, posts up to 208k views |
+| 차등 N빵 | fights over who pays for drinks | tap who ate what -> three split results side by side, vote by link | Clien post 31k views, 44 comments |
+| 부모님 따라하기 링크 | parents stall at remote-app authorization | child picks task and phone model -> big-text step link | 4 Clien posts, 1.3k-22k views |
+| 경조사 장부 | gifts given and received are scattered | one-line entry -> totals per person, stored only in the browser | 7 posts |
+| 제출용 사진 변환 | government sites reject size and format | re-encode locally to the entered limits | 5 posts; 1.2% of reviews and many free tools exist, sources disagree |
+| 거주사실조사 위치 점검 | Gov24 location check fails | show location permission and accuracy; not the app's own verdict | 18% of 199 low Gov24 reviews, seasonal |
+| 알림 점검 순서 | school and bank alerts do not arrive | checklist per phone model and app | 14.9% of 94 low 아이알리미 reviews |
+| 기프티콘 만료 모음 | vouchers expire unnoticed | images + dates -> sorted list and calendar file | 4 posts |
+| 이사 체크리스트 | missed address changes | move date -> tasks with deadlines; no legal claims | 3+ posts |
+
 ## Device-input ideas, second batch (2026-11-01)
 
 Not checked against references yet.
