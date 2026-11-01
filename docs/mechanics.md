@@ -99,6 +99,7 @@ Operator 2026-11-01: try solving real inconveniences ahead of fun. Replay here m
 | 알림 점검 순서 | school and bank alerts do not arrive | checklist per phone model and app | 14.9% of 94 low 아이알리미 reviews |
 | 기프티콘 만료 모음 | vouchers expire unnoticed | images + dates -> sorted list and calendar file | 4 posts |
 | 이사 체크리스트 | missed address changes | move date -> tasks with deadlines; no legal claims | 3+ posts |
+| 주차 층 찾기 (operator idea) | forgetting the parking floor | native widget: Bluetooth disconnect + barometer drop from the last outdoor point -> estimated floor, pillar photo as fallback. Not a web work: needs an Android app; iOS needs a Mac. Garage accuracy unmeasured | 3 Clien posts, up to 4k views |
 
 ## Device-input ideas, second batch (2026-11-01)
 
