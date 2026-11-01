@@ -26,6 +26,11 @@ content-system holds a ready manifest whose work is not linked from `index.html`
 "‹ 시켜본 것들" chip in the top-left of the start screen (hidden while playing, so a stray tap can't leave the game),
 and "시켜본 것 더 보기 →" under the result's retry/share buttons. #001 and #002 show both.
 
+**Link to the blog post (2026-11-01).** Sharing stays on the work's own page, so a friend lands in the game in one tap;
+the blog is reached from inside the work. Under "시켜본 것 더 보기 →" add "만든 이야기 보기 →" to the work's blog post.
+The post URL only exists once it is published and content-system never writes here, so add this link and the index
+tile's "해설 →" right after the first publish: `/<yyyy>/<mm>/<manifest slug>.html` is the usual shape, open it to confirm.
+
 **Touch input inside Threads / Instagram.** Most players open the link inside the app's own browser. With only
 `touch-action: none` the drawing pad scrolled the page, and at scroll top Threads took every downward drag as
 "close the browser" (up strokes drew, down strokes closed the window). Both fixes are needed on any work that

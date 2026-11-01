@@ -480,6 +480,7 @@
       ${best > 0 && !rec && best > s.total ? `<div class="near">${C.myBest(best)}</div>` : ""}
       <div class="row"><button class="btn" id="again" type="button">${g.auto ? C.tryIt : C.again}</button>${g.auto ? "" : `<button class="btn ghost" id="share" type="button">${C.share}</button>`}</div>
       <a class="more" href="../../../">${C.more}</a>
+      <a class="more" href="https://www.dotconnects.kr/2026/10/2026-10-23-kimchi-fried-rice.html">${C.story}</a>
       ${K.Input.hint ? `<div class="open">${C.openInBrowser}</div>` : ""}<div class="credit">${C.credit}</div></div>`;
     const gg = g; // a restart within 2 s must not let this round's slide-in / stamp fire into the next
     resEl.hidden = false; setTimeout(() => { if (g === gg) resEl.classList.add("up"); }, 900); // the finished dish gets a moment first

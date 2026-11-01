@@ -108,6 +108,7 @@ dialog img{width:100%;display:block;border:1px solid var(--grid)}
     <div class="acts"><button class="btn" id="again" type="button" hidden>다시</button><button class="btn main" id="share" type="button" hidden>공유하기</button></div>
   </div>
   <a class="more" id="more" href="../../../" hidden>시켜본 것 더 보기 →</a>
+  <a class="more" id="story" href="https://www.dotconnects.kr/2026/10/001.html" hidden>만든 이야기 보기 →</a>
   <div class="regs" id="regs" hidden></div>
   <div class="notes" id="notes" hidden></div>
   <div class="isles" id="isles"></div>
@@ -130,7 +131,7 @@ const LANG = (() => { const q = new URLSearchParams(location.search).get("lang")
   return q === "en" || q === "ko" ? q : saved === "en" || saved === "ko" ? saved : /^ko/i.test(navigator.language) ? "ko" : "en"; })();
 const EN = LANG === "en";
 const en = {
-  "‹ 시켜본 것들": "‹ All experiments", "시켜본 것 더 보기 →": "More experiments →", "D:OT LAB · 실험 #001": "D:OT LAB · #001",
+  "‹ 시켜본 것들": "‹ All experiments", "시켜본 것 더 보기 →": "More experiments →", "만든 이야기 보기 →": "How it was made →", "D:OT LAB · 실험 #001": "D:OT LAB · #001",
   "한반도를 그릴 수 있나?": "Can you draw Korea?", "지도 안 보고, 손가락으로 한반도를 그려 봐. 크기·위치는 상관없다.": "No map. Draw the Korean Peninsula with your finger. Size and position don't matter.",
   "한반도 그리는 칸. 손가락으로 그리면 채점된다": "Drawing pad for the Korean Peninsula. Draw with your finger to get scored",
   "본토는 손 떼지 말고 한 번에 · 섬은 따로": "Mainland in one stroke · islands separately", "섬도 그릴 거면 지금": "Islands? Now or never",
@@ -226,7 +227,7 @@ function drawStrokes(c, u) { c.strokeStyle = "#1d2733"; c.fillStyle = "#1d2733";
   for (const s of strokes) { if (s.length < 3) { c.beginPath(); c.arc(s[0][0], s[0][1], 3 * u, 0, 7); c.fill(); continue; }
     c.beginPath(); s.forEach(([x, y], i) => i ? c.lineTo(x, y) : c.moveTo(x, y)); c.stroke(); } }
 function drawInk() { ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, cv.width, cv.height); drawStrokes(ctx, dpr); }
-function reset() { cancelAnimationFrame(anim); strokes = []; res = null; ["verdict", "msg", "share", "again", "more", "notes", "regs"].forEach(id => $(id).hidden = true); $("idle").hidden = $("ghost").hidden = $("lang").hidden = false; }
+function reset() { cancelAnimationFrame(anim); strokes = []; res = null; ["verdict", "msg", "share", "again", "more", "story", "notes", "regs"].forEach(id => $(id).hidden = true); $("idle").hidden = $("ghost").hidden = $("lang").hidden = false; }
 pad.addEventListener("pointerdown", e => {
   if (!e.isPrimary) return;
   if (res || !$("msg").hidden) reset();
@@ -491,7 +492,7 @@ function show() {
     : prev < 0 ? "첫 기록" : pct > prev ? `최고 갱신! (+${pct - prev})` : `내 최고 ${prev}%`;
   $("lang").hidden = true;   // a reload here would throw the result away
   const mine = res; cardBlob = null; card().then(b => { if (res === mine) cardBlob = b; });
-  $("share").hidden = $("again").hidden = $("more").hidden = false; $("idle").hidden = true; noteList(); meLine(); islesLine(); histLine();
+  $("share").hidden = $("again").hidden = $("more").hidden = $("story").hidden = false; $("idle").hidden = true; noteList(); meLine(); islesLine(); histLine();
   cancelAnimationFrame(anim); const end = revealEnd(), v = $("verdict");
   const done = () => { if (res !== mine) return; v.classList.remove("counting"); $("vScore").textContent = pct + "%"; render(); };
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return done();
