@@ -84,7 +84,24 @@ Complaints, small twists and trends. Not picked yet.
 | 해지 미로 | subscription dark patterns | find the cancel path -> receipt of steps and seconds |
 | 썩어 가는 짤 | KakaoTalk image compression | each friend's pass degrades the photo -> people passed; needs a server |
 
+## Device-input ideas, second batch (2026-11-01)
+
+Not checked against references yet.
+
+| Work | Known thing | Mechanic |
+|---|---|---|
+| 김 서린 창문 | writing on a fogged window | blow at the mic to fog, write by finger, send by link, the message fades as it arrives |
+| 입으로 끄는 생일 촛불 | birthday candles | friend's link has their age in candles, blow at the mic -> breaths used |
+| 노래방 99점 | karaoke score screen | sing into the mic -> real pitch score, retro fanfare |
+| 웃음 참기 | no-laugh challenge | camera watches your face while funny clips play -> seconds held |
+| 고양이 눈싸움 | staring contest | camera detects blinks -> seconds held, friend's record as rival |
+| 손 그림자 놀이 | hand shadows | camera hand shape casts a shadow -> matched shapes |
+| 색 사냥 | treasure hunt | find an object of the target colour in your room -> seconds |
+| 딱지치기 | 딱지, Squid Game | swing the phone to flip a friend's 딱지 by link -> flips; check overlap with #002 |
+
 ## Useless programs (2026-11-01)
+
+Mockups of the phone-idle and phone-nap directions: https://claude.ai/artifact/N5BoztnfwrXRMLtDbV36Cw (operator moved on 2026-11-01, not rejected).
 
 Rule from Chindogu: it really works, and nobody needs it.
 
