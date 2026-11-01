@@ -18,12 +18,12 @@ failure, comparison, a funny label, the player's own input decides the result.
 | estimate a number on a log slider | sketch liked ("OK") | candidate 9 |
 | flick to toss, tilt/drag to catch -> one-bowl score /100 | **used** (#002 ready 2026-10-26, operator picked 2026-10-23) | works/2026-10-23-kimchi-fried-rice |
 | flick to flip a cube, cook all faces | dropped: "too close to Mario Party" (operator 2026-10-23) | works/2026-10-22-steak |
+| hold to pour, release at a hidden line (라면 물 550ml) | rejected: "no fun" (operator 2026-11-01) | was candidate 1 |
 
 ## Candidates (each a different mechanic; 2026-10-20)
 
 | # | Work | Mechanic | One number | Replay | Data |
 |---|---|---|---|---|---|
-| 1 | 라면 물 550ml 맞추기 | hold to pour, release at a hidden line | ml off | new pot each round, best | maker's recipe (source) |
 | 2 | 내 간은 어디 있나 | pin a point on a body from knowledge | cm off per organ | 6 organs, best | textbook diagram, simplified |
 | 3 | 피자 8등분 | swipe cut lines | spread of slice areas % | new shape each round | geometry only |
 | 4 | 대왕고래 실제 크기 | pinch to size next to a person | % off | 10 objects | lengths with sources |
@@ -42,8 +42,8 @@ failure, comparison, a funny label, the player's own input decides the result.
 | 17 | 3초 보고 없어진 것 | memorise a shelf, find the missing item | found count | shelf grows | own drawings |
 | 18 | 내 하루 24시간 나누기 | split a fixed total across sliders | distance from the national average | change and compare | time-use survey (source) |
 
-Pick for the next three (Claude's view): 1 (Korean, physical, one number, 3-second reel hook), 4 (the guide's
-"whales in my room" with real input), 8 (streak, cheap to build, data-driven).
+Pick for the next two (Claude's view): 4 (the guide's "whales in my room" with real input), 8 (streak, cheap to
+build, data-driven).
 
 ## Known thing x device input (2026-10-21, operator)
 
@@ -57,13 +57,13 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 | 1 | 주사위 스테이크 6면 굽기 | Mario Party "Sizzling Stakes" feel | flick the phone to roll a cube, cook every face by sound/vibration -> seconds, none burnt | dropped 10-23: too close to Mario Party |
 | 2 | 허공 달고나 | Squid Game dalgona | camera fingertip traces the outline, shaking cracks it -> % carved | parked (ledger only) |
 | 3 | 계란후라이 뒤집기 + 웍질 볶음밥 | flipping an egg, 중국집 wok toss | flick to toss rice (bottom burns if idle, too hard spills), then toss and catch a fried egg -> one-bowl score /100 | **#002 ready** works/2026-10-23-kimchi-fried-rice |
-| 4 | 절대 안 지는 가위바위보 | Janken robot meme | camera reads your hand, AI answers at the last moment -> how long you last | parked (ledger only) |
+| 4 | 절대 안 지는 가위바위보 | Janken robot meme | camera reads your hand, AI answers at the last moment -> how long you last | rejected: "no fun" (operator 2026-11-01) |
 | 5 | 손으로 찍는 인생네컷 | photo booth, 셋로그 (2 s clips, 2026) | hand-frame gesture shoots 4 cuts, frames swap with the trend. 10-26 brainstorm: (a) memory mode - 4 cuts each keep the 2 s before the shutter, saved as a moving 4-cut strip (mp4) + image; (b) pose-hole relay - friend's pose outline (~150 chars in the link, no face) becomes a hole, fit your body -> overlap %, default set for solo play. No backend: photos/video travel as saved files, only outlines fit a link. First: in-app camera/record/save spike | **brainstorming** (operator picked 10-26) |
 | 6 | 내 방에 뭔가 잡기 | "2026 is the new 2016" / Pokemon GO feel, own creatures | flick to throw over the camera view -> caught /N | later |
-| 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | date slot (program) |
+| 7 | 수능 실전 시계 | 수능 (mid November) | real timetable bells and announcements | rejected: "no fun" (operator 2026-11-01) |
 | 9 | 우리 집 몬스터 잡기 | Pokemon GO | throw a ball at your pet/person on the camera; segmentation cuts them out of the view and they land in an in-phone dex -> caught /N. Operator 10-21 extension: a subject that stays still cannot be caught - keep recording while it moves (motion fills the catch gauge), then turn the clip into a 3D character that lives on the phone screen; if it works, swap skins to Chiikawa-style characters. Browser ceiling: cut-out living 2.5D sticker; true 3D needs a GPU server (new PC), staying on screen over other apps needs a native app (tap-trigger Android base) | parked (ledger only) |
 | 8 | 폰 두 대로 펼치는 폴드 | Fold "iPhone Duo" reel | two phones join one screen | hard (needs pairing server) |
-| 10 | 흐린 사진 맑게 바꾸기 | bad-weather travel and outing photos | pick a photo -> the sky changes and the buildings and people lit by it change too; keepsake, no score. Overcast light has no direction, so real shadows need image generation. Next step: convert the same overcast photo both ways (on-device sky swap + grade vs generative relight), then the operator picks after comparing | **researching** (operator picked 2026-11-01) works/2026-11-01-sunny-photo/research |
+| 10 | 흐린 사진 맑게 바꾸기 | bad-weather travel and outing photos | pick a photo -> the sky changes and the buildings and people lit by it change too; keepsake, no score. Overcast light has no direction, so real shadows need image generation. Next step: convert the same overcast photo both ways (on-device sky swap + grade vs generative relight), then the operator picks after comparing | stopped 2026-11-01: on-device relight spike looked like a colour grade, no real building shadows; those need paid image generation and the operator wants it free. Research kept in works/2026-11-01-sunny-photo/research |
 | 11 | 카드 실적 자동 확인 | card spend targets, each with its own dates | Android app reads payment SMS and card-app notifications -> met / how much is left per target. Same card can have different windows for card benefits and for the loan-rate discount, so each target gets its own period. Operator chose: sideloaded app for own phone first (like tap-trigger; public release judged later), major cards built in + manual rule entry. Utility rather than a replay work; browser cannot read SMS | parked (operator 2026-10-31) |
 | 12 | 내 사인·로고 만들기 | personal signature, company logo | type a person or company name and add a photo -> a generated signature and logo; keepsake, no score | parked (operator 2026-11-01) |
 
