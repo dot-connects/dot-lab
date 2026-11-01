@@ -19,6 +19,7 @@ failure, comparison, a funny label, the player's own input decides the result.
 | flick to toss, tilt/drag to catch -> one-bowl score /100 | **used** (#002 ready 2026-10-26, operator picked 2026-10-23) | works/2026-10-23-kimchi-fried-rice |
 | flick to flip a cube, cook all faces | dropped: "too close to Mario Party" (operator 2026-10-23) | works/2026-10-22-steak |
 | hold to pour, release at a hidden line (라면 물 550ml) | rejected: "no fun" (operator 2026-11-01) | was candidate 1 |
+| pinch to size next to a person (대왕고래 실제 크기) | rejected: operator 2026-11-01 | was candidate 4 |
 
 ## Candidates (each a different mechanic; 2026-10-20)
 
@@ -26,7 +27,6 @@ failure, comparison, a funny label, the player's own input decides the result.
 |---|---|---|---|---|---|
 | 2 | 내 간은 어디 있나 | pin a point on a body from knowledge | cm off per organ | 6 organs, best | textbook diagram, simplified |
 | 3 | 피자 8등분 | swipe cut lines | spread of slice areas % | new shape each round | geometry only |
-| 4 | 대왕고래 실제 크기 | pinch to size next to a person | % off | 10 objects | lengths with sources |
 | 6 | 진짜 태극기 고르기 | pick the real one among near fakes | streak | new fakes each round | flag law diagram |
 | 7 | 비싼 순서로 줄 세우기 | drag to sort | pairs right % | new set | price survey (source) |
 | 8 | 더 많을까 적을까 | binary compare, streak | streak | endless pairs | public stats (source each) |
@@ -42,8 +42,7 @@ failure, comparison, a funny label, the player's own input decides the result.
 | 17 | 3초 보고 없어진 것 | memorise a shelf, find the missing item | found count | shelf grows | own drawings |
 | 18 | 내 하루 24시간 나누기 | split a fixed total across sliders | distance from the national average | change and compare | time-use survey (source) |
 
-Pick for the next two (Claude's view): 4 (the guide's "whales in my room" with real input), 8 (streak, cheap to
-build, data-driven).
+Pick for the next (Claude's view): 8 (streak, cheap to build, data-driven).
 
 ## Known thing x device input (2026-10-21, operator)
 
@@ -65,6 +64,6 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 | 8 | 폰 두 대로 펼치는 폴드 | Fold "iPhone Duo" reel | two phones join one screen | hard (needs pairing server) |
 | 10 | 흐린 사진 맑게 바꾸기 | bad-weather travel and outing photos | pick a photo -> the sky changes and the buildings and people lit by it change too; keepsake, no score. Overcast light has no direction, so real shadows need image generation. Next step: convert the same overcast photo both ways (on-device sky swap + grade vs generative relight), then the operator picks after comparing | stopped 2026-11-01: on-device relight spike looked like a colour grade, no real building shadows; those need paid image generation and the operator wants it free. Research kept in works/2026-11-01-sunny-photo/research |
 | 11 | 카드 실적 자동 확인 | card spend targets, each with its own dates | Android app reads payment SMS and card-app notifications -> met / how much is left per target. Same card can have different windows for card benefits and for the loan-rate discount, so each target gets its own period. Operator chose: sideloaded app for own phone first (like tap-trigger; public release judged later), major cards built in + manual rule entry. Utility rather than a replay work; browser cannot read SMS | parked (operator 2026-10-31) |
-| 12 | 내 사인·로고 만들기 | personal signature, company logo | type a person or company name and add a photo -> a generated signature and logo; keepsake, no score | parked (operator 2026-11-01) |
+| 12 | 내 사인 만들기 + 받아쓰기 | personal signature, company name | type a Korean name -> signatures in several styles built from Hangul pen strokes; trace it, then write it from memory -> similarity score. Strokes are generated, so the writing order is known. Photo only for the result card, logo left out for now. Spike 2026-11-01 reads as a real signature in Hangul; no Latin yet | **reviewing** (operator asked 2026-11-01) |
 
 Dropped from the 10-21 artifact sketch: dalgona-by-finger-on-screen and the bungeoppang tycoon (operator: too simple).
