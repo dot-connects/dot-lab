@@ -149,3 +149,9 @@ Session CSVs from car tests hold GPS positions. Received CSVs go to `C:\DC\DD\do
 - Family sharing: register a car, invite family by link or QR (no account), whichever phone sees the car
   Bluetooth records the park, every family widget shows it. Sync via the dot-lab Cloudflare Worker; instant
   widget refresh needs FCM. Location-law status for sharing is unverified.
+- Light by design (operator 2026-11-03 "가볍지만 강력하게"): no resident process; the system wakes the app on car
+  Bluetooth connect, barometer batched at 1 Hz while driving, no GPS polling (passive or one fix), RemoteViews
+  widget redrawn only on park, family sync by push only, Latin OCR via Play services, R8 on, APK under 3 MB.
+  Settings shows the app's own battery use. Return-to-place geofence is opt-in (needs background location).
+- Differentiators: shows itself on return, free-parking timer, steps to the elevator (measure first), remembers
+  the usual spot per place, auto-clear on reconnect, no ads and no stored photos.
