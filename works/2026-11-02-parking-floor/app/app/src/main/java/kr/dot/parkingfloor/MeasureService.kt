@@ -42,6 +42,8 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
         private const val SAMPLE_US = 200_000
         private const val BASELINE_S = 5.0
         private const val LABEL_WINDOW_S = 5.0
+        private const val MIN_BASELINE_SAMPLES = 3
+        private const val MAX_CLOCK_OFFSET_NS = 2_000_000_000L
 
         /** The running session, or null when idle. Lives only as long as the process. */
         var current: MeasureService? = null
@@ -61,8 +63,15 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
     var lastFix: Location? = null; private set
     var lastParkMs: Long? = null; private set
     var lastMark: String? = null; private set
+    var sensorFailed = false; private set
+    var btReady = false; private set
+    private class Mark(val tS: Double, val trueIndex: Int, val previousTrue: Int?, val previousParkMs: Long?)
+    private var undoable: Mark? = null
     private var lastTrue: Int? = null
     private var startNs = 0L
+    private var clockChecked = false
+    private var useArrivalClock = false
+    private var collectFromS = 0.0
     private var collectUntilS: Double? = null
     private val collected = ArrayList<Double>()
     private var bucketSecond = -1L
@@ -111,7 +120,9 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
             .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "parkingfloor:measure")
             .also { it.acquire(SESSION_MS + 60_000) }
         val sensors = getSystemService(SensorManager::class.java)
-        sensors.getDefaultSensor(Sensor.TYPE_PRESSURE)?.let { sensors.registerListener(this, it, SAMPLE_US) }
+        val sensor = sensors.getDefaultSensor(Sensor.TYPE_PRESSURE)
+        sensorFailed = sensor == null || !sensors.registerListener(this, sensor, SAMPLE_US)
+        if (sensorFailed) row("note", note = "sensor registration failed")
         if (car) startCarInputs()
         handler.postDelayed(endTimer, SESSION_MS)
         return START_NOT_STICKY
@@ -169,6 +180,7 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
             }
             registerReceiver(btReceiver, filter, RECEIVER_EXPORTED)
             receiverOn = true
+            btReady = true
         }
     }
 
@@ -179,7 +191,15 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
     override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) = Unit
 
     override fun onSensorChanged(event: SensorEvent) {
-        val second = (event.timestamp - startNs) / 1_000_000_000L
+        val arrivalNs = SystemClock.elapsedRealtimeNanos()
+        if (!clockChecked) {
+            clockChecked = true
+            val offsetNs = event.timestamp - arrivalNs
+            useArrivalClock = kotlin.math.abs(offsetNs) > MAX_CLOCK_OFFSET_NS
+            row("note", note = "sensor clock offset ${offsetNs / 1_000_000} ms, arrival clock $useArrivalClock")
+        }
+        val eventNs = if (useArrivalClock) arrivalNs else event.timestamp
+        val second = (eventNs - startNs) / 1_000_000_000L
         if (second != bucketSecond) {
             if (bucket.isNotEmpty()) sample(bucketSecond.toDouble(), FloorMath.median(bucket))
             bucket.clear()
@@ -195,8 +215,8 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
         while (recent.size > 3) recent.removeFirst()
         val until = collectUntilS
         if (until != null) {
-            collected.add(hpa)
-            if (tS >= until && collected.isNotEmpty()) {
+            if (tS >= collectFromS) collected.add(hpa)
+            if (tS >= until && collected.size >= MIN_BASELINE_SAMPLES) {
                 baseHpa = FloorMath.median(collected)
                 collectUntilS = null
                 row("base", tS = tS, hpa = baseHpa)
@@ -210,19 +230,22 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
         row("sample", tS = tS, hpa = hpa, withEstimate = base != null)
     }
 
-    private fun nowS() = (SystemClock.elapsedRealtimeNanos() - startNs) / 1e9
+    fun nowS() = (SystemClock.elapsedRealtimeNanos() - startNs) / 1e9
 
     private fun beginBaseline(fromS: Double) {
         baseHpa = null
         lastDeltaM = null
         lastEstimate = null
         collected.clear()
+        collectFromS = fromS
         collectUntilS = fromS + BASELINE_S
     }
 
     /** Re-reference at the last tapped floor, or at the start floor when none was tapped. */
     fun rebase() {
         lastTrue?.let { baseIndex = it }
+        undoable = null
+        row("rebase", note = "base floor ${FloorMath.labelOf(baseIndex)}")
         beginBaseline(nowS())
         lastMark = "기준 다시: ${FloorMath.labelOf(baseIndex)}"
     }
@@ -235,13 +258,18 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
         val delta = if (hpa != null && base != null) FloorMath.heightM(hpa, base) else null
         val estimate = delta?.let { FloorMath.estimate(baseIndex, it) }
         row(if (park) "park" else "label", tS = tS, hpa = hpa, delta = delta, estimate = estimate, trueIndex = trueIndex)
+        undoable = Mark(tS, trueIndex, lastTrue, lastParkMs)
         lastTrue = trueIndex
         if (park) lastParkMs = SystemClock.elapsedRealtime()
         lastMark = "실제 ${FloorMath.labelOf(trueIndex)} · 추정 ${estimate?.let(FloorMath::labelOf) ?: "없음"}"
     }
 
     fun undo() {
-        row("undo", note = "cancels previous label or park")
+        val target = undoable ?: return
+        row("undo", trueIndex = target.trueIndex, note = "cancels t_s %.1f".format(Locale.ROOT, target.tS))
+        lastTrue = target.previousTrue
+        lastParkMs = target.previousParkMs
+        undoable = null
         lastMark = "마지막 기록 취소"
     }
 

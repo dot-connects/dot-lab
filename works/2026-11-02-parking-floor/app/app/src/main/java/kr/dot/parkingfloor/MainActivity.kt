@@ -118,10 +118,10 @@ class MainActivity : Activity() {
         card.addView(text("주차층", 26f, true))
         if (!hasBarometer) card.addView(text("기압계 없음", 18f, true))
         card.addView(text("장소"))
-        placeInput = EditText(this).apply { hint = "건물 이름"; setSingleLine() }
+        placeInput = EditText(this).apply { id = 1001; hint = "건물 이름"; setSingleLine() }
         card.addView(placeInput)
-        val walk = RadioButton(this).apply { text = "도보"; id = View.generateViewId(); isChecked = true }
-        carMode = RadioButton(this).apply { text = "차"; id = View.generateViewId() }
+        val walk = RadioButton(this).apply { text = "도보"; id = 1002; isChecked = true }
+        carMode = RadioButton(this).apply { text = "차"; id = 1003 }
         card.addView(RadioGroup(this).apply {
             orientation = RadioGroup.HORIZONTAL
             addView(walk)
@@ -129,6 +129,7 @@ class MainActivity : Activity() {
         })
         card.addView(text("지금 층"))
         floorPick = Spinner(this).apply {
+            id = 1004
             adapter = ArrayAdapter(
                 this@MainActivity, android.R.layout.simple_spinner_dropdown_item, FloorMath.FLOORS.map(FloorMath::labelOf),
             )
@@ -169,7 +170,11 @@ class MainActivity : Activity() {
         }
         card.addView(parkButton)
         card.addView(button("기준 다시") { MeasureService.current?.rebase(); render() })
-        card.addView(button("마지막 취소") { MeasureService.current?.undo(); render() })
+        card.addView(button("마지막 취소") {
+            parkPending = false
+            MeasureService.current?.undo()
+            render()
+        })
         endButton = button("끝내기") { end() }
         card.addView(endButton)
         return card
@@ -242,9 +247,12 @@ class MainActivity : Activity() {
         val delta = session.lastDeltaM?.let { "%.1f m".format(it) } ?: "-"
         val hpa = session.lastHpa?.let { "%.2f hPa".format(it) } ?: "-"
         val lines = mutableListOf(
-            "${session.place} · 기준 ${FloorMath.labelOf(session.baseIndex)}",
+            "${session.place} · 기준 ${FloorMath.labelOf(session.baseIndex)} · %d분 %d초".format(
+                session.nowS().toInt() / 60, session.nowS().toInt() % 60,
+            ),
             "높이 $delta · $hpa · 샘플 ${session.samples}",
         )
+        if (session.sensorFailed) lines += "센서 시작 실패"
         if (session.car) {
             val fix = session.lastFix
             lines += when {
@@ -254,7 +262,7 @@ class MainActivity : Activity() {
                     fix.accuracy, (SystemClock.elapsedRealtimeNanos() - fix.elapsedRealtimeNanos) / 1_000_000_000L,
                 )
             }
-            lines += "블루투스 기록 ${session.btEvents}건"
+            lines += if (session.btReady) "블루투스 기록 ${session.btEvents}건" else "블루투스 권한 없음"
         }
         statsText.text = lines.joinToString("\n")
         if (!parkPending) markText.text = session.lastMark.orEmpty()

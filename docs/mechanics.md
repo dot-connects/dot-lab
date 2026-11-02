@@ -99,7 +99,7 @@ Operator 2026-11-01: try solving real inconveniences ahead of fun. Replay here m
 | 알림 점검 순서 | school and bank alerts do not arrive | checklist per phone model and app | 14.9% of 94 low 아이알리미 reviews |
 | 기프티콘 만료 모음 | vouchers expire unnoticed | images + dates -> sorted list and calendar file | 4 posts |
 | 이사 체크리스트 | missed address changes | move date -> tasks with deadlines; no legal claims | 3+ posts |
-| 주차 층 찾기 (operator idea) | forgetting the parking floor | native widget: Bluetooth disconnect + barometer drop from the last outdoor point -> estimated floor, pillar photo as fallback. Not a web work: needs an Android app; iOS needs a Mac. Garage accuracy unmeasured | 3 Clien posts, up to 4k views |
+| 주차 층 찾기 (operator idea) | forgetting the parking floor | native widget: Bluetooth disconnect + barometer drop from the last outdoor point -> estimated floor, pillar photo as fallback. Not a web work: needs an Android app; iOS needs a Mac. In progress: measurement app at works/2026-11-02-parking-floor, not published, garage accuracy unmeasured | 3 Clien posts, up to 4k views |
 | 여행 사진 기록 (operator idea) | after a trip, photos and the places they were taken are hard to piece back together into a record | photo taken -> its location is kept; merged with the Google Timeline route so the trip can be written up later. Form undecided (app or program). Check first, from memory and unverified: Timeline moved on-device with no public API, so the likely route is a manual export file; Android may strip photo GPS when a browser picks the file, which would push this to a native app | operator 2026-11-01; not researched |
 
 ## Device-input ideas, second batch (2026-11-01)
