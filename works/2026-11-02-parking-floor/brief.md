@@ -155,3 +155,15 @@ Session CSVs from car tests hold GPS positions. Received CSVs go to `C:\DC\DD\do
   Settings shows the app's own battery use. Return-to-place geofence is opt-in (needs background location).
 - Differentiators: shows itself on return, free-parking timer, steps to the elevator (measure first), remembers
   the usual spot per place, auto-clear on reconnect, no ads and no stored photos.
+
+## Operator decisions 2026-11-03 morning
+
+- Design: round 5 "pillar base" approved. Family sharing v1 = KakaoTalk share sheet, no server. No store release
+  (personal sideload), so background location is allowed and no LBS filing is planned.
+- Widget: estimate and confirmed differ by colour. Estimate buttons: confirm, manual floor, second candidate.
+  Confirmed buttons: pillar photo, manual location, share. Minimum size 2x2; layouts differ per size.
+- Place: building name from the last GPS fix before the car Bluetooth drops (reverse geocode).
+- Next: round 6 widget mockups (3 variants x 4 sizes x 3 states), then a real working app.
+- Foot data 11-03: Honors-ville 43F to B2 = 3.28 m/floor (B2 right at rest); DSR 6.3-6.9 m/floor (3.3 m fixed
+  1/3, learning from 2F gets 3F). Labels tapped while the elevator still moved were off by a floor: record a label
+  only after pressure settles.
