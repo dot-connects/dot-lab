@@ -138,3 +138,14 @@ Session CSVs from car tests hold GPS positions. Received CSVs go to `C:\DC\DD\do
 - Foot test CSVs cover at least 2 buildings and 12 scored labels, with accuracy and metres per floor reported against the pass reading, plus sample gaps with the screen off.
 - Car test CSVs cover 5 parks, at least 3 underground, with accuracy reported and the Bluetooth disconnect time compared with `주차함`.
 - A written decision: widget next, per-place correction, or pillar scan first.
+
+## Later (decided 2026-11-03, not in the measurement app)
+
+- Absolute floor: phone pressure + KMA AWS station pressure + ground height (DEM) + building height and floor
+  count (V-World LT_C_BLDGINFO, building register). Keys via `dot-lab/scripts/wizard-parking-keys.bat`, stored in
+  `%USERPROFILE%\.dot-lab\parking.env` (outside git).
+- Entrance anchor: the pressure when GPS drops on the way in marks the entrance level.
+- Design round 4: widget sizes 1x1 to 4x3, app screens, family sharing.
+- Family sharing: register a car, invite family by link or QR (no account), whichever phone sees the car
+  Bluetooth records the park, every family widget shows it. Sync via the dot-lab Cloudflare Worker; instant
+  widget refresh needs FCM. Location-law status for sharing is unverified.
