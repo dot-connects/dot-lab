@@ -34,7 +34,7 @@ class FloorMathTest {
 
     @Test fun labelRoundTrip() {
         FloorMath.FLOORS.forEach { assertEquals(it, FloorMath.indexOf(FloorMath.labelOf(it))) }
-        assertEquals(26, FloorMath.FLOORS.size)
+        assertEquals(76, FloorMath.FLOORS.size)
     }
 
     @Test fun median() {
