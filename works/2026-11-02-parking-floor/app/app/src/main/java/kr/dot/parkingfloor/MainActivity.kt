@@ -143,6 +143,24 @@ class MainActivity : Activity() {
         })
         card.addView(text("지난 기록", 17f, true))
         sessionList = column().also(card::addView)
+        card.addView(buildWidgetCard())
+        return card
+    }
+
+    /** Design-prototype controls: puts the home-screen widget into each state so it can be judged on a real wallpaper. */
+    private fun buildWidgetCard(): LinearLayout {
+        val card = column()
+        card.addView(text("위젯 시험", 17f, true))
+        card.addView(text("홈 화면에 '주차층' 위젯을 놓고 크기를 바꿔 보세요. 아래 버튼은 위젯 상태만 바꿉니다.", 13f))
+        card.addView(button("방금 주차: B2쯤 (줄무늬)") { ParkWidget.setEstimate(this, "B2", "B3") })
+        card.addView(button("확정: B2, 기둥 번호 없음") { ParkWidget.setParked(this, "B2", null) })
+        card.addView(button("기둥 C-12 찍음: 노란 기둥 색 배움") { ParkWidget.setLearned(this, "C-12", PillarMark.HAZARD_YELLOW) })
+        card.addView(button("기둥 D-03 찍음: 파란 기둥 색 배움") { ParkWidget.setLearned(this, "D-03", ParkWidget.BLUE) })
+        card.addView(button("글자색: 배경 따라 자동") { ParkWidget.setOption(this, "ink", ParkWidget.INK_AUTO) })
+        card.addView(button("글자색: 흰색") { ParkWidget.setOption(this, "ink", ParkWidget.INK_LIGHT) })
+        card.addView(button("글자색: 검정") { ParkWidget.setOption(this, "ink", ParkWidget.INK_DARK) })
+        card.addView(button("또렷하게 판 켜기") { ParkWidget.setPanel(this, true) })
+        card.addView(button("또렷하게 판 끄기") { ParkWidget.setPanel(this, false) })
         return card
     }
 

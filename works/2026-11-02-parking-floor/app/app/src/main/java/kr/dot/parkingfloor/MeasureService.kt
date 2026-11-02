@@ -260,7 +260,15 @@ class MeasureService : Service(), SensorEventListener, LocationListener {
         row(if (park) "park" else "label", tS = tS, hpa = hpa, delta = delta, estimate = estimate, trueIndex = trueIndex)
         undoable = Mark(tS, trueIndex, lastTrue, lastParkMs)
         lastTrue = trueIndex
-        if (park) lastParkMs = SystemClock.elapsedRealtime()
+        if (park) {
+            lastParkMs = SystemClock.elapsedRealtime()
+            // The widget is a design prototype; it must never take the measurement down with it.
+            try {
+                ParkWidget.setParked(this, FloorMath.labelOf(trueIndex), place)
+            } catch (e: Throwable) {
+                row("note", note = "widget update failed: ${e.javaClass.simpleName}")
+            }
+        }
         lastMark = "실제 ${FloorMath.labelOf(trueIndex)} · 추정 ${estimate?.let(FloorMath::labelOf) ?: "없음"}"
     }
 

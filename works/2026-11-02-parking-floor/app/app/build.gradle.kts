@@ -10,8 +10,8 @@ android {
         applicationId = "kr.dot.parkingfloor"
         minSdk = 34 // the specialUse service type starts at API 34
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.1.2"
+        versionCode = 4
+        versionName = "0.2.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
