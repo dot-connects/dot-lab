@@ -127,7 +127,7 @@ class MainActivity : Activity() {
             addView(walk)
             addView(carMode)
         })
-        card.addView(text("지금 층"))
+        card.addView(text("지금 있는 층 (시작 전에 꼭 맞추기)", 16f, true))
         floorPick = Spinner(this).apply {
             id = 1004
             adapter = ArrayAdapter(
@@ -184,6 +184,8 @@ class MainActivity : Activity() {
         val session = MeasureService.current ?: return
         session.mark(index, parkPending)
         parkPending = false
+        runCard.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
+        Toast.makeText(this, "${FloorMath.labelOf(index)} 기록됨", Toast.LENGTH_SHORT).show()
         render()
     }
 
