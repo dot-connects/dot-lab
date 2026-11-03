@@ -168,8 +168,10 @@ function sparkle(host, { n = 3, dist = 24, size = 18, x = 0.5, y = 0.5 } = {}) {
 function lastA() {
   try { const o = JSON.parse(localStorage.getItem("booth:lastA")); return o && Date.now() - o.at < 7 * 864e5 ? o.id : null; } catch { return null; }
 }
+const count = e => { if (!MOCK) api.ping(e, P.id, env.app); };   // visit counter (Worker /v)
 async function route() {
   if (env.framed) { $("openTab").href = location.href; return show("framed"); }
+  if (!S.counted) { S.counted = true; count(S.id ? "join" : "open"); }   // join = opened a friend's link
   if (!S.id) {
     if (P.id === "toss") { setUi("cute"); show("landA"); $("resumeA").hidden = !lastA(); } else show("theme");
     return prefetchHQ();
@@ -252,6 +254,7 @@ function modeScreen() {
 // ---- shoot --------------------------------------------------------------------------------------------------------
 async function startShoot(side) {
   S.side = side; S.sent.clear();
+  count("shoot");
   show("shoot");
   resetShoot();
   // Round 7: nobody moves A any more, so B has no hint (no mover); a chip with no text never shows
@@ -1291,6 +1294,7 @@ function setSave(on) { document.querySelector('[data-act="savePhoto"]').disabled
 let tapAt = 0, dlAt = 0;
 addEventListener("pointerdown", () => { tapAt = performance.now(); }, true);
 async function download(...files) {
+  count("save");
   if (P.id === "toss") {
     if (D.sending) return toast("보내는 중이야, 조금만 기다려 줘");
     D.sending = files[0][1]; setVid();

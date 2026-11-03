@@ -47,6 +47,20 @@ async function devOf(req, id) {
   const dev = (new URL(req.url).searchParams.get("d") || "").slice(0, 64), ip = req.headers.get("CF-Connecting-IP") || "";
   return dev && ip ? sha(`${id}|${netOf(ip)}|${dev}`) : null;
 }
+// Visit counter (2026-11-03): links only record people who sent one, so the funnel before that was invisible.
+// One empty object per (KST day, event, visitor); the visitor is a day-salted hash of network + screen string, so a
+// reload is not a second visit and nothing about the person is kept. Count with visits.py.
+const EVENTS = ["open", "join", "shoot", "save"], PLATFORMS = ["web", "toss"];
+const VIAS = ["Instagram", "Threads", "KakaoTalk", "Facebook", "app", "browser"];
+async function visit(req, env, now, json) {
+  const q = new URL(req.url).searchParams, e = q.get("e");
+  if (!EVENTS.includes(e)) return json(400, { error: "event" });
+  const pick = (v, list) => list.includes(v) ? v : "other";
+  const day = new Date(now + 9 * 36e5).toISOString().slice(0, 10);
+  const who = (await sha(`${day}|${netOf(req.headers.get("CF-Connecting-IP") || "")}|${(q.get("d") || "").slice(0, 64)}`)).slice(0, 12);
+  await env.BUCKET.put(`v/${day}/${e}/${pick(q.get("p"), PLATFORMS)}.${pick(q.get("via"), VIAS)}.${who}`, "");
+  return json(204);
+}
 // B uploads into a staging folder named by its token hash; `done` claims the B slot, so an abandoned upload never blocks it
 const bDir = (id, hash) => `s/${id}/b-${hash.slice(0, 16)}`;
 
@@ -63,6 +77,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers: cors });
     const now = env.NOW ?? Date.now();
     const p = new URL(req.url).pathname.split("/").filter(Boolean);
+    if (req.method === "POST" && p[0] === "v" && p.length === 1) return visit(req, env, now, json);
     if (p[0] !== "s") return json(404, { error: "not-found" });
 
     if (req.method === "POST" && p.length === 1) {

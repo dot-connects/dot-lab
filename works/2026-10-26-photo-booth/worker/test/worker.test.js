@@ -306,3 +306,44 @@ test("wrangler.toml ORIGINS lets the Toss mini-app hosts in, and nothing else un
     assert.equal(r.headers.get("Access-Control-Allow-Origin"), allowed[0], o);
   }
 });
+
+// ---- visit counter (/v): one empty object per visitor, day and event; nothing about the person is stored ----
+const visit = (e, q, opt = {}) => call(e, "POST", "/v?" + q, opt);
+const vkeys = e => [...e.BUCKET.m.keys()].filter(k => k.startsWith("v/"));
+
+test("a visit writes one key under the KST day, event, platform and in-app browser", async () => {
+  const e = { ...env(), NOW: Date.parse("2026-11-02T16:30:00Z") };          // 11-03 01:30 KST
+  assert.equal((await visit(e, "e=open&p=web&via=Instagram", { ip: "1.2.3.4", dev: "390x844@3|ios" })).status, 204);
+  const k = vkeys(e);
+  assert.equal(k.length, 1);
+  assert.match(k[0], /^v\/2026-11-03\/open\/web\.Instagram\.[A-Za-z0-9_-]{12}$/);
+  assert.ok(!k[0].includes("1.2.3.4"));
+});
+
+test("the same phone twice on one day is one visitor; another phone or another day is another", async () => {
+  const e = { ...env(), NOW: Date.parse("2026-11-03T03:00:00Z") };
+  const me = { ip: "1.2.3.4", dev: "390x844@3|ios" };
+  await visit(e, "e=open&p=web&via=browser", me);
+  await visit(e, "e=open&p=web&via=browser", me);                             // reload
+  assert.equal(vkeys(e).length, 1);
+  await visit(e, "e=open&p=web&via=browser", { ip: "5.6.7.8", dev: "412x915@2.6|android" });
+  assert.equal(vkeys(e).length, 2);
+  e.NOW += 864e5;
+  await visit(e, "e=open&p=web&via=browser", me);
+  assert.equal(vkeys(e).length, 3);
+});
+
+test("unknown events are refused; unknown platform or browser is filed as other", async () => {
+  const e = { ...env(), NOW: Date.parse("2026-11-03T03:00:00Z") };
+  assert.equal((await visit(e, "e=../../s/x", { ip: "1.2.3.4" })).status, 400);
+  assert.equal((await visit(e, "p=web", { ip: "1.2.3.4" })).status, 400);
+  assert.equal(vkeys(e).length, 0);
+  assert.equal((await visit(e, "e=shoot&p=evil/x&via=<script>", { ip: "1.2.3.4" })).status, 204);
+  assert.match(vkeys(e)[0], /^v\/2026-11-03\/shoot\/other\.other\./);
+});
+
+test("visits carry CORS for the page and need no preflight header", async () => {
+  const e = { ...env(), NOW: Date.parse("2026-11-03T03:00:00Z") };
+  const r = await visit(e, "e=open&p=web&via=browser");
+  assert.equal(r.headers.get("Access-Control-Allow-Origin"), PAGES);
+});

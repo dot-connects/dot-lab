@@ -14,6 +14,22 @@ const [sw, sh] = [screen.width, screen.height].sort((x, y) => x - y);
 // refuses (the live site broke when Pages went out first); an old Worker just ignores ?d=
 const DEV = "d=" + encodeURIComponent(`${sw}x${sh}@${Math.round(devicePixelRatio * 100) / 100}|${os}`);
 
+// Visit counter: e = open | join | shoot | save. A bare POST (no body, no header) needs no CORS preflight, and a
+// Worker without /v just answers 404, so nothing here can break the page. ?nocount=1 once stops this browser counting
+// (the operator's own tests); ?nocount=0 turns it back on.
+const NOCOUNT = "booth:nocount";
+try {
+  const nc = new URLSearchParams(location.search).get("nocount");
+  if (nc === "1") localStorage.setItem(NOCOUNT, "1"); else if (nc === "0") localStorage.removeItem(NOCOUNT);
+} catch {}
+export function ping(e, p, via) {
+  try {
+    if (localStorage.getItem(NOCOUNT)) return;
+  } catch {}
+  const q = new URLSearchParams({ e, p, via: via === "앱" ? "app" : via === "브라우저" ? "browser" : via });
+  fetch(`${WORKER}/v?${q}&${DEV}`, { method: "POST", keepalive: true }).catch(() => {});
+}
+
 const url = (...p) => `${WORKER}/s/${p.map(encodeURIComponent).join("/")}`;
 const body = async r => { try { return await r.json(); } catch { return {}; } };
 
