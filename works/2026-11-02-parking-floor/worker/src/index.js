@@ -78,15 +78,19 @@ async function newMember(store, groupId, name, owner) {
 
 /** Wakes the other phones; a failed push is not an error for the sender. */
 async function notify(env, store, groupId, exceptId, data) {
-  if (!env.FCM_SA) return 0;
+  if (!env.FCM_SA) return { sent: 0, failed: 0, reason: "no-push" };
   const tokens = (await store.members(groupId)).filter(m => m.id !== exceptId && m.fcmToken).map(m => m.fcmToken);
-  let sent = 0;
+  let sent = 0, failed = 0, reason = null;
   for (const t of tokens) {
-    const r = await sendData(env, t, data).catch(() => ({ ok: false }));
+    const r = await sendData(env, t, data).catch(e => ({ ok: false, reason: e.message }));
     if (r.ok) sent++;
-    else if (r.unregistered) await store.clearToken(t);
+    else {
+      failed++;
+      reason = reason || r.reason || null;
+      if (r.unregistered) await store.clearToken(t);
+    }
   }
-  return sent;
+  return { sent, failed, reason };
 }
 
 export async function handle(req, env, store, ctx) {
@@ -155,9 +159,10 @@ export async function handle(req, env, store, ctx) {
     if (cur && cur.park.id !== park.id && cur.park.atMs > park.atMs) return json({ ok: false, stale: true });
     const by = cur && cur.park.id === park.id ? cur.by : me.name;
     await store.setPark(me.groupId, { park, by, byId: cur && cur.park.id === park.id ? cur.byId : me.id, updated: now });
-    const sent = notify(env, store, me.groupId, me.id, { type: "park", id: String(park.id) });
-    ctx?.waitUntil?.(sent);
-    return json({ ok: true });
+    // the phone logs how many family phones were woken; a push problem never fails the upload
+    const push = await notify(env, store, me.groupId, me.id, { type: "park", id: String(park.id) })
+      .catch(e => ({ sent: 0, failed: 0, reason: String(e.message || e) }));
+    return json({ ok: true, push });
   }
 
   if (req.method === "GET" && path === "/v1/park") {

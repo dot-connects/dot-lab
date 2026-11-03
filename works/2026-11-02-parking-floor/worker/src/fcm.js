@@ -4,6 +4,9 @@
 
 let cached = null; // { token, until }
 
+/** The secret as pasted; trim() also drops the UTF-8 BOM a Windows pipe adds. */
+export const parseSa = text => JSON.parse(String(text).trim());
+
 const b64url = buf => btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const b64urlText = s => b64url(new TextEncoder().encode(s));
 
@@ -33,7 +36,7 @@ export async function signedJwt(sa, nowS) {
 async function accessToken(env, fetcher) {
   const now = Math.floor(Date.now() / 1000);
   if (cached && cached.until > now + 60) return cached.token;
-  const sa = JSON.parse(env.FCM_SA);
+  const sa = parseSa(env.FCM_SA);
   const jwt = await signedJwt(sa, now);
   const r = await fetcher("https://oauth2.googleapis.com/token", {
     method: "POST",
@@ -48,7 +51,7 @@ async function accessToken(env, fetcher) {
 
 /** Returns { ok } or { ok: false, unregistered } so dead tokens can be dropped. */
 export async function sendData(env, token, data, fetcher = fetch) {
-  const sa = JSON.parse(env.FCM_SA);
+  const sa = parseSa(env.FCM_SA);
   const access = await accessToken(env, fetcher);
   const r = await fetcher(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
     method: "POST",
@@ -57,7 +60,8 @@ export async function sendData(env, token, data, fetcher = fetch) {
   });
   if (r.ok) return { ok: true };
   const text = await r.text();
-  return { ok: false, unregistered: r.status === 404 || text.includes("UNREGISTERED") };
+  const status = (text.match(/"status":\s*"([A-Z_]+)"/) || [])[1] || "";
+  return { ok: false, unregistered: r.status === 404 || text.includes("UNREGISTERED"), reason: `${r.status} ${status}`.trim() };
 }
 
 export function resetTokenCache() { cached = null; }

@@ -191,6 +191,8 @@ $sa = Pick-File '서비스 계정 JSON 경로' '*firebase-adminsdk*.json'
 if ($sa) {
   Push-Location $Worker
   try {
+    # PowerShell 5.1 pipes to native programs with a BOM unless told otherwise
+    $OutputEncoding = New-Object System.Text.UTF8Encoding $false
     Get-Content $sa -Raw -Encoding UTF8 | & npx --yes wrangler@4 secret put FCM_SA
     if ($LASTEXITCODE -eq 0) {
       Write-Host '  ✓ Cloudflare 에 FCM_SA 저장' -ForegroundColor Green

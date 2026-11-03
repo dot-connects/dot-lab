@@ -20,8 +20,8 @@ android {
         applicationId = "kr.dot.parkingfloor"
         minSdk = 34 // the specialUse service type starts at API 34
         targetSdk = 35
-        versionCode = 6
-        versionName = "0.4.0"
+        versionCode = 7
+        versionName = "0.4.1"
         buildConfigField("String", "SYNC_URL", "\"https://dot-lab-parking.dotconnects.workers.dev\"")
         buildConfigField("String", "FB_API_KEY", fb("apiKey"))
         buildConfigField("String", "FB_APP_ID", fb("appId"))

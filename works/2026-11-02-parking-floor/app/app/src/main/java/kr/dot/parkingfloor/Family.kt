@@ -144,7 +144,12 @@ object Family {
         val app = context.applicationContext
         io.execute {
             try {
-                ParkStore.latest(app)?.let { pushNow(app, it) }
+                ParkStore.latest(app)?.let { park ->
+                    val push = pushNow(app, park).optJSONObject("push")
+                    val woke = push?.optInt("sent") ?: 0
+                    val failed = push?.optInt("failed") ?: 0
+                    DriveLog.add(app, "family upload ok, woke $woke" + if (failed > 0) ", failed $failed (${push?.optString("reason")})" else "")
+                }
                 prefs(app).edit().putBoolean("dirty", false).apply()
             } catch (e: Exception) {
                 if (joined(app)) prefs(app).edit().putBoolean("dirty", true).apply()
@@ -153,10 +158,10 @@ object Family {
         }
     }
 
-    private fun pushNow(context: Context, p: Park) {
+    private fun pushNow(context: Context, p: Park): JSONObject {
         val park = JSONObject().put("id", p.id).put("atMs", p.atMs).put("floor", p.floor).put("est", p.est).put("alt", p.alt)
             .put("confirmed", p.confirmed).put("pillar", p.pillar).put("color", p.color).put("placeName", p.placeName)
-        authed(context, "PUT", "/v1/park", JSONObject().put("park", park))
+        return authed(context, "PUT", "/v1/park", JSONObject().put("park", park))
     }
 
     fun pull(context: Context, done: () -> Unit) {

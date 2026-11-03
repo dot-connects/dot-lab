@@ -182,3 +182,11 @@ test("an oversized body is refused", async () => {
   const r = await call("PUT", "/v1/park", { park: park({ placeName: "x".repeat(5000) }) }, mom.token);
   assert.ok(r.status === 413 || r.status === 400);
 });
+
+test("a service account pasted with a BOM still signs", async () => {
+  const { mom, dad } = await family();
+  env.FCM_SA = "﻿" + env.FCM_SA;
+  await call("PUT", "/v1/token", { fcmToken: "dad-phone" }, dad.token);
+  const r = await call("PUT", "/v1/park", { park: park() }, mom.token);
+  assert.deepEqual(r.body.push, { sent: 1, failed: 0, reason: null });
+});
