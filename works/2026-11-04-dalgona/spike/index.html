@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>달고나 손 인식 실험</title>
+<style>
+  html,body{margin:0;height:100%;background:#0f2b26;color:#eef;font-family:system-ui,sans-serif;overflow:hidden}
+  #wrap{position:fixed;inset:0;touch-action:none}
+  video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);opacity:.85}
+  canvas{position:absolute;inset:0;width:100%;height:100%}
+  #panel{position:absolute;left:8px;right:8px;top:max(8px,env(safe-area-inset-top));font:12px/1.45 ui-monospace,Consolas,monospace;
+    background:#000a;border-radius:8px;padding:8px 10px;white-space:pre;overflow:hidden;pointer-events:none}
+  #ctl{position:absolute;left:8px;right:8px;bottom:max(8px,env(safe-area-inset-bottom));background:#000b;border-radius:8px;padding:8px 10px;font-size:13px;display:flex;flex-direction:column;gap:6px}
+  #ctl label{display:flex;align-items:center;gap:8px}
+  #ctl input[type=range]{flex:1}
+  #ctl .row{display:flex;gap:8px}
+  button{font:inherit;padding:9px 12px;border-radius:6px;border:0;background:#ff2e7e;color:#fff;flex:1}
+  button.alt{background:#2b4a42}
+  #start{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#0f2b26;text-align:center;padding:24px}
+  #start p{max-width:320px;line-height:1.6;margin:0}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <video id="v" playsinline muted></video>
+  <canvas id="c"></canvas>
+  <div id="panel">로딩 전</div>
+  <div id="ctl">
+    <label>집기 판정 <input id="pinchTh" type="range" min="0.15" max="0.7" step="0.01" value="0.38"><span id="pinchV"></span></label>
+    <label>찌르기 판정 <input id="pokeTh" type="range" min="0.3" max="4" step="0.05" value="1.4"><span id="pokeV"></span></label>
+    <div class="row"><button id="mark" class="alt">지금 찔렀음 표시</button><button id="copy">기록 복사</button></div>
+  </div>
+  <div id="start">
+    <h2 style="margin:0;color:#ff2e7e">손 인식 실험</h2>
+    <p>앞 카메라로 손과 얼굴을 봅니다. 바늘 잡듯 엄지와 검지를 모으면 바늘이 생겨요. 콕 찔러 보고, 흔들어 보고, 혀를 내밀어 보세요. 영상은 이 폰 밖으로 나가지 않아요.</p>
+    <button id="go" style="flex:none;padding:12px 28px">카메라 켜기</button>
+    <p id="err" style="color:#ff9"></p>
+  </div>
+</div>
+<script type="module">
+const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const HAND = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
+const FACE = "https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task";
+const $ = id => document.getElementById(id);
+const v = $("v"), c = $("c"), g = c.getContext("2d"), panel = $("panel");
+const log = [];               // event log for the operator to paste back
+const t0 = performance.now();
+const L = (msg) => { const line = `${((performance.now() - t0) / 1000).toFixed(2)} ${msg}`; log.push(line); if (log.length > 400) log.shift(); };
+L(`ua ${navigator.userAgent}`);
+
+let hand = null, face = null, W = 0, H = 0;
+const st = {
+  pinched: false, pinchDist: 0, pinchSpeed: 0, lastPinchDist: null,
+  pos: null, ema: null, jitHist: [], jitter: 0, speed: 0,
+  scale: null, scaleRate: 0, pokes: 0, lastPoke: -1, z: 0, zRate: 0, lastZ: null,
+  handMs: 0, faceMs: 0, fps: 0, frames: 0, fpsT: performance.now(),
+  tongueBs: null, jaw: 0, redFrac: 0, mouth: null, bsNames: null,
+  trail: [],
+};
+
+function resize() { const r = $("wrap").getBoundingClientRect(); W = r.width; H = r.height; c.width = W * devicePixelRatio; c.height = H * devicePixelRatio; g.setTransform(devicePixelRatio, 0, 0, devicePixelRatio, 0, 0); }
+addEventListener("resize", resize);
+
+// map a normalized landmark (video space) to the mirrored, object-fit:cover screen
+function toScreen(p) {
+  const vw = v.videoWidth, vh = v.videoHeight, s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s;
+  return [W - ((p.x * dw) - (dw - W) / 2), p.y * dh - (dh - H) / 2];
+}
+
+$("go").onclick = async () => {
+  $("err").textContent = "불러오는 중…";
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: false, video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } } });
+    v.srcObject = stream; await v.play();
+    const s = stream.getVideoTracks()[0].getSettings(); L(`camera ${s.width}x${s.height} ${s.frameRate || ""}fps`);
+    const { FilesetResolver, HandLandmarker, FaceLandmarker } = await import(MP + "/vision_bundle.mjs");
+    const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
+    const mk = async (Cls, path, opts) => {
+      try { return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "GPU" }, runningMode: "VIDEO", ...opts }); }
+      catch (e) { L(`gpu fail ${e}`); return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "CPU" }, runningMode: "VIDEO", ...opts }); }
+    };
+    hand = await mk(HandLandmarker, HAND, { numHands: 1, minHandDetectionConfidence: .5, minTrackingConfidence: .5 });
+    face = await mk(FaceLandmarker, FACE, { numFaces: 1, outputFaceBlendshapes: true });
+    $("start").hidden = true; resize(); requestAnimationFrame(loop);
+  } catch (e) { $("err").textContent = "실패: " + e; L(`start fail ${e}`); }
+};
+
+const off = document.createElement("canvas"), og = off.getContext("2d", { willReadFrequently: true });
+let lastVT = -1, frameN = 0, lastT = performance.now();
+
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (v.currentTime === lastVT) { draw(); return; }
+  lastVT = v.currentTime; frameN++;
+  const dt = Math.max(.001, (now - lastT) / 1000); lastT = now;
+  st.frames++; if (now - st.fpsT > 1000) { st.fps = st.frames * 1000 / (now - st.fpsT); st.frames = 0; st.fpsT = now; }
+
+  let a = performance.now(); const hr = hand.detectForVideo(v, now); st.handMs = performance.now() - a;
+  readHand(hr, dt, now);
+  if (frameN % 2 === 0) { a = performance.now(); const fr = face.detectForVideo(v, now); st.faceMs = performance.now() - a; readFace(fr); }
+  draw();
+}
+
+function readHand(hr, dt, now) {
+  const lm = hr.landmarks && hr.landmarks[0];
+  if (!lm) { if (st.pinched) L("hand lost while pinched"); st.pinched = false; st.pos = null; st.lastPinchDist = null; st.scale = null; st.lastZ = null; return; }
+  const S = lm.map(toScreen);
+  const size = Math.hypot(S[0][0] - S[9][0], S[0][1] - S[9][1]);          // wrist -> middle knuckle, screen px
+  const pd = Math.hypot(S[4][0] - S[8][0], S[4][1] - S[8][1]) / size;     // thumb tip - index tip, in hand sizes
+  if (st.lastPinchDist != null) st.pinchSpeed = (st.lastPinchDist - pd) / dt;
+  st.lastPinchDist = pd; st.pinchDist = pd;
+  const th = +$("pinchTh").value;
+  const was = st.pinched;
+  st.pinched = st.pinched ? pd < th * 1.25 : pd < th;                       // hysteresis so the needle does not flicker
+  if (st.pinched !== was) L(`${st.pinched ? "PINCH" : "release"} d=${pd.toFixed(2)} closeSpeed=${st.pinchSpeed.toFixed(2)}`);
+  const tip = [(S[4][0] + S[8][0]) / 2, (S[4][1] + S[8][1]) / 2];
+  // speed in screen px/s, jitter = RMS distance from a smoothed path over ~0.5 s, in px
+  if (st.pos) st.speed = Math.hypot(tip[0] - st.pos[0], tip[1] - st.pos[1]) / dt;
+  st.pos = tip;
+  st.ema = st.ema ? [st.ema[0] * .7 + tip[0] * .3, st.ema[1] * .7 + tip[1] * .3] : tip;
+  st.jitHist.push(Math.hypot(tip[0] - st.ema[0], tip[1] - st.ema[1])); if (st.jitHist.length > 15) st.jitHist.shift();
+  st.jitter = Math.sqrt(st.jitHist.reduce((s, x) => s + x * x, 0) / st.jitHist.length);
+  // poke candidates: hand grows on screen (moves toward camera) fast, or index tip z drops fast
+  if (st.scale) st.scaleRate = (size / st.scale - 1) / dt;
+  st.scale = size;
+  const z = lm[8].z; if (st.lastZ != null) st.zRate = (st.lastZ - z) / dt; st.lastZ = z;
+  const pth = +$("pokeTh").value;
+  if (st.pinched && st.scaleRate > pth && now - st.lastPoke > 220) { st.pokes++; st.lastPoke = now; L(`POKE scaleRate=${st.scaleRate.toFixed(2)} zRate=${st.zRate.toFixed(2)} speed=${st.speed.toFixed(0)}`); }
+  if (st.pinched) { st.trail.push([tip[0], tip[1], now]); }
+  st.trail = st.trail.filter(p => now - p[2] < 1500);
+  st.S = S;
+}
+
+function readFace(fr) {
+  const lm = fr.faceLandmarks && fr.faceLandmarks[0];
+  if (!lm) { st.mouth = null; return; }
+  const bs = fr.faceBlendshapes && fr.faceBlendshapes[0] && fr.faceBlendshapes[0].categories;
+  if (bs) {
+    if (!st.bsNames) { st.bsNames = bs.map(b => b.categoryName); L(`blendshapes(${bs.length}): ${st.bsNames.join(",")}`); }
+    const t = bs.find(b => b.categoryName === "tongueOut"); st.tongueBs = t ? t.score : null;
+    const j = bs.find(b => b.categoryName === "jawOpen"); st.jaw = j ? j.score : 0;
+  }
+  // tongue heuristic: share of red-pink pixels in a box from the inner lower lip (14) down toward the chin (152)
+  const up = toScreen(lm[13]), lo = toScreen(lm[14]), lipL = toScreen(lm[61]), lipR = toScreen(lm[291]), chin = toScreen(lm[152]);
+  st.mouth = [(up[0] + lo[0]) / 2, (up[1] + lo[1]) / 2];
+  const bx = Math.min(lipL[0], lipR[0]), bw = Math.abs(lipR[0] - lipL[0]), by = up[1], bh = Math.max(4, (chin[1] - up[1]) * .7);
+  st.tongueBox = [bx, by, bw, bh];
+  // read the same box from the video (undo mirror + cover)
+  const vw = v.videoWidth, vh = v.videoHeight, s = Math.max(W / vw, H / vh), dw = vw * s, dh = vh * s;
+  const sx = ((W - (bx + bw)) + (dw - W) / 2) / s, sy = (by + (dh - H) / 2) / s, sw = bw / s, sh = bh / s;
+  if (sw < 4 || sh < 4) return;
+  off.width = 48; off.height = 48; og.drawImage(v, sx, sy, sw, sh, 0, 0, 48, 48);
+  const d = og.getImageData(0, 0, 48, 48).data; let red = 0;
+  for (let i = 0; i < d.length; i += 4) { const r = d[i], gg = d[i + 1], b = d[i + 2]; if (r > 110 && r > gg * 1.45 && r > b * 1.15) red++; }
+  st.redFrac = red / (48 * 48);
+}
+
+function draw() {
+  g.clearRect(0, 0, W, H);
+  // a dalgona-sized guide circle to try scraping on
+  const R = Math.min(W, H) * .32, cx = W / 2, cy = H * .55;
+  g.strokeStyle = "#e9c48f88"; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, R * .84, 0, 7); g.stroke();
+  if (st.S) { g.fillStyle = "#9fe"; for (const [x, y] of st.S) { g.beginPath(); g.arc(x, y, 2.5, 0, 7); g.fill(); } }
+  if (st.trail.length > 1) { g.strokeStyle = "#ffd36b"; g.lineWidth = 3; g.beginPath(); st.trail.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.stroke(); }
+  if (st.pos && st.pinched) {
+    const [x, y] = st.pos, hot = performance.now() - st.lastPoke < 180;
+    g.strokeStyle = "#dfe3e6"; g.lineWidth = 3; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 70, y + 70); g.stroke();
+    g.strokeStyle = hot ? "#ff2e7e" : "#fff"; g.lineWidth = hot ? 5 : 2; g.beginPath(); g.arc(x, y, hot ? 18 : 10, 0, 7); g.stroke();
+  }
+  if (st.tongueBox) { const [x, y, w, h] = st.tongueBox; g.strokeStyle = st.redFrac > .25 ? "#ff7a9a" : "#fff6"; g.lineWidth = 2; g.strokeRect(x, y, w, h); }
+  const f = n => (n == null ? "—" : n.toFixed(2));
+  panel.textContent =
+`fps ${st.fps.toFixed(0)}  hand ${st.handMs.toFixed(0)}ms  face ${st.faceMs.toFixed(0)}ms
+바늘 ${st.pinched ? "■ 잡음" : "□ 없음"}  집기거리 ${f(st.pinchDist)}  집는속도 ${f(st.pinchSpeed)}
+속도 ${st.speed.toFixed(0)}px/s  떨림 ${st.jitter.toFixed(1)}px
+찌르기 ${st.pokes}회  크기변화 ${f(st.scaleRate)}/s  z변화 ${f(st.zRate)}
+혀(표정값) ${st.tongueBs == null ? "없음" : f(st.tongueBs)}  입벌림 ${f(st.jaw)}  분홍 ${(st.redFrac * 100).toFixed(0)}%`;
+  $("pinchV").textContent = (+$("pinchTh").value).toFixed(2);
+  $("pokeV").textContent = (+$("pokeTh").value).toFixed(2);
+}
+
+$("mark").onclick = () => L(`MARK operator poked  scaleRate=${st.scaleRate.toFixed(2)} zRate=${st.zRate.toFixed(2)}`);
+$("copy").onclick = async () => {
+  const text = [`pinchTh ${$("pinchTh").value} pokeTh ${$("pokeTh").value}`, ...log].join("\n");
+  try { await navigator.clipboard.writeText(text); $("copy").textContent = "복사됨"; } catch (e) { $("copy").textContent = "복사 실패"; }
+  setTimeout(() => $("copy").textContent = "기록 복사", 1500);
+};
+// tiny per-second sample so the log shows the numbers over time, not only events
+setInterval(() => { if (hand) L(`s pinch=${st.pinched ? 1 : 0} d=${st.pinchDist.toFixed(2)} v=${st.speed.toFixed(0)} jit=${st.jitter.toFixed(1)} sr=${st.scaleRate.toFixed(2)} jaw=${st.jaw.toFixed(2)} red=${(st.redFrac * 100).toFixed(0)} tbs=${st.tongueBs == null ? "na" : st.tongueBs.toFixed(2)} fps=${st.fps.toFixed(0)}`); }, 1000);
+resize();
+</script>
+</body>
+</html>

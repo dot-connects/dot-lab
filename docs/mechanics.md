@@ -56,7 +56,7 @@ channel (operator 10-21, repeated): use IP characters and names freely, no merch
 | # | Work | Known thing | Mechanic (verb -> score) | Status |
 |---|---|---|---|---|
 | 1 | 주사위 스테이크 6면 굽기 | Mario Party "Sizzling Stakes" feel | flick the phone to roll a cube, cook every face by sound/vibration -> seconds, none burnt | dropped 10-23: too close to Mario Party |
-| 2 | 허공 달고나 | Squid Game dalgona | camera fingertip traces the outline, shaking cracks it -> % carved | parked (ledger only) |
+| 2 | 허공 달고나 | Squid Game dalgona | camera fingertip traces the outline, shaking cracks it -> % carved | **picked 2026-11-04** (classic Squid Game: 4 shapes, timer, crack = out) works/2026-11-04-dalgona |
 | 3 | 계란후라이 뒤집기 + 웍질 볶음밥 | flipping an egg, 중국집 wok toss | flick to toss rice (bottom burns if idle, too hard spills), then toss and catch a fried egg -> one-bowl score /100 | **#002 ready** works/2026-10-23-kimchi-fried-rice |
 | 4 | 절대 안 지는 가위바위보 | Janken robot meme | camera reads your hand, AI answers at the last moment -> how long you last | rejected: "no fun" (operator 2026-11-01) |
 | 5 | 손으로 찍는 인생네컷 | photo booth, 셋로그 (2 s clips, 2026) | hand-frame gesture shoots 4 cuts, frames swap with the trend. 10-26 brainstorm: (a) memory mode - 4 cuts each keep the 2 s before the shutter, saved as a moving 4-cut strip (mp4) + image; (b) pose-hole relay - friend's pose outline (~150 chars in the link, no face) becomes a hole, fit your body -> overlap %, default set for solo play. No backend: photos/video travel as saved files, only outlines fit a link. First: in-app camera/record/save spike | **#003 shipped** as 따로 같이 네컷 (take a photo beside a friend's cut-out via link) works/2026-10-26-photo-booth |
