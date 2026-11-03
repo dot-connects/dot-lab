@@ -7,20 +7,17 @@ import org.junit.Test
 class WidgetSizeTest {
     @Test
     fun classifiesLauncherCellSizes() {
-        assertEquals(Size.TINY, ParkWidget.classify(57f, 74f))
-        assertEquals(Size.WIDE2, ParkWidget.classify(130f, 74f))
-        assertEquals(Size.WIDE4, ParkWidget.classify(276f, 74f))
-        assertEquals(Size.SQUARE, ParkWidget.classify(130f, 160f))
-        assertEquals(Size.BIG, ParkWidget.classify(276f, 160f))
-        assertEquals(Size.XL, ParkWidget.classify(276f, 250f))
+        assertEquals(Size.S22, ParkWidget.classify(150f, 170f))
+        assertEquals(Size.S32, ParkWidget.classify(220f, 170f))
+        assertEquals(Size.S42, ParkWidget.classify(300f, 170f))
+        assertEquals(Size.S43, ParkWidget.classify(300f, 260f))
     }
 
     @Test
-    fun boundariesBelongToTheLargerSize() {
-        assertEquals(Size.WIDE2, ParkWidget.classify(100f, 99f))
-        assertEquals(Size.SQUARE, ParkWidget.classify(99f, 100f))
-        assertEquals(Size.WIDE4, ParkWidget.classify(230f, 60f))
-        assertEquals(Size.BIG, ParkWidget.classify(170f, 229f))
-        assertEquals(Size.XL, ParkWidget.classify(170f, 230f))
+    fun boundaries() {
+        assertEquals(Size.S22, ParkWidget.classify(169f, 300f))
+        assertEquals(Size.S32, ParkWidget.classify(170f, 229f))
+        assertEquals(Size.S42, ParkWidget.classify(240f, 229f))
+        assertEquals(Size.S43, ParkWidget.classify(170f, 230f))
     }
 }

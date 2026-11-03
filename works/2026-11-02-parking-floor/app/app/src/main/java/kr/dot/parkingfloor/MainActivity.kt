@@ -1,339 +1,325 @@
 package kr.dot.parkingfloor
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.app.Activity
-import android.content.ClipData
-import android.content.ClipboardManager
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
+import android.companion.AssociationInfo
+import android.companion.AssociationRequest
+import android.companion.BluetoothDeviceFilter
+import android.companion.CompanionDeviceManager
 import android.content.Intent
+import android.content.IntentSender
 import android.content.pm.PackageManager
 import android.graphics.Typeface
-import android.hardware.Sensor
-import android.hardware.SensorManager
-import android.net.Uri
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.os.SystemClock
-import android.provider.Settings
-import android.view.Gravity
+import android.os.health.SystemHealthManager
+import android.os.health.UidHealthStats
 import android.view.View
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowInsets
-import android.widget.ArrayAdapter
 import android.widget.Button
-import android.widget.EditText
-import android.widget.GridLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.RadioButton
 import android.widget.RadioGroup
 import android.widget.ScrollView
-import android.widget.Spinner
+import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
-import androidx.core.content.FileProvider
-import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
+/** Home: the current park, setup (permissions, car), widget panel, history, and what the app cost. */
 class MainActivity : Activity() {
     private companion object {
-        const val END_LOCK_MS = 2 * 60 * 1000L
-        const val CONFIRM_MS = 3000L
+        const val REQ_PERMS = 1
+        const val REQ_BACKGROUND = 2
+        const val REQ_ASSOC = 3
+        const val INK = 0xFF16191C.toInt()
+        const val MUTE = 0xFF4F565D.toInt()
     }
 
-    private val ticker = Handler(Looper.getMainLooper())
-    private val tick = object : Runnable {
-        override fun run() {
-            render()
-            ticker.postDelayed(this, 1000)
-        }
-    }
-    private lateinit var startCard: LinearLayout
-    private lateinit var runCard: LinearLayout
-    private lateinit var sessionList: LinearLayout
-    private lateinit var crashBox: LinearLayout
-    private lateinit var placeInput: EditText
-    private lateinit var carMode: RadioButton
-    private lateinit var floorPick: Spinner
-    private lateinit var startButton: Button
-    private lateinit var estimateText: TextView
-    private lateinit var statsText: TextView
-    private lateinit var markText: TextView
-    private lateinit var parkButton: Button
-    private lateinit var endButton: Button
-    private var hasBarometer = false
-    private var starting = false
-    private var parkPending = false
-    private var endArmedAt = 0L
-    private var listedSessions: List<String> = emptyList()
+    private lateinit var body: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        hasBarometer = getSystemService(SensorManager::class.java).getDefaultSensor(Sensor.TYPE_PRESSURE) != null
-        val scroll = ScrollView(this).apply { setBackgroundColor(0xFFFFFFFF.toInt()) }
-        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        scroll.addView(root, MATCH_PARENT, WRAP_CONTENT)
+        val scroll = ScrollView(this).apply { setBackgroundColor(0xFFF4F4F1.toInt()) }
+        body = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        scroll.addView(body, MATCH_PARENT, WRAP_CONTENT)
         scroll.setOnApplyWindowInsetsListener { view, insets ->
-            val bars = insets.getInsets(WindowInsets.Type.systemBars() or WindowInsets.Type.ime())
-            val side = dp(16)
-            view.setPadding(side + bars.left, dp(12) + bars.top, side + bars.right, dp(12) + bars.bottom)
+            val bars = insets.getInsets(WindowInsets.Type.systemBars())
+            view.setPadding(dp(18) + bars.left, dp(14) + bars.top, dp(18) + bars.right, dp(18) + bars.bottom)
             insets
         }
-        crashBox = column().also(root::addView)
-        startCard = buildStartCard().also(root::addView)
-        runCard = buildRunCard().also(root::addView)
         setContentView(scroll)
     }
 
     override fun onResume() {
         super.onResume()
-        showCrash()
-        ticker.post(tick)
+        render()
     }
 
-    override fun onPause() {
-        ticker.removeCallbacks(tick)
-        super.onPause()
-    }
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
-    private fun dp(value: Int) = (value * resources.displayMetrics.density).toInt()
-
-    private fun column() = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-
-    private fun text(value: String, size: Float = 15f, bold: Boolean = false) = TextView(this).apply {
+    private fun text(value: String, size: Float = 15f, bold: Boolean = false, color: Int = INK) = TextView(this).apply {
         text = value
         textSize = size
-        setTextColor(0xFF17191C.toInt())
-        setPadding(0, dp(4), 0, dp(4))
+        setTextColor(color)
+        setPadding(0, dp(3), 0, dp(3))
         if (bold) setTypeface(typeface, Typeface.BOLD)
     }
 
-    private fun button(label: String, onClick: () -> Unit) = Button(this).apply {
+    private fun button(label: String, primary: Boolean = false, onClick: () -> Unit) = Button(this).apply {
         text = label
         isAllCaps = false
+        textSize = 15f
+        setTextColor(if (primary) 0xFFFFFFFF.toInt() else INK)
+        background = GradientDrawable().apply {
+            cornerRadius = dp(24).toFloat()
+            if (primary) setColor(INK) else { setColor(0x00000000); setStroke(dp(1), INK) }
+        }
+        minHeight = dp(48)
         setOnClickListener { onClick() }
     }
 
-    private fun buildStartCard(): LinearLayout {
-        val card = column()
-        card.addView(text("주차층", 26f, true))
-        if (!hasBarometer) card.addView(text("기압계 없음", 18f, true))
-        card.addView(text("장소"))
-        placeInput = EditText(this).apply { id = 1001; hint = "건물 이름"; setSingleLine() }
-        card.addView(placeInput)
-        val walk = RadioButton(this).apply { text = "도보"; id = 1002; isChecked = true }
-        carMode = RadioButton(this).apply { text = "차"; id = 1003 }
-        card.addView(RadioGroup(this).apply {
-            orientation = RadioGroup.HORIZONTAL
-            addView(walk)
-            addView(carMode)
-        })
-        card.addView(text("지금 있는 층 (시작 전에 꼭 맞추기)", 16f, true))
-        floorPick = Spinner(this).apply {
-            id = 1004
-            adapter = ArrayAdapter(
-                this@MainActivity, android.R.layout.simple_spinner_dropdown_item, FloorMath.FLOORS.map(FloorMath::labelOf),
-            )
-            setSelection(FloorMath.FLOORS.indexOf(0))
+    private fun row(vararg views: View) = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        views.forEachIndexed { i, view ->
+            addView(view, LinearLayout.LayoutParams(0, WRAP_CONTENT, 1f).apply { if (i > 0) marginStart = dp(8) })
         }
-        card.addView(floorPick)
-        startButton = button("여기서 시작") { start() }.apply { isEnabled = hasBarometer }
-        card.addView(startButton)
-        card.addView(button("배터리 설정 열기") {
-            startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", packageName, null)))
-        })
-        card.addView(text("지난 기록", 17f, true))
-        sessionList = column().also(card::addView)
-        card.addView(buildWidgetCard())
-        return card
     }
 
-    /** Design-prototype controls: puts the home-screen widget into each state so it can be judged on a real wallpaper. */
-    private fun buildWidgetCard(): LinearLayout {
-        val card = column()
-        card.addView(text("위젯 시험", 17f, true))
-        card.addView(text("홈 화면에 '주차층' 위젯을 놓고 크기를 바꿔 보세요. 아래 버튼은 위젯 상태만 바꿉니다.", 13f))
-        card.addView(button("방금 주차: B2쯤 (줄무늬)") { ParkWidget.setEstimate(this, "B2", "B3") })
-        card.addView(button("확정: B2, 기둥 번호 없음") { ParkWidget.setParked(this, "B2", null) })
-        card.addView(button("기둥 C-12 찍음: 노란 기둥 색 배움") { ParkWidget.setLearned(this, "C-12", PillarMark.HAZARD_YELLOW) })
-        card.addView(button("기둥 D-03 찍음: 파란 기둥 색 배움") { ParkWidget.setLearned(this, "D-03", ParkWidget.BLUE) })
-        card.addView(button("글자색: 배경 따라 자동") { ParkWidget.setOption(this, "ink", ParkWidget.INK_AUTO) })
-        card.addView(button("글자색: 흰색") { ParkWidget.setOption(this, "ink", ParkWidget.INK_LIGHT) })
-        card.addView(button("글자색: 검정") { ParkWidget.setOption(this, "ink", ParkWidget.INK_DARK) })
-        card.addView(button("또렷하게 판 켜기") { ParkWidget.setPanel(this, true) })
-        card.addView(button("또렷하게 판 끄기") { ParkWidget.setPanel(this, false) })
-        return card
+    private fun section(title: String) {
+        body.addView(text(title, 17f, true).apply { setPadding(0, dp(22), 0, dp(4)) })
     }
 
-    private fun buildRunCard(): LinearLayout {
-        val card = column()
-        estimateText = text("측정 중", 64f, true).apply { gravity = Gravity.CENTER }
-        statsText = text("")
-        markText = text("", 16f, true)
-        card.addView(estimateText)
-        card.addView(statsText)
-        card.addView(markText)
-        val grid = GridLayout(this).apply { columnCount = 5 }
-        FloorMath.FLOORS.forEach { index ->
-            val cell = button(FloorMath.labelOf(index)) { tapFloor(index) }
-            cell.minWidth = 0
-            cell.minimumWidth = 0
-            grid.addView(cell, GridLayout.LayoutParams(
-                GridLayout.spec(GridLayout.UNDEFINED), GridLayout.spec(GridLayout.UNDEFINED, 1f),
-            ).apply { width = 0; height = WRAP_CONTENT })
-        }
-        card.addView(grid, MATCH_PARENT, WRAP_CONTENT)
-        parkButton = button("주차함") {
-            parkPending = true
-            markText.text = "주차한 층을 누르세요"
-        }
-        card.addView(parkButton)
-        card.addView(button("기준 다시") { MeasureService.current?.rebase(); render() })
-        card.addView(button("마지막 취소") {
-            parkPending = false
-            MeasureService.current?.undo()
-            render()
-        })
-        endButton = button("끝내기") { end() }
-        card.addView(endButton)
-        return card
-    }
-
-    private fun tapFloor(index: Int) {
-        val session = MeasureService.current ?: return
-        session.mark(index, parkPending)
-        parkPending = false
-        runCard.performHapticFeedback(android.view.HapticFeedbackConstants.CONFIRM)
-        Toast.makeText(this, "${FloorMath.labelOf(index)} 기록됨", Toast.LENGTH_SHORT).show()
-        render()
-    }
-
-    private fun end() {
-        val session = MeasureService.current ?: return
-        val now = SystemClock.elapsedRealtime()
-        if (now - endArmedAt > CONFIRM_MS) {
-            endArmedAt = now
-            render()
-            return
-        }
-        endArmedAt = 0
-        session.finish()
-        render()
-    }
-
-    private fun start() {
-        if (starting || MeasureService.current != null) return
-        val name = placeInput.text.toString().trim()
-        if (name.isEmpty()) {
-            Toast.makeText(this, "장소를 입력하세요", Toast.LENGTH_SHORT).show()
-            return
-        }
-        starting = true
-        startButton.isEnabled = false
-        val wanted = mutableListOf(Manifest.permission.POST_NOTIFICATIONS)
-        if (carMode.isChecked) {
-            wanted += Manifest.permission.ACCESS_FINE_LOCATION
-            wanted += Manifest.permission.ACCESS_COARSE_LOCATION
-            wanted += Manifest.permission.BLUETOOTH_CONNECT
-        }
-        val missing = wanted.filter { checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED }
-        if (missing.isEmpty()) launch() else requestPermissions(missing.toTypedArray(), 1)
-    }
-
-    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
-        launch()
-    }
-
-    private fun launch() {
-        startForegroundService(
-            Intent(this, MeasureService::class.java)
-                .putExtra(MeasureService.EXTRA_PLACE, placeInput.text.toString().trim())
-                .putExtra(MeasureService.EXTRA_CAR, carMode.isChecked)
-                .putExtra(MeasureService.EXTRA_FLOOR, FloorMath.FLOORS[floorPick.selectedItemPosition]),
-        )
-        ticker.postDelayed({ starting = false; render() }, 2000)
-    }
+    private fun granted(permission: String) = checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED
 
     private fun render() {
-        val session = MeasureService.current
-        startCard.visibility = if (session == null) View.VISIBLE else View.GONE
-        runCard.visibility = if (session == null) View.GONE else View.VISIBLE
-        if (session == null) {
-            parkPending = false
-            startButton.isEnabled = hasBarometer && !starting
-            renderSessions()
+        body.removeAllViews()
+        body.addView(text("주차층", 26f, true))
+        renderPark()
+        renderSetup()
+        renderWidget()
+        renderHistory()
+        renderCost()
+        val log = DriveLog.recent(this, 8)
+        if (log.isNotEmpty()) {
+            section("최근 동작")
+            log.forEach { body.addView(text(it, 12f, color = MUTE)) }
+        }
+        section("기타")
+        body.addView(button("기록 못 한 주차 직접 넣기") {
+            startActivity(Intent(this, FloorPickActivity::class.java).putExtra(FloorPickActivity.EXTRA_NEW, true))
+        })
+        body.addView(button("시험 기록 (층 측정 연구용)") { startActivity(Intent(this, TestActivity::class.java)) })
+    }
+
+    private fun renderPark() {
+        val park = ParkStore.latest(this)
+        if (park == null) {
+            body.addView(text("아직 주차 기록이 없어요. 아래에서 차를 연결하면 블루투스가 끊길 때 자동으로 기록해요.", 15f, color = MUTE))
             return
         }
-        estimateText.text = session.lastEstimate?.let(FloorMath::labelOf) ?: "측정 중"
-        val delta = session.lastDeltaM?.let { "%.1f m".format(it) } ?: "-"
-        val hpa = session.lastHpa?.let { "%.2f hPa".format(it) } ?: "-"
-        val lines = mutableListOf(
-            "${session.place} · 기준 ${FloorMath.labelOf(session.baseIndex)} · %d분 %d초".format(
-                session.nowS().toInt() / 60, session.nowS().toInt() % 60,
-            ),
-            "높이 $delta · $hpa · 샘플 ${session.samples}",
-        )
-        if (session.sensorFailed) lines += "센서 시작 실패"
-        if (session.car) {
-            val fix = session.lastFix
-            lines += when {
-                !session.gpsActive -> "GPS 없음"
-                fix == null -> "GPS 찾는 중"
-                else -> "GPS %.0f m · %d초 전".format(
-                    fix.accuracy, (SystemClock.elapsedRealtimeNanos() - fix.elapsedRealtimeNanos) / 1_000_000_000L,
-                )
+        val label = park.floor?.let(FloorMath::labelOf) ?: "?"
+        body.addView(text(
+            (park.placeName ?: if (park.lat == null) "장소 모름" else "장소 찾는 중") + " · " +
+                (if (park.confirmed) ParkWidget.hhmm(park.atMs) else ParkWidget.ago(park.atMs)),
+            14f, color = MUTE,
+        ).apply { setPadding(0, dp(10), 0, 0) })
+        body.addView(text(if (park.confirmed) "확정" else if (park.floor == null) "층 모름" else "추정 · 확인해 주세요", 13f, true).apply {
+            background = GradientDrawable().apply { cornerRadius = dp(12).toFloat(); setColor(if (park.confirmed) 0xFF3FBF7F.toInt() else PillarMark.HAZARD_YELLOW) }
+            setPadding(dp(10), dp(2), dp(10), dp(2))
+        }, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT).apply { topMargin = dp(6) })
+        val line = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = android.view.Gravity.BOTTOM }
+        line.addView(ImageView(this).apply {
+            setImageBitmap(PillarMark.render(this@MainActivity, label, !park.confirmed, park.color.takeIf { it != 0 }, INK, dp(110)))
+        })
+        val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(12), 0, 0, dp(8)) }
+        if (park.pillar.isNotEmpty()) info.addView(text(park.pillar, 26f, true))
+        info.addView(text(if (park.confirmed) "엘리베이터에서 $label" else park.alt?.let { "아니면 ${FloorMath.labelOf(it)}" } ?: "", 16f, true))
+        line.addView(info)
+        body.addView(line)
+        if (!park.confirmed) {
+            val buttons = mutableListOf<View>()
+            park.est?.let { est -> buttons += button("확정", true) { ParkStore.confirm(this, park.id, est); ParkWidget.refresh(this); render() } }
+            buttons += button("직접 입력") { startActivity(Intent(this, FloorPickActivity::class.java)) }
+            park.alt?.let { alt -> buttons += button(FloorMath.labelOf(alt)) { ParkStore.confirm(this, park.id, alt); ParkWidget.refresh(this); render() } }
+            body.addView(row(*buttons.toTypedArray()))
+        } else {
+            body.addView(row(
+                button("기둥 사진") { startActivity(Intent(this, PillarActivity::class.java)) },
+                button("위치 입력") { startActivity(Intent(this, PillarActivity::class.java).putExtra(PillarActivity.EXTRA_TYPE, true)) },
+                button("공유", true) { startActivity(ParkWidget.share(this, park)) },
+            ))
+        }
+    }
+
+    private fun renderSetup() {
+        section("설정")
+        val basics = listOf(Manifest.permission.BLUETOOTH_CONNECT, Manifest.permission.POST_NOTIFICATIONS, Manifest.permission.ACCESS_FINE_LOCATION)
+        val missing = basics.filterNot(::granted)
+        if (missing.isNotEmpty()) {
+            body.addView(text("블루투스·알림·위치 권한이 필요해요. 위치는 건물 이름을 찾는 데만 써요.", 14f, color = MUTE))
+            body.addView(button("권한 허용", true) { requestPermissions(missing.toTypedArray(), REQ_PERMS) })
+            return
+        }
+        if (!granted(Manifest.permission.ACCESS_BACKGROUND_LOCATION)) {
+            body.addView(text("차에서 내릴 때 앱이 꺼져 있어도 건물 이름을 남기려면 위치를 '항상 허용'으로 바꿔 주세요.", 14f, color = MUTE))
+            body.addView(button("위치 항상 허용") { requestPermissions(arrayOf(Manifest.permission.ACCESS_BACKGROUND_LOCATION), REQ_BACKGROUND) })
+        }
+        val car = Settings.carName(this)
+        if (car != null) {
+            body.addView(text("연결된 차: $car", 15f, true))
+            body.addView(text("차 블루투스가 연결되면 깨어나고, 끊기면 주차를 기록해요.", 13f, color = MUTE))
+            body.addView(button("다른 차로 바꾸기") { showCars() })
+        } else {
+            body.addView(text("차 블루투스를 골라 주세요. 한 번만 하면 돼요.", 14f, color = MUTE))
+            showCarList()
+        }
+    }
+
+    /** Drops the old car's association so only one car wakes the app. */
+    private fun showCars() {
+        val cdm = getSystemService(CompanionDeviceManager::class.java)
+        cdm.myAssociations.forEach { info ->
+            try {
+                @Suppress("DEPRECATION")
+                info.deviceMacAddress?.toString()?.let { cdm.stopObservingDevicePresence(it) }
+                cdm.disassociate(info.id)
+            } catch (_: Exception) {
             }
-            lines += if (session.btReady) "블루투스 기록 ${session.btEvents}건" else "블루투스 권한 없음"
         }
-        statsText.text = lines.joinToString("\n")
-        if (!parkPending) markText.text = session.lastMark.orEmpty()
-        parkButton.visibility = if (session.car) View.VISIBLE else View.GONE
-        val lockLeft = if (session.car) session.lastParkMs?.let { END_LOCK_MS - (SystemClock.elapsedRealtime() - it) } else null
-        val armed = SystemClock.elapsedRealtime() - endArmedAt <= CONFIRM_MS
-        endButton.isEnabled = lockLeft == null || lockLeft <= 0
-        endButton.text = when {
-            lockLeft != null && lockLeft > 0 -> "끝내기 (${lockLeft / 1000 + 1}초 후)"
-            armed -> "한 번 더 누르면 끝"
-            else -> "끝내기"
-        }
+        Settings.clearCar(this)
+        render()
     }
 
-    private fun sessionFiles(): List<File> =
-        filesDir.listFiles { file -> file.name.startsWith("session-") }.orEmpty().sortedByDescending { it.name }
-
-    private fun renderSessions() {
-        val files = sessionFiles()
-        val names = files.map { "${it.name}:${it.length()}" }
-        if (names == listedSessions) return
-        listedSessions = names
-        sessionList.removeAllViews()
-        if (files.isEmpty()) sessionList.addView(text("없음"))
-        files.forEach { file ->
-            sessionList.addView(button("보내기 · ${file.name.removePrefix("session-").removeSuffix(".csv")} · ${file.length() / 1024} KB") { share(file) })
+    @SuppressLint("MissingPermission")
+    private fun showCarList() {
+        val devices = getSystemService(BluetoothManager::class.java).adapter?.bondedDevices.orEmpty()
+        if (devices.isEmpty()) {
+            body.addView(text("페어링된 블루투스 기기가 없어요. 폰 설정에서 차와 먼저 연결해 주세요.", 14f, color = MUTE))
+            return
+        }
+        devices.sortedBy { it.name ?: it.address }.forEach { device ->
+            body.addView(button(device.name ?: device.address) { associate(device) })
         }
     }
 
-    private fun share(file: File) {
-        val uri = FileProvider.getUriForFile(this, "kr.dot.parkingfloor.files", file)
-        val send = Intent(Intent.ACTION_SEND)
-            .setType("text/csv")
-            .putExtra(Intent.EXTRA_STREAM, uri)
-            .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        startActivity(Intent.createChooser(send, "기록 보내기"))
-    }
+    @SuppressLint("MissingPermission")
+    private fun associate(device: BluetoothDevice) {
+        val cdm = getSystemService(CompanionDeviceManager::class.java)
+        val request = AssociationRequest.Builder()
+            .addDeviceFilter(BluetoothDeviceFilter.Builder().setAddress(device.address).build())
+            .setSingleDevice(true)
+            .build()
+        cdm.associate(request, mainExecutor, object : CompanionDeviceManager.Callback() {
+            override fun onAssociationPending(intentSender: IntentSender) {
+                try {
+                    startIntentSenderForResult(intentSender, REQ_ASSOC, null, 0, 0, 0)
+                } catch (_: Exception) {
+                    Toast.makeText(this@MainActivity, "연결 창을 열지 못했어요", Toast.LENGTH_SHORT).show()
+                }
+            }
 
-    private fun showCrash() {
-        crashBox.removeAllViews()
-        val file = File(filesDir, "crash.log")
-        if (!file.exists()) return
-        val log = file.readText()
-        crashBox.addView(text("지난번 앱 오류", 16f, true))
-        crashBox.addView(text(log.take(600), 12f))
-        crashBox.addView(button("오류 복사") {
-            getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("crash", log))
+            override fun onAssociationCreated(associationInfo: AssociationInfo) {
+                Settings.setCar(this@MainActivity, device.address, device.name ?: device.address)
+                try {
+                    @Suppress("DEPRECATION")
+                    cdm.startObservingDevicePresence(device.address)
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "차 감지 등록 실패: ${e.javaClass.simpleName}", Toast.LENGTH_LONG).show()
+                }
+                render()
+            }
+
+            override fun onFailure(error: CharSequence?) {
+                Toast.makeText(this@MainActivity, "연결 안 됨: ${error ?: ""}", Toast.LENGTH_SHORT).show()
+            }
         })
-        crashBox.addView(button("오류 지우기") {
-            file.delete()
-            crashBox.removeAllViews()
+    }
+
+    private fun renderWidget() {
+        section("위젯")
+        body.addView(text("밝은 판 불투명도. 0%면 완전 투명, 45%부터 글자가 검정으로 바뀌어요.", 14f, color = MUTE))
+        val value = text("${Settings.panel(this)}%", 15f, true)
+        body.addView(value)
+        body.addView(SeekBar(this).apply {
+            id = 3001
+            max = 100
+            progress = Settings.panel(this@MainActivity)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(bar: SeekBar, progress: Int, fromUser: Boolean) {
+                    val stepped = progress / 5 * 5
+                    value.text = "$stepped%"
+                    if (fromUser) {
+                        Settings.setPanel(this@MainActivity, stepped)
+                        ParkWidget.refresh(this@MainActivity)
+                    }
+                }
+                override fun onStartTrackingTouch(bar: SeekBar) = Unit
+                override fun onStopTrackingTouch(bar: SeekBar) = Unit
+            })
         })
+        body.addView(text("판이 45% 미만일 때 글자색", 14f, color = MUTE))
+        val group = RadioGroup(this).apply { orientation = RadioGroup.HORIZONTAL }
+        listOf(Settings.INK_AUTO to "배경 따라", Settings.INK_LIGHT to "흰색", Settings.INK_DARK to "검정").forEachIndexed { i, (mode, label) ->
+            group.addView(RadioButton(this).apply {
+                id = 3100 + i
+                text = label
+                isChecked = Settings.ink(this@MainActivity) == mode
+                setOnClickListener {
+                    Settings.setInk(this@MainActivity, mode)
+                    ParkWidget.refresh(this@MainActivity)
+                }
+            })
+        }
+        body.addView(group)
+    }
+
+    private fun renderHistory() {
+        val parks = ParkStore.load(this).parks.reversed().drop(1).take(8)
+        if (parks.isEmpty()) return
+        section("지난 주차")
+        val fmt = SimpleDateFormat("M/d HH:mm", Locale.KOREA)
+        parks.forEach { p ->
+            val floor = p.floor?.let(FloorMath::labelOf) ?: "?"
+            body.addView(text("${fmt.format(Date(p.atMs))} · ${p.placeName ?: "장소 모름"} · $floor ${p.pillar}${if (p.confirmed) "" else " (추정)"}", 14f))
+        }
+    }
+
+    private fun renderCost() {
+        section("이 앱이 쓴 것 (지난 충전 이후)")
+        try {
+            val stats = getSystemService(SystemHealthManager::class.java).takeMyUidSnapshot()
+            fun measure(key: Int) = if (stats.hasMeasurement(key)) stats.getMeasurement(key) else 0L
+            fun timers(key: Int) = if (stats.hasTimers(key)) stats.getTimers(key).values.sumOf { it.time } else 0L
+            val cpuMs = measure(UidHealthStats.MEASUREMENT_USER_CPU_TIME_MS) + measure(UidHealthStats.MEASUREMENT_SYSTEM_CPU_TIME_MS)
+            val sensorMs = timers(UidHealthStats.TIMERS_SENSORS)
+            val wakeMs = timers(UidHealthStats.TIMERS_WAKELOCKS_PARTIAL)
+            val gpsMs = if (stats.hasTimer(UidHealthStats.TIMER_GPS_SENSOR)) stats.getTimer(UidHealthStats.TIMER_GPS_SENSOR).time else 0L
+            body.addView(text("센서 ${minutes(sensorMs)} · CPU ${"%.1f".format(cpuMs / 1000.0)}초 · 깨운 시간 ${minutes(wakeMs)} · GPS ${gpsMs / 1000}초", 14f))
+            val (_, wakeUp) = DriveService.barometer(getSystemService(android.hardware.SensorManager::class.java))
+            body.addView(text(if (wakeUp) "기압계가 스스로 깨우는 방식이라 운전 중에도 폰이 잘 수 있어요." else "이 폰 기압계는 스스로 못 깨워서 운전 중에만 폰을 깨워 둬요.", 13f, color = MUTE))
+        } catch (_: Exception) {
+            body.addView(text("이 폰에서는 사용량을 읽을 수 없어요.", 14f, color = MUTE))
+        }
+    }
+
+    private fun minutes(ms: Long): String = if (ms < 60_000) "${ms / 1000}초" else "${ms / 60_000}분"
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
+        render()
+    }
+
+    @Deprecated("plain Activity result API")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        render()
     }
 }

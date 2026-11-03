@@ -3,12 +3,25 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- personal sideload only (not on the store): the building name is read when the car drops, app closed -->
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_COMPANION_START_FOREGROUND_SERVICES_FROM_BACKGROUND" />
+    <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />
     <uses-feature android:name="android.hardware.sensor.barometer" android:required="false" />
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
+
+    <queries>
+        <intent>
+            <action android:name="android.media.action.IMAGE_CAPTURE" />
+        </intent>
+    </queries>
 
     <application
         android:name=".App"
@@ -16,17 +29,51 @@
         android:icon="@android:drawable/ic_menu_mylocation"
         android:label="주차층"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="ocr_korean" />
+
         <activity
             android:name=".MainActivity"
-            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:windowSoftInputMode="adjustResize">
+            android:launchMode="singleTop">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".FloorPickActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar" />
+        <activity
+            android:name=".PillarActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:taskAffinity=""
+            android:theme="@android:style/Theme.Material.Light.Dialog.NoActionBar"
+            android:windowSoftInputMode="adjustResize" />
+        <activity
+            android:name=".TestActivity"
+            android:configChanges="orientation|screenSize|screenLayout|smallestScreenSize|keyboardHidden|density|uiMode"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:windowSoftInputMode="adjustResize" />
+
+        <service
+            android:name=".CarPresenceService"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
+        <service
+            android:name=".DriveService"
+            android:exported="false"
+            android:foregroundServiceType="connectedDevice" />
         <service
             android:name=".MeasureService"
             android:exported="false"
@@ -35,6 +82,15 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="barometric floor measurement" />
         </service>
+
+        <receiver
+            android:name=".CarBluetoothReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.bluetooth.device.action.ACL_CONNECTED" />
+                <action android:name="android.bluetooth.device.action.ACL_DISCONNECTED" />
+            </intent-filter>
+        </receiver>
         <receiver
             android:name=".ParkWidget"
             android:exported="false">
@@ -45,6 +101,7 @@
                 android:name="android.appwidget.provider"
                 android:resource="@xml/park_widget_info" />
         </receiver>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="kr.dot.parkingfloor.files"
