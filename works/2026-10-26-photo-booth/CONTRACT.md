@@ -204,3 +204,10 @@ Research: research/booth-flow.md (Photoism: 8 shots, 8-10 s timer, pick 4, no re
   silently: the face landmarker, so B's 보정 did nothing).
 - `#revBg` on the 보정 review = the pick screen's background pills (same `S.pickBg`); `[data-act="toTheme"]` "‹ 테마" on
   `#s-landA` and `#s-mode` only.
+
+## Visit counter (2026-11-03)
+- Worker: `POST /v?e=<open|join|shoot|save>&p=<web|toss>&via=<Instagram|Threads|KakaoTalk|Facebook|app|browser>&d=<screen>`
+  -> 204, writes empty `v/<KST day>/<e>/<p>.<via>.<hash12>` (hash = day | network | screen, so one phone = one key a day,
+  no IP kept); unknown `e` 400, unknown `p`/`via` filed as `other`. Bare POST, no preflight; tests in worker.test.js.
+- api.js `ping(e, platform, envApp)`, fire-and-forget; `?nocount=1` stops counting in that browser (`?nocount=0` undoes).
+- app.js counts open/join once per page (route), shoot (startShoot), save (download). Read with `worker/visits.py`.
