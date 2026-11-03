@@ -81,6 +81,9 @@ class ParkWidget : AppWidgetProvider() {
             }
         }
 
+        /** "16:32" for this phone's park, "엄마 · 16:32" for a family member's. */
+        fun who(park: Park): String = (park.by?.takeIf { it.isNotBlank() }?.let { "$it · " } ?: "") + hhmm(park.atMs)
+
         fun hhmm(atMs: Long): String = SimpleDateFormat("HH:mm", Locale.KOREA).format(Date(atMs))
 
         fun shareText(park: Park): String {
@@ -179,7 +182,7 @@ class ParkWidget : AppWidgetProvider() {
             val pick = activity(context, 11, Intent(context, FloorPickActivity::class.java))
             if (!park.confirmed) {
                 // the widget is not redrawn on a timer, so a clock time stays true where "10분 전" would not
-                v.setTextViewText(R.id.time, hhmm(park.atMs))
+                v.setTextViewText(R.id.time, who(park))
                 show(R.id.tag, true)
                 v.setTextViewText(R.id.tag, if (park.floor == null) "층 모름 · 직접 입력" else "추정 · 눌러서 확정")
                 v.setInt(R.id.tag, "setBackgroundResource", R.drawable.wtag_est)
@@ -200,7 +203,7 @@ class ParkWidget : AppWidgetProvider() {
                     } else show(R.id.b3, false)
                 }
             } else {
-                v.setTextViewText(R.id.time, hhmm(park.atMs))
+                v.setTextViewText(R.id.time, who(park))
                 show(R.id.tag, true)
                 v.setTextViewText(R.id.tag, "확정")
                 v.setInt(R.id.tag, "setBackgroundResource", R.drawable.wtag_ok)
@@ -247,6 +250,7 @@ class ParkWidget : AppWidgetProvider() {
                 else -> return
             }
             refresh(context)
+            Family.changed(context)
         } catch (_: Throwable) {
         }
     }

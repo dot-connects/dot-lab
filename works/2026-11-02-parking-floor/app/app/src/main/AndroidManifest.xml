@@ -71,6 +71,13 @@
             </intent-filter>
         </service>
         <service
+            android:name=".ParkPushService"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.google.firebase.MESSAGING_EVENT" />
+            </intent-filter>
+        </service>
+        <service
             android:name=".DriveService"
             android:exported="false"
             android:foregroundServiceType="connectedDevice" />

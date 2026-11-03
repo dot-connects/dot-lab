@@ -11,5 +11,6 @@ class App : Application() {
             runCatching { File(filesDir, "crash.log").writeText(error.stackTraceToString()) }
             previous?.uncaughtException(thread, error)
         }
+        PushSetup.init(this)
     }
 }

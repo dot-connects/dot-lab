@@ -217,6 +217,7 @@ class DriveService : Service(), SensorEventListener2, LocationListener {
         )
         ParkStore.add(this, park, place)
         ParkWidget.refresh(this)
+        Family.changed(this)
         if (place != null && place.name == null && fix != null) {
             val appContext = applicationContext
             PlaceResolver.name(appContext, fix.latitude, fix.longitude) { name ->
@@ -225,6 +226,7 @@ class DriveService : Service(), SensorEventListener2, LocationListener {
                         ParkStore.updatePlace(appContext, place.key) { it.copy(name = name) }
                         ParkStore.update(appContext, park.id) { it.copy(placeName = name) }
                         ParkWidget.refresh(appContext)
+                        Family.changed(appContext)
                     }
                     DriveLog.add(appContext, "place name: ${name ?: "none"}")
                 } catch (_: Throwable) {

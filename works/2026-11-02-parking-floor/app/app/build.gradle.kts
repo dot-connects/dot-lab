@@ -1,7 +1,17 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
 }
+
+// Firebase client values from google-services.json, written by scripts/wizard-parking-firebase.bat into the
+// gitignored firebase.properties. Missing file = no push; family sync still works by pulling.
+val firebase = Properties().apply {
+    val f = rootProject.file("firebase.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+fun fb(key: String) = "\"" + firebase.getProperty(key, "") + "\""
 
 android {
     namespace = "kr.dot.parkingfloor"
@@ -10,9 +20,15 @@ android {
         applicationId = "kr.dot.parkingfloor"
         minSdk = 34 // the specialUse service type starts at API 34
         targetSdk = 35
-        versionCode = 5
-        versionName = "0.3.0"
+        versionCode = 6
+        versionName = "0.4.0"
+        buildConfigField("String", "SYNC_URL", "\"https://dot-lab-parking.dotconnects.workers.dev\"")
+        buildConfigField("String", "FB_API_KEY", fb("apiKey"))
+        buildConfigField("String", "FB_APP_ID", fb("appId"))
+        buildConfigField("String", "FB_PROJECT_ID", fb("projectId"))
+        buildConfigField("String", "FB_SENDER_ID", fb("senderId"))
     }
+    buildFeatures { buildConfig = true }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -31,5 +47,7 @@ dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
     // Korean text recognizer served by Play services (~260 KB in the APK, model downloaded on first use)
     implementation("com.google.android.gms:play-services-mlkit-text-recognition-korean:16.0.2")
+    // family push; initialised by hand in PushSetup (no google-services plugin)
+    implementation("com.google.firebase:firebase-messaging:25.1.3")
     testImplementation("junit:junit:4.13.2")
 }

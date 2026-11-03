@@ -62,6 +62,7 @@ class MainActivity : Activity() {
     override fun onResume() {
         super.onResume()
         render()
+        if (Family.joined(this)) Family.pull(this) { if (!isFinishing) render() }
     }
 
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
@@ -104,6 +105,7 @@ class MainActivity : Activity() {
         body.removeAllViews()
         body.addView(text("주차층", 26f, true))
         renderPark()
+        renderFamily()
         renderSetup()
         renderWidget()
         renderHistory()
@@ -129,7 +131,7 @@ class MainActivity : Activity() {
         val label = park.floor?.let(FloorMath::labelOf) ?: "?"
         body.addView(text(
             (park.placeName ?: if (park.lat == null) "장소 모름" else "장소 찾는 중") + " · " +
-                (if (park.confirmed) ParkWidget.hhmm(park.atMs) else ParkWidget.ago(park.atMs)),
+                ParkWidget.who(park) + (if (park.confirmed) "" else " (${ParkWidget.ago(park.atMs)})"),
             14f, color = MUTE,
         ).apply { setPadding(0, dp(10), 0, 0) })
         body.addView(text(if (park.confirmed) "확정" else if (park.floor == null) "층 모름" else "추정 · 확인해 주세요", 13f, true).apply {
@@ -147,9 +149,9 @@ class MainActivity : Activity() {
         body.addView(line)
         if (!park.confirmed) {
             val buttons = mutableListOf<View>()
-            park.est?.let { est -> buttons += button("확정", true) { ParkStore.confirm(this, park.id, est); ParkWidget.refresh(this); render() } }
+            park.est?.let { est -> buttons += button("확정", true) { ParkStore.confirm(this, park.id, est); ParkWidget.refresh(this); Family.changed(this); render() } }
             buttons += button("직접 입력") { startActivity(Intent(this, FloorPickActivity::class.java)) }
-            park.alt?.let { alt -> buttons += button(FloorMath.labelOf(alt)) { ParkStore.confirm(this, park.id, alt); ParkWidget.refresh(this); render() } }
+            park.alt?.let { alt -> buttons += button(FloorMath.labelOf(alt)) { ParkStore.confirm(this, park.id, alt); ParkWidget.refresh(this); Family.changed(this); render() } }
             body.addView(row(*buttons.toTypedArray()))
         } else {
             body.addView(row(
@@ -158,6 +160,53 @@ class MainActivity : Activity() {
                 button("공유", true) { startActivity(ParkWidget.share(this, park)) },
             ))
         }
+    }
+
+    private var leaveArmedAt = 0L
+
+    /** Family sharing: create or join with a code; once joined, members, invite and leave. */
+    private fun renderFamily() {
+        section("가족")
+        if (!Family.joined(this)) {
+            body.addView(text("같은 차를 쓰는 가족이 이 앱을 깔면, 누가 주차하든 모두의 위젯에 떠요. 층·기둥·건물 이름만 공유하고 위치 좌표는 보내지 않아요.", 14f, color = MUTE))
+            val name = android.widget.EditText(this).apply { id = 4001; hint = "내 이름 (예: 엄마)"; setSingleLine() }
+            body.addView(name)
+            body.addView(button("가족 만들기", true) {
+                val n = name.text.toString().trim()
+                if (n.isEmpty()) return@button Toast.makeText(this, "이름을 먼저 적어 주세요", Toast.LENGTH_SHORT).show()
+                Family.create(this, n) { err -> err?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }; render() }
+            })
+            val code = android.widget.EditText(this).apply { id = 4002; hint = "받은 초대 코드 (XXXX-XXXX-XXXX)"; setSingleLine() }
+            body.addView(code)
+            body.addView(button("코드로 합류") {
+                val n = name.text.toString().trim()
+                if (n.isEmpty()) return@button Toast.makeText(this, "이름을 먼저 적어 주세요", Toast.LENGTH_SHORT).show()
+                Family.join(this, code.text.toString(), n) { err -> err?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() }; render() }
+            })
+            return
+        }
+        val members = Family.members(this)
+        body.addView(text(if (members.isEmpty()) "가족: ${Family.myName(this)} (나)" else "가족: " + members.joinToString(", ") { if (it.me) "${it.name} (나)" else it.name }, 15f, true))
+        body.addView(text(
+            if (PushSetup.configured) "가족이 주차하면 바로 알림이 오고 위젯이 바뀌어요."
+            else "알림 설정 전이라 앱을 열 때 가족 주차를 받아 와요.",
+            13f, color = MUTE,
+        ))
+        body.addView(row(
+            button("초대 코드 보내기", true) {
+                Family.invite(this) { code, err ->
+                    if (code == null) return@invite Toast.makeText(this, err ?: "실패", Toast.LENGTH_LONG).show()
+                    val msg = "주차층 가족 초대 코드: $code\n앱 → 가족 → 코드로 합류 (24시간 안에 한 번만 쓸 수 있어요)"
+                    startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, msg), "초대 코드 보내기"))
+                }
+            },
+            button(if (System.currentTimeMillis() - leaveArmedAt < 3000) "한 번 더 누르면 나감" else "가족에서 나가기") {
+                if (System.currentTimeMillis() - leaveArmedAt > 3000) {
+                    leaveArmedAt = System.currentTimeMillis()
+                    render()
+                } else Family.leave(this) { render() }
+            },
+        ))
     }
 
     private fun renderSetup() {

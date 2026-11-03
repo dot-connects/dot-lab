@@ -82,6 +82,7 @@ class FloorPickActivity : Activity() {
             }
         }
         ParkWidget.refresh(this)
+        Family.changed(this)
         finish()
     }
 

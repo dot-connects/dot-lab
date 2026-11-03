@@ -20,6 +20,10 @@ data class Park(
     val floor: Int?,
     val pillar: String,
     val color: Int,
+    /** Family member who parked, null when it was this phone. */
+    val by: String? = null,
+    /** Came from the family server; such parks never teach a place on this phone. */
+    val remote: Boolean = false,
 )
 
 /** A garage the app has seen: centre, name, and the confirmed (height, floor) pairs it learned from. */
@@ -133,6 +137,31 @@ object ParkStore {
         save(context, State(parks, places))
     }
 
+    /**
+     * Merges a park from the family server. Same id: the shared fields are updated (and a confirmation of a
+     * park this phone measured teaches its place). New id: added only when newer than what is here.
+     * Returns true when anything changed.
+     */
+    @Synchronized
+    fun merge(context: Context, remote: Park): Boolean {
+        val local = load(context).parks.firstOrNull { it.id == remote.id }
+        if (local == null) {
+            val latest = load(context).parks.lastOrNull()
+            if (latest != null && latest.atMs >= remote.atMs) return false
+            add(context, remote, null)
+            return true
+        }
+        val same = local.floor == remote.floor && local.confirmed == remote.confirmed && local.pillar == remote.pillar &&
+            local.color == remote.color && local.placeName == remote.placeName
+        if (same) return false
+        if (remote.confirmed && remote.floor != null && (!local.confirmed || local.floor != remote.floor)) confirm(context, local.id, remote.floor)
+        update(context, local.id) {
+            it.copy(floor = remote.floor, est = remote.est ?: it.est, alt = remote.alt ?: it.alt, confirmed = remote.confirmed,
+                pillar = remote.pillar, color = remote.color, placeName = remote.placeName ?: it.placeName)
+        }
+        return true
+    }
+
     private fun JSONArray?.objects(): List<JSONObject> =
         if (this == null) emptyList() else (0 until length()).map { getJSONObject(it) }
 
@@ -154,12 +183,15 @@ object ParkStore {
         floor = o.optIntOrNull("floor"),
         pillar = o.optString("pillar"),
         color = o.optInt("color"),
+        by = o.optStringOrNull("by"),
+        remote = o.optBoolean("remote"),
     )
 
     private fun jsonOf(p: Park) = JSONObject()
         .put("id", p.id).put("at", p.atMs).put("place", p.placeKey).put("name", p.placeName)
         .put("lat", p.lat).put("lng", p.lng).put("delta", p.deltaM).put("est", p.est).put("alt", p.alt)
         .put("confirmed", p.confirmed).put("floor", p.floor).put("pillar", p.pillar).put("color", p.color)
+        .put("by", p.by).put("remote", p.remote)
 
     private fun placeOf(o: JSONObject) = Place(
         key = o.getString("key"),

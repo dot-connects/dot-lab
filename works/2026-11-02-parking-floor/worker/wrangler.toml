@@ -1,0 +1,16 @@
+name = "dot-lab-parking"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+# Family sync for the parking floor app. Secret FCM_SA (Firebase service account JSON) is set with
+# `npx wrangler@4 secret put FCM_SA`; without it parks are stored and pulled, but nobody is woken.
+[[d1_databases]]
+binding = "DB"
+database_name = "dot-lab-parking"
+database_id = "6feb3999-b0f1-40a3-8982-a2058a25f7ae"
+
+# create-family and join are unauthenticated: 10 a minute per IP
+[[ratelimits]]
+name = "LIMIT"
+namespace_id = "2611"
+simple = { limit = 10, period = 60 }

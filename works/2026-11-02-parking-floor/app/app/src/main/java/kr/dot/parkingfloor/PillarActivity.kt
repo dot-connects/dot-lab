@@ -177,6 +177,7 @@ class PillarActivity : Activity() {
         val current = park ?: return finish()
         ParkStore.setPillar(this, current.id, input.text.toString().trim(), color)
         ParkWidget.refresh(this)
+        Family.changed(this)
         finish()
     }
 
