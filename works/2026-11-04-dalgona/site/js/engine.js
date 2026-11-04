@@ -378,7 +378,7 @@ export function label(g) {
   if (g.ok && g.chips) return "조각은 잃었지만 통과";
   if (g.ok) return "실금 위에서 통과";
   if (g.cause === "melt") return "혀로 다 녹임";
-  if (g.cause === "time") return p > 80 ? "시간이 모자랐음" : "바늘만 들고 있었음";
+  if (g.cause === "time") return p >= 50 ? "시간이 모자랐음" : "바늘만 들고 있었음";
   if (p >= 85) return "한 끗 차이";
   if (open > 2) return "성격 급함";
   if (p < 25) return "시작하자마자";

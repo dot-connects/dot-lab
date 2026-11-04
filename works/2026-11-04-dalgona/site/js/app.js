@@ -16,7 +16,9 @@ const store = (k, v) => { try { if (v === undefined) return localStorage.getItem
 const bestOf = k => {
   try {
     const v = JSON.parse(store("dalgona.best2." + k));
-    return v && typeof v === "object" && Number.isFinite(v.stars) && Number.isFinite(v.time) && Number.isFinite(v.pct) ? v : null;
+    const ok = v && typeof v === "object" && Number.isInteger(v.stars) && v.stars >= 0 && v.stars <= 3
+      && Number.isFinite(v.time) && v.time >= 0 && Number.isFinite(v.pct) && v.pct >= 0 && v.pct <= 100;
+    return ok ? v : null;
   } catch { return null; }
 };
 // a better record: more stars, then a faster time; a loss only beats a loss with less carved
@@ -32,6 +34,11 @@ function resize() {
   hc.width = Math.ceil(W); hc.height = Math.ceil(H);
   // mid-round the candy stays put (toolbars folding resize the page; rebuilding the view lost chips and the win)
   if (!game || resultShown) geom = freshGeom();
+  else if (!game.done) {
+    // a toolbar folding is ignored; a rotation or a big shrink that leaves the candy off screen moves it (QA r3)
+    const { cx, cy, R } = geom;
+    if (cx + R > W || cy + R > H - 40 || cx - R < 0) { geom = freshGeom(); layout(game, geom); view = createCandyView(game, DPR); }
+  }
   if (tracker) tracker.size(W, H);
 }
 addEventListener("resize", resize);
@@ -444,7 +451,7 @@ async function share() {
 async function showResult() {
   const g = game, rec = { stars: stars(g), time: +g.t.toFixed(1), pct: g.final }, prev = bestOf(g.shape);
   const isNew = better(rec, prev);
-  if (isNew) store("dalgona.best2." + g.shape, JSON.stringify(rec));
+  if (isNew && (rec.stars || rec.pct > 0)) store("dalgona.best2." + g.shape, JSON.stringify(rec));   // a 0 % loss is no record
   const best = isNew ? rec : prev;
   const r = $("result"); r.innerHTML = "";
   r.classList.toggle("win", g.ok);
