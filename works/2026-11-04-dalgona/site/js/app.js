@@ -1,4 +1,4 @@
-import { createGame, layout, step, poke, percent, label, reason, stars, SHAPES, RULES, wetAt, crackStage } from "./engine.js";
+import { createGame, layout, step, poke, percent, label, reason, stars, clean, SHAPES, RULES, wetAt, crackStage } from "./engine.js";
 import { startCamera, loadModels, createTracker, BONES, PALM } from "./camera.js";
 import { createCandyView } from "./render.js";
 
@@ -164,6 +164,12 @@ function drawStressRing(tip) {
   const st = game ? game.stress : 0, col = st < 0.3 ? "#7CE38B" : st < RULES.HAIR ? "#FFC23D" : "#FF3B5C";
   const r = 22 + (st >= RULES.HAIR ? Math.sin(performance.now() / 60) * 1.5 : 0);
   ctx.save(); ctx.lineCap = "round";
+  const heat = game ? Math.min(1, game.heat / 0.9) : 0;
+  if (heat > 0.15) {   // poke heat: the needle tip glows hotter with every poke in a run (players r4: cracks felt unfair)
+    const hg2 = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, r * 0.8);
+    hg2.addColorStop(0, `rgba(255,${Math.round(150 - 110 * heat)},40,${0.55 * heat})`); hg2.addColorStop(1, "rgba(255,60,40,0)");
+    ctx.fillStyle = hg2; ctx.beginPath(); ctx.arc(tip.x, tip.y, r * 0.8, 0, 7); ctx.fill();
+  }
   if (st > 0.3) {   // stress whitening: toffee goes pale right before it gives
     const wg = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, geom.R * 0.09);
     wg.addColorStop(0, `rgba(255,240,210,${Math.min(0.4, 0.3 * st)})`); wg.addColorStop(1, "rgba(255,240,210,0)");
@@ -336,7 +342,7 @@ function showPick() {
     b.innerHTML = `<span class="ic"></span><small></small>`;
     b.querySelector(".ic").textContent = s.icon;
     const sm = b.querySelector("small"); sm.textContent = s.name;
-    if (best) { sm.append(document.createElement("br")); const st = document.createElement("b"); st.textContent = best.stars ? starText(best.stars) : best.pct + "%"; sm.append(st); }
+    if (best) { sm.append(document.createElement("br")); const st = document.createElement("b"); st.textContent = best.stars ? `${starText(best.stars)} ${best.time.toFixed(1)}초` : `최고 ${best.pct}%`; sm.append(st); }
     b.setAttribute("aria-label", s.name + (best && best.stars ? ` 별 ${best.stars}개` : ""));
     b.onclick = () => begin(k); picks.appendChild(b);
   }
@@ -344,6 +350,7 @@ function showPick() {
 
 let resultShown = false, endAt = 0, winAt = 0, loseT = -1, moment = null, lickShot = null, lickFor = 0, capture = null;
 let pose = null, ghost = null, beatAt = 0, note = null, candyAt = 0;
+const taught = {};   // one-time in-game tips per page load
 function begin(shape) {
   geom = freshGeom();   // a rotation during the last round must not leave the next one off screen
   game = createGame(shape, geom, Math.random, { camera: mode === "camera" }); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
@@ -452,6 +459,8 @@ async function share() {
 async function showResult() {
   const g = game, rec = { stars: stars(g), time: +g.t.toFixed(1), pct: g.final }, prev = bestOf(g.shape);
   const isNew = better(rec, prev);
+  const lastTry = (() => { try { const v = JSON.parse(store("dalgona.last." + g.shape)); return v && Number.isFinite(v.pct) ? v : null; } catch { return null; } })();
+  store("dalgona.last." + g.shape, JSON.stringify({ pct: g.final, ok: g.ok }));
   if (isNew && (rec.stars || rec.pct > 0)) store("dalgona.best2." + g.shape, JSON.stringify(rec));   // a 0 % loss is no record
   const best = isNew ? rec : prev;
   const r = $("result"); r.innerHTML = "";
@@ -460,10 +469,12 @@ async function showResult() {
   const img = el("img", "res-card"); img.alt = `결과 카드: ${label(g)}`;
   // the numbers live on the card; below it only what the card does not say (review r3)
   const openCracks = g.cracks.filter(c => !c.healed).length;
-  const why = g.ok ? [openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
+  const to3 = g.ok && rec.stars === 2 && clean(g) ? `★3까지 ${(g.t - g.limit * 0.5).toFixed(1)}초` : "";
+  const why = g.ok ? [to3, openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
     : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요 · 원작은 10분` : "금이 모양 안으로 번졌어요";
   const sub = el("p", "res-sub", why);
   const bestLine = el("p", "res-best",
+    !g.ok && lastTry && !lastTry.ok && g.final > lastTry.pct ? `지난번 ${lastTry.pct}% → 이번 ${g.final}%` :
     !prev ? "" : isNew ? "새 기록!" : prev.stars ? `지난 최고 ${starText(prev.stars)} ${prev.time.toFixed(1)}초` : `지난 최고 ${prev.pct}%`);
   const row = el("div", "row");
   const nextShape = ORDER[(ORDER.indexOf(g.shape) + 1) % ORDER.length];
@@ -572,10 +583,14 @@ function frame(now) {
     for (const ev of game.events.splice(0)) {
       if (ev.type === "win") { winAt = now + 350; buzz(30); continue; }   // a beat of stillness before the break
       view.onEvent(ev);
-      if (ev.type === "poke") { if (ev.corner) { SFX.corner(); note = { text: "모서리 콕! 한 번에 파였어요", until: now + 1200 }; } else SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
+      if (ev.type === "poke") { if (ev.corner) { SFX.corner(); note = { text: "모서리 콕! 한 번에 파였어요", until: now + 1200, good: true }; } else SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
       else if (ev.type === "segment") SFX.segment();
-      else if (ev.type === "heal") { SFX.heal(); note = { text: "실금이 아물었어요", until: now + 1500 }; }
-      else if (ev.type === "crack") SFX.hair();
+      else if (ev.type === "heal") { SFX.heal(); note = { text: "실금이 아물었어요", until: now + 1500, good: true }; }
+      else if (ev.type === "crack") {
+        SFX.hair();
+        if (mode === "camera" && !game.licks && !taught.lick) { taught.lick = true; note = { text: "입을 크게 벌려 핥으면 실금이 아물어요", until: now + 2600, good: true }; }
+      }
+      else if (ev.type === "chip" && !taught.chip) { taught.chip = true; note = { text: "조각이 떨어졌어요 · 다음 금은 안쪽으로 가기 쉬워요", until: now + 2400 }; }
       else if (ev.type === "spread") SFX.spread();
       else if (ev.type === "chip") SFX.chip();
       else if (ev.type === "lose") { SFX.lose(); loseT = 0; }
@@ -601,25 +616,31 @@ function frame(now) {
     const open = game.cracks.filter(c => !c.done);
     const stg = open.reduce((a, c) => Math.max(a, crackStage(game, c) + 1), 0);
     const lk = lickOn && wetAt(game, lick.x, lick.y);
-    const st = note && now < note.until && !game.done ? note.text
+    const hot = !game.done && game.heat > 0.6;
+    const showNote = note && now < note.until && !game.done && game.stress < RULES.HAIR;
+    const st = showNote ? note.text
       : game.done ? (game.ok ? (pose && pose.text ? pose.text : "떼어냈어요!") : game.cause === "melt" ? "녹아서 뚫렸어요" : game.cause === "time" ? "시간 끝" : "깨졌어요")
       : game.stress >= RULES.HAIR ? (open.some(c => c.inward) ? "금이 모양 쪽으로! 손 멈춰요" : "금이 자라요 · 손 멈춰요")
       : lickOn ? (lk > 0.95 ? "녹고 있어요 · 한곳만 핥으면 구멍" : "핥는 중 · 핥은 곳은 덜 깨져요")
       : lick ? "입을 달고나에 더 가까이"
       : stg ? (open.some(c => c.inward) ? "안쪽 금 · 더 자라면 탈락" : "바깥 금 · 조각만 떨어져요")
+      : mode === "camera" && s && !s.hand ? "손이 안 보여요 · 화면 안으로"
+      : mode === "camera" && s && !s.pinched ? "엄지·검지를 붙여 바늘 집기"
+      : hot ? "찌르기 과열 · 잠깐 긁기만"
       : game.stress > 0.3 ? "조심 · 압력이 올라요"
       : pct >= 90 ? "거의 다 됐어요 · 숨 참고"
       : game.started ? "천천히 긁는 중" : `${SHAPES[game.shape].name} · 첫 긁기부터 시간이 가요`;
     if (st !== lastStatus) { $("sw").textContent = st; lastStatus = st; }
-    $("sw").className = game.stress >= RULES.HAIR || (game.done && !game.ok) ? "bad" : game.done ? "good" : "";
+    $("sw").className = showNote ? (note.good ? "good" : "warn") : game.stress >= RULES.HAIR || (game.done && !game.ok) ? "bad" : game.done ? "good" : hot ? "warn" : "";
     if (game.done && !resultShown && !endAt && !(game.ok && mode === "camera")) endAt = now + (game.ok ? 2400 : 2000);
     if (pose && now >= pose.t0 && !pose.done) {
-      const grip = s && s.grip, target = grip ? { x: grip[0], y: grip[1] - geom.R * 0.35, k: 0.62 } : { x: geom.cx, y: geom.cy - geom.R * 0.2, k: 0.9 };
+      const grip = s && s.hand && s.grip, target = grip ? { x: grip[0], y: grip[1] - geom.R * 0.35, k: 0.62 } : { x: geom.cx, y: geom.cy - geom.R * 0.2, k: 0.9 };
       const f = 1 - Math.exp(-dt * 7);
       pose.x += (target.x - pose.x) * f; pose.y += (target.y - pose.y) * f; pose.k += (target.k - pose.k) * f;
       view.setPose({ x: pose.x, y: pose.y, k: pose.k, rot: Math.sin(now / 400) * 0.04 });
+      if (!grip && (pose.waited || 0) < 3000) { pose.waited = (pose.waited || 0) + dt * 1000; pose.cap += dt * 1000; }
       const n = Math.ceil((pose.cap - now) / 1000);
-      pose.text = n > 0 ? `얼굴 옆에 들어 보세요 · ${n}` : "";
+      pose.text = !grip && pose.waited < 3000 ? "손을 보여 주면 모양이 따라가요" : n > 0 ? `얼굴 옆에 들어 보세요 · ${n}` : "";
       if (now >= pose.cap) { pose.done = true; moment = grab(); SFX.shutter(); flashAt = now; endAt = now + 600; }
     }
     if (endAt && now >= endAt) { endAt = 0; if (!moment) moment = grab(); resultShown = true; freezeFrame(); showResult(); }
@@ -628,7 +649,7 @@ function frame(now) {
   ctx.clearRect(0, 0, W, H);
   if (!game || resultShown) { if (DEBUG && s) debug(s); return; }
   view.draw(ctx, dt, game.done ? null : percent(game) / 100);
-  if (game.done && !game.ok) drawMissing(now);
+  if (game.done && !game.ok && loseT > 0.9 && game.final >= 50) drawMissing(now);
   drawCrumbs(dt);
   if (!game.done) {
     if (s) {
@@ -640,7 +661,7 @@ function frame(now) {
       else if (touch.down) { const p = touchTip(); drawNeedle(p, [0.45, 0.89], true); drawStressRing(p); }
     }
   }
-  if (loseT > 0.25) drawStamp(loseT - 0.25);
+  if (loseT > 0.65) drawStamp(loseT - 0.65);
   if (ghost && !game.started) drawGhost(dt);
   else if (ghost && game.started) { ghost = null; store("dalgona.seen", "1"); }
   if (flashAt && now - flashAt < 250) { ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - (now - flashAt) / 250)})`; ctx.fillRect(0, 0, W, H); }

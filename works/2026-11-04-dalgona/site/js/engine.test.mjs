@@ -210,3 +210,17 @@ test("a crack on the umbrella handle snaps it once it spreads", () => {
   assert.equal(g.cause, "crack");
   assert.ok(g.cracks.some(c => c.handle && c.fatal));
 });
+
+// design r4: two cells melting together under one tongue tip are one hole, not a lost round
+test("one small hole under the tongue is not two holes", () => {
+  const g = createGame("circle", GEOM, seeded());
+  const cs = 2 * GEOM.R / RULES.GRID, x = GEOM.cx + cs * 0.5, y = GEOM.cy;   // on a cell boundary
+  let melted = 0;
+  for (let i = 0; i < 30 * 6 && !g.done; i++) {
+    step(g, DT, { needle: null, lick: { x, y } });
+    melted = g.meltG.filter(m => m >= 1).length;
+    if (melted >= 2) break;
+  }
+  assert.ok(melted >= 2, `melted ${melted}`);
+  assert.equal(g.done, false);
+});

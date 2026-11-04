@@ -166,10 +166,21 @@ export function cellCentre(g, k) {
   const { cx, cy, R } = g.geom, N = RULES.GRID, cs = 2 * R / N;
   return [cx - R + (k % N + 0.5) * cs, cy - R + (Math.floor(k / N) + 0.5) * cs];
 }
+// holes as the eye sees them: melted cells within a tongue's width of each other are one hole (design r4: two
+// cells under one tongue tip melted together and ended the round on "one" hole)
 function meltedInShape(g) {
-  let n = 0;
-  for (let k = 0; k < g.meltG.length; k++) if (g.meltG[k] >= 1) { const [x, y] = cellCentre(g, k); if (inShape(g, x, y)) n++; }
-  return n;
+  const cells = [];
+  for (let k = 0; k < g.meltG.length; k++) if (g.meltG[k] >= 1) { const [x, y] = cellCentre(g, k); if (inShape(g, x, y)) cells.push([x, y]); }
+  const r = g.geom.R * 0.2, seen = new Uint8Array(cells.length);
+  let holes = 0;
+  for (let i = 0; i < cells.length; i++) {
+    if (seen[i]) continue;
+    holes++; seen[i] = 1;
+    const stack = [i];
+    while (stack.length) { const a = cells[stack.pop()]; for (let j = 0; j < cells.length; j++) if (!seen[j] && Math.hypot(cells[j][0] - a[0], cells[j][1] - a[1]) <= r) { seen[j] = 1; stack.push(j); } }
+  }
+  // one hole that keeps growing (6 cells, wider than a tongue) breaks it too
+  return cells.length >= 6 ? Math.max(holes, RULES.MELT_HOLES) : holes;
 }
 
 function nearestOutline(g, x, y) {
@@ -287,7 +298,8 @@ export function step(g, dt, input) {
   if (g.done) return { carve: 0 };
   const { needle, jitter = 0, lick } = input;
   if (needle && needle.down && inCandy(g, needle.x, needle.y)) g.started = true;
-  if (lick && inCandy(g, lick.x, lick.y)) g.started = true;   // licking first is a fair opening move
+  // licking first is a fair opening move on touch; on camera an open mouth (a laugh, a yawn) must not start the clock
+  if (!g.cam && lick && inCandy(g, lick.x, lick.y)) g.started = true;
   if (!g.started) return { carve: 0 };
   g.t += dt;
   g.heat = Math.max(0, g.heat - dt * RULES.HEAT_DECAY);
@@ -308,7 +320,7 @@ export function step(g, dt, input) {
       g.wetG[k] = Math.min(1.4, g.wetG[k] + dt * 1.6 * f * Math.max(0.4, 1 - moved * 8));
       if (g.wetG[k] > 1) {
         const was = g.meltG[k];
-        g.meltG[k] += dt * 0.45 * f;
+        g.meltG[k] += dt * (g.cam ? 0.3 : 0.45) * f;   // camera: time to see "녹고 있어요" and close the mouth
         // a hole that opens on the line cracks it there
         if (was < 1 && g.meltG[k] >= 1) {
           const [x, y] = cellCentre(g, k);
@@ -368,13 +380,15 @@ export function step(g, dt, input) {
 }
 
 /** Win grade: 3 = no crack grew past a hairline and nothing fell off, 2 = no piece lost, 1 = came out anyway. 0 = lost. */
-export function stars(g) { return !g.ok ? 0 : g.chips ? 1 : g.cracks.some(c => c.maxStage > 0) ? 2 : 3; }
+export function clean(g) { return !g.chips && !g.cracks.some(c => c.maxStage > 0); }
+/** ★3 also needs the shape out within half its time (design r4: calm tracing always got ★3, no goal left). */
+export function stars(g) { return !g.ok ? 0 : g.chips ? 1 : !clean(g) || g.t > g.limit * 0.5 ? 2 : 3; }
 
 /** Funny name for the result. */
 export function label(g) {
   const p = g.final;
   const open = g.cracks.filter(c => !c.healed).length;
-  if (g.ok && stars(g) === 3) return open ? "실금 하나로 버팀" : "흠집 하나 없이 통과";
+  if (g.ok && clean(g)) return open ? "실금 하나로 버팀" : "흠집 하나 없이 통과";
   if (g.ok && g.chips) return "조각은 잃었지만 통과";
   if (g.ok) return "실금 위에서 통과";
   if (g.cause === "melt") return "혀로 다 녹임";
@@ -390,5 +404,6 @@ export function reason(g) {
   if (g.ok) return `${s}초 · 금 ${g.cracks.filter(c => !c.healed).length}개 · 떨어진 조각 ${g.chips}개 · 찌른 횟수 ${g.pokes}`;
   if (g.cause === "melt") return `한 곳을 오래 핥아 모양이 녹았어요 · ${g.final}% 파냄`;
   if (g.cause === "time") return `${g.limit}초 안에 ${g.final}%까지 · 원작은 10분`;
+  if (g.cracks.some(c => c.fatal && c.handle)) return `손잡이가 끊겼어요 · ${s}초 · ${g.final}% 파냄`;
   return `금이 모양 안으로 번졌어요 · ${s}초 · ${g.final}% 파냄`;
 }
