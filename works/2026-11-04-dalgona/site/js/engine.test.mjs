@@ -121,13 +121,15 @@ test("every shape can be finished by tracing its outline slowly", () => {
     for (let lap = 0; lap < 8 && !g.done; lap++) {
       for (const path of g.paths) {
         const seq = lap % 2 ? [...path].reverse() : path;
-        let acc = 0, prev = seq[0];
-        for (const p of seq) {
-          acc += Math.hypot(p[0] - prev[0], p[1] - prev[1]); prev = p;
-          if (acc < v) continue;
-          acc = 0;
-          step(g, DT, { needle: { x: p[0], y: p[1], down: true } });
-          if (g.done) break;
+        // walk the polyline at exactly v per frame (samples on the umbrella handle are wider apart than v)
+        let i = 0, x = seq[0][0], y = seq[0][1];
+        while (i < seq.length - 1 && !g.done) {
+          let left = v;
+          while (left > 0 && i < seq.length - 1) {
+            const [nx, ny] = seq[i + 1], d = Math.hypot(nx - x, ny - y);
+            if (d <= left) { x = nx; y = ny; left -= d; i++; } else { x += (nx - x) * left / d; y += (ny - y) * left / d; left = 0; }
+          }
+          step(g, DT, { needle: { x, y, down: true } });
         }
         step(g, DT, { needle: null });   // lift between paths
       }
@@ -198,4 +200,13 @@ test("licking a hairline closes it", () => {
 
 test("camera play gets twice the time", () => {
   assert.equal(createGame("umb", GEOM, seeded(), { camera: true }).limit, 2 * createGame("umb", GEOM, seeded()).limit);
+});
+
+// code review r2 L5: the umbrella handle was the safest stretch; in the drama it is the one that snaps
+test("a crack on the umbrella handle snaps it once it spreads", () => {
+  const g = createGame("umb", GEOM, seeded(4));
+  const h = g.paths[1][Math.floor(g.paths[1].length / 2)];
+  for (let i = 0; i < 40 && !g.done; i++) { poke(g, h[0], h[1]); for (let k = 0; k < 3; k++) step(g, DT, { needle: null }); }
+  assert.equal(g.cause, "crack");
+  assert.ok(g.cracks.some(c => c.handle && c.fatal));
 });

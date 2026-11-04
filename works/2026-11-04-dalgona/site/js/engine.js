@@ -118,7 +118,7 @@ export function layout(g, geom) {
 function weakPoints(path) {
   const n = path.length, k = 3, out = new Uint8Array(n);
   const closed = Math.hypot(path[0][0] - path[n - 1][0], path[0][1] - path[n - 1][1]) < 1;
-  if (!closed) return out;
+  if (!closed) return out.fill(1);   // an open stroke (the umbrella handle) is thin all along: all of it is fragile
   const m = n - 1;
   for (let i = 0; i < m; i++) {
     const a = path[(i - k + m) % m], b = path[i], c = path[(i + k) % m];
@@ -173,15 +173,15 @@ function meltedInShape(g) {
 }
 
 function nearestOutline(g, x, y) {
-  let best = null, bd = 1e9;
-  for (const path of g.paths) for (const q of path) { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = q; } }
-  return { q: best, d: bd };
+  let best = null, bd = 1e9, pi = 0;
+  g.paths.forEach((path, k) => { for (const q of path) { const d = Math.hypot(q[0] - x, q[1] - y); if (d < bd) { bd = d; best = q; pi = k; } } });
+  return { q: best, d: bd, pi };
 }
 
 // A new hairline on the outline nearest (x, y). It only grows while the pressure stays above HAIR (growCracks).
 function spawnCrack(g, x, y, w) {
   const { cx, cy, R } = g.geom;
-  const [sx, sy] = nearestOutline(g, x, y).q;
+  const no = nearestOutline(g, x, y), [sx, sy] = no.q;
   const corner = nearWeak(g, sx, sy) && !(g.at && g.at.poke);
   const inward = g.rng() < Math.min(0.85, RULES.IN_P + 0.1 * g.chips + (corner ? RULES.WEAK_IN : 0)) * (1 - w * 0.6);
   const st = R * 0.02, pts = [[sx, sy]], cum = [0], flip = inward ? Math.PI : 0;
@@ -194,7 +194,8 @@ function spawnCrack(g, x, y, w) {
     if (!inward && Math.hypot(px - cx, py - cy) > R) break;
     if (inward && L > R * 0.9) break;
   }
-  const c = { pts, cum, total: L, len: R * 0.07, inward, done: false, fatal: false, healed: false, maxStage: 0, seed: Math.floor(g.rng() * 1e9) };
+  // handle: a crack starting on the umbrella's thin handle snaps it once it spreads, whichever way it runs
+  const c = { pts, cum, total: L, len: R * 0.07, inward, handle: no.pi > 0, done: false, fatal: false, healed: false, maxStage: 0, seed: Math.floor(g.rng() * 1e9) };
   g.cracks.push(c);
   g.events.push({ type: "crack", inward, crack: c });
   return c;
@@ -227,6 +228,7 @@ function growCracks(g, dt) {
   const wr = wetAt(g, near.pts[0][0], near.pts[0][1]);
   near.len = Math.min(near.total, near.len + (g.stress - RULES.HAIR) * RULES.GROW * R * dt * (1 - 0.85 * wr));
   if (crackStage(g, near) > s0) { near.maxStage = crackStage(g, near); g.events.push({ type: "spread", crack: near }); }
+  if (near.handle && crackStage(g, near) >= 1) { near.fatal = true; finish(g, false, "crack"); return; }
   if (!near.inward && near.len >= near.total) { near.done = true; g.chips++; g.events.push({ type: "chip", crack: near }); return; }
   if (near.inward) {
     const [tx, ty] = crackTip(near);
