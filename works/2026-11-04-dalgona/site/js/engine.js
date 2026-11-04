@@ -11,6 +11,8 @@ export const RULES = {
   POKE_STRESS: 0.16,  // pressure of one poke on the line (0.22 off the line)
   POKE_WEAK: 0.9,     // a poke on a sharp corner carves it almost through at once: corners are for poking (review r2)
   POKE_WEAK_STRESS: 0.12,
+  POKE_HEAT: 0.15,    // every poke adds heat that fades slowly; pressure from a poke is multiplied by 1 + heat, so a
+  HEAT_DECAY: 0.12,   // steady rhythm of pokes all the way round builds up (code review r2: 0.46 s pokes won clean)
   POKE_FAST: 0.2,     // extra pressure when pokes come less than FAST_GAP apart
   FAST_GAP: 0.45,     // s (at 0.3 a steady 0.31 s rhythm never cracked)
   POKE_CAP: 0.45,     // one poke never adds more than this (v1: one camera jab broke the candy at once)
@@ -73,7 +75,7 @@ export function createGame(shape, geom, rng = Math.random, opts = {}) {
   const cam = !!opts.camera;
   const g = {
     shape, geom, rng, cam, limit: SHAPES[shape].t * (cam ? RULES.CAM_TIME : 1), vK: cam ? RULES.CAM_SPEED : SHAPES[shape].v, t: 0, started: false, stress: 0, chips: 0, cracks: [], pits: [], scratches: [],
-    done: false, ok: false, cause: null, pokes: 0, lastPoke: -9, licks: 0, final: 0, at: null, downAt: null, segs: 0,
+    done: false, ok: false, cause: null, pokes: 0, heat: 0, lastPoke: -9, licks: 0, final: 0, at: null, downAt: null, segs: 0,
     wetG: new Float32Array(RULES.GRID * RULES.GRID), meltG: new Float32Array(RULES.GRID * RULES.GRID),
     events: [], last: null,
   };
@@ -262,7 +264,8 @@ export function poke(g, x, y) {
   });
   g.pits.push([x, y]);
   const add = (hit ? (corner ? RULES.POKE_WEAK_STRESS : RULES.POKE_STRESS) : 0.22) * (1 - 0.5 * w) + (gap < RULES.FAST_GAP ? RULES.POKE_FAST : 0);
-  g.stress = Math.min(1.3, g.stress + Math.min(RULES.POKE_CAP, add));
+  g.stress = Math.min(1.3, g.stress + Math.min(RULES.POKE_CAP, add * (1 + g.heat)));
+  g.heat += RULES.POKE_HEAT;
   g.at = { x, y, w, poke: true };
   g.events.push({ type: "poke", hit, corner: hit && corner });
 }
@@ -285,6 +288,7 @@ export function step(g, dt, input) {
   if (lick && inCandy(g, lick.x, lick.y)) g.started = true;   // licking first is a fair opening move
   if (!g.started) return { carve: 0 };
   g.t += dt;
+  g.heat = Math.max(0, g.heat - dt * RULES.HEAT_DECAY);
   if (g.t >= g.limit) { finish(g, false, "time"); return { carve: 0 }; }
   const { R } = g.geom;
 
@@ -350,7 +354,8 @@ export function step(g, dt, input) {
       if (settled) add += 0.35 * Math.min(2, v);
       if (g.rng() < 0.5) g.scratches.push([g.last.x, g.last.y, needle.x, needle.y]);
     }
-    if (on) { g.stress = Math.min(1.3, g.stress + Math.min(RULES.SPEED_CAP, add) * dt); if (add > 0 || !g.at || g.at.poke) g.at = { x: needle.x, y: needle.y, w }; }
+    // pressure over the time the move took: a 30 fps camera on a 60-120 Hz screen moves on every 2nd-4th frame
+    if (on) { g.stress = Math.min(1.3, g.stress + Math.min(RULES.SPEED_CAP, add) * Math.max(dt, input.moveDt || 0)); if (add > 0 || !g.at || g.at.poke) g.at = { x: needle.x, y: needle.y, w }; }
   }
   g.last = needle && needle.down ? { x: needle.x, y: needle.y } : null;
   pressure();

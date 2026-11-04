@@ -185,10 +185,13 @@ export function createTracker(video, models, { onPoke } = {}) {
     const poked = det.feed(now, hs, s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH && now - s.foundAt > CAM.POKE_AFTER_PINCH);
     if (poked) { s.holdUntil = now + CAM.HOLD_MS; s.pokes++; }
     const holding = now < s.holdUntil && s.needle;
+    // resume (= do not read the jump as speed) only after a lost hand, a fresh pinch, landing, or a poke's hold;
+    // a face frame's held needle is not a jump (code review r2: it reset the landing grace every 133 ms)
+    const jumped = s.wasLost || !was || !s.needle?.down || s.afterHold;
     if (!s.pinched) s.needle = null;
-    else if (holding) s.needle = { ...s.needle, held: true, resume: false };
+    else if (holding) { s.needle = { ...s.needle, held: true, resume: false }; s.afterHold = true; }
     // until it has hovered LAND_MS the needle is shown but does not touch
-    else s.needle = { x: tip[0], y: tip[1], down: now - s.pinchAt > CAM.LAND_MS, resume: s.wasLost || !was || s.needle?.held === true || !s.needle?.down };
+    else { s.needle = { x: tip[0], y: tip[1], down: now - s.pinchAt > CAM.LAND_MS, resume: jumped }; s.afterHold = false; }
     s.wasLost = false;
     if (poked && onPoke) onPoke(s.needle.x, s.needle.y);
   }

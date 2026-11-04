@@ -45,20 +45,33 @@ test("normal hand shake (spike: 3-13 px) is free", () => {
   assert.equal(g.ok, true);
 });
 
-test("careful pokes carve without cracking; frantic pokes crack", () => {
+test("a few careful pokes are free; frantic pokes crack", () => {
   const g = createGame("circle", GEOM, seeded());
   const r = 0.84 * GEOM.R;
-  for (let i = 0; i < 36 && !g.done; i++) {
+  for (let i = 0; i < 8 && !g.done; i++) {
     const a = i / 36 * 2 * Math.PI;
     poke(g, GEOM.cx + r * Math.cos(a), GEOM.cy + r * Math.sin(a));
     for (let k = 0; k < 14; k++) step(g, DT, { needle: null });   // 0.47 s between pokes
   }
   assert.equal(g.cracks.length, 0);
-  assert.ok(percent(g) > 40, `${percent(g)}%`);
 
   const h = createGame("circle", GEOM, seeded());
   for (let i = 0; i < 12 && !h.done; i++) { poke(h, GEOM.cx + r, GEOM.cy); for (let k = 0; k < 3; k++) step(h, DT, { needle: null }); }
   assert.ok(h.cracks.length >= 1);
+});
+
+// code review r2 H2: poking all the way round at just over FAST_GAP took every shape with three stars
+test("poking the whole outline on a steady rhythm does not come out clean", () => {
+  for (const shape of ["circle", "tri", "star", "umb"]) {
+    const g = createGame(shape, GEOM, seeded(9), { camera: true });   // the longest clock
+    const pts = g.paths.flatMap(p => p.filter((_, i) => i % 4 === 0));
+    for (let lap = 0; lap < 4 && !g.done; lap++) for (const q of pts) {
+      if (g.done) break;
+      poke(g, q[0], q[1]);
+      for (let k = 0; k < 14; k++) step(g, DT, { needle: null });   // 0.47 s
+    }
+    assert.ok(!g.ok || g.cracks.some(c => c.maxStage > 0) || g.chips, `${shape}: clean win by rhythm poking`);
+  }
 });
 
 test("licking one spot melts only that spot, and too long there breaks the shape", () => {

@@ -13,7 +13,12 @@ const touch = { x: 0, y: 0, down: false };
 const TOUCH_LIFT = 46;    // touch mode: the needle tip sits above the finger so the finger does not hide it
 
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
-const bestOf = k => { try { return JSON.parse(store("dalgona.best2." + k)) || null; } catch { return null; } };
+const bestOf = k => {
+  try {
+    const v = JSON.parse(store("dalgona.best2." + k));
+    return v && typeof v === "object" && Number.isFinite(v.stars) && Number.isFinite(v.time) && Number.isFinite(v.pct) ? v : null;
+  } catch { return null; }
+};
 // a better record: more stars, then a faster time; a loss only beats a loss with less carved
 const better = (a, b) => !b || a.stars > b.stars || (a.stars === b.stars && (a.stars ? a.time < b.time : a.pct > b.pct));
 
@@ -24,8 +29,8 @@ function resize() {
   DPR = Math.min(2, devicePixelRatio || 1); W = b.width; H = b.height;
   cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hc.width = Math.ceil(W); hc.height = Math.ceil(H);
-  geom = { cx: W / 2, cy: H * 0.58, R: Math.min(W * 0.36, H * 0.2) };
-  if (game) { layout(game, geom); view = createCandyView(game, DPR); }
+  // mid-round the candy stays put (toolbars folding resize the page; rebuilding the view lost chips and the win)
+  if (!game || resultShown) geom = { cx: W / 2, cy: H * 0.58, R: Math.min(W * 0.36, H * 0.2) };
   if (tracker) tracker.size(W, H);
 }
 addEventListener("resize", resize);
@@ -310,6 +315,7 @@ function demoFrame(dt) {
 
 const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
 function showPick() {
+  if (audio) audio.gn.gain.value = 0;
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
   $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
   const picks = $("picks"); picks.innerHTML = "";
@@ -366,10 +372,10 @@ function grab() {
 }
 
 // 1080 x 1350 card: the moment, the verdict, the link
-async function makeCard(faceOff) {
-  try { await document.fonts.load('80px "Do Hyeon"'); await document.fonts.load('40px "Orbit"'); } catch { /* fallback fonts */ }
-  const g0 = game, CW = 1080, CH = 1350, c = document.createElement("canvas"); c.width = CW; c.height = CH;
-  const g = c.getContext("2d"), m = moment || grab();
+async function makeCard(faceOff, g0, m, lick, candy) {
+  try { await document.fonts.load('80px "Do Hyeon"'); } catch { /* fallback fonts */ }
+  const CW = 1080, CH = 1350, c = document.createElement("canvas"); c.width = CW; c.height = CH;
+  const g = c.getContext("2d"), lickShot = lick, candyShot = candy;
   const k = m.width / W, face = mode === "camera" && !faceOff;
   if (face) {   // 4:5 around the candy and whatever is above it (the face)
     const sw = m.width, sh = Math.min(m.height, sw * CH / CW);
@@ -424,6 +430,8 @@ async function share() {
     if (navigator.share) { await navigator.share({ text, url }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
   if (cardBlob) { const a = document.createElement("a"); a.href = URL.createObjectURL(cardBlob); a.download = "dalgona.png"; a.click(); }
+  // in-app browsers often ignore both: say how to keep it
+  const tip = document.getElementById("saveTip"); if (tip) tip.hidden = false;
 }
 
 async function showResult() {
@@ -448,12 +456,16 @@ async function showResult() {
   row.append(...[primary, again, shareB].filter(Boolean));
   const foot = el("div", "row foot");
   foot.append(Object.assign(el("button", "link", "다른 모양"), { onclick: showPick }), Object.assign(el("a", "link", "시켜본 것 더 보기 →"), { href: "../../../" }));
+  cardBlob = null;
+  const m = moment || grab(), ls = lickShot instanceof HTMLCanvasElement ? lickShot : null, cs = candyShot;
   const render = async faceOff => {
-    const card = await makeCard(faceOff);
+    const card = await makeCard(faceOff, g, m, ls, cs);
+    if (game !== g) return;   // a new round started while the fonts loaded
     img.src = card.toDataURL("image/jpeg", 0.86);
-    card.toBlob(b => { cardBlob = b; }, "image/png");
+    card.toBlob(b => { if (game === g) cardBlob = b; }, "image/png");
   };
-  const parts = [img, sub, bestLine, row, foot];
+  const saveTip = el("p", "res-sub", "공유가 안 되면 카드를 길게 눌러 저장하세요"); saveTip.id = "saveTip"; saveTip.hidden = true;
+  const parts = [img, saveTip, sub, bestLine, row, foot];
   if (mode === "camera") {   // some people will not post their face
     const lab = el("label", "res-face"), cb = el("input"); cb.type = "checkbox";
     cb.onchange = () => render(cb.checked);

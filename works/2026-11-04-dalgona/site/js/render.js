@@ -182,6 +182,14 @@ export function createCandyView(game, dprIn) {
   }
 
   // ---------- carved groove from the engine's per-sample progress ----------
+  // cached: redrawn only when the progress changed (code review r2: ~550 strokes a frame on the umbrella)
+  const CV = off(PX, PX), cvg = toC(CV.getContext("2d"));
+  let carveSum = -1;
+  function carvedLayer() {
+    let sum = 0; for (const pr of game.prog) for (const v of pr) sum += v;
+    if (sum !== carveSum) { carveSum = sum; cvg.setTransform(1, 0, 0, 1, 0, 0); cvg.clearRect(0, 0, PX, PX); toC(cvg); carved(cvg); }
+    return CV;
+  }
   function carved(g) {
     g.save(); g.clip(edge); g.lineCap = "round";
     game.paths.forEach((path, pi) => {
@@ -219,10 +227,10 @@ export function createCandyView(game, dprIn) {
     for (let i = 1; i < pts.length && cum[i] <= upto; i++) g.lineTo(pts[i][0], pts[i][1]);
   }
   // toffee cracks catch light: a bright refracting band with a hair-thin dark core and a soft drop on one side
-  const tipLen = new Map();
+  const tipLen = new Map(), locPts = new WeakMap();
   function drawCrack(g, c, now) {
     const st = c.fatal ? 2 : crackStage(game, c), sc = R / 142, w = [1.6, 2.1, 3][st] * sc;
-    const pts = c.pts.map(loc);
+    let pts = locPts.get(c); if (!pts) { pts = c.pts.map(loc); locPts.set(c, pts); }
     const stroke = (pp, cum, upto, ww) => {
       // a step in the surface: lit on one side, shaded on the other, a dark gap between
       g.save(); g.translate(-sc, -sc); g.globalCompositeOperation = "screen"; g.strokeStyle = "rgba(255,236,190,.45)"; g.lineWidth = ww * 1.2; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
@@ -252,7 +260,7 @@ export function createCandyView(game, dprIn) {
   const chips = [], pieces = [], pending = [];
   function chipFrom(c) {
     const pts = c.pts.map(loc), [ex, ey] = pts[pts.length - 1], te = Math.atan2(ey, ex), r = rng(c.seed + 1);
-    const dir = r() < 0.5 ? 1 : -1, span = 0.16 + r() * 0.1;
+    const dir = r() < 0.5 ? 1 : -1, span = 0.22 + r() * 0.1;
     const k0 = Math.max(0, c.cum.findIndex(v => v >= c.total - 0.2 * R)), seg = pts.slice(k0);
     const p = new Path2D(); p.moveTo(seg[0][0], seg[0][1]); seg.forEach(([x, y]) => p.lineTo(x, y));
     for (let i = 0; i <= 12; i++) { const t = te + dir * span * i / 12, rr = edgeR(t) + 3; p.lineTo(rr * Math.cos(t), rr * Math.sin(t)); }
@@ -331,7 +339,7 @@ export function createCandyView(game, dprIn) {
     toC(lg); lg.save(); lg.translate(0, R * 0.03);   // candy thickness
     const th = lg.createLinearGradient(0, -R, 0, R); th.addColorStop(0, "#7a3a10"); th.addColorStop(1, "#3a1805"); lg.fillStyle = th; lg.fill(edge); lg.restore();
     lg.setTransform(1, 0, 0, 1, 0, 0); lg.drawImage(DRY, 0, 0); lg.drawImage(damage, 0, 0);
-    toC(lg); carved(lg); lg.setTransform(1, 0, 0, 1, 0, 0);
+    lg.drawImage(carvedLayer(), 0, 0);
     if (anyWet) {
       bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(WET, 0, 0);
       bg.globalCompositeOperation = "destination-in"; bg.drawImage(mWet, 0, 0);
