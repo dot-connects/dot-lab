@@ -266,43 +266,71 @@ function drawStamp(t) {
 
 // ---------- sound and touch feedback ----------
 function initAudio() {
-  if (audio) return;
+  if (audio) { if (audio.ac.state !== "running") audio.ac.resume().catch(() => {}); return; }
   try {
     const ac = new (window.AudioContext || window.webkitAudioContext)();
+    // every sound goes through one compressor so stacked cracks, chips and beats do not clip (juice r6)
+    const bus = ac.createDynamicsCompressor();
+    bus.threshold.value = -18; bus.knee.value = 6; bus.ratio.value = 4; bus.attack.value = 0.003; bus.release.value = 0.15;
+    bus.connect(ac.destination);
     const buf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate), d = buf.getChannelData(0);
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-    const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
-    const bp = ac.createBiquadFilter(); bp.type = "bandpass"; bp.frequency.value = 3200; bp.Q.value = 1.2;
-    const gn = ac.createGain(); gn.gain.value = 0; src.connect(bp).connect(gn).connect(ac.destination); src.start();
-    audio = { ac, gn, bp, buf };
+    const loop = (type, f, q) => {   // a looped noise voice: scraping, licking
+      const src = ac.createBufferSource(); src.buffer = buf; src.loop = true;
+      const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+      const gn = ac.createGain(); gn.gain.value = 0; src.connect(fl).connect(gn).connect(bus); src.start();
+      return { fl, gn };
+    };
+    const sc = loop("bandpass", 3200, 1.2), lk = loop("lowpass", 900, 0.7);
+    audio = { ac, bus, buf, gn: sc.gn, bp: sc.fl, lk };
   } catch { audio = null; }
 }
+// iOS suspends the context after a tab switch or a call: wake it on the next touch
+addEventListener("pointerdown", () => { if (audio && audio.ac.state !== "running") audio.ac.resume().catch(() => {}); }, { capture: true });
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /* not supported */ } };
-function noise(f, d, v, type = "bandpass") {
+function noise(f, d, v, type = "bandpass", at = 0) {
   if (!audio) return; const { ac, buf } = audio, s = ac.createBufferSource(); s.buffer = buf;
   const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = 1.4;
-  const g = ac.createGain(), t = ac.currentTime; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
-  s.connect(fl).connect(g).connect(ac.destination); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.05);
+  const g = ac.createGain(), t = ac.currentTime + at; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  s.connect(fl).connect(g).connect(audio.bus); s.start(t, Math.random() * 0.5); s.stop(t + d + 0.05);
 }
-function tone(f, d, v, type = "triangle") {
-  if (!audio) return; const { ac } = audio, o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
-  o.type = type; o.frequency.value = f; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
-  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + d + 0.02);
+function tone(f, d, v, type = "triangle", at = 0, detune = 0) {
+  if (!audio) return; const { ac } = audio, o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
+  o.type = type; o.frequency.value = f; o.detune.value = detune; g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + d);
+  o.connect(g).connect(audio.bus); o.start(t); o.stop(t + d + 0.02);
+}
+// a low thump a phone speaker can play: a pitch drop from 2.5x plus a lowpassed noise body (sub-200 Hz alone is silent there)
+function thump(f0, v = 0.7, at = 0) {
+  if (!audio) return; const { ac } = audio, o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime + at;
+  o.type = "sine"; o.frequency.setValueAtTime(f0 * 2.5, t); o.frequency.exponentialRampToValueAtTime(f0, t + 0.08);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+  o.connect(g).connect(audio.bus); o.start(t); o.stop(t + 0.2);
+  noise(180, 0.05, 0.6 * v / 0.7, "lowpass", at);
 }
 const SFX = {
   poke: hit => { tone(hit ? 1900 : 1300, 0.05, 0.22); buzz(8); },
   segment: () => { tone(2600, 0.04, 0.2, "square"); noise(5200, 0.03, 0.25); buzz(12); },
   corner: () => { noise(2200, 0.05, 0.6); tone(1500, 0.06, 0.25); buzz(18); },
-  heal: () => { tone(660, 0.18, 0.12, "sine"); setTimeout(() => tone(990, 0.2, 0.1, "sine"), 120); },
-  beat: () => { tone(58, 0.14, 0.55, "sine"); setTimeout(() => tone(52, 0.12, 0.4, "sine"), 160); buzz(15); },
-  shutter: () => { noise(3000, 0.04, 0.6, "highpass"); setTimeout(() => noise(2000, 0.05, 0.4, "highpass"), 70); },
+  heal: () => { tone(660, 0.18, 0.2, "sine"); tone(990, 0.2, 0.18, "sine", 0.12); },
+  beat: () => { thump(60); thump(52, 0.5, 0.16); buzz(15); },
+  tick: () => { tone(1800, 0.03, 0.18, "square"); },
+  shutter: () => { noise(3000, 0.04, 0.6, "highpass"); noise(2000, 0.05, 0.4, "highpass", 0.07); },
+  hush: () => { tone(3200, 0.3, 0.04, "sine"); },
   hair: () => { noise(4200, 0.06, 0.5); buzz(15); },
   spread: () => { noise(2600, 0.1, 0.6); buzz([20, 30, 20]); },
-  chip: () => { noise(1800, 0.14, 0.7); setTimeout(() => noise(3000, 0.05, 0.3), 260); buzz([30, 40, 30]); },
-  snap: () => { noise(1500, 0.12, 0.8); buzz(30); },
-  win: () => { [880, 1320, 1760].forEach((f, i) => setTimeout(() => tone(f, 0.35, 0.18, "sine"), i * 110)); buzz([40, 60, 40]); },
-  lose: () => { noise(700, 0.4, 0.9, "lowpass"); tone(90, 0.5, 0.5, "sine"); buzz([80, 40, 160]); },
+  chip: () => { noise(1800, 0.14, 0.7); noise(3000, 0.05, 0.3, "bandpass", 0.26); buzz([30, 40, 30]); },
+  snap: () => { noise(4000, 0.015, 0.9, "highpass"); noise(1200, 0.1, 0.7); thump(90); buzz([0, 12, 20, 40]); },
+  win: () => {
+    // scheduled on the audio clock (setTimeout wobbles); each note doubled 7 cents sharp for a shimmer
+    [880, 1320, 1760, 2640].forEach((f, i) => { const d = i === 3 ? 0.5 : 0.35; tone(f, d, 0.18, "sine", i * 0.11); tone(f, d, 0.1, "sine", i * 0.11, 7); });
+    buzz([40, 60, 40]);
+  },
+  lose: () => { noise(900, 0.06, 0.9); thump(70, 0.8, 0.02); noise(700, 0.4, 0.9, "lowpass", 0.02); buzz([80, 40, 160]); },
 };
+
+// screen shake: the haptic you can see (iPhone Safari has no vibrate)
+let shakeUntil = 0, shakeAmp = 0;
+const shake = (amp, ms = 150) => { shakeAmp = amp; shakeUntil = performance.now() + ms; };
 
 // ---------- flow ----------
 const show = id => ["start", "pick", "result"].forEach(k => { $(k).hidden = k !== id; });
@@ -362,7 +390,7 @@ function demoFrame(dt) {
 
 const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
 function showPick() {
-  if (audio) audio.gn.gain.value = 0;
+  if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
   $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
   const picks = $("picks"); picks.innerHTML = "";
@@ -647,7 +675,11 @@ function frame(now) {
     const { carve } = step(game, dt, { needle, jitter, lick, moveDt });
     if (game.started && !game.done) recordTrail(needle);
     for (const ev of game.events.splice(0)) {
-      if (ev.type === "win") { winAt = now + 350; buzz(30); continue; }   // a beat of stillness before the break
+      if (ev.type === "win") {   // a beat of stillness before the break: scraping falls silent, a faint high note
+        winAt = now + 350; buzz(30); SFX.hush();
+        if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
+        continue;
+      }
       view.onEvent(ev);
       if (ev.type === "poke") { if (ev.corner) { SFX.corner(); note = { text: "모서리 콕! 한 번에 파였어요", until: now + 1200, good: true }; } else SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
       else if (ev.type === "segment") SFX.segment();
@@ -658,23 +690,33 @@ function frame(now) {
       }
       else if (ev.type === "spread") SFX.spread();
       else if (ev.type === "chip") {
-        SFX.chip();
+        SFX.chip(); shake(3);
         if (!taught.chip) { taught.chip = true; note = { text: "조각이 떨어졌어요 · 다음 금은 안쪽으로 가기 쉬워요", until: now + 2400 }; }
       }
-      else if (ev.type === "lose") { SFX.lose(); loseT = 0; }
+      else if (ev.type === "lose") { SFX.lose(); shake(10); loseT = 0; }
     }
     if (winAt && now >= winAt) {
-      winAt = 0; view.onEvent({ type: "win" }); SFX.snap(); setTimeout(SFX.win, 250);
+      winAt = 0; view.onEvent({ type: "win" }); SFX.snap(); shake(6); setTimeout(SFX.win, 250);
       // camera: the freed shape flies to your fingers for a photo; touch: the shot is the moment it parts
       if (mode === "camera") { candyAt = now + 500; pose = { t0: now + 1100, cap: now + 1100 + 3300, x: geom.cx, y: geom.cy, k: 1 }; }
       else capture = now + 500;
     }
-    if (pct90() && !game.done && now >= beatAt) { beatAt = now + 750; SFX.beat(); }
+    if (pct90() && !game.done && now >= beatAt) { beatAt = now + 750 - (percent(game) - 90) * 30; SFX.beat(); }   // speeds up to the end
     if (loseT >= 0) { loseT += dt; if (!moment && loseT > 0.55) capture = now; }
     if (carve > 0.05 && needle && !needle.held) spawnCrumbs(needle.x, needle.y, Math.random() < carve ? 1 : 0, false);
     if (lickOn) { lickFor += dt; if (!lickShot && lickFor > 0.8 && mode === "camera") lickShot = "next"; } else lickFor = 0;
     const still = mode === "touch" && performance.now() - (touch.mt || 0) > 120;
-    if (audio) { audio.gn.gain.value = game.done || still ? 0 : carve * 0.22; audio.bp.frequency.value = 2400 + carve * 1800; }
+    if (audio) {
+      // glide, never jump: a cut to 0 clicks (juice r6); grains of sugar ticking on top while carving hard
+      const t = audio.ac.currentTime, target = game.done || still ? 0 : carve * 0.22;
+      audio.gn.gain.setTargetAtTime(target, t, target > audio.gn.gain.value ? 0.015 : 0.04);
+      audio.bp.frequency.setTargetAtTime(2400 + carve * 1800, t, 0.03);
+      if (target > 0.066 && Math.random() < carve * 0.5) noise(5000 + Math.random() * 2500, 0.012, 0.18 * carve, "highpass");
+      // licking: a wet low rustle with a lap rhythm; melting goes duller and louder
+      const melting = lickOn && wetAt(game, lick.x, lick.y) > 0.95;
+      audio.lk.gn.gain.setTargetAtTime(lickOn && !game.done ? (melting ? 0.2 : 0.12 + 0.06 * Math.sin(now / 90)) : 0, t, 0.05);
+      audio.lk.fl.frequency.setTargetAtTime(melting ? 500 : 900, t, 0.1);
+    }
     if (game.started) $("hint").textContent = "";
     const left = Math.max(0, Math.ceil(game.limit - game.t));
     const tm = $("timer"); tm.textContent = `0${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
@@ -709,13 +751,15 @@ function frame(now) {
       view.setPose({ x: pose.x, y: pose.y, k: pose.k, rot: Math.sin(now / 400) * 0.04 });
       if (!grip && (pose.waited || 0) < 3000) { pose.waited = (pose.waited || 0) + dt * 1000; pose.cap += dt * 1000; }
       const n = Math.ceil((pose.cap - now) / 1000);
+      if (n !== pose.lastN && n > 0 && !(!grip && pose.waited < 3000)) { pose.lastN = n; SFX.tick(); }
       pose.text = !grip && pose.waited < 3000 ? "손을 보여 주면 모양이 따라가요" : n > 0 ? `얼굴 옆에 들어 보세요 · ${n}` : "";
       if (now >= pose.cap) { pose.done = true; moment = grab(); SFX.shutter(); flashAt = now; endAt = now + 600; }
     }
     if (endAt && now >= endAt) { endAt = 0; if (!moment) moment = grab(); resultShown = true; freezeFrame(); showResult(); }
   }
 
-  ctx.clearRect(0, 0, W, H);
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0); ctx.clearRect(0, 0, W, H);
+  if (now < shakeUntil) { const a = shakeAmp * (shakeUntil - now) / 150; ctx.translate((Math.random() - 0.5) * a, (Math.random() - 0.5) * a); }
   if (!game || resultShown) { if (DEBUG && s) debug(s); return; }
   view.draw(ctx, dt, game.done ? null : percent(game) / 100);
   if (game.done && !game.ok && loseT > 0.9 && game.final >= 50) drawMissing(now);
