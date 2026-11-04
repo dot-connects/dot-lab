@@ -32,6 +32,7 @@ function resize() {
   DPR = Math.min(2, devicePixelRatio || 1); W = b.width; H = b.height;
   cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hc.width = Math.ceil(W); hc.height = Math.ceil(H);
+  tcv.width = cv.width; tcv.height = cv.height;   // the touch tongue layer, sized before the first lick (resize runs after module init)
   // mid-round the candy stays put (toolbars folding resize the page; rebuilding the view lost chips and the win)
   if (!game || resultShown) geom = freshGeom();
   else if (!game.done) {

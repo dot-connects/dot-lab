@@ -111,17 +111,23 @@ export function createCandyView(game, dprIn) {
   // ---------- wet / melt masks from the engine grid ----------
   const N = RULES.GRID, cell = 2 * R / N;
   let maskFrame = 0, anyWet = false, anyMelt = false;
+  // soft round sprites drawn with globalAlpha: one gradient each, made once (perf: hundreds of gradients per
+  // mask update stalled low-end phones for ~200 ms)
+  const sprite = (stops) => {
+    const c = off(64, 64), g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+    stops.forEach(([o, a]) => gr.addColorStop(o, `rgba(255,255,255,${a})`)); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return c;
+  };
+  const BLOB = sprite([[0, 1], [0.55, 0.7], [1, 0]]), RIM = sprite([[0, 1], [0.5, 1], [1, 0]]);
   function blobs(c, val) {
     const g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); toC(g);
     let any = false;
     for (let k = 0; k < N * N; k++) {
       const a = val(k); if (a < 0.02) continue;
       any = true;
-      const [sx, sy] = cellCentre(game, k), [x, y] = loc([sx, sy]), r = cell * 1.3;
-      const gr = g.createRadialGradient(x, y, 0, x, y, r);
-      gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(0.55, `rgba(255,255,255,${a * 0.7})`); gr.addColorStop(1, "rgba(255,255,255,0)");
-      g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+      const [x, y] = loc(cellCentre(game, k)), r = cell * 1.3;
+      g.globalAlpha = a; g.drawImage(BLOB, x - r, y - r, 2 * r, 2 * r);
     }
+    g.globalAlpha = 1;
     return any;
   }
   // melted holes: a union of solid circles sized by how far each cell melted, jittered per cell, so the hole is
@@ -135,14 +141,16 @@ export function createCandyView(game, dprIn) {
       any = true;
       const [jx, jy, js] = jit[k], [x0, y0] = loc(cellCentre(game, k)), x = x0 + jx * cell * 0.3, y = y0 + jy * cell * 0.3;
       const r = cell * (0.35 + 0.85 * Math.min(1, m / 0.8)) * js * 1.25 + grow;
-      if (soft) { const gr = g.createRadialGradient(x, y, r - grow, x, y, r); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; }
-      else g.fillStyle = "#fff";
-      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+      if (soft) g.drawImage(RIM, x - r, y - r, 2 * r, 2 * r);
+      else { g.fillStyle = "#fff"; g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill(); }
     }
     return any;
   }
-  let meltSum = 0;
+  let meltSum = 0, wetSeen = true;
   function masks() {
+    const wetNow = game.wetG.some(v => v > 0.02);
+    if (!wetNow && !wetSeen) return;   // nothing licked: no mask work at all
+    wetSeen = wetNow;
     anyWet = blobs(mWet, k => clamp(game.wetG[k] * 0.9));
     anyMelt = game.meltG.some(m => m > 0.45);
     if (anyMelt) {
