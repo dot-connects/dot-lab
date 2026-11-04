@@ -346,9 +346,11 @@ $("camGo").onclick = async () => {
   try {
     video.hidden = false;   // WebKit may not play a hidden video
     camStream = await startCamera(video);
+    if (mode === "touch") { camStream.getTracks().forEach(t => t.stop()); camStream = null; video.hidden = true; return; }
     $("nocam").hidden = true;
     msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…";
     const models = await loadModels();
+    if (mode === "touch") { camStream.getTracks().forEach(t => t.stop()); camStream = null; video.hidden = true; return; }
     tracker = createTracker(video, models, { onPoke: (x, y) => { if (game) poke(game, x, y); } });
     mode = "camera";
     resize(); showPick();
@@ -368,7 +370,7 @@ let demo = null;
 function demoFrame(dt) {
   if ($("start").hidden) { if (demo) demo.v.dispose(); demo = null; return; }
   const S = demoCv.clientWidth || 210, k = Math.min(2, devicePixelRatio || 1);
-  if (demoCv.width !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); demo = null; }
+  if (demoCv.width !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); if (demo) demo.v.dispose(); demo = null; }
   if (!demo || (demo.g.done && demo.t > 3.2)) {
     const g = createGame("star", { cx: S / 2, cy: S / 2, R: S * 0.38 }, Math.random);
     if (demo) demo.v.dispose();
@@ -445,6 +447,7 @@ function drawRival() {
 }
 
 function begin(shape) {
+  touch.down = false;
   initAudio();   // resumes a context iOS suspended while we were away
   if (view) view.dispose();
   geom = freshGeom();   // a rotation during the last round must not leave the next one off screen
@@ -592,15 +595,22 @@ async function showResult() {
   cardBlob = null;
   const m = moment || grab(), ls = lickShot instanceof HTMLCanvasElement ? lickShot : null, cs = candyShot;
   const shotGeom = { ...geom }, shotW = W;
+  let renderSeq = 0;
   const render = async faceOff => {
-    cardBlob = null;
+    const tok = ++renderSeq;   // only the latest render may set the card (review r7: a late face PNG after "face off")
+    cardBlob = null; shareB.disabled = true;
     cardReady = new Promise(res => { cardDone = res; });
     const card = await makeCard(faceOff, g, m, ls, cs, shotGeom, shotW);
-    if (game !== g) return;   // a new round started while the fonts loaded
-    shareB.disabled = true;
+    if (game !== g || tok !== renderSeq) return;   // a new round, or a newer render, while the fonts loaded
     img.onload = () => { img.style.animation = "none"; void img.offsetWidth; img.style.animation = ""; };   // drop in once it has a picture
     img.src = card.toDataURL("image/jpeg", 0.86);
-    card.toBlob(b => { if (game === g) { cardBlob = b; cardDone(); shareB.disabled = false; } card.width = 0; }, "image/png");
+    card.toBlob(b => {
+      if (game === g && tok === renderSeq) {
+        if (b) { cardBlob = b; cardDone(); shareB.disabled = false; }
+        else saveTip.hidden = false;   // no PNG (memory): the card image above can still be long-pressed
+      }
+      card.width = 0;
+    }, "image/png");
   };
   const saveTip = el("p", "res-sub", "공유가 안 되면 카드를 길게 눌러 저장하세요"); saveTip.id = "saveTip"; saveTip.hidden = true;
   const parts = [img, saveTip, sub, bestLine, row, foot];
@@ -616,11 +626,17 @@ async function showResult() {
 }
 
 // back from another app: iOS may have paused the video or ended the track
+let camRestarting = false;
 document.addEventListener("visibilitychange", async () => {
-  if (document.hidden || mode !== "camera") return;
+  if (document.hidden) { touch.down = false; return; }
+  if (mode !== "camera" || camRestarting) return;
   video.play().catch(() => {});
   const tr = camStream && camStream.getVideoTracks()[0];
-  if (tr && tr.readyState === "ended") { try { camStream = await startCamera(video); } catch { /* stays on the last frame */ } }
+  if (tr && (tr.readyState === "ended" || tr.muted)) {
+    camRestarting = true;
+    try { if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = await startCamera(video); } catch { /* stays on the last frame */ }
+    camRestarting = false;
+  }
 });
 
 // ---------- touch input ----------
@@ -628,7 +644,7 @@ const pos = e => { const b = app.getBoundingClientRect(); touch.x = e.clientX - 
 const touchTip = () => ({ x: touch.x, y: touch.y - (lickMode ? 0 : TOUCH_LIFT) });
 app.addEventListener("pointerdown", e => {
   if (mode !== "touch" || !game || game.done || e.target.closest("button,a")) return;
-  if (touch.down) return;   // a second finger or a palm does not move the needle (iOS review r6)
+  if (!e.isPrimary) return;   // a second finger or a palm does not move the needle (iOS review r6); a new first finger always can
   touch.id = e.pointerId;
   pos(e); touch.down = true; touch.t0 = performance.now(); touch.mt = 0; touch.fresh = true; touch.moved = 0;
   try { app.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }

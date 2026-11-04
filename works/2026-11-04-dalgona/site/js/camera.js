@@ -55,7 +55,10 @@ export function createPokeDetector() {
 
 export async function startCamera(video, timeoutMs = 5000) {
   // while the browser is showing the permission prompt, give people time to read it (iOS review r6)
-  try { const st = await navigator.permissions.query({ name: "camera" }); if (st.state === "prompt") timeoutMs = 30000; } catch { /* no Permissions API */ }
+  try {
+    const st = await Promise.race([navigator.permissions.query({ name: "camera" }), new Promise((_, no) => setTimeout(no, 1000))]);
+    if (st.state === "prompt") timeoutMs = 15000;
+  } catch { /* no Permissions API, or it did not answer */ }
   const ask = navigator.mediaDevices.getUserMedia({ audio: false,
     video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } } });
   // in-app browsers sometimes never answer the permission request (#003 spike); give up after a while
@@ -132,7 +135,8 @@ export function createTracker(video, models, { onPoke } = {}) {
   if (video.requestVideoFrameCallback) { const cb = () => { vframes++; video.requestVideoFrameCallback(cb); }; video.requestVideoFrameCallback(cb); }
   function update(now) {
     s.fresh = false;
-    const stamp = video.requestVideoFrameCallback ? vframes : video.currentTime;
+    const useFrames = video.requestVideoFrameCallback && (vframes > 0 || now - (s.t0 ??= now) < 1000);   // rVFC silent for 1 s: use currentTime
+    const stamp = useFrames ? vframes : video.currentTime;
     if (!video.videoWidth || stamp === s.lastVT) return s;
     s.lastVT = stamp; s.frame++; s.fresh = true;
     const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now; s.vdt = dt;
