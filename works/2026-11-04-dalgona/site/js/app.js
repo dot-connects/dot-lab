@@ -38,7 +38,11 @@ function resize() {
   else if (!game.done) {
     // a toolbar folding is ignored; a rotation or a big shrink that leaves the candy off screen moves it (QA r3)
     const { cx, cy, R } = geom;
-    if (cx + R > W || cy + R > H - 40 || cx - R < 0) { geom = freshGeom(); layout(game, geom); view = createCandyView(game, DPR); }
+    if (cx + R > W || cy + R > H - 40 || cx - R < 0) {
+      geom = freshGeom(); layout(game, geom); view = createCandyView(game, DPR);
+      // the new view knows nothing of pieces that already fell: replay them (review r5)
+      for (const c of game.cracks) if (c.done && !c.inward && !c.healed && c.len >= c.total) view.onEvent({ type: "chip", crack: c });
+    }
   }
   if (tracker) tracker.size(W, H);
 }
@@ -380,19 +384,20 @@ const taught = {};   // one-time in-game tips per page load
 // as a faint rival needle (design r4: something to chase once three stars are in reach)
 let trail = [], rival = null;
 const loadRival = shape => {
-  try { const v = JSON.parse(store("dalgona.ghost." + shape)); return v && Array.isArray(v.p) && v.p.length && Number.isFinite(v.t) && v.cam === (mode === "camera") ? v : null; }
+  try { const v = JSON.parse(store(`dalgona.ghost.${mode}.${shape}`)); return v && Array.isArray(v.p) && v.p.length && Number.isFinite(v.t) ? v : null; }
   catch { return null; }
 };
 function recordTrail(needle) {
   const i = Math.floor(game.t * 10);
   if (trail.length > i || trail.length > 1500) return;
-  while (trail.length < i) trail.push(null);
+  while (trail.length < i) trail.push(trail.length ? trail[trail.length - 1] : null);   // a slow frame: hold the last point
   trail.push(needle && needle.down ? [+((needle.x - geom.cx) / geom.R).toFixed(3), +((needle.y - geom.cy) / geom.R).toFixed(3)] : null);
 }
 function drawRival() {
   if (!rival || !game.started || game.done) return;
   const i = Math.floor(game.t * 10), p = rival.p[i];
-  if (i >= rival.p.length) {   // the ghost is already out
+  if (i >= rival.p.length) {   // the ghost is already out (said for 3 s)
+    if (game.t > rival.p.length / 10 + 3) return;
     ctx.save(); ctx.font = '15px "Do Hyeon", sans-serif'; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,.75)";
     ctx.shadowColor = "#000"; ctx.shadowBlur = 6; ctx.fillText(`내 최고 기록 ${rival.t.toFixed(1)}초 지남`, geom.cx, geom.cy - geom.R * 1.22); ctx.restore();
     return;
@@ -519,7 +524,7 @@ async function showResult() {
   store("dalgona.last." + g.shape, JSON.stringify({ pct: g.final, ok: g.ok }));
   if (isNew && (rec.stars || rec.pct > 0)) store("dalgona.best2." + g.shape, JSON.stringify(rec));   // a 0 % loss is no record
   const oldRival = loadRival(g.shape);
-  if (g.ok && (!oldRival || g.t < oldRival.t)) store("dalgona.ghost." + g.shape, JSON.stringify({ t: +g.t.toFixed(1), cam: mode === "camera", p: trail }));
+  if (g.ok && (!oldRival || g.t < oldRival.t)) store(`dalgona.ghost.${mode}.${g.shape}`, JSON.stringify({ t: +g.t.toFixed(1), p: trail }));   // camera and touch race separately
   const best = isNew ? rec : prev;
   const r = $("result"); r.innerHTML = "";
   r.classList.toggle("win", g.ok);
@@ -527,7 +532,7 @@ async function showResult() {
   const img = el("img", "res-card"); img.alt = `결과 카드: ${label(g)}`;
   // the numbers live on the card; below it only what the card does not say (review r3)
   const openCracks = g.cracks.filter(c => !c.healed).length;
-  const to3 = g.ok && rec.stars === 2 && clean(g) ? `★3까지 ${(g.t - g.limit * 0.5).toFixed(1)}초` : "";
+  const to3 = g.ok && rec.stars === 2 && clean(g) ? `${(g.t - g.limit * 0.5).toFixed(1)}초 더 빨랐으면 ★3` : "";
   const why = g.ok ? [to3, openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
     : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요 · 원작은 10분` : "금이 모양 안으로 번졌어요";
   const sub = el("p", "res-sub", why);
@@ -635,7 +640,9 @@ function frame(now) {
     touch.fresh = false;
     if (touch.down && lickMode) lick = p;
   }
-  const lickOn = lick && Math.hypot(lick.x - geom.cx, lick.y - geom.cy) < geom.R;
+  // camera: licking only counts once the round has started (an open mouth does not start it; review r5)
+  const lickOn = lick && Math.hypot(lick.x - geom.cx, lick.y - geom.cy) < geom.R && (mode !== "camera" || (game && game.started));
+  const lickEarly = lick && mode === "camera" && game && !game.started;
   if (game) {
     const { carve } = step(game, dt, { needle, jitter, lick, moveDt });
     if (game.started && !game.done) recordTrail(needle);
@@ -683,6 +690,7 @@ function frame(now) {
       : game.done ? (game.ok ? (pose && pose.text ? pose.text : "떼어냈어요!") : game.cause === "melt" ? "녹아서 뚫렸어요" : game.cause === "time" ? "시간 끝" : "깨졌어요")
       : game.stress >= RULES.HAIR ? (open.some(c => c.inward) ? "금이 모양 쪽으로! 손 멈춰요" : "금이 자라요 · 손 멈춰요")
       : lickOn ? (lk > 0.95 ? "녹고 있어요 · 한곳만 핥으면 구멍" : "핥는 중 · 핥은 곳은 덜 깨져요")
+      : lickEarly ? "먼저 바늘로 긁어야 혀가 닿아요"
       : lick ? "입을 달고나에 더 가까이"
       : stg ? (open.some(c => c.inward) ? "안쪽 금 · 더 자라면 탈락" : "바깥 금 · 조각만 떨어져요")
       : mode === "camera" && s && !s.hand ? "손이 안 보여요 · 화면 안으로"
