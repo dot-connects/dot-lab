@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>허공 달고나 — 그냥 시켜봄</title>
+<meta name="description" content="카메라 앞에서 손가락으로 바늘을 집고 허공에서 달고나를 긁어 보세요. 서두르면 금이 갑니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gasoek+One&family=Do+Hyeon&family=Orbit&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+:root{--bg:#0f2b26;--deep:#0b1512;--pink:#ff2e7e;--green:#1f7a5c;--ink:#f4f1ea;--mute:#a9c2b8;--tin:#9aa3a6}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,sans-serif;overscroll-behavior:none}
+[hidden]{display:none!important}
+#app{position:fixed;inset:0;touch-action:none;user-select:none;-webkit-user-select:none;overflow:hidden}
+video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);filter:saturate(.7) brightness(.8)}
+#shade{position:absolute;inset:0;background:radial-gradient(120% 75% at 50% 45%,#0f2b2600 0%,#0f2b26aa 70%,#0b1512 100%)}
+#nocam{position:absolute;inset:0;background:radial-gradient(120% 70% at 50% 35%,#3c4a44 0%,#14201c 60%,#0b1512 100%)}
+canvas{position:absolute;inset:0;width:100%;height:100%}
+.hud{position:absolute;inset:0;pointer-events:none}
+#timer{position:absolute;top:calc(env(safe-area-inset-top) + 18px);left:0;right:0;text-align:center;font-family:"Orbit",monospace;font-size:54px;color:var(--pink);font-variant-numeric:tabular-nums;text-shadow:0 2px 0 #000}
+#badge{position:absolute;top:calc(env(safe-area-inset-top) + 86px);left:50%;transform:translateX(-50%);font-family:"Gasoek One",sans-serif;font-size:15px;color:#fff;background:var(--green);padding:3px 12px;border-radius:4px;letter-spacing:.06em}
+#hint{position:absolute;top:calc(env(safe-area-inset-top) + 122px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:20px;color:#fff;text-shadow:0 1px 4px #000}
+#status{position:absolute;left:24px;right:24px;bottom:calc(env(safe-area-inset-bottom) + 44px);font-size:13px;display:flex;justify-content:space-between;color:#d9efe6}
+#bar{position:absolute;left:24px;right:24px;bottom:calc(env(safe-area-inset-bottom) + 26px);height:10px;border-radius:5px;background:#ffffff22;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:#fff}
+#lick{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + 72px);pointer-events:auto;font:inherit;font-size:14px;padding:10px 14px;border-radius:999px;border:1px solid #ffffff66;background:#0008;color:#fff}
+#lick[aria-pressed="true"]{background:#ff7a9a;border-color:#ff7a9a}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 20px calc(env(safe-area-inset-bottom) + 24px);background:#0b1512e8;overflow:auto}
+.ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:46px;margin:0;color:var(--pink);letter-spacing:.02em}
+.ov h2{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:38px;margin:0;color:var(--pink)}
+.ov p{margin:0;line-height:1.6;max-width:320px;color:#e3eee9}
+.how{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:15px;max-width:320px}
+.how b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:18px;color:var(--pink)}
+.go{font-family:"Do Hyeon",sans-serif;font-size:22px;background:var(--pink);color:#fff;border:0;border-radius:6px;padding:13px 34px;cursor:pointer}
+.sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff33;border-radius:6px;padding:9px 16px;cursor:pointer}
+.link{color:var(--mute);font-size:14px;text-decoration:none}
+.picks{display:flex;gap:12px}
+.picks button{width:66px;height:66px;border-radius:50%;font-size:30px;background:#e9c48f;border:4px solid #b78549;color:#7a4a17;cursor:pointer}
+.res-pct{font-family:"Gasoek One",sans-serif;font-size:72px;line-height:1;color:#fff;font-variant-numeric:tabular-nums}
+.res-img{width:min(58vw,240px);aspect-ratio:1}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+#back{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:13px;color:var(--mute);text-decoration:none;border:1px solid #ffffff33;border-radius:999px;padding:6px 12px}
+button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="nocam"></div>
+  <video id="video" playsinline muted hidden></video>
+  <div id="shade" hidden></div>
+  <canvas id="cv"></canvas>
+  <div class="hud" id="hud" hidden>
+    <div id="timer">01:30</div>
+    <div id="badge">456</div>
+    <div id="hint"></div>
+    <div id="status"><span id="sw">손이 안정적</span><span id="pc">0%</span></div>
+    <div id="bar"><i id="pb"></i></div>
+    <button id="lick" aria-pressed="false" hidden>혀로 핥기</button>
+  </div>
+
+  <section class="ov" id="start">
+    <a id="back" href="../../../">‹ 시켜본 것들</a>
+    <h1>허공 달고나</h1>
+    <p>카메라 앞에서 손가락으로 바늘을 집고, 허공에서 달고나를 긁어 모양을 떼어 내세요. 금이 모양 안으로 들어가면 탈락.</p>
+    <div class="how">
+      <b>집기</b><span>엄지와 검지를 바늘 잡듯 모으면 바늘이 생겨요</span>
+      <b>긁기</b><span>집은 채로 선을 따라 천천히</span>
+      <b>찌르기</b><span>화면 쪽으로 콕. 깊게 파이지만 압력이 올라요</span>
+      <b>핥기</b><span>입을 크게 벌리고 원하는 쪽에 갖다 대기. 오래 대면 녹아요</span>
+    </div>
+    <button class="go" id="camGo">카메라로 하기</button>
+    <button class="sub" id="touchGo">화면 터치로 하기</button>
+    <p id="camMsg" hidden></p>
+  </section>
+
+  <section class="ov" id="pick" hidden>
+    <h2>모양을 고르세요</h2>
+    <p>무엇을 할지는 고른 다음에 알려 드립니다.</p>
+    <div class="picks" id="picks"></div>
+    <p id="best" style="font-size:13px;color:var(--mute)"></p>
+  </section>
+
+  <section class="ov" id="result" hidden></section>
+</div>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>
