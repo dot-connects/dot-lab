@@ -77,9 +77,19 @@ function handFront(P, hs) {
 }
 
 // ---------- drawing ----------
-const TG = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
-const PAPILLAE = Array.from({ length: 40 }, () => [TG() - 0.5, TG(), 0.5 + TG()]);
 /** t = {base, dir, len, width, mouthW?, gap?, top?}; draws the open mouth (camera) and a wet tongue reaching to base + dir*len. */
+let papPat = null;
+function papillae(g) {   // a 48 px tile of matte bumps, baked once
+  if (papPat) return papPat;
+  const c = document.createElement("canvas"); c.width = c.height = 48; const t = c.getContext("2d");
+  let sd = 5; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 70; i++) {
+    const x = rr() * 48, y = rr() * 48;
+    t.fillStyle = "rgba(140,35,55,.22)"; t.beginPath(); t.arc(x, y, 1, 0, 7); t.fill();
+    t.fillStyle = "rgba(255,220,228,.28)"; t.beginPath(); t.arc(x - 0.6, y - 0.6, 0.7, 0, 7); t.fill();
+  }
+  return (papPat = g.createPattern(c, "repeat"));
+}
 function drawTongue(t, active, now, g = ctx) {
   const [bx, by] = t.base, [dx, dy] = t.dir, L = t.len, w = t.width;
   g.save();
@@ -92,6 +102,10 @@ function drawTongue(t, active, now, g = ctx) {
   }
   const wig = active ? Math.sin(now / 130) * 0.13 : 0;
   g.translate(bx, by); g.rotate(Math.atan2(dy, dx) - Math.PI / 2 + wig);
+  if (active) {   // pressed against the candy: the tip flattens a little in time with the licking
+    const pr = 0.5 + 0.5 * Math.sin(now / 130);
+    g.translate(0, L * 0.9); g.scale(1 + 0.07 * pr, 1 - 0.05 * pr); g.translate(0, -L * 0.9);
+  }
   // body: wide at the root, a rounded tip with a slight notch
   const body = new Path2D();
   body.moveTo(-w * 0.42, 0);
@@ -104,23 +118,34 @@ function drawTongue(t, active, now, g = ctx) {
   g.save(); g.translate(w * 0.06, L * 0.62); g.scale(1, L / w);
   const shg = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.62); shg.addColorStop(0, "rgba(0,0,0,.32)"); shg.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = shg; g.beginPath(); g.arc(0, 0, w * 0.62, 0, 7); g.fill(); g.restore();
+  if (active) {   // where the tip touches: a tight dark contact and a ring of saliva on the candy
+    const cg = g.createRadialGradient(0, L * 0.97, 0, 0, L * 0.97, w * 0.28); cg.addColorStop(0, "rgba(30,8,0,.45)"); cg.addColorStop(1, "rgba(30,8,0,0)");
+    g.fillStyle = cg; g.fillRect(-w * 0.3, L * 0.97 - w * 0.3, w * 0.6, w * 0.6);
+    g.strokeStyle = "rgba(255,236,200,.22)"; g.lineWidth = 1.2; g.beginPath(); g.ellipse(0, L * 0.97, w * 0.48, w * 0.2, 0, 0, 7); g.stroke();
+  }
   const tg = g.createRadialGradient(-w * 0.1, L * 0.55, w * 0.05, 0, L * 0.5, w * 0.75);
-  tg.addColorStop(0, "#ff9db0"); tg.addColorStop(0.55, "#ec6380"); tg.addColorStop(1, "#b83652");
+  tg.addColorStop(0, "#f2a0ab"); tg.addColorStop(0.55, "#d86a7e"); tg.addColorStop(1, "#9e3a50");
   g.fillStyle = tg; g.fill(body);
   // root goes into the mouth: darker toward the base
   const rg = g.createLinearGradient(0, 0, 0, L * 0.35); rg.addColorStop(0, "rgba(90,10,25,.6)"); rg.addColorStop(1, "rgba(90,10,25,0)");
   g.fillStyle = rg; g.fill(body);
+  // rounded flesh: darker toward the edges
+  g.save(); g.translate(0, L * 0.5); g.scale(1, L / w);
+  const eg = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.6); eg.addColorStop(0.55, "rgba(110,20,40,0)"); eg.addColorStop(1, "rgba(110,20,40,.45)");
+  g.restore();
   g.save(); g.clip(body);
-  g.fillStyle = "rgba(255,210,220,.4)";
-  for (const [px, py, ps] of PAPILLAE) { g.beginPath(); g.arc(px * w * 0.8, py * L, ps * w * 0.038, 0, 7); g.fill(); }
-  g.strokeStyle = "#a02a46"; g.lineWidth = w * 0.12; g.globalAlpha = 0.5; g.stroke(body); g.globalAlpha = 1;
+  g.save(); g.translate(0, L * 0.5); g.scale(1, L / w); g.fillStyle = eg; g.fillRect(-w, -w, 2 * w, 2 * w); g.restore();
+  g.fillStyle = papillae(g); g.fill(body);   // matte bumps, not bubbles
+  g.strokeStyle = "#a02a46"; g.lineWidth = w * 0.2; g.globalAlpha = 0.22; g.stroke(body); g.globalAlpha = 1;
   g.restore();
   g.strokeStyle = "rgba(140,25,50,.45)"; g.lineWidth = Math.max(1, w * 0.045); g.lineCap = "round";
   g.beginPath(); g.moveTo(0, L * 0.12); g.quadraticCurveTo(w * 0.02, L * 0.5, 0, L * 0.84); g.stroke();
-  g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = w * 0.03;
-  g.beginPath(); g.arc(0, L * 0.55, w * 0.36, Math.PI * 0.62, Math.PI * 0.9); g.stroke();
-  g.beginPath(); g.arc(0, L * 0.7, w * 0.3, Math.PI * 0.15, Math.PI * 0.32); g.stroke();
-  g.strokeStyle = "rgba(120,20,40,.35)"; g.lineWidth = 1; g.stroke(body);
+  // saliva along the left ridge: a soft band, a bright core, three beads
+  const ridge = new Path2D(); ridge.moveTo(-w * 0.3, L * 0.2); ridge.quadraticCurveTo(-w * 0.4, L * 0.55, -w * 0.18, L * 0.85);
+  g.strokeStyle = "rgba(255,255,255,.22)"; g.lineWidth = w * 0.07; g.stroke(ridge);
+  g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = w * 0.02; g.stroke(ridge);
+  g.fillStyle = "rgba(255,255,255,.9)";
+  for (const [qx, qy] of [[-0.33, 0.4], [-0.3, 0.62], [0.12, 0.8]]) { g.beginPath(); g.arc(qx * w, qy * L, w * 0.018, 0, 7); g.fill(); }
   if (t.fadeRoot) {   // touch mode: the root fades out instead of a cut edge (on its own layer, see drawTongueFaded)
     g.globalCompositeOperation = "destination-out";
     const fg = g.createLinearGradient(0, 0, 0, L * 0.35); fg.addColorStop(0, "rgba(0,0,0,1)"); fg.addColorStop(1, "rgba(0,0,0,0)");

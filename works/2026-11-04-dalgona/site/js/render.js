@@ -35,7 +35,7 @@ export function createCandyView(game, dprIn) {
     g.save(); g.clip(edge);
     const base = g.createRadialGradient(-0.2 * R, -0.22 * R, 0, 0, 0, R * 1.05);
     if (!wet) { base.addColorStop(0, "#f4c878"); base.addColorStop(0.6, "#e0a04a"); base.addColorStop(0.9, "#b8661f"); base.addColorStop(1, "#7a3a10"); }
-    else { base.addColorStop(0, "#d48a34"); base.addColorStop(0.6, "#b0621c"); base.addColorStop(1, "#5e2a0a"); }
+    else { base.addColorStop(0, "#b56a24"); base.addColorStop(0.6, "#8a4412"); base.addColorStop(1, "#3e1a05"); }
     g.fillStyle = base; g.fillRect(-HALF, -HALF, S, S);
     // caramel blotches, darker toward the rim
     for (let i = 0; i < 220; i++) {
@@ -51,7 +51,7 @@ export function createCandyView(game, dprIn) {
       g.fillRect(x, y, ps, ps);
     }
     // bubbles: light and see-through, dark lip on the upper left, bright lip on the lower right
-    const n = wet ? 260 : 600;
+    const n = wet ? 90 : 600;   // a wet surface is smooth
     for (let i = 0; i < n; i++) {
       const t = r() * TAU, d = Math.sqrt(r()) * R * 0.97, x = d * Math.cos(t), y = d * Math.sin(t);
       const s = ps * (0.8 + 4 * Math.pow(r(), 2.6)), e = 0.75 + 0.3 * r(), rot = r() * 3;
@@ -106,7 +106,7 @@ export function createCandyView(game, dprIn) {
   const damage = off(PX, PX), dg = toC(damage.getContext("2d"));
   const L = off(PX, PX), lg = L.getContext("2d");
   const B = off(PX, PX), bg = B.getContext("2d");
-  const mWet = off(PX, PX), mRim = off(PX, PX), mHole = off(PX, PX);
+  const mWet = off(PX, PX), mRim = off(PX, PX), mHole = off(PX, PX), mWetEdge = off(PX, PX), mCore = off(PX, PX);
 
   // ---------- wet / melt masks from the engine grid ----------
   const N = RULES.GRID, cell = 2 * R / N;
@@ -152,9 +152,16 @@ export function createCandyView(game, dprIn) {
     if (!wetNow && !wetSeen) return;   // nothing licked: no mask work at all
     wetSeen = wetNow;
     anyWet = blobs(mWet, k => clamp(game.wetG[k] * 0.9));
+    if (anyWet) {   // the raised edge of the wet film catches light on its upper left
+      const e = mWetEdge.getContext("2d"); e.setTransform(1, 0, 0, 1, 0, 0); e.globalCompositeOperation = "source-over";
+      e.clearRect(0, 0, PX, PX); e.drawImage(mWet, 0, 0);
+      e.globalCompositeOperation = "destination-out"; e.drawImage(mWet, 1.5 * K, 1.5 * K);
+      e.globalCompositeOperation = "source-in"; e.fillStyle = "rgba(255,245,220,.55)"; e.fillRect(0, 0, PX, PX);
+      e.globalCompositeOperation = "source-over";
+    }
     anyMelt = game.meltG.some(m => m > 0.45);
     if (anyMelt) {
-      holes(mRim, cell * 1.4, true); holes(mHole, 0, false);
+      holes(mRim, cell * 1.4, true); holes(mHole, 0, false); holes(mCore, -cell * 0.35, false);
       const sum = game.meltG.reduce((a, m) => a + Math.max(0, m - 0.45), 0);
       if (Math.abs(sum - meltSum) > 0.05) { meltSum = sum; shadowDirty = true; }
     }
@@ -352,12 +359,20 @@ export function createCandyView(game, dprIn) {
       bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(WET, 0, 0);
       bg.globalCompositeOperation = "destination-in"; bg.drawImage(mWet, 0, 0);
       lg.drawImage(B, 0, 0);
+      lg.drawImage(mWetEdge, 0, 0);
+      // a narrow reflection slides over the wet parts only, as if the candy tilts in the light
+      const gx = (Math.sin(performance.now() / 2200) * R * 0.9 + HALF) * K;
+      const sg = bg.createLinearGradient(gx - R * 0.1 * K, 0, gx + R * 0.1 * K, R * 0.06 * K);
+      sg.addColorStop(0, "rgba(255,250,235,0)"); sg.addColorStop(0.5, "rgba(255,250,235,.5)"); sg.addColorStop(1, "rgba(255,250,235,0)");
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.fillStyle = sg; bg.fillRect(0, 0, PX, PX);
+      bg.globalCompositeOperation = "destination-in"; bg.drawImage(mWet, 0, 0);
+      lg.globalCompositeOperation = "lighter"; lg.drawImage(B, 0, 0); lg.globalCompositeOperation = "source-over";
     }
     if (anyMelt) {   // a ring of dark translucent melted caramel around each hole
       bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mRim, 0, 0);
       bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, 0, 0);
-      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(138,62,12,.75)"; bg.fillRect(0, 0, PX, PX);
-      lg.globalCompositeOperation = "source-atop"; lg.drawImage(B, 0, 0); lg.globalCompositeOperation = "source-over";
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(150,70,14,.38)"; bg.fillRect(0, 0, PX, PX);
+      lg.globalCompositeOperation = "multiply"; lg.drawImage(B, 0, 0); lg.globalCompositeOperation = "source-over";
     }
     const now = performance.now();
     toC(lg); lg.save(); lg.clip(edge); game.cracks.forEach(c => drawCrack(lg, c, now)); lg.restore();
@@ -371,15 +386,24 @@ export function createCandyView(game, dprIn) {
       lg.globalCompositeOperation = "destination-out"; lg.drawImage(mHole, 0, 0);
       // the hole's lower right inner wall catches the light
       bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
-      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, -1.5 * K, -1.5 * K);
-      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(255,226,160,.9)"; bg.fillRect(0, 0, PX, PX);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, -0.8 * K, -0.8 * K);
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(255,244,215,.75)"; bg.fillRect(0, 0, PX, PX);
       lg.globalCompositeOperation = "source-over"; lg.drawImage(B, 0, 0);
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, -4 * K, -4 * K);
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(240,150,50,.35)"; bg.fillRect(0, 0, PX, PX);
+      lg.globalCompositeOperation = "lighter"; lg.drawImage(B, 0, 0); lg.globalCompositeOperation = "source-over";
+      // a film of glassy amber left at the hole's edge: light (and the camera feed) shows through it
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mCore, 0, 0);
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(205,110,28,.45)"; bg.fillRect(0, 0, PX, PX);
+      lg.drawImage(B, 0, 0);
       // and the upper wall shows the candy's thickness
       bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
-      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, 0, R * 0.03 * K);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, 0, R * 0.045 * K);
       bg.globalCompositeOperation = "source-in";
-      const wg = bg.createLinearGradient(0, 0, 0, PX); wg.addColorStop(0, "#5a2508"); wg.addColorStop(1, "#2a1003"); bg.fillStyle = wg; bg.fillRect(0, 0, PX, PX);
-      lg.drawImage(B, 0, 0);
+      const wg = bg.createLinearGradient(0, 0, 0, PX); wg.addColorStop(0, "#b8661f"); wg.addColorStop(1, "#6e3410"); bg.fillStyle = wg; bg.fillRect(0, 0, PX, PX);
+      lg.globalAlpha = 0.7; lg.drawImage(B, 0, 0); lg.globalAlpha = 1;
     }
     if (chips.length) { toC(lg); lg.globalCompositeOperation = "destination-out"; chips.forEach(p => lg.fill(p)); }
     lg.globalCompositeOperation = "source-over"; lg.setTransform(1, 0, 0, 1, 0, 0);
