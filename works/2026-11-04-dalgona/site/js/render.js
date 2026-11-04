@@ -4,12 +4,16 @@
 import { RULES, cellCentre, crackStage } from "./engine.js";
 
 const TAU = Math.PI * 2;
-const off = (w, h) => { const c = document.createElement("canvas"); c.width = Math.max(1, w); c.height = Math.max(1, h); return c; };
+// every offscreen canvas of a view is tracked so dispose() can hand the memory back at once (iOS caps total canvas
+// memory; a big iPad view plus win pieces reached ~300 MB before the GC caught up: iOS review r6)
+let made = null;
+const off = (w, h) => { const c = document.createElement("canvas"); c.width = Math.max(1, w); c.height = Math.max(1, h); if (made) made.push(c); return c; };
 function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 const clamp = v => Math.min(1, Math.max(0, v));
 
 export function createCandyView(game, dprIn) {
-  const { R } = game.geom, K = Math.min(2, dprIn || 1), S = Math.ceil(2.5 * R), HALF = S / 2, PX = Math.ceil(S * K);
+  const mine = []; made = mine;
+  const { R } = game.geom, S = Math.ceil(2.5 * R), K = Math.min(2, dprIn || 1, 1100 / S), HALF = S / 2, PX = Math.ceil(S * K);
   const toC = g => { g.setTransform(K, 0, 0, K, K * HALF, K * HALF); return g; };
   const loc = p => [p[0] - game.geom.cx, p[1] - game.geom.cy];
   const r0 = rng(456);
@@ -462,7 +466,7 @@ export function createCandyView(game, dprIn) {
     if (!won) compose();
     updateDrips(dt);
     for (const p of pieces) { p.t += dt; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
-    for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > 2.5) pieces.splice(i, 1);
+    for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > 2.5) { pieces[i].c.width = 0; pieces.splice(i, 1); }
     let sx = 0;
     if (lostT >= 0) {
       lostT += dt; sx = lostT < 0.35 ? Math.sin(lostT * 90) * R * 0.03 * (1 - lostT / 0.35) : 0;
@@ -544,5 +548,9 @@ export function createCandyView(game, dprIn) {
     return c;
   }
 
-  return { draw, onEvent, snapshot, setLight, setPose, edgeR, get won() { return won; } };
+  made = null;
+  // pieces, halves and the snapshot are made later: they go on the same list
+  const track = fn => (...a) => { made = mine; try { return fn(...a); } finally { made = null; } };
+  function dispose() { for (const c of mine) { c.width = 0; c.height = 0; } mine.length = 0; }
+  return { draw: track(draw), onEvent: track(onEvent), snapshot: track(snapshot), setLight, setPose, edgeR, dispose, get won() { return won; } };
 }

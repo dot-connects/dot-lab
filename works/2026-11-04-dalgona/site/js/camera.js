@@ -54,6 +54,8 @@ export function createPokeDetector() {
 }
 
 export async function startCamera(video, timeoutMs = 5000) {
+  // while the browser is showing the permission prompt, give people time to read it (iOS review r6)
+  try { const st = await navigator.permissions.query({ name: "camera" }); if (st.state === "prompt") timeoutMs = 30000; } catch { /* no Permissions API */ }
   const ask = navigator.mediaDevices.getUserMedia({ audio: false,
     video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } } });
   // in-app browsers sometimes never answer the permission request (#003 spike); give up after a while
@@ -77,6 +79,8 @@ export async function loadModels() {
   const models = { hand: await mk(HandLandmarker, HAND, HO), face: await mk(FaceLandmarker, FACE, FO) };
   // some GPUs create the model fine and then throw on the first frame: rebuild both on the CPU once
   models.toCpu = async () => {
+    if (models.onCpu) return; models.onCpu = true;   // once: a failing CPU build must not retry every frame
+    try { models.hand.close(); models.face.close(); } catch { /* already gone */ }
     const cpu = (Cls, path, opts) => Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "CPU" }, runningMode: "VIDEO", ...opts });
     models.hand = await cpu(HandLandmarker, HAND, HO); models.face = await cpu(FaceLandmarker, FACE, FO);
   };
@@ -124,10 +128,13 @@ export function createTracker(video, models, { onPoke } = {}) {
     return [W - (p.x * dw - (dw - W) / 2), p.y * dh - (dh - H) / 2];
   };
 
+  let vframes = 0;
+  if (video.requestVideoFrameCallback) { const cb = () => { vframes++; video.requestVideoFrameCallback(cb); }; video.requestVideoFrameCallback(cb); }
   function update(now) {
     s.fresh = false;
-    if (!video.videoWidth || video.currentTime === s.lastVT) return s;
-    s.lastVT = video.currentTime; s.frame++; s.fresh = true;
+    const stamp = video.requestVideoFrameCallback ? vframes : video.currentTime;
+    if (!video.videoWidth || stamp === s.lastVT) return s;
+    s.lastVT = stamp; s.frame++; s.fresh = true;
     const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now; s.vdt = dt;
     s.fps = s.fps ? s.fps * 0.9 + 0.1 / dt : 1 / dt;
     if (rebuilding) return s;

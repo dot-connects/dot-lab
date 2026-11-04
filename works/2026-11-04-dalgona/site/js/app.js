@@ -32,14 +32,14 @@ function resize() {
   DPR = Math.min(2, devicePixelRatio || 1); W = b.width; H = b.height;
   cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hc.width = Math.ceil(W); hc.height = Math.ceil(H);
-  tcv.width = cv.width; tcv.height = cv.height;   // the touch tongue layer, sized before the first lick (resize runs after module init)
+  if (mode === "touch") { tcv.width = cv.width; tcv.height = cv.height; }   // touch tongue layer, sized before the first lick
   // mid-round the candy stays put (toolbars folding resize the page; rebuilding the view lost chips and the win)
   if (!game || resultShown) geom = freshGeom();
   else if (!game.done) {
     // a toolbar folding is ignored; a rotation or a big shrink that leaves the candy off screen moves it (QA r3)
     const { cx, cy, R } = geom;
     if (cx + R > W || cy + R > H - 40 || cx - R < 0) {
-      geom = freshGeom(); layout(game, geom); view = createCandyView(game, DPR);
+      geom = freshGeom(); layout(game, geom); view.dispose(); view = createCandyView(game, DPR);
       // the new view knows nothing of pieces that already fell: replay them (review r5)
       for (const c of game.cracks) if (c.done && !c.inward && !c.healed && c.len >= c.total) view.onEvent({ type: "chip", crack: c });
     }
@@ -286,7 +286,7 @@ function initAudio() {
   } catch { audio = null; }
 }
 // iOS suspends the context after a tab switch or a call: wake it on the next touch
-addEventListener("pointerdown", () => { if (audio && audio.ac.state !== "running") audio.ac.resume().catch(() => {}); }, { capture: true });
+for (const t of ["pointerup", "touchend", "click"]) addEventListener(t, () => { if (audio && audio.ac.state !== "running") audio.ac.resume().catch(() => {}); }, { capture: true });
 const buzz = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /* not supported */ } };
 function noise(f, d, v, type = "bandpass", at = 0) {
   if (!audio) return; const { ac, buf } = audio, s = ac.createBufferSource(); s.buffer = buf;
@@ -309,7 +309,7 @@ function thump(f0, v = 0.7, at = 0) {
 }
 const SFX = {
   poke: hit => { tone(hit ? 1900 : 1300, 0.05, 0.22); buzz(8); },
-  segment: () => { tone(2600, 0.04, 0.2, "square"); noise(5200, 0.03, 0.25); buzz(12); },
+  segment: n => { tone(2000 + Math.min(12, n) * 120, 0.04, 0.2, "square"); noise(5200, 0.03, 0.25); buzz(12); },   // climbs as stretches finish
   corner: () => { noise(2200, 0.05, 0.6); tone(1500, 0.06, 0.25); buzz(18); },
   heal: () => { tone(660, 0.18, 0.2, "sine"); tone(990, 0.2, 0.18, "sine", 0.12); },
   beat: () => { thump(60); thump(52, 0.5, 0.16); buzz(15); },
@@ -342,8 +342,9 @@ $("camGo").onclick = async () => {
   initAudio();
   const msg = $("camMsg"); msg.hidden = false; msg.textContent = "카메라를 켜는 중이에요…";
   try {
+    video.hidden = false;   // WebKit may not play a hidden video
     camStream = await startCamera(video);
-    video.hidden = false; $("nocam").hidden = true;
+    $("nocam").hidden = true;
     msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…";
     const models = await loadModels();
     tracker = createTracker(video, models, { onPoke: (x, y) => { if (game) poke(game, x, y); } });
@@ -357,17 +358,18 @@ $("camGo").onclick = async () => {
       : "카메라를 쓸 수 없어요. 화면 터치로 해 보세요.";
   }
 };
-$("touchGo").onclick = () => { initAudio(); mode = "touch"; showPick(); };
+$("touchGo").onclick = () => { initAudio(); mode = "touch"; resize(); showPick(); };
 
 // the start screen plays a round by itself: a needle scraping a star out (shows the game in one look)
 const demoCv = $("demo"), dctx = demoCv.getContext("2d");
 let demo = null;
 function demoFrame(dt) {
-  if ($("start").hidden) { demo = null; return; }
+  if ($("start").hidden) { if (demo) demo.v.dispose(); demo = null; return; }
   const S = demoCv.clientWidth || 210, k = Math.min(2, devicePixelRatio || 1);
   if (demoCv.width !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); demo = null; }
   if (!demo || (demo.g.done && demo.t > 3.2)) {
     const g = createGame("star", { cx: S / 2, cy: S / 2, R: S * 0.38 }, Math.random);
+    if (demo) demo.v.dispose();
     demo = { g, v: createCandyView(g, k), i: 0, t: 0 };
   }
   const d = demo, g = d.g, path = g.paths[0];
@@ -390,6 +392,7 @@ function demoFrame(dt) {
 
 const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
 function showPick() {
+  if (view) view.dispose();
   if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
   $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
@@ -440,6 +443,8 @@ function drawRival() {
 }
 
 function begin(shape) {
+  initAudio();   // resumes a context iOS suspended while we were away
+  if (view) view.dispose();
   geom = freshGeom();   // a rotation during the last round must not leave the next one off screen
   game = createGame(shape, geom, Math.random, { camera: mode === "camera" }); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
   endAt = 0; winAt = 0; loseT = -1; moment = null; lickShot = null; lickFor = 0; capture = null; crumbs.length = 0;
@@ -531,16 +536,20 @@ function loseLine(g0) {
 }
 
 let cardBlob = null, cardReady = Promise.resolve(), cardDone = () => {};
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 async function share() {
   const url = location.origin + location.pathname, g0 = game;
-  await Promise.race([cardReady, new Promise(r => setTimeout(r, 3000))]);
+  if (!cardBlob) return;   // the button stays disabled until the card is ready
   const text = `허공 달고나 ${SHAPES[g0.shape].name} — ${label(g0)}${g0.ok ? ` ${starText(stars(g0))} ${g0.t.toFixed(1)}초` : ` ${g0.final}%`}`;
   try {
     const file = cardBlob && new File([cardBlob], "dalgona.png", { type: "image/png" });
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: text + " " + url }); return; }
     if (navigator.share) { await navigator.share({ text, url }); return; }
   } catch (e) { if (e && e.name === "AbortError") return; }
-  if (cardBlob) { const a = document.createElement("a"); a.href = URL.createObjectURL(cardBlob); a.download = "dalgona.png"; a.click(); }
+  if (cardBlob && !IOS) {   // iOS WebViews open a blob page or ignore it: only the save tip there
+    const a = document.createElement("a"), u = URL.createObjectURL(cardBlob); a.href = u; a.download = "dalgona.png"; a.click();
+    setTimeout(() => URL.revokeObjectURL(u), 10000);
+  }
   // in-app browsers often ignore both: say how to keep it
   const tip = document.getElementById("saveTip"); if (tip) tip.hidden = false;
 }
@@ -566,14 +575,14 @@ async function showResult() {
   const sub = el("p", "res-sub", why);
   const bestLine = el("p", "res-best",
     !g.ok && lastTry && !lastTry.ok && g.final > lastTry.pct ? `지난번 ${lastTry.pct}% → 이번 ${g.final}%` :
-    !prev ? "" : isNew ? "새 기록!" : prev.stars ? `지난 최고 ${starText(prev.stars)} ${prev.time.toFixed(1)}초` : `지난 최고 ${prev.pct}%`);
+    !prev ? "" : isNew ? (tone(1760, 0.2, 0.12, "sine", 0.6), "새 기록!") : prev.stars ? `지난 최고 ${starText(prev.stars)} ${prev.time.toFixed(1)}초` : `지난 최고 ${prev.pct}%`);
   const row = el("div", "row");
   const nextShape = ORDER[(ORDER.indexOf(g.shape) + 1) % ORDER.length];
   const next = g.ok && nextShape !== ORDER[0];
   const primary = next
     ? Object.assign(el("button", "go", `다음: ${SHAPES[nextShape].name} →`), { onclick: () => begin(nextShape) })
     : Object.assign(el("button", "go", "다시 하기"), { onclick: () => begin(g.shape) });
-  const shareB = Object.assign(el("button", "sub", g.ok ? "자랑하기" : "친구한테 보내기"), { onclick: share });
+  const shareB = Object.assign(el("button", "sub", g.ok ? "자랑하기" : "친구한테 보내기"), { onclick: share, disabled: true });
   row.append(primary, shareB);
   const foot = el("div", "row foot");
   if (next) foot.append(Object.assign(el("button", "link", "다시 하기"), { onclick: () => begin(g.shape) }));
@@ -586,8 +595,10 @@ async function showResult() {
     cardReady = new Promise(res => { cardDone = res; });
     const card = await makeCard(faceOff, g, m, ls, cs, shotGeom, shotW);
     if (game !== g) return;   // a new round started while the fonts loaded
+    shareB.disabled = true;
+    img.onload = () => { img.style.animation = "none"; void img.offsetWidth; img.style.animation = ""; };   // drop in once it has a picture
     img.src = card.toDataURL("image/jpeg", 0.86);
-    card.toBlob(b => { if (game === g) { cardBlob = b; cardDone(); } }, "image/png");
+    card.toBlob(b => { if (game === g) { cardBlob = b; cardDone(); shareB.disabled = false; } card.width = 0; }, "image/png");
   };
   const saveTip = el("p", "res-sub", "공유가 안 되면 카드를 길게 눌러 저장하세요"); saveTip.id = "saveTip"; saveTip.hidden = true;
   const parts = [img, saveTip, sub, bestLine, row, foot];
@@ -602,23 +613,34 @@ async function showResult() {
   await render(false);
 }
 
+// back from another app: iOS may have paused the video or ended the track
+document.addEventListener("visibilitychange", async () => {
+  if (document.hidden || mode !== "camera") return;
+  video.play().catch(() => {});
+  const tr = camStream && camStream.getVideoTracks()[0];
+  if (tr && tr.readyState === "ended") { try { camStream = await startCamera(video); } catch { /* stays on the last frame */ } }
+});
+
 // ---------- touch input ----------
 const pos = e => { const b = app.getBoundingClientRect(); touch.x = e.clientX - b.left; touch.y = e.clientY - b.top; };
 const touchTip = () => ({ x: touch.x, y: touch.y - (lickMode ? 0 : TOUCH_LIFT) });
 app.addEventListener("pointerdown", e => {
   if (mode !== "touch" || !game || game.done || e.target.closest("button,a")) return;
+  if (touch.down) return;   // a second finger or a palm does not move the needle (iOS review r6)
+  touch.id = e.pointerId;
   pos(e); touch.down = true; touch.t0 = performance.now(); touch.mt = 0; touch.fresh = true; touch.moved = 0;
   try { app.setPointerCapture(e.pointerId); } catch { /* synthetic events */ }
 });
 app.addEventListener("pointermove", e => {
+  if (touch.down && e.pointerId !== touch.id) return;
   const px = touch.x, py = touch.y; pos(e);
   if (!touch.down) return;
   touch.moved += Math.hypot(touch.x - px, touch.y - py);
   // like camera frames: speed is measured between move events, frames without one hold the needle still
   const now = performance.now(); touch.mdt = Math.min(0.1, (now - (touch.mt || now)) / 1000); touch.mt = now; touch.fresh = true;
 });
-for (const t of ["pointerup", "pointercancel"]) app.addEventListener(t, () => {
-  if (!touch.down) return;
+for (const t of ["pointerup", "pointercancel"]) app.addEventListener(t, e => {
+  if (!touch.down || e.pointerId !== touch.id) return;
   touch.down = false;
   // a quick tap without sliding is a poke; holding and sliding is scraping
   if (game && !lickMode && performance.now() - touch.t0 < 220 && touch.moved < 8) { const p = touchTip(); poke(game, p.x, p.y); }
@@ -682,7 +704,7 @@ function frame(now) {
       }
       view.onEvent(ev);
       if (ev.type === "poke") { if (ev.corner) { SFX.corner(); note = { text: "모서리 콕! 한 번에 파였어요", until: now + 1200, good: true }; } else SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
-      else if (ev.type === "segment") SFX.segment();
+      else if (ev.type === "segment") SFX.segment(game.segs);
       else if (ev.type === "heal") { SFX.heal(); note = { text: "실금이 아물었어요", until: now + 1500, good: true }; }
       else if (ev.type === "crack") {
         SFX.hair();
