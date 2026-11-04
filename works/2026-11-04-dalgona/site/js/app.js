@@ -66,17 +66,18 @@ function handFront(P, hs) {
 const TG = (() => { let s = 11; return () => (s = (s * 16807) % 2147483647) / 2147483647; })();
 const PAPILLAE = Array.from({ length: 40 }, () => [TG() - 0.5, TG(), 0.5 + TG()]);
 /** t = {base, dir, len, width, mouthW?, gap?, top?}; draws the open mouth (camera) and a wet tongue reaching to base + dir*len. */
-function drawTongue(t, active, now) {
+function drawTongue(t, active, now, g = ctx) {
   const [bx, by] = t.base, [dx, dy] = t.dir, L = t.len, w = t.width;
-  ctx.save();
+  g.save();
   if (t.top) {   // the open mouth: dark inside, a strip of teeth under the upper lip
     const mx = (t.top[0] + bx) / 2, my = (t.top[1] + by) / 2, rx = t.mouthW * 0.42, ry = Math.max(2, t.gap * 0.55);
-    const mg = ctx.createRadialGradient(mx, my, 0, mx, my, rx); mg.addColorStop(0, "#1a0306"); mg.addColorStop(1, "#5a1420");
-    ctx.fillStyle = mg; ctx.beginPath(); ctx.ellipse(mx, my, rx, ry, Math.atan2(dy, dx) - Math.PI / 2, 0, 7); ctx.fill();
-    ctx.fillStyle = "rgba(240,236,228,.85)"; ctx.beginPath(); ctx.ellipse(mx, my - ry * 0.75, rx * 0.7, Math.max(1, ry * 0.18), 0, 0, 7); ctx.fill();
+    const mg = g.createRadialGradient(mx, my, 0, mx, my, rx); mg.addColorStop(0, "#1a0306"); mg.addColorStop(1, "#5a1420");
+    g.fillStyle = mg; g.beginPath(); g.ellipse(mx, my, rx, ry, Math.atan2(dy, dx) - Math.PI / 2, 0, 7); g.fill();
+    g.fillStyle = "rgba(240,236,228,.85)"; g.beginPath(); g.ellipse(mx, my - ry * 0.75, rx * 0.7, Math.max(1, ry * 0.18), 0, 0, 7); g.fill();
+    g.fillStyle = "rgba(0,0,0,.4)"; g.beginPath(); g.ellipse(mx, my - ry * 0.95, rx * 0.85, Math.max(1, ry * 0.2), 0, 0, 7); g.fill();
   }
   const wig = active ? Math.sin(now / 130) * 0.13 : 0;
-  ctx.translate(bx, by); ctx.rotate(Math.atan2(dy, dx) - Math.PI / 2 + wig);
+  g.translate(bx, by); g.rotate(Math.atan2(dy, dx) - Math.PI / 2 + wig);
   // body: wide at the root, a rounded tip with a slight notch
   const body = new Path2D();
   body.moveTo(-w * 0.42, 0);
@@ -84,40 +85,75 @@ function drawTongue(t, active, now) {
   body.quadraticCurveTo(0, L * 0.95, w * 0.12, L * 0.99);
   body.bezierCurveTo(w * 0.5, L * 0.92, w * 0.58, L * 0.45, w * 0.42, 0);
   body.closePath();
-  const tg = ctx.createRadialGradient(-w * 0.1, L * 0.55, w * 0.05, 0, L * 0.5, w * 0.75);
+  // contact shadow on the candy below the tongue
+  // (a gradient, not shadowBlur: shadow offsets ignore the rotation)
+  g.save(); g.translate(w * 0.06, L * 0.62); g.scale(1, L / w);
+  const shg = g.createRadialGradient(0, 0, 0, 0, 0, w * 0.62); shg.addColorStop(0, "rgba(0,0,0,.32)"); shg.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = shg; g.beginPath(); g.arc(0, 0, w * 0.62, 0, 7); g.fill(); g.restore();
+  const tg = g.createRadialGradient(-w * 0.1, L * 0.55, w * 0.05, 0, L * 0.5, w * 0.75);
   tg.addColorStop(0, "#ff9db0"); tg.addColorStop(0.55, "#ec6380"); tg.addColorStop(1, "#b83652");
-  ctx.fillStyle = tg; ctx.fill(body);
+  g.fillStyle = tg; g.fill(body);
   // root goes into the mouth: darker toward the base
-  const rg = ctx.createLinearGradient(0, 0, 0, L * 0.35); rg.addColorStop(0, "rgba(90,10,25,.6)"); rg.addColorStop(1, "rgba(90,10,25,0)");
-  ctx.fillStyle = rg; ctx.fill(body);
-  ctx.save(); ctx.clip(body);
-  ctx.fillStyle = "rgba(255,210,220,.22)";
-  for (const [px, py, ps] of PAPILLAE) { ctx.beginPath(); ctx.arc(px * w * 0.8, py * L, ps * w * 0.025, 0, 7); ctx.fill(); }
-  ctx.restore();
-  ctx.strokeStyle = "rgba(140,25,50,.45)"; ctx.lineWidth = Math.max(1, w * 0.045); ctx.lineCap = "round";
-  ctx.beginPath(); ctx.moveTo(0, L * 0.12); ctx.quadraticCurveTo(w * 0.02, L * 0.5, 0, L * 0.84); ctx.stroke();
-  ctx.fillStyle = "rgba(255,255,255,.55)"; ctx.beginPath(); ctx.ellipse(-w * 0.2, L * 0.5, w * 0.06, L * 0.16, 0.15, 0, 7); ctx.fill();
-  ctx.fillStyle = "rgba(255,255,255,.7)"; ctx.beginPath(); ctx.ellipse(w * 0.14, L * 0.82, w * 0.05, w * 0.03, 0.4, 0, 7); ctx.fill();
-  ctx.strokeStyle = "rgba(120,20,40,.35)"; ctx.lineWidth = 1; ctx.stroke(body);
-  ctx.restore();
+  const rg = g.createLinearGradient(0, 0, 0, L * 0.35); rg.addColorStop(0, "rgba(90,10,25,.6)"); rg.addColorStop(1, "rgba(90,10,25,0)");
+  g.fillStyle = rg; g.fill(body);
+  g.save(); g.clip(body);
+  g.fillStyle = "rgba(255,210,220,.4)";
+  for (const [px, py, ps] of PAPILLAE) { g.beginPath(); g.arc(px * w * 0.8, py * L, ps * w * 0.038, 0, 7); g.fill(); }
+  g.strokeStyle = "#a02a46"; g.lineWidth = w * 0.12; g.globalAlpha = 0.5; g.stroke(body); g.globalAlpha = 1;
+  g.restore();
+  g.strokeStyle = "rgba(140,25,50,.45)"; g.lineWidth = Math.max(1, w * 0.045); g.lineCap = "round";
+  g.beginPath(); g.moveTo(0, L * 0.12); g.quadraticCurveTo(w * 0.02, L * 0.5, 0, L * 0.84); g.stroke();
+  g.strokeStyle = "rgba(255,255,255,.5)"; g.lineWidth = w * 0.03;
+  g.beginPath(); g.arc(0, L * 0.55, w * 0.36, Math.PI * 0.62, Math.PI * 0.9); g.stroke();
+  g.beginPath(); g.arc(0, L * 0.7, w * 0.3, Math.PI * 0.15, Math.PI * 0.32); g.stroke();
+  g.strokeStyle = "rgba(120,20,40,.35)"; g.lineWidth = 1; g.stroke(body);
+  if (t.fadeRoot) {   // touch mode: the root fades out instead of a cut edge (on its own layer, see drawTongueFaded)
+    g.globalCompositeOperation = "destination-out";
+    const fg = g.createLinearGradient(0, 0, 0, L * 0.35); fg.addColorStop(0, "rgba(0,0,0,1)"); fg.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = fg; g.fillRect(-w, -2, 2 * w, L * 0.36);
+  }
+  g.restore();
+}
+// touch mode tongue: drawn on its own layer so the faded root does not erase the candy under it
+const tcv = document.createElement("canvas"), tctx = tcv.getContext("2d");
+function drawTongueFaded(t, now) {
+  if (tcv.width !== cv.width || tcv.height !== cv.height) { tcv.width = cv.width; tcv.height = cv.height; }
+  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, tcv.width, tcv.height); tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  drawTongue(t, true, now, tctx);
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(tcv, 0, 0); ctx.restore();
+}
+function pin(x, y, dx, dy, len, w0, w1) {   // a tapered quad from the tip (w0) to the tail (w1)
+  const ex = x - dx * len, ey = y - dy * len, nx = -dy, ny = dx, p = new Path2D();
+  p.moveTo(x + nx * w0, y + ny * w0); p.lineTo(ex + nx * w1, ey + ny * w1); p.arc(ex, ey, w1, Math.atan2(ny, nx), Math.atan2(ny, nx) + Math.PI);
+  p.lineTo(x - nx * w0, y - ny * w0); p.closePath();
+  return p;
 }
 function drawNeedle(tip, dir, down) {
-  const len = geom.R * 1.05, [dx, dy] = dir, ex = tip.x - dx * len, ey = tip.y - dy * len;
-  ctx.save(); ctx.lineCap = "round"; ctx.globalAlpha = down ? 1 : 0.55;
-  // shadow on the candy closes in when the needle touches it
-  const so = down ? geom.R * 0.03 : geom.R * 0.12;
-  ctx.strokeStyle = "rgba(0,0,0,.3)"; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(tip.x + so * 0.6, tip.y + so); ctx.lineTo(ex + so * 1.6, ey + so * 2.2); ctx.stroke();
-  const ng = ctx.createLinearGradient(tip.x, tip.y, ex, ey); ng.addColorStop(0, "#f4f6f8"); ng.addColorStop(0.5, "#a9b0b6"); ng.addColorStop(1, "#5d646a");
-  ctx.strokeStyle = ng; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(tip.x, tip.y); ctx.lineTo(ex, ey); ctx.stroke();
-  ctx.strokeStyle = "rgba(255,255,255,.8)"; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(tip.x - dy, tip.y + dx); ctx.lineTo(ex - dy, ey + dx); ctx.stroke();
+  const len = geom.R * 1.05, [dx, dy] = dir;
+  ctx.save(); ctx.globalAlpha = down ? 1 : 0.5;
+  // shadow on the candy: offset and soft while hovering, closes in to the tip on contact
+  const so = down ? geom.R * 0.025 : geom.R * 0.12;
+  ctx.fillStyle = `rgba(0,0,0,${down ? 0.32 : 0.18})`; ctx.fill(pin(tip.x + so * 0.4, tip.y + so, dx - so * 0.002, dy, len, 0.2, 2.6));
+  const ng = ctx.createLinearGradient(tip.x - dy * 2, tip.y + dx * 2, tip.x + dy * 2, tip.y - dx * 2);
+  ng.addColorStop(0, "#5d646a"); ng.addColorStop(0.45, "#f4f6f8"); ng.addColorStop(1, "#7d858a");
+  ctx.fillStyle = ng; ctx.fill(pin(tip.x, tip.y, dx, dy, len, 0.25, 1.7));
+  if (down) {
+    ctx.fillStyle = "rgba(40,14,2,.7)"; ctx.beginPath(); ctx.arc(tip.x, tip.y, 1.6, 0, 7); ctx.fill();
+    ctx.strokeStyle = "rgba(255,236,200,.6)"; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.arc(tip.x + 0.5, tip.y + 0.5, 2.4, 0.2, 2.4); ctx.stroke();
+  }
   ctx.restore();
 }
 function drawStressRing(tip) {
   const st = game ? game.stress : 0, col = st < 0.3 ? "#7CE38B" : st < RULES.HAIR ? "#FFC23D" : "#FF3B5C";
-  const r = 15 + (st >= RULES.HAIR ? Math.sin(performance.now() / 60) * 1.5 : 0);
+  const r = 22 + (st >= RULES.HAIR ? Math.sin(performance.now() / 60) * 1.5 : 0);
   ctx.save(); ctx.lineCap = "round";
-  ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(tip.x, tip.y, r, 0, 7); ctx.stroke();
-  ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tip.x, tip.y, r, -Math.PI / 2, -Math.PI / 2 + Math.max(0.06, Math.min(1, st)) * Math.PI * 2); ctx.stroke();
+  if (st > 0.3) {   // stress whitening: toffee goes pale right before it gives
+    const wg = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, geom.R * 0.09);
+    wg.addColorStop(0, `rgba(255,240,210,${Math.min(0.4, 0.3 * st)})`); wg.addColorStop(1, "rgba(255,240,210,0)");
+    ctx.globalCompositeOperation = "screen"; ctx.fillStyle = wg; ctx.fillRect(tip.x - geom.R * 0.1, tip.y - geom.R * 0.1, geom.R * 0.2, geom.R * 0.2); ctx.globalCompositeOperation = "source-over";
+  }
+  ctx.strokeStyle = "rgba(0,0,0,.4)"; ctx.lineWidth = 4.5; ctx.beginPath(); ctx.arc(tip.x, tip.y, r, 0, 7); ctx.stroke();
+  ctx.strokeStyle = col; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(tip.x, tip.y, r, -Math.PI / 2, -Math.PI / 2 + Math.max(0.06, Math.min(1, st)) * Math.PI * 2); ctx.stroke();
   ctx.restore();
 }
 
@@ -152,13 +188,27 @@ function drawMissing(now) {
   });
   ctx.restore();
 }
+let stampCv = null;
+function stampImage() {
+  if (stampCv) return stampCv;
+  const c = document.createElement("canvas"), sw = 220, sh = 110, k = 2; c.width = sw * k; c.height = sh * k;
+  const g = c.getContext("2d"); g.scale(k, k);
+  g.strokeStyle = g.fillStyle = "#E0213F"; g.lineWidth = 7;
+  g.beginPath(); g.roundRect ? g.roundRect(8, 8, sw - 16, sh - 16, 14) : g.rect(8, 8, sw - 16, sh - 16); g.stroke();
+  g.font = '68px "Do Hyeon", sans-serif'; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("탈락", sw / 2, sh / 2 + 4);
+  g.globalCompositeOperation = "destination-out";   // worn ink
+  let sd = 3; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  for (let i = 0; i < 400; i++) { g.beginPath(); g.arc(rr() * sw, rr() * sh, 0.5 + rr() * 1.5, 0, 7); g.fill(); }
+  g.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const x = rr() * sw, y = rr() * sh; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 20 + rr() * 30, y + (rr() - 0.5) * 6); g.stroke(); }
+  return (stampCv = c);
+}
 function drawStamp(t) {
   if (t <= 0) return;
-  const k = Math.min(1, t / 0.18), sc = 1.6 - 0.6 * k;
-  ctx.save(); ctx.globalAlpha = k; ctx.translate(geom.cx, geom.cy - geom.R * 1.45); ctx.rotate(-0.08); ctx.scale(sc, sc);
-  ctx.font = `64px "Do Hyeon", sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-  ctx.lineWidth = 6; ctx.strokeStyle = "rgba(0,0,0,.55)"; ctx.strokeText("탈락", 0, 0);
-  ctx.fillStyle = "#FF3B5C"; ctx.fillText("탈락", 0, 0);
+  // slammed down: 2x -> 0.92 -> 1 in 0.2 s, inked into the candy
+  const sc = t < 0.12 ? 2 - 1.08 * (t / 0.12) : t < 0.2 ? 0.92 + 0.08 * ((t - 0.12) / 0.08) : 1;
+  const img = stampImage(), w = geom.R * 1.15, h = w / 2;
+  ctx.save(); ctx.globalAlpha = Math.min(0.92, t / 0.06); ctx.translate(geom.cx, geom.cy - geom.R * 0.1); ctx.rotate(-0.14); ctx.scale(sc, sc);
+  ctx.globalCompositeOperation = "multiply"; ctx.drawImage(img, -w / 2, -h / 2, w, h);
   ctx.restore();
 }
 
@@ -190,6 +240,10 @@ function tone(f, d, v, type = "triangle") {
 const SFX = {
   poke: hit => { tone(hit ? 1900 : 1300, 0.05, 0.22); buzz(8); },
   segment: () => { tone(2600, 0.04, 0.2, "square"); noise(5200, 0.03, 0.25); buzz(12); },
+  corner: () => { noise(2200, 0.05, 0.6); tone(1500, 0.06, 0.25); buzz(18); },
+  heal: () => { tone(660, 0.18, 0.12, "sine"); setTimeout(() => tone(990, 0.2, 0.1, "sine"), 120); },
+  beat: () => { tone(58, 0.14, 0.55, "sine"); setTimeout(() => tone(52, 0.12, 0.4, "sine"), 160); buzz(15); },
+  shutter: () => { noise(3000, 0.04, 0.6, "highpass"); setTimeout(() => noise(2000, 0.05, 0.4, "highpass"), 70); },
   hair: () => { noise(4200, 0.06, 0.5); buzz(15); },
   spread: () => { noise(2600, 0.1, 0.6); buzz([20, 30, 20]); },
   chip: () => { noise(1800, 0.14, 0.7); setTimeout(() => noise(3000, 0.05, 0.3), 260); buzz([30, 40, 30]); },
@@ -225,9 +279,39 @@ $("camGo").onclick = async () => {
 };
 $("touchGo").onclick = () => { initAudio(); mode = "touch"; showPick(); };
 
+// the start screen plays a round by itself: a needle scraping a star out (shows the game in one look)
+const demoCv = $("demo"), dctx = demoCv.getContext("2d");
+let demo = null;
+function demoFrame(dt) {
+  if ($("start").hidden) { demo = null; return; }
+  const S = demoCv.clientWidth || 210, k = Math.min(2, devicePixelRatio || 1);
+  if (demoCv.width !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); demo = null; }
+  if (!demo || (demo.g.done && demo.t > 3.2)) {
+    const g = createGame("star", { cx: S / 2, cy: S / 2, R: S * 0.38 }, Math.random);
+    demo = { g, v: createCandyView(g, k), i: 0, t: 0 };
+  }
+  const d = demo, g = d.g, path = g.paths[0];
+  d.t += dt;
+  if (!g.done) {
+    d.i = (d.i + dt * RULES.V_SAFE * g.vK * 0.8 * g.geom.R * 2.2 / (g.geom.R * 0.02)) % (path.length - 1);
+    const p = path[Math.floor(d.i)];
+    step(g, dt * 2.2, { needle: { x: p[0], y: p[1], down: true }, moveDt: dt });
+    for (const ev of g.events.splice(0)) d.v.onEvent(ev);
+    d.p = p; d.t = 0;
+  }
+  dctx.setTransform(k, 0, 0, k, 0, 0); dctx.clearRect(0, 0, S, S);
+  d.v.draw(dctx, dt, null);
+  if (!g.done && d.p) {
+    const [x, y] = d.p, len = S * 0.4;
+    dctx.strokeStyle = "#e9edf0"; dctx.lineWidth = 2; dctx.lineCap = "round";
+    dctx.beginPath(); dctx.moveTo(x, y); dctx.lineTo(x - 0.45 * len, y - 0.89 * len); dctx.stroke();
+  }
+}
+
 const starText = n => "★".repeat(n) + "☆".repeat(3 - n);
 function showPick() {
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
+  $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
   const picks = $("picks"); picks.innerHTML = "";
   for (const [k, s] of Object.entries(SHAPES)) {
     const b = document.createElement("button"), best = bestOf(k);
@@ -240,9 +324,13 @@ function showPick() {
 }
 
 let resultShown = false, endAt = 0, winAt = 0, loseT = -1, moment = null, lickShot = null, lickFor = 0, capture = null;
+let pose = null, ghost = null, beatAt = 0, note = null, candyAt = 0;
 function begin(shape) {
-  game = createGame(shape, geom); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
+  game = createGame(shape, geom, Math.random, { camera: mode === "camera" }); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
   endAt = 0; winAt = 0; loseT = -1; moment = null; lickShot = null; lickFor = 0; capture = null; crumbs.length = 0;
+  pose = null; beatAt = 0; note = null; candyAt = 0; candyShot = null;
+  // first round on this phone: a ghost needle shows the safe speed along the first stretch
+  ghost = store("dalgona.seen") ? null : { t: 0 };
   show(null); $("hud").hidden = false; $("freeze").hidden = true;
   if (DEBUG) window.__g = game;
   $("lick").hidden = mode !== "touch"; $("lick").setAttribute("aria-pressed", "false"); $("lick").textContent = "혀로 핥기";
@@ -264,7 +352,11 @@ function freezeFrame() {
 }
 
 // the screen as the player sees it (camera feed + candy + hand), for the result card
+// the canvas layer alone (candy, no camera), for a card without a face
+let candyShot = null;
+function grabCandy() { const c = document.createElement("canvas"); c.width = cv.width; c.height = cv.height; c.getContext("2d").drawImage(cv, 0, 0); candyShot = c; }
 function grab() {
+  if (!(pose && pose.t0 && performance.now() >= pose.t0)) grabCandy();
   const c = document.createElement("canvas"); c.width = Math.round(W * DPR); c.height = Math.round(H * DPR);
   const g = c.getContext("2d"); g.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (mode === "camera" && video.videoWidth) videoCover(g);
@@ -274,15 +366,25 @@ function grab() {
 }
 
 // 1080 x 1350 card: the moment, the verdict, the link
-async function makeCard() {
+async function makeCard(faceOff) {
   try { await document.fonts.load('80px "Do Hyeon"'); await document.fonts.load('40px "Orbit"'); } catch { /* fallback fonts */ }
   const g0 = game, CW = 1080, CH = 1350, c = document.createElement("canvas"); c.width = CW; c.height = CH;
   const g = c.getContext("2d"), m = moment || grab();
-  // crop the moment to 4:5 around the candy and whatever is above it (the face)
-  const sw = m.width, sh = Math.min(m.height, sw * CH / CW), k = sw / W;
-  const sy = Math.max(0, Math.min(m.height - sh, (geom.cy + geom.R * 1.35) * k - sh));
-  g.drawImage(m, 0, sy, sw, sh, 0, 0, CW, CH);
-  if (lickShot && lickShot !== m) {   // the licking face, as an inset
+  const k = m.width / W, face = mode === "camera" && !faceOff;
+  if (face) {   // 4:5 around the candy and whatever is above it (the face)
+    const sw = m.width, sh = Math.min(m.height, sw * CH / CW);
+    const sy = Math.max(0, Math.min(m.height - sh, (geom.cy + geom.R * 1.35) * k - sh));
+    g.drawImage(m, 0, sy, sw, sh, 0, 0, CW, CH);
+  } else {      // the candy alone: centred at 40 % height, 78 % of the card wide
+    g.fillStyle = "#16120f"; g.fillRect(0, 0, CW, CH);
+    const sw = geom.R * 2.75 * k, sh = sw * CH / CW, sx = geom.cx * k - sw / 2, sy = geom.cy * k - sh * 0.4;
+    if (faceOff) {   // no face: the candy on a plain table, not the room
+      const bg = g.createRadialGradient(CW / 2, CH * 0.4, 0, CW / 2, CH * 0.4, CH * 0.75); bg.addColorStop(0, "#4a4038"); bg.addColorStop(1, "#141110");
+      g.fillStyle = bg; g.fillRect(0, 0, CW, CH);
+      if (candyShot) g.drawImage(candyShot, sx, sy, sw, sh, 0, 0, CW, CH);
+    } else g.drawImage(m, sx, sy, sw, sh, 0, 0, CW, CH);
+  }
+  if (face && lickShot && lickShot !== m) {   // the licking face, as an inset
     const r = 170, x = CW - r - 40, y = 230;
     g.save(); g.beginPath(); g.arc(x, y, r, 0, 7); g.clip();
     const ls = lickShot, lw = ls.width * 0.55, lx = ls.width * 0.225, ly = Math.max(0, ls.height * 0.3);
@@ -296,12 +398,20 @@ async function makeCard() {
   g.fillStyle = "#fff"; g.textBaseline = "alphabetic";
   g.font = '44px "Do Hyeon", sans-serif'; g.fillText("허공 달고나 · " + SHAPES[g0.shape].name, 56, 96);
   g.font = '96px "Do Hyeon", sans-serif'; g.fillText(label(g0), 56, CH - 210);
-  g.font = '52px "Orbit", monospace';
+  g.font = '58px "Do Hyeon", sans-serif';
   g.fillStyle = g0.ok ? "#FFC23D" : "#FF6B81";
-  g.fillText(g0.ok ? `${starText(stars(g0))}  ${g0.t.toFixed(1)}s` : `${g0.final}%`, 56, CH - 130);
-  g.fillStyle = "rgba(255,255,255,.75)"; g.font = '34px "IBM Plex Sans KR", sans-serif';
+  g.fillText(g0.ok ? `${starText(stars(g0))}  ${g0.t.toFixed(1)}초` : loseLine(g0), 56, CH - 128);
+  g.fillStyle = "rgba(255,255,255,.6)"; g.font = '28px "IBM Plex Sans KR", sans-serif';
   g.fillText("dot-connects.github.io/dot-lab", 56, CH - 64);
   return c;
+}
+
+// a loss line people send to tease, not a bare percentage
+function loseLine(g0) {
+  const p = g0.final;
+  if (g0.cause === "melt") return `혀로 ${p}%까지 녹여 먹음`;
+  if (g0.cause === "time") return `${p}%에서 시간 끝`;
+  return p >= 85 ? `${p}%! 한 조각만 더` : p >= 50 ? `${p}%에서 쩍` : `${p}%에서 바로 쩍`;
 }
 
 let cardBlob = null;
@@ -324,9 +434,7 @@ async function showResult() {
   const r = $("result"); r.innerHTML = "";
   r.classList.toggle("win", g.ok);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
-  const h = el("h2", null, label(g));
-  const img = el("img", "res-card"); img.alt = "결과 카드";
-  const line = el("div", "res-line num", g.ok ? `${starText(rec.stars)}  ${rec.time.toFixed(1)}초` : `${g.final}% 파냄`);
+  const img = el("img", "res-card"); img.alt = `결과 카드: ${label(g)}`;
   const sub = el("p", "res-sub", reason(g));
   const bestLine = el("p", "res-best",
     isNew && prev ? "새 기록!" : best && best.stars ? `${SHAPES[g.shape].name} 최고 ${starText(best.stars)} ${best.time.toFixed(1)}초` : best ? `${SHAPES[g.shape].name} 최고 ${best.pct}%` : "");
@@ -340,12 +448,21 @@ async function showResult() {
   row.append(...[primary, again, shareB].filter(Boolean));
   const foot = el("div", "row foot");
   foot.append(Object.assign(el("button", "link", "다른 모양"), { onclick: showPick }), Object.assign(el("a", "link", "시켜본 것 더 보기 →"), { href: "../../../" }));
-  r.append(h, img, line, sub, bestLine, row, foot);
+  const render = async faceOff => {
+    const card = await makeCard(faceOff);
+    img.src = card.toDataURL("image/jpeg", 0.86);
+    card.toBlob(b => { cardBlob = b; }, "image/png");
+  };
+  const parts = [img, sub, bestLine, row, foot];
+  if (mode === "camera") {   // some people will not post their face
+    const lab = el("label", "res-face"), cb = el("input"); cb.type = "checkbox";
+    cb.onchange = () => render(cb.checked);
+    lab.append(cb, document.createTextNode(" 카드에서 얼굴 빼기")); parts.splice(1, 0, lab);
+  }
+  r.append(...parts);
   $("hud").hidden = true;
   show("result");
-  const card = await makeCard();
-  img.src = card.toDataURL("image/jpeg", 0.86);
-  card.toBlob(b => { cardBlob = b; }, "image/png");
+  await render(false);
 }
 
 // ---------- touch input ----------
@@ -392,11 +509,11 @@ function sampleLight(now) {
 }
 
 // ---------- loop ----------
-const STAGE_TEXT = ["실금 · 아직 괜찮아요", "갈라지는 중 · 살살", "크게 갈라졌어요"];
 let last = performance.now(), lastStatus = "";
 function frame(now) {
   requestAnimationFrame(frame);
-  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  const dt = Math.max(0, Math.min(0.05, (now - last) / 1000)); last = now;   // the first rAF stamp can precede load
+  if (!$("start").hidden) demoFrame(dt);
   let needle = null, lick = null, jitter = 0, moveDt = 0, s = null;
   const playing = game && !resultShown;
   if (mode === "camera" && tracker && playing) {   // no hand/face models outside a round: heat and battery
@@ -420,20 +537,27 @@ function frame(now) {
     for (const ev of game.events.splice(0)) {
       if (ev.type === "win") { winAt = now + 350; buzz(30); continue; }   // a beat of stillness before the break
       view.onEvent(ev);
-      if (ev.type === "poke") { SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
+      if (ev.type === "poke") { if (ev.corner) { SFX.corner(); note = { text: "모서리 콕! 한 번에 파였어요", until: now + 1200 }; } else SFX.poke(ev.hit); const p = game.pits[game.pits.length - 1]; spawnCrumbs(p[0], p[1], ev.hit ? 7 : 3, true); }
       else if (ev.type === "segment") SFX.segment();
+      else if (ev.type === "heal") { SFX.heal(); note = { text: "실금이 아물었어요", until: now + 1500 }; }
       else if (ev.type === "crack") SFX.hair();
       else if (ev.type === "spread") SFX.spread();
       else if (ev.type === "chip") SFX.chip();
       else if (ev.type === "lose") { SFX.lose(); loseT = 0; }
     }
-    if (winAt && now >= winAt) { winAt = 0; view.onEvent({ type: "win" }); SFX.snap(); setTimeout(SFX.win, 250); capture = now + 700; }
+    if (winAt && now >= winAt) {
+      winAt = 0; view.onEvent({ type: "win" }); SFX.snap(); setTimeout(SFX.win, 250);
+      // camera: the freed shape flies to your fingers for a photo; touch: the shot is the moment it parts
+      if (mode === "camera") { candyAt = now + 500; pose = { t0: now + 1100, cap: now + 1100 + 3300, x: geom.cx, y: geom.cy, k: 1 }; }
+      else capture = now + 500;
+    }
+    if (pct90() && !game.done && now >= beatAt) { beatAt = now + 750; SFX.beat(); }
     if (loseT >= 0) { loseT += dt; if (!moment && loseT > 0.55) capture = now; }
     if (carve > 0.05 && needle && !needle.held) spawnCrumbs(needle.x, needle.y, Math.random() < carve ? 1 : 0, false);
     if (lickOn) { lickFor += dt; if (!lickShot && lickFor > 0.8 && mode === "camera") lickShot = "next"; } else lickFor = 0;
     if (audio) { audio.gn.gain.value = game.done ? 0 : carve * 0.22; audio.bp.frequency.value = 2400 + carve * 1800; }
     if (game.started) $("hint").textContent = "";
-    const left = Math.max(0, Math.ceil(RULES.T_LIMIT - game.t));
+    const left = Math.max(0, Math.ceil(game.limit - game.t));
     const tm = $("timer"); tm.textContent = `0${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     tm.classList.toggle("hurry", left <= 10 && game.started);
     const pct = percent(game);
@@ -441,17 +565,27 @@ function frame(now) {
     const open = game.cracks.filter(c => !c.done);
     const stg = open.reduce((a, c) => Math.max(a, crackStage(game, c) + 1), 0);
     const lk = lickOn && wetAt(game, lick.x, lick.y);
-    const st = game.done ? (game.ok ? "떼어냈어요!" : game.cause === "melt" ? "녹아서 뚫렸어요" : game.cause === "time" ? "시간 끝" : "깨졌어요")
-      : game.stress >= RULES.HAIR ? "금이 자라요 · 손 멈춰요"
+    const st = note && now < note.until && !game.done ? note.text
+      : game.done ? (game.ok ? (pose && pose.text ? pose.text : "떼어냈어요!") : game.cause === "melt" ? "녹아서 뚫렸어요" : game.cause === "time" ? "시간 끝" : "깨졌어요")
+      : game.stress >= RULES.HAIR ? (open.some(c => c.inward) ? "금이 모양 쪽으로! 손 멈춰요" : "금이 자라요 · 손 멈춰요")
       : lickOn ? (lk > 0.95 ? "녹고 있어요 · 한곳만 핥으면 구멍" : "핥는 중 · 핥은 곳은 덜 깨져요")
       : lick ? "입을 달고나에 더 가까이"
-      : stg ? STAGE_TEXT[stg - 1]
+      : stg ? (open.some(c => c.inward) ? "안쪽 금 · 더 자라면 탈락" : "바깥 금 · 조각만 떨어져요")
       : game.stress > 0.3 ? "조심 · 압력이 올라요"
       : pct >= 90 ? "거의 다 됐어요 · 숨 참고"
       : game.started ? "천천히 긁는 중" : `${SHAPES[game.shape].name} · 첫 긁기부터 시간이 가요`;
     if (st !== lastStatus) { $("sw").textContent = st; lastStatus = st; }
     $("sw").className = game.stress >= RULES.HAIR || (game.done && !game.ok) ? "bad" : game.done ? "good" : "";
-    if (game.done && !resultShown && !endAt) endAt = now + (game.ok ? 2600 : 2000);
+    if (game.done && !resultShown && !endAt && !(game.ok && mode === "camera")) endAt = now + (game.ok ? 2400 : 2000);
+    if (pose && now >= pose.t0 && !pose.done) {
+      const grip = s && s.grip, target = grip ? { x: grip[0], y: grip[1] - geom.R * 0.35, k: 0.62 } : { x: geom.cx, y: geom.cy - geom.R * 0.2, k: 0.9 };
+      const f = 1 - Math.exp(-dt * 7);
+      pose.x += (target.x - pose.x) * f; pose.y += (target.y - pose.y) * f; pose.k += (target.k - pose.k) * f;
+      view.setPose({ x: pose.x, y: pose.y, k: pose.k, rot: Math.sin(now / 400) * 0.04 });
+      const n = Math.ceil((pose.cap - now) / 1000);
+      pose.text = n > 0 ? `얼굴 옆에 들어 보세요 · ${n}` : "";
+      if (now >= pose.cap) { pose.done = true; moment = grab(); SFX.shutter(); flashAt = now; endAt = now + 600; }
+    }
     if (endAt && now >= endAt) { endAt = 0; if (!moment) moment = grab(); resultShown = true; freezeFrame(); showResult(); }
   }
 
@@ -466,14 +600,33 @@ function frame(now) {
       if (s.hand) handFront(s.hand, s.hs);
       if (s.needle) { drawNeedle(s.needle, s.dir || [0.55, 0.83], !s.needle.held || !!s.hand); drawStressRing(s.needle); }
     } else if (mode === "touch") {
-      if (lickMode) { if (touch.down) drawTongue({ base: [touch.x, touch.y - geom.R * 0.55], dir: [0, 1], len: geom.R * 0.55, width: geom.R * 0.34 }, true, now); }
+      if (lickMode) { if (touch.down) drawTongueFaded({ base: [touch.x, touch.y - geom.R * 0.7], dir: [0, 1], len: geom.R * 0.7, width: geom.R * 0.34, fadeRoot: true }, now); }
       else if (touch.down) { const p = touchTip(); drawNeedle(p, [0.45, 0.89], true); drawStressRing(p); }
     }
   }
   if (loseT > 0.25) drawStamp(loseT - 0.25);
+  if (ghost && !game.started) drawGhost(dt);
+  else if (ghost && game.started) { ghost = null; store("dalgona.seen", "1"); }
+  if (flashAt && now - flashAt < 250) { ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - (now - flashAt) / 250)})`; ctx.fillRect(0, 0, W, H); }
   if (lickShot === "next") lickShot = grab();
   if (capture && now >= capture) { capture = null; moment = grab(); }
+  if (candyAt && now >= candyAt) { candyAt = 0; grabCandy(); }
   if (DEBUG && s) debug(s);
+}
+
+let flashAt = 0;
+const pct90 = () => game && percent(game) >= 90;
+// first round: a ghost needle traces the first stretch at a safe pace, then waits for the player
+function drawGhost(dt) {
+  ghost.t += dt;
+  const path = game.paths[0], idx = path.map((_, i) => i).filter(i => game.segOf[0][i] === 0);
+  const speed = RULES.V_SAFE * game.vK * 0.7 * geom.R, len = idx.length * geom.R * 0.02, cyc = len / speed + 0.8;
+  const u = Math.min(1, (ghost.t % cyc) / (len / speed)), p = path[idx[Math.floor(u * (idx.length - 1))]];
+  ctx.save(); ctx.globalAlpha = 0.55;
+  drawNeedle({ x: p[0], y: p[1] }, [0.45, 0.89], true);
+  ctx.globalAlpha = 0.9; ctx.font = '17px "Do Hyeon", sans-serif'; ctx.textAlign = "center"; ctx.fillStyle = "#fff";
+  ctx.shadowColor = "rgba(0,0,0,.8)"; ctx.shadowBlur = 6; ctx.fillText("이 속도로", p[0], p[1] - 30);
+  ctx.restore();
 }
 
 function debug(s) {

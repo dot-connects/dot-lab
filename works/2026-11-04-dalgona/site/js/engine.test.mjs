@@ -21,7 +21,7 @@ test("slow laps cut the circle out inside the time limit", () => {
   const g = createGame("circle", GEOM, seeded());
   traceCircle(g, 1.0, 6);
   assert.equal(g.ok, true);
-  assert.ok(g.t < RULES.T_LIMIT * 0.8, `took ${g.t.toFixed(1)} s`);
+  assert.ok(g.t < g.limit * 0.8, `took ${g.t.toFixed(1)} s`);
   assert.equal(g.cracks.length, 0);
 });
 
@@ -120,7 +120,7 @@ test("every shape can be finished by tracing its outline slowly", () => {
       }
     }
     assert.equal(g.ok, true, `${shape}: ${percent(g)}% at ${g.t.toFixed(1)} s, cause ${g.cause}`);
-    assert.ok(g.t < RULES.T_LIMIT, `${shape} took ${g.t.toFixed(1)} s`);
+    assert.ok(g.t < g.limit, `${shape} took ${g.t.toFixed(1)} s`);
     console.log(`${shape}: ${g.t.toFixed(1)} s`);
   }
 });
@@ -161,4 +161,28 @@ test("jabbing on and on ends the round, through a chip or a crack into the shape
   }
   assert.ok(fails > 80, `only ${fails}/100 failed`);
   assert.ok(chips > 20, `${chips} chips`);
+});
+
+// review r2: pokes are the corner tool, licking is crack first aid, camera play gets more time
+test("a poke on a star corner carves it nearly through; on a flat edge it does not", () => {
+  const g = createGame("star", GEOM, seeded(11));
+  const p = g.paths[0], tipI = p.findIndex((_, i) => g.weak[0][i]), flatI = p.findIndex((_, i) => !g.weak[0][i] && i > tipI + 8);
+  poke(g, ...p[tipI]); poke(g, ...p[flatI]);
+  assert.ok(g.prog[0][tipI] >= 0.85, `corner ${g.prog[0][tipI]}`);
+  assert.ok(g.prog[0][flatI] < 0.5, `edge ${g.prog[0][flatI]}`);
+});
+
+test("licking a hairline closes it", () => {
+  const r = 0.84 * GEOM.R;
+  const g = createGame("circle", GEOM, seeded(5));
+  for (let i = 0; i < 5 && g.cracks.length === 0; i++) { poke(g, GEOM.cx + r, GEOM.cy); for (let k = 0; k < 3; k++) step(g, DT, { needle: null }); }
+  assert.ok(g.cracks.length >= 1);
+  for (let k = 0; k < 60; k++) step(g, DT, { needle: null });   // pressure gone, crack stopped
+  const c = g.cracks[0];
+  for (let k = 0; k < 30 * 4 && !c.healed; k++) step(g, DT, { needle: null, lick: { x: c.pts[0][0], y: c.pts[0][1] } });
+  assert.equal(c.healed, true);
+});
+
+test("camera play gets twice the time", () => {
+  assert.equal(createGame("umb", GEOM, seeded(), { camera: true }).limit, 2 * createGame("umb", GEOM, seeded()).limit);
 });

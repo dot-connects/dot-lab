@@ -52,6 +52,10 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 #result:not(.win) .res-line{color:#ff8a9b}
 .res-sub{font-size:14px;color:#d7e2dd!important}
 .res-best{font-size:13px;color:var(--mute)!important;min-height:1em}
+.res-face{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
+#demo{width:210px;height:210px;margin-bottom:-6px}
+.mode-hint{font-size:14px;color:#FFC23D!important}
+@media (max-height:700px){#demo{width:150px;height:150px}}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
 .foot{gap:18px}
 .foot .link{background:none;border:0;font:inherit;font-size:14px;cursor:pointer;padding:6px}
@@ -78,6 +82,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 
   <section class="ov" id="start">
     <a id="back" href="../../../">‹ 시켜본 것들</a>
+    <canvas id="demo" aria-hidden="true"></canvas>
     <h1>허공 <em>달고나</em></h1>
     <p>내 카메라 화면 위에 달고나가 떠요.<br>금 가기 전에 모양을 떼어 내세요.</p>
     <div class="how">
@@ -93,6 +98,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
   <section class="ov" id="pick" hidden>
     <h2>모양을 고르세요</h2>
     <p>무엇을 할지는 고른 다음에 알려 드립니다.</p>
+    <p id="modeHint" class="mode-hint"></p>
     <div class="picks" id="picks"></div>
   </section>
 

@@ -16,6 +16,8 @@ export const CAM = {
   HOLD_MS: 200,       // the needle stays put this long after a jab (pushing the hand moved the tip)
   TIP: 0.45,          // needle tip this many hand sizes ahead of the pinch, along the index finger
   JAW: 0.4,           // jawOpen that counts as licking (open mouth 0.5-0.74)
+  LAND_MS: 250,       // a fresh pinch hovers this long before the needle touches the candy (review r2: landings scratched)
+  EURO_MIN: 1.0, EURO_BETA: 0.02,   // needle smoothing (px, px/s)
 };
 
 export const BONES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12],
@@ -83,6 +85,27 @@ export async function loadModels() {
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
+/**
+ * One-Euro filter (Casiez et al. 2012): heavy smoothing when the point is slow, light when it moves fast, so a
+ * still hand does not tremble and a moving one does not lag. Values in px, t in ms.
+ */
+export function oneEuro(minCutoff = CAM.EURO_MIN, beta = CAM.EURO_BETA, dCutoff = 1) {
+  let x = null, dx = 0, t0 = 0;
+  const alpha = (cut, dt) => 1 / (1 + 1 / (2 * Math.PI * cut * dt));
+  return {
+    reset() { x = null; dx = 0; },
+    f(v, t) {
+      if (x == null) { x = v; t0 = t; return v; }
+      const dt = Math.max(0.001, (t - t0) / 1000); t0 = t;
+      const d = (v - x) / dt, ad = alpha(dCutoff, dt);
+      dx = dx + ad * (d - dx);
+      const a = alpha(minCutoff + beta * Math.abs(dx), dt);
+      x = x + a * (v - x);
+      return x;
+    },
+  };
+}
+
 /** Tracks one hand and the mouth on a mirrored, object-fit:cover video filling a W x H box. */
 export function createTracker(video, models, { onPoke } = {}) {
   const s = {
@@ -93,6 +116,7 @@ export function createTracker(video, models, { onPoke } = {}) {
   let rebuilding = false;
   const det = createPokeDetector();
   s.det = det;
+  const fx = oneEuro(), fy = oneEuro();
   let W = 0, H = 0;
   const size = (w, h) => { W = w; H = h; };
   const toScreen = p => {
@@ -148,7 +172,9 @@ export function createTracker(video, models, { onPoke } = {}) {
     // the needle sticks out ahead of the fingers along the index finger, so the fingers do not hide the line
     let dx = P[8][0] - P[5][0], dy = P[8][1] - P[5][1], dl = Math.hypot(dx, dy) || 1;
     dx /= dl; dy /= dl;
-    const tip = [grip[0] + dx * CAM.TIP * hs, grip[1] + dy * CAM.TIP * hs];
+    const raw = [grip[0] + dx * CAM.TIP * hs, grip[1] + dy * CAM.TIP * hs];
+    if (!s.pinched || s.wasLost) { fx.reset(); fy.reset(); }
+    const tip = [fx.f(raw[0], now), fy.f(raw[1], now)];
     s.grip = grip; s.dir = [dx, dy];
     if (s.pinched && !was) { s.pinchAt = now; s.ema = tip; s.jit = []; }
     // shake: RMS distance from a smoothed path over ~0.5 s, skipping the jolt of closing the fingers
@@ -161,7 +187,8 @@ export function createTracker(video, models, { onPoke } = {}) {
     const holding = now < s.holdUntil && s.needle;
     if (!s.pinched) s.needle = null;
     else if (holding) s.needle = { ...s.needle, held: true, resume: false };
-    else s.needle = { x: tip[0], y: tip[1], down: true, resume: s.wasLost || !was || s.needle?.held === true };
+    // until it has hovered LAND_MS the needle is shown but does not touch
+    else s.needle = { x: tip[0], y: tip[1], down: now - s.pinchAt > CAM.LAND_MS, resume: s.wasLost || !was || s.needle?.held === true || !s.needle?.down };
     s.wasLost = false;
     if (poked && onPoke) onPoke(s.needle.x, s.needle.y);
   }

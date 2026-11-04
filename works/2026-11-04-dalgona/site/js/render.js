@@ -133,8 +133,8 @@ export function createCandyView(game, dprIn) {
     for (let k = 0; k < N * N; k++) {
       const m = game.meltG[k] - 0.45; if (m <= 0) continue;
       any = true;
-      const [jx, jy, js] = jit[k], [x0, y0] = loc(cellCentre(game, k)), x = x0 + jx * cell * 0.5, y = y0 + jy * cell * 0.5;
-      const r = cell * (0.35 + 0.85 * Math.min(1, m / 0.8)) * js + grow;
+      const [jx, jy, js] = jit[k], [x0, y0] = loc(cellCentre(game, k)), x = x0 + jx * cell * 0.3, y = y0 + jy * cell * 0.3;
+      const r = cell * (0.35 + 0.85 * Math.min(1, m / 0.8)) * js * 1.25 + grow;
       if (soft) { const gr = g.createRadialGradient(x, y, r - grow, x, y, r); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; }
       else g.fillStyle = "#fff";
       g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
@@ -224,8 +224,9 @@ export function createCandyView(game, dprIn) {
     const st = c.fatal ? 2 : crackStage(game, c), sc = R / 142, w = [1.6, 2.1, 3][st] * sc;
     const pts = c.pts.map(loc);
     const stroke = (pp, cum, upto, ww) => {
-      g.save(); g.globalCompositeOperation = "screen"; g.strokeStyle = "rgba(255,236,190,.8)"; g.lineWidth = ww * 1.8; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
-      g.save(); g.translate(sc, sc); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = ww * 0.5; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
+      // a step in the surface: lit on one side, shaded on the other, a dark gap between
+      g.save(); g.translate(-sc, -sc); g.globalCompositeOperation = "screen"; g.strokeStyle = "rgba(255,236,190,.45)"; g.lineWidth = ww * 1.2; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
+      g.save(); g.translate(sc, sc); g.strokeStyle = "rgba(40,12,0,.35)"; g.lineWidth = ww * 0.8; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
       g.strokeStyle = "rgba(35,10,0,.9)"; g.lineWidth = Math.max(0.6, ww * (st ? 0.45 : 0.35)); crackPath(g, pp, cum, upto); g.stroke();
     };
     g.lineJoin = "round"; g.lineCap = "round";
@@ -287,10 +288,17 @@ export function createCandyView(game, dprIn) {
   function breakOut() {
     // the body around the shape snaps into wedges that fall away; the shape stays
     const n = 7, r = rng(game.cracks.length + 31), a0 = r() * TAU;
+    const cuts = Array.from({ length: n + 1 }, (_, i) => a0 + (i + (i % n ? (r() - 0.5) * 0.4 : 0)) / n * TAU);
+    const kink = cuts.map(() => [0.3, 0.6, 0.8].map(() => (r() - 0.5) * 0.15));
+    const ray = (i, p, rev) => {   // a crooked break line from the centre out
+      const pts = [[0, 0], ...[0.3, 0.6, 0.8].map((f, j) => { const t = cuts[i] + kink[i % n][j]; return [f * R * Math.cos(t), f * R * Math.sin(t)]; }), [1.25 * R * Math.cos(cuts[i]), 1.25 * R * Math.sin(cuts[i])]];
+      (rev ? pts.reverse() : pts).forEach(([x, y]) => p.lineTo(x, y));
+    };
     for (let i = 0; i < n; i++) {
-      const a = a0 + i / n * TAU, b = a0 + (i + 1) / n * TAU + 0.002, p = new Path2D();
-      p.moveTo(0, 0);
-      for (let k = 0; k <= 10; k++) { const t = a + (b - a) * k / 10 + (k > 0 && k < 10 ? (r() - 0.5) * 0.03 : 0); p.lineTo(1.2 * R * Math.cos(t), 1.2 * R * Math.sin(t)); }
+      const a = cuts[i], b = cuts[i + 1] + 0.002, p = new Path2D();
+      p.moveTo(0, 0); ray(i, p, false);
+      for (let k = 1; k < 10; k++) { const t = a + (b - a) * k / 10; p.lineTo(1.25 * R * Math.cos(t), 1.25 * R * Math.sin(t)); }
+      ray(i + 1, p, true);
       p.closePath();
       const m = (a + b) / 2;
       pending.push({ path: p, x: 0.75 * R * Math.cos(m), y: 0.75 * R * Math.sin(m), dir: m, win: true });
@@ -350,17 +358,41 @@ export function createCandyView(game, dprIn) {
       bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, -1.5 * K, -1.5 * K);
       bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(255,226,160,.9)"; bg.fillRect(0, 0, PX, PX);
       lg.globalCompositeOperation = "source-over"; lg.drawImage(B, 0, 0);
+      // and the upper wall shows the candy's thickness
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, 0, R * 0.03 * K);
+      bg.globalCompositeOperation = "source-in";
+      const wg = bg.createLinearGradient(0, 0, 0, PX); wg.addColorStop(0, "#5a2508"); wg.addColorStop(1, "#2a1003"); bg.fillStyle = wg; bg.fillRect(0, 0, PX, PX);
+      lg.drawImage(B, 0, 0);
     }
     if (chips.length) { toC(lg); lg.globalCompositeOperation = "destination-out"; chips.forEach(p => lg.fill(p)); }
     lg.globalCompositeOperation = "source-over"; lg.setTransform(1, 0, 0, 1, 0, 0);
   }
 
-  const flashes = [];
+  const flashes = [], bursts = [];
+  // a crack is announced where it starts: a white ring snaps out, red if it heads into the shape (users r2: three
+  // pokes "changed nothing" because an 11 px hairline was invisible at arm's length)
+  function drawBursts(ctx, dt) {
+    for (const b of bursts) b.t += dt;
+    for (let i = bursts.length - 1; i >= 0; i--) if (bursts[i].t > 0.6) bursts.splice(i, 1);
+    for (const b of bursts) {
+      const k = b.t / 0.6, r = R * (0.06 + (b.big ? 0.28 : 0.2) * Math.sqrt(k));
+      ctx.save(); ctx.globalAlpha = 1 - k; ctx.lineWidth = (b.big ? 4 : 3) * (1 - k) + 1;
+      ctx.strokeStyle = b.inward ? "#FF3B5C" : "#fff6e0"; ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, TAU); ctx.stroke(); ctx.restore();
+    }
+    // open cracks running inward keep a pulsing red marker at their tip until they stop or the round ends
+    for (const c of game.cracks) if (c.inward && !c.done) {
+      let i = c.cum.findIndex(v => v >= c.len); if (i < 0) i = c.pts.length - 1;
+      const [x, y] = loc(c.pts[i]), a = 0.55 + 0.45 * Math.sin(performance.now() / 110);
+      ctx.save(); ctx.strokeStyle = `rgba(255,59,92,${a})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, R * 0.07, 0, TAU); ctx.stroke(); ctx.restore();
+    }
+  }
   function onEvent(ev) {
     if (ev.type === "chip") chipFrom(ev.crack);
     else if (ev.type === "win") { compose(); breakOut(); }
     else if (ev.type === "lose") lostT = 0;
     else if (ev.type === "segment") flashes.push({ k: ev.k, t: 0 });
+    else if (ev.type === "crack" || ev.type === "spread") { const [x, y] = loc(ev.crack.pts[0]); bursts.push({ x, y, t: 0, big: ev.type === "spread", inward: ev.crack.inward }); }
   }
   // a finished stretch of the outline lights up for a moment
   function drawFlashes(ctx, dt) {
@@ -379,8 +411,10 @@ export function createCandyView(game, dprIn) {
     ctx.restore();
   }
   // the room's light on the candy: brightness and a little of the room's colour (from the camera, set by the app)
-  let light = null;
+  let light = null, pose = null;
   function setLight(l) { light = l; }
+  /** After a win: draw the freed shape at screen (x, y), scaled by k (null = where it came out). */
+  function setPose(p) { pose = p; }
 
   /** Draw at the candy centre (cx, cy) on a CSS-px context. ring = progress 0..1 (null = no ring). */
   function draw(ctx, dt, ring) {
@@ -388,7 +422,7 @@ export function createCandyView(game, dprIn) {
     if (!won) compose();
     updateDrips(dt);
     for (const p of pieces) { p.t += dt; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
-    for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > pieces[i].life) pieces.splice(i, 1);
+    for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > 2.5) pieces.splice(i, 1);
     let sx = 0;
     if (lostT >= 0) {
       lostT += dt; sx = lostT < 0.35 ? Math.sin(lostT * 90) * R * 0.03 * (1 - lostT / 0.35) : 0;
@@ -397,27 +431,37 @@ export function createCandyView(game, dprIn) {
     }
     ctx.save(); ctx.translate(cx + sx, cy);
     const drawPieces = () => { for (const p of pieces) {
-      ctx.save(); ctx.globalAlpha = Math.max(0, 1 - p.t / p.life); ctx.translate(p.ox + p.x, p.oy + p.y); ctx.rotate(p.rot); ctx.translate(-p.ox, -p.oy);
+      ctx.save(); ctx.translate(p.ox + p.x, p.oy + p.y); ctx.rotate(p.rot); ctx.scale(1, Math.max(0.15, Math.abs(Math.cos(p.t * p.vr * 2)))); ctx.translate(-p.ox, -p.oy);
       ctx.drawImage(p.c, -HALF, -HALF, S, S); ctx.restore();
     } };
     if (won) drawPieces();
     if (won) {
+      ctx.save();
       wonT += dt;
+      if (pose) { ctx.translate(pose.x - cx - sx, pose.y - cy); ctx.scale(pose.k, pose.k); ctx.rotate(pose.rot || 0); }
       const lift = Math.min(1, wonT / 0.6), e = 1 - Math.pow(1 - lift, 3), sc = 1 + 0.08 * e;
       // soft shadow without ctx.filter (iOS Safari has none): shadow of a copy drawn far off screen
       const dk = ctx.getTransform().a * sc;   // shadow offsets ignore the transform
       ctx.save(); ctx.scale(sc, sc); ctx.shadowColor = `rgba(0,0,0,${0.55 * e})`; ctx.shadowBlur = R * 0.12 * dk; ctx.shadowOffsetX = (9000 + R * 0.04 * e) * dk; ctx.shadowOffsetY = R * 0.14 * e * dk;
       ctx.translate(-9000, 0); ctx.fillStyle = "#000"; ctx.fill(body); ctx.restore();
-      ctx.save(); ctx.scale(sc, sc); ctx.translate(0, -R * 0.05 * e); ctx.clip(body); ctx.drawImage(L, -HALF, -HALF, S, S); ctx.restore();
+      // the freed shape: its side wall shows under it (3-4 mm of toffee), then the top, then a rim light
+      ctx.save(); ctx.scale(sc, sc); ctx.translate(0, -R * 0.05 * e);
+      ctx.save(); ctx.translate(0, R * 0.03); ctx.fillStyle = "#5a2a08"; ctx.fill(body); ctx.restore();
+      ctx.save(); ctx.clip(body); ctx.drawImage(L, -HALF, -HALF, S, S);
+      ctx.translate(-1, -1); ctx.strokeStyle = "rgba(255,240,210,.6)"; ctx.lineWidth = 1; ctx.stroke(body); ctx.restore();
+      ctx.restore();
       // a glint runs across the freed shape once
       const gx = (wonT - 0.5) * 2.4 * R - R;
       if (wonT > 0.4 && wonT < 1.6) {
         ctx.save(); ctx.scale(sc, sc); ctx.translate(0, -R * 0.05 * e); ctx.clip(body);
-        const gl = ctx.createLinearGradient(gx - R * 0.3, -R * 0.3, gx + R * 0.3, R * 0.3);
-        gl.addColorStop(0, "rgba(255,250,230,0)"); gl.addColorStop(0.5, "rgba(255,250,230,.4)"); gl.addColorStop(1, "rgba(255,250,230,0)");
-        ctx.fillStyle = gl; ctx.fillRect(-R, -R, 2 * R, 2 * R); ctx.restore();
+        // one narrow diagonal streak (the gradient axis runs across the streak)
+        const gl = ctx.createLinearGradient(gx - R * 0.12, -R * 0.04, gx + R * 0.12, R * 0.04);
+        gl.addColorStop(0, "rgba(255,250,230,0)"); gl.addColorStop(0.5, "rgba(255,250,230,.32)"); gl.addColorStop(1, "rgba(255,250,230,0)");
+        ctx.globalCompositeOperation = "lighter"; ctx.fillStyle = gl; ctx.fillRect(-R, -R, 2 * R, 2 * R); ctx.restore();
       }
+      ctx.restore();
     } else if (halves) {
+      const fc = game.cracks.find(k => k.fatal);
       const k = Math.min(1, (lostT - 0) / 0.5), e = 1 - Math.pow(1 - k, 3), d = R * 0.06 * e;
       // each half casts its own shadow, so the gap between them shows the room, not a black band
       const dk = ctx.getTransform().a;
@@ -426,11 +470,16 @@ export function createCandyView(game, dprIn) {
         ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = R * 0.1 * dk; ctx.shadowOffsetY = R * 0.07 * dk;
         ctx.drawImage(h.c, -HALF, -HALF, S, S); ctx.restore();
       }
+      if (fc) {   // where it started: so the loss is not a mystery
+        const [x, y] = loc(fc.pts[0]), a = 0.6 + 0.4 * Math.sin(lostT * 9);
+        ctx.save(); ctx.strokeStyle = `rgba(255,59,92,${a})`; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, R * 0.1, 0, TAU); ctx.stroke(); ctx.restore();
+      }
     } else {
       if (shadowDirty) rebuildShadow();
       ctx.drawImage(SHc, -HALF + R * 0.03, -HALF + R * 0.08, S, S);
       ctx.drawImage(L, -HALF, -HALF, S, S);
       drawFlashes(ctx, dt);
+      drawBursts(ctx, dt);
       if (ring != null) {
         ctx.lineCap = "round"; ctx.lineWidth = 4;
         ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.beginPath(); ctx.arc(0, 0, 1.13 * R, 0, TAU); ctx.stroke();
@@ -455,5 +504,5 @@ export function createCandyView(game, dprIn) {
     return c;
   }
 
-  return { draw, onEvent, snapshot, setLight, edgeR, get won() { return won; } };
+  return { draw, onEvent, snapshot, setLight, setPose, edgeR, get won() { return won; } };
 }
