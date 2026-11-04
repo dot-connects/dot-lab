@@ -24,13 +24,14 @@ const better = (a, b) => !b || a.stars > b.stars || (a.stars === b.stars && (a.s
 
 // ---------- layout ----------
 const hc = document.createElement("canvas"), hg = hc.getContext("2d");   // the real hand cut out of the video (CSS px)
+const freshGeom = () => ({ cx: W / 2, cy: H * 0.58, R: Math.min(W * 0.36, H * 0.2) });
 function resize() {
   const b = app.getBoundingClientRect();
   DPR = Math.min(2, devicePixelRatio || 1); W = b.width; H = b.height;
   cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   hc.width = Math.ceil(W); hc.height = Math.ceil(H);
   // mid-round the candy stays put (toolbars folding resize the page; rebuilding the view lost chips and the win)
-  if (!game || resultShown) geom = { cx: W / 2, cy: H * 0.58, R: Math.min(W * 0.36, H * 0.2) };
+  if (!game || resultShown) geom = freshGeom();
   if (tracker) tracker.size(W, H);
 }
 addEventListener("resize", resize);
@@ -123,9 +124,12 @@ function drawTongue(t, active, now, g = ctx) {
 const tcv = document.createElement("canvas"), tctx = tcv.getContext("2d");
 function drawTongueFaded(t, now) {
   if (tcv.width !== cv.width || tcv.height !== cv.height) { tcv.width = cv.width; tcv.height = cv.height; }
-  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(0, 0, tcv.width, tcv.height); tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+  const pad = t.width, x0 = Math.max(0, (t.base[0] - pad) * DPR), y0 = Math.max(0, (t.base[1] - pad * 0.3) * DPR);
+  const w = Math.min(tcv.width - x0, 2 * pad * DPR), h = Math.min(tcv.height - y0, (t.len + pad * 0.6) * DPR);
+  if (w <= 0 || h <= 0) return;
+  tctx.setTransform(1, 0, 0, 1, 0, 0); tctx.clearRect(x0, y0, w, h); tctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   drawTongue(t, true, now, tctx);
-  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(tcv, 0, 0); ctx.restore();
+  ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(tcv, x0, y0, w, h, x0, y0, w, h); ctx.restore();
 }
 function pin(x, y, dx, dy, len, w0, w1) {   // a tapered quad from the tip (w0) to the tail (w1)
   const ex = x - dx * len, ey = y - dy * len, nx = -dy, ny = dx, p = new Path2D();
@@ -323,7 +327,8 @@ function showPick() {
     const b = document.createElement("button"), best = bestOf(k);
     b.innerHTML = `<span class="ic"></span><small></small>`;
     b.querySelector(".ic").textContent = s.icon;
-    b.querySelector("small").textContent = best ? (best.stars ? starText(best.stars) : best.pct + "%") : s.name;
+    const sm = b.querySelector("small"); sm.textContent = s.name;
+    if (best) { sm.append(document.createElement("br")); const st = document.createElement("b"); st.textContent = best.stars ? starText(best.stars) : best.pct + "%"; sm.append(st); }
     b.setAttribute("aria-label", s.name + (best && best.stars ? ` 별 ${best.stars}개` : ""));
     b.onclick = () => begin(k); picks.appendChild(b);
   }
@@ -332,6 +337,7 @@ function showPick() {
 let resultShown = false, endAt = 0, winAt = 0, loseT = -1, moment = null, lickShot = null, lickFor = 0, capture = null;
 let pose = null, ghost = null, beatAt = 0, note = null, candyAt = 0;
 function begin(shape) {
+  geom = freshGeom();   // a rotation during the last round must not leave the next one off screen
   game = createGame(shape, geom, Math.random, { camera: mode === "camera" }); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
   endAt = 0; winAt = 0; loseT = -1; moment = null; lickShot = null; lickFor = 0; capture = null; crumbs.length = 0;
   pose = null; beatAt = 0; note = null; candyAt = 0; candyShot = null;
@@ -372,7 +378,7 @@ function grab() {
 }
 
 // 1080 x 1350 card: the moment, the verdict, the link
-async function makeCard(faceOff, g0, m, lick, candy) {
+async function makeCard(faceOff, g0, m, lick, candy, geom, W) {
   try { await document.fonts.load('80px "Do Hyeon"'); } catch { /* fallback fonts */ }
   const CW = 1080, CH = 1350, c = document.createElement("canvas"); c.width = CW; c.height = CH;
   const g = c.getContext("2d"), lickShot = lick, candyShot = candy;
@@ -420,9 +426,10 @@ function loseLine(g0) {
   return p >= 85 ? `${p}%! 한 조각만 더` : p >= 50 ? `${p}%에서 쩍` : `${p}%에서 바로 쩍`;
 }
 
-let cardBlob = null;
+let cardBlob = null, cardReady = Promise.resolve(), cardDone = () => {};
 async function share() {
   const url = location.origin + location.pathname, g0 = game;
+  await Promise.race([cardReady, new Promise(r => setTimeout(r, 3000))]);
   const text = `허공 달고나 ${SHAPES[g0.shape].name} — ${label(g0)}${g0.ok ? ` ${starText(stars(g0))} ${g0.t.toFixed(1)}초` : ` ${g0.final}%`}`;
   try {
     const file = cardBlob && new File([cardBlob], "dalgona.png", { type: "image/png" });
@@ -443,26 +450,34 @@ async function showResult() {
   r.classList.toggle("win", g.ok);
   const el = (tag, cls, txt) => { const e = document.createElement(tag); if (cls) e.className = cls; if (txt != null) e.textContent = txt; return e; };
   const img = el("img", "res-card"); img.alt = `결과 카드: ${label(g)}`;
-  const sub = el("p", "res-sub", reason(g));
+  // the numbers live on the card; below it only what the card does not say (review r3)
+  const openCracks = g.cracks.filter(c => !c.healed).length;
+  const why = g.ok ? [openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
+    : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요 · 원작은 10분` : "금이 모양 안으로 번졌어요";
+  const sub = el("p", "res-sub", why);
   const bestLine = el("p", "res-best",
-    isNew && prev ? "새 기록!" : best && best.stars ? `${SHAPES[g.shape].name} 최고 ${starText(best.stars)} ${best.time.toFixed(1)}초` : best ? `${SHAPES[g.shape].name} 최고 ${best.pct}%` : "");
+    !prev ? "" : isNew ? "새 기록!" : prev.stars ? `지난 최고 ${starText(prev.stars)} ${prev.time.toFixed(1)}초` : `지난 최고 ${prev.pct}%`);
   const row = el("div", "row");
   const nextShape = ORDER[(ORDER.indexOf(g.shape) + 1) % ORDER.length];
-  const primary = g.ok && nextShape !== ORDER[0]
+  const next = g.ok && nextShape !== ORDER[0];
+  const primary = next
     ? Object.assign(el("button", "go", `다음: ${SHAPES[nextShape].name} →`), { onclick: () => begin(nextShape) })
     : Object.assign(el("button", "go", "다시 하기"), { onclick: () => begin(g.shape) });
-  const again = g.ok && nextShape !== ORDER[0] ? Object.assign(el("button", "sub", "다시 하기"), { onclick: () => begin(g.shape) }) : null;
-  const shareB = Object.assign(el("button", "sub", "결과 공유"), { onclick: share });
-  row.append(...[primary, again, shareB].filter(Boolean));
+  const shareB = Object.assign(el("button", "sub", g.ok ? "자랑하기" : "친구한테 보내기"), { onclick: share });
+  row.append(primary, shareB);
   const foot = el("div", "row foot");
+  if (next) foot.append(Object.assign(el("button", "link", "다시 하기"), { onclick: () => begin(g.shape) }));
   foot.append(Object.assign(el("button", "link", "다른 모양"), { onclick: showPick }), Object.assign(el("a", "link", "시켜본 것 더 보기 →"), { href: "../../../" }));
   cardBlob = null;
   const m = moment || grab(), ls = lickShot instanceof HTMLCanvasElement ? lickShot : null, cs = candyShot;
+  const shotGeom = { ...geom }, shotW = W;
   const render = async faceOff => {
-    const card = await makeCard(faceOff, g, m, ls, cs);
+    cardBlob = null;
+    cardReady = new Promise(res => { cardDone = res; });
+    const card = await makeCard(faceOff, g, m, ls, cs, shotGeom, shotW);
     if (game !== g) return;   // a new round started while the fonts loaded
     img.src = card.toDataURL("image/jpeg", 0.86);
-    card.toBlob(b => { if (game === g) cardBlob = b; }, "image/png");
+    card.toBlob(b => { if (game === g) { cardBlob = b; cardDone(); } }, "image/png");
   };
   const saveTip = el("p", "res-sub", "공유가 안 되면 카드를 길게 눌러 저장하세요"); saveTip.id = "saveTip"; saveTip.hidden = true;
   const parts = [img, saveTip, sub, bestLine, row, foot];
@@ -567,7 +582,8 @@ function frame(now) {
     if (loseT >= 0) { loseT += dt; if (!moment && loseT > 0.55) capture = now; }
     if (carve > 0.05 && needle && !needle.held) spawnCrumbs(needle.x, needle.y, Math.random() < carve ? 1 : 0, false);
     if (lickOn) { lickFor += dt; if (!lickShot && lickFor > 0.8 && mode === "camera") lickShot = "next"; } else lickFor = 0;
-    if (audio) { audio.gn.gain.value = game.done ? 0 : carve * 0.22; audio.bp.frequency.value = 2400 + carve * 1800; }
+    const still = mode === "touch" && performance.now() - (touch.mt || 0) > 120;
+    if (audio) { audio.gn.gain.value = game.done || still ? 0 : carve * 0.22; audio.bp.frequency.value = 2400 + carve * 1800; }
     if (game.started) $("hint").textContent = "";
     const left = Math.max(0, Math.ceil(game.limit - game.t));
     const tm = $("timer"); tm.textContent = `0${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
@@ -610,7 +626,7 @@ function frame(now) {
     if (s) {
       if (s.tongue) drawTongue(s.tongue, !!lickOn, now);
       if (s.hand) handFront(s.hand, s.hs);
-      if (s.needle) { drawNeedle(s.needle, s.dir || [0.55, 0.83], !s.needle.held || !!s.hand); drawStressRing(s.needle); }
+      if (s.needle) { drawNeedle(s.needle, s.dir || [0.55, 0.83], !!s.needle.down); drawStressRing(s.needle); }
     } else if (mode === "touch") {
       if (lickMode) { if (touch.down) drawTongueFaded({ base: [touch.x, touch.y - geom.R * 0.7], dir: [0, 1], len: geom.R * 0.7, width: geom.R * 0.34, fadeRoot: true }, now); }
       else if (touch.down) { const p = touchTip(); drawNeedle(p, [0.45, 0.89], true); drawStressRing(p); }

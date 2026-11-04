@@ -135,7 +135,11 @@ export function createTracker(video, models, { onPoke } = {}) {
       // the face is slow to read: every 4th frame, every 2nd while the mouth is open; never on the same frame as the
       // hand, so one frame never pays for both models
       if (s.frame % (s.jaw > CAM.JAW * 0.6 ? 2 : 4) === 0) { readFace(models.face.detectForVideo(video, now)); keepHand(); }
-      else readHand(models.hand.detectForVideo(video, now), dt, now);
+      else {
+        // the move since the last HAND reading (a face frame in between doubles it: review r3 M1)
+        const hdt = Math.max(0.001, (now - (s.lastHandT || now - 33)) / 1000); s.lastHandT = now; s.vdt = hdt;
+        readHand(models.hand.detectForVideo(video, now), hdt, now);
+      }
     } catch (e) {
       rebuilding = true;
       models.toCpu().finally(() => { rebuilding = false; });

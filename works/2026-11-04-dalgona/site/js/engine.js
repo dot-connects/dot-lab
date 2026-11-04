@@ -182,7 +182,7 @@ function nearestOutline(g, x, y) {
 function spawnCrack(g, x, y, w) {
   const { cx, cy, R } = g.geom;
   const no = nearestOutline(g, x, y), [sx, sy] = no.q;
-  const corner = nearWeak(g, sx, sy) && !(g.at && g.at.poke);
+  const corner = nearWeak(g, sx, sy) && !(g.at && g.at.poke && g.t - g.at.t < 1);   // a poke's corner pass lasts a second
   const inward = g.rng() < Math.min(0.85, RULES.IN_P + 0.1 * g.chips + (corner ? RULES.WEAK_IN : 0)) * (1 - w * 0.6);
   const st = R * 0.02, pts = [[sx, sy]], cum = [0], flip = inward ? Math.PI : 0;
   let ang = Math.atan2(sy - cy, sx - cx) + flip + (g.rng() - 0.5) * 0.8, px = sx, py = sy, L = 0;
@@ -268,7 +268,7 @@ export function poke(g, x, y) {
   const add = (hit ? (corner ? RULES.POKE_WEAK_STRESS : RULES.POKE_STRESS) : 0.22) * (1 - 0.5 * w) + (gap < RULES.FAST_GAP ? RULES.POKE_FAST : 0);
   g.stress = Math.min(1.3, g.stress + Math.min(RULES.POKE_CAP, add * (1 + g.heat)));
   g.heat += RULES.POKE_HEAT;
-  g.at = { x, y, w, poke: true };
+  g.at = { x, y, w, poke: true, t: g.t };
   g.events.push({ type: "poke", hit, corner: hit && corner });
 }
 
@@ -373,20 +373,21 @@ export function stars(g) { return !g.ok ? 0 : g.chips ? 1 : g.cracks.some(c => c
 /** Funny name for the result. */
 export function label(g) {
   const p = g.final;
-  if (g.ok && stars(g) === 3) return g.cracks.length ? "실금 하나로 버팀" : "흠집 하나 없이 통과";
+  const open = g.cracks.filter(c => !c.healed).length;
+  if (g.ok && stars(g) === 3) return open ? "실금 하나로 버팀" : "흠집 하나 없이 통과";
   if (g.ok && g.chips) return "조각은 잃었지만 통과";
   if (g.ok) return "실금 위에서 통과";
   if (g.cause === "melt") return "혀로 다 녹임";
   if (g.cause === "time") return p > 80 ? "시간이 모자랐음" : "바늘만 들고 있었음";
   if (p >= 85) return "한 끗 차이";
-  if (g.cracks.length > 2) return "성격 급함";
+  if (open > 2) return "성격 급함";
   if (p < 25) return "시작하자마자";
   return "탈락";
 }
 
 export function reason(g) {
   const s = Math.round(g.t);
-  if (g.ok) return `${s}초 · 금 ${g.cracks.length}개 · 떨어진 조각 ${g.chips}개 · 찌른 횟수 ${g.pokes}`;
+  if (g.ok) return `${s}초 · 금 ${g.cracks.filter(c => !c.healed).length}개 · 떨어진 조각 ${g.chips}개 · 찌른 횟수 ${g.pokes}`;
   if (g.cause === "melt") return `한 곳을 오래 핥아 모양이 녹았어요 · ${g.final}% 파냄`;
   if (g.cause === "time") return `${g.limit}초 안에 ${g.final}%까지 · 원작은 10분`;
   return `금이 모양 안으로 번졌어요 · ${s}초 · ${g.final}% 파냄`;

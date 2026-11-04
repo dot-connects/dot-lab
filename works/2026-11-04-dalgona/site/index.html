@@ -21,16 +21,16 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 .num{font-family:"Orbit",ui-monospace,monospace;font-variant-numeric:tabular-nums}
 #timer{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:0;right:0;text-align:center;font-size:40px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.7)}
 #timer.hurry{color:var(--pink)}
-#badge{position:absolute;top:calc(env(safe-area-inset-top) + 22px);left:14px;font-size:12px;color:#fff;background:var(--green);border-radius:6px;padding:.15em .5em;letter-spacing:.06em}
+#badge{position:absolute;top:calc(env(safe-area-inset-top) + 22px);left:14px;font-size:13px;color:#fff;background:none;border:1px solid rgba(255,255,255,.45);border-radius:6px;padding:.2em .55em;letter-spacing:.06em;text-shadow:0 1px 4px #000}
 #quit{position:absolute;top:calc(env(safe-area-inset-top) + 14px);right:12px;pointer-events:auto;width:40px;height:40px;border-radius:50%;border:0;background:rgba(8,12,10,.5);color:#fff;font-size:18px;cursor:pointer;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #hint{position:absolute;top:calc(env(safe-area-inset-top) + 74px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:20px;color:#fff;text-shadow:0 1px 6px #000}
-#pc{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 64px);text-align:center;font-size:15px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+#pc{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 68px);text-align:center;font-size:22px;color:var(--candy);text-shadow:0 2px 8px #000}
 #status{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 22px);text-align:center}
 #sw{display:inline-block;font-family:"Do Hyeon",sans-serif;font-size:18px;color:#fff;padding:6px 14px;border-radius:999px;background:rgba(8,12,10,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:background .2s}
 #sw.bad{background:rgba(200,20,50,.75)}
-#sw.good{background:rgba(30,138,94,.85)}
+#sw.good{background:rgba(18,104,68,.92)}
 #lick{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + 100px);pointer-events:auto;font:inherit;font-size:14px;padding:10px 14px;border-radius:999px;border:1px solid #ffffff66;background:rgba(8,12,10,.55);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-#lick[aria-pressed="true"]{background:#ff7a9a;border-color:#ff7a9a}
+#lick[aria-pressed="true"]{background:#f2b866;border-color:#f2b866;color:#2a1406}
 .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 20px calc(env(safe-area-inset-bottom) + 24px);background:rgba(10,14,12,.86);overflow:auto}
 #result{background:rgba(10,14,12,.62)}
 #result.win{background:radial-gradient(90% 60% at 50% 40%,rgba(233,166,74,.22),rgba(10,14,12,.7))}
@@ -40,23 +40,29 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 .ov p{margin:0;line-height:1.6;max-width:320px;color:#e3eee9}
 .how{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:15px;max-width:320px}
 .how b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:18px;color:var(--candy)}
-.go{font-family:"Do Hyeon",sans-serif;font-size:22px;background:var(--pink);color:#fff;border:0;border-radius:12px;padding:13px 34px;cursor:pointer}
+.go{font-family:"Do Hyeon",sans-serif;font-size:22px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:13px 34px;cursor:pointer;box-shadow:0 4px 14px rgba(214,140,54,.35)}
 .sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff44;border-radius:12px;padding:9px 16px;cursor:pointer}
 .link{color:var(--mute);font-size:14px;text-decoration:none}
 .picks{display:flex;gap:12px}
 .picks button{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;font:inherit}
-.picks .ic{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;font-size:30px;background:radial-gradient(circle at 38% 34%,#f2c071,#d68c36 60%,#9a5418);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 -3px 6px rgba(80,30,5,.4);color:#6b3410}
-.picks small{font-size:12px;color:#FFC23D;letter-spacing:.05em;min-height:1.2em}
-.res-card{width:min(74vw,300px);aspect-ratio:4/5;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.6);background:#1a1d1b;object-fit:cover}
+.picks .ic{display:grid;place-items:center;width:min(76px,calc((100vw - 76px)/4));height:auto;aspect-ratio:1;border-radius:50%;font-size:30px;background:radial-gradient(circle at 38% 34%,#f2c071,#d68c36 60%,#9a5418);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 -3px 6px rgba(80,30,5,.4);color:#6b3410}
+.picks small{font-size:12px;color:var(--ink);letter-spacing:.03em;line-height:1.4;min-height:2.8em}
+.picks small b{font-weight:400;color:#FFC23D;letter-spacing:.08em}
+.res-card{width:min(84vw,340px,calc((100dvh - 320px)*.8));aspect-ratio:4/5;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.6);background:#1a1d1b;object-fit:cover}
 .res-line{font-size:26px;color:#FFC23D;letter-spacing:.02em}
 #result:not(.win) .res-line{color:#ff8a9b}
 .res-sub{font-size:14px;color:#d7e2dd!important}
-.res-best{font-size:13px;color:var(--mute)!important;min-height:1em}
+.res-best{font-size:13px;color:var(--mute)!important}
+.res-best:not(:empty){color:var(--candy)!important;font-family:"Do Hyeon",sans-serif;font-size:16px}
+.res-sub:empty,.res-best:empty{display:none}
+.cam-note{font-size:13px;color:var(--mute)!important;margin-top:-6px!important}
 .res-face{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
 #demo{width:210px;height:210px;margin-bottom:-6px}
-.mode-hint{font-size:14px;color:#FFC23D!important}
+.mode-hint{font-size:14px;color:#FFC23D!important;text-wrap:balance;max-width:300px}
 @media (max-height:700px){#demo{width:150px;height:150px}}
-.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+@media (min-height:820px){#demo{width:250px;height:250px}}
+.row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;width:100%;max-width:400px}
+.row .go,.row .sub{flex:1 1 0;min-width:0;max-width:200px}
 .foot{gap:18px}
 .foot .link{background:none;border:0;font:inherit;font-size:14px;cursor:pointer;padding:6px}
 .ov h2{font-size:32px}
@@ -86,18 +92,19 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
     <h1>허공 <em>달고나</em></h1>
     <p>내 카메라 화면 위에 달고나가 떠요.<br>금 가기 전에 모양을 떼어 내세요.</p>
     <div class="how">
-      <b>🤏</b><span>엄지·검지를 모으면 바늘</span>
+      <b>🤏</b><span>엄지·검지를 모으면 바늘 (터치는 손가락)</span>
       <b>〰</b><span>선을 따라 천천히 긁기</span>
       <b>👅</b><span>입 벌려 핥으면 말랑, 오래 핥으면 녹음</span>
     </div>
     <button class="go" id="camGo">카메라로 하기</button>
+    <p class="cam-note">영상은 폰 밖으로 나가지 않아요</p>
     <button class="sub" id="touchGo">화면 터치로 하기</button>
     <p id="camMsg" hidden></p>
   </section>
 
   <section class="ov" id="pick" hidden>
     <h2>모양을 고르세요</h2>
-    <p>무엇을 할지는 고른 다음에 알려 드립니다.</p>
+    <p>동그라미가 제일 쉽고, 우산이 제일 어려워요</p>
     <p id="modeHint" class="mode-hint"></p>
     <div class="picks" id="picks"></div>
   </section>
