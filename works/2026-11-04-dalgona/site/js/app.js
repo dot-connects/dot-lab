@@ -351,11 +351,42 @@ function showPick() {
 let resultShown = false, endAt = 0, winAt = 0, loseT = -1, moment = null, lickShot = null, lickFor = 0, capture = null;
 let pose = null, ghost = null, beatAt = 0, note = null, candyAt = 0;
 const taught = {};   // one-time in-game tips per page load
+// the best win per shape leaves its needle's route (10 samples a second, candy-relative); the next rounds replay it
+// as a faint rival needle (design r4: something to chase once three stars are in reach)
+let trail = [], rival = null;
+const loadRival = shape => {
+  try { const v = JSON.parse(store("dalgona.ghost." + shape)); return v && Array.isArray(v.p) && v.p.length && Number.isFinite(v.t) && v.cam === (mode === "camera") ? v : null; }
+  catch { return null; }
+};
+function recordTrail(needle) {
+  const i = Math.floor(game.t * 10);
+  if (trail.length > i || trail.length > 1500) return;
+  while (trail.length < i) trail.push(null);
+  trail.push(needle && needle.down ? [+((needle.x - geom.cx) / geom.R).toFixed(3), +((needle.y - geom.cy) / geom.R).toFixed(3)] : null);
+}
+function drawRival() {
+  if (!rival || !game.started || game.done) return;
+  const i = Math.floor(game.t * 10), p = rival.p[i];
+  if (i >= rival.p.length) {   // the ghost is already out
+    ctx.save(); ctx.font = '15px "Do Hyeon", sans-serif'; ctx.textAlign = "center"; ctx.fillStyle = "rgba(255,255,255,.75)";
+    ctx.shadowColor = "#000"; ctx.shadowBlur = 6; ctx.fillText(`내 최고 기록 ${rival.t.toFixed(1)}초 지남`, geom.cx, geom.cy - geom.R * 1.22); ctx.restore();
+    return;
+  }
+  if (!p) return;
+  const x = geom.cx + p[0] * geom.R, y = geom.cy + p[1] * geom.R;
+  ctx.save(); ctx.globalAlpha = 0.32;
+  drawNeedle({ x, y }, [0.45, 0.89], true);
+  ctx.globalAlpha = 0.8; ctx.font = '12px "Do Hyeon", sans-serif'; ctx.fillStyle = "#FFC23D"; ctx.textAlign = "center";
+  ctx.shadowColor = "#000"; ctx.shadowBlur = 4; ctx.fillText("내 최고", x, y + 18);
+  ctx.restore();
+}
+
 function begin(shape) {
   geom = freshGeom();   // a rotation during the last round must not leave the next one off screen
   game = createGame(shape, geom, Math.random, { camera: mode === "camera" }); view = createCandyView(game, DPR); resultShown = false; lickMode = false;
   endAt = 0; winAt = 0; loseT = -1; moment = null; lickShot = null; lickFor = 0; capture = null; crumbs.length = 0;
   pose = null; beatAt = 0; note = null; candyAt = 0; candyShot = null;
+  trail = []; rival = loadRival(shape);
   // first round on this phone: a ghost needle shows the safe speed along the first stretch
   ghost = store("dalgona.seen") ? null : { t: 0 };
   show(null); $("hud").hidden = false; $("freeze").hidden = true;
@@ -462,6 +493,8 @@ async function showResult() {
   const lastTry = (() => { try { const v = JSON.parse(store("dalgona.last." + g.shape)); return v && Number.isFinite(v.pct) ? v : null; } catch { return null; } })();
   store("dalgona.last." + g.shape, JSON.stringify({ pct: g.final, ok: g.ok }));
   if (isNew && (rec.stars || rec.pct > 0)) store("dalgona.best2." + g.shape, JSON.stringify(rec));   // a 0 % loss is no record
+  const oldRival = loadRival(g.shape);
+  if (g.ok && (!oldRival || g.t < oldRival.t)) store("dalgona.ghost." + g.shape, JSON.stringify({ t: +g.t.toFixed(1), cam: mode === "camera", p: trail }));
   const best = isNew ? rec : prev;
   const r = $("result"); r.innerHTML = "";
   r.classList.toggle("win", g.ok);
@@ -580,6 +613,7 @@ function frame(now) {
   const lickOn = lick && Math.hypot(lick.x - geom.cx, lick.y - geom.cy) < geom.R;
   if (game) {
     const { carve } = step(game, dt, { needle, jitter, lick, moveDt });
+    if (game.started && !game.done) recordTrail(needle);
     for (const ev of game.events.splice(0)) {
       if (ev.type === "win") { winAt = now + 350; buzz(30); continue; }   // a beat of stillness before the break
       view.onEvent(ev);
@@ -590,9 +624,11 @@ function frame(now) {
         SFX.hair();
         if (mode === "camera" && !game.licks && !taught.lick) { taught.lick = true; note = { text: "입을 크게 벌려 핥으면 실금이 아물어요", until: now + 2600, good: true }; }
       }
-      else if (ev.type === "chip" && !taught.chip) { taught.chip = true; note = { text: "조각이 떨어졌어요 · 다음 금은 안쪽으로 가기 쉬워요", until: now + 2400 }; }
       else if (ev.type === "spread") SFX.spread();
-      else if (ev.type === "chip") SFX.chip();
+      else if (ev.type === "chip") {
+        SFX.chip();
+        if (!taught.chip) { taught.chip = true; note = { text: "조각이 떨어졌어요 · 다음 금은 안쪽으로 가기 쉬워요", until: now + 2400 }; }
+      }
       else if (ev.type === "lose") { SFX.lose(); loseT = 0; }
     }
     if (winAt && now >= winAt) {
@@ -664,6 +700,7 @@ function frame(now) {
   if (loseT > 0.65) drawStamp(loseT - 0.65);
   if (ghost && !game.started) drawGhost(dt);
   else if (ghost && game.started) { ghost = null; store("dalgona.seen", "1"); }
+  drawRival();
   if (flashAt && now - flashAt < 250) { ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - (now - flashAt) / 250)})`; ctx.fillRect(0, 0, W, H); }
   if (lickShot === "next") lickShot = grab();
   if (capture && now >= capture) { capture = null; moment = grab(); }
