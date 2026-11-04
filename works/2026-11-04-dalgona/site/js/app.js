@@ -252,7 +252,9 @@ function stampImage() {
   let sd = 3; const rr = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
   for (let i = 0; i < 400; i++) { g.beginPath(); g.arc(rr() * sw, rr() * sh, 0.5 + rr() * 1.5, 0, 7); g.fill(); }
   g.lineWidth = 1.2; for (let i = 0; i < 6; i++) { const x = rr() * sw, y = rr() * sh; g.beginPath(); g.moveTo(x, y); g.lineTo(x + 20 + rr() * 30, y + (rr() - 0.5) * 6); g.stroke(); }
-  return (stampCv = c);
+  // cache only once the real font drew it (a fallback-font stamp would stick for the session: iOS review r6)
+  try { if (document.fonts.check('68px "Do Hyeon"')) stampCv = c; } catch { stampCv = c; }
+  return c;
 }
 function drawStamp(t) {
   if (t <= 0) return;
