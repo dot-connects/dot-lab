@@ -1,0 +1,601 @@
+<title>달고나 AR 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&family=Orbit&display=swap">
+<style>
+/* Layout: one phone frame (390x780 logical) with the AR scene on a canvas, HUD in DOM per variant; tabs above, state buttons below. */
+:root{
+  --bg:#0e1311; --fg:#eef2ef; --mute:#9fb0a9; --line:#2a3532; --chip:#18201d;
+  --pink:#ff2e7e; --green:#1e8a5e; --amber:#e9a64a;
+  --f-num:"Orbit",ui-monospace,monospace;
+  --f-head:"Do Hyeon","IBM Plex Sans KR",sans-serif;
+  --f-body:"IBM Plex Sans KR",system-ui,sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.55;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:430px;margin:0 auto;display:grid;gap:14px}
+h1{font-family:var(--f-head);font-weight:400;font-size:28px;margin:0;letter-spacing:.01em}
+.lede{margin:0;color:var(--mute)}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.tabs button,.ctl button{font:inherit;color:var(--fg);background:var(--chip);border:1px solid var(--line);border-radius:10px;padding:9px 6px;cursor:pointer}
+.tabs button[aria-pressed="true"]{border-color:var(--amber);background:#2a2114}
+.tabs b{display:block;font-family:var(--f-head);font-weight:400;font-size:18px}
+.tabs small{color:var(--mute);font-size:12px}
+.desc{margin:0;min-height:3.1em;color:var(--fg)}
+.phone{position:relative;width:100%;aspect-ratio:390/780;max-width:100%;border-radius:26px;overflow:hidden;background:#000;touch-action:none;user-select:none;-webkit-user-select:none;box-shadow:0 0 0 1px var(--line)}
+.phone canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.hud{position:absolute;inset:0;pointer-events:none;font-size:calc(var(--u)*1px)}
+.cap{margin:0;color:var(--mute);font-size:13px}
+.ctl{display:flex;flex-wrap:wrap;gap:6px}
+.ctl button{padding:8px 11px;font-size:14px}
+.ctl button.on{border-color:var(--pink);background:#3a1626}
+.notes{margin:0;padding-left:18px;color:var(--mute);font-size:14px;display:grid;gap:4px}
+button:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* phone-internal sizes use --u = phone width / 390 */
+.pill{position:absolute;background:rgba(8,12,10,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);border-radius:999px;color:#fff}
+.num{font-family:var(--f-num);font-variant-numeric:tabular-nums}
+.badge456{font-family:var(--f-num);color:#fff;background:#1e8a5e;border-radius:6px;padding:.15em .5em;letter-spacing:.06em}
+.bar{height:8px;border-radius:4px;background:rgba(255,255,255,.22);overflow:hidden}
+.bar i{display:block;height:100%;background:#fff;width:35%}
+.status{font-family:var(--f-head);font-size:18px;color:#fff}
+/* A */
+#hudA .t{left:14px;top:14px;padding:4px 16px 2px;font-size:34px}
+#hudA .b{right:14px;top:22px;font-size:14px}
+#hudA .card{position:absolute;left:14px;right:14px;bottom:16px;padding:10px 14px 12px;border-radius:16px;background:rgba(8,12,10,.6);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:grid;gap:7px}
+/* B */
+#hudB .t{position:absolute;left:0;right:0;top:12px;text-align:center;font-size:40px;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.7)}
+#hudB .b{position:absolute;left:14px;top:22px;font-size:12px}
+#hudB .s{position:absolute;left:0;right:0;bottom:22px;text-align:center}
+#hudB .s span{display:inline-block;padding:6px 14px;border-radius:999px;background:rgba(8,12,10,.55);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+#hudB .pct{position:absolute;left:0;right:0;bottom:62px;text-align:center;font-size:15px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.8)}
+/* C */
+#hudC .top{position:absolute;left:0;right:0;top:0;height:70px;background:#d81f6a;display:flex;align-items:center;justify-content:space-between;padding:0 16px;color:#fff}
+#hudC .sym{font-size:22px;letter-spacing:6px;opacity:.9}
+#hudC .t{font-size:36px}
+#hudC .bot{position:absolute;left:0;right:0;bottom:0;height:104px;background:#0d1f1b;border-top:3px solid #1e8a5e;display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:center;padding:12px 16px}
+#hudC .tag{grid-row:span 2;background:#f4f4f0;color:#1e8a5e;font-family:var(--f-num);font-size:30px;padding:4px 10px;border-radius:4px;border:2px solid #1e8a5e}
+.lose{position:absolute;inset:0;background:rgba(150,10,30,.55);display:grid;place-content:center;text-align:center;gap:10px;color:#fff;pointer-events:auto}
+.lose b{font-family:var(--f-head);font-weight:400;font-size:52px}
+.lose button{font:inherit;font-family:var(--f-head);font-size:20px;color:#fff;background:#000a;border:1px solid #fff8;border-radius:12px;padding:8px 22px;cursor:pointer}
+</style>
+
+<div class="wrap">
+  <h1>달고나 AR 시안</h1>
+  <p class="lede">세 안 모두 같은 달고나·금·녹음 표현이에요. 차이는 카메라 화면 위에 무엇을 얹느냐예요. 화면을 직접 긁고 톡 찔러 보세요.</p>
+  <div class="tabs" role="group" aria-label="시안">
+    <button id="tA" aria-pressed="true"><b>A 링 깡통</b><small>얇은 테두리·알약</small></button>
+    <button id="tB" aria-pressed="false"><b>B 맨 달고나</b><small>깡통 없음</small></button>
+    <button id="tC" aria-pressed="false"><b>C 세트장 띠</b><small>위아래 띠</small></button>
+  </div>
+  <p class="desc" id="desc"></p>
+  <div class="phone" id="phone">
+    <canvas id="cv"></canvas>
+    <div class="hud" id="hudA">
+      <div class="pill t num" id="tA1">01:12</div>
+      <div class="pill b"><span class="badge456">456</span></div>
+      <div class="card"><div class="status st">천천히 긁는 중</div><div class="bar"><i class="pb"></i></div></div>
+    </div>
+    <div class="hud" id="hudB" hidden>
+      <div class="t num">01:12</div>
+      <div class="b"><span class="badge456">456</span></div>
+      <div class="pct num">35%</div>
+      <div class="s"><span class="status st">천천히 긁는 중</span></div>
+    </div>
+    <div class="hud" id="hudC" hidden>
+      <div class="top"><span class="sym">○△□</span><span class="t num">01:12</span><span class="sym">☆</span></div>
+      <div class="bot"><span class="tag">456</span><div class="status st">천천히 긁는 중</div><div class="bar"><i class="pb"></i></div></div>
+    </div>
+    <div class="lose" id="lose" hidden><b>탈락</b><span>금이 별 안쪽까지 들어갔어요</span><button id="again">다시</button></div>
+  </div>
+  <p class="cap">뒤의 방과 사람은 그림이에요. 실제로는 내 카메라 화면이 그대로 깔리고, 손과 입은 카메라가 찾은 위치에 붙어요.</p>
+  <div class="ctl" aria-label="상태 미리보기">
+    <button id="bLick">핥기 모드</button>
+    <button data-s="hair">실금</button>
+    <button data-s="spread">갈라짐</button>
+    <button data-s="chip">조각 떨어짐</button>
+    <button data-s="wet">핥은 자리</button>
+    <button data-s="hole">녹은 구멍</button>
+    <button data-s="lose">탈락</button>
+    <button data-s="reset">처음부터</button>
+  </div>
+  <ol class="notes">
+    <li>톡 한 번은 절대 안 깨져요. 빨리 두세 번 찌르면 실금이 생기고, 계속 무리하면 금이 자라요. 손을 멈추면 금도 멈춰요.</li>
+    <li>바깥쪽 금이 가장자리에 닿으면 그 조각만 떨어져요(괜찮음). 안쪽 금이 별 안으로 깊이 들어가면 탈락이에요.</li>
+    <li>핥기 모드에서 달고나를 누르면 고개가 그쪽으로 내려와 핥아요. 오래 핥으면 구멍이 뚫리고 뒤가 비쳐요.</li>
+    <li>바늘 끝 링: 초록 안전 → 노랑 조심 → 빨강 금 가는 중.</li>
+  </ol>
+</div>
+
+<script>
+(() => {
+const W = 390, H = 780;
+const $ = s => document.querySelector(s);
+const phone = $('#phone'), cv = $('#cv'), ctx = cv.getContext('2d');
+let scale = 1, dpr = Math.min(2, window.devicePixelRatio || 1);
+let variant = 'A';
+const R = 142, C = { x: W / 2, y: H * 0.62 };
+const CY = { A: 0.62, B: 0.6, C: 0.6 };
+
+// ---------- seeded random ----------
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const rand = rng(456);
+const off = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
+
+// ---------- candy geometry (candy coords: centre 0,0, px) ----------
+const K = 2, S = Math.ceil(2.4 * R), HALF = S / 2;
+const toC = g => { g.setTransform(K, 0, 0, K, K * HALF, K * HALF); return g; };
+const ph = [rand() * 6, rand() * 6, rand() * 6, rand() * 6];
+const edgeR = t => R * (1 + 0.028 * Math.sin(3 * t + ph[0]) + 0.018 * Math.sin(7 * t + ph[1]) + 0.01 * Math.sin(13 * t + ph[2]) + 0.006 * Math.sin(31 * t + ph[3]));
+const edge = new Path2D();
+for (let i = 0; i <= 240; i++) { const t = i / 240 * Math.PI * 2, r = edgeR(t); i ? edge.lineTo(r * Math.cos(t), r * Math.sin(t)) : edge.moveTo(r, 0); }
+edge.closePath();
+// star from engine.js: outer .52, inner .23, x0.78, dy .03
+const star = [];
+for (let i = 0; i <= 10; i++) { const r = (i % 2 ? 0.23 : 0.52) * 0.78 * R, t = -Math.PI / 2 + i * Math.PI / 5; star.push([r * Math.cos(t), r * Math.sin(t) + 0.03 * 0.78 * R]); }
+const starPath = new Path2D(); star.forEach(([x, y], i) => i ? starPath.lineTo(x, y) : starPath.moveTo(x, y)); starPath.closePath();
+// groove samples every 3 px
+const groove = [];
+for (let i = 0; i < 10; i++) { const [ax, ay] = star[i], [bx, by] = star[i + 1], n = Math.ceil(Math.hypot(bx - ax, by - ay) / 3); for (let k = 0; k < n; k++) groove.push({ x: ax + (bx - ax) * k / n, y: ay + (by - ay) * k / n, c: 0 }); }
+function inStar(x, y) { let ins = false; for (let i = 0, j = 9; i < 10; j = i++) { const [xi, yi] = star[i], [xj, yj] = star[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
+function nearGroove(x, y) { let best = 1e9, bi = 0; groove.forEach((p, i) => { const d = Math.hypot(p.x - x, p.y - y); if (d < best) { best = d; bi = i; } }); return { d: best, i: bi }; }
+const inCandy = (x, y) => Math.hypot(x, y) < edgeR(Math.atan2(y, x));
+
+// ---------- textures ----------
+function texture(wet) {
+  const c = off(S * K, S * K), g = toC(c.getContext('2d')), r = rng(wet ? 77 : 77);
+  g.save(); g.clip(edge);
+  const base = g.createRadialGradient(-0.25 * R, -0.25 * R, 0, 0, 0, R * 1.05);
+  if (!wet) { base.addColorStop(0, '#efb75c'); base.addColorStop(0.55, '#dc953c'); base.addColorStop(0.86, '#b06420'); base.addColorStop(1, '#6b3410'); }
+  else { base.addColorStop(0, '#c9772a'); base.addColorStop(0.6, '#a85718'); base.addColorStop(1, '#5e2a0a'); }
+  g.fillStyle = base; g.fillRect(-HALF, -HALF, S, S);
+  // caramel blotches, heavier near the rim
+  for (let i = 0; i < 260; i++) {
+    const t = r() * 6.283, d = Math.sqrt(r()) * R, x = d * Math.cos(t), y = d * Math.sin(t), rr = 6 + r() * 22;
+    const gr = g.createRadialGradient(x, y, 0, x, y, rr);
+    const dark = r() < 0.4 + 0.5 * (d / R);
+    gr.addColorStop(0, dark ? 'rgba(110,50,12,.16)' : 'rgba(255,214,140,.12)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+    g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
+  }
+  // bubbles (honeycomb pores), power-law sizes
+  const n = wet ? 700 : 2000;
+  for (let i = 0; i < n; i++) {
+    const t = r() * 6.283, d = Math.sqrt(r()) * R * 0.98, x = d * Math.cos(t), y = d * Math.sin(t);
+    const s = 0.5 + 3.6 * Math.pow(r(), 3.2);
+    g.fillStyle = wet ? 'rgba(70,28,6,.18)' : `rgba(92,40,10,${0.35 + 0.3 * r()})`;
+    g.beginPath(); g.ellipse(x, y, s, s * (0.75 + 0.3 * r()), r() * 3, 0, 6.283); g.fill();
+    if (!wet && s > 1.1) { g.strokeStyle = 'rgba(255,226,170,.38)'; g.lineWidth = 0.6; g.beginPath(); g.arc(x + 0.25 * s, y + 0.25 * s, s, 0.1, 1.5); g.stroke(); }
+  }
+  // darker caramelised rim
+  g.strokeStyle = wet ? 'rgba(50,20,4,.45)' : 'rgba(84,36,8,.42)'; g.lineWidth = 0.14 * R; g.stroke(edge);
+  g.strokeStyle = 'rgba(60,24,4,.5)'; g.lineWidth = 0.035 * R; g.stroke(edge);
+  // pressed shape groove (engraved: dark top-left, light bottom-right)
+  g.lineJoin = 'round';
+  g.save(); g.translate(-0.7, -0.7); g.strokeStyle = 'rgba(82,34,6,.75)'; g.lineWidth = 2.4; g.stroke(starPath); g.restore();
+  g.save(); g.translate(0.9, 0.9); g.strokeStyle = 'rgba(255,218,150,.55)'; g.lineWidth = 1.3; g.stroke(starPath); g.restore();
+  // gloss
+  g.globalCompositeOperation = 'screen';
+  const sp = g.createRadialGradient(-0.38 * R, -0.42 * R, 0, -0.38 * R, -0.42 * R, 0.5 * R);
+  sp.addColorStop(0, wet ? 'rgba(255,236,190,.55)' : 'rgba(255,236,190,.26)'); sp.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = sp; g.fillRect(-HALF, -HALF, S, S);
+  if (wet) { // sharp wet highlights
+    for (let i = 0; i < 90; i++) { const t = r() * 6.283, d = Math.sqrt(r()) * R, x = d * Math.cos(t), y = d * Math.sin(t); g.fillStyle = `rgba(255,248,225,${0.25 + 0.45 * r()})`; g.beginPath(); g.ellipse(x, y, 1.5 + 4 * r(), 0.8 + 1.2 * r(), -0.6, 0, 6.283); g.fill(); }
+  }
+  g.restore();
+  return c;
+}
+const DRY = texture(false), WET = texture(true);
+let damage = off(S * K, S * K), dg = toC(damage.getContext('2d'));
+const L = off(S * K, S * K), lg = L.getContext('2d');
+const B = off(S * K, S * K), bg = B.getContext('2d');
+
+// candy shadow, rendered once
+const SH = off(S * K, S * K); { const g = toC(SH.getContext('2d')); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 26 * K; g.shadowOffsetX = 2000 * K; g.translate(-2000, 0); g.fill(edge); }
+
+// ---------- wet / melt grid ----------
+const N = 28, cell = S / N;
+let wetG = new Float32Array(N * N), meltG = new Float32Array(N * N);
+const mWet = off(S * K, S * K), mRim = off(S * K, S * K), mHole = off(S * K, S * K);
+function blobs(c, val) {
+  const g = toC(c.getContext('2d')); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); toC(g);
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const a = val(j * N + i); if (a < 0.02) continue;
+    const x = -HALF + (i + 0.5) * cell, y = -HALF + (j + 0.5) * cell, r = cell * 1.3;
+    const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, `rgba(255,255,255,${a})`); gr.addColorStop(0.55, `rgba(255,255,255,${a * 0.7})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(x - r, y - r, 2 * r, 2 * r);
+  }
+}
+const clamp = v => Math.min(1, Math.max(0, v));
+function masks() {
+  blobs(mWet, k => clamp(wetG[k] * 0.9));
+  blobs(mRim, k => clamp((meltG[k] - 0.1) / 0.45));
+  blobs(mHole, k => clamp((meltG[k] - 0.4) / 0.5));
+}
+function lickAt(x, y, dt) {
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    const cx = -HALF + (i + 0.5) * cell, cy = -HALF + (j + 0.5) * cell, d = Math.hypot(cx - x, cy - y) / (0.16 * R);
+    if (d > 2) continue;
+    const k = j * N + i, a = Math.exp(-d * d) * dt;
+    wetG[k] += a * 1.1; if (wetG[k] > 1) meltG[k] += (wetG[k] - 1) * a * 0.9;
+    wetG[k] = Math.min(wetG[k], 2.4); meltG[k] = Math.min(meltG[k], 1.4);
+  }
+}
+const drips = [];
+function spawnDrips(dt) {
+  if (drips.length >= 6) return;
+  for (let k = 0; k < N * N; k++) if (wetG[k] > 1.1 && Math.random() < dt * 0.35) {
+    const i = k % N, j = (k / N) | 0; drips.push({ x: -HALF + (i + 0.5) * cell + (Math.random() - .5) * 6, y: -HALF + (j + 0.5) * cell, vy: 6, len: 3, a: 1, off: false });
+    if (drips.length >= 6) return;
+  }
+}
+
+// ---------- damage: carving, scratches, pits ----------
+function carveAt(x, y, amount) {
+  groove.forEach(p => { const d = Math.hypot(p.x - x, p.y - y); if (d < 7) p.c = Math.min(1, p.c + amount * (1 - d / 7)); });
+}
+function drawCarved() {
+  dg.save(); dg.clip(edge); dg.lineCap = 'round';
+  for (let i = 0; i < groove.length; i++) {
+    const p = groove[i], q = groove[(i + 1) % groove.length], c = Math.min(p.c, q.c);
+    if (c < 0.05) continue;
+    dg.strokeStyle = `rgba(60,22,4,${0.25 + 0.55 * c})`; dg.lineWidth = 1.2 + 2 * c; dg.beginPath(); dg.moveTo(p.x, p.y); dg.lineTo(q.x, q.y); dg.stroke();
+    dg.strokeStyle = `rgba(255,240,210,${0.25 * c})`; dg.lineWidth = 0.8; dg.beginPath(); dg.moveTo(p.x + 1.4, p.y + 1.4); dg.lineTo(q.x + 1.4, q.y + 1.4); dg.stroke();
+  }
+  dg.restore();
+}
+function scratch(x0, y0, x1, y1) {
+  dg.save(); dg.clip(edge); dg.lineCap = 'round';
+  dg.strokeStyle = 'rgba(255,238,205,.32)'; dg.lineWidth = 1.1; dg.beginPath(); dg.moveTo(x0, y0); dg.lineTo(x1, y1); dg.stroke();
+  for (let i = 0; i < 3; i++) { dg.fillStyle = 'rgba(255,240,215,.5)'; dg.fillRect(x1 + (Math.random() - .5) * 6, y1 + (Math.random() - .5) * 6, 1, 1); }
+  dg.restore();
+}
+function pit(x, y) {
+  dg.save(); dg.clip(edge);
+  dg.fillStyle = 'rgba(50,18,2,.75)'; dg.beginPath(); dg.arc(x, y, 1.8, 0, 6.283); dg.fill();
+  dg.strokeStyle = 'rgba(255,225,170,.55)'; dg.lineWidth = 0.8; dg.beginPath(); dg.arc(x + 0.6, y + 0.6, 2.6, 0.2, 2.2); dg.stroke();
+  for (let i = 0; i < 6; i++) { const a = Math.random() * 6.283, d = 3 + Math.random() * 5; dg.fillStyle = 'rgba(255,236,200,.55)'; dg.fillRect(x + d * Math.cos(a), y + d * Math.sin(a), 1.2, 1.2); }
+  dg.restore();
+}
+
+// ---------- cracks ----------
+const HAIR = 0.5, GROW = 0.8 * R, FATAL = 0.12 * R;
+let cracks = [], chips = [], pieces = [], pendingChip = null, lost = false;
+function makeCrack(x, y, inward) {
+  const r = Math.random;
+  let a = inward ? Math.atan2(-y, -x) + (r() - .5) * 0.8 : Math.atan2(y, x) + (r() - .5) * 0.8;
+  const pts = [[x, y]], cum = [0]; let px = x, py = y, L0 = 0;
+  for (let i = 0; i < 400; i++) {
+    const tg = inward ? Math.atan2(-py, -px) : Math.atan2(py, px); a += (r() - .5) * 0.7 + Math.atan2(Math.sin(tg - a), Math.cos(tg - a)) * 0.12; px += 3 * Math.cos(a); py += 3 * Math.sin(a); L0 += 3; pts.push([px, py]); cum.push(L0);
+    if (!inward && !inCandy(px, py)) break;
+    if (inward && L0 > 0.9 * R) break;
+  }
+  const br = [];
+  for (let b = 0; b < 2; b++) {
+    const at = 6 + ((r() * (pts.length - 8)) | 0); let ba = a + (r() < .5 ? -1 : 1) * (0.5 + r() * 0.5), [bx, by] = pts[at]; const bp = [[bx, by]];
+    for (let i = 0; i < 5 + r() * 8; i++) { ba += (r() - .5) * 0.6; bx += 3 * Math.cos(ba); by += 3 * Math.sin(ba); bp.push([bx, by]); }
+    br.push({ at: cum[at], pts: bp });
+  }
+  const c = { pts, cum, total: L0, len: 0.04 * R, inward, br, stage: 0, done: false };
+  cracks.push(c); return c;
+}
+function stageOf(c) { return c.len < 0.12 * R ? 0 : c.len < 0.35 * R ? 1 : 2; }
+function tipOf(c) { let i = c.cum.findIndex(v => v >= c.len); if (i < 0) i = c.pts.length - 1; return c.pts[i]; }
+function drawCrack(g, c) {
+  const st = stageOf(c), w = [0.7, 1.4, 2.6][st], al = [0.5, 0.82, 0.95][st];
+  const path = (pts, cum, upto) => { g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (let i = 1; i < pts.length && cum[i] <= upto; i++) g.lineTo(pts[i][0], pts[i][1]); };
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  g.save(); g.translate(0.8, 0.8); g.strokeStyle = 'rgba(255,214,160,.45)'; g.lineWidth = w * 0.6; path(c.pts, c.cum, c.len); g.stroke(); g.restore();
+  g.strokeStyle = `rgba(48,18,2,${al})`; g.lineWidth = w; path(c.pts, c.cum, c.len); g.stroke();
+  if (st >= 1) for (const b of c.br) if (c.len > b.at) {
+    const bc = b.pts.map((_, i) => i * 3), upto = Math.min((c.len - b.at) * 0.6, bc[bc.length - 1]);
+    g.strokeStyle = `rgba(48,18,2,${al * 0.8})`; g.lineWidth = w * 0.55; path(b.pts, bc, upto); g.stroke();
+  }
+}
+function chipFrom(c) {
+  const [ex, ey] = c.pts[c.pts.length - 1], te = Math.atan2(ey, ex), dir = Math.random() < .5 ? 1 : -1, span = 0.16 + Math.random() * 0.1;
+  const k0 = Math.max(0, c.cum.findIndex(v => v >= c.total - 0.2 * R)), seg = c.pts.slice(k0);
+  const p = new Path2D(); p.moveTo(seg[0][0], seg[0][1]); seg.forEach(([x, y]) => p.lineTo(x, y));
+  for (let i = 0; i <= 12; i++) { const t = te + dir * span * i / 12, r = edgeR(t) + 3; p.lineTo(r * Math.cos(t), r * Math.sin(t)); }
+  p.closePath();
+  const tm = te + dir * span / 2, cxp = 0.92 * R * Math.cos(tm), cyp = 0.92 * R * Math.sin(tm);
+  pendingChip = { path: p, cx: cxp, cy: cyp, dir: tm };
+}
+
+// ---------- state ----------
+let stress = 0, above = false, tip = { x: C.x + 0.4 * R, y: C.y - 0.3 * R }, lastC = { x: 0, y: 0 }, pressing = false, lickMode = false, licking = false;
+let clockStarted = false, clock = 72, head = { x: 0, y: 0, s: 1, m: 0 };
+let sfx = null;
+function tick(f = 2800, d = 0.03, v = 0.25) {
+  try {
+    sfx = sfx || new (window.AudioContext || window.webkitAudioContext)();
+    const n = sfx.createBuffer(1, sfx.sampleRate * d, sfx.sampleRate), ch = n.getChannelData(0); for (let i = 0; i < ch.length; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / ch.length);
+    const s = sfx.createBufferSource(), bp = sfx.createBiquadFilter(), gn = sfx.createGain(); bp.type = 'bandpass'; bp.frequency.value = f; gn.gain.value = v;
+    s.buffer = n; s.connect(bp).connect(gn).connect(sfx.destination); s.start();
+  } catch (e) { }
+}
+function reset(preset = true) {
+  damage = off(S * K, S * K); dg = toC(damage.getContext('2d'));
+  groove.forEach(p => p.c = 0); wetG = new Float32Array(N * N); meltG = new Float32Array(N * N);
+  cracks = []; chips = []; pieces = []; drips.length = 0; pendingChip = null; stress = 0; above = false; lost = false; $('#lose').hidden = true;
+  clockStarted = false; clock = preset ? 72 : 90;
+  if (preset) { // a believable mid-game frame for the first look
+    for (let i = 0; i < groove.length * 0.35; i++) groove[i].c = 0.6 + 0.4 * Math.sin(i);
+    for (let i = 0; i < 18; i++) pit(groove[(i * 7) % groove.length].x + 1, groove[(i * 7) % groove.length].y);
+    const g = groove[Math.floor(groove.length * 0.42)]; const c = makeCrack(g.x, g.y, false); c.len = 0.1 * R; lastC = { x: g.x, y: g.y };
+    lickAt(-0.55 * R, 0.25 * R, 1.0); lickAt(-0.55 * R, 0.25 * R, 0.25);
+    stress = 0.42;
+  }
+  drawCarved();
+}
+
+// ---------- scene (stand-in for the camera feed) ----------
+const ROOM = off(W * 2, H * 2); {
+  const g = ROOM.getContext('2d'); g.scale(2, 2);
+  const wall = g.createLinearGradient(0, 0, 0, H); wall.addColorStop(0, '#4a4038'); wall.addColorStop(1, '#2a241f'); g.fillStyle = wall; g.fillRect(0, 0, W, H);
+  const win = g.createRadialGradient(60, 130, 10, 60, 130, 260); win.addColorStop(0, 'rgba(255,232,190,.55)'); win.addColorStop(1, 'rgba(255,232,190,0)'); g.fillStyle = win; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(255,240,215,.18)'; g.fillRect(8, 40, 92, 170); g.fillStyle = 'rgba(40,34,30,.5)'; g.fillRect(52, 40, 4, 170); g.fillRect(8, 122, 92, 4);
+  g.fillStyle = 'rgba(20,16,14,.55)'; g.fillRect(300, 70, 90, 6); g.fillRect(300, 150, 90, 6);
+  [[310, 48, 16, 22, '#7a4b3a'], [334, 54, 12, 16, '#3d5a6a'], [352, 44, 20, 26, '#8a8070'], [312, 124, 26, 26, '#4f6b4a'], [346, 130, 14, 20, '#a0583a']].forEach(([x, y, w, h, c]) => { g.fillStyle = c; g.globalAlpha = .55; g.fillRect(x, y, w, h); });
+  g.globalAlpha = 1;
+  const lamp = g.createRadialGradient(360, 330, 5, 360, 330, 160); lamp.addColorStop(0, 'rgba(255,200,140,.25)'); lamp.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = lamp; g.fillRect(0, 0, W, H);
+}
+const GRAIN = off(128, 128); { const g = GRAIN.getContext('2d'), d = g.createImageData(128, 128); for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 18; } g.putImageData(d, 0, 0); }
+const grainPat = ctx.createPattern(GRAIN, 'repeat');
+
+const SKIN = '#d9a585', SKIN_D = '#b57b5c';
+function person(g, hx, hy, hs, m, t) {
+  const x = W / 2 + hx, y = H * 0.25 + hy + Math.sin(t * 1.3) * 1.5;
+  // torso (green tracksuit)
+  g.save(); g.translate(W / 2 + hx * 0.4, H * 0.25 + hy * 0.4);
+  g.fillStyle = '#1d5e52'; g.beginPath(); g.ellipse(0, 210, 190, 125, 0, Math.PI, 0); g.lineTo(190, 400); g.lineTo(-190, 400); g.fill();
+  g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 6; g.beginPath(); g.moveTo(-60, 100); g.lineTo(-150, 160); g.moveTo(60, 100); g.lineTo(150, 160); g.stroke();
+  g.fillStyle = '#f2f2ee'; g.fillRect(40, 150, 56, 30); g.fillStyle = '#1e8a5e'; g.font = '22px Orbit, monospace'; g.fillText('456', 46, 173);
+  g.restore();
+  g.save(); g.translate(x, y); g.scale(hs, hs);
+  g.fillStyle = SKIN_D; g.fillRect(-26, 50, 52, 70);
+  g.fillStyle = SKIN; g.beginPath(); g.ellipse(-62, 6, 10, 18, 0, 0, 6.283); g.ellipse(62, 6, 10, 18, 0, 0, 6.283); g.fill();
+  const sk = g.createRadialGradient(-18, -20, 10, 0, 0, 95); sk.addColorStop(0, '#ecbd9c'); sk.addColorStop(1, '#bf8664'); g.fillStyle = sk;
+  g.beginPath(); g.ellipse(0, 0, 62, 80, 0, 0, 6.283); g.fill();
+  g.fillStyle = '#17110f'; g.beginPath(); g.ellipse(0, -36, 67, 52, 0, Math.PI * 0.98, Math.PI * 2.02); g.lineTo(60, -18); g.quadraticCurveTo(10, -44, -60, -14); g.fill();
+  g.fillStyle = '#231a16'; g.beginPath(); g.ellipse(-24, 2, 8, 4.5, 0, 0, 6.283); g.ellipse(24, 2, 8, 4.5, 0, 0, 6.283); g.fill();
+  g.strokeStyle = '#2a1d17'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(-34, -14); g.lineTo(-14, -12); g.moveTo(14, -12); g.lineTo(34, -14); g.stroke();
+  g.strokeStyle = 'rgba(120,70,50,.45)'; g.lineWidth = 2; g.beginPath(); g.moveTo(-4, 6); g.quadraticCurveTo(-8, 22, 2, 24); g.stroke();
+  mouth(g, m);
+  g.restore();
+}
+function mouth(g, m) { // in head space, mouth at (0, 44)
+  if (m < 0.08) { g.strokeStyle = '#8a4a3e'; g.lineWidth = 3; g.beginPath(); g.moveTo(-14, 44); g.quadraticCurveTo(0, 47, 14, 44); g.stroke(); return; }
+  g.fillStyle = '#3e0f12'; g.beginPath(); g.ellipse(0, 46, 13 + 6 * m, 2 + 15 * m, 0, 0, 6.283); g.fill();
+  g.strokeStyle = '#a05048'; g.lineWidth = 3; g.stroke();
+  if (m > 0.3) { g.fillStyle = '#f3efe8'; g.fillRect(-9 - 3 * m, 46 - 2 - 13 * m, 18 + 6 * m, 4); }
+  if (m > 0.45) {
+    const L = 14 + 46 * Math.min(1, (m - 0.45) / 0.5);
+    const tg = g.createLinearGradient(0, 46, 0, 46 + L); tg.addColorStop(0, '#d9566f'); tg.addColorStop(1, '#f07e95');
+    g.fillStyle = tg; g.beginPath(); g.moveTo(-13, 50); g.bezierCurveTo(-16, 50 + L * 0.7, -10, 46 + L, 0, 46 + L); g.bezierCurveTo(10, 46 + L, 16, 50 + L * 0.7, 13, 50); g.closePath(); g.fill();
+    g.strokeStyle = 'rgba(160,40,70,.6)'; g.lineWidth = 1.6; g.beginPath(); g.moveTo(0, 54); g.lineTo(0, 40 + L * 0.85); g.stroke();
+    g.fillStyle = 'rgba(255,255,255,.35)'; g.beginPath(); g.ellipse(-5, 46 + L * 0.55, 3, 6, 0.3, 0, 6.283); g.fill();
+  }
+}
+const tongueTip = () => ({ x: W / 2 + head.x, y: H * 0.25 + head.y + (46 + 14 + 46 * Math.min(1, Math.max(0, (head.m - 0.45) / 0.5))) * head.s });
+
+function drawHand(g, tx, ty, press) {
+  const d = { x: 0.55, y: 0.83 }, pp = { x: -d.y, y: d.x }, ang = Math.atan2(d.y, d.x);
+  const P = { x: tx + d.x * 92, y: ty + d.y * 92 };
+  // needle shadow on the candy: closer to the tip while pressing
+  const so = (1 - press) * R * 0.15 + 3;
+  g.strokeStyle = 'rgba(0,0,0,.32)'; g.lineWidth = 3; g.lineCap = 'round'; g.beginPath(); g.moveTo(tx + so * 0.6, ty + so); g.lineTo(P.x + so * 1.4, P.y + so * 2); g.stroke();
+  // needle
+  const ng = g.createLinearGradient(tx, ty, tx + d.x * 140, ty + d.y * 140); ng.addColorStop(0, '#f4f6f8'); ng.addColorStop(0.5, '#a9b0b6'); ng.addColorStop(1, '#5d646a');
+  g.strokeStyle = ng; g.lineWidth = 2.6; g.beginPath(); g.moveTo(tx, ty); g.lineTo(tx + d.x * 140, ty + d.y * 140); g.stroke();
+  // hand (stand-in for the real camera hand drawn in front of the candy)
+  g.save(); g.translate(P.x, P.y); g.rotate(ang - Math.PI / 2);
+  const hg = g.createLinearGradient(-40, 0, 50, 80); hg.addColorStop(0, '#e6b391'); hg.addColorStop(1, '#bb7f5e'); g.fillStyle = hg; g.strokeStyle = hg; g.lineCap = 'round';
+  g.beginPath(); g.ellipse(14, 70, 46, 56, -0.25, 0, 6.283); g.fill();
+  g.lineWidth = 19; g.beginPath(); g.moveTo(-26, 52); g.quadraticCurveTo(-20, 14, -3, 2); g.stroke(); // thumb
+  g.lineWidth = 17; g.beginPath(); g.moveTo(30, 34); g.quadraticCurveTo(26, 2, 4, -2); g.stroke(); // index
+  g.lineWidth = 16; [[44, 48, 40, 26], [50, 66, 46, 44], [52, 84, 46, 64]].forEach(([a, b, c, e]) => { g.beginPath(); g.moveTo(a, b); g.quadraticCurveTo(c + 14, e, c, e + 6); g.stroke(); });
+  g.strokeStyle = 'rgba(110,60,40,.35)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(-3, 2); g.lineTo(4, -2); g.stroke();
+  g.fillStyle = 'rgba(255,230,210,.5)'; g.beginPath(); g.ellipse(-4, 0, 4, 2.5, 0.4, 0, 6.283); g.ellipse(6, -4, 3.5, 2.2, -0.4, 0, 6.283); g.fill();
+  g.restore();
+}
+
+// ---------- render ----------
+function compose() {
+  masks();
+  lg.globalCompositeOperation = 'source-over'; lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, L.width, L.height);
+  toC(lg); lg.fillStyle = '#4a2207'; lg.save(); lg.translate(0, 3.5); lg.fill(edge); lg.restore();
+  lg.setTransform(1, 0, 0, 1, 0, 0); lg.drawImage(DRY, 0, 0); lg.drawImage(damage, 0, 0);
+  bg.globalCompositeOperation = 'source-over'; bg.clearRect(0, 0, B.width, B.height); bg.drawImage(WET, 0, 0);
+  bg.globalCompositeOperation = 'destination-in'; bg.imageSmoothingEnabled = true; bg.drawImage(mWet, 0, 0, B.width, B.height);
+  lg.drawImage(B, 0, 0);
+  bg.globalCompositeOperation = 'source-over'; bg.clearRect(0, 0, B.width, B.height); bg.fillStyle = '#ffc56a'; bg.fillRect(0, 0, B.width, B.height);
+  bg.globalCompositeOperation = 'destination-in'; bg.drawImage(mRim, 0, 0, B.width, B.height);
+  lg.globalAlpha = 0.6; lg.globalCompositeOperation = 'source-atop'; lg.drawImage(B, 0, 0); lg.globalAlpha = 1;
+  toC(lg); lg.save(); lg.clip(edge); cracks.forEach(c => drawCrack(lg, c)); lg.restore();
+  lg.setTransform(1, 0, 0, 1, 0, 0);
+  if (pendingChip) { // capture the piece before cutting it out
+    const pc = off(L.width, L.height), g = toC(pc.getContext('2d')); g.clip(pendingChip.path); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(L, 0, 0);
+    pieces.push({ c: pc, x: pendingChip.cx, y: pendingChip.cy, vx: Math.cos(pendingChip.dir) * 40, vy: -60, rot: 0, vr: (Math.random() - .5) * 4, t: 0 });
+    chips.push(pendingChip.path); pendingChip = null; tick(1800, 0.12, 0.5);
+  }
+  lg.globalCompositeOperation = 'destination-out'; lg.drawImage(mHole, 0, 0, L.width, L.height);
+  toC(lg); chips.forEach(p => lg.fill(p));
+  lg.globalCompositeOperation = 'source-over'; lg.setTransform(1, 0, 0, 1, 0, 0);
+}
+function tin(g) {
+  if (variant === 'A') {
+    g.fillStyle = 'rgba(0,0,0,.35)'; g.beginPath(); g.ellipse(C.x, C.y + 22, 1.24 * R, 1.16 * R, 0, 0, 6.283); g.fill();
+    g.fillStyle = 'rgba(40,44,46,.55)'; g.beginPath(); g.arc(C.x, C.y, 1.2 * R, 0, 6.283); g.fill();
+    const rg = g.createLinearGradient(C.x - R, C.y - R, C.x + R, C.y + R); rg.addColorStop(0, '#d4dadd'); rg.addColorStop(0.5, '#8a9296'); rg.addColorStop(1, '#c9cfd2');
+    g.strokeStyle = rg; g.lineWidth = 10; g.beginPath(); g.arc(C.x, C.y, 1.2 * R, 0, 6.283); g.stroke();
+  } else if (variant === 'C') {
+    g.fillStyle = 'rgba(0,0,0,.4)'; g.beginPath(); g.ellipse(C.x, C.y + 20, 1.26 * R, 1.2 * R, 0, 0, 6.283); g.fill();
+    const pg = g.createRadialGradient(C.x - 40, C.y - 50, 10, C.x, C.y, 1.25 * R); pg.addColorStop(0, 'rgba(205,212,215,.62)'); pg.addColorStop(1, 'rgba(120,128,132,.62)');
+    g.fillStyle = pg; g.beginPath(); g.arc(C.x, C.y, 1.24 * R, 0, 6.283); g.fill();
+    g.strokeStyle = 'rgba(255,255,255,.35)'; g.lineWidth = 2; g.beginPath(); g.arc(C.x, C.y, 1.1 * R, 0, 6.283); g.stroke();
+    g.strokeStyle = '#9aa2a6'; g.lineWidth = 6; g.beginPath(); g.arc(C.x, C.y, 1.24 * R, 0, 6.283); g.stroke();
+  }
+}
+function render(t) {
+  ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+  ctx.drawImage(ROOM, 0, 0, W, H);
+  person(ctx, head.x, head.y, head.s, head.m, t);
+  ctx.save(); ctx.fillStyle = grainPat; ctx.translate((t * 97) % 128, (t * 61) % 128); ctx.fillRect(-128, -128, W + 256, H + 256); ctx.restore();
+  if (variant === 'A') {
+    let s = ctx.createLinearGradient(0, 0, 0, H * 0.2); s.addColorStop(0, 'rgba(0,0,0,.55)'); s.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = s; ctx.fillRect(0, 0, W, H * 0.2);
+    s = ctx.createLinearGradient(0, H * 0.72, 0, H); s.addColorStop(0, 'rgba(0,0,0,0)'); s.addColorStop(1, 'rgba(0,0,0,.6)'); ctx.fillStyle = s; ctx.fillRect(0, H * 0.72, W, H * 0.28);
+  }
+  tin(ctx);
+  ctx.drawImage(SH, C.x - HALF, C.y - HALF + 0.07 * R, S, S);
+  compose();
+  ctx.drawImage(L, C.x - HALF, C.y - HALF, S, S);
+  if (variant === 'B') { // progress ring around the candy
+    const p = groove.reduce((a, g) => a + g.c, 0) / groove.length;
+    ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 4; ctx.beginPath(); ctx.arc(C.x, C.y, 1.14 * R, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = '#fff'; ctx.lineCap = 'round'; ctx.beginPath(); ctx.arc(C.x, C.y, 1.14 * R, -Math.PI / 2, -Math.PI / 2 + p * 6.283); ctx.stroke();
+  }
+  // falling pieces
+  for (const p of pieces) {
+    ctx.save(); ctx.globalAlpha = Math.max(0, 1 - p.t / 1.6); ctx.translate(C.x + p.x, C.y + p.y); ctx.rotate(p.rot); ctx.translate(-p.x - HALF, -p.y - HALF);
+    ctx.drawImage(p.c, 0, 0, S, S); ctx.restore();
+  }
+  // drips (candy coords)
+  for (const d of drips) {
+    ctx.save(); ctx.globalAlpha = d.a; ctx.translate(C.x + d.x, C.y + d.y);
+    const dg2 = ctx.createLinearGradient(0, -d.len, 0, 4); dg2.addColorStop(0, 'rgba(150,70,15,.0)'); dg2.addColorStop(1, 'rgba(176,86,20,.95)');
+    ctx.fillStyle = dg2; ctx.beginPath(); ctx.moveTo(-1.2, -d.len); ctx.quadraticCurveTo(-4, 0, 0, 4.5); ctx.quadraticCurveTo(4, 0, 1.2, -d.len); ctx.fill();
+    ctx.fillStyle = 'rgba(255,240,200,.8)'; ctx.beginPath(); ctx.arc(-1, 1.5, 1, 0, 6.283); ctx.fill(); ctx.restore();
+  }
+  // mouth and tongue in front of the candy while licking
+  if (head.m > 0.3) {
+    const mx = W / 2 + head.x, my = H * 0.25 + head.y;
+    ctx.save(); ctx.translate(mx, my); ctx.scale(head.s, head.s);
+    const sk = ctx.createRadialGradient(0, 46, 8, 0, 50, 40); sk.addColorStop(0, 'rgba(210,150,118,1)'); sk.addColorStop(0.6, 'rgba(210,150,118,.85)'); sk.addColorStop(1, 'rgba(210,150,118,0)');
+    ctx.fillStyle = sk; ctx.beginPath(); ctx.ellipse(0, 44, 40, 34, 0, 0, 6.283); ctx.fill();
+    mouth(ctx, head.m); ctx.restore();
+    const tt = tongueTip(); // pink lick ring at the tongue tip
+    ctx.strokeStyle = '#ff2e7e'; ctx.lineWidth = 2.5; ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.arc(tt.x, tt.y, 0.16 * R, 0, 6.283); ctx.stroke(); ctx.setLineDash([]);
+  }
+  if (!lickMode) {
+    drawHand(ctx, tip.x, tip.y, pressing ? 1 : 0);
+    const col = stress < 0.35 ? '#7CE38B' : stress < HAIR ? '#FFC23D' : '#FF3B5C';
+    ctx.strokeStyle = 'rgba(0,0,0,.45)'; ctx.lineWidth = 5; ctx.beginPath(); ctx.arc(tip.x, tip.y, 15, 0, 6.283); ctx.stroke();
+    ctx.strokeStyle = col; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(tip.x, tip.y, 15, -Math.PI / 2, -Math.PI / 2 + Math.max(0.08, Math.min(1, stress)) * 6.283); ctx.stroke();
+  }
+}
+
+// ---------- update ----------
+function update(dt) {
+  if (clockStarted && !lost) clock = Math.max(0, clock - dt);
+  stress = Math.max(0, stress - 0.45 * dt);
+  if (!above && stress >= HAIR) { // a new hairline where the needle is
+    above = true;
+    const near = cracks.find(c => !c.done && Math.hypot(c.pts[0][0] - lastC.x, c.pts[0][1] - lastC.y) < 0.25 * R);
+    if (!near) { const g = groove[nearGroove(lastC.x, lastC.y).i]; makeCrack(g.x, g.y, Math.random() < 0.4); } // cracks start on the line
+    tick();
+  }
+  if (above && stress < HAIR - 0.05) above = false;
+  if (stress > HAIR) {
+    const near = cracks.filter(c => !c.done).sort((a, b) => Math.hypot(a.pts[0][0] - lastC.x, a.pts[0][1] - lastC.y) - Math.hypot(b.pts[0][0] - lastC.x, b.pts[0][1] - lastC.y))[0];
+    if (near) { const s0 = stageOf(near); near.len = Math.min(near.total, near.len + (stress - HAIR) * GROW * dt); if (stageOf(near) > s0) tick(1500, 0.08, 0.45); }
+  }
+  for (const c of cracks) if (!c.done) {
+    if (!c.inward && c.len >= c.total - 1) { c.done = true; chipFrom(c); }
+    if (c.inward) { const [x, y] = tipOf(c); if (inStar(x, y) && nearGroove(x, y).d > FATAL) lose(); }
+  }
+  // head follows the lick
+  const tgt = licking ? { x: tip.x - W / 2, y: tip.y - H * 0.25 - 106 * 1.25, s: 1.25, m: 1 } : { x: 0, y: 0, s: 1, m: 0 };
+  const k = 1 - Math.exp(-dt * 6); head.x += (tgt.x - head.x) * k; head.y += (tgt.y - head.y) * k; head.s += (tgt.s - head.s) * k; head.m += (tgt.m - head.m) * (1 - Math.exp(-dt * 9));
+  if (head.m > 0.8) { const tt = tongueTip(); lickAt(tt.x - C.x, tt.y - C.y, dt); }
+  spawnDrips(dt);
+  for (const d of drips) {
+    const inside = inCandy(d.x, d.y);
+    if (inside && !d.off) { d.vy = Math.min(26, d.vy + 20 * dt); d.len = Math.min(10, d.len + 6 * dt); } else { d.off = true; d.vy += 700 * dt; d.a -= dt * 1.4; }
+    d.y += d.vy * dt;
+  }
+  for (let i = drips.length - 1; i >= 0; i--) if (drips[i].a <= 0) drips.splice(i, 1);
+  for (const p of pieces) { p.t += dt; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
+  for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > 1.6) pieces.splice(i, 1);
+}
+function lose() { if (lost) return; lost = true; $('#lose').hidden = false; tick(400, 0.4, 0.8); }
+
+function hud() {
+  const p = Math.round(groove.reduce((a, g) => a + g.c, 0) / groove.length * 100);
+  const mm = String(Math.floor(clock / 60)).padStart(2, '0'), ss = String(Math.floor(clock % 60)).padStart(2, '0');
+  const stg = cracks.filter(c => !c.done).reduce((a, c) => Math.max(a, stageOf(c) + 1), 0);
+  const st = lost ? '탈락' : licking && head.m > 0.8 ? '핥는 중 · 오래 핥으면 구멍' : stress > HAIR ? '금이 자라요 · 손 멈춰요' : stg === 3 ? '크게 갈라졌어요' : stg === 2 ? '갈라지는 중 · 살살' : stg === 1 ? '실금 · 아직 괜찮아요' : '천천히 긁는 중';
+  document.querySelectorAll('.hud .t').forEach(e => { e.textContent = `${mm}:${ss}`; e.style.color = clock <= 10 ? '#FF2E88' : ''; });
+  document.querySelectorAll('.st').forEach(e => e.textContent = st);
+  document.querySelectorAll('.pb').forEach(e => e.style.width = p + '%');
+  $('#hudB .pct').textContent = p + '%';
+}
+
+// ---------- input ----------
+let down = null, lastMove = null;
+const toLogical = e => { const r = phone.getBoundingClientRect(); return { x: (e.clientX - r.left) / scale, y: (e.clientY - r.top) / scale }; };
+phone.addEventListener('pointerdown', e => {
+  if (lost) return;
+  phone.setPointerCapture(e.pointerId); const p = toLogical(e); tip = p; pressing = true; clockStarted = true;
+  down = { ...p, t: performance.now(), moved: 0 }; lastMove = { ...p, t: performance.now() };
+  if (lickMode) licking = true;
+});
+phone.addEventListener('pointermove', e => {
+  const p = toLogical(e); tip = p;
+  if (!pressing || lickMode || lost) return;
+  const now = performance.now(), dt = Math.max(8, now - lastMove.t) / 1000, dist = Math.hypot(p.x - lastMove.x, p.y - lastMove.y), v = dist / dt;
+  down.moved += dist;
+  const cx = p.x - C.x, cy = p.y - C.y; lastC = { x: cx, y: cy };
+  if (inCandy(cx, cy)) {
+    const ng = nearGroove(cx, cy);
+    if (ng.d < 9) { if (v < 420) carveAt(cx, cy, dist * 0.012); drawCarved(); }
+    else scratch(lastMove.x - C.x, lastMove.y - C.y, cx, cy);
+    if (v > 420) stress += Math.min((v - 420) / 900, 0.05);
+  }
+  lastMove = { ...p, t: now };
+});
+const up = e => {
+  if (!pressing) return; pressing = false; licking = false;
+  if (lickMode || lost) return;
+  if (performance.now() - down.t < 220 && down.moved < 6) { // a poke
+    const cx = down.x - C.x, cy = down.y - C.y; lastC = { x: cx, y: cy };
+    if (inCandy(cx, cy)) { pit(cx, cy); if (nearGroove(cx, cy).d < 8) { carveAt(cx, cy, 0.3); drawCarved(); } stress = Math.min(stress + 0.32, Math.max(stress, 0) + 0.32); tick(3600, 0.02, 0.18); }
+  }
+};
+phone.addEventListener('pointerup', up); phone.addEventListener('pointercancel', up);
+
+$('#bLick').onclick = () => { lickMode = !lickMode; $('#bLick').classList.toggle('on', lickMode); $('#bLick').textContent = lickMode ? '핥기 모드 끄기' : '핥기 모드'; };
+$('#again').onclick = () => reset(false);
+const gi = f => groove[Math.floor(groove.length * f)];
+document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => {
+  const s = b.dataset.s;
+  if (s === 'reset') return reset(false);
+  if (lost) reset(false);
+  if (s === 'hair') { const g = gi(0.12); makeCrack(g.x, g.y, false).len = 0.08 * R; stress = 0.45; tick(); }
+  if (s === 'spread') { const g = gi(0.62); makeCrack(g.x, g.y, true).len = 0.3 * R; stress = 0.6; tick(1500, 0.08, 0.45); }
+  if (s === 'chip') { const g = gi(0.3); const c = makeCrack(g.x, g.y, false); c.len = c.total; }
+  if (s === 'wet') { for (let i = 0; i < 6; i++) lickAt(0.05 * R, 0.62 * R, 0.25); }
+  if (s === 'hole') { for (let i = 0; i < 16; i++) lickAt(0.6 * R, 0.5 * R, 0.25); }
+  if (s === 'lose') { const g = gi(0.8); const c = makeCrack(g.x, g.y, true); c.len = c.total * 0.7; c.inward = true; for (let k = 0; k < c.pts.length && !lost; k++) { c.len = c.cum[k]; const [x, y] = tipOf(c); if (inStar(x, y) && nearGroove(x, y).d > FATAL) lose(); } }
+});
+
+const DESC = {
+  A: '디자이너 안. 실제 방 위에 얇은 금속 테두리와 반투명 바닥만 깔고, 글자는 흐린 알약 위에 올려 어지러운 배경에서도 읽혀요.',
+  B: '깡통 없이 그림자만 있는 달고나. 진행은 달고나를 두른 흰 선. 카메라 화면이 가장 많이 보여요.',
+  C: '위는 분홍 띠, 아래는 초록 456 번호표 띠. 오징어게임 세트장 느낌이 가장 강하고 가운데만 카메라예요.',
+};
+function setVariant(v) {
+  variant = v; C.y = H * CY[v];
+  ['A', 'B', 'C'].forEach(k => { $('#t' + k).setAttribute('aria-pressed', k === v); $('#hud' + k).hidden = k !== v; });
+  $('#desc').textContent = DESC[v];
+}
+['A', 'B', 'C'].forEach(k => $('#t' + k).onclick = () => setVariant(k));
+
+function fit() { const w = phone.clientWidth; scale = w / W; cv.width = Math.round(w * dpr); cv.height = Math.round(w * H / W * dpr); phone.style.setProperty('--u', scale); }
+new ResizeObserver(fit).observe(phone);
+fit(); setVariant('A'); reset(true);
+let last = performance.now();
+function loop(now) { const dt = Math.min(0.05, (now - last) / 1000); last = now; update(dt); render(now / 1000); hud(); requestAnimationFrame(loop); }
+requestAnimationFrame(loop);
+})();
+</script>
