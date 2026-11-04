@@ -17,7 +17,7 @@ function resize() {
   cv.width = W * DPR; cv.height = H * DPR; ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   geom = { cx: W / 2, cy: H * 0.55, R: Math.min(W * 0.37, H * 0.27) };
   candy = makeCandy(geom.R);
-  if (game) layout(game, geom);
+  if (game) { layout(game, geom); mainPath = shapePath(); game.last = null; }
   if (tracker) tracker.size(W, H);
 }
 addEventListener("resize", resize);
@@ -157,11 +157,14 @@ function tick(hit) {
 // ---------- flow ----------
 const show = id => ["start", "pick", "result"].forEach(k => { $(k).hidden = k !== id; });
 
+let camStream = null;
 $("camGo").onclick = async () => {
+  if ($("camGo").disabled) return;
+  $("camGo").disabled = true;
   initAudio();
   const msg = $("camMsg"); msg.hidden = false; msg.textContent = "카메라를 켜는 중이에요…";
   try {
-    await startCamera(video);
+    camStream = await startCamera(video);
     msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…";
     const models = await loadModels();
     tracker = createTracker(video, models, {
@@ -171,6 +174,8 @@ $("camGo").onclick = async () => {
     mode = "camera"; video.hidden = false; $("shade").hidden = false; $("nocam").hidden = true;
     resize(); showPick();
   } catch (e) {
+    if (camStream) camStream.getTracks().forEach(t => t.stop());   // no camera light left on in touch mode
+    camStream = null; $("camGo").disabled = false;
     msg.textContent = e && e.message === "timeout"
       ? "카메라가 응답하지 않아요. 크롬에서 열거나 화면 터치로 해 보세요."
       : "카메라를 쓸 수 없어요. 화면 터치로 해 보세요.";
@@ -232,23 +237,28 @@ app.addEventListener("pointerdown", e => {
 app.addEventListener("pointermove", pos);
 for (const t of ["pointerup", "pointercancel"]) app.addEventListener(t, () => { touch.down = false; });
 // in-app browsers: keep the gesture on the page (README "Touch input inside Threads / Instagram")
-for (const t of ["touchstart", "touchmove"]) app.addEventListener(t, e => { if (!e.target.closest("button,a")) e.preventDefault(); }, { passive: false });
+// only while playing: the start and result screens may need to scroll on short phones
+for (const t of ["touchstart", "touchmove"]) app.addEventListener(t, e => {
+  if (game && !game.done && !e.target.closest("button,a")) e.preventDefault();
+}, { passive: false });
 
 // ---------- loop ----------
 let last = performance.now();
 function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
-  let needle = null, lick = null, jitter = 0;
+  let needle = null, lick = null, jitter = 0, moveDt = 0;
   if (mode === "camera" && tracker) {
     const s = tracker.update(now);
-    needle = s.needle; jitter = s.jitter; lick = s.lick;
+    // between camera frames the needle has not moved: the engine must not read that as stop-and-jump
+    needle = s.needle && (s.fresh ? s.needle : { ...s.needle, held: true }); jitter = s.jitter; lick = s.lick;
+    moveDt = s.vdt;
   } else if (mode === "touch") {
     if (touch.down && !lickMode) needle = { x: touch.x, y: touch.y, down: true };
     if (touch.down && lickMode) lick = { x: touch.x, y: touch.y };
   }
   if (game) {
-    const { carve } = step(game, dt, { needle, jitter, lick });
+    const { carve } = step(game, dt, { needle, jitter, lick, moveDt });
     for (const ev of game.events.splice(0)) {
       if (ev.type === "crack") burst(ev.inward);
       else if (ev.type === "poke") tick(ev.hit);

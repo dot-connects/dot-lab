@@ -72,6 +72,29 @@ test("licking one spot melts only that spot, and too long there breaks the shape
   assert.equal(g.cause, "melt");
 });
 
+test("a 30 fps camera on a 120 Hz screen reads the same speed (review 11-04)", () => {
+  const g = createGame("circle", GEOM, seeded());
+  const r = 0.84 * GEOM.R, w = 1.0 * GEOM.R / r, sdt = 1 / 120;
+  let pos = null;
+  for (let i = 0; i < 120 * 80 && !g.done; i++) {
+    const fresh = i % 4 === 0;
+    if (fresh) { const a = i * sdt * w; pos = { x: GEOM.cx + r * Math.cos(a), y: GEOM.cy + r * Math.sin(a), down: true }; }
+    step(g, sdt, { needle: fresh ? pos : { ...pos, held: true }, moveDt: 1 / 30 });
+  }
+  assert.equal(g.ok, true, `${percent(g)}%, cracks ${g.cracks.length}`);
+  assert.equal(g.cracks.length, 0);
+});
+
+test("a hand found again somewhere else does not count as a fast move", () => {
+  const g = createGame("circle", GEOM, seeded());
+  const r = 0.84 * GEOM.R;
+  step(g, DT, { needle: { x: GEOM.cx + r, y: GEOM.cy, down: true } });
+  step(g, DT, { needle: { x: GEOM.cx + r, y: GEOM.cy + 1, down: true } });
+  step(g, DT, { needle: { x: GEOM.cx - r, y: GEOM.cy, down: true, resume: true } });
+  assert.equal(g.cracks.length, 0);
+  assert.ok(g.stress < 0.1, `stress ${g.stress}`);
+});
+
 test("the clock waits for the first touch of the needle", () => {
   const g = createGame("circle", GEOM, seeded());
   for (let i = 0; i < 300; i++) step(g, DT, { needle: { x: 10, y: 10, down: true } });

@@ -40,7 +40,7 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
   const s = {
     needle: null, pinched: false, lostAt: 0, pinchAt: 0, lastPinch: null, closeSpeed: 0,
     ema: null, jit: [], jitter: 0, scale: null, lastPoke: 0, lick: null, jaw: 0, hand: null, frame: 0,
-    lastVT: -1, lastT: 0,
+    lastVT: -1, lastT: 0, fresh: false, vdt: 0, wasLost: false,
   };
   let W = 0, H = 0;
   const size = (w, h) => { W = w; H = h; };
@@ -50,9 +50,10 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
   };
 
   function update(now) {
+    s.fresh = false;
     if (!video.videoWidth || video.currentTime === s.lastVT) return s;
-    s.lastVT = video.currentTime; s.frame++;
-    const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now;
+    s.lastVT = video.currentTime; s.frame++; s.fresh = true;
+    const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now; s.vdt = dt;
     readHand(models.hand.detectForVideo(video, now), dt, now);
     if (s.frame % 2 === 0) readFace(models.face.detectForVideo(video, now));
     return s;
@@ -64,7 +65,7 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
       s.hand = null; s.scale = null; s.lastPinch = null;
       if (s.pinched && now - s.lostAt > CAM.LOST_GRACE && s.lostAt) { s.pinched = false; s.needle = null; }
       if (!s.lostAt) s.lostAt = now;
-      if (s.needle) s.needle = { ...s.needle, held: true };   // frozen while lost: no scraping from a jump
+      s.wasLost = true;
       return;
     }
     s.lostAt = 0;
@@ -82,8 +83,10 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     s.ema = s.ema ? [s.ema[0] * 0.7 + tip[0] * 0.3, s.ema[1] * 0.7 + tip[1] * 0.3] : tip;
     if (now - s.pinchAt > CAM.POKE_AFTER_PINCH) { s.jit.push(Math.hypot(tip[0] - s.ema[0], tip[1] - s.ema[1])); if (s.jit.length > 15) s.jit.shift(); }
     s.jitter = s.jit.length ? Math.sqrt(s.jit.reduce((a, x) => a + x * x, 0) / s.jit.length) : 0;
-    s.needle = s.pinched ? { x: tip[0], y: tip[1], down: true } : null;
-    if (s.pinched && s.closeSpeed > 0 && onSqueeze) onSqueeze(tip[0], tip[1], s.closeSpeed);
+    s.needle = s.pinched ? { x: tip[0], y: tip[1], down: true, resume: s.wasLost || !was } : null;
+    s.wasLost = false;
+    // closing the fingers to pick the needle up is not a squeeze; only a hard grip after that
+    if (s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH && s.closeSpeed > 0 && onSqueeze) onSqueeze(tip[0], tip[1], s.closeSpeed);
     const rate = s.scale ? (hs / s.scale - 1) / dt : 0;
     s.scale = hs;
     if (s.pinched && rate > CAM.POKE_RATE && now - s.pinchAt > CAM.POKE_AFTER_PINCH && now - s.lastPoke > CAM.POKE_GAP) {

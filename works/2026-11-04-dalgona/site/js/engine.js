@@ -171,7 +171,9 @@ export function squeeze(g, x, y, closeSpeed) {
 
 /**
  * Advance dt seconds. input = {
- *   needle: {x, y, down} | null   — down = held to the candy (pinched / finger on screen)
+ *   needle: {x, y, down, held?, resume?} | null — down = held to the candy (pinched / finger on screen);
+ *           held = no new camera frame (do not measure motion); resume = first frame after the hand was lost
+ *   moveDt: seconds the needle's move took (camera frame interval); defaults to dt
  *   jitter: px RMS of the hand (camera only, 0 for touch)
  *   lick:   {x, y} | null         — where the tongue/open mouth is on screen
  * }
@@ -205,8 +207,10 @@ export function step(g, dt, input) {
   if (meltedInShape(g) >= RULES.MELT_HOLES) { finish(g, false, "melt"); return { carve: 0 }; }
 
   let carve = 0;
+  if (needle && needle.held) return { carve: g.lastCarve || 0 };   // same camera frame: nothing moved yet
+  if (needle && needle.resume) g.last = null;                      // a hand found again does not "jump"
   if (needle && needle.down && g.last) {
-    const d = Math.hypot(needle.x - g.last.x, needle.y - g.last.y), v = d / dt / R;
+    const d = Math.hypot(needle.x - g.last.x, needle.y - g.last.y), v = d / Math.max(dt, input.moveDt || 0) / R;
     const w = wetAt(g, needle.x, needle.y), vSafe = RULES.V_SAFE * (1 + w * 0.9), tol = RULES.TOL * R;
     let near = false;
     g.paths.forEach((path, pi) => {
@@ -232,6 +236,7 @@ export function step(g, dt, input) {
   }
   g.last = needle && needle.down ? { x: needle.x, y: needle.y } : null;
   g.stress = Math.max(0, g.stress - dt * 0.5);
+  g.lastCarve = carve;
   if (!g.done && g.prog.every(pr => pr.every(v => v >= RULES.DONE))) finish(g, true, null);
   return { carve };
 }
