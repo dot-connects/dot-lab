@@ -125,3 +125,41 @@ test("every shape can be finished by tracing its outline slowly", () => {
     console.log(`${shape}: ${g.t.toFixed(1)} s`);
   }
 });
+
+// v2 (operator 11-04 "조금만 찌르면 바로 깨지네"): cracks come in stages and only depth inside the shape fails
+test("one poke never cracks; three quick pokes leave at most a hairline", () => {
+  const r = 0.84 * GEOM.R;
+  for (let seed = 1; seed <= 200; seed++) {
+    const g = createGame("circle", GEOM, seeded(seed * 104729 + 7));
+    poke(g, GEOM.cx + r, GEOM.cy);
+    for (let k = 0; k < 30; k++) step(g, DT, { needle: null });
+    assert.equal(g.cracks.length, 0, `seed ${seed}: one poke cracked`);
+    for (let i = 0; i < 3; i++) { poke(g, GEOM.cx + r, GEOM.cy); for (let k = 0; k < 4; k++) step(g, DT, { needle: null }); }
+    for (let k = 0; k < 90; k++) step(g, DT, { needle: null });
+    assert.equal(g.done, false, `seed ${seed}: three pokes ended the round`);
+  }
+});
+
+test("a crack stops growing when the pressure stops", () => {
+  const r = 0.84 * GEOM.R;
+  const g = createGame("circle", GEOM, seeded(3));
+  for (let i = 0; i < 4 && g.cracks.length === 0; i++) { poke(g, GEOM.cx + r, GEOM.cy); for (let k = 0; k < 3; k++) step(g, DT, { needle: null }); }
+  assert.ok(g.cracks.length >= 1);
+  for (let k = 0; k < 60; k++) step(g, DT, { needle: null });
+  const len = g.cracks[0].len;
+  for (let k = 0; k < 300; k++) step(g, DT, { needle: null });
+  assert.equal(g.cracks[0].len, len);
+});
+
+test("jabbing on and on ends the round, through a chip or a crack into the shape", () => {
+  const r = 0.84 * GEOM.R;
+  let fails = 0, chips = 0;
+  for (let seed = 1; seed <= 100; seed++) {
+    const g = createGame("circle", GEOM, seeded(seed * 104729 + 7));
+    for (let i = 0; i < 60 && !g.done; i++) { poke(g, GEOM.cx + r, GEOM.cy); for (let k = 0; k < 4; k++) step(g, DT, { needle: null }); }
+    if (g.cause === "crack") fails++;
+    chips += g.chips;
+  }
+  assert.ok(fails > 80, `only ${fails}/100 failed`);
+  assert.ok(chips > 20, `${chips} chips`);
+});

@@ -8,10 +8,48 @@ export const CAM = {
   PINCH: 0.38,        // thumb-index tip distance in hand sizes (pinched 0.10-0.20, open 0.5-1.2)
   RELEASE: 1.25,      // hysteresis factor
   LOST_GRACE: 300,    // ms the needle survives a dropped hand
-  POKE_RATE: 1.3,     // hand growth rate (/s) that is a jab (still -0.3..0.7, jabs 1.5-3.6)
-  POKE_AFTER_PINCH: 300, POKE_GAP: 220,
+  POKE_RATE: 1.1,     // hand growth rate (/s) over RATE_WINDOW that is a jab (spike per frame: still -0.3..0.7, jabs 1.5-3.6)
+  REARM_RATE: 0.3,    // the hand must settle below this growth rate ...
+  REARM_MS: 120,      // ... for this long before the next jab can count (v1 counted one jab 2-3 times)
+  RATE_WINDOW: 100,   // ms over which the growth rate is measured (at least two frames, so 14 fps still sees a jab)
+  POKE_AFTER_PINCH: 300, POKE_GAP: 350,
+  HOLD_MS: 200,       // the needle stays put this long after a jab (pushing the hand moved the tip)
+  TIP: 0.45,          // needle tip this many hand sizes ahead of the pinch, along the index finger
   JAW: 0.4,           // jawOpen that counts as licking (open mouth 0.5-0.74)
 };
+
+export const BONES = [[0, 1], [1, 2], [2, 3], [3, 4], [0, 5], [5, 6], [6, 7], [7, 8], [5, 9], [9, 10], [10, 11], [11, 12],
+  [9, 13], [13, 14], [14, 15], [15, 16], [13, 17], [0, 17], [17, 18], [18, 19], [19, 20]];
+export const PALM = [0, 1, 2, 5, 9, 13, 17];
+export const LIPS = [61, 146, 91, 181, 84, 17, 314, 405, 321, 375, 291, 409, 270, 269, 267, 0, 37, 39, 40, 185];
+
+/**
+ * One jab = one poke. Fires when the hand grows faster than POKE_RATE, then stays quiet until the growth rate has
+ * been under REARM_RATE for REARM_MS. feed(t ms, hand size) -> true on the frame a jab counts.
+ */
+export function createPokeDetector() {
+  const hist = [];
+  let armed = true, calmSince = null, lastPoke = -1e9;
+  const d = {
+    rate: 0, armed: true,
+    reset() { hist.length = 0; armed = true; calmSince = null; d.rate = 0; },
+    feed(t, hs, allowed = true) {
+      hist.push([t, hs]);
+      while (hist.length > 2 && t - hist[1][0] >= CAM.RATE_WINDOW) hist.shift();
+      const [t0, h0] = hist[0], span = (t - t0) / 1000;
+      d.rate = span > 0.02 ? (hs / h0 - 1) / span : 0;
+      let fire = false;
+      if (armed && allowed && d.rate > CAM.POKE_RATE && t - lastPoke > CAM.POKE_GAP) { fire = true; armed = false; lastPoke = t; calmSince = null; }
+      else if (!armed) {
+        if (d.rate < CAM.REARM_RATE) { calmSince ??= t; if (t - calmSince >= CAM.REARM_MS) armed = true; }
+        else calmSince = null;
+      }
+      d.armed = armed;
+      return fire;
+    },
+  };
+  return d;
+}
 
 export async function startCamera(video, timeoutMs = 5000) {
   const ask = navigator.mediaDevices.getUserMedia({ audio: false,
@@ -35,13 +73,17 @@ export async function loadModels() {
   return { hand, face };
 }
 
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+
 /** Tracks one hand and the mouth on a mirrored, object-fit:cover video filling a W x H box. */
 export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
   const s = {
-    needle: null, pinched: false, lostAt: 0, pinchAt: 0, lastPinch: null, closeSpeed: 0,
-    ema: null, jit: [], jitter: 0, scale: null, lastPoke: 0, lick: null, jaw: 0, hand: null, frame: 0,
-    lastVT: -1, lastT: 0, fresh: false, vdt: 0, wasLost: false,
+    needle: null, pinched: false, lostAt: 0, pinchAt: 0, lastPinch: null, closeSpeed: 0, hs: 0,
+    ema: null, jit: [], jitter: 0, lick: null, jaw: 0, hand: null, lips: null, tongue: null, frame: 0,
+    lastVT: -1, lastT: 0, fresh: false, vdt: 0, wasLost: false, holdUntil: 0, pokes: 0, fps: 0,
   };
+  const det = createPokeDetector();
+  s.det = det;
   let W = 0, H = 0;
   const size = (w, h) => { W = w; H = h; };
   const toScreen = p => {
@@ -54,15 +96,17 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     if (!video.videoWidth || video.currentTime === s.lastVT) return s;
     s.lastVT = video.currentTime; s.frame++; s.fresh = true;
     const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now; s.vdt = dt;
+    s.fps = s.fps ? s.fps * 0.9 + 0.1 / dt : 1 / dt;
     readHand(models.hand.detectForVideo(video, now), dt, now);
-    if (s.frame % 2 === 0) readFace(models.face.detectForVideo(video, now));
+    // the face is slow to read: every 4th frame unless the mouth is open
+    if (s.frame % (s.jaw > CAM.JAW * 0.7 ? 2 : 4) === 0) readFace(models.face.detectForVideo(video, now));
     return s;
   }
 
   function readHand(r, dt, now) {
     const lm = r.landmarks && r.landmarks[0];
     if (!lm) {
-      s.hand = null; s.scale = null; s.lastPinch = null;
+      s.hand = null; s.lastPinch = null; det.reset();
       if (s.pinched && now - s.lostAt > CAM.LOST_GRACE && s.lostAt) { s.pinched = false; s.needle = null; }
       if (!s.lostAt) s.lostAt = now;
       s.wasLost = true;
@@ -71,38 +115,51 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     s.lostAt = 0;
     const P = lm.map(toScreen);
     s.hand = P;
-    const hs = Math.hypot(P[0][0] - P[9][0], P[0][1] - P[9][1]);
-    const pd = Math.hypot(P[4][0] - P[8][0], P[4][1] - P[8][1]) / hs;
+    // palm triangle: steadier than wrist-to-middle when the fingers curl to pinch
+    const hs = (dist(P[0], P[5]) + dist(P[0], P[17]) + dist(P[5], P[17])) / 3;
+    s.hs = hs;
+    const pd = dist(P[4], P[8]) / hs;
     s.closeSpeed = s.lastPinch != null ? (s.lastPinch - pd) / dt : 0;
     s.lastPinch = pd;
     const was = s.pinched;
     s.pinched = s.pinched ? pd < CAM.PINCH * CAM.RELEASE : pd < CAM.PINCH;
-    const tip = [(P[4][0] + P[8][0]) / 2, (P[4][1] + P[8][1]) / 2];
+    const grip = [(P[4][0] + P[8][0]) / 2, (P[4][1] + P[8][1]) / 2];
+    // the needle sticks out ahead of the fingers along the index finger, so the fingers do not hide the line
+    let dx = P[8][0] - P[5][0], dy = P[8][1] - P[5][1], dl = Math.hypot(dx, dy) || 1;
+    dx /= dl; dy /= dl;
+    const tip = [grip[0] + dx * CAM.TIP * hs, grip[1] + dy * CAM.TIP * hs];
+    s.grip = grip; s.dir = [dx, dy];
     if (s.pinched && !was) { s.pinchAt = now; s.ema = tip; s.jit = []; }
     // shake: RMS distance from a smoothed path over ~0.5 s, skipping the jolt of closing the fingers
     s.ema = s.ema ? [s.ema[0] * 0.7 + tip[0] * 0.3, s.ema[1] * 0.7 + tip[1] * 0.3] : tip;
-    if (now - s.pinchAt > CAM.POKE_AFTER_PINCH) { s.jit.push(Math.hypot(tip[0] - s.ema[0], tip[1] - s.ema[1])); if (s.jit.length > 15) s.jit.shift(); }
+    if (now - s.pinchAt > CAM.POKE_AFTER_PINCH) { s.jit.push(dist(tip, s.ema)); if (s.jit.length > 15) s.jit.shift(); }
     s.jitter = s.jit.length ? Math.sqrt(s.jit.reduce((a, x) => a + x * x, 0) / s.jit.length) : 0;
-    s.needle = s.pinched ? { x: tip[0], y: tip[1], down: true, resume: s.wasLost || !was } : null;
+    const poked = det.feed(now, hs, s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH);
+    if (poked) { s.holdUntil = now + CAM.HOLD_MS; s.pokes++; }
+    const holding = now < s.holdUntil && s.needle;
+    if (!s.pinched) s.needle = null;
+    else if (holding) s.needle = { ...s.needle, held: true, resume: false };
+    else s.needle = { x: tip[0], y: tip[1], down: true, resume: s.wasLost || !was || s.needle?.held === true };
     s.wasLost = false;
+    if (poked && onPoke) onPoke(s.needle.x, s.needle.y);
     // closing the fingers to pick the needle up is not a squeeze; only a hard grip after that
     if (s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH && s.closeSpeed > 0 && onSqueeze) onSqueeze(tip[0], tip[1], s.closeSpeed);
-    const rate = s.scale ? (hs / s.scale - 1) / dt : 0;
-    s.scale = hs;
-    if (s.pinched && rate > CAM.POKE_RATE && now - s.pinchAt > CAM.POKE_AFTER_PINCH && now - s.lastPoke > CAM.POKE_GAP) {
-      s.lastPoke = now;
-      if (onPoke) onPoke(tip[0], tip[1]);
-    }
   }
 
   function readFace(r) {
     const lm = r.faceLandmarks && r.faceLandmarks[0];
-    if (!lm) { s.lick = null; s.jaw = 0; return; }
+    if (!lm) { s.lick = null; s.jaw = 0; s.lips = null; s.tongue = null; return; }
     const bs = r.faceBlendshapes && r.faceBlendshapes[0] && r.faceBlendshapes[0].categories;
     const j = bs && bs.find(b => b.categoryName === "jawOpen");
     s.jaw = j ? j.score : 0;
-    const lo = toScreen(lm[14]);   // inner lower lip: the tongue comes out here
-    s.lick = s.jaw > CAM.JAW ? { x: lo[0], y: lo[1] + Math.abs(toScreen(lm[152])[1] - lo[1]) * 0.25 } : null;
+    s.lips = LIPS.map(i => toScreen(lm[i]));
+    const lo = toScreen(lm[14]), chin = toScreen(lm[152]), mw = dist(toScreen(lm[78]), toScreen(lm[308]));
+    // the tongue hangs from the inner lower lip toward the chin and a bit past it
+    const ux = chin[0] - lo[0], uy = chin[1] - lo[1], ul = Math.hypot(ux, uy) || 1;
+    const out = Math.max(0, Math.min(1, (s.jaw - CAM.JAW * 0.6) / 0.35));
+    const len = ul * (0.4 + 0.9 * out);
+    s.tongue = out > 0 ? { base: lo, dir: [ux / ul, uy / ul], len, width: mw * 0.6, out } : null;
+    s.lick = s.jaw > CAM.JAW ? { x: lo[0] + ux / ul * len, y: lo[1] + uy / ul * len } : null;
     s.mouth = lo;
   }
 
