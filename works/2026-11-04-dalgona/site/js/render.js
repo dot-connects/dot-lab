@@ -27,51 +27,82 @@ export function createCandyView(game, dprIn) {
   body.closePath();
   if (game.paths[1]) for (const [x, y] of game.paths[1].map(loc)) { body.moveTo(x + R * 0.035, y); body.arc(x, y, R * 0.035, 0, TAU); }
 
-  // ---------- textures ----------
+  // ---------- textures (rendered once) ----------
+  // Glassy toffee, not a cookie (review r1): light translucent bubbles over a warm gradient, a broad gloss band,
+  // a shallow bevelled mould dent, a darker caramelised rim with a thin rim light.
   function texture(wet) {
-    const c = off(PX, PX), g = toC(c.getContext("2d")), r = rng(77);
+    const c = off(PX, PX), g = toC(c.getContext("2d")), r = rng(77), ps = R / 142;
     g.save(); g.clip(edge);
-    const base = g.createRadialGradient(-0.25 * R, -0.25 * R, 0, 0, 0, R * 1.05);
-    if (!wet) { base.addColorStop(0, "#efb75c"); base.addColorStop(0.55, "#dc953c"); base.addColorStop(0.86, "#b06420"); base.addColorStop(1, "#6b3410"); }
-    else { base.addColorStop(0, "#c9772a"); base.addColorStop(0.6, "#a85718"); base.addColorStop(1, "#5e2a0a"); }
+    const base = g.createRadialGradient(-0.2 * R, -0.22 * R, 0, 0, 0, R * 1.05);
+    if (!wet) { base.addColorStop(0, "#f4c878"); base.addColorStop(0.6, "#e0a04a"); base.addColorStop(0.9, "#b8661f"); base.addColorStop(1, "#7a3a10"); }
+    else { base.addColorStop(0, "#d48a34"); base.addColorStop(0.6, "#b0621c"); base.addColorStop(1, "#5e2a0a"); }
     g.fillStyle = base; g.fillRect(-HALF, -HALF, S, S);
     // caramel blotches, darker toward the rim
-    for (let i = 0; i < 260; i++) {
+    for (let i = 0; i < 220; i++) {
       const t = r() * TAU, d = Math.sqrt(r()) * R, x = d * Math.cos(t), y = d * Math.sin(t), rr = R * (0.04 + r() * 0.15);
-      const gr = g.createRadialGradient(x, y, 0, x, y, rr), dark = r() < 0.4 + 0.5 * (d / R);
-      gr.addColorStop(0, dark ? "rgba(110,50,12,.16)" : "rgba(255,214,140,.12)"); gr.addColorStop(1, "rgba(0,0,0,0)");
+      const gr = g.createRadialGradient(x, y, 0, x, y, rr), dark = r() < 0.35 + 0.55 * (d / R);
+      gr.addColorStop(0, dark ? "rgba(120,55,12,.14)" : "rgba(255,220,150,.12)"); gr.addColorStop(1, "rgba(0,0,0,0)");
       g.fillStyle = gr; g.fillRect(x - rr, y - rr, rr * 2, rr * 2);
     }
-    // honeycomb pores with power-law sizes; each big pore catches light on its lower right lip
-    const n = wet ? 700 : 2000, ps = R / 142;
-    for (let i = 0; i < n; i++) {
-      const t = r() * TAU, d = Math.sqrt(r()) * R * 0.98, x = d * Math.cos(t), y = d * Math.sin(t);
-      const s = ps * (0.5 + 3.6 * Math.pow(r(), 3.2));
-      g.fillStyle = wet ? "rgba(70,28,6,.18)" : `rgba(92,40,10,${0.35 + 0.3 * r()})`;
-      g.beginPath(); g.ellipse(x, y, s, s * (0.75 + 0.3 * r()), r() * 3, 0, TAU); g.fill();
-      if (!wet && s > 1.1 * ps) { g.strokeStyle = "rgba(255,226,170,.38)"; g.lineWidth = 0.6; g.beginPath(); g.arc(x + 0.25 * s, y + 0.25 * s, s, 0.1, 1.5); g.stroke(); }
-    }
-    g.strokeStyle = wet ? "rgba(50,20,4,.45)" : "rgba(84,36,8,.42)"; g.lineWidth = 0.14 * R; g.stroke(edge);
-    g.strokeStyle = "rgba(60,24,4,.5)"; g.lineWidth = 0.035 * R; g.stroke(edge);
-    // pressed shape: engraved, dark on the upper left, light on the lower right
-    g.lineJoin = "round"; g.lineCap = "round";
-    const gw = Math.max(1.6, R * 0.017);
-    g.save(); g.translate(-0.7, -0.7); g.strokeStyle = "rgba(82,34,6,.75)"; g.lineWidth = gw; lines.forEach(l => g.stroke(l)); g.restore();
-    g.save(); g.translate(0.9, 0.9); g.strokeStyle = "rgba(255,218,150,.55)"; g.lineWidth = gw * 0.55; lines.forEach(l => g.stroke(l)); g.restore();
-    g.globalCompositeOperation = "screen";
-    const sp = g.createRadialGradient(-0.38 * R, -0.42 * R, 0, -0.38 * R, -0.42 * R, 0.5 * R);
-    sp.addColorStop(0, wet ? "rgba(255,236,190,.55)" : "rgba(255,236,190,.26)"); sp.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = sp; g.fillRect(-HALF, -HALF, S, S);
-    if (wet) for (let i = 0; i < 90; i++) {
+    // micro bubbles
+    for (let i = 0; i < 4000; i++) {
       const t = r() * TAU, d = Math.sqrt(r()) * R, x = d * Math.cos(t), y = d * Math.sin(t);
-      g.fillStyle = `rgba(255,248,225,${0.25 + 0.45 * r()})`; g.beginPath(); g.ellipse(x, y, ps * (1.5 + 4 * r()), ps * (0.8 + 1.2 * r()), -0.6, 0, TAU); g.fill();
+      g.fillStyle = r() < 0.5 ? `rgba(255,236,190,${0.08 + 0.1 * r()})` : `rgba(110,48,10,${0.06 + 0.08 * r()})`;
+      g.fillRect(x, y, ps, ps);
     }
+    // bubbles: light and see-through, dark lip on the upper left, bright lip on the lower right
+    const n = wet ? 260 : 600;
+    for (let i = 0; i < n; i++) {
+      const t = r() * TAU, d = Math.sqrt(r()) * R * 0.97, x = d * Math.cos(t), y = d * Math.sin(t);
+      const s = ps * (0.8 + 4 * Math.pow(r(), 2.6)), e = 0.75 + 0.3 * r(), rot = r() * 3;
+      g.fillStyle = wet ? "rgba(255,220,160,.12)" : "rgba(255,222,160,.22)";
+      g.beginPath(); g.ellipse(x, y, s, s * e, rot, 0, TAU); g.fill();
+      if (s > 1.2 * ps) {
+        g.lineWidth = 0.6;
+        g.strokeStyle = "rgba(110,50,12,.35)"; g.beginPath(); g.arc(x, y, s, Math.PI * 0.9, Math.PI * 1.6); g.stroke();
+        g.strokeStyle = "rgba(255,245,215,.5)"; g.beginPath(); g.arc(x, y, s, -0.2, 1.4); g.stroke();
+      }
+    }
+    // caramelised rim: translucent darker ring
+    g.strokeStyle = wet ? "rgba(70,28,6,.5)" : "rgba(160,80,20,.5)"; g.lineWidth = 0.1 * R; g.stroke(edge);
+    g.strokeStyle = "rgba(84,36,8,.4)"; g.lineWidth = 0.05 * R; g.stroke(edge);
+    // mould dent: a shallow bevel, dark on the upper left wall, light on the lower right
+    g.lineJoin = "round"; g.lineCap = "round";
+    for (const [w, ad, al] of [[0.06, 0.08, 0.06], [0.035, 0.12, 0.1], [0.015, 0.3, 0.35]]) {
+      g.save(); g.translate(-ps, -ps); g.strokeStyle = `rgba(90,36,6,${ad})`; g.lineWidth = w * R; lines.forEach(l => g.stroke(l)); g.restore();
+      g.save(); g.translate(1.2 * ps, 1.2 * ps); g.strokeStyle = `rgba(255,232,180,${al})`; g.lineWidth = w * R * 0.8; lines.forEach(l => g.stroke(l)); g.restore();
+    }
+    g.globalCompositeOperation = "screen";
+    // broad gloss band, like light on a smooth glassy top
+    g.save(); g.rotate(-0.61);
+    const band = g.createRadialGradient(0, -0.38 * R, 0, 0, -0.38 * R, 0.9 * R);
+    band.addColorStop(0, wet ? "rgba(255,248,225,.4)" : "rgba(255,248,225,.24)"); band.addColorStop(1, "rgba(255,248,225,0)");
+    g.scale(1, 0.25); g.fillStyle = band; g.fillRect(-R * 1.2, -R * 5, R * 2.4, R * 8); g.restore();
+    const sp = g.createRadialGradient(-0.38 * R, -0.42 * R, 0, -0.38 * R, -0.42 * R, 0.45 * R);
+    sp.addColorStop(0, wet ? "rgba(255,236,190,.5)" : "rgba(255,236,190,.18)"); sp.addColorStop(1, "rgba(0,0,0,0)");
+    g.fillStyle = sp; g.fillRect(-HALF, -HALF, S, S);
+    if (wet) for (let i = 0; i < 40; i++) {   // wet streaks, one light direction
+      const t = r() * TAU, d = Math.sqrt(r()) * R * 0.9, x = d * Math.cos(t), y = d * Math.sin(t);
+      g.fillStyle = `rgba(255,250,235,${0.5 + 0.4 * r()})`;
+      g.beginPath(); g.ellipse(x, y, ps * (6 + 8 * r()), ps * (0.8 + 0.8 * r()), -0.6, 0, TAU); g.fill();
+    }
+    g.globalCompositeOperation = "source-over";
+    // rim light on the upper left edge
+    g.strokeStyle = "rgba(255,240,210,.6)"; g.lineWidth = ps;
+    g.beginPath(); for (let i = 0; i <= 40; i++) { const t = -Math.PI * 0.83 + i / 40 * Math.PI * 0.5, rr = edgeR(t) - 1.5 * ps; i ? g.lineTo(rr * Math.cos(t), rr * Math.sin(t)) : g.moveTo(rr * Math.cos(t), rr * Math.sin(t)); } g.stroke();
     g.restore();
     return c;
   }
   const DRY = texture(false), WET = texture(true);
-  const SH = off(PX, PX);
-  { const g = toC(SH.getContext("2d")); g.shadowColor = "rgba(0,0,0,.55)"; g.shadowBlur = R * 0.2 * K; g.shadowOffsetX = 4000 * K; g.translate(-4000, 0); g.fill(edge); }
+  // two shadows: a tight contact one and a wide soft one; holes and chips are cut out of them (SHc)
+  const SH = off(PX, PX), SHc = off(PX, PX);
+  {
+    const g = toC(SH.getContext("2d"));
+    g.save(); g.shadowColor = "rgba(0,0,0,.3)"; g.shadowBlur = R * 0.2 * K; g.shadowOffsetX = 4000 * K; g.shadowOffsetY = R * 0.06 * K; g.translate(-4000, 0); g.fill(edge); g.restore();
+    g.save(); g.shadowColor = "rgba(0,0,0,.6)"; g.shadowBlur = R * 0.02 * K; g.shadowOffsetX = 4000 * K; g.shadowOffsetY = R * 0.012 * K; g.translate(-4000, 0); g.fill(edge); g.restore();
+  }
+  SHc.getContext("2d").drawImage(SH, 0, 0);
+  let shadowDirty = false;
   const damage = off(PX, PX), dg = toC(damage.getContext("2d"));
   const L = off(PX, PX), lg = L.getContext("2d");
   const B = off(PX, PX), bg = B.getContext("2d");
@@ -93,10 +124,42 @@ export function createCandyView(game, dprIn) {
     }
     return any;
   }
+  // melted holes: a union of solid circles sized by how far each cell melted, jittered per cell, so the hole is
+  // round and ragged instead of following the square grid
+  const jit = Array.from({ length: N * N }, (_, k) => { const r = rng(k * 7 + 3); return [r() - 0.5, r() - 0.5, 0.8 + 0.4 * r()]; });
+  function holes(c, grow, soft) {
+    const g = c.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.clearRect(0, 0, c.width, c.height); toC(g);
+    let any = false;
+    for (let k = 0; k < N * N; k++) {
+      const m = game.meltG[k] - 0.45; if (m <= 0) continue;
+      any = true;
+      const [jx, jy, js] = jit[k], [x0, y0] = loc(cellCentre(game, k)), x = x0 + jx * cell * 0.5, y = y0 + jy * cell * 0.5;
+      const r = cell * (0.35 + 0.85 * Math.min(1, m / 0.8)) * js + grow;
+      if (soft) { const gr = g.createRadialGradient(x, y, r - grow, x, y, r); gr.addColorStop(0, "#fff"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; }
+      else g.fillStyle = "#fff";
+      g.beginPath(); g.arc(x, y, r, 0, TAU); g.fill();
+    }
+    return any;
+  }
+  let meltSum = 0;
   function masks() {
     anyWet = blobs(mWet, k => clamp(game.wetG[k] * 0.9));
-    anyMelt = blobs(mRim, k => clamp((game.meltG[k] - 0.1) / 0.45));
-    if (anyMelt) blobs(mHole, k => clamp((game.meltG[k] - 0.4) / 0.5));
+    anyMelt = game.meltG.some(m => m > 0.45);
+    if (anyMelt) {
+      holes(mRim, cell * 1.4, true); holes(mHole, 0, false);
+      const sum = game.meltG.reduce((a, m) => a + Math.max(0, m - 0.45), 0);
+      if (Math.abs(sum - meltSum) > 0.05) { meltSum = sum; shadowDirty = true; }
+    }
+  }
+  // no shadow under a hole or where a chip fell off
+  function rebuildShadow() {
+    const g = SHc.getContext("2d"); g.setTransform(1, 0, 0, 1, 0, 0); g.globalCompositeOperation = "source-over";
+    g.clearRect(0, 0, PX, PX); g.drawImage(SH, 0, 0);
+    g.globalCompositeOperation = "destination-out";
+    const ox = R * 0.03 * K, oy = R * 0.08 * K;   // the shadow is drawn offset; cut where the candy is missing above it
+    if (anyMelt) g.drawImage(mHole, -ox, -oy);
+    if (chips.length) { g.setTransform(K, 0, 0, K, K * HALF - ox, K * HALF - oy); chips.forEach(c => g.fill(c)); }
+    g.globalCompositeOperation = "source-over"; shadowDirty = false;
   }
 
   // ---------- marks: pits and scratches are drawn once, as they happen ----------
@@ -155,15 +218,32 @@ export function createCandyView(game, dprIn) {
     g.beginPath(); g.moveTo(pts[0][0], pts[0][1]);
     for (let i = 1; i < pts.length && cum[i] <= upto; i++) g.lineTo(pts[i][0], pts[i][1]);
   }
-  function drawCrack(g, c) {
-    const st = c.fatal ? 2 : crackStage(game, c), sc = R / 142, w = [1.3, 1.8, 2.8][st] * sc, al = [0.8, 0.9, 0.97][st];
+  // toffee cracks catch light: a bright refracting band with a hair-thin dark core and a soft drop on one side
+  const tipLen = new Map();
+  function drawCrack(g, c, now) {
+    const st = c.fatal ? 2 : crackStage(game, c), sc = R / 142, w = [1.6, 2.1, 3][st] * sc;
     const pts = c.pts.map(loc);
+    const stroke = (pp, cum, upto, ww) => {
+      g.save(); g.globalCompositeOperation = "screen"; g.strokeStyle = "rgba(255,236,190,.8)"; g.lineWidth = ww * 1.8; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
+      g.save(); g.translate(sc, sc); g.strokeStyle = "rgba(0,0,0,.25)"; g.lineWidth = ww * 0.5; crackPath(g, pp, cum, upto); g.stroke(); g.restore();
+      g.strokeStyle = "rgba(35,10,0,.9)"; g.lineWidth = Math.max(0.6, ww * (st ? 0.45 : 0.35)); crackPath(g, pp, cum, upto); g.stroke();
+    };
     g.lineJoin = "round"; g.lineCap = "round";
-    g.save(); g.translate(0.8, 0.8); g.strokeStyle = "rgba(255,214,160,.45)"; g.lineWidth = w * 0.6; crackPath(g, pts, c.cum, c.len); g.stroke(); g.restore();
-    g.strokeStyle = `rgba(40,14,2,${al})`; g.lineWidth = w; crackPath(g, pts, c.cum, c.len); g.stroke();
+    stroke(pts, c.cum, c.len, w);
     if (st >= 1) for (const b of branchesOf(c)) if (c.len > b.at) {
       const bc = b.pts.map((_, i) => i * R * 0.02), upto = Math.min((c.len - b.at) * 0.6, bc[bc.length - 1]);
-      g.strokeStyle = `rgba(40,14,2,${al * 0.8})`; g.lineWidth = w * 0.55; crackPath(g, b.pts, bc, upto); g.stroke();
+      stroke(b.pts, bc, upto, w * 0.6);
+    }
+    // the tip glints while it is still running
+    const prev = tipLen.get(c) || [0, -1];
+    if (c.len > prev[0] + 0.01) tipLen.set(c, [c.len, now]);
+    const age = (now - (tipLen.get(c) || prev)[1]) / 1000;
+    if (!c.done && age < 0.3) {
+      let i = c.cum.findIndex(v => v >= c.len); if (i < 0) i = pts.length - 1;
+      const [x, y] = pts[i], a = 1 - age / 0.3;
+      g.save(); g.globalCompositeOperation = "lighter";
+      const sg = g.createRadialGradient(x, y, 0, x, y, 4 * sc); sg.addColorStop(0, `rgba(255,245,220,${a})`); sg.addColorStop(1, "rgba(255,245,220,0)");
+      g.fillStyle = sg; g.fillRect(x - 4 * sc, y - 4 * sc, 8 * sc, 8 * sc); g.restore();
     }
   }
 
@@ -186,10 +266,24 @@ export function createCandyView(game, dprIn) {
       if (pc.win) { toC(g); g.globalCompositeOperation = "destination-out"; g.fill(body); g.globalCompositeOperation = "source-over"; }
       const sp = pc.win ? 90 + Math.random() * 60 : 40;
       pieces.push({ c, x: 0, y: 0, vx: Math.cos(pc.dir) * sp, vy: Math.sin(pc.dir) * sp * 0.6 - (pc.win ? 140 : 60), rot: 0, vr: (Math.random() - 0.5) * (pc.win ? 3 : 4), t: 0, life: pc.win ? 1.4 : 1.6, ox: pc.x, oy: pc.y });
-      if (!pc.win) chips.push(pc.path);
+      if (!pc.win) { chips.push(pc.path); shadowDirty = true; }
     }
   }
-  let won = false, wonT = 0, lostT = -1;
+  let won = false, wonT = 0, lostT = -1, halves = null;
+  function split() {
+    const c = game.cracks.find(k => k.fatal); if (!c) return;
+    const pts = c.pts.map(loc), [ax, ay] = pts[0], [bx, by] = pts[pts.length - 1];
+    let dx = bx - ax, dy = by - ay; const dl = Math.hypot(dx, dy) || 1; dx /= dl; dy /= dl;
+    const nx = -dy, ny = dx, F = R * 3;
+    halves = [1, -1].map(side => {
+      // the crack itself is the cut on the near side, a straight run on through the far side
+      const p = new Path2D(); p.moveTo(ax - dx * F, ay - dy * F); pts.forEach(([x, y]) => p.lineTo(x, y));
+      p.lineTo(bx + dx * F, by + dy * F); p.lineTo(bx + dx * F + nx * F * side, by + dy * F + ny * F * side);
+      p.lineTo(ax - dx * F + nx * F * side, ay - dy * F + ny * F * side); p.closePath();
+      const cnv = off(PX, PX), g = toC(cnv.getContext("2d")); g.clip(p); g.setTransform(1, 0, 0, 1, 0, 0); g.drawImage(L, 0, 0);
+      return { c: cnv, nx: nx * side, ny: ny * side, rot: 0.04 * side };
+    });
+  }
   function breakOut() {
     // the body around the shape snaps into wedges that fall away; the shape stays
     const n = 7, r = rng(game.cracks.length + 31), a0 = r() * TAU;
@@ -226,7 +320,8 @@ export function createCandyView(game, dprIn) {
     if (maskFrame++ % 3 === 0) masks();
     marks();
     lg.globalCompositeOperation = "source-over"; lg.setTransform(1, 0, 0, 1, 0, 0); lg.clearRect(0, 0, PX, PX);
-    toC(lg); lg.fillStyle = "#4a2207"; lg.save(); lg.translate(0, R * 0.025); lg.fill(edge); lg.restore();   // candy thickness
+    toC(lg); lg.save(); lg.translate(0, R * 0.03);   // candy thickness
+    const th = lg.createLinearGradient(0, -R, 0, R); th.addColorStop(0, "#7a3a10"); th.addColorStop(1, "#3a1805"); lg.fillStyle = th; lg.fill(edge); lg.restore();
     lg.setTransform(1, 0, 0, 1, 0, 0); lg.drawImage(DRY, 0, 0); lg.drawImage(damage, 0, 0);
     toC(lg); carved(lg); lg.setTransform(1, 0, 0, 1, 0, 0);
     if (anyWet) {
@@ -234,25 +329,58 @@ export function createCandyView(game, dprIn) {
       bg.globalCompositeOperation = "destination-in"; bg.drawImage(mWet, 0, 0);
       lg.drawImage(B, 0, 0);
     }
-    if (anyMelt) {
-      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.fillStyle = "#ffc56a"; bg.fillRect(0, 0, PX, PX);
-      bg.globalCompositeOperation = "destination-in"; bg.drawImage(mRim, 0, 0);
-      lg.globalAlpha = 0.6; lg.globalCompositeOperation = "source-atop"; lg.drawImage(B, 0, 0); lg.globalAlpha = 1;
+    if (anyMelt) {   // a ring of dark translucent melted caramel around each hole
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mRim, 0, 0);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, 0, 0);
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(138,62,12,.75)"; bg.fillRect(0, 0, PX, PX);
+      lg.globalCompositeOperation = "source-atop"; lg.drawImage(B, 0, 0); lg.globalCompositeOperation = "source-over";
+    }
+    const now = performance.now();
+    toC(lg); lg.save(); lg.clip(edge); game.cracks.forEach(c => drawCrack(lg, c, now)); lg.restore();
+    if (light) {   // match the room: multiply by a light tinted toward the camera's average colour
+      lg.save(); lg.clip(edge); lg.globalCompositeOperation = "multiply"; lg.fillStyle = light.tint; lg.fillRect(-HALF, -HALF, S, S); lg.restore();
       lg.globalCompositeOperation = "source-over";
     }
-    toC(lg); lg.save(); lg.clip(edge); game.cracks.forEach(c => drawCrack(lg, c)); lg.restore();
     lg.setTransform(1, 0, 0, 1, 0, 0);
     if (pending.length) piecesFromPending();
-    if (anyMelt) { lg.globalCompositeOperation = "destination-out"; lg.drawImage(mHole, 0, 0); }
+    if (anyMelt) {
+      lg.globalCompositeOperation = "destination-out"; lg.drawImage(mHole, 0, 0);
+      // the hole's lower right inner wall catches the light
+      bg.globalCompositeOperation = "source-over"; bg.clearRect(0, 0, PX, PX); bg.drawImage(mHole, 0, 0);
+      bg.globalCompositeOperation = "destination-out"; bg.drawImage(mHole, -1.5 * K, -1.5 * K);
+      bg.globalCompositeOperation = "source-in"; bg.fillStyle = "rgba(255,226,160,.9)"; bg.fillRect(0, 0, PX, PX);
+      lg.globalCompositeOperation = "source-over"; lg.drawImage(B, 0, 0);
+    }
     if (chips.length) { toC(lg); lg.globalCompositeOperation = "destination-out"; chips.forEach(p => lg.fill(p)); }
     lg.globalCompositeOperation = "source-over"; lg.setTransform(1, 0, 0, 1, 0, 0);
   }
 
+  const flashes = [];
   function onEvent(ev) {
     if (ev.type === "chip") chipFrom(ev.crack);
     else if (ev.type === "win") { compose(); breakOut(); }
     else if (ev.type === "lose") lostT = 0;
+    else if (ev.type === "segment") flashes.push({ k: ev.k, t: 0 });
   }
+  // a finished stretch of the outline lights up for a moment
+  function drawFlashes(ctx, dt) {
+    for (const f of flashes) f.t += dt;
+    for (let i = flashes.length - 1; i >= 0; i--) if (flashes[i].t > 0.5) flashes.splice(i, 1);
+    if (!flashes.length) return;
+    ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round"; ctx.lineJoin = "round";
+    for (const f of flashes) {
+      ctx.strokeStyle = `rgba(255,214,140,${0.7 * (1 - f.t / 0.5)})`; ctx.lineWidth = R * 0.035;
+      game.paths.forEach((path, pi) => {
+        ctx.beginPath(); let on = false;
+        path.forEach((q, i) => { if (game.segOf[pi][i] !== f.k) { on = false; return; } const [x, y] = loc(q); on ? ctx.lineTo(x, y) : ctx.moveTo(x, y); on = true; });
+        ctx.stroke();
+      });
+    }
+    ctx.restore();
+  }
+  // the room's light on the candy: brightness and a little of the room's colour (from the camera, set by the app)
+  let light = null;
+  function setLight(l) { light = l; }
 
   /** Draw at the candy centre (cx, cy) on a CSS-px context. ring = progress 0..1 (null = no ring). */
   function draw(ctx, dt, ring) {
@@ -262,7 +390,11 @@ export function createCandyView(game, dprIn) {
     for (const p of pieces) { p.t += dt; p.vy += 900 * dt; p.x += p.vx * dt; p.y += p.vy * dt; p.rot += p.vr * dt; }
     for (let i = pieces.length - 1; i >= 0; i--) if (pieces[i].t > pieces[i].life) pieces.splice(i, 1);
     let sx = 0;
-    if (lostT >= 0) { lostT += dt; sx = lostT < 0.35 ? Math.sin(lostT * 90) * R * 0.03 * (1 - lostT / 0.35) : 0; }
+    if (lostT >= 0) {
+      lostT += dt; sx = lostT < 0.35 ? Math.sin(lostT * 90) * R * 0.03 * (1 - lostT / 0.35) : 0;
+      const fc = game.cracks.find(k => k.fatal);
+      if (!halves && fc && fc.len >= fc.total) split();
+    }
     ctx.save(); ctx.translate(cx + sx, cy);
     const drawPieces = () => { for (const p of pieces) {
       ctx.save(); ctx.globalAlpha = Math.max(0, 1 - p.t / p.life); ctx.translate(p.ox + p.x, p.oy + p.y); ctx.rotate(p.rot); ctx.translate(-p.ox, -p.oy);
@@ -281,17 +413,28 @@ export function createCandyView(game, dprIn) {
       const gx = (wonT - 0.5) * 2.4 * R - R;
       if (wonT > 0.4 && wonT < 1.6) {
         ctx.save(); ctx.scale(sc, sc); ctx.translate(0, -R * 0.05 * e); ctx.clip(body);
-        const gl = ctx.createLinearGradient(gx - R * 0.3, -R, gx + R * 0.3, R);
-        gl.addColorStop(0, "rgba(255,250,230,0)"); gl.addColorStop(0.5, "rgba(255,250,230,.55)"); gl.addColorStop(1, "rgba(255,250,230,0)");
+        const gl = ctx.createLinearGradient(gx - R * 0.3, -R * 0.3, gx + R * 0.3, R * 0.3);
+        gl.addColorStop(0, "rgba(255,250,230,0)"); gl.addColorStop(0.5, "rgba(255,250,230,.4)"); gl.addColorStop(1, "rgba(255,250,230,0)");
         ctx.fillStyle = gl; ctx.fillRect(-R, -R, 2 * R, 2 * R); ctx.restore();
       }
+    } else if (halves) {
+      const k = Math.min(1, (lostT - 0) / 0.5), e = 1 - Math.pow(1 - k, 3), d = R * 0.06 * e;
+      // each half casts its own shadow, so the gap between them shows the room, not a black band
+      const dk = ctx.getTransform().a;
+      for (const h of halves) {
+        ctx.save(); ctx.translate(h.nx * d, h.ny * d + R * 0.02 * e); ctx.rotate(h.rot * e);
+        ctx.shadowColor = "rgba(0,0,0,.45)"; ctx.shadowBlur = R * 0.1 * dk; ctx.shadowOffsetY = R * 0.07 * dk;
+        ctx.drawImage(h.c, -HALF, -HALF, S, S); ctx.restore();
+      }
     } else {
-      ctx.drawImage(SH, -HALF + R * 0.03, -HALF + R * 0.08, S, S);
+      if (shadowDirty) rebuildShadow();
+      ctx.drawImage(SHc, -HALF + R * 0.03, -HALF + R * 0.08, S, S);
       ctx.drawImage(L, -HALF, -HALF, S, S);
+      drawFlashes(ctx, dt);
       if (ring != null) {
         ctx.lineCap = "round"; ctx.lineWidth = 4;
         ctx.strokeStyle = "rgba(255,255,255,.22)"; ctx.beginPath(); ctx.arc(0, 0, 1.13 * R, 0, TAU); ctx.stroke();
-        ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 1.13 * R, -Math.PI / 2, -Math.PI / 2 + Math.max(0.001, ring) * TAU); ctx.stroke();
+        if (ring > 0.005) { ctx.strokeStyle = "#fff"; ctx.beginPath(); ctx.arc(0, 0, 1.13 * R, -Math.PI / 2, -Math.PI / 2 + ring * TAU); ctx.stroke(); }
       }
     }
     if (!won) drawPieces();
@@ -312,5 +455,5 @@ export function createCandyView(game, dprIn) {
     return c;
   }
 
-  return { draw, onEvent, snapshot, edgeR, get won() { return won; } };
+  return { draw, onEvent, snapshot, setLight, edgeR, get won() { return won; } };
 }

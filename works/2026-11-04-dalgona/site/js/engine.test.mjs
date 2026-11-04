@@ -63,7 +63,6 @@ test("careful pokes carve without cracking; frantic pokes crack", () => {
 
 test("licking one spot melts only that spot, and too long there breaks the shape", () => {
   const g = createGame("circle", GEOM, seeded());
-  poke(g, GEOM.cx + 0.84 * GEOM.R, GEOM.cy);   // start the clock
   for (let i = 0; i < 30 * 1.0; i++) step(g, DT, { needle: null, lick: { x: GEOM.cx, y: GEOM.cy } });
   assert.equal(g.done, false);
   const far = g.wetG[0] + g.wetG[g.wetG.length - 1];

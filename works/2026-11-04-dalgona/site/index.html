@@ -44,11 +44,18 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 .sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff44;border-radius:12px;padding:9px 16px;cursor:pointer}
 .link{color:var(--mute);font-size:14px;text-decoration:none}
 .picks{display:flex;gap:12px}
-.picks button{width:68px;height:68px;border-radius:50%;font-size:30px;background:radial-gradient(circle at 38% 34%,#f2c071,#d68c36 60%,#9a5418);border:0;box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 -3px 6px rgba(80,30,5,.4);color:#6b3410;cursor:pointer}
-.res-pct{font-family:"Orbit",monospace;font-size:64px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 2px 12px rgba(0,0,0,.6)}
-.res-img{width:min(58vw,240px);aspect-ratio:1;filter:drop-shadow(0 10px 18px rgba(0,0,0,.55))}
-.res-best{font-size:13px;color:var(--mute)!important}
+.picks button{display:flex;flex-direction:column;align-items:center;gap:8px;background:none;border:0;padding:0;color:var(--ink);cursor:pointer;font:inherit}
+.picks .ic{display:grid;place-items:center;width:68px;height:68px;border-radius:50%;font-size:30px;background:radial-gradient(circle at 38% 34%,#f2c071,#d68c36 60%,#9a5418);box-shadow:0 6px 16px rgba(0,0,0,.45),inset 0 -3px 6px rgba(80,30,5,.4);color:#6b3410}
+.picks small{font-size:12px;color:#FFC23D;letter-spacing:.05em;min-height:1.2em}
+.res-card{width:min(74vw,300px);aspect-ratio:4/5;border-radius:14px;box-shadow:0 12px 30px rgba(0,0,0,.6);background:#1a1d1b;object-fit:cover}
+.res-line{font-size:26px;color:#FFC23D;letter-spacing:.02em}
+#result:not(.win) .res-line{color:#ff8a9b}
+.res-sub{font-size:14px;color:#d7e2dd!important}
+.res-best{font-size:13px;color:var(--mute)!important;min-height:1em}
 .row{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.foot{gap:18px}
+.foot .link{background:none;border:0;font:inherit;font-size:14px;cursor:pointer;padding:6px}
+.ov h2{font-size:32px}
 #back{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:13px;color:var(--mute);text-decoration:none;border:1px solid #ffffff33;border-radius:999px;padding:6px 12px}
 button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 </style>
@@ -72,12 +79,11 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
   <section class="ov" id="start">
     <a id="back" href="../../../">‹ 시켜본 것들</a>
     <h1>허공 <em>달고나</em></h1>
-    <p>내 카메라 화면 위에 달고나가 떠요. 손가락으로 바늘을 집고 모양을 떼어 내세요. 금이 모양 안까지 들어가면 탈락.</p>
+    <p>내 카메라 화면 위에 달고나가 떠요.<br>금 가기 전에 모양을 떼어 내세요.</p>
     <div class="how">
-      <b>집기</b><span>엄지와 검지를 모으면 바늘이 손에 잡혀요</span>
-      <b>긁기</b><span>집은 채로 선을 따라 천천히</span>
-      <b>찌르기</b><span>화면 쪽으로 콕. 깊게 파이지만 연달아 찌르면 금이 가요</span>
-      <b>핥기</b><span>입을 크게 벌리고 혀를 달고나에 대기. 말랑해지지만 오래 대면 녹아요</span>
+      <b>🤏</b><span>엄지·검지를 모으면 바늘</span>
+      <b>〰</b><span>선을 따라 천천히 긁기</span>
+      <b>👅</b><span>입 벌려 핥으면 말랑, 오래 핥으면 녹음</span>
     </div>
     <button class="go" id="camGo">카메라로 하기</button>
     <button class="sub" id="touchGo">화면 터치로 하기</button>
@@ -88,7 +94,6 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
     <h2>모양을 고르세요</h2>
     <p>무엇을 할지는 고른 다음에 알려 드립니다.</p>
     <div class="picks" id="picks"></div>
-    <p id="best" style="font-size:13px;color:var(--mute)"></p>
   </section>
 
   <section class="ov" id="result" hidden></section>

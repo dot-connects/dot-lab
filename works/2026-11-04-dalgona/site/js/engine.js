@@ -2,13 +2,14 @@
 // Rule constants are ours (tuned in the 11-04 mockups and the phone spike), not measurements of real candy.
 
 export const RULES = {
-  T_LIMIT: 90,        // seconds (the drama gave 10 minutes)
+  T_LIMIT: 75,        // seconds (the drama gave 10 minutes)
   V_SAFE: 1.35,       // safe needle speed in candy radii per second
   TOL: 0.11,          // how close to the line the needle must be, in candy radii
-  SCRAPE: 1.75,       // carve per radius of needle travel near a point (one slow lap ~0.38 -> about three laps)
+  SCRAPE: 2.6,        // carve per radius of needle travel near a point (one slow lap ~0.57 -> two laps; three were dull, review r1)
   POKE: 0.42,         // carve of one poke at its centre
   POKE_STRESS: 0.16,  // pressure of one poke on the line (0.22 off the line)
-  POKE_FAST: 0.2,     // extra pressure when pokes come less than 0.3 s apart
+  POKE_FAST: 0.2,     // extra pressure when pokes come less than FAST_GAP apart
+  FAST_GAP: 0.45,     // s (at 0.3 a steady 0.31 s rhythm never cracked)
   POKE_CAP: 0.45,     // one poke never adds more than this (v1: one camera jab broke the candy at once)
   SPEED_CAP: 1.4,     // pressure per second from rushing, shaking or scraping the body, at most
   GRACE: 0.15,        // seconds after the needle touches down with no speed pressure
@@ -16,20 +17,24 @@ export const RULES = {
   HAIR: 0.5,          // pressure where a hairline crack appears on the line
   GROW: 0.35,         // crack growth in radii per second per unit of pressure above HAIR
   FATAL: 0.14,        // an inward crack this many radii inside the shape breaks it
-  IN_P: 0.3,          // chance a new crack runs into the shape (+0.1 per chip, less where licked)
+  IN_P: 0.25,         // chance a new crack runs into the shape (+0.1 per chip, +WEAK_IN at a sharp inner corner, less where licked)
+  WEAK_IN: 0.25,      // sharp corners (star points and valleys, umbrella rib tips) break inward more often, as real candy does
+  WEAK_V: 0.75,       // and tolerate less speed
+  SEG: 12,            // the main outline is cut in this many stretches; each finished stretch clicks
   JITTER_SAFE: 0.08,  // hand shake below this many radii (RMS) is free
-  SQUEEZE: 5,         // pinch closing speed (hand sizes/s) that counts as gripping the needle too hard
   DONE: 0.9,          // every outline point carved this deep -> the shape comes out
   GRID: 28,           // wet / melt grid across the candy
-  MELT_HOLES: 3,      // melted cells inside the shape that break it
+  MELT_HOLES: 2,      // melted cells inside the shape that break it (3 let two holes pass as harmless)
+  FINAL_DECAY: 0.35,  // over 90 % the pressure fades slower: hold your breath
 };
 
+// v: safe-speed factor per shape (the umbrella is the hard one)
 export const SHAPES = {
-  circle: { icon: "○", name: "동그라미", paths: [circle(0, 0, 0.42)] },
+  circle: { icon: "○", name: "동그라미", v: 1.1, paths: [circle(0, 0, 0.42)] },
   // shapes keep inside ~0.8 R of the candy edge (the first mockups ran the star and umbrella off the rim)
-  tri: { icon: "△", name: "세모", paths: scale([[[0, -0.5], [0.47, 0.32], [-0.47, 0.32], [0, -0.5]]], 0.8) },
-  star: { icon: "☆", name: "별", paths: scale([star()], 0.78) },
-  umb: { icon: "☂", name: "우산", paths: scale(umbrella(), 0.8, 0.04) },
+  tri: { icon: "△", name: "세모", v: 1, paths: scale([[[0, -0.5], [0.47, 0.32], [-0.47, 0.32], [0, -0.5]]], 0.8) },
+  star: { icon: "☆", name: "별", v: 0.9, paths: scale([star()], 0.78) },
+  umb: { icon: "☂", name: "우산", v: 0.8, paths: scale(umbrella(), 0.8, 0.04) },
 };
 
 function scale(paths, k, dy = 0) { return paths.map(p => p.map(([x, y]) => [x * k, y * k + dy])); }
@@ -62,7 +67,7 @@ function umbrella() {
 export function createGame(shape, geom, rng = Math.random) {
   const g = {
     shape, geom, rng, t: 0, started: false, stress: 0, chips: 0, cracks: [], pits: [], scratches: [],
-    done: false, ok: false, cause: null, pokes: 0, lastPoke: -9, licks: 0, final: 0, at: null, downAt: null,
+    done: false, ok: false, cause: null, pokes: 0, lastPoke: -9, licks: 0, final: 0, at: null, downAt: null, segs: 0,
     wetG: new Float32Array(RULES.GRID * RULES.GRID), meltG: new Float32Array(RULES.GRID * RULES.GRID),
     events: [], last: null,
   };
@@ -85,6 +90,12 @@ export function layout(g, geom) {
   });
   const prev = g.prog;
   g.prog = g.paths.map((p, i) => (prev && prev[i] && prev[i].length === p.length ? prev[i] : new Float32Array(p.length)));
+  g.weak = g.paths.map(weakPoints);
+  // stretches: SEG along the main outline, the umbrella handle as one more
+  if (!g.segOf) {
+    g.segOf = g.paths.map((p, pi) => Array.from(p, (_, i) => (pi === 0 ? Math.min(RULES.SEG - 1, Math.floor(i / p.length * RULES.SEG)) : RULES.SEG + pi - 1)));
+    g.segDone = new Uint8Array(RULES.SEG + g.paths.length - 1);
+  }
   // marks made before a resize move with the candy
   if (old && old !== geom) {
     const k = R / old.R, mv = ([x, y]) => [cx + (x - old.cx) * k, cy + (y - old.cy) * k];
@@ -93,6 +104,27 @@ export function layout(g, geom) {
     for (const c of g.cracks) { c.pts = c.pts.map(mv); c.cum = c.cum.map(v => v * k); c.total *= k; c.len *= k; }
     g.at = null; g.last = null;
   }
+}
+
+// sharp corners of a closed outline (a turn over ~50 deg: star points and valleys, umbrella rib tips), with a margin
+function weakPoints(path) {
+  const n = path.length, k = 3, out = new Uint8Array(n);
+  const closed = Math.hypot(path[0][0] - path[n - 1][0], path[0][1] - path[n - 1][1]) < 1;
+  if (!closed) return out;
+  const m = n - 1;
+  for (let i = 0; i < m; i++) {
+    const a = path[(i - k + m) % m], b = path[i], c = path[(i + k) % m];
+    const ux = b[0] - a[0], uy = b[1] - a[1], vx = c[0] - b[0], vy = c[1] - b[1];
+    const turn = Math.atan2(ux * vy - uy * vx, ux * vx + uy * vy);
+    if (Math.abs(turn) > 0.9) for (let j = -2; j <= 2; j++) out[(i + j + m) % m] = 1;
+  }
+  return out;
+}
+
+function nearWeak(g, x, y) {
+  const r = g.geom.R * 0.1;
+  for (let pi = 0; pi < g.paths.length; pi++) { const p = g.paths[pi], w = g.weak[pi]; for (let i = 0; i < p.length; i++) if (w[i] && Math.abs(p[i][0] - x) < r && Math.abs(p[i][1] - y) < r) return true; }
+  return false;
 }
 
 export function percent(g) {
@@ -142,7 +174,7 @@ function nearestOutline(g, x, y) {
 function spawnCrack(g, x, y, w) {
   const { cx, cy, R } = g.geom;
   const [sx, sy] = nearestOutline(g, x, y).q;
-  const inward = g.rng() < Math.min(0.85, RULES.IN_P + 0.1 * g.chips) * (1 - w * 0.6);
+  const inward = g.rng() < Math.min(0.85, RULES.IN_P + 0.1 * g.chips + (nearWeak(g, sx, sy) ? RULES.WEAK_IN : 0)) * (1 - w * 0.6);
   const st = R * 0.02, pts = [[sx, sy]], cum = [0], flip = inward ? Math.PI : 0;
   let ang = Math.atan2(sy - cy, sx - cx) + flip + (g.rng() - 0.5) * 0.8, px = sx, py = sy, L = 0;
   for (let i = 0; i < 200; i++) {
@@ -186,6 +218,13 @@ function growCracks(g, dt) {
   }
 }
 
+function checkSegments(g) {
+  const full = new Uint8Array(g.segDone.length).fill(1);
+  g.prog.forEach((pr, pi) => pr.forEach((v, i) => { if (v < RULES.DONE) full[g.segOf[pi][i]] = 0; }));
+  for (let k = 0; k < full.length; k++) if (full[k] && !g.segDone[k]) { g.segDone[k] = 1; g.segs++; g.events.push({ type: "segment", k }); }
+  g.final90 = percent(g) >= 90;
+}
+
 function finish(g, ok, cause) {
   if (g.done) return;
   g.done = true; g.ok = ok; g.cause = cause; g.final = ok ? 100 : percent(g);
@@ -207,18 +246,10 @@ export function poke(g, x, y) {
     }
   });
   g.pits.push([x, y]);
-  const add = (hit ? RULES.POKE_STRESS : 0.22) * (1 - 0.5 * w) + (gap < 0.3 ? RULES.POKE_FAST : 0);
+  const add = (hit ? RULES.POKE_STRESS : 0.22) * (1 - 0.5 * w) + (gap < RULES.FAST_GAP ? RULES.POKE_FAST : 0);
   g.stress = Math.min(1.3, g.stress + Math.min(RULES.POKE_CAP, add));
   g.at = { x, y, w };
   g.events.push({ type: "poke", hit });
-}
-
-/** Gripping the needle too hard (fast pinch close) over the candy: a small pressure spike. */
-export function squeeze(g, x, y, closeSpeed) {
-  if (g.done || closeSpeed < RULES.SQUEEZE || !inCandy(g, x, y)) return;
-  g.stress += 0.2;
-  g.at = { x, y, w: wetAt(g, x, y) };
-  g.events.push({ type: "squeeze" });
 }
 
 /**
@@ -236,6 +267,7 @@ export function step(g, dt, input) {
   if (g.done) return { carve: 0 };
   const { needle, jitter = 0, lick } = input;
   if (needle && needle.down && inCandy(g, needle.x, needle.y)) g.started = true;
+  if (lick && inCandy(g, lick.x, lick.y)) g.started = true;   // licking first is a fair opening move
   if (!g.started) return { carve: 0 };
   g.t += dt;
   if (g.t >= RULES.T_LIMIT) { finish(g, false, "time"); return { carve: 0 }; }
@@ -251,8 +283,17 @@ export function step(g, dt, input) {
       const [x, y] = cellCentre(g, k), d = Math.hypot(x - lick.x, y - lick.y);
       if (d >= r) continue;
       const f = 1 - d / r;
-      g.wetG[k] = Math.min(1.4, g.wetG[k] + dt * 1.6 * f * (1 + moved * 12));
-      if (g.wetG[k] > 1) g.meltG[k] += dt * 0.45 * f;
+      // holding the tongue still is what melts: moving it spreads the wet thinner (review r1 flipped this)
+      g.wetG[k] = Math.min(1.4, g.wetG[k] + dt * 1.6 * f * Math.max(0.4, 1 - moved * 8));
+      if (g.wetG[k] > 1) {
+        const was = g.meltG[k];
+        g.meltG[k] += dt * 0.45 * f;
+        // a hole that opens on the line cracks it there
+        if (was < 1 && g.meltG[k] >= 1) {
+          const [x, y] = cellCentre(g, k);
+          if (nearestOutline(g, x, y).d < R * 0.08) { spawnCrack(g, x, y, 0); g.stress = Math.min(1.3, g.stress + 0.35); g.at = { x, y, w: 0 }; }
+        }
+      }
     }
     g.lastLick = { x: lick.x, y: lick.y };
   } else g.lastLick = null;
@@ -261,14 +302,15 @@ export function step(g, dt, input) {
   let carve = 0;
   const pressure = () => {
     growCracks(g, dt);
-    g.stress = Math.max(0, g.stress - dt * RULES.DECAY);
+    g.stress = Math.max(0, g.stress - dt * (g.final90 ? RULES.FINAL_DECAY : RULES.DECAY));
   };
   if (needle && needle.held) { pressure(); return { carve: g.lastCarve || 0 }; }   // same camera frame: nothing moved yet
   if (needle && needle.resume) g.last = null;                      // a hand found again does not "jump"
   if (needle && needle.down && !g.last) g.downAt = g.t;
   if (needle && needle.down && g.last) {
     const d = Math.hypot(needle.x - g.last.x, needle.y - g.last.y), v = d / Math.max(dt, input.moveDt || 0) / R;
-    const w = wetAt(g, needle.x, needle.y), vSafe = RULES.V_SAFE * (1 + w * 0.9), tol = RULES.TOL * R;
+    const w = wetAt(g, needle.x, needle.y), tol = RULES.TOL * R;
+    const vSafe = RULES.V_SAFE * SHAPES[g.shape].v * (nearWeak(g, needle.x, needle.y) ? RULES.WEAK_V : 1) * (1 + w * 0.9);
     let near = false;
     g.paths.forEach((path, pi) => {
       const pr = g.prog[pi];
@@ -297,9 +339,13 @@ export function step(g, dt, input) {
   g.last = needle && needle.down ? { x: needle.x, y: needle.y } : null;
   pressure();
   g.lastCarve = carve;
+  checkSegments(g);
   if (!g.done && g.prog.every(pr => pr.every(v => v >= RULES.DONE))) finish(g, true, null);
   return { carve };
 }
+
+/** Win grade: 3 = not one crack, 2 = no piece lost, 1 = came out anyway. 0 = lost. */
+export function stars(g) { return !g.ok ? 0 : !g.cracks.length ? 3 : !g.chips ? 2 : 1; }
 
 /** Funny name for the result. */
 export function label(g) {
@@ -309,8 +355,8 @@ export function label(g) {
   if (g.ok) return "실금 위에서 통과";
   if (g.cause === "melt") return "혀로 다 녹임";
   if (g.cause === "time") return p > 80 ? "시간이 모자랐음" : "바늘만 들고 있었음";
-  if (g.cracks.length > 2) return "성격 급함";
   if (p >= 85) return "한 끗 차이";
+  if (g.cracks.length > 2) return "성격 급함";
   if (p < 25) return "시작하자마자";
   return "탈락";
 }
@@ -319,6 +365,6 @@ export function reason(g) {
   const s = Math.round(g.t);
   if (g.ok) return `${s}초 · 금 ${g.cracks.length}개 · 떨어진 조각 ${g.chips}개 · 찌른 횟수 ${g.pokes}`;
   if (g.cause === "melt") return `한 곳을 오래 핥아 모양이 녹았어요 · ${g.final}% 파냄`;
-  if (g.cause === "time") return `90초 안에 ${g.final}%까지 · 원작은 10분`;
+  if (g.cause === "time") return `${RULES.T_LIMIT}초 안에 ${g.final}%까지 · 원작은 10분`;
   return `금이 모양 안으로 번졌어요 · ${s}초 · ${g.final}% 파냄`;
 }

@@ -55,7 +55,10 @@ export async function startCamera(video, timeoutMs = 5000) {
   const ask = navigator.mediaDevices.getUserMedia({ audio: false,
     video: { facingMode: "user", width: { ideal: 960 }, height: { ideal: 720 } } });
   // in-app browsers sometimes never answer the permission request (#003 spike); give up after a while
-  const stream = await Promise.race([ask, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), timeoutMs))]);
+  let late = false;
+  // a permission granted after we gave up must not leave the camera light on
+  ask.then(st => { if (late) st.getTracks().forEach(t => t.stop()); }, () => {});
+  const stream = await Promise.race([ask, new Promise((_, no) => setTimeout(() => { late = true; no(new Error("timeout")); }, timeoutMs))]);
   video.srcObject = stream;
   await video.play();
   return stream;
@@ -68,20 +71,26 @@ export async function loadModels() {
     try { return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "GPU" }, runningMode: "VIDEO", ...opts }); }
     catch { return await Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "CPU" }, runningMode: "VIDEO", ...opts }); }
   };
-  const hand = await mk(HandLandmarker, HAND, { numHands: 1 });
-  const face = await mk(FaceLandmarker, FACE, { numFaces: 1, outputFaceBlendshapes: true });
-  return { hand, face };
+  const HO = { numHands: 1 }, FO = { numFaces: 1, outputFaceBlendshapes: true };
+  const models = { hand: await mk(HandLandmarker, HAND, HO), face: await mk(FaceLandmarker, FACE, FO) };
+  // some GPUs create the model fine and then throw on the first frame: rebuild both on the CPU once
+  models.toCpu = async () => {
+    const cpu = (Cls, path, opts) => Cls.createFromOptions(files, { baseOptions: { modelAssetPath: path, delegate: "CPU" }, runningMode: "VIDEO", ...opts });
+    models.hand = await cpu(HandLandmarker, HAND, HO); models.face = await cpu(FaceLandmarker, FACE, FO);
+  };
+  return models;
 }
 
 const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
 
 /** Tracks one hand and the mouth on a mirrored, object-fit:cover video filling a W x H box. */
-export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
+export function createTracker(video, models, { onPoke } = {}) {
   const s = {
     needle: null, pinched: false, lostAt: 0, pinchAt: 0, lastPinch: null, closeSpeed: 0, hs: 0,
     ema: null, jit: [], jitter: 0, lick: null, jaw: 0, hand: null, lips: null, tongue: null, frame: 0,
-    lastVT: -1, lastT: 0, fresh: false, vdt: 0, wasLost: false, holdUntil: 0, pokes: 0, fps: 0,
+    lastVT: -1, lastT: 0, fresh: false, vdt: 0, wasLost: false, holdUntil: 0, pokes: 0, fps: 0, foundAt: 0, licking: false,
   };
+  let rebuilding = false;
   const det = createPokeDetector();
   s.det = det;
   let W = 0, H = 0;
@@ -97,11 +106,21 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     s.lastVT = video.currentTime; s.frame++; s.fresh = true;
     const dt = Math.max(0.001, (now - (s.lastT || now - 33)) / 1000); s.lastT = now; s.vdt = dt;
     s.fps = s.fps ? s.fps * 0.9 + 0.1 / dt : 1 / dt;
-    readHand(models.hand.detectForVideo(video, now), dt, now);
-    // the face is slow to read: every 4th frame unless the mouth is open
-    if (s.frame % (s.jaw > CAM.JAW * 0.7 ? 2 : 4) === 0) readFace(models.face.detectForVideo(video, now));
+    if (rebuilding) return s;
+    try {
+      // the face is slow to read: every 4th frame, every 2nd while the mouth is open; never on the same frame as the
+      // hand, so one frame never pays for both models
+      if (s.frame % (s.jaw > CAM.JAW * 0.6 ? 2 : 4) === 0) { readFace(models.face.detectForVideo(video, now)); keepHand(); }
+      else readHand(models.hand.detectForVideo(video, now), dt, now);
+    } catch (e) {
+      rebuilding = true;
+      models.toCpu().finally(() => { rebuilding = false; });
+    }
     return s;
   }
+
+  // a frame without a hand reading: the needle stays where it was, without counting as a move
+  function keepHand() { if (s.needle) s.needle = { ...s.needle, held: true }; }
 
   function readHand(r, dt, now) {
     const lm = r.landmarks && r.landmarks[0];
@@ -110,8 +129,10 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
       if (s.pinched && now - s.lostAt > CAM.LOST_GRACE && s.lostAt) { s.pinched = false; s.needle = null; }
       if (!s.lostAt) s.lostAt = now;
       s.wasLost = true;
+      keepHand();
       return;
     }
+    if (s.wasLost) s.foundAt = now;   // the first frames after finding a hand again jump in size: no jabs yet
     s.lostAt = 0;
     const P = lm.map(toScreen);
     s.hand = P;
@@ -132,9 +153,10 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     if (s.pinched && !was) { s.pinchAt = now; s.ema = tip; s.jit = []; }
     // shake: RMS distance from a smoothed path over ~0.5 s, skipping the jolt of closing the fingers
     s.ema = s.ema ? [s.ema[0] * 0.7 + tip[0] * 0.3, s.ema[1] * 0.7 + tip[1] * 0.3] : tip;
-    if (now - s.pinchAt > CAM.POKE_AFTER_PINCH) { s.jit.push(dist(tip, s.ema)); if (s.jit.length > 15) s.jit.shift(); }
+    // in a 120 px hand's pixels, so a hand close to the camera is not punished for looking bigger
+    if (now - s.pinchAt > CAM.POKE_AFTER_PINCH) { s.jit.push(dist(tip, s.ema) * 120 / hs); if (s.jit.length > 15) s.jit.shift(); }
     s.jitter = s.jit.length ? Math.sqrt(s.jit.reduce((a, x) => a + x * x, 0) / s.jit.length) : 0;
-    const poked = det.feed(now, hs, s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH);
+    const poked = det.feed(now, hs, s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH && now - s.foundAt > CAM.POKE_AFTER_PINCH);
     if (poked) { s.holdUntil = now + CAM.HOLD_MS; s.pokes++; }
     const holding = now < s.holdUntil && s.needle;
     if (!s.pinched) s.needle = null;
@@ -142,13 +164,11 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     else s.needle = { x: tip[0], y: tip[1], down: true, resume: s.wasLost || !was || s.needle?.held === true };
     s.wasLost = false;
     if (poked && onPoke) onPoke(s.needle.x, s.needle.y);
-    // closing the fingers to pick the needle up is not a squeeze; only a hard grip after that
-    if (s.pinched && now - s.pinchAt > CAM.POKE_AFTER_PINCH && s.closeSpeed > 0 && onSqueeze) onSqueeze(tip[0], tip[1], s.closeSpeed);
   }
 
   function readFace(r) {
     const lm = r.faceLandmarks && r.faceLandmarks[0];
-    if (!lm) { s.lick = null; s.jaw = 0; s.lips = null; s.tongue = null; return; }
+    if (!lm) { s.lick = null; s.jaw = 0; s.lips = null; s.tongue = null; s.licking = false; return; }
     const bs = r.faceBlendshapes && r.faceBlendshapes[0] && r.faceBlendshapes[0].categories;
     const j = bs && bs.find(b => b.categoryName === "jawOpen");
     s.jaw = j ? j.score : 0;
@@ -158,8 +178,11 @@ export function createTracker(video, models, { onPoke, onSqueeze } = {}) {
     const ux = chin[0] - lo[0], uy = chin[1] - lo[1], ul = Math.hypot(ux, uy) || 1;
     const out = Math.max(0, Math.min(1, (s.jaw - CAM.JAW * 0.6) / 0.35));
     const len = ul * (0.4 + 0.9 * out);
-    s.tongue = out > 0 ? { base: lo, dir: [ux / ul, uy / ul], len, width: mw * 0.6, out } : null;
-    s.lick = s.jaw > CAM.JAW ? { x: lo[0] + ux / ul * len, y: lo[1] + uy / ul * len } : null;
+    const up = toScreen(lm[13]), gap = dist(up, lo);
+    s.tongue = out > 0 ? { base: lo, dir: [ux / ul, uy / ul], len, width: mw * 0.6, out, mouthW: mw, gap, top: up } : null;
+    // on at 0.4, off below 0.3: talking does not flicker it on and off
+    s.licking = s.licking ? s.jaw > CAM.JAW - 0.1 : s.jaw > CAM.JAW;
+    s.lick = s.licking ? { x: lo[0] + ux / ul * len, y: lo[1] + uy / ul * len } : null;
     s.mouth = lo;
   }
 
