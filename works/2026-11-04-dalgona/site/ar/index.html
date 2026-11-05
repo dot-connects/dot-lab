@@ -34,7 +34,17 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 #ring{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;transform:rotate(-90deg)}
 #toast{position:absolute;left:16px;right:16px;bottom:58%;text-align:center;text-wrap:balance;line-height:1.2;font-family:"Do Hyeon",sans-serif;font-size:30px;color:#fff;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(8px)}
 #toast.show{opacity:1;transform:none}
-#again{position:absolute;left:50%;top:calc(42% + 14px);transform:translateX(-50%);pointer-events:auto;font-family:"Do Hyeon",sans-serif;font-size:20px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:11px 28px}
+#timer{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 16px);text-align:center;font-family:"Do Hyeon",sans-serif;font-size:34px;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.04em;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+#timer.low{color:var(--bad)}
+#doom{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 35%,rgba(0,0,0,.72));pointer-events:none}
+#doom b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:21px;color:rgba(255,255,255,.62);letter-spacing:.04em;animation:doomIn 1.2s ease-out both}
+@keyframes doomIn{from{opacity:0}to{opacity:1}}
+#flash{position:absolute;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 40%,#fff6e0,#b3120a 70%)}
+#dead{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:calc(env(safe-area-inset-bottom) + 150px);box-sizing:border-box;gap:8px;background:linear-gradient(transparent 45%,rgba(0,0,0,.7));pointer-events:none}
+#dead b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:56px;color:#ff4d3d;letter-spacing:.1em;text-shadow:0 3px 18px #000}
+#dead span{font-size:15px;color:#f3d6d2}
+@media (prefers-reduced-motion:reduce){#doom b{animation:none}}
+#again{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 70px);transform:translateX(-50%);pointer-events:auto;font-family:"Do Hyeon",sans-serif;font-size:20px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:11px 28px}
 .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 22px calc(env(safe-area-inset-bottom) + 24px);background:radial-gradient(120% 70% at 50% 35%,#3a3029 0%,#171311 60%,#0b0908 100%)}
 .ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:44px;margin:0}
 .ov h1 em{font-style:normal;color:var(--candy)}
@@ -65,6 +75,10 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
     <div id="cursor" hidden></div>
     <svg id="ring" viewBox="0 0 52 52" hidden><circle cx="26" cy="26" r="22" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5"/><circle id="ringArc" cx="26" cy="26" r="22" fill="none" stroke="#7ee2a8" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
     <div id="toast" class="ts"></div>
+    <div id="timer" hidden>2:00</div>
+    <div id="doom" hidden><b>고개를 들어 보세요</b></div>
+    <div id="flash"></div>
+    <div id="dead" hidden><b>탈락</b><span id="deadWhy"></span></div>
     <button id="again" hidden>새 달고나</button>
     <div id="tray"></div>
   </div>

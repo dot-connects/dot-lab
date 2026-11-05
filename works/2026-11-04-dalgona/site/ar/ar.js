@@ -256,6 +256,7 @@ function reset(shape = S.shape) {
   candy.rotation.set(0, 0, 0);
   paintCandy();
   $("again").hidden = true; toast("");
+  resetWatcher();
   for (const [k, b] of [["circle", "shCircle"], ["tri", "shTri"], ["star", "shStar"]]) $(b).setAttribute("aria-pressed", String(k === shape));
 }
 
@@ -314,10 +315,10 @@ function lightFromFrame(now) {
     lastLight = now;
     lctx.drawImage(frameCv, 0, 0, 16, 16);
     const d = lctx.getImageData(0, 0, 16, 16).data;
-    let r = 0, g = 0, b = 0, best = -1, bx = 8, by = 4;
+    let r = 0, g = 0, b = 0, best = -1, bx = 8, by = 4, sumL = 0;
     for (let i = 0; i < 256; i++) {
       const R_ = d[i * 4], G = d[i * 4 + 1], B = d[i * 4 + 2], L = 0.2126 * R_ + 0.7152 * G + 0.0722 * B;
-      r += R_; g += G; b += B;
+      r += R_; g += G; b += B; sumL += L;
       if (L > best) { best = L; bx = i % 16; by = (i / 16) | 0; }
     }
     r /= 256; g /= 256; b /= 256;
@@ -330,7 +331,8 @@ function lightFromFrame(now) {
     grainU.amt.value = 0.05 + 0.08 * (1 - Math.min(1, lum / 0.5));   // dim rooms are noisier
     S.dark = lum < 0.28;
     // the brightest patch of the frame is where the light comes from
-    keyDirT.set((bx / 15) * 2 - 1, 1 - (by / 15) * 2 + 0.4, 0.6).normalize().applyQuaternion(camera.quaternion);
+    keyDirT.set((bx / 15) * 2 - 1, 1 - (by / 15) * 2 + 0.4, -0.6).normalize().applyQuaternion(camera.quaternion);
+    S.lightStrong = best > 2 * (sumL / 256 + 1);   // a lamp or window, not an evenly lit room
   }
   if (now - lastEnv > 1500) {
     lastEnv = now;
@@ -338,9 +340,8 @@ function lightFromFrame(now) {
     ectx.drawImage(frameCv, 0, 0, 64, 64);
     ectx.save(); ectx.scale(-1, 1); ectx.drawImage(frameCv, -128, 0, 64, 64); ectx.restore();
     const t = new THREE.CanvasTexture(envCv); t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.SRGBColorSpace;
-    const rt = pmrem.fromEquirectangular(t); t.dispose();
-    if (envRT) envRT.dispose();
-    envRT = rt; scene.environment = rt.texture;
+    envRT = pmrem.fromEquirectangular(t, envRT); t.dispose();   // reuse the target: no allocation every 1.5 s
+    scene.environment = envRT.texture;
     for (const m of [topMat, rimMat]) m.envMapIntensity = 0.55;
   }
   keyDir.lerp(keyDirT, 0.05).normalize();
@@ -596,6 +597,7 @@ function chip(c) {
   const pts = jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, k) => k * 4 > len, 4, 1.0);
   drawCrack(pts, 1.4); markCrack(S.F, pts);
   snap(0.5); vibrate(25); S.wob = 0.4;
+  strike();   // the guard brings the rifle up
   const inside = pts.some(p => { const [sx, sy] = toS(p); return inShape(sx, sy) && outlineDist(sx, sy) > 0.035; });
   if (inside) fail("바늘이 빨라서 모양에 금이 갔어요");
   else toast("금! 너무 빨라요", "var(--bad)", 900);
@@ -713,10 +715,10 @@ function dropPiece(region, bands, mid) {
 }
 function fail(why) {
   S.ended = true; snap(1.2); vibrate([40, 40, 60]);
-  toast(`금! ${why}`, "var(--bad)", 0); $("again").hidden = false;
+  doom(why);   // no toast: the stinger and the silence say it; the reason is on the result screen   // the retry button comes after the guard has fired
 }
 function win() {
-  S.ended = true; S.spin = 1;
+  S.ended = true; S.spin = 1; WT.running = false; sfx("win");
   toast("떼어 냈어요!", "var(--gold)", 0); $("again").hidden = false;
 }
 
@@ -725,7 +727,7 @@ const yAxis = new THREE.Vector3(0, 1, 0);
 function placeTool(c) {
   for (const k in toolMesh) toolMesh[k].visible = false;
   shadow.visible = false;
-  if (!S.tool || !H.present || !H.tip || !c) return;
+  if (!S.tool || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom)) return;
   // the tool is only there while the fingers hold it: open them and it is gone, so you can see whether you hold it
   if (S.mode === "camera" && !H.pinched && S.tool !== "hammer") return;
   toolMesh.hammer.children[1].visible = S.mode !== "camera";
@@ -759,7 +761,7 @@ $("tray").innerHTML = TOOLS.map(([k, name, svg]) => `<button data-tool="${k}"><s
 const trayBtns = [...$("tray").querySelectorAll("button")];
 trayBtns.forEach(b => { b.onclick = () => pickTool(b.dataset.tool); });
 function pickTool(k) {
-  S.tool = k; S.prev = null; tick();
+  S.tool = k; S.prev = null; tick(); startClock();
   trayBtns.forEach(b => b.classList.toggle("on", b.dataset.tool === k));
 }
 const dwell = { tool: null, t: 0, leftAt: 0, done: null };
@@ -857,12 +859,192 @@ function detFrame() {
   dctx.drawImage(frameCv, 0, 0, w, h);
   return detCv;
 }
+// ---------- the watcher: a masked guard on the floor, a 2-minute clock, and what happens when you fail ----------
+// The floor is not detected (WebXR has no plane finding on iPhone). With the gyro we know which way is down and the
+// phone is assumed EYE metres above the floor (?h=). With rotation-only tracking that height only sets how big he
+// looks; his feet land on whatever real floor is at that angle below the horizon. He starts GUARD_D metres ahead and
+// creeps closer only while you are not looking at him. Fail or run out of time: silence, a prompt to look up, a beat
+// of stillness when you do, then the rack, the aim and the shot. (Horror and AR reviews 11-06.)
+const EYE = +(Q.get("h") || 1.2), GUARD_D = 2.4, TIME_LIMIT = 120;
+const STEPS = [[90, 2.1], [60, 1.8], [30, 1.5]], DOOM_D = 1.4;   // [seconds left, distance he creeps to]
+const STRIKE = [[0.35, 0], [0.55, 0.15], [0.75, 0.3]];          // [rifle lift on a careless stroke, rest after it]
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
+key.castShadow = true; key.shadow.mapSize.set(512, 512); key.shadow.radius = 4; key.shadow.bias = -0.0003; key.shadow.normalBias = 0.015;
+Object.assign(key.shadow.camera, { left: -1, right: 1, top: 2, bottom: -0.3, near: 1, far: 8 });
+key.shadow.camera.updateProjectionMatrix();   // without this the default 10 m box stays live (blurry, detached shadow)
+// the real floor only takes the shadow: a transparent plane that draws nothing but the dark
+const floorY = () => camera.position.y - EYE;
+const catcher = new THREE.Mesh(new THREE.PlaneGeometry(20, 20), new THREE.ShadowMaterial({ opacity: 0.4 }));
+catcher.rotation.x = -Math.PI / 2; catcher.receiveShadow = true; scene.add(catcher);
+// soft dark patches right under the soles, and a faint wide one: what makes him stand on the floor, not hover
+const blobTex = a => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 2, 32, 32, 31); gr.addColorStop(0, `rgba(0,0,0,${a})`); gr.addColorStop(1, "rgba(0,0,0,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); };
+const soles = new THREE.Group();
+for (const [w, h, x, a] of [[0.7, 0.55, 0, 0.25], [0.18, 0.32, -0.12, 0.55], [0.18, 0.32, 0.12, 0.55]]) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: blobTex(a), transparent: true, depthWrite: false }));
+  m.rotation.x = -Math.PI / 2; m.position.set(x, 0.004, 0.03); soles.add(m);
+}
+// muzzle flash: an additive sprite for a few frames
+const flashTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,250,230,1)"); gr.addColorStop(0.3, "rgba(255,190,90,.9)"); gr.addColorStop(1, "rgba(255,120,30,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const muzzle = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+muzzle.scale.setScalar(0.25); muzzle.visible = false; scene.add(muzzle);
+
+const WT = { guard: null, sfx: null, placed: false, timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null,
+  alarm: 0, strikes: 0, dir: new THREE.Vector3(0, 0, -1), dist: GUARD_D, move: null, step: 0, frozen: false };
+import("./guard.js").then(m => { WT.guard = m.makeGuard(); scene.add(WT.guard.root); WT.guard.root.add(soles); if (S.mode) placeGuard(); }, e => console.warn("guard", e));
+function loadSfx() { if (ac && !WT.sfx) import("./sfx.js").then(m => { WT.sfx = m.makeSfx(ac); sfx("bed", true); }, e => console.warn("sfx", e)); }
+const sfx = (k, ...a) => { try { WT.sfx && WT.sfx[k] && WT.sfx[k](...a); } catch (e) { console.warn(e); } };
+const gcall = (k, ...a) => { const G = WT.guard; if (G && G[k]) G[k](...a); };
+
+function setGuardDist(d) {
+  const g = WT.guard.root;
+  g.position.copy(camera.position).addScaledVector(WT.dir, d); g.position.y = floorY();
+  g.lookAt(camera.position.x, g.position.y, camera.position.z);
+  WT.dist = d;
+}
+function placeGuard() {
+  camera.updateMatrixWorld();
+  // ahead on the floor, along where the phone faces (flattened); when it points straight down, along its top edge
+  const f = WT.dir.set(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0;
+  if (f.lengthSq() < 0.04) { f.set(0, 1, 0).applyQuaternion(camera.quaternion); f.y = 0; }
+  f.normalize();
+  catcher.position.set(camera.position.x, floorY() + 0.001, camera.position.z);
+  if (!WT.guard) return;
+  WT.move = null; setGuardDist(WT.doom ? WT.dist : GUARD_D);
+  WT.placed = true;
+}
+function startClock() { if (!WT.running && !S.ended && !WT.doom) { WT.running = true; } }
+const hudEls = () => ["tray", "stat", "timer", "hint", "sub"].map($).concat([document.querySelector(".tools")]);
+function resetWatcher() {
+  Object.assign(WT, { timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null, alarm: 0, strikes: 0, move: null, step: 0, frozen: false });
+  $("timer").textContent = "2:00"; $("timer").classList.remove("low");
+  $("doom").hidden = true; $("dead").hidden = true; $("again").hidden = true;
+  const f = $("flash"); f.style.transition = "none"; f.style.opacity = 0; f.style.background = "";
+  hudEls().forEach(e => { if (e) e.style.visibility = ""; });
+  canvas.style.filter = ""; canvas.style.transform = "";
+  sfx("breath", false); sfx("bed", true); sfx("setTension", 0);
+  if (WT.guard) { gcall("setAim", 0); gcall("hold", false); if (WT.placed) setGuardDist(GUARD_D); }
+}
+// a careless stroke: he brings the rifle up, a little higher each time, and it stays higher
+function strike() {
+  const k = Math.min(STRIKE.length - 1, WT.strikes++);
+  WT.alarm = 2.5; WT.alarmAim = STRIKE[k][0]; WT.restAim = STRIKE[k][1];
+  sfx(k === 0 ? "creak" : "halfRack");
+}
+// fail(): the candy broke or the time ran out. Everything goes quiet; the prompt comes a moment later.
+function doom(why) {
+  WT.running = false;
+  WT.doom = { why, t: 0, seen: 0, fired: 0, prompted: 0 };
+  hudEls().forEach(e => { if (e && e.id !== "stat") e.style.visibility = "hidden"; });
+  sfx("stinger"); setTimeout(() => sfx("silence"), 60); sfx("breath", true);
+  // he closes in while you are still looking down
+  if (WT.guard && !guardInView()) setGuardDist(DOOM_D);
+}
+const headV = new THREE.Vector3();
+function guardInView() {
+  if (!WT.guard) return true;
+  headV.copy(WT.guard.root.position); headV.y += 1.6;
+  const p = headV.project(camera);
+  return p.z < 1 && Math.abs(p.x) < 0.75 && p.y < 0.9 && p.y > -0.6;
+}
+const away = new THREE.Vector3(), lightD = new THREE.Vector3();
+function updateWatcher(dt, now) {
+  const G = WT.guard;
+  if (G) G.root.visible = S.gyro || S.mode !== "camera";   // no gyro: he would ride along with the phone like a sticker
+  if (G && !WT.placed && S.mode) placeGuard();
+  if (G) {
+    catcher.position.y = G.root.position.y + 0.001;
+    // Light: a strong bright patch in the room sets the direction (kept high so the shadow stays short and on the
+    // floor). In an evenly lit room it is near-overhead and a little beyond him, so his shadow reaches toward you,
+    // under the candy, where you are looking.
+    away.copy(WT.dir); away.y = 0;
+    if (S.lightStrong) { lightD.copy(keyDir); if (lightD.y < 0.65) { lightD.y = 0.65; lightD.normalize(); } }
+    else lightD.set(0, 1, 0).addScaledVector(away, 0.5).normalize();
+    key.target.position.copy(G.root.position); key.position.copy(G.root.position).addScaledVector(lightD, 4);
+    catcher.material.opacity += ((S.lightStrong ? 0.5 : 0.32) - catcher.material.opacity) * 0.05;
+    // a creep toward you, only ever while you are not looking at him
+    if (WT.move) {
+      WT.move.t += dt; const k = Math.min(1, WT.move.t / 0.4);
+      setGuardDist(WT.move.from + (WT.move.to - WT.move.from) * (1 - (1 - k) * (1 - k)));
+      if (k >= 1) WT.move = null;
+    }
+    if (!WT.doom) {
+      G.lookAt(camera.position);
+      G.setAim(WT.alarm > 0 ? WT.alarmAim : (WT.restAim || 0));
+    }
+    WT.alarm = Math.max(0, WT.alarm - dt);
+    G.update(dt, now / 1000);
+    // his breath comes from his head
+    if (WT.sfx && WT.sfx.setVoicePos) {
+      headV.copy(G.root.position); headV.y += 1.6; sfx("setVoicePos", headV.x, headV.y, headV.z);
+      const fw = v3b.set(0, 0, -1).applyQuaternion(camera.quaternion), upv = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
+      sfx("setListener", camera.position, fw, upv);
+    }
+  }
+  // the clock
+  if (WT.running && !S.ended) {
+    WT.timeLeft = Math.max(0, WT.timeLeft - dt);
+    const s = Math.ceil(WT.timeLeft);
+    $("timer").textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+    $("timer").classList.toggle("low", s <= 30);
+    if (s !== WT.lastTick) { WT.lastTick = s; if (s <= 10 && s > 0) sfx("tick", true); }
+    sfx("setTension", Math.max(0, Math.min(1, (60 - WT.timeLeft) / 60)));
+    while (WT.step < STEPS.length && WT.timeLeft <= STEPS[WT.step][0]) {
+      const [, to] = STEPS[WT.step++];
+      if (G && !guardInView() && !WT.move) { WT.move = { from: WT.dist, to, t: 0 }; sfx("scuff"); }
+    }
+    if (WT.timeLeft <= 0) { S.ended = true; doom("시간 초과"); }
+  }
+  // the end: look up, a dead-still beat, the rack, the aim, the shot
+  const D = WT.doom;
+  if (D && !D.fired) {
+    D.t += dt;
+    if (D.t > 1.4) {
+      if (!D.prompted) { D.prompted = 1; toast(""); }
+      const seen = guardInView();
+      $("doom").hidden = !!D.seen || seen;
+      if (seen && !D.seen) { D.seen = D.t; gcall("hold", true); gcall("setAim", 0); }
+      if (D.seen) {
+        const s = D.t - D.seen;
+        if (s > 0.7 && !D.racked) { D.racked = 1; gcall("hold", false); sfx("cock"); }
+        if (s > 0.7) gcall("setAim", 1);
+        if (s > 1.6) shoot(D.why, true);
+      } else if (D.t > 10.4) shoot(D.why, false);   // he does not wait forever
+    }
+  }
+  if (muzzle.visible && now - WT.flashAt > 60) muzzle.visible = false;
+}
+function shoot(why, seen) {
+  const D = WT.doom; D.fired = 1;
+  $("doom").hidden = true;
+  hudEls().forEach(e => { if (e) e.style.visibility = "hidden"; });
+  gcall("fire");
+  if (WT.guard && seen) { WT.guard.muzzleWorld(muzzle.position); muzzle.visible = true; WT.flashAt = performance.now(); }
+  sfx("breath", false); sfx("gunshot"); setTimeout(() => sfx("ring"), 120);
+  vibrate([60, 30, 120]);
+  // one white frame, then black: a hit, not a colour change. Then the room comes back frozen and drained.
+  const f = $("flash"); f.style.transition = "none"; f.style.background = "#fff"; f.style.opacity = 1;
+  setTimeout(() => { f.style.background = "#000"; }, 34);
+  const shake = performance.now();
+  const sh = () => { const k = 1 - (performance.now() - shake) / 200; if (k <= 0) { canvas.style.transform = ""; return; } canvas.style.transform = `translate(${(Math.random() - 0.5) * 12 * k}px,${(Math.random() - 0.5) * 12 * k}px)`; requestAnimationFrame(sh); };
+  if (seen) sh();
+  WT.frozen = true;
+  const blackFor = seen ? 450 : 1500;
+  setTimeout(() => {
+    canvas.style.filter = "saturate(0.2) brightness(0.6)";
+    f.style.transition = "opacity .9s ease-out"; f.style.opacity = 0;
+    // he lowers the rifle and looks away: done with you
+    gcall("setAim", 0); away.copy(WT.guard ? WT.guard.root.position : camera.position).add(v3b.set(1.5, 1.6, 0)); gcall("lookAt", away.clone());
+  }, blackFor);
+  setTimeout(() => { $("deadWhy").textContent = why; $("dead").hidden = false; }, blackFor + 1400);
+  setTimeout(() => { $("again").hidden = false; }, blackFor + 2600);
+}
+
 // ---------- frame loop ----------
 let last = performance.now(), fps = 60, lastWork = 0;
 if (video.requestVideoFrameCallback) { const cb = () => { vframes++; video.requestVideoFrameCallback(cb); }; video.requestVideoFrameCallback(cb); }
 function grab(now) {
   const stamp = video.requestVideoFrameCallback && vframes > 0 ? vframes : video.currentTime;
-  if (!video.videoWidth || stamp === lastVF) return false;
+  if (!video.videoWidth || stamp === lastVF || WT.frozen) return false;
   lastVF = stamp;
   if (frameCv.width !== video.videoWidth || frameCv.height !== video.videoHeight) { frameCv.width = video.videoWidth; frameCv.height = video.videoHeight; fit(); }
   fctx.drawImage(video, 0, 0);
@@ -881,13 +1063,17 @@ function grab(now) {
   return true;
 }
 const camQ = new THREE.Quaternion();
+// the camera frame on screen is ~70 ms old; the gyro is not. Render the pose of that moment (?lag= tunes it).
+const GYRO_LAG = +(Q.get("lag") || 70), qHist = [];
 function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, (now - last) / 1000); last = now; fps = fps * 0.95 + (1 / Math.max(dt, 0.001)) * 0.05;
   const g = gyroTarget();
   if (g) {
-    if (!S.gyro) { S.gyro = true; camera.quaternion.copy(g); place(); }
-    camera.quaternion.slerp(g, 0.45);
+    qHist.push([now, g.clone()]); while (qHist.length > 2 && now - qHist[1][0] > GYRO_LAG) qHist.shift();
+    const qt = S.mode === "camera" ? qHist[0][1] : g;
+    if (!S.gyro) { S.gyro = true; camera.quaternion.copy(qt); place(); placeGuard(); }
+    camera.quaternion.slerp(qt, 1 - Math.exp(-dt / 0.03));
   }
   let fresh = false;
   if (S.mode === "camera") fresh = grab(now);
@@ -924,7 +1110,8 @@ function loop(now) {
   const off = Math.abs(v3.x) > 1.4 || Math.abs(v3.y) > 1.4 || v3.z > 1;
   if (off) { S.offscreenSince ||= now; if (now - S.offscreenSince > 2500) { place(); S.offscreenSince = 0; } } else S.offscreenSince = 0;
   lightFromFrame(now);
-  key.position.copy(anchor.position).addScaledVector(keyDir, 1); key.target.position.copy(anchor.position);
+  if (!WT.guard) { key.position.copy(anchor.position).addScaledVector(keyDir, 1); key.target.position.copy(anchor.position); }
+  updateWatcher(dt, now);
   placeTool(c);
   if (S.dirty.size && now - S.lastUpload > 40) { for (const k of S.dirty) tex[k].needsUpdate = true; S.dirty.clear(); S.lastUpload = now; }
   grainU.time.value = (now / 1000) % 100;
@@ -954,7 +1141,7 @@ function roomBackdrop() {
 }
 function begin(mode) {
   S.mode = mode; $("start").hidden = true;
-  initAudio(); fit(); reset("circle"); place();
+  initAudio(); loadSfx(); fit(); reset("circle"); place(); placeGuard();
   requestAnimationFrame(loop);
 }
 $("go").onclick = async () => {
@@ -975,8 +1162,8 @@ $("touch").onclick = () => {
   try { if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") DeviceOrientationEvent.requestPermission().catch(() => {}); } catch { /* old browser */ }
   roomBackdrop(); begin("touch");
 };
-$("again").onclick = () => { reset(); place(); };
-$("center").onclick = () => place();
+$("again").onclick = () => { reset(); place(); placeGuard(); };
+$("center").onclick = () => { place(); placeGuard(); };
 $("shCircle").onclick = () => { reset("circle"); place(); };
 $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
