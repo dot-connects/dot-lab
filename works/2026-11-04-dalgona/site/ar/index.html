@@ -17,13 +17,13 @@ html,body{margin:0;height:100%;background:#0b0e0d;color:var(--ink);font-family:"
 video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .hud{position:absolute;inset:0;pointer-events:none}
 .ts{text-shadow:0 1px 6px rgba(0,0,0,.85)}
-#hint{position:absolute;top:calc(env(safe-area-inset-top) + 64px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:22px;color:#fff;transition:color .2s}
-#sub{position:absolute;top:calc(env(safe-area-inset-top) + 94px);left:16px;right:16px;text-align:center;font-size:13px;color:#e3eee9}
+#hint{position:absolute;top:calc(env(safe-area-inset-top) + 158px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:22px;color:#fff;transition:color .2s}
+#sub{position:absolute;top:calc(env(safe-area-inset-top) + 188px);left:16px;right:16px;text-align:center;font-size:13px;color:#e3eee9}
 #stat{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:11px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;line-height:1.4}
 .tools{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;display:flex;gap:6px;pointer-events:auto}
 .tools button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(8,12,10,.5);color:#fff;font-size:17px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
 .tools button[aria-pressed="true"]{background:var(--candy);color:#2a1406}
-#tray{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:flex;justify-content:center;gap:22px;pointer-events:auto}
+#tray{position:absolute;left:0;right:0;top:calc(env(safe-area-inset-top) + 58px);display:flex;justify-content:center;gap:22px;pointer-events:auto}
 #tray button{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:0;padding:0;color:#fff;font:inherit;font-family:"Do Hyeon",sans-serif;font-size:14px;cursor:pointer}
 #tray .ic{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:rgba(10,14,16,.55);border:1.5px solid rgba(255,255,255,.3);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:transform .15s,border-color .15s}
 #tray button.on .ic{border:2.5px solid var(--gold)}
@@ -74,7 +74,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
     <h1>허공 <em>달고나</em></h1>
     <p>폰을 들고 앞을 비추면 달고나가 떠 있어요. 카메라 앞에 손을 넣고 도구를 손가락으로 골라 해 보세요.</p>
     <div class="steps">
-      <b>고르기</b><span>아래 도구를 손가락으로 가리키고 잠깐 기다리기</span>
+      <b>고르기</b><span>위 도구를 손가락으로 가리키고 잠깐 기다리기</span>
       <b>쓰기</b><span>엄지·검지를 모으면 도구가 달고나에 닿아요</span>
       <b>망치</b><span>쥐고 손을 톡 아래로 내리면 바깥을 쳐요</span>
     </div>

@@ -12,8 +12,9 @@ const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 
 // Sizes in metres. A street dalgona is about 9-10 cm across and 5 mm thick. It floats at the distance the free hand
-// reaches behind the phone (phone test 11-05: at 32 cm it looked too small); ?dist= tunes it on the phone.
-const R = 0.05, T = 0.005, DIST = +(Q.get("dist") || 0.24), TILT = -18 * Math.PI / 180;
+// reaches behind the phone. Phone test 11-05: at 32 cm it looked too small, at 24 cm the hand came so close it
+// filled the frame and the tracker lost it; 30 cm with a big (11 cm) candy keeps both. ?dist= tunes it on the phone.
+const R = 0.055, T = 0.005, DIST = +(Q.get("dist") || 0.30), TILT = -18 * Math.PI / 180;
 const TEX = 512, PXMM = TEX / (2 * R * 1000);   // texture px per mm of candy
 const RIMN = 72;   // rim bands: a broken piece takes the bands along its stretch of the edge
 // Tuning knobs. Pinch numbers are from the 11-04 front-camera phone spike (camera.js); the rest are first guesses
@@ -339,7 +340,7 @@ async function loadHand() {
   const { FilesetResolver, HandLandmarker } = await import(MP + "/vision_bundle.mjs");
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const opts = d => ({ baseOptions: { modelAssetPath: HAND, delegate: d }, runningMode: "VIDEO", numHands: 1,
-    minHandDetectionConfidence: 0.4, minHandPresenceConfidence: 0.4, minTrackingConfidence: 0.4 });
+    minHandDetectionConfidence: 0.4, minHandPresenceConfidence: 0.3, minTrackingConfidence: 0.3 });
   try { return await HandLandmarker.createFromOptions(files, opts("GPU")); }
   catch { return await HandLandmarker.createFromOptions(files, opts("CPU")); }
 }
@@ -792,7 +793,7 @@ function hud(c) {
   let hint = "", sub = "", col = "#fff";
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
   else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : "화면을 손가락으로 만져 보세요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
-  else if (!S.tool) { hint = cam ? "아래 도구를 손가락으로 가리켜요" : "아래 도구를 눌러 골라요"; }
+  else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
   else if (S.tool === "needle") {
     if (!c || !c.pressed) { hint = cam ? "엄지·검지를 모으면 바늘이 닿아요" : "누르면 바늘이 닿아요"; }
     else if (S.v > AR.FAST) { hint = "너무 빨라요!"; col = "var(--bad)"; }
