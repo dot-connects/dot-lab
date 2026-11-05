@@ -14,7 +14,7 @@ const Q = new URLSearchParams(location.search);
 // Sizes in metres. A street dalgona is about 9 cm across and 5 mm thick.
 const R = 0.045, T = 0.005, DIST = 0.32, TILT = -18 * Math.PI / 180;
 const TEX = 512, PXMM = TEX / (2 * R * 1000);   // texture px per mm of candy
-const SECTORS = 8;
+const RIMN = 72;   // rim bands: a broken piece takes the bands along its stretch of the edge
 // Tuning knobs. Pinch numbers are from the 11-04 front-camera phone spike (camera.js); the rest are first guesses
 // for the phone test, not measurements of real candy.
 const AR = {
@@ -115,10 +115,10 @@ function band(a0, a1, n = 12) {
   g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
   return g;
 }
-// sectors are counted in texture angles (y down) from 12 o'clock; local angles are their negatives
-const secA = s => [-Math.PI / 2 + s * 2 * Math.PI / SECTORS, -Math.PI / 2 + (s + 1) * 2 * Math.PI / SECTORS];
-const rims = [];
-for (let s = 0; s < SECTORS; s++) { const [a0, a1] = secA(s); const m = new THREE.Mesh(band(-a1, -a0), rimMat); rims.push(m); candy.add(m); }
+// rim bands are counted in texture angles (y down, so clockwise on screen); local angles are their negatives
+const rimA = k => [k * 2 * Math.PI / RIMN, (k + 1) * 2 * Math.PI / RIMN];
+const rimGeo = [], rims = [];
+for (let k = 0; k < RIMN; k++) { const [a0, a1] = rimA(k); rimGeo.push(band(-a1, -a0, 2)); const m = new THREE.Mesh(rimGeo[k], rimMat); rims.push(m); candy.add(m); }
 
 // contact shadow of the tool on the candy: darker and tighter as the tool comes down
 const shadowTex = (() => {
@@ -157,7 +157,7 @@ const toolMesh = makeTools();
 // ---------- state ----------
 const S = {
   mode: null, tool: null, shape: "circle", ended: false, gyro: false, spawn: 1, wob: 0, spin: 0,
-  pts: [], depth: [], soft: [], melt: new Float32Array(40 * 40), broken: new Array(SECTORS).fill(false), stress: 0,
+  pts: [], depth: [], soft: [], melt: new Float32Array(40 * 40), gone: new Uint8Array(0), stress: 0,
   pieces: [], dirty: new Set(), lastUpload: 0, contact: null, prev: null, v: 0, lastHit: 0, offscreenSince: 0,
 };
 const H = { present: false, P: null, hs: 120, pinched: false, pinchRun: 0, openRun: 0, pinchAt: 0, lostAt: 0, tip: null, dir: [-0.5, -0.86], grip: null, idx: null, t: 0, ys: [] };
@@ -228,8 +228,8 @@ function paintCandy() {
 }
 
 function reset(shape = S.shape) {
-  S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.broken.fill(false); S.wob = 0; S.spin = 0;
-  S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length);
+  S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.wob = 0; S.spin = 0;
+  S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length); S.gone = new Uint8Array(S.pts.length);
   for (const p of S.pieces) scene.remove(p.g);
   S.pieces = [];
   rims.forEach(m => { m.visible = true; });
@@ -467,83 +467,183 @@ function work(c, dt, now) {
     sound(Math.min(0.18, 0.05 + S.v / 200), 700);
   }
 }
-function crackLine(x, y, ang, len, rnd = Math.random) {
+// ---------- cracks ----------
+// A crack is a jagged polyline in texture px, drawn as a dark hairline with a lit lip and sunk into the height map
+// so the light catches it.
+function jag(x, y, ang, stop, step = 5, wob = 0.8) {
   const pts = [[x, y]];
-  for (let d = 0; d < len; d += 5) { ang += (rnd() - 0.5) * 0.9; x += Math.cos(ang) * 5; y += Math.sin(ang) * 5; pts.push([x, y]); }
-  const path = c => { c.beginPath(); pts.forEach(([a, b], i) => i ? c.lineTo(a, b) : c.moveTo(a, b)); };
-  const c = ctx.color; c.lineJoin = "bevel";
-  path(c); c.strokeStyle = "rgba(55,22,4,.95)"; c.lineWidth = 1.7; c.stroke();
-  c.save(); c.translate(1, 1); path(c); c.strokeStyle = "rgba(255,230,180,.5)"; c.lineWidth = 0.7; c.stroke(); c.restore();
-  path(ctx.height); ctx.height.strokeStyle = "#1a1a1a"; ctx.height.lineWidth = 2; ctx.height.stroke();
-  S.dirty.add("color"); S.dirty.add("height");
+  // the heading jitters but keeps pulling back to where it set off: sugar cracks run straight-ish, not in curls
+  const a0 = ang;
+  for (let k = 0; k < 400 && !stop(x, y, k); k++) { ang = a0 + (ang - a0) * 0.7 + (Math.random() - 0.5) * wob; x += Math.cos(ang) * step; y += Math.sin(ang) * step; pts.push([x, y]); }
   return pts;
 }
+function drawCrack(pts, w = 1.7) {
+  const path = c => { c.beginPath(); pts.forEach(([a, b], i) => i ? c.lineTo(a, b) : c.moveTo(a, b)); };
+  const c = ctx.color; c.lineJoin = "bevel"; c.lineCap = "round";
+  path(c); c.strokeStyle = "rgba(55,22,4,.95)"; c.lineWidth = w; c.stroke();
+  c.save(); c.translate(1, 1); path(c); c.strokeStyle = "rgba(255,230,180,.5)"; c.lineWidth = w * 0.4; c.stroke(); c.restore();
+  path(ctx.height); ctx.height.strokeStyle = "#1a1a1a"; ctx.height.lineWidth = w + 0.5; ctx.height.stroke();
+  S.dirty.add("color"); S.dirty.add("height");
+}
+const C2 = TEX / 2;
+const fromCentre = (x, y) => Math.hypot(x - C2, y - C2);
+const gpx = i => toPx(...S.pts[i]);
+const toS = ([x, y]) => [x / TEX * 2 - 1, y / TEX * 2 - 1];
+function outlineDist(sx, sy) { let b = 1e9; for (const [x, y] of S.pts) b = Math.min(b, Math.hypot(x - sx, y - sy)); return b; }
+/** From a point on the outline, a crack that runs into the shape. */
+function inwardCrack(x, y) {
+  const len = TEX * (0.12 + Math.random() * 0.18);
+  return jag(x, y, Math.atan2(C2 - y, C2 - x) + (Math.random() - 0.5) * 1.2, (_, __, k) => k * 5 > len, 5, 0.9);
+}
+
+// Needle too fast: a crack starts at the point. If it runs past the groove into the shape, the shape is broken.
 function chip(c) {
-  crackLine(c.px, c.py, Math.random() * Math.PI * 2, 14 + Math.random() * 16);
-  toast("금! 너무 빨라요", "var(--bad)", 900); snap(0.5); vibrate(25); S.wob = 0.4;
+  const over = Math.min(2, S.v / AR.FAST);
+  const len = TEX * (0.04 + 0.06 * over * Math.random());
+  const pts = jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, k) => k * 4 > len, 4, 1.0);
+  drawCrack(pts, 1.4);
+  snap(0.5); vibrate(25); S.wob = 0.4;
+  const inside = pts.some(p => { const [sx, sy] = toS(p); return inShape(sx, sy) && outlineDist(sx, sy) > 0.035; });
+  if (inside) fail("바늘이 빨라서 모양에 금이 갔어요");
+  else toast("금! 너무 빨라요", "var(--bad)", 900);
 }
 function hole(c) {
   blob(c.px, c.py, 3.4 * PXMM, "rgba(0,0,0,1)", "alpha");
   blob(c.px, c.py, 5 * PXMM, "rgba(70,25,2,.5)", "color");
-  toast("녹아서 구멍이 났어요", "var(--bad)", 1200); vibrate(20);
+  vibrate(20);
+  if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) fail("모양이 녹아서 구멍이 났어요");
+  else toast("녹아서 구멍이 났어요", "var(--bad)", 1200);
 }
 
-// ---------- hammer ----------
-const angOf = (sx, sy) => Math.atan2(sy, sx);
-function sectorOf(a) { let t = a + Math.PI / 2; t = ((t % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI); return Math.floor(t / (2 * Math.PI / SECTORS)); }
-function wedge(c, s) { const [a0, a1] = secA(s), C = TEX / 2; c.beginPath(); c.moveTo(C, C); c.arc(C, C, TEX, a0, a1); c.closePath(); }
-function hit(c) {
+// ---------- hammer: the crack runs along the groove and turns in where it is shallow ----------
+// A hit sends a crack to the nearest groove point, then both ways along the groove. At every groove point (0.45 mm
+// apart) it may turn inward with hazard K * E * (HOLD - strength)^2, strength = depth + melt bonus. So an uncarved
+// stamp gives way within ~9 mm almost surely, a half-carved one (0.5) about half the time over 22 mm, and 0.7+ holds.
+// Each side runs a random 6-14 % of the outline (longer for harder hits), then turns out to the rim and that piece
+// falls. E = how hard the hit was (1 = a tap). Numbers are game tuning, not measurements of real candy.
+const CR = { HOLD: 0.7, K: 0.29, MELT: 0.35, SIDE: [0.06, 0.14], AT_HIT: 3 };
+const strength = i => Math.min(1, S.depth[i] + CR.MELT * S.soft[i]);
+const hazard = (i, E) => CR.K * E * Math.max(0, CR.HOLD - strength(i)) ** 2;
+function hit(c, E = 1) {
   const now = performance.now();
   if (S.ended || now - S.lastHit < 450) return;
-  S.lastHit = now; S.wob = 1; thud(); vibrate(18);
-  if (!c.onCandy) { toast("허공을 쳤어요", "#fff", 700); return; }
-  if (inShape(c.sx, c.sy)) { fail(crackLine(c.px, c.py, Math.random() * Math.PI * 2, TEX * 0.35)); return; }
-  const s = sectorOf(angOf(c.sx, c.sy));
-  if (S.broken[s]) return;
-  let sum = 0, soft = 0, n = 0;
-  S.pts.forEach(([x, y], i) => { if (sectorOf(angOf(x, y)) === s) { sum += S.depth[i]; soft += S.soft[i]; n++; } });
-  const deep = n ? sum / n : 1, need = AR.BREAK - 0.2 * (n ? soft / n : 0);
-  if (deep >= need) breakSector(s);
-  else {
-    const C = TEX / 2, len = Math.hypot(C - c.px, C - c.py) + TEX * 0.12;
-    fail(crackLine(c.px, c.py, Math.atan2(C - c.py, C - c.px), len), "얕게 판 데로 금이 들어갔어요");
+  S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
+  if (!c || !c.onCandy) { toast("허공을 쳤어요", "#fff", 700); return; }
+  if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
+    for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
+    fail("모양을 쳤어요"); return;
   }
+  const n = S.pts.length, wrap = i => (i % n + n) % n;
+  let i0 = -1, best = 1e9;
+  S.pts.forEach(([x, y], i) => { if (!S.gone[i]) { const d = Math.hypot(x - c.sx, y - c.sy); if (d < best) { best = d; i0 = i; } } });
+  if (i0 < 0) return;
+  // from the hammer to the groove
+  const [gx, gy] = gpx(i0);
+  const steps = Math.hypot(gx - c.px, gy - c.py) / 5 - 1;   // stop short and join it straight: never overshoot into the shape
+  const lead = jag(c.px, c.py, Math.atan2(gy - c.py, gx - c.px), (x, y, k) => k >= steps || Math.hypot(x - gx, y - gy) < 6, 5, 0.5);
+  lead.push([gx, gy]);
+  // along the groove, both ways
+  const run = dir => {
+    const target = Math.round(n * (CR.SIDE[0] + Math.random() * (CR.SIDE[1] - CR.SIDE[0])) * (0.7 + 0.3 * E));
+    let i = i0;
+    for (let k = 0; k < target; k++) {
+      const j = wrap(i + dir);
+      if (S.gone[j]) return { end: i, stop: "gone" };
+      if (Math.random() < hazard(j, E)) return { end: j, stop: "in" };
+      i = j;
+    }
+    return { end: i, stop: "rim" };
+  };
+  const atHit = Math.random() < hazard(i0, E) * CR.AT_HIT;
+  const L = atHit ? { end: i0, stop: "in" } : run(-1), R = atHit ? { end: i0, stop: "in" } : run(1);
+  const along = (a, b, dir) => { const out = []; for (let i = a; ; i = wrap(i + dir)) { out.push(gpx(i)); if (i === b) break; } return out; };
+  drawCrack(lead);
+  if (L.stop === "in" || R.stop === "in") {
+    // the crack follows the groove to its weak spot, then breaks into the shape
+    for (const [side, dir] of [[L, -1], [R, 1]]) {
+      drawCrack(along(i0, side.end, dir), 1.3);
+      if (side.stop === "in") { const [x, y] = gpx(side.end); drawCrack(inwardCrack(x, y), 2); }
+    }
+    fail("얕게 판 데서 금이 안으로 꺾였어요");
+    return;
+  }
+  breakPiece(L, R, wrap);
 }
-function breakSector(s) {
-  S.broken[s] = true; snap(1); vibrate([20, 30, 20]);
+
+// One piece of the outer ring: the groove from L.end clockwise to R.end, out to the rim at both ends.
+function breakPiece(L, R, wrap) {
+  const outward = (i, rough) => {
+    const [x, y] = gpx(i), a = Math.atan2(y - C2, x - C2);
+    return rough ? jag(x, y, a, (x2, y2) => fromCentre(x2, y2) > C2 * 1.06, 5, 0.6)
+      : [[x, y], [C2 + Math.cos(a) * C2 * 1.2, C2 + Math.sin(a) * C2 * 1.2]];
+  };
+  // where a neighbour already fell, run a little into the gap so no sliver is left standing
+  const li = L.stop === "gone" ? wrap(L.end - 3) : L.end, ri = R.stop === "gone" ? wrap(R.end + 3) : R.end;
+  const lo = outward(li, L.stop === "rim"), ro = outward(ri, R.stop === "rim");
+  const poly = new Path2D();
+  [...lo].reverse().forEach(([x, y], k) => k ? poly.lineTo(x, y) : poly.moveTo(x, y));
+  for (let i = li; ; i = wrap(i + 1)) { poly.lineTo(...gpx(i)); if (i === ri) break; }
+  ro.forEach(([x, y]) => poly.lineTo(x, y));
+  const aL = Math.atan2(lo.at(-1)[1] - C2, lo.at(-1)[0] - C2), aR = Math.atan2(ro.at(-1)[1] - C2, ro.at(-1)[0] - C2);
+  poly.arc(C2, C2, C2 * 1.3, aR, aL, true);
+  poly.closePath();
+  for (let i = L.end; ; i = wrap(i + 1)) { S.gone[i] = 1; if (i === R.end) break; }
+  // a sliver of ring left between two fallen pieces (under ~4 mm of groove) cannot stand on its own: it goes too
+  const n = S.gone.length, start = S.gone.indexOf(1);
+  for (let k = 0, run = []; k <= n; k++) {
+    const i = (start + k) % n;
+    if (k < n && !S.gone[i]) { run.push(i); continue; }
+    if (run.length && run.length < n * 0.03) run.forEach(j => { S.gone[j] = 1; });
+    run = [];
+  }
+  // the edges left behind show as darker cut faces
+  const cut = pts => { const c = ctx.color; c.beginPath(); pts.forEach(([x, y], k) => k ? c.lineTo(x, y) : c.moveTo(x, y)); c.strokeStyle = "rgba(95,42,8,.85)"; c.lineWidth = 4; c.lineJoin = "round"; c.stroke(); };
+  cut(along2(L.end, R.end, wrap)); if (L.stop === "rim") cut(lo); if (R.stop === "rim") cut(ro);
+  // the rim bands along that stretch of edge go with the piece
+  let span = aR - aL; if (span < 0) span += 2 * Math.PI;
+  const bands = [];
+  for (let k = 0; k < RIMN; k++) {
+    if (!rims[k].visible) continue;
+    let m = (rimA(k)[0] + rimA(k)[1]) / 2 - aL; m = (m % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
+    if (m < span) { rims[k].visible = false; bands.push(k); }
+  }
+  dropPiece(poly, bands, aL + span / 2);
+  snap(1); vibrate([20, 30, 20]);
+  if (S.gone.every(Boolean)) {
+    // the last of the ring comes away with it
+    const rest = new Path2D(); rest.rect(0, 0, TEX, TEX);
+    const left = rims.map((m, k) => m.visible ? k : -1).filter(k => k >= 0);
+    left.forEach(k => { rims[k].visible = false; });
+    dropPiece(rest, left, Math.random() * Math.PI * 2);
+    win();
+  } else toast("탁! 떨어졌어요", "var(--gold)", 900);
+}
+function along2(a, b, wrap) { const out = []; for (let i = a; ; i = wrap(i + 1)) { out.push(gpx(i)); if (i === b) break; } return out; }
+function dropPiece(region, bands, mid) {
   // masks are built by compositing, not clip(): clipping one canvas while drawing into another wiped the colour
   // canvas in Chrome (headless check 11-05)
   const layer = () => { const c = document.createElement("canvas"); c.width = c.height = TEX; return [c, c.getContext("2d")]; };
-  const [mc, mx] = layer();   // white where the piece is: this wedge, outside the shape
-  mx.fillStyle = "#fff"; wedge(mx, s); mx.fill();
+  const [mc, mx] = layer();   // white where the piece is: the region, outside the shape
+  mx.fillStyle = "#fff"; mx.fill(region);
   mx.globalCompositeOperation = "destination-out"; mx.fill(shapePath());
-  // the piece: that mask, minus anything already melted away
-  const [pc, px] = layer();
+  const [pc, px] = layer();   // the piece: that mask, minus anything already gone
   px.drawImage(mc, 0, 0); px.globalCompositeOperation = "source-in"; px.drawImage(cv.alpha, 0, 0);
-  // the candy loses it
-  const [bc, bx] = layer();
+  const [bc, bx] = layer();   // the candy loses it
   bx.drawImage(mc, 0, 0); bx.globalCompositeOperation = "source-in"; bx.fillStyle = "#000"; bx.fillRect(0, 0, TEX, TEX);
   ctx.alpha.drawImage(bc, 0, 0);
-  // the snapped edge along the groove shows as a darker cut face
-  const [ec, ex] = layer();
-  ex.strokeStyle = "rgba(95,42,8,.85)"; ex.lineWidth = 5; ex.lineJoin = "round"; ex.stroke(shapePath());
-  ex.globalCompositeOperation = "destination-in"; ex.fillStyle = "#fff"; wedge(ex, s); ex.fill();
-  ctx.color.drawImage(ec, 0, 0);
   S.dirty.add("alpha"); S.dirty.add("color");
-  rims[s].visible = false;
   const ptex = new THREE.CanvasTexture(pc);
   const g = new THREE.Group();
   g.add(new THREE.Mesh(discGeo, topMat.clone()), new THREE.Mesh(discGeo, bottomMat.clone()));
   g.children[0].material.alphaMap = ptex; g.children[1].material.alphaMap = ptex; g.children[1].position.z = -T;
-  const [a0, a1] = secA(s); g.add(new THREE.Mesh(band(-a1, -a0), rimMat));
+  for (const k of bands) g.add(new THREE.Mesh(rimGeo[k], rimMat));
   candy.updateMatrixWorld(); candy.matrixWorld.decompose(g.position, g.quaternion, g.scale);
   scene.add(g);
-  const mid = (a0 + a1) / 2, out = v3b.set(Math.cos(mid), -Math.sin(mid), 0).applyQuaternion(g.quaternion);
-  S.pieces.push({ g, t: 0, vel: out.multiplyScalar(0.09).add(new THREE.Vector3(0, 0.05, 0)), spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
-  if (S.broken.every(Boolean)) win();
-  else toast("탁! 떨어졌어요", "var(--gold)", 900);
+  const out = v3b.set(Math.cos(mid), -Math.sin(mid), 0).applyQuaternion(g.quaternion);
+  S.pieces.push({ g, t: 0, vel: out.multiplyScalar(0.07 + Math.random() * 0.05).add(new THREE.Vector3(0, 0.04, 0)),
+    spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
 }
-function fail(_, why = "모양을 쳤어요") {
+function fail(why) {
   S.ended = true; snap(1.2); vibrate([40, 40, 60]);
   toast(`금! ${why}`, "var(--bad)", 0); $("again").hidden = false;
 }
@@ -658,7 +758,7 @@ function hud(c) {
     const mean = S.depth.reduce((a, b) => a + b, 0) / (S.depth.length || 1);
     sub = `선 판 깊이 ${Math.round(mean * 100)}%`;
   } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고, 금이 덜 가요"; }
-  else { hint = cam ? "쥐고 바깥을 톡 내리쳐요" : "바깥을 톡 눌러 쳐요"; sub = "덜 판 곳을 치면 금이 안으로 들어가요"; }
+  else { hint = cam ? "쥐고 바깥을 톡 내리쳐요" : "바깥을 톡 눌러 쳐요"; sub = "금은 홈을 타고 가다 얕은 데서 꺾여요 · 살살 칠수록 덜 번져요"; }
   if (S.ended) { hint = ""; sub = ""; }
   $("hint").textContent = hint; $("hint").style.color = col; $("sub").textContent = sub;
   // speed ring (needle) or melt ring (swab) around the tool's point
@@ -715,7 +815,9 @@ function loop(now) {
     // hammer swing: the tool point drops fast while the fingers are closed
     if (S.mode === "camera" && S.tool === "hammer" && H.pinched && H.ys.length > 1) {
       const [t0, y0] = H.ys[0], [t1, y1] = H.ys[H.ys.length - 1];
-      if (t1 > t0 && (y1 - y0) / ((t1 - t0) / 1000) / H.hs > AR.SWING) { H.ys.length = 0; hit(c || contact()); }
+      const sp = t1 > t0 ? (y1 - y0) / ((t1 - t0) / 1000) / H.hs : 0;
+      // a harder swing carries the crack further, and turns it in more easily at a shallow spot
+      if (sp > AR.SWING) { H.ys.length = 0; hit(c || contact(), Math.min(1.8, Math.max(0.8, sp / AR.SWING))); }
     }
     updateDwell(now, wdt);
   }
@@ -801,7 +903,7 @@ $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
-window.__ar = { S, H, AR, pickTool, reset, breakSector, ctx, cv, wedge, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+window.__ar = { S, H, AR, pickTool, reset, hit, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
