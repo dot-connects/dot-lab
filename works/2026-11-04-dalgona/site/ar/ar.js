@@ -386,11 +386,14 @@ function drawMask(P) {
   if (P) {
     // hand size from the whole palm triangle: the knuckle line alone shrinks to nothing when the hand turns sideways
     const q = P.map(([x, y]) => [x * s, y * s]), hs = H.hs * s;
+    // the palm is the hull of its points: in a grip the thumb folds over the palm, the plain polygon crosses itself
+    // and its overlap is left unfilled (phone test 11-05: a candy-coloured hole in the back of the hand)
+    const palm = hull(PALM.map(i => q[i]));
     mctx.lineCap = "round"; mctx.lineJoin = "round";
     const pass = (col, k) => {
       mctx.fillStyle = mctx.strokeStyle = col;
       mctx.lineWidth = hs * 0.22 * k;
-      mctx.beginPath(); PALM.forEach((i, j) => j ? mctx.lineTo(...q[i]) : mctx.moveTo(...q[i])); mctx.closePath(); mctx.fill(); mctx.stroke();
+      mctx.beginPath(); palm.forEach((p, j) => j ? mctx.lineTo(...p) : mctx.moveTo(...p)); mctx.closePath(); mctx.fill(); mctx.stroke();
       for (const [a, b] of BONES) { mctx.lineWidth = hs * (a < 5 ? 0.26 : 0.21) * k; mctx.beginPath(); mctx.moveTo(...q[a]); mctx.lineTo(...q[b]); mctx.stroke(); }
       // the wrist and forearm run on off the bottom of the hand
       mctx.lineWidth = hs * 0.75 * k; mctx.beginPath(); mctx.moveTo(...q[0]); mctx.lineTo(q[0][0] + (q[0][0] - q[9][0]) * 3, q[0][1] + (q[0][1] - q[9][1]) * 3); mctx.stroke();
@@ -402,6 +405,15 @@ function drawMask(P) {
     mctx.globalCompositeOperation = "source-over"; mctx.filter = "none";
   }
   mtex.needsUpdate = true;
+}
+// convex hull, monotone chain
+function hull(pts) {
+  const p = pts.slice().sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+  const cr = (o, a, b) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  const lo = [], up = [];
+  for (const x of p) { while (lo.length > 1 && cr(lo[lo.length - 2], lo[lo.length - 1], x) <= 0) lo.pop(); lo.push(x); }
+  for (const x of p.reverse()) { while (up.length > 1 && cr(up[up.length - 2], up[up.length - 1], x) <= 0) up.pop(); up.push(x); }
+  return lo.slice(0, -1).concat(up.slice(0, -1));
 }
 // skin colour: the palm centre, read every half second (a light change moves it)
 let lastSkin = 0;
