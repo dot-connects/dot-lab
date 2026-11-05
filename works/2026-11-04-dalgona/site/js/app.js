@@ -337,32 +337,41 @@ const shake = (amp, ms = 150) => { shakeAmp = amp; shakeUntil = performance.now(
 // ---------- flow ----------
 const show = id => ["start", "pick", "result"].forEach(k => { $(k).hidden = k !== id; });
 
-let camStream = null;
-$("camGo").onclick = async () => {
-  if ($("camGo").disabled) return;
-  $("camGo").disabled = true;
-  initAudio();
-  const msg = $("camMsg"); msg.hidden = false; msg.textContent = "카메라를 켜는 중이에요…";
+let camStream = null, models = null, camBusy = false;
+const stopCam = () => { if (camStream) camStream.getTracks().forEach(t => t.stop()); camStream = null; video.hidden = true; $("nocam").hidden = false; };
+// switch to the camera from the start or the pick screen; the models stay loaded, so a second switch is quick
+async function toCamera(msg) {
+  if (camBusy) return false;
+  camBusy = true; initAudio();
+  msg.hidden = false; msg.textContent = "카메라를 켜는 중이에요…";
   try {
     video.hidden = false;   // WebKit may not play a hidden video
-    camStream = await startCamera(video);
-    if (mode === "touch") { camStream.getTracks().forEach(t => t.stop()); camStream = null; video.hidden = true; return; }
+    if (!camStream) camStream = await startCamera(video);
     $("nocam").hidden = true;
-    msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…";
-    const models = await loadModels();
-    if (mode === "touch") { camStream.getTracks().forEach(t => t.stop()); camStream = null; video.hidden = true; return; }
-    tracker = createTracker(video, models, { onPoke: (x, y) => { if (game) poke(game, x, y); } });
-    mode = "camera";
-    resize(); showPick();
+    if (!models) { msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…"; models = await loadModels(); }
+    if (!tracker) tracker = createTracker(video, models, { onPoke: (x, y) => { if (game && mode === "camera") poke(game, x, y); } });
+    mode = "camera"; msg.hidden = true;
+    resize();
+    return true;
   } catch (e) {
-    if (camStream) camStream.getTracks().forEach(t => t.stop());   // no camera light left on in touch mode
-    camStream = null; video.hidden = true; $("nocam").hidden = false; $("camGo").disabled = false;
+    stopCam();   // no camera light left on in touch mode
     msg.textContent = e && e.message === "timeout"
       ? "카메라가 응답하지 않아요. 크롬에서 열거나 화면 터치로 해 보세요."
       : "카메라를 쓸 수 없어요. 화면 터치로 해 보세요.";
-  }
+    return false;
+  } finally { camBusy = false; }
+}
+function toTouch() { stopCam(); mode = "touch"; resize(); }
+$("camGo").onclick = async () => { $("camGo").disabled = true; if (await toCamera($("camMsg"))) showPick(); $("camGo").disabled = false; };
+$("touchGo").onclick = () => { initAudio(); toTouch(); showPick(); };
+$("mTouch").onclick = () => { if (mode !== "touch" && !camBusy) { toTouch(); showPick(); } };
+$("mCam").onclick = async () => {
+  if (mode === "camera" || camBusy) return;
+  $("mCam").disabled = $("mTouch").disabled = true;
+  const ok = await toCamera($("pickMsg"));
+  $("mCam").disabled = $("mTouch").disabled = false;
+  if (ok) showPick();
 };
-$("touchGo").onclick = () => { initAudio(); mode = "touch"; resize(); showPick(); };
 
 // the start screen plays a round by itself: a needle scraping a star out (shows the game in one look)
 const demoCv = $("demo"), dctx = demoCv.getContext("2d");
@@ -370,7 +379,8 @@ let demo = null;
 function demoFrame(dt) {
   if ($("start").hidden) { if (demo) demo.v.dispose(); demo = null; return; }
   const S = demoCv.clientWidth || 210, k = Math.min(2, devicePixelRatio || 1);
-  if (demoCv.width !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); if (demo) demo.v.dispose(); demo = null; }
+  // both sides: a 150 px demo at 2x is 300 wide, the canvas default, so a width-only check left the default 150 height
+  if (demoCv.width !== Math.round(S * k) || demoCv.height !== Math.round(S * k)) { demoCv.width = demoCv.height = Math.round(S * k); if (demo) demo.v.dispose(); demo = null; }
   if (!demo || (demo.g.done && demo.t > 3.2)) {
     const g = createGame("star", { cx: S / 2, cy: S / 2, R: S * 0.38 }, Math.random);
     if (demo) demo.v.dispose();
@@ -399,6 +409,7 @@ function showPick() {
   if (view) view.dispose();
   if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
+  $("mTouch").setAttribute("aria-pressed", String(mode === "touch")); $("mCam").setAttribute("aria-pressed", String(mode === "camera"));
   $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
   const picks = $("picks"); picks.innerHTML = "";
   for (const [k, s] of Object.entries(SHAPES)) {

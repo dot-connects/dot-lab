@@ -58,7 +58,11 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 .res-sub:empty,.res-best:empty{display:none}
 .cam-note{font-size:13px;color:var(--mute)!important;margin-top:-6px!important}
 .res-face{font-size:13px;color:var(--mute);display:flex;align-items:center;gap:6px}
-#demo{width:210px;height:210px;margin-bottom:-6px}
+#demo{width:210px;height:210px;margin-bottom:-6px;flex-shrink:0}
+.modes{display:inline-flex;padding:4px;border-radius:999px;background:rgba(255,255,255,.08);border:1px solid #ffffff22}
+.modes button{font:inherit;font-size:15px;border:0;border-radius:999px;padding:9px 18px;background:none;color:var(--mute);cursor:pointer}
+.modes button[aria-pressed="true"]{background:var(--candy);color:#2a1406}
+.modes button:disabled{opacity:.6}
 .mode-hint{font-size:14px;color:#FFC23D!important;text-wrap:balance;max-width:300px}
 @media (max-height:700px){#demo{width:150px;height:150px}}
 @media (min-height:820px){#demo{width:250px;height:250px}}
@@ -114,7 +118,12 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
   <section class="ov" id="pick" hidden>
     <h2>모양을 고르세요</h2>
     <p>동그라미가 제일 쉽고, 우산이 제일 어려워요</p>
+    <div class="modes" role="group" aria-label="조작 방법">
+      <button id="mTouch" aria-pressed="false">화면 터치</button>
+      <button id="mCam" aria-pressed="false">카메라</button>
+    </div>
     <p id="modeHint" class="mode-hint"></p>
+    <p id="pickMsg" class="mode-hint" hidden></p>
     <div class="picks" id="picks"></div>
   </section>
 
