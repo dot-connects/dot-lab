@@ -5,6 +5,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 import { SHAPES } from "../js/engine.js";
 import { oneEuro } from "../js/camera.js";
+import { makeField, score, setGroove, markCrack, walk, loosePieces } from "./fracture.js";
 
 const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const HAND = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
@@ -26,15 +27,18 @@ const AR = {
   PINCH: +(Q.get("pinch") || 0.26), RELEASE: 1.3,   // touching tips read 0.21 on a test photo
   CONFIRM: 2, LOST_GRACE: 400, LAND_MS: 150,
   POKE: 0.3,              // groove depth one needle poke adds near its point
+  SCORE: 0.2,             // weakness a needle pass leaves anywhere it goes (~0.4 a pass; cracks follow a line from ~0.7)
   DWELL: 600, DWELL_GRACE: 150,
   SAFE: 22, FAST: 38,     // needle speed over the candy, mm/s: calm under SAFE, cracks over FAST
   CARVE: 0.06,            // groove depth per mm of needle travel near it (about 3 careful passes)
   NEAR: 0.06,             // groove points within this many candy radii of the tip get carved
   MELT_HOLE: 3.2,         // seconds of rubbing one spot before it melts through
   BREAK: 0.55,            // mean groove depth in a sector that lets the hammer snap it off cleanly
-  SWING: 3.2,             // hammer: downward speed in hand sizes per second that counts as a hit
-  SWING_MS: 220,          // over this window: a fast swing blurs, the tracker drops frames, a short window saw nothing
-  TIP: { needle: 0.45, swab: 0.5, hammer: 1.15 },   // tool contact point ahead of the pinch, in hand sizes
+  // hammer = the index finger. A tap is a fast move of the fingertip down the screen (or the finger tipping toward
+  // the candy, which shortens it on screen) that then stops: the stop is the hit.
+  SWING_GO: 2.0, SWING: 3.0,   // fingertip speed, hand sizes per second: a move starts / counts as a tap
+  SWING_TRAVEL: 0.18,          // and it must travel this far (hand sizes)
+  TIP: { needle: 0.45, swab: 0.5, hammer: 0.12 },   // hammer: ahead of the index fingertip   // tool contact point ahead of the pinch, in hand sizes
 };
 
 // ---------- renderer ----------
@@ -247,6 +251,8 @@ function reset(shape = S.shape) {
   for (const p of S.pieces) scene.remove(p.g);
   S.pieces = [];
   rims.forEach(m => { m.visible = true; });
+  S.F = makeField(TEX, inShape, outlineDist);
+  S.outer0 = 0; for (let k = 0; k < S.F.alive.length; k++) if (S.F.alive[k] && !S.F.inside[k]) S.outer0++;
   candy.rotation.set(0, 0, 0);
   paintCandy();
   $("again").hidden = true; toast("");
@@ -322,6 +328,7 @@ function lightFromFrame(now) {
     hemi.intensity += (1.0 * e - hemi.intensity) * 0.3;
     key.intensity += (2.0 * e - key.intensity) * 0.3;
     grainU.amt.value = 0.05 + 0.08 * (1 - Math.min(1, lum / 0.5));   // dim rooms are noisier
+    S.dark = lum < 0.28;
     // the brightest patch of the frame is where the light comes from
     keyDirT.set((bx / 15) * 2 - 1, 1 - (by / 15) * 2 + 0.4, 0.6).normalize().applyQuaternion(camera.quaternion);
   }
@@ -345,7 +352,7 @@ async function loadHand() {
   const { FilesetResolver, HandLandmarker } = await import(MP + "/vision_bundle.mjs");
   const files = await FilesetResolver.forVisionTasks(MP + "/wasm");
   const opts = d => ({ baseOptions: { modelAssetPath: HAND, delegate: d }, runningMode: "VIDEO", numHands: 1,
-    minHandDetectionConfidence: 0.4, minHandPresenceConfidence: 0.3, minTrackingConfidence: 0.3 });
+    minHandDetectionConfidence: 0.3, minHandPresenceConfidence: 0.3, minTrackingConfidence: 0.3 });
   try { return await HandLandmarker.createFromOptions(files, opts("GPU")); }
   catch { return await HandLandmarker.createFromOptions(files, opts("CPU")); }
 }
@@ -375,18 +382,39 @@ function readHand(lm, now) {
   let dx = P[8][0] - P[5][0], dy = P[8][1] - P[5][1]; const dl = Math.hypot(dx, dy) || 1;
   H.dir = [H.dir[0] * 0.5 + dx / dl * 0.5, H.dir[1] * 0.5 + dy / dl * 0.5];
   const nl = Math.hypot(...H.dir) || 1; H.dir = [H.dir[0] / nl, H.dir[1] / nl];
-  const k = AR.TIP[S.tool || "needle"] * hs, raw = [H.grip[0] + H.dir[0] * k, H.grip[1] + H.dir[1] * k];
+  // the needle and swab sit in the pinch; the hammer is the index finger itself, its head just past the fingertip
+  const base = S.tool === "hammer" ? P[8] : H.grip;
+  const k = AR.TIP[S.tool || "needle"] * hs, raw = [base[0] + H.dir[0] * k, base[1] + H.dir[1] * k];
   if (!was) { fx.reset(); fy.reset(); }
   H.tip = [fx.f(raw[0], now), fy.f(raw[1], now)];
   H.idx = P[8];
-  // the swing is read off the raw grip, not the smoothed tip: the filter shaves the very speed we look for
-  H.ys.push([now, H.grip[1]]); while (H.ys.length > 1 && now - H.ys[0][0] > AR.SWING_MS) H.ys.shift();
+  // the tap is read off the raw fingertip, not the smoothed tip: the filter shaves the very speed we look for
+  H.ys.push([now, P[8][1], dist(P[5], P[8]) / hs]); if (H.ys.length > 2) H.ys.shift();
+  if (S.mode === "camera" && S.tool === "hammer") H.tapE = tap();
   drawMask(P);
   return true;
 }
 // Two channels: red = surely hand (the bones drawn finger-thick), green = maybe hand (the same, much wider). The
 // overlay shader keeps a "maybe" pixel only if its colour is close to the skin colour read off the palm, so the cut
 // follows the real edge of the fingers instead of a cartoon outline.
+// A tap: the fingertip moves fast down the screen (or the finger tips toward the candy and shortens on screen), then
+// stops. The stop is the hit; its peak speed is how hard. A swing that blurs the hand away for a frame or two still
+// counts when the hand comes back lower (up to 0.4 s apart).
+function tap() {
+  const h = H.ys; if (h.length < 2) return 0;
+  const [t0, y0, l0] = h[0], [t1, y1, l1] = h[1], dt = (t1 - t0) / 1000;
+  if (dt <= 0 || dt > 0.4) { H.sw = null; return 0; }
+  const v = Math.max((y1 - y0) / dt / H.hs, (l0 - l1) / dt * 1.5);
+  if (v > AR.SWING_GO) {
+    if (!H.sw) H.sw = { peak: 0, y: y0, l: l0 };
+    H.sw.peak = Math.max(H.sw.peak, v);
+    return 0;
+  }
+  if (!H.sw) return 0;
+  const sw = H.sw; H.sw = null;
+  const travel = Math.max((y1 - sw.y) / H.hs, (sw.l - l1) * 1.5);
+  return sw.peak > AR.SWING && travel > AR.SWING_TRAVEL ? Math.min(1.8, Math.max(0.8, sw.peak / AR.SWING)) : 0;
+}
 function drawMask(P) {
   const w = maskCv.width, h = maskCv.height, s = w / W;
   mctx.fillStyle = "#000"; mctx.fillRect(0, 0, w, h);
@@ -493,6 +521,7 @@ function work(c, dt, now) {
     stroke(p.px, p.py, c.px, c.py, "rgba(250,238,214,.34)", 3.6, "color");
     stroke(p.px, p.py, c.px, c.py, "rgba(25,25,25,.30)", 3.2, "height");
     stroke(p.px, p.py, c.px, c.py, "rgba(255,255,255,.18)", 3.2, "rough");
+    score(S.F, p.px, p.py, c.px, c.py, AR.SCORE);   // every scratch weakens the candy where it runs, on the line or not
     let near = 0;
     for (let i = 0; i < S.pts.length; i++) {
       const [x, y] = S.pts[i];
@@ -522,6 +551,7 @@ function poke(c) {
   blob(c.px, c.py, 1.4 * PXMM, "rgba(25,25,25,.55)", "height");
   blob(c.px, c.py, 1.6 * PXMM, "rgba(250,236,210,.45)", "color");
   blob(c.px, c.py, 1.4 * PXMM, "rgba(255,255,255,.3)", "rough");
+  score(S.F, c.px, c.py, c.px, c.py, AR.POKE);
   let near = 0;
   for (let i = 0; i < S.pts.length; i++) {
     const [x, y] = S.pts[i], d = Math.hypot(x - c.sx, y - c.sy);
@@ -564,7 +594,7 @@ function chip(c) {
   const over = Math.min(2, S.v / AR.FAST);
   const len = TEX * (0.04 + 0.06 * over * Math.random());
   const pts = jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, k) => k * 4 > len, 4, 1.0);
-  drawCrack(pts, 1.4);
+  drawCrack(pts, 1.4); markCrack(S.F, pts);
   snap(0.5); vibrate(25); S.wob = 0.4;
   const inside = pts.some(p => { const [sx, sy] = toS(p); return inShape(sx, sy) && outlineDist(sx, sy) > 0.035; });
   if (inside) fail("바늘이 빨라서 모양에 금이 갔어요");
@@ -578,15 +608,20 @@ function hole(c) {
   else toast("녹아서 구멍이 났어요", "var(--bad)", 1200);
 }
 
-// ---------- hammer: the crack runs along the groove and turns in where it is shallow ----------
-// A hit sends a crack to the nearest groove point, then both ways along the groove. At every groove point (0.45 mm
-// apart) it may turn inward with hazard K * E * (HOLD - strength)^2, strength = depth + melt bonus. So an uncarved
-// stamp gives way within ~9 mm almost surely, a half-carved one (0.5) about half the time over 22 mm, and 0.7+ holds.
-// Each side runs a random 6-14 % of the outline (longer for harder hits), then turns out to the rim and that piece
-// falls. E = how hard the hit was (1 = a tap). Numbers are game tuning, not measurements of real candy.
-const CR = { HOLD: 0.7, K: 0.29, MELT: 0.35, SIDE: [0.06, 0.14], AT_HIT: 3 };
-const strength = i => Math.min(1, S.depth[i] + CR.MELT * S.soft[i]);
-const hazard = (i, E) => CR.K * E * Math.max(0, CR.HOLD - strength(i)) ** 2;
+// ---------- hammer ----------
+// A hit starts two cracks at the hammer: one out toward the rim, one in toward the outline. Each walks the weakest
+// way (fracture.js): along a needle score or the carved groove if it is cut deep enough, straight on through it if
+// not. A crack that gets into the shape breaks it; a region the cracks cut off from the shape falls.
+const MELT = 0.35;   // a melted point of the groove counts this much extra depth
+const strength = i => Math.min(1, S.depth[i] + MELT * S.soft[i]);
+const aliveCv = document.createElement("canvas"), alctx = aliveCv.getContext("2d", { willReadFrequently: true });
+function updateAlive() {
+  const F = S.F, N = F.N;
+  aliveCv.width = aliveCv.height = N;
+  alctx.drawImage(cv.alpha, 0, 0, N, N);
+  const d = alctx.getImageData(0, 0, N, N).data;
+  for (let k = 0; k < N * N; k++) if (d[k * 4 + 1] < 128) F.alive[k] = 0;
+}
 function hit(c, E = 1) {
   const now = performance.now();
   if (S.ended || now - S.lastHit < 450) return;
@@ -596,98 +631,68 @@ function hit(c, E = 1) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
     fail("모양을 쳤어요"); return;
   }
-  const n = S.pts.length, wrap = i => (i % n + n) % n;
-  let i0 = -1, best = 1e9;
-  S.pts.forEach(([x, y], i) => { if (!S.gone[i]) { const d = Math.hypot(x - c.sx, y - c.sy); if (d < best) { best = d; i0 = i; } } });
-  if (i0 < 0) return;
-  // from the hammer to the groove
+  const F = S.F;
+  updateAlive();
+  setGroove(F, S.pts.map(p => toPx(...p)), strength);
+  let i0 = 0, best = 1e9;
+  S.pts.forEach(([x, y], i) => { const d = Math.hypot(x - c.sx, y - c.sy); if (d < best) { best = d; i0 = i; } });
   const [gx, gy] = gpx(i0);
-  const steps = Math.hypot(gx - c.px, gy - c.py) / 5 - 1;   // stop short and join it straight: never overshoot into the shape
-  const lead = jag(c.px, c.py, Math.atan2(gy - c.py, gx - c.px), (x, y, k) => k >= steps || Math.hypot(x - gx, y - gy) < 6, 5, 0.5);
-  lead.push([gx, gy]);
-  // along the groove, both ways
-  const run = dir => {
-    const target = Math.round(n * (CR.SIDE[0] + Math.random() * (CR.SIDE[1] - CR.SIDE[0])) * (0.7 + 0.3 * E));
-    let i = i0;
-    for (let k = 0; k < target; k++) {
-      const j = wrap(i + dir);
-      if (S.gone[j]) return { end: i, stop: "gone" };
-      if (Math.random() < hazard(j, E)) return { end: j, stop: "in" };
-      i = j;
-    }
-    return { end: i, stop: "rim" };
-  };
-  const atHit = Math.random() < hazard(i0, E) * CR.AT_HIT;
-  const L = atHit ? { end: i0, stop: "in" } : run(-1), R = atHit ? { end: i0, stop: "in" } : run(1);
-  const along = (a, b, dir) => { const out = []; for (let i = a; ; i = wrap(i + dir)) { out.push(gpx(i)); if (i === b) break; } return out; };
-  drawCrack(lead);
-  if (L.stop === "in" || R.stop === "in") {
-    // the crack follows the groove to its weak spot, then breaks into the shape
-    for (const [side, dir] of [[L, -1], [R, 1]]) {
-      drawCrack(along(i0, side.end, dir), 1.3);
-      if (side.stop === "in") { const [x, y] = gpx(side.end); drawCrack(inwardCrack(x, y), 2); }
-    }
-    fail("얕게 판 데서 금이 안으로 꺾였어요");
+  const a = walk(F, c.px, c.py, Math.atan2(c.py - C2, c.px - C2) + (Math.random() - 0.5) * 0.8, { E });
+  const b = walk(F, c.px, c.py, Math.atan2(gy - c.py, gx - c.px) + (Math.random() - 0.5) * 0.5, { E });
+  drawCrack(a.pts); drawCrack(b.pts);
+  markCrack(F, a.pts); markCrack(F, b.pts);
+  const into = [a, b].find(w => w.end === "in");
+  if (into) {
+    const [x, y] = into.pts.at(-1); drawCrack(inwardCrack(x, y), 2);
+    fail(into.scratched ? "긁은 자국을 따라 금이 모양 안으로 갔어요" : "얕게 판 데서 금이 모양 안으로 들어갔어요");
     return;
   }
-  breakPiece(L, R, wrap);
-}
-
-// One piece of the outer ring: the groove from L.end clockwise to R.end, out to the rim at both ends.
-function breakPiece(L, R, wrap) {
-  const outward = (i, rough) => {
-    const [x, y] = gpx(i), a = Math.atan2(y - C2, x - C2);
-    return rough ? jag(x, y, a, (x2, y2) => fromCentre(x2, y2) > C2 * 1.06, 5, 0.6)
-      : [[x, y], [C2 + Math.cos(a) * C2 * 1.2, C2 + Math.sin(a) * C2 * 1.2]];
-  };
-  // where a neighbour already fell, run a little into the gap so no sliver is left standing
-  const li = L.stop === "gone" ? wrap(L.end - 3) : L.end, ri = R.stop === "gone" ? wrap(R.end + 3) : R.end;
-  const lo = outward(li, L.stop === "rim"), ro = outward(ri, R.stop === "rim");
-  const poly = new Path2D();
-  [...lo].reverse().forEach(([x, y], k) => k ? poly.lineTo(x, y) : poly.moveTo(x, y));
-  for (let i = li; ; i = wrap(i + 1)) { poly.lineTo(...gpx(i)); if (i === ri) break; }
-  ro.forEach(([x, y]) => poly.lineTo(x, y));
-  const aL = Math.atan2(lo.at(-1)[1] - C2, lo.at(-1)[0] - C2), aR = Math.atan2(ro.at(-1)[1] - C2, ro.at(-1)[0] - C2);
-  poly.arc(C2, C2, C2 * 1.3, aR, aL, true);
-  poly.closePath();
-  for (let i = L.end; ; i = wrap(i + 1)) { S.gone[i] = 1; if (i === R.end) break; }
-  // a sliver of ring left between two fallen pieces (under ~4 mm of groove) cannot stand on its own: it goes too
-  const n = S.gone.length, start = S.gone.indexOf(1);
-  for (let k = 0, run = []; k <= n; k++) {
-    const i = (start + k) % n;
-    if (k < n && !S.gone[i]) { run.push(i); continue; }
-    if (run.length && run.length < n * 0.03) run.forEach(j => { S.gone[j] = 1; });
-    run = [];
+  const pieces = loosePieces(F);
+  S.lastBreak = { a: a.end, b: b.end, pieces: pieces.map(p => p.length) };
+  pieces.forEach(dropCells);
+  // what is left of the ring: when only crumbs remain they come away too, and the shape is out
+  let left = 0;
+  for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k] && !F.crack[k]) left++;
+  if (left < S.outer0 * 0.04) {
+    const rest = [];
+    for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k);
+    dropCells(rest); S.gone.fill(1); win(); return;
   }
-  // the edges left behind show as darker cut faces
-  const cut = pts => { const c = ctx.color; c.beginPath(); pts.forEach(([x, y], k) => k ? c.lineTo(x, y) : c.moveTo(x, y)); c.strokeStyle = "rgba(95,42,8,.85)"; c.lineWidth = 4; c.lineJoin = "round"; c.stroke(); };
-  cut(along2(L.end, R.end, wrap)); if (L.stop === "rim") cut(lo); if (R.stop === "rim") cut(ro);
-  // the rim bands along that stretch of edge go with the piece
-  let span = aR - aL; if (span < 0) span += 2 * Math.PI;
+  if (pieces.length) { snap(1); vibrate([20, 30, 20]); toast("탁! 떨어졌어요", "var(--gold)", 900); }
+  else { snap(0.6); toast("쩍, 금만 갔어요", "#fff", 900); }
+}
+/** Drop the grid cells as one falling piece, with the rim bands along its edge. */
+function dropCells(cells) {
+  if (!cells.length) return;
+  const F = S.F, N = F.N, set = new Set(cells);
+  const m = document.createElement("canvas"); m.width = m.height = N;
+  const mx = m.getContext("2d"), img = mx.createImageData(N, N);
+  let vx = 0, vy = 0;
+  for (const k of cells) {
+    img.data[k * 4] = img.data[k * 4 + 1] = img.data[k * 4 + 2] = img.data[k * 4 + 3] = 255;
+    F.alive[k] = 0;
+    vx += (k % N + 0.5) / N - 0.5; vy += ((k / N | 0) + 0.5) / N - 0.5;
+  }
+  mx.putImageData(img, 0, 0);
   const bands = [];
   for (let k = 0; k < RIMN; k++) {
     if (!rims[k].visible) continue;
-    let m = (rimA(k)[0] + rimA(k)[1]) / 2 - aL; m = (m % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI);
-    if (m < span) { rims[k].visible = false; bands.push(k); }
+    const am = (rimA(k)[0] + rimA(k)[1]) / 2, r = N / 2 * 0.975;
+    const cell = Math.floor(N / 2 + Math.sin(am) * r) * N + Math.floor(N / 2 + Math.cos(am) * r);
+    if (set.has(cell)) { rims[k].visible = false; bands.push(k); }
   }
-  dropPiece(poly, bands, aL + span / 2);
-  snap(1); vibrate([20, 30, 20]);
-  if (S.gone.every(Boolean)) {
-    // the last of the ring comes away with it
-    const rest = new Path2D(); rest.rect(0, 0, TEX, TEX);
-    const left = rims.map((m, k) => m.visible ? k : -1).filter(k => k >= 0);
-    left.forEach(k => { rims[k].visible = false; });
-    dropPiece(rest, left, Math.random() * Math.PI * 2);
-    win();
-  } else toast("탁! 떨어졌어요", "var(--gold)", 900);
+  S.pts.forEach(([x, y], i) => {
+    const [px, py] = toPx(x * 1.08, y * 1.08), k = Math.floor(py / F.cell) * N + Math.floor(px / F.cell);
+    if (set.has(k)) S.gone[i] = 1;
+  });
+  dropPiece(m, bands, Math.atan2(vy, vx));
 }
-function along2(a, b, wrap) { const out = []; for (let i = a; ; i = wrap(i + 1)) { out.push(gpx(i)); if (i === b) break; } return out; }
 function dropPiece(region, bands, mid) {
   // masks are built by compositing, not clip(): clipping one canvas while drawing into another wiped the colour
   // canvas in Chrome (headless check 11-05)
   const layer = () => { const c = document.createElement("canvas"); c.width = c.height = TEX; return [c, c.getContext("2d")]; };
-  const [mc, mx] = layer();   // white where the piece is: the region, outside the shape
-  mx.fillStyle = "#fff"; mx.fill(region);
+  const [mc, mx] = layer();   // white where the piece is: the region (grid cells, smoothed up), outside the shape
+  mx.imageSmoothingEnabled = true; mx.drawImage(region, 0, 0, TEX, TEX);
   mx.globalCompositeOperation = "destination-out"; mx.fill(shapePath());
   const [pc, px] = layer();   // the piece: that mask, minus anything already gone
   px.drawImage(mc, 0, 0); px.globalCompositeOperation = "source-in"; px.drawImage(cv.alpha, 0, 0);
@@ -722,7 +727,8 @@ function placeTool(c) {
   shadow.visible = false;
   if (!S.tool || !H.present || !H.tip || !c) return;
   // the tool is only there while the fingers hold it: open them and it is gone, so you can see whether you hold it
-  if (S.mode === "camera" && !H.pinched) return;
+  if (S.mode === "camera" && !H.pinched && S.tool !== "hammer") return;
+  toolMesh.hammer.children[1].visible = S.mode !== "camera";
   // the hammer hovers and only touches down for a moment when it hits
   const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : 0.025) : c.pressed && c.onCandy ? 0 : 0.012;
   const m = toolMesh[S.tool], P = c.world.clone();
@@ -815,7 +821,7 @@ function hud(c) {
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
   else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : "화면을 손가락으로 만져 보세요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
   else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
-  else if (cam && !H.pinched) { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = "떼면 도구를 놓아요"; }
+  else if (cam && !H.pinched && S.tool !== "hammer") { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = "떼면 도구를 놓아요"; }
   else if (S.tool === "needle") {
     if (!c || !c.pressed) { hint = cam ? "달고나 위로 가져가요" : "누르면 바늘이 닿아요"; }
     else if (S.v > AR.FAST) { hint = "너무 빨라요!"; col = "var(--bad)"; }
@@ -824,7 +830,7 @@ function hud(c) {
     const mean = S.depth.reduce((a, b) => a + b, 0) / (S.depth.length || 1);
     sub = `선 판 깊이 ${Math.round(mean * 100)}%`;
   } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고, 금이 덜 가요"; }
-  else { hint = cam ? "바깥 위에서 손을 아래로 톡 내리쳐요" : "바깥을 톡 눌러 쳐요"; sub = "금은 홈을 타고 가다 얕은 데서 꺾여요 · 살살 칠수록 덜 번져요"; }
+  else { hint = cam ? "검지가 망치예요 · 바깥을 톡 쳐요" : "바깥을 톡 눌러 쳐요"; sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요"; }
   if (S.ended) { hint = ""; sub = ""; }
   $("hint").textContent = hint; $("hint").style.color = col; $("sub").textContent = sub;
   // speed ring (needle) or melt ring (swab) around the tool's point
@@ -841,6 +847,16 @@ function hud(c) {
   $("stat").textContent = `${Math.round(fps)} fps · 손 ${Math.round(handFps)} fps ${handMs.toFixed(0)} ms · 자이로 ${S.gyro ? "켜짐" : "없음"}${H.pd != null ? ` · 집기 ${H.pd.toFixed(2)}/${AR.PINCH}` : ""}`;
 }
 
+// The tracker sees a copy at most 640 px wide (its models work at ~200 px anyway, so this only saves time), lifted
+// in a dark room where a dim hand is the usual miss. The picture on screen stays the untouched frame.
+const detCv = document.createElement("canvas"), dctx = detCv.getContext("2d");
+function detFrame() {
+  const w = Math.min(640, frameCv.width), h = Math.round(frameCv.height * w / frameCv.width);
+  if (detCv.width !== w || detCv.height !== h) { detCv.width = w; detCv.height = h; }
+  dctx.filter = S.dark ? "brightness(1.7) contrast(1.1)" : "none";
+  dctx.drawImage(frameCv, 0, 0, w, h);
+  return detCv;
+}
 // ---------- frame loop ----------
 let last = performance.now(), fps = 60, lastWork = 0;
 if (video.requestVideoFrameCallback) { const cb = () => { vframes++; video.requestVideoFrameCallback(cb); }; video.requestVideoFrameCallback(cb); }
@@ -854,7 +870,7 @@ function grab(now) {
   if (!landmarker) return true;
   try {
     const t0 = performance.now();
-    const r = landmarker.detectForVideo(frameCv, now);
+    const r = landmarker.detectForVideo(detFrame(), now);
     handMs = handMs * 0.9 + (performance.now() - t0) * 0.1;
     const lm = r.landmarks && r.landmarks[0];
     if (lm) readSkin(lm, now);
@@ -880,14 +896,8 @@ function loop(now) {
   if (fresh) {
     const wdt = Math.min(0.1, (now - (lastWork || now - 16)) / 1000); lastWork = now;
     work(c, wdt, now);
-    // hammer swing: the tool point drops fast while the fingers are closed
-    // a fast swing can blur the pinch open for a frame or two: a pinch let go just now still counts
-    if (S.mode === "camera" && S.tool === "hammer" && (H.pinched || now - (H.openAt || 0) < 250) && H.ys.length > 1) {
-      const [t0, y0] = H.ys[0], [t1, y1] = H.ys[H.ys.length - 1];
-      const sp = t1 > t0 ? (y1 - y0) / ((t1 - t0) / 1000) / H.hs : 0;
-      // a harder swing carries the crack further, and turns it in more easily at a shallow spot
-      if (sp > AR.SWING) { H.ys.length = 0; hit(c || contact(), Math.min(1.8, Math.max(0.8, sp / AR.SWING))); }
-    }
+    // a harder tap carries the cracks further, and through a groove more easily
+    if (H.tapE) { const E = H.tapE; H.tapE = 0; hit(c || contact(), E); }
     updateDwell(now, wdt);
   }
   // the candy idles with a slow bob, wobbles when hit, pops in when (re)placed
