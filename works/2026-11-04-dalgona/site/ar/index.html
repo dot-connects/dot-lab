@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>허공 달고나 AR — 시험판</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+:root{--ink:#f4f1ea;--mute:#b4c4bd;--gold:#ffc23d;--candy:#e9a64a;--bad:#ff8a9b;--good:#7ee2a8}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:#0b0e0d;color:var(--ink);font-family:"IBM Plex Sans KR",system-ui,sans-serif;overscroll-behavior:none}
+[hidden]{display:none!important}
+#app{position:fixed;inset:0;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+.hud{position:absolute;inset:0;pointer-events:none}
+.ts{text-shadow:0 1px 6px rgba(0,0,0,.85)}
+#hint{position:absolute;top:calc(env(safe-area-inset-top) + 64px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:22px;color:#fff;transition:color .2s}
+#sub{position:absolute;top:calc(env(safe-area-inset-top) + 94px);left:16px;right:16px;text-align:center;font-size:13px;color:#e3eee9}
+#stat{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:11px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;line-height:1.4}
+.tools{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;display:flex;gap:6px;pointer-events:auto}
+.tools button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(8,12,10,.5);color:#fff;font-size:17px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
+.tools button[aria-pressed="true"]{background:var(--candy);color:#2a1406}
+#tray{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 18px);display:flex;justify-content:center;gap:22px;pointer-events:auto}
+#tray button{position:relative;display:flex;flex-direction:column;align-items:center;gap:5px;background:none;border:0;padding:0;color:#fff;font:inherit;font-family:"Do Hyeon",sans-serif;font-size:14px;cursor:pointer}
+#tray .ic{display:grid;place-items:center;width:62px;height:62px;border-radius:50%;background:rgba(10,14,16,.55);border:1.5px solid rgba(255,255,255,.3);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);transition:transform .15s,border-color .15s}
+#tray button.on .ic{border:2.5px solid var(--gold)}
+#tray button.on{color:var(--gold)}
+#tray button.hover .ic{transform:scale(1.12)}
+#tray svg.ring{position:absolute;top:-6px;left:50%;margin-left:-37px;width:74px;height:74px;transform:rotate(-90deg);pointer-events:none}
+#cursor{position:absolute;width:16px;height:16px;margin:-8px 0 0 -8px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.35),0 0 12px rgba(255,255,255,.7);transition:opacity .15s}
+#ring{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;transform:rotate(-90deg)}
+#toast{position:absolute;left:0;right:0;top:42%;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:34px;color:#fff;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(8px)}
+#toast.show{opacity:1;transform:none}
+#again{position:absolute;left:50%;top:calc(42% + 56px);transform:translateX(-50%);pointer-events:auto;font-family:"Do Hyeon",sans-serif;font-size:20px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:11px 28px}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 22px calc(env(safe-area-inset-bottom) + 24px);background:radial-gradient(120% 70% at 50% 35%,#3a3029 0%,#171311 60%,#0b0908 100%)}
+.ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:44px;margin:0}
+.ov h1 em{font-style:normal;color:var(--candy)}
+.ov .tag{font-size:12px;letter-spacing:.12em;color:var(--gold)}
+.ov p{margin:0;max-width:320px;line-height:1.6;color:#e3eee9;font-size:15px}
+.ov p.mute{color:var(--mute);font-size:13px}
+.go{font-family:"Do Hyeon",sans-serif;font-size:22px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:13px 32px;cursor:pointer}
+.sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff44;border-radius:12px;padding:9px 16px;cursor:pointer}
+#msg{color:var(--bad)}
+.steps{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:14px;max-width:320px;color:#e3eee9}
+.steps b{font-family:"Do Hyeon",sans-serif;font-weight:400;color:var(--candy);font-size:16px}
+</style>
+</head>
+<body>
+<div id="app">
+  <video id="video" playsinline muted></video>
+  <canvas id="gl"></canvas>
+  <div class="hud">
+    <div id="stat"></div>
+    <div class="tools">
+      <button id="shCircle" aria-pressed="true" aria-label="동그라미">○</button>
+      <button id="shTri" aria-pressed="false" aria-label="세모">△</button>
+      <button id="shStar" aria-pressed="false" aria-label="별">☆</button>
+      <button id="center" aria-label="달고나를 앞으로">◎</button>
+    </div>
+    <div id="hint" class="ts"></div>
+    <div id="sub" class="ts"></div>
+    <div id="cursor" hidden></div>
+    <svg id="ring" viewBox="0 0 52 52" hidden><circle cx="26" cy="26" r="22" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5"/><circle id="ringArc" cx="26" cy="26" r="22" fill="none" stroke="#7ee2a8" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+    <div id="toast" class="ts"></div>
+    <button id="again" hidden>새 달고나</button>
+    <div id="tray"></div>
+  </div>
+
+  <section class="ov" id="start">
+    <div class="tag">시험판 · 뒤 카메라</div>
+    <h1>허공 <em>달고나</em></h1>
+    <p>폰을 들고 앞을 비추면 달고나가 떠 있어요. 카메라 앞에 손을 넣고 도구를 손가락으로 골라 해 보세요.</p>
+    <div class="steps">
+      <b>고르기</b><span>아래 도구를 손가락으로 가리키고 잠깐 기다리기</span>
+      <b>쓰기</b><span>엄지·검지를 모으면 도구가 달고나에 닿아요</span>
+      <b>망치</b><span>쥐고 손을 톡 아래로 내리면 바깥을 쳐요</span>
+    </div>
+    <button class="go" id="go">카메라 켜고 시작</button>
+    <button class="sub" id="touch">카메라 없이 (화면 터치)</button>
+    <p class="mute">영상은 폰 밖으로 나가지 않아요</p>
+    <p id="msg" hidden></p>
+  </section>
+</div>
+<script type="module" src="ar.js"></script>
+</body>
+</html>
