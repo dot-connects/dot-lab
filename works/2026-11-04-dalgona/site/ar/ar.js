@@ -11,8 +11,9 @@ const HAND = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/ha
 const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 
-// Sizes in metres. A street dalgona is about 9 cm across and 5 mm thick.
-const R = 0.045, T = 0.005, DIST = 0.32, TILT = -18 * Math.PI / 180;
+// Sizes in metres. A street dalgona is about 9-10 cm across and 5 mm thick. It floats at the distance the free hand
+// reaches behind the phone (phone test 11-05: at 32 cm it looked too small); ?dist= tunes it on the phone.
+const R = 0.05, T = 0.005, DIST = +(Q.get("dist") || 0.24), TILT = -18 * Math.PI / 180;
 const TEX = 512, PXMM = TEX / (2 * R * 1000);   // texture px per mm of candy
 const RIMN = 72;   // rim bands: a broken piece takes the bands along its stretch of the edge
 // Tuning knobs. Pinch numbers are from the 11-04 front-camera phone spike (camera.js); the rest are first guesses
@@ -59,9 +60,16 @@ const quad = (frag, uniforms, extra = {}) => {
 };
 bgScene.add(quad(`uniform sampler2D map; uniform vec2 crop; varying vec2 vUv;
   void main(){ gl_FragColor = vec4(texture2D(map, .5 + (vUv - .5) * crop).rgb, 1.); }`, { map: { value: vtex }, crop }));
-fgScene.add(quad(`uniform sampler2D map; uniform sampler2D mask; uniform vec2 crop; varying vec2 vUv;
-  void main(){ float a = texture2D(mask, vUv).g; if (a < .01) discard; gl_FragColor = vec4(texture2D(map, .5 + (vUv - .5) * crop).rgb, a); }`,
-  { map: { value: vtex }, mask: { value: mtex }, crop }, { transparent: true }));
+const skinU = { value: new THREE.Vector3(0.8, 0.6, 0.5) };
+fgScene.add(quad(`uniform sampler2D map; uniform sampler2D mask; uniform vec2 crop; uniform vec3 skin; varying vec2 vUv;
+  vec3 ycc(vec3 c){ return vec3(dot(c, vec3(.299, .587, .114)), dot(c, vec3(-.169, -.331, .5)), dot(c, vec3(.5, -.419, -.081))); }
+  void main(){
+    vec4 m = texture2D(mask, vUv); if (m.g < .01) discard;
+    vec3 c = texture2D(map, .5 + (vUv - .5) * crop).rgb, a = ycc(c), b = ycc(skin);
+    // same chroma as the palm, and not far darker or brighter (shadowed knuckles still pass)
+    float sk = (1. - smoothstep(.035, .075, distance(a.yz, b.yz))) * smoothstep(.3, .5, a.x / max(b.x, .05)) * (1. - smoothstep(1.6, 2., a.x / max(b.x, .05)));
+    gl_FragColor = vec4(c, max(smoothstep(.3, .7, m.r), m.g * sk)); }`,
+  { map: { value: vtex }, mask: { value: mtex }, crop, skin: skinU }, { transparent: true }));
 const grainU = { time: { value: 0 }, amt: { value: 0.07 } };
 const grain = quad(`uniform float time; uniform float amt;
   float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
@@ -369,20 +377,43 @@ function readHand(lm, now) {
   drawMask(P);
   return true;
 }
+// Two channels: red = surely hand (the bones drawn finger-thick), green = maybe hand (the same, much wider). The
+// overlay shader keeps a "maybe" pixel only if its colour is close to the skin colour read off the palm, so the cut
+// follows the real edge of the fingers instead of a cartoon outline.
 function drawMask(P) {
   const w = maskCv.width, h = maskCv.height, s = w / W;
   mctx.fillStyle = "#000"; mctx.fillRect(0, 0, w, h);
   if (P) {
-    const q = P.map(([x, y]) => [x * s, y * s]), pw = dist(q[5], q[17]);
-    mctx.fillStyle = mctx.strokeStyle = "#fff"; mctx.lineCap = "round"; mctx.lineJoin = "round";
-    mctx.shadowColor = "#fff"; mctx.shadowBlur = 2;
-    mctx.beginPath(); PALM.forEach((i, j) => j ? mctx.lineTo(...q[i]) : mctx.moveTo(...q[i])); mctx.closePath(); mctx.fill();
-    for (const [a, b] of BONES) { mctx.lineWidth = pw * (a < 5 ? 0.32 : 0.26); mctx.beginPath(); mctx.moveTo(...q[a]); mctx.lineTo(...q[b]); mctx.stroke(); }
-    // the wrist runs on off the bottom of the hand
-    mctx.lineWidth = pw * 0.9; mctx.beginPath(); mctx.moveTo(...q[0]); mctx.lineTo(q[0][0] + (q[0][0] - q[9][0]) * 1.5, q[0][1] + (q[0][1] - q[9][1]) * 1.5); mctx.stroke();
-    mctx.shadowBlur = 0;
+    // hand size from the whole palm triangle: the knuckle line alone shrinks to nothing when the hand turns sideways
+    const q = P.map(([x, y]) => [x * s, y * s]), hs = H.hs * s;
+    mctx.lineCap = "round"; mctx.lineJoin = "round";
+    const pass = (col, k) => {
+      mctx.fillStyle = mctx.strokeStyle = col;
+      mctx.lineWidth = hs * 0.22 * k;
+      mctx.beginPath(); PALM.forEach((i, j) => j ? mctx.lineTo(...q[i]) : mctx.moveTo(...q[i])); mctx.closePath(); mctx.fill(); mctx.stroke();
+      for (const [a, b] of BONES) { mctx.lineWidth = hs * (a < 5 ? 0.26 : 0.21) * k; mctx.beginPath(); mctx.moveTo(...q[a]); mctx.lineTo(...q[b]); mctx.stroke(); }
+      // the wrist and forearm run on off the bottom of the hand
+      mctx.lineWidth = hs * 0.75 * k; mctx.beginPath(); mctx.moveTo(...q[0]); mctx.lineTo(q[0][0] + (q[0][0] - q[9][0]) * 3, q[0][1] + (q[0][1] - q[9][1]) * 3); mctx.stroke();
+    };
+    // a soft "maybe" edge: a hard one shows as a straight cut where skin-coloured background (a face, a wooden desk) passes
+    mctx.filter = `blur(${Math.max(1, hs * 0.06).toFixed(1)}px)`;
+    pass("#0f0", 1.8);
+    mctx.globalCompositeOperation = "lighter"; mctx.filter = "blur(1px)"; pass("#f00", 0.9);
+    mctx.globalCompositeOperation = "source-over"; mctx.filter = "none";
   }
   mtex.needsUpdate = true;
+}
+// skin colour: the palm centre, read every half second (a light change moves it)
+let lastSkin = 0;
+function readSkin(lm, now) {
+  if (now - lastSkin < 500) return;
+  lastSkin = now;
+  const cx = (lm[0].x + lm[5].x + lm[9].x + lm[13].x + lm[17].x) / 5 * frameCv.width, cy = (lm[0].y + lm[5].y + lm[9].y + lm[13].y + lm[17].y) / 5 * frameCv.height;
+  const d = fctx.getImageData(Math.max(0, cx - 4) | 0, Math.max(0, cy - 4) | 0, 8, 8).data;
+  let r = 0, g = 0, b = 0;
+  for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
+  const n = d.length / 4;
+  skinU.value.set(r / n / 255, g / n / 255, b / n / 255);
 }
 
 // ---------- touch fallback ----------
@@ -790,7 +821,9 @@ function grab(now) {
     const t0 = performance.now();
     const r = landmarker.detectForVideo(frameCv, now);
     handMs = handMs * 0.9 + (performance.now() - t0) * 0.1;
-    readHand(r.landmarks && r.landmarks[0], now);
+    const lm = r.landmarks && r.landmarks[0];
+    if (lm) readSkin(lm, now);
+    readHand(lm, now);
     if (H.handT) handFps = handFps * 0.9 + 100 / Math.max(1, now - H.handT);
     H.handT = now;
   } catch (e) { console.warn(e); }
