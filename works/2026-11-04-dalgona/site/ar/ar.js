@@ -40,11 +40,13 @@ const AR = {
   BREAK: 0.55,            // mean groove depth in a sector that lets the hammer snap it off cleanly
   // hammer = the index finger. A tap is a fast move of the fingertip down the screen (or the finger tipping toward
   // the candy, which shortens it on screen) that then stops: the stop is the hit.
-  // With the rear camera looking down, a tap mostly moves the fingertip AWAY from the phone: the hand shrinks on
-  // screen while the tip barely moves (phone test 11-06: every tap read as "허공", the old screen-down detector fired
-  // on re-aiming moves instead). A tap = the hand size drops TAP_DROP below its top within TAP_WIN ms, at least
-  // TAP_RATE per second (a slow needle push is < 0.2/s; probe jitter sd ~1 %). A palm roll (aspect change) is not a tap.
-  TAP_DROP: 0.08, TAP_RATE: 0.6, TAP_WIN: 260, TAP_REARM: 0.5, TAP_ROLL: 0.12,
+  // Hammer = aim, then push, like the needle. With the rear camera looking down a tap moves the fingertip away from
+  // the phone (the hand shrinks on screen), and so does reaching for the candy: a detector that fired on any quick
+  // shrink fired on the reach, off the candy (phone test 11-06/07: "계속 허공"). So the hammer first arms: the tip
+  // holds still over the candy for ARM_MS (lateral speed < ARM_MOVE hand sizes/s, size steady within ARM_SPREAD).
+  // Then the hand pushing TAP_DROP smaller than where it armed strikes there (the needle lands at the same 6 %).
+  // Over the shape itself only a quick push (TAP_RATE /s) counts, so sinking slowly while aiming does not fail you.
+  ARM_MS: 200, ARM_MOVE: 1.2, ARM_SPREAD: 0.04, TAP_DROP: 0.06, TAP_RATE: 0.5, TAP_LEAVE: 0.9,
   TIP: { needle: 0.45, swab: 0.5, hammer: 0.12 },   // hammer: ahead of the index fingertip   // tool contact point ahead of the pinch, in hand sizes
 };
 
@@ -384,7 +386,7 @@ const PALM = [0, 1, 2, 5, 9, 13, 17];
 function readHand(lm, now) {
   if (!lm) {
     if (H.present && !H.lostAt) H.lostAt = now;
-    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; H.ys = []; H.tapLow = 0; fx.reset(); fy.reset(); }
+    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; H.ys = []; H.arm = null; fx.reset(); fy.reset(); }
     drawMask(null);
     return false;
   }
@@ -424,18 +426,35 @@ function readHand(lm, now) {
   drawMask(P);
   return true;
 }
-// A tap: see TAP_* above. Its strength is how far the hand dropped. After one, the hand must come back up half way
-// before the next can fire.
+function contactAt(x, y) { const keep = H.tip; H.tip = [x, y]; const c = contact(); H.tip = keep; return c; }
+// The hammer: arm while still over the candy, strike on the push. Returns the strike strength, 0 if none.
 function tap() {
   const h = H.ys, b = h[h.length - 1];
-  if (H.tapLow) { if (b.hs > H.tapLow * (1 + AR.TAP_DROP * AR.TAP_REARM)) H.tapLow = 0; return 0; }
-  let top = b; for (const a of h) if (b.t - a.t <= AR.TAP_WIN && a.hs > top.hs) top = a;
-  const d = 1 - b.hs / top.hs + Math.max(0, top.l - b.l) * 0.5, dt = (b.t - top.t) / 1000;
+  H.hamPush = 0;
+  if (b.t < (H.tapBlock || 0)) return 0;
+  const A = H.arm;
+  if (!A) {
+    const w = h.filter(a => b.t - a.t <= AR.ARM_MS), w0 = w[0], span = (b.t - w0.t) / 1000;
+    if (span < AR.ARM_MS / 1000 * 0.7) return 0;
+    let lo = Infinity, hi = 0; for (const a of w) { lo = Math.min(lo, a.hs); hi = Math.max(hi, a.hs); }
+    if (Math.hypot(b.x - w0.x, b.y - w0.y) / b.hs / span > AR.ARM_MOVE || hi / lo - 1 > AR.ARM_SPREAD) return 0;
+    let c = contactAt(b.x, b.y); if (c && !c.onCandy) c = snapToCandy(c);
+    if (!c || !c.onCandy) return 0;
+    H.arm = { top: b.hs, topT: b.t, t: b.t, x: b.x, y: b.y }; return 0;
+  }
+  // moved off to aim somewhere else: disarm (it re-arms when the tip settles again)
+  if (Math.hypot(b.x - A.x, b.y - A.y) > b.hs * AR.TAP_LEAVE) { H.arm = null; return 0; }
+  if (b.hs > A.top) { A.top = b.hs; A.topT = b.t; }
+  const d = 1 - b.hs / A.top, rate = d / Math.max(0.05, (b.t - A.topT) / 1000);
+  H.hamPush = d;
   if (PROBE) PR.dmax = Math.max(PR.dmax || 0, d);
-  if (d < AR.TAP_DROP || d / Math.max(dt, 0.05) < AR.TAP_RATE || Math.abs(b.asp - top.asp) > AR.TAP_ROLL) return 0;
-  H.tapLow = b.hs; H.tapPath = h.filter(a => a.t >= top.t).map(a => [a.x, a.y]);
-  if (PROBE) PR.tap = `망치 ${(d * 100).toFixed(0)}% / ${(dt * 1000).toFixed(0)}ms`;
-  return Math.min(1.8, Math.max(0.8, d / AR.TAP_DROP * 0.8));
+  if (d < AR.TAP_DROP) return 0;
+  const path = h.filter(a => a.t >= A.t).map(a => [a.x, a.y]), c = strikePoint(path);
+  const onShape = c && c.onCandy && inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03;
+  if (onShape && rate < AR.TAP_RATE) { A.top = b.hs; A.topT = b.t; toast("모양 위예요 · 바깥에서 쳐요", "var(--gold)", 900); return 0; }
+  H.arm = null; H.tapBlock = b.t + 250; H.tapPath = path;
+  if (PROBE) PR.tap = `망치 ${(d * 100).toFixed(0)}% ${rate.toFixed(2)}/s`;
+  return Math.min(1.8, Math.max(0.8, rate / AR.TAP_RATE));
 }
 // Where the tap struck: walk the swing path back from where it ended and take the first point over the candy. A
 // tip that passed over the candy on its way counts (operator 11-06: "통과해도 닿은 부분이 쳐지는 걸로"). If that
@@ -534,7 +553,7 @@ function probe(hs, now) {
   g.fillStyle = "#fff"; g.font = "bold 24px sans-serif";
   g.fillText(`${PR.ref ? "집음" : "안 집음"}  ${m >= 0 ? "+" : ""}${m.toFixed(1)}%`, 10, 30);
   g.fillText(`떨림 ${sd.toFixed(1)}%  손 ${hs.toFixed(0)}px`, 10, H2 - 12);
-  if (S.tool === "hammer") { g.font = "bold 18px sans-serif"; g.fillText(`손 줄어듦 최대 ${((PR.dmax || 0) * 100).toFixed(0)}% (탭 ${AR.TAP_DROP * 100}%)`, 10, 60); g.fillText(`${PR.tap || ""} ${PR.hit || ""}`, 10, 84); }
+  if (S.tool === "hammer") { g.font = "bold 18px sans-serif"; g.fillText(`${H.arm ? "준비" : "대기"} 밀기 ${((H.hamPush || 0) * 100).toFixed(0)}% 최대 ${((PR.dmax || 0) * 100).toFixed(0)}%`, 10, 60); g.fillText(`${PR.tap || ""} ${PR.hit || ""}`, 10, 84); }
 }
 
 // ---------- touch fallback ----------
@@ -867,7 +886,8 @@ function placeTool(c) {
   // the hammer hovers and only touches down for a moment when it hits
   // a pinched tool hovers HOVER above the candy at the pinch and comes down as the hand pushes away from the phone
   const hov = S.mode === "camera" ? AR.HOVER * Math.max(0, Math.min(1.5, 1 - H.push / AR.LAND)) : 0.012;
-  const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : 0.025) : c.pressed && c.onCandy ? 0 : hov;
+  const hamLift = S.mode === "camera" ? 0.02 * Math.max(0, 1 - (H.hamPush || 0) / AR.TAP_DROP) : 0.025;
+  const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : hamLift) : c.pressed && c.onCandy ? 0 : hov;
   S.liftMM = c.onCandy ? lift * 1000 : null;
   const m = toolMesh[S.tool], P = c.world.clone();
   const toCam = v3.copy(camera.position).sub(P).normalize();
@@ -887,7 +907,7 @@ function placeTool(c) {
   if (S.tool === "needle") { m.scale.set(1, len, 1); m.userData.eye.scale.set(1, 1 / len, 1); }
   m.visible = true;
   // the point's shadow is where it will land: off to one side and soft while it hovers, under the point when it touches
-  if (c.onCandy && pinchTool) {
+  if (c.onCandy && (pinchTool || H.arm)) {
     const l = candy.worldToLocal(c.world.clone()), off = 0.0008 + lift * 0.5;
     shadow.position.set(l.x + off * 0.5, l.y - off, 0.0004);
     const k = 0.45 + lift * 90; shadow.scale.set(k, k, 1); shadow.material.opacity = Math.max(0.3, 0.95 - lift * 50); shadow.visible = true;
@@ -981,7 +1001,11 @@ function hud(c) {
     else { hint = "좋아요, 이 속도"; col = "var(--good)"; }
     if (cam && c && c.pressed) sub = `누르기 ${c.press < 0.25 ? "살살" : c.press < 0.75 ? "알맞게" : "세게"} · ` + sub;
   } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고 금이 덜 가요 · 모양에 간 금은 문지르면 붙어요"; }
-  else { hint = cam ? "검지가 망치예요 · 바깥을 톡 쳐요" : "바깥을 톡 눌러 쳐요"; sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요"; }
+  else {
+    hint = !cam ? "바깥을 톡 눌러 쳐요" : H.arm ? "좋아요 · 손을 톡 밀어 쳐요" : "검지 끝을 달고나 바깥 위에 잠깐 멈춰요";
+    if (cam && H.arm) col = "var(--good)";
+    sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요";
+  }
   if (S.ended) { hint = ""; sub = ""; }
   $("hint").textContent = hint; $("hint").style.color = col; $("sub").textContent = sub;
   // speed ring (needle) or melt ring (swab) around the tool's point
@@ -1015,7 +1039,7 @@ function detFrame() {
 // creeps closer only while you are not looking at him. Fail or run out of time: silence, a prompt to look up, a beat
 // of stillness when you do, then the rack, the aim and the shot. (Horror and AR reviews 11-06.)
 const EYE = +(Q.get("h") || 1.2), GUARD_D = 2.4, TIME_LIMIT = 120;
-const GS = +(Q.get("gs") || 1.36);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
+const GS = +(Q.get("gs") || 1.5);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
 // a bigger guard creeps less, so at the end his face still fits on screen when you look up
 const near = d => GUARD_D - (GUARD_D - d) / GS;
 const STEPS = [[90, near(2.1)], [60, near(1.8)], [30, near(1.5)]], DOOM_D = near(1.4);   // [seconds left, distance he creeps to]
@@ -1321,7 +1345,7 @@ $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
-window.__ar = { S, H, AR, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+window.__ar = { S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
