@@ -693,10 +693,28 @@ function updateAlive() {
   const d = alctx.getImageData(0, 0, N, N).data;
   for (let k = 0; k < N * N; k++) if (d[k * 4 + 1] < 128) F.alive[k] = 0;
 }
+// A tap is read where the fingertip stops, and the finger has travelled by then (and the tip filter lags), so a blow
+// aimed at the edge or next to a fallen piece lands just off the candy (phone test 11-06: "허공을 쳤어요" again and
+// again). A miss within SNAP of what is left outside the shape lands on the nearest such bit instead.
+const SNAP = 0.35;   // in candy radii, ~2 cm
+function snapToCandy(c) {
+  if (c.sx === undefined) return c;
+  const F = S.F, N = F.N; updateAlive();
+  let best = SNAP, bk = -1;
+  for (let k = 0; k < N * N; k++) {
+    if (!F.alive[k] || F.inside[k]) continue;
+    const sx = ((k % N) + 0.5) / N * 2 - 1, sy = (((k / N) | 0) + 0.5) / N * 2 - 1, d = Math.hypot(sx - c.sx, sy - c.sy);
+    if (d < best) { best = d; bk = k; }
+  }
+  if (bk < 0) return c;
+  const sx = ((bk % N) + 0.5) / N * 2 - 1, sy = (((bk / N) | 0) + 0.5) / N * 2 - 1, [px, py] = toPx(sx, sy);
+  return { ...c, sx, sy, px, py, onCandy: true, snapped: best };
+}
 function hit(c, E = 1) {
   const now = performance.now();
   if (S.ended || now - S.lastHit < 450) return;
   S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
+  if (c && !c.onCandy) c = snapToCandy(c);
   if (!c || !c.onCandy) { toast("허공을 쳤어요", "#fff", 700); return; }
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
