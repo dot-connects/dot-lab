@@ -791,7 +791,8 @@ function hit(c, E = 1) {
   const b = walk(F, c.px, c.py, Math.atan2(gy - c.py, gx - c.px) + (Math.random() - 0.5) * 0.5, { E });
   drawCrack(a.pts); drawCrack(b.pts);
   markCrack(F, a.pts); markCrack(F, b.pts);
-  const into = [a, b].find(w => w.end === "in");
+  // the promo render (?reel) plays a clean run: no crack walks into the shape there
+  const into = Q.has("reel") ? null : [a, b].find(w => w.end === "in");
   if (into) {
     const [x, y] = into.pts.at(-1), inw = inwardCrack(x, y);
     drawCrack(inw, 2); markCrack(F, inw); shapeCrack(inw, 0.6);
@@ -1345,7 +1346,12 @@ $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
-window.__ar = { S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+window.__ar = { THREE, scene, camera, place,
+  // the promo render ends its run here: the last crumbs fall away and the shape comes out
+  finish: () => { const F = S.F, rest = []; for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k); dropCells(rest); S.gone.fill(1); win(); },
+  S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
+// ?reel: the promo-video renderer (works/2026-11-04-dalgona/reel/) drives the page; not part of the toy
+if (Q.has("reel")) import("../../reel/reel.js");

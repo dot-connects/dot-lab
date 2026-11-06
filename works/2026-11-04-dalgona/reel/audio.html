@@ -1,0 +1,52 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>reel sound</title>
+<script type="module">
+// Offline render of the reel's sound track from out/events.json, with the toy's own synth (site/ar/sfx.js) plus the
+// small noise sounds ar.js plays (scratch, snap, thud). Result: window.__wav = base64 WAV.
+import { makeSfx } from "../site/ar/sfx.js";
+const { frames, events } = await (await fetch("out/events.json")).json();
+const SR = 44100, LEN = frames / 30 + 0.5;
+const ac = new OfflineAudioContext(2, Math.ceil(SR * LEN), SR);
+const sfx = makeSfx(ac);
+const noise = ac.createBuffer(1, SR, SR); { const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
+function burst(t, dur, f, gain, type = "highpass", q = 0.7) {
+  const s = ac.createBufferSource(); s.buffer = noise; const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q;
+  const g = ac.createGain(); g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  s.connect(fl).connect(g).connect(ac.destination); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+}
+// one suspend per render quantum (a second suspend at the same time throws), so calls at one moment share it
+const slots = new Map();
+const at = (t, fn) => {
+  const q = Math.max(0, Math.round(t * SR / 128) * 128 / SR);
+  if (!slots.has(q)) { slots.set(q, []); ac.suspend(q).then(() => { slots.get(q).forEach(f => f()); ac.resume(); }); }
+  slots.get(q).push(fn);
+};
+const plain = {
+  poke: t => burst(t, 0.05, 2800, 0.5, "bandpass", 1.4),
+  scratch: t => burst(t, 0.22, 2600, 0.22, "bandpass", 1.4),
+  crack: t => { burst(t, 0.11, 3200, 0.9); burst(t, 0.06, 1200, 0.5); },
+  melt: t => { for (let k = 0; k < 9; k++) burst(t + k * 0.2, 0.25, 900, 0.12, "lowpass"); },
+  thud: t => { burst(t, 0.14, 300, 1.0, "lowpass"); burst(t + 0.01, 0.08, 2600, 0.45); },
+};
+const synth = { tick: () => sfx.tick(false), breath: () => sfx.breath(true), scuff: () => sfx.scuff(), cock: () => sfx.cock(), win: () => sfx.win() };
+at(0, () => { sfx.bed(true); sfx.setTension(0.1); });
+for (const [t, name] of events) {
+  if (plain[name]) plain[name](t);
+  if (synth[name]) at(t, synth[name]);
+  if (name === "crack") at(t + 0.15, () => sfx.cock());
+  if (name === "scuff") at(t + 0.5, () => sfx.scuff());
+}
+for (let t = 1; t < LEN - 3; t += 1) at(t, () => sfx.setTension(Math.min(1, t / 17)));
+const endT = events.find(e => e[0] > 0 && e[1] === "win");
+if (endT) at(endT[0] + 2.2, () => sfx.bed(false));
+const buf = await ac.startRendering();
+// 16-bit PCM WAV
+const ch = [buf.getChannelData(0), buf.getChannelData(1)], n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
+const ws = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));
+ws(0, "RIFF"); out.setUint32(4, 36 + n * 4, true); ws(8, "WAVEfmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 2, true);
+out.setUint32(24, SR, true); out.setUint32(28, SR * 4, true); out.setUint16(32, 4, true); out.setUint16(34, 16, true); ws(36, "data"); out.setUint32(40, n * 4, true);
+for (let i = 0; i < n; i++) for (let c = 0; c < 2; c++) out.setInt16(44 + i * 4 + c * 2, Math.max(-1, Math.min(1, ch[c][i])) * 32767, true);
+let bin = ""; const u8 = new Uint8Array(out.buffer); for (let i = 0; i < u8.length; i += 0x8000) bin += String.fromCharCode(...u8.subarray(i, i + 0x8000));
+window.__wav = btoa(bin);
+</script>
