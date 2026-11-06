@@ -7,6 +7,7 @@
 import { makeSfx } from "../site/ar/sfx.js";
 const { frames, events } = await (await fetch("out/events.json")).json();
 const SR = 44100, LEN = frames / 30 + 0.5;
+console.log("events", events.length, "len", LEN);
 const ac = new OfflineAudioContext(2, Math.ceil(SR * LEN), SR);
 const sfx = makeSfx(ac);
 const noise = ac.createBuffer(1, SR, SR); { const d = noise.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1; }
@@ -18,8 +19,12 @@ function burst(t, dur, f, gain, type = "highpass", q = 0.7) {
 // one suspend per render quantum (a second suspend at the same time throws), so calls at one moment share it
 const slots = new Map();
 const at = (t, fn) => {
-  const q = Math.max(0, Math.round(t * SR / 128) * 128 / SR);
-  if (!slots.has(q)) { slots.set(q, []); ac.suspend(q).then(() => { slots.get(q).forEach(f => f()); ac.resume(); }); }
+  const q = Math.max(128 / SR, Math.round(t * SR / 128) * 128 / SR);
+  if (q >= LEN) return;
+  if (!slots.has(q)) {
+    slots.set(q, []);
+    ac.suspend(q).then(() => { for (const f of slots.get(q)) { try { f(); } catch (e) { console.error("sfx", e); } } ac.resume(); });
+  }
   slots.get(q).push(fn);
 };
 const plain = {
@@ -40,7 +45,9 @@ for (const [t, name] of events) {
 for (let t = 1; t < LEN - 3; t += 1) at(t, () => sfx.setTension(Math.min(1, t / 17)));
 const endT = events.find(e => e[0] > 0 && e[1] === "win");
 if (endT) at(endT[0] + 2.2, () => sfx.bed(false));
+console.log("slots", slots.size); ac.onstatechange = () => console.log("state", ac.state, ac.currentTime.toFixed(2));
 const buf = await ac.startRendering();
+console.log("rendered");
 // 16-bit PCM WAV
 const ch = [buf.getChannelData(0), buf.getChannelData(1)], n = buf.length, out = new DataView(new ArrayBuffer(44 + n * 4));
 const ws = (o, s) => [...s].forEach((c, i) => out.setUint8(o + i, c.charCodeAt(0)));

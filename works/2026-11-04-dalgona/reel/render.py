@@ -96,10 +96,16 @@ class Reel:
         self.down = on
         await (self.pg.mouse.down() if on else self.pg.mouse.up())
 
-    async def look(self, alpha, beta, frames):
-        a0, b0 = self.alpha, self.beta
+    async def look(self, alpha, beta, frames, hand=(0, 0)):
+        a0, b0 = self.alpha, self.beta; m0 = self.mouse
         for i in range(1, frames + 1):
             u = ease(i / frames); self.alpha, self.beta = lerp(a0, alpha, u), lerp(b0, beta, u)
+            if m0 and hand != (0, 0):
+                # the drawn hand and the pointer (which carries the 3D tool) leave together; once the hand is
+                # out of frame the tool is dropped so it cannot hang at the bottom edge
+                self.mouse = (m0[0] + hand[0] * u, m0[1] + hand[1] * u)
+                await self.pg.mouse.move(self.mouse[0], min(self.mouse[1], VH - 2))
+                if self.mouse[1] > VH + 40: await self.js("__ar.S.tool = null")
             await self.frame()
 
     async def cap(self, key): await self.js(f"__reel.cap({json.dumps(CAP.get(key, key))})")
@@ -110,9 +116,13 @@ class Reel:
         return x + 20, y + 44
 
     async def outline(self, i0, i1, n):
+        """candy-space points along the shape; trace() projects each one on the frame it is used"""
         return await self.js(f"""(() => {{ const P = __ar.S.pts, o = [];
-          for (let k = 0; k <= {n}; k++) {{ const i = Math.round({i0} + ({i1} - {i0}) * k / {n}) % P.length; const [x, y] = __ar.screenOf(...P[i]); o.push([x + 20, y + 44]); }}
+          for (let k = 0; k <= {n}; k++) {{ const i = Math.round({i0} + ({i1} - {i0}) * k / {n}) % P.length; o.push(P[i]); }}
           return o; }})()""")
+
+    async def trace(self, c, frames=1):
+        await self.move(*(await self.scr(*c)), frames)
 
 
 async def main():
@@ -152,9 +162,9 @@ async def main():
             r.mouse = (x + 160, y + 260); r.zt = 1.3; await r.move(x, y, 16); await r.cap("needle")
             r.hk = 0.95; await r.press(True); r.ev("poke"); await r.frame(6)
             path = await r.outline(0, 70, 70)
-            await r.move(*path[0], 6)
+            await r.trace(path[0], 6)
             for i, q in enumerate(path[1:]):
-                await r.move(*q, 1)
+                await r.trace(q)
                 if i == 20: await r.cap("carve")
                 if i % 6 == 0: r.ev("scratch")
             await r.press(False); r.hk = 1.0
@@ -162,7 +172,7 @@ async def main():
             await r.snap_hold(); r.rec = False
             full = await r.outline(0, 400, 400)
             await r.press(True)
-            for q in full + full: await r.move(*q, 1)
+            for q in full + full: await r.trace(q)
             await r.press(False)
             r.rec = True; await r.dissolve(label="30초 뒤")
             # 4. a careless fast stroke: a crack, the guard raises the rifle (9.0 - 10.6 s)
@@ -170,24 +180,25 @@ async def main():
             await r.move(*a, 8); r.hk = 0.95; await r.press(True)
             for i in range(1, 5): await r.move(lerp(a[0], bq[0], i / 4), lerp(a[1], bq[1], i / 4), 1)
             r.ev("crack"); await r.cap("crack"); await r.press(False); r.hk = 1.0; await r.diag("after slash")
+            r.zo = (bq[0] - 20, bq[1] - 44); r.zt = 1.55
             await r.frame(26)
             # 5. the wet swab melts it shut (10.6 - 13.0 s)
             await r.js("__ar.pickTool('swab')"); r.ev("tick")
             # rub up and down the crack itself (texture px -> candy coords -> screen)
             pts = await r.js("(() => { const k = __ar.S.shapeCracks.at(-1); return k ? k.pts : [[330, 230]]; })()")
             pts = pts[: max(2, len(pts) * 2 // 3)]
-            along = [await r.scr(x / 256 - 1, y / 256 - 1) for x, y in pts]
-            await r.move(*along[0], 10); await r.cap("swab")
+            along = [(x / 256 - 1, y / 256 - 1) for x, y in pts]
+            r.zt = 1.35; await r.trace(along[0], 10); await r.cap("swab")
             r.hk = 0.95; await r.press(True); r.ev("melt")
             for i in range(56):
                 u = 0.5 - 0.5 * math.cos(i * 0.35); q = along[min(len(along) - 1, int(u * (len(along) - 1)))]
-                await r.move(q[0] + 2 * math.sin(i * 1.7), q[1] + 2 * math.cos(i * 1.3), 1)
+                x, y = await r.scr(*q); await r.move(x + 2 * math.sin(i * 1.7), y + 2 * math.cos(i * 1.3), 1)
             # whatever the rubbing missed is treated as mended: this run is the clean one
             await r.js("__ar.S.shapeCracks.forEach(k => k.sev = 0)")
             await r.press(False); r.hk = 1.0; await r.diag("after swab")
             # 6. hammer: tap off the outside (13.0 - 15.2 s); off camera the groove is finished and time has run down
             await r.snap_hold(); r.rec = False
-            r.zk = r.zt = 1.15
+            r.zk = r.zt = 1.15; r.zo = tuple(await r.js("__ar.screenOf(0, 0)"))
             await r.js("__ar.carveAll(0.97); __ar.WT.timeLeft = 26; __ar.WT.running = false; __ar.pickTool('hammer')")
             await r.cap(""); await r.frame(20)
             await r.js("__ar.WT.running = true"); await r.frame(4)
@@ -198,9 +209,14 @@ async def main():
                 await r.js("__ar.S.lastHit = 0"); r.hk = 0.94; await r.pg.mouse.down(); r.ev("thud"); await r.frame(3)
                 await r.pg.mouse.up(); r.hk = 1.0; await r.frame(9); await r.diag(f"hammer {th}")
             # 7. look up: he is closer (15.2 - 17.0 s)
-            r.zt = 1.0; await r.look(28, 97, 18); await r.cap("near"); r.ev("scuff"); await r.frame(20); await r.look(0, 50, 16); r.zt = 1.15
+            await r.js("__ar.guardTo(1.8)"); hand0 = r.mouse
+            # the hand (and the hammer on the pointer) drop out of frame as the phone tilts up
+            r.zt = 1.0; await r.look(32, 110, 18, hand=(0, 900)); await r.cap("near"); r.ev("scuff"); await r.frame(24)
+            # look back down with the hand still out; it returns with the hammer through the dissolve below
+            await r.look(0, 50, 16); r.zt = 1.15
             # (off camera) knock most of the rest off, clock held
             await r.cap(""); await r.frame(); await r.snap_hold(); r.rec = False
+            await r.js("__ar.S.tool = 'hammer'"); r.mouse = hand0
             await r.js("__ar.WT.running = false"); r.zk = r.zt = 1.2
             ang = 1.95
             for k in range(30):

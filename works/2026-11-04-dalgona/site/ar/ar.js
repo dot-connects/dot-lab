@@ -1347,6 +1347,7 @@ $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
 window.__ar = { THREE, scene, camera, place,
+  guardTo: d => { WT.move = null; setGuardDist(d); },   // the promo render stands him where the late game would
   // the promo render ends its run here: the last crumbs fall away and the shape comes out
   finish: () => { const F = S.F, rest = []; for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k); dropCells(rest); S.gone.fill(1); win(); },
   S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),

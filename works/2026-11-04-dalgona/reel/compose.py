@@ -19,16 +19,17 @@ async def sound():
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(channel="chrome")
-            pg = await b.new_page(); pg.on("pageerror", lambda e: print("ERR", e))
+            pg = await b.new_page(); pg.on("pageerror", lambda e: print("ERR", e)); pg.on("console", lambda m: print("CON", m.type, m.text))
             await pg.goto("http://127.0.0.1:8765/works/2026-11-04-dalgona/reel/audio.html")
-            await pg.wait_for_function("window.__wav", timeout=120000)
+            await pg.wait_for_function("window.__wav", timeout=900000, polling=1000)
             (OUT / "sound.wav").write_bytes(base64.b64decode(await pg.evaluate("window.__wav")))
             await b.close()
     finally:
         srv.terminate()
 
 asyncio.run(sound())
+if "--sound-only" in sys.argv: sys.exit(0)
 subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-framerate", "30", "-i", str(OUT / "frames" / "%04d.png"), "-i", str(OUT / "sound.wav"),
                 "-vf", "scale=1080:1920:flags=lanczos,format=yuv420p", "-c:v", "libx264", "-preset", "slow", "-crf", "18",
-                "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(OUT / "reel.mp4")], check=True)
+                "-af", "loudnorm=I=-15:TP=-1.5:LRA=11", "-c:a", "aac", "-b:a", "192k", "-shortest", "-movflags", "+faststart", str(OUT / "reel.mp4")], check=True)
 print("wrote", OUT / "reel.mp4")

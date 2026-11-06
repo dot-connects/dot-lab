@@ -29,7 +29,7 @@ css.textContent = `
 #rend span{font-family:"IBM Plex Sans KR",sans-serif;font-weight:600;font-size:23px;color:#f2ede4}
 #rend i{font-style:normal;font-family:"Do Hyeon",sans-serif;font-size:27px;color:#2a1406;background:#ffc23d;border-radius:16px;padding:12px 26px;margin-top:10px}
 #rflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
-#rchip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%);font-family:"Do Hyeon",sans-serif;font-size:24px;color:#fff;background:rgba(8,10,9,.7);border-radius:999px;padding:6px 18px;opacity:0;pointer-events:none;white-space:nowrap}
+#rchip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%);font-family:"Do Hyeon",sans-serif;font-size:30px;color:#fff;background:rgba(8,10,9,.72);border-radius:999px;padding:6px 22px;opacity:0;pointer-events:none;white-space:nowrap}
 #rhold{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none}`;
 document.head.appendChild(css);
 const hud = document.querySelector(".hud");
