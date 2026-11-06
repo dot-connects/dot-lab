@@ -40,8 +40,11 @@ const AR = {
   BREAK: 0.55,            // mean groove depth in a sector that lets the hammer snap it off cleanly
   // hammer = the index finger. A tap is a fast move of the fingertip down the screen (or the finger tipping toward
   // the candy, which shortens it on screen) that then stops: the stop is the hit.
-  SWING_GO: 2.0, SWING: 3.0,   // fingertip speed, hand sizes per second: a move starts / counts as a tap
-  SWING_TRAVEL: 0.18,          // and it must travel this far (hand sizes)
+  // With the rear camera looking down, a tap mostly moves the fingertip AWAY from the phone: the hand shrinks on
+  // screen while the tip barely moves (phone test 11-06: every tap read as "허공", the old screen-down detector fired
+  // on re-aiming moves instead). A tap = the hand size drops TAP_DROP below its top within TAP_WIN ms, at least
+  // TAP_RATE per second (a slow needle push is < 0.2/s; probe jitter sd ~1 %). A palm roll (aspect change) is not a tap.
+  TAP_DROP: 0.08, TAP_RATE: 0.6, TAP_WIN: 260, TAP_REARM: 0.5, TAP_ROLL: 0.12,
   TIP: { needle: 0.45, swab: 0.5, hammer: 0.12 },   // hammer: ahead of the index fingertip   // tool contact point ahead of the pinch, in hand sizes
 };
 
@@ -381,7 +384,7 @@ const PALM = [0, 1, 2, 5, 9, 13, 17];
 function readHand(lm, now) {
   if (!lm) {
     if (H.present && !H.lostAt) H.lostAt = now;
-    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; fx.reset(); fy.reset(); }
+    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; H.ys = []; H.tapLow = 0; fx.reset(); fy.reset(); }
     drawMask(null);
     return false;
   }
@@ -414,37 +417,47 @@ function readHand(lm, now) {
   H.tip = [fx.f(raw[0], now), fy.f(raw[1], now)];
   H.idx = P[8];
   // the tap is read off the raw fingertip, not the smoothed tip: the filter shaves the very speed we look for
-  H.ys.push([now, P[8][1], dist(P[5], P[8]) / hs, raw[0], raw[1]]); if (H.ys.length > 2) H.ys.shift();
+  // kept by time, not count, so a tap that blurs the hand away for a frame still has both ends
+  H.ys.push({ t: now, x: raw[0], y: raw[1], hs, l: dist(P[5], P[8]) / hs, asp: dist(P[5], P[17]) / (dist(P[0], P[9]) || 1) });
+  while (now - H.ys[0].t > 500) H.ys.shift();
   if (S.mode === "camera" && S.tool === "hammer") H.tapE = tap();
   drawMask(P);
   return true;
 }
+// A tap: see TAP_* above. Its strength is how far the hand dropped. After one, the hand must come back up half way
+// before the next can fire.
+function tap() {
+  const h = H.ys, b = h[h.length - 1];
+  if (H.tapLow) { if (b.hs > H.tapLow * (1 + AR.TAP_DROP * AR.TAP_REARM)) H.tapLow = 0; return 0; }
+  let top = b; for (const a of h) if (b.t - a.t <= AR.TAP_WIN && a.hs > top.hs) top = a;
+  const d = 1 - b.hs / top.hs + Math.max(0, top.l - b.l) * 0.5, dt = (b.t - top.t) / 1000;
+  if (PROBE) PR.dmax = Math.max(PR.dmax || 0, d);
+  if (d < AR.TAP_DROP || d / Math.max(dt, 0.05) < AR.TAP_RATE || Math.abs(b.asp - top.asp) > AR.TAP_ROLL) return 0;
+  H.tapLow = b.hs; H.tapPath = h.filter(a => a.t >= top.t).map(a => [a.x, a.y]);
+  if (PROBE) PR.tap = `망치 ${(d * 100).toFixed(0)}% / ${(dt * 1000).toFixed(0)}ms`;
+  return Math.min(1.8, Math.max(0.8, d / AR.TAP_DROP * 0.8));
+}
+// Where the tap struck: walk the swing path back from where it ended and take the first point over the candy. A
+// tip that passed over the candy on its way counts (operator 11-06: "통과해도 닿은 부분이 쳐지는 걸로"). If that
+// point is in the shape but a point outside it lies within 0.15 R on the same path, the outside one wins.
+function strikePoint(path) {
+  const keep = H.tip; let first = null, out = null;
+  if (path.length === 1) path = [path[0], path[0]];
+  for (let i = path.length - 1; i > 0 && !out; i--) {
+    const [x0, y0] = path[i], [x1, y1] = path[i - 1], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4) || 1;
+    for (let j = 0; j <= n; j++) {
+      H.tip = [x0 + (x1 - x0) * j / n, y0 + (y1 - y0) * j / n]; const c = contact();
+      if (!c || !c.onCandy) continue; first ||= c;
+      if (!inShape(c.sx, c.sy) || outlineDist(c.sx, c.sy) < 0.03) { out = c; break; }
+    }
+  }
+  if (!first) { H.tip = path[path.length - 1]; first = contact(); }
+  H.tip = keep;
+  return out && Math.hypot(out.sx - first.sx, out.sy - first.sy) < 0.15 ? out : first;
+}
 // Two channels: red = surely hand (the bones drawn finger-thick), green = maybe hand (the same, much wider). The
 // overlay shader keeps a "maybe" pixel only if its colour is close to the skin colour read off the palm, so the cut
 // follows the real edge of the fingers instead of a cartoon outline.
-// A tap: the fingertip moves fast down the screen (or the finger tips toward the candy and shortens on screen), then
-// stops. The stop is the hit; its peak speed is how hard. A swing that blurs the hand away for a frame or two still
-// counts when the hand comes back lower (up to 0.4 s apart).
-function tap() {
-  const h = H.ys; if (h.length < 2) return 0;
-  const [t0, y0, l0] = h[0], [t1, y1, l1] = h[1], dt = (t1 - t0) / 1000;
-  if (dt <= 0 || dt > 0.4) { H.sw = null; return 0; }
-  const v = Math.max((y1 - y0) / dt / H.hs, (l0 - l1) / dt * 1.5);
-  if (v > AR.SWING_GO) {
-    // the aim is where the finger hovered before the swing: the tap carries it on down the screen past the target
-    // (phone test 11-06: "정확하게 치고 있는데" kept missing)
-    if (!H.sw) H.sw = { peak: 0, y: y0, l: l0, aim: [h[0][3], h[0][4]] };
-    H.sw.peak = Math.max(H.sw.peak, v);
-    return 0;
-  }
-  if (!H.sw) return 0;
-  const sw = H.sw; H.sw = null;
-  const travel = Math.max((y1 - sw.y) / H.hs, (sw.l - l1) * 1.5);
-  const ok = sw.peak > AR.SWING && travel > AR.SWING_TRAVEL;
-  if (PROBE) PR.tap = `망치 속도 ${sw.peak.toFixed(1)}/${AR.SWING} 거리 ${travel.toFixed(2)}/${AR.SWING_TRAVEL} ${ok ? "맞음" : "약함"}`;
-  if (ok) H.tapAim = sw.aim;
-  return ok ? Math.min(1.8, Math.max(0.8, sw.peak / AR.SWING)) : 0;
-}
 function drawMask(P) {
   const w = maskCv.width, h = maskCv.height, s = w / W;
   mctx.fillStyle = "#000"; mctx.fillRect(0, 0, w, h);
@@ -521,7 +534,7 @@ function probe(hs, now) {
   g.fillStyle = "#fff"; g.font = "bold 24px sans-serif";
   g.fillText(`${PR.ref ? "집음" : "안 집음"}  ${m >= 0 ? "+" : ""}${m.toFixed(1)}%`, 10, 30);
   g.fillText(`떨림 ${sd.toFixed(1)}%  손 ${hs.toFixed(0)}px`, 10, H2 - 12);
-  if (PR.tap) { g.font = "bold 18px sans-serif"; g.fillText(PR.tap, 10, 60); g.fillText(PR.hit || "", 10, 84); }
+  if (S.tool === "hammer") { g.font = "bold 18px sans-serif"; g.fillText(`손 줄어듦 최대 ${((PR.dmax || 0) * 100).toFixed(0)}% (탭 ${AR.TAP_DROP * 100}%)`, 10, 60); g.fillText(`${PR.tap || ""} ${PR.hit || ""}`, 10, 84); }
 }
 
 // ---------- touch fallback ----------
@@ -734,10 +747,10 @@ function snapToCandy(c) {
 function hit(c, E = 1) {
   const now = performance.now();
   if (S.ended || now - S.lastHit < 450) return;
-  S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
   if (c && !c.onCandy) c = snapToCandy(c);
   if (PROBE) PR.hit = c && c.sx !== undefined ? `친 곳 반지름의 ${Math.hypot(c.sx, c.sy).toFixed(2)}배 ${c.onCandy ? "달고나" : "허공"}` : "친 곳 화면 밖";
   if (!c || !c.onCandy) { toast("허공을 쳤어요", "#fff", 700); return; }
+  S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
     fail("모양을 쳤어요"); return;
@@ -982,7 +995,7 @@ function hud(c) {
   const cur = $("cursor");
   if (cam && H.present && H.idx && !(c && c.pressed)) { cur.hidden = false; cur.style.left = H.idx[0] + "px"; cur.style.top = H.idx[1] + "px"; cur.style.opacity = S.tool ? 0.5 : 1; }
   else cur.hidden = true;
-  $("stat").textContent = `${Math.round(fps)} fps · 손 ${Math.round(handFps)} fps ${handMs.toFixed(0)} ms · 자이로 ${S.gyro ? "켜짐" : "없음"}${H.pd != null ? ` · 집기 ${H.pd.toFixed(2)}/${AR.PINCH}` : ""}`;
+  if (PROBE || Q.has("debug")) $("stat").textContent = `${Math.round(fps)} fps · 손 ${Math.round(handFps)} fps ${handMs.toFixed(0)} ms · 자이로 ${S.gyro ? "켜짐" : "없음"}${H.pd != null ? ` · 집기 ${H.pd.toFixed(2)}/${AR.PINCH}` : ""}`;
 }
 
 // The tracker sees a copy at most 640 px wide (its models work at ~200 px anyway, so this only saves time), lifted
@@ -1002,7 +1015,7 @@ function detFrame() {
 // creeps closer only while you are not looking at him. Fail or run out of time: silence, a prompt to look up, a beat
 // of stillness when you do, then the rack, the aim and the shot. (Horror and AR reviews 11-06.)
 const EYE = +(Q.get("h") || 1.2), GUARD_D = 2.4, TIME_LIMIT = 120;
-const GS = +(Q.get("gs") || 1.7);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
+const GS = +(Q.get("gs") || 1.36);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
 // a bigger guard creeps less, so at the end his face still fits on screen when you look up
 const near = d => GUARD_D - (GUARD_D - d) / GS;
 const STEPS = [[90, near(2.1)], [60, near(1.8)], [30, near(1.5)]], DOOM_D = near(1.4);   // [seconds left, distance he creeps to]
@@ -1055,7 +1068,7 @@ function startClock() { if (!WT.running && !S.ended && !WT.doom) { WT.running = 
 const hudEls = () => ["tray", "stat", "timer", "hint", "sub"].map($).concat([document.querySelector(".tools")]);
 function resetWatcher() {
   Object.assign(WT, { timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null, alarm: 0, strikes: 0, move: null, step: 0, frozen: false });
-  $("timer").textContent = "2:00"; $("timer").classList.remove("low"); $("timer").hidden = false;
+  $("timer").innerHTML = "2:00<small>도구를 고르면 시작</small>"; $("timer").classList.remove("low"); $("timer").hidden = false;
   $("doom").hidden = true; $("dead").hidden = true; $("again").hidden = true;
   const f = $("flash"); f.style.transition = "none"; f.style.opacity = 0; f.style.background = "";
   hudEls().forEach(e => { if (e) e.style.visibility = ""; });
@@ -1222,12 +1235,7 @@ function loop(now) {
     const wdt = Math.min(0.1, (now - (lastWork || now - 16)) / 1000); lastWork = now;
     work(c, wdt, now);
     // a harder tap carries the cracks further, and through a groove more easily
-    if (H.tapE) {
-      const E = H.tapE, tip = H.tip; H.tapE = 0;
-      if (H.tapAim) { H.tip = H.tapAim; H.tapAim = null; }
-      const at = contact(); H.tip = tip;
-      hit(at, E);
-    }
+    if (H.tapE) { const E = H.tapE; H.tapE = 0; hit(strikePoint(H.tapPath), E); }
     updateDwell(now, wdt);
   }
   // the candy idles with a slow bob, wobbles when hit, pops in when (re)placed
@@ -1313,7 +1321,7 @@ $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
-window.__ar = { S, H, AR, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+window.__ar = { S, H, AR, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>허공 달고나 AR — 시험판</title>
+<title>허공 달고나 AR</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
@@ -34,7 +34,9 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 #ring{position:absolute;width:52px;height:52px;margin:-26px 0 0 -26px;transform:rotate(-90deg)}
 #toast{position:absolute;left:16px;right:16px;bottom:58%;text-align:center;text-wrap:balance;line-height:1.2;font-family:"Do Hyeon",sans-serif;font-size:30px;color:#fff;opacity:0;transition:opacity .25s,transform .25s;transform:translateY(8px)}
 #toast.show{opacity:1;transform:none}
-#timer{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom) + 16px);text-align:center;font-family:"Do Hyeon",sans-serif;font-size:34px;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.04em;text-shadow:0 2px 10px rgba(0,0,0,.6)}
+#timer{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom) + 14px);min-width:132px;padding:4px 20px 6px;border-radius:16px;background:rgba(8,10,9,.62);border:1.5px solid rgba(255,255,255,.22);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);text-align:center;font-family:"Do Hyeon",sans-serif;font-size:46px;line-height:1.1;color:#fff;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+#timer small{display:block;font-size:13px;letter-spacing:0;color:#e3eee9;margin-top:-2px}
+#timer.low{border-color:var(--bad)}
 #timer.low{color:var(--bad)}
 #doom{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;background:radial-gradient(ellipse at 50% 55%,rgba(0,0,0,0) 35%,rgba(0,0,0,.72));pointer-events:none}
 #doom b{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:21px;color:rgba(255,255,255,.62);letter-spacing:.04em;animation:doomIn 1.2s ease-out both}
@@ -84,13 +86,14 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
   </div>
 
   <section class="ov" id="start">
-    <div class="tag">시험판 · 뒤 카메라</div>
+    <div class="tag">뒤 카메라 · AR</div>
     <h1>허공 <em>달고나</em></h1>
     <p>폰을 들고 앞을 비추면 달고나가 떠 있어요. 카메라 앞에 손을 넣고 도구를 손가락으로 골라 해 보세요.</p>
     <div class="steps">
       <b>고르기</b><span>위 도구를 손가락으로 가리키고 잠깐 기다리기</span>
-      <b>쓰기</b><span>엄지·검지를 모으면 도구가 달고나에 닿아요</span>
-      <b>망치</b><span>쥐고 손을 톡 아래로 내리면 바깥을 쳐요</span>
+      <b>바늘</b><span>엄지·검지를 모아 집고, 손을 폰에서 살짝 밀면 내려가 닿아요</span>
+      <b>망치</b><span>검지 끝이 망치예요. 모양 바깥을 톡 쳐요</span>
+      <b>시간</b><span>도구를 처음 고르면 2분이 흐르기 시작해요</span>
     </div>
     <button class="go" id="go">카메라 켜고 시작</button>
     <button class="sub" id="touch">카메라 없이 (화면 터치)</button>
