@@ -157,6 +157,7 @@ function orientBone(bone, from, to, perp) { // bone's -Y runs from->to, +Z leans
 function solveTwoBone(upper, lower, l1, l2, target, pole) {
   upper.updateWorldMatrix(true, false);
   _A.setFromMatrixPosition(upper.matrixWorld);
+  const s = _d.setFromMatrixScale(upper.matrixWorld).x; l1 *= s; l2 *= s;   // lengths are local; the root may be scaled
   _d.subVectors(target, _A);
   const len = THREE.MathUtils.clamp(_d.length(), 0.05, l1 + l2 - 1e-4);
   _d.normalize();

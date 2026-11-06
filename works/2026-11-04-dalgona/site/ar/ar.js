@@ -866,11 +866,14 @@ function detFrame() {
 // creeps closer only while you are not looking at him. Fail or run out of time: silence, a prompt to look up, a beat
 // of stillness when you do, then the rack, the aim and the shot. (Horror and AR reviews 11-06.)
 const EYE = +(Q.get("h") || 1.2), GUARD_D = 2.4, TIME_LIMIT = 120;
-const STEPS = [[90, 2.1], [60, 1.8], [30, 1.5]], DOOM_D = 1.4;   // [seconds left, distance he creeps to]
+const GS = +(Q.get("gs") || 2);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
+// a bigger guard creeps less, so at the end his face still fits on screen when you look up
+const near = d => GUARD_D - (GUARD_D - d) / GS;
+const STEPS = [[90, near(2.1)], [60, near(1.8)], [30, near(1.5)]], DOOM_D = near(1.4);   // [seconds left, distance he creeps to]
 const STRIKE = [[0.35, 0], [0.55, 0.15], [0.75, 0.3]];          // [rifle lift on a careless stroke, rest after it]
 renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFShadowMap;
 key.castShadow = true; key.shadow.mapSize.set(512, 512); key.shadow.radius = 4; key.shadow.bias = -0.0003; key.shadow.normalBias = 0.015;
-Object.assign(key.shadow.camera, { left: -1, right: 1, top: 2, bottom: -0.3, near: 1, far: 8 });
+Object.assign(key.shadow.camera, { left: -GS, right: GS, top: 2 * GS, bottom: -0.3 * GS, near: 1, far: 8 * GS });
 key.shadow.camera.updateProjectionMatrix();   // without this the default 10 m box stays live (blurry, detached shadow)
 // the real floor only takes the shadow: a transparent plane that draws nothing but the dark
 const floorY = () => camera.position.y - EYE;
@@ -886,11 +889,11 @@ for (const [w, h, x, a] of [[0.7, 0.55, 0, 0.25], [0.18, 0.32, -0.12, 0.55], [0.
 // muzzle flash: an additive sprite for a few frames
 const flashTex = (() => { const c = document.createElement("canvas"); c.width = c.height = 64; const g = c.getContext("2d"), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, "rgba(255,250,230,1)"); gr.addColorStop(0.3, "rgba(255,190,90,.9)"); gr.addColorStop(1, "rgba(255,120,30,0)"); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
 const muzzle = new THREE.Sprite(new THREE.SpriteMaterial({ map: flashTex, blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
-muzzle.scale.setScalar(0.25); muzzle.visible = false; scene.add(muzzle);
+muzzle.scale.setScalar(0.25 * GS); muzzle.visible = false; scene.add(muzzle);
 
 const WT = { guard: null, sfx: null, placed: false, timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null,
   alarm: 0, strikes: 0, dir: new THREE.Vector3(0, 0, -1), dist: GUARD_D, move: null, step: 0, frozen: false };
-import("./guard.js").then(m => { WT.guard = m.makeGuard(); scene.add(WT.guard.root); WT.guard.root.add(soles); if (S.mode) placeGuard(); }, e => console.warn("guard", e));
+import("./guard.js").then(m => { WT.guard = m.makeGuard(); WT.guard.root.scale.setScalar(GS); scene.add(WT.guard.root); WT.guard.root.add(soles); if (S.mode) placeGuard(); }, e => console.warn("guard", e));
 function loadSfx() { if (ac && !WT.sfx) import("./sfx.js").then(m => { WT.sfx = m.makeSfx(ac); sfx("bed", true); }, e => console.warn("sfx", e)); }
 const sfx = (k, ...a) => { try { WT.sfx && WT.sfx[k] && WT.sfx[k](...a); } catch (e) { console.warn(e); } };
 const gcall = (k, ...a) => { const G = WT.guard; if (G && G[k]) G[k](...a); };
@@ -942,7 +945,7 @@ function doom(why) {
 const headV = new THREE.Vector3();
 function guardInView() {
   if (!WT.guard) return true;
-  headV.copy(WT.guard.root.position); headV.y += 1.6;
+  headV.copy(WT.guard.root.position); headV.y += 1.6 * GS;
   const p = headV.project(camera);
   return p.z < 1 && Math.abs(p.x) < 0.75 && p.y < 0.9 && p.y > -0.6;
 }
@@ -959,7 +962,7 @@ function updateWatcher(dt, now) {
     away.copy(WT.dir); away.y = 0;
     if (S.lightStrong) { lightD.copy(keyDir); if (lightD.y < 0.65) { lightD.y = 0.65; lightD.normalize(); } }
     else lightD.set(0, 1, 0).addScaledVector(away, 0.5).normalize();
-    key.target.position.copy(G.root.position); key.position.copy(G.root.position).addScaledVector(lightD, 4);
+    key.target.position.copy(G.root.position); key.position.copy(G.root.position).addScaledVector(lightD, 4 * GS);
     catcher.material.opacity += ((S.lightStrong ? 0.5 : 0.32) - catcher.material.opacity) * 0.05;
     // a creep toward you, only ever while you are not looking at him
     if (WT.move) {
@@ -975,7 +978,7 @@ function updateWatcher(dt, now) {
     G.update(dt, now / 1000);
     // his breath comes from his head
     if (WT.sfx && WT.sfx.setVoicePos) {
-      headV.copy(G.root.position); headV.y += 1.6; sfx("setVoicePos", headV.x, headV.y, headV.z);
+      headV.copy(G.root.position); headV.y += 1.6 * GS; sfx("setVoicePos", headV.x, headV.y, headV.z);
       const fw = v3b.set(0, 0, -1).applyQuaternion(camera.quaternion), upv = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
       sfx("setListener", camera.position, fw, upv);
     }
