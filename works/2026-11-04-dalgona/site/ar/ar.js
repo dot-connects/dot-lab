@@ -249,7 +249,7 @@ function reset(shape = S.shape) {
   S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.wob = 0; S.spin = 0;
   S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length); S.gone = new Uint8Array(S.pts.length);
   for (const p of S.pieces) scene.remove(p.g);
-  S.pieces = [];
+  S.pieces = []; S.shapeCracks = [];
   rims.forEach(m => { m.visible = true; });
   S.F = makeField(TEX, inShape, outlineDist);
   S.outer0 = 0; for (let k = 0; k < S.F.alive.length; k++) if (S.F.alive[k] && !S.F.inside[k]) S.outer0++;
@@ -543,6 +543,7 @@ function work(c, dt, now) {
     S.melt[k] += dt;
     for (let i = 0; i < S.pts.length; i++) { const [x, y] = S.pts[i]; if (Math.hypot(x - c.sx, y - c.sy) < 0.1) S.soft[i] = Math.min(1, S.soft[i] + dt / 1.2); }
     S.meltNow = S.melt[k] / AR.MELT_HOLE;
+    heal(c, dt);
     if (S.melt[k] > AR.MELT_HOLE) { S.melt[k] = -1e9; hole(c); }
     sound(Math.min(0.18, 0.05 + S.v / 200), 700);
   }
@@ -599,7 +600,7 @@ function chip(c) {
   snap(0.5); vibrate(25); S.wob = 0.4;
   strike();   // the guard brings the rifle up
   const inside = pts.some(p => { const [sx, sy] = toS(p); return inShape(sx, sy) && outlineDist(sx, sy) > 0.035; });
-  if (inside) fail("바늘이 빨라서 모양에 금이 갔어요");
+  if (inside) { shapeCrack(pts, 0.5); toast("모양에 금이 갔어요 · 면봉으로 녹이면 붙어요", "var(--bad)", 2200); }
   else toast("금! 너무 빨라요", "var(--bad)", 900);
 }
 function hole(c) {
@@ -608,6 +609,30 @@ function hole(c) {
   vibrate(20);
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) fail("모양이 녹아서 구멍이 났어요");
   else toast("녹아서 구멍이 났어요", "var(--bad)", 1200);
+}
+
+// A crack in the shape is not the end: rub it with the wet swab and the sugar melts it shut. Left open, the hammer
+// widens it (hit) and lifting the shape out snaps it (win check). sev: 0 mended .. 1 broken.
+function shapeCrack(pts, sev) { S.shapeCracks.push({ pts, sev }); }
+function heal(c, dt) {
+  const r = 5 * PXMM;
+  for (const k of S.shapeCracks) {
+    if (k.sev <= 0) continue;
+    let near = false;
+    for (let i = 1; i < k.pts.length; i++) {
+      const [x0, y0] = k.pts[i - 1], [x1, y1] = k.pts[i];
+      if (Math.hypot(x1 - c.px, y1 - c.py) > r) continue;
+      near = true;   // melted sugar flows into the line: it fades into the candy and its groove fills
+      stroke(x0, y0, x1, y1, "rgba(214,150,72,.16)", 3.4, "color");
+      stroke(x0, y0, x1, y1, "rgba(140,140,140,.16)", 3.0, "height");
+    }
+    if (!near) continue;
+    k.sev = Math.max(0, k.sev - dt / 1.6);
+    if (k.sev === 0) {
+      for (const [x, y] of k.pts) { const m = Math.floor(y / S.F.cell) * S.F.N + Math.floor(x / S.F.cell); if (m >= 0 && m < S.F.crack.length && S.F.inside[m]) S.F.crack[m] = 0; }
+      toast("금이 붙었어요", "var(--gold)", 1200); vibrate(10);
+    }
+  }
 }
 
 // ---------- hammer ----------
@@ -633,6 +658,13 @@ function hit(c, E = 1) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
     fail("모양을 쳤어요"); return;
   }
+  // an unmended crack in the shape opens a little more with every blow; this is where you find out
+  for (const k of S.shapeCracks) if (k.sev > 0) k.sev += 0.25 * E;
+  const open = S.shapeCracks.find(k => k.sev >= 1);
+  if (open) {
+    const [x, y] = open.pts.at(-1); drawCrack(inwardCrack(x, y), 2.2);
+    fail("붙이지 않은 금이 망치질에 벌어졌어요"); return;
+  }
   const F = S.F;
   updateAlive();
   setGroove(F, S.pts.map(p => toPx(...p)), strength);
@@ -645,9 +677,9 @@ function hit(c, E = 1) {
   markCrack(F, a.pts); markCrack(F, b.pts);
   const into = [a, b].find(w => w.end === "in");
   if (into) {
-    const [x, y] = into.pts.at(-1); drawCrack(inwardCrack(x, y), 2);
-    fail(into.scratched ? "긁은 자국을 따라 금이 모양 안으로 갔어요" : "얕게 판 데서 금이 모양 안으로 들어갔어요");
-    return;
+    const [x, y] = into.pts.at(-1), inw = inwardCrack(x, y);
+    drawCrack(inw, 2); markCrack(F, inw); shapeCrack(inw, 0.6);
+    toast(into.scratched ? "긁은 자국을 따라 금이 모양으로 들어갔어요 · 면봉으로 녹여 붙여요" : "금이 모양 안으로 들어갔어요 · 면봉으로 녹여 붙여요", "var(--bad)", 2400);
   }
   const pieces = loosePieces(F);
   S.lastBreak = { a: a.end, b: b.end, pieces: pieces.map(p => p.length) };
@@ -658,8 +690,12 @@ function hit(c, E = 1) {
   if (left < S.outer0 * 0.04) {
     const rest = [];
     for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k);
-    dropCells(rest); S.gone.fill(1); win(); return;
+    dropCells(rest); S.gone.fill(1);
+    // lifting it out bends it: a crack left unmended snaps here
+    if (S.shapeCracks.some(k => k.sev > 0.15)) { fail("떼어 내는 순간 금을 따라 부러졌어요"); return; }
+    win(); return;
   }
+  if (into) return;
   if (pieces.length) { snap(1); vibrate([20, 30, 20]); toast("탁! 떨어졌어요", "var(--gold)", 900); }
   else { snap(0.6); toast("쩍, 금만 갔어요", "#fff", 900); }
 }
@@ -831,7 +867,7 @@ function hud(c) {
     else { hint = "좋아요, 이 속도"; col = "var(--good)"; }
     const mean = S.depth.reduce((a, b) => a + b, 0) / (S.depth.length || 1);
     sub = `선 판 깊이 ${Math.round(mean * 100)}%`;
-  } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고, 금이 덜 가요"; }
+  } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고 금이 덜 가요 · 모양에 간 금은 문지르면 붙어요"; }
   else { hint = cam ? "검지가 망치예요 · 바깥을 톡 쳐요" : "바깥을 톡 눌러 쳐요"; sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요"; }
   if (S.ended) { hint = ""; sub = ""; }
   $("hint").textContent = hint; $("hint").style.color = col; $("sub").textContent = sub;
@@ -1172,7 +1208,7 @@ $("shTri").onclick = () => { reset("tri"); place(); };
 $("shStar").onclick = () => { reset("star"); place(); };
 
 // test hook (headless checks drive the touch mode through this)
-window.__ar = { S, H, AR, toolMesh, fg: fgScene, pickTool, reset, hit, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+window.__ar = { S, H, AR, toolMesh, fg: fgScene, pickTool, reset, hit, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
