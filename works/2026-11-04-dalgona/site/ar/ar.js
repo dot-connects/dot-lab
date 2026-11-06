@@ -150,15 +150,24 @@ shadow.position.z = 0.0004; shadow.visible = false; candy.add(shadow);
 // ---------- tools (built with the contact point at the origin, the body along +Y) ----------
 const metal = new THREE.MeshStandardMaterial({ color: 0xe6eaed, metalness: 0.9, roughness: 0.25 });
 function makeTools() {
-  // Thicker than a real needle (a 0.8 mm one is ~4 px on the phone, lost under the fingers), with a dark rim so it
-  // reads on any background. Built 1 unit long so placeTool can stretch it from the fingers to the point.
-  const needle = new THREE.Group(), rim = new THREE.MeshBasicMaterial({ color: 0x14100c, side: THREE.BackSide });
-  const NR = 0.0019;
-  for (const [mat, k] of [[metal, 1], [rim, 1.45]]) {
-    const body = new THREE.Mesh(new THREE.CylinderGeometry(NR * k, NR * k, 0.82, 12), mat); body.position.y = 0.59;
-    const point = new THREE.Mesh(new THREE.CylinderGeometry(NR * k, 0.00012 * k, 0.18, 12), mat); point.position.y = 0.09;
-    needle.add(body, point);
+  // A sharps sewing needle (size 6-7: 37 mm x 0.69 mm, JJ Needles size chart): a long round shaft, a long gradual
+  // taper to the point, a slightly swollen head with a round-ended slot eye. The shaft is drawn 1.3 mm so it is not
+  // lost on the phone (a real one is ~2 px at 30 cm); a polished highlight and a thin dark edge carry the rest.
+  // The shaft is built 1 unit long so placeTool can stretch it from the fingers to the point; the eye is in metres
+  // and placeTool undoes the stretch on it.
+  const needle = new THREE.Group(), rim = new THREE.MeshBasicMaterial({ color: 0x16120e, side: THREE.BackSide });
+  const steel = new THREE.MeshStandardMaterial({ color: 0xdfe4e8, metalness: 1, roughness: 0.14 });
+  const NR = 0.00065;
+  const prof = [[0, 0], [0.04, 0.004], [0.16, 0.02], [0.4, 0.06], [0.7, 0.12], [0.92, 0.18], [1, 0.24], [1, 0.95], [1.12, 0.975], [1.12, 1]].map(([r, y]) => new THREE.Vector2(r * NR, y));
+  for (const [mat, k] of [[steel, 1], [rim, 1.55]]) {
+    const g = new THREE.LatheGeometry(prof.map(v => new THREE.Vector2(v.x * k, v.y)), 14);
+    needle.add(new THREE.Mesh(g, mat));
   }
+  const eye = new THREE.Group();
+  const knob = new THREE.Mesh(new THREE.SphereGeometry(NR * 1.12, 12, 8), steel); knob.scale.set(1, 1.3, 0.8);
+  const slot = new THREE.Mesh(new THREE.CapsuleGeometry(NR * 0.32, NR * 3.2, 4, 8), new THREE.MeshBasicMaterial({ color: 0x0c0a08 }));
+  slot.scale.z = 3; slot.position.y = -NR * 2.6;
+  eye.add(knob, slot); eye.position.y = 1; needle.add(eye); needle.userData.eye = eye;
   const swab = new THREE.Group();
   const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0013, 0.0013, 0.075, 10), new THREE.MeshStandardMaterial({ color: 0xf6f3ee, roughness: 0.7 }));
   stick.position.y = 0.0455;
@@ -819,7 +828,7 @@ function placeTool(c) {
   m.position.copy(P);
   const len = B.distanceTo(P);
   m.quaternion.setFromUnitVectors(yAxis, B.sub(P).normalize());
-  if (S.tool === "needle") m.scale.set(1, len, 1);
+  if (S.tool === "needle") { m.scale.set(1, len, 1); m.userData.eye.scale.set(1, 1 / len, 1); }
   m.visible = true;
   // the point's shadow is where it will land: off to one side and soft while it hovers, under the point when it touches
   if (c.onCandy && pinchTool) {
@@ -945,7 +954,7 @@ function detFrame() {
 // creeps closer only while you are not looking at him. Fail or run out of time: silence, a prompt to look up, a beat
 // of stillness when you do, then the rack, the aim and the shot. (Horror and AR reviews 11-06.)
 const EYE = +(Q.get("h") || 1.2), GUARD_D = 2.4, TIME_LIMIT = 120;
-const GS = +(Q.get("gs") || 2);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
+const GS = +(Q.get("gs") || 1.7);   // guard scale: twice life size reads as menacing on a phone (operator 11-06)
 // a bigger guard creeps less, so at the end his face still fits on screen when you look up
 const near = d => GUARD_D - (GUARD_D - d) / GS;
 const STEPS = [[90, near(2.1)], [60, near(1.8)], [30, near(1.5)]], DOOM_D = near(1.4);   // [seconds left, distance he creeps to]
