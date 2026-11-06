@@ -150,11 +150,15 @@ shadow.position.z = 0.0004; shadow.visible = false; candy.add(shadow);
 // ---------- tools (built with the contact point at the origin, the body along +Y) ----------
 const metal = new THREE.MeshStandardMaterial({ color: 0xe6eaed, metalness: 0.9, roughness: 0.25 });
 function makeTools() {
-  const needle = new THREE.Group();
-  const body = new THREE.Mesh(new THREE.CylinderGeometry(0.0008, 0.0008, 0.05, 12), metal); body.position.y = 0.031;
-  const point = new THREE.Mesh(new THREE.CylinderGeometry(0.0008, 0.00004, 0.006, 12), metal); point.position.y = 0.003;
-  const eye = new THREE.Mesh(new THREE.TorusGeometry(0.0009, 0.00028, 6, 14), metal); eye.position.y = 0.0565;
-  needle.add(body, point, eye);
+  // Thicker than a real needle (a 0.8 mm one is ~4 px on the phone, lost under the fingers), with a dark rim so it
+  // reads on any background. Built 1 unit long so placeTool can stretch it from the fingers to the point.
+  const needle = new THREE.Group(), rim = new THREE.MeshBasicMaterial({ color: 0x14100c, side: THREE.BackSide });
+  const NR = 0.0019;
+  for (const [mat, k] of [[metal, 1], [rim, 1.45]]) {
+    const body = new THREE.Mesh(new THREE.CylinderGeometry(NR * k, NR * k, 0.82, 12), mat); body.position.y = 0.59;
+    const point = new THREE.Mesh(new THREE.CylinderGeometry(NR * k, 0.00012 * k, 0.18, 12), mat); point.position.y = 0.09;
+    needle.add(body, point);
+  }
   const swab = new THREE.Group();
   const stick = new THREE.Mesh(new THREE.CylinderGeometry(0.0013, 0.0013, 0.075, 10), new THREE.MeshStandardMaterial({ color: 0xf6f3ee, roughness: 0.7 }));
   stick.position.y = 0.0455;
@@ -772,17 +776,25 @@ function placeTool(c) {
   const m = toolMesh[S.tool], P = c.world.clone();
   const toCam = v3.copy(camera.position).sub(P).normalize();
   P.addScaledVector(toCam, lift);
-  // the tool leans back toward the camera along the finger, the way a pen does
-  const back = [H.tip[0] - H.dir[0] * H.hs * 0.9, H.tip[1] - H.dir[1] * H.hs * 0.9];
-  const rb = rayAt(back[0], back[1]), dB = P.distanceTo(camera.position) * 0.8;
+  // Needle and swab come out of the pinch: the top end sits just behind where thumb and index meet, so on screen
+  // the tool runs from your fingers to its point (phone test 11-06: leaning toward the camera it foreshortened to a
+  // stub under the fingers and you could not tell where the point was). It lies fairly flat, rising RISE toward the
+  // camera at the fingers. The hammer keeps its pen-like lean.
+  const pinchTool = S.tool !== "hammer";
+  const back = pinchTool && H.grip ? [H.grip[0] - H.dir[0] * H.hs * 0.12, H.grip[1] - H.dir[1] * H.hs * 0.12]
+    : [H.tip[0] - H.dir[0] * H.hs * 0.9, H.tip[1] - H.dir[1] * H.hs * 0.9];
+  const rb = rayAt(back[0], back[1]), dB = pinchTool ? P.distanceTo(camera.position) - 0.022 : P.distanceTo(camera.position) * 0.8;
   const B = v3b.copy(rb.origin).addScaledVector(rb.direction, dB);
   m.position.copy(P);
+  const len = B.distanceTo(P);
   m.quaternion.setFromUnitVectors(yAxis, B.sub(P).normalize());
+  if (S.tool === "needle") m.scale.set(1, len, 1);
   m.visible = true;
-  if (c.onCandy && S.tool !== "hammer") {
-    const l = candy.worldToLocal(c.world.clone());
-    shadow.position.set(l.x + 0.0012, l.y - 0.0012, 0.0004);
-    const k = lift ? 1.8 : 0.8; shadow.scale.set(k, k, 1); shadow.material.opacity = lift ? 0.35 : 0.8; shadow.visible = true;
+  // the point's shadow is where it will land: off to one side and soft while it hovers, under the point when it touches
+  if (c.onCandy && pinchTool) {
+    const l = candy.worldToLocal(c.world.clone()), off = 0.0008 + lift * 0.5;
+    shadow.position.set(l.x + off * 0.5, l.y - off, 0.0004);
+    const k = 0.45 + lift * 90; shadow.scale.set(k, k, 1); shadow.material.opacity = Math.max(0.3, 0.95 - lift * 50); shadow.visible = true;
   }
 }
 
