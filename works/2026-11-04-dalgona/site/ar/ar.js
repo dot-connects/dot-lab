@@ -377,6 +377,7 @@ function readHand(lm, now) {
   H.P = P; H.present = true;
   const hs = (dist(P[0], P[5]) + dist(P[0], P[17]) + dist(P[5], P[17])) / 3;
   H.hs = hs;
+  if (PROBE) probe(hs, now);
   // pinch needs CONFIRM frames in a row both ways, so one bad frame neither grabs nor drops the tool
   H.pd = dist(P[4], P[8]) / hs;
   const closed = H.pinched ? H.pd < AR.PINCH * AR.RELEASE : H.pd < AR.PINCH;
@@ -466,6 +467,36 @@ function readSkin(lm, now) {
   for (let i = 0; i < d.length; i += 4) { r += d[i]; g += d[i + 1]; b += d[i + 2]; }
   const n = d.length / 4;
   skinU.value.set(r / n / 255, g / n / 255, b / n / 255);
+}
+
+// ---------- ?probe: hand-size meter for the height test ----------
+// Height will be read off the hand's size on screen (smaller = further from the phone = lower). Before choosing the
+// touch threshold we need to know how much that size jitters on a real phone: this draws the last 4 s of size,
+// relative to the size at the moment of the pinch, and the jitter (sd over the last 0.5 s).
+const PROBE = Q.has("probe");
+const PR = { hist: [], ref: 0, cv: null };
+function probe(hs, now) {
+  if (!PR.cv) {
+    PR.cv = document.createElement("canvas"); PR.cv.width = 300; PR.cv.height = 220;
+    Object.assign(PR.cv.style, { position: "fixed", left: "8px", bottom: "120px", width: "150px", height: "110px", zIndex: 50, background: "rgba(0,0,0,.55)", borderRadius: "8px", pointerEvents: "none" });
+    document.body.appendChild(PR.cv);
+  }
+  if (H.pinched && !PR.ref) PR.ref = hs;
+  if (!H.pinched) PR.ref = 0;
+  const ref = PR.ref || hs;
+  PR.hist.push([now, (hs / ref - 1) * 100]);
+  while (PR.hist.length && now - PR.hist[0][0] > 4000) PR.hist.shift();
+  const last = PR.hist.filter(([t]) => now - t < 500).map(h => h[1]), m = last.reduce((a, b) => a + b, 0) / last.length;
+  const sd = Math.sqrt(last.reduce((a, b) => a + (b - m) ** 2, 0) / last.length);
+  const g = PR.cv.getContext("2d"), W2 = 300, H2 = 220, y = v => H2 / 2 - v * 10;   // 1 % = 10 px, +-11 %
+  g.clearRect(0, 0, W2, H2);
+  g.strokeStyle = "rgba(255,255,255,.25)"; g.lineWidth = 1;
+  for (const v of [-10, -5, 0, 5, 10]) { g.beginPath(); g.moveTo(0, y(v)); g.lineTo(W2, y(v)); g.stroke(); }
+  g.strokeStyle = PR.ref ? "#ffc23d" : "#8fd"; g.lineWidth = 3; g.beginPath();
+  PR.hist.forEach(([t, v], i) => { const x = W2 - (now - t) / 4000 * W2; i ? g.lineTo(x, y(v)) : g.moveTo(x, y(v)); }); g.stroke();
+  g.fillStyle = "#fff"; g.font = "bold 24px sans-serif";
+  g.fillText(`${PR.ref ? "집음" : "안 집음"}  ${m >= 0 ? "+" : ""}${m.toFixed(1)}%`, 10, 30);
+  g.fillText(`떨림 ${sd.toFixed(1)}%  손 ${hs.toFixed(0)}px`, 10, H2 - 12);
 }
 
 // ---------- touch fallback ----------
