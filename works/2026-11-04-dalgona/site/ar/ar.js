@@ -281,6 +281,9 @@ function reset(shape = S.shape) {
   candy.rotation.set(0, 0, 0);
   paintCandy();
   $("again").hidden = true; toast("");
+  for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = false;
+  // a new candy starts with empty hands: picking the first tool starts the clock again
+  S.tool = null; document.querySelectorAll("#tray button").forEach(b => b.classList.remove("on"));
   resetWatcher();
   for (const [k, b] of [["circle", "shCircle"], ["tri", "shTri"], ["star", "shStar"]]) $(b).setAttribute("aria-pressed", String(k === shape));
 }
@@ -597,6 +600,8 @@ function work(c, dt, now) {
     S.melt[k] += dt;
     for (let i = 0; i < S.pts.length; i++) { const [x, y] = S.pts[i]; if (Math.hypot(x - c.sx, y - c.sy) < 0.1) S.soft[i] = Math.min(1, S.soft[i] + dt / 1.2); }
     S.meltNow = S.melt[k] / AR.MELT_HOLE;
+    if (S.meltNow > 0.7 && !S.meltWarned) { S.meltWarned = 1; toast("그만! 더 문지르면 녹아 구멍 나요", "var(--bad)", 1400); vibrate([30, 30, 30]); }
+    if (S.meltNow < 0.5) S.meltWarned = 0;
     heal(c, dt);
     if (S.melt[k] > AR.MELT_HOLE) { S.melt[k] = -1e9; hole(c); }
     sound(Math.min(0.18, 0.05 + S.v / 200), 700);
@@ -684,7 +689,10 @@ function heal(c, dt) {
     k.sev = Math.max(0, k.sev - dt / 1.6);
     if (k.sev === 0) {
       for (const [x, y] of k.pts) { const m = Math.floor(y / S.F.cell) * S.F.N + Math.floor(x / S.F.cell); if (m >= 0 && m < S.F.crack.length && S.F.inside[m]) S.F.crack[m] = 0; }
-      toast("금이 붙었어요", "var(--gold)", 1200); vibrate(10);
+      toast("금이 붙었어요 · 이제 떼요", "var(--gold)", 1400); vibrate(10);
+      // the rubbing that mended it does not count toward melting a hole there
+      const gx = ((c.sx + 1) / 2 * 40) | 0, gy = ((c.sy + 1) / 2 * 40) | 0;
+      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const m = (gy + j) * 40 + gx + i; if (m >= 0 && m < S.melt.length && S.melt[m] > 0) S.melt[m] = 0; }
     }
   }
 }
@@ -761,7 +769,7 @@ function hit(c, E = 1) {
   // what is left of the ring: when only crumbs remain they come away too, and the shape is out
   let left = 0;
   for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k] && !F.crack[k]) left++;
-  if (left < S.outer0 * 0.04) {
+  if (left < S.outer0 * 0.1) {
     const rest = [];
     for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k);
     dropCells(rest); S.gone.fill(1);
@@ -841,9 +849,15 @@ function fail(why) {
   S.ended = true; snap(1.2); vibrate([40, 40, 60]);
   doom(why);   // no toast: the stinger and the silence say it; the reason is on the result screen   // the retry button comes after the guard has fired
 }
+const NEXT = { circle: "tri", tri: "star", star: "circle" }, NAME = { circle: "동그라미", tri: "세모", star: "별" };
 function win() {
   S.ended = true; S.spin = 1; WT.running = false; sfx("win");
-  toast("떼어 냈어요!", "var(--gold)", 0); $("again").hidden = false;
+  const used = Math.round(TIME_LIMIT - WT.timeLeft);
+  $("timer").hidden = true;
+  $("deadWhy").textContent = `${used >= 60 ? `${Math.floor(used / 60)}분 ` : ""}${used % 60}초 걸렸어요`;
+  $("dead").querySelector("b").textContent = "통과"; $("dead").classList.add("win"); $("dead").hidden = false;
+  $("again").textContent = `다음은 ${NAME[NEXT[S.shape]]}`; $("again").dataset.next = NEXT[S.shape];
+  setTimeout(() => { $("again").hidden = false; }, 900);
 }
 
 // ---------- tool placement in 3D ----------
@@ -926,6 +940,7 @@ const trayBtns = [...$("tray").querySelectorAll("button")];
 trayBtns.forEach(b => { b.onclick = () => pickTool(b.dataset.tool); });
 function pickTool(k) {
   S.tool = k; S.prev = null; tick(); startClock();
+  for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = true;
   trayBtns.forEach(b => b.classList.toggle("on", b.dataset.tool === k));
 }
 const dwell = { tool: null, t: 0, leftAt: 0, done: null };
@@ -944,7 +959,8 @@ function updateDwell(now, dt) {
   for (const b of trayBtns) {
     const on = b.dataset.tool === dwell.tool && dwell.done !== dwell.tool;
     b.classList.toggle("hover", b.dataset.tool === dwell.tool);
-    b.querySelector(".ring circle").setAttribute("stroke-dasharray", `${on ? Math.min(100, dwell.t / AR.DWELL * 100) : 0} 100`);
+    const f = on ? Math.min(100, dwell.t / AR.DWELL * 100) : 0, rc = b.querySelector(".ring circle");
+    rc.setAttribute("stroke-dasharray", `${f} 100`); rc.setAttribute("stroke-linecap", f > 0 ? "round" : "butt");
   }
 }
 
@@ -985,7 +1001,7 @@ function hud(c) {
   const cam = S.mode === "camera";
   let hint = "", sub = "", col = "#fff";
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
-  else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : "화면을 손가락으로 만져 보세요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
+  else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : S.tool ? "화면을 손가락으로 만져 보세요" : "위에서 바늘부터 골라요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
   else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
   else if (cam && !H.pinched) { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = S.tool === "hammer" ? "붙이면 망치가 혼자 톡톡 쳐요" : "떼면 도구를 놓아요"; }
   else if (S.tool === "needle") {
@@ -1094,6 +1110,8 @@ function resetWatcher() {
   Object.assign(WT, { timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null, alarm: 0, strikes: 0, move: null, step: 0, frozen: false });
   $("timer").innerHTML = "2:00<small>도구를 고르면 시작</small>"; $("timer").classList.remove("low"); $("timer").hidden = false;
   $("doom").hidden = true; $("dead").hidden = true; $("again").hidden = true;
+  $("dead").classList.remove("win"); $("dead").querySelector("b").textContent = "탈락";
+  $("again").textContent = "다시 하기"; delete $("again").dataset.next;
   const f = $("flash"); f.style.transition = "none"; f.style.opacity = 0; f.style.background = "";
   hudEls().forEach(e => { if (e) e.style.visibility = ""; });
   canvas.style.filter = ""; canvas.style.transform = "";
@@ -1116,9 +1134,9 @@ function doom(why) {
   if (WT.guard && !guardInView()) setGuardDist(DOOM_D);
 }
 const headV = new THREE.Vector3();
-function guardInView() {
+function guardInView(at = 1.6) {   // at: height on him (m, before scale) that must be on screen: 1.6 head, 0.9 chest
   if (!WT.guard) return true;
-  headV.copy(WT.guard.root.position); headV.y += 1.6 * GS;
+  headV.copy(WT.guard.root.position); headV.y += at * GS;
   const p = headV.project(camera);
   return p.z < 1 && Math.abs(p.x) < 0.75 && p.y < 0.9 && p.y > -0.6;
 }
@@ -1176,7 +1194,7 @@ function updateWatcher(dt, now) {
     D.t += dt;
     if (D.t > 1.4) {
       if (!D.prompted) { D.prompted = 1; toast(""); }
-      const seen = guardInView();
+      const seen = guardInView() || guardInView(0.9);
       $("doom").hidden = !!D.seen || seen;
       if (seen && !D.seen) { D.seen = D.t; gcall("hold", true); gcall("setAim", 0); }
       if (D.seen) {
@@ -1184,7 +1202,7 @@ function updateWatcher(dt, now) {
         if (s > 0.7 && !D.racked) { D.racked = 1; gcall("hold", false); sfx("cock"); }
         if (s > 0.7) gcall("setAim", 1);
         if (s > 1.6) shoot(D.why, true);
-      } else if (D.t > 10.4) shoot(D.why, false);   // he does not wait forever
+      } else if (D.t > 6.4) shoot(D.why, false);   // he does not wait forever
     }
   }
   if (muzzle.visible && now - WT.flashAt > 60) muzzle.visible = false;
@@ -1337,7 +1355,7 @@ $("touch").onclick = () => {
   try { if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") DeviceOrientationEvent.requestPermission().catch(() => {}); } catch { /* old browser */ }
   roomBackdrop(); begin("touch");
 };
-$("again").onclick = () => { reset(); place(); placeGuard(); };
+$("again").onclick = () => { reset($("again").dataset.next || S.shape); place(); placeGuard(); };
 $("center").onclick = () => { place(); placeGuard(); };
 $("shCircle").onclick = () => { reset("circle"); place(); };
 $("shTri").onclick = () => { reset("tri"); place(); };
