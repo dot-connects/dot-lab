@@ -66,7 +66,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff44;border-radius:12px;padding:9px 16px;cursor:pointer}
 #msg{color:var(--bad)}
 .steps{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:14px;max-width:320px;color:#e3eee9}
-.goal{font-family:"Do Hyeon",sans-serif;font-size:22px;line-height:1.35;color:#fff;margin:0}
+.ov .goal{font-family:"Do Hyeon",sans-serif;font-size:22px;line-height:1.35;color:#fff;margin:0}
 .goal em{font-style:normal;color:var(--candy)}
 .steps b{font-family:"Do Hyeon",sans-serif;font-weight:400;color:var(--candy);font-size:16px}
 </style>
@@ -100,17 +100,15 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
   <section class="ov" id="start">
     <div class="tag">뒤 카메라 · AR</div>
     <h1><img class="logo" src="../logo.svg" alt="달고나" width="230" height="87"></h1>
-    <p>폰을 들고 앞을 비추면 달고나가 떠 있어요. 카메라 앞에 손을 넣고 도구를 손가락으로 골라 해 보세요.</p>
-    <p class="goal">2분 안에 모양만 남기고 떼어 내요.<br>모양이 깨지면 <em>감시자</em>가 쏴요.</p>
+    <p class="goal">2분 안에 모양만 떼어 내요.<br>깨지면 <em>감시자</em>가 쏴요.</p>
     <div class="steps">
-      <b>고르기</b><span>위 도구를 손가락으로 가리키고 잠깐 기다리기</span>
-      <b>바늘</b><span>엄지·검지를 모아 집고, 손을 폰에서 살짝 밀면 내려가 닿아요</span>
-      <b>면봉</b><span>모양에 금이 가면 젖은 면봉으로 문질러 붙여요</span>
-      <b>망치</b><span>엄지·검지를 붙이면 망치가 혼자 톡톡 쳐요. 모양 바깥에 갖다 대요</span>
-      <b>시간</b><span>도구를 처음 고르면 2분이 흐르기 시작해요</span>
+      <b>바늘</b><span>엄지·검지를 모아 선을 따라 긁어요</span>
+      <b>망치</b><span>엄지·검지를 붙이면 혼자 톡톡, 바깥에 대요</span>
+      <b>면봉</b><span>금이 가면 문질러 붙여요</span>
     </div>
-    <button class="go" id="go">카메라 켜고 시작</button>
-    <button class="sub" id="touch">카메라 없이 (화면 터치)</button>
+    <p class="mute">도구는 위에서 손가락으로 가리켜 골라요</p>
+    <button class="go" id="go">카메라로 하기</button>
+    <button class="sub" id="touch">화면 터치로 하기</button>
     <p class="mute">영상은 폰 밖으로 나가지 않아요</p>
     <p id="msg" hidden></p>
   </section>
