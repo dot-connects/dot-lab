@@ -421,7 +421,9 @@ function showPick() {
   for (const [k, s] of Object.entries(SHAPES)) {
     const b = document.createElement("button"), best = bestOf(k);
     b.innerHTML = `<span class="ic"></span><small></small>`;
-    b.querySelector(".ic").textContent = s.icon;
+    // the icon is the very outline you will carve, pressed into the candy (font glyphs drew a different umbrella)
+    const d = s.paths.map(p => "M" + p.map(([x, y]) => `${x.toFixed(3)} ${y.toFixed(3)}`).join("L")).join("");
+    b.querySelector(".ic").innerHTML = `<svg viewBox="-.5 -.5 1 1" width="58%" height="58%" aria-hidden="true"><path d="${d}" fill="none" stroke="#fbd79a" stroke-width=".05" stroke-linejoin="round" stroke-linecap="round" transform="translate(.012 .016)"/><path d="${d}" fill="none" stroke="#6b3410" stroke-width=".05" stroke-linejoin="round" stroke-linecap="round"/></svg>`;
     const sm = b.querySelector("small"); sm.textContent = s.name;
     if (best) { sm.append(document.createElement("br")); const st = document.createElement("b"); st.textContent = best.stars ? `${starText(best.stars)} ${best.time.toFixed(1)}초` : `최고 ${best.pct}%`; sm.append(st); }
     b.setAttribute("aria-label", s.name + (best && best.stars ? ` 별 ${best.stars}개` : ""));
