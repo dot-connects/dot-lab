@@ -27,11 +27,18 @@ const at = (t, fn) => {
   }
   slots.get(q).push(fn);
 };
+// ears ringing after the shot: a thin high tone under everything, so the shot stays the loudest thing
+function ring(t) {
+  const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.value = 3400;
+  g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(0.06, t + 0.15); g.gain.exponentialRampToValueAtTime(0.0008, t + 2.6);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 2.7);
+}
 const plain = {
   poke: t => burst(t, 0.05, 2800, 0.5, "bandpass", 1.4),
   scratch: t => burst(t, 0.22, 2600, 0.22, "bandpass", 1.4),
   crack: t => { burst(t, 0.11, 3200, 0.9); burst(t, 0.06, 1200, 0.5); },
   melt: t => { for (let k = 0; k < 9; k++) burst(t + k * 0.2, 0.25, 900, 0.12, "lowpass"); },
+  swish: t => burst(t, 0.08, 1500, 0.12, "bandpass"),
   thud: t => { burst(t, 0.14, 300, 1.0, "lowpass"); burst(t + 0.01, 0.08, 2600, 0.45); },
 };
 const synth = { tick: () => sfx.tick(false), breath: () => sfx.breath(true), scuff: () => sfx.scuff(), cock: () => sfx.cock(), win: () => sfx.win() };
@@ -41,8 +48,13 @@ for (const [t, name] of events) {
   if (synth[name]) at(t, synth[name]);
   if (name === "crack") at(t + 0.15, () => sfx.cock());
   if (name === "scuff") at(t + 0.5, () => sfx.scuff());
+  // cut A: the arm snaps, everything stops; later the shot and the ringing ears
+  // the snap and the shot are the two loudest moments of the reel: extra layers under the toy's own sounds
+  if (name === "snap") { plain.crack(t); plain.thud(t); burst(t, 0.25, 1800, 1.2, "lowpass"); burst(t, 0.05, 4500, 1.0); at(t + 0.05, () => sfx.silence()); }
+  if (name === "shot") { at(t, () => { sfx.breath(false); sfx.gunshot(); }); burst(t, 0.45, 900, 2.2, "lowpass"); burst(t, 0.06, 3000, 1.6); ring(t + 0.3); }
 }
-for (let t = 1; t < LEN - 3; t += 1) at(t, () => sfx.setTension(Math.min(1, t / 17)));
+const snapT = (events.find(e => e[1] === "snap") || [LEN])[0];
+for (let t = 1; t < Math.min(snapT, LEN - 3); t += 1) at(t, () => sfx.setTension(Math.min(1, t / 17)));
 const endT = events.find(e => e[0] > 0 && e[1] === "win");
 if (endT) at(endT[0] + 2.2, () => sfx.bed(false));
 console.log("slots", slots.size); ac.onstatechange = () => console.log("state", ac.state, ac.currentTime.toFixed(2));
