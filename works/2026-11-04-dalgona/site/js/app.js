@@ -416,7 +416,7 @@ function showPick() {
   if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
   $("mTouch").setAttribute("aria-pressed", String(mode === "touch")); $("mCam").setAttribute("aria-pressed", String(mode === "camera"));
-  $("modeHint").textContent = (mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기") + " · ★3은 금 없이 제한 시간 절반 안에";
+  $("modeHint").textContent = (mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기") + "\n★3은 금 없이, 제한 시간 절반 안에";
   const picks = $("picks"); picks.innerHTML = "";
   for (const [k, s] of Object.entries(SHAPES)) {
     const b = document.createElement("button"), best = bestOf(k);

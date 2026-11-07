@@ -870,7 +870,7 @@ function dropPiece(region, bands, mid, withShape = false) {
   scene.add(g);
   const out = v3b.set(Math.cos(mid), -Math.sin(mid), 0).applyQuaternion(g.quaternion);
   // a snapped arm jumps off the candy, so the break is seen, not just a gap appearing
-  const hop = withShape ? [0.32, 0.55] : [0.07, 0.04];
+  const hop = withShape ? [0.34, 0.14] : [0.07, 0.04];
   S.pieces.push({ g, t: 0, vel: out.multiplyScalar(hop[0] + Math.random() * 0.05).add(new THREE.Vector3(0, hop[1], 0)),
     spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
 }
@@ -1442,7 +1442,7 @@ window.__ar = { THREE, scene, camera, place,
   guardTo: d => { WT.move = null; setGuardDist(d); },   // the promo render stands him where the late game would
   // the promo render ends its run here: the last crumbs fall away and the shape comes out
   finish: () => { const F = S.F, rest = []; for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k); dropCells(rest); S.gone.fill(1); win(); },
-  S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, swing, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+  S, H, AR, WT, toolMesh, dropCells, fg: fgScene, pickTool, reset, hit, readHand, contact, swing, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
