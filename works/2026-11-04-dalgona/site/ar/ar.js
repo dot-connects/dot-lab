@@ -675,7 +675,7 @@ function hole(c) {
   blob(c.px, c.py, 3.4 * PXMM, "rgba(0,0,0,1)", "alpha");
   blob(c.px, c.py, 5 * PXMM, "rgba(70,25,2,.5)", "color");
   vibrate(20);
-  if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) fail("모양이 녹아서 구멍이 났어요");
+  if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) fail("모양이 녹아 구멍이 났어요");
   else toast("녹아서 구멍이 났어요", "var(--bad)", 1200);
 }
 
@@ -771,7 +771,7 @@ function hit(c, E = 1) {
   const open = S.shapeCracks.find(k => k.sev >= 1);
   if (open) {
     const [x, y] = open.pts.at(-1); drawCrack(inwardCrack(x, y), 2.2);
-    fail("붙이지 않은 금이 망치질에 벌어졌어요"); return;
+    fail("붙이지 않은 금이 벌어졌어요"); return;
   }
   const F = S.F;
   updateAlive();
@@ -801,7 +801,7 @@ function hit(c, E = 1) {
     for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k);
     dropCells(rest); S.gone.fill(1);
     // lifting it out bends it: a crack left unmended snaps here
-    if (S.shapeCracks.some(k => k.sev > 0.15)) { fail("떼어 내는 순간 금을 따라 부러졌어요"); return; }
+    if (S.shapeCracks.some(k => k.sev > 0.15)) { fail("떼는 순간 금 따라 부러졌어요"); return; }
     win(); return;
   }
   if (into) return;
@@ -909,7 +909,7 @@ function placeHammer(c, m, ph) {
   const t = disc >= 0 ? -b - Math.sqrt(disc) : -b;   // the nearer crossing: the hand is above the candy, toward the phone
   const hand = ry.origin.clone().addScaledVector(ry.direction, Math.max(0.05, t));
   const justHit = performance.now() - S.lastHit < 120;
-  const up = justHit ? 0 : S.mode !== "camera" && !AR.autoSwing ? 0.25 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
+  const up = justHit ? 0 : (S.mode !== "camera" && !AR.autoSwing) || !H.pinched ? 0.25 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
   const r = center.clone().sub(hand), axis = r.clone().cross(n);
   if (axis.lengthSq() > 1e-10) { axis.normalize(); hamQ.setFromAxisAngle(axis, HAM.RAISE * up); } else hamQ.identity();
   r.applyQuaternion(hamQ);
