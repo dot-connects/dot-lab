@@ -15,7 +15,7 @@ scene.add(room);
 
 const css = document.createElement("style");
 css.textContent = `
-#tray,.tools,#hint,#sub,#stat,#toast,#cursor,#ring,#again,#doom{display:none!important}
+#tray,.tools,#hint,#sub,#stat,#toast,#cursor,#ring,#again,#doom,#zbar{display:none!important}
 #rend .logo{width:150px;height:auto;opacity:.95}
 #rend .ask{font-family:"Do Hyeon",sans-serif;font-size:62px;line-height:1.08;color:#fff;margin:6px 0 4px}
 #rend .ask em{font-style:normal;color:#ffc23d}

@@ -69,24 +69,25 @@ const mtex = new THREE.CanvasTexture(maskCv);
 
 const QUAD_V = "varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0., 1.); }";
 const crop = { value: new THREE.Vector2(1, 1) };
+const zoomU = { value: new THREE.Vector3(0.5, 0.5, 1) };   // origin (uv) + factor, see zoom
 const quad = (frag, uniforms, extra = {}) => {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(2, 2), new THREE.ShaderMaterial({
     vertexShader: QUAD_V, fragmentShader: frag, uniforms, depthTest: false, depthWrite: false, ...extra }));
   m.frustumCulled = false;
   return m;
 };
-bgScene.add(quad(`uniform sampler2D map; uniform vec2 crop; varying vec2 vUv;
-  void main(){ gl_FragColor = vec4(texture2D(map, .5 + (vUv - .5) * crop).rgb, 1.); }`, { map: { value: vtex }, crop }));
+bgScene.add(quad(`uniform sampler2D map; uniform vec2 crop; uniform vec3 zoom; varying vec2 vUv;
+  void main(){ vec2 u = zoom.xy + (vUv - zoom.xy) / zoom.z; gl_FragColor = vec4(texture2D(map, .5 + (u - .5) * crop).rgb, 1.); }`, { map: { value: vtex }, crop, zoom: zoomU }));
 const skinU = { value: new THREE.Vector3(0.8, 0.6, 0.5) };
-fgScene.add(quad(`uniform sampler2D map; uniform sampler2D mask; uniform vec2 crop; uniform vec3 skin; varying vec2 vUv;
+fgScene.add(quad(`uniform sampler2D map; uniform sampler2D mask; uniform vec2 crop; uniform vec3 skin; uniform vec3 zoom; varying vec2 vUv;
   vec3 ycc(vec3 c){ return vec3(dot(c, vec3(.299, .587, .114)), dot(c, vec3(-.169, -.331, .5)), dot(c, vec3(.5, -.419, -.081))); }
   void main(){
     vec4 m = texture2D(mask, vUv); if (m.g < .01) discard;
-    vec3 c = texture2D(map, .5 + (vUv - .5) * crop).rgb, a = ycc(c), b = ycc(skin);
+    vec2 u = zoom.xy + (vUv - zoom.xy) / zoom.z; vec3 c = texture2D(map, .5 + (u - .5) * crop).rgb, a = ycc(c), b = ycc(skin);
     // same chroma as the palm, and not far darker or brighter (shadowed knuckles still pass)
     float sk = (1. - smoothstep(.035, .075, distance(a.yz, b.yz))) * smoothstep(.3, .5, a.x / max(b.x, .05)) * (1. - smoothstep(1.6, 2., a.x / max(b.x, .05)));
     gl_FragColor = vec4(c, max(smoothstep(.3, .7, m.r), m.g * sk)); }`,
-  { map: { value: vtex }, mask: { value: mtex }, crop, skin: skinU }, { transparent: true }));
+  { map: { value: vtex }, mask: { value: mtex }, crop, skin: skinU, zoom: zoomU }, { transparent: true }));
 const grainU = { time: { value: 0 }, amt: { value: 0.07 } };
 const grain = quad(`uniform float time; uniform float amt;
   float h(vec2 p){ return fract(sin(dot(p, vec2(12.9898, 78.233)) + time) * 43758.5453); }
@@ -285,7 +286,7 @@ function reset(shape = S.shape) {
   for (const id of ["shCircle", "shTri", "shStar", "shLabel"]) $(id).hidden = false;
   // a new candy starts with empty hands: picking the first tool starts the clock again
   S.tool = null; document.querySelectorAll("#tray button").forEach(b => b.classList.remove("on"));
-  resetWatcher();
+  resetWatcher(); zoomTo(1);
   for (const [k, b] of [["circle", "shCircle"], ["tri", "shTri"], ["star", "shStar"]]) $(b).setAttribute("aria-pressed", String(k === shape));
 }
 
@@ -328,9 +329,52 @@ function fit() {
   camera.aspect = W / Hh; camera.updateProjectionMatrix();
   maskCv.width = Math.max(4, Math.round(W / 4)); maskCv.height = Math.max(4, Math.round(Hh / 4));
   crop0 = { k, vw, vh };
+  ZM.dirty = true;
 }
 addEventListener("resize", () => { if (S.mode) fit(); });
-const toScreen = p => { const { k, vw, vh } = crop0; return [p.x * vw * k - (vw * k - W) / 2, p.y * vh * k - (vh * k - Hh) / 2]; };
+const toScreen0 = p => { const { k, vw, vh } = crop0; return [p.x * vw * k - (vw * k - W) / 2, p.y * vh * k - (vh * k - Hh) / 2]; };
+const toScreen = p => zoomed(toScreen0(p));
+
+// ---------- zoom: the bar on the right edge brings the candy closer (operator pick 11-07, mockup 2) ----------
+// The camera renders a sub-window of its full view (setViewOffset) and the video quads sample the same window, so
+// both stay sharp and stay lined up. Hand points and touches are points of the zoomed screen, so rays and the tool
+// need no change. Origin = where the tool last touched the candy, picked when zooming starts from 1x.
+const ZMAX = 2.2;
+const ZM = { k: 1, goal: 1, ox: 0, oy: 0, grab: false, k0: 1, y0: 0, last: null };
+const zoomed = ([x, y]) => [ZM.ox + (x - ZM.ox) * ZM.k, ZM.oy + (y - ZM.oy) * ZM.k];
+const unzoomed = ([x, y]) => [ZM.ox + (x - ZM.ox) / ZM.k, ZM.oy + (y - ZM.oy) / ZM.k];
+function applyZoom() {
+  if (ZM.k > 1.001) camera.setViewOffset(W, Hh, ZM.ox * (1 - 1 / ZM.k), ZM.oy * (1 - 1 / ZM.k), W / ZM.k, Hh / ZM.k);
+  else { ZM.k = Math.max(1, ZM.k); camera.clearViewOffset(); }
+  zoomU.value.set(ZM.ox / W, 1 - ZM.oy / Hh, ZM.k);
+  const t = (ZM.goal - 1) / (ZMAX - 1);
+  $("zknob").style.bottom = `calc(${(t * 100).toFixed(1)}% - ${(t * 44).toFixed(1)}px)`;
+  $("zknob").textContent = `×${ZM.goal.toFixed(1)}`;
+}
+function zoomFrom(y) {
+  if (ZM.k < 1.01 && ZM.goal < 1.01) {
+    const o = ZM.last && performance.now() - ZM.last.t < 8000 ? ZM.last.p : (() => { const p = v3.setFromMatrixPosition(top.matrixWorld).project(camera); return unzoomed([(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]); })();
+    ZM.ox = Math.min(W, Math.max(0, o[0])); ZM.oy = Math.min(Hh, Math.max(0, o[1]));
+  }
+  ZM.k0 = ZM.goal; ZM.y0 = y;
+}
+const zoomTo = k => { ZM.goal = Math.min(ZMAX, Math.max(1, k)); };
+function stepZoom(dt) {
+  if (Math.abs(ZM.goal - ZM.k) < 0.002 && !ZM.dirty) return;
+  ZM.k += (ZM.goal - ZM.k) * (1 - Math.exp(-dt / 0.09)); if (Math.abs(ZM.goal - ZM.k) < 0.002) ZM.k = ZM.goal;
+  ZM.dirty = false; applyZoom();
+}
+// touch: the knob follows the finger along the bar
+{
+  const bar = $("zbar"), at = e => { const r = bar.getBoundingClientRect(); return 1 + (ZMAX - 1) * Math.min(1, Math.max(0, (r.bottom - 22 - e.clientY) / (r.height - 44))); };
+  bar.addEventListener("pointerdown", e => { e.stopPropagation(); bar.setPointerCapture(e.pointerId); zoomFrom(e.clientY); zoomTo(at(e)); bar.classList.add("grab"); });
+  bar.addEventListener("pointermove", e => { if (bar.hasPointerCapture(e.pointerId)) zoomTo(at(e)); });
+  const end = () => bar.classList.remove("grab");
+  bar.addEventListener("pointerup", end); bar.addEventListener("pointercancel", end);
+}
+// camera: a pinch that closes on the bar grabs it; moving the hand up a third of the screen goes from 1x to ZMAX.
+// Read in unzoomed screen points, or the zoom would move the hand that moves the zoom.
+const onBar = ([x, y]) => { const r = $("zbar").getBoundingClientRect(); return x > r.left - 46 && y > r.top - 40 && y < r.bottom + 40; };
 
 // ---------- light from the camera frame ----------
 const lightCv = document.createElement("canvas"); lightCv.width = lightCv.height = 16;
@@ -393,7 +437,7 @@ const PALM = [0, 1, 2, 5, 9, 13, 17];
 function readHand(lm, now) {
   if (!lm) {
     if (H.present && !H.lostAt) H.lostAt = now;
-    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; fx.reset(); fy.reset(); }
+    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; ZM.grab = false; $("zbar").classList.remove("grab"); H.P = null; fx.reset(); fy.reset(); }
     drawMask(null);
     return false;
   }
@@ -405,9 +449,14 @@ function readHand(lm, now) {
   if (PROBE) probe(hs, now);
   // pinch needs CONFIRM frames in a row both ways, so one bad frame neither grabs nor drops the tool
   H.pd = dist(P[4], P[8]) / hs;
-  const closed = H.pinched ? H.pd < AR.PINCH * AR.RELEASE : H.pd < AR.PINCH;
+  const closed = H.pinched || ZM.grab ? H.pd < AR.PINCH * AR.RELEASE : H.pd < AR.PINCH;
   if (closed) { H.pinchRun++; H.openRun = 0; } else { H.openRun++; H.pinchRun = 0; }
-  if (!H.pinched && H.pinchRun >= AR.CONFIRM) { H.pinched = true; H.pinchAt = now; H.h0 = hs; H.push = 0; vibrate(8); }
+  // a pinch on the zoom bar holds the bar, not the tool: no tool comes out while it is held
+  const g0 = toScreen0({ x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 });
+  if (!H.pinched && !ZM.grab && H.pinchRun >= AR.CONFIRM && onBar([(P[4][0] + P[8][0]) / 2, (P[4][1] + P[8][1]) / 2])) { ZM.grab = true; zoomFrom(g0[1]); $("zbar").classList.add("grab"); vibrate(8); }
+  if (ZM.grab && H.openRun >= AR.CONFIRM) { ZM.grab = false; $("zbar").classList.remove("grab"); }
+  if (ZM.grab) zoomTo(ZM.k0 + (ZM.y0 - g0[1]) / (Hh / 3) * (ZMAX - 1));
+  if (!H.pinched && !ZM.grab && H.pinchRun >= AR.CONFIRM) { H.pinched = true; H.pinchAt = now; H.h0 = hs; H.push = 0; vibrate(8); }
   if (H.pinched && H.openRun >= AR.CONFIRM) { H.pinched = false; H.openAt = now; }
   if (H.pinched) {
     // lifting the hand above where it pinched raises the zero with it, so "up, then push down" always works
@@ -557,6 +606,7 @@ function contact() {
   }
   const l = top.worldToLocal(hitP.clone()), sx = l.x / R, sy = -l.y / R, [px, py] = toPx(sx, sy);
   let onCandy = Math.hypot(sx, sy) < 0.97;
+  if (onCandy) ZM.last = { p: unzoomed(H.tip), t: performance.now() };
   if (onCandy) onCandy = ctx.alpha.getImageData(px | 0, py | 0, 1, 1).data[1] > 128;
   const cam = S.mode === "camera";
   const pressed = cam ? H.pinched && H.down : H.pinched && performance.now() - H.pinchAt > AR.LAND_MS;
@@ -1166,7 +1216,7 @@ function placeGuard() {
   WT.placed = true;
 }
 function startClock() { if (!WT.running && !S.ended && !WT.doom) { WT.running = true; } }
-const hudEls = () => ["tray", "stat", "timer", "hint", "sub"].map($).concat([document.querySelector(".tools")]);
+const hudEls = () => ["tray", "stat", "timer", "hint", "sub", "zbar"].map($).concat([document.querySelector(".tools")]);
 function resetWatcher() {
   Object.assign(WT, { timeLeft: TIME_LIMIT, running: false, lastTick: -1, doom: null, alarm: 0, strikes: 0, move: null, step: 0, frozen: false });
   $("timer").innerHTML = "2:00<small>도구를 고르면 시작</small>"; $("timer").classList.remove("low"); $("timer").hidden = false;
@@ -1189,7 +1239,7 @@ function strike() {
 }
 // fail(): the candy broke or the time ran out. Everything goes quiet; the prompt comes a moment later.
 function doom(why) {
-  WT.running = false;
+  WT.running = false; zoomTo(1);   // he has to be seen
   WT.doom = { why, t: 0, seen: 0, fired: 0, prompted: 0 }; WT.fails = (WT.fails || 0) + 1;
   hudEls().forEach(e => { if (e && e.id !== "stat") e.style.visibility = "hidden"; });
   sfx("stinger"); setTimeout(() => sfx("silence"), 60); sfx("breath", true);
@@ -1338,6 +1388,7 @@ function loop(now) {
     if (!S.gyro) { S.gyro = true; camera.quaternion.copy(qt); place(); placeGuard(); }
     camera.quaternion.slerp(qt, 1 - Math.exp(-dt / 0.03));
   }
+  stepZoom(dt);
   let fresh = false;
   if (S.mode === "camera") fresh = grab(now);
   else { updateTouchHand(now); fresh = true; }
@@ -1372,7 +1423,8 @@ function loop(now) {
   S.pieces = S.pieces.filter(p => { if (p.t < 2.2) return true; scene.remove(p.g); disposePiece(p.g); return false; });
   // bring the candy back in front if it has been off screen for a while (gyro drift, or the phone turned away)
   v3.setFromMatrixPosition(candy.matrixWorld).project(camera);
-  const off = Math.abs(v3.x) > 1.4 || Math.abs(v3.y) > 1.4 || v3.z > 1;
+  const zx = ZM.ox / W * 2 - 1, zy = 1 - ZM.oy / Hh * 2;
+  const off = Math.abs(zx + (v3.x - zx) / ZM.k) > 1.4 || Math.abs(zy + (v3.y - zy) / ZM.k) > 1.4 || v3.z > 1;
   if (off) { S.offscreenSince ||= now; if (now - S.offscreenSince > 2500) { place(); S.offscreenSince = 0; } } else S.offscreenSince = 0;
   lightFromFrame(now);
   if (!WT.guard) { key.position.copy(anchor.position).addScaledVector(keyDir, 1); key.target.position.copy(anchor.position); }
@@ -1405,7 +1457,7 @@ function roomBackdrop() {
   vtex.needsUpdate = true;
 }
 function begin(mode) {
-  S.mode = mode; $("start").hidden = true;
+  S.mode = mode; $("start").hidden = true; $("zbar").hidden = false;
   initAudio(); loadSfx(); fit(); reset("circle"); place(); placeGuard();
   requestAnimationFrame(loop);
 }

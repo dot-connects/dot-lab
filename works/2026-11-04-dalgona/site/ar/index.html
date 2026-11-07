@@ -71,6 +71,11 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .ov .goal{font-family:"Do Hyeon",sans-serif;font-size:22px;line-height:1.35;color:#fff;margin:0}
 .goal em{font-style:normal;color:var(--candy)}
 .steps b{font-family:"Do Hyeon",sans-serif;font-weight:400;color:var(--candy);font-size:16px}
+#zbar{position:absolute;right:calc(env(safe-area-inset-right) + 8px);top:50%;height:min(40vh,300px);width:44px;transform:translateY(-50%);border-radius:99px;background:rgba(8,12,10,.45);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:auto;touch-action:none}
+#zbar::before,#zbar::after{position:absolute;left:0;right:0;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:20px;color:#fff;text-shadow:0 1px 4px #000;pointer-events:none}
+#zbar::before{content:"+";top:-26px}#zbar::after{content:"\2212";bottom:-26px}
+#zknob{position:absolute;left:0;bottom:0;width:44px;height:44px;border-radius:50%;background:#fff6e6;box-shadow:0 3px 10px rgba(0,0,0,.45);display:grid;place-items:center;font-style:normal;font-family:"Do Hyeon",sans-serif;font-size:14px;color:#2a1406;transition:transform .15s;pointer-events:none}
+#zbar.grab #zknob{transform:scale(1.18);background:var(--gold)}
 </style>
 </head>
 <body>
@@ -90,6 +95,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
     <div id="sub" class="ts"></div>
     <div id="cursor" hidden></div>
     <svg id="ring" viewBox="0 0 52 52" hidden><circle cx="26" cy="26" r="22" fill="none" stroke="rgba(0,0,0,.35)" stroke-width="5"/><circle id="ringArc" cx="26" cy="26" r="22" fill="none" stroke="#7ee2a8" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>
+    <div id="zbar" aria-label="확대" hidden><i id="zknob">×1.0</i></div>
     <div id="toast" class="ts"></div>
     <div id="timer" hidden>2:00</div>
     <div id="doom" hidden><b>고개를 들어 보세요</b></div>
