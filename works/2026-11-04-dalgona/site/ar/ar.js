@@ -729,7 +729,7 @@ function hit(c, E = 1) {
   S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
-    fail("모양을 쳤어요"); return;
+    snapOff(c.px, c.py); fail("모양을 쳤어요"); return;
   }
   // an unmended crack in the shape opens a little more with every blow; this is where you find out
   for (const k of S.shapeCracks) if (k.sev > 0) k.sev += 0.25 * E;
@@ -774,7 +774,21 @@ function hit(c, E = 1) {
   else { snap(0.6); toast("쩍, 금만 갔어요", "#fff", 900); }
 }
 /** Drop the grid cells as one falling piece, with the rim bands along its edge. */
-function dropCells(cells) {
+// A blow on the shape snaps off everything beyond it, shape and candy alike, within reach of the blow: a star loses
+// the arm it was struck on. The miss reads at a glance, in the game and in the reel (operator 11-07: "별 한쪽 짤려서").
+function snapOff(x, y) {
+  // a slice from just inside the blow out to the rim, as wide as the blow's arm: arm and candy go together
+  const F = S.F, N = F.N, C = TEX / 2, d = Math.hypot(x - C, y - C) || 1, a0 = Math.atan2(y - C, x - C), cut = [];
+  const off = a => Math.abs(Math.atan2(Math.sin(a - a0), Math.cos(a - a0)));
+  const W = Math.max(0.28, Math.min(0.6, 0.11 * C / d));   // about the same width in mm wherever it lands
+  for (let k = 0; k < N * N; k++) {
+    if (!F.alive[k]) continue;
+    const cx = (k % N + 0.5) * F.cell - C, cy = ((k / N | 0) + 0.5) * F.cell - C, r = Math.hypot(cx, cy);
+    if (r > d - 0.04 * C && off(Math.atan2(cy, cx)) < W * (0.6 + 0.4 * d / Math.max(r, d))) cut.push(k);
+  }
+  dropCells(cut, true);
+}
+function dropCells(cells, withShape = false) {
   if (!cells.length) return;
   const F = S.F, N = F.N, set = new Set(cells);
   const m = document.createElement("canvas"); m.width = m.height = N;
@@ -797,15 +811,15 @@ function dropCells(cells) {
     const [px, py] = toPx(x * 1.08, y * 1.08), k = Math.floor(py / F.cell) * N + Math.floor(px / F.cell);
     if (set.has(k)) S.gone[i] = 1;
   });
-  dropPiece(m, bands, Math.atan2(vy, vx));
+  dropPiece(m, bands, Math.atan2(vy, vx), withShape);
 }
-function dropPiece(region, bands, mid) {
+function dropPiece(region, bands, mid, withShape = false) {
   // masks are built by compositing, not clip(): clipping one canvas while drawing into another wiped the colour
   // canvas in Chrome (headless check 11-05)
   const layer = () => { const c = document.createElement("canvas"); c.width = c.height = TEX; return [c, c.getContext("2d")]; };
   const [mc, mx] = layer();   // white where the piece is: the region (grid cells, smoothed up), outside the shape
   mx.imageSmoothingEnabled = true; mx.drawImage(region, 0, 0, TEX, TEX);
-  mx.globalCompositeOperation = "destination-out"; mx.fill(shapePath());
+  if (!withShape) { mx.globalCompositeOperation = "destination-out"; mx.fill(shapePath()); }
   const [pc, px] = layer();   // the piece: that mask, minus anything already gone
   px.drawImage(mc, 0, 0); px.globalCompositeOperation = "source-in"; px.drawImage(cv.alpha, 0, 0);
   const [bc, bx] = layer();   // the candy loses it
