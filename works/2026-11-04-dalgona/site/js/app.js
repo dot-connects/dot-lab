@@ -587,7 +587,7 @@ async function showResult() {
   const openCracks = g.cracks.filter(c => !c.healed).length;
   const to3 = g.ok && rec.stars === 2 && clean(g) ? `${(g.t - g.limit * 0.5).toFixed(1)}초 더 빨랐으면 ★3` : "";
   const why = g.ok ? [to3, openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
-    : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요 · 원작은 10분` : "금이 모양 안으로 번졌어요";
+    : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요` : "금이 모양 안으로 번졌어요";
   const sub = el("p", "res-sub", why);
   const bestLine = el("p", "res-best",
     !g.ok && lastTry && !lastTry.ok && g.final > lastTry.pct ? `지난번 ${lastTry.pct}% → 이번 ${g.final}%` :

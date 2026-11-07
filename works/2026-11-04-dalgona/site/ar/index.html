@@ -65,6 +65,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .go{font-family:"Do Hyeon",sans-serif;font-size:22px;background:linear-gradient(#f2b866,#d68c36);color:#2a1406;border:0;border-radius:12px;padding:13px 32px;cursor:pointer}
 .sub{font:inherit;font-size:14px;background:transparent;color:var(--mute);border:1px solid #ffffff44;border-radius:12px;padding:9px 16px;cursor:pointer}
 #msg{color:var(--bad)}
+#back{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:13px;color:var(--mute);text-decoration:none;border:1px solid #ffffff33;border-radius:999px;padding:6px 12px}
 .steps{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:14px;max-width:320px;color:#e3eee9}
 .ov .goal{font-family:"Do Hyeon",sans-serif;font-size:22px;line-height:1.35;color:#fff;margin:0}
 .goal em{font-style:normal;color:var(--candy)}
@@ -98,15 +99,16 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
   </div>
 
   <section class="ov" id="start">
+    <a id="back" href="../../../../">‹ 시켜본 것들</a>
     <div class="tag">뒤 카메라 · AR</div>
     <h1><img class="logo" src="../logo.svg" alt="달고나" width="230" height="87"></h1>
     <p class="goal">2분 안에 모양만 떼어 내요.<br>깨지면 <em>감시자</em>가 쏴요.</p>
     <div class="steps">
-      <b>바늘</b><span>엄지·검지를 모아 선을 따라 긁어요</span>
-      <b>망치</b><span>엄지·검지를 붙이면 혼자 톡톡, 바깥에 대요</span>
+      <b>바늘</b><span>집어서 살짝 밀면 닿아요 · 선을 따라 긁어요</span>
+      <b>망치</b><span>집으면 혼자 톡톡 쳐요 · 모양 바깥에 대요</span>
       <b>면봉</b><span>금이 가면 문질러 붙여요</span>
     </div>
-    <p class="mute">도구는 위에서 손가락으로 가리켜 골라요</p>
+    <p class="mute">도구는 위에서 손가락으로 가리키거나 엄지로 눌러요</p>
     <button class="go" id="go">카메라로 하기</button>
     <button class="sub" id="touch">화면 터치로 하기</button>
     <p class="mute">영상은 폰 밖으로 나가지 않아요</p>

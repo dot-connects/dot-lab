@@ -430,9 +430,13 @@ function readHand(lm, now) {
 // blow lands under the head. Over nothing it just swings.
 function swing(c, now) {
   if (!H.pinched || S.ended) { H.swingAt = 0; return; }
+  const over = !!(c && c.onCandy && inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03);
+  S.overAt = over ? (S.overAt || now) : 0;
   if (!H.swingAt) { H.swingAt = now; return; }
   if (now - H.swingAt < AR.SWING * 1000) return;
   H.swingAt = now;
+  // just slid onto the shape: this blow pulls up short, the red hint has a moment to be read (review 11-07)
+  if (over && now - S.overAt < 250) { burst(0.08, 1500, 0.12, "bandpass"); return; }
   if (c && c.onCandy) hit(c);
   else burst(0.08, 1500, 0.12, "bandpass");   // a swish on air, so the beat is heard before it lands on anything
 }
@@ -524,7 +528,7 @@ canvas.addEventListener("pointerdown", e => {
   if (S.mode !== "touch") return;
   Object.assign(touch, { x: e.clientX, y: e.clientY, down: true, on: true, downAt: performance.now() });
   canvas.setPointerCapture(e.pointerId);
-  if (S.tool === "hammer") { updateTouchHand(performance.now()); const c = contact(); if (c) hit(c); }
+  if (S.tool === "hammer" && !AR.autoSwing) { updateTouchHand(performance.now()); const c = contact(); if (c) hit(c); }
 });
 canvas.addEventListener("pointermove", e => { if (S.mode === "touch") { touch.x = e.clientX; touch.y = e.clientY; touch.on = true; } });
 const up = () => { touch.down = false; };
@@ -533,7 +537,7 @@ function updateTouchHand(now) {
   // the tool sits a little above the finger so the finger does not hide its point
   H.present = touch.on; H.hs = 110; H.dir = [-0.42, -0.91];
   const wasDown = H.pinched;
-  H.pinched = touch.down && S.tool !== "hammer";
+  H.pinched = touch.down && (S.tool !== "hammer" || AR.autoSwing);
   if (H.pinched && !wasDown) H.pinchAt = now;
   H.tip = [touch.x - 20, touch.y - 44]; H.grip = [touch.x, touch.y]; H.P = null; H.idx = null;
 }
@@ -605,7 +609,7 @@ function work(c, dt, now) {
     S.meltNow = S.melt[k] / AR.MELT_HOLE;
     if (S.meltNow > 0.7 && !S.meltWarned[k]) {
       S.meltWarned[k] = 1; S.meltHold[k] = now + 1000;
-      toast("그만! 더 문지르면 녹아 구멍 나요", "var(--bad)", 1400); vibrate([30, 30, 30]);
+      toast("그만! 더 문지르면 구멍 나요", "var(--bad)", 1400); vibrate([30, 30, 30]);
     }
     heal(c, dt);
     if (S.melt[k] > AR.MELT_HOLE) { S.melt[k] = -1e9; hole(c); }
@@ -664,8 +668,8 @@ function chip(c) {
   snap(0.5); vibrate(25); S.wob = 0.4;
   strike();   // the guard brings the rifle up
   const inside = pts.some(p => { const [sx, sy] = toS(p); return inShape(sx, sy) && outlineDist(sx, sy) > 0.035; });
-  if (inside) { shapeCrack(pts, 0.5); toast("모양에 금이 갔어요 · 면봉으로 녹이면 붙어요", "var(--bad)", 2200); }
-  else toast("금! 너무 빨라요", "var(--bad)", 900);
+  if (inside) { shapeCrack(pts, 0.5); toast("모양에 금! 면봉으로 붙여요", "var(--bad)", 2200); }
+  else toast(c.press >= 1 ? "금! 너무 세게 눌렀어요" : "금! 너무 빨라요", "var(--bad)", 900);
 }
 function hole(c) {
   blob(c.px, c.py, 3.4 * PXMM, "rgba(0,0,0,1)", "alpha");
@@ -704,6 +708,12 @@ function heal(c, dt) {
   }
 }
 
+function outsideGone() {   // 0..100: how much of the candy outside the shape is off
+  const F = S.F; if (!F || !S.outer0) return 0; let left = 0;
+  for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) left++;
+  return Math.max(0, Math.min(100, Math.round((1 - left / S.outer0) * 100)));
+}
+function grooveDone() { let p = 0; for (let i = 0; i < S.pts.length; i++) p += Math.min(1, strength(i) / AR.HOLD); return Math.round(p / (S.pts.length || 1) * 100); }
 function shallowArcs() {
   const n = S.pts.length, G = AR.SEGS; let left = 0;
   for (let g = 0; g < G; g++) {
@@ -754,7 +764,7 @@ function hit(c, E = 1) {
   S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
-    snapOff(c.px, c.py); fail("모양을 쳤어요"); return;
+    snapOff(c.px, c.py); fail("망치가 모양을 쳤어요"); return;
   }
   // an unmended crack in the shape opens a little more with every blow; this is where you find out
   for (const k of S.shapeCracks) if (k.sev > 0) k.sev += 0.25 * E;
@@ -778,7 +788,7 @@ function hit(c, E = 1) {
   if (into) {
     const [x, y] = into.pts.at(-1), inw = inwardCrack(x, y);
     drawCrack(inw, 2); markCrack(F, inw); shapeCrack(inw, 0.6);
-    toast(into.scratched ? "긁은 자국을 따라 금이 모양으로 들어갔어요 · 면봉으로 녹여 붙여요" : "금이 모양 안으로 들어갔어요 · 면봉으로 녹여 붙여요", "var(--bad)", 2400);
+    toast(into.scratched ? "긁은 자국 따라 금이 모양으로! 면봉으로 붙여요" : "금이 모양 안으로! 면봉으로 붙여요", "var(--bad)", 2400);
   }
   const pieces = loosePieces(F);
   S.lastBreak = { a: a.end, b: b.end, pieces: pieces.map(p => p.length) };
@@ -862,16 +872,21 @@ function dropPiece(region, bands, mid, withShape = false) {
   S.pieces.push({ g, t: 0, vel: out.multiplyScalar(0.07 + Math.random() * 0.05).add(new THREE.Vector3(0, 0.04, 0)),
     spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
 }
+function disposePiece(g) {
+  for (const m of g.children) if (m.material !== rimMat) { if (m.material.alphaMap) m.material.alphaMap.dispose(); m.material.dispose(); }
+}
 function fail(why) {
   S.ended = true; snap(1.2); vibrate([40, 40, 60]);
   doom(why);   // no toast: the stinger and the silence say it; the reason is on the result screen   // the retry button comes after the guard has fired
 }
 const NEXT = { circle: "tri", tri: "star", star: "circle" }, NAME = { circle: "동그라미", tri: "세모", star: "별" };
 function win() {
-  S.ended = true; S.spin = 1; WT.running = false; sfx("win");
+  S.ended = true; S.spin = 1; WT.running = false; sfx("win"); sfx("setTension", 0); sfx("breath", false); gcall("setAim", 0);
   const used = Math.round(TIME_LIMIT - WT.timeLeft);
   $("timer").hidden = true; hudEls().forEach(e => { if (e && e.id !== "stat") e.style.visibility = "hidden"; });
-  $("deadWhy").textContent = `${used >= 60 ? `${Math.floor(used / 60)}분 ` : ""}${used % 60}초 걸렸어요`;
+  const fmt = s => `${s >= 60 ? `${Math.floor(s / 60)}분 ` : ""}${s % 60}초`, key = "dalgona-ar-best-" + S.shape;
+  let best = 0; try { best = +localStorage.getItem(key) || 0; if (!best || used < best) localStorage.setItem(key, used); } catch { /* private mode */ }
+  $("deadWhy").textContent = `${fmt(used)} 걸렸어요 · ${!best || used < best ? "새 기록!" : `최고 ${fmt(best)}`}`;
   $("dead").querySelector("b").textContent = "통과"; $("dead").classList.add("win"); $("dead").hidden = false;
   $("again").textContent = `다음은 ${NAME[NEXT[S.shape]]}`; $("again").dataset.next = NEXT[S.shape];
   setTimeout(() => { $("again").hidden = false; }, 900);
@@ -892,7 +907,7 @@ function placeHammer(c, m, ph) {
   const t = disc >= 0 ? -b - Math.sqrt(disc) : -b;   // the nearer crossing: the hand is above the candy, toward the phone
   const hand = ry.origin.clone().addScaledVector(ry.direction, Math.max(0.05, t));
   const justHit = performance.now() - S.lastHit < 120;
-  const up = justHit ? 0 : S.mode !== "camera" ? 0.25 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
+  const up = justHit ? 0 : S.mode !== "camera" && !AR.autoSwing ? 0.25 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
   const r = center.clone().sub(hand), axis = r.clone().cross(n);
   if (axis.lengthSq() > 1e-10) { axis.normalize(); hamQ.setFromAxisAngle(axis, HAM.RAISE * up); } else hamQ.identity();
   r.applyQuaternion(hamQ);
@@ -912,7 +927,9 @@ const yAxis = new THREE.Vector3(0, 1, 0);
 function placeTool(c) {
   for (const k in toolMesh) toolMesh[k].visible = false;
   shadow.visible = false;
-  if (!S.tool || S.ended || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom)) return;
+  // the blow that ended it stays on screen a moment, so you see what you hit
+  const lingering = S.ended && S.tool === "hammer" && performance.now() - S.lastHit < 350;
+  if (!S.tool || (S.ended && !lingering) || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom && !lingering)) return;
   // the tool is only there while the fingers hold it: open them and it is gone, so you can see whether you hold it
   if (S.mode === "camera" && !H.pinched) return;
   // a pinched tool hovers HOVER above the candy at the pinch and comes down as the hand pushes away from the phone
@@ -948,9 +965,10 @@ function placeTool(c) {
 // ---------- tray ----------
 const TOOLS = [
   ["needle", "바늘", '<svg width="34" height="34" viewBox="0 0 34 34"><line x1="7" y1="28" x2="27" y2="6" stroke="#e8ecef" stroke-width="2.4" stroke-linecap="round"/><circle cx="26" cy="7" r="1.6" fill="none" stroke="#e8ecef" stroke-width="1"/></svg>'],
-  ["swab", "젖은 면봉", '<svg width="34" height="34" viewBox="0 0 34 34"><line x1="7" y1="28" x2="23" y2="11" stroke="#f6f3ee" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="25" cy="9" rx="4" ry="6" transform="rotate(43 25 9)" fill="#e4edf1"/><circle cx="21" cy="17" r="1.5" fill="#bfe0ff"/></svg>'],
+  ["swab", "면봉", '<svg width="34" height="34" viewBox="0 0 34 34"><line x1="7" y1="28" x2="23" y2="11" stroke="#f6f3ee" stroke-width="2.6" stroke-linecap="round"/><ellipse cx="25" cy="9" rx="4" ry="6" transform="rotate(43 25 9)" fill="#e4edf1"/><circle cx="21" cy="17" r="1.5" fill="#bfe0ff"/></svg>'],
   ["hammer", "망치", '<svg width="34" height="34" viewBox="0 0 34 34"><line x1="9" y1="28" x2="21" y2="12" stroke="#c08a52" stroke-width="3.6" stroke-linecap="round"/><rect x="13" y="5" width="18" height="9" rx="2" transform="rotate(37 22 9.5)" fill="#a7aeb3"/></svg>'],
 ];
+TOOLS.push(TOOLS.splice(1, 1)[0]);   // 바늘, 망치, 면봉: the order you reach for them
 const RING = '<svg class="ring" viewBox="0 0 74 74"><circle cx="37" cy="37" r="34" fill="none" stroke="#ffc23d" stroke-width="3.5" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/></svg>';
 $("tray").innerHTML = TOOLS.map(([k, name, svg]) => `<button data-tool="${k}"><span class="ic">${svg}</span>${RING}<span>${name}</span></button>`).join("");
 const trayBtns = [...$("tray").querySelectorAll("button")];
@@ -960,6 +978,7 @@ function markReady() {   // the hammer button pulses once the groove would hold
   if (b) b.classList.toggle("ready", !S.ended && S.tool === "needle" && shallowArcs() === 0);
 }
 function pickTool(k) {
+  if (k === "hammer" && S.tool !== "hammer" && !S.ended) { const n = shallowArcs(); if (n) toast(`아직 얕은 곳 ${n}군데 · 치면 금이 안으로 가요`, "var(--gold)", 2000); }
   S.tool = k; S.prev = null; tick(); startClock();
   for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = true;
   trayBtns.forEach(b => b.classList.toggle("on", b.dataset.tool === k));
@@ -1008,7 +1027,15 @@ function burst(dur, f, gain, type = "highpass") {
 const snap = (k = 1) => { burst(0.09 * k, 3200, 0.7); burst(0.05, 1200, 0.4); };
 const thud = () => burst(0.12, 300, 0.8, "lowpass");
 const tick = () => burst(0.03, 4000, 0.25);
-const vibrate = p => { try { navigator.vibrate && navigator.vibrate(p); } catch { /* not allowed */ } };
+let shakeAt = 0;
+const vibrate = p => {
+  try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch { /* not allowed */ }
+  const ms = [].concat(p).reduce((a, b) => a + b, 0);
+  if (ms < 15 || matchMedia("(prefers-reduced-motion: reduce)").matches || WT.frozen) return;
+  shakeAt = performance.now();
+  const go = () => { const k = 1 - (performance.now() - shakeAt) / 120; if (k <= 0 || WT.frozen) { canvas.style.transform = ""; return; } canvas.style.transform = `translate(${(Math.random() - 0.5) * 8 * k}px,${(Math.random() - 0.5) * 8 * k}px)`; requestAnimationFrame(go); };
+  requestAnimationFrame(go);
+};
 
 // ---------- HUD ----------
 let toastTimer = 0;
@@ -1030,11 +1057,10 @@ function hud(c) {
     // a mean depth said nothing about where it was still shallow (playtest 11-07): count the arcs still too shallow
     // to hold a hammer crack, and say when it is time for the hammer
     const left = shallowArcs();
-    let prog = 0; for (let i = 0; i < S.pts.length; i++) prog += Math.min(1, strength(i) / AR.HOLD);
-    prog = Math.round(prog / (S.pts.length || 1) * 100);
+    const prog = grooveDone();
     sub = left ? `홈 ${Math.min(99, prog)}% · 아직 얕은 곳 ${left}군데` : "홈이 충분히 깊어요 · 이제 망치로 바깥을 쳐요";
     if (!c || !c.pressed) {
-      hint = !cam ? "누른 채 선을 따라 천천히 그어요" : c && c.onCandy ? "손을 폰에서 살짝 밀면 바늘이 내려가요" : "달고나 위로 가져가요";
+      hint = !cam ? "누른 채 선을 따라 천천히 그어요" : c && c.onCandy ? "손을 살짝 멀리 밀면 바늘이 닿아요" : "달고나 위로 가져가요";
       if (cam && S.liftMM != null) sub = `바늘 끝이 ${Math.max(1, Math.round(S.liftMM))}mm 떠 있어요 · ` + sub;
     }
     else if (c.press >= 1) { hint = "너무 세게 눌러요!"; col = "var(--bad)"; }
@@ -1042,12 +1068,14 @@ function hud(c) {
     else if (S.v > AR.SAFE) { hint = "조금 천천히"; col = "var(--gold)"; }
     else { hint = "좋아요, 이 속도"; col = "var(--good)"; }
     if (cam && c && c.pressed) sub = `누르기 ${c.press < 0.25 ? "살살" : c.press < 0.75 ? "알맞게" : "세게"} · ` + sub;
-  } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고 금이 덜 가요 · 모양에 간 금은 문지르면 붙어요"; }
+  } else if (S.tool === "swab") { hint = "금 간 곳을 문질러 붙여요"; sub = "오래 문지르면 녹아요 · 녹은 선은 바늘이 잘 들어요"; }
   else {
-    hint = !cam ? "바깥을 톡 눌러 쳐요" : c && c.onCandy && !inShape(c.sx, c.sy) ? "좋아요 · 그대로 대고 있어요" : "망치를 달고나 바깥에 갖다 대요";
-    if (cam && c && c.onCandy && !inShape(c.sx, c.sy)) col = "var(--good)";
-    sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요";
+    const onShape = c && c.onCandy && inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03;
+    hint = !cam ? "바깥을 톡 눌러 쳐요" : onShape ? "모양 위예요! 손가락 떼요" : c && c.onCandy ? "좋아요 · 그대로 대고 있어요" : "망치를 달고나 바깥에 갖다 대요";
+    if (cam && onShape) col = "var(--bad)"; else if (cam && c && c.onCandy) col = "var(--good)";
+    sub = `바깥 ${outsideGone()}% 떼어 냄 · 홈이 깊은 데로 금이 가요`;
   }
+  if (S.tool !== "swab" && S.shapeCracks.some(k => k.sev > 0.15)) { hint = "모양에 금이 있어요 · 면봉으로 먼저 붙여요"; col = "var(--bad)"; }
   if (S.ended) { hint = ""; sub = ""; }
   $("hint").textContent = hint; $("hint").style.color = col; $("sub").textContent = sub;
   // speed ring (needle) or melt ring (swab) around the tool's point
@@ -1059,7 +1087,7 @@ function hud(c) {
     arc.setAttribute("stroke", f < 0.58 ? "#7ee2a8" : f < 0.9 ? "#ffc23d" : "#ff5c74");
   } else ring.hidden = true;
   const cur = $("cursor");
-  if (cam && H.present && H.idx && !(c && c.pressed)) { cur.hidden = false; cur.style.left = H.idx[0] + "px"; cur.style.top = H.idx[1] + "px"; cur.style.opacity = S.tool ? 0.5 : 1; }
+  if (cam && H.present && H.idx && !(c && c.pressed) && !S.ended && !WT.doom) { cur.hidden = false; cur.style.left = H.idx[0] + "px"; cur.style.top = H.idx[1] + "px"; cur.style.opacity = S.tool ? 0.5 : 1; }
   else cur.hidden = true;
   if (PROBE || Q.has("debug")) $("stat").textContent = `${Math.round(fps)} fps · 손 ${Math.round(handFps)} fps ${handMs.toFixed(0)} ms · 자이로 ${S.gyro ? "켜짐" : "없음"}${H.pd != null ? ` · 집기 ${H.pd.toFixed(2)}/${AR.PINCH}` : ""}`;
 }
@@ -1127,7 +1155,7 @@ function placeGuard() {
   f.normalize();
   catcher.position.set(camera.position.x, floorY() + 0.001, camera.position.z);
   if (!WT.guard) return;
-  WT.move = null; setGuardDist(WT.doom ? WT.dist : GUARD_D);
+  WT.move = null; setGuardDist(WT.doom || WT.running ? WT.dist : GUARD_D);
   WT.placed = true;
 }
 function startClock() { if (!WT.running && !S.ended && !WT.doom) { WT.running = true; } }
@@ -1155,7 +1183,7 @@ function strike() {
 // fail(): the candy broke or the time ran out. Everything goes quiet; the prompt comes a moment later.
 function doom(why) {
   WT.running = false;
-  WT.doom = { why, t: 0, seen: 0, fired: 0, prompted: 0 };
+  WT.doom = { why, t: 0, seen: 0, fired: 0, prompted: 0 }; WT.fails = (WT.fails || 0) + 1;
   hudEls().forEach(e => { if (e && e.id !== "stat") e.style.visibility = "hidden"; });
   sfx("stinger"); setTimeout(() => sfx("silence"), 60); sfx("breath", true);
   // he closes in while you are still looking down
@@ -1214,13 +1242,14 @@ function updateWatcher(dt, now) {
       const [, to] = STEPS[WT.step++];
       if (G && !guardInView() && !WT.move) { WT.move = { from: WT.dist, to, t: 0 }; sfx("scuff"); }
     }
-    if (WT.timeLeft <= 0) { S.ended = true; doom("시간 초과"); }
+    if (WT.timeLeft <= 0) { S.ended = true; doom("2분이 다 됐어요"); }
   }
   // the end: look up, a dead-still beat, the rack, the aim, the shot
   const D = WT.doom;
   if (D && !D.fired) {
     D.t += dt;
-    if (D.t > 1.4) {
+    if (D.t > 1.4 && S.mode === "camera" && !S.gyro) shoot(D.why, false);
+    else if (D.t > 1.4) {
       if (!D.prompted) { D.prompted = 1; toast(""); }
       const seen = guardInView() || guardInView(0.9);
       $("doom").hidden = !!D.seen || seen;
@@ -1230,12 +1259,12 @@ function updateWatcher(dt, now) {
         if (s > 0.7 && !D.racked) { D.racked = 1; gcall("hold", false); sfx("cock"); }
         if (s > 0.7) gcall("setAim", 1);
         if (s > 1.6) shoot(D.why, true);
-      } else if (D.t > 6.4 && !D.came) {
+      } else if (D.t > (WT.fails > 1 ? 2.4 : 6.4) && !D.came) {
         // you won't look up: he steps round in front of where you are looking, so the shot is still seen (playtest 11-07)
         D.came = 1; const f = WT.dir.set(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0;
         if (f.lengthSq() < 0.04) { f.set(0, 1, 0).applyQuaternion(camera.quaternion); f.y = 0; }
         f.normalize(); WT.move = null; setGuardDist(1.5); sfx("scuff");
-      } else if (D.came && D.t > 7.6) shoot(D.why, true);   // in front of you now: the flash and the jolt land on screen
+      } else if (D.came && D.t > (WT.fails > 1 ? 3.6 : 7.6)) shoot(D.why, true);   // in front of you now: the flash and the jolt land on screen
     }
   }
   if (muzzle.visible && now - WT.flashAt > 60) muzzle.visible = false;
@@ -1262,8 +1291,8 @@ function shoot(why, seen) {
     // he lowers the rifle and looks away: done with you
     gcall("setAim", 0); away.copy(WT.guard ? WT.guard.root.position : camera.position).add(v3b.set(1.5, 1.6, 0)); gcall("lookAt", away.clone());
   }, blackFor);
-  setTimeout(() => { $("deadWhy").textContent = why; $("dead").hidden = false; }, blackFor + 1400);
-  setTimeout(() => { $("again").hidden = false; }, blackFor + 2600);
+  const got = outsideGone(), how = got > 0 ? `바깥 ${got}% 떼어 냈어요` : `홈 ${Math.min(99, grooveDone())}% 팠어요`;
+  setTimeout(() => { $("deadWhy").textContent = `${why} · ${how}`; $("dead").hidden = false; $("again").hidden = false; }, blackFor + 1400);
 }
 
 // ---------- frame loop ----------
@@ -1309,7 +1338,7 @@ function loop(now) {
   if (fresh) {
     const wdt = Math.min(0.1, (now - (lastWork || now - 16)) / 1000); lastWork = now;
     work(c, wdt, now);
-    if (S.mode === "camera" && S.tool === "hammer") swing(c, now);
+    if ((S.mode === "camera" || AR.autoSwing) && S.tool === "hammer") swing(c, now);
     updateDwell(now, wdt);
   }
   // the candy idles with a slow bob, wobbles when hit, pops in when (re)placed
@@ -1330,7 +1359,7 @@ function loop(now) {
     p.g.position.addScaledVector(p.vel, dt);
     p.g.rotation.x += p.spin.x * dt; p.g.rotation.y += p.spin.y * dt; p.g.rotation.z += p.spin.z * dt;
   }
-  S.pieces = S.pieces.filter(p => { if (p.t < 2.2) return true; scene.remove(p.g); return false; });
+  S.pieces = S.pieces.filter(p => { if (p.t < 2.2) return true; scene.remove(p.g); disposePiece(p.g); return false; });
   // bring the candy back in front if it has been off screen for a while (gyro drift, or the phone turned away)
   v3.setFromMatrixPosition(candy.matrixWorld).project(camera);
   const off = Math.abs(v3.x) > 1.4 || Math.abs(v3.y) > 1.4 || v3.z > 1;
@@ -1382,12 +1411,18 @@ $("go").onclick = async () => {
   }
   frameCv.width = video.videoWidth || 720; frameCv.height = video.videoHeight || 1280;
   begin("camera");
-  loadHand().then(m => { landmarker = m; }, () => toast("손 인식을 불러오지 못했어요", "var(--bad)", 3000));
+  loadHand().then(m => { landmarker = m; }, () => { S.mode = "touch"; toast("손 인식을 못 불러왔어요 · 화면을 터치해서 해요", "var(--bad)", 3500); });
 };
 $("touch").onclick = () => {
   try { if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") DeviceOrientationEvent.requestPermission().catch(() => {}); } catch { /* old browser */ }
   roomBackdrop(); begin("touch");
 };
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) return;
+  try { if (ac && ac.state !== "running") ac.resume(); } catch { /* ignore */ }
+  const tr = video.srcObject && video.srcObject.getVideoTracks()[0];
+  if (S.mode === "camera" && tr && tr.readyState === "ended") startCamera().catch(() => {});
+});
 $("again").onclick = () => { reset($("again").dataset.next || S.shape); place(); placeGuard(); };
 $("center").onclick = () => { place(); placeGuard(); };
 $("shCircle").onclick = () => { reset("circle"); place(); };

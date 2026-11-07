@@ -403,7 +403,7 @@ export function reason(g) {
   const s = Math.round(g.t);
   if (g.ok) return `${s}초 · 금 ${g.cracks.filter(c => !c.healed).length}개 · 떨어진 조각 ${g.chips}개 · 찌른 횟수 ${g.pokes}`;
   if (g.cause === "melt") return `한 곳을 오래 핥아 모양이 녹았어요 · ${g.final}% 파냄`;
-  if (g.cause === "time") return `${g.limit}초 안에 ${g.final}%까지 · 원작은 10분`;
+  if (g.cause === "time") return `${g.limit}초 안에 ${g.final}%까지`;
   if (g.cracks.some(c => c.fatal && c.handle)) return `손잡이가 끊겼어요 · ${s}초 · ${g.final}% 파냄`;
   return `금이 모양 안으로 번졌어요 · ${s}초 · ${g.final}% 파냄`;
 }
