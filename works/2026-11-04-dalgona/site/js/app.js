@@ -597,7 +597,9 @@ async function showResult() {
   const why = g.ok ? [to3, openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
     : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요` : g.cracks.some(c => c.fatal && c.handle) ? "우산 손잡이가 끊겼어요" : "금이 모양 안으로 번졌어요";
   const sub = el("p", "res-sub", why);
+  const allDone = g.ok && ORDER.every(k => { const b = bestOf(k); return b && b.stars; });
   const bestLine = el("p", "res-best",
+    allDone && isNew ? "네 모양 다 떼어 냈어요!" :
     !g.ok && lastTry && !lastTry.ok && g.final > lastTry.pct ? `지난번 ${lastTry.pct}% → 이번 ${g.final}%` :
     !prev ? "" : isNew ? (tone(1760, 0.2, 0.12, "sine", 0.6), "새 기록!") : prev.stars ? `지난 최고 ${starText(prev.stars)} ${prev.time.toFixed(1)}초` : `지난 최고 ${prev.pct}%`);
   const row = el("div", "row");
@@ -609,7 +611,7 @@ async function showResult() {
   const shareB = Object.assign(el("button", "sub", g.ok ? "자랑하기" : "친구한테 보내기"), { onclick: share, disabled: true });
   row.append(primary, shareB);
   const foot = el("div", "row foot");
-  if (next) foot.append(Object.assign(el("button", "link", "다시 하기"), { onclick: () => begin(g.shape) }));
+  if (next) foot.append(Object.assign(el("button", "link", rec.stars && rec.stars < 3 ? "다시 해서 ★3" : "다시 하기"), { onclick: () => begin(g.shape) }));
   foot.append(Object.assign(el("button", "link", "다른 모양"), { onclick: showPick }), Object.assign(el("a", "link", "시켜본 것 더 보기 →"), { href: "../../../" }));
   cardBlob = null;
   const m = moment || grab(), ls = lickShot instanceof HTMLCanvasElement ? lickShot : null, cs = candyShot;
@@ -745,7 +747,7 @@ function frame(now) {
       else if (ev.type === "heal") { SFX.heal(); note = { text: "실금이 아물었어요", until: now + 1500, good: true }; }
       else if (ev.type === "crack") {
         SFX.hair();
-        if (mode === "camera" && !game.licks && !taught.lick) { taught.lick = true; note = { text: "입을 크게 벌려 핥으면 실금이 아물어요", until: now + 2600, good: true }; }
+        if (!game.licks && !taught.lick) { taught.lick = true; note = { text: mode === "camera" ? "입을 크게 벌려 핥으면 실금이 아물어요" : "혀 버튼으로 핥으면 실금이 아물어요", until: now + 2600, good: true }; }
       }
       else if (ev.type === "spread") SFX.spread();
       else if (ev.type === "chip") {
