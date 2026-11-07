@@ -37,7 +37,8 @@ const AR = {
   CARVE: 0.06,            // groove depth per mm of needle travel near it (about 3 careful passes)
   NEAR: 0.06,             // groove points within this many candy radii of the tip get carved
   MELT_HOLE: 3.2,         // seconds of rubbing one spot before it melts through
-  BREAK: 0.55,            // mean groove depth in a sector that lets the hammer snap it off cleanly
+  HOLD: 0.65,             // groove strength that holds a hammer crack (fracture.js FR.W note); SEGS arcs are checked
+  SEGS: 16,
   // Hammer: pinched like the needle, it swings by itself, one blow every SWING s, and the blow lands wherever the
   // head is. Reading a push to strike kept missing where the finger was (phone tests 11-06/07: "계속 허공"); now the
   // hand only aims (operator 11-07). Over the shape a blow cracks it, so open the fingers to stop while moving across.
@@ -697,6 +698,16 @@ function heal(c, dt) {
   }
 }
 
+function shallowArcs() {
+  const n = S.pts.length, G = AR.SEGS; let left = 0;
+  for (let g = 0; g < G; g++) {
+    let sum = 0, m = 0;
+    for (let i = (g * n / G) | 0; i < ((g + 1) * n / G) | 0; i++) { sum += strength(i); m++; }
+    if (m && sum / m < AR.HOLD) left++;
+  }
+  return left;
+}
+
 // ---------- hammer ----------
 // A hit starts two cracks at the hammer: one out toward the rim, one in toward the outline. Each walks the weakest
 // way (fracture.js): along a needle score or the carved groove if it is cut deep enough, straight on through it if
@@ -938,6 +949,10 @@ const RING = '<svg class="ring" viewBox="0 0 74 74"><circle cx="37" cy="37" r="3
 $("tray").innerHTML = TOOLS.map(([k, name, svg]) => `<button data-tool="${k}"><span class="ic">${svg}</span>${RING}<span>${name}</span></button>`).join("");
 const trayBtns = [...$("tray").querySelectorAll("button")];
 trayBtns.forEach(b => { b.onclick = () => pickTool(b.dataset.tool); });
+function markReady() {   // the hammer button pulses once the groove would hold
+  const b = trayBtns.find(b => b.dataset.tool === "hammer");
+  if (b) b.classList.toggle("ready", !S.ended && S.tool === "needle" && shallowArcs() === 0);
+}
 function pickTool(k) {
   S.tool = k; S.prev = null; tick(); startClock();
   for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = true;
@@ -998,6 +1013,7 @@ function toast(text, color = "#fff", ms = 1200) {
   if (ms) toastTimer = setTimeout(() => t.classList.remove("show"), ms);
 }
 function hud(c) {
+  markReady();
   const cam = S.mode === "camera";
   let hint = "", sub = "", col = "#fff";
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
@@ -1005,8 +1021,10 @@ function hud(c) {
   else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
   else if (cam && !H.pinched) { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = S.tool === "hammer" ? "붙이면 망치가 혼자 톡톡 쳐요" : "떼면 도구를 놓아요"; }
   else if (S.tool === "needle") {
-    const mean = S.depth.reduce((a, b) => a + b, 0) / (S.depth.length || 1);
-    sub = `선 판 깊이 ${Math.round(mean * 100)}%`;
+    // a mean depth said nothing about where it was still shallow (playtest 11-07): count the arcs still too shallow
+    // to hold a hammer crack, and say when it is time for the hammer
+    const left = shallowArcs();
+    sub = left ? `아직 얕은 곳 ${left}군데 · 선을 따라 더 긁어요` : "홈이 충분히 깊어요 · 이제 망치로 바깥을 쳐요";
     if (!c || !c.pressed) {
       hint = !cam ? "누르면 바늘이 닿아요" : c && c.onCandy ? "손을 폰에서 살짝 밀면 바늘이 내려가요" : "달고나 위로 가져가요";
       if (cam && S.liftMM != null) sub = `바늘 끝이 ${Math.max(1, Math.round(S.liftMM))}mm 떠 있어요 · ` + sub;
