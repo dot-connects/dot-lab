@@ -434,6 +434,7 @@ function swing(c, now) {
   if (now - H.swingAt < AR.SWING * 1000) return;
   H.swingAt = now;
   if (c && c.onCandy) hit(c);
+  else burst(0.08, 1500, 0.12, "bandpass");   // a swish on air, so the beat is heard before it lands on anything
 }
 // Two channels: red = surely hand (the bones drawn finger-thick), green = maybe hand (the same, much wider). The
 // overlay shader keeps a "maybe" pixel only if its colour is close to the skin colour read off the palm, so the cut
