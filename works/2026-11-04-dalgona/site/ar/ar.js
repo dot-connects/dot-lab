@@ -335,12 +335,14 @@ addEventListener("resize", () => { if (S.mode) fit(); });
 const toScreen0 = p => { const { k, vw, vh } = crop0; return [p.x * vw * k - (vw * k - W) / 2, p.y * vh * k - (vh * k - Hh) / 2]; };
 const toScreen = p => zoomed(toScreen0(p));
 
-// ---------- zoom: the bar on the right edge brings the candy closer (operator pick 11-07, mockup 2) ----------
+// ---------- zoom: the bar under the tools brings the candy closer (operator pick 11-07, mockup 2) ----------
+// It sat on the right edge first; there the hand that grabs it is half off the screen and the tracker loses it
+// (phone test 11-07), so it lies across the top, under the tool tray, where the tools are grabbed too.
 // The camera renders a sub-window of its full view (setViewOffset) and the video quads sample the same window, so
 // both stay sharp and stay lined up. Hand points and touches are points of the zoomed screen, so rays and the tool
 // need no change. Origin = where the tool last touched the candy, picked when zooming starts from 1x.
 const ZMAX = 2.2;
-const ZM = { k: 1, goal: 1, ox: 0, oy: 0, grab: false, k0: 1, y0: 0, last: null };
+const ZM = { k: 1, goal: 1, ox: 0, oy: 0, grab: false, k0: 1, x0: 0, last: null };
 const zoomed = ([x, y]) => [ZM.ox + (x - ZM.ox) * ZM.k, ZM.oy + (y - ZM.oy) * ZM.k];
 const unzoomed = ([x, y]) => [ZM.ox + (x - ZM.ox) / ZM.k, ZM.oy + (y - ZM.oy) / ZM.k];
 function applyZoom() {
@@ -348,15 +350,15 @@ function applyZoom() {
   else { ZM.k = Math.max(1, ZM.k); camera.clearViewOffset(); }
   zoomU.value.set(ZM.ox / W, 1 - ZM.oy / Hh, ZM.k);
   const t = (ZM.goal - 1) / (ZMAX - 1);
-  $("zknob").style.bottom = `calc(${(t * 100).toFixed(1)}% - ${(t * 44).toFixed(1)}px)`;
+  $("zknob").style.left = `calc(${(t * 100).toFixed(1)}% - ${(t * 40).toFixed(1)}px)`;
   $("zknob").textContent = `×${ZM.goal.toFixed(1)}`;
 }
-function zoomFrom(y) {
+function zoomFrom(x) {
   if (ZM.k < 1.01 && ZM.goal < 1.01) {
     const o = ZM.last && performance.now() - ZM.last.t < 8000 ? ZM.last.p : (() => { const p = v3.setFromMatrixPosition(top.matrixWorld).project(camera); return unzoomed([(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]); })();
     ZM.ox = Math.min(W, Math.max(0, o[0])); ZM.oy = Math.min(Hh, Math.max(0, o[1]));
   }
-  ZM.k0 = ZM.goal; ZM.y0 = y;
+  ZM.k0 = ZM.goal; ZM.x0 = x;
 }
 const zoomTo = k => { ZM.goal = Math.min(ZMAX, Math.max(1, k)); };
 function stepZoom(dt) {
@@ -364,17 +366,17 @@ function stepZoom(dt) {
   ZM.k += (ZM.goal - ZM.k) * (1 - Math.exp(-dt / 0.09)); if (Math.abs(ZM.goal - ZM.k) < 0.002) ZM.k = ZM.goal;
   ZM.dirty = false; applyZoom();
 }
-// touch: the knob follows the finger along the bar
+// touch: the knob follows the finger along the bar (left = 1x, right = most)
 {
-  const bar = $("zbar"), at = e => { const r = bar.getBoundingClientRect(); return 1 + (ZMAX - 1) * Math.min(1, Math.max(0, (r.bottom - 22 - e.clientY) / (r.height - 44))); };
-  bar.addEventListener("pointerdown", e => { e.stopPropagation(); bar.setPointerCapture(e.pointerId); zoomFrom(e.clientY); zoomTo(at(e)); bar.classList.add("grab"); });
+  const bar = $("zbar"), at = e => { const r = bar.getBoundingClientRect(); return 1 + (ZMAX - 1) * Math.min(1, Math.max(0, (e.clientX - r.left - 20) / (r.width - 40))); };
+  bar.addEventListener("pointerdown", e => { e.stopPropagation(); bar.setPointerCapture(e.pointerId); zoomFrom(e.clientX); zoomTo(at(e)); bar.classList.add("grab"); });
   bar.addEventListener("pointermove", e => { if (bar.hasPointerCapture(e.pointerId)) zoomTo(at(e)); });
   const end = () => bar.classList.remove("grab");
   bar.addEventListener("pointerup", end); bar.addEventListener("pointercancel", end);
 }
-// camera: a pinch that closes on the bar grabs it; moving the hand up a third of the screen goes from 1x to ZMAX.
+// camera: a pinch that closes on the bar grabs it; moving the hand right across half the screen goes from 1x to ZMAX.
 // Read in unzoomed screen points, or the zoom would move the hand that moves the zoom.
-const onBar = ([x, y]) => { const r = $("zbar").getBoundingClientRect(); return x > r.left - 46 && y > r.top - 40 && y < r.bottom + 40; };
+const onBar = ([x, y]) => { const r = $("zbar").getBoundingClientRect(); return x > r.left - 30 && x < r.right + 30 && y > r.top - 12 && y < r.bottom + 34; };   // little slack upward: the tool tray is right above
 
 // ---------- light from the camera frame ----------
 const lightCv = document.createElement("canvas"); lightCv.width = lightCv.height = 16;
@@ -453,9 +455,9 @@ function readHand(lm, now) {
   if (closed) { H.pinchRun++; H.openRun = 0; } else { H.openRun++; H.pinchRun = 0; }
   // a pinch on the zoom bar holds the bar, not the tool: no tool comes out while it is held
   const g0 = toScreen0({ x: (lm[4].x + lm[8].x) / 2, y: (lm[4].y + lm[8].y) / 2 });
-  if (!H.pinched && !ZM.grab && H.pinchRun >= AR.CONFIRM && onBar([(P[4][0] + P[8][0]) / 2, (P[4][1] + P[8][1]) / 2])) { ZM.grab = true; zoomFrom(g0[1]); $("zbar").classList.add("grab"); vibrate(8); }
+  if (!H.pinched && !ZM.grab && H.pinchRun >= AR.CONFIRM && onBar([(P[4][0] + P[8][0]) / 2, (P[4][1] + P[8][1]) / 2])) { ZM.grab = true; zoomFrom(g0[0]); $("zbar").classList.add("grab"); vibrate(8); }
   if (ZM.grab && H.openRun >= AR.CONFIRM) { ZM.grab = false; $("zbar").classList.remove("grab"); }
-  if (ZM.grab) zoomTo(ZM.k0 + (ZM.y0 - g0[1]) / (Hh / 3) * (ZMAX - 1));
+  if (ZM.grab) zoomTo(ZM.k0 + (g0[0] - ZM.x0) / (W / 2) * (ZMAX - 1));
   if (!H.pinched && !ZM.grab && H.pinchRun >= AR.CONFIRM) { H.pinched = true; H.pinchAt = now; H.h0 = hs; H.push = 0; vibrate(8); }
   if (H.pinched && H.openRun >= AR.CONFIRM) { H.pinched = false; H.openAt = now; }
   if (H.pinched) {

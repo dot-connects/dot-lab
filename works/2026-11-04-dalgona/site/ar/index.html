@@ -17,8 +17,8 @@ html,body{margin:0;height:100%;background:#0b0e0d;color:var(--ink);font-family:"
 video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .hud{position:absolute;inset:0;pointer-events:none}
 .ts{text-shadow:0 1px 6px rgba(0,0,0,.85)}
-#hint{position:absolute;top:calc(env(safe-area-inset-top) + 158px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:22px;color:#fff;transition:color .2s}
-#sub{position:absolute;top:calc(env(safe-area-inset-top) + 188px);left:16px;right:16px;text-align:center;font-size:13px;color:#e3eee9}
+#hint{position:absolute;top:calc(env(safe-area-inset-top) + 204px);left:16px;right:16px;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:22px;color:#fff;transition:color .2s}
+#sub{position:absolute;top:calc(env(safe-area-inset-top) + 234px);left:16px;right:16px;text-align:center;font-size:13px;color:#e3eee9}
 #stat{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:11px;color:rgba(255,255,255,.75);font-variant-numeric:tabular-nums;line-height:1.4}
 .tools{position:absolute;top:calc(env(safe-area-inset-top) + 10px);right:10px;display:flex;gap:6px;pointer-events:auto}
 .tools button{width:38px;height:38px;border-radius:50%;border:0;background:rgba(8,12,10,.5);color:#fff;font-size:17px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);cursor:pointer}
@@ -71,10 +71,10 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .ov .goal{font-family:"Do Hyeon",sans-serif;font-size:22px;line-height:1.35;color:#fff;margin:0}
 .goal em{font-style:normal;color:var(--candy)}
 .steps b{font-family:"Do Hyeon",sans-serif;font-weight:400;color:var(--candy);font-size:16px}
-#zbar{position:absolute;right:calc(env(safe-area-inset-right) + 8px);top:50%;height:min(40vh,300px);width:44px;transform:translateY(-50%);border-radius:99px;background:rgba(8,12,10,.45);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:auto;touch-action:none}
-#zbar::before,#zbar::after{position:absolute;left:0;right:0;text-align:center;font-family:"Do Hyeon",sans-serif;font-size:20px;color:#fff;text-shadow:0 1px 4px #000;pointer-events:none}
-#zbar::before{content:"+";top:-26px}#zbar::after{content:"\2212";bottom:-26px}
-#zknob{position:absolute;left:0;bottom:0;width:44px;height:44px;border-radius:50%;background:#fff6e6;box-shadow:0 3px 10px rgba(0,0,0,.45);display:grid;place-items:center;font-style:normal;font-family:"Do Hyeon",sans-serif;font-size:14px;color:#2a1406;transition:transform .15s;pointer-events:none}
+#zbar{position:absolute;left:50%;top:calc(env(safe-area-inset-top) + 152px);width:min(64vw,250px);height:40px;transform:translateX(-50%);border-radius:99px;background:rgba(8,12,10,.45);box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.35);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);pointer-events:auto;touch-action:none}
+#zbar::before,#zbar::after{position:absolute;top:0;bottom:0;display:grid;place-items:center;width:22px;font-family:"Do Hyeon",sans-serif;font-size:20px;color:#fff;text-shadow:0 1px 4px #000;pointer-events:none}
+#zbar::before{content:"\2212";left:-26px}#zbar::after{content:"+";right:-26px}
+#zknob{position:absolute;top:0;left:0;width:40px;height:40px;border-radius:50%;background:#fff6e6;box-shadow:0 3px 10px rgba(0,0,0,.45);display:grid;place-items:center;font-style:normal;font-family:"Do Hyeon",sans-serif;font-size:13px;color:#2a1406;transition:transform .15s;pointer-events:none}
 #zbar.grab #zknob{transform:scale(1.18);background:var(--gold)}
 </style>
 </head>
