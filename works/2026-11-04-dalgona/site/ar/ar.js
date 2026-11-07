@@ -836,7 +836,7 @@ function placeTool(c) {
   const hov = S.mode === "camera" ? AR.HOVER * Math.max(0, Math.min(1.5, 1 - H.push / AR.LAND)) : 0.012;
   // the hammer rises over the beat and drops at its end (camera); on touch it waits up and taps down
   const ph = H.swingAt ? Math.min(1, (performance.now() - H.swingAt) / (AR.SWING * 1000)) : 0;
-  const hamLift = S.mode === "camera" ? 0.035 * (ph < 0.8 ? Math.sin(ph / 0.8 * Math.PI / 2) : 1 - ((ph - 0.8) / 0.2) ** 2) : 0.025;
+  const hamLift = S.mode === "camera" ? 0 : 0.025;   // camera: the swing below does the lifting
   const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : hamLift) : c.pressed && c.onCandy ? 0 : hov;
   S.liftMM = c.onCandy ? lift * 1000 : null;
   const m = toolMesh[S.tool], P = c.world.clone();
@@ -851,6 +851,14 @@ function placeTool(c) {
     : [H.tip[0] - H.dir[0] * H.hs * 0.9, H.tip[1] - H.dir[1] * H.hs * 0.9];
   const rb = rayAt(back[0], back[1]), dB = pinchTool ? P.distanceTo(camera.position) - 0.022 : P.distanceTo(camera.position) * 0.8;
   const B = v3b.copy(rb.origin).addScaledVector(rb.direction, dB);
+  // The swing: pivoting at the hand, the head comes up toward the phone (up to 75 degrees) over most of the beat and
+  // slams down onto the candy at its end. A straight lift of a few cm read as no swing at all from above (11-07).
+  if (S.tool === "hammer" && S.mode === "camera") {
+    const up = performance.now() - S.lastHit < 120 ? 0 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
+    const r = new THREE.Vector3().subVectors(P, B), cam = new THREE.Vector3().subVectors(camera.position, P);
+    const axis = r.clone().cross(cam).normalize();
+    P.copy(B).add(r.applyAxisAngle(axis, 1.3 * up));
+  }
   m.position.copy(P);
   const len = B.distanceTo(P);
   m.quaternion.setFromUnitVectors(yAxis, B.sub(P).normalize());
