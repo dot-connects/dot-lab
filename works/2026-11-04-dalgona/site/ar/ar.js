@@ -42,8 +42,10 @@ const AR = {
   // head is. Reading a push to strike kept missing where the finger was (phone tests 11-06/07: "계속 허공"); now the
   // hand only aims (operator 11-07). Over the shape a blow cracks it, so open the fingers to stop while moving across.
   SWING: 0.7,
-  TIP: { needle: 0.45, swab: 0.5, hammer: 0.4 },   // tool contact point ahead of the pinch, in hand sizes
+  TIP: { needle: 0.45, swab: 0.5, hammer: 0.6 },   // tool contact point ahead of the pinch, in hand sizes
 };
+
+const HAM = { R: 0.0068, HALF: 0.013, LEN: 0.075, RAISE: 0.95 };   // hammer head radius / half length, handle length (m), swing (rad)
 
 // ---------- renderer ----------
 const canvas = $("gl"), video = $("video");
@@ -178,12 +180,18 @@ function makeTools() {
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.0034, 18, 12), new THREE.MeshPhysicalMaterial({ color: 0xe4edf1, roughness: 0.5, clearcoat: 0.6, clearcoatRoughness: 0.3 }));
   bulb.scale.set(1, 1.7, 1); bulb.position.y = 0.0052;
   swab.add(stick, bulb);
-  const hammer = new THREE.Group();
-  const head = new THREE.Mesh(new THREE.CylinderGeometry(0.0075, 0.0075, 0.03, 20), new THREE.MeshStandardMaterial({ color: 0xc4cad0, metalness: 0.85, roughness: 0.28 }));
-  head.rotation.z = Math.PI / 2; head.position.y = 0.0075;
-  const handle = new THREE.Mesh(new THREE.CylinderGeometry(0.0026, 0.0032, 0.085, 12), new THREE.MeshStandardMaterial({ color: 0xb07a45, roughness: 0.55 }));
-  handle.position.y = 0.057;
-  hammer.add(head, handle);
+  // A small tack hammer: a steel head with chamfered faces, the striking face down; a tapered wooden handle that
+  // thickens toward the grip and ends round. Origin = centre of the head, head along local X, handle along +Y.
+  const hammer = new THREE.Group(), HR = HAM.R, HH = HAM.HALF, ch = HR * 0.22;
+  const headProf = [[0, -HH], [HR * 0.78, -HH], [HR, -HH + ch], [HR, HH - ch], [HR * 0.78, HH], [0, HH]].map(([x, y]) => new THREE.Vector2(x, y));
+  const head = new THREE.Mesh(new THREE.LatheGeometry(headProf, 28), new THREE.MeshStandardMaterial({ color: 0xb9c0c7, metalness: 0.9, roughness: 0.3 }));
+  head.rotation.z = -Math.PI / 2;
+  const L = HAM.LEN, handProf = [[0, HR * 0.6], [0.0027, HR * 0.6], [0.0026, L * 0.35], [0.0031, L * 0.8], [0.0033, L - 0.004], [0.0022, L - 0.001], [0, L]]
+    .map(([x, y]) => new THREE.Vector2(x, y));
+  const handle = new THREE.Mesh(new THREE.LatheGeometry(handProf, 16), new THREE.MeshStandardMaterial({ color: 0xb98450, roughness: 0.6 }));
+  const wedge = new THREE.Mesh(new THREE.CylinderGeometry(0.0029, 0.0029, 0.0016, 16), new THREE.MeshStandardMaterial({ color: 0x3a2a1c, roughness: 0.7 }));
+  wedge.position.y = HR + 0.0004;
+  hammer.add(head, handle, wedge);
   for (const g of [needle, swab, hammer]) { g.visible = false; scene.add(g); }
   return { needle, swab, hammer };
 }
@@ -825,6 +833,36 @@ function win() {
 }
 
 // ---------- tool placement in 3D ----------
+// The hammer, held like a real one (operator 11-07: "디자인이랑 방향 다시"): the flat face sits on the spot it will
+// hit, the head stands up off the candy, and the handle runs from the head to the fingers on screen, its end on the
+// ray through them one handle-length away. The swing pivots at the hand: over the beat the head comes up off the
+// candy (HAM.RAISE rad at the top) and slams down at its end. Touch mode hovers it a little and drops it on a tap.
+const hamQ = new THREE.Quaternion(), hamM = new THREE.Matrix4();
+function placeHammer(c, m, ph) {
+  const n = new THREE.Vector3(0, 0, 1).applyQuaternion(candy.getWorldQuaternion(hamQ)).normalize();
+  const center = c.world.clone().addScaledVector(n, HAM.HALF);
+  const g = S.mode === "camera" && H.grip ? H.grip : [H.tip[0] - H.dir[0] * H.hs * 0.6, H.tip[1] - H.dir[1] * H.hs * 0.6];
+  const ry = rayAt(g[0], g[1]), oc = new THREE.Vector3().subVectors(ry.origin, center);
+  const b = ry.direction.dot(oc), disc = b * b - (oc.lengthSq() - HAM.LEN * HAM.LEN);
+  const t = disc >= 0 ? -b - Math.sqrt(disc) : -b;   // the nearer crossing: the hand is above the candy, toward the phone
+  const hand = ry.origin.clone().addScaledVector(ry.direction, Math.max(0.05, t));
+  const justHit = performance.now() - S.lastHit < 120;
+  const up = justHit ? 0 : S.mode !== "camera" ? 0.25 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
+  const r = center.clone().sub(hand), axis = r.clone().cross(n);
+  if (axis.lengthSq() > 1e-10) { axis.normalize(); hamQ.setFromAxisAngle(axis, HAM.RAISE * up); } else hamQ.identity();
+  r.applyQuaternion(hamQ);
+  const pos = hand.clone().add(r);
+  // seen from above a face-down head is just a grey dot; turning it most of the way across the line of sight keeps
+  // the T of a hammer readable while the face still points down at the spot
+  const Y = hand.clone().sub(pos).normalize(), X = n.clone().applyQuaternion(hamQ), view = pos.clone().sub(camera.position).normalize();
+  X.addScaledVector(view, -0.75 * X.dot(view)).addScaledVector(Y, -X.dot(Y)).normalize();
+  m.quaternion.setFromRotationMatrix(hamM.makeBasis(X, Y, X.clone().cross(Y)));
+  m.position.copy(pos); m.visible = true;
+  if (c.onCandy) {
+    const l = candy.worldToLocal(c.world.clone()), k = 0.5 + up * 0.5;
+    shadow.position.set(l.x, l.y, 0.0004); shadow.scale.set(k, k, 1); shadow.material.opacity = 0.9 - up * 0.4; shadow.visible = true;
+  }
+}
 const yAxis = new THREE.Vector3(0, 1, 0);
 function placeTool(c) {
   for (const k in toolMesh) toolMesh[k].visible = false;
@@ -834,31 +872,21 @@ function placeTool(c) {
   if (S.mode === "camera" && !H.pinched) return;
   // a pinched tool hovers HOVER above the candy at the pinch and comes down as the hand pushes away from the phone
   const hov = S.mode === "camera" ? AR.HOVER * Math.max(0, Math.min(1.5, 1 - H.push / AR.LAND)) : 0.012;
-  // the hammer rises over the beat and drops at its end (camera); on touch it waits up and taps down
   const ph = H.swingAt ? Math.min(1, (performance.now() - H.swingAt) / (AR.SWING * 1000)) : 0;
-  const hamLift = S.mode === "camera" ? 0 : 0.025;   // camera: the swing below does the lifting
-  const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : hamLift) : c.pressed && c.onCandy ? 0 : hov;
+  const lift = c.pressed && c.onCandy ? 0 : hov;
   S.liftMM = c.onCandy ? lift * 1000 : null;
   const m = toolMesh[S.tool], P = c.world.clone();
+  if (S.tool === "hammer") { placeHammer(c, m, ph); return; }
   const toCam = v3.copy(camera.position).sub(P).normalize();
   P.addScaledVector(toCam, lift);
   // Needle and swab come out of the pinch: the top end sits just behind where thumb and index meet, so on screen
   // the tool runs from your fingers to its point (phone test 11-06: leaning toward the camera it foreshortened to a
   // stub under the fingers and you could not tell where the point was). It lies fairly flat, rising RISE toward the
-  // camera at the fingers. The hammer keeps its pen-like lean.
-  const pinchTool = S.tool !== "hammer";
-  const back = pinchTool && H.grip ? [H.grip[0] - H.dir[0] * H.hs * 0.12, H.grip[1] - H.dir[1] * H.hs * 0.12]
+  // camera at the fingers.
+  const back = H.grip ? [H.grip[0] - H.dir[0] * H.hs * 0.12, H.grip[1] - H.dir[1] * H.hs * 0.12]
     : [H.tip[0] - H.dir[0] * H.hs * 0.9, H.tip[1] - H.dir[1] * H.hs * 0.9];
-  const rb = rayAt(back[0], back[1]), dB = pinchTool ? P.distanceTo(camera.position) - 0.022 : P.distanceTo(camera.position) * 0.8;
+  const rb = rayAt(back[0], back[1]), dB = P.distanceTo(camera.position) - 0.022;
   const B = v3b.copy(rb.origin).addScaledVector(rb.direction, dB);
-  // The swing: pivoting at the hand, the head comes up toward the phone (up to 75 degrees) over most of the beat and
-  // slams down onto the candy at its end. A straight lift of a few cm read as no swing at all from above (11-07).
-  if (S.tool === "hammer" && S.mode === "camera") {
-    const up = performance.now() - S.lastHit < 120 ? 0 : ph < 0.75 ? Math.sin(ph / 0.75 * Math.PI / 2) : 1 - ((ph - 0.75) / 0.25) ** 2;
-    const r = new THREE.Vector3().subVectors(P, B), cam = new THREE.Vector3().subVectors(camera.position, P);
-    const axis = r.clone().cross(cam).normalize();
-    P.copy(B).add(r.applyAxisAngle(axis, 1.3 * up));
-  }
   m.position.copy(P);
   const len = B.distanceTo(P);
   m.quaternion.setFromUnitVectors(yAxis, B.sub(P).normalize());
