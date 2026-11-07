@@ -38,16 +38,11 @@ const AR = {
   NEAR: 0.06,             // groove points within this many candy radii of the tip get carved
   MELT_HOLE: 3.2,         // seconds of rubbing one spot before it melts through
   BREAK: 0.55,            // mean groove depth in a sector that lets the hammer snap it off cleanly
-  // hammer = the index finger. A tap is a fast move of the fingertip down the screen (or the finger tipping toward
-  // the candy, which shortens it on screen) that then stops: the stop is the hit.
-  // Hammer = aim, then push, like the needle. With the rear camera looking down a tap moves the fingertip away from
-  // the phone (the hand shrinks on screen), and so does reaching for the candy: a detector that fired on any quick
-  // shrink fired on the reach, off the candy (phone test 11-06/07: "계속 허공"). So the hammer first arms: the tip
-  // holds still over the candy for ARM_MS (lateral speed < ARM_MOVE hand sizes/s, size steady within ARM_SPREAD).
-  // Then the hand pushing TAP_DROP smaller than where it armed strikes there (the needle lands at the same 6 %).
-  // Over the shape itself only a quick push (TAP_RATE /s) counts, so sinking slowly while aiming does not fail you.
-  ARM_MS: 200, ARM_MOVE: 1.2, ARM_SPREAD: 0.04, TAP_DROP: 0.06, TAP_RATE: 0.5, TAP_LEAVE: 0.9,
-  TIP: { needle: 0.45, swab: 0.5, hammer: 0.12 },   // hammer: ahead of the index fingertip   // tool contact point ahead of the pinch, in hand sizes
+  // Hammer: pinched like the needle, it swings by itself, one blow every SWING s, and the blow lands wherever the
+  // head is. Reading a push to strike kept missing where the finger was (phone tests 11-06/07: "계속 허공"); now the
+  // hand only aims (operator 11-07). Over the shape a blow cracks it, so open the fingers to stop while moving across.
+  SWING: 0.7,
+  TIP: { needle: 0.45, swab: 0.5, hammer: 0.4 },   // tool contact point ahead of the pinch, in hand sizes
 };
 
 // ---------- renderer ----------
@@ -200,7 +195,7 @@ const S = {
   pts: [], depth: [], soft: [], melt: new Float32Array(40 * 40), gone: new Uint8Array(0), stress: 0,
   pieces: [], dirty: new Set(), lastUpload: 0, contact: null, prev: null, v: 0, lastHit: 0, offscreenSince: 0,
 };
-const H = { present: false, P: null, hs: 120, pinched: false, pinchRun: 0, openRun: 0, pinchAt: 0, lostAt: 0, tip: null, dir: [-0.5, -0.86], grip: null, idx: null, t: 0, ys: [] };
+const H = { present: false, P: null, hs: 120, pinched: false, pinchRun: 0, openRun: 0, pinchAt: 0, lostAt: 0, tip: null, dir: [-0.5, -0.86], grip: null, idx: null, t: 0, swingAt: 0 };
 const fx = oneEuro(), fy = oneEuro();
 
 // ---------- candy textures ----------
@@ -386,7 +381,7 @@ const PALM = [0, 1, 2, 5, 9, 13, 17];
 function readHand(lm, now) {
   if (!lm) {
     if (H.present && !H.lostAt) H.lostAt = now;
-    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; H.ys = []; H.arm = null; fx.reset(); fy.reset(); }
+    if (H.present && now - H.lostAt > AR.LOST_GRACE) { H.present = false; H.pinched = false; H.P = null; fx.reset(); fy.reset(); }
     drawMask(null);
     return false;
   }
@@ -412,67 +407,21 @@ function readHand(lm, now) {
   let dx = P[8][0] - P[5][0], dy = P[8][1] - P[5][1]; const dl = Math.hypot(dx, dy) || 1;
   H.dir = [H.dir[0] * 0.5 + dx / dl * 0.5, H.dir[1] * 0.5 + dy / dl * 0.5];
   const nl = Math.hypot(...H.dir) || 1; H.dir = [H.dir[0] / nl, H.dir[1] / nl];
-  // the needle and swab sit in the pinch; the hammer is the index finger itself, its head just past the fingertip
-  const base = S.tool === "hammer" ? P[8] : H.grip;
-  const k = AR.TIP[S.tool || "needle"] * hs, raw = [base[0] + H.dir[0] * k, base[1] + H.dir[1] * k];
+  const k = AR.TIP[S.tool || "needle"] * hs, raw = [H.grip[0] + H.dir[0] * k, H.grip[1] + H.dir[1] * k];
   if (!was) { fx.reset(); fy.reset(); }
   H.tip = [fx.f(raw[0], now), fy.f(raw[1], now)];
   H.idx = P[8];
-  // the tap is read off the raw fingertip, not the smoothed tip: the filter shaves the very speed we look for
-  // kept by time, not count, so a tap that blurs the hand away for a frame still has both ends
-  H.ys.push({ t: now, x: raw[0], y: raw[1], hs, l: dist(P[5], P[8]) / hs, asp: dist(P[5], P[17]) / (dist(P[0], P[9]) || 1) });
-  while (now - H.ys[0].t > 500) H.ys.shift();
-  if (S.mode === "camera" && S.tool === "hammer") H.tapE = tap();
   drawMask(P);
   return true;
 }
-function contactAt(x, y) { const keep = H.tip; H.tip = [x, y]; const c = contact(); H.tip = keep; return c; }
-// The hammer: arm while still over the candy, strike on the push. Returns the strike strength, 0 if none.
-function tap() {
-  const h = H.ys, b = h[h.length - 1];
-  H.hamPush = 0;
-  if (b.t < (H.tapBlock || 0)) return 0;
-  const A = H.arm;
-  if (!A) {
-    const w = h.filter(a => b.t - a.t <= AR.ARM_MS), w0 = w[0], span = (b.t - w0.t) / 1000;
-    if (span < AR.ARM_MS / 1000 * 0.7) return 0;
-    let lo = Infinity, hi = 0; for (const a of w) { lo = Math.min(lo, a.hs); hi = Math.max(hi, a.hs); }
-    if (Math.hypot(b.x - w0.x, b.y - w0.y) / b.hs / span > AR.ARM_MOVE || hi / lo - 1 > AR.ARM_SPREAD) return 0;
-    let c = contactAt(b.x, b.y); if (c && !c.onCandy) c = snapToCandy(c);
-    if (!c || !c.onCandy) return 0;
-    H.arm = { top: b.hs, topT: b.t, t: b.t, x: b.x, y: b.y }; return 0;
-  }
-  // moved off to aim somewhere else: disarm (it re-arms when the tip settles again)
-  if (Math.hypot(b.x - A.x, b.y - A.y) > b.hs * AR.TAP_LEAVE) { H.arm = null; return 0; }
-  if (b.hs > A.top) { A.top = b.hs; A.topT = b.t; }
-  const d = 1 - b.hs / A.top, rate = d / Math.max(0.05, (b.t - A.topT) / 1000);
-  H.hamPush = d;
-  if (PROBE) PR.dmax = Math.max(PR.dmax || 0, d);
-  if (d < AR.TAP_DROP) return 0;
-  const path = h.filter(a => a.t >= A.t).map(a => [a.x, a.y]), c = strikePoint(path);
-  const onShape = c && c.onCandy && inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03;
-  if (onShape && rate < AR.TAP_RATE) { A.top = b.hs; A.topT = b.t; toast("모양 위예요 · 바깥에서 쳐요", "var(--gold)", 900); return 0; }
-  H.arm = null; H.tapBlock = b.t + 250; H.tapPath = path;
-  if (PROBE) PR.tap = `망치 ${(d * 100).toFixed(0)}% ${rate.toFixed(2)}/s`;
-  return Math.min(1.8, Math.max(0.8, rate / AR.TAP_RATE));
-}
-// Where the tap struck: walk the swing path back from where it ended and take the first point over the candy. A
-// tip that passed over the candy on its way counts (operator 11-06: "통과해도 닿은 부분이 쳐지는 걸로"). If that
-// point is in the shape but a point outside it lies within 0.15 R on the same path, the outside one wins.
-function strikePoint(path) {
-  const keep = H.tip; let first = null, out = null;
-  if (path.length === 1) path = [path[0], path[0]];
-  for (let i = path.length - 1; i > 0 && !out; i--) {
-    const [x0, y0] = path[i], [x1, y1] = path[i - 1], n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) / 4) || 1;
-    for (let j = 0; j <= n; j++) {
-      H.tip = [x0 + (x1 - x0) * j / n, y0 + (y1 - y0) * j / n]; const c = contact();
-      if (!c || !c.onCandy) continue; first ||= c;
-      if (!inShape(c.sx, c.sy) || outlineDist(c.sx, c.sy) < 0.03) { out = c; break; }
-    }
-  }
-  if (!first) { H.tip = path[path.length - 1]; first = contact(); }
-  H.tip = keep;
-  return out && Math.hypot(out.sx - first.sx, out.sy - first.sy) < 0.15 ? out : first;
+// The hammer swings on its own while the fingers pinch: it rises over the beat and comes down at its end, and the
+// blow lands under the head. Over nothing it just swings.
+function swing(c, now) {
+  if (!H.pinched || S.ended) { H.swingAt = 0; return; }
+  if (!H.swingAt) { H.swingAt = now; return; }
+  if (now - H.swingAt < AR.SWING * 1000) return;
+  H.swingAt = now;
+  if (c && c.onCandy) hit(c);
 }
 // Two channels: red = surely hand (the bones drawn finger-thick), green = maybe hand (the same, much wider). The
 // overlay shader keeps a "maybe" pixel only if its colour is close to the skin colour read off the palm, so the cut
@@ -553,7 +502,7 @@ function probe(hs, now) {
   g.fillStyle = "#fff"; g.font = "bold 24px sans-serif";
   g.fillText(`${PR.ref ? "집음" : "안 집음"}  ${m >= 0 ? "+" : ""}${m.toFixed(1)}%`, 10, 30);
   g.fillText(`떨림 ${sd.toFixed(1)}%  손 ${hs.toFixed(0)}px`, 10, H2 - 12);
-  if (S.tool === "hammer") { g.font = "bold 18px sans-serif"; g.fillText(`${H.arm ? "준비" : "대기"} 밀기 ${((H.hamPush || 0) * 100).toFixed(0)}% 최대 ${((PR.dmax || 0) * 100).toFixed(0)}%`, 10, 60); g.fillText(`${PR.tap || ""} ${PR.hit || ""}`, 10, 84); }
+  if (S.tool === "hammer") { g.font = "bold 18px sans-serif"; g.fillText(`${H.pinched ? "휘두르는 중" : "멈춤"} ${PR.hit || ""}`, 10, 60); }
 }
 
 // ---------- touch fallback ----------
@@ -882,12 +831,12 @@ function placeTool(c) {
   shadow.visible = false;
   if (!S.tool || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom)) return;
   // the tool is only there while the fingers hold it: open them and it is gone, so you can see whether you hold it
-  if (S.mode === "camera" && !H.pinched && S.tool !== "hammer") return;
-  toolMesh.hammer.children[1].visible = S.mode !== "camera";
-  // the hammer hovers and only touches down for a moment when it hits
+  if (S.mode === "camera" && !H.pinched) return;
   // a pinched tool hovers HOVER above the candy at the pinch and comes down as the hand pushes away from the phone
   const hov = S.mode === "camera" ? AR.HOVER * Math.max(0, Math.min(1.5, 1 - H.push / AR.LAND)) : 0.012;
-  const hamLift = S.mode === "camera" ? 0.02 * Math.max(0, 1 - (H.hamPush || 0) / AR.TAP_DROP) : 0.025;
+  // the hammer rises over the beat and drops at its end (camera); on touch it waits up and taps down
+  const ph = H.swingAt ? Math.min(1, (performance.now() - H.swingAt) / (AR.SWING * 1000)) : 0;
+  const hamLift = S.mode === "camera" ? 0.035 * (ph < 0.8 ? Math.sin(ph / 0.8 * Math.PI / 2) : 1 - ((ph - 0.8) / 0.2) ** 2) : 0.025;
   const lift = S.tool === "hammer" ? (performance.now() - S.lastHit < 120 ? 0 : hamLift) : c.pressed && c.onCandy ? 0 : hov;
   S.liftMM = c.onCandy ? lift * 1000 : null;
   const m = toolMesh[S.tool], P = c.world.clone();
@@ -908,7 +857,7 @@ function placeTool(c) {
   if (S.tool === "needle") { m.scale.set(1, len, 1); m.userData.eye.scale.set(1, 1 / len, 1); }
   m.visible = true;
   // the point's shadow is where it will land: off to one side and soft while it hovers, under the point when it touches
-  if (c.onCandy && (pinchTool || H.arm)) {
+  if (c.onCandy) {
     const l = candy.worldToLocal(c.world.clone()), off = 0.0008 + lift * 0.5;
     shadow.position.set(l.x + off * 0.5, l.y - off, 0.0004);
     const k = 0.45 + lift * 90; shadow.scale.set(k, k, 1); shadow.material.opacity = Math.max(0.3, 0.95 - lift * 50); shadow.visible = true;
@@ -988,7 +937,7 @@ function hud(c) {
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
   else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : "화면을 손가락으로 만져 보세요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
   else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
-  else if (cam && !H.pinched && S.tool !== "hammer") { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = "떼면 도구를 놓아요"; }
+  else if (cam && !H.pinched) { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = S.tool === "hammer" ? "붙이면 망치가 혼자 톡톡 쳐요" : "떼면 도구를 놓아요"; }
   else if (S.tool === "needle") {
     const mean = S.depth.reduce((a, b) => a + b, 0) / (S.depth.length || 1);
     sub = `선 판 깊이 ${Math.round(mean * 100)}%`;
@@ -1003,8 +952,8 @@ function hud(c) {
     if (cam && c && c.pressed) sub = `누르기 ${c.press < 0.25 ? "살살" : c.press < 0.75 ? "알맞게" : "세게"} · ` + sub;
   } else if (S.tool === "swab") { hint = "녹일 곳에 대고 문질러요"; sub = "녹은 곳은 바늘이 잘 들고 금이 덜 가요 · 모양에 간 금은 문지르면 붙어요"; }
   else {
-    hint = !cam ? "바깥을 톡 눌러 쳐요" : H.arm ? "좋아요 · 손을 톡 밀어 쳐요" : "검지 끝을 달고나 바깥 위에 잠깐 멈춰요";
-    if (cam && H.arm) col = "var(--good)";
+    hint = !cam ? "바깥을 톡 눌러 쳐요" : c && c.onCandy && !inShape(c.sx, c.sy) ? "좋아요 · 그대로 대고 있어요" : "망치를 달고나 바깥에 갖다 대요";
+    if (cam && c && c.onCandy && !inShape(c.sx, c.sy)) col = "var(--good)";
     sub = "금은 깊게 판 홈과 긁은 자국을 따라가요 · 얕은 데선 뚫고 들어가요";
   }
   if (S.ended) { hint = ""; sub = ""; }
@@ -1259,8 +1208,7 @@ function loop(now) {
   if (fresh) {
     const wdt = Math.min(0.1, (now - (lastWork || now - 16)) / 1000); lastWork = now;
     work(c, wdt, now);
-    // a harder tap carries the cracks further, and through a groove more easily
-    if (H.tapE) { const E = H.tapE; H.tapE = 0; hit(strikePoint(H.tapPath), E); }
+    if (S.mode === "camera" && S.tool === "hammer") swing(c, now);
     updateDwell(now, wdt);
   }
   // the candy idles with a slow bob, wobbles when hit, pops in when (re)placed
@@ -1350,7 +1298,7 @@ window.__ar = { THREE, scene, camera, place,
   guardTo: d => { WT.move = null; setGuardDist(d); },   // the promo render stands him where the late game would
   // the promo render ends its run here: the last crumbs fall away and the shape comes out
   finish: () => { const F = S.F, rest = []; for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k); dropCells(rest); S.gone.fill(1); win(); },
-  S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, strikePoint, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
+  S, H, AR, WT, toolMesh, fg: fgScene, pickTool, reset, hit, readHand, contact, swing, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },
   screenOf: (sx, sy) => { top.updateMatrixWorld(); const p = top.localToWorld(new THREE.Vector3(sx * R, -sy * R, 0)).project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; } };
