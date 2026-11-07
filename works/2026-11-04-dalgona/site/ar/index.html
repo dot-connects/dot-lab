@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>허공 달고나 AR</title>
+<title>달고나 AR</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
@@ -58,6 +58,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 .ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 22px calc(env(safe-area-inset-bottom) + 24px);background:radial-gradient(120% 70% at 50% 35%,#3a3029 0%,#171311 60%,#0b0908 100%)}
 .ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:44px;margin:0}
 .ov h1 em{font-style:normal;color:var(--candy)}
+.ov h1 .logo{display:block;width:230px;max-width:70vw;height:auto}
 .ov .tag{font-size:12px;letter-spacing:.12em;color:var(--gold)}
 .ov p{margin:0;max-width:320px;line-height:1.6;color:#e3eee9;font-size:15px}
 .ov p.mute{color:var(--mute);font-size:13px}
@@ -98,7 +99,7 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 
   <section class="ov" id="start">
     <div class="tag">뒤 카메라 · AR</div>
-    <h1>허공 <em>달고나</em></h1>
+    <h1><img class="logo" src="../logo.svg" alt="달고나" width="230" height="87"></h1>
     <p>폰을 들고 앞을 비추면 달고나가 떠 있어요. 카메라 앞에 손을 넣고 도구를 손가락으로 골라 해 보세요.</p>
     <p class="goal">2분 안에 모양만 남기고 떼어 내요.<br>모양이 깨지면 <em>감시자</em>가 쏴요.</p>
     <div class="steps">

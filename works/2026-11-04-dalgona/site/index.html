@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>허공 달고나 — 그냥 시켜봄</title>
+<title>달고나 — 그냥 시켜봄</title>
 <meta name="description" content="카메라 앞에서 손가락으로 바늘을 집고 허공의 달고나를 긁어 보세요. 서두르면 금이 갑니다.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Do+Hyeon&family=Orbit&family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
@@ -37,6 +37,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 #result.win{background:radial-gradient(90% 60% at 50% 40%,rgba(233,166,74,.22),rgba(10,14,12,.7))}
 .ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:46px;margin:0;color:#fff;letter-spacing:.02em}
 .ov h1 em{font-style:normal;color:var(--candy)}
+.ov h1 .logo{display:block;width:240px;max-width:70vw;height:auto}
 .ov h2{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:36px;margin:0;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.6)}
 .ov p{margin:0;line-height:1.6;max-width:320px;color:#e3eee9}
 .how{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;text-align:left;font-size:15px;max-width:320px}
@@ -102,7 +103,7 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
   <section class="ov" id="start">
     <a id="back" href="../../../">‹ 시켜본 것들</a>
     <canvas id="demo" aria-hidden="true"></canvas>
-    <h1>허공 <em>달고나</em></h1>
+    <h1><img class="logo" src="logo.svg" alt="달고나" width="240" height="91"></h1>
     <p>내 카메라 화면 위에 달고나가 떠요.<br>금 가기 전에 모양을 떼어 내세요.</p>
     <div class="how">
       <b>🤏</b><span>엄지·검지를 모으면 바늘 (터치는 손가락)</span>

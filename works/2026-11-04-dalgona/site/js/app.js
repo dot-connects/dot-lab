@@ -533,7 +533,7 @@ async function makeCard(faceOff, g0, m, lick, candy, geom, W) {
   sh2 = g.createLinearGradient(0, 0, 0, 200); sh2.addColorStop(0, "rgba(0,0,0,.55)"); sh2.addColorStop(1, "rgba(0,0,0,0)");
   g.fillStyle = sh2; g.fillRect(0, 0, CW, 200);
   g.fillStyle = "#fff"; g.textBaseline = "alphabetic";
-  g.font = '44px "Do Hyeon", sans-serif'; g.fillText("허공 달고나 · " + SHAPES[g0.shape].name, 56, 96);
+  g.font = '44px "Do Hyeon", sans-serif'; g.fillText("달고나 · " + SHAPES[g0.shape].name, 56, 96);
   g.font = '96px "Do Hyeon", sans-serif'; g.fillText(label(g0), 56, CH - 210);
   g.font = '58px "Do Hyeon", sans-serif';
   g.fillStyle = g0.ok ? "#FFC23D" : "#FF6B81";
@@ -556,7 +556,7 @@ const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform ==
 async function share() {
   const url = location.origin + location.pathname, g0 = game;
   if (!cardBlob) return;   // the button stays disabled until the card is ready
-  const text = `허공 달고나 ${SHAPES[g0.shape].name} — ${label(g0)}${g0.ok ? ` ${starText(stars(g0))} ${g0.t.toFixed(1)}초` : ` ${g0.final}%`}`;
+  const text = `달고나 ${SHAPES[g0.shape].name} — ${label(g0)}${g0.ok ? ` ${starText(stars(g0))} ${g0.t.toFixed(1)}초` : ` ${g0.final}%`}`;
   try {
     const file = cardBlob && new File([cardBlob], "dalgona.png", { type: "image/png" });
     if (file && navigator.canShare && navigator.canShare({ files: [file] })) { await navigator.share({ files: [file], text: text + " " + url }); return; }
