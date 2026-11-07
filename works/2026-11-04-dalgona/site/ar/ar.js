@@ -1230,7 +1230,12 @@ function updateWatcher(dt, now) {
         if (s > 0.7 && !D.racked) { D.racked = 1; gcall("hold", false); sfx("cock"); }
         if (s > 0.7) gcall("setAim", 1);
         if (s > 1.6) shoot(D.why, true);
-      } else if (D.t > 6.4) shoot(D.why, false);   // he does not wait forever
+      } else if (D.t > 6.4 && !D.came) {
+        // you won't look up: he steps round in front of where you are looking, so the shot is still seen (playtest 11-07)
+        D.came = 1; const f = WT.dir.set(0, 0, -1).applyQuaternion(camera.quaternion); f.y = 0;
+        if (f.lengthSq() < 0.04) { f.set(0, 1, 0).applyQuaternion(camera.quaternion); f.y = 0; }
+        f.normalize(); WT.move = null; setGuardDist(1.5); sfx("scuff");
+      } else if (D.came && D.t > 7.6) shoot(D.why, true);   // in front of you now: the flash and the jolt land on screen
     }
   }
   if (muzzle.visible && now - WT.flashAt > 60) muzzle.visible = false;
