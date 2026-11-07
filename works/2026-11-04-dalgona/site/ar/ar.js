@@ -1141,6 +1141,8 @@ function strike() {
   const k = Math.min(STRIKE.length - 1, WT.strikes++);
   WT.alarm = 2.5; WT.alarmAim = STRIKE[k][0]; WT.restAim = STRIKE[k][1];
   sfx(k === 0 ? "creak" : "halfRack");
+  // he is usually off the top of the screen while you carve: the edges flash red so you know he moved (playtest 11-07)
+  const w = $("warn"); w.classList.remove("on"); void w.offsetWidth; w.classList.add("on"); vibrate([20, 40, 20]);
 }
 // fail(): the candy broke or the time ran out. Everything goes quiet; the prompt comes a moment later.
 function doom(why) {
