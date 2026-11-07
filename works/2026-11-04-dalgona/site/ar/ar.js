@@ -201,7 +201,7 @@ const toolMesh = makeTools();
 // ---------- state ----------
 const S = {
   mode: null, tool: null, shape: "circle", ended: false, gyro: false, spawn: 1, wob: 0, spin: 0,
-  pts: [], depth: [], soft: [], melt: new Float32Array(40 * 40), gone: new Uint8Array(0), stress: 0,
+  pts: [], depth: [], soft: [], melt: new Float32Array(40 * 40), meltWarned: new Uint8Array(40 * 40), meltHold: new Float64Array(40 * 40), gone: new Uint8Array(0), stress: 0,
   pieces: [], dirty: new Set(), lastUpload: 0, contact: null, prev: null, v: 0, lastHit: 0, offscreenSince: 0,
 };
 const H = { present: false, P: null, hs: 120, pinched: false, pinchRun: 0, openRun: 0, pinchAt: 0, lostAt: 0, tip: null, dir: [-0.5, -0.86], grip: null, idx: null, t: 0, swingAt: 0 };
@@ -272,7 +272,7 @@ function paintCandy() {
 }
 
 function reset(shape = S.shape) {
-  S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.wob = 0; S.spin = 0;
+  S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.meltWarned.fill(0); S.meltHold.fill(0); S.wob = 0; S.spin = 0;
   S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length); S.gone = new Uint8Array(S.pts.length);
   for (const p of S.pieces) scene.remove(p.g);
   S.pieces = []; S.shapeCracks = [];
@@ -599,11 +599,14 @@ function work(c, dt, now) {
     blob(c.px, c.py, 5 * PXMM, "rgba(0,0,0,.10)", "rough");
     blob(c.px, c.py, 5 * PXMM, "rgba(140,140,140,.05)", "height");
     const gx = Math.min(39, Math.max(0, ((c.sx + 1) / 2 * 40) | 0)), gy = Math.min(39, Math.max(0, ((c.sy + 1) / 2 * 40) | 0)), k = gy * 40 + gx;
-    S.melt[k] += dt;
+    const now = performance.now();
+    if (now >= (S.meltHold[k] || 0)) S.melt[k] += dt;
     for (let i = 0; i < S.pts.length; i++) { const [x, y] = S.pts[i]; if (Math.hypot(x - c.sx, y - c.sy) < 0.1) S.soft[i] = Math.min(1, S.soft[i] + dt / 1.2); }
     S.meltNow = S.melt[k] / AR.MELT_HOLE;
-    if (S.meltNow > 0.7 && !S.meltWarned) { S.meltWarned = 1; toast("그만! 더 문지르면 녹아 구멍 나요", "var(--bad)", 1400); vibrate([30, 30, 30]); }
-    if (S.meltNow < 0.5) S.meltWarned = 0;
+    if (S.meltNow > 0.7 && !S.meltWarned[k]) {
+      S.meltWarned[k] = 1; S.meltHold[k] = now + 1000;
+      toast("그만! 더 문지르면 녹아 구멍 나요", "var(--bad)", 1400); vibrate([30, 30, 30]);
+    }
     heal(c, dt);
     if (S.melt[k] > AR.MELT_HOLE) { S.melt[k] = -1e9; hole(c); }
     sound(Math.min(0.18, 0.05 + S.v / 200), 700);
@@ -693,8 +696,10 @@ function heal(c, dt) {
       for (const [x, y] of k.pts) { const m = Math.floor(y / S.F.cell) * S.F.N + Math.floor(x / S.F.cell); if (m >= 0 && m < S.F.crack.length && S.F.inside[m]) S.F.crack[m] = 0; }
       toast("금이 붙었어요 · 이제 떼요", "var(--gold)", 1400); vibrate(10);
       // the rubbing that mended it does not count toward melting a hole there
-      const gx = ((c.sx + 1) / 2 * 40) | 0, gy = ((c.sy + 1) / 2 * 40) | 0;
-      for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) { const m = (gy + j) * 40 + gx + i; if (m >= 0 && m < S.melt.length && S.melt[m] > 0) S.melt[m] = 0; }
+      for (const [x, y] of k.pts) for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) {
+        const m = (((y / TEX * 40) | 0) + j) * 40 + ((x / TEX * 40) | 0) + i;
+        if (m >= 0 && m < S.melt.length && S.melt[m] > 0) { S.melt[m] = 0; S.meltWarned[m] = 0; }
+      }
     }
   }
 }
@@ -865,7 +870,7 @@ const NEXT = { circle: "tri", tri: "star", star: "circle" }, NAME = { circle: "�
 function win() {
   S.ended = true; S.spin = 1; WT.running = false; sfx("win");
   const used = Math.round(TIME_LIMIT - WT.timeLeft);
-  $("timer").hidden = true;
+  $("timer").hidden = true; hudEls().forEach(e => { if (e && e.id !== "stat") e.style.visibility = "hidden"; });
   $("deadWhy").textContent = `${used >= 60 ? `${Math.floor(used / 60)}분 ` : ""}${used % 60}초 걸렸어요`;
   $("dead").querySelector("b").textContent = "통과"; $("dead").classList.add("win"); $("dead").hidden = false;
   $("again").textContent = `다음은 ${NAME[NEXT[S.shape]]}`; $("again").dataset.next = NEXT[S.shape];
@@ -907,7 +912,7 @@ const yAxis = new THREE.Vector3(0, 1, 0);
 function placeTool(c) {
   for (const k in toolMesh) toolMesh[k].visible = false;
   shadow.visible = false;
-  if (!S.tool || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom)) return;
+  if (!S.tool || S.ended || !H.present || !H.tip || !c || (typeof WT !== "undefined" && WT.doom)) return;
   // the tool is only there while the fingers hold it: open them and it is gone, so you can see whether you hold it
   if (S.mode === "camera" && !H.pinched) return;
   // a pinched tool hovers HOVER above the candy at the pinch and comes down as the hand pushes away from the phone
@@ -1019,15 +1024,17 @@ function hud(c) {
   let hint = "", sub = "", col = "#fff";
   if (cam && !landmarker) { hint = "손 인식 준비 중…"; }
   else if (!H.present) { hint = cam ? "손을 카메라 앞에 보여 주세요" : S.tool ? "화면을 손가락으로 만져 보세요" : "위에서 바늘부터 골라요"; sub = cam ? "폰은 한 손에, 다른 손을 화면 안으로" : ""; }
-  else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위 도구를 눌러 골라요"; }
+  else if (!S.tool) { hint = cam ? "위 도구를 손가락으로 가리켜요" : "위에서 바늘부터 골라요"; }
   else if (cam && !H.pinched) { hint = "엄지·검지 끝을 꼭 붙여 잡아요"; sub = S.tool === "hammer" ? "붙이면 망치가 혼자 톡톡 쳐요" : "떼면 도구를 놓아요"; }
   else if (S.tool === "needle") {
     // a mean depth said nothing about where it was still shallow (playtest 11-07): count the arcs still too shallow
     // to hold a hammer crack, and say when it is time for the hammer
     const left = shallowArcs();
-    sub = left ? `아직 얕은 곳 ${left}군데 · 선을 따라 더 긁어요` : "홈이 충분히 깊어요 · 이제 망치로 바깥을 쳐요";
+    let prog = 0; for (let i = 0; i < S.pts.length; i++) prog += Math.min(1, strength(i) / AR.HOLD);
+    prog = Math.round(prog / (S.pts.length || 1) * 100);
+    sub = left ? `홈 ${Math.min(99, prog)}% · 아직 얕은 곳 ${left}군데` : "홈이 충분히 깊어요 · 이제 망치로 바깥을 쳐요";
     if (!c || !c.pressed) {
-      hint = !cam ? "누르면 바늘이 닿아요" : c && c.onCandy ? "손을 폰에서 살짝 밀면 바늘이 내려가요" : "달고나 위로 가져가요";
+      hint = !cam ? "누른 채 선을 따라 천천히 그어요" : c && c.onCandy ? "손을 폰에서 살짝 밀면 바늘이 내려가요" : "달고나 위로 가져가요";
       if (cam && S.liftMM != null) sub = `바늘 끝이 ${Math.max(1, Math.round(S.liftMM))}mm 떠 있어요 · ` + sub;
     }
     else if (c.press >= 1) { hint = "너무 세게 눌러요!"; col = "var(--bad)"; }
