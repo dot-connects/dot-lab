@@ -35,11 +35,12 @@ ease = lambda u: 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, u)))
 lerp = lambda a, b, u: a + (b - a) * u
 
 CAP = {
-    "candy": "폰으로 비추면<br>바닥에 <em>달고나</em>",
-    "guard": "2분 넘기면<br><em>저 사람</em>이 쏜다",
-    "hammer": "엄지·검지 붙이면 <em>망치</em><small>갖다 대면 톡톡</small>",
+    "candy": "깨면 <em>총 맞는</em><br>달고나",
+    "guard": "시간 넘기면<br><em>저 사람</em>이 쏜다",
+    "hammer": "망치로 <em>바깥만</em> 톡톡",
     "almost": "<em>성공?</em>",
-    "snap": "아.",
+    "snap": '<span style="font-size:1.6em">아.</span>',
+    "bang": '<span style="font-size:2.2em">탕.</span>',
 }
 END = ('<img class="logo" src="../logo.svg" alt="달고나">'
        '<div class="ask">너는 <em>안 깨고</em><br>할 수 있어?</div>'
@@ -164,7 +165,7 @@ async def main():
             print("ready", flush=True)
 
             # the needle is already in hand when the video starts
-            await r.js("__ar.pickTool('needle'); __ar.WT.timeLeft = 112.6; __reel.timer(1)")
+            await r.js("__ar.pickTool('needle'); __ar.WT.timeLeft = 58.6; __reel.timer(1)")
             r.hand_on = True; r.zo = tuple(await r.js("__ar.screenOf(0, 0)")); r.zk = r.zt = 1.25
             path = await r.outline(0, 75, 75)
             await r.trace(path[0], 1); r.hk = 0.95; await r.press(True); await r.frame(2)
@@ -178,9 +179,10 @@ async def main():
             await r.press(False); r.hk = 1.0
             # 2. turn: the guard (2.5 - 5.0 s)
             await r.cap(""); r.zt = 1.0
-            await r.look(30, 95, 22, hand=(0, 900)); r.hand_on = False; await r.cap("guard"); r.ev("breath")
+            await r.js("__reel.timer(0)")   # the clock chip would sit over him
+            await r.look(30, 88, 22, hand=(0, 900)); r.hand_on = False; await r.cap("guard"); r.ev("breath")
             await r.frame(34)
-            await r.look(0, 50, 18); await r.cap("")
+            await r.cap(""); await r.look(0, 50, 18); await r.js("__reel.timer(1)")
             # (off camera) the groove is finished, most of the clock is gone, the hammer comes out
             await r.snap_hold(); r.rec = False
             await r.js("__ar.carveAll(0.97); __ar.WT.timeLeft = 24.4; __ar.pickTool('hammer')")
@@ -188,11 +190,11 @@ async def main():
             r.hand_on = True; th = 0.1
             q = await r.scr(0.88 * math.cos(th), 0.88 * math.sin(th)); r.mouse = q; await pg.mouse.move(*q)
             await r.press(True); r.hk = 0.94; await r.frame(4)
-            r.rec = True; await r.dissolve(n=8); r.ev("tick")
+            r.rec = True; await r.dissolve(n=8, label="30초 뒤"); r.ev("tick")
             # 3. the hammer swings on its own; carried round the rim it knocks the outside off (5.0 - 8.5 s)
             await r.cap("hammer")
-            for k in range(90):
-                th += 0.0125; q = await r.scr(0.88 * math.cos(th), 0.88 * math.sin(th))
+            for k in range(66):
+                th += 0.035; q = await r.scr(0.88 * math.cos(th), 0.88 * math.sin(th))
                 await r.move(*q, 1)
             await r.press(False); r.hk = 1.0
             await r.diag("after hammer")
@@ -216,9 +218,9 @@ async def main():
             print("ended before slip", await r.js("__ar.S.ended"), await r.outside_left(), flush=True)
             tip = await r.js("__ar.S.pts.reduce((m, p) => Math.hypot(...p) > Math.hypot(...m) ? p : m)")
             q = await r.scr(tip[0] * 1.45, tip[1] * 1.45); r.mouse = q; await pg.mouse.move(*q)
-            r.zk = r.zt = 1.35; r.zo = tuple(await r.js(f"__ar.screenOf({tip[0] * 0.7}, {tip[1] * 0.7})"))
+            r.zk = r.zt = 1.9; r.zo = tuple(await r.js("__ar.screenOf(0, 0.1)"))   # the star fills the frame for the last beat
             await r.frame(4)
-            r.rec = True; await r.dissolve(n=8)
+            r.rec = True; await r.dissolve(n=8, label="15초 뒤")
             # 4. only the star is left; the hammer drifts toward an arm, the clock ticks (8.5 - 11.0 s)
             await r.cap("almost")
             q = await r.scr(tip[0] * 0.55, tip[1] * 0.55)
@@ -233,21 +235,25 @@ async def main():
             await r.js(f"if (!__ar.S.ended) {{ __ar.S.lastHit = 0; __ar.hit({{ onCandy: true, sx: {sx}, sy: {sy}, px: {(sx + 1) * 256}, py: {(sy + 1) * 256} }}); }}")
             r.ev("snap"); await r.cap("snap"); await r.press(False); r.hk = 1.0
             await r.diag("slip")
-            await r.frame(30)
+            # the hand lifts off so the break is in plain view
+            await r.move(r.mouse[0] + 70, r.mouse[1] + 110, 8); await r.frame(22)
             # 6. look up: he is right there, stops, racks, aims; the shot (12.0 - 15.0 s)
             await r.cap(""); r.zt = 1.0
-            await r.look(32, 108, 18, hand=(0, 900)); r.hand_on = False
+            await r.look(32, 100, 18, hand=(0, 900)); r.hand_on = False
+            r.zo = (VW / 2, VH * 0.35)
             for _ in range(90):
+                r.zt = min(1.12, r.zt + 0.004)   # a slow push-in on the aim
                 await r.frame()
                 if r.seen[2]: break
+            r.zk = r.zt = 1.0; await r.cap("bang"); await r.frame(12); await r.cap("")
             # the white frame, black, the drained room (15.0 - 16.5 s); the game's result line comes up sooner here
-            await r.frame(14)
+            await r.frame(2)
             await r.js("document.getElementById('deadWhy').textContent = '망치가 모양을 쳤어요'; document.getElementById('dead').hidden = false")
-            await r.frame(36)
+            await r.frame(24)
             await r.diag("dead")
             # 7. end card (16.5 - 20.0 s)
             for i in range(1, 11): await r.js(f"__reel.end({json.dumps(END)}, {i / 10}); document.getElementById('dead').style.opacity = {1 - i / 10}"); await r.frame()
-            r.ev("end"); await r.frame(95)
+            r.ev("end"); await r.frame(75)
             (HERE / "out" / "events.json").write_text(json.dumps({"frames": r.f, "events": r.events}, ensure_ascii=False))
             print("frames", r.f, flush=True)
             await b.close()

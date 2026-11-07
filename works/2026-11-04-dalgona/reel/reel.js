@@ -19,6 +19,10 @@ css.textContent = `
 #rend .logo{width:150px;height:auto;opacity:.95}
 #rend .ask{font-family:"Do Hyeon",sans-serif;font-size:62px;line-height:1.08;color:#fff;margin:6px 0 4px}
 #rend .ask em{font-style:normal;color:#ffc23d}
+#rend .ask{animation:askIn .35s cubic-bezier(.3,1.6,.5,1) both}
+@keyframes askIn{from{transform:scale(.6);opacity:0}to{transform:none;opacity:1}}
+#rend i{font-size:28px!important;padding:16px 28px!important;white-space:nowrap;animation:pill 0.6s ease-in-out 1.2s 1 both}
+@keyframes pill{50%{transform:scale(1.08)}}
 #rh{display:none;position:absolute;left:0;top:0;pointer-events:none;transform-origin:0 0;will-change:transform;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
 #rc{position:absolute;left:20px;right:20px;top:calc(env(safe-area-inset-top) + 124px);text-align:center;font-family:"Do Hyeon",sans-serif;
   font-size:44px;line-height:1.08;color:#fff;letter-spacing:-.01em;text-wrap:balance;pointer-events:none;
@@ -32,6 +36,7 @@ css.textContent = `
 #rend span{font-family:"IBM Plex Sans KR",sans-serif;font-weight:600;font-size:23px;color:#f2ede4}
 #rend i{font-style:normal;font-family:"Do Hyeon",sans-serif;font-size:27px;color:#2a1406;background:#ffc23d;border-radius:16px;padding:12px 26px;margin-top:10px}
 #timer{bottom:150px!important}
+#dead b{font-size:84px!important}#dead span{font-size:24px!important;font-family:"Do Hyeon",sans-serif}
 /* Reels covers the bottom fifth with its own UI */
 #rflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 #rchip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%);font-family:"Do Hyeon",sans-serif;font-size:30px;color:#fff;background:rgba(8,10,9,.72);border-radius:999px;padding:6px 22px;opacity:0;pointer-events:none;white-space:nowrap}

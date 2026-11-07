@@ -871,7 +871,7 @@ function dropPiece(region, bands, mid, withShape = false) {
   const out = v3b.set(Math.cos(mid), -Math.sin(mid), 0).applyQuaternion(g.quaternion);
   // a snapped arm jumps off the candy, so the break is seen, not just a gap appearing
   const hop = withShape ? [0.34, 0.14] : [0.07, 0.04];
-  S.pieces.push({ g, t: 0, vel: out.multiplyScalar(hop[0] + Math.random() * 0.05).add(new THREE.Vector3(0, hop[1], 0)),
+  S.pieces.push({ g, t: 0, rest: withShape ? g.position.y : null, vel: out.multiplyScalar(hop[0] + Math.random() * 0.05).add(new THREE.Vector3(0, hop[1], 0)),
     spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
 }
 function disposePiece(g) {
@@ -1366,6 +1366,8 @@ function loop(now) {
     p.t += dt; p.vel.y -= 2.6 * dt;
     p.g.position.addScaledVector(p.vel, dt);
     p.g.rotation.x += p.spin.x * dt; p.g.rotation.y += p.spin.y * dt; p.g.rotation.z += p.spin.z * dt;
+    // a snapped arm lands and skids to a stop beside the candy, so the break stays in view
+    if (p.rest !== null && p.g.position.y < p.rest) { p.g.position.y = p.rest; p.vel.y = 0; p.vel.multiplyScalar(0.9); p.spin.multiplyScalar(0.8); }
   }
   S.pieces = S.pieces.filter(p => { if (p.t < 2.2) return true; scene.remove(p.g); disposePiece(p.g); return false; });
   // bring the candy back in front if it has been off screen for a while (gyro drift, or the phone turned away)
