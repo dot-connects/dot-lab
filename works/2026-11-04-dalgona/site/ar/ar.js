@@ -282,7 +282,7 @@ function reset(shape = S.shape) {
   candy.rotation.set(0, 0, 0);
   paintCandy();
   $("again").hidden = true; toast("");
-  for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = false;
+  for (const id of ["shCircle", "shTri", "shStar", "shLabel"]) $(id).hidden = false;
   // a new candy starts with empty hands: picking the first tool starts the clock again
   S.tool = null; document.querySelectorAll("#tray button").forEach(b => b.classList.remove("on"));
   resetWatcher();
@@ -761,7 +761,7 @@ function hit(c, E = 1) {
   if (c && !c.onCandy) c = snapToCandy(c);
   if (PROBE) PR.hit = c && c.sx !== undefined ? `친 곳 반지름의 ${Math.hypot(c.sx, c.sy).toFixed(2)}배 ${c.onCandy ? "달고나" : "허공"}` : "친 곳 화면 밖";
   if (!c || !c.onCandy) { toast("허공을 쳤어요", "#fff", 700); return; }
-  S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18);
+  S.lastHit = now; S.wob = Math.min(1.4, 0.6 + 0.5 * E); thud(); vibrate(18); shake(3, 90);
   if (inShape(c.sx, c.sy) && outlineDist(c.sx, c.sy) > 0.03) {
     for (let k = 0; k < 3; k++) { const len = 10 + Math.random() * 25; drawCrack(jag(c.px, c.py, Math.random() * Math.PI * 2, (_, __, m) => m > len, 5, 0.7)); }
     snapOff(c.px, c.py); fail("망치가 모양을 쳤어요"); return;
@@ -805,7 +805,7 @@ function hit(c, E = 1) {
     win(); return;
   }
   if (into) return;
-  if (pieces.length) { snap(1); vibrate([20, 30, 20]); toast("탁! 떨어졌어요", "var(--gold)", 900); }
+  if (pieces.length) { snap(1); vibrate([20, 30, 20]); shake(6, 120); S.hitStop = now + 70; toast("탁! 떨어졌어요", "var(--gold)", 900); }
   else { snap(0.6); toast("쩍, 금만 갔어요", "#fff", 900); }
 }
 /** Drop the grid cells as one falling piece, with the rim bands along its edge. */
@@ -869,14 +869,16 @@ function dropPiece(region, bands, mid, withShape = false) {
   candy.updateMatrixWorld(); candy.matrixWorld.decompose(g.position, g.quaternion, g.scale);
   scene.add(g);
   const out = v3b.set(Math.cos(mid), -Math.sin(mid), 0).applyQuaternion(g.quaternion);
-  S.pieces.push({ g, t: 0, vel: out.multiplyScalar(0.07 + Math.random() * 0.05).add(new THREE.Vector3(0, 0.04, 0)),
+  // a snapped arm jumps off the candy, so the break is seen, not just a gap appearing
+  const hop = withShape ? [0.32, 0.55] : [0.07, 0.04];
+  S.pieces.push({ g, t: 0, vel: out.multiplyScalar(hop[0] + Math.random() * 0.05).add(new THREE.Vector3(0, hop[1], 0)),
     spin: new THREE.Vector3((Math.random() - 0.5) * 6, (Math.random() - 0.5) * 6, (Math.random() - 0.5) * 3) });
 }
 function disposePiece(g) {
   for (const m of g.children) if (m.material !== rimMat) { if (m.material.alphaMap) m.material.alphaMap.dispose(); m.material.dispose(); }
 }
 function fail(why) {
-  S.ended = true; snap(1.2); vibrate([40, 40, 60]);
+  S.ended = true; snap(1.2); vibrate([40, 40, 60]); shake(8, 160);
   doom(why);   // no toast: the stinger and the silence say it; the reason is on the result screen   // the retry button comes after the guard has fired
 }
 const NEXT = { circle: "tri", tri: "star", star: "circle" }, NAME = { circle: "동그라미", tri: "세모", star: "별" };
@@ -980,7 +982,7 @@ function markReady() {   // the hammer button pulses once the groove would hold
 function pickTool(k) {
   if (k === "hammer" && S.tool !== "hammer" && !S.ended) { const n = shallowArcs(); if (n) toast(`아직 얕은 곳 ${n}군데 · 치면 금이 안으로 가요`, "var(--gold)", 2000); }
   S.tool = k; S.prev = null; tick(); startClock();
-  for (const id of ["shCircle", "shTri", "shStar"]) $(id).hidden = true;
+  for (const id of ["shCircle", "shTri", "shStar", "shLabel"]) $(id).hidden = true;
   trayBtns.forEach(b => b.classList.toggle("on", b.dataset.tool === k));
 }
 const dwell = { tool: null, t: 0, leftAt: 0, done: null };
@@ -1027,14 +1029,19 @@ function burst(dur, f, gain, type = "highpass") {
 const snap = (k = 1) => { burst(0.09 * k, 3200, 0.7); burst(0.05, 1200, 0.4); };
 const thud = () => burst(0.12, 300, 0.8, "lowpass");
 const tick = () => burst(0.03, 4000, 0.25);
-let shakeAt = 0;
+// a short shake of the picture: 3 px for a tap, 6 px for a break (game-feel refs 11-07: 2-3 weak, 8-10 strong)
+let shakeAt = 0, shakePx = 0, shakeMs = 0;
+function shake(px, ms) {
+  if (WT.frozen || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const running = performance.now() - shakeAt < shakeMs;
+  shakeAt = performance.now(); shakePx = Math.max(px, running ? shakePx : 0); shakeMs = ms;
+  if (running) return;
+  const go = () => { const k = 1 - (performance.now() - shakeAt) / shakeMs; if (k <= 0 || WT.frozen) { canvas.style.transform = ""; return; } canvas.style.transform = `translate(${(Math.random() - 0.5) * 2 * shakePx * k}px,${(Math.random() - 0.5) * 2 * shakePx * k}px)`; requestAnimationFrame(go); };
+  requestAnimationFrame(go);
+}
 const vibrate = p => {
   try { if (navigator.vibrate) { navigator.vibrate(p); return; } } catch { /* not allowed */ }
-  const ms = [].concat(p).reduce((a, b) => a + b, 0);
-  if (ms < 15 || matchMedia("(prefers-reduced-motion: reduce)").matches || WT.frozen) return;
-  shakeAt = performance.now();
-  const go = () => { const k = 1 - (performance.now() - shakeAt) / 120; if (k <= 0 || WT.frozen) { canvas.style.transform = ""; return; } canvas.style.transform = `translate(${(Math.random() - 0.5) * 8 * k}px,${(Math.random() - 0.5) * 8 * k}px)`; requestAnimationFrame(go); };
-  requestAnimationFrame(go);
+  if ([].concat(p).reduce((a, b) => a + b, 0) >= 15) shake(4, 120);   // no vibration API (iPhone): the picture jolts instead
 };
 
 // ---------- HUD ----------
@@ -1354,7 +1361,8 @@ function loop(now) {
   else candy.position.z = 0;
   candy.scale.setScalar(Math.max(0.01, back));
   // pieces fall away
-  for (const p of S.pieces) {
+  // hit-stop: a freed piece hangs for a few frames before it falls, so the break lands
+  for (const p of (now < (S.hitStop || 0) ? [] : S.pieces)) {
     p.t += dt; p.vel.y -= 2.6 * dt;
     p.g.position.addScaledVector(p.vel, dt);
     p.g.rotation.x += p.spin.x * dt; p.g.rotation.y += p.spin.y * dt; p.g.rotation.z += p.spin.z * dt;

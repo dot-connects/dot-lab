@@ -7,6 +7,7 @@ const app = $("app"), cv = $("cv"), ctx = cv.getContext("2d"), video = $("video"
 const DEBUG = new URLSearchParams(location.search).has("debug");
 const ORDER = Object.keys(SHAPES);
 let W = 0, H = 0, DPR = 1, geom = { cx: 0, cy: 0, R: 1 };
+let lastTickS = -1;
 let mode = null;          // "camera" | "touch"
 let tracker = null, game = null, view = null, lickMode = false, audio = null;
 const touch = { x: 0, y: 0, down: false };
@@ -15,7 +16,7 @@ const TOUCH_LIFT = 46;    // touch mode: the needle tip sits above the finger so
 const store = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); localStorage.setItem(k, v); } catch { return null; } };
 const bestOf = k => {
   try {
-    const v = JSON.parse(store("dalgona.best2." + k));
+    const v = JSON.parse(store(`dalgona.best2.${mode}.${k}`));
     const ok = v && typeof v === "object" && Number.isInteger(v.stars) && v.stars >= 0 && v.stars <= 3
       && Number.isFinite(v.time) && v.time >= 0 && Number.isFinite(v.pct) && v.pct >= 0 && v.pct <= 100;
     return ok ? v : null;
@@ -348,15 +349,20 @@ async function toCamera(msg) {
     video.hidden = false;   // WebKit may not play a hidden video
     if (!camStream) camStream = await startCamera(video);
     $("nocam").hidden = true;
-    if (!models) { msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…"; models = await loadModels(); }
+    if (!models) {
+      msg.textContent = "손 인식을 불러오는 중이에요(처음 한 번 몇 초)…";
+      try { models = await Promise.race([loadModels(), new Promise((_, no) => setTimeout(() => no(new Error("models")), 20000))]); }
+      catch { throw new Error("models"); }
+    }
     if (!tracker) tracker = createTracker(video, models, { onPoke: (x, y) => { if (game && mode === "camera") poke(game, x, y); } });
     mode = "camera"; msg.hidden = true;
     resize();
     return true;
   } catch (e) {
     stopCam();   // no camera light left on in touch mode
-    msg.textContent = e && e.message === "timeout"
-      ? "카메라가 응답하지 않아요. 크롬에서 열거나 화면 터치로 해 보세요."
+    msg.textContent = e && e.message === "timeout" ? "카메라가 응답하지 않아요. 크롬에서 열거나 화면 터치로 해 보세요."
+      : e && e.name === "NotAllowedError" ? "카메라 권한이 막혀 있어요. 주소창 옆 설정에서 허용하거나 화면 터치로 해 보세요."
+      : e && e.message === "models" ? "손 인식을 못 불러왔어요. 와이파이에서 다시 하거나 화면 터치로 해 보세요."
       : "카메라를 쓸 수 없어요. 화면 터치로 해 보세요.";
     return false;
   } finally { camBusy = false; }
@@ -410,7 +416,7 @@ function showPick() {
   if (audio) { audio.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); audio.lk.gn.gain.setTargetAtTime(0, audio.ac.currentTime, 0.02); }
   game = null; view = null; endAt = 0; $("hud").hidden = true; $("freeze").hidden = true; show("pick");
   $("mTouch").setAttribute("aria-pressed", String(mode === "touch")); $("mCam").setAttribute("aria-pressed", String(mode === "camera"));
-  $("modeHint").textContent = mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기";
+  $("modeHint").textContent = (mode === "camera" ? "엄지·검지로 바늘 집기 · 손을 화면 쪽으로 콕 = 찌르기 · 입 벌리면 혀" : "손가락으로 긁기 · 톡 치면 찌르기 · 혀 버튼으로 핥기") + " · ★3은 금 없이 제한 시간 절반 안에";
   const picks = $("picks"); picks.innerHTML = "";
   for (const [k, s] of Object.entries(SHAPES)) {
     const b = document.createElement("button"), best = bestOf(k);
@@ -471,7 +477,7 @@ function begin(shape) {
   show(null); $("hud").hidden = false; $("freeze").hidden = true;
   if (DEBUG) window.__g = game;
   $("lick").hidden = mode !== "touch"; $("lick").setAttribute("aria-pressed", "false"); $("lick").textContent = "혀로 핥기";
-  $("hint").textContent = mode === "camera" ? "엄지와 검지를 모아 바늘을 집고 달고나에 대 보세요" : "선을 따라 천천히 긁거나 톡톡 찔러 보세요";
+  $("hint").textContent = mode === "camera" ? "" : "선을 따라 천천히 긁거나 톡톡 찔러 보세요";
 }
 
 $("lick").addEventListener("pointerdown", e => e.stopPropagation());
@@ -510,7 +516,7 @@ async function makeCard(faceOff, g0, m, lick, candy, geom, W) {
   const k = m.width / W, face = mode === "camera" && !faceOff;
   if (face) {   // 4:5 around the candy and whatever is above it (the face)
     const sw = m.width, sh = Math.min(m.height, sw * CH / CW);
-    const sy = Math.max(0, Math.min(m.height - sh, (geom.cy + geom.R * 1.35) * k - sh));
+    const sy = Math.max(0, Math.min(m.height - sh, (geom.cy + geom.R * 2.1) * k - sh));
     g.drawImage(m, 0, sy, sw, sh, 0, 0, CW, CH);
   } else {      // the candy alone: centred at 40 % height, 78 % of the card wide
     g.fillStyle = "#16120f"; g.fillRect(0, 0, CW, CH);
@@ -539,7 +545,7 @@ async function makeCard(faceOff, g0, m, lick, candy, geom, W) {
   g.fillStyle = g0.ok ? "#FFC23D" : "#FF6B81";
   g.fillText(g0.ok ? `${starText(stars(g0))}  ${g0.t.toFixed(1)}초` : loseLine(g0), 56, CH - 128);
   g.fillStyle = "rgba(255,255,255,.6)"; g.font = '28px "IBM Plex Sans KR", sans-serif';
-  g.fillText("dot-connects.github.io/dot-lab", 56, CH - 64);
+  g.fillText("dot-connects.github.io/dot-lab · 달고나", 56, CH - 64);
   return c;
 }
 
@@ -567,7 +573,9 @@ async function share() {
     setTimeout(() => URL.revokeObjectURL(u), 10000);
   }
   // in-app browsers often ignore both: say how to keep it
-  const tip = document.getElementById("saveTip"); if (tip) tip.hidden = false;
+  const tip = document.getElementById("saveTip");
+  if (!IOS) { try { await navigator.clipboard.writeText(text + " " + url); if (tip) tip.textContent = "이미지를 저장하고 링크를 복사했어요"; } catch { /* no clipboard */ } }
+  if (tip) tip.hidden = false;
 }
 
 async function showResult() {
@@ -575,7 +583,7 @@ async function showResult() {
   const isNew = better(rec, prev);
   const lastTry = (() => { try { const v = JSON.parse(store("dalgona.last." + g.shape)); return v && Number.isFinite(v.pct) ? v : null; } catch { return null; } })();
   store("dalgona.last." + g.shape, JSON.stringify({ pct: g.final, ok: g.ok }));
-  if (isNew && (rec.stars || rec.pct > 0)) store("dalgona.best2." + g.shape, JSON.stringify(rec));   // a 0 % loss is no record
+  if (isNew && (rec.stars || rec.pct > 0)) store(`dalgona.best2.${mode}.${g.shape}`, JSON.stringify(rec));   // a 0 % loss is no record
   const oldRival = loadRival(g.shape);
   if (g.ok && (!oldRival || g.t < oldRival.t)) store(`dalgona.ghost.${mode}.${g.shape}`, JSON.stringify({ t: +g.t.toFixed(1), p: trail }));   // camera and touch race separately
   const best = isNew ? rec : prev;
@@ -585,9 +593,9 @@ async function showResult() {
   const img = el("img", "res-card"); img.alt = `결과 카드: ${label(g)}`;
   // the numbers live on the card; below it only what the card does not say (review r3)
   const openCracks = g.cracks.filter(c => !c.healed).length;
-  const to3 = g.ok && rec.stars === 2 && clean(g) ? `${(g.t - g.limit * 0.5).toFixed(1)}초 더 빨랐으면 ★3` : "";
+  const to3 = !g.ok ? "" : rec.stars === 2 && clean(g) ? `${(g.t - g.limit * 0.5).toFixed(1)}초 더 빨랐으면 ★3` : rec.stars === 2 ? "금 안 키우면 ★3" : rec.stars === 1 ? "조각 안 떨어뜨리면 ★2" : "";
   const why = g.ok ? [to3, openCracks && `금 ${openCracks}개`, g.chips && `떨어진 조각 ${g.chips}개`, g.pokes && `찌른 횟수 ${g.pokes}`].filter(Boolean).join(" · ")
-    : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요` : "금이 모양 안으로 번졌어요";
+    : g.cause === "melt" ? "한 곳을 오래 핥아 모양이 녹았어요" : g.cause === "time" ? `${g.limit}초가 다 됐어요` : g.cracks.some(c => c.fatal && c.handle) ? "우산 손잡이가 끊겼어요" : "금이 모양 안으로 번졌어요";
   const sub = el("p", "res-sub", why);
   const bestLine = el("p", "res-best",
     !g.ok && lastTry && !lastTry.ok && g.final > lastTry.pct ? `지난번 ${lastTry.pct}% → 이번 ${g.final}%` :
@@ -672,7 +680,7 @@ for (const t of ["pointerup", "pointercancel"]) app.addEventListener(t, e => {
   if (!touch.down || e.pointerId !== touch.id) return;
   touch.down = false;
   // a quick tap without sliding is a poke; holding and sliding is scraping
-  if (game && !lickMode && performance.now() - touch.t0 < 220 && touch.moved < 8) { const p = touchTip(); poke(game, p.x, p.y); }
+  if (game && !lickMode && performance.now() - touch.t0 < 220 && touch.moved < 8) poke(game, touch.x, touch.y);   // a tap lands under the finger; only a scrape is lifted
 });
 // in-app browsers: keep the gesture on the page (README "Touch input inside Threads / Instagram")
 for (const t of ["touchstart", "touchmove"]) app.addEventListener(t, e => {
@@ -772,6 +780,7 @@ function frame(now) {
     const left = Math.max(0, Math.ceil(game.limit - game.t));
     const tm = $("timer"); tm.textContent = `0${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
     tm.classList.toggle("hurry", left <= 10 && game.started);
+    if (game.started && !game.done && left <= 5 && left > 0 && left !== lastTickS) { lastTickS = left; SFX.tick(); tm.animate([{ transform: "scale(1.18)" }, { transform: "scale(1)" }], 260); }
     const pct = percent(game);
     $("pc").textContent = pct + "%";
     const open = game.cracks.filter(c => !c.done);

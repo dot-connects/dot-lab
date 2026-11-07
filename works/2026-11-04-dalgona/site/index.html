@@ -32,7 +32,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 #sw.warn{background:rgba(190,100,10,.9)}
 #lick{position:absolute;right:14px;bottom:calc(env(safe-area-inset-bottom) + 100px);pointer-events:auto;font:inherit;font-size:14px;padding:10px 14px;border-radius:999px;border:1px solid #ffffff66;background:rgba(8,12,10,.55);color:#fff;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
 #lick[aria-pressed="true"]{background:#f2b866;border-color:#f2b866;color:#2a1406}
-.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;text-align:center;padding:24px 20px calc(env(safe-area-inset-bottom) + 24px);background:rgba(10,14,12,.86);overflow:auto}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:safe center;gap:14px;text-align:center;padding:24px 20px calc(env(safe-area-inset-bottom) + 24px);background:rgba(10,14,12,.86);overflow:auto}
 #result{background:rgba(10,14,12,.62)}
 #result.win{background:radial-gradient(90% 60% at 50% 40%,rgba(233,166,74,.22),rgba(10,14,12,.7))}
 .ov h1{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:46px;margin:0;color:#fff;letter-spacing:.02em}
@@ -75,7 +75,7 @@ canvas#cv{position:absolute;inset:0;width:100%;height:100%}
 .foot .link{background:none;border:0;font:inherit;font-size:14px;cursor:pointer;padding:6px}
 .ov h2{font-size:32px}
 .alt{font-size:14px;color:var(--candy);text-decoration:none;border-bottom:1px solid currentColor;padding-bottom:1px}
-#back{position:absolute;top:calc(env(safe-area-inset-top) + 12px);left:12px;font-size:13px;color:var(--mute);text-decoration:none;border:1px solid #ffffff33;border-radius:999px;padding:6px 12px}
+#back{position:static;align-self:flex-start;font-size:13px;color:var(--mute);text-decoration:none;border:1px solid #ffffff33;border-radius:999px;padding:6px 12px}
 button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
 /* result entrance: the card drops in with a little overshoot, the rest rises after it (juice r6) */
 @keyframes cardIn{0%{transform:translateY(24px) scale(.86) rotate(-3deg);opacity:0}60%{transform:translateY(-4px) scale(1.03) rotate(.6deg);opacity:1}100%{transform:none}}
@@ -108,9 +108,9 @@ button:focus-visible,a:focus-visible{outline:2px solid #fff;outline-offset:2px}
     <h1><img class="logo" src="logo.svg" alt="달고나" width="240" height="91"></h1>
     <p class="goal">금 가기 전에 모양만 떼어 내요.</p>
     <div class="how">
-      <b>바늘</b><span>엄지·검지를 모아 선을 따라 긁어요</span>
+      <b>바늘</b><span>선을 따라 천천히 긁어요</span>
       <b>모서리</b><span>콕 찌르면 한 번에 파여요</span>
-      <b>핥기</b><span>입 벌려 핥으면 말랑, 오래 핥으면 녹아요</span>
+      <b>핥기</b><span>금 간 곳을 핥으면 아물어요 · 오래 핥으면 녹아요</span>
     </div>
     <button class="go" id="camGo">카메라로 하기</button>
     <button class="sub" id="touchGo">화면 터치로 하기</button>
