@@ -631,14 +631,18 @@ function blob(x, y, r, inner, k, op = "source-over") {
 }
 // 11-08: a stretch of groove cut deep enough to stop every crack (fracture.js FR.HOLD) turns gold, so you can see
 // where it is safe and where it still needs the needle
-const GOLD = "rgba(255,214,90,1)";
+// (operator 11-09: a thin gold line was hard to see) a thick bright line with a glow round it
+const GOLD = "#ffd84a";
 function markHeld() {
-  const n = S.pts.length;
+  const n = S.pts.length, g = ctx.gold; let fresh = 0;
+  g.shadowColor = "rgba(255,200,40,.95)"; g.shadowBlur = 10;
   for (let i = 0; i < n; i++) {
     if (S.held[i] || strength(i) < AR.HOLD) continue;
-    S.held[i] = 1;
-    for (const j of [(i + n - 1) % n, (i + 1) % n]) if (S.held[j]) { const [a, b] = gpx(i), [x, y] = gpx(j); stroke(a, b, x, y, GOLD, 2.4, "gold"); }
+    S.held[i] = 1; fresh++;
+    for (const j of [(i + n - 1) % n, (i + 1) % n]) if (S.held[j]) { const [a, b] = gpx(i), [x, y] = gpx(j); stroke(a, b, x, y, GOLD, 5, "gold"); }
   }
+  g.shadowBlur = 0;
+  if (fresh) vibrate(6);
 }
 function work(c, dt, now) {
   if (S.ended || !c || !c.pressed || !c.onCandy || S.tool === "hammer") { S.prev = null; S.v *= 0.8; sound(0); return; }
