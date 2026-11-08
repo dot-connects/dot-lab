@@ -9,7 +9,7 @@
 Every shot of the game is the real page (?reel) on the virtual clock; render.py holds the driver (Reel).
 Run: uv run --with playwright python render_b.py   then   uv run --with playwright python compose.py
 """
-import asyncio, json, math, random, subprocess, sys
+import asyncio, json, math, os, random, subprocess, sys
 from playwright.async_api import async_playwright
 from render import HERE, OUT, URL, PORT, VW, VH, DSF, VCLOCK, STRIDE, Reel, ease, lerp
 
@@ -31,6 +31,7 @@ END = ('<img class="logo" src="../logo.svg" alt="달고나">'
        '<span>폰 카메라로 하는 달고나 뽑기</span>'
        '<i>프로필 링크 · 무료 · 설치 없음</i>')
 # what ended the tries the film strip runs past
+PART = os.environ.get("PART", "")   # "film": stop after the film strip (previews)
 WHY = {3: "깨짐", 4: "시간 종료", 5: "깨짐", 6: "녹아서 구멍", 7: "깨짐", 8: "시간 종료", 9: "깨짐", 10: "깨짐", 11: "시간 종료", 12: "깨짐"}
 
 
@@ -68,7 +69,7 @@ async def again(r, n, tool):
     await r.js(f"__ar.reset('star')")
     r.alpha, r.beta = 0, 50
     # while the camera was up on him the page re-anchored the candy up there; put it back in front, as at the start
-    await r.frame(10); await r.js("__ar.place()"); await r.frame(20)
+    await r.frame(10); await r.js(f"__ar.place(); {REGUARD}"); await r.frame(20)
     await r.js(f"__ar.pickTool('{tool}'); __reel.timer(1); __reel.clock(null, 0)")
     r.rec = True
     await count(r, n); r.ev("again")
@@ -91,16 +92,21 @@ VARIANTS = {
 }
 
 
+REGUARD = "__ar.WT.dir.copy(window.__gdir); __ar.guardTo(2.4)"   # off to the left again, where he stood at the start
+
+
 async def stills(r):
-    """play each of tries 3..12 off camera to its end and photograph the candy; returns the image URLs"""
+    """play each of tries 3..12 off camera to its end and film the candy around the break (11-08: a short clip per
+    try, not one still); returns {n: {frames: [url], brk}}, brk = the first frame after the break"""
     STILL = OUT.parent / "stills"; STILL.mkdir(exist_ok=True)
+    for f in STILL.glob("*"): f.unlink()
     r.rec = False; r.hand_on = False
     await until(r, "!document.getElementById('dead').hidden", 150)   # try 2's shot timers land first
-    rnd, urls = random.Random(13), {}
+    rnd, out = random.Random(13), {}
     for n, v in VARIANTS.items():
         await r.js("__ar.reset('star')"); r.alpha, r.beta = 0, 50
-        await r.frame(10); await r.js("__ar.place()"); await r.frame(10)
-        await r.js(f"__ar.carveAll({v['carve']}); __ar.S.tool = null; __reel.cap(''); __reel.count(null, 0); __reel.clock(null, 0); __reel.flash(0); __reel.timer(1)")
+        await r.frame(10); await r.js(f"__ar.place(); {REGUARD}"); await r.frame(10)
+        await r.js(f"__ar.carveAll({v['carve']}); __ar.S.tool = null; __reel.cap(''); __reel.count(null, 0); __reel.clock(null, 0); __reel.flash(0); __reel.timer(0)")
         # star geometry: tip angle and radius, inner-corner radius
         a0, rt, ri = await r.js("(() => { const P = __ar.S.pts, rs = P.map(p => Math.hypot(...p)); const i = rs.indexOf(Math.max(...rs));"
                                 " return [Math.atan2(P[i][1], P[i][0]), rs[i], Math.min(...rs)]; })()")
@@ -109,8 +115,29 @@ async def stills(r):
             await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {sx}, sy: {sy}, px: (0.5 + {sx} * 0.5) * 512, py: (0.5 + {sy} * 0.5) * 512, onCandy: true}}, 1)")
             await r.frame(3)
         await r.frame(12)
-        if v["kind"] == "time":
-            await r.js("__ar.WT.timeLeft = 0.05; __ar.WT.running = true"); await r.frame(4)
+        cx, cy = await r.js("__ar.screenOf(0, 0)")
+        w, h = 310, 400
+        clip = {"x": max(0, cx - w / 2), "y": max(0, min(VH - h, cy - h / 2)), "width": w, "height": h}
+        frames, brk = [], [None]
+
+        async def shot(k=1):
+            for _ in range(k):
+                await r.frame()
+                p = STILL / f"{n:02d}_{len(frames):02d}.jpg"
+                await r.pg.screenshot(path=str(p), clip=clip, type="jpeg", quality=88)
+                frames.append(f"/works/2026-11-04-dalgona/reel/out/stills/{p.name}?{r.f}")
+                if brk[0] is None and await r.js("__ar.S.ended"): brk[0] = len(frames) - 1
+
+        r.hand_on = True
+        if v["kind"] == "time":   # the needle still going round when the clock hits zero
+            await r.js("__ar.pickTool('needle'); __ar.WT.timeLeft = 2; __ar.WT.running = true")
+            i0 = rnd.randrange(75); path = await r.outline(i0, i0 + 16, 16)
+            q = await r.scr(*path[0]); r.mouse = q; await r.pg.mouse.move(*q); await r.press(True); r.hk = 0.95
+            for c in path[1:12]: await r.trace(c); await shot()
+            await r.js("__ar.WT.timeLeft = 0.05")
+            for c in path[12:]: await r.trace(c); await shot()
+            await r.press(False); r.hk = 1.0
+            await shot(6)
         else:
             await r.js(f"__ar.WT.timeLeft = {v['clock'] + 0.5}; __ar.WT.running = true")
             ta = a0 + v["arm"] * 2 * math.pi / 5
@@ -119,28 +146,47 @@ async def stills(r):
             sx, sy = d * math.cos(ang), d * math.sin(ang)
             if v["kind"] == "hole":   # the swab held on one spot inside the star until it melts through
                 await r.js("__ar.pickTool('swab')")
-                q = await r.scr(sx, sy); r.mouse = q; await r.pg.mouse.move(*q); await r.press(True)
-                for _ in range(200):
+                q = await r.scr(sx, sy); r.mouse = q; await r.pg.mouse.move(*q); await r.press(True); r.hk = 0.95
+                for k in range(240):
                     if await r.js("__ar.S.ended"): break
-                    await r.frame()
-                await r.press(False); await r.js("__ar.S.tool = null")
-            else:
-                await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {sx}, sy: {sy}, px: (0.5 + {sx} * 0.5) * 512, py: (0.5 + {sy} * 0.5) * 512, onCandy: true}}, 1.2)")
-        await r.frame(16)   # the pieces fall and settle
-        cx, cy = await r.js("__ar.screenOf(0, 0)")
-        w, h = 310, 400
-        path = STILL / f"{n:02d}.png"
-        await r.pg.screenshot(path=str(path), clip={"x": max(0, cx - w / 2), "y": max(0, min(VH - h, cy - h / 2)), "width": w, "height": h})
-        print(f"still {n} {v['kind']} ended={await r.js('__ar.S.ended')} why={await r.js('document.getElementById(`deadWhy`).textContent')}", flush=True)
-        urls[n] = f"/works/2026-11-04-dalgona/reel/out/stills/{n:02d}.png?{r.f}"
-    r.mouse = None
-    return urls
+                    if k % 12 == 0: await shot()
+                    else: await r.frame()
+                await r.press(False); r.hk = 1.0
+                await shot(8)
+            else:   # the hammer comes in from outside and lands on the star
+                await r.js("__ar.pickTool('hammer'); __ar.AR.autoSwing = false")
+                q0 = await r.scr(sx + 0.55, sy + 0.5); r.mouse = q0; await r.pg.mouse.move(*q0)
+                q1 = await r.scr(sx, sy)
+                for i in range(1, 9):
+                    u = ease(i / 8); p = (lerp(q0[0], q1[0], u), lerp(q0[1], q1[1], u))
+                    r.mouse = p; await r.pg.mouse.move(*p); await shot()
+                await r.js("__ar.S.lastHit = 0"); await r.pg.mouse.down(); await shot(2); await r.pg.mouse.up()
+                await shot(2)
+                if not await r.js("__ar.S.ended"):
+                    await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {sx}, sy: {sy}, px: (0.5 + {sx} * 0.5) * 512, py: (0.5 + {sy} * 0.5) * 512, onCandy: true}}, 1.2)")
+                await shot(12)
+                await r.js("__ar.AR.autoSwing = true")
+        await r.js("__ar.S.tool = null"); r.hand_on = False; r.mouse = None
+        print(f"clip {n} {v['kind']} frames={len(frames)} brk={brk[0]} ended={await r.js('__ar.S.ended')}", flush=True)
+        out[n] = {"frames": frames, "brk": brk[0] if brk[0] is not None else len(frames) - 8}
+    await r.js("__ar.reset('star')")   # the last clip's guard must not fire while the film is on screen
+    return out
 
 
-async def film(r, urls):
-    """tries 3..12 run past as a film strip: each a still of that try's own break, stamped 탈락; it lands on a blank
-    13 and pushes into it, so the white of the blank frame becomes the white the 13th try fades in from"""
-    cells = [{"n": n, "src": urls[n], "why": WHY[n]} for n in range(3, 13)]
+def film_speed(y):
+    """cells per frame at strip position y (11-08 operator): normal for the first tries, faster and faster till
+    the cells blur, then braking back to normal for the last two, and an ease into the blank 13"""
+    vn, vmax = 1 / 22, 0.55
+    up = min(1, max(0, (y - 1.0) / 2.2)); dn = min(1, max(0, (y - 5.2) / 2.6))
+    bump = up * up * (3 - 2 * up) * (1 - dn * dn * (3 - 2 * dn))
+    v = vn + (vmax - vn) * bump
+    return min(v, max(0.004, vn * (10 - y) / 0.5)) if y > 9.5 else v
+
+
+async def film(r, clips):
+    """tries 3..12 run past as a film strip: each cell plays that try's own break and gets stamped 탈락; it lands
+    on a blank 13 and pushes into it, so the white of the blank frame becomes the white the 13th try fades in from"""
+    cells = [{"n": n, "frames": clips[n]["frames"], "brk": clips[n]["brk"], "why": WHY[n]} for n in range(3, 13)]
     cells.append({"n": 13, "blank": True})
     await r.js("__reel.flash(1)")
     r.rec = False
@@ -152,17 +198,20 @@ async def film(r, urls):
     rnd = random.Random(7)
     flick = lambda: 1 + rnd.uniform(-0.07, 0.05)
     await count(r, 3)
-    for i in range(1, 7):                     # in from the white
-        await r.js(f"__reel.film({i / 6}, 0, 1, {flick()})"); await r.frame()
-    N, last, y0 = 66, 0, 0.0
-    for i in range(1, N + 1):
-        y = 10 * ease(i / N); sp = y - y0; y0 = y
-        await r.js(f"__reel.film(1, {y}, 1, {flick()}, {min(1.6, sp * 5):.2f})")
+    y = -0.45
+    for i in range(1, 7):                     # in from the white, the 3rd try already running
+        y += film_speed(y)
+        await r.js(f"__reel.film({i / 6}, {y}, 1, {flick()})"); await r.frame()
+    last = 0
+    while y < 9.995:
+        sp = film_speed(y); y = min(10, y + sp)
+        await r.js(f"__reel.film(1, {y}, 1, {flick()}, {min(2.4, max(0, sp - 0.08) * 6):.2f})")
         if round(y) != last:
             last = round(y); await count(r, cells[last]["n"]); r.ev("frame")
         if sp > 0.02: r.ev("rattle")
         await r.frame()
-    for i in range(1, 9): await r.js(f"__reel.film(1, 10, 1, {flick()})"); await r.frame()
+    r.ev("breath")
+    for i in range(1, 15): await r.js(f"__reel.film(1, 10, 1, {flick()})"); await r.frame()
     for i in range(1, 11):                    # push into the blank 13
         await r.js(f"__reel.film(1, 10, {1 + 3.2 * ease(i / 10) ** 2}, 1)"); await r.frame()
     await r.js("__reel.flash(1); __reel.film(0)")
@@ -188,6 +237,7 @@ async def main():
                 if await r.js("__reel.ready()"): break
                 await pg.wait_for_timeout(250)
             print("ready", flush=True)
+            await r.js("window.__gdir = __ar.WT.dir.clone()")   # where he stands; a missed look moves him in front
             center = tuple(await r.js("__ar.screenOf(0, 0)"))
 
             # ---- 1번째: the hammer straight away; the second blow lands on the star ----
@@ -239,6 +289,7 @@ async def main():
 
             # ---- tries 3..12 run past as film ----
             await film(r, await stills(r))
+            if PART == "film": raise SystemExit
 
             # ---- 13번째: slow needle ----
             await again(r, 13, "needle")
@@ -256,9 +307,13 @@ async def main():
             # a look up at him; while the camera is on him the groove gets finished and the hammer comes out
             await cap(r, ""); r.zt = 1.0
             await r.js("__reel.timer(0)")
-            await r.look(30, 88, 20, hand=(0, 900)); r.hand_on = False; await cap(r, "watch"); r.ev("breath")
-            await r.frame(26)
-            r.rec = False
+            # 11-08: up slowly from his boots to the mask, where he stands off to the left
+            await r.look(30, 70, 16, hand=(0, 900)); r.hand_on = False
+            r.ev("breath"); await r.look(31, 96, 26)
+            await cap(r, "watch"); r.zo = (VW / 2, VH * 0.3); r.zt = 1.18
+            await r.frame(34)
+            await r.diag("watch")
+            r.rec = False; r.zk = r.zt = 1.0; r.zo = center
             await r.js("__ar.carveAll(0.97); __ar.WT.timeLeft = 41.2; __ar.pickTool('hammer')")
             th = 0.1
             q = await r.scr(0.88 * math.cos(th), 0.88 * math.sin(th)); r.mouse = q; await pg.mouse.move(*q)
@@ -295,17 +350,26 @@ async def main():
             # ---- one blow next to an arm: a crack runs into the star ----
             await cap(r, "")
             tip = await r.js("__ar.S.pts.reduce((m, p) => Math.hypot(...p) > Math.hypot(...m) ? p : m)")
-            r.zo = tuple(await r.js(f"__ar.screenOf({tip[0] * 0.6}, {tip[1] * 0.6})")); r.zt = 1.9
+            r.zo = tuple(await r.js(f"__ar.screenOf({tip[0] * 0.6}, {tip[1] * 0.6})")); r.zt = 1.6
             side = (tip[0] * 0.62 - tip[1] * 0.28, tip[1] * 0.62 + tip[0] * 0.28)   # beside the arm, outside the star
             q = await r.scr(*side)
-            await r.move(*q, 24)
-            await r.press(True); r.hk = 0.94
-            last = await r.js("__ar.S.lastHit || 0")
-            await until(r, f"(__ar.S.lastHit || 0) !== {last}", 40)
-            crack = await r.js(f"__ar.crackInto({tip[0] * 0.7}, {tip[1] * 0.7})")
-            await r.press(False); r.hk = 1.0
-            r.ev("crack"); await cap(r, "crack")
-            await r.frame(26)
+            await r.move(*q, 20)
+            # 11-08: one blow, the hammer lifts off at once, and the crack is seen running into the star, close up
+            await r.js("__ar.AR.autoSwing = false; __ar.S.lastHit = 0")
+            await pg.mouse.down(); r.hk = 0.94; await r.frame(2); await pg.mouse.up(); r.hk = 1.0
+            crack = await r.js(f"__ar.crackPlan({tip[0] * 0.7}, {tip[1] * 0.7})")
+            mid = crack[len(crack) // 2]
+            r.ev("crack")
+            q0, r.zo, r.zt = r.mouse, tuple(await r.js(f"__ar.screenOf({mid[0]}, {mid[1]})")), 2.4
+            for i in range(1, 15):
+                u = ease(i / 14)
+                await r.js(f"__ar.crackGrow({min(1, i / 11)})")
+                r.mouse = (q0[0] + 220 * u, q0[1] + 420 * u); await pg.mouse.move(r.mouse[0], min(r.mouse[1], VH - 2))
+                if i == 9: await r.js("__ar.S.tool = null"); r.hand_on = False
+                await r.frame()
+            await cap(r, "crack")
+            await r.frame(30)
+            await r.js("__ar.AR.autoSwing = true"); r.hand_on = True; r.zt = 1.9
             await r.diag("crack")
             # ---- the swab melts it shut ----
             await r.js("__ar.pickTool('swab')")
@@ -323,13 +387,34 @@ async def main():
             await r.frame(14)
             await r.diag("mended")
             # ---- last tap, the shape comes out ----
-            await cap(r, "last"); r.zt = 1.35
-            await r.js("__ar.pickTool('hammer')")
-            q = await r.scr(-0.86, 0.3); await r.move(*q, 12)
-            await r.frame(6)
+            # 11-08: tap, tap, tap: each blow takes the biggest lump left, the last one lets the star out clean
+            await cap(r, "last"); r.zo = center; r.zt = 1.3
+            await r.js("__ar.pickTool('hammer'); __ar.AR.autoSwing = false")
+            LUMP = """(() => { const F = __ar.S.F, N = F.N, c = [];
+              for (let i = 0; i < N * N; i++) if (F.alive[i] && !F.inside[i]) {
+                const sx = ((i % N) + .5) / N * 2 - 1, sy = (((i / N) | 0) + .5) / N * 2 - 1;
+                if (Math.min(...__ar.S.pts.map(p => Math.hypot(p[0] - sx, p[1] - sy))) > 0.1) c.push([sx, sy]); }
+              if (!c.length) return null;
+              let best = c[0], bn = -1;
+              for (let j = 0; j < c.length; j += 4) { let n = 0; for (let k = 0; k < c.length; k += 2) if (Math.hypot(c[k][0] - c[j][0], c[k][1] - c[j][1]) < 0.14) n++; if (n > bn) { bn = n; best = c[j]; } }
+              return best; })()"""
+            for t in range(4):
+                c = await r.js(LUMP)
+                if not c: break
+                await r.move(*(await r.scr(*c)), 9 if t else 14)
+                await r.js("__ar.S.lastHit = 0")
+                await pg.mouse.down(); r.hk = 0.94; await r.frame(2); await pg.mouse.up(); r.hk = 1.0
+                if t == 3: break
+                # the blow takes the lump it landed on (the game's own blow only chips the thin edge of it)
+                await r.js(f"""(() => {{ const F = __ar.S.F, N = F.N, o = [];
+                  for (let i = 0; i < N * N; i++) if (F.alive[i] && !F.inside[i]) {{
+                    const sx = ((i % N) + .5) / N * 2 - 1, sy = (((i / N) | 0) + .5) / N * 2 - 1;
+                    if (Math.hypot(sx - {c[0]}, sy - {c[1]}) < 0.2) o.push(i); }}
+                  __ar.dropCells(o); }})()""")
+                await r.frame(9)
             await r.js("__ar.finish()"); r.ev("thud"); r.ev("win")
             await cap(r, ""); r.zt = 1.0
-            await r.move(r.mouse[0] + 60, r.mouse[1] + 140, 10); r.hand_on = False
+            await r.move(r.mouse[0] + 60, r.mouse[1] + 140, 10); r.hand_on = False; await r.js("__ar.S.tool = null")
             await r.frame(40)
             await r.diag("win")
             # ---- end card ----

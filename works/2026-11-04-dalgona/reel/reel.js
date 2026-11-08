@@ -80,6 +80,7 @@ const clock = Object.assign(document.createElement("div"), { id: "rclock" });
 const film = Object.assign(document.createElement("div"), { id: "rfilm" });
 film.innerHTML = '<div class="strip"></div><div class="gate"></div>';
 const strip = film.querySelector(".strip"), CELL = 300;
+let filmCells = [];
 hud.append(hold, chip, cap, clock, end, flash, film, count);   // the count stays on top of the white and the film
 // The "lens": the 3D canvas and the hand share one wrapper, so a push-in zooms both alike while the captions and the
 // clock stay put. The page still reads the pointer in unzoomed screen px, so the driver never has to think about it.
@@ -102,17 +103,26 @@ window.__reel = {
   count(n, o = 1) { if (n != null) count.innerHTML = `시도<b>${String(n).padStart(2, "0")}</b>`; count.style.opacity = o; },
   timer(o) { document.getElementById("timer").style.opacity = o; },
   clock(text, o = 1, low = false) { if (text != null) clock.textContent = text; clock.style.opacity = o; clock.classList.toggle("low", low); },
-  // cells: [{n, src, why}] or {n, blank: true}; returns when the images are loaded (poll filmReady)
+  // cells: [{n, frames: [url], brk, why}] or {n, blank: true}; returns when the images are loaded (poll filmReady).
+  // Each cell plays its own short clip as it crosses the gate; the 탈락 stamp lands on frame brk (the break).
   filmSetup(cells) {
-    strip.innerHTML = cells.map((c, i) => `<div class="cell${c.blank ? " blank" : ""}" data-n="${c.n}"><div class="pic">${c.blank ? "" :
-      `<img src="${c.src}"><div class="x"><b>탈락</b><span>${c.why}</span></div>`}<div class="edge">${String(c.n).padStart(2, "0")}</div></div></div>`).join("");
+    filmCells = cells;
+    strip.innerHTML = cells.map(c => `<div class="cell${c.blank ? " blank" : ""}" data-n="${c.n}"><div class="pic">${c.blank ? "" :
+      c.frames.map(s => `<img src="${s}" style="position:absolute;inset:0;visibility:hidden">`).join("") +
+      `<div class="x"><b>탈락</b><span>${c.why}</span></div>`}<div class="edge">${String(c.n).padStart(2, "0")}</div></div></div>`).join("");
   },
   filmReady: () => [...strip.querySelectorAll("img")].every(i => i.complete && i.naturalWidth > 0),
   // y = which cell (index into cells, fractional) sits in the gate; k = zoom into the gate; b = brightness flicker
   film(o, y = 0, k = 1, b = 1, blur = 0) {
     film.style.opacity = o;
     const H = innerHeight;
-    strip.querySelectorAll(".cell").forEach((c, i) => { c.style.top = `${H / 2 - CELL / 2 + (y - i) * CELL}px`; });
+    strip.querySelectorAll(".cell").forEach((c, i) => {
+      c.style.top = `${H / 2 - CELL / 2 + (y - i) * CELL}px`;
+      const fc = filmCells[i]; if (!fc || fc.blank) return;
+      const u = Math.min(1, Math.max(0, (y - i + 0.45) / 0.75)), idx = Math.round(u * (fc.frames.length - 1));
+      c.querySelectorAll("img").forEach((im, j) => { im.style.visibility = j === idx ? "visible" : "hidden"; });
+      c.querySelector(".x").style.opacity = idx >= fc.brk ? 1 : 0;
+    });
     strip.style.transformOrigin = `50% ${H / 2}px`;
     strip.style.transform = `scale(${k})`;
     strip.style.filter = `brightness(${b})${blur ? ` blur(${blur}px)` : ""}`;
