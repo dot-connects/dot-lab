@@ -22,7 +22,7 @@ async def sound():
             b = await p.chromium.launch(channel="chrome")
             pg = await b.new_page(); pg.on("pageerror", lambda e: print("ERR", e)); pg.on("console", lambda m: print("CON", m.type, m.text))
             await pg.goto(f"http://127.0.0.1:{PORT}/works/2026-11-04-dalgona/reel/audio.html")
-            await pg.wait_for_function("window.__wav", timeout=900000, polling=1000)
+            await pg.wait_for_function("window.__wav", timeout=2400000, polling=1000)
             (OUT / "sound.wav").write_bytes(base64.b64decode(await pg.evaluate("window.__wav")))
             await b.close()
     finally:

@@ -1,39 +1,41 @@
-"""Cut B (operator pick 11-07): "몇 번째 만에?" — a red try counter top left all the way through.
+"""Cut B (operator pick 11-07): "몇 번째 만에?" — a try counter top left all the way through.
 
-1번째  the hammer straight onto the star, an arm snaps, he aims, 탕.
-2번째  careful needle, but the clock runs out, 탕.
-       the counter spins 3..12 on the white flash
-13번째 slow needle, a look up at him, the hammer at fast forward, one blow cracks into the star ("아…"), the swab
-       melts the crack shut, the last crumbs off, 통과. End card "너는 몇 번 만에?".
+1번째  the hammer straight onto the star, an arm snaps, he aims, the shot, 탈락.
+2번째  careful needle, a big clock runs down from 0:06, 시간 종료, the shot.
+3..12  a film strip runs past (stills of the tries above, each stamped 탈락) and pushes into a blank 13 (11-08).
+13번째 slow needle, a look up at him, the hammer at fast forward, one blow cracks into the star, the swab
+       melts the crack shut, the last crumbs off, 통과. End card "당신은 몇 번째에 통과하시겠습니까?".
 
 Every shot of the game is the real page (?reel) on the virtual clock; render.py holds the driver (Reel).
 Run: uv run --with playwright python render_b.py   then   uv run --with playwright python compose.py
 """
-import asyncio, json, math, subprocess, sys
+import asyncio, json, math, random, subprocess, sys
 from playwright.async_api import async_playwright
-from render import HERE, OUT, URL, PORT, VW, VH, DSF, VCLOCK, Reel, ease, lerp
+from render import HERE, OUT, URL, PORT, VW, VH, DSF, VCLOCK, STRIDE, Reel, ease, lerp
 
+# 11-08 operator: the first captions read childish; now plain statements in a cold, rule-reading voice
 CAP = {
-    "candy": "깨면 <em>총 맞는</em><br>달고나",
-    "snap": '<span style="font-size:1.6em">아.</span>',
-    "bang": '<span style="font-size:2.2em">탕.</span>',
-    "time": "2분 안에<br><em>모양만</em> 떼야 한다",
-    "over": '<span style="font-size:1.4em">시간 끝.</span>',
-    "slow": "이번엔<br><em>천천히</em>",
-    "watch": "<em>저 사람</em>은<br>계속 보고 있다",
-    "hammer": "망치로 <em>바깥만</em> 톡톡",
-    "crack": '<span style="font-size:1.6em">아…</span><small>금 갔다</small>',
-    "swab": "면봉으로<br><em>녹여서</em> 붙이고",
-    "last": "마지막 <em>한 톡</em>",
+    "rule": "모양대로 떼어 내면 통과<br>깨지면 <em>탈락</em>",
+    "bang": '<b class="out">탈락</b>',
+    "time": "남은 시간",
+    "over": "시간 종료<small>모양을 다 떼어 내지 못했다</small>",
+    "slow": "숨을 참고, 천천히",
+    "watch": "누군가 보고 있다",
+    "hammer": "바깥부터 조금씩",
+    "crack": "금이 갔다",
+    "swab": "녹여서 다시 붙인다",
+    "last": "마지막 한 번",
 }
 END = ('<img class="logo" src="../logo.svg" alt="달고나">'
-       '<div class="ask">너는 <em>몇 번</em><br>만에?</div>'
-       '<span>폰 카메라로 하는 진짜 달고나</span>'
+       '<div class="ask">당신은 몇 번째에<br>통과하시겠습니까?</div>'
+       '<span>폰 카메라로 하는 달고나 뽑기</span>'
        '<i>프로필 링크 · 무료 · 설치 없음</i>')
+# what ended the tries the film strip runs past
+WHY = {3: "깨짐", 4: "시간 종료", 5: "깨짐", 6: "녹아서 구멍", 7: "깨짐", 8: "시간 종료", 9: "깨짐", 10: "깨짐", 11: "시간 종료", 12: "깨짐"}
 
 
 async def cap(r, key): await r.js(f"__reel.cap({json.dumps(CAP.get(key, key))})")
-async def count(r, n): await r.js(f"__reel.count('{n}번째', 1)")
+async def count(r, n): await r.js(f"__reel.count({n}, 1)")
 
 
 async def until(r, cond, most):
@@ -67,9 +69,103 @@ async def again(r, n, tool):
     r.alpha, r.beta = 0, 50
     # while the camera was up on him the page re-anchored the candy up there; put it back in front, as at the start
     await r.frame(10); await r.js("__ar.place()"); await r.frame(20)
-    await r.js(f"__ar.pickTool('{tool}'); __reel.timer(1)")
+    await r.js(f"__ar.pickTool('{tool}'); __reel.timer(1); __reel.clock(null, 0)")
     r.rec = True
     await count(r, n); r.ev("again")
+
+
+# tries 3..12, each ended its own way (operator 11-08: every frame of the film a different break). kind, then:
+# arm = which star arm the hammer clipped (0..4) and how far out (0..1 of the tip), inner = a blow between two arms,
+# knocks = how many blows on the outside before it, carve = how deep the groove got, clock = the game clock shown
+VARIANTS = {
+    3: dict(kind="arm", arm=0, at=0.6, knocks=1, carve=0.25, clock=101),
+    4: dict(kind="time", knocks=4, carve=0.6),
+    5: dict(kind="arm", arm=2, at=0.55, knocks=7, carve=0.5, clock=64),
+    6: dict(kind="hole", arm=3, knocks=3, carve=0.45, clock=77),
+    7: dict(kind="inner", arm=1, knocks=2, carve=0.4, clock=88),
+    8: dict(kind="time", knocks=9, carve=0.8),
+    9: dict(kind="arm", arm=4, at=0.45, knocks=5, carve=0.6, clock=52),
+    10: dict(kind="arm", arm=1, at=0.5, knocks=10, carve=0.7, clock=31),
+    11: dict(kind="time", knocks=1, carve=0.3),
+    12: dict(kind="inner", arm=3, knocks=12, carve=0.85, clock=12),
+}
+
+
+async def stills(r):
+    """play each of tries 3..12 off camera to its end and photograph the candy; returns the image URLs"""
+    STILL = OUT.parent / "stills"; STILL.mkdir(exist_ok=True)
+    r.rec = False; r.hand_on = False
+    await until(r, "!document.getElementById('dead').hidden", 150)   # try 2's shot timers land first
+    rnd, urls = random.Random(13), {}
+    for n, v in VARIANTS.items():
+        await r.js("__ar.reset('star')"); r.alpha, r.beta = 0, 50
+        await r.frame(10); await r.js("__ar.place()"); await r.frame(10)
+        await r.js(f"__ar.carveAll({v['carve']}); __ar.S.tool = null; __reel.cap(''); __reel.count(null, 0); __reel.clock(null, 0); __reel.flash(0); __reel.timer(1)")
+        # star geometry: tip angle and radius, inner-corner radius
+        a0, rt, ri = await r.js("(() => { const P = __ar.S.pts, rs = P.map(p => Math.hypot(...p)); const i = rs.indexOf(Math.max(...rs));"
+                                " return [Math.atan2(P[i][1], P[i][0]), rs[i], Math.min(...rs)]; })()")
+        for k in range(v["knocks"]):   # blows on the outside: bits of the ring gone, different every time
+            a = rnd.uniform(0, 2 * math.pi); d = rnd.uniform(0.84, 0.95); sx, sy = d * math.cos(a), d * math.sin(a)
+            await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {sx}, sy: {sy}, px: (0.5 + {sx} * 0.5) * 512, py: (0.5 + {sy} * 0.5) * 512, onCandy: true}}, 1)")
+            await r.frame(3)
+        await r.frame(12)
+        if v["kind"] == "time":
+            await r.js("__ar.WT.timeLeft = 0.05; __ar.WT.running = true"); await r.frame(4)
+        else:
+            await r.js(f"__ar.WT.timeLeft = {v['clock'] + 0.5}; __ar.WT.running = true")
+            ta = a0 + v["arm"] * 2 * math.pi / 5
+            if v["kind"] == "arm": d, ang = rt * v["at"], ta
+            else: d, ang = ri * 0.75, ta + math.pi / 5
+            sx, sy = d * math.cos(ang), d * math.sin(ang)
+            if v["kind"] == "hole":   # the swab held on one spot inside the star until it melts through
+                await r.js("__ar.pickTool('swab')")
+                q = await r.scr(sx, sy); r.mouse = q; await r.pg.mouse.move(*q); await r.press(True)
+                for _ in range(200):
+                    if await r.js("__ar.S.ended"): break
+                    await r.frame()
+                await r.press(False); await r.js("__ar.S.tool = null")
+            else:
+                await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {sx}, sy: {sy}, px: (0.5 + {sx} * 0.5) * 512, py: (0.5 + {sy} * 0.5) * 512, onCandy: true}}, 1.2)")
+        await r.frame(16)   # the pieces fall and settle
+        cx, cy = await r.js("__ar.screenOf(0, 0)")
+        w, h = 310, 400
+        path = STILL / f"{n:02d}.png"
+        await r.pg.screenshot(path=str(path), clip={"x": max(0, cx - w / 2), "y": max(0, min(VH - h, cy - h / 2)), "width": w, "height": h})
+        print(f"still {n} {v['kind']} ended={await r.js('__ar.S.ended')} why={await r.js('document.getElementById(`deadWhy`).textContent')}", flush=True)
+        urls[n] = f"/works/2026-11-04-dalgona/reel/out/stills/{n:02d}.png?{r.f}"
+    r.mouse = None
+    return urls
+
+
+async def film(r, urls):
+    """tries 3..12 run past as a film strip: each a still of that try's own break, stamped 탈락; it lands on a blank
+    13 and pushes into it, so the white of the blank frame becomes the white the 13th try fades in from"""
+    cells = [{"n": n, "src": urls[n], "why": WHY[n]} for n in range(3, 13)]
+    cells.append({"n": 13, "blank": True})
+    await r.js("__reel.flash(1)")
+    r.rec = False
+    await r.js(f"__reel.filmSetup({json.dumps(cells, ensure_ascii=False)})")
+    for _ in range(100):
+        if await r.js("__reel.filmReady()"): break
+        await r.pg.wait_for_timeout(100)
+    r.rec = True
+    rnd = random.Random(7)
+    flick = lambda: 1 + rnd.uniform(-0.07, 0.05)
+    await count(r, 3)
+    for i in range(1, 7):                     # in from the white
+        await r.js(f"__reel.film({i / 6}, 0, 1, {flick()})"); await r.frame()
+    N, last, y0 = 66, 0, 0.0
+    for i in range(1, N + 1):
+        y = 10 * ease(i / N); sp = y - y0; y0 = y
+        await r.js(f"__reel.film(1, {y}, 1, {flick()}, {min(1.6, sp * 5):.2f})")
+        if round(y) != last:
+            last = round(y); await count(r, cells[last]["n"]); r.ev("frame")
+        if sp > 0.02: r.ev("rattle")
+        await r.frame()
+    for i in range(1, 9): await r.js(f"__reel.film(1, 10, 1, {flick()})"); await r.frame()
+    for i in range(1, 11):                    # push into the blank 13
+        await r.js(f"__reel.film(1, 10, {1 + 3.2 * ease(i / 10) ** 2}, 1)"); await r.frame()
+    await r.js("__reel.flash(1); __reel.film(0)")
 
 
 async def main():
@@ -100,8 +196,8 @@ async def main():
             q = await r.scr(0.62, 0.55); r.mouse = q; await pg.mouse.move(*q)
             await r.press(True); r.hk = 0.94
             r.rec = True
-            await count(r, 1); await cap(r, "candy")
-            await r.frame(14)
+            await count(r, 1); await cap(r, "rule")
+            await r.frame(30)
             tip = await r.js("__ar.S.pts.reduce((m, p) => Math.hypot(...p) > Math.hypot(...m) ? p : m)")
             arm = (tip[0] * 0.55, tip[1] * 0.55)            # inside an arm of the star
             q2 = await r.scr(*arm)
@@ -109,36 +205,40 @@ async def main():
             if not await until(r, "__ar.S.ended", 30):       # the swing missed the arm: the next blow lands on it
                 await r.js(f"__ar.S.lastHit = 0; __ar.hit({{sx: {arm[0]}, sy: {arm[1]}, px: (0.5 + {arm[0]} * 0.5) * 512, py: (0.5 + {arm[1]} * 0.5) * 512, onCandy: true}}, 1.2)")
                 await r.frame()
-            r.ev("snap"); await cap(r, "snap"); r.zt = 1.0
+            r.ev("snap"); await cap(r, ""); r.zt = 1.0
             await r.diag("try 1")
             await die(r)
 
-            # ---- 2번째: careful, but the clock runs out ----
+            # ---- 2번째: careful, but the clock runs out (11-08: a big clock, so the death reads as time) ----
             await again(r, 2, "needle")
-            await r.js("__ar.WT.timeLeft = 2.9; __ar.WT.running = true")
-            path = await r.outline(0, 40, 40)
+            r.rec = False   # two minutes in: the groove is already round the whole star, the outside still on
+            await r.js("__ar.carveAll(0.55); __ar.WT.timeLeft = 5.95; __ar.WT.running = true; __reel.timer(0); __reel.clock('0:06', 1)")
+            r.rec = True
+            path = await r.outline(0, 60, 60)
             q = await r.scr(*path[0]); r.mouse = q; await pg.mouse.move(*q)
             r.hand_on = True; r.zt = 1.25
             await r.press(True); r.hk = 0.95
             await cap(r, "time")
             for i in range(3, 0, -1):   # the white fades off the new try
                 await r.js(f"__reel.flash({(i - 1) / 3})"); await r.frame()
-            k, t0 = 0, await r.js("Math.ceil(__ar.WT.timeLeft)")
-            while not await r.js("__ar.S.ended") and k < 140:
+            k, t0 = 0, 6
+            while not await r.js("__ar.S.ended") and k < 260:
                 await r.trace(path[min(k // 3 + 1, len(path) - 1)])
-                s = await r.js("Math.ceil(__ar.WT.timeLeft)")
-                if s != t0: r.ev("tick"); t0 = s
+                s = await r.js("Math.max(0, Math.ceil(__ar.WT.timeLeft))")
+                if s != t0: r.ev("tock" if s <= 3 else "tick"); t0 = s
+                await r.js(f"__reel.clock('0:0{s}', 1, {str(s <= 3).lower()})")
                 if k % 8 == 0: r.ev("scratch")
                 k += 1
-            r.ev("hush"); await cap(r, "over"); r.zt = 1.0
+            await r.js("__reel.clock('0:00', 1, true)")
+            r.ev("hush"); await cap(r, "시간 종료"); r.zt = 1.0
             await r.diag("try 2")
+            await r.frame(14)   # the clock at 0:00, held; then it gives way to the reason
+            await r.js("__reel.clock(null, 0)"); await cap(r, "over")
+            await r.frame(10)
             await die(r)
 
-            # ---- the counter spins on the white ----
-            for n in range(3, 13):
-                await count(r, n)
-                if n % 3 == 0: r.ev("tick")
-                await r.frame(2)
+            # ---- tries 3..12 run past as film ----
+            await film(r, await stills(r))
 
             # ---- 13번째: slow needle ----
             await again(r, 13, "needle")

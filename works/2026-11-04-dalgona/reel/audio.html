@@ -37,16 +37,31 @@ function thump(t) {   // sub hit under the shot
   const o = ac.createOscillator(), g = ac.createGain(); o.type = "sine"; o.frequency.setValueAtTime(110, t); o.frequency.exponentialRampToValueAtTime(38, t + 0.4);
   g.gain.setValueAtTime(1.4, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + 0.55);
 }
+// a noise grain with a soft attack (the 11-08 tool sounds: no sharp edges)
+function soft(t, dur, f, gain, a = 0.02, type = "lowpass") {
+  const s = ac.createBufferSource(); s.buffer = noise; const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f;
+  const g = ac.createGain(); g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(gain, t + a); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  s.connect(fl).connect(g).connect(ac.destination); s.start(t, Math.random() * 0.5); s.stop(t + dur + 0.02);
+}
+function knock(t, dur, f0, f1, gain) {
+  const o = ac.createOscillator(), g = ac.createGain(); o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur); o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+// the game's sounds as picked 11-08: needle = pencil hush, swab = warm hush, hammer = a low knock
 const plain = {
-  poke: t => burst(t, 0.05, 2800, 0.5, "bandpass", 1.4),
-  scratch: t => burst(t, 0.22, 2600, 0.22, "bandpass", 1.4),
+  poke: t => soft(t, 0.06, 1000, 0.25, 0.004),
+  scratch: t => { for (let k = 0; k < 4; k++) soft(t + k * 0.07, 0.09, 800 + 400 * Math.random(), 0.22); },
   crack: t => { burst(t, 0.11, 3200, 0.9); burst(t, 0.06, 1200, 0.5); },
-  melt: t => { for (let k = 0; k < 9; k++) burst(t + k * 0.2, 0.25, 900, 0.12, "lowpass"); },
+  melt: t => { for (let k = 0; k < 12; k++) soft(t + k * 0.16, 0.25, 320, 0.35, 0.08); },
   swish: t => burst(t, 0.08, 1500, 0.12, "bandpass"),
-  thud: t => { burst(t, 0.14, 300, 1.0, "lowpass"); burst(t + 0.01, 0.08, 2600, 0.45); },
+  thud: t => { knock(t, 0.14, 170, 85, 1.0); soft(t, 0.06, 500, 0.35, 0.001); },
+  // the film strip: a projector's clatter while it runs, a shutter click as each try passes the gate
+  rattle: t => { soft(t, 0.014, 2200, 0.16, 0.001, "bandpass"); knock(t, 0.02, 110, 80, 0.25); },
+  frame: t => { soft(t, 0.03, 1500, 0.35, 0.001, "bandpass"); knock(t, 0.05, 160, 90, 0.5); },
 };
-const synth = { tick: () => sfx.tick(false), breath: () => sfx.breath(true), scuff: () => sfx.scuff(), cock: () => sfx.cock(), win: () => sfx.win() };
-at(0, () => { sfx.setMaster(0.6); sfx.bed(true); sfx.setTension(0.1); });   // the bed sits lower so the snap and the shot stand out
+const synth = { tick: () => sfx.tick(false), tock: () => sfx.tick(true), breath: () => sfx.breath(true), scuff: () => sfx.scuff(), cock: () => sfx.cock(), win: () => sfx.win() };
+// the bed sits lower so the snap and the shot stand out; the music box is scheduled far ahead (offline render)
+at(0, () => { sfx.setMaster(0.6); sfx.bed(true); sfx.music(true, 60); sfx.setTension(0.1); });
 for (const [t, name] of events) {
   if (plain[name]) plain[name](t);
   if (synth[name]) at(t, synth[name]);
@@ -59,7 +74,7 @@ for (const [t, name] of events) {
 }
 // cut B: each new try brings the room back; the clock's time over goes quiet like a snap
 for (const [t, name] of events) {
-  if (name === "again") at(t, () => { sfx.bed(true); sfx.setTension(0.12); });
+  if (name === "again") at(t, () => { sfx.bed(true); sfx.music(true, 60); sfx.setTension(0.12); });
   if (name === "hush") at(t, () => { sfx.silence(); sfx.breath(true); });
 }
 // tension climbs through each try (from the start or an "again") until its snap, crack-free hush, shot or win
@@ -72,7 +87,7 @@ for (const [t, name] of [...events, [LEN, "end"]]) {
   from = null;
 }
 const endT = events.find(e => e[0] > 0 && e[1] === "win");
-if (endT) at(endT[0] + 2.2, () => sfx.bed(false));
+if (endT) at(endT[0] + 2.2, () => sfx.setTension(0));   // the music box plays on under the end card
 console.log("slots", slots.size); ac.onstatechange = () => console.log("state", ac.state, ac.currentTime.toFixed(2));
 const buf = await ac.startRendering();
 console.log("rendered");
