@@ -15,12 +15,14 @@ export const FR = {
   EXIT: 70,        // when the budget is spent the crack turns out to the rim with this much left
   PULL: [0.55, 0.88], // weakness range over which a line goes from no pull to full pull
   STAMP: 0.25,     // weakness of the pressed outline before any carving
+  HOLD: 0.65,      // carve strength from which the groove stops every crack (11-08: a finished groove must be safe)
+  HELD_R: 3,       // cells around a finished groove point that a crack may not step into the shape through
 };
 
 export function makeField(TEX, inShape, outlineDist) {
   const N = FR.N, cell = TEX / N, n = N * N;
   const F = { N, cell, TEX, scratch: new Float32Array(n), groove: new Float32Array(n), crack: new Uint8Array(n),
-    alive: new Uint8Array(n).fill(1), inside: new Uint8Array(n), deep: new Uint8Array(n) };
+    alive: new Uint8Array(n).fill(1), inside: new Uint8Array(n), deep: new Uint8Array(n), held: new Uint8Array(n) };
   for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
     const sx = ((i + 0.5) / N) * 2 - 1, sy = ((j + 0.5) / N) * 2 - 1, k = j * N + i;
     if (Math.hypot(sx, sy) > 1) { F.alive[k] = 0; continue; }
@@ -44,19 +46,27 @@ export function score(F, x0, y0, x1, y1, amt) {
 }
 /** The outline's weakness from the carve depth of each point (strength 0..1). */
 export function setGroove(F, pts, strength) {
-  F.groove.fill(0);
+  F.groove.fill(0); F.held.fill(0);
+  const R = FR.HELD_R;
   pts.forEach(([x, y], p) => {
-    const w = FR.STAMP + (1 - FR.STAMP) * strength(p), k = idx(F, x, y);
+    const s = strength(p), w = FR.STAMP + (1 - FR.STAMP) * s, k = idx(F, x, y);
     if (k < 0) return;
     F.groove[k] = Math.max(F.groove[k], w);
     for (const d of [-1, 1, -F.N, F.N]) if (F.groove[k + d] !== undefined) F.groove[k + d] = Math.max(F.groove[k + d], w * 0.6);
+    // a finished groove: the shape cells just inside it are closed to cracks
+    if (s >= FR.HOLD) {
+      const i0 = k % F.N, j0 = (k / F.N) | 0;
+      for (let j = j0 - R; j <= j0 + R; j++) for (let i = i0 - R; i <= i0 + R; i++)
+        if (i >= 0 && j >= 0 && i < F.N && j < F.N && F.inside[j * F.N + i]) F.held[j * F.N + i] = 1;
+    }
   });
 }
 export function markCrack(F, pts) { for (const [x, y] of pts) { const k = idx(F, x, y); if (k >= 0) F.crack[k] = 1; } }
 
 /**
  * Walk a crack from (x, y) heading ang (radians, texture px). Returns { pts, end } with end:
- * "edge" (ran off the candy or into a hole), "join" (met an older crack), "in" (got into the shape), "died".
+ * "edge" (ran off the candy or into a hole), "join" (met an older crack), "in" (got into the shape), "died",
+ * "held" (stopped against a finished groove).
  */
 export function walk(F, x, y, ang, { E = 1, rnd = Math.random } = {}) {
   const C = F.TEX / 2, step = F.cell, pts = [[x, y]]; let a0 = ang;
@@ -69,13 +79,16 @@ export function walk(F, x, y, ang, { E = 1, rnd = Math.random } = {}) {
     const Wt = exit ? 0.8 : FR.W, In = exit ? 0.3 : FR.INERTIA * E, Rim = exit ? 1.2 : FR.RIM;
     let best = -1e9, ba = ang;
     for (let d = -span; d <= span + 1e-6; d += span / 3) {
-      const a = ang + d, w = sample(a, 1.5) * 0.6 + sample(a, 3) * 0.4;
+      const a = ang + d, kn = idx(F, x + Math.cos(a) * step, y + Math.sin(a) * step);
+      if (kn >= 0 && F.held[kn]) continue;   // a finished groove: it runs along it or stops, never through
+      const w = sample(a, 1.5) * 0.6 + sample(a, 3) * 0.4;
       const ox = x - C, oy = y - C, ol = Math.hypot(ox, oy) || 1, out = (Math.cos(a) * ox + Math.sin(a) * oy) / ol;
       // momentum: keep the current heading and drift back to the one it set off on (sugar cracks run straight-ish)
       const mom = exit ? Math.cos(d) : 0.5 * Math.cos(d) + 0.5 * Math.cos(a - a0);
       const sc = Wt * w + In * mom + Rim * out + (rnd() - 0.5) * FR.NOISE;
       if (sc > best) { best = sc; ba = a; }
     }
+    if (best === -1e9) return { pts, end: "held" };
     if (here > 0.7 && !exit) a0 = ba;   // once in a line, the line is its new heading
     ang = ba; x += Math.cos(ang) * step; y += Math.sin(ang) * step; pts.push([x, y]);
     const k = idx(F, x, y);
@@ -134,7 +147,9 @@ if (typeof process !== "undefined" && process.argv[1] && process.argv[1].endsWit
   const alongScore = rate(0.9, radial, r => [r.a, r.b].some(w => w.pts.filter(([x, y]) => x < C - 30 && y < C - 0.75 * C).length > 8));
   const noScore = rate(0.9, null, r => [r.a, r.b].some(w => w.pts.filter(([x, y]) => x < C - 30 && y < C - 0.75 * C).length > 8));
   console.log({ deepIn, shallowIn, deepPiece, alongScore, noScore });
-  const ok = deepIn < 0.1 && shallowIn > 0.8 && deepPiece > 0.6 && alongScore > noScore + 0.3;
+  const holdIn = rate(FR.HOLD, null, into);   // a groove carved just to HOLD lets nothing through
+  console.log({ holdIn });
+  const ok = deepIn === 0 && holdIn === 0 && shallowIn > 0.8 && deepPiece > 0.6 && alongScore > noScore + 0.3;
   console.log(ok ? "fracture self-check ok" : "fracture self-check FAILED");
   if (!ok) process.exit(1);
 }

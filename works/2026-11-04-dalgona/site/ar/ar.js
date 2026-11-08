@@ -5,7 +5,7 @@
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 import { SHAPES } from "../js/engine.js";
 import { oneEuro } from "../js/camera.js";
-import { makeField, score, setGroove, markCrack, walk, loosePieces } from "./fracture.js";
+import { FR, makeField, score, setGroove, markCrack, walk, loosePieces } from "./fracture.js";
 
 const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
 const HAND = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task";
@@ -37,7 +37,7 @@ const AR = {
   CARVE: 0.06,            // groove depth per mm of needle travel near it (about 3 careful passes)
   NEAR: 0.06,             // groove points within this many candy radii of the tip get carved
   MELT_HOLE: 3.2,         // seconds of rubbing one spot before it melts through
-  HOLD: 0.65,             // groove strength that holds a hammer crack (fracture.js FR.W note); SEGS arcs are checked
+  HOLD: 0.65,             // groove strength from which no hammer crack gets through (fracture.js FR.HOLD); SEGS arcs are checked
   SEGS: 16,
   // Hammer: pinched like the needle, it swings by itself, one blow every SWING s, and the blow lands wherever the
   // head is. Reading a push to strike kept missing where the finger was (phone tests 11-06/07: "계속 허공"); now the
@@ -46,6 +46,7 @@ const AR = {
   TIP: { needle: 0.45, swab: 0.5, hammer: 0.6 },   // tool contact point ahead of the pinch, in hand sizes
 };
 
+FR.HOLD = AR.HOLD;   // one number: the groove that stops cracks is the groove the gold line shows
 const HAM = { R: 0.0068, HALF: 0.013, LEN: 0.075, RAISE: 0.95 };   // hammer head radius / half length, handle length (m), swing (rad)
 
 // ---------- renderer ----------
@@ -105,7 +106,7 @@ scene.add(hemi, key, key.target);
 const anchor = new THREE.Group(); scene.add(anchor);
 const candy = new THREE.Group(); anchor.add(candy);
 const cv = {}, ctx = {}, tex = {};
-for (const k of ["color", "height", "rough", "alpha"]) {
+for (const k of ["color", "height", "rough", "alpha", "gold"]) {
   cv[k] = document.createElement("canvas"); cv[k].width = cv[k].height = TEX;
   ctx[k] = cv[k].getContext("2d", { willReadFrequently: k === "alpha" });
   tex[k] = new THREE.CanvasTexture(cv[k]);
@@ -126,7 +127,11 @@ const bottomMat = new THREE.MeshStandardMaterial({ color: 0x8a4512, roughness: 0
 const rimMat = new THREE.MeshPhysicalMaterial({ color: 0xb8691f, roughness: 0.35, clearcoat: 0.5, clearcoatRoughness: 0.25, emissive: 0xff8a2a, emissiveIntensity: 0.06 });
 const top = new THREE.Mesh(discGeo, topMat), bottom = new THREE.Mesh(discGeo, bottomMat);
 bottom.position.z = -T;
-candy.add(top, bottom);
+// the finished-groove line (11-08): unlit, just above the top, so it reads as gold in a dark room too
+tex.gold.colorSpace = THREE.SRGBColorSpace;
+const goldLine = new THREE.Mesh(discGeo, new THREE.MeshBasicMaterial({ map: tex.gold, alphaMap: tex.alpha, transparent: true, depthWrite: false }));
+goldLine.position.z = 0.0002;
+candy.add(top, bottom, goldLine);
 
 /** One rim band from local angle a0 to a1 (radians, counter-clockwise), with a rounded top edge. */
 function band(a0, a1, n = 12) {
@@ -274,14 +279,14 @@ function paintCandy() {
 
 function reset(shape = S.shape) {
   S.shape = shape; S.ended = false; S.stress = 0; S.melt.fill(0); S.meltWarned.fill(0); S.meltHold.fill(0); S.wob = 0; S.spin = 0;
-  S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length); S.gone = new Uint8Array(S.pts.length);
+  S.pts = resample(SHAPES[shape].paths[0], 0.01); S.depth = new Float32Array(S.pts.length); S.soft = new Float32Array(S.pts.length); S.gone = new Uint8Array(S.pts.length); S.held = new Uint8Array(S.pts.length);
   for (const p of S.pieces) scene.remove(p.g);
   S.pieces = []; S.shapeCracks = [];
   rims.forEach(m => { m.visible = true; });
   S.F = makeField(TEX, inShape, outlineDist);
   S.outer0 = 0; for (let k = 0; k < S.F.alive.length; k++) if (S.F.alive[k] && !S.F.inside[k]) S.outer0++;
   candy.rotation.set(0, 0, 0);
-  paintCandy();
+  paintCandy(); ctx.gold.clearRect(0, 0, TEX, TEX); S.dirty.add("gold");
   $("again").hidden = true; toast("");
   for (const id of ["shCircle", "shTri", "shStar", "shLabel"]) $(id).hidden = false;
   // a new candy starts with empty hands: picking the first tool starts the clock again
@@ -624,6 +629,17 @@ function blob(x, y, r, inner, k, op = "source-over") {
   c.globalCompositeOperation = op; c.fillStyle = g; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill(); c.globalCompositeOperation = "source-over";
   S.dirty.add(k);
 }
+// 11-08: a stretch of groove cut deep enough to stop every crack (fracture.js FR.HOLD) turns gold, so you can see
+// where it is safe and where it still needs the needle
+const GOLD = "rgba(255,214,90,1)";
+function markHeld() {
+  const n = S.pts.length;
+  for (let i = 0; i < n; i++) {
+    if (S.held[i] || strength(i) < AR.HOLD) continue;
+    S.held[i] = 1;
+    for (const j of [(i + n - 1) % n, (i + 1) % n]) if (S.held[j]) { const [a, b] = gpx(i), [x, y] = gpx(j); stroke(a, b, x, y, GOLD, 2.4, "gold"); }
+  }
+}
 function work(c, dt, now) {
   if (S.ended || !c || !c.pressed || !c.onCandy || S.tool === "hammer") { S.prev = null; S.v *= 0.8; sound(0); return; }
   const p = S.prev; S.prev = c;
@@ -645,6 +661,7 @@ function work(c, dt, now) {
         S.depth[i] = Math.min(1, S.depth[i] + AR.CARVE * kp * mm * (1 + S.soft[i])); near++;
       }
     }
+    if (near) markHeld();
     if (S.v > fast || c.press >= 1) {
       S.stress += (Math.max(0, S.v - fast) * 0.06 + (c.press >= 1 ? 0.8 : 0)) * dt;
       if (S.stress > 1) { S.stress = 0; chip(c); }
@@ -659,6 +676,7 @@ function work(c, dt, now) {
     const now = performance.now();
     if (now >= (S.meltHold[k] || 0)) S.melt[k] += dt;
     for (let i = 0; i < S.pts.length; i++) { const [x, y] = S.pts[i]; if (Math.hypot(x - c.sx, y - c.sy) < 0.1) S.soft[i] = Math.min(1, S.soft[i] + dt / 1.2); }
+    markHeld();
     S.meltNow = S.melt[k] / AR.MELT_HOLE;
     if (S.meltNow > 0.7 && !S.meltWarned[k]) {
       S.meltWarned[k] = 1; S.meltHold[k] = now + 1000;
@@ -680,6 +698,7 @@ function poke(c) {
     const [x, y] = S.pts[i], d = Math.hypot(x - c.sx, y - c.sy);
     if (d < AR.NEAR) { S.depth[i] = Math.min(1, S.depth[i] + AR.POKE * (1 - d / AR.NEAR) * (1 + S.soft[i])); near++; }
   }
+  if (near) markHeld();
   sound(0.16, near ? 1100 : 800); setTimeout(() => sound(0), 60);
   vibrate(near ? 12 : 6);
 }
