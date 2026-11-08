@@ -40,21 +40,25 @@ css.textContent = `
 /* Reels covers the bottom fifth with its own UI */
 #rflash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
 #rchip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%);font-family:"Do Hyeon",sans-serif;font-size:30px;color:#fff;background:rgba(8,10,9,.72);border-radius:999px;padding:6px 22px;opacity:0;pointer-events:none;white-space:nowrap}
+#rcount{position:absolute;left:20px;top:calc(env(safe-area-inset-top) + 40px);font-family:"Do Hyeon",sans-serif;font-size:34px;color:#fff;background:#e5402f;border-radius:12px;padding:4px 16px;opacity:0;pointer-events:none;font-variant-numeric:tabular-nums;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #rhold{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none}`;
 document.head.appendChild(css);
 const hud = document.querySelector(".hud");
 // the hammer swings on its own while the pointer is held (the pinch), as in camera play
 A.AR.autoSwing = true;
-// the operator's own hand, cut from their phone test screenshot (11-06); (PX, PY) = where thumb and index meet
+// a flat white hand traced from the operator's own pinch photo (silhouette.py; 11-07 the photo hand read too real and
+// stopped at the wrist); (PX, PY) = where thumb and index meet
 const PX = 145, PY = 212, NAT = 390 / 1248, ROT = 13.5;
-const hand = Object.assign(document.createElement("img"), { id: "rh", src: here("assets/hand2_sam.png") });
+const hand = Object.assign(document.createElement("img"), { id: "rh", src: here("assets/hand_white.png") });
 const cap = Object.assign(document.createElement("div"), { id: "rc" });
 const end = Object.assign(document.createElement("div"), { id: "rend" });
 const flash = Object.assign(document.createElement("div"), { id: "rflash" });
 // a still of the frame before a time skip, faded out over the new one: a dissolve instead of a jump
 const hold = Object.assign(document.createElement("img"), { id: "rhold" });
 const chip = Object.assign(document.createElement("div"), { id: "rchip" });
-hud.append(hold, chip, cap, end, flash);
+// cut B: which try this is, top left all the way through
+const count = Object.assign(document.createElement("div"), { id: "rcount" });
+hud.append(hold, chip, cap, end, flash, count);   // over the white flash: the count spins on it
 // The "lens": the 3D canvas and the hand share one wrapper, so a push-in zooms both alike while the captions and the
 // clock stay put. The page still reads the pointer in unzoomed screen px, so the driver never has to think about it.
 const gl = document.getElementById("gl"), lens = document.createElement("div");
@@ -73,6 +77,7 @@ window.__reel = {
   flash(o) { flash.style.opacity = o; },
   hold(src, o) { if (src) hold.src = src; hold.style.opacity = o; },
   chip(text, o = 1) { if (text != null) chip.textContent = text; chip.style.opacity = o; },
+  count(text, o = 1) { if (text != null) count.textContent = text; count.style.opacity = o; },
   timer(o) { document.getElementById("timer").style.opacity = o; },
   zoom(k, ox, oy) { lens.style.transformOrigin = `${ox}px ${oy}px`; lens.style.transform = `scale(${k})`; },
   ready: () => hand.complete && tex.image != null,

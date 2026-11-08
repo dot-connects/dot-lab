@@ -1498,6 +1498,8 @@ window.__ar = { THREE, scene, camera, place,
   guardTo: d => { WT.move = null; setGuardDist(d); },   // the promo render stands him where the late game would
   // the promo render ends its run here: the last crumbs fall away and the shape comes out
   finish: () => { const F = S.F, rest = []; for (let k = 0; k < F.alive.length; k++) if (F.alive[k] && !F.inside[k]) rest.push(k); dropCells(rest); S.gone.fill(1); win(); },
+  // cut B of the reel: a crack from an outline point into the shape, the kind the swab mends; returns it in candy units
+  crackInto: (sx, sy) => { const [x, y] = toPx(sx, sy), inw = inwardCrack(x, y); drawCrack(inw, 2.2); markCrack(S.F, inw); shapeCrack(inw, 0.6); snap(0.6); S.wob = 0.8; return inw.map(toS); },
   S, H, AR, WT, toolMesh, dropCells, fg: fgScene, pickTool, reset, hit, readHand, contact, swing, heal, ctx, cv, shapePath, alphaURL: (k = "alpha") => cv[k].toDataURL(),
   debug: () => { const c = contact(), m = S.tool && toolMesh[S.tool]; const pr = v => { const p = v.clone().project(camera); return [(p.x + 1) / 2 * W, (1 - p.y) / 2 * Hh]; };
     return { tip: H.tip, c: c && { sx: c.sx, sy: c.sy, on: c.onCandy }, tool: m && pr(m.position), toolEnd: m && pr(m.localToWorld(new THREE.Vector3(0, 0.05, 0))), shadow: pr(shadow.getWorldPosition(new THREE.Vector3())) }; }, carveAll: d => { S.depth.fill(d); },

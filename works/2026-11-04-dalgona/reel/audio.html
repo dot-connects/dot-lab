@@ -57,8 +57,20 @@ for (const [t, name] of events) {
   if (name === "snap") { plain.crack(t); plain.thud(t); burst(t, 0.25, 1800, 1.2, "lowpass"); burst(t, 0.05, 4500, 1.0); at(t + 0.05, () => { sfx.silence(); sfx.breath(false); }); }
   if (name === "shot") { at(t, () => { sfx.breath(false); sfx.gunshot(); }); burst(t, 0.45, 900, 3.2, "lowpass"); burst(t, 0.06, 3000, 2.2); thump(t); ring(t + 0.3); }
 }
-const snapT = (events.find(e => e[1] === "snap") || [LEN])[0];
-for (let t = 1; t < Math.min(snapT, LEN - 3); t += 1) at(t, () => sfx.setTension(Math.min(1, t / 17)));
+// cut B: each new try brings the room back; the clock's time over goes quiet like a snap
+for (const [t, name] of events) {
+  if (name === "again") at(t, () => { sfx.bed(true); sfx.setTension(0.12); });
+  if (name === "hush") at(t, () => { sfx.silence(); sfx.breath(true); });
+}
+// tension climbs through each try (from the start or an "again") until its snap, crack-free hush, shot or win
+const STOP = new Set(["snap", "hush", "shot", "win"]);
+let from = 0;
+for (const [t, name] of [...events, [LEN, "end"]]) {
+  if (name === "again") { from = t; continue; }
+  if (from === null || !(STOP.has(name) || name === "end")) continue;
+  for (let s = from + 1; s < Math.min(t, LEN - 3); s += 1) { const k = s - from; at(s, () => sfx.setTension(Math.min(1, 0.12 + k / 12))); }
+  from = null;
+}
 const endT = events.find(e => e[0] > 0 && e[1] === "win");
 if (endT) at(endT[0] + 2.2, () => sfx.bed(false));
 console.log("slots", slots.size); ac.onstatechange = () => console.log("state", ac.state, ac.currentTime.toFixed(2));

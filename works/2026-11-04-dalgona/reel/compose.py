@@ -2,7 +2,7 @@
 
 Run after render.py: uv run --with playwright python compose.py
 """
-import asyncio, base64, pathlib, subprocess, sys
+import asyncio, base64, os, pathlib, subprocess, sys
 from playwright.async_api import async_playwright
 
 if sys.platform == "win32":   # idle priority, inherited by Chrome: the trading tick shares this machine
@@ -12,15 +12,16 @@ if sys.platform == "win32":   # idle priority, inherited by Chrome: the trading 
 
 HERE = pathlib.Path(__file__).parent
 OUT = HERE / "out"
+PORT = os.environ.get("PORT", "8771")   # 8765 is taken by ai-hub ops serve
 
 async def sound():
-    srv = subprocess.Popen([sys.executable, "-m", "http.server", "8765", "--bind", "127.0.0.1"], cwd=str(HERE.parents[2]),
+    srv = subprocess.Popen([sys.executable, "-m", "http.server", PORT, "--bind", "127.0.0.1"], cwd=str(HERE.parents[2]),
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         async with async_playwright() as p:
             b = await p.chromium.launch(channel="chrome")
             pg = await b.new_page(); pg.on("pageerror", lambda e: print("ERR", e)); pg.on("console", lambda m: print("CON", m.type, m.text))
-            await pg.goto("http://127.0.0.1:8765/works/2026-11-04-dalgona/reel/audio.html")
+            await pg.goto(f"http://127.0.0.1:{PORT}/works/2026-11-04-dalgona/reel/audio.html")
             await pg.wait_for_function("window.__wav", timeout=900000, polling=1000)
             (OUT / "sound.wav").write_bytes(base64.b64decode(await pg.evaluate("window.__wav")))
             await b.close()

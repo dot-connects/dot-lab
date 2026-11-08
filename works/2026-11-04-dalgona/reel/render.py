@@ -21,7 +21,8 @@ OUT = HERE / "out" / "frames"; OUT.mkdir(parents=True, exist_ok=True)
 FPS = 30; DT = 1000 / FPS
 STRIDE = int(os.environ.get("STRIDE", 1))   # preview: keep every Nth frame only
 VW, VH, DSF = 405, 720, 8 / 3          # 9:16 viewport -> 1080x1920
-URL = "http://127.0.0.1:8765/works/2026-11-04-dalgona/site/ar/?reel&room=metro&yaw=0"
+PORT = os.environ.get("PORT", "8771")   # 8765 is taken by ai-hub ops serve
+URL = f"http://127.0.0.1:{PORT}/works/2026-11-04-dalgona/site/ar/?reel&room=metro&yaw=0"
 # virtual clock: performance.now, the game loop's rAF and setTimeout all advance only with __step
 VCLOCK = ("(()=>{let vt=0,tid=1e6;const rq=[],tq=[];performance.now=()=>vt;const rr=window.requestAnimationFrame.bind(window);"
           "window.requestAnimationFrame=cb=>{if(cb.name!=='loop')return rr(cb);rq.push(cb);return 1};"
@@ -144,7 +145,7 @@ class Reel:
 
 
 async def main():
-    srv = subprocess.Popen([sys.executable, "-m", "http.server", "8765", "--bind", "127.0.0.1"], cwd=str(HERE.parents[2]),
+    srv = subprocess.Popen([sys.executable, "-m", "http.server", PORT, "--bind", "127.0.0.1"], cwd=str(HERE.parents[2]),
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     try:
         async with async_playwright() as p:
