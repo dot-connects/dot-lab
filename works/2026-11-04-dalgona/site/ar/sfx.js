@@ -183,8 +183,43 @@ export function makeSfx(ac) {
   const droneGain = ac.createGain(); droneGain.gain.value = 0; droneGain.connect(duck);
   let bedNodes = null, droneOn = false, tension = 0, hTimer = 0, silenced = false;
 
+  // ---- music box (operator pick 11-08 "오르골 동요", an original tune): a slow children's-song loop under play that
+  // stops dead on a fail. Each run gets its own gain, so stopping it also silences the notes already scheduled ahead.
+  const MEL = [72, 76, 79, 76, 74, 72, 69, 72, 74, 76, 74, 72, 67, 69, 72, 0], BASS = [48, 45, 41, 43], LOOP = 9.6;
+  const hz = n => 440 * Math.pow(2, (n - 69) / 12);
+  let mus = null;
+  function music(on, ahead = 10) {
+    const t = now();
+    if (mus) {
+      const m = mus; mus = null; clearInterval(m.timer);
+      m.g.gain.cancelScheduledValues(t); m.g.gain.setValueAtTime(m.g.gain.value, t); m.g.gain.linearRampToValueAtTime(0, t + 0.04);
+    }
+    if (!on) return;
+    const g = ac.createGain(); g.connect(duck);
+    const inp = ac.createGain(), dl = ac.createDelay(1), fb = ac.createGain(), lp = ac.createBiquadFilter();   // a soft echo
+    dl.delayTime.value = 0.32; fb.gain.value = 0.32; lp.type = 'lowpass'; lp.frequency.value = 2200;
+    inp.connect(g); inp.connect(dl); dl.connect(lp); lp.connect(fb); fb.connect(dl); lp.connect(g);
+    const box = (t0, n, dur = 1.6) => {
+      const f = hz(n);
+      tone(t0, dur, { freq: f, gain: 0.16, attack: 0.003, to: inp });
+      tone(t0, dur * 0.5, { freq: f * 4.02, gain: 0.03, attack: 0.002, to: inp });
+      tone(t0, 0.25, { freq: f * 2.98, gain: 0.02, attack: 0.002, to: inp });
+    };
+    const m = mus = { g, next: t + 0.05, timer: 0 };
+    const fill = () => {
+      while (m.next < now() + ahead) {
+        const t0 = m.next;
+        MEL.forEach((n, i) => { if (n) box(t0 + i * 0.6, n); });
+        BASS.forEach((n, i) => box(t0 + i * 2.4, n + 12, 2.2));
+        m.next += LOOP;
+      }
+    };
+    fill(); m.timer = setInterval(fill, 2000);
+  }
+
   function bed(on) {
     const t = now();
+    if (!on || !mus) music(on);
     if (on) {
       silenced = false;
       heartGain.gain.cancelScheduledValues(t); heartGain.gain.setValueAtTime(1, t);
@@ -236,7 +271,7 @@ export function makeSfx(ac) {
   }
   function silence() {
     const t = now();
-    silenced = true; clearTimeout(hTimer); hTimer = 0;
+    silenced = true; clearTimeout(hTimer); hTimer = 0; music(false);
     for (const g of [bedGain, heartGain, droneGain]) {
       g.gain.cancelScheduledValues(t); g.gain.setValueAtTime(g.gain.value, t);
       g.gain.linearRampToValueAtTime(0, t + 0.03);
@@ -264,5 +299,5 @@ export function makeSfx(ac) {
   function setMaster(v) { master.gain.value = Math.max(0, Math.min(1, v)); }
 
   return { tick, cock, halfRack, creak, scuff, gunshot, ring, breath, setVoicePos, setListener,
-    bed, setTension, silence, stinger, win, setMaster };
+    bed, music, setTension, silence, stinger, win, setMaster };
 }

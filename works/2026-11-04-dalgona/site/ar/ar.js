@@ -649,7 +649,8 @@ function work(c, dt, now) {
       S.stress += (Math.max(0, S.v - fast) * 0.06 + (c.press >= 1 ? 0.8 : 0)) * dt;
       if (S.stress > 1) { S.stress = 0; chip(c); }
     } else S.stress = Math.max(0, S.stress - dt * 0.5);
-    sound(Math.min(0.5, S.v / 60), near ? 2600 : 1900);
+    // a soft pencil-on-paper hush (operator 11-08: the old 2.4 kHz scrape grated); faster = a little brighter
+    const v = Math.min(1, S.v / 30); sound(v < 0.03 ? 0 : 0.05 + 0.12 * v, (near ? 800 : 700) + 500 * v);
   } else if (S.tool === "swab") {
     blob(c.px, c.py, 4.5 * PXMM, "rgba(105,40,4,.05)", "color");
     blob(c.px, c.py, 5 * PXMM, "rgba(0,0,0,.10)", "rough");
@@ -665,7 +666,7 @@ function work(c, dt, now) {
     }
     heal(c, dt);
     if (S.melt[k] > AR.MELT_HOLE) { S.melt[k] = -1e9; hole(c); }
-    sound(Math.min(0.18, 0.05 + S.v / 200), 700);
+    const v = Math.min(1, S.v / 30); sound(0.08 + 0.12 * v, 320);   // a low warm hush
   }
 }
 // a poke: the needle lands on the candy (the fingers close over it). Pokes along the line are how most people start.
@@ -679,7 +680,7 @@ function poke(c) {
     const [x, y] = S.pts[i], d = Math.hypot(x - c.sx, y - c.sy);
     if (d < AR.NEAR) { S.depth[i] = Math.min(1, S.depth[i] + AR.POKE * (1 - d / AR.NEAR) * (1 + S.soft[i])); near++; }
   }
-  sound(0.4, near ? 2800 : 2000); setTimeout(() => sound(0), 60);
+  sound(0.16, near ? 1100 : 800); setTimeout(() => sound(0), 60);
   vibrate(near ? 12 : 6);
 }
 // ---------- cracks ----------
@@ -857,7 +858,7 @@ function hit(c, E = 1) {
     win(); return;
   }
   if (into) return;
-  if (pieces.length) { snap(1); vibrate([20, 30, 20]); shake(6, 120); S.hitStop = now + 70; toast("탁! 떨어졌어요", "var(--gold)", 900); }
+  if (pieces.length) { crumb(); vibrate([20, 30, 20]); shake(6, 120); S.hitStop = now + 70; toast("탁! 떨어졌어요", "var(--gold)", 900); }
   else { snap(0.6); toast("쩍, 금만 갔어요", "#fff", 900); }
 }
 /** Drop the grid cells as one falling piece, with the rim bands along its edge. */
@@ -1066,12 +1067,12 @@ function initAudio() {
     noiseBuf = ac.createBuffer(1, ac.sampleRate, ac.sampleRate);
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     const src = ac.createBufferSource(); src.buffer = noiseBuf; src.loop = true;
-    sf = ac.createBiquadFilter(); sf.type = "bandpass"; sf.frequency.value = 2400; sf.Q.value = 1.4;
+    sf = ac.createBiquadFilter(); sf.type = "lowpass"; sf.frequency.value = 700;
     sg = ac.createGain(); sg.gain.value = 0;
     src.connect(sf).connect(sg).connect(ac.destination); src.start();
   } catch { ac = null; }
 }
-function sound(level, freq = 2400) { if (!ac) return; sg.gain.setTargetAtTime(level, ac.currentTime, 0.03); sf.frequency.setTargetAtTime(freq, ac.currentTime, 0.05); }
+function sound(level, freq = 700) { if (!ac) return; sg.gain.setTargetAtTime(level, ac.currentTime, 0.03); sf.frequency.setTargetAtTime(freq, ac.currentTime, 0.05); }
 function burst(dur, f, gain, type = "highpass") {
   if (!ac) return;
   const s = ac.createBufferSource(); s.buffer = noiseBuf; const fl = ac.createBiquadFilter(); fl.type = type; fl.frequency.value = f;
@@ -1079,7 +1080,16 @@ function burst(dur, f, gain, type = "highpass") {
   s.connect(fl).connect(g).connect(ac.destination); s.start(t, Math.random() * 0.5); s.stop(t + dur);
 }
 const snap = (k = 1) => { burst(0.09 * k, 3200, 0.7); burst(0.05, 1200, 0.4); };
-const thud = () => burst(0.12, 300, 0.8, "lowpass");
+function boom(dur, f0, f1, gain) {
+  if (!ac) return;
+  const o = ac.createOscillator(), g = ac.createGain(), t = ac.currentTime;
+  o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+  g.gain.setValueAtTime(gain, t); g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g).connect(ac.destination); o.start(t); o.stop(t + dur + 0.02);
+}
+// the hammer: a short low knock with weight (operator pick 11-08 "둔탁 쿵"), no hiss tail
+const thud = () => { boom(0.14, 170, 85, 0.7); burst(0.06, 500, 0.25, "lowpass"); };
+const crumb = () => burst(0.04, 1600, 0.3, "bandpass");   // bits knocked off: a dry little tick, not a crack
 const tick = () => burst(0.03, 4000, 0.25);
 // a short shake of the picture: 3 px for a tap, 6 px for a break (game-feel refs 11-07: 2-3 weak, 8-10 strong)
 let shakeAt = 0, shakePx = 0, shakeMs = 0;
