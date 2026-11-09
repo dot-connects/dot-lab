@@ -104,3 +104,23 @@ Boards with 6 layouts (1, 2, big+2, 2+big, 4, 3 slots) and 12 cards; seven prese
 bed, 수능, book, video). Also: big notification, Live Activity pill to 2x, alarm with the Fold inner-screen mood
 light (warm ramp 6 s, our value), Fold unfolded 932x704 book board. Open: how Claude/Codex usage gets from the PC
 to the phone; YouTube video only through the official embed player.
+
+## Step 2: app v0.1.0 (2026-11-10 overnight, module `:standby`, package `kr.dot.standby`)
+
+Built from `plan.md` by parallel agents (clocks, boards+cards, platform, settings, screens), then a designer review
+(`review-design-1.md`, 7 P0 fixed) and an iPhone parity review (`review-parity-1.md`, High 3 fixed). Specs:
+`design-system.md`, `spec-behaviour.md`. Renders: Roborazzi on 6 device shapes (`gradlew :standby:testDebugUnitTest
+-Proborazzi.test.record=true`, PNGs in `standby/build/shots/`). Probe 0.2.0 adds alarm actions, progress notifications,
+light and pose logging.
+
+Probe result reported by the operator (2026-11-09 night): the screen saver starts by itself while charging (R1 closed);
+the probe ran warm (full brightness, per-second redraw, gravity sensor) — the app's lightness rules are in plan.md.
+
+Open after v0.1.0:
+- Not built: D6 modular big-slot pager, D7/D8 weather and calendar styles, W6 ↗ badge, D12 위치 checkboxes, M4 glow
+  drag/swipe, Now Playing volume slider, per-card clock style (styles are per face), photo place names.
+- Lightness debt: a running pomodoro republishes state every second (card should tick itself).
+- Design calls for the operator: Digital/Desk condensed digits narrowed to 0.8x (`CONDENSE` in TimeText.kt) to reach
+  61.6 % hero height; Solar pastel palettes stay under 3:1 contrast; startPage now follows the last page shown.
+- Device-only risks (spec R1-R10): Samsung alarm UI may cover our alarm screen; touch in an interactive dream; own
+  rotation sign; dream surviving unfold.
