@@ -150,7 +150,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
     fun editSlot(slot: Int, f: (List<CardType>) -> List<CardType>) = edit { b -> b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) f(l) else l }) }
 
     Box(Modifier.fillMaxSize()) {
-        Page(board.name, back) {
+        Page(board.name, back, side = {
             PreviewFrame(
                 dev.width(portrait), dev.height(portrait), Modifier.fillMaxWidth(), maxHeight = 280.dp,
                 overlay = { scale ->
@@ -173,6 +173,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
             Gap(8.dp)
             Segmented(listOf("가로", "세로"), if (portrait) 1 else 0, { portrait = it == 1 })
             T("칸을 누르면 카드를 고를 수 있어요", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp))
+        }) {
 
             Section("이름") {
                 item {

@@ -15,6 +15,7 @@ import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FontId
+import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.Motion
 import kotlin.math.min
@@ -26,10 +27,11 @@ private class Holder(var v: String)
  * digit accDeep, colon = two discs on top. Changed digits roll for 400 ms (old up + tilt + fade, new from below).
  */
 @Composable
-internal fun FloatFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+internal fun FloatFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, hero: Boolean = true) {
     val p = rememberTimePainter(style)
     val look = Look.of(style, ink)
-    val deep = if (look.effect == Effect.SOLID) Look(Effect.SOLID, ink.accDeep.toArgb(), look.c2) else look
+    // A second clock on a board is plain ink: no deep centre digit (§5.1).
+    val deep = if (hero && look.effect == Effect.SOLID) Look(Effect.SOLID, ink.accDeep.toArgb(), look.c2) else look
     val digits = d.h + d.m
     val last = remember { Holder(digits) }
     val from = remember(digits) { last.v.also { last.v = digits } }
@@ -50,9 +52,12 @@ internal fun FloatFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val a = p.digitAdv.max()
         // In em: step inside a group overlaps by 0.12 em; across the colon the digits just touch (frame "5:22").
         val inStep = a - 0.12f; val crossStep = a + 0.02f
-        val lineEm = if (two) inStep + a else 2 * inStep + crossStep + a
+        // Width of the current hour-digit class (§2.3.1): 3 digits for 1:00-9:59, 4 otherwise; changes only with the class.
+        val lineEm = if (two) (d.h.length.coerceAtLeast(2) - 1) * inStep + a else (digits.length - 2) * inStep + crossStep + a
         val maxCap = (if (inSlot) (if (two) 0.42f else 0.8f) * h else (if (two) 0.36f else 0.66f) * h) * sizePct
-        val fs = min(maxCap / p.capEm, (if (inSlot) 0.9f else 0.84f) * w / lineEm)
+        // full screen: the board content width (margins M), like Digital (review X1)
+        val maxW = if (inSlot) 0.9f * w else w - 2 * Grid.margin(min(w, h).toDp()).toPx()
+        val fs = min(maxCap / p.capEm, maxW / lineEm)
         val cap = p.capEm * fs
         val gap = 0.02f * h
         val hl = d.h.length

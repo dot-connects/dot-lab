@@ -9,7 +9,6 @@ import android.graphics.Rect
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.TextPaint
-import android.text.TextUtils
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
@@ -64,10 +63,15 @@ internal fun TextPaint.capRatio(): Float {
     return -r.top / 100f
 }
 
-internal fun TextPaint.fit(text: String, maxW: Float): String =
-    if (measureText(text) <= maxW) text else TextUtils.ellipsize(text, this, maxW, TextUtils.TruncateAt.END).toString()
+/** One line, ellipsized at the end to [maxW] (own loop: never clips mid-glyph, same result on device and in tests). */
+internal fun TextPaint.fit(text: String, maxW: Float): String {
+    if (measureText(text) <= maxW) return text
+    var n = text.length
+    while (n > 0 && measureText(text, 0, n) + measureText("…") > maxW) n--
+    return text.substring(0, n).trimEnd() + "…"
+}
 
-/** Colours of one time run after night mapping (N4: effects off at night except glow; backgrounds black). */
+/** Colours of one time run after night mapping (N4 + design-system §4.3: every effect off at night, glow too). */
 internal class Look(
     val effect: Effect,
     val c1: Int,
@@ -79,8 +83,7 @@ internal class Look(
         fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true): Look {
             val night = ink.night >= 0.5f
             val fx = when {
-                !effects -> Effect.SOLID
-                night && style.effect != Effect.GLOW -> Effect.SOLID
+                !effects || night -> Effect.SOLID
                 else -> style.effect
             }
             return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb())
@@ -93,14 +96,17 @@ internal class Look(
 /**
  * Digit painter for one clock font at one weight/width/numeral system. Metrics are measured once (at 100 px) and
  * reused for every minute, so autosize never re-measures on a time change (design-system §2.3.1).
+ * Hero digits are proportional ([tnum] false: a "1" is narrow, like iPhone); board numerals keep `tnum`.
  */
-internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, widthPct: Int, val numerals: Numerals) {
+internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, widthPct: Int, val numerals: Numerals, tnum: Boolean = false) {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = tf
         fontVariationSettings = "'wght' $weight"
-        textScaleX = widthPct / 100f
+        // "StandBy 디지털" (Oswald) is condensed to the iPhone digit width (digital-dan: a digit ≈ 0.42 cap wide vs
+        // Oswald's 0.62); without it the hero tops out at ~49 % H on the Fold cover (review X1 wants ≥ 60 %).
+        textScaleX = widthPct / 100f * (if (font == FontId.CONDENSED) CONDENSE else 1f)
         textSize = REF
-        fontFeatureSettings = "'tnum'"
+        fontFeatureSettings = if (tnum) "'tnum'" else null
     }
     private val fx = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
 
@@ -123,21 +129,42 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
 
     private fun maxAdv(range: IntRange) = range.maxOf { digitAdv[it] }
 
-    /** Widest hour string (§2.3.1: 12 h "10"-"12", 24 h "00"-"23"), in em. */
-    fun hourEm(use24h: Boolean) = if (use24h) maxAdv(0..2) + maxAdv(0..9) else max(digitAdv[1] + maxAdv(0..2), maxAdv(1..9))
+    /**
+     * Widest hour string of one hour-digit class (§2.3.1 rev. 2026-11-10), in em: class 1 = "1"-"9" (12 h 1:00-9:59),
+     * class 2 = 12 h "10"-"12" or 24 h "00"-"23". The size changes only when the class does (9:59→10:00, 12:59→1:00).
+     */
+    fun hourEm(digits: Int, use24h: Boolean) = when {
+        digits == 1 -> maxAdv(1..9)
+        use24h -> maxAdv(0..2) + maxAdv(0..9)
+        else -> digitAdv[1] + maxAdv(0..2)
+    }
     val minuteEm get() = maxAdv(0..5) + maxAdv(0..9)
-    /** Widest "h:mm" in em, with 3 % for kerning slack. */
-    fun widestEm(use24h: Boolean) = (hourEm(use24h) + colonAdv + minuteEm) * 1.03f
+    /** The colon's advance in a time run: 30 % tighter than the font's (iPhone-like). */
+    val colonRun get() = colonAdv * COLON
+    /** Widest "h:mm" of the class in em, with 3 % for kerning slack. */
+    fun widestEm(hourDigits: Int, use24h: Boolean) = (hourEm(hourDigits, use24h) + colonRun + minuteEm) * 1.03f
     /** Widest string of arbitrary digits (each digit position takes the widest digit). */
     fun widestEm(pattern: String) = pattern.sumOf { if (it in '0'..'9') maxAdv(0..9).toDouble() else measure(it.toString(), 1f).toDouble() }.toFloat() * 1.03f
 
     fun measure(text: String, size: Float): Float { paint.textSize = size; return paint.measureText(numerals.convert(text)) }
 
+    /** Width of "h:mm" drawn by [drawHm] (tight colon). */
+    fun measureHm(h: String, m: String, size: Float): Float = measure(h, size) + colonRun * size + measure(m, size)
+
+    /** "h:mm" with the tight colon; one gradient spans the whole run. */
+    fun drawHm(c: Canvas, h: String, m: String, x: Float, baseline: Float, size: Float, look: Look) {
+        val wh = measure(h, size)
+        val r = x + measureHm(h, m, size)
+        draw(c, h, x, baseline, size, look, x, r)
+        draw(c, ":", x + wh - colonAdv * size * (1 - COLON) / 2, baseline, size, look, x, r)
+        draw(c, m, x + wh + colonRun * size, baseline, size, look, x, r)
+    }
+
     /**
      * Draw [text] (ASCII digits, converted here) with its left edge at [x] and baseline at [baseline].
      * Stencil/Rails cuts are drawn here, per font.
      */
-    fun draw(c: Canvas, text: String, x: Float, baseline: Float, size: Float, look: Look) {
+    fun draw(c: Canvas, text: String, x: Float, baseline: Float, size: Float, look: Look, gl: Float = x, gr: Float = Float.NaN) {
         val s = numerals.convert(text)
         paint.textSize = size
         val w = paint.measureText(s)
@@ -148,7 +175,7 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         val layered = stencil || rails
         if (layered) c.saveLayer(x - size, top - size, x + w + size, bottom + size, null)
 
-        paint.reset(look, x, top, x + w, bottom)
+        paint.reset(look, gl, top, if (gr.isNaN()) x + w else gr, bottom)
         val glass = look.effect == Effect.GLASS
         if (look.effect == Effect.GLOW) {
             // Two blurs (0.05 em full, 0.22 em at 55 %), then the crisp fill on top.
@@ -209,13 +236,16 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         when (look.effect) {
             Effect.TWO_COLOR -> shader = LinearGradient(l, t, r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
             Effect.RAINBOW -> shader = LinearGradient(l, t, r, t, Look.RAINBOW, null, Shader.TileMode.CLAMP)
-            Effect.GLASS -> color = withAlpha(look.c1, 0.30f)
+            // 60 % (review C5): 30 % read ≈ 1.5:1 on black, the digits showed only through the stroke
+            Effect.GLASS -> color = withAlpha(look.c1, 0.60f)
             else -> {}
         }
     }
 
     companion object {
         const val REF = 100f
+        const val COLON = 0.7f
+        const val CONDENSE = 0.8f
         fun withAlpha(c: Int, a: Float): Int = (c and 0xFFFFFF) or ((a * 255).toInt() shl 24)
 
         /** Glass stroke = mix(acc, white 65 %), never darker than luminance 0.5 (so it never reads dark on black). */
@@ -230,9 +260,9 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
 
 /** Cached painter for a style (rebuilt only when font/weight/width/numerals change). */
 @Composable
-internal fun rememberTimePainter(style: ClockStyle, weight: Int = style.weight): TimePainter {
+internal fun rememberTimePainter(style: ClockStyle, weight: Int = style.weight, tnum: Boolean = false): TimePainter {
     val tf = rememberClockTypeface(style.font, weight)
-    return remember(tf, weight, style.font, style.widthPct, style.numerals) { TimePainter(tf, weight, style.font, style.widthPct, style.numerals) }
+    return remember(tf, weight, style.font, style.widthPct, style.numerals, tnum) { TimePainter(tf, weight, style.font, style.widthPct, style.numerals, tnum) }
 }
 
 /** Night-aware background colours (N4: black at night). Solar keeps a red-black plate (§5.2). */

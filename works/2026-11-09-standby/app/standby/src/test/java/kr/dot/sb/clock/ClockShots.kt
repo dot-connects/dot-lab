@@ -18,6 +18,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AnalogNumbers
+import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
@@ -62,9 +63,10 @@ class ClockShots {
 
     private fun face(f: FaceId, state: StandbyState = Fixtures.full(), style: ClockStyle = ClockStyle.default(f)): @Composable () -> Unit = {
         if (f == FaceId.PHOTOS_TIME) {
-            // Photos page puts the time top-right (x 72-92 %, y 10-28 %): render it in that box over grey.
-            Box(Modifier.fillMaxSize().background(Color(0xFF3F6D8C))) {
-                Box(Modifier.align(Alignment.TopEnd).size(150.dp, 70.dp)) { ClockFace(f, style, state, Modifier.fillMaxSize()) }
+            // The face places the time itself on the whole photo screen (review C1). Placeholder photo = flat blue,
+            // night-mapped like a photo (review C7: the screens layer must pass fallbacks through the same filter).
+            Box(Modifier.fillMaxSize().background(Ink.of(state.night, Color.White).mapped(Color(0xFF3F6D8C)))) {
+                ClockFace(f, style, state, Modifier.fillMaxSize())
             }
         } else ClockFace(f, style, state, Modifier.fillMaxSize())
     }
@@ -103,8 +105,33 @@ class ClockShots {
                 "world-24h" to face(FaceId.WORLD, Fixtures.full().copy(use24h = true)),
                 "desk-empty" to face(FaceId.DESK, StandbyState(now = Fixtures.now)),
                 "styled-time" to styled(dig),
-            )
+                "float-1-05" to face(FaceId.FLOAT, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 13, 5))),
+                "world-london" to face(FaceId.WORLD, Fixtures.full().copy(worldCity = City("런던", 51.5072, -0.1276), worldZoneId = "Europe/London")),
+            ) + ClockStyle.SOLAR_SETS.mapIndexed { i, c ->
+                "solar-set$i" to face(FaceId.SOLAR, style = sol.copy(bgColor = c[0], bgColor2 = c[1], color = c[2], color2 = c[3]))
+            }
         shots(Device.FOLD_COVER_L, items.map { (n, c) -> "style-$n" to c })
+    }
+
+    /**
+     * Review X1 target: Digital hero cap ≥ 60 % H for one-digit hours on the Fold cover (landscape). Measured on the
+     * render: rows holding accent-blue pixels left of the side column.
+     */
+    @Test fun digitalHeroSize() {
+        RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
+        rule.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { face(FaceId.DIGITAL)() } }
+        rule.waitForIdle()
+        val path = "build/shots/clock/hero-size-check.png"
+        rule.onRoot().captureRoboImage(path)
+        val bmp = android.graphics.BitmapFactory.decodeFile(path)
+        var top = -1; var bottom = -1
+        for (y in 0 until bmp.height) for (x in 0 until (bmp.width * 0.62f).toInt()) {
+            val c = bmp.getPixel(x, y)
+            if (android.graphics.Color.blue(c) > 200 && android.graphics.Color.red(c) in 90..150) { if (top < 0) top = y; bottom = y; break }
+        }
+        val pct = (bottom - top + 1).toFloat() / bmp.height
+        println("digital hero cap = ${"%.1f".format(pct * 100)} % H")
+        org.junit.Assert.assertTrue("hero cap $pct < 0.60", pct >= 0.60f)
     }
 
     private fun styled(st: ClockStyle): @Composable () -> Unit = {

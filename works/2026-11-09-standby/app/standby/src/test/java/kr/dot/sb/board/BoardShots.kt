@@ -79,6 +79,18 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("empty-b", d, e2, "emptyB")
             }
             out += arrayOf("empty-a-night", Device.FOLD_COVER_L, e1, "emptyAnight")
+            // Two clocks on one board (§5.1): hero keeps accent digits, the second is white / white hands.
+            val c = CardType.CLOCK; val a = CardType.ANALOG
+            val dual = listOf(
+                Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(a))),
+                Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(a), listOf(c), listOf(CardType.WEATHER))),
+                Board("dual-float", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.TIMER)), clockFace = kr.dot.sb.model.FaceId.FLOAT),
+                Board("dual-solar", "dual", Layout.TWO2, listOf(listOf(c), listOf(CardType.DDAY), listOf(c)), clockFace = kr.dot.sb.model.FaceId.SOLAR),
+            )
+            for (b in dual) {
+                out += arrayOf(b.id, Device.FOLD_COVER_L, b, "full")
+                out += arrayOf(b.id, Device.FOLD_COVER_P, b, "full")
+            }
             return out
         }
     }

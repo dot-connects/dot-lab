@@ -11,6 +11,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.DisplayOff
@@ -40,7 +41,7 @@ class SettingsShots {
         foldable = true,
         granted = mapOf(Perm.DREAM to false, Perm.NOTIFICATIONS to true, Perm.CALENDAR to true, Perm.PHOTOS to true, Perm.FULL_SCREEN to true, Perm.EXACT_ALARM to false, Perm.BATTERY to false),
         lux = 2.4f,
-        licenseNames = listOf("OFL-inter.txt", "OFL-pretendard.txt", "OFL-nunito.txt"),
+        licenseNames = listOf("LICENSE-robotoslab.txt", "OFL-inter.txt", "OFL-nunito.txt", "OFL-oswald.txt", "OFL-pretendard.txt", "OFL-sourceserif4.txt"),
         licenseText = { "Copyright 2020 The Inter Project Authors\nThis Font Software is licensed under the SIL Open Font License, Version 1.1." },
     )
 
@@ -63,7 +64,7 @@ class SettingsShots {
     @Test fun boards() = snap("boards", tall, route = Routes.BOARDS)
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
-    @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performClick() }
+    @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
     @Test fun clocks() = snap("clocks", tall, route = Routes.CLOCKS)
     @Test fun clockDigital() = snap("clock-digital", tall, route = Routes.clock(FaceId.DIGITAL))
     @Test fun clockAnalog() = snap("clock-analog", tall, route = Routes.clock(FaceId.ANALOG))
