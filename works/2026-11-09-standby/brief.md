@@ -15,6 +15,9 @@ Operator decisions, fixed:
   from `frames/` (or a source link), what it does, and the measured numbers, with unknowns marked as our choice.
 - Everything goes in (2026-11-09, after round 1): every iPhone StandBy screen copied as-is, plus round 1's
   portrait (B) and desk clock (C); landscape and portrait both. SF fonts swap to lookalikes (Inter, Nunito, Oswald).
+- Every clock is user-styled (2026-11-09): font, weight, size, width, colour, effect, background, numerals, layout.
+  All 11 iPhone clock fonts are offered; Apple's font files cannot ship in an Android app, so each maps to the
+  closest open font, and Stencil and Rails are drawn by us from Inter.
 - The 20 open unknowns in the canon stay open; where one matters, the mockup states the value we chose.
 
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
@@ -79,3 +82,11 @@ One working device: widgets (two stacks), photos (5 themes), clocks Digital/Anal
 edit, desk clock, alarm, Now Playing, night red; landscape and portrait on Fold cover/bar/Flip cover. A panel under
 the device swaps to the matching iPhone frame and measured numbers. World map = Natural Earth 110m land as 96x44 dots,
 sunlit side computed from the date. Not yet: big notifications, Live Activities, per-charger memory, mood light.
+
+## Mockups round 3 (2026-11-09): https://claude.ai/artifact/TQCBqLqcWkL6KCGqAjhSw8
+
+Round 2 plus a per-screen "내 설정" panel: 11 fonts (iOS 16 Lock Screen 8 + StandBy Condensed, Rounded Heavy,
+Thin), weight/size/width sliders, solid/two-colour/rainbow/glass/glow, free colour picker, background
+black/colour/gradient, six numeral systems, layout iPhone/centre/two lines; analog numerals 4/12/Roman/none,
+ticks, five colours. Night still forces red. Font names: 9to5Mac (iOS 16); iOS 26 names and the 15 numeral
+systems were not found.
