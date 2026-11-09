@@ -22,7 +22,8 @@ object Feeds {
         val prefs = ctx.getSharedPreferences("sb_feed", Context.MODE_PRIVATE)
         val lan = prefs.getString("lan", null)
         val errors = mutableListOf<String>()
-        if (lan != null && BuildConfig.LAN_TOKEN.isNotEmpty() && UsageParser.isPrivateHttp(lan)) {
+        // token only over Wi-Fi to a private IPv4 literal (same rule as 눈금); never over mobile data
+        if (lan != null && onWifi(ctx) && BuildConfig.LAN_TOKEN.isNotEmpty() && UsageParser.isPrivateHttp(lan)) {
             try { return get(lan, 1500, "Bearer " + BuildConfig.LAN_TOKEN) } catch (e: Exception) { errors += "lan:${e.javaClass.simpleName}" }
         }
         if (BuildConfig.STATUS_BOT_TOKEN.isEmpty()) throw IllegalStateException("no bot token " + errors.joinToString())

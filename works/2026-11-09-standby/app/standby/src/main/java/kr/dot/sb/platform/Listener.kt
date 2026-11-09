@@ -134,7 +134,15 @@ class Listener : NotificationListenerService() {
     }
 
     private fun liveOf(sbn: StatusBarNotification, max: Int): LiveActivity {
-        val x = sbn.notification.extras
+        val n = sbn.notification
+        // StandBy shows over the lock screen: PRIVATE content only through the app's public version, else no text
+        val private = n.visibility == Notification.VISIBILITY_PRIVATE && locked()
+        val pub = n.publicVersion
+        if (private && pub == null) {
+            val p = if (max > 0) (n.extras.getInt(Notification.EXTRA_PROGRESS).toFloat() / max).coerceIn(0f, 1f) else null
+            return LiveActivity(sbn.key, appLabel(sbn.packageName), "", p?.let { "${(it * 100).toInt()}%" }.orEmpty(), "", p)
+        }
+        val x = if (private) pub!!.extras else n.extras
         val p = if (max > 0) (x.getInt(Notification.EXTRA_PROGRESS).toFloat() / max).coerceIn(0f, 1f) else null
         return LiveActivity(
             sbn.key, appLabel(sbn.packageName), x.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
@@ -145,14 +153,14 @@ class Listener : NotificationListenerService() {
 
     private fun big(sbn: StatusBarNotification) {
         val n = sbn.notification
-        val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
-        // PRIVATE content on a locked phone: only what the app allows in its public version
-        val private = n.visibility == Notification.VISIBILITY_PRIVATE && locked
+        // PRIVATE content on a locked phone: only what the app allows in its public version; with none, no text
+        // at all reaches the state (not merely flagged hidden)
+        val private = n.visibility == Notification.VISIBILITY_PRIVATE && locked()
         val pub = n.publicVersion
         val x = if (private && pub != null) pub.extras else n.extras
         val hiddenByApp = private && pub == null
-        val sender = (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString().orEmpty()
-        val text = (x.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
+        val sender = if (hiddenByApp) "" else (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString().orEmpty()
+        val text = if (hiddenByApp) "" else (x.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
         val icon: Bitmap? = runCatching {
             (n.getLargeIcon()?.loadDrawable(this) ?: packageManager.getApplicationIcon(sbn.packageName)).toBitmap(192, 192)
         }.getOrNull()
@@ -166,6 +174,8 @@ class Listener : NotificationListenerService() {
             ),
         )
     }
+
+    private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     private fun appLabel(pkg: String) =
         runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)

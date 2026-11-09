@@ -141,6 +141,8 @@ data class AppConfig(
     val startPage: Int = 2,
     val use24h: Boolean? = null, // null = follow system
     val nightMode: NightMode = NightMode.AUTO,
+    val nightStartHour: Int = 22,
+    val nightEndHour: Int = 7,
     val nightEnterLux: Float = 3f,
     val nightExitLux: Float = 8f,
     val nightMaxBrightness: Float = 0.3f,

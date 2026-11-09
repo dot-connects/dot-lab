@@ -56,8 +56,9 @@ object NightRamp {
         return if (up) minOf(target, from + step) else maxOf(target, from - step)
     }
 
-    /** SCHEDULE mode has no times in AppConfig yet: fixed 22:00-07:00 (ponytail: add times to AppConfig when needed). */
-    fun scheduledNight(hour: Int): Boolean = hour >= 22 || hour < 7
+    /** SCHEDULE mode: night between [start] and [end] hours, wrapping past midnight. */
+    fun scheduledNight(hour: Int, start: Int = 22, end: Int = 7): Boolean =
+        if (start <= end) hour in start until end else hour >= start || hour < end
 }
 
 /** ON/OFF decision of the display (spec E10-E14). */

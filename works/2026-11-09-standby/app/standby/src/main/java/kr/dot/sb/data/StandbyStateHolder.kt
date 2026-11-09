@@ -197,7 +197,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         lastLux?.let { nightSw.update(now, it) }
         val nightOn = when (c.nightMode) {
             NightMode.OFF -> false
-            NightMode.SCHEDULE -> NightRamp.scheduledNight(LocalTime.now().hour)
+            NightMode.SCHEDULE -> NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour)
             NightMode.AUTO -> nightSw.night
         }
         setNight(if (nightOn) 1f else 0f)
