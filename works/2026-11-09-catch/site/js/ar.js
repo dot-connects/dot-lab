@@ -222,8 +222,8 @@ export function frame(now, dt, pose = {}) {
 }
 
 // ---------- camera ----------
-export async function startCamera() {   // from dalgona startCamera
-  const ask = navigator.mediaDevices.getUserMedia({ audio: false,
+export async function startCamera(given) {   // from dalgona startCamera; given = a stream in place of the camera (?still=)
+  const ask = given ? Promise.resolve(given) : navigator.mediaDevices.getUserMedia({ audio: false,
     video: { facingMode: { ideal: "environment" }, width: { ideal: 1280 }, height: { ideal: 960 } } });
   const stream = await Promise.race([ask, new Promise((_, no) => setTimeout(() => no(new Error("timeout")), 15000))]);
   video.srcObject = stream; await video.play();

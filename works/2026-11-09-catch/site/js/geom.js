@@ -62,3 +62,31 @@ export function hit(p, box, ring) {
     inRing: Math.hypot(p.x - ring.x, p.y - ring.y) <= ring.r,
   };
 }
+
+/**
+ * One find result into a tracked real target: the 0..1 box smoothed by EMA (a = 0.5) against the last one, and a miss
+ * keeps the last box for 2 misses (DeepLab drops a close dog about 1 run in 3). found/prev = {x, y, w, h, kind} | null.
+ */
+export function track(prev, found, a = 0.5, hold = 2) {
+  if (!found) return prev && prev.miss < hold ? { ...prev, miss: prev.miss + 1 } : null;
+  if (!prev) return { x: found.x, y: found.y, w: found.w, h: found.h, kind: found.kind, miss: 0 };
+  const m = k => prev[k] + (found[k] - prev[k]) * a;
+  return { x: m("x"), y: m("y"), w: m("w"), h: m("h"), kind: found.kind, miss: 0 };
+}
+
+/**
+ * Grow a crop's short side towards its long side (centred, clamped to the frame): DeepLab stretches its input to a
+ * square, and a 2.5:1 crop of a lying cat came back with no cat at all.
+ */
+export function square(b, fw, fh) {
+  const s = Math.max(b.w, b.h), w = Math.min(fw, s), h = Math.min(fh, s);
+  const x = Math.round(Math.min(fw - w, Math.max(0, b.x + b.w / 2 - w / 2))), y = Math.round(Math.min(fh - h, Math.max(0, b.y + b.h / 2 - h / 2)));
+  return { x, y, w: Math.round(w), h: Math.round(h) };
+}
+
+/** The crop for a cut-out: the box (frame px) widened 25 % (12.5 % each side), clamped to the frame, whole pixels. */
+export function widen(b, fw, fh, k = 0.25) {
+  const x0 = Math.max(0, Math.floor(b.x - b.w * k / 2)), y0 = Math.max(0, Math.floor(b.y - b.h * k / 2));
+  const x1 = Math.min(fw, Math.ceil(b.x + b.w * (1 + k / 2))), y1 = Math.min(fh, Math.ceil(b.y + b.h * (1 + k / 2)));
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}

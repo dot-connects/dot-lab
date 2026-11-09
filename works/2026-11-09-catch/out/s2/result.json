@@ -1,0 +1,295 @@
+{
+ "errors": [
+  "log: INFO: Created TensorFlow Lite XNNPACK delegate for CPU. https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js",
+  "log: INFO: Created TensorFlow Lite XNNPACK delegate for CPU. https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js",
+  "log: INFO: Created TensorFlow Lite XNNPACK delegate for CPU. https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js",
+  "log: INFO: Created TensorFlow Lite XNNPACK delegate for CPU. https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm/vision_wasm_internal.js"
+ ],
+ "steps": {
+  "white-dog": {
+   "open": {
+    "ready": true,
+    "warmMs": 11591,
+    "waitedMs": 16751
+   },
+   "reals": [
+    {
+     "kind": "dog",
+     "box": {
+      "x": 4.611596913724561,
+      "y": 26.375,
+      "w": 431.018190320318,
+      "h": 817.625
+     },
+     "n": {
+      "x": 0.1043956043956044,
+      "y": 0.03125,
+      "w": 0.8956043956043956,
+      "h": 0.96875,
+      "kind": "dog",
+      "miss": 0
+     }
+    }
+   ],
+   "stats": {
+    "ready": true,
+    "warmMs": 11591,
+    "ms": 1083,
+    "finds": 2,
+    "timeouts": 0,
+    "rebuilds": 0,
+    "cut": "",
+    "off": "",
+    "err": ""
+   },
+   "label": "야생의 강아지",
+   "throws": [
+    {
+     "aim": "dog",
+     "landed": "catch",
+     "after": "caught",
+     "cut": "refined"
+    }
+   ],
+   "who": {
+    "title": "누구야?",
+    "chips": [
+     "개 *",
+     "고양이",
+     "+ 새 친구"
+    ]
+   },
+   "defaultName": "멍멍이 1",
+   "pose": {
+    "title": "어떤 모습?",
+    "chips": [
+     "앞모습 *",
+     "옆모습",
+     "걷는 중",
+     "누운 모습",
+     "뒷모습"
+    ]
+   },
+   "card": "모습 1/5 · 앞모습 새 모습 발견!\nNice · 확률 65%",
+   "saved": {
+    "id": "c_mw9fft5gqxyi_front",
+    "label": "front",
+    "w": 136,
+    "h": 256,
+    "blurry": false,
+    "grade": "nice"
+   },
+   "cutStat": "refined",
+   "counter": "1마리 · 모습 1개"
+  },
+  "black-cat": {
+   "open": {
+    "ready": true,
+    "warmMs": 6941,
+    "waitedMs": 10070
+   },
+   "reals": [
+    {
+     "kind": "cat",
+     "box": {
+      "x": -95.71111111111117,
+      "y": 225.06666666666666,
+      "w": 848.6888888888889,
+      "h": 304.77777777777777
+     },
+     "n": {
+      "x": 0.30625,
+      "y": 0.26666666666666666,
+      "w": 0.565625,
+      "h": 0.3611111111111111,
+      "kind": "cat",
+      "miss": 0
+     }
+    }
+   ],
+   "stats": {
+    "ready": true,
+    "warmMs": 6941,
+    "ms": 1212,
+    "finds": 3,
+    "timeouts": 0,
+    "rebuilds": 0,
+    "cut": "",
+    "off": "",
+    "err": ""
+   },
+   "label": "",
+   "throws": [
+    {
+     "aim": "cat",
+     "landed": "hand",
+     "after": "hand",
+     "cut": ""
+    },
+    {
+     "aim": "cat",
+     "landed": "catch",
+     "after": "caught",
+     "cut": "refined"
+    }
+   ],
+   "who": {
+    "title": "누구야?",
+    "chips": [
+     "개",
+     "고양이 *",
+     "+ 새 친구"
+    ]
+   },
+   "defaultName": "야옹이 1",
+   "pose": {
+    "title": "어떤 모습?",
+    "chips": [
+     "앞모습",
+     "옆모습",
+     "걷는 중",
+     "누운 모습 *",
+     "뒷모습"
+    ]
+   },
+   "card": "모습 1/5 · 누운 모습 새 모습 발견!\nGreat · 확률 80%",
+   "saved": {
+    "id": "c_mw9fh84oaohf_lying",
+    "label": "lying",
+    "w": 256,
+    "h": 87,
+    "blurry": false,
+    "grade": "great"
+   },
+   "cutStat": "refined",
+   "counter": "2마리 · 모습 2개"
+  },
+  "selfie-dog": {
+   "open": {
+    "ready": true,
+    "warmMs": 14214,
+    "waitedMs": 26654
+   },
+   "reals": [
+    {
+     "kind": "person",
+     "box": {
+      "x": 268.85,
+      "y": 35.166666666666664,
+      "w": 488.8166666666666,
+      "h": 808.8333333333334
+     },
+     "n": {
+      "x": 0.565625,
+      "y": 0.041666666666666664,
+      "w": 0.434375,
+      "h": 0.9583333333333334,
+      "kind": "person",
+      "miss": 0
+     }
+    },
+    {
+     "kind": "cat",
+     "box": {
+      "x": -367.66666666666663,
+      "y": 112.53333333333333,
+      "w": 267.26666666666665,
+      "h": 196.9333333333333
+     },
+     "n": {
+      "x": 0,
+      "y": 0.13333333333333333,
+      "w": 0.2375,
+      "h": 0.23333333333333334,
+      "kind": "cat",
+      "miss": 0
+     }
+    }
+   ],
+   "stats": {
+    "ready": true,
+    "warmMs": 14214,
+    "ms": 1291,
+    "finds": 2,
+    "timeouts": 0,
+    "rebuilds": 0,
+    "cut": "",
+    "off": "",
+    "err": ""
+   },
+   "label": "야생의 사람",
+   "throws": [
+    {
+     "aim": "person",
+     "landed": "catch",
+     "after": "caught",
+     "cut": "refined"
+    }
+   ],
+   "who": {
+    "title": "누구야?",
+    "chips": [
+     "+ 새 친구"
+    ]
+   },
+   "defaultName": "사람 1",
+   "pose": {
+    "title": "어떤 모습?",
+    "chips": [
+     "앞모습 *",
+     "옆모습",
+     "걷는 중",
+     "누운 모습",
+     "뒷모습"
+    ]
+   },
+   "card": "모습 1/5 · 앞모습 새 모습 발견!\n맞았다 · 확률 50%",
+   "saved": {
+    "id": "c_mw9fim06gtml_front",
+    "label": "front",
+    "w": 149,
+    "h": 256,
+    "blurry": false,
+    "grade": "hit"
+   },
+   "cutStat": "refined",
+   "counter": "3마리 · 모습 3개"
+  },
+  "reload": {
+   "before": "3마리 · 모습 3개",
+   "after": "3마리 · 모습 3개"
+  },
+  "again": {
+   "open": {
+    "ready": true,
+    "warmMs": 13719,
+    "waitedMs": 15588
+   },
+   "throws": [
+    {
+     "aim": "dog",
+     "landed": "catch",
+     "after": "caught",
+     "cut": "refined"
+    }
+   ],
+   "who": [
+    "개 *",
+    "고양이",
+    "멍멍이 1 · 모습 1/5",
+    "+ 새 친구"
+   ],
+   "pose": [
+    "앞모습 *",
+    "옆모습",
+    "걷는 중",
+    "누운 모습",
+    "뒷모습"
+   ],
+   "picked": "옆모습",
+   "hadLabel": "front",
+   "card": "모습 2/5 · 옆모습 새 모습 발견!\nGreat · 확률 80%",
+   "counter": "3마리 · 모습 4개"
+  }
+ }
+}

@@ -41,6 +41,16 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
 #card .line{font-size:15px;line-height:1.5;margin:0 0 10px}
 #card .how{font-size:12px;color:#7a6c50;margin:0 0 12px}
 #card button{width:100%;font:inherit;font-family:"Do Hyeon",sans-serif;font-size:21px;padding:13px;border:0;border-radius:14px;background:#2a2418;color:#fff;cursor:pointer}
+#sheet{position:absolute;left:0;right:0;bottom:0;padding:16px 16px calc(env(safe-area-inset-bottom) + 18px);border-radius:22px 22px 0 0;background:#fffaf0;color:#2a2418;z-index:5;box-shadow:0 -12px 40px rgba(0,0,0,.45)}
+#sheet img{display:block;height:120px;max-width:70%;margin:0 auto 6px;object-fit:contain;background:repeating-conic-gradient(#eee6d4 0 25%,#fffaf0 0 50%) 0 0/16px 16px;border-radius:12px}
+#sheet h3{font-family:"Do Hyeon",sans-serif;font-weight:400;font-size:26px;margin:4px 0 10px;text-align:center}
+#sKind,#sChips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:10px}
+.chip{font:inherit;font-size:16px;padding:10px 14px;border-radius:20px;border:1.5px solid #2a2418;background:#fff;color:#2a2418;cursor:pointer}
+.chip.on{background:#ffc83d;border-color:#c99100;font-weight:600}
+.chip.new{border-style:dashed}
+#sNew{display:flex;gap:8px}
+#sNew input{user-select:text;-webkit-user-select:text;flex:1;min-width:0;font:inherit;font-size:17px;padding:10px 12px;border-radius:12px;border:1.5px solid #2a2418}
+#sNew button{font:inherit;font-family:"Do Hyeon",sans-serif;font-size:18px;padding:10px 14px;border:0;border-radius:12px;background:#2a2418;color:#fff}
 </style>
 </head>
 <body>
@@ -66,6 +76,13 @@ video{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
       <p class="how" id="cHow"></p>
       <button id="cGo">계속 잡기</button>
     </div>
+  </div>
+  <div id="sheet" hidden>
+    <img id="sImg" alt="">
+    <h3 id="sTitle">누구야?</h3>
+    <div id="sKind"></div>
+    <div id="sChips"></div>
+    <div id="sNew" hidden><input id="sName" maxlength="12" aria-label="이름"><button id="sOk">이 이름으로</button></div>
   </div>
   <div id="start">
     <a id="back" class="glass" href="../../../">‹ 시켜본 것들</a>

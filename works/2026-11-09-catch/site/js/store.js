@@ -71,4 +71,29 @@ export async function catchVirtual({ pokeId, name, grade }) {
   return { creature: c, outcome, pose };
 }
 
-// S2 hook: catchReal({kind, name, label, png, grade}) goes here (creature chosen on the "누구야?" screen).
+const posesOf = async id => (await S.all("poses")).filter(p => p.creatureId === id);   // ponytail: full scan, fine for a home dex
+
+/** Real creatures of one kind (dog | cat | person) for the "누구야?" chips, each with its pose labels, oldest first. */
+export async function ofKind(kind) {
+  const cs = (await S.all("creatures")).filter(c => c.kind === kind).sort((a, b) => a.no - b.no);
+  return Promise.all(cs.map(async c => ({ ...c, labels: (await posesOf(c.id)).map(p => p.label) })));
+}
+
+/**
+ * A real creature caught, picked on the "누구야?" screen: id = an existing one, or null for a new friend (name, kind).
+ * The pose keeps the cut-out PNG (Blob); a label already held is replaced only by a better grade.
+ * Returns {creature, outcome: "new" | "again", pose: "new" | "better" | "have", labels}.
+ */
+export async function catchReal({ id, name, kind, label, png, w, h, grade, blurry }) {
+  const now = Date.now();
+  let c = id ? await S.get("creatures", id) : null, outcome = "again";
+  if (!c) {
+    c = { id: "c_" + now.toString(36) + Math.random().toString(36).slice(2, 6), name, kind, no: await nextNo(), pokeId: null, times: 0, first: now };
+    outcome = "new";
+  }
+  c.times++; c.last = now;
+  await S.put("creatures", c);
+  const pid = `${c.id}_${label}`, had = await S.get("poses", pid), pose = poseOutcome(had?.grade, grade);
+  if (pose !== "have") await S.put("poses", { id: pid, creatureId: c.id, label, grade, at: now, png, w, h, blurry: !!blurry });
+  return { creature: c, outcome, pose, labels: (await posesOf(c.id)).map(p => p.label) };
+}

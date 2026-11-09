@@ -17,4 +17,10 @@
 - 헤드리스(S1): `python -m http.server 8765 --bind 127.0.0.1 --directory C:/DC/DD/dot-lab` 를 띄운 뒤
   `node check/s1.mjs 8765 <빈 프로필 폴더>` → `out/s1/*.png` + `out/s1/result.json`.
   끝나면 남은 headless chrome 을 확인해 끈다(Windows 에서 자식 프로세스가 남는다).
-- 쿼리: `?seed=N` 결정적 난수, `?touch` 시작 화면 없이 화면 모드, `?fov=` 카메라 FOV, `?lag=` 자이로 지연(ms).
+- 헤드리스(S2): 같은 서버에서 `node check/s2.mjs <port> <빈 프로필 폴더>` → photo-booth `research/pet-matting/media` 사진 3장으로
+  박스·오려 내기·칩·저장·새로고침·재포획 → `out/s2/*.png`(`*-cut.png` = 저장된 투명 PNG) + `out/s2/result.json`.
+- 쿼리: `?seed=N` 결정적 난수, `?touch` 시작 화면 없이 화면 모드, `?fov=` 카메라 FOV, `?lag=` 자이로 지연(ms),
+  `?still=<url>` 카메라 대신 사진(사진 전체가 카메라 프레임, 화면은 cover 로 자름), `?cpu` DeepLab CPU delegate(헤드리스 소프트웨어 GL 은 GPU 경로가 프레임당 3초+),
+  `?boxes` 진짜 박스 전부 점선으로.
+- 진짜 찾기·오려 내기: `site/js/seg-worker.js` 는 photo-booth `site/js/pet-worker.js`, `site/js/refine.js` 는 photo-booth
+  `site/js/refine.js` 에서 복사 (파일 머리에 출처). DeepLab v3 (MediaPipe tasks-vision 0.10.14, Apache-2.0).

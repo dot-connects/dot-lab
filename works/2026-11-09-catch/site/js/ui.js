@@ -2,8 +2,10 @@
 // escaped, the counter and a minimal catch card (the full card and dex are stage S3).
 import * as ar from "./ar.js";
 import { grade, chance, roll, ringAt, rng } from "./catch.js";
-import { release, flight, hit, FLIGHT_MS, END_SCALE } from "./geom.js";
+import { release, flight, hit, coverMap, FLIGHT_MS, END_SCALE } from "./geom.js";
 import { cardText } from "./lines.js";
+import { LABELS, LABEL_KO, suggest, count } from "./moves.js";
+import * as seg from "./seg.js";
 import * as store from "./store.js";
 
 const $ = id => document.getElementById(id);
@@ -66,19 +68,30 @@ async function spawn() {
   }
   spawning = false;
 }
-// S2 hook: when seg.js sees a real dog / cat / person, its box becomes the target here and the virtual one hides.
-const currentTarget = t => t;
+// A real dog / cat / person in the camera beats the virtual one (which hides); several = the one nearest the centre.
+const REAL_KO = { dog: "강아지", cat: "고양이", person: "사람" };
+function currentTarget(t) {
+  const v = $("video");
+  G.reals = G.mode === "camera" && v.videoWidth ? seg.targets().map(r => {
+    const m = coverMap(v.videoWidth, v.videoHeight, W, H), [x0, y0] = m([r.x * v.videoWidth, r.y * v.videoHeight]),
+      [x1, y1] = m([(r.x + r.w) * v.videoWidth, (r.y + r.h) * v.videoHeight]);
+    return { box: { x: x0, y: y0, w: x1 - x0, h: y1 - y0 }, center: { x: (x0 + x1) / 2, y: (y0 + y1) / 2 }, onScreen: true, real: r.kind, n: r };
+  }) : [];
+  if (!G.reals.length) return t;
+  const d = r => Math.hypot(r.center.x - W / 2, r.center.y - H / 2);
+  return G.reals.reduce((a, b) => (d(b) < d(a) ? b : a));
+}
 
 // ---------- input ----------
 const app = $("app");
 for (const t of ["touchstart", "touchmove"])   // keep the gesture in the page inside Threads / Instagram (README)
-  app.addEventListener(t, e => { if (!e.target.closest("button,a")) e.preventDefault(); }, { passive: false });
+  app.addEventListener(t, e => { if (!e.target.closest("button,a,input")) e.preventDefault(); }, { passive: false });
 document.body.style.minHeight = "calc(100% + 2px)";
 const nudge = () => { if (scrollY < 1) scrollTo(0, 1); };
 addEventListener("load", nudge); addEventListener("scroll", nudge, { passive: true });
 
 app.addEventListener("pointerdown", e => {
-  if (e.target.closest("button,a,#card,#start")) return;
+  if (e.target.closest("button,a,#card,#start,#sheet")) return;
   const b = G.ball, now = performance.now();
   if (G.phase === "hand" && Math.hypot(e.clientX - b.x, e.clientY - b.y) < b.r * 1.9) {
     G.phase = "drag"; G.path = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
@@ -108,13 +121,15 @@ function up(e) {
   G.lastThrow = { th, n: G.path.length, span: e.timeStamp - G.path[0].t };
   if (!th) { G.phase = "hand"; return; }   // not a throw: the ball goes back to the hand
   G.th = th; G.t0 = now; G.ring = ringAt(now - G.ringT0); G.phase = "fly";
+  G.aim = G.target?.real ? G.target : null;   // thrown at a real one: it stays the target even if a find misses mid-flight
 }
 app.addEventListener("pointerup", up);
 app.addEventListener("pointercancel", e => { if (G.phase === "drag") G.phase = "hand"; if (G.look) G.look = null; });
 
 // ---------- the throw lands ----------
 function land(now) {
-  const end = flight(G.th, 1, W, H), t = G.target;
+  const end = flight(G.th, 1, W, H), t = G.aim ? (G.target?.real === G.aim.real ? G.target : G.aim) : G.target;
+  G.aim = null;
   const ok = t && t.onScreen && !t.behind;
   const ringC = ok ? { x: t.center.x, y: t.center.y, r: ringMax(t) * G.ring } : { x: 0, y: 0, r: 0 };
   const gr = grade({ ...hit(end, ok ? t.box : null, ringC), ring: G.ring });
@@ -126,6 +141,8 @@ function land(now) {
   }
   const p = chance(gr, G.th.curve), r = roll(p, rnd);
   G.res = { grade: gr, curve: G.th.curve, p, ...r, land: end, ground: t.box.y + t.box.h - 6, t0: now };
+  // a real one: freeze this frame and start the cut-out now; the roll above already decided, the cut cannot change it
+  if (t.real) G.res.real = { kind: t.real, n: t.n, cut: seg.cut({ ...t.n, kind: t.real }) };
   G.phase = "catch";
   toast(`${GRADE_KO[gr]}!${G.th.curve ? " 커브볼" : ""}`, `잡힐 확률 ${Math.round(p * 100)}%`);
 }
@@ -136,7 +153,10 @@ function catchStep(now) {
   const shakeI = Math.floor((T - SH.absorb - SH.drop) / SH.each);
   if (shakeI >= 0 && shakeI < R.shakes && R.vib !== shakeI) { R.vib = shakeI; try { navigator.vibrate?.(30); } catch { /* iOS */ } }
   if (T < endT) return;
-  if (R.caught) {
+  if (R.caught && R.real) {
+    G.phase = "caught"; R.doneT = now; toast("잡았다!");
+    setTimeout(() => who(R), 800);
+  } else if (R.caught) {
     G.phase = "caught"; R.doneT = now; toast("잡았다!");
     store.catchVirtual({ pokeId: G.mon.id, name: G.mon.name, grade: R.grade }).then(async out => {
       await counter();
@@ -148,6 +168,7 @@ function catchStep(now) {
   }
 }
 function monPose(now) {
+  if (G.res ? G.res.real : G.aim || G.target?.real) return { scale: 0, hidden: true, hold: true };   // a real one is the target
   if (G.phase === "catch") {
     const T = now - G.res.t0;
     return { scale: Math.max(0, 1 - T / SH.absorb), hold: true };
@@ -184,8 +205,13 @@ function draw(now) {
   const t = G.target, aiming = G.phase === "hand" || G.phase === "drag" || G.phase === "fly";
   if (t && aiming && t.onScreen) drawRing(t, now);
   const nm = $("name");
-  if (t && aiming && t.onScreen && G.mon) {
-    nm.hidden = false; nm.textContent = `야생의 ${G.mon.name}`;
+  if (Q.has("boxes")) for (const r of G.reals || []) {   // test view: every real box
+    g.setLineDash([6, 5]); g.lineWidth = 2; g.strokeStyle = r.real === "person" ? "#7ecbff" : "#ffc83d";
+    g.strokeRect(r.box.x, r.box.y, r.box.w, r.box.h); g.setLineDash([]);
+    g.fillStyle = g.strokeStyle; g.font = "12px sans-serif"; g.fillText(r.real, r.box.x + 4, r.box.y + r.box.h - 6);
+  }
+  if (t && aiming && t.onScreen && (t.real || G.mon)) {
+    nm.hidden = false; nm.textContent = `야생의 ${t.real ? REAL_KO[t.real] : G.mon.name}`;
     nm.style.left = `${t.center.x}px`; nm.style.top = `${Math.max(70, t.box.y - 10)}px`;
   } else nm.hidden = true;
 
@@ -255,20 +281,80 @@ function showCard({ creature: c, outcome }) {
   $("cHow").style.whiteSpace = "pre-line";
   $("card").hidden = false; G.phase = "card";
 }
-$("cGo").onclick = () => { $("card").hidden = true; G.res = null; G.phase = "wait"; spawn(); };
+$("cGo").onclick = () => {
+  $("card").hidden = true;
+  if (G.res?.real) { G.res = null; G.phase = "hand"; G.ringT0 = performance.now(); return; }   // the virtual one is still there
+  G.res = null; G.phase = "wait"; spawn();
+};
+
+// ---------- a real one caught: "누구야?" then "어떤 모습?" ----------
+const BASE = { dog: "멍멍이", cat: "야옹이", person: "사람" };
+const POSE_KO = { new: "새 모습 발견!", better: "더 잘 찍힌 사진으로 바꿨다", have: "이미 있는 모습" };
+function chip(text, onTap, cls = "") {
+  const b = document.createElement("button"); b.className = "chip " + cls; b.textContent = text; b.onclick = onTap;
+  return b;
+}
+async function who(R) {
+  const cut = await R.real.cut, v = $("video");
+  const sug = suggest(R.real.n.w * v.videoWidth, R.real.n.h * v.videoHeight);
+  let kind = R.real.kind;
+  G.phase = "card";
+  $("sImg").src = URL.createObjectURL(cut.blob);
+  async function ask() {
+    $("sTitle").textContent = "누구야?";
+    const list = await store.ofKind(kind);
+    $("sKind").replaceChildren(...(kind === "person" ? [] : ["dog", "cat"].map(k =>
+      chip(k === "dog" ? "개" : "고양이", () => { kind = k; ask(); }, k === kind ? "on" : ""))));
+    $("sChips").replaceChildren(...list.map(c => chip(`${c.name} · ${count(c.labels, c.kind)}`, () => pose({ id: c.id, name: c.name, kind: c.kind }))),
+      chip("+ 새 친구", () => { $("sNew").hidden = false; $("sName").value = `${BASE[kind]} ${list.length + 1}`; $("sName").focus(); }, "new"));
+    $("sNew").hidden = true;
+    $("sOk").onclick = () => pose({ id: null, name: $("sName").value.trim().slice(0, 12) || `${BASE[kind]} ${list.length + 1}`, kind });
+    $("sheet").hidden = false;
+  }
+  function pose(c) {
+    $("sTitle").textContent = "어떤 모습?";
+    $("sKind").replaceChildren(); $("sNew").hidden = true;
+    $("sChips").replaceChildren(...LABELS.map(l => chip(LABEL_KO[l], () => save(c, l), l === sug ? "on" : "")));
+  }
+  async function save(c, label) {
+    const out = await store.catchReal({ ...c, label, png: cut.blob, w: cut.w, h: cut.h, grade: R.grade, blurry: cut.blurry });
+    $("sheet").hidden = true;
+    await counter();
+    const txt = cardText(out.creature.id, out.creature.kind);
+    $("cNo").textContent = `No.${String(out.creature.no).padStart(3, "0")}`;
+    $("cImg").src = $("sImg").src;
+    $("cName").textContent = out.creature.name;
+    $("cType").textContent = txt.type;
+    $("cLine").textContent = txt.line;
+    $("cHow").textContent = `${count(out.labels, out.creature.kind)} · ${LABEL_KO[label]} ${POSE_KO[out.pose]}` + (cut.blurry ? " · 흐릿하게 찍힘" : "") +
+      `\n${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""} · 확률 ${Math.round(R.p * 100)}%`;
+    $("cHow").style.whiteSpace = "pre-line";
+    $("card").hidden = false;
+  }
+  ask();
+}
 
 // ---------- modes ----------
 const askMotion = () => { try { if (typeof DeviceOrientationEvent?.requestPermission === "function") DeviceOrientationEvent.requestPermission().catch(() => {}); } catch { /* old browser */ } };
+// ?still=<url>: a photo stands in for the camera (tests), as the whole camera frame (the screen crops it like a camera).
+// Letterboxing it into a portrait frame shrank a landscape photo to a strip in black, and DeepLab never found the black cat.
+async function stillStream(url) {
+  const img = await ar.loadImg(url), c = document.createElement("canvas");
+  c.width = img.naturalWidth; c.height = img.naturalHeight;
+  const x = c.getContext("2d"), paint = () => x.drawImage(img, 0, 0);
+  paint(); setInterval(paint, 200);   // a canvas stream only sends a frame when the canvas is drawn
+  return c.captureStream(10);
+}
 async function toCamera() {
-  try { await ar.startCamera(); } catch (e) {
+  try { await ar.startCamera(Q.has("still") ? await stillStream(Q.get("still")) : undefined); } catch (e) {
     note(e && e.name === "NotAllowedError" ? "카메라가 막혀 있어 화면으로 잡아요 · 주소창 옆 설정에서 허용할 수 있어요" : "카메라를 켜지 못해 화면으로 잡아요");
     return false;
   }
-  setMode("camera"); return true;
+  setMode("camera"); seg.start($("video")); return true;
 }
 function setMode(m) {
   G.mode = m; ar.setMode(m);
-  if (m === "screen") ar.stopCamera();
+  if (m === "screen") { ar.stopCamera(); seg.clear(); }
   $("mode").textContent = m === "camera" ? "화면으로" : "카메라로";
   if (m === "camera") note("");
 }
@@ -297,7 +383,8 @@ function loop(now) {
   requestAnimationFrame(loop);
   const dt = Math.min(0.05, (now - last) / 1000); last = now;
   if (!started) return;
-  if (G.phase === "hand" && G.mon && now - G.mon.t0 > STAY_MS) { G.mon.t0 = now; toast("녀석이 가 버렸다…"); spawn(); }
+  seg.tick(now);
+  if (G.phase === "hand" && G.mon && !G.target?.real && now - G.mon.t0 > STAY_MS) { G.mon.t0 = now; toast("녀석이 가 버렸다…"); spawn(); }
   G.target = currentTarget(ar.frame(now, dt, monPose(now)));
   draw(now);
 }
@@ -305,4 +392,4 @@ requestAnimationFrame(loop);
 if (Q.has("touch")) begin("screen");
 
 // test hook for the headless checks
-window.__catch = { G, ar, get phase() { return G.phase; }, target: () => G.target, ball: () => G.ball, count: () => $("count").textContent };
+window.__catch = { G, ar, seg, store, reals: () => (G.reals || []).map(r => ({ kind: r.real, box: r.box, n: r.n })), get phase() { return G.phase; }, target: () => G.target, ball: () => G.ball, count: () => $("count").textContent };
