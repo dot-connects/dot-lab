@@ -193,9 +193,10 @@ object DeviceSources {
     } catch (e: SecurityException) { emptyList() }
 
     /** Up to [n] random photos from favourites + the 200 most recent, decoded to <= 1280 px. null = no permission. */
-    fun photos(ctx: Context, n: Int): List<Photo>? {
+    fun photos(ctx: Context, n: Int, bucket: String? = null): List<Photo>? {
         if (!has(ctx, Manifest.permission.READ_MEDIA_IMAGES)) return null
-        val pool = (rows(ctx, "${MediaStore.Images.Media.IS_FAVORITE}=1", null, 100) +
+        val pool = if (bucket != null) rows(ctx, "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME}=?", arrayOf(bucket), 200)
+        else (rows(ctx, "${MediaStore.Images.Media.IS_FAVORITE}=1", null, 100) +
             rows(ctx, "${MediaStore.Images.Media.DATE_TAKEN}>0", null, 200)).distinctBy { it.id }
         val out = ArrayList<Photo>(n)
         for (r in pool.shuffled()) {
@@ -204,6 +205,11 @@ object DeviceSources {
         }
         return out
     }
+
+    /** Album names of the 500 most recent photos, most used first (max 12): the Photos page themes after 추천. */
+    fun buckets(ctx: Context): List<String> =
+        rows(ctx, "${MediaStore.Images.Media.DATE_TAKEN}>0", null, 500).map { it.bucket }.filter { it.isNotBlank() }
+            .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(12).map { it.key }
 
     /** A photo taken on today's day-of-year 1..15 years ago, or null. */
     fun memory(ctx: Context, today: LocalDate): Photo? {
@@ -233,6 +239,6 @@ object DeviceSources {
         val taken = Instant.ofEpochMilli(r.takenMs).atZone(ZoneId.systemDefault()).toLocalDate()
         // no reverse geocoding: the album name stands in for the place, and the camera roll has none worth showing
         val place = if (r.bucket.equals("Camera", true)) "" else r.bucket
-        Photo(MediaSource.scaleDown(bmp, 1280).asImageBitmap(), place, taken.format(DATE), yearsAgo)
+        Photo(MediaSource.scaleDown(bmp, 1280).asImageBitmap(), place, taken.format(DATE), yearsAgo, uri.toString())
     }.getOrNull()
 }

@@ -1,6 +1,7 @@
 package kr.dot.sb.data
 
 import kr.dot.sb.model.DisplayOff
+import kr.dot.sb.model.NightMode
 import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
@@ -61,6 +62,34 @@ object NightRamp {
         if (start <= end) hour in start until end else hour >= start || hour < end
 }
 
+/** Median of the (at most 3) light readings of the last second: one phone-screen flash cannot reset a night hold (spec N1). */
+class LuxMedian {
+    private val times = LongArray(3)
+    private val vals = FloatArray(3)
+    private var n = 0
+
+    fun add(nowMs: Long, lux: Float): Float {
+        var k = 0
+        for (i in 0 until n) if (nowMs - times[i] <= 1_000) { times[k] = times[i]; vals[k] = vals[i]; k++ }
+        if (k == 3) { times[0] = times[1]; vals[0] = vals[1]; times[1] = times[2]; vals[1] = vals[2]; k = 2 }
+        times[k] = nowMs; vals[k] = lux; n = k + 1
+        return vals.copyOf(n).sorted()[n / 2]
+    }
+}
+
+/** Night look from the settings (spec E12: 안 함 = the display never changes, so no night mode at all). */
+object NightRules {
+    fun on(mode: NightMode, display: DisplayOff, scheduled: Boolean, auto: Boolean): Boolean =
+        display != DisplayOff.NEVER && when (mode) {
+            NightMode.OFF -> false
+            NightMode.SCHEDULE -> scheduled
+            NightMode.AUTO -> auto
+        }
+
+    /** A ringing alarm or a shown notification keeps the screen on, whatever the idle/dark/flat decision says (spec I1). */
+    fun displayOff(wanted: Boolean, alarm: Boolean, notification: Boolean) = wanted && !alarm && !notification
+}
+
 /** ON/OFF decision of the display (spec E10-E14). */
 class DisplayOffMachine {
     var off = false
@@ -68,6 +97,11 @@ class DisplayOffMachine {
     private var last = 0L
 
     fun touch(nowMs: Long) { last = nowMs; off = false }
+
+    /** Last touch time (a notification that woke the screen only sends it back to OFF when nothing touched since). */
+    val lastTouch get() = last
+
+    fun forceOff() { off = true }
 
     fun evaluate(nowMs: Long, mode: DisplayOff, lux: Float?, enterLux: Float, exitLux: Float): Boolean {
         when (mode) {
@@ -116,13 +150,13 @@ class MotionDetector {
     fun update(nowMs: Long, x: Float, y: Float, z: Float) {
         if (!init) { gx = x; gy = y; gz = z; init = true }
         gx = A * gx + (1 - A) * x; gy = A * gy + (1 - A) * y; gz = A * gz + (1 - A) * z
-        val dx = x - gx; val dy = y - gy; val dz = z - gz
-        linear = sqrt(dx * dx + dy * dy + dz * dz)
+        // magnitude, not axis: turning the phone moves gravity between axes but keeps |a| = g (E4 rotation must not read as pick-up)
+        linear = abs(sqrt(x * x + y * y + z * z) - G)
         pickup.update(nowMs, linear > PICKUP, linear <= PICKUP)
         flat.update(nowMs, abs(gz) > 9.0f, abs(gz) < 8.0f)
     }
 
-    companion object { const val A = 0.9f; const val WAKE = 0.25f; const val PICKUP = 2.5f }
+    companion object { const val G = 9.81f; const val A = 0.9f; const val WAKE = 0.25f; const val PICKUP = 2.5f }
 }
 
 /** Content rotation from gravity (dreams cannot request orientation): 600 ms debounce, 30 deg hysteresis (spec E4). */

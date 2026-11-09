@@ -27,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,8 +57,8 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.LocalInk
 import kotlin.math.abs
 
-/** Photo themes (spec P1). Only relabel for now: on-device labeling is P1. */
-private val THEMES = listOf("추천", "자연", "반려동물", "도시", "인물")
+/** Photo themes (spec P1, P0 part): 추천 + the user's albums; on-device labels (자연, 반려동물 …) are P1. */
+private const val RECOMMENDED = "추천"
 private const val SHUFFLE_MS = 15_000L
 
 /**
@@ -68,6 +69,8 @@ private const val SHUFFLE_MS = 15_000L
 @Composable
 internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: StandbyActions, active: Boolean) {
     val ink = LocalInk.current
+    val act by rememberUpdatedState(actions)
+    val themes = remember(state.photoBuckets) { listOf(RECOMMENDED) + state.photoBuckets }
     var theme by remember { mutableIntStateOf(0) }
     var pillKey by remember { mutableIntStateOf(0) }
     var pill by remember { mutableStateOf(false) }
@@ -78,7 +81,10 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
             var dy = 0f
             detectVerticalDragGestures(
                 onDragStart = { dy = 0f },
-                onDragEnd = { if (abs(dy) > 48.dp.toPx()) { theme = Math.floorMod(theme + if (dy < 0) 1 else -1, THEMES.size); pillKey++ } },
+                onDragEnd = { if (abs(dy) > 48.dp.toPx()) {
+                    theme = Math.floorMod(theme + if (dy < 0) 1 else -1, themes.size); pillKey++
+                    act.photoTheme(themes.getOrNull(theme)?.takeIf { theme > 0 })
+                } },
             ) { _, d -> dy += d }
         },
     ) {
@@ -95,14 +101,16 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
                 LaunchedEffect(photos.size, active) {
                     while (active && photos.size > 1) { delay(SHUFFLE_MS); idx = (idx + 1) % photos.size }
                 }
-                Crossfade(idx % photos.size, animationSpec = tween(1_000), label = "photo") { i ->
-                    KenBurns(photos[i], ink.night, active)
+                // keyed by the photo itself: the 45 s reload swaps photos under the same index and must still fade
+                Crossfade(photos[idx % photos.size], animationSpec = tween(1_000), label = "photo") { ph ->
+                    KenBurns(ph, ink.night, active)
                 }
                 // Scrim: transparent until 55 % height, then to 60 % black (design §2.1).
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
                 val p = photos[idx % photos.size]
                 Column(
-                    Modifier.align(Alignment.BottomEnd).padding(end = w * 0.08f, bottom = h * if (port) 0.1f else 0.14f),
+                    Modifier.align(Alignment.BottomEnd).padding(end = w * 0.08f, bottom = h * if (port) 0.1f else 0.14f)
+                        .tap(p.uri?.let { u -> { act.openPhoto(u) } }), // spec P5: caption tap opens the gallery
                     horizontalAlignment = Alignment.End,
                 ) {
                     Txt(p.place, s * 0.09f, ink.ink, weight = 700, maxW = w * if (port) 0.8f else 0.5f, align = TextAlign.End)
@@ -124,7 +132,7 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
         ) {
             val t = max(18.dp, s * 0.045f)
             Box(Modifier.clip(RoundedCornerShape(50)).background(ink.ink4.copy(alpha = 0.85f)).padding(horizontal = t * 0.9f, vertical = t * 0.6f)) {
-                Txt(THEMES[theme], t, ink.ink, weight = 700)
+                Txt(themes[theme.coerceIn(0, themes.lastIndex)], t, ink.ink, weight = 700)
             }
         }
     }

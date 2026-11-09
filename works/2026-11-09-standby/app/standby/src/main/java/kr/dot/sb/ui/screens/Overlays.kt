@@ -43,6 +43,8 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
@@ -79,6 +81,7 @@ import java.time.ZoneId
 import kotlin.math.roundToInt
 
 /** Digits on interrupt screens: Inter, like iPhone's SF time on these layers. */
+private const val NOTIF_HOLD_MS = 300 // spec I4: text unfolds at 0.9 s (300 in + 300 hold + 350 shrink)
 private val TIME_FONT = FontId.BOLD
 private const val TIME_WEIGHT = 600
 
@@ -201,19 +204,24 @@ private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: Stand
     val text = remember(n.key) { Animatable(0f) }
     LaunchedEffect(n.key) {
         appear.animateTo(1f, tween(Motion.NOTIF_ICON_IN_MS, easing = FastOutSlowInEasing))
-        delay(Motion.NOTIF_HOLD_MS.toLong())
+        delay(NOTIF_HOLD_MS.toLong())
         morph.animateTo(1f, tween(Motion.NOTIF_SHRINK_MS, easing = FastOutSlowInEasing))
         text.animateTo(1f, tween(Motion.NOTIF_TEXT_MS))
-        delay((Motion.NOTIF_CLOSE_MS - Motion.NOTIF_ICON_IN_MS - Motion.NOTIF_HOLD_MS - Motion.NOTIF_SHRINK_MS - Motion.NOTIF_TEXT_MS).toLong())
+        delay((Motion.NOTIF_CLOSE_MS - Motion.NOTIF_ICON_IN_MS - NOTIF_HOLD_MS - Motion.NOTIF_SHRINK_MS - Motion.NOTIF_TEXT_MS).toLong())
         act.notificationDismiss(n.key)
     }
     var origin by remember { mutableStateOf(Offset.Zero) }
     var mini by remember { mutableStateOf<Offset?>(null) }
-    BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).onPlaced { origin = it.positionInRoot() }.tap { act.notificationTap(n.key) }) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).onPlaced { origin = it.positionInRoot() }.tap { act.notificationTap(n.key) }
+            .pointerInput(n.key) { // swipe up or down closes (spec I4)
+                var dy = 0f
+                detectVerticalDragGestures(onDragStart = { dy = 0f }, onDragEnd = { if (kotlin.math.abs(dy) > size.height * 0.12f) act.notificationDismiss(n.key) }) { _, d -> dy += d }
+            },
+    ) {
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
-        val big = s * 0.30f
+        val big = s * 0.40f
         val small = s * 0.14f
         Column(Modifier.align(Alignment.Center).width(w * 0.78f).graphicsLayer { alpha = text.value }) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -335,12 +343,12 @@ private fun LiveFull(l: LiveActivity, actions: StandbyActions) {
 
 // ------------------------------------------------------------------------------------------------- now playing
 
-/** Waveform pill top-right while something plays. The bars step ~6×/s and only while this pill is composed. */
+/** Waveform pill top-right while something plays. The bars step 2×/s and only while this pill is composed (display on, playing). */
 @Composable
 private fun WavePill(onOpen: () -> Unit) {
     val ink = LocalInk.current
     var phase by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) { while (true) { delay(160); phase += 1f } }
+    LaunchedEffect(Unit) { while (true) { delay(500); phase += 2f } }
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val s = min(maxWidth, maxHeight)
         val d = max(40.dp, s * 0.1f)
@@ -393,10 +401,23 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
         val detail = max(18.dp, s * 0.05f)
         val small = max(16.dp, s * 0.036f)
         val pad = screenPadding(w, h)
+        val glyph = max(22.dp, s * 0.055f)
         IconView(
             Ic.SOUND, ink.ink2,
-            Modifier.align(Alignment.TopEnd).padding(top = pad.calculateTopPadding(), end = w * 0.06f).size(max(22.dp, s * 0.055f)),
+            Modifier.align(Alignment.TopEnd).padding(top = pad.calculateTopPadding() - 12.dp.coerceAtMost(pad.calculateTopPadding()), end = w * 0.06f - 12.dp.coerceAtMost(w * 0.06f))
+                .semantics { contentDescription = "볼륨" }.tap(actions::openVolume).padding(12.dp).size(glyph),
         )
+        // ✕ top-left: same close as the swipe (spec I11)
+        Box(
+            Modifier.align(Alignment.TopStart).padding(top = pad.calculateTopPadding() - 12.dp.coerceAtMost(pad.calculateTopPadding()), start = w * 0.06f - 12.dp.coerceAtMost(w * 0.06f))
+                .semantics { contentDescription = "닫기" }.tap(close).padding(12.dp).size(glyph),
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val st = size.minDimension * 0.12f
+                drawLine(ink.ink2, Offset(0f, 0f), Offset(size.width, size.height), st, androidx.compose.ui.graphics.StrokeCap.Round)
+                drawLine(ink.ink2, Offset(size.width, 0f), Offset(0f, size.height), st, androidx.compose.ui.graphics.StrokeCap.Round)
+            }
+        }
         val art: Dp
         val artX: Dp
         val artY: Dp
@@ -425,9 +446,9 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
             }
             val play = title * 2f
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                Btn(Ic.PREV, play * 0.62f, m.canPrev, ink, actions::mediaPrev)
-                Btn(if (m.playing) Ic.PAUSE else Ic.PLAY, play, true, ink, actions::mediaPlayPause)
-                Btn(Ic.NEXT, play * 0.62f, m.canNext, ink, actions::mediaNext)
+                Btn(Ic.PREV, "이전", play * 0.62f, m.canPrev, ink, actions::mediaPrev)
+                Btn(if (m.playing) Ic.PAUSE else Ic.PLAY, if (m.playing) "일시정지" else "재생", play, true, ink, actions::mediaPlayPause)
+                Btn(Ic.NEXT, "다음", play * 0.62f, m.canNext, ink, actions::mediaNext)
             }
             Column {
                 val frac = if (m.durationMs > 0) pos.toFloat() / m.durationMs else 0f
@@ -446,8 +467,8 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
 }
 
 @Composable
-private fun Btn(ic: Ic, size: Dp, enabled: Boolean, ink: Ink, onClick: () -> Unit) {
-    Box(Modifier.size(size).tap(if (enabled) onClick else null)) {
+private fun Btn(ic: Ic, label: String, size: Dp, enabled: Boolean, ink: Ink, onClick: () -> Unit) {
+    Box(Modifier.size(size).semantics { contentDescription = label }.tap(if (enabled) onClick else null)) {
         IconView(ic, if (enabled) ink.ink else ink.ink3, Modifier.fillMaxSize())
     }
 }
