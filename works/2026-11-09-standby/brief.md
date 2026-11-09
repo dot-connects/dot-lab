@@ -8,7 +8,8 @@ Operator decisions, fixed:
   light (slightly opened inner screen) is Fold-only (2026-11-09).
 - StandBy lives on the folded cover screen; alarm = Samsung Clock alarm (2026-10-29).
 - Step 1 is a measuring APK, then design mockups after its results (2026-11-09).
-- Research every StandBy detail first: `docs/archive/2026-10-29-standby-galaxy/` in C:\DC\DD (01-06 + frames/).
+- Research every StandBy detail first: `docs/archive/2026-10-29-standby-galaxy/` in C:\DC\DD. Canonical merge:
+  `00-standby-canon.md` (2026-11-09, 20 open unknowns in section 9; sources 01-07 + frames/).
 
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
 
