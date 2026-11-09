@@ -36,12 +36,14 @@ let S = null;
 export let saved = false;
 
 /** Open the dex once. Returns true when it is kept on the phone, false when it lives in memory only. */
-export async function open() {
-  if (S) return saved;
-  try { S = new Idb(await openDb()); saved = true; }
-  catch { S = new Mem(); saved = false; }
-  try { await navigator.storage?.persist?.(); } catch { /* best effort */ }
-  return saved;
+let opening = null;
+export function open() {   // the page load and the start button both ask: one open
+  return (opening ??= (async () => {
+    try { S = new Idb(await openDb()); saved = true; }
+    catch { S = new Mem(); saved = false; }
+    try { await navigator.storage?.persist?.(); } catch { /* best effort */ }
+    return saved;
+  })());
 }
 
 /** {creatures, poses} for the always-visible counter */
@@ -96,4 +98,10 @@ export async function catchReal({ id, name, kind, label, png, w, h, grade, blurr
   const pid = `${c.id}_${label}`, had = await S.get("poses", pid), pose = poseOutcome(had?.grade, grade);
   if (pose !== "have") await S.put("poses", { id: pid, creatureId: c.id, label, grade, at: now, png, w, h, blurry: !!blurry });
   return { creature: c, outcome, pose, labels: (await posesOf(c.id)).map(p => p.label) };
+}
+
+/** Every creature by No. with its pose records ({label, png Blob for a real one, w, h, grade, ...}). */
+export async function list() {
+  const [cs, ps] = await Promise.all([S.all("creatures"), S.all("poses")]);
+  return cs.sort((a, b) => a.no - b.no).map(c => ({ ...c, poses: ps.filter(p => p.creatureId === c.id) }));
 }

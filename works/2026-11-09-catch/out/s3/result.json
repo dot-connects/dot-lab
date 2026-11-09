@@ -1,0 +1,205 @@
+{
+ "errors": [],
+ "steps": {
+  "dlBehavior": "ok",
+  "start": {
+   "counter": "0마리 · 모습 0개",
+   "counterVisible": true,
+   "errors": 0
+  },
+  "emptyDex": "아직 잡은 녀석이 없어요. 공을 던져 첫 녀석을 잡아 봐요!",
+  "pokemon": {
+   "throws": [
+    "caught"
+   ],
+   "card": {
+    "no": "No.001",
+    "name": "롱스톤",
+    "how": "Great · 확률 80% · 새 친구!\n몸 50 · Nice 65 · Great 80 · Excellent 95% · 커브 +10%p",
+    "share": "카드 저장·공유"
+   },
+   "shared": {
+    "name": "우리집몬스터-No.001-롱스톤.png",
+    "type": "image/png",
+    "bytes": 623935,
+    "how": "share"
+   }
+  },
+  "seed": {
+   "dog": "c_mw9gavzq6vli",
+   "cat": "c_mw9gaweaop9i",
+   "person": "c_mw9gawkh2bt5"
+  },
+  "dex": {
+   "count": "4마리 · 모습 5개",
+   "cells": [
+    "No.001 | 롱스톤 | 모습 1/1",
+    "No.002 | 콩이 | 모습 2/5",
+    "No.003 | 나비 | 모습 1/5",
+    "No.004 | 사람 1 | 모습 1/5"
+   ]
+  },
+  "detail": {
+   "head": "No.002 콩이 에스퍼/간식감지 모습 2/5 · 잡은 횟수 2",
+   "slots": [
+    "앞모습",
+    "옆모습",
+    "걷는 중? (빈칸)",
+    "누운 모습? (빈칸)",
+    "뒷모습? (빈칸)"
+   ],
+   "moves": [
+    "통통 *",
+    "움찔 *",
+    "걷기 *",
+    "뛰기 · 옆모습 + 걷는 중 잡으면",
+    "잠자기 · 누운 모습 잡으면",
+    "숨기 · 뒷모습 잡으면"
+   ]
+  },
+  "detailCard": {
+   "go": "닫기",
+   "how": "모습 2/5 · 할 줄 아는 것 통통·움찔·걷기",
+   "downloaded": {
+    "name": "우리집몬스터-No.002-콩이.png",
+    "ms": 12704
+   },
+   "backToDetail": true
+  },
+  "exportOne": {
+   "file": {
+    "name": "우리집몬스터-20261110.dotpet",
+    "ms": 2701
+   },
+   "msg": "1마리 · 모습 2개를 내보냈어요 · Android 펫 앱에서 열어요",
+   "parsed": {
+    "dropped": {
+     "poses": 0,
+     "creatures": 0
+    },
+    "creatures": [
+     {
+      "id": "c_mw9gavzq6vli",
+      "name": "콩이",
+      "kind": "dog",
+      "no": 2,
+      "labels": [
+       "front",
+       "side"
+      ],
+      "sizes": [
+       "136x256",
+       "136x256"
+      ]
+     }
+    ]
+   }
+  },
+  "exportAll": {
+   "file": {
+    "name": "우리집몬스터-20261110.dotpet",
+    "ms": 7318
+   },
+   "msg": "4마리 · 모습 5개를 내보냈어요 · Android 펫 앱에서 열어요",
+   "parsed": {
+    "dropped": {
+     "poses": 0,
+     "creatures": 0
+    },
+    "creatures": [
+     {
+      "id": "p_95",
+      "name": "롱스톤",
+      "kind": "pokemon",
+      "no": 1,
+      "labels": [
+       "front"
+      ],
+      "sizes": [
+       "256x256"
+      ]
+     },
+     {
+      "id": "c_mw9gavzq6vli",
+      "name": "콩이",
+      "kind": "dog",
+      "no": 2,
+      "labels": [
+       "front",
+       "side"
+      ],
+      "sizes": [
+       "136x256",
+       "136x256"
+      ]
+     },
+     {
+      "id": "c_mw9gaweaop9i",
+      "name": "나비",
+      "kind": "cat",
+      "no": 3,
+      "labels": [
+       "lying"
+      ],
+      "sizes": [
+       "256x87"
+      ]
+     },
+     {
+      "id": "c_mw9gawkh2bt5",
+      "name": "사람 1",
+      "kind": "person",
+      "no": 4,
+      "labels": [
+       "front"
+      ],
+      "sizes": [
+       "149x256"
+      ]
+     }
+    ]
+   }
+  },
+  "dexNow": [
+   {
+    "id": "p_95",
+    "name": "롱스톤",
+    "kind": "pokemon",
+    "no": 1,
+    "labels": [
+     "front"
+    ]
+   },
+   {
+    "id": "c_mw9gavzq6vli",
+    "name": "콩이",
+    "kind": "dog",
+    "no": 2,
+    "labels": [
+     "front",
+     "side"
+    ]
+   },
+   {
+    "id": "c_mw9gaweaop9i",
+    "name": "나비",
+    "kind": "cat",
+    "no": 3,
+    "labels": [
+     "lying"
+    ]
+   },
+   {
+    "id": "c_mw9gawkh2bt5",
+    "name": "사람 1",
+    "kind": "person",
+    "no": 4,
+    "labels": [
+     "front"
+    ]
+   }
+  ]
+ },
+ "fail": [],
+ "ok": true
+}

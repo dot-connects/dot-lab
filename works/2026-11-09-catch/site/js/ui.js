@@ -1,9 +1,9 @@
 // The game: start screen, mode switch, the ball (drawn in 2D over the 3D scene), throw -> hit -> shakes -> caught /
-// escaped, the counter and a minimal catch card (the full card and dex are stage S3).
+// escaped, the counter and the catch card (dex, detail, card PNG and export live in dex.js).
 import * as ar from "./ar.js";
+import * as dex from "./dex.js";
 import { grade, chance, roll, ringAt, rng } from "./catch.js";
 import { release, flight, hit, coverMap, FLIGHT_MS, END_SCALE } from "./geom.js";
-import { cardText } from "./lines.js";
 import { LABELS, LABEL_KO, suggest, count } from "./moves.js";
 import * as seg from "./seg.js";
 import * as store from "./store.js";
@@ -11,7 +11,7 @@ import * as store from "./store.js";
 const $ = id => document.getElementById(id);
 const Q = new URLSearchParams(location.search);
 const rnd = Q.has("seed") ? rng(+Q.get("seed") || 0) : Math.random;
-const ART = id => `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
+const ART = dex.ART;
 const GRADE_KO = { hit: "맞았다", nice: "Nice", great: "Great", excellent: "Excellent" };
 const STAY_MS = 30000;   // a creature nobody catches leaves after 30 s
 
@@ -85,13 +85,13 @@ function currentTarget(t) {
 // ---------- input ----------
 const app = $("app");
 for (const t of ["touchstart", "touchmove"])   // keep the gesture in the page inside Threads / Instagram (README)
-  app.addEventListener(t, e => { if (!e.target.closest("button,a,input")) e.preventDefault(); }, { passive: false });
+  app.addEventListener(t, e => { if (!e.target.closest("button,a,input,#dex")) e.preventDefault(); }, { passive: false });
 document.body.style.minHeight = "calc(100% + 2px)";
 const nudge = () => { if (scrollY < 1) scrollTo(0, 1); };
 addEventListener("load", nudge); addEventListener("scroll", nudge, { passive: true });
 
 app.addEventListener("pointerdown", e => {
-  if (e.target.closest("button,a,#card,#start,#sheet")) return;
+  if (e.target.closest("button,a,#card,#start,#sheet,#dex")) return;
   const b = G.ball, now = performance.now();
   if (G.phase === "hand" && Math.hypot(e.clientX - b.x, e.clientY - b.y) < b.r * 1.9) {
     G.phase = "drag"; G.path = [{ x: e.clientX, y: e.clientY, t: e.timeStamp }];
@@ -269,19 +269,14 @@ async function counter() {
   $("count").textContent = `${c.creatures}마리 · 모습 ${c.poses}개`;
 }
 function showCard({ creature: c, outcome }) {
-  const R = G.res, txt = cardText(c.id, c.kind);
-  $("cNo").textContent = `No.${String(c.no).padStart(3, "0")}`;
-  $("cImg").crossOrigin = "anonymous"; $("cImg").src = G.mon.img.src;
-  $("cName").textContent = c.name;
-  $("cType").textContent = txt.type;
-  $("cLine").textContent = txt.line;
-  $("cHow").textContent = `${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""} · 확률 ${Math.round(R.p * 100)}%` +
+  const R = G.res;
+  dex.fillCard(c, G.mon.img.src, `${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""} · 확률 ${Math.round(R.p * 100)}%` +
     (outcome === "again" ? ` · 또 잡았다 ×${c.times}` : " · 새 친구!") +
-    "\n몸 50 · Nice 65 · Great 80 · Excellent 95% · 커브 +10%p";
-  $("cHow").style.whiteSpace = "pre-line";
-  $("card").hidden = false; G.phase = "card";
+    "\n몸 50 · Nice 65 · Great 80 · Excellent 95% · 커브 +10%p");
+  G.phase = "card";
 }
 $("cGo").onclick = () => {
+  if (dex.closeCard()) return;   // a card made from the dex goes back to the detail
   $("card").hidden = true;
   if (G.res?.real) { G.res = null; G.phase = "hand"; G.ringT0 = performance.now(); return; }   // the virtual one is still there
   G.res = null; G.phase = "wait"; spawn();
@@ -320,16 +315,8 @@ async function who(R) {
     const out = await store.catchReal({ ...c, label, png: cut.blob, w: cut.w, h: cut.h, grade: R.grade, blurry: cut.blurry });
     $("sheet").hidden = true;
     await counter();
-    const txt = cardText(out.creature.id, out.creature.kind);
-    $("cNo").textContent = `No.${String(out.creature.no).padStart(3, "0")}`;
-    $("cImg").src = $("sImg").src;
-    $("cName").textContent = out.creature.name;
-    $("cType").textContent = txt.type;
-    $("cLine").textContent = txt.line;
-    $("cHow").textContent = `${count(out.labels, out.creature.kind)} · ${LABEL_KO[label]} ${POSE_KO[out.pose]}` + (cut.blurry ? " · 흐릿하게 찍힘" : "") +
-      `\n${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""} · 확률 ${Math.round(R.p * 100)}%`;
-    $("cHow").style.whiteSpace = "pre-line";
-    $("card").hidden = false;
+    dex.fillCard(out.creature, $("sImg").src, `${count(out.labels, out.creature.kind)} · ${LABEL_KO[label]} ${POSE_KO[out.pose]}` + (cut.blurry ? " · 흐릿하게 찍힘" : "") +
+      `\n${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""} · 확률 ${Math.round(R.p * 100)}%`);
   }
   ask();
 }
@@ -373,6 +360,10 @@ async function begin(mode) {
 }
 $("goCam").onclick = () => { askMotion(); begin("camera"); };
 $("goScreen").onclick = () => { askMotion(); begin("screen"); };
+
+// the counter opens the dex, from the start screen too (not over a card or the "누구야?" sheet)
+store.open().then(counter);
+$("count").onclick = () => { if ($("card").hidden && $("sheet").hidden) dex.open(counter); };
 
 // ---------- loop ----------
 ar.init($("gl"), $("video"));
