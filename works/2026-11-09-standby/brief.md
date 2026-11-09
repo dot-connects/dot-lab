@@ -13,6 +13,8 @@ Operator decisions, fixed:
 
 - The operator has no iPhone (2026-11-09). Every mockup screen shows the real iPhone version next to ours: a frame
   from `frames/` (or a source link), what it does, and the measured numbers, with unknowns marked as our choice.
+- Everything goes in (2026-11-09, after round 1): every iPhone StandBy screen copied as-is, plus round 1's
+  portrait (B) and desk clock (C); landscape and portrait both. SF fonts swap to lookalikes (Inter, Nunito, Oswald).
 - The 20 open unknowns in the canon stay open; where one matters, the mockup states the value we chose.
 
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
@@ -70,3 +72,10 @@ Clock home screen, three directions, each next to the real iPhone frame:
 A iPhone layout (landscape, widgets/photos/clock pages, Float + condensed clock),
 B portrait stand (hours over minutes), C desk clock (clock + alarm/weather/music).
 Device switch Fold cover (measured) / bar S25 / Flip7 cover (spec), day/night (#FC0000), 12/24 h.
+
+## Mockups round 2 (2026-11-09): https://claude.ai/artifact/6n1XpLN9LGN6R8HDR7otHE
+
+One working device: widgets (two stacks), photos (5 themes), clocks Digital/Analog/World/Solar/Float with colour
+edit, desk clock, alarm, Now Playing, night red; landscape and portrait on Fold cover/bar/Flip cover. A panel under
+the device swaps to the matching iPhone frame and measured numbers. World map = Natural Earth 110m land as 96x44 dots,
+sunlit side computed from the date. Not yet: big notifications, Live Activities, per-charger memory, mood light.
