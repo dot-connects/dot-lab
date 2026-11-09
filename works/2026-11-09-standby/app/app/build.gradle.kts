@@ -10,8 +10,8 @@ android {
         applicationId = "kr.dot.standby.probe"
         minSdk = 34 // specialUse foreground service; measurement runs on the operator's Fold8 only
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.1.1"
+        versionCode = 3
+        versionName = "0.2.0"
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

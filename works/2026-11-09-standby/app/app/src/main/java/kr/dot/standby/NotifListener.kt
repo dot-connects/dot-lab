@@ -40,16 +40,24 @@ class NotifListener : NotificationListenerService() {
 
     private fun interesting(sbn: StatusBarNotification): Boolean {
         val n = sbn.notification
+        // also progress notifications (delivery, timers): the source for our Live Activity pill
         return "clock" in sbn.packageName || n.category == Notification.CATEGORY_ALARM ||
-            n.fullScreenIntent != null
+            n.fullScreenIntent != null || n.extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0) > 0 ||
+            n.category == Notification.CATEGORY_PROGRESS || n.category == Notification.CATEGORY_NAVIGATION
     }
 
     private fun describe(sbn: StatusBarNotification): String {
         val n = sbn.notification
         val title = n.extras.getCharSequence(Notification.EXTRA_TITLE) ?: ""
         val text = n.extras.getCharSequence(Notification.EXTRA_TEXT) ?: ""
+        // action titles tell us whether our Snooze/Stop buttons can fire the clock app's own actions
+        val actions = n.actions.orEmpty().joinToString("/") { it.title?.toString().orEmpty() }
+        val progress = n.extras.getInt(Notification.EXTRA_PROGRESS_MAX, 0).let { max ->
+            if (max > 0) " progress=${n.extras.getInt(Notification.EXTRA_PROGRESS)}/$max" else ""
+        }
         return "pkg=${sbn.packageName} id=${sbn.id} cat=${n.category} channel=${n.channelId} " +
-            "ongoing=${sbn.isOngoing} fullScreen=${n.fullScreenIntent != null} title=$title text=$text"
+            "ongoing=${sbn.isOngoing} fullScreen=${n.fullScreenIntent != null} actions=$actions$progress " +
+            "style=${n.extras.getString(Notification.EXTRA_TEMPLATE)?.substringAfterLast('$')} title=$title text=$text"
     }
 
     private fun logSessions(list: List<MediaController>?) {

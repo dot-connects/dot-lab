@@ -63,6 +63,17 @@ class MainActivity : ComponentActivity() {
         setContentView(scroll)
 
         root.addView(text("StandBy 측정", 22f, bold = true))
+        root.addView(
+            text(
+                "오늘 밤 할 것 (기록 켠 채로)\n" +
+                    "1. 접은 채 충전기에 꽂고 화면이 꺼질 때까지 그냥 두기 → 커버에 시계가 저절로 뜨는지\n" +
+                    "2. 티빙에서 아무 영상 10초 재생 → 멈춤\n" +
+                    "3. 삼성 시계 앱으로 2분 뒤 알람 → 울리면 알림창의 '해제' 누르기\n" +
+                    "4. 방 불 끄기 → 1분 뒤 켜기 (야간 모드 밝기 기준)\n" +
+                    "5. 밤새 충전, 아침에 CSV 보내기",
+                13f,
+            ),
+        )
         status = text("", 13f).also(root::addView)
 
         recordButton = button("") { toggleRecording() }.also(root::addView)

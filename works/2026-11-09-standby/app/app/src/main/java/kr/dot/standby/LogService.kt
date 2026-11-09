@@ -45,6 +45,39 @@ class LogService : Service() {
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
 
+    // ambient light in coarse buckets: sets the night-mode threshold for the real app
+    private var lastLux = -1
+    private val light = object : SensorEventListener {
+        override fun onSensorChanged(e: SensorEvent) {
+            val b = LUX_BUCKETS.lastOrNull { e.values[0] >= it } ?: 0
+            if (b != lastLux) {
+                lastLux = b
+                log("light", "lux=${"%.1f".format(e.values[0])} bucket>=$b")
+            }
+        }
+
+        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+    }
+
+    // gravity direction: how the phone stands on the charger (auto-start rule for the real app)
+    private var lastPose = ""
+    private val gravity = object : SensorEventListener {
+        override fun onSensorChanged(e: SensorEvent) {
+            val (x, y, z) = Triple(e.values[0], e.values[1], e.values[2])
+            val pose = when {
+                kotlin.math.abs(z) > 8.5f -> if (z > 0) "flat_up" else "flat_down"
+                kotlin.math.abs(x) > kotlin.math.abs(y) -> "landscape"
+                else -> "portrait"
+            }
+            if (pose != lastPose) {
+                lastPose = pose
+                log("pose", "$pose x=${"%.1f".format(x)} y=${"%.1f".format(y)} z=${"%.1f".format(z)}")
+            }
+        }
+
+        override fun onAccuracyChanged(s: Sensor?, a: Int) {}
+    }
+
     private val displays = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(id: Int) = logDisplay("display_added", id)
         override fun onDisplayRemoved(id: Int) = log("display_removed", "id=$id")
@@ -121,6 +154,10 @@ class LogService : Service() {
         val sensor = sm.getDefaultSensor(Sensor.TYPE_HINGE_ANGLE)
         if (sensor == null) log("hinge", "no hinge sensor") else sm.registerListener(hinge, sensor, SensorManager.SENSOR_DELAY_NORMAL)
 
+        sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(light, it, SensorManager.SENSOR_DELAY_NORMAL) }
+            ?: log("light", "no light sensor")
+        sm.getDefaultSensor(Sensor.TYPE_GRAVITY)?.let { sm.registerListener(gravity, it, SensorManager.SENSOR_DELAY_NORMAL) }
+
         getSystemService(DisplayManager::class.java).registerDisplayListener(displays, handler)
 
         val filter = IntentFilter().apply {
@@ -146,7 +183,9 @@ class LogService : Service() {
     override fun onDestroy() {
         running = false
         handler.removeCallbacks(batteryTick)
-        getSystemService(SensorManager::class.java).unregisterListener(hinge)
+        getSystemService(SensorManager::class.java).run {
+            unregisterListener(hinge); unregisterListener(light); unregisterListener(gravity)
+        }
         getSystemService(DisplayManager::class.java).unregisterDisplayListener(displays)
         runCatching { unregisterReceiver(broadcasts) }
         getSystemService(AudioManager::class.java).unregisterAudioPlaybackCallback(audio)
@@ -164,5 +203,6 @@ class LogService : Service() {
     companion object {
         @Volatile var running = false
         @Volatile var currentAngle = Float.NaN
+        private val LUX_BUCKETS = listOf(0, 1, 3, 10, 30, 100, 300, 1000, 3000)
     }
 }
