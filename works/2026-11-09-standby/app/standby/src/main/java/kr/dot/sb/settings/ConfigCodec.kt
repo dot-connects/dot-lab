@@ -23,6 +23,8 @@ object ConfigCodec {
         put("startPage", c.startPage)
         put("use24h", c.use24h ?: JSONObject.NULL)
         put("nightMode", c.nightMode.name)
+        put("nightStartHour", c.nightStartHour)
+        put("nightEndHour", c.nightEndHour)
         put("nightEnterLux", c.nightEnterLux.toDouble())
         put("nightExitLux", c.nightExitLux.toDouble())
         put("nightMaxBrightness", c.nightMaxBrightness.toDouble())
@@ -65,6 +67,8 @@ object ConfigCodec {
             startPage = o.optInt("startPage", d.startPage),
             use24h = if (o.has("use24h") && !o.isNull("use24h")) o.optBoolean("use24h") else null,
             nightMode = enumOf(o, "nightMode", d.nightMode),
+            nightStartHour = o.optInt("nightStartHour", d.nightStartHour).coerceIn(0, 23),
+            nightEndHour = o.optInt("nightEndHour", d.nightEndHour).coerceIn(0, 23),
             nightEnterLux = num(o, "nightEnterLux", d.nightEnterLux),
             nightExitLux = num(o, "nightExitLux", d.nightExitLux),
             nightMaxBrightness = num(o, "nightMaxBrightness", d.nightMaxBrightness),

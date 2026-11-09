@@ -136,12 +136,26 @@ fun NightScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
                 item {
                     ControlRow(null, note = when (config.nightMode) {
                         NightMode.AUTO -> "저조도에서 화면 밝기를 낮추고 항목이 빨간색 틴트로 표시됩니다."
-                        NightMode.SCHEDULE -> "정해 둔 시간에만 빨간 화면이 돼요. 시각 설정은 다음 버전에서 열려요 (지금은 22:00 – 07:00)."
+                        NightMode.SCHEDULE -> "정해 둔 시간에만 빨간 화면이 돼요."
                         NightMode.OFF -> "밤에도 낮과 같은 색으로 보여요."
                     }) { Segmented(listOf("자동", "시간 예약", "끔"), config.nightMode.ordinal, { i -> update { it.copy(nightMode = NightMode.entries[i]) } }) }
                 }
-                if (config.nightMode != NightMode.OFF) {
+                if (config.nightMode == NightMode.SCHEDULE) {
+                    item {
+                        SliderRow("시작", "%02d:00".format(config.nightStartHour), config.nightStartHour.toFloat(), 0f..23f, { v ->
+                            update { it.copy(nightStartHour = v.toInt()) }
+                        }, steps = 22)
+                    }
+                    item {
+                        SliderRow("끝", "%02d:00".format(config.nightEndHour), config.nightEndHour.toFloat(), 0f..23f, { v ->
+                            update { it.copy(nightEndHour = v.toInt()) }
+                        }, steps = 22)
+                    }
+                }
+                if (config.nightMode == NightMode.AUTO) {
                     item { LuxRow(env.lux, config) }
+                }
+                if (config.nightMode != NightMode.OFF) {
                     if (config.nightMode == NightMode.AUTO) {
                         item {
                             SliderRow("어두워졌다고 볼 밝기", "${config.nightEnterLux.toInt()} lx 이하", config.nightEnterLux, 1f..20f, { v ->
