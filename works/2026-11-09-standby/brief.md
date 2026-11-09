@@ -53,3 +53,20 @@ Operator test steps:
 | Samsung alarm moment, overnight battery | Not run yet. |
 
 0.1.1: every hinge value, angle in notes, display changes that only differ in refresh rate (48/60/120 Hz) dropped.
+
+## Run 2 (2026-11-09 20:19-20:21, probe 0.1.1)
+
+- Hinge still reports only 0.0 and 90.0 with every value logged, so the Fold8 sensor is coarse. The "slightly
+  opened" mood light cannot key on an angle below 90; it has to key on the inner screen turning on.
+- FoldingFeature went straight from none to FLAT, no HALF_OPENED seen (the opening may have been quick).
+- Glow over the lock screen and the cover-screen dream worked again. Every SCREEN_OFF pairs with
+  DREAMING_STARTED: that is Samsung's AOD, not our dream.
+- Still open: our dream starting by itself while charging (charger was on for 12 s), Samsung alarm moment,
+  overnight battery. Operator moved on to mockups ("다 잘 되는거 같은데"); these get tested before the app build.
+
+## Mockups round 1 (2026-11-09): https://claude.ai/artifact/LfjVbNnG2RPhaywGsdNDSf
+
+Clock home screen, three directions, each next to the real iPhone frame:
+A iPhone layout (landscape, widgets/photos/clock pages, Float + condensed clock),
+B portrait stand (hours over minutes), C desk clock (clock + alarm/weather/music).
+Device switch Fold cover (measured) / bar S25 / Flip7 cover (spec), day/night (#FC0000), 12/24 h.
