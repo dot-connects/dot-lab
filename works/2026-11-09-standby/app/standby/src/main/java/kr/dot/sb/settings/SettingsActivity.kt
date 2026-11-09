@@ -48,7 +48,17 @@ class SettingsActivity : ComponentActivity() {
         granted.value = Perms.granted(this)
         setContent {
             val config by ConfigStore.flow(this).collectAsState()
-            var stack by rememberSaveable { mutableStateOf(listOf(Routes.HOME)) }
+            // StandBy opens settings at a section: "board:<id>", "clock:<FACE>", or a permission need ("photos")
+            val section = intent.getStringExtra("section")
+            var stack by rememberSaveable {
+                mutableStateOf(
+                    when {
+                        section == null -> listOf(Routes.HOME)
+                        section == "photos" || section == "calendar" || section == "notifications" -> listOf(Routes.HOME, Routes.PERMS)
+                        else -> listOf(Routes.HOME, section)
+                    },
+                )
+            }
             BackHandler(stack.size > 1) { stack = stack.dropLast(1) }
             val nav = remember {
                 object : Nav {
