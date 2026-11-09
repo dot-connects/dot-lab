@@ -2,6 +2,7 @@ package kr.dot.sb.ui.state
 
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
+import kr.dot.sb.model.City
 import java.time.LocalDateTime
 
 /**
@@ -42,6 +43,10 @@ data class StandbyState(
     /** Burn-in shift offset in dp, applied to the whole root. */
     val shiftX: Int = 0,
     val shiftY: Int = 0,
+    /** World face city (from AppConfig.worldCities; its dot is placed from lat/lon). */
+    val worldCity: City = City("서울", 37.5665, 126.9780),
+    /** IANA zone of [worldCity] ("Europe/London"); null = the system zone. */
+    val worldZoneId: String? = null,
 )
 
 enum class MediaKind { MUSIC, VIDEO }

@@ -60,7 +60,9 @@ fun PreviewFrame(
     content: @Composable BoxScope.() -> Unit,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
-        val scale = min(maxWidth.value / w, maxHeight.value / h)
+        // two-pane page (review S1): the preview takes the pane width instead of the phone height cap
+        val cap = if (LocalPreviewPane.current) Dp.Infinity else maxHeight
+        val scale = min(maxWidth.value / w, cap.value / h)
         val shape = RoundedCornerShape(radius)
         Box(Modifier.size((w * scale).dp, (h * scale).dp).clip(shape).background(Color.Black).border(1.dp, SK.line, shape)) {
             Box(

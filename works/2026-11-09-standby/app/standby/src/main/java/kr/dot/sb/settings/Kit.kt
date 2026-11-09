@@ -149,16 +149,45 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, tint: Color = SK.muted, enabled: Boolea
 
 // ---- page, sections, rows -----------------------------------------------------------------------------------------
 
+/** True inside the left (preview) pane of a two-pane page: previews may use the pane's full height. */
+val LocalPreviewPane = compositionLocalOf { false }
+
+/**
+ * A settings page. [header] = sticky preview above the scrolling [content]; [side] = preview block that scrolls with
+ * the content on a phone. Width ≥ 600 dp (Fold inner, review S1): two panes — [header] + [side] on the left (55 %,
+ * sticky), [content] on the right (45 %), same components.
+ */
 @Composable
-fun Page(title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier, header: (@Composable ColumnScope.() -> Unit)? = null, content: @Composable ColumnScope.() -> Unit) {
-    Box(modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), Alignment.TopCenter) {
-        Column(Modifier.widthIn(max = 720.dp).fillMaxSize()) {
+fun Page(
+    title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier,
+    header: (@Composable ColumnScope.() -> Unit)? = null,
+    side: (@Composable ColumnScope.() -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
+    BoxWithConstraints(modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
+        val twoPane = maxWidth >= 600.dp && (header != null || side != null)
+        Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
             Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
                 T(title, if (onBack != null) 22.sp else 30.sp, 700, maxLines = 1)
             }
-            if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+            if (twoPane) {
+                Row(Modifier.weight(1f).fillMaxWidth()) {
+                    CompositionLocalProvider(LocalPreviewPane provides true) {
+                        Column(Modifier.weight(0.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                            header?.invoke(this)
+                            side?.invoke(this)
+                        }
+                    }
+                    Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+                }
+            } else {
+                if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
+                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
+                    side?.invoke(this)
+                    content()
+                }
+            }
         }
     }
 }

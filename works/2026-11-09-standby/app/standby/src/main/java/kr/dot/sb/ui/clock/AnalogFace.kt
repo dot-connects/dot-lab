@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -147,17 +148,20 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
                     for (i in which) {
                         val an = i * Math.PI.toFloat() / 6f
                         val dx = sin(an); val dy = -cos(an)
+                        val inset = hourLen + 0.03f * s
                         if (numbers == AnalogNumbers.FOUR && dial.rect) {
                             // iPhone frame: 12/6 at 35 % of the way in from the edge, 3/9 at 30 %
                             val f = if (i % 6 == 0) 0.35f else 0.30f
                             nums += N(label(i), dial.cx + dx * dial.hw * (1 - f), dial.cy + dy * dial.hh * (1 - f))
+                        } else if (dial.rect) {
+                            // review C6: equal spacing along the inset rounded rect, starting at 12, so 3/6/9/12 sit on
+                            // the axes and "11 12 1" no longer bunch while the 3/9 sides stay empty
+                            val a = dial.hw - inset - adv.values.max() / 2; val b = dial.hh - inset - cap / 2
+                            val (px, py) = perimeterPoint(a, b, max(0f, dial.rc - inset), i / 12f)
+                            nums += N(label(i), dial.cx + px, dial.cy + py)
                         } else {
                             // sit on the dial inset by (major tick + 0.03 s) and the numeral's own half extent
-                            // on a squircle inside the inset rect: rect-like, but 10/2/4/8 come in from the corners
-                            val inset = hourLen + 0.03f * s
-                            val a = dial.hw - inset - adv.getValue(i) / 2; val b = dial.hh - inset - cap / 2
-                            val r = if (dial.rect) 1f / sqrt(sqrt((abs(dx) / a).pow(4) + (abs(dy) / b).pow(4)))
-                            else dial.dist(dx, dy, inset) - (abs(dx) * adv.getValue(i) / 2 + abs(dy) * cap / 2)
+                            val r = dial.dist(dx, dy, inset) - (abs(dx) * adv.getValue(i) / 2 + abs(dy) * cap / 2)
                             nums += N(label(i), dial.cx + dx * r, dial.cy + dy * r)
                         }
                     }
@@ -176,8 +180,19 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
             // date: weekday + day, right of centre
             val date = if (xs) null else listOf(Seg(d.weekday + " ", wkday), Seg(d.day.toString(), white))
             ui.textSize = if (dial.rect) 0.055f * h else if (inSlot) Sizes.of(w.toDp(), h.toDp()).label.toPx() else 0.1f * u
-            val dateX = if (dial.rect) 0.628f * w else dial.cx + 0.3f * u
-            val dateBase = dial.cy + ui.textSize * ui.capRatio() / 2
+            var dateX = if (dial.rect) 0.628f * w else dial.cx + 0.3f * u
+            var dateBase = dial.cy + ui.textSize * ui.capRatio() / 2
+            if (date != null && !dial.rect) {
+                // review C3: on the round dial the date must clear numeral 3 by 0.5 em ("월 9" + "3" read "월 93");
+                // when it cannot (or the slot is small), it moves below the centre (y = +0.38 R, centred)
+                val n3 = nums.firstOrNull { it.text == "3" || it.text == "III" }
+                val dw = ui.width(date)
+                val limit = n3?.let { it.x - p.measure(it.text, numSize) / 2 - 0.5f * ui.textSize } ?: (dial.cx + 0.9f * u)
+                if (dateX + dw > limit || (inSlot && s.toDp() < 300.dp)) {
+                    dateX = dial.cx - dw / 2
+                    dateBase = dial.cy + 0.38f * u + ui.textSize * ui.capRatio() / 2
+                }
+            }
 
             // hour / minute hands (minute resolution)
             val m = d.now.minute; val hr = d.now.hour % 12 + m / 60f
@@ -208,6 +223,31 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
                 drawCircle(dial.cx, dial.cy, 0.02f * u, dot)
             }
         }
+    }
+}
+
+/**
+ * Point at fraction [t] (0 = 12 o'clock, clockwise) of the perimeter of a rounded rect with half extents [a]×[b] and
+ * corner radius [r], relative to its centre. Quarter-symmetric, so 3/6/9 land exactly on the axes.
+ */
+internal fun perimeterPoint(a: Float, b: Float, r0: Float, t: Float): Pair<Float, Float> {
+    val r = r0.coerceIn(0f, min(a, b))
+    val arc = r * Math.PI.toFloat() / 2
+    val lq = (a - r) + arc + (b - r)
+    // quadrant 0: from (0, -b) along the top, round the corner, down to (a, 0)
+    fun q0(l: Float): Pair<Float, Float> = when {
+        l <= a - r -> l to -b
+        l <= a - r + arc -> { val th = (l - (a - r)) / r; (a - r + r * sin(th)) to (-b + r - r * cos(th)) }
+        else -> a to (-b + r + (l - (a - r) - arc))
+    }
+    val pos = (((t % 1f) + 1f) % 1f) * 4 * lq
+    val q = (pos / lq).toInt().coerceAtMost(3)
+    val l = pos - q * lq
+    return when (q) {
+        0 -> q0(l)
+        1 -> q0(lq - l).let { (x, y) -> x to -y }
+        2 -> q0(l).let { (x, y) -> -x to -y }
+        else -> q0(lq - l).let { (x, y) -> -x to y }
     }
 }
 

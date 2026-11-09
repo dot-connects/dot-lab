@@ -19,10 +19,6 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 
-/** Seoul until the city list reaches the face (see report: contract). */
-private const val CITY_LAT = 37.57f
-private const val CITY_LON = 126.98f
-
 /** Solar declination (rad) and subsolar longitude (deg) for a local time in the system zone. */
 internal fun sun(now: LocalDateTime, zone: ZoneId = ZoneId.systemDefault()): Pair<Float, Float> {
     val utc = now.atZone(zone).withZoneSameInstant(ZoneOffset.UTC)
@@ -85,26 +81,26 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         }
         val dot = Paint(Paint.ANTI_ALIAS_FLAG)
         val line = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = dark; this.style = Paint.Style.STROKE; strokeWidth = max(1.dp.toPx(), cell * 0.14f) }
-        val cityX = mx0 + (CITY_LON + 180f) / 360f * mw
-        val cityY = my0 + (MAP_LAT0 - CITY_LAT) / (MAP_LAT0 - MAP_LAT1) * mh
+        val cityX = mx0 + (d.worldCity.lon.toFloat() + 180f) / 360f * mw
+        val cityY = my0 + (MAP_LAT0 - d.worldCity.lat.toFloat()) / (MAP_LAT0 - MAP_LAT1) * mh
 
         // bottom-left block: city label over the time
         val bx = 0.074f * w
         val bottom = if (portrait) 0.86f * h else 0.854f * h
         val timeCap = 0.105f * s * style.sizePct / 100f
         val fs = timeCap / p.capEm
-        val t = "${d.h}:${d.m}"
+        val t = d.worldTime
         reg.textSize = 0.062f * s
         bold.textSize = 0.058f * s
         val cityCap = bold.textSize * bold.capRatio()
-        val ap = if (d.use24h) "" else d.ampm + " "
+        val ap = if (d.use24h) "" else d.worldAmPm + " "
         val cityBase = bottom - timeCap - 0.045f * s
         val arrow = Path().apply {
             // location arrow (filled), size = city cap
             val a = cityCap * 1.05f; val x = bx; val y = cityBase - cityCap
             moveTo(x, y + a * 0.45f); lineTo(x + a, y); lineTo(x + a * 0.58f, y + a); lineTo(x + a * 0.45f, y + a * 0.55f); close()
         }
-        val alarm = d.alarm?.let { listOf(Seg("알람 ", grey), Seg("${d.alarmAmPm}$it", grey)) }
+        val alarm = d.alarmShort?.let { listOf(alarmSeg(grey), Seg(it, grey)) }
         val small = android.text.TextPaint(reg).apply { textSize = 0.05f * s }
         val alarmBase = 0.08f * h + small.textSize * small.capRatio()
         return@FaceCanvas {
@@ -118,7 +114,7 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
             drawCircle(cityX, cityY, cell * 0.6f, dot)
             drawPath(arrow, dot)
             bold.color = acc
-            drawText(d.city ?: "서울", bx + cityCap * 1.45f, cityBase, bold)
+            drawText(d.worldCity.name, bx + cityCap * 1.45f, cityBase, bold)
             reg.color = ink.ink.toArgb()
             drawText(ap, bx, bottom, reg)
             p.draw(this, t, bx + reg.measureText(ap), bottom, fs, look)

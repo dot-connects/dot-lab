@@ -45,12 +45,13 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
     var full by remember { mutableStateOf(false) }
     val missing = env.missing
     Box(Modifier.fillMaxSize()) {
-        Page("스탠바이", null) {
+        Page("스탠바이", null, side = {
             if (missing.isNotEmpty()) {
                 PermBanner(missing.size, missing.first().ko) { nav.push(Routes.PERMS) }
             }
             Gap(16.dp)
             Carousel(config) { full = true }
+        }) {
             Section("화면 구성") {
                 item { NavRow("화면", { nav.push(Routes.BOARDS) }, subtitle = "위젯 · 사진 · 시계 + 내 화면 ${config.boards.size}개") }
                 item { NavRow("시계 스타일", { nav.push(Routes.CLOCKS) }, subtitle = "서체, 색, 크기를 시계마다 따로") }

@@ -32,7 +32,13 @@ import androidx.compose.ui.layout.LastBaseline
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.style.LineBreak
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.LineHeightStyle
@@ -113,6 +119,9 @@ internal class Env(
     val labelCap: Dp get() = label * CAP_UI
     val bar: Dp get() = max(4.dp, s * 0.025f)
     val plateRadius: Dp get() = max(12.dp, s * 0.05f)
+    /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */
+    val loneDisplay: Dp get() = if (tall) max(sz.display, h * 0.6f * 0.56f) else sz.display
+    val loneValue: Dp get() = if (tall) max(sz.value, h * 0.6f * 0.30f) else sz.value
     val atLeastS: Boolean get() = cls >= SizeClass.S
     val atLeastM: Boolean get() = cls >= SizeClass.M
 }
@@ -145,6 +154,25 @@ internal fun Txt(
     tnum: Boolean = false,
     maxW: Dp? = null,
     maxCapH: Dp? = null,
+) = Txt(AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH)
+
+/** Korean never breaks inside a word (review X4): phrase word-break on the heading strategy. */
+private val PHRASE = LineBreak.Heading.copy(wordBreak = LineBreak.WordBreak.Phrase)
+
+@Composable
+internal fun Txt(
+    text: AnnotatedString,
+    size: Dp,
+    color: Color,
+    modifier: Modifier = Modifier,
+    weight: Int = 600,
+    family: FontFamily? = null,
+    cap: Float = CAP_UI,
+    lines: Int = 1,
+    align: TextAlign = TextAlign.Start,
+    tnum: Boolean = false,
+    maxW: Dp? = null,
+    maxCapH: Dp? = null,
 ) {
     val fam = family ?: Fonts.ui(weight)
     val density = LocalDensity.current
@@ -154,6 +182,7 @@ internal fun Txt(
         fontFeatureSettings = if (tnum) "tnum" else null,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
+        lineBreak = PHRASE,
     )
     var fs = size
     if (maxCapH != null) fs = min(fs, maxCapH / cap)
@@ -173,6 +202,25 @@ internal fun Txt(
     )
 }
 
+/** "7°" with the degree pulled in by 0.12 em so it touches the digit like iPhone's "74°" (review X7). */
+internal fun temp(c: Int): AnnotatedString = buildAnnotatedString {
+    val n = c.toString()
+    append(n.dropLast(1))
+    withStyle(SpanStyle(letterSpacing = (-0.12).em)) { append(n.last()) }
+    append("°")
+}
+
+/** Whether [text] at [size] (Pretendard [weight]) fits [maxW] on one line. */
+@Composable
+internal fun fitsOneLine(text: String, size: Dp, weight: Int, maxW: Dp): Boolean {
+    val measurer = rememberTextMeasurer(cacheSize = 2)
+    val density = LocalDensity.current
+    return remember(text, size, weight, maxW) {
+        val style = TextStyle(fontSize = (size.value / density.fontScale).sp, fontFamily = Fonts.ui(weight))
+        measurer.measure(text, style, maxLines = 1, softWrap = false).size.width <= with(density) { maxW.toPx() }
+    }
+}
+
 /** Tap without ripple (board surfaces never flash). */
 @Composable
 internal fun Modifier.tap(onClick: (() -> Unit)?): Modifier =
@@ -185,7 +233,7 @@ internal fun Modifier.wrapUnbounded(): Modifier = wrapContentHeight(unbounded = 
 @Composable
 internal fun LabelRow(
     e: Env, icon: Ic?, text: String, color: Color = e.ink.ink2, trailing: String? = null, trailingColor: Color = e.ink.ink2,
-    center: Boolean = false, iconEnd: Boolean = false,
+    center: Boolean = false, iconEnd: Boolean = false, weight: Int = 600,
 ) {
     val iconBox = @Composable {
         Box(Modifier.height(e.labelCap).wrapUnbounded()) { IconView(icon!!, color, Modifier.size(e.label), e.ink.bg) }
@@ -196,7 +244,7 @@ internal fun LabelRow(
         horizontalArrangement = if (center) Arrangement.Center else Arrangement.Start,
     ) {
         if (icon != null && !iconEnd) { iconBox(); Spacer(Modifier.width(e.label * 0.35f)) }
-        Txt(text, e.label, color, Modifier.weight(1f, fill = !center && !iconEnd), weight = 600)
+        Txt(text, e.label, color, Modifier.weight(1f, fill = !center && !iconEnd), weight = weight)
         if (icon != null && iconEnd) { Spacer(Modifier.width(e.label * 0.35f)); iconBox(); Spacer(Modifier.weight(1f)) }
         if (trailing != null) {
             Spacer(Modifier.width(e.label * 0.5f))
@@ -240,9 +288,10 @@ internal fun StateCard(e: Env, icon: Ic, label: String, valueIcon: Ic?, valueTex
 
 /** Loading (first fetch): real label + static ink4 bar the size of the value. No spinner (§5.4). */
 @Composable
-internal fun LoadingCard(e: Env, icon: Ic, label: String) {
+internal fun LoadingCard(e: Env, icon: Ic, label: String, labelRow: (@Composable () -> Unit)? = null) {
     TextCard(e) {
-        LabelRow(e, icon, label)
+        // the loaded card's own label composable when given, so loading and loaded never differ (review X6)
+        if (labelRow != null) labelRow() else LabelRow(e, icon, label)
         Box(Modifier.width(e.cw * 0.45f).height(min(e.sz.value * CAP_UI, e.ch * 0.3f)).clip(RoundedCornerShape(50)).background(e.ink.ink4))
     }
 }

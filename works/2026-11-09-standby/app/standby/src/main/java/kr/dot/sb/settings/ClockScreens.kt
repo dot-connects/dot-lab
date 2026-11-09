@@ -151,7 +151,7 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
                 if (style.effect == Effect.TWO_COLOR) item { ControlRow("두 번째 색") { ColorPalette(style.color2, { c -> edit { it.copy(color2 = c) } }) } }
                 if (world) item { ColorRow("밝은 점", style.litDotColor) { c -> edit { it.copy(litDotColor = c) } } }
             }
-            Section("효과", footer = "밤에는 모든 효과가 꺼지고 빛 번짐만 빨간색으로 남아요.") {
+            Section("효과", footer = "밤에는 모든 효과가 꺼져요.") {
                 item { ControlRow(null) { Segmented(Effect.entries.map { it.ko }, style.effect.ordinal, { i -> edit { it.copy(effect = Effect.entries[i]) } }) } }
             }
         }
