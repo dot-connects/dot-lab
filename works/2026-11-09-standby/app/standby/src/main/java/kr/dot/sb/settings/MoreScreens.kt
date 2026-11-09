@@ -259,7 +259,7 @@ fun AlarmScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
 fun DataScreen(config: AppConfig, update: Update, back: () -> Unit) {
     val minutes = listOf(15, 30, 45, 60, 90)
     Page("데이터", back) {
-        Section("날씨 지역", footer = "Open-Meteo에서 한 시간마다 받아와요.") {
+        Section("날씨 지역", footer = "Open-Meteo에서 30분마다 받아와요.") {
             item { Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("지금 지역", 16.sp, 500, SK.text, Modifier.weight(1f)); T(config.city.name, 16.sp, 700, LocalAccent.current)
             } }

@@ -18,6 +18,7 @@ import androidx.core.app.NotificationManagerCompat
 enum class Perm(val ko: String, val why: String, val button: String) {
     DREAM("화면 보호기로 선택", "충전 중 화면이 꺼질 때 스탠바이가 뜨게 해요", "선택하기"),
     NOTIFICATIONS("알림 접근 허용", "큰 알림, 음악 재생, 알람을 읽어요", "허용하기"),
+    POST("알림 보내기 허용", "무드등과 알람 화면을 잠금 화면 위로 띄우는 데 필요해요", "허용하기"),
     CALENDAR("캘린더 접근 허용", "오늘 일정 카드에 써요", "허용하기"),
     PHOTOS("사진 접근 허용", "사진 화면과 추억 카드에 써요", "허용하기"),
     FULL_SCREEN("전체 화면 알림 허용", "잠금 화면 위에 알람과 무드등을 띄워요", "허용하기"),
@@ -34,6 +35,7 @@ object Perms {
         return mapOf(
             Perm.DREAM to (runCatching { Settings.Secure.getString(ctx.contentResolver, "screensaver_components") }.getOrNull()?.contains(ctx.packageName) == true),
             Perm.NOTIFICATIONS to (ctx.packageName in NotificationManagerCompat.getEnabledListenerPackages(ctx)),
+            Perm.POST to has(Manifest.permission.POST_NOTIFICATIONS),
             Perm.CALENDAR to has(Manifest.permission.READ_CALENDAR),
             Perm.PHOTOS to has(Manifest.permission.READ_MEDIA_IMAGES),
             Perm.FULL_SCREEN to (nm?.canUseFullScreenIntent() == true),
@@ -58,9 +60,11 @@ object Perms {
         Perm.EXACT_ALARM -> listOf(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.BATTERY -> listOf(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.CALENDAR, Perm.PHOTOS -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
+        Perm.POST -> listOf(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
     }
 
     fun runtimePermission(p: Perm): String? = when (p) {
+        Perm.POST -> Manifest.permission.POST_NOTIFICATIONS
         Perm.CALENDAR -> Manifest.permission.READ_CALENDAR
         Perm.PHOTOS -> Manifest.permission.READ_MEDIA_IMAGES
         else -> null

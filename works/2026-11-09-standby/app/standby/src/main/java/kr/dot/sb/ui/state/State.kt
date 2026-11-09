@@ -35,8 +35,6 @@ data class StandbyState(
     val memory: Photo? = null,
     /** Album names for the Photos page themes (after 추천); empty until the first load. */
     val photoBuckets: List<String> = emptyList(),
-    /** First of config.worldCities (the city the World clock shows); null = Seoul/system. */
-    val worldCity: kr.dot.sb.model.City? = null,
     val permissions: Permissions = Permissions(),
     /** Fold inner screen open (book posture). */
     val unfolded: Boolean = false,

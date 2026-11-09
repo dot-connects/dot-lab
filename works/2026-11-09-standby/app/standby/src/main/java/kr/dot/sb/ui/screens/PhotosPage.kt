@@ -121,11 +121,8 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
         }
         // Time top-right (landscape x 72–92 %, y 10–28 %); portrait gets a wider, shorter box.
         val style = config.styles[FaceId.PHOTOS_TIME] ?: ClockStyle.default(FaceId.PHOTOS_TIME)
-        ClockFace(
-            FaceId.PHOTOS_TIME, style, state,
-            if (port) Modifier.offset(w * 0.40f, h * 0.06f).size(w * 0.52f, h * 0.13f)
-            else Modifier.offset(w * 0.58f, h * 0.08f).size(w * 0.35f, h * 0.22f),
-        )
+        // the PHOTOS_TIME face places the time itself over the whole page (clock area owns the geometry)
+        ClockFace(FaceId.PHOTOS_TIME, style, state, Modifier.fillMaxSize())
         AnimatedVisibility(
             pill, Modifier.align(Alignment.CenterEnd).padding(end = w * 0.04f),
             enter = fadeIn(tween(300)), exit = fadeOut(tween(300)),

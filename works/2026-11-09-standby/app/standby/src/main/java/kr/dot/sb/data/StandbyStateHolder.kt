@@ -147,7 +147,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         scope.launch {
             cfgFlow.collect { c ->
                 _state.update {
-                    var n = it.copy(use24h = c.use24h ?: DateFormat.is24HourFormat(ctx), worldCity = c.worldCities.firstOrNull())
+                    var n = it.copy(use24h = c.use24h ?: DateFormat.is24HourFormat(ctx), worldCity = c.worldCities.firstOrNull() ?: it.worldCity)
                     if (!c.burnInShift) n = n.copy(shiftX = 0, shiftY = 0)
                     n
                 }
