@@ -3,3 +3,5 @@ build/
 local.properties
 *.apk
 *.csv
+# Roborazzi screenshots are review output, not source
+standby/build/
