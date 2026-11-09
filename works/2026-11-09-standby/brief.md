@@ -11,6 +11,10 @@ Operator decisions, fixed:
 - Research every StandBy detail first: `docs/archive/2026-10-29-standby-galaxy/` in C:\DC\DD. Canonical merge:
   `00-standby-canon.md` (2026-11-09, 20 open unknowns in section 9; sources 01-07 + frames/).
 
+- The operator has no iPhone (2026-11-09). Every mockup screen shows the real iPhone version next to ours: a frame
+  from `frames/` (or a source link), what it does, and the measured numbers, with unknowns marked as our choice.
+- The 20 open unknowns in the canon stay open; where one matters, the mockup states the value we chose.
+
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
 
 Answers four questions from I-0053 plus the screen shape for the all-ratio layout:
