@@ -19,8 +19,6 @@ import android.media.AudioPlaybackConfiguration
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
-import android.os.SystemClock
-import kotlin.math.abs
 
 /**
  * Overnight logger. Records hinge angle, display changes, power/screen/dream broadcasts, the next alarm,
@@ -30,17 +28,15 @@ import kotlin.math.abs
 class LogService : Service() {
     private val handler = Handler(Looper.getMainLooper())
     private var lastAngle = -999f
-    private var lastAngleAt = 0L
+    private val lastDisplay = HashMap<Int, String>()
     private var alarmAudioOn = false
 
     private val hinge = object : SensorEventListener {
         override fun onSensorChanged(e: SensorEvent) {
             val a = e.values[0]
-            val now = SystemClock.elapsedRealtime()
-            // log every 2 degrees, or the resting value after 1 s
-            if (abs(a - lastAngle) >= 2f || (a != lastAngle && now - lastAngleAt > 1000)) {
+            // hinge is an on-change sensor: log every reported value, the 11-09 run only showed 0 and 90
+            if (a != lastAngle) {
                 lastAngle = a
-                lastAngleAt = now
                 currentAngle = a
                 log("hinge", "angle=${"%.1f".format(a)}")
             }
@@ -52,7 +48,15 @@ class LogService : Service() {
     private val displays = object : DisplayManager.DisplayListener {
         override fun onDisplayAdded(id: Int) = logDisplay("display_added", id)
         override fun onDisplayRemoved(id: Int) = log("display_removed", "id=$id")
-        override fun onDisplayChanged(id: Int) = logDisplay("display_changed", id)
+        override fun onDisplayChanged(id: Int) {
+            // adaptive refresh (48/60/120 Hz) fires many changes; log only when something else changed
+            val d = getSystemService(DisplayManager::class.java).getDisplay(id) ?: return
+            val line = Probe.display(this@LogService, d)
+            val key = line.replace(Regex(" hz=\\d+"), "")
+            if (lastDisplay[id] == key) return
+            lastDisplay[id] = key
+            log("display_changed", line)
+        }
     }
 
     private val broadcasts = object : BroadcastReceiver() {

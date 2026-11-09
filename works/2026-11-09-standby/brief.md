@@ -39,3 +39,17 @@ Operator test steps:
 4. Set a Samsung Clock alarm 2 minutes ahead and let it ring.
 5. 무드등 15초 뒤 켜기, then fold or lock the phone.
 6. Leave it charging overnight, then CSV 보내기.
+
+## Run 1 (2026-11-09 19:12-19:14, Fold8, not charging, 2 minutes)
+
+| Question | Result |
+|---|---|
+| Dream on the folded cover screen | **Yes.** Started from the screen saver settings (preview), shown on the cover: display id 0, 1248x1972 px, 475x751 dp, ratio 1.58, top cutout 104 px. Auto-start while charging not tested yet. |
+| Screen shapes | Cover 475x751 dp (1.58), inner 932x704 dp (1.32, no cutout). Samsung keeps display id 0 and swaps the panel; the other panel shows as id 1, OFF. |
+| Full-screen mood light over the lock screen | **Yes.** `canUseFullScreenIntent=true`; the glow opened on the inner screen before unlock (glow_shown 19:13:21, USER_PRESENT 19:13:26). |
+| Our window across fold/unfold | **Kept.** Folding moved the open glow activity to the cover screen (config 475x751 dp) without closing it. |
+| Hinge angle | Only 0.0 and 90.0 logged; the inner screen turned on before the 90 event. Either the sensor is coarse or 0.1.0 throttled it. 0.1.1 logs every value and puts the angle in each note. |
+| Music page | Feasible: YouTube Music session with title, artist, album art, transport actions. |
+| Samsung alarm moment, overnight battery | Not run yet. |
+
+0.1.1: every hinge value, angle in notes, display changes that only differ in refresh rate (48/60/120 Hz) dropped.

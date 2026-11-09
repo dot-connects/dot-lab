@@ -95,7 +95,7 @@ class MainActivity : ComponentActivity() {
         root.addView(button("메모 기록") {
             val t = note.text.toString().trim()
             if (t.isNotEmpty()) {
-                EventLog.write(this, "note", "$t | $fold | ${display?.let { Probe.display(this, it) }}")
+                EventLog.write(this, "note", "$t | hinge=${LogService.currentAngle} | $fold | ${display?.let { Probe.display(this, it) }}")
                 note.setText("")
                 render()
             }
