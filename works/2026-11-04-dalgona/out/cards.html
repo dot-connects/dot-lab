@@ -1,0 +1,31 @@
+<!doctype html>
+<!-- Source of out/cover.png (1080x1920, ?k=cover) and out/card.png (1080x1350, ?k=card); screenshot at that viewport. -->
+<html lang="ko"><head><meta charset="utf-8">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600&display=swap">
+<style>
+html,body{margin:0;background:#0c0b0a;color:#fff;font-family:"IBM Plex Sans KR",sans-serif}
+.p{position:relative;width:1080px;display:flex;flex-direction:column;align-items:center;text-align:center;box-sizing:border-box;
+  background:radial-gradient(110% 70% at 50% 45%,#2a1f16,#0c0b0a 75%)}
+.cover{height:1920px;padding-top:250px}
+.card{height:1350px;padding-top:70px}
+.lab{font-size:30px;color:#e8913a;letter-spacing:.14em;font-weight:600}
+.logo{width:340px;margin:26px 0 30px}
+.card .logo{width:250px;margin:18px 0 20px}
+h1{margin:0;font-weight:600;font-size:76px;line-height:1.25;letter-spacing:-.01em}
+.card h1{font-size:60px}
+h1 em{font-style:normal;color:#ff4d3d}
+.scene{margin-top:60px;width:820px;height:820px;border-radius:24px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.6)}
+.card .scene{margin-top:40px;width:640px;height:640px}
+.scene img{width:100%;height:100%;object-fit:cover;display:block}
+.sub{margin-top:54px;font-size:34px;color:#d9d3ca}
+.card .sub{margin-top:34px;font-size:30px}
+</style></head><body>
+<div class="p" id="p">
+  <div class="lab">D:OT lab · 실험 #004</div>
+  <img class="logo" src="../site/logo.svg" alt="달고나">
+  <h1>깨지면 <em>탈락</em><br>몇 번째에 통과할까?</h1>
+  <div class="scene"><img src="scene.jpg" alt=""></div>
+  <div class="sub">폰 카메라로 하는 달고나 뽑기 · 설치 없음</div>
+</div>
+<script>document.getElementById("p").classList.add(new URLSearchParams(location.search).get("k") || "cover");</script>
+</body></html>

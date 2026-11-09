@@ -15,7 +15,7 @@ scene.add(room);
 
 const css = document.createElement("style");
 css.textContent = `
-#tray,.tools,#hint,#sub,#stat,#toast,#cursor,#ring,#again,#doom,#zbar{display:none!important}
+#tray,.tools,#hint,#sub,#stat,#toast,#cursor,#ring,#again,#more,#doom,#zbar{display:none!important}
 #rend .logo{width:150px;height:auto;opacity:.95}
 #rend .ask{font-family:"IBM Plex Sans KR",sans-serif;font-weight:600;font-size:40px;line-height:1.3;color:#fff;margin:10px 0 6px;letter-spacing:-.01em}
 #rend .ask em{font-style:normal;color:#ff4d3d}
