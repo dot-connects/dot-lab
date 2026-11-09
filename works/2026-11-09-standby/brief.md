@@ -18,6 +18,8 @@ Operator decisions, fixed:
 - Every clock is user-styled (2026-11-09): font, weight, size, width, colour, effect, background, numerals, layout.
   All 11 iPhone clock fonts are offered; Apple's font files cannot ship in an Android app, so each maps to the
   closest open font, and Stencil and Rails are drawn by us from Inter.
+- Screens split into slots (2026-11-09): a board holds 1-4 slots (six layouts), each slot any card; boards are
+  unlimited. New cards: YouTube Music, YouTube, timer/pomodoro, sleep sound, D-day, agenda, Claude/Codex usage.
 - The 20 open unknowns in the canon stay open; where one matters, the mockup states the value we chose.
 
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
@@ -90,3 +92,10 @@ Thin), weight/size/width sliders, solid/two-colour/rainbow/glass/glow, free colo
 black/colour/gradient, six numeral systems, layout iPhone/centre/two lines; analog numerals 4/12/Roman/none,
 ticks, five colours. Night still forces red. Font names: 9to5Mac (iOS 16); iOS 26 names and the 15 numeral
 systems were not found.
+
+## Mockups round 4 (2026-11-09): https://claude.ai/artifact/NDS42qvtvu1CZqmjRjXawa
+
+Boards with 6 layouts (1, 2, big+2, 2+big, 4, 3 slots) and 12 cards; seven preset boards (Modular, desk, music,
+bed, 수능, book, video). Also: big notification, Live Activity pill to 2x, alarm with the Fold inner-screen mood
+light (warm ramp 6 s, our value), Fold unfolded 932x704 book board. Open: how Claude/Codex usage gets from the PC
+to the phone; YouTube video only through the official embed player.
