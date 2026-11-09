@@ -33,6 +33,7 @@ import kr.dot.sb.platform.ListenerBus
 import kr.dot.sb.platform.SleepService
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.ui.state.AlarmRinging
+import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.StandbyState
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -85,6 +86,9 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private val machine = DisplayOffMachine()
     private val motion = MotionDetector()
     private val rot = RotationTracker()
+    private val lux = LuxMedian()
+    private var wasOffAtNotif = false
+    private var notifWokeAt = -1L
     private val media = MediaSource(ctx) { m -> _state.update { it.copy(media = m) } }
 
     private var lastLux: Float? = null
@@ -94,7 +98,6 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var startedAt = 0L
     private var exited = false
     private var lastBrightness = Float.NaN
-    private var burnStep = 0
     private var page = 0
     private var started = false
     private var lastStaticAt = 0L
@@ -103,6 +106,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var lastPhotosAt = 0L
     private var memoryDay: LocalDate? = null
     private var lastCity = cfg.city
+    private var photoBucket: String? = null
 
     private var visibleJob: Job? = null
     private var pollJob: Job? = null
@@ -113,7 +117,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var notifShownAt = 0L
 
     private val lightL = object : SensorEventListener {
-        override fun onSensorChanged(e: SensorEvent) { lastLux = e.values[0]; evaluate() }
+        override fun onSensorChanged(e: SensorEvent) { lastLux = lux.add(el(), e.values[0]); evaluate() }
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
     private val accelL = object : SensorEventListener {
@@ -143,7 +147,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         scope.launch {
             cfgFlow.collect { c ->
                 _state.update {
-                    var n = it.copy(use24h = c.use24h ?: DateFormat.is24HourFormat(ctx))
+                    var n = it.copy(use24h = c.use24h ?: DateFormat.is24HourFormat(ctx), worldCity = c.worldCities.firstOrNull())
                     if (!c.burnInShift) n = n.copy(shiftX = 0, shiftY = 0)
                     n
                 }
@@ -155,7 +159,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         scope.launch {
             ListenerBus.alarm.collect { a ->
                 _state.update { it.copy(alarm = a?.let { s -> AlarmRinging(s.label, true) }) }
-                if (a != null) { machine.touch(el()); evaluate() } // alarm preempts everything and wakes OFF
+                machine.touch(el()); evaluate() // alarm preempts everything and wakes OFF; when it ends the idle time restarts
             }
         }
         scope.launch { ListenerBus.notifications.collect { showNotification(it) } }
@@ -195,14 +199,18 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         val c = cfg
         nightSw.enterLux = c.nightEnterLux; nightSw.exitLux = c.nightExitLux
         lastLux?.let { nightSw.update(now, it) }
-        val nightOn = when (c.nightMode) {
-            NightMode.OFF -> false
-            NightMode.SCHEDULE -> NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour)
-            NightMode.AUTO -> nightSw.night
-        }
+        val nightOn = NightRules.on(
+            c.nightMode, c.displayOff,
+            scheduled = c.nightMode == NightMode.SCHEDULE && NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour),
+            auto = nightSw.night,
+        )
         setNight(if (nightOn) 1f else 0f)
         val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
-        val off = machine.evaluate(now, c.displayOff, lastLux, c.nightEnterLux, c.nightExitLux) || flat
+        val busy = _state.value.alarm != null || _state.value.notification != null
+        val off = NightRules.displayOff(
+            machine.evaluate(now, c.displayOff, lastLux, c.nightEnterLux, c.nightExitLux) || flat,
+            _state.value.alarm != null, _state.value.notification != null,
+        )
         setOff(off, nightOn)
         schedulePoll(now)
     }
@@ -271,7 +279,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private suspend fun minuteLoop() {
         while (true) {
             val t = LocalDateTime.now()
-            val (sx, sy) = if (cfg.burnInShift) BurnIn.at(burnStep++) else (0 to 0)
+            val (sx, sy) = if (cfg.burnInShift) BurnIn.at(t.hour * 60 + t.minute) else (0 to 0)
             _state.update { it.copy(now = t.truncatedTo(ChronoUnit.MINUTES), shiftX = sx, shiftY = sy) }
             publishTimers()
             if (memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
@@ -327,8 +335,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private suspend fun reloadPhotos() {
         lastPhotosAt = el()
         val n = if (_state.value.memory != null) 2 else 3 // max 3 bitmaps in memory
-        val p = withContext(Dispatchers.IO) { DeviceSources.photos(ctx, n) }
-        _state.update { it.copy(photos = p) }
+        val b = photoBucket
+        val have = _state.value.photoBuckets
+        val (p, buckets) = withContext(Dispatchers.IO) { DeviceSources.photos(ctx, n, b) to have.ifEmpty { DeviceSources.buckets(ctx) } }
+        _state.update { it.copy(photos = p, photoBuckets = buckets) }
     }
 
     private suspend fun loadMemory(day: LocalDate) {
@@ -346,11 +356,21 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             val wait = 2_000 - (el() - notifShownAt) // a newer one replaces the shown one after >= 2 s
             if (_state.value.notification != null && wait > 0) delay(wait)
             notifShownAt = el()
+            // woken from OFF by this notification: back to OFF afterwards unless the user touched the screen (spec I4)
+            if (_state.value.notification == null) wasOffAtNotif = _state.value.displayOff
             _state.update { it.copy(notification = n) }
-            machine.touch(el()); evaluate()
+            machine.touch(el()); notifWokeAt = machine.lastTouch; evaluate()
             delay(6_500) // 6 s + fade
-            _state.update { if (it.notification?.key == n.key) it.copy(notification = null) else it }
+            endNotification(n.key)
         }
+    }
+
+    private fun endNotification(key: String?) {
+        if (key != null && _state.value.notification?.key != key) return
+        _state.update { it.copy(notification = null) }
+        if (wasOffAtNotif && machine.lastTouch == notifWokeAt) machine.forceOff() else machine.touch(el())
+        wasOffAtNotif = false
+        evaluate()
     }
 
     // ---- pomodoro ----------------------------------------------------------------------------------------------
@@ -376,15 +396,26 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     // ---- actions (called through HostActions) ------------------------------------------------------------------
 
     fun touch() { machine.touch(el()); evaluate() }
-    fun onPage(p: Int) { page = p; if (p == 1 && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() } }
+    fun onPage(p: Int) {
+        page = p
+        // "first entry = clock, then the last viewed page": remembered through startPage (not while the unfold rule steers it)
+        if (!_state.value.unfolded) ConfigStore.update(ctx) { it.copy(startPage = p) }
+        if (p == 1 && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() }
+    }
+    /** Photos page theme swipe: null = 추천, else an album name (spec P1). */
+    fun photoTheme(bucket: String?) { photoBucket = bucket; scope.launch { reloadPhotos() } }
     fun mediaPlayPause() = media.playPause()
     fun mediaNext() = media.next()
     fun mediaPrev() = media.prev()
     val mediaPackage get() = media.packageName
     fun timerToggle(id: String) { timer(id).toggle(el()); scheduleTimerEnd(id); publishTimers() }
     fun timerReset(id: String) { timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
-    fun sleepToggle() { if (SleepBus.state.value.playing) SleepService.stop(ctx) else SleepService.start(ctx, cfg.sleepSound, cfg.sleepMinutes) }
-    fun dismissNotification() { notifJob?.cancel(); _state.update { it.copy(notification = null) } }
+    fun sleepToggle() {
+        if (SleepBus.state.value.playing) { SleepService.stop(ctx); return }
+        // ForegroundServiceStartNotAllowedException etc. must not take the dream down; SleepService.start already set "playing"
+        runCatching { SleepService.start(ctx, cfg.sleepSound, cfg.sleepMinutes) }.onFailure { SleepBus.state.value = SleepState() }
+    }
+    fun dismissNotification() { notifJob?.cancel(); endNotification(null) }
     fun notificationIntentOf(key: String) = ListenerBus.contentIntents[key]
     fun retryFeeds() { scope.launch { fetchWeather() }; scope.launch { fetchUsage() } }
 
@@ -399,7 +430,6 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (u == _state.value.unfolded) return
         _state.update { it.copy(unfolded = u) }
         pushUi()
-        if (u && !initial && cfg.onUnfold == UnfoldAction.MOOD_LIGHT) host.openGlow()
     }
 
     private fun pushUi() {

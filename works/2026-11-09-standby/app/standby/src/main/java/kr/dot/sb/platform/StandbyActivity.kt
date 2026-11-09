@@ -30,6 +30,10 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         holder = StandbyStateHolder(this, this, ownRotation = false)
         val actions = HostActions(this, holder, this)
         setContent { HostContent(holder, actions) }
+        // manual start only: a dream hand-over (PendingUnlock) must not pop a dialog over the lock screen
+        if (PendingUnlock.block == null && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
     }
 
     override fun onStart() {

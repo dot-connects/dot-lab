@@ -5,7 +5,9 @@ import kr.dot.sb.data.BurnIn
 import kr.dot.sb.data.DisplayOffMachine
 import kr.dot.sb.data.MediaKinds
 import kr.dot.sb.data.MotionDetector
+import kr.dot.sb.data.LuxMedian
 import kr.dot.sb.data.NightRamp
+import kr.dot.sb.data.NightRules
 import kr.dot.sb.data.NightSwitch
 import kr.dot.sb.data.NoiseGen
 import kr.dot.sb.data.NotifKind
@@ -16,6 +18,7 @@ import kr.dot.sb.data.UsageParser
 import kr.dot.sb.data.WeatherParser
 import kr.dot.sb.data.Wmo
 import kr.dot.sb.model.DisplayOff
+import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.TimerMode
@@ -86,11 +89,11 @@ class LogicTest {
         var t = 0L
         repeat(50) { m.update(t, 0f, 0f, 9.8f); t += 60 }
         assertFalse(m.pickedUp)
-        m.update(t, 6f, 0f, 9.8f); t += 100
+        m.update(t, 12f, 0f, 9.8f); t += 100
         assertFalse(m.pickedUp)
-        m.update(t, 6f, 0f, 9.8f); t += 150
-        m.update(t, 6f, 0f, 9.8f); t += 100
-        m.update(t, 6f, 0f, 9.8f)
+        m.update(t, 12f, 0f, 9.8f); t += 150
+        m.update(t, 12f, 0f, 9.8f); t += 100
+        m.update(t, 12f, 0f, 9.8f)
         assertTrue(m.pickedUp)
     }
 
@@ -222,5 +225,42 @@ class LogicTest {
             val quiet = ShortArray(1000); g.fill(quiet, 0f)
             assertTrue(quiet.all { it.toInt() == 0 })
         }
+    }
+
+    @Test fun turningThePhoneIsNotAPickUp() {
+        // portrait -> landscape: gravity moves from y to x over ~0.5 s, |a| stays 9.81 (spec E4/E7)
+        val m = MotionDetector()
+        var t = 0L
+        repeat(50) { m.update(t, 0f, 9.81f, 0f); t += 60 }
+        for (i in 0..10) { val a = Math.toRadians(i * 9.0); m.update(t, (9.81 * Math.sin(a)).toFloat(), (9.81 * Math.cos(a)).toFloat(), 0f); t += 50 }
+        repeat(40) { m.update(t, 9.81f, 0f, 0f); t += 60 }
+        assertFalse(m.pickedUp)
+        assertTrue(m.linear < 0.5f)
+    }
+
+    @Test fun luxMedianIgnoresOneFlash() {
+        val l = LuxMedian()
+        assertEquals(2f, l.add(0, 2f), 0f)
+        l.add(300, 2f)
+        assertEquals(2f, l.add(600, 400f), 0f)    // a phone-screen flash among dark readings
+        assertEquals(2f, l.add(1700, 2f), 0f)     // old readings expire after 1 s
+    }
+
+    @Test fun nightIsOffUnderNeverAndAlarmKeepsTheScreenOn() {
+        assertFalse(NightRules.on(NightMode.AUTO, DisplayOff.NEVER, scheduled = true, auto = true))
+        assertTrue(NightRules.on(NightMode.AUTO, DisplayOff.AUTO, scheduled = false, auto = true))
+        assertTrue(NightRules.on(NightMode.SCHEDULE, DisplayOff.AFTER_20S, scheduled = true, auto = false))
+        assertFalse(NightRules.on(NightMode.OFF, DisplayOff.AUTO, scheduled = true, auto = true))
+        assertFalse(NightRules.displayOff(wanted = true, alarm = true, notification = false))
+        assertFalse(NightRules.displayOff(wanted = true, alarm = false, notification = true))
+        assertTrue(NightRules.displayOff(wanted = true, alarm = false, notification = false))
+    }
+
+    @Test fun notificationThatWokeTheScreenSendsItBackOff() {
+        val m = DisplayOffMachine()
+        m.touch(0); m.forceOff()
+        assertTrue(m.off)
+        assertTrue(m.evaluate(7_000, DisplayOff.AFTER_20S, null, 3f, 8f)) // stays off, idle rule does not wake it
+        assertEquals(0L, m.lastTouch)
     }
 }

@@ -32,6 +32,10 @@ data class StandbyState(
     /** Photos page queue (already decoded at screen size); null = permission missing. */
     val photos: List<Photo>? = emptyList(),
     val memory: Photo? = null,
+    /** Album names for the Photos page themes (after 추천); empty until the first load. */
+    val photoBuckets: List<String> = emptyList(),
+    /** First of config.worldCities (the city the World clock shows); null = Seoul/system. */
+    val worldCity: kr.dot.sb.model.City? = null,
     val permissions: Permissions = Permissions(),
     /** Fold inner screen open (book posture). */
     val unfolded: Boolean = false,
@@ -130,7 +134,7 @@ data class TimerState(val mode: TimerMode = TimerMode.FOCUS, val leftSec: Int = 
 data class SleepState(val playing: Boolean = false, val minutesLeft: Int? = null)
 
 @Immutable
-data class Photo(val image: ImageBitmap, val place: String, val date: String, val yearsAgo: Int? = null)
+data class Photo(val image: ImageBitmap, val place: String, val date: String, val yearsAgo: Int? = null, val uri: String? = null)
 
 @Immutable
 data class Permissions(
@@ -158,6 +162,12 @@ interface StandbyActions {
     /** User touched the screen (wakes from display-off, resets the 20 s timer). */
     fun userActivity() {}
     fun pageChanged(page: Int) {}
+    /** Photos page: caption tap opens the photo in the gallery (after unlock). */
+    fun openPhoto(uri: String) {}
+    /** Photos page: theme swipe; null = 추천, else the album name. */
+    fun photoTheme(bucket: String?) {}
+    /** Now Playing volume glyph: show the system volume panel. */
+    fun openVolume() {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

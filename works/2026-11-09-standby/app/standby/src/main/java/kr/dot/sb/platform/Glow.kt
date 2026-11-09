@@ -14,6 +14,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.BatteryManager
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -81,9 +82,18 @@ class GlowReceiver : BroadcastReceiver() {
                 ctx.getSystemService(SensorManager::class.java).getDefaultSensor(Sensor.TYPE_HINGE_ANGLE) != null
 
         /** Full-screen-intent notification: the only way to light a screen over the lock screen (confirmed by the probe). */
-        fun showIfInner(ctx: Context) { if (isInner(ctx)) post(ctx) }
+        fun showIfInner(ctx: Context) { if (isInner(ctx) && charging(ctx)) post(ctx) } // unplugged = StandBy is not running: no glow
 
+        private fun charging(ctx: Context): Boolean =
+            ctx.getSystemService(BatteryManager::class.java).isCharging
+
+        @Volatile private var lastPostAt = 0L
+
+        /** One glow per unfold: the dream's config change and its detach both ask for it (spec M1). */
         fun post(ctx: Context) {
+            val now = android.os.SystemClock.elapsedRealtime()
+            if (now - lastPostAt < 5_000) return
+            lastPostAt = now
             Channels.ensure(ctx)
             val open = PendingIntent.getActivity(
                 ctx, 12, Intent(ctx, GlowActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE,
@@ -109,6 +119,8 @@ class GlowActivity : ComponentActivity() {
     private lateinit var glow: View
     private var night = false
     private var started = false
+    private var lightSm: SensorManager? = null
+    private var lightL: SensorEventListener? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -140,10 +152,11 @@ class GlowActivity : ComponentActivity() {
             override fun onAccuracyChanged(s: Sensor?, a: Int) {}
         }
         if (light != null) {
+            lightSm = sm; lightL = l
             sm.registerListener(l, light, SensorManager.SENSOR_DELAY_FASTEST)
             handler.postDelayed({ sm.unregisterListener(l); startRamp(cfg.glowRampSec) }, 400)
         } else startRamp(cfg.glowRampSec)
-        handler.postDelayed({ finish() }, 10 * 60_000L) // M2: until Stop/Snooze or 10 min
+        if (ListenerBus.alarm.value != null) handler.postDelayed({ finish() }, 10 * 60_000L) // M2: until Stop/Snooze or 10 min (plain mood light: until tapped)
 
         var seen = false
         lifecycleScope.launch {
@@ -179,6 +192,7 @@ class GlowActivity : ComponentActivity() {
 
     override fun onDestroy() {
         ramp?.cancel()
+        lightL?.let { lightSm?.unregisterListener(it) }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

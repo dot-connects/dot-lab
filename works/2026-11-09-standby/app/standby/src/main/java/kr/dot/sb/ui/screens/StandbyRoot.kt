@@ -23,6 +23,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.systemGestureExclusion
+import androidx.compose.ui.graphics.Brush
+import kr.dot.sb.ui.cards.tap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -113,6 +116,9 @@ internal fun RootImpl(
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
     val edits = remember { mutableStateMapOf<FaceId, ClockStyle>() }
+    // unfolded + 무드등: the dream that survives the unfold turns into the glow in place (spec M1); a tap goes back to the board
+    var moodOff by remember { mutableStateOf(false) }
+    LaunchedEffect(state.unfolded) { if (!state.unfolded) moodOff = false }
 
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { act.pageChanged(it) } }
     LaunchedEffect(state.unfolded, config.onUnfold) {
@@ -137,9 +143,10 @@ internal fun RootImpl(
         val widgets = remember(config.widgetLeft, config.widgetRight) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
         }
+        val mood = state.unfolded && config.onUnfold == UnfoldAction.MOOD_LIGHT && !moodOff && !editing
         CompositionLocalProvider(LocalInk provides ink) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {
-                HorizontalPager(
+                if (mood) MoodLight(config.glowColor, ink) { moodOff = true } else HorizontalPager(
                     pager, Modifier.fillMaxSize(),
                     userScrollEnabled = !editing,
                     flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
@@ -156,7 +163,7 @@ internal fun RootImpl(
                         else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, actions) }
                     }
                 }
-                if (!editing) {
+                if (!editing && !mood) {
                     val s = min(w, h)
                     AutoHideDots(
                         count, pager.currentPage, pager.isScrollInProgress, vertical = false,
@@ -166,15 +173,26 @@ internal fun RootImpl(
                 }
                 Overlays(state, config, actions, layer, editing, onNowPlaying = { npOpen = it })
             }
+            // keep the system back-swipe off the board pager's edges (spec E4/R7); the system honours ~200 dp per edge
+            Box(Modifier.align(Alignment.CenterStart).size(24.dp, 200.dp).systemGestureExclusion())
+            Box(Modifier.align(Alignment.CenterEnd).size(24.dp, 200.dp).systemGestureExclusion())
         }
     }
+}
+
+/** Warm full-screen light (spec M1), same colours as the glow screen: static, so it costs nothing. */
+@Composable
+private fun MoodLight(color: Long, ink: Ink, onTap: () -> Unit) {
+    val top = ink.mapped(Color(color or 0xFF000000L))
+    val bottom = Color(top.red * 0.45f, top.green * 0.3f, top.blue * 0.25f)
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(top, bottom))).tap(onTap))
 }
 
 /** A board (or the widgets page). Long press asks for the editor, which needs the unlocked phone (spec D2). */
 @Composable
 private fun BoardPage(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val act by rememberUpdatedState(actions)
-    Box(Modifier.fillMaxSize().pointerInput(board.id) { detectTapGestures(onLongPress = { act.openSettings("board:${board.id}") }) }) {
+    Box(Modifier.fillMaxSize().pointerInput(board.id) { detectTapGestures(onLongPress = { act.openSettings(if (board.id == "widgets") "widgets" else "board:${board.id}") }) }) {
         BoardView(board, state, config, actions, Modifier.fillMaxSize())
     }
 }

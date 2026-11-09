@@ -74,6 +74,15 @@ class HostActions(
         val pkg = holder.mediaPackage ?: return
         host.unlockThen { ctx.packageManager.getLaunchIntentForPackage(pkg)?.let { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
     }
+    override fun openPhoto(uri: String) {
+        host.unlockThen {
+            runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(android.net.Uri.parse(uri), "image/*").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
+        }
+    }
+    override fun photoTheme(bucket: String?) = holder.photoTheme(bucket)
+    override fun openVolume() {
+        ctx.getSystemService(android.media.AudioManager::class.java).adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_SAME, android.media.AudioManager.FLAG_SHOW_UI)
+    }
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
     override fun sleepToggle() = holder.sleepToggle()
