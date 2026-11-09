@@ -15,7 +15,9 @@ object EventLog {
     fun write(ctx: Context, kind: String, detail: String) {
         val f = file(ctx)
         val fresh = !f.exists()
-        val clean = detail.replace("\"", "'").replace("\n", " ")
+        val flat = detail.replace("\"", "'").replace("\n", " ").replace("\r", " ")
+        // spreadsheet formula guard: the CSV is opened in Excel
+        val clean = if (flat.firstOrNull() in listOf('=', '+', '-', '@')) "'$flat" else flat
         f.appendText(
             (if (fresh) "time,kind,detail\n" else "") +
                 "${LocalDateTime.now().format(stamp)},$kind,\"$clean\"\n",
