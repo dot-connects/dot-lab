@@ -1,0 +1,34 @@
+{
+  "about": "Shared fixed vector for the .dotpet parser: web petfile.test.mjs and Android PetFileTest read this same file. 'file' is parsed; the result must match 'expect'. Every entry of 'reject' must be refused whole.",
+  "file": {
+    "format": "dotpet", "v": 1, "exported": "2026-11-09T12:00:00Z",
+    "creatures": [
+      { "id": "c_1", "name": "콩이", "kind": "dog", "no": 1, "pokeId": null,
+        "poses": [
+          { "label": "front", "png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP438PwnwEG/vcw/AcALlIFFSMuN78AAAAASUVORK5CYII=", "w": 2, "h": 2 },
+          { "label": "side", "png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR42mPQiDrRwAADGlEnGgAe0AOVzuumtAAAAABJRU5ErkJggg==", "w": 2, "h": 2 },
+          { "label": "fly", "png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP438PwnwEG/vcw/AcALlIFFSMuN78AAAAASUVORK5CYII=", "w": 2, "h": 2 },
+          { "label": "back", "png": "!!!not base64!!!", "w": 2, "h": 2 },
+          { "label": "lying", "png": "aGVsbG8gd29ybGQ=", "w": 2, "h": 2 },
+          { "label": "front", "png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAE0lEQVR42mPQiDrRwAADGlEnGgAe0AOVzuumtAAAAABJRU5ErkJggg==", "w": 2, "h": 2 }
+        ] },
+      { "id": "c_2", "name": "나비", "kind": "cat", "no": 2, "pokeId": null,
+        "poses": [ { "label": "front", "png": "", "w": 2, "h": 2 } ] },
+      { "id": "p_25", "name": "피카츄", "kind": "pokemon", "no": 3, "pokeId": 25,
+        "poses": [ { "label": "front", "png": "iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAYAAABytg0kAAAAFElEQVR42mP438PwnwEG/vcw/AcALlIFFSMuN78AAAAASUVORK5CYII=", "w": 2, "h": 2 } ] }
+    ]
+  },
+  "expect": {
+    "creatures": [
+      { "id": "c_1", "name": "콩이", "kind": "dog", "no": 1, "labels": ["front", "side"] },
+      { "id": "p_25", "name": "피카츄", "kind": "pokemon", "no": 3, "labels": ["front"] }
+    ],
+    "dropped": { "poses": 5, "creatures": 1 },
+    "notes": "c_1 drops: fly (unknown label), back (broken base64), lying (not a PNG), second front (one picture per label). c_2 drops its only pose (empty png), then itself."
+  },
+  "reject": [
+    { "format": "dotpet", "v": 2, "exported": "2026-11-09T12:00:00Z", "creatures": [] },
+    { "format": "petpet", "v": 1, "exported": "2026-11-09T12:00:00Z", "creatures": [] },
+    { "format": "dotpet", "v": 1, "exported": "2026-11-09T12:00:00Z" }
+  ]
+}

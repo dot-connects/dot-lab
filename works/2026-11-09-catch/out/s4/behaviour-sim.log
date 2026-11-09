@@ -1,0 +1,31 @@
+## one pose labels=[front] unlocked=[bounce, flinch] seed=1 screen=412x915dp
+t=  0.00s bounce dur= 7.59s edge=bottom at=(158.0,819.0) pose=front
+t=  7.60s bounce dur= 4.46s edge=bottom at=(158.0,819.0) pose=front
+t= 12.10s bounce dur= 8.24s edge=bottom at=(158.0,819.0) pose=front
+t= 20.35s bounce dur= 7.97s edge=bottom at=(158.0,819.0) pose=front
+t= 28.35s bounce dur= 3.53s edge=bottom at=(158.0,819.0) pose=front
+t= 31.90s bounce dur= 5.18s edge=bottom at=(158.0,819.0) pose=front
+t= 37.10s bounce dur= 8.64s edge=bottom at=(158.0,819.0) pose=front
+t= 45.75s bounce dur=10.43s edge=bottom at=(158.0,819.0) pose=front
+t= 56.20s bounce dur= 9.85s edge=bottom at=(158.0,819.0) pose=front
+time on edge: bottom=100% top=0% side=0%
+states seen: [bounce]
+
+## all poses labels=[front, side, walk, lying, back] unlocked=[bounce, flinch, walk, run, sleep, hide] seed=1 screen=412x915dp
+t=  0.00s bounce dur= 7.59s edge=bottom at=(158.0,819.0) pose=front
+t=  7.60s run    dur= 6.95s edge=bottom at=(158.0,819.0) pose=side
+t= 14.60s hide   dur= 3.00s edge=bottom at=( 56.1,819.0) pose=back
+t= 17.60s run    dur= 8.83s edge=bottom at=( 56.1,819.0) pose=side
+t= 26.45s bounce dur= 4.27s edge=bottom at=(238.5,819.0) pose=front
+t= 30.75s bounce dur= 3.42s edge=bottom at=(238.5,819.0) pose=front
+t= 34.20s bounce dur= 7.75s edge=bottom at=(238.5,819.0) pose=front
+t= 42.00s sleep  dur=10.31s edge=bottom at=(238.5,819.0) pose=lying
+t= 52.35s hide   dur= 3.00s edge=bottom at=(238.5,819.0) pose=back
+t= 55.35s hide   dur= 3.00s edge=bottom at=(238.5,819.0) pose=back
+t= 58.35s run    dur= 6.25s edge=bottom at=(238.5,819.0) pose=side
+time on edge: bottom=100% top=0% side=0%
+states seen: [bounce, hide, run, sleep]
+
+## all poses, 10 min (state lines omitted) labels=[front, side, walk, lying, back] unlocked=[bounce, flinch, walk, run, sleep, hide] seed=1 screen=412x915dp
+time on edge: bottom=55% top=24% side=20%
+states seen: [bounce, hide, run, sleep, walk]
