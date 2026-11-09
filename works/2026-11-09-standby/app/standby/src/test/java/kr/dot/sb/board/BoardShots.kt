@@ -1,0 +1,85 @@
+package kr.dot.sb.board
+
+import androidx.compose.ui.test.junit4.createComposeRule
+import kr.dot.sb.Device
+import kr.dot.sb.Fixtures
+import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.Board
+import kr.dot.sb.model.CardType
+import kr.dot.sb.model.Layout
+import kr.dot.sb.model.Presets
+import kr.dot.sb.shot
+import kr.dot.sb.ui.board.BoardView
+import kr.dot.sb.ui.state.MediaKind
+import kr.dot.sb.ui.state.Permissions
+import kr.dot.sb.ui.state.StandbyActions
+import kr.dot.sb.ui.state.StandbyState
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.ParameterizedRobolectricTestRunner
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+
+/**
+ * Board render matrix → standby/build/shots/board/. One case per PNG (a compose rule takes one setContent per test).
+ * Cases: presets × 6 devices (day), presets on the Fold cover at night, every card alone per size class, empty states.
+ */
+@RunWith(ParameterizedRobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [34])
+class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String) {
+    @get:Rule val rule = createComposeRule()
+
+    @Test fun shot() = rule.shot("board", name, device) {
+        BoardView(board, stateOf(stateKey, board), AppConfig(), StandbyActions.NONE)
+    }
+
+    companion object {
+        private fun video(s: StandbyState) =
+            s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
+
+        /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
+        fun stateOf(key: String, b: Board): StandbyState = when (key) {
+            "night" -> Fixtures.full(1f)
+            "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
+                it.copy(media = null, weather = null, agenda = null, usage = it.usage!!.copy(offline = true, fetchedAtEpochSec = it.usage!!.fetchedAtEpochSec - 4 * 3600))
+            }
+            "emptyB" -> Fixtures.full().let {
+                it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
+            }
+            else -> Fixtures.full()
+        }.let { if (it.media != null && b.slots.any { CardType.VIDEO in it }) video(it) else it }
+
+        /** Layouts that put slot 0 into each size class (§3.3): L / M / S wide / S tall on the Fold cover, XS on the Flip. */
+        private val CLASSES = listOf(
+            Triple("L", Layout.ONE, Device.FOLD_COVER_L),
+            Triple("M", Layout.TWO, Device.FOLD_COVER_L),
+            Triple("Sw", Layout.FOUR, Device.FOLD_COVER_L),
+            Triple("St", Layout.THREE, Device.FOLD_COVER_L),
+            Triple("XS", Layout.FOUR, Device.FLIP),
+        )
+
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}")
+        fun cases(): List<Array<Any>> {
+            val out = mutableListOf<Array<Any>>()
+            for (b in Presets.boards()) {
+                for (d in Device.entries) out += arrayOf("preset-${b.id}", d, b, "full")
+                out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
+            }
+            for (t in CardType.entries) for ((cls, layout, d) in CLASSES) {
+                val b = Board("card", t.name, layout, listOf(listOf(t)))
+                out += arrayOf("card-${t.name.lowercase()}-$cls", d, b, "full")
+            }
+            val e1 = Board("empty1", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.AGENDA), listOf(CardType.WEATHER)))
+            val e2 = Board("empty2", "empty", Layout.FOUR, listOf(listOf(CardType.VIDEO), listOf(CardType.USAGE), listOf(CardType.MEMORIES), listOf(CardType.WEATHER)))
+            for (d in listOf(Device.FOLD_COVER_L, Device.FOLD_INNER)) {
+                out += arrayOf("empty-a", d, e1, "emptyA")
+                out += arrayOf("empty-b", d, e2, "emptyB")
+            }
+            out += arrayOf("empty-a-night", Device.FOLD_COVER_L, e1, "emptyAnight")
+            return out
+        }
+    }
+}
