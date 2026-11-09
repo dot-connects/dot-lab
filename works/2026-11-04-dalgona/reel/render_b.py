@@ -245,9 +245,12 @@ async def main():
             r.hand_on = True; r.zo = center; r.zk = r.zt = 1.1
             q = await r.scr(0.62, 0.55); r.mouse = q; await pg.mouse.move(*q)
             await r.press(True); r.hk = 0.94
+            await r.js("__reel.logo(1)")
             r.rec = True
+            await r.frame(24)                                 # 11-09: the logo for a second, fading off the opening
             await count(r, 1); await cap(r, "rule")
-            await r.frame(30)
+            for i in range(1, 13): await r.js(f"__reel.logo({1 - ease(i / 12)})"); await r.frame()
+            await r.frame(24)
             tip = await r.js("__ar.S.pts.reduce((m, p) => Math.hypot(...p) > Math.hypot(...m) ? p : m)")
             arm = (tip[0] * 0.55, tip[1] * 0.55)            # inside an arm of the star
             q2 = await r.scr(*arm)
@@ -310,7 +313,7 @@ async def main():
             # 11-08: up slowly from his boots to the mask, where he stands off to the left
             await r.look(30, 70, 16, hand=(0, 900)); r.hand_on = False
             r.ev("breath"); await r.look(31, 96, 26)
-            await cap(r, "watch"); r.zo = (VW / 2, VH * 0.3); r.zt = 1.18
+            r.zo = (VW / 2, VH * 0.3); r.zt = 1.18          # 11-09 operator: no caption, the look says it
             await r.frame(34)
             await r.diag("watch")
             r.rec = False; r.zk = r.zt = 1.0; r.zo = center

@@ -58,6 +58,8 @@ css.textContent = `
 #rchip{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 96px);transform:translateX(-50%);font-family:"IBM Plex Sans KR",sans-serif;font-weight:600;font-size:22px;color:#fff;background:rgba(8,10,9,.72);border-radius:999px;padding:6px 22px;opacity:0;pointer-events:none;white-space:nowrap}
 #rcount{position:absolute;left:20px;top:calc(env(safe-area-inset-top) + 40px);font-family:"IBM Plex Sans KR",sans-serif;font-weight:600;font-size:15px;color:#e9e4dc;background:rgba(10,9,8,.72);border-left:4px solid #ff4d3d;border-radius:4px;padding:6px 14px 6px 12px;opacity:0;pointer-events:none;letter-spacing:.06em;box-shadow:0 4px 14px rgba(0,0,0,.35)}
 #rcount b{display:inline-block;font-size:34px;line-height:1;color:#fff;font-variant-numeric:tabular-nums;margin-left:8px;vertical-align:-5px;letter-spacing:.02em}
+#rlogo{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:radial-gradient(90% 60% at 50% 50%,rgba(10,8,6,.72),rgba(10,8,6,.5));opacity:0;pointer-events:none}
+#rlogo img{width:230px;height:auto}
 #rhold{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;pointer-events:none}`;
 document.head.appendChild(css);
 const hud = document.querySelector(".hud");
@@ -81,7 +83,10 @@ const film = Object.assign(document.createElement("div"), { id: "rfilm" });
 film.innerHTML = '<div class="strip"></div><div class="gate"></div>';
 const strip = film.querySelector(".strip"), CELL = 300;
 let filmCells = [];
-hud.append(hold, chip, cap, clock, end, flash, film, count);   // the count stays on top of the white and the film
+// 11-09 operator: the logo over the first second, then it fades off the opening shot
+const logo = Object.assign(document.createElement("div"), { id: "rlogo" });
+logo.innerHTML = `<img src="${here("../site/logo.svg")}" alt="달고나">`;
+hud.append(hold, chip, cap, clock, end, flash, film, count, logo);   // the count stays on top of the white and the film
 // The "lens": the 3D canvas and the hand share one wrapper, so a push-in zooms both alike while the captions and the
 // clock stay put. The page still reads the pointer in unzoomed screen px, so the driver never has to think about it.
 const gl = document.getElementById("gl"), lens = document.createElement("div");
@@ -98,6 +103,7 @@ window.__reel = {
   cap(html = "", o = 1) { cap.innerHTML = html; cap.style.opacity = o; },
   end(html, o = 1) { end.style.display = html ? "flex" : "none"; end.innerHTML = html || ""; end.style.opacity = o; document.getElementById("timer").style.opacity = html ? 1 - o : 1; },
   flash(o) { flash.style.opacity = o; },
+  logo(o) { logo.style.opacity = o; },
   hold(src, o) { if (src) hold.src = src; hold.style.opacity = o; },
   chip(text, o = 1) { if (text != null) chip.textContent = text; chip.style.opacity = o; },
   count(n, o = 1) { if (n != null) count.innerHTML = `시도<b>${String(n).padStart(2, "0")}</b>`; count.style.opacity = o; },
