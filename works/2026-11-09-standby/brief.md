@@ -20,6 +20,11 @@ Operator decisions, fixed:
   closest open font, and Stencil and Rails are drawn by us from Inter.
 - Screens split into slots (2026-11-09): a board holds 1-4 slots (six layouts), each slot any card; boards are
   unlimited. New cards: YouTube Music, YouTube, timer/pomodoro, sleep sound, D-day, agenda, Claude/Codex usage.
+- Claude/Codex usage comes from the same feed 눈금 (status-widget) reads: ai-hub `ops/status.py` status.json
+  (LAN `:8765/status.json` with Bearer, or the status bot's pinned message). Reuse 눈금's fetch code (2026-11-09).
+- TVING and other video apps: controls and title only, through their media session if they publish one (check
+  with the probe's media_sessions log); no video in StandBy (2026-11-09).
+- App name and app design (icon, settings screens) are decided later (operator, 2026-11-09).
 - The 20 open unknowns in the canon stay open; where one matters, the mockup states the value we chose.
 
 ## Step 1: measuring APK (`app/`, package `kr.dot.standby.probe`)
