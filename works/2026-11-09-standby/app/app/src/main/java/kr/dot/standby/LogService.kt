@@ -60,7 +60,15 @@ class LogService : Service() {
             val extra = when (i.action) {
                 Intent.ACTION_POWER_CONNECTED, Intent.ACTION_POWER_DISCONNECTED -> Probe.battery(c)
                 AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED -> Probe.nextAlarm(c)
-                else -> i.extras?.keySet()?.joinToString(" ") { "$it=${i.extras?.get(it)}" } ?: ""
+                // exported for vendor alarm broadcasts: log primitive extras only, never unparcel arbitrary objects
+                else -> runCatching {
+                    i.extras?.keySet()?.joinToString(" ") { k ->
+                        when (val v = i.extras?.get(k)) {
+                            is Number, is Boolean, is String -> "$k=${v.toString().take(80)}"
+                            else -> k
+                        }
+                    }
+                }.getOrNull() ?: ""
             }
             log("broadcast", "${i.action} $extra")
         }
