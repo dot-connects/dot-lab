@@ -29,6 +29,8 @@ import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.UnfoldAction
+import kr.dot.sb.platform.Brightness
+import kr.dot.sb.platform.ChargeStart
 import kr.dot.sb.platform.ListenerBus
 import kr.dot.sb.platform.SleepService
 import kr.dot.sb.settings.ConfigStore
@@ -124,6 +126,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         override fun onSensorChanged(e: SensorEvent) = onAccel(e.values[0], e.values[1], e.values[2])
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
+    /** Charger out: the "start on charge" job must not wait for its rearm delay (see [ChargeStart]). */
+    private val unplugRx = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) = ChargeStart.rearmNow(ctx)
+    }
     private val nextAlarmRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { scope.launch { refreshStatic(force = true) } }
     }
@@ -138,6 +144,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         nightSw.prime(lastNight >= 0.5f) // a dream restarted in the dark starts red, not day
         sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(lightL, it, SensorManager.SENSOR_DELAY_NORMAL, 5_000_000) } // 5 s batching
         sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(accelL, it, SensorManager.SENSOR_DELAY_UI) }
+        ctx.registerReceiver(unplugRx, IntentFilter(Intent.ACTION_POWER_DISCONNECTED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(nextAlarmRx, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
         media.start()
         onConfiguration(ctx.resources.configuration.smallestScreenWidthDp, initial = true)
@@ -187,8 +194,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         started = false
         sm.unregisterListener(lightL); sm.unregisterListener(accelL)
         runCatching { ctx.unregisterReceiver(nextAlarmRx) }
+        runCatching { ctx.unregisterReceiver(unplugRx) }
         media.stop()
         lastNight = _state.value.night
+        flushBrightness()
         scope.cancel()
     }
 
@@ -242,12 +251,31 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         }
     }
 
+    private var pendingBrightness: Float? = null
+    private var brightJob: Job? = null
+
+    /** Live from the on-screen bar: shown at once, written to the config once the finger has paused (not per frame). */
+    fun setUserBrightness(v: Float) {
+        val b = Brightness.clamp(v)
+        lastBrightness = b
+        host.setBrightness(b)
+        pendingBrightness = b
+        brightJob?.cancel()
+        brightJob = scope.launch { delay(500); flushBrightness() }
+    }
+
+    private fun flushBrightness() {
+        val b = pendingBrightness ?: return
+        pendingBrightness = null
+        ConfigStore.update(ctx) { Brightness.store(it, nightTarget >= 0.5f, b) }
+    }
+
     private fun setOff(off: Boolean, nightOn: Boolean) {
         if (_state.value.displayOff != off) {
             _state.update { it.copy(displayOff = off) }
             if (off) { visibleJob?.cancel(); visibleJob = null } else startVisible()
         }
-        val b = if (off) 0.01f else if (nightOn) cfg.nightMaxBrightness else -1f
+        val b = Brightness.target(off, nightOn, cfg)
         if (b != lastBrightness) { lastBrightness = b; host.setBrightness(b) }
     }
 

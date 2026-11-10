@@ -171,6 +171,8 @@ interface StandbyActions {
     fun photoTheme(bucket: String?) {}
     /** Now Playing volume glyph: show the system volume panel. */
     fun openVolume() {}
+    /** Brightness bar: 0..1 for the window, applied live. */
+    fun setBrightness(value: Float) {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

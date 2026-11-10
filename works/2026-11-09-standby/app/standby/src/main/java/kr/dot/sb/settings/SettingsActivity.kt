@@ -48,6 +48,8 @@ class SettingsActivity : ComponentActivity() {
         granted.value = Perms.granted(this)
         setContent {
             val config by ConfigStore.flow(this).collectAsState()
+            // app start and every toggle: the job exists iff the option is on
+            androidx.compose.runtime.LaunchedEffect(config.startOnCharge) { kr.dot.sb.platform.ChargeStart.sync(this@SettingsActivity) }
             // StandBy opens settings at a section: "board:<id>", "clock:<FACE>", or a permission need ("photos")
             val section = intent.getStringExtra("section")
             var stack by rememberSaveable {

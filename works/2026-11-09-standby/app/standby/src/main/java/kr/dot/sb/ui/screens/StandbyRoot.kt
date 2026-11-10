@@ -31,6 +31,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.UnfoldAction
+import kr.dot.sb.platform.Brightness
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
@@ -67,6 +69,8 @@ import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.Motion
 import java.time.LocalDateTime
 import kotlin.math.abs
+
+internal const val BAR_HIDE_MS = 2_500L
 
 /** Widgets, Photos, Clocks come first (spec §1c); user boards follow. */
 internal const val FIXED_PAGES = 3
@@ -83,7 +87,7 @@ internal fun topLayer(state: StandbyState, config: AppConfig, nowPlayingOpen: Bo
 }
 
 /** Test hook: start on clock face [face], in clock edit mode (optionally with the colour sheet), or with Now Playing open. */
-internal data class RootStart(val edit: Boolean = false, val sheet: Boolean = false, val nowPlaying: Boolean = false, val face: Int = 0)
+internal data class RootStart(val edit: Boolean = false, val sheet: Boolean = false, val nowPlaying: Boolean = false, val face: Int = 0, val bar: Boolean = false)
 
 /**
  * The whole StandBy surface: horizontal pages (widgets, photos, clocks, boards), the interrupt layers, night, the
@@ -129,9 +133,19 @@ internal fun RootImpl(
     }
     if (state.media == null && npOpen) npOpen = false
 
+    // Brightness bar: swipe down from the top edge opens it, 2.5 s after the last touch it closes (day value or night cap).
+    val nightNow = state.night >= 0.5f
+    var barOn by remember { mutableStateOf(start.bar) }
+    var level by remember { mutableFloatStateOf(Brightness.shown(nightNow, config)) }
+    var barPressed by remember { mutableStateOf(false) }
+    var barTick by remember { mutableIntStateOf(0) }
+    val canBar by rememberUpdatedState(!state.displayOff && !editing && topLayer(state, config, npOpen) == Layer.NONE)
+    val barOpen by rememberUpdatedState({ level = Brightness.shown(nightNow, config); barOn = true; barTick++ })
+    LaunchedEffect(barOn, barTick, barPressed) { if (barOn && !barPressed) { delay(BAR_HIDE_MS); barOn = false } }
+
     BoxWithConstraints(
         modifier.fillMaxSize().background(Color.Black)
-            .pointerInput(Unit) { rootGestures({ act.userActivity() }, { act.exit() }) },
+            .pointerInput(Unit) { rootGestures({ act.userActivity() }, { act.exit() }, { canBar }, { barOpen() }) },
     ) {
         // Display off: pure black, nothing else composed; the root gesture above is the tap catcher (spec E14).
         if (state.displayOff) return@BoxWithConstraints
@@ -173,6 +187,11 @@ internal fun RootImpl(
                 }
                 Overlays(state, config, actions, layer, editing, onNowPlaying = { npOpen = it })
             }
+            val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
+            if (a > 0f) BrightnessBar(
+                level, { v -> level = v; barTick++; act.setBrightness(v) }, { barPressed = it }, w, h,
+                Modifier.align(Alignment.TopCenter).alpha(a),
+            )
             // keep the system back-swipe off the board pager's edges (spec E4/R7); the system honours ~200 dp per edge
             Box(Modifier.align(Alignment.CenterStart).size(24.dp, 200.dp).systemGestureExclusion())
             Box(Modifier.align(Alignment.CenterEnd).size(24.dp, 200.dp).systemGestureExclusion())
@@ -201,11 +220,25 @@ private fun BoardPage(board: Board, state: StandbyState, config: AppConfig, acti
  * Root gesture: every touch reports user activity; a swipe up that starts in the bottom 48 dp and travels more than
  * 30 % of the height leaves StandBy (spec E8). Runs in the Initial pass so it claims the swipe before pagers do.
  */
-private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.rootGestures(onTouch: () -> Unit, onExit: () -> Unit) {
+private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.rootGestures(
+    onTouch: () -> Unit, onExit: () -> Unit, canOpenBar: () -> Boolean, onOpenBar: () -> Unit,
+) {
     val edge = 48.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         onTouch()
+        if (down.position.y < edge && canOpenBar()) {
+            // top edge: a downward drag > 24 dp opens the brightness bar; claimed so the pager and card stacks stay still
+            var claimed = false
+            while (true) {
+                val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
+                if (!c.pressed) break
+                val dy = c.position.y - down.position.y
+                if (!claimed && dy > 24.dp.toPx() && dy > abs(c.position.x - down.position.x)) { claimed = true; onOpenBar() }
+                if (claimed) c.consume()
+            }
+            return@awaitEachGesture
+        }
         if (down.position.y < size.height - edge) return@awaitEachGesture
         var claimed = false
         while (true) {

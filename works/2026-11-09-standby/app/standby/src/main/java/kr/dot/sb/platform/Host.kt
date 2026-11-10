@@ -101,6 +101,7 @@ class HostActions(
     }
     override fun userActivity() = holder.touch()
     override fun pageChanged(page: Int) = holder.onPage(page)
+    override fun setBrightness(value: Float) = holder.setUserBrightness(value)
     override fun exit() = host.finish()
 }
 

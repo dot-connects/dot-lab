@@ -60,10 +60,12 @@ object ListenerBus {
 object Channels {
     const val GLOW = "glow"
     const val SLEEP = "sleep"
+    const val CHARGE = "charge"
 
     fun ensure(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(GLOW, "무드등", NotificationManager.IMPORTANCE_HIGH).apply { setSound(null, null) })
+        nm.createNotificationChannel(NotificationChannel(CHARGE, "충전 시작", NotificationManager.IMPORTANCE_HIGH).apply { setSound(null, null) })
         nm.createNotificationChannel(NotificationChannel(SLEEP, "수면 소리", NotificationManager.IMPORTANCE_LOW))
     }
 }
