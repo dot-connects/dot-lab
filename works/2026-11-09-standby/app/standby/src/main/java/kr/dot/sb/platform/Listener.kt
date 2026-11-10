@@ -90,7 +90,8 @@ class Listener : NotificationListenerService() {
         }
         getSystemService(AudioManager::class.java).registerAudioPlaybackCallback(audio, handler)
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
-        runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, null) }
+        val rm0 = runCatching { currentRanking }.getOrNull()
+        runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()
     }
 
@@ -168,10 +169,16 @@ class Listener : NotificationListenerService() {
     /** The user's lock-screen settings; an unreadable "show content" counts as off (the strict answer). */
     private fun lockScreen(): LockScreen {
         fun on(key: String, unreadable: Boolean) = runCatching { Settings.Secure.getInt(contentResolver, key, 1) != 0 }.getOrDefault(unreadable)
+        // a device policy (work/MDM) can switch either one off regardless of the user's own toggles
+        val policy = runCatching {
+            getSystemService(android.app.admin.DevicePolicyManager::class.java).getKeyguardDisabledFeatures(null)
+        }.getOrDefault(0)
         return LockScreen(
             secure = getSystemService(KeyguardManager::class.java).isDeviceSecure,
-            showOnLock = on("lock_screen_show_notifications", true),
-            allowPrivate = on("lock_screen_allow_private_notifications", false),
+            showOnLock = on("lock_screen_show_notifications", true) &&
+                policy and android.app.admin.DevicePolicyManager.KEYGUARD_DISABLE_SECURE_NOTIFICATIONS == 0,
+            allowPrivate = on("lock_screen_allow_private_notifications", false) &&
+                policy and android.app.admin.DevicePolicyManager.KEYGUARD_DISABLE_UNREDACTED_NOTIFICATIONS == 0,
         )
     }
 
@@ -179,7 +186,12 @@ class Listener : NotificationListenerService() {
         val n = sbn.notification
         return NotifPrivacy.reveal(
             visibility = n.visibility,
-            channelOverride = rank?.lockscreenVisibilityOverride ?: NotifPrivacy.NO_OVERRIDE,
+            // no ranking, or another profile (work) whose own lock-screen settings we can't read: the strict answer
+            channelOverride = when {
+                sbn.user != android.os.Process.myUserHandle() -> Notification.VISIBILITY_PRIVATE
+                rank == null -> Notification.VISIBILITY_PRIVATE
+                else -> rank.lockscreenVisibilityOverride
+            },
             secure = lock.secure, showOnLock = lock.showOnLock, allowPrivate = lock.allowPrivate,
             hasPublic = n.publicVersion != null, tapOnly = tapOnly,
         )
