@@ -23,7 +23,7 @@
 <body>
 <main>
   <h1>잡은 사진 변신 시안</h1>
-  <p>같은 사진 3장을 세 방식으로. <b>3 AI 변신</b>은 사진을 서버(이미지 AI)로 보내 10~60초 · <b>2 툰 필터</b>와 <b>1 털뭉치</b>는 폰 안에서 바로.</p>
+  <p>같은 사진 3장을 세 방식으로. <b>3a·3b AI</b>는 사진을 서버(이미지 AI)로 보내 10~60초 · <b>2 툰 필터</b>와 <b>1 털뭉치</b>는 폰 안에서 바로.</p>
   <div id="list"></div>
 </main>
 <script>window.onerror = (m) => { document.getElementById("list").textContent = "오류: " + m; };</script>
@@ -51,7 +51,7 @@ const pals = await Promise.all(blobs.map(paletteOf)), toons = await Promise.all(
 for (const [i, [f, kind, ko]] of SET.entries()) {
   const src = `../out/s2/${f}-cut.png`, pal = pals[i], spec = specFor(kind, pal, { id: f, name: ko });
   const el = document.createElement("div"); el.className = "row";
-  el.innerHTML = `<div class="cap">${ko}</div><div><img alt="원래 사진" src="${src}"><div class="sw">원래 사진</div></div><div><img alt="AI" src="../out/ai/${f}-ai.jpg"><div class="sw">3 AI 변신</div></div><div><img alt="툰" src="${toons[i]}"><div class="sw">2 툰 필터</div></div>
+  el.innerHTML = `<div class="cap">${ko}</div><div><img alt="원래 사진" src="${src}"><div class="sw">원래 사진</div></div><div><img alt="AI" src="../out/ai/${f}-ai.jpg"><div class="sw">3a AI 털뭉치</div></div><div><img alt="AI 피규어" src="../out/ai/${f}-fig.jpg"><div class="sw">3b AI 3D 피규어</div></div><div><img alt="툰" src="${toons[i]}"><div class="sw">2 툰 필터</div></div>
     <div><img alt="변신" src="${shot(spec)}"><div class="sw">1 털뭉치 ${Object.values(pal).filter(c => typeof c === "string").map(c => `<i style="background:${c}"></i>`).join("")}</div></div>`;
   L.append(el);
 }
