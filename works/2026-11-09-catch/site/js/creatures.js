@@ -175,6 +175,8 @@ function build(spec) {
   for (const s of [-1, 1]) {
     const eye = spec.style === "paper" ? new THREE.CircleGeometry(er, 6) : new THREE.SphereGeometry(er, 16, 12).scale(1, 1.18, 0.45);
     flat(eye, INK, [s * f.x, f.y], { mat: inkMat, parent: eyes });
+    if (f.shine) flat(new THREE.CircleGeometry(er * 0.38, 12), 0, [s * f.x - er * 0.5, f.y + er * 0.7],
+      { mat: new THREE.MeshBasicMaterial({ color: 0xffffff }), out: er * 0.5, parent: eyes });
     flat(new THREE.TorusGeometry(er * 1.05, er * 0.3, 6, 14, Math.PI), INK, [s * f.x, f.y - 0.02], { mat: inkMat, parent: happy });
     if (f.blush) {
       const b = flat(new THREE.CircleGeometry(er * 1.5, spec.style === "paper" ? 6 : 20), 0, [s * (f.x + 0.2), f.y - 0.17],
@@ -272,6 +274,43 @@ export function makeCreature(spec) {
 // ---------- the dex: 3 looks x 3 creatures ----------
 // angles: face.x = eye yaw from the front, face.y = eye pitch (radians); parts on a body use on_at [yaw, pitch]
 export const SPECS = [
+  // Chiikawa trio (operator request 2026-11-10): big head over a small body, dot eyes with a shine, pink blush
+  { id: "chiikawa", name: "치이카와", group: "chiikawa", style: "mochi", color: "#fbfaf7", height: 0.3,
+    bodies: [
+      { r: [0.5, 0.4, 0.42], taper: 0.05, c: [0, 0.2, 0] },
+      { r: [0.3, 0.26, 0.27], flat: 0.3, c: [0, -0.32, -0.02] },
+    ],
+    face: { x: 0.3, y: -0.06, r: 0.064, blush: "#f6b2b8", shine: true },
+    parts: [
+      { kind: "blob", r: [0.11, 0.1, 0.07], on: "head", on_at: [0.85, 0.7], out: 0.07, mirror: true, rot: [0, 0, -0.6], wob: 0.3 },
+      { kind: "blob", r: [0.07, 0.11, 0.07], c: [0.3, -0.25, 0.08], rot: [0, 0, 0.5], mirror: true, wob: 0.6 },
+      { kind: "blob", r: [0.09, 0.05, 0.1], c: [0.13, -0.56, 0.06], mirror: true },
+    ] },
+  { id: "hachiware", name: "하치와레", group: "chiikawa", style: "mochi", color: "#fbfaf7", height: 0.31,
+    bodies: [
+      { r: [0.5, 0.4, 0.42], taper: 0.05, c: [0, 0.2, 0] },
+      { r: [0.3, 0.26, 0.27], flat: 0.3, c: [0, -0.32, -0.02] },
+    ],
+    face: { x: 0.3, y: -0.08, r: 0.064, blush: "#f6b2b8", shine: true },
+    parts: [
+      // the split cap: two blue-grey lobes over the crown leaving a white V on the forehead
+      { kind: "blob", r: [0.34, 0.27, 0.41], c: [0.22, 0.4, -0.05], mirror: true, color: "#9fb2cf" },
+      { kind: "cone", r: 0.11, h: 0.17, on: "head", on_at: [0.8, 0.9], out: 0.17, mirror: true, rot: [0, 0, -0.5], color: "#9fb2cf", inner: "#f3cfd3" },
+      { kind: "blob", r: [0.07, 0.11, 0.07], c: [0.3, -0.25, 0.08], rot: [0, 0, 0.5], mirror: true, wob: 0.6 },
+      { kind: "blob", r: [0.09, 0.05, 0.1], c: [0.13, -0.56, 0.06], mirror: true },
+    ] },
+  { id: "usagi", name: "우사기", group: "chiikawa", style: "mochi", color: "#f8e9a8", height: 0.42,
+    bodies: [
+      { r: [0.46, 0.38, 0.4], taper: 0.05, c: [0, 0.2, 0] },
+      { r: [0.28, 0.27, 0.26], flat: 0.3, c: [0, -0.32, -0.02] },
+    ],
+    face: { x: 0.29, y: -0.06, r: 0.06, blush: "#f4aeb0", shine: true },
+    parts: [
+      { kind: "blob", r: [0.09, 0.32, 0.07], off: [0, 0.28, 0], on: "head", on_at: [0.3, 1.15], out: -0.04, mirror: true, rot: [0, 0, -0.12], wob: 0.9 },
+      { kind: "blob", r: [0.07, 0.11, 0.07], c: [0.28, -0.25, 0.08], rot: [0, 0, 0.5], mirror: true, wob: 0.6 },
+      { kind: "blob", r: [0.09, 0.05, 0.1], c: [0.13, -0.57, 0.06], mirror: true },
+    ] },
+
   // A. 말랑 — matte toon clay with a thin warm line
   { id: "mongsil", name: "몽실", style: "mochi", color: "#f8f4ec", height: 0.3,
     body: { r: [0.5, 0.42, 0.46], taper: 0.12, flat: 0.35 },

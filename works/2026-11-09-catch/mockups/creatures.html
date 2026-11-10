@@ -36,6 +36,9 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 import { makeCreature, SPECS } from "../site/js/creatures.js";
 
 const DIRS = [
+  { style: "chiikawa", name: "치이카와", en: "chiikawa trio",
+    concept: "치이카와·하치와레·우사기를 말랑 방식(무광 찰흙 + 얇은 선)으로 세웠다.",
+    why: "큰 머리·점 눈·볼터치가 그대로라 방 바닥 위에서도 바로 알아본다." },
   { style: "mochi", name: "A. 말랑", en: "matte clay + thin line",
     concept: "무광 찰흙 덩어리에 얇은 선 한 줄, 점 눈. 그림체를 그대로 3D 로 세운 느낌.",
     why: "카메라 화면이 아무리 복잡해도 얇은 윤곽선이 몸을 배경에서 떼어 내서 바로 '여기 있다'가 보인다." },
@@ -64,14 +67,14 @@ for (const d of DIRS) {
   const sec = document.createElement("section");
   sec.innerHTML = `<h2>${d.name}<small>${d.en}</small></h2><p class="concept">${d.concept}</p><p class="why">${d.why}</p>`;
   dex.append(sec);
-  for (const spec of SPECS.filter(s => s.style === d.style)) {
+  for (const spec of SPECS.filter(s => (s.group || s.style) === d.style)) {
     const el = document.createElement("div"); el.className = "card";
     el.innerHTML = `<canvas></canvas><span class="tag">${spec.name}</span><span class="pose"></span>`;
     sec.append(el);
     const c = makeCreature(spec), scene = new THREE.Scene();
     scene.background = room; scene.add(c.object3d);
     // look down at the floor from a phone held low (≈0.9 m up, 1 m away), each card facing another spot of the room
-    const yaw = [0.78, 0.86, 0.94, 0.72, 0.84, 0.9, 0.8, 0.96, 0.74][n];   // the wooden floor part of the panorama
+    const yaw = [0.78, 0.86, 0.94, 0.72, 0.84, 0.9, 0.8, 0.96, 0.74][n % 9];   // the wooden floor part of the panorama
     const cam = new THREE.PerspectiveCamera(36, 4 / 3, 0.05, 50);
     cam.position.set(Math.sin(yaw) * 0.95, 0.9, Math.cos(yaw) * 0.95); cam.lookAt(0, 0.13, 0);
     c.object3d.rotation.y = yaw;
