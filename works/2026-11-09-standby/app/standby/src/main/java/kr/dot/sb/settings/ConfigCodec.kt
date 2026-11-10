@@ -18,6 +18,7 @@ import java.time.LocalDate
  */
 object ConfigCodec {
     fun encode(c: AppConfig): String = JSONObject().apply {
+        put("theme", c.theme.name)
         put("styles", JSONObject().also { o -> c.styles.forEach { (f, s) -> o.put(f.name, style(s)) } })
         put("boards", JSONArray().also { a -> c.boards.forEach { a.put(board(it)) } })
         put("startPage", c.startPage)
@@ -61,6 +62,7 @@ object ConfigCodec {
         val d = AppConfig()
         val styles = o.optJSONObject("styles")
         return AppConfig(
+            theme = enumOf(o, "theme", d.theme),
             styles = FaceId.entries.associateWith { f ->
                 val so = styles?.optJSONObject(f.name)
                 if (so == null) ClockStyle.default(f) else style(so, ClockStyle.default(f))

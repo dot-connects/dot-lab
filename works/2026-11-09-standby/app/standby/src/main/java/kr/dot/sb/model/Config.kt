@@ -34,8 +34,11 @@ enum class Numerals(val ko: String, val digits: String) {
 
     fun convert(s: String): String = if (this == LATN) s else s.map { c -> if (c in '0'..'9') digits[c - '0'] else c }.joinToString("")
 }
+/** The look of every StandBy surface (mockup r5): A = iPhone (default), B = newspaper front page, C = mood lamp. */
+enum class Theme(val ko: String) { IPHONE("아이폰 그대로"), PAPER("신문 1면"), MOODLIGHT("무드등") }
+
 enum class ClockLayout(val ko: String) { IPHONE("아이폰"), CENTER("가운데"), TWO_LINES("두 줄") }
-enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음") }
+enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음"), DUO("Duo") }
 enum class AnalogTicks(val ko: String) { IPHONE("아이폰"), SHORT("짧게"), HOURS("정시만"), NONE("없음") }
 
 /** Full-screen clock faces in vertical-swipe order (spec C1), plus the two other places a styled time appears. */
@@ -73,14 +76,18 @@ data class ClockStyle(
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */
         fun default(face: FaceId): ClockStyle = when (face) {
-            FaceId.DIGITAL, FaceId.DESK -> ClockStyle(FontId.CONDENSED, 600, color = 0xFF76A6F3)
+            FaceId.DIGITAL, FaceId.DESK -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
             FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFF4D9BEF)
             FaceId.SOLAR -> ClockStyle(
                 FontId.THIN, 350, color = 0xFFDCCAF7, color2 = 0xFF9DF0F7, effect = Effect.TWO_COLOR,
                 background = Background.GRADIENT, bgColor = 0xFFA396AE, bgColor2 = 0xFFB4E6E2,
             )
             FaceId.WORLD -> ClockStyle(FontId.LIGHT, 400, color = 0xFFFFAF3B)
-            FaceId.ANALOG -> ClockStyle(FontId.ROUNDED, 700, widthPct = 130, color = 0xFFE9893A)
+            // iPhone Duo analog (mockup r5 A): 8 pale-blue rounded numerals, white hands, blue second hand
+            FaceId.ANALOG -> ClockStyle(
+                FontId.ROUNDED, 800, widthPct = 115, color = 0xFF76A6F3, analogNumbers = AnalogNumbers.DUO,
+                numeralColor = 0xFFCFEAFF, handColor = 0xFFFFFFFF, secondColor = 0xFF76A6F3, weekdayColor = 0xFFFFFFFF, tickColor = 0xFFDDE6F0,
+            )
             FaceId.PHOTOS_TIME -> ClockStyle(FontId.BOLD, 600, color = 0xFFFFFFFF)
         }
 
@@ -169,6 +176,8 @@ data class AppConfig(
     val sleepMinutes: Int = 45,
     val focusMinutes: Int = 25,
     val breakMinutes: Int = 5,
+    /** Look of every StandBy surface; clock styles stay per clock on top of it. */
+    val theme: Theme = Theme.IPHONE,
 )
 
 object Presets {

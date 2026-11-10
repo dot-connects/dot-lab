@@ -75,6 +75,7 @@ private class Dial(w: Float, h: Float, val rect: Boolean) {
 internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
     val p = rememberTimePainter(style)
     val ui = rememberUi(600)
+    val ui2 = rememberUi(600)
     val numLook = Look.of(style, ink, base = Color(style.numeralColor), effects = false)
     val tick = ink.mapped(Color(style.tickColor)).toArgb()
     val hand = ink.accent(Color(style.handColor)).toArgb()
@@ -97,9 +98,11 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
         FaceCanvas(Modifier.graphicsLayer()) {
             val w = size.width; val h = size.height
             val dial = Dial(w, h, rect = !inSlot && w > h * 1.2f)
+            if (dial.rect && style.analogNumbers == AnalogNumbers.DUO) return@FaceCanvas duo(w, h, d, style, p, numLook, ui, tick, hand, wkday, white, bg)
             val xs = inSlot && SizeClass.of(Sizes.of(w.toDp(), h.toDp()).s) == SizeClass.XS
             val s = min(w, h); val u = dial.u
-            val numbers = if (xs) AnalogNumbers.NONE else style.analogNumbers
+            // Duo's eight-numeral layout needs the wide rect dial; a round dial shows all twelve
+            val numbers = if (xs) AnalogNumbers.NONE else if (style.analogNumbers == AnalogNumbers.DUO) AnalogNumbers.TWELVE else style.analogNumbers
             val ticks = if (xs) AnalogTicks.HOURS else style.analogTicks
             val ringNums = numbers == AnalogNumbers.TWELVE || numbers == AnalogNumbers.ROMAN
             val major = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = tick; strokeWidth = 0.028f * u; strokeCap = Paint.Cap.ROUND }
@@ -211,6 +214,25 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
         FaceCanvas(Modifier.fillMaxSize().graphicsLayer()) {
             val w = size.width; val h = size.height
             val dial = Dial(w, h, rect = !inSlot && w > h * 1.2f)
+            if (dial.rect && style.analogNumbers == AnalogNumbers.DUO) {
+                // iPhone Duo: thin second hand with a tail, centre cap, and the "9:41:10" readout left of centre
+                val k = h / 475f; val cx = w / 2; val cy = h / 2
+                val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = sec; strokeWidth = 3.5f * k; strokeCap = Paint.Cap.ROUND }
+                val cap = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = hand }
+                ui2.textSize = 0.06f * h
+                ui2.color = white
+                ui2.textAlign = Paint.Align.CENTER
+                val base = cy + ui2.textSize * ui2.capRatio() / 2
+                return@FaceCanvas {
+                    val sNow = second.intValue
+                    drawText("${d.h}:${d.m}:${"%02d".format(sNow)}", cx - 0.149f * w, base, ui2)
+                    val an = sNow * Math.PI.toFloat() / 30f
+                    val dx = sin(an); val dy = -cos(an)
+                    drawLine(cx - dx * 30f * k, cy - dy * 30f * k, cx + dx * 200f * k, cy + dy * 200f * k, sp)
+                    drawCircle(cx, cy, 9f * k, cap)
+                    drawCircle(cx, cy, 4f * k, sp)
+                }
+            }
             val u = dial.u
             val reach = if (dial.rect) dial.hh * 0.97f else u * 0.88f
             val sp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = sec; strokeWidth = 0.02f * u; strokeCap = Paint.Cap.ROUND }
@@ -223,6 +245,61 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
                 drawCircle(dial.cx, dial.cy, 0.02f * u, dot)
             }
         }
+    }
+}
+
+/**
+ * iPhone Duo analog (mockup r5 A, frame ip-analog-duo): on the wide screen, eight numerals (12 2 3 4 6 8 9 10) sit on a
+ * rounded-rect ring, ticks at 1 5 7 11, short dashes inside 3 and 9, weekday + day right of centre, white hands with a
+ * black outline. Geometry in the mockup's 751 × 475 units, scaled by the height.
+ */
+private fun duo(
+    w: Float, h: Float, d: FaceData, style: ClockStyle, p: TimePainter, numLook: Look, ui: android.text.TextPaint,
+    tick: Int, hand: Int, wkday: Int, white: Int, bg: Pair<Int, Int>?,
+): Canvas.() -> Unit {
+    val k = h / 475f; val cx = w / 2; val cy = h / 2
+    val rx = 0.389f * w; val ry = 172f * k
+    fun onRect(deg: Float, inset: Float): Pair<Float, Float> {
+        val a = Math.toRadians(deg.toDouble())
+        val sx = sin(a).toFloat(); val sy = -cos(a).toFloat()
+        val t = min((rx - inset) / max(abs(sx), 1e-6f), (ry - inset) / max(abs(sy), 1e-6f))
+        return (cx + sx * t) to (cy + sy * t)
+    }
+    val numSize = 80f * k * 0.73f / p.capEm * style.sizePct / 100f
+    val labels = mapOf(0 to "12", 2 to "2", 3 to "3", 4 to "4", 6 to "6", 8 to "8", 9 to "9", 10 to "10")
+    val tp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = tick; strokeWidth = 7f * k; strokeCap = Paint.Cap.ROUND }
+    val dash = Paint(tp).apply { strokeWidth = 5f * k }
+    ui.textSize = 0.06f * h
+    val date = listOf(Seg(d.weekday + " ", wkday), Seg(d.day.toString(), white))
+    val dateX = cx + 0.149f * w - ui.width(date) / 2
+    val dateBase = cy + ui.textSize * ui.capRatio() / 2
+    val m = d.now.minute; val hr = d.now.hour % 12 + m / 60f
+    val outline = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.Black.toArgb(); strokeCap = Paint.Cap.ROUND }
+    val hp = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = hand; strokeCap = Paint.Cap.ROUND }
+    fun Canvas.handLine(deg: Float, len: Float, width: Float) {
+        val a = Math.toRadians(deg.toDouble())
+        val ex = cx + sin(a).toFloat() * len; val ey = cy - cos(a).toFloat() * len
+        outline.strokeWidth = width + 6f * k; drawLine(cx, cy, ex, ey, outline)
+        hp.strokeWidth = width; drawLine(cx, cy, ex, ey, hp)
+    }
+    return {
+        drawFaceBg(bg, w, h, 0f)
+        for (i in 1..12) {
+            val hNum = i % 12
+            val label = labels[hNum]
+            if (label != null) {
+                val (x, y) = onRect(i * 30f, 0f)
+                p.draw(this, label, x - p.measure(label, numSize) / 2, y + p.capEm * numSize / 2, numSize, numLook)
+            } else {
+                val (x1, y1) = onRect(i * 30f, 18f * k); val (x2, y2) = onRect(i * 30f, 58f * k)
+                drawLine(x1, y1, x2, y2, tp)
+            }
+        }
+        drawLine(cx - 222f * w / 751f, cy, cx - 196f * w / 751f, cy, dash)
+        drawLine(cx + 196f * w / 751f, cy, cx + 222f * w / 751f, cy, dash)
+        drawSegs(date, dateX, dateBase, ui)
+        handLine(hr * 30f, 112f * k, 14f * k)
+        handLine(m * 6f, 178f * k, 10f * k)
     }
 }
 

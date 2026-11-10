@@ -382,7 +382,7 @@ fun PermsScreen(env: SettingsEnv, back: () -> Unit) {
 
 // ---- about ------------------------------------------------------------------------------------------------------
 
-private val FONT_NAMES = mapOf("inter" to "Inter", "nunito" to "Nunito", "oswald" to "Oswald", "pretendard" to "Pretendard", "sourceserif4" to "Source Serif 4", "robotoslab" to "Roboto Slab")
+private val FONT_NAMES = mapOf("inter" to "Inter", "nunito" to "Nunito", "pretendard" to "Pretendard", "sourceserif4" to "Source Serif 4", "robotoslab" to "Roboto Slab", "sofiasansextracondensed" to "Sofia Sans Extra Condensed", "mplusrounded1c" to "M PLUS Rounded 1c")
 
 @Composable
 fun AboutScreen(env: SettingsEnv, back: () -> Unit) {

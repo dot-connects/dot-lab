@@ -22,6 +22,8 @@ import kr.dot.sb.model.Effect
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
 import kotlin.math.max
@@ -89,20 +91,21 @@ internal fun Canvas.drawTime(p: TimePainter, d: FaceData, size: Float, twoLines:
 
 @Composable
 internal fun rememberUi(weight: Int): TextPaint {
-    val tf = rememberTypeface(Fonts.ui(weight), weight)
+    val tf = rememberTypeface(LocalTheme.current.words(weight), weight)
     return androidx.compose.runtime.remember(tf) { uiPaint(tf, weight) }
 }
 
 /* ------------------------------------------------------------------ Digital */
 
 /** Side column width reserved on Digital (review X1): fixed so the hero never shrinks for a long label. */
-private val SIDE_MIN = 120.dp
+private val SIDE_MIN = 100.dp
 
 @Composable
 internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
     val p = rememberTimePainter(style)
-    val ui = rememberUi(600)
+    val ui = rememberUi(500)
     val look = Look.of(style, ink)
+    val slotLabel = LocalSlotLabel.current
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val portrait = h > w * 1.15f
@@ -113,10 +116,15 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
 
         if (inSlot) {
             val sz = Sizes.of(w.toDp(), h.toDp())
-            val xs = SizeClass.of(sz.s) == SizeClass.XS
+            // the card already took its pad off: only a really small box drops the date line
+            val xs = sz.s < 140.dp
             val two = style.layout == ClockLayout.TWO_LINES || portrait
-            ui.textSize = sz.label.toPx()
-            val info = if (xs || !style.showInfo) null else listOf(Seg(d.dateLong, grey))
+            // r5 desk: "월요일 11월 9일 · 7°" right under the digits, weekday in the clock colour
+            ui.textSize = slotLabel?.toPx() ?: max(18.dp.toPx(), 0.075f * min(w, h))
+            val info = if (xs || !style.showInfo) null else buildList {
+                add(Seg("${d.weekday}요일 ", accent)); add(Seg("${d.month}월 ${d.day}일", white))
+                d.temp?.let { add(Seg(" · $it", white)) }
+            }.let { segs -> if (ui.width(segs) > w) listOf(Seg("${d.weekday}요일 ", accent), Seg("${d.month}월 ${d.day}일", white)) else segs }
             val infoH = if (info == null) 0f else ui.textSize * capR + sz.label.toPx() * 0.9f
             val gap = h * 0.04f
             val maxCap = ((if (xs) h * 0.8f else h * 0.86f - sz.pad.toPx() - infoH) - if (two) gap else 0f) / (if (two) 2 else 1) * sizePct
@@ -148,13 +156,15 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
         when (layout) {
             ClockLayout.IPHONE -> {
                 val sideW = max(SIDE_MIN.toPx(), rows.maxOf { ui.width(it) })
-                val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.05f * w
-                val fs = fitSize(p, d, false, 0.69f * h * sizePct, w - 2 * margin - sideW - g)
+                val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.025f * w
+                // r5: digits as big as the iPhone's (≥ 60 % H): the side column may use half the right margin, and
+                // Sofia has no kerning to reserve slack for (×1.03 cancels widestEm's slack)
+                val fs = fitSize(p, d, false, 0.69f * h * sizePct, (w - 1.5f * margin - sideW - g) * 1.03f)
                 val cap = p.capEm * fs
                 // digits centred in the class's reserved width, so the side column never moves within the hour class
                 val res = p.widestEm(d.h.length, d.use24h) * fs
                 val tw = p.measureHm(d.h, d.m, fs)
-                val x0 = (w - (res + g + sideW)) / 2
+                val x0 = margin + (w - 1.5f * margin - (res + g + sideW)) / 2
                 val capTop = (h - cap) / 2
                 val step = ui.textSize * 1.25f
                 return@FaceCanvas {

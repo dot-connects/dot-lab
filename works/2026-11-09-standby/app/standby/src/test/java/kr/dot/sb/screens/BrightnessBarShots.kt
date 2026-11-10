@@ -5,6 +5,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
 import kr.dot.sb.ui.screens.RootImpl
 import kr.dot.sb.ui.screens.RootStart
@@ -25,7 +26,7 @@ class BrightnessBarShots {
 
     private fun shot(name: String, night: Float, day: Float?) {
         rule.mainClock.autoAdvance = false
-        rule.shot("brightness", name, Device.FOLD_COVER_L) {
+        rule.shot("brightness", name, Device.FOLD_COVER_L, Theme.IPHONE) {
             RootImpl(Fixtures.full(night), AppConfig(dayBrightness = day, nightMaxBrightness = 0.3f), StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = true))
         }
     }

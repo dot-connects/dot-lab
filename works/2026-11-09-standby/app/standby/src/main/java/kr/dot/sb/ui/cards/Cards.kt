@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
@@ -48,29 +49,31 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.CardType
-import kr.dot.sb.model.ClockStyle
-import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
-import kr.dot.sb.model.FontId
 import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.state.UsageWindow
 import kr.dot.sb.ui.state.WeatherInfo
-import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalSlotLabel
+import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
+import kr.dot.sb.ui.theme.Surface
+import kr.dot.sb.ui.theme.Themes
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * One card filling its slot (design-system §4). Size class, shape and text sizes come from the slot size; [look]
- * carries the board-level rules (accent, hero, shared label size and pad). [slotId] keys per-slot state (timers).
+ * One card filling its slot (design-system §4, mockup r5). Size class, shape and text sizes come from the slot size;
+ * [look] carries the board-level rules (accent, hero, shared label size and pad). [slotId] keys per-slot state (timers).
+ * Colours, fonts, sizes and the card surface come from the theme ([config].theme).
  */
 @Composable
 fun CardView(
@@ -81,34 +84,41 @@ fun CardView(
     modifier: Modifier = Modifier,
     slotId: String = type.name,
     look: CardLook = CardLook.of(config),
-) {
+) = ProvideTheme(config.theme) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
-        val ink = remember(state.night, look.accent) { Ink.of(state.night, look.accent) }
-        val style = config.styles[look.clockFace] ?: ClockStyle.default(look.clockFace)
+        val t = Themes.of(config.theme)
+        val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t.palette) }
         val today = state.now.toLocalDate()
-        val e = remember(w, h, ink, look, style.font, style.weight, slotId, today) {
-            val own = Sizes.of(w, h)
+        val e = remember(w, h, ink, look, slotId, today, t) {
+            val own = Sizes.of(w, h, r = t.ramp)
             Env(
                 w, h, own.copy(label = look.labelSize ?: own.label, pad = look.pad ?: own.pad), own.label, ink, look,
-                Fonts.clock(style.font, style.weight), capOf(style.font), slotId, today,
+                t.numerals, t.numeralsCap, slotId, today, t,
             )
         }
-        CompositionLocalProvider(LocalInk provides ink) {
-            when (type) {
-                CardType.CLOCK -> ClockCard(e, state, config)
-                CardType.ANALOG -> AnalogCard(e, state, config)
-                CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
-                CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO)
-                CardType.TIMER -> TimerCard(e, state, config, actions)
-                CardType.SLEEP -> SleepCard(e, state, config, actions)
-                CardType.DDAY -> DdayCard(e, config)
-                CardType.AGENDA -> AgendaCard(e, state, actions)
-                CardType.USAGE -> UsageCard(e, state, actions)
-                CardType.WEATHER -> WeatherCard(e, state, config, actions)
-                CardType.CALENDAR -> CalendarCard(e)
-                CardType.MEMORIES -> MemoriesCard(e, state, actions)
+        val surface = when (t.surface) {
+            Surface.NONE -> Modifier
+            Surface.PLATE -> Modifier.clip(RoundedCornerShape(e.plateRadius)).background(ink.plate)
+            Surface.RULE -> Modifier.drawBehind { drawLine(ink.ink3, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }
+        }
+        CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
+            Box(Modifier.fillMaxSize().then(surface)) {
+                when (type) {
+                    CardType.CLOCK -> ClockCard(e, state, config)
+                    CardType.ANALOG -> AnalogCard(e, state, config)
+                    CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
+                    CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO)
+                    CardType.TIMER -> TimerCard(e, state, config, actions)
+                    CardType.SLEEP -> SleepCard(e, state, config, actions)
+                    CardType.DDAY -> DdayCard(e, config)
+                    CardType.AGENDA -> AgendaCard(e, state, actions)
+                    CardType.USAGE -> UsageCard(e, state, actions)
+                    CardType.WEATHER -> WeatherCard(e, state, config, actions)
+                    CardType.CALENDAR -> CalendarCard(e)
+                    CardType.MEMORIES -> MemoriesCard(e, state, actions)
+                }
             }
         }
     }
@@ -119,9 +129,14 @@ fun CardView(
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     val face = e.look.clockFace
-    val base = config.styles[face] ?: ClockStyle.default(face)
+    val base = config.styles[face] ?: e.t.clockDefaults(face)
     // §5.1: hero digits carry the accent; a second clock on the board renders its numerals in ink (hero = false).
-    // The date is this card's own BOT-line detail, so the face's in-slot date row is off (no double date).
+    if (face == FaceId.DIGITAL) {
+        // Digital draws its own date line right under the digits (mockup r5 desk: "월요일 11월 9일 · 7°"), so the
+        // date never drifts to the slot bottom.
+        ClockFace(face, base.copy(color = e.look.accent.argbLong(), showInfo = e.atLeastS), state, Modifier.fillMaxSize().padding(e.pad), inSlot = true, hero = e.look.hero)
+        return
+    }
     val style = base.copy(color = e.look.accent.argbLong(), showInfo = false)
     Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally) {
         ClockFace(face, style, state, Modifier.fillMaxWidth().weight(1f), inSlot = true, hero = e.look.hero)
@@ -134,10 +149,14 @@ private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
 
 @Composable
 private fun AnalogCard(e: Env, state: StandbyState, config: AppConfig) {
-    val base = config.styles[FaceId.ANALOG] ?: ClockStyle.default(FaceId.ANALOG)
-    val acc = e.look.accent.argbLong()
-    // Accent only on the second hand (hero or not); hands and numerals keep their own neutral colours.
-    ClockFace(FaceId.ANALOG, base.copy(color = acc, secondColor = acc), state, Modifier.fillMaxSize(), inSlot = true)
+    // Per-widget colours (r5): the analog keeps its own second-hand colour instead of the board accent.
+    val def = e.t.clockDefaults(FaceId.ANALOG)
+    val base = config.styles[FaceId.ANALOG] ?: def
+    // Untouched default = the iPhone analog *widget* (frame ex-analogwidget): white numerals, orange second hand.
+    // The Duo palette belongs to the full-screen face; a user-picked style is drawn as picked.
+    val pal = e.t.palette
+    val st = if (base == def) base.copy(numeralColor = pal.fg.argbLong(), secondColor = pal.orange.argbLong(), tickColor = pal.fg2.argbLong()) else base
+    ClockFace(FaceId.ANALOG, st, state, Modifier.fillMaxSize(), inSlot = true)
 }
 
 // ---------------------------------------------------------------- media
@@ -169,22 +188,24 @@ private fun Art(e: Env, img: ImageBitmap?, placeholder: Ic, modifier: Modifier, 
     }
 }
 
+/** iPhone widget transport button: icon on a 14 % ink disc (mockup r5 modular). */
 @Composable
-private fun Btn(e: Env, ic: Ic, size: Dp, enabled: Boolean = true, onClick: () -> Unit) {
-    Box(Modifier.size(size).tap(if (enabled) onClick else null)) {
-        IconView(ic, if (enabled) e.ink.ink else e.ink.ink3, Modifier.fillMaxSize())
-    }
+private fun Disc(e: Env, ic: Ic, d: Dp, enabled: Boolean = true, onClick: () -> Unit) {
+    Box(
+        Modifier.size(d).clip(CircleShape).background(e.ink.ink.copy(alpha = 0.14f)).tap(if (enabled) onClick else null),
+        contentAlignment = Alignment.Center,
+    ) { IconView(ic, if (enabled) e.ink.ink else e.ink.ink3, Modifier.size(d * 0.44f)) }
 }
 
-/** prev/next = label × 1.6, play = label × 2.4 (§4.2). S keeps play/pause only. */
+/** Prev / play / next discs spread over [width]; only play/pause when three do not fit. */
 @Composable
-private fun Transport(e: Env, m: MediaInfo, actions: StandbyActions, full: Boolean, maxW: Dp) {
-    // Scale the whole row down when the column is narrower than the nominal 7.4 labels (never clip "next").
-    val u = e.label * kotlin.math.min(1f, maxW / (e.label * (if (full) 7.4f else 2.4f)))
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(u * 0.9f)) {
-        if (full) Btn(e, Ic.PREV, u * 1.6f, m.canPrev, actions::mediaPrev)
-        Btn(e, if (m.playing) Ic.PAUSE else Ic.PLAY, u * 2.4f, onClick = actions::mediaPlayPause)
-        if (full) Btn(e, Ic.NEXT, u * 1.6f, m.canNext, actions::mediaNext)
+private fun Transport(e: Env, m: MediaInfo, actions: StandbyActions, width: Dp, d0: Dp) {
+    val full = width >= d0 * 3.4f
+    val d = if (full) d0 else min(d0, width)
+    Row(Modifier.width(width), horizontalArrangement = if (full) Arrangement.SpaceBetween else Arrangement.Start) {
+        if (full) Disc(e, Ic.PREV, d, m.canPrev, actions::mediaPrev)
+        Disc(e, if (m.playing) Ic.PAUSE else Ic.PLAY, d, onClick = actions::mediaPlayPause)
+        if (full) Disc(e, Ic.NEXT, d, m.canNext, actions::mediaNext)
     }
 }
 
@@ -200,14 +221,14 @@ private fun XsPlate(e: Env, m: MediaInfo, ic: Ic, actions: StandbyActions) {
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Art(e, m.art, ic, Modifier.size(e.cw), max(12.dp, e.cw * 0.06f))
-            Btn(e, if (m.playing) Ic.PAUSE else Ic.PLAY, e.label * 2.4f, onClick = actions::mediaPlayPause)
+            Art(e, m.art, ic, Modifier.size(e.cw), max(12.dp, e.cw * e.t.radius))
+            Disc(e, if (m.playing) Ic.PAUSE else Ic.PLAY, e.label * 2f, onClick = actions::mediaPlayPause)
         }
         return
     }
     Box(Modifier.fillMaxSize().tap(actions::openMediaApp)) {
         Art(e, m.art, ic, Modifier.fillMaxSize(), e.plateRadius)
-        val d = e.label * 2.4f
+        val d = e.label * 2.2f
         Box(
             Modifier.align(Alignment.BottomEnd).padding(e.pad * 0.7f).size(d).clip(CircleShape)
                 .background(Color.Black.copy(alpha = 0.6f)).tap(actions::mediaPlayPause),
@@ -216,54 +237,58 @@ private fun XsPlate(e: Env, m: MediaInfo, ic: Ic, actions: StandbyActions) {
     }
 }
 
+/**
+ * Music (mockup r5 modular, iPhone Duo widget): art top-left with the music glyph top-right, title + artist under the
+ * art, three transport discs along the bottom. Wide slots put the art on the left, full height.
+ */
 @Composable
 private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
-    val full = e.atLeastM
-    val playH = e.label * 2.4f
-    val text: @Composable (Modifier, Dp, Boolean) -> Unit = { mod, textW, label ->
-        Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
-            if (label) LabelRow(e, Ic.NOTE, m.appLabel)
-            Column {
-                Txt(m.title, e.sz.title, e.ink.ink, weight = 700)
-                Spacer(Modifier.height(e.gap * 0.75f))
-                Detail(e, m.artist)
-            }
-            Column {
-                Bar(e, progress(m), e.ink.acc)
-                Spacer(Modifier.height(e.gap))
-                Transport(e, m, actions, full, textW)
-            }
+    val title = min(e.sz.title, e.label * 1.4f)
+    val disc = max(40.dp, e.label * 1.7f)
+    val glyph = e.label * 1.1f
+    val names = @Composable { mod: Modifier ->
+        Column(mod) {
+            Txt(m.title, title, e.ink.ink, weight = 700)
+            Spacer(Modifier.height(e.gap))
+            Detail(e, m.artist)
         }
     }
-    // Art top (tall/square) or art left (wide), whichever gives the bigger plate — 4:3 slots get art left.
-    val need = e.labelCap + e.sz.title * CAP_UI + e.labelCap + e.bar + playH + e.gap * 5.5f
-    val aTop = min(e.ch - need, e.cw * (if (e.tall) 0.62f else 0.5f))
-    // wide: the label spans the full width on the TOP line (review X5), art + text start below it
-    val below = e.ch - e.labelCap - e.gap * 1.5f
-    val aLeft = min(below, e.cw * 0.45f)
-    if (!e.tall && aLeft > aTop) {
-        Column(Modifier.fillMaxSize().padding(e.pad)) {
-            LabelRow(e, Ic.NOTE, m.appLabel)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Row(Modifier.weight(1f)) {
-                Art(e, m.art, Ic.NOTE, Modifier.size(aLeft), max(12.dp, aLeft * 0.06f))
-                Spacer(Modifier.width(e.pad))
-                text(Modifier.weight(1f).fillMaxHeight(), e.cw - aLeft - e.pad, false)
+    val noteGlyph = @Composable { IconView(Ic.NOTE, e.ink.music, Modifier.size(glyph)) }
+    if (e.w > e.h * 1.15f) {
+        val a = min(e.ch, e.cw * 0.45f)
+        Row(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
+            Art(e, m.art, Ic.NOTE, Modifier.size(a), max(10.dp, a * e.t.radius * 0.8f))
+            Spacer(Modifier.width(e.pad))
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                Row(Modifier.fillMaxWidth()) {
+                    names(Modifier.weight(1f))
+                    noteGlyph()
+                }
+                Transport(e, m, actions, e.cw - a - e.pad, disc)
             }
         }
-    } else {
-        val a = aTop
-        Column(Modifier.fillMaxSize().padding(e.pad)) {
-            if (a >= e.label * 3) {
-                Art(e, m.art, Ic.NOTE, Modifier.size(a), max(12.dp, a * 0.06f))
-                Spacer(Modifier.height(e.gap * 1.5f))
+        return
+    }
+    val need = title * CAP_UI + e.gap + e.labelCap + disc + e.gap * 4
+    val a = min(e.ch - need, e.cw - glyph - e.gap)
+    Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
+        if (a >= e.label * 3) {
+            Row(Modifier.fillMaxWidth()) {
+                Art(e, m.art, Ic.NOTE, Modifier.size(a), max(10.dp, a * e.t.radius * 0.8f))
+                Spacer(Modifier.weight(1f))
+                noteGlyph()
             }
-            text(Modifier.weight(1f).fillMaxWidth(), e.cw, true)
+            Spacer(Modifier.height(e.gap * 2))
+            names(Modifier.fillMaxWidth())
+        } else {
+            Row(Modifier.fillMaxWidth()) { names(Modifier.weight(1f)); noteGlyph() }
         }
+        Spacer(Modifier.weight(1f))
+        Transport(e, m, actions, e.cw, disc)
     }
 }
 
-/** Video: the still fills the slot like a photo card (scrim top and bottom), text bottom-leading, transport trailing. */
+/** Video: the still fills the slot like a photo card (scrim top and bottom), text bottom-leading, transport discs. */
 @Composable
 private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
     Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius))) {
@@ -271,7 +296,6 @@ private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
-                    // text now stacks from mid-card (music order), so the bottom scrim starts higher
                     0f to Color.Black.copy(alpha = 0.5f), 0.25f to Color.Black.copy(alpha = 0.15f),
                     0.45f to Color.Black.copy(alpha = 0.4f), 1f to Color.Black.copy(alpha = 0.75f),
                 ),
@@ -279,15 +303,14 @@ private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
         )
         TextCard(e) {
             LabelRow(e, Ic.VIDEO, m.appLabel, color = e.ink.ink)
-            // Music's order exactly (review X8): title → channel → progress → transport, transport at the leading edge.
             Column {
-                Txt(m.title, e.sz.title, e.ink.ink, weight = 700)
+                Txt(m.title, min(e.sz.title, e.label * 1.4f), e.ink.ink, weight = 700)
                 Spacer(Modifier.height(e.gap * 0.75f))
-                Detail(e, m.artist, color = e.ink.ink.copy(alpha = 0.8f)) // on a photo: white like Memories
+                Detail(e, m.artist, color = e.ink.ink.copy(alpha = 0.8f))
                 Spacer(Modifier.height(e.gap * 1.5f))
-                Bar(e, progress(m), e.ink.acc)
-                Spacer(Modifier.height(e.gap))
-                Transport(e, m, actions, e.atLeastM, e.cw)
+                Bar(e, progress(m), e.ink.ink)
+                Spacer(Modifier.height(e.gap * 1.5f))
+                Transport(e, m, actions, min(e.cw, e.label * 7f), max(40.dp, e.label * 1.7f))
             }
         }
     }
@@ -295,62 +318,54 @@ private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
 
 // ---------------------------------------------------------------- timer, sleep, d-day
 
+/**
+ * Timer as the iPhone timer Live Activity (mockup r5 desk): dark plate, amber strip with pause/close discs, mode label
+ * top-trailing in grey, white digits bottom-trailing. Tall slots put the strip on top.
+ */
 @Composable
 private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val total0 = config.focusMinutes * 60
     val t = state.timers[e.slotId] ?: TimerState(leftSec = total0, totalSec = total0)
-    val frac = if (t.totalSec > 0) t.leftSec.toFloat() / t.totalSec else 0f
-    val mode = if (t.mode == kr.dot.sb.ui.state.TimerMode.FOCUS) "집중" else "휴식"
-    val hint = when {
-        t.running -> "눌러서 멈춤"
-        t.leftSec >= t.totalSec -> "눌러서 시작"
-        else -> "눌러서 계속"
-    }
+    val mode = if (t.mode == TimerMode.FOCUS) "집중" else "휴식"
+    val label = if (!t.running && t.leftSec < t.totalSec) "$mode · 멈춤" else mode
     val digits = "%02d:%02d".format(t.leftSec / 60, t.leftSec % 60)
     val ink = e.ink
-    if (!e.atLeastM) {
-        // S/XS (review B2): mode label on the TOP line like every other card, ring + digits below, no hint
-        Column(Modifier.fillMaxSize().padding(e.pad).tap { actions.timerToggle(e.slotId) }) {
-            LabelRow(e, Ic.TIMER, mode)
-            Spacer(Modifier.height(e.gap))
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                val d = min(maxWidth, maxHeight)
-                val sw = d * 0.05f
-                Ring(d, sw, frac, ink)
-                Txt(
-                    digits, e.sz.display, if (e.look.hero) ink.acc else ink.ink, family = e.num, cap = e.numCap, tnum = true,
-                    maxW = (d - sw * 2) * 0.74f, maxCapH = (d - sw * 2) * 0.3f,
-                )
-            }
+    val side = e.w >= e.h * 0.9f
+    val strip = if (side) min(e.h * 0.5f, e.w * 0.32f) else min(e.w * 0.5f, e.h * 0.3f)
+    val btn = min(strip * 0.72f, (if (side) e.h else e.w) * 0.32f)
+    val btnBg = lerp(Color.Black, ink.amber, 0.55f)
+    val toggle = { actions.timerToggle(e.slotId) }
+    val buttons = @Composable {
+        Box(Modifier.size(btn).clip(CircleShape).background(btnBg).tap(toggle), contentAlignment = Alignment.Center) {
+            IconView(if (t.running) Ic.PAUSE else Ic.PLAY, ink.amber, Modifier.size(btn * 0.42f))
         }
-        return
+        Box(Modifier.size(btn).clip(CircleShape).background(btnBg).tap { actions.timerReset(e.slotId) }, contentAlignment = Alignment.Center) {
+            IconView(Ic.CLOSE, ink.ink, Modifier.size(btn * 0.46f))
+        }
     }
-    val d = min(e.w, e.h) - e.s * 0.08f
-    val sw = d * 0.05f
-    Box(Modifier.fillMaxSize().tap { actions.timerToggle(e.slotId) }, contentAlignment = Alignment.Center) {
-        Ring(d, sw, frac, ink)
-        val inner = d - sw * 2
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Txt(mode, e.label, ink.acc)
-            Spacer(Modifier.height(inner * 0.07f))
+    val body = @Composable { mod: Modifier, w: Dp, h: Dp ->
+        Column(mod.padding(e.pad), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
+            Txt(label, e.label, ink.ink2, weight = 600, maxW = w - e.pad * 2)
             Txt(
-                digits, e.sz.display, if (e.look.hero) ink.acc else ink.ink, family = e.num, cap = e.numCap, tnum = true,
-                maxW = inner * 0.74f, maxCapH = inner * 0.3f,
+                digits, e.sz.display, ink.ink, weight = 600, family = e.t.time, cap = e.t.timeCap, tnum = true,
+                maxW = w - e.pad * 2, maxCapH = h - e.pad * 2 - e.labelCap - e.gap * 2,
             )
-            Spacer(Modifier.height(inner * 0.07f))
-            Detail(e, hint)
         }
     }
-}
-
-@Composable
-private fun Ring(d: Dp, sw: Dp, frac: Float, ink: Ink) {
-    Canvas(Modifier.size(d)) {
-        val swPx = sw.toPx()
-        val tl = Offset(swPx / 2, swPx / 2)
-        val sz = Size(size.width - swPx, size.height - swPx)
-        drawArc(ink.ink3, 0f, 360f, false, tl, sz, style = Stroke(swPx))
-        if (frac > 0f) drawArc(ink.acc, -90f, 360f * frac, false, tl, sz, style = Stroke(swPx, cap = StrokeCap.Round))
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).background(ink.plate).tap(toggle)) {
+        if (side) Row(Modifier.fillMaxSize()) {
+            Column(
+                Modifier.width(strip).fillMaxHeight().background(ink.amber),
+                verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally,
+            ) { buttons() }
+            body(Modifier.weight(1f).fillMaxHeight(), e.w - strip, e.h)
+        } else Column(Modifier.fillMaxSize()) {
+            Row(
+                Modifier.height(strip).fillMaxWidth().background(ink.amber),
+                horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically,
+            ) { buttons() }
+            body(Modifier.weight(1f).fillMaxWidth(), e.w, e.h - strip)
+        }
     }
 }
 
@@ -363,17 +378,16 @@ private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val mod = Modifier.width(min(e.cw, waveH * 2.4f)).height(waveH)
     val wave = @Composable { if (on) AnimatedWave(e, mod) else Wave(e, mod, e.ink.ink2, null) }
     if (!e.atLeastS) {
-        // XS: no detail, so the wave is centred in the space below the label (review X9)
         Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::sleepToggle), horizontalAlignment = Alignment.CenterHorizontally) {
-            LabelRow(e, Ic.SOUND, config.sleepSound.ko, center = true)
+            LabelRow(e, Ic.SOUND, config.sleepSound.ko, color = e.ink.blue, center = true, weight = 700)
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { wave() }
         }
         return
     }
     TextCard(e, Modifier.tap(actions::sleepToggle), horizontal = Alignment.CenterHorizontally) {
-        LabelRow(e, Ic.SOUND, config.sleepSound.ko, center = true)
+        LabelRow(e, Ic.SOUND, config.sleepSound.ko, color = e.ink.blue, center = true, weight = 700)
         wave()
-        Detail(e, if (on) "${state.sleep.minutesLeft ?: config.sleepMinutes}분 뒤 꺼짐" else "눌러서 틀기", align = TextAlign.Center)
+        Txt(if (on) "${state.sleep.minutesLeft ?: config.sleepMinutes}분 뒤 꺼짐" else "눌러서 틀기", e.label, e.ink.ink2, weight = 500, align = TextAlign.Center, num = true)
     }
 }
 
@@ -383,7 +397,7 @@ private fun AnimatedWave(e: Env, modifier: Modifier) {
     val phase = rememberInfiniteTransition(label = "wave").animateFloat(
         0f, (2 * Math.PI).toFloat(), infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart), label = "phase",
     )
-    Wave(e, modifier, e.ink.acc, phase)
+    Wave(e, modifier, e.ink.blue, phase)
 }
 
 @Composable
@@ -410,18 +424,17 @@ private fun DdayCard(e: Env, config: AppConfig) {
     }
     val n = ChronoUnit.DAYS.between(e.today, dd.date)
     val txt = when { n > 0 -> "D-$n"; n == 0L -> "D-DAY"; else -> "D+${-n}" }
-    // §4.2: accent only when no clock shares the board.
-    val col = if (e.look.clockOnBoard) e.ink.ink else e.ink.acc
     val avail = e.ch - e.labelCap * (if (e.atLeastS) 2 else 1) - e.s * 0.08f
     TextCard(e) {
-        LabelRow(e, Ic.CALENDAR, dd.name)
-        Txt(txt, e.sz.display, col, family = e.num, cap = e.numCap, tnum = true, maxW = e.cw, maxCapH = avail)
-        if (e.atLeastS) Detail(e, dateKo(dd.date))
+        LabelRow(e, Ic.CALENDAR, dd.name, color = e.ink.orange, weight = 700)
+        Txt(txt, e.sz.display, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true, maxW = e.cw, maxCapH = avail)
+        if (e.atLeastS) Txt(dateKo(dd.date), e.label, e.ink.ink2, weight = 500, num = true)
     }
 }
 
 // ---------------------------------------------------------------- agenda, usage
 
+/** iPhone Calendar widget (mockup r5 modular): "월요일 9" header, events as colour bar + title over the time. */
 @Composable
 private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val items = state.agenda
@@ -429,39 +442,69 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
         StateCard(e, Ic.CALENDAR, "오늘 일정", Ic.LOCK, null, "권한 필요 · 눌러서 설정") { actions.openSettings("calendar") }
         return
     }
+    val header = @Composable {
+        Row(verticalAlignment = Alignment.Bottom) {
+            Txt("${dowKo(e.today)}요일", e.label, e.ink.weekday, weight = 700)
+            Spacer(Modifier.width(e.label * 0.35f))
+            Txt("${e.today.dayOfMonth}", e.label, e.ink.ink, weight = 700, num = true)
+        }
+    }
     if (items.isEmpty()) {
-        StateCard(e, Ic.CALENDAR, "오늘", null, "일정 없음", null, null)
+        TextCard(e) { header(); Txt("일정 없음", min(e.sz.title, e.label * 1.4f), e.ink.ink2, weight = 700) }
         return
     }
+    val now = "%02d:%02d".format(state.now.hour, state.now.minute)
     if (e.cls == SizeClass.XS) {
-        val now = "%02d:%02d".format(state.now.hour, state.now.minute)
         val next = items.firstOrNull { it.start >= now } ?: items.last()
         TextCard(e) {
-            LabelRow(e, Ic.CALENDAR, "오늘 ${next.start}")
-            Txt(next.title, e.loneValue, e.ink.ink, weight = 700, maxW = e.cw, maxCapH = e.ch - e.labelCap - e.gap * 2)
+            header()
+            Column {
+                Txt(next.title, e.label, e.ink.ink, weight = 700)
+                Spacer(Modifier.height(e.gap))
+                Txt(next.start, e.label, e.ink.ink2, weight = 500, num = true)
+            }
         }
         return
     }
-    val rows = items.take(if (e.atLeastM) 3 else 2)
-    val ev = max(e.label, min(e.sz.title, e.s * 0.10f))
-    // review X9: fixed baseline pitch (1.9 × row title) under the label; leftover space stays below the list
-    val pitch = min(ev * 1.9f, (e.ch - e.labelCap) / rows.size)
+    val ev = max(e.label, min(e.sz.title, e.label * 1.15f))
+    val sub = e.label
+    val block = ev * CAP_UI + e.gap * 0.9f + sub * CAP_UI
+    val step = block + e.gap * 3f
+    val fit = ((e.ch - e.labelCap - e.gap * 2f + e.gap * 3f) / step).toInt().coerceIn(1, 3)
     Column(Modifier.fillMaxSize().padding(e.pad)) {
-        LabelRow(e, Ic.CALENDAR, "오늘", trailing = "${items.size}개")
-        rows.forEach { it ->
-            Spacer(Modifier.height(pitch - ev * CAP_UI))
-            Row(verticalAlignment = Alignment.Bottom) {
-                Box(Modifier.width(max(4.dp, e.s * 0.02f)).height(ev * CAP_UI).clip(RoundedCornerShape(50)).background(e.ink.mapped(Color(it.color))))
-                Spacer(Modifier.width(e.label * 0.6f))
-                Txt(it.start, e.label, e.ink.ink2, weight = 500, tnum = true)
-                Spacer(Modifier.width(e.label * 0.6f))
-                Txt(it.title, ev, e.ink.ink, Modifier.weight(1f), weight = 700)
+        header()
+        items.take(fit).forEach { it ->
+            Spacer(Modifier.height(e.gap * 3f))
+            Row {
+                Box(Modifier.width(max(4.dp, e.label * 0.2f)).height(block).clip(RoundedCornerShape(50)).background(e.ink.mapped(Color(it.color))))
+                Spacer(Modifier.width(e.label * 0.5f))
+                Column(Modifier.weight(1f)) {
+                    Txt(it.title, ev, e.ink.ink, weight = 700)
+                    Spacer(Modifier.height(e.gap * 0.9f))
+                    Txt(it.start, sub, e.ink.ink2, weight = 500, num = true, tnum = true)
+                }
             }
         }
     }
 }
 
 private fun pctOf(w: UsageWindow?) = w?.usedPct?.let { "$it%" } ?: "–"
+
+/** Battery-widget ring: track 25 % of the colour, arc from 12 o'clock, letter centred (rounded numerals). */
+@Composable
+private fun UsageRing(e: Env, d: Dp, frac: Float, color: Color, letter: String) {
+    val track = lerp(Color.Black, color, 0.28f)
+    Box(Modifier.size(d), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val sw = size.minDimension * 0.125f
+            val tl = Offset(sw / 2, sw / 2)
+            val sz = Size(size.width - sw, size.height - sw)
+            drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
+            drawArc(color, -90f, 360f * frac.coerceIn(0.005f, 1f), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
+        }
+        Txt(letter, d * 0.4f, e.ink.ink, weight = 800, family = e.num, cap = e.numCap)
+    }
+}
 
 @Composable
 private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
@@ -473,66 +516,61 @@ private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
     val old = nowSec - u.fetchedAtEpochSec > 3 * 3600
     val valCol = if (old) e.ink.ink2 else e.ink.ink
-    fun tone(w: UsageWindow?, base: Color) = if ((w?.usedPct ?: 0) >= 90) e.ink.red else base
-    val age = "${hhmm(u.fetchedAtEpochSec)} 기준"
+    fun ringCol(w: UsageWindow?) = when { (w?.usedPct ?: 0) >= 90 -> e.ink.weekday; old -> e.ink.ink2; else -> e.ink.green }
     val tapMod = Modifier.tap(if (u.offline) actions::retryFeeds else null)
-    val offlineLine: @Composable () -> Unit = {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Box(Modifier.size(e.labelCap * 0.6f).clip(CircleShape).background(e.ink.ink2))
-            Spacer(Modifier.width(e.label * 0.4f))
-            Detail(e, "$age · 연결 안 됨")
-        }
-    }
+    val pctSize = e.label * 1.1f
     if (e.cls == SizeClass.XS) {
-        val all = listOf("Claude 5시간" to u.claude5h, "Claude 7일" to u.claude7d, "Codex 5시간" to u.codex5h, "Codex 7일" to u.codex7d)
+        val all = listOf("C" to u.claude5h, "C" to u.claude7d, "X" to u.codex5h, "X" to u.codex7d)
         val (name, w) = all.maxByOrNull { it.second?.usedPct ?: -1 }!!
-        TextCard(e, tapMod) {
-            LabelRow(e, Ic.USAGE, name)
-            Txt(pctOf(w), e.loneValue, tone(w, valCol), weight = 600, tnum = true, maxW = e.cw, maxCapH = e.ch - e.labelCap - e.gap * 2)
+        Column(Modifier.fillMaxSize().padding(e.pad).then(tapMod), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+            val d = min(e.cw, e.ch - pctSize * e.numCap - e.gap * 2)
+            UsageRing(e, d, (w?.usedPct ?: 0) / 100f, ringCol(w), name)
+            Spacer(Modifier.height(e.gap * 1.5f))
+            Txt(pctOf(w), pctSize, valCol, weight = 700, family = e.num, cap = e.numCap, tnum = true)
         }
         return
     }
-    val rows = listOf(Triple("Claude", u.claude5h, u.claude7d), Triple("Codex", u.codex5h, u.codex7d))
-    val detail = e.atLeastM
-    val fixed = e.labelCap + (if (u.offline) e.labelCap + e.gap else 0.dp) + e.gap * 5
-    val perRow = (e.ch - fixed) / 2 - e.bar - e.gap * 1.2f - (if (detail) e.labelCap + e.gap else 0.dp)
-    // Two values share one card: 0.7 × value keeps "Claude 5시간" readable beside the number.
-    val vSize = min(e.sz.value * 0.7f, perRow / CAP_UI)
-    // review X9: rows stack from the label with a fixed gap; leftover space goes below (BOT binds only the offline line)
-    Column(Modifier.fillMaxSize().padding(e.pad).then(tapMod)) {
-        LabelRow(e, Ic.USAGE, "사용량", trailing = if (u.offline) null else age)
-        rows.forEach { (name, h5, d7) ->
-            Spacer(Modifier.height(e.gap * 2.5f))
-            Column {
-                // review X3: the value is measured first (no weight) and never ellipsizes; the name takes the rest
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
-                        Txt(name, e.label, e.ink.ink, Modifier.weight(1f, fill = false), weight = 700)
-                        if (e.atLeastM) {
-                            Spacer(Modifier.width(e.label * 0.4f))
-                            Txt("5시간", e.label, e.ink.ink2, weight = 500)
-                        }
-                    }
-                    Spacer(Modifier.width(e.label * 0.4f))
-                    Txt(pctOf(h5), vSize, tone(h5, valCol), weight = 600, tnum = true)
-                }
-                Spacer(Modifier.height(e.gap * 1.2f))
-                Bar(e, (h5?.usedPct ?: 0) / 100f, tone(h5, e.ink.ink))
+    val stack = e.tall
+    val detail = e.atLeastM && (stack || e.cw / 2 >= e.label * 4.5f)
+    val caption = if (u.offline) "${hhmm(u.fetchedAtEpochSec)} 기준 · 연결 안 됨" else "5시간 사용량 · ${hhmm(u.fetchedAtEpochSec)}"
+    val below = e.gap * 1.5f + pctSize * e.numCap + (if (detail) e.gap * 1.2f + e.labelCap else 0.dp)
+    val d = if (stack) min(((e.ch - e.labelCap - e.gap * 3f) / 2f - below - e.gap * 2f), e.cw * 0.8f)
+    else min((e.ch - e.labelCap - e.gap * 3f - below), (e.cw - e.gap * 3f) / 2f)
+    val rings = @Composable {
+        listOf(Triple("C", u.claude5h, u.claude7d), Triple("X", u.codex5h, u.codex7d)).forEach { (letter, h5, d7) ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                UsageRing(e, d, (h5?.usedPct ?: 0) / 100f, ringCol(h5), letter)
+                Spacer(Modifier.height(e.gap * 1.5f))
+                Txt(pctOf(h5), pctSize, valCol, weight = 700, family = e.num, cap = e.numCap, tnum = true)
                 if (detail) {
-                    Spacer(Modifier.height(e.gap))
-                    val reset = h5?.resetsAtEpochSec?.let { " · ${hhmm(it)} 초기화" } ?: ""
-                    Detail(e, "7일 ${pctOf(d7)}$reset")
+                    Spacer(Modifier.height(e.gap * 1.2f))
+                    Txt("7일 ${pctOf(d7)}", e.label, e.ink.ink2, weight = 500, num = true)
                 }
             }
         }
-        if (u.offline) { Spacer(Modifier.weight(1f)); offlineLine() }
+    }
+    Column(Modifier.fillMaxSize().padding(e.pad).then(tapMod)) {
+        if (stack) Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) { rings() }
+        else Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { rings() }
+        Spacer(Modifier.height(e.gap * 3f))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
+            if (u.offline) {
+                Box(Modifier.size(e.labelCap * 0.6f).clip(CircleShape).background(e.ink.ink2))
+                Spacer(Modifier.width(e.label * 0.4f))
+            }
+            Txt(caption, e.label, e.ink.ink2, weight = 500, num = true, maxW = e.cw)
+        }
     }
 }
 
 // ---------------------------------------------------------------- weather, calendar, memories
 
-private fun tempFont() = Fonts.clock(FontId.LIGHT, 300)
-private const val INTER_CAP = 0.7275f
+/** Weather glyph in theme colours: white cloud, yellow sun, blue rain (night: the red ramp). */
+@Composable
+private fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
+    val c2 = if (!e.t.colorIcons) e.ink.ink else if (ic == Ic.RAIN) e.ink.blue else e.ink.sun
+    IconView(ic, e.ink.ink, modifier, e.ink.bg, color2 = c2)
+}
 
 @Composable
 private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
@@ -553,7 +591,7 @@ private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions:
             Hours(e, wx, Modifier.weight(0.58f).fillMaxHeight(), spread = true)
         }
     } else {
-        val hoursH = e.labelCap + e.label * 1.5f + e.sz.title * CAP_UI + e.gap * 1.6f
+        val hoursH = e.labelCap + e.label * 1.6f + e.label * CAP_UI + e.gap * 1.6f
         Column(mod) {
             val mainH = if (showHours) e.ch - hoursH - e.gap * 2 else e.ch
             WeatherMain(e, wx, old, Modifier.fillMaxWidth().weight(1f), mainH, e.cw)
@@ -565,41 +603,47 @@ private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions:
     }
 }
 
+/**
+ * iPhone weather widget (mockup r5): "서울 ➤" over a big rounded "7°", then the coloured glyph, the condition and
+ * "최고:11° 최저:2°". Small slots put the glyph beside the city.
+ */
 @Composable
 private fun WeatherMain(e: Env, wx: WeatherInfo, old: Boolean, modifier: Modifier, h: Dp, w: Dp) {
-    val lines = when { !e.atLeastS -> 0; e.atLeastM -> 2; else -> 1 }
-    val avail = h - e.labelCap * (1 + lines) - e.gap * (1 + lines)
+    val lines = if (e.atLeastS) 2 else 0
+    val iconTop = !e.atLeastM || h < e.s * 0.8f
+    val ico = e.label * 1.5f
+    val bottom = if (lines == 0) 0.dp else e.labelCap * 2 + e.gap + (if (iconTop) 0.dp else ico + e.gap)
+    val avail = h - e.labelCap - bottom - e.gap * (if (lines == 0) 2f else 3.5f)
     Column(modifier, verticalArrangement = Arrangement.SpaceBetween) {
-        WeatherLabel(e, wx.city)
-        Txt(temp(wx.tempC), e.loneDisplay, if (old) e.ink.ink2 else e.ink.ink, family = tempFont(), cap = INTER_CAP, tnum = true, maxW = w, maxCapH = avail)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
+            Box(Modifier.weight(1f)) { WeatherLabel(e, wx.city) }
+            if (iconTop) Box(Modifier.height(e.labelCap).wrapUnbounded()) { WxIcon(e, weatherIc(wx.condition), Modifier.size(ico)) }
+        }
+        Txt(
+            temp(wx.tempC), e.loneDisplay, if (old) e.ink.ink2 else e.ink.ink, weight = 500, family = e.num, cap = e.numCap,
+            tnum = true, maxW = w, maxCapH = avail,
+        )
         if (lines > 0) {
             Column {
-                val off = if (wx.offline) "${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else null
-                if (lines == 1 && off != null) {
-                    Detail(e, off)
-                } else {
-                    Row(verticalAlignment = Alignment.Bottom) {
-                        Box(Modifier.height(e.labelCap).wrapUnbounded()) { IconView(weatherIc(wx.condition), e.ink.ink, Modifier.size(e.label * 1.25f), e.ink.bg) }
-                        Spacer(Modifier.width(e.label * 0.4f))
-                        Txt(wx.condition.ko, e.label, e.ink.ink, weight = 600)
-                    }
-                }
-                if (lines == 2) {
+                if (!iconTop) {
+                    WxIcon(e, weatherIc(wx.condition), Modifier.size(ico))
                     Spacer(Modifier.height(e.gap))
-                    Detail(e, off ?: "최고 ${wx.highC}° 최저 ${wx.lowC}°")
                 }
+                val off = if (wx.offline) "${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else null
+                Txt(off ?: wx.condition.ko, e.label, if (off != null) e.ink.ink2 else e.ink.ink, weight = 600, num = true, maxW = w)
+                Spacer(Modifier.height(e.gap))
+                Txt("최고:${wx.highC}° 최저:${wx.lowC}°", e.label, e.ink.ink, weight = 500, num = true, maxW = w)
             }
         }
     }
 }
 
-/** Next hours: "22시" / icon / "6°" columns. [spread] = columns span TOP→BOT (wide side panel). */
+/** Next hours: "22시" / glyph / "6°" columns. [spread] = columns span TOP→BOT (wide side panel). */
 @Composable
 private fun Hours(e: Env, wx: WeatherInfo, modifier: Modifier, spread: Boolean) {
-    // review B1: 5 equal columns, each centred; one temperature size for all columns that fits "-10°" in a column
     BoxWithConstraints(modifier) {
         val col = maxWidth / 5
-        val tSize = min(e.sz.title, col * 0.9f / 2.1f)
+        val tSize = min(e.label * 1.1f, col * 0.9f / 1.9f)
         Row(Modifier.fillMaxSize()) {
             wx.hourly.take(5).forEach { hr ->
                 Column(
@@ -607,9 +651,9 @@ private fun Hours(e: Env, wx: WeatherInfo, modifier: Modifier, spread: Boolean) 
                     verticalArrangement = if (spread) Arrangement.SpaceBetween else Arrangement.spacedBy(e.gap * 0.8f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Txt("${hr.hour}시", min(e.label, col * 0.8f / 2.2f), e.ink.ink2, weight = 500, tnum = true)
-                    IconView(weatherIc(hr.condition), e.ink.ink, Modifier.size(e.label * 1.6f), e.ink.bg)
-                    Txt(temp(hr.tempC), tSize, e.ink.ink, weight = 600, tnum = true)
+                    Txt("${hr.hour}시", min(e.label, col * 0.8f / 2.2f), e.ink.ink2, weight = 600, num = true)
+                    WxIcon(e, weatherIc(hr.condition), Modifier.size(e.label * 1.6f))
+                    Txt(temp(hr.tempC), tSize, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true)
                 }
             }
         }
@@ -622,6 +666,11 @@ private fun WeatherLabel(e: Env, city: String) = LabelRow(e, Ic.ARROW, city, col
 
 @Composable
 private fun CalendarCard(e: Env) {
+    // r5: no month grid in small slots, only in L (iPhone's default calendar widget is "Mon Aug / 19").
+    if (e.cls != SizeClass.L) {
+        DateWidget(e)
+        return
+    }
     val t = e.today
     val first = t.withDayOfMonth(1)
     val lead = first.dayOfWeek.value % 7 // Sunday first
@@ -631,19 +680,23 @@ private fun CalendarCard(e: Env) {
     val gridH = e.ch - titleCap - e.gap * 1.5f
     val pitch = gridH / (weeks + 1)
     val cellW = e.cw / 7
-    val f = min(e.ownLabel, min(pitch * 0.56f, cellW * 0.5f))
-    if (!e.atLeastM || f < 18.dp) {
+    val f = min(e.ownLabel * 1.2f, min(pitch * 0.56f, cellW * 0.5f))
+    if (f < 18.dp) {
         DateWidget(e)
         return
     }
     val r = min(cellW, pitch) * 0.44f
     Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Txt("${t.monthValue}월", e.sz.title, e.ink.red, weight = 700)
+        Row(verticalAlignment = Alignment.Bottom) {
+            Txt("${dowKo(t)}요일", e.sz.title, e.ink.weekday, weight = 700)
+            Spacer(Modifier.width(e.sz.title * 0.35f))
+            Txt("${t.monthValue}월", e.sz.title, e.ink.ink2, weight = 700, num = true)
+        }
         Spacer(Modifier.height(e.gap * 1.5f))
         Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.SpaceBetween) {
             Row(Modifier.fillMaxWidth()) {
                 listOf("일", "월", "화", "수", "목", "금", "토").forEach {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Txt(it, f, e.ink.ink2, weight = 500) }
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Txt(it, f, e.ink.ink2, weight = 600) }
                 }
             }
             for (wk in 0 until weeks) {
@@ -651,14 +704,17 @@ private fun CalendarCard(e: Env) {
                     for (dw in 0 until 7) {
                         val day = wk * 7 + dw - lead + 1
                         val isToday = day == t.dayOfMonth
-                        val red = e.ink.red
+                        val red = e.ink.weekday
                         Box(
-                            Modifier.weight(1f).height(f * CAP_UI).then(
+                            Modifier.weight(1f).height(f * e.numCap).then(
                                 if (isToday) Modifier.drawBehind { drawCircle(red, r.toPx(), center) } else Modifier,
                             ),
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (day in 1..days) Txt("$day", f, if (isToday) androidx.compose.ui.graphics.lerp(Color.White, Color.Black, e.ink.night) else e.ink.ink, weight = 600, tnum = true)
+                            if (day in 1..days) Txt(
+                                "$day", f, if (isToday) lerp(Color.White, Color.Black, e.ink.night) else e.ink.ink,
+                                weight = 700, family = e.num, cap = e.numCap, tnum = true,
+                            )
                         }
                     }
                 }
@@ -667,18 +723,22 @@ private fun CalendarCard(e: Env) {
     }
 }
 
-/** XS/S calendar: "월요일 11월" over a big day number (iPhone date widget). */
+/** iPhone date widget (mockup r5): red "월요일" + grey "11월" over a big rounded day number. */
 @Composable
 private fun DateWidget(e: Env) {
     val t = e.today
     val top = max(e.label, e.sz.title)
-    TextCard(e) {
+    Column(Modifier.fillMaxSize().padding(e.pad)) {
         Row(verticalAlignment = Alignment.Bottom) {
-            Txt("${dowKo(t)}요일", top, e.ink.red, weight = 700)
-            Spacer(Modifier.width(top * 0.35f))
-            Txt("${t.monthValue}월", top, e.ink.ink2, weight = 700)
+            Txt("${dowKo(t)}요일", top, e.ink.weekday, weight = 700)
+            Spacer(Modifier.width(top * 0.3f))
+            Txt("${t.monthValue}월", top, e.ink.ink2, weight = 700, num = true)
         }
-        Txt("${t.dayOfMonth}", e.s, e.ink.ink, weight = 600, tnum = true, maxW = e.cw, maxCapH = e.ch - top * CAP_UI - e.gap * 1.5f)
+        Spacer(Modifier.height(e.gap * 2f))
+        Txt(
+            "${t.dayOfMonth}", e.s, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true,
+            maxW = e.cw, maxCapH = e.ch - top * CAP_UI - e.gap * 2f,
+        )
     }
 }
 
@@ -695,9 +755,9 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
     }
     Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius))) {
         Image(p.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = nightFilter(e.ink.night))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.65f))))
         Column(Modifier.align(Alignment.BottomStart).padding(e.pad)) {
-            Txt(p.yearsAgo?.let { "${it}년 전 오늘" } ?: p.place, e.sz.title, e.ink.ink, weight = 700, maxW = e.cw)
+            Txt(p.yearsAgo?.let { "${it}년 전 오늘" } ?: p.place, min(e.sz.title, e.label * 1.4f), e.ink.ink, weight = 700, maxW = e.cw, num = true)
             if (e.atLeastS) {
                 Spacer(Modifier.height(e.gap))
                 // review X4: one line; the short date ("설악산 · 2023.11.9") when the long one does not fit

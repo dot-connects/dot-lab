@@ -76,6 +76,10 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalTheme
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.text.style.TextAlign
 import kr.dot.sb.ui.theme.Motion
 import java.time.ZoneId
 import kotlin.math.roundToInt
@@ -121,50 +125,49 @@ private fun <T : Any> Faded(visible: Boolean, value: T?, content: @Composable (T
 // ------------------------------------------------------------------------------------------------- alarm
 
 /**
- * Alarm (design §4.4, frame duo-alarm): "알람" + icon top-left in acc, time top-right with its cap-top on the same
- * line, Snooze / Stop pills along the bottom (27 % H). Portrait: time under the header, pills stacked (13 % H).
+ * Alarm (mockup r5 A, frame ip-alarm): grey "⏰ 알람" top-left, time top-right with its cap-top on the same line,
+ * an orange Snooze pill and a text-only Stop along the bottom (30 % H). Portrait: time under the header, pills stacked.
  */
 @Composable
 private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyActions) {
     val ink = LocalInk.current
+    val t = LocalTheme.current
     BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).tap {}) {
         val w = maxWidth
         val h = maxHeight
         val port = h > w
         val s = min(w, h)
         val pad = screenPadding(w, h)
-        val label = max(20.dp, s * 0.06f)
+        val label = max(20.dp, s * 0.066f)
         val time = clockText(state.now, state.use24h)
-        val snooze = lerp(Color(0xFFF2A65E), Color(0xFF7A0000), ink.night)
+        // r5: white text on the orange pill by day, black on the dim red pill at night
+        val snoozeText = lerp(Color.White, Color.Black, ink.night)
         Box(Modifier.fillMaxSize().padding(pad)) {
             val cw = w - pad.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) * 2
             val title = if (a.label.isBlank() || a.label == "알람") "알람" else "알람 · ${a.label}"
-            val header = @Composable { HeaderRow(Ic.ALARM, title, label, ink.acc, weight = 700) }
+            val header = @Composable { HeaderRow(Ic.ALARM, title, label, ink.ink2, weight = 600) }
             if (!port) {
                 Box(Modifier.align(Alignment.TopStart)) { header() }
                 Txt(
-                    time, h * 0.25f / capOf(TIME_FONT), ink.ink, Modifier.align(Alignment.TopEnd),
-                    family = Fonts.clock(TIME_FONT, TIME_WEIGHT), cap = capOf(TIME_FONT), tnum = true, maxW = cw * 0.6f,
+                    time, h * 0.23f / t.timeCap, ink.ink, Modifier.align(Alignment.TopEnd),
+                    family = t.time, cap = t.timeCap, tnum = true, maxW = cw * 0.6f,
                 )
                 Row(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(h * 0.27f),
+                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(h * 0.30f),
                     horizontalArrangement = Arrangement.spacedBy(w * 0.04f),
                 ) {
-                    if (a.canSnooze) AlarmPill("다시 알림", snooze, ink.ink, Modifier.weight(1f).fillMaxHeight(), actions::alarmSnooze)
-                    AlarmPill("중단", ink.ink3, ink.ink, Modifier.weight(1f).fillMaxHeight(), actions::alarmStop)
+                    if (a.canSnooze) AlarmPill("다시 알림", ink.snooze, snoozeText, Modifier.weight(1f).fillMaxHeight(), actions::alarmSnooze)
+                    AlarmPill("중단", Color.Transparent, ink.ink, Modifier.weight(1f).fillMaxHeight(), actions::alarmStop)
                 }
             } else {
                 Column(Modifier.align(Alignment.TopStart)) {
                     header()
                     Spacer(Modifier.height(h * 0.04f))
-                    Txt(
-                        time, h * 0.16f / capOf(TIME_FONT), ink.ink,
-                        family = Fonts.clock(TIME_FONT, TIME_WEIGHT), cap = capOf(TIME_FONT), tnum = true, maxW = cw,
-                    )
+                    Txt(time, h * 0.16f / t.timeCap, ink.ink, family = t.time, cap = t.timeCap, tnum = true, maxW = cw)
                 }
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(h * 0.025f)) {
-                    if (a.canSnooze) AlarmPill("다시 알림", snooze, ink.ink, Modifier.fillMaxWidth().height(h * 0.13f), actions::alarmSnooze)
-                    AlarmPill("중단", ink.ink3, ink.ink, Modifier.fillMaxWidth().height(h * 0.13f), actions::alarmStop)
+                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(h * 0.02f)) {
+                    if (a.canSnooze) AlarmPill("다시 알림", ink.snooze, snoozeText, Modifier.fillMaxWidth().height(h * 0.14f), actions::alarmSnooze)
+                    AlarmPill("중단", Color.Transparent, ink.ink, Modifier.fillMaxWidth().height(h * 0.14f), actions::alarmStop)
                 }
             }
         }
@@ -174,7 +177,7 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
 @Composable
 private fun AlarmPill(text: String, bg: Color, fg: Color, modifier: Modifier, onClick: () -> Unit) {
     BoxWithConstraints(modifier.clip(RoundedCornerShape(50)).background(bg).tap(onClick), contentAlignment = Alignment.Center) {
-        Txt(text, max(22.dp, maxHeight * 0.3f).coerceAtMost(maxHeight * 0.42f), fg, weight = 700, maxW = maxWidth * 0.8f)
+        Txt(text, max(22.dp, maxHeight * 0.3f).coerceAtMost(maxHeight * 0.42f), fg, weight = 600, maxW = maxWidth * 0.8f)
     }
 }
 
@@ -228,14 +231,14 @@ private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: Stand
                 Spacer(Modifier.size(small).onPlaced { mini = it.positionInRoot() })
                 Spacer(Modifier.width(s * 0.045f))
                 Column {
-                    Txt(if (hidden) n.appLabel else n.sender, max(24.dp, s * 0.08f), ink.ink, weight = 700, maxW = w * 0.78f - small - s * 0.05f)
+                    Txt(if (hidden) n.appLabel else n.sender, max(24.dp, s * 0.09f), ink.ink, weight = 700, maxW = w * 0.78f - small - s * 0.05f)
                     Spacer(Modifier.height(s * 0.028f))
-                    Txt(if (hidden) "탭하여 보기" else "${n.appLabel} · ${ago(n.postedAtEpochMs, state)}", max(18.dp, s * 0.045f), ink.ink2, weight = 500)
+                    Txt(if (hidden) "탭하여 보기" else "${n.appLabel} · ${ago(n.postedAtEpochMs, state)}", max(18.dp, s * 0.06f), ink.ink2, weight = 500, num = true)
                 }
             }
             if (!hidden) {
                 Spacer(Modifier.height(s * 0.05f))
-                Txt(n.text, max(24.dp, s * 0.072f), ink.ink, weight = 700, lines = 3)
+                Txt(n.text, max(24.dp, s * 0.08f), ink.ink, weight = 700, lines = 3)
             }
         }
         // The plate, drawn at `big` and scaled; position and size interpolate centre → mini.
@@ -286,57 +289,78 @@ private fun ago(epochMs: Long, state: StandbyState): String {
 
 // ------------------------------------------------------------------------------------------------- live activity
 
-/** Live Activity pill top-centre (design §4.4): ink4 plate, icon + short value in acc. Tap → 2× view. */
+/** Live Activity pill top-centre (r5 A): dark pill, glyph + short value in the Live Activity amber. Tap → full view. */
 @Composable
 private fun LivePill(l: LiveActivity, actions: StandbyActions) {
     val ink = LocalInk.current
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val s = min(maxWidth, maxHeight)
-        val t = max(18.dp, s * 0.042f)
+        val t = max(18.dp, s * 0.05f)
         Row(
             Modifier.align(Alignment.TopCenter).padding(top = max(maxHeight * 0.03f, screenPadding(maxWidth, maxHeight).calculateTopPadding() - t * 1.2f))
                 .clip(RoundedCornerShape(50)).background(ink.ink4).tap(actions::liveToggle)
                 .padding(horizontal = t * 0.8f, vertical = t * 0.5f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            HeaderRow(Ic.TIMER, l.value, t, ink.acc, weight = 700)
+            HeaderRow(Ic.TIMER, l.value, t, ink.amber, weight = 700)
         }
     }
 }
 
-/** Live Activity at 2× (design §4.4): header label + icon, value `display`, 4-step bar (acc / ink3), detail. */
+/**
+ * Live Activity full screen as the iPhone timer activity (mockup r5 A, frame ip-timer): an amber panel on the leading
+ * side with the app glyph and name, then the title (grey) and detail top-trailing, step bar, and the value huge and
+ * white bottom-trailing. Portrait: the panel is a band on top.
+ */
 @Composable
 private fun LiveFull(l: LiveActivity, actions: StandbyActions) {
     val ink = LocalInk.current
+    val t = LocalTheme.current
     BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).tap(actions::liveToggle)) {
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
+        val port = h > w
         val pad = screenPadding(w, h)
-        val label = max(20.dp, s * 0.055f)
-        Column(Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                HeaderRow(Ic.TIMER, l.appLabel, label, ink.ink2)
-                Spacer(Modifier.height(s * 0.05f))
-                Txt(l.title, max(24.dp, s * 0.09f), ink.ink, weight = 700)
-            }
-            Txt(
-                l.value, s * 0.30f, ink.ink, family = Fonts.clock(TIME_FONT, TIME_WEIGHT), cap = capOf(TIME_FONT),
-                tnum = true, maxW = w * 0.9f,
-            )
-            Column {
-                l.progress?.let { p ->
-                    val bar = max(6.dp, s * 0.022f)
-                    val on = (p.coerceIn(0f, 1f) * l.steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0)
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(bar)) {
-                        repeat(l.steps) {
-                            Box(Modifier.weight(1f).height(bar).clip(RoundedCornerShape(50)).background(if (it < on) ink.acc else ink.ink3))
-                        }
-                    }
-                    Spacer(Modifier.height(s * 0.06f))
+        val label = max(20.dp, s * 0.066f)
+        val panelText = lerp(Color.White, Color.Black, ink.night)
+        val panel = @Composable { mod: Modifier ->
+            Column(mod.background(ink.amber).padding(s * 0.06f), verticalArrangement = Arrangement.SpaceBetween) {
+                Box(Modifier.size(s * 0.2f).clip(CircleShape).background(lerp(Color.Black, ink.amber, 0.55f)), contentAlignment = Alignment.Center) {
+                    IconView(Ic.TIMER, panelText, Modifier.size(s * 0.1f))
                 }
-                Txt(l.detail, label, ink.ink2, weight = 500)
+                Txt(l.appLabel, label, panelText, weight = 700, maxW = (if (port) w else w * 0.3f) - s * 0.12f)
             }
+        }
+        val info = @Composable { mod: Modifier, cw: Dp ->
+            Column(mod, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
+                Column(horizontalAlignment = Alignment.End) {
+                    Txt(l.title, label, ink.ink2, weight = 600, maxW = cw)
+                    Spacer(Modifier.height(s * 0.035f))
+                    Txt(l.detail, label, ink.ink2, weight = 500, maxW = cw, align = TextAlign.End, num = true)
+                }
+                Column(horizontalAlignment = Alignment.End) {
+                    l.progress?.let { p ->
+                        val bar = max(6.dp, s * 0.022f)
+                        val on = (p.coerceIn(0f, 1f) * l.steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0)
+                        Row(Modifier.width(cw * 0.7f), horizontalArrangement = Arrangement.spacedBy(bar)) {
+                            repeat(l.steps) {
+                                Box(Modifier.weight(1f).height(bar).clip(RoundedCornerShape(50)).background(if (it < on) ink.amber else ink.ink3))
+                            }
+                        }
+                        Spacer(Modifier.height(s * 0.05f))
+                    }
+                    Txt(l.value, s * 0.32f / t.wordsCap, ink.ink, weight = 600, cap = t.wordsCap, tnum = true, maxW = cw)
+                }
+            }
+        }
+        if (!port) Row(Modifier.fillMaxSize()) {
+            panel(Modifier.width(w * 0.3f).fillMaxHeight())
+            val cw = w * 0.7f - pad.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) - s * 0.08f
+            info(Modifier.weight(1f).fillMaxHeight().padding(start = s * 0.08f, top = pad.calculateTopPadding(), bottom = pad.calculateBottomPadding(), end = pad.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)), cw)
+        } else Column(Modifier.fillMaxSize()) {
+            panel(Modifier.fillMaxWidth().height(h * 0.28f))
+            info(Modifier.weight(1f).fillMaxWidth().padding(pad), w - pad.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) * 2)
         }
     }
 }
@@ -365,7 +389,7 @@ private fun WavePill(onOpen: () -> Unit) {
                 for (i in 0 until n) {
                     val k = 0.35f + 0.65f * ((kotlin.math.sin(phase * 0.9f + i * 1.7f) + 1f) / 2f)
                     val bh = size.height * k
-                    drawRoundRect(ink.acc, Offset(i * step, (size.height - bh) / 2), Size(bw, bh), CornerRadius(bw / 2))
+                    drawRoundRect(ink.ink, Offset(i * step, (size.height - bh) / 2), Size(bw, bh), CornerRadius(bw / 2))
                 }
             }
         }
@@ -387,19 +411,35 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
         pos = m.positionMs
         while (m.playing && pos < m.durationMs) { delay(1_000); pos = (pos + 1_000).coerceAtMost(m.durationMs) }
     }
+    val tinted = LocalTheme.current.artTint
+    val tint = remember(m.art, tinted) { if (tinted) m.art?.let(::artColor) else null }
     BoxWithConstraints(
         Modifier.fillMaxSize().background(ink.bg).tap {}.pointerInput(Unit) {
             var dy = 0f
             detectVerticalDragGestures(onDragStart = { dy = 0f }, onDragEnd = { if (dy > size.height * 0.15f) close() }) { _, d -> dy += d }
         },
     ) {
+        if (tint != null) {
+            // r5 A (frame ip-nowplaying): the art colour bleeds into the dark from the art side; gone at night
+            val k = 1f - ink.night
+            val c0 = lerp(Color.Black, tint, 0.45f * k)
+            val c1 = lerp(Color.Black, tint, 0.16f * k)
+            Canvas(Modifier.fillMaxSize()) {
+                drawRect(
+                    Brush.radialGradient(
+                        0f to c0, 0.55f to c1, 1f to Color.Black,
+                        center = Offset(size.width * 0.15f, size.height * 0.5f), radius = size.width * 0.95f,
+                    ),
+                )
+            }
+        }
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
         val port = h > w
-        val title = max(24.dp, s * 0.072f)
-        val detail = max(18.dp, s * 0.05f)
-        val small = max(16.dp, s * 0.036f)
+        val title = max(24.dp, s * 0.09f)
+        val detail = max(18.dp, s * 0.07f)
+        val small = max(16.dp, s * 0.06f)
         val pad = screenPadding(w, h)
         val glyph = max(22.dp, s * 0.055f)
         IconView(
@@ -442,7 +482,7 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
             Column {
                 Txt(m.title, title, ink.ink, weight = 700)
                 Spacer(Modifier.height(s * 0.03f))
-                Txt(m.artist, detail, ink.ink2, weight = 500)
+                Txt(m.artist, detail, ink.ink.copy(alpha = 0.6f), weight = 500)
             }
             val play = title * 2f
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
@@ -453,13 +493,13 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
             Column {
                 val frac = if (m.durationMs > 0) pos.toFloat() / m.durationMs else 0f
                 val bar = max(5.dp, s * 0.014f)
-                Box(Modifier.fillMaxWidth().height(bar).clip(RoundedCornerShape(50)).background(ink.ink3)) {
-                    Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).height(bar).clip(RoundedCornerShape(50)).background(ink.ink))
+                Box(Modifier.fillMaxWidth().height(bar).clip(RoundedCornerShape(50)).background(ink.ink.copy(alpha = 0.25f))) {
+                    Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).height(bar).clip(RoundedCornerShape(50)).background(ink.ink.copy(alpha = 0.85f)))
                 }
                 Spacer(Modifier.height(s * 0.035f))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Txt(mmss(pos), small, ink.ink2, weight = 500, tnum = true)
-                    Txt("-" + mmss((m.durationMs - pos).coerceAtLeast(0)), small, ink.ink2, weight = 500, tnum = true)
+                    Txt(mmss(pos), small, ink.ink.copy(alpha = 0.55f), weight = 500, tnum = true, num = true)
+                    Txt("-" + mmss((m.durationMs - pos).coerceAtLeast(0)), small, ink.ink.copy(alpha = 0.55f), weight = 500, tnum = true, num = true)
                 }
             }
         }
@@ -471,6 +511,17 @@ private fun Btn(ic: Ic, label: String, size: Dp, enabled: Boolean, ink: Ink, onC
     Box(Modifier.size(size).semantics { contentDescription = label }.tap(if (enabled) onClick else null)) {
         IconView(ic, if (enabled) ink.ink else ink.ink3, Modifier.fillMaxSize())
     }
+}
+
+/** Mean colour of the art (every 8th pixel), saturation kept: the Now Playing wash. Computed once per art. */
+internal fun artColor(img: androidx.compose.ui.graphics.ImageBitmap): Color {
+    val px = img.toPixelMap()
+    var r = 0f; var g = 0f; var b = 0f; var n = 0
+    for (y in 0 until px.height step 8) for (x in 0 until px.width step 8) {
+        val c = px[x, y]; r += c.red; g += c.green; b += c.blue; n++
+    }
+    if (n == 0) return Color.Black
+    return Color(r / n, g / n, b / n)
 }
 
 private fun mmss(ms: Long): String { val t = ms / 1000; return "%d:%02d".format(t / 60, t % 60) }

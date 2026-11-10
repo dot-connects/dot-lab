@@ -53,8 +53,13 @@ import androidx.compose.ui.unit.sp
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
+import androidx.compose.ui.text.font.FontSynthesis
+import androidx.compose.ui.text.font.FontWeight
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.StandbyTheme
+import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
 import java.time.LocalDate
@@ -84,7 +89,7 @@ data class CardLook(
 /** Cap height / em from OS/2 sCapHeight (design-system §2.3); used to put cap-tops exactly on the TOP line. */
 internal const val CAP_UI = 0.707f // Pretendard
 internal fun capOf(font: FontId): Float = when (font) {
-    FontId.CONDENSED -> 0.81f
+    FontId.CONDENSED -> 0.655f
     FontId.ROUNDED, FontId.ROUNDED_HEAVY -> 0.705f
     FontId.SERIF, FontId.SERIF_HEAVY -> 0.67f
     FontId.SLAB -> 0.711f
@@ -101,10 +106,12 @@ internal class Env(
     val ownLabel: Dp,
     val ink: Ink,
     val look: CardLook,
+    /** Widget numerals family (theme): "9", "7°", "20%", "D-10". */
     val num: FontFamily,
     val numCap: Float,
     val slotId: String,
     val today: LocalDate,
+    val t: StandbyTheme = Themes.IPHONE,
 ) {
     val s: Dp get() = sz.s
     val pad: Dp get() = sz.pad
@@ -118,7 +125,7 @@ internal class Env(
     val gap: Dp get() = s * 0.04f
     val labelCap: Dp get() = label * CAP_UI
     val bar: Dp get() = max(4.dp, s * 0.025f)
-    val plateRadius: Dp get() = max(12.dp, s * 0.05f)
+    val plateRadius: Dp get() = max(12.dp, s * t.radius)
     /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */
     val loneDisplay: Dp get() = if (tall) max(sz.display, h * 0.6f * 0.56f) else sz.display
     val loneValue: Dp get() = if (tall) max(sz.value, h * 0.6f * 0.30f) else sz.value
@@ -154,7 +161,16 @@ internal fun Txt(
     tnum: Boolean = false,
     maxW: Dp? = null,
     maxCapH: Dp? = null,
-) = Txt(AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH)
+    num: Boolean = false,
+) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH)
+
+/** Runs of Latin/digits ("11°", "9:30", "C") in the theme's numeral font; Hangul stays in the words font. */
+internal fun numSpans(text: String, numerals: FontFamily, weight: Int): AnnotatedString = buildAnnotatedString {
+    append(text)
+    Regex("[!-~°·–]+").findAll(text).forEach { m ->
+        addStyle(SpanStyle(fontFamily = numerals, fontWeight = FontWeight(weight.coerceIn(1, 1000))), m.range.first, m.range.last + 1)
+    }
+}
 
 /** Korean never breaks inside a word (review X4): phrase word-break on the heading strategy. */
 private val PHRASE = LineBreak.Heading.copy(wordBreak = LineBreak.WordBreak.Phrase)
@@ -174,10 +190,12 @@ internal fun Txt(
     maxW: Dp? = null,
     maxCapH: Dp? = null,
 ) {
-    val fam = family ?: Fonts.ui(weight)
+    val fam = family ?: LocalTheme.current.words(weight)
     val density = LocalDensity.current
     fun styleOf(d: Dp) = TextStyle(
         color = color, fontSize = (d.value / density.fontScale).sp, fontFamily = fam,
+        // static multi-weight families (rounded numerals) pick by weight; never fake bold
+        fontWeight = FontWeight(weight.coerceIn(1, 1000)), fontSynthesis = FontSynthesis.None,
         lineHeight = (d.value * 1.15f / density.fontScale).sp, textAlign = align,
         fontFeatureSettings = if (tnum) "tnum" else null,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
@@ -244,7 +262,8 @@ internal fun LabelRow(
         horizontalArrangement = if (center) Arrangement.Center else Arrangement.Start,
     ) {
         if (icon != null && !iconEnd) { iconBox(); Spacer(Modifier.width(e.label * 0.35f)) }
-        Txt(text, e.label, color, Modifier.weight(1f, fill = !center && !iconEnd), weight = weight)
+        // icon-after labels ("서울 ➤") take their own width first, so a narrow slot never ellipsizes the city
+        Txt(text, e.label, color, if (iconEnd) Modifier else Modifier.weight(1f, fill = !center), weight = weight)
         if (icon != null && iconEnd) { Spacer(Modifier.width(e.label * 0.35f)); iconBox(); Spacer(Modifier.weight(1f)) }
         if (trailing != null) {
             Spacer(Modifier.width(e.label * 0.5f))
