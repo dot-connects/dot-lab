@@ -66,7 +66,7 @@ export function spriteCreature(img) {
 // ---------- 3D creatures (creatures.js) behind the same seam ----------
 import { makeCreature, SPECS } from "./creatures.js";
 
-export const VIRTUAL = SPECS.filter(s => s.group === "chiikawa");
+export const VIRTUAL = SPECS.filter(s => s.style === "mochi");
 export const specOf = id => SPECS.find(s => s.id === id);
 
 /** A creatures.js model as the ar.js creature (its own contact shadow is hidden: ar.js draws one). */
