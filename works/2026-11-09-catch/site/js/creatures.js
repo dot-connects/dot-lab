@@ -492,4 +492,80 @@ export const SPECS = [
       { kind: "blob", r: [0.09, 0.06, 0.05], on: "head", on_at: [0, -0.3], out: 0.04, color: "#fbf5ec" },
       { kind: "blob", r: [0.07, 0.08, 0.08], c: [0.17, -0.42, 0.06], mirror: true, color: "#d9c3a7" },
     ] },
+  // F. 보송 동물 — same fur, animals the operator named 2026-11-10 (cat, dog, penguin, sheep, llama, meerkat, pig, bear)
+  { id: "nyangsom", name: "냥솜", style: "fuzz", group: "fluff2", color: "#efeae3", height: 0.3,   // a cat
+    body: { r: [0.44, 0.4, 0.42], flat: 0.25, len: 0.07 },
+    face: { x: 0.3, y: 0.04, r: 0.045, blush: "#f1aeb0" },
+    parts: [
+      { kind: "cone", r: 0.12, h: 0.25, fur: true, on: "head", on_at: [0.55, 0.9], mirror: true, rot: [0, 0, -0.35], out: -0.02, wob: 0.4 },
+      { kind: "blob", r: [0.05, 0.24, 0.05], on: "head", on_at: [Math.PI - 0.5, -0.35], rot: [-0.7, 0, 0.5], out: 0.1, fur: true, len: 0.05, wob: 1 },
+      { kind: "blob", r: [0.07, 0.045, 0.09], c: [0.15, -0.38, 0.16], mirror: true, color: "#e6dcd0" },
+    ] },
+  { id: "meongsom", name: "멍솜", style: "fuzz", group: "fluff2", color: "#f3e3c8", height: 0.3,   // a puppy with floppy ears
+    body: { r: [0.44, 0.42, 0.42], flat: 0.25, len: 0.07 },
+    face: { x: 0.3, y: 0.1, r: 0.045, blush: "#f0aa98", mouth: false },
+    parts: [
+      { kind: "blob", r: [0.1, 0.2, 0.06], off: [0, -0.15, 0], on: "head", on_at: [1.15, 0.7], mirror: true, rot: [0, 0, 0.35], fur: true, len: 0.05, color: "#d8b88e", wob: 1.1 },
+      { kind: "blob", r: [0.12, 0.08, 0.06], on: "head", on_at: [0, -0.12], out: 0.03, color: "#fbf5ea" },
+      { kind: "blob", r: [0.035, 0.025, 0.02], on: "head", on_at: [0, -0.05], out: 0.1, color: "#3d3532" },
+      { kind: "blob", r: [0.08, 0.045, 0.1], c: [0.15, -0.38, 0.16], mirror: true, color: "#e2c9a4" },
+    ] },
+  { id: "pengsom", name: "펭송", style: "fuzz", group: "fluff2", color: "#d9e1ec", height: 0.33,   // a penguin chick
+    body: { r: [0.4, 0.48, 0.38], taper: 0.12, flat: 0.3, len: 0.07 },
+    face: { x: 0.26, y: 0.24, r: 0.04, blush: "#f0b0b8", mouth: false },
+    parts: [
+      { kind: "blob", r: [0.26, 0.3, 0.08], on: "head", on_at: [0, -0.3], out: -0.03, fur: true, len: 0.06, color: "#fbfaf6" },
+      { kind: "cone", r: 0.045, h: 0.08, on: "head", on_at: [0, 0.12], out: 0.05, rot: [Math.PI / 2, 0, 0], color: "#f3c77a" },
+      { kind: "blob", r: [0.05, 0.2, 0.08], on: "head", on_at: [1.5, -0.1], mirror: true, rot: [0, 0, 0.35], fur: true, len: 0.05, wob: 1.1, out: -0.02 },
+      { kind: "blob", r: [0.1, 0.04, 0.12], c: [0.14, -0.44, 0.14], mirror: true, color: "#f3c77a" },
+    ] },
+  { id: "mungge", name: "뭉게", style: "fuzz", group: "fluff2", color: "#f3e2d8", height: 0.3,   // a sheep: short-haired face in front of a big wool cloud
+    bodies: [
+      { r: [0.24, 0.26, 0.22], c: [0, 0.02, 0.36], len: 0.03 },
+      { r: [0.46, 0.4, 0.42], c: [0, 0.04, 0], color: "#fdfbf6", len: 0.13 },
+    ],
+    face: { x: 0.34, y: 0.05, r: 0.038, blush: "#eea9a2" },
+    parts: [
+      { kind: "blob", r: [0.1, 0.05, 0.04], on: "head", on_at: [1.3, 0.35], mirror: true, rot: [0, 0, -0.5], color: "#f0d6c8", out: 0.02, wob: 0.5 },
+      { kind: "blob", r: [0.18, 0.1, 0.16], on: "head", on_at: [0, 1.3], out: -0.02, fur: true, len: 0.12, color: "#fdfbf6" },
+      { kind: "blob", r: [0.06, 0.08, 0.06], c: [0.18, -0.38, 0.1], mirror: true, color: "#e8cdbd" },
+    ] },
+  { id: "rara", name: "라라", style: "fuzz", group: "fluff2", color: "#f7f3ec", height: 0.44,   // a llama: long neck, banana ears, a little blanket
+    bodies: [
+      { r: [0.18, 0.2, 0.2], c: [0, 0.62, 0.2], len: 0.04 },
+      { r: [0.12, 0.3, 0.12], c: [0, 0.3, 0.12], len: 0.06 },
+      { r: [0.34, 0.26, 0.42], c: [0, -0.12, -0.08], len: 0.08 },
+    ],
+    face: { x: 0.4, y: 0.06, r: 0.034, blush: "#f0b0a0" },
+    parts: [
+      { kind: "blob", r: [0.04, 0.13, 0.04], on: "head", on_at: [0.7, 1.0], mirror: true, rot: [0, 0, -0.25], out: 0.06, color: "#e6d6c0", wob: 0.8 },
+      { kind: "blob", r: [0.06, 0.09, 0.06], c: [0.17, -0.38, 0.08], mirror: true, color: "#ded0bd" },
+    ] },
+  { id: "mieo", name: "미어", style: "fuzz", group: "fluff2", color: "#ead8bc", height: 0.4,   // a meerkat on watch, paws together
+    body: { r: [0.26, 0.5, 0.25], taper: 0.15, flat: 0.15, len: 0.05 },
+    face: { x: 0.36, y: 0.32, r: 0.036, blush: "#eea996" },
+    parts: [
+      { kind: "blob", r: [0.05, 0.05, 0.03], on: "head", on_at: [1.2, 0.55], mirror: true, out: 0.0, color: "#a88b6c" },
+      { kind: "blob", r: [0.05, 0.04, 0.04], on: "head", on_at: [0.22, -0.12], mirror: true, out: 0.05, color: "#c9ad86" },   // paws held in front
+      { kind: "blob", r: [0.05, 0.26, 0.05], on: "head", on_at: [Math.PI, -0.75], rot: [-1.3, 0, 0], out: 0.1, fur: true, len: 0.04, color: "#dcc6a4" },
+      { kind: "blob", r: [0.07, 0.04, 0.1], c: [0.1, -0.5, 0.12], mirror: true, color: "#c9ad86" },
+    ] },
+  { id: "kkulkkul", name: "꿀꿀", style: "fuzz", group: "fluff2", color: "#f8dcd8", height: 0.28,   // a piglet
+    body: { r: [0.46, 0.4, 0.42], flat: 0.25, len: 0.035 },
+    face: { x: 0.3, y: 0.14, r: 0.042, blush: "#f09ca4", mouth: false },
+    parts: [
+      { kind: "cone", r: 0.09, h: 0.12, fur: true, on: "head", on_at: [0.6, 0.85], mirror: true, rot: [0.5, 0, -0.4], out: -0.03, wob: 0.6 },
+      { kind: "blob", r: [0.1, 0.07, 0.04], on: "head", on_at: [0, -0.1], out: 0.035, color: "#f2b7b9" },
+      { kind: "blob", r: [0.015, 0.024, 0.01], on: "head", on_at: [0.07, -0.1], mirror: true, out: 0.075, color: "#c47c82" },
+      { kind: "blob", r: [0.07, 0.05, 0.08], c: [0.17, -0.38, 0.14], mirror: true, color: "#efc0be" },
+    ] },
+  { id: "gomsom", name: "곰솜", style: "fuzz", group: "fluff2", color: "#e6d2bb", height: 0.31,   // a bear cub
+    body: { r: [0.44, 0.42, 0.42], flat: 0.25, len: 0.07 },
+    face: { x: 0.3, y: 0.12, r: 0.044, blush: "#eea592", mouth: false },
+    parts: [
+      { kind: "blob", r: [0.11, 0.11, 0.07], on: "head", on_at: [0.75, 0.9], mirror: true, out: -0.02, fur: true, len: 0.05 },
+      { kind: "blob", r: [0.12, 0.085, 0.06], on: "head", on_at: [0, -0.12], out: 0.03, color: "#f6ebde" },
+      { kind: "blob", r: [0.035, 0.025, 0.02], on: "head", on_at: [0, -0.05], out: 0.1, color: "#3d3532" },
+      { kind: "blob", r: [0.08, 0.05, 0.1], c: [0.16, -0.38, 0.16], mirror: true, color: "#d4bb9c" },
+    ] },
 ];

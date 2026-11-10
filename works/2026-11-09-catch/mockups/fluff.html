@@ -21,18 +21,21 @@
 </head>
 <body>
 <main>
-  <h1>보송 털뭉치 — 8마리 시안</h1>
-  <p>컨셉 6 안의 8마리. 양·병아리·민들레·털실·솜사탕·밤송이·강아지풀·알파카에서 왔습니다. 번호 대신 이름으로 골라 주세요.</p>
+  <h1>보송 털뭉치 — 16마리 시안</h1>
+  <p>컨셉 6 안의 8마리. 양·병아리·민들레·털실·솜사탕·밤송이·강아지풀·알파카에서 왔습니다. 아래는 같은 털로 만든 동물 8마리. 이름으로 골라 주세요.</p>
   <div id="grid"></div>
 </main>
 <script type="module">
 import { SPECS } from "../site/js/creatures.js";
 import { snapshot } from "../site/js/creature.js";
 const g = document.getElementById("grid");
-for (const s of SPECS.filter(s => s.group === "fluff")) {
+for (const [grp, title] of [["fluff", "보송 털뭉치 8"], ["fluff2", "보송 동물 8"]]) {
+  const h = document.createElement("h2"); h.textContent = title; h.style.cssText = "grid-column:1/-1;font-size:17px;margin:14px 0 0"; g.append(h);
+  for (const s of SPECS.filter(s => s.group === grp)) {
   const f = document.createElement("figure");
   f.innerHTML = `<img alt="${s.name}" src="${snapshot(s.id)}"><figcaption>${s.name}</figcaption>`;
   g.append(f);
+  }
 }
 window.__done = true;
 </script>
