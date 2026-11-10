@@ -354,4 +354,63 @@ export const SPECS = [
       { kind: "cone", r: 0.04, h: 0.14, on: "head", on_at: [0, 1.45], mirror: true, rot: [0, 0, -0.35], out: -0.02, color: "#c7d9ee" },
       { kind: "blob", r: [0.08, 0.05, 0.1], c: [0.14, -0.31, 0.1], mirror: true, color: "#f4dc9c" },
     ] },
+
+  // D. 새 친구들 — small, round, pale mochi with a thin line and dot eyes (2026-11-10 draft, 8 originals)
+  { id: "bangul", name: "방울", style: "mochi", group: "new", color: "#e3f3ef", height: 0.3,
+    body: { r: [0.42, 0.46, 0.4], taper: 0.34, flat: 0.3 },   // a water drop: narrow top
+    face: { x: 0.3, y: -0.02, r: 0.042, blush: "#f2b2ad" },
+    parts: [
+      { kind: "cone", r: 0.07, h: 0.16, on: "head", on_at: [0, 1.5], out: -0.05, rot: [0, 0, 0.3], wob: 0.9 },
+      { kind: "blob", r: [0.09, 0.055, 0.11], c: [0.16, -0.32, 0.16], mirror: true },
+    ] },
+  { id: "kongtteok", name: "콩떡", style: "mochi", group: "new", color: "#e4efd2", height: 0.2,
+    body: { r: [0.58, 0.32, 0.42], taper: 0.0, flat: 0.5 },   // a wide flat bean cake
+    face: { x: 0.3, y: 0.12, r: 0.04, blush: "#efb1a1" },
+    parts: [
+      { kind: "blob", r: [0.07, 0.05, 0.07], on: "head", on_at: [0.55, 1.1], out: -0.01, mirror: true, color: "#b9cf96" },
+      { kind: "blob", r: [0.07, 0.05, 0.07], on: "head", on_at: [0, 1.35], out: -0.01, color: "#b9cf96" },
+    ] },
+  { id: "noeul", name: "노을", style: "mochi", group: "new", color: "#fbe1d2", height: 0.3,
+    body: { r: [0.44, 0.44, 0.42], taper: 0.1, flat: 0.3 },
+    face: { x: 0.3, y: 0.06, r: 0.042, blush: "#ee9f93" },
+    parts: [
+      { kind: "stick", h: 0.24, tip: 0.055, tipColor: "#f6c56e", color: "#8a6f66", on: "head", on_at: [0.2, 1.25], rot: [0, 0, -0.3], wob: 1.3 },
+      { kind: "blob", r: [0.09, 0.055, 0.11], c: [0.17, -0.3, 0.17], mirror: true },
+    ] },
+  { id: "gureum", name: "구름", style: "mochi", group: "new", color: "#eceaf4", height: 0.26,
+    bodies: [   // a cloud: one round middle, two smaller puffs at the sides
+      { r: [0.4, 0.38, 0.38], c: [0, 0.04, 0] },
+      { r: [0.26, 0.24, 0.26], c: [-0.4, -0.06, -0.04] },
+      { r: [0.26, 0.24, 0.26], c: [0.4, -0.06, -0.04] },
+    ],
+    face: { x: 0.3, y: 0.1, r: 0.04, blush: "#efb5c6" },
+    parts: [{ kind: "blob", r: [0.08, 0.05, 0.1], c: [0.14, -0.3, 0.16], mirror: true }] },
+  { id: "byeolkong", name: "별콩", style: "mochi", group: "new", color: "#fbf1c9", height: 0.28,
+    body: { r: [0.46, 0.44, 0.42], taper: 0.05, flat: 0.3, star: 0.22 },   // a soft five-point star
+    face: { x: 0.3, y: 0.06, r: 0.042, blush: "#f0ab95" },
+    parts: [{ kind: "blob", r: [0.09, 0.055, 0.11], c: [0.16, -0.3, 0.16], mirror: true }] },
+  { id: "pengdol", name: "펭돌", style: "mochi", group: "new", color: "#dfe7f1", height: 0.32,
+    body: { r: [0.4, 0.5, 0.38], taper: 0.12, flat: 0.3 },
+    face: { x: 0.28, y: 0.22, r: 0.04, blush: "#f0b0b8" },
+    parts: [
+      { kind: "blob", r: [0.24, 0.22, 0.07], on: "head", on_at: [0, -0.55], out: -0.05, color: "#fbfaf6" },   // pale belly, below the face
+      { kind: "cone", r: 0.045, h: 0.09, on: "head", on_at: [0, 0.08], out: -0.01, rot: [Math.PI / 2, 0, 0], color: "#f3c77a" },
+      { kind: "blob", r: [0.05, 0.2, 0.08], on: "head", on_at: [1.5, -0.1], mirror: true, rot: [0, 0, 0.35], wob: 1.1, out: -0.02 },
+      { kind: "blob", r: [0.1, 0.05, 0.12], c: [0.14, -0.4, 0.14], mirror: true, color: "#f3c77a" },
+    ] },
+  { id: "musun", name: "무순", style: "mochi", group: "new", color: "#fdf3f3", height: 0.34,
+    body: { r: [0.42, 0.48, 0.4], taper: -0.22, flat: 0.15 },   // a radish: round top, narrow bottom
+    face: { x: 0.3, y: 0.1, r: 0.04, blush: "#f2a9b5" },
+    parts: [
+      { kind: "leaf", color: "#a7d39a", h: 0.1, w: 0.06, on: "head", on_at: [0.25, 1.4], out: -0.01, mirror: true, rot: [0, 0, -0.35], wob: 0.6 },
+      { kind: "blob", r: [0.07, 0.05, 0.09], c: [0.1, -0.36, 0.1], mirror: true },
+    ] },
+  { id: "malgeun", name: "말금", style: "mochi", group: "new", color: "#ece2f5", height: 0.3,
+    body: { r: [0.44, 0.46, 0.42], taper: 0.08, flat: 0.3 },
+    face: { x: 0.3, y: 0.05, r: 0.044, blush: "#efb1c9", shine: true },
+    parts: [
+      { kind: "blob", r: [0.09, 0.09, 0.09], on: "head", on_at: [0.55, 1.05], out: -0.03, mirror: true },   // three soft bumps
+      { kind: "blob", r: [0.1, 0.1, 0.1], on: "head", on_at: [0, 1.4], out: -0.03 },
+      { kind: "blob", r: [0.09, 0.055, 0.11], c: [0.16, -0.31, 0.16], mirror: true },
+    ] },
 ];

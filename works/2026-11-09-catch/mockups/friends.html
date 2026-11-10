@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>새 친구들 시안</title>
+<style>
+  :root { --bg: #f6f3ee; --fg: #2d2826; --sub: #6f6762; --card: #fff; --line: #e4ded6; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --card: #2a2725; --line: #3a3634; } }
+  :root[data-theme="dark"] { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --card: #2a2725; --line: #3a3634; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  main { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 21px; margin: 0 0 4px; } p { color: var(--sub); margin: 0 0 18px; font-size: 14px; }
+  #grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  figure { margin: 0; background: #efe7dc; border: 1px solid var(--line); border-radius: 14px; padding: 8px 8px 10px; text-align: center; }
+  figure img { width: 100%; aspect-ratio: 1; display: block; }
+  figcaption { font-weight: 700; color: #2d2826; }
+</style>
+</head>
+<body>
+<main>
+  <h1>새 친구들 — 8마리 시안</h1>
+  <p>작고 동그랗고 연한 몸, 얇은 선, 점 눈, 볼터치. 말랑 질감이라 게임에 그대로 들어갑니다.</p>
+  <div id="grid"></div>
+</main>
+<script type="module">
+import { SPECS } from "../site/js/creatures.js";
+import { snapshot } from "../site/js/creature.js";
+const g = document.getElementById("grid");
+for (const s of SPECS.filter(s => s.group === "new")) {
+  const f = document.createElement("figure");
+  f.innerHTML = `<img alt="${s.name}" src="${snapshot(s.id)}"><figcaption>${s.name}</figcaption>`;
+  g.append(f);
+}
+window.__done = true;
+</script>
+</body>
+</html>
