@@ -420,4 +420,76 @@ export const SPECS = [
       { kind: "blob", r: [0.1, 0.1, 0.1], on: "head", on_at: [0, 1.4], out: -0.03 },
       { kind: "blob", r: [0.09, 0.055, 0.11], c: [0.16, -0.31, 0.16], mirror: true },
     ] },
+
+  // E. 보송 털뭉치 — concept 6 picked 2026-11-10: pale fur balls, each a fluffy thing from a home or a field
+  { id: "monggeul", name: "몽글", style: "fuzz", group: "fluff", color: "#f6efe1", height: 0.3,   // a lamb
+    body: { r: [0.46, 0.42, 0.44], flat: 0.25, len: 0.09 },
+    face: { x: 0.3, y: 0.05, r: 0.05, blush: "#f2b2a6" },
+    parts: [
+      { kind: "blob", r: [0.12, 0.06, 0.05], on: "head", on_at: [1.1, 0.25], mirror: true, rot: [0, 0, -0.4], color: "#3d3532", out: 0.04, wob: 0.6 },
+      { kind: "blob", r: [0.06, 0.08, 0.06], c: [0.16, -0.42, 0.12], mirror: true, color: "#3d3532" },
+    ] },
+  { id: "ppiyak", name: "삐약", style: "fuzz", group: "fluff", color: "#fbecb4", height: 0.28,   // a chick
+    body: { r: [0.42, 0.44, 0.4], taper: 0.1, flat: 0.25, len: 0.07 },
+    face: { x: 0.28, y: 0.12, r: 0.045, blush: "#f3a98f" },
+    parts: [
+      { kind: "cone", r: 0.05, h: 0.09, on: "head", on_at: [0, 0.02], out: 0.03, rot: [Math.PI / 2, 0, 0], color: "#f3b766" },
+      { kind: "blob", r: [0.07, 0.15, 0.1], on: "head", on_at: [1.45, -0.15], mirror: true, rot: [0, 0, 0.5], fur: true, len: 0.05, wob: 1.2, out: -0.02 },
+      { kind: "stick", h: 0.1, tip: 0.035, tipColor: "#fbecb4", color: "#e9cf86", on: "head", on_at: [0.15, 1.35], mirror: true, rot: [0, 0, -0.4], out: 0.03, wob: 1 },
+      { kind: "blob", r: [0.08, 0.035, 0.1], c: [0.13, -0.42, 0.14], mirror: true, color: "#f3b766" },
+    ] },
+  { id: "huhu", name: "후후", style: "fuzz", group: "fluff", color: "#fdfcf8", height: 0.36,   // a dandelion clock on its stem
+    body: { r: [0.42, 0.42, 0.42], len: 0.14 },
+    face: { x: 0.28, y: 0.02, r: 0.045, blush: "#f1b9b0" },
+    parts: [
+      { kind: "stick", h: 0.36, tip: 0.07, tipColor: "#b9d79a", color: "#9cc27c", on: "head", on_at: [0, -1.5], out: -0.02, rot: [Math.PI, 0, 0] },
+      { kind: "leaf", color: "#a9cf8c", h: 0.07, w: 0.06, c: [0.06, -0.62, 0.02], rot: [0, 0, -0.6], wob: 0.5 },
+    ] },
+  { id: "silta", name: "실타", style: "fuzz", group: "fluff", color: "#f5d3d9", height: 0.27,   // a ball of yarn with its needles
+    body: { r: [0.42, 0.4, 0.42], flat: 0.2, len: 0.04 },
+    face: { x: 0.3, y: 0.04, r: 0.045, blush: "#ee9fae" },
+    parts: [
+      { kind: "stick", h: 0.55, tip: 0.04, tipColor: "#f3d79a", color: "#d6b98f", on: "head", on_at: [Math.PI - 0.6, 0.35], mirror: true, rot: [-0.2, 0, 0.55], out: -0.05 },   // needles crossed behind
+      { kind: "blob", r: [0.22, 0.03, 0.03], c: [0.5, -0.36, 0.12], rot: [0, -0.5, 0], color: "#efc1ca", fur: true, len: 0.03 },
+      { kind: "blob", r: [0.07, 0.04, 0.08], c: [-0.15, -0.38, 0.16], mirror: false, color: "#e7aab7" },
+      { kind: "blob", r: [0.07, 0.04, 0.08], c: [0.08, -0.38, 0.2], color: "#e7aab7" },
+    ] },
+  { id: "dalsom", name: "달솜", style: "fuzz", group: "fluff", color: "#f1dcf0", height: 0.26,   // a cotton-candy cloud
+    bodies: [
+      { r: [0.38, 0.36, 0.36], c: [0, 0.04, 0.02], len: 0.1 },
+      { r: [0.26, 0.24, 0.26], c: [-0.38, -0.06, -0.04], color: "#f6d6e2", len: 0.1 },
+      { r: [0.26, 0.24, 0.26], c: [0.38, -0.06, -0.04], color: "#dfe0f5", len: 0.1 },
+      { r: [0.22, 0.2, 0.22], c: [0.06, 0.32, -0.08], color: "#f6d6e2", len: 0.1 },
+    ],
+    face: { x: 0.28, y: 0.06, r: 0.042, blush: "#ee9fc0" },
+    parts: [{ kind: "blob", r: [0.07, 0.04, 0.08], c: [0.13, -0.32, 0.16], mirror: true, color: "#e2b6d6" }] },
+  { id: "bamtol", name: "밤톨", style: "fuzz", group: "fluff", color: "#efdcbc", height: 0.3,   // a chestnut burr: soft prickles on a fur ball
+    body: { r: [0.42, 0.42, 0.4], taper: 0.12, flat: 0.25, len: 0.05 },
+    face: { x: 0.28, y: -0.02, r: 0.045, blush: "#eea98c" },
+    parts: [
+      ...[[0, 1.5], [0.6, 1.0], [-0.6, 1.0], [1.3, 0.75], [-1.3, 0.75], [0.3, 0.55], [-0.3, 0.55], [1.7, 0.3], [-1.7, 0.3], [Math.PI, 0.9]].map(([y, p]) =>
+        ({ kind: "cone", r: 0.045, h: 0.14, color: "#cfa877", on: "head", on_at: [y, p], out: -0.04,
+           rot: [Math.atan2(Math.cos(y) * Math.cos(p), Math.sin(p)), 0, -Math.asin(Math.sin(y) * Math.cos(p))] })),   // cone +Y along the surface normal
+      { kind: "blob", r: [0.08, 0.045, 0.1], c: [0.15, -0.4, 0.14], mirror: true, color: "#b98d64" },
+    ] },
+  { id: "sallang", name: "살랑", style: "fuzz", group: "fluff", color: "#e4ecc3", height: 0.38,   // a foxtail-grass plume, nodding
+    body: { r: [0.26, 0.5, 0.26], taper: 0.3, flat: 0.15, len: 0.12 },
+    face: { x: 0.36, y: 0.0, r: 0.04, blush: "#efb2a2" },
+    parts: [
+      { kind: "leaf", color: "#a6c98a", h: 0.1, w: 0.08, c: [0, -0.5, 0.02], mirror: false, wob: 0.6 },
+      { kind: "blob", r: [0.06, 0.035, 0.08], c: [0.1, -0.52, 0.1], mirror: true, color: "#b6cf95" },
+    ] },
+  { id: "bodeul", name: "보들", style: "fuzz", group: "fluff", color: "#f4e8d8", height: 0.42,   // an alpaca: fluffy head on a neck on a round body
+    bodies: [
+      { r: [0.22, 0.22, 0.22], c: [0, 0.5, 0.16], len: 0.07 },
+      { r: [0.15, 0.24, 0.15], c: [0, 0.22, 0.08], len: 0.08 },
+      { r: [0.36, 0.3, 0.4], c: [0, -0.14, -0.06], len: 0.1 },
+    ],
+    face: { x: 0.38, y: 0.08, r: 0.036, blush: "#eeb0a0" },
+    parts: [
+      { kind: "blob", r: [0.15, 0.1, 0.14], on: "head", on_at: [0, 1.3], out: -0.02, fur: true, len: 0.11 },
+      { kind: "cone", r: 0.05, h: 0.16, on: "head", on_at: [0.9, 0.7], mirror: true, rot: [0, 0, -0.6], out: 0.02, color: "#e2cdb3", wob: 0.8 },
+      { kind: "blob", r: [0.09, 0.06, 0.05], on: "head", on_at: [0, -0.3], out: 0.04, color: "#fbf5ec" },
+      { kind: "blob", r: [0.07, 0.08, 0.08], c: [0.17, -0.42, 0.06], mirror: true, color: "#d9c3a7" },
+    ] },
 ];
