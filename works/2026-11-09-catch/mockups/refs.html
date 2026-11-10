@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>펫 레퍼런스</title>
+<style>
+  :root { --bg: #f6f3ee; --fg: #2d2826; --sub: #6f6762; --line: #e4ded6; --a: #b4562f; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --line: #3a3634; --a: #f0a27c; } }
+  :root[data-theme="dark"] { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --line: #3a3634; --a: #f0a27c; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.6 system-ui, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  main { max-width: 680px; margin: 0 auto; padding: 16px 16px 48px; overflow-wrap: anywhere; }
+  h1 { font-size: 21px; } h2 { font-size: 18px; margin-top: 28px; border-top: 1px solid var(--line); padding-top: 14px; } h3 { font-size: 16px; }
+  a { color: var(--a); } code { font-size: 13px; }
+  .tw { overflow-x: auto; } table { border-collapse: collapse; font-size: 13.5px; } td, th { border: 1px solid var(--line); padding: 5px 7px; vertical-align: top; }
+</style>
+</head>
+<body>
+<main id="m">불러오는 중…</main>
+<script type="module">
+import { marked } from "https://cdn.jsdelivr.net/npm/marked@12.0.2/lib/marked.esm.js";
+const md = await (await fetch("../research/pet-refs.md", { cache: "no-store" })).text();
+const m = document.getElementById("m");
+m.innerHTML = marked.parse(md);
+m.querySelectorAll("table").forEach(t => { const w = document.createElement("div"); w.className = "tw"; t.replaceWith(w); w.append(t); });
+m.querySelectorAll("a").forEach(a => { a.target = "_blank"; a.rel = "noopener"; });
+</script>
+</body>
+</html>
