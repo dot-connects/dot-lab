@@ -8,8 +8,8 @@ import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.m
 
 const Q = new URLSearchParams(location.search);
 const LONG_FOV = +(Q.get("fov") || 66);    // degrees across the long side of a 26 mm-equivalent rear camera
-const DIST = 1.2, HEIGHT = 0.35;           // metres: the creature stands 1.2 m along the first gaze, 35 cm tall
-const ART = 0.84;                          // official artwork has a clear margin: the hit box is the inner 84 %
+const DIST = 1.2, DROP = 0.09;             // metres: the creature stands 1.2 m along the first gaze, its centre 9 cm below it
+                                           // (centre at ~0.56 of the screen height: on the floor in front of you, not floating)
 
 /** Every picture (pokemon art, room) loads through here: crossOrigin "anonymous" keeps canvases readable later. */
 export function loadImg(src) {
@@ -26,7 +26,7 @@ let renderer, camera, scene, bgScene, ortho, video, vtex, roomTex = null, roomPi
 const crop = { value: new THREE.Vector2(1, 1) };
 const S = { mode: null, gyro: false, yaw: 0, pitch: 0, offSince: 0, spawn: 1, scale: 1, W: 1, H: 1 };
 const anchor = new THREE.Group(), body = new THREE.Group();
-let sprite = null, shadow = null, aspect = 1;
+let cur = null, shadow = null;   // cur = the creature (creature.js seam)
 const tint = new THREE.Color(1, 1, 1), tintT = new THREE.Color(1, 1, 1);
 
 export function init(canvas, videoEl) {
@@ -57,16 +57,10 @@ export function init(canvas, videoEl) {
   addEventListener("resize", fit);
 }
 
-/** The creature's picture (an image from loadImg). */
-export function setCreature(img) {
-  if (sprite) { body.remove(sprite); sprite.material.map.dispose(); sprite.material.dispose(); sprite.geometry.dispose(); }
-  const t = new THREE.Texture(img); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; t.needsUpdate = true;
-  aspect = img.naturalWidth / img.naturalHeight || 1;
-  sprite = new THREE.Mesh(new THREE.PlaneGeometry(HEIGHT * aspect, HEIGHT), new THREE.MeshBasicMaterial({ map: t, transparent: true, alphaTest: 0.02, depthWrite: false }));
-  sprite.position.y = HEIGHT / 2;   // the group's origin is at the feet
-  sprite.renderOrder = 2;
-  body.add(sprite);
-  shadow.scale.set(HEIGHT * aspect * 0.42, HEIGHT * aspect * 0.42, 1);
+/** The creature (see creature.js for the members it must have). */
+export function setCreature(c) {
+  if (cur) { body.remove(cur.root); cur.dispose(); }
+  cur = c; body.add(c.root);
   shadow.position.y = 0.002;
   S.spawn = 0;
 }
@@ -129,7 +123,7 @@ export function place() {
   camera.updateMatrixWorld();
   const fwd = v3.set(0, 0, -1).applyQuaternion(camera.quaternion);
   anchor.position.copy(camera.position).addScaledVector(fwd, DIST);
-  anchor.position.y -= HEIGHT / 2;
+  anchor.position.y -= (cur ? cur.hit.cy : 0.175) + DROP;
   S.spawn = 0; S.offSince = 0;
   if (S.mode === "screen") roomLight(fwd);
 }
@@ -169,7 +163,7 @@ const lookQ = new THREE.Quaternion(), lookE = new THREE.Euler(0, 0, 0, "YXZ");
 const corners = [[-0.5, 0], [0.5, 0], [-0.5, 1], [0.5, 1]].map(([x, y]) => new THREE.Vector3(x, y, 0));
 
 /**
- * One frame. pose = {scale (0..1, shrinks into the ball), hidden}. Returns the target on screen:
+ * One frame. pose = {scale (0..1, shrinks into the ball), flash, squash, hidden, hold} (creature.js). Returns the target on screen:
  * {box: {x, y, w, h}, center: {x, y}, onScreen} in CSS px, or null before a creature is loaded.
  */
 export function frame(now, dt, pose = {}) {
@@ -188,27 +182,28 @@ export function frame(now, dt, pose = {}) {
   tint.lerp(tintT, 0.1);
 
   let out = null;
-  if (sprite) {
-    // stands upright in the room and turns to face you; breathes; pops in when (re)placed
+  if (cur) {
+    // stands upright in the room and turns to face you; pops in when (re)placed; the creature moves itself
     anchor.lookAt(v3.set(camera.position.x, anchor.position.y, camera.position.z));
     S.spawn = Math.min(1, S.spawn + dt / 0.5);
     const e = S.spawn, pop = 1 - Math.pow(1 - e, 3) * (1 - 1.6 * (1 - e)), k = Math.max(0.001, pop * (pose.scale ?? 1));
-    body.scale.set(k, k * (1 + 0.03 * Math.sin(now / 1000 * 2.4)), k);
+    const lift = cur.update(now, dt, { ...pose, scale: k }, tint), air = Math.max(0.4, 1 - lift / 0.09);
     body.visible = !pose.hidden;
     shadow.visible = !pose.hidden;
-    shadow.material.opacity = Math.min(1, k);
-    sprite.material.color.copy(tint);
+    shadow.scale.set(cur.shadowR * k * air, cur.shadowR * k * air, 1);   // the contact shadow shrinks and fades as it hops
+    shadow.material.opacity = Math.min(1, k) * air;
 
     // bring it back in front if it has been off screen for 2.5 s (gyro drift, or the phone turned away)
     anchor.updateMatrixWorld(true);
-    v3.set(0, HEIGHT / 2, 0); body.localToWorld(v3); v3.project(camera);
+    v3.set(0, cur.hit.cy, 0).applyMatrix4(anchor.matrixWorld).project(camera);
     const off = Math.abs(v3.x) > 1.4 || Math.abs(v3.y) > 1.4 || v3.z > 1;
     if (off && !pose.hold) { S.offSince ||= now; if (now - S.offSince > 2500) place(); } else S.offSince = 0;
 
-    // screen box of the picture (the inner ART part), unscaled by breathing and the catch shrink
+    // screen box of the creature's hit box, unmoved by its idle moves and the catch shrink
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    const hb = cur.hit;
     for (const c of corners) {
-      v3.set(c.x * HEIGHT * aspect * ART, HEIGHT * (0.5 + (c.y - 0.5) * ART), 0).applyMatrix4(anchor.matrixWorld).project(camera);
+      v3.set(c.x * hb.w, hb.cy + (c.y - 0.5) * hb.h, 0).applyMatrix4(anchor.matrixWorld).project(camera);
       const sx = (v3.x + 1) / 2 * S.W, sy = (1 - v3.y) / 2 * S.H;
       x0 = Math.min(x0, sx); x1 = Math.max(x1, sx); y0 = Math.min(y0, sy); y1 = Math.max(y1, sy);
     }

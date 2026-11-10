@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { coverMap, release, curveOf, flight, hit, FLIGHT_MS } from "./geom.js";
+import { coverMap, release, reach, assist, curveOf, turnOf, flight, sweep, FLIGHT_MS, END_SCALE } from "./geom.js";
 
 const near = (a, b, e = 1e-6) => assert.ok(Math.abs(a - b) < e, `${a} != ${b}`);
 
@@ -26,31 +26,85 @@ const line = (x0, y0, x1, y1, ms) => {
   return out;
 };
 
-test("release: a quick upward flick lands v x 260 ms beyond the release point", () => {
-  const p = line(195, 660, 195, 560, 128);   // 100 px up in 128 ms = 0.78 px/ms
-  const r = release(p, 390, 844);
+const W = 390, H = 844, REST = { x: 195, y: 658 };
+const BOX = { x: 115, y: 388, w: 160, h: 160 }, C = { x: 195, y: 468 };   // centre 190 px above the hand
+
+test("reach: linear in swipe speed, clamped .4 .. 2.2", () => {
+  near(reach(2.2), 0.986); near(reach(1.2), 0.606); near(reach(0), 0.4); near(reach(10), 2.2);
+});
+
+test("release: distance = reach(speed) x distance from the hand to the box centre, direction = last 80 ms", () => {
+  const p = line(195, 658, 195, 458, 96);   // 200 px up in 96 ms = 2.083 px/ms
+  const r = release(p, W, H, REST, BOX);
   assert.ok(r);
-  near(r.from.x, 195); near(r.from.y, 560);
-  near(r.to.x, 195, 1e-3); near(r.to.y, 560 - 100 / 128 * 260, 1e-3);
+  near(r.from.x, 195); near(r.from.y, 458);
+  near(r.v, 200 / 96, 1e-9);
+  near(r.raw.x, 195); near(r.raw.y, 658 - 190 * reach(200 / 96), 1e-6);
+  assert.deepEqual(r.to, r.raw);             // on the box: no assist
+  // 10 degrees right of straight up: the landing moves along that direction from the hand
+  const a = 10 * Math.PI / 180, q = line(195, 658, 195 + 200 * Math.sin(a), 658 - 200 * Math.cos(a), 96), t = release(q, W, H, REST, BOX);
+  const ox = 195 + 200 * Math.sin(a), D = Math.hypot(C.x - ox, C.y - 658), L = D * reach(200 / 96);
+  near(t.raw.x, ox + Math.sin(a) * L, 1e-6); near(t.raw.y, 658 - Math.cos(a) * L, 1e-6);
+});
+
+test("release: no box = 40 % of the screen height times reach, no assist", () => {
+  const r = release(line(195, 658, 195, 458, 96), W, H, REST, null);
+  near(r.raw.y, 658 - 0.4 * H * reach(200 / 96), 1e-6); assert.deepEqual(r.to, r.raw);
 });
 
 test("release: too short, too slow or downward is not a throw", () => {
-  assert.equal(release(line(195, 660, 195, 620, 48), 390, 844), null);     // 40 px
-  assert.equal(release(line(195, 660, 195, 560, 400), 390, 844), null);    // 0.25 px/ms up
-  assert.equal(release(line(195, 560, 195, 660, 100), 390, 844), null);    // down
-  assert.equal(release(line(100, 660, 300, 650, 100), 390, 844), null);    // sideways
+  assert.equal(release(line(195, 660, 195, 620, 48), W, H, REST, BOX), null);     // 40 px
+  assert.equal(release(line(195, 660, 195, 560, 400), W, H, REST, BOX), null);    // 0.25 px/ms up
+  assert.equal(release(line(195, 560, 195, 660, 100), W, H, REST, BOX), null);    // down
+  assert.equal(release(line(100, 660, 300, 650, 100), W, H, REST, BOX), null);    // sideways
 });
 
 test("release: only the last 80 ms set the speed (a slow start then a flick)", () => {
   const slow = line(195, 700, 195, 680, 400), fast = line(195, 680, 195, 560, 96).map(q => ({ ...q, t: q.t + 400 }));
-  const r = release([...slow, ...fast.slice(1)], 390, 844);
-  assert.ok(r);
-  near(r.to.y, 560 - 120 / 96 * 260, 1);
+  const r = release([...slow, ...fast.slice(1)], W, H, REST, BOX);
+  near(r.v, 120 / 96, 1e-9);
 });
 
-test("release: landing stays on the screen", () => {
-  const r = release(line(195, 660, 195, 300, 64), 390, 844);
-  assert.ok(r.to.y >= 0);
+test("assist: near miss pulled half way to the centre; on the box or far off left alone", () => {
+  assert.deepEqual(assist({ x: 195, y: 300 }, BOX), { x: 195, y: 384 });            // 88 px over the top -> inside
+  assert.deepEqual(assist({ x: 30, y: 468 }, BOX), { x: 112.5, y: 468 });           // 85 px left -> still just off
+  assert.deepEqual(assist({ x: 200, y: 400 }, BOX), { x: 200, y: 400 });            // on the box
+  assert.deepEqual(assist({ x: 195, y: 220 }, BOX), { x: 195, y: 220 });            // 168 px over > one box height
+  const corner = assist({ x: 115 - 120, y: 388 - 120 }, BOX);                       // 170 px off diagonally
+  assert.deepEqual(corner, { x: -5, y: 268 });
+});
+
+// a straight flick from the hand: speed v px/ms, angle deg off straight up, 200 px long, samples every 12 ms
+const flick = (v, deg, len = 200) => {
+  const a = deg * Math.PI / 180, ms = len / v, n = Math.max(3, Math.round(ms / 12)), out = [];
+  for (let i = 0; i <= n; i++) out.push({ x: REST.x + Math.sin(a) * len * i / n, y: REST.y - Math.cos(a) * len * i / n, t: 1000 + ms * i / n });
+  return out;
+};
+const shoot = (v, deg, ring = { ...C, r: 38 }, len) => { const th = release(flick(v, deg, len), W, H, REST, BOX); return th && sweep(th, 0, 1, BOX, ring, W, H); };
+
+test("sweep: every natural flick 1.2..3.5 px/ms within +-10 degrees hits the body", () => {
+  for (const v of [1.2, 1.6, 2, 2.5, 3, 3.5]) for (const deg of [-10, -5, 0, 5, 10]) for (const len of [140, 200, 260])
+    assert.ok(shoot(v, deg, undefined, len)?.onBody, `v ${v} deg ${deg} len ${len}`);
+});
+
+test("sweep: a very hard flick flies over, a wide one misses", () => {
+  assert.equal(shoot(5, 0), null);
+  assert.equal(shoot(2.2, 35), null);
+});
+
+test("sweep: the ring takes a well-judged speed; the assist never puts a throw in the ring", () => {
+  assert.equal(shoot(2.2, 0).inRing, true);
+  assert.equal(shoot(1.2, 0).inRing, false);   // body only
+  assert.equal(shoot(3.5, 0).inRing, false);   // assisted onto the body, not into the ring
+});
+
+test("sweep: only u >= .6 counts, and a frame that jumps over the box still finds it", () => {
+  const th = release(flick(2.2, 0), W, H, REST, BOX);
+  assert.equal(sweep(th, 0, 0.59, BOX, { ...C, r: 38 }, W, H), null);
+  const h = sweep(th, 0, 1, BOX, { ...C, r: 38 }, W, H);
+  assert.ok(h.u >= 0.6);
+  assert.deepEqual(sweep(th, 0.3, 1, BOX, { ...C, r: 38 }, W, H), h);   // one slow frame from .3 to 1
+  assert.equal(sweep(th, 0, 1, null, C, W, H), null);
 });
 
 // a circle drawn with n points, direction +1 = clockwise on screen (y down)
@@ -69,22 +123,18 @@ test("curveOf: a full circle either way is a curve with its sign, a wiggle is no
   assert.equal(curveOf(zig), 0);
 });
 
-test("flight: starts at release, ends at landing (bent by a curve), arcs up and shrinks", () => {
-  const th = { from: { x: 195, y: 600 }, to: { x: 195, y: 300 }, curve: 0 };
-  const a = flight(th, 0, 390, 844), b = flight(th, 1, 390, 844), m = flight(th, 0.5, 390, 844);
-  near(a.x, 195); near(a.y, 600); near(a.s, 1);
-  near(b.x, 195); near(b.y, 300); near(b.s, 0.6);
-  near(m.y, 450 - 0.12 * 844);
-  const c = flight({ ...th, curve: 1 }, 1, 390, 844);
-  near(c.x, 195 + 0.15 * 390);
-  near(flight({ ...th, curve: -1 }, 0.3, 390, 844).x, 195);   // the bend is late in the flight
-  assert.ok(FLIGHT_MS === 500);
+test("turnOf: degrees with sign", () => {
+  near(turnOf(circle(195, 660, 30, 1, 1)), 350, 1e-6);   // 36 segments, 35 turns of 10 degrees
+  near(turnOf(circle(195, 660, 30, 1, -1)), -350, 1e-6);
 });
 
-test("hit: body box and ring circle", () => {
-  const box = { x: 100, y: 200, w: 120, h: 160 }, ring = { x: 160, y: 280, r: 30 };
-  assert.deepEqual(hit({ x: 160, y: 280 }, box, ring), { onBody: true, inRing: true });
-  assert.deepEqual(hit({ x: 105, y: 210 }, box, ring), { onBody: true, inRing: false });
-  assert.deepEqual(hit({ x: 50, y: 210 }, box, ring), { onBody: false, inRing: false });
-  assert.deepEqual(hit({ x: 160, y: 280 }, null, ring), { onBody: false, inRing: false });
+test("flight: starts at release, ends at the (assisted) landing, arcs up, shrinks; a curve bows out and comes back", () => {
+  const th = { from: { x: 195, y: 600 }, to: { x: 195, y: 300 }, raw: { x: 195, y: 250 }, curve: 0 };
+  const a = flight(th, 0, W, H), b = flight(th, 1, W, H), m = flight(th, 0.5, W, H);
+  near(a.x, 195); near(a.y, 600); near(a.s, 1);
+  near(b.x, 195); near(b.y, 300); near(b.s, END_SCALE);
+  near(m.y, 450 - 0.12 * H);
+  near(flight({ ...th, curve: 1 }, 0.5, W, H).x, 195 + 0.12 * W);
+  near(flight({ ...th, curve: -1 }, 1, W, H).x, 195, 1e-9);
+  assert.ok(FLIGHT_MS === 600);
 });

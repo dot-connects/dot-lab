@@ -6,15 +6,23 @@ export function coverMap(vw, vh, W, H) {
   return ([x, y]) => [ox + x * k, oy + y * k];
 }
 
-export const FLIGHT_MS = 500, END_SCALE = 0.6;
-const LAST_MS = 80, MIN_UP = 0.5, MIN_MOVE = 60, CARRY_MS = 260;
+export const FLIGHT_MS = 600, END_SCALE = 0.6, HIT_FROM = 0.6;
+const LAST_MS = 80, MIN_UP = 0.5, MIN_MOVE = 60, ARC = 0.12, STEPS = 50;
+
+/**
+ * Swipe speed (px/ms) -> how far the ball goes, as a fraction of the distance to the target: 0.15 + 0.38 v, 0.4..2.2.
+ * A natural flick (~2.2 px/ms) reaches the centre, 1.2 px/ms 60 % of the way, over ~4.4 px/ms it flies over even with the assist.
+ */
+export const reach = v => Math.min(2.2, Math.max(0.4, 0.15 + 0.38 * v));
 
 /**
  * Finger path ({x, y, t} from the press on the ball to the release) -> throw, or null when it is not one
  * (moved < 60 px, or under 0.5 px/ms upward over the last 80 ms; the ball then goes back to the hand).
- * The ball lands where the finger's last 80 ms speed carries it in 260 ms, clamped to the screen.
+ * Direction = the last 80 ms; distance = reach(speed) x the distance from the hand (rest.y, the release's x) to the
+ * target box centre, so a flick works at any speed in a wide middle band. raw = where the swipe sends it, to = after the
+ * aim assist (the ball flies there). No box: 40 % of the screen height up, no assist.
  */
-export function release(path, W, H) {
+export function release(path, W, H, rest, box = null) {
   if (!path || path.length < 2) return null;
   const a = path[0], b = path[path.length - 1];
   if (Math.hypot(b.x - a.x, b.y - a.y) < MIN_MOVE) return null;
@@ -23,12 +31,24 @@ export function release(path, W, H) {
   if (i === path.length - 1) i--;
   const s = path[i], dt = Math.max(1, b.t - s.t), vx = (b.x - s.x) / dt, vy = (b.y - s.y) / dt;
   if (-vy < MIN_UP) return null;
-  const to = { x: Math.min(W, Math.max(0, b.x + vx * CARRY_MS)), y: Math.min(H, Math.max(0, b.y + vy * CARRY_MS)) };
-  return { from: { x: b.x, y: b.y }, to, curve: curveOf(path) };
+  const v = Math.hypot(vx, vy), o = { x: b.x, y: rest.y };
+  const D = box ? Math.hypot(box.x + box.w / 2 - o.x, box.y + box.h / 2 - o.y) : 0.4 * H, L = D * reach(v);
+  const raw = { x: o.x + vx / v * L, y: o.y + vy / v * L };
+  return { from: { x: b.x, y: b.y }, raw, to: box ? assist(raw, box) : raw, curve: curveOf(path), v };
 }
 
-/** Sum of the signed turns between path segments; |sum| >= 300 degrees = a curve ball, +1 clockwise on screen. */
-export function curveOf(path) {
+/**
+ * Soft aim assist: a landing off the box but within one box height of its edge is pulled half way to the box centre.
+ * A landing on the box is left alone (the ring stays skill), one further off stays a miss.
+ */
+export function assist(p, box) {
+  const dx = Math.max(box.x - p.x, 0, p.x - box.x - box.w), dy = Math.max(box.y - p.y, 0, p.y - box.y - box.h);
+  if ((dx === 0 && dy === 0) || Math.hypot(dx, dy) > box.h) return p;
+  return { x: p.x + (box.x + box.w / 2 - p.x) / 2, y: p.y + (box.y + box.h / 2 - p.y) / 2 };
+}
+
+/** Signed turn of the finger path in degrees (sum of the turns between segments), + = clockwise on screen. */
+export function turnOf(path) {
   let sum = 0, prev = null, last = path[0];
   for (let k = 1; k < path.length; k++) {
     const q = path[k], dx = q.x - last.x, dy = q.y - last.y;
@@ -37,30 +57,42 @@ export function curveOf(path) {
     if (prev !== null) { let d = ang - prev; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; sum += d; }
     prev = ang; last = q;
   }
-  const deg = sum * 180 / Math.PI;
+  return sum * 180 / Math.PI;
+}
+/** |turn| >= 300 degrees = a curve ball (armed), +1 clockwise. */
+export function curveOf(path) {
+  const deg = turnOf(path);
   return deg >= 300 ? 1 : deg <= -300 ? -1 : 0;
 }
 
 /**
- * Ball at flight time u (0..1): straight from release to landing, lifted on an arc whose top is 12 % of the screen
- * height, shrinking 1 -> 0.6 (it goes away from you; 0.6 of the 58 px ball is a 7 cm ball at the creature's 1.2 m), and a curve ball swings 15 % of the width late in the flight.
+ * Ball at flight time u (0..1): straight from release to `to`, lifted on an arc whose top is
+ * 12 % of the screen height, shrinking 1 -> 0.6 (it goes away from you; 0.6 of the 58 px ball is a 7 cm ball at the
+ * creature's 1.2 m). A curve ball bows out sideways by up to 12 % of the width and comes back: it lands where it was aimed.
  */
 export function flight(th, u, W, H) {
-  const bend = th.curve ? th.curve * 0.15 * W * Math.pow(Math.max(0, (u - 0.4) / 0.6), 2) : 0;
+  const to = th.to;
   return {
-    x: th.from.x + (th.to.x - th.from.x) * u + bend,
-    y: th.from.y + (th.to.y - th.from.y) * u - 0.12 * H * 4 * u * (1 - u),
+    x: th.from.x + (to.x - th.from.x) * u + (th.curve || 0) * 0.12 * W * Math.sin(Math.PI * u),
+    y: th.from.y + (to.y - th.from.y) * u - ARC * H * 4 * u * (1 - u),
     s: 1 - (1 - END_SCALE) * u,
   };
 }
 
-/** Where the ball came down: inside the target's box = onBody, inside the ring circle = inRing. */
-export function hit(p, box, ring) {
-  if (!box) return { onBody: false, inRing: false };
-  return {
-    onBody: p.x >= box.x && p.x <= box.x + box.w && p.y >= box.y && p.y <= box.y + box.h,
-    inRing: Math.hypot(p.x - ring.x, p.y - ring.y) <= ring.r,
-  };
+const inBox = (p, b) => p.x >= b.x && p.x <= b.x + b.w && p.y >= b.y && p.y <= b.y + b.h;
+/**
+ * Test the flight between u0 and u1 against the target (only u >= 0.6 counts: the ball reaches the creature's depth late
+ * in the flight; 50 samples per flight, so a slow frame cannot jump over the box). First sample on the box = the hit:
+ * {u, at, onBody, inRing}, inRing = where the swipe itself sends the ball (no assist) is inside the ring. null = not yet.
+ */
+export function sweep(th, u0, u1, box, ring, W, H) {
+  if (!box) return null;
+  for (let k = Math.max(Math.ceil(u0 * STEPS), HIT_FROM * STEPS); k <= Math.floor(u1 * STEPS + 1e-9); k++) {
+    const at = flight(th, k / STEPS, W, H);
+    if (!inBox(at, box)) continue;
+    return { u: k / STEPS, at, onBody: true, inRing: Math.hypot(th.raw.x - ring.x, th.raw.y - ring.y) <= ring.r };
+  }
+  return null;
 }
 
 /**

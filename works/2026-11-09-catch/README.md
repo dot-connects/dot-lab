@@ -22,7 +22,10 @@
 - 헤드리스(S3): 같은 서버에서 `node check/s3.mjs <port> <빈 프로필 폴더>` → 빈 도감·포켓몬 포획 카드(Web Share 경로를 흉내 내 File 로 받음)·
   S2 오려 낸 사진으로 채운 도감·상세·상세에서 만든 카드(다운로드 경로)·`.dotpet` 내보내기(한 마리·전체)를 `petfile.parse` 로 다시 읽어 도감과 대조
   → `out/s3/*.png`(`card-*.png` = 카드 PNG, `export-*.png` = 내보낸 모습) + `all.dotpet`·`one.dotpet` + `result.json`(`ok`). 끝나고 남은 headless chrome 확인.
-- 쿼리: `?seed=N` 결정적 난수, `?touch` 시작 화면 없이 화면 모드, `?fov=` 카메라 FOV, `?lag=` 자이로 지연(ms),
+- 손맛(feel): 같은 서버에서 `node check/feel.mjs <port> <빈 프로필 폴더> [flickSeed]` → 1.2–3.5 px/ms·±6° 흔들린 일부러 던지기 20번의 명중률
+  (목표 ≥ 80%) + `?slow=6` 으로 장전된 커브·명중 글자·흔들림·잡음·튀어나옴·빗나감 스크린샷 → `out/feel/*.png` + `result.json`. 끝나고 남은 headless chrome 확인.
+- 녀석 그리기는 `site/js/creature.js` 의 `{root, hit, shadowR, update, dispose}` 뒤에 있다(지금은 그림 카드, 나중에 3D 녀석으로 교체).
+- 쿼리: `?seed=N` 결정적 난수, `?slow=N` 게임 시계 N배 느리게(테스트 스크린샷용), `?touch` 시작 화면 없이 화면 모드, `?fov=` 카메라 FOV, `?lag=` 자이로 지연(ms),
   `?still=<url>` 카메라 대신 사진(사진 전체가 카메라 프레임, 화면은 cover 로 자름), `?cpu` DeepLab CPU delegate(헤드리스 소프트웨어 GL 은 GPU 경로가 프레임당 3초+),
   `?boxes` 진짜 박스 전부 점선으로.
 - 진짜 찾기·오려 내기: `site/js/seg-worker.js` 는 photo-booth `site/js/pet-worker.js`, `site/js/refine.js` 는 photo-booth
