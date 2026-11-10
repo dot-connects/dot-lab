@@ -32,7 +32,11 @@ import kr.dot.sb.ui.theme.Ink
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
+import org.robolectric.ParameterizedRobolectricTestRunner
+import kr.dot.sb.THEMES
+import kr.dot.sb.shotPath
+import kr.dot.sb.model.Theme
+import kr.dot.sb.ui.theme.ProvideTheme
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -42,10 +46,16 @@ import java.time.LocalDateTime
  * Clock render matrix → standby/build/shots/clock/. One test per device; each test swaps the content and captures,
  * because a compose rule takes one setContent per test.
  */
-@RunWith(RobolectricTestRunner::class)
+@RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
-class ClockShots {
+class ClockShots(private val theme: Theme) {
+    companion object {
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}")
+        fun themes(): List<Array<Any>> = THEMES.map { arrayOf<Any>(it) }
+    }
+
     @get:Rule val rule = createComposeRule()
 
     private val faces = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT, FaceId.DESK, FaceId.PHOTOS_TIME)
@@ -53,11 +63,11 @@ class ClockShots {
     private fun shots(device: Device, items: List<Pair<String, @Composable () -> Unit>>) {
         RuntimeEnvironment.setQualifiers(device.qualifiers)
         var current by mutableStateOf(items.first().second)
-        rule.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { current() } }
+        rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { current() } } }
         for ((name, content) in items) {
             current = content
             rule.waitForIdle()
-            rule.onRoot().captureRoboImage("build/shots/clock/$name-${device.label}.png")
+            rule.onRoot().captureRoboImage(shotPath(theme, "clock", name, device))
         }
     }
 
@@ -93,6 +103,7 @@ class ClockShots {
                 "digital-glass" to face(FaceId.DIGITAL, style = dig.copy(effect = Effect.GLASS)),
                 "digital-stencil-glow" to face(FaceId.DIGITAL, style = dig.copy(font = FontId.STENCIL, weight = 800, effect = Effect.GLOW)),
                 "analog-roman" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.ROMAN)),
+                "analog-four" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.FOUR, secondColor = 0xFFE9893A)),
                 "analog-twelve" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.TWELVE)),
                 "analog-rails" to face(FaceId.ANALOG, style = ana.copy(font = FontId.RAILS, weight = 800, widthPct = 100)),
                 "solar-arab" to face(FaceId.SOLAR, style = sol.copy(numerals = Numerals.ARAB)),
@@ -119,9 +130,9 @@ class ClockShots {
      */
     @Test fun digitalHeroSize() {
         RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
-        rule.setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { face(FaceId.DIGITAL)() } }
+        rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { face(FaceId.DIGITAL)() } } }
         rule.waitForIdle()
-        val path = "build/shots/clock/hero-size-check.png"
+        val path = shotPath(theme, "clock", "hero-size-check")
         rule.onRoot().captureRoboImage(path)
         val bmp = android.graphics.BitmapFactory.decodeFile(path)
         var top = -1; var bottom = -1

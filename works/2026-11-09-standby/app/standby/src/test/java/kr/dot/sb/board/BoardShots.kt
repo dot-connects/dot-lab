@@ -8,6 +8,8 @@ import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Presets
+import kr.dot.sb.THEMES
+import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.MediaKind
@@ -28,11 +30,11 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
-class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String) {
+class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String, private val theme: Theme) {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun shot() = rule.shot("board", name, device) {
-        BoardView(board, stateOf(stateKey, board), AppConfig(), StandbyActions.NONE)
+    @Test fun shot() = rule.shot("board", name, device, theme) {
+        BoardView(board, stateOf(stateKey, board), AppConfig(theme = theme), StandbyActions.NONE)
     }
 
     companion object {
@@ -61,8 +63,10 @@ class BoardShots(private val name: String, private val device: Device, private v
         )
 
         @JvmStatic
-        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}")
-        fun cases(): List<Array<Any>> {
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{4}-{0}-{1}")
+        fun cases(): List<Array<Any>> = THEMES.flatMap { th -> base().map { it + th } }
+
+        private fun base(): List<Array<Any>> {
             val out = mutableListOf<Array<Any>>()
             for (b in Presets.boards()) {
                 for (d in Device.entries) out += arrayOf("preset-${b.id}", d, b, "full")

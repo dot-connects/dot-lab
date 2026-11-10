@@ -47,6 +47,7 @@ import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.Motion
 import java.time.LocalDateTime
 import java.time.ZoneId
@@ -60,7 +61,8 @@ fun ClockFace(
     val data = FaceData.of(state)
     // §5.1: a second clock draws its numerals in ink (white by day) without effects; Analog keeps its own colours.
     val st = if (hero || face == FaceId.ANALOG) style else style.copy(color = 0xFFFFFFFF, effect = Effect.SOLID)
-    val ink = remember(state.night, st.color) { Ink.of(state.night, Color(st.color)) }
+    val pal = LocalTheme.current.palette
+    val ink = remember(state.night, st.color, pal) { Ink.of(state.night, Color(st.color), pal) }
     val m = modifier.semantics { contentDescription = "${data.ampm} ${data.h}:${data.m}" }
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {

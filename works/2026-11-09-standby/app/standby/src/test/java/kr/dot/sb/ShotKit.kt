@@ -11,6 +11,8 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
+import kr.dot.sb.model.Theme
+import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.state.AgendaItem
 import kr.dot.sb.ui.state.HourTemp
 import kr.dot.sb.ui.state.MediaInfo
@@ -27,7 +29,7 @@ import java.time.LocalDateTime
 
 /**
  * Screenshot harness shared by all render tests. Each device is a Robolectric qualifier string; shots land in
- * standby/build/shots/<group>/<name>-<device>.png (run with -Proborazzi.test.record=true).
+ * standby/build/shots/<theme>/<group>/<name>-<device>.png (run with -Proborazzi.test.record=true).
  * Tests must use @GraphicsMode(NATIVE) and @Config(sdk = [34]).
  */
 enum class Device(val qualifiers: String, val label: String) {
@@ -39,11 +41,21 @@ enum class Device(val qualifiers: String, val label: String) {
     FLIP("w400dp-h362dp-land-xhdpi", "flip-cover"),
 }
 
-fun ComposeContentTestRule.shot(group: String, name: String, device: Device, content: @Composable () -> Unit) {
+/**
+ * Themes every render matrix runs under (one PNG tree per theme: build/shots/<theme>/<group>/…). Adding a theme to the
+ * shots = one entry here.
+ */
+val THEMES: List<Theme> = listOf(Theme.IPHONE)
+
+fun shotPath(theme: Theme, group: String, name: String, device: Device? = null): String =
+    "build/shots/${theme.name.lowercase()}/$group/$name${device?.let { "-" + it.label } ?: ""}.png"
+
+/** Render [content] under [theme] (ambient for ClockFace; BoardView/StandbyRoot also take it from their AppConfig). */
+fun ComposeContentTestRule.shot(group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, content: @Composable () -> Unit) {
     RuntimeEnvironment.setQualifiers(device.qualifiers)
-    setContent { Box(Modifier.fillMaxSize().background(Color.Black)) { content() } }
+    setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { content() } } }
     waitForIdle()
-    onRoot().captureRoboImage("build/shots/$group/$name-${device.label}.png")
+    onRoot().captureRoboImage(shotPath(theme, group, name, device))
 }
 
 /** Deterministic sample data: 9:41 on 2026-11-09 (Mon), with every feed filled. */

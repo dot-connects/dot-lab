@@ -45,6 +45,9 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.ProvideTheme
+import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Motion
 import kr.dot.sb.ui.theme.Sizes
 import kotlin.math.max
@@ -115,8 +118,12 @@ object BoardGrid {
     fun hasClock(cards: List<CardType?>) = cards.any { it in CLOCKS }
 }
 
-/** Board-level look: accent, hero slot, and the shared label size / pad (§5.3, §3.4). */
-private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>): List<CardLook> {
+/**
+ * Board-level look: accent, hero slot, and the shared label size / pad (§5.3, §3.4). The label is floored at the
+ * theme's minimum text size of the screen ([screenShort] × minText, r5: never phone-app sized), capped by the smallest
+ * slot so it still fits.
+ */
+private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screenShort: Float, t: StandbyTheme): List<CardLook> {
     val firsts = board.slots.map { it.firstOrNull() }
     val hero = BoardGrid.hero(slots, firsts)
     val heroFace = when (firsts.getOrNull(hero)) {
@@ -124,9 +131,10 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>): List<
         null -> null
         else -> board.clockFace
     }
-    val accent = board.accent ?: heroFace?.let { (config.styles[it] ?: ClockStyle.default(it)).color } ?: 0xFF76A6F3
-    val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp) }
-    val label = sizes.minOfOrNull { it.label } ?: 18.dp
+    val accent = board.accent ?: heroFace?.let { (config.styles[it] ?: t.clockDefaults(it)).color } ?: 0xFF76A6F3
+    val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp, r = t.ramp) }
+    val floor = (screenShort * t.minText).dp
+    val label = (sizes.minOfOrNull { it.label } ?: 18.dp).coerceAtLeast(floor).coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f)
     val pad = sizes.minOfOrNull { it.pad } ?: 12.dp
     val clock = BoardGrid.hasClock(firsts)
     return slots.indices.map { CardLook(Color(accent), label, pad, it == hero, clock, board.clockFace) }
@@ -134,7 +142,8 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>): List<
 
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */
 @Composable
-fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions, modifier: Modifier = Modifier) {
+fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions, modifier: Modifier = Modifier) = ProvideTheme(config.theme) {
+    val t = LocalTheme.current
     val density = LocalDensity.current
     val dir = LocalLayoutDirection.current
     val cut = WindowInsets.displayCutout
@@ -144,8 +153,8 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
         val w = maxWidth.value
         val h = maxHeight.value
         val slots = remember(board.layout, w, h, cutX, cutY) { BoardGrid.slots(board.layout, w, h, cutX, cutY) }
-        val looks = remember(board, config.styles, slots) { looks(board, config, slots) }
-        CompositionLocalProvider(LocalInk provides Ink.of(state.night, looks.firstOrNull()?.accent ?: Color(0xFF76A6F3))) {
+        val looks = remember(board, config.styles, slots, t) { looks(board, config, slots, min(w, h), t) }
+        CompositionLocalProvider(LocalInk provides Ink.of(state.night, looks.firstOrNull()?.accent ?: Color(0xFF76A6F3), t.palette)) {
             slots.forEachIndexed { i, r ->
                 val cards = board.slots.getOrNull(i).orEmpty()
                 if (cards.isEmpty()) return@forEachIndexed

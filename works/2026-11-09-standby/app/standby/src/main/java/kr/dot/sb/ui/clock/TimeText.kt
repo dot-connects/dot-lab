@@ -24,6 +24,7 @@ import kr.dot.sb.model.FontId
 import kr.dot.sb.model.Numerals
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalTheme
 import java.time.LocalDateTime
 import kotlin.math.max
 import kotlin.math.min
@@ -47,7 +48,7 @@ internal fun rememberTypeface(family: FontFamily, weight: Int): Typeface {
 }
 
 @Composable
-internal fun rememberClockTypeface(font: FontId, weight: Int): Typeface = rememberTypeface(Fonts.clock(font, weight), weight)
+internal fun rememberClockTypeface(font: FontId, weight: Int): Typeface = rememberTypeface(LocalTheme.current.clockFamily(font, weight), weight)
 
 /** Pretendard paint for words on clock faces (sizes in px, set per use). */
 internal fun uiPaint(tf: Typeface, weight: Int): TextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -102,9 +103,8 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = tf
         fontVariationSettings = "'wght' $weight"
-        // "StandBy 디지털" (Oswald) is condensed to the iPhone digit width (digital-dan: a digit ≈ 0.42 cap wide vs
-        // Oswald's 0.62); without it the hero tops out at ~49 % H on the Fold cover (review X1 wants ≥ 60 %).
-        textScaleX = widthPct / 100f * (if (font == FontId.CONDENSED) CONDENSE else 1f)
+        // "StandBy 디지털" is Sofia Sans Extra Condensed (r5): already iPhone-narrow, no artificial squeeze
+        textScaleX = widthPct / 100f
         textSize = REF
         fontFeatureSettings = if (tnum) "'tnum'" else null
     }
@@ -245,7 +245,6 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
     companion object {
         const val REF = 100f
         const val COLON = 0.7f
-        const val CONDENSE = 0.8f
         fun withAlpha(c: Int, a: Float): Int = (c and 0xFFFFFF) or ((a * 255).toInt() shl 24)
 
         /** Glass stroke = mix(acc, white 65 %), never darker than luminance 0.5 (so it never reads dark on black). */

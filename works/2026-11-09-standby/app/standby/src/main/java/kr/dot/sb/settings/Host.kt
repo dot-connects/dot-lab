@@ -43,18 +43,18 @@ object Routes {
 
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
 @Composable
-fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) {
+fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config.theme) {
     val back = { nav.back() }
     when {
         route == Routes.BOARDS -> BoardsScreen(config, update, nav, back)
         route.startsWith("board:") -> {
             val id = route.removePrefix("board:")
-            if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, back) else HomeScreen(config, nav, env)
+            if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, back) else HomeScreen(config, nav, env, update)
         }
         route == Routes.CLOCKS -> ClockListScreen(config, nav, back)
         route.startsWith("clock:") -> {
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
-            if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)
+            if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env, update)
         }
         route == Routes.WIDGETS -> WidgetsScreen(config, update, back)
         route == Routes.NIGHT -> NightScreen(config, update, env, back)
@@ -62,6 +62,6 @@ fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: S
         route == Routes.DATA -> DataScreen(config, update, back)
         route == Routes.PERMS -> PermsScreen(env, back)
         route == Routes.ABOUT -> AboutScreen(env, back)
-        else -> HomeScreen(config, nav, env)
+        else -> HomeScreen(config, nav, env, update)
     }
 }

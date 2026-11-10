@@ -66,7 +66,10 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.Motion
+import kr.dot.sb.ui.theme.Themes
 import java.time.LocalDateTime
 import kotlin.math.abs
 
@@ -111,7 +114,7 @@ internal fun RootImpl(
     modifier: Modifier,
     onStyleChange: (FaceId, ClockStyle) -> Unit,
     start: RootStart,
-) {
+) = ProvideTheme(config.theme) {
     val act by rememberUpdatedState(actions)
     val count by rememberUpdatedState(FIXED_PAGES + config.boards.size)
     // Hoisted above the display-off branch so waking returns to the same page and clock face.
@@ -152,7 +155,8 @@ internal fun RootImpl(
         val w = maxWidth
         val h = maxHeight
         val accent = Color(config.styles[FaceId.DIGITAL]?.color ?: 0xFF76A6F3)
-        val ink = remember(state.night, accent) { Ink.of(state.night, accent) }
+        val pal = LocalTheme.current.palette
+        val ink = remember(state.night, accent, pal) { Ink.of(state.night, accent, pal) }
         val layer = topLayer(state, config, npOpen)
         val widgets = remember(config.widgetLeft, config.widgetRight) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
@@ -171,7 +175,7 @@ internal fun RootImpl(
                         1 -> PhotosPage(state, config, actions, active = pager.settledPage == 1 && layer == Layer.NONE)
                         2 -> ClocksPage(
                             state, config, clockPage, editing, { editing = it }, start.sheet,
-                            styleOf = { f -> edits[f] ?: config.styles[f] ?: ClockStyle.default(f) },
+                            styleOf = { f -> edits[f] ?: config.styles[f] ?: Themes.of(config.theme).clockDefaults(f) },
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
                         )
                         else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, actions) }

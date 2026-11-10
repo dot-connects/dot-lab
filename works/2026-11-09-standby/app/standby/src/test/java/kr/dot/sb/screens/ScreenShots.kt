@@ -10,6 +10,9 @@ import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
+import kr.dot.sb.THEMES
+import kr.dot.sb.model.Theme
+import kr.dot.sb.shotPath
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.Presets
 import kr.dot.sb.ui.screens.RootImpl
@@ -35,7 +38,7 @@ import java.time.ZoneId
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
-class ScreenShots(private val name: String, private val device: Device, private val key: String, private val page: Int) {
+class ScreenShots(private val name: String, private val device: Device, private val key: String, private val page: Int, private val theme: Theme) {
     @get:Rule val rule = createComposeRule()
 
     @Test fun shot() {
@@ -53,12 +56,12 @@ class ScreenShots(private val name: String, private val device: Device, private 
         }
         rule.setContent {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                RootImpl(state, AppConfig(startPage = page), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
+                RootImpl(state, AppConfig(startPage = page, theme = theme), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
             }
         }
         rule.mainClock.advanceTimeBy(if (k == "sheet-solar" || k == "sheet") 400 else if (k == "notif" || k == "notif-hidden") 2_200 else 32)
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots/screens/$name-${device.label}.png")
+        rule.onRoot().captureRoboImage(shotPath(theme, "screens", name, device))
     }
 
     companion object {
@@ -87,8 +90,10 @@ class ScreenShots(private val name: String, private val device: Device, private 
         private val CLOCKS = 2
 
         @JvmStatic
-        @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}")
-        fun cases(): List<Array<Any>> {
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{4}-{0}-{1}")
+        fun cases(): List<Array<Any>> = THEMES.flatMap { th -> base().map { it + th } }
+
+        private fun base(): List<Array<Any>> {
             val pages = listOf("widgets" to 0, "photos" to 1, "clocks" to CLOCKS) +
                 Presets.boards().mapIndexed { i, b -> "board-${b.id}" to 3 + i }
             val out = mutableListOf<Array<Any>>()
@@ -97,8 +102,7 @@ class ScreenShots(private val name: String, private val device: Device, private 
                 out += arrayOf("$n-night", L, "page-night", p)
             }
             for (o in listOf("alarm", "notif", "notif-hidden", "live", "np", "pills")) {
-                out += arrayOf(o, L, o, CLOCKS)
-                out += arrayOf(o, P, o, CLOCKS)
+                for (d in Device.entries) out += arrayOf(o, d, o, CLOCKS)
                 out += arrayOf("$o-night", L, "$o-night", CLOCKS)
             }
             out += arrayOf("edit", L, "edit", CLOCKS)
@@ -109,8 +113,6 @@ class ScreenShots(private val name: String, private val device: Device, private 
             out += arrayOf("off", L, "off", CLOCKS)
             out += arrayOf("photos-perm", L, "photos-perm", 1)
             out += arrayOf("photos-empty", P, "photos-empty", 1)
-            out += arrayOf("alarm", Device.FLIP, "alarm", CLOCKS)
-            out += arrayOf("np", Device.BAR_L, "np", CLOCKS)
             return out
         }
     }

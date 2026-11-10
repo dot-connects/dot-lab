@@ -171,7 +171,7 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         }
 
         Gap(24.dp)
-        ActionButton("아이폰처럼 되돌리기", { update { it.copy(styles = it.styles + (face to ClockStyle.default(face))) } }, Modifier.fillMaxWidth(), primary = false)
+        ActionButton("아이폰처럼 되돌리기", { update { it.copy(styles = it.styles + (face to kr.dot.sb.ui.theme.Themes.of(it.theme).clockDefaults(face))) } }, Modifier.fillMaxWidth(), primary = false)
     }
 }
 

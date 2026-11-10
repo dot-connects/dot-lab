@@ -32,6 +32,7 @@ import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.screens.StandbyRoot
@@ -41,7 +42,7 @@ import kr.dot.sb.ui.state.StandbyActions
 internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board("widgets", "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight)))
 
 @Composable
-fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
+fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv, update: Update = {}) {
     var full by remember { mutableStateOf(false) }
     val missing = env.missing
     Box(Modifier.fillMaxSize()) {
@@ -52,6 +53,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
             Gap(16.dp)
             Carousel(config) { full = true }
         }) {
+            ThemePicker(config, update)
             Section("화면 구성") {
                 item { NavRow("화면", { nav.push(Routes.BOARDS) }, subtitle = "위젯 · 사진 · 시계 + 내 화면 ${config.boards.size}개") }
                 item { NavRow("시계 스타일", { nav.push(Routes.CLOCKS) }, subtitle = "서체, 색, 크기를 시계마다 따로") }
@@ -73,6 +75,35 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 StandbyRoot(Sample.state(config), config, StandbyActions.NONE, Modifier.fillMaxSize())
                 Box(Modifier.align(Alignment.BottomCenter).systemBarsPadding().padding(bottom = 16.dp).clip(RoundedCornerShape(50)).background(SK.scrim).padding(horizontal = 14.dp, vertical = 8.dp)) {
                     T("화면을 누르면 닫혀요", 13.sp, 500, SK.text)
+                }
+            }
+        }
+    }
+}
+
+/**
+ * "테마" row (mockup r5): one tile per [Theme], each the real widgets page drawn in that theme, so what you tap is
+ * what StandBy shows. Tap = switch (saved like every other setting).
+ */
+@Composable
+private fun ThemePicker(config: AppConfig, update: Update) {
+    val state = remember(config.city, config.use24h) { Sample.state(config) }
+    val board = remember(config.widgetLeft, config.widgetRight) { widgetsBoard(config) }
+    val acc = LocalAccent.current
+    Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
+        T("테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Theme.entries.forEach { th ->
+                val on = th == config.theme
+                Column(
+                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
+                        .clickable { update { it.copy(theme = th) } }.padding(8.dp),
+                ) {
+                    val cfg = remember(config, th) { config.copy(theme = th) }
+                    PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
+                        BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                    }
+                    T(th.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.padding(top = 8.dp, start = 2.dp), maxLines = 1)
                 }
             }
         }

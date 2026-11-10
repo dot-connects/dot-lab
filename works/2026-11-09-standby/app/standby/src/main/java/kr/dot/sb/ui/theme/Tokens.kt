@@ -34,7 +34,20 @@ data class Ink(
     val accDeep: Color,
     val accLight: Color,
     val accDim: Color,
+    /** The theme's day colours; role colours below are night-mapped from it. */
+    val pal: Palette = Palette.IPHONE,
 ) {
+    // Role colours (night → bright #FC0000 for small marks, dim #A80000 for big areas).
+    val weekday: Color get() = accent(pal.red)
+    val orange: Color get() = accent(pal.orange)
+    val sun: Color get() = mapped(pal.yellow)
+    val green: Color get() = accent(pal.green)
+    val blue: Color get() = mapped(pal.blue)
+    val amber: Color get() = mapped(pal.amber)
+    val snooze: Color get() = mapped(pal.snooze)
+    val music: Color get() = accent(pal.music)
+    val plate: Color get() = lerp(pal.plate, NIGHT_INK4, night)
+
     /** Map any day colour (calendar colours, brand glyphs, user colours) to its night twin. */
     fun mapped(day: Color): Color = lerp(day, NIGHT_INK2, night)
 
@@ -47,26 +60,30 @@ data class Ink(
         val NIGHT_INK3 = Color(0xFF3A0000)
         val NIGHT_INK4 = Color(0xFF1A0000)
 
-        fun of(night: Float, accent: Color): Ink {
+        fun of(night: Float, accent: Color, pal: Palette = Palette.IPHONE): Ink {
             val n = night.coerceIn(0f, 1f)
             return Ink(
                 night = n,
-                bg = Color.Black,
-                ink = lerp(Color.White, NIGHT_INK, n),
-                ink2 = lerp(Color(0xFF98989F), NIGHT_INK2, n),
-                ink3 = lerp(Color(0xFF3A3A3C), NIGHT_INK3, n),
-                ink4 = lerp(Color(0xFF1C1C1E), NIGHT_INK4, n),
-                red = lerp(Color(0xFFFF453A), NIGHT_INK2, n),
+                bg = lerp(pal.bg, Color.Black, n),
+                ink = lerp(pal.fg, NIGHT_INK, n),
+                ink2 = lerp(pal.fg2, NIGHT_INK2, n),
+                ink3 = lerp(pal.fg3, NIGHT_INK3, n),
+                ink4 = lerp(pal.fg4, NIGHT_INK4, n),
+                red = lerp(pal.red, NIGHT_INK2, n),
                 acc = lerp(accent, NIGHT_INK, n),
                 accDeep = lerp(Hsl.deep(accent), NIGHT_INK2, n),
                 accLight = lerp(Hsl.light(accent), NIGHT_INK, n),
                 accDim = lerp(accent.copy(alpha = 0.45f), NIGHT_INK3, n),
+                pal = pal,
             )
         }
     }
 }
 
 val LocalInk = compositionLocalOf { Ink.of(0f, Color(0xFF76A6F3)) }
+
+/** The board-wide label size of the slot a clock face sits in (null = not in a card): its date line uses it. */
+val LocalSlotLabel = compositionLocalOf<Dp?> { null }
 
 /** Derived accent shades (design-system §2.1: accDeep = S+0.35, L−0.25 floor 0.15; accLight = L+0.12). */
 object Hsl {
@@ -103,15 +120,15 @@ data class Sizes(
     val pad: Dp,
 ) {
     companion object {
-        fun of(w: Dp, h: Dp, labelOverride: Dp? = null): Sizes {
+        fun of(w: Dp, h: Dp, labelOverride: Dp? = null, r: Ramp = Ramp.IPHONE): Sizes {
             val s = min(w, h)
             return Sizes(
                 s = s,
-                display = max(s * 0.56f, 64.dp).coerceAtMost(s * 0.9f),
-                value = max(s * 0.30f, 40.dp).coerceAtMost(s * 0.6f),
-                title = max(s * 0.13f, 22.dp).coerceAtMost(s * 0.3f),
-                label = labelOverride ?: max(s * 0.085f, 18.dp).coerceAtMost(s * 0.2f),
-                pad = max(s * 0.07f, 12.dp),
+                display = max(s * r.display, 64.dp).coerceAtMost(s * 0.9f),
+                value = max(s * r.value, 40.dp).coerceAtMost(s * 0.6f),
+                title = max(s * r.title, 22.dp).coerceAtMost(s * 0.3f),
+                label = labelOverride ?: max(s * r.label, 18.dp).coerceAtMost(s * 0.2f),
+                pad = max(s * r.pad, 12.dp),
             )
         }
     }

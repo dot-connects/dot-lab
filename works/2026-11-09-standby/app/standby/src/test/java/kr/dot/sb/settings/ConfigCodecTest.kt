@@ -37,7 +37,7 @@ class ConfigCodecTest {
             glowColor = 0xFF85D4BA, glowStartMinBefore = 10, glowRampSec = 9, onUnfold = UnfoldAction.MOOD_LIGHT,
             ddays = listOf(DDay("수능", LocalDate.of(2026, 11, 19)), DDay("생일", LocalDate.of(2027, 2, 3))),
             city = City("부산", 35.1796, 129.0756), worldCities = listOf(City("도쿄", 35.6762, 139.6503)),
-            usageEnabled = false, focusMinutes = 50, breakMinutes = 10, sleepMinutes = 90,
+            usageEnabled = false, focusMinutes = 50, breakMinutes = 10, sleepMinutes = 90, theme = kr.dot.sb.model.Theme.MOODLIGHT,
         )
     }
 
