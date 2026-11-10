@@ -124,3 +124,15 @@ Open after v0.1.0:
   61.6 % hero height; Solar pastel palettes stay under 3:1 contrast; startPage now follows the last page shown.
 - Device-only risks (spec R1-R10): Samsung alarm UI may cover our alarm screen; touch in an interactive dream; own
   rotation sign; dream surviving unfold.
+
+## 0.2.0 – 0.2.3 (2026-11-10)
+- Themes: A iPhone (default), B newspaper front page (PAPER), C mood light (MOODLIGHT); picked on the settings home.
+  Round 5 picks: https://claude.ai/artifact/QGnu2TtyP4hihNRFwb6LZV
+- Notification cards: NOTIF_STACK and NOTIF_LIST card types (swipe = cancel the real notification, tap = open the app after unlock).
+  Lock-screen privacy follows the phone settings; unknown ranking, a work profile, or device policy = hidden.
+  Mockup round 6: https://claude.ai/artifact/4tN6nu4JnX7FNPHEz9gKup
+- Charger start never showed on the device. 0.2.2 adds an instant ACTION_POWER_CONNECTED path in the bound
+  notification listener, and an on-device trail (설정 > 야간 모드 · 디스플레이 > 시작, last 8 attempts).
+  Also: a 무선 충전일 때만 option and a quick-settings tile (no charger needed, stops at 20 % battery).
+  0.2.3 lets a quick re-plug start it again.
+- Open: the operator tests charger start on 11-11; if it fails, read the trail screenshot first.
