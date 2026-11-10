@@ -77,6 +77,9 @@ import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.Family
+import androidx.compose.foundation.border
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.toPixelMap
 import androidx.compose.ui.text.style.TextAlign
@@ -106,9 +109,22 @@ internal fun Overlays(
     Faded(bare && state.live != null, state.live) { LivePill(it, actions) }
     Faded(bare && state.media?.playing == true, state.media) { WavePill { onNowPlaying(true) } }
     Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, actions) { onNowPlaying(false) } }
-    Faded(layer == Layer.LIVE, state.live) { LiveFull(it, actions) }
+    val family = LocalTheme.current.family
+    Faded(layer == Layer.LIVE, state.live) {
+        when (family) {
+            Family.PAPER -> PaperLive(it, actions)
+            Family.LAMP -> LampLive(it, actions)
+            Family.IPHONE -> LiveFull(it, actions)
+        }
+    }
     Faded(layer == Layer.NOTIFICATION, state.notification) { NotificationScreen(it, it.hidden || config.previewOnTapOnly, state, actions) }
-    Faded(layer == Layer.ALARM, state.alarm) { AlarmScreen(it, state, actions) }
+    Faded(layer == Layer.ALARM, state.alarm) {
+        when (family) {
+            Family.PAPER -> PaperAlarm(it, state, actions)
+            Family.LAMP -> LampAlarm(it, state, actions)
+            Family.IPHONE -> AlarmScreen(it, state, actions)
+        }
+    }
 }
 
 /** 350 ms fade that keeps showing the last value while it fades out after the state went null. */
@@ -264,7 +280,7 @@ private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: Stand
                     transformOrigin = TransformOrigin(0f, 0f)
                     alpha = appear.value
                 }
-                .clip(RoundedCornerShape(28))
+                .clip(if (LocalTheme.current.radius == 0f) RectangleShape else RoundedCornerShape(28))
                 .background(ink.mapped(Color(n.plateColor))),
             contentAlignment = Alignment.Center,
         ) {
@@ -296,9 +312,16 @@ private fun LivePill(l: LiveActivity, actions: StandbyActions) {
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val s = min(maxWidth, maxHeight)
         val t = max(18.dp, s * 0.05f)
+        val th = LocalTheme.current
         Row(
             Modifier.align(Alignment.TopCenter).padding(top = max(maxHeight * 0.03f, screenPadding(maxWidth, maxHeight).calculateTopPadding() - t * 1.2f))
-                .clip(RoundedCornerShape(50)).background(ink.ink4).tap(actions::liveToggle)
+                .then(
+                    when (th.family) {
+                        Family.PAPER -> Modifier.background(ink.bg).border(1.dp, ink.ink3)
+                        Family.LAMP -> Modifier.clip(RoundedCornerShape(50)).background(ink.plate2)
+                        Family.IPHONE -> Modifier.clip(RoundedCornerShape(50)).background(ink.ink4)
+                    },
+                ).tap(actions::liveToggle)
                 .padding(horizontal = t * 0.8f, vertical = t * 0.5f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -379,7 +402,13 @@ private fun WavePill(onOpen: () -> Unit) {
         val pad = screenPadding(maxWidth, maxHeight)
         Box(
             Modifier.align(Alignment.TopEnd).padding(top = pad.calculateTopPadding() * 0.6f, end = pad.calculateTopPadding() * 0.6f)
-                .size(d).clip(CircleShape).background(ink.ink4).tap(onOpen),
+                .size(d).then(
+                    when (LocalTheme.current.family) {
+                        Family.PAPER -> Modifier.background(ink.bg).border(1.dp, ink.ink3)
+                        Family.LAMP -> Modifier.clip(CircleShape).background(ink.plate2)
+                        Family.IPHONE -> Modifier.clip(CircleShape).background(ink.ink4)
+                    },
+                ).tap(onOpen),
             contentAlignment = Alignment.Center,
         ) {
             Canvas(Modifier.size(d * 0.46f)) {
@@ -458,6 +487,9 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
                 drawLine(ink.ink2, Offset(size.width, 0f), Offset(0f, size.height), st, androidx.compose.ui.graphics.StrokeCap.Round)
             }
         }
+        val family = LocalTheme.current.family
+        if (family == Family.PAPER) { PaperNowPlayingBody(m, pos, actions, w, h); return@BoxWithConstraints }
+        if (family == Family.LAMP) { LampNowPlayingBody(m, pos, actions, w, h); return@BoxWithConstraints }
         val art: Dp
         val artX: Dp
         val artY: Dp
@@ -524,4 +556,4 @@ internal fun artColor(img: androidx.compose.ui.graphics.ImageBitmap): Color {
     return Color(r / n, g / n, b / n)
 }
 
-private fun mmss(ms: Long): String { val t = ms / 1000; return "%d:%02d".format(t / 60, t % 60) }
+internal fun mmss(ms: Long): String { val t = ms / 1000; return "%d:%02d".format(t / 60, t % 60) }

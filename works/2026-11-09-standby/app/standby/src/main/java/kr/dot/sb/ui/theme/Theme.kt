@@ -6,7 +6,12 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
+import kr.dot.sb.model.AnalogNumbers
+import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.Background
+import kr.dot.sb.model.CardType
 import kr.dot.sb.model.ClockStyle
+import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
 import kr.dot.sb.model.Theme
@@ -18,12 +23,19 @@ import kr.dot.sb.model.Theme
  * [LocalTheme]. Cards, clocks and screens read colours from [Ink] (built from the theme's [Palette]), fonts and sizes
  * from [StandbyTheme]; they never branch on [Theme] themselves.
  *
- * Adding a theme = one more `val` in [Themes] and one branch in [Themes.of]. A new card surface or effect that the
- * fields below cannot express gets a new field here (default = the iPhone behaviour), not a `when (theme)` in a card.
+ * Tokens cover most of a theme. Where B and C lay a screen out differently (not just in other colours or fonts: the
+ * newspaper masthead, the lamp's pills, the hairline dial, editorial card bodies), the code branches once on
+ * [StandbyTheme.family] and hands over to that family's own composables (PaperCards / LampCards, ThemeFaces,
+ * ThemeOverlays). Anything a family does not redraw falls back to the shared iPhone layout in the theme's tokens.
+ *
+ * Adding a theme = one more `val` in [Themes] and one branch in [Themes.of].
  */
 
 /** How a card sits on the board: bare on black (A), on a rounded plate (C), between hairline rules (B). */
 enum class Surface { NONE, PLATE, RULE }
+
+/** Which layout family draws the screens that differ beyond tokens (see the file header). */
+enum class Family { IPHONE, PAPER, LAMP }
 
 /**
  * Day colours of one theme, by role. Night is always the red ramp: [Ink] maps every role to #FC0000 (bright roles) or
@@ -55,6 +67,10 @@ data class Palette(
     val music: Color,
     /** Card plate (Surface.PLATE) and rule (Surface.RULE) colour. */
     val plate: Color,
+    /** Lighter plate (C: pills, transport discs, the plate gradient's lit corner). */
+    val plate2: Color = plate,
+    /** Usage colour (C: lilac). */
+    val lilac: Color = blue,
 ) {
     companion object {
         /** Mockup r5 A, measured from iPhone frames. */
@@ -73,6 +89,46 @@ data class Palette(
             snooze = Color(0xFFF26B2A),
             music = Color(0xFFFF5B57),
             plate = Color(0xFF1C1C1E),
+        )
+
+        /** Mockup r5 B: warm ink on black, one vermilion accent, hairline rules. */
+        val PAPER = Palette(
+            bg = Color.Black,
+            fg = Color(0xFFEFE8DC),
+            fg2 = Color(0xFF8F887C),
+            fg3 = Color(0xFF4A463F),
+            fg4 = Color(0xFF1F1C18),
+            red = Color(0xFFFF5533),
+            orange = Color(0xFFFF5533),
+            yellow = Color(0xFFEFE8DC),
+            green = Color(0xFFFF5533),
+            blue = Color(0xFFEFE8DC),
+            amber = Color(0xFFFF5533),
+            snooze = Color(0xFFFF5533),
+            music = Color(0xFFFF5533),
+            plate = Color(0xFF4A463F),
+            plate2 = Color(0xFF1F1C18),
+            lilac = Color(0xFFEFE8DC),
+        )
+
+        /** Mockup r5 C: warm plates (≤ 12 % brightness for OLED), one pastel per function. */
+        val LAMP = Palette(
+            bg = Color.Black,
+            fg = Color(0xFFFFF3E6),
+            fg2 = Color(0xFFC2B2A2),
+            fg3 = Color(0xFF3A2E25),
+            fg4 = Color(0xFF2C221B),
+            red = Color(0xFFFF9AAA), // rose: calendar
+            orange = Color(0xFFFFB27A), // peach: clock
+            yellow = Color(0xFFFFDC8F), // butter: sun, play
+            green = Color(0xFFB5DC9F), // sage: focus
+            blue = Color(0xFF9FD3FF), // sky: weather
+            amber = Color(0xFFFFB27A),
+            snooze = Color(0xFFFFDC8F),
+            music = Color(0xFFC9B8FF),
+            plate = Color(0xFF1E1713),
+            plate2 = Color(0xFF2C221B),
+            lilac = Color(0xFFC9B8FF), // usage
         )
     }
 }
@@ -116,6 +172,13 @@ class StandbyTheme(
     val colorIcons: Boolean,
     /** Now Playing background washed with the album art colour. */
     val artTint: Boolean,
+    val family: Family = Family.IPHONE,
+    /** Label rows draw their glyph (A, C); B labels are bare kickers. */
+    val labelIcons: Boolean = true,
+    /** Letter spacing of label rows in em (B kickers are tracked out). */
+    val labelTracking: Float = 0f,
+    /** Plate wash per card type (C): the plate's gradient leans to this colour; null = plain plate. */
+    val tint: (CardType) -> Color? = { null },
 )
 
 object Themes {
@@ -138,10 +201,111 @@ object Themes {
         artTint = true,
     )
 
-    // ponytail: PAPER and MOODLIGHT render as IPHONE until their vals land (next agent adds them here only).
+    private const val P_FG = 0xFFEFE8DC
+    private const val P_ACC = 0xFFFF5533
+
+    /** B 신문 1면 (mockup r5 B): Instrument Serif numerals and clock, Pretendard words, hairline rules, one accent. */
+    val PAPER = StandbyTheme(
+        id = Theme.PAPER,
+        palette = Palette.PAPER,
+        words = { Fonts.ui(it) },
+        wordsCap = 0.707f,
+        numerals = Fonts.instrument,
+        numeralsCap = 0.70f,
+        time = Fonts.instrument,
+        timeCap = 0.70f,
+        // "명조" is the newspaper serif in this theme; every other choice keeps its own font
+        clockFamily = { f, w -> if (f == FontId.SERIF) Fonts.instrument else Fonts.clock(f, w) },
+        clockDefaults = { face ->
+            when (face) {
+                FaceId.ANALOG -> ClockStyle(
+                    FontId.SERIF, 400, color = P_FG, analogNumbers = AnalogNumbers.FOUR, numeralColor = P_FG,
+                    handColor = P_FG, secondColor = P_ACC, weekdayColor = P_FG, tickColor = P_FG,
+                )
+                FaceId.SOLAR -> ClockStyle(
+                    FontId.SERIF, 400, color = P_FG, background = Background.GRADIENT, bgColor = 0xFF231D17, bgColor2 = 0xFF3D3025,
+                )
+                FaceId.PHOTOS_TIME -> ClockStyle(FontId.SERIF, 400, color = 0xFFFFFFFF)
+                else -> ClockStyle(FontId.SERIF, 400, color = P_FG)
+            }
+        },
+        ramp = Ramp.IPHONE,
+        minText = 0.06f,
+        surface = Surface.RULE,
+        radius = 0f,
+        colorIcons = false,
+        artTint = false,
+        family = Family.PAPER,
+        labelIcons = false,
+        labelTracking = 0.08f,
+    )
+
+    /** C 무드등 (mockup r5 C): Nunito heavy numerals, warm plates washed per function, soft pastel accents. */
+    val MOODLIGHT = StandbyTheme(
+        id = Theme.MOODLIGHT,
+        palette = Palette.LAMP,
+        words = { Fonts.ui(it) },
+        wordsCap = 0.707f,
+        numerals = Fonts.nunitoHeavy,
+        numeralsCap = 0.705f,
+        time = Fonts.nunitoHeavy,
+        timeCap = 0.705f,
+        clockFamily = { f, w -> Fonts.clock(f, w) },
+        clockDefaults = { face ->
+            when (face) {
+                FaceId.DIGITAL, FaceId.DESK -> ClockStyle(
+                    FontId.ROUNDED_HEAVY, 900, color = 0xFFFFDC8F, color2 = 0xFFFFB27A, effect = Effect.TWO_COLOR,
+                )
+                FaceId.ANALOG -> ClockStyle(
+                    FontId.ROUNDED, 900, color = 0xFFFFB27A, analogNumbers = AnalogNumbers.FOUR, numeralColor = 0xFFFFDC8F,
+                    handColor = 0xFFFFF3E6, secondColor = 0xFFFFB27A, weekdayColor = 0xFFFFF3E6, tickColor = 0xFFC2B2A2,
+                )
+                FaceId.SOLAR -> ClockStyle.SOLAR_SETS[1].let { c ->
+                    ClockStyle(
+                        FontId.ROUNDED, 800, color = c[2], color2 = c[3], effect = Effect.TWO_COLOR,
+                        background = Background.GRADIENT, bgColor = c[0], bgColor2 = c[1],
+                    )
+                }
+                FaceId.WORLD -> ClockStyle(FontId.ROUNDED, 800, color = 0xFFFFB27A)
+                FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFFFFB27A)
+                FaceId.PHOTOS_TIME -> ClockStyle(FontId.ROUNDED_HEAVY, 900, color = 0xFFFFF3E6)
+            }
+        },
+        ramp = Ramp.IPHONE,
+        minText = 0.06f,
+        surface = Surface.PLATE,
+        radius = 0.16f,
+        colorIcons = true,
+        artTint = true,
+        family = Family.LAMP,
+        tint = { type ->
+            val p = Palette.LAMP
+            when (type) {
+                CardType.CLOCK, CardType.ANALOG, CardType.DDAY -> p.orange
+                CardType.CALENDAR, CardType.AGENDA -> p.red
+                CardType.WEATHER, CardType.SLEEP -> p.blue
+                CardType.TIMER -> p.green
+                CardType.USAGE -> p.lilac
+                CardType.MUSIC -> Color(0xFF9B6BD8)
+                CardType.VIDEO, CardType.MEMORIES -> null
+            }
+        },
+    )
+
     fun of(t: Theme): StandbyTheme = when (t) {
-        Theme.IPHONE, Theme.PAPER, Theme.MOODLIGHT -> IPHONE
+        Theme.IPHONE -> IPHONE
+        Theme.PAPER -> PAPER
+        Theme.MOODLIGHT -> MOODLIGHT
     }
+}
+
+/**
+ * The style [face] is drawn with: the user's own edit, else the theme's default. A stored style equal to the iPhone
+ * default ([ClockStyle.default], what [AppConfig] starts with) counts as untouched, so switching theme restyles it.
+ */
+fun AppConfig.clockStyle(face: FaceId): ClockStyle {
+    val s = styles[face]
+    return if (s == null || s == ClockStyle.default(face)) Themes.of(theme).clockDefaults(face) else s
 }
 
 val LocalTheme = staticCompositionLocalOf { Themes.IPHONE }

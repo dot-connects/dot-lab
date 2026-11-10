@@ -106,6 +106,8 @@ internal data class FaceData(
     val day: Int,
     val month: Int,
     val temp: String?,
+    /** Weather condition (theme C pills draw its glyph). */
+    val cond: kr.dot.sb.ui.state.WeatherCondition? = null,
     val weatherLine: String?,
     val city: String?,
     /** Next alarm time "6:30" / "06:30" and its day word "오늘" / "내일" / "11월 12일" (Desk's full form). */
@@ -137,6 +139,7 @@ internal data class FaceData(
                 weekday = WEEKDAY_KO[s.now.dayOfWeek.value - 1],
                 day = s.now.dayOfMonth, month = s.now.monthValue,
                 temp = s.weather?.let { "${it.tempC}°" },
+                cond = s.weather?.condition,
                 weatherLine = s.weather?.let { "${it.tempC}° ${it.condition.ko}" },
                 city = s.weather?.city,
                 alarm = a?.let { timeParts(it, s.use24h).let { (ah, am) -> "$ah:$am" } },

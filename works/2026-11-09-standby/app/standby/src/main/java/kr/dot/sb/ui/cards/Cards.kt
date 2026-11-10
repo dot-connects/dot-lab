@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.cards
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -66,6 +67,9 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
 import kr.dot.sb.ui.theme.Surface
+import kr.dot.sb.ui.theme.Family
+import kr.dot.sb.ui.screens.artColor
+import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.ui.theme.Themes
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -98,14 +102,22 @@ fun CardView(
                 t.numerals, t.numeralsCap, slotId, today, t,
             )
         }
+        // C: the music plate takes the album colour (computed once per cover), every other card its function pastel
+        val art = state.media?.art?.takeIf { type == CardType.MUSIC && t.surface == Surface.PLATE }
+        val artTint = remember(art) { art?.let(::artColor) }
         val surface = when (t.surface) {
-            Surface.NONE -> Modifier
-            Surface.PLATE -> Modifier.clip(RoundedCornerShape(e.plateRadius)).background(ink.plate)
-            Surface.RULE -> Modifier.drawBehind { drawLine(ink.ink3, Offset.Zero, Offset(size.width, 0f), 1.dp.toPx()) }
+            // B's hairlines live in the gutters, drawn once by the board (BoardView)
+            Surface.NONE, Surface.RULE -> Modifier
+            Surface.PLATE -> Modifier.lampPlate(ink, artTint ?: t.tint(type), min(e.plateRadius, 44.dp))
         }
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
-                when (type) {
+                val drawn = when (t.family) {
+                    Family.PAPER -> paperBody(type, e, state, config, actions)
+                    Family.LAMP -> lampBody(type, e, state, config, actions)
+                    Family.IPHONE -> false
+                }
+                if (!drawn) when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
                     CardType.ANALOG -> AnalogCard(e, state, config)
                     CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
@@ -129,7 +141,7 @@ fun CardView(
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     val face = e.look.clockFace
-    val base = config.styles[face] ?: e.t.clockDefaults(face)
+    val base = config.clockStyle(face)
     // §5.1: hero digits carry the accent; a second clock on the board renders its numerals in ink (hero = false).
     if (face == FaceId.DIGITAL) {
         // Digital draws its own date line right under the digits (mockup r5 desk: "월요일 11월 9일 · 7°"), so the
@@ -151,11 +163,11 @@ private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
 private fun AnalogCard(e: Env, state: StandbyState, config: AppConfig) {
     // Per-widget colours (r5): the analog keeps its own second-hand colour instead of the board accent.
     val def = e.t.clockDefaults(FaceId.ANALOG)
-    val base = config.styles[FaceId.ANALOG] ?: def
+    val base = config.clockStyle(FaceId.ANALOG)
     // Untouched default = the iPhone analog *widget* (frame ex-analogwidget): white numerals, orange second hand.
     // The Duo palette belongs to the full-screen face; a user-picked style is drawn as picked.
     val pal = e.t.palette
-    val st = if (base == def) base.copy(numeralColor = pal.fg.argbLong(), secondColor = pal.orange.argbLong(), tickColor = pal.fg2.argbLong()) else base
+    val st = if (base == def && def.analogNumbers == AnalogNumbers.DUO) base.copy(numeralColor = pal.fg.argbLong(), secondColor = pal.orange.argbLong(), tickColor = pal.fg2.argbLong()) else base
     ClockFace(FaceId.ANALOG, st, state, Modifier.fillMaxSize(), inSlot = true)
 }
 
@@ -177,7 +189,7 @@ private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind
 }
 
 @Composable
-private fun Art(e: Env, img: ImageBitmap?, placeholder: Ic, modifier: Modifier, radius: Dp) {
+internal fun Art(e: Env, img: ImageBitmap?, placeholder: Ic, modifier: Modifier, radius: Dp) {
     val shape = RoundedCornerShape(radius)
     if (img != null) {
         Image(img, null, modifier.clip(shape), contentScale = ContentScale.Crop, colorFilter = nightFilter(e.ink.night))
@@ -209,7 +221,7 @@ private fun Transport(e: Env, m: MediaInfo, actions: StandbyActions, width: Dp, 
     }
 }
 
-private fun progress(m: MediaInfo) = if (m.durationMs > 0) m.positionMs.toFloat() / m.durationMs else 0f
+internal fun progress(m: MediaInfo) = if (m.durationMs > 0) m.positionMs.toFloat() / m.durationMs else 0f
 
 /** XS: art plate fills the slot, play/pause disc bottom-trailing; tap elsewhere opens the player. */
 @Composable
@@ -221,7 +233,7 @@ private fun XsPlate(e: Env, m: MediaInfo, ic: Ic, actions: StandbyActions) {
             verticalArrangement = Arrangement.SpaceBetween,
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Art(e, m.art, ic, Modifier.size(e.cw), max(12.dp, e.cw * e.t.radius))
+            Art(e, m.art, ic, Modifier.size(e.cw), e.round(e.cw))
             Disc(e, if (m.playing) Ic.PAUSE else Ic.PLAY, e.label * 2f, onClick = actions::mediaPlayPause)
         }
         return
@@ -257,7 +269,7 @@ private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
     if (e.w > e.h * 1.15f) {
         val a = min(e.ch, e.cw * 0.45f)
         Row(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-            Art(e, m.art, Ic.NOTE, Modifier.size(a), max(10.dp, a * e.t.radius * 0.8f))
+            Art(e, m.art, Ic.NOTE, Modifier.size(a), e.round(a, 10.dp, 0.8f))
             Spacer(Modifier.width(e.pad))
             Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
                 Row(Modifier.fillMaxWidth()) {
@@ -274,7 +286,7 @@ private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
     Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
         if (a >= e.label * 3) {
             Row(Modifier.fillMaxWidth()) {
-                Art(e, m.art, Ic.NOTE, Modifier.size(a), max(10.dp, a * e.t.radius * 0.8f))
+                Art(e, m.art, Ic.NOTE, Modifier.size(a), e.round(a, 10.dp, 0.8f))
                 Spacer(Modifier.weight(1f))
                 noteGlyph()
             }
@@ -488,7 +500,7 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     }
 }
 
-private fun pctOf(w: UsageWindow?) = w?.usedPct?.let { "$it%" } ?: "–"
+internal fun pctOf(w: UsageWindow?) = w?.usedPct?.let { "$it%" } ?: "–"
 
 /** Battery-widget ring: track 25 % of the colour, arc from 12 o'clock, letter centred (rounded numerals). */
 @Composable
@@ -567,7 +579,7 @@ private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
 
 /** Weather glyph in theme colours: white cloud, yellow sun, blue rain (night: the red ramp). */
 @Composable
-private fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
+internal fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
     val c2 = if (!e.t.colorIcons) e.ink.ink else if (ic == Ic.RAIN) e.ink.blue else e.ink.sun
     IconView(ic, e.ink.ink, modifier, e.ink.bg, color2 = c2)
 }

@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.board
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -50,6 +51,9 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Motion
 import kr.dot.sb.ui.theme.Sizes
+import kr.dot.sb.ui.theme.Surface
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
 import kotlin.math.max
 import kotlin.math.min
 
@@ -116,6 +120,25 @@ object BoardGrid {
             ).firstOrNull() ?: -1
 
     fun hasClock(cards: List<CardType?>) = cards.any { it in CLOCKS }
+
+    /**
+     * Gutter rules (theme B) as (x0, y0, x1, y1) in dp: for every two slots that face each other across a gutter, a
+     * line down (or across) the gutter's middle over the stretch both slots share.
+     */
+    fun rules(slots: List<SlotRect>): List<FloatArray> {
+        val out = ArrayList<FloatArray>()
+        val gap = 64f // a gutter is at most this wide; slots further apart do not face each other
+        for (a in slots) for (b in slots) {
+            if (a === b) continue
+            val dx = b.x - (a.x + a.w)
+            val y0 = max(a.y, b.y); val y1 = min(a.y + a.h, b.y + b.h)
+            if (dx in 0f..gap && y1 - y0 > 1f) out += floatArrayOf(a.x + a.w + dx / 2, y0, a.x + a.w + dx / 2, y1)
+            val dy = b.y - (a.y + a.h)
+            val x0 = max(a.x, b.x); val x1 = min(a.x + a.w, b.x + b.w)
+            if (dy in 0f..gap && x1 - x0 > 1f) out += floatArrayOf(x0, a.y + a.h + dy / 2, x1, a.y + a.h + dy / 2)
+        }
+        return out
+    }
 }
 
 /**
@@ -131,7 +154,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
         null -> null
         else -> board.clockFace
     }
-    val accent = board.accent ?: heroFace?.let { (config.styles[it] ?: t.clockDefaults(it)).color } ?: 0xFF76A6F3
+    val accent = board.accent ?: heroFace?.let { config.clockStyle(it).color } ?: 0xFF76A6F3
     val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp, r = t.ramp) }
     val floor = (screenShort * t.minText).dp
     val label = (sizes.minOfOrNull { it.label } ?: 18.dp).coerceAtLeast(floor).coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f)
@@ -154,7 +177,17 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
         val h = maxHeight.value
         val slots = remember(board.layout, w, h, cutX, cutY) { BoardGrid.slots(board.layout, w, h, cutX, cutY) }
         val looks = remember(board, config.styles, slots, t) { looks(board, config, slots, min(w, h), t) }
-        CompositionLocalProvider(LocalInk provides Ink.of(state.night, looks.firstOrNull()?.accent ?: Color(0xFF76A6F3), t.palette)) {
+        val ink = Ink.of(state.night, looks.firstOrNull()?.accent ?: Color(0xFF76A6F3), t.palette)
+        CompositionLocalProvider(LocalInk provides ink) {
+            if (t.surface == Surface.RULE) {
+                // B: one hairline in the middle of every gutter between two filled slots (mockup r5 B columns)
+                val rules = remember(slots, board.slots) { BoardGrid.rules(slots.filterIndexed { i, _ -> board.slots.getOrNull(i).orEmpty().isNotEmpty() }) }
+                val c = ink.ink3
+                Canvas(Modifier.fillMaxSize()) {
+                    val sw = maxOf(1f, 1.dp.toPx())
+                    for (r in rules) drawLine(c, Offset(r[0].dp.toPx(), r[1].dp.toPx()), Offset(r[2].dp.toPx(), r[3].dp.toPx()), sw)
+                }
+            }
             slots.forEachIndexed { i, r ->
                 val cards = board.slots.getOrNull(i).orEmpty()
                 if (cards.isEmpty()) return@forEachIndexed

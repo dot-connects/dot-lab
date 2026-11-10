@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.screens
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -154,7 +155,7 @@ internal fun RootImpl(
         if (state.displayOff) return@BoxWithConstraints
         val w = maxWidth
         val h = maxHeight
-        val accent = Color(config.styles[FaceId.DIGITAL]?.color ?: 0xFF76A6F3)
+        val accent = Color(config.clockStyle(FaceId.DIGITAL).color)
         val pal = LocalTheme.current.palette
         val ink = remember(state.night, accent, pal) { Ink.of(state.night, accent, pal) }
         val layer = topLayer(state, config, npOpen)
@@ -175,7 +176,7 @@ internal fun RootImpl(
                         1 -> PhotosPage(state, config, actions, active = pager.settledPage == 1 && layer == Layer.NONE)
                         2 -> ClocksPage(
                             state, config, clockPage, editing, { editing = it }, start.sheet,
-                            styleOf = { f -> edits[f] ?: config.styles[f] ?: Themes.of(config.theme).clockDefaults(f) },
+                            styleOf = { f -> edits[f] ?: config.clockStyle(f) },
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
                         )
                         else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, actions) }

@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.screens
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
@@ -55,6 +56,9 @@ import kr.dot.sb.ui.state.Photo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.Family
+import androidx.compose.foundation.layout.width
 import kotlin.math.abs
 
 /** Photo themes (spec P1, P0 part): 추천 + the user's albums; on-device labels (자연, 반려동물 …) are P1. */
@@ -108,19 +112,30 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
                 // Scrim: transparent until 55 % height, then to 60 % black (design §2.1).
                 Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
                 val p = photos[idx % photos.size]
+                val t = LocalTheme.current
+                val dateSize = max(18.dp, s * if (t.family == Family.IPHONE) 0.048f else 0.06f)
                 Column(
                     Modifier.align(Alignment.BottomEnd).padding(end = w * 0.08f, bottom = h * if (port) 0.1f else 0.14f)
-                        .tap(p.uri?.let { u -> { act.openPhoto(u) } }), // spec P5: caption tap opens the gallery
+                        .tap(p.uri?.let { u -> { act.openPhoto(u) } }) // spec P5: caption tap opens the gallery
+                        // C: the caption sits on a soft lamp pill; B: under a hairline like a photo credit
+                        .then(if (t.family == Family.LAMP) Modifier.clip(RoundedCornerShape(s * 0.06f)).background(ink.plate2.copy(alpha = 0.82f)).padding(horizontal = s * 0.05f, vertical = s * 0.04f) else Modifier),
                     horizontalAlignment = Alignment.End,
                 ) {
                     Txt(p.place, s * 0.09f, ink.ink, weight = 700, maxW = w * if (port) 0.8f else 0.5f, align = TextAlign.End)
                     Spacer(Modifier.height(s * 0.035f))
-                    Txt(p.date, max(18.dp, s * 0.048f), ink.ink, weight = 600, tnum = true, align = TextAlign.End)
+                    if (t.family == Family.PAPER) {
+                        Box(Modifier.width(s * 0.3f).height(1.dp).background(ink.ink.copy(alpha = 0.6f)))
+                        Spacer(Modifier.height(s * 0.03f))
+                    }
+                    Txt(
+                        p.date, dateSize, if (t.family == Family.LAMP) ink.ink2 else ink.ink, weight = if (t.family == Family.IPHONE) 600 else 500,
+                        tnum = true, align = TextAlign.End, num = t.family != Family.IPHONE, tracking = t.labelTracking,
+                    )
                 }
             }
         }
         // Time top-right (landscape x 72–92 %, y 10–28 %); portrait gets a wider, shorter box.
-        val style = config.styles[FaceId.PHOTOS_TIME] ?: ClockStyle.default(FaceId.PHOTOS_TIME)
+        val style = config.clockStyle(FaceId.PHOTOS_TIME)
         // the PHOTOS_TIME face places the time itself over the whole page (clock area owns the geometry)
         ClockFace(FaceId.PHOTOS_TIME, style, state, Modifier.fillMaxSize())
         AnimatedVisibility(

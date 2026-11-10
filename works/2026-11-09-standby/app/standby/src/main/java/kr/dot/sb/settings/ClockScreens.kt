@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -50,7 +51,7 @@ fun ClockListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     @Composable
     fun row(face: FaceId, sub: String? = null) {
-        val st = config.styles.getValue(face)
+        val st = config.clockStyle(face)
         PageRow(
             thumb = { ClockFace(face, st, state, Modifier.fillMaxSize()) },
             title = face.ko, subtitle = sub ?: "${st.font.ko} · ${st.effect.ko}", start = false, onClick = { nav.push(Routes.clock(face)) },
@@ -73,12 +74,12 @@ private val FONT_ORDER = FontId.entries
 
 @Composable
 fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -> Unit) {
-    val style = config.styles.getValue(face)
+    val style = config.clockStyle(face)
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     var devIdx by rememberSaveable { mutableIntStateOf(0) }
     var portrait by rememberSaveable { mutableStateOf(false) }
     val dev = PreviewDevice.entries[devIdx]
-    fun edit(f: (ClockStyle) -> ClockStyle) = update { it.copy(styles = it.styles + (face to f(it.styles.getValue(face)))) }
+    fun edit(f: (ClockStyle) -> ClockStyle) = update { it.copy(styles = it.styles + (face to f(it.clockStyle(face)))) }
     val analog = face == FaceId.ANALOG
     val world = face == FaceId.WORLD
     val solar = face == FaceId.SOLAR
@@ -171,7 +172,7 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         }
 
         Gap(24.dp)
-        ActionButton("아이폰처럼 되돌리기", { update { it.copy(styles = it.styles + (face to kr.dot.sb.ui.theme.Themes.of(it.theme).clockDefaults(face))) } }, Modifier.fillMaxWidth(), primary = false)
+        ActionButton("테마 기본값으로 되돌리기", { update { it.copy(styles = it.styles + (face to ClockStyle.default(face))) } }, Modifier.fillMaxWidth(), primary = false)
     }
 }
 

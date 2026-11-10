@@ -45,7 +45,7 @@ enum class Device(val qualifiers: String, val label: String) {
  * Themes every render matrix runs under (one PNG tree per theme: build/shots/<theme>/<group>/…). Adding a theme to the
  * shots = one entry here.
  */
-val THEMES: List<Theme> = listOf(Theme.IPHONE)
+val THEMES: List<Theme> = listOf(Theme.IPHONE, Theme.PAPER, Theme.MOODLIGHT)
 
 fun shotPath(theme: Theme, group: String, name: String, device: Device? = null): String =
     "build/shots/${theme.name.lowercase()}/$group/$name${device?.let { "-" + it.label } ?: ""}.png"

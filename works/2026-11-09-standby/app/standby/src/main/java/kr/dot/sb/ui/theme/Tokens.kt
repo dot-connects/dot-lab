@@ -47,6 +47,8 @@ data class Ink(
     val snooze: Color get() = mapped(pal.snooze)
     val music: Color get() = accent(pal.music)
     val plate: Color get() = lerp(pal.plate, NIGHT_INK4, night)
+    val plate2: Color get() = lerp(pal.plate2, Color(0xFF240000), night)
+    val lilac: Color get() = accent(pal.lilac)
 
     /** Map any day colour (calendar colours, brand glyphs, user colours) to its night twin. */
     fun mapped(day: Color): Color = lerp(day, NIGHT_INK2, night)

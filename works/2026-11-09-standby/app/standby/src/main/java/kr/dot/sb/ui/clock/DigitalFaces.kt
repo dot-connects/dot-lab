@@ -23,6 +23,7 @@ import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.Family
 import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
@@ -102,6 +103,12 @@ private val SIDE_MIN = 100.dp
 
 @Composable
 internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+    // B / C dress the default ("아이폰") layout their own way; the other layouts stay shared
+    val family = LocalTheme.current.family
+    if (!inSlot && style.layout == ClockLayout.IPHONE && (family == Family.LAMP || (family == Family.PAPER && style.showInfo))) {
+        if (family == Family.PAPER) PaperDigital(style, d, ink, modifier) else LampDigital(style, d, ink, modifier)
+        return
+    }
     val p = rememberTimePainter(style)
     val ui = rememberUi(500)
     val look = Look.of(style, ink)
@@ -224,7 +231,7 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
 
         // digits box and rows box
         val fs: Float; val dx: Float; val capTop: Float
-        val rx: Float; val rTop: Float; val rBottom: Float; val rW: Float
+        val rx: Float; var rTop: Float; var rBottom: Float; val rW: Float
         if (portrait) {
             fs = fitSize(p, d, false, 0.24f * h * sizePct, w - 2 * margin)
             val cap = p.capEm * fs
@@ -249,6 +256,11 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         // each row = label cap-top … title baseline; rows spread space-between from rTop to rBottom
         val gapLT = lab.textSize * 0.55f
         val blockH = lab.textSize * labCap + gapLT + ttl.textSize * ttlCap
+        // a wide font (theme C Nunito) leaves a short digit cap: the rows then keep at least 0.8 label of air between
+        // them, growing the band around its centre instead of overlapping the separators
+        val need = 3 * blockH + 2 * 1.6f * lab.textSize
+        val mid = (rTop + rBottom) / 2
+        if (rBottom - rTop < need) { rTop = mid - need / 2; rBottom = mid + need / 2 }
         val pitch = (rBottom - rTop - blockH) / 2
         val sep = Paint().apply { color = ink.ink3.toArgb(); strokeWidth = max(1f, 1.dp.toPx()) }
         val texts = rows.map { (l, t, _) -> lab.fit(l, rW) to ttl.fit(t, rW) }
@@ -333,7 +345,7 @@ internal fun StyledTimeImpl(
     align: Alignment.Horizontal,
 ) {
     val p = rememberTimePainter(style, tnum = true)
-    val look = Look.of(style, ink, base = color, effects = effects)
+    val look = Look.of(style, ink, base = color, effects = effects, vertical = LocalTheme.current.family == Family.LAMP)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val wEm = p.widestEm(widest ?: text)

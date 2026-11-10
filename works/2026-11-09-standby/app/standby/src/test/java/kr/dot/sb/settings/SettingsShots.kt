@@ -61,6 +61,8 @@ class SettingsShots {
 
     @Test fun home() = snap("home", phone, route = Routes.HOME)
     @Test fun homeFold() = snap("home-fold", fold, route = Routes.HOME)
+    @Test fun homePaper() = snap("home-paper", phone, AppConfig(theme = kr.dot.sb.model.Theme.PAPER), route = Routes.HOME)
+    @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
     @Test fun boards() = snap("boards", tall, route = Routes.BOARDS)
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))

@@ -19,6 +19,7 @@ import kotlinx.coroutines.withContext
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.model.AnalogTicks
 import kr.dot.sb.model.ClockStyle
+import kr.dot.sb.ui.theme.Family
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
@@ -73,6 +74,12 @@ private class Dial(w: Float, h: Float, val rect: Boolean) {
  */
 @Composable
 internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+    // B / C draw their own dial for the 12·3·6·9 (and bare) numbering; Duo, twelve and Roman stay shared
+    val family = kr.dot.sb.ui.theme.LocalTheme.current.family
+    if (family != Family.IPHONE && (style.analogNumbers == AnalogNumbers.FOUR || style.analogNumbers == AnalogNumbers.NONE)) {
+        if (family == Family.PAPER) PaperAnalog(style, d, ink, inSlot, modifier) else LampAnalog(style, d, ink, inSlot, modifier)
+        return
+    }
     val p = rememberTimePainter(style)
     val ui = rememberUi(600)
     val ui2 = rememberUi(600)
@@ -84,15 +91,7 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
     val white = ink.ink.toArgb()
     val bg = if (inSlot) null else bgColors(style, ink)
 
-    val second = remember { mutableIntStateOf(((System.currentTimeMillis() / 1000) % 60).toInt()) }
-    LaunchedEffect(Unit) {
-        while (true) {
-            val ms = System.currentTimeMillis()
-            second.intValue = ((ms / 1000) % 60).toInt()
-            // Wait off the frame clock so idle tests and the UI thread never spin on this ticker.
-            withContext(Dispatchers.Default) { delay(1000 - ms % 1000) }
-        }
-    }
+    val second = rememberSecond()
 
     Box(modifier) {
         FaceCanvas(Modifier.graphicsLayer()) {

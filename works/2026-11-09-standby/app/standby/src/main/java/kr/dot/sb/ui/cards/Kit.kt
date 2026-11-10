@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.cards
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -82,7 +83,7 @@ data class CardLook(
     companion object {
         /** A card alone (no board): follows the given clock face's accent. */
         fun of(config: AppConfig, face: FaceId = FaceId.DIGITAL): CardLook =
-            CardLook(Color(config.styles[face]?.color ?: 0xFF76A6F3))
+            CardLook(Color(config.clockStyle(face).color))
     }
 }
 
@@ -125,7 +126,9 @@ internal class Env(
     val gap: Dp get() = s * 0.04f
     val labelCap: Dp get() = label * CAP_UI
     val bar: Dp get() = max(4.dp, s * 0.025f)
-    val plateRadius: Dp get() = max(12.dp, s * t.radius)
+    val plateRadius: Dp get() = round(s)
+    /** Corner radius for something [of] long: the theme radius with a floor; B (radius 0) stays square. */
+    fun round(of: Dp, floor: Dp = 12.dp, k: Float = 1f): Dp = if (t.radius == 0f) 0.dp else max(floor, of * t.radius * k)
     /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */
     val loneDisplay: Dp get() = if (tall) max(sz.display, h * 0.6f * 0.56f) else sz.display
     val loneValue: Dp get() = if (tall) max(sz.value, h * 0.6f * 0.30f) else sz.value
@@ -162,7 +165,8 @@ internal fun Txt(
     maxW: Dp? = null,
     maxCapH: Dp? = null,
     num: Boolean = false,
-) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH)
+    tracking: Float = 0f,
+) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking)
 
 /** Runs of Latin/digits ("11°", "9:30", "C") in the theme's numeral font; Hangul stays in the words font. */
 internal fun numSpans(text: String, numerals: FontFamily, weight: Int): AnnotatedString = buildAnnotatedString {
@@ -189,6 +193,8 @@ internal fun Txt(
     tnum: Boolean = false,
     maxW: Dp? = null,
     maxCapH: Dp? = null,
+    /** Letter spacing in em (B kickers). */
+    tracking: Float = 0f,
 ) {
     val fam = family ?: LocalTheme.current.words(weight)
     val density = LocalDensity.current
@@ -200,7 +206,7 @@ internal fun Txt(
         fontFeatureSettings = if (tnum) "tnum" else null,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),
-        lineBreak = PHRASE,
+        lineBreak = PHRASE, letterSpacing = tracking.em,
     )
     var fs = size
     if (maxCapH != null) fs = min(fs, maxCapH / cap)
@@ -253,6 +259,11 @@ internal fun LabelRow(
     e: Env, icon: Ic?, text: String, color: Color = e.ink.ink2, trailing: String? = null, trailingColor: Color = e.ink.ink2,
     center: Boolean = false, iconEnd: Boolean = false, weight: Int = 600,
 ) {
+    if (!e.t.labelIcons) {
+        // B: a bare kicker in the secondary ink, tracked out (mockup r5 B "오늘", "날씨", "재생 중")
+        Kicker(e, if (trailing != null) "$text · $trailing" else text, center = center)
+        return
+    }
     val iconBox = @Composable {
         Box(Modifier.height(e.labelCap).wrapUnbounded()) { IconView(icon!!, color, Modifier.size(e.label), e.ink.bg) }
     }
@@ -271,6 +282,14 @@ internal fun LabelRow(
         }
     }
 }
+
+/** B kicker: small tracked label in ink2 (digits in the numeral serif), one line, height = its cap. */
+@Composable
+internal fun Kicker(e: Env, text: String, color: Color = e.ink.ink2, center: Boolean = false, modifier: Modifier = Modifier) =
+    Txt(
+        text, e.label, color, if (center) modifier else modifier.fillMaxWidth(), weight = 500, num = true,
+        tracking = e.t.labelTracking, align = if (center) TextAlign.Center else TextAlign.Start,
+    )
 
 @Composable
 internal fun Detail(e: Env, text: String, color: Color = e.ink.ink2, modifier: Modifier = Modifier, align: TextAlign = TextAlign.Start) =

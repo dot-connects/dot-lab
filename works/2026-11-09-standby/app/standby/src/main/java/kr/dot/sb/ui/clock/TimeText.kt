@@ -79,15 +79,17 @@ internal class Look(
     val c2: Int,
     /** Extra soft shadow (Solar contrast floor); 0 = none. */
     val shadow: Int = 0,
+    /** TWO_COLOR runs top → bottom instead of along the run (theme C: butter above, peach below). */
+    val vertical: Boolean = false,
 ) {
     companion object {
-        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true): Look {
+        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true, vertical: Boolean = false): Look {
             val night = ink.night >= 0.5f
             val fx = when {
                 !effects || night -> Effect.SOLID
                 else -> style.effect
             }
-            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb())
+            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb(), vertical = vertical)
         }
 
         val RAINBOW = intArrayOf(0xFFFF5A5F.toInt(), 0xFFFFB347.toInt(), 0xFFFFE066.toInt(), 0xFF6FDC86.toInt(), 0xFF4D9BEF.toInt(), 0xFFAA88FE.toInt())
@@ -144,19 +146,20 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
     /** Widest "h:mm" of the class in em, with 3 % for kerning slack. */
     fun widestEm(hourDigits: Int, use24h: Boolean) = (hourEm(hourDigits, use24h) + colonRun + minuteEm) * 1.03f
     /** Widest string of arbitrary digits (each digit position takes the widest digit). */
-    fun widestEm(pattern: String) = pattern.sumOf { if (it in '0'..'9') maxAdv(0..9).toDouble() else measure(it.toString(), 1f).toDouble() }.toFloat() * 1.03f
+    // non-digits measured at REF: at 1 px Android rounds the colon advance to 0 and StyledTime overflowed its box
+    fun widestEm(pattern: String) = pattern.sumOf { if (it in '0'..'9') maxAdv(0..9).toDouble() else measure(it.toString(), REF).toDouble() / REF }.toFloat() * 1.03f
 
     fun measure(text: String, size: Float): Float { paint.textSize = size; return paint.measureText(numerals.convert(text)) }
 
     /** Width of "h:mm" drawn by [drawHm] (tight colon). */
     fun measureHm(h: String, m: String, size: Float): Float = measure(h, size) + colonRun * size + measure(m, size)
 
-    /** "h:mm" with the tight colon; one gradient spans the whole run. */
-    fun drawHm(c: Canvas, h: String, m: String, x: Float, baseline: Float, size: Float, look: Look) {
+    /** "h:mm" with the tight colon; one gradient spans the whole run. [colon] = its own look (theme B: accent colon). */
+    fun drawHm(c: Canvas, h: String, m: String, x: Float, baseline: Float, size: Float, look: Look, colon: Look = look) {
         val wh = measure(h, size)
         val r = x + measureHm(h, m, size)
         draw(c, h, x, baseline, size, look, x, r)
-        draw(c, ":", x + wh - colonAdv * size * (1 - COLON) / 2, baseline, size, look, x, r)
+        draw(c, ":", x + wh - colonAdv * size * (1 - COLON) / 2, baseline, size, colon, x, r)
         draw(c, m, x + wh + colonRun * size, baseline, size, look, x, r)
     }
 
@@ -234,7 +237,7 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         shader = null
         color = look.c1
         when (look.effect) {
-            Effect.TWO_COLOR -> shader = LinearGradient(l, t, r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
+            Effect.TWO_COLOR -> shader = LinearGradient(l, t, if (look.vertical) l else r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
             Effect.RAINBOW -> shader = LinearGradient(l, t, r, t, Look.RAINBOW, null, Shader.TileMode.CLAMP)
             // 60 % (review C5): 30 % read ≈ 1.5:1 on black, the digits showed only through the stroke
             Effect.GLASS -> color = withAlpha(look.c1, 0.60f)

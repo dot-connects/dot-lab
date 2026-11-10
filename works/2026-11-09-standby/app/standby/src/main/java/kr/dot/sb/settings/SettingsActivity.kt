@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.clockStyle
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
@@ -80,7 +81,7 @@ class SettingsActivity : ComponentActivity() {
                 licenseText = { f -> runCatching { assets.open("licenses/$f").bufferedReader().use { it.readText() } }.getOrDefault("") },
                 versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "",
             )
-            SettingsTheme(config.styles.getValue(FaceId.DIGITAL).color.c()) {
+            SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
                 RouteHost(route, config, { f -> ConfigStore.update(this, f) }, nav, env)
             }
         }

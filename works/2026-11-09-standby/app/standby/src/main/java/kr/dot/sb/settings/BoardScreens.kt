@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -76,7 +77,7 @@ fun BoardsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) 
             }
             item {
                 PageRow(
-                    thumb = { kr.dot.sb.ui.clock.ClockFace(FaceId.DIGITAL, config.styles.getValue(FaceId.DIGITAL), state, Modifier.fillMaxSize()) },
+                    thumb = { kr.dot.sb.ui.clock.ClockFace(FaceId.DIGITAL, config.clockStyle(FaceId.DIGITAL), state, Modifier.fillMaxSize()) },
                     title = "시계", subtitle = "디지털 · 아날로그 · 세계 · 솔라 · 플로트", start = config.startPage == 2, onClick = { nav.push(Routes.CLOCKS) },
                 )
             }

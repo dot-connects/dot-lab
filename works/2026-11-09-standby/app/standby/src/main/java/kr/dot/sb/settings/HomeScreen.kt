@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -141,7 +142,7 @@ private fun Carousel(config: AppConfig, onFull: () -> Unit) {
                 PreviewFrame(dev.w, dev.h, Modifier.fillMaxWidth()) {
                     when (i) {
                         0 -> BoardView(widgetsBoard(config), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
-                        1 -> ClockFace(FaceId.DIGITAL, config.styles.getValue(FaceId.DIGITAL), state, Modifier.fillMaxSize())
+                        1 -> ClockFace(FaceId.DIGITAL, config.clockStyle(FaceId.DIGITAL), state, Modifier.fillMaxSize())
                         else -> BoardView(config.boards[i - 2], state, config, StandbyActions.NONE, Modifier.fillMaxSize())
                     }
                 }

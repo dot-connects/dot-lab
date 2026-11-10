@@ -37,6 +37,7 @@ import kr.dot.sb.THEMES
 import kr.dot.sb.shotPath
 import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.theme.ProvideTheme
+import kr.dot.sb.ui.theme.Themes
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
@@ -71,7 +72,7 @@ class ClockShots(private val theme: Theme) {
         }
     }
 
-    private fun face(f: FaceId, state: StandbyState = Fixtures.full(), style: ClockStyle = ClockStyle.default(f)): @Composable () -> Unit = {
+    private fun face(f: FaceId, state: StandbyState = Fixtures.full(), style: ClockStyle = Themes.of(theme).clockDefaults(f)): @Composable () -> Unit = {
         if (f == FaceId.PHOTOS_TIME) {
             // The face places the time itself on the whole photo screen (review C1). Placeholder photo = flat blue,
             // night-mapped like a photo (review C7: the screens layer must pass fallbacks through the same filter).
@@ -129,6 +130,8 @@ class ClockShots(private val theme: Theme) {
      * render: rows holding accent-blue pixels left of the side column.
      */
     @Test fun digitalHeroSize() {
+        // the 60 % blue-digit target is theme A's (iPhone frame); B and C size their own hero
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
         RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
         rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { face(FaceId.DIGITAL)() } } }
         rule.waitForIdle()
@@ -153,7 +156,7 @@ class ClockShots(private val theme: Theme) {
 
     private fun slot(f: FaceId, w: Int, h: Int): @Composable () -> Unit = {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            ClockFace(f, ClockStyle.default(f), Fixtures.full(), Modifier.size(w.dp, h.dp), inSlot = true)
+            ClockFace(f, Themes.of(theme).clockDefaults(f), Fixtures.full(), Modifier.size(w.dp, h.dp), inSlot = true)
         }
     }
 
