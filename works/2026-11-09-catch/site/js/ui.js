@@ -4,7 +4,7 @@ import * as ar from "./ar.js";
 import * as dex from "./dex.js";
 import { grade, odds, roll, ringAt, rng, CRIT_RING } from "./catch.js";
 import { release, flight, sweep, turnOf, curveOf, coverMap, FLIGHT_MS, END_SCALE } from "./geom.js";
-import { spriteCreature } from "./creature.js";
+import { modelCreature, VIRTUAL } from "./creature.js";
 import { LABELS, LABEL_KO, suggest, count } from "./moves.js";
 import * as seg from "./seg.js";
 import * as store from "./store.js";
@@ -44,27 +44,15 @@ const rest = () => ({ x: W / 2, y: H * 0.78 });
 const ballR = () => Math.max(24, Math.min(34, W * 0.075));
 
 // ---------- creatures ----------
-const names = new Map();
-async function koName(id) {
-  if (names.has(id)) return names.get(id);
-  let n = `포켓몬 ${id}`;
-  try {
-    const r = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${id}`);
-    const ko = (await r.json()).names.find(x => x.language.name === "ko");
-    if (ko) n = ko.name;
-  } catch { /* the number will do */ }
-  names.set(id, n);
-  return n;
-}
 let spawning = false;
 async function spawn() {
   if (spawning) return;
   spawning = true;   // a creature that leaves stays in view (and the ball in hand) until the next one has loaded
-  const id = 1 + Math.floor(rnd() * 151);
+  const spec = VIRTUAL[Math.floor(rnd() * VIRTUAL.length)], id = spec.id;
   try {
-    const [img, name] = await Promise.all([ar.loadImg(ART(id)), koName(id)]);
-    G.mon = { id, name, img, t0: clock() };
-    ar.setCreature(spriteCreature(img)); ar.place();
+    const img = await ar.loadImg(ART(id));
+    G.mon = { id, name: spec.name, img, t0: clock() };
+    ar.setCreature(modelCreature(spec)); ar.place();
     G.ringT0 = clock();
     if (G.phase === "wait") { G.phase = "hand"; G.handT0 = clock(); }
   } catch {

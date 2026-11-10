@@ -62,3 +62,60 @@ export function spriteCreature(img) {
     dispose() { mesh.material.map.dispose(); mesh.material.dispose(); mesh.geometry.dispose(); },
   };
 }
+
+// ---------- 3D creatures (creatures.js) behind the same seam ----------
+import { makeCreature, SPECS } from "./creatures.js";
+
+export const VIRTUAL = SPECS.filter(s => s.group === "chiikawa");
+export const specOf = id => SPECS.find(s => s.id === id);
+
+/** A creatures.js model as the ar.js creature (its own contact shadow is hidden: ar.js draws one). */
+export function modelCreature(spec) {
+  const c = makeCreature(spec), root = new THREE.Group(), lift = new THREE.Group();
+  lift.add(c.object3d); root.add(lift);
+  c.object3d.children.forEach(o => { if (o.isMesh && o.renderOrder === -1) o.visible = false; });
+  const lights = [], glow = [];
+  c.object3d.traverse(o => {
+    if (o.isLight) lights.push({ o, base: o.color.clone() });
+    if (o.material && o.material.emissive && !glow.includes(o.material)) glow.push(o.material);
+  });
+  const box = new THREE.Box3().setFromObject(c.object3d), sz = box.getSize(new THREE.Vector3());
+  const st = { act: null, next: null };
+  let last = null;
+  return {
+    root,
+    hit: { w: sz.x * 0.9, h: sz.y * 0.9, cy: sz.y / 2 },
+    shadowR: Math.max(sz.x, sz.z) * 0.45,
+    update(now, dt, pose, tint) {
+      if (last === null) last = now;
+      c.update(Math.min(0.05, (now - last) / 1000)); last = now;
+      const m = idle(now, pose.hold, st), k = Math.max(0.001, pose.scale ?? 1), sq = (pose.squash || 0) + m.sq;
+      root.scale.set(k * (1 - 0.5 * sq), k * (1 + sq), k * (1 - 0.5 * sq));
+      lift.position.y = m.lift; lift.rotation.z = m.rot;
+      for (const l of lights) l.o.color.copy(l.base).multiply(tint);
+      for (const mt of glow) mt.emissive.setScalar(pose.flash || 0);
+      return m.lift;
+    },
+    dispose() { root.traverse(o => { o.geometry?.dispose?.(); }); },
+  };
+}
+
+/** A front picture of a model (PNG data URL, 256 px), for the dex, the card and the export. One shared renderer. */
+let snapR = null;
+const snaps = new Map();
+export function snapshot(id) {
+  if (snaps.has(id)) return snaps.get(id);
+  const spec = specOf(id);
+  if (!spec) return "";
+  snapR ||= new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+  snapR.setPixelRatio(1); snapR.setSize(256, 256, false); snapR.outputColorSpace = THREE.SRGBColorSpace;
+  const c = makeCreature(spec), scene = new THREE.Scene();
+  scene.add(c.object3d); c.update(0.016);
+  const box = new THREE.Box3().setFromObject(c.object3d), sz = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10), d = Math.max(sz.x, sz.y) * 0.62 / Math.tan(Math.PI / 12);
+  cam.position.set(mid.x, mid.y + d * 0.12, mid.z + d); cam.lookAt(mid);
+  snapR.setClearColor(0x000000, 0); snapR.render(scene, cam);
+  const url = snapR.domElement.toDataURL("image/png");
+  snaps.set(id, url);
+  return url;
+}

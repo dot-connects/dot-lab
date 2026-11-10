@@ -54,8 +54,8 @@
    "measured": 2.32,
    "hit": true,
    "res": {
-    "grade": "great",
-    "p": 0.79,
+    "grade": "nice",
+    "p": 0.749,
     "caught": true,
     "shakes": 3,
     "critical": false
@@ -69,8 +69,8 @@
    "measured": 2.69,
    "hit": true,
    "res": {
-    "grade": "nice",
-    "p": 0.702,
+    "grade": "hit",
+    "p": 0.7,
     "caught": true,
     "shakes": 3,
     "critical": false
@@ -81,7 +81,7 @@
    "v": 3.22,
    "noise": -2.1,
    "len": 223,
-   "measured": 3.05,
+   "measured": 3.04,
    "hit": true,
    "res": {
     "grade": "hit",
@@ -99,8 +99,8 @@
    "measured": 1.76,
    "hit": true,
    "res": {
-    "grade": "hit",
-    "p": 0.7,
+    "grade": "nice",
+    "p": 0.727,
     "caught": true,
     "shakes": 3,
     "critical": false
@@ -141,7 +141,7 @@
    "v": 2.97,
    "noise": -1,
    "len": 226,
-   "measured": 2.82,
+   "measured": 2.79,
    "hit": true,
    "res": {
     "grade": "hit",
@@ -249,8 +249,8 @@
    "measured": 2.22,
    "hit": true,
    "res": {
-    "grade": "nice",
-    "p": 0.758,
+    "grade": "excellent",
+    "p": 0.859,
     "caught": true,
     "shakes": 3,
     "critical": false
@@ -276,7 +276,7 @@
    "v": 2.78,
    "noise": 2.4,
    "len": 196,
-   "measured": 2.64,
+   "measured": 2.63,
    "hit": true,
    "res": {
     "grade": "hit",
@@ -317,8 +317,8 @@
   "armed": -1,
   "turn": -390,
   "flick": {
-   "grade": "nice",
-   "p": 0.9142417125941038,
+   "grade": "excellent",
+   "p": 0.9642031293130112,
    "caught": true,
    "curve": -1
   }

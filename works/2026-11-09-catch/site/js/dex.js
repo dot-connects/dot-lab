@@ -1,12 +1,14 @@
 // The dex (grid), one creature's detail (5 pose slots, empty = silhouette, unlocked moves), the catch card as a
 // 1080x1350 PNG (share or download) and the .dotpet export the Android app reads.
 import { loadImg } from "./ar.js";
+import { snapshot } from "./creature.js";
 import { cardText } from "./lines.js";
 import { LABELS, LABEL_KO, moves, count } from "./moves.js";
 import { serialize, fileName } from "./petfile.js";
 import * as store from "./store.js";
 
-export const ART = id => `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
+// a 3D creature id (string) -> its rendered picture; an old saved pokemon number keeps its artwork URL
+export const ART = id => typeof id === "string" ? snapshot(id) : `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
 const LINK = "dot-connects.github.io/dot-lab/works/2026-11-09-catch/site/";
 const MOVE_KO = { bounce: "통통", flinch: "움찔", walk: "걷기", run: "뛰기", sleep: "잠자기", hide: "숨기" };
 const MOVE_NEEDS = { walk: "옆모습", run: "옆모습 + 걷는 중", sleep: "누운 모습", hide: "뒷모습" };

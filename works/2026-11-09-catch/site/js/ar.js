@@ -102,7 +102,8 @@ function fit() {
 // ---------- gyro (three.js r133 DeviceOrientationControls math, from dalgona) ----------
 let orient = null;
 const gq = new THREE.Quaternion(), euler = new THREE.Euler(), qBack = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5)), qs = new THREE.Quaternion(), Z = new THREE.Vector3(0, 0, 1);
-addEventListener("deviceorientation", e => { if (e.beta != null && e.gamma != null) orient = e; });
+// desktop / headless Chrome without a sensor fires all-zero events: that is "no gyro", not a phone lying flat
+addEventListener("deviceorientation", e => { if (e.beta != null && e.gamma != null && (e.alpha || e.beta || e.gamma)) orient = e; });
 function gyroTarget() {
   if (!orient) return null;
   const D = Math.PI / 180, so = (screen.orientation && screen.orientation.angle) || window.orientation || 0;
