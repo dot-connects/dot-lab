@@ -61,6 +61,7 @@ object ChargeRules {
  */
 object ChargeStart {
     const val EXTRA = "kr.dot.sb.CHARGE_START"
+    @Volatile private var lastLaunchMs = 0L
     private const val JOB_ID = 4101
     private const val NOTIF_ID = 8
     private const val REARM_MS = 20 * 60_000L
@@ -81,7 +82,10 @@ object ChargeStart {
     }
 
     /** The charger came out: the next plug-in must not wait for the rearm delay. */
-    fun rearmNow(ctx: Context) { if (on(ctx)) arm(ctx, 0, replace = true) }
+    fun rearmNow(ctx: Context) {
+        lastLaunchMs = 0L // an unplug ends the one-minute double-fire guard, so a quick re-plug starts again
+        if (on(ctx)) arm(ctx, 0, replace = true)
+    }
 
     fun cancelNotification(ctx: Context) = ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
 
@@ -94,8 +98,6 @@ object ChargeStart {
         prefs(ctx).edit().putString(LOG_KEY, (listOf("$t  $line") + old).take(8).joinToString("\n")).apply()
     }
     fun trail(ctx: Context): List<String> = prefs(ctx).getString(LOG_KEY, "").orEmpty().lines().filter { it.isNotBlank() }
-
-    @Volatile private var lastLaunchMs = 0L
 
     /** The notification listener (always bound) heard the charger go in: start now, no job delay. */
     fun onPowerConnected(ctx: Context) = fire(ctx, "충전기 연결")
