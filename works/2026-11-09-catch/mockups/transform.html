@@ -26,6 +26,7 @@
   <p>오려 낸 사진에서 색 3개를 뽑아, 개는 멍솜·고양이는 냥솜·사람은 사람 털뭉치 틀에 입혔습니다. 폰 안에서 바로 만들어지고 사진은 밖으로 안 나갑니다.</p>
   <div id="list"></div>
 </main>
+<script>window.onerror = (m) => { document.getElementById("list").textContent = "오류: " + m; };</script>
 <script type="module">
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 import { makeCreature } from "../site/js/creatures.js";

@@ -100,10 +100,13 @@ export function specFor(kind, pal, { id, name }) {
 }
 
 /** Browser: a cut-out Blob -> palette. */
-export async function paletteOf(blob) {
-  const bmp = await createImageBitmap(blob), s = Math.min(1, 160 / Math.max(bmp.width, bmp.height));
-  const w = Math.max(1, Math.round(bmp.width * s)), h = Math.max(1, Math.round(bmp.height * s));
-  const c = new OffscreenCanvas(w, h), g = c.getContext("2d");
-  g.drawImage(bmp, 0, 0, w, h);
+export async function paletteOf(blob) {   // plain <img> + <canvas>: older in-app browsers lack OffscreenCanvas
+  const url = URL.createObjectURL(blob), img = new Image();
+  try { img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
+  const s = Math.min(1, 160 / Math.max(img.naturalWidth, img.naturalHeight));
+  const w = Math.max(1, Math.round(img.naturalWidth * s)), h = Math.max(1, Math.round(img.naturalHeight * s));
+  const c = document.createElement("canvas"); c.width = w; c.height = h;
+  const g = c.getContext("2d", { willReadFrequently: true });
+  g.drawImage(img, 0, 0, w, h);
   return palette(g.getImageData(0, 0, w, h).data, w, h);
 }
