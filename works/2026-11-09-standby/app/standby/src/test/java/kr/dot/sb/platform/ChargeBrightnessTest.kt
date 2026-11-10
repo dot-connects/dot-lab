@@ -27,6 +27,11 @@ class ChargeBrightnessTest {
         assertEquals(ChargeVerdict.NO_FULL_SCREEN, decide(fsi = false))
     }
 
+    @Test fun wiredSkipsOnlyWhenWirelessOnly() {
+        assertEquals(ChargeVerdict.NOT_WIRELESS, ChargeRules.decide(true, true, false, true, false, false, true, true, pluggedOk = false))
+        assertEquals(ChargeVerdict.NOT_CHARGING, ChargeRules.decide(true, false, false, true, false, false, true, true, pluggedOk = false))
+    }
+
     @Test fun clampKeepsTheBarOffZeroAndNaN() {
         assertEquals(Brightness.MIN, Brightness.clamp(0f))
         assertEquals(Brightness.MIN, Brightness.clamp(-3f))

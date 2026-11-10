@@ -27,12 +27,27 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
+        if (intent.getBooleanExtra(EXTRA_TILE, false)) {
+            val bm = getSystemService(BatteryManager::class.java)
+            if (!bm.isCharging && bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) <= LOW_BATTERY) { finish(); return }
+            // without a charger the screen stays on: leave at LOW_BATTERY % (re-checked on every battery change)
+            endRx = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, i: Intent) {
+                    val level = i.getIntExtra(BatteryManager.EXTRA_LEVEL, 100) * 100 / i.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1)
+                    if (i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) == 0 && level <= LOW_BATTERY) finish()
+                }
+            }.also { registerReceiver(it, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) }
+        }
         if (chargeStart) {
             ChargeStart.cancelNotification(this)
-            if (!getSystemService(BatteryManager::class.java).isCharging) { finish(); return } // unplugged before we got here
+            ChargeStart.log(this, "화면 열림")
+            if (!getSystemService(BatteryManager::class.java).isCharging) { ChargeStart.log(this, "닫힘 · 이미 뽑힘"); finish(); return } // unplugged before we got here
             // unplug or unlock ends it; the exit swipe goes through HostActions.exit() -> finish()
             endRx = object : BroadcastReceiver() {
-                override fun onReceive(c: Context, i: Intent) = finish()
+                override fun onReceive(c: Context, i: Intent) {
+                    ChargeStart.log(c, if (i.action == Intent.ACTION_USER_PRESENT) "닫힘 · 잠금 해제" else "닫힘 · 충전기 뽑힘")
+                    finish()
+                }
             }.also {
                 registerReceiver(it, IntentFilter(Intent.ACTION_POWER_DISCONNECTED).apply { addAction(Intent.ACTION_USER_PRESENT) }, Context.RECEIVER_NOT_EXPORTED)
             }
@@ -69,7 +84,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         StandbyPresence.activity = false
         holder.stop()
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
-        if (chargeStart && !isChangingConfigurations) finish()
+        if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
         super.onStop()
     }
 
@@ -97,4 +112,9 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     }
 
     override fun openGlow() { startActivity(Intent(this, GlowActivity::class.java)) }
+
+    companion object {
+        const val EXTRA_TILE = "kr.dot.sb.TILE"
+        const val LOW_BATTERY = 20
+    }
 }

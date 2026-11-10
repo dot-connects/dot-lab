@@ -67,6 +67,15 @@ class Listener : NotificationListenerService() {
     }
     private val audioOff = Runnable { if (!audioAlarm) ListenerBus.setAudioAlarm(false) }
 
+    private val power = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            if (i.action == Intent.ACTION_POWER_CONNECTED) {
+                // let the battery state settle (the plug type arrives a moment later on some chargers)
+                handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
+            } else ChargeStart.rearmNow(c)
+        }
+    }
+
     private val nextAlarm = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) = GlowScheduler.reschedule(c)
     }
@@ -90,6 +99,8 @@ class Listener : NotificationListenerService() {
         }
         getSystemService(AudioManager::class.java).registerAudioPlaybackCallback(audio, handler)
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
+        // this service stays bound, so it hears every plug-in at once (the charging job alone can lag by minutes)
+        registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply { addAction(Intent.ACTION_POWER_DISCONNECTED) }, RECEIVER_NOT_EXPORTED)
         val rm0 = runCatching { currentRanking }.getOrNull()
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()
@@ -98,6 +109,7 @@ class Listener : NotificationListenerService() {
     override fun onListenerDisconnected() {
         runCatching { getSystemService(AudioManager::class.java).unregisterAudioPlaybackCallback(audio) }
         runCatching { unregisterReceiver(nextAlarm) }
+        runCatching { unregisterReceiver(power) }
         handler.removeCallbacksAndMessages(null)
         scope?.cancel(); scope = null
         if (ListenerBus.listener?.get() === this) ListenerBus.listener = null

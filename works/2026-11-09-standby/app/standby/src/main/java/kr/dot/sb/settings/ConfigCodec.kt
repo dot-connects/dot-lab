@@ -31,6 +31,7 @@ object ConfigCodec {
         put("nightMaxBrightness", c.nightMaxBrightness.toDouble())
         put("dayBrightness", c.dayBrightness?.toDouble() ?: JSONObject.NULL)
         put("startOnCharge", c.startOnCharge)
+        put("chargeWirelessOnly", c.chargeWirelessOnly)
         put("displayOff", c.displayOff.name)
         put("motionToWake", c.motionToWake)
         put("showNotifications", c.showNotifications)
@@ -78,6 +79,7 @@ object ConfigCodec {
             nightMaxBrightness = num(o, "nightMaxBrightness", d.nightMaxBrightness),
             dayBrightness = if (o.has("dayBrightness") && !o.isNull("dayBrightness")) num(o, "dayBrightness", 0.5f).coerceIn(0f, 1f) else null,
             startOnCharge = o.optBoolean("startOnCharge", d.startOnCharge),
+            chargeWirelessOnly = o.optBoolean("chargeWirelessOnly", d.chargeWirelessOnly),
             displayOff = enumOf(o, "displayOff", d.displayOff),
             motionToWake = o.optBoolean("motionToWake", d.motionToWake),
             showNotifications = o.optBoolean("showNotifications", d.showNotifications),

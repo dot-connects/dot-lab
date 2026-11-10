@@ -24,15 +24,21 @@ object StandbyPresence {
 }
 
 /** Why plugging in did or did not bring StandBy up; the order of the checks is the order of the `when`. */
-enum class ChargeVerdict { LAUNCH, OPTION_OFF, NOT_CHARGING, ALREADY_SHOWING, USING_PHONE, NO_NOTIFICATIONS, NO_FULL_SCREEN }
+enum class ChargeVerdict(val ko: String) {
+    LAUNCH("띄움"), OPTION_OFF("옵션 꺼짐"), NOT_CHARGING("충전 아님"), NOT_WIRELESS("유선 충전이라 건너뜀"),
+    ALREADY_SHOWING("이미 떠 있음"), USING_PHONE("폰 사용 중이라 건너뜀"),
+    NO_NOTIFICATIONS("알림 권한 없음"), NO_FULL_SCREEN("전체 화면 알림 권한 없음"),
+}
 
 object ChargeRules {
     fun decide(
         optionOn: Boolean, charging: Boolean, interactive: Boolean, locked: Boolean,
         dreamRunning: Boolean, activityFront: Boolean, notificationsOk: Boolean, fullScreenOk: Boolean,
+        pluggedOk: Boolean = true,
     ): ChargeVerdict = when {
         !optionOn -> ChargeVerdict.OPTION_OFF
         !charging -> ChargeVerdict.NOT_CHARGING
+        !pluggedOk -> ChargeVerdict.NOT_WIRELESS
         dreamRunning || activityFront -> ChargeVerdict.ALREADY_SHOWING
         interactive && !locked -> ChargeVerdict.USING_PHONE // unlocked with the screen on: someone is using the phone
         !notificationsOk -> ChargeVerdict.NO_NOTIFICATIONS
@@ -79,21 +85,43 @@ object ChargeStart {
 
     fun cancelNotification(ctx: Context) = ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
 
-    internal fun fire(ctx: Context) {
+    // ---- on-device trail: the last few attempts, shown in settings (the operator has no adb) ----
+    private const val LOG_KEY = "trail"
+    private fun prefs(ctx: Context) = ctx.getSharedPreferences("charge_start", Context.MODE_PRIVATE)
+    fun log(ctx: Context, line: String) {
+        val t = java.time.LocalTime.now().withNano(0)
+        val old = trail(ctx)
+        prefs(ctx).edit().putString(LOG_KEY, (listOf("$t  $line") + old).take(8).joinToString("\n")).apply()
+    }
+    fun trail(ctx: Context): List<String> = prefs(ctx).getString(LOG_KEY, "").orEmpty().lines().filter { it.isNotBlank() }
+
+    @Volatile private var lastLaunchMs = 0L
+
+    /** The notification listener (always bound) heard the charger go in: start now, no job delay. */
+    fun onPowerConnected(ctx: Context) = fire(ctx, "충전기 연결")
+
+    internal fun fire(ctx: Context, source: String = "충전 작업") {
         if (!on(ctx)) return
         arm(ctx, REARM_MS, replace = true) // first, so a failure below cannot leave us unarmed
+        // the listener and the job both see one plug-in; the second one within a minute does nothing
+        if (System.currentTimeMillis() - lastLaunchMs < 60_000L) return
         val nm = ctx.getSystemService(NotificationManager::class.java)
+        val plugged = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
         val verdict = ChargeRules.decide(
             optionOn = true,
-            charging = ctx.getSystemService(BatteryManager::class.java).isCharging,
+            charging = plugged != 0 || ctx.getSystemService(BatteryManager::class.java).isCharging,
             interactive = ctx.getSystemService(PowerManager::class.java).isInteractive,
             locked = ctx.getSystemService(KeyguardManager::class.java).isKeyguardLocked,
             dreamRunning = StandbyPresence.dream,
             activityFront = StandbyPresence.activity,
             notificationsOk = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
             fullScreenOk = nm.canUseFullScreenIntent(),
+            pluggedOk = !ConfigStore.flow(ctx).value.chargeWirelessOnly || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS,
         )
+        log(ctx, "$source · ${verdict.ko}")
         if (verdict != ChargeVerdict.LAUNCH) return
+        lastLaunchMs = System.currentTimeMillis()
         Channels.ensure(ctx)
         val open = PendingIntent.getActivity(
             ctx, 13, Intent(ctx, StandbyActivity::class.java).putExtra(EXTRA, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),

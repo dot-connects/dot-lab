@@ -163,6 +163,8 @@ data class AppConfig(
     val dayBrightness: Float? = null,
     /** Plug in with the screen off/locked and StandBy comes up (job + full-screen intent, no service). */
     val startOnCharge: Boolean = true,
+    /** Only a wireless charger starts StandBy (a cable does not). */
+    val chargeWirelessOnly: Boolean = false,
     val displayOff: DisplayOff = DisplayOff.AUTO,
     val motionToWake: Boolean = true,
     val showNotifications: Boolean = true,

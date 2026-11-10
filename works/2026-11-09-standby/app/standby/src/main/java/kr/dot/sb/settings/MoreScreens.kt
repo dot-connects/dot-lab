@@ -119,6 +119,18 @@ fun NightScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
         DisplayOff.NEVER -> "스탠바이가 켜져 있으면 디스플레이가 계속 켜져 있습니다."
     }
     Page("야간 모드 · 디스플레이", back) {
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        val trail = androidx.compose.runtime.remember { kr.dot.sb.platform.ChargeStart.trail(ctx) }
+        Section("시작", footer = if (trail.isEmpty()) "충전기를 꽂으면 여기에 기록이 남아요." else "최근 기록\n" + trail.joinToString("\n")) {
+            item {
+                SwitchRow("충전기 꽂으면 시작", config.startOnCharge, { v -> update { it.copy(startOnCharge = v) } },
+                    subtitle = "화면이 꺼져 있어도 충전을 시작하면 스탠바이가 떠요")
+            }
+            item {
+                SwitchRow("무선 충전일 때만", config.chargeWirelessOnly, { v -> update { it.copy(chargeWirelessOnly = v) } },
+                    subtitle = "케이블로 충전할 때는 뜨지 않아요", enabled = config.startOnCharge)
+            }
+        }
         Section("디스플레이", footer = if (never) "'안 함'일 때는 야간 모드와 움직임으로 깨우기를 쓸 수 없어요." else null) {
             item {
                 ControlRow(null, note = displayNote) {
