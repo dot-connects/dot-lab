@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="icon" href="data:,">
+<title>우리 집 녀석 시안</title>
+<style>
+  :root { --bg: #f6f3ee; --fg: #2d2826; --sub: #6f6762; --card: #fff; --line: #e4ded6; --chip: rgba(255,255,255,.86); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --card: #2a2725; --line: #3a3634; --chip: rgba(30,28,27,.8); } }
+  :root[data-theme="dark"] { --bg: #1d1b1a; --fg: #f1ece6; --sub: #aaa19a; --card: #2a2725; --line: #3a3634; --chip: rgba(30,28,27,.8); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.55 system-ui, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
+  main { max-width: 460px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 21px; margin: 0 0 4px; }
+  .lead { color: var(--sub); margin: 0 0 22px; font-size: 14px; }
+  section { margin: 0 0 34px; }
+  h2 { font-size: 18px; margin: 0 0 2px; }
+  h2 small { font-weight: 500; color: var(--sub); font-size: 14px; margin-left: 6px; }
+  .concept { margin: 0 0 4px; }
+  .why { margin: 0 0 12px; color: var(--sub); font-size: 14px; }
+  .card { position: relative; border-radius: 14px; overflow: hidden; background: #8a7f74; margin: 0 0 10px; border: 1px solid var(--line); cursor: pointer; touch-action: manipulation; }
+  .card canvas { display: block; width: 100%; aspect-ratio: 4 / 3; }
+  .tag { position: absolute; left: 10px; top: 10px; background: var(--chip); color: var(--fg); border-radius: 999px; padding: 3px 10px; font-size: 13px; font-weight: 600; }
+  .pose { position: absolute; right: 10px; top: 10px; background: var(--chip); color: var(--sub); border-radius: 999px; padding: 3px 10px; font-size: 12px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>우리 집 녀석 — 3가지 방향</h1>
+  <p class="lead">방 사진 바닥 위에 직접 만든 3D 녀석. 숨쉬기·깜빡임·점프·잡힘이 차례로 돕니다. 카드를 누르면 다음 동작.</p>
+  <div id="dex"></div>
+</main>
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
+import { makeCreature, SPECS } from "../site/js/creatures.js";
+
+const DIRS = [
+  { style: "mochi", name: "A. 말랑", en: "matte clay + thin line",
+    concept: "무광 찰흙 덩어리에 얇은 선 한 줄, 점 눈. 그림체를 그대로 3D 로 세운 느낌.",
+    why: "카메라 화면이 아무리 복잡해도 얇은 윤곽선이 몸을 배경에서 떼어 내서 바로 '여기 있다'가 보인다." },
+  { style: "fuzz", name: "B. 보송", en: "felt pompom fur",
+    concept: "털실 방울처럼 보송한 털 덩어리. 가장자리가 부드럽게 풀린다.",
+    why: "털 끝이 배경과 섞여 붙여 넣은 티가 덜 나고, 카메라 노이즈 속에서 진짜 물건처럼 보인다." },
+  { style: "paper", name: "C. 종이", en: "low-poly papercraft",
+    concept: "종이를 접어 만든 인형. 면이 각지고 접힌 자리에 가는 선.",
+    why: "각진 면마다 밝기가 달라 방 조명 아래서 입체가 또렷하고, 종이 질감이라 반짝임 없이도 실물 같다." },
+];
+const CYCLE = [["idle", 2.6], ["hop", 1.9], ["idle", 1.4], ["caught", 2.6]];
+const POSE_KO = { idle: "숨쉬기", hop: "점프", caught: "잡힘" };
+const Q = new URLSearchParams(location.search), FREEZE = Q.get("pose");
+
+const room = await new Promise((ok, no) => new THREE.TextureLoader().load("../site/img/room.jpg", ok, undefined, no));
+room.mapping = THREE.EquirectangularReflectionMapping; room.colorSpace = THREE.SRGBColorSpace;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const dpr = Math.min(2, devicePixelRatio || 1);
+
+const cards = [];
+const dex = document.getElementById("dex");
+let n = 0;
+for (const d of DIRS) {
+  const sec = document.createElement("section");
+  sec.innerHTML = `<h2>${d.name}<small>${d.en}</small></h2><p class="concept">${d.concept}</p><p class="why">${d.why}</p>`;
+  dex.append(sec);
+  for (const spec of SPECS.filter(s => s.style === d.style)) {
+    const el = document.createElement("div"); el.className = "card";
+    el.innerHTML = `<canvas></canvas><span class="tag">${spec.name}</span><span class="pose"></span>`;
+    sec.append(el);
+    const c = makeCreature(spec), scene = new THREE.Scene();
+    scene.background = room; scene.add(c.object3d);
+    // look down at the floor from a phone held low (≈0.9 m up, 1 m away), each card facing another spot of the room
+    const yaw = [0.78, 0.86, 0.94, 0.72, 0.84, 0.9, 0.8, 0.96, 0.74][n];   // the wooden floor part of the panorama
+    const cam = new THREE.PerspectiveCamera(36, 4 / 3, 0.05, 50);
+    cam.position.set(Math.sin(yaw) * 0.95, 0.9, Math.cos(yaw) * 0.95); cam.lookAt(0, 0.13, 0);
+    c.object3d.rotation.y = yaw;
+    const card = { el, cv: el.querySelector("canvas"), poseEl: el.querySelector(".pose"), c, scene, cam, step: 0, t: -n * 0.7, seen: false };
+    card.ctx = card.cv.getContext("2d");
+    const set = i => { card.step = i % CYCLE.length; card.t = 0; const p = FREEZE || CYCLE[card.step][0]; c.setPose(p); card.poseEl.textContent = POSE_KO[p]; };
+    card.set = set; set(0);
+    el.addEventListener("click", () => set(card.step + 1));
+    cards.push(card); n++; window.__cards = cards;
+  }
+}
+const io = new IntersectionObserver(es => es.forEach(e => cards.find(k => k.el === e.target).seen = e.isIntersecting));
+cards.forEach(k => io.observe(k.el));
+
+function size() {
+  const w = cards[0].cv.clientWidth, h = Math.round(w * 3 / 4);
+  renderer.setPixelRatio(dpr); renderer.setSize(w, h, false);
+  for (const k of cards) { k.cv.width = Math.round(w * dpr); k.cv.height = Math.round(h * dpr); }
+}
+addEventListener("resize", size); size();
+
+let last = performance.now(), frames = 0;
+function loop(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  for (const k of cards) {
+    k.t += dt;
+    if (!FREEZE && k.t > CYCLE[k.step][1]) k.set(k.step + 1);
+    k.c.update(dt);
+    if (!k.seen) continue;
+    renderer.render(k.scene, k.cam);
+    k.ctx.drawImage(renderer.domElement, 0, 0, k.cv.width, k.cv.height);
+  }
+  window.__frames = ++frames;
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
