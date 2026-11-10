@@ -1,7 +1,11 @@
 package kr.dot.sb.platform
 
 import android.app.KeyguardManager
+import android.content.BroadcastReceiver
+import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
+import android.os.BatteryManager
 import android.content.res.Configuration
 import android.os.Bundle
 import android.view.WindowManager
@@ -16,9 +20,23 @@ import kr.dot.sb.data.StandbyStateHolder
 /** Manual start / preview, and the unlocked hand-over target of the dream (same UI, system rotation). */
 class StandbyActivity : ComponentActivity(), HostCallbacks {
     private lateinit var holder: StandbyStateHolder
+    /** Started by the plug-in notification ([ChargeStart]): it lives only as long as the charger and the lock screen. */
+    private var chargeStart = false
+    private var endRx: BroadcastReceiver? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
+        if (chargeStart) {
+            ChargeStart.cancelNotification(this)
+            if (!getSystemService(BatteryManager::class.java).isCharging) { finish(); return } // unplugged before we got here
+            // unplug or unlock ends it; the exit swipe goes through HostActions.exit() -> finish()
+            endRx = object : BroadcastReceiver() {
+                override fun onReceive(c: Context, i: Intent) = finish()
+            }.also {
+                registerReceiver(it, IntentFilter(Intent.ACTION_POWER_DISCONNECTED).apply { addAction(Intent.ACTION_USER_PRESENT) }, Context.RECEIVER_NOT_EXPORTED)
+            }
+        }
         setShowWhenLocked(true)
         setTurnScreenOn(true)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -38,6 +56,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onStart() {
         super.onStart()
+        StandbyPresence.activity = true
         holder.start()
     }
 
@@ -47,8 +66,16 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     }
 
     override fun onStop() {
+        StandbyPresence.activity = false
         holder.stop()
+        // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
+        if (chargeStart && !isChangingConfigurations) finish()
         super.onStop()
+    }
+
+    override fun onDestroy() {
+        endRx?.let { unregisterReceiver(it) }
+        super.onDestroy()
     }
 
     override fun onConfigurationChanged(newConfig: Configuration) {

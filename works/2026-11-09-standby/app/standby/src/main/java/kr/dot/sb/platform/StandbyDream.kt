@@ -35,11 +35,13 @@ class StandbyDream : DreamService(), HostCallbacks {
 
     override fun onDreamingStarted() {
         super.onDreamingStarted()
+        StandbyPresence.dream = true
         lowRefreshRate()
         holder?.start()
     }
 
     override fun onDreamingStopped() {
+        StandbyPresence.dream = false
         holder?.stop()
         super.onDreamingStopped()
     }

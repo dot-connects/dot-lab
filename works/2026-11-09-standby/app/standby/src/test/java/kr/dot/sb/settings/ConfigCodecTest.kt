@@ -32,7 +32,7 @@ class ConfigCodecTest {
             styles = d.styles + (FaceId.DIGITAL to digital),
             boards = BoardOps.add(d).boards.map { it.copy(accent = 0xFFFD6890) },
             startPage = 4, use24h = true, nightMode = NightMode.SCHEDULE, nightEnterLux = 2.5f, nightExitLux = 11f,
-            nightMaxBrightness = 0.45f, displayOff = DisplayOff.NEVER, motionToWake = false, showNotifications = false,
+            nightMaxBrightness = 0.45f, dayBrightness = 0.6f, startOnCharge = false, displayOff = DisplayOff.NEVER, motionToWake = false, showNotifications = false,
             previewOnTapOnly = true, burnInShift = false, widgetLeft = listOf(CardType.MUSIC), widgetRight = emptyList(),
             glowColor = 0xFF85D4BA, glowStartMinBefore = 10, glowRampSec = 9, onUnfold = UnfoldAction.MOOD_LIGHT,
             ddays = listOf(DDay("수능", LocalDate.of(2026, 11, 19)), DDay("생일", LocalDate.of(2027, 2, 3))),
@@ -50,6 +50,20 @@ class ConfigCodecTest {
     @Test fun defaultsRoundTrip() {
         assertEquals(AppConfig(), ConfigCodec.decode(ConfigCodec.encode(AppConfig())))
     }
+
+    @Test fun dayBrightnessNullMeansAutoAndSurvives() {
+        assertEquals(null, ConfigCodec.decode(ConfigCodec.encode(AppConfig(dayBrightness = null))).dayBrightness)
+        assertEquals(0.35f, ConfigCodec.decode(ConfigCodec.encode(AppConfig(dayBrightness = 0.35f))).dayBrightness)
+    }
+
+    @Test fun oldSaveWithoutNewFieldsGetsDefaults() {
+        val c = ConfigCodec.decode("""{"startPage":1}""")
+        assertEquals(null, c.dayBrightness)
+        assertEquals(true, c.startOnCharge)
+    }
+
+    @Test fun outOfRangeDayBrightnessIsClamped() =
+        assertEquals(1f, ConfigCodec.decode("""{"dayBrightness":7.5}""").dayBrightness)
 
     @Test fun nullUse24hSurvives() {
         assertEquals(null, ConfigCodec.decode(ConfigCodec.encode(AppConfig(use24h = null))).use24h)

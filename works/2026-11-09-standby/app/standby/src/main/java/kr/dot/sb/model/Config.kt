@@ -146,6 +146,10 @@ data class AppConfig(
     val nightEnterLux: Float = 3f,
     val nightExitLux: Float = 8f,
     val nightMaxBrightness: Float = 0.3f,
+    /** Day brightness 0..1 set from the on-screen bar or settings; null = follow the system auto brightness. */
+    val dayBrightness: Float? = null,
+    /** Plug in with the screen off/locked and StandBy comes up (job + full-screen intent, no service). */
+    val startOnCharge: Boolean = true,
     val displayOff: DisplayOff = DisplayOff.AUTO,
     val motionToWake: Boolean = true,
     val showNotifications: Boolean = true,
