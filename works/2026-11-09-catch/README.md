@@ -1,6 +1,18 @@
 # 우리 집 몬스터 잡기 — 작업 폴더
 
-## 이어서 하기 (2026-11-10 밤 기준, 다음 세션은 여기부터)
+## 이어서 하기 (2026-11-11 기준, 다음 세션은 여기부터)
+
+**잡은 진짜(개·고양이·사람) 사진은 그대로 쓰지 않는다 (7561ee9).** 잡으면 폰 안 털뭉치 그림(`fluffify.js` 색 → 멍솜/냥솜/사람 틀)이
+바로 나오고, 동의한 폰이면 AI 그림이 10~30초 뒤 바뀌어 들어온다. AI 스타일은 3a 털뭉치 / 3b 3D 피규어 (운영자 2026-11-11 "3a, 3b 만").
+툰 필터(`toonify.js`)·진짜 3D 모델(GLB)은 뺐다. 시안 `mockups/transform.html`, 계획 `plan-transform.md`.
+- 서버 `worker/` = Cloudflare Worker `dot-lab-catch` (https://dot-lab-catch.dotconnects.workers.dev/transform). Gemini `gemini-3.1-flash-image`
+  Interactions API, `store: false`. 하루 한도: 기기 5 · IP 15 · 전체 100 (D1 `dot-lab-catch`). `ALL_DAY = "0"` 이면 즉시 끔.
+  모델 응답 형식은 문서로만 확인 — 첫 실호출에서 `pickImage` 가 맞는지 볼 것.
+- **아직 꺼져 있음(503 off):** 운영자가 `dot-lab/scripts/wizard-catch-gemini.bat` 로 결제 연결된 Gemini 키를 넣어야 켜진다.
+- AI 는 초록 배경으로 그리게 하고 `ai.js` `chromaKey` 로 투명하게 만든다. 원래 사진은 폰 IndexedDB pose `orig` 에만, 도감 상세에 작게.
+- 헤드리스 S2 는 `?ai=` 로컬 스텁(초록 고양이 `check/ai-stub.jpg`)으로 AI 교체까지 돈다. 단, 털 녀석 풀에선 소프트웨어 GL 이 느려 첫 사진(흰 개)
+  인식이 안 잡힌다(말랑 풀로 돌리면 통과) — 실폰에서 털 녀석이 있을 때 진짜 찾기가 느려지는지 확인 필요.
+- 펫 자리 레퍼런스 `mockups/refs.html`(조사 `research/pet-refs.md`) — 운영자 번호 선택 대기.
 
 **게임 녀석 = 털뭉치 16마리 (1e00bb9).** `VIRTUAL` = `group` 이 `fluff`(컨셉 6: 몽글·삐약·후후·실타·달솜·밤톨·살랑·보들) 또는
 `fluff2`(운영자 요청 동물: 냥솜·멍솜·펭송·뭉게·라라·미어·꿀꿀·곰솜). 정면 시트 `mockups/fluff.html` 에서 운영자 "좋네, 적용해줘".
