@@ -109,6 +109,12 @@ export function snapshot(id) {
   if (snaps.has(id)) return snaps.get(id);
   const spec = specOf(id);
   if (!spec) return "";
+  const url = snapshotSpec(spec);
+  snaps.set(id, url);
+  return url;
+}
+/** The same front picture for a spec that is not in SPECS (a caught real one turned into fur). */
+export function snapshotSpec(spec) {
   snapR ||= new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   snapR.setPixelRatio(1); snapR.setSize(256, 256, false); snapR.outputColorSpace = THREE.SRGBColorSpace;
   const c = makeCreature(spec), scene = new THREE.Scene();
@@ -117,7 +123,5 @@ export function snapshot(id) {
   const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10), d = Math.max(sz.x, sz.y) * 0.62 / Math.tan(Math.PI / 12);
   cam.position.set(mid.x, mid.y + d * 0.12, mid.z + d); cam.lookAt(mid);
   snapR.setClearColor(0x000000, 0); snapR.render(scene, cam);
-  const url = snapR.domElement.toDataURL("image/png");
-  snaps.set(id, url);
-  return url;
+  return snapR.domElement.toDataURL("image/png");
 }

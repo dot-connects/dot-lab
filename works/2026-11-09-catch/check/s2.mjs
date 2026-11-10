@@ -5,6 +5,7 @@
 // the same dog caught again under another label reads "모습 2/5". Screenshots, cut-out PNGs and result.json in out/s2/.
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
+import http from "node:http";
 import path from "node:path";
 
 const [port = "8765", prof] = process.argv.slice(2);
@@ -45,12 +46,25 @@ try {
   const clickText = t => ev(`([...document.querySelectorAll("#sheet .chip")].find(b => b.textContent.includes(${JSON.stringify(t)})).click(), 1)`);
   const chips = () => ev(`[...document.querySelectorAll("#sheet .chip")].map(b => b.textContent + (b.classList.contains("on") ? " *" : ""))`);
 
+  const GREEN = fs.readFileSync(path.join(path.dirname(OUT), "..", "check", "ai-stub.jpg")).toString("base64");
+  R.aiCalls = [];
+  const stub = http.createServer((req, res) => {
+    const h = { "access-control-allow-origin": req.headers.origin || "*", "access-control-allow-headers": "content-type", "access-control-allow-methods": "POST, OPTIONS" };
+    if (req.method === "OPTIONS") { res.writeHead(204, h); return res.end(); }
+    let b = ""; req.on("data", d => b += d); req.on("end", () => {
+      const j = JSON.parse(b); R.aiCalls.push({ style: j.style, kind: j.kind, device: j.device, bytes: j.image.length });
+      setTimeout(() => { res.writeHead(200, { ...h, "content-type": "application/json" }); res.end(JSON.stringify({ mime: "image/jpeg", image: GREEN, left: 4 })); }, 800);
+    });
+  }).listen(0, "127.0.0.1");
+  await new Promise(r => stub.once("listening", r));
+  const AI = `http://127.0.0.1:${stub.address().port}`;
+
   await send("Page.enable"); await send("Runtime.enable"); await send("Log.enable");
   await send("Emulation.setDeviceMetricsOverride", { width: 390, height: 844, deviceScaleFactor: 2, mobile: true });
   await send("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
 
   async function open(photo) {
-    await send("Page.navigate", { url: `http://127.0.0.1:${port}/works/2026-11-09-catch/site/?seed=3&boxes&cpu&still=${MEDIA}${photo}.jpg` });
+    await send("Page.navigate", { url: `http://127.0.0.1:${port}/works/2026-11-09-catch/site/?seed=3&boxes&cpu&ai=${AI}&still=${MEDIA}${photo}.jpg` });
     await until("window.__catch && document.getElementById('goCam')", 15000);
     await click("#goCam");
     const t0 = Date.now(), ok = await until("__catch.seg.stats.ready", 60000);
@@ -75,12 +89,13 @@ try {
     const q = r.result.transaction("poses").objectStore("poses").getAll(); q.onsuccess = () => {
       const p = q.result.filter(x => x.png).sort((a, b) => b.at - a.at)[0], f = new FileReader();
       if (!p) return ok(null);
-      f.onload = () => ok({ id: p.id, label: p.label, w: p.w, h: p.h, blurry: p.blurry, grade: p.grade, png: f.result.split(",")[1] }); f.readAsDataURL(p.png); }; }; })`);
+      const rd = b => new Promise(r => { if (!b) return r(null); const f = new FileReader(); f.onload = () => r(f.result.split(",")[1]); f.readAsDataURL(b); });
+      Promise.all([rd(p.png), rd(p.orig)]).then(([png, orig]) => ok({ id: p.id, label: p.label, w: p.w, h: p.h, blurry: p.blurry, grade: p.grade, art: p.art, png, orig })); }; }; })`);
 
   for (const photo of ["white-dog", "black-cat", "selfie-dog"]) {
     const S = R.steps[photo] = {};
     S.open = await open(photo);
-    await until("__catch.reals().length >= (" + (photo === "selfie-dog" ? 2 : 1) + ")", 15000);
+    await until("__catch.reals().length >= (" + (photo === "selfie-dog" ? 2 : 1) + ")", 60000);   // fur creatures render slowly on software GL
     await sleep(1500);
     S.reals = await ev("__catch.reals()");
     S.stats = await ev("JSON.parse(JSON.stringify(__catch.seg.stats))");
@@ -96,11 +111,19 @@ try {
     S.pose = { title: await ev("sTitle.textContent"), chips: await chips() };
     await shot(`${photo}-3-pose.png`);
     await ev(`([...document.querySelectorAll("#sheet .chip.on")][0].click(), 1)`);
-    await until("!document.getElementById('card').hidden", 5000); await sleep(400);
+    await sleep(300);
+    if ((await ev("sTitle.textContent")).includes("AI")) {   // first catch on this phone: the consent sheet
+      S.consent = await chips(); await shot(`${photo}-3b-consent.png`); await clickText("털뭉치로");
+    }
+    await until("!document.getElementById('card').hidden", 8000); await sleep(400);
     S.card = await ev("cHow.textContent");
     await shot(`${photo}-4-card.png`);
+    S.aiSwapped = await until("!cHow.textContent.includes('그리는 중')", 20000); await sleep(500);
+    S.cardAfter = await ev("cHow.textContent");
+    await shot(`${photo}-5-ai.png`);
     const pz = await lastPose();
-    if (pz) { fs.writeFileSync(path.join(OUT, `${photo}-cut.png`), Buffer.from(pz.png, "base64")); delete pz.png; }
+    if (pz) { fs.writeFileSync(path.join(OUT, `${photo}-art.png`), Buffer.from(pz.png, "base64")); delete pz.png;
+      if (pz.orig) fs.writeFileSync(path.join(OUT, `${photo}-cut.png`), Buffer.from(pz.orig, "base64")); delete pz.orig; }
     S.saved = pz; S.cutStat = await ev("__catch.seg.stats.cut");
     S.counter = await ev("__catch.count()");
   }

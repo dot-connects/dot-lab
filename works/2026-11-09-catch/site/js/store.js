@@ -83,10 +83,11 @@ export async function ofKind(kind) {
 
 /**
  * A real creature caught, picked on the "누구야?" screen: id = an existing one, or null for a new friend (name, kind).
- * The pose keeps the cut-out PNG (Blob); a label already held is replaced only by a better grade.
+ * The pose keeps its picture (png Blob: the on-device fur version, later the AI one) and the cut-out photo (orig);
+ * a label already held is replaced only by a better grade.
  * Returns {creature, outcome: "new" | "again", pose: "new" | "better" | "have", labels}.
  */
-export async function catchReal({ id, name, kind, label, png, w, h, grade, blurry }) {
+export async function catchReal({ id, name, kind, label, png, w, h, grade, blurry, orig = null }) {
   const now = Date.now();
   let c = id ? await S.get("creatures", id) : null, outcome = "again";
   if (!c) {
@@ -96,8 +97,16 @@ export async function catchReal({ id, name, kind, label, png, w, h, grade, blurr
   c.times++; c.last = now;
   await S.put("creatures", c);
   const pid = `${c.id}_${label}`, had = await S.get("poses", pid), pose = poseOutcome(had?.grade, grade);
-  if (pose !== "have") await S.put("poses", { id: pid, creatureId: c.id, label, grade, at: now, png, w, h, blurry: !!blurry });
-  return { creature: c, outcome, pose, labels: (await posesOf(c.id)).map(p => p.label) };
+  if (pose !== "have") await S.put("poses", { id: pid, creatureId: c.id, label, grade, at: now, png, w, h, blurry: !!blurry, orig, art: "fur" });
+  return { creature: c, outcome, pose, pid, at: now, labels: (await posesOf(c.id)).map(p => p.label) };
+}
+
+/** Swap a pose's picture (the AI one arrived). art = "fluff" | "figure". No-op when the pose is gone or newer. */
+export async function setArt(pid, at, { blob, w, h }, art) {
+  const p = await S.get("poses", pid);
+  if (!p || p.at !== at) return false;
+  await S.put("poses", { ...p, png: blob, w, h, art, at: Date.now() });
+  return true;
 }
 
 /** Every creature by No. with its pose records ({label, png Blob for a real one, w, h, grade, ...}). */

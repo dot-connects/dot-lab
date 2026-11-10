@@ -25,6 +25,11 @@ function poseUrl(p) {
   if (!urls.has(k)) urls.set(k, URL.createObjectURL(p.png));
   return urls.get(k);
 }
+function origUrl(p) {
+  const k = `${p.id}@${p.at}#orig`;
+  if (!urls.has(k)) urls.set(k, URL.createObjectURL(p.orig));
+  return urls.get(k);
+}
 /** The picture that stands for a creature: the pokemon art, or its front (else first) pose. */
 function face(c) {
   if (c.kind === "pokemon") return ART(c.pokeId);
@@ -94,7 +99,7 @@ async function shareFile(blob, name) {
 // ---------- the card overlay (S1's HTML card, now with a PNG behind it) ----------
 let card = null;   // {png: Promise<Blob>, file, from: "game" | "dex"}
 /** Fill the on-screen card for creature c and start drawing its PNG now, so [저장·공유] can share at once. */
-export function fillCard(c, src, how, from = "game") {
+export function fillCard(c, src, how, from = "game", pid = null) {
   const t = cardText(c.id, c.kind), d = { no: no3(c.no), name: c.name, type: t.type, line: t.line, how, src };
   $("cNo").textContent = d.no;
   $("cImg").crossOrigin = "anonymous"; $("cImg").src = src;
@@ -102,7 +107,7 @@ export function fillCard(c, src, how, from = "game") {
   $("cHow").textContent = how; $("cHow").style.whiteSpace = "pre-line";
   $("cGo").textContent = from === "dex" ? "닫기" : "계속 잡기";
   $("card").classList.toggle("over", from === "dex");
-  card = { png: cardPng(d), file: `우리집몬스터-${d.no}-${c.name}.png`, from };
+  card = { png: cardPng(d), file: `우리집몬스터-${d.no}-${c.name}.png`, from, pid };
   card.png.catch(() => {});
   $("card").hidden = false;
 }
@@ -111,6 +116,8 @@ $("cShare").onclick = async () => {
   try { card.last = await shareFile(await card.png, card.file); } catch { card.last = "fail"; }
 };
 /** The card's close button: true when the card came from the dex (back to the detail), false = the game's card. */
+/** Is the game's card open for this pose right now (its AI picture may still swap in)? */
+export function showing(pid) { return !!card && card.from === "game" && card.pid === pid && !$("card").hidden; }
 export function closeCard() {
   if (!card || card.from !== "dex") return false;
   $("card").hidden = true; $("card").classList.remove("over"); card = null;
@@ -192,6 +199,8 @@ async function detail(id) {
   $("dGrid").hidden = true; $("dHead").hidden = true; $("dAll").hidden = true; $("dNote").hidden = true;
   $("dDetail").hidden = false; $("dMsg").textContent = "";
   $("xImg").crossOrigin = "anonymous"; $("xImg").src = src;
+  const shown = LABELS.map(l => c.poses.find(q => q.label === l && q.png)).find(Boolean), orig = shown?.orig ? shown : null;   // the photo behind the picture shown
+  $("xOrig").hidden = !orig; if (orig) $("xOrig").src = origUrl(orig);
   $("xNo").textContent = no3(c.no);
   $("xName").textContent = c.name;
   $("xType").textContent = t.type;

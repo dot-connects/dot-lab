@@ -4,7 +4,9 @@ import * as ar from "./ar.js";
 import * as dex from "./dex.js";
 import { grade, odds, roll, ringAt, rng, CRIT_RING } from "./catch.js";
 import { release, flight, sweep, turnOf, curveOf, coverMap, FLIGHT_MS, END_SCALE } from "./geom.js";
-import { modelCreature, spriteCreature, VIRTUAL } from "./creature.js";
+import { modelCreature, spriteCreature, VIRTUAL, snapshotSpec } from "./creature.js";
+import { paletteOf, specFor } from "./fluffify.js";
+import * as ai from "./ai.js";
 import { LABELS, LABEL_KO, suggest, count } from "./moves.js";
 import * as seg from "./seg.js";
 import * as store from "./store.js";
@@ -305,7 +307,7 @@ function star(x, y, s, rot) {   // four-point sparkle
 function drawParts(now, dt) {
   G.parts = G.parts.filter(q => now - q.t0 < q.life);
   for (const q of G.parts) {
-    const a = (now - q.t0) / q.life;
+    const a = Math.max(0, (now - q.t0) / q.life);   // a part born this frame on a later clock read: never a negative ring
     g.globalAlpha = 1 - a * a;
     if (q.kind === "ring") {
       g.strokeStyle = q.col; g.lineWidth = 3 * (1 - a); g.beginPath(); g.arc(q.x, q.y, q.size + 60 * easeOut(a), 0, Math.PI * 2); g.stroke();
@@ -460,16 +462,49 @@ async function who(R) {
   function pose(c) {
     $("sTitle").textContent = "어떤 모습?";
     $("sKind").replaceChildren(); $("sNew").hidden = true;
-    $("sChips").replaceChildren(...LABELS.map(l => chip(LABEL_KO[l], () => save(c, l), l === sug ? "on" : "")));
+    $("sChips").replaceChildren(...LABELS.map(l => chip(LABEL_KO[l], () => (ai.consent() === null ? askAi(c, l) : save(c, l)), l === sug ? "on" : "")));
   }
+  function askAi(c, label) {   // once per phone: may the photo go to the image AI, and in which look
+    $("sTitle").textContent = "AI로 변신시킬까요?";
+    $("sKind").replaceChildren(Object.assign(document.createElement("p"), { className: "ask",
+      textContent: "사진을 그림 AI(Google Gemini)에 보내 닮은 녀석으로 그려요. 서버·Google 에는 남기지 않고, 원래 사진은 이 폰 도감에만 남아요. 하루 5번까지." }));
+    const pick = (v, st) => () => { ai.setConsent(v); if (st) ai.setStyle(st); save(c, label); };
+    $("sChips").replaceChildren(chip("털뭉치로", pick("yes", "fluff"), "on"), chip("피규어로", pick("yes", "figure")), chip("폰 안에서만", pick("no")));
+  }
+  let saving = false;   // a double tap on a chip must not catch (and pay for) the same one twice
   async function save(c, label) {
-    const out = await store.catchReal({ ...c, label, png: cut.blob, w: cut.w, h: cut.h, grade: R.grade, blurry: cut.blurry });
+    if (saving) return; saving = true;
+    const fur = await furPicture(c.kind, cut.blob);
+    const out = await store.catchReal({ ...c, label, png: fur.blob, w: fur.w, h: fur.h, orig: cut.blob, grade: R.grade, blurry: cut.blurry });
     $("sheet").hidden = true;
     await counter();
-    dex.fillCard(out.creature, $("sImg").src, `${count(out.labels, out.creature.kind)} · ${LABEL_KO[label]} ${POSE_KO[out.pose]}` + (cut.blurry ? " · 흐릿하게 찍힘" : "") +
-      `\n${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""}${R.critical ? " · 크리티컬" : ""} · 확률 ${Math.round(R.p * 100)}%`);
+    const how = `${count(out.labels, out.creature.kind)} · ${LABEL_KO[label]} ${POSE_KO[out.pose]}` + (cut.blurry ? " · 흐릿하게 찍힘" : "") +
+      `\n${GRADE_KO[R.grade]}${R.curve ? " · 커브볼" : ""}${R.critical ? " · 크리티컬" : ""} · 확률 ${Math.round(R.p * 100)}%`;
+    const busy = out.pose !== "have" && ai.consent() === "yes";
+    dex.fillCard(out.creature, URL.createObjectURL(fur.blob), how + (busy ? "\nAI가 닮은 모습으로 그리는 중…" : ""), "game", out.pid);
+    if (busy) aiSwap(out, c.kind, how);
+  }
+  async function aiSwap(out, kind, how) {
+    const st = ai.style();
+    let msg = "AI 변신을 못 했어요 · 털뭉치로 남겨요";
+    try {
+      const r = await ai.transform(cut.blob, kind, st);
+      if (!(await store.setArt(out.pid, out.at, r, st))) return;   // that pose was replaced meanwhile
+      if (dex.showing(out.pid)) dex.fillCard(out.creature, URL.createObjectURL(r.blob), how + (r.left === 0 ? "\n오늘 AI 변신은 여기까지" : ""), "game", out.pid);
+      return;
+    } catch (e) {
+      msg = { device: "오늘 AI 변신 5번을 다 썼어요 · 털뭉치로 남겨요", all: "오늘 AI 변신이 마감됐어요 · 털뭉치로 남겨요",
+        off: "AI 변신이 잠시 꺼져 있어요 · 털뭉치로 남겨요" }[e.code] || msg;
+    }
+    if (dex.showing(out.pid)) $("cHow").textContent = how + "\n" + msg;
   }
   ask();
+}
+
+/** The on-device stand-in: the caught one's colours on our fur template, a 256 px PNG with a clear background. */
+async function furPicture(kind, blob) {
+  const url = snapshotSpec(specFor(kind, await paletteOf(blob), { id: "fur", name: "" }));
+  return { blob: await (await fetch(url)).blob(), w: 256, h: 256 };
 }
 
 // ---------- modes ----------
