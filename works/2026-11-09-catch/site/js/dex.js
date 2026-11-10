@@ -8,7 +8,9 @@ import { serialize, fileName } from "./petfile.js";
 import * as store from "./store.js";
 
 // a 3D creature id (string) -> its rendered picture; an old saved pokemon number keeps its artwork URL
-export const ART = id => typeof id === "string" ? snapshot(id) : `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
+// the operator's own pictures ("그림 넣기"): [{id: "u_<n>", name, src (PNG data URL)}], kept in this browser only
+export const mine = () => { try { return JSON.parse(localStorage.getItem("catch.mine")) || []; } catch { return []; } };
+export const ART = id => typeof id === "string" ? (id.startsWith("u_") ? mine().find(m => m.id === id)?.src || "" : snapshot(id)) : `https://cdn.jsdelivr.net/gh/PokeAPI/sprites@master/sprites/pokemon/other/official-artwork/${id}.png`;
 const LINK = "dot-connects.github.io/dot-lab/works/2026-11-09-catch/site/";
 const MOVE_KO = { bounce: "통통", flinch: "움찔", walk: "걷기", run: "뛰기", sleep: "잠자기", hide: "숨기" };
 const MOVE_NEEDS = { walk: "옆모습", run: "옆모습 + 걷는 중", sleep: "누운 모습", hide: "뒷모습" };

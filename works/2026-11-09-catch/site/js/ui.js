@@ -4,7 +4,7 @@ import * as ar from "./ar.js";
 import * as dex from "./dex.js";
 import { grade, odds, roll, ringAt, rng, CRIT_RING } from "./catch.js";
 import { release, flight, sweep, turnOf, curveOf, coverMap, FLIGHT_MS, END_SCALE } from "./geom.js";
-import { modelCreature, VIRTUAL } from "./creature.js";
+import { modelCreature, spriteCreature, VIRTUAL } from "./creature.js";
 import { LABELS, LABEL_KO, suggest, count } from "./moves.js";
 import * as seg from "./seg.js";
 import * as store from "./store.js";
@@ -48,11 +48,12 @@ let spawning = false;
 async function spawn() {
   if (spawning) return;
   spawning = true;   // a creature that leaves stays in view (and the ball in hand) until the next one has loaded
-  const spec = VIRTUAL[Math.floor(rnd() * VIRTUAL.length)], id = spec.id;
+  const own = dex.mine(), pool = own.length ? own : VIRTUAL;   // the operator's own pictures replace the 3D ones
+  const spec = pool[Math.floor(rnd() * pool.length)], id = spec.id;
   try {
     const img = await ar.loadImg(ART(id));
     G.mon = { id, name: spec.name, img, t0: clock() };
-    ar.setCreature(modelCreature(spec)); ar.place();
+    ar.setCreature(own.length ? spriteCreature(img) : modelCreature(spec)); ar.place();
     G.ringT0 = clock();
     if (G.phase === "wait") { G.phase = "hand"; G.handT0 = clock(); }
   } catch {
@@ -513,6 +514,25 @@ $("goScreen").onclick = () => { askMotion(); begin("screen"); };
 
 // the counter opens the dex, from the start screen too (not over a card or the "누구야?" sheet)
 store.open().then(counter);
+// "그림 넣기": the picked pictures (long side 256, PNG) become the creatures, replacing the last set; name = file name
+$("mineBtn").onclick = () => $("mineFile").click();
+$("mineFile").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = "";
+  if (!files.length) return;
+  const out = [];
+  for (const [i, f] of files.entries()) {
+    try {
+      const im = await ar.loadImg(URL.createObjectURL(f)), s = 256 / Math.max(im.naturalWidth, im.naturalHeight);
+      const c = Object.assign(document.createElement("canvas"), { width: Math.round(im.naturalWidth * s), height: Math.round(im.naturalHeight * s) });
+      c.getContext("2d").drawImage(im, 0, 0, c.width, c.height);
+      out.push({ id: `u_${Date.now().toString(36)}${i}`, name: f.name.replace(/\.[^.]+$/, "").slice(0, 12), src: c.toDataURL("image/png") });
+    } catch { /* not a picture */ }
+  }
+  if (!out.length) return toast("그림을 읽지 못했어요");
+  try { localStorage.setItem("catch.mine", JSON.stringify(out)); } catch { return toast("저장 공간이 부족해요"); }
+  toast(`${out.length}마리 들어왔다!`);
+  if (started && G.phase === "hand") spawn();
+};
 $("count").onclick = () => { if ($("card").hidden && $("sheet").hidden) dex.open(counter); };
 
 // ---------- loop ----------
