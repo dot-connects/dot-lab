@@ -117,6 +117,12 @@ enum class Layout(val ko: String, val slots: Int) {
 enum class CardType(val ko: String) {
     CLOCK("시계"), ANALOG("아날로그 시계"), MUSIC("음악"), VIDEO("영상 앱"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
+    /** The phone's notifications: newest big on a plate, the rest peeking behind it. */
+    NOTIF_STACK("알림 · 쌓기"),
+    /** The phone's notifications as the shade list (scrolls, swipe a row away, 모두 지우기). */
+    NOTIF_LIST("알림 · 목록");
+
+    val isNotif: Boolean get() = this == NOTIF_STACK || this == NOTIF_LIST
 }
 
 /**

@@ -108,7 +108,8 @@ fun CardView(
         val surface = when (t.surface) {
             // B's hairlines live in the gutters, drawn once by the board (BoardView)
             Surface.NONE, Surface.RULE -> Modifier
-            Surface.PLATE -> Modifier.lampPlate(ink, artTint ?: t.tint(type), min(e.plateRadius, 44.dp))
+            // notification cards lay a plate under each notification instead (NotifCards)
+            Surface.PLATE -> if (type.isNotif) Modifier else Modifier.lampPlate(ink, artTint ?: t.tint(type), min(e.plateRadius, 44.dp))
         }
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
@@ -130,6 +131,9 @@ fun CardView(
                     CardType.WEATHER -> WeatherCard(e, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
+                    // one body for all three themes: the theme's surface decides plates, rules or rings
+                    CardType.NOTIF_STACK -> NotifStackCard(e, state, actions)
+                    CardType.NOTIF_LIST -> NotifListCard(e, state, actions)
                 }
             }
         }

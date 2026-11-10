@@ -1,5 +1,7 @@
 package kr.dot.sb.platform
 
+import android.app.ActivityOptions
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -10,6 +12,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kr.dot.sb.data.AlarmActions
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.LiveActivity
+import kr.dot.sb.ui.state.NotifItem
+import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 
 class AlarmSource(
@@ -25,6 +29,33 @@ object ListenerBus {
     val live = MutableStateFlow<LiveActivity?>(null)
     val notifications = MutableSharedFlow<BigNotification>(extraBufferCapacity = 4, onBufferOverflow = kotlinx.coroutines.channels.BufferOverflow.DROP_OLDEST)
     val contentIntents = ConcurrentHashMap<String, PendingIntent>()
+    /** The phone's shade for the notification cards (newest first, redacted). */
+    val shade = MutableStateFlow<List<NotifItem>>(emptyList())
+
+    /** The connected listener (null while access is off or it is rebinding); cancelling goes through it. */
+    @Volatile internal var listener: WeakReference<Listener>? = null
+
+    /** Re-read the shade (a StandBy session starting re-checks the lock-screen settings). */
+    fun refreshShade() { listener?.get()?.publishShade() }
+
+    /** Remove notifications from the phone, as a swipe in the system shade does. */
+    fun cancel(keys: List<String>) {
+        val l = listener?.get() ?: return
+        runCatching { l.cancelNotifications(keys.toTypedArray()) }
+    }
+
+    /**
+     * Fire a notification's tap intent the way the system shade does. Since Android 14 a sender must opt in to lend
+     * its foreground state; without it the app (in the background) may not open. Then, like the shade, auto-cancel.
+     */
+    fun open(ctx: Context, key: String, pi: PendingIntent): Boolean {
+        val opts = ActivityOptions.makeBasic()
+            .setPendingIntentBackgroundActivityStartMode(ActivityOptions.MODE_BACKGROUND_ACTIVITY_START_ALLOWED).toBundle()
+        val sbn = listener?.get()?.let { runCatching { it.getActiveNotifications(arrayOf(key)) }.getOrNull()?.firstOrNull() }
+        val sent = runCatching { pi.send(ctx, 0, null, null, null, null, opts) }.isSuccess
+        if (sent && sbn != null && sbn.notification.flags and Notification.FLAG_AUTO_CANCEL != 0) cancel(listOf(key))
+        return sent
+    }
 
     @Volatile private var fromNotification: AlarmSource? = null
     @Volatile private var fromAudio = false

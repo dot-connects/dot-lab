@@ -3,6 +3,7 @@ package kr.dot.sb.platform
 import android.app.AlarmManager
 import android.app.KeyguardManager
 import android.app.Notification
+import android.app.NotificationManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -13,8 +14,10 @@ import android.media.AudioManager
 import android.media.AudioPlaybackConfiguration
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.CoroutineScope
@@ -22,18 +25,26 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kr.dot.sb.data.AlarmActions
 import kr.dot.sb.data.NotifKind
+import kr.dot.sb.data.NotifPrivacy
 import kr.dot.sb.data.NotifRules
+import kr.dot.sb.data.Reveal
+import kr.dot.sb.data.ShadeRules
+import kr.dot.sb.model.Theme
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.LiveActivity
+import kr.dot.sb.ui.state.NotifItem
+import java.lang.ref.WeakReference
 
 /**
- * Alarm detection (Samsung Clock notification + USAGE_ALARM audio), big notifications and live-activity sources.
- * Event driven: no timers, no polling. Media sessions are looked up through this component by MediaSource.
+ * Alarm detection (Samsung Clock notification + USAGE_ALARM audio), big notifications, live-activity sources and the
+ * shade list of the notification cards. Event driven: no timers, no polling. Media sessions are looked up through this
+ * component by MediaSource.
  */
 class Listener : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
@@ -41,6 +52,9 @@ class Listener : NotificationListenerService() {
     private var alarmKey: String? = null
     private val live = LinkedHashMap<String, Pair<Long, LiveActivity>>()
     private var audioAlarm = false
+    /** Shade icons, decoded once per notification ("key|kind") or app ("pkg:"); pruned to what is listed. */
+    private val icons = HashMap<String, ImageBitmap?>()
+    private val labels = HashMap<String, String>()
 
     private val audio = object : AudioManager.AudioPlaybackCallback() {
         override fun onPlaybackConfigChanged(configs: MutableList<AudioPlaybackConfiguration>) {
@@ -60,6 +74,7 @@ class Listener : NotificationListenerService() {
     override fun onListenerConnected() {
         val s = CoroutineScope(SupervisorJob() + Dispatchers.Main)
         scope = s
+        ListenerBus.listener = WeakReference(this)
         var prev: AlarmSource? = null
         s.launch {
             ListenerBus.alarm.collect { a ->
@@ -68,9 +83,15 @@ class Listener : NotificationListenerService() {
             }
         }
         s.launch { ConfigStore.flow(this@Listener).map { it.glowStartMinBefore }.distinctUntilChanged().collect { GlowScheduler.reschedule(this@Listener) } }
+        // the shade depends on two settings: 탭할 때만 미리보기 (redaction) and the theme (colour icon vs mono glyph)
+        s.launch {
+            ConfigStore.flow(this@Listener).map { it.previewOnTapOnly to (it.theme == Theme.PAPER) }.distinctUntilChanged().drop(1)
+                .collect { publishShade() }
+        }
         getSystemService(AudioManager::class.java).registerAudioPlaybackCallback(audio, handler)
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, null) }
+        publishShade()
     }
 
     override fun onListenerDisconnected() {
@@ -78,14 +99,21 @@ class Listener : NotificationListenerService() {
         runCatching { unregisterReceiver(nextAlarm) }
         handler.removeCallbacksAndMessages(null)
         scope?.cancel(); scope = null
+        if (ListenerBus.listener?.get() === this) ListenerBus.listener = null
+        ListenerBus.shade.value = emptyList()
+        icons.clear()
     }
 
-    override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap) = handle(sbn, rankingMap)
+    override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap) {
+        handle(sbn, rankingMap)
+        publishShade()
+    }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         ListenerBus.contentIntents.remove(sbn.key)
         if (sbn.key == alarmKey) { alarmKey = null; ListenerBus.setNotificationAlarm(null) }
         if (live.remove(sbn.key) != null) publishLive()
+        publishShade()
     }
 
     private fun handle(sbn: StatusBarNotification, rm: RankingMap?) {
@@ -108,10 +136,10 @@ class Listener : NotificationListenerService() {
         when (kind) {
             NotifKind.ALARM -> alarm(sbn)
             NotifKind.LIVE -> {
-                live[sbn.key] = sbn.postTime to liveOf(sbn, max)
+                live[sbn.key] = sbn.postTime to liveOf(sbn, max, reveal(sbn, rank.takeIf { ranked }, lockScreen(), false))
                 publishLive()
             }
-            NotifKind.BIG -> if (ConfigStore.flow(this).value.showNotifications) big(sbn)
+            NotifKind.BIG -> if (ConfigStore.flow(this).value.showNotifications) big(sbn, reveal(sbn, rank.takeIf { ranked }, lockScreen(), false))
             NotifKind.IGNORE -> {}
         }
     }
@@ -133,50 +161,155 @@ class Listener : NotificationListenerService() {
         ListenerBus.live.value = live.values.maxByOrNull { it.first }?.second
     }
 
-    private fun liveOf(sbn: StatusBarNotification, max: Int): LiveActivity {
+    // ---- lock-screen privacy (one rule for every surface: NotifPrivacy) ----------------------------------------------
+
+    private class LockScreen(val secure: Boolean, val showOnLock: Boolean, val allowPrivate: Boolean)
+
+    /** The user's lock-screen settings; an unreadable "show content" counts as off (the strict answer). */
+    private fun lockScreen(): LockScreen {
+        fun on(key: String, unreadable: Boolean) = runCatching { Settings.Secure.getInt(contentResolver, key, 1) != 0 }.getOrDefault(unreadable)
+        return LockScreen(
+            secure = getSystemService(KeyguardManager::class.java).isDeviceSecure,
+            showOnLock = on("lock_screen_show_notifications", true),
+            allowPrivate = on("lock_screen_allow_private_notifications", false),
+        )
+    }
+
+    private fun reveal(sbn: StatusBarNotification, rank: Ranking?, lock: LockScreen, tapOnly: Boolean): Reveal {
         val n = sbn.notification
-        // StandBy shows over the lock screen: PRIVATE content only through the app's public version, else no text
-        val private = n.visibility == Notification.VISIBILITY_PRIVATE && locked()
-        val pub = n.publicVersion
-        if (private && pub == null) {
-            val p = if (max > 0) (n.extras.getInt(Notification.EXTRA_PROGRESS).toFloat() / max).coerceIn(0f, 1f) else null
-            return LiveActivity(sbn.key, appLabel(sbn.packageName), "", p?.let { "${(it * 100).toInt()}%" }.orEmpty(), "", p)
+        return NotifPrivacy.reveal(
+            visibility = n.visibility,
+            channelOverride = rank?.lockscreenVisibilityOverride ?: NotifPrivacy.NO_OVERRIDE,
+            secure = lock.secure, showOnLock = lock.showOnLock, allowPrivate = lock.allowPrivate,
+            hasPublic = n.publicVersion != null, tapOnly = tapOnly,
+        )
+    }
+
+    /** Title and text through [NotifPrivacy.text]: only what [r] allows ever leaves this method. */
+    private fun textOf(sbn: StatusBarNotification, r: Reveal, app: String, big: Boolean): Pair<String, String> {
+        fun t(x: android.os.Bundle?) = (x?.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x?.getCharSequence(Notification.EXTRA_TITLE))?.toString()
+        fun b(x: android.os.Bundle?) = ((if (big) x?.getCharSequence(Notification.EXTRA_BIG_TEXT) else null) ?: x?.getCharSequence(Notification.EXTRA_TEXT))?.toString()
+        val x = sbn.notification.extras
+        val p = sbn.notification.publicVersion?.extras
+        return when (r) {
+            Reveal.FULL -> NotifPrivacy.text(r, app, t(x), b(x), null, null)
+            Reveal.PUBLIC -> NotifPrivacy.text(r, app, null, null, t(p), b(p))
+            Reveal.HIDDEN, Reveal.NONE -> NotifPrivacy.text(r, app, null, null, null, null)
         }
-        val x = if (private) pub!!.extras else n.extras
-        val p = if (max > 0) (x.getInt(Notification.EXTRA_PROGRESS).toFloat() / max).coerceIn(0f, 1f) else null
+    }
+
+    private fun liveOf(sbn: StatusBarNotification, max: Int, r: Reveal): LiveActivity {
+        val n = sbn.notification
+        val x = when (r) {
+            Reveal.FULL -> n.extras
+            Reveal.PUBLIC -> n.publicVersion!!.extras
+            Reveal.HIDDEN, Reveal.NONE -> null // progress only, no text
+        }
+        val p = if (max > 0) ((x ?: n.extras).getInt(Notification.EXTRA_PROGRESS).toFloat() / max).coerceIn(0f, 1f) else null
+        val pct = p?.let { "${(it * 100).toInt()}%" }
+        if (x == null) return LiveActivity(sbn.key, appLabel(sbn.packageName), "", pct.orEmpty(), "", p)
         return LiveActivity(
             sbn.key, appLabel(sbn.packageName), x.getCharSequence(Notification.EXTRA_TITLE)?.toString().orEmpty(),
-            p?.let { "${(it * 100).toInt()}%" } ?: x.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty(),
+            pct ?: x.getCharSequence(Notification.EXTRA_SUB_TEXT)?.toString().orEmpty(),
             x.getCharSequence(Notification.EXTRA_TEXT)?.toString().orEmpty(), p,
         )
     }
 
-    private fun big(sbn: StatusBarNotification) {
+    private fun big(sbn: StatusBarNotification, r: Reveal) {
+        if (r == Reveal.NONE) return
         val n = sbn.notification
-        // PRIVATE content on a locked phone: only what the app allows in its public version; with none, no text
-        // at all reaches the state (not merely flagged hidden)
-        val private = n.visibility == Notification.VISIBILITY_PRIVATE && locked()
-        val pub = n.publicVersion
-        val x = if (private && pub != null) pub.extras else n.extras
-        val hiddenByApp = private && pub == null
-        val sender = if (hiddenByApp) "" else (x.getCharSequence(Notification.EXTRA_CONVERSATION_TITLE) ?: x.getCharSequence(Notification.EXTRA_TITLE))?.toString().orEmpty()
-        val text = if (hiddenByApp) "" else (x.getCharSequence(Notification.EXTRA_BIG_TEXT) ?: x.getCharSequence(Notification.EXTRA_TEXT))?.toString().orEmpty()
+        val app = appLabel(sbn.packageName)
+        // a hidden notification gets no text at all in the state (not merely flagged), and no sender photo
+        val hiddenByApp = r == Reveal.HIDDEN
+        val (sender, text) = if (hiddenByApp) "" to "" else textOf(sbn, r, app, big = true)
         val icon: Bitmap? = runCatching {
-            (n.getLargeIcon()?.loadDrawable(this) ?: packageManager.getApplicationIcon(sbn.packageName)).toBitmap(192, 192)
+            ((if (r == Reveal.FULL) n.getLargeIcon()?.loadDrawable(this) else null) ?: packageManager.getApplicationIcon(sbn.packageName)).toBitmap(192, 192)
         }.getOrNull()
         ListenerBus.contentIntents[sbn.key] = n.contentIntent ?: return
         ListenerBus.notifications.tryEmit(
             BigNotification(
-                sbn.key, appLabel(sbn.packageName), sender, text, icon?.asImageBitmap(),
-                plateColor = if (n.color != 0) (n.color.toLong() or 0xFF000000L) and 0xFFFFFFFFL else 0xFF34C759,
+                sbn.key, app, sender, text, icon?.asImageBitmap(),
+                plateColor = plateOf(n),
                 hidden = ConfigStore.flow(this).value.previewOnTapOnly || hiddenByApp,
                 postedAtEpochMs = sbn.postTime,
             ),
         )
     }
 
-    private fun locked() = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+    // ---- shade cards -----------------------------------------------------------------------------------------------
 
-    private fun appLabel(pkg: String) =
+    /** Rebuild the notification cards' list from the active notifications. Runs on post/remove only. */
+    internal fun publishShade() {
+        val active = runCatching { activeNotifications }.getOrNull() ?: return
+        val ranking = runCatching { currentRanking }.getOrNull()
+        val cfg = ConfigStore.flow(this).value
+        val lock = lockScreen()
+        val mono = cfg.theme == Theme.PAPER
+        val rank = Ranking()
+        val used = HashSet<String>()
+        val items = active.sortedByDescending { it.postTime }.asSequence().mapNotNull { sbn ->
+            val n = sbn.notification
+            val x = n.extras
+            val r = rank.takeIf { ranking?.getRanking(sbn.key, it) == true }
+            val tmpl = x.getString(Notification.EXTRA_TEMPLATE).orEmpty()
+            val listed = ShadeRules.include(
+                pkg = sbn.packageName, own = packageName, category = n.category, ongoing = sbn.isOngoing,
+                foreground = n.flags and Notification.FLAG_FOREGROUND_SERVICE != 0,
+                groupSummary = n.flags and Notification.FLAG_GROUP_SUMMARY != 0,
+                fullScreen = n.fullScreenIntent != null,
+                isMedia = tmpl.endsWith("MediaStyle") || x.containsKey("android.mediaSession"),
+                importance = r?.importance ?: NotificationManager.IMPORTANCE_DEFAULT,
+                hiddenFromShade = r != null && r.suppressedVisualEffects and NotificationManager.Policy.SUPPRESSED_EFFECT_NOTIFICATION_LIST != 0,
+            )
+            val rv = if (listed) reveal(sbn, r, lock, cfg.previewOnTapOnly) else Reveal.NONE
+            if (rv == Reveal.NONE) return@mapNotNull null
+            val app = appLabel(sbn.packageName)
+            val (title, text) = textOf(sbn, rv, app, big = true)
+            n.contentIntent?.let { ListenerBus.contentIntents[sbn.key] = it }
+            NotifItem(
+                key = sbn.key, appLabel = app, packageName = sbn.packageName, title = title, text = text,
+                postedAtEpochMs = sbn.postTime,
+                icon = if (mono) null else colourIcon(sbn, avatar = rv == Reveal.FULL, used),
+                glyph = if (mono) glyphIcon(sbn, used) else null,
+                plateColor = plateOf(n), hidden = rv == Reveal.HIDDEN, clearable = sbn.isClearable,
+            )
+        }.take(MAX_SHADE).toList()
+        icons.keys.retainAll(used)
+        ListenerBus.shade.value = items
+    }
+
+    /** Sender photo (only when the content may show: a photo is content too), else the app icon. */
+    private fun colourIcon(sbn: StatusBarNotification, avatar: Boolean, used: MutableSet<String>): ImageBitmap? {
+        if (avatar && sbn.notification.getLargeIcon() != null) {
+            val k = "${sbn.key}|a"
+            used += k
+            val bmp = icons.getOrPut(k) { decode { sbn.notification.getLargeIcon()?.loadDrawable(this)?.toBitmap(ICON_PX, ICON_PX) } }
+            if (bmp != null) return bmp
+        }
+        val k = "pkg:${sbn.packageName}"
+        used += k
+        return icons.getOrPut(k) { decode { packageManager.getApplicationIcon(sbn.packageName).toBitmap(ICON_PX, ICON_PX) } }
+    }
+
+    /** The status-bar icon: an alpha mask the paper theme tints with its ink. */
+    private fun glyphIcon(sbn: StatusBarNotification, used: MutableSet<String>): ImageBitmap? {
+        val k = "${sbn.key}|g"
+        used += k
+        return icons.getOrPut(k) { decode { sbn.notification.smallIcon?.loadDrawable(this)?.toBitmap(ICON_PX, ICON_PX) } }
+    }
+
+    private inline fun decode(f: () -> Bitmap?): ImageBitmap? = runCatching { f()?.asImageBitmap() }.getOrNull()
+
+    private fun plateOf(n: Notification): Long = if (n.color != 0) (n.color.toLong() or 0xFF000000L) and 0xFFFFFFFFL else 0xFF34C759
+
+    private fun appLabel(pkg: String) = labels.getOrPut(pkg) {
         runCatching { packageManager.getApplicationLabel(packageManager.getApplicationInfo(pkg, 0)).toString() }.getOrDefault(pkg)
+    }
+
+    private companion object {
+        /** ponytail: newest 24 only (a group chat can keep 50); the cards never show more than a screenful anyway. */
+        const val MAX_SHADE = 24
+        /** Icons draw at most ~60 dp; 96 px is sharp on xhdpi and light (37 KB each). */
+        const val ICON_PX = 96
+    }
 }

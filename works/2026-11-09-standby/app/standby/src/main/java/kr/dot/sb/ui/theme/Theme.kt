@@ -287,7 +287,8 @@ object Themes {
                 CardType.TIMER -> p.green
                 CardType.USAGE -> p.lilac
                 CardType.MUSIC -> Color(0xFF9B6BD8)
-                CardType.VIDEO, CardType.MEMORIES -> null
+                // notification cards put a plate under each notification instead of one under the slot
+                CardType.VIDEO, CardType.MEMORIES, CardType.NOTIF_STACK, CardType.NOTIF_LIST -> null
             }
         },
     )

@@ -18,7 +18,7 @@ import androidx.compose.ui.graphics.drawscope.scale
 import kr.dot.sb.ui.state.WeatherCondition
 
 /** design-system §4.2 icon set, drawn on a 24 grid with 2-unit round strokes. Weather glyphs are filled like iPhone's. */
-enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE }
+enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL }
 
 internal fun weatherIc(c: WeatherCondition): Ic = when (c) {
     WeatherCondition.CLEAR -> Ic.SUN
@@ -125,6 +125,16 @@ private fun DrawScope.drawIc(ic: Ic, col: Color, bg: Color, outline: Boolean, c2
             line(12f, 9.5f, 12f, 13f); line(12f, 13f, 14.5f, 15f); line(3.5f, 6f, 6.5f, 3f); line(20.5f, 6f, 17.5f, 3f)
         }
         Ic.CLOSE -> { line(6.5f, 6.5f, 17.5f, 17.5f); line(17.5f, 6.5f, 6.5f, 17.5f) }
+        Ic.BELL -> {
+            // the mockup's bell: dome, flared rim, clapper
+            val p = Path().apply {
+                moveTo(4f, 15f); cubicTo(4f, 15f, 6f, 14f, 6f, 9f)
+                arcTo(Rect(6f, 3f, 18f, 15f), 180f, 180f, false)
+                cubicTo(18f, 14f, 20f, 15f, 20f, 15f); close()
+            }
+            if (outline) drawPath(p, col, style = st) else drawPath(p, col)
+            drawPath(Path().apply { arcTo(Rect(10f, 17f, 14f, 21f), 180f, -180f, true) }, col, style = st)
+        }
         Ic.USAGE -> {
             val p = Path().apply { arcTo(Rect(Offset(12f, 15f), 9f), 180f, 180f, true) }
             drawPath(p, col, style = st)

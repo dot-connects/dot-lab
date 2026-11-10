@@ -293,13 +293,15 @@ private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: Stand
 
 private fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
 
-private fun ago(epochMs: Long, state: StandbyState): String {
+/** "방금", "12분 전", "2시간 전", "3일 전" at the state's minute (the notification cards use it too). */
+internal fun ago(epochMs: Long, state: StandbyState): String {
     val now = state.now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val min = ((now - epochMs) / 60_000).coerceAtLeast(0)
     return when {
         min < 1 -> "방금"
         min < 60 -> "${min}분 전"
-        else -> "${min / 60}시간 전"
+        min < 24 * 60 -> "${min / 60}시간 전"
+        else -> "${min / (24 * 60)}일 전"
     }
 }
 
