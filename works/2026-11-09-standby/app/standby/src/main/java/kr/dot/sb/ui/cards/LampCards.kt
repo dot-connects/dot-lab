@@ -152,7 +152,7 @@ private fun LampWeather(e: Env, state: StandbyState, wx: WeatherInfo, actions: S
     if (e.ch < e.label * 7) {
         Column(mod) {
             Row(Modifier.fillMaxWidth().weight(1f)) {
-                FillText(temp(wx.tempC), tempCol, e.num, e.numCap, Modifier.weight(1f).fillMaxHeight(), weight = 900, align = Alignment.TopStart)
+                FillText(temp(wx.tempC), tempCol, e.num, e.numCap, Modifier.weight(1f).fillMaxHeight().padding(start = e.gap * 1.5f, top = e.gap * 2), weight = 900, align = Alignment.TopStart)
                 WxIcon(e, weatherIc(wx.condition), Modifier.size(min(e.ch * 0.45f, e.cw * 0.3f)))
             }
             Spacer(Modifier.height(e.gap * 2))
