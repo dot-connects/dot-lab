@@ -26,6 +26,8 @@ data class StandbyState(
     val nextAlarm: LocalDateTime? = null,
     val alarm: AlarmRinging? = null,
     val notification: BigNotification? = null,
+    /** The phone's shade for the notification cards, newest first, already redacted for the lock screen. */
+    val notifications: List<NotifItem> = emptyList(),
     val live: LiveActivity? = null,
     val liveExpanded: Boolean = false,
     val timers: Map<String, TimerState> = emptyMap(),
@@ -117,6 +119,29 @@ data class BigNotification(
     val postedAtEpochMs: Long,
 )
 
+/**
+ * One notification in the shade cards. Redaction happens in the listener: when [hidden], [title] is the app name and
+ * [text] is empty, so private text never reaches the UI state.
+ */
+@Immutable
+data class NotifItem(
+    val key: String,
+    val appLabel: String,
+    val packageName: String,
+    val title: String,
+    val text: String,
+    val postedAtEpochMs: Long,
+    /** Colour icon (sender avatar or app icon) for themes A and C. */
+    val icon: ImageBitmap? = null,
+    /** The app's small status-bar icon (alpha mask) for theme B's monochrome rings. */
+    val glyph: ImageBitmap? = null,
+    /** App colour for the letter plate when there is no icon. */
+    val plateColor: Long = 0xFF8E8E93,
+    val hidden: Boolean = false,
+    /** false = the app forbids swiping it away (FLAG_NO_CLEAR): the row snaps back. */
+    val clearable: Boolean = true,
+)
+
 @Immutable
 data class LiveActivity(
     val key: String,
@@ -158,7 +183,10 @@ interface StandbyActions {
     fun alarmSnooze() {}
     fun alarmStop() {}
     fun notificationTap(key: String) {}
+    /** Closes the big notification overlay (it stays in the phone's shade). */
     fun notificationDismiss(key: String) {}
+    /** Removes these notifications from the phone itself (shade cards: swipe, 모두 지우기). */
+    fun notificationClear(keys: List<String>) {}
     fun liveToggle() {}
     fun retryFeeds() {}
     fun openSettings(section: String? = null) {}

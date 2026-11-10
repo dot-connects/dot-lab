@@ -119,5 +119,16 @@ object Sample {
         timers = mapOf("desk-1" to TimerState(leftSec = 18 * 60 + 24, running = true)),
         photos = listOf(Photo(photo, "설악산", "2025년 10월 18일")),
         memory = Photo(photo, "설악산", "2023년 11월 9일", yearsAgo = 3),
+        notifications = sampleNotifs(),
     )
+
+    /** Picker preview of the notification cards (sample text, never the phone's own). */
+    private fun sampleNotifs(): List<kr.dot.sb.ui.state.NotifItem> {
+        val t = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+        return listOf(
+            kr.dot.sb.ui.state.NotifItem("p1", "카카오톡", "com.kakao.talk", "엄마", "저녁 먹었어?", t, plateColor = 0xFFF5D000),
+            kr.dot.sb.ui.state.NotifItem("p2", "쿠팡", "com.coupang.mobile", "배송 완료", "문 앞에 도착했습니다", t - 12 * 60_000, plateColor = 0xFFE1393B),
+            kr.dot.sb.ui.state.NotifItem("p3", "캘린더", "com.samsung.android.calendar", "팀 회의", "10:30 · 3층 회의실", t - 20 * 60_000, plateColor = 0xFF3478F6),
+        )
+    }
 }

@@ -250,3 +250,66 @@ object NotifRules {
         else -> NotifKind.BIG
     }
 }
+
+/** Which notifications the shade cards list: what the phone's own shade shows, minus what StandBy shows elsewhere. */
+object ShadeRules {
+    fun include(
+        pkg: String, own: String, category: String?, ongoing: Boolean, foreground: Boolean, groupSummary: Boolean,
+        fullScreen: Boolean, isMedia: Boolean, importance: Int, hiddenFromShade: Boolean,
+    ): Boolean = !(
+        pkg == own ||
+            AlarmActions.isAlarm(pkg, category, fullScreen) || // the alarm screen owns it
+            ongoing || foreground || // downloads, deliveries, services: the live pill or nothing
+            isMedia || category == "transport" || category == "call" || // the music card / the call screen
+            groupSummary || // its children are listed instead
+            importance < 2 || // IMPORTANCE_MIN is folded away in the phone's shade too
+            hiddenFromShade // Do Not Disturb set to hide it from the notification list
+        )
+}
+
+/** How much of a notification StandBy may show; [NONE] = not even that it exists. */
+enum class Reveal { FULL, PUBLIC, HIDDEN, NONE }
+
+/**
+ * The phone's lock-screen privacy (AOSP NotificationLockscreenUserManager), applied to every StandBy surface. StandBy
+ * stands in for the lock screen, and the keyguard can lock under it with no broadcast, so a secure phone always gets
+ * lock-screen rules here, unlocked or not.
+ */
+object NotifPrivacy {
+    const val SECRET = -1 // Notification.VISIBILITY_SECRET
+    const val PRIVATE = 0 // Notification.VISIBILITY_PRIVATE (the default)
+    const val PUBLIC = 1 // Notification.VISIBILITY_PUBLIC
+    const val NO_OVERRIDE = -1000 // NotificationListenerService.Ranking: the channel sets no lock-screen visibility
+
+    /**
+     * [channelOverride] = the channel's lock-screen visibility (the stricter of it and the app's wins). [showOnLock] /
+     * [allowPrivate] = the user's "show notifications" / "show content" lock-screen settings. [tapOnly] = StandBy's own
+     * "탭할 때만 미리보기".
+     */
+    fun reveal(
+        visibility: Int, channelOverride: Int, secure: Boolean, showOnLock: Boolean, allowPrivate: Boolean,
+        hasPublic: Boolean, tapOnly: Boolean,
+    ): Reveal {
+        val v = if (channelOverride == NO_OVERRIDE) visibility else minOf(visibility, channelOverride)
+        val r = when {
+            !secure -> Reveal.FULL
+            v <= SECRET || !showOnLock -> return Reveal.NONE
+            v == PRIVATE && !allowPrivate -> if (hasPublic) Reveal.PUBLIC else Reveal.HIDDEN
+            else -> Reveal.FULL
+        }
+        return if (tapOnly) Reveal.HIDDEN else r
+    }
+
+    /**
+     * Title and text the UI may hold for [r]: the app's own text, its public version, or the app name with no text.
+     * Blank titles fall back to the app name; text is flattened to one paragraph.
+     */
+    fun text(r: Reveal, app: String, title: String?, text: String?, pubTitle: String?, pubText: String?): Pair<String, String> {
+        fun flat(s: String?) = s.orEmpty().trim().replace(Regex("\\s*\\n\\s*"), " ")
+        return when (r) {
+            Reveal.FULL -> flat(title).ifEmpty { app } to flat(text)
+            Reveal.PUBLIC -> flat(pubTitle).ifEmpty { app } to flat(pubText)
+            Reveal.HIDDEN, Reveal.NONE -> app to ""
+        }
+    }
+}

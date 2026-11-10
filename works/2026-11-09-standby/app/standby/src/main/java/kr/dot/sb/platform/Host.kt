@@ -90,10 +90,17 @@ class HostActions(
     override fun alarmStop() = ListenerBus.stop(ctx)
     override fun notificationTap(key: String) {
         val pi = holder.notificationIntentOf(key)
+        val pkg = holder.notificationPackageOf(key)
         holder.dismissNotification()
-        if (pi != null) host.unlockThen { runCatching { pi.send() } }
+        if (pi == null && pkg == null) return
+        // like the system shade: unlock first, then the app's own tap intent; an app without one just opens
+        host.unlockThen {
+            if (pi != null && ListenerBus.open(ctx, key, pi)) return@unlockThen
+            pkg?.let { ctx.packageManager.getLaunchIntentForPackage(it) }?.let { runCatching { ctx.startActivity(it.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) } }
+        }
     }
     override fun notificationDismiss(key: String) = holder.dismissNotification()
+    override fun notificationClear(keys: List<String>) = holder.clearNotifications(keys)
     override fun liveToggle() = holder.liveToggle()
     override fun retryFeeds() = holder.retryFeeds()
     override fun openSettings(section: String?) = host.unlockThen {

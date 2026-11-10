@@ -170,6 +170,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             }
         }
         scope.launch { ListenerBus.notifications.collect { showNotification(it) } }
+        ListenerBus.refreshShade() // lock-screen settings may have changed since the last post
+        scope.launch { ListenerBus.shade.collect { l -> _state.update { it.copy(notifications = l) } } }
         scope.launch {
             ListenerBus.live.collect { l -> _state.update { it.copy(live = l, liveExpanded = if (l == null) false else it.liveExpanded) } }
         }
@@ -445,6 +447,14 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     }
     fun dismissNotification() { notifJob?.cancel(); endNotification(null) }
     fun notificationIntentOf(key: String) = ListenerBus.contentIntents[key]
+    fun notificationPackageOf(key: String) = _state.value.notifications.firstOrNull { it.key == key }?.packageName
+
+    /** Shade cards: gone from the card at once (the row has already flown out), then from the phone. */
+    fun clearNotifications(keys: List<String>) {
+        val k = keys.toSet()
+        _state.update { s -> s.copy(notifications = s.notifications.filterNot { it.key in k }) }
+        ListenerBus.cancel(keys)
+    }
     fun retryFeeds() { scope.launch { fetchWeather() }; scope.launch { fetchUsage() } }
 
     fun liveToggle() {

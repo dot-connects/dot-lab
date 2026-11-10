@@ -17,6 +17,7 @@ import kr.dot.sb.ui.state.AgendaItem
 import kr.dot.sb.ui.state.HourTemp
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.MediaKind
+import kr.dot.sb.ui.state.NotifItem
 import kr.dot.sb.ui.state.Photo
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerState
@@ -96,5 +97,20 @@ object Fixtures {
         timers = mapOf("desk-1" to TimerState(leftSec = 18 * 60 + 24, running = true)),
         photos = listOf(Photo(photo, "설악산", "2025년 10월 18일")),
         memory = Photo(photo, "설악산", "2023년 11월 9일", yearsAgo = 3),
+        notifications = notifs(),
     )
+
+    private fun minutesAgo(m: Long) = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - m * 60_000
+
+    /** Mockup r6 shade, newest first; icons null = the letter plates (B: rings). */
+    fun notifs(): List<NotifItem> = listOf(
+        NotifItem("k1", "카카오톡", "com.kakao.talk", "엄마", "저녁 먹었어? 내일 김장하러 올 수 있으면 연락 줘", minutesAgo(0), plateColor = 0xFFF5D000),
+        NotifItem("k2", "쿠팡", "com.coupang.mobile", "배송 완료", "주문하신 상품이 문 앞에 도착했습니다", minutesAgo(12), plateColor = 0xFFE1393B),
+        NotifItem("k3", "캘린더", "com.samsung.android.calendar", "팀 회의", "10:30 · 3층 회의실", minutesAgo(20), plateColor = 0xFF3478F6),
+        NotifItem("k4", "메시지", "com.samsung.android.messaging", "민지", "내일 몇 시에 만나?", minutesAgo(60), plateColor = 0xFF34C759),
+        NotifItem("k5", "토스", "viva.republica.toss", "입금 알림", "급여가 입금되었어요", minutesAgo(120), plateColor = 0xFF1B64DA),
+    )
+
+    /** The phone hides KakaoTalk's content on the lock screen: the listener hands over the app name only. */
+    fun hiddenNotifs(): List<NotifItem> = notifs().let { l -> listOf(l[0].copy(title = "카카오톡", text = "", hidden = true)) + l.drop(1) }
 }
