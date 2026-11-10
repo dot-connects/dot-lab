@@ -66,7 +66,7 @@ export function spriteCreature(img) {
 // ---------- 3D creatures (creatures.js) behind the same seam ----------
 import { makeCreature, SPECS } from "./creatures.js";
 
-export const VIRTUAL = SPECS.filter(s => s.style === "mochi");
+export const VIRTUAL = SPECS.filter(s => s.group === "fluff" || s.group === "fluff2");   // concept 6 cast, picked 2026-11-10
 export const specOf = id => SPECS.find(s => s.id === id);
 
 /** A creatures.js model as the ar.js creature (its own contact shadow is hidden: ar.js draws one). */
@@ -74,10 +74,11 @@ export function modelCreature(spec) {
   const c = makeCreature(spec), root = new THREE.Group(), lift = new THREE.Group();
   lift.add(c.object3d); root.add(lift);
   c.object3d.children.forEach(o => { if (o.isMesh && o.renderOrder === -1) o.visible = false; });
-  const lights = [], glow = [];
+  const lights = [], glow = [], fur = [];
   c.object3d.traverse(o => {
     if (o.isLight) lights.push({ o, base: o.color.clone() });
     if (o.material && o.material.emissive && !glow.includes(o.material)) glow.push(o.material);
+    if (o.material?.uniforms?.uC && !fur.some(f => f.m === o.material)) fur.push({ m: o.material, base: o.material.uniforms.uC.value.clone() });   // shell fur ignores lights: tint + flash by hand
   });
   const box = new THREE.Box3().setFromObject(c.object3d), sz = box.getSize(new THREE.Vector3());
   const st = { act: null, next: null };
@@ -94,6 +95,7 @@ export function modelCreature(spec) {
       lift.position.y = m.lift; lift.rotation.z = m.rot;
       for (const l of lights) l.o.color.copy(l.base).multiply(tint);
       for (const mt of glow) mt.emissive.setScalar(pose.flash || 0);
+      for (const f of fur) f.m.uniforms.uC.value.copy(f.base).multiply(tint).multiplyScalar(1 + 7 * (pose.flash || 0));
       return m.lift;
     },
     dispose() { root.traverse(o => { o.geometry?.dispose?.(); }); },
