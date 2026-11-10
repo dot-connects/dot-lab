@@ -106,6 +106,13 @@ function makeLook(style) {
       },
     };
   }
+  if (style === "jelly") {   // glossy see-through candy, no line
+    return {
+      segs: [48, 32], lift: 0.003,
+      solid: col => memo(col, () => new THREE.MeshPhysicalMaterial({ color: col, roughness: 0.15, clearcoat: 1, clearcoatRoughness: 0.08, sheen: 0.6, transparent: true, opacity: 0.84 })),
+      part(geo, col) { return new THREE.Mesh(geo, this.solid(col)); },
+    };
+  }
   if (style === "fuzz") {
     return {
       segs: [48, 32], lift: 0.068,
