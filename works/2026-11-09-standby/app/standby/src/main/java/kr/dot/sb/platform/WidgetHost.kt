@@ -9,6 +9,7 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.widget.RemoteViews
@@ -75,6 +76,15 @@ class WidgetView(ctx: Context) : AppWidgetHostView(ctx) {
     private fun locked() = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = locked() || super.onInterceptTouchEvent(ev)
+
+    // ponytail: accessibility-service clicks on descendants are not gated (such a service already controls the device)
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (!locked()) return super.dispatchKeyEvent(event)
+        if (event.action == KeyEvent.ACTION_UP && (event.keyCode == KeyEvent.KEYCODE_ENTER || event.keyCode == KeyEvent.KEYCODE_DPAD_CENTER)) {
+            WidgetHost.unlock {}
+        }
+        return true
+    }
 
     @android.annotation.SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(ev: MotionEvent): Boolean {
