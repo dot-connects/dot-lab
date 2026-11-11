@@ -40,7 +40,7 @@ internal fun barFraction(xDp: Float, screenWDp: Float): Float {
 
 /**
  * Slim brightness bar at the top edge: sun glyph + track, filled up to [level]. Same ink as the board, so at night it
- * is the red ramp. Touching or dragging on it calls [onLevel] (0..1 along the bar); [onPress] reports finger down/up
+ * is the candle night. Touching or dragging on it calls [onLevel] (0..1 along the bar); [onPress] reports finger down/up
  * so the owner keeps it open while a finger is on it.
  */
 @Composable

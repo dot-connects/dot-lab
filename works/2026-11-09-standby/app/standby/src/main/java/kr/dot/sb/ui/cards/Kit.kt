@@ -349,20 +349,18 @@ internal fun LoadingCard(e: Env, icon: Ic, label: String, labelRow: (@Composable
     }
 }
 
-/** Night photo mapping (§2.2): luminance → red ×0.5, G = B = 0, lerped by the night fraction. */
+/** Night photo mapping (candle night): luminance tinted to the candle ink #B9A48C, lerped by the night fraction. No red. */
 internal fun nightFilter(n: Float): ColorFilter? {
     if (n <= 0f) return null
-    fun l(a: Float, b: Float) = a + (b - a) * n
-    return ColorFilter.colorMatrix(
-        ColorMatrix(
-            floatArrayOf(
-                l(1f, 0.15f), l(0f, 0.295f), l(0f, 0.055f), 0f, 0f,
-                0f, 1f - n, 0f, 0f, 0f,
-                0f, 0f, 1f - n, 0f, 0f,
-                0f, 0f, 0f, 1f, 0f,
-            ),
-        ),
-    )
+    val c = kr.dot.sb.ui.theme.ThemeTokens.NIGHT_INK
+    val lum = floatArrayOf(0.2126f, 0.7152f, 0.0722f)
+    val m = FloatArray(20)
+    for (row in 0..2) {
+        val tint = when (row) { 0 -> c.red; 1 -> c.green; else -> c.blue }
+        for (col in 0..2) m[row * 5 + col] = (if (row == col) 1f else 0f) * (1f - n) + lum[col] * tint * n
+    }
+    m[18] = 1f
+    return ColorFilter.colorMatrix(ColorMatrix(m))
 }
 
 internal fun Color.argbLong(): Long = toArgb().toLong() and 0xFFFFFFFFL

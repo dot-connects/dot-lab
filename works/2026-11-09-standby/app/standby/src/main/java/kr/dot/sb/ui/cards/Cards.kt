@@ -102,7 +102,7 @@ fun CardView(
         val w = maxWidth
         val h = maxHeight
         val t = Themes.of(config.theme)
-        val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t.palette) }
+        val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t) }
         val today = state.now.toLocalDate()
         val e = remember(w, h, ink, look, slotId, today, t) {
             val own = Sizes.of(w, h, r = t.ramp)
@@ -590,7 +590,7 @@ private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
 
 // ---------------------------------------------------------------- weather, calendar, memories
 
-/** Weather glyph in theme colours: white cloud, yellow sun, blue rain (night: the red ramp). */
+/** Weather glyph in theme colours: white cloud, yellow sun, blue rain (night: the candle ink). */
 @Composable
 internal fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
     val c2 = if (!e.t.colorIcons) e.ink.ink else if (ic == Ic.RAIN) e.ink.blue else e.ink.sun

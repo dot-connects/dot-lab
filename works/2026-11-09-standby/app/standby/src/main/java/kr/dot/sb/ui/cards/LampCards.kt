@@ -74,7 +74,7 @@ internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppCo
 
 /**
  * The C plate: rounded, lit from the top-left by [tint] (radial wash 22 % → 8 %), static (cached per size).
- * Night maps the tint to the red ramp, so the plate sinks to a dark red like the mockup's night board.
+ * Night maps the tint to the candle night, so the plate sinks to the candle plate.
  */
 internal fun Modifier.lampPlate(ink: Ink, tint: Color?, radius: Dp): Modifier = clip(RoundedCornerShape(radius)).drawWithCache {
     val t = tint?.let { ink.mapped(it) }

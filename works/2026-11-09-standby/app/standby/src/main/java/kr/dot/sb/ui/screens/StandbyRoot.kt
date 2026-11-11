@@ -163,8 +163,8 @@ internal fun RootImpl(
         val w = maxWidth
         val h = maxHeight
         val accent = Color(config.clockStyle(FaceId.DIGITAL).color)
-        val pal = LocalTheme.current.palette
-        val ink = remember(state.night, accent, pal) { Ink.of(state.night, accent, pal) }
+        val th = LocalTheme.current
+        val ink = remember(state.night, accent, th) { Ink.of(state.night, accent, th) }
         val layer = topLayer(state, config, npOpen)
         val widgets = remember(config.widgetLeft, config.widgetRight) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))

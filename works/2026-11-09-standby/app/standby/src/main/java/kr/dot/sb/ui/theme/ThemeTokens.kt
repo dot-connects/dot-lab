@@ -72,6 +72,10 @@ object Contrast {
         val la = a.luminance(); val lb = b.luminance()
         return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
     }
+
+    /** [c] if it reaches 3:1 on every colour in [against] (translucent [c] composited first), else [fallback]. */
+    fun safe(c: Color, against: List<Color>, fallback: Color): Color =
+        if (against.all { ratio(c.compositeOver(it), it) >= 3f }) c else fallback
 }
 
 @Immutable

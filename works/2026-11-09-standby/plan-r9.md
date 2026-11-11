@@ -165,7 +165,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
   `clockDefaults` until Task 5 switches every theme to `FontId.THEME` (keeps the D5 gate meaningful). Nothing reads
   tokens until Task 4. Contrast test also asserts **accent/plate ≥ 4.5** where the accent is used as text. Commit.
 
-### Task 4: Ink reads tokens; candle night; image filter
+### Task 4: Ink reads tokens; candle night; image filter — done (the D4 backdrop is `Ink.page` — page stops or the clock's own bg, passed to `Ink.of` — instead of a separate `LocalPageBg`)
 **Files:** `ui/theme/Tokens.kt:24-91`, `ui/cards/Kit.kt:353-369` (`nightFilter`), callers `BoardView:184`,
 `Cards:105`, `ClockFaces:64`, `StandbyRoot:166`, `NotifCards:104`; `TimeText.kt:89`.
 - [ ] `Ink.of(night, accent, tokens)`: ink/ink2/ink3/accent/roles lerp to NIGHT_CANDLE; bg/plates step for light

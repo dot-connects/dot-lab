@@ -290,7 +290,7 @@ private fun contrast(a: Int, b: Int): Float {
 
 @Composable
 internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
-    val bg = bgColors(style, ink, nightPlate = Ink.NIGHT_INK4)
+    val bg = bgColors(style, ink, nightPlate = Ink.NIGHT_PLATE)
     val base = Look.of(style, ink)
     // Contrast floor (§4.3): digits vs local bg ≥ 3:1, else weight ≥ 500 + soft dark shadow.
     val low = bg != null && ink.night < 0.5f && (

@@ -40,8 +40,7 @@ enum class Surface { NONE, PLATE, RULE }
 enum class Family { IPHONE, PAPER, LAMP }
 
 /**
- * Day colours of one theme, by role. Night is always the red ramp: [Ink] maps every role to #FC0000 (bright roles) or
- * #A80000 (dim roles) by the night fraction, in every theme.
+ * Legacy day colours of one theme, by role (family code only; [Ink] now reads [ThemeTokens] and the candle night).
  */
 @Immutable
 data class Palette(

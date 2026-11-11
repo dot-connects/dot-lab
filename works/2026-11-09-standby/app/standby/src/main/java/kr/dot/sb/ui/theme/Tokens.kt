@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
@@ -34,55 +35,85 @@ data class Ink(
     val accDeep: Color,
     val accLight: Color,
     val accDim: Color,
-    /** The theme's day colours; role colours below are night-mapped from it. */
+    /** The theme's legacy palette (family code only; goes in Task 22). */
     val pal: Palette = Palette.IPHONE,
+    /** Day tokens of the theme; role colours below lerp from them to the candle night. */
+    val tokens: ThemeTokens = ThemeTokens.IPHONE,
+    /** What colours bypassing [Look] are checked against (D4): the page stops, or a clock's own background. */
+    val page: List<Color> = listOf(bg),
 ) {
-    // Role colours (night → bright #FC0000 for small marks, dim #A80000 for big areas).
-    val weekday: Color get() = accent(pal.red)
-    val orange: Color get() = accent(pal.orange)
-    val sun: Color get() = mapped(pal.yellow)
-    val green: Color get() = accent(pal.green)
-    val blue: Color get() = mapped(pal.blue)
-    val amber: Color get() = mapped(pal.amber)
-    val snooze: Color get() = mapped(pal.snooze)
-    val music: Color get() = accent(pal.music)
-    val plate: Color get() = lerp(pal.plate, NIGHT_INK4, night)
-    val plate2: Color get() = lerp(pal.plate2, Color(0xFF240000), night)
-    val lilac: Color get() = accent(pal.lilac)
+    private val nt: ThemeTokens by lazy { tokens.night() }
+    private fun role(day: Color, nightC: Color) = lerp(day, nightC, night)
+    private fun step(day: Color, nightC: Color) =
+        if (tokens.light) (if (night >= 0.5f) nightC else day) else lerp(day, nightC, night)
+
+    val weekday: Color get() = safe(role(tokens.roles.red, nt.roles.red))
+    val orange: Color get() = role(tokens.roles.orange, nt.roles.orange)
+    val sun: Color get() = role(tokens.roles.yellow, nt.roles.yellow)
+    val green: Color get() = role(tokens.roles.green, nt.roles.green)
+    val blue: Color get() = role(tokens.roles.blue, nt.roles.blue)
+    val amber: Color get() = role(tokens.roles.amber, nt.roles.amber)
+    val snooze: Color get() = role(tokens.roles.snooze, nt.roles.snooze)
+    val music: Color get() = role(tokens.roles.music, nt.roles.music)
+    val lilac: Color get() = role(tokens.roles.lilac, nt.roles.lilac)
+    /** Plates step to the candle plate at night ≥ 0.5 on light themes (a lerp would pass through mid grey). */
+    val plate: Color get() = step(tokens.plate, nt.plate)
+    val plate2: Color get() = step(tokens.plate2, nt.plate2)
+    /** Text accent (D12) through the night ramp. */
+    val accText: Color get() = safe(lerp(tokens.accentText, nt.accentText, night))
 
     /** Map any day colour (calendar colours, brand glyphs, user colours) to its night twin. */
-    fun mapped(day: Color): Color = lerp(day, NIGHT_INK2, night)
+    fun mapped(day: Color): Color = safe(lerp(day, NIGHT_DIM, night))
 
-    /** User accent through the night ramp: full red at night. */
-    fun accent(day: Color): Color = lerp(day, NIGHT_INK, night)
+    /** User accent through the night ramp: full candle ink at night. */
+    fun accent(day: Color): Color = safe(lerp(day, ThemeTokens.NIGHT_INK, night))
+
+    /** Below 3:1 on the weakest page stop → the theme ink (D4 safety net for colours that bypass [Look]). */
+    fun safe(c: Color): Color = Contrast.safe(c, page, ink)
 
     companion object {
-        val NIGHT_INK = Color(0xFFFC0000)
-        val NIGHT_INK2 = Color(0xFFA80000)
-        val NIGHT_INK3 = Color(0xFF3A0000)
-        val NIGHT_INK4 = Color(0xFF1A0000)
+        /** Candle ink at the night ink2 alpha over black: dim marks and big areas at night. */
+        val NIGHT_DIM = ThemeTokens.NIGHT_INK.copy(alpha = 0.58f).compositeOver(Color.Black)
+        /** Candle plate over black (opaque): clock backgrounds at night. */
+        val NIGHT_PLATE = ThemeTokens.NIGHT_INK.copy(alpha = 0x0F / 255f).compositeOver(Color.Black)
 
-        fun of(night: Float, accent: Color, pal: Palette = Palette.IPHONE): Ink {
+        /**
+         * Colours of [theme] at night fraction [night]. Dark themes lerp to the candle night; light themes lerp ink but
+         * step bg/plates to black at 0.5. [accent] null = the theme accent; [page] overrides the contrast backdrop
+         * (a clock with its own background).
+         */
+        fun of(night: Float, accent: Color? = null, theme: StandbyTheme = Themes.IPHONE, page: List<Color>? = null): Ink {
             val n = night.coerceIn(0f, 1f)
+            val t = theme.tokens
+            val nt = t.night()
+            val a = accent ?: t.accent
+            val dark = t.light && n >= 0.5f
+            val bg = if (t.light) (if (dark) nt.bg.base else t.bg.base) else lerp(t.bg.base, nt.bg.base, n)
+            val stops = if (t.light) (if (dark) nt.bg.stops else t.bg.stops) else t.bg.stops.map { lerp(it, nt.bg.base, n) }
+            val inkC = lerp(t.ink, nt.ink, n)
+            fun alpha(al: Float) = inkC.copy(alpha = al).compositeOver(bg)
+            val plate2 = if (t.light) (if (dark) nt.plate2 else t.plate2) else lerp(t.plate2, nt.plate2, n)
             return Ink(
                 night = n,
-                bg = lerp(pal.bg, Color.Black, n),
-                ink = lerp(pal.fg, NIGHT_INK, n),
-                ink2 = lerp(pal.fg2, NIGHT_INK2, n),
-                ink3 = lerp(pal.fg3, NIGHT_INK3, n),
-                ink4 = lerp(pal.fg4, NIGHT_INK4, n),
-                red = lerp(pal.red, NIGHT_INK2, n),
-                acc = lerp(accent, NIGHT_INK, n),
-                accDeep = lerp(Hsl.deep(accent), NIGHT_INK2, n),
-                accLight = lerp(Hsl.light(accent), NIGHT_INK, n),
-                accDim = lerp(accent.copy(alpha = 0.45f), NIGHT_INK3, n),
-                pal = pal,
+                bg = bg,
+                ink = inkC,
+                ink2 = alpha(t.ink2 + (nt.ink2 - t.ink2) * n),
+                ink3 = alpha(t.ink3 + (nt.ink3 - t.ink3) * n),
+                ink4 = plate2.compositeOver(bg),
+                red = lerp(t.roles.red, nt.roles.red, n),
+                acc = lerp(a, nt.accent, n),
+                accDeep = lerp(Hsl.deep(a), NIGHT_DIM, n),
+                accLight = lerp(Hsl.light(a), nt.accent, n),
+                accDim = lerp(a.copy(alpha = 0.45f), nt.ink.copy(alpha = 0.3f), n),
+                pal = theme.palette,
+                tokens = t,
+                page = page ?: stops,
             )
         }
     }
 }
 
-val LocalInk = compositionLocalOf { Ink.of(0f, Color(0xFF76A6F3)) }
+val LocalInk = compositionLocalOf { Ink.of(0f) }
 
 /** The board-wide label size of the slot a clock face sits in (null = not in a card): its date line uses it. */
 val LocalSlotLabel = compositionLocalOf<Dp?> { null }

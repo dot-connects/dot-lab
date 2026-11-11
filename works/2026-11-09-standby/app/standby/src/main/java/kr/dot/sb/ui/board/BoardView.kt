@@ -155,7 +155,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
         null -> null
         else -> board.clockFace
     }
-    val accent = board.accent ?: heroFace?.let { config.clockStyle(it).color } ?: 0xFF76A6F3
+    val accent = (board.accent ?: heroFace?.let { config.clockStyle(it).color })?.let { Color(it) } ?: t.tokens.accent
     val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp, r = t.ramp) }
     val floor = (screenShort * t.minText).dp
     // r7: also capped at 6.2 % of the screen, so a lone full-size slot never gets 40 dp labels
@@ -164,7 +164,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     val read = Reading.read(screenShort.dp)
     val pad = sizes.minOfOrNull { it.pad } ?: 12.dp
     val clock = BoardGrid.hasClock(firsts)
-    return slots.indices.map { CardLook(Color(accent), label, pad, it == hero, clock, board.clockFace, read) }
+    return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace, read) }
 }
 
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */
@@ -181,7 +181,7 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
         val h = maxHeight.value
         val slots = remember(board.layout, w, h, cutX, cutY) { BoardGrid.slots(board.layout, w, h, cutX, cutY) }
         val looks = remember(board, config.styles, slots, t) { looks(board, config, slots, min(w, h), t) }
-        val ink = Ink.of(state.night, looks.firstOrNull()?.accent ?: Color(0xFF76A6F3), t.palette)
+        val ink = Ink.of(state.night, looks.firstOrNull()?.accent, t)
         CompositionLocalProvider(LocalInk provides ink) {
             if (t.surface == Surface.RULE) {
                 // B: one hairline in the middle of every gutter between two filled slots (mockup r5 B columns)

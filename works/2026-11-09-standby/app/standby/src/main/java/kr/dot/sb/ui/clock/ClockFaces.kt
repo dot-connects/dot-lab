@@ -10,7 +10,7 @@ package kr.dot.sb.ui.clock
  *       [hero] = false: a second clock on a board (design-system §5.1) — digits in white `ink`, no effects.
  *       PHOTOS_TIME is given the whole photo screen and places the time itself (right edge 92 % W, cap-top 10 % H,
  *       cap 15 % H, autosized inside x 72-92 %, y 10-28 %).
- *       Night = state.night (red ramp). displayOff = draws nothing and stops the analog ticker.
+ *       Night = state.night (candle night). displayOff = draws nothing and stops the analog ticker.
  *       Hero size depends only on the hour-digit count (§2.3.1): it changes at 9:59→10:00 and 12:59→1:00 with a
  *       400 ms crossfade, never per minute.
  *
@@ -43,6 +43,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockStyle
+import kr.dot.sb.model.Background
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.state.StandbyState
@@ -61,8 +62,14 @@ fun ClockFace(
     val data = FaceData.of(state)
     // §5.1: a second clock draws its numerals in ink (white by day) without effects; Analog keeps its own colours.
     val st = if (hero || face == FaceId.ANALOG) style else style.copy(color = 0xFFFFFFFF, effect = Effect.SOLID)
-    val pal = LocalTheme.current.palette
-    val ink = remember(state.night, st.color, pal) { Ink.of(state.night, Color(st.color), pal) }
+    val th = LocalTheme.current
+    // D4: a clock with its own background checks bypassing colours against it, not the page
+    val own = when (st.background) {
+        Background.BLACK -> null
+        Background.COLOR -> listOf(Color(st.bgColor))
+        Background.GRADIENT -> listOf(Color(st.bgColor), Color(st.bgColor2))
+    }
+    val ink = remember(state.night, st, th) { Ink.of(state.night, Color(st.color), th, own) }
     val m = modifier.semantics { contentDescription = "${data.ampm} ${data.h}:${data.m}" }
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
