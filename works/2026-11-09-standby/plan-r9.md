@@ -198,7 +198,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
 `BoardView.kt:184-186`, `Cards.kt:105-128`, `NotifCards.kt:70-105` → `themedSurface`. Shots vs mockup "테마 전체".
 Commit.
 
-### Task 8: Layout choosers (pure)
+### Task 8: Layout choosers (pure) — done (as built: `TileGrid` instead of `Grid` (clashes with `ui.theme.Grid`); `rectPoint` = ray from centre, 0° = 12 o'clock clockwise)
 **Files:** Create `ui/cards/Layouts.kt`; Test `LayoutsTest.kt`.
 ```kotlin
 enum class MediaShape { TALL, COVER }
