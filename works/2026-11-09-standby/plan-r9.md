@@ -220,7 +220,7 @@ fun rectPoint(w: Float, h: Float, deg: Float, inset: Float): Pair<Float, Float>
   `mediaShape(338f,419f)==TALL`, `(419f,338f)==COVER`; `tileGrid(6,338f,380f).cols==2`;
   `rectPoint(400f,200f,90f,10f)==(390f to 100f)`. FAIL → implement → PASS. Commit.
 
-### Task 9: Data paths
+### Task 9: Data paths — done (as built: `WeatherInfo.days` = days after today (forecast_days=6, daily weather_code); `DeviceSources.upcoming` one query today..+14 days ≤ 8 with `AgendaItem.date`, `agenda` = today's first 5 of it; `notifGroups` in `data/Logic.kt` by package + title; inline sample instead of a saved file)
 `Parsers.kt:49-74` + `State.kt:91-100` (weather `days` from Open-Meteo `daily`), `Sources.kt:141-160` (calendar today
 + 14 days, ≤ 8 → `state.upcoming`), `Logic.kt` (`NotifGroup` by app + conversation). Tests: saved Open-Meteo sample,
 grouping. Commit.

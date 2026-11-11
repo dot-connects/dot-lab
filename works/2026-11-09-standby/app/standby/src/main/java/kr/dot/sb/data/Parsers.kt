@@ -1,5 +1,7 @@
 package kr.dot.sb.data
 
+import java.time.LocalDate
+import kr.dot.sb.ui.state.DayTemp
 import kr.dot.sb.ui.state.HourTemp
 import kr.dot.sb.ui.state.UsageInfo
 import kr.dot.sb.ui.state.UsageWindow
@@ -50,7 +52,7 @@ object WeatherParser {
     fun url(lat: Double, lon: Double) =
         "https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon" +
             "&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,is_day" +
-            "&daily=temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=2"
+            "&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=6"
 
     fun parse(body: String, city: String, fetchedAtSec: Long): WeatherInfo {
         val j = JSONObject(body)
@@ -66,11 +68,16 @@ object WeatherParser {
             )
         }
         val d = j.getJSONObject("daily")
+        val hi = d.getJSONArray("temperature_2m_max"); val lo = d.getJSONArray("temperature_2m_min")
+        val dTimes = d.optJSONArray("time"); val dCodes = d.optJSONArray("weather_code")
+        // the next days after today (spec-r9 weather: up to 5 day rows); older payloads without codes give none
+        val week = if (dTimes == null || dCodes == null) emptyList() else (1 until dTimes.length()).map {
+            DayTemp(LocalDate.parse(dTimes.getString(it)), hi.getDouble(it).roundToInt(), lo.getDouble(it).roundToInt(), Wmo.condition(dCodes.getInt(it), true))
+        }
         return WeatherInfo(
             city, cur.getDouble("temperature_2m").roundToInt(),
             Wmo.condition(cur.getInt("weather_code"), cur.optInt("is_day", 1) == 1),
-            d.getJSONArray("temperature_2m_max").getDouble(0).roundToInt(),
-            d.getJSONArray("temperature_2m_min").getDouble(0).roundToInt(), next, fetchedAtSec,
+            hi.getDouble(0).roundToInt(), lo.getDouble(0).roundToInt(), next, fetchedAtSec, days = week,
         )
     }
 }

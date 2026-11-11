@@ -340,8 +340,9 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (!force && el() - lastStaticAt < 60_000) return
         lastStaticAt = el()
         val now = LocalDateTime.now()
-        val (agenda, alarm, perms) = withContext(Dispatchers.IO) { Triple(DeviceSources.agenda(ctx, now), DeviceSources.nextAlarm(ctx), DeviceSources.permissions(ctx)) }
-        _state.update { it.copy(agenda = agenda, nextAlarm = alarm, permissions = perms) }
+        val (upcoming, alarm, perms) = withContext(Dispatchers.IO) { Triple(DeviceSources.upcoming(ctx, now), DeviceSources.nextAlarm(ctx), DeviceSources.permissions(ctx)) }
+        val agenda = upcoming?.filter { it.date == now.toLocalDate() }?.take(5)
+        _state.update { it.copy(agenda = agenda, upcoming = upcoming.orEmpty(), nextAlarm = alarm, permissions = perms) }
     }
 
     private suspend fun fetchWeather(): Boolean {

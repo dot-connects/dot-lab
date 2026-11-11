@@ -152,12 +152,27 @@ class LogicTest {
         val days = (13..23).joinToString(",") { if (it < 18) "1" else "0" }
         val body = """{"current":{"time":"2026-11-09T14:15","temperature_2m":9.6,"weather_code":0,"is_day":1},
             "hourly":{"time":[$times],"temperature_2m":[$temps],"weather_code":[$codes],"is_day":[$days]},
-            "daily":{"temperature_2m_max":[11.2,12],"temperature_2m_min":[2.4,3]}}"""
+            "daily":{"time":["2026-11-09","2026-11-10","2026-11-11"],"temperature_2m_max":[11.2,12,8.6],
+            "temperature_2m_min":[2.4,3,-1.5],"weather_code":[0,61,3]}}"""
         val w = WeatherParser.parse(body, "서울", 100)
         assertEquals(10, w.tempC); assertEquals(11, w.highC); assertEquals(2, w.lowC)
         assertEquals(WeatherCondition.CLEAR, w.condition)
         assertEquals(listOf(15, 16, 17, 18, 19), w.hourly.map { it.hour })
         assertEquals(WeatherCondition.CLOUDY, w.hourly[0].condition)
+        // days after today only
+        assertEquals(listOf(java.time.LocalDate.of(2026, 11, 10), java.time.LocalDate.of(2026, 11, 11)), w.days.map { it.date })
+        assertEquals(listOf(12 to 3, 9 to -1), w.days.map { it.highC to it.lowC })
+        assertEquals(WeatherCondition.RAIN, w.days[0].condition)
+    }
+
+    @Test fun notificationsMergePerConversationNewestFirst() {
+        fun n(key: String, pkg: String, title: String, t: Long) =
+            kr.dot.sb.ui.state.NotifItem(key, pkg, pkg, title, "x", t)
+        val g = kr.dot.sb.data.notifGroups(listOf(
+            n("a", "kakao", "엄마", 10), n("b", "kakao", "민수", 30), n("c", "kakao", "엄마", 40), n("d", "sms", "엄마", 20),
+        ))
+        assertEquals(listOf("c", "b", "d"), g.map { it.head.key })
+        assertEquals(listOf(2, 1, 1), g.map { it.count })
     }
 
     @Test fun usageReadsUsedShareAndReset() {

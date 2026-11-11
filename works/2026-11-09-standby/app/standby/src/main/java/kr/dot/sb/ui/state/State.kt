@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.state
 
+import java.time.LocalDate
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
 import kr.dot.sb.model.City
@@ -23,6 +24,8 @@ data class StandbyState(
     val weather: WeatherInfo? = null,
     /** null = calendar permission missing; empty = no events today. */
     val agenda: List<AgendaItem>? = emptyList(),
+    /** Today and the next 14 days, at most 8 (calendar card: events list, "다가오는 날"). */
+    val upcoming: List<AgendaItem> = emptyList(),
     val nextAlarm: LocalDateTime? = null,
     val alarm: AlarmRinging? = null,
     val notification: BigNotification? = null,
@@ -88,6 +91,9 @@ enum class WeatherCondition(val ko: String) {
 data class HourTemp(val hour: Int, val tempC: Int, val condition: WeatherCondition)
 
 @Immutable
+data class DayTemp(val date: LocalDate, val highC: Int, val lowC: Int, val condition: WeatherCondition)
+
+@Immutable
 data class WeatherInfo(
     val city: String,
     val tempC: Int,
@@ -97,10 +103,12 @@ data class WeatherInfo(
     val hourly: List<HourTemp>,
     val fetchedAtEpochSec: Long,
     val offline: Boolean = false,
+    /** Days after today, from the daily forecast. */
+    val days: List<DayTemp> = emptyList(),
 )
 
 @Immutable
-data class AgendaItem(val start: String, val title: String, val color: Long)
+data class AgendaItem(val start: String, val title: String, val color: Long, val date: LocalDate? = null)
 
 @Immutable
 data class AlarmRinging(val label: String, val canSnooze: Boolean = true)

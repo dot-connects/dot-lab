@@ -3,6 +3,7 @@ package kr.dot.sb.data
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.ui.state.MediaKind
+import kr.dot.sb.ui.state.NotifItem
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
 import kotlin.math.abs
@@ -313,3 +314,13 @@ object NotifPrivacy {
         }
     }
 }
+
+/** Notifications from one app and one conversation (same sender/title) shown as one row with a count (spec-r9). */
+data class NotifGroup(val items: List<NotifItem>) {
+    val head: NotifItem get() = items.first()
+    val count: Int get() = items.size
+}
+
+/** Newest first; a group sorts by its newest item. Hidden items carry the app name as title, so they merge per app. */
+fun notifGroups(list: List<NotifItem>): List<NotifGroup> =
+    list.sortedByDescending { it.postedAtEpochMs }.groupBy { it.packageName to it.title }.values.map { NotifGroup(it) }

@@ -138,11 +138,12 @@ object DeviceSources {
 
     private val HM = DateTimeFormatter.ofPattern("HH:mm")
 
-    fun agenda(ctx: Context, now: LocalDateTime): List<AgendaItem>? {
+    /** Events from today through the next 14 days that are not over yet, in start order, at most 8. */
+    fun upcoming(ctx: Context, now: LocalDateTime): List<AgendaItem>? {
         if (!has(ctx, Manifest.permission.READ_CALENDAR)) return null
         val zone = ZoneId.systemDefault()
         val start = now.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
-        val end = now.toLocalDate().plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = now.toLocalDate().plusDays(15).atStartOfDay(zone).toInstant().toEpochMilli()
         val nowMs = now.atZone(zone).toInstant().toEpochMilli()
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also { ContentUris.appendId(it, start); ContentUris.appendId(it, end) }.build()
         val cols = arrayOf(
@@ -152,11 +153,13 @@ object DeviceSources {
         return try {
             buildList {
                 ctx.contentResolver.query(uri, cols, null, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
-                    while (c.moveToNext() && size < 5) {
+                    while (c.moveToNext() && size < 8) {
                         val allDay = c.getInt(4) == 1
                         if (!allDay && c.getLong(1) < nowMs) continue // already over
-                        val t = if (allDay) "종일" else Instant.ofEpochMilli(c.getLong(0)).atZone(zone).format(HM)
-                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL))
+                        // all-day instances are stored at UTC midnight
+                        val at = Instant.ofEpochMilli(c.getLong(0)).atZone(if (allDay) ZoneId.of("UTC") else zone)
+                        val t = if (allDay) "종일" else at.format(HM)
+                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, at.toLocalDate()))
                     }
                 }
             }
