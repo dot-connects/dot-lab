@@ -120,6 +120,9 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-sleep-L-playing", Device.FOLD_INNER, Board("card", "SLEEP", Layout.ONE, listOf(listOf(CardType.SLEEP))), "playing")
             // usage (personal build; the public build draws its empty stub): a tall slot gets the bots + last update
             out += arrayOf("card-usage-tall", Device.BAR_P, Board("card", "USAGE", Layout.ONE, listOf(listOf(CardType.USAGE))), "full")
+            // phone widget: shots never host a real widget (D6), a bound card draws the placeholder at its opacity / radius
+            out += arrayOf("card-widget-M-bound", Device.FOLD_COVER_L, Board("card", "WIDGET", Layout.TWO, listOf(listOf(CardType.WIDGET)),
+                options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(widgetId = 7, opacity = 0.7f, radiusDp = 8))), "full")
             out += arrayOf("card-memories-M-nophoto", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "nophoto")
             out += arrayOf("card-memories-M-noperm", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "emptyB")
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")

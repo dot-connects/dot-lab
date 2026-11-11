@@ -12,6 +12,10 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <!-- phone widget card: package visibility for AppWidgetManager.getInstalledProviders -->
+    <queries>
+        <intent><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent>
+    </queries>
 
     <application
         android:label="StandBy"

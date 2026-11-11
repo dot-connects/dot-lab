@@ -296,7 +296,7 @@ object Themes {
                 CardType.USAGE -> p.lilac
                 CardType.MUSIC -> Color(0xFF9B6BD8)
                 // notification cards put a plate under each notification instead of one under the slot
-                CardType.VIDEO, CardType.MEMORIES, CardType.NOTIF_STACK, CardType.NOTIF_LIST -> null
+                CardType.VIDEO, CardType.MEMORIES, CardType.WIDGET, CardType.NOTIF_STACK, CardType.NOTIF_LIST -> null
             }
         },
         tokens = ThemeTokens.MOODLIGHT,

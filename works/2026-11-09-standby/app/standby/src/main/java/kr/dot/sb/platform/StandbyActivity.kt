@@ -74,6 +74,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         super.onStart()
         StandbyPresence.activity = true
         holder.start()
+        WidgetHost.start(this)
     }
 
     override fun onResume() {
@@ -85,6 +86,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         StandbyPresence.activity = false
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder.stop()
+        WidgetHost.stop()
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
         if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
         super.onStop()

@@ -43,6 +43,9 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.SlotOptions
+import kr.dot.sb.model.WidgetMode
+import kotlin.math.roundToInt
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
 import java.util.Collections
@@ -133,7 +136,7 @@ internal fun PageRow(
 private data class PickTarget(val slot: Int, val index: Int?) // index null = append to the stack
 
 @Composable
-fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
+fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     val idx = config.boards.indexOfFirst { it.id == id }
     val board = config.boards[idx]
     var devIdx by rememberSaveable { mutableIntStateOf(0) }
@@ -149,10 +152,9 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     val acc = LocalAccent.current
     fun edit(f: (Board) -> Board) = update { BoardOps.replace(it, id, f) }
-    fun editSlot(slot: Int, f: (List<CardType>) -> List<CardType>) = edit { b ->
-        val old = b.slots.getOrElse(slot) { emptyList() }; val new = f(old)
-        // options follow a card that stayed at its index; Task 18 maps moves for the widget card
-        BoardOps.editStack(b, slot, new) { j -> j.takeIf { it < new.size && old[it] == new[it] } }
+    /** [moved]: old stack index -> new one (null = the card left); a widget's options and id follow it (D6). */
+    fun editSlot(slot: Int, moved: (Int) -> Int?, f: (List<CardType>) -> List<CardType>) = edit { b ->
+        BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -221,8 +223,9 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
                     cards = stack,
                     onReplace = { j -> selected = s; pick = PickTarget(s, j) },
                     onAdd = { selected = s; pick = PickTarget(s, null) },
-                    onMove = { j, d -> editSlot(s) { it.moved(j, d) } },
-                    onRemove = { j -> editSlot(s) { l -> l.filterIndexed { k, _ -> k != j } } },
+                    onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
+                    onRemove = { j -> editSlot(s, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } } },
+                    onSettings = { j -> nav.push(Routes.widget(id, s, j)) },
                 )
             }
 
@@ -268,10 +271,15 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
                 config = config, state = state, accent = board.accent, face = board.clockFace,
                 current = p.index?.let { board.slots.getOrNull(p.slot)?.getOrNull(it) },
                 taken = board.slots.getOrNull(p.slot).orEmpty().toSet(),
+                widget = true,
                 onDismiss = { pick = null },
                 onPick = { card ->
-                    editSlot(p.slot) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
+                    val stack = board.slots.getOrNull(p.slot).orEmpty()
+                    val j = p.index ?: stack.size
+                    editSlot(p.slot, { k -> k.takeIf { it != p.index || stack[it] == card } }) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
                     pick = null
+                    // a new phone widget card asks for its widget right away (a cancel leaves the "pick" placeholder)
+                    if (card == CardType.WIDGET && stack.getOrNull(j) != card) pickWidget(env, update, id, "${p.slot}:$j")
                 },
             )
         }
@@ -310,12 +318,17 @@ fun CardStackSection(
     onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
     footer: String? = null,
+    /** Phone widget rows get a settings button (boards only). */
+    onSettings: ((Int) -> Unit)? = null,
 ) {
     Section(title, footer) {
         cards.forEachIndexed { j, card ->
             item {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onReplace(j) }.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     T(card.ko, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
+                    if (card == CardType.WIDGET && onSettings != null) {
+                        Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
+                    }
                     if (cards.size > 1) {
                         Box(Modifier.size(44.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
                         Box(Modifier.size(44.dp).clickable(enabled = j < cards.lastIndex) { onMove(j, 1) }, Alignment.Center) { Icon(Ic.DOWN, if (j < cards.lastIndex) SK.muted else SK.line) }
@@ -348,6 +361,8 @@ fun CardPickerSheet(
     current: CardType?,
     taken: Set<CardType>,
     onDismiss: () -> Unit,
+    /** The phone widget card is offered on boards only, never on the widgets page (D6). */
+    widget: Boolean = false,
     onPick: (CardType) -> Unit,
 ) {
     val acc = LocalAccent.current
@@ -355,7 +370,7 @@ fun CardPickerSheet(
         T("칸 크기(${slotW}×${slotH}dp)에서 보이는 모습이에요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, bottom = 12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // the media card plays video too (r8) and one notification card replaced stack + list (r9): the old types stay only where a board already has them
-            CardType.entries.filter { (it != CardType.VIDEO && it != CardType.NOTIF_STACK && (it != CardType.USAGE || UsageFeature.enabled)) || it == current }.chunked(2).forEach { row ->
+            CardType.entries.filter { (it != CardType.VIDEO && it != CardType.NOTIF_STACK && (it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current }.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { card ->
                         val dup = card in taken && card != current
@@ -374,4 +389,41 @@ fun CardPickerSheet(
             }
         }
     }
+}
+
+// ---- phone widget options (r9 D6; a long press on the card opens this) -----------------------------------------------
+
+/** Option [key] ("slot:index") of board [boardId] through [f]. */
+private fun setWidget(update: Update, boardId: String, key: String, f: (SlotOptions) -> SlotOptions) =
+    update { c -> BoardOps.replace(c, boardId) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
+
+/** Provider pick + bind; the new id replaces the slot's old one, which the activity's update releases (removedWidgetIds). */
+private fun pickWidget(env: SettingsEnv, update: Update, boardId: String, key: String) =
+    env.pickWidget { wid -> setWidget(update, boardId, key) { it.copy(widgetId = wid) } }
+
+/** Route "widget:<board>:<slot>:<index>"; null when that card is no longer a phone widget (the caller shows Home). */
+@Composable
+fun WidgetOptionsScreen(route: String, config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit): Unit? {
+    val parts = route.split(':')
+    val board = config.boards.firstOrNull { it.id == parts.getOrNull(1) } ?: return null
+    val slot = parts.getOrNull(2)?.toIntOrNull() ?: return null
+    val j = parts.getOrNull(3)?.toIntOrNull() ?: return null
+    if (board.slots.getOrNull(slot)?.getOrNull(j) != CardType.WIDGET) return null
+    val key = "$slot:$j"
+    val o = board.options[key] ?: SlotOptions()
+    val set = { f: (SlotOptions) -> SlotOptions -> setWidget(update, board.id, key, f) }
+    val id = o.widgetId
+    Page("폰 위젯", back) {
+        Section(null) {
+            item { NavRow(if (id == null) "위젯 고르기" else "위젯 바꾸기", { pickWidget(env, update, board.id, key) }, subtitle = id?.let(env.widgetLabel) ?: "홈 화면 위젯 가운데 하나") }
+            if (id != null) item { NavRow("위젯 설정", { env.configureWidget(id) }, subtitle = "위젯 앱이 가진 설정 화면을 열어요") }
+        }
+        Section("StandBy에서 보이는 모습", footer = "다크·라이트는 위젯 앱이 지원할 때만 바뀌어요. 밤에는 밝은 위젯을 뒤집어 어둡게 보여 줘요.") {
+            item { SliderRow("투명도", "${(o.opacity * 100).roundToInt()}%", o.opacity, 0f..1f, { v -> set { it.copy(opacity = v) } }) }
+            item { ControlRow("다크·라이트") { Segmented(WidgetMode.entries.map { it.ko }, o.widgetMode.ordinal, { i -> set { it.copy(widgetMode = WidgetMode.entries[i]) } }) } }
+            item { SliderRow("모서리", "${o.radiusDp}dp", o.radiusDp.toFloat(), 0f..40f, { v -> set { it.copy(radiusDp = v.roundToInt()) } }) }
+            item { SwitchRow("밤에 숨기기", o.hideAtNight, { on -> set { it.copy(hideAtNight = on) } }) }
+        }
+    }
+    return Unit
 }

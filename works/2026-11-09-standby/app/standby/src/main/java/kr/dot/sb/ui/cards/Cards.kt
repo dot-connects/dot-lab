@@ -110,6 +110,9 @@ fun CardView(
     modifier: Modifier = Modifier,
     slotId: String = type.name,
     look: CardLook = CardLook.of(config),
+    /** This card's [kr.dot.sb.model.SlotOptions] and its settings route (phone widget only). */
+    options: kr.dot.sb.model.SlotOptions? = null,
+    menu: String? = null,
 ) = ProvideTheme(config.theme) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
@@ -142,6 +145,7 @@ fun CardView(
                     CardType.WEATHER -> WeatherCard(e, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e, state, actions)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
+                    CardType.WIDGET -> PhoneWidget(e, options, actions, menu)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF_STACK, CardType.NOTIF_LIST -> NotifCard(e, state, actions, plate)
                 }

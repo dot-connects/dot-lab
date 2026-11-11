@@ -149,6 +149,8 @@ enum class Layout(val ko: String, val slots: Int) {
 enum class CardType(val ko: String) {
     CLOCK("시계"), ANALOG("아날로그 시계"), MUSIC("미디어"), VIDEO("미디어 (영상)"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
+    /** A home-screen AppWidget hosted in the slot (r9 D6); its id and look live in [Board.options]. Boards only. */
+    WIDGET("폰 위젯"),
     /** The phone's notifications: newest big on a plate, the rest peeking behind it. */
     NOTIF_STACK("알림 · 쌓기"),
     /** The phone's notifications (r9: stack + list merged; the stack decodes to this). Rename to NOTIF in Task 22. */

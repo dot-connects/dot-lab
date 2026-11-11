@@ -38,6 +38,7 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.cards.CardLook
 import kr.dot.sb.ui.cards.CardView
 import kr.dot.sb.ui.state.StandbyActions
@@ -169,6 +170,7 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
                     cards, state, config, actions,
                     Modifier.offset(r.x.dp, r.y.dp).size(r.w.dp, r.h.dp),
                     slotId = "${board.id}-$i", look = looks[i], dotsAtStart = r.x + r.w / 2 < w / 2,
+                    options = { j -> board.options["$i:$j"] }, menu = { j -> "widget:${board.id}:$i:$j" },
                 )
             }
         }
@@ -189,9 +191,12 @@ fun SlotStack(
     slotId: String = "stack",
     look: CardLook = CardLook.of(config),
     dotsAtStart: Boolean = false,
+    /** Per-card options and settings route by stack index (phone widget). */
+    options: (Int) -> SlotOptions? = { null },
+    menu: (Int) -> String? = { null },
 ) {
     if (cards.size <= 1) {
-        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look) }
+        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, options(0), menu(0)) }
         return
     }
     val pager = rememberPagerState { cards.size }
@@ -203,7 +208,7 @@ fun SlotStack(
     val a by animateFloatAsState(if (show) 1f else 0f, tween(300), label = "dots")
     Box(modifier) {
         VerticalPager(pager, Modifier.fillMaxSize()) { p ->
-            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look)
+            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, options(p), menu(p))
         }
         if (a > 0f) {
             val ink = LocalInk.current

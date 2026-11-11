@@ -139,8 +139,10 @@ fun HostContent(holder: StandbyStateHolder, actions: StandbyActions) {
     RotatedBox(rotation, Modifier.fillMaxSize().background(Color.Black)) { // literal-ok: display off = pure black
         val ctx = androidx.compose.ui.platform.LocalContext.current
         // colour edits made in the clocks page edit mode persist like settings edits
-        StandbyRoot(state, config, actions, Modifier.fillMaxSize()) { face, style ->
-            kr.dot.sb.settings.ConfigStore.update(ctx) { it.copy(styles = it.styles + (face to style)) }
+        androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalLiveWidgets provides true) {
+            StandbyRoot(state, config, actions, Modifier.fillMaxSize()) { face, style ->
+                kr.dot.sb.settings.ConfigStore.update(ctx) { it.copy(styles = it.styles + (face to style)) }
+            }
         }
     }
 }
