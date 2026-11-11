@@ -1,20 +1,17 @@
 package kr.dot.sb.ui.cards
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -22,26 +19,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.text.AnnotatedString
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
-import androidx.compose.ui.unit.min
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.CardType
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
-import kr.dot.sb.ui.state.TimerMode
-import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.theme.Ink
-import kr.dot.sb.ui.theme.SizeClass
 import java.time.ZoneId
 
 /*
@@ -54,7 +42,6 @@ import java.time.ZoneId
 @Composable
 internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions): Boolean {
     when (type) {
-        CardType.TIMER -> LampTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { LampUsage(e, state, actions) } ?: return false
         else -> return false
     }
@@ -74,54 +61,6 @@ internal fun Modifier.lampPlate(ink: Ink, tint: Color?, radius: Dp): Modifier = 
         center = Offset(size.width * 0.15f, 0f), radius = maxOf(size.width, size.height) * 1.2f,
     )
     onDrawBehind { drawRect(brush) }
-}
-
-// ---------------------------------------------------------------- timer
-
-/** Sage progress ring (play/pause inside) + "집중" over the big time (mockup r5 C desk). */
-@Composable
-private fun LampTimer(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
-    val total0 = config.focusMinutes * 60
-    val t = state.timers[e.slotId] ?: TimerState(leftSec = total0, totalSec = total0)
-    val mode = if (t.mode == TimerMode.FOCUS) "집중" else "휴식"
-    val paused = !t.running && t.leftSec < t.totalSec
-    val digits = "%02d:%02d".format(t.leftSec / 60, t.leftSec % 60)
-    val frac = if (t.totalSec > 0) 1f - t.leftSec.toFloat() / t.totalSec else 0f
-    val sage = e.ink.green
-    val toggle = { actions.timerToggle(e.slotId) }
-    val side = e.w >= e.h * 0.9f
-    val ring = @Composable { d: Dp ->
-        Box(Modifier.size(d).tap(toggle), contentAlignment = Alignment.Center) {
-            val track = lerp(e.ink.plate, sage, 0.2f)
-            Canvas(Modifier.fillMaxSize()) {
-                val sw = size.minDimension * 0.15f
-                val tl = Offset(sw / 2, sw / 2)
-                val sz = Size(size.width - sw, size.height - sw)
-                drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
-                drawArc(sage, -90f, 360f * frac.coerceIn(0.005f, 1f), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
-            }
-            IconView(if (t.running) Ic.PAUSE else Ic.PLAY, sage, Modifier.size(d * 0.3f))
-        }
-    }
-    val text = @Composable { mod: Modifier, align: Alignment.Horizontal ->
-        Column(mod, horizontalAlignment = align, verticalArrangement = Arrangement.Center) {
-            Txt(if (paused) "$mode · 멈춤" else mode, e.label, sage, weight = 500)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(digits, e.sz.value, e.ink.ink, weight = 900, family = e.num, cap = e.numCap, tnum = true, maxW = if (side) e.cw - min(e.ch, e.cw * 0.44f) - e.gap * 2.5f else e.cw)
-            if (t.leftSec < t.totalSec && e.atLeastM) {
-                Spacer(Modifier.height(e.gap * 2))
-                Txt("처음으로", e.label, e.ink.ink2, Modifier.tap { actions.timerReset(e.slotId) }, weight = 500)
-            }
-        }
-    }
-    if (side) Row(Modifier.fillMaxSize().padding(e.pad), verticalAlignment = Alignment.CenterVertically) {
-        ring(min(e.ch, e.cw * 0.44f))
-        Spacer(Modifier.width(e.gap * 2.5f))
-        text(Modifier.weight(1f), Alignment.Start)
-    } else Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly) {
-        ring(min(e.cw, e.ch * 0.5f))
-        text(Modifier, Alignment.CenterHorizontally)
-    }
 }
 
 // ---------------------------------------------------------------- usage

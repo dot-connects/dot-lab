@@ -464,53 +464,80 @@ internal const val MEDIA_CONTROLS_MS = 3_000L
 // ---------------------------------------------------------------- timer, sleep, d-day
 
 /**
- * Timer as the iPhone timer Live Activity (mockup r5 desk): dark plate, amber strip with pause/close discs, mode label
- * top-trailing in grey, white digits bottom-trailing. Tall slots put the strip on top.
+ * Timer · pomodoro (spec §1): accent arc on an ink3 ring, digits in the theme's digit font. Square/tall: digits + mode
+ * inside the ring, pause/stop under it; wide (w/h ≥ 1.35): ring left, "집중 · 18:45에 휴식" + digits + buttons right;
+ * short side < 150 (or a ring under 120): mode, digits, one pause button. [TimerState] has no session count, so the mode stands alone
+ * ("집중", not the mockup's "집중 2/4").
  */
 @Composable
 private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val total0 = config.focusMinutes * 60
     val t = state.timers[e.slotId] ?: TimerState(leftSec = total0, totalSec = total0)
     val mode = if (t.mode == TimerMode.FOCUS) "집중" else "휴식"
-    val label = if (!t.running && t.leftSec < t.totalSec) "$mode · 멈춤" else mode
-    val digits = "%02d:%02d".format(t.leftSec / 60, t.leftSec % 60)
-    val ink = e.ink
-    val side = e.w >= e.h * 0.9f
-    val strip = if (side) min(e.h * 0.5f, e.w * 0.32f) else min(e.w * 0.5f, e.h * 0.3f)
-    val btn = min(strip * 0.72f, (if (side) e.h else e.w) * 0.32f)
-    val btnBg = lerp(Color.Black, ink.amber, 0.55f)
-    val toggle = { actions.timerToggle(e.slotId) }
-    val buttons = @Composable {
-        Box(Modifier.size(btn).clip(CircleShape).background(btnBg).tap(toggle), contentAlignment = Alignment.Center) {
-            IconView(if (t.running) Ic.PAUSE else Ic.PLAY, ink.amber, Modifier.size(btn * 0.42f))
+    val paused = !t.running && t.leftSec < t.totalSec
+    val label = if (paused) "$mode · 멈춤" else mode
+    val digits = AnnotatedString("%02d:%02d".format(t.leftSec / 60, t.leftSec % 60))
+    val dc = if (paused) e.ink.ink2 else e.ink.ink
+    val frac = if (t.totalSec > 0) 1f - t.leftSec.toFloat() / t.totalSec else 0f
+    val p = e.p7
+    val iw = e.w - p * 2
+    val ih = e.h - p * 2
+    val toggle = @Composable { d: Dp -> MediaBtn(if (t.running) Ic.PAUSE else Ic.PLAY, d, e.ink.acc, e.onAcc, true) { actions.timerToggle(e.slotId) } }
+    val stop = @Composable { d: Dp -> MediaBtn(Ic.CLOSE, d, e.ink.ink4, e.ink.ink, true) { actions.timerReset(e.slotId) } }
+    when {
+        // short side < 150, or a ring that would come out smaller than its buttons
+        e.short < 150.dp || (e.w / e.h < 1.35f && min(iw, ih - 80.dp) < 120.dp) -> Column(
+            Modifier.fillMaxSize().padding(p),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Txt(label, e.meta, e.ink.accText, weight = 700, maxW = iw)
+            Hero(e, digits, ih - 48.dp - e.meta - 16.dp, dc, iw)
+            toggle(48.dp)
         }
-        Box(Modifier.size(btn).clip(CircleShape).background(btnBg).tap { actions.timerReset(e.slotId) }, contentAlignment = Alignment.Center) {
-            IconView(Ic.CLOSE, ink.ink, Modifier.size(btn * 0.46f))
+        e.w / e.h >= 1.35f -> Row(Modifier.fillMaxSize().padding(p), verticalAlignment = Alignment.CenterVertically) {
+            val d = min(ih, iw * 0.45f)
+            val tw = iw - d - p
+            val next = state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d에 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
+            val gap = e.short * 0.05f
+            TimerRing(e, d, frac) { Txt(mode, (d * 0.16f).coerceAtLeast(e.meta), e.ink.accText, weight = 700, maxW = d * 0.7f) }
+            Spacer(Modifier.width(p))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
+                Txt(if (t.running) "$mode · $next" else label, e.meta, e.readInk2, weight = 500, maxW = tw, num = true)
+                Hero(e, digits, ih - e.meta * 1.4f - 52.dp - gap * 2, dc, tw) // as wide as the column allows
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { toggle(52.dp); stop(52.dp) }
+            }
+        }
+        else -> Column(
+            Modifier.fillMaxSize().padding(p),
+            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly,
+        ) {
+            val d = min(iw, ih - 80.dp)
+            TimerRing(e, d, frac) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Hero(e, digits, d * 0.155f, dc, d * 0.72f)
+                    Spacer(Modifier.height(6.dp))
+                    Txt(label, if (d >= 200.dp) e.read else e.meta, e.ink.accText, weight = 700, maxW = d * 0.72f)
+                }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) { toggle(56.dp); stop(48.dp) }
         }
     }
-    val body = @Composable { mod: Modifier, w: Dp, h: Dp ->
-        Column(mod.padding(e.pad), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
-            Txt(label, e.label, ink.ink2, weight = 600, maxW = w - e.pad * 2)
-            Txt(
-                digits, e.sz.display, ink.ink, weight = 600, family = e.t.time, cap = e.t.timeCap, tnum = true,
-                maxW = w - e.pad * 2, maxCapH = h - e.pad * 2 - e.labelCap - e.gap * 2,
-            )
+}
+
+/** Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for the elapsed [frac], [inner] centred. */
+@Composable
+private fun TimerRing(e: Env, d: Dp, frac: Float, inner: @Composable () -> Unit) {
+    val track = e.ink.ink3
+    val arc = e.ink.acc
+    Box(Modifier.size(d), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val sw = maxOf(6.dp.toPx(), size.minDimension * 0.065f)
+            val tl = Offset(sw / 2, sw / 2)
+            val sz = Size(size.width - sw, size.height - sw)
+            drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
+            if (frac > 0f) drawArc(arc, -90f, 360f * frac.coerceAtMost(1f), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
         }
-    }
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).background(ink.plate).tap(toggle)) {
-        if (side) Row(Modifier.fillMaxSize()) {
-            Column(
-                Modifier.width(strip).fillMaxHeight().background(ink.amber),
-                verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally,
-            ) { buttons() }
-            body(Modifier.weight(1f).fillMaxHeight(), e.w - strip, e.h)
-        } else Column(Modifier.fillMaxSize()) {
-            Row(
-                Modifier.height(strip).fillMaxWidth().background(ink.amber),
-                horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically,
-            ) { buttons() }
-            body(Modifier.weight(1f).fillMaxWidth(), e.w, e.h - strip)
-        }
+        inner()
     }
 }
 
@@ -1087,6 +1114,9 @@ private fun MonthGrid(e: Env, events: List<AgendaItem>, modifier: Modifier) {
     DayGrid(e, first.minusDays(lead.toLong()), (lead + e.today.lengthOfMonth() + 6) / 7, events, modifier, month = e.today.monthValue)
 }
 
+/** Ink or page colour, whichever reads better on an accent disc. */
+private val Env.onAcc: Color get() = if (Contrast.ratio(ink.ink, ink.acc) >= Contrast.ratio(ink.bg, ink.acc)) ink.ink else ink.bg
+
 private val DOW_SUN = listOf("일", "월", "화", "수", "목", "금", "토")
 
 /**
@@ -1096,7 +1126,7 @@ private val DOW_SUN = listOf("일", "월", "화", "수", "목", "금", "토")
 @Composable
 private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaItem>, modifier: Modifier, month: Int? = null) {
     val dots = remember(events, e.ink) { events.filter { it.date != null }.groupBy { it.date!! }.mapValues { eventInk(e, it.value.first().color) } }
-    val onAcc = if (Contrast.ratio(e.ink.ink, e.ink.acc) >= Contrast.ratio(e.ink.bg, e.ink.acc)) e.ink.ink else e.ink.bg
+    val onAcc = e.onAcc
     BoxWithConstraints(modifier) {
         // rows never taller than wide (a one-week strip stays compact); the grid sits centred in its box
         val rowH = min(maxHeight / (weeks + 0.8f), maxWidth / 7 * 1.15f)
@@ -1130,6 +1160,10 @@ private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaIte
     }
 }
 
+/**
+ * Memories (spec §1): the photo fills the slot; "3년 전 오늘" over place · date along the bottom on a scrim, white in
+ * every theme (candle ink at night). The mockup's "1 / 12" needs a photo count the state does not carry (one photo).
+ */
 @Composable
 private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val p = state.memory
@@ -1141,18 +1175,22 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
         }
         return
     }
+    val fg = overPicture(e)
+    val pad = (e.short * 0.06f).coerceIn(10.dp, 22.dp)
+    val cw = e.w - pad * 2
     Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius))) {
         Image(p.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = nightFilter(e.ink.night))
-        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.65f))))
-        Column(Modifier.align(Alignment.BottomStart).padding(e.pad)) {
-            Txt(p.yearsAgo?.let { "${it}년 전 오늘" } ?: p.place, min(e.sz.title, e.label * 1.4f), e.ink.ink, weight = 700, maxW = e.cw, num = true)
-            if (e.atLeastS) {
-                Spacer(Modifier.height(e.gap))
-                // review X4: one line; the short date ("설악산 · 2023.11.9") when the long one does not fit
-                val long = "${p.place} · ${p.date}"
+        Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) // scrim
+        Column(Modifier.align(Alignment.BottomStart).padding(pad)) {
+            Txt(p.yearsAgo?.let { "${it}년 전 오늘" } ?: p.place, e.head, fg, weight = 700, maxW = cw, num = true)
+            if (e.short >= 150.dp) {
+                Spacer(Modifier.height(8.dp))
+                // one line; the short date ("설악산 · 2023.11.9") when the long one does not fit
+                val size = if (e.short >= 200.dp) e.read else e.meta
+                val long = listOf(p.place, p.date).filter { it.isNotBlank() }.joinToString(" · ")
                 val digits = Regex("\\d+").findAll(p.date).map { it.value }.toList()
-                val short = if (digits.size == 3) "${p.place} · ${digits.joinToString(".")}" else long
-                Txt(if (fitsOneLine(long, e.label, 500, e.cw)) long else short, e.label, e.ink.ink, weight = 500, tnum = true)
+                val short = if (digits.size == 3) listOf(p.place, digits.joinToString(".")).filter { it.isNotBlank() }.joinToString(" · ") else long
+                Txt(if (fitsOneLine(long, size, 500, cw)) long else short, size, fg.copy(alpha = 0.8f), weight = 500, tnum = true, maxW = cw)
             }
         }
     }

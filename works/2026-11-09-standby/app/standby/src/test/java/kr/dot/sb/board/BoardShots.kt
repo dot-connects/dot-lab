@@ -58,11 +58,14 @@ class BoardShots(private val name: String, private val device: Device, private v
             }
             "noperm" -> Fixtures.full().copy(agenda = null, upcoming = emptyList(), permissions = Permissions(calendar = false))
             "noevents" -> Fixtures.full().copy(agenda = emptyList())
+            "nophoto" -> Fixtures.full().copy(memory = null)
             "emptyB" -> Fixtures.full().let {
                 it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
             }
             else -> Fixtures.full()
         }.let { if (it.media != null && b.slots.any { CardType.VIDEO in it }) video(it) else it }
+            // the fixture timer (18:24 left) in every slot of the board; "paused" stops it
+            .let { s -> s.copy(timers = s.timers + b.slots.indices.associate { "${b.id}-$it" to s.timers.values.first().copy(running = key != "paused") }) }
 
         /** Layouts that put slot 0 into each size class (§3.3): L / M / S wide / S tall on the Fold cover, XS on the Flip. */
         private val CLASSES = listOf(
@@ -99,7 +102,7 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("card-${t.name.lowercase()}-L-open-night", Device.FOLD_COVER_L, one, "open-night")
             }
             // clocks, weather, calendar (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
-            for (t in listOf(CardType.CLOCK, CardType.ANALOG, CardType.WEATHER, CardType.CALENDAR, CardType.AGENDA, CardType.DDAY)) {
+            for (t in listOf(CardType.CLOCK, CardType.ANALOG, CardType.WEATHER, CardType.CALENDAR, CardType.AGENDA, CardType.DDAY, CardType.TIMER, CardType.MEMORIES)) {
                 out += arrayOf("card-${t.name.lowercase()}-L", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full")
                 out += arrayOf("card-${t.name.lowercase()}-M", Device.FOLD_COVER_P, Board("card", t.name, Layout.TWO, listOf(listOf(t))), "full")
             }
@@ -109,6 +112,9 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-calendar-Sw-noperm", Device.FOLD_COVER_L, Board("card", "CALENDAR", Layout.FOUR, listOf(listOf(CardType.CALENDAR))), "noperm")
             out += arrayOf("card-agenda-M-noperm", Device.FOLD_COVER_L, Board("card", "AGENDA", Layout.TWO, listOf(listOf(CardType.AGENDA))), "noperm")
             out += arrayOf("card-agenda-Sw-empty", Device.FOLD_COVER_L, Board("card", "AGENDA", Layout.FOUR, listOf(listOf(CardType.AGENDA))), "noevents")
+            for ((cls, layout, d) in CLASSES) out += arrayOf("card-timer-$cls-paused", d, Board("card", "TIMER", layout, listOf(listOf(CardType.TIMER))), "paused")
+            out += arrayOf("card-memories-M-nophoto", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "nophoto")
+            out += arrayOf("card-memories-M-noperm", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "emptyB")
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")
             out += arrayOf("card-music-L-open-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.ONE, listOf(listOf(CardType.MUSIC))), "open-noart")
             val e1 = Board("empty1", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.AGENDA), listOf(CardType.WEATHER)))
