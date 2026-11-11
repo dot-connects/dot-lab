@@ -15,6 +15,8 @@ from pathlib import Path
 
 APP = Path(__file__).resolve().parent.parent
 SRC = APP / "standby/src/main/java/kr/dot/sb"
+# the flavour source sets (personal usage card, public stubs) obey the same rule
+SRCS = [APP / f"standby/src/{s}/java/kr/dot/sb" for s in ("main", "personal", "public")]
 SKIP = {"ui/theme/ThemeTokens.kt", "ui/theme/Primitives.kt", "ui/theme/Tokens.kt"}
 LIT = re.compile(r"\bColor\.(Black|White)\b")
 OK = re.compile(r"literal-ok|scrim|overPicture", re.I)
@@ -24,8 +26,8 @@ def main() -> int:
     sys.stdout.reconfigure(encoding="utf-8")
     legacy = {l.split("#")[0].strip() for l in (APP / "tools/legacy.txt").read_text(encoding="utf-8").splitlines()} - {""}
     bad: list[str] = []
-    for f in sorted(SRC.rglob("*.kt")):
-        rel = f.relative_to(SRC).as_posix()
+    for f in sorted(f for root in SRCS for f in root.rglob("*.kt")):
+        rel = next(f.relative_to(r) for r in SRCS if f.is_relative_to(r)).as_posix()
         for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
             if "copy(theme" in line and rel != "ui/theme/Theme.kt":
                 bad.append(f"{rel}:{n}: theme change outside withTheme: {line.strip()}")

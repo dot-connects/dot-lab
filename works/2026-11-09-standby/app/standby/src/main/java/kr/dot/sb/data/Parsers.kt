@@ -3,37 +3,10 @@ package kr.dot.sb.data
 import java.time.LocalDate
 import kr.dot.sb.ui.state.DayTemp
 import kr.dot.sb.ui.state.HourTemp
-import kr.dot.sb.ui.state.UsageInfo
-import kr.dot.sb.ui.state.UsageWindow
 import kr.dot.sb.ui.state.WeatherCondition
 import kr.dot.sb.ui.state.WeatherInfo
 import org.json.JSONObject
 import kotlin.math.roundToInt
-
-/** status.json of ai-hub (shape copied from 눈금's Status.kt; "pct" is the share USED). */
-object UsageParser {
-    fun parse(text: String, fetchedAtSec: Long): UsageInfo {
-        val limits = JSONObject(text).optJSONObject("limits")
-        fun win(acct: String, key: String): UsageWindow? {
-            val w = limits?.optJSONObject(acct)?.optJSONObject(key) ?: return null
-            if (!w.has("pct") || w.isNull("pct")) return null
-            val reset = if (!w.has("reset") || w.isNull("reset")) null else w.getLong("reset")
-            return UsageWindow(w.getDouble("pct").roundToInt().coerceIn(0, 100), reset)
-        }
-        return UsageInfo(win("claude", "5h"), win("claude", "7d"), win("codex", "5h"), win("codex", "7d"), fetchedAtSec)
-    }
-
-    /** The PC's home address advertised in the status text ("lan"), or null. */
-    fun lanUrl(text: String): String? = JSONObject(text).optString("lan").ifEmpty { null }
-
-    /** http://<private IPv4 literal>:port/... only: the LAN token goes there. */
-    fun isPrivateHttp(url: String): Boolean {
-        val m = Regex("""^http://(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})(:\d+)?/""").find(url) ?: return false
-        val p = m.groupValues.drop(1).take(4).map { it.toInt() }
-        if (p.any { it > 255 }) return false
-        return p[0] == 10 || (p[0] == 172 && p[1] in 16..31) || (p[0] == 192 && p[1] == 168)
-    }
-}
 
 object Wmo {
     fun condition(code: Int, isDay: Boolean): WeatherCondition = when (code) {

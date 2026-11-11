@@ -241,7 +241,8 @@ object Presets {
     /** Mockup r4 presets (desk = iPhone-less "책상" face kept as a board). */
     fun boards(): List<Board> = listOf(
         b("modular", "모듈러", Layout.TWO2, CardType.WEATHER, CardType.AGENDA, CardType.MUSIC),
-        b("desk", "작업 책상", Layout.BIG2, CardType.CLOCK, CardType.TIMER, CardType.USAGE),
+        // the usage card exists only in the personal build
+        b("desk", "작업 책상", Layout.BIG2, CardType.CLOCK, CardType.TIMER, if (kr.dot.sb.data.UsageFeature.enabled) CardType.USAGE else CardType.TIMER),
         b("music", "음악", Layout.TWO, CardType.CLOCK, CardType.MUSIC),
         b("bed", "잠자리", Layout.TWO, CardType.CLOCK, CardType.SLEEP),
         b("exam", "수능", Layout.FOUR, CardType.DDAY, CardType.CLOCK, CardType.CALENDAR, CardType.AGENDA),

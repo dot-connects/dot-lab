@@ -23,9 +23,21 @@ android {
         targetSdk = 35
         versionCode = 10
         versionName = "0.2.7"
-        buildConfigField("String", "STATUS_BOT_TOKEN", secret("statusBotToken"))
-        buildConfigField("String", "STATUS_CHAT_ID", secret("statusChatId"))
-        buildConfigField("String", "LAN_TOKEN", secret("lanToken"))
+    }
+    // personal = the operator's phone (usage card + PC feed + secrets); public = release builds, no secret anywhere
+    // (tools/check_secrets.py scans both APKs). Different ids so both can sit on one phone.
+    flavorDimensions += "dist"
+    productFlavors {
+        create("personal") {
+            dimension = "dist"
+            buildConfigField("String", "STATUS_BOT_TOKEN", secret("statusBotToken"))
+            buildConfigField("String", "STATUS_CHAT_ID", secret("statusChatId"))
+            buildConfigField("String", "LAN_TOKEN", secret("lanToken"))
+        }
+        create("public") {
+            dimension = "dist"
+            applicationIdSuffix = ".pub"
+        }
     }
     buildFeatures { compose = true; buildConfig = true }
     buildTypes {

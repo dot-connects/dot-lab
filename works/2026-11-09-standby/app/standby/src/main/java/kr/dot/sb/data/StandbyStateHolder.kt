@@ -107,6 +107,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var lastStaticAt = 0L
     private var lastWeatherAt = 0L
     private var lastUsageAt = 0L
+    private val usageFeed = UsageFeature.feed(ctx)
     private var lastPhotosAt = 0L
     private var memoryDay: LocalDate? = null
     private var lastCity = cfg.city
@@ -361,14 +362,11 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun markWeatherOffline() = _state.update { it.copy(weather = it.weather?.copy(offline = true)) }
 
     private suspend fun fetchUsage(): Boolean {
-        if (!cfg.usageEnabled) { lastUsageAt = System.currentTimeMillis(); return true }
-        if (!Feeds.onWifi(ctx)) { markUsageOffline(); return false }
-        return try {
-            val u = withContext(Dispatchers.IO) { UsageParser.parse(Feeds.usageText(ctx), System.currentTimeMillis() / 1000) }
-            lastUsageAt = System.currentTimeMillis()
-            _state.update { it.copy(usage = u) }
-            true
-        } catch (e: Exception) { markUsageOffline(); false }
+        if (!UsageFeature.enabled || !cfg.usageEnabled) { lastUsageAt = System.currentTimeMillis(); return true }
+        val u = usageFeed.fetch() ?: run { markUsageOffline(); return false }
+        lastUsageAt = System.currentTimeMillis()
+        _state.update { it.copy(usage = u) }
+        return true
     }
 
     private fun markUsageOffline() = _state.update { it.copy(usage = it.usage?.copy(offline = true)) }

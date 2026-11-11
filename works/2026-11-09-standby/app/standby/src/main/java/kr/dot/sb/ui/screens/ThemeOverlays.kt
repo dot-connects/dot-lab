@@ -39,8 +39,11 @@ import androidx.compose.ui.unit.min
 import kr.dot.sb.ui.cards.Ic
 import kr.dot.sb.ui.cards.IconView
 import kr.dot.sb.ui.cards.Txt
-import kr.dot.sb.ui.cards.italicSpans
-import kr.dot.sb.ui.cards.lampPlate
+import kr.dot.sb.ui.cards.numSpans
+import kr.dot.sb.ui.theme.Fonts
+import kr.dot.sb.ui.theme.Ink
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.text.AnnotatedString
 import kr.dot.sb.ui.cards.nightFilter
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.state.AlarmRinging
@@ -377,3 +380,20 @@ internal fun LampNowPlayingBody(m: MediaInfo, pos: Long, actions: StandbyActions
     }
 }
 
+/**
+ * The C plate: rounded, lit from the top-left by [tint] (radial wash 22 % → 8 %), static (cached per size).
+ * Night maps the tint to the candle night, so the plate sinks to the candle plate. (Moved from the deleted LampCards.kt.)
+ */
+private fun Modifier.lampPlate(ink: Ink, tint: Color?, radius: Dp): Modifier = clip(RoundedCornerShape(radius)).drawWithCache {
+    val t = tint?.let { ink.mapped(it) }
+    val lit = if (t == null) ink.plate2 else lerp(ink.plate2, t, 0.22f)
+    val deep = if (t == null) ink.plate else lerp(ink.plate, t, 0.08f)
+    val brush = Brush.radialGradient(
+        0f to lit, 0.7f to deep, 1f to deep,
+        center = Offset(size.width * 0.15f, 0f), radius = maxOf(size.width, size.height) * 1.2f,
+    )
+    onDrawBehind { drawRect(brush) }
+}
+
+/** Latin runs of a title in the italic serif (Hangul stays in Pretendard): "Ditto" set like a cover line. (Moved from PaperCards.kt.) */
+private fun italicSpans(text: String): AnnotatedString = numSpans(text, Fonts.instrumentItalic, 400)

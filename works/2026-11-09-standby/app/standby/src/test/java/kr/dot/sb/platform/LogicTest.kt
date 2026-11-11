@@ -14,7 +14,6 @@ import kr.dot.sb.data.NotifKind
 import kr.dot.sb.data.NotifRules
 import kr.dot.sb.data.PomodoroTimer
 import kr.dot.sb.data.RotationTracker
-import kr.dot.sb.data.UsageParser
 import kr.dot.sb.data.WeatherParser
 import kr.dot.sb.data.Wmo
 import kr.dot.sb.model.DisplayOff
@@ -173,27 +172,6 @@ class LogicTest {
         ))
         assertEquals(listOf("c", "b", "d"), g.map { it.head.key })
         assertEquals(listOf(2, 1, 1), g.map { it.count })
-    }
-
-    @Test fun usageReadsUsedShareAndReset() {
-        val u = UsageParser.parse(
-            """{"lan":"http://192.168.0.12:8765/status.json","limits":{"claude":{"5h":{"pct":52.4,"reset":100},"7d":{"pct":70,"reset":null}},"codex":{"5h":{"pct":null}}}}""", 5,
-        )
-        assertEquals(52, u.claude5h!!.usedPct); assertEquals(100L, u.claude5h!!.resetsAtEpochSec)
-        assertEquals(70, u.claude7d!!.usedPct); assertNull(u.claude7d!!.resetsAtEpochSec)
-        assertNull(u.codex5h); assertNull(u.codex7d)
-        assertEquals("http://192.168.0.12:8765/status.json", UsageParser.lanUrl("""{"lan":"http://192.168.0.12:8765/status.json"}"""))
-        assertNull(UsageParser.lanUrl("{}"))
-    }
-
-    @Test fun onlyPrivateAddressesGetTheToken() {
-        assertTrue(UsageParser.isPrivateHttp("http://192.168.0.12:8765/status.json"))
-        assertTrue(UsageParser.isPrivateHttp("http://10.0.0.5:8765/status.json"))
-        assertTrue(UsageParser.isPrivateHttp("http://172.20.1.1/x"))
-        assertFalse(UsageParser.isPrivateHttp("http://172.40.1.1/x"))
-        assertFalse(UsageParser.isPrivateHttp("http://8.8.8.8:8765/status.json"))
-        assertFalse(UsageParser.isPrivateHttp("http://evil.example:8765/status.json"))
-        assertFalse(UsageParser.isPrivateHttp("https://192.168.0.12/status.json"))
     }
 
     @Test fun mediaKindByPackage() {

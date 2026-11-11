@@ -63,7 +63,6 @@ import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
-import kr.dot.sb.ui.state.UsageWindow
 import kr.dot.sb.ui.state.WeatherInfo
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
@@ -71,8 +70,6 @@ import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
-import kr.dot.sb.ui.theme.Surface
-import kr.dot.sb.ui.theme.Family
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.model.BoardBg
 import androidx.compose.ui.text.SpanStyle
@@ -132,12 +129,7 @@ fun CardView(
         val surface = if (type.isNotif) Modifier else plate
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
-                val drawn = when (t.family) {
-                    Family.PAPER -> paperBody(type, e, state, config, actions)
-                    Family.LAMP -> lampBody(type, e, state, config, actions)
-                    Family.IPHONE -> false
-                }
-                if (!drawn) when (type) {
+                when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
                     CardType.ANALOG -> AnalogCard(e, state)
                     CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
@@ -676,7 +668,7 @@ private fun DdayCard(e: Env, config: AppConfig) {
     }
 }
 
-// ---------------------------------------------------------------- agenda, usage
+// ---------------------------------------------------------------- agenda
 
 /**
  * Today's agenda (spec §1, mockup "일정"): "월요일 9 · 남은 일정 N", then colour-bar rows (title over time) as many as
@@ -719,81 +711,6 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     }
 }
 
-internal fun pctOf(w: UsageWindow?) = w?.usedPct?.let { "$it%" } ?: "–"
-
-/** Battery-widget ring: track 25 % of the colour, arc from 12 o'clock, letter centred (rounded numerals). */
-@Composable
-private fun UsageRing(e: Env, d: Dp, frac: Float, color: Color, letter: String) {
-    val track = lerp(Color.Black, color, 0.28f)
-    Box(Modifier.size(d), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val sw = size.minDimension * 0.125f
-            val tl = Offset(sw / 2, sw / 2)
-            val sz = Size(size.width - sw, size.height - sw)
-            drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
-            drawArc(color, -90f, 360f * frac.coerceIn(0.005f, 1f), false, tl, sz, style = Stroke(sw, cap = StrokeCap.Round))
-        }
-        Txt(letter, d * 0.4f, e.ink.ink, weight = 800, family = e.num, cap = e.numCap)
-    }
-}
-
-@Composable
-private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
-    val u = state.usage
-    if (u == null) {
-        LoadingCard(e, Ic.USAGE, "사용량")
-        return
-    }
-    val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
-    val old = nowSec - u.fetchedAtEpochSec > 3 * 3600
-    val valCol = if (old) e.ink.ink2 else e.ink.ink
-    fun ringCol(w: UsageWindow?) = when { (w?.usedPct ?: 0) >= 90 -> e.ink.weekday; old -> e.ink.ink2; else -> e.ink.green }
-    val tapMod = Modifier.tap(if (u.offline) actions::retryFeeds else null)
-    val pctSize = e.label * 1.1f
-    if (e.cls == SizeClass.XS) {
-        val all = listOf("C" to u.claude5h, "C" to u.claude7d, "X" to u.codex5h, "X" to u.codex7d)
-        val (name, w) = all.maxByOrNull { it.second?.usedPct ?: -1 }!!
-        Column(Modifier.fillMaxSize().padding(e.pad).then(tapMod), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-            val d = min(e.cw, e.ch - pctSize * e.numCap - e.gap * 2)
-            UsageRing(e, d, (w?.usedPct ?: 0) / 100f, ringCol(w), name)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(pctOf(w), pctSize, valCol, weight = 700, family = e.num, cap = e.numCap, tnum = true)
-        }
-        return
-    }
-    val stack = e.tall
-    val detail = e.atLeastM && (stack || e.cw / 2 >= e.label * 4.5f)
-    val caption = if (u.offline) "${hhmm(u.fetchedAtEpochSec)} 기준 · 연결 안 됨" else "5시간 사용량 · ${hhmm(u.fetchedAtEpochSec)}"
-    val below = e.gap * 1.5f + pctSize * e.numCap + (if (detail) e.gap * 1.2f + e.labelCap else 0.dp)
-    val d = if (stack) min(((e.ch - e.labelCap - e.gap * 3f) / 2f - below - e.gap * 2f), e.cw * 0.8f)
-    else min((e.ch - e.labelCap - e.gap * 3f - below), (e.cw - e.gap * 3f) / 2f)
-    val rings = @Composable {
-        listOf(Triple("C", u.claude5h, u.claude7d), Triple("X", u.codex5h, u.codex7d)).forEach { (letter, h5, d7) ->
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                UsageRing(e, d, (h5?.usedPct ?: 0) / 100f, ringCol(h5), letter)
-                Spacer(Modifier.height(e.gap * 1.5f))
-                Txt(pctOf(h5), pctSize, valCol, weight = 700, family = e.num, cap = e.numCap, tnum = true)
-                if (detail) {
-                    Spacer(Modifier.height(e.gap * 1.2f))
-                    Txt("7일 ${pctOf(d7)}", e.label, e.ink.ink2, weight = 500, num = true)
-                }
-            }
-        }
-    }
-    Column(Modifier.fillMaxSize().padding(e.pad).then(tapMod)) {
-        if (stack) Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) { rings() }
-        else Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) { rings() }
-        Spacer(Modifier.height(e.gap * 3f))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Bottom) {
-            if (u.offline) {
-                Box(Modifier.size(e.labelCap * 0.6f).clip(CircleShape).background(e.ink.ink2))
-                Spacer(Modifier.width(e.label * 0.4f))
-            }
-            Txt(caption, e.label, e.ink.ink2, weight = 500, num = true, maxW = e.cw)
-        }
-    }
-}
-
 // ---------------------------------------------------------------- weather, calendar, memories
 
 /** Weather glyph through Ink roles: cloud in ink, sun / rain in the sun / blue roles; mono-icon themes draw it in ink. */
@@ -804,7 +721,7 @@ internal fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
 }
 
 /** Weather / calendar inset (mockup P(s)): 7 % of the short side, 12–28 dp. */
-private val Env.p7: Dp get() = (min(w, h) * 0.07f).coerceIn(12.dp, 28.dp)
+internal val Env.p7: Dp get() = (min(w, h) * 0.07f).coerceIn(12.dp, 28.dp)
 /** One meta line (cap height) and the gap that separates header lines from the hero number. */
 private val Env.metaCap: Dp get() = meta * CAP_UI
 private val LG = 8.dp
@@ -816,7 +733,7 @@ private val Env.evStep: Dp get() = evH + 12.dp
 
 /** Hero number in the theme's digit font, [cap] dp tall, shrunk to [maxW]. Slot-sized, never text-scaled (spec §0). */
 @Composable
-private fun Hero(e: Env, text: AnnotatedString, cap: Dp, color: Color, maxW: Dp) {
+internal fun Hero(e: Env, text: AnnotatedString, cap: Dp, color: Color, maxW: Dp) {
     val tk = e.t.tokens
     val c = cap.coerceAtLeast(8.dp)
     Txt(text, c / tk.digitCap, color, weight = tk.digitWeight, family = tk.digitFont(tk.digitWeight), cap = tk.digitCap, tnum = true, maxW = maxW, maxCapH = c)

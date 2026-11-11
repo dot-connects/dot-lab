@@ -2,6 +2,7 @@
 
 package kr.dot.sb.settings
 
+import kr.dot.sb.data.UsageFeature
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -316,7 +317,7 @@ fun DataScreen(config: AppConfig, update: Update, back: () -> Unit) {
             item { SliderRow("집중", "${config.focusMinutes}분", config.focusMinutes.toFloat(), 5f..60f, { v -> update { it.copy(focusMinutes = v.toInt()) } }, steps = 54) }
             item { SliderRow("휴식", "${config.breakMinutes}분", config.breakMinutes.toFloat(), 1f..30f, { v -> update { it.copy(breakMinutes = v.toInt()) } }, steps = 28) }
         }
-        Section("사용량", footer = "Claude·Codex 사용량은 눈금 앱과 같은 피드(같은 와이파이의 PC, 안 되면 상태 봇)를 읽어요. 켜 두면 5분마다 가져와요.") {
+        if (UsageFeature.enabled) Section("사용량", footer = "Claude·Codex 사용량은 눈금 앱과 같은 피드(같은 와이파이의 PC, 안 되면 상태 봇)를 읽어요. 켜 두면 5분마다 가져와요.") {
             item { SwitchRow("Claude·Codex 사용량", config.usageEnabled, { v -> update { it.copy(usageEnabled = v) } }) }
         }
     }

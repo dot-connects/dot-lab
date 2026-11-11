@@ -1,0 +1,96 @@
+{
+ "v": 1,
+ "at": 1794428400,
+ "sessions": [
+  {
+   "name": "dev",
+   "state": "idle",
+   "since": 1794408884,
+   "ctx": null,
+   "codex": false,
+   "cache_until": null
+  },
+  {
+   "name": "dev2",
+   "state": "busy",
+   "since": 1794428252,
+   "ctx": 20,
+   "codex": false,
+   "cache_until": 1794431998
+  },
+  {
+   "name": "sync",
+   "state": "off",
+   "since": 0,
+   "ctx": null,
+   "codex": false,
+   "cache_until": null
+  },
+  {
+   "name": "lab",
+   "state": "idle",
+   "since": 1794399632,
+   "ctx": 14,
+   "codex": false,
+   "cache_until": 1794403229
+  }
+ ],
+ "limits": {
+  "claude": {
+   "5h": {
+    "pct": 21,
+    "reset": 1794435000,
+    "pace": 0.367,
+    "soon": false
+   },
+   "7d": {
+    "pct": 20,
+    "reset": 1794913200,
+    "pace": 0.802,
+    "soon": false
+   }
+  },
+  "codex": {
+   "5h": {
+    "pct": 0,
+    "reset": 1794402026,
+    "pace": 1.0,
+    "soon": false
+   },
+   "7d": {
+    "pct": 28,
+    "reset": 1794574925,
+    "pace": 0.242,
+    "soon": false
+   }
+  }
+ },
+ "codex_runs": [],
+ "bots": {
+  "content": true,
+  "content-ai": true,
+  "content-stocks": true,
+  "content-realestate": true,
+  "trading": true
+ },
+ "work": {
+  "content": {
+   "state": "idle",
+   "since": null,
+   "channel": "",
+   "step": "",
+   "provider": "gemini",
+   "last_at": 1794405066
+  },
+  "trading": {
+   "state": "idle",
+   "since": null,
+   "channel": "",
+   "step": "",
+   "provider": "claude",
+   "last_at": 1794406850,
+   "market": "US"
+  }
+ },
+ "alerts": []
+}

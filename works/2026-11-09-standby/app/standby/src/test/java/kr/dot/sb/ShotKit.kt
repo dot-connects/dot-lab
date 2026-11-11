@@ -25,6 +25,7 @@ import kr.dot.sb.ui.state.Photo
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.state.UsageInfo
+import kr.dot.sb.ui.state.UsageSession
 import kr.dot.sb.ui.state.UsageWindow
 import kr.dot.sb.ui.state.WeatherCondition
 import kr.dot.sb.ui.state.WeatherInfo
@@ -102,7 +103,15 @@ object Fixtures {
         now = now,
         night = night,
         media = MediaInfo("YouTube Music", "com.google.android.apps.youtube.music", MediaKind.MUSIC, "Ditto", "NewJeans", art, true, 72_000, 186_000),
-        usage = UsageInfo(UsageWindow(20, 1794230400), UsageWindow(49, 1794308400), UsageWindow(0, 1794192419), UsageWindow(9, 1794574925), 1794228000),
+        // mockup "사용량" v3: left 80 / 51 / 100 / 91 %, pace .55 / .62; sessions busy · wait · idle · off
+        usage = UsageInfo(
+            UsageWindow(20, 1794230400, 0.55), UsageWindow(49, 1794308400, 0.62), UsageWindow(0, 1794192419), UsageWindow(9, 1794574925, 0.62), 1794228000,
+            sessions = listOf(
+                UsageSession("dev", "busy", 62, nowSec + 420), UsageSession("dev2", "wait", 35, nowSec + 120),
+                UsageSession("sync", "idle", 18, null), UsageSession("lab", "off", null, null),
+            ),
+            bots = listOf("content" to "busy", "trading" to "idle"),
+        ),
         weather = WeatherInfo(
             "서울", 7, WeatherCondition.CLOUDY, 11, 2,
             listOf(HourTemp(22, 6, WeatherCondition.CLOUDY), HourTemp(23, 5, WeatherCondition.CLOUDY), HourTemp(0, 5, WeatherCondition.NIGHT_CLEAR), HourTemp(1, 4, WeatherCondition.NIGHT_CLEAR), HourTemp(2, 4, WeatherCondition.FOG)),
@@ -128,6 +137,8 @@ object Fixtures {
         memory = Photo(photo, "설악산", "2023년 11월 9일", yearsAgo = 3),
         notifications = notifs(),
     )
+
+    private val nowSec: Long get() = now.atZone(java.time.ZoneId.systemDefault()).toEpochSecond()
 
     private fun minutesAgo(m: Long) = now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - m * 60_000
 

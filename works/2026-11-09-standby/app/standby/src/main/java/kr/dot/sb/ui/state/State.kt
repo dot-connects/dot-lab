@@ -70,8 +70,13 @@ data class MediaInfo(
     val canNext: Boolean = true,
 )
 
+/** [pace] = the share an even spend would have LEFT by now (1.0 at the window's start), null when unknown. */
 @Immutable
-data class UsageWindow(val usedPct: Int, val resetsAtEpochSec: Long?)
+data class UsageWindow(val usedPct: Int, val resetsAtEpochSec: Long?, val pace: Double? = null)
+
+/** A named Claude session on the PC. [state] busy | wait | idle | off; [ctx] context used %; [cacheUntil] prompt cache expiry (unix s). */
+@Immutable
+data class UsageSession(val name: String, val state: String, val ctx: Int?, val cacheUntil: Long?)
 
 @Immutable
 data class UsageInfo(
@@ -82,7 +87,16 @@ data class UsageInfo(
     val fetchedAtEpochSec: Long,
     /** true when the last fetch failed (show last values + "연결 안 됨"). */
     val offline: Boolean = false,
+    /** dev, dev2, sync, lab in that order (a missing one is "off"); empty on older feeds. */
+    val sessions: List<UsageSession> = emptyList(),
+    /** content, trading bot state (busy | idle | off). */
+    val bots: List<Pair<String, String>> = emptyList(),
 )
+
+/** The PC usage feed; only the personal build has a real one (UsageFeature). Null = the fetch failed. */
+interface UsageFeed {
+    suspend fun fetch(): UsageInfo?
+}
 
 enum class WeatherCondition(val ko: String) {
     CLEAR("맑음"), PARTLY("구름 조금"), CLOUDY("대체로 흐림"), RAIN("비"), SNOW("눈"), FOG("안개"), THUNDER("뇌우"), NIGHT_CLEAR("맑은 밤")
