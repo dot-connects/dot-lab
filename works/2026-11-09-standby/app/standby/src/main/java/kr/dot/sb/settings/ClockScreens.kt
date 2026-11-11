@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -32,6 +35,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.sb.model.AnalogNumbers
+import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.AnalogTicks
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.Background
@@ -53,7 +57,7 @@ fun ClockListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
     fun row(face: FaceId, sub: String? = null) {
         val st = config.clockStyle(face)
         PageRow(
-            thumb = { ClockFace(face, st, state, Modifier.fillMaxSize()) },
+            thumb = { ClockFace(face, st, state, Modifier.fillMaxSize(), analog = config.analogStyle) },
             title = face.ko, subtitle = sub ?: "${st.font.ko} · ${st.effect.ko}", start = false, onClick = { nav.push(Routes.clock(face)) },
         )
     }
@@ -88,7 +92,7 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         face.ko, back,
         header = {
             PreviewFrame(dev.width(portrait), dev.height(portrait), Modifier.fillMaxWidth(), maxHeight = 190.dp) {
-                ClockFace(face, style, state, Modifier.fillMaxSize())
+                ClockFace(face, style, state, Modifier.fillMaxSize(), analog = config.analogStyle)
             }
         },
     ) {
@@ -96,6 +100,8 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         ChipFlow(PreviewDevice.entries.map { it.ko }, devIdx, { devIdx = it })
         Gap(8.dp)
         Segmented(listOf("가로", "세로"), if (portrait) 1 else 0, { portrait = it == 1 })
+
+        if (analog) Section("스타일") { item { ControlRow(null) { AnalogStylePicker(config, style, state, update) } } }
 
         Section("서체", footer = "스텐실과 레일은 같은 글꼴을 잘라서 그려요.") {
             item {
@@ -128,8 +134,13 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
                 item { ColorRow("눈금", style.tickColor) { c -> edit { it.copy(tickColor = c) } } }
             }
             Section("다이얼") {
-                item { ControlRow("숫자") { Segmented(AnalogNumbers.entries.map { it.ko }, style.analogNumbers.ordinal, { i -> edit { it.copy(analogNumbers = AnalogNumbers.entries[i]) } }) } }
-                item { ControlRow("눈금") { Segmented(AnalogTicks.entries.map { it.ko }, style.analogTicks.ordinal, { i -> edit { it.copy(analogTicks = AnalogTicks.entries[i]) } }) } }
+                // numerals and ticks shape only the dials that carry them; DUO stays a decode-only alias of TWELVE (D7)
+                if (config.analogStyle == AnalogStyle.ROUND || config.analogStyle == AnalogStyle.RECT) {
+                    val nums = AnalogNumbers.entries - AnalogNumbers.DUO
+                    val cur = if (style.analogNumbers == AnalogNumbers.DUO) AnalogNumbers.TWELVE else style.analogNumbers
+                    item { ControlRow("숫자") { Segmented(nums.map { it.ko }, nums.indexOf(cur), { i -> edit { it.copy(analogNumbers = nums[i]) } }) } }
+                    item { ControlRow("눈금") { Segmented(AnalogTicks.entries.map { it.ko }, style.analogTicks.ordinal, { i -> edit { it.copy(analogTicks = AnalogTicks.entries[i]) } }) } }
+                }
                 item { SwitchRow("날짜와 요일 표시", style.showInfo, { v -> edit { it.copy(showInfo = v) } }) }
             }
         } else {
@@ -195,5 +206,25 @@ private fun FontTile(font: FontId, on: Boolean, modifier: Modifier, onClick: () 
             )
         }
         T(font.ko, 12.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 1, align = TextAlign.Center)
+    }
+}
+
+/** The five full-screen analog styles as live thumbnails (no theme names); a tap sets `AppConfig.analogStyle`. */
+@Composable
+private fun AnalogStylePicker(config: AppConfig, style: ClockStyle, state: kr.dot.sb.ui.state.StandbyState, update: Update) {
+    val acc = LocalAccent.current
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        AnalogStyle.entries.forEach { k ->
+            val on = k == config.analogStyle
+            Column(
+                Modifier.width(136.dp).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
+                    .clickable { update { it.copy(analogStyle = k) } }.padding(8.dp),
+            ) {
+                PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
+                    ClockFace(FaceId.ANALOG, style, state, Modifier.fillMaxSize(), analog = k)
+                }
+                T(k.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.padding(top = 8.dp, start = 2.dp), maxLines = 1)
+            }
+        }
     }
 }

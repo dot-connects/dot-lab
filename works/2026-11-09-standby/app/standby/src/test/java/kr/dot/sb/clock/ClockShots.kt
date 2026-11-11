@@ -19,6 +19,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AnalogNumbers
+import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
@@ -73,7 +74,9 @@ class ClockShots(private val theme: Theme) {
         }
     }
 
-    private fun face(f: FaceId, state: StandbyState = Fixtures.full(), style: ClockStyle = Themes.of(theme).clockDefaults(f)): @Composable () -> Unit = {
+    private fun face(
+        f: FaceId, state: StandbyState = Fixtures.full(), style: ClockStyle = Themes.of(theme).clockDefaults(f), analog: AnalogStyle = AnalogStyle.ROUND,
+    ): @Composable () -> Unit = {
         if (f == FaceId.PHOTOS_TIME) {
             // The face places the time itself on the whole photo screen (review C1). Placeholder photo = flat blue,
             // night-mapped like a photo (review C7: the screens layer must pass fallbacks through the same filter).
@@ -82,7 +85,7 @@ class ClockShots(private val theme: Theme) {
             }
         } else Box(Modifier.fillMaxSize()) {
             ThemeBackground(Themes.of(theme), state.night)
-            ClockFace(f, style, state, Modifier.fillMaxSize())
+            ClockFace(f, style, state, Modifier.fillMaxSize(), analog = analog)
         }
     }
 
@@ -94,6 +97,14 @@ class ClockShots(private val theme: Theme) {
     @Test fun barLand() = matrix(Device.BAR_L)
     @Test fun barPort() = matrix(Device.BAR_P)
     @Test fun flip() = matrix(Device.FLIP)
+
+    /** Task 19e: the five full-screen analog styles (night on IPHONE); ROUND/RECT also portrait and on the Flip cover. */
+    private fun analog(styles: List<AnalogStyle>, night: Boolean) = styles.map { "analog-${it.name.lowercase()}-day" to face(FaceId.ANALOG, analog = it) } +
+        (if (night && theme == Theme.IPHONE) styles.map { "analog-${it.name.lowercase()}-night" to face(FaceId.ANALOG, Fixtures.full(night = 1f), analog = it) } else emptyList())
+
+    @Test fun analogLand() = shots(Device.FOLD_COVER_L, analog(AnalogStyle.entries, night = true))
+    @Test fun analogPort() = shots(Device.FOLD_COVER_P, analog(listOf(AnalogStyle.ROUND, AnalogStyle.RECT), night = false))
+    @Test fun analogFlip() = shots(Device.FLIP, analog(listOf(AnalogStyle.ROUND, AnalogStyle.RECT), night = false))
 
     @Test fun styleMatrix() {
         val dig = ClockStyle.default(FaceId.DIGITAL)

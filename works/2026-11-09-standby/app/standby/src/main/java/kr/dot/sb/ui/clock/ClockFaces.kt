@@ -4,9 +4,10 @@ package kr.dot.sb.ui.clock
  * Public API of the clock area (OWNER: clock agent).
  *
  *   @Composable fun ClockFace(face: FaceId, style: ClockStyle, state: StandbyState, modifier: Modifier = Modifier,
- *                             inSlot: Boolean = false, hero: Boolean = true)
+ *                             inSlot: Boolean = false, hero: Boolean = true, analog: AnalogStyle = ROUND)
  *       A whole face filling [modifier]'s box: full screen, or fitted into a board slot when [inSlot] (no side column,
  *       date row below in slot label size, no background except Solar's rounded plate; XS slot = digits only).
+ *       [analog] = `AppConfig.analogStyle` (full screen only; a slot always gets the round dial).
  *       [hero] = false: a second clock on a board (design-system §5.1) — digits in white `ink`, no effects.
  *       PHOTOS_TIME is given the whole photo screen and places the time itself (right edge 92 % W, cap-top 10 % H,
  *       cap 15 % H, autosized inside x 72-92 %, y 10-28 %).
@@ -41,6 +42,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Background
@@ -57,6 +59,7 @@ import java.time.ZoneId
 @Composable
 fun ClockFace(
     face: FaceId, style: ClockStyle, state: StandbyState, modifier: Modifier = Modifier, inSlot: Boolean = false, hero: Boolean = true,
+    analog: AnalogStyle = AnalogStyle.ROUND,
 ) {
     if (state.displayOff) { Box(modifier); return }
     val data = FaceData.of(state)
@@ -77,7 +80,7 @@ fun ClockFace(
             FaceId.DESK -> DeskFace(st, d, ink, inSlot, mod)
             FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod)
             FaceId.FLOAT -> FloatFace(st, d, ink, inSlot, mod, hero)
-            FaceId.ANALOG -> AnalogFace(st, d, ink, inSlot, mod)
+            FaceId.ANALOG -> AnalogFace(st, d, ink, inSlot, mod, analog)
             FaceId.WORLD -> WorldFace(st, d, ink, inSlot, mod)
             FaceId.PHOTOS_TIME -> PhotosTime(st, d, ink, mod)
         }

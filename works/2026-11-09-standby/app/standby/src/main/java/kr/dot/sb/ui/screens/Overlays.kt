@@ -133,7 +133,7 @@ private fun Page(ink: Ink) = ThemeBackground(LocalTheme.current, ink.night)
  * full strength in the centre, gone at the rim. Off at night (spec: glow effects off).
  */
 @Composable
-private fun Glow(c: Color, at: Offset, rx: Float, ry: Float, alpha: Float) {
+internal fun Glow(c: Color, at: Offset, rx: Float, ry: Float, alpha: Float) {
     val k = 1f - LocalInk.current.night
     if (k <= 0f) return
     Canvas(Modifier.fillMaxSize()) {

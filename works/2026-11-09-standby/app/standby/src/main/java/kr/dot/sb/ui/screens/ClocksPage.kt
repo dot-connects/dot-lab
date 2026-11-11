@@ -120,7 +120,7 @@ internal fun ClocksPage(
                     // Rounded card only while editing: a full-screen Solar must keep its square corners.
                     if (k > 0f) { clip = true; shape = RoundedCornerShape(s * 0.06f) }
                 }.background(ink.bg),
-            ) { ClockFace(face, styleOf(face), state, Modifier.fillMaxSize()) }
+            ) { ClockFace(face, styleOf(face), state, Modifier.fillMaxSize(), analog = config.analogStyle) }
         }
 
         val cur = pager.currentPage
