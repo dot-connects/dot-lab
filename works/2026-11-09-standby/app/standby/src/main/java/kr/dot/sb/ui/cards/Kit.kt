@@ -128,7 +128,8 @@ internal class Env(
     /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
     val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)
-    val plateRadius: Dp get() = round(s)
+    /** Slot plate corner: the theme ratio of the short side, floored (PAPER: square). */
+    val plateRadius: Dp get() = if (t.tokens.radiusRatio == 0f) 0.dp else max(t.tokens.radiusMin, s * t.tokens.radiusRatio)
     /** Corner radius for something [of] long: the theme radius with a floor; B (radius 0) stays square. */
     fun round(of: Dp, floor: Dp = 12.dp, k: Float = 1f): Dp = if (t.radius == 0f) 0.dp else max(floor, of * t.radius * k)
     /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */

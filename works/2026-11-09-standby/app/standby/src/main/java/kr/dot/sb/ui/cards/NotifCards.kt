@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.cards
 
+import kr.dot.sb.ui.theme.themedSurface
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -98,12 +99,10 @@ private fun actionInk(e: Env): Color = when (e.t.family) {
     Family.LAMP -> e.ink.sun
 }
 
-/** One notification's ground in the theme: flat grey plate (A), lamp plate (C), nothing (B: rules are drawn apart). */
-private fun Modifier.notifPlate(e: Env, shape: RoundedCornerShape, radius: Dp): Modifier = when (e.t.surface) {
-    Surface.NONE -> clip(shape).background(e.ink.plate)
-    Surface.PLATE -> lampPlate(e.ink, e.t.palette.fg2, radius) // neutral warm wash (mockup r6 C)
-    Surface.RULE -> this
-}
+/** One notification's ground: the theme plate (B keeps its own hairlines, drawn apart). Replaced in Task 11. */
+@Suppress("UNUSED_PARAMETER")
+private fun Modifier.notifPlate(e: Env, shape: RoundedCornerShape, radius: Dp): Modifier =
+    if (e.t.surface == Surface.RULE) this else clip(shape).themedSurface(e.t, e.ink, shape)
 
 /** B hairlines along the top and/or bottom edge. */
 private fun Modifier.hairlines(e: Env, top: Boolean, bottom: Boolean): Modifier = if (!e.rule) this else drawBehind {

@@ -194,7 +194,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
 - [ ] Create `tools/check_light.py`: for DAYPAPER/RADIO PNGs, sample the 4 screen corners and every slot gutter
   midpoint; any sample with luminance < 0.5 → fail (catches black rectangles, ignores dark digits). Commit.
 
-### Task 7: Board + cards plates through tokens
+### Task 7: Board + cards plates through tokens — done (as built: every non-notification slot gets `themedSurface` with radius = tokens ratio × short side (PAPER square); the old gutter rules and `BoardGrid.rules` are gone (RULE = top hairline per card, mockup); LAMP per-type tints and album-colour plates dropped (mockup plates are flat); notification rows use the theme plate until Task 11; IPHONE board digits are still the r8 blue default, accent decision in Task 10)
 `BoardView.kt:184-186`, `Cards.kt:105-128`, `NotifCards.kt:70-105` → `themedSurface`. Shots vs mockup "테마 전체".
 Commit.
 

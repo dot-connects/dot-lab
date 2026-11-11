@@ -77,7 +77,8 @@ import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
 import kr.dot.sb.ui.theme.Surface
 import kr.dot.sb.ui.theme.Family
-import kr.dot.sb.ui.screens.artColor
+import kr.dot.sb.ui.theme.themedSurface
+import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.ui.theme.Themes
 import java.time.ZoneId
@@ -111,15 +112,9 @@ fun CardView(
                 t.numerals, t.numeralsCap, slotId, today, t,
             )
         }
-        // C: the music plate takes the album colour (computed once per cover), every other card its function pastel
-        val art = state.media?.takeIf { it.kind == MediaKind.MUSIC }?.art?.takeIf { type == CardType.MUSIC && t.surface == Surface.PLATE }
-        val artTint = remember(art) { art?.let(::artColor) }
-        val surface = when (t.surface) {
-            // B's hairlines live in the gutters, drawn once by the board (BoardView)
-            Surface.NONE, Surface.RULE -> Modifier
-            // notification cards lay a plate under each notification instead (NotifCards)
-            Surface.PLATE -> if (type.isNotif) Modifier else Modifier.lampPlate(ink, artTint ?: t.tint(type), min(e.plateRadius, 44.dp))
-        }
+        // every card sits on the theme's plate (mockup "테마 전체"); notification cards lay plates per row until Task 11
+        val surface = if (type.isNotif) Modifier
+        else Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
                 val drawn = when (t.family) {
