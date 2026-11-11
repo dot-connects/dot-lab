@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,6 +37,7 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FontId
 import kr.dot.sb.ui.clock.StyledTime
+import kr.dot.sb.ui.clock.rememberTimePainter
 
 /*
  * r9 primitives (plan-r9 Task 5): the only readers of the token style switches (PlateStyle, DigitStyle, BgSpec).
@@ -78,7 +80,8 @@ fun Modifier.themedSurface(t: StandbyTheme, ink: Ink, shape: Shape, custom: Bool
 /**
  * Hero digits in the theme's treatment. [style] null = the theme default (FontId.THEME at the theme weight); FLIP
  * tiles and GLOW apply only when the style is the theme font with a plain effect (D4b), and never at night ≥ 0.5.
- * [twoLines] stacks hours over minutes ("9:41" → "9" / "41"). Autosized to the modifier's box.
+ * [twoLines] stacks hours over minutes ("9:41" → "9" / "41"). Autosized to the modifier's box; takes only the height
+ * the digits need (FLIP: the tiles), so a wrap-height caller can put a line right under them.
  */
 @Composable
 fun ThemedDigits(
@@ -100,8 +103,13 @@ fun ThemedDigits(
     val lines = if (twoLines) text.split(':').filter { it.isNotEmpty() } else listOf(text)
     if (flip) return FlipDigits(lines, st, ink, tk, c, modifier)
     val widest = lines.maxBy { it.length }
-    Column(modifier, verticalArrangement = Arrangement.Center) {
-        lines.forEach { StyledTime(it, st, ink, Modifier.fillMaxWidth().weight(1f), c, widest = widest) }
+    val p = rememberTimePainter(st, tnum = true)
+    // as tall as the digits need (StyledTime's fit), centred: a line under a wrap-height caller sits right below them
+    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
+        val lineH = minOf(maxHeight / lines.size, maxWidth / p.widestEm(widest) * (p.capEm + p.descEm) / 0.9f)
+        Column(Modifier.fillMaxWidth().height(lineH * lines.size)) {
+            lines.forEach { StyledTime(it, st, ink, Modifier.fillMaxWidth().weight(1f), c, widest = widest) }
+        }
     }
 }
 

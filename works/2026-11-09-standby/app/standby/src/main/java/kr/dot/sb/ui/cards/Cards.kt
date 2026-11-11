@@ -79,7 +79,18 @@ import kr.dot.sb.ui.theme.Surface
 import kr.dot.sb.ui.theme.Family
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.model.BoardBg
-import kr.dot.sb.model.AnalogNumbers
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.rememberTextMeasurer
+import androidx.compose.ui.text.withStyle
+import kr.dot.sb.ui.clock.rememberSecond
+import kr.dot.sb.ui.screens.clockText
+import kr.dot.sb.ui.theme.ThemedDigits
+import kotlin.math.cos
+import kotlin.math.sin
 import kr.dot.sb.ui.theme.Themes
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
@@ -124,7 +135,7 @@ fun CardView(
                 }
                 if (!drawn) when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
-                    CardType.ANALOG -> AnalogCard(e, state, config)
+                    CardType.ANALOG -> AnalogCard(e, state)
                     CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
                     CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO)
                     CardType.TIMER -> TimerCard(e, state, config, actions)
@@ -148,15 +159,9 @@ fun CardView(
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     val face = e.look.clockFace
-    val base = config.clockStyle(face)
-    // §5.1: hero digits carry the accent; a second clock on the board renders its numerals in ink (hero = false).
-    if (face == FaceId.DIGITAL) {
-        // Digital draws its own date line right under the digits (mockup r5 desk: "월요일 11월 9일 · 7°"), so the
-        // date never drifts to the slot bottom.
-        ClockFace(face, base.copy(color = e.look.accent.argbLong(), showInfo = e.atLeastS), state, Modifier.fillMaxSize().padding(e.pad), inSlot = true, hero = e.look.hero)
-        return
-    }
-    val style = base.copy(color = e.look.accent.argbLong(), showInfo = false)
+    if (face == FaceId.DIGITAL) return DigitalCard(e, state, config)
+    // other faces picked for the board keep their own slot rendering
+    val style = config.clockStyle(face).copy(color = e.look.accent.argbLong(), showInfo = false)
     Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally) {
         ClockFace(face, style, state, Modifier.fillMaxWidth().weight(1f), inSlot = true, hero = e.look.hero)
         if (e.atLeastS) {
@@ -166,16 +171,121 @@ private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     }
 }
 
+/** Short side of the slot; < 150 dp drops the date (spec §1 clock). */
+private val Env.short: Dp get() = min(w, h)
+
+/** "월요일 11월 9일 · 7°", weekday in the text accent (ink on a second clock), [size] × the text-size setting. */
 @Composable
-private fun AnalogCard(e: Env, state: StandbyState, config: AppConfig) {
-    // Per-widget colours (r5): the analog keeps its own second-hand colour instead of the board accent.
-    val def = e.t.clockDefaults(FaceId.ANALOG)
-    val base = config.clockStyle(FaceId.ANALOG)
-    // Untouched default = the iPhone analog *widget* (frame ex-analogwidget): white numerals, orange second hand.
-    // The Duo palette belongs to the full-screen face; a user-picked style is drawn as picked.
-    val pal = e.t.palette
-    val st = if (base == def && def.analogNumbers == AnalogNumbers.DUO) base.copy(numeralColor = pal.fg.argbLong(), secondColor = pal.orange.argbLong(), tickColor = pal.fg2.argbLong()) else base
-    ClockFace(FaceId.ANALOG, st, state, Modifier.fillMaxSize(), inSlot = true)
+private fun DateLine(e: Env, state: StandbyState, size: Dp) {
+    val d = e.today
+    val rest = " ${d.monthValue}월 ${d.dayOfMonth}일" + (state.weather?.let { " · ${it.tempC}°" } ?: "")
+    val text = buildAnnotatedString {
+        withStyle(SpanStyle(color = if (e.look.hero) e.ink.accText else e.ink.ink)) { append("${dowKo(d)}요일") }
+        append(rest)
+    }
+    Txt(text, size * e.look.textScale, e.readInk2, weight = 500, align = TextAlign.Center, maxW = e.w)
+}
+
+/**
+ * Digital clock card (spec §1): theme digits fill the slot, one line "9:41" when w/h ≥ 1.05 or the short side < 150,
+ * else hours over minutes; the date line (13–20 dp) right under them. The user's own clock style (font/colour) wins
+ * over the theme's. A second, smaller clock on the board draws its digits in ink.
+ */
+@Composable
+private fun DigitalCard(e: Env, state: StandbyState, config: AppConfig) {
+    val oneLine = e.w / e.h >= 1.05f || e.short < 150.dp
+    val dl = (e.short * 0.055f).coerceIn(13.dp, 20.dp)
+    val own = config.styles[FaceId.DIGITAL]?.copy(color = e.look.accent.argbLong())
+    Column(
+        Modifier.fillMaxSize().padding((e.short * 0.08f).coerceIn(10.dp, 32.dp)),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
+    ) {
+        ThemedDigits(
+            clockText(state.now, state.use24h), e.t, e.ink, Modifier.fillMaxWidth().weight(1f, fill = false),
+            style = own, color = if (e.look.hero) null else e.ink.ink, twoLines = !oneLine,
+        )
+        if (e.short >= 150.dp) {
+            Spacer(Modifier.height(dl * 0.6f))
+            DateLine(e, state, dl)
+        }
+    }
+}
+
+/**
+ * Analog clock card (spec §1, mockup "아날로그"): the iPhone widget dial in theme ink with an accent second hand; wide
+ * slots (w/h ≥ 1.45) put a date block right of the dial, tall ones (≤ 0.7) a date line under it, others the dial only.
+ */
+@Composable
+private fun AnalogCard(e: Env, state: StandbyState) {
+    val pad = (e.short * 0.07f).coerceIn(8.dp, 28.dp)
+    val r = e.w / e.h
+    when {
+        r >= 1.45f && e.h >= 140.dp -> Row(Modifier.fillMaxSize().padding(pad), verticalAlignment = Alignment.CenterVertically) {
+            val d = e.h - pad * 2
+            Dial(e, state, Modifier.size(d))
+            Spacer(Modifier.width(pad))
+            val tw = e.w - d - pad * 3
+            val big = min(e.h * 0.2f, tw * 0.2f).coerceIn(18.dp, 44.dp)
+            Column {
+                Txt("${dowKo(e.today)}요일", big * 0.55f, if (e.look.hero) e.ink.accText else e.ink.ink, maxW = tw)
+                Spacer(Modifier.height(big * 0.1f))
+                Txt("${e.today.monthValue}월 ${e.today.dayOfMonth}일", big, e.ink.ink, weight = 700, maxW = tw)
+                state.weather?.let {
+                    Spacer(Modifier.height(big * 0.15f))
+                    Txt("${it.condition.ko} · ${it.tempC}°", big * 0.5f, e.readInk2, weight = 500, maxW = tw)
+                }
+            }
+        }
+        r <= 0.7f && e.w >= 140.dp -> Column(
+            Modifier.fillMaxSize().padding(pad), horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            val dl = (e.w * 0.07f).coerceIn(13.dp, 20.dp)
+            Dial(e, state, Modifier.size(min(e.w - pad * 2, e.h - pad * 2 - dl * 3)))
+            Spacer(Modifier.height(dl))
+            DateLine(e, state, dl)
+        }
+        else -> Box(Modifier.fillMaxSize().padding(pad), contentAlignment = Alignment.Center) {
+            Dial(e, state, Modifier.size(e.short - pad * 2))
+        }
+    }
+}
+
+/** The widget dial (mockup `face`): 60 ticks, 12 numerals, ink hour/minute hands, accent second hand on its own layer. */
+@Composable
+private fun Dial(e: Env, state: StandbyState, modifier: Modifier) {
+    val ink = e.ink
+    val sec = if (e.look.hero) ink.acc else ink.ink
+    val tm = rememberTextMeasurer()
+    val numStyle = TextStyle(fontFamily = e.num, fontWeight = FontWeight.Bold, color = ink.ink)
+    val second = rememberSecond()
+    val hr = state.now.hour % 12 + state.now.minute / 60f
+    val mn = state.now.minute.toFloat()
+    Box(modifier) {
+        Canvas(Modifier.fillMaxSize()) {
+            val d = size.minDimension; val rr = d / 2; val c = center
+            fun pt(deg: Float, len: Float) = Math.toRadians(deg.toDouble()).let { Offset(c.x + sin(it).toFloat() * len, c.y - cos(it).toFloat() * len) }
+            for (i in 0 until 60) {
+                val big = i % 5 == 0
+                drawLine(if (big) ink.ink2 else ink.ink3, pt(i * 6f, rr * 0.97f), pt(i * 6f, rr * if (big) 0.87f else 0.92f), d * if (big) 0.012f else 0.006f, StrokeCap.Round)
+            }
+            val ns = numStyle.copy(fontSize = (d * 0.1f).toSp())
+            for (n in 1..12) {
+                val l = tm.measure(n.toString(), ns)
+                drawText(l, topLeft = pt(n * 30f, rr * 0.72f) - Offset(l.size.width / 2f, l.size.height / 2f))
+            }
+            drawLine(ink.ink, c, pt(hr * 30f, rr * 0.5f), d * 0.035f, StrokeCap.Round)
+            drawLine(ink.ink, c, pt(mn * 6f, rr * 0.78f), d * 0.028f, StrokeCap.Round)
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            val d = size.minDimension; val rr = d / 2; val c = center
+            val a = Math.toRadians(second.intValue * 6.0)
+            val dir = Offset(sin(a).toFloat(), -cos(a).toFloat())
+            drawLine(sec, c - dir * (rr * 0.12f), c + dir * (rr * 0.85f), d * 0.008f, StrokeCap.Round)
+            drawCircle(ink.bg, d * 0.018f, c)
+            drawCircle(sec, d * 0.018f, c, style = Stroke(d * 0.006f))
+        }
+    }
 }
 
 // ---------------------------------------------------------------- media

@@ -28,16 +28,12 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.CardType
-import kr.dot.sb.model.FaceId
-import kr.dot.sb.ui.clock.StyledTime
-import kr.dot.sb.ui.screens.clockText
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.SizeClass
-import kr.dot.sb.ui.theme.clockStyle
 import java.time.ZoneId
 
 /*
@@ -50,7 +46,6 @@ import java.time.ZoneId
 @Composable
 internal fun paperBody(type: CardType, e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions): Boolean {
     when (type) {
-        CardType.CLOCK -> if (e.look.clockFace == FaceId.DIGITAL) PaperClock(e, state, config) else return false
         CardType.CALENDAR -> if (e.cls != SizeClass.L) PaperDate(e) else return false
         CardType.WEATHER -> state.weather?.let { PaperWeather(e, state, it, actions) } ?: return false
         CardType.TIMER -> PaperTimer(e, state, config, actions)
@@ -80,31 +75,6 @@ private fun Headline(e: Env, text: String, color: Color = e.ink.ink, modifier: M
     Txt(text, headSize(e), color, modifier, weight = 700, maxW = e.cw)
 
 private fun headSize(e: Env): Dp = max(e.label, min(e.sz.title, e.label * 1.2f))
-
-// ---------------------------------------------------------------- clock
-
-/** "지금" / big serif time / bold date (mockup r5 B desk). */
-@Composable
-private fun PaperClock(e: Env, state: StandbyState, config: AppConfig) {
-    val style = config.clockStyle(FaceId.DIGITAL)
-    val color = if (e.look.hero) e.look.accent else e.ink.pal.fg
-    val time = clockText(state.now, state.use24h)
-    val xs = e.cls == SizeClass.XS
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        if (!xs) {
-            Kicker(e, "지금")
-            Spacer(Modifier.height(e.gap * 2))
-        }
-        StyledTime(
-            time, style.copy(color = color.argbLong()), e.ink, Modifier.fillMaxWidth().weight(1f), color = color,
-            effects = e.look.hero, align = Alignment.Start,
-        )
-        if (!xs) {
-            Spacer(Modifier.height(e.gap * 2))
-            Headline(e, dateKo(e.today))
-        }
-    }
-}
 
 // ---------------------------------------------------------------- calendar
 

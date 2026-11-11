@@ -36,9 +36,6 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.CardType
-import kr.dot.sb.model.FaceId
-import kr.dot.sb.ui.clock.StyledTime
-import kr.dot.sb.ui.screens.clockText
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
@@ -46,7 +43,6 @@ import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.state.WeatherInfo
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.SizeClass
-import kr.dot.sb.ui.theme.clockStyle
 import java.time.ZoneId
 
 /*
@@ -59,7 +55,6 @@ import java.time.ZoneId
 @Composable
 internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions): Boolean {
     when (type) {
-        CardType.CLOCK -> if (e.look.clockFace == FaceId.DIGITAL) LampClock(e, state, config) else return false
         CardType.CALENDAR -> if (e.cls != SizeClass.L) LampDate(e) else return false
         CardType.WEATHER -> state.weather?.let { LampWeather(e, state, it, actions) } ?: return false
         CardType.TIMER -> LampTimer(e, state, config, actions)
@@ -87,26 +82,6 @@ internal fun Modifier.lampPlate(ink: Ink, tint: Color?, radius: Dp): Modifier = 
 
 /** Dark text on a pastel fill (today's circle, butter buttons); black at night like the iPhone's red mode. */
 private fun onPastel(e: Env) = lerp(Color(0xFF2B1D07), Color.Black, e.ink.night)
-
-// ---------------------------------------------------------------- clock
-
-/** Peach time centred on the plate, the date under it in the soft ink (mockup r5 C desk). */
-@Composable
-private fun LampClock(e: Env, state: StandbyState, config: AppConfig) {
-    val style = config.clockStyle(FaceId.DIGITAL)
-    val color = if (e.look.hero) e.look.accent else e.ink.pal.fg
-    Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally) {
-        Spacer(Modifier.weight(0.35f))
-        StyledTime(
-            clockText(state.now, state.use24h), style, e.ink, Modifier.fillMaxWidth().weight(1f), color = color,
-            effects = e.look.hero,
-        )
-        if (e.atLeastS) {
-            Spacer(Modifier.weight(0.25f))
-            Txt(dateKo(e.today), e.label, e.ink.ink2, weight = 500, num = true, align = TextAlign.Center, maxW = e.cw)
-        } else Spacer(Modifier.weight(0.35f))
-    }
-}
 
 // ---------------------------------------------------------------- calendar
 

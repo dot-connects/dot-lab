@@ -1,6 +1,5 @@
 package kr.dot.sb.ui.board
 
-import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -135,7 +134,8 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
         null -> null
         else -> board.clockFace
     }
-    val accent = (board.accent ?: heroFace?.let { config.clockStyle(it).color })?.let { Color(it) } ?: t.tokens.accent
+    // plan Global Constraints: board accent, else the user's own clock colour (styles = edits only), else the theme's
+    val accent = (board.accent ?: heroFace?.let { config.styles[it]?.color })?.let { Color(it) } ?: t.tokens.accent
     val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp, r = t.ramp) }
     val floor = (screenShort * t.minText).dp
     // r7: also capped at 6.2 % of the screen, so a lone full-size slot never gets 40 dp labels

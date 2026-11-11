@@ -96,6 +96,11 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("card-${t.name.lowercase()}-L-open", Device.FOLD_COVER_L, one, "open")
                 out += arrayOf("card-${t.name.lowercase()}-L-open-night", Device.FOLD_COVER_L, one, "open-night")
             }
+            // clocks (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
+            for (t in listOf(CardType.CLOCK, CardType.ANALOG)) {
+                out += arrayOf("card-${t.name.lowercase()}-L", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full")
+                out += arrayOf("card-${t.name.lowercase()}-M", Device.FOLD_COVER_P, Board("card", t.name, Layout.TWO, listOf(listOf(t))), "full")
+            }
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")
             out += arrayOf("card-music-L-open-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.ONE, listOf(listOf(CardType.MUSIC))), "open-noart")
             val e1 = Board("empty1", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.AGENDA), listOf(CardType.WEATHER)))

@@ -1,6 +1,5 @@
 package kr.dot.sb.ui.cards
 
-import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -84,9 +83,9 @@ data class CardLook(
     val textScale: Float = 1f,
 ) {
     companion object {
-        /** A card alone (no board): follows the given clock face's accent. */
+        /** A card alone (no board): the user's colour for [face] if they set one, else the theme accent. */
         fun of(config: AppConfig, face: FaceId = FaceId.DIGITAL): CardLook =
-            CardLook(Color(config.clockStyle(face).color), textScale = config.textSize.f)
+            CardLook(config.styles[face]?.let { Color(it.color) } ?: Themes.of(config.theme).tokens.accent, textScale = config.textSize.f)
     }
 }
 
