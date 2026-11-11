@@ -63,7 +63,7 @@ class NotifGestureTest {
 
     @Test fun verticalScrollClearsNothing() {
         val rec = show(CardType.NOTIF_LIST)
-        rule.onNodeWithText("쿠팡").performTouchInput { swipeUp() }
+        rule.onNodeWithText("배송 완료").performTouchInput { swipeUp() }
         rule.waitForIdle()
         assertEquals(emptyList<List<String>>(), rec.cleared)
         assertEquals(emptyList<String>(), rec.tapped)

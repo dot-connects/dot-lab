@@ -76,12 +76,20 @@ import kotlin.math.sign
 
 private val Env.rule: Boolean get() = t.surface == Surface.RULE
 
+/*
+ * r7 (operator 2026-11-11 "글씨가 너무 커"): three reading sizes instead of one board label for everything:
+ * sender [Env.head] bold, message [Env.read], app and time [Env.meta]. A half slot on the Fold cover now holds about
+ * 45 characters of message instead of 20.
+ */
+
 /** Between stacked text lines: clears the upper line's descenders (Txt boxes end on the baseline). */
-private val Env.lineGap: Dp get() = max(gap * 0.6f, label * 0.38f)
+private val Env.lineGap: Dp get() = max(gap * 0.5f, read * 0.38f)
 /** "12분 전" beside the sender only where the sender keeps room (narrow tall slots drop it). */
-private val Env.roomForTime: Boolean get() = atLeastS && w >= label * 9f
+private val Env.roomForTime: Boolean get() = atLeastS && w >= read * 9f
 /** Between the sender row and the message. */
-private val Env.bodyGap: Dp get() = max(gap * 1.5f, label * 0.55f)
+private val Env.bodyGap: Dp get() = max(gap * 0.8f, read * 0.4f)
+/** Message line height / size. */
+private const val LEADING = 1.35f
 
 /** "Do it" ink: A system blue, B vermilion, C butter. */
 private fun actionInk(e: Env): Color = when (e.t.family) {
@@ -104,17 +112,12 @@ private fun Modifier.hairlines(e: Env, top: Boolean, bottom: Boolean): Modifier 
     if (bottom) drawLine(e.ink.ink3, Offset(0f, size.height - sw / 2), Offset(size.width, size.height - sw / 2), sw)
 }
 
-/** Small grey line at the board label size (B: tracked kicker); never below the theme's minimum text. */
-@Composable
-private fun Small(e: Env, text: String, modifier: Modifier = Modifier, color: Color = e.ink.ink2) =
-    Txt(text, e.label, color, modifier, weight = 500, num = true, tracking = e.t.labelTracking)
-
 /** "12분 전" (B: the digits in the italic serif, like a newspaper dateline). */
 @Composable
 private fun When(e: Env, n: NotifItem, state: StandbyState) {
     val s = ago(n.postedAtEpochMs, state)
-    if (e.rule) Txt(numSpans(s, Fonts.instrumentItalic, 400), e.label, e.ink.ink2, weight = 500)
-    else Txt(s, e.label, e.ink.ink2, weight = 500, num = true)
+    if (e.rule) Txt(numSpans(s, Fonts.instrumentItalic, 400), e.meta, e.ink.ink2, weight = 500)
+    else Txt(s, e.meta, e.ink.ink2, weight = 500, num = true)
 }
 
 /** App icon: A/C the colour icon on a rounded square (letter plate without one), B a hairline ring with the mono glyph. */
@@ -202,8 +205,9 @@ private fun gate(e: Env, state: StandbyState, actions: StandbyActions): Boolean 
 // ---------------------------------------------------------------- 1 · stack
 
 /**
- * The newest notification big on a plate, the next two peeking under it as smaller, fainter slivers (B: rules only),
- * "알림 5 · 뒤에 4개" above. Swiping the front one away brings the next forward. Small slots: the front card alone.
+ * The newest notification on a plate like a lock-screen notification (r7): icon + app + time on top, sender bold,
+ * message up to four lines; the next two peek under it as slivers (B: rules only). The total count sits as a badge on
+ * the icon. Swiping the front one away brings the next forward. Small slots: the front card alone, sender beside the icon.
  */
 @Composable
 internal fun NotifStackCard(e: Env, state: StandbyState, actions: StandbyActions) {
@@ -220,42 +224,34 @@ internal fun NotifStackCard(e: Env, state: StandbyState, actions: StandbyActions
     }
     val clear = { promoted = true; actions.notificationClear(listOf(front.key)) }
     val r = e.round(e.s * 0.75f)
-    val pad = if (e.rule) e.label * 0.7f else max(e.label * 0.8f, e.pad * 0.75f)
-    val padX = if (e.rule) e.label * 0.15f else pad
-    val who = if (compact) e.label * 1.15f else max(e.label, min(e.sz.title, e.label * 1.3f))
-    val body = e.label * 1.1f
-    val icon = if (compact) e.label * 1.5f else e.label * 2.1f
-    val appLine = !compact && !front.hidden
-    val topRow = max(icon, (if (appLine) e.labelCap + e.lineGap else 0.dp) + who * CAP_UI)
-    val bodyGap = e.bodyGap
-    val lineH = body * 1.15f
+    val pad = if (e.rule) e.read * 0.6f else max(e.read * 0.9f, e.pad * 0.75f)
+    val padX = if (e.rule) e.read * 0.15f else pad
+    val who = e.head
+    val body = e.read
+    val icon = if (compact) e.head * 1.3f else e.head * 1.5f
+    // top row: icon beside app · time (compact: beside the sender); then the sender line (not compact)
+    val topRow = if (compact) max(icon, who * CAP_UI) else max(icon, e.meta * CAP_UI) + e.lineGap + who * CAP_UI
+    val lineH = body * LEADING
     fun linesIn(space: Dp): Int = if (space < body * CAP_UI) 0 else (floor(((space - body * CAP_UI) / lineH).toDouble()).toInt() + 1)
 
     if (compact) {
-        val lines = linesIn(e.h - pad * 2 - topRow - bodyGap).coerceAtMost(if (e.atLeastS) 2 else 1)
-        FrontCard(e, state, actions, front, Modifier.fillMaxSize(), r, pad, padX, icon, who, body, lines, appLine, clear) { grow.floatValue }
+        val lines = linesIn(e.h - pad * 2 - topRow - e.bodyGap).coerceAtMost(if (e.atLeastS) 3 else 1)
+        FrontCard(e, state, actions, front, list.size, true, Modifier.fillMaxSize(), r, pad, padX, icon, who, body, lines, clear) { grow.floatValue }
         return
     }
     val peeks = if (e.rule) 0 else (list.size - 1).coerceAtMost(2)
-    val p1 = e.label * 0.55f
-    val p2 = e.label * 1.05f
+    val p1 = e.read * 0.55f
+    val p2 = e.read * 1.05f
     val peek = when (peeks) { 2 -> p2; 1 -> p1; else -> 0.dp }
-    val headGap = e.gap * 2f
-    val lines = linesIn(e.h - e.labelCap - headGap - peek - pad * 2 - topRow - bodyGap).coerceAtMost(3)
-    val inset = if (e.rule) 0.dp else e.label * 0.25f
-    Column(Modifier.fillMaxSize()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = inset)) {
-            Small(e, "알림 ${list.size}", Modifier.weight(1f))
-            if (list.size > 1) Small(e, "뒤에 ${list.size - 1}개")
-        }
-        Spacer(Modifier.height(headGap))
-        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-            Box(Modifier.fillMaxWidth().padding(bottom = peek)) {
-                // slivers: narrower copies of the card dropped so exactly p1 / p2 shows under it, fading back
-                if (peeks >= 2) Sliver(e, Modifier.matchParentSize(), e.cw * 0.07f, p2, 0.45f, r)
-                if (peeks >= 1) Sliver(e, Modifier.matchParentSize(), e.cw * 0.035f, p1, 0.75f, r)
-                FrontCard(e, state, actions, front, Modifier.fillMaxWidth(), r, pad, padX, icon, who, body, lines, appLine, clear) { grow.floatValue }
-            }
+    // the badge pokes above the icon: leave it room under the slot's top edge
+    val top = e.meta * 0.5f
+    val lines = linesIn(e.h - top - peek - pad * 2 - topRow - e.bodyGap).coerceAtMost(4)
+    Box(Modifier.fillMaxSize().padding(top = top), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxWidth().padding(bottom = peek)) {
+            // slivers: narrower copies of the card dropped so exactly p1 / p2 shows under it, fading back
+            if (peeks >= 2) Sliver(e, Modifier.matchParentSize(), e.cw * 0.07f, p2, 0.45f, r)
+            if (peeks >= 1) Sliver(e, Modifier.matchParentSize(), e.cw * 0.035f, p1, 0.75f, r)
+            FrontCard(e, state, actions, front, list.size, false, Modifier.fillMaxWidth(), r, pad, padX, icon, who, body, lines, clear) { grow.floatValue }
         }
     }
 }
@@ -267,10 +263,29 @@ private fun Sliver(e: Env, modifier: Modifier, inset: Dp, peek: Dp, a: Float, r:
     Box(modifier.offset(y = peek).padding(horizontal = inset).clip(RoundedCornerShape(r * 0.9f)).background(c))
 }
 
+/** App icon with the total count as a badge on its corner (r7: replaces the "알림 5 · 뒤에 4개" header row). */
+@Composable
+private fun BadgedIcon(e: Env, n: NotifItem, d: Dp, count: Int) {
+    Box {
+        NotifIcon(e, n, d)
+        if (count > 1) {
+            val b = max(e.meta * 1.1f, d * 0.46f)
+            val text = if (count > 99) "99+" else count.toString()
+            val fg = lerp(Color.White, Color.Black, e.ink.night)
+            Box(
+                Modifier.align(Alignment.TopEnd).offset(x = b * 0.4f, y = -b * 0.35f)
+                    .height(b).width(max(b, b * 0.5f * text.length + b * 0.3f))
+                    .clip(RoundedCornerShape(50)).background(e.ink.red),
+                contentAlignment = Alignment.Center,
+            ) { Txt(text, b * 0.62f, fg, weight = 700, num = true) }
+        }
+    }
+}
+
 @Composable
 private fun FrontCard(
-    e: Env, state: StandbyState, actions: StandbyActions, n: NotifItem, modifier: Modifier, r: Dp, pad: Dp, padX: Dp,
-    icon: Dp, who: Dp, body: Dp, lines: Int, appLine: Boolean, onClear: () -> Unit, grow: () -> Float,
+    e: Env, state: StandbyState, actions: StandbyActions, n: NotifItem, count: Int, compact: Boolean, modifier: Modifier,
+    r: Dp, pad: Dp, padX: Dp, icon: Dp, who: Dp, body: Dp, lines: Int, onClear: () -> Unit, grow: () -> Float,
 ) {
     val text = if (n.hidden) "내용 숨김" else n.text
     Column(
@@ -284,23 +299,22 @@ private fun FrontCard(
         verticalArrangement = Arrangement.Center, // a slot-filling (compact) card centres its content
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            NotifIcon(e, n, icon)
-            Spacer(Modifier.width(e.label * 0.55f))
-            Column(Modifier.weight(1f)) {
-                if (appLine) {
-                    Txt(n.appLabel, e.label, e.ink.ink2, weight = 500)
-                    Spacer(Modifier.height(e.lineGap))
-                }
-                Txt(n.title, who, e.ink.ink, weight = 700)
-            }
+            BadgedIcon(e, n, icon, count)
+            Spacer(Modifier.width(e.read * 0.55f))
+            if (compact) Txt(n.title, who, e.ink.ink, Modifier.weight(1f), weight = 700)
+            else Txt(n.appLabel, e.meta, e.ink.ink2, Modifier.weight(1f), weight = 500)
             if (e.roomForTime) {
-                Spacer(Modifier.width(e.label * 0.4f))
+                Spacer(Modifier.width(e.read * 0.4f))
                 When(e, n, state)
             }
         }
+        if (!compact) {
+            Spacer(Modifier.height(e.lineGap))
+            Txt(n.title, who, e.ink.ink, weight = 700)
+        }
         if (lines > 0 && text.isNotEmpty()) {
             Spacer(Modifier.height(e.bodyGap))
-            Txt(text, body, if (n.hidden) e.ink.ink2 else e.ink.ink, weight = 500, lines = lines)
+            Txt(text, body, if (n.hidden) e.ink.ink2 else e.ink.ink, weight = 500, lines = lines, leading = LEADING)
         }
     }
 }
@@ -308,28 +322,28 @@ private fun FrontCard(
 // ---------------------------------------------------------------- 2 · list
 
 /**
- * The phone's shade inside the slot: "알림 5" + "모두 지우기", then one row per notification (icon, app · time,
- * sender bold, one line of text), scrolling. Small slots drop the app line. Removing a row slides the rest up.
+ * The phone's shade inside the slot: "알림 5" + "모두 지우기", then one row per notification like the lock screen
+ * (r7): icon, sender bold with the time trailing, the message in up to two lines. Rows are about half as tall as
+ * before, so three to five show whole. Small slots keep one message line. Removing a row slides the rest up.
  */
 @Composable
 internal fun NotifListCard(e: Env, state: StandbyState, actions: StandbyActions) {
     if (gate(e, state, actions)) return
     val list = state.notifications
     val compact = !e.atLeastM
-    val head = max(e.label, min(e.sz.title, e.label * 1.2f))
-    val inset = if (e.rule) 0.dp else e.label * 0.25f
+    val inset = if (e.rule) 0.dp else e.read * 0.3f
     val outer = e.round(e.s * 0.75f)
-    val inner = max(4.dp, e.label * 0.22f)
-    val gapRow = when (e.t.surface) { Surface.NONE -> max(2.dp, e.label * 0.08f); Surface.RULE -> 0.dp; Surface.PLATE -> e.gap * 0.7f }
+    val inner = max(4.dp, e.read * 0.22f)
+    val gapRow = when (e.t.surface) { Surface.NONE -> max(2.dp, e.read * 0.08f); Surface.RULE -> 0.dp; Surface.PLATE -> e.gap * 0.7f }
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().padding(start = inset), verticalAlignment = Alignment.CenterVertically) {
-            Txt("알림 ${list.size}", head, e.ink.ink, weight = 700, num = true)
+            Txt("알림 ${list.size}", e.head, e.ink.ink, weight = 700, num = true)
             Spacer(Modifier.weight(1f))
             val keys = list.filter { it.clearable }.map { it.key }
             if (keys.isNotEmpty()) {
                 // the hit area reaches past the text; the visible text sits on the slot edge like the shade's
-                Box(Modifier.tap { actions.notificationClear(keys) }.padding(start = e.label * 0.6f, end = inset, top = e.gap, bottom = e.gap)) {
-                    Txt(if (e.w >= e.label * 9.5f) "모두 지우기" else "지우기", e.label, actionInk(e), weight = 600)
+                Box(Modifier.tap { actions.notificationClear(keys) }.padding(start = e.read * 0.6f, end = inset, top = e.gap, bottom = e.gap)) {
+                    Txt(if (e.w >= e.meta * 11f) "모두 지우기" else "지우기", e.meta, actionInk(e), weight = 600)
                 }
             }
         }
@@ -360,9 +374,7 @@ private fun ShadeRow(
     e: Env, state: StandbyState, n: NotifItem, compact: Boolean, shape: RoundedCornerShape, radius: Dp, modifier: Modifier,
     onTap: () -> Unit, onClear: () -> Unit,
 ) {
-    val appLine = !compact && !n.hidden
-    val who = max(e.label, min(e.sz.title, e.label * 1.12f))
-    val icon = if (compact) e.label * 1.35f else e.label * 1.6f
+    val icon = e.read * 1.6f
     val text = if (n.hidden) "내용 숨김" else n.text
     Row(
         modifier
@@ -370,29 +382,23 @@ private fun ShadeRow(
             .tap(onTap)
             .notifPlate(e, shape, radius)
             .hairlines(e, top = true, bottom = false)
-            .padding(horizontal = if (e.rule) e.label * 0.1f else e.label * 0.6f, vertical = e.label * 0.55f),
+            .padding(horizontal = if (e.rule) e.read * 0.1f else e.read * 0.6f, vertical = e.read * 0.55f),
     ) {
         NotifIcon(e, n, icon)
-        Spacer(Modifier.width(e.label * 0.5f))
+        Spacer(Modifier.width(e.read * 0.5f))
         Column(Modifier.weight(1f)) {
-            if (appLine) {
-                Row(verticalAlignment = Alignment.Bottom) {
-                    Txt(n.appLabel, e.label, e.ink.ink2, Modifier.weight(1f), weight = 500)
-                    Spacer(Modifier.width(e.label * 0.4f))
-                    When(e, n, state)
-                }
-                Spacer(Modifier.height(e.lineGap))
-            }
             Row(verticalAlignment = Alignment.Bottom) {
-                Txt(n.title, who, e.ink.ink, Modifier.weight(1f), weight = 700)
-                if (!appLine && e.roomForTime) {
-                    Spacer(Modifier.width(e.label * 0.4f))
+                Txt(n.title, e.read, e.ink.ink, Modifier.weight(1f), weight = 700)
+                if (e.roomForTime) {
+                    Spacer(Modifier.width(e.read * 0.4f))
+                    // the app name trails the sender in meta size where the row is wide (the sender ellipsizes first)
+                    if (e.w >= e.read * 14f) Txt(n.appLabel + " · ", e.meta, e.ink.ink2, weight = 500)
                     When(e, n, state)
                 }
             }
             if (text.isNotEmpty()) {
                 Spacer(Modifier.height(e.lineGap))
-                Txt(text, e.label, e.ink.ink2, weight = 500)
+                Txt(text, e.read, e.readInk2, weight = 500, lines = if (compact || n.hidden) 1 else 2, leading = LEADING)
             }
         }
     }

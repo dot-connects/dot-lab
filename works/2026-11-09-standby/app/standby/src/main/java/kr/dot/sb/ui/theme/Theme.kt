@@ -135,12 +135,12 @@ data class Palette(
 
 /**
  * Text roles relative to the slot short side `s` (design-system §2.3). [label] is also floored by [StandbyTheme.minText]
- * of the screen (board-wide), so the smallest line never drops below 6 % of the screen.
+ * of the screen (board-wide), so the smallest line never drops below 4.5 % of the screen (r7: 6 % read too big in Hangul).
  */
 @Immutable
 data class Ramp(val display: Float, val value: Float, val title: Float, val label: Float, val pad: Float) {
     companion object {
-        val IPHONE = Ramp(display = 0.56f, value = 0.30f, title = 0.15f, label = 0.095f, pad = 0.07f)
+        val IPHONE = Ramp(display = 0.56f, value = 0.30f, title = 0.12f, label = 0.08f, pad = 0.07f)
     }
 }
 
@@ -194,7 +194,7 @@ object Themes {
         clockFamily = { f, w -> Fonts.clock(f, w) },
         clockDefaults = { ClockStyle.default(it) },
         ramp = Ramp.IPHONE,
-        minText = 0.06f,
+        minText = 0.045f,
         surface = Surface.NONE,
         radius = 0.12f,
         colorIcons = true,
@@ -230,7 +230,7 @@ object Themes {
             }
         },
         ramp = Ramp.IPHONE,
-        minText = 0.06f,
+        minText = 0.045f,
         surface = Surface.RULE,
         radius = 0f,
         colorIcons = false,
@@ -272,7 +272,7 @@ object Themes {
             }
         },
         ramp = Ramp.IPHONE,
-        minText = 0.06f,
+        minText = 0.045f,
         surface = Surface.PLATE,
         radius = 0.16f,
         colorIcons = true,

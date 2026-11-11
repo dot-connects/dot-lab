@@ -63,6 +63,8 @@ import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
+import kr.dot.sb.ui.theme.Reading
+import androidx.compose.ui.graphics.lerp
 import java.time.LocalDate
 import kotlin.math.roundToInt
 
@@ -79,6 +81,8 @@ data class CardLook(
     val hero: Boolean = true,
     val clockOnBoard: Boolean = false,
     val clockFace: FaceId = FaceId.DIGITAL,
+    /** Board-wide reading size ([kr.dot.sb.ui.theme.Reading.read] of the screen); null = card alone, derived from its label. */
+    val readSize: Dp? = null,
 ) {
     companion object {
         /** A card alone (no board): follows the given clock face's accent. */
@@ -125,6 +129,14 @@ internal class Env(
     /** Minimum gaps between template rows (§2.4). */
     val gap: Dp get() = s * 0.04f
     val labelCap: Dp get() = label * CAP_UI
+    /** Reading sentences (notification text, artist, channel): never above the slot's label floor of 16 dp (r7). */
+    val read: Dp get() = min(look.readSize ?: (label * 0.85f).coerceIn(18.dp, 24.dp), max(label, 16.dp))
+    /** App name, time ("카카오톡", "12분 전"). */
+    val meta: Dp get() = Reading.meta(read)
+    /** Sender, list header, media title floor. */
+    val head: Dp get() = Reading.head(read)
+    /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
+    val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)
     val plateRadius: Dp get() = round(s)
     /** Corner radius for something [of] long: the theme radius with a floor; B (radius 0) stays square. */
@@ -166,7 +178,8 @@ internal fun Txt(
     maxCapH: Dp? = null,
     num: Boolean = false,
     tracking: Float = 0f,
-) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking)
+    leading: Float = 1.15f,
+) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking, leading)
 
 /** Runs of Latin/digits ("11°", "9:30", "C") in the theme's numeral font; Hangul stays in the words font. */
 internal fun numSpans(text: String, numerals: FontFamily, weight: Int): AnnotatedString = buildAnnotatedString {
@@ -195,6 +208,8 @@ internal fun Txt(
     maxCapH: Dp? = null,
     /** Letter spacing in em (B kickers). */
     tracking: Float = 0f,
+    /** Line height / size; multi-line Hangul sentences read better at 1.35 (r7). */
+    leading: Float = 1.15f,
 ) {
     val fam = family ?: LocalTheme.current.words(weight)
     val density = LocalDensity.current
@@ -202,7 +217,7 @@ internal fun Txt(
         color = color, fontSize = (d.value / density.fontScale).sp, fontFamily = fam,
         // static multi-weight families (rounded numerals) pick by weight; never fake bold
         fontWeight = FontWeight(weight.coerceIn(1, 1000)), fontSynthesis = FontSynthesis.None,
-        lineHeight = (d.value * 1.15f / density.fontScale).sp, textAlign = align,
+        lineHeight = (d.value * leading / density.fontScale).sp, textAlign = align,
         fontFeatureSettings = if (tnum) "tnum" else null,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
         lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.Both),

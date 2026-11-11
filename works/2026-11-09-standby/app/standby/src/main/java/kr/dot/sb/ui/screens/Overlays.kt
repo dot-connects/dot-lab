@@ -73,6 +73,7 @@ import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.theme.OverlayType
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
@@ -247,14 +248,15 @@ private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: Stand
                 Spacer(Modifier.size(small).onPlaced { mini = it.positionInRoot() })
                 Spacer(Modifier.width(s * 0.045f))
                 Column {
-                    Txt(if (hidden) n.appLabel else n.sender, max(24.dp, s * 0.09f), ink.ink, weight = 700, maxW = w * 0.78f - small - s * 0.05f)
+                    Txt(if (hidden) n.appLabel else n.sender, OverlayType.title(s), ink.ink, weight = 700, maxW = w * 0.78f - small - s * 0.05f)
                     Spacer(Modifier.height(s * 0.028f))
-                    Txt(if (hidden) "탭하여 보기" else "${n.appLabel} · ${ago(n.postedAtEpochMs, state)}", max(18.dp, s * 0.06f), ink.ink2, weight = 500, num = true)
+                    Txt(if (hidden) "탭하여 보기" else "${n.appLabel} · ${ago(n.postedAtEpochMs, state)}", OverlayType.meta(s), ink.ink2, weight = 500, num = true)
                 }
             }
             if (!hidden) {
                 Spacer(Modifier.height(s * 0.05f))
-                Txt(n.text, max(24.dp, s * 0.08f), ink.ink, weight = 700, lines = 3)
+                // r7: was 38 dp bold over 3 lines; now ~22 characters a line over 4
+                Txt(n.text, OverlayType.body(s), ink.ink, weight = 500, lines = 4, leading = 1.35f)
             }
         }
         // The plate, drawn at `big` and scaled; position and size interpolate centre → mini.
@@ -468,9 +470,10 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
         val h = maxHeight
         val s = min(w, h)
         val port = h > w
-        val title = max(24.dp, s * 0.09f)
-        val detail = max(18.dp, s * 0.07f)
-        val small = max(16.dp, s * 0.06f)
+        // r7: was 43 / 33 / 28.5 dp on the Fold cover; the play button no longer follows the title
+        val title = OverlayType.title(s)
+        val detail = OverlayType.sub(s)
+        val small = OverlayType.meta(s)
         val pad = screenPadding(w, h)
         val glyph = max(22.dp, s * 0.055f)
         IconView(
@@ -514,11 +517,11 @@ private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Uni
         else Modifier.offset(w * 0.5f, artY).size(w * 0.40f, art)
         Column(col, verticalArrangement = Arrangement.SpaceBetween) {
             Column {
-                Txt(m.title, title, ink.ink, weight = 700)
-                Spacer(Modifier.height(s * 0.03f))
+                Txt(m.title, title, ink.ink, weight = 600, lines = 2)
+                Spacer(Modifier.height(s * 0.025f))
                 Txt(m.artist, detail, ink.ink.copy(alpha = 0.6f), weight = 500)
             }
-            val play = title * 2f
+            val play = OverlayType.play(s)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 Btn(Ic.PREV, "이전", play * 0.62f, m.canPrev, ink, actions::mediaPrev)
                 Btn(if (m.playing) Ic.PAUSE else Ic.PLAY, if (m.playing) "일시정지" else "재생", play, true, ink, actions::mediaPlayPause)

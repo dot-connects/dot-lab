@@ -48,6 +48,7 @@ import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.theme.OverlayType
 import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.LocalTheme
 import kotlin.math.roundToInt
@@ -272,7 +273,7 @@ internal fun PaperNowPlayingBody(m: MediaInfo, pos: Long, actions: StandbyAction
     val t = LocalTheme.current
     val s = min(w, h)
     val port = h > w
-    val kick = max(18.dp, s * 0.06f)
+    val kick = OverlayType.meta(s)
     val art = if (port) min(w * 0.82f, h * 0.4f) else min(w * 0.36f, h * 0.76f)
     val artX = if (port) (w - art) / 2 else w * 0.06f
     val artY = if (port) h * 0.1f else (h - art) / 2
@@ -289,9 +290,9 @@ internal fun PaperNowPlayingBody(m: MediaInfo, pos: Long, actions: StandbyAction
         Column {
             Txt("지금 재생", kick, ink.ink2, weight = 500, tracking = t.labelTracking)
             Spacer(Modifier.height(s * 0.03f))
-            Txt(italicSpans(m.title), s * (if (port) 0.18f else 0.22f), ink.ink, weight = 400, maxW = colW)
+            Txt(italicSpans(m.title), OverlayType.title(s) * 1.6f, ink.ink, weight = 400, maxW = colW) // r7: was 104 dp
             Spacer(Modifier.height(s * 0.03f))
-            Txt(m.artist, max(22.dp, s * 0.075f), ink.ink, weight = 800, maxW = colW)
+            Txt(m.artist, OverlayType.sub(s), ink.ink, weight = 800, maxW = colW)
         }
         Column {
             val frac = (if (m.durationMs > 0) pos.toFloat() / m.durationMs else 0f).coerceIn(0f, 1f)
@@ -308,7 +309,7 @@ internal fun PaperNowPlayingBody(m: MediaInfo, pos: Long, actions: StandbyAction
             }
             Spacer(Modifier.height(s * 0.06f))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                val b = max(22.dp, s * 0.07f)
+                val b = OverlayType.sub(s) * 1.15f
                 Txt("이전", b, if (m.canPrev) ink.ink else ink.ink3, Modifier.semantics { contentDescription = "이전" }.tap(if (m.canPrev) actions::mediaPrev else null), weight = 700)
                 Txt(if (m.playing) "멈춤" else "재생", b, ink.weekday, Modifier.tap(actions::mediaPlayPause), weight = 700)
                 Txt("다음", b, if (m.canNext) ink.ink else ink.ink3, Modifier.semantics { contentDescription = "다음" }.tap(if (m.canNext) actions::mediaNext else null), weight = 700)
@@ -352,9 +353,9 @@ internal fun LampNowPlayingBody(m: MediaInfo, pos: Long, actions: StandbyActions
     val dark = lerp(Color(0xFF2B1D07), Color.Black, ink.night)
     Column(Modifier.offset(colX, colY).size(colW, colH), verticalArrangement = Arrangement.SpaceBetween) {
         Column {
-            Txt(m.title, max(26.dp, s * 0.13f), ink.ink, weight = 900, maxW = colW, num = true)
+            Txt(m.title, OverlayType.title(s) * 1.15f, ink.ink, weight = 900, maxW = colW, num = true) // r7: was 62 dp
             Spacer(Modifier.height(s * 0.035f))
-            Txt(m.artist, max(20.dp, s * 0.07f), ink.ink2, weight = 500, maxW = colW, num = true)
+            Txt(m.artist, OverlayType.sub(s), ink.ink2, weight = 500, maxW = colW, num = true)
         }
         val frac = (if (m.durationMs > 0) pos.toFloat() / m.durationMs else 0f).coerceIn(0f, 1f)
         val bar = max(8.dp, s * 0.04f)

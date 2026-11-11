@@ -259,14 +259,14 @@ private fun XsPlate(e: Env, m: MediaInfo, ic: Ic, actions: StandbyActions) {
  */
 @Composable
 private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
-    val title = min(e.sz.title, e.label * 1.4f)
-    val disc = max(40.dp, e.label * 1.7f)
+    val title = mediaTitle(e)
+    val disc = mediaDisc(e)
     val glyph = e.label * 1.1f
     val names = @Composable { mod: Modifier ->
         Column(mod) {
-            Txt(m.title, title, e.ink.ink, weight = 700)
-            Spacer(Modifier.height(e.gap))
-            Detail(e, m.artist)
+            Txt(m.title, title, e.ink.ink, weight = 700, lines = 2)
+            Spacer(Modifier.height(e.gap * 0.6f))
+            Txt(m.artist, e.read, e.readInk2, weight = 500)
         }
     }
     val noteGlyph = @Composable { IconView(Ic.NOTE, e.ink.music, Modifier.size(glyph)) }
@@ -280,12 +280,17 @@ private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
                     names(Modifier.weight(1f))
                     noteGlyph()
                 }
-                Transport(e, m, actions, e.cw - a - e.pad, disc)
+                Column {
+                    Bar(e, progress(m), e.ink.ink)
+                    Spacer(Modifier.height(e.gap * 1.5f))
+                    Transport(e, m, actions, e.cw - a - e.pad, disc)
+                }
             }
         }
         return
     }
-    val need = title * CAP_UI + e.gap + e.labelCap + disc + e.gap * 4
+    // two title lines, artist, bar, discs and their gaps
+    val need = title * CAP_UI + title * 1.15f + e.gap * 0.6f + e.read * CAP_UI + e.bar + disc + e.gap * 5.5f
     val a = min(e.ch - need, e.cw - glyph - e.gap)
     Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
         if (a >= e.label * 3) {
@@ -300,9 +305,17 @@ private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
             Row(Modifier.fillMaxWidth()) { names(Modifier.weight(1f)); noteGlyph() }
         }
         Spacer(Modifier.weight(1f))
+        Bar(e, progress(m), e.ink.ink)
+        Spacer(Modifier.height(e.gap * 1.5f))
         Transport(e, m, actions, e.cw, disc)
     }
 }
+
+/** Media title: one step above reading text, never the slot's big title (r7: was 45–56 dp on the Fold cover). */
+private fun mediaTitle(e: Env): Dp = min(e.sz.title, e.read * 1.5f)
+
+/** Transport disc: a 48 dp touch target at least, whatever the text size. */
+private fun mediaDisc(e: Env): Dp = max(48.dp, e.label * 1.7f)
 
 /** Video: the still fills the slot like a photo card (scrim top and bottom), text bottom-leading, transport discs. */
 @Composable
@@ -320,13 +333,13 @@ private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
         TextCard(e) {
             LabelRow(e, Ic.VIDEO, m.appLabel, color = e.ink.ink)
             Column {
-                Txt(m.title, min(e.sz.title, e.label * 1.4f), e.ink.ink, weight = 700)
-                Spacer(Modifier.height(e.gap * 0.75f))
-                Detail(e, m.artist, color = e.ink.ink.copy(alpha = 0.8f))
+                Txt(m.title, mediaTitle(e), e.ink.ink, weight = 700, lines = 2)
+                Spacer(Modifier.height(e.gap * 0.6f))
+                Txt(m.artist, e.read, e.ink.ink.copy(alpha = 0.8f), weight = 500)
                 Spacer(Modifier.height(e.gap * 1.5f))
                 Bar(e, progress(m), e.ink.ink)
                 Spacer(Modifier.height(e.gap * 1.5f))
-                Transport(e, m, actions, min(e.cw, e.label * 7f), max(40.dp, e.label * 1.7f))
+                Transport(e, m, actions, min(e.cw, mediaDisc(e) * 4.2f), mediaDisc(e))
             }
         }
     }

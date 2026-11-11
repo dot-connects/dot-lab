@@ -136,6 +136,31 @@ data class Sizes(
     }
 }
 
+/**
+ * Reading text (r7, operator 2026-11-11 "글씨가 너무 커"): sentences in notifications and media titles are sized from
+ * the screen short side [screenShort], not the slot, so they stay phone-reading sized while glance text (clock date,
+ * weather, D-day) keeps the slot ramp. Hangul fills ~0.88 em against 0.71 for a Latin cap, so the iPhone ratios read
+ * about 25 % bigger in Korean; these are the corrected sizes.
+ */
+object Reading {
+    /** Body sentences: 0.048 × short side, 20–24 dp (Fold cover 23, bar 20). */
+    fun read(screenShort: Dp): Dp = (screenShort * 0.048f).coerceIn(20.dp, 24.dp)
+    /** App name, time: never above [read]. */
+    fun meta(read: Dp): Dp = max(min(18.dp, read), read * 0.83f)
+    /** Sender, list header: one step up from [read], bold. */
+    fun head(read: Dp): Dp = read * 1.2f
+}
+
+/** Full-screen overlays (Now Playing, big notification), sized from the screen short side [s] (r7). */
+object OverlayType {
+    fun title(s: Dp): Dp = max(22.dp, s * 0.065f)
+    fun sub(s: Dp): Dp = max(18.dp, s * 0.05f)
+    fun meta(s: Dp): Dp = max(16.dp, s * 0.042f)
+    fun body(s: Dp): Dp = max(20.dp, s * 0.055f)
+    /** Play button: from the screen, not from the title, so a smaller title keeps a big target. */
+    fun play(s: Dp): Dp = max(56.dp, s * 0.15f)
+}
+
 /** Size class of a slot (design-system §4.1). */
 enum class SizeClass { XS, S, M, L;
     companion object {

@@ -299,12 +299,12 @@ private fun LampAgenda(e: Env, state: StandbyState) {
 private fun LampMusic(e: Env, state: StandbyState, actions: StandbyActions) {
     val m = state.media!!
     val butter = e.ink.sun
-    val title = max(e.label * 1.2f, min(e.sz.title, e.label * 1.6f))
+    val title = min(e.sz.title, e.read * 1.5f) // r7
     val names = @Composable { mod: Modifier ->
         Column(mod) {
             Txt(m.title, title, e.ink.ink, weight = 800, num = true, maxW = e.cw)
             Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(m.artist, e.label, e.ink.ink2, weight = 500, num = true)
+            Txt(m.artist, e.read, e.readInk2, weight = 500, num = true)
         }
     }
     val play = @Composable { d: Dp ->
@@ -335,7 +335,7 @@ private fun LampMusic(e: Env, state: StandbyState, actions: StandbyActions) {
         }
         return
     }
-    val need = title * CAP_UI + e.labelCap + d + e.gap * 6
+    val need = title * CAP_UI + e.read * CAP_UI + d + e.gap * 6
     val a = min(e.ch - need, e.cw * 0.62f)
     Box(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
         Column(Modifier.fillMaxWidth()) {

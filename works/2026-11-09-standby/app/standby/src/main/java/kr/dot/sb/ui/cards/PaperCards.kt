@@ -275,13 +275,13 @@ internal fun italicSpans(text: String): AnnotatedString = numSpans(text, Fonts.i
 @Composable
 private fun PaperMusic(e: Env, state: StandbyState, actions: StandbyActions) {
     val m = state.media!!
-    val title = max(e.label * 1.3f, min(e.sz.title * 1.3f, e.label * 1.8f))
-    val ctl = e.label * 1.1f
+    val title = e.read * 1.6f // r7: the serif italic reads small, one step above the sans media title
+    val ctl = max(40.dp, e.read * 1.6f)
     val names = @Composable { mod: Modifier ->
         Column(mod) {
             Txt(italicSpans(m.title), title, e.ink.ink, weight = 400, maxW = e.cw)
             Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(m.artist.uppercase(), e.label, e.ink.ink2, weight = 500, tracking = e.t.labelTracking, num = true)
+            Txt(m.artist.uppercase(), e.meta, e.ink.ink2, weight = 500, tracking = e.t.labelTracking, num = true)
         }
     }
     val transport = @Composable {

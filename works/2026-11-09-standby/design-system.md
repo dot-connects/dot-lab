@@ -74,8 +74,22 @@ Roles (sizes = font size, from the **slot** short side `s`; floors in dp, ~50 cm
 | `hero` | autosize (§2.3.1) | — | clock style | 0.85 |
 | `display` | 0.56 s | 64 | Inter 300 (temp) / hero font (D-day, timer) · `tnum` | 0.9 |
 | `value` | 0.30 s | 40 | Inter 600 · `tnum` | 1.0 |
-| `title` | 0.13 s | 22 | Inter 700 | 1.1 |
-| `label` / `detail` | 0.085 s | 18 | Inter 600 / 500 · `tnum` for times | 1.15 |
+| `title` | 0.12 s | 22 | Inter 700 | 1.1 |
+| `label` / `detail` | 0.08 s, board floor 0.045 × screen, cap 0.062 × screen | 18 | Inter 600 / 500 · `tnum` for times | 1.15 |
+
+**Reading roles (r7, 2026-11-11, `Reading` in Tokens.kt).** The operator found notifications and media too big: the
+single label size carried sentences, and Hangul fills ~0.88 em against 0.71 for a Latin cap, so iPhone ratios read
+~25 % bigger in Korean. Sentences now size from the **screen** short side S, glance text (clock date, weather, D-day)
+keeps `label`:
+
+| Role | Size | Fold cover / bar | Used for |
+|---|---|---|---|
+| `read` | 0.048 S, 20–24, ≤ slot label | 23 / 20 | notification message, artist, channel (line height 1.35) |
+| `meta` | max(18, read × 0.83) | 19 / 18 | app name, time |
+| `head` | read × 1.2 | 27 / 24 | sender, list header; media title = min(title, read × 1.5) |
+
+Overlays (`OverlayType`): Now Playing title max(22, 0.065 s) 2 lines, artist max(18, 0.05 s), times max(16, 0.042 s),
+play button max(56, 0.15 s); big notification sender = title, meta = times, body max(20, 0.055 s) 4 lines.
 
 Rules: max **one** of hero/display/value per card. Labels are sentence case (no all-caps Korean, Latin weekday in caps
 only on Digital "MON 19" like iPhone). StandBy surfaces **ignore system font scale** (size = slot-derived; convert with
@@ -249,7 +263,7 @@ it is never dark-on-black; **glow** = 2 blurs (0.05 em, 0.22 em at 55 %), off at
 | Widgets | board `two` whose slots are **stacks** (vertical swipe cycles cards in that slot); default left Analog, right Calendar |
 | Photos | photo fills, Ken Burns ≤ 2 % over 20 s (ours); time top-right x 72–92 %, y 10–28 % in board clock font `ink`; place `title` bold y 72–80 %, date `label` caps y 80–86 %, right-aligned, on bottom scrim; theme pill (right middle) `ink4` bg on switch only, 1.5 s |
 | Alarm | top: "알람" `label` `acc` + icon (top-left), time `hero` 25 % H `ink` (top-right, cap-top on same line). Bottom: two full pills, height 27 % H, gap 4 % W: Snooze `#F2A65E` (night `#7A0000`) left, Stop `ink4`+`ink` text (night `#3A0000`) right; text `title` 700. Portrait: stacked, pills 13 % H. Fold inner glow §2.5 |
-| Now Playing | art square x 9–42 %, y 14–83 % (radius 0.06); title `title`, artist `detail`; transport centre x 56–82 %, y ≈ 58 % (play = title × 2); progress y 71 %, times y 76 % `detail` `tnum`; volume glyph top-right. Empty: §5.4 |
+| Now Playing | art square x 9–42 %, y 14–83 % (radius 0.06); title `title`, artist `detail`; transport centre x 56–82 %, y ≈ 58 % (play = max(56, 0.15 s), r7); progress y 71 %, times y 76 % `detail` `tnum`; volume glyph top-right. Empty: §5.4 |
 | Notification | step 1: app icon/sender photo plate centred, Ø 30 % s, radius 28 %; step 2: plate **shrinks to the mini position first** (Ø 14 % s, top-leading of a 78 % W text block), then sender `title` + app·time `detail` fade in to its right, message `value`×0.8 (max 3 lines) below. Nothing overlaps the plate. Preview hidden → only icon + "메시지 1개" |
 | Live Activity | pill top-centre 3 % H: `ink4` bg, icon + short value in `la` = `acc`, `label` size. Tap → 2× full: header `label` + icon, value `display`, step bar (4 segments, `acc` / `ink3`), `detail`. Margins = board `M` |
 
