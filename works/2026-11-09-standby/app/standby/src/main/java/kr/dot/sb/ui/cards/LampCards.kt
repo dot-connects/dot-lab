@@ -39,7 +39,6 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.clock.StyledTime
 import kr.dot.sb.ui.screens.clockText
-import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
@@ -66,7 +65,6 @@ internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppCo
         CardType.TIMER -> LampTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { LampUsage(e, state, actions) } ?: return false
         CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) LampAgenda(e, state) else return false
-        CardType.MUSIC -> state.media?.takeIf { it.kind == MediaKind.MUSIC && e.cls != SizeClass.XS }?.let { LampMusic(e, state, actions) } ?: return false
         else -> return false
     }
     return true
@@ -289,63 +287,5 @@ private fun LampAgenda(e: Env, state: StandbyState) {
                 Txt(it.title, e.label, e.ink.ink, weight = 500)
             }
         }
-    }
-}
-
-// ---------------------------------------------------------------- music
-
-/** Rounded art, heavy title, soft artist, butter progress and a big butter play disc (mockup r5 C modular). */
-@Composable
-private fun LampMusic(e: Env, state: StandbyState, actions: StandbyActions) {
-    val m = state.media!!
-    val butter = e.ink.sun
-    val title = min(e.sz.title, e.read * 1.5f) // r7
-    val names = @Composable { mod: Modifier ->
-        Column(mod) {
-            Txt(m.title, title, e.ink.ink, weight = 800, num = true, maxW = e.cw)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(m.artist, e.read, e.readInk2, weight = 500, num = true)
-        }
-    }
-    val play = @Composable { d: Dp ->
-        Box(Modifier.size(d).clip(CircleShape).background(butter).tap(actions::mediaPlayPause), contentAlignment = Alignment.Center) {
-            IconView(if (m.playing) Ic.PAUSE else Ic.PLAY, onPastel(e), Modifier.size(d * 0.42f))
-        }
-    }
-    val bar = @Composable { w: Dp ->
-        val h = max(6.dp, e.label * 0.28f)
-        Box(Modifier.width(w).height(h).clip(RoundedCornerShape(50)).background(e.ink.ink.copy(alpha = 0.15f))) {
-            Box(Modifier.fillMaxWidth(progress(m).coerceIn(0f, 1f)).height(h).clip(RoundedCornerShape(50)).background(butter))
-        }
-    }
-    val d = max(44.dp, min(e.label * 2.6f, min(e.ch * 0.3f, e.cw * 0.3f)))
-    val radius = { a: Dp -> max(10.dp, a * 0.12f) }
-    if (e.w > e.h * 1.15f) {
-        val a = min(e.ch, e.cw * 0.45f)
-        Row(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-            Art(e, m.art, Ic.NOTE, Modifier.size(a), radius(a))
-            Spacer(Modifier.width(e.pad))
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                names(Modifier.fillMaxWidth())
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.weight(1f)) { bar(e.cw * 0.25f) }
-                    play(d)
-                }
-            }
-        }
-        return
-    }
-    val need = title * CAP_UI + e.read * CAP_UI + d + e.gap * 6
-    val a = min(e.ch - need, e.cw * 0.62f)
-    Box(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-        Column(Modifier.fillMaxWidth()) {
-            if (a >= e.label * 3) {
-                Art(e, m.art, Ic.NOTE, Modifier.size(a), radius(a))
-                Spacer(Modifier.height(e.gap * 3))
-            }
-            names(Modifier.fillMaxWidth())
-        }
-        Box(Modifier.align(Alignment.BottomStart).padding(bottom = (d - max(6.dp, e.label * 0.28f)) / 2)) { bar(min(e.cw - d - e.gap * 3, e.cw * 0.45f)) }
-        Box(Modifier.align(Alignment.BottomEnd)) { play(d) }
     }
 }

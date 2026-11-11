@@ -185,6 +185,8 @@ interface StandbyActions {
     fun mediaNext() {}
     fun mediaPrev() {}
     fun openMediaApp() {}
+    /** The media card's second tap: the full-screen Now Playing (StandbyRoot owns it). */
+    fun openNowPlaying() {}
     fun timerToggle(id: String) {}
     fun timerReset(id: String) {}
     fun sleepToggle() {}

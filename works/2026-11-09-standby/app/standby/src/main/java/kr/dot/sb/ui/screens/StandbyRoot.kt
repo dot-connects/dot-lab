@@ -124,6 +124,8 @@ internal fun RootImpl(
     val clockPage = remember { mutableIntStateOf(start.face) }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
+    // cards ask for Now Playing through the actions; the root owns the layer
+    val boardActions = remember(actions) { object : StandbyActions by actions { override fun openNowPlaying() { npOpen = true } } }
     val edits = remember { mutableStateMapOf<FaceId, ClockStyle>() }
     // unfolded + 무드등: the dream that survives the unfold turns into the glow in place (spec M1); a tap goes back to the board
     var moodOff by remember { mutableStateOf(false) }
@@ -184,14 +186,14 @@ internal fun RootImpl(
                     key = { if (it < FIXED_PAGES) "fixed-$it" else config.boards.getOrNull(it - FIXED_PAGES)?.id ?: "p$it" },
                 ) { page ->
                     when (page) {
-                        0 -> BoardPage(widgets, state, config, actions)
+                        0 -> BoardPage(widgets, state, config, boardActions)
                         1 -> PhotosPage(state, config, actions, active = pager.settledPage == 1 && layer == Layer.NONE)
                         2 -> ClocksPage(
                             state, config, clockPage, editing, { editing = it }, start.sheet,
                             styleOf = { f -> edits[f] ?: config.clockStyle(f) },
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
                         )
-                        else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, actions) }
+                        else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, boardActions) }
                     }
                 }
                 if (!editing && !mood) {

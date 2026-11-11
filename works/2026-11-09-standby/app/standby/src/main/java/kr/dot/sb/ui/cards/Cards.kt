@@ -190,8 +190,11 @@ private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind
         StateCard(e, ic, "미디어", ic, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
         return
     }
-    // r9 (operator, YouTube Music / YouTube refs): one look for music and video, picked by the slot's shape only
-    if (e.w / e.h <= 0.82f) MediaTall(e, m, actions) else MediaCover(e, m, actions)
+    // r9 (operator, YouTube Music / YouTube refs): one look for music and video in every theme, picked by the slot's shape
+    when (mediaShape(e.w.value, e.h.value)) {
+        MediaShape.TALL -> MediaTall(e, m, actions)
+        MediaShape.COVER -> MediaCover(e, m, actions)
+    }
 }
 
 @Composable
@@ -210,6 +213,12 @@ internal fun progress(m: MediaInfo) = if (m.durationMs > 0) m.positionMs.toFloat
 
 private fun mmss(ms: Long): String { val s = (ms / 1000).coerceAtLeast(0); return "%d:%02d".format(s / 60, s % 60) }
 
+/** Text and marks over the art (cover controls): white in every theme, the candle ink at night. */
+private fun overPicture(e: Env): Color = lerp(Color.White, e.ink.ink, e.ink.night)
+
+/** Dark see-through disc behind the cover's buttons. */
+private val scrimDisc = Color.Black.copy(alpha = 0.42f)
+
 /** One transport button: [fill] disc behind the glyph; a 48 dp target at least. */
 @Composable
 private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, onClick: () -> Unit) {
@@ -220,33 +229,28 @@ private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, on
 }
 
 /**
- * Prev / play-pause / next. [solid]: the play button is an ink disc with a dark glyph (YouTube Music portrait), the
- * side ones bare; otherwise all three sit on dark see-through discs over the picture (YouTube landscape). Slots under
- * 140 dp keep play-pause alone. [onUse] runs on any press (keeps a revealed overlay up).
+ * Prev / play-pause / next. [fg] glyph of the side buttons on [sideFill]; the play button is [playFg] on [playFill].
+ * Slots under 140 dp keep play-pause alone. [onUse] runs on any press (keeps a revealed overlay up).
  */
 @Composable
 private fun MediaTransport(
-    e: Env, m: MediaInfo, actions: StandbyActions, play: Dp, side: Dp, solid: Boolean, arrangement: Arrangement.Horizontal,
-    modifier: Modifier, onUse: () -> Unit = {},
+    e: Env, m: MediaInfo, actions: StandbyActions, play: Dp, side: Dp, fg: Color, sideFill: Color, playFill: Color, playFg: Color,
+    arrangement: Arrangement.Horizontal, modifier: Modifier, onUse: () -> Unit = {},
 ) {
-    val scrim = Color.Black.copy(alpha = 0.42f)
-    val playFill = if (solid) e.ink.ink else scrim
-    val playFg = if (solid) Color.Black else e.ink.ink
-    val sideFill = if (solid) Color.Transparent else scrim
     val one = e.w < 140.dp
     Row(modifier, horizontalArrangement = if (one) Arrangement.Center else arrangement, verticalAlignment = Alignment.CenterVertically) {
-        if (!one) MediaBtn(Ic.PREV, side, sideFill, e.ink.ink, m.canPrev) { onUse(); actions.mediaPrev() }
+        if (!one) MediaBtn(Ic.PREV, side, sideFill, fg, m.canPrev) { onUse(); actions.mediaPrev() }
         MediaBtn(if (m.playing) Ic.PAUSE else Ic.PLAY, play, playFill, playFg, true) { onUse(); actions.mediaPlayPause() }
-        if (!one) MediaBtn(Ic.NEXT, side, sideFill, e.ink.ink, m.canNext) { onUse(); actions.mediaNext() }
+        if (!one) MediaBtn(Ic.NEXT, side, sideFill, fg, m.canNext) { onUse(); actions.mediaNext() }
     }
 }
 
 @Composable
-private fun MediaTime(e: Env, ms: Long) = Txt(mmss(ms), 12.dp, e.ink.ink.copy(alpha = 0.7f), num = true)
+private fun MediaTime(ms: Long, c: Color) = Txt(mmss(ms), 12.dp, c, num = true)
 
 /**
  * Tall slot (w/h <= 0.82), YouTube Music portrait: art centred on top (video: 16:9 still), title and artist
- * left-aligned under it, bar + times, then prev / white play disc / next. Always shown. Tap opens the player.
+ * left-aligned under it, bar + times, then prev / ink play disc / next. Always shown. Tap opens Now Playing.
  */
 @Composable
 private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
@@ -256,25 +260,27 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
     val play = (w * 0.19f).coerceIn(52.dp, 80.dp)
     val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
     val video = m.kind == MediaKind.VIDEO
-    Column(Modifier.fillMaxSize().padding(pad).tap(actions::openMediaApp)) {
+    val ink = e.ink.ink
+    Column(Modifier.fillMaxSize().padding(pad).tap(actions::openNowPlaying)) {
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             val ah = min(maxHeight, if (video) maxWidth * (9f / 16f) else maxWidth)
             Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.size(if (video) maxWidth else ah, ah), (ah * 0.05f).coerceIn(8.dp, 18.dp))
         }
         Spacer(Modifier.height(gap))
-        Txt(m.title, ts, e.ink.ink, weight = 700, lines = if (video) 2 else 1)
+        Txt(m.title, ts, ink, weight = 700, lines = if (video) 2 else 1)
         Spacer(Modifier.height(4.dp))
         Txt(m.artist, ts * 0.78f, e.readInk2, weight = 500)
         Spacer(Modifier.height(gap))
-        Bar(e, progress(m), e.ink.ink)
+        Bar(e, progress(m), ink)
         if (w >= 180.dp) Row(Modifier.fillMaxWidth().padding(top = 5.dp)) {
-            MediaTime(e, m.positionMs)
+            MediaTime(m.positionMs, e.readInk2)
             Spacer(Modifier.weight(1f))
-            MediaTime(e, m.durationMs)
+            MediaTime(m.durationMs, e.readInk2)
         }
         Spacer(Modifier.height(gap * 1.4f))
+        // play disc = ink, glyph = the page colour (mockup: white disc + black glyph on the iPhone theme)
         MediaTransport(
-            e, m, actions, play, max(48.dp, play * 0.7f), solid = true, Arrangement.SpaceBetween,
+            e, m, actions, play, max(48.dp, play * 0.7f), ink, Color.Transparent, ink, e.ink.bg, Arrangement.SpaceBetween,
             Modifier.fillMaxWidth().padding(horizontal = w * 0.06f),
         )
     }
@@ -283,7 +289,7 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
 /**
  * Wide or square slot, YouTube landscape: the art / still fills the slot. At rest only the picture; a tap brings the
  * scrim, title top-leading, transport centred and bar + times along the bottom for [MEDIA_CONTROLS_MS] (any button
- * keeps them up); a tap while they show opens the player.
+ * keeps them up); a tap while they show opens Now Playing. Everything over the picture is white + scrim.
  */
 @Composable
 private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
@@ -293,7 +299,8 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
     LaunchedEffect(shown, tick) { if (shown) { delay(MEDIA_CONTROLS_MS); shown = false } }
     val a by animateFloatAsState(if (shown) 1f else 0f, tween(200), label = "media")
     val video = m.kind == MediaKind.VIDEO
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).tap { if (shown) actions.openMediaApp() else shown = true }) {
+    val fg = overPicture(e)
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).tap { if (shown) actions.openNowPlaying() else shown = true }) {
         Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.fillMaxSize(), 0.dp)
         if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
             val pad = (s * 0.07f).coerceIn(12.dp, 32.dp)
@@ -304,30 +311,31 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
             Box(
                 Modifier.fillMaxSize().background(
                     Brush.verticalGradient(
-                        0f to Color.Black.copy(alpha = 0.62f), 0.35f to Color.Black.copy(alpha = 0.38f),
-                        0.65f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.66f),
+                        0f to Color.Black.copy(alpha = 0.62f), 0.35f to Color.Black.copy(alpha = 0.38f), // scrim
+                        0.65f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.66f), // scrim
                     ),
                 ),
             )
             Column(Modifier.fillMaxWidth().padding(pad)) {
-                Txt(m.title, ts, e.ink.ink, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
+                Txt(m.title, ts, fg, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
                 if (s >= 150.dp) {
                     Spacer(Modifier.height(3.dp))
-                    Txt(m.artist, ts * 0.8f, e.ink.ink.copy(alpha = 0.75f), weight = 500)
+                    Txt(m.artist, ts * 0.8f, fg.copy(alpha = 0.75f), weight = 500)
                 }
             }
             MediaTransport(
-                e, m, actions, play, side, solid = false, Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+                e, m, actions, play, side, fg, scrimDisc, scrimDisc, fg, Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
                 Modifier.fillMaxWidth().align(Alignment.Center).offset(y = s * 0.04f), onUse = { tick++ },
             )
             val times = s >= 180.dp
+            val tc = fg.copy(alpha = 0.7f)
             Row(
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = pad).padding(bottom = pad * 0.8f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (times) { MediaTime(e, m.positionMs); Spacer(Modifier.width(10.dp)) }
-                Bar(e, progress(m), e.ink.ink, Modifier.weight(1f))
-                if (times) { Spacer(Modifier.width(10.dp)); MediaTime(e, m.durationMs) }
+                if (times) { MediaTime(m.positionMs, tc); Spacer(Modifier.width(10.dp)) }
+                Bar(e, progress(m), fg, Modifier.weight(1f), track = fg.copy(alpha = 0.25f))
+                if (times) { Spacer(Modifier.width(10.dp)); MediaTime(m.durationMs, tc) }
             }
         }
     }

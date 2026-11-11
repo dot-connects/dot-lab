@@ -60,11 +60,17 @@ fun shotPath(theme: Theme, group: String, name: String, device: Device? = null):
     "build/shots/${theme.name.lowercase()}/$group/$name${device?.let { "-" + it.label } ?: ""}.png"
 
 /** Render [content] under [theme] (ambient for ClockFace; BoardView/StandbyRoot also take it from their AppConfig). */
-fun ComposeContentTestRule.shot(group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, night: Float = 0f, content: @Composable () -> Unit) {
+fun ComposeContentTestRule.shot(
+    group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, night: Float = 0f,
+    /** Runs after the first frame, before the capture (a tap that reveals an overlay). */
+    act: (ComposeContentTestRule.() -> Unit)? = null,
+    content: @Composable () -> Unit,
+) {
     if (!groupOn(group)) return
     RuntimeEnvironment.setQualifiers(device.qualifiers)
     setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize()) { ThemeBackground(Themes.of(theme), night); content() } } }
     waitForIdle()
+    act?.invoke(this)
     onRoot().captureRoboImage(shotPath(theme, group, name, device))
 }
 

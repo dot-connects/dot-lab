@@ -230,7 +230,7 @@ grouping. Commit.
 
 | Task | Card | Notes |
 |---|---|---|
-| 10 | Media | port 50e5acb; card tap → `npOpen`; remove PaperMusic/LampMusic |
+| 10 | Media — done (as built: `mediaShape` picks the body; tall = ink text, ink play disc with a page-colour glyph, ink bar on ink3; cover overlay = `overPicture` white (candle ink at night) + scrim; new `StandbyActions.openNowPlaying()`, which `StandbyRoot` wraps (delegation) to set `npOpen` for board pages. Tall tap and the cover's second tap open Now Playing; the idle card still opens the app. `Bar` got a `track` arg. BoardShots gained `card-*-L-open[-night]` (tap via the new `shot(act=)`) and no-art cases. IPHONE board digit default left for Task 12) | port 50e5acb; card tap → `npOpen`; remove PaperMusic/LampMusic |
 | 11 | Notifications | new `NotifCard` for `NOTIF_LIST` slots (tiers + open plates + 10 s idle); picker hides `NOTIF_STACK` (`BoardScreens.kt:353`); D9 in `Listener` |
 | 12 | Clock + analog card | one/two-line rule; analog card date placement; **two clocks on a board: larger keeps accent, smaller = ink** (`BoardView` hero rule) |
 | 13 | Weather + calendar | Task 9 data |

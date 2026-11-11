@@ -31,7 +31,6 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.clock.StyledTime
 import kr.dot.sb.ui.screens.clockText
-import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
@@ -57,7 +56,6 @@ internal fun paperBody(type: CardType, e: Env, state: StandbyState, config: AppC
         CardType.TIMER -> PaperTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { PaperUsage(e, state, actions) } ?: return false
         CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) PaperAgenda(e, state) else return false
-        CardType.MUSIC -> state.media?.takeIf { it.kind == MediaKind.MUSIC && e.cls != SizeClass.XS }?.let { PaperMusic(e, state, actions) } ?: return false
         else -> return false
     }
     return true
@@ -266,55 +264,5 @@ private fun PaperAgenda(e: Env, state: StandbyState) {
     }
 }
 
-// ---------------------------------------------------------------- music
-
 /** Latin runs of a title in the italic serif (Hangul stays in Pretendard): "Ditto" set like a cover line. */
 internal fun italicSpans(text: String): AnnotatedString = numSpans(text, Fonts.instrumentItalic, 400)
-
-/** "재생 중" / square art / italic serif title / tracked artist / glyph transport (mockup r5 B modular). */
-@Composable
-private fun PaperMusic(e: Env, state: StandbyState, actions: StandbyActions) {
-    val m = state.media!!
-    val title = e.read * 1.6f // r7: the serif italic reads small, one step above the sans media title
-    val ctl = max(40.dp, e.read * 1.6f)
-    val names = @Composable { mod: Modifier ->
-        Column(mod) {
-            Txt(italicSpans(m.title), title, e.ink.ink, weight = 400, maxW = e.cw)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Txt(m.artist.uppercase(), e.meta, e.ink.ink2, weight = 500, tracking = e.t.labelTracking, num = true)
-        }
-    }
-    val transport = @Composable {
-        Row(horizontalArrangement = Arrangement.spacedBy(ctl * 0.9f), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(ctl).tap(if (m.canPrev) actions::mediaPrev else null)) { IconView(Ic.PREV, if (m.canPrev) e.ink.ink else e.ink.ink3, Modifier.fillMaxSize()) }
-            Box(Modifier.size(ctl).tap(actions::mediaPlayPause)) { IconView(if (m.playing) Ic.PAUSE else Ic.PLAY, e.ink.weekday, Modifier.fillMaxSize()) }
-            Box(Modifier.size(ctl).tap(if (m.canNext) actions::mediaNext else null)) { IconView(Ic.NEXT, if (m.canNext) e.ink.ink else e.ink.ink3, Modifier.fillMaxSize()) }
-        }
-    }
-    if (e.w > e.h * 1.15f) {
-        val a = min(e.ch, e.cw * 0.45f)
-        Row(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-            Art(e, m.art, Ic.NOTE, Modifier.size(a), 0.dp)
-            Spacer(Modifier.width(e.pad))
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                Kicker(e, "재생 중")
-                names(Modifier.fillMaxWidth())
-                transport()
-            }
-        }
-        return
-    }
-    val need = e.labelCap * 2 + title * CAP_UI + ctl + e.gap * 7.5f
-    val a = min(e.ch - need, e.cw)
-    Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-        Kicker(e, "재생 중")
-        Spacer(Modifier.height(e.gap * 2))
-        if (a >= e.label * 3) {
-            Art(e, m.art, Ic.NOTE, Modifier.size(a), 0.dp)
-            Spacer(Modifier.height(e.gap * 3))
-        }
-        names(Modifier.fillMaxWidth())
-        Spacer(Modifier.weight(1f))
-        transport()
-    }
-}

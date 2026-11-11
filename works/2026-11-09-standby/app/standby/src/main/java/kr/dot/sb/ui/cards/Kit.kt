@@ -303,8 +303,8 @@ internal fun Detail(e: Env, text: String, color: Color = e.ink.ink2, modifier: M
 
 /** Progress / usage bar (§2.4): full radius, track ink3. */
 @Composable
-internal fun Bar(e: Env, frac: Float, fill: Color, modifier: Modifier = Modifier) {
-    Box(modifier.fillMaxWidth().height(e.bar).clip(RoundedCornerShape(50)).background(e.ink.ink3)) {
+internal fun Bar(e: Env, frac: Float, fill: Color, modifier: Modifier = Modifier, track: Color = e.ink.ink3) {
+    Box(modifier.fillMaxWidth().height(e.bar).clip(RoundedCornerShape(50)).background(track)) {
         Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).height(e.bar).clip(RoundedCornerShape(50)).background(fill))
     }
 }
