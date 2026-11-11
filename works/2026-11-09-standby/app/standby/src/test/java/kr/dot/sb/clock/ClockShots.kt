@@ -1,5 +1,6 @@
 package kr.dot.sb.clock
 
+import kr.dot.sb.ui.theme.ThemeBackground
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -64,7 +65,7 @@ class ClockShots(private val theme: Theme) {
     private fun shots(device: Device, items: List<Pair<String, @Composable () -> Unit>>) {
         RuntimeEnvironment.setQualifiers(device.qualifiers)
         var current by mutableStateOf(items.first().second)
-        rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { current() } } }
+        rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize()) { ThemeBackground(Themes.of(theme), 0f); current() } } }
         for ((name, content) in items) {
             current = content
             rule.waitForIdle()
@@ -79,7 +80,10 @@ class ClockShots(private val theme: Theme) {
             Box(Modifier.fillMaxSize().background(Ink.of(state.night, Color.White).mapped(Color(0xFF3F6D8C)))) {
                 ClockFace(f, style, state, Modifier.fillMaxSize())
             }
-        } else ClockFace(f, style, state, Modifier.fillMaxSize())
+        } else Box(Modifier.fillMaxSize()) {
+            ThemeBackground(Themes.of(theme), state.night)
+            ClockFace(f, style, state, Modifier.fillMaxSize())
+        }
     }
 
     private fun matrix(device: Device) = shots(device, faces.map { f -> "${f.name.lowercase()}-day" to face(f) })

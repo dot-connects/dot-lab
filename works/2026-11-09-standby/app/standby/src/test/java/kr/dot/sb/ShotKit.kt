@@ -1,5 +1,7 @@
 package kr.dot.sb
 
+import kr.dot.sb.ui.theme.Themes
+import kr.dot.sb.ui.theme.ThemeBackground
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -58,10 +60,10 @@ fun shotPath(theme: Theme, group: String, name: String, device: Device? = null):
     "build/shots/${theme.name.lowercase()}/$group/$name${device?.let { "-" + it.label } ?: ""}.png"
 
 /** Render [content] under [theme] (ambient for ClockFace; BoardView/StandbyRoot also take it from their AppConfig). */
-fun ComposeContentTestRule.shot(group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, content: @Composable () -> Unit) {
+fun ComposeContentTestRule.shot(group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, night: Float = 0f, content: @Composable () -> Unit) {
     if (!groupOn(group)) return
     RuntimeEnvironment.setQualifiers(device.qualifiers)
-    setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { content() } } }
+    setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize()) { ThemeBackground(Themes.of(theme), night); content() } } }
     waitForIdle()
     onRoot().captureRoboImage(shotPath(theme, group, name, device))
 }

@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.clock
 
+import kr.dot.sb.ui.theme.ThemeTokens
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -252,9 +253,9 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
 
         /** Glass stroke = mix(acc, white 65 %), never darker than luminance 0.5 (so it never reads dark on black). */
         fun glassStroke(c1: Int): Int {
-            var c = lerp(Color(c1), Color.White, 0.65f)
+            var c = lerp(Color(c1), Color.White, 0.65f) // literal-ok: glass highlight = fill pushed toward white
             var k = 0.65f
-            while (c.luminance() < 0.5f && k < 1f) { k += 0.05f; c = lerp(Color(c1), Color.White, k) }
+            while (c.luminance() < 0.5f && k < 1f) { k += 0.05f; c = lerp(Color(c1), Color.White, k) } // literal-ok
             return c.toArgb()
         }
     }
@@ -267,14 +268,18 @@ internal fun rememberTimePainter(style: ClockStyle, weight: Int = style.weight, 
     return remember(tf, weight, style.font, style.widthPct, style.numerals, tnum) { TimePainter(tf, weight, style.font, style.widthPct, style.numerals, tnum) }
 }
 
-/** Night-aware background colours (N4: black at night). Solar keeps a red-black plate (§5.2). */
-internal fun bgColors(style: ClockStyle, ink: Ink, nightPlate: Color = Color.Black): Pair<Int, Int>? {
+/**
+ * Face background colours; null = paint nothing ([kr.dot.sb.model.Background.BLACK] means "the page", r9 D4b). Own
+ * colours fade to the night page (or [nightPlate], Solar's candle plate) as night rises.
+ */
+internal fun bgColors(style: ClockStyle, ink: Ink, nightPlate: Color? = null): Pair<Int, Int>? {
+    val to = nightPlate ?: ThemeTokens.NIGHT_BG.base
     val (a, b) = when (style.background) {
-        kr.dot.sb.model.Background.BLACK -> return if (nightPlate != Color.Black && ink.night > 0f) lerp(Color.Black, nightPlate, ink.night).toArgb().let { it to it } else null
+        kr.dot.sb.model.Background.BLACK -> return nightPlate?.takeIf { ink.night > 0f }?.copy(alpha = ink.night)?.toArgb()?.let { it to it }
         kr.dot.sb.model.Background.COLOR -> Color(style.bgColor) to Color(style.bgColor)
         kr.dot.sb.model.Background.GRADIENT -> Color(style.bgColor) to Color(style.bgColor2)
     }
-    return lerp(a, nightPlate, ink.night).toArgb() to lerp(b, nightPlate, ink.night).toArgb()
+    return lerp(a, to, ink.night).toArgb() to lerp(b, to, ink.night).toArgb()
 }
 
 /** Paint the face background ([r] > 0 = rounded plate, used in slots). 105° gradient like the mockup. */

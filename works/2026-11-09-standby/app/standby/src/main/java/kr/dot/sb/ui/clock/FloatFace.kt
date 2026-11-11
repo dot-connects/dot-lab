@@ -38,11 +38,13 @@ internal fun FloatFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
     val roll = remember(digits) { Animatable(if (from == digits || from.length != digits.length) 1f else 0f) }
     LaunchedEffect(digits) { roll.animateTo(1f, tween(Motion.FLOAT_ROLL_MS, easing = FastOutSlowInEasing)) }
     val bgStyle = bgColors(style, ink)
+    val lightPage = ink.tokens.light && ink.night < 0.5f
+    val mix = if (lightPage) BlendMode.MULTIPLY else BlendMode.SCREEN
     val colon = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = TimePainter.withAlpha(ink.mapped(Color(0xFFD5D9DF)).toArgb(), 0.85f)
-        blendMode = BlendMode.SCREEN
+        color = TimePainter.withAlpha(ink.ink2.toArgb(), 0.85f)
+        blendMode = mix
     }
-    val screen = Paint().apply { blendMode = if (look.effect == Effect.GLASS || style.font == FontId.RAILS) BlendMode.SRC_OVER else BlendMode.SCREEN }
+    val screen = Paint().apply { blendMode = if (look.effect == Effect.GLASS || style.font == FontId.RAILS) BlendMode.SRC_OVER else mix }
     val fade = Paint()
 
     FaceCanvas(modifier) {

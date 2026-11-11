@@ -36,7 +36,7 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
     val p = rememberTimePainter(style)
     val bold = rememberUi(700)
     val reg = rememberUi(500)
-    val look = Look.of(style, ink, base = Color.White, base2 = Color(style.color2))
+    val look = Look.of(style, ink, base = ink.ink, base2 = Color(style.color2))
     val lit = ink.mapped(Color(style.litDotColor)).toArgb()
     val dark = ink.ink3.toArgb()
     val acc = ink.acc.toArgb()

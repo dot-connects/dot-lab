@@ -133,7 +133,7 @@ fun HostContent(holder: StandbyStateHolder, actions: StandbyActions) {
     val state by holder.state.collectAsState()
     val config by holder.uiConfig.collectAsState()
     val rotation by holder.rotation.collectAsState()
-    RotatedBox(rotation, Modifier.fillMaxSize().background(Color.Black)) {
+    RotatedBox(rotation, Modifier.fillMaxSize().background(Color.Black)) { // literal-ok: display off = pure black
         val ctx = androidx.compose.ui.platform.LocalContext.current
         // colour edits made in the clocks page edit mode persist like settings edits
         StandbyRoot(state, config, actions, Modifier.fillMaxSize()) { face, style ->

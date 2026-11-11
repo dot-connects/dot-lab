@@ -306,22 +306,20 @@ object Themes {
 
     /**
      * Clock defaults of the seven r9 themes: digits/second hand = accent, hands/numerals = ink, ticks = ink2 on the page;
-     * light themes put the clock on their own page colour. Digits are [FontId.THEME] (D4b); SOLAR keeps its gradients.
+     * clocks sit on the page (Background.BLACK = page, D4b). Digits are [FontId.THEME] (D4b); SOLAR keeps its gradients.
      */
     private fun r9Defaults(tk: ThemeTokens): (FaceId) -> ClockStyle = { face ->
         val font = FontId.THEME; val weight = tk.digitWeight
         val ink = tk.ink.long(); val acc = tk.accent.long()
         val tick = tk.ink.copy(alpha = tk.ink2).compositeOver(tk.bg.base).long()
-        val bg = if (tk.light) Background.COLOR else Background.BLACK
-        val page = tk.bg.base.long()
         when (face) {
             FaceId.ANALOG -> ClockStyle(
-                font, weight, color = acc, background = bg, bgColor = page, numeralColor = ink, handColor = ink,
+                font, weight, color = acc, numeralColor = ink, handColor = ink,
                 secondColor = acc, weekdayColor = tk.accentText.long(), tickColor = tick,
             )
             FaceId.SOLAR -> ClockStyle.default(face).copy(font = font, weight = weight)
             FaceId.PHOTOS_TIME -> ClockStyle(font, weight, color = 0xFFFFFFFF)
-            else -> ClockStyle(font, weight, color = acc, background = bg, bgColor = page, litDotColor = tick)
+            else -> ClockStyle(font, weight, color = acc, litDotColor = tick)
         }
     }
 

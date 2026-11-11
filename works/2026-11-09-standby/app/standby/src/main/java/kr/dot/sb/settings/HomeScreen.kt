@@ -73,7 +73,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv, update: Update = {
         }
         if (full) {
             val none = remember { MutableInteractionSource() }
-            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black).clickable(interactionSource = none, indication = null) { full = false }) {
+            Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black /* literal-ok: behind the root */).clickable(interactionSource = none, indication = null) { full = false }) {
                 StandbyRoot(Sample.state(config), config, StandbyActions.NONE, Modifier.fillMaxSize())
                 Box(Modifier.align(Alignment.BottomCenter).systemBarsPadding().padding(bottom = 16.dp).clip(RoundedCornerShape(50)).background(SK.scrim).padding(horizontal = 14.dp, vertical = 8.dp)) {
                     T("화면을 누르면 닫혀요", 13.sp, 500, SK.text)

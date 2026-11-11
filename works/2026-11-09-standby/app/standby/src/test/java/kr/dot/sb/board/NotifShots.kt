@@ -32,8 +32,9 @@ import org.robolectric.annotation.GraphicsMode
 class NotifShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String, private val theme: Theme) {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun shot() = rule.shot("notif", name, device, theme) {
-        BoardView(board, stateOf(stateKey), AppConfig(theme = theme), StandbyActions.NONE)
+    @Test fun shot() {
+        val s = stateOf(stateKey)
+        rule.shot("notif", name, device, theme, s.night) { BoardView(board, s, AppConfig(theme = theme), StandbyActions.NONE) }
     }
 
     companion object {

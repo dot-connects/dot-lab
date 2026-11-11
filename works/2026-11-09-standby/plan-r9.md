@@ -183,7 +183,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
 - [ ] Reading: delete `Reading` and the reading part of `TypeScale.meta`; `Env.read/head/meta` = 15/18/13 dp ×
   `LocalTextScale`; every caller moved (grep `Reading\.` = 0). Shot test `PrimitivesShots`. Commit.
 
-### Task 6: Background ownership on every page
+### Task 6: Background ownership on every page — done (as built: r9 clock defaults use Background.BLACK = page for light themes too; `bgColors` paints nothing for BLACK and fades own colours to the night page; the gate also skips `ui/theme/Tokens.kt` (token defs) and settings/ chrome; `copy(theme` lives in `ui/theme/Theme.kt` (`withTheme`), not model/Config.kt; check_light samples corners + edge midpoints (not gutters), fails on ≥ 3 dark samples, skips Solar/photo time; shot harness draws `ThemeBackground` instead of a black box)
 **Files:** `StandbyRoot.kt:157-158`, `settings/Host.kt:136`, `settings/Preview.kt:67`, `TimeText.kt:270-277`,
 `DigitalFaces.kt:312` (digital + desk), `WorldFace.kt:39`, `FloatFace.kt:42`, `SolarFace`, `PhotosPage.kt`, `Overlays.kt`.
 - [ ] Rule: the root draws `ThemeBackground`; a face/overlay paints its own background only when the clock style says

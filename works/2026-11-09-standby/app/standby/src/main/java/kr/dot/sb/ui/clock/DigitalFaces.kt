@@ -309,7 +309,7 @@ internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val cap = p.capEm * fs
         val top = (h - (if (two) 2 * cap + gap else cap)) / 2
         return@FaceCanvas {
-            drawFaceBg(bg ?: (Color.Black.toArgb() to Color.Black.toArgb()), w, h, r)
+            drawFaceBg(bg, w, h, r)
             drawTime(p, d, fs, two, gap, w / 2, top, look)
         }
     }

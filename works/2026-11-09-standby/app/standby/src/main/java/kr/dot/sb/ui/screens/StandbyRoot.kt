@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.screens
 
+import kr.dot.sb.ui.theme.ThemeBackground
 import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -155,11 +156,15 @@ internal fun RootImpl(
     LaunchedEffect(barOn, barTick, barPressed) { if (barOn && !barPressed) { delay(BAR_HIDE_MS); barOn = false } }
 
     BoxWithConstraints(
-        modifier.fillMaxSize().background(Color.Black)
+        modifier.fillMaxSize()
             .pointerInput(Unit) { rootGestures({ act.userActivity() }, { act.exit() }, { canBar }, { barOpen() }, { barSlide(it) }, { barUp() }) },
     ) {
         // Display off: pure black, nothing else composed; the root gesture above is the tap catcher (spec E14).
         if (state.displayOff) return@BoxWithConstraints
+        ThemeBackground(
+            LocalTheme.current, state.night, bg = config.boardBg, custom = Color(config.boardBgColor),
+            photo = state.media?.art ?: state.memory?.image,
+        )
         val w = maxWidth
         val h = maxHeight
         val accent = Color(config.clockStyle(FaceId.DIGITAL).color)

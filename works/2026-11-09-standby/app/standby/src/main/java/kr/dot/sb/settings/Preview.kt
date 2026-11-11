@@ -64,7 +64,8 @@ fun PreviewFrame(
         val cap = if (LocalPreviewPane.current) Dp.Infinity else maxHeight
         val scale = min(maxWidth.value / w, cap.value / h)
         val shape = RoundedCornerShape(radius)
-        Box(Modifier.size((w * scale).dp, (h * scale).dp).clip(shape).background(Color.Black).border(1.dp, SK.line, shape)) {
+        Box(Modifier.size((w * scale).dp, (h * scale).dp).clip(shape).border(1.dp, SK.line, shape)) {
+            kr.dot.sb.ui.theme.ThemeBackground(kr.dot.sb.ui.theme.LocalTheme.current, 0f)
             Box(
                 Modifier.layout { measurable, _ ->
                     val pw = w.dp.roundToPx()

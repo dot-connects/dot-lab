@@ -33,8 +33,9 @@ import org.robolectric.annotation.GraphicsMode
 class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String, private val theme: Theme) {
     @get:Rule val rule = createComposeRule()
 
-    @Test fun shot() = rule.shot("board", name, device, theme) {
-        BoardView(board, stateOf(stateKey, board), AppConfig(theme = theme), StandbyActions.NONE)
+    @Test fun shot() {
+        val s = stateOf(stateKey, board)
+        rule.shot("board", name, device, theme, s.night) { BoardView(board, s, AppConfig(theme = theme), StandbyActions.NONE) }
     }
 
     companion object {
