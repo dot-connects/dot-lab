@@ -89,7 +89,7 @@ val LocalSlotLabel = compositionLocalOf<Dp?> { null }
 
 /** Derived accent shades (design-system §2.1: accDeep = S+0.35, L−0.25 floor 0.15; accLight = L+0.12). */
 object Hsl {
-    private fun toHsl(c: Color): FloatArray {
+    internal fun toHsl(c: Color): FloatArray {
         val r = c.red; val g = c.green; val b = c.blue
         val mx = fmax(r, fmax(g, b)); val mn = fmin(r, fmin(g, b))
         val l = (mx + mn) / 2f

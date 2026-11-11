@@ -6,3 +6,4 @@ local.properties
 # Roborazzi screenshots are review output, not source
 standby/build/
 tools/baseline-r8/
+tools/baseline-r9/

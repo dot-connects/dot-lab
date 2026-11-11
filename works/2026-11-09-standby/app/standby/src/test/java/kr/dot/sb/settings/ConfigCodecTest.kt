@@ -152,7 +152,8 @@ class ConfigCodecTest {
         assertEquals(def.background, s.background)
         assertEquals(80, s.sizePct)
         // a colour-only edit collapses back into the theme default (same-shape themes)
-        val only = d.copy(styles = mapOf(FaceId.WORLD to d.clockStyle(FaceId.WORLD).copy(color = 0xFF123456))).withTheme(Theme.CANDLE)
+        val candle = AppConfig(theme = Theme.CANDLE)
+        val only = candle.copy(styles = mapOf(FaceId.WORLD to candle.clockStyle(FaceId.WORLD).copy(color = 0xFF123456))).withTheme(Theme.SKY)
         assertEquals(null, only.styles[FaceId.WORLD])
     }
 

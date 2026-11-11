@@ -45,6 +45,9 @@ object Fonts {
     val instrument: FontFamily by lazy { FontFamily(Font(R.font.instrument_serif, FontWeight.Normal)) }
     val instrumentItalic: FontFamily by lazy { FontFamily(Font(R.font.instrument_serif_italic, FontWeight.Normal)) }
 
+    /** IBM Plex Mono Medium (TERMINAL digits): one static 500 cut. */
+    val plexMono: FontFamily by lazy { FontFamily(Font(R.font.plex_mono_500, FontWeight.Medium)) }
+
     /** Nunito 800/900 (theme C widget numerals): every request resolves to one of the two heavy cuts. */
     val nunitoHeavy: FontFamily by lazy {
         FontFamily(

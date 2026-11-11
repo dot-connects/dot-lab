@@ -5,6 +5,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.text.font.FontFamily
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.model.AppConfig
@@ -179,6 +181,8 @@ class StandbyTheme(
     val labelTracking: Float = 0f,
     /** Plate wash per card type (C): the plate's gradient leans to this colour; null = plain plate. */
     val tint: (CardType) -> Color? = { null },
+    /** r9 tokens (Task 3); nothing reads them until Task 4. */
+    val tokens: ThemeTokens = ThemeTokens.IPHONE,
 )
 
 object Themes {
@@ -199,6 +203,7 @@ object Themes {
         radius = 0.12f,
         colorIcons = true,
         artTint = true,
+        tokens = ThemeTokens.IPHONE,
     )
 
     private const val P_FG = 0xFFEFE8DC
@@ -238,6 +243,7 @@ object Themes {
         family = Family.PAPER,
         labelIcons = false,
         labelTracking = 0.08f,
+        tokens = ThemeTokens.PAPER,
     )
 
     /** C 무드등 (mockup r5 C): Nunito heavy numerals, warm plates washed per function, soft pastel accents. */
@@ -291,14 +297,58 @@ object Themes {
                 CardType.VIDEO, CardType.MEMORIES, CardType.NOTIF_STACK, CardType.NOTIF_LIST -> null
             }
         },
+        tokens = ThemeTokens.MOODLIGHT,
     )
+
+    private fun Color.long(): Long = toArgb().toLong() and 0xFFFFFFFFL
+
+    /**
+     * Clock defaults of the seven r9 themes: digits/second hand = accent, hands/numerals = ink, ticks = ink2 on the page;
+     * light themes put the clock on their own page colour. [font] stands in for the theme digit font until Task 5 (FontId.THEME).
+     */
+    private fun r9Defaults(tk: ThemeTokens, font: FontId, weight: Int): (FaceId) -> ClockStyle = { face ->
+        val ink = tk.ink.long(); val acc = tk.accent.long()
+        val tick = tk.ink.copy(alpha = tk.ink2).compositeOver(tk.bg.base).long()
+        val bg = if (tk.light) Background.COLOR else Background.BLACK
+        val page = tk.bg.base.long()
+        when (face) {
+            FaceId.ANALOG -> ClockStyle(
+                font, weight, color = acc, background = bg, bgColor = page, numeralColor = ink, handColor = ink,
+                secondColor = acc, weekdayColor = tk.accentText.long(), tickColor = tick,
+            )
+            FaceId.SOLAR -> ClockStyle.default(face).copy(font = font, weight = weight)
+            FaceId.PHOTOS_TIME -> ClockStyle(font, weight, color = 0xFFFFFFFF)
+            else -> ClockStyle(font, weight, color = acc, background = bg, bgColor = page, litDotColor = tick)
+        }
+    }
+
+    /** r9 themes: every non-token field copied from [IPHONE] (those fields go in Task 22). */
+    private fun r9(id: Theme, tk: ThemeTokens, font: FontId, weight: Int) = StandbyTheme(
+        id = id, palette = IPHONE.palette, words = IPHONE.words, wordsCap = IPHONE.wordsCap, numerals = IPHONE.numerals,
+        numeralsCap = IPHONE.numeralsCap, time = IPHONE.time, timeCap = IPHONE.timeCap, clockFamily = IPHONE.clockFamily,
+        clockDefaults = r9Defaults(tk, font, weight), ramp = IPHONE.ramp, minText = IPHONE.minText, surface = IPHONE.surface,
+        radius = IPHONE.radius, colorIcons = IPHONE.colorIcons, artTint = IPHONE.artTint, tokens = tk,
+    )
+
+    val CANDLE = r9(Theme.CANDLE, ThemeTokens.CANDLE, FontId.THIN, 200)
+    val FLIP = r9(Theme.FLIP, ThemeTokens.FLIP, FontId.CONDENSED, 700)
+    val SKY = r9(Theme.SKY, ThemeTokens.SKY, FontId.THIN, 200)
+    val DAYPAPER = r9(Theme.DAYPAPER, ThemeTokens.DAYPAPER, FontId.SERIF, 600)
+    val RADIO = r9(Theme.RADIO, ThemeTokens.RADIO, FontId.BOLD, 500)
+    val NEON = r9(Theme.NEON, ThemeTokens.NEON, FontId.CONDENSED, 400)
+    val TERMINAL = r9(Theme.TERMINAL, ThemeTokens.TERMINAL, FontId.LIGHT, 400)
 
     fun of(t: Theme): StandbyTheme = when (t) {
         Theme.IPHONE -> IPHONE
         Theme.PAPER -> PAPER
         Theme.MOODLIGHT -> MOODLIGHT
-        // r9 Task 2: the seven new themes borrow IPHONE until Task 3 gives them their own entries
-        Theme.CANDLE, Theme.FLIP, Theme.SKY, Theme.DAYPAPER, Theme.RADIO, Theme.NEON, Theme.TERMINAL -> IPHONE
+        Theme.CANDLE -> CANDLE
+        Theme.FLIP -> FLIP
+        Theme.SKY -> SKY
+        Theme.DAYPAPER -> DAYPAPER
+        Theme.RADIO -> RADIO
+        Theme.NEON -> NEON
+        Theme.TERMINAL -> TERMINAL
     }
 }
 

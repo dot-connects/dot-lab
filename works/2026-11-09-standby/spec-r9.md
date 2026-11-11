@@ -58,11 +58,11 @@ geometry identical to `BoardView.slots`). When this file and the page disagree, 
 | 아이폰 (따뜻하게) | bg #000, ink #F6EFE6, accent #FFAD5C, plate #1C1A18, r 26, digits condensed 600 (app font Sofia Sans Extra Condensed; the mockup used Barlow Condensed) |
 | 신문 1면 | bg #0E0D0B, ink #ECE4D4, accent #D8B46A, rules instead of plates, r 0, serif italic digits |
 | 무드등 | bg #14100C + warm glow, ink #FFF2E2, accent #FFB36B, plate #2B2119, r 32, light sans digits |
-| 촛불 (new) | bg #0C0805 + candle glow from the bottom, ink #EAD9C2, accent #E3A35B, plate 6 % warm, r 28, thin sans digits |
+| 촛불 (new) | bg #0C0805 + candle glow from the bottom, ink #EAD9C2, accent #E3A35B (text #E6AD6C), plate 6 % warm, r 28, thin sans digits |
 | 플립 시계 (new) | bg #0C0C0C, ink #F2F2F2, accent #FF9F0A, plate #1F1F1F, r 14, split-flap digit tiles |
-| 하늘 (new) | time-of-day gradient bg (dusk stop darkened for contrast), ink #FFF, accent #FFD29A, glass plates 14 %, r 26, extra-light digits |
-| 종이 · 낮 (new) | bg #F3EEE4, ink #1D1A16, accent #B23A0B (darkened for contrast), plate #E8E1D3, r 18, serif digits (light theme) |
-| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #E8641C kept by the operator (shapes: knobs, dots, rings); accent **text** uses the darker #A8420E (4.9:1), plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
+| 하늘 (new) | time-of-day gradient bg #1B2A4A → #31355A → #552D32 (dusk stops darkened so accent text passes 4.5:1 on glass), ink #FFF, accent #FFD29A, glass plates 14 %, r 26, extra-light digits |
+| 종이 · 낮 (new) | bg #F3EEE4, ink #1D1A16, accent #B23A0B (text #A6360A for 4.5:1 on plates), plate #E8E1D3, r 18, serif digits (light theme) |
+| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #E8641C kept by the operator (shapes: knobs, dots, rings); accent **text** uses the darker #9C3D0D (≥ 4.5:1 on page and plates), plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
 | 네온 (new) | bg #000, ink #7DF9FF, accent #FF4FD8, outlined plates with glow, r 24, condensed digits with glow |
 | 터미널 (new) | bg #050805, ink #59FF7A, accent #FFB000, outlined plates, r 4, IBM Plex Mono |
 

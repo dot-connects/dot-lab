@@ -85,7 +85,7 @@ Round logs: `docs/archive/2026-11-11-standby-r9-plan-review/` (workspace root). 
   `Themes.of(cfg.theme).tokens.monoIcons` instead of `theme == Theme.PAPER` (Task 11).
 - **D10** Fire sound is synthesised in the existing `AudioTrack` path (filtered noise + random crackle bursts in
   `NoiseGen`), so fade/timer/stop work unchanged; a recorded asset only if the operator dislikes it on device.
-- **D12** `ThemeTokens.accentText` (default = accent): the accent used for **text**. RADIO keeps #E8641C for shapes (operator, 2026-11-11) and uses #A8420E for text; the contrast test checks `accentText`/plate ≥ 4.5 and `accent` only as a shape colour.
+- **D12** `ThemeTokens.accentText` (default = accent): the accent used for **text**. RADIO keeps #E8641C for shapes (operator, 2026-11-11; below 3:1, waived in the test) and uses #9C3D0D for text; CANDLE text #E6AD6C, DAYPAPER text #A6360A; the contrast test checks `accentText`/plate ≥ 4.5 and `accent` only as a shape colour.
 - **D13** Phone widget at night: light widget → invert colour matrix (invert, hue-rotate 180°, warm toward candle, brightness .75); dark widget → candle tone (grayscale + sepia, dim). Light/dark from the mean luminance of a 16×16 downscale of the widget bitmap, recomputed on each `updateAppWidget`.
 - **D11** Role colours are **derived**, not hand-set: `Roles.derive(base = iOS system set, bg, light)` adjusts
   lightness until contrast ≥ 3:1 on bg; TERMINAL and NEON map every role to accent/ink variants.
@@ -99,9 +99,9 @@ Round logs: `docs/archive/2026-11-11-standby-r9-plan-review/` (workspace root). 
 | MOODLIGHT | #14100C + glow #FFAA5A2E at (.3,.4) | #FFF2E2 | .60 / .32 | #FFB36B | #2B2119 / #3A2C21 | FILL | .09, 16 | Pretendard 300, PLAIN | no | no | 0 |
 | CANDLE | #0C0805 + glow #FFA05047 at (.5,1.15) | #EAD9C2 | .55 / .30 | #E3A35B | #FFCD960F / #FFCD961A | FILL | .085, 16 | Pretendard 200, PLAIN | no | no | 0 |
 | FLIP | #0C0C0C | #F2F2F2 | .55 / .30 | #FF9F0A | #1F1F1F / #2A2A2A | FILL | .05, 10 | `sofia_xcond` 700, FLIP | no | no | 0 |
-| SKY | gradient #1B2A4A→#3A3F6B→#7A4148 (time of day; stops darkened until contrast passes) | #FFFFFF | .70 / .40 | #FFD29A | #FFFFFF24 / #FFFFFF33 | GLASS | .075, 12 | Pretendard 200, PLAIN | no | no | 0 |
+| SKY | gradient #1B2A4A→#31355A→#552D32 (time of day; last two stops darkened in Task 3) | #FFFFFF | .70 / .40 | #FFD29A | #FFFFFF24 / #FFFFFF33 | GLASS | .075, 12 | Pretendard 200, PLAIN | no | no | 0 |
 | DAYPAPER | #F3EEE4 | #1D1A16 | .60 / .35 | #B23A0B | #E8E1D3 / #DDD4C3 | FILL | .055, 10 | `source_serif` 600, PLAIN | yes | no | 0 |
-| RADIO | #D9D3C7 | #2A2723 | .62 / .38 | #E8641C (shapes) · text #A8420E | #EBE6DC / #E0DACE | FILL | .065, 12 | `inter` 500, PLAIN | yes | no | 0 |
+| RADIO | #D9D3C7 | #2A2723 | .62 / .38 | #E8641C (shapes) · text #9C3D0D | #EBE6DC / #E0DACE | FILL | .065, 12 | `inter` 500, PLAIN | yes | no | 0 |
 | NEON | #000000 | #7DF9FF | .55 / .30 | #FF4FD8 | transparent / #7DF9FF14 | OUTLINE | .07, 12 | `sofia_xcond` 400, GLOW | no | yes | 0 |
 | TERMINAL | #050805 | #59FF7A | .55 / .30 | #FFB000 | transparent / #59FF7A12 | OUTLINE | .012, 4 | `plex_mono_500` 500, PLAIN | no | yes | .02 |
 | NIGHT_CANDLE | #000000 + glow #FFAA5A14 at (.5,1.15) | #B9A48C | .58 / .30 | = ink | #B9A48C0F / #B9A48C1A | FILL (effects off) | theme | theme font, weight min(theme, 400) | — | — | theme |
@@ -150,7 +150,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
   `clockStyle(face)`; reset path test (`styles - face`); theme-change colour reset test; `editStack` re-keying test.
 - [ ] Implement; suite green; Roborazzi compare 0 diff (old themes). Commit.
 
-### Task 3: ThemeTokens, ten themes, derived roles, contrast floors
+### Task 3: ThemeTokens, ten themes, derived roles, contrast floors — done
 **Files:** Create `ui/theme/ThemeTokens.kt`; `ui/theme/Theme.kt`, `ui/theme/Fonts.kt`; Test `TokenContrastTest.kt`.
 - [ ] `ThemeTokens(bg: BgSpec, ink, ink2: Float, ink3: Float, accent, plate, plate2, plateStyle, radiusRatio,
   radiusMin: Dp, digitFont: Font, digitWeight, digitStyle, light, monoIcons, labelIcons, tracking)`; `Roles.derive`

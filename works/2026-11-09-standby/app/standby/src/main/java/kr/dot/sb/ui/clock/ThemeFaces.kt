@@ -55,9 +55,13 @@ import kotlin.math.sin
  * the second hand on its own layer at 1 Hz, every glow a static gradient (none at night).
  */
 
+/** Unit tests pin the second hand (Gradle sets `shot.second`) so shots compare byte-for-byte. */
+internal val fixedSecond: Int? = System.getProperty("shot.second")?.toIntOrNull()
+
 /** Seconds 0-59, ticking at 1 Hz off the frame clock while composed (analog second hands). */
 @Composable
 internal fun rememberSecond(): IntState {
+    fixedSecond?.let { return remember { mutableIntStateOf(it) } }
     val second = remember { mutableIntStateOf(((System.currentTimeMillis() / 1000) % 60).toInt()) }
     LaunchedEffect(Unit) {
         while (true) {

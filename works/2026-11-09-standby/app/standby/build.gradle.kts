@@ -43,7 +43,7 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             // r9 shot filters: -Pshot.themes=IPHONE,DAYPAPER -Pshot.group=board
-            all { t -> listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } } }
+            all { t -> listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10") }
         }
     }
 }
