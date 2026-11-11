@@ -212,6 +212,8 @@ interface StandbyActions {
     fun alarmSnooze() {}
     fun alarmStop() {}
     fun notificationTap(key: String) {}
+    /** New-notification banner tap: the board's notification card opens expanded (StandbyRoot owns it); no card → the app. */
+    fun openNotifCard(key: String) = notificationTap(key)
     /** Closes the big notification overlay (it stays in the phone's shade). */
     fun notificationDismiss(key: String) {}
     /** Removes these notifications from the phone itself (shade cards: swipe, 모두 지우기). */

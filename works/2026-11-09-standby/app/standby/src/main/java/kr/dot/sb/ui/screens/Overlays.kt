@@ -1,14 +1,15 @@
 package kr.dot.sb.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -39,28 +40,24 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.layout.onPlaced
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kotlinx.coroutines.delay
 import kr.dot.sb.model.AppConfig
-import kr.dot.sb.model.FontId
+import kr.dot.sb.model.CardType
+import kr.dot.sb.ui.cards.CardView
 import kr.dot.sb.ui.cards.Ic
 import kr.dot.sb.ui.cards.IconView
 import kr.dot.sb.ui.cards.Txt
@@ -72,29 +69,26 @@ import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
-import kr.dot.sb.ui.theme.OverlayType
-import kr.dot.sb.ui.theme.Fonts
+import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.LocalTheme
-import kr.dot.sb.ui.theme.Family
-import androidx.compose.foundation.border
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.toPixelMap
-import androidx.compose.ui.text.style.TextAlign
 import kr.dot.sb.ui.theme.Motion
+import kr.dot.sb.ui.theme.ThemeBackground
+import kr.dot.sb.ui.theme.ThemedDigits
+import kr.dot.sb.ui.theme.themedSurface
 import java.time.ZoneId
 import kotlin.math.roundToInt
 
-/** Digits on interrupt screens: Inter, like iPhone's SF time on these layers. */
-private const val NOTIF_HOLD_MS = 300 // spec I4: text unfolds at 0.9 s (300 in + 300 hold + 350 shrink)
-private val TIME_FONT = FontId.BOLD
-private const val TIME_WEIGHT = 600
+/** New-notification banner (spec-r9 §1): on screen this long, then it slides away. */
+internal const val BANNER_MS = 5_000L
+
+private val WEEK = arrayOf("월", "화", "수", "목", "금", "토", "일")
 
 /**
- * Interrupt layers over the pages (design §4.4) and the two pills that open them. One layer at a time by priority
- * ([topLayer]); each fades 350 ms; a lower one keeps its state and comes back when the higher one ends.
+ * Full-screen layers over the pages (spec-r9 §3) by priority ([topLayer]), the Live Activity pill, and the
+ * new-notification banner, which is not a layer: it sits over whatever shows (the board stays visible). One body per
+ * surface for all ten themes; colours from [LocalInk], plates via [themedSurface], digits via [ThemedDigits].
  */
 @Composable
 internal fun Overlays(
@@ -107,24 +101,16 @@ internal fun Overlays(
 ) {
     val bare = layer == Layer.NONE && !editing
     Faded(bare && state.live != null, state.live) { LivePill(it, actions) }
-    // r9 (operator): no wave pill over the board while media plays; the media card is the way in
-    Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, actions) { onNowPlaying(false) } }
-    val family = LocalTheme.current.family
-    Faded(layer == Layer.LIVE, state.live) {
-        when (family) {
-            Family.PAPER -> PaperLive(it, actions)
-            Family.LAMP -> LampLive(it, actions)
-            Family.IPHONE -> LiveFull(it, actions)
-        }
+    Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, state, config, actions) { onNowPlaying(false) } }
+    // alarm and live glow in the theme accent, not the board clock's colour (accent-warm, spec-r9 §3)
+    val night = LocalInk.current.night
+    val th = LocalTheme.current
+    val warm = remember(night, th) { Ink.of(night, null, th) }
+    CompositionLocalProvider(LocalInk provides warm) {
+        Faded(layer == Layer.LIVE, state.live) { LiveScreen(it, actions) }
+        Faded(layer == Layer.ALARM, state.alarm) { AlarmScreen(it, state, actions) }
     }
-    Faded(layer == Layer.NOTIFICATION, state.notification) { NotificationScreen(it, it.hidden || config.previewOnTapOnly, state, actions) }
-    Faded(layer == Layer.ALARM, state.alarm) {
-        when (family) {
-            Family.PAPER -> PaperAlarm(it, state, actions)
-            Family.LAMP -> LampAlarm(it, state, actions)
-            Family.IPHONE -> AlarmScreen(it, state, actions)
-        }
-    }
+    Banner(layer != Layer.ALARM && !editing && config.showNotifications, state, config, actions)
 }
 
 /** 350 ms fade that keeps showing the last value while it fades out after the state went null. */
@@ -138,64 +124,37 @@ private fun <T : Any> Faded(visible: Boolean, value: T?, content: @Composable (T
     ) { last?.let { Box(Modifier.fillMaxSize()) { content(it) } } }
 }
 
-// ------------------------------------------------------------------------------------------------- alarm
+/** Opaque page under a full-screen surface: the theme background (candle night included), so pages never show through. */
+@Composable
+private fun Page(ink: Ink) = ThemeBackground(LocalTheme.current, ink.night)
 
 /**
- * Alarm (mockup r5 A, frame ip-alarm): grey "⏰ 알람" top-left, time top-right with its cap-top on the same line,
- * an orange Snooze pill and a text-only Stop along the bottom (30 % H). Portrait: time under the header, pills stacked.
+ * A static radial glow of [c]: an ellipse [rx] × [ry] (fractions of the page) centred at [at] (fractions), [c] at
+ * full strength in the centre, gone at the rim. Off at night (spec: glow effects off).
  */
 @Composable
-private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyActions) {
-    val ink = LocalInk.current
-    val t = LocalTheme.current
-    BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).tap {}) {
-        val w = maxWidth
-        val h = maxHeight
-        val port = h > w
-        val s = min(w, h)
-        val pad = screenPadding(w, h)
-        val label = max(20.dp, s * 0.066f)
-        val time = clockText(state.now, state.use24h)
-        // r5: white text on the orange pill by day, black on the dim red pill at night
-        val snoozeText = lerp(Color.White, Color.Black, ink.night)
-        Box(Modifier.fillMaxSize().padding(pad)) {
-            val cw = w - pad.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) * 2
-            val title = if (a.label.isBlank() || a.label == "알람") "알람" else "알람 · ${a.label}"
-            val header = @Composable { HeaderRow(Ic.ALARM, title, label, ink.ink2, weight = 600) }
-            if (!port) {
-                Box(Modifier.align(Alignment.TopStart)) { header() }
-                Txt(
-                    time, h * 0.23f / t.timeCap, ink.ink, Modifier.align(Alignment.TopEnd),
-                    family = t.time, cap = t.timeCap, tnum = true, maxW = cw * 0.6f,
-                )
-                Row(
-                    Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(h * 0.30f),
-                    horizontalArrangement = Arrangement.spacedBy(w * 0.04f),
-                ) {
-                    if (a.canSnooze) AlarmPill("다시 알림", ink.snooze, snoozeText, Modifier.weight(1f).fillMaxHeight(), actions::alarmSnooze)
-                    AlarmPill("중단", Color.Transparent, ink.ink, Modifier.weight(1f).fillMaxHeight(), actions::alarmStop)
-                }
-            } else {
-                Column(Modifier.align(Alignment.TopStart)) {
-                    header()
-                    Spacer(Modifier.height(h * 0.04f))
-                    Txt(time, h * 0.16f / t.timeCap, ink.ink, family = t.time, cap = t.timeCap, tnum = true, maxW = cw)
-                }
-                Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(h * 0.02f)) {
-                    if (a.canSnooze) AlarmPill("다시 알림", ink.snooze, snoozeText, Modifier.fillMaxWidth().height(h * 0.14f), actions::alarmSnooze)
-                    AlarmPill("중단", Color.Transparent, ink.ink, Modifier.fillMaxWidth().height(h * 0.14f), actions::alarmStop)
-                }
-            }
+private fun Glow(c: Color, at: Offset, rx: Float, ry: Float, alpha: Float) {
+    val k = 1f - LocalInk.current.night
+    if (k <= 0f) return
+    Canvas(Modifier.fillMaxSize()) {
+        val ctr = Offset(at.x * size.width, at.y * size.height)
+        val r = ry * size.height
+        val sx = rx * size.width / r
+        scale(sx, 1f, pivot = ctr) {
+            drawRect(
+                Brush.radialGradient(
+                    0f to c.copy(alpha = alpha * k), 0.5f to c.copy(alpha = alpha * k * 0.35f), 1f to c.copy(alpha = 0f),
+                    center = ctr, radius = r,
+                ),
+                topLeft = Offset(ctr.x - ctr.x / sx, 0f), size = size.copy(width = size.width / sx),
+            )
         }
     }
 }
 
+/** Pill / button shape: round, square on themes without corners (PAPER). */
 @Composable
-private fun AlarmPill(text: String, bg: Color, fg: Color, modifier: Modifier, onClick: () -> Unit) {
-    BoxWithConstraints(modifier.clip(RoundedCornerShape(50)).background(bg).tap(onClick), contentAlignment = Alignment.Center) {
-        Txt(text, max(22.dp, maxHeight * 0.3f).coerceAtMost(maxHeight * 0.42f), fg, weight = 600, maxW = maxWidth * 0.8f)
-    }
-}
+private fun pillShape(): Shape = if (LocalTheme.current.tokens.radiusRatio == 0f) RectangleShape else RoundedCornerShape(50)
 
 /** Icon (box = text size, centred on the cap) + one line of text. Height = the text's cap. */
 @Composable
@@ -207,92 +166,294 @@ private fun HeaderRow(icon: Ic, text: String, size: Dp, color: Color, weight: In
     }
 }
 
-// ------------------------------------------------------------------------------------------------- notification
+// ------------------------------------------------------------------------------------------------- alarm
 
 /**
- * Two-step notification (design §2.5, §4.4): the plate pops in centred (Ø 30 % s), holds, then shrinks to its mini
- * spot (Ø 14 % s, top-leading of a 78 % W text block); only then the text fades in, so nothing ever overlaps the plate.
- * Closes itself after 6 s. Tap = open (after unlock).
+ * Alarm (spec-r9 §3, mockup 화면 전체 → 알람): a sunrise glow of the accent rising from the bottom, "⏰ 기상 · 월요일",
+ * the time centred and big, weather + today's event count, then a big accent "다시 알림" pill and a quiet "중단" pill
+ * (side by side in landscape, stacked in portrait). The snooze length is not in [AlarmRinging], so no "· 9분".
  */
 @Composable
-private fun NotificationScreen(n: BigNotification, hidden: Boolean, state: StandbyState, actions: StandbyActions) {
+private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyActions) {
     val ink = LocalInk.current
-    val act by rememberUpdatedState(actions)
-    val appear = remember(n.key) { Animatable(0f) }
-    val morph = remember(n.key) { Animatable(0f) }
-    val text = remember(n.key) { Animatable(0f) }
-    LaunchedEffect(n.key) {
-        appear.animateTo(1f, tween(Motion.NOTIF_ICON_IN_MS, easing = FastOutSlowInEasing))
-        delay(NOTIF_HOLD_MS.toLong())
-        morph.animateTo(1f, tween(Motion.NOTIF_SHRINK_MS, easing = FastOutSlowInEasing))
-        text.animateTo(1f, tween(Motion.NOTIF_TEXT_MS))
-        delay((Motion.NOTIF_CLOSE_MS - Motion.NOTIF_ICON_IN_MS - NOTIF_HOLD_MS - Motion.NOTIF_SHRINK_MS - Motion.NOTIF_TEXT_MS).toLong())
-        act.notificationDismiss(n.key)
-    }
-    var origin by remember { mutableStateOf(Offset.Zero) }
-    var mini by remember { mutableStateOf<Offset?>(null) }
-    BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).onPlaced { origin = it.positionInRoot() }.tap { act.notificationTap(n.key) }
-            .pointerInput(n.key) { // swipe up or down closes (spec I4)
-                var dy = 0f
-                detectVerticalDragGestures(onDragStart = { dy = 0f }, onDragEnd = { if (kotlin.math.abs(dy) > size.height * 0.12f) act.notificationDismiss(n.key) }) { _, d -> dy += d }
-            },
-    ) {
-        val w = maxWidth
-        val h = maxHeight
-        val s = min(w, h)
-        val big = s * 0.40f
-        val small = s * 0.14f
-        Column(Modifier.align(Alignment.Center).width(w * 0.78f).graphicsLayer { alpha = text.value }) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Spacer(Modifier.size(small).onPlaced { mini = it.positionInRoot() })
-                Spacer(Modifier.width(s * 0.045f))
-                Column {
-                    Txt(if (hidden) n.appLabel else n.sender, OverlayType.title(s), ink.ink, weight = 700, maxW = w * 0.78f - small - s * 0.05f)
-                    Spacer(Modifier.height(s * 0.028f))
-                    Txt(if (hidden) "탭하여 보기" else "${n.appLabel} · ${ago(n.postedAtEpochMs, state)}", OverlayType.meta(s), ink.ink2, weight = 500, num = true)
+    val t = LocalTheme.current
+    Box(Modifier.fillMaxSize().tap {}) {
+        Page(ink)
+        Glow(ink.acc, Offset(0.5f, 1.2f), 1.2f, 0.7f, 0.55f)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val w = maxWidth
+            val h = maxHeight
+            val land = w > h
+            val s = min(w, h)
+            val lab = (s * 0.045f).coerceIn(14.dp, 20.dp)
+            val bh = (s * 0.14f).coerceIn(56.dp, 84.dp)
+            val bw = if (land) min(w * 0.3f, 300.dp) else w - s * 0.16f
+            val title = if (a.label.isBlank() || a.label == "알람") "알람" else a.label
+            val events = state.agenda?.size ?: 0
+            val info = listOfNotNull(
+                state.weather?.let { "${it.condition.ko} · ${it.tempC}°" },
+                if (events > 0) "오늘 일정 ${events}개" else null,
+            ).joinToString(" · ")
+            Column(
+                Modifier.fillMaxSize().padding(s * 0.07f),
+                horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(
+                    Modifier.fillMaxWidth().padding(top = if (land) 0.dp else s * 0.08f),
+                    horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(s * 0.03f),
+                ) {
+                    HeaderRow(Ic.ALARM, "$title · ${WEEK[state.now.dayOfWeek.value - 1]}요일", lab, ink.accText)
+                    val th = min(if (land) h * 0.36f else w * 0.3f, 220.dp)
+                    ThemedDigits(clockText(state.now, state.use24h), t, ink, Modifier.fillMaxWidth(0.86f).height(th), color = ink.ink)
+                    if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, num = true)
+                }
+                val snooze = @Composable { m: Modifier -> AlarmPill(if (bw >= 170.dp) "다시 알림" else "다시", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
+                val stop = @Composable { m: Modifier -> AlarmPill("중단", ink.ink.copy(alpha = 0.12f), ink.ink, bh, m, actions::alarmStop) }
+                if (land) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (a.canSnooze) snooze(Modifier.size(bw, bh))
+                    stop(Modifier.size(bw, bh))
+                } else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (a.canSnooze) snooze(Modifier.size(bw, bh))
+                    stop(Modifier.size(bw, bh))
                 }
             }
-            if (!hidden) {
-                Spacer(Modifier.height(s * 0.05f))
-                // r7: was 38 dp bold over 3 lines; now ~22 characters a line over 4
-                Txt(n.text, OverlayType.body(s), ink.ink, weight = 500, lines = 4, leading = 1.35f)
-            }
-        }
-        // The plate, drawn at `big` and scaled; position and size interpolate centre → mini.
-        val density = LocalDensity.current
-        val bigPx = with(density) { big.toPx() }
-        val smallPx = with(density) { small.toPx() }
-        val wPx = with(density) { w.toPx() }
-        val hPx = with(density) { h.toPx() }
-        Box(
-            Modifier.size(big)
-                .offset {
-                    val m = morph.value
-                    val size = lerpF(bigPx * (0.6f + 0.4f * appear.value), smallPx, m)
-                    val target = (mini ?: Offset((wPx - smallPx) / 2, (hPx - smallPx) / 2) + origin) - origin
-                    val cx = lerpF(wPx / 2, target.x + smallPx / 2, m)
-                    val cy = lerpF(hPx / 2, target.y + smallPx / 2, m)
-                    IntOffset((cx - size / 2).roundToInt(), (cy - size / 2).roundToInt())
-                }
-                .graphicsLayer {
-                    val m = morph.value
-                    val sc = lerpF(0.6f + 0.4f * appear.value, smallPx / bigPx, m)
-                    scaleX = sc; scaleY = sc
-                    transformOrigin = TransformOrigin(0f, 0f)
-                    alpha = appear.value
-                }
-                .clip(if (LocalTheme.current.radius == 0f) RectangleShape else RoundedCornerShape(28))
-                .background(ink.mapped(Color(n.plateColor))),
-            contentAlignment = Alignment.Center,
-        ) {
-            val icon = n.icon
-            if (icon != null) Image(icon, null, Modifier.fillMaxSize(0.62f), contentScale = ContentScale.Fit, colorFilter = nightFilter(ink.night))
-            else Txt((n.sender.ifBlank { n.appLabel }).take(1), big * 0.42f, lerp(Color.White, Color.Black, ink.night), weight = 700)
         }
     }
 }
 
-private fun lerpF(a: Float, b: Float, t: Float) = a + (b - a) * t
+@Composable
+private fun AlarmPill(text: String, bg: Color, fg: Color, bh: Dp, modifier: Modifier, onClick: () -> Unit) {
+    val shape = pillShape()
+    BoxWithConstraints(modifier.clip(shape).background(bg, shape).tap(onClick), contentAlignment = Alignment.Center) {
+        Txt(text, bh * 0.36f, fg, weight = 700, maxW = maxWidth * 0.84f)
+    }
+}
+
+// ------------------------------------------------------------------------------------------------- live activity
+
+/** Live Activity pill top-centre: the theme plate, timer glyph + short value in the amber role. Tap → full view. */
+@Composable
+private fun LivePill(l: LiveActivity, actions: StandbyActions) {
+    val ink = LocalInk.current
+    val th = LocalTheme.current
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        val s = min(maxWidth, maxHeight)
+        val t = max(18.dp, s * 0.05f)
+        val shape = pillShape()
+        Row(
+            Modifier.align(Alignment.TopCenter).padding(top = max(maxHeight * 0.03f, screenPadding(maxWidth, maxHeight).calculateTopPadding() - t * 1.2f))
+                .background(ink.bg, shape).themedSurface(th, ink, shape).clip(shape).tap(actions::liveToggle)
+                .padding(horizontal = t * 0.8f, vertical = t * 0.5f),
+            verticalAlignment = Alignment.CenterVertically,
+        ) { HeaderRow(Ic.TIMER, l.value, t, ink.amber, weight = 700) }
+    }
+}
+
+private val STEPS = listOf("주문", "조리", "픽업", "도착")
+
+/**
+ * Live Activity full screen (spec-r9 §3, mockup 화면 전체 → 실시간 활동): app + detail header, the value filling its
+ * column under the title as a kicker ("배달 중" / "12분"), and a vertical timeline 주문 → 조리 → 픽업 → 도착 lit up to
+ * the progress; a warm accent glow from the bottom-left corner. Landscape: header + value left, timeline right;
+ * portrait: stacked. [LiveActivity] carries no step times, store or rider, so those are left out.
+ */
+@Composable
+private fun LiveScreen(l: LiveActivity, actions: StandbyActions) {
+    val ink = LocalInk.current
+    val tk = LocalTheme.current.tokens
+    Box(Modifier.fillMaxSize().tap(actions::liveToggle)) {
+        Page(ink)
+        Glow(ink.acc, Offset(0f, 1f), 0.8f, 0.9f, 0.3f)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val w = maxWidth
+            val h = maxHeight
+            val land = w > h
+            val s = min(w, h)
+            val pad = s * 0.06f
+            val fs = (s * 0.042f).coerceIn(13.dp, 19.dp)
+            val on = l.progress?.let { p -> (p.coerceIn(0f, 1f) * l.steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0) }
+            val header = @Composable {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(fs * 2.2f).clip(RoundedCornerShape(fs * 0.55f)).background(ink.ink4), contentAlignment = Alignment.Center) {
+                        IconView(Ic.TIMER, ink.acc, Modifier.size(fs * 1.2f), ink.ink4)
+                    }
+                    Spacer(Modifier.width(10.dp))
+                    Column {
+                        Txt(l.appLabel, fs, ink.ink, weight = 700)
+                        if (l.detail.isNotBlank()) Spacer(Modifier.height(fs * 0.5f))
+                        if (l.detail.isNotBlank()) Txt(l.detail, fs - 2.dp, ink.ink2, weight = 500, num = true)
+                    }
+                }
+            }
+            val eta = @Composable { colW: Dp, cap: Dp ->
+                Column {
+                    if (l.title.isNotBlank()) Txt(l.title, fs, ink.accText, weight = 600)
+                    Spacer(Modifier.height(fs * 0.9f))
+                    // "12분": the number in the digit font, the unit small in the words font on the same baseline
+                    val mt = Regex("^([0-9:.,%]+) *(.*)$").find(l.value)
+                    val num = mt?.groupValues?.get(1) ?: l.value
+                    val unit = mt?.groupValues?.get(2).orEmpty()
+                    Row(verticalAlignment = Alignment.Bottom) {
+                        Txt(
+                            num, cap / tk.digitCap, ink.ink, weight = tk.digitWeight, family = tk.digitFont(tk.digitWeight),
+                            cap = tk.digitCap, tnum = true, maxW = colW * if (unit.isEmpty()) 1f else 0.75f, maxCapH = cap,
+                        )
+                        if (unit.isNotEmpty()) { Spacer(Modifier.width(fs * 0.4f)); Txt(unit, cap * 0.5f, ink.ink2, weight = 500) }
+                    }
+                }
+            }
+            val timeline = @Composable { rowH: Dp ->
+                if (on != null) Column {
+                    val steps = if (l.steps == STEPS.size) STEPS else List(l.steps) { "${it + 1}단계" }
+                    steps.forEachIndexed { i, name -> StepRow(name, i < on, i == on - 1, i < steps.size - 1, i + 1 < on, rowH, fs) }
+                }
+            }
+            if (land) Row(Modifier.fillMaxSize().padding(pad), horizontalArrangement = Arrangement.spacedBy(pad)) {
+                val lw = w * 0.46f
+                Column(Modifier.width(lw).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                    header()
+                    eta(lw, min((h - pad * 2 - fs * 7) * 0.7f, lw * 0.45f))
+                }
+                Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
+                    timeline(((h - pad * 2 - 60.dp) / 4).coerceIn(28.dp, 70.dp))
+                }
+            } else Column(Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.SpaceBetween) {
+                header()
+                eta(w - pad * 2, min(w * 0.34f, h * 0.2f) * 0.7f)
+                timeline(((h - pad * 2 - min(w * 0.34f, h * 0.2f) - fs * 9) / 4).coerceIn(26.dp, 64.dp))
+            }
+        }
+    }
+}
+
+/** One timeline step: dot (accent when done, ink2 ring when not) + connector down to the next, label. */
+@Composable
+private fun StepRow(name: String, done: Boolean, current: Boolean, line: Boolean, lineLit: Boolean, rowH: Dp, fs: Dp) {
+    val ink = LocalInk.current
+    Row(Modifier.fillMaxWidth().height(rowH)) {
+        Column(Modifier.width(14.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
+            Box(
+                Modifier.size(14.dp).clip(CircleShape)
+                    .then(if (done) Modifier.background(ink.acc) else Modifier.border(2.dp, ink.ink2, CircleShape)),
+            )
+            if (line) Box(Modifier.width(2.dp).weight(1f).background(if (lineLit) ink.acc else ink.ink3))
+        }
+        Spacer(Modifier.width(12.dp))
+        Txt(name, fs, if (done) ink.ink else ink.ink2, weight = if (current) 700 else 500)
+    }
+}
+
+// ------------------------------------------------------------------------------------------------- now playing
+
+/**
+ * Now Playing (spec-r9 §3): the media card's own body at screen size, so portrait screens get the tall body and
+ * landscape ones the cover (tap reveals the controls for 3 s). ✕ (in the body) or a swipe down closes; so does 5 s
+ * paused. Position is interpolated per second between the 5 s updates, only while this screen is up.
+ */
+@Composable
+private fun NowPlaying(m: MediaInfo, state: StandbyState, config: AppConfig, actions: StandbyActions, onClose: () -> Unit) {
+    val ink = LocalInk.current
+    val close by rememberUpdatedState(onClose)
+    LaunchedEffect(m.playing) { if (!m.playing) { delay(5_000); close() } }
+    var pos by remember { mutableLongStateOf(m.positionMs) }
+    LaunchedEffect(m.positionMs, m.playing) {
+        pos = m.positionMs
+        while (m.playing && pos < m.durationMs) { delay(1_000); pos = (pos + 1_000).coerceAtMost(m.durationMs) }
+    }
+    Box(
+        Modifier.fillMaxSize().tap {}.pointerInput(Unit) {
+            var dy = 0f
+            detectVerticalDragGestures(onDragStart = { dy = 0f }, onDragEnd = { if (dy > size.height * 0.15f) close() }) { _, d -> dy += d }
+        },
+    ) {
+        Page(ink)
+        BoxWithConstraints(Modifier.fillMaxSize()) {
+            val p = screenPadding(maxWidth, maxHeight)
+            CardView(
+                CardType.MUSIC, state.copy(media = m.copy(positionMs = pos)), config, actions, Modifier.fillMaxSize().padding(p),
+                slotId = "now-playing", close = close,
+            )
+        }
+    }
+}
+
+// ------------------------------------------------------------------------------------------------- banner
+
+/**
+ * New-notification banner (spec-r9 §1, mockup 새 알림): top centre, min(W − 2M, 520) × 64 on the theme plate, icon ·
+ * sender · app · time and one line of text. [BANNER_MS] then it slides away; swipe up dismisses; tap opens the board's
+ * notification card ([StandbyActions.openNotifCard]). Hidden notifications (or 탭할 때만 미리보기) show the app name only.
+ */
+@Composable
+private fun Banner(allowed: Boolean, state: StandbyState, config: AppConfig, actions: StandbyActions) {
+    val n = state.notification
+    var last by remember { mutableStateOf(n) }
+    if (n != null && n != last) last = n
+    AnimatedVisibility(
+        allowed && n != null,
+        enter = slideInVertically(tween(Motion.LAYER_FADE_MS)) { -it } + fadeIn(tween(Motion.LAYER_FADE_MS)),
+        exit = slideOutVertically(tween(Motion.LAYER_FADE_MS)) { -it } + fadeOut(tween(Motion.LAYER_FADE_MS)),
+    ) { last?.let { NotifBanner(it, it.hidden || config.previewOnTapOnly, state, config.textSize.f, actions) } }
+}
+
+@Composable
+private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState, k: Float, actions: StandbyActions) {
+    val ink = LocalInk.current
+    val t = LocalTheme.current
+    val act by rememberUpdatedState(actions)
+    LaunchedEffect(n.key) { delay(BANNER_MS); act.notificationDismiss(n.key) }
+    var dy by remember(n.key) { mutableFloatStateOf(0f) }
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val m = Grid.margin(min(maxWidth, maxHeight))
+        val bw = min(maxWidth - m * 2, 520.dp)
+        val shape = RoundedCornerShape(if (t.tokens.radiusRatio == 0f) 0.dp else 22.dp)
+        Row(
+            Modifier.align(Alignment.TopCenter).padding(top = m * 0.5f).width(bw).height(64.dp)
+                .graphicsLayer { translationY = dy.coerceAtMost(0f) }
+                .background(ink.bg, shape).themedSurface(t, ink, shape).clip(shape)
+                .pointerInput(n.key) {
+                    detectVerticalDragGestures(
+                        onDragStart = { dy = 0f },
+                        onDragEnd = { if (dy < -24.dp.toPx()) act.notificationDismiss(n.key) else dy = 0f },
+                        onDragCancel = { dy = 0f },
+                    ) { _, d -> dy += d }
+                }
+                .tap { act.openNotifCard(n.key) }
+                .padding(horizontal = 16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BannerIcon(n, ink)
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.Bottom) { // cap boxes: bottom = baseline
+                    Txt(if (hidden) n.appLabel else n.sender.ifBlank { n.appLabel }, 15.dp * k, ink.ink, Modifier.weight(1f), weight = 700)
+                    Spacer(Modifier.width(8.dp))
+                    val time = ago(n.postedAtEpochMs, state)
+                    Txt(if (!hidden && bw >= 360.dp) "${n.appLabel} · $time" else time, 13.dp * k, ink.ink2, weight = 500, num = true)
+                }
+                if (!hidden && n.text.isNotBlank()) {
+                    Spacer(Modifier.height(9.dp))
+                    Txt(n.text, 15.dp * k, lerp(ink.ink2, ink.ink, 0.5f), weight = 500)
+                }
+            }
+        }
+    }
+}
+
+/** The app icon (or the sender photo) on its squircle; a letter on the app colour without one. */
+@Composable
+private fun BannerIcon(n: BigNotification, ink: Ink) {
+    val shape = RoundedCornerShape(26) // percent: the app-icon squircle
+    val img = n.icon
+    if (img != null) {
+        Image(img, null, Modifier.size(34.dp).clip(shape), contentScale = ContentScale.Crop, colorFilter = nightFilter(ink.night))
+        return
+    }
+    val plate = lerp(Color(n.plateColor), Ink.NIGHT_DIM, ink.night)
+    Box(Modifier.size(34.dp).clip(shape).background(plate), contentAlignment = Alignment.Center) {
+        Txt(n.appLabel.take(1), 16.dp, ink.on(plate), weight = 700)
+    }
+}
 
 /** "방금", "12분 전", "2시간 전", "3일 전" at the state's minute (the notification cards use it too). */
 internal fun ago(epochMs: Long, state: StandbyState): String {
@@ -305,224 +466,3 @@ internal fun ago(epochMs: Long, state: StandbyState): String {
         else -> "${min / (24 * 60)}일 전"
     }
 }
-
-// ------------------------------------------------------------------------------------------------- live activity
-
-/** Live Activity pill top-centre (r5 A): dark pill, glyph + short value in the Live Activity amber. Tap → full view. */
-@Composable
-private fun LivePill(l: LiveActivity, actions: StandbyActions) {
-    val ink = LocalInk.current
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val s = min(maxWidth, maxHeight)
-        val t = max(18.dp, s * 0.05f)
-        val th = LocalTheme.current
-        Row(
-            Modifier.align(Alignment.TopCenter).padding(top = max(maxHeight * 0.03f, screenPadding(maxWidth, maxHeight).calculateTopPadding() - t * 1.2f))
-                .then(
-                    when (th.family) {
-                        Family.PAPER -> Modifier.background(ink.bg).border(1.dp, ink.ink3)
-                        Family.LAMP -> Modifier.clip(RoundedCornerShape(50)).background(ink.plate2)
-                        Family.IPHONE -> Modifier.clip(RoundedCornerShape(50)).background(ink.ink4)
-                    },
-                ).tap(actions::liveToggle)
-                .padding(horizontal = t * 0.8f, vertical = t * 0.5f),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            HeaderRow(Ic.TIMER, l.value, t, ink.amber, weight = 700)
-        }
-    }
-}
-
-/**
- * Live Activity full screen as the iPhone timer activity (mockup r5 A, frame ip-timer): an amber panel on the leading
- * side with the app glyph and name, then the title (grey) and detail top-trailing, step bar, and the value huge and
- * white bottom-trailing. Portrait: the panel is a band on top.
- */
-@Composable
-private fun LiveFull(l: LiveActivity, actions: StandbyActions) {
-    val ink = LocalInk.current
-    val t = LocalTheme.current
-    BoxWithConstraints(Modifier.fillMaxSize().background(ink.bg).tap(actions::liveToggle)) {
-        val w = maxWidth
-        val h = maxHeight
-        val s = min(w, h)
-        val port = h > w
-        val pad = screenPadding(w, h)
-        val label = max(20.dp, s * 0.066f)
-        val panelText = lerp(Color.White, Color.Black, ink.night)
-        val panel = @Composable { mod: Modifier ->
-            Column(mod.background(ink.amber).padding(s * 0.06f), verticalArrangement = Arrangement.SpaceBetween) {
-                Box(Modifier.size(s * 0.2f).clip(CircleShape).background(lerp(Color.Black, ink.amber, 0.55f)), contentAlignment = Alignment.Center) {
-                    IconView(Ic.TIMER, panelText, Modifier.size(s * 0.1f))
-                }
-                Txt(l.appLabel, label, panelText, weight = 700, maxW = (if (port) w else w * 0.3f) - s * 0.12f)
-            }
-        }
-        val info = @Composable { mod: Modifier, cw: Dp ->
-            Column(mod, horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.SpaceBetween) {
-                Column(horizontalAlignment = Alignment.End) {
-                    Txt(l.title, label, ink.ink2, weight = 600, maxW = cw)
-                    Spacer(Modifier.height(s * 0.035f))
-                    Txt(l.detail, label, ink.ink2, weight = 500, maxW = cw, align = TextAlign.End, num = true)
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    l.progress?.let { p ->
-                        val bar = max(6.dp, s * 0.022f)
-                        val on = (p.coerceIn(0f, 1f) * l.steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0)
-                        Row(Modifier.width(cw * 0.7f), horizontalArrangement = Arrangement.spacedBy(bar)) {
-                            repeat(l.steps) {
-                                Box(Modifier.weight(1f).height(bar).clip(RoundedCornerShape(50)).background(if (it < on) ink.amber else ink.ink3))
-                            }
-                        }
-                        Spacer(Modifier.height(s * 0.05f))
-                    }
-                    Txt(l.value, s * 0.32f / t.wordsCap, ink.ink, weight = 600, cap = t.wordsCap, tnum = true, maxW = cw)
-                }
-            }
-        }
-        if (!port) Row(Modifier.fillMaxSize()) {
-            panel(Modifier.width(w * 0.3f).fillMaxHeight())
-            val cw = w * 0.7f - pad.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) - s * 0.08f
-            info(Modifier.weight(1f).fillMaxHeight().padding(start = s * 0.08f, top = pad.calculateTopPadding(), bottom = pad.calculateBottomPadding(), end = pad.calculateRightPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)), cw)
-        } else Column(Modifier.fillMaxSize()) {
-            panel(Modifier.fillMaxWidth().height(h * 0.28f))
-            info(Modifier.weight(1f).fillMaxWidth().padding(pad), w - pad.calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr) * 2)
-        }
-    }
-}
-
-// ------------------------------------------------------------------------------------------------- now playing
-
-/**
- * Now Playing (design §4.4, spec I11): art left x 9–42 %, title/artist, transport and progress in the right column
- * sharing the art's top and bottom lines; volume glyph top-right. Portrait: art on top. Swipe down or 5 s after
- * pause closes. Position is interpolated per second between the 5 s updates, only while this screen is up.
- */
-@Composable
-private fun NowPlaying(m: MediaInfo, actions: StandbyActions, onClose: () -> Unit) {
-    val ink = LocalInk.current
-    val close by rememberUpdatedState(onClose)
-    LaunchedEffect(m.playing) { if (!m.playing) { delay(5_000); close() } }
-    var pos by remember { mutableLongStateOf(m.positionMs) }
-    LaunchedEffect(m.positionMs, m.playing) {
-        pos = m.positionMs
-        while (m.playing && pos < m.durationMs) { delay(1_000); pos = (pos + 1_000).coerceAtMost(m.durationMs) }
-    }
-    val tinted = LocalTheme.current.artTint
-    val tint = remember(m.art, tinted) { if (tinted) m.art?.let(::artColor) else null }
-    BoxWithConstraints(
-        Modifier.fillMaxSize().background(ink.bg).tap {}.pointerInput(Unit) {
-            var dy = 0f
-            detectVerticalDragGestures(onDragStart = { dy = 0f }, onDragEnd = { if (dy > size.height * 0.15f) close() }) { _, d -> dy += d }
-        },
-    ) {
-        if (tint != null) {
-            // r5 A (frame ip-nowplaying): the art colour bleeds into the dark from the art side; gone at night
-            val k = 1f - ink.night
-            val c0 = lerp(Color.Black, tint, 0.45f * k)
-            val c1 = lerp(Color.Black, tint, 0.16f * k)
-            Canvas(Modifier.fillMaxSize()) {
-                drawRect(
-                    Brush.radialGradient(
-                        0f to c0, 0.55f to c1, 1f to Color.Black,
-                        center = Offset(size.width * 0.15f, size.height * 0.5f), radius = size.width * 0.95f,
-                    ),
-                )
-            }
-        }
-        val w = maxWidth
-        val h = maxHeight
-        val s = min(w, h)
-        val port = h > w
-        // r7: was 43 / 33 / 28.5 dp on the Fold cover; the play button no longer follows the title
-        val title = OverlayType.title(s)
-        val detail = OverlayType.sub(s)
-        val small = OverlayType.meta(s)
-        val pad = screenPadding(w, h)
-        val glyph = max(22.dp, s * 0.055f)
-        IconView(
-            Ic.SOUND, ink.ink2,
-            Modifier.align(Alignment.TopEnd).padding(top = pad.calculateTopPadding() - 12.dp.coerceAtMost(pad.calculateTopPadding()), end = w * 0.06f - 12.dp.coerceAtMost(w * 0.06f))
-                .semantics { contentDescription = "볼륨" }.tap(actions::openVolume).padding(12.dp).size(glyph),
-        )
-        // ✕ top-left: same close as the swipe (spec I11)
-        Box(
-            Modifier.align(Alignment.TopStart).padding(top = pad.calculateTopPadding() - 12.dp.coerceAtMost(pad.calculateTopPadding()), start = w * 0.06f - 12.dp.coerceAtMost(w * 0.06f))
-                .semantics { contentDescription = "닫기" }.tap(close).padding(12.dp).size(glyph),
-        ) {
-            Canvas(Modifier.fillMaxSize()) {
-                val st = size.minDimension * 0.12f
-                drawLine(ink.ink2, Offset(0f, 0f), Offset(size.width, size.height), st, androidx.compose.ui.graphics.StrokeCap.Round)
-                drawLine(ink.ink2, Offset(size.width, 0f), Offset(0f, size.height), st, androidx.compose.ui.graphics.StrokeCap.Round)
-            }
-        }
-        val family = LocalTheme.current.family
-        if (family == Family.PAPER) { PaperNowPlayingBody(m, pos, actions, w, h); return@BoxWithConstraints }
-        if (family == Family.LAMP) { LampNowPlayingBody(m, pos, actions, w, h); return@BoxWithConstraints }
-        val art: Dp
-        val artX: Dp
-        val artY: Dp
-        if (port) {
-            art = min(w * 0.82f, h * 0.48f)
-            artX = (w - art) / 2
-            artY = h * 0.11f
-        } else {
-            art = min(w * 0.33f, h * 0.69f)
-            artX = w * 0.09f
-            artY = h * 0.485f - art / 2
-        }
-        val shape = RoundedCornerShape(max(12.dp, art * 0.06f))
-        Box(Modifier.offset(artX, artY).size(art).clip(shape).background(ink.ink4), contentAlignment = Alignment.Center) {
-            val img = m.art
-            if (img != null) Image(img, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = nightFilter(ink.night))
-            else IconView(Ic.NOTE, ink.ink3, Modifier.fillMaxSize(0.4f), ink.ink4)
-        }
-        val col = if (port) Modifier.offset(artX, artY + art + h * 0.05f).size(art, h * 0.92f - artY - art - h * 0.05f)
-        else Modifier.offset(w * 0.5f, artY).size(w * 0.40f, art)
-        Column(col, verticalArrangement = Arrangement.SpaceBetween) {
-            Column {
-                Txt(m.title, title, ink.ink, weight = 600, lines = 2)
-                Spacer(Modifier.height(s * 0.025f))
-                Txt(m.artist, detail, ink.ink.copy(alpha = 0.6f), weight = 500)
-            }
-            val play = OverlayType.play(s)
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                Btn(Ic.PREV, "이전", play * 0.62f, m.canPrev, ink, actions::mediaPrev)
-                Btn(if (m.playing) Ic.PAUSE else Ic.PLAY, if (m.playing) "일시정지" else "재생", play, true, ink, actions::mediaPlayPause)
-                Btn(Ic.NEXT, "다음", play * 0.62f, m.canNext, ink, actions::mediaNext)
-            }
-            Column {
-                val frac = if (m.durationMs > 0) pos.toFloat() / m.durationMs else 0f
-                val bar = max(5.dp, s * 0.014f)
-                Box(Modifier.fillMaxWidth().height(bar).clip(RoundedCornerShape(50)).background(ink.ink.copy(alpha = 0.25f))) {
-                    Box(Modifier.fillMaxWidth(frac.coerceIn(0f, 1f)).height(bar).clip(RoundedCornerShape(50)).background(ink.ink.copy(alpha = 0.85f)))
-                }
-                Spacer(Modifier.height(s * 0.035f))
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Txt(mmss(pos), small, ink.ink.copy(alpha = 0.55f), weight = 500, tnum = true, num = true)
-                    Txt("-" + mmss((m.durationMs - pos).coerceAtLeast(0)), small, ink.ink.copy(alpha = 0.55f), weight = 500, tnum = true, num = true)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun Btn(ic: Ic, label: String, size: Dp, enabled: Boolean, ink: Ink, onClick: () -> Unit) {
-    Box(Modifier.size(size).semantics { contentDescription = label }.tap(if (enabled) onClick else null)) {
-        IconView(ic, if (enabled) ink.ink else ink.ink3, Modifier.fillMaxSize())
-    }
-}
-
-/** Mean colour of the art (every 8th pixel), saturation kept: the Now Playing wash. Computed once per art. */
-internal fun artColor(img: androidx.compose.ui.graphics.ImageBitmap): Color {
-    val px = img.toPixelMap()
-    var r = 0f; var g = 0f; var b = 0f; var n = 0
-    for (y in 0 until px.height step 8) for (x in 0 until px.width step 8) {
-        val c = px[x, y]; r += c.red; g += c.green; b += c.blue; n++
-    }
-    if (n == 0) return Color.Black
-    return Color(r / n, g / n, b / n)
-}
-
-internal fun mmss(ms: Long): String { val t = ms / 1000; return "%d:%02d".format(t / 60, t % 60) }

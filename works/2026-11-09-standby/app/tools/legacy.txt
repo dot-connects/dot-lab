@@ -2,7 +2,5 @@
 # replaces the code and deletes its line here (plan-r9 D1); Task 22 empties the list.
 ui/clock/AnalogFace.kt       # Task 19 (hand outline, centre dot)
 ui/screens/BrightnessBar.kt  # Task 20 (pull-down panel)
-ui/screens/Overlays.kt       # Task 19 (full-screen surfaces)
-ui/screens/ThemeOverlays.kt  # Task 19 (family overlays)
 ui/screens/PhotosPage.kt     # Task 19 (photo caption fade)
 ui/theme/Theme.kt            # Task 22 (legacy Palette)

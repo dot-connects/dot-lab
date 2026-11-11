@@ -28,6 +28,9 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.systemGestureExclusion
 import androidx.compose.ui.graphics.Brush
 import kr.dot.sb.ui.cards.tap
+import kr.dot.sb.ui.cards.LocalNotifOpen
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -80,15 +83,21 @@ internal const val BAR_HIDE_MS = 2_500L
 /** Widgets, Photos, Clocks come first (spec §1c); user boards follow. */
 internal const val FIXED_PAGES = 3
 
-/** Full-screen layer on top of the pages, by interrupt priority (spec §2): alarm > notification > live > now playing. */
-internal enum class Layer { NONE, ALARM, NOTIFICATION, LIVE, NOW_PLAYING }
+/** Full-screen layer on top of the pages, by interrupt priority: alarm > live > now playing. A new notification is a banner, not a layer (spec-r9 §1). */
+internal enum class Layer { NONE, ALARM, LIVE, NOW_PLAYING }
 
-internal fun topLayer(state: StandbyState, config: AppConfig, nowPlayingOpen: Boolean): Layer = when {
+internal fun topLayer(state: StandbyState, nowPlayingOpen: Boolean): Layer = when {
     state.alarm != null -> Layer.ALARM
-    state.notification != null && config.showNotifications -> Layer.NOTIFICATION
     state.live != null && state.liveExpanded -> Layer.LIVE
     nowPlayingOpen && state.media != null -> Layer.NOW_PLAYING
     else -> Layer.NONE
+}
+
+/** The page whose board holds a notification card: the current one if it does, else the first (widgets page included). */
+internal fun notifPage(config: AppConfig, current: Int): Int? {
+    val pages = listOf(0 to listOf(config.widgetLeft, config.widgetRight)) + config.boards.mapIndexed { i, b -> FIXED_PAGES + i to b.slots }
+    val hits = pages.filter { (_, slots) -> slots.any { stack -> stack.any { it.isNotif } } }.map { it.first }
+    return if (current in hits) current else hits.firstOrNull()
 }
 
 /** Test hook: start on clock face [face], in clock edit mode (optionally with the colour sheet), or with Now Playing open. */
@@ -124,8 +133,25 @@ internal fun RootImpl(
     val clockPage = remember { mutableIntStateOf(start.face) }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
-    // cards ask for Now Playing through the actions; the root owns the layer
-    val boardActions = remember(actions) { object : StandbyActions by actions { override fun openNowPlaying() { npOpen = true } } }
+    // cards ask for Now Playing (and the banner for the notification card) through the actions; the root owns both
+    val notifOpen = remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val cfg by rememberUpdatedState(config)
+    val st by rememberUpdatedState(state)
+    val boardActions = remember(actions) {
+        object : StandbyActions by actions {
+            override fun openNowPlaying() { npOpen = true }
+            override fun openNotifCard(key: String) {
+                val p = notifPage(cfg, pager.currentPage) ?: return actions.notificationTap(key)
+                actions.notificationDismiss(key)
+                npOpen = false
+                if (st.liveExpanded) actions.liveToggle()
+                editing = false
+                notifOpen.value = true
+                scope.launch { pager.scrollToPage(p) }
+            }
+        }
+    }
     val edits = remember { mutableStateMapOf<FaceId, ClockStyle>() }
     // unfolded + 무드등: the dream that survives the unfold turns into the glow in place (spec M1); a tap goes back to the board
     var moodOff by remember { mutableStateOf(false) }
@@ -146,7 +172,7 @@ internal fun RootImpl(
     var level by remember { mutableFloatStateOf(Brightness.shown(nightNow, config)) }
     var barPressed by remember { mutableStateOf(false) }
     var barTick by remember { mutableIntStateOf(0) }
-    val canBar by rememberUpdatedState(!state.displayOff && !editing && topLayer(state, config, npOpen) == Layer.NONE)
+    val canBar by rememberUpdatedState(!state.displayOff && !editing && topLayer(state, npOpen) == Layer.NONE)
     // the swipe that opens the bar keeps going as a slider: sideways travel moves the level from where it was (r8)
     var slideBase by remember { mutableFloatStateOf(0f) }
     val barOpen by rememberUpdatedState({ level = Brightness.shown(nightNow, config); slideBase = level; barOn = true; barPressed = true; barTick++ })
@@ -172,12 +198,12 @@ internal fun RootImpl(
         val accent = Color(config.clockStyle(FaceId.DIGITAL).color)
         val th = LocalTheme.current
         val ink = remember(state.night, accent, th) { Ink.of(state.night, accent, th) }
-        val layer = topLayer(state, config, npOpen)
+        val layer = topLayer(state, npOpen)
         val widgets = remember(config.widgetLeft, config.widgetRight) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
         }
         val mood = state.unfolded && config.onUnfold == UnfoldAction.MOOD_LIGHT && !moodOff && !editing
-        CompositionLocalProvider(LocalInk provides ink) {
+        CompositionLocalProvider(LocalInk provides ink, LocalNotifOpen provides notifOpen) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {
                 if (mood) MoodLight(config.glowColor, ink) { moodOff = true } else HorizontalPager(
                     pager, Modifier.fillMaxSize(),
@@ -204,7 +230,7 @@ internal fun RootImpl(
                         modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Grid.margin(s) / 2 - max(5.dp, s * 0.013f) / 2),
                     )
                 }
-                Overlays(state, config, actions, layer, editing, onNowPlaying = { npOpen = it })
+                Overlays(state, config, boardActions, layer, editing, onNowPlaying = { npOpen = it })
             }
             val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
             if (a > 0f) BrightnessBar(

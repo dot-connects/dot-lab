@@ -113,6 +113,8 @@ fun CardView(
     /** This card's [kr.dot.sb.model.SlotOptions] and its settings route (phone widget only). */
     options: kr.dot.sb.model.SlotOptions? = null,
     menu: String? = null,
+    /** Full-screen Now Playing: no plate, the media body shows ✕ (calls this) and stays put on tap. */
+    close: (() -> Unit)? = null,
 ) = ProvideTheme(config.theme) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
@@ -129,14 +131,14 @@ fun CardView(
         }
         // every card sits on the theme's plate (mockup "테마 전체"); the notification card wears it only while closed
         val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
-        val surface = if (type.isNotif) Modifier else plate
+        val surface = if (type.isNotif || close != null) Modifier else plate
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
                 when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
                     CardType.ANALOG -> AnalogCard(e, state)
-                    CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC)
-                    CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO)
+                    CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC, close)
+                    CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO, close)
                     CardType.TIMER -> TimerCard(e, state, config, actions)
                     CardType.SLEEP -> SleepCard(e, state, config, actions)
                     CardType.DDAY -> DdayCard(e, config)
@@ -291,7 +293,7 @@ private fun Dial(e: Env, state: StandbyState, modifier: Modifier) {
 // ---------------------------------------------------------------- media
 
 @Composable
-private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind: MediaKind) {
+private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind: MediaKind, close: (() -> Unit)?) {
     // r8 (operator "음악이랑 유튜브를 하나로"): one media card shows whatever plays; [kind] only picks the idle look
     val m = state.media
     if (m == null) {
@@ -301,8 +303,8 @@ private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind
     }
     // r9 (operator, YouTube Music / YouTube refs): one look for music and video in every theme, picked by the slot's shape
     when (mediaShape(e.w.value, e.h.value)) {
-        MediaShape.TALL -> MediaTall(e, m, actions)
-        MediaShape.COVER -> MediaCover(e, m, actions)
+        MediaShape.TALL -> MediaTall(e, m, actions, close)
+        MediaShape.COVER -> MediaCover(e, m, actions, close)
     }
 }
 
@@ -362,7 +364,7 @@ private fun MediaTime(ms: Long, c: Color) = Txt(mmss(ms), 12.dp, c, num = true)
  * left-aligned under it, bar + times, then prev / ink play disc / next. Always shown. Tap opens Now Playing.
  */
 @Composable
-private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
+private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() -> Unit)?) {
     val w = e.w
     val pad = (w * 0.075f).coerceIn(12.dp, 32.dp)
     val ts = (w * 0.068f).coerceIn(15.dp, 26.dp)
@@ -370,7 +372,8 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
     val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
     val video = m.kind == MediaKind.VIDEO
     val ink = e.ink.ink
-    Column(Modifier.fillMaxSize().padding(pad).tap(actions::openNowPlaying)) {
+    Column(Modifier.fillMaxSize().padding(pad).tap(if (close == null) actions::openNowPlaying else null)) {
+        if (close != null) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { MediaBtn(Ic.CLOSE, 48.dp, Color.Transparent, e.readInk2, true, close) }
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             val ah = min(maxHeight, if (video) maxWidth * (9f / 16f) else maxWidth)
             Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.size(if (video) maxWidth else ah, ah), (ah * 0.05f).coerceIn(8.dp, 18.dp))
@@ -401,7 +404,7 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
  * keeps them up); a tap while they show opens Now Playing. Everything over the picture is white + scrim.
  */
 @Composable
-private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
+private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions, close: (() -> Unit)?) {
     val s = min(e.w, e.h)
     var shown by remember { mutableStateOf(false) }
     var tick by remember { mutableIntStateOf(0) }
@@ -409,7 +412,7 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
     val a by animateFloatAsState(if (shown) 1f else 0f, tween(200), label = "media")
     val video = m.kind == MediaKind.VIDEO
     val fg = overPicture(e)
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).tap { if (shown) actions.openNowPlaying() else shown = true }) {
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).tap { if (!shown) shown = true else if (close == null) actions.openNowPlaying() else shown = false }) {
         Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.fillMaxSize(), 0.dp)
         if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
             val pad = (s * 0.07f).coerceIn(12.dp, 32.dp)
@@ -425,12 +428,15 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
                     ),
                 ),
             )
-            Column(Modifier.fillMaxWidth().padding(pad)) {
-                Txt(m.title, ts, fg, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
-                if (s >= 150.dp) {
-                    Spacer(Modifier.height(3.dp))
-                    Txt(m.artist, ts * 0.8f, fg.copy(alpha = 0.75f), weight = 500)
+            Row(Modifier.fillMaxWidth().padding(pad)) {
+                Column(Modifier.weight(1f)) {
+                    Txt(m.title, ts, fg, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
+                    if (s >= 150.dp) {
+                        Spacer(Modifier.height(3.dp))
+                        Txt(m.artist, ts * 0.8f, fg.copy(alpha = 0.75f), weight = 500)
+                    }
                 }
+                if (close != null) MediaBtn(Ic.CLOSE, 48.dp, scrimDisc, fg, true) { close() }
             }
             MediaTransport(
                 e, m, actions, play, side, fg, scrimDisc, scrimDisc, fg, Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
@@ -1074,7 +1080,7 @@ private fun MonthGrid(e: Env, events: List<AgendaItem>, modifier: Modifier) {
 }
 
 /** Ink or page colour, whichever reads better on an accent disc. */
-private val Env.onAcc: Color get() = if (Contrast.ratio(ink.ink, ink.acc) >= Contrast.ratio(ink.bg, ink.acc)) ink.ink else ink.bg
+private val Env.onAcc: Color get() = ink.onAcc
 
 private val DOW_SUN = listOf("일", "월", "화", "수", "목", "금", "토")
 

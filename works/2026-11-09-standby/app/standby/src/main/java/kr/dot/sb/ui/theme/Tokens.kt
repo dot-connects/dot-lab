@@ -62,6 +62,12 @@ data class Ink(
     /** Text accent (D12) through the night ramp. */
     val accText: Color get() = safe(lerp(tokens.accentText, nt.accentText, night))
 
+    /** Ink or the page colour, whichever reads better on [c] (text on accent pills, letter plates). */
+    fun on(c: Color): Color = if (Contrast.ratio(ink, c) >= Contrast.ratio(bg, c)) ink else bg
+
+    /** Glyphs and text on the accent. */
+    val onAcc: Color get() = on(acc)
+
     /** Map any day colour (calendar colours, brand glyphs, user colours) to its night twin. */
     fun mapped(day: Color): Color = safe(lerp(day, NIGHT_DIM, night))
 
@@ -178,16 +184,6 @@ data class Sizes(
     }
 }
 
-/** Full-screen overlays (Now Playing, big notification), sized from the screen short side [s] (r7). */
-object OverlayType {
-    fun title(s: Dp): Dp = max(18.dp, s * 0.052f)
-    fun sub(s: Dp): Dp = max(15.dp, s * 0.04f)
-    fun meta(s: Dp): Dp = max(13.dp, s * 0.034f)
-    fun body(s: Dp): Dp = max(16.dp, s * 0.044f)
-    /** Play button: from the screen, not from the title, so a smaller title keeps a big target. */
-    fun play(s: Dp): Dp = max(52.dp, s * 0.13f)
-}
-
 /** Size class of a slot (design-system §4.1). */
 enum class SizeClass { XS, S, M, L;
     companion object {
@@ -214,11 +210,6 @@ object Grid {
 /** Motion constants (design-system §2.5). */
 object Motion {
     const val FLOAT_ROLL_MS = 400
-    const val NOTIF_ICON_IN_MS = 300
-    const val NOTIF_HOLD_MS = 900
-    const val NOTIF_SHRINK_MS = 350
-    const val NOTIF_TEXT_MS = 300
-    const val NOTIF_CLOSE_MS = 6000
     const val LAYER_FADE_MS = 350
     const val DOTS_HIDE_MS = 1500
     const val NIGHT_IN_MS = 1000

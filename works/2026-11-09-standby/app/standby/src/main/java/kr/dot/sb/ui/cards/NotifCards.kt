@@ -32,6 +32,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -81,6 +83,9 @@ import kotlin.math.sign
  */
 
 private const val IDLE_CLOSE_MS = 10_000L
+
+/** Set by the root when the new-notification banner is tapped; the first notification card composed opens and clears it. */
+internal val LocalNotifOpen = compositionLocalOf<MutableState<Boolean>?> { null }
 private const val FRESH_MS = 10 * 60_000L
 /** Message line height / size. */
 private const val LEADING = 1.35f
@@ -204,6 +209,8 @@ internal fun NotifCard(e: Env, state: StandbyState, actions: StandbyActions, pla
     var open by remember { mutableStateOf(false) }
     var touched by remember { mutableIntStateOf(0) }
     LaunchedEffect(open, touched) { if (open) { delay(IDLE_CLOSE_MS); open = false } }
+    val req = LocalNotifOpen.current
+    LaunchedEffect(req?.value) { if (req?.value == true) { req.value = false; open = true; touched++ } }
     when {
         !state.permissions.notifications -> return NotifEmpty(e, plate, Ic.LOCK, "권한 필요 · 눌러서 설정") { actions.openSettings("notifications") }
         state.notifications.isEmpty() -> return NotifEmpty(e, plate, Ic.BELL, "알림 없음", null)

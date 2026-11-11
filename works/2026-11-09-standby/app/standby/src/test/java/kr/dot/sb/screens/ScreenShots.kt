@@ -7,6 +7,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.click
 import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
@@ -51,7 +53,7 @@ class ScreenShots(private val name: String, private val device: Device, private 
             "edit" -> RootStart(edit = true)
             "sheet" -> RootStart(edit = true, sheet = true)
             "sheet-solar" -> RootStart(edit = true, sheet = true, face = 3)
-            "np" -> RootStart(nowPlaying = true)
+            "np", "np-open" -> RootStart(nowPlaying = true)
             else -> RootStart()
         }
         rule.setContent {
@@ -61,6 +63,11 @@ class ScreenShots(private val name: String, private val device: Device, private 
         }
         rule.mainClock.advanceTimeBy(if (k == "sheet-solar" || k == "sheet") 400 else if (k == "notif" || k == "notif-hidden") 2_200 else 32)
         rule.waitForIdle()
+        if (k == "np-open") { // the cover's controls (a portrait screen shows the tall body either way)
+            rule.onRoot().performTouchInput { click(center) }
+            rule.mainClock.advanceTimeBy(400)
+            rule.waitForIdle()
+        }
         rule.onRoot().captureRoboImage(shotPath(theme, "screens", name, device))
     }
 
@@ -76,7 +83,7 @@ class ScreenShots(private val name: String, private val device: Device, private 
                 "notif-hidden" -> s.copy(notification = notif.copy(hidden = true))
                 "live" -> s.copy(live = live, liveExpanded = true)
                 "pills" -> s.copy(live = live)
-                "np" -> s
+                "np", "np-open" -> s
                 "off" -> s.copy(displayOff = true)
                 "photos-perm" -> s.copy(photos = null)
                 "photos-empty" -> s.copy(photos = emptyList())
@@ -101,10 +108,11 @@ class ScreenShots(private val name: String, private val device: Device, private 
                 for (d in Device.entries) out += arrayOf(n, d, "page", p)
                 out += arrayOf("$n-night", L, "page-night", p)
             }
-            for (o in listOf("alarm", "notif", "notif-hidden", "live", "np", "pills")) {
+            for (o in listOf("alarm", "notif", "notif-hidden", "live", "np", "np-open", "pills")) {
                 for (d in Device.entries) out += arrayOf(o, d, o, CLOCKS)
                 out += arrayOf("$o-night", L, "$o-night", CLOCKS)
             }
+            out += arrayOf("alarm-night", P, "alarm-night", CLOCKS)
             out += arrayOf("edit", L, "edit", CLOCKS)
             out += arrayOf("sheet", L, "sheet", CLOCKS)
             out += arrayOf("sheet", P, "sheet", CLOCKS)

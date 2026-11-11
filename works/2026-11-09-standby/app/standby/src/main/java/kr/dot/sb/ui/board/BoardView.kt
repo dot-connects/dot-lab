@@ -38,6 +38,7 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.ui.cards.LocalNotifOpen
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.cards.CardLook
 import kr.dot.sb.ui.cards.CardView
@@ -200,6 +201,11 @@ fun SlotStack(
         return
     }
     val pager = rememberPagerState { cards.size }
+    // banner tap: bring this stack's notification card up so it can open
+    val openReq = LocalNotifOpen.current
+    LaunchedEffect(openReq?.value) {
+        if (openReq?.value == true) cards.indexOfFirst { it.isNotif }.takeIf { it >= 0 }?.let { pager.scrollToPage(it) }
+    }
     var show by remember { mutableStateOf(false) }
     LaunchedEffect(pager.settledPage, pager.isScrollInProgress) {
         if (pager.isScrollInProgress) { show = true; return@LaunchedEffect }
