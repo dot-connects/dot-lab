@@ -26,6 +26,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        StandbyPresence.alive = true
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
         if (intent.getBooleanExtra(EXTRA_TILE, false)) {
             val bm = getSystemService(BatteryManager::class.java)
@@ -82,6 +83,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onStop() {
         StandbyPresence.activity = false
+        StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder.stop()
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
         if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
@@ -89,6 +91,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     }
 
     override fun onDestroy() {
+        StandbyPresence.alive = false
         endRx?.let { unregisterReceiver(it) }
         super.onDestroy()
     }

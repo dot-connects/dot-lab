@@ -23,8 +23,11 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <!-- own task: started with NEW_TASK (charge start, tile, dream hand-over) it must not land on top of a settings
+             task left in the background, or finishing it (unplug) would show the settings screen (r9) -->
         <activity
             android:name=".platform.StandbyActivity"
+            android:taskAffinity="kr.dot.standby.board"
             android:exported="false"
             android:showWhenLocked="true"
             android:turnScreenOn="true"

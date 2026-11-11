@@ -21,6 +21,10 @@ import kr.dot.sb.settings.ConfigStore
 object StandbyPresence {
     @Volatile var dream = false
     @Volatile var activity = false
+    /** A StandbyActivity exists (maybe stopped behind the lock screen); it comes back by itself on the next wake. */
+    @Volatile var alive = false
+    /** When a StandBy surface last stopped being visible (elapsed ms); a screen-off right then was StandBy's own. */
+    @Volatile var lastHiddenMs = 0L
 }
 
 /** Why plugging in did or did not bring StandBy up; the order of the checks is the order of the `when`. */
@@ -102,11 +106,27 @@ object ChargeStart {
     /** The notification listener (always bound) heard the charger go in: start now, no job delay. */
     fun onPowerConnected(ctx: Context) = fire(ctx, "충전기 연결")
 
-    internal fun fire(ctx: Context, source: String = "충전 작업") {
+    /**
+     * r9 (operator: "다 쓰고 화면을 다시 끄면 스탠바이모드가 다시 되어야"): while charging, StandBy comes back
+     * (a) right after the phone is locked from normal use, and (b) on the next wake after StandBy itself was switched
+     * off with the side key. A screen-off that StandBy's own side-key press caused does not relight the screen.
+     */
+    fun onScreenOff(ctx: Context) {
+        val own = StandbyPresence.activity || StandbyPresence.dream || android.os.SystemClock.elapsedRealtime() - StandbyPresence.lastHiddenMs < 4_000L
+        if (own) log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음에 켤 때") else fire(ctx, "화면 꺼짐", force = true)
+    }
+
+    /** The screen woke on the lock screen while charging and no StandBy is waiting behind it. */
+    fun onScreenOn(ctx: Context) {
+        if (StandbyPresence.alive || StandbyPresence.dream) return
+        fire(ctx, "화면 켜짐", force = true)
+    }
+
+    internal fun fire(ctx: Context, source: String = "충전 작업", force: Boolean = false) {
         if (!on(ctx)) return
         arm(ctx, REARM_MS, replace = true) // first, so a failure below cannot leave us unarmed
         // the listener and the job both see one plug-in; the second one within a minute does nothing
-        if (System.currentTimeMillis() - lastLaunchMs < 60_000L) return
+        if (!force && System.currentTimeMillis() - lastLaunchMs < 60_000L) return
         val nm = ctx.getSystemService(NotificationManager::class.java)
         val plugged = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
             ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0

@@ -42,6 +42,7 @@ class StandbyDream : DreamService(), HostCallbacks {
 
     override fun onDreamingStopped() {
         StandbyPresence.dream = false
+        StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder?.stop()
         super.onDreamingStopped()
     }

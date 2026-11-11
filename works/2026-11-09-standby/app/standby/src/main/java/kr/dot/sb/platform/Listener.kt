@@ -69,10 +69,14 @@ class Listener : NotificationListenerService() {
 
     private val power = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
-            if (i.action == Intent.ACTION_POWER_CONNECTED) {
+            when (i.action) {
                 // let the battery state settle (the plug type arrives a moment later on some chargers)
-                handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
-            } else ChargeStart.rearmNow(c)
+                Intent.ACTION_POWER_CONNECTED -> handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
+                // after the keyguard has locked and StandBy (if it was up) has stopped
+                Intent.ACTION_SCREEN_OFF -> handler.postDelayed({ ChargeStart.onScreenOff(this@Listener) }, 1500)
+                Intent.ACTION_SCREEN_ON -> ChargeStart.onScreenOn(this@Listener)
+                else -> ChargeStart.rearmNow(c)
+            }
         }
     }
 
@@ -100,7 +104,9 @@ class Listener : NotificationListenerService() {
         getSystemService(AudioManager::class.java).registerAudioPlaybackCallback(audio, handler)
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
         // this service stays bound, so it hears every plug-in at once (the charging job alone can lag by minutes)
-        registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply { addAction(Intent.ACTION_POWER_DISCONNECTED) }, RECEIVER_NOT_EXPORTED)
+        registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply {
+            addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON)
+        }, RECEIVER_NOT_EXPORTED)
         val rm0 = runCatching { currentRanking }.getOrNull()
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()
