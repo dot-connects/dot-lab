@@ -1,11 +1,6 @@
 package kr.dot.sb.ui.cards
 
 import kr.dot.sb.ui.theme.clockStyle
-import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import kotlinx.coroutines.delay
 import androidx.compose.foundation.layout.offset
@@ -36,11 +31,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import androidx.compose.runtime.State
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import kr.dot.sb.model.SleepSound
+import kr.dot.sb.ui.icons.SoundIcon
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
@@ -541,49 +537,91 @@ private fun TimerRing(e: Env, d: Dp, frac: Float, inner: @Composable () -> Unit)
     }
 }
 
-private val WAVE = floatArrayOf(0.35f, 0.6f, 0.85f, 0.55f, 1f, 0.7f, 0.45f, 0.8f, 0.4f)
-
+/**
+ * Sleep sounds (spec §1, mockup "수면 소리" v3): six Control-Center tiles (plate2, a circular glyph on ink3; the playing
+ * sound on the accent) in the column count with the biggest tiles, names when a tile is ≥ 78 dp; footer play/pause ·
+ * "45분 뒤 꺼짐" · minutes chip. A tap plays that sound (again = stop). Short side < 150 or tiles < 48 dp: [SleepOne].
+ */
 @Composable
 private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val on = state.sleep.playing
-    val waveH = min(e.sz.value * 1.3f, (e.ch - e.labelCap * 2 - e.gap * 3) * 0.85f)
-    val mod = Modifier.width(min(e.cw, waveH * 2.4f)).height(waveH)
-    val wave = @Composable { if (on) AnimatedWave(e, mod) else Wave(e, mod, e.ink.ink2, null) }
-    if (!e.atLeastS) {
-        Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::sleepToggle), horizontalAlignment = Alignment.CenterHorizontally) {
-            LabelRow(e, Ic.SOUND, config.sleepSound.ko, color = e.ink.blue, center = true, weight = 700)
-            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) { wave() }
+    val cur = config.sleepSound
+    val p = e.p7
+    val iw = e.w - p * 2
+    val ih = e.h - p * 2
+    val foot = 48.dp
+    val g = tileGrid(SleepSound.entries.size, iw.value, (ih - foot - 10.dp).value)
+    val t = minOf(g.tileW, g.tileH).dp
+    if (e.short < 150.dp || t < 48.dp) return SleepOne(e, state, config, actions)
+    val th = minOf(g.tileH, g.tileW * 1.15f).dp
+    val named = t >= 78.dp
+    val shape = RoundedCornerShape(if (e.plateRadius == 0.dp) 0.dp else min(22.dp, t * 0.25f))
+    Column(Modifier.fillMaxSize().padding(p), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically)) {
+            SleepSound.entries.chunked(g.cols).forEach { row ->
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    row.forEach { s ->
+                        val lit = on && s == cur
+                        Column(
+                            Modifier.width(g.tileW.dp).height(th).clip(shape).background(e.ink.plate2).tap { actions.sleepPick(s, true) },
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
+                        ) {
+                            SoundDisc(e, s, t * if (named) 0.5f else 0.62f, lit)
+                            if (named) Txt(s.ko, e.meta, if (s == cur) e.ink.ink else e.readInk2, weight = if (lit) 700 else 500, maxW = g.tileW.dp - 8.dp)
+                        }
+                    }
+                }
+            }
         }
-        return
-    }
-    TextCard(e, Modifier.tap(actions::sleepToggle), horizontal = Alignment.CenterHorizontally) {
-        LabelRow(e, Ic.SOUND, config.sleepSound.ko, color = e.ink.blue, center = true, weight = 700)
-        wave()
-        Txt(if (on) "${state.sleep.minutesLeft ?: config.sleepMinutes}분 뒤 꺼짐" else "눌러서 틀기", e.label, e.ink.ink2, weight = 500, align = TextAlign.Center, num = true)
+        Row(Modifier.fillMaxWidth().height(foot), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            MediaBtn(if (on) Ic.PAUSE else Ic.PLAY, foot, e.ink.ink, e.ink.bg, true, actions::sleepToggle)
+            Txt(sleepLine(state, config, iw >= 320.dp), e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
+            Box(Modifier.height(foot).tap(actions::sleepMinutesNext), contentAlignment = Alignment.Center) {
+                Box(Modifier.clip(RoundedCornerShape(if (e.plateRadius == 0.dp) 0 else 50)).background(e.ink.plate2).padding(horizontal = 12.dp, vertical = 8.dp)) {
+                    Txt("${config.sleepMinutes}분", e.meta, e.ink.ink, weight = 600, num = true)
+                }
+            }
+        }
     }
 }
 
-/** The only infinite animation on the board, composed only while the sound plays; the phase is read in draw only. */
-@Composable
-private fun AnimatedWave(e: Env, modifier: Modifier) {
-    val phase = rememberInfiniteTransition(label = "wave").animateFloat(
-        0f, (2 * Math.PI).toFloat(), infiniteRepeatable(tween(1800, easing = LinearEasing), RepeatMode.Restart), label = "phase",
-    )
-    Wave(e, modifier, e.ink.blue, phase)
+/** "빗소리 · 45분 뒤 꺼짐" while playing (the name only when [named]), "멈춤" when stopped. */
+private fun sleepLine(state: StandbyState, config: AppConfig, named: Boolean): String {
+    val tail = if (state.sleep.playing) "${state.sleep.minutesLeft ?: config.sleepMinutes}분 뒤 꺼짐" else "멈춤"
+    return if (named) "${config.sleepSound.ko} · $tail" else tail
 }
 
+/** Glyph disc [d] wide: ink glyph on ink3, or the accent with an [Env.onAcc] glyph when [lit]. */
 @Composable
-private fun Wave(e: Env, modifier: Modifier, color: Color, phase: State<Float>?) {
-    Canvas(modifier) {
-        val n = WAVE.size
-        val bw = size.width / (n * 1.9f)
-        val step = (size.width - bw) / (n - 1)
-        val p = phase?.value
-        for (i in 0 until n) {
-            val k = if (p == null) WAVE[i] else WAVE[i] * (0.6f + 0.4f * kotlin.math.sin(p + i * 0.9f).toFloat())
-            val bh = (size.height * k).coerceAtLeast(bw)
-            drawRoundRect(color, Offset(i * step, (size.height - bh) / 2), Size(bw, bh), CornerRadius(bw / 2))
+private fun SoundDisc(e: Env, s: SleepSound, d: Dp, lit: Boolean, modifier: Modifier = Modifier) {
+    Box(modifier.size(d).clip(CircleShape).background(if (lit) e.ink.acc else e.ink.ink3), contentAlignment = Alignment.Center) {
+        SoundIcon(s, if (lit) e.onAcc else e.ink.ink, Modifier.size(d * 0.56f))
+    }
+}
+
+/** Small sleep card: "수면 소리 1/6", ◀ the chosen sound's disc + name ▶ (arrows switch, the disc plays/stops), the timer line. */
+@Composable
+private fun SleepOne(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
+    val all = SleepSound.entries
+    val cur = config.sleepSound
+    val i = cur.ordinal
+    val p = e.p7
+    val ih = e.h - p * 2
+    val arrow = @Composable { ic: Ic, to: SleepSound ->
+        Box(Modifier.size(48.dp).tap { actions.sleepPick(to, false) }, contentAlignment = Alignment.Center) { IconView(ic, e.ink.ink2, Modifier.size(16.dp)) }
+    }
+    Column(Modifier.fillMaxSize().padding(p), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
+        if (ih >= 110.dp) Txt("수면 소리 ${i + 1}/${all.size}", e.meta, e.readInk2, weight = 500, num = true)
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+            arrow(Ic.PREV, all[(i + all.size - 1) % all.size])
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                SoundDisc(e, cur, min(56.dp, max(48.dp, ih * 0.4f)), state.sleep.playing, Modifier.tap { actions.sleepPick(cur, true) })
+                Txt(cur.ko, e.meta, e.ink.ink, weight = 600, maxW = e.w - p * 2 - 96.dp)
+            }
+            arrow(Ic.NEXT, all[(i + 1) % all.size])
         }
+        Txt(sleepLine(state, config, false), e.meta, e.readInk2, weight = 500, num = true)
     }
 }
 

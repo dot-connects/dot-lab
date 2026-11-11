@@ -242,6 +242,14 @@ class LogicTest {
         }
     }
 
+    @Test fun fireCracklesOverASmoothRumble() {
+        // D10: crackles are sharp sample-to-sample jumps; the brown rumble alone never jumps that far
+        fun jumps(s: SleepSound) = ShortArray(22050 * 2).also { NoiseGen(s, 7).fill(it, 1f) }
+            .asList().zipWithNext { x, y -> Math.abs(y - x) }.count { it > 3000 }
+        assertTrue(jumps(SleepSound.FIRE) > 20)
+        assertEquals(0, jumps(SleepSound.BROWN))
+    }
+
     @Test fun turningThePhoneIsNotAPickUp() {
         // portrait -> landscape: gravity moves from y to x over ~0.5 s, |a| stays 9.81 (spec E4/E7)
         val m = MotionDetector()

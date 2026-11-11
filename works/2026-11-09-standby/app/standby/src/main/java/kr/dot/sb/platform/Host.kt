@@ -25,6 +25,7 @@ import androidx.savedstate.SavedStateRegistryOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import kr.dot.sb.data.HostCallbacks
 import kr.dot.sb.data.StandbyStateHolder
+import kr.dot.sb.model.SleepSound
 import kr.dot.sb.settings.SettingsActivity
 import kr.dot.sb.ui.screens.StandbyRoot
 import kr.dot.sb.ui.state.StandbyActions
@@ -86,6 +87,8 @@ class HostActions(
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
     override fun sleepToggle() = holder.sleepToggle()
+    override fun sleepPick(sound: SleepSound, toggle: Boolean) = holder.sleepPick(sound, toggle)
+    override fun sleepMinutesNext() = holder.sleepMinutesNext()
     override fun alarmSnooze() = ListenerBus.snooze(ctx)
     override fun alarmStop() = ListenerBus.stop(ctx)
     override fun notificationTap(key: String) {

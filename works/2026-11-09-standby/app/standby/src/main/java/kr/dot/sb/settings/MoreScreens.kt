@@ -46,6 +46,7 @@ import kr.dot.sb.model.DDay
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.NightMode
+import kr.dot.sb.model.SLEEP_MINUTES
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.ui.board.BoardView
@@ -269,7 +270,7 @@ fun AlarmScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
 
 @Composable
 fun DataScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    val minutes = listOf(15, 30, 45, 60, 90)
+    val minutes = SLEEP_MINUTES
     Page("데이터", back) {
         Section("날씨 지역", footer = "Open-Meteo에서 30분마다 받아와요.") {
             item { Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {

@@ -22,13 +22,14 @@ import kr.dot.sb.ui.state.SleepState
  */
 class SleepService : Service() {
     @Volatile private var running = false
+    @Volatile private var sound = SleepSound.RAIN
+    @Volatile private var endAt = Long.MAX_VALUE
     private var thread: Thread? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (intent?.action == ACTION_STOP) { running = false; stopSelf(); return START_NOT_STICKY }
-        if (running) return START_NOT_STICKY
         val sound = runCatching { SleepSound.valueOf(intent?.getStringExtra(SOUND).orEmpty()) }.getOrDefault(SleepSound.RAIN)
         val minutes = intent?.getIntExtra(MINUTES, 45) ?: 45
         Channels.ensure(this)
@@ -42,13 +43,17 @@ class SleepService : Service() {
             .addAction(Notification.Action.Builder(null, "끄기", stop).build())
             .build()
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
+        // a start while playing (the sleep card picked another sound or timer) swaps them in the running loop
+        this.sound = sound
+        endAt = if (minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else Long.MAX_VALUE
+        if (running) return START_NOT_STICKY
         running = true
-        thread = Thread({ play(sound, minutes) }, "sleep-noise").also { it.start() }
+        thread = Thread({ play() }, "sleep-noise").also { it.start() }
         return START_NOT_STICKY
     }
 
-    private fun play(sound: SleepSound, minutes: Int) {
-        val gen = NoiseGen(sound)
+    private fun play() {
+        var gen = NoiseGen(sound)
         val buf = ShortArray(2048)
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
@@ -57,14 +62,14 @@ class SleepService : Service() {
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
         track.play()
-        val endAt = if (minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else Long.MAX_VALUE
         var lastMin = -1
         try {
             while (running) {
+                if (gen.sound != sound) gen = NoiseGen(sound)
                 val left = endAt - SystemClock.elapsedRealtime()
                 if (left <= 0) break
-                val m = if (minutes > 0) ((left + 59_999) / 60_000).toInt() else null
-                if (m != lastMin) { lastMin = m ?: -1; SleepBus.state.value = SleepState(true, m) } // once a minute
+                val m = if (endAt != Long.MAX_VALUE) ((left + 59_999) / 60_000).toInt() else null
+                if ((m ?: -1) != lastMin) { lastMin = m ?: -1; SleepBus.state.value = SleepState(true, m) } // once a minute
                 gen.fill(buf, if (left < FADE_MS) left.toFloat() / FADE_MS else 1f)
                 track.write(buf, 0, buf.size) // blocks until the buffer drains: this is the only pacing
             }

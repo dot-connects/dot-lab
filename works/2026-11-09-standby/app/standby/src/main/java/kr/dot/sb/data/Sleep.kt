@@ -13,12 +13,13 @@ object SleepBus {
 }
 
 /** Procedural noise, mono 22.05 kHz (no audio assets). Pure: the service only pipes it to an AudioTrack. */
-class NoiseGen(private val sound: SleepSound, seed: Long = System.nanoTime()) {
+class NoiseGen(val sound: SleepSound, seed: Long = System.nanoTime()) {
     private val rnd = Random(seed)
     private var b0 = 0f; private var b1 = 0f; private var b2 = 0f; private var b3 = 0f; private var b4 = 0f; private var b5 = 0f; private var b6 = 0f
     private var brown = 0f
     private var prevWhite = 0f
     private var drop = 0f
+    private var crack = 0f
     private var n = 0L
 
     private fun white() = rnd.nextFloat() * 2f - 1f
@@ -47,6 +48,15 @@ class NoiseGen(private val sound: SleepSound, seed: Long = System.nanoTime()) {
             val hiss = (w - prevWhite) * 0.12f // crude high-pass: the sizzle of rain
             prevWhite = w
             pink() * 0.45f + hiss + drop * w
+        }
+        SleepSound.FIRE -> {
+            // D10: low brown rumble + a quiet hiss + short white-noise crackles (~9 a second, 1-3 ms each)
+            if (rnd.nextFloat() < 0.0004f) crack = 0.3f + rnd.nextFloat() * 0.7f
+            crack *= 0.94f
+            val w = white()
+            val hiss = (w - prevWhite) * 0.04f
+            prevWhite = w
+            brown() * 0.7f + hiss + crack * w
         }
         SleepSound.WAVES -> {
             val swell = 0.5f + 0.5f * sin(2.0 * PI * n / (RATE * 9.0)).toFloat() // one wave every 9 s

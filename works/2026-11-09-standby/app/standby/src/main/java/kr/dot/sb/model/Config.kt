@@ -176,7 +176,10 @@ data class Board(
 enum class NightMode(val ko: String) { AUTO("자동 (조도)"), SCHEDULE("시간 예약"), OFF("끔") }
 enum class DisplayOff(val ko: String) { AUTO("자동"), AFTER_20S("20초 후"), NEVER("안 함") }
 enum class UnfoldAction(val ko: String) { BOOK_BOARD("책 보드"), MOOD_LIGHT("무드등") }
-enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), WHITE("백색소음"), PINK("핑크 노이즈"), BROWN("브라운 노이즈") }
+enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), FIRE("장작불"), WHITE("백색소음"), PINK("핑크 노이즈"), BROWN("브라운 노이즈") }
+
+/** Sleep timer choices (settings chips, the sleep card's minutes chip). */
+val SLEEP_MINUTES = listOf(15, 30, 45, 60, 90)
 
 data class DDay(val name: String, val date: LocalDate)
 data class City(val name: String, val lat: Double, val lon: Double)

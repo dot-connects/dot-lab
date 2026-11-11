@@ -4,6 +4,7 @@ import java.time.LocalDate
 import androidx.compose.runtime.Immutable
 import androidx.compose.ui.graphics.ImageBitmap
 import kr.dot.sb.model.City
+import kr.dot.sb.model.SleepSound
 import java.time.LocalDateTime
 
 /**
@@ -190,6 +191,10 @@ interface StandbyActions {
     fun timerToggle(id: String) {}
     fun timerReset(id: String) {}
     fun sleepToggle() {}
+    /** Sleep card: [sound] becomes the chosen one. [toggle] plays it (stops it if it is the one playing); else it only switches a playing sound. */
+    fun sleepPick(sound: SleepSound, toggle: Boolean) {}
+    /** Sleep card minutes chip: the next timer choice (a playing sound restarts its timer). */
+    fun sleepMinutesNext() {}
     fun alarmSnooze() {}
     fun alarmStop() {}
     fun notificationTap(key: String) {}

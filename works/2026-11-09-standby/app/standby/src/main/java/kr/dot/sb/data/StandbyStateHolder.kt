@@ -28,6 +28,8 @@ import kotlinx.coroutines.withContext
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.NightMode
+import kr.dot.sb.model.SLEEP_MINUTES
+import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.platform.Brightness
 import kr.dot.sb.platform.ChargeStart
@@ -451,7 +453,20 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     fun timerReset(id: String) { timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
     fun sleepToggle() {
         if (SleepBus.state.value.playing) { SleepService.stop(ctx); return }
-        // ForegroundServiceStartNotAllowedException etc. must not take the dream down; SleepService.start already set "playing"
+        startSleep()
+    }
+    fun sleepPick(sound: SleepSound, toggle: Boolean) {
+        val playing = SleepBus.state.value.playing
+        if (toggle && playing && cfg.sleepSound == sound) { SleepService.stop(ctx); return }
+        ConfigStore.update(ctx) { it.copy(sleepSound = sound) }
+        if (toggle || playing) startSleep()
+    }
+    fun sleepMinutesNext() {
+        ConfigStore.update(ctx) { c -> c.copy(sleepMinutes = SLEEP_MINUTES.firstOrNull { it > c.sleepMinutes } ?: SLEEP_MINUTES.first()) }
+        if (SleepBus.state.value.playing) startSleep()
+    }
+    // ForegroundServiceStartNotAllowedException etc. must not take the dream down; SleepService.start already set "playing"
+    private fun startSleep() {
         runCatching { SleepService.start(ctx, cfg.sleepSound, cfg.sleepMinutes) }.onFailure { SleepBus.state.value = SleepState() }
     }
     fun dismissNotification() { notifJob?.cancel(); endNotification(null) }
