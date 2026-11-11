@@ -108,7 +108,7 @@ internal fun Overlays(
 ) {
     val bare = layer == Layer.NONE && !editing
     Faded(bare && state.live != null, state.live) { LivePill(it, actions) }
-    Faded(bare && state.media?.playing == true, state.media) { WavePill { onNowPlaying(true) } }
+    // r9 (operator): no wave pill over the board while media plays; the media card is the way in
     Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, actions) { onNowPlaying(false) } }
     val family = LocalTheme.current.family
     Faded(layer == Layer.LIVE, state.live) {
@@ -393,41 +393,6 @@ private fun LiveFull(l: LiveActivity, actions: StandbyActions) {
 }
 
 // ------------------------------------------------------------------------------------------------- now playing
-
-/** Waveform pill top-right while something plays. The bars step 2×/s and only while this pill is composed (display on, playing). */
-@Composable
-private fun WavePill(onOpen: () -> Unit) {
-    val ink = LocalInk.current
-    var phase by remember { mutableFloatStateOf(0f) }
-    LaunchedEffect(Unit) { while (true) { delay(500); phase += 2f } }
-    BoxWithConstraints(Modifier.fillMaxSize()) {
-        val s = min(maxWidth, maxHeight)
-        val d = max(40.dp, s * 0.1f)
-        val pad = screenPadding(maxWidth, maxHeight)
-        Box(
-            Modifier.align(Alignment.TopEnd).padding(top = pad.calculateTopPadding() * 0.6f, end = pad.calculateTopPadding() * 0.6f)
-                .size(d).then(
-                    when (LocalTheme.current.family) {
-                        Family.PAPER -> Modifier.background(ink.bg).border(1.dp, ink.ink3)
-                        Family.LAMP -> Modifier.clip(CircleShape).background(ink.plate2)
-                        Family.IPHONE -> Modifier.clip(CircleShape).background(ink.ink4)
-                    },
-                ).tap(onOpen),
-            contentAlignment = Alignment.Center,
-        ) {
-            Canvas(Modifier.size(d * 0.46f)) {
-                val n = 4
-                val bw = size.width / (n * 1.8f)
-                val step = (size.width - bw) / (n - 1)
-                for (i in 0 until n) {
-                    val k = 0.35f + 0.65f * ((kotlin.math.sin(phase * 0.9f + i * 1.7f) + 1f) / 2f)
-                    val bh = size.height * k
-                    drawRoundRect(ink.ink, Offset(i * step, (size.height - bh) / 2), Size(bw, bh), CornerRadius(bw / 2))
-                }
-            }
-        }
-    }
-}
 
 /**
  * Now Playing (design §4.4, spec I11): art left x 9–42 %, title/artist, transport and progress in the right column
