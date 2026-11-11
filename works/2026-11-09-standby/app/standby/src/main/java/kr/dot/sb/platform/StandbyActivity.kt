@@ -74,7 +74,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         super.onStart()
         StandbyPresence.activity = true
         holder.start()
-        WidgetHost.start(this)
+        WidgetHost.start(this, ::unlockThen)
     }
 
     override fun onResume() {

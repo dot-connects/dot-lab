@@ -1,5 +1,6 @@
 package kr.dot.sb.platform
 
+import android.app.KeyguardManager
 import android.appwidget.AppWidgetHost
 import android.appwidget.AppWidgetHostView
 import android.appwidget.AppWidgetManager
@@ -8,6 +9,8 @@ import android.content.Context
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.view.MotionEvent
+import android.view.ViewConfiguration
 import android.widget.RemoteViews
 import androidx.compose.runtime.mutableStateOf
 
@@ -21,13 +24,22 @@ object WidgetHost {
     private var refs = 0
     private val views = HashMap<Int, WidgetView>()
 
+    /**
+     * The current screen host's `unlockThen`. StandBy shows over the keyguard, so a widget tap must not fire the
+     * provider's PendingIntent before the user unlocks; every tap goes through this.
+     */
+    @Volatile var unlock: (() -> Unit) -> Unit = {}
+
     @Synchronized
     fun get(ctx: Context): AppWidgetHost = host ?: object : AppWidgetHost(ctx.applicationContext, HOST_ID) {
         override fun onCreateView(context: Context, id: Int, info: AppWidgetProviderInfo?): AppWidgetHostView = WidgetView(context)
     }.also { host = it }
 
     @Synchronized
-    fun start(ctx: Context) { if (refs++ == 0) get(ctx).startListening() }
+    fun start(ctx: Context, unlockThen: (() -> Unit) -> Unit) {
+        unlock = unlockThen
+        if (refs++ == 0) get(ctx).startListening()
+    }
 
     @Synchronized
     fun stop() { if (refs > 0 && --refs == 0) host?.stopListening() }
@@ -58,6 +70,20 @@ object WidgetHost {
 class WidgetView(ctx: Context) : AppWidgetHostView(ctx) {
     var dark = false
     val light = mutableStateOf(false)
+
+    /** Over the keyguard a tap only asks for unlock: the provider's PendingIntent must not fire while locked. */
+    private fun locked() = context.getSystemService(KeyguardManager::class.java).isKeyguardLocked
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean = locked() || super.onInterceptTouchEvent(ev)
+
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+        if (!locked()) return super.onTouchEvent(ev)
+        if (ev.actionMasked == MotionEvent.ACTION_UP && ev.eventTime - ev.downTime < ViewConfiguration.getLongPressTimeout()) {
+            WidgetHost.unlock {}
+        }
+        return true
+    }
 
     override fun updateAppWidget(remoteViews: RemoteViews?) {
         super.updateAppWidget(remoteViews)

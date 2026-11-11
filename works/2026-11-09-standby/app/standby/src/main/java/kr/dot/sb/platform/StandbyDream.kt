@@ -38,7 +38,7 @@ class StandbyDream : DreamService(), HostCallbacks {
         StandbyPresence.dream = true
         lowRefreshRate()
         holder?.start()
-        WidgetHost.start(this)
+        WidgetHost.start(this, ::unlockThen)
     }
 
     override fun onDreamingStopped() {
