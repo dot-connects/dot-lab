@@ -21,9 +21,17 @@ enum class PlateStyle { FILL, RULE, GLASS, OUTLINE }
 /** How hero digits are treated beyond font and colour. */
 enum class DigitStyle { PLAIN, ITALIC, FLIP, GLOW }
 
-/** Page background: one stop = solid, more = vertical gradient (SKY: time of day); optional radial glow (centre in 0..1 of the page). */
+/**
+ * Page background: one stop = solid, more = vertical gradient (SKY: time of day); optional radial glow, centre [glowAt]
+ * and radii [glowSize] as fractions of the page, fading to clear at 70 % (CSS `radial-gradient(… at …, c, transparent 70%)`).
+ */
 @Immutable
-data class BgSpec(val stops: List<Color>, val glow: Color? = null, val glowAt: Offset = Offset(0.5f, 0.5f)) {
+data class BgSpec(
+    val stops: List<Color>,
+    val glow: Color? = null,
+    val glowAt: Offset = Offset(0.5f, 0.5f),
+    val glowSize: Offset = Offset(0.6f, 0.55f),
+) {
     val base: Color get() = stops.first()
 }
 
@@ -159,7 +167,7 @@ data class ThemeTokens(
             tracking = .04f,
         )
         val MOODLIGHT = make(
-            BgSpec(listOf(Color(0xFF14100C)), glow = rgba(0xFFAA5A2E), glowAt = Offset(.3f, .4f)), 0xFFFFF2E2, .60f, .32f,
+            BgSpec(listOf(Color(0xFF14100C)), glow = rgba(0xFFAA5A2E), glowAt = Offset(.3f, .4f), glowSize = Offset(.7f, .6f)), 0xFFFFF2E2, .60f, .32f,
             0xFFFFB36B, Color(0xFF2B2119), Color(0xFF3A2C21), PlateStyle.FILL, .09f, 16, pretendard, 300, DigitStyle.PLAIN,
             0.707f, labelIcons = true,
         )

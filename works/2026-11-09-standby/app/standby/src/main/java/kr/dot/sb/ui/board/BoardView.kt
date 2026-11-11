@@ -51,7 +51,6 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Motion
 import kr.dot.sb.ui.theme.Sizes
-import kr.dot.sb.ui.theme.Reading
 import kr.dot.sb.ui.theme.Surface
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
@@ -161,10 +160,9 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     // r7: also capped at 6.2 % of the screen, so a lone full-size slot never gets 40 dp labels
     val label = (sizes.minOfOrNull { it.label } ?: 18.dp).coerceAtLeast(floor)
         .coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f).coerceAtMost((screenShort * 0.054f).dp)
-    val read = Reading.read(screenShort.dp)
     val pad = sizes.minOfOrNull { it.pad } ?: 12.dp
     val clock = BoardGrid.hasClock(firsts)
-    return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace, read) }
+    return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace, config.textSize.f) }
 }
 
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */

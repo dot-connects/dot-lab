@@ -63,6 +63,7 @@ object Fonts {
         FontId.SERIF, FontId.SERIF_HEAVY -> variable(R.font.source_serif, weight, "serif")
         FontId.SLAB -> variable(R.font.roboto_slab, weight, "slab")
         // Sofia Sans Extra Condensed (digits subset): the iPhone StandBy Digital face, no artificial squeeze needed
-        FontId.CONDENSED -> variable(R.font.sofia_xcond, weight, "sofia")
+        // THEME is resolved by StandbyTheme.digits; Sofia is only the theme-less fallback
+        FontId.CONDENSED, FontId.THEME -> variable(R.font.sofia_xcond, weight, "sofia")
     }
 }

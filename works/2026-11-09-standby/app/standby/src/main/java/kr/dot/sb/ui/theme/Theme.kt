@@ -180,9 +180,12 @@ class StandbyTheme(
     val labelTracking: Float = 0f,
     /** Plate wash per card type (C): the plate's gradient leans to this colour; null = plain plate. */
     val tint: (CardType) -> Color? = { null },
-    /** r9 tokens (Task 3); nothing reads them until Task 4. */
+    /** r9 tokens: colours, plates, digits (ThemeTokens). */
     val tokens: ThemeTokens = ThemeTokens.IPHONE,
-)
+) {
+    /** Clock family for a font choice; [FontId.THEME] = this theme's digit font (D4b). */
+    fun digits(f: FontId, w: Int): FontFamily = if (f == FontId.THEME) tokens.digitFont(w) else clockFamily(f, w)
+}
 
 object Themes {
     val IPHONE = StandbyTheme(
@@ -303,9 +306,10 @@ object Themes {
 
     /**
      * Clock defaults of the seven r9 themes: digits/second hand = accent, hands/numerals = ink, ticks = ink2 on the page;
-     * light themes put the clock on their own page colour. [font] stands in for the theme digit font until Task 5 (FontId.THEME).
+     * light themes put the clock on their own page colour. Digits are [FontId.THEME] (D4b); SOLAR keeps its gradients.
      */
-    private fun r9Defaults(tk: ThemeTokens, font: FontId, weight: Int): (FaceId) -> ClockStyle = { face ->
+    private fun r9Defaults(tk: ThemeTokens): (FaceId) -> ClockStyle = { face ->
+        val font = FontId.THEME; val weight = tk.digitWeight
         val ink = tk.ink.long(); val acc = tk.accent.long()
         val tick = tk.ink.copy(alpha = tk.ink2).compositeOver(tk.bg.base).long()
         val bg = if (tk.light) Background.COLOR else Background.BLACK
@@ -322,20 +326,20 @@ object Themes {
     }
 
     /** r9 themes: every non-token field copied from [IPHONE] (those fields go in Task 22). */
-    private fun r9(id: Theme, tk: ThemeTokens, font: FontId, weight: Int) = StandbyTheme(
+    private fun r9(id: Theme, tk: ThemeTokens) = StandbyTheme(
         id = id, palette = IPHONE.palette, words = IPHONE.words, wordsCap = IPHONE.wordsCap, numerals = IPHONE.numerals,
         numeralsCap = IPHONE.numeralsCap, time = IPHONE.time, timeCap = IPHONE.timeCap, clockFamily = IPHONE.clockFamily,
-        clockDefaults = r9Defaults(tk, font, weight), ramp = IPHONE.ramp, minText = IPHONE.minText, surface = IPHONE.surface,
+        clockDefaults = r9Defaults(tk), ramp = IPHONE.ramp, minText = IPHONE.minText, surface = IPHONE.surface,
         radius = IPHONE.radius, colorIcons = IPHONE.colorIcons, artTint = IPHONE.artTint, tokens = tk,
     )
 
-    val CANDLE = r9(Theme.CANDLE, ThemeTokens.CANDLE, FontId.THIN, 200)
-    val FLIP = r9(Theme.FLIP, ThemeTokens.FLIP, FontId.CONDENSED, 700)
-    val SKY = r9(Theme.SKY, ThemeTokens.SKY, FontId.THIN, 200)
-    val DAYPAPER = r9(Theme.DAYPAPER, ThemeTokens.DAYPAPER, FontId.SERIF, 600)
-    val RADIO = r9(Theme.RADIO, ThemeTokens.RADIO, FontId.BOLD, 500)
-    val NEON = r9(Theme.NEON, ThemeTokens.NEON, FontId.CONDENSED, 400)
-    val TERMINAL = r9(Theme.TERMINAL, ThemeTokens.TERMINAL, FontId.LIGHT, 400)
+    val CANDLE = r9(Theme.CANDLE, ThemeTokens.CANDLE)
+    val FLIP = r9(Theme.FLIP, ThemeTokens.FLIP)
+    val SKY = r9(Theme.SKY, ThemeTokens.SKY)
+    val DAYPAPER = r9(Theme.DAYPAPER, ThemeTokens.DAYPAPER)
+    val RADIO = r9(Theme.RADIO, ThemeTokens.RADIO)
+    val NEON = r9(Theme.NEON, ThemeTokens.NEON)
+    val TERMINAL = r9(Theme.TERMINAL, ThemeTokens.TERMINAL)
 
     fun of(t: Theme): StandbyTheme = when (t) {
         Theme.IPHONE -> IPHONE

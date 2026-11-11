@@ -9,6 +9,8 @@ import java.time.LocalDate
 
 /** The 11 iPhone clock fonts mapped to bundled open fonts (design-system.md §4.3, spec C10). */
 enum class FontId(val ko: String, val ios: String, val defaultWeight: Int) {
+    /** The theme's digit font + weight + digit style (r9 D4b); resolved by [kr.dot.sb.ui.theme.StandbyTheme.digits]. */
+    THEME("테마 글꼴", "Theme", 600),
     BOLD("굵게", "Bold", 800),
     LIGHT("가늘게", "Light", 250),
     ROUNDED("둥글게", "Rounded", 800),

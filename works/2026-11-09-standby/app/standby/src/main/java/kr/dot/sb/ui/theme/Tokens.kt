@@ -45,7 +45,7 @@ data class Ink(
     private val nt: ThemeTokens by lazy { tokens.night() }
     private fun role(day: Color, nightC: Color) = lerp(day, nightC, night)
     private fun step(day: Color, nightC: Color) =
-        if (tokens.light) (if (night >= 0.5f) nightC else day) else lerp(day, nightC, night)
+        if (tokens.light) (if (night >= 0.5f) nightC else day) else lerpPremul(day, nightC, night)
 
     val weekday: Color get() = safe(role(tokens.roles.red, nt.roles.red))
     val orange: Color get() = role(tokens.roles.orange, nt.roles.orange)
@@ -92,7 +92,7 @@ data class Ink(
             val stops = if (t.light) (if (dark) nt.bg.stops else t.bg.stops) else t.bg.stops.map { lerp(it, nt.bg.base, n) }
             val inkC = lerp(t.ink, nt.ink, n)
             fun alpha(al: Float) = inkC.copy(alpha = al).compositeOver(bg)
-            val plate2 = if (t.light) (if (dark) nt.plate2 else t.plate2) else lerp(t.plate2, nt.plate2, n)
+            val plate2 = if (t.light) (if (dark) nt.plate2 else t.plate2) else lerpPremul(t.plate2, nt.plate2, n)
             return Ink(
                 night = n,
                 bg = bg,
@@ -111,6 +111,17 @@ data class Ink(
             )
         }
     }
+}
+
+/**
+ * Lerp in premultiplied space: an opaque day plate fading to a 6 % night plate passes through dark, translucent greys,
+ * not through a half-opaque copy of the night colour (Compose [lerp] keeps rgb and alpha apart: a bright brown plate at dusk).
+ */
+internal fun lerpPremul(a: Color, b: Color, f: Float): Color {
+    val al = a.alpha + (b.alpha - a.alpha) * f
+    if (al <= 0f) return Color.Transparent
+    fun ch(x: Float, y: Float) = ((x * a.alpha) + (y * b.alpha - x * a.alpha) * f) / al
+    return Color(ch(a.red, b.red).coerceIn(0f, 1f), ch(a.green, b.green).coerceIn(0f, 1f), ch(a.blue, b.blue).coerceIn(0f, 1f), al)
 }
 
 val LocalInk = compositionLocalOf { Ink.of(0f) }
@@ -165,21 +176,6 @@ data class Sizes(
             )
         }
     }
-}
-
-/**
- * Reading text (r7, operator 2026-11-11 "글씨가 너무 커"): sentences in notifications and media titles are sized from
- * the screen short side [screenShort], not the slot, so they stay phone-reading sized while glance text (clock date,
- * weather, D-day) keeps the slot ramp. Hangul fills ~0.88 em against 0.71 for a Latin cap, so the iPhone ratios read
- * about 25 % bigger in Korean; these are the corrected sizes.
- */
-object Reading {
-    /** Body sentences: 0.04 × short side, 16–20 dp (r8 "아직도 크네": one more step down). */
-    fun read(screenShort: Dp): Dp = (screenShort * 0.04f).coerceIn(16.dp, 20.dp)
-    /** App name, time: never above [read]. */
-    fun meta(read: Dp): Dp = max(min(14.dp, read), read * 0.83f)
-    /** Sender, list header: one step up from [read], bold. */
-    fun head(read: Dp): Dp = read * 1.2f
 }
 
 /** Full-screen overlays (Now Playing, big notification), sized from the screen short side [s] (r7). */

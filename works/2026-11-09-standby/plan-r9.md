@@ -175,7 +175,7 @@ data class SlotOptions(val widgetId: Int? = null, val opacity: Float = 1f, val w
 - [ ] Test `NightColourTest`: for 4 themes, `Ink.of(1f, …)` returns the same colour set (ink, ink2, accent, roles,
   plate) — the "night ignores the theme" check, on colours not pixels. Commit.
 
-### Task 5: Primitives + reading roles
+### Task 5: Primitives + reading roles — done (as built: text size rides on `CardLook.textScale` instead of a `LocalTextScale`; `ThemedDigits` autosizes to its box (no `size` arg); `themedSurface(t, ink, shape, custom)`; FontId.THEME used by the seven r9 themes' defaults — IPHONE/PAPER/MOODLIGHT keep their per-face fonts (iPhone faces differ by font; their family code is replaced card by card); `capOf` had no callers and was deleted; Ink plates now lerp premultiplied (dusk plates were bright brown); TIME_OF_DAY = SKY dusk stops until the operator picks dawn/day/night sets; open: light themes on a custom board bg (dark ink on dark preset) → decide in Task 20)
 **Files:** Create `ui/theme/Primitives.kt`; `ui/cards/Kit.kt:132-214`; `ui/theme/Tokens.kt:145-158`.
 - [ ] `themedSurface(t, ink, shape, boardBg)`, `ThemedDigits(text, size, t, ink, style: ClockStyle?, twoLines)` —
   adapter over `StyledTimeImpl` (`DigitalFaces.kt:343`); `style == null` means "theme default", only then FLIP/GLOW

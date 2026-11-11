@@ -64,7 +64,6 @@ import kr.dot.sb.model.FontId
 import kr.dot.sb.ui.cards.Ic
 import kr.dot.sb.ui.cards.IconView
 import kr.dot.sb.ui.cards.Txt
-import kr.dot.sb.ui.cards.capOf
 import kr.dot.sb.ui.cards.nightFilter
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.state.AlarmRinging

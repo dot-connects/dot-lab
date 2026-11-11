@@ -63,7 +63,6 @@ import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
-import kr.dot.sb.ui.theme.Reading
 import androidx.compose.ui.graphics.lerp
 import java.time.LocalDate
 import kotlin.math.roundToInt
@@ -81,25 +80,18 @@ data class CardLook(
     val hero: Boolean = true,
     val clockOnBoard: Boolean = false,
     val clockFace: FaceId = FaceId.DIGITAL,
-    /** Board-wide reading size ([kr.dot.sb.ui.theme.Reading.read] of the screen); null = card alone, derived from its label. */
-    val readSize: Dp? = null,
+    /** Text-size setting (0.9 / 1 / 1.15): scales reading text only, never hero numbers (spec §0). */
+    val textScale: Float = 1f,
 ) {
     companion object {
         /** A card alone (no board): follows the given clock face's accent. */
         fun of(config: AppConfig, face: FaceId = FaceId.DIGITAL): CardLook =
-            CardLook(Color(config.clockStyle(face).color))
+            CardLook(Color(config.clockStyle(face).color), textScale = config.textSize.f)
     }
 }
 
 /** Cap height / em from OS/2 sCapHeight (design-system §2.3); used to put cap-tops exactly on the TOP line. */
 internal const val CAP_UI = 0.707f // Pretendard
-internal fun capOf(font: FontId): Float = when (font) {
-    FontId.CONDENSED -> 0.655f
-    FontId.ROUNDED, FontId.ROUNDED_HEAVY -> 0.705f
-    FontId.SERIF, FontId.SERIF_HEAVY -> 0.67f
-    FontId.SLAB -> 0.711f
-    else -> 0.7275f
-}
 
 /** Everything a card body reads, computed once per slot size. */
 @Immutable
@@ -129,12 +121,10 @@ internal class Env(
     /** Minimum gaps between template rows (§2.4). */
     val gap: Dp get() = s * 0.04f
     val labelCap: Dp get() = label * CAP_UI
-    /** Reading sentences (notification text, artist, channel): never above the slot's label floor of 16 dp (r7). */
-    val read: Dp get() = min(look.readSize ?: (label * 0.85f).coerceIn(15.dp, 20.dp), max(label, 14.dp))
-    /** App name, time ("카카오톡", "12분 전"). */
-    val meta: Dp get() = Reading.meta(read)
-    /** Sender, list header, media title floor. */
-    val head: Dp get() = Reading.head(read)
+    /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp × the text-size setting. */
+    val read: Dp get() = 15.dp * look.textScale
+    val meta: Dp get() = 13.dp * look.textScale
+    val head: Dp get() = 18.dp * look.textScale
     /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
     val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)

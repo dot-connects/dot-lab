@@ -101,9 +101,10 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
             item {
                 ControlRow(null) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        val themeW = kr.dot.sb.ui.theme.LocalTheme.current.tokens.digitWeight
                         FONT_ORDER.chunked(3).forEach { row ->
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                row.forEach { f -> FontTile(f, f == style.font, Modifier.weight(1f)) { edit { s -> s.copy(font = f, weight = f.defaultWeight) } } }
+                                row.forEach { f -> FontTile(f, f == style.font, Modifier.weight(1f)) { edit { s -> s.copy(font = f, weight = if (f == FontId.THEME) themeW else f.defaultWeight) } } }
                                 repeat(3 - row.size) { Box(Modifier.weight(1f)) }
                             }
                         }
@@ -180,6 +181,8 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
 private fun FontTile(font: FontId, on: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val acc = LocalAccent.current
     val shape = RoundedCornerShape(14.dp)
+    val th = kr.dot.sb.ui.theme.LocalTheme.current
+    val w = if (font == FontId.THEME) th.tokens.digitWeight else font.defaultWeight
     Column(
         modifier.clip(shape).background(if (on) SK.surface2 else SK.bg).border(if (on) 2.dp else 1.dp, if (on) acc else SK.line, shape)
             .clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
@@ -187,8 +190,8 @@ private fun FontTile(font: FontId, on: Boolean, modifier: Modifier, onClick: () 
     ) {
         Box(Modifier.height(56.dp), Alignment.Center) {
             Text(
-                "12", color = if (on) acc else SK.text, fontSize = 38.sp, fontFamily = Fonts.clock(font, font.defaultWeight),
-                fontWeight = FontWeight(font.defaultWeight.coerceIn(100, 900)), maxLines = 1,
+                "12", color = if (on) acc else SK.text, fontSize = 38.sp, fontFamily = th.digits(font, w),
+                fontWeight = FontWeight(w.coerceIn(100, 900)), maxLines = 1,
             )
         }
         T(font.ko, 12.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 1, align = TextAlign.Center)

@@ -48,7 +48,7 @@ internal fun rememberTypeface(family: FontFamily, weight: Int): Typeface {
 }
 
 @Composable
-internal fun rememberClockTypeface(font: FontId, weight: Int): Typeface = rememberTypeface(LocalTheme.current.clockFamily(font, weight), weight)
+internal fun rememberClockTypeface(font: FontId, weight: Int): Typeface = rememberTypeface(LocalTheme.current.digits(font, weight), weight)
 
 /** Pretendard paint for words on clock faces (sizes in px, set per use). */
 internal fun uiPaint(tf: Typeface, weight: Int): TextPaint = TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
