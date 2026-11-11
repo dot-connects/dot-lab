@@ -48,7 +48,6 @@ internal fun paperBody(type: CardType, e: Env, state: StandbyState, config: AppC
     when (type) {
         CardType.TIMER -> PaperTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { PaperUsage(e, state, actions) } ?: return false
-        CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) PaperAgenda(e, state) else return false
         else -> return false
     }
     return true
@@ -147,29 +146,6 @@ private fun Leader(e: Env, modifier: Modifier) {
         val r = size.height / 2
         var x = r
         while (x < size.width) { drawCircle(c, r * 0.7f, Offset(x, size.height / 2)); x += r * 4f }
-    }
-}
-
-// ---------------------------------------------------------------- agenda
-
-/** "오늘 일정 3" / per event: time (the next one in accent) over the bold title (mockup r5 B modular). */
-@Composable
-private fun PaperAgenda(e: Env, state: StandbyState) {
-    val items = state.agenda!!
-    val now = "%02d:%02d".format(state.now.hour, state.now.minute)
-    val next = items.indexOfFirst { it.start >= now }
-    val ev = headSize(e)
-    val block = e.labelCap + e.gap * 1.2f + ev * CAP_UI
-    val step = block + e.gap * 3.5f
-    val fit = ((e.ch - e.labelCap - e.gap * 2f + e.gap * 3.5f) / step).toInt().coerceIn(1, 4)
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Kicker(e, "오늘 일정 ${items.size}")
-        items.take(fit).forEachIndexed { i, it ->
-            Spacer(Modifier.height(e.gap * 3.5f))
-            Txt(it.start, e.label, if (i == next) e.ink.weekday else e.ink.ink2, weight = 500, num = true, tracking = e.t.labelTracking)
-            Spacer(Modifier.height(e.gap * 1.2f))
-            Txt(it.title, ev, e.ink.ink, weight = 700)
-        }
     }
 }
 

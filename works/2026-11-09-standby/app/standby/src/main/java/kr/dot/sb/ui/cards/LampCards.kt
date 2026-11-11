@@ -56,7 +56,6 @@ internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppCo
     when (type) {
         CardType.TIMER -> LampTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { LampUsage(e, state, actions) } ?: return false
-        CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) LampAgenda(e, state) else return false
         else -> return false
     }
     return true
@@ -155,35 +154,5 @@ private fun LampUsage(e: Env, state: StandbyState, actions: StandbyActions) {
             if (u.offline) "${hhmm(u.fetchedAtEpochSec)} 기준 · 연결 안 됨" else "5시간 사용량 · ${hhmm(u.fetchedAtEpochSec)}",
             e.label, e.ink.ink2, weight = 500, num = true, maxW = e.cw,
         )
-    }
-}
-
-// ---------------------------------------------------------------- agenda
-
-/** "09:30 ● 팀 회의" rows: rounded times, a dot in the calendar's colour, the title (mockup r5 C modular). */
-@Composable
-private fun LampAgenda(e: Env, state: StandbyState) {
-    val items = state.agenda!!
-    val step = e.labelCap + e.gap * 4.5f
-    val fit = ((e.ch + e.gap * 4.5f) / step).toInt().coerceIn(1, 4)
-    Column(Modifier.fillMaxSize().padding(e.pad), verticalArrangement = Arrangement.SpaceEvenly) {
-        val narrow = e.cw < e.label * 8
-        items.take(if (narrow) ((e.ch + e.gap * 4.5f) / (step + e.labelCap + e.gap)).toInt().coerceIn(1, 4) else fit).forEach {
-            if (narrow) Column {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(e.label * 0.36f).clip(CircleShape).background(e.ink.mapped(Color(it.color))))
-                    Spacer(Modifier.width(e.label * 0.35f))
-                    Txt(it.start, e.label, e.ink.ink2, weight = 800, family = e.num, cap = e.numCap, tnum = true)
-                }
-                Spacer(Modifier.height(e.gap))
-                Txt(it.title, e.label, e.ink.ink, weight = 500)
-            } else Row(verticalAlignment = Alignment.CenterVertically) {
-                Txt(it.start, e.label, e.ink.ink2, weight = 800, family = e.num, cap = e.numCap, tnum = true)
-                Spacer(Modifier.width(e.label * 0.4f))
-                Box(Modifier.size(e.label * 0.36f).clip(CircleShape).background(e.ink.mapped(Color(it.color))))
-                Spacer(Modifier.width(e.label * 0.4f))
-                Txt(it.title, e.label, e.ink.ink, weight = 500)
-            }
-        }
     }
 }

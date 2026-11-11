@@ -560,6 +560,10 @@ private fun Wave(e: Env, modifier: Modifier, color: Color, phase: State<Float>?)
     }
 }
 
+/**
+ * D-day (spec §1, mockup "D-day"): the name in the text accent, "D-10" in the theme's digit font as big as the slot
+ * allows, the date (short side ≥ 150) and a progress bar with "시작 · 지남 · 남음" (≥ 176). Wide slots align left.
+ */
 @Composable
 private fun DdayCard(e: Env, config: AppConfig) {
     val dd = config.ddays.filter { !it.date.isBefore(e.today) }.minByOrNull { it.date } ?: config.ddays.firstOrNull()
@@ -569,66 +573,83 @@ private fun DdayCard(e: Env, config: AppConfig) {
     }
     val n = ChronoUnit.DAYS.between(e.today, dd.date)
     val txt = when { n > 0 -> "D-$n"; n == 0L -> "D-DAY"; else -> "D+${-n}" }
-    val avail = e.ch - e.labelCap * (if (e.atLeastS) 2 else 1) - e.s * 0.08f
-    TextCard(e) {
-        LabelRow(e, Ic.CALENDAR, dd.name, color = e.ink.orange, weight = 700)
-        Txt(txt, e.sz.display, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true, maxW = e.cw, maxCapH = avail)
-        if (e.atLeastS) Txt(dateKo(dd.date), e.label, e.ink.ink2, weight = 500, num = true)
+    val p = e.p7
+    val iw = e.w - p * 2
+    val showDate = e.short >= 150.dp
+    val showBar = e.short >= 176.dp
+    val readCap = e.read * CAP_UI
+    val texts = readCap + LG * 2 + (if (showDate) readCap + LG * 2 else 0.dp) + (if (showBar) p * 0.8f + 6.dp + LG + e.metaCap else 0.dp)
+    // mockup: font min(0.4 h, w / 2.7) up to 180 → cap ≈ 0.3 h, ≤ 130
+    val cap = minOf(e.h - p * 2 - texts, e.h * 0.3f, 130.dp)
+    Column(
+        Modifier.fillMaxSize().padding(p), verticalArrangement = Arrangement.Center,
+        horizontalAlignment = if (e.w / e.h >= 1.6f) Alignment.Start else Alignment.CenterHorizontally,
+    ) {
+        Txt(dd.name, e.read, e.ink.accText, weight = 700)
+        Spacer(Modifier.height(LG * 2))
+        Hero(e, AnnotatedString(txt), cap, e.ink.ink, iw)
+        if (showDate) {
+            Spacer(Modifier.height(LG * 2))
+            Txt(dateKo(dd.date), e.read, e.readInk2, weight = 500)
+        }
+        if (showBar) {
+            // ponytail: a fixed 100-day countdown window (DDay has no start date); store one if the operator wants it
+            val start = dd.date.minusDays(100)
+            val left = if (n > 0) "${(100 - n).coerceAtLeast(0)}일 지남 · ${n}일 남음" else if (n == 0L) "오늘" else "${-n}일 지남"
+            val from = "시작 ${start.monthValue}월 ${start.dayOfMonth}일"
+            Spacer(Modifier.height(p * 0.8f))
+            Bar(e, (100 - n) / 100f, e.ink.acc, Modifier.height(6.dp))
+            Spacer(Modifier.height(LG))
+            Row(Modifier.fillMaxWidth()) {
+                if (fitsOneLine("$from    $left", e.meta, 500, iw)) {
+                    Txt(from, e.meta, e.readInk2, weight = 500)
+                    Spacer(Modifier.weight(1f))
+                }
+                Txt(left, e.meta, e.readInk2, weight = 500)
+            }
+        }
     }
 }
 
 // ---------------------------------------------------------------- agenda, usage
 
-/** iPhone Calendar widget (mockup r5 modular): "월요일 9" header, events as colour bar + title over the time. */
+/**
+ * Today's agenda (spec §1, mockup "일정"): "월요일 9 · 남은 일정 N", then colour-bar rows (title over time) as many as
+ * fit, two columns when wide, "외 N개" for the rest. No permission = a prompt in the list area; the card taps to settings.
+ */
 @Composable
 private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val items = state.agenda
-    if (items == null) {
-        StateCard(e, Ic.CALENDAR, "오늘 일정", Ic.LOCK, null, "권한 필요 · 눌러서 설정") { actions.openSettings("calendar") }
-        return
-    }
-    val header = @Composable {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Txt("${dowKo(e.today)}요일", e.label, e.ink.weekday, weight = 700)
-            Spacer(Modifier.width(e.label * 0.35f))
-            Txt("${e.today.dayOfMonth}", e.label, e.ink.ink, weight = 700, num = true)
+    val p = e.p7
+    val cols = if (e.w / e.h >= 1.6f || (e.w >= 560.dp && e.w / e.h >= 1.2f)) 2 else 1
+    val room = e.h - p * 2 - e.metaCap - LG * 2 + 12.dp // the last row needs no gap under it
+    var rows = (room / e.evStep).toInt().coerceAtLeast(1)
+    if (items != null && items.size > rows * cols) rows = ((room - e.metaCap - LG) / e.evStep).toInt().coerceAtLeast(1)
+    val shown = items.orEmpty().take(rows * cols)
+    val more = items.orEmpty().size - shown.size
+    Column(Modifier.fillMaxSize().padding(p).tap(if (items == null) ({ actions.openSettings("calendar") }) else null)) {
+        val head = buildAnnotatedString {
+            withStyle(SpanStyle(color = e.ink.accText)) { append("${dowKo(e.today)}요일") }
+            append(" ${e.today.dayOfMonth}")
+            if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}") }
         }
-    }
-    if (items.isEmpty()) {
-        TextCard(e) { header(); Txt("일정 없음", min(e.sz.title, e.label * 1.4f), e.ink.ink2, weight = 700) }
-        return
-    }
-    val now = "%02d:%02d".format(state.now.hour, state.now.minute)
-    if (e.cls == SizeClass.XS) {
-        val next = items.firstOrNull { it.start >= now } ?: items.last()
-        TextCard(e) {
-            header()
-            Column {
-                Txt(next.title, e.label, e.ink.ink, weight = 700)
-                Spacer(Modifier.height(e.gap))
-                Txt(next.start, e.label, e.ink.ink2, weight = 500, num = true)
-            }
-        }
-        return
-    }
-    val ev = max(e.label, min(e.sz.title, e.label * 1.15f))
-    val sub = e.label
-    val block = ev * CAP_UI + e.gap * 0.9f + sub * CAP_UI
-    val step = block + e.gap * 3f
-    val fit = ((e.ch - e.labelCap - e.gap * 2f + e.gap * 3f) / step).toInt().coerceIn(1, 3)
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        header()
-        items.take(fit).forEach { it ->
-            Spacer(Modifier.height(e.gap * 3f))
-            Row {
-                Box(Modifier.width(max(4.dp, e.label * 0.2f)).height(block).clip(RoundedCornerShape(50)).background(e.ink.mapped(Color(it.color))))
-                Spacer(Modifier.width(e.label * 0.5f))
-                Column(Modifier.weight(1f)) {
-                    Txt(it.title, ev, e.ink.ink, weight = 700)
-                    Spacer(Modifier.height(e.gap * 0.9f))
-                    Txt(it.start, sub, e.ink.ink2, weight = 500, num = true, tnum = true)
+        Txt(head, e.meta, e.ink.ink, weight = 700)
+        Spacer(Modifier.height(LG * 2))
+        when {
+            items == null -> Txt("캘린더 권한 필요 · 눌러서 설정", e.read, e.readInk2, weight = 500, lines = 2)
+            items.isEmpty() -> Txt("남은 일정 없음", e.read, e.readInk2, weight = 500)
+            else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                shown.chunked(cols).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(p)) {
+                        row.forEach { Box(Modifier.weight(1f)) { EventRow(e, it, it.start) } }
+                        if (row.size < cols) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
+        }
+        if (more > 0) {
+            Spacer(Modifier.weight(1f))
+            Txt("외 ${more}개", e.meta, e.readInk2, weight = 500)
         }
     }
 }
@@ -1028,17 +1049,19 @@ private fun EventList(e: Env, events: List<AgendaItem>, n: Int, denied: Boolean)
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        events.take(n).forEach { ev ->
-            Row {
-                Box(Modifier.width(4.dp).height(e.evH).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
-                Spacer(Modifier.width(8.dp))
-                Column {
-                    Txt(ev.title, e.read, e.ink.ink, weight = 600)
-                    Spacer(Modifier.height(8.dp))
-                    Txt(whenKo(e, ev), e.meta, e.readInk2, weight = 500, num = true)
-                }
-            }
-        }
+        events.take(n).forEach { EventRow(e, it, whenKo(e, it)) }
+    }
+}
+
+/** One event: colour bar + title over [time]. */
+@Composable
+private fun EventRow(e: Env, ev: AgendaItem, time: String) = Row {
+    Box(Modifier.width(4.dp).height(e.evH).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
+    Spacer(Modifier.width(8.dp))
+    Column {
+        Txt(ev.title, e.read, e.ink.ink, weight = 600)
+        Spacer(Modifier.height(8.dp))
+        Txt(time, e.meta, e.readInk2, weight = 500, num = true)
     }
 }
 

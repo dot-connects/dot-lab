@@ -113,7 +113,10 @@ object Fixtures {
                 DayTemp(now.toLocalDate().plusDays(5), 7, 1, WeatherCondition.PARTLY),
             ),
         ),
-        agenda = listOf(AgendaItem("09:30", "팀 회의", 0xFF4D9BEF), AgendaItem("13:00", "병원 예약", 0xFFFF9C56), AgendaItem("19:00", "헬스", 0xFF6FDC86)),
+        agenda = listOf(
+            AgendaItem("09:30", "팀 회의", 0xFF0A84FF), AgendaItem("13:00", "병원 예약", 0xFFFF9F0A), AgendaItem("17:00", "엄마 생신 선물 사기", 0xFFBF5AF2),
+            AgendaItem("19:00", "헬스", 0xFF30D158), AgendaItem("21:00", "독서 모임", 0xFFFF375F),
+        ),
         upcoming = listOf(
             AgendaItem("22:30", "독서 모임", 0xFFFF375F, now.toLocalDate()), AgendaItem("13:00", "병원 예약", 0xFFFF9C56, now.toLocalDate().plusDays(2)),
             AgendaItem("종일", "김장", 0xFF6FDC86, now.toLocalDate().plusDays(5)), AgendaItem("종일", "수능", 0xFFFF9F0A, now.toLocalDate().plusDays(10)),
