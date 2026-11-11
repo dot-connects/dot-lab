@@ -18,7 +18,29 @@ object BoardOps {
     /** Make the slot list match the layout's slot count: keep what is there, pad with plain cards, drop extras. */
     fun fit(b: Board): Board {
         val slots = (0 until b.layout.slots).map { i -> b.slots.getOrNull(i)?.takeIf { it.isNotEmpty() } ?: listOf(PAD[i % PAD.size]) }
-        return if (slots == b.slots) b else b.copy(slots = slots)
+        val options = b.options.filterKeys { k -> key(k)?.let { (s, j) -> j < (slots.getOrNull(s)?.size ?: 0) && slots[s] == b.slots.getOrNull(s) } == true }
+        return if (slots == b.slots && options == b.options) b else b.copy(slots = slots, options = options)
+    }
+
+    private fun key(k: String): Pair<Int, Int>? = k.split(':').takeIf { it.size == 2 }?.let { (a, c) -> a.toIntOrNull()?.let { s -> c.toIntOrNull()?.let { s to it } } }
+
+    /**
+     * Edit stack [slot] of [b]: [newStack] replaces it and [moved] maps an old stack index to its new one (null =
+     * removed). Options follow their card; removed cards drop theirs (r9 D6).
+     */
+    fun editStack(b: Board, slot: Int, newStack: List<CardType>, moved: (Int) -> Int?): Board {
+        if (slot !in b.slots.indices) return b
+        val options = b.options.mapNotNull { (k, v) ->
+            val (s, j) = key(k) ?: return@mapNotNull null
+            if (s != slot) k to v else moved(j)?.takeIf { it in newStack.indices }?.let { "$slot:$it" to v }
+        }.toMap()
+        return b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) newStack else l }, options = options)
+    }
+
+    /** Widget ids present in [old] but gone from [new]; the caller releases them (`AppWidgetHost.deleteAppWidgetId`). */
+    fun removedWidgetIds(old: AppConfig, new: AppConfig): List<Int> {
+        fun ids(c: AppConfig) = c.boards.flatMap { b -> b.options.values.mapNotNull { it.widgetId } }.toSet()
+        return (ids(old) - ids(new)).toList()
     }
 
     fun withLayout(b: Board, layout: Layout): Board = fit(b.copy(layout = layout))
@@ -34,7 +56,8 @@ object BoardOps {
 
     fun duplicate(c: AppConfig, i: Int): AppConfig {
         val src = c.boards.getOrNull(i) ?: return c
-        val copy = src.copy(id = freshId(c), name = src.name + " 복사")
+        // a hosted widget belongs to one slot: the copy gets the options without the id (it asks for its own)
+        val copy = src.copy(id = freshId(c), name = src.name + " 복사", options = src.options.mapValues { it.value.copy(widgetId = null) })
         val start = if (c.startPage > FIRST_BOARD_PAGE + i) c.startPage + 1 else c.startPage
         return c.copy(boards = c.boards.toMutableList().apply { add(i + 1, copy) }, startPage = start)
     }

@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.withTheme
 import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -94,13 +95,14 @@ private fun ThemePicker(config: AppConfig, update: Update) {
     Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
         T("테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Theme.entries.forEach { th ->
+            // r9: the seven new themes join the picker in Task 20 (horizontal scroll of previews, no names)
+            Theme.entries.take(3).forEach { th ->
                 val on = th == config.theme
                 Column(
                     Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
-                        .clickable { update { it.copy(theme = th) } }.padding(8.dp),
+                        .clickable { update { it.withTheme(th) } }.padding(8.dp),
                 ) {
-                    val cfg = remember(config, th) { config.copy(theme = th) }
+                    val cfg = remember(config, th) { config.withTheme(th) }
                     PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
                         BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
                     }

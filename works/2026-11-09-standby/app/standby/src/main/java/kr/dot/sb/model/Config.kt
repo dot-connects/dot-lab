@@ -34,8 +34,38 @@ enum class Numerals(val ko: String, val digits: String) {
 
     fun convert(s: String): String = if (this == LATN) s else s.map { c -> if (c in '0'..'9') digits[c - '0'] else c }.joinToString("")
 }
-/** The look of every StandBy surface (mockup r5): A = iPhone (default), B = newspaper front page, C = mood lamp. */
-enum class Theme(val ko: String) { IPHONE("아이폰 그대로"), PAPER("신문 1면"), MOODLIGHT("무드등") }
+/**
+ * The look of every StandBy surface. r5: A = iPhone (default), B = newspaper front page, C = mood lamp; r9 adds seven
+ * (spec-r9 §4). [ko] is for logs and settings rows only — pickers show previews, never names.
+ */
+enum class Theme(val ko: String) {
+    IPHONE("아이폰 그대로"), PAPER("신문 1면"), MOODLIGHT("무드등"), CANDLE("촛불"), FLIP("플립 시계"),
+    SKY("하늘"), DAYPAPER("종이"), RADIO("브라운 라디오"), NEON("네온"), TERMINAL("터미널"),
+}
+
+/** Board background (r9): the theme's own, or one of eight presets laid under translucent plates. */
+enum class BoardBg(val ko: String) {
+    THEME("테마 기본"), BLACK("순검정"), GRAPHITE("그래파이트"), MIDNIGHT("미드나잇"), AMBER("앰버"), AURORA("오로라"),
+    TIME_OF_DAY("시간 따라"), PHOTO_BLUR("사진 흐림"), SOLID("단색 고르기"),
+}
+
+/** Reading text size (r9): message / sender / meta only; hero numbers are slot-sized and never scaled. */
+enum class TextSize(val ko: String, val f: Float) { SMALL("작게", 0.9f), NORMAL("보통", 1f), LARGE("크게", 1.15f) }
+
+/** Full-screen analog dial layout (r9): round dial, edge-following square, four big numerals, bars only, half digital. */
+enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("듀오") }
+
+/** Phone-widget slot (r9): follow the theme, or force the provider's dark / light layout (best effort). */
+enum class WidgetMode(val ko: String) { THEME("테마 따라"), DARK("늘 다크"), LIGHT("늘 라이트") }
+
+/** Per-card options keyed by "slotIdx:stackIdx" on a [Board]; today only the phone-widget card has any. */
+data class SlotOptions(
+    val widgetId: Int? = null,
+    val opacity: Float = 1f,
+    val widgetMode: WidgetMode = WidgetMode.THEME,
+    val radiusDp: Int = 22,
+    val hideAtNight: Boolean = false,
+)
 
 enum class ClockLayout(val ko: String) { IPHONE("아이폰"), CENTER("가운데"), TWO_LINES("두 줄") }
 enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음"), DUO("Duo") }
@@ -137,6 +167,8 @@ data class Board(
     val accent: Long? = null,
     /** Which clock style the board's clock-like cards use. */
     val clockFace: FaceId = FaceId.DIGITAL,
+    /** [SlotOptions] by "slotIdx:stackIdx"; [kr.dot.sb.settings.BoardOps] keeps the keys aligned with [slots]. */
+    val options: Map<String, SlotOptions> = emptyMap(),
 )
 
 enum class NightMode(val ko: String) { AUTO("자동 (조도)"), SCHEDULE("시간 예약"), OFF("끔") }
@@ -148,7 +180,11 @@ data class DDay(val name: String, val date: LocalDate)
 data class City(val name: String, val lat: Double, val lon: Double)
 
 data class AppConfig(
-    val styles: Map<FaceId, ClockStyle> = FaceId.entries.associateWith { ClockStyle.default(it) },
+    /**
+     * Clock styles the user **edited** (r9 D4). A face missing here is drawn with the theme's default
+     * (`AppConfig.clockStyle`), so switching theme restyles every untouched clock.
+     */
+    val styles: Map<FaceId, ClockStyle> = emptyMap(),
     val boards: List<Board> = Presets.boards(),
     /** Horizontal page order: widgets, photos, clocks are fixed first three pages (iPhone), then [boards]. */
     val startPage: Int = 2,
@@ -184,8 +220,13 @@ data class AppConfig(
     val sleepMinutes: Int = 45,
     val focusMinutes: Int = 25,
     val breakMinutes: Int = 5,
-    /** Look of every StandBy surface; clock styles stay per clock on top of it. */
+    /** Look of every StandBy surface; clock styles stay per clock on top of it. Change it with `withTheme`. */
     val theme: Theme = Theme.IPHONE,
+    val boardBg: BoardBg = BoardBg.THEME,
+    /** Colour of [BoardBg.SOLID]. */
+    val boardBgColor: Long = 0xFF1A1430,
+    val textSize: TextSize = TextSize.NORMAL,
+    val analogStyle: AnalogStyle = AnalogStyle.ROUND,
 )
 
 object Presets {
@@ -200,6 +241,6 @@ object Presets {
         b("bed", "잠자리", Layout.TWO, CardType.CLOCK, CardType.SLEEP),
         b("exam", "수능", Layout.FOUR, CardType.DDAY, CardType.CLOCK, CardType.CALENDAR, CardType.AGENDA),
         b("book", "책 (펼침)", Layout.BIG2, CardType.MEMORIES, CardType.WEATHER, CardType.CALENDAR),
-        b("video", "영상", Layout.ONE, CardType.VIDEO),
+        b("video", "영상", Layout.ONE, CardType.MUSIC),   // r9: one media card plays video too
     )
 }

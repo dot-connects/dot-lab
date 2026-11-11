@@ -148,7 +148,11 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, b
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     val acc = LocalAccent.current
     fun edit(f: (Board) -> Board) = update { BoardOps.replace(it, id, f) }
-    fun editSlot(slot: Int, f: (List<CardType>) -> List<CardType>) = edit { b -> b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) f(l) else l }) }
+    fun editSlot(slot: Int, f: (List<CardType>) -> List<CardType>) = edit { b ->
+        val old = b.slots.getOrElse(slot) { emptyList() }; val new = f(old)
+        // options follow a card that stayed at its index; Task 18 maps moves for the widget card
+        BoardOps.editStack(b, slot, new) { j -> j.takeIf { it < new.size && old[it] == new[it] } }
+    }
 
     Box(Modifier.fillMaxSize()) {
         Page(board.name, back, side = {

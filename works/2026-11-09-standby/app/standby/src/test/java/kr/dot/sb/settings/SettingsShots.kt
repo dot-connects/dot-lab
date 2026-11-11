@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
@@ -49,7 +50,7 @@ class SettingsShots {
         RuntimeEnvironment.setQualifiers(qualifiers)
         rule.setContent {
             var cfg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(config) }
-            SettingsTheme(config.styles.getValue(FaceId.DIGITAL).color.c()) {
+            SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
                 RouteHost(route, cfg, { f -> cfg = f(cfg) }, nav, e)
             }
         }

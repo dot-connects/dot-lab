@@ -172,7 +172,7 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         }
 
         Gap(24.dp)
-        ActionButton("테마 기본값으로 되돌리기", { update { it.copy(styles = it.styles + (face to ClockStyle.default(face))) } }, Modifier.fillMaxWidth(), primary = false)
+        ActionButton("테마 기본값으로 되돌리기", { update { it.copy(styles = it.styles - face) } }, Modifier.fillMaxWidth(), primary = false)
     }
 }
 

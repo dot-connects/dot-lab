@@ -8,6 +8,7 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.DDay
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.SlotOptions
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -19,7 +20,11 @@ import java.time.LocalDate
 object ConfigCodec {
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("theme", c.theme.name)
-        put("styles", JSONObject().also { o -> c.styles.forEach { (f, s) -> o.put(f.name, style(s)) } })
+        put("styles", JSONObject().also { o -> c.styles.forEach { (f, s) -> o.put(f.name, style(s)) } })   // overrides only
+        put("boardBg", c.boardBg.name)
+        put("boardBgColor", c.boardBgColor)
+        put("textSize", c.textSize.name)
+        put("analogStyle", c.analogStyle.name)
         put("boards", JSONArray().also { a -> c.boards.forEach { a.put(board(it)) } })
         put("startPage", c.startPage)
         put("use24h", c.use24h ?: JSONObject.NULL)
@@ -61,13 +66,15 @@ object ConfigCodec {
 
     private fun fromJson(o: JSONObject): AppConfig {
         val d = AppConfig()
-        val styles = o.optJSONObject("styles")
+        val theme = enumOf(o, "theme", d.theme)
+        val (styles, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme) { so, base -> style(so, base) }
         return AppConfig(
-            theme = enumOf(o, "theme", d.theme),
-            styles = FaceId.entries.associateWith { f ->
-                val so = styles?.optJSONObject(f.name)
-                if (so == null) ClockStyle.default(f) else style(so, ClockStyle.default(f))
-            },
+            theme = theme,
+            styles = styles,
+            boardBg = enumOf(o, "boardBg", d.boardBg),
+            boardBgColor = o.optLong("boardBgColor", d.boardBgColor),
+            textSize = enumOf(o, "textSize", d.textSize),
+            analogStyle = if (o.has("analogStyle")) enumOf(o, "analogStyle", d.analogStyle) else migratedAnalog ?: d.analogStyle,
             boards = o.optJSONArray("boards")?.let { a -> (0 until a.length()).mapNotNull { runCatching { board(a.getJSONObject(it)) }.getOrNull() } } ?: d.boards,
             startPage = o.optInt("startPage", d.startPage),
             use24h = if (o.has("use24h") && !o.isNull("use24h")) o.optBoolean("use24h") else null,
@@ -135,6 +142,21 @@ object ConfigCodec {
         put("slots", JSONArray().also { a -> b.slots.forEach { a.put(cards(it)) } })
         put("accent", b.accent ?: JSONObject.NULL)
         put("clockFace", b.clockFace.name)
+        if (b.options.isNotEmpty()) put("options", JSONObject().also { o -> b.options.forEach { (k, v) -> o.put(k, slotOptions(v)) } })
+    }
+
+    private fun slotOptions(s: SlotOptions) = JSONObject().apply {
+        put("widgetId", s.widgetId ?: JSONObject.NULL); put("opacity", s.opacity.toDouble()); put("widgetMode", s.widgetMode.name)
+        put("radiusDp", s.radiusDp); put("hideAtNight", s.hideAtNight)
+    }
+
+    private fun slotOptions(o: JSONObject): SlotOptions {
+        val d = SlotOptions()
+        return SlotOptions(
+            widgetId = if (o.has("widgetId") && !o.isNull("widgetId")) o.optInt("widgetId") else null,
+            opacity = num(o, "opacity", d.opacity).coerceIn(0f, 1f), widgetMode = enumOf(o, "widgetMode", d.widgetMode),
+            radiusDp = o.optInt("radiusDp", d.radiusDp), hideAtNight = o.optBoolean("hideAtNight", d.hideAtNight),
+        )
     }
 
     private fun board(o: JSONObject): Board {
@@ -144,14 +166,21 @@ object ConfigCodec {
                 id = o.getString("id"), name = o.optString("name", "화면"), layout = enumOf(o, "layout", Layout.TWO), slots = slots,
                 accent = if (o.has("accent") && !o.isNull("accent")) o.optLong("accent") else null,
                 clockFace = enumOf(o, "clockFace", FaceId.DIGITAL),
+                options = o.optJSONObject("options")?.let { oo -> oo.keys().asSequence().mapNotNull { k -> runCatching { k to slotOptions(oo.getJSONObject(k)) }.getOrNull() }.toMap() } ?: emptyMap(),
             ),
         )
     }
 
     private fun cards(l: List<CardType>) = JSONArray().also { a -> l.forEach { a.put(it.name) } }
 
+    /** r9 merged cards: old names read as their new card (D3), and a stack never holds the same card twice. */
+    private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF_LIST, "VIDEO" to CardType.MUSIC)
+
     private fun cards(a: JSONArray?, def: List<CardType>): List<CardType> =
-        if (a == null) def else (0 until a.length()).mapNotNull { runCatching { CardType.valueOf(a.getString(it)) }.getOrNull() }
+        if (a == null) def else (0 until a.length()).mapNotNull {
+            val n = a.optString(it)
+            CARD_ALIAS[n] ?: runCatching { CardType.valueOf(n) }.getOrNull()
+        }.distinct()
 
     private fun city(c: City) = JSONObject().put("name", c.name).put("lat", c.lat).put("lon", c.lon)
     private fun city(o: JSONObject) = City(o.getString("name"), o.getDouble("lat"), o.getDouble("lon"))

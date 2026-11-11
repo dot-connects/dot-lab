@@ -297,16 +297,32 @@ object Themes {
         Theme.IPHONE -> IPHONE
         Theme.PAPER -> PAPER
         Theme.MOODLIGHT -> MOODLIGHT
+        // r9 Task 2: the seven new themes borrow IPHONE until Task 3 gives them their own entries
+        Theme.CANDLE, Theme.FLIP, Theme.SKY, Theme.DAYPAPER, Theme.RADIO, Theme.NEON, Theme.TERMINAL -> IPHONE
     }
 }
 
+/** The style [face] is drawn with: the user's own edit ([AppConfig.styles] holds edits only, r9 D4), else the theme's default. */
+fun AppConfig.clockStyle(face: FaceId): ClockStyle = styles[face] ?: Themes.of(theme).clockDefaults(face)
+
 /**
- * The style [face] is drawn with: the user's own edit, else the theme's default. A stored style equal to the iPhone
- * default ([ClockStyle.default], what [AppConfig] starts with) counts as untouched, so switching theme restyles it.
+ * The one way to change theme (r9 D4: settings, the pull-down panel and previews all call it). Edited clock styles keep
+ * their font, size and effect but take the new theme's colours and background; an edit left equal to the new default
+ * is dropped, so it follows the theme again.
  */
-fun AppConfig.clockStyle(face: FaceId): ClockStyle {
-    val s = styles[face]
-    return if (s == null || s == ClockStyle.default(face)) Themes.of(theme).clockDefaults(face) else s
+fun AppConfig.withTheme(th: Theme): AppConfig {
+    if (th == theme) return this
+    val t = Themes.of(th)
+    val kept = styles.mapNotNull { (f, s) ->
+        val d = t.clockDefaults(f)
+        val r = s.copy(
+            color = d.color, color2 = d.color2, background = d.background, bgColor = d.bgColor, bgColor2 = d.bgColor2,
+            numeralColor = d.numeralColor, handColor = d.handColor, secondColor = d.secondColor, weekdayColor = d.weekdayColor,
+            tickColor = d.tickColor, litDotColor = d.litDotColor,
+        )
+        if (r == d) null else f to r
+    }.toMap()
+    return copy(theme = th, styles = kept)
 }
 
 val LocalTheme = staticCompositionLocalOf { Themes.IPHONE }
