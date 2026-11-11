@@ -28,7 +28,7 @@ geometry identical to `BoardView.slots`). When this file and the page disagree, 
 | Weather | Temperature grows into the free height. Tiny: temp + sky. Short-wide (h < 176): temp left, 4–5 hours right. Small tall: temp + hour list. Wide (≥ 1.3): now left at full height, hours right (+5 days when tall enough). Square/tall: hours row + day rows as they fit, leftover goes to the number. |
 | Calendar | Tiny: weekday/month + biggest day. Short-wide (h < 240): big day + this week + next 1–2 events. Narrow (w < 260): big day + upcoming events list. Big: month grid (wide: big day + events left, grid right; tall: grid + "다가오는 날"). Events from the phone calendar. |
 | Agenda, D-day | As drawn: colour-bar list ("외 N개"), two columns when wide; D-day name · D-n · date + progress bar when short ≥ 176. |
-| Phone widget (new card) | Hosts any home-screen AppWidget (Samsung Notes etc.) via AppWidgetHost; bind permission asked once. Long-press menu: "위젯 설정" (provider's configure activity) + StandBy settings: opacity 0–100 %, follow theme / always dark / always light (uiMode), corner radius, hide at night. Night: dark + red-tinted overlay over the whole slot. |
+| Phone widget (new card) | Hosts any home-screen AppWidget (Samsung Notes etc.) via AppWidgetHost; bind permission asked once. Long-press menu: "위젯 설정" (provider's configure activity) + StandBy settings: opacity 0–100 %, follow theme / always dark / always light (uiMode), corner radius, hide at night. Night: dark candle overlay over the whole slot (no red). |
 | Timer · pomodoro | Ring progress; square/tall: digits inside the ring + "집중 2/4", pause/stop under; wide: ring left, digits + next break + buttons right; small: digits + one button. |
 | Sleep sounds | Six tiles (빗소리 · 파도 · 장작불 · 백색소음 · 핑크 · 브라운) in Control-Center style (round tile, circular SF-Symbol-like glyph, active one coloured); grid picks the column count with the biggest tiles; footer: pause · "45분 뒤 꺼짐" · minutes chip. Tiny: current sound + ◀ ▶. Needs a fire-crackle audio asset. |
 | Usage (personal build only) | 눈금 widget rings (270°, open at the bottom; outer 5 h left thick, inner 7 d left thin, gap at the pace point, number = 7 d left) + session rows (dev · dev2 · sync · lab: dot state busy/wait/idle/off, context fill, cache arc). Wide: rings left full height, sessions right; stacked otherwise, sessions sized first; small = one line per session; tall big slots add bots + last update. Removed from release builds with the PC feed code. |
@@ -48,21 +48,21 @@ geometry identical to `BoardView.slots`). When this file and the page disagree, 
 - **Live activity**: ETA fills its column ("도착까지 12분"), app + store header, vertical timeline 주문 → 조리 → 픽업 → 도착 with times, rider row when tall enough; warm corner glow.
 - **Analog clock (full)**: five styles, all shipped as a style option: 둥근 판 · 네모 판 (ticks/numerals along the screen edge) · 큰 숫자 4개 · 미니멀 (12 bars + glow) · 듀오 (analog + digital). Date/weather outside the dial.
 - **Now Playing**: same YouTube Music look as the media card (tall/cover rules applied to the whole screen).
-- **Night mode**: "촛불" — warm grey ink #B9A48C, secondary 45 %, plates 6 %, faint candle glow from the bottom, thin digits. Replaces the saturated red everywhere.
+- **Night mode**: "촛불" — warm grey ink #B9A48C, secondary 58 % (raised from 45 % for 3:1), plates 6 %, faint candle glow from the bottom, thin digits. Replaces the saturated red everywhere.
 - Digital / world / solar / float / desk / photos: unchanged except the theme tokens.
 
 ## 4. Themes (all ten ship)
 
 | Theme | Tokens |
 |---|---|
-| 아이폰 (따뜻하게) | bg #000, ink #F6EFE6, accent #FFAD5C, plate #1C1A18, r 26, digits Barlow Condensed 600 |
+| 아이폰 (따뜻하게) | bg #000, ink #F6EFE6, accent #FFAD5C, plate #1C1A18, r 26, digits condensed 600 (app font Sofia Sans Extra Condensed; the mockup used Barlow Condensed) |
 | 신문 1면 | bg #0E0D0B, ink #ECE4D4, accent #D8B46A, rules instead of plates, r 0, serif italic digits |
 | 무드등 | bg #14100C + warm glow, ink #FFF2E2, accent #FFB36B, plate #2B2119, r 32, light sans digits |
 | 촛불 (new) | bg #0C0805 + candle glow from the bottom, ink #EAD9C2, accent #E3A35B, plate 6 % warm, r 28, thin sans digits |
 | 플립 시계 (new) | bg #0C0C0C, ink #F2F2F2, accent #FF9F0A, plate #1F1F1F, r 14, split-flap digit tiles |
-| 하늘 (new) | time-of-day gradient bg, ink #FFF, accent #FFD29A, glass plates 14 %, r 26, extra-light digits |
-| 종이 · 낮 (new) | bg #F3EEE4, ink #1D1A16, accent #C2410C, plate #E8E1D3, r 18, serif digits (light theme) |
-| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #E8641C, plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
+| 하늘 (new) | time-of-day gradient bg (dusk stop darkened for contrast), ink #FFF, accent #FFD29A, glass plates 14 %, r 26, extra-light digits |
+| 종이 · 낮 (new) | bg #F3EEE4, ink #1D1A16, accent #B23A0B (darkened for contrast), plate #E8E1D3, r 18, serif digits (light theme) |
+| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #B4470F or darker (≥ 4.5:1 on plate), plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
 | 네온 (new) | bg #000, ink #7DF9FF, accent #FF4FD8, outlined plates with glow, r 24, condensed digits with glow |
 | 터미널 (new) | bg #050805, ink #59FF7A, accent #FFB000, outlined plates, r 4, IBM Plex Mono |
 
