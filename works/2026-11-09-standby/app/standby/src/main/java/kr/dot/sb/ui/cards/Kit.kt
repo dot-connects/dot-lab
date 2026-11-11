@@ -130,7 +130,7 @@ internal class Env(
     val gap: Dp get() = s * 0.04f
     val labelCap: Dp get() = label * CAP_UI
     /** Reading sentences (notification text, artist, channel): never above the slot's label floor of 16 dp (r7). */
-    val read: Dp get() = min(look.readSize ?: (label * 0.85f).coerceIn(18.dp, 24.dp), max(label, 16.dp))
+    val read: Dp get() = min(look.readSize ?: (label * 0.85f).coerceIn(15.dp, 20.dp), max(label, 14.dp))
     /** App name, time ("카카오톡", "12분 전"). */
     val meta: Dp get() = Reading.meta(read)
     /** Sender, list header, media title floor. */

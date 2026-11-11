@@ -160,7 +160,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     val floor = (screenShort * t.minText).dp
     // r7: also capped at 6.2 % of the screen, so a lone full-size slot never gets 40 dp labels
     val label = (sizes.minOfOrNull { it.label } ?: 18.dp).coerceAtLeast(floor)
-        .coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f).coerceAtMost((screenShort * 0.062f).dp)
+        .coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f).coerceAtMost((screenShort * 0.054f).dp)
     val read = Reading.read(screenShort.dp)
     val pad = sizes.minOfOrNull { it.pad } ?: 12.dp
     val clock = BoardGrid.hasClock(firsts)

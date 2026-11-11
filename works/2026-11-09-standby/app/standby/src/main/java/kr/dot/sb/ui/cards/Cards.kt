@@ -103,7 +103,7 @@ fun CardView(
             )
         }
         // C: the music plate takes the album colour (computed once per cover), every other card its function pastel
-        val art = state.media?.art?.takeIf { type == CardType.MUSIC && t.surface == Surface.PLATE }
+        val art = state.media?.takeIf { it.kind == MediaKind.MUSIC }?.art?.takeIf { type == CardType.MUSIC && t.surface == Surface.PLATE }
         val artTint = remember(art) { art?.let(::artColor) }
         val surface = when (t.surface) {
             // B's hairlines live in the gutters, drawn once by the board (BoardView)
@@ -179,15 +179,17 @@ private fun AnalogCard(e: Env, state: StandbyState, config: AppConfig) {
 
 @Composable
 private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind: MediaKind) {
-    val m = state.media?.takeIf { it.kind == kind }
-    val ic = if (kind == MediaKind.MUSIC) Ic.NOTE else Ic.VIDEO
+    // r8 (operator "음악이랑 유튜브를 하나로"): one media card shows whatever plays; [kind] only picks the idle look
+    val m = state.media
     if (m == null) {
-        StateCard(e, ic, if (kind == MediaKind.MUSIC) "음악" else "영상", ic, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
+        val ic = if (kind == MediaKind.MUSIC) Ic.NOTE else Ic.VIDEO
+        StateCard(e, ic, "미디어", ic, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
         return
     }
+    val ic = if (m.kind == MediaKind.MUSIC) Ic.NOTE else Ic.VIDEO
     when {
         e.cls == SizeClass.XS -> XsPlate(e, m, ic, actions)
-        kind == MediaKind.VIDEO -> VideoBody(e, m, actions)
+        m.kind == MediaKind.VIDEO -> VideoBody(e, m, actions)
         else -> MusicBody(e, m, actions)
     }
 }

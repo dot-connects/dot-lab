@@ -277,6 +277,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             _state.update { it.copy(displayOff = off) }
             if (off) { visibleJob?.cancel(); visibleJob = null } else startVisible()
         }
+        // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
+        if (!off && pendingBrightness != null) return
         val b = Brightness.target(off, nightOn, cfg)
         if (b != lastBrightness) { lastBrightness = b; host.setBrightness(b) }
     }

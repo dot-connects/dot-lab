@@ -143,22 +143,22 @@ data class Sizes(
  * about 25 % bigger in Korean; these are the corrected sizes.
  */
 object Reading {
-    /** Body sentences: 0.048 × short side, 20–24 dp (Fold cover 23, bar 20). */
-    fun read(screenShort: Dp): Dp = (screenShort * 0.048f).coerceIn(20.dp, 24.dp)
+    /** Body sentences: 0.04 × short side, 16–20 dp (r8 "아직도 크네": one more step down). */
+    fun read(screenShort: Dp): Dp = (screenShort * 0.04f).coerceIn(16.dp, 20.dp)
     /** App name, time: never above [read]. */
-    fun meta(read: Dp): Dp = max(min(18.dp, read), read * 0.83f)
+    fun meta(read: Dp): Dp = max(min(14.dp, read), read * 0.83f)
     /** Sender, list header: one step up from [read], bold. */
     fun head(read: Dp): Dp = read * 1.2f
 }
 
 /** Full-screen overlays (Now Playing, big notification), sized from the screen short side [s] (r7). */
 object OverlayType {
-    fun title(s: Dp): Dp = max(22.dp, s * 0.065f)
-    fun sub(s: Dp): Dp = max(18.dp, s * 0.05f)
-    fun meta(s: Dp): Dp = max(16.dp, s * 0.042f)
-    fun body(s: Dp): Dp = max(20.dp, s * 0.055f)
+    fun title(s: Dp): Dp = max(18.dp, s * 0.052f)
+    fun sub(s: Dp): Dp = max(15.dp, s * 0.04f)
+    fun meta(s: Dp): Dp = max(13.dp, s * 0.034f)
+    fun body(s: Dp): Dp = max(16.dp, s * 0.044f)
     /** Play button: from the screen, not from the title, so a smaller title keeps a big target. */
-    fun play(s: Dp): Dp = max(56.dp, s * 0.15f)
+    fun play(s: Dp): Dp = max(52.dp, s * 0.13f)
 }
 
 /** Size class of a slot (design-system §4.1). */

@@ -194,7 +194,7 @@ object Themes {
         clockFamily = { f, w -> Fonts.clock(f, w) },
         clockDefaults = { ClockStyle.default(it) },
         ramp = Ramp.IPHONE,
-        minText = 0.045f,
+        minText = 0.038f,
         surface = Surface.NONE,
         radius = 0.12f,
         colorIcons = true,
@@ -230,7 +230,7 @@ object Themes {
             }
         },
         ramp = Ramp.IPHONE,
-        minText = 0.045f,
+        minText = 0.038f,
         surface = Surface.RULE,
         radius = 0f,
         colorIcons = false,
@@ -272,7 +272,7 @@ object Themes {
             }
         },
         ramp = Ramp.IPHONE,
-        minText = 0.045f,
+        minText = 0.038f,
         surface = Surface.PLATE,
         radius = 0.16f,
         colorIcons = true,

@@ -144,12 +144,19 @@ internal fun RootImpl(
     var barPressed by remember { mutableStateOf(false) }
     var barTick by remember { mutableIntStateOf(0) }
     val canBar by rememberUpdatedState(!state.displayOff && !editing && topLayer(state, config, npOpen) == Layer.NONE)
-    val barOpen by rememberUpdatedState({ level = Brightness.shown(nightNow, config); barOn = true; barTick++ })
+    // the swipe that opens the bar keeps going as a slider: sideways travel moves the level from where it was (r8)
+    var slideBase by remember { mutableFloatStateOf(0f) }
+    val barOpen by rememberUpdatedState({ level = Brightness.shown(nightNow, config); slideBase = level; barOn = true; barPressed = true; barTick++ })
+    val barSlide by rememberUpdatedState({ d: Float ->
+        val v = (slideBase + d).coerceIn(0f, 1f)
+        if (v != level) { level = v; act.setBrightness(v) }
+    })
+    val barUp by rememberUpdatedState({ barPressed = false; barTick++ })
     LaunchedEffect(barOn, barTick, barPressed) { if (barOn && !barPressed) { delay(BAR_HIDE_MS); barOn = false } }
 
     BoxWithConstraints(
         modifier.fillMaxSize().background(Color.Black)
-            .pointerInput(Unit) { rootGestures({ act.userActivity() }, { act.exit() }, { canBar }, { barOpen() }) },
+            .pointerInput(Unit) { rootGestures({ act.userActivity() }, { act.exit() }, { canBar }, { barOpen() }, { barSlide(it) }, { barUp() }) },
     ) {
         // Display off: pure black, nothing else composed; the root gesture above is the tap catcher (spec E14).
         if (state.displayOff) return@BoxWithConstraints
@@ -227,21 +234,26 @@ private fun BoardPage(board: Board, state: StandbyState, config: AppConfig, acti
  */
 private suspend fun androidx.compose.ui.input.pointer.PointerInputScope.rootGestures(
     onTouch: () -> Unit, onExit: () -> Unit, canOpenBar: () -> Boolean, onOpenBar: () -> Unit,
+    onBarSlide: (Float) -> Unit, onBarUp: () -> Unit,
 ) {
     val edge = 48.dp.toPx()
     awaitEachGesture {
         val down = awaitFirstDown(requireUnconsumed = false, pass = PointerEventPass.Initial)
         onTouch()
         if (down.position.y < edge && canOpenBar()) {
-            // top edge: a downward drag > 24 dp opens the brightness bar; claimed so the pager and card stacks stay still
+            // top edge: a downward drag > 24 dp opens the brightness bar; claimed so the pager and card stacks stay still.
+            // The same finger then slides it: sideways travel / bar width = change in level.
             var claimed = false
+            var x0 = 0f
+            val bw = barWidth(size.width.toDp()).toPx()
             while (true) {
                 val c = awaitPointerEvent(PointerEventPass.Initial).changes.firstOrNull { it.id == down.id } ?: break
                 if (!c.pressed) break
                 val dy = c.position.y - down.position.y
-                if (!claimed && dy > 24.dp.toPx() && dy > abs(c.position.x - down.position.x)) { claimed = true; onOpenBar() }
-                if (claimed) c.consume()
+                if (!claimed && dy > 24.dp.toPx() && dy > abs(c.position.x - down.position.x)) { claimed = true; x0 = c.position.x; onOpenBar() }
+                if (claimed) { c.consume(); onBarSlide((c.position.x - x0) / bw) }
             }
+            if (claimed) onBarUp()
             return@awaitEachGesture
         }
         if (down.position.y < size.height - edge) return@awaitEachGesture
