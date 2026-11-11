@@ -7,6 +7,15 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
+import kotlinx.coroutines.delay
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.draw.alpha
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -186,12 +195,8 @@ private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind
         StateCard(e, ic, "미디어", ic, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
         return
     }
-    val ic = if (m.kind == MediaKind.MUSIC) Ic.NOTE else Ic.VIDEO
-    when {
-        e.cls == SizeClass.XS -> XsPlate(e, m, ic, actions)
-        m.kind == MediaKind.VIDEO -> VideoBody(e, m, actions)
-        else -> MusicBody(e, m, actions)
-    }
+    // r9 (operator, YouTube Music / YouTube refs): one look for music and video, picked by the slot's shape only
+    if (e.w / e.h <= 0.82f) MediaTall(e, m, actions) else MediaCover(e, m, actions)
 }
 
 @Composable
@@ -206,146 +211,135 @@ internal fun Art(e: Env, img: ImageBitmap?, placeholder: Ic, modifier: Modifier,
     }
 }
 
-/** iPhone widget transport button: icon on a 14 % ink disc (mockup r5 modular). */
-@Composable
-private fun Disc(e: Env, ic: Ic, d: Dp, enabled: Boolean = true, onClick: () -> Unit) {
-    Box(
-        Modifier.size(d).clip(CircleShape).background(e.ink.ink.copy(alpha = 0.14f)).tap(if (enabled) onClick else null),
-        contentAlignment = Alignment.Center,
-    ) { IconView(ic, if (enabled) e.ink.ink else e.ink.ink3, Modifier.size(d * 0.44f)) }
-}
-
-/** Prev / play / next discs spread over [width]; only play/pause when three do not fit. */
-@Composable
-private fun Transport(e: Env, m: MediaInfo, actions: StandbyActions, width: Dp, d0: Dp) {
-    val full = width >= d0 * 3.4f
-    val d = if (full) d0 else min(d0, width)
-    Row(Modifier.width(width), horizontalArrangement = if (full) Arrangement.SpaceBetween else Arrangement.Start) {
-        if (full) Disc(e, Ic.PREV, d, m.canPrev, actions::mediaPrev)
-        Disc(e, if (m.playing) Ic.PAUSE else Ic.PLAY, d, onClick = actions::mediaPlayPause)
-        if (full) Disc(e, Ic.NEXT, d, m.canNext, actions::mediaNext)
-    }
-}
-
 internal fun progress(m: MediaInfo) = if (m.durationMs > 0) m.positionMs.toFloat() / m.durationMs else 0f
 
-/** XS: art plate fills the slot, play/pause disc bottom-trailing; tap elsewhere opens the player. */
+private fun mmss(ms: Long): String { val s = (ms / 1000).coerceAtLeast(0); return "%d:%02d".format(s / 60, s % 60) }
+
+/** One transport button: [fill] disc behind the glyph; a 48 dp target at least. */
 @Composable
-private fun XsPlate(e: Env, m: MediaInfo, ic: Ic, actions: StandbyActions) {
-    if (e.tall) {
-        // Tall XS (Flip halves): square art on TOP, play/pause on BOT instead of a stretched crop.
-        Column(
-            Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp),
-            verticalArrangement = Arrangement.SpaceBetween,
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Art(e, m.art, ic, Modifier.size(e.cw), e.round(e.cw))
-            Disc(e, if (m.playing) Ic.PAUSE else Ic.PLAY, e.label * 2f, onClick = actions::mediaPlayPause)
-        }
-        return
+private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        Modifier.size(d).clip(CircleShape).background(fill).tap(if (enabled) onClick else null),
+        contentAlignment = Alignment.Center,
+    ) { IconView(ic, if (enabled) fg else fg.copy(alpha = 0.4f), Modifier.size(d * 0.5f)) }
+}
+
+/**
+ * Prev / play-pause / next. [solid]: the play button is an ink disc with a dark glyph (YouTube Music portrait), the
+ * side ones bare; otherwise all three sit on dark see-through discs over the picture (YouTube landscape). Slots under
+ * 140 dp keep play-pause alone. [onUse] runs on any press (keeps a revealed overlay up).
+ */
+@Composable
+private fun MediaTransport(
+    e: Env, m: MediaInfo, actions: StandbyActions, play: Dp, side: Dp, solid: Boolean, arrangement: Arrangement.Horizontal,
+    modifier: Modifier, onUse: () -> Unit = {},
+) {
+    val scrim = Color.Black.copy(alpha = 0.42f)
+    val playFill = if (solid) e.ink.ink else scrim
+    val playFg = if (solid) Color.Black else e.ink.ink
+    val sideFill = if (solid) Color.Transparent else scrim
+    val one = e.w < 140.dp
+    Row(modifier, horizontalArrangement = if (one) Arrangement.Center else arrangement, verticalAlignment = Alignment.CenterVertically) {
+        if (!one) MediaBtn(Ic.PREV, side, sideFill, e.ink.ink, m.canPrev) { onUse(); actions.mediaPrev() }
+        MediaBtn(if (m.playing) Ic.PAUSE else Ic.PLAY, play, playFill, playFg, true) { onUse(); actions.mediaPlayPause() }
+        if (!one) MediaBtn(Ic.NEXT, side, sideFill, e.ink.ink, m.canNext) { onUse(); actions.mediaNext() }
     }
-    Box(Modifier.fillMaxSize().tap(actions::openMediaApp)) {
-        Art(e, m.art, ic, Modifier.fillMaxSize(), e.plateRadius)
-        val d = e.label * 2.2f
-        Box(
-            Modifier.align(Alignment.BottomEnd).padding(e.pad * 0.7f).size(d).clip(CircleShape)
-                .background(Color.Black.copy(alpha = 0.6f)).tap(actions::mediaPlayPause),
-            contentAlignment = Alignment.Center,
-        ) { IconView(if (m.playing) Ic.PAUSE else Ic.PLAY, e.ink.ink, Modifier.size(d * 0.46f)) }
+}
+
+@Composable
+private fun MediaTime(e: Env, ms: Long) = Txt(mmss(ms), 12.dp, e.ink.ink.copy(alpha = 0.7f), num = true)
+
+/**
+ * Tall slot (w/h <= 0.82), YouTube Music portrait: art centred on top (video: 16:9 still), title and artist
+ * left-aligned under it, bar + times, then prev / white play disc / next. Always shown. Tap opens the player.
+ */
+@Composable
+private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions) {
+    val w = e.w
+    val pad = (w * 0.075f).coerceIn(12.dp, 32.dp)
+    val ts = (w * 0.068f).coerceIn(15.dp, 26.dp)
+    val play = (w * 0.19f).coerceIn(52.dp, 80.dp)
+    val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
+    val video = m.kind == MediaKind.VIDEO
+    Column(Modifier.fillMaxSize().padding(pad).tap(actions::openMediaApp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
+            val ah = min(maxHeight, if (video) maxWidth * (9f / 16f) else maxWidth)
+            Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.size(if (video) maxWidth else ah, ah), (ah * 0.05f).coerceIn(8.dp, 18.dp))
+        }
+        Spacer(Modifier.height(gap))
+        Txt(m.title, ts, e.ink.ink, weight = 700, lines = if (video) 2 else 1)
+        Spacer(Modifier.height(4.dp))
+        Txt(m.artist, ts * 0.78f, e.readInk2, weight = 500)
+        Spacer(Modifier.height(gap))
+        Bar(e, progress(m), e.ink.ink)
+        if (w >= 180.dp) Row(Modifier.fillMaxWidth().padding(top = 5.dp)) {
+            MediaTime(e, m.positionMs)
+            Spacer(Modifier.weight(1f))
+            MediaTime(e, m.durationMs)
+        }
+        Spacer(Modifier.height(gap * 1.4f))
+        MediaTransport(
+            e, m, actions, play, max(48.dp, play * 0.7f), solid = true, Arrangement.SpaceBetween,
+            Modifier.fillMaxWidth().padding(horizontal = w * 0.06f),
+        )
     }
 }
 
 /**
- * Music (mockup r5 modular, iPhone Duo widget): art top-left with the music glyph top-right, title + artist under the
- * art, three transport discs along the bottom. Wide slots put the art on the left, full height.
+ * Wide or square slot, YouTube landscape: the art / still fills the slot. At rest only the picture; a tap brings the
+ * scrim, title top-leading, transport centred and bar + times along the bottom for [MEDIA_CONTROLS_MS] (any button
+ * keeps them up); a tap while they show opens the player.
  */
 @Composable
-private fun MusicBody(e: Env, m: MediaInfo, actions: StandbyActions) {
-    val title = mediaTitle(e)
-    val disc = mediaDisc(e)
-    val glyph = e.label * 1.1f
-    val names = @Composable { mod: Modifier ->
-        Column(mod) {
-            Txt(m.title, title, e.ink.ink, weight = 700, lines = 2)
-            Spacer(Modifier.height(e.gap * 0.6f))
-            Txt(m.artist, e.read, e.readInk2, weight = 500)
-        }
-    }
-    val noteGlyph = @Composable { IconView(Ic.NOTE, e.ink.music, Modifier.size(glyph)) }
-    if (e.w > e.h * 1.15f) {
-        val a = min(e.ch, e.cw * 0.45f)
-        Row(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-            Art(e, m.art, Ic.NOTE, Modifier.size(a), e.round(a, 10.dp, 0.8f))
-            Spacer(Modifier.width(e.pad))
-            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
-                Row(Modifier.fillMaxWidth()) {
-                    names(Modifier.weight(1f))
-                    noteGlyph()
-                }
-                Column {
-                    Bar(e, progress(m), e.ink.ink)
-                    Spacer(Modifier.height(e.gap * 1.5f))
-                    Transport(e, m, actions, e.cw - a - e.pad, disc)
-                }
-            }
-        }
-        return
-    }
-    // two title lines, artist, bar, discs and their gaps
-    val need = title * CAP_UI + title * 1.15f + e.gap * 0.6f + e.read * CAP_UI + e.bar + disc + e.gap * 5.5f
-    val a = min(e.ch - need, e.cw - glyph - e.gap)
-    Column(Modifier.fillMaxSize().padding(e.pad).tap(actions::openMediaApp)) {
-        if (a >= e.label * 3) {
-            Row(Modifier.fillMaxWidth()) {
-                Art(e, m.art, Ic.NOTE, Modifier.size(a), e.round(a, 10.dp, 0.8f))
-                Spacer(Modifier.weight(1f))
-                noteGlyph()
-            }
-            Spacer(Modifier.height(e.gap * 2))
-            names(Modifier.fillMaxWidth())
-        } else {
-            Row(Modifier.fillMaxWidth()) { names(Modifier.weight(1f)); noteGlyph() }
-        }
-        Spacer(Modifier.weight(1f))
-        Bar(e, progress(m), e.ink.ink)
-        Spacer(Modifier.height(e.gap * 1.5f))
-        Transport(e, m, actions, e.cw, disc)
-    }
-}
-
-/** Media title: one step above reading text, never the slot's big title (r7: was 45–56 dp on the Fold cover). */
-private fun mediaTitle(e: Env): Dp = min(e.sz.title, e.read * 1.5f)
-
-/** Transport disc: a 48 dp touch target at least, whatever the text size. */
-private fun mediaDisc(e: Env): Dp = max(48.dp, e.label * 1.7f)
-
-/** Video: the still fills the slot like a photo card (scrim top and bottom), text bottom-leading, transport discs. */
-@Composable
-private fun VideoBody(e: Env, m: MediaInfo, actions: StandbyActions) {
-    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius))) {
-        Art(e, m.art, Ic.VIDEO, Modifier.fillMaxSize(), 0.dp)
-        Box(
-            Modifier.fillMaxSize().background(
-                Brush.verticalGradient(
-                    0f to Color.Black.copy(alpha = 0.5f), 0.25f to Color.Black.copy(alpha = 0.15f),
-                    0.45f to Color.Black.copy(alpha = 0.4f), 1f to Color.Black.copy(alpha = 0.75f),
+private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions) {
+    val s = min(e.w, e.h)
+    var shown by remember { mutableStateOf(false) }
+    var tick by remember { mutableIntStateOf(0) }
+    LaunchedEffect(shown, tick) { if (shown) { delay(MEDIA_CONTROLS_MS); shown = false } }
+    val a by animateFloatAsState(if (shown) 1f else 0f, tween(200), label = "media")
+    val video = m.kind == MediaKind.VIDEO
+    Box(Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).tap { if (shown) actions.openMediaApp() else shown = true }) {
+        Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.fillMaxSize(), 0.dp)
+        if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
+            val pad = (s * 0.07f).coerceIn(12.dp, 32.dp)
+            val ts = (s * 0.07f).coerceIn(13.dp, 26.dp)
+            val play = (s * 0.24f).coerceIn(48.dp, 96.dp)
+            val side = max(48.dp, play * 0.72f)
+            val gap = ((e.w - play - side * 2) * 0.12f).coerceIn(0.dp, play * 0.9f)
+            Box(
+                Modifier.fillMaxSize().background(
+                    Brush.verticalGradient(
+                        0f to Color.Black.copy(alpha = 0.62f), 0.35f to Color.Black.copy(alpha = 0.38f),
+                        0.65f to Color.Black.copy(alpha = 0.38f), 1f to Color.Black.copy(alpha = 0.66f),
+                    ),
                 ),
-            ),
-        )
-        TextCard(e) {
-            LabelRow(e, Ic.VIDEO, m.appLabel, color = e.ink.ink)
-            Column {
-                Txt(m.title, mediaTitle(e), e.ink.ink, weight = 700, lines = 2)
-                Spacer(Modifier.height(e.gap * 0.6f))
-                Txt(m.artist, e.read, e.ink.ink.copy(alpha = 0.8f), weight = 500)
-                Spacer(Modifier.height(e.gap * 1.5f))
-                Bar(e, progress(m), e.ink.ink)
-                Spacer(Modifier.height(e.gap * 1.5f))
-                Transport(e, m, actions, min(e.cw, mediaDisc(e) * 4.2f), mediaDisc(e))
+            )
+            Column(Modifier.fillMaxWidth().padding(pad)) {
+                Txt(m.title, ts, e.ink.ink, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
+                if (s >= 150.dp) {
+                    Spacer(Modifier.height(3.dp))
+                    Txt(m.artist, ts * 0.8f, e.ink.ink.copy(alpha = 0.75f), weight = 500)
+                }
+            }
+            MediaTransport(
+                e, m, actions, play, side, solid = false, Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+                Modifier.fillMaxWidth().align(Alignment.Center).offset(y = s * 0.04f), onUse = { tick++ },
+            )
+            val times = s >= 180.dp
+            Row(
+                Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = pad).padding(bottom = pad * 0.8f),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                if (times) { MediaTime(e, m.positionMs); Spacer(Modifier.width(10.dp)) }
+                Bar(e, progress(m), e.ink.ink, Modifier.weight(1f))
+                if (times) { Spacer(Modifier.width(10.dp)); MediaTime(e, m.durationMs) }
             }
         }
     }
 }
+
+/** How long a tap keeps the cover's controls up. */
+internal const val MEDIA_CONTROLS_MS = 3_000L
 
 // ---------------------------------------------------------------- timer, sleep, d-day
 
