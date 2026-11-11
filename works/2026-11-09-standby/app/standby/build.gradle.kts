@@ -21,8 +21,8 @@ android {
         applicationId = "kr.dot.standby"
         minSdk = 34
         targetSdk = 35
-        versionCode = 8
-        versionName = "0.2.5"
+        versionCode = 9
+        versionName = "0.2.6"
         buildConfigField("String", "STATUS_BOT_TOKEN", secret("statusBotToken"))
         buildConfigField("String", "STATUS_CHAT_ID", secret("statusChatId"))
         buildConfigField("String", "LAN_TOKEN", secret("lanToken"))

@@ -126,9 +126,15 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         override fun onSensorChanged(e: SensorEvent) = onAccel(e.values[0], e.values[1], e.values[2])
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
-    /** Charger out: the "start on charge" job must not wait for its rearm delay (see [ChargeStart]). */
+    /**
+     * Charger out (wired or wireless): StandBy ends, however it was opened (r8: a tile or dream hand-over start stayed
+     * on after the phone left the pad). Also re-arms the "start on charge" job at once (see [ChargeStart]).
+     */
     private val unplugRx = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) = ChargeStart.rearmNow(ctx)
+        override fun onReceive(c: Context, i: Intent) {
+            ChargeStart.rearmNow(ctx)
+            if (!exited) { exited = true; ChargeStart.log(ctx, "닫힘 · 충전기 뽑힘"); host.finish() }
+        }
     }
     private val nextAlarmRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { scope.launch { refreshStatic(force = true) } }

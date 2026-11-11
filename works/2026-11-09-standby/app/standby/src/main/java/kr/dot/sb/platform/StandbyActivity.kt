@@ -42,14 +42,14 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             ChargeStart.cancelNotification(this)
             ChargeStart.log(this, "화면 열림")
             if (!getSystemService(BatteryManager::class.java).isCharging) { ChargeStart.log(this, "닫힘 · 이미 뽑힘"); finish(); return } // unplugged before we got here
-            // unplug or unlock ends it; the exit swipe goes through HostActions.exit() -> finish()
+            // unlock ends it (unplug: the state holder, for every start path); the exit swipe goes through HostActions.exit()
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {
-                    ChargeStart.log(c, if (i.action == Intent.ACTION_USER_PRESENT) "닫힘 · 잠금 해제" else "닫힘 · 충전기 뽑힘")
+                    ChargeStart.log(c, "닫힘 · 잠금 해제")
                     finish()
                 }
             }.also {
-                registerReceiver(it, IntentFilter(Intent.ACTION_POWER_DISCONNECTED).apply { addAction(Intent.ACTION_USER_PRESENT) }, Context.RECEIVER_NOT_EXPORTED)
+                registerReceiver(it, IntentFilter(Intent.ACTION_USER_PRESENT), Context.RECEIVER_NOT_EXPORTED)
             }
         }
         setShowWhenLocked(true)
