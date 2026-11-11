@@ -62,7 +62,7 @@ geometry identical to `BoardView.slots`). When this file and the page disagree, 
 | 플립 시계 (new) | bg #0C0C0C, ink #F2F2F2, accent #FF9F0A, plate #1F1F1F, r 14, split-flap digit tiles |
 | 하늘 (new) | time-of-day gradient bg (dusk stop darkened for contrast), ink #FFF, accent #FFD29A, glass plates 14 %, r 26, extra-light digits |
 | 종이 · 낮 (new) | bg #F3EEE4, ink #1D1A16, accent #B23A0B (darkened for contrast), plate #E8E1D3, r 18, serif digits (light theme) |
-| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #B4470F or darker (≥ 4.5:1 on plate), plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
+| 브라운 라디오 (new) | bg #D9D3C7, ink #2A2723, accent #A8420E (darkened for ≥ 4.5:1 on plate), plate #EBE6DC, r 22, Inter digits, knob row (light theme) |
 | 네온 (new) | bg #000, ink #7DF9FF, accent #FF4FD8, outlined plates with glow, r 24, condensed digits with glow |
 | 터미널 (new) | bg #050805, ink #59FF7A, accent #FFB000, outlined plates, r 4, IBM Plex Mono |
 

@@ -99,7 +99,7 @@ Round logs: `docs/archive/2026-11-11-standby-r9-plan-review/` (workspace root). 
 | FLIP | #0C0C0C | #F2F2F2 | .55 / .30 | #FF9F0A | #1F1F1F / #2A2A2A | FILL | .05, 10 | `sofia_xcond` 700, FLIP | no | no | 0 |
 | SKY | gradient #1B2A4A→#3A3F6B→#7A4148 (time of day; stops darkened until contrast passes) | #FFFFFF | .70 / .40 | #FFD29A | #FFFFFF24 / #FFFFFF33 | GLASS | .075, 12 | Pretendard 200, PLAIN | no | no | 0 |
 | DAYPAPER | #F3EEE4 | #1D1A16 | .60 / .35 | #B23A0B | #E8E1D3 / #DDD4C3 | FILL | .055, 10 | `source_serif` 600, PLAIN | yes | no | 0 |
-| RADIO | #D9D3C7 | #2A2723 | .62 / .38 | #B4470F (darken until ≥ 4.5:1 on plate) | #EBE6DC / #E0DACE | FILL | .065, 12 | `inter` 500, PLAIN | yes | no | 0 |
+| RADIO | #D9D3C7 | #2A2723 | .62 / .38 | #A8420E (4.9:1 on plate) | #EBE6DC / #E0DACE | FILL | .065, 12 | `inter` 500, PLAIN | yes | no | 0 |
 | NEON | #000000 | #7DF9FF | .55 / .30 | #FF4FD8 | transparent / #7DF9FF14 | OUTLINE | .07, 12 | `sofia_xcond` 400, GLOW | no | yes | 0 |
 | TERMINAL | #050805 | #59FF7A | .55 / .30 | #FFB000 | transparent / #59FF7A12 | OUTLINE | .012, 4 | `plex_mono_500` 500, PLAIN | no | yes | .02 |
 | NIGHT_CANDLE | #000000 + glow #FFAA5A14 at (.5,1.15) | #B9A48C | .58 / .30 | = ink | #B9A48C0F / #B9A48C1A | FILL (effects off) | theme | theme font, weight min(theme, 400) | — | — | theme |
