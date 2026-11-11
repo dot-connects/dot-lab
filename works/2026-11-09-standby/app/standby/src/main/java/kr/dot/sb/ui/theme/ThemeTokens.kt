@@ -56,16 +56,7 @@ data class Roles(
 
         /** Move each base colour's lightness away from the page (up on dark, down on light) until it reaches 3:1 on every surface. */
         fun derive(base: Roles, surfaces: List<Color>, light: Boolean): Roles {
-            fun fit(c: Color): Color {
-                val (h, s, l0) = Hsl.toHsl(c)
-                var l = l0
-                var out = c
-                while (surfaces.minOf { Contrast.ratio(out, it) } < 3f && l in 0f..1f) {
-                    l += if (light) -0.01f else 0.01f
-                    out = Color.hsl(h, s, l.coerceIn(0f, 1f))
-                }
-                return out
-            }
+            fun fit(c: Color) = Contrast.fit(c, surfaces, light)
             return Roles(
                 fit(base.red), fit(base.orange), fit(base.yellow), fit(base.green), fit(base.blue),
                 fit(base.amber), fit(base.snooze), fit(base.music), fit(base.lilac),
@@ -79,6 +70,18 @@ object Contrast {
     fun ratio(a: Color, b: Color): Float {
         val la = a.luminance(); val lb = b.luminance()
         return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
+    }
+
+    /** [c] with its lightness moved away from the page (down when [light]) until it reaches 3:1 on every surface. */
+    fun fit(c: Color, surfaces: List<Color>, light: Boolean): Color {
+        val (h, s, l0) = Hsl.toHsl(c)
+        var l = l0
+        var out = c
+        while (surfaces.minOf { ratio(out, it) } < 3f && l in 0f..1f) {
+            l += if (light) -0.01f else 0.01f
+            out = Color.hsl(h, s, l.coerceIn(0f, 1f))
+        }
+        return out
     }
 
     /** [c] if it reaches 3:1 on every colour in [against] (translucent [c] composited first), else [fallback]. */

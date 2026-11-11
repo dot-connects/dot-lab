@@ -92,6 +92,14 @@ import kr.dot.sb.ui.theme.ThemedDigits
 import kotlin.math.cos
 import kotlin.math.sin
 import kr.dot.sb.ui.theme.Themes
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.ui.text.AnnotatedString
+import kr.dot.sb.ui.state.AgendaItem
+import kr.dot.sb.ui.state.DayTemp
+import kr.dot.sb.ui.state.HourTemp
+import kr.dot.sb.ui.theme.Contrast
+import androidx.compose.ui.graphics.compositeOver
+import java.time.LocalDate
 import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
@@ -144,7 +152,7 @@ fun CardView(
                     CardType.AGENDA -> AgendaCard(e, state, actions)
                     CardType.USAGE -> UsageCard(e, state, actions)
                     CardType.WEATHER -> WeatherCard(e, state, config, actions)
-                    CardType.CALENDAR -> CalendarCard(e)
+                    CardType.CALENDAR -> CalendarCard(e, state, actions)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF_STACK, CardType.NOTIF_LIST -> NotifCard(e, state, actions, plate)
@@ -702,11 +710,30 @@ private fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
 
 // ---------------------------------------------------------------- weather, calendar, memories
 
-/** Weather glyph in theme colours: white cloud, yellow sun, blue rain (night: the candle ink). */
+/** Weather glyph through Ink roles: cloud in ink, sun / rain in the sun / blue roles; mono-icon themes draw it in ink. */
 @Composable
 internal fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
-    val c2 = if (!e.t.colorIcons) e.ink.ink else if (ic == Ic.RAIN) e.ink.blue else e.ink.sun
+    val c2 = if (e.t.tokens.monoIcons) e.ink.ink else if (ic == Ic.RAIN) e.ink.blue else e.ink.sun
     IconView(ic, e.ink.ink, modifier, e.ink.bg, color2 = c2)
+}
+
+/** Weather / calendar inset (mockup P(s)): 7 % of the short side, 12–28 dp. */
+private val Env.p7: Dp get() = (min(w, h) * 0.07f).coerceIn(12.dp, 28.dp)
+/** One meta line (cap height) and the gap that separates header lines from the hero number. */
+private val Env.metaCap: Dp get() = meta * CAP_UI
+private val LG = 8.dp
+/** Hour column (label, glyph, temperature) and the per-row pitch of hour / day / event lists. */
+private val Env.hourColH: Dp get() = metaCap + read * 1.6f + read * CAP_UI + 12.dp
+private val Env.rowStep: Dp get() = read * 1.4f + 9.dp
+private val Env.evH: Dp get() = read * CAP_UI + 8.dp + metaCap
+private val Env.evStep: Dp get() = evH + 12.dp
+
+/** Hero number in the theme's digit font, [cap] dp tall, shrunk to [maxW]. Slot-sized, never text-scaled (spec §0). */
+@Composable
+private fun Hero(e: Env, text: AnnotatedString, cap: Dp, color: Color, maxW: Dp) {
+    val tk = e.t.tokens
+    val c = cap.coerceAtLeast(8.dp)
+    Txt(text, c / tk.digitCap, color, weight = tk.digitWeight, family = tk.digitFont(tk.digitWeight), cap = tk.digitCap, tnum = true, maxW = maxW, maxCapH = c)
 }
 
 @Composable
@@ -717,81 +744,174 @@ private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions:
         return
     }
     val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
-    val old = nowSec - wx.fetchedAtEpochSec > 3 * 3600
+    val tc = if (nowSec - wx.fetchedAtEpochSec > 3 * 3600) e.ink.ink2 else e.ink.ink
+    val p = e.p7
+    val iw = e.w - p * 2
+    val ih = e.h - p * 2
+    val head = e.metaCap * 2 + LG * 2 // city line + high/low line around the number
     val hours = wx.hourly.take(5)
-    val showHours = hours.isNotEmpty() && (e.cls == SizeClass.L || (e.wide && e.atLeastM))
-    val mod = Modifier.fillMaxSize().padding(e.pad).tap(if (wx.offline) actions::retryFeeds else null)
-    if (showHours && e.wide) {
-        Row(mod) {
-            WeatherMain(e, wx, old, Modifier.weight(0.42f).fillMaxHeight(), e.ch, (e.cw - e.pad) * 0.42f)
-            Spacer(Modifier.width(e.pad))
-            Hours(e, wx, Modifier.weight(0.58f).fillMaxHeight(), spread = true)
+    val mod = Modifier.fillMaxSize().padding(p).tap(if (wx.offline) actions::retryFeeds else null)
+    val now = @Composable { cap: Dp, maxW: Dp, sky: Boolean ->
+        Column {
+            CityLine(e, wx, sky)
+            Spacer(Modifier.height(LG))
+            TempRow(e, wx, cap, maxW, tc)
+            Spacer(Modifier.height(LG))
+            Txt("최고 ${wx.highC}° · 최저 ${wx.lowC}°", e.meta, e.readInk2, weight = 500, num = true)
         }
-    } else {
-        val hoursH = e.labelCap + e.label * 1.6f + e.label * CAP_UI + e.gap * 1.6f
-        Column(mod) {
-            val mainH = if (showHours) e.ch - hoursH - e.gap * 2 else e.ch
-            WeatherMain(e, wx, old, Modifier.fillMaxWidth().weight(1f), mainH, e.cw)
-            if (showHours) {
-                Spacer(Modifier.height(e.gap * 2))
-                Hours(e, wx, Modifier.fillMaxWidth().height(hoursH), spread = false)
+    }
+    when (weatherShape(e.w.value, e.h.value)) {
+        WeatherShape.TINY -> Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
+            CityLine(e, wx, sky = false)
+            TempRow(e, wx, ih - head, iw, tc)
+            Txt("${wx.highC}° / ${wx.lowC}°", e.meta, e.readInk2, weight = 500, num = true)
+        }
+        // temperature left, 4–5 hours right (fewer than 3 hours fit: the number takes the width)
+        WeatherShape.SHORT_WIDE -> {
+            val hw = min(iw * 0.58f, 56.dp * hours.size)
+            val n = minOf(hours.size, (hw / 44.dp).toInt()).let { if (it < 3) 0 else it }
+            Row(mod, verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.weight(1f)) { now(ih - head, if (n > 0) iw - hw - p else iw, n == 0) }
+                if (n > 0) {
+                    Spacer(Modifier.width(p))
+                    Box(Modifier.width(hw)) { HourRow(e, hours.take(n)) }
+                }
+            }
+        }
+        // narrow and tall: number, then the next hours as a list; what the list leaves goes to the number
+        WeatherShape.SMALL -> {
+            val step = e.read * 1.4f + 6.dp
+            val n = minOf(hours.size, ((ih - head - min(iw * 0.6f, (ih - head) * 0.5f) - 12.dp) / step).toInt().coerceAtLeast(0))
+            Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
+                now(ih - head - (if (n > 0) 12.dp + step * n else 0.dp), iw, false)
+                if (n > 0) HourList(e, hours.take(n))
+            }
+        }
+        // now on the left at full height, hours on the right, five days under them when tall enough
+        WeatherShape.WIDE -> {
+            val lw = min(iw * 0.42f, 260.dp)
+            val n = minOf(hours.size, ((iw - lw - p) / 46.dp).toInt())
+            val days = if (ih >= 280.dp) minOf(5, wx.days.size + 1, ((ih - e.hourColH - 30.dp) / e.rowStep).toInt()) else 0
+            Row(mod) {
+                Column(Modifier.width(lw).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                    CityLine(e, wx, true)
+                    TempRow(e, wx, min(ih - head, lw * 0.75f), lw, tc)
+                    Txt("최고 ${wx.highC}° · 최저 ${wx.lowC}°", e.meta, e.readInk2, weight = 500, num = true)
+                }
+                Spacer(Modifier.width(p))
+                Column(
+                    Modifier.weight(1f).fillMaxHeight(),
+                    verticalArrangement = if (days > 0) Arrangement.SpaceEvenly else Arrangement.Center,
+                ) {
+                    if (n > 0) HourRow(e, hours.take(n))
+                    if (days > 0) DayRows(e, wx, days)
+                }
+            }
+        }
+        // square / tall: hours row + day rows as they fit, the leftover goes to the number (mockup weather v3)
+        WeatherShape.STACK -> {
+            val tMax = min(180.dp, iw * 0.8f)
+            var rest = ih - head
+            var t = min(tMax, rest * 0.55f)
+            rest -= t
+            val n = minOf(hours.size, (iw / 44.dp).toInt())
+            val row = n >= 3 && rest >= e.hourColH + 12.dp
+            if (row) rest -= e.hourColH + 12.dp
+            val days = ((rest - 10.dp) / e.rowStep).toInt().coerceIn(0, minOf(5, wx.days.size + 1))
+            rest -= e.rowStep * days
+            t = min(tMax, t + rest - 4.dp)
+            Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
+                now(t, iw, true)
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    if (row) HourRow(e, hours.take(n))
+                    if (days > 0) DayRows(e, wx, days)
+                }
             }
         }
     }
+}
+
+/** "서울 · 대체로 흐림" (offline: "서울 · 21:40 기준 · 연결 안 됨"), city bold, the rest in the secondary ink. */
+@Composable
+private fun CityLine(e: Env, wx: WeatherInfo, sky: Boolean) {
+    val rest = if (wx.offline) " · ${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else if (sky) " · ${wx.condition.ko}" else ""
+    val text = buildAnnotatedString {
+        append(wx.city)
+        withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(rest) }
+    }
+    Txt(text, e.meta, e.ink.ink, weight = 700)
 }
 
 /**
- * iPhone weather widget (mockup r5): "서울 ➤" over a big rounded "7°", then the coloured glyph, the condition and
- * "최고:11° 최저:2°". Small slots put the glyph beside the city.
+ * The temperature as big as [cap] (and [maxW]) allow, the sky glyph top-right of it. The degree is a drawn ring at the
+ * cap top: digit fonts draw "°" anywhere from a dot to a cap-high "o".
  */
 @Composable
-private fun WeatherMain(e: Env, wx: WeatherInfo, old: Boolean, modifier: Modifier, h: Dp, w: Dp) {
-    val lines = if (e.atLeastS) 2 else 0
-    val iconTop = !e.atLeastM || h < e.s * 0.8f
-    val ico = e.label * 1.5f
-    val bottom = if (lines == 0) 0.dp else e.labelCap * 2 + e.gap + (if (iconTop) 0.dp else ico + e.gap)
-    val avail = h - e.labelCap - bottom - e.gap * (if (lines == 0) 2f else 3.5f)
-    Column(modifier, verticalArrangement = Arrangement.SpaceBetween) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Bottom) {
-            Box(Modifier.weight(1f)) { WeatherLabel(e, wx.city) }
-            if (iconTop) Box(Modifier.height(e.labelCap).wrapUnbounded()) { WxIcon(e, weatherIc(wx.condition), Modifier.size(ico)) }
-        }
-        Txt(
-            temp(wx.tempC), e.loneDisplay, if (old) e.ink.ink2 else e.ink.ink, weight = 500, family = e.num, cap = e.numCap,
-            tnum = true, maxW = w, maxCapH = avail,
-        )
-        if (lines > 0) {
-            Column {
-                if (!iconTop) {
-                    WxIcon(e, weatherIc(wx.condition), Modifier.size(ico))
-                    Spacer(Modifier.height(e.gap))
-                }
-                val off = if (wx.offline) "${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else null
-                Txt(off ?: wx.condition.ko, e.label, if (off != null) e.ink.ink2 else e.ink.ink, weight = 600, num = true, maxW = w)
-                Spacer(Modifier.height(e.gap))
-                Txt("최고:${wx.highC}° 최저:${wx.lowC}°", e.label, e.ink.ink, weight = 500, num = true, maxW = w)
+private fun TempRow(e: Env, wx: WeatherInfo, cap: Dp, maxW: Dp, color: Color) {
+    val ico = cap * 0.4f
+    val deg = cap * 0.2f
+    Row {
+        Hero(e, AnnotatedString("${wx.tempC}"), cap, color, maxW - ico - deg - cap * 0.2f)
+        Spacer(Modifier.width(cap * 0.12f)) // italic digits lean past their advance
+        Canvas(Modifier.size(deg)) { drawCircle(color, size.minDimension * 0.38f, style = Stroke(size.minDimension * 0.22f)) }
+        Spacer(Modifier.width(cap * 0.08f))
+        WxIcon(e, weatherIc(wx.condition), Modifier.size(ico))
+    }
+}
+
+/** Next hours as columns: "22시" / glyph / "6°". */
+@Composable
+private fun HourRow(e: Env, hours: List<HourTemp>) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        hours.forEach { hr ->
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Txt("${hr.hour}시", e.meta, e.readInk2, weight = 500, num = true)
+                WxIcon(e, weatherIc(hr.condition), Modifier.size(e.read * 1.6f))
+                Txt(temp(hr.tempC), e.read, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true)
             }
         }
     }
 }
 
-/** Next hours: "22시" / glyph / "6°" columns. [spread] = columns span TOP→BOT (wide side panel). */
+/** Next hours as rows: "22시 ☁ 6°" (narrow tall slots). */
 @Composable
-private fun Hours(e: Env, wx: WeatherInfo, modifier: Modifier, spread: Boolean) {
-    BoxWithConstraints(modifier) {
-        val col = maxWidth / 5
-        val tSize = min(e.label * 1.1f, col * 0.9f / 1.9f)
-        Row(Modifier.fillMaxSize()) {
-            wx.hourly.take(5).forEach { hr ->
-                Column(
-                    Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = if (spread) Arrangement.SpaceBetween else Arrangement.spacedBy(e.gap * 0.8f),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Txt("${hr.hour}시", min(e.label, col * 0.8f / 2.2f), e.ink.ink2, weight = 600, num = true)
-                    WxIcon(e, weatherIc(hr.condition), Modifier.size(e.label * 1.6f))
-                    Txt(temp(hr.tempC), tSize, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true)
+private fun HourList(e: Env, hours: List<HourTemp>) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        hours.forEach { hr ->
+            Row(Modifier.fillMaxWidth().height(e.read * 1.4f), verticalAlignment = Alignment.CenterVertically) {
+                Txt("${hr.hour}시", e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
+                WxIcon(e, weatherIc(hr.condition), Modifier.size(e.read * 1.3f))
+                Txt(temp(hr.tempC), e.read, e.ink.ink, Modifier.width(e.read * 2.2f), weight = 700, family = e.num, cap = e.numCap, tnum = true, align = TextAlign.End)
+            }
+        }
+    }
+}
+
+/** Today + the next days: "화 ☀ 0° ━━━ 9°", the range bar placed on the shared low–high scale. */
+@Composable
+private fun DayRows(e: Env, wx: WeatherInfo, n: Int) {
+    val days = (listOf(DayTemp(e.today, wx.highC, wx.lowC, wx.condition)) + wx.days).take(n)
+    val lo = days.minOf { it.lowC }
+    val span = (days.maxOf { it.highC } - lo).coerceAtLeast(1).toFloat()
+    val track = e.ink.ink3
+    val fill = if (e.t.tokens.monoIcons) Brush.horizontalGradient(listOf(e.ink.ink2, e.ink.ink)) else Brush.horizontalGradient(listOf(e.ink.blue, e.ink.sun))
+    val numW = e.read * 2.4f
+    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+        days.forEach { d ->
+            Row(Modifier.fillMaxWidth().height(e.read * 1.4f), verticalAlignment = Alignment.CenterVertically) {
+                Txt(if (d.date == e.today) "오늘" else dowKo(d.date), e.read, e.ink.ink, Modifier.width(e.read * 2.6f), weight = 600)
+                WxIcon(e, weatherIc(d.condition), Modifier.size(e.read * 1.3f))
+                Txt("${d.lowC}°", e.read, e.readInk2, Modifier.width(numW), weight = 500, num = true, align = TextAlign.End)
+                Spacer(Modifier.width(8.dp))
+                Canvas(Modifier.weight(1f).height(4.dp)) {
+                    val r = CornerRadius(size.height / 2)
+                    drawRoundRect(track, cornerRadius = r)
+                    val a = (d.lowC - lo) / span * size.width
+                    val b = (d.highC - lo) / span * size.width
+                    drawRoundRect(fill, Offset(a, 0f), Size((b - a).coerceAtLeast(size.height), size.height), cornerRadius = r)
                 }
+                Spacer(Modifier.width(8.dp))
+                Txt("${d.highC}°", e.read, e.ink.ink, Modifier.width(numW), weight = 600, num = true)
             }
         }
     }
@@ -801,81 +921,189 @@ private fun Hours(e: Env, wx: WeatherInfo, modifier: Modifier, spread: Boolean) 
 @Composable
 private fun WeatherLabel(e: Env, city: String) = LabelRow(e, Ic.ARROW, city, color = e.ink.ink, iconEnd = true, weight = 700)
 
+/**
+ * Calendar card (spec §1, mockup "달력" v3): the day number fills its block; small slots list the coming events
+ * (`state.upcoming`), big ones draw the month. Without calendar permission the events area asks for it (tap = settings).
+ */
 @Composable
-private fun CalendarCard(e: Env) {
-    // r5: no month grid in small slots, only in L (iPhone's default calendar widget is "Mon Aug / 19").
-    if (e.cls != SizeClass.L) {
-        DateWidget(e)
-        return
-    }
-    val t = e.today
-    val first = t.withDayOfMonth(1)
-    val lead = first.dayOfWeek.value % 7 // Sunday first
-    val days = t.lengthOfMonth()
-    val weeks = (lead + days + 6) / 7
-    val titleCap = e.sz.title * CAP_UI
-    val gridH = e.ch - titleCap - e.gap * 1.5f
-    val pitch = gridH / (weeks + 1)
-    val cellW = e.cw / 7
-    val f = min(e.ownLabel * 1.2f, min(pitch * 0.56f, cellW * 0.5f))
-    if (f < 18.dp) {
-        DateWidget(e)
-        return
-    }
-    val r = min(cellW, pitch) * 0.44f
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Txt("${dowKo(t)}요일", e.sz.title, e.ink.weekday, weight = 700)
-            Spacer(Modifier.width(e.sz.title * 0.35f))
-            Txt("${t.monthValue}월", e.sz.title, e.ink.ink2, weight = 700, num = true)
+private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
+    val p = e.p7
+    val iw = e.w - p * 2
+    val ih = e.h - p * 2
+    val denied = state.agenda == null
+    val events = if (denied) emptyList() else state.upcoming
+    val mod = Modifier.fillMaxSize().padding(p).tap(if (denied) ({ actions.openSettings("calendar") }) else null)
+    val tiny = @Composable {
+        Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
+            CalHead(e, e.meta)
+            Hero(e, AnnotatedString("${e.today.dayOfMonth}"), ih - e.metaCap - LG, e.ink.ink, iw)
         }
-        Spacer(Modifier.height(e.gap * 1.5f))
-        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.SpaceBetween) {
-            Row(Modifier.fillMaxWidth()) {
-                listOf("일", "월", "화", "수", "목", "금", "토").forEach {
-                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) { Txt(it, f, e.ink.ink2, weight = 600) }
+    }
+    when (calendarShape(e.w.value, e.h.value)) {
+        CalendarShape.TINY -> tiny()
+        // big day left, this week + the next 1–2 events right
+        CalendarShape.SHORT_WIDE -> {
+            val cap = ih - e.metaCap - LG
+            val lw = min(iw * 0.35f, cap * 1.6f)
+            if (iw - lw - p < 18.dp * 7) return tiny()
+            Row(mod) {
+                Column(Modifier.width(lw).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                    CalHead(e, e.meta)
+                    Hero(e, AnnotatedString("${e.today.dayOfMonth}"), cap, e.ink.ink, lw)
+                }
+                Spacer(Modifier.width(p))
+                Column(Modifier.weight(1f).fillMaxHeight()) {
+                    val n = if (ih >= 170.dp) 2 else 1
+                    DayGrid(e, e.today.minusDays((e.today.dayOfWeek.value % 7).toLong()), 1, events, Modifier.fillMaxWidth().weight(1f))
+                    Spacer(Modifier.height(LG))
+                    EventList(e, events, n, denied)
                 }
             }
-            for (wk in 0 until weeks) {
-                Row(Modifier.fillMaxWidth()) {
-                    for (dw in 0 until 7) {
-                        val day = wk * 7 + dw - lead + 1
-                        val isToday = day == t.dayOfMonth
-                        val red = e.ink.weekday
-                        Box(
-                            Modifier.weight(1f).height(f * e.numCap).then(
-                                if (isToday) Modifier.drawBehind { drawCircle(red, r.toPx(), center) } else Modifier,
-                            ),
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            if (day in 1..days) Txt(
-                                "$day", f, if (isToday) lerp(Color.White, Color.Black, e.ink.night) else e.ink.ink,
-                                weight = 700, family = e.num, cap = e.numCap, tnum = true,
-                            )
-                        }
-                    }
+        }
+        CalendarShape.NARROW -> Column(mod) { DayAndEvents(e, iw, ih, events, denied, e.meta, 5) }
+        // big day + events left, the month right
+        CalendarShape.WIDE_MONTH -> {
+            val cell = (ih - e.head * 1.6f) / 6.2f
+            val gw = min(cell * 7 * 1.3f, e.w * 0.6f)
+            Row(mod) {
+                Column(Modifier.weight(1f).fillMaxHeight()) { DayAndEvents(e, e.w - gw - p * 3, ih, events, denied, e.head, 4) }
+                Spacer(Modifier.width(p))
+                MonthGrid(e, events, Modifier.width(gw).fillMaxHeight())
+            }
+        }
+        // the month, then "다가오는 날" in what is left
+        CalendarShape.MONTH -> {
+            val headH = e.head * CAP_UI
+            val cell = min(iw / 7 / 1.1f, (ih - headH - 40.dp) / 6.4f)
+            val left = ih - headH - LG * 2 - cell * 6.4f - e.metaCap - 10.dp
+            val n = if (events.isEmpty() && !denied) 0 else ((left - 10.dp) / e.evStep).toInt().coerceIn(0, 5)
+            Column(mod) {
+                val text = buildAnnotatedString {
+                    withStyle(SpanStyle(color = e.ink.accText)) { append("${e.today.monthValue}월") }
+                    withStyle(SpanStyle(color = e.readInk2)) { append(" ${e.today.year}") }
+                }
+                Txt(text, e.head, e.ink.ink, weight = 700)
+                Spacer(Modifier.height(LG * 2))
+                MonthGrid(e, events, Modifier.fillMaxWidth().weight(1f))
+                if (n > 0) {
+                    Spacer(Modifier.height(LG * 2))
+                    Txt("다가오는 날", e.meta, e.readInk2, weight = 600)
+                    Spacer(Modifier.height(10.dp))
+                    EventList(e, events, n, denied)
                 }
             }
         }
     }
 }
 
-/** iPhone date widget (mockup r5): red "월요일" + grey "11월" over a big rounded day number. */
+/** "월요일 11월": weekday in the text accent, month in the secondary ink. */
 @Composable
-private fun DateWidget(e: Env) {
-    val t = e.today
-    val top = max(e.label, e.sz.title)
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Row(verticalAlignment = Alignment.Bottom) {
-            Txt("${dowKo(t)}요일", top, e.ink.weekday, weight = 700)
-            Spacer(Modifier.width(top * 0.3f))
-            Txt("${t.monthValue}월", top, e.ink.ink2, weight = 700, num = true)
+private fun CalHead(e: Env, size: Dp) {
+    val text = buildAnnotatedString {
+        withStyle(SpanStyle(color = e.ink.accText)) { append("${dowKo(e.today)}요일") }
+        withStyle(SpanStyle(color = e.readInk2)) { append(" ${e.today.monthValue}월") }
+    }
+    Txt(text, size, e.ink.ink, weight = 700)
+}
+
+/** Head, the big day, then up to [max] coming events under it; whatever the events leave goes to the day. */
+@Composable
+private fun ColumnScope.DayAndEvents(e: Env, w: Dp, h: Dp, events: List<AgendaItem>, denied: Boolean, headSize: Dp, max: Int) {
+    val headH = headSize * CAP_UI + LG
+    val fit = ((h - headH - h * 0.3f - 20.dp) / e.evStep).toInt().coerceIn(1, max)
+    val n = minOf(fit, events.size.coerceAtLeast(1))
+    val cap = h - headH - 20.dp - e.evStep * n
+    CalHead(e, headSize)
+    Spacer(Modifier.height(LG))
+    Hero(e, AnnotatedString("${e.today.dayOfMonth}"), cap, e.ink.ink, w)
+    Spacer(Modifier.weight(1f))
+    EventList(e, events, n, denied)
+}
+
+/** Coming events: colour bar (the calendar's colour, contrast-floored) + title over "오늘 22:30" / "11/19 (목)". */
+@Composable
+private fun EventList(e: Env, events: List<AgendaItem>, n: Int, denied: Boolean) {
+    if (denied || events.isEmpty()) {
+        Txt(if (denied) "캘린더 권한 필요 · 눌러서 설정" else "다가오는 일정 없음", e.meta, e.readInk2, weight = 500)
+        return
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        events.take(n).forEach { ev ->
+            Row {
+                Box(Modifier.width(4.dp).height(e.evH).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
+                Spacer(Modifier.width(8.dp))
+                Column {
+                    Txt(ev.title, e.read, e.ink.ink, weight = 600)
+                    Spacer(Modifier.height(8.dp))
+                    Txt(whenKo(e, ev), e.meta, e.readInk2, weight = 500, num = true)
+                }
+            }
         }
-        Spacer(Modifier.height(e.gap * 2f))
-        Txt(
-            "${t.dayOfMonth}", e.s, e.ink.ink, weight = 700, family = e.num, cap = e.numCap, tnum = true,
-            maxW = e.cw, maxCapH = e.ch - top * CAP_UI - e.gap * 2f,
-        )
+    }
+}
+
+/**
+ * The calendar's own event colour, its lightness stepped until it reaches 3:1 on the page and plate (pastels darken on
+ * light themes instead of falling back to ink); night maps it to the candle like every role.
+ */
+private fun eventInk(e: Env, argb: Long): Color {
+    val light = e.t.tokens.light && e.ink.night < 0.5f
+    return e.ink.mapped(Contrast.fit(Color(argb), listOf(e.ink.bg, e.ink.plate.compositeOver(e.ink.bg)), light))
+}
+
+private fun whenKo(e: Env, ev: AgendaItem): String {
+    val d = ev.date ?: e.today
+    return if (d == e.today) "오늘 ${ev.start}" else "${d.monthValue}/${d.dayOfMonth} (${dowKo(d)})" + if (ev.start != "종일") " ${ev.start}" else ""
+}
+
+/** This month, Sunday first, inside its own box. */
+@Composable
+private fun MonthGrid(e: Env, events: List<AgendaItem>, modifier: Modifier) {
+    val first = e.today.withDayOfMonth(1)
+    val lead = first.dayOfWeek.value % 7
+    DayGrid(e, first.minusDays(lead.toLong()), (lead + e.today.lengthOfMonth() + 6) / 7, events, modifier, month = e.today.monthValue)
+}
+
+private val DOW_SUN = listOf("일", "월", "화", "수", "목", "금", "토")
+
+/**
+ * [weeks] rows of days from [start] (a Sunday) under a weekday header: today on an accent disc, Sundays in the red
+ * role, a dot in the event colour under days with events. [month] blanks days outside it. Numbers fit the cell.
+ */
+@Composable
+private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaItem>, modifier: Modifier, month: Int? = null) {
+    val dots = remember(events, e.ink) { events.filter { it.date != null }.groupBy { it.date!! }.mapValues { eventInk(e, it.value.first().color) } }
+    val onAcc = if (Contrast.ratio(e.ink.ink, e.ink.acc) >= Contrast.ratio(e.ink.bg, e.ink.acc)) e.ink.ink else e.ink.bg
+    BoxWithConstraints(modifier) {
+        // rows never taller than wide (a one-week strip stays compact); the grid sits centred in its box
+        val rowH = min(maxHeight / (weeks + 0.8f), maxWidth / 7 * 1.15f)
+        val d = min(rowH, maxWidth / 7) * 0.86f
+        val fs = (d * 0.5f).coerceIn(11.dp, 20.dp)
+        Column(Modifier.fillMaxWidth().align(Alignment.Center)) {
+            Row(Modifier.fillMaxWidth().height(rowH * 0.8f), verticalAlignment = Alignment.CenterVertically) {
+                DOW_SUN.forEachIndexed { i, s ->
+                    Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                        Txt(s, fs * 0.85f, if (i == 0) e.ink.weekday else e.readInk2, weight = 600)
+                    }
+                }
+            }
+            for (wk in 0 until weeks) Row(Modifier.fillMaxWidth().height(rowH)) {
+                for (dw in 0 until 7) {
+                    val day = start.plusDays((wk * 7 + dw).toLong())
+                    Box(Modifier.weight(1f).fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        if (month != null && day.monthValue != month) return@Box
+                        val today = day == e.today
+                        if (today) Box(Modifier.size(d).clip(CircleShape).background(e.ink.acc))
+                        Txt(
+                            "${day.dayOfMonth}", fs, if (today) onAcc else if (dw == 0) e.ink.weekday else e.ink.ink,
+                            weight = if (today) 700 else 500, family = e.num, cap = e.numCap, tnum = true,
+                        )
+                        val dot = dots[day]
+                        if (dot != null && !today) Box(Modifier.offset(y = d * 0.36f).size(max(4.dp, d * 0.1f)).clip(CircleShape).background(dot))
+                    }
+                }
+            }
+        }
     }
 }
 

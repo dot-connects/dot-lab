@@ -40,7 +40,6 @@ import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
-import kr.dot.sb.ui.state.WeatherInfo
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.SizeClass
 import java.time.ZoneId
@@ -55,8 +54,6 @@ import java.time.ZoneId
 @Composable
 internal fun lampBody(type: CardType, e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions): Boolean {
     when (type) {
-        CardType.CALENDAR -> if (e.cls != SizeClass.L) LampDate(e) else return false
-        CardType.WEATHER -> state.weather?.let { LampWeather(e, state, it, actions) } ?: return false
         CardType.TIMER -> LampTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { LampUsage(e, state, actions) } ?: return false
         CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) LampAgenda(e, state) else return false
@@ -78,80 +75,6 @@ internal fun Modifier.lampPlate(ink: Ink, tint: Color?, radius: Dp): Modifier = 
         center = Offset(size.width * 0.15f, 0f), radius = maxOf(size.width, size.height) * 1.2f,
     )
     onDrawBehind { drawRect(brush) }
-}
-
-/** Dark text on a pastel fill (today's circle, butter buttons); black at night like the iPhone's red mode. */
-private fun onPastel(e: Env) = lerp(Color(0xFF2B1D07), Color.Black, e.ink.night)
-
-// ---------------------------------------------------------------- calendar
-
-/** Rose weekday, big rose day, this week as one row with today circled (mockup r5 C widgets). */
-@Composable
-private fun LampDate(e: Env) {
-    val t = e.today
-    val rose = e.ink.weekday
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Txt("${dowKo(t)}요일", max(e.label, e.label * 1.1f), rose, weight = 500)
-        Spacer(Modifier.height(e.gap * 2))
-        FillText(AnnotatedString("${t.dayOfMonth}"), rose, e.num, e.numCap, Modifier.fillMaxWidth().weight(1f), weight = 900)
-        if (e.atLeastS) {
-            Spacer(Modifier.height(e.gap * 2))
-            val d = min(e.label * 1.5f, e.cw / 7)
-            val sunday = t.minusDays((t.dayOfWeek.value % 7).toLong())
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                listOf("일", "월", "화", "수", "목", "금", "토").forEachIndexed { i, s ->
-                    val today = sunday.plusDays(i.toLong()) == t
-                    Box(
-                        Modifier.size(d).clip(CircleShape).background(if (today) rose else Color.Transparent),
-                        contentAlignment = Alignment.Center,
-                    ) { Txt(s, e.label, if (today) onPastel(e) else e.ink.ink2, weight = if (today) 700 else 500) }
-                }
-            }
-        }
-    }
-}
-
-// ---------------------------------------------------------------- weather
-
-/** Sky city, colour glyph top-right, big temperature, condition + high/low (mockup r5 C widgets / modular). */
-@Composable
-private fun LampWeather(e: Env, state: StandbyState, wx: WeatherInfo, actions: StandbyActions) {
-    val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
-    val old = nowSec - wx.fetchedAtEpochSec > 3 * 3600
-    val tempCol = if (old) e.ink.ink2 else e.ink.ink
-    val mod = Modifier.fillMaxSize().padding(e.pad).tap(if (wx.offline) actions::retryFeeds else null)
-    val off = if (wx.offline) "${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else null
-    // short plate (modular): temperature + glyph on one row, "서울 · 구름 조금" under it
-    if (e.ch < e.label * 7) {
-        Column(mod) {
-            Row(Modifier.fillMaxWidth().weight(1f)) {
-                FillText(temp(wx.tempC), tempCol, e.num, e.numCap, Modifier.weight(1f).fillMaxHeight().padding(start = e.gap * 1.5f, top = e.gap * 2), weight = 900, align = Alignment.TopStart)
-                WxIcon(e, weatherIc(wx.condition), Modifier.size(min(e.ch * 0.45f, e.cw * 0.3f)))
-            }
-            Spacer(Modifier.height(e.gap * 2))
-            Txt(off ?: "${wx.city} · ${wx.condition.ko}", e.label, e.ink.ink2, weight = 500, num = true, maxW = e.cw)
-        }
-        return
-    }
-    Column(mod) {
-        // city top-left, the big glyph top-right, the temperature under the city (glyph and digits never share x)
-        val g = min(e.ch * 0.3f, e.cw * 0.36f)
-        Box(Modifier.fillMaxWidth().weight(1f)) {
-            Txt(wx.city, e.label, e.ink.blue, Modifier.align(Alignment.TopStart), weight = 500)
-            WxIcon(e, weatherIc(wx.condition), Modifier.align(Alignment.TopEnd).size(g))
-            FillText(
-                temp(wx.tempC), tempCol, e.num, e.numCap,
-                Modifier.align(Alignment.BottomStart).fillMaxWidth().padding(top = e.labelCap + e.gap * 4, end = g * 0.4f).fillMaxHeight(),
-                weight = 900, align = Alignment.BottomStart,
-            )
-        }
-        if (e.atLeastS) {
-            Spacer(Modifier.height(e.gap * 3))
-            Txt(off ?: wx.condition.ko, e.label, if (off != null) e.ink.ink2 else e.ink.ink, weight = 500, num = true, maxW = e.cw)
-            Spacer(Modifier.height(e.gap * 1.5f))
-            Txt("최고 ${wx.highC}° · 최저 ${wx.lowC}°", e.label, e.ink.ink2, weight = 500, num = true, maxW = e.cw)
-        }
-    }
 }
 
 // ---------------------------------------------------------------- timer

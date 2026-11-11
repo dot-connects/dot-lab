@@ -1,7 +1,6 @@
 # Files still allowed to use Color.Black / Color.White (tools/check_literals.py). Each card/surface task
 # replaces the code and deletes its line here (plan-r9 D1); Task 22 empties the list.
-ui/cards/Cards.kt            # Tasks 10-16 (media scrims, calendar, timer, sleep)
-ui/cards/LampCards.kt        # Tasks 10-16 (family code)
+ui/cards/Cards.kt            # Tasks 10-16 (media scrims, timer, sleep, usage, memories)
 ui/clock/AnalogFace.kt       # Task 19 (hand outline, centre dot)
 ui/screens/BrightnessBar.kt  # Task 20 (pull-down panel)
 ui/screens/Overlays.kt       # Task 19 (full-screen surfaces)

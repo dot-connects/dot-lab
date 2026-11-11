@@ -46,8 +46,6 @@ import java.time.ZoneId
 @Composable
 internal fun paperBody(type: CardType, e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions): Boolean {
     when (type) {
-        CardType.CALENDAR -> if (e.cls != SizeClass.L) PaperDate(e) else return false
-        CardType.WEATHER -> state.weather?.let { PaperWeather(e, state, it, actions) } ?: return false
         CardType.TIMER -> PaperTimer(e, state, config, actions)
         CardType.USAGE -> state.usage?.let { PaperUsage(e, state, actions) } ?: return false
         CardType.AGENDA -> if (!state.agenda.isNullOrEmpty()) PaperAgenda(e, state) else return false
@@ -68,66 +66,7 @@ internal fun FillText(
     }
 }
 
-/** Bold Korean headline line ("11월 9일 월요일", "구름 조금"): a step above the label, digits in the serif. */
-@Composable
-private fun Headline(e: Env, text: String, color: Color = e.ink.ink, modifier: Modifier = Modifier) =
-    // digits stay in Pretendard bold here: the serif has one thin weight and looked broken inside a bold line
-    Txt(text, headSize(e), color, modifier, weight = 700, maxW = e.cw)
-
 private fun headSize(e: Env): Dp = max(e.label, min(e.sz.title, e.label * 1.2f))
-
-// ---------------------------------------------------------------- calendar
-
-/** "오늘" / the day in accent serif / "월요일, 11월" (mockup r5 B widgets). */
-@Composable
-private fun PaperDate(e: Env) {
-    val t = e.today
-    Column(Modifier.fillMaxSize().padding(e.pad)) {
-        Kicker(e, "오늘")
-        Spacer(Modifier.height(e.gap * 2))
-        FillText(AnnotatedString("${t.dayOfMonth}"), e.ink.weekday, e.num, e.numCap, Modifier.fillMaxWidth().weight(1f))
-        Spacer(Modifier.height(e.gap * 2))
-        Headline(e, "${dowKo(t)}요일, ${t.monthValue}월")
-    }
-}
-
-// ---------------------------------------------------------------- weather
-
-/** "서울 · 최고 11° 최저 2°" / big serif temperature / bold condition / hours as a text row (mockup r5 B widgets). */
-@Composable
-private fun PaperWeather(e: Env, state: StandbyState, wx: kr.dot.sb.ui.state.WeatherInfo, actions: StandbyActions) {
-    val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
-    val old = nowSec - wx.fetchedAtEpochSec > 3 * 3600
-    val hours = wx.hourly.take(4)
-    val showHours = hours.isNotEmpty() && e.atLeastM && e.ch > e.label * 9
-    val long = "${wx.city} · 최고 ${wx.highC}° 최저 ${wx.lowC}°"
-    val kicker = when {
-        wx.offline -> "${wx.city} · ${hhmm(wx.fetchedAtEpochSec)} 기준"
-        fitsOneLine(long, e.label * (1f + e.t.labelTracking), 500, e.cw) -> long
-        else -> "${wx.city} ↑${wx.highC}° ↓${wx.lowC}°"
-    }
-    Column(Modifier.fillMaxSize().padding(e.pad).tap(if (wx.offline) actions::retryFeeds else null)) {
-        Kicker(e, if (e.atLeastS) kicker else wx.city)
-        Spacer(Modifier.height(e.gap * 2))
-        FillText(temp(wx.tempC), if (old) e.ink.ink2 else e.ink.ink, e.num, e.numCap, Modifier.fillMaxWidth().weight(1f))
-        if (e.atLeastS) {
-            Spacer(Modifier.height(e.gap * 2))
-            Headline(e, wx.condition.ko)
-        }
-        if (showHours) {
-            Spacer(Modifier.height(e.gap * 3))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                hours.forEach { hr ->
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Txt("${hr.hour}시", e.label, e.ink.ink2, weight = 500, num = true)
-                        Spacer(Modifier.height(e.gap * 1.2f))
-                        Txt(temp(hr.tempC), e.label * 1.25f, e.ink.ink, weight = 400, family = e.num, cap = e.numCap)
-                    }
-                }
-            }
-        }
-    }
-}
 
 // ---------------------------------------------------------------- timer
 

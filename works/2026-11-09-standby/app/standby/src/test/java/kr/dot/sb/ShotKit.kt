@@ -16,6 +16,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.state.AgendaItem
+import kr.dot.sb.ui.state.DayTemp
 import kr.dot.sb.ui.state.HourTemp
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.MediaKind
@@ -106,8 +107,18 @@ object Fixtures {
             "서울", 7, WeatherCondition.CLOUDY, 11, 2,
             listOf(HourTemp(22, 6, WeatherCondition.CLOUDY), HourTemp(23, 5, WeatherCondition.CLOUDY), HourTemp(0, 5, WeatherCondition.NIGHT_CLEAR), HourTemp(1, 4, WeatherCondition.NIGHT_CLEAR), HourTemp(2, 4, WeatherCondition.FOG)),
             1794228000,
+            days = listOf(
+                DayTemp(now.toLocalDate().plusDays(1), 9, 0, WeatherCondition.CLEAR), DayTemp(now.toLocalDate().plusDays(2), 8, 3, WeatherCondition.RAIN),
+                DayTemp(now.toLocalDate().plusDays(3), 6, -1, WeatherCondition.CLOUDY), DayTemp(now.toLocalDate().plusDays(4), 5, -3, WeatherCondition.CLEAR),
+                DayTemp(now.toLocalDate().plusDays(5), 7, 1, WeatherCondition.PARTLY),
+            ),
         ),
         agenda = listOf(AgendaItem("09:30", "팀 회의", 0xFF4D9BEF), AgendaItem("13:00", "병원 예약", 0xFFFF9C56), AgendaItem("19:00", "헬스", 0xFF6FDC86)),
+        upcoming = listOf(
+            AgendaItem("22:30", "독서 모임", 0xFFFF375F, now.toLocalDate()), AgendaItem("13:00", "병원 예약", 0xFFFF9C56, now.toLocalDate().plusDays(2)),
+            AgendaItem("종일", "김장", 0xFF6FDC86, now.toLocalDate().plusDays(5)), AgendaItem("종일", "수능", 0xFFFF9F0A, now.toLocalDate().plusDays(10)),
+            AgendaItem("18:00", "엄마 생신", 0xFFBF5AF2, now.toLocalDate().plusDays(12)),
+        ),
         nextAlarm = LocalDateTime.of(2026, 11, 10, 6, 30),
         timers = mapOf("desk-1" to TimerState(leftSec = 18 * 60 + 24, running = true)),
         photos = listOf(Photo(photo, "설악산", "2025년 10월 18일")),

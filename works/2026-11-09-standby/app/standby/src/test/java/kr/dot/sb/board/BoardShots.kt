@@ -56,6 +56,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
                 it.copy(media = null, weather = null, agenda = null, usage = it.usage!!.copy(offline = true, fetchedAtEpochSec = it.usage!!.fetchedAtEpochSec - 4 * 3600))
             }
+            "noperm" -> Fixtures.full().copy(agenda = null, upcoming = emptyList(), permissions = Permissions(calendar = false))
             "emptyB" -> Fixtures.full().let {
                 it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
             }
@@ -96,11 +97,15 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("card-${t.name.lowercase()}-L-open", Device.FOLD_COVER_L, one, "open")
                 out += arrayOf("card-${t.name.lowercase()}-L-open-night", Device.FOLD_COVER_L, one, "open-night")
             }
-            // clocks (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
-            for (t in listOf(CardType.CLOCK, CardType.ANALOG)) {
+            // clocks, weather, calendar (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
+            for (t in listOf(CardType.CLOCK, CardType.ANALOG, CardType.WEATHER, CardType.CALENDAR)) {
                 out += arrayOf("card-${t.name.lowercase()}-L", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full")
                 out += arrayOf("card-${t.name.lowercase()}-M", Device.FOLD_COVER_P, Board("card", t.name, Layout.TWO, listOf(listOf(t))), "full")
             }
+            // narrow tall weather (SMALL) + square calendar on the bar portrait; calendar without permission
+            out += arrayOf("small-weather-calendar", Device.BAR_P, Board("small", "small", Layout.BIG2, listOf(listOf(CardType.CLOCK), listOf(CardType.WEATHER), listOf(CardType.CALENDAR))), "full")
+            out += arrayOf("card-calendar-M-noperm", Device.FOLD_COVER_L, Board("card", "CALENDAR", Layout.TWO, listOf(listOf(CardType.CALENDAR))), "noperm")
+            out += arrayOf("card-calendar-Sw-noperm", Device.FOLD_COVER_L, Board("card", "CALENDAR", Layout.FOUR, listOf(listOf(CardType.CALENDAR))), "noperm")
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")
             out += arrayOf("card-music-L-open-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.ONE, listOf(listOf(CardType.MUSIC))), "open-noart")
             val e1 = Board("empty1", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.AGENDA), listOf(CardType.WEATHER)))
