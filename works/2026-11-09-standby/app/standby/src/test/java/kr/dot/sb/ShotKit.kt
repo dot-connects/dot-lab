@@ -43,16 +43,23 @@ enum class Device(val qualifiers: String, val label: String) {
 }
 
 /**
- * Themes every render matrix runs under (one PNG tree per theme: build/shots/<theme>/<group>/…). Adding a theme to the
- * shots = one entry here.
+ * Themes every render matrix runs under (one PNG tree per theme: build/shots/<theme>/<group>/…): every theme, or the
+ * comma list in `-Pshot.themes=IPHONE,DAYPAPER` while iterating (r9: ten themes × six devices is slow).
  */
-val THEMES: List<Theme> = listOf(Theme.IPHONE, Theme.PAPER, Theme.MOODLIGHT)
+val THEMES: List<Theme> = System.getProperty("shot.themes").orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    .mapNotNull { n -> Theme.entries.firstOrNull { it.name.equals(n, ignoreCase = true) } }
+    .ifEmpty { Theme.entries.toList() }
+
+/** `-Pshot.group=board,screens` captures only those groups; the rest of a matrix still runs (cheap) but writes nothing. */
+private val GROUPS: Set<String> = System.getProperty("shot.group").orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+fun groupOn(group: String): Boolean = GROUPS.isEmpty() || group in GROUPS
 
 fun shotPath(theme: Theme, group: String, name: String, device: Device? = null): String =
     "build/shots/${theme.name.lowercase()}/$group/$name${device?.let { "-" + it.label } ?: ""}.png"
 
 /** Render [content] under [theme] (ambient for ClockFace; BoardView/StandbyRoot also take it from their AppConfig). */
 fun ComposeContentTestRule.shot(group: String, name: String, device: Device, theme: Theme = Theme.IPHONE, content: @Composable () -> Unit) {
+    if (!groupOn(group)) return
     RuntimeEnvironment.setQualifiers(device.qualifiers)
     setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { content() } } }
     waitForIdle()

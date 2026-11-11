@@ -5,3 +5,4 @@ local.properties
 *.csv
 # Roborazzi screenshots are review output, not source
 standby/build/
+tools/baseline-r8/

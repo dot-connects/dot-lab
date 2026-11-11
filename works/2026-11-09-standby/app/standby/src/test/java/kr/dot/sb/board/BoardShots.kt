@@ -64,7 +64,12 @@ class BoardShots(private val name: String, private val device: Device, private v
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{4}-{0}-{1}")
-        fun cases(): List<Array<Any>> = THEMES.flatMap { th -> base().map { it + th } }
+        fun cases(): List<Array<Any>> = THEMES.flatMap { th -> (base() + if (th == Theme.IPHONE) nightCards() else emptyList()).map { it + th } }
+
+        /** r9: night ignores the theme (candle), so every card at night is shot once, under IPHONE, on every device class. */
+        private fun nightCards(): List<Array<Any>> = CardType.entries.flatMap { t ->
+            CLASSES.map { (cls, layout, d) -> arrayOf<Any>("card-${t.name.lowercase()}-$cls-night", d, Board("card", t.name, layout, listOf(listOf(t))), "night") }
+        }
 
         private fun base(): List<Array<Any>> {
             val out = mutableListOf<Array<Any>>()
