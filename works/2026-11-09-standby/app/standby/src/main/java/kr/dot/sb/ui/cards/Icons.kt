@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import kr.dot.sb.ui.state.WeatherCondition
+import kr.dot.sb.ui.theme.LocalInk
 
 /** design-system §4.2 icon set, drawn on a 24 grid with 2-unit round strokes. Weather glyphs are filled like iPhone's. */
 enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL }
@@ -36,7 +37,7 @@ internal fun weatherIc(c: WeatherCondition): Ic = when (c) {
  * [color2] paints the second part of two-colour glyphs (sun, rain drops, bolt) when the theme colours weather icons.
  */
 @Composable
-fun IconView(ic: Ic, color: Color, modifier: Modifier, bg: Color = Color.Black, stroke: Boolean = false, color2: Color = color) {
+fun IconView(ic: Ic, color: Color, modifier: Modifier, bg: Color = LocalInk.current.bg, stroke: Boolean = false, color2: Color = color) {
     Canvas(modifier) { scale(size.minDimension / 24f, pivot = Offset.Zero) { drawIc(ic, color, bg, stroke, color2) } }
 }
 

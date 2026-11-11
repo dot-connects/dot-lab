@@ -69,9 +69,12 @@ class NotifGestureTest {
         assertEquals(emptyList<String>(), rec.tapped)
     }
 
-    @Test fun tapOpensAndClearAllTakesEveryClearableKey() {
+    @Test fun rowTapOpensCardPlateTapOpensAppClearAllTakesEveryClearableKey() {
         val rec = show(CardType.NOTIF_LIST, Fixtures.full().let { s -> s.copy(notifications = s.notifications.mapIndexed { i, n -> if (i == 2) n.copy(clearable = false) else n }) })
-        rule.onNodeWithText("엄마").performClick()
+        rule.onNodeWithText("엄마").performClick() // closed row: opens the card (r9), not the app
+        rule.waitForIdle()
+        assertEquals(emptyList<String>(), rec.tapped)
+        rule.onNodeWithText("엄마").performClick() // open plate: the app
         rule.onNodeWithText("모두 지우기").performClick()
         rule.waitForIdle()
         assertEquals(listOf("k1"), rec.tapped)

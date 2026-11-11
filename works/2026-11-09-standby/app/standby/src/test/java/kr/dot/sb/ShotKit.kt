@@ -126,6 +126,23 @@ object Fixtures {
         NotifItem("k5", "토스", "viva.republica.toss", "입금 알림", "급여가 입금되었어요", minutesAgo(120), plateColor = 0xFF1B64DA),
     )
 
+    /** Twelve conversations, 엄마 three times (merged) and 회사 동기방 fourteen: fills every tier and overflows into "+N". */
+    fun manyNotifs(): List<NotifItem> {
+        val l = notifs()
+        val more = listOf(
+            NotifItem("m1", "카카오톡", "com.kakao.talk", "회사 동기방", "금요일 저녁 7시 강남역 고깃집 예약했어요. 못 오시는 분 말해주세요", minutesAgo(130), plateColor = 0xFFF5D000),
+            NotifItem("m2", "당근", "com.towneers.www", "채팅 1개", "자전거 아직 판매 중인가요?", minutesAgo(180), plateColor = 0xFFFF7E36),
+            NotifItem("m3", "Gmail", "com.google.android.gm", "네이버페이", "11월 카드 명세서가 도착했습니다", minutesAgo(1500), plateColor = 0xFFEA4335),
+            NotifItem("m4", "인스타그램", "com.instagram.android", "jiwoo_k", "회원님의 사진을 좋아합니다", minutesAgo(1520), plateColor = 0xFFD6249F),
+            NotifItem("m5", "배민", "com.sampleapp", "주문 접수", "가게에서 주문을 확인했어요", minutesAgo(1540), plateColor = 0xFF2AC1BC),
+            NotifItem("m6", "YouTube", "com.google.android.youtube", "캐스터안TV", "새 동영상: 트리스탄 벡 심층 분석", minutesAgo(1560), plateColor = 0xFFFF0033),
+            NotifItem("m7", "네이버", "com.nhn.android.search", "날씨", "내일 아침 영하 3도, 빙판길 주의", minutesAgo(1580), plateColor = 0xFF03C75A),
+        )
+        val mom = (1..2).map { i -> l[0].copy(key = "k1-$i", text = "배추는 아침에 절여놨어", postedAtEpochMs = l[0].postedAtEpochMs - i * 60_000) }
+        val room = (1..13).map { i -> more[0].copy(key = "m1-$i", postedAtEpochMs = more[0].postedAtEpochMs - i * 60_000) }
+        return l + more + mom + room
+    }
+
     /** The phone hides KakaoTalk's content on the lock screen: the listener hands over the app name only. */
     fun hiddenNotifs(): List<NotifItem> = notifs().let { l -> listOf(l[0].copy(title = "카카오톡", text = "", hidden = true)) + l.drop(1) }
 }

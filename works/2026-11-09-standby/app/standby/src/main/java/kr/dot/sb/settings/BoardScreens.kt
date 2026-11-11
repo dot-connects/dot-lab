@@ -353,8 +353,8 @@ fun CardPickerSheet(
     Sheet(title, onDismiss) {
         T("칸 크기(${slotW}×${slotH}dp)에서 보이는 모습이에요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, bottom = 12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            // the media card plays video too (r8): the old video type stays only for boards that already have it
-            CardType.entries.filter { it != CardType.VIDEO || it == current }.chunked(2).forEach { row ->
+            // the media card plays video too (r8) and one notification card replaced stack + list (r9): the old types stay only where a board already has them
+            CardType.entries.filter { (it != CardType.VIDEO && it != CardType.NOTIF_STACK) || it == current }.chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { card ->
                         val dup = card in taken && card != current

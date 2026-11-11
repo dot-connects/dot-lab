@@ -112,9 +112,9 @@ fun CardView(
                 t.numerals, t.numeralsCap, slotId, today, t,
             )
         }
-        // every card sits on the theme's plate (mockup "테마 전체"); notification cards lay plates per row until Task 11
-        val surface = if (type.isNotif) Modifier
-        else Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
+        // every card sits on the theme's plate (mockup "테마 전체"); the notification card wears it only while closed
+        val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
+        val surface = if (type.isNotif) Modifier else plate
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
             Box(Modifier.fillMaxSize().then(surface)) {
                 val drawn = when (t.family) {
@@ -135,9 +135,8 @@ fun CardView(
                     CardType.WEATHER -> WeatherCard(e, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
-                    // one body for all three themes: the theme's surface decides plates, rules or rings
-                    CardType.NOTIF_STACK -> NotifStackCard(e, state, actions)
-                    CardType.NOTIF_LIST -> NotifListCard(e, state, actions)
+                    // r9: stack and list merged into one card (boards saved with the stack still draw it)
+                    CardType.NOTIF_STACK, CardType.NOTIF_LIST -> NotifCard(e, state, actions, plate)
                 }
             }
         }

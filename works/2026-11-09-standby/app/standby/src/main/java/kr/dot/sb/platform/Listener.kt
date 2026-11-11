@@ -34,7 +34,7 @@ import kr.dot.sb.data.NotifPrivacy
 import kr.dot.sb.data.NotifRules
 import kr.dot.sb.data.Reveal
 import kr.dot.sb.data.ShadeRules
-import kr.dot.sb.model.Theme
+import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.LiveActivity
@@ -98,7 +98,7 @@ class Listener : NotificationListenerService() {
         s.launch { ConfigStore.flow(this@Listener).map { it.glowStartMinBefore }.distinctUntilChanged().collect { GlowScheduler.reschedule(this@Listener) } }
         // the shade depends on two settings: 탭할 때만 미리보기 (redaction) and the theme (colour icon vs mono glyph)
         s.launch {
-            ConfigStore.flow(this@Listener).map { it.previewOnTapOnly to (it.theme == Theme.PAPER) }.distinctUntilChanged().drop(1)
+            ConfigStore.flow(this@Listener).map { it.previewOnTapOnly to Themes.of(it.theme).tokens.monoIcons }.distinctUntilChanged().drop(1)
                 .collect { publishShade() }
         }
         getSystemService(AudioManager::class.java).registerAudioPlaybackCallback(audio, handler)
@@ -274,7 +274,7 @@ class Listener : NotificationListenerService() {
         val ranking = runCatching { currentRanking }.getOrNull()
         val cfg = ConfigStore.flow(this).value
         val lock = lockScreen()
-        val mono = cfg.theme == Theme.PAPER
+        val mono = Themes.of(cfg.theme).tokens.monoIcons
         val rank = Ranking()
         val used = HashSet<String>()
         val items = active.sortedByDescending { it.postTime }.asSequence().mapNotNull { sbn ->
