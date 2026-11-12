@@ -287,12 +287,12 @@ FOLD_COVER_L and FLIP boards). Commit.
   `NOTIF`, remove `NOTIF_STACK`/`VIDEO` enum values; aliases now also map `"NOTIF_LIST" → NOTIF` (r9 dev builds stored
   it); **re-run `ConfigCodecTest` alias + dedupe tests with JSON string inputs** against the renamed enum; Roborazzi compare vs the shots just recorded → 0 diff. Commit.
 
-### Task 23: Review, release candidate, wrap-up
-- [ ] Independent review of the whole diff (reviewer by quota); fix Critical/High.
-- [ ] versionName 0.3.0; `testPersonalDebugUnitTest` + `testPublicDebugUnitTest` + `check_secrets.py`; personal APK
+### Task 23: Review, release candidate, wrap-up — done (as built: Codex adversarial review of production src: High 3 — usage state crash fixed (c0176c1); widget content and 14-day calendar titles over the keyguard left to the operator (r8 already showed today's titles); check_secrets now scans debug + release of both flavours; personal release APK 24 MB sent unzipped)
+- [x] Independent review of the whole diff (reviewer by quota); fix Critical/High.
+- [x] versionName 0.3.0; `testPersonalDebugUnitTest` + `testPublicDebugUnitTest` + `check_secrets.py`; personal APK
   zipped if > 30 MB → SendUserFile; device checklist: widget bind/config/dark-light, unplug/relock/side-key, fire
   sound, banner → card, text sizes, candle night, each theme once on the Fold cover.
-- [ ] Wrap-up per `C:\DC\DD\CLAUDE.md`: ROADMAP Recent, `tasks/T-0162` attempts, `docs/decisions` (D1, D4, D10),
+- [x] Wrap-up per `C:\DC\DD\CLAUDE.md`: ROADMAP Recent, `tasks/T-0162` attempts, `docs/decisions` (D1, D4, D10),
   `references/techniques.md` (mockup-first decision page), `standby/LICENSES.md` (Plex Mono OFL).
 
 ## Self-review
