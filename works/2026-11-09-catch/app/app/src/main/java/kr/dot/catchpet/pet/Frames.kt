@@ -38,9 +38,9 @@ object Frames {
         return CELLS.associateWith { trim(raw[it] ?: front) }
     }
 
-    /** critters/<id>/<name>.png, else that critter's front, else the grey placeholder (plan R19). */
+    /** critters/<id>/<name>.webp, else that critter's front, else the grey placeholder (plan R19). */
     fun asset(ctx: Context, critterId: String, name: String): Bitmap? =
-        listOf("critters/$critterId/$name.png", "critters/$critterId/front.png", "critters/_placeholder/front.png")
+        listOf("critters/$critterId/$name.webp", "critters/$critterId/front.webp", "critters/_placeholder/front.webp")
             .firstNotNullOfOrNull { p -> runCatching { ctx.assets.open(p).use(BitmapFactory::decodeStream) }.getOrNull() }
 
     /** Cut away transparent margins so the pet fills its box. */

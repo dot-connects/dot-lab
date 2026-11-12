@@ -48,7 +48,7 @@ class PetAppTest {
 
     @Test fun missingCritterPicturesFallBack() {
         val ctx = RuntimeEnvironment.getApplication()
-        assertNotNull(Frames.asset(ctx, "no-such-critter", "dir3"))   // -> _placeholder/front.png
+        assertNotNull(Frames.asset(ctx, "no-such-critter", "dir3"))   // -> _placeholder/front.webp
         val e = Dex.add(ctx, "critter", null, "monggeul", "dir0")
         val cells = Frames.load(ctx, e)!!
         assertEquals(Frames.CELLS, cells.keys.toList())

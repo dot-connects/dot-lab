@@ -131,7 +131,7 @@ internal fun rememberFile(id: String, name: String): ImageBitmap? {
 fun posePicture(ctx: Context, e: Dex.Entry, pose: String): Bitmap? {
     val cid = e.critterId ?: return BitmapFactory.decodeFile(Dex.file(ctx, e.id, "$pose.png").path)
     val file = when (pose) { "side" -> "dir2"; "back" -> "dir4"; else -> pose }
-    for (p in listOf("critters/$cid/$file.png", "critters/$cid/front.png", "critters/_placeholder/front.png")) {
+    for (p in listOf("critters/$cid/$file.webp", "critters/$cid/front.webp", "critters/_placeholder/front.webp")) {
         runCatching { ctx.assets.open(p).use { BitmapFactory.decodeStream(it) } }.getOrNull()?.let { return it }
     }
     return null

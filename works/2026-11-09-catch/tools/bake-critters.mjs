@@ -3,8 +3,9 @@
 // Needs a static server for C:/DC/DD/dot-lab on <port>. Runs critters in batches of 4 with a 60 s budget per critter
 // and 20 min overall; a critter that fails keeps whatever the app falls back to (front, then _placeholder).
 // Heavy (headless Chrome + swiftshader): start it only outside the trading windows (plan R12/R17).
-import { spawn } from "node:child_process";
-import { mkdirSync, writeFileSync, readFileSync } from "node:fs";
+import { spawn, spawnSync } from "node:child_process";
+import { mkdirSync, writeFileSync, readFileSync, unlinkSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 const [port, prof] = process.argv.slice(2);
 const root = new URL("../app/app/src/main/assets/critters/", import.meta.url);
@@ -32,7 +33,13 @@ async function batch(ids) {
       if (out) {
         for (const [cid, pics] of Object.entries(out)) {
           const dir = new URL(`${cid}/`, root); mkdirSync(dir, { recursive: true });
-          for (const [name, url] of Object.entries(pics)) writeFileSync(new URL(`${name}.png`, dir), Buffer.from(url.split(",")[1], "base64"));
+          for (const [name, url] of Object.entries(pics)) {
+            // the app ships WebP (lossy q88 with alpha): 225 PNGs were 6.8 MB, the APK had to fit a 30 MB hand-off
+            const png = fileURLToPath(new URL(`${name}.png`, dir));
+            writeFileSync(png, Buffer.from(url.split(",")[1], "base64"));
+            spawnSync("ffmpeg", ["-loglevel", "error", "-y", "-i", png, "-c:v", "libwebp", "-quality", "88", "-lossless", "0", png.replace(/\.png$/, ".webp")]);
+            unlinkSync(png);
+          }
           done++;
         }
         return;
