@@ -85,7 +85,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv, update: Update = {
             }
             Section("동작") {
                 item { NavRow("야간 모드 · 디스플레이", { nav.push(Routes.NIGHT) }, subtitle = "밝기, 꺼지는 시점, 알림") }
-                if (env.foldable) item { NavRow("알람 · 무드등", { nav.push(Routes.ALARM) }, subtitle = "폴드 안쪽 화면을 부드럽게 밝혀요") }
+                item { NavRow(if (env.foldable) "알람 · 무드등" else "알람", { nav.push(Routes.ALARM) }, subtitle = if (env.foldable) "알람 화면, 폴드 안쪽 화면 불빛" else "알람이 울릴 때 보이는 화면") }
             }
             Section("연결") {
                 item { NavRow("데이터", { nav.push(Routes.DATA) }, subtitle = "날씨 지역, D-day, 수면 소리, 타이머") }

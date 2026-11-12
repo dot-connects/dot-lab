@@ -38,10 +38,10 @@ object BoardOps {
     }
 
     /** Widget ids present in [old] but gone from [new]; the caller releases them (`AppWidgetHost.deleteAppWidgetId`). */
-    fun removedWidgetIds(old: AppConfig, new: AppConfig): List<Int> {
-        fun ids(c: AppConfig) = c.boards.flatMap { b -> b.options.values.mapNotNull { it.widgetId } }.toSet()
-        return (ids(old) - ids(new)).toList()
-    }
+    fun removedWidgetIds(old: AppConfig, new: AppConfig): List<Int> = (widgetIds(old) - widgetIds(new)).toList()
+
+    /** Every widget id the boards hold. */
+    fun widgetIds(c: AppConfig): Set<Int> = c.boards.flatMap { b -> b.options.values.mapNotNull { it.widgetId } }.toSet()
 
     fun withLayout(b: Board, layout: Layout): Board = fit(b.copy(layout = layout))
 

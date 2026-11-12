@@ -43,16 +43,26 @@ class SleepService : Service() {
             .addAction(Notification.Action.Builder(null, "끄기", stop).build())
             .build()
         startForeground(1, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK)
-        // a start while playing (the sleep card picked another sound or timer) swaps them in the running loop
-        this.sound = sound
-        endAt = if (minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else Long.MAX_VALUE
-        if (running) return START_NOT_STICKY
-        running = true
-        thread = Thread({ play() }, "sleep-noise").also { it.start() }
+        // a start while playing (the sleep card picked another sound or timer) swaps them in the running loop;
+        // under the lock so a loop that just decided to end cannot swallow this start
+        val g = synchronized(this) {
+            this.sound = sound
+            endAt = if (minutes > 0) SystemClock.elapsedRealtime() + minutes * 60_000L else Long.MAX_VALUE
+            if (running) return START_NOT_STICKY
+            running = true
+            session.incrementAndGet()
+        }
+        thread = Thread({ play(g) }, "sleep-noise").also { it.start() }
         return START_NOT_STICKY
     }
 
-    private fun play() {
+    /** Time left, or -1 once the loop must end (stopped or timer over); ending clears [running] under the same lock. */
+    private fun timeLeft(): Long = synchronized(this) {
+        val left = endAt - SystemClock.elapsedRealtime()
+        if (!running || left <= 0) { running = false; -1L } else left
+    }
+
+    private fun play(g: Int) {
         var gen = NoiseGen(sound)
         val buf = ShortArray(2048)
         val track = AudioTrack.Builder()
@@ -66,8 +76,8 @@ class SleepService : Service() {
         try {
             while (running) {
                 if (gen.sound != sound) gen = NoiseGen(sound)
-                val left = endAt - SystemClock.elapsedRealtime()
-                if (left <= 0) break
+                val left = timeLeft()
+                if (left < 0) break
                 val m = if (endAt != Long.MAX_VALUE) ((left + 59_999) / 60_000).toInt() else null
                 if ((m ?: -1) != lastMin) { lastMin = m ?: -1; SleepBus.state.value = SleepState(true, m) } // once a minute
                 gen.fill(buf, if (left < FADE_MS) left.toFloat() / FADE_MS else 1f)
@@ -75,9 +85,14 @@ class SleepService : Service() {
             }
         } finally {
             track.stop(); track.release()
-            running = false
-            SleepBus.state.value = SleepState(false, null)
-            stopSelf()
+            // a newer start (this service, or a new one after a quick stop+start) owns the card and the service now
+            synchronized(this) {
+                if (session.get() == g) {
+                    running = false
+                    SleepBus.state.value = SleepState(false, null)
+                    stopSelf()
+                }
+            }
         }
     }
 
@@ -91,6 +106,8 @@ class SleepService : Service() {
         private const val MINUTES = "minutes"
         private const val ACTION_STOP = "kr.dot.sb.SLEEP_STOP"
         private const val FADE_MS = 10_000L
+        /** Playback session across service instances: only the latest loop may report "off" or stop the service. */
+        private val session = java.util.concurrent.atomic.AtomicInteger()
 
         fun start(ctx: Context, sound: SleepSound, minutes: Int) {
             SleepBus.state.value = SleepState(true, minutes.takeIf { it > 0 })

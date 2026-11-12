@@ -37,8 +37,10 @@ object Migrations {
      * [AnalogStyle.DUO] when the user saw it (iPhone theme, or an edited analog style), (3) drop untouched styles.
      * Returns the styles and the migrated analog style (null = nothing to carry over).
      */
-    fun styles(o: JSONObject?, theme: Theme, read: (JSONObject, ClockStyle) -> ClockStyle): Pair<Map<FaceId, ClockStyle>, AnalogStyle?> {
+    fun styles(o: JSONObject?, theme: Theme, r8: Boolean, read: (JSONObject, ClockStyle) -> ClockStyle): Pair<Map<FaceId, ClockStyle>, AnalogStyle?> {
         if (o == null) return emptyMap<FaceId, ClockStyle>() to null
+        // an r9 save holds edits only, read as written (an edit can equal the r8 look on purpose)
+        if (!r8) return FaceId.entries.mapNotNull { f -> o.optJSONObject(f.name)?.let { f to read(it, r8Default(f)) } }.toMap() to null
         var analog: AnalogStyle? = null
         val out = mutableMapOf<FaceId, ClockStyle>()
         for (f in FaceId.entries) {

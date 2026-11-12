@@ -13,6 +13,7 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.widget.RemoteViews
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 
 /**
@@ -31,6 +32,13 @@ object WidgetHost {
      */
     @Volatile var unlock: (() -> Unit) -> Unit = {}
 
+    /**
+     * Bumped on every [start]. A widget view lives in one parent at a time, so when the dream took it the activity's
+     * slot is empty; the composition keys on this and takes the view back when its host starts again.
+     */
+    val epoch = mutableIntStateOf(0)
+    private var swept = false
+
     @Synchronized
     fun get(ctx: Context): AppWidgetHost = host ?: object : AppWidgetHost(ctx.applicationContext, HOST_ID) {
         override fun onCreateView(context: Context, id: Int, info: AppWidgetProviderInfo?): AppWidgetHostView = WidgetView(context)
@@ -39,11 +47,28 @@ object WidgetHost {
     @Synchronized
     fun start(ctx: Context, unlockThen: (() -> Unit) -> Unit) {
         unlock = unlockThen
+        epoch.intValue++
         if (refs++ == 0) get(ctx).startListening()
     }
 
+    /** [unlockThen] = the one passed to [start]; dropping it lets a finished activity or dream be collected. */
     @Synchronized
-    fun stop() { if (refs > 0 && --refs == 0) host?.stopListening() }
+    fun stop(unlockThen: (() -> Unit) -> Unit) {
+        if (unlock == unlockThen) unlock = {}
+        if (refs > 0 && --refs == 0) host?.stopListening()
+    }
+
+    /**
+     * Once per process: release bound ids no board references (a stack shortened on load, a pick that landed after its
+     * card was removed). ponytail: an id whose provider config screen is open in this very process start is lost too;
+     * rare, the user picks again.
+     */
+    @Synchronized
+    fun sweep(ctx: Context, used: Set<Int>) {
+        if (swept) return
+        swept = true
+        get(ctx).appWidgetIds.filter { it !in used }.forEach { delete(ctx, it) }
+    }
 
     /** The view for [id], inflated with the night/day uiMode [dark] (best effort: the provider decides). Null = not bound. */
     @Synchronized

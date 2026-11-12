@@ -36,7 +36,7 @@ class StandbyDream : DreamService(), HostCallbacks {
     override fun onDreamingStarted() {
         super.onDreamingStarted()
         StandbyPresence.dream = true
-        lowRefreshRate()
+        window?.lowRefreshRate()
         holder?.start()
         WidgetHost.start(this, ::unlockThen)
     }
@@ -45,7 +45,7 @@ class StandbyDream : DreamService(), HostCallbacks {
         StandbyPresence.dream = false
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder?.stop()
-        WidgetHost.stop()
+        WidgetHost.stop(::unlockThen)
         super.onDreamingStopped()
     }
 
@@ -77,13 +77,16 @@ class StandbyDream : DreamService(), HostCallbacks {
     }
 
     override fun openGlow() = GlowReceiver.post(this)
+}
 
-    /** Lowest refresh rate of the current resolution: a still clock needs no 120 Hz (plan rule 7). */
-    private fun lowRefreshRate() {
-        val d = window?.decorView?.display ?: return
-        val cur = d.mode
-        val low = d.supportedModes.filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
-            .minByOrNull { it.refreshRate } ?: return
-        window.attributes = window.attributes.apply { preferredDisplayModeId = low.modeId }
-    }
+/**
+ * Lowest refresh rate of the current resolution: a still clock needs no 120 Hz (plan rule 7). Both hosts, since the
+ * activity is the one that stays on all night on a charger.
+ */
+internal fun android.view.Window.lowRefreshRate() {
+    val d = decorView.display ?: return
+    val cur = d.mode
+    val low = d.supportedModes.filter { it.physicalWidth == cur.physicalWidth && it.physicalHeight == cur.physicalHeight }
+        .minByOrNull { it.refreshRate } ?: return
+    attributes = attributes.apply { preferredDisplayModeId = low.modeId }
 }

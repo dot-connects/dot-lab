@@ -174,7 +174,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         }
         scope.launch {
             ListenerBus.alarm.collect { a ->
-                _state.update { it.copy(alarm = a?.let { s -> AlarmRinging(s.label, true) }) }
+                // off: the clock app's own alarm screen is the only one (StandBy stays as it is)
+                _state.update { it.copy(alarm = a?.takeIf { cfg.alarmScreen }?.let { s -> AlarmRinging(s.label, true) }) }
                 machine.touch(el()); evaluate() // alarm preempts everything and wakes OFF; when it ends the idle time restarts
             }
         }

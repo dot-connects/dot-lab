@@ -397,9 +397,20 @@ fun CardPickerSheet(
 private fun setWidget(update: Update, boardId: String, key: String, f: (SlotOptions) -> SlotOptions) =
     update { c -> BoardOps.replace(c, boardId) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
 
-/** Provider pick + bind; the new id replaces the slot's old one, which the activity's update releases (removedWidgetIds). */
+/**
+ * Provider pick + bind; the new id replaces the slot's old one, which the activity's update releases (removedWidgetIds).
+ * The pick is async: when the card stopped being a phone widget meanwhile, nothing is written (the next process start's
+ * sweep releases the unused id).
+ */
 private fun pickWidget(env: SettingsEnv, update: Update, boardId: String, key: String) =
-    env.pickWidget { wid -> setWidget(update, boardId, key) { it.copy(widgetId = wid) } }
+    env.pickWidget { wid ->
+        update { c ->
+            val (slot, j) = key.split(':').map { it.toInt() }
+            val b = c.boards.firstOrNull { it.id == boardId }
+            if (b?.slots?.getOrNull(slot)?.getOrNull(j) != CardType.WIDGET) c
+            else BoardOps.replace(c, boardId) { bb -> bb.copy(options = bb.options + (key to (bb.options[key] ?: SlotOptions()).copy(widgetId = wid))) }
+        }
+    }
 
 /** Route "widget:<board>:<slot>:<index>"; null when that card is no longer a phone widget (the caller shows Home). */
 @Composable

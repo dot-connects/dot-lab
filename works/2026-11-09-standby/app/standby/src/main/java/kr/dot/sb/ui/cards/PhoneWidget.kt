@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
@@ -72,11 +73,14 @@ private fun Hosted(v: WidgetView, night: Boolean, w: Float, h: Float) {
     val light by v.light
     LaunchedEffect(v, w, h) { v.updateAppWidgetSize(Bundle(), listOf(SizeF(w, h))) }
     val paint = if (!night) null else Paint().apply { colorFilter = ColorMatrixColorFilter(if (light) LIGHT_AT_NIGHT else DARK_AT_NIGHT) }
-    AndroidView(
-        factory = { (v.parent as? ViewGroup)?.removeView(v); v },
-        modifier = Modifier.fillMaxSize(),
-        update = { it.setLayerType(if (paint == null) View.LAYER_TYPE_NONE else View.LAYER_TYPE_HARDWARE, paint) },
-    )
+    // a new host start (dream ended, activity back) remakes the holder so the factory takes the view back
+    key(v, WidgetHost.epoch.intValue) {
+        AndroidView(
+            factory = { (v.parent as? ViewGroup)?.removeView(v); v },
+            modifier = Modifier.fillMaxSize(),
+            update = { it.setLayerType(if (paint == null) View.LAYER_TYPE_NONE else View.LAYER_TYPE_HARDWARE, paint) },
+        )
+    }
 }
 
 /**

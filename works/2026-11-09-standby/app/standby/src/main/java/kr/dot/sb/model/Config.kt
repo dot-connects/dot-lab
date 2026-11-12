@@ -213,6 +213,10 @@ data class AppConfig(
     val burnInShift: Boolean = true,
     val widgetLeft: List<CardType> = listOf(CardType.ANALOG, CardType.CALENDAR, CardType.WEATHER),
     val widgetRight: List<CardType> = listOf(CardType.CALENDAR, CardType.WEATHER, CardType.AGENDA),
+    /** A ringing alarm shows StandBy's own alarm screen (off = only the clock app's screen). */
+    val alarmScreen: Boolean = true,
+    /** A ringing alarm lights the fold's inner screen (foldables only). */
+    val alarmGlow: Boolean = true,
     val glowColor: Long = 0xFFFFB36B,
     val glowStartMinBefore: Int = 0,
     val glowRampSec: Int = 6,

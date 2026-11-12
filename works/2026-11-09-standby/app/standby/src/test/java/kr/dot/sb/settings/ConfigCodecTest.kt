@@ -139,6 +139,12 @@ class ConfigCodecTest {
         assertEquals(Themes.of(Theme.PAPER).clockDefaults(FaceId.DIGITAL), c.clockStyle(FaceId.DIGITAL))
     }
 
+    @Test fun r9EditEqualToTheR8LookSurvivesARestart() {
+        val edit = Migrations.r8Default(FaceId.DIGITAL)
+        val back = ConfigCodec.decode(ConfigCodec.encode(AppConfig(theme = Theme.PAPER, styles = mapOf(FaceId.DIGITAL to edit))))
+        assertEquals(edit, back.styles[FaceId.DIGITAL])      // a versioned save skips the r8 "untouched" drop
+    }
+
     @Test fun r8DuoDialBecomesTheDuoStyleOnlyWhereItWasSeen() {
         val analog = JSONObject().put("ANALOG", styleJson(Migrations.r8Default(FaceId.ANALOG)))
         val iphone = ConfigCodec.decode(JSONObject().put("theme", "IPHONE").put("styles", analog).toString())

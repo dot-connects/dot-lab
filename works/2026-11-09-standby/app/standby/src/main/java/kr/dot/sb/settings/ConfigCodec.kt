@@ -18,7 +18,11 @@ import java.time.LocalDate
  * so a save from an older or newer build (missing or unknown fields, renamed enum values) never crashes.
  */
 object ConfigCodec {
+    /** Stored schema: 9 = r9 (styles are overrides only). Saves without "v" are r8 or r9 dev builds. */
+    const val VERSION = 9
+
     fun encode(c: AppConfig): String = JSONObject().apply {
+        put("v", VERSION)
         put("theme", c.theme.name)
         put("styles", JSONObject().also { o -> c.styles.forEach { (f, s) -> o.put(f.name, style(s)) } })   // overrides only
         put("boardBg", c.boardBg.name)
@@ -44,6 +48,8 @@ object ConfigCodec {
         put("burnInShift", c.burnInShift)
         put("widgetLeft", cards(c.widgetLeft))
         put("widgetRight", cards(c.widgetRight))
+        put("alarmScreen", c.alarmScreen)
+        put("alarmGlow", c.alarmGlow)
         put("glowColor", c.glowColor)
         put("glowStartMinBefore", c.glowStartMinBefore)
         put("glowRampSec", c.glowRampSec)
@@ -67,7 +73,7 @@ object ConfigCodec {
     private fun fromJson(o: JSONObject): AppConfig {
         val d = AppConfig()
         val theme = enumOf(o, "theme", d.theme)
-        val (styles, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme) { so, base -> style(so, base) }
+        val (styles, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme, r8 = o.optInt("v") < VERSION) { so, base -> style(so, base) }
         return AppConfig(
             theme = theme,
             styles = styles,
@@ -94,6 +100,8 @@ object ConfigCodec {
             burnInShift = o.optBoolean("burnInShift", d.burnInShift),
             widgetLeft = cards(o.optJSONArray("widgetLeft"), d.widgetLeft),
             widgetRight = cards(o.optJSONArray("widgetRight"), d.widgetRight),
+            alarmScreen = o.optBoolean("alarmScreen", d.alarmScreen),
+            alarmGlow = o.optBoolean("alarmGlow", d.alarmGlow),
             glowColor = o.optLong("glowColor", d.glowColor),
             glowStartMinBefore = o.optInt("glowStartMinBefore", d.glowStartMinBefore),
             glowRampSec = o.optInt("glowRampSec", d.glowRampSec),

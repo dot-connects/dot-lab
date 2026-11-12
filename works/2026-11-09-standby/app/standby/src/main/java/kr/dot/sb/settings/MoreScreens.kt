@@ -10,6 +10,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -227,44 +228,54 @@ private val GLOWS = listOf("따뜻한 주황" to 0xFFFFB36BL, "호박" to 0xFFFF
 fun AlarmScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
     val glow = config.glowColor.c()
     val offsets = listOf(0, 5, 10, 15)
-    Page("알람 · 무드등", back) {
-        Section("불빛 색", footer = "폴드를 펼쳤을 때와 알람이 울릴 때 안쪽 화면이 이 색으로 천천히 밝아져요.") {
-            item {
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    Box(Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(14.dp)).background(Brush.verticalGradient(listOf(glow, lerp(glow, Color.Black, 0.62f)))))
-                    Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
-                        GLOWS.forEach { (name, c) ->
-                            Column(Modifier.width(60.dp).clip(RoundedCornerShape(12.dp)).clickable { update { it.copy(glowColor = c) } }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Box(Modifier.size(44.dp), Alignment.Center) {
-                                    if (c == config.glowColor) Box(Modifier.size(42.dp).border(2.dp, Color.White, CircleShape))
-                                    Box(Modifier.size(30.dp).clip(CircleShape).background(c.c()))
-                                }
-                                T(name, 11.sp, if (c == config.glowColor) 700 else 500, if (c == config.glowColor) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 2, align = TextAlign.Center)
+    val fold = env.foldable
+    Page(if (fold) "알람 · 무드등" else "알람", back) {
+        Section("알람이 울릴 때", footer = "알람 소리와 끄기·다시 알림은 언제나 시계 앱이 맡아요.") {
+            item { SwitchRow("StandBy 알람 화면", config.alarmScreen, { v -> update { it.copy(alarmScreen = v) } }, subtitle = if (config.alarmScreen) "StandBy가 켜져 있으면 큰 시계와 끄기·다시 알림 버튼을 보여줘요" else "시계 앱의 기본 알람 화면만 떠요") }
+            item { SwitchRow("안쪽 화면 무드등", config.alarmGlow && fold, { v -> update { it.copy(alarmGlow = v) } }, subtitle = if (fold) "폴드를 펼친 채 충전 중이면 안쪽 화면이 서서히 밝아져요" else "폴더블폰에서만 쓸 수 있어요", enabled = fold) }
+        }
+        if (fold) FoldGlow(config, update, env, glow, offsets)
+    }
+}
+
+@Composable
+private fun ColumnScope.FoldGlow(config: AppConfig, update: Update, env: SettingsEnv, glow: Color, offsets: List<Int>) {
+    Section("미리 밝히기") {
+        item {
+            ControlRow(
+                "알람 전에 미리 밝히기",
+                note = if (env.granted[Perm.EXACT_ALARM] != true && config.glowStartMinBefore > 0) "정확한 알람 허용이 꺼져 있어 미리 밝히기가 동작하지 않아요. 권한 화면에서 켜 주세요." else "삼성 시계 앱의 다음 알람보다 먼저 서서히 밝아져요.",
+            ) { Segmented(offsets.map { if (it == 0) "끔" else "${it}분" }, offsets.indexOf(config.glowStartMinBefore).coerceAtLeast(0), { i -> update { it.copy(glowStartMinBefore = offsets[i]) } }) }
+        }
+        item { SliderRow("밝아지는 시간", "${config.glowRampSec}초", config.glowRampSec.toFloat(), 2f..20f, { v -> update { it.copy(glowRampSec = v.toInt()) } }, steps = 17) }
+    }
+    Section("불빛 색", footer = "폴드를 펼쳤을 때와 알람이 울릴 때 안쪽 화면이 이 색으로 천천히 밝아져요.") {
+        item {
+            Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                Box(Modifier.fillMaxWidth().height(84.dp).clip(RoundedCornerShape(14.dp)).background(Brush.verticalGradient(listOf(glow, lerp(glow, Color.Black, 0.62f)))))
+                Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                    GLOWS.forEach { (name, c) ->
+                        Column(Modifier.width(60.dp).clip(RoundedCornerShape(12.dp)).clickable { update { it.copy(glowColor = c) } }.padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                            Box(Modifier.size(44.dp), Alignment.Center) {
+                                if (c == config.glowColor) Box(Modifier.size(42.dp).border(2.dp, Color.White, CircleShape))
+                                Box(Modifier.size(30.dp).clip(CircleShape).background(c.c()))
                             }
+                            T(name, 11.sp, if (c == config.glowColor) 700 else 500, if (c == config.glowColor) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 2, align = TextAlign.Center)
                         }
                     }
                 }
             }
-            item { ControlRow("직접 고르기") { ColorPalette(config.glowColor, { c -> update { it.copy(glowColor = c) } }) } }
         }
-        Section("알람") {
-            item {
-                ControlRow(
-                    "알람 전에 미리 밝히기",
-                    note = if (env.granted[Perm.EXACT_ALARM] != true && config.glowStartMinBefore > 0) "정확한 알람 허용이 꺼져 있어 미리 밝히기가 동작하지 않아요. 권한 화면에서 켜 주세요." else "삼성 시계 앱의 다음 알람보다 먼저 서서히 밝아져요.",
-                ) { Segmented(offsets.map { if (it == 0) "끔" else "${it}분" }, offsets.indexOf(config.glowStartMinBefore).coerceAtLeast(0), { i -> update { it.copy(glowStartMinBefore = offsets[i]) } }) }
-            }
-            item { SliderRow("밝아지는 시간", "${config.glowRampSec}초", config.glowRampSec.toFloat(), 2f..20f, { v -> update { it.copy(glowRampSec = v.toInt()) } }, steps = 17) }
-        }
-        Section("폴드를 펼쳤을 때") {
-            item { ControlRow(null, note = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "스탠바이가 켜져 있는 동안 펼치면 안쪽 화면 전체가 무드등이 돼요." else "스탠바이가 켜져 있는 동안 펼치면 큰 칸 + 작은 칸의 '책 (펼침)' 화면을 보여줘요.") {
-                Segmented(UnfoldAction.entries.map { it.ko }, config.onUnfold.ordinal, { i -> update { it.copy(onUnfold = UnfoldAction.entries[i]) } })
-            } }
-        }
-        Gap(20.dp)
-        ActionButton("무드등 테스트", env.onGlowTest, Modifier.fillMaxWidth())
-        T("지금 설정으로 안쪽 화면을 잠깐 밝혀 봐요", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp))
+        item { ControlRow("직접 고르기") { ColorPalette(config.glowColor, { c -> update { it.copy(glowColor = c) } }) } }
     }
+    Section("폴드를 펼쳤을 때") {
+        item { ControlRow(null, note = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "스탠바이가 켜져 있는 동안 펼치면 안쪽 화면 전체가 무드등이 돼요." else "스탠바이가 켜져 있는 동안 펼치면 큰 칸 + 작은 칸의 '책 (펼침)' 화면을 보여줘요.") {
+            Segmented(UnfoldAction.entries.map { it.ko }, config.onUnfold.ordinal, { i -> update { it.copy(onUnfold = UnfoldAction.entries[i]) } })
+        } }
+    }
+    Gap(20.dp)
+    ActionButton("무드등 테스트", env.onGlowTest, Modifier.fillMaxWidth())
+    T("지금 설정으로 안쪽 화면을 잠깐 밝혀 봐요", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp))
 }
 
 // ---- data sources -----------------------------------------------------------------------------------------------

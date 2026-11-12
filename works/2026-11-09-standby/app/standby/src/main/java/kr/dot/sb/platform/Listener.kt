@@ -91,7 +91,8 @@ class Listener : NotificationListenerService() {
         var prev: AlarmSource? = null
         s.launch {
             ListenerBus.alarm.collect { a ->
-                if (prev == null && a != null) GlowReceiver.showIfInner(this@Listener) // alarm just started ringing
+                // alarm just started ringing
+                if (prev == null && a != null && ConfigStore.flow(this@Listener).value.alarmGlow) GlowReceiver.showIfInner(this@Listener)
                 prev = a
             }
         }
