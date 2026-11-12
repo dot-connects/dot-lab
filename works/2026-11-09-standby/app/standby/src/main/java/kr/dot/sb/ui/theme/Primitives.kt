@@ -31,7 +31,13 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.constrainHeight
+import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
+import kr.dot.sb.data.BurnIn
 import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
@@ -192,6 +198,20 @@ private fun DrawScope.draw(g: Ground, alpha: Float = 1f) {
     }
 }
 
+/** How far the burn-in shift moves the content layer ([BurnIn.MAX], r10). */
+val BURN_IN_BLEED: Dp = BurnIn.MAX.dp
+
+/**
+ * Overscan for the burn-in shift (r10): the child is measured [BURN_IN_BLEED] larger on every side and placed back by
+ * that much, so a full-bleed background moved ±8 dp never shows a moving band. Needs a parent that does not clip:
+ * pagers clip their bounds, so a pager gets it itself and pads its pages back in by [BURN_IN_BLEED].
+ */
+fun Modifier.burnInBleed(): Modifier = layout { m, c ->
+    val b = BURN_IN_BLEED.roundToPx()
+    val p = m.measure(c.offset(2 * b, 2 * b))
+    layout(c.constrainWidth(p.width - 2 * b), c.constrainHeight(p.height - 2 * b)) { p.place(-b, -b) }
+}
+
 /**
  * The page behind everything: the theme's bg (or the board background [bg] / [custom] colour / blurred [photo]), with
  * the candle night ([ThemeTokens.NIGHT_BG]) faded in by [night]; light themes step to it at 0.5.
@@ -206,7 +226,7 @@ fun ThemeBackground(
     photo: ImageBitmap? = null,
 ) {
     val n = if (t.tokens.light && bg == BoardBg.THEME) (if (night >= 0.5f) 1f else 0f) else night.coerceIn(0f, 1f)
-    Box(modifier.fillMaxSize()) {
+    Box(modifier.fillMaxSize().burnInBleed()) {
         if (n < 1f) {
             if (bg == BoardBg.PHOTO_BLUR && photo != null) {
                 Image(photo, null, Modifier.fillMaxSize().blur(48.dp), contentScale = ContentScale.Crop)

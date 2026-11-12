@@ -55,6 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kotlinx.coroutines.delay
+import kr.dot.sb.data.LiveTimes
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.CardType
 import kr.dot.sb.ui.cards.CardView
@@ -101,6 +102,8 @@ internal fun Overlays(
 ) {
     val bare = layer == Layer.NONE && !editing
     Faded(bare && state.live != null, state.live) { LivePill(it, actions) }
+    // the live pill owns the top centre; the heat pill comes back (message first) once it is gone
+    Faded(bare && state.live == null && state.hot, if (state.hot) Unit else null) { HeatPill(config.textSize.f) }
     Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, state, config, actions) { onNowPlaying(false) } }
     // alarm and live glow in the theme accent, not the board clock's colour (accent-warm, spec-r9 §3)
     val night = LocalInk.current.night
@@ -163,6 +166,36 @@ private fun HeaderRow(icon: Ic, text: String, size: Dp, color: Color, weight: In
         Box(Modifier.height(size * 0.707f).wrapContentHeight(unbounded = true)) { IconView(icon, color, Modifier.size(size * 1.05f)) }
         Spacer(Modifier.width(size * 0.4f))
         Txt(text, size, color, weight = weight)
+    }
+}
+
+// ------------------------------------------------------------------------------------------------- heat
+
+/** Heat pill message time (features.html §2 A): then only the thermometer stays until the phone cools. */
+internal const val HEAT_MSG_MS = 5_000L
+
+/** Heat protection pill (features.html §2 A): black pill top-centre, "뜨거워서 화면을 어둡게 했어요" 5 s, then the glyph alone. */
+@Composable
+private fun HeatPill(textScale: Float) {
+    val ink = LocalInk.current
+    var msg by remember { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(HEAT_MSG_MS); msg = false }
+    val fg = lerp(Color(0xFFFFB05A), ink.ink, ink.night) // mockup orange; candle ink at night
+    val line = lerp(Color.White.copy(alpha = 0.18f), ink.ink.copy(alpha = 0.35f), ink.night) // literal-ok: hairline on the black pill
+    val shape = RoundedCornerShape(50)
+    Box(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
+                .background(Color.Black, shape).border(1.dp, line, shape) // literal-ok: the pill is black in every theme (mockup)
+                .padding(horizontal = if (msg) 18.dp else 9.dp, vertical = if (msg) 10.dp else 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconView(Ic.THERMO, fg, Modifier.size(20.dp))
+            if (msg) {
+                Spacer(Modifier.width(8.dp))
+                Txt("뜨거워서 화면을 어둡게 했어요", 17.dp * textScale, fg, weight = 700)
+            }
+        }
     }
 }
 
@@ -271,7 +304,7 @@ private fun LiveScreen(l: LiveActivity, actions: StandbyActions) {
             val s = min(w, h)
             val pad = s * 0.06f
             val fs = (s * 0.042f).coerceIn(13.dp, 19.dp)
-            val on = l.progress?.let { p -> (p.coerceIn(0f, 1f) * l.steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0) }
+            val on = l.progress?.let { LiveTimes.reached(it, l.steps) }
             val header = @Composable {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(fs * 2.2f).clip(RoundedCornerShape(fs * 0.55f)).background(ink.ink4), contentAlignment = Alignment.Center) {

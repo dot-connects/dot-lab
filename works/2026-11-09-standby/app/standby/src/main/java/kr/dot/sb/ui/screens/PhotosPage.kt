@@ -57,14 +57,15 @@ import kr.dot.sb.ui.state.Photo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.burnInBleed
 import kotlin.math.abs
 
 /** Photo themes (spec P1, P0 part): 추천 + the user's albums; on-device labels (자연, 반려동물 …) are P1. */
 private const val RECOMMENDED = "추천"
-private const val SHUFFLE_MS = 15_000L
 
 /**
- * Photos page (design §4.4): photo fills, 1 s crossfade every 15 s, Ken Burns to 1.04 per photo; time top-right in
+ * Photos page (design §4.4): photo fills, 1 s crossfade every `photoIntervalSec` (r10, default 15 s), Ken Burns to
+ * 1.04 per photo; the photo and its scrim overscan for the burn-in shift; time top-right in
  * the photos time style; place + date bottom-right on a scrim; theme pill right-middle on a vertical swipe.
  * [active] = the page is settled and uncovered; nothing animates otherwise.
  */
@@ -100,15 +101,16 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
             photos.isEmpty() -> Placeholder(Ic.PHOTO, "사진 없음", "앨범을 추가하면 여기 나와요", null)
             else -> {
                 var idx by remember { mutableIntStateOf(0) }
-                LaunchedEffect(photos.size, active) {
-                    while (active && photos.size > 1) { delay(SHUFFLE_MS); idx = (idx + 1) % photos.size }
+                val shuffleMs = config.photoIntervalSec * 1000L
+                LaunchedEffect(photos.size, active, shuffleMs) {
+                    while (active && photos.size > 1) { delay(shuffleMs); idx = (idx + 1) % photos.size }
                 }
-                // keyed by the photo itself: the 45 s reload swaps photos under the same index and must still fade
-                Crossfade(photos[idx % photos.size], animationSpec = tween(1_000), label = "photo") { ph ->
-                    KenBurns(ph, ink.night, active)
+                // keyed by the photo itself: the set reload swaps photos under the same index and must still fade
+                Crossfade(photos[idx % photos.size], Modifier.fillMaxSize().burnInBleed(), animationSpec = tween(1_000), label = "photo") { ph ->
+                    KenBurns(ph, ink.night, active, shuffleMs)
                 }
                 // Scrim: transparent until 55 % height, then to 60 % black (design §2.1).
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) // scrim
+                Box(Modifier.fillMaxSize().burnInBleed().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) // scrim
                 val p = photos[idx % photos.size]
                 // caption over the photo: white in every theme (candle ink at night), like the memories card
                 val fg = lerp(Color.White, ink.ink, ink.night) // overPicture
@@ -140,9 +142,9 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
 }
 
 @Composable
-private fun KenBurns(p: Photo, night: Float, active: Boolean) {
+private fun KenBurns(p: Photo, night: Float, active: Boolean, shuffleMs: Long) {
     val k = remember { Animatable(1f) }
-    LaunchedEffect(active) { if (active) k.animateTo(1.04f, tween((SHUFFLE_MS + 1_000).toInt(), easing = LinearEasing)) }
+    LaunchedEffect(active) { if (active) k.animateTo(1.04f, tween((shuffleMs + 1_000).toInt(), easing = LinearEasing)) }
     Image(
         p.image, null,
         Modifier.fillMaxSize().graphicsLayer { scaleX = k.value; scaleY = k.value },

@@ -173,7 +173,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun testGlow() {
-        val i = Intent().setClassName(packageName, "kr.dot.sb.platform.GlowActivity").putExtra("test", true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        val i = Intent().setClassName(packageName, "kr.dot.sb.platform.GlowActivity").putExtra("source", "TEST").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         if (runCatching { startActivity(i) }.isFailure) Toast.makeText(this, "무드등을 열 수 없어요", Toast.LENGTH_SHORT).show()
     }
 

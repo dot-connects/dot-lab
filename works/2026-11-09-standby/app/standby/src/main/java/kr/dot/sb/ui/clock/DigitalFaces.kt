@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
+import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
@@ -301,8 +302,10 @@ internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         else fitSize(p, d, two, (if (two) 0.30f else 0.40f) * h * sizePct, (if (two) 0.76f else 0.68f) * w)
         val cap = p.capEm * fs
         val top = (h - (if (two) 2 * cap + gap else cap)) / 2
+        val bleed = if (inSlot) 0f else BURN_IN_BLEED.toPx() // full screen: the plate overscans for the burn-in shift
         return@FaceCanvas {
-            drawFaceBg(bg, w, h, r)
+            if (bleed > 0f) { save(); translate(-bleed, -bleed); drawFaceBg(bg, w + 2 * bleed, h + 2 * bleed, r); restore() }
+            else drawFaceBg(bg, w, h, r)
             drawTime(p, d, fs, two, gap, w / 2, top, look)
         }
     }

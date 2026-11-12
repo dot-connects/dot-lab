@@ -52,7 +52,7 @@ class StandbyDream : DreamService(), HostCallbacks {
     override fun onDetachedFromWindow() {
         val h = holder
         // unfolded while dreaming and the dream is going away: light the inner screen through a full-screen intent
-        if (h != null && h.state.value.unfolded && h.uiConfig.value.onUnfold == UnfoldAction.MOOD_LIGHT) GlowReceiver.post(this)
+        if (h != null && h.state.value.unfolded && h.uiConfig.value.onUnfold == UnfoldAction.MOOD_LIGHT) GlowReceiver.post(this, GlowSource.UNFOLD)
         h?.stop()
         holder = null
         owner.destroy()
@@ -76,7 +76,7 @@ class StandbyDream : DreamService(), HostCallbacks {
         finish()
     }
 
-    override fun openGlow() = GlowReceiver.post(this)
+    override fun openGlow() = GlowReceiver.post(this, GlowSource.UNFOLD)
 }
 
 /**

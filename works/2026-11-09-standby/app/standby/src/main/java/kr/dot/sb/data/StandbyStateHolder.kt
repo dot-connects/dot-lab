@@ -9,6 +9,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.BatteryManager
 import android.os.SystemClock
 import android.text.format.DateFormat
 import kotlinx.coroutines.CoroutineScope
@@ -39,6 +40,7 @@ import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.theme.drawnTheme
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -92,6 +94,11 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private val rot = RotationTracker()
     private val lux = LuxMedian()
     private var wasOffAtNotif = false
+    private var wasAsleepAtNotif = false
+    /** Battery heat (HeatRule state, before the heatProtect option). */
+    private var hot = false
+    /** The unfold mood light is on screen (reported by StandbyRoot): keeps the display on. */
+    private var mood = false
     private var notifWokeAt = -1L
     private val media = MediaSource(ctx) { m -> _state.update { it.copy(media = m) } }
 
@@ -142,6 +149,22 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private val nextAlarmRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) { scope.launch { refreshStatic(force = true) } }
     }
+    /** Heat protection: battery temperature (tenths of °C) on every BATTERY_CHANGED; a change re-applies the brightness. */
+    private val batteryRx = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
+            val h = HeatRule.next(t, hot)
+            if (h == hot) return
+            hot = h
+            publishHot()
+            evaluate()
+        }
+    }
+
+    private fun publishHot() {
+        val h = hot && cfg.heatProtect
+        if (_state.value.hot != h) _state.update { it.copy(hot = h) }
+    }
 
     fun start() {
         if (started) return
@@ -155,6 +178,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(accelL, it, SensorManager.SENSOR_DELAY_UI) }
         ctx.registerReceiver(unplugRx, IntentFilter(Intent.ACTION_POWER_DISCONNECTED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(nextAlarmRx, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
+        ctx.registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) // sticky: the current value arrives at once
         media.start()
         onConfiguration(ctx.resources.configuration.smallestScreenWidthDp, initial = true)
         for ((id, t) in timers) { t.finishIfDone(el()); scheduleTimerEnd(id) }
@@ -168,6 +192,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
                     n
                 }
                 pushUi()
+                publishHot()
                 if (c.city != lastCity) { lastCity = c.city; lastWeatherAt = 0; if (!_state.value.displayOff) launch { fetchWeather() } }
                 evaluate()
             }
@@ -206,6 +231,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         started = false
         sm.unregisterListener(lightL); sm.unregisterListener(accelL)
         runCatching { ctx.unregisterReceiver(nextAlarmRx) }
+        runCatching { ctx.unregisterReceiver(batteryRx) }
         runCatching { ctx.unregisterReceiver(unplugRx) }
         media.stop()
         lastNight = _state.value.night
@@ -224,13 +250,13 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             c.nightMode, c.displayOff,
             scheduled = c.nightMode == NightMode.SCHEDULE && NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour),
             auto = nightSw.night,
+            forceNight = c.drawnTheme().tokens.light,
         )
         setNight(if (nightOn) 1f else 0f)
         val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
-        val busy = _state.value.alarm != null || _state.value.notification != null
         val off = NightRules.displayOff(
             machine.evaluate(now, c.displayOff, lastLux, c.nightEnterLux, c.nightExitLux) || flat,
-            _state.value.alarm != null, _state.value.notification != null,
+            _state.value.alarm != null, _state.value.notification != null, mood = mood && !machine.asleep, // sleep wins over mood
         )
         setOff(off, nightOn)
         schedulePoll(now)
@@ -239,8 +265,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     /** Sensors send nothing while the value is steady, so the end of a hold or of the idle time needs its own wake-up. */
     private fun schedulePoll(now: Long) {
         pollJob?.cancel()
+        val c = cfg
+        val luxNight = c.nightMode == NightMode.AUTO || (c.nightMode == NightMode.OFF && c.drawnTheme().tokens.light) // light theme: forced AUTO
         val waits = listOfNotNull(
-            if (cfg.nightMode == NightMode.AUTO) nightSw.pendingMs(now) else null,
+            if (luxNight) nightSw.pendingMs(now) else null,
             if (cfg.displayOff != DisplayOff.NEVER) machine.idleLeftMs(now)?.takeIf { it > 0 } else null,
         )
         val w = waits.minOrNull() ?: return
@@ -269,8 +297,9 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     /** Live from the on-screen bar: shown at once, written to the config once the finger has paused (not per frame). */
     fun setUserBrightness(v: Float) {
         val b = Brightness.clamp(v)
-        lastBrightness = b
-        host.setBrightness(b)
+        val w = Brightness.applied(b, cfg, hot)
+        lastBrightness = w
+        host.setBrightness(w)
         pendingBrightness = b
         brightJob?.cancel()
         brightJob = scope.launch { delay(500); flushBrightness() }
@@ -289,7 +318,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         }
         // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
         if (!off && pendingBrightness != null) return
-        val b = Brightness.target(off, nightOn, cfg)
+        val b = Brightness.target(off, nightOn, cfg, hot)
         if (b != lastBrightness) { lastBrightness = b; host.setBrightness(b) }
     }
 
@@ -314,14 +343,20 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             launch { minuteLoop() }
             launch { every(30 * 60_000L, { lastWeatherAt }) { fetchWeather() } }
             launch { every(5 * 60_000L, { lastUsageAt }) { fetchUsage() } }
-            launch { while (true) { delay(45_000); if (page == 1) reloadPhotos() } }
+            // a new set once every photo of the current one had its turn (at least 45 s); the interval is re-read each loop
+            launch {
+                while (true) {
+                    delay(maxOf(45_000L, cfg.photoIntervalSec * 1000L * (_state.value.photos?.size ?: 0)))
+                    if (page == 1) reloadPhotos()
+                }
+            }
         }
     }
 
     private suspend fun minuteLoop() {
         while (true) {
             val t = LocalDateTime.now()
-            val (sx, sy) = if (cfg.burnInShift) BurnIn.at(t.hour * 60 + t.minute) else (0 to 0)
+            val (sx, sy) = if (cfg.burnInShift) BurnIn.at(System.currentTimeMillis() / 60_000L) else (0 to 0)
             _state.update { it.copy(now = t.truncatedTo(ChronoUnit.MINUTES), shiftX = sx, shiftY = sy) }
             publishTimers()
             if (memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
@@ -344,7 +379,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (!force && el() - lastStaticAt < 60_000) return
         lastStaticAt = el()
         val now = LocalDateTime.now()
-        val (upcoming, alarm, perms) = withContext(Dispatchers.IO) { Triple(DeviceSources.upcoming(ctx, now), DeviceSources.nextAlarm(ctx), DeviceSources.permissions(ctx)) }
+        val (upcoming, alarm, perms) = withContext(Dispatchers.IO) { Triple(DeviceSources.upcoming(ctx, now, cfg.excludedCalendars), DeviceSources.nextAlarm(ctx), DeviceSources.permissions(ctx)) }
         val agenda = upcoming?.filter { it.date == now.toLocalDate() }?.take(5)
         _state.update { it.copy(agenda = agenda, upcoming = upcoming.orEmpty(), nextAlarm = alarm, permissions = perms) }
     }
@@ -391,13 +426,15 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
 
     private fun showNotification(n: kr.dot.sb.ui.state.BigNotification) {
         if (_state.value.alarm != null) return // dropped while an alarm shows; it stays in the shade
+        // quiet night: no banner, no wake; the notification card still updates through ListenerBus.shade
+        if (!NightRules.wakeOnNotification(nightTarget >= 0.5f, cfg.nightNotifQuiet, _state.value.displayOff)) return
         notifJob?.cancel()
         notifJob = scope.launch {
             val wait = 2_000 - (el() - notifShownAt) // a newer one replaces the shown one after >= 2 s
             if (_state.value.notification != null && wait > 0) delay(wait)
             notifShownAt = el()
             // woken from OFF by this notification: back to OFF afterwards unless the user touched the screen (spec I4)
-            if (_state.value.notification == null) wasOffAtNotif = _state.value.displayOff
+            if (_state.value.notification == null) { wasOffAtNotif = _state.value.displayOff; wasAsleepAtNotif = machine.asleep }
             _state.update { it.copy(notification = n) }
             machine.touch(el()); notifWokeAt = machine.lastTouch; evaluate()
             delay(6_500) // 6 s + fade
@@ -408,8 +445,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun endNotification(key: String?) {
         if (key != null && _state.value.notification?.key != key) return
         _state.update { it.copy(notification = null) }
-        if (wasOffAtNotif && machine.lastTouch == notifWokeAt) machine.forceOff() else machine.touch(el())
-        wasOffAtNotif = false
+        if (wasOffAtNotif && machine.lastTouch == notifWokeAt) { if (wasAsleepAtNotif) machine.sleep() else machine.forceOff() } else machine.touch(el())
+        wasOffAtNotif = false; wasAsleepAtNotif = false
         evaluate()
     }
 
@@ -436,6 +473,9 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     // ---- actions (called through HostActions) ------------------------------------------------------------------
 
     fun touch() { machine.touch(el()); evaluate() }
+    fun moodShowing(on: Boolean) { if (on != mood) { mood = on; evaluate() } }
+    /** Mood light auto-off ran out: sticky off until a touch (which then shows the board). */
+    fun moodDone() { mood = false; MoodLatch.done = true; machine.sleep(); evaluate() }
     fun onPage(p: Int) {
         page = p
         // "first entry = clock, then the last viewed page": remembered through startPage (not while the unfold rule steers it)
@@ -488,6 +528,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
 
     fun onConfiguration(smallestWidthDp: Int, initial: Boolean = false) {
         val u = smallestWidthDp >= 600 && hasHinge
+        if (!u) MoodLatch.done = false // folded: the next unfold may light the mood light again
         if (u == _state.value.unfolded) return
         _state.update { it.copy(unfolded = u) }
         pushUi()

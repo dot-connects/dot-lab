@@ -128,8 +128,10 @@ object ChargeStart {
         // the listener and the job both see one plug-in; the second one within a minute does nothing
         if (!force && System.currentTimeMillis() - lastLaunchMs < 60_000L) return
         val nm = ctx.getSystemService(NotificationManager::class.java)
-        val plugged = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-            ?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        val battery = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+        // heat protection starts at 42 °C: the log shows how warm a charge start really is
+        val temp = battery?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)?.takeIf { it != Int.MIN_VALUE }?.let { " · %.1f°C".format(it / 10f) }.orEmpty()
         val verdict = ChargeRules.decide(
             optionOn = true,
             charging = plugged != 0 || ctx.getSystemService(BatteryManager::class.java).isCharging,
@@ -141,7 +143,7 @@ object ChargeStart {
             fullScreenOk = nm.canUseFullScreenIntent(),
             pluggedOk = !ConfigStore.flow(ctx).value.chargeWirelessOnly || plugged == BatteryManager.BATTERY_PLUGGED_WIRELESS,
         )
-        log(ctx, "$source · ${verdict.ko}")
+        log(ctx, "$source · ${verdict.ko}$temp")
         if (verdict != ChargeVerdict.LAUNCH) return
         lastLaunchMs = System.currentTimeMillis()
         Channels.ensure(ctx)

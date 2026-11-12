@@ -44,7 +44,9 @@ data class StandbyState(
     val permissions: Permissions = Permissions(),
     /** Fold inner screen open (book posture). */
     val unfolded: Boolean = false,
-    /** Burn-in shift offset in dp, applied to the whole root. */
+    /** Heat protection is dimming the screen (battery ≥ 42 °C until ≤ 40 °C, and the option is on). */
+    val hot: Boolean = false,
+    /** Burn-in shift offset in dp, applied to the content layer. */
     val shiftX: Int = 0,
     val shiftY: Int = 0,
     /** World face city (from AppConfig.worldCities; its dot is placed from lat/lon). */
@@ -174,6 +176,10 @@ data class LiveActivity(
     val detail: String,
     val progress: Float?, // 0..1
     val steps: Int = 4,
+    /** Epoch ms when each step was first seen reached (null = not yet); filled by the listener (LiveTimes.stamp). */
+    val stepTimes: List<Long?> = emptyList(),
+    /** Epoch ms of arrival from a "N분" value, null when the value is not one. */
+    val etaAt: Long? = null,
 )
 
 enum class TimerMode { FOCUS, BREAK }
@@ -232,6 +238,10 @@ interface StandbyActions {
     fun setTheme(theme: kr.dot.sb.model.Theme) {}
     /** Brightness bar: 0..1 for the window, applied live. */
     fun setBrightness(value: Float) {}
+    /** The unfold mood light is (not) on screen: while it is, the display stays on. */
+    fun moodShowing(on: Boolean) {}
+    /** The mood light's auto-off ran out: the screen sleeps until touched. */
+    fun moodDone() {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

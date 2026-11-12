@@ -126,6 +126,11 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
     }
 }
 
+/** One calendar of the provider; [key] = "accountType|accountName|name", the stored form (ids get reused). */
+data class CalendarInfo(val id: Long, val accountType: String, val accountName: String, val name: String, val color: Long) {
+    val key: String get() = "$accountType|$accountName|$name"
+}
+
 /** Calendar, alarm clock, photos: each returns null when its permission is missing. Blocking: call from IO. */
 object DeviceSources {
     fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
@@ -138,9 +143,33 @@ object DeviceSources {
 
     private val HM = DateTimeFormatter.ofPattern("HH:mm")
 
-    /** Events from today through the next 14 days that are not over yet, in start order, at most 8. */
-    fun upcoming(ctx: Context, now: LocalDateTime): List<AgendaItem>? {
+    /**
+     * Every calendar in the provider, visible or not, sorted by account (the picker groups them). Null = permission
+     * missing. [CalendarInfo.key] is what `AppConfig.excludedCalendars` stores.
+     */
+    fun calendars(ctx: Context): List<CalendarInfo>? {
         if (!has(ctx, Manifest.permission.READ_CALENDAR)) return null
+        val cols = arrayOf(
+            CalendarContract.Calendars._ID, CalendarContract.Calendars.ACCOUNT_TYPE, CalendarContract.Calendars.ACCOUNT_NAME,
+            CalendarContract.Calendars.CALENDAR_DISPLAY_NAME, CalendarContract.Calendars.CALENDAR_COLOR,
+        )
+        return try {
+            buildList {
+                ctx.contentResolver.query(CalendarContract.Calendars.CONTENT_URI, cols, null, null, null)?.use { c ->
+                    while (c.moveToNext()) {
+                        add(CalendarInfo(c.getLong(0), c.getString(1).orEmpty(), c.getString(2).orEmpty(), c.getString(3).orEmpty(), c.getInt(4).toLong() and 0xFFFFFFFFL))
+                    }
+                }
+            }.sortedWith(compareBy({ it.accountName }, { it.accountType }, { it.name }))
+        } catch (e: SecurityException) { null }
+    }
+
+    /** Events from today through the next 14 days that are not over yet, in start order, at most 8; [excluded] calendar keys left out. */
+    fun upcoming(ctx: Context, now: LocalDateTime, excluded: Set<String> = emptySet()): List<AgendaItem>? {
+        if (!has(ctx, Manifest.permission.READ_CALENDAR)) return null
+        // keys, not ids, are stored (ids get reused): map them to today's ids; no clause at all when nothing is excluded
+        val ids = if (excluded.isEmpty()) emptyList() else calendars(ctx).orEmpty().filter { it.key in excluded }.map { it.id }
+        val where = if (ids.isEmpty()) null else "${CalendarContract.Instances.CALENDAR_ID} NOT IN (${ids.joinToString(",")})"
         val zone = ZoneId.systemDefault()
         val start = now.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
         val end = now.toLocalDate().plusDays(15).atStartOfDay(zone).toInstant().toEpochMilli()
@@ -152,7 +181,7 @@ object DeviceSources {
         )
         return try {
             buildList {
-                ctx.contentResolver.query(uri, cols, null, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
+                ctx.contentResolver.query(uri, cols, where, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
                     while (c.moveToNext() && size < 8) {
                         val allDay = c.getInt(4) == 1
                         if (!allDay && c.getLong(1) < nowMs) continue // already over

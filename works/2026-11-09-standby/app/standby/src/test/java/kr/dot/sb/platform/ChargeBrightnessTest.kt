@@ -73,4 +73,15 @@ class ChargeBrightnessTest {
         // 400 dp wide: bar is 240 dp from x=80 to x=320
         assertEquals(0.25f, barFraction(140f, 400f), 1e-6f)
     }
+
+    @Test fun heatCapsOnlyTheAppliedWindowValue() {
+        val c = AppConfig(nightMaxBrightness = 0.25f, dayBrightness = 0.7f)
+        assertEquals(0.35f, Brightness.target(off = false, night = false, c = c, hot = true))
+        assertEquals(0.35f, Brightness.target(off = false, night = false, c = c.copy(dayBrightness = null), hot = true)) // AUTO
+        assertEquals(0.25f, Brightness.target(off = false, night = true, c = c, hot = true)) // already lower
+        assertEquals(Brightness.OFF, Brightness.target(off = true, night = false, c = c, hot = true))
+        assertEquals(0.7f, Brightness.target(off = false, night = false, c = c.copy(heatProtect = false), hot = true))
+        assertEquals(0.35f, Brightness.applied(0.9f, c, hot = true))
+        assertEquals(0.9f, Brightness.applied(0.9f, c, hot = false))
+    }
 }

@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.hardware.Sensor
@@ -28,6 +29,10 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kr.dot.sb.data.HeatRule
+import kr.dot.sb.data.MoodLatch
+import kr.dot.sb.data.MoodPhase
+import kr.dot.sb.data.MoodTimer
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.settings.SettingsActivity
@@ -70,9 +75,19 @@ object GlowScheduler {
     }
 }
 
+/** Who asked for the glow: only the unfold mood light has the auto-off timer (r10). Stored in the intent as its name. */
+enum class GlowSource {
+    UNFOLD, TEST, PRE_ALARM, ALARM;
+
+    companion object {
+        const val EXTRA = "source"
+        fun of(i: Intent?): GlowSource = i?.getStringExtra(EXTRA)?.let { s -> entries.firstOrNull { it.name == s } } ?: UNFOLD
+    }
+}
+
 class GlowReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
-        showIfInner(context)
+        showIfInner(context, GlowSource.PRE_ALARM)
     }
 
     companion object {
@@ -82,21 +97,28 @@ class GlowReceiver : BroadcastReceiver() {
                 ctx.getSystemService(SensorManager::class.java).getDefaultSensor(Sensor.TYPE_HINGE_ANGLE) != null
 
         /** Full-screen-intent notification: the only way to light a screen over the lock screen (confirmed by the probe). */
-        fun showIfInner(ctx: Context) { if (isInner(ctx) && charging(ctx)) post(ctx) } // unplugged = StandBy is not running: no glow
+        fun showIfInner(ctx: Context, source: GlowSource) { if (isInner(ctx) && charging(ctx)) post(ctx, source) } // unplugged = StandBy is not running: no glow
 
         private fun charging(ctx: Context): Boolean =
             ctx.getSystemService(BatteryManager::class.java).isCharging
 
-        @Volatile private var lastPostAt = 0L
+        private val lastPostAt = HashMap<GlowSource, Long>() // main thread only (receivers, dream)
 
-        /** One glow per unfold: the dream's config change and its detach both ask for it (spec M1). */
-        fun post(ctx: Context) {
+        /**
+         * One glow per unfold: the dream's config change and its detach both ask for it (spec M1); debounced per
+         * [source], one PendingIntent per source so a pre-alarm does not reuse the unfold intent's extras. An unfold
+         * after the mood light's timer ran out stays dark until the phone is folded again ([MoodLatch]).
+         */
+        fun post(ctx: Context, source: GlowSource) {
+            if (source == GlowSource.UNFOLD && MoodLatch.done) return
             val now = android.os.SystemClock.elapsedRealtime()
-            if (now - lastPostAt < 5_000) return
-            lastPostAt = now
+            if (now - (lastPostAt[source] ?: Long.MIN_VALUE / 2) < 5_000) return
+            lastPostAt[source] = now
             Channels.ensure(ctx)
             val open = PendingIntent.getActivity(
-                ctx, 12, Intent(ctx, GlowActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK), PendingIntent.FLAG_IMMUTABLE,
+                ctx, 20 + source.ordinal,
+                Intent(ctx, GlowActivity::class.java).putExtra(GlowSource.EXTRA, source.name).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
             )
             val n = Notification.Builder(ctx, Channels.GLOW)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
@@ -121,11 +143,31 @@ class GlowActivity : ComponentActivity() {
     private var started = false
     private var lightSm: SensorManager? = null
     private var lightL: SensorEventListener? = null
+    /** Ramp level (0..target) times the auto-off fade [moodK] = the glow's alpha. */
+    private var level = 0f
+    private var moodK = 1f
+    /** Unfold mood light auto-off (r10): minutes (0 = off) and the start of the current run; a ringing alarm cancels it. */
+    private var moodMin = 0
+    private var moodFrom = 0L
+    /** Window brightness before the heat cap; null until the ramp starts. */
+    private var baseBrightness: Float? = null
+    private var hot = false
+    private val batteryRx = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) {
+            val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
+            val h = HeatRule.next(t, hot)
+            if (h != hot) { hot = h; applyBrightness() }
+        }
+    }
+    private val moodTick = Runnable { moodStep() }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val cfg = ConfigStore.flow(this).value
+        if (GlowSource.of(intent) == GlowSource.UNFOLD) moodMin = cfg.moodAutoOffMin
+        moodFrom = android.os.SystemClock.elapsedRealtime()
+        registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), RECEIVER_NOT_EXPORTED)
         val top = cfg.glowColor.toInt() or (0xFF shl 24)
         val bottom = Color.rgb((Color.red(top) * .45f).toInt(), (Color.green(top) * .3f).toInt(), (Color.blue(top) * .25f).toInt())
         glow = View(this).apply {
@@ -135,7 +177,8 @@ class GlowActivity : ComponentActivity() {
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
             addView(glow, FrameLayout.LayoutParams(-1, -1))
-            setOnClickListener { finish() } // tap = back to the board
+            // tap = back to the board; during the auto-off fade a tap restarts the timer instead
+            setOnClickListener { if (moodK < 1f) { moodFrom = android.os.SystemClock.elapsedRealtime(); moodStep() } else finish() }
         }
         if (ListenerBus.alarm.value != null) root.addView(buttons(), FrameLayout.LayoutParams(-1, -2, Gravity.BOTTOM).apply { setMargins(48, 48, 48, 96) })
         setContentView(root)
@@ -160,8 +203,49 @@ class GlowActivity : ComponentActivity() {
 
         var seen = false
         lifecycleScope.launch {
-            ListenerBus.alarm.collect { a -> if (a != null) seen = true else if (seen) finish() }
+            ListenerBus.alarm.collect { a -> if (a != null) { seen = true; cancelMood() } else if (seen) finish() }
         }
+        moodStep()
+    }
+
+    /** One auto-off step: sleep until the fade starts, then step the fade, then black and gone. */
+    private fun moodStep() {
+        handler.removeCallbacks(moodTick)
+        val el = android.os.SystemClock.elapsedRealtime() - moodFrom
+        when (val p = MoodTimer.phase(el, moodMin)) {
+            MoodPhase.On -> {
+                moodK = 1f; render()
+                if (moodMin > 0) handler.postDelayed(moodTick, moodMin * 60_000L - MoodTimer.FADE_MS - el)
+            }
+            is MoodPhase.Fade -> { moodK = p.alpha; render(); handler.postDelayed(moodTick, 250) }
+            MoodPhase.Done -> {
+                MoodLatch.done = true
+                moodK = 0f; render()
+                finish()
+            }
+        }
+    }
+
+    private fun cancelMood() { moodMin = 0; moodStep() }
+
+    private fun render() { glow.alpha = level * moodK }
+
+    private fun applyBrightness() {
+        val b = baseBrightness ?: return
+        window.attributes = window.attributes.apply { screenBrightness = Brightness.applied(b, ConfigStore.flow(this@GlowActivity).value, hot) }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        // the pre-alarm / alarm glow takes over an open unfold mood light: no auto-off then
+        val s = GlowSource.of(intent)
+        if (s == GlowSource.PRE_ALARM || s == GlowSource.ALARM) cancelMood()
+    }
+
+    override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        super.onConfigurationChanged(newConfig)
+        if (newConfig.smallestScreenWidthDp < 600) MoodLatch.done = false // folded
     }
 
     private fun startRamp(sec: Int) {
@@ -169,11 +253,12 @@ class GlowActivity : ComponentActivity() {
         started = true
         val target = if (night) 0.35f else 0.9f
         val cap = ConfigStore.flow(this).value.nightMaxBrightness
-        window.attributes = window.attributes.apply { screenBrightness = if (night) cap else 0.8f }
+        baseBrightness = if (night) cap else 0.8f
+        applyBrightness()
         ramp = ValueAnimator.ofFloat(0f, target).apply {
             duration = sec.coerceAtLeast(1) * 1000L
             interpolator = LinearInterpolator()
-            addUpdateListener { glow.alpha = it.animatedValue as Float }
+            addUpdateListener { level = it.animatedValue as Float; render() }
             start()
         }
     }
@@ -193,6 +278,7 @@ class GlowActivity : ComponentActivity() {
     override fun onDestroy() {
         ramp?.cancel()
         lightL?.let { lightSm?.unregisterListener(it) }
+        runCatching { unregisterReceiver(batteryRx) }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }

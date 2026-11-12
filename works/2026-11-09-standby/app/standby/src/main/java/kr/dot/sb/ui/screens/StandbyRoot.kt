@@ -1,6 +1,8 @@
 package kr.dot.sb.ui.screens
 
+import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.ThemeBackground
+import kr.dot.sb.ui.theme.burnInBleed
 import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -38,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +67,9 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.UnfoldAction
+import kr.dot.sb.data.MoodLatch
+import kr.dot.sb.data.MoodPhase
+import kr.dot.sb.data.MoodTimer
 import kr.dot.sb.platform.Brightness
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
@@ -157,6 +163,9 @@ internal fun RootImpl(
     // unfolded + 무드등: the dream that survives the unfold turns into the glow in place (spec M1); a tap goes back to the board
     var moodOff by remember { mutableStateOf(false) }
     LaunchedEffect(state.unfolded) { if (!state.unfolded) moodOff = false }
+    // auto-off ran out ([MoodLatch], reset by the holder on fold): no mood light until folded again
+    val mood = state.unfolded && config.onUnfold == UnfoldAction.MOOD_LIGHT && !moodOff && !editing && !MoodLatch.done
+    LaunchedEffect(mood) { act.moodShowing(mood) }
 
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { act.pageChanged(it) } }
     LaunchedEffect(state.unfolded, config.onUnfold) {
@@ -203,16 +212,18 @@ internal fun RootImpl(
         val widgets = remember(config.widgetLeft, config.widgetRight) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
         }
-        val mood = state.unfolded && config.onUnfold == UnfoldAction.MOOD_LIGHT && !moodOff && !editing
         CompositionLocalProvider(LocalInk provides ink, LocalNotifOpen provides notifOpen) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {
-                if (mood) MoodLight(config.glowColor, ink) { moodOff = true } else HorizontalPager(
-                    pager, Modifier.fillMaxSize(),
+                // sleep wins over mood: at DONE the holder sleeps the display and a touch wakes to the board
+                if (mood) MoodLight(config.glowColor, ink, config.moodAutoOffMin, state.alarm != null, { moodOff = true; act.moodDone() }) { moodOff = true }
+                // the pager clips its bounds: it takes the burn-in bleed itself, each page is padded back in
+                else HorizontalPager(
+                    pager, Modifier.fillMaxSize().burnInBleed(),
                     userScrollEnabled = !editing,
                     flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
                     key = { if (it < FIXED_PAGES) "fixed-$it" else config.boards.getOrNull(it - FIXED_PAGES)?.id ?: "p$it" },
                 ) { page ->
-                    when (page) {
+                    Box(Modifier.fillMaxSize().padding(BURN_IN_BLEED)) { when (page) {
                         0 -> BoardPage(widgets, state, config, boardActions)
                         1 -> PhotosPage(state, config, actions, active = pager.settledPage == 1 && layer == Layer.NONE)
                         2 -> ClocksPage(
@@ -221,7 +232,7 @@ internal fun RootImpl(
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
                         )
                         else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, boardActions) }
-                    }
+                    } }
                 }
                 if (!editing && !mood) {
                     val s = min(w, h)
@@ -247,12 +258,37 @@ internal fun RootImpl(
     }
 }
 
-/** Warm full-screen light (spec M1), same colours as the glow screen: static, so it costs nothing. */
+/**
+ * Warm full-screen light (spec M1), same colours as the glow screen: static, so it costs nothing. Auto-off (r10,
+ * [MoodTimer]): after [minutes] (0 = never) it fades to black over the last minute, then [onDone]. A tap during the fade
+ * restarts the timer, otherwise it closes ([onTap]); a ringing [alarm] cancels the timer.
+ */
 @Composable
-private fun MoodLight(color: Long, ink: Ink, onTap: () -> Unit) {
+private fun MoodLight(color: Long, ink: Ink, minutes: Int, alarm: Boolean, onDone: () -> Unit, onTap: () -> Unit) {
     val top = ink.mapped(Color(color or 0xFF000000L))
     val bottom = Color(top.red * 0.45f, top.green * 0.3f, top.blue * 0.25f)
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(top, bottom))).tap(onTap))
+    var from by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
+    var k by remember { mutableFloatStateOf(1f) }
+    var cancelled by remember { mutableStateOf(false) }
+    LaunchedEffect(alarm) { if (alarm) cancelled = true }
+    val done by rememberUpdatedState(onDone)
+    LaunchedEffect(from, minutes, cancelled) {
+        val m = if (cancelled) 0 else minutes
+        while (true) {
+            val el = android.os.SystemClock.elapsedRealtime() - from
+            when (val p = MoodTimer.phase(el, m)) {
+                MoodPhase.On -> { k = 1f; if (m <= 0) return@LaunchedEffect; delay(m * 60_000L - MoodTimer.FADE_MS - el) }
+                is MoodPhase.Fade -> { k = p.alpha; delay(100) }
+                MoodPhase.Done -> { k = 0f; done(); return@LaunchedEffect }
+            }
+        }
+    }
+    Box(
+        Modifier.fillMaxSize().burnInBleed()
+            .background(Color.Black) // literal-ok: the mood light fades to black, whatever the theme
+            .background(Brush.verticalGradient(listOf(top, bottom)), alpha = k)
+            .tap { if (k < 1f) from = android.os.SystemClock.elapsedRealtime() else onTap() },
+    )
 }
 
 /** A board (or the widgets page). Long press asks for the editor, which needs the unlocked phone (spec D2). */

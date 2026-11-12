@@ -118,7 +118,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         )
     }
 
-    override fun openGlow() { startActivity(Intent(this, GlowActivity::class.java)) }
+    override fun openGlow() { startActivity(Intent(this, GlowActivity::class.java).putExtra(GlowSource.EXTRA, GlowSource.UNFOLD.name)) }
 
     companion object {
         const val EXTRA_TILE = "kr.dot.sb.TILE"

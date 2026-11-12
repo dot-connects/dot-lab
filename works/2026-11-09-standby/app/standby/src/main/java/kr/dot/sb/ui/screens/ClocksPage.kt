@@ -61,7 +61,9 @@ import kr.dot.sb.ui.cards.Txt
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.Grid
+import kr.dot.sb.ui.theme.burnInBleed
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
 
@@ -102,19 +104,22 @@ internal fun ClocksPage(
     val k by animateFloatAsState(if (editing) 1f else 0f, tween(350, easing = FastOutSlowInEasing), label = "edit")
     val ink = LocalInk.current
 
-    BoxWithConstraints(Modifier.fillMaxSize().background(lerp(ink.bg, ink.ink4, k))) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
+        // own page colour (edit mode dims it), overscanned for the burn-in shift
+        Box(Modifier.fillMaxSize().burnInBleed().background(lerp(ink.bg, ink.ink4, k)))
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
         val m = Grid.margin(s)
         VerticalPager(
             pager,
-            Modifier.fillMaxSize().pointerInput(editing) { if (!editing) detectTapGestures(onLongPress = { edit(true) }) },
+            // pagers clip: the bleed goes on the pager, each page is padded back in (a full-bleed face draws past it)
+            Modifier.fillMaxSize().burnInBleed().pointerInput(editing) { if (!editing) detectTapGestures(onLongPress = { edit(true) }) },
             flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
         ) { p ->
             val face = faces[p]
             Box(
-                Modifier.fillMaxSize().graphicsLayer {
+                Modifier.fillMaxSize().padding(BURN_IN_BLEED).graphicsLayer {
                     val sc = 1f - (1f - EDIT_SCALE) * k
                     scaleX = sc; scaleY = sc
                     // Rounded card only while editing: a full-screen Solar must keep its square corners.

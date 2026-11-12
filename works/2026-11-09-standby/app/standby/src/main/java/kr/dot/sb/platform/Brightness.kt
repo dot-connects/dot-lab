@@ -13,11 +13,18 @@ object Brightness {
 
     fun clamp(v: Float): Float = if (v.isNaN()) MIN else v.coerceIn(MIN, 1f)
 
-    fun target(off: Boolean, night: Boolean, c: AppConfig): Float = when {
+    /** Heat protection's ceiling for the applied window value (r10); stored values stay as the user set them. */
+    const val HOT_MAX = 0.35f
+
+    fun target(off: Boolean, night: Boolean, c: AppConfig, hot: Boolean = false): Float = when {
         off -> OFF
-        night -> c.nightMaxBrightness
-        else -> c.dayBrightness?.let(::clamp) ?: AUTO
+        night -> applied(c.nightMaxBrightness, c, hot)
+        else -> applied(c.dayBrightness?.let(::clamp) ?: AUTO, c, hot)
     }
+
+    /** [v] as the window gets it: capped at [HOT_MAX] while hot and protected (system AUTO becomes an explicit value). */
+    fun applied(v: Float, c: AppConfig, hot: Boolean): Float =
+        if (c.heatProtect && hot && (v == AUTO || v > HOT_MAX)) HOT_MAX else v
 
     /** What the bar shows first: the stored value, or a middle value while day brightness follows auto. */
     fun shown(night: Boolean, c: AppConfig): Float = if (night) c.nightMaxBrightness else c.dayBrightness ?: 0.5f

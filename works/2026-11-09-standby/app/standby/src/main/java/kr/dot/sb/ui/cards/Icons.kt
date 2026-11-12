@@ -19,7 +19,7 @@ import kr.dot.sb.ui.state.WeatherCondition
 import kr.dot.sb.ui.theme.LocalInk
 
 /** design-system §4.2 icon set, drawn on a 24 grid with 2-unit round strokes. Weather glyphs are filled like iPhone's. */
-enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL }
+enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL, THERMO }
 
 internal fun weatherIc(c: WeatherCondition): Ic = when (c) {
     WeatherCondition.CLEAR -> Ic.SUN
@@ -126,6 +126,15 @@ private fun DrawScope.drawIc(ic: Ic, col: Color, bg: Color, outline: Boolean, c2
             line(12f, 9.5f, 12f, 13f); line(12f, 13f, 14.5f, 15f); line(3.5f, 6f, 6.5f, 3f); line(20.5f, 6f, 17.5f, 3f)
         }
         Ic.CLOSE -> { line(6.5f, 6.5f, 17.5f, 17.5f); line(17.5f, 6.5f, 6.5f, 17.5f) }
+        Ic.THERMO -> {
+            // features.html §2: stem with a round top, bulb at the bottom, mercury line
+            val p = Path().apply {
+                moveTo(10f, 14.5f); lineTo(10f, 5f); arcTo(Rect(10f, 3f, 14f, 7f), 180f, 180f, false); lineTo(14f, 14.5f)
+                arcTo(Rect(8f, 13.96f, 16f, 21.96f), -60f, 300f, false); close()
+            }
+            drawPath(p, col, style = st)
+            line(12f, 9f, 12f, 17f)
+        }
         Ic.BELL -> {
             // the mockup's bell: dome, flared rim, clapper
             val p = Path().apply {

@@ -29,6 +29,8 @@ import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kr.dot.sb.data.AlarmActions
+import kr.dot.sb.data.LiveTimes
+import kr.dot.sb.data.MoodLatch
 import kr.dot.sb.data.NotifKind
 import kr.dot.sb.data.NotifPrivacy
 import kr.dot.sb.data.NotifRules
@@ -71,7 +73,10 @@ class Listener : NotificationListenerService() {
         override fun onReceive(c: Context, i: Intent) {
             when (i.action) {
                 // let the battery state settle (the plug type arrives a moment later on some chargers)
-                Intent.ACTION_POWER_CONNECTED -> handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
+                Intent.ACTION_POWER_CONNECTED -> {
+                    MoodLatch.done = false // a new charge may light the unfold mood light again
+                    handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
+                }
                 // after the keyguard has locked and StandBy (if it was up) has stopped
                 Intent.ACTION_SCREEN_OFF -> handler.postDelayed({ ChargeStart.onScreenOff(this@Listener) }, 1500)
                 Intent.ACTION_SCREEN_ON -> ChargeStart.onScreenOn(this@Listener)
@@ -92,7 +97,7 @@ class Listener : NotificationListenerService() {
         s.launch {
             ListenerBus.alarm.collect { a ->
                 // alarm just started ringing
-                if (prev == null && a != null && ConfigStore.flow(this@Listener).value.alarmGlow) GlowReceiver.showIfInner(this@Listener)
+                if (prev == null && a != null && ConfigStore.flow(this@Listener).value.alarmGlow) GlowReceiver.showIfInner(this@Listener, GlowSource.ALARM)
                 prev = a
             }
         }
@@ -156,7 +161,9 @@ class Listener : NotificationListenerService() {
         when (kind) {
             NotifKind.ALARM -> alarm(sbn)
             NotifKind.LIVE -> {
-                live[sbn.key] = sbn.postTime to liveOf(sbn, max, reveal(sbn, rank.takeIf { ranked }, lockScreen(), false))
+                // the previous post of this key carries the step times; a newly reached step is stamped now
+                val a = liveOf(sbn, max, reveal(sbn, rank.takeIf { ranked }, lockScreen(), false))
+                live[sbn.key] = sbn.postTime to LiveTimes.stamp(live[sbn.key]?.second, a, System.currentTimeMillis())
                 publishLive()
             }
             NotifKind.BIG -> if (ConfigStore.flow(this).value.showNotifications) big(sbn, reveal(sbn, rank.takeIf { ranked }, lockScreen(), false))

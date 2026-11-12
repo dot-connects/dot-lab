@@ -3,6 +3,10 @@ package kr.dot.sb.platform
 import kr.dot.sb.data.AlarmActions
 import kr.dot.sb.data.BurnIn
 import kr.dot.sb.data.DisplayOffMachine
+import kr.dot.sb.data.HeatRule
+import kr.dot.sb.data.LiveTimes
+import kr.dot.sb.data.MoodPhase
+import kr.dot.sb.data.MoodTimer
 import kr.dot.sb.data.MediaKinds
 import kr.dot.sb.data.MotionDetector
 import kr.dot.sb.data.LuxMedian
@@ -19,6 +23,7 @@ import kr.dot.sb.data.Wmo
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.SleepSound
+import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.WeatherCondition
@@ -73,14 +78,15 @@ class LogicTest {
         assertEquals(15_000L, d.idleLeftMs(30_000))
     }
 
-    @Test fun burnInWalksTheGridWithoutJumps() {
-        val pts = (0..40).map { BurnIn.at(it) }
-        assertEquals(9, pts.toSet().size)
-        pts.zipWithNext().forEach { (a, b) ->
-            assertTrue(Math.abs(a.first - b.first) <= 3 && Math.abs(a.second - b.second) <= 3)
-            assertTrue(a != b)
-        }
-        assertTrue(pts.all { it.first in -3..3 && it.second in -3..3 })
+    @Test fun burnInWalksEightDpEachWayOneDpPerMinute() {
+        val pts = (0L..1200L).map { BurnIn.at(it) }
+        assertEquals(8, pts.maxOf { maxOf(Math.abs(it.first), Math.abs(it.second)) })
+        assertEquals(17 * 17, pts.toSet().size)
+        pts.zipWithNext().forEach { (a, b) -> assertTrue(Math.abs(a.first - b.first) <= 1 && Math.abs(a.second - b.second) <= 1) }
+        // step = minutes since epoch: local midnight is just the next minute
+        val m = java.time.LocalDateTime.of(2026, 11, 12, 23, 59).atZone(java.time.ZoneId.of("Asia/Seoul")).toEpochSecond() / 60
+        val (a, b) = BurnIn.at(m) to BurnIn.at(m + 1)
+        assertTrue(Math.abs(a.first - b.first) <= 1 && Math.abs(a.second - b.second) <= 1)
     }
 
     @Test fun pickUpNeedsThreeHundredMsOfShaking() {
@@ -263,5 +269,75 @@ class LogicTest {
         assertTrue(m.off)
         assertTrue(m.evaluate(7_000, DisplayOff.AFTER_20S, null, 3f, 8f)) // stays off, idle rule does not wake it
         assertEquals(0L, m.lastTouch)
+    }
+
+    @Test fun heatTurnsOnAt42AndOffAt40() {
+        assertFalse(HeatRule.next(419, hot = false))
+        assertTrue(HeatRule.next(420, hot = false))
+        assertTrue(HeatRule.next(401, hot = true))
+        assertFalse(HeatRule.next(400, hot = true))
+        assertFalse(HeatRule.next(410, hot = false)) // between: keeps the current state
+        assertTrue(HeatRule.next(410, hot = true))
+    }
+
+    @Test fun quietNightKeepsAnOffScreenOffForNotifications() {
+        assertFalse(NightRules.wakeOnNotification(night = true, quiet = true, displayOff = true))
+        assertTrue(NightRules.wakeOnNotification(night = true, quiet = false, displayOff = true))
+        assertTrue(NightRules.wakeOnNotification(night = false, quiet = true, displayOff = true))
+        assertTrue(NightRules.wakeOnNotification(night = true, quiet = true, displayOff = false))
+    }
+
+    @Test fun lightThemeForcesNightThroughTheLuxRule() {
+        assertTrue(NightRules.on(NightMode.OFF, DisplayOff.AUTO, scheduled = false, auto = true, forceNight = true)) // dark room
+        assertFalse(NightRules.on(NightMode.OFF, DisplayOff.AUTO, scheduled = false, auto = false, forceNight = true)) // bright room
+        assertTrue(NightRules.on(NightMode.AUTO, DisplayOff.NEVER, scheduled = false, auto = true, forceNight = true))
+        assertTrue(NightRules.on(NightMode.SCHEDULE, DisplayOff.NEVER, scheduled = true, auto = false, forceNight = true))
+        assertFalse(NightRules.on(NightMode.OFF, DisplayOff.AUTO, scheduled = false, auto = true, forceNight = false)) // dark theme
+    }
+
+    @Test fun moodLightKeepsTheScreenOn() {
+        assertFalse(NightRules.displayOff(wanted = true, alarm = false, notification = false, mood = true))
+        assertTrue(NightRules.displayOff(wanted = true, alarm = false, notification = false, mood = false))
+    }
+
+    @Test fun sleepIsStickyInEveryModeUntilATouch() {
+        val m = DisplayOffMachine()
+        m.touch(0); m.sleep()
+        assertTrue(m.evaluate(1_000, DisplayOff.NEVER, 500f, 3f, 8f))
+        assertTrue(m.evaluate(2_000, DisplayOff.AUTO, 500f, 3f, 8f)) // bright room does not wake it
+        assertTrue(m.evaluate(3_000, DisplayOff.AFTER_20S, null, 3f, 8f))
+        assertNull(m.idleLeftMs(3_000))
+        m.touch(4_000)
+        assertFalse(m.evaluate(5_000, DisplayOff.NEVER, 0f, 3f, 8f))
+        assertFalse(m.evaluate(5_000, DisplayOff.AUTO, 0f, 3f, 8f)) // idle time restarted
+    }
+
+    @Test fun moodTimerFadesInTheLastMinute() {
+        assertEquals(MoodPhase.On, MoodTimer.phase(10 * 3_600_000L, minutes = 0))
+        assertEquals(MoodPhase.On, MoodTimer.phase(119_999, minutes = 3))
+        assertEquals(MoodPhase.Fade(1f), MoodTimer.phase(120_000, minutes = 3))
+        assertEquals(MoodPhase.Fade(0.5f), MoodTimer.phase(150_000, minutes = 3))
+        assertEquals(MoodPhase.Done, MoodTimer.phase(180_000, minutes = 3))
+    }
+
+    @Test fun liveEtaParsesLeadingMinutes() {
+        assertEquals(12, LiveTimes.etaMinutes("12분"))
+        assertEquals(5, LiveTimes.etaMinutes(" 5 분 남음"))
+        assertEquals(120, LiveTimes.etaMinutes("120분"))
+        assertNull(LiveTimes.etaMinutes("약 12분"))
+        assertNull(LiveTimes.etaMinutes("1234분"))
+        assertNull(LiveTimes.etaMinutes("45%"))
+    }
+
+    @Test fun liveStampsEachStepOnceAndKeepsTheEta() {
+        val a = LiveTimes.stamp(null, LiveActivity("k", "앱", "배달 중", "12분", "", 0.5f), nowMs = 1_000)
+        assertEquals(listOf(1_000L, 1_000L, null, null), a.stepTimes)
+        assertEquals(1_000L + 12 * 60_000L, a.etaAt)
+        val b = LiveTimes.stamp(a, LiveActivity("k", "앱", "배달 중", "12분", "", 0.75f), nowMs = 9_000)
+        assertEquals(listOf(1_000L, 1_000L, 9_000L, null), b.stepTimes)
+        assertEquals(a.etaAt, b.etaAt) // same value: the eta does not slide
+        val c = LiveTimes.stamp(b, LiveActivity("k", "앱", "배달 중", "도착", "", 1f), nowMs = 20_000)
+        assertEquals(listOf(1_000L, 1_000L, 9_000L, 20_000L), c.stepTimes)
+        assertNull(c.etaAt)
     }
 }

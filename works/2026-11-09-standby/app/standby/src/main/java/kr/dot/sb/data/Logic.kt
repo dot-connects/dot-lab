@@ -2,6 +2,7 @@ package kr.dot.sb.data
 
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.NightMode
+import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaKind
 import kr.dot.sb.ui.state.NotifItem
 import kr.dot.sb.ui.state.TimerMode
@@ -80,24 +81,94 @@ class LuxMedian {
 
 /** Night look from the settings (spec E12: 안 함 = the display never changes, so no night mode at all). */
 object NightRules {
-    fun on(mode: NightMode, display: DisplayOff, scheduled: Boolean, auto: Boolean): Boolean =
-        display != DisplayOff.NEVER && when (mode) {
-            NightMode.OFF -> false
+    /**
+     * [forceNight] = the drawn theme is light (r10): a light page at night is a lamp, so night applies even under
+     * mode OFF (then the AUTO lux rule decides) or display-off NEVER. Stored settings stay as they are.
+     */
+    fun on(mode: NightMode, display: DisplayOff, scheduled: Boolean, auto: Boolean, forceNight: Boolean = false): Boolean =
+        (forceNight || display != DisplayOff.NEVER) && when (mode) {
+            NightMode.OFF -> forceNight && auto
             NightMode.SCHEDULE -> scheduled
             NightMode.AUTO -> auto
         }
 
-    /** A ringing alarm or a shown notification keeps the screen on, whatever the idle/dark/flat decision says (spec I1). */
-    fun displayOff(wanted: Boolean, alarm: Boolean, notification: Boolean) = wanted && !alarm && !notification
+    /**
+     * A ringing alarm, a shown notification or the mood light keeps the screen on, whatever the idle/dark/flat
+     * decision says (spec I1). A sleeping machine (mood light done) is not "wanted" here: its caller drops [mood] first.
+     */
+    fun displayOff(wanted: Boolean, alarm: Boolean, notification: Boolean, mood: Boolean = false) =
+        wanted && !alarm && !notification && !mood
+
+    /** Quiet night (r10): at night a notification never lights a screen that is off; the alarm always does. */
+    fun wakeOnNotification(night: Boolean, quiet: Boolean, displayOff: Boolean) = !(night && quiet && displayOff)
+}
+
+/** Heat protection (r10): hot from 42.0 °C, cool again at 40.0 °C; battery temperature in tenths of a degree. */
+object HeatRule {
+    fun next(tenths: Int, hot: Boolean): Boolean = if (hot) tenths > 400 else tenths >= 420
+}
+
+sealed interface MoodPhase {
+    data object On : MoodPhase
+    /** Last minute: [alpha] 1 → 0. */
+    data class Fade(val alpha: Float) : MoodPhase
+    data object Done : MoodPhase
+}
+
+/** Mood light auto-off (r10): full light, then a 60 s fade, then off. [minutes] 0 = never off. */
+object MoodTimer {
+    const val FADE_MS = 60_000L
+
+    fun phase(elapsedMs: Long, minutes: Int): MoodPhase {
+        if (minutes <= 0) return MoodPhase.On
+        val left = minutes * 60_000L - elapsedMs
+        return when {
+            left <= 0 -> MoodPhase.Done
+            left <= FADE_MS -> MoodPhase.Fade(left.toFloat() / FADE_MS)
+            else -> MoodPhase.On
+        }
+    }
+}
+
+/**
+ * The unfold mood light ended by its timer: no host shows another one until the phone is folded again (any host that
+ * sees the fold resets it) or the charger goes in again. Process-wide on purpose: dream, activity and GlowActivity share it.
+ */
+object MoodLatch {
+    @Volatile var done = false
+}
+
+/** Live Activity times (r10): when each step was first seen, and an ETA from a "N분" value. */
+object LiveTimes {
+    private val ETA = Regex("^(\\d{1,3})\\s*분")
+
+    fun etaMinutes(value: String): Int? = ETA.find(value.trim())?.groupValues?.get(1)?.toInt()
+
+    /** Steps the progress has reached (what the live screen lights up). */
+    fun reached(progress: Float?, steps: Int): Int =
+        progress?.let { p -> (p.coerceIn(0f, 1f) * steps).roundToInt().coerceAtLeast(if (p > 0f) 1 else 0) } ?: 0
+
+    /** [next] with [prev]'s times carried over, each newly reached step stamped [nowMs]; the ETA moves only when the value does. */
+    fun stamp(prev: LiveActivity?, next: LiveActivity, nowMs: Long): LiveActivity {
+        val r = reached(next.progress, next.steps)
+        val times = List(next.steps) { i -> prev?.stepTimes?.getOrNull(i) ?: if (i < r) nowMs else null }
+        val eta = if (prev != null && prev.value == next.value) prev.etaAt else etaMinutes(next.value)?.let { nowMs + it * 60_000L }
+        return next.copy(stepTimes = times, etaAt = eta)
+    }
 }
 
 /** ON/OFF decision of the display (spec E10-E14). */
 class DisplayOffMachine {
     var off = false
         private set
+    /** Sticky off (mood light done): every mode keeps it, NEVER and the AUTO lux wake included; only [touch] clears it. */
+    var asleep = false
+        private set
     private var last = 0L
 
-    fun touch(nowMs: Long) { last = nowMs; off = false }
+    fun touch(nowMs: Long) { last = nowMs; off = false; asleep = false }
+
+    fun sleep() { off = true; asleep = true }
 
     /** Last touch time (a notification that woke the screen only sends it back to OFF when nothing touched since). */
     val lastTouch get() = last
@@ -105,6 +176,7 @@ class DisplayOffMachine {
     fun forceOff() { off = true }
 
     fun evaluate(nowMs: Long, mode: DisplayOff, lux: Float?, enterLux: Float, exitLux: Float): Boolean {
+        if (asleep) return true
         when (mode) {
             DisplayOff.NEVER -> off = false
             DisplayOff.AFTER_20S -> if (!off && nowMs - last >= IDLE_MS) off = true
@@ -121,14 +193,22 @@ class DisplayOffMachine {
     companion object { const val IDLE_MS = 20_000L }
 }
 
-/** Pixel shift of the whole root: 3x3 grid {-3,0,3} dp, snake order, one point per minute (spec E20). */
+/**
+ * Pixel shift of the content layer (r10): ±8 dp over a 17 × 17 grid, a snake walked one 1 dp step per minute and
+ * back again (ping-pong), so neighbouring minutes never differ by more than 1 dp. Step = minutes since the epoch:
+ * no jump at midnight.
+ */
 object BurnIn {
-    private val PATH = listOf(-3 to -3, 0 to -3, 3 to -3, 3 to 0, 0 to 0, -3 to 0, -3 to 3, 0 to 3, 3 to 3)
+    const val MAX = 8
+    private const val N = 2 * MAX + 1
+    private const val LAST = N * N - 1
 
-    /** Ping-pong over the snake so the shift never jumps across the grid. */
-    fun at(step: Int): Pair<Int, Int> {
-        val i = step.mod(16)
-        return PATH[if (i > 8) 16 - i else i]
+    fun at(epochMinute: Long): Pair<Int, Int> {
+        val i = epochMinute.mod(2L * LAST).toInt()
+        val k = if (i > LAST) 2 * LAST - i else i
+        val row = k / N
+        val col = if (row % 2 == 0) k % N else N - 1 - k % N
+        return (col - MAX) to (row - MAX)
     }
 }
 
