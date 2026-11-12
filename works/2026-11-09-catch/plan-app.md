@@ -59,104 +59,17 @@ works/2026-11-09-catch/worker/src/index.js       Gemini → OpenAI, /sheet 추�
 
 ---
 
-### Task 0: 오려 내기 후보 실측 (PC, 웹 tasks-vision)
+### Task 0: 오려 내기 후보 실측 — 끝남
 
-**Files:** Create `works/2026-11-09-catch/research/seg-compare.md`. scratchpad 하네스(커밋 안 함).
-
-- [ ] **Step 1:** 고양이 영상 앞 10초 120프레임에 세 가지를 돌린다. 각각 고양이(또는 사람)를 찾은 프레임 수를 센다. 하네스는 이미 있는 scratchpad `claw/seg.html` 을 고친다.
-  - (a) DeepLab 문턱 0.5
-  - (b) DeepLab 문턱 0.3
-  - (c) EfficientDet-Lite0 ObjectDetector (점수 ≥ 0.3, COCO cat/dog/person)
-- [ ] **Step 2:** 결과 표를 `seg-compare.md` 에 쓰고 고른 조합을 적는다.
-  - 기본 규칙: DeepLab 0.3 마스크를 쓰고, 마스크가 비면 EfficientDet 상자에 내접한 타원을 마스크로 쓴다.
-- [ ] **Step 3:** Commit `docs(catch): segmenter comparison on the kitten clip`.
+결과: `research/seg-compare.md`. DeepLab 0.3 + EfficientDet 타원 보충 + 4프레임 유지로 120/120.
 
 ### Task 1: Gradle · 의존성 · 앱 뼈대
 
-**Files:** Modify `app/app/build.gradle.kts`, `app/build.gradle.kts`, `AndroidManifest.xml`; Create `ui/App.kt`; Modify `MainActivity.kt`.
+의존성은 끝났다(빌드·테스트 통과, 11-12 23:15). 남은 것: 매니페스트 권한(CAMERA, INTERNET), `xmlns:tools`, MainActivity → ComponentActivity + `ui/App.kt`(화면 4개를 상태 하나로). 원래 명세: archive `task1-body.md`.
 
-- [ ] **Step 1:** 플러그인 `org.jetbrains.kotlin.plugin.compose` 2.0.21, `buildFeatures { compose = true }` 를 넣는다.
-- [ ] **Step 2:** 의존성을 넣는다: compose BOM, activity-compose, camera-core/camera2/lifecycle/view 1.4.0, tasks-vision 0.10.14, arsceneview 2.2.1, billing-ktx 7.1.1. test 쪽은 robolectric·roborazzi·compose-ui-test-junit4 를 넣는다.
-- [ ] **Step 3:** 매니페스트에 권한·기능을 넣는다.
-  - 권한: CAMERA, INTERNET, SYSTEM_ALERT_WINDOW, FOREGROUND_SERVICE(_SPECIAL_USE), POST_NOTIFICATIONS
-  - `<uses-feature android:name="android.hardware.camera.ar" android:required="false"/>`
-  - `<meta-data com.google.ar.core value="optional"/>`
-- [ ] **Step 4:** `MainActivity` 를 `ComponentActivity` 로 바꾸고 `App()` 을 띄운다. App 은 화면 4개(Catch/Dex/Detail/Pet)를 상태 하나로 전환한다(내비게이션 라이브러리 없음).
-- [ ] **Step 5:** `assembleDebug` 와 기존 테스트가 통과하는지 본다. Commit.
+### Task 2–4: 마스크·추적 · 집게 · 캡슐 — 끝남
 
-### Task 2: 마스크와 추적 (순수)
-
-**Interfaces — Produces:**
-```kotlin
-class Mask(val w: Int, val h: Int, val bits: BooleanArray, val kind: Kind) {
-  enum class Kind { PERSON, DOG, CAT, CRITTER }
-  val area: Int; val box: Box?            // Box(x0, y0, x1, y1) inclusive, mask px
-  fun at(x: Int, y: Int): Boolean
-  fun firstRowInColumn(cx: Int, halfWidth: Int = 2): Int?   // first row with a set pixel in cx±halfWidth
-  fun spanInBand(y0: Int, rows: Int): IntRange?               // min..max x of set pixels in rows y0 until y0+rows
-  companion object { fun ellipseIn(w: Int, h: Int, b: Box, kind: Kind): Mask }
-}
-fun iou(a: Mask, b: Mask): Float
-class Tracker(private val hold: Int = 4) { fun update(m: Mask?): Mask? }   // returns m, or the last non-empty one for up to `hold` misses
-```
-- [ ] **Step 1: 실패 테스트**
-  - `firstRowInColumn`: 2×2 블록이 (5..6, 10..11)에 있으면 cx=5 → 10, cx=20 → null.
-  - `spanInBand(10, 18)` → 5..6.
-  - `ellipseIn` 의 면적이 상자 면적 × π/4 의 ±10% 안.
-  - `iou`: 같은 마스크 1, 겹침 없음 0.
-  - Tracker: [m, null, null, null, null, null] → m, m, m, m, m, null. 여섯 번째(5번째 놓침)에 null.
-- [ ] **Step 2:** 실패를 확인한다. **Step 3:** 구현한다. **Step 4:** 통과를 확인한다. **Step 5:** Commit.
-
-### Task 3: 집게 상태 기계 + 판정 (순수, 틀리면 비싼 곳)
-
-**Interfaces — Produces:**
-```kotlin
-class Claw(val screenW: Float, val screenH: Float, val railY: Float, private val rnd: () -> Float) {
-  enum class St { AIM, DOWN, GRIP, UP, FALL, CARRY, DONE }
-  var st: St; var x: Float /*0..1*/; var y: Float /*px, claw hub*/; var open: Float /*0..1*/
-  var result: Result?          // Result(win: Boolean, p: Float, target: Mask?, hitRow: Int?)
-  fun aim(x01: Float)          // AIM only
-  fun release()                // AIM -> DOWN
-  fun step(dtMs: Float, targets: List<Mask>, toMask: (Float, Float) -> Pair<Int, Int>)
-  fun next()                   // any end -> AIM (continuous play)
-}
-fun chance(m: Mask, cx: Int, row: Int): Float  // 0.9 - 0.7 * min(1, |cx - mid| / max(3, half)), band 18 rows; 0 if no span
-```
-규칙(시안 `claw-endings.html` 과 같게):
-- 하강 속도 0.26 px/ms. 집게 끝 = hub + 44px.
-- 끝이 닿은 열의 첫 마스크 행에 도달하면 GRIP. 여러 마스크면 가장 위 행이 먼저.
-- 바닥(screenH − 30)까지 아무것도 없으면 헛집기.
-- GRIP 560ms → UP(0.15 px/ms). 실패면 70px 올라간 뒤 FALL.
-- 성공이면 레일까지 올라간 뒤 CARRY(캡슐 단계로 넘김). DONE → next() 로 AIM.
-- [ ] **Step 1: 실패 테스트**
-  - 가운데 정렬: `chance` = 0.9.
-  - 몸 가장자리: 0.2.
-  - 몸 밖: 0.
-  - 두 마스크: 위에 있는 것이 target.
-  - 아무것도 없음: 헛집기(result.target == null, win false).
-  - rnd=0.05 → win, rnd=0.95 → FALL 을 거쳐 DONE.
-  - release() 는 AIM 에서만 먹힌다.
-  - next() 뒤 st == AIM.
-- [ ] **Step 2–4:** 실패 확인, 구현, 통과. **Step 5:** Commit.
-
-### Task 4: 캡슐 (순수)
-
-```kotlin
-class Capsule(startX: Float, startY: Float, val floorY: Float, val screenW: Float) {
-  enum class Phase { WRAP, DROP, ROLL, GONE }
-  var x: Float; var y: Float; var r: Float; var rot: Float; var phase: Phase
-  fun step(dtMs: Float)
-}
-```
-- WRAP: 420ms 동안 반지름이 0 → 64 로 ease-out.
-- DROP: 중력 0.0042 px/ms², 바닥에서 튀어 오르는 비율 0.45. 3번 튀면 ROLL.
-- ROLL: 가속 0.0006, 화면 밖으로 나가면 GONE.
-- [ ] 테스트:
-  - 520ms 뒤 r == 64.
-  - DROP 은 유한 시간(≤ 5초 시뮬레이션) 안에 ROLL 이 된다.
-  - ROLL 은 ≤ 5초 안에 GONE 이 된다.
-  - y 는 floorY − r 를 넘지 않는다.
-- Commit.
+`game/Mask.kt`(Mask, Box, iou, Tracker) · `game/Claw.kt`(Claw, chance, handedOff) · `game/Capsule.kt` + `GameTest.kt` 13개 통과. 원래 명세: `docs/archive/2026-11-12-catch-app-plan-review/tasks-2-4-done.md`. 다시 쓰지 않는다.
 
 ### Task 5: 오려 내기 + 카메라 소스
 
@@ -339,34 +252,184 @@ PC 에서는 순수 로직 JVM 테스트와 Robolectric 화면 렌더로 확인�
 
 ---
 
-## 계획 리뷰 반영 (2026-11-12, 독립 Claude 리뷰 1회)
+## 계획 리뷰 반영 (사전 리뷰)
 
-위 Task 본문보다 이 절이 우선한다.
+12개 항목 전문은 `C:\DC\DD\docsrchive6-11-12-catch-app-plan-review
+eview0.md` 에 있다. 이 계획에 여전히 적용한다. 요약:
 
-1. **Worker 가 앱 요청을 막음:** Origin 헤더가 없으면 403 이다. Task 9 에서 Origin 이 없고 `x-app: catchpet` 이 있으면 받게 하고, 테스트를 하나 넣는다. AiClient 는 기기 ID `dev-[a-z0-9]{8,32}` 를 보낸다.
-2. **Robolectric:** 4.14.1 과 `src/test/resources/robolectric.properties` 의 `sdk=34` 를 쓴다. 그 밖에 아래를 넣는다. Windows 에서 화면 렌더가 안 되면 렌더 단계는 건너뛴다(밤을 막지 않음).
-   - `isIncludeAndroidResources = true`
-   - `debugImplementation ui-test-manifest`
-   - Roborazzi 플러그인
-   - `@GraphicsMode(NATIVE)`
-3. **첫 화면은 CameraX + 자이로가 기본이다.** ARCore 는 펫 화면의 "AR 털 녀석 (실험)" 스위치로만 켠다. 세션 생성에 성공한 뒤에만 쓰고, 실패하면 try/catch 로 CameraX 로 돌아간다.
-4. **순서:** 1 → 2·3·4 → 7(CameraX, 털 녀석은 자이로 + 임시 그림) → 8 → 11 → 12(오버레이) → 10 → 9 → 6(굽기, 시간 제한, 실패하면 모든 방향에 front) → 5 AR → 배경화면.
-   - Task 하나가 초록이 될 때마다 "마지막 성공 APK" 를 scratchpad 에 복사해 둔다.
-5. **좌표:** Preview 와 ImageAnalysis 를 `ViewPort` / `UseCaseGroup` 하나로 묶고, 이미지 → 화면 행렬 하나(`ScreenMap`, 순수)로 마스크 ↔ 화면을 바꾼다. 회전과 FILL_CENTER 자르기를 반영한다. 순수 테스트 1개. AR 은 `transformCoordinates2d`.
-6. **오려 내기 해상도:** ImageAnalysis 는 긴 변 약 1280 으로 받는다. 세그먼트에는 줄여서 넣는다. AR 모드의 오려 내기는 640×480 이라 거칠어진다(기록).
-7. **펫 잠:** 터치하면 sinceTouch 가 0 이 된다. 밤이나 충전이어도 sinceTouch ≥ 30초여야 잔다. 테스트를 넣는다.
-8. **배경화면:**
-   - 매니페스트: `BIND_WALLPAPER` permission 속성, intent-filter, `live_wallpaper` feature(required=false), `ACTION_CHANGE_LIVE_WALLPAPER`
-   - 터치는 `android.wallpaper.tap` 한 번만 받는다.
-   - 배경은 **사용자가 고른 사진**이다(없으면 은은한 그라데이션). 운영자 확인이 필요하다고 보고한다.
-9. **빠진 것 추가:**
-   - 털 녀석 크기 1/4·1/5 전환 칩(펫 화면 개발자 칸)
-   - 503 `off` / 일일 한도 / 실패 안내 문구 "AI 그림을 잠시 못 그려요"
-   - `/sheet` 는 구매 1건당 호출 1번 + 재시도 1번(기기 ID + 토큰으로 D1 카운트)
-10. **Gradle:**
-    - compose 플러그인을 루트에 `apply false`
-    - billing-ktx 는 출시 단계로 미룸(Purchase 는 디버그 토큰만)
-    - `abiFilters("arm64-v8a")`
-    - `pickFirsts libc++_shared.so`
-11. **출시 단계 메모:** Play 의 16KB 페이지 정렬. tasks-vision · Filament 버전을 올리고 `zipalign -P 16` 으로 확인한다(6단계).
-12. **Worker 배포는 마지막에 건너뛸 수 있는 단계다.** 로그인이 만료됐으면 기록만 남긴다. 비밀값은 파이프로 넣는다. README 에 "동결된 웹 게임도 이제 OpenAI 를 탄다"고 적는다.
+- Worker 는 Origin 이 없고 `x-app: catchpet` 이 있으면 허용한다.
+- Robolectric 4.14.1 + sdk=34 를 쓴다.
+- 첫 화면은 CameraX + 자이로다. AR 은 스위치 뒤에 둔다.
+- 순서: 1 → 7 → 8 → 11 → 12 → 10 → 9 → 6 → 5 → 배경화면.
+- `ScreenMap` 좌표 변환, ImageAnalysis 긴 변 1280.
+- 배경화면 매니페스트 규칙.
+- 털 녀석 크기 1/4·1/5 전환 칩.
+- compose 플러그인을 루트에 둔다. billing 은 나중. arm64 만. 16KB 정렬은 출시 단계.
+
+---
+
+## /plan-review 1회차 반영 (2026-11-12, High 11 → 반영)
+
+이 절이 위 모든 절보다 우선한다. 근거와 렌즈별 원문은 `C:\DC\DD\docs\archive\2026-11-12-catch-app-plan-review\round1.md` 에 있다.
+Task 0 · 2 · 3 · 4 는 이미 끝났다(`game/`, `GameTest.kt`, `research/seg-compare.md`). **다시 쓰지 않는다.**
+
+**R1. 레지스트리.** 순서를 지켜야 라이브 봇이 깨지지 않는다.
+1. 4개 사본(`ai-hub/src/ai_hub`, `content-system/src/content_system`, `trading-system/trading_system`, `mpk-deck/src/mpk_deck/core`)의 `llm_registry.py` `PROVIDER_FIELDS` 에 `"openai": {"quality"}` 를 넣는다. ai-hub 테스트를 1개 추가해 통과시킨다.
+2. 그다음 `llm-registry.toml` 의 chain 을 고친다.
+   - `lab.catch_transform` 은 openai/gpt-image-2.6-flare, quality low.
+   - `lab.catch_sheet` 를 새로 만든다: medium, templates = index.js.
+3. `llm-check.py --all` 이 통과해야 커밋한다.
+4. 레포마다 따로 커밋한다.
+
+**R2. 돈 상한(Worker).**
+- `wrangler.toml` `[vars] ALL_DAY = "30"`.
+- D1 키 `usd|YYYY-MM` 에 호출마다 센트를 더한다(low 3, medium 5). 500 이상이면 503 `off`. `/transform` 과 `/sheet` 둘 다 센다.
+- `/sheet` 는 `x-purchase` 가 env `DEBUG_PURCHASE` 와 같고 **그 값이 비어 있지 않을 때만** 받는다.
+  - 키 `sheet|<token>|<entry>` 는 최대 2(호출 + 재시도 1).
+  - 키 `sheetday|<token>|<date>` 는 최대 10.
+  - `ALL_DAY` 에는 넣지 않는다.
+- 테스트(기존 `test/worker.test.js` 에 추가, `callModel` 주입 방식 유지):
+  - 빈 토큰 거절
+  - 월 상한 503
+  - `ALL_DAY` 를 wrangler.toml 에서 읽음
+  - `left` 유지
+  - Origin 없음 + `x-app: catchpet` 허용
+
+**R3. `/sheet` 계약.**
+- 요청: POST JSON `{image: base64 PNG, kind: dog|cat|person, device, entry}`
+  - 헤더 `x-app: catchpet`, `x-purchase: <token>`
+- 응답: `{image, mime, left}` (left = 이 entry 의 남은 재시도)
+- 모델에 보내는 것: image[] = 사진 + `STYLE_URL` 스타일 그림, size 1536x1024, quality medium.
+- 프롬프트는 index.js 상수 `SHEET_PROMPT` 로 둔다. 내용은 3×2: 앞 · 웃음(눈 감고) · 옆걸음 A · 옆걸음 B · 누워 자기 · 몸 말고 자기. 초록 배경, 글자 없음.
+- 미리보기 `/transform` 응답 모양 `{image, mime, left}` 는 그대로 둔다.
+
+**R4. 굽기(Task 6) 방식.**
+- `makeCreature` 는 idle/hop/caught 자세만 있다. 그래서 방향은 `object3d.rotation.y` 로 정한다(0 = 정면, +45° 씩 시계 방향 8장).
+- 펫 칸:
+
+| 칸 | 만드는 법 |
+|---|---|
+| front | idle, 정면 |
+| smile | hop 자세, 정면 |
+| walkA | 옆(90°) idle |
+| walkB | 옆(90°) hop |
+| sleep | 옆(90°) idle 을 z 로 −80° 눕힘 |
+| curl | 정면 idle 을 y 0.7 · x 1.15 로 눌러 둥글게 |
+
+- 녀석 목록은 `VIRTUAL` 배열의 16마리다. `type` 은 SPECS 의 `group`.
+- 투명 배경 PNG 256px.
+- **낮은 우선순위로 돌린다:** Windows `start /low`. 끝나면 trading 예약 작업의 마지막 결과를 확인해 로그에 남긴다.
+- 실패하면 front 하나만 굽고 모든 칸에 쓴다.
+
+**R5. PetBrain 값.**
+- 생성자 `PetBrain(zone, w, h, floorY, size = 48f, rnd)`.
+- 속도: WALK 0.022 px/ms, CLIMB 0.018. FALL 중력 0.003 px/ms².
+- dir: +1 = 오른쪽 / 아래.
+- 동작 → 칸:
+
+| 동작 | 칸 |
+|---|---|
+| IDLE · THINK · HANG · FALL | front |
+| SMILE · DANCE | smile |
+| WALK · CLIMB | walkA / walkB 를 170ms 마다 번갈아 |
+| SLEEP | 벽에서는 curl, 아래 줄·아이콘 뒤에서는 sleep |
+
+- `drop(x, y)` 는 인자 둘. HANG = 끌고 있는 동안.
+- 잠: sinceTouch ≥ 180초, 또는 (night 또는 charging 이고 sinceTouch ≥ 30초).
+- PetService: `floorY = 화면 높이 × 0.88 − 48dp`. 매니페스트 클래스 이름도 `.pet.PetService` 로 바꾸고, 매니페스트 서비스가 실제로 있는 클래스인지 Robolectric 테스트로 확인한다.
+
+**R6. Dex.**
+- 번호 `no` 는 전체에서 이어지는 순번이다(털 녀석 포함).
+- 이름: 진짜는 "강아지 N / 고양이 N / 사람 N"(같은 kind 의 N 번째), 털 녀석은 `critters/index.json` 의 name.
+- 털 녀석 모습: 뽑은 순간의 방향이 dir0·1·7 이면 front, 2·6 이면 side, 3·4·5 이면 back.
+- 저장은 임시 파일에 쓴 뒤 이름을 바꾼다. 읽지 못하는 항목은 건너뛴다. 테스트로 확인한다.
+- **CARRY 에 들어서는 순간 저장한다**(캡슐 연출 중에 앱을 꺼도 남게).
+
+**R7. 잡는 순간.**
+- GRIP 프레임(긴 변 1280)으로 세그먼트를 한 번 더 돌려 그 마스크로 오린다.
+- 그래도 비면 원래 마스크를 쓴다.
+- 오린 결과의 불투명 픽셀이 5% 미만이면 "헛집기"로 처리한다(도감에 넣지 않음).
+- `ScreenMap`(순수)은 버퍼 회전(0/90/270), FILL_CENTER 자르기, 마스크 격자를 함께 바꾼다. 테스트 2개.
+
+**R8. AiClient.**
+- 연결 30초, 읽기 200초.
+- 오류 코드 → 한국어 문구(순수 함수 + 테스트):
+  - `device` = "오늘 AI 미리보기 5번을 다 썼어요"
+  - `all` · `off` · `model` · 그 밖 = "AI 그림을 잠시 못 그려요"
+  - `net` = "인터넷 연결을 확인해 주세요"
+  - 402 = "구매가 확인되지 않았어요"
+
+**R9. 배경화면.**
+- 기본은 은은한 그라데이션이다.
+- 사용자가 "배경 사진 고르기"를 하면 사진을 `filesDir/wallpaper.jpg` 로 **복사**한다(URI 를 보관하지 않음).
+
+**R10. 사람이 할 일.**
+- Worker 비밀값 `DEBUG_PURCHASE` 는 세션이 `wrangler secret put` 에 파이프로 넣는다.
+- 실패하면 `dot-lab/scripts/wizard-catch-openai.bat` 에 "디버그 구매 토큰" 단계를 추가하고, 운영자 할 일로 보고한다.
+- 토큰 값은 `%USERPROFILE%\.catchpet-debug-purchase` 에만 둔다.
+
+**R11. 범위.** 운영자가 정한 범위라 그대로 둔다. 다만 아래를 지킨다.
+- AR 은 스위치 뒤에 둔다.
+- 배경화면은 마지막에 한다.
+- Task 마다 "마지막 성공 APK" 를 보관한다.
+- 아침 확인 목록은 Task 13 에서 **실제로 된 것만** 적는다.
+- 실제 사진을 무료 펫으로 쓰는 안(zoom-out 렌즈 제안)은 운영자가 11-12 에 뺐으므로 받지 않는다.
+
+## /plan-review 2회차 반영 (2026-11-12, High 2 → 반영)
+
+이 절이 1회차 반영보다 우선한다. 원문은 `docs/archive/2026-11-12-catch-app-plan-review/round2.md`.
+
+**R12. 트레이딩 시간대 지키기(High).**
+- 06:00–07:00, 08:30–09:10, 15:30–16:30, 22:00–23:50 KST 에는 Gradle · 헤드리스 Chrome · 테스트를 돌리지 않는다. 코드 쓰기는 해도 된다.
+- 무거운 명령 앞에 시각을 확인한다.
+- Task 하나가 끝날 때마다 `Get-ScheduledTaskInfo trading-system-briefing` 결과를 확인한다. 0x41306 이 나오면 멈추고 기록한다.
+
+**R13. Task 5 를 나눈다(High).**
+- 5a = 모델 파일 2개 · Segmenter · CutOut · ScreenMap · CameraXSource. Task 7 바로 앞에 한다.
+- 5b = ArSource · AR 털 녀석. 맨 뒤에 한다.
+- 순서: 1 → 5a → 7 → 8 → 11 → 12 → 10 → 9 → 6 → 5b → 배경화면.
+
+**R14. 레지스트리 적용(R1 보완).**
+- ai-hub 사본을 먼저 고치고 테스트한다. 나머지 셋에는 바이트 그대로 복사한다. 무거운 시간대 밖에서 한다.
+- toml 을 바꾼 뒤 `ai-hub/scripts/restart-bots.ps1 -Bot content`, `-Bot trading` 을 하고 ai-hub 를 재시작한다.
+- `llm-calls/registry-error.json` 이 없는지 확인한다.
+- `llm-check <id>` 에는 openai 분기가 없어서 `--all` 만 돌린다(기록).
+
+**R15. 돈 계산(R2 보완).**
+- 호출 **전에** 센트를 예약한다: 미리보기 5, 동작표 8 (입력 이미지 토큰 포함 보수치).
+- 과금되지 않은 실패(4xx 거절, 네트워크)일 때만 돌려준다. 패턴은 `kAll` 과 같다.
+- `D1Counts` 에 `add(k, n, limit)` 를 추가하고 테스트한다.
+- 모델 요청은 `output_format=webp`, `output_compression=80`.
+- 배포 확인에 실제 `/sheet` 1회(약 5센트)를 넣는다.
+
+**R16. 앱 쪽.**
+- 세그먼트(300ms 반복)와 GRIP 재세그먼트는 **같은 단일 스레드 executor** 에서 돈다.
+- CatchScreen: Claw 가 CARRY 가 되면 오린 결과를 확인한다. 불투명 5% 미만이면 `handedOff()` → `next()` → "아깝다!" 를 띄우고 Dex 에 넣지 않는다.
+- `Sheet.cells`: 3×2 로 나눈 각 칸에서 초록이 아닌 부분의 상자를 찾고 여백 6% 로 자른다(칸 경계에 걸린 팔다리 보존).
+- AI 요청은 화면이 아닌 앱 범위 코루틴(Application scope)에서 돈다. 화면을 나가도 계속된다.
+- 자이로 모드 털 녀석은 나타날 때마다 무작위 방향(dir0–7)이다.
+- 매니페스트 `com.google.ar.core` meta-data 에 `tools:replace="android:value"` 를 넣는다.
+- 굽기: 녀석당 60초, 전체 20분 제한. 실패하면 앱에 미리 넣은 회색 털뭉치 placeholder(`critters/_placeholder/front.png`)를 쓴다.
+
+## /plan-review 3회차 반영 (High 1 → 반영)
+
+- **R17(High).** 무거운 작업은 "다음 시간대 시작 − 지금 > 예산"일 때만 시작한다. 예산은 Gradle 20분, 굽기 25분이다. 05:30–06:00 도 시간대로 친다(새벽 스터디 작업).
+- **R18.** 기기 ID 는 `dev-` + 소문자·숫자 24자다(SharedPreferences 에 한 번 만들어 둔다). 400 은 따로 "앱을 업데이트해 주세요" 로 바꾼다.
+- **R19.**
+  - `critters/index.json` 은 Chrome 없이 `creatures.js` 의 VIRTUAL · SPECS 를 읽어 node 로 만든다(굽기 실패와 무관).
+  - `Frames` 는 파일 하나씩 front → `_placeholder` 순으로 대신한다.
+- **R20.** CARRY 에서 GRIP 재세그먼트 결과를 **기다린다**(최대 1.5초, 넘으면 원래 마스크). 결과 중 같은 kind 이고 `result.target` 과 IoU 가 가장 큰 마스크를 쓴다. 털 녀석(CRITTER)은 재세그먼트 · 오려 내기 · 5% 검사를 하지 않는다.
+- **R21.**
+  - 매니페스트 루트에 `xmlns:tools`.
+  - 레지스트리 templates 는 `::NAME` 없이 경로만.
+  - 돈 환불은 예약한 만큼 `add(k, −n)` 으로 돌려준다. OpenAI 로 요청을 보내기 **전에** 실패한 경우만 환불한다.
+
+## /plan-review 4회차 (High 0 — 리뷰 끝)
+
+- **R22.**
+  - 매 Task 뒤에 `trading-system` 의 `tick.log` 에서 Task 시작 이후 "tick done" 줄 수를 센다(10분당 1개). 모자라면 무거운 작업을 멈춘다.
+  - 레지스트리 사본 2곳도 같이 고친다: `trading-system-t0185/trading_system`, `.worktrees/content-t0115-fixes/src/content_system`.
+  - AiClient 의 base64 는 `Base64.NO_WRAP` 이다(테스트 1개).
+  - 털 녀석 목록은 `site/js/creature.js` 의 `SPECS` 텍스트를 정규식으로 읽어 group 으로 거른다.
+  - Task 7 에는 털 녀석 마스크 빈 스텁을 둔다.
+  - mpk-deck 트레이도 재시작한다.
