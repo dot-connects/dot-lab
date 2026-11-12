@@ -50,6 +50,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
     implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    // AR critters behind the developer switch (manifest: AR optional, the app runs without ARCore)
+    implementation("com.google.ar:core:1.48.0")
 
     testImplementation("junit:junit:4.13.2")
     // Android ships org.json; plain JVM unit tests need the real one

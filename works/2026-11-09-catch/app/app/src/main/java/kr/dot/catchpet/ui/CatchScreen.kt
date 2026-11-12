@@ -1,6 +1,7 @@
 package kr.dot.catchpet.ui
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
@@ -35,6 +36,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -52,6 +54,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import kr.dot.catchpet.ar.ArCritters
+import kr.dot.catchpet.camera.ArSource
 import kr.dot.catchpet.camera.CameraXSource
 import kr.dot.catchpet.camera.FrameSource
 import kr.dot.catchpet.game.Capsule
@@ -107,7 +111,17 @@ fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenD
     }
 
     val owner = LocalLifecycleOwner.current
-    val src = remember { CameraXSource(ctx, owner) }
+    // developer switch "AR 털 녀석": ARCore when it is installed and a session opens; any failure -> CameraX + gyro
+    val wantAr = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getBoolean("ar", false) }
+    var arFailed by remember { mutableStateOf(false) }
+    val ar = remember(arFailed) { if (wantAr && !arFailed) ArSource.open(ctx, owner) { arFailed = true } else null }
+    val src: FrameSource = remember(ar) { ar ?: CameraXSource(ctx, owner) }
+    val crit: CritterSource = remember(ar) { ar?.let { ArCritters(ctx.applicationContext, it) } ?: critters }
+    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
+}
+
+@Composable
+private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit) {
     val seg = remember { Segmenter(ctx.applicationContext) }
     val game = remember { CatchGame(src, seg, sink, critters) }
     DisposableEffect(Unit) {

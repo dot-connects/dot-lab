@@ -32,12 +32,7 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
         var onScreen = false
     }
 
-    private val ids: List<String> by lazy {
-        runCatching {
-            val a = JSONArray(ctx.assets.open("critters/index.json").bufferedReader().use { it.readText() })
-            (0 until a.length()).map { a.getJSONObject(it).getString("id") }
-        }.getOrDefault(emptyList())
-    }
+    private val ids: List<String> by lazy { Companion.ids(ctx) }
     private val live = mutableListOf<One>()
     private var lastCaughtAz: Float? = null
     private var yaw = 0f
@@ -100,12 +95,7 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
         val c = live.firstOrNull { it.id == critterId } ?: return "dir0" to null
         live.remove(c)
         lastCaughtAz = c.az
-        // the picture in upright-image px, so the capsule can shrink it like a real cut-out
-        val src = Rect(
-            ((c.rect.left - map.left) / map.scale).roundToInt(), ((c.rect.top - map.top) / map.scale).roundToInt(),
-            ((c.rect.right - map.left) / map.scale).roundToInt(), ((c.rect.bottom - map.top) / map.scale).roundToInt(),
-        )
-        return "dir${c.dir}" to CutOut.Cut(c.pic, src)
+        return "dir${c.dir}" to cutOf(c.pic, c.rect, map)
     }
 
     /** Keep three on stage, at least 20 degrees apart (and away from the one just caught). */
@@ -131,6 +121,18 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
         // ponytail: fixed horizontal field of view of the portrait preview; calibrate on the real phone
         const val FOV_DEG = 40f
         const val SPREAD_DEG = 60f
+
+        /** The baked critter ids (assets critters/index.json), empty when missing. */
+        fun ids(ctx: Context): List<String> = runCatching {
+            val a = JSONArray(ctx.assets.open("critters/index.json").bufferedReader().use { it.readText() })
+            (0 until a.length()).map { a.getJSONObject(it).getString("id") }
+        }.getOrDefault(emptyList())
+
+        /** The picture placed in upright-image px, so the capsule can shrink it like a real cut-out. */
+        fun cutOf(pic: Bitmap, r: RectF, map: ScreenMap) = CutOut.Cut(pic, Rect(
+            ((r.left - map.left) / map.scale).roundToInt(), ((r.top - map.top) / map.scale).roundToInt(),
+            ((r.right - map.left) / map.scale).roundToInt(), ((r.bottom - map.top) / map.scale).roundToInt(),
+        ))
 
         /** a - b wrapped into -180..180. */
         fun diff(a: Float, b: Float): Float = ((a - b) % 360f + 540f) % 360f - 180f

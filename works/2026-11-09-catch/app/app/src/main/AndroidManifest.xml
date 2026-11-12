@@ -9,12 +9,16 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-feature android:name="android.software.live_wallpaper" android:required="false" />
+    <uses-feature android:name="android.hardware.camera.ar" android:required="false" />
 
     <application
         android:allowBackup="false"
         android:icon="@android:drawable/sym_def_app_icon"
         android:label="우리집 몬스터"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
+
+        <!-- AR is an opt-in experiment: never ask Play to require or install ARCore -->
+        <meta-data android:name="com.google.ar.core" android:value="optional" tools:replace="android:value" />
 
         <activity
             android:name=".MainActivity"
