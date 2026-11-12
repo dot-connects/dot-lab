@@ -75,10 +75,18 @@ interface CatchSink {
     fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String): Boolean
 }
 
-/** Virtual critters on screen this frame, as masks on the segmenter grid (ar/Critters fills this in). */
-fun interface CritterSource { fun masks(map: ScreenMap): List<Mask> }
+/** Virtual critters (ar/Critters): masks on the segmenter grid for the claw, drawn by the catch screen. */
+interface CritterSource {
+    fun masks(map: ScreenMap): List<Mask>
+    /** Draw in view px; the critter being lifted (`held`) is drawn moved by dy px. */
+    fun draw(cv: android.graphics.Canvas, map: ScreenMap, held: String?, dy: Float) {}
+    /** It was caught: the pose label it showed (dirN) and its picture for the capsule. Another one appears. */
+    fun caught(critterId: String, map: ScreenMap): Pair<String, CutOut.Cut?> = "front" to null
+    fun start() {}
+    fun stop() {}
+}
 
-val NoCritters = CritterSource { emptyList() }
+object NoCritters : CritterSource { override fun masks(map: ScreenMap): List<Mask> = emptyList() }
 
 @Composable
 fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenDex: () -> Unit) {
@@ -104,7 +112,8 @@ fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenD
     val game = remember { CatchGame(src, seg, sink, critters) }
     DisposableEffect(Unit) {
         seg.start(src::latest)
-        onDispose { seg.close(); src.close() }
+        critters.start()
+        onDispose { critters.stop(); seg.close(); src.close() }
     }
     val dens = LocalDensity.current
     game.d = dens.density
@@ -261,7 +270,10 @@ private class CatchGame(
     private fun onCarry(c: Claw) {
         val target = c.result!!.target!!
         if (target.kind == Mask.Kind.CRITTER) {
-            val grew = sink.onCaught(Mask.Kind.CRITTER, null, target.critterId, "front")
+            val id = target.critterId ?: ""
+            val (label, pic) = map?.let { critters.caught(id, it) } ?: ("front" to null)
+            held = Grip(pic, null, 1f)
+            val grew = sink.onCaught(Mask.Kind.CRITTER, null, id, label)
             startCapsule(c, "털 녀석을 뽑았다!", grew)
             return
         }
@@ -321,6 +333,13 @@ private class CatchGame(
             imageRect(m)
             cv.drawBitmap(f, null, rect, bmpPaint)
             held?.hole?.let { cv.drawBitmap(it, null, rect, bmpPaint) }
+        }
+        if (m != null) {
+            val r = c.result
+            val heldId = r?.target?.takeIf { it.kind == Mask.Kind.CRITTER && c.st in LIFTED }?.critterId
+            cv.save(); cv.scale(1 / d, 1 / d)
+            critters.draw(cv, m, heldId, c.carryDy * d)
+            cv.restore()
         }
         // subtle glass
         fill.shader = LinearGradient(0f, 0f, w, h * 0.7f, intArrayOf(argb(.07f, 255, 255, 255), 0), floatArrayOf(0f, 0.4f), Shader.TileMode.CLAMP)
@@ -480,6 +499,7 @@ private class CatchGame(
         private const val TAG = "CatchGame"
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
+        private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
         private fun family(k: Mask.Kind) = if (k == Mask.Kind.CAT) Mask.Kind.DOG else k
     }
 }

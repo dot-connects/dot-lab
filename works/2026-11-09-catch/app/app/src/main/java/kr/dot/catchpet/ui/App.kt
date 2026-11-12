@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kr.dot.catchpet.ar.Critters
 import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.game.Mask
 import java.io.ByteArrayOutputStream
@@ -40,18 +41,19 @@ fun App() {
     var screen by rememberSaveable { mutableStateOf(Screen.CATCH) }
     var entryId by rememberSaveable { mutableStateOf<String?>(null) }
     val sink = remember { DexSink(ctx.applicationContext) }
+    val critters = remember { Critters(ctx.applicationContext) }
     BackHandler(enabled = screen != Screen.CATCH) {
         screen = if (screen == Screen.DETAIL) Screen.DEX else Screen.CATCH
     }
     when (screen) {
-        Screen.CATCH -> CatchScreen(sink, NoCritters, sink.count) { screen = Screen.DEX }
+        Screen.CATCH -> CatchScreen(sink, critters, sink.count) { screen = Screen.DEX }
         Screen.DEX -> DexScreen(
             onOpen = { entryId = it; screen = Screen.DETAIL },
             onPet = { screen = Screen.PET },
             onBack = { screen = Screen.CATCH },
         )
         Screen.DETAIL -> DetailScreen(entryId ?: "", onPet = { screen = Screen.PET }) { screen = Screen.DEX }
-        Screen.PET -> Placeholder("펫", null) { screen = Screen.CATCH }
+        Screen.PET -> PetScreen { screen = Screen.CATCH }
     }
 }
 
@@ -81,19 +83,4 @@ class DexSink(private val ctx: Context) : CatchSink {
     }
 
     private companion object { val writes = Executors.newSingleThreadExecutor() }
-}
-
-/** Stand-in until the Pet screen lands (another task). */
-@Composable
-private fun Placeholder(title: String, extra: Pair<String, () -> Unit>?, onBack: () -> Unit) {
-    Column(
-        Modifier.fillMaxSize().background(Color(0xFF101114)).safeDrawingPadding().padding(24.dp),
-        verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(title, color = Color.White, fontSize = 24.sp)
-        Text("준비 중이에요", color = Color(0xFF9AA0AB), fontSize = 15.sp)
-        Spacer(Modifier.height(20.dp))
-        extra?.let { (label, go) -> Button(onClick = go) { Text(label) } }
-        Button(onClick = onBack) { Text("돌아가기") }
-    }
 }
