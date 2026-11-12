@@ -48,7 +48,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
@@ -409,7 +408,7 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clea
 }
 
 /** The open list fades out over its last [h] (mockup: mask-image to transparent over 36 px), so cut plates read as "more". */
-private fun Modifier.fadeBottom(h: Dp): Modifier = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+private fun Modifier.fadeBottom(h: Dp): Modifier = graphicsLayer { alpha = 0.99f } // < 1 = own layer, so DstIn masks only the list (the Offscreen strategy drew no fade in Robolectric)
     .drawWithContent {
         drawContent()
         val f = (1f - h.toPx() / size.height).coerceIn(0f, 1f)

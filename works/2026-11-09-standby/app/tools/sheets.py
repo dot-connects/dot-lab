@@ -22,7 +22,7 @@ def split(stem: str) -> tuple[str, str]:
     """(subject, variant): device goes to the variant; card shots also move their size class there."""
     dev = next((d for d in DEVICES if stem.endswith("-" + d)), "")
     base = stem[: -len(dev) - 1] if dev else stem
-    m = re.match(r"(card-[a-z_]+)-(L|M|Sw|St|XS)(-night)?$", base)
+    m = re.match(r"(card-[a-z_]+)-(L|M|Sw|St|XSt|XS)(-night|-large)?$", base)
     if m:
         return m.group(1), f"{m.group(2)}{m.group(3) or ''}"
     return base, dev or "-"

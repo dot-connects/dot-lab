@@ -145,7 +145,7 @@ class ClockShots(private val theme: Theme) {
      * render: rows holding accent-blue pixels left of the side column.
      */
     @Test fun digitalHeroSize() {
-        // the 60 % blue-digit target is theme A's (iPhone frame); B and C size their own hero
+        // the 60 % digit target is theme A's (iPhone frame); digits = the theme accent since Task 22 (was r8 blue)
         org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
         RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
         rule.setContent { ProvideTheme(theme) { Box(Modifier.fillMaxSize().background(Color.Black)) { face(FaceId.DIGITAL)() } } }
@@ -153,10 +153,12 @@ class ClockShots(private val theme: Theme) {
         val path = shotPath(theme, "clock", "hero-size-check")
         rule.onRoot().captureRoboImage(path)
         val bmp = android.graphics.BitmapFactory.decodeFile(path)
+        val acc = Themes.of(theme).clockDefaults(FaceId.DIGITAL).color.toInt()
+        fun near(c: Int) = listOf(16, 8, 0).all { sh -> kotlin.math.abs((c shr sh and 0xFF) - (acc shr sh and 0xFF)) < 64 } // antialiased edge rows count
         var top = -1; var bottom = -1
         for (y in 0 until bmp.height) for (x in 0 until (bmp.width * 0.62f).toInt()) {
             val c = bmp.getPixel(x, y)
-            if (android.graphics.Color.blue(c) > 200 && android.graphics.Color.red(c) in 90..150) { if (top < 0) top = y; bottom = y; break }
+            if (near(c)) { if (top < 0) top = y; bottom = y; break }
         }
         val pct = (bottom - top + 1).toFloat() / bmp.height
         println("digital hero cap = ${"%.1f".format(pct * 100)} % H")
