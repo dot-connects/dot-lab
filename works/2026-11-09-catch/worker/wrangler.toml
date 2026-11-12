@@ -2,11 +2,14 @@ name = "dot-lab-catch"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
-# Photo transform for 「우리 집 몬스터 잡기」. Secret GEMINI_KEY: `npx wrangler@4 secret put GEMINI_KEY`
-# (without it /transform answers 503 and the game keeps its on-device fluff picture).
+# Photo transform for 「우리 집 몬스터 잡기」 (OpenAI images/edits). Secrets: `npx wrangler@4 secret put OPENAI_KEY`
+# (without it every AI route answers 503 and the game keeps its on-device fluff picture) and DEBUG_PURCHASE
+# (the /sheet token until real billing; unset or empty = /sheet answers 402).
+# MONTH_CENTS = the month's money ceiling over /transform + /sheet ("0" = AI off).
 [vars]
 DEVICE_DAY = "5"
-ALL_DAY = "100"
+ALL_DAY = "30"
+MONTH_CENTS = "500"
 
 [[d1_databases]]
 binding = "DB"
