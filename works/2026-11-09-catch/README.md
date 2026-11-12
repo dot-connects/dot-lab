@@ -1,6 +1,43 @@
 # 우리 집 몬스터 잡기 — 작업 폴더
 
-## 이어서 하기 (2026-11-11 기준, 다음 세션은 여기부터)
+## 이어서 하기 (2026-11-13 새벽 기준 — 이제 **안드로이드 앱**이 본체)
+
+**웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:\DC\DD\docsrchive6-11-12-catch-app-plan-review`).
+동결된 웹 게임도 같은 Worker 를 쓰므로 이제 OpenAI(gpt-image-2.6-flare)로 그린다.
+
+| 부분 | 파일 | 상태 |
+|---|---|---|
+| 뽑기 | `ui/CatchScreen.kt`, `game/`, `seg/`, `camera/` | CameraX + DeepLab 0.3 + EfficientDet 보충 + 4프레임 유지(`research/seg-compare.md` 120/120), 집게 판정, 캡슐, 멈춤 없는 다음 판 |
+| 털 녀석 | `ar/Critters.kt`(자이로), `ar/` AR(ARCore 1.48, 개발자 스위치) | 16마리 × 14장 굽기 `tools/bake-critters.mjs` → `assets/critters/`, 크기 1/4·1/5 스위치 |
+| 도감·상세 | `dex/Dex.kt`, `ui/DexScreen.kt`, `ui/DetailScreen.kt` | 원자 저장, 털 녀석 모습 합치기, AI 미리보기(하루 5), 구매 잠금 500원 |
+| AI | `ai/`, `worker/` | Worker 배포됨: /transform low, /sheet medium, 월 500센트 상한, `x-app: catchpet`, 디버그 구매 토큰 |
+| 펫 | `pet/PetBrain.kt`, `pet/PetService.kt`, `pet/PetWallpaper.kt`, `ui/PetScreen.kt` | 아래 줄 · 왼쪽 벽 · 오른쪽 벽(오버레이), 아이콘 뒤(라이브 배경화면) |
+
+- 빌드: `app/` 에서 `JAVA_HOME=C:/DC/tools/jdk-17 ./gradlew assembleDebug testDebugUnitTest`. APK 는 `%LOCALAPPDATA%\catchpet-buildpp\outputspk\debug\`.
+- **트레이딩 틱 보호:** 06:00–07:00 · 08:30–09:10 · 15:30–16:30 · 22:00–23:50 KST(+05:30–06:00)에는 Gradle · 헤드리스 Chrome 금지(plan R12/R17).
+- 디버그 구매 토큰: `%USERPROFILE%\.catchpet-debug-purchase` (펫 화면 맨 아래 "개발자" 칸에 붙여 넣으면 구매가 열린다).
+
+**운영자가 할 일**
+1. **OpenAI API 키 교체** — 11-12 밤 Worker 로그 확인 중 키 원문이 세션 기록에 찍혔다. platform.openai.com 에서 폐기·새로 만들고 `dot-lab/scripts/wizard-catch-openai.bat` 을 다시 실행(BOM 버그는 고침).
+2. 아이콘 뒤 자리는 라이브 배경화면이라 원래 배경화면을 대신한다(기본 그라데이션, 사진 고르기 가능). 괜찮은지 판정.
+3. 실폰 확인 목록(아래).
+
+**실폰 확인 목록 (PC 에 기기·에뮬레이터가 없어 아무것도 실폰에서 돌려 보지 못함)**
+- [ ] 앱이 켜지고 카메라 권한 → 뽑기 화면
+- [ ] 강아지·고양이·사람 윤곽이 화면과 맞는지(집게 조준선이 녀석 머리에 닿는지), 오린 그림이 녀석과 맞는지
+- [ ] 끌어서 놓기 → 캡슐 → "도감 N" 증가 → 바로 다음 판
+- [ ] 털 녀석 3마리가 바닥 쪽에 보이는지, 폰을 돌리면 제자리에 있는지(자이로), 크기 1/4 vs 1/5
+- [ ] 도감 → 상세 → AI 미리보기(털뭉치·피규어) 실제로 오는지
+- [ ] 디버그 토큰 넣고 "펫으로 사기" → 동작표 → 펫으로 쓰기
+- [ ] 펫: 아래 줄 걷기·갸웃, 벽 타기, 누르기(웃음)·두 번(춤)·꾹 끌기, 오래 두면 잠
+- [ ] 아이콘 뒤(라이브 배경화면) 설정과 탭
+- [ ] AR 스위치 켜고: 바닥 찾기, 털 녀석이 바닥에 서 있는지, 돌아보면 방향 그림이 반대면 `ArCritters.DIR_SIGN = -1`
+
+**출시 전(6단계):** Play 결제 연결, 개인정보 처리방침, 데이터 안전 양식, 16KB 페이지 정렬(tasks-vision · ARCore so), APK 78MB(모델 2개 + 털 녀석 그림 + ARCore).
+
+<details><summary>2026-11-11 까지의 웹 기록 (옛 "이어서 하기")</summary>
+
+
 
 **잡은 진짜(개·고양이·사람) 사진은 그대로 쓰지 않는다 (7561ee9).** 잡으면 폰 안 털뭉치 그림(`fluffify.js` 색 → 멍솜/냥솜/사람 틀)이
 바로 나오고, 동의한 폰이면 AI 그림이 10~30초 뒤 바뀌어 들어온다. AI 스타일은 3a 털뭉치 / 3b 3D 피규어 (운영자 2026-11-11 "3a, 3b 만").
@@ -35,6 +72,9 @@
 돌림, 검은 고양이 머리 빠짐·셀카 강아지가 고양이로, Android 앱은 웹 최신 변경 미반영(옆 가장자리 20% vs 목표 15%). 목록 페이지 미등록·manifest 없음 유지.
 
 기획 `brief.md`, 구현 계획 `plan.md`. 작품은 `site/`.
+
+
+</details>
 
 ## 출처
 - 화면 모드 배경 `site/img/room.jpg`: Poly Haven **Hotel Room** (`hotel_room`), CC0 —
