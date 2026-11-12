@@ -38,10 +38,14 @@ class Segmenter(private val ctx: Context) {
     /** The tracked masks of the latest loop frame (grid ScreenMap.GRID_W x GRID_H, covering the upright frame). */
     @Volatile var masks: List<Mask> = emptyList(); private set
 
+    /** While the app is in the background the loop skips (review M3): no model runs on a stale frame. */
+    @Volatile var paused = false
+
     /** Segments [frames]() every 300 ms on the model thread. */
     fun start(frames: () -> Bitmap?) {
         exec.scheduleWithFixedDelay({
             try {
+                if (paused) return@scheduleWithFixedDelay
                 val f = frames() ?: return@scheduleWithFixedDelay
                 val raw = run(f)
                 masks = listOfNotNull(

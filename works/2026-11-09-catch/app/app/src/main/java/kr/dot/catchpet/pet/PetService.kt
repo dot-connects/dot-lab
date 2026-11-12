@@ -92,9 +92,15 @@ class PetService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        startForeground(1, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        // not sticky: a system restart from the background is refused on Android 15 before the overlay window shows
+        // (review M2, 2026-11-13); the user turns the pet on again from the app
+        try {
+            startForeground(1, notification(), ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+        } catch (e: Exception) {
+            stopSelf(); return START_NOT_STICKY
+        }
         show()   // every start re-reads the pet and the place
-        return START_STICKY
+        return START_NOT_STICKY
     }
 
     private fun notification(): Notification {

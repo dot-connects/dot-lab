@@ -65,7 +65,8 @@ export async function callOpenAI({ prompt, image, ref, quality, size }, env) {
     catch (e) { throw sent(new Error("model network " + (e?.message || e))); }
     if (r.status >= 500 && attempt === 0) continue;
     const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw sent(new Error(`model HTTP ${r.status} ${body?.error?.code || ""}`));
+    // a 4xx is a refusal OpenAI does not bill (bad image, moderation): marked so the money reservation comes back
+    if (!r.ok) throw Object.assign(sent(new Error(`model HTTP ${r.status} ${body?.error?.code || ""}`)), { rejected: r.status < 500 });
     const data = body?.data?.[0]?.b64_json;
     if (!data) throw Object.assign(sent(new Error("model gave no image")), { billed: true });
     return { mime: `image/${body.output_format || "webp"}`, data };
@@ -85,6 +86,7 @@ export class MemoryCounts {
 export class D1Counts {
   constructor(db) { this.db = db; }
   async take(k, limit) {
+    if (limit <= 0) return 0;   // "0" = off: the INSERT branch below has no WHERE
     const r = await this.db.prepare("INSERT INTO counts (k, n) VALUES (?1, 1) ON CONFLICT(k) DO UPDATE SET n = n + 1 WHERE n < ?2 RETURNING n").bind(k, limit).first();
     return r ? r.n : 0;
   }
@@ -108,7 +110,7 @@ async function paidCall(job, cents, env, counts, day, onFail) {
     return { img: await (env.callModel || callOpenAI)(job, env) };
   } catch (e) {
     console.log("model failed", e?.message || e);   // status only: never the model's words about the photo
-    if (!e?.sent) await counts.add(kUsd, -cents, cap);
+    if (!e?.sent || e?.rejected) await counts.add(kUsd, -cents, cap);
     await onFail(e);
     return { err: e };
   }
@@ -132,8 +134,9 @@ async function transform(b, req, env, counts, day, origin) {
     return json({ error: "device" }, 429, origin);
   }
   const job = { prompt: PROMPTS[b.style](b.kind), image: b.image, ref: b.style === "fluff", quality: "low", size: "1024x1024" };
-  // the day slots come back on any failure OpenAI did not bill (a refused or failed call costs nothing)
-  const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.billed) { await counts.give(kDev); await counts.give(kIp); await counts.give(kAll); } });
+  // day slots come back unless OpenAI refused (4xx) or billed: a refused call keeps its slot, so junk images cannot
+  // be retried for free until they drain the month (review M1, 2026-11-13); its money comes back in paidCall
+  const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.sent || (!e.rejected && !e.billed)) { await counts.give(kDev); await counts.give(kIp); await counts.give(kAll); } });
   if (r.off) return json({ error: "off" }, 503, origin);
   if (r.err) return json({ error: "model" }, 502, origin);
   return json({ mime: r.img.mime, image: r.img.data, left: perDev - used }, 200, origin);

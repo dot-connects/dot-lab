@@ -293,3 +293,12 @@ test("a BOM or newline around a secret is ignored (PowerShell pipe)", () => {
   assert.equal(secret(String.fromCharCode(0xfeff) + "sk-abc" + String.fromCharCode(13, 10)), "sk-abc");
   assert.equal(secret(undefined), "");
 });
+
+test("a 4xx refusal keeps the day slot but gives the month's cents back (review M1)", async () => {
+  delete env.callModel;
+  fakeFetch(reply(400, { error: { code: "invalid_image" } }));
+  const r = await call(ok({ style: "figure" }));
+  assert.equal(r.status, 502);
+  assert.equal(counts.m.get("usd|2026-11"), 0, "a refusal is not billed: cents back");
+  assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), 1, "the day slot stays used");
+});

@@ -129,6 +129,20 @@ private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, s
         critters.start()
         onDispose { critters.stop(); seg.close(); src.close() }
     }
+    // Home / screen off: stop the model loop and the sensors; back: start them again (review M3)
+    val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
+    DisposableEffect(life) {
+        var stopped = false
+        val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
+            when (e) {
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> if (!stopped) { stopped = true; seg.paused = true; critters.stop() }
+                androidx.lifecycle.Lifecycle.Event.ON_START -> if (stopped) { stopped = false; seg.paused = false; critters.start() }
+                else -> {}
+            }
+        }
+        life.lifecycle.addObserver(obs)
+        onDispose { life.lifecycle.removeObserver(obs) }
+    }
     val dens = LocalDensity.current
     game.d = dens.density
     game.topInset = WindowInsets.statusBars.getTop(dens) / dens.density
