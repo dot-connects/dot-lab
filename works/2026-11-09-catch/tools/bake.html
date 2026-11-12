@@ -1,0 +1,44 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// Bakes the 16 critters into PNGs for the Android app (plan Task 6 / R4): 8 view directions for catching and
+// the 6 pet cells. Driven by tools/bake-critters.mjs; results land in window.__out = { id: { name: dataURL } }.
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
+import { makeCreature, SPECS } from "../site/js/creatures.js";
+
+const ids = new URLSearchParams(location.search).get("ids").split(",");
+const R = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
+R.setPixelRatio(1); R.setSize(256, 256, false); R.outputColorSpace = THREE.SRGBColorSpace; R.setClearColor(0x000000, 0);
+
+function shot(spec, { yaw = 0, pose = "idle", roll = 0, sx = 1, sy = 1, frame }) {
+  const c = makeCreature(spec), scene = new THREE.Scene(), holder = new THREE.Group();
+  holder.add(c.object3d); scene.add(holder);
+  c.setPose(pose); for (let i = 0; i < (pose === "hop" ? 9 : 2); i++) c.update(0.016);
+  c.object3d.rotation.y = yaw * Math.PI / 180;
+  holder.rotation.z = roll * Math.PI / 180; holder.scale.set(sx, sy, sx);
+  const cam = new THREE.PerspectiveCamera(30, 1, 0.01, 10);
+  cam.position.set(frame.mid.x, frame.mid.y + frame.d * 0.12, frame.mid.z + frame.d); cam.lookAt(frame.mid);
+  R.render(scene, cam);
+  const url = R.domElement.toDataURL("image/png");
+  c.object3d.traverse(o => { o.geometry?.dispose?.(); if (o.material) [].concat(o.material).forEach(m => { m.map?.dispose?.(); m.dispose?.(); }); });
+  return url;
+}
+
+const out = {};
+for (const id of ids) {
+  const spec = SPECS.find(s => s.id === id);
+  // one framing per critter (from its front view, with room for the lying pose) so every picture has the same scale
+  const probe = makeCreature(spec); probe.update(0.016);
+  const box = new THREE.Box3().setFromObject(probe.object3d), sz = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
+  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.72 / Math.tan(Math.PI / 12) };
+  const o = {};
+  for (let k = 0; k < 8; k++) o["dir" + k] = shot(spec, { yaw: k * 45, frame });
+  o.front = o.dir0;
+  o.smile = shot(spec, { pose: "caught", frame });
+  o.walkA = shot(spec, { yaw: 90, frame });
+  o.walkB = shot(spec, { yaw: 90, pose: "hop", frame });
+  o.sleep = shot(spec, { yaw: 90, pose: "caught", roll: -80, frame });
+  o.curl = shot(spec, { pose: "caught", sx: 1.15, sy: 0.7, frame });
+  out[id] = o;
+  window.__p = (window.__p || 0) + 1;
+}
+window.__out = out;
+</script>

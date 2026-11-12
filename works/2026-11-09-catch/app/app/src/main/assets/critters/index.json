@@ -1,0 +1,98 @@
+[
+ {
+  "id": "monggeul",
+  "name": "몽글",
+  "type": "fluff",
+  "color": "#f6efe1"
+ },
+ {
+  "id": "ppiyak",
+  "name": "삐약",
+  "type": "fluff",
+  "color": "#fbecb4"
+ },
+ {
+  "id": "huhu",
+  "name": "후후",
+  "type": "fluff",
+  "color": "#fdfcf8"
+ },
+ {
+  "id": "silta",
+  "name": "실타",
+  "type": "fluff",
+  "color": "#f5d3d9"
+ },
+ {
+  "id": "dalsom",
+  "name": "달솜",
+  "type": "fluff",
+  "color": "#f1dcf0"
+ },
+ {
+  "id": "bamtol",
+  "name": "밤톨",
+  "type": "fluff",
+  "color": "#efdcbc"
+ },
+ {
+  "id": "sallang",
+  "name": "살랑",
+  "type": "fluff",
+  "color": "#e4ecc3"
+ },
+ {
+  "id": "bodeul",
+  "name": "보들",
+  "type": "fluff",
+  "color": "#f4e8d8"
+ },
+ {
+  "id": "nyangsom",
+  "name": "냥솜",
+  "type": "fluff2",
+  "color": "#efeae3"
+ },
+ {
+  "id": "meongsom",
+  "name": "멍솜",
+  "type": "fluff2",
+  "color": "#f3e3c8"
+ },
+ {
+  "id": "pengsom",
+  "name": "펭송",
+  "type": "fluff2",
+  "color": "#d9e1ec"
+ },
+ {
+  "id": "mungge",
+  "name": "뭉게",
+  "type": "fluff2",
+  "color": "#f3e2d8"
+ },
+ {
+  "id": "rara",
+  "name": "라라",
+  "type": "fluff2",
+  "color": "#f7f3ec"
+ },
+ {
+  "id": "mieo",
+  "name": "미어",
+  "type": "fluff2",
+  "color": "#ead8bc"
+ },
+ {
+  "id": "kkulkkul",
+  "name": "꿀꿀",
+  "type": "fluff2",
+  "color": "#f8dcd8"
+ },
+ {
+  "id": "gomsom",
+  "name": "곰솜",
+  "type": "fluff2",
+  "color": "#e6d2bb"
+ }
+]
