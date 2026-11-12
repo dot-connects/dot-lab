@@ -14,7 +14,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalFontFamilyResolver
 import androidx.compose.ui.text.font.FontFamily
@@ -90,8 +89,6 @@ internal class Look(
             }
             return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb())
         }
-
-        val RAINBOW = intArrayOf(0xFFFF5A5F.toInt(), 0xFFFFB347.toInt(), 0xFFFFE066.toInt(), 0xFF6FDC86.toInt(), 0xFF4D9BEF.toInt(), 0xFFAA88FE.toInt())
     }
 }
 
@@ -178,7 +175,6 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         if (layered) c.saveLayer(x - size, top - size, x + w + size, bottom + size, null)
 
         paint.reset(look, gl, top, if (gr.isNaN()) x + w else gr, bottom)
-        val glass = look.effect == Effect.GLASS
         if (look.effect == Effect.GLOW) {
             // Two blurs (0.05 em full, 0.22 em at 55 %), then the crisp fill on top.
             paint.setShadowLayer(size * 0.22f, 0f, 0f, withAlpha(look.c1, 0.55f))
@@ -200,18 +196,6 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
             c.drawText(s, x, baseline, clear)
         } else {
             c.drawText(s, x, baseline, paint)
-            if (glass) {
-                paint.style = Paint.Style.STROKE
-                paint.strokeWidth = size * 0.012f
-                paint.shader = null
-                paint.color = glassStroke(look.c1)
-                // outline of the merged glyph shape: variable fonts overlap contours, a plain stroke shows them
-                val path = android.graphics.Path()
-                paint.getTextPath(s, 0, s.length, x, baseline, path)
-                path.op(android.graphics.Path(), android.graphics.Path.Op.UNION)
-                c.drawPath(path, paint)
-                paint.style = Paint.Style.FILL
-            }
         }
         paint.clearShadowLayer()
         if (stencil) {
@@ -237,9 +221,6 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         color = look.c1
         when (look.effect) {
             Effect.TWO_COLOR -> shader = LinearGradient(l, t, r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
-            Effect.RAINBOW -> shader = LinearGradient(l, t, r, t, Look.RAINBOW, null, Shader.TileMode.CLAMP)
-            // 60 % (review C5): 30 % read ≈ 1.5:1 on black, the digits showed only through the stroke
-            Effect.GLASS -> color = withAlpha(look.c1, 0.60f)
             else -> {}
         }
     }
@@ -248,14 +229,6 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         const val REF = 100f
         const val COLON = 0.7f
         fun withAlpha(c: Int, a: Float): Int = (c and 0xFFFFFF) or ((a * 255).toInt() shl 24)
-
-        /** Glass stroke = mix(acc, white 65 %), never darker than luminance 0.5 (so it never reads dark on black). */
-        fun glassStroke(c1: Int): Int {
-            var c = lerp(Color(c1), Color.White, 0.65f) // literal-ok: glass highlight = fill pushed toward white
-            var k = 0.65f
-            while (c.luminance() < 0.5f && k < 1f) { k += 0.05f; c = lerp(Color(c1), Color.White, k) } // literal-ok
-            return c.toArgb()
-        }
     }
 }
 

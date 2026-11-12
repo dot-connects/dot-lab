@@ -26,7 +26,6 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
-import kr.dot.sb.model.Numerals
 import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.clock.StyledTime
 import kr.dot.sb.ui.state.StandbyState
@@ -115,14 +114,11 @@ class ClockShots(private val theme: Theme) {
             Effect.entries.map { "fx-${it.name.lowercase()}" to face(FaceId.FLOAT, style = flt.copy(effect = it)) } +
             listOf(
                 "fx-glow-night" to face(FaceId.FLOAT, Fixtures.full(night = 1f), flt.copy(effect = Effect.GLOW)),
-                "digital-rainbow" to face(FaceId.DIGITAL, style = dig.copy(effect = Effect.RAINBOW)),
-                "digital-glass" to face(FaceId.DIGITAL, style = dig.copy(effect = Effect.GLASS)),
                 "digital-stencil-glow" to face(FaceId.DIGITAL, style = dig.copy(font = FontId.STENCIL, weight = 800, effect = Effect.GLOW)),
                 "analog-roman" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.ROMAN)),
                 "analog-four" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.FOUR, secondColor = 0xFFE9893A)),
                 "analog-twelve" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.TWELVE)),
                 "analog-rails" to face(FaceId.ANALOG, style = ana.copy(font = FontId.RAILS, weight = 800, widthPct = 100)),
-                "solar-arab" to face(FaceId.SOLAR, style = sol.copy(numerals = Numerals.ARAB)),
                 "digital-center" to face(FaceId.DIGITAL, style = dig.copy(layout = ClockLayout.CENTER)),
                 "digital-twolines" to face(FaceId.DIGITAL, style = dig.copy(layout = ClockLayout.TWO_LINES)),
                 "digital-10-58" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58))),

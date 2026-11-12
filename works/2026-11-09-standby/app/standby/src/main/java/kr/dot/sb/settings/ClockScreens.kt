@@ -44,7 +44,6 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
-import kr.dot.sb.model.Numerals
 import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.theme.Fonts
 
@@ -122,7 +121,6 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         Section("크기와 굵기") {
             item { SliderRow("굵기", "${style.weight}", style.weight.toFloat(), 100f..950f, { v -> edit { it.copy(weight = (v / 10).toInt() * 10) } }) }
             item { SliderRow("크기", "${style.sizePct}%", style.sizePct.toFloat(), 60f..130f, { v -> edit { it.copy(sizePct = v.toInt()) } }) }
-            item { SliderRow("너비", "${style.widthPct}%", style.widthPct.toFloat(), 70f..130f, { v -> edit { it.copy(widthPct = v.toInt()) } }) }
         }
 
         if (analog) {
@@ -175,12 +173,9 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
             if (style.background == Background.GRADIENT) item { ControlRow("끝 색") { ColorPalette(style.bgColor2, { c -> edit { it.copy(bgColor2 = c) } }) } }
         }
 
-        Section("숫자와 배치") {
-            item { ControlRow("숫자 모양", note = "서양 숫자가 기본이에요") { ChipFlow(Numerals.entries.map { it.ko }, style.numerals.ordinal, { i -> edit { it.copy(numerals = Numerals.entries[i]) } }) } }
-            if (!analog && !world) {
-                item { ControlRow("배치") { Segmented(ClockLayout.entries.map { it.ko }, style.layout.ordinal, { i -> edit { it.copy(layout = ClockLayout.entries[i]) } }) } }
-                item { SwitchRow("날짜와 온도 표시", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "시계 옆에 요일·날짜·기온·다음 알람을 보여요") }
-            }
+        if (!analog && !world) Section("배치") {
+            item { ControlRow("배치") { Segmented(ClockLayout.entries.map { it.ko }, style.layout.ordinal, { i -> edit { it.copy(layout = ClockLayout.entries[i]) } }) } }
+            item { SwitchRow("날짜와 온도 표시", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "시계 옆에 요일·날짜·기온·다음 알람을 보여요") }
         }
 
         Gap(24.dp)

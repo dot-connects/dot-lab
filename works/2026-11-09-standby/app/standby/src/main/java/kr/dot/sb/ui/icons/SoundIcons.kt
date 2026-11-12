@@ -32,8 +32,6 @@ private val GLYPHS: Map<SleepSound, List<Part>> = mapOf(
         Part("M12.3 2.3c.4 2.8-1 4.6-2.6 6.3-1.7 1.8-3.4 3.6-3.4 6.6a5.7 5.7 0 0 0 11.4.3c.1-2.2-.8-3.9-1.8-5.1.1 1.4-.4 2.6-1.4 3.1.4-3.9-.6-8.2-2.2-11.2zm-.3 12.1c.9 1.2 1.9 2.2 1.9 3.6a1.9 1.9 0 0 1-3.8 0c0-1.3.8-2.4 1.9-3.6z"),
     ),
     SleepSound.WHITE to listOf(Part("M3 11v2M6 8v8M9 5v14M12 9v6M15 6v12M18 9v6M21 11v2", 2.1f)),
-    SleepSound.PINK to listOf(Part("M2.5 12c1.6 0 1.9-5.5 3.6-5.5S8 17.5 9.7 17.5s1.9-9 3.6-9 1.9 7 3.6 7 1.9-4.5 3.6-4.5", 2.1f)),
-    SleepSound.BROWN to listOf(Part("M2.5 13c2.2 0 2.6-5 5.3-5s3.1 8 5.8 8 3.1-6 5.8-6c.8 0 1.4.4 2.1 1", 2.4f)),
 )
 
 @Composable

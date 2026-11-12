@@ -225,7 +225,7 @@ class LogicTest {
         fun jumps(s: SleepSound) = ShortArray(22050 * 2).also { NoiseGen(s, 7).fill(it, 1f) }
             .asList().zipWithNext { x, y -> Math.abs(y - x) }.count { it > 3000 }
         assertTrue(jumps(SleepSound.FIRE) > 20)
-        assertEquals(0, jumps(SleepSound.BROWN))
+        assertEquals(0, jumps(SleepSound.WHITE))   // r10: WHITE is the old brown generator
     }
 
     @Test fun turningThePhoneIsNotAPickUp() {

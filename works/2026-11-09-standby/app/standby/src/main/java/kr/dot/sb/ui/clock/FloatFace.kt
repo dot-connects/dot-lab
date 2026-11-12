@@ -44,7 +44,7 @@ internal fun FloatFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         color = TimePainter.withAlpha(ink.ink2.toArgb(), 0.85f)
         blendMode = mix
     }
-    val screen = Paint().apply { blendMode = if (look.effect == Effect.GLASS || style.font == FontId.RAILS) BlendMode.SRC_OVER else mix }
+    val screen = Paint().apply { blendMode = if (style.font == FontId.RAILS) BlendMode.SRC_OVER else mix }
     val fade = Paint()
 
     FaceCanvas(modifier) {

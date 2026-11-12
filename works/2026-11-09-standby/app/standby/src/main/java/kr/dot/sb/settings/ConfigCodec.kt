@@ -6,9 +6,14 @@ import kr.dot.sb.model.CardType
 import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.DDay
+import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
+import kr.dot.sb.model.PHOTO_INTERVAL_SEC
+import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.SlotOptions
+import kr.dot.sb.ui.theme.Themes
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -18,8 +23,8 @@ import java.time.LocalDate
  * so a save from an older or newer build (missing or unknown fields, renamed enum values) never crashes.
  */
 object ConfigCodec {
-    /** Stored schema: 9 = r9 (styles are overrides only). Saves without "v" are r8 or r9 dev builds. */
-    const val VERSION = 9
+    /** Stored schema: 9 = r9 (styles are overrides only), 10 = r10. Saves without "v" are r8 or r9 dev builds. */
+    const val VERSION = 10
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -62,6 +67,12 @@ object ConfigCodec {
         put("sleepMinutes", c.sleepMinutes)
         put("focusMinutes", c.focusMinutes)
         put("breakMinutes", c.breakMinutes)
+        put("myClocks", JSONArray().also { a -> c.myClocks.forEach { a.put(it.name) } })
+        put("excludedCalendars", JSONArray().also { a -> c.excludedCalendars.forEach { a.put(it) } })
+        put("heatProtect", c.heatProtect)
+        put("moodAutoOffMin", c.moodAutoOffMin)
+        put("nightNotifQuiet", c.nightNotifQuiet)
+        put("photoIntervalSec", c.photoIntervalSec)
     }.toString()
 
     /** Any parse failure returns defaults; a bad field returns that field's default. */
@@ -73,7 +84,11 @@ object ConfigCodec {
     private fun fromJson(o: JSONObject): AppConfig {
         val d = AppConfig()
         val theme = enumOf(o, "theme", d.theme)
-        val (styles, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme, r8 = o.optInt("v") < VERSION) { so, base -> style(so, base) }
+        val v = o.optInt("v")
+        // r8 = before the r9 schema; stays on 9 whatever VERSION becomes (a v9 edit equal to the r8 look is an edit)
+        val (read, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme, r8 = v < 9) { so, base -> style(so, base) }
+        // r10 dropped the width slider: every face draws at its default width
+        val styles = read.mapValues { (f, s) -> s.copy(widthPct = Themes.of(theme).clockDefaults(f).widthPct) }
         return AppConfig(
             theme = theme,
             styles = styles,
@@ -110,16 +125,29 @@ object ConfigCodec {
                 (0 until a.length()).mapNotNull {
                     runCatching { a.getJSONObject(it).let { x -> DDay(x.getString("name"), LocalDate.parse(x.getString("date"))) } }.getOrNull()
                 }
-            } ?: d.ddays,
+            }?.let { Migrations.ddays(it, v) } ?: d.ddays,
             city = o.optJSONObject("city")?.let { runCatching { city(it) }.getOrNull() } ?: d.city,
             worldCities = o.optJSONArray("worldCities")?.let { a -> (0 until a.length()).mapNotNull { runCatching { city(a.getJSONObject(it)) }.getOrNull() } } ?: d.worldCities,
             usageEnabled = o.optBoolean("usageEnabled", d.usageEnabled),
-            sleepSound = enumOf(o, "sleepSound", d.sleepSound),
+            sleepSound = if (o.optString("sleepSound") in OLD_NOISE) SleepSound.WHITE else enumOf(o, "sleepSound", d.sleepSound),
             sleepMinutes = o.optInt("sleepMinutes", d.sleepMinutes),
             focusMinutes = o.optInt("focusMinutes", d.focusMinutes),
             breakMinutes = o.optInt("breakMinutes", d.breakMinutes),
+            myClocks = Migrations.myClocks(o.optJSONArray("myClocks"), d.myClocks),
+            excludedCalendars = o.optJSONArray("excludedCalendars")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.toSet() } ?: d.excludedCalendars,
+            heatProtect = o.optBoolean("heatProtect", d.heatProtect),
+            moodAutoOffMin = o.optInt("moodAutoOffMin", d.moodAutoOffMin).takeIf { it in MOOD_AUTO_OFF_MIN } ?: d.moodAutoOffMin,
+            nightNotifQuiet = o.optBoolean("nightNotifQuiet", d.nightNotifQuiet),
+            photoIntervalSec = o.optInt("photoIntervalSec", d.photoIntervalSec).takeIf { it in PHOTO_INTERVAL_SEC } ?: d.photoIntervalSec,
         )
     }
+
+    /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
+    private val OLD_EFFECTS = setOf("RAINBOW", "GLASS")
+    private val OLD_NOISE = setOf("PINK", "BROWN")
+
+    private fun effect(o: JSONObject, def: Effect): Effect =
+        if (o.optString("effect") in OLD_EFFECTS) Effect.SOLID else enumOf(o, "effect", def)
 
     private fun style(s: ClockStyle) = JSONObject().apply {
         put("font", s.font.name); put("weight", s.weight); put("sizePct", s.sizePct); put("widthPct", s.widthPct)
@@ -135,7 +163,7 @@ object ConfigCodec {
     private fun style(o: JSONObject, b: ClockStyle) = b.copy(
         font = enumOf(o, "font", b.font), weight = o.optInt("weight", b.weight), sizePct = o.optInt("sizePct", b.sizePct),
         widthPct = o.optInt("widthPct", b.widthPct), color = o.optLong("color", b.color), color2 = o.optLong("color2", b.color2),
-        effect = enumOf(o, "effect", b.effect), background = enumOf(o, "background", b.background),
+        effect = effect(o, b.effect), background = enumOf(o, "background", b.background),
         bgColor = o.optLong("bgColor", b.bgColor), bgColor2 = o.optLong("bgColor2", b.bgColor2),
         numerals = enumOf(o, "numerals", b.numerals), layout = enumOf(o, "layout", b.layout),
         showInfo = o.optBoolean("showInfo", b.showInfo),

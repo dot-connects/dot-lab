@@ -1,6 +1,8 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.Board
+import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -8,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class BoardOpsTest {
-    private val c = AppConfig() // 7 preset boards, pages 3..9
+    private val c = AppConfig() // 5 preset boards, pages 3..7
 
     @Test fun deleteKeepsStartOnTheSameBoard() {
         val ids = c.boards.map { it.id }
@@ -34,7 +36,8 @@ class BoardOpsTest {
     }
 
     @Test fun relayoutKeepsCardsAndPads() {
-        val b = c.boards.first { it.layout == Layout.FOUR }
+        // r10: the 수능 preset (the only FOUR default) is gone
+        val b = Board("four", "four", Layout.FOUR, listOf(CardType.DDAY, CardType.CLOCK, CardType.CALENDAR, CardType.AGENDA).map { listOf(it) })
         val smaller = BoardOps.withLayout(b, Layout.TWO)
         assertEquals(b.slots.take(2), smaller.slots)
         assertEquals(4, BoardOps.withLayout(smaller, Layout.FOUR).slots.size)

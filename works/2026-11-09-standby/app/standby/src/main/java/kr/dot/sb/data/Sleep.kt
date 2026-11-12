@@ -38,9 +38,7 @@ class NoiseGen(val sound: SleepSound, seed: Long = System.nanoTime()) {
     private fun brown(): Float { brown = (brown + 0.02f * white()) / 1.02f; return brown * 3.5f }
 
     private fun sample(): Float = when (sound) {
-        SleepSound.WHITE -> white() * 0.5f
-        SleepSound.PINK -> pink() * 0.9f
-        SleepSound.BROWN -> brown() * 0.9f
+        SleepSound.WHITE -> brown() * 0.9f   // r10: the one "백색소음" is the old brown noise
         SleepSound.RAIN -> {
             val w = white()
             if (rnd.nextFloat() < 0.0006f) drop = 0.5f + rnd.nextFloat() * 0.4f

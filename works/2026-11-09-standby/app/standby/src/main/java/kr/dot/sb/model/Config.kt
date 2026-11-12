@@ -24,17 +24,14 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int) {
     THIN("얇게", "StandBy 솔라", 350),
 }
 
-enum class Effect(val ko: String) { SOLID("단색"), TWO_COLOR("두 색"), RAINBOW("무지개"), GLASS("유리"), GLOW("빛 번짐") }
+/** r10 dropped RAINBOW and GLASS; [kr.dot.sb.settings.ConfigCodec] reads them as SOLID. */
+enum class Effect(val ko: String) { SOLID("단색"), TWO_COLOR("두 색"), GLOW("빛 번짐") }
 enum class Background(val ko: String) { BLACK("검정"), COLOR("단색"), GRADIENT("그라데이션") }
-enum class Numerals(val ko: String, val digits: String) {
-    LATN("서양 (0123)", "0123456789"),
-    ARAB("아랍 (٠١٢٣)", "٠١٢٣٤٥٦٧٨٩"),
-    DEVA("데바나가리 (०१२३)", "०१२३४५६७८९"),
-    BENG("벵골 (০১২৩)", "০১২৩৪৫৬৭৮৯"),
-    KHMR("크메르 (០១២៣)", "០១២៣៤៥៦៧៨៩"),
-    MYMR("미얀마 (၀၁၂၃)", "၀၁၂၃၄၅၆၇၈၉");
+/** r10: Latin digits only (the other numeral systems and their UI are gone; stored values read as LATN). */
+enum class Numerals(val ko: String) {
+    LATN("서양 (0123)");
 
-    fun convert(s: String): String = if (this == LATN) s else s.map { c -> if (c in '0'..'9') digits[c - '0'] else c }.joinToString("")
+    fun convert(s: String): String = s
 }
 /**
  * The look of every StandBy surface. r5: A = iPhone (default), B = newspaper front page, C = mood lamp; r9 adds seven
@@ -75,7 +72,10 @@ enum class AnalogTicks(val ko: String) { IPHONE("기본"), SHORT("짧게"), HOUR
 
 /** Full-screen clock faces in vertical-swipe order (spec C1), plus the two other places a styled time appears. */
 enum class FaceId(val ko: String) {
-    DIGITAL("디지털"), ANALOG("아날로그"), WORLD("세계"), SOLAR("솔라"), FLOAT("플로트"), DESK("책상"), PHOTOS_TIME("사진 위 시간");
+    DIGITAL("디지털"), ANALOG("아날로그"), WORLD("세계"), SOLAR("솔라"), FLOAT("플로트"), DESK("책상"), PHOTOS_TIME("사진 위 시간"),
+    // r10 clock gallery (plan-r10 Tasks 6-9); until their renderer lands they draw as DIGITAL
+    THIN("가는 선"), SPLIT("시·분 나눔"), COLOR_BLOCK("색 블록"), STICKER("스티커"), BALLS("공 숫자"), FLIP("플립"), LED("LED"),
+    LCD("액정"), DOT_MATRIX("전광판"), WALL("벽시계"), CALENDAR("달력과 시계"), HANGUL("한글 시계"), DAY_BAR("하루 막대"), RIM("테두리 초");
 
     companion object { val CLOCKS = listOf(DIGITAL, ANALOG, WORLD, SOLAR, FLOAT) }
 }
@@ -108,7 +108,9 @@ data class ClockStyle(
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */
         fun default(face: FaceId): ClockStyle = when (face) {
-            FaceId.DIGITAL, FaceId.DESK -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
+            FaceId.DIGITAL, FaceId.DESK, FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS, FaceId.FLIP,
+            FaceId.LED, FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
+            -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
             FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFF4D9BEF)
             FaceId.SOLAR -> ClockStyle(
                 FontId.THIN, 350, color = 0xFFDCCAF7, color2 = 0xFF9DF0F7, effect = Effect.TWO_COLOR,
@@ -176,7 +178,8 @@ data class Board(
 enum class NightMode(val ko: String) { AUTO("자동 (조도)"), SCHEDULE("시간 예약"), OFF("끔") }
 enum class DisplayOff(val ko: String) { AUTO("자동"), AFTER_20S("20초 후"), NEVER("안 함") }
 enum class UnfoldAction(val ko: String) { BOOK_BOARD("책 보드"), MOOD_LIGHT("무드등") }
-enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), FIRE("장작불"), WHITE("백색소음"), PINK("핑크 노이즈"), BROWN("브라운 노이즈") }
+/** r10: one "백색소음" (the old brown-noise generator); stored PINK/BROWN read as WHITE. */
+enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), FIRE("장작불"), WHITE("백색소음") }
 
 /** Sleep timer choices (settings chips, the sleep card's minutes chip). */
 val SLEEP_MINUTES = listOf(15, 30, 45, 60, 90)
@@ -221,7 +224,7 @@ data class AppConfig(
     val glowStartMinBefore: Int = 0,
     val glowRampSec: Int = 6,
     val onUnfold: UnfoldAction = UnfoldAction.BOOK_BOARD,
-    val ddays: List<DDay> = listOf(DDay("수능", LocalDate.of(2026, 11, 19))),
+    val ddays: List<DDay> = emptyList(),
     val city: City = City("서울", 37.5665, 126.9780),
     val worldCities: List<City> = listOf(City("서울", 37.5665, 126.9780)),
     val usageEnabled: Boolean = true,
@@ -236,7 +239,22 @@ data class AppConfig(
     val boardBgColor: Long = 0xFF1A1430,
     val textSize: TextSize = TextSize.NORMAL,
     val analogStyle: AnalogStyle = AnalogStyle.ROUND,
+    /** Faces of the clocks page, in swipe order (r10). A save without it (r9 and older) gets the old five. */
+    val myClocks: List<FaceId> = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG),
+    /** Calendars hidden from agenda/calendar cards, keyed "accountType|accountName|calendarName" (ids get reused). */
+    val excludedCalendars: Set<String> = emptySet(),
+    /** Dim to 35 % while the battery is hot (r10). */
+    val heatProtect: Boolean = true,
+    /** Unfold mood light turns itself off after this many minutes; 0 = never. One of [MOOD_AUTO_OFF_MIN]. */
+    val moodAutoOffMin: Int = 0,
+    /** At night a notification never wakes a screen that is off (the alarm always does). */
+    val nightNotifQuiet: Boolean = true,
+    /** Seconds per photo on the photos page. One of [PHOTO_INTERVAL_SEC]. */
+    val photoIntervalSec: Int = 15,
 )
+
+val MOOD_AUTO_OFF_MIN = listOf(0, 3, 10, 15)
+val PHOTO_INTERVAL_SEC = listOf(10, 15, 30, 60, 300)
 
 object Presets {
     private fun b(id: String, name: String, layout: Layout, vararg cards: CardType, face: FaceId = FaceId.DIGITAL) =
@@ -249,8 +267,6 @@ object Presets {
         b("desk", "작업 책상", Layout.BIG2, CardType.CLOCK, CardType.TIMER, if (kr.dot.sb.data.UsageFeature.enabled) CardType.USAGE else CardType.TIMER),
         b("music", "음악", Layout.TWO, CardType.CLOCK, CardType.MUSIC),
         b("bed", "잠자리", Layout.TWO, CardType.CLOCK, CardType.SLEEP),
-        b("exam", "수능", Layout.FOUR, CardType.DDAY, CardType.CLOCK, CardType.CALENDAR, CardType.AGENDA),
         b("book", "책 (펼침)", Layout.BIG2, CardType.MEMORIES, CardType.WEATHER, CardType.CALENDAR),
-        b("video", "영상", Layout.ONE, CardType.MUSIC),   // r9: one media card plays video too
     )
 }

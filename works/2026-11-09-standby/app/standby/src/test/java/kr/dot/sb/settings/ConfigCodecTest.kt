@@ -14,6 +14,7 @@ import kr.dot.sb.model.FontId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.Numerals
+import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.Board
@@ -27,6 +28,7 @@ import kr.dot.sb.ui.theme.withTheme
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Test
 import java.time.LocalDate
@@ -35,8 +37,8 @@ class ConfigCodecTest {
     private fun changed(): AppConfig {
         val d = AppConfig()
         val digital = d.clockStyle(FaceId.DIGITAL).copy(
-            font = FontId.SLAB, weight = 640, sizePct = 85, widthPct = 112, color = 0xFF123456, effect = Effect.GLASS,
-            background = Background.GRADIENT, numerals = Numerals.DEVA, analogNumbers = AnalogNumbers.ROMAN, showInfo = false,
+            font = FontId.SLAB, weight = 640, sizePct = 85, color = 0xFF123456, effect = Effect.GLOW,
+            background = Background.GRADIENT, analogNumbers = AnalogNumbers.ROMAN, showInfo = false,
         )
         return d.copy(
             styles = d.styles + (FaceId.DIGITAL to digital),
@@ -49,6 +51,9 @@ class ConfigCodecTest {
             city = City("부산", 35.1796, 129.0756), worldCities = listOf(City("도쿄", 35.6762, 139.6503)),
             usageEnabled = false, focusMinutes = 50, breakMinutes = 10, sleepMinutes = 90, theme = Theme.MOODLIGHT,
             boardBg = BoardBg.AURORA, boardBgColor = 0xFF223344, textSize = TextSize.LARGE, analogStyle = AnalogStyle.BIG4,
+            sleepSound = SleepSound.WAVES, myClocks = listOf(FaceId.WALL, FaceId.DIGITAL),
+            excludedCalendars = setOf("com.google|a@b.c|Work", "LOCAL|phone|Holidays"), heatProtect = false,
+            moodAutoOffMin = 10, nightNotifQuiet = false, photoIntervalSec = 60,
         )
     }
 
@@ -82,7 +87,7 @@ class ConfigCodecTest {
 
     @Test fun emptyOrBrokenSavesGiveDefaults() {
         assertEquals(AppConfig(), ConfigCodec.decode(null))
-        assertEquals(AppConfig(), ConfigCodec.decode("{}"))
+        assertEquals(AppConfig(myClocks = Migrations.OLD_CLOCKS), ConfigCodec.decode("{}"))   // no myClocks = an upgrade
         assertEquals(AppConfig(), ConfigCodec.decode("not json {{{"))
     }
 
@@ -142,7 +147,7 @@ class ConfigCodecTest {
     @Test fun r9EditEqualToTheR8LookSurvivesARestart() {
         val edit = Migrations.r8Default(FaceId.DIGITAL)
         val back = ConfigCodec.decode(ConfigCodec.encode(AppConfig(theme = Theme.PAPER, styles = mapOf(FaceId.DIGITAL to edit))))
-        assertEquals(edit, back.styles[FaceId.DIGITAL])      // a versioned save skips the r8 "untouched" drop
+        assertEquals(edit.copy(widthPct = 100), back.styles[FaceId.DIGITAL])      // a versioned save skips the r8 "untouched" drop
     }
 
     @Test fun r8DuoDialBecomesTheDuoStyleOnlyWhereItWasSeen() {
@@ -195,6 +200,96 @@ class ConfigCodecTest {
         // a duplicated board never shares a hosted widget
         val dup = BoardOps.duplicate(c, 0).boards[1]
         assertTrue(dup.options.values.all { it.widgetId == null })
+    }
+
+    // ---- r10 (plan-r10 Task 2)
+
+    /** [c] saved by r10, then rewritten as a v9 save: "v" = 9 and no fields r9 did not have. */
+    private fun v9(c: AppConfig, edit: (JSONObject) -> Unit = {}): String = JSONObject(ConfigCodec.encode(c)).apply {
+        put("v", 9)
+        listOf("myClocks", "excludedCalendars", "heatProtect", "moodAutoOffMin", "nightNotifQuiet", "photoIntervalSec").forEach { remove(it) }
+        edit(this)
+    }.toString()
+
+    private fun storedStyle(face: FaceId, vararg kv: Pair<String, Any>): (JSONObject) -> Unit = { o ->
+        o.getJSONObject("styles").getJSONObject(face.name).apply { kv.forEach { (k, v) -> put(k, v) } }
+    }
+
+    private val edited = AppConfig(styles = mapOf(FaceId.DIGITAL to AppConfig().clockStyle(FaceId.DIGITAL).copy(sizePct = 80)))
+
+    @Test fun removedEffectsReadAsSolid() {   // (a)
+        for (e in listOf("RAINBOW", "GLASS")) {
+            assertEquals(Effect.SOLID, ConfigCodec.decode(v9(edited, storedStyle(FaceId.DIGITAL, "effect" to e))).styles[FaceId.DIGITAL]!!.effect)
+        }
+        // an explicit alias, not the face's base effect: solar's base is TWO_COLOR
+        val solar = AppConfig(styles = mapOf(FaceId.SOLAR to AppConfig().clockStyle(FaceId.SOLAR).copy(sizePct = 80)))
+        assertEquals(Effect.SOLID, ConfigCodec.decode(v9(solar, storedStyle(FaceId.SOLAR, "effect" to "GLASS"))).styles[FaceId.SOLAR]!!.effect)
+    }
+
+    @Test fun otherNumeralsReadAsLatin() {   // (b)
+        assertEquals(Numerals.LATN, ConfigCodec.decode(v9(edited, storedStyle(FaceId.DIGITAL, "numerals" to "ARAB"))).styles[FaceId.DIGITAL]!!.numerals)
+    }
+
+    @Test fun pinkAndBrownNoiseReadAsWhite() {   // (c)
+        for (s in listOf("PINK", "BROWN")) assertEquals(SleepSound.WHITE, ConfigCodec.decode(v9(AppConfig()) { it.put("sleepSound", s) }).sleepSound)
+        assertEquals(SleepSound.FIRE, ConfigCodec.decode(v9(AppConfig()) { it.put("sleepSound", "FIRE") }).sleepSound)
+    }
+
+    @Test fun storedWidthGivesWayToTheFaceDefault() {   // (d)
+        val c = ConfigCodec.decode(v9(edited.copy(theme = Theme.NEON), storedStyle(FaceId.DIGITAL, "widthPct" to 127)))
+        assertEquals(Themes.of(Theme.NEON).clockDefaults(FaceId.DIGITAL).widthPct, c.styles[FaceId.DIGITAL]!!.widthPct)
+        assertEquals(80, c.styles[FaceId.DIGITAL]!!.sizePct)   // the rest of the edit stays
+    }
+
+    @Test fun videoAndExamPresetsLeaveTheDefaultsButStoredOnesStay() {   // (e)
+        assertTrue(AppConfig().boards.none { it.id == "video" || it.id == "exam" })
+        val old = Board("video", "v", Layout.ONE, listOf(listOf(CardType.MUSIC)))
+        val exam = Board("exam", "e", Layout.FOUR, listOf(listOf(CardType.DDAY), listOf(CardType.CLOCK), listOf(CardType.CALENDAR), listOf(CardType.AGENDA)))
+        assertEquals(listOf("video", "exam"), ConfigCodec.decode(v9(AppConfig(boards = listOf(old, exam)))).boards.map { it.id })
+    }
+
+    @Test fun newFieldsRoundTrip() {   // (f)
+        val c = AppConfig(
+            myClocks = listOf(FaceId.HANGUL, FaceId.RIM), excludedCalendars = setOf("a|b|c"), heatProtect = false,
+            moodAutoOffMin = 15, nightNotifQuiet = false, photoIntervalSec = 300,
+        )
+        assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
+        // out-of-menu values fall back to the default
+        val bad = ConfigCodec.decode(JSONObject(ConfigCodec.encode(c)).put("moodAutoOffMin", 7).put("photoIntervalSec", 1).toString())
+        assertEquals(AppConfig().moodAutoOffMin, bad.moodAutoOffMin)
+        assertEquals(AppConfig().photoIntervalSec, bad.photoIntervalSec)
+    }
+
+    @Test fun upgradeKeepsTheOldFiveFreshInstallGetsTheNewFour() {   // (g)
+        assertEquals(listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT), ConfigCodec.decode(v9(AppConfig())).myClocks)
+        assertEquals(listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG), ConfigCodec.decode(null).myClocks)
+        assertEquals(listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG), AppConfig().myClocks)
+    }
+
+    @Test fun unknownClockIdsDropEmptyListIsTheDefault() {   // (h)
+        fun my(vararg ids: String) = ConfigCodec.decode(JSONObject(ConfigCodec.encode(AppConfig())).put("myClocks", JSONArray(ids.toList())).toString()).myClocks
+        assertEquals(listOf(FaceId.LED, FaceId.DIGITAL), my("LED", "HOLOGRAM", "DIGITAL", "LED"))
+        assertEquals(AppConfig().myClocks, my())
+        assertEquals(AppConfig().myClocks, my("HOLOGRAM"))
+    }
+
+    @Test fun v9EditsSurviveAV10SaveAndLoad() {   // (i) the r8 drop is keyed on v < 9, not on the current version
+        val digital = Migrations.r8Default(FaceId.DIGITAL).copy(widthPct = 100)   // an edit equal to the r8 look
+        val analog = AppConfig().clockStyle(FaceId.ANALOG).copy(analogNumbers = AnalogNumbers.DUO, handColor = 0xFF112233)
+        val c = AppConfig(theme = Theme.PAPER, styles = mapOf(FaceId.DIGITAL to digital, FaceId.ANALOG to analog))
+        val once = ConfigCodec.decode(v9(c))
+        assertEquals(c.styles, once.styles)
+        assertEquals(AnalogStyle.ROUND, once.analogStyle)
+        assertEquals(once, ConfigCodec.decode(ConfigCodec.encode(once)))
+    }
+
+    @Test fun v10DropsExactlyTheOldExamDday() {   // (j)
+        val exam = DDay("수능", LocalDate.of(2026, 11, 19))
+        val keep = listOf(DDay("수능", LocalDate.of(2027, 11, 18)), DDay("생일", LocalDate.of(2026, 11, 19)))
+        assertEquals(keep, ConfigCodec.decode(v9(AppConfig(ddays = listOf(exam) + keep))).ddays)
+        assertTrue(AppConfig().ddays.isEmpty())
+        // a v10 user who adds it back keeps it
+        assertEquals(listOf(exam), ConfigCodec.decode(ConfigCodec.encode(AppConfig(ddays = listOf(exam)))).ddays)
     }
 
     private fun styleJson(s: ClockStyle): JSONObject = JSONObject(ConfigCodec.encode(AppConfig(styles = mapOf(FaceId.DIGITAL to s)))).getJSONObject("styles").getJSONObject("DIGITAL")
