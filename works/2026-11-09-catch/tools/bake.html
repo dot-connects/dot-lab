@@ -11,6 +11,8 @@ R.setPixelRatio(1); R.setSize(256, 256, false); R.outputColorSpace = THREE.SRGBC
 function shot(spec, { yaw = 0, pose = "idle", roll = 0, sx = 1, sy = 1, frame }) {
   const c = makeCreature(spec), scene = new THREE.Scene(), holder = new THREE.Group();
   holder.add(c.object3d); scene.add(holder);
+  // the creature's own contact shadow disc would bake into the picture (walls, AR): hide it like creature.js does
+  c.object3d.children.forEach(o => { if (o.isMesh && o.renderOrder === -1) o.visible = false; });
   c.setPose(pose); for (let i = 0; i < (pose === "hop" ? 9 : 2); i++) c.update(0.016);
   c.object3d.rotation.y = yaw * Math.PI / 180;
   holder.rotation.z = roll * Math.PI / 180; holder.scale.set(sx, sy, sx);
@@ -28,14 +30,14 @@ for (const id of ids) {
   // one framing per critter (from its front view, with room for the lying pose) so every picture has the same scale
   const probe = makeCreature(spec); probe.update(0.016);
   const box = new THREE.Box3().setFromObject(probe.object3d), sz = box.getSize(new THREE.Vector3()), mid = box.getCenter(new THREE.Vector3());
-  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.72 / Math.tan(Math.PI / 12) };
+  const frame = { mid, d: Math.max(sz.x, sz.y) * 0.56 / Math.tan(Math.PI / 12) };
   const o = {};
   for (let k = 0; k < 8; k++) o["dir" + k] = shot(spec, { yaw: k * 45, frame });
   o.front = o.dir0;
   o.smile = shot(spec, { pose: "caught", frame });
   o.walkA = shot(spec, { yaw: 90, frame });
   o.walkB = shot(spec, { yaw: 90, pose: "hop", frame });
-  o.sleep = shot(spec, { yaw: 90, pose: "caught", roll: -80, frame });
+  o.sleep = shot(spec, { yaw: 90, pose: "caught", sx: 1.2, sy: 0.72, frame });
   o.curl = shot(spec, { pose: "caught", sx: 1.15, sy: 0.7, frame });
   out[id] = o;
   window.__p = (window.__p || 0) + 1;
