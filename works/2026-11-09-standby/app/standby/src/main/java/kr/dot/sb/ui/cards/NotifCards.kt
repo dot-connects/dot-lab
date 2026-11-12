@@ -44,7 +44,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.graphicsLayer
@@ -372,7 +376,7 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clea
             TextBtn(e, "접기", e.ink.accText, onClose)
             if (clearAll != null && e.w >= 200.dp) TextBtn(e, "모두 지우기", e.ink.ink2, clearAll)
         }
-        LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        LazyColumn(Modifier.weight(1f).fillMaxWidth().fadeBottom(36.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             itemsIndexed(list, key = { _, n -> n.key }) { i, n ->
                 val text = if (n.hidden) "내용 숨김" else n.text
                 val time = @Composable { if (e.w >= 200.dp) Txt(ago(n.postedAtEpochMs, state), e.meta, e.ink.ink2, weight = 500, num = true) }
@@ -403,3 +407,11 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clea
         }
     }
 }
+
+/** The open list fades out over its last [h] (mockup: mask-image to transparent over 36 px), so cut plates read as "more". */
+private fun Modifier.fadeBottom(h: Dp): Modifier = graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+    .drawWithContent {
+        drawContent()
+        val f = (1f - h.toPx() / size.height).coerceIn(0f, 1f)
+        drawRect(Brush.verticalGradient(0f to Color.Black, f to Color.Black, 1f to Color.Transparent), blendMode = BlendMode.DstIn) // literal-ok: alpha mask
+    }

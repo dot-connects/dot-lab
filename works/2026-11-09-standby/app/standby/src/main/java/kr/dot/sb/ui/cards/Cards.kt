@@ -48,7 +48,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
@@ -85,6 +87,7 @@ import kr.dot.sb.ui.screens.clockText
 import kr.dot.sb.ui.theme.ThemedDigits
 import kotlin.math.cos
 import kotlin.math.sin
+import kotlin.math.roundToInt
 import kr.dot.sb.ui.theme.Themes
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.ui.text.AnnotatedString
@@ -868,13 +871,22 @@ private fun CityLine(e: Env, wx: WeatherInfo, sky: Boolean) {
 private fun TempRow(e: Env, wx: WeatherInfo, capH: Dp, maxW: Dp, color: Color) {
     val cap = min(capH, maxW * 0.8f) // tall narrow slots: the glyph + ring alone would take the whole width
     val ico = cap * 0.4f
-    val deg = cap * 0.2f
-    Row {
-        Hero(e, AnnotatedString("${wx.tempC}"), cap, color, maxW - ico - deg - cap * 0.2f)
-        Spacer(Modifier.width(cap * 0.12f)) // italic digits lean past their advance
-        Canvas(Modifier.size(deg)) { drawCircle(color, size.minDimension * 0.38f, style = Stroke(size.minDimension * 0.22f)) }
-        Spacer(Modifier.width(cap * 0.08f))
+    val deg = cap * 0.28f
+    Layout({
+        Hero(e, AnnotatedString("${wx.tempC}"), cap, color, maxW - ico - deg - cap * 0.16f)
+        Canvas(Modifier.fillMaxSize()) { val sw = size.minDimension * 0.17f; drawCircle(color, (size.minDimension - sw) / 2, style = Stroke(sw)) }
         WxIcon(e, weatherIc(wx.condition), Modifier.size(ico))
+    }) { ms, _ ->
+        // the ring is a superscript "°" of the digits as drawn (Hero shrinks to its width): 0.28 of their cap, top-aligned
+        val hero = ms[0].measure(Constraints())
+        val d = (hero.height * 0.28f).roundToInt().coerceAtLeast(1)
+        val gap = (hero.height * 0.08f).roundToInt() // italic digits lean past their advance
+        val ring = ms[1].measure(Constraints.fixed(d, d))
+        val icon = ms[2].measure(Constraints())
+        val ix = hero.width + gap + d + (cap * 0.08f).roundToPx()
+        layout(ix + icon.width, maxOf(hero.height, icon.height)) {
+            hero.place(0, 0); ring.place(hero.width + gap, 0); icon.place(ix, 0)
+        }
     }
 }
 

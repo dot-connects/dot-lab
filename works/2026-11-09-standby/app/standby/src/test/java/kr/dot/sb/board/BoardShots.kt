@@ -97,6 +97,10 @@ class BoardShots(private val name: String, private val device: Device, private v
                 val b = Board("card", t.name, layout, listOf(listOf(t)))
                 out += arrayOf("card-${t.name.lowercase()}-$cls", d, b, "full")
             }
+            // the narrowest slots: Flip THREE (~110 dp wide), where Task 21 fixed SleepOne / TempRow crashes
+            for (t in listOf(CardType.SLEEP, CardType.WEATHER, CardType.MUSIC, CardType.NOTIF_LIST, CardType.CLOCK)) {
+                out += arrayOf("card-${t.name.lowercase()}-XSt", Device.FLIP, Board("card", t.name, Layout.THREE, listOf(listOf(t))), "full")
+            }
             // media: the cover with its controls up, and both shapes without art (light themes must still read)
             for (t in listOf(CardType.MUSIC, CardType.VIDEO)) {
                 val one = Board("card", t.name, Layout.ONE, listOf(listOf(t)))

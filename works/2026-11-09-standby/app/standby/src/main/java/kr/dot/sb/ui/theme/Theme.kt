@@ -173,8 +173,6 @@ class StandbyTheme(
     val radius: Float,
     /** Weather glyphs in colour (yellow sun, white cloud) instead of one ink. */
     val colorIcons: Boolean,
-    /** Now Playing background washed with the album art colour. */
-    val artTint: Boolean,
     val family: Family = Family.IPHONE,
     /** Label rows draw their glyph (A, C); B labels are bare kickers. */
     val labelIcons: Boolean = true,
@@ -200,18 +198,14 @@ object Themes {
         time = Fonts.clock(FontId.BOLD, 600),
         timeCap = 0.7275f,
         clockFamily = { f, w -> Fonts.clock(f, w) },
-        clockDefaults = { ClockStyle.default(it) },
+        clockDefaults = r9Defaults(ThemeTokens.IPHONE),
         ramp = Ramp.IPHONE,
         minText = 0.038f,
         surface = Surface.NONE,
         radius = 0.12f,
         colorIcons = true,
-        artTint = true,
         tokens = ThemeTokens.IPHONE,
     )
-
-    private const val P_FG = 0xFFEFE8DC
-    private const val P_ACC = 0xFFFF5533
 
     /** B 신문 1면 (mockup r5 B): Instrument Serif numerals and clock, Pretendard words, hairline rules, one accent. */
     val PAPER = StandbyTheme(
@@ -225,25 +219,12 @@ object Themes {
         timeCap = 0.70f,
         // "명조" is the newspaper serif in this theme; every other choice keeps its own font
         clockFamily = { f, w -> if (f == FontId.SERIF) Fonts.instrument else Fonts.clock(f, w) },
-        clockDefaults = { face ->
-            when (face) {
-                FaceId.ANALOG -> ClockStyle(
-                    FontId.SERIF, 400, color = P_FG, analogNumbers = AnalogNumbers.FOUR, numeralColor = P_FG,
-                    handColor = P_FG, secondColor = P_ACC, weekdayColor = P_FG, tickColor = P_FG,
-                )
-                FaceId.SOLAR -> ClockStyle(
-                    FontId.SERIF, 400, color = P_FG, background = Background.GRADIENT, bgColor = 0xFF231D17, bgColor2 = 0xFF3D3025,
-                )
-                FaceId.PHOTOS_TIME -> ClockStyle(FontId.SERIF, 400, color = 0xFFFFFFFF)
-                else -> ClockStyle(FontId.SERIF, 400, color = P_FG)
-            }
-        },
+        clockDefaults = r9Defaults(ThemeTokens.PAPER),
         ramp = Ramp.IPHONE,
         minText = 0.038f,
         surface = Surface.RULE,
         radius = 0f,
         colorIcons = false,
-        artTint = false,
         family = Family.PAPER,
         labelIcons = false,
         labelTracking = 0.08f,
@@ -261,32 +242,12 @@ object Themes {
         time = Fonts.nunitoHeavy,
         timeCap = 0.705f,
         clockFamily = { f, w -> Fonts.clock(f, w) },
-        clockDefaults = { face ->
-            when (face) {
-                FaceId.DIGITAL, FaceId.DESK -> ClockStyle(
-                    FontId.ROUNDED_HEAVY, 900, color = 0xFFFFDC8F, color2 = 0xFFFFB27A, effect = Effect.TWO_COLOR,
-                )
-                FaceId.ANALOG -> ClockStyle(
-                    FontId.ROUNDED, 900, color = 0xFFFFB27A, analogNumbers = AnalogNumbers.FOUR, numeralColor = 0xFFFFDC8F,
-                    handColor = 0xFFFFF3E6, secondColor = 0xFFFFB27A, weekdayColor = 0xFFFFF3E6, tickColor = 0xFFC2B2A2,
-                )
-                FaceId.SOLAR -> ClockStyle.SOLAR_SETS[1].let { c ->
-                    ClockStyle(
-                        FontId.ROUNDED, 800, color = c[2], color2 = c[3], effect = Effect.TWO_COLOR,
-                        background = Background.GRADIENT, bgColor = c[0], bgColor2 = c[1],
-                    )
-                }
-                FaceId.WORLD -> ClockStyle(FontId.ROUNDED, 800, color = 0xFFFFB27A)
-                FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFFFFB27A)
-                FaceId.PHOTOS_TIME -> ClockStyle(FontId.ROUNDED_HEAVY, 900, color = 0xFFFFF3E6)
-            }
-        },
+        clockDefaults = r9Defaults(ThemeTokens.MOODLIGHT),
         ramp = Ramp.IPHONE,
         minText = 0.038f,
         surface = Surface.PLATE,
         radius = 0.16f,
         colorIcons = true,
-        artTint = true,
         family = Family.LAMP,
         tint = { type ->
             val p = Palette.LAMP
@@ -330,7 +291,7 @@ object Themes {
         id = id, palette = IPHONE.palette, words = IPHONE.words, wordsCap = IPHONE.wordsCap, numerals = IPHONE.numerals,
         numeralsCap = IPHONE.numeralsCap, time = IPHONE.time, timeCap = IPHONE.timeCap, clockFamily = IPHONE.clockFamily,
         clockDefaults = r9Defaults(tk), ramp = IPHONE.ramp, minText = IPHONE.minText, surface = IPHONE.surface,
-        radius = IPHONE.radius, colorIcons = IPHONE.colorIcons, artTint = IPHONE.artTint, tokens = tk,
+        radius = IPHONE.radius, colorIcons = IPHONE.colorIcons, tokens = tk,
     )
 
     val CANDLE = r9(Theme.CANDLE, ThemeTokens.CANDLE)
