@@ -1,8 +1,9 @@
 """Gate (plan-r9 Task 17): the public APK carries no secret, the personal APK does (proves the scan works).
 
-    python tools/check_secrets.py      -> builds both debug APKs, exit 1 on a leak or a scan that finds nothing
+    python tools/check_secrets.py      -> builds the debug and release APKs of both flavours, exit 1 on a leak or a
+                                          scan that finds nothing
 
-Builds :standby:assemblePublicDebug + :standby:assemblePersonalDebug (JAVA_HOME must point at JDK 17), then scans
+Builds :standby:assemble{Public,Personal}{Debug,Release} (JAVA_HOME must point at JDK 17), then scans
 every entry of each APK (classes*.dex, resources.arsc, res/, assets/ …) for each value of
 ../../../../status-widget/secrets.properties, as UTF-8 and UTF-16LE bytes. Prints key names and counts only, never a
 value. The APKs stay in the build folder; do not send them anywhere.
@@ -33,9 +34,12 @@ def load() -> dict[str, str]:
     return out
 
 
-def apk(flavour: str) -> Path:
+BUILDS = ("debug", "release")
+
+
+def apk(flavour: str, build: str) -> Path:
     root = Path(os.environ.get("SB_BUILD_DIR") or Path(os.environ["LOCALAPPDATA"]) / "standby-build")
-    return root / "standby" / "outputs" / "apk" / flavour / "debug" / f"standby-{flavour}-debug.apk"
+    return root / "standby" / "outputs" / "apk" / flavour / build / f"standby-{flavour}-{build}.apk"
 
 
 def hits(path: Path, secrets: dict[str, str]) -> dict[str, int]:
@@ -59,15 +63,16 @@ def main() -> int:
         print(f"check_secrets: FAIL - secrets.properties lacks {', '.join(missing)}: the scan could not prove anything")
         return 1
     gradle = APP / ("gradlew.bat" if os.name == "nt" else "gradlew")
-    r = subprocess.run([str(gradle), ":standby:assemblePublicDebug", ":standby:assemblePersonalDebug", "-q"], cwd=APP)
+    r = subprocess.run([str(gradle), *(f":standby:assemble{f}{b.title()}" for f in ("Public", "Personal") for b in BUILDS), "-q"], cwd=APP)
     if r.returncode:
         print("check_secrets: FAIL - APK build failed")
         return 1
     bad = []
     for flavour, want in (("public", False), ("personal", True)):
-        found = hits(apk(flavour), secrets)
-        print(f"{flavour}: " + ", ".join(f"{k} in {n} entries" for k, n in found.items()))
-        bad += [f"{flavour}: {k} {'missing' if want else 'LEAKED'}" for k, n in found.items() if (n > 0) != want]
+        for build in BUILDS:
+            found = hits(apk(flavour, build), secrets)
+            print(f"{flavour}-{build}: " + ", ".join(f"{k} in {n} entries" for k, n in found.items()))
+            bad += [f"{flavour}-{build}: {k} {'missing' if want else 'LEAKED'}" for k, n in found.items() if (n > 0) != want]
     print("\n".join(bad) if bad else "check_secrets: ok")
     return 1 if bad else 0
 

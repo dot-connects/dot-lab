@@ -76,6 +76,8 @@ object UsageParser {
         )
     }
 
+    private val STATES = setOf("busy", "wait", "idle", "off")
+
     /** dev, dev2, sync, lab; a session that is not running is "off". */
     fun dots(j: JSONObject): List<UsageSession> {
         val arr = j.optJSONArray("sessions")
@@ -83,7 +85,8 @@ object UsageParser {
         return DOTS.map { name ->
             val s = all.firstOrNull { it.optString("name") == name }
             fun long(k: String) = if (s == null || !s.has(k) || s.isNull(k)) null else s.getLong(k)
-            UsageSession(name, s?.optString("state", "off") ?: "off", long("ctx")?.toInt()?.coerceIn(0, 100), long("cache_until"))
+            // a state this build does not know (a newer PC feed) reads as off: the card has no words for it
+            UsageSession(name, s?.optString("state")?.takeIf { it in STATES } ?: "off", long("ctx")?.toInt()?.coerceIn(0, 100), long("cache_until"))
         }
     }
 

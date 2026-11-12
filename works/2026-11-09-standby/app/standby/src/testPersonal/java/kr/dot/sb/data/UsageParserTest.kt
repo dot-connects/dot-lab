@@ -36,6 +36,8 @@ class UsageParserTest {
         assertEquals(listOf("content" to "idle", "trading" to "idle"), u.bots)
         // an errored "work" section (one broken source) reads as off, not as a crash
         assertEquals(listOf("content" to "off", "trading" to "off"), UsageParser.bots(JSONObject("""{"work":{"error":"OSError"}}""")))
+        // a session state a newer PC feed adds reads as off (the card's state words would throw on it)
+        assertEquals("off", UsageParser.dots(JSONObject("""{"sessions":[{"name":"dev","state":"starting"}]}"""))[0].state)
     }
 
     @Test fun onlyPrivateAddressesGetTheToken() {
