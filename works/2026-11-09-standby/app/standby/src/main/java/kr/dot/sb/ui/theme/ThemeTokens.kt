@@ -72,12 +72,12 @@ object Contrast {
         return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
     }
 
-    /** [c] with its lightness moved away from the page (down when [light]) until it reaches 3:1 on every surface. */
-    fun fit(c: Color, surfaces: List<Color>, light: Boolean): Color {
+    /** [c] with its lightness moved away from the page (down when [light]) until it reaches [min] on every surface. */
+    fun fit(c: Color, surfaces: List<Color>, light: Boolean, min: Float = 3f): Color {
         val (h, s, l0) = Hsl.toHsl(c)
         var l = l0
         var out = c
-        while (surfaces.minOf { ratio(out, it) } < 3f && l in 0f..1f) {
+        while (surfaces.minOf { ratio(out, it) } < min && l in 0f..1f) {
             l += if (light) -0.01f else 0.01f
             out = Color.hsl(h, s, l.coerceIn(0f, 1f))
         }
@@ -135,7 +135,22 @@ data class ThemeTokens(
         roles = Roles.mono(NIGHT_INK, NIGHT_INK),
     )
 
+    /**
+     * A light theme on a dark board background (Task 20): the page colour becomes the ink, plates turn to white glass,
+     * accents and roles are lifted until they read on the dark page. Fonts and shapes stay the theme's.
+     */
+    fun onDark(): ThemeTokens {
+        val t = copy(bg = BgSpec(listOf(DARK_PAGE)), ink = bg.base, plate = rgba(0xFFFFFF12), plate2 = rgba(0xFFFFFF1F), light = false)
+        val s = t.surfaces
+        return t.copy(
+            accent = Contrast.fit(accent, s, false), accentText = Contrast.fit(accentText, s, false, 4.5f),
+            roles = Roles.derive(Roles.IOS, s, false),
+        )
+    }
+
     companion object {
+        /** The page [onDark] assumes: between the dark board presets (graphite, midnight, amber …). */
+        val DARK_PAGE = Color(0xFF111113)
         val NIGHT_INK = Color(0xFFB9A48C)
         val NIGHT_BG = BgSpec(listOf(Color.Black), glow = rgba(0xFFAA5A14), glowAt = Offset(0.5f, 1.15f))
 

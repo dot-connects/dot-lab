@@ -228,8 +228,8 @@ interface StandbyActions {
     fun openPhoto(uri: String) {}
     /** Photos page: theme swipe; null = 추천, else the album name. */
     fun photoTheme(bucket: String?) {}
-    /** Now Playing volume glyph: show the system volume panel. */
-    fun openVolume() {}
+    /** Pull-down panel theme preview: switch theme (through `withTheme`, saved like a settings edit). */
+    fun setTheme(theme: kr.dot.sb.model.Theme) {}
     /** Brightness bar: 0..1 for the window, applied live. */
     fun setBrightness(value: Float) {}
     fun exit() {}

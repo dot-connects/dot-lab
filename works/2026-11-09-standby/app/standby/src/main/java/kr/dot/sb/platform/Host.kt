@@ -27,6 +27,7 @@ import kr.dot.sb.data.HostCallbacks
 import kr.dot.sb.data.StandbyStateHolder
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.settings.SettingsActivity
+import kr.dot.sb.ui.theme.withTheme
 import kr.dot.sb.ui.screens.StandbyRoot
 import kr.dot.sb.ui.state.StandbyActions
 
@@ -81,9 +82,7 @@ class HostActions(
         }
     }
     override fun photoTheme(bucket: String?) = holder.photoTheme(bucket)
-    override fun openVolume() {
-        ctx.getSystemService(android.media.AudioManager::class.java).adjustStreamVolume(android.media.AudioManager.STREAM_MUSIC, android.media.AudioManager.ADJUST_SAME, android.media.AudioManager.FLAG_SHOW_UI)
-    }
+    override fun setTheme(theme: kr.dot.sb.model.Theme) = kr.dot.sb.settings.ConfigStore.update(ctx) { it.withTheme(theme) }
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
     override fun sleepToggle() = holder.sleepToggle()

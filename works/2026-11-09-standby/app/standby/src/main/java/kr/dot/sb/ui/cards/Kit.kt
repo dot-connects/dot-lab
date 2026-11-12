@@ -58,6 +58,7 @@ import androidx.compose.ui.text.font.FontWeight
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTheme
+import kr.dot.sb.ui.theme.drawnTheme
 import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.SizeClass
@@ -85,7 +86,7 @@ data class CardLook(
     companion object {
         /** A card alone (no board): the user's colour for [face] if they set one, else the theme accent. */
         fun of(config: AppConfig, face: FaceId = FaceId.DIGITAL): CardLook =
-            CardLook(config.styles[face]?.let { Color(it.color) } ?: Themes.of(config.theme).tokens.accent, textScale = config.textSize.f)
+            CardLook(config.styles[face]?.let { Color(it.color) } ?: config.drawnTheme().tokens.accent, textScale = config.textSize.f)
     }
 }
 

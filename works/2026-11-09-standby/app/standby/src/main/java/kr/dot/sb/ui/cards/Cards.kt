@@ -66,6 +66,7 @@ import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.state.WeatherInfo
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
@@ -115,11 +116,11 @@ fun CardView(
     menu: String? = null,
     /** Full-screen Now Playing: no plate, the media body shows ✕ (calls this) and stays put on tap. */
     close: (() -> Unit)? = null,
-) = ProvideTheme(config.theme) {
+) = ProvideTheme(config) {
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
-        val t = Themes.of(config.theme)
+        val t = LocalTheme.current
         val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t) }
         val today = state.now.toLocalDate()
         val e = remember(w, h, ink, look, slotId, today, t) {

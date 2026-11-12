@@ -56,6 +56,8 @@ fun PreviewFrame(
     modifier: Modifier = Modifier,
     maxHeight: Dp = Dp.Infinity,
     radius: Dp = 12.dp,
+    /** Night fraction of the page behind [content] (the pull-down panel's previews follow the screen). */
+    night: Float = 0f,
     overlay: @Composable BoxScope.(scale: Float) -> Unit = {},
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -65,7 +67,8 @@ fun PreviewFrame(
         val scale = min(maxWidth.value / w, cap.value / h)
         val shape = RoundedCornerShape(radius)
         Box(Modifier.size((w * scale).dp, (h * scale).dp).clip(shape).border(1.dp, SK.line, shape)) {
-            kr.dot.sb.ui.theme.ThemeBackground(kr.dot.sb.ui.theme.LocalTheme.current, 0f)
+            val (bg, custom) = kr.dot.sb.ui.theme.LocalBoardBg.current
+            kr.dot.sb.ui.theme.ThemeBackground(kr.dot.sb.ui.theme.LocalTheme.current, night, bg = bg, custom = custom)
             Box(
                 Modifier.layout { measurable, _ ->
                     val pw = w.dp.roundToPx()

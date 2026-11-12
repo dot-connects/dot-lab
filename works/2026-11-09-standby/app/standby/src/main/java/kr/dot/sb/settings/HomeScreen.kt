@@ -3,6 +3,13 @@ package kr.dot.sb.settings
 import kr.dot.sb.ui.theme.withTheme
 import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import kr.dot.sb.model.BoardBg
+import kr.dot.sb.model.TextSize
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +63,21 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv, update: Update = {
             Carousel(config) { full = true }
         }) {
             ThemePicker(config, update)
+            Section("배경 · 글자", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
+                item {
+                    ControlRow("배경") {
+                        ChipFlow(BoardBg.entries.map { it.ko }, config.boardBg.ordinal, { i -> update { it.copy(boardBg = BoardBg.entries[i]) } })
+                        if (config.boardBg == BoardBg.SOLID) {
+                            ColorPalette(config.boardBgColor, { c -> update { it.copy(boardBgColor = c) } }, BG_SWATCHES, Modifier.padding(top = 8.dp))
+                        }
+                    }
+                }
+                item {
+                    ControlRow("글자 크기", note = "알림 · 일정처럼 읽는 글씨만 바뀌어요. 시계 숫자는 그대로예요.") {
+                        Segmented(TextSize.entries.map { "${it.ko} ${(it.f * 100).toInt()}%" }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
+                    }
+                }
+            }
             Section("화면 구성") {
                 item { NavRow("화면", { nav.push(Routes.BOARDS) }, subtitle = "위젯 · 사진 · 시계 + 내 화면 ${config.boards.size}개") }
                 item { NavRow("시계 스타일", { nav.push(Routes.CLOCKS) }, subtitle = "서체, 색, 크기를 시계마다 따로") }
@@ -83,30 +105,35 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv, update: Update = {
     }
 }
 
+/** Dark picks for the "단색" board background (light ones would fight the dark themes' ink); the picker does the rest. */
+private val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12, 0xFF26142A, 0xFF1E1E20)
+
 /**
- * "테마" row (mockup r5): one tile per [Theme], each the real widgets page drawn in that theme, so what you tap is
- * what StandBy shows. Tap = switch (saved like every other setting).
+ * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it, no names, in a horizontal scroll, so
+ * what you tap is what StandBy shows. Tap = switch (saved like every other setting).
  */
 @Composable
 private fun ThemePicker(config: AppConfig, update: Update) {
     val state = remember(config.city, config.use24h) { Sample.state(config) }
     val board = remember(config.widgetLeft, config.widgetRight) { widgetsBoard(config) }
     val acc = LocalAccent.current
+    val list = rememberLazyListState((Theme.entries.indexOf(config.theme) - 1).coerceAtLeast(0))
     Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
         T("테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            // r9: the seven new themes join the picker in Task 20 (horizontal scroll of previews, no names)
-            Theme.entries.take(3).forEach { th ->
+        LazyRow(Modifier.fillMaxWidth(), list, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            items(Theme.entries) { th ->
                 val on = th == config.theme
-                Column(
-                    Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
-                        .clickable { update { it.withTheme(th) } }.padding(8.dp),
+                val cfg = remember(config, th) { config.withTheme(th) }
+                Box(
+                    Modifier.width(132.dp).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
+                        .then(if (on) Modifier.border(2.dp, acc, RoundedCornerShape(14.dp)) else Modifier).padding(8.dp),
                 ) {
-                    val cfg = remember(config, th) { config.withTheme(th) }
-                    PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
-                        BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                    kr.dot.sb.ui.theme.ProvideTheme(cfg) {
+                        PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
+                            BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                        }
                     }
-                    T(th.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.padding(top = 8.dp, start = 2.dp), maxLines = 1)
+                    Box(Modifier.matchParentSize().clickable { update { it.withTheme(th) } })
                 }
             }
         }

@@ -4,7 +4,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.junit4.createComposeRule
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
+import kr.dot.sb.THEMES
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
 import kr.dot.sb.ui.screens.RootImpl
@@ -13,24 +15,39 @@ import kr.dot.sb.ui.state.StandbyActions
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
+import org.robolectric.ParameterizedRobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The brightness bar over the clocks page, day and night → standby/build/shots/brightness/. */
-@RunWith(RobolectricTestRunner::class)
+/**
+ * The pull-down panel over the widgets page in every theme (+ IPHONE night), and light themes on a dark board
+ * background (Task 20: the dark twin) → build/shots/<theme>/brightness/.
+ */
+@RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
-class BrightnessBarShots {
+class BrightnessBarShots(private val name: String, private val night: Float, private val bar: Boolean, private val bg: BoardBg, private val device: Device, private val th: Theme) {
     @get:Rule val rule = createComposeRule()
 
-    private fun shot(name: String, night: Float, day: Float?) {
+    @Test fun shot() {
         rule.mainClock.autoAdvance = false
-        rule.shot("brightness", name, Device.FOLD_COVER_L, Theme.IPHONE) {
-            RootImpl(Fixtures.full(night), AppConfig(dayBrightness = day, nightMaxBrightness = 0.3f), StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = true))
+        rule.shot("brightness", name, device, th, night) {
+            val cfg = AppConfig(theme = th, dayBrightness = 0.7f, nightMaxBrightness = 0.3f, boardBg = bg, startPage = 0)
+            RootImpl(Fixtures.full(night), cfg, StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = bar))
         }
     }
 
-    @Test fun day() = shot("bar-day", 0f, 0.7f)
-    @Test fun night() = shot("bar-night", 1f, null)
+    companion object {
+        @JvmStatic
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{5}-{0}-{4}")
+        fun cases(): List<Array<Any>> = THEMES.flatMap { th ->
+            val day = listOf(Device.FOLD_COVER_L, Device.FLIP).map { arrayOf<Any>("panel-day", 0f, true, BoardBg.THEME, it) }
+            val night = if (th == Theme.IPHONE) listOf(arrayOf<Any>("panel-night", 1f, true, BoardBg.THEME, Device.FOLD_COVER_L)) else emptyList()
+            val dark = if (th == Theme.DAYPAPER || th == Theme.RADIO) listOf(
+                arrayOf<Any>("bg-graphite", 0f, false, BoardBg.GRAPHITE, Device.FOLD_COVER_L),
+                arrayOf<Any>("bg-graphite-panel", 0f, true, BoardBg.GRAPHITE, Device.FOLD_COVER_P),
+            ) else emptyList()
+            (day + night + dark).map { it + th }
+        }
+    }
 }

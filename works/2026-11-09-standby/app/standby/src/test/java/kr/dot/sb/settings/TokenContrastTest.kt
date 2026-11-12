@@ -19,7 +19,9 @@ class TokenContrastTest {
     private val shapeAccentWaived = setOf(Theme.RADIO)
 
     private fun cases(): List<Pair<String, ThemeTokens>> =
-        Theme.entries.flatMap { th -> Themes.of(th).tokens.let { listOf(th.name to it, "${th.name}/night" to it.night()) } }
+        Theme.entries.flatMap { th ->
+            Themes.of(th).tokens.let { listOf(th.name to it, "${th.name}/night" to it.night()) + if (it.light) listOf("${th.name}/onDark" to it.onDark()) else emptyList() }
+        }
 
     private fun floor(name: String, what: String, ratio: Float, min: Float, fails: MutableList<String>) {
         if (ratio < min) fails += "$name $what ${"%.2f".format(ratio)} < $min"
@@ -37,7 +39,7 @@ class TokenContrastTest {
                 floor(name, "accentText/surface", Contrast.ratio(t.accentText, s), 4.5f, fails)
                 t.roles.all.forEach { floor(name, "role/surface", Contrast.ratio(it, s), 3f, fails) }
             }
-            if (Theme.valueOf(name.substringBefore('/')) !in shapeAccentWaived || name.endsWith("/night")) {
+            if (Theme.valueOf(name.substringBefore('/')) !in shapeAccentWaived || '/' in name) {
                 pages.forEach { floor(name, "accent/page", Contrast.ratio(t.accent, it), 3f, fails) }
             }
         }

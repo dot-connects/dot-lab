@@ -150,7 +150,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
 
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */
 @Composable
-fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions, modifier: Modifier = Modifier) = ProvideTheme(config.theme) {
+fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions, modifier: Modifier = Modifier) = ProvideTheme(config) {
     val t = LocalTheme.current
     val density = LocalDensity.current
     val dir = LocalLayoutDirection.current

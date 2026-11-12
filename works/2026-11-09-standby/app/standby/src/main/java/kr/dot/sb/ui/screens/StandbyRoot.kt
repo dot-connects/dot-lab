@@ -78,7 +78,8 @@ import kr.dot.sb.ui.theme.Themes
 import java.time.LocalDateTime
 import kotlin.math.abs
 
-internal const val BAR_HIDE_MS = 2_500L
+/** The pull-down panel closes 4 s after the last touch (spec-r9 §1). */
+internal const val BAR_HIDE_MS = 4_000L
 
 /** Widgets, Photos, Clocks come first (spec §1c); user boards follow. */
 internal const val FIXED_PAGES = 3
@@ -125,7 +126,7 @@ internal fun RootImpl(
     modifier: Modifier,
     onStyleChange: (FaceId, ClockStyle) -> Unit,
     start: RootStart,
-) = ProvideTheme(config.theme) {
+) = ProvideTheme(config) {
     val act by rememberUpdatedState(actions)
     val count by rememberUpdatedState(FIXED_PAGES + config.boards.size)
     // Hoisted above the display-off branch so waking returns to the same page and clock face.
@@ -166,7 +167,7 @@ internal fun RootImpl(
     }
     if (state.media == null && npOpen) npOpen = false
 
-    // Brightness bar: swipe down from the top edge opens it, 2.5 s after the last touch it closes (day value or night cap).
+    // Pull-down panel: swipe down from the top edge opens it, 4 s after the last touch it closes (brightness = day value or night cap).
     val nightNow = state.night >= 0.5f
     var barOn by remember { mutableStateOf(start.bar) }
     var level by remember { mutableFloatStateOf(Brightness.shown(nightNow, config)) }
@@ -233,10 +234,12 @@ internal fun RootImpl(
                 Overlays(state, config, boardActions, layer, editing, onNowPlaying = { npOpen = it })
             }
             val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
-            if (a > 0f) BrightnessBar(
-                level, { v -> level = v; barTick++; act.setBrightness(v) }, { barPressed = it }, w, h,
-                Modifier.align(Alignment.TopCenter).alpha(a),
-            )
+            if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
+                TopPanel(
+                    level, { v -> level = v; act.setBrightness(v) }, { barPressed = it; barTick++ }, { th -> act.setTheme(th) },
+                    state, config, w, h, Modifier.align(Alignment.TopCenter),
+                )
+            }
             // keep the system back-swipe off the board pager's edges (spec E4/R7); the system honours ~200 dp per edge
             Box(Modifier.align(Alignment.CenterStart).size(24.dp, 200.dp).systemGestureExclusion())
             Box(Modifier.align(Alignment.CenterEnd).size(24.dp, 200.dp).systemGestureExclusion())

@@ -51,7 +51,7 @@ object Routes {
 
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
 @Composable
-fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config.theme) {
+fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config) {
     val back = { nav.back() }
     when {
         route == Routes.BOARDS -> BoardsScreen(config, update, nav, back)
