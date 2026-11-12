@@ -2,7 +2,7 @@
 
 ## 이어서 하기 (2026-11-13 새벽 기준 — 이제 **안드로이드 앱**이 본체)
 
-**웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:\DC\DD\docsrchive6-11-12-catch-app-plan-review`).
+**웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:/DC/DD/docs/archive/2026-11-12-catch-app-plan-review`).
 동결된 웹 게임도 같은 Worker 를 쓰므로 이제 OpenAI(gpt-image-2.6-flare)로 그린다.
 
 | 부분 | 파일 | 상태 |
@@ -13,7 +13,7 @@
 | AI | `ai/`, `worker/` | Worker 배포됨: /transform low, /sheet medium, 월 500센트 상한, `x-app: catchpet`, 디버그 구매 토큰 |
 | 펫 | `pet/PetBrain.kt`, `pet/PetService.kt`, `pet/PetWallpaper.kt`, `ui/PetScreen.kt` | 아래 줄 · 왼쪽 벽 · 오른쪽 벽(오버레이), 아이콘 뒤(라이브 배경화면) |
 
-- 빌드: `app/` 에서 `JAVA_HOME=C:/DC/tools/jdk-17 ./gradlew assembleDebug testDebugUnitTest`. APK 는 `%LOCALAPPDATA%\catchpet-buildpp\outputspk\debug\`.
+- 빌드: `app/` 에서 `JAVA_HOME=C:/DC/tools/jdk-17 ./gradlew assembleDebug testDebugUnitTest`. APK 는 `%LOCALAPPDATA%/catchpet-build/app/outputs/apk/debug/`.
 - **트레이딩 틱 보호:** 06:00–07:00 · 08:30–09:10 · 15:30–16:30 · 22:00–23:50 KST(+05:30–06:00)에는 Gradle · 헤드리스 Chrome 금지(plan R12/R17).
 - 디버그 구매 토큰: `%USERPROFILE%\.catchpet-debug-purchase` (펫 화면 맨 아래 "개발자" 칸에 붙여 넣으면 구매가 열린다).
 
