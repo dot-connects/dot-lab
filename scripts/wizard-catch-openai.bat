@@ -18,7 +18,8 @@ exit /b %rc%
 
 $ErrorActionPreference = 'Stop'
 [Console]::OutputEncoding = [Text.Encoding]::UTF8
-$OutputEncoding = [Text.Encoding]::UTF8
+# no BOM: piping a key to wrangler with [Text.Encoding]::UTF8 put a BOM in front of the secret (2026-11-12, OpenAI 400)
+$OutputEncoding = New-Object System.Text.UTF8Encoding $false
 $ScriptDir = Split-Path -Parent $WizardPath
 
 # ──────────────────────────────────────────────────────────────────────────

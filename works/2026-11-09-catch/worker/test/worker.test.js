@@ -2,7 +2,7 @@ import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { handle, MemoryCounts, D1Counts, callOpenAI, SHEET_PROMPT } from "../src/index.js";
+import { handle, MemoryCounts, D1Counts, callOpenAI, SHEET_PROMPT , secret } from "../src/index.js";
 
 const PNG = "iVBORw0KGgo" + "A".repeat(200);   // only checked for being base64-ish and small
 const SITE = "https://dot-connects.github.io";
@@ -287,4 +287,9 @@ test("a 5xx twice through the real handler: one retry, a 502, and the cents stay
   assert.equal(sent.length, 2);
   assert.equal(counts.m.get("usd|2026-11"), 5);
   assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), 0, "an unbilled failure gives the day slot back");
+});
+
+test("a BOM or newline around a secret is ignored (PowerShell pipe)", () => {
+  assert.equal(secret(String.fromCharCode(0xfeff) + "sk-abc" + String.fromCharCode(13, 10)), "sk-abc");
+  assert.equal(secret(undefined), "");
 });

@@ -8,6 +8,8 @@
 // Secrets: OPENAI_KEY (none = 503 "off"), DEBUG_PURCHASE (the /sheet token until real billing; empty = /sheet refused).
 // Set ALL_DAY = "0" to stop previews, MONTH_CENTS = "0" to stop every AI call at once.
 
+// A secret piped in from Windows PowerShell can carry a UTF-8 BOM and a newline (2026-11-12: OpenAI answered 400).
+export const secret = v => String(v ?? "").replace(/^\uFEFF/, "").trim();
 const ORIGINS = [/^https:\/\/dot-connects\.github\.io$/, /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/];
 const STYLES = ["fluff", "figure"], KINDS = ["dog", "cat", "person"];
 const IMAGE_MAX = 2_000_000;   // base64 chars, ~1.5 MB: the game sends a <= 512 px PNG
@@ -59,7 +61,7 @@ export async function callOpenAI({ prompt, image, ref, quality, size }, env) {
   const sent = e => Object.assign(e, { sent: true });
   for (let attempt = 0; ; attempt++) {
     let r;
-    try { r = await fetch(OPENAI_URL, { method: "POST", headers: { authorization: `Bearer ${env.OPENAI_KEY}` }, body: form }); }
+    try { r = await fetch(OPENAI_URL, { method: "POST", headers: { authorization: `Bearer ${secret(env.OPENAI_KEY)}` }, body: form }); }
     catch (e) { throw sent(new Error("model network " + (e?.message || e))); }
     if (r.status >= 500 && attempt === 0) continue;
     const body = await r.json().catch(() => ({}));
@@ -114,7 +116,7 @@ async function paidCall(job, cents, env, counts, day, onFail) {
 
 async function transform(b, req, env, counts, day, origin) {
   if (!STYLES.includes(b.style) || !KINDS.includes(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400, origin);
-  if (!env.OPENAI_KEY) return json({ error: "off" }, 503, origin);
+  if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503, origin);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429, origin); }
 
   const perDev = num(env.DEVICE_DAY, 5), all = num(env.ALL_DAY, 30), perIp = num(env.IP_DAY, 15);
@@ -139,9 +141,9 @@ async function transform(b, req, env, counts, day, origin) {
 
 async function sheet(b, req, env, counts, day) {
   const token = req.headers.get("x-purchase") || "";
-  if (typeof env.DEBUG_PURCHASE !== "string" || !env.DEBUG_PURCHASE || token !== env.DEBUG_PURCHASE) return json({ error: "purchase" }, 402);
+  if (!secret(env.DEBUG_PURCHASE) || token !== secret(env.DEBUG_PURCHASE)) return json({ error: "purchase" }, 402);
   if (!KINDS.includes(b.kind) || !goodDevice(b.device) || !goodImage(b.image) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "")) return json({ error: "bad request" }, 400);
-  if (!env.OPENAI_KEY) return json({ error: "off" }, 503);
+  if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
 
   const kEntry = `sheet|${token}|${b.entry}`, kDay = `sheetday|${token}|${day}`;
