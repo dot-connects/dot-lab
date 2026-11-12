@@ -35,7 +35,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -72,14 +71,8 @@ import kotlin.random.Random
 
 /** Where a catch goes (the Dex wires this). Called the moment the claw reaches the top (plan R6), before the capsule. */
 interface CatchSink {
-    /** png: the cut-out (real things) or null (critters). label: the pose. */
-    fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String)
-}
-
-/** Stand-in sink until the Dex exists: counts catches. */
-class CountingSink : CatchSink {
-    var count by mutableIntStateOf(0); private set
-    override fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String) { count++ }
+    /** png: the cut-out (real things) or null (critters). label: the pose. True when the dex count grows. */
+    fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String): Boolean
 }
 
 /** Virtual critters on screen this frame, as masks on the segmenter grid (ar/Critters fills this in). */
@@ -268,8 +261,8 @@ private class CatchGame(
     private fun onCarry(c: Claw) {
         val target = c.result!!.target!!
         if (target.kind == Mask.Kind.CRITTER) {
-            sink.onCaught(Mask.Kind.CRITTER, null, target.critterId, "front")
-            startCapsule(c, "털 녀석을 뽑았다!")
+            val grew = sink.onCaught(Mask.Kind.CRITTER, null, target.critterId, "front")
+            startCapsule(c, "털 녀석을 뽑았다!", grew)
             return
         }
         val g = grip
@@ -283,16 +276,16 @@ private class CatchGame(
             c.handedOff(); next(); say("아깝다!", false)
             return
         }
-        sink.onCaught(target.kind, got.cut.bmp, null, "front")
-        startCapsule(c, when (target.kind) {
+        val grew = sink.onCaught(target.kind, got.cut.bmp, null, "front")
+        startCapsule(c, grew = grew, text = when (target.kind) {
             Mask.Kind.CAT -> "고양이를 뽑았다!"
             Mask.Kind.DOG -> "강아지를 뽑았다!"
             else -> "사람을 뽑았다!"
         })
     }
 
-    private fun startCapsule(c: Claw, text: String) {
-        saved = true
+    private fun startCapsule(c: Claw, text: String, grew: Boolean) {
+        saved = grew
         capText = text
         capT = 0f
         capsule = Capsule(c.x * w, c.y + 70f, floorY = h - bottomInset - 18f, screenW = w)

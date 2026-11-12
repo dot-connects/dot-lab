@@ -23,7 +23,11 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
     kotlinOptions { jvmTarget = "17" }
-    androidResources { noCompress += "tflite" }
+    androidResources {
+        noCompress += "tflite"
+        // AAPT's default pattern drops "_*" asset folders; keep critters/_placeholder
+        ignoreAssetsPattern = "!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~"
+    }
     packaging { jniLibs { pickFirsts += "**/libc++_shared.so" } }
     testOptions {
         unitTests.isIncludeAndroidResources = true
