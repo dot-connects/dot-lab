@@ -41,7 +41,7 @@ enum class Numerals(val ko: String, val digits: String) {
  * (spec-r9 §4). [ko] is for logs and settings rows only — pickers show previews, never names.
  */
 enum class Theme(val ko: String) {
-    IPHONE("아이폰 그대로"), PAPER("신문 1면"), MOODLIGHT("무드등"), CANDLE("촛불"), FLIP("플립 시계"),
+    IPHONE("기본"), PAPER("신문 1면"), MOODLIGHT("무드등"), CANDLE("촛불"), FLIP("플립 시계"),
     SKY("하늘"), DAYPAPER("종이"), RADIO("브라운 라디오"), NEON("네온"), TERMINAL("터미널"),
 }
 
@@ -69,9 +69,9 @@ data class SlotOptions(
     val hideAtNight: Boolean = false,
 )
 
-enum class ClockLayout(val ko: String) { IPHONE("아이폰"), CENTER("가운데"), TWO_LINES("두 줄") }
+enum class ClockLayout(val ko: String) { IPHONE("기본"), CENTER("가운데"), TWO_LINES("두 줄") }
 enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음"), DUO("Duo") }
-enum class AnalogTicks(val ko: String) { IPHONE("아이폰"), SHORT("짧게"), HOURS("정시만"), NONE("없음") }
+enum class AnalogTicks(val ko: String) { IPHONE("기본"), SHORT("짧게"), HOURS("정시만"), NONE("없음") }
 
 /** Full-screen clock faces in vertical-swipe order (spec C1), plus the two other places a styled time appears. */
 enum class FaceId(val ko: String) {

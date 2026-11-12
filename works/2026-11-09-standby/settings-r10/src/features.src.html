@@ -1,0 +1,462 @@
+<title>StandBy 새 기능 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@200;300;500;600&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --page:#050506; --bg:#0e0f12; --surface:#17181c; --surface2:#212228; --line:#2a2c32;
+  --text:#ededef; --muted:#9a9aa0; --danger:#ff6b5e; --acc:#76a6f3; --acc-soft:#1b2538; --pick:#e9c46a;
+  --nink:#B9A48C; /* night ink (ThemeTokens.NIGHT_INK) */
+  --font:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --num:"Barlow Condensed","Noto Sans KR",sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.45;word-break:keep-all;overflow-wrap:anywhere;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button:focus-visible,input:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.wrap{max-width:1120px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right,0px)) 80px max(16px,env(safe-area-inset-left,0px))}
+h1{font-size:26px;font-weight:700;margin:0 0 6px;text-wrap:balance}
+.lede{color:var(--muted);font-size:14px;margin:0 0 8px;max-width:64ch}
+nav{display:flex;flex-wrap:wrap;gap:8px;margin:16px 0 0}
+nav a{font-size:13px;font-weight:600;color:var(--muted);text-decoration:none;padding:8px 12px;border-radius:99px;background:var(--surface)}
+nav a:hover{color:var(--text)}
+section{padding-top:56px}
+h2{font-size:21px;font-weight:700;margin:0 0 10px}
+h2 small{font-size:13px;font-weight:600;color:var(--muted);margin-right:8px}
+h3{font-size:13px;font-weight:600;color:var(--muted);margin:28px 0 10px;letter-spacing:.02em}
+.q{border-left:3px solid var(--pick);padding:4px 0 4px 12px;margin:0 0 20px;font-size:15px;max-width:68ch}
+.q b{color:var(--pick);font-weight:700;margin-right:6px}
+.rec{font-size:14px;margin:14px 0 0;max-width:68ch}
+.rec b{color:var(--pick)}
+.cap{font-size:13px;color:var(--muted);margin:8px 2px 0;max-width:60ch}
+.vars{display:grid;gap:24px 20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));align-items:start}
+.vars.three{grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr))}
+.vl{display:flex;align-items:baseline;gap:8px;margin:0 0 8px;font-size:15px;font-weight:700}
+.vl i{font-style:normal;display:inline-grid;place-items:center;width:26px;height:26px;border-radius:8px;background:var(--surface2);font-size:14px;flex:none}
+.vl.pick i{background:var(--pick);color:#111}
+.vl span{font-size:12px;font-weight:600;color:var(--pick)}
+.demo{display:inline-flex;align-items:center;min-height:44px;padding:0 16px;border-radius:99px;background:var(--surface2);font-size:14px;font-weight:600;margin-top:10px}
+.demo:hover{background:#2c2e35}
+
+/* device frames: 1 CSS px = 1 dp, scaled down by --k (set by script) */
+.fit{overflow:hidden;border-radius:calc(22px*var(--k,1))}
+.fr{position:relative;width:751px;height:475px;background:#000;overflow:hidden;zoom:var(--k,1);border-radius:22px;outline:1px solid #1d1e22;outline-offset:-1px;font-family:var(--font)}
+.fr.inner{width:932px;height:704px}
+.fr img.full{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.shot{display:block;width:100%;height:auto;border-radius:12px;outline:1px solid #1d1e22;outline-offset:-1px}
+
+/* settings snippets (app settings look) */
+.sets{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));align-items:start}
+.set{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:6px 12px 16px;max-width:430px}
+.crumb{font-size:13px;font-weight:600;color:var(--muted);padding:10px 4px 10px}
+.crumb b{color:var(--text);font-weight:700}
+.grp{background:var(--surface);border-radius:16px;overflow:hidden}
+.grp+.grp{margin-top:12px}
+.grp>*+*{position:relative}
+.grp>*+*::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--line)}
+.row{display:flex;align-items:center;min-height:60px;padding:10px 12px 10px 16px;gap:8px;width:100%}
+.rt{flex:1;min-width:0}
+.t{font-size:16px;font-weight:500}
+.s{font-size:13px;color:var(--muted);margin-top:2px;line-height:18px}
+.val{font-size:14px;color:var(--muted);white-space:nowrap}
+.new{font-size:11px;font-weight:700;padding:2px 7px;border-radius:99px;background:var(--acc-soft);color:var(--acc);margin-left:6px;vertical-align:2px;white-space:nowrap}
+.dis .t{color:var(--muted)}
+.dis .radio,.dis .seg{opacity:.38}
+.dis{pointer-events:none}
+.why{color:#c9a56a}
+.sw{width:52px;height:32px;border-radius:16px;background:var(--surface2);border:2px solid var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:50%;left:6px;width:16px;height:16px;border-radius:50%;background:var(--muted);transform:translateY(-50%);transition:all .15s}
+.sw.on{background:var(--acc);border-color:var(--acc)}
+.sw.on::after{left:22px;width:24px;height:24px;background:var(--bg)}
+.ctl{padding:12px 16px}
+.ctl>.t{padding-bottom:10px}
+.note{font-size:13px;color:var(--muted);padding-top:8px;line-height:18px}
+.seg{display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--surface2);width:100%}
+.seg button{flex:1;min-height:46px;border-radius:10px;font-size:14px;font-weight:500;color:var(--muted);text-align:center;padding:0 2px;white-space:nowrap}
+.seg button.on{background:var(--acc);color:var(--bg);font-weight:700}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);flex:none;margin-right:6px;display:grid;place-items:center}
+.on>.radio{border-color:var(--acc)}
+.on>.radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--acc)}
+.chev{color:#9a9aa0b3}
+
+/* 1 dim clock */
+.dim{position:absolute;left:0;top:0;color:var(--nink);font-family:var(--num);line-height:1;white-space:nowrap;animation:drift 18s steps(1) infinite}
+.dimA{font-size:132px;font-weight:200;opacity:.42}
+.dimB{font-size:300px;font-weight:600;color:transparent;-webkit-text-stroke:1.5px rgba(185,164,140,.5);animation-name:driftB}
+.dimC{font-size:104px;font-weight:300;opacity:.42}
+.dimC small{display:flex;align-items:center;gap:8px;font:500 24px var(--font);margin-top:10px;opacity:.8}
+@keyframes drift{0%{transform:translate(70px,60px)}17%{transform:translate(430px,250px)}34%{transform:translate(250px,110px)}51%{transform:translate(480px,50px)}68%{transform:translate(60px,280px)}85%{transform:translate(300px,300px)}}
+@keyframes driftB{0%{transform:translate(120px,80px)}17%{transform:translate(180px,120px)}34%{transform:translate(90px,110px)}51%{transform:translate(200px,70px)}68%{transform:translate(110px,130px)}85%{transform:translate(160px,60px)}}
+.wake{opacity:0;transition:opacity .5s;pointer-events:none}
+.woke .wake{opacity:1}
+.woke .dim{visibility:hidden}
+.tapme{cursor:pointer}
+
+/* 2 heat */
+.heat img.full{transition:filter 1.2s}
+.heat.hot img.full{filter:brightness(.5)}
+.pill{position:absolute;display:flex;align-items:center;gap:8px;background:#000;border:1px solid #ffffff2e;border-radius:99px;color:#ffb05a;font-size:17px;font-weight:700;padding:10px 18px;opacity:0;transition:opacity .4s;white-space:nowrap}
+.pill svg{flex:none}
+.pill.top{top:14px;left:50%;transform:translateX(-50%)}
+.pill.ico{padding:9px}
+.pill.br{right:16px;bottom:16px}
+.pill.bub{right:16px;bottom:64px;font-size:15px}
+.show{opacity:1!important}
+
+/* 3 mood light */
+.glow{position:absolute;inset:0;background:radial-gradient(ellipse 70% 70% at 50% 50%,#FFB36B 0%,#b9763a 45%,#3a2210 100%);transition:opacity .3s}
+.glow.fade{opacity:0;transition:opacity 5s ease-in}
+.tl{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;font-size:13px}
+.tl span{background:var(--surface);border-radius:10px;padding:8px 12px}
+.tl b{display:block;font-size:12px;color:var(--muted);font-weight:600}
+
+/* 5 alarm */
+.al{position:absolute;inset:0;padding:33px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;color:var(--nink);background:#000}
+.al .hd{display:flex;align-items:center;gap:8px;font-size:20px;font-weight:600}
+.al .tm{font:600 236px/0.86 var(--num);margin-top:10px}
+.al .inf{font-size:20px;font-weight:500;opacity:.58;margin-top:14px}
+.al .top{display:flex;flex-direction:column;align-items:center}
+.al .btns{display:flex;gap:12px;align-items:center}
+.ab{height:66px;width:225px;border-radius:99px;display:grid;place-items:center;font-size:24px;font-weight:700;text-align:center}
+.ab.pri{background:var(--nink);color:#000}
+.ab.old{background:rgba(185,164,140,.12)}
+.ab.line{background:rgba(185,164,140,.16);box-shadow:inset 0 0 0 2px rgba(185,164,140,.75)}
+.ab small{font-size:17px;font-weight:600;opacity:.75}
+.slide{position:relative;width:300px;height:66px;border-radius:99px;background:rgba(185,164,140,.16);box-shadow:inset 0 0 0 2px rgba(185,164,140,.75);display:grid;place-items:center;font-size:21px;font-weight:700;padding-left:48px}
+.slide input{position:absolute;inset:0;width:100%;height:100%;margin:0;appearance:none;-webkit-appearance:none;background:none;cursor:grab}
+.slide input::-webkit-slider-runnable-track{background:none;height:66px}
+.slide input::-moz-range-track{background:none}
+.slide input::-webkit-slider-thumb{-webkit-appearance:none;width:58px;height:58px;margin-top:4px;border-radius:50%;background:var(--nink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='2.6' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M13 6l6 6-6 6'/%3E%3C/svg%3E") center/26px no-repeat;border:0}
+.slide input::-moz-range-thumb{width:58px;height:58px;border-radius:50%;background:var(--nink);border:0}
+
+/* 6 sleep */
+.player{background:var(--surface);border-radius:20px;padding:16px;max-width:640px}
+.snds{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:480px){.snds{grid-template-columns:repeat(2,1fr)}}
+.snds button{min-height:72px;border-radius:14px;background:var(--surface2);padding:10px 12px;font-size:15px;font-weight:600;display:flex;flex-direction:column;justify-content:center;gap:2px}
+.snds button small{font-size:12px;font-weight:500;color:var(--muted)}
+.snds button.on{background:var(--pick);color:#111}
+.snds button.on small{color:#3b3210}
+.pbar{display:flex;align-items:center;gap:12px;margin-top:14px;flex-wrap:wrap}
+.pbar .stop{min-height:48px;padding:0 22px;border-radius:99px;background:var(--surface2);font-weight:700;font-size:15px}
+.pbar label{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);flex:1;min-width:180px}
+.pbar input{flex:1;accent-color:var(--pick);height:36px}
+#pstat{font-size:13px;color:var(--muted);margin-top:10px;min-height:20px}
+
+.bed{--ink:#fff;--acc:#FFB05A;--plate:#1c1c1e;--plate2:#2a2826;--dim:rgba(255,255,255,.3);--on:#111;position:absolute;inset:0;background:#000;color:var(--ink)}
+.bed.night{--ink:#B9A48C;--acc:#B9A48C;--plate:#0f0e0c;--plate2:#1a1815;--dim:rgba(185,164,140,.3);--on:#000}
+.bed .lp,.bed .rp{position:absolute;top:28px;bottom:23px;border-radius:30px;background:var(--plate)}
+.bed .lp{left:28px;width:342px;display:flex;flex-direction:column;align-items:center;justify-content:center;font:600 190px/0.9 var(--num);color:var(--acc)}
+.bed .lp small{font:500 19px var(--font);color:var(--ink);opacity:.6;margin-top:14px}
+.bed .rp{left:390px;width:342px;padding:24px}
+.tiles{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.tile{position:relative;height:100px;border-radius:22px;background:var(--plate2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:14px;font-weight:500;color:var(--ink);cursor:pointer}
+.tile>span{opacity:.6}
+.tile .disc{width:48px;height:48px;border-radius:50%;background:var(--dim);display:grid;place-items:center;color:var(--ink)}
+.tile.sel{box-shadow:inset 0 0 0 2.5px var(--acc)}
+.tile.sel>span{opacity:1;font-weight:700}
+.tile.sel .disc{background:var(--acc);color:var(--on)}
+.eq{position:absolute;top:12px;right:14px;display:none;gap:3px;align-items:flex-end;height:16px}
+.eq i{width:3px;background:var(--acc);border-radius:2px;animation:eq .9s ease-in-out infinite alternate}
+.eq i:nth-child(2){animation-delay:-.3s}.eq i:nth-child(3){animation-delay:-.6s}
+@keyframes eq{from{height:4px}to{height:16px}}
+.playing .tile.sel .eq{display:flex}
+.foot{display:flex;align-items:center;gap:12px;margin-top:11px;height:48px}
+.foot .pp{width:48px;height:48px;border-radius:50%;background:var(--ink);color:var(--on);display:grid;place-items:center;flex:none}
+.playing .foot .pp{background:var(--acc)}
+.foot .ln{flex:1;font-size:15px;font-weight:600}
+.foot .ln small{display:block;font-size:13px;font-weight:500;opacity:.6}
+.foot .min{font-size:14px;font-weight:600;background:var(--plate2);border-radius:99px;padding:6px 12px}
+.i-pause,.playing .i-play{display:none}.playing .i-pause{display:block}
+
+.pn{position:absolute;left:118px;top:18px;width:522px;border-radius:26px;background:#14120f;padding:14px;display:grid;gap:10px;color:var(--nink)}
+.pn .bar{height:48px;border-radius:99px;background:rgba(185,164,140,.16);position:relative;overflow:hidden;display:flex;align-items:center;padding:0 16px;gap:10px;font-size:15px;font-weight:600}
+.pn .bar.fill::before{content:"";position:absolute;inset:0 70% 0 0;background:var(--nink)}
+.pn .bar>*{position:relative}
+.pn .bar.snd{box-shadow:inset 0 0 0 2px rgba(185,164,140,.75);cursor:pointer}
+.pn .bar .r{margin-left:auto;opacity:.6;font-weight:500}
+.wash{position:absolute;inset:0;background:#000a}
+.spill{position:absolute;top:14px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:8px;background:#000;border:1px solid rgba(185,164,140,.35);border-radius:99px;color:var(--nink);font-size:17px;font-weight:700;padding:10px 18px;white-space:nowrap}
+
+@media (prefers-reduced-motion:reduce){.dim,.eq i{animation-play-state:paused}}
+</style>
+
+<div class="wrap">
+<h1>StandBy 새 기능 시안</h1>
+<p class="lede">r10에 새로 들어가는 기능 여섯 가지예요. 화면 틀은 폴드 커버 가로(751 × 475)이고, 사진으로 된 것은 지금 앱의 실제 화면이에요. 노란 표시가 제 추천이에요.</p>
+<nav><a href="#s1">1 희미한 시계</a><a href="#s2">2 발열 보호</a><a href="#s3">3 무드등 자동 끄기</a><a href="#s4">4 새 옵션</a><a href="#s5">5 밤 알람 화면</a><a href="#s6">6 수면 소리</a></nav>
+
+<!-- ============================================================ 1 -->
+<section id="s1">
+<h2><small>1</small>희미한 시계</h2>
+<p class="q"><b>정할 것</b>밤에 화면이 꺼질 때 남길 시계를 A·B·C 중 무엇으로 할까요? 그리고 처음 값을 "희미한 시계"로 둘까요?</p>
+<div class="vars three" id="dims">
+  <div><p class="vl"><i>A</i>가는 숫자만</p>
+    <div class="fit"><div class="fr tapme"><div class="dim dimA">3:07</div><img class="full wake" src="{{clock_night}}" alt="밤 시계 화면"></div></div>
+    <p class="cap">시·분만, 아주 가는 획. 1분마다 화면 전체에서 자리를 옮겨요. 켜지는 점이 가장 적어요.</p></div>
+  <div><p class="vl"><i>B</i>큰 윤곽선 숫자</p>
+    <div class="fit"><div class="fr tapme"><div class="dim dimB">3:07</div><img class="full wake" src="{{clock_night}}" alt="밤 시계 화면"></div></div>
+    <p class="cap">멀리서도 읽히지만 숫자가 커서 옮길 자리가 좁아요(±50 dp). 같은 자리가 겹쳐 켜지는 시간이 길어요.</p></div>
+  <div><p class="vl pick"><i>C</i>가는 숫자 + 다음 알람 <span>추천</span></p>
+    <div class="fit"><div class="fr tapme"><div class="dim dimC">3:07<small><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="7"/><path d="M12 9.5V13l2.5 1.5M5 4 2.5 6.5M19 4l2.5 2.5"/></svg>6:30 · 3시간 23분 남음</small></div><img class="full wake" src="{{clock_night}}" alt="밤 시계 화면"></div></div>
+    <p class="cap">새벽에 눈 떴을 때 궁금한 건 "얼마나 더 잘 수 있나"예요. 알람이 없으면 A와 같아져요.</p></div>
+</div>
+<p class="cap">화면을 눌러 보세요: 한 번 누르면 평소 밤 화면이 20초 켜졌다가 다시 희미한 시계로 돌아가요(여기서는 3초). 자리 옮김은 1분을 3초로 줄여 보여 줘요. 실제로는 글자 밝기 약 40%에 화면 밝기도 가장 낮게 내려요. 날짜·날씨·알림은 그리지 않아요.</p>
+<p class="rec"><b>추천 C.</b> 가는 획 + 넓은 자리 옮김이라 밤새 켜 둬도 잔상 걱정이 가장 적고, 알람까지 남은 시간이 한눈에 보여요.</p>
+
+<h3>설정에서 놓이는 자리</h3>
+<div class="sets">
+  <div class="set"><div class="crumb">밤과 꺼짐 › <b>켜짐과 꺼짐</b></div>
+    <div class="grp">
+      <div class="ctl"><div class="t">화면 꺼짐</div><div class="seg"><button class="on">어두워지면</button><button>20초 뒤</button><button>계속 켜 둠</button></div></div>
+      <div class="ctl"><div class="t">꺼진 화면<span class="new">새로</span></div><div class="seg"><button>완전히 끄기</button><button class="on">희미한 시계</button></div><div class="note">꺼진 동안 시간만 어둡게 남겨요. 자리는 1분마다 옮겨요.</div></div>
+      <div class="row"><div class="rt"><div class="t">밤에 알림이 와도 꺼진 화면 켜지 않기<span class="new">새로</span></div><div class="s">밤 화면일 때만요. 알람은 그대로 울려요.</div></div><button class="sw on" aria-label="켜짐"></button></div>
+      <div class="row"><div class="rt"><div class="t">움직이면 켜기</div></div><button class="sw on" aria-label="켜짐"></button></div>
+    </div>
+    <p class="cap">"계속 켜 둠"이면 꺼진 화면 줄은 흐리게 잠기고 "화면이 꺼지지 않아서 쓸 일이 없어요"라고 보여요.</p>
+  </div>
+  <div class="set"><div class="crumb">밤과 꺼짐 › <b>밤 화면</b></div>
+    <div class="grp">
+      <div class="row on"><i class="radio"></i><div class="rt"><div class="t">어두워지면</div><div class="s">방이 어두워지면 붉고 어둡게</div></div></div>
+      <div class="ctl"><div class="t">밤 밝기</div><input type="range" value="20" style="width:100%;accent-color:var(--acc)" aria-label="밤 밝기"></div>
+      <div class="row"><div class="rt"><div class="t">꺼진 화면<span class="new">새로</span></div><div class="s">밤에 화면이 꺼지면 시간만 남겨요</div></div><span class="val">희미한 시계</span><span class="chev">›</span></div>
+    </div>
+    <p class="cap">값은 하나예요. 밤 화면에서는 지금 값을 보여 주고, 누르면 켜짐과 꺼짐의 같은 줄로 가요. 두 곳에 스위치를 따로 두면 서로 어긋날 수 있어서요.</p>
+  </div>
+</div>
+<p class="rec"><b>처음 값: 희미한 시계.</b> 완전히 꺼진 화면에서는 시간을 볼 방법이 없다는 게 이 기능의 출발점이라서요.</p>
+</section>
+
+<!-- ============================================================ 2 -->
+<section id="s2">
+<h2><small>2</small>발열 보호</h2>
+<p class="q"><b>정할 것</b>폰이 뜨거워져 화면이 어두워졌을 때, 이유를 글로 한 번 알려 줄까요(A), 아이콘만 둘까요(B)?</p>
+<div class="vars">
+  <div><p class="vl pick"><i>A</i>알약 안내 → 아이콘 <span>추천</span></p>
+    <div class="fit"><div class="fr heat" id="heatA"><img class="full" src="{{widgets}}" alt="위젯 화면">
+      <div class="pill top" data-p="msg">{{thermo}}뜨거워서 화면을 어둡게 했어요</div>
+      <div class="pill top ico" data-p="ico">{{thermo}}</div></div></div>
+    <p class="cap">어두워질 때 위쪽에 한 줄이 5초 떴다가 온도계 아이콘만 남아요. 식어서 밝기가 돌아오면 아이콘도 사라져요.</p>
+    <button class="demo" data-heat="heatA">다시 보기</button></div>
+  <div><p class="vl"><i>B</i>구석 아이콘만</p>
+    <div class="fit"><div class="fr heat" id="heatB"><img class="full" src="{{widgets}}" alt="위젯 화면">
+      <div class="pill br ico tapme" data-p="ico" role="button" tabindex="0" aria-label="발열 보호 안내">{{thermo}}</div>
+      <div class="pill bub" data-p="bub">뜨거워서 화면을 어둡게 했어요</div></div></div>
+    <p class="cap">글은 없고 오른쪽 아래 온도계만 켜져요. 아이콘을 누르면 이유가 3초 보여요. 조용하지만 "왜 어둡지?"를 한 번은 겪어요.</p>
+    <button class="demo" data-heat="heatB">다시 보기</button></div>
+</div>
+<p class="rec"><b>추천 A.</b> 화면이 갑자기 어두워지면 고장처럼 보여요. 처음 한 번은 글로 말해 주는 쪽이 안심돼요.</p>
+<h3>설정에서 놓이는 자리</h3>
+<div class="sets"><div class="set"><div class="crumb">밤과 꺼짐 › 켜짐과 꺼짐 › <b>자세히</b></div>
+  <div class="grp">
+    <div class="row"><div class="rt"><div class="t">발열 보호<span class="new">새로</span></div><div class="s">배터리가 42도를 넘으면 화면을 절반쯤 어둡게 해요. 식으면 돌아와요.</div></div><button class="sw on" aria-label="켜짐"></button></div>
+    <div class="row"><div class="rt"><div class="t">잔상 막기</div></div><button class="sw on" aria-label="켜짐"></button></div>
+  </div><p class="cap">처음 값: 켜짐.</p></div></div>
+</section>
+
+<!-- ============================================================ 3 -->
+<section id="s3">
+<h2><small>3</small>무드등 자동 끄기</h2>
+<p class="q"><b>정할 것</b>처음 값을 몇 분으로 둘까요? 끝날 때 1분에 걸쳐 천천히 꺼지는 방식이면 될까요?</p>
+<div class="vars">
+  <div><div class="fit"><div class="fr inner"><div class="glow" id="glow"></div></div></div>
+    <button class="demo" id="glowBtn">끝나는 모습 보기</button>
+    <div class="tl"><span><b>켠 뒤 29분까지</b>그대로</span><span><b>마지막 1분</b>천천히 어두워짐</span><span><b>30분</b>안쪽 화면 꺼짐</span></div>
+    <p class="cap">펼친 안쪽 화면이에요. 마지막 1분을 5초로 줄여 보여 줘요. 어두워지는 중에 화면을 누르면 다시 처음부터 세요. 알람 전에 미리 밝히는 무드등은 이 시간과 상관없이 켜져요.</p></div>
+  <div class="set"><div class="crumb">알람과 폴드 › <b>폴드를 펼쳤을 때</b></div>
+    <div class="grp">
+      <div class="ctl"><div class="t">펼치면</div><div class="seg"><button>책 화면</button><button class="on">무드등</button></div></div>
+      <div class="row"><div class="rt"><div class="t">무드등 색</div></div><span class="val">따뜻한 주황</span><span class="chev">›</span></div>
+      <div class="ctl"><div class="t">무드등 자동 끄기<span class="new">새로</span></div><div class="seg"><button>끄지 않음</button><button>15분</button><button class="on">30분</button><button>60분</button></div><div class="note">시간이 되면 천천히 어두워지다 꺼져요.</div></div>
+    </div><p class="cap">추천 처음 값: 30분. 잠들 때까지 켜 두는 불빛이라 밤새 켜질 이유가 없어요.</p></div>
+</div>
+</section>
+
+<!-- ============================================================ 4 -->
+<section id="s4">
+<h2><small>4</small>새 옵션 줄</h2>
+<p class="q"><b>정할 것</b>아래 문구와 자리, 처음 값이 괜찮은지 봐 주세요. ("밤에 알림이 와도 꺼진 화면 켜지 않기"는 1번의 켜짐과 꺼짐 안에 있어요.)</p>
+<div class="sets">
+  <div class="set"><div class="crumb">페이지 구성 › <b>사진</b></div>
+    <div class="grp"><div class="ctl"><div class="t">사진 넘김 간격<span class="new">새로</span></div><div class="seg"><button>10초</button><button class="on">15초</button><button>30초</button><button>1분</button><button>5분</button></div></div></div>
+    <p class="cap">처음 값 15초(지금과 같음).</p></div>
+  <div class="set"><div class="crumb">밤 화면 · 테마가 <b>기본</b>일 때</div>
+    <div class="grp">
+      <div class="row on"><i class="radio"></i><div class="rt"><div class="t">안 씀</div><div class="s">밤에도 낮과 같은 화면</div></div></div>
+      <div class="row"><i class="radio"></i><div class="rt"><div class="t">어두워지면</div><div class="s">방이 어두워지면 붉고 어둡게</div></div></div>
+      <div class="row"><i class="radio"></i><div class="rt"><div class="t">정한 시간에</div><div class="s">22시~7시</div></div></div>
+    </div></div>
+  <div class="set"><div class="crumb">밤 화면 · 테마가 <b>종이 · 브라운 라디오</b>일 때</div>
+    <div class="grp">
+      <div class="row dis"><i class="radio"></i><div class="rt"><div class="t">안 씀</div><div class="s why">종이 테마는 밝아서 밤에는 꼭 어두운 화면으로 바뀌어요</div></div></div>
+      <div class="row on"><i class="radio"></i><div class="rt"><div class="t">어두워지면</div><div class="s">방이 어두워지면 붉고 어둡게</div></div></div>
+      <div class="row"><i class="radio"></i><div class="rt"><div class="t">정한 시간에</div><div class="s">22시~7시</div></div></div>
+    </div>
+    <p class="cap">"안 씀"이던 사람이 밝은 테마로 바꾸면 "어두워지면"으로 보이고, 어두운 테마로 돌아오면 원래 값이 살아나요. 이유 문장의 테마 이름은 지금 테마를 따라가요.</p></div>
+</div>
+</section>
+
+<!-- ============================================================ 5 -->
+<section id="s5">
+<h2><small>5</small>밤 알람 화면</h2>
+<p class="q"><b>정할 것</b>"중단"을 어떻게 눈에 띄게 할까요? 잠결에 잘못 눌러 알람을 꺼 버리는 일도 같이 막고 싶어요.</p>
+<div class="vars">
+  <div><p class="vl"><i>·</i>지금 (실제 화면)</p><img class="shot" src="{{alarm_night}}" alt="지금의 밤 알람 화면" width="760" height="481">
+    <p class="cap"><b style="color:var(--text)">왜 안 보이나:</b> 중단 버튼 바탕이 밤 글자색의 12%예요(<code>ink.copy(alpha = 0.12f)</code>). 검정 위에서는 대비가 1.2 : 1뿐이라 버튼 모양이 사라지고 글자 두 개만 떠 있어요. 다시 알림에는 몇 분인지도 없어요.</p></div>
+  <div><p class="vl"><i>A</i>테두리만 더하기</p>
+    <div class="fit"><div class="fr"><div class="al"><div class="top"><div class="hd">{{alarm}}알람 · 월요일</div><div class="tm">9:41</div><div class="inf">대체로 흐림 · 7° · 오늘 일정 5개</div></div>
+      <div class="btns"><div class="ab pri"><span>다시 알림 <small>· 5분</small></span></div><div class="ab line">중단</div></div></div></div></div>
+    <p class="cap">자리와 크기는 그대로, 중단에 또렷한 테두리. 가장 작은 변경이지만 두 버튼이 같은 크기로 붙어 있는 건 그대로예요.</p></div>
+  <div><p class="vl pick"><i>B</i>크기와 거리 벌리기 <span>추천</span></p>
+    <div class="fit"><div class="fr"><div class="al"><div class="top"><div class="hd">{{alarm}}알람 · 월요일</div><div class="tm">9:41</div><div class="inf">대체로 흐림 · 7° · 오늘 일정 5개</div></div>
+      <div class="btns" style="gap:36px"><div class="ab pri" style="width:360px"><span>다시 알림 <small>· 5분</small></span></div><div class="ab line" style="width:180px">중단</div></div></div></div></div>
+    <p class="cap">다시 알림은 넓게, 중단은 테두리 버튼으로 좁게, 사이를 36 dp 띄워요. 눈 감고 가운데를 치면 다시 알림이 눌려요.</p></div>
+  <div><p class="vl"><i>C</i>밀어서 중단</p>
+    <div class="fit"><div class="fr"><div class="al"><div class="top"><div class="hd">{{alarm}}알람 · 월요일</div><div class="tm">9:41</div><div class="inf">대체로 흐림 · 7° · 오늘 일정 5개</div></div>
+      <div class="btns" style="gap:24px"><div class="ab pri" style="width:300px"><span>다시 알림 <small>· 5분</small></span></div><div class="slide"><span id="slTxt">밀어서 중단</span><input type="range" id="sl" min="0" max="100" value="0" aria-label="밀어서 중단"></div></div></div></div></div>
+    <p class="cap">직접 밀어 보세요. 스치는 손으로는 절대 꺼지지 않아요. 대신 잠결에 미는 동작이 번거롭고, 페이지 넘기는 손짓과 헷갈릴 수 있어요.</p></div>
+</div>
+<p class="rec"><b>추천 B.</b> 누르기만 하면 되는 건 그대로 두면서 잘못 누를 일을 줄여요. "· 5분"은 예시예요. 지금 코드는 시계 앱이 정한 다시 알림 시간을 모르기 때문에, 그 값을 읽을 수 있을 때만 붙이고 못 읽으면 "다시 알림"만 써요.</p>
+</section>
+
+<!-- ============================================================ 6 -->
+<section id="s6">
+<h2><small>6</small>수면 소리</h2>
+<p class="q"><b>정할 것</b>① 소리 여섯 개를 직접 듣고 남길 것을 골라 주세요. ② 수면 소리 카드를 고쳐서 둘까요, 없애고 끌어내림 패널에서 켤까요?</p>
+<h3>들어 보기 (앱과 같은 방식으로 만든 소리)</h3>
+<div class="player">
+  <div class="snds" id="snds">
+    <button data-s="RAIN">빗소리<small>잔잔한 비 + 굵은 방울</small></button>
+    <button data-s="WAVES">파도<small>9초에 한 번 밀려옴</small></button>
+    <button data-s="FIRE">장작불<small>낮은 울림 + 탁탁 소리</small></button>
+    <button data-s="WHITE">백색소음<small>고른 쉬 소리</small></button>
+    <button data-s="PINK">핑크 노이즈<small>조금 부드러운 쉬 소리</small></button>
+    <button data-s="BROWN">브라운 노이즈<small>낮고 묵직한 소리</small></button>
+  </div>
+  <div class="pbar"><button class="stop" id="pstop">멈춤</button><label>소리 크기<input type="range" id="pvol" min="0" max="100" value="45" aria-label="소리 크기"></label></div>
+  <div id="pstat" aria-live="polite">소리 이름을 누르면 나와요. 처음엔 작게 틀어 두었어요.</div>
+</div>
+
+<h3>수면 소리 카드: 지금 (실제 화면, 낮 · 밤)</h3>
+<div class="vars">
+  <div><img class="shot" src="{{bed}}" alt="지금의 잠자리 페이지, 낮" width="760" height="481"></div>
+  <div><img class="shot" src="{{bed_night}}" alt="지금의 잠자리 페이지, 밤" width="760" height="481"></div>
+</div>
+<p class="cap">고른 소리(빗소리)는 글자가 조금 진할 뿐이고 밤에는 여섯 칸이 똑같아요. ▶ 옆에 "멈춤"이라고 쓰여 있어서 나오는 중인지 멈춘 건지 헷갈려요.</p>
+
+<h3>카드를 어떻게 할까요</h3>
+<div class="vars">
+  <div><p class="vl"><i>A</i>고친 카드 (칸과 ▶를 눌러 보세요)</p><div class="fit"><div class="fr"><div class="bed" id="bed">
+      <div class="lp"><span>9</span><span>41</span><small>월요일 11월 9일 · 7°</small></div>
+      <div class="rp"><div class="tiles" id="tiles"></div>
+        <div class="foot"><button class="pp" id="bedPP" aria-label="틀기 또는 멈추기"><svg class="i-play" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg><svg class="i-pause" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M7 5h4v14H7zM13 5h4v14h-4z"/></svg></button>
+          <div class="ln" id="bedLn"></div><div class="min">45분</div></div></div>
+    </div></div></div>
+    <button class="demo" id="bedNight">밤 화면으로 보기</button>
+    <p class="cap">고른 칸은 색 채운 동그라미 + 테두리 + 굵은 이름(밤에도 구분됨). 나오는 중이면 칸에 움직이는 막대, 아래 줄은 "44분 뒤 꺼짐"과 ⏸. 멈춰 있으면 ▶ 옆에 "눌러서 틀기". 이 카드는 모양만 바뀌고 소리는 위 들어 보기에서 나요.</p></div>
+
+  <div><p class="vl pick"><i>B</i>카드 없이: 끌어내림 패널에서 켜기 <span>추천</span></p>
+    <div class="fit"><div class="fr" id="pnFr"><img class="full" src="{{clock_night}}" alt="밤 시계 화면"><div class="wash" id="pnWash"></div>
+      <div class="pn" id="pn"><div class="bar fill"><span style="color:#000">☀</span></div><div class="bar"><span>🔈</span></div>
+        <div class="bar snd" id="pnSnd" role="button" tabindex="0"><span>▶</span><span>수면 소리 · 빗소리</span><span class="r">45분 ›</span></div></div>
+      <div class="spill" id="spill" hidden>{{moon}}빗소리 · 44분</div></div></div>
+    <button class="demo" id="pnBtn">패널에서 켜 보기</button>
+    <p class="cap">위에서 끌어내리면 밝기·음량 아래에 수면 소리 줄이 하나 생겨요. ▶를 누르면 바로 시작, 오른쪽 "45분 ›"은 소리·시간 고르는 설정 화면으로. 나오는 동안은 어느 페이지에서든 위쪽에 작은 알약이 보이고, 누르면 멈춰요.</p></div>
+</div>
+<p class="rec"><b>추천 B, 카드는 없애요.</b> 하루에 한 번 누르는 버튼에 페이지 절반을 쓰고 있고, 패널에 두면 어느 페이지에서든 켤 수 있어요. 소리 고르기는 설정의 수면 소리 화면(누르면 3초 들려줌)에 이미 있어요.</p>
+</section>
+</div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  // scale frames to their column
+  const ro = new ResizeObserver(es => requestAnimationFrame(() => es.forEach(e => { const f = e.target.firstElementChild; e.target.style.setProperty('--k', Math.min(1, e.contentRect.width / f.offsetWidth)); })));
+  $$('.fit').forEach(f => ro.observe(f));
+  // settings snippets react like the real controls
+  document.addEventListener('click', e => {
+    const b = e.target.closest('.seg button'); if (b) { $$('button', b.parentNode).forEach(x => x.classList.toggle('on', x === b)); return; }
+    const sw = e.target.closest('.sw'); if (sw) { sw.classList.toggle('on'); return; }
+    const r = e.target.closest('.grp>.row:not(.dis)'); if (r && $('.radio', r)) $$('.row', r.parentNode).forEach(x => x.classList.toggle('on', x === r));
+  });
+  // 1: tap wakes the night screen, then back to the dim clock
+  $$('#dims .fr').forEach(f => f.addEventListener('click', () => { f.classList.add('woke'); clearTimeout(f._t); f._t = setTimeout(() => f.classList.remove('woke'), 3000); }));
+  // 2: heat
+  const heat = id => {
+    const f = document.getElementById(id), p = n => $(`[data-p=${n}]`, f), show = (el, on) => el && el.classList.toggle('show', on);
+    (f._t || []).forEach(clearTimeout); f.classList.remove('hot'); ['msg', 'ico', 'bub'].forEach(n => show(p(n), false));
+    f._t = [setTimeout(() => { f.classList.add('hot'); show(p('msg') || p('ico'), true); }, 900)];
+    if (p('msg')) f._t.push(setTimeout(() => { show(p('msg'), false); show(p('ico'), true); }, 5900));
+  };
+  $$('[data-heat]').forEach(b => b.addEventListener('click', () => heat(b.dataset.heat)));
+  heat('heatA'); heat('heatB');
+  const bub = $('#heatB [data-p=bub]');
+  $('#heatB [data-p=ico]').addEventListener('click', () => { bub.classList.add('show'); setTimeout(() => bub.classList.remove('show'), 3000); });
+  // 3: mood light fade
+  const glow = $('#glow'), gb = $('#glowBtn');
+  gb.addEventListener('click', () => { glow.classList.add('fade'); gb.textContent = '어두워지는 중…'; setTimeout(() => { gb.textContent = '꺼짐 (화면도 꺼져요)'; }, 5000); setTimeout(() => { glow.classList.remove('fade'); gb.textContent = '끝나는 모습 보기'; }, 7500); });
+  // 5: slide to stop
+  const sl = $('#sl'), slTxt = $('#slTxt');
+  sl.addEventListener('input', () => { if (+sl.value >= 96) { slTxt.textContent = '알람을 껐어요'; setTimeout(() => { sl.value = 0; slTxt.textContent = '밀어서 중단'; }, 1800); } });
+  sl.addEventListener('change', () => { if (+sl.value < 96) sl.value = 0; });
+
+  // 6: NoiseGen (data/Sleep.kt) as a looping Web Audio buffer
+  const RATE = 22050, LOOP = 27 * RATE, XF = RATE >> 1; // 27 s = 3 wave swells; 0.5 s crossfade hides the loop seam
+  function gen(sound) {
+    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0, br = 0, prevWhite = 0, drop = 0, crack = 0, n = 0;
+    const rnd = Math.random, white = () => rnd() * 2 - 1;
+    const pink = () => { const w = white();
+      b0 = 0.99886 * b0 + w * 0.0555179; b1 = 0.99332 * b1 + w * 0.0750759; b2 = 0.969 * b2 + w * 0.153852;
+      b3 = 0.8665 * b3 + w * 0.3104856; b4 = 0.55 * b4 + w * 0.5329522; b5 = -0.7616 * b5 - w * 0.016898;
+      const o = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11; b6 = w * 0.115926; return o; };
+    const brown = () => { br = (br + 0.02 * white()) / 1.02; return br * 3.5; };
+    const sample = {
+      WHITE: () => white() * 0.5, PINK: () => pink() * 0.9, BROWN: () => brown() * 0.9,
+      RAIN: () => { const w = white(); if (rnd() < 0.0006) drop = 0.5 + rnd() * 0.4; drop *= 0.97; const hiss = (w - prevWhite) * 0.12; prevWhite = w; return pink() * 0.45 + hiss + drop * w; },
+      FIRE: () => { if (rnd() < 0.0004) crack = 0.3 + rnd() * 0.7; crack *= 0.94; const w = white(); const hiss = (w - prevWhite) * 0.04; prevWhite = w; return brown() * 0.7 + hiss + crack * w; },
+      WAVES: () => { const swell = 0.5 + 0.5 * Math.sin(2 * Math.PI * n / (RATE * 9)); return (brown() * 0.55 + pink() * 0.35) * (0.25 + 0.75 * swell); },
+    }[sound];
+    const raw = new Float32Array(LOOP + XF);
+    for (let i = 0; i < raw.length; i++) { n++; raw[i] = Math.max(-1, Math.min(1, sample())) * 0.6; }
+    for (let i = 0; i < XF; i++) { const k = i / XF; raw[i] = raw[i] * k + raw[LOOP + i] * (1 - k); }
+    return raw.subarray(0, LOOP);
+  }
+  let ctx, gain, src; const bufs = {}, stat = $('#pstat'), vol = $('#pvol');
+  const level = () => (vol.value / 100) ** 2 * 1.5;
+  function stop() { if (src) { try { src.stop(); } catch (_) {} src = null; } $$('#snds button').forEach(b => b.classList.remove('on')); stat.textContent = '멈췄어요.'; }
+  function play(btn) {
+    try {
+      if (btn.classList.contains('on')) return stop();
+      ctx = ctx || new (window.AudioContext || window.webkitAudioContext)(); ctx.resume();
+      if (!gain) { gain = ctx.createGain(); gain.connect(ctx.destination); }
+      const s = btn.dataset.s;
+      if (!bufs[s]) { const b = ctx.createBuffer(1, LOOP, RATE); b.getChannelData(0).set(gen(s)); bufs[s] = b; }
+      stop(); src = ctx.createBufferSource(); src.buffer = bufs[s]; src.loop = true; src.connect(gain);
+      gain.gain.setValueAtTime(0, ctx.currentTime); gain.gain.linearRampToValueAtTime(level(), ctx.currentTime + 0.6); src.start();
+      btn.classList.add('on'); stat.textContent = btn.firstChild.textContent + ' 나오는 중 · 다시 누르면 멈춰요.';
+    } catch (e) { stat.textContent = '이 브라우저에서는 소리를 낼 수 없어요. (' + e.message + ')'; }
+  }
+  $$('#snds button').forEach(b => b.addEventListener('click', () => play(b)));
+  $('#pstop').addEventListener('click', stop);
+  vol.addEventListener('input', () => { if (gain) gain.gain.setTargetAtTime(level(), ctx.currentTime, 0.05); });
+
+  // 6: fixed sleep card (visual only)
+  const ICON = { '빗소리': 'M7 15a4 4 0 1 1 1-7.9A5 5 0 0 1 17.5 9 3 3 0 0 1 17 15zM9 18l-1 2.5M13 18l-1 2.5M17 18l-1 2.5', '파도': 'M3 8c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 13c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 18c2-2 4-2 6 0s4 2 6 0 4-2 6 0', '장작불': 'M12 3c1 4 5 5 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3-1-5 1-9z', '백색소음': 'M4 10v4M7.2 7v10M10.4 9v6M13.6 5v14M16.8 9v6M20 11v2', '핑크 노이즈': 'M3 12c2 0 2-5 4-5s2 10 4 10 2-8 4-8 2 5 3 5 1.500-2 3-2', '브라운 노이즈': 'M3 13c3 0 3-5 6-5s3 8 6 8 3-4 6-4' };
+  const bed = $('#bed'), tiles = $('#tiles'), ln = $('#bedLn'); let cur = '빗소리';
+  const drawBed = () => {
+    tiles.innerHTML = Object.keys(ICON).map(k => `<div class="tile${k === cur ? ' sel' : ''}" data-k="${k}"><div class="eq"><i></i><i></i><i></i></div><div class="disc"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="${ICON[k]}"/></svg></div><span>${k}</span></div>`).join('');
+    ln.innerHTML = bed.classList.contains('playing') ? `${cur}<small>44분 뒤 꺼짐</small>` : `${cur}<small>눌러서 틀기</small>`;
+  };
+  tiles.addEventListener('click', e => { const t = e.target.closest('.tile'); if (!t) return; const same = t.dataset.k === cur; cur = t.dataset.k; bed.classList.toggle('playing', same ? !bed.classList.contains('playing') : true); drawBed(); });
+  $('#bedPP').addEventListener('click', () => { bed.classList.toggle('playing'); drawBed(); });
+  $('#bedNight').addEventListener('click', e => { e.target.textContent = bed.classList.toggle('night') ? '낮 화면으로 보기' : '밤 화면으로 보기'; });
+  drawBed();
+  // 6: no-card alternative
+  const pn = $('#pn'), wash = $('#pnWash'), spill = $('#spill'), pnBtn = $('#pnBtn');
+  const pnSet = on => { pn.hidden = wash.hidden = on; spill.hidden = !on; pnBtn.textContent = on ? '패널 다시 열기' : '패널에서 켜 보기'; };
+  $('#pnSnd').addEventListener('click', () => pnSet(true));
+  pnBtn.addEventListener('click', () => pnSet(pn.hidden ? false : true));
+  spill.addEventListener('click', () => pnSet(false));
+})();
+</script>

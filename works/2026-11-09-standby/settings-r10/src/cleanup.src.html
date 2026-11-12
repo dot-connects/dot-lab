@@ -1,0 +1,309 @@
+<title>StandBy 정리 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Sofia+Sans+Extra+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#0d0e10; --panel:#15171a; --panel2:#1c1f23; --line:#2b2e34;
+  --ink:#eceae6; --ink2:#a9a6a0; --ink3:#77756f;
+  --keep:#74dc8b; --drop:#ff7a70; --merge:#ffb95c; --acc:#ffad5c;
+  --r:12px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.6 Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;-webkit-text-size-adjust:100%;word-break:keep-all;overflow-wrap:anywhere}
+.wrap{max-width:1120px;margin:0 auto;padding:28px 0 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:clamp(24px,4.6vw,34px);line-height:1.25;margin:0 0 8px;letter-spacing:-.01em;text-wrap:balance}
+h2{font-size:22px;margin:56px 0 4px;padding-top:20px;border-top:1px solid var(--line)}
+h3{font-size:19px;line-height:1.35;margin:0 0 10px;text-wrap:balance}
+h4{font-size:14px;font-weight:600;color:var(--ink2);margin:20px 0 8px}
+p{margin:0 0 8px}
+.lede{color:var(--ink2);max-width:62ch}
+.sec-note{color:var(--ink2);margin-bottom:8px;max-width:70ch}
+code{font:13px/1.5 ui-monospace,Consolas,monospace;background:var(--panel2);padding:1px 5px;border-radius:5px;color:#d9d6cf}
+
+.sum{list-style:none;margin:20px 0 0;padding:0;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.sum li{display:grid;grid-template-columns:76px 1fr;gap:12px;align-items:start;padding:11px 14px;background:var(--panel)}
+.sum li+li{border-top:1px solid var(--line)}
+.sum .head{background:var(--panel2);color:var(--ink2);font-size:13px;font-weight:600;display:block}
+.sum a{color:var(--ink);text-decoration:none;font-weight:600}
+.sum a:hover{text-decoration:underline}
+.sum small{display:block;color:var(--ink2);font-size:14px}
+
+.chip{display:inline-block;font-size:13px;font-weight:700;line-height:1;padding:6px 9px;border-radius:999px;border:1px solid currentColor;white-space:nowrap;text-align:center}
+.chip.keep{color:var(--keep)} .chip.drop{color:var(--drop)} .chip.merge{color:var(--merge)} .chip.fix{color:#8fc0ff}
+
+.item{margin-top:28px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px}
+.g{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.pair{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:720px){
+  .item{padding:14px}
+  .g3,.g4{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .pair{grid-template-columns:minmax(0,1fr)}
+}
+figure{margin:0;min-width:0}
+.shot{position:relative;aspect-ratio:751/475;background:#000;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.shot.bar{aspect-ratio:2340/1080}
+.shot img,.shot svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.shot.out{border-color:rgba(255,122,112,.55)}
+.shot.new{border-color:rgba(143,192,255,.6)}
+figcaption{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:baseline;margin-top:6px;font-size:14px;line-height:1.4}
+figcaption b{font-weight:600}
+figcaption span{color:var(--ink2)}
+.tag{font-size:11.5px;font-weight:600;color:var(--ink3);border:1px solid var(--line);border-radius:5px;padding:0 5px;white-space:nowrap}
+.tag.mock{color:#8fc0ff;border-color:rgba(143,192,255,.4)}
+.tag.ex{color:var(--merge);border-color:rgba(255,185,92,.4)}
+.colhead{font-size:14px;font-weight:700;text-align:center;padding:4px 0;color:var(--ink2)}
+.colhead.out{color:var(--drop)} .colhead.in{color:var(--keep)}
+.rowlab{grid-column:1/-1;font-size:13px;font-weight:600;color:var(--ink2);margin-top:6px}
+
+.verdict{margin-top:16px;border-top:1px solid var(--line);padding-top:14px;display:grid;gap:6px}
+.verdict p{margin:0;display:grid;grid-template-columns:76px 1fr;gap:12px}
+.verdict p>b{color:var(--ink2);font-weight:600;font-size:14px;padding-top:1px}
+.verdict .rec{margin-top:6px;align-items:start}
+.verdict .rec strong{font-weight:700}
+.codeline{margin-top:12px;font-size:14px;color:var(--ink2);background:var(--panel2);border-radius:10px;padding:10px 12px}
+.codeline b{color:var(--ink);font-weight:600}
+.side{display:grid;grid-template-columns:minmax(0,150px) 1fr;gap:12px;align-items:center;margin-top:12px;font-size:14px;color:var(--ink2)}
+.side img{width:100%;border-radius:10px;border:1px solid var(--line);display:block}
+ul.plain{margin:8px 0 0;padding-left:20px;color:var(--ink2)}
+ul.plain li{margin-bottom:4px}
+svg text{font-family:Pretendard,"Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif}
+svg .d,svg .d text{font-family:"Sofia Sans Extra Condensed","Arial Narrow",sans-serif;font-variant-numeric:tabular-nums}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>StandBy 정리 시안 — 뺄 것과 고칠 것</h1>
+  <p class="lede">눈으로 보고 정하실 수 있게 실제 화면을 나란히 놓았어요. 뺄 후보 4가지에는 제 추천을, 고칠 곳 5가지에는 지금 화면과 고친 시안을 붙였어요. 화면은 모두 폴드 커버 가로(751 × 475) 기준이에요.</p>
+  <p class="lede"><span class="tag">실제 화면</span> 앱이 그린 그대로 · <span class="tag ex">예시</span> 실제 화면이 없어서 코드 값으로 만든 것 · <span class="tag mock">시안</span> 고친 뒤 모습을 그린 것</p>
+
+  <ul class="sum">
+    <li class="head">뺄 것 후보 — 추천</li>
+    <li><span class="chip drop">빼기</span><div><a href="#a1">시계 효과 무지개 · 유리</a><small>단색 · 두 색 · 번짐 세 가지만 남겨요. 유리는 검정 위에서 숫자가 어두워져요.</small></div></li>
+    <li><span class="chip drop">빼기</span><div><a href="#a2">시계 너비 %</a><small>넓히면 숫자가 오히려 낮아져요. 조절 막대만 빼고 기본 비율은 그대로 둬요.</small></div></li>
+    <li><span class="chip merge">합치기</span><div><a href="#a3">테마 촛불 → 무드등</a><small>낮은 숫자 굵기만 다르고, 밤은 완전히 같아요.</small></div></li>
+    <li><span class="chip drop">빼기</span><div><a href="#a4">배경 그래파이트 · 미드나잇 · 앰버 · 오로라</a><small>테마 기본 · 순검정 · 사진 흐림 · 단색 네 가지만 남겨요.</small></div></li>
+    <li class="head">고칠 것 — 지금 → 시안</li>
+    <li><span class="chip fix">고치기</span><div><a href="#b1">플립 시계 테마: 전체 화면 시계에 플립 타일</a></div></li>
+    <li><span class="chip fix">고치기</span><div><a href="#b2">모듈러 페이지: 반쯤 빈 날씨 칸</a></div></li>
+    <li><span class="chip fix">고치기</span><div><a href="#b3">라이브 화면: 빈 오른쪽, 시각 없는 단계</a></div></li>
+    <li><span class="chip fix">고치기</span><div><a href="#b4">디지털 시계: 화면 끝에 붙은 오른쪽 정보</a></div></li>
+    <li><span class="chip fix">고치기</span><div><a href="#b5">끌어내림 패널: 밤에 똑같아 보이는 테마 미리보기</a></div></li>
+  </ul>
+</header>
+
+<h2>A. 뺄 것 후보</h2>
+<p class="sec-note">빨간 테두리가 빼자고 하는 쪽이에요. 빼도 이미 그 값을 쓰던 설정은 가장 가까운 남는 값으로 바꿔 줘요.</p>
+
+<section class="item" id="a1">
+  <h3>A1. 시계 효과 — 무지개 · 유리 vs 단색 · 두 색 · 번짐</h3>
+  <h4>남길 것</h4>
+  <div class="g g3">
+    <figure><div class="shot"><img src="[[fx_solid]]" alt="단색 효과 시계"></div><figcaption><b>단색</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot"><img src="[[fx_two]]" alt="두 색 효과 시계"></div><figcaption><b>두 색</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot"><img src="[[fx_glow]]" alt="번짐 효과 시계"></div><figcaption><b>번짐</b><span class="tag">실제 화면</span></figcaption></figure>
+  </div>
+  <h4>뺄 후보</h4>
+  <div class="g g2">
+    <figure><div class="shot out"><img src="[[fx_rainbow]]" alt="무지개 효과, 플로트 시계"></div><figcaption><b>무지개</b><span>플로트 시계</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[fx_glass]]" alt="유리 효과, 플로트 시계"></div><figcaption><b>유리</b><span>플로트 시계</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[dg_rainbow]]" alt="무지개 효과, 디지털 시계"></div><figcaption><b>무지개</b><span>디지털 시계</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[dg_glass]]" alt="유리 효과, 디지털 시계"></div><figcaption><b>유리</b><span>디지털 시계</span><span class="tag">실제 화면</span></figcaption></figure>
+  </div>
+  <div class="verdict">
+    <p><b>더하는 것</b><span>무지개는 장난스러운 색, 유리는 반투명 숫자에 밝은 테두리를 줘요.</span></p>
+    <p><b>드는 값</b><span>유리는 숫자 속이 60%만 칠해져서 검정 위에서 어두운 남색이 돼요. 1~2 m 밖에서는 테두리만 보여요. 무지개는 고른 색이 무시되고 테마 색과도 안 맞아요. 둘 다 밤에는 어차피 단색으로 바뀌어요.</span></p>
+    <p class="rec"><span class="chip drop">빼기</span><span><strong>무지개와 유리를 빼요.</strong> 색을 섞고 싶으면 두 색, 빛나는 느낌은 번짐으로 충분해요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>model/Config.kt</code> <code>Effect</code>에서 RAINBOW · GLASS 삭제 → <code>ui/clock/TimeText.kt</code>(무지개 셰이더, 유리 테두리 · <code>glassStroke</code>), <code>ui/clock/FloatFace.kt</code>(GLASS 분기) 정리 → <code>settings/ConfigCodec.kt</code>에서 모르는 값은 SOLID로 읽기. 설정 화면 <code>settings/ClockScreens.kt</code> 효과 고르기는 enum을 그대로 써서 자동으로 3칸이 돼요.</p>
+</section>
+
+<section class="item" id="a2">
+  <h3>A2. 시계 너비 % — 좁게 · 기본 · 넓게</h3>
+  <div class="g g3">
+    <figure><div class="shot out"><img src="[[w70]]" alt="너비 70% 시계"></div><figcaption><b>좁게 70%</b><span class="tag ex">예시</span></figcaption></figure>
+    <figure><div class="shot"><img src="[[w100]]" alt="기본 너비 시계"></div><figcaption><b>기본</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[w130]]" alt="너비 130% 시계"></div><figcaption><b>넓게 130%</b><span class="tag ex">예시</span></figcaption></figure>
+  </div>
+  <p class="sec-note" style="margin-top:10px">좁게 · 넓게는 실제 화면이 없어서, 기본 화면의 숫자를 앱과 같은 방식(글자를 가로로만 늘리기)으로 늘려 만들었어요.</p>
+  <div class="verdict">
+    <p><b>더하는 것</b><span>숫자의 가로 폭을 70~130%로 바꿔요.</span></p>
+    <p><b>드는 값</b><span>숫자는 이미 화면 폭에 꽉 맞춰져 있어서, 넓히면 폭은 그대로고 키만 낮아져요. 좁히면 획이 가늘어지고 옆이 비어요. 어느 쪽도 멀리서 더 잘 보이지 않아요. 글꼴 고르기(좁게 · 둥글게 등)와 하는 일도 겹쳐요.</span></p>
+    <p class="rec"><span class="chip drop">빼기</span><span><strong>조절 막대만 빼요.</strong> 시계마다 맞춰 둔 기본 비율(디지털 94%, 아날로그 115%)은 안에 그대로 둬서 지금 모습이 바뀌지 않아요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>settings/ClockScreens.kt</code>의 "너비" <code>SliderRow</code> 한 줄 삭제. <code>ClockStyle.widthPct</code> 필드와 <code>TimeText.kt</code>는 그대로 두고, <code>settings/Migrations.kt</code>에서 저장된 값을 시계별 기본값으로 되돌려요.</p>
+</section>
+
+<section class="item" id="a3">
+  <h3>A3. 테마 — 촛불 vs 무드등</h3>
+  <div class="g g2">
+    <div class="colhead out">촛불 (뺄 후보)</div><div class="colhead in">무드등 (남김)</div>
+    <div class="rowlab">낮 — 위젯 페이지</div>
+    <figure><div class="shot out"><img src="[[c_wid_d]]" alt="촛불 테마 낮 위젯 페이지"></div></figure>
+    <figure><div class="shot"><img src="[[m_wid_d]]" alt="무드등 테마 낮 위젯 페이지"></div></figure>
+    <div class="rowlab">낮 — 시계</div>
+    <figure><div class="shot out"><img src="[[c_clk_d]]" alt="촛불 테마 낮 시계"></div></figure>
+    <figure><div class="shot"><img src="[[m_clk_d]]" alt="무드등 테마 낮 시계"></div></figure>
+    <div class="rowlab">낮 — 책상 보드</div>
+    <figure><div class="shot out"><img src="[[c_brd_d]]" alt="촛불 테마 낮 책상 보드"></div></figure>
+    <figure><div class="shot"><img src="[[m_brd_d]]" alt="무드등 테마 낮 책상 보드"></div></figure>
+    <div class="rowlab">밤 — 위젯 페이지</div>
+    <figure><div class="shot out"><img src="[[c_wid_n]]" alt="촛불 테마 밤 위젯 페이지"></div></figure>
+    <figure><div class="shot"><img src="[[m_wid_n]]" alt="무드등 테마 밤 위젯 페이지"></div></figure>
+    <div class="rowlab">밤 — 시계</div>
+    <figure><div class="shot out"><img src="[[c_clk_n]]" alt="촛불 테마 밤 시계"></div></figure>
+    <figure><div class="shot"><img src="[[m_clk_n]]" alt="무드등 테마 밤 시계"></div></figure>
+    <div class="rowlab">밤 — 책상 보드</div>
+    <figure><div class="shot out"><img src="[[c_brd_n]]" alt="촛불 테마 밤 책상 보드"></div></figure>
+    <figure><div class="shot"><img src="[[m_brd_n]]" alt="무드등 테마 밤 책상 보드"></div></figure>
+  </div>
+  <p class="sec-note" style="margin-top:10px">12장 모두 실제 화면이에요.</p>
+  <div class="verdict">
+    <p><b>더하는 것</b><span>촛불은 무드등보다 숫자가 한 단계 가늘고, 바탕이 조금 더 어둡고, 빛이 아래에서 올라와요.</span></p>
+    <p><b>드는 값</b><span>낮에는 나란히 놓아야 겨우 구분돼요. 밤에는 두 테마 모두 같은 밤 색으로 바뀌어서 숫자 굵기 말고는 똑같아요. 테마 고르기에 거의 같은 칸이 두 개 생겨요.</span></p>
+    <p class="rec"><span class="chip merge">합치기</span><span><strong>무드등 하나로 합쳐요.</strong> 촛불을 쓰던 설정은 무드등으로 넘겨요. 가는 숫자가 좋으면 시계 글꼴에서 "얇게"를 고르면 돼요. 밤 화면의 "촛불 색"은 테마와 별개라 그대로예요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>model/Config.kt</code> <code>Theme.CANDLE</code> 삭제 → <code>ui/theme/ThemeTokens.kt</code>의 CANDLE 값, <code>ui/theme/Theme.kt</code> 두 줄 삭제 → <code>settings/Migrations.kt</code>에서 "CANDLE" → MOODLIGHT. <code>NIGHT_INK</code>(밤 색)는 건드리지 않아요.</p>
+</section>
+
+<section class="item" id="a4">
+  <h3>A4. 배경 — 그래파이트 · 미드나잇 · 앰버 · 오로라 vs 테마 기본 · 순검정 · 사진 흐림 · 단색</h3>
+  <h4>남길 것</h4>
+  <div class="g g4">
+    <figure><div class="shot"><img src="[[bg_theme]]" alt="테마 기본 배경"></div><figcaption><b>테마 기본</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot"><svg viewBox="0 0 751 475" role="img" aria-label="순검정 배경 예시"><rect width="751" height="475" fill="#000"/><g fill="rgba(255,255,255,.07)"><rect x="28" y="28" width="404" height="419" rx="22"/><rect x="453" y="28" width="270" height="197" rx="22"/><rect x="453" y="249" width="270" height="197" rx="22"/></g><g class="d" font-weight="600" text-anchor="middle"><text x="230" y="312" font-size="230" fill="#FFAD5C">9:41</text><text x="588" y="112" font-size="100" fill="#FFAD5C">9</text><text x="588" y="200" font-size="100" fill="#FFAD5C">41</text><text x="596" y="403" font-size="170" fill="#F6EFE6">18°</text></g></svg></div><figcaption><b>순검정</b><span class="tag ex">예시</span></figcaption></figure>
+    <figure><div class="shot"><img src="[[bg_blur]]" alt="사진 흐림 배경"></div><figcaption><b>사진 흐림</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot"><svg viewBox="0 0 751 475" role="img" aria-label="단색 배경 예시"><rect width="751" height="475" fill="#122a3f"/><g fill="rgba(255,255,255,.07)"><rect x="28" y="28" width="404" height="419" rx="22"/><rect x="453" y="28" width="270" height="197" rx="22"/><rect x="453" y="249" width="270" height="197" rx="22"/></g><g class="d" font-weight="600" text-anchor="middle"><text x="230" y="312" font-size="230" fill="#FFAD5C">9:41</text><text x="588" y="112" font-size="100" fill="#FFAD5C">9</text><text x="588" y="200" font-size="100" fill="#FFAD5C">41</text><text x="596" y="403" font-size="170" fill="#F6EFE6">18°</text></g></svg></div><figcaption><b>단색</b><span>고른 색 한 가지</span><span class="tag ex">예시</span></figcaption></figure>
+  </div>
+  <h4>뺄 후보</h4>
+  <div class="g g4">
+    <figure><div class="shot out"><img src="[[bg_graphite]]" alt="그래파이트 배경"></div><figcaption><b>그래파이트</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[bg_midnight]]" alt="미드나잇 배경"></div><figcaption><b>미드나잇</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[bg_amber]]" alt="앰버 배경"></div><figcaption><b>앰버</b><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot out"><img src="[[bg_aurora]]" alt="오로라 배경"></div><figcaption><b>오로라</b><span class="tag">실제 화면</span></figcaption></figure>
+  </div>
+  <p class="sec-note" style="margin-top:10px">순검정과 단색은 실제 화면이 없어서 같은 판 배치를 코드 값(판 = 흰색 7%)으로 그렸어요. 기본 테마는 바탕이 원래 검정이라 테마 기본과 순검정이 거의 같아 보여요.</p>
+  <div class="verdict">
+    <p><b>더하는 것</b><span>판 뒤로 은은한 색 빛이 깔려요. 미드나잇은 파랑, 앰버는 주황, 오로라는 청록과 보라예요.</span></p>
+    <p><b>드는 값</b><span>그래파이트는 테마 기본과 구분이 거의 안 돼요. 나머지 셋은 판이 화면을 거의 다 덮어서 가장자리에만 색이 비쳐요. 테마 10개 × 배경 9개라 고를 건 많은데 달라지는 건 적어요. 색을 원하면 단색이나 색이 있는 테마(무드등 · 하늘)로 돼요.</span></p>
+    <p class="rec"><span class="chip drop">빼기</span><span><strong>네 가지 모두 빼요.</strong> 쓰던 설정은 테마 기본으로 넘겨요. 하나만 남긴다면 다른 것과 가장 다르게 보이는 오로라예요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>model/Config.kt</code> <code>BoardBg</code>에서 4개 삭제 → <code>ui/theme/Primitives.kt</code> <code>PRESETS</code> 정리(그래파이트 값은 "사진 흐림"에 사진이 없을 때 바탕으로 쓰이니 값만 남겨요) → <code>settings/Migrations.kt</code>에서 없어진 값은 THEME으로. 설정 화면 <code>settings/HomeScreen.kt</code> 배경 칩은 enum을 그대로 써서 자동으로 줄어요. 참고: "시간 따라"는 코드에 해질녘 색 한 벌만 들어 있는 반쯤 만든 상태예요. 이번 범위는 아니지만 같이 정할 만해요.</p>
+</section>
+
+<h2>B. 고칠 것 (지금 → 시안)</h2>
+<p class="sec-note">왼쪽이 지금 앱이 그리는 화면, 오른쪽 파란 테두리가 고친 모습이에요.</p>
+
+<section class="item" id="b1">
+  <h3>B1. 플립 시계 테마인데 전체 화면 시계에 플립 타일이 없어요</h3>
+  <div class="g pair">
+    <figure><div class="shot"><img src="[[flip_before]]" alt="플립 시계 테마 전체 화면 시계, 타일 없이 주황 숫자만 있음"></div><figcaption><b>지금</b><span>그냥 주황 숫자</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot new"><svg viewBox="0 0 751 475" role="img" aria-label="플립 타일 위에 숫자가 놓인 전체 화면 시계 시안">
+      <defs><linearGradient id="tile" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2A2A2A"/><stop offset=".494" stop-color="#2A2A2A"/><stop offset=".494" stop-color="#0C0C0C"/><stop offset=".506" stop-color="#0C0C0C"/><stop offset=".506" stop-color="#242424"/><stop offset="1" stop-color="#242424"/></linearGradient></defs>
+      <rect width="751" height="475" fill="#0C0C0C"/>
+      <g fill="url(#tile)"><rect x="28" y="133" width="136" height="209" rx="22"/><rect x="267" y="133" width="136" height="209" rx="22"/><rect x="416" y="133" width="136" height="209" rx="22"/></g>
+      <g fill="rgba(242,242,242,.55)"><circle cx="215.5" cy="203" r="12"/><circle cx="215.5" cy="272" r="12"/></g>
+      <g class="d" font-size="252" font-weight="700" fill="#F2F2F2" text-anchor="middle"><text x="96" y="320">9</text><text x="335" y="320">4</text><text x="484" y="320">1</text></g>
+      <g fill="#0C0C0C"><rect x="28" y="236.2" width="136" height="2.6"/><rect x="267" y="236.2" width="136" height="2.6"/><rect x="416" y="236.2" width="136" height="2.6"/></g>
+      <g font-size="35" font-weight="500" fill="#F2F2F2"><text x="578" y="170"><tspan fill="#FF9F0A">월</tspan> 9</text><text x="578" y="220">7°</text><text x="622" y="270">6:30</text></g>
+      <g transform="translate(593,258)" fill="none" stroke="rgba(242,242,242,.55)" stroke-width="2.8" stroke-linecap="round"><circle r="11.5"/><path d="M0-6V0l4 3M-12-11l5-4M12-11l-5-4"/></g>
+    </svg></div><figcaption><b>시안</b><span>카드와 같은 타일, 흰 숫자</span><span class="tag mock">시안</span></figcaption></figure>
+  </div>
+  <div class="side"><img src="[[flip_card]]" alt="책상 보드의 시계 카드, 숫자마다 플립 타일이 있음"><span>같은 테마의 카드에서는 이미 이렇게 타일 위에 숫자가 놓여요(실제 화면). 전체 화면 시계도 같은 모양으로 맞춰요. 밤에는 지금처럼 타일 없이 숫자만 남겨요.</span></div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>ui/clock/DigitalFaces.kt</code>의 디지털 시계가 숫자를 직접 그려서(<code>p.drawHm</code>) 타일 규칙을 안 거쳐요. 테마 숫자 모양이 FLIP이고 글꼴이 테마 기본 · 효과가 단색 · 낮일 때(카드와 같은 조건)는 <code>ui/theme/Primitives.kt</code>의 <code>FlipDigits</code>로 그리게 해요(지금 private → internal). 숫자 폭 계산은 타일 기준(타일 0.62 · 콜론 0.35 · 간격 0.06 em)으로. "10:58"처럼 네 자리면 타일이 20%쯤 작아져요.</p>
+</section>
+
+<section class="item" id="b2">
+  <h3>B2. 모듈러 페이지의 날씨 칸이 반쯤 비어 있어요</h3>
+  <div class="g pair">
+    <figure><div class="shot"><img src="[[mod_before]]" alt="모듈러 페이지, 날씨 칸의 기온이 작고 아래가 비어 있음"></div><figcaption><b>지금</b><span>7°가 작고, 일정 글자는 15 dp</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot new"><img src="[[mod_before]]" alt=""><svg viewBox="0 0 751 475" role="img" aria-label="날씨 칸은 기온을 크게, 일정 칸은 다음 일정 한 줄만 크게 보여 주는 시안">
+      <rect width="314" height="475" fill="#000"/>
+      <g fill="#1C1A18"><rect x="28" y="28" width="270" height="197" rx="22"/><rect x="28" y="249" width="270" height="197" rx="22"/></g>
+      <text x="46" y="60" font-size="13.5" fill="rgba(246,239,230,.62)"><tspan font-weight="700" fill="#F6EFE6">서울</tspan> · 대체로 흐림</text>
+      <text class="d" x="44" y="181" font-size="158" font-weight="600" fill="#F6EFE6">7°</text>
+      <g transform="translate(178,98)" fill="#F6EFE6"><circle cx="26" cy="36" r="18"/><circle cx="50" cy="26" r="24"/><circle cx="74" cy="38" r="16"/><rect x="26" y="34" width="48" height="20" rx="4"/></g>
+      <text x="46" y="208" font-size="13.5" font-weight="500" fill="rgba(246,239,230,.62)">최고 11° · 최저 2°</text>
+      <text x="46" y="281" font-size="13.5" fill="rgba(246,239,230,.62)"><tspan font-weight="700" fill="#FFAD5C">월요일 9</tspan> · 남은 일정 5</text>
+      <rect x="46" y="303" width="4" height="92" rx="2" fill="#3B82F6"/>
+      <text class="d" x="62" y="358" font-size="84" font-weight="600" fill="#F6EFE6">09:30</text>
+      <text x="62" y="393" font-size="26" font-weight="700" fill="#F6EFE6">팀 회의</text>
+      <text x="46" y="428" font-size="13.5" font-weight="500" fill="rgba(246,239,230,.62)">다음 13:00 병원 예약 · 외 3개</text>
+    </svg></div><figcaption><b>시안</b><span>기온 2배, 다음 일정 한 줄만 크게</span><span class="tag mock">시안</span></figcaption></figure>
+  </div>
+  <div class="verdict">
+    <p><b>날씨 칸</b><span>이 크기에서는 시간 예보 2칸을 빼고 기온을 칸 높이에 맞춰 키워요(글자 높이 약 50 → 100 dp). 넓은 칸에서는 지금처럼 시간 예보가 나와요.</span></p>
+    <p><b>일정 칸</b><span>세 줄을 작게 쓰는 대신 다음 일정 하나만 시각 · 제목을 크게 쓰고, 나머지는 "외 3개"로 줄여요. 1 m 밖에서도 읽혀요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>ui/cards/Layouts.kt</code> <code>weatherShape</code>: 이 칸(270 × 197 dp)은 지금 WIDE(왼쪽 42%에 기온, 오른쪽에 시간)로 가요. 폭 300 dp 미만은 숫자만 크게 쓰는 모양으로 보내요. <code>ui/cards/Cards.kt</code> <code>WeatherCard</code>에서 그 모양일 때 기온 높이 = 칸 높이 − 머리 두 줄. 같은 파일 <code>AgendaCard</code>: 칸 높이 220 dp 미만이면 일정 1개(시각은 <code>Hero</code>, 제목 26 dp) + "다음 … · 외 n개" 한 줄.</p>
+</section>
+
+<section class="item" id="b3">
+  <h3>B3. 라이브 화면 오른쪽 40%가 비고, 단계에 시각이 없어요</h3>
+  <div class="g pair">
+    <figure><div class="shot"><img src="[[live_before]]" alt="라이브 화면, 숫자는 왼쪽 아래 구석에 있고 오른쪽은 비어 있음"></div><figcaption><b>지금</b><span>숫자는 구석, 단계는 가운데 작게</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot new"><svg viewBox="0 0 751 475" role="img" aria-label="숫자를 세로 가운데로 옮기고 단계 옆에 시각을 넣은 라이브 화면 시안">
+      <defs><radialGradient id="lg" cx="0" cy="1" r=".9"><stop offset="0" stop-color="#FFAD5C" stop-opacity=".3"/><stop offset="1" stop-color="#FFAD5C" stop-opacity="0"/></radialGradient></defs>
+      <rect width="751" height="475" fill="#000"/><rect width="751" height="475" fill="url(#lg)"/>
+      <rect x="28" y="28" width="42" height="42" rx="10" fill="rgba(246,239,230,.14)"/>
+      <g transform="translate(49,51)" fill="none" stroke="#FFAD5C" stroke-width="2.2" stroke-linecap="round"><circle r="9"/><path d="M0-4.5V0M-3-13h6"/></g>
+      <text x="82" y="46" font-size="18" font-weight="700" fill="#F6EFE6">배달의민족</text>
+      <text x="82" y="70" font-size="16" font-weight="500" fill="rgba(246,239,230,.62)">가게에서 음식을 픽업했어요</text>
+      <text x="30" y="188" font-size="19" font-weight="600" fill="#FFAD5C">배달 중</text>
+      <text class="d" x="24" y="384" font-size="270" font-weight="600" fill="#F6EFE6">12</text>
+      <text x="262" y="384" font-size="76" font-weight="500" fill="rgba(246,239,230,.62)">분</text>
+      <g stroke-width="2.5"><path d="M452 112V197" stroke="#FFAD5C"/><path d="M452 197V367" stroke="rgba(246,239,230,.3)"/></g>
+      <circle cx="452" cy="112" r="7" fill="#FFAD5C"/>
+      <circle cx="452" cy="197" r="14" fill="none" stroke="#FFAD5C" stroke-opacity=".4" stroke-width="2"/><circle cx="452" cy="197" r="8" fill="#FFAD5C"/>
+      <g fill="#000" stroke="rgba(246,239,230,.62)" stroke-width="2"><circle cx="452" cy="282" r="6.5"/><circle cx="452" cy="367" r="6.5"/></g>
+      <g font-size="24"><text x="480" y="120" font-weight="600" fill="#F6EFE6">주문</text><text x="480" y="206" font-size="27" font-weight="700" fill="#F6EFE6">조리 중</text><text x="480" y="290" font-weight="500" fill="rgba(246,239,230,.62)">픽업</text><text x="480" y="375" font-weight="500" fill="rgba(246,239,230,.62)">도착</text></g>
+      <g font-size="23" text-anchor="end" style="font-variant-numeric:tabular-nums"><text x="723" y="120" fill="rgba(246,239,230,.62)">21:18</text><text x="723" y="206" fill="#F6EFE6">21:26</text><text x="723" y="375" font-weight="600" fill="#F6EFE6">21:53쯤</text></g>
+    </svg></div><figcaption><b>시안</b><span>숫자는 세로 가운데, 단계는 크게 + 시각</span><span class="tag mock">시안</span></figcaption></figure>
+  </div>
+  <div class="verdict">
+    <p><b>바뀐 점</b><span>남은 시간을 세로 가운데로 올리고 더 키웠어요. 단계는 오른쪽 끝까지 써서 글자를 15 → 24 dp로 키우고, 지난 단계에는 바뀐 시각, 도착에는 예상 시각을 붙였어요.</span></p>
+    <p><b>알아 둘 점</b><span>배달 앱 알림에는 단계별 시각이 들어 있지 않아요. 그래서 지난 단계 시각은 "StandBy가 단계가 바뀌는 걸 본 시각", 도착은 "지금 + 남은 분"으로 만들어요. 아직 안 온 단계(픽업)는 비워 둬요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>ui/screens/Overlays.kt</code> <code>LiveScreen</code>: 가로일 때 왼쪽 열을 머리(위) + 숫자(남은 높이의 가운데)로, 오른쪽 열 <code>timeline</code>은 폭을 다 쓰고 <code>StepRow</code>에 시각 칸(오른쪽 정렬) 추가, 단계 글자 크기 상한 19 → 24 dp. <code>ui/state/State.kt</code> <code>LiveActivity</code>에 <code>stepTimes</code>(단계별 시각, 없으면 null)와 <code>etaAt</code> 추가. <code>platform/Listener.kt</code>에서 진행 단계가 바뀔 때 시각을 적어 두고, 값이 "12분" 꼴이면 도착 예상을 계산해요.</p>
+</section>
+
+<section class="item" id="b4">
+  <h3>B4. 디지털 시계의 오른쪽 정보가 화면 끝에 붙어요</h3>
+  <div class="g pair">
+    <figure><div class="shot"><img src="[[term_before]]" alt="터미널 테마 디지털 시계, 알람 시각 6:30이 오른쪽 끝에 붙어 있음"></div><figcaption><b>지금</b><span>터미널 테마 · 오른쪽 여백 7 dp</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot new"><img src="[[term_after]]" alt="숫자를 조금 줄여 오른쪽 여백을 왼쪽과 같게 맞춘 시안"></div><figcaption><b>시안</b><span>숫자 5% 줄이고 양쪽 여백 같게</span><span class="tag mock">시안</span></figcaption></figure>
+    <figure><div class="shot bar"><img src="[[mood_before]]" alt="무드등 테마 일반 폰 가로 시계, 6:30이 오른쪽 끝에 붙어 있음"></div><figcaption><b>지금</b><span>무드등 테마 · 일반 폰 가로 · 여백 거의 0</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot bar new"><img src="[[mood_after]]" alt="숫자를 조금 줄여 오른쪽 여백을 확보한 시안"></div><figcaption><b>시안</b><span>오른쪽 여백 확보</span><span class="tag mock">시안</span></figcaption></figure>
+  </div>
+  <div class="verdict">
+    <p><b>왜 고치나</b><span>잔상을 막으려고 화면 전체가 1분마다 3 dp씩 움직이는데, 여백이 그보다 작으면 "6:30" 끝이 잘려요. 시안은 실제 화면의 숫자와 정보 묶음을 그대로 줄여서 만들었어요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>ui/clock/DigitalFaces.kt</code> 디지털 시계의 "아이폰" 배치: 쓸 수 있는 폭을 <code>w − 1.5 × margin</code>에서 <code>w − 2 × margin</code>으로(오른쪽도 여백 전체), 폭에 곱하는 <code>× 1.03</code>은 Sofia 글꼴(CONDENSED)일 때만. 끝으로 <code>x0 + 숫자 + 간격 + 정보 폭 ≤ w − margin</code>이 안 맞으면 숫자를 더 줄여요. 테마 글꼴이 넓은 터미널(모노) · 무드등에서 넘치던 게 사라져요.</p>
+</section>
+
+<section class="item" id="b5">
+  <h3>B5. 끌어내림 패널의 테마 미리보기가 밤에는 다 똑같아 보여요</h3>
+  <div class="g pair">
+    <figure><div class="shot"><img src="[[pn_before]]" alt="밤의 끌어내림 패널, 테마 미리보기 세 개가 같은 밤 색"></div><figcaption><b>지금 (밤)</b><span>세 칸이 같은 색 · 패널 부분 확대</span><span class="tag">실제 화면</span></figcaption></figure>
+    <figure><div class="shot new"><img src="[[pn_after]]" alt="밤의 끌어내림 패널, 테마 미리보기만 낮 색으로 그린 시안"></div><figcaption><b>시안 (밤)</b><span>미리보기만 낮 색, 밝기는 85%</span><span class="tag mock">시안</span></figcaption></figure>
+  </div>
+  <div class="verdict">
+    <p><b>바뀐 점</b><span>패널과 밝기 막대는 밤 색 그대로 두고, 테마 미리보기 칸만 낮 색으로 그려요. 눈이 부시지 않게 밝기를 조금 낮췄어요. 시안의 미리보기는 낮 패널의 실제 화면에서 가져왔어요.</span></p>
+    <p><b>알아 둘 점</b><span>처음 보이는 세 테마(기본 · 신문 · 무드등)는 낮에도 서로 비슷한 어두운 테마예요. 옆으로 넘기면 나오는 종이 · 네온 · 하늘에서 차이가 더 커요.</span></p>
+  </div>
+  <p class="codeline"><b>바뀌는 코드</b> <code>ui/screens/TopPanel.kt</code>의 미리보기 <code>PreviewFrame(…, night = state.night)</code> → <code>night = 0f</code>, 밤일 때는 미리보기에 <code>alpha 0.85</code>. 함수 위 주석("previews are drawn at night too")도 고쳐요. 밤 패널 스크린샷은 기본 테마만 있어서(<code>_sheets/brightness</code>), 나머지 9개 테마도 찍도록 샷 목록에 추가하면 좋아요.</p>
+</section>
+
+<h2>못 담은 것</h2>
+<ul class="plain">
+  <li>너비 좁게 · 넓게, 배경 순검정 · 단색은 실제 화면이 없어서 예시로 대신했어요.</li>
+  <li>배경 비교는 기본 테마에서만 찍혀 있어요. 무드등처럼 바탕에 색이 있는 테마에서는 "테마 기본"이 다르게 보여요.</li>
+  <li>B1 · B2 · B3 시안은 그림이라 글꼴 굵기와 자간이 앱과 조금 달라요. 위치와 크기를 보는 용도예요.</li>
+  <li>움직임(플립 넘어가는 모습, 번짐의 깜빡임)은 정지 화면이라 담지 못했어요.</li>
+</ul>
+</div>

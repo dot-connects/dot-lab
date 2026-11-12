@@ -18,7 +18,9 @@
     </queries>
 
     <application
-        android:label="StandBy"
+        android:label="@string/app_name"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.Material.NoActionBar">
         <activity android:name=".settings.SettingsActivity" android:exported="true">
@@ -48,7 +50,7 @@
         <service
             android:name=".platform.StandbyDream"
             android:exported="true"
-            android:label="StandBy"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_DREAM_SERVICE">
             <intent-filter>
                 <action android:name="android.service.dreams.DreamService" />
@@ -59,7 +61,7 @@
         <service
             android:name=".platform.Listener"
             android:exported="true"
-            android:label="StandBy"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
             <intent-filter>
                 <action android:name="android.service.notification.NotificationListenerService" />
@@ -74,7 +76,7 @@
             android:name=".platform.StandbyTile"
             android:exported="true"
             android:icon="@android:drawable/ic_lock_idle_charging"
-            android:label="StandBy"
+            android:label="@string/app_name"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE">
             <intent-filter>
                 <action android:name="android.service.quicksettings.action.QS_TILE" />

@@ -1,0 +1,901 @@
+<title>StandBy 설정 개편</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
+<!--CLOCK_FONTS-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Nanum+Pen+Script&display=swap">
+<style>
+:root{
+  color-scheme:dark;
+  --page:#08090b; --bg:#0e0f12; --surface:#17181c; --surface2:#212228; --line:#2a2c32;
+  --text:#ededef; --muted:#9a9aa0; --danger:#ff6b5e; --ok:#6fdc86; --acc:#76a6f3; --acc-soft:#1b2538;
+  --font:"Pretendard","Noto Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font-family:var(--font);font-size:16px;line-height:1.35;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right,0px)) 64px max(16px,env(safe-area-inset-left,0px))}
+.wrap>h1{font-size:26px;font-weight:700;margin:0 0 6px;text-wrap:balance}
+.lede{color:var(--muted);font-size:14px;margin:0 0 20px;max-width:62ch}
+
+/* control bar (outside the phone) */
+.bar{display:flex;flex-wrap:wrap;gap:12px 24px;padding:14px 16px;background:var(--surface);border-radius:16px;margin-bottom:24px}
+.bar label{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--muted);flex-wrap:wrap}
+.bar .seg{width:auto;min-width:230px}
+
+.stage{display:grid;gap:32px;justify-items:center}
+@media (min-width:900px){.stage{grid-template-columns:411px minmax(0,1fr);justify-items:start;align-items:start}}
+.notes{max-width:60ch}
+.notes h2,.foldsec h2{font-size:13px;font-weight:600;color:var(--muted);margin:0 0 12px;letter-spacing:.02em}
+.notes ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-size:14px}
+.notes li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:12px 14px;background:var(--surface);border-radius:12px}
+.notes .old{color:var(--muted);text-decoration:line-through;text-decoration-color:#55565c;grid-column:1/-1;font-size:13px}
+.notes .ar{color:var(--acc);font-weight:700}
+.foldsec{margin-top:48px}
+.foldsec p{color:var(--muted);font-size:13px;margin:-6px 0 14px}
+
+/* ---- device frames ---- */
+.dev{position:relative;background:var(--bg);border:1px solid var(--line);overflow:hidden;display:flex;flex-direction:column;zoom:var(--k,1);flex:none}
+.phone{width:411px;height:914px;border-radius:30px;padding-top:22px}
+.fold{width:932px;height:704px;border-radius:22px;padding-top:10px}
+.hd{height:64px;flex:none;display:flex;align-items:center;padding:0 16px 0 4px;font-size:22px;font-weight:700;gap:4px}
+.hd.home{padding-left:20px;font-size:30px}
+.ib{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:var(--muted);flex:none}
+.ib:hover{background:#ffffff0d}
+.hd .ib{color:var(--text)}
+.ministick{position:sticky;top:0;height:0;z-index:6}
+.mini{position:absolute;left:-16px;right:-16px;top:0;display:flex;align-items:center;gap:12px;padding:8px 16px;background:var(--bg);border-bottom:1px solid var(--line);box-shadow:0 8px 16px #0008;visibility:hidden;cursor:pointer}
+.mini.on{visibility:visible}
+.mini .pv,.mini .pv.port{height:96px;width:auto;flex:none;border-radius:10px;cursor:pointer;margin:0}
+.mini .mr{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.mini .pvact{padding:0;width:100%}
+.mini .pvact small{display:none}
+.ministick+.sec{padding-top:8px}
+.scroll{flex:1;overflow-y:auto;padding:0 16px 40px;scrollbar-width:none}
+.scroll::-webkit-scrollbar,.strip::-webkit-scrollbar,.pager::-webkit-scrollbar{display:none}
+.panes{flex:1;display:flex;min-height:0}
+.panes>.pl{flex:55;overflow-y:auto;padding:0 16px 24px;scrollbar-width:none}
+.panes>.pr{flex:45;overflow-y:auto;padding:0 16px 40px;scrollbar-width:none}
+.panes>.pr>.sec:first-child{padding-top:0}
+.fold .scroll{width:100%;max-width:720px;margin:0 auto}
+
+/* ---- kit: sections and rows ---- */
+.sec{padding-top:24px}
+.sh{font-size:13px;font-weight:600;color:var(--muted);padding:0 0 8px 16px}
+.sf{font-size:13px;color:var(--muted);padding:8px 16px 0;line-height:18px}
+.grp{background:var(--surface);border-radius:16px;overflow:hidden}
+.grp>*+*{position:relative}
+.grp>*+*::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--line)}
+.row{display:flex;align-items:center;min-height:60px;padding:10px 12px 10px 16px;gap:8px;width:100%}
+.row[data-a]{cursor:pointer}
+.row[data-a]:hover{background:#ffffff08}
+.rt{flex:1;min-width:0}
+.t{font-size:16px;font-weight:500}
+.s{font-size:13px;color:var(--muted);margin-top:2px;line-height:18px}
+.val{font-size:14px;color:var(--muted);white-space:nowrap}
+.chev{color:#9a9aa0b3;display:flex}
+.pillb{font-size:12px;font-weight:700;padding:4px 10px;border-radius:99px;background:#ff6b5e29;color:var(--danger);white-space:nowrap}
+.pillb.ok{background:#6fdc8629;color:var(--ok)}
+.pillb.acc{background:var(--acc-soft);color:var(--acc)}
+.dis .t{color:var(--muted)}
+.dis .sw,.dis .seg,.dis .val,.dis .chev,.dis input,.dis .dots{opacity:.38;pointer-events:none}
+.why{color:#c9a56a}
+.permline{display:flex;align-items:center;gap:8px;min-height:44px;padding:8px 16px 10px 16px;font-size:13px;color:var(--danger);cursor:pointer}
+.permline::before{display:none}
+.ctl .permline{padding:8px 0 0;min-height:36px}
+.permline b{font-weight:700;text-decoration:underline;text-underline-offset:3px}
+.permline i{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none}
+
+.sw{width:52px;height:32px;border-radius:16px;background:var(--surface2);border:2px solid var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:50%;left:6px;width:16px;height:16px;border-radius:50%;background:var(--muted);transform:translateY(-50%);transition:all .15s}
+.sw.on{background:var(--acc);border-color:var(--acc)}
+.sw.on::after{left:22px;width:24px;height:24px;background:var(--bg)}
+
+.ctl{padding:12px 16px}
+.ctl>.ct{display:flex;align-items:center;padding-bottom:10px}
+.ctl>.ct .t{flex:1}
+.note{font-size:13px;color:var(--muted);padding-top:8px;line-height:18px}
+.seg{display:flex;gap:2px;padding:3px;border-radius:12px;background:var(--surface2);width:100%}
+.seg button{flex:1;min-height:46px;border-radius:10px;font-size:14px;font-weight:500;color:var(--muted);text-align:center;padding:0 4px;white-space:nowrap}
+.seg button.on{background:var(--acc);color:var(--bg);font-weight:700}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chips button{min-height:40px;border-radius:99px;padding:0 16px;background:var(--surface2);font-size:14px;font-weight:500;display:inline-flex;align-items:center;gap:6px}
+.chips button.on{background:var(--acc);color:var(--bg);font-weight:700}
+input[type=range]{width:100%;height:36px;margin:0;accent-color:var(--acc);cursor:pointer;display:block}
+.field{width:100%;height:48px;border-radius:12px;background:var(--surface2);border:0;padding:0 14px;color:var(--text);font:500 16px var(--font);outline-offset:2px}
+.field::placeholder{color:var(--muted);font-weight:400}
+.btn{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:14px;padding:0 18px;font-size:15px;font-weight:700;background:var(--acc);color:var(--bg);width:100%;margin-top:16px}
+.btn.sub{background:var(--surface2);color:var(--text)}
+.btn.danger{background:#ff6b5e29;color:var(--danger)}
+.more{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:48px;margin-top:16px;border-radius:14px;background:var(--surface);color:var(--muted);font-size:14px;font-weight:600}
+.more:hover{color:var(--text)}
+.radio{width:22px;height:22px;border-radius:50%;border:2px solid var(--muted);flex:none;margin-right:6px;display:grid;place-items:center}
+.on>.radio{border-color:var(--acc)}
+.on>.radio::after{content:"";width:10px;height:10px;border-radius:50%;background:var(--acc)}
+.dots{display:flex;flex-wrap:wrap}
+.dot{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;position:relative}
+.dot>i{width:30px;height:30px;border-radius:50%;border:1px solid #ffffff1f;background:var(--c)}
+.dot.on::before{content:"";position:absolute;inset:2px;border-radius:50%;border:2px solid #fff}
+.dot.custom>i{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+.dot.custom input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.named{display:grid;grid-template-columns:repeat(6,1fr);gap:2px}
+.named>div{display:grid;justify-items:center;gap:2px;font-size:11px;color:var(--muted);text-align:center;line-height:1.25}
+.cdot{width:28px;height:28px;border-radius:50%;border:1px solid #fff3;background:var(--c);margin-right:6px}
+
+/* strips of tiles (themes, clock faces, analog shapes) */
+.strip{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+.tile{flex:none;width:118px;border-radius:14px;background:var(--surface);padding:8px 8px 10px;font-size:13px;font-weight:500}
+.grp .tile{background:var(--surface2)}
+.tile img,.tile .stand{display:block;width:100%;aspect-ratio:751/475;border-radius:8px;border:1px solid var(--line);object-fit:cover;margin-bottom:8px;background:#000}
+.tile.on{background:var(--acc-soft);color:var(--acc)}
+.tile.on img{border-color:var(--acc)}
+.fonts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.fonts button{border:1.5px solid var(--line);border-radius:12px;padding:8px 2px 8px;text-align:center;font-size:11px;color:var(--muted);background:var(--bg)}
+.fonts button b{display:block;font-size:24px;line-height:32px;color:var(--text)}
+.fonts button.on{border-color:var(--acc);background:var(--surface2);color:var(--text)}
+.fonts button.on b{color:var(--acc)}
+.lays{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.lays button{border:1.5px solid var(--line);border-radius:12px;padding:8px;font-size:11px;color:var(--muted);text-align:center;background:var(--bg)}
+.lays button.on{border-color:var(--acc);color:var(--text);background:var(--surface2)}
+.lay{display:grid;gap:3px;width:100%;aspect-ratio:751/475;margin-bottom:6px}
+.lay i{background:var(--line);border-radius:4px}
+.on .lay i{background:var(--acc)}
+
+/* ---- live preview ---- */
+.pvw{position:relative}
+.pv{position:relative;aspect-ratio:751/475;border-radius:18px;border:1px solid var(--line);background:#000;overflow:hidden;cursor:zoom-in}
+.pv.inner{aspect-ratio:932/704;max-height:250px;margin:0 auto}
+.fold .pv.inner{max-height:330px}
+.pv img{width:100%;height:100%;object-fit:contain;display:block;transition:filter .2s}
+.pv.glow{box-shadow:0 0 34px 2px color-mix(in srgb,var(--g) 55%,transparent);border-color:color-mix(in srgb,var(--g) 60%,var(--line))}
+.stand{width:100%;height:100%;display:grid;place-content:center;justify-items:center;gap:6px;color:var(--muted);font-size:14px;background:repeating-linear-gradient(135deg,#131418 0 10px,#0e0f12 10px 20px);text-align:center}
+.stand small,.ex{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;background:#ffffff1a;color:var(--muted)}
+.glowfill{width:100%;height:100%;background:radial-gradient(ellipse at 50% 60%,var(--g),color-mix(in srgb,var(--g) 35%,#000) 75%)}
+.pvbar{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-bottom:8px}
+.chip{height:30px;padding:0 12px;border-radius:99px;background:#17181cd9;border:1px solid #ffffff1f;font-size:12px;font-weight:600;color:var(--text);display:inline-flex;align-items:center;backdrop-filter:blur(6px)}
+.dn{display:flex;padding:2px;border-radius:99px;background:#17181cd9;border:1px solid #ffffff1f;backdrop-filter:blur(6px)}
+.dn button{height:26px;min-width:38px;padding:0 10px;border-radius:99px;font-size:12px;font-weight:600;color:var(--muted);text-align:center}
+.dn button.on{background:var(--acc);color:var(--bg);font-weight:700}
+.devmenu{position:absolute;top:36px;left:0;z-index:5;background:var(--surface2);border:1px solid var(--line);border-radius:12px;padding:4px;display:grid;min-width:130px;box-shadow:0 8px 24px #000a}
+.devmenu button{height:38px;padding:0 12px;border-radius:8px;font-size:14px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+.devmenu button:hover{background:#ffffff10}
+.devmenu button.on{color:var(--acc);font-weight:700}
+.pvp{margin:0;padding:0;gap:10px}
+.pp{flex:none;width:100%;scroll-snap-align:center}
+.pn{font-size:12px;color:var(--muted);text-align:center;padding-top:4px}
+.pv.port{aspect-ratio:475/751;height:300px;width:auto;margin:0 auto}
+.pc .pv.port{height:180px}
+.cap{font-size:12px;color:var(--muted);padding:6px 4px 0;min-height:22px;text-align:center}
+.pager{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.pc{flex:none;width:285px;scroll-snap-align:center}
+.fold .pc{width:440px}
+.pc .pv{border-radius:16px}
+.pc .nm{display:flex;align-items:center;gap:8px;padding:8px 4px 0;font-size:15px;font-weight:600}
+.pc .nm small{font-size:12px;font-weight:400;color:var(--muted)}
+
+/* page list + editor */
+.thumb{width:88px;aspect-ratio:751/475;border-radius:8px;border:1px solid var(--line);object-fit:cover;flex:none;background:#000;margin-right:6px;font-size:10px!important;overflow:hidden}
+.slots{position:absolute;inset:6px;display:grid;gap:5px}
+.slots button{border-radius:12px;border:1.5px dashed #ffffff40;display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;text-shadow:0 1px 4px #000}
+.slots button.on{border:2px solid var(--acc);background:#76a6f326}
+.slots button span{background:#000a;border-radius:99px;padding:2px 8px}
+
+/* banner, perms */
+.banner{display:flex;align-items:center;gap:12px;background:var(--surface);border-radius:16px;padding:14px 12px 14px 16px;margin-top:16px;cursor:pointer}
+.banner>i{width:10px;height:10px;border-radius:50%;background:var(--danger);flex:none}
+.banner .t{font-weight:700;font-size:15px}
+.need{background:var(--surface);border-radius:16px;padding:16px;margin-top:12px}
+.need .btn{margin-top:12px}
+.okline{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;font-size:15px;color:var(--muted)}
+.okline svg{color:var(--ok)}
+
+/* overlays inside a frame */
+.ov{position:absolute;inset:0;z-index:20;background:#000000b3;display:flex;align-items:flex-end;justify-content:center}
+.sheet{width:100%;max-width:720px;max-height:86%;background:var(--surface);border-radius:24px 24px 0 0;display:flex;flex-direction:column;padding-bottom:16px}
+.sheet::before{content:"";width:36px;height:4px;border-radius:2px;background:var(--line);margin:10px auto 0;flex:none}
+.sheet .sht{display:flex;align-items:center;padding:6px 4px 0 20px;font-size:18px;font-weight:700}
+.sheet .sht span{flex:1}
+.sheet .shb{overflow-y:auto;padding:8px 16px 4px}
+.sheet .grp{background:var(--surface2)}
+.full{background:#000;align-items:center;cursor:zoom-out}
+.full img{max-width:100%;max-height:100%}
+.phone .full img{position:absolute;top:50%;left:50%;width:650px;max-width:none;max-height:none;transform:translate(-50%,-50%) rotate(90deg)}
+.full span{position:absolute;bottom:14px;left:0;right:0;text-align:center;font-size:12px;color:#fff8}
+.toastb{position:absolute;left:50%;bottom:28px;transform:translateX(-50%);z-index:30;background:var(--text);color:var(--bg);font-size:14px;font-weight:700;padding:10px 18px;border-radius:99px;box-shadow:0 6px 20px #000a;white-space:nowrap}
+.sol{display:flex;gap:10px}
+.sol button{flex:1;aspect-ratio:1;max-width:40px;border-radius:50%;border:1px solid var(--line)}
+.sol button.on{border:2px solid #fff}
+.sol button.custom{background:conic-gradient(red,yellow,lime,cyan,blue,magenta,red)}
+.fonts.k button b{font-size:22px}
+:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* clock gallery */
+.fh{display:block;width:100%}
+.pv .fh{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);transition:filter .2s}
+.gt{position:relative;aspect-ratio:751/475;border-radius:8px;border:1px solid var(--line);background:#000;overflow:hidden;display:grid;align-items:center;margin-bottom:8px}
+.gt img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;border:0!important;margin:0!important;border-radius:0!important}
+.thumb.gt{margin-bottom:0}
+.tile.my{padding:8px 8px 6px}
+.tile.my>button:first-child{display:block;width:100%;font-weight:500;min-height:104px}
+.mv{display:flex;margin-top:6px;border-top:1px solid var(--line);padding-top:4px}
+.mv button{flex:1;height:34px;display:grid;place-items:center;color:var(--muted);border-radius:8px}
+.mv button:hover{background:#ffffff10;color:var(--text)}
+.mv button[disabled],.pvact button[disabled]{opacity:.3;pointer-events:none}
+.tile.add{display:grid;place-content:center;justify-items:center;gap:6px;color:var(--acc);border:1.5px dashed var(--line);background:none}
+.pvact{display:flex;align-items:center;gap:8px;padding-top:6px}
+.pvact .nm{flex:1;min-width:0;font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pvact .nm small{font-size:12px;font-weight:500;color:var(--muted);margin-left:8px}
+.pvact button{min-height:40px;padding:0 14px;border-radius:12px;font-size:14px;font-weight:700;background:var(--acc);color:var(--bg);white-space:nowrap;flex:none;text-align:center}
+.pvact button.sub{background:var(--surface2);color:var(--text)}
+.famchips{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.famchips::-webkit-scrollbar{display:none}
+.famchips button{flex:none;min-height:38px;border-radius:99px;padding:0 14px;background:var(--surface2);font-size:14px;font-weight:500}
+.famchips button.on{background:var(--acc);color:var(--bg);font-weight:700}
+.gal{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding-top:12px}
+.gc{position:relative;border-radius:14px;background:var(--surface);padding:8px 8px 10px;font-size:13px;font-weight:500;min-width:0}
+.gc.on{background:var(--acc-soft);color:var(--acc)}
+.gc.on .gt{border-color:var(--acc)}
+.gc .in{position:absolute;top:14px;right:14px;width:22px;height:22px;border-radius:50%;background:var(--acc);color:var(--bg);display:grid;place-items:center;z-index:2}
+.gc .gn{display:flex;align-items:center;gap:6px}
+.gc .uq{font-size:10px;font-weight:700;color:#ffad5c;border:1px solid currentColor;border-radius:5px;padding:1px 5px;white-space:nowrap}
+</style>
+
+<div class="wrap">
+  <h1>StandBy 설정 개편 (r10)</h1>
+  <p class="lede">아래 폰은 눌러 볼 수 있는 시안이에요. 홈에서 각 화면으로 들어가 값을 바꾸면 위쪽 미리보기가 함께 바뀌어요.</p>
+
+  <div class="bar" id="bar"></div>
+
+  <div class="stage">
+    <div id="phoneCol"><div class="dev phone" id="phone"></div></div>
+    <aside class="notes">
+      <h2>바뀐 점</h2>
+      <ol>
+        <li><span class="old">홈: 미리보기 + 테마 + 배경 + 메뉴가 한 화면에</span><span class="ar">→</span><span>홈은 미리보기와 네 묶음뿐이에요. 줄마다 지금 값이 보여요.</span></li>
+        <li><span class="old">야간 모드 · 디스플레이 (한 화면에 다섯 가지)</span><span class="ar">→</span><span>밤 화면 / 켜짐과 꺼짐 / 알림 표시로 나눴어요.</span></li>
+        <li><span class="old">야간 모드 "끔"이 세 번째 칸에</span><span class="ar">→</span><span>밤 화면 맨 위 첫 줄이 "안 씀"이에요.</span></li>
+        <li><span class="old">데이터</span><span class="ar">→</span><span>날씨와 도시 / 카드에 쓰는 정보 / 수면 소리로 나눴어요.</span></li>
+        <li><span class="old">시작 화면을 세 군데에서 설정</span><span class="ar">→</span><span>"처음 보이는 페이지" 한 곳에서만 정해요.</span></li>
+        <li><span class="old">보드 · 화면</span><span class="ar">→</span><span>모두 "페이지"라고 불러요. "화면"은 폰 화면만 뜻해요.</span></li>
+        <li><span class="old">시계 스타일 목록 → 시계별 화면</span><span class="ar">→</span><span>시계 한 화면에서 띠로 고르고 누르면 꾸며요. 시계 21개를 다섯 묶음으로 둘러봐요.</span></li>
+        <li><span class="old">StandBy 알람 화면 (스위치)</span><span class="ar">→</span><span>"알람이 울릴 때: 스탠바이 화면 / 시계 앱 화면"</span></li>
+        <li><span class="old">권한 화면에서 한꺼번에</span><span class="ar">→</span><span>쓰는 자리에 빨간 한 줄이 뜨고, 권한 화면은 체크리스트예요.</span></li>
+        <li><span class="old">모든 옵션이 한 줄로 쭉</span><span class="ar">→</span><span>덜 쓰는 것은 "자세히" 안에 있어요. 폴더블 전용은 이유와 함께 흐리게 보여요. 테마 이름 하나는 "기본"으로 바꿨어요.</span></li>
+      </ol>
+    </aside>
+  </div>
+
+  <section class="foldsec" id="foldSec">
+    <h2>폴드 안쪽 화면 (932dp)</h2>
+    <p>왼쪽 폰과 같은 화면을 두 칸으로 보여줘요. 왼쪽이 미리보기, 오른쪽이 설정이고 "자세히"는 처음부터 펼쳐져 있어요.</p>
+    <div class="dev fold" id="fold"></div>
+  </section>
+</div>
+
+<script>
+/*IMAGES*/
+const $ = (s, r = document) => r.querySelector(s), $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+// ---- data (names come from the app's Config.kt) ----
+const THEMES = [['iphone', '기본'], ['paper', '신문 1면'], ['moodlight', '무드등'], ['candle', '촛불'], ['flip', '플립 시계'], ['sky', '하늘'], ['daypaper', '종이'], ['radio', '브라운 라디오'], ['neon', '네온'], ['terminal', '터미널']];
+const FACES = [['digital', '디지털'], ['analog', '아날로그'], ['world', '세계'], ['solar', '솔라'], ['float', '둥근 굵은 글씨'], ['desk', '책상'], ['photos_time', '사진 위 시간']];
+/*CLOCK_JS*/
+const FACE_CSS = /*CLOCK_CSS*/;
+const FAMS = [['all', '전체'], ...NEWC.FAM.map(f => [f[0], f[1]])];
+/** Family of each face the app already has. The old 디지털 is merged into the 꽉 찬 숫자 drawing (id 'full', named 디지털). */
+const OLDFAM = { desk: 'simple', float: 'pop', solar: 'pop', analog: 'classic', photos_time: 'classic', world: 'gauge' };
+/** Every face the clock page can cycle through: 15 new (drawn live) + the 5 existing (real render images). */
+const CLOCKS = [...NEWC.F.map(f => ({ id: f.c, ko: f.c === 'full' ? '디지털' : f.name, fam: f.fam, uq: NEWC.REF[f.c][0], neu: true })), ...FACES.filter(([id]) => OLDFAM[id]).map(([id, ko]) => ({ id, ko, fam: OLDFAM[id] }))]
+  .sort((a, b) => FAMS.findIndex(f => f[0] === a.fam) - FAMS.findIndex(f => f[0] === b.fam));
+const clock = id => CLOCKS.find(c => c.id === id);
+const faceKo = id => (clock(id) || { ko: FACES.find(x => x[0] === id)[1] }).ko;
+const DT = ['weight', 'fx', 'bg']; // rows only typeset-digit ("digital-type") faces can use
+const STYLE = {
+  full: [['color', 'size', 'font', 'info'], [...DT, 'lay']],
+  thin: [['color', 'size', 'font', 'info'], DT],
+  split: [['hourC', 'minC', 'size', 'font', 'info'], DT],
+  desk: [['color', 'size', 'font'], DT],
+  block: [['combo2', 'size', 'font', 'info'], []],
+  stick: [['combo3', 'size', 'font', 'info'], ['paperC']],
+  ball: [['combo3', 'size', 'font', 'info'], ['digitC']],
+  solar: [['solar', 'color', 'size', 'font', 'info'], ['weight', 'fx', 'lay']],
+  float: [['color', 'size', 'font', 'info'], [...DT, 'lay']],
+  flip: [['plateC', 'digitC', 'size', 'font', 'info'], []],
+  led: [['ledC', 'size'], []],
+  lcd: [['panelC', 'inkC', 'size'], []],
+  dot: [['dotC', 'size'], []],
+  wall: [['handC', 'secC', 'anum', 'info'], ['faceC', 'tickC', 'numC', 'atick', 'dialfont', 'size']],
+  cal: [['color', 'calC', 'size', 'font'], ['weight']],
+  han: [['color', 'accC', 'size', 'kfont'], []],
+  analog: [['shape', 'handC', 'secC', 'anum'], ['faceC', 'tickC', 'numC', 'dayC', 'atick', 'dialfont', 'size']],
+  photos_time: [['color', 'size', 'font'], ['weight', 'fx']],
+  day: [['color', 'barC', 'size', 'font'], ['weight']],
+  rim: [['color', 'rimC', 'size', 'font', 'info'], ['weight']],
+  world: [['cityC', 'litC', 'size', 'font'], DT],
+};
+/** Colour rows: [label, default]. The label names the part of that clock the colour paints. */
+const PART = {
+  color: ['글자 색', '#76a6f3'], hourC: ['시 색', '#ff9c56'], minC: ['분 색', '#ffffff'], cityC: ['도시 색', '#76a6f3'], litC: ['밝은 점 색', '#ffd74b'],
+  plateC: ['판 색', '#1e1e20'], digitC: ['숫자 색', '#ffffff'], panelC: ['판 색', '#aab59b'], inkC: ['글자 색', '#1c2217'], dotC: ['점 색', '#ffb000'],
+  handC: ['바늘 색', '#ffffff'], secC: ['초침 색', '#ff9c56'], faceC: ['판 색', '#f1ece2'], tickC: ['눈금 색', '#d5d9df'], numC: ['숫자 색', '#ffffff'], dayC: ['요일 색', '#ff453a'],
+  calC: ['달력 색', '#c8402a'], accC: ['강조 색', '#d8b46a'], barC: ['막대 색', '#30ceda'], rimC: ['점 색', '#ff9c56'], paperC: ['바탕 색', '#f4efe6'],
+};
+const DEF = { size: 100, weight: 600, info: true, font: 0, dialfont: 0, kfont: 0, fx: 0, bg: 0, lay: 0, anum: 0, atick: 0, solar: 0, ledC: '#ff3a22', combo2: 0, combo3: 0 };
+const LEDS = [['빨강', '#ff3a22'], ['초록', '#3dff6e'], ['파랑', '#3aa0ff'], ['호박', '#ffb000']];
+const COMBO2 = [['#ffcf33', '#ff6f8f'], ['#7bdff2', '#ffd166'], ['#b8f2a0', '#5b6cff'], ['#ff8a5b', '#2d2a4a'], ['#f4efe6', '#16130f'], ['#c6b3ff', '#ffe08a']];
+const COMBO3 = [['#ff6b6b', '#ffd93d', '#4d96ff'], ['#ff8a5b', '#ffd166', '#7bdff2'], ['#f72585', '#7209b7', '#4cc9f0'], ['#b8f2a0', '#ffe08a', '#ffb3c7'], ['#ffffff', '#d5d9df', '#9a9aa0']];
+const KFONTS = [['명조', 700, "'Gowun Batang',serif"], ['고딕', 700, "'IBM Plex Sans KR',sans-serif"], ['둥근 고딕', 400, "'Jua',sans-serif"], ['손글씨', 400, "'Nanum Pen Script',cursive"]];
+const SHAPES = [['round', '둥근 판'], ['rect', '네모 판'], ['big4', '큰 숫자 4개'], ['minimal', '미니멀'], ['duo', '듀오']];
+const BGS = ['테마 기본', '순검정', '그래파이트', '미드나잇', '앰버', '오로라', '시간 따라', '사진 흐림', '단색 고르기'];
+const FONTS = [['테마 글꼴', 600, ''], ['굵게', 800, ''], ['가늘게', 300, ''], ['둥글게', 800, 'ui-rounded,var(--font)'], ['스텐실', 800, 'Impact,var(--font)'], ['명조', 500, 'serif'], ['굵은 명조', 900, 'serif'], ['슬랩', 700, 'Rockwell,serif'], ['레일', 800, 'Impact,var(--font)'], ['좁게', 600, '"Arial Narrow",var(--font)'], ['둥글고 아주 굵게', 900, 'ui-rounded,var(--font)'], ['얇게', 200, '']];
+const SW = ['#76a6f3', '#4d9bef', '#aa88fe', '#fd6890', '#e162b6', '#ff453a', '#fe7f7a', '#ff9c56', '#ffd74b', '#6fdc86', '#30ceda', '#d5d9df', '#ffffff'];
+const GLOWS = [['따뜻한 주황', '#ffb36b'], ['호박', '#ffa81f'], ['빨강', '#ff453a'], ['민트', '#85d4ba'], ['흰색', '#ffffff']];
+const SOLAR = [['#a396ae', '#b4e6e2'], ['#b07a86', '#f2c49b'], ['#4f5da8', '#9c7fd8'], ['#5e8f6e', '#d8e39a'], ['#9b4f4f', '#f59b6b'], ['#3d7f8f', '#7fd3e6'], ['#6b6b70', '#b5b5ba']];
+const SOUNDS = ['빗소리', '파도', '장작불', '백색소음', '핑크 노이즈', '브라운 노이즈'];
+const CARDS = ['시계', '아날로그 시계', '미디어', '타이머·뽀모도로', '수면 소리', 'D-day', '오늘 일정', 'Claude·Codex 사용량', '날씨', '이번 달 달력', '추억', '폰 위젯', '알림'];
+const CITIES = ['서울', '부산', '대구', '인천', '광주', '대전', '울산', '세종', '수원', '성남', '고양', '용인', '창원', '청주', '전주'];
+const DEVS = { cover: '폴드 커버', inner: '폴드 안쪽', bar: '일반 폰', flip: '플립' };
+const LAY = {
+  ONE: ['한 칸', "'a' 1fr/1fr"], TWO: ['두 칸', "'a b' 1fr/1fr 1fr"], BIG2: ['큰 칸 + 작은 칸 2', "'a b' 1fr 'a c' 1fr/1.5fr 1fr"],
+  TWO2: ['작은 칸 2 + 큰 칸', "'a c' 1fr 'b c' 1fr/1fr 1.5fr"], FOUR: ['네 칸', "'a b' 1fr 'c d' 1fr/1fr 1fr"], THREE: ['세 칸', "'a b c' 1fr/1fr 1fr 1fr"],
+};
+const slotCount = l => new Set(LAY[l][1].match(/[a-d]/g)).size;
+const PERMS = [
+  ['dream', '충전 중 스탠바이 띄우기', '충전 중 화면이 꺼질 때 스탠바이가 뜨게 해요', '선택하기'],
+  ['read', '알림 읽기', '큰 알림, 음악 재생, 알람을 읽어요', '허용하기'],
+  ['post', '알림 띄우기', '무드등과 알람 화면을 띄우는 데 필요해요', '허용하기'],
+  ['lock', '잠금 화면 위에 띄우기', '잠금 화면 위에 알람과 무드등을 띄워요', '허용하기'],
+  ['exact', '알람 시각 미리 알기', '알람 전에 미리 밝히기에 필요해요', '허용하기'],
+  ['cal', '캘린더', '오늘 일정 카드에 써요', '허용하기'],
+  ['photos', '사진', '사진 페이지와 추억 카드에 써요', '허용하기'],
+  ['battery', '밤새 멈추지 않게 하기', '밤새 켜져 있어도 앱이 멈추지 않게 해요', '설정 열기'],
+];
+const MISS4 = ['dream', 'read', 'lock', 'exact'];
+const pg = (id, name, layout, slots, o = {}) => ({ id, name, layout, slots, accent: 0, face: 'digital', wmode: 0, hide: false, op: 100, rad: 16, ...o });
+
+// ---- state ----
+const S = {
+  stack: [{ n: 'home' }], foldable: true, phone: 'fold', scr: 'out', ori: 'land', miss: new Set(), open: {}, sheet: null, full: null, devOpen: false, dev: 'cover', night: false,
+  theme: 'iphone', themePv: 'widgets', text: 1, bg: 0, bgColor: '#aa88fe',
+  startPage: 'clock', sel: 0, my: ['full', 'flip', 'han', 'analog'], fam: 'all',
+  pages: [
+    pg('widgets', '위젯', 'TWO', [], { fixed: true, sub: '두 칸 · 카드 쌓기' }), pg('photos', '사진', 'ONE', [], { fixed: true, sub: '앨범 사진을 번갈아' }),
+    pg('clock', '시계', 'ONE', [], { fixed: true, sub: '위아래로 넘기면 시계가 바뀌어요' }),
+    pg('modular', '모듈러', 'TWO2', ['날씨', '오늘 일정', '미디어']), pg('desk', '작업 책상', 'BIG2', ['시계', '타이머·뽀모도로', 'Claude·Codex 사용량']),
+    pg('music', '음악', 'TWO', ['시계', '미디어']), pg('bed', '잠자리', 'TWO', ['시계', '수면 소리']),
+    pg('exam', '수능', 'FOUR', ['D-day', '시계', '이번 달 달력', '오늘 일정']), pg('book', '책 (펼침)', 'BIG2', ['추억', '날씨', '이번 달 달력']), pg('video', '영상', 'ONE', ['미디어']),
+  ],
+  stackL: ['아날로그 시계'], stackR: ['이번 달 달력'],
+  use24: 0, face: 'digital', analogStyle: 'round', cFont: 9, cColor: '#76a6f3', cColor2: '#aa88fe', cSize: 100, cInfo: true, cWeight: 600, cWidth: 94, cFx: 0, cBg: 0, cLay: 0, cNum: 0,
+  aHand: '#ffffff', aSec: '#ff9c56', aNum: 0, aTick: 0, aNumC: '#ffffff', aTickC: '#d5d9df', aDayC: '#ff453a', solar: 0, litDot: '#ffd74b',
+  notif: true, tapOnly: false,
+  nightMode: 'auto', nStart: 22, nEnd: 7, nBright: 30, luxIn: 3, luxOut: 8,
+  startOnCharge: true, displayOff: 0, motion: true, wireless: false, burn: true,
+  sound: 0, sleepMin: 45, playing: false,
+  alarmScreen: 0, alarmGlow: true, glowBefore: 0, ramp: 6, onUnfold: 0, glowColor: '#ffb36b', glowTest: false,
+  city: '서울', world: ['서울'], ddays: [['수능', '2026년 11월 19일']], focus: 25, brk: 5, usage: true,
+};
+let TWO = false; // true while rendering the Fold inner frame
+const cur = () => S.stack.at(-1);
+/** The preview device comes from the phone itself (no menu): fold/flip pick 커버 or 안쪽, a bar phone has one screen. */
+const devOf = () => S.phone === 'bar' ? 'bar' : S.phone === 'flip' ? (S.scr === 'out' ? 'flip' : 'bar') : (S.scr === 'out' ? 'cover' : 'inner');
+const page = id => S.pages.find(p => p.id === id);
+const editing = () => page(cur().arg);
+const nightOn = () => S.night && S.nightMode !== 'off' && S.displayOff !== 2;
+const isOpen = id => S.open[id] ?? TWO;
+const glowName = () => (GLOWS.find(g => g[1] === S.glowColor) || ['직접 고른 색'])[0];
+const koOf = (list, id) => list.find(x => x[0] === id)[1];
+const FMT = { pct: v => v + '%', hour: v => String(v).padStart(2, '0') + ':00', min: v => v + '분', sec: v => v + '초', num: v => v, le: v => v + ' lx 이하', ge: v => v + ' lx 이상', dp: v => v + 'dp' };
+
+// ---- kit ----
+const PATH = { back: 'M13.6 4.4 7 11l6.6 6.6', chev: 'M8.4 4.4 15 11l-6.6 6.6', up: 'M4.4 13.6 11 7l6.6 6.6', down: 'M4.4 8.4 11 15l6.6-6.6', check: 'M4.4 11.4 9.2 15.8 17.6 6.6', plus: 'M11 4.4v13.2M4.4 11h13.2', close: 'M6 6l10 10M16 6 6 16' };
+const ic = (n, s = 22) => `<svg width="${s}" height="${s}" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${PATH[n]}"/></svg>`;
+const sec = (title, rows, footer) => `<div class="sec">${title ? `<div class="sh">${title}</div>` : ''}<div class="grp">${rows.filter(Boolean).join('')}</div>${footer ? `<div class="sf">${footer}</div>` : ''}</div>`;
+const tx = (t, sub, why) => `<div class="rt"><div class="t">${t}</div>${sub ? `<div class="s">${sub}</div>` : ''}${why ? `<div class="s why">${why}</div>` : ''}</div>`;
+const row = (inner, a, dis, cls = '') => `<div class="row ${cls} ${dis ? 'dis' : ''}" ${a && !dis ? `data-a="${a}" role="button" tabindex="0"` : ''}>${inner}</div>`;
+const nav = (t, a, o = {}) => row((o.pre || '') + tx(t, o.sub, o.dis && o.why) + (o.val ? `<span class="val">${o.val}</span>` : '') + (o.badge ? `<span class="pillb ${o.ok ? 'ok' : ''}">${o.badge}</span>` : '') + `<span class="chev">${ic('chev', 20)}</span>`, a, o.dis);
+const permLine = id => S.miss.has(id) ? `<div class="permline" data-a="grant:${id}" role="button" tabindex="0"><i></i><span>설정 한 가지가 더 필요해요 · <b>설정하기</b></span></div>` : '';
+const sw = (t, key, o = {}) => `<div>${row(tx(t, o.sub, o.dis && o.why) + `<span class="sw ${S[key] && !o.off ? 'on' : ''}"></span>`, 'tog:' + key, o.dis)}${o.perm ? permLine(o.perm) : ''}</div>`;
+const seg = (key, opts, a = 'set:' + key, v = S[key]) => `<div class="seg">${opts.map((o, i) => `<button class="${v === i ? 'on' : ''}" data-a="${a}:${i}">${o}</button>`).join('')}</div>`;
+const chips = (key, opts, vals) => `<div class="chips">${opts.map((o, i) => `<button class="${S[key] === (vals ? vals[i] : i) ? 'on' : ''}" data-a="set:${key}:${vals ? vals[i] : i}">${o}</button>`).join('')}</div>`;
+const ctl = (t, inner, o = {}) => `<div class="ctl ${o.dis ? 'dis' : ''}">${t ? `<div class="ct"><div class="t">${t}</div>${o.val ? `<span class="val">${o.val}</span>` : ''}</div>` : ''}${inner}${o.dis && o.why ? `<div class="note why">${o.why}</div>` : o.note ? `<div class="note">${o.note}</div>` : ''}${o.perm ? permLine(o.perm) : ''}</div>`;
+const sl = (t, key, min, max, step, f, o = {}) => {
+  const v = key[0] === '@' ? editing()[key.slice(1)] : S[key];
+  return `<div class="ctl ${o.dis ? 'dis' : ''}" style="padding-bottom:${o.note || o.why ? 12 : 4}px"><div class="ct" style="padding-bottom:0"><div class="t">${t}</div><span class="val" data-v="${key}">${FMT[f](v)}</span></div><input type="range" aria-label="${t}" min="${min}" max="${max}" step="${step}" value="${v}" data-k="${key}" data-f="${f}">${o.dis && o.why ? `<div class="note why" style="padding-top:0">${o.why}</div>` : o.note ? `<div class="note" style="padding-top:0">${o.note}</div>` : ''}</div>`;
+};
+const dots = (key, v = S[key], a = 'set:' + key) => `<div class="dots">${SW.map(c => `<button class="dot ${v === c ? 'on' : ''}" style="--c:${c}" data-a="${a}:${c}" aria-label="색 ${c}"><i></i></button>`).join('')}<label class="dot custom ${SW.includes(v) ? '' : 'on'}" title="직접 고르기"><i></i><input type="color" value="${v}" data-k="${key}" aria-label="직접 고르기"></label></div>`;
+const colorRow = (t, key) => `<div>${row(tx(t) + `<span class="cdot" style="--c:${S[key]}"></span>`, 'more:c-' + key)}${S.open['c-' + key] ? `<div style="padding:0 8px 8px">${dots(key)}</div>` : ''}</div>`;
+const more = (id, html) => `<button class="more" data-a="more:${id}" aria-expanded="${isOpen(id)}">자세히 ${ic(isOpen(id) ? 'up' : 'down', 18)}</button>${isOpen(id) ? html : ''}`;
+const strip = (key, items, a = 'set:' + key) => `<div class="strip" data-keep="strip-${key}">${items.map(it => `<button class="tile ${S[key] === it[0] ? 'on' : ''}" data-a="${a}:${it[0]}"><img src="${IMG[it[2]]}" alt="" loading="lazy">${it[1]}</button>`).join('')}</div>`;
+const FWHY = '갤럭시 폴드처럼 안쪽 화면이 큰 폰에서만 쓸 수 있어요';
+
+// ---- live preview ----
+const faceKey = (f, n = '') => f === 'digital' ? `${S.theme}/digital${n}` : `${S.theme}/f-${f}${n}`;
+const faceSrc = (id, n = '') => id === 'analog' && S.theme === 'iphone' ? `an-${S.analogStyle}${n}` : faceKey(id, n);
+/** A face as html: a real render image for the existing faces, a live drawn face (see mountFaces) for the new ones. */
+const faceArt = (id, night) => clock(id)?.neu ? `<div class="fh" data-face="${id}" data-n="${night ? 1 : 0}"></div>` : `<img src="${IMG[faceSrc(id, night ? '-n' : '')]}" alt="" loading="lazy">`;
+const pageKey = (id, n = '') => id === 'widgets' || id === 'modular' || id === 'photos' ? `${S.theme}/${id}${n}` : id === 'clock' ? (clock(S.my[0]).neu ? null : faceSrc(S.my[0], n)) : IMG[`${S.theme}/${id}${n}`] ? `${S.theme}/${id}${n}` : null;
+/** What the preview shows for a screen: image key, stand-in text, captions. All preview rules live here. */
+function look(kind, arg) {
+  if (kind === 'page' && arg === 'widgets') kind = 'widgets';
+  const T = S.theme, on = nightOn(), n = on ? '-n' : '', caps = [], D = devOf();
+  let port = false;
+  let src = null, stand = '', fill = false, face = null;
+  if (S.night && !on) caps.push(S.displayOff === 2 ? '지금은 밤 화면이 꺼져 있어요' : '밤에도 이렇게 보여요');
+  if (kind === 'page') {
+    src = arg === 'modular' && S.text === 2 && !on ? `${T}/modular-L` : pageKey(arg, n); stand = '새 페이지';
+    if (arg === 'modular' && S.text === 0) caps.push('"작게"는 예시 그림이 없어서 "보통"으로 보여요');
+    if (arg === 'clock' && clock(S.my[0]).neu) face = S.my[0];
+  }
+  else if (kind === 'theme' && S.themePv === 'text') {
+    src = `${T}/modular${S.text === 2 && !on ? '-L' : n}`;
+    if (S.text === 0) caps.push('"작게"는 예시 그림이 없어서 "보통"으로 보여요');
+    if (S.text === 2 && on) caps.push('밤 화면의 큰 글자는 예시 그림이 없어요');
+  }
+  else if (kind === 'theme' || kind === 'widgets' || kind === 'night') {
+    port = S.ori === 'port' && (D === 'cover' || D === 'bar');
+    if (S.ori === 'port' && !port) caps.push('이 기기의 세로 예시 그림은 아직 없어요');
+    src = port ? `${T}/widgets@${D}-port` : D === 'cover' ? `${T}/widgets${n}` : `${T}/widgets@${D}`;
+    if (port && on) caps.push('세로 예시는 낮 그림만 있어요');
+    if (D !== 'cover' && on) caps.push('다른 기기는 낮 그림만 있어요');
+    if (kind === 'theme' && S.bg !== 0) caps.push('배경을 바꾼 모습은 예시 그림에 없어요');
+    if (kind === 'theme' && S.text !== 1) caps.push('글자 크기는 "모듈러" 페이지에서 보여요');
+  }
+  else if (kind === 'clock') {
+    if (clock(S.face)?.neu) { face = S.face; caps.push('새 시계는 일반 폰 가로 시안 그림이에요'); }
+    else if (S.face === 'analog' && T === 'iphone') src = `an-${S.analogStyle}${n}`;
+    else { src = faceKey(S.face, n); if (S.face === 'analog' && S.analogStyle !== 'round') caps.push('모양 예시는 "기본" 테마에서만 보여요'); }
+  }
+  else if (kind === 'notif') {
+    if (!S.notif) { src = `${T}/digital${n}`; caps.push('알림이 와도 화면은 그대로예요'); }
+    else { src = (S.tapOnly ? 'notif-hidden' : 'notif') + n; if (T !== 'iphone') caps.push('알림 예시는 "기본" 테마 그림이에요'); }
+  }
+  else if (kind === 'alarm') { if (S.alarmScreen === 0) src = 'alarm' + n; else stand = '시계 앱의 알람 화면'; }
+  else if (kind === 'fold') { if (S.onUnfold === 0 && !S.glowTest) src = 'book-inner'; else fill = true; }
+  if ((D !== 'cover' || S.ori === 'port') && !/@/.test(src || '') && kind !== 'fold' && !face) caps.push('이 화면은 폴드 커버 가로 예시 그림이에요');
+  const glow = kind === 'alarm' && S.foldable && S.alarmGlow;
+  if (glow) caps.push('둘레 불빛 = 안쪽 화면 무드등');
+  return { src, stand, fill, caps, glow, port, face, night: on, b: on ? Math.min(1.6, 0.4 + S.nBright / 50) : 1 };
+}
+const dnPill = () => `<div class="dn" role="group" aria-label="낮 밤"><button class="${S.night ? '' : 'on'}" data-a="set:night:false">낮</button><button class="${S.night ? 'on' : ''}" data-a="set:night:true">밤</button></div>`;
+const oriPick = () => true ? `<div class="dn" role="group" aria-label="방향"><button class="${S.ori === 'land' ? 'on' : ''}" data-a="set:ori:land">가로</button><button class="${S.ori === 'port' ? 'on' : ''}" data-a="set:ori:port">세로</button></div>` : '';
+const devChip = () => `<div style="display:flex;gap:6px">${scrPick()}${oriPick()}</div>`;
+const scrPick = () => S.phone === 'bar' ? '' : `<div class="dn" role="group" aria-label="화면"><button class="${S.scr === 'out' ? 'on' : ''}" data-a="set:scr:out">커버</button><button class="${S.scr === 'in' ? 'on' : ''}" data-a="set:scr:in">안쪽</button></div>`;
+const devMenu = () => false ? `<div class="devmenu">${Object.entries(DEVS).map(([k, v]) => `<button class="${S.dev === k ? 'on' : ''}" data-a="set:dev:${k}">${v}${S.dev === k ? ic('check', 16) : ''}</button>`).join('')}</div>` : '';
+function frame(L, extra = '') {
+  const media = L.fill ? `<div class="glowfill"></div>` : L.face ? `<div class="fh" data-face="${L.face}" data-n="${L.night ? 1 : 0}" style="filter:brightness(${L.b})"></div>` : L.src ? `<img src="${IMG[L.src]}" alt="" style="filter:brightness(${L.b})">` : `<div class="stand">${L.stand}<small>예시</small></div>`;
+  return `<div class="pv ${L.glow ? 'glow' : ''} ${L.port ? 'port' : ''}" style="--g:${S.glowColor}" data-a="full:${L.src || ''}">${media}${extra}</div>`;
+}
+/** Screens whose preview can be swiped to the other pages; the value names the first slide. */
+const SLIDE = { theme: () => S.themePv === 'text' ? '모듈러' : '위젯', widgets: () => '위젯', night: () => '위젯', notif: () => '알림', clock: () => faceKo(S.face) };
+function pv(kind, arg = '') {
+  const L = look(kind, arg), fold = kind === 'fold';
+  const bar = `<div class="pvbar">${fold ? '<span class="chip">폴드 안쪽</span>' : devChip() + dnPill()}</div>`;
+  let extra = '';
+  if (kind === 'page' && !editing().fixed) {
+    const p = editing(), n = slotCount(p.layout);
+    extra += `<div class="slots" style="grid-template:${LAY[p.layout][1]}">${[...'abcd'].slice(0, n).map((ar, i) => `<button style="grid-area:${ar}" class="${S.sel === i ? 'on' : ''}" data-a="set:sel:${i}"><span>칸 ${i + 1}</span></button>`).join('')}</div>`;
+    L.caps.unshift('칸을 누르면 카드를 고를 수 있어요');
+  }
+  let html = frame(L, extra).replace('class="pv ', `class="pv ${fold ? 'inner' : ''} `);
+  if (SLIDE[kind]) {
+    const rest = S.pages.filter(p => !(kind === 'widgets' && p.id === 'widgets')).map(p => [frame(look('page', p.id)), esc(p.name)]);
+    html = `<div class="pager pvp" data-keep="pvp-${kind}">${[[html, SLIDE[kind]()], ...rest].map(([f, nm]) => `<div class="pp">${f}<div class="pn">${nm}</div></div>`).join('')}</div>`;
+  }
+  const caps = SLIDE[kind] ? [...L.caps, '옆으로 넘기면 다른 페이지'] : L.caps;
+  return `<div class="pvw" data-pv="${kind}|${arg}">${bar}${html}${devMenu()}<div class="cap">${caps.join(' · ')}</div></div>`;
+}
+/** Name of the face in the preview + 넣기 / 꾸미기 / 빼기 (clock screen, also inside the mini preview). */
+function clockAct() {
+  const c = clock(S.face), inMy = S.my.includes(c.id);
+  return `<div class="pvact"><span class="nm">${c.ko}<small>${inMy ? `내 시계 ${S.my.indexOf(c.id) + 1}번째` : '둘러보는 중'}</small></span>` +
+    (inMy ? `<button class="sub" data-a="go:style:${c.id}">꾸미기</button><button class="sub" data-a="myrm:${c.id}" ${S.my.length < 2 ? 'disabled' : ''}>빼기</button>` : `<button data-a="myadd:${c.id}">내 시계에 넣기</button>`) + `</div>`;
+}
+/** Compact preview shown once the full one has scrolled away. It overlays the list (sticky, height 0), so showing it never moves the content. */
+function miniHTML(kind, arg, on = false) {
+  return `<div class="mini ${on ? 'on' : ''}" data-mini="${kind}|${arg}" data-a="top" role="button" tabindex="0" aria-label="미리보기로 올라가기">${frame(look(kind, arg)).replace(/data-a="full:[^"]*"/, '')}<div class="mr">${kind === 'fold' ? '' : dnPill()}${cur().n === 'clock' ? clockAct() : ''}</div></div>`;
+}
+let WATCH = [];
+function watchMini() {
+  WATCH.forEach(o => o.disconnect()); WATCH = [];
+  $$('.pvfull').forEach(full => {
+    const sc = full.parentElement, set = on => $('.mini', sc)?.classList.toggle('on', on);
+    set(full.offsetHeight > 0 && sc.scrollTop > full.offsetHeight - 64);
+    const io = new IntersectionObserver(es => set(!es.at(-1).isIntersecting), { root: sc, rootMargin: '-64px 0px 0px 0px' });
+    io.observe(full); WATCH.push(io);
+  });
+}
+function pager() {
+  const cards = S.pages.map(p => {
+    const L = look('page', p.id);
+    return `<div class="pc ${p.id === S.startPage ? 'start' : ''}">${frame(L)}<div class="nm">${esc(p.name)}${p.id === S.startPage ? '<span class="pillb acc">처음</span>' : ''}</div></div>`;
+  }).join('');
+  const cap = look('page', 'widgets').caps.filter(c => /밤/.test(c)).join('');
+  return `<div class="pvw" data-pv="pager|"><div class="pvbar">${devChip()}${dnPill()}</div>${devMenu()}<div class="pager" data-keep="pager">${cards}</div><div class="cap">${cap || '옆으로 넘기면 다른 페이지가 보여요 · 누르면 전체 화면'}</div></div>`;
+}
+const repaint = () => { $$('[data-pv]').forEach(el => {
+  TWO = !!el.closest('.fold');
+  const [k, a] = el.dataset.pv.split('|');
+  if (k !== 'pager') { const x = $('.pvp', el)?.scrollLeft; el.outerHTML = pv(k, a); const n = $(`[data-pv="${k}|${a}"] .pvp`); if (n && x) n.scrollLeft = x; }
+  else $$('.pv img', el).forEach(im => im.style.filter = `brightness(${look('page', 'widgets').b})`);
+}); $$('[data-mini]').forEach(el => { const [k, a] = el.dataset.mini.split('|'); el.outerHTML = miniHTML(k, a, el.classList.contains('on')); }); mountFaces(); };
+
+// ---- screens: each returns { t: title, pv: preview html (optional), body: rows html } ----
+const SCREENS = {
+  home() {
+    const done = PERMS.length - S.miss.size, nm = S.nightMode, mine = S.pages.filter(p => !p.fixed).length, need = id => S.miss.has(id) ? { badge: '설정 필요' } : null;
+    const banner = S.miss.size ? `<div class="banner" data-a="go:perms" role="button" tabindex="0"><i></i>${tx('충전 중 스탠바이가 뜨려면 설정이 더 필요해요', `${PERMS.length}개 중 ${done}개 완료`)}<span class="chev">${ic('chev', 20)}</span></div>` : '';
+    return {
+      t: '스탠바이', pv: pager(), body: banner +
+        sec('화면', [
+          nav('테마와 배경', 'go:theme', { val: koOf(THEMES, S.theme) }),
+          nav('페이지 구성', 'go:pages', { sub: `위젯 · 사진 · 시계 + 내 페이지 ${mine}개` }),
+          nav('시계', 'go:clock', { val: `내 시계 ${S.my.length}개` }),
+          nav('알림 표시', 'go:notif', need('read') || { val: S.notif ? '켜짐' : '꺼짐' }),
+        ]) +
+        sec('밤과 꺼짐', [
+          nav('밤 화면', 'go:night', { val: nm === 'off' ? '안 씀' : nm === 'auto' ? '어두워지면' : `정한 시간에 ${FMT.hour(S.nStart).slice(0, 2)}–${FMT.hour(S.nEnd).slice(0, 2)}` }),
+          nav('켜짐과 꺼짐', 'go:onoff', need('dream') || { val: `${S.startOnCharge ? '충전하면 켜짐' : '직접 켤 때만'} · ${['어두워지면 꺼짐', '20초 뒤 꺼짐', '계속 켜 둠'][S.displayOff]}` }),
+          nav('수면 소리', 'go:sound', { val: `${SOUNDS[S.sound]} · ${S.sleepMin}분` }),
+        ]) +
+        sec('알람과 폴드', [
+          nav('알람', 'go:alarm', { val: S.alarmScreen ? '시계 앱 화면' : '스탠바이 화면' }),
+          nav('폴드를 펼쳤을 때', 'go:fold', { val: S.onUnfold ? '무드등' : '책 화면', dis: !S.foldable, why: FWHY }),
+        ]) +
+        sec('정보와 권한', [
+          nav('날씨와 도시', 'go:weather', { val: S.city }),
+          nav('카드에 쓰는 정보', 'go:cardinfo'),
+          nav('권한', 'go:perms', { badge: S.miss.size ? `${S.miss.size}개 필요` : '모두 켜짐', ok: !S.miss.size }),
+          nav('앱 정보', 'go:about'),
+        ]),
+    };
+  },
+  theme() {
+    return {
+      t: '테마와 배경', pv: pv('theme'), body:
+        `<div class="sec"><div class="sh">테마</div>${strip('theme', THEMES.map(([id, ko]) => [id, ko, `${id}/widgets`]))}</div>` +
+        sec(null, [ctl('글자 크기', seg('text', ['작게', '보통', '크게']), { note: '알림과 일정 글자가 바뀌어요. 큰 시계 숫자는 그대로예요. 미리보기를 옆으로 넘겨 일정이 있는 페이지에서 확인해요.' })]) +
+        sec('배경', [ctl(null, chips('bg', BGS) + (S.bg === 8 ? `<div style="padding-top:8px">${dots('bgColor')}</div>` : ''))]),
+    };
+  },
+  pages() {
+    const rows = S.pages.map((p, i) => {
+      const k = pageKey(p.id), mine = !p.fixed, first = S.pages.findIndex(x => !x.fixed);
+      const pre = p.id === 'clock' && clock(S.my[0]).neu ? `<div class="thumb gt">${faceArt(S.my[0])}</div>` : k ? `<img class="thumb" src="${IMG[k]}" alt="">` : `<div class="thumb stand">예시</div>`;
+      const txt = tx(esc(p.name) + (p.id === S.startPage ? ' <span class="pillb acc">처음</span>' : ''), p.sub || LAY[p.layout][0]);
+      if (!mine) return p.id === 'photos' ? row(pre + txt) : row(pre + txt + `<span class="chev">${ic('chev', 20)}</span>`, p.id === 'widgets' ? 'go:stacks' : 'go:clock');
+      return row(pre + `<div class="rt" data-a="go:edit:${p.id}" role="button" tabindex="0" style="cursor:pointer">${tx(esc(p.name) + (p.id === S.startPage ? ' <span class="pillb acc">처음</span>' : ''), LAY[p.layout][0]).replace('<div class="rt">', '<div>')}</div>` +
+        `<button class="ib ${i === first ? 'dis' : ''}" style="${i === first ? 'opacity:.25' : ''}" data-a="move:${i}:-1" aria-label="위로">${ic('up')}</button><button class="ib" style="${i === S.pages.length - 1 ? 'opacity:.25' : ''}" data-a="move:${i}:1" aria-label="아래로">${ic('down')}</button>`, null, false);
+    });
+    return {
+      t: '페이지 구성', body:
+        sec(null, [nav('처음 보이는 페이지', 'go:start', { val: esc(page(S.startPage).name) })]) +
+        sec('페이지 순서', rows, '위젯 · 사진 · 시계는 맨 앞에 고정돼요. 내 페이지는 ▲▼로 순서를 바꾸고, 누르면 고칠 수 있어요.') +
+        `<button class="btn" data-a="addpage">페이지 추가</button>`,
+    };
+  },
+  start() {
+    return {
+      t: '처음 보이는 페이지', body: sec(null, S.pages.map(p => row(tx(esc(p.name)) + (p.id === S.startPage ? `<span style="color:var(--acc);display:flex">${ic('check')}</span>` : ''), 'set:startPage:' + p.id)),
+        '스탠바이가 켜질 때 처음 보이는 페이지예요.'),
+    };
+  },
+  stacks() {
+    const side = (t, key) => sec(t, [...S[key].map((c, i) => row(tx(c, i === 0 && S[key].length > 1 ? '처음에 보이는 카드' : '') + (S[key].length > 1 ? `<button class="ib" data-a="unstack:${key}:${i}" aria-label="빼기">${ic('close')}</button>` : ''))),
+      row(`<span style="color:var(--acc);display:flex">${ic('plus', 20)}</span>` + tx('<span style="color:var(--acc)">카드 더하기</span>'), 'sheet:stack:' + key)]);
+    return { t: '위젯', pv: pv('widgets'), body: side('왼쪽 칸', 'stackL') + side('오른쪽 칸', 'stackR') + `<div class="sf">카드가 둘 이상이면 그 칸을 위아래로 넘겨요.</div>` };
+  },
+  edit() {
+    const p = editing(), n = slotCount(p.layout), wi = p.slots.findIndex(c => c === '폰 위젯');
+    const lays = `<div class="lays">${Object.entries(LAY).map(([k, [ko, g]]) => `<button class="${p.layout === k ? 'on' : ''}" data-a="pset:layout:${k}"><div class="lay" style="grid-template:${g}">${[...'abcd'].slice(0, slotCount(k)).map(a => `<i style="grid-area:${a}"></i>`).join('')}</div>${ko}</button>`).join('')}</div>`;
+    const widget = wi < 0 ? '' : sec(`폰 위젯 · 칸 ${wi + 1}`, [
+      nav('위젯 고르기', null, { sub: '홈 화면 위젯 가운데 하나' }),
+      ctl('다크·라이트', seg('', ['테마 따라', '늘 다크', '늘 라이트'], 'pset:wmode', p.wmode)),
+      `<div>${row(tx('밤에 숨기기') + `<span class="sw ${p.hide ? 'on' : ''}"></span>`, 'pset:hide:' + !p.hide)}</div>`,
+    ]);
+    return {
+      t: esc(p.name), pv: pv('page', p.id), body:
+        sec('칸 나누기', [ctl(null, lays)]) +
+        sec('칸별 카드', p.slots.slice(0, n).map((c, i) => nav(`칸 ${i + 1}`, `sheet:card:${i}`, { val: c, pre: S.sel === i ? '<i style="width:4px;height:28px;border-radius:2px;background:var(--acc);margin-right:6px"></i>' : '' })), '예시 그림이라 카드를 바꿔도 위 그림은 그대로예요.') +
+        widget +
+        more('edit', sec(null, [
+          ctl('이름', `<input class="field" value="${esc(p.name)}" data-k="@name" placeholder="페이지 이름" aria-label="이름">`),
+          ctl('강조 색', seg('', ['시계 따라', '직접 고르기'], 'pset:accent', p.accent) + (p.accent ? `<div style="padding-top:8px">${dots('', p.accentC || SW[0], 'pset:accentC')}</div>` : ''), { note: '시계 따라: 이 페이지의 시계 색을 같이 써요.' }),
+          ctl('이 페이지의 시계', `<div class="chips">${FACES.slice(0, 6).map(([id, ko]) => `<button class="${p.face === id ? 'on' : ''}" data-a="pset:face:${id}">${ko}</button>`).join('')}</div>`),
+          wi < 0 ? '' : sl('폰 위젯 투명도', '@op', 0, 100, 5, 'pct'),
+          wi < 0 ? '' : sl('폰 위젯 모서리', '@rad', 0, 40, 1, 'dp'),
+        ]) + `<button class="btn sub" data-a="dup">복제</button><button class="btn danger" data-a="del">${S.delArm ? '한 번 더 누르면 지워져요' : '이 페이지 지우기'}</button>`),
+    };
+  },
+  clock() {
+    if (!clock(S.face)) S.face = S.my[0];
+    const one = S.my.length < 2 ? 'disabled' : '';
+    const mine = S.my.map((id, i) => `<div class="tile my ${S.face === id ? 'on' : ''}"><button data-a="set:face:${id}" aria-label="${faceKo(id)} 보기"><div class="gt">${faceArt(id)}</div>${i + 1}. ${faceKo(id)}</button>` +
+      `<div class="mv"><button data-a="mymove:${i}:-1" aria-label="앞으로 옮기기" ${i ? '' : 'disabled'}>${ic('back', 18)}</button><button data-a="mymove:${i}:1" aria-label="뒤로 옮기기" ${i < S.my.length - 1 ? '' : 'disabled'}>${ic('chev', 18)}</button><button data-a="myrm:${id}" aria-label="빼기" ${one}>${ic('close', 18)}</button></div></div>`).join('') +
+      `<button class="tile add" data-a="gal">${ic('plus')}시계 넣기</button>`;
+    const gal = CLOCKS.filter(x => S.fam === 'all' || x.fam === S.fam).map(x => `<button class="gc ${S.face === x.id ? 'on' : ''}" data-a="set:face:${x.id}">${S.my.includes(x.id) ? `<span class="in" title="내 시계에 있어요">${ic('check', 16)}</span>` : ''}<div class="gt">${faceArt(x.id)}</div><span class="gn">${x.ko}${x.uq ? '<span class="uq">우리만</span>' : ''}</span></button>`).join('');
+    return {
+      t: '시계', pv: pv('clock') + clockAct(), body:
+        `<div class="sec"><div class="sh">내 시계 · ${S.my.length}개</div><div class="strip" data-keep="strip-my">${mine}</div><div class="sf">스탠바이에서 시계 페이지를 위아래로 넘기면 이 순서로 바뀌어요. 누르면 위 미리보기에 보여요. 꾸미기는 미리보기의 [꾸미기]로 해요.</div></div>` +
+        `<div class="sec galsec"><div class="sh">둘러보기 · ${CLOCKS.length}개</div><div class="famchips" data-keep="fam">${FAMS.map(([k, t]) => `<button class="${S.fam === k ? 'on' : ''}" data-a="set:fam:${k}">${t}</button>`).join('')}</div><div class="gal">${gal}</div><div class="sf">누르면 위 미리보기에 보여요. 마음에 들면 "내 시계에 넣기"를 눌러요.</div></div>` +
+        more('clock24', sec(null, [ctl('시간 표시', seg('use24', ['폰 설정 따라', '12시간', '24시간']))])),
+    };
+  },
+  style() {
+    const f = S.face, [basic, extra] = STYLE[f];
+    let firstColour = true;
+    const key = t => { const k = `st_${f}_${t}`; S[k] ??= t in DEF ? DEF[t] : PART[t]?.[1]; return k; };
+    const fontGrid = (k, list, sample) => `<div class="fonts ${sample === '12' ? '' : 'k'}">${list.map(([n, w, ff], i) => `<button class="${S[k] === i ? 'on' : ''}" data-a="set:${k}:${i}"><b style="font-weight:${w};${ff ? `font-family:${ff}` : ''}">${sample}</b>${n}</button>`).join('')}</div>`;
+    const combo = (k, sets) => `<div class="sol">${sets.map((c, i) => `<button class="${S[k] === i ? 'on' : ''}" style="background:linear-gradient(90deg,${c.map((x, j) => `${x} ${j * 100 / c.length}% ${(j + 1) * 100 / c.length}%`).join(',')})" data-a="set:${k}:${i}" aria-label="조합 ${i + 1}"></button>`).join('')}<button class="custom ${S[k] === sets.length ? 'on' : ''}" data-a="set:${k}:${sets.length}" aria-label="직접 고르기"></button></div>` +
+      (S[k] === sets.length ? sets[0].map((c, j) => { S[`${k}_${j}`] ??= c; return colorRow(`색 ${j + 1}`, `${k}_${j}`); }).join('') : '');
+    const rowOf = t => {
+      const k = key(t);
+      switch (t) {
+        case 'size': return sl('크기', k, 60, 130, 1, 'pct');
+        case 'weight': return sl('굵기', k, 100, 950, 50, 'num');
+        case 'info': return sw('날짜와 날씨 표시', k, { sub: '요일·날짜·기온·다음 알람을 같이 보여요' });
+        case 'font': return ctl(f === 'flip' ? '판 위 숫자 서체' : '서체', fontGrid(k, FONTS, '12'));
+        case 'dialfont': return ctl('시계판 숫자 서체', fontGrid(k, FONTS, '12'));
+        case 'kfont': return ctl('서체', fontGrid(k, KFONTS, '아홉'), { note: '한글을 쓸 수 있는 서체만 보여요.' });
+        case 'fx': return ctl('효과', seg(k, ['단색', '두 색', '번짐']) + (S[k] === 1 ? `<div class="ct" style="padding:12px 0 0"><div class="t">두 번째 색</div></div>${dots(key('color2'))}` : ''), { note: '밤에는 모든 효과가 꺼져요.' });
+        case 'bg': return ctl('배경', seg(k, ['검정', '단색', '그라데이션']));
+        case 'lay': return ctl('배치', seg(k, ['기본', '가운데', '두 줄']));
+        case 'anum': return ctl('숫자', seg(k, ['12·3·6·9', '12개', '로마', '없음']));
+        case 'atick': return ctl('눈금', seg(k, ['기본', '짧게', '정시만', '없음']));
+        case 'shape': return ctl('모양', strip('analogStyle', SHAPES.map(([id, n]) => [id, n, 'an-' + id])));
+        case 'solar': return ctl('솔라 팔레트', `<div class="sol">${SOLAR.map(([c1, c2], i) => `<button class="${S[k] === i ? 'on' : ''}" style="background:linear-gradient(135deg,${c1},${c2})" data-a="set:${k}:${i}" aria-label="팔레트 ${i + 1}"></button>`).join('')}</div>`);
+        case 'ledC': return ctl('불빛 색', `<div class="named">${LEDS.map(([n, c]) => `<div><button class="dot ${S[k] === c ? 'on' : ''}" style="--c:${c}" data-a="set:${k}:${c}" aria-label="${n}"><i></i></button>${n}</div>`).join('')}<div><label class="dot custom ${LEDS.some(l => l[1] === S[k]) ? '' : 'on'}"><i></i><input type="color" value="${S[k]}" data-k="${k}" aria-label="직접 고르기"></label>직접 고르기</div></div>`);
+        case 'combo2': return ctl('두 색 조합', combo(k, COMBO2));
+        case 'combo3': return ctl('색 조합', combo(k, COMBO3));
+        default: { const first = firstColour; firstColour = false; return first ? ctl(PART[t][0], dots(k)) : colorRow(PART[t][0], k); }
+      }
+    };
+    return {
+      t: `${faceKo(f)} 꾸미기`, pv: pv('clock'), body:
+        sec(null, basic.map(rowOf), '꾸민 모습은 예시 그림에 없어요.') +
+        (extra.length ? more('clock', sec(null, extra.map(rowOf))) : '') +
+        `<button class="btn sub" data-a="noop">테마 기본값으로 되돌리기</button>`,
+    };
+  },
+  notif() {
+    return {
+      t: '알림 표시', pv: pv('notif'), body: sec(null, [
+        sw('알림 보기', 'notif', { sub: '받은 알림을 화면 가득 크게 보여줘요', perm: 'read' }),
+        sw('누를 때만 내용 보기', 'tapOnly', { sub: '누르기 전에는 앱 아이콘만 보여요', dis: !S.notif, why: '알림 보기를 켜면 쓸 수 있어요' }),
+      ]),
+    };
+  },
+  night() {
+    const never = S.displayOff === 2, m = S.nightMode;
+    const r = (v, t, d) => row(`<span class="radio"></span>` + tx(t, d), 'set:nightMode:' + v, never, m === v ? 'on' : '');
+    return {
+      t: '밤 화면', pv: pv('night'), body:
+        (never ? `<div class="banner" data-a="go:onoff" role="button" tabindex="0" style="margin-top:8px">${tx('<span class="why">지금은 밤 화면을 쓸 수 없어요</span>', '화면 꺼짐이 "계속 켜 둠"이에요 · <b style="color:var(--acc)">켜짐과 꺼짐에서 바꾸기</b>')}<span class="chev">${ic('chev', 20)}</span></div>` : '') +
+        sec(null, [
+          r('off', '안 씀', '밤에도 낮과 같은 화면'),
+          r('auto', '어두워지면', '방이 어두워지면 붉고 어둡게'),
+          r('sched', '정한 시간에', `${S.nStart}시~${S.nEnd}시`),
+        ], '어두워지면 화면이 붉고 어둡게 바뀌어요.') +
+        (m === 'sched' ? sec('시간', [sl('시작', 'nStart', 0, 23, 1, 'hour', { dis: never }), sl('끝', 'nEnd', 0, 23, 1, 'hour', { dis: never })]) : '') +
+        (m !== 'off' ? sec(null, [sl('밤 밝기', 'nBright', 5, 100, 5, 'pct', { note: '밤에 화면이 넘지 않을 가장 밝은 정도예요', dis: never })]) : '') +
+        (m === 'auto' ? more('night', sec(null, [
+          row(tx('지금 주변 밝기', '센서 값을 바로바로 보여줘요') + `<b style="font-size:22px;margin-right:8px">12 lx</b><span class="pillb" style="background:#ffffff14;color:var(--muted)">중간</span>`),
+          sl('어두워졌다고 볼 밝기', 'luxIn', 1, 20, 1, 'le', { note: '이 밝기가 5초 이어지면 밤 화면으로 바뀌어요', dis: never }),
+          sl('밝아졌다고 볼 밝기', 'luxOut', 3, 40, 1, 'ge', { note: '이 밝기가 1.5초 이어지면 원래 화면으로 돌아와요', dis: never }),
+        ])) : ''),
+    };
+  },
+  onoff() {
+    const never = S.displayOff === 2;
+    const notes = ['쓰지 않고 방이 어두우면 화면이 꺼져요.', '20초 뒤에 화면이 꺼져요.', '스탠바이가 켜져 있는 동안 화면이 계속 켜져 있어요. 이때는 밤 화면과 움직이면 켜기를 쓸 수 없어요.'];
+    return {
+      t: '켜짐과 꺼짐', body: sec(null, [
+        sw('충전하면 켜기', 'startOnCharge', { sub: '화면이 꺼져 있어도 충전을 시작하면 스탠바이가 떠요', perm: 'dream' }),
+        ctl('화면 꺼짐', seg('displayOff', ['어두워지면', '20초 뒤', '계속 켜 둠']), { note: notes[S.displayOff] }),
+        sw('무선 충전일 때만', 'wireless', { sub: '케이블로 충전할 때는 뜨지 않아요', dis: !S.startOnCharge, why: '충전하면 켜기를 켜면 쓸 수 있어요' }),
+        sw('움직이면 켜기', 'motion', { sub: '밤에 폰이 움직이면 화면이 켜져요', dis: never, why: '화면 꺼짐이 "계속 켜 둠"이면 쓸 수 없어요' }),
+      ]) + more('onoff', sec(null, [
+        sw('잔상 막기', 'burn', { sub: '1분마다 화면을 조금씩 옮겨서 잔상을 막아요' }),
+      ]) + sec('최근 켜짐 기록', [`<div class="ctl s" style="margin:0;line-height:22px">11월 12일 23:12 · 무선 충전 → 켜짐<br>11월 11일 23:40 · 무선 충전 → 켜짐<br>11월 11일 08:05 · 케이블 충전 → 켜짐</div>`], '충전기를 꽂으면 여기에 기록이 남아요. (예시)')),
+    };
+  },
+  sound() {
+    return {
+      t: '수면 소리', body: sec(null, [
+        ctl('소리', chips('sound', SOUNDS), { note: S.playing ? `<span style="color:var(--acc)">♪ ${SOUNDS[S.sound]} 3초 들려주는 중이에요 (시안에서는 소리가 안 나요)</span>` : '누르면 3초 동안 들려줘요.' }),
+        ctl('꺼지는 시간', chips('sleepMin', [15, 30, 45, 60, 90].map(FMT.min), [15, 30, 45, 60, 90])),
+      ]),
+    };
+  },
+  alarm() {
+    const F = !S.foldable;
+    return {
+      t: '알람', pv: pv('alarm'), body: sec(null, [
+        ctl('알람이 울릴 때', seg('alarmScreen', ['스탠바이 화면', '시계 앱 화면']), { note: S.alarmScreen ? '시계 앱의 기본 알람 화면만 떠요.' : '스탠바이가 켜져 있으면 큰 시계와 끄기·다시 알림 버튼을 보여줘요.', perm: S.alarmScreen === 0 && 'lock' }),
+        sw('안쪽 화면 무드등', 'alarmGlow', { sub: F ? '' : '알람이 울리면 펼친 안쪽 화면이 은은한 불빛이 돼요', dis: F, why: FWHY, off: F, perm: !F && 'lock' }),
+        ctl('알람 전에 미리 밝히기', seg('glowBefore', ['끔', '5분', '10분', '15분'], 'glow', [0, 5, 10, 15].indexOf(S.glowBefore)), { note: '시계 앱의 다음 알람보다 먼저 서서히 밝아져요.', dis: F, why: FWHY, perm: !F && S.glowBefore > 0 && 'exact' }),
+      ], '알람 소리와 끄기·다시 알림은 언제나 시계 앱이 맡아요.') +
+        more('alarm', sec(null, [
+          sl('밝아지는 시간', 'ramp', 2, 20, 1, 'sec', { dis: F, why: FWHY }),
+          nav('무드등 색', 'go:fold', { val: glowName(), dis: F, why: FWHY }),
+        ])),
+    };
+  },
+  fold() {
+    const named = `<div class="named">${GLOWS.map(([n, c]) => `<div><button class="dot ${S.glowColor === c ? 'on' : ''}" style="--c:${c}" data-a="set:glowColor:${c}" aria-label="${n}"><i></i></button>${n}</div>`).join('')}<div><label class="dot custom ${GLOWS.some(g => g[1] === S.glowColor) ? '' : 'on'}"><i></i><input type="color" value="${S.glowColor}" data-k="glowColor" aria-label="직접 고르기"></label>직접 고르기</div></div>`;
+    return {
+      t: '폴드를 펼쳤을 때', pv: pv('fold'), body: sec(null, [
+        ctl('펼치면', seg('onUnfold', ['책 화면', '무드등']), { note: S.onUnfold ? '펼친 안쪽 화면이 은은한 불빛이 돼요.' : '스탠바이가 켜져 있는 동안 펼치면 "책 (펼침)" 페이지를 보여줘요.', perm: 'lock' }),
+        ctl('무드등 색', named, { note: '펼쳤을 때와 알람이 울릴 때 안쪽 화면이 이 색으로 천천히 밝아져요.' }),
+      ]) + `<button class="btn" data-a="glowtest">무드등 테스트</button><div class="sf">지금 설정으로 안쪽 화면을 잠깐 밝혀 봐요.</div>`,
+    };
+  },
+  weather() {
+    return {
+      t: '날씨와 도시', body: sec(null, [nav('날씨 지역', 'sheet:city:city', { val: S.city })]) +
+        more('weather', sec('세계 시계 도시', [
+          ctl(null, `<div class="chips">${S.world.map((c, i) => `<button ${S.world.length > 1 ? `data-a="unworld:${i}"` : ''}>${c}${S.world.length > 1 ? ic('close', 16) : ''}</button>`).join('')}<button data-a="sheet:city:world" style="color:var(--acc)">${ic('plus', 16)}도시 더하기</button></div>`),
+        ], '세계 시계에 보이는 도시예요.')),
+    };
+  },
+  cardinfo() {
+    return {
+      t: '카드에 쓰는 정보', body:
+        sec('D-day', [...S.ddays.map(([n, d], i) => row(tx(esc(n), d) + `<button class="ib" data-a="undday:${i}" aria-label="지우기">${ic('close')}</button>`)),
+        ctl(null, `<div style="display:flex;gap:8px"><input class="field" id="ddname" placeholder="새 D-day 이름" aria-label="새 D-day 이름"><button class="btn" style="width:auto;margin:0" data-a="adddday">추가</button></div>`)], 'D-day 카드에 보여요. 날짜가 지나면 D+로 세요.') +
+        sec('집중 · 휴식', [sl('집중', 'focus', 5, 60, 1, 'min'), sl('휴식', 'brk', 1, 30, 1, 'min')], '타이머 카드의 한 번 집중하는 시간과 쉬는 시간이에요.') +
+        sec(null, [sw('Claude·Codex 사용량', 'usage', { sub: '사용량 카드에 보여요 · 개인용 빌드에만 있어요' })]),
+    };
+  },
+  perms() {
+    const need = PERMS.filter(p => S.miss.has(p[0])), ok = PERMS.filter(p => !S.miss.has(p[0]));
+    return {
+      t: '권한', body:
+        `<div class="s" style="padding:4px 4px 0;font-size:15px;color:${need.length ? 'var(--muted)' : 'var(--ok)'}">${need.length ? `${need.length}개를 켜면 스탠바이가 제대로 움직여요` : '필요한 항목이 모두 켜져 있어요'}</div>` +
+        need.map(([id, n, d, b]) => `<div class="need">${tx(n, d)}<button class="btn" data-a="grant:${id}">${b}</button></div>`).join('') +
+        (ok.length ? sec('켜져 있어요', ok.map(([, n]) => `<div class="okline">${ic('check', 18)}${n}</div>`)) : ''),
+    };
+  },
+  about() {
+    return { t: '앱 정보', body: sec(null, [row(tx('버전') + `<span class="val">0.3.1</span>`), nav('글꼴 라이선스', null)], '날씨는 Open-Meteo에서 30분마다 받아와요.') };
+  },
+};
+
+function sheetHTML() {
+  const s = S.sheet;
+  const has = s.k === 'stack' ? S[s.arg] : [];
+  const list = s.k === 'city' ? CITIES : s.k === 'stack' ? CARDS.filter(c => c !== '폰 위젯') : CARDS;
+  const title = s.k === 'city' ? (s.arg === 'city' ? '날씨 지역' : '세계 시계 도시') : s.k === 'card' ? `칸 ${+s.arg + 1} · 카드 고르기` : `${s.arg === 'stackL' ? '왼쪽 칸' : '오른쪽 칸'} · 카드 고르기`;
+  return `<div class="ov" data-a="close"><div class="sheet" data-a="noop"><div class="sht"><span>${title}</span><button class="ib" data-a="close" aria-label="닫기">${ic('close')}</button></div><div class="shb">${s.k === 'city' ? `<input class="field" placeholder="도시 이름으로 찾기" aria-label="도시 이름으로 찾기" data-filter>` : ''}<div class="sec" style="padding-top:12px"><div class="grp">${list.map(c => has.includes(c) ? row(tx(c + ' (이미 있어요)'), null, true) : row(tx(c), 'pick:' + c)).join('')}</div></div></div></div></div>`;
+}
+
+// ---- render ----
+function frameHTML(two) {
+  TWO = two;
+  const r = cur(), sc = SCREENS[r.n]();
+  const head = `<div class="hd ${r.n === 'home' ? 'home' : ''}">${r.n === 'home' ? '' : `<button class="ib" data-a="back" aria-label="뒤로">${ic('back')}</button>`}<span>${sc.t}</span></div>`;
+  const main = two && sc.pv ? `<div class="panes"><div class="pl" data-keep="l">${sc.pv}</div><div class="pr" data-keep="r">${sc.body}</div></div>`
+    : r.n === 'home' ? `<div class="scroll" data-keep="s">${sc.pv}${sc.body}</div>`
+      : `<div class="scroll" data-keep="s">${sc.pv ? `<div class="pvfull">${sc.pv}</div><div class="ministick">${miniHTML(.../data-pv="([^|"]*)\|([^"]*)"/.exec(sc.pv).slice(1))}</div>` : ''}${sc.body}</div>`;
+  const full = S.full ? `<div class="ov full" data-a="close"><img src="${IMG[S.full]}" alt=""><span>누르면 닫혀요</span></div>` : '';
+  return head + main + (S.sheet ? sheetHTML() : '') + full + (S.toast ? `<div class="toastb" role="status">${S.toast}</div>` : '');
+}
+// New clock faces are drawn by the clocks.html renderers inside a shadow root, so their CSS (.row, .tile, .sec …) cannot clash with the settings UI.
+const FSHEET = new CSSStyleSheet();
+FSHEET.replaceSync(`:host{font:400 16px/1.6 var(--ui);--ui:'IBM Plex Sans KR',sans-serif;--night:#b9a48c;--night-dim:rgba(185,164,140,.5)}` + FACE_CSS + `.stage{border:0;border-radius:0}`);
+const fitFace = new ResizeObserver(es => es.forEach(e => e.target.style.setProperty('--s', e.target.clientWidth / 780)));
+function mountFaces() {
+  $$('.fh').forEach(el => {
+    if (el.shadowRoot) return;
+    el.attachShadow({ mode: 'open' }).adoptedStyleSheets = [FSHEET];
+    el.shadowRoot.innerHTML = NEWC.face(NEWC.F.find(f => f.c === el.dataset.face), +el.dataset.n);
+    el.style.setProperty('--s', el.clientWidth / 780);
+    fitFace.observe(el);
+  });
+  tickFaces();
+}
+function tickFaces() {
+  const sec = new Date().getSeconds();
+  $$('.fh').forEach(el => {
+    el.shadowRoot?.querySelectorAll('.rim circle').forEach(c => c.classList.toggle('on', +c.dataset.i <= sec));
+    el.shadowRoot?.querySelectorAll('.c-wall .sh').forEach(h => h.style.transform = `rotate(${sec * 6}deg)`);
+  });
+}
+setInterval(tickFaces, 1000);
+let lastRoute = '';
+function render() {
+  const key = cur().n + (cur().arg || ''), same = key === lastRoute;
+  lastRoute = key;
+  for (const [id, two] of [['phone', false], ['fold', true]]) {
+    const el = $('#' + id), keep = same ? $$('[data-keep]', el).map(k => [k.dataset.keep, k.scrollTop, k.scrollLeft]) : [];
+    el.innerHTML = frameHTML(two);
+    keep.forEach(([k, t, l]) => { const n = $(`[data-keep="${k}"]`, el); if (n) { n.scrollTop = t; n.scrollLeft = l; } });
+  }
+  if (S.toGal) { $$('.galsec').forEach(g => { const sc = g.closest('[data-keep]'); sc.scrollTop = g.offsetTop - sc.offsetTop - ($('.mini', sc) ? 116 : 0); }); S.toGal = false; }
+  if (S.toTop) { $$('.scroll').forEach(sc => sc.scrollTop = 0); S.toTop = false; }
+  mountFaces();
+  watchMini();
+  if (!same && cur().n === 'home') $$('.pager').forEach(pe => { const c = $(".pc.start", pe); if (c) pe.scrollLeft = c.offsetLeft - pe.offsetLeft - (pe.clientWidth - c.offsetWidth) / 2; });
+  $('#foldSec').hidden = !S.foldable;
+  $('#bar').innerHTML =
+    `<label>폰 종류 <span class="seg">${[['fold', '폴드'], ['flip', '플립'], ['bar', '일반 폰']].map(([k, t]) => `<button class="${S.phone === k ? 'on' : ''}" data-a="set:phone:${k}">${t}</button>`).join('')}</span></label>` +
+    `<label>권한 <span class="seg"><button class="${S.miss.size ? '' : 'on'}" data-a="perms:0">모두 허용</button><button class="${S.miss.size ? 'on' : ''}" data-a="perms:4">4개 빠짐</button></span></label>`;
+  fit();
+}
+function fit() {
+  $('#phone').style.setProperty('--k', Math.min(1, $('#phoneCol').parentElement.clientWidth / 413));
+  $('#fold').style.setProperty('--k', Math.min(1, $('#foldSec').clientWidth / 934));
+}
+
+// ---- actions ----
+const parse = v => { try { return JSON.parse(v); } catch { return v; } };
+const go = (n, arg) => { S.stack.push({ n, arg }); if (n === 'night') S.night = true; if (n === 'theme') S.themePv = 'widgets'; if (n === 'clock') S.face = S.my[0]; if (n === 'style') S.face = arg; S.sel = 0; S.delArm = false; };
+const ACT = {
+  go: a => go(...a.split(':')),
+  back: () => S.stack.length > 1 && S.stack.pop(),
+  set(a) {
+    const i = a.indexOf(':'), k = a.slice(0, i), v = parse(a.slice(i + 1));
+    S[k] = v;
+    if (k === 'theme' || k === 'bg') S.themePv = 'widgets';
+    if (k === 'phone') { S.foldable = v === 'fold'; S.scr = 'out'; if (!S.foldable && cur().n === 'fold') S.stack.pop(); }
+    if (k === 'startPage') S.stack.pop();
+    if (k === 'sound') { S.playing = true; clearTimeout(ACT.t); ACT.t = setTimeout(() => { S.playing = false; render(); }, 3000); }
+  },
+  tog: k => { S[k] = !S[k]; },
+  more: (id, el) => { S.open[id] = !(S.open[id] ?? !!el.closest('.fold')); },
+  glow: i => { S.glowBefore = [0, 5, 10, 15][i]; },
+  full: k => { if (k) S.full = k; },
+  close: () => { S.full = S.sheet = null; },
+  sheet: a => { const [k, arg] = a.split(':'); S.sheet = { k, arg }; },
+  pick(c) {
+    const s = S.sheet;
+    if (s.k === 'card') editing().slots[+s.arg] = c;
+    else if (s.k === 'stack') S[s.arg].includes(c) || S[s.arg].push(c);
+    else if (s.arg === 'city') S.city = c;
+    else S.world.includes(c) || S.world.push(c);
+    S.sheet = null;
+  },
+  pset(a) { const i = a.indexOf(':'), k = a.slice(0, i), p = editing(); p[k] = parse(a.slice(i + 1)); if (k === 'layout') while (p.slots.length < slotCount(p.layout)) p.slots.push('시계'); },
+  move(a) { const [i, d] = a.split(':').map(Number), j = i + d; if (S.pages[j] && !S.pages[j].fixed) [S.pages[i], S.pages[j]] = [S.pages[j], S.pages[i]]; },
+  addpage() { const id = 'new' + Date.now(); S.pages.push(pg(id, '새 페이지', 'TWO', ['시계', '날씨'])); go('edit', id); },
+  dup() { const p = editing(), id = 'new' + Date.now(); S.pages.splice(S.pages.indexOf(p) + 1, 0, { ...p, slots: [...p.slots], id, name: p.name + ' 2' }); S.stack.pop(); },
+  del() { if (!S.delArm) return void (S.delArm = true); const p = editing(); S.pages.splice(S.pages.indexOf(p), 1); if (S.startPage === p.id) S.startPage = 'clock'; S.stack.pop(); S.delArm = false; },
+  unstack(a) { const [k, i] = a.split(':'); S[k].splice(+i, 1); },
+  unworld: i => { S.world.splice(+i, 1); },
+  undday: i => { S.ddays.splice(+i, 1); },
+  adddday(_, el) { const v = $('#ddname', el.closest('.dev')).value.trim(); if (v) S.ddays.push([v, '2026년 12월 25일']); },
+  grant: id => { S.miss.delete(id); S.toast = '허용됐어요'; clearTimeout(ACT.tt); ACT.tt = setTimeout(() => { S.toast = ''; render(); }, 1800); },
+  perms: n => { S.miss = new Set(+n ? MISS4 : []); },
+  glowtest() { S.glowTest = true; setTimeout(() => { S.glowTest = false; render(); }, 2500); },
+  myadd: id => { S.my.includes(id) || S.my.push(id); },
+  myrm: id => { if (S.my.length > 1) S.my = S.my.filter(x => x !== id); },
+  mymove(a) { const [i, d] = a.split(':').map(Number), j = i + d; if (S.my[j]) [S.my[i], S.my[j]] = [S.my[j], S.my[i]]; },
+  gal() { S.toGal = true; },
+  top() { S.toTop = true; },
+  noop() { },
+};
+document.addEventListener('click', e => {
+  const el = e.target.closest('[data-a]');
+  if (!el || el.closest('.dis') || e.target.matches('input')) return;
+  const a = el.dataset.a, i = a.indexOf(':'), verb = i < 0 ? a : a.slice(0, i);
+  if (!(verb === 'tog' && a.endsWith('devOpen'))) S.devOpen = false;
+  ACT[verb](i < 0 ? '' : a.slice(i + 1), el);
+  render();
+});
+document.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('[role=button]')) { e.preventDefault(); e.target.click(); } });
+document.addEventListener('input', e => {
+  const el = e.target, k = el.dataset.k;
+  if (el.matches('[data-filter]')) return $$('.row', el.parentElement).forEach(r => r.hidden = !r.textContent.includes(el.value.trim()));
+  if (!k) return;
+  const v = el.type === 'range' ? +el.value : el.value;
+  if (k[0] === '@') editing()[k.slice(1)] = v; else S[k] = v;
+  const out = $(`[data-v="${k}"]`, el.closest('.ctl') || document);
+  if (out) out.textContent = FMT[el.dataset.f](v);
+  repaint();
+});
+// a finished drag or colour pick redraws both frames so they agree
+document.addEventListener('change', e => { if (e.target.dataset.k && !(e.target.type === 'text')) render(); });
+addEventListener('resize', fit);
+render();
+</script>

@@ -68,7 +68,7 @@ fun BoardsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) 
         Section("시작 화면", footer = "스탠바이가 켜질 때 처음 보이는 화면이에요. 처음에는 시계예요.") {
             item { ControlRow(null) { ChipFlow(pageNames, config.startPage.coerceIn(0, pageNames.lastIndex), { i -> update { it.copy(startPage = i) } }) } }
         }
-        Section("화면 순서", footer = "위젯 · 사진 · 시계는 아이폰처럼 맨 앞에 고정돼요. 내 화면은 ▲▼로 순서를 바꿀 수 있어요.") {
+        Section("화면 순서", footer = "위젯 · 사진 · 시계는 맨 앞에 고정돼요. 내 화면은 ▲▼로 순서를 바꿀 수 있어요.") {
             item {
                 PageRow(
                     thumb = { BoardView(widgetsBoard(config), state, config, StandbyActions.NONE, Modifier.fillMaxSize()) },
