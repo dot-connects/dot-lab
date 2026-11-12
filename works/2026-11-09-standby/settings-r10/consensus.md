@@ -84,3 +84,50 @@ Existing two-pane `Page`: preview + pills on the left 55 %, rows on the right wi
 - The preview shrinks only when the list is long enough to stay scrolled after it shrinks (short screens keep the full preview; no flicker).
 - 가로 | 세로 on every screen (fold inner and flip cover rotate too; the app has no orientation lock). r10 needs portrait shots for fold inner and flip.
 - Changing an option never jumps the preview to another page; every slide reflects the current settings and the user swipes to where the change shows (글자 크기 → 모듈러).
+
+## Operator decisions (2026-11-12, round 3)
+- Trial: 7 days full, then the free tier (no lock). Trial start is recorded on our server (hash of the per-app device id
+  + first-run date on the existing Cloudflare Worker), so a reinstall does not restart it; Auto Backup as a fallback.
+  Price proposal ₩4,900 one-time.
+- New features 1 (희미한 시계), 3 (발열 보호), 6 (무드등 자동 끄기), each switchable; options: 밤 알림으로 꺼진 화면 안 켜기
+  (the app already drops notifications the phone's 방해 금지 filters; this covers people without 방해 금지),
+  꺼진 화면 = 완전히 끄기 / 희미한 시계 (same design as feature 1), 사진 넘김 간격.
+- Removed now: numeral shapes, default D-day, the 영상 preset page. Bright themes (종이, 브라운 라디오) force night on.
+- Burn-in shift: keep on, widen to a slow 10–20 dp drift (r10). Notification banner may cover the digits (it is brief).
+- Alarm action buttons verified on the operator's device (2026-11-12).
+
+## Operator decisions on features.html / cleanup.html (2026-11-12)
+- 희미한 시계: dropped (no dim clock, and no "꺼진 화면: 완전히 끄기 / 희미한 시계" option; display-off stays full black).
+- 발열 보호: variant A (pill message 5 s, then a thermometer icon until it cools). On by default.
+- 무드등 자동 끄기: 끄지 않음 / 3분 / 10분 / 15분.
+- New option rows (사진 넘김 간격, bright themes lock 밤 화면 "안 씀", 밤 알림으로 꺼진 화면 안 켜기): as in the mockup.
+- 밤 알람: variant A (outlined 중단, same size and place; snooze minutes only when readable).
+- 수면 소리: keep 빗소리 · 파도 · 장작불; merge 백색소음 / 핑크 / 브라운 into one sound named "백색소음" that uses the
+  brown-noise generator. Keep the sleep card, fixed per variant A (selected tile marked, play state clear).
+- Removal: 촛불 theme stays — give it a warm light rising from the bottom on every page, as visible as on the day
+  widgets page and day desk board ("a candle lit below"). Background presets stay (all 4).
+  A1 (rainbow/glass effects) and A2 (width slider) were not discussed: lead's assumption = follow the recommendation
+  (drop rainbow/glass; drop the width slider, keep per-face default widths) unless the operator objects.
+- Fixes B1–B5: all in (B3 step times = time StandBy saw each step change; arrival = now + remaining minutes).
+- App name: **Stand Screen**. Play title idea "Stand Screen: StandBy Clock"; Korean listing carries "스탠바이" in title/short description.
+- New in r10: calendar picker (choose which phone calendars feed the cards — every calendar in the system calendar provider, per account).
+- Clocks: all 15 candidates of clocks.html go in (operator 2026-11-12), each with a full-screen form and a form for every
+  card size class (L / M / St / Sw), plus night ink. Clock picker = gallery by family (see lead's proposal in chat).
+- Icon: D3 (corner brackets + colon) chosen as the base; colour variants in icon/r4/.
+- No "아이폰" / "iPhone" in any user-visible text (operator 2026-11-12). Renames: theme 아이폰 그대로 → 기본;
+  ClockLayout.IPHONE "아이폰" → "기본"; AnalogTicks.IPHONE "아이폰" → "기본" (operator, 2026-11-12);
+  BoardScreens footer "아이폰처럼" → drop the phrase. Enum names in code stay (stored values), only labels change.
+  Add a check (like tools/check_literals) that fails on "아이폰"/"iPhone" in user-visible strings.
+- 시간 표시 (12/24h) stays, folded under "자세히" at the bottom of the 시계 screen; default 폰 설정 따라 (operator 2026-11-12).
+- 책상 시계 and 사진 위 시간 become regular clocks in the gallery (selectable into 내 시계). No "기존" tab: every clock
+  is sorted into 심플 / 팝 / 레트로 / 클래식 / 계기. 디지털 and the "꽉 찬 숫자" candidate are one clock.
+- App icon CONFIRMED (operator 2026-11-12) = F4 (sideways phone outline + stand + clock hands; cream #F4EEE3 / navy #1B2238 / coral #FF6F59),
+  redrawn as exact geometry in `icon/final/make_icon.py` (SVG, adaptive foreground + monochrome vector drawables,
+  Play 512/1024 PNG). Goes into the app in r10.
+- Preview pattern (replaces the shrinking pin): the full preview is the first item of the scrolling list; once it is out
+  of view a 96 dp sticky mini preview (낮|밤; on the 시계 screen also the face name + 넣기/꾸미기/빼기) overlays the top
+  without changing layout height; tapping it scrolls to the top. Fold inner two-pane keeps the left preview.
+- 꾸미기 per clock shows only what that clock supports (operator agreed 2026-11-12): every clock has its own colour
+  slots; the font choice exists only where digits are typeset (digital-type faces, split, colour block, sticker,
+  balls, calendar time, day bar, wall/analog numerals); 7-segment LED/LCD and the dot-matrix board have no font (their
+  shape is the look) but get colour/style presets; 한글 시계 offers only Korean-capable fonts.

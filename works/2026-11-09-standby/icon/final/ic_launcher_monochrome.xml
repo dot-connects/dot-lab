@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Stand Screen launcher icon monochrome (icon/final/make_icon.py; do not edit by hand) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
+    <group android:pivotX="54" android:pivotY="54" android:scaleX="0.72" android:scaleY="0.72" android:translateY="3.0">
+        <path android:strokeColor="#FF000000" android:strokeWidth="4.4" android:pathData="M31.0,33 H77.0 A9.0,9.0 0 0 1 86,42.0 V54.0 A9.0,9.0 0 0 1 77.0,63 H31.0 A9.0,9.0 0 0 1 22,54.0 V42.0 A9.0,9.0 0 0 1 31.0,33 Z"/>
+        <path android:fillColor="#FF000000" android:pathData="M20.1,48.0 a1.9,1.9 0 1 0 3.8,0 a1.9,1.9 0 1 0 -3.8,0 Z"/>
+        <path android:fillColor="#FF000000" android:pathData="M28.700000000000003,68.3 H79.3 A1.7000000000000028,1.7000000000000028 0 0 1 79.3,71.7 H28.700000000000003 A1.7000000000000028,1.7000000000000028 0 0 1 28.700000000000003,68.3 Z"/>
+        <path android:strokeColor="#FF000000" android:strokeWidth="3.8" android:strokeLineCap="round" android:pathData="M54.0,52.0 L44.67,46.17"/>
+        <path android:strokeColor="#FF000000" android:strokeWidth="3.8" android:strokeLineCap="round" android:pathData="M54.0,52.0 L69.59,43.00"/>
+        <path android:fillColor="#FF000000" android:pathData="M51.1,52.0 a2.9,2.9 0 1 0 5.8,0 a2.9,2.9 0 1 0 -5.8,0 Z"/>
+    </group>
+</vector>
