@@ -241,10 +241,10 @@ private fun NotifClosed(
     val total = groups.sumOf { it.count }
     val nowMs = state.now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val k = e.look.textScale
-    Box(Modifier.fillMaxSize().then(plate).padding(pad)) {
+    Box(Modifier.fillMaxSize().then(plate).tap(onOpen).padding(pad)) { // one target: rows are under 48 dp
         val ih = e.h - pad * 2
         when (tier) {
-            NotifTier.A -> IconGrid(e, groups, total, ih, onOpen)
+            NotifTier.A -> IconGrid(e, groups, total, ih)
             NotifTier.S -> Row(Modifier.fillMaxSize()) {
                 Column(Modifier.width(44.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
                     Txt(total.toString(), e.head * 1.1f, e.ink.ink, weight = 700, num = true)
@@ -253,7 +253,7 @@ private fun NotifClosed(
                 Spacer(Modifier.width(12.dp))
                 val rowH = 36.dp * k
                 Column(Modifier.weight(1f)) {
-                    groups.take(floor(ih / rowH).toInt().coerceAtLeast(1)).forEach { GroupRow(e, state, actions, it, tier, rowH, nowMs, onOpen) }
+                    groups.take(floor(ih / rowH).toInt().coerceAtLeast(1)).forEach { GroupRow(e, state, actions, it, tier, rowH, nowMs) }
                 }
             }
             else -> Column(Modifier.fillMaxSize()) {
@@ -271,7 +271,7 @@ private fun NotifClosed(
                 val fit = floor(room / rowH).toInt() * cols
                 val n = if (groups.size <= fit) groups.size else (floor((room - 32.dp) / rowH).toInt() * cols).coerceAtLeast(1)
                 val shown = groups.take(n)
-                val row = @Composable { g: NotifGroup -> GroupRow(e, state, actions, g, tier, rowH, nowMs, onOpen) }
+                val row = @Composable { g: NotifGroup -> GroupRow(e, state, actions, g, tier, rowH, nowMs) }
                 if (cols == 2) {
                     val per = (n + 1) / 2
                     Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
@@ -279,7 +279,7 @@ private fun NotifClosed(
                         Column(Modifier.weight(1f)) { shown.drop(per).forEach { row(it) } }
                     }
                 } else shown.forEach { row(it) }
-                if (groups.size > n) Cluster(e, groups.drop(n), onOpen)
+                if (groups.size > n) Cluster(e, groups.drop(n))
             }
         }
     }
@@ -288,15 +288,14 @@ private fun NotifClosed(
 /** One quiet row: icon, sender (bold + dot when fresh), count, app name (wide), time. B: time under the sender. */
 @Composable
 private fun GroupRow(
-    e: Env, state: StandbyState, actions: StandbyActions, g: NotifGroup, tier: NotifTier, rowH: Dp, nowMs: Long, onOpen: () -> Unit,
+    e: Env, state: StandbyState, actions: StandbyActions, g: NotifGroup, tier: NotifTier, rowH: Dp, nowMs: Long,
 ) {
     val n = g.head
     val fresh = nowMs - n.postedAtEpochMs < FRESH_MS
     val count = @Composable { if (g.count > 1) Txt(g.count.toString(), e.meta, e.ink.ink2, weight = 500, num = true) }
     Row(
         Modifier.fillMaxWidth().height(rowH)
-            .swipeAway(n.key, g.items.all { it.clearable }) { actions.notificationClear(g.items.map { it.key }) }
-            .tap(onOpen),
+            .swipeAway(n.key, g.items.all { it.clearable }) { actions.notificationClear(g.items.map { it.key }) },
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         NotifIcon(e, n, if (tier == NotifTier.B) 22.dp else 20.dp)
@@ -316,12 +315,12 @@ private fun GroupRow(
     }
 }
 
-/** Overflow: up to five icons overlapped (each ringed in the plate colour) + "+N". Tap opens. */
+/** Overflow: up to five icons overlapped (each ringed in the plate colour) + "+N". */
 @Composable
-private fun Cluster(e: Env, rest: List<NotifGroup>, onOpen: () -> Unit) {
+private fun Cluster(e: Env, rest: List<NotifGroup>) {
     val ring = e.ink.plate.compositeOver(e.ink.bg)
     val icons = rest.take(5)
-    Row(Modifier.height(32.dp).tap(onOpen), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.height(32.dp), verticalAlignment = Alignment.CenterVertically) {
         // 20 dp icons in a 2 dp ring, each 6 dp over the one before
         Box(Modifier.width(24.dp + 18.dp * (icons.size - 1)).height(24.dp)) {
             icons.forEachIndexed { i, g ->
@@ -335,9 +334,9 @@ private fun Cluster(e: Env, rest: List<NotifGroup>, onOpen: () -> Unit) {
 
 /** Tier A: the total on top, then a two-column grid of badged icons; the last cell turns into "+N" when they overflow. */
 @Composable
-private fun IconGrid(e: Env, groups: List<NotifGroup>, total: Int, ih: Dp, onOpen: () -> Unit) {
+private fun IconGrid(e: Env, groups: List<NotifGroup>, total: Int, ih: Dp) {
     val cell = 44.dp
-    Column(Modifier.fillMaxSize().tap(onOpen)) {
+    Column(Modifier.fillMaxSize()) {
         Box(Modifier.height(24.dp), contentAlignment = Alignment.CenterStart) { Txt(total.toString(), e.meta, e.ink.ink, weight = 600, num = true) }
         val rows = floor((ih - 24.dp) / cell).toInt().coerceAtLeast(1)
         val slots = rows * 2

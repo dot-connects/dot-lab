@@ -369,7 +369,7 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() 
     val w = e.w
     val pad = (w * 0.075f).coerceIn(12.dp, 32.dp)
     val ts = (w * 0.068f).coerceIn(15.dp, 26.dp)
-    val play = (w * 0.19f).coerceIn(52.dp, 80.dp)
+    val play = min((w * 0.19f).coerceIn(52.dp, 80.dp), w - pad * 2 - 96.dp).coerceAtLeast(48.dp) // prev + next keep 48 dp
     val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
     val video = m.kind == MediaKind.VIDEO
     val ink = e.ink.ink
@@ -392,9 +392,11 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() 
         }
         Spacer(Modifier.height(gap * 1.4f))
         // play disc = ink, glyph = the page colour (mockup: white disc + black glyph on the iPhone theme)
+        val side = max(48.dp, play * 0.7f)
         MediaTransport(
-            e, m, actions, play, max(48.dp, play * 0.7f), ink, Color.Transparent, ink, e.ink.bg, Arrangement.SpaceBetween,
-            Modifier.fillMaxWidth().padding(horizontal = w * 0.06f),
+            e, m, actions, play, side, ink, Color.Transparent, ink, e.ink.bg, Arrangement.SpaceBetween,
+            // the inset gives way before the three buttons would squeeze the last one under 48 dp
+            Modifier.fillMaxWidth().padding(horizontal = ((w - pad * 2 - play - side * 2) / 2).coerceIn(0.dp, w * 0.06f)),
         )
     }
 }
@@ -611,18 +613,20 @@ private fun SleepOne(e: Env, state: StandbyState, config: AppConfig, actions: St
     val i = cur.ordinal
     val p = e.p7
     val ih = e.h - p * 2
+    // slots narrower than two arrows + the disc keep the disc alone (it still plays; the sound is picked in settings)
+    val arrows = e.w - p * 2 >= 144.dp
     val arrow = @Composable { ic: Ic, to: SleepSound ->
         Box(Modifier.size(48.dp).tap { actions.sleepPick(to, false) }, contentAlignment = Alignment.Center) { IconView(ic, e.ink.ink2, Modifier.size(16.dp)) }
     }
     Column(Modifier.fillMaxSize().padding(p), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
         if (ih >= 110.dp) Txt("수면 소리 ${i + 1}/${all.size}", e.meta, e.readInk2, weight = 500, num = true)
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-            arrow(Ic.PREV, all[(i + all.size - 1) % all.size])
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = if (arrows) Arrangement.SpaceBetween else Arrangement.Center) {
+            if (arrows) arrow(Ic.PREV, all[(i + all.size - 1) % all.size])
             Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
                 SoundDisc(e, cur, min(56.dp, max(48.dp, ih * 0.4f)), state.sleep.playing, Modifier.tap { actions.sleepPick(cur, true) })
-                Txt(cur.ko, e.meta, e.ink.ink, weight = 600, maxW = e.w - p * 2 - 96.dp)
+                Txt(cur.ko, e.meta, e.ink.ink, weight = 600, maxW = e.w - p * 2 - if (arrows) 96.dp else 0.dp)
             }
-            arrow(Ic.NEXT, all[(i + 1) % all.size])
+            if (arrows) arrow(Ic.NEXT, all[(i + 1) % all.size])
         }
         Txt(sleepLine(state, config, false), e.meta, e.readInk2, weight = 500, num = true)
     }
@@ -861,7 +865,8 @@ private fun CityLine(e: Env, wx: WeatherInfo, sky: Boolean) {
  * cap top: digit fonts draw "°" anywhere from a dot to a cap-high "o".
  */
 @Composable
-private fun TempRow(e: Env, wx: WeatherInfo, cap: Dp, maxW: Dp, color: Color) {
+private fun TempRow(e: Env, wx: WeatherInfo, capH: Dp, maxW: Dp, color: Color) {
+    val cap = min(capH, maxW * 0.8f) // tall narrow slots: the glyph + ring alone would take the whole width
     val ico = cap * 0.4f
     val deg = cap * 0.2f
     Row {

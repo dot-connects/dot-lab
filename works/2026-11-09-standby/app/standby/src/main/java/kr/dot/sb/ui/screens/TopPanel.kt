@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
@@ -133,7 +134,7 @@ internal fun TopPanel(
                             }
                         }
                     }
-                    Box(Modifier.matchParentSize().tap { onTheme(th) })
+                    Box(Modifier.matchParentSize().testTag("theme-${th.name}").tap { onTheme(th) })
                 }
             }
         }
