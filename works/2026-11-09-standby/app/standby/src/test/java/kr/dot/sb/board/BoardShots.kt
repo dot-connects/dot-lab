@@ -11,6 +11,7 @@ import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Presets
+import kr.dot.sb.model.TextSize
 import kr.dot.sb.THEMES
 import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
@@ -43,7 +44,7 @@ class BoardShots(private val name: String, private val device: Device, private v
         val open: (ComposeContentTestRule.() -> Unit)? = if (!stateKey.startsWith("open")) null else {
             { mainClock.autoAdvance = false; onRoot().performClick(); mainClock.advanceTimeBy(400) }
         }
-        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme), StandbyActions.NONE) }
+        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
     }
 
     companion object {
@@ -51,7 +52,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
 
         /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
-        fun stateOf(key: String, b: Board): StandbyState = when (key.removePrefix("open").removePrefix("-")) {
+        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-large").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
             "night" -> Fixtures.full(1f)
             "noart" -> Fixtures.full().let { it.copy(media = it.media!!.copy(art = null)) }
             "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
@@ -65,7 +66,7 @@ class BoardShots(private val name: String, private val device: Device, private v
                 it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
             }
             else -> Fixtures.full()
-        }.let { if (it.media != null && b.slots.any { CardType.VIDEO in it }) video(it) else it }
+        }.let { if (it.media != null && key.endsWith("-video")) video(it) else it }
             // the fixture timer (18:24 left) in every slot of the board; "paused" stops it
             .let { s -> s.copy(timers = s.timers + b.slots.indices.associate { "${b.id}-$it" to s.timers.values.first().copy(running = key != "paused") }) }
 
@@ -97,16 +98,23 @@ class BoardShots(private val name: String, private val device: Device, private v
                 val b = Board("card", t.name, layout, listOf(listOf(t)))
                 out += arrayOf("card-${t.name.lowercase()}-$cls", d, b, "full")
             }
+            // text size LARGE (115 %, reading text only): every card per size class + two presets
+            for (t in CardType.entries) for ((cls, layout, d) in CLASSES) {
+                out += arrayOf("card-${t.name.lowercase()}-$cls-large", d, Board("card", t.name, layout, listOf(listOf(t))), "full-large")
+            }
+            for (b in Presets.boards().take(2)) for (d in listOf(Device.FOLD_COVER_L, Device.FLIP)) out += arrayOf("large-${b.id}", d, b, "full-large")
             // the narrowest slots: Flip THREE (~110 dp wide), where Task 21 fixed SleepOne / TempRow crashes
-            for (t in listOf(CardType.SLEEP, CardType.WEATHER, CardType.MUSIC, CardType.NOTIF_LIST, CardType.CLOCK)) {
+            for (t in listOf(CardType.SLEEP, CardType.WEATHER, CardType.MUSIC, CardType.NOTIF, CardType.CLOCK)) {
                 out += arrayOf("card-${t.name.lowercase()}-XSt", Device.FLIP, Board("card", t.name, Layout.THREE, listOf(listOf(t))), "full")
             }
             // media: the cover with its controls up, and both shapes without art (light themes must still read)
-            for (t in listOf(CardType.MUSIC, CardType.VIDEO)) {
-                val one = Board("card", t.name, Layout.ONE, listOf(listOf(t)))
-                out += arrayOf("card-${t.name.lowercase()}-L-open", Device.FOLD_COVER_L, one, "open")
-                out += arrayOf("card-${t.name.lowercase()}-L-open-night", Device.FOLD_COVER_L, one, "open-night")
+            // (r9: one media card; "-video" plays a YouTube video in it, the old VIDEO card's shots)
+            val one = Board("card", "MUSIC", Layout.ONE, listOf(listOf(CardType.MUSIC)))
+            for ((n, v) in listOf("music" to "", "video" to "-video")) {
+                out += arrayOf("card-$n-L-open", Device.FOLD_COVER_L, one, "open$v")
+                out += arrayOf("card-$n-L-open-night", Device.FOLD_COVER_L, one, "open-night$v")
             }
+            for ((cls, layout, d) in CLASSES) out += arrayOf("card-video-$cls", d, Board("card", "MUSIC", layout, listOf(listOf(CardType.MUSIC))), "full-video")
             // clocks, weather, calendar (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
             for (t in listOf(CardType.CLOCK, CardType.ANALOG, CardType.WEATHER, CardType.CALENDAR, CardType.AGENDA, CardType.DDAY, CardType.TIMER, CardType.MEMORIES, CardType.SLEEP, CardType.USAGE)) {
                 out += arrayOf("card-${t.name.lowercase()}-L", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full")
@@ -132,7 +140,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")
             out += arrayOf("card-music-L-open-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.ONE, listOf(listOf(CardType.MUSIC))), "open-noart")
             val e1 = Board("empty1", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.AGENDA), listOf(CardType.WEATHER)))
-            val e2 = Board("empty2", "empty", Layout.FOUR, listOf(listOf(CardType.VIDEO), listOf(CardType.USAGE), listOf(CardType.MEMORIES), listOf(CardType.WEATHER)))
+            val e2 = Board("empty2", "empty", Layout.FOUR, listOf(listOf(CardType.MUSIC), listOf(CardType.USAGE), listOf(CardType.MEMORIES), listOf(CardType.WEATHER)))
             for (d in listOf(Device.FOLD_COVER_L, Device.FOLD_INNER)) {
                 out += arrayOf("empty-a", d, e1, "emptyA")
                 out += arrayOf("empty-b", d, e2, "emptyB")

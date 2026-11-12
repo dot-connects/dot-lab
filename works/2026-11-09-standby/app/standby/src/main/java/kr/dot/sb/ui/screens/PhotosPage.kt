@@ -35,6 +35,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -56,9 +57,6 @@ import kr.dot.sb.ui.state.Photo
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.LocalInk
-import kr.dot.sb.ui.theme.LocalTheme
-import kr.dot.sb.ui.theme.Family
-import androidx.compose.foundation.layout.width
 import kotlin.math.abs
 
 /** Photo themes (spec P1, P0 part): 추천 + the user's albums; on-device labels (자연, 반려동물 …) are P1. */
@@ -110,27 +108,18 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
                     KenBurns(ph, ink.night, active)
                 }
                 // Scrim: transparent until 55 % height, then to 60 % black (design §2.1).
-                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f))))
+                Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.55f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) // scrim
                 val p = photos[idx % photos.size]
-                val t = LocalTheme.current
-                val dateSize = max(18.dp, s * if (t.family == Family.IPHONE) 0.048f else 0.06f)
+                // caption over the photo: white in every theme (candle ink at night), like the memories card
+                val fg = lerp(Color.White, ink.ink, ink.night) // overPicture
                 Column(
                     Modifier.align(Alignment.BottomEnd).padding(end = w * 0.08f, bottom = h * if (port) 0.1f else 0.14f)
-                        .tap(p.uri?.let { u -> { act.openPhoto(u) } }) // spec P5: caption tap opens the gallery
-                        // C: the caption sits on a soft lamp pill; B: under a hairline like a photo credit
-                        .then(if (t.family == Family.LAMP) Modifier.clip(RoundedCornerShape(s * 0.06f)).background(ink.plate2.copy(alpha = 0.82f)).padding(horizontal = s * 0.05f, vertical = s * 0.04f) else Modifier),
+                        .tap(p.uri?.let { u -> { act.openPhoto(u) } }), // spec P5: caption tap opens the gallery
                     horizontalAlignment = Alignment.End,
                 ) {
-                    Txt(p.place, s * 0.09f, ink.ink, weight = 700, maxW = w * if (port) 0.8f else 0.5f, align = TextAlign.End)
+                    Txt(p.place, s * 0.09f, fg, weight = 700, maxW = w * if (port) 0.8f else 0.5f, align = TextAlign.End)
                     Spacer(Modifier.height(s * 0.035f))
-                    if (t.family == Family.PAPER) {
-                        Box(Modifier.width(s * 0.3f).height(1.dp).background(ink.ink.copy(alpha = 0.6f)))
-                        Spacer(Modifier.height(s * 0.03f))
-                    }
-                    Txt(
-                        p.date, dateSize, if (t.family == Family.LAMP) ink.ink2 else ink.ink, weight = if (t.family == Family.IPHONE) 600 else 500,
-                        tnum = true, align = TextAlign.End, num = t.family != Family.IPHONE, tracking = t.labelTracking,
-                    )
+                    Txt(p.date, max(18.dp, s * 0.048f), fg, weight = 600, tnum = true, align = TextAlign.End)
                 }
             }
         }

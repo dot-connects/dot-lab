@@ -35,8 +35,6 @@ data class Ink(
     val accDeep: Color,
     val accLight: Color,
     val accDim: Color,
-    /** The theme's legacy palette (family code only; goes in Task 22). */
-    val pal: Palette = Palette.IPHONE,
     /** Day tokens of the theme; role colours below lerp from them to the candle night. */
     val tokens: ThemeTokens = ThemeTokens.IPHONE,
     /** What colours bypassing [Look] are checked against (D4): the page stops, or a clock's own background. */
@@ -111,7 +109,6 @@ data class Ink(
                 accDeep = lerp(Hsl.deep(a), NIGHT_DIM, n),
                 accLight = lerp(Hsl.light(a), nt.accent, n),
                 accDim = lerp(a.copy(alpha = 0.45f), nt.ink.copy(alpha = 0.3f), n),
-                pal = theme.palette,
                 tokens = t,
                 page = page ?: stops,
             )

@@ -130,8 +130,6 @@ internal class Env(
     val bar: Dp get() = max(4.dp, s * 0.025f)
     /** Slot plate corner: the theme ratio of the short side, floored (PAPER: square). */
     val plateRadius: Dp get() = if (t.tokens.radiusRatio == 0f) 0.dp else max(t.tokens.radiusMin, s * t.tokens.radiusRatio)
-    /** Corner radius for something [of] long: the theme radius with a floor; B (radius 0) stays square. */
-    fun round(of: Dp, floor: Dp = 12.dp, k: Float = 1f): Dp = if (t.radius == 0f) 0.dp else max(floor, of * t.radius * k)
     /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */
     val loneDisplay: Dp get() = if (tall) max(sz.display, h * 0.6f * 0.56f) else sz.display
     val loneValue: Dp get() = if (tall) max(sz.value, h * 0.6f * 0.30f) else sz.value

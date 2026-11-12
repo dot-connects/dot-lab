@@ -141,8 +141,7 @@ fun CardView(
                 when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
                     CardType.ANALOG -> AnalogCard(e, state)
-                    CardType.MUSIC -> MediaCard(e, state, actions, MediaKind.MUSIC, close)
-                    CardType.VIDEO -> MediaCard(e, state, actions, MediaKind.VIDEO, close)
+                    CardType.MUSIC -> MediaCard(e, state, actions, close)
                     CardType.TIMER -> TimerCard(e, state, config, actions)
                     CardType.SLEEP -> SleepCard(e, state, config, actions)
                     CardType.DDAY -> DdayCard(e, config)
@@ -153,7 +152,7 @@ fun CardView(
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
                     CardType.WIDGET -> PhoneWidget(e, options, actions, menu)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
-                    CardType.NOTIF_STACK, CardType.NOTIF_LIST -> NotifCard(e, state, actions, plate)
+                    CardType.NOTIF -> NotifCard(e, state, actions, plate)
                 }
             }
         }
@@ -234,10 +233,10 @@ private fun AnalogCard(e: Env, state: StandbyState) {
             val big = min(e.h * 0.2f, tw * 0.2f).coerceIn(18.dp, 44.dp)
             Column {
                 Txt("${dowKo(e.today)}요일", big * 0.55f, if (e.look.hero) e.ink.accText else e.ink.ink, maxW = tw)
-                Spacer(Modifier.height(big * 0.1f))
+                Spacer(Modifier.height(big * 0.28f))
                 Txt("${e.today.monthValue}월 ${e.today.dayOfMonth}일", big, e.ink.ink, weight = 700, maxW = tw)
                 state.weather?.let {
-                    Spacer(Modifier.height(big * 0.15f))
+                    Spacer(Modifier.height(big * 0.3f))
                     Txt("${it.condition.ko} · ${it.tempC}°", big * 0.5f, e.readInk2, weight = 500, maxW = tw)
                 }
             }
@@ -297,12 +296,11 @@ private fun Dial(e: Env, state: StandbyState, modifier: Modifier) {
 // ---------------------------------------------------------------- media
 
 @Composable
-private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, kind: MediaKind, close: (() -> Unit)?) {
-    // r8 (operator "음악이랑 유튜브를 하나로"): one media card shows whatever plays; [kind] only picks the idle look
+private fun MediaCard(e: Env, state: StandbyState, actions: StandbyActions, close: (() -> Unit)?) {
+    // r8 (operator "음악이랑 유튜브를 하나로"): one media card shows whatever plays
     val m = state.media
     if (m == null) {
-        val ic = if (kind == MediaKind.MUSIC) Ic.NOTE else Ic.VIDEO
-        StateCard(e, ic, "미디어", ic, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
+        StateCard(e, Ic.NOTE, "미디어", Ic.NOTE, null, "폰에서 재생하면 여기 나와요", actions::openMediaApp)
         return
     }
     // r9 (operator, YouTube Music / YouTube refs): one look for music and video in every theme, picked by the slot's shape
@@ -384,7 +382,8 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() 
         }
         Spacer(Modifier.height(gap))
         Txt(m.title, ts, ink, weight = 700, lines = if (video) 2 else 1)
-        Spacer(Modifier.height(4.dp))
+        // cap boxes end at the baseline: Hangul descends below it and rises above the cap, so leave the line's room
+        Spacer(Modifier.height(ts * 0.4f))
         Txt(m.artist, ts * 0.78f, e.readInk2, weight = 500)
         Spacer(Modifier.height(gap))
         Bar(e, progress(m), ink)
@@ -438,7 +437,7 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions, close: (()
                 Column(Modifier.weight(1f)) {
                     Txt(m.title, ts, fg, weight = 700, lines = if (video && s >= 200.dp) 2 else 1)
                     if (s >= 150.dp) {
-                        Spacer(Modifier.height(3.dp))
+                        Spacer(Modifier.height(ts * 0.4f)) // Hangul overhangs the cap box (see MediaTall)
                         Txt(m.artist, ts * 0.8f, fg.copy(alpha = 0.75f), weight = 500)
                     }
                 }

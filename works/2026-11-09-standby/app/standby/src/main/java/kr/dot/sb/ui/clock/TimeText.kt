@@ -80,17 +80,15 @@ internal class Look(
     val c2: Int,
     /** Extra soft shadow (Solar contrast floor); 0 = none. */
     val shadow: Int = 0,
-    /** TWO_COLOR runs top → bottom instead of along the run (theme C: butter above, peach below). */
-    val vertical: Boolean = false,
 ) {
     companion object {
-        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true, vertical: Boolean = false): Look {
+        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true): Look {
             val night = ink.night >= 0.5f
             val fx = when {
                 !effects || night -> Effect.SOLID
                 else -> style.effect
             }
-            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb(), vertical = vertical)
+            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb())
         }
 
         val RAINBOW = intArrayOf(0xFFFF5A5F.toInt(), 0xFFFFB347.toInt(), 0xFFFFE066.toInt(), 0xFF6FDC86.toInt(), 0xFF4D9BEF.toInt(), 0xFFAA88FE.toInt())
@@ -238,7 +236,7 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         shader = null
         color = look.c1
         when (look.effect) {
-            Effect.TWO_COLOR -> shader = LinearGradient(l, t, if (look.vertical) l else r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
+            Effect.TWO_COLOR -> shader = LinearGradient(l, t, r, b, look.c1, look.c2, Shader.TileMode.CLAMP)
             Effect.RAINBOW -> shader = LinearGradient(l, t, r, t, Look.RAINBOW, null, Shader.TileMode.CLAMP)
             // 60 % (review C5): 30 % read ≈ 1.5:1 on black, the digits showed only through the stroke
             Effect.GLASS -> color = withAlpha(look.c1, 0.60f)

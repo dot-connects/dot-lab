@@ -41,7 +41,7 @@ class LayerTest {
         fun board(id: String, vararg slots: List<CardType>) = Board(id, id, Layout.TWO, slots.toList())
         val cfg = AppConfig(
             widgetLeft = plain, widgetRight = plain,
-            boards = listOf(board("a", plain, plain), board("b", plain, listOf(CardType.WEATHER, CardType.NOTIF_LIST)), board("c", listOf(CardType.NOTIF_STACK), plain)),
+            boards = listOf(board("a", plain, plain), board("b", plain, listOf(CardType.WEATHER, CardType.NOTIF)), board("c", listOf(CardType.NOTIF), plain)),
         )
         assertEquals(FIXED_PAGES + 1, notifPage(cfg, 2))
         assertEquals(FIXED_PAGES + 2, notifPage(cfg, FIXED_PAGES + 2))

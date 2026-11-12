@@ -1,5 +1,11 @@
 package kr.dot.sb.ui.clock
 
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.IntState
 import android.graphics.Paint
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -118,7 +124,7 @@ private fun Info(d: FaceData, c: Hues, ink: Ink, fs: Dp, land: Boolean, room: Dp
     val line = listOfNotNull(d.cond?.let { "${it.ko} ${d.temp}" }, d.alarmShort?.let { "알람 $it" }).joinToString(" · ")
     Column(
         horizontalAlignment = if (land) Alignment.Start else Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(fs * 0.3f),
+        verticalArrangement = Arrangement.spacedBy(fs * 0.5f), // cap boxes: Hangul overhangs the cap and the baseline
     ) {
         Txt("${d.weekday}요일", fs, c.wk, maxW = room)
         Txt("${d.month}월 ${d.day}일", fs * 1.8f, ink.ink, num = true, maxW = room)
@@ -231,4 +237,23 @@ private fun Dial(kind: AnalogStyle, style: ClockStyle, d: FaceData, c: Hues, p: 
             }
         }
     }
+}
+
+/** Unit tests pin the second hand (Gradle sets `shot.second`) so shots compare byte-for-byte. */
+internal val fixedSecond: Int? = System.getProperty("shot.second")?.toIntOrNull()
+
+/** Seconds 0-59, ticking at 1 Hz off the frame clock while composed (analog second hands). */
+@Composable
+internal fun rememberSecond(): IntState {
+    fixedSecond?.let { return remember { mutableIntStateOf(it) } }
+    val second = remember { mutableIntStateOf(((System.currentTimeMillis() / 1000) % 60).toInt()) }
+    LaunchedEffect(Unit) {
+        while (true) {
+            val ms = System.currentTimeMillis()
+            second.intValue = ((ms / 1000) % 60).toInt()
+            // Wait off the frame clock so idle tests and the UI thread never spin on this ticker.
+            withContext(Dispatchers.Default) { delay(1000 - ms % 1000) }
+        }
+    }
+    return second
 }

@@ -1,4 +1,3 @@
 # Files still allowed to use Color.Black / Color.White (tools/check_literals.py). Each card/surface task
-# replaces the code and deletes its line here (plan-r9 D1); Task 22 empties the list.
-ui/screens/PhotosPage.kt     # Task 19 (photo caption fade)
-ui/theme/Theme.kt            # Task 22 (legacy Palette)
+# replaced its code and deleted its line here (plan-r9 D1); Task 22 emptied the list: only picture helpers
+# (scrim / overPicture / literal-ok lines) may use the literals now.

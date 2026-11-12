@@ -112,9 +112,21 @@ class ConfigCodecTest {
     @Test fun oldNotificationAndVideoCardsReadAsTheMergedCards() {
         val c = ConfigCodec.decode("""{"boards":[{"id":"a","layout":"TWO","slots":[["NOTIF_STACK","NOTIF_LIST"],["VIDEO","MUSIC"]]}],
             |"widgetLeft":["NOTIF_STACK"],"widgetRight":["VIDEO","CLOCK"]}""".trimMargin())
-        assertEquals(listOf(listOf(CardType.NOTIF_LIST), listOf(CardType.MUSIC)), c.boards[0].slots)
-        assertEquals(listOf(CardType.NOTIF_LIST), c.widgetLeft)
+        assertEquals(listOf(listOf(CardType.NOTIF), listOf(CardType.MUSIC)), c.boards[0].slots)
+        assertEquals(listOf(CardType.NOTIF), c.widgetLeft)
         assertEquals(listOf(CardType.MUSIC, CardType.CLOCK), c.widgetRight)
+    }
+
+    @Test fun r9DevNamesAndTheNewNameDedupeToOneNotifCard() {
+        val c = ConfigCodec.decode("""{"boards":[{"id":"a","layout":"THREE","slots":[["NOTIF_LIST"],["NOTIF","NOTIF_STACK","NOTIF_LIST"],["MUSIC","VIDEO","NOTIF_LIST"]]}],
+            |"widgetLeft":["NOTIF_LIST","NOTIF"],"widgetRight":["VIDEO"]}""".trimMargin())
+        assertEquals(listOf(listOf(CardType.NOTIF), listOf(CardType.NOTIF), listOf(CardType.MUSIC, CardType.NOTIF)), c.boards[0].slots)
+        assertEquals(listOf(CardType.NOTIF), c.widgetLeft)
+        assertEquals(listOf(CardType.MUSIC), c.widgetRight)
+        // and it writes the new name back
+        val back = ConfigCodec.encode(c)
+        assertTrue("NOTIF_LIST" !in back && "NOTIF_STACK" !in back && "VIDEO" !in back)
+        assertEquals(c.boards, ConfigCodec.decode(back).boards)
     }
 
     @Test fun unknownThemeFallsBackToIphone() = assertEquals(Theme.IPHONE, ConfigCodec.decode("""{"theme":"XYZ"}""").theme)

@@ -173,8 +173,8 @@ object ConfigCodec {
 
     private fun cards(l: List<CardType>) = JSONArray().also { a -> l.forEach { a.put(it.name) } }
 
-    /** r9 merged cards: old names read as their new card (D3), and a stack never holds the same card twice. */
-    private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF_LIST, "VIDEO" to CardType.MUSIC)
+    /** r9 merged cards: old names read as their new card (D3; r9 dev builds stored NOTIF_LIST), and a stack never holds the same card twice. */
+    private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF, "NOTIF_LIST" to CardType.NOTIF, "VIDEO" to CardType.MUSIC)
 
     private fun cards(a: JSONArray?, def: List<CardType>): List<CardType> =
         if (a == null) def else (0 until a.length()).mapNotNull {

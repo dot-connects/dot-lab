@@ -23,7 +23,6 @@ import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTheme
-import kr.dot.sb.ui.theme.Family
 import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
@@ -103,12 +102,6 @@ private val SIDE_MIN = 100.dp
 
 @Composable
 internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
-    // B / C dress the default ("아이폰") layout their own way; the other layouts stay shared
-    val family = LocalTheme.current.family
-    if (!inSlot && style.layout == ClockLayout.IPHONE && (family == Family.LAMP || (family == Family.PAPER && style.showInfo))) {
-        if (family == Family.PAPER) PaperDigital(style, d, ink, modifier) else LampDigital(style, d, ink, modifier)
-        return
-    }
     val p = rememberTimePainter(style)
     val ui = rememberUi(500)
     val look = Look.of(style, ink)
@@ -345,7 +338,7 @@ internal fun StyledTimeImpl(
     align: Alignment.Horizontal,
 ) {
     val p = rememberTimePainter(style, tnum = true)
-    val look = Look.of(style, ink, base = color, effects = effects, vertical = LocalTheme.current.family == Family.LAMP)
+    val look = Look.of(style, ink, base = color, effects = effects)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val wEm = p.widestEm(widest ?: text)

@@ -52,7 +52,6 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.StandbyTheme
 import kr.dot.sb.ui.theme.Motion
 import kr.dot.sb.ui.theme.Sizes
-import kr.dot.sb.ui.theme.Surface
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.geometry.Offset
 import kotlin.math.max

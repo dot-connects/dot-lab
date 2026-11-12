@@ -47,7 +47,7 @@ class NotifGestureTest {
     }
 
     @Test fun listRowSwipedPastAThirdIsCleared() {
-        val rec = show(CardType.NOTIF_LIST)
+        val rec = show(CardType.NOTIF)
         rule.onNodeWithText("엄마", useUnmergedTree = true).performTouchInput { swipeLeft(durationMillis = 400) }
         rule.waitForIdle()
         assertEquals(listOf(listOf("k1")), rec.cleared)
@@ -55,14 +55,14 @@ class NotifGestureTest {
     }
 
     @Test fun shortSwipeSnapsBack() {
-        val rec = show(CardType.NOTIF_LIST)
+        val rec = show(CardType.NOTIF)
         rule.onNodeWithText("엄마", useUnmergedTree = true).performTouchInput { swipeRight(startX = centerX, endX = centerX + width * 0.15f, durationMillis = 500) }
         rule.waitForIdle()
         assertEquals(emptyList<List<String>>(), rec.cleared)
     }
 
     @Test fun verticalScrollClearsNothing() {
-        val rec = show(CardType.NOTIF_LIST)
+        val rec = show(CardType.NOTIF)
         rule.onNodeWithText("배송 완료", useUnmergedTree = true).performTouchInput { swipeUp() }
         rule.waitForIdle()
         assertEquals(emptyList<List<String>>(), rec.cleared)
@@ -70,7 +70,7 @@ class NotifGestureTest {
     }
 
     @Test fun rowTapOpensCardPlateTapOpensAppClearAllTakesEveryClearableKey() {
-        val rec = show(CardType.NOTIF_LIST, Fixtures.full().let { s -> s.copy(notifications = s.notifications.mapIndexed { i, n -> if (i == 2) n.copy(clearable = false) else n }) })
+        val rec = show(CardType.NOTIF, Fixtures.full().let { s -> s.copy(notifications = s.notifications.mapIndexed { i, n -> if (i == 2) n.copy(clearable = false) else n }) })
         rule.onNodeWithText("엄마").performClick() // closed row: opens the card (r9), not the app
         rule.waitForIdle()
         assertEquals(emptyList<String>(), rec.tapped)
@@ -82,14 +82,14 @@ class NotifGestureTest {
     }
 
     @Test fun pinnedNotificationNeverClears() {
-        val rec = show(CardType.NOTIF_LIST, Fixtures.full().let { s -> s.copy(notifications = s.notifications.map { it.copy(clearable = false) }) })
+        val rec = show(CardType.NOTIF, Fixtures.full().let { s -> s.copy(notifications = s.notifications.map { it.copy(clearable = false) }) })
         rule.onNodeWithText("엄마", useUnmergedTree = true).performTouchInput { swipeLeft(durationMillis = 400) }
         rule.waitForIdle()
         assertEquals(emptyList<List<String>>(), rec.cleared)
     }
 
-    @Test fun stackFrontCardSwipesAway() {
-        val rec = show(CardType.NOTIF_STACK)
+    @Test fun rowSwipedRightIsClearedToo() {
+        val rec = show(CardType.NOTIF)
         rule.onNodeWithText("엄마", useUnmergedTree = true).performTouchInput { swipeRight(durationMillis = 400) }
         rule.waitForIdle()
         assertEquals(listOf(listOf("k1")), rec.cleared)

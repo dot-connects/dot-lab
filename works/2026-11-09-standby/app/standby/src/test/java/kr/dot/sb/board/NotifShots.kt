@@ -64,13 +64,11 @@ class NotifShots(private val name: String, private val device: Device, private v
         fun cases(): List<Array<Any>> = THEMES.flatMap { th -> base().map { it + th } }
 
         private fun base(): List<Array<Any>> {
-            val n = CardType.NOTIF_LIST
+            val n = CardType.NOTIF
             val one = Board("n-one", "one", Layout.ONE, listOf(listOf(n)))
             val two = Board("n-two", "two", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(n)))
             val three = Board("n-three", "three", Layout.THREE, listOf(listOf(CardType.CLOCK), listOf(n), listOf(CardType.WEATHER)))
             val four = Board("n-four", "four", Layout.FOUR, listOf(listOf(CardType.CLOCK), listOf(n), listOf(CardType.WEATHER), listOf(CardType.MUSIC)))
-            // a board saved before r9 with the stack card still draws the merged card
-            val stack = Board("n-stack", "stack", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(CardType.NOTIF_STACK)))
             val out = mutableListOf<Array<Any>>()
             for (k in listOf("full", "many", "open-many")) {
                 out += arrayOf("E-one-$k", Device.FOLD_COVER_L, one, k)
@@ -86,7 +84,6 @@ class NotifShots(private val name: String, private val device: Device, private v
             out += arrayOf("D-two-hidden", Device.FOLD_COVER_L, two, "hidden")
             out += arrayOf("D-two-open-hidden", Device.FOLD_COVER_L, two, "open-hidden")
             out += arrayOf("four-noaccess", Device.FOLD_COVER_L, four, "noaccess")
-            out += arrayOf("stack-two", Device.FOLD_COVER_L, stack, "full")
             return out
         }
     }

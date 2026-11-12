@@ -28,7 +28,7 @@ class NotifCardTest {
 
     private fun open() {
         rule.mainClock.autoAdvance = false
-        rule.setContent { Box(Modifier.size(340.dp, 420.dp)) { CardView(CardType.NOTIF_LIST, Fixtures.full(), AppConfig(), StandbyActions.NONE) } }
+        rule.setContent { Box(Modifier.size(340.dp, 420.dp)) { CardView(CardType.NOTIF, Fixtures.full(), AppConfig(), StandbyActions.NONE) } }
         rule.mainClock.advanceTimeBy(100)
         rule.onNodeWithText("접기").assertDoesNotExist()
         rule.onNodeWithText("엄마").performClick()

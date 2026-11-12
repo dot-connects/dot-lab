@@ -38,23 +38,11 @@ object Fonts {
         )
     }
 
-    /**
-     * Instrument Serif (theme B numerals and serif clock): one static 400 cut, Latin/digits subset, proportional digits.
-     * No Hangul: mixed text goes through `num` spans like [rounded].
-     */
-    val instrument: FontFamily by lazy { FontFamily(Font(R.font.instrument_serif, FontWeight.Normal)) }
+    /** Instrument Serif Italic (PAPER digits): one static 400 cut, Latin/digits subset. */
     val instrumentItalic: FontFamily by lazy { FontFamily(Font(R.font.instrument_serif_italic, FontWeight.Normal)) }
 
     /** IBM Plex Mono Medium (TERMINAL digits): one static 500 cut. */
     val plexMono: FontFamily by lazy { FontFamily(Font(R.font.plex_mono_500, FontWeight.Medium)) }
-
-    /** Nunito 800/900 (theme C widget numerals): every request resolves to one of the two heavy cuts. */
-    val nunitoHeavy: FontFamily by lazy {
-        FontFamily(
-            Font(R.font.nunito, FontWeight.ExtraBold, variationSettings = FontVariation.Settings(FontVariation.weight(800))),
-            Font(R.font.nunito, FontWeight.Black, variationSettings = FontVariation.Settings(FontVariation.weight(900))),
-        )
-    }
 
     /** The clock family for a font choice at a weight. Stencil and Rails are Inter; their cut/outline is drawn by the clock renderer. */
     fun clock(id: FontId, weight: Int = id.defaultWeight): FontFamily = when (id) {

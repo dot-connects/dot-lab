@@ -45,7 +45,7 @@ class BannerTest {
         val now = Fixtures.now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
         val state = Fixtures.full().copy(notification = BigNotification("b1", "카카오톡", "민수", "도착했어", null, postedAtEpochMs = now))
         val plain = listOf(CardType.CLOCK)
-        val config = AppConfig(widgetLeft = plain, widgetRight = plain, startPage = 0, boards = listOf(Board("n", "알림", Layout.ONE, listOf(listOf(CardType.NOTIF_LIST)))))
+        val config = AppConfig(widgetLeft = plain, widgetRight = plain, startPage = 0, boards = listOf(Board("n", "알림", Layout.ONE, listOf(listOf(CardType.NOTIF)))))
         rule.mainClock.autoAdvance = false
         rule.setContent { RootImpl(state, config, rec, Modifier, { _, _ -> }, RootStart()) }
         rule.mainClock.advanceTimeBy(500) // slide-in
