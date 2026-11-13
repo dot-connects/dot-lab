@@ -105,6 +105,7 @@ internal fun topLayer(state: StandbyState, nowPlayingOpen: Boolean): Layer = whe
 internal fun notifPage(config: AppConfig, current: Int): Int? {
     val pages = listOf(0 to listOf(config.widgetLeft, config.widgetRight)) + config.boards.mapIndexed { i, b -> FIXED_PAGES + i to b.slots }
     val hits = pages.filter { (_, slots) -> slots.any { stack -> stack.any { it.isNotif } } }.map { it.first }
+        .filter { kr.dot.sb.settings.Pages.position(config, it) != null } // a page switched off is no target
     return if (current in hits) current else hits.firstOrNull()
 }
 

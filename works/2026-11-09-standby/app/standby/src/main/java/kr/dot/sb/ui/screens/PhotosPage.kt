@@ -78,7 +78,9 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
     val themes = remember(state.photoBuckets, config.photoFolders) { (listOf(RECOMMENDED) + state.photoBuckets + config.photoFolders).distinct() }
     val one = config.photoFolders.singleOrNull()?.takeIf { config.photoSource == PhotoSource.FOLDERS }
     val theme = one?.let { themes.indexOf(it) } ?: 0
-    val cur by rememberUpdatedState(theme to themes)
+    // several folders picked in settings: the swipe would replace them with one, so it does nothing
+    val multi = config.photoSource == PhotoSource.FOLDERS && config.photoFolders.size > 1
+    val cur by rememberUpdatedState(Triple(theme, themes, multi))
     var pillKey by remember { mutableIntStateOf(0) }
     var pill by remember { mutableStateOf(false) }
     LaunchedEffect(pillKey) { if (pillKey > 0) { pill = true; delay(1_500); pill = false } }
@@ -88,7 +90,7 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
             var dy = 0f
             detectVerticalDragGestures(
                 onDragStart = { dy = 0f },
-                onDragEnd = { if (abs(dy) > 48.dp.toPx()) {
+                onDragEnd = { if (abs(dy) > 48.dp.toPx() && !cur.third) {
                     val (t, list) = cur
                     val next = Math.floorMod(t + if (dy < 0) 1 else -1, list.size); pillKey++
                     act.photoTheme(list.getOrNull(next)?.takeIf { next > 0 })

@@ -127,8 +127,18 @@ internal fun DayBarFace(
                 }
                 // the info column ends where the time (and its 오전/오후) ends
                 val infoW = w * 0.951f - (leftTime + painter.measureHm(d.h, d.m, fs) + ampmW) - 16 * k
-                if (!inSlot && infoW > 80 * k) {
-                    val date = label.fit("${d.weekday}요일 · ${d.month}월 ${d.day}일", infoW)
+                val dateFull = "${d.weekday}요일 · ${d.month}월 ${d.day}일"
+                val tooNarrow = label.measureText(dateFull) > infoW || d.weatherLine?.let { label.measureText(it) > infoW } == true
+                // near-square boxes (Flip cover): the right column would cut both lines, so they go under the time
+                val lineH = label.capRatio() * label.textSize
+                val below1 = capTop + cap + 34 * k + lineH
+                val below2 = below1 + 34 * k
+                if (!inSlot && tooNarrow && below2 < 238 * k - small.capRatio() * 16 * k - 14 * k) {
+                    label.color = text
+                    drawText(label.fit(dateFull, w * 0.902f), leftTime, below1, label)
+                    d.weatherLine?.let { label.color = dim; drawText(label.fit(it, w * 0.902f), leftTime, below2, label) }
+                } else if (!inSlot && infoW > 80 * k) {
+                    val date = label.fit(dateFull, infoW)
                     label.color = text
                     drawText(date, w * 0.951f - label.measureText(date), 44 * k + 17.6f * k + label.capRatio() * label.textSize / 2, label)
                     d.weatherLine?.let {

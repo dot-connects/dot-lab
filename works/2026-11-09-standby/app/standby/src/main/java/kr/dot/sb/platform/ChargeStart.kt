@@ -104,21 +104,28 @@ object ChargeStart {
     fun trail(ctx: Context): List<String> = prefs(ctx).getString(LOG_KEY, "").orEmpty().lines().filter { it.isNotBlank() }
 
     /** The notification listener (always bound) heard the charger go in: start now, no job delay. */
-    fun onPowerConnected(ctx: Context) = fire(ctx, "충전기 연결")
+    fun onPowerConnected(ctx: Context) { manualOff = false; fire(ctx, "충전기 연결") }
 
     /**
-     * r9 (operator: "다 쓰고 화면을 다시 끄면 스탠바이모드가 다시 되어야"): while charging, StandBy comes back
-     * (a) right after the phone is locked from normal use, and (b) on the next wake after StandBy itself was switched
-     * off with the side key. A screen-off that StandBy's own side-key press caused does not relight the screen.
+     * While charging, StandBy comes back right after the phone's screen goes off from normal use (timeout, double tap
+     * or side key: Android does not say which, operator 2026-11-13: all three start StandBy).
+     * StandBy keeps the screen on, so a screen-off while StandBy is showing is the side key: the next wake shows the
+     * phone's own lock screen (operator 2026-11-13, replaces r9's "StandBy again on the next wake"). StandBy returns at
+     * the next screen-off from normal use or the next plug-in.
      */
     fun onScreenOff(ctx: Context) {
         val own = StandbyPresence.activity || StandbyPresence.dream || android.os.SystemClock.elapsedRealtime() - StandbyPresence.lastHiddenMs < 4_000L
-        if (own) log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음에 켤 때") else fire(ctx, "화면 꺼짐", force = true)
+        if (own) { manualOff = true; log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음엔 폰 화면") }
+        else fire(ctx, "화면 꺼짐", force = true)
     }
+
+    // ponytail: process memory only; if the process dies in between, the next wake shows StandBy as before
+    @Volatile private var manualOff = false
 
     /** The screen woke on the lock screen while charging and no StandBy is waiting behind it. */
     fun onScreenOn(ctx: Context) {
         if (StandbyPresence.alive || StandbyPresence.dream) return
+        if (manualOff) { manualOff = false; log(ctx, "화면 켜짐 · 직접 껐음 → 폰 화면"); return }
         fire(ctx, "화면 켜짐", force = true)
     }
 

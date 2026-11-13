@@ -53,6 +53,7 @@ class SettingsShots {
         },
         photoFolders = { listOf("Camera" to 1240, "Screenshots" to 312, "여행" to 86, "KakaoTalk" to 54) },
         chargeTrail = { listOf("11월 12일 23:12 · 무선 충전 → 켜짐", "11월 11일 08:05 · 케이블 충전 → 켜짐") },
+        io = kotlinx.coroutines.Dispatchers.Unconfined,
     )
     private val bar = SettingsEnv(phone = Phone.BAR, foldable = false, granted = Perm.entries.associateWith { true })
 

@@ -247,8 +247,10 @@ object DeviceSources {
     /** Up to [n] random photos from [source] ([PhotoQueries]), decoded to <= 1280 px. null = no permission. */
     fun photos(ctx: Context, n: Int, source: PhotoSource = PhotoSource.PICKS, folders: List<String> = emptyList()): List<Photo>? {
         if (!has(ctx, Manifest.permission.READ_MEDIA_IMAGES)) return null
-        val existing = if (source == PhotoSource.FOLDERS) folders(ctx).map { it.first }.toSet() else emptySet()
-        val pool = PhotoQueries.of(source, folders, existing).flatMap { q -> rows(ctx, q.selection, q.args.toTypedArray().takeIf { it.isNotEmpty() }, q.limit) }.distinctBy { it.id }
+        fun pool(s: PhotoSource) = PhotoQueries.of(s, folders, folders.toSet())
+            .flatMap { q -> rows(ctx, q.selection, q.args.toTypedArray().takeIf { it.isNotEmpty() }, q.limit) }.distinctBy { it.id }
+        // picked folders that no longer exist return no rows; nothing left reads as PICKS (no full-table folder scan)
+        val pool = pool(source).ifEmpty { if (source == PhotoSource.FOLDERS) pool(PhotoSource.PICKS) else emptyList() }
         val out = ArrayList<Photo>(n)
         for (r in pool.shuffled()) {
             if (out.size >= n) break

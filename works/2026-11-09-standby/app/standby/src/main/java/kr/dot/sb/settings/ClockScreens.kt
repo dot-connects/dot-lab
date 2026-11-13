@@ -300,7 +300,8 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
                         ActionButton("색 조합 바꾸기", {
                             val cur = config.clockStyle(face)
                             prev = ColorShuffle.current(face, cur)
-                            val seed = cur.hashCode() + presses++
+                            // toString, not hashCode: enum hashCodes are identity-based and change every process
+                            val seed = cur.toString().hashCode() + presses++
                             edit { ColorShuffle.apply(face, it, ColorShuffle.next(face, it, seed)) }
                         }, Modifier.weight(1f), primary = false)
                         ActionButton("이전 조합", { prev?.let { p -> edit { ColorShuffle.apply(face, it, p) } }; prev = null }, Modifier.weight(1f), primary = false, enabled = prev != null)

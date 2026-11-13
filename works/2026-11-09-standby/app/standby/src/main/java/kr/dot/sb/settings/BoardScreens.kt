@@ -236,7 +236,9 @@ fun WidgetsScreen(config: AppConfig, update: Update, back: () -> Unit) {
 
 @Composable
 fun PhotosScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
-    val folders = remember(env.granted[Perm.PHOTOS]) { env.photoFolders() }
+    val folders by androidx.compose.runtime.produceState(emptyList<Pair<String, Int>>(), env.granted[Perm.PHOTOS]) {
+        value = kotlinx.coroutines.withContext(env.io) { env.photoFolders() }
+    }
     val first = pageSlides(config.copy(pagesOff = config.pagesOff - kr.dot.sb.model.PAGE_PHOTOS)).first { it.name == "사진" }
     Page("사진", back, preview = Preview(config, withPages(first, config, skip = "사진"))) {
         Section("사진 고르기") {

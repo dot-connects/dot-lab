@@ -20,7 +20,12 @@ object Fonts {
 
     private fun variable(res: Int, weight: Int, key: String): FontFamily = cache.getOrPut("$key-$weight") {
         val w = weight.coerceIn(1, 1000)
-        FontFamily(Font(res, FontWeight(w.coerceIn(100, 900)), variationSettings = FontVariation.Settings(FontVariation.weight(w))))
+        // Compose applies variations through one shared Paint; Paint.setFontVariationSettings returns early when the
+        // string equals the previous one, even for another font, so e.g. Pretendard 700 loaded right after Inter 700
+        // kept Pretendard's default weight (load-order dependent). An axis no font has ("ZKEY", dropped by Android)
+        // with a per-family value makes every family's string unique.
+        val unique = FontVariation.Setting("ZKEY", cache.size.toFloat())
+        FontFamily(Font(res, FontWeight(w.coerceIn(100, 900)), variationSettings = FontVariation.Settings(FontVariation.weight(w), unique)))
     }
 
     /** Pretendard at the given weight. */
