@@ -124,6 +124,7 @@ object Fixtures {
                 DayTemp(now.toLocalDate().plusDays(3), 6, -1, WeatherCondition.CLOUDY), DayTemp(now.toLocalDate().plusDays(4), 5, -3, WeatherCondition.CLEAR),
                 DayTemp(now.toLocalDate().plusDays(5), 7, 1, WeatherCondition.PARTLY),
             ),
+            sunrise = java.time.LocalTime.of(7, 5), sunset = java.time.LocalTime.of(17, 25),
         ),
         agenda = listOf(
             AgendaItem("09:30", "팀 회의", 0xFF0A84FF), AgendaItem("13:00", "병원 예약", 0xFFFF9F0A), AgendaItem("17:00", "엄마 생신 선물 사기", 0xFFBF5AF2),

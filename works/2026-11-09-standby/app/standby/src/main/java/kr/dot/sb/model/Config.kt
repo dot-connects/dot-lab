@@ -8,7 +8,8 @@ import java.time.LocalDate
  */
 
 /** The 11 iPhone clock fonts mapped to bundled open fonts (design-system.md §4.3, spec C10). */
-enum class FontId(val ko: String, val ios: String, val defaultWeight: Int) {
+/** [hangul] = a font with Hangul, offered only to 한글 시계 (plan-r10); the others are digit fonts. */
+enum class FontId(val ko: String, val ios: String, val defaultWeight: Int, val hangul: Boolean = false) {
     /** The theme's digit font + weight + digit style (r9 D4b); resolved by [kr.dot.sb.ui.theme.StandbyTheme.digits]. */
     THEME("테마 글꼴", "Theme", 600),
     BOLD("굵게", "Bold", 800),
@@ -28,6 +29,16 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int) {
     BAGEL("통통하게", "Bagel Fat One", 400),
     TITAN("스티커", "Titan One", 400),
     FREDOKA("동글게", "Fredoka", 700),
+    OSWALD("길쭉하게", "Oswald", 600),
+    PLEX_MONO("타자기", "IBM Plex Mono", 500),
+    BARLOW("반듯하게", "Barlow Condensed", 600),
+    JOST("기하학", "Jost", 500),
+    PLAYFAIR("굵은 장식 명조", "Playfair Display", 800),
+    // 한글 시계 fonts (mockup KFONTS)
+    HANGUL_SERIF("명조", "Gowun Batang", 700, hangul = true),
+    HANGUL_GOTHIC("고딕", "Pretendard", 700, hangul = true),
+    HANGUL_ROUND("둥근 고딕", "Jua", 400, hangul = true),
+    HANGUL_PEN("손글씨", "Nanum Pen Script", 400, hangul = true),
 }
 
 /** r10 dropped RAINBOW and GLASS; [kr.dot.sb.settings.ConfigCodec] reads them as SOLID. */

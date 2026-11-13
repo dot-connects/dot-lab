@@ -77,15 +77,15 @@ fun ClockFace(
     val m = modifier.semantics { contentDescription = "${data.ampm} ${data.h}:${data.m}" }
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
-            // r10 faces draw as DIGITAL until their renderer lands (plan-r10 Tasks 6-9)
             FaceId.DIGITAL -> if (!inSlot && th.id == Theme.FLIP && ink.night < 0.5f) FlipFace(st, d, ink, inSlot, mod)
                 else DigitalFace(st, d, ink, inSlot, mod)
             FaceId.FLIP -> FlipFace(st, d, ink, inSlot, mod)
             FaceId.LED -> SevenSegmentFace(st, d, ink, inSlot, false, mod)
             FaceId.LCD -> SevenSegmentFace(st, d, ink, inSlot, true, mod)
             FaceId.DOT_MATRIX -> DotMatrixFace(st, d, ink, inSlot, mod)
-            FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL,
-            -> DigitalFace(st, d, ink, inSlot, mod)
+            FaceId.WALL -> WallFace(st, d, ink, inSlot, mod)
+            FaceId.CALENDAR -> CalendarFace(st, d, ink, inSlot, mod)
+            FaceId.HANGUL -> HangulFace(st, d, ink, inSlot, mod)
             FaceId.THIN -> ThinFace(st, d, ink, inSlot, mod)
             FaceId.SPLIT -> SplitFace(st, d, ink, inSlot, mod)
             FaceId.COLOR_BLOCK -> ColorBlockFace(st, d, ink, inSlot, mod)
@@ -102,7 +102,7 @@ fun ClockFace(
         }
     }
     // Analog and World never change size with the hour; the others crossfade only when the hour-digit class changes.
-    if (face == FaceId.ANALOG || face == FaceId.WORLD || face == FaceId.DAY_BAR || face == FaceId.RIM) body(data, m)
+    if (face == FaceId.ANALOG || face == FaceId.WALL || face == FaceId.WORLD || face == FaceId.DAY_BAR || face == FaceId.RIM) body(data, m)
     else {
         // Crossfade only when the hour-digit class changes (twice a day); every other minute is a plain recomposition.
         val cls = data.h.length

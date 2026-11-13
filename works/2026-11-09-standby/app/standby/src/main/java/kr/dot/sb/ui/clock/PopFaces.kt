@@ -12,6 +12,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
+import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
@@ -195,8 +196,7 @@ internal fun BallsFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
     val ui = rememberUi(500)
     val n = ink.night
     val trio = FaceDefaults.TRIOS[(style.trioPreset ?: 0).coerceIn(0, FaceDefaults.TRIOS.lastIndex)]
-    // FaceDefaults.DIGIT is the flip tiles' white; the balls' own default digit is the mockup's dark ink
-    val digitC = lerp(Color(style.digitColor ?: DARK), NIGHT_INK, n).toArgb()
+    val digitC = lerp(Color(style.digitColor ?: FaceDefaults.digit(FaceId.BALLS)), NIGHT_INK, n).toArgb()
     val fallback = Look.of(style, ink)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height

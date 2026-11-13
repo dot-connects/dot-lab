@@ -59,5 +59,15 @@ object Fonts {
         // static single cuts: the variation setting is ignored
         FontId.BAGEL -> variable(R.font.bagel_fat_one, weight, "bagel")
         FontId.TITAN -> variable(R.font.titan_one, weight, "titan")
+        FontId.OSWALD -> variable(R.font.oswald, weight, "oswald")
+        FontId.JOST -> variable(R.font.jost, weight, "jost")
+        FontId.PLAYFAIR -> variable(R.font.playfair, weight, "playfair")
+        FontId.PLEX_MONO -> plexMono
+        FontId.BARLOW -> variable(R.font.barlow_condensed_600, weight, "barlow")
+        // Hangul (한글 시계): Gowun Batang ships its 700 cut only (each cut is 8 MB); Pretendard is the UI font
+        FontId.HANGUL_SERIF -> variable(R.font.gowun_batang_700, weight, "gowun")
+        FontId.HANGUL_GOTHIC -> variable(R.font.pretendard, weight, "ui")
+        FontId.HANGUL_ROUND -> variable(R.font.jua, weight, "jua")
+        FontId.HANGUL_PEN -> variable(R.font.nanum_pen, weight, "nanumpen")
     }
 }

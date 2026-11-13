@@ -73,7 +73,7 @@ fun ClockListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
 
 // ---- one clock's style ------------------------------------------------------------------------------------------
 
-private val FONT_ORDER = FontId.entries
+private val FONT_ORDER = FontId.entries.filter { !it.hangul }
 
 @Composable
 fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -> Unit) {

@@ -74,6 +74,13 @@ object Themes {
                 font, weight, color = acc, numeralColor = ink, handColor = ink,
                 secondColor = acc, weekdayColor = tk.accentText.long(), tickColor = tick,
             )
+            // 벽시계: a light dial with dark ink and a red second hand under every theme (clocks.html c-wall)
+            FaceId.WALL -> ClockStyle(
+                font, weight, color = acc, analogNumbers = kr.dot.sb.model.AnalogNumbers.TWELVE,
+                numeralColor = kr.dot.sb.ui.clock.FaceDefaults.WALL_INK, handColor = kr.dot.sb.ui.clock.FaceDefaults.WALL_INK,
+                tickColor = kr.dot.sb.ui.clock.FaceDefaults.WALL_INK, secondColor = kr.dot.sb.ui.clock.FaceDefaults.WALL_SECOND,
+                weekdayColor = tk.accentText.long(),
+            )
             FaceId.SOLAR -> ClockStyle.default(face).copy(font = font, weight = weight)
             FaceId.PHOTOS_TIME -> ClockStyle(font, weight, color = 0xFFFFFFFF)
             else -> ClockStyle(font, weight, color = acc, litDotColor = tick)

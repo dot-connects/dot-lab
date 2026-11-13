@@ -22,6 +22,16 @@ object FaceDefaults {
     const val BAR = 0xFF30CEDA
     const val RIM = 0xFFFF9C56
     const val PAPER = 0xFFF4EFE6
+    /** 벽시계 hands, ticks and numerals on the light dial, and its red second hand (c-wall). */
+    const val WALL_INK = 0xFF1D1A16
+    const val WALL_SECOND = 0xFFE0452B
+    /** 달력과 시계 page (c-cal .page). */
+    const val PAGE = 0xFFF3EEE4
+    /** 공 숫자 digits: the mockup's dark ink on the coloured balls. */
+    const val BALL_DIGIT = 0xFF15120E
+
+    /** Default [kr.dot.sb.model.ClockStyle.digitColor] of [face]: white flip tiles, dark ball digits. */
+    fun digit(face: FaceId): Long = if (face == FaceId.BALLS) BALL_DIGIT else DIGIT
 
     /** Default digit font + weight of a new face (mockup); overrides the theme's THEME font. null = the theme's. */
     fun font(face: FaceId): Pair<FontId, Int>? = when (face) {
@@ -30,6 +40,12 @@ object FaceDefaults {
         FaceId.COLOR_BLOCK -> FontId.BAGEL to 400
         FaceId.STICKER -> FontId.TITAN to 400
         FaceId.BALLS -> FontId.FREDOKA to 700
+        FaceId.FLIP -> FontId.OSWALD to 600
+        FaceId.DAY_BAR -> FontId.PLEX_MONO to 500
+        FaceId.RIM -> FontId.BARLOW to 600
+        FaceId.WALL -> FontId.JOST to 500
+        FaceId.CALENDAR -> FontId.PLAYFAIR to 800
+        FaceId.HANGUL -> FontId.HANGUL_SERIF to 700
         else -> null
     }
 

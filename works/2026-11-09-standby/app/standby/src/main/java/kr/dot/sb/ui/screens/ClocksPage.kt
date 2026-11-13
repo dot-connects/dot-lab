@@ -190,7 +190,7 @@ internal fun ClocksPage(
         ) {
             val face = faces[cur]
             spec(face).sheetRow?.let { row ->
-                ColorSheet(row, styleOf(face), ink, s, if (h > w) w - m * 2 else w * 0.74f, { onPick(face, it) }) { sheet = false }
+                ColorSheet(face, row, styleOf(face), ink, s, if (h > w) w - m * 2 else w * 0.74f, { onPick(face, it) }) { sheet = false }
             }
         }
     }
@@ -198,7 +198,7 @@ internal fun ClocksPage(
 
 /** Bottom colour sheet (frame float-colormenu): "색상" centred, ✕ right, one row of swatches (scrolls when narrow). */
 @Composable
-private fun ColorSheet(row: StyleRow, style: ClockStyle, ink: Ink, s: Dp, width: Dp, onPick: (ClockStyle) -> Unit, onClose: () -> Unit) {
+private fun ColorSheet(face: FaceId, row: StyleRow, style: ClockStyle, ink: Ink, s: Dp, width: Dp, onPick: (ClockStyle) -> Unit, onClose: () -> Unit) {
     val pad = max(16.dp, s * 0.05f)
     val d = max(30.dp, min(46.dp, s * 0.085f))
     Column(
@@ -236,7 +236,7 @@ private fun ColorSheet(row: StyleRow, style: ClockStyle, ink: Ink, s: Dp, width:
                     Swatch(d, (style.ledColor ?: FaceDefaults.LEDS[0]) == c, ink, solid(c)) { onPick(style.copy(ledColor = c)) }
                 }
                 else -> ClockStyle.SWATCHES.forEach { c ->
-                    Swatch(d, row.color(style) == c, ink, solid(c)) { onPick(row.withColor(style, c)) }
+                    Swatch(d, row.color(style, face) == c, ink, solid(c)) { onPick(row.withColor(style, c)) }
                 }
             }
         }

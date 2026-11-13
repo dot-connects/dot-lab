@@ -104,7 +104,8 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
         // "StandBy 디지털" is Sofia Sans Extra Condensed (r5): already iPhone-narrow, no artificial squeeze
         textScaleX = widthPct / 100f
         textSize = REF
-        fontFeatureSettings = if (tnum) "'tnum'" else null
+        // Playfair's default figures are old-style (a descending 9): the clocks use its lining figures (c-cal lining-nums)
+        fontFeatureSettings = listOfNotNull("'tnum'".takeIf { tnum }, "'lnum'".takeIf { font == FontId.PLAYFAIR }).joinToString(", ").ifEmpty { null }
     }
     private val fx = Paint(Paint.ANTI_ALIAS_FLAG).apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.CLEAR) }
 

@@ -54,8 +54,8 @@ enum class StyleRow(val part: String? = null) {
 
     val preset: Boolean get() = this == LED || this == PAIR || this == TRIO || this == SOLAR
 
-    /** The colour this row edits, null fields resolved through [FaceDefaults]; null for the other rows (presets too). */
-    fun color(s: ClockStyle): Long? = when (this) {
+    /** The colour this row edits on [face], null fields resolved through [FaceDefaults]; null for the other rows (presets too). */
+    fun color(s: ClockStyle, face: FaceId): Long? = when (this) {
         TEXT_COLOR, CITY_COLOR -> s.color
         LIT_COLOR -> s.litDotColor
         HAND_COLOR -> s.handColor
@@ -66,7 +66,7 @@ enum class StyleRow(val part: String? = null) {
         HOUR_COLOR -> s.hourColor ?: FaceDefaults.HOUR
         MINUTE_COLOR -> s.minuteColor ?: FaceDefaults.MINUTE
         PLATE_COLOR -> s.plateColor ?: FaceDefaults.PLATE
-        DIGIT_COLOR -> s.digitColor ?: FaceDefaults.DIGIT
+        DIGIT_COLOR -> s.digitColor ?: FaceDefaults.digit(face)
         PANEL_COLOR -> s.panelColor ?: FaceDefaults.PANEL
         INK_COLOR -> s.inkColor ?: FaceDefaults.INK
         DOT_COLOR -> s.dotColor ?: FaceDefaults.DOT
@@ -140,10 +140,10 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.DOT_MATRIX -> c(Family.RETRO, "전광판", listOf(DOT_COLOR, SIZE), emptyList(), built = true)
         FaceId.WALL -> c(
             Family.CLASSIC, "벽시계", listOf(HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS, INFO),
-            listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE),
+            listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
         )
-        FaceId.CALENDAR -> c(Family.CLASSIC, "달력과 시계", listOf(TEXT_COLOR, CALENDAR_COLOR, SIZE, FONT), listOf(WEIGHT), ours = true)
-        FaceId.HANGUL -> c(Family.CLASSIC, "한글 시계", listOf(TEXT_COLOR, ACCENT_COLOR, SIZE, KFONT), emptyList(), ours = true)
+        FaceId.CALENDAR -> c(Family.CLASSIC, "달력과 시계", listOf(TEXT_COLOR, CALENDAR_COLOR, SIZE, FONT), listOf(WEIGHT), ours = true, built = true)
+        FaceId.HANGUL -> c(Family.CLASSIC, "한글 시계", listOf(TEXT_COLOR, ACCENT_COLOR, SIZE, KFONT), emptyList(), ours = true, built = true)
         FaceId.ANALOG -> c(
             Family.CLASSIC, "아날로그", listOf(SHAPE, HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS),
             listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, DAY_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,

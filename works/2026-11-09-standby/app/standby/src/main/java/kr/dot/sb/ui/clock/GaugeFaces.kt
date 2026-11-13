@@ -69,6 +69,8 @@ internal fun DayBarFace(
 ) {
     val painter = rememberTimePainter(style)
     val label = rememberUi(500)
+    val small = rememberUi(600)
+    val mono = rememberTypeface(kr.dot.sb.ui.theme.Fonts.plexMono, 500).let { remember(it) { uiPaint(it, 500) } }
     val look = Look.of(style, ink)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
@@ -87,8 +89,11 @@ internal fun DayBarFace(
         val alarmAt = alarm?.let { barPosition(it.toLocalTime()) }
         label.textSize = min(w, h) * (if (inSlot) 0.055f else 0.06f)
         val capRatio = label.capRatio()
-        val fs = fitSize(painter, d, false, (if (vertical) 0.18f * h else 0.52f * h) * style.sizePct / 100f,
-            if (vertical) w * 0.84f else w * 0.60f)
+        // landscape: the time and its small 오전/오후 share 62 % of the width (c-day), the info column takes the rest
+        small.textSize = 26 * min(w, h) / 360f
+        val ampmW = if (d.use24h || vertical) 0f else small.measureText(d.ampm) + 14 * min(w, h) / 360f
+        val fs = fitSize(painter, d, false, (if (vertical) 0.18f * h else 0.38f * h) * style.sizePct / 100f,
+            if (vertical) w * 0.84f else w * 0.62f - ampmW)
         val cap = painter.capEm * fs
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bar }
         val pale = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = sun }
@@ -110,34 +115,52 @@ internal fun DayBarFace(
                     drawText((i * 6).toString(), x + thick + 0.05f * w, y + label.textSize * capRatio / 2, label)
                 }
             } else {
-                val top = h * 0.03f
-                val leftTime = w * 0.05f
-                painter.drawHm(this, d.h, d.m, leftTime, top + cap, fs, look)
-                if (!inSlot) {
-                    label.color = dim
-                    val date = "${d.weekday}요일 · ${d.month}월 ${d.day}일"
-                    drawText(label.fit(date, w * 0.31f), w * 0.95f - label.measureText(label.fit(date, w * 0.31f)), h * 0.16f, label)
+                // c-day at 780 × 360: time cap top 41, info right 38 / top 44, "하루의 N%" at 238, track 266 (16 tall),
+                // hour scale 10 under the track (mono 15), 해 뜸 / 해 짐 22 under that
+                val k = min(w, h) / 360f
+                val capTop = 41 * k
+                val leftTime = w * 0.046f
+                painter.drawHm(this, d.h, d.m, leftTime, capTop + cap, fs, look)
+                if (!d.use24h) {
+                    small.textSize = 26 * k; small.color = dim
+                    drawText(d.ampm, leftTime + painter.measureHm(d.h, d.m, fs) + 14 * k, capTop + cap, small)
+                }
+                // the info column ends where the time (and its 오전/오후) ends
+                val infoW = w * 0.951f - (leftTime + painter.measureHm(d.h, d.m, fs) + ampmW) - 16 * k
+                if (!inSlot && infoW > 80 * k) {
+                    val date = label.fit("${d.weekday}요일 · ${d.month}월 ${d.day}일", infoW)
+                    label.color = text
+                    drawText(date, w * 0.951f - label.measureText(date), 44 * k + 17.6f * k + label.capRatio() * label.textSize / 2, label)
                     d.weatherLine?.let {
-                        val line = label.fit(it, w * 0.31f)
-                        drawText(line, w * 0.95f - label.measureText(line), h * 0.16f + label.textSize * 1.5f, label)
+                        val line = label.fit(it, infoW)
+                        label.color = dim
+                        drawText(line, w * 0.951f - label.measureText(line), 44 * k + 52.8f * k + label.capRatio() * label.textSize / 2, label)
                     }
                 }
-                val x0 = w * 0.049f; val length = w * 0.902f; val y = h * 0.661f; val thick = min(h * 0.044f, 16.dp.toPx())
-                label.color = bar
-                val pct = "${(now * 100).toInt()}%"
-                drawText(pct, x0, y - label.textSize * 0.7f, label)
+                val x0 = w * 0.049f; val length = w * 0.902f; val y = 266 * k; val thick = 16 * k
+                small.textSize = 16 * k; small.color = bar
+                drawText("하루의 ${(now * 100).toInt()}%", x0, 238 * k + small.capRatio() * small.textSize, small)
                 drawRoundRect(x0, y, x0 + length, y + thick, thick / 2, thick / 2, base)
                 if (rise != null && set != null && set > rise) drawRect(x0 + length * rise, y, x0 + length * set, y + thick, pale)
                 drawRoundRect(x0, y, x0 + length * now, y + thick, thick / 2, thick / 2, fill)
                 val xm = x0 + length * now
-                drawRoundRect(xm - 2.dp.toPx(), y - 9.dp.toPx(), xm + 2.dp.toPx(), y + thick + 9.dp.toPx(), 2.dp.toPx(), 2.dp.toPx(), marker)
-                alarmAt?.let { drawAlarmGlyph(x0 + length * it - label.textSize / 2, y - label.textSize, label.textSize, text) }
-                label.color = dim
+                drawRoundRect(xm - 2 * k, y - 9 * k, xm + 2 * k, y + 25 * k, 2 * k, 2 * k, marker)
+                alarmAt?.let { drawAlarmGlyph(x0 + length * it - 8 * k, y - 14 * k, 16 * k, text) }
+                mono.textSize = 15 * k; mono.color = dim
+                val scaleY = y + thick + 10 * k + mono.capRatio() * mono.textSize
                 for (i in 0..4) {
                     val tick = (i * 6).toString()
-                    val tx = x0 + length * i / 4f - if (i == 0) 0f else if (i == 4) label.measureText(tick) else label.measureText(tick) / 2
-                    drawText(tick, tx, y + thick + label.textSize * 1.6f, label)
+                    val tx = x0 + length * i / 4f - if (i == 0) 0f else if (i == 4) mono.measureText(tick) else mono.measureText(tick) / 2
+                    drawText(tick, tx, scaleY, mono)
                 }
+                small.textSize = 15 * k; small.color = dim
+                fun sun(word: String, t: LocalTime?, at: Float?) {
+                    if (t == null || at == null) return
+                    val s = "$word ${t.hour}:%02d".format(t.minute)
+                    drawText(s, x0 + length * at - small.measureText(s) / 2, scaleY + 22 * k, small)
+                }
+                sun("해 뜸", weather?.sunrise, rise)
+                sun("해 짐", weather?.sunset, set)
             }
         }
     }
@@ -169,7 +192,7 @@ internal fun RimFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, 
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val compact = min(w, h).toDp() < 120.dp
-        val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.52f) * style.sizePct / 100f, w * 0.78f)
+        val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
         val cap = painter.capEm * fs
         if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
         val active = ink.accent(Color(style.rimColor ?: FaceDefaults.RIM)).toArgb()
@@ -179,18 +202,22 @@ internal fun RimFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, 
         val dots = (0 until 60).map { rimDot(it, w, h, inset, radius) }
         val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
         label.textSize = min(w, h) * 0.053f
-        val caption = if (style.showInfo && !inSlot) "${d.weekday}요일 · ${d.month}월 ${d.day}일${d.temp?.let { " · $it" } ?: ""}" else null
-        val captionText = caption?.let { label.fit(it, w * 0.78f) }
+        // c-rim: "월요일 · 11월 9일 · 7° · ⏰ 6:30" 29 dp (of 360) under the digits' baseline, the pair centred
+        val dim = ink.ink2.toArgb()
+        val caption = if (!style.showInfo || inSlot) null else buildList {
+            add(Seg(d.infoLine(), dim))
+            d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
+        }.let { if (label.width(it) <= w * 0.78f) it else listOf(Seg(d.infoLine(), dim)) }
+        val gap = 29 * min(w, h) / 360f
+        val group = cap + if (caption == null) 0f else gap + label.capRatio() * label.textSize
+        val capTop = (h - group) / 2
         return@FaceCanvas {
             dots.forEachIndexed { i, (x, y) ->
                 dotPaint.color = if (second?.let { i <= it } ?: (i == d.now.minute)) active else inactive
                 drawCircle(x, y, min(w, h) * (if (i % 5 == 0) 5f else 3f) / 360f, dotPaint)
             }
-            drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2 - if (captionText == null) 0f else label.textSize * 0.3f, look)
-            if (captionText != null) {
-                label.color = ink.ink2.toArgb()
-                drawText(captionText, (w - label.measureText(captionText)) / 2, h * 0.77f, label)
-            }
+            drawTime(painter, d, fs, false, 0f, w / 2, capTop, look)
+            if (caption != null) drawSegs(caption, (w - label.width(caption)) / 2, capTop + group, label)
         }
     }
 }

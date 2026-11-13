@@ -110,7 +110,7 @@ class ClockShots(private val theme: Theme) {
         val flt = ClockStyle.default(FaceId.FLOAT)
         val ana = ClockStyle.default(FaceId.ANALOG)
         val sol = ClockStyle.default(FaceId.SOLAR)
-        val items = FontId.entries.map { "font-${it.name.lowercase()}" to face(FaceId.DIGITAL, style = dig.copy(font = it, weight = it.defaultWeight)) } +
+        val items = FontId.entries.filter { !it.hangul }.map { "font-${it.name.lowercase()}" to face(FaceId.DIGITAL, style = dig.copy(font = it, weight = it.defaultWeight)) } +
             Effect.entries.map { "fx-${it.name.lowercase()}" to face(FaceId.FLOAT, style = flt.copy(effect = it)) } +
             listOf(
                 "fx-glow-night" to face(FaceId.FLOAT, Fixtures.full(night = 1f), flt.copy(effect = Effect.GLOW)),
@@ -178,7 +178,10 @@ class ClockShots(private val theme: Theme) {
      * r10 faces (plan-r10 shot budget): every theme on the Fold cover by day; IPHONE on all six devices day + night,
      * a two-digit hour and the slot classes L / M / Sw / St / XSt.
      */
-    private val r10 = listOf(FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS)
+    private val r10 = listOf(
+        FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS,
+        FaceId.FLIP, FaceId.LED, FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
+    )
 
     private fun r10Items(night: Boolean) = r10.map { "${it.name.lowercase()}-day" to face(it) } +
         (if (night) r10.map { "${it.name.lowercase()}-night" to face(it, Fixtures.full(night = 1f)) } else emptyList())
