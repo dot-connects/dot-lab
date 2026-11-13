@@ -48,6 +48,7 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Background
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
+import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTheme
@@ -77,8 +78,13 @@ fun ClockFace(
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
             // r10 faces draw as DIGITAL until their renderer lands (plan-r10 Tasks 6-9)
-            FaceId.DIGITAL, FaceId.FLIP, FaceId.LED,
-            FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL,
+            FaceId.DIGITAL -> if (!inSlot && th.id == Theme.FLIP && ink.night < 0.5f) FlipFace(st, d, ink, inSlot, mod)
+                else DigitalFace(st, d, ink, inSlot, mod)
+            FaceId.FLIP -> FlipFace(st, d, ink, inSlot, mod)
+            FaceId.LED -> SevenSegmentFace(st, d, ink, inSlot, false, mod)
+            FaceId.LCD -> SevenSegmentFace(st, d, ink, inSlot, true, mod)
+            FaceId.DOT_MATRIX -> DotMatrixFace(st, d, ink, inSlot, mod)
+            FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL,
             -> DigitalFace(st, d, ink, inSlot, mod)
             FaceId.THIN -> ThinFace(st, d, ink, inSlot, mod)
             FaceId.SPLIT -> SplitFace(st, d, ink, inSlot, mod)

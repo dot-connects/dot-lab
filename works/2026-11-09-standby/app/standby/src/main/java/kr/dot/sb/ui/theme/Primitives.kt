@@ -16,10 +16,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -121,23 +127,39 @@ fun ThemedDigits(
 
 /** FLIP: each digit on its own split tile (mockup: tile .62 × .95 em, gap .06 em, colon .35 em in ink2). */
 @Composable
-private fun FlipDigits(lines: List<String>, st: ClockStyle, ink: Ink, tk: ThemeTokens, c: Color, modifier: Modifier) =
+internal fun FlipDigits(
+    lines: List<String>, st: ClockStyle, ink: Ink, tk: ThemeTokens, c: Color, modifier: Modifier,
+    plate: Color? = null, animate: Boolean = false,
+) =
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         fun emW(l: String) = l.sumOf { if (it == ':') 0.35 else 0.62 }.toFloat() + (l.length - 1) * 0.06f
         val fs = minOf(maxWidth / lines.maxOf { emW(it) }, maxHeight / (lines.size * 0.95f + (lines.size - 1) * 0.06f))
-        val top = tk.plate2
-        val bottom = lerp(tk.plate, tk.plate2, 0.5f)
-        val split = tk.bg.base
+        val top = plate ?: tk.plate2
+        val bottom = if (plate == null) lerp(tk.plate, tk.plate2, 0.5f) else plate
+        val split = if (plate == null) tk.bg.base else ink.bg
         val tile = Brush.verticalGradient(
             0f to top, 0.494f to top, 0.494f to split, 0.506f to split, 0.506f to bottom, 1f to bottom,
         )
         Column(verticalArrangement = Arrangement.spacedBy(fs * 0.06f), horizontalAlignment = Alignment.CenterHorizontally) {
             lines.forEach { l ->
                 Row(horizontalArrangement = Arrangement.spacedBy(fs * 0.06f), verticalAlignment = Alignment.CenterVertically) {
-                    l.forEach { ch ->
+                    l.forEachIndexed { index, ch ->
                         if (ch == ':') StyledTime(":", st, ink, Modifier.size(fs * 0.3f, fs * 0.5f), ink.ink2)
-                        else Box(Modifier.size(fs * 0.62f, fs * 0.95f).background(tile, RoundedCornerShape(fs * 0.1f))) {
-                            StyledTime(ch.toString(), st, ink, Modifier.fillMaxSize().padding(fs * 0.05f, fs * 0.1f), c)
+                        else {
+                            val shown = remember(lines.size, index) { mutableStateOf(ch) }
+                            val turn = remember(lines.size, index) { Animatable(0f) }
+                            LaunchedEffect(ch, animate) {
+                                if (animate && shown.value != ch) {
+                                    turn.snapTo(0f)
+                                    turn.animateTo(0.5f, tween(250))
+                                    shown.value = ch
+                                    turn.animateTo(1f, tween(250))
+                                } else shown.value = ch
+                            }
+                            val angle = if (turn.value < 0.5f) turn.value * 180f else (turn.value - 1f) * 180f
+                            Box(Modifier.size(fs * 0.62f, fs * 0.95f).graphicsLayer { rotationX = angle }.background(tile, RoundedCornerShape(fs * 0.1f))) {
+                                StyledTime(shown.value.toString(), st, ink, Modifier.fillMaxSize().padding(fs * 0.05f, fs * 0.1f), c)
+                            }
                         }
                     }
                 }
