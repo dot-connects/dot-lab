@@ -34,6 +34,7 @@ class LayoutsTest {
         assertEquals(WeatherShape.SHORT_WIDE, weatherShape(400f, 150f))
         assertEquals(WeatherShape.SMALL, weatherShape(170f, 300f))
         assertEquals(WeatherShape.WIDE, weatherShape(695f, 419f))
+        assertEquals(WeatherShape.BIG_TEMP, weatherShape(270f, 197f))
         assertEquals(WeatherShape.STACK, weatherShape(338f, 419f))
         assertEquals(CalendarShape.SHORT_WIDE, calendarShape(270f, 200f))
         assertEquals(CalendarShape.NARROW, calendarShape(218f, 419f))

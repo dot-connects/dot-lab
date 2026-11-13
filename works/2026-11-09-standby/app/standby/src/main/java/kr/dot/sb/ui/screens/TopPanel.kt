@@ -29,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -76,8 +77,8 @@ internal fun barFraction(xDp: Float, screenWDp: Float): Float {
 
 /**
  * Pull-down panel (spec-r9 §1, mockup "내리기 패널"): brightness, media volume and theme previews (shapes only, three in
- * view, the rest by scrolling) on the theme plate over a dim wash. Ink is the board's, so night is the candle night and
- * the previews are drawn at night too. [onPress] reports any finger on the panel so the owner keeps it open.
+ * view, the rest by scrolling) on the theme plate over a dim wash. Ink is the board's, so night is the candle night; the
+ * previews alone are drawn in day colours (at night they all looked the same, r10 B5) at 85 % alpha. [onPress] reports any finger on the panel so the owner keeps it open.
  */
 @Composable
 internal fun TopPanel(
@@ -116,6 +117,7 @@ internal fun TopPanel(
         }) { c -> speaker(c) }
         val chipW = (pw - pad * 2 - 16.dp) / 3
         val list = rememberLazyListState((Theme.entries.indexOf(config.theme) - 1).coerceAtLeast(0))
+        val day = remember(state) { state.copy(night = 0f) }
         LazyRow(Modifier.fillMaxWidth().padding(top = 2.dp), list, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             items(Theme.entries) { th ->
                 val chip = RoundedCornerShape(16.dp)
@@ -129,8 +131,8 @@ internal fun TopPanel(
                     // previews never host a live phone widget (one view per widget id, D6)
                     CompositionLocalProvider(LocalLiveWidgets provides false) {
                         ProvideTheme(cfg) {
-                            PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 10.dp, night = state.night) {
-                                BoardView(widgetsBoard(cfg), state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                            PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth().alpha(1f - 0.15f * state.night), radius = 10.dp, night = 0f) {
+                                BoardView(widgetsBoard(cfg), day, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
                             }
                         }
                     }

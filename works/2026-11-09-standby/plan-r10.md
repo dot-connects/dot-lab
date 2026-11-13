@@ -1,4 +1,4 @@
-# Stand Screen r10 — settings redesign, 21 clocks, night/heat features: Implementation Plan (v5)
+# Stand Screen r10 — settings redesign, 21 clocks, night/heat features: Implementation Plan (v6, review closed)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or
 > superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax.
@@ -19,7 +19,7 @@ shared collapsing preview.
 `settings-r10/mockup.html` (settings; readable source `settings-r10/src/mockup.src.html`: `SCREENS.*`, `STYLE`,
 `PART`, `COMBO2/3`, `LEDS`, `KFONTS`, `PERMS`), `features.html` (src `features.src.html`), `cleanup.html` (src
 `cleanup.src.html`), `clocks.html` (15 new clocks, renderers + CSS inline), icon `icon/final/`.
-Reviews: `app-review-fable.md`, `competitors.md`. Plan review log: `C:\DC\DD\docs\archive\2026-11-12-standby-r10-plan-review\`.
+Reviews: `app-review-fable.md`, `competitors.md`. Plan review log (5 rounds, High 13·3·2·1·0): `C:\DC\DD\docs\archive\2026-11-12-standby-r10-plan-review\`.
 
 ## Global Constraints
 
@@ -86,7 +86,8 @@ Reviews: `app-review-fable.md`, `competitors.md`. Plan review log: `C:\DC\DD\doc
 - **Burn-in:** ±8 dp (16 dp travel), one 1 dp step per minute along a ping-pong snake over a 17 × 17 grid, step =
   minutes since epoch (no jump at midnight). The shift moves the content layer only: `ThemeBackground` and full-bleed
   face backgrounds (솔라, 색 블록, 사진 페이지), the Compose `MoodLight` and the clocks page background are **overscanned by
-  8 dp** on every side (one modifier, `Modifier.burnInBleed()`), so no moving band. `ClocksPage` keeps its own `ink.bg`
+  8 dp** on every side (one modifier, `Modifier.burnInBleed()`), so no moving band. Pagers clip their bounds, so the bleed is applied to the
+  pagers themselves (outer size + 16 dp, offset back by −8 dp) rather than inside a page. `ClocksPage` keeps its own `ink.bg`
   (edit mode needs it); the candle theme's bottom light is drawn there too (same layer as `ThemeBackground`'s).
 - **Light themes force night:** when the *drawn* theme (`drawnTheme()`) is light, night applies even when the stored
   mode is OFF or display-off is NEVER; with mode OFF the AUTO (lux) rule decides. Stored values untouched.
@@ -96,11 +97,14 @@ Reviews: `app-review-fable.md`, `competitors.md`. Plan review log: `C:\DC\DD\doc
   per source; `openGlow` and the settings test pass their source. A ringing alarm cancels the timer (GlowActivity also handles
   `onNewIntent`: a PRE_ALARM/ALARM source cancels the UNFOLD timer); fade = last 60 s; a tap during the fade restarts
   the timer, otherwise a tap closes (as now). One shared `MoodTimer` rule. In the activity host `StandbyRoot` reports the
-  mood light through a new `StandbyActions.moodShowing(Boolean)`; the holder passes `mood` into
+  mood light through new `StandbyActions.moodShowing(Boolean)` and `moodDone()` (DONE also sets `moodOff = true`;
+  **sleep wins over mood**); the holder passes `mood` into
   `NightRules.displayOff(…, mood)` (mood → keep on) and at DONE calls a new `DisplayOffMachine.sleep()`: a **sticky
   off** that every mode respects (NEVER and the AUTO lux wake included) and only `touch()` clears (tested). A touch after
   DONE wakes to the board (the mood light counts as dismissed, like `moodOff`). `GlowActivity` at DONE fades to black
-  and finishes, and the dream does not post another UNFOLD glow until the phone is folded again (one glow per unfold).
+  and finishes, and neither path shows another UNFOLD mood light until the phone is folded again: one process-level
+  `MoodLatch` (set at DONE, reset when any host sees `unfolded = false` or on the next `ACTION_POWER_CONNECTED`).
+  `endNotification` restores `sleep()` (not `forceOff()`) when the display was sleeping before the notification.
 - **Default D-day:** fresh installs none, and the "수능" preset board leaves the fresh defaults too; a stored entry
   exactly ("수능", 2026-11-19) is removed by the v10 migration (a stored 수능 board stays).
 - **Calendars:** the picker lists every calendar in the provider (visible or not), grouped by account; excluded set is
@@ -148,6 +152,7 @@ tests `settings/ConfigCodecTest.kt` (+ shot tests that name removed values).
 
 ### Task 3: Behaviour features (TDD on the pure parts)
 **Files:** `data/Logic.kt`, `platform/Brightness.kt`, `data/StandbyStateHolder.kt`, `platform/Glow.kt`,
+`ui/screens/StandbyRoot.kt`, `ui/screens/ClocksPage.kt`, `platform/StandbyDream.kt`, `platform/Host.kt`,
 `platform/Listener.kt`, `data/Sources.kt`, `ui/screens/PhotosPage.kt`, `ui/state/State.kt`, `ui/screens/Overlays.kt`
 (heat pill), tests `platform/LogicTest.kt`, `platform/ChargeBrightnessTest.kt`.
 - [ ] `HeatRule.next(tenths, hot)` (≥ 420 hot, ≤ 400 cool; tests 419/420/401/400); the ChargeStart log line also records
@@ -166,7 +171,7 @@ tests `settings/ConfigCodecTest.kt` (+ shot tests that name removed values).
 - [ ] Mood auto-off per Decisions: `MoodTimer` (pure: phase at elapsed ms → ON / FADE(alpha) / DONE, tested) used by the
   Compose `MoodLight` and `GlowActivity`; `GlowReceiver.post(ctx, source)` changes per Decisions.
 - [ ] Photos: the crossfade and Ken Burns tween use `config.photoIntervalSec`; the holder reloads a new set every
-  `max(45 s, interval × set size)` instead of a fixed 45 s.
+  `max(45 s, interval × set size)` instead of a fixed 45 s, re-reading the interval every loop.
 - [ ] `DeviceSources.calendars(ctx)` (all calendars) and agenda/upcoming filtered by the key set (clause only when
   non-empty).
 - [ ] Live: `LiveActivity.stepTimes: List<Long?> = emptyList()`, `etaAt: Long? = null`; `Listener` keeps the previous
@@ -251,6 +256,22 @@ replacement lands: 테마와 배경; 페이지 구성 (+ 처음 보이는 페이
 tap = 3 s preview via SleepService); 알람 (segmented → `alarmScreen`, (F) rows); 폴드를 펼쳤을 때 ((F), auto-off 0/3/10/15);
 날씨와 도시 (one city sheet); 카드에 쓰는 정보 (D-day, 집중·휴식, 캘린더 고르기 by account, usage in personal); 권한
 checklist; 앱 정보 (+ new font licenses). (F) reason "갤럭시 폴드처럼 안쪽 화면이 큰 폰에서만 쓸 수 있어요" (flip too).
+- [ ] **Pages on/off + fixed four** (operator, 2026-11-13). Config (still v10, unshipped): `Board.on: Boolean = true`
+  (codec omits true), `pagesOff: Set<String>` for the fixed pages `widgets`/`photos` (clock is always on). Fixed and
+  never deletable: 위젯, 사진, 시계 + the `desk` board (작업 책상; no 지우기 button, no BoardOps.remove for id "desk");
+  every other page can be deleted. 페이지 구성 rows get a switch (사용) except 시계; off pages stay in the list (dimmed)
+  but leave the pager. One pure `Pages.visible(config): List<PageRef>` feeds StandbyRoot's pager count/order, 처음 보이는
+  페이지 (lists visible pages only) and the preview pager; `startPage` is resolved through it (a start page that is
+  off or deleted → 시계). TDD: visible order, off board skipped, start fallback, desk undeletable, codec round-trip.
+  [페이지 추가] offers 빈 페이지 + every recommended preset not in the list (re-add after delete). Fresh install keeps
+  today's recommended set (3 fixed + 모듈러·작업 책상·음악·잠자리·책 = 8; 수능·영상 were removed in Task 2).
+- [ ] **사진 고르기** (operator, 2026-11-13). Config `photoSource: PhotoSource { PICKS("추천: 즐겨찾기 + 최근"),
+  RECENT("최근 사진"), FOLDERS("폴더 고르기") } = PICKS`, `photoFolders: List<String>` (bucket names). Sources gets one
+  query per mode (RECENT = newest 200 by DATE_TAKEN; FOLDERS = `BUCKET_DISPLAY_NAME IN (…)`, empty → PICKS) and a
+  `folders()` list with counts. The 사진 row in 페이지 구성 opens a new 사진 screen: source radio, folder checklist
+  (name + count, only under FOLDERS), 사진 넘김 간격 (moved here). The photos page's on-screen theme chips write the
+  same config (one source of truth; the holder's in-memory `photoBucket` goes away). Memories card unchanged. Folder
+  that disappeared → skipped; nothing left → PICKS. Test: query selection per mode (pure builder), fallbacks.
 - [ ] SettingsShots per screen (phone + fold inner, alarm also non-fold). Old screens/rows removed. Commit.
 
 ### Task 12: Clock settings
@@ -261,6 +282,15 @@ checklist; 앱 정보 (+ new font licenses). (F) reason "갤럭시 폴드처럼 
 - [ ] 꾸미기 = rows from `spec(face).rows` / `more`, each `StyleRow` → one Kit control (colour rows use the existing
   `ColorPalette`; `combo2/3`, `solar`, `ledC` presets = a new `PresetSwatches` row; `kfont` = font tiles drawn in
   each Korean font). Shots: 시계, 꾸미기 for LED, 한글, 아날로그, 색 블록. Commit.
+- [ ] **색 조합 바꾸기** (operator, 2026-11-13, via dot-dev): at the top of every face's 꾸미기 colour section a
+  [색 조합 바꾸기] button + [이전 조합] button. Digital-family faces change their colour rows together (color · color2 ·
+  bgColor · bgColor2, whichever the face has); analog changes hand · second · weekday · numeral · tick together. Pure
+  `ColorShuffle.next(face, current, seed): Map<field, Color>` picks from `SWATCHES` and **rejects any combo whose
+  digit/hand colours have WCAG contrast < 3.0 against the background** (BLACK = black, GRADIENT = both ends, photo/
+  solar = skip the check). TDD: every result passes the contrast rule; 1 000 seeds never return a failing combo;
+  the result differs from the current combo. [이전 조합] restores the combo from before the last shuffle (one level,
+  `rememberSaveable` on the screen; a hand-picked colour is never lost). Not on the standby screen itself (night
+  mis-taps), not for board accent/background (one colour). Shot: 꾸미기 with the two buttons.
 
 ### Task 13: Full matrix, review, release candidate
 - [ ] Personal suite record → inspect sheets for every new clock/device → verify 0 diff; public suite plain; gates

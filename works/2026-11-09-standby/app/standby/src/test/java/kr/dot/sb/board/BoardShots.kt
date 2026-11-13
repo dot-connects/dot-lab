@@ -44,7 +44,7 @@ class BoardShots(private val name: String, private val device: Device, private v
         val open: (ComposeContentTestRule.() -> Unit)? = if (!stateKey.startsWith("open")) null else {
             { mainClock.autoAdvance = false; onRoot().performClick(); mainClock.advanceTimeBy(400) }
         }
-        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
+        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, ddays = Fixtures.ddays, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
     }
 
     companion object {

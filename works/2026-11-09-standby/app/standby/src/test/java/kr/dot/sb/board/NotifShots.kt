@@ -46,7 +46,7 @@ class NotifShots(private val name: String, private val device: Device, private v
                 mainClock.advanceTimeBy(400)
             }
         }
-        rule.shot("notif", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme), StandbyActions.NONE) }
+        rule.shot("notif", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, ddays = Fixtures.ddays), StandbyActions.NONE) }
     }
 
     companion object {

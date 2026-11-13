@@ -22,13 +22,14 @@ fun notifTier(w: Float, h: Float): NotifTier = when {
     else -> NotifTier.E
 }
 
-enum class WeatherShape { TINY, SHORT_WIDE, SMALL, WIDE, STACK }
+enum class WeatherShape { TINY, SHORT_WIDE, SMALL, BIG_TEMP, WIDE, STACK }
 
 fun weatherShape(w: Float, h: Float): WeatherShape = when {
     w < 150f || h < 130f -> WeatherShape.TINY
     h < 176f -> WeatherShape.SHORT_WIDE
     min(w, h) < 176f -> WeatherShape.SMALL
-    w / h >= 1.3f -> WeatherShape.WIDE
+    // r10 B2: a wide slot under 300 dp (modular 270 × 197) left the number small beside two hours: number only
+    w / h >= 1.3f -> if (w < 300f) WeatherShape.BIG_TEMP else WeatherShape.WIDE
     else -> WeatherShape.STACK
 }
 

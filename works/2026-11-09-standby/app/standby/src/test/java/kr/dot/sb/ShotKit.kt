@@ -80,6 +80,9 @@ fun ComposeContentTestRule.shot(
 object Fixtures {
     val now: LocalDateTime = LocalDateTime.of(2026, 11, 9, 21, 41)
 
+    /** r10 dropped the default D-day: shots keep drawing the D-day card with the old ("수능", 2026-11-19) entry. */
+    val ddays = listOf(kr.dot.sb.model.DDay("수능", java.time.LocalDate.of(2026, 11, 19)))
+
     fun gradient(w: Int, h: Int, top: Int, bottom: Int, ridge: Int): ImageBitmap {
         val bmp = android.graphics.Bitmap.createBitmap(w, h, android.graphics.Bitmap.Config.ARGB_8888)
         val c = android.graphics.Canvas(bmp)

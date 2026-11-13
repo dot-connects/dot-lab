@@ -203,7 +203,7 @@ private fun HeatPill(textScale: Float) {
 
 /**
  * Alarm (spec-r9 §3, mockup 화면 전체 → 알람): a sunrise glow of the accent rising from the bottom, "⏰ 기상 · 월요일",
- * the time centred and big, weather + today's event count, then a big accent "다시 알림" pill and a quiet "중단" pill
+ * the time centred and big, weather + today's event count, then a big accent "다시 알림" pill and an outlined "중단" pill
  * (side by side in landscape, stacked in portrait). The snooze length is not in [AlarmRinging], so no "· 9분".
  */
 @Composable
@@ -241,7 +241,7 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                     if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, num = true)
                 }
                 val snooze = @Composable { m: Modifier -> AlarmPill(if (bw >= 170.dp) "다시 알림" else "다시", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
-                val stop = @Composable { m: Modifier -> AlarmPill("중단", ink.ink.copy(alpha = 0.12f), ink.ink, bh, m, actions::alarmStop) }
+                val stop = @Composable { m: Modifier -> AlarmPill("중단", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f)) }
                 if (land) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (a.canSnooze) snooze(Modifier.size(bw, bh))
                     stop(Modifier.size(bw, bh))
@@ -255,9 +255,12 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
 }
 
 @Composable
-private fun AlarmPill(text: String, bg: Color, fg: Color, bh: Dp, modifier: Modifier, onClick: () -> Unit) {
+private fun AlarmPill(text: String, bg: Color, fg: Color, bh: Dp, modifier: Modifier, onClick: () -> Unit, outline: Color? = null) {
     val shape = pillShape()
-    BoxWithConstraints(modifier.clip(shape).background(bg, shape).tap(onClick), contentAlignment = Alignment.Center) {
+    // features.html §5 A: 중단 keeps its size and place but gets a 2 dp outline (ink 75 %) over ink 16 %: at 12 % alone
+    // it was 1.2 : 1 on black and vanished at night
+    val edge = if (outline != null) Modifier.border(2.dp, outline, shape) else Modifier
+    BoxWithConstraints(modifier.clip(shape).background(bg, shape).then(edge).tap(onClick), contentAlignment = Alignment.Center) {
         Txt(text, bh * 0.36f, fg, weight = 700, maxW = maxWidth * 0.84f)
     }
 }
@@ -285,10 +288,11 @@ private fun LivePill(l: LiveActivity, actions: StandbyActions) {
 private val STEPS = listOf("주문", "조리", "픽업", "도착")
 
 /**
- * Live Activity full screen (spec-r9 §3, mockup 화면 전체 → 실시간 활동): app + detail header, the value filling its
- * column under the title as a kicker ("배달 중" / "12분"), and a vertical timeline 주문 → 조리 → 픽업 → 도착 lit up to
- * the progress; a warm accent glow from the bottom-left corner. Landscape: header + value left, timeline right;
- * portrait: stacked. [LiveActivity] carries no step times, store or rider, so those are left out.
+ * Live Activity full screen (spec-r9 §3, mockup 화면 전체 → 실시간 활동; r10 cleanup B3): app + detail header, the value
+ * as a kicker ("배달 중") over a big number ("12분"), and a vertical timeline 주문 → 조리 → 픽업 → 도착 lit up to the
+ * progress, each reached step with the time StandBy saw it and the arrival with "now + N분" ([LiveActivity.stepTimes],
+ * [LiveActivity.etaAt]); a warm accent glow from the bottom-left corner. Landscape: header on top of the left column,
+ * the number centred in the height under it, the timeline the full right column; portrait: stacked.
  */
 @Composable
 private fun LiveScreen(l: LiveActivity, actions: StandbyActions) {
@@ -331,37 +335,49 @@ private fun LiveScreen(l: LiveActivity, actions: StandbyActions) {
                             num, cap / tk.digitCap, ink.ink, weight = tk.digitWeight, family = tk.digitFont(tk.digitWeight),
                             cap = tk.digitCap, tnum = true, maxW = colW * if (unit.isEmpty()) 1f else 0.75f, maxCapH = cap,
                         )
-                        if (unit.isNotEmpty()) { Spacer(Modifier.width(fs * 0.4f)); Txt(unit, cap * 0.5f, ink.ink2, weight = 500) }
+                        if (unit.isNotEmpty()) { Spacer(Modifier.width(fs * 0.4f)); Txt(unit, cap * 0.4f, ink.ink2, weight = 500) }
                     }
                 }
             }
-            val timeline = @Composable { rowH: Dp ->
+            val timeline = @Composable { rowH: Dp, sfs: Dp ->
                 if (on != null) Column {
                     val steps = if (l.steps == STEPS.size) STEPS else List(l.steps) { "${it + 1}단계" }
-                    steps.forEachIndexed { i, name -> StepRow(name, i < on, i == on - 1, i < steps.size - 1, i + 1 < on, rowH, fs) }
+                    steps.forEachIndexed { i, name ->
+                        // a reached step shows when it was seen; the last one, not reached yet, the expected arrival
+                        val time = if (i < on) l.stepTimes.getOrNull(i)?.let(::hm)
+                        else if (i == steps.size - 1) l.etaAt?.let { hm(it) + "쯤" } else null
+                        StepRow(name, i < on, i == on - 1, i < steps.size - 1, i + 1 < on, rowH, sfs, time, bright = i == on - 1 || i >= on)
+                    }
                 }
             }
             if (land) Row(Modifier.fillMaxSize().padding(pad), horizontalArrangement = Arrangement.spacedBy(pad)) {
                 val lw = w * 0.46f
-                Column(Modifier.width(lw).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
+                Column(Modifier.width(lw).fillMaxHeight()) {
                     header()
-                    eta(lw, min((h - pad * 2 - fs * 7) * 0.7f, lw * 0.45f))
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
+                        eta(lw, min((h - pad * 2 - fs * 5.5f) * 0.62f, lw * 0.55f))
+                    }
                 }
                 Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.Center) {
-                    timeline(((h - pad * 2 - 60.dp) / 4).coerceIn(28.dp, 70.dp))
+                    timeline(((h - pad * 2 - 60.dp) / 4).coerceIn(28.dp, 88.dp), (s * 0.05f).coerceIn(15.dp, 24.dp))
                 }
             } else Column(Modifier.fillMaxSize().padding(pad), verticalArrangement = Arrangement.SpaceBetween) {
                 header()
                 eta(w - pad * 2, min(w * 0.34f, h * 0.2f) * 0.7f)
-                timeline(((h - pad * 2 - min(w * 0.34f, h * 0.2f) - fs * 9) / 4).coerceIn(26.dp, 64.dp))
+                timeline(((h - pad * 2 - min(w * 0.34f, h * 0.2f) - fs * 9) / 4).coerceIn(26.dp, 64.dp), fs)
             }
         }
     }
 }
 
-/** One timeline step: dot (accent when done, ink2 ring when not) + connector down to the next, label. */
+private val HM = java.time.format.DateTimeFormatter.ofPattern("HH:mm")
+private fun hm(epochMs: Long): String = java.time.Instant.ofEpochMilli(epochMs).atZone(java.time.ZoneId.systemDefault()).format(HM)
+
+/** One timeline step: dot (accent when done, ink2 ring when not) + connector down to the next, label, time on the right. */
 @Composable
-private fun StepRow(name: String, done: Boolean, current: Boolean, line: Boolean, lineLit: Boolean, rowH: Dp, fs: Dp) {
+private fun StepRow(
+    name: String, done: Boolean, current: Boolean, line: Boolean, lineLit: Boolean, rowH: Dp, fs: Dp, time: String?, bright: Boolean,
+) {
     val ink = LocalInk.current
     Row(Modifier.fillMaxWidth().height(rowH)) {
         Column(Modifier.width(14.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -372,7 +388,11 @@ private fun StepRow(name: String, done: Boolean, current: Boolean, line: Boolean
             if (line) Box(Modifier.width(2.dp).weight(1f).background(if (lineLit) ink.acc else ink.ink3))
         }
         Spacer(Modifier.width(12.dp))
-        Txt(name, fs, if (done) ink.ink else ink.ink2, weight = if (current) 700 else 500)
+        Txt(name, if (current) fs * 1.1f else fs, if (done) ink.ink else ink.ink2, weight = if (current) 700 else 500)
+        if (time != null) {
+            Spacer(Modifier.weight(1f))
+            Txt(time, fs * 0.95f, if (bright) ink.ink else ink.ink2, weight = if (current) 600 else 500, num = true)
+        }
     }
 }
 

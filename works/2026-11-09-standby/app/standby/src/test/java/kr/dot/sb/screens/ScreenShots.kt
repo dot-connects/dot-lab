@@ -58,7 +58,7 @@ class ScreenShots(private val name: String, private val device: Device, private 
         }
         rule.setContent {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                RootImpl(state, AppConfig(startPage = page, theme = theme), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
+                RootImpl(state, AppConfig(startPage = page, theme = theme, ddays = Fixtures.ddays), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
             }
         }
         rule.mainClock.advanceTimeBy(if (k == "sheet-solar" || k == "sheet") 400 else if (k == "notif" || k == "notif-hidden") 2_200 else 32)
@@ -76,7 +76,11 @@ class ScreenShots(private val name: String, private val device: Device, private 
             val s = Fixtures.full(night)
             val posted = s.now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
             val notif = BigNotification("n1", "메시지", "엄마", "저녁 먹었어? 내일 김장하러 올 수 있니", null, postedAtEpochMs = posted)
-            val live = LiveActivity("l1", "배달의민족", "배달 중", "12분", "가게에서 음식을 픽업했어요", 0.5f)
+            // r10 B3: steps seen at 21:18 / 21:26, arrival = now + 12 min
+            val live = LiveActivity(
+                "l1", "배달의민족", "배달 중", "12분", "가게에서 음식을 픽업했어요", 0.5f,
+                stepTimes = listOf(posted - 23 * 60_000L, posted - 15 * 60_000L, null, null), etaAt = posted + 12 * 60_000L,
+            )
             return when (key) {
                 "alarm" -> s.copy(alarm = AlarmRinging("알람"), notification = notif)
                 "notif" -> s.copy(notification = notif, live = live)

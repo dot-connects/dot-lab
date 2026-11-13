@@ -32,7 +32,7 @@ class BrightnessBarShots(private val name: String, private val night: Float, pri
     @Test fun shot() {
         rule.mainClock.autoAdvance = false
         rule.shot("brightness", name, device, th, night) {
-            val cfg = AppConfig(theme = th, dayBrightness = 0.7f, nightMaxBrightness = 0.3f, boardBg = bg, startPage = 0)
+            val cfg = AppConfig(theme = th, dayBrightness = 0.7f, nightMaxBrightness = 0.3f, boardBg = bg, startPage = 0, ddays = Fixtures.ddays)
             RootImpl(Fixtures.full(night), cfg, StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = bar))
         }
     }

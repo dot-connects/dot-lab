@@ -107,6 +107,8 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
     val ui = rememberUi(500)
     val look = Look.of(style, ink)
     val slotLabel = LocalSlotLabel.current
+    // Sofia (StandBy 디지털) has no kerning to reserve slack for: ×1.03 cancels widestEm's slack for it only (B4)
+    val condensed = LocalTheme.current.digits(style.font, style.weight) === kr.dot.sb.ui.theme.Fonts.clock(kr.dot.sb.model.FontId.CONDENSED, style.weight)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val portrait = h > w * 1.15f
@@ -158,14 +160,16 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
             ClockLayout.IPHONE -> {
                 val sideW = max(SIDE_MIN.toPx(), rows.maxOf { ui.width(it) })
                 val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.025f * w
-                // r5: digits as big as the iPhone's (≥ 60 % H): the side column may use half the right margin, and
-                // Sofia has no kerning to reserve slack for (×1.03 cancels widestEm's slack)
-                val fs = fitSize(p, d, false, 0.69f * h * sizePct, (w - 1.5f * margin - sideW - g) * 1.03f)
+                // B4 (r10): x0 + digits + gap + side column ≤ w − margin − 10 dp, so the ±8 dp burn-in shift never
+                // clips "6:30" (was w − 1.5 × margin with ×1.03 for every font: wide theme fonts ran to the edge)
+                val avail = w - 2 * margin - 10.dp.toPx()
+                val slack = if (condensed) 1.03f else 1f
+                val fs = fitSize(p, d, false, 0.69f * h * sizePct, (avail - sideW - g) * slack)
                 val cap = p.capEm * fs
                 // digits centred in the class's reserved width, so the side column never moves within the hour class
-                val res = p.widestEm(d.h.length, d.use24h) * fs
+                val res = p.widestEm(d.h.length, d.use24h) * fs / slack
                 val tw = p.measureHm(d.h, d.m, fs)
-                val x0 = margin + (w - 1.5f * margin - (res + g + sideW)) / 2
+                val x0 = margin + (avail - (res + g + sideW)) / 2
                 val capTop = (h - cap) / 2
                 val step = ui.textSize * 1.25f
                 return@FaceCanvas {
@@ -234,13 +238,15 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
             rx = margin; rW = w - 2 * margin
             rTop = capTop + cap + 0.1f * h; rBottom = h - 0.12f * h
         } else {
-            // digits in the left 55 %, rows from 60 % (design-system §4.3 Desk)
-            val digitR = 0.55f * w
-            fs = fitSize(p, d, false, 0.46f * h * sizePct, digitR - margin)
+            // digits in the left 55 %, rows from 60 % (design-system §4.3 Desk); a bar phone (w/h ≥ 1.8) is so short
+            // that 46 % H left the digits small: there they take ≥ 60 % H and the left 62 % (r10 bar-land)
+            val bar = w >= 1.8f * h
+            val digitR = (if (bar) 0.62f else 0.55f) * w
+            fs = fitSize(p, d, false, (if (bar) 0.62f else 0.46f) * h * sizePct, digitR - margin)
             val cap = p.capEm * fs
             capTop = (h - cap) / 2
             dx = (margin + digitR) / 2
-            rx = 0.6f * w; rW = w - margin - rx
+            rx = digitR + 0.05f * w; rW = w - margin - rx
             rTop = capTop; rBottom = capTop + cap
         }
         // review C2: row pitch = digit cap / 3; title 0.38 × pitch, label 0.24 × pitch, floors 22 / 18 dp

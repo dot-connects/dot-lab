@@ -701,12 +701,13 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     if (items != null && items.size > rows * cols) rows = ((room - e.metaCap - LG) / e.evStep).toInt().coerceAtLeast(1)
     val shown = items.orEmpty().take(rows * cols)
     val more = items.orEmpty().size - shown.size
+    val head = buildAnnotatedString {
+        withStyle(SpanStyle(color = e.ink.accText)) { append("${dowKo(e.today)}요일") }
+        append(" ${e.today.dayOfMonth}")
+        if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}") }
+    }
+    if (!items.isNullOrEmpty() && e.h < 220.dp) return AgendaOne(e, items, head)
     Column(Modifier.fillMaxSize().padding(p).tap(if (items == null) ({ actions.openSettings("calendar") }) else null)) {
-        val head = buildAnnotatedString {
-            withStyle(SpanStyle(color = e.ink.accText)) { append("${dowKo(e.today)}요일") }
-            append(" ${e.today.dayOfMonth}")
-            if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}") }
-        }
         Txt(head, e.meta, e.ink.ink, weight = 700)
         Spacer(Modifier.height(LG * 2))
         when {
@@ -725,6 +726,37 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
             Spacer(Modifier.weight(1f))
             Txt("외 ${more}개", e.meta, e.readInk2, weight = 500)
         }
+    }
+}
+
+/**
+ * A short agenda slot (< 220 dp, r10 B2): rows of 15 dp text were unreadable at 1 m, so the next event alone goes large
+ * (time as a [Hero], title 26 dp) and the rest folds into "다음 13:00 병원 예약 · 외 3개".
+ */
+@Composable
+private fun AgendaOne(e: Env, items: List<AgendaItem>, head: AnnotatedString) {
+    val p = e.p7
+    val ev = items.first()
+    val ih = e.h - p * 2
+    val title = min(26.dp, ih * 0.15f)
+    val foot = items.getOrNull(1)?.let { n -> "다음 ${n.start} ${n.title}" + if (items.size > 2) " · 외 ${items.size - 2}개" else "" }
+    val cap = min(ih - e.metaCap * (if (foot != null) 2 else 1) - LG * 4 - title * 1.4f - 8.dp, ih * 0.3f)
+    val maxW = e.w - p * 2 - 16.dp
+    Column(Modifier.fillMaxSize().padding(p)) {
+        Txt(head, e.meta, e.ink.ink, weight = 700, maxW = maxW + 16.dp)
+        Spacer(Modifier.weight(1f))
+        Row {
+            Box(Modifier.width(4.dp).height(cap * 1.25f + 8.dp + title * 1.3f).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
+            Spacer(Modifier.width(12.dp))
+            Column {
+                if (ev.start.first().isDigit()) Hero(e, AnnotatedString(ev.start), cap, e.ink.ink, maxW)
+                else Txt(ev.start, cap / CAP_UI, e.ink.ink, weight = 700, maxW = maxW)
+                Spacer(Modifier.height(8.dp))
+                Txt(ev.title, title, e.ink.ink, weight = 700, maxW = maxW)
+            }
+        }
+        Spacer(Modifier.weight(1f))
+        if (foot != null) Txt(foot, e.meta, e.readInk2, weight = 500, num = true, maxW = maxW + 16.dp)
     }
 }
 
@@ -807,6 +839,8 @@ private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions:
                 if (n > 0) HourList(e, hours.take(n))
             }
         }
+        // r10 B2: city line, the number as tall as the slot allows, high/low; no hours
+        WeatherShape.BIG_TEMP -> Column(mod, verticalArrangement = Arrangement.Center) { now((ih - head) * 0.9f, iw, true) }
         // now on the left at full height, hours on the right, five days under them when tall enough
         WeatherShape.WIDE -> {
             val lw = min(iw * 0.42f, 260.dp)

@@ -158,7 +158,8 @@ class ClockShots(private val theme: Theme) {
         }
         val pct = (bottom - top + 1).toFloat() / bmp.height
         println("digital hero cap = ${"%.1f".format(pct * 100)} % H")
-        org.junit.Assert.assertTrue("hero cap $pct < 0.60", pct >= 0.60f)
+        // r10 B4: the right info column keeps a full margin + 10 dp for the burn-in shift (cleanup.html: digits ~5 % smaller)
+        org.junit.Assert.assertTrue("hero cap $pct < 0.57", pct >= 0.57f)
     }
 
     private fun styled(st: ClockStyle): @Composable () -> Unit = {

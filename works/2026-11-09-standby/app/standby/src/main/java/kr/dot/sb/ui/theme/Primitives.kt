@@ -184,7 +184,7 @@ private fun ground(t: StandbyTheme, bg: BoardBg, custom: Color): Ground = when (
 }
 
 private fun DrawScope.draw(g: Ground, alpha: Float = 1f) {
-    if (g.stops.size == 1) drawRect(g.stops[0], alpha = alpha) else drawRect(Brush.verticalGradient(g.stops), alpha = alpha)
+    if (g.stops.size == 1) drawRect(g.stops[0], alpha = alpha) else if (g.stops.size > 1) drawRect(Brush.verticalGradient(g.stops), alpha = alpha)
     for (gl in g.glows) {
         val ctr = Offset(gl.at.x * size.width, gl.at.y * size.height)
         val rx = gl.size.x * size.width
@@ -241,4 +241,15 @@ fun ThemeBackground(
             Canvas(Modifier.fillMaxSize()) { draw(g, n) }
         }
     }
+}
+
+/**
+ * The candle theme's bottom light alone (r10 "a candle lit below"), for a page that paints its own colour over
+ * [ThemeBackground] (the clocks page keeps `ink.bg` for edit mode). Day only: night has its own [ThemeTokens.NIGHT_BG].
+ */
+@Composable
+fun CandleLight(t: StandbyTheme, night: Float, modifier: Modifier = Modifier) {
+    if (t.id != kr.dot.sb.model.Theme.CANDLE || night >= 1f) return
+    val g = Ground(emptyList(), t.tokens.bg.ground().glows)
+    Canvas(modifier.fillMaxSize()) { draw(g, 1f - night.coerceIn(0f, 1f)) }
 }
