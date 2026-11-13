@@ -10,6 +10,8 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.os.SystemClock
+import kr.dot.catchpet.camera.Yard
 import kr.dot.catchpet.game.Box
 import kr.dot.catchpet.game.Mask
 import kr.dot.catchpet.pet.Frames
@@ -23,8 +25,9 @@ import kotlin.random.Random
 
 /**
  * Fur critters, each pinned to a world azimuth (rotation-vector yaw): turning the phone pans them across the view,
- * tilting it up / down moves them down / up. Camera mode: three. Scene mode (camera off, SceneSource draws a room that
- * pans the same way, operator 11-13 "the AR feel stays"): six, spread wider.
+ * tilting it up / down moves them down / up. Camera mode: three. Scene mode (camera off, SceneSource draws the Yard that
+ * pans the same way, operator 11-13 "the AR feel stays"): six, a bit bigger (SCENE_SIZE), drawn in depth order with the
+ * yard's trees, bushes and grass; every other spawn hides behind one of its own (a cover) and bobs up to look out.
  * Both use perspective (operator 11-13): the higher a critter stands (further away), the smaller it is, times a
  * random size each. Each spawn faces a random way (dir0..7, R16); a caught one leaves and another appears.
  */
@@ -33,7 +36,7 @@ class Critters(
     private val scene: Boolean = false,
     private val rnd: Random = Random.Default,
 ) : CritterSource, SensorEventListener {
-    private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val size: Float, val pic: Bitmap) {
+    private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val size: Float, val pic: Bitmap, val cover: Yard.Thing? = null) {
         val rect = RectF()   // view px, updated each frame
         var onScreen = false
     }
@@ -41,6 +44,7 @@ class Critters(
     private val ids: List<String> by lazy { Companion.ids(ctx) }
     private val live = mutableListOf<One>()
     private var lastCaughtAz: Float? = null
+    private var spawns = 0
     private var yaw = 0f
     private var pitchBase: Float? = null
     private var tilt = 0f   // degrees from the pitch the screen opened at
@@ -85,7 +89,7 @@ class Critters(
         fill()
         val out = ArrayList<Mask>(live.size)
         for (c in live) {
-            val h = map.viewH * heightFrac * perspective(c.feet01) * c.size
+            val h = map.viewH * heightFrac * perspective(c.feet01) * c.size * (if (scene) SCENE_SIZE else 1f)
             val w = h * c.pic.width / c.pic.height
             val cx = map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
             val feet = (c.feet01 + shift01) * map.viewH
@@ -100,6 +104,7 @@ class Critters(
     }
 
     override fun draw(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
+        if (scene) return drawScene(cv, map, held, dy)
         for (c in live.sortedBy { it.feet01 }) {   // far ones first
             if (!c.onScreen) continue
             val r = c.rect
@@ -107,6 +112,25 @@ class Critters(
             val lift = if (c.id == held) dy else 0f
             cv.drawBitmap(c.pic, null, RectF(r.left, r.top + lift, r.right, r.bottom + lift), paint)
         }
+    }
+
+    /** Scene mode: critters, the yard's standing things and the covers, far first; the one on the claw on top. */
+    private fun drawScene(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
+        val v = Yard.View(map.viewW, map.viewH, yaw, shift01, SystemClock.uptimeMillis() / 1000f, Yard.palNow())
+        val things = ArrayList<Pair<Float, Any>>(Yard.standing.size + live.size * 2)
+        for (th in Yard.standing) things += th.feet to th
+        for (c in live) { if (c.id != held) things += c.feet01 + 0.0001f to c; c.cover?.let { things += it.feet to it } }
+        things.sortBy { it.first }
+        for ((_, o) in things) if (o is Yard.Thing) Yard.draw(cv, v, o) else critter(cv, v, o as One, 0f)
+        live.firstOrNull { it.id == held }?.let { critter(cv, v, it, dy) }
+    }
+
+    private fun critter(cv: Canvas, v: Yard.View, c: One, lift: Float) {
+        if (!c.onScreen) return
+        val r = c.rect
+        if (lift == 0f) Yard.groundShadow(cv, v, r.centerX(), r.bottom, r.width() * 0.55f, r.height() * 0.1f, 0.38f)
+        val peek = if (c.cover != null && lift == 0f) (0.5f + 0.5f * kotlin.math.sin(v.t * 1.4f + c.az)) * r.height() * 0.14f else 0f
+        cv.drawBitmap(c.pic, null, RectF(r.left, r.top + lift + peek, r.right, r.bottom + lift + peek), paint)
     }
 
     override fun caught(critterId: String, map: ScreenMap): Pair<String, CutOut.Cut?> {
@@ -133,14 +157,21 @@ class Critters(
             }
             val dir = rnd.nextInt(8)
             val pic = Frames.asset(ctx, id, "dir$dir")?.let(Frames::trim) ?: return
-            live += One(id, dir, az, feet, 0.8f + rnd.nextFloat() * 0.4f, pic)
+            // scene mode: every other spawn hides behind a bush, a tree or a grass clump just in front of it
+            val n = spawns++
+            val cover = if (scene && n % 2 == 1) intArrayOf(Yard.BUSH, Yard.TREE, Yard.GRASS)[(n / 2) % 3].let { k ->
+                Yard.Thing(k, az + if (k == Yard.TREE) 1.5f else 0.5f, feet + 0.025f, 1.1f, n.toFloat())
+            } else null
+            live += One(id, dir, az, feet, 0.8f + rnd.nextFloat() * 0.4f, pic, cover)
         }
     }
 
     companion object {
         const val COUNT = 3
         const val SCENE_COUNT = 6
-        const val SCENE_SPREAD_DEG = 150f
+        const val SCENE_SPREAD_DEG = 90f
+        /** Scene-mode critter size vs camera mode: mockup x1.3, then x0.8 (operator 11-13). */
+        const val SCENE_SIZE = 1.04f
         // ponytail: vertical field of view and tilt direction guessed from the Android docs; calibrate on the phone
         const val VFOV_DEG = 60f
         const val PITCH_SIGN = -1f
