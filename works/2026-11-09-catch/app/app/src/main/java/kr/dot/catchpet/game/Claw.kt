@@ -22,6 +22,11 @@ fun sameThing(a: Mask, b: Mask): Boolean =
  * The tips touching something picks the target and its chance; the roll comes at the end of GRIP, the chance cut by
  * up to half when the target moved while the claw closed (camera shake counts). A won target that leaves the claw's
  * column on the way up for 200 ms slips out (operator 11-13: shaking the phone must not still win).
+ *
+ * Feel (operator 11-13, Fable design note): on contact the claw digs into the body (DIG_MS) before the prongs close,
+ * and the prongs stop at the body's width (minOpen) instead of closing on air. A lost roll slips out on the way up,
+ * later the closer the roll was (dropLift), sliding for SLIP_LEAD px first (slip01) so the player sees it coming;
+ * it then falls slowly (FALL_G).
  */
 class Claw(
     val screenW: Float,
@@ -40,11 +45,24 @@ class Claw(
     var y = restY; private set
     var open = 1f; private set
     var result: Result? = null; private set
-    /** How far a held thing has been lifted (px, <= 0 is up) and its fall speed. */
+    /** How far a held thing has been lifted (px, <= 0 is up). */
     var carryDy = 0f; private set
-    private var t = 0f
+    /** ms in the current state. */
+    var t = 0f; private set
+    /** 0..1 while a held thing is sliding out of the prongs (just before FALL), else 0. */
+    var slip01 = 0f; private set
+    /** Fall speed (px/ms) while FALLing. */
+    var vy = 0f; private set
+    /** The grabbed body's size on screen (px), 0 when grabbing air. */
+    var bodyH = 0f; private set
+    var bodyW = 0f; private set
+    /** How far the lift goes before a lost roll falls out (px). */
+    var dropLift = 0f; private set
+    /** How far the prongs close on the grabbed body (0 = shut, for air). */
+    var minOpen = 0f; private set
     private var base = 0f
-    private var vy = 0f
+    private var contactY = 0f
+    private var dig = 0f
     private var anchorX = 0f
     private var anchorY = 0f
     private var halfW = 1f
@@ -75,28 +93,43 @@ class Claw(
                 if (best != null && my >= best.second) {
                     val m = best.first
                     result = Result(win = false, p = chance(m, mx, best.second), target = m, hitRow = best.second)
-                    m.box?.let { anchorX = (it.x0 + it.x1) / 2f; anchorY = (it.y0 + it.y1) / 2f; halfW = max(3f, it.w / 2f) }
+                    m.box?.let {
+                        anchorX = (it.x0 + it.x1) / 2f; anchorY = (it.y0 + it.y1) / 2f; halfW = max(3f, it.w / 2f)
+                        // grid cells per screen px, to size the body on screen
+                        val (gx0, gy0) = toMask(0f, 0f); val (gx1, gy1) = toMask(100f, 100f)
+                        val cx = max(1e-3f, (gx1 - gx0) / 100f); val cy = max(1e-3f, (gy1 - gy0) / 100f)
+                        bodyW = it.w / cx; bodyH = (it.y1 - it.y0 + 1) / cy
+                    }
+                    dig = min(DIG_SHARE * bodyH, DIG_MAX)
+                    minOpen = ((0.75f * bodyW / 2f - 8f) / 20f).coerceIn(0f, 0.6f)
+                    contactY = y
                     motion = 0f
                     grip()
                 } else if (tipY > screenH - 30f) {
                     result = Result(win = false, p = 0f, target = null, hitRow = null)
+                    bodyW = 0f; bodyH = 0f; dig = 0f; minOpen = 0f; contactY = y
                     grip()
                 }
             }
             St.GRIP -> {
-                open = max(0f, 1f - t / 380f)
+                // dig in, then close (ease-in) down to the body's width
+                if (t < DIG_MS) { val k = t / DIG_MS; y = contactY + dig * (1f - (1f - k) * (1f - k)) } else y = contactY + dig
+                val k = ((t - DIG_MS) / CLOSE_MS).coerceIn(0f, 1f)
+                open = 1f - (1f - minOpen) * k * k
                 val r = result!!
                 val tg = r.target
                 if (tg != null) targets.firstOrNull { sameThing(tg, it) }?.box?.let {
                     val d = hypot((it.x0 + it.x1) / 2f - anchorX, (it.y0 + it.y1) / 2f - anchorY) / halfW
                     motion = max(motion, d)
                 }
-                if (t > 560f) {
+                if (t > GRIP_MS) {
+                    st = St.UP; base = y; carryDy = 0f; outMs = 0f; slip01 = 0f; t = 0f
                     if (tg != null) {
                         val p = r.p * (1f - MOTION_CUT * min(1f, motion))
-                        result = r.copy(win = rnd() < p, p = p)
+                        val roll = rnd()
+                        result = r.copy(win = roll < p, p = p)
+                        dropLift = dropLiftFor(roll, p, base - restY)
                     }
-                    st = St.UP; base = y; carryDy = 0f; outMs = 0f
                 }
             }
             St.UP -> {
@@ -108,18 +141,23 @@ class Claw(
                     val mx = toMask(x * screenW, y).first
                     val under = targets.any { o -> sameThing(tg, o) && o.box.let { b -> b != null && mx in b.x0 - 2..b.x1 + 2 } }
                     outMs = if (under) 0f else outMs + dtMs
+                    slip01 = (outMs / SLIP_MS).coerceIn(0f, 1f)
                     if (outMs > SLIP_MS) {
                         r = r.copy(win = false, slipped = true); result = r
-                        st = St.FALL; vy = 0f; open = 0.8f
+                        fall()
                         return
                     }
                 }
-                // a miss slips after 70 px, or halfway up when the lift is short
-                if (r.target != null && !r.win && base - y > min(70f, (base - restY) * 0.5f)) { st = St.FALL; vy = 0f; open = 0.8f }
-                else if (y <= restY) st = if (r.win) St.CARRY else St.DONE
+                if (tg != null && !r.win) {
+                    val lifted = base - y
+                    slip01 = ((lifted - (dropLift - SLIP_LEAD)) / SLIP_LEAD).coerceIn(0f, 1f)
+                    open = minOpen + (0.8f - minOpen) * slip01
+                    if (lifted >= dropLift) { fall(); return }
+                }
+                if (y <= restY) st = if (r.win) St.CARRY else St.DONE
             }
             St.FALL -> {
-                vy += dtMs * 0.0045f
+                vy += dtMs * FALL_G
                 carryDy = min(0f, carryDy + vy * dtMs)
                 y = max(restY, y - dtMs * UP_SPEED)
                 if (carryDy >= 0f) st = St.DONE
@@ -127,12 +165,14 @@ class Claw(
         }
     }
 
+    private fun fall() { st = St.FALL; vy = 0f; open = 0.8f; slip01 = 0f; t = 0f }
+
     /** The capsule took the catch away (CARRY -> DONE). */
     fun handedOff() { if (st == St.CARRY) { st = St.DONE; open = 1f } }
 
     /** Straight back to aiming: no result screen, no button. */
     fun next() {
-        st = St.AIM; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f
+        st = St.AIM; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f; slip01 = 0f; vy = 0f
     }
 
     private fun grip() { st = St.GRIP; t = 0f }
@@ -143,5 +183,22 @@ class Claw(
         const val TIP = 44f
         const val MOTION_CUT = 0.5f    // moved half its width (or more) while gripping -> chance halved
         const val SLIP_MS = 200f
+        const val DIG_MS = 140f
+        const val CLOSE_MS = 380f
+        const val GRIP_MS = 560f
+        const val DIG_SHARE = 0.3f     // dig into the body by 30 % of its height ...
+        const val DIG_MAX = 26f        // ... at most 26 px
+        const val SLIP_LEAD = 37.5f    // px of visible sliding before a lost roll falls out (250 ms of lift)
+        const val FALL_G = 0.0014f     // px/ms², slow and floaty (was 0.0045)
+
+        /**
+         * A lost roll falls out after this much lift: the nearer the roll came to winning, the higher (90 % of the
+         * lift for a near miss .. 25 % for a clear one), so "almost" looks like almost. At least SLIP_LEAD px.
+         */
+        fun dropLiftFor(roll: Float, p: Float, lift: Float): Float {
+            if (lift <= 0f) return 0f
+            val margin = if (p >= 1f) 1f else ((roll - p) / (1f - p)).coerceIn(0f, 1f)
+            return max(min(SLIP_LEAD, lift * 0.5f), lift * (0.9f + (0.25f - 0.9f) * margin))
+        }
     }
 }

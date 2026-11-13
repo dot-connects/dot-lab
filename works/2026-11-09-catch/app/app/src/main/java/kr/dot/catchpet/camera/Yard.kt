@@ -1,5 +1,6 @@
 package kr.dot.catchpet.camera
 
+import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.LinearGradient
 import android.graphics.Paint
@@ -235,17 +236,35 @@ object Yard {
 
     // ---------------- standing things: shaded, with soft ground shadows ----------------
 
+    // Heat (operator 11-13 "살짝 뜨거워"): the shaded balls and soft shadows are drawn from small cached sprites
+    // instead of a new gradient shader per ball every frame.
+    private val sprites = HashMap<String, Bitmap>()
+    private val spritePaint = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+
+    private fun shadowSprite(): Bitmap = sprites.getOrPut("shadow") {
+        Bitmap.createBitmap(64, 64, Bitmap.Config.ARGB_8888).also { b ->
+            Canvas(b).drawCircle(32f, 32f, 32f, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(32f, 32f, 32f, 0xFF142D14.toInt(), 0x00142D14, Shader.TileMode.CLAMP) })
+        }
+    }
+
     fun groundShadow(cv: Canvas, v: View, cx: Float, fy: Float, rx: Float, ry: Float, a: Float = 0.28f) {
         if (rx < 1f) return
-        val alpha = ((if (v.pal.dark) a + 0.1f else a) * 255).toInt()
-        fill.shader = RadialGradient(cx, fy, rx, (alpha shl 24) or 0x142D14, 0x00142D14, Shader.TileMode.CLAMP)
-        cv.save(); cv.scale(1f, ry / rx, cx, fy); cv.drawCircle(cx, fy, rx, fill); cv.restore(); fill.shader = null
+        spritePaint.alpha = ((if (v.pal.dark) a + 0.1f else a) * 255).toInt().coerceAtMost(255)
+        rf.set(cx - rx, fy - ry, cx + rx, fy + ry)
+        cv.drawBitmap(shadowSprite(), null, rf, spritePaint)
+        spritePaint.alpha = 255
     }
 
     /** A ball lit from the upper left (the sun side). */
     private fun sphere(cv: Canvas, v: View, cx: Float, cy: Float, r: Float, c0: Int, c1: Int, c2: Int) {
-        fill.shader = RadialGradient(cx - r * 0.3f, cy - r * 0.35f, r * 1.45f, intArrayOf(c0, c0, c1, c2), floatArrayOf(0f, 0.17f, 0.55f, 1f), Shader.TileMode.CLAMP)
-        cv.drawCircle(cx, cy, r, fill); fill.shader = null
+        val b = sprites.getOrPut("ball$c0,$c1,$c2") {
+            Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888).also { bm ->
+                val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(64f - 64f * 0.3f, 64f - 64f * 0.35f, 64f * 1.45f, intArrayOf(c0, c0, c1, c2), floatArrayOf(0f, 0.17f, 0.55f, 1f), Shader.TileMode.CLAMP) }
+                Canvas(bm).drawCircle(64f, 64f, 63f, p)
+            }
+        }
+        rf.set(cx - r, cy - r, cx + r, cy + r)
+        cv.drawBitmap(b, null, rf, spritePaint)
         cv.drawCircle(cx, cy, r, ink(v, 3f))
     }
 
@@ -282,6 +301,7 @@ object Yard {
                 val sw = sin(v.t * 2.2f + th.phase) * s * 0.08f
                 val lo = if (v.pal.dark) 0xFF1F4A33.toInt() else 0xFF3F8E3E.toInt()
                 val hi = if (v.pal.dark) 0xFF6FB08A.toInt() else 0xFFB4E886.toInt()
+                fill.shader = LinearGradient(0f, fy, 0f, fy - s * 0.8f, lo, hi, Shader.TileMode.CLAMP)   // one per clump
                 for (i in -5..5) {
                     val bx = cx + i * s * 0.09f
                     val hh = s * (0.8f - kotlin.math.abs(i) * 0.05f) * (0.8f + 0.4f * (((i + 5) * 7) % 5) / 5f)
@@ -289,9 +309,9 @@ object Yard {
                         moveTo(bx - s * 0.05f, fy); quadTo(bx, fy - hh * 0.6f, bx + i * s * 0.03f + sw, fy - hh)
                         quadTo(bx + s * 0.02f, fy - hh * 0.5f, bx + s * 0.05f, fy); close()
                     }
-                    fill.shader = LinearGradient(0f, fy, 0f, fy - hh, lo, hi, Shader.TileMode.CLAMP)
-                    cv.drawPath(blade, fill); fill.shader = null
+                    cv.drawPath(blade, fill)
                 }
+                fill.shader = null
             }
         }
     }

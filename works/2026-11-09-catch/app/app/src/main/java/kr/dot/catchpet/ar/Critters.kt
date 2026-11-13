@@ -12,6 +12,8 @@ import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.os.SystemClock
 import kr.dot.catchpet.camera.Yard
+import kr.dot.catchpet.game.Life
+import kr.dot.catchpet.game.Pose
 import kr.dot.catchpet.game.Box
 import kr.dot.catchpet.game.Mask
 import kr.dot.catchpet.pet.Frames
@@ -36,9 +38,14 @@ class Critters(
     private val scene: Boolean = false,
     private val rnd: Random = Random.Default,
 ) : CritterSource, SensorEventListener {
-    private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val size: Float, val pic: Bitmap, val cover: Yard.Thing? = null) {
-        val rect = RectF()   // view px, updated each frame
+    private class One(val id: String, val dir: Int, var az: Float, val feet01: Float, val size: Float, val pic: Bitmap, val cover: Yard.Thing? = null) {
+        val rect = RectF()   // view px at rest (masks use it), updated each frame
         var onScreen = false
+        val seed = Random.nextFloat()
+        var clock = Random.nextFloat() * 20000f   // its own life clock (ms); stands still while the claw is over it
+        var landAt = -1L                          // uptime ms of a landing after a drop, -1 = none
+        var pose = Pose.REST
+        var side: Array<Bitmap?>? = null          // dir-1, dir+1 pictures for looking aside, loaded on first look
     }
 
     private val ids: List<String> by lazy { Companion.ids(ctx) }
@@ -54,9 +61,15 @@ class Critters(
     private val ori = FloatArray(3)
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33000000 }
+    private val tmp = RectF()
+    private var lastNow = 0L
+    private var viewW = 1f
+    private var wary: Float? = null
+    private var heldId: String? = null
 
+    private val prefs = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
     /** critter_scale x the web figure (a creature ~40% of the screen height): the nearest one at 0.25 is 10 % of it. */
-    private val heightFrac get() = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getFloat("critter_scale", 0.25f) * 0.4f
+    private val heightFrac get() = prefs.getFloat("critter_scale", 0.25f) * 0.4f
 
     override fun start() {
         pitchBase = null
@@ -80,18 +93,26 @@ class Critters(
     /** Vertical shift of the floor, share of the view height (+ = down), from tilting since the screen opened. */
     val shift01: Float get() = (PITCH_SIGN * tilt / VFOV_DEG).coerceIn(-0.3f, 0.3f)
 
-    /** Where the phone looks now: yaw (degrees) and the floor shift; the camera-off room pans with it. */
-    fun view(): Pair<Float, Float> = yaw to shift01
-
     override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
 
     override fun masks(map: ScreenMap): List<Mask> {
         fill()
+        val now = SystemClock.uptimeMillis()
+        val dt = if (lastNow == 0L) 16f else (now - lastNow).coerceIn(0L, 100L).toFloat()
+        lastNow = now
+        viewW = map.viewW
         val out = ArrayList<Mask>(live.size)
         for (c in live) {
             val h = map.viewH * heightFrac * perspective(c.feet01) * c.size * (if (scene) SCENE_SIZE else 1f)
             val w = h * c.pic.width / c.pic.height
-            val cx = map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
+            // life: idle (frozen and cringing while the claw comes down over it) or the landing after a drop
+            val over = wary?.let { abs(it - c.rect.centerX()) < c.rect.width() * 0.6f } == true
+            if (!over && c.id != heldId) c.clock += dt   // the one on the claw keeps still (its mask must not wander)
+            c.pose = when {
+                c.landAt >= 0 && now - c.landAt < Life.LAND_MS -> Life.land((now - c.landAt).toFloat())
+                else -> { c.landAt = -1; Life.idle(c.clock, c.seed).let { if (over) it.copy(sy = it.sy * 0.94f, dy = 0f) else it } }
+            }
+            val cx = map.viewW / 2 + diff(c.az + c.pose.daz, yaw) / FOV_DEG * map.viewW
             val feet = (c.feet01 + shift01) * map.viewH
             c.rect.set(cx - w / 2, feet - h, cx + w / 2, feet)
             c.onScreen = c.rect.right > 0 && c.rect.left < map.viewW
@@ -103,34 +124,65 @@ class Critters(
         return out
     }
 
-    override fun draw(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
-        if (scene) return drawScene(cv, map, held, dy)
+    override fun draw(cv: Canvas, map: ScreenMap, held: String?, wary: Float?) {
+        this.wary = wary; heldId = held
+        if (scene) return drawScene(cv, map, held)
         for (c in live.sortedBy { it.feet01 }) {   // far ones first
-            if (!c.onScreen) continue
-            val r = c.rect
-            if (c.id != held) cv.drawOval(r.left + r.width() * 0.1f, r.bottom - r.height() * 0.06f, r.right - r.width() * 0.1f, r.bottom + r.height() * 0.06f, shadow)
-            val lift = if (c.id == held) dy else 0f
-            cv.drawBitmap(c.pic, null, RectF(r.left, r.top + lift, r.right, r.bottom + lift), paint)
+            if (!c.onScreen || c.id == held) continue
+            critter(cv, null, c)
         }
     }
 
-    /** Scene mode: critters, the yard's standing things and the covers, far first; the one on the claw on top. */
-    private fun drawScene(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
+    /** Scene mode: the yard, then critters, the yard's standing things and the covers, far first. */
+    private fun drawScene(cv: Canvas, map: ScreenMap, held: String?) {
         val v = Yard.View(map.viewW, map.viewH, yaw, shift01, SystemClock.uptimeMillis() / 1000f, Yard.palNow())
+        Yard.back(cv, v)   // the yard is painted here, on the same canvas and frame as the critters (one redraw, never out of step)
         val things = ArrayList<Pair<Float, Any>>(Yard.standing.size + live.size * 2)
         for (th in Yard.standing) things += th.feet to th
         for (c in live) { if (c.id != held) things += c.feet01 + 0.0001f to c; c.cover?.let { things += it.feet to it } }
         things.sortBy { it.first }
-        for ((_, o) in things) if (o is Yard.Thing) Yard.draw(cv, v, o) else critter(cv, v, o as One, 0f)
-        live.firstOrNull { it.id == held }?.let { critter(cv, v, it, dy) }
+        for ((_, o) in things) if (o is Yard.Thing) Yard.draw(cv, v, o) else critter(cv, v, o as One)
     }
 
-    private fun critter(cv: Canvas, v: Yard.View, c: One, lift: Float) {
+    private fun shadowAt(cv: Canvas, v: Yard.View?, cx: Float, feet: Float, w: Float, h: Float, scale: Float) {
+        if (v != null) Yard.groundShadow(cv, v, cx, feet, w * 0.55f * scale, h * 0.1f * scale, 0.38f * scale)
+        else { shadow.alpha = (0x33 * scale).toInt(); cv.drawOval(cx - w * 0.4f * scale, feet - h * 0.06f * scale, cx + w * 0.4f * scale, feet + h * 0.06f * scale, shadow) }
+    }
+
+    /** A critter on the floor with its life pose (hiding ones bob up from behind their cover). */
+    private fun critter(cv: Canvas, v: Yard.View?, c: One) {
         if (!c.onScreen) return
         val r = c.rect
-        if (lift == 0f) Yard.groundShadow(cv, v, r.centerX(), r.bottom, r.width() * 0.55f, r.height() * 0.1f, 0.38f)
-        val peek = if (c.cover != null && lift == 0f) (0.5f + 0.5f * kotlin.math.sin(v.t * 1.4f + c.az)) * r.height() * 0.14f else 0f
-        cv.drawBitmap(c.pic, null, RectF(r.left, r.top + lift + peek, r.right, r.bottom + lift + peek), paint)
+        val p = c.pose
+        shadowAt(cv, v, r.centerX(), r.bottom, r.width(), r.height(), Posed.shadowScale(-p.dy * r.height(), r.height()))
+        val peek = if (c.cover != null && c.landAt < 0) (0.5f + 0.5f * kotlin.math.sin(c.clock / 1000f * 1.4f + c.az)) * 0.14f else 0f
+        Posed.draw(cv, picOf(c, p.look), r, if (peek != 0f) p.copy(dy = p.dy + peek) else p, paint)
+        if (c.landAt >= 0) Posed.dust(cv, r, (SystemClock.uptimeMillis() - c.landAt).toFloat(), v?.pal?.dark == true)
+    }
+
+    /** Its own picture, or the neighbouring direction while it looks aside. */
+    private fun picOf(c: One, look: Int): Bitmap {
+        if (look == 0) return c.pic
+        val side = c.side ?: arrayOfNulls<Bitmap>(2).also { a ->
+            c.side = a
+            for ((i, d) in intArrayOf(-1, 1).withIndex()) a[i] = Frames.asset(ctx, c.id, "dir${(c.dir + d + 8) % 8}")?.let(Frames::trim)
+        }
+        return side[if (look < 0) 0 else 1] ?: c.pic
+    }
+
+    override fun drawHeld(cv: Canvas, map: ScreenMap, held: String, cx: Float, dy: Float, pose: Pose) {
+        val c = live.firstOrNull { it.id == held } ?: return
+        val r = c.rect
+        val v = if (scene) Yard.View(map.viewW, map.viewH, yaw, shift01, SystemClock.uptimeMillis() / 1000f, Yard.palNow()) else null
+        shadowAt(cv, v, cx, r.bottom, r.width(), r.height(), Posed.shadowScale(-dy, r.height()))
+        tmp.set(r); tmp.offset(cx - r.centerX(), dy)
+        Posed.draw(cv, c.pic, tmp, pose, paint)
+    }
+
+    override fun landed(id: String, cx: Float) {
+        val c = live.firstOrNull { it.id == id } ?: return
+        c.az = c.az + (cx - c.rect.centerX()) / viewW * FOV_DEG   // it lands where it fell
+        c.landAt = SystemClock.uptimeMillis()
     }
 
     override fun caught(critterId: String, map: ScreenMap): Pair<String, CutOut.Cut?> {

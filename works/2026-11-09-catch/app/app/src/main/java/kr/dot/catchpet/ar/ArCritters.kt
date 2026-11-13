@@ -7,6 +7,7 @@ import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Typeface
+import android.os.SystemClock
 import com.google.ar.core.Anchor
 import com.google.ar.core.Frame
 import com.google.ar.core.Plane
@@ -15,7 +16,9 @@ import com.google.ar.core.Session
 import com.google.ar.core.TrackingState
 import kr.dot.catchpet.camera.ArSource
 import kr.dot.catchpet.game.Box
+import kr.dot.catchpet.game.Life
 import kr.dot.catchpet.game.Mask
+import kr.dot.catchpet.game.Pose as GamePose
 import kr.dot.catchpet.pet.Frames
 import kr.dot.catchpet.seg.CutOut
 import kr.dot.catchpet.seg.ScreenMap
@@ -68,21 +71,34 @@ class ArCritters(private val ctx: Context, private val ar: ArSource, private val
         Mask.ellipseIn(map.gridW, map.gridH, Box(x0, y0, x1, y1), Mask.Kind.CRITTER, s.id)
     }
 
-    override fun draw(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
+    override fun draw(cv: Canvas, map: ScreenMap, held: String?, wary: Float?) {
         val now = shown
         if (!seenFloor) {
             hint.textSize = map.viewW * 0.045f
             cv.drawText("바닥을 천천히 비춰 주세요", map.viewW / 2, map.viewH * 0.6f, hint)
         }
-        // far ones first, so near ones overlap them
+        val t = SystemClock.uptimeMillis()
+        // far ones first, so near ones overlap them; idle life (breathing, hops) or the landing after a drop
         for (c in now.sortedBy { it.rect.bottom }) {
-            if (!visible(c.rect, map)) continue
+            if (!visible(c.rect, map) || c.id == held) continue
             val r = c.rect
-            if (c.id != held) cv.drawOval(r.left + r.width() * 0.1f, r.bottom - r.height() * 0.06f, r.right - r.width() * 0.1f, r.bottom + r.height() * 0.06f, shadow)
-            val lift = if (c.id == held) dy else 0f
-            cv.drawBitmap(c.pic, null, RectF(r.left, r.top + lift, r.right, r.bottom + lift), paint)
+            cv.drawOval(r.left + r.width() * 0.1f, r.bottom - r.height() * 0.06f, r.right - r.width() * 0.1f, r.bottom + r.height() * 0.06f, shadow)
+            val land = landAt[c.id]?.let { t - it }?.takeIf { it < Life.LAND_MS }
+            val pose = if (land != null) Life.land(land.toFloat()) else Life.idle(t.toFloat() % 1_000_000f, (c.id.hashCode() and 0xFFFF) / 65535f).copy(look = 0, daz = 0f)
+            Posed.draw(cv, c.pic, r, pose, paint)
+            if (land != null) Posed.dust(cv, r, land.toFloat())
         }
     }
+
+    override fun drawHeld(cv: Canvas, map: ScreenMap, held: String, cx: Float, dy: Float, pose: GamePose) {
+        val c = shown.firstOrNull { it.id == held } ?: return
+        val r = RectF(c.rect); r.offset(cx - r.centerX(), dy)
+        Posed.draw(cv, c.pic, r, pose, paint)
+    }
+
+    // ponytail: an AR critter keeps its anchor, so it lands back on its own spot, not where it fell
+    private val landAt = HashMap<String, Long>()
+    override fun landed(id: String, cx: Float) { landAt[id] = SystemClock.uptimeMillis() }
 
     override fun caught(critterId: String, map: ScreenMap): Pair<String, CutOut.Cut?> {
         val c = shown.firstOrNull { it.id == critterId } ?: return "dir0" to null
