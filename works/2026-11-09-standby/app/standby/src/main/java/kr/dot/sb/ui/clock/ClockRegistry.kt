@@ -134,10 +134,10 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), ours = true)
         FaceId.SOLAR -> c(Family.POP, "솔라", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
         FaceId.FLOAT -> c(Family.POP, "둥근 굵은 글씨", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT + LAYOUT, built = true)
-        FaceId.FLIP -> c(Family.RETRO, "플립 시계", listOf(PLATE_COLOR, DIGIT_COLOR, SIZE, FONT, INFO), emptyList())
-        FaceId.LED -> c(Family.RETRO, "빨간 LED", listOf(StyleRow.LED, SIZE), emptyList())
-        FaceId.LCD -> c(Family.RETRO, "액정 시계", listOf(PANEL_COLOR, INK_COLOR, SIZE), emptyList())
-        FaceId.DOT_MATRIX -> c(Family.RETRO, "전광판", listOf(DOT_COLOR, SIZE), emptyList())
+        FaceId.FLIP -> c(Family.RETRO, "플립 시계", listOf(PLATE_COLOR, DIGIT_COLOR, SIZE, FONT, INFO), emptyList(), built = true)
+        FaceId.LED -> c(Family.RETRO, "빨간 LED", listOf(StyleRow.LED, SIZE), emptyList(), built = true)
+        FaceId.LCD -> c(Family.RETRO, "액정 시계", listOf(PANEL_COLOR, INK_COLOR, SIZE), emptyList(), built = true)
+        FaceId.DOT_MATRIX -> c(Family.RETRO, "전광판", listOf(DOT_COLOR, SIZE), emptyList(), built = true)
         FaceId.WALL -> c(
             Family.CLASSIC, "벽시계", listOf(HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS, INFO),
             listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE),
