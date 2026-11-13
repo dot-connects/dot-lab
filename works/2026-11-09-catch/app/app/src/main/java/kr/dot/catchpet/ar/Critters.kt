@@ -22,8 +22,9 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * Fur critters. Camera mode (gyro, no AR): three, each pinned to a world azimuth (rotation-vector yaw); turning the
- * phone pans them across the view. Scene mode (camera off, SceneSource): six standing still on the drawn floor.
+ * Fur critters, each pinned to a world azimuth (rotation-vector yaw): turning the phone pans them across the view,
+ * tilting it up / down moves them down / up. Camera mode: three. Scene mode (camera off, SceneSource draws a room that
+ * pans the same way, operator 11-13 "the AR feel stays"): six, spread wider.
  * Both use perspective (operator 11-13): the higher a critter stands (further away), the smaller it is, times a
  * random size each. Each spawn faces a random way (dir0..7, R16); a caught one leaves and another appears.
  */
@@ -32,7 +33,6 @@ class Critters(
     private val scene: Boolean = false,
     private val rnd: Random = Random.Default,
 ) : CritterSource, SensorEventListener {
-    /** az: world azimuth (camera mode) or screen x 0..1 (scene mode). */
     private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val size: Float, val pic: Bitmap) {
         val rect = RectF()   // view px, updated each frame
         var onScreen = false
@@ -42,6 +42,8 @@ class Critters(
     private val live = mutableListOf<One>()
     private var lastCaughtAz: Float? = null
     private var yaw = 0f
+    private var pitchBase: Float? = null
+    private var tilt = 0f   // degrees from the pitch the screen opened at
     private val sm = ctx.getSystemService(SensorManager::class.java)
     private val rot = FloatArray(9)
     private val remapped = FloatArray(9)
@@ -53,7 +55,7 @@ class Critters(
     private val heightFrac get() = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getFloat("critter_scale", 0.25f) * 0.4f
 
     override fun start() {
-        if (scene) return
+        pitchBase = null
         sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
@@ -66,7 +68,16 @@ class Critters(
         SensorManager.getOrientation(remapped, ori)
         val a = Math.toDegrees(ori[0].toDouble()).toFloat()
         yaw += diff(a, yaw) * 0.5f   // light smoothing
+        val p = Math.toDegrees(ori[1].toDouble()).toFloat()
+        val base = pitchBase ?: p.also { pitchBase = it }
+        tilt += ((p - base) - tilt) * 0.5f
     }
+
+    /** Vertical shift of the floor, share of the view height (+ = down), from tilting since the screen opened. */
+    val shift01: Float get() = (PITCH_SIGN * tilt / VFOV_DEG).coerceIn(-0.3f, 0.3f)
+
+    /** Where the phone looks now: yaw (degrees) and the floor shift; the camera-off room pans with it. */
+    fun view(): Pair<Float, Float> = yaw to shift01
 
     override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
 
@@ -76,8 +87,8 @@ class Critters(
         for (c in live) {
             val h = map.viewH * heightFrac * perspective(c.feet01) * c.size
             val w = h * c.pic.width / c.pic.height
-            val cx = if (scene) c.az * map.viewW else map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
-            val feet = c.feet01 * map.viewH
+            val cx = map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
+            val feet = (c.feet01 + shift01) * map.viewH
             c.rect.set(cx - w / 2, feet - h, cx + w / 2, feet)
             c.onScreen = c.rect.right > 0 && c.rect.left < map.viewW
             if (!c.onScreen) continue
@@ -105,7 +116,7 @@ class Critters(
         return "dir${c.dir}" to cutOf(c.pic, c.rect, map)
     }
 
-    /** Keep the stage full: camera mode 3, at least 20 degrees apart; scene mode 6, not standing on each other. */
+    /** Keep the stage full (camera mode 3, scene mode 6), at least 20 degrees apart and away from the one just caught. */
     private fun fill() {
         if (ids.isEmpty()) return
         val count = if (scene) SCENE_COUNT else COUNT
@@ -116,14 +127,9 @@ class Critters(
             var feet = 0f
             for (i in 0 until 16) {
                 feet = FEET_MIN + rnd.nextFloat() * (FEET_MAX - FEET_MIN)
-                if (scene) {
-                    az = 0.1f + rnd.nextFloat() * 0.8f
-                    if (live.all { abs(it.az - az) > 0.16f || abs(it.feet01 - feet) > 0.07f }) break
-                } else {
-                    az = yaw + (rnd.nextFloat() * 2 - 1) * SPREAD_DEG
-                    val taken = live.map { it.az } + listOfNotNull(lastCaughtAz)
-                    if (taken.all { abs(diff(az, it)) >= 20f }) break
-                }
+                az = yaw + (rnd.nextFloat() * 2 - 1) * (if (scene) SCENE_SPREAD_DEG else SPREAD_DEG)
+                val taken = live.map { it.az } + listOfNotNull(lastCaughtAz)
+                if (taken.all { abs(diff(az, it)) >= 20f }) break
             }
             val dir = rnd.nextInt(8)
             val pic = Frames.asset(ctx, id, "dir$dir")?.let(Frames::trim) ?: return
@@ -134,6 +140,10 @@ class Critters(
     companion object {
         const val COUNT = 3
         const val SCENE_COUNT = 6
+        const val SCENE_SPREAD_DEG = 150f
+        // ponytail: vertical field of view and tilt direction guessed from the Android docs; calibrate on the phone
+        const val VFOV_DEG = 60f
+        const val PITCH_SIGN = -1f
         /** Feet line range (share of the view height): FEET_MIN is the far edge of the floor. */
         const val FEET_MIN = 0.6f
         const val FEET_MAX = 0.93f

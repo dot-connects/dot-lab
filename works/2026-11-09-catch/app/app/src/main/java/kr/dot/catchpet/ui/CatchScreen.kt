@@ -129,8 +129,8 @@ fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenD
 
 @Composable
 private fun SceneCatch(ctx: Context, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit) {
-    val src = remember { SceneSource() }
     val crit = remember { Critters(ctx.applicationContext, scene = true) }
+    val src = remember { SceneSource(crit::view) }
     key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
 }
 
