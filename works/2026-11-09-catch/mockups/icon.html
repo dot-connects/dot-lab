@@ -1,0 +1,301 @@
+<title>리얼뽑기 아이콘</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap">
+<style>
+/* Layout: big icon on the left, palette pickers on the right (stacked on a phone), home-screen rows under the icon. */
+:root {
+  --bg: #F7F3EA; --card: #FFFFFF; --fg: #2A2420; --dim: #74695F; --line: #E4DBCD; --accent: #C98316;
+  --display: "Jua", "Gowun Dodum", system-ui, sans-serif; --body: "Gowun Dodum", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16130F; --card: #221E19; --fg: #F2ECE4; --dim: #A99E92; --line: #3A332B; --accent: #F2BC52; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #16130F; --card: #221E19; --fg: #F2ECE4; --dim: #A99E92; --line: #3A332B; --accent: #F2BC52; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; }
+main { max-width: 1040px; margin: 0 auto; padding-block: 28px 48px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+h1 { font-family: var(--display); font-weight: 400; font-size: 34px; margin: 0 0 6px; }
+.lede { color: var(--dim); margin: 0 0 22px; max-width: 64ch; line-height: 1.6; }
+.wrap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 760px) { .wrap { grid-template-columns: 1fr; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.shapes { display: flex; gap: 18px; justify-content: center; align-items: end; flex-wrap: wrap; }
+.shapes figure { margin: 0; display: grid; justify-items: center; gap: 6px; color: var(--dim); font-size: 12px; }
+#big { width: min(300px, 70vw); aspect-ratio: 1; }
+#round { width: 120px; aspect-ratio: 1; }
+.home { border-radius: 16px; padding: 14px 10px 10px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+  background: linear-gradient(160deg, #6F86B8, #B79BC4 55%, #E9B9A0); }
+.home.dark { background: linear-gradient(160deg, #10141F, #2B2440 60%, #3B2A33); }
+.app { display: grid; justify-items: center; gap: 4px; }
+.app canvas { width: 52px; height: 52px; }
+.app span { font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45); white-space: nowrap; }
+fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
+legend { font-family: var(--display); font-size: 17px; padding: 0; margin-bottom: 8px; }
+.sw { display: flex; flex-wrap: wrap; gap: 8px; }
+.sw button { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid var(--line); background: transparent; color: var(--fg); font: inherit; font-size: 14px; }
+.sw button[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent) inset; }
+.sw button:focus-visible, .row button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.dot { width: 24px; height: 24px; border-radius: 50%; border: 1px solid rgba(0,0,0,.15); }
+.row { display: flex; gap: 10px; flex-wrap: wrap; }
+.row button { padding: 10px 16px; border-radius: 12px; border: 0; background: var(--accent); color: #241800; font: inherit; font-weight: 700; cursor: pointer; }
+.row button.ghost { background: transparent; color: var(--fg); border: 1.5px solid var(--line); }
+#code { font-size: 13px; color: var(--dim); font-variant-numeric: tabular-nums; }
+.refs { color: var(--dim); font-size: 13px; line-height: 1.6; margin: 0; }
+</style>
+<main>
+  <h1>리얼뽑기 아이콘 시안</h1>
+  <p class="lede">닥스훈트가 유리구슬에 코를 바짝 대고 있어요. 진짜 개 코처럼 가운데 홈으로 나뉜 두 덩어리에 쉼표 모양 콧구멍을 넣었고, 어안 렌즈처럼 코가 고깔 끝이 되어 크게, 눈과 귀는 가장자리로 작게 밀려나요. 오른쪽에서 색을 바꿔 보세요.</p>
+  <div class="wrap">
+    <section class="card" aria-label="미리보기">
+      <div class="shapes">
+        <figure><canvas id="big" width="600" height="600"></canvas><figcaption>둥근 사각형</figcaption></figure>
+        <figure><canvas id="round" width="240" height="240"></canvas><figcaption>원형</figcaption></figure>
+      </div>
+      <div class="home" id="homeL"></div>
+      <div class="home dark" id="homeD"></div>
+    </section>
+    <section class="card" aria-label="색 고르기">
+      <fieldset><legend>배경</legend><div class="sw" id="sw-bg"></div></fieldset>
+      <fieldset><legend>집게</legend><div class="sw" id="sw-claw"></div></fieldset>
+      <fieldset><legend>털 색</legend><div class="sw" id="sw-fur"></div></fieldset>
+      <fieldset><legend>유리 테두리</legend><div class="sw" id="sw-rim"></div></fieldset>
+      <fieldset><legend>코 크기</legend><div class="sw" id="sw-warp"></div></fieldset>
+      <div class="row"><button id="rand" type="button">아무거나 섞기</button><button id="copy" class="ghost" type="button">조합 이름 복사</button></div>
+      <div id="code" aria-live="polite"></div>
+      <p class="refs">참고: 위키미디어 공용의 어안 렌즈 개 사진, 개 코 접사 사진 12장 (research/fisheye-refs). 그림은 새로 그렸고 사진은 앱에 쓰지 않아요.</p>
+    </section>
+  </div>
+</main>
+<script>
+const S = 512, CX = 256, CY = 292, R = 160;
+const PAL = {
+  bg: [
+    ["밤하늘", "#2A3156", "#0C0E18"], ["버터", "#FFE38F", "#FFB98C"], ["민트", "#C9F2E0", "#7DCDBB"],
+    ["딸기우유", "#FFDCE4", "#FF9FB5"], ["하늘", "#D6EBFF", "#8DB6F2"], ["우유", "#FFFFFF", "#ECE6DC"],
+  ],
+  claw: [
+    ["은색", "#7D8594", "#EEF1F5"], ["금색", "#B9822A", "#FFE6A3"], ["로즈", "#C9787E", "#FFD9DC"],
+    ["하양", "#C9CDD4", "#FFFFFF"], ["검정", "#1E2128", "#6B7280"],
+  ],
+  fur: [
+    ["갈색", { muzzle: "#F2CFA0", mid: "#C98549", rim: "#8E5124", ear: "#723A18", brow: null }],
+    ["크림", { muzzle: "#FFF6E8", mid: "#EED5AE", rim: "#C8A374", ear: "#B48A58", brow: null }],
+    ["블랙탄", { muzzle: "#D8945A", mid: "#3A2A24", rim: "#17100D", ear: "#120C0A", brow: "#D8945A" }],
+    ["초코", { muzzle: "#C08A62", mid: "#6A3F27", rim: "#3B2214", ear: "#2E1A0F", brow: null }],
+  ],
+  rim: [["투명", "rgba(235,228,215,.75)"], ["노랑", "rgba(255,214,110,.9)"], ["분홍", "rgba(255,170,190,.9)"], ["파랑", "rgba(150,195,255,.9)"]],
+  warp: [["크게", 0.22], ["아주 크게", 0.16], ["엄청 크게", 0.11]],
+};
+// operator 11-13: 배경 딸기우유 · 집게 은색 · 털 갈색 · 테두리 투명 · 코 아주 크게
+const pick = { bg: 3, claw: 0, fur: 0, rim: 0, warp: 1 };
+try { Object.assign(pick, JSON.parse(localStorage.getItem("icon-pick") || "{}")); } catch {}
+
+// ---- the face, drawn flat (nose = tip of a cone), then bent by the glass
+function face(coat) {
+  const c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d");
+  const fill = (col, f) => { g.fillStyle = col; g.beginPath(); f(); g.fill(); };
+  const NX = CX, NY = CY + 6;
+  const fur = g.createRadialGradient(NX, NY, 10, CX, CY, R * 1.1);
+  fur.addColorStop(0, coat.mid); fur.addColorStop(.75, coat.mid); fur.addColorStop(1, coat.rim);
+  g.fillStyle = fur; g.fillRect(0, 0, S, S);
+  for (const s of [-1, 1]) fill(coat.ear, () => {   // long ears hanging at the far sides
+    g.moveTo(CX + s * 96, CY - 120); g.quadraticCurveTo(CX + s * 205, CY - 70, CX + s * 186, CY + 96);
+    g.quadraticCurveTo(CX + s * 160, CY + 150, CX + s * 126, CY + 50); g.quadraticCurveTo(CX + s * 106, CY - 30, CX + s * 96, CY - 120);
+  });
+  const muz = g.createRadialGradient(NX, NY + 8, 6, NX, NY + 8, 80);
+  muz.addColorStop(0, coat.muzzle); muz.addColorStop(.4, coat.muzzle); muz.addColorStop(1, coat.muzzle + "00");
+  fill(muz, () => g.ellipse(NX, NY + 10, 84, 76, 0, 0, Math.PI * 2));
+  // fur strands flow away from the nose, longer further out
+  let seed = 13; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  g.lineCap = "round";
+  for (let i = 0; i < 2200; i++) {
+    const x = rnd() * S, y = rnd() * S, dx = x - NX, dy = y - NY, dist = Math.hypot(dx, dy);
+    if (dist < 40 || dist > R * 1.1) continue;
+    const a = Math.atan2(dy, dx) + (rnd() - .5) * .5, L = 2 + dist * 0.05 + rnd() * 3;
+    g.strokeStyle = rnd() < .5 ? "rgba(255,244,225,.32)" : "rgba(50,25,10,.22)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+  }
+  // whisker pores on the muzzle
+  for (const s of [-1, 1]) for (let r = 0; r < 3; r++) for (let k = 0; k < 4; k++)
+    fill("rgba(40,20,10,.45)", () => g.arc(NX + s * (30 + k * 9 + r * 3), NY + 32 + r * 8 - k * 2, 1.6, 0, Math.PI * 2));
+  // eyes: small and far (the head runs away from the lens), brown and glossy
+  for (const s of [-1, 1]) {
+    const ex = CX + s * 64, ey = CY - 70;
+    if (coat.brow) fill(coat.brow, () => g.ellipse(ex - s * 2, ey - 26, 11, 7, s * .25, 0, Math.PI * 2));
+    fill("#120A06", () => g.ellipse(ex, ey, 15, 16, 0, 0, Math.PI * 2));
+    const iris = g.createRadialGradient(ex, ey + 3, 1, ex, ey, 13);
+    iris.addColorStop(0, "#8A5530"); iris.addColorStop(1, "#2E170A");
+    fill(iris, () => g.arc(ex, ey, 12.5, 0, Math.PI * 2));
+    fill("#0A0503", () => g.arc(ex, ey, 7, 0, Math.PI * 2));
+    fill("rgba(255,255,255,.95)", () => g.arc(ex - 5, ey - 6, 4.5, 0, Math.PI * 2));
+    fill("rgba(255,255,255,.55)", () => g.arc(ex + 5, ey + 5, 2, 0, Math.PI * 2));
+    fill("rgba(255,130,150,.35)", () => g.ellipse(ex + s * 26, ey + 40, 15, 8, 0, 0, Math.PI * 2));
+  }
+  // mouth: philtrum, a soft "w", the tongue tip
+  g.strokeStyle = "rgba(40,20,12,.75)"; g.lineWidth = 2.6;
+  g.beginPath(); g.moveTo(NX, NY + 30); g.lineTo(NX, NY + 42);
+  g.moveTo(NX - 26, NY + 44); g.quadraticCurveTo(NX - 12, NY + 54, NX, NY + 42); g.quadraticCurveTo(NX + 12, NY + 54, NX + 26, NY + 44); g.stroke();
+  fill("#F27C8F", () => g.ellipse(NX + 2, NY + 55, 11, 8, 0.1, 0, Math.PI * 2));
+  // the nose: two lobes, a groove, comma nostrils, cobbled skin, wet highlights
+  const nosePath = () => {
+    g.moveTo(NX - 36, NY - 4);
+    g.bezierCurveTo(NX - 30, NY - 24, NX + 30, NY - 24, NX + 36, NY - 4);
+    g.bezierCurveTo(NX + 42, NY + 14, NX + 30, NY + 30, NX + 14, NY + 31);
+    g.quadraticCurveTo(NX + 4, NY + 31, NX, NY + 25);
+    g.quadraticCurveTo(NX - 4, NY + 31, NX - 14, NY + 31);
+    g.bezierCurveTo(NX - 30, NY + 30, NX - 42, NY + 14, NX - 36, NY - 4);
+  };
+  const nose = g.createRadialGradient(NX - 8, NY - 8, 2, NX, NY + 6, 42);
+  nose.addColorStop(0, "#5A4843"); nose.addColorStop(.6, "#241916"); nose.addColorStop(1, "#0E0907");
+  g.save(); g.beginPath(); nosePath(); g.fillStyle = nose; g.fill(); g.clip();
+  for (let i = 0; i < 260; i++) fill("rgba(255,255,255,.07)", () => g.arc(NX - 40 + rnd() * 80, NY - 24 + rnd() * 56, .8 + rnd() * 1.4, 0, Math.PI * 2));
+  g.restore();
+  g.strokeStyle = "rgba(0,0,0,.6)"; g.lineWidth = 2; g.beginPath(); g.moveTo(NX, NY + 4); g.lineTo(NX, NY + 25); g.stroke();
+  for (const s of [-1, 1]) fill("#030101", () => {
+    g.moveTo(NX + s * 7, NY + 12); g.quadraticCurveTo(NX + s * 18, NY + 2, NX + s * 27, NY + 12);
+    g.quadraticCurveTo(NX + s * 24, NY + 19, NX + s * 15, NY + 18); g.quadraticCurveTo(NX + s * 10, NY + 17, NX + s * 7, NY + 12);
+  });
+  fill("rgba(255,255,255,.55)", () => g.ellipse(NX - 13, NY - 10, 11, 4.5, -0.25, 0, Math.PI * 2));
+  fill("rgba(255,255,255,.35)", () => g.ellipse(NX + 15, NY - 9, 6, 2.5, 0.25, 0, Math.PI * 2));
+  // the head falls away from the lens: darker toward the rim
+  const cone = g.createRadialGradient(NX, NY, R * .3, CX, CY, R * 1.05);
+  cone.addColorStop(0, "rgba(0,0,0,0)"); cone.addColorStop(1, "rgba(0,0,0,.28)");
+  g.fillStyle = cone; g.fillRect(0, 0, S, S);
+  return c;
+}
+
+function bulge(src, warp) {   // fisheye: centre sampled at `warp` (nose x 1/warp), rim almost 1:1
+  const out = document.createElement("canvas"); out.width = out.height = S;
+  const si = src.getContext("2d").getImageData(0, 0, S, S).data;
+  const o = out.getContext("2d"), od = o.createImageData(S, S), d = od.data;
+  for (let y = CY - R; y < CY + R; y++) for (let x = CX - R; x < CX + R; x++) {
+    const dx = x - CX, dy = y - CY, r = Math.hypot(dx, dy) / R;
+    if (r >= 1) continue;
+    const k = warp + (1 - warp) * Math.pow(r, 1.6);
+    const fx = CX + dx * k, fy = CY + dy * k, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0;
+    const i = (y * S + x) * 4;
+    for (let ch = 0; ch < 3; ch++) {   // bilinear, so the magnified nose stays smooth
+      const p = (yy, xx) => si[(yy * S + xx) * 4 + ch];
+      d[i + ch] = (p(y0, x0) * (1 - tx) + p(y0, x0 + 1) * tx) * (1 - ty) + (p(y0 + 1, x0) * (1 - tx) + p(y0 + 1, x0 + 1) * tx) * ty;
+    }
+    d[i + 3] = 255;
+  }
+  o.putImageData(od, 0, 0); return out;
+}
+
+const cache = {};
+function warpedFace() {
+  const key = pick.fur + ":" + pick.warp;
+  return cache[key] ||= bulge(face(PAL.fur[pick.fur][1]), PAL.warp[pick.warp][1]);
+}
+
+function lum(hex) { const n = parseInt(hex.slice(1), 16); return ((n >> 16) * .299 + ((n >> 8) & 255) * .587 + (n & 255) * .114) / 255; }
+
+function icon(withBg = true) {
+  const c = document.createElement("canvas"); c.width = c.height = S; const g = c.getContext("2d");
+  const [, b0, b1] = PAL.bg[pick.bg];
+  const bg = g.createLinearGradient(0, 0, S, S); bg.addColorStop(0, b0); bg.addColorStop(1, b1);
+  if (withBg) { g.fillStyle = bg; g.fillRect(0, 0, S, S); }
+  g.fillStyle = lum(b1) < .4 ? "rgba(0,0,0,.4)" : "rgba(90,60,40,.18)";
+  g.beginPath(); g.ellipse(CX, CY + R + 20, R * .72, 13, 0, 0, Math.PI * 2); g.fill();
+  g.drawImage(warpedFace(), 0, 0);
+  const ring = g.createRadialGradient(CX, CY, R * .8, CX, CY, R);
+  ring.addColorStop(0, "rgba(30,20,15,0)"); ring.addColorStop(.8, "rgba(30,20,15,.16)"); ring.addColorStop(1, PAL.rim[pick.rim][1]);
+  g.fillStyle = ring; g.beginPath(); g.arc(CX, CY, R, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 12; g.lineCap = "round";
+  g.beginPath(); g.arc(CX, CY, R - 20, Math.PI * 1.12, Math.PI * 1.36); g.stroke();
+  g.lineWidth = 6; g.strokeStyle = "rgba(255,255,255,.5)"; g.beginPath(); g.arc(CX, CY, R - 15, Math.PI * 1.72, Math.PI * 1.86); g.stroke();
+  g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.arc(CX - R * .38, CY - R * .5, 6, 0, Math.PI * 2); g.fill();
+  g.strokeStyle = PAL.rim[pick.rim][1]; g.lineWidth = 4; g.beginPath(); g.arc(CX, CY, R - 2, 0, Math.PI * 2); g.stroke();
+  claw(g);
+  return c;
+}
+
+function claw(g) {
+  const [, dark, light] = PAL.claw[pick.claw];
+  const metal = g.createLinearGradient(CX - 150, 0, CX + 150, 0);
+  metal.addColorStop(0, dark); metal.addColorStop(.5, light); metal.addColorStop(1, dark);
+  g.fillStyle = dark; g.fillRect(CX - 9, 0, 18, 76);
+  g.lineCap = "round"; g.lineJoin = "round";
+  for (const s of [-1, 1]) { g.strokeStyle = dark; g.lineWidth = 20; arm(g, s); g.strokeStyle = metal; g.lineWidth = 13; arm(g, s); }
+  g.fillStyle = metal; g.beginPath(); g.roundRect(CX - 40, 66, 80, 34, 12); g.fill();
+  g.strokeStyle = dark; g.lineWidth = 3; g.stroke();
+  g.fillStyle = "#F2C14E"; g.beginPath(); g.arc(CX, 83, 7, 0, Math.PI * 2); g.fill();
+}
+function arm(g, s) {
+  const a = Math.PI * (1.5 + s * 0.36), px = CX + Math.cos(a) * (R + 6), py = CY + Math.sin(a) * (R + 6);
+  g.beginPath(); g.moveTo(CX + s * 28, 94);
+  g.quadraticCurveTo(CX + s * 165, 76, px + s * 8, py);
+  g.quadraticCurveTo(px + s * 4, py + 28, px - s * 12, py + 32);
+  g.stroke();
+}
+
+function paint(canvas, src, shape) {
+  const g = canvas.getContext("2d"), w = canvas.width;
+  g.clearRect(0, 0, w, w); g.save(); g.beginPath();
+  if (shape === "circle") g.arc(w / 2, w / 2, w / 2, 0, Math.PI * 2); else g.roundRect(0, 0, w, w, w * 0.31);
+  g.clip(); g.drawImage(src, 0, 0, w, w); g.restore();
+}
+function dummy(hue) {
+  const c = document.createElement("canvas"); c.width = c.height = 104; const g = c.getContext("2d");
+  g.fillStyle = `hsl(${hue} 55% 62%)`; g.beginPath(); g.arc(52, 52, 52, 0, Math.PI * 2); g.fill();
+  g.fillStyle = "rgba(255,255,255,.85)"; g.beginPath(); g.roundRect(32, 32, 40, 40, 10); g.fill();
+  return c;
+}
+const ours = [];
+for (const id of ["homeL", "homeD"]) {
+  const row = document.getElementById(id);
+  for (const [label, hue] of [["카메라", 200], ["갤러리", 330], ["리얼뽑기", -1], ["메시지", 140]]) {
+    const a = document.createElement("div"); a.className = "app";
+    let cv; if (hue < 0) { cv = document.createElement("canvas"); cv.width = cv.height = 104; ours.push(cv); } else cv = dummy(hue);
+    const sp = document.createElement("span"); sp.textContent = label; a.append(cv, sp); row.append(a);
+  }
+}
+
+function render() {
+  const src = icon();
+  paint(document.getElementById("big"), src, "squircle");
+  paint(document.getElementById("round"), src, "circle");
+  for (const cv of ours) paint(cv, src, "circle");
+  document.getElementById("code").textContent =
+    `배경 ${PAL.bg[pick.bg][0]} · 집게 ${PAL.claw[pick.claw][0]} · 털 ${PAL.fur[pick.fur][0]} · 테두리 ${PAL.rim[pick.rim][0]} · 코 ${PAL.warp[pick.warp][0]}`;
+  for (const k of Object.keys(PAL)) document.querySelectorAll(`#sw-${k} button`).forEach((b, i) => b.setAttribute("aria-pressed", String(i === pick[k])));
+  try { localStorage.setItem("icon-pick", JSON.stringify(pick)); } catch {}
+}
+
+function swatch(k, i, label, colors) {
+  const b = document.createElement("button"); b.type = "button";
+  const dot = document.createElement("span"); dot.className = "dot"; dot.style.background = colors;
+  b.append(dot, document.createTextNode(label));
+  b.addEventListener("click", () => { pick[k] = i; render(); });
+  document.getElementById("sw-" + k).append(b);
+}
+PAL.bg.forEach(([n, a, b], i) => swatch("bg", i, n, `linear-gradient(135deg, ${a}, ${b})`));
+PAL.claw.forEach(([n, a, b], i) => swatch("claw", i, n, `linear-gradient(90deg, ${a}, ${b}, ${a})`));
+PAL.fur.forEach(([n, c], i) => swatch("fur", i, n, `radial-gradient(${c.muzzle} 30%, ${c.mid} 60%, ${c.rim})`));
+PAL.rim.forEach(([n, c], i) => swatch("rim", i, n, c));
+PAL.warp.forEach(([n], i) => swatch("warp", i, n, `radial-gradient(#1a1210 ${[30, 42, 55][i]}%, #E8C9A0 ${[32, 44, 57][i]}%)`));
+document.getElementById("rand").addEventListener("click", () => {
+  for (const k of Object.keys(PAL)) pick[k] = Math.floor(Math.random() * PAL[k].length);
+  render();
+});
+document.getElementById("copy").addEventListener("click", async () => {
+  const t = document.getElementById("code").textContent;
+  try { await navigator.clipboard.writeText(t); document.getElementById("code").textContent = t + "  (복사했어요)"; }
+  catch { const r = document.createRange(); r.selectNodeContents(document.getElementById("code")); getSelection().removeAllRanges(); getSelection().addRange(r); }
+});
+render();
+
+/**
+ * For tools/icon-export.mjs: the Android adaptive icon foreground (432 px = 108 dp at xxxhdpi, the art kept inside
+ * the 66 dp safe circle, the claw rod running up out of the mask) and the 512 px Play Store icon.
+ */
+window.__exportIcons = () => {
+  const fg = document.createElement("canvas"); fg.width = fg.height = 432; const g = fg.getContext("2d");
+  const art = icon(false), k = 432 / S * 0.84;
+  g.translate(216, 216); g.scale(k, k); g.translate(-CX, -(CY - 16));
+  g.fillStyle = PAL.claw[pick.claw][1]; g.fillRect(CX - 9, -400, 18, 480);   // rod continues above the safe zone
+  g.drawImage(art, 0, 0);
+  return { fg: fg.toDataURL("image/png"), store: icon(true).toDataURL("image/png"), bg: PAL.bg[pick.bg].slice(1) };
+};
+</script>
