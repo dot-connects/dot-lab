@@ -33,6 +33,14 @@ class SettingsEnv(
     val configureWidget: (Int) -> Unit = {},
     /** "앱 · 위젯" for a bound id, null when it is gone. */
     val widgetLabel: (Int) -> String? = { null },
+    /** Every calendar on the phone (카드에 쓰는 정보 picker); null = no calendar permission. */
+    val calendars: () -> List<kr.dot.sb.data.CalendarInfo>? = { null },
+    /** Albums with their photo counts (사진 고르기). */
+    val photoFolders: () -> List<Pair<String, Int>> = { emptyList() },
+    /** 수면 소리: play [SleepSound] for 3 s. */
+    val playSample: (kr.dot.sb.model.SleepSound) -> Unit = {},
+    /** Recent charger-start log lines (켜짐과 꺼짐 자세히). */
+    val chargeTrail: () -> List<String> = { emptyList() },
 ) {
     val missing: List<Perm> get() = Perm.entries.filter { granted[it] != true }
 }
@@ -43,12 +51,19 @@ val LocalSettingsEnv = compositionLocalOf { SettingsEnv() }
 object Routes {
     const val HOME = "home"
     const val THEME = "theme"
-    const val BOARDS = "boards"
-    const val CLOCKS = "clocks"
+    const val PAGES = "pages"
+    const val START = "start"
     const val WIDGETS = "widgets"
+    const val PHOTOS = "photos"
+    const val CLOCKS = "clocks"
+    const val NOTIF = "notif"
     const val NIGHT = "night"
+    const val ONOFF = "onoff"
+    const val SOUND = "sound"
     const val ALARM = "alarm"
-    const val DATA = "data"
+    const val FOLD = "fold"
+    const val WEATHER = "weather"
+    const val CARD_INFO = "cardinfo"
     const val PERMS = "perms"
     const val ABOUT = "about"
     fun board(id: String) = "board:$id"
@@ -68,7 +83,10 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
     val back = { nav.back() }
     when {
         route == Routes.THEME -> ThemeScreen(config, update, back)
-        route == Routes.BOARDS -> BoardsScreen(config, update, nav, back)
+        route == Routes.PAGES -> PagesScreen(config, update, nav, back)
+        route == Routes.START -> StartPageScreen(config, update, back)
+        route == Routes.WIDGETS -> WidgetsScreen(config, update, back)
+        route == Routes.PHOTOS -> PhotosScreen(config, update, env, back)
         route.startsWith("board:") -> {
             val id = route.removePrefix("board:")
             if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, env, back) else HomeScreen(config, nav, env)
@@ -79,10 +97,14 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)
         }
-        route == Routes.WIDGETS -> WidgetsScreen(config, update, back)
-        route == Routes.NIGHT -> NightScreen(config, update, env, back)
-        route == Routes.ALARM -> AlarmScreen(config, update, env, back)
-        route == Routes.DATA -> DataScreen(config, update, back)
+        route == Routes.NOTIF -> NotifScreen(config, update, back)
+        route == Routes.NIGHT -> NightScreen(config, update, nav, env, back)
+        route == Routes.ONOFF -> OnOffScreen(config, update, env, back)
+        route == Routes.SOUND -> SoundScreen(config, update, env, back)
+        route == Routes.ALARM -> AlarmScreen(config, update, nav, env, back)
+        route == Routes.FOLD -> FoldScreen(config, update, env, back)
+        route == Routes.WEATHER -> WeatherScreen(config, update, back)
+        route == Routes.CARD_INFO -> CardInfoScreen(config, update, env, back)
         route == Routes.PERMS -> PermsScreen(env, back)
         route == Routes.ABOUT -> AboutScreen(env, back)
         else -> HomeScreen(config, nav, env)

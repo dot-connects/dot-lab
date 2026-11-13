@@ -11,6 +11,8 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
 import kr.dot.sb.model.PHOTO_INTERVAL_SEC
+import kr.dot.sb.model.PAGE_PHOTOS
+import kr.dot.sb.model.PAGE_WIDGETS
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.theme.Themes
@@ -73,6 +75,9 @@ object ConfigCodec {
         put("moodAutoOffMin", c.moodAutoOffMin)
         put("nightNotifQuiet", c.nightNotifQuiet)
         put("photoIntervalSec", c.photoIntervalSec)
+        put("pagesOff", JSONArray().also { a -> c.pagesOff.forEach { a.put(it) } })
+        put("photoSource", c.photoSource.name)
+        put("photoFolders", JSONArray().also { a -> c.photoFolders.forEach { a.put(it) } })
     }.toString()
 
     /** Any parse failure returns defaults; a bad field returns that field's default. */
@@ -139,6 +144,9 @@ object ConfigCodec {
             moodAutoOffMin = o.optInt("moodAutoOffMin", d.moodAutoOffMin).takeIf { it in MOOD_AUTO_OFF_MIN } ?: d.moodAutoOffMin,
             nightNotifQuiet = o.optBoolean("nightNotifQuiet", d.nightNotifQuiet),
             photoIntervalSec = o.optInt("photoIntervalSec", d.photoIntervalSec).takeIf { it in PHOTO_INTERVAL_SEC } ?: d.photoIntervalSec,
+            pagesOff = strings(o, "pagesOff")?.filter { it == PAGE_WIDGETS || it == PAGE_PHOTOS }?.toSet() ?: d.pagesOff,
+            photoSource = enumOf(o, "photoSource", d.photoSource),
+            photoFolders = strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
         )
     }
 
@@ -199,6 +207,7 @@ object ConfigCodec {
         put("slots", JSONArray().also { a -> b.slots.forEach { a.put(cards(it)) } })
         put("accent", b.accent ?: JSONObject.NULL)
         put("clockFace", b.clockFace.name)
+        if (!b.on) put("on", false)
         if (b.options.isNotEmpty()) put("options", JSONObject().also { o -> b.options.forEach { (k, v) -> o.put(k, slotOptions(v)) } })
     }
 
@@ -224,9 +233,13 @@ object ConfigCodec {
                 accent = if (o.has("accent") && !o.isNull("accent")) o.optLong("accent") else null,
                 clockFace = enumOf(o, "clockFace", FaceId.DIGITAL),
                 options = o.optJSONObject("options")?.let { oo -> oo.keys().asSequence().mapNotNull { k -> runCatching { k to slotOptions(oo.getJSONObject(k)) }.getOrNull() }.toMap() } ?: emptyMap(),
+                on = o.optBoolean("on", true),
             ),
         )
     }
+
+    private fun strings(o: JSONObject, k: String): List<String>? =
+        o.optJSONArray(k)?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() } }
 
     private fun cards(l: List<CardType>) = JSONArray().also { a -> l.forEach { a.put(it.name) } }
 

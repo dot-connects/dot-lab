@@ -14,13 +14,13 @@ class BoardOpsTest {
 
     @Test fun deleteKeepsStartOnTheSameBoard() {
         val ids = c.boards.map { it.id }
-        val after = BoardOps.delete(c.copy(startPage = 6), 1) // start = 4th board, delete the 2nd
+        val after = BoardOps.delete(c.copy(startPage = 6), 2) // start = 4th board, delete the 3rd (the 2nd is the fixed desk)
         assertEquals(5, after.startPage)
         assertEquals(ids[3], after.boards[after.startPage - 3].id)
     }
 
     @Test fun deletingTheStartBoardFallsBackToClocks() {
-        assertEquals(2, BoardOps.delete(c.copy(startPage = 4), 1).startPage)
+        assertEquals(2, BoardOps.delete(c.copy(startPage = 5), 2).startPage)
     }
 
     @Test fun moveFollowsTheStartBoard() {

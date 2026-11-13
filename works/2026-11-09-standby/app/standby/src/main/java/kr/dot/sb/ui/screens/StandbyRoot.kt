@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.screens
 
+import kr.dot.sb.settings.Pages
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.ThemeBackground
 import kr.dot.sb.ui.theme.burnInBleed
@@ -134,9 +135,10 @@ internal fun RootImpl(
     start: RootStart,
 ) = ProvideTheme(config) {
     val act by rememberUpdatedState(actions)
-    val count by rememberUpdatedState(FIXED_PAGES + config.boards.size)
+    // r10: only the pages that are on, in the full order; pages are passed around by their full-order index
+    val pages by rememberUpdatedState(Pages.visible(config))
     // Hoisted above the display-off branch so waking returns to the same page and clock face.
-    val pager = rememberPagerState(config.startPage.coerceIn(0, count - 1)) { count }
+    val pager = rememberPagerState(Pages.start(config)) { pages.size }
     val clockPage = remember { mutableStateOf(start.face) }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
@@ -149,7 +151,7 @@ internal fun RootImpl(
         object : StandbyActions by actions {
             override fun openNowPlaying() { npOpen = true }
             override fun openNotifCard(key: String) {
-                val p = notifPage(cfg, pager.currentPage) ?: return actions.notificationTap(key)
+                val p = notifPage(cfg, pages.getOrNull(pager.currentPage)?.index ?: -1)?.let { Pages.position(cfg, it) } ?: return actions.notificationTap(key)
                 actions.notificationDismiss(key)
                 npOpen = false
                 if (st.liveExpanded) actions.liveToggle()
@@ -167,11 +169,11 @@ internal fun RootImpl(
     val mood = state.unfolded && config.onUnfold == UnfoldAction.MOOD_LIGHT && !moodOff && !editing && !MoodLatch.done
     LaunchedEffect(mood) { act.moodShowing(mood) }
 
-    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { act.pageChanged(it) } }
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { p -> pages.getOrNull(p)?.let { act.pageChanged(it.index) } } }
     LaunchedEffect(state.unfolded, config.onUnfold) {
         if (state.unfolded && config.onUnfold == UnfoldAction.BOOK_BOARD) {
             val i = config.boards.indexOfFirst { it.id == "book" }
-            if (i >= 0) pager.scrollToPage(FIXED_PAGES + i)
+            if (i >= 0) Pages.position(config, FIXED_PAGES + i)?.let { pager.scrollToPage(it) }
         }
     }
     if (state.media == null && npOpen) npOpen = false
@@ -221,23 +223,25 @@ internal fun RootImpl(
                     pager, Modifier.fillMaxSize().burnInBleed(),
                     userScrollEnabled = !editing,
                     flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
-                    key = { if (it < FIXED_PAGES) "fixed-$it" else config.boards.getOrNull(it - FIXED_PAGES)?.id ?: "p$it" },
-                ) { page ->
-                    Box(Modifier.fillMaxSize().padding(BURN_IN_BLEED)) { when (page) {
+                    key = { pages.getOrNull(it)?.let { p -> if (p.board == null) "fixed-${p.index}" else p.board.id } ?: "p$it" },
+                ) { pos ->
+                    val ref = pages.getOrNull(pos)
+                    Box(Modifier.fillMaxSize().padding(BURN_IN_BLEED)) { when (ref?.index) {
                         0 -> BoardPage(widgets, state, config, boardActions)
-                        1 -> PhotosPage(state, config, actions, active = pager.settledPage == 1 && layer == Layer.NONE)
+                        1 -> PhotosPage(state, config, actions, active = pager.settledPage == pos && layer == Layer.NONE)
                         2 -> ClocksPage(
                             state, config, clockPage, editing, { editing = it }, start.sheet,
                             styleOf = { f -> edits[f] ?: config.clockStyle(f) },
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
                         )
-                        else -> config.boards.getOrNull(page - FIXED_PAGES)?.let { BoardPage(it, state, config, boardActions) }
+                        null -> {}
+                        else -> ref.board?.let { BoardPage(it, state, config, boardActions) }
                     } }
                 }
                 if (!editing && !mood) {
                     val s = min(w, h)
                     AutoHideDots(
-                        count, pager.currentPage, pager.isScrollInProgress, vertical = false,
+                        pages.size, pager.currentPage, pager.isScrollInProgress, vertical = false,
                         dot = max(5.dp, s * 0.013f),
                         modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = Grid.margin(s) / 2 - max(5.dp, s * 0.013f) / 2),
                     )

@@ -252,12 +252,16 @@ class ConfigCodecTest {
         val c = AppConfig(
             myClocks = listOf(FaceId.HANGUL, FaceId.RIM), excludedCalendars = setOf("a|b|c"), heatProtect = false,
             moodAutoOffMin = 15, nightNotifQuiet = false, photoIntervalSec = 300,
+            pagesOff = setOf("photos"), photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"),
+            boards = AppConfig().boards.mapIndexed { i, b -> if (i == 1) b.copy(on = false) else b },
         )
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
         // out-of-menu values fall back to the default
         val bad = ConfigCodec.decode(JSONObject(ConfigCodec.encode(c)).put("moodAutoOffMin", 7).put("photoIntervalSec", 1).toString())
         assertEquals(AppConfig().moodAutoOffMin, bad.moodAutoOffMin)
         assertEquals(AppConfig().photoIntervalSec, bad.photoIntervalSec)
+        // a board that is on stores nothing extra
+        assertTrue(!JSONObject(ConfigCodec.encode(AppConfig())).getJSONArray("boards").getJSONObject(0).has("on"))
     }
 
     @Test fun upgradeKeepsTheOldFiveFreshInstallGetsTheNewFour() {   // (g)

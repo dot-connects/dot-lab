@@ -45,7 +45,16 @@ class SettingsShots {
         lux = 2.4f,
         licenseNames = listOf("LICENSE-robotoslab.txt", "OFL-inter.txt", "OFL-nunito.txt", "OFL-pretendard.txt", "OFL-sourceserif4.txt"),
         licenseText = { "Copyright 2020 The Inter Project Authors\nThis Font Software is licensed under the SIL Open Font License, Version 1.1." },
+        calendars = {
+            listOf(
+                kr.dot.sb.data.CalendarInfo(1, "com.google", "me@example.com", "내 일정", 0xFF4D9BEF), kr.dot.sb.data.CalendarInfo(2, "com.google", "me@example.com", "대한민국 공휴일", 0xFF6FDC86),
+                kr.dot.sb.data.CalendarInfo(3, "LOCAL", "", "가족", 0xFFFF9C56),
+            )
+        },
+        photoFolders = { listOf("Camera" to 1240, "Screenshots" to 312, "여행" to 86, "KakaoTalk" to 54) },
+        chargeTrail = { listOf("11월 12일 23:12 · 무선 충전 → 켜짐", "11월 11일 08:05 · 케이블 충전 → 켜짐") },
     )
+    private val bar = SettingsEnv(phone = Phone.BAR, foldable = false, granted = Perm.entries.associateWith { true })
 
     private fun snap(name: String, qualifiers: String, config: AppConfig = AppConfig(), route: String, e: SettingsEnv = env, after: ComposeContentTestRule.() -> Unit = {}) {
         RuntimeEnvironment.setQualifiers(qualifiers)
@@ -64,16 +73,28 @@ class SettingsShots {
     @Test fun home() = snap("home", phone, route = Routes.HOME)
     @Test fun homeFold() = snap("home-fold", fold, route = Routes.HOME)
     @Test fun homePaper() = snap("home-paper", phone, AppConfig(theme = kr.dot.sb.model.Theme.PAPER), route = Routes.HOME)
+    @Test fun homeBar() = snap("home-bar", phone, route = Routes.HOME, e = bar)
+    @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
+    @Test fun theme() = snap("theme", tall, route = Routes.THEME)
+    @Test fun themeFold() = snap("theme-fold", fold, route = Routes.THEME)
     @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID, textSize = kr.dot.sb.model.TextSize.LARGE), route = Routes.THEME)
-    @Test fun homeBar() = snap("home-bar", phone, route = Routes.HOME, e = SettingsEnv(phone = Phone.BAR, foldable = false, granted = Perm.entries.associateWith { true }))
     @Test fun themeNight() = snap("theme-night", phone, route = Routes.THEME) { onNodeWithText("밤").performClick() }
     /** r10 preview pattern: scrolled past the full preview, the 96 dp mini overlays the top. */
     @Test fun themeMini() = snap("theme-mini", "w411dp-h560dp-port-xxhdpi", route = Routes.THEME) {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1400f) }
     }
-    @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
-    @Test fun boards() = snap("boards", tall, route = Routes.BOARDS)
+    /** Pages on/off: 사진 and 음악 switched off (dimmed, gone from 처음 보이는 페이지 and the preview). */
+    private val someOff = AppConfig().let { c -> c.copy(pagesOff = setOf("photos"), boards = c.boards.map { if (it.id == "music") it.copy(on = false) else it }) }
+    @Test fun pages() = snap("pages", tall, someOff, route = Routes.PAGES)
+    @Test fun pagesFold() = snap("pages-fold", foldTall, someOff, route = Routes.PAGES)
+    @Test fun pagesAdd() = snap("pages-add", phone, BoardOps.delete(AppConfig(), 0), route = Routes.PAGES) { onNodeWithText("페이지 추가").performScrollTo().performClick() }
+    @Test fun start() = snap("start", phone, someOff.copy(startPage = 5), route = Routes.START)
+    @Test fun widgets() = snap("widgets", tall, route = Routes.WIDGETS)
+    @Test fun widgetsFold() = snap("widgets-fold", fold, route = Routes.WIDGETS)
+    private val folders = AppConfig(photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"))
+    @Test fun photos() = snap("photos", tall, folders, route = Routes.PHOTOS)
+    @Test fun photosFold() = snap("photos-fold", foldTall, folders, route = Routes.PHOTOS)
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
@@ -81,11 +102,27 @@ class SettingsShots {
     @Test fun clockDigital() = snap("clock-digital", tall, route = Routes.clock(FaceId.DIGITAL))
     @Test fun clockAnalog() = snap("clock-analog", tall, route = Routes.clock(FaceId.ANALOG))
     @Test fun clockSolarFold() = snap("clock-solar-fold", foldTall, route = Routes.clock(FaceId.SOLAR))
-    @Test fun widgets() = snap("widgets", phone, route = Routes.WIDGETS)
+    @Test fun notif() = snap("notif", phone, route = Routes.NOTIF)
+    @Test fun notifFold() = snap("notif-fold", fold, route = Routes.NOTIF)
     @Test fun night() = snap("night", tall, route = Routes.NIGHT)
+    @Test fun nightFold() = snap("night-fold", foldTall, route = Routes.NIGHT)
     @Test fun nightNever() = snap("night-never", phone, AppConfig(displayOff = DisplayOff.NEVER), route = Routes.NIGHT)
-    @Test fun alarm() = snap("alarm", phone, route = Routes.ALARM)
-    @Test fun data() = snap("data", tall, route = Routes.DATA)
+    @Test fun nightLight() = snap("night-light", phone, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, nightMode = kr.dot.sb.model.NightMode.OFF), route = Routes.NIGHT)
+    @Test fun onoff() = snap("onoff", tall, route = Routes.ONOFF) { onNodeWithText("자세히").performScrollTo().performClick() }
+    @Test fun onoffFold() = snap("onoff-fold", foldTall, AppConfig(displayOff = DisplayOff.NEVER), route = Routes.ONOFF)
+    @Test fun sound() = snap("sound", phone, route = Routes.SOUND) { onNodeWithText("파도").performClick() }
+    @Test fun soundFold() = snap("sound-fold", fold, route = Routes.SOUND)
+    @Test fun alarm() = snap("alarm", tall, route = Routes.ALARM)
+    @Test fun alarmFold() = snap("alarm-fold", foldTall, route = Routes.ALARM)
+    @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALARM, e = bar)
+    @Test fun foldScreen() = snap("fold", tall, route = Routes.FOLD)
+    @Test fun foldScreenFold() = snap("fold-fold", foldTall, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.FOLD)
+    @Test fun weather() = snap("weather", phone, route = Routes.WEATHER) { onNodeWithText("자세히").performClick() }
+    @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.WEATHER) { onNodeWithText("자세히").performClick(); onNodeWithText("도시 더하기").performClick() }
+    @Test fun cardInfo() = snap("cardinfo", tall, AppConfig(excludedCalendars = setOf("com.google|me@example.com|대한민국 공휴일")), route = Routes.CARD_INFO)
+    @Test fun cardInfoFold() = snap("cardinfo-fold", foldTall, route = Routes.CARD_INFO, e = SettingsEnv(granted = mapOf(Perm.CALENDAR to false)))
     @Test fun perms() = snap("perms", tall, route = Routes.PERMS)
+    @Test fun permsFold() = snap("perms-fold", fold, route = Routes.PERMS)
     @Test fun about() = snap("about", phone, route = Routes.ABOUT) { onNodeWithText("Inter").performClick() }
+    @Test fun aboutFold() = snap("about-fold", fold, route = Routes.ABOUT)
 }

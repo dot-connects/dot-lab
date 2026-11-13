@@ -207,6 +207,8 @@ data class Board(
     val clockFace: FaceId = FaceId.DIGITAL,
     /** [SlotOptions] by "slotIdx:stackIdx"; [kr.dot.sb.settings.BoardOps] keeps the keys aligned with [slots]. */
     val options: Map<String, SlotOptions> = emptyMap(),
+    /** Off = stays in 페이지 구성 (dimmed) but leaves the pager (r10). */
+    val on: Boolean = true,
 )
 
 enum class NightMode(val ko: String) { AUTO("자동 (조도)"), SCHEDULE("시간 예약"), OFF("끔") }
@@ -285,7 +287,18 @@ data class AppConfig(
     val nightNotifQuiet: Boolean = true,
     /** Seconds per photo on the photos page. One of [PHOTO_INTERVAL_SEC]. */
     val photoIntervalSec: Int = 15,
+    /** Fixed pages switched off in 페이지 구성: [PAGE_WIDGETS] / [PAGE_PHOTOS] (the clock page is always on). */
+    val pagesOff: Set<String> = emptySet(),
+    val photoSource: PhotoSource = PhotoSource.PICKS,
+    /** Album (bucket) names for [PhotoSource.FOLDERS]. */
+    val photoFolders: List<String> = emptyList(),
 )
+
+const val PAGE_WIDGETS = "widgets"
+const val PAGE_PHOTOS = "photos"
+
+/** Where the photos page takes its pictures from (r10 사진 고르기). */
+enum class PhotoSource(val ko: String) { PICKS("추천: 즐겨찾기 + 최근"), RECENT("최근 사진"), FOLDERS("폴더 고르기") }
 
 val MOOD_AUTO_OFF_MIN = listOf(0, 3, 10, 15)
 val PHOTO_INTERVAL_SEC = listOf(10, 15, 30, 60, 300)

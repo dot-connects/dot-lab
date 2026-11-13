@@ -14,16 +14,16 @@ import android.provider.Settings
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 
-/** The things StandBy needs the user to grant, in the order the Permissions screen lists them (spec §4 "Setup rows"). */
+/** The eight things StandBy needs the user to grant, mockup `PERMS` order and plain names (r10 checklist). */
 enum class Perm(val ko: String, val why: String, val button: String) {
-    DREAM("화면 보호기로 선택", "충전 중 화면이 꺼질 때 스탠바이가 뜨게 해요", "선택하기"),
-    NOTIFICATIONS("알림 접근 허용", "큰 알림, 음악 재생, 알람을 읽어요", "허용하기"),
-    POST("알림 보내기 허용", "무드등과 알람 화면을 잠금 화면 위로 띄우는 데 필요해요", "허용하기"),
-    CALENDAR("캘린더 접근 허용", "오늘 일정 카드에 써요", "허용하기"),
-    PHOTOS("사진 접근 허용", "사진 화면과 추억 카드에 써요", "허용하기"),
-    FULL_SCREEN("전체 화면 알림 허용", "잠금 화면 위에 알람과 무드등을 띄워요", "허용하기"),
-    EXACT_ALARM("정확한 알람 허용", "알람 전에 미리 밝히기에 필요해요", "허용하기"),
-    BATTERY("배터리 최적화 제외", "밤새 켜져 있어도 앱이 멈추지 않게 해요", "설정 열기"),
+    DREAM("충전 중 스탠바이 띄우기", "충전 중 화면이 꺼질 때 스탠바이가 뜨게 해요", "선택하기"),
+    NOTIFICATIONS("알림 읽기", "큰 알림, 음악 재생, 알람을 읽어요", "허용하기"),
+    POST("알림 띄우기", "무드등과 알람 화면을 띄우는 데 필요해요", "허용하기"),
+    FULL_SCREEN("잠금 화면 위에 띄우기", "잠금 화면 위에 알람과 무드등을 띄워요", "허용하기"),
+    EXACT_ALARM("알람 시각 미리 알기", "알람 전에 미리 밝히기에 필요해요", "허용하기"),
+    CALENDAR("캘린더", "오늘 일정 카드에 써요", "허용하기"),
+    PHOTOS("사진", "사진 페이지와 추억 카드에 써요", "허용하기"),
+    BATTERY("밤새 멈추지 않게 하기", "밤새 켜져 있어도 앱이 멈추지 않게 해요", "설정 열기"),
 }
 
 object Perms {

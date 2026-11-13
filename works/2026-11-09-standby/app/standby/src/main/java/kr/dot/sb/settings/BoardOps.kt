@@ -5,6 +5,9 @@ import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.PAGE_PHOTOS
+import kr.dot.sb.model.PAGE_WIDGETS
+import kr.dot.sb.model.Presets
 import kr.dot.sb.ui.theme.Grid
 
 /**
@@ -62,8 +65,18 @@ object BoardOps {
         return c.copy(boards = c.boards.toMutableList().apply { add(i + 1, copy) }, startPage = start)
     }
 
+    /** The 작업 책상 board is fixed like 위젯 · 사진 · 시계 (r10): it can be switched off, never deleted. */
+    const val DESK = "desk"
+
+    fun deletable(b: Board) = b.id != DESK
+
+    /** Recommended boards that are not in the list (페이지 추가 offers them again after a delete). */
+    fun missingPresets(c: AppConfig): List<Board> = Presets.boards().filter { p -> c.boards.none { it.id == p.id } }
+
+    fun addPreset(c: AppConfig, b: Board): AppConfig = if (c.boards.any { it.id == b.id }) c else c.copy(boards = c.boards + b)
+
     fun delete(c: AppConfig, i: Int): AppConfig {
-        if (i !in c.boards.indices) return c
+        if (i !in c.boards.indices || !deletable(c.boards[i])) return c
         val page = FIRST_BOARD_PAGE + i
         val start = when { c.startPage == page -> 2; c.startPage > page -> c.startPage - 1; else -> c.startPage }
         return c.copy(boards = c.boards.filterIndexed { j, _ -> j != i }, startPage = start)
@@ -80,6 +93,41 @@ object BoardOps {
 
     fun replace(c: AppConfig, id: String, change: (Board) -> Board): AppConfig =
         c.copy(boards = c.boards.map { if (it.id == id) change(it) else it })
+}
+
+/**
+ * One StandBy page. [index] = its place in the full order (0 위젯, 1 사진, 2 시계, then the boards from 3), which is what
+ * `AppConfig.startPage` and `StandbyActions.pageChanged` carry, so switching a page off never re-points the start page.
+ */
+data class PageRef(val index: Int, val board: Board? = null) {
+    val id: String get() = board?.id ?: FIXED[index]
+
+    companion object { val FIXED = listOf(PAGE_WIDGETS, PAGE_PHOTOS, "clock") }
+}
+
+/** The pager's pages: one rule for StandBy, 처음 보이는 페이지 and the settings preview (r10 Pages on/off). */
+object Pages {
+    const val CLOCK = 2
+
+    fun all(c: AppConfig): List<PageRef> = (0 until BoardOps.FIRST_BOARD_PAGE).map { PageRef(it) } +
+        c.boards.mapIndexed { i, b -> PageRef(BoardOps.FIRST_BOARD_PAGE + i, b) }
+
+    fun isOn(c: AppConfig, p: PageRef): Boolean = p.board?.on ?: (p.index == CLOCK || p.id !in c.pagesOff)
+
+    fun visible(c: AppConfig): List<PageRef> = all(c).filter { isOn(c, it) }
+
+    /** Pager position of the start page; one that is off or gone falls back to the clock page. */
+    fun start(c: AppConfig): Int = visible(c).let { v -> v.indexOfFirst { it.index == c.startPage }.takeIf { it >= 0 } ?: v.indexOfFirst { it.index == CLOCK } }
+
+    /** Pager position of full-order [index], or null when that page is off or gone. */
+    fun position(c: AppConfig, index: Int): Int? = visible(c).indexOfFirst { it.index == index }.takeIf { it >= 0 }
+
+    /** Switch a page on or off (the clock page stays on). */
+    fun setOn(c: AppConfig, p: PageRef, on: Boolean): AppConfig = when {
+        p.board != null -> BoardOps.replace(c, p.board.id) { it.copy(on = on) }
+        p.index == CLOCK -> c
+        else -> c.copy(pagesOff = if (on) c.pagesOff - p.id else c.pagesOff + p.id)
+    }
 }
 
 /** Rectangle in device dp. */

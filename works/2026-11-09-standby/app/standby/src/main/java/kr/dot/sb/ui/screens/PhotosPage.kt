@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kotlinx.coroutines.delay
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.cards.Ic
@@ -73,8 +74,11 @@ private const val RECOMMENDED = "추천"
 internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: StandbyActions, active: Boolean) {
     val ink = LocalInk.current
     val act by rememberUpdatedState(actions)
-    val themes = remember(state.photoBuckets) { listOf(RECOMMENDED) + state.photoBuckets }
-    var theme by remember { mutableIntStateOf(0) }
+    // the chips are 사진 고르기 itself (r10): the theme shown comes from the config, a swipe writes it back
+    val themes = remember(state.photoBuckets, config.photoFolders) { (listOf(RECOMMENDED) + state.photoBuckets + config.photoFolders).distinct() }
+    val one = config.photoFolders.singleOrNull()?.takeIf { config.photoSource == PhotoSource.FOLDERS }
+    val theme = one?.let { themes.indexOf(it) } ?: 0
+    val cur by rememberUpdatedState(theme to themes)
     var pillKey by remember { mutableIntStateOf(0) }
     var pill by remember { mutableStateOf(false) }
     LaunchedEffect(pillKey) { if (pillKey > 0) { pill = true; delay(1_500); pill = false } }
@@ -85,8 +89,9 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
             detectVerticalDragGestures(
                 onDragStart = { dy = 0f },
                 onDragEnd = { if (abs(dy) > 48.dp.toPx()) {
-                    theme = Math.floorMod(theme + if (dy < 0) 1 else -1, themes.size); pillKey++
-                    act.photoTheme(themes.getOrNull(theme)?.takeIf { theme > 0 })
+                    val (t, list) = cur
+                    val next = Math.floorMod(t + if (dy < 0) 1 else -1, list.size); pillKey++
+                    act.photoTheme(list.getOrNull(next)?.takeIf { next > 0 })
                 } },
             ) { _, d -> dy += d }
         },

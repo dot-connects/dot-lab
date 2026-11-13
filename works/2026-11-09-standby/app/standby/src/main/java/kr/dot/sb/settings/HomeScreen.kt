@@ -45,8 +45,7 @@ internal const val FOLD_WHY = "갤럭시 폴드처럼 안쪽 화면이 큰 폰�
 
 /**
  * Home (mockup SCREENS.home): the page pager (scrolls with the list), the permission banner while any of the eight
- * permissions is missing, then four groups of rows, each showing its current value. Rows open the pre-r10 screens until
- * Task 11 ports them.
+ * permissions is missing, then four groups of rows, each showing its current value.
  */
 @Composable
 fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
@@ -56,11 +55,11 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
         if (missing.isNotEmpty()) PermBanner(Perm.entries.size, Perm.entries.size - missing.size) { nav.push(Routes.PERMS) }
         Section("화면") {
             item { NavRow("테마와 배경", { nav.push(Routes.THEME) }, value = config.theme.ko) }
-            item { NavRow("페이지 구성", { nav.push(Routes.BOARDS) }, subtitle = "위젯 · 사진 · 시계 + 내 페이지 ${config.boards.size}개") }
+            item { NavRow("페이지 구성", { nav.push(Routes.PAGES) }, subtitle = "위젯 · 사진 · 시계 + 내 페이지 ${config.boards.size}개") }
             item { NavRow("시계", { nav.push(Routes.CLOCKS) }, value = "내 시계 ${config.myClocks.size}개") }
             item {
                 val badge = need(Perm.NOTIFICATIONS)
-                NavRow("알림 표시", { nav.push(Routes.NIGHT) }, badge = badge, value = if (badge != null) null else if (config.showNotifications) "켜짐" else "꺼짐")
+                NavRow("알림 표시", { nav.push(Routes.NOTIF) }, badge = badge, value = if (badge != null) null else if (config.showNotifications) "켜짐" else "꺼짐")
             }
         }
         Section("밤과 꺼짐") {
@@ -75,46 +74,48 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
             item {
                 val badge = need(Perm.DREAM)
                 val off = when (config.displayOff) { DisplayOff.AUTO -> "어두워지면 꺼짐"; DisplayOff.AFTER_20S -> "20초 뒤 꺼짐"; DisplayOff.NEVER -> "계속 켜 둠" }
-                NavRow("켜짐과 꺼짐", { nav.push(Routes.NIGHT) }, badge = badge, value = if (badge != null) null else "${if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"} · $off")
+                NavRow("켜짐과 꺼짐", { nav.push(Routes.ONOFF) }, badge = badge, value = if (badge != null) null else "${if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"} · $off")
             }
-            item { NavRow("수면 소리", { nav.push(Routes.DATA) }, value = "${config.sleepSound.ko} · ${config.sleepMinutes}분") }
+            item { NavRow("수면 소리", { nav.push(Routes.SOUND) }, value = "${config.sleepSound.ko} · ${config.sleepMinutes}분") }
         }
         Section("알람과 폴드") {
             item { NavRow("알람", { nav.push(Routes.ALARM) }, value = if (config.alarmScreen) "스탠바이 화면" else "시계 앱 화면") }
             item {
                 val fold = env.phone == Phone.FOLD
                 NavRow(
-                    "폴드를 펼쳤을 때", { nav.push(Routes.ALARM) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "책 화면",
+                    "폴드를 펼쳤을 때", { nav.push(Routes.FOLD) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "책 화면",
                     enabled = fold, why = FOLD_WHY,
                 )
             }
         }
         Section("정보와 권한") {
-            item { NavRow("날씨와 도시", { nav.push(Routes.DATA) }, value = config.city.name) }
-            item { NavRow("카드에 쓰는 정보", { nav.push(Routes.DATA) }) }
+            item { NavRow("날씨와 도시", { nav.push(Routes.WEATHER) }, value = config.city.name) }
+            item { NavRow("카드에 쓰는 정보", { nav.push(Routes.CARD_INFO) }) }
             item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 켜짐" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }
             item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }) }
         }
     }
 }
 
-/** 테마와 배경 until Task 11 ports it: the theme strip and the 배경 · 글자 rows that used to sit on home. */
+/** 테마와 배경 (mockup SCREENS.theme): the theme strip, 글자 크기, 배경. The preview swipes on to every page (글자 크기 shows on 모듈러). */
 @Composable
 fun ThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
     Page("테마와 배경", back, preview = Preview(config, pageSlides(config))) {
         ThemePicker(config, update)
-        Section("배경 · 글자", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
+        Section(null) {
             item {
-                ControlRow("배경") {
+                ControlRow("글자 크기", note = "알림과 일정 글자가 바뀌어요. 큰 시계 숫자는 그대로예요. 미리보기를 옆으로 넘겨 일정이 있는 페이지에서 확인해요.") {
+                    Segmented(TextSize.entries.map { it.ko }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
+                }
+            }
+        }
+        Section("배경", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
+            item {
+                ControlRow(null) {
                     ChipFlow(BoardBg.entries.map { it.ko }, config.boardBg.ordinal, { i -> update { it.copy(boardBg = BoardBg.entries[i]) } })
                     if (config.boardBg == BoardBg.SOLID) {
                         ColorPalette(config.boardBgColor, { c -> update { it.copy(boardBgColor = c) } }, BG_SWATCHES, Modifier.padding(top = 8.dp))
                     }
-                }
-            }
-            item {
-                ControlRow("글자 크기", note = "알림 · 일정처럼 읽는 글씨만 바뀌어요. 시계 숫자는 그대로예요.") {
-                    Segmented(TextSize.entries.map { "${it.ko} ${(it.f * 100).toInt()}%" }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
                 }
             }
         }

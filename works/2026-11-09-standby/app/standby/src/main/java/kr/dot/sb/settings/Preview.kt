@@ -190,7 +190,11 @@ object Sample {
 // ---- r10 preview shell: one preview per screen, full at the top of the list, a 96 dp mini once it scrolls away --------
 
 /** What a slide draws for: the device, its orientation, and the sample state (night already decided). */
-class PreviewLook(val device: PreviewDevice, val portrait: Boolean, val night: Float, val state: StandbyState)
+class PreviewLook(val device: PreviewDevice, val portrait: Boolean, val night: Float, val state: StandbyState) {
+    /** Night only: how much darker the night brightness cap makes the screen (mockup `0.4 + nBright/50`, dimming only). */
+    var dim: Float = 0f
+        internal set
+}
 
 /** One slide: [name] under the frame, [draw] = the StandBy content at real device size. [start] = the "처음" page (home). */
 class Slide(val name: String, val start: Boolean = false, val draw: @Composable BoxScope.(PreviewLook) -> Unit)
@@ -205,6 +209,10 @@ class Preview(
     val caption: String? = null,
     val cards: Boolean = false,
     val fixed: PreviewDevice? = null,
+    /** The bar starts on 밤 (밤 화면). */
+    val night: Boolean = false,
+    /** false = taps reach the slide (the page editor's slots) instead of opening full screen. */
+    val full: Boolean = true,
 )
 
 /** The bar's choices, shared by the full preview and the mini (saved across rotation). */
@@ -229,7 +237,7 @@ private fun rememberLook(p: Preview, st: PreviewState, phone: Phone): PreviewLoo
     val portrait = p.fixed == null && st.portrait
     val night = if (st.night && p.config.nightApplies()) 1f else 0f
     val state = remember(p.config, night) { Sample.state(p.config, night) }
-    return PreviewLook(dev, portrait, night, state)
+    return PreviewLook(dev, portrait, night, state).also { if (night > 0f) it.dim = 1f - (0.4f + p.config.nightMaxBrightness * 2f).coerceAtMost(1f) }
 }
 
 private val PILL_BG = Color(0xD917181C)
@@ -285,7 +293,10 @@ private fun PreviewBar(p: Preview, st: PreviewState, phone: Phone) {
 /** One slide in its frame. In the phone list: landscape up to 250 dp tall, portrait 300 dp (mockup `.pv`). */
 @Composable
 private fun SlideFrame(s: Slide, look: PreviewLook, modifier: Modifier = Modifier, maxHeight: Dp = if (look.portrait) 300.dp else 250.dp, radius: Dp = 18.dp) {
-    PreviewFrame(look.device.width(look.portrait), look.device.height(look.portrait), modifier, maxHeight = maxHeight, radius = radius, night = look.night) { s.draw(this, look) }
+    PreviewFrame(
+        look.device.width(look.portrait), look.device.height(look.portrait), modifier, maxHeight = maxHeight, radius = radius, night = look.night,
+        overlay = { if (look.dim > 0f) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = look.dim))) /* literal-ok: dims the preview */ },
+    ) { s.draw(this, look) }
 }
 
 /** The full preview: bar, swipeable slides, caption. Tapping a slide asks for full screen ([onFull] gets its index). */
@@ -304,7 +315,7 @@ internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone:
             Column(Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth()) {
                     SlideFrame(s, look, Modifier.fillMaxWidth(), radius = if (p.cards) 16.dp else 18.dp)
-                    Box(Modifier.matchParentSize().clickable(onClickLabel = "전체 화면") { onFull(i) })
+                    if (p.full) Box(Modifier.matchParentSize().clickable(onClickLabel = "전체 화면") { onFull(i) })
                 }
                 if (p.cards) {
                     Row(Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -374,14 +385,23 @@ internal fun FullScreenPreview(p: Preview, st: PreviewState, phone: Phone, index
     }
 }
 
-/** The StandBy pages as preview slides in pager order (widgets, clock, boards), the start page marked. */
+/** The StandBy pages that are on ([Pages.visible]) as preview slides in pager order, the start page marked. */
 fun pageSlides(config: AppConfig): List<Slide> {
     val widgets = widgetsBoard(config)
     val face = ClockRegistry.pages(config.myClocks).first()
-    return listOf(
-        Slide("위젯", config.startPage <= 1) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) },
-        Slide("시계", config.startPage == 2) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) },
-    ) + config.boards.mapIndexed { i, b ->
-        Slide(b.name, config.startPage == BoardOps.FIRST_BOARD_PAGE + i) { l -> BoardView(b, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+    val pages = Pages.visible(config)
+    val start = pages.getOrNull(Pages.start(config))?.index
+    return pages.map { p ->
+        when (p.index) {
+            0 -> Slide("위젯", start == 0) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+            1 -> Slide("사진", start == 1) { l ->
+                val ink = kr.dot.sb.ui.theme.Ink.of(l.night, androidx.compose.ui.graphics.Color(config.clockStyle(kr.dot.sb.model.FaceId.DIGITAL).color), kr.dot.sb.ui.theme.LocalTheme.current)
+                androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.theme.LocalInk provides ink) {
+                    kr.dot.sb.ui.screens.PhotosPage(l.state, config, StandbyActions.NONE, active = false)
+                }
+            }
+            Pages.CLOCK -> Slide("시계", start == Pages.CLOCK) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
+            else -> Slide(p.board!!.name, start == p.index) { l -> BoardView(p.board, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+        }
     }
 }

@@ -37,6 +37,7 @@ import kr.dot.sb.platform.ChargeStart
 import kr.dot.sb.platform.ListenerBus
 import kr.dot.sb.platform.SleepService
 import kr.dot.sb.settings.ConfigStore
+import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.StandbyState
@@ -118,7 +119,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var lastPhotosAt = 0L
     private var memoryDay: LocalDate? = null
     private var lastCity = cfg.city
-    private var photoBucket: String? = null
+    /** Photo source last loaded ([AppConfig.photoSource] + folders); a change reloads the photos page. */
+    private var photoKey: Pair<PhotoSource, List<String>>? = null
 
     private var visibleJob: Job? = null
     private var pollJob: Job? = null
@@ -193,6 +195,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
                 }
                 pushUi()
                 publishHot()
+                if (photoKey != null && photoKey != (c.photoSource to c.photoFolders)) launch { reloadPhotos() }
                 if (c.city != lastCity) { lastCity = c.city; lastWeatherAt = 0; if (!_state.value.displayOff) launch { fetchWeather() } }
                 evaluate()
             }
@@ -410,9 +413,12 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private suspend fun reloadPhotos() {
         lastPhotosAt = el()
         val n = if (_state.value.memory != null) 2 else 3 // max 3 bitmaps in memory
-        val b = photoBucket
+        val c = cfg
+        photoKey = c.photoSource to c.photoFolders
         val have = _state.value.photoBuckets
-        val (p, buckets) = withContext(Dispatchers.IO) { DeviceSources.photos(ctx, n, b) to have.ifEmpty { DeviceSources.buckets(ctx) } }
+        val (p, buckets) = withContext(Dispatchers.IO) {
+            DeviceSources.photos(ctx, n, c.photoSource, c.photoFolders) to have.ifEmpty { DeviceSources.folders(ctx).take(12).map { it.first } }
+        }
         _state.update { it.copy(photos = p, photoBuckets = buckets) }
     }
 
@@ -482,8 +488,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (!_state.value.unfolded) ConfigStore.update(ctx) { it.copy(startPage = p) }
         if (p == 1 && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() }
     }
-    /** Photos page theme swipe: null = 추천, else an album name (spec P1). */
-    fun photoTheme(bucket: String?) { photoBucket = bucket; scope.launch { reloadPhotos() } }
+    /** Photos page theme swipe: null = 추천, else one album; written to the config like 사진 고르기 (one source of truth). */
+    fun photoTheme(bucket: String?) = ConfigStore.update(ctx) {
+        if (bucket == null) it.copy(photoSource = PhotoSource.PICKS) else it.copy(photoSource = PhotoSource.FOLDERS, photoFolders = listOf(bucket))
+    }
     fun mediaPlayPause() = media.playPause()
     fun mediaNext() = media.next()
     fun mediaPrev() = media.prev()

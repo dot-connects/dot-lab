@@ -19,6 +19,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.provider.CalendarContract
 import android.provider.MediaStore
+import kr.dot.sb.model.PhotoSource
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationManagerCompat
 import kr.dot.sb.platform.GlowScheduler
@@ -131,6 +132,25 @@ data class CalendarInfo(val id: Long, val accountType: String, val accountName: 
     val key: String get() = "$accountType|$accountName|$name"
 }
 
+/** One MediaStore image query: selection, its args, newest-first row limit. */
+data class PhotoQuery(val selection: String, val args: List<String>, val limit: Int)
+
+/** Which photos each 사진 고르기 mode reads (pure, so the choice is tested without a device). */
+object PhotoQueries {
+    private const val TAKEN = "${MediaStore.Images.Media.DATE_TAKEN}>0"
+    private val PICKS = listOf(PhotoQuery("${MediaStore.Images.Media.IS_FAVORITE}=1", emptyList(), 100), PhotoQuery(TAKEN, emptyList(), 200))
+
+    /** FOLDERS keeps the [folders] that still exist in [existing]; none left (or none picked) reads as PICKS. */
+    fun of(source: PhotoSource, folders: List<String>, existing: Set<String>): List<PhotoQuery> = when (source) {
+        PhotoSource.PICKS -> PICKS
+        PhotoSource.RECENT -> listOf(PhotoQuery(TAKEN, emptyList(), 200))
+        PhotoSource.FOLDERS -> folders.filter { it in existing }.distinct().let { f ->
+            if (f.isEmpty()) PICKS
+            else listOf(PhotoQuery("${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} IN (${f.joinToString(",") { "?" }})", f, 200))
+        }
+    }
+}
+
 /** Calendar, alarm clock, photos: each returns null when its permission is missing. Blocking: call from IO. */
 object DeviceSources {
     fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
@@ -224,12 +244,11 @@ object DeviceSources {
         }
     } catch (e: SecurityException) { emptyList() }
 
-    /** Up to [n] random photos from favourites + the 200 most recent, decoded to <= 1280 px. null = no permission. */
-    fun photos(ctx: Context, n: Int, bucket: String? = null): List<Photo>? {
+    /** Up to [n] random photos from [source] ([PhotoQueries]), decoded to <= 1280 px. null = no permission. */
+    fun photos(ctx: Context, n: Int, source: PhotoSource = PhotoSource.PICKS, folders: List<String> = emptyList()): List<Photo>? {
         if (!has(ctx, Manifest.permission.READ_MEDIA_IMAGES)) return null
-        val pool = if (bucket != null) rows(ctx, "${MediaStore.Images.Media.BUCKET_DISPLAY_NAME}=?", arrayOf(bucket), 200)
-        else (rows(ctx, "${MediaStore.Images.Media.IS_FAVORITE}=1", null, 100) +
-            rows(ctx, "${MediaStore.Images.Media.DATE_TAKEN}>0", null, 200)).distinctBy { it.id }
+        val existing = if (source == PhotoSource.FOLDERS) folders(ctx).map { it.first }.toSet() else emptySet()
+        val pool = PhotoQueries.of(source, folders, existing).flatMap { q -> rows(ctx, q.selection, q.args.toTypedArray().takeIf { it.isNotEmpty() }, q.limit) }.distinctBy { it.id }
         val out = ArrayList<Photo>(n)
         for (r in pool.shuffled()) {
             if (out.size >= n) break
@@ -238,10 +257,14 @@ object DeviceSources {
         return out
     }
 
-    /** Album names of the 500 most recent photos, most used first (max 12): the Photos page themes after 추천. */
-    fun buckets(ctx: Context): List<String> =
-        rows(ctx, "${MediaStore.Images.Media.DATE_TAKEN}>0", null, 500).map { it.bucket }.filter { it.isNotBlank() }
-            .groupingBy { it }.eachCount().entries.sortedByDescending { it.value }.take(12).map { it.key }
+    /** Every album with photos and its photo count, biggest first (사진 고르기 folder list, the photos page's chips). */
+    fun folders(ctx: Context): List<Pair<String, Int>> = try {
+        buildMap<String, Int> {
+            ctx.contentResolver.query(IMAGES, arrayOf(MediaStore.Images.Media.BUCKET_DISPLAY_NAME), null, null, null)?.use { c ->
+                while (c.moveToNext()) c.getString(0)?.takeIf { it.isNotBlank() }?.let { put(it, (get(it) ?: 0) + 1) }
+            }
+        }.entries.sortedByDescending { it.value }.map { it.key to it.value }
+    } catch (e: SecurityException) { emptyList() }
 
     /** A photo taken on today's day-of-year 1..15 years ago, or null. */
     fun memory(ctx: Context, today: LocalDate): Photo? {

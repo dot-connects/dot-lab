@@ -89,6 +89,10 @@ class SettingsActivity : ComponentActivity() {
                 pickWidget = ::pickWidget,
                 configureWidget = { id -> configure(id, fresh = false) },
                 widgetLabel = { id -> AppWidgetManager.getInstance(this).getAppWidgetInfo(id)?.let(::label) },
+                calendars = { kr.dot.sb.data.DeviceSources.calendars(this) },
+                photoFolders = { kr.dot.sb.data.DeviceSources.folders(this) },
+                playSample = ::playSample,
+                chargeTrail = { kr.dot.sb.platform.ChargeStart.trail(this) },
             )
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
                 RouteHost(route, config, ::update, nav, env)
@@ -171,6 +175,16 @@ class SettingsActivity : ComponentActivity() {
     private fun onPermClick(p: Perm) {
         val rp = Perms.runtimePermission(p)
         if (rp != null && checkSelfPermission(rp) != PackageManager.PERMISSION_GRANTED) { pending = p; requestPermission.launch(rp) } else Perms.open(this, p)
+    }
+
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val stopSample = Runnable { kr.dot.sb.platform.SleepService.stop(this) }
+
+    /** 수면 소리: 3 s of [s] through the real service (a new tap restarts the 3 s). */
+    private fun playSample(s: kr.dot.sb.model.SleepSound) {
+        main.removeCallbacks(stopSample)
+        runCatching { kr.dot.sb.platform.SleepService.start(this, s, 1) }
+        main.postDelayed(stopSample, 3_000)
     }
 
     private fun testGlow() {

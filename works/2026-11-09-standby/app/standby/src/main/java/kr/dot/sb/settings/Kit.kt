@@ -165,6 +165,9 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, tint: Color = SK.muted, enabled: Boolea
 /** True inside the left (preview) pane of a two-pane page: previews may use the pane's full height. */
 val LocalPreviewPane = compositionLocalOf { false }
 
+/** True on a two-pane page (Fold inner): [More] starts open there (consensus "자세히 open by default"). */
+val LocalTwoPane = compositionLocalOf { false }
+
 /**
  * A settings page. [preview] (r10) = the screen's live preview: on a phone it is the first item of the list, and once it
  * has scrolled away a 96 dp mini (+ [miniActions]) overlays the top without changing the list's height; a tap on the mini
@@ -182,7 +185,7 @@ fun Page(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val phone = LocalSettingsEnv.current.phone
-    val st = rememberSaveable(saver = PreviewState.Saver) { PreviewState() }
+    val st = rememberSaveable(saver = PreviewState.Saver) { PreviewState(night = preview?.night == true) }
     val pager = rememberPagerState(if (preview?.cards == true) preview.slides.indexOfFirst { it.start }.coerceAtLeast(0) else 0) { preview?.slides?.size ?: 0 }
     var full by remember { mutableStateOf<Int?>(null) }
     val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
@@ -203,7 +206,9 @@ fun Page(
                                 side?.invoke(this)
                             }
                         }
-                        Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+                        CompositionLocalProvider(LocalTwoPane provides true) {
+                            Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+                        }
                     }
                 } else {
                     if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
@@ -305,8 +310,9 @@ fun Pill(text: String, color: Color, modifier: Modifier = Modifier, filled: Bool
     ) { T(text, 12.sp, 700, if (filled) SK.bg else color, maxLines = 1) }
 }
 
+/** [why] = the reason under the title while disabled (mockup `.why`). */
 @Composable
-fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null, enabled: Boolean = true) {
+fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null, enabled: Boolean = true, why: String? = null) {
     val acc = LocalAccent.current
     Row(
         Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled) { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 10.dp),
@@ -314,7 +320,8 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
     ) {
         Column(Modifier.weight(1f)) {
             T(title, 16.sp, 500, if (enabled) SK.text else SK.muted)
-            if (subtitle != null) T(subtitle, 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
+            if (!subtitle.isNullOrEmpty()) T(subtitle, 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
+            if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
         }
         Spacer(Modifier.width(12.dp))
         Switch(
@@ -330,14 +337,77 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
 
 /** Title row with a body slot underneath (segmented control, chips, slider …). */
 @Composable
-fun ControlRow(title: String?, note: String? = null, value: String? = null, content: @Composable ColumnScope.() -> Unit) {
+fun ControlRow(title: String?, note: String? = null, value: String? = null, enabled: Boolean = true, why: String? = null, content: @Composable ColumnScope.() -> Unit) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
         if (title != null) Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            T(title, 16.sp, 500, Modifier.weight(1f))
+            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted, Modifier.weight(1f))
             if (value != null) T(value, 14.sp, 500, SK.muted)
         }
         content()
-        if (note != null) T(note, 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp), lineHeight = 18.sp)
+        if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 8.dp), lineHeight = 18.sp)
+        else if (note != null) T(note, 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp), lineHeight = 18.sp)
+    }
+}
+
+/** Radio row (mockup 밤 화면): a full-width choice with a one-line description. */
+@Composable
+fun RadioRow(title: String, subtitle: String?, selected: Boolean, onClick: () -> Unit, enabled: Boolean = true, why: String? = null) {
+    val acc = LocalAccent.current
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.size(22.dp).border(2.dp, if (selected && enabled) acc else SK.muted, CircleShape), Alignment.Center) {
+            if (selected) Box(Modifier.size(11.dp).clip(CircleShape).background(if (enabled) acc else SK.muted))
+        }
+        Column(Modifier.weight(1f).padding(start = 14.dp)) {
+            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted)
+            if (subtitle != null) T(subtitle, 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
+            if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
+        }
+    }
+}
+
+/** "자세히" (mockup `more()`): folded rows; open from the start on a two-pane page. */
+@Composable
+fun More(content: @Composable ColumnScope.() -> Unit) {
+    var open by rememberSaveable { mutableStateOf<Boolean?>(null) }
+    val shown = open ?: LocalTwoPane.current
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            Modifier.padding(top = 16.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(50)).clickable { open = !shown }.padding(horizontal = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            T("자세히", 14.sp, 600, SK.muted)
+            Icon(if (shown) Ic.UP else Ic.DOWN, SK.muted, 18.dp, Modifier.padding(start = 4.dp))
+        }
+        if (shown) content()
+    }
+}
+
+/** Named colour presets in one row + 직접 고르기 (mockup `.named`: 무드등 색). */
+@Composable
+fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChange: (Long) -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    val custom = names.none { it.second == color }
+    Column(Modifier.fillMaxWidth()) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            names.forEach { (n, c) -> NamedDot(n, c.c(), c == color) { onChange(c) } }
+            NamedDot("직접 고르기", null, custom || open) { open = !open }
+        }
+        if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp))
+    }
+}
+
+@Composable
+private fun NamedDot(name: String, color: Color?, on: Boolean, onClick: () -> Unit) {
+    Column(Modifier.width(64.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Box(Modifier.size(44.dp), Alignment.Center) {
+            if (on) Box(Modifier.size(42.dp).border(2.dp, Color.White, CircleShape))
+            if (color != null) Box(Modifier.size(30.dp).clip(CircleShape).background(color))
+            else Canvas(Modifier.size(30.dp).clip(CircleShape)) {
+                drawCircle(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))
+                drawCircle(Color.White, radius = size.minDimension * 0.18f)
+            }
+        }
+        T(name, 11.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 2, align = TextAlign.Center)
     }
 }
 
