@@ -22,12 +22,18 @@ import kotlin.math.roundToInt
 import kotlin.random.Random
 
 /**
- * Gyro critters (no AR): three fur critters, each pinned to a world azimuth (rotation-vector yaw) in the lower
- * third of the screen. Turning the phone pans them across the view. Each spawn faces a random way (dir0..7, R16);
- * a caught one leaves and another appears at a new azimuth.
+ * Fur critters. Camera mode (gyro, no AR): three, each pinned to a world azimuth (rotation-vector yaw); turning the
+ * phone pans them across the view. Scene mode (camera off, SceneSource): six standing still on the drawn floor.
+ * Both use perspective (operator 11-13): the higher a critter stands (further away), the smaller it is, times a
+ * random size each. Each spawn faces a random way (dir0..7, R16); a caught one leaves and another appears.
  */
-class Critters(private val ctx: Context, private val rnd: Random = Random.Default) : CritterSource, SensorEventListener {
-    private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val pic: Bitmap) {
+class Critters(
+    private val ctx: Context,
+    private val scene: Boolean = false,
+    private val rnd: Random = Random.Default,
+) : CritterSource, SensorEventListener {
+    /** az: world azimuth (camera mode) or screen x 0..1 (scene mode). */
+    private class One(val id: String, val dir: Int, val az: Float, val feet01: Float, val size: Float, val pic: Bitmap) {
         val rect = RectF()   // view px, updated each frame
         var onScreen = false
     }
@@ -43,10 +49,11 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
     private val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x33000000 }
 
-    /** critter_scale x the web figure (a creature ~40% of the screen height): 1/4 -> ~10% of the height. */
+    /** critter_scale x the web figure (a creature ~40% of the screen height): the nearest one at 0.25 is 10 % of it. */
     private val heightFrac get() = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getFloat("critter_scale", 0.25f) * 0.4f
 
     override fun start() {
+        if (scene) return
         sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
@@ -65,11 +72,11 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
 
     override fun masks(map: ScreenMap): List<Mask> {
         fill()
-        val h = map.viewH * heightFrac
         val out = ArrayList<Mask>(live.size)
         for (c in live) {
+            val h = map.viewH * heightFrac * perspective(c.feet01) * c.size
             val w = h * c.pic.width / c.pic.height
-            val cx = map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
+            val cx = if (scene) c.az * map.viewW else map.viewW / 2 + diff(c.az, yaw) / FOV_DEG * map.viewW
             val feet = c.feet01 * map.viewH
             c.rect.set(cx - w / 2, feet - h, cx + w / 2, feet)
             c.onScreen = c.rect.right > 0 && c.rect.left < map.viewW
@@ -82,7 +89,7 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
     }
 
     override fun draw(cv: Canvas, map: ScreenMap, held: String?, dy: Float) {
-        for (c in live) {
+        for (c in live.sortedBy { it.feet01 }) {   // far ones first
             if (!c.onScreen) continue
             val r = c.rect
             if (c.id != held) cv.drawOval(r.left + r.width() * 0.1f, r.bottom - r.height() * 0.06f, r.right - r.width() * 0.1f, r.bottom + r.height() * 0.06f, shadow)
@@ -98,26 +105,42 @@ class Critters(private val ctx: Context, private val rnd: Random = Random.Defaul
         return "dir${c.dir}" to cutOf(c.pic, c.rect, map)
     }
 
-    /** Keep three on stage, at least 20 degrees apart (and away from the one just caught). */
+    /** Keep the stage full: camera mode 3, at least 20 degrees apart; scene mode 6, not standing on each other. */
     private fun fill() {
         if (ids.isEmpty()) return
-        while (live.size < COUNT) {
+        val count = if (scene) SCENE_COUNT else COUNT
+        while (live.size < count) {
             val free = ids.filter { id -> live.none { it.id == id } }.ifEmpty { return }
             val id = free[rnd.nextInt(free.size)]
             var az = yaw
-            for (i in 0 until 12) {
-                az = yaw + (rnd.nextFloat() * 2 - 1) * SPREAD_DEG
-                val taken = live.map { it.az } + listOfNotNull(lastCaughtAz)
-                if (taken.all { abs(diff(az, it)) >= 20f }) break
+            var feet = 0f
+            for (i in 0 until 16) {
+                feet = FEET_MIN + rnd.nextFloat() * (FEET_MAX - FEET_MIN)
+                if (scene) {
+                    az = 0.1f + rnd.nextFloat() * 0.8f
+                    if (live.all { abs(it.az - az) > 0.16f || abs(it.feet01 - feet) > 0.07f }) break
+                } else {
+                    az = yaw + (rnd.nextFloat() * 2 - 1) * SPREAD_DEG
+                    val taken = live.map { it.az } + listOfNotNull(lastCaughtAz)
+                    if (taken.all { abs(diff(az, it)) >= 20f }) break
+                }
             }
             val dir = rnd.nextInt(8)
             val pic = Frames.asset(ctx, id, "dir$dir")?.let(Frames::trim) ?: return
-            live += One(id, dir, az, 0.78f + rnd.nextFloat() * 0.12f, pic)
+            live += One(id, dir, az, feet, 0.8f + rnd.nextFloat() * 0.4f, pic)
         }
     }
 
     companion object {
         const val COUNT = 3
+        const val SCENE_COUNT = 6
+        /** Feet line range (share of the view height): FEET_MIN is the far edge of the floor. */
+        const val FEET_MIN = 0.6f
+        const val FEET_MAX = 0.93f
+
+        /** Size by distance: 0.45 at the far edge .. 1.0 at the near edge. */
+        fun perspective(feet01: Float): Float =
+            0.45f + 0.55f * ((feet01 - FEET_MIN) / (FEET_MAX - FEET_MIN)).coerceIn(0f, 1f)
         // ponytail: fixed horizontal field of view of the portrait preview; calibrate on the real phone
         const val FOV_DEG = 40f
         const val SPREAD_DEG = 60f

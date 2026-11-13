@@ -17,6 +17,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.waitForUpOrCancellation
@@ -58,6 +61,8 @@ import kr.dot.catchpet.ar.ArCritters
 import kr.dot.catchpet.camera.ArSource
 import kr.dot.catchpet.camera.CameraXSource
 import kr.dot.catchpet.camera.FrameSource
+import kr.dot.catchpet.camera.SceneSource
+import kr.dot.catchpet.ar.Critters
 import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.game.Capsule
 import kr.dot.catchpet.game.Claw
@@ -96,21 +101,41 @@ object NoCritters : CritterSource { override fun masks(map: ScreenMap): List<Mas
 @Composable
 fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenDex: () -> Unit) {
     val ctx = LocalContext.current
+    val prefs = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE) }
     var granted by remember { mutableStateOf(ctx.checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) }
-    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it }
-    LaunchedEffect(Unit) { if (!granted) ask.launch(Manifest.permission.CAMERA) }
-    if (!granted) {
-        Column(
-            Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF101114)).padding(24.dp),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text("카메라를 켜야 녀석을 뽑을 수 있어요.", color = androidx.compose.ui.graphics.Color.White, fontSize = 17.sp)
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = { ask.launch(Manifest.permission.CAMERA) }) { Text("카메라 켜기") }
-        }
-        return
+    var cameraOff by remember { mutableStateOf(prefs.getBoolean("camera_off", false)) }
+    val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it; if (it) cameraOff = false }
+    LaunchedEffect(Unit) { if (!granted && !cameraOff) ask.launch(Manifest.permission.CAMERA) }
+    Box(Modifier.fillMaxSize()) {
+        if (!granted || cameraOff) SceneCatch(ctx, sink, dexCount, onOpenDex)
+        else CameraCatch(ctx, sink, critters, dexCount, onOpenDex)
+        // camera on/off, like the AR switch in Pokémon GO (operator 11-13)
+        Text(
+            if (!granted || cameraOff) "카메라 켜기" else "카메라 끄기",
+            color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp,
+            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(start = 12.dp, top = 10.dp)
+                .background(androidx.compose.ui.graphics.Color(0x66000000), RoundedCornerShape(50))
+                .clickable {
+                    when {
+                        cameraOff -> { cameraOff = false; prefs.edit().putBoolean("camera_off", false).apply(); if (!granted) ask.launch(Manifest.permission.CAMERA) }
+                        !granted -> ask.launch(Manifest.permission.CAMERA)
+                        else -> { cameraOff = true; prefs.edit().putBoolean("camera_off", true).apply() }
+                    }
+                }
+                .padding(horizontal = 12.dp, vertical = 7.dp),
+        )
     }
+}
 
+@Composable
+private fun SceneCatch(ctx: Context, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit) {
+    val src = remember { SceneSource() }
+    val crit = remember { Critters(ctx.applicationContext, scene = true) }
+    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
+}
+
+@Composable
+private fun CameraCatch(ctx: Context, sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenDex: () -> Unit) {
     val owner = LocalLifecycleOwner.current
     // developer switch "AR 털 녀석": ARCore when it is installed and a session opens; any failure -> CameraX + gyro
     val wantAr = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getBoolean("ar", false) }
@@ -267,7 +292,7 @@ private class CatchGame(
         targets = if (m == null) emptyList() else seg.masks + critters.masks(m)
         // sway (mockup): the hub lags behind fast aiming
         val acc = (c.x - lastX) * w; lastX = c.x
-        vsw += (-swing * 0.012f - acc * 0.0009f) * dt
+        vsw += (-swing * 0.012f + acc * 0.0009f) * dt   // + : a positive swing tilts the claw left (canvas rotate), so it trails the move
         vsw *= 0.992f.pow(dt)
         swing = (swing + vsw * dt * 0.06f).coerceIn(-0.3f, 0.3f)
         pulse = max(0f, pulse - dt / 500f)
