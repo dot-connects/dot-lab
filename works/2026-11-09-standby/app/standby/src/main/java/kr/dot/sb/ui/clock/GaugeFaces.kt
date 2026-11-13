@@ -1,17 +1,15 @@
 package kr.dot.sb.ui.clock
 
-import android.content.BroadcastReceiver
-import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.os.BatteryManager
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.foundation.layout.Box
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
@@ -176,58 +174,61 @@ internal fun DayBarFace(
     }
 }
 
+/** One sticky read, no receiver: StandBy closes when the charger goes out, so the value cannot go stale on screen. */
 @Composable
 private fun chargingNow(): Boolean {
     val context = LocalContext.current
-    val charging = remember { mutableStateOf(false) }
-    DisposableEffect(context) {
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                charging.value = (intent?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
-            }
-        }
-        context.registerReceiver(receiver, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        onDispose { context.unregisterReceiver(receiver) }
+    return remember(context) {
+        (context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0) != 0
     }
-    return charging.value
 }
 
 @Composable
 internal fun RimFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
-    val charging = chargingNow()
-    val second = if (charging) rememberSecond().intValue else null
+    // read only in the dot layer's draw lambda: the time and caption never re-lay-out per second
+    val second = if (chargingNow()) rememberSecond() else null
     val painter = rememberTimePainter(style)
     val label = rememberUi(500)
     val look = Look.of(style, ink)
-    FaceCanvas(modifier) {
-        val w = size.width; val h = size.height
-        val compact = min(w, h).toDp() < 120.dp
-        val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
-        val cap = painter.capEm * fs
-        if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
-        val active = ink.accent(Color(style.rimColor ?: FaceDefaults.RIM)).toArgb()
-        val inactive = ink.ink3.toArgb()
-        val inset = min(w, h) * 0.05f
-        val radius = min(w, h) * (44f / 360f)
-        val dots = (0 until 60).map { rimDot(it, w, h, inset, radius) }
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        label.textSize = min(w, h) * 0.053f
-        // c-rim: "월요일 · 11월 9일 · 7° · ⏰ 6:30" 29 dp (of 360) under the digits' baseline, the pair centred
-        val dim = ink.ink2.toArgb()
-        val caption = if (!style.showInfo || inSlot) null else buildList {
-            add(Seg(d.infoLine(), dim))
-            d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
-        }.let { if (label.width(it) <= w * 0.78f) it else listOf(Seg(d.infoLine(), dim)) }
-        val gap = 29 * min(w, h) / 360f
-        val group = cap + if (caption == null) 0f else gap + label.capRatio() * label.textSize
-        val capTop = (h - group) / 2
-        return@FaceCanvas {
-            dots.forEachIndexed { i, (x, y) ->
-                dotPaint.color = if (second?.let { i <= it } ?: (i == d.now.minute)) active else inactive
-                drawCircle(x, y, min(w, h) * (if (i % 5 == 0) 5f else 3f) / 360f, dotPaint)
+    Box(modifier) {
+        // 60 rim dots on their own layer, the only thing that redraws each second
+        FaceCanvas(Modifier.graphicsLayer()) {
+            val w = size.width; val h = size.height
+            if (min(w, h).toDp() < 120.dp) return@FaceCanvas {} // compact: digits only
+            val active = ink.accent(Color(style.rimColor ?: FaceDefaults.RIM)).toArgb()
+            val inactive = ink.ink3.toArgb()
+            val inset = min(w, h) * 0.05f
+            val radius = min(w, h) * (44f / 360f)
+            val dots = (0 until 60).map { rimDot(it, w, h, inset, radius) }
+            val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+            return@FaceCanvas {
+                val sec = second?.intValue
+                dots.forEachIndexed { i, (x, y) ->
+                    dotPaint.color = if (sec?.let { i <= it } ?: (i == d.now.minute)) active else inactive
+                    drawCircle(x, y, min(w, h) * (if (i % 5 == 0) 5f else 3f) / 360f, dotPaint)
+                }
             }
-            drawTime(painter, d, fs, false, 0f, w / 2, capTop, look)
-            if (caption != null) drawSegs(caption, (w - label.width(caption)) / 2, capTop + group, label)
+        }
+        FaceCanvas(Modifier) {
+            val w = size.width; val h = size.height
+            val compact = min(w, h).toDp() < 120.dp
+            val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
+            val cap = painter.capEm * fs
+            if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
+            label.textSize = min(w, h) * 0.053f
+            // c-rim: "월요일 · 11월 9일 · 7° · ⏰ 6:30" 29 dp (of 360) under the digits' baseline, the pair centred
+            val dim = ink.ink2.toArgb()
+            val caption = if (!style.showInfo || inSlot) null else buildList {
+                add(Seg(d.infoLine(), dim))
+                d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
+            }.let { if (label.width(it) <= w * 0.78f) it else listOf(Seg(d.infoLine(), dim)) }
+            val gap = 29 * min(w, h) / 360f
+            val group = cap + if (caption == null) 0f else gap + label.capRatio() * label.textSize
+            val capTop = (h - group) / 2
+            return@FaceCanvas {
+                drawTime(painter, d, fs, false, 0f, w / 2, capTop, look)
+                if (caption != null) drawSegs(caption, (w - label.width(caption)) / 2, capTop + group, label)
+            }
         }
     }
 }

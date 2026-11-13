@@ -288,14 +288,14 @@ object DeviceSources {
     private fun decode(ctx: Context, r: Row, yearsAgo: Int?): Photo? = runCatching {
         val uri = ContentUris.withAppendedId(IMAGES, r.id)
         val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { dec, info, _ ->
-            var s = 1
-            while (maxOf(info.size.width, info.size.height) / (s * 2) >= 1280) s *= 2 // inSampleSize: no full-size bitmap in memory
-            dec.setTargetSampleSize(s)
+            // decode straight to <= 1280 px (one bitmap, no full-size or scale copy); size is post-EXIF, rotation is kept
+            val k = 1280f / maxOf(info.size.width, info.size.height)
+            if (k < 1f) dec.setTargetSize((info.size.width * k).toInt().coerceAtLeast(1), (info.size.height * k).toInt().coerceAtLeast(1))
             dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
         }
         val taken = Instant.ofEpochMilli(r.takenMs).atZone(ZoneId.systemDefault()).toLocalDate()
         // no reverse geocoding: the album name stands in for the place, and the camera roll has none worth showing
         val place = if (r.bucket.equals("Camera", true)) "" else r.bucket
-        Photo(MediaSource.scaleDown(bmp, 1280).asImageBitmap(), place, taken.format(DATE), yearsAgo, uri.toString())
+        Photo(bmp.asImageBitmap(), place, taken.format(DATE), yearsAgo, uri.toString())
     }.getOrNull()
 }

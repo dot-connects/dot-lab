@@ -66,7 +66,7 @@ private const val RECOMMENDED = "추천"
 
 /**
  * Photos page (design §4.4): photo fills, 1 s crossfade every `photoIntervalSec` (r10, default 15 s), Ken Burns to
- * 1.04 per photo; the photo and its scrim overscan for the burn-in shift; time top-right in
+ * 1.04 per photo by day (none at night); the photo and its scrim overscan for the burn-in shift; time top-right in
  * the photos time style; place + date bottom-right on a scrim; theme pill right-middle on a vertical swipe.
  * [active] = the page is settled and uncovered; nothing animates otherwise.
  */
@@ -151,7 +151,9 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
 @Composable
 private fun KenBurns(p: Photo, night: Float, active: Boolean, shuffleMs: Long) {
     val k = remember { Animatable(1f) }
-    LaunchedEffect(active) { if (active) k.animateTo(1.04f, tween((shuffleMs + 1_000).toInt(), easing = LinearEasing)) }
+    // day only: at night the photo holds still, so the page draws nothing between swaps (no frame every vsync all night)
+    val zoom = active && night < 0.5f
+    LaunchedEffect(zoom) { if (zoom) k.animateTo(1.04f, tween((shuffleMs + 1_000).toInt(), easing = LinearEasing)) }
     Image(
         p.image, null,
         Modifier.fillMaxSize().graphicsLayer { scaleX = k.value; scaleY = k.value },
