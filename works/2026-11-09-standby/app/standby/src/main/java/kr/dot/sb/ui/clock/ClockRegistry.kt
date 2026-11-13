@@ -149,8 +149,8 @@ fun spec(id: FaceId): ClockSpec {
             listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, DAY_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
         )
         FaceId.PHOTOS_TIME -> c(Family.CLASSIC, "사진 위 시간", listOf(TEXT_COLOR, SIZE, FONT), listOf(WEIGHT, StyleRow.FX), built = true)
-        FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT))
-        FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), ours = true)
+        FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
+        FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), ours = true, built = true)
         FaceId.WORLD -> c(Family.GAUGE, "세계", listOf(CITY_COLOR, LIT_COLOR, SIZE, FONT), DT, built = true)
     }
 }
