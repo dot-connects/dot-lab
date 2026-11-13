@@ -345,7 +345,7 @@ private class CatchGame(
                 say(when {
                     r.target == null -> "헛집었다"
                     r.slipped -> "놓쳤다! 흔들려서 빠졌어요"
-                    else -> "아깝다! (${(r.p * 100).roundToInt()}%)"
+                    else -> "아깝다!"
                 }, false)
                 next()
             }
@@ -375,6 +375,7 @@ private class CatchGame(
         if (before == Claw.St.UP && c.st == Claw.St.CARRY) dangle.kick(if (dangle.rot >= 0f) 0.03f else -0.03f)   // the stop at the top
         val cap = if (critter) Dangle.CAP_CRITTER else Dangle.CAP_PHOTO
         // the arms: spread past the body's sides as the claw settles on it, then close in under its widest point
+        if (before == Claw.St.DOWN) hugTop = Claw.TIP * 0.5f
         if (c.st == Claw.St.GRIP) now?.let { hugTop = m.gridToViewY(it.y0.toFloat()) / d - c.y }
         if (c.bodyW > 0f) {
             val o = ((c.open - c.minOpen) / max(1e-3f, 1f - c.minOpen)).coerceIn(0f, 1f)

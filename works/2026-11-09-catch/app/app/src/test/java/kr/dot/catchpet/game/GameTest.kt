@@ -73,8 +73,8 @@ class ClawTest {
 
     @Test fun chanceCentreEdgeOutside() {
         val m = body(30, 60, 100, 140)
-        assertEquals(0.55f, chance(m, 45, 100), 1e-4f)
-        assertEquals(0.10f, chance(m, 60, 100), 1e-4f)
+        assertEquals(0.80f, chance(m, 45, 100), 1e-4f)
+        assertEquals(0.35f, chance(m, 60, 100), 1e-4f)
         assertEquals(0f, chance(m, 80, 100), 1e-4f)
     }
 

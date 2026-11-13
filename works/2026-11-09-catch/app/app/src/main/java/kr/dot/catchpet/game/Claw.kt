@@ -4,11 +4,11 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.min
 
-/** Grab chance at mask column cx, grab row `row`: 0.55 at the body's centre .. 0.10 at its edge, 0 off the body (operator 11-13). */
+/** Grab chance at mask column cx, grab row `row`: 0.80 at the body's centre .. 0.35 at its edge, 0 off the body (operator 11-14: was 0.55..0.10, too low). */
 fun chance(m: Mask, cx: Int, row: Int): Float {
     val span = m.spanInBand(row, 18) ?: return 0f
     if (cx < span.first - 2 || cx > span.last + 2) return 0f
-    return 0.55f - 0.45f * offCentre(cx, span)
+    return 0.80f - 0.45f * offCentre(cx, span)
 }
 
 /** The same thing in another frame: a critter by its id, a real one by kind family (person / animal). */
@@ -85,12 +85,17 @@ class Claw(
                 y += dtMs * DOWN_SPEED
                 val tipY = y + TIP
                 val (mx, my) = toMask(x * screenW, tipY)
+                // the hub's underside stops on a body's top too (a side hit must not sink the hub into it)
+                val hubRow = toMask(x * screenW, y + HUB_BOTTOM).second
                 var best: Pair<Mask, Int>? = null
                 for (m in targets) {
-                    val row = m.firstRowInColumn(mx) ?: continue
+                    val col = m.firstRowInColumn(mx)
+                    val bx = m.box
+                    val onHub = bx != null && mx in bx.x0..bx.x1 && hubRow >= bx.y0 + (bx.y1 - bx.y0) / 10
+                    val row = when { col != null && my >= col -> col; onHub -> col ?: bx!!.y0; else -> continue }
                     if (best == null || row < best.second) best = m to row
                 }
-                if (best != null && my >= best.second) {
+                if (best != null) {
                     val m = best.first
                     result = Result(win = false, p = chance(m, mx, best.second), target = m, hitRow = best.second)
                     m.box?.let {
@@ -101,6 +106,12 @@ class Claw(
                         bodyW = it.w / cx; bodyH = (it.y1 - it.y0 + 1) / cy
                     }
                     dig = min(DIG_SHARE * bodyH, DIG_MAX)
+                    // never dig the hub more than a tenth of the body below its top
+                    m.box?.let { bx ->
+                        val (_, gy0) = toMask(0f, 0f); val cy = max(1e-3f, (toMask(0f, 100f).second - gy0) / 100f)
+                        val topPx = (bx.y0 - gy0) / cy
+                        dig = dig.coerceAtMost(max(0f, topPx + 0.1f * bodyH - (y + HUB_BOTTOM)))
+                    }
                     minOpen = ((0.75f * bodyW / 2f - 8f) / 20f).coerceIn(0f, 0.6f)
                     contactY = y
                     motion = 0f
@@ -181,6 +192,7 @@ class Claw(
         const val DOWN_SPEED = 0.26f   // px/ms
         const val UP_SPEED = 0.15f
         const val TIP = 44f
+        const val HUB_BOTTOM = 10f   // the hub's underside below its centre
         const val MOTION_CUT = 0.5f    // moved half its width (or more) while gripping -> chance halved
         const val SLIP_MS = 200f
         const val DIG_MS = 140f

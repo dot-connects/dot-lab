@@ -22,7 +22,7 @@ class ClawShotTest {
         val pic = Frames.asset(ctx, Critters.ids(ctx).first(), "dir0")!!.let(Frames::trim)
         val scale = 2f   // dp -> px
         val cell = 170f
-        val frames = listOf("idle" to 0, "touch" to 1, "spread" to 2, "hug" to 3, "lift" to 4)
+        val frames = listOf("idle" to 0, "touch" to 1, "spread" to 2, "hug" to 3, "lift" to 4, "side" to 5)
         val b = Bitmap.createBitmap((cell * frames.size * 2 * scale).toInt(), (330 * scale).toInt(), Bitmap.Config.ARGB_8888)
         val cv = Canvas(b); cv.drawColor(0xFF9FD07F.toInt()); cv.scale(scale, scale)
         val paint = Paint(Paint.FILTER_BITMAP_FLAG)
@@ -43,6 +43,7 @@ class ClawShotTest {
                     2 -> arms = ClawArt.on(ClawArt.Body(w / 2, body.top - hubY, h), 1f)
                     3 -> arms = ClawArt.on(ClawArt.Body(w / 2, body.top - hubY, h), 0f)
                     4 -> { arms = ClawArt.on(ClawArt.Body(w / 2, body.top - hubY, h), 0f); lift = -90f }
+                    5 -> { hubY = body.top + 0.1f * h - 10f; arms = ClawArt.on(ClawArt.Body(w / 2, body.top - hubY, h), 0f) }   // side hit: hub below the top
                 }
                 cv.save()
                 if (step == 4) cv.rotate(4f, cx, 20f)

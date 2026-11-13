@@ -34,8 +34,9 @@ object ClawArt {
      */
     fun on(body: Body, open: Float): Arms {
         val a = min(body.a, MAX_SPREAD)
-        val hugL = min(body.top + body.h * 0.6f, MAX_REACH)
-        val openL = min(body.top + body.h * 0.42f, MAX_REACH)
+        // a side hit puts the body's top level with (or above) the hub: the arms still reach down past their joints
+        val hugL = (body.top + body.h * 0.6f).coerceIn(MIN_REACH, MAX_REACH)
+        val openL = (body.top + body.h * 0.42f).coerceIn(MIN_REACH - 8f, MAX_REACH)
         val hugS = a * 0.86f
         val openS = a + 12f
         val o = open.coerceIn(0f, 1f)
@@ -47,6 +48,7 @@ object ClawArt {
 
     const val MAX_SPREAD = 64f
     const val MAX_REACH = 120f
+    const val MIN_REACH = 44f   // the idle tips' depth (Claw.TIP)
 
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
     private val stroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeJoin = Paint.Join.ROUND }
