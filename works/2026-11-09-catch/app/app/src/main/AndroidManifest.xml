@@ -14,7 +14,7 @@
     <application
         android:allowBackup="false"
         android:icon="@android:drawable/sym_def_app_icon"
-        android:label="우리집 몬스터"
+        android:label="리얼뽑기"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <!-- AR is an opt-in experiment: never ask Play to require or install ARCore -->

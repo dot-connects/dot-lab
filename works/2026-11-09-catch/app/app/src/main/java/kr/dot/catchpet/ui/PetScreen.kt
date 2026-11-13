@@ -153,7 +153,7 @@ fun PetScreen(onBack: () -> Unit) {
                     }
                     if (home || lock) {
                         Text(
-                            "홈·잠금화면의 녀석은 배경화면 '우리집 몬스터'가 그려요. 잠금화면은 배경화면을 '홈 및 잠금화면'에 지정해야 하고, 폰에 따라 안 될 수 있어요.",
+                            "홈·잠금화면의 녀석은 배경화면 '리얼뽑기 펫'이 그려요. 잠금화면은 배경화면을 '홈 및 잠금화면'에 지정해야 하고, 폰에 따라 안 될 수 있어요.",
                             color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

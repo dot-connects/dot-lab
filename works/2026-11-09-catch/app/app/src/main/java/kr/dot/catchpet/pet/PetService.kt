@@ -127,7 +127,7 @@ class PetService : Service() {
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         return Notification.Builder(this, "pet")
             .setSmallIcon(android.R.drawable.ic_menu_view)
-            .setContentTitle("우리집 몬스터")
+            .setContentTitle("리얼뽑기")
             .setContentText("녀석이 화면을 돌아다니는 중")
             .setContentIntent(open)
             .setOngoing(true)

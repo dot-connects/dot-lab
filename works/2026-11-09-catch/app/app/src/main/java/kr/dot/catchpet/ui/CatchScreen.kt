@@ -195,6 +195,7 @@ private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, s
             tick // redraw every frame
             drawIntoCanvas { game.render(it.nativeCanvas) }
         }
+        if (game.askPerson != null) PersonConsent(PersonUse.DEX) { game.keepPerson(it) }
     }
 }
 
@@ -237,6 +238,15 @@ private class CatchGame(
     private var capT = 0f
     private var capText = ""
     private var saved = false   // the catch is already in the dex but the capsule still rolls: show N-1 until GONE
+    private var pendingPerson: Bitmap? = null
+    /** A caught person waiting for the player's "허락받았어요" (the game holds still meanwhile). */
+    var askPerson by mutableStateOf<Bitmap?>(null); private set
+
+    fun keepPerson(keep: Boolean) {
+        val b = askPerson ?: return
+        askPerson = null
+        if (keep) sink.onCaught("person", b, null, "front")
+    }
 
     fun setSize(wDp: Float, hDp: Float) {
         if (wDp == w && hDp == h) return
@@ -246,6 +256,7 @@ private class CatchGame(
     }
 
     fun step(dt: Float) {
+        if (askPerson != null) return
         var c = claw ?: return
         if (c.railY != rail && c.st == Claw.St.AIM) {   // insets arrived after the first layout
             c = Claw(w, h - bottomInset, rail) { Random.nextFloat() }; claw = c
@@ -283,7 +294,10 @@ private class CatchGame(
             val was = cap.phase
             cap.step(dt); capT += dt
             if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
-            if (cap.phase == Capsule.Phase.GONE) { say(capText, true); pulse = 1f; next() }
+            if (cap.phase == Capsule.Phase.GONE) {
+                say(capText, true); pulse = 1f; next()
+                pendingPerson?.let { askPerson = it; pendingPerson = null }
+            }
         }
     }
 
@@ -327,8 +341,15 @@ private class CatchGame(
             c.handedOff(); next(); say("아깝다!", false)
             return
         }
+        val text = Dex.withObject(Dex.kindName(target.dexKind)) + " 뽑았다!"
+        if (target.kind == Mask.Kind.PERSON) {
+            // a person goes into the dex only after the consent dialog (shown when the capsule is gone)
+            pendingPerson = got.cut.bmp
+            startCapsule(c, grew = false, text = text)
+            return
+        }
         val grew = sink.onCaught(target.dexKind, got.cut.bmp, null, "front")
-        startCapsule(c, grew = grew, text = Dex.withObject(Dex.kindName(target.dexKind)) + " 뽑았다!")
+        startCapsule(c, grew = grew, text = text)
     }
 
     private fun startCapsule(c: Claw, text: String, grew: Boolean) {
@@ -513,7 +534,7 @@ private class CatchGame(
         cv.drawText("도감 ${dexCount - if (saved) 1 else 0}", 0f, 6f, text)
         cv.restore()
         text.textSize = 14f; text.textAlign = Paint.Align.LEFT; text.color = argb(.55f, 255, 255, 255)
-        cv.drawText("우리 집 뽑기", 16f, r - 22f, text)
+        cv.drawText("리얼뽑기", 16f, r - 22f, text)
         text.textAlign = Paint.Align.CENTER
     }
 

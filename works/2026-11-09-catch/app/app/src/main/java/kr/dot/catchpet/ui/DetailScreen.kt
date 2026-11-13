@@ -111,6 +111,18 @@ private fun PetButton(ctx: Context, e: Dex.Entry, onPet: () -> Unit) {
 @Composable
 private fun RealAi(ctx: Context, e: Dex.Entry) {
     val busy = AiWork.busy[e.id]
+    // a person's photo leaves the phone only after "허락받았어요" (asked once per dex entry)
+    val prefs = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE) }
+    var asking by remember { mutableStateOf<(() -> Unit)?>(null) }
+    fun guarded(go: () -> Unit) {
+        if (e.kind != "person" || prefs.getBoolean("ai_ok_${e.id}", false)) go() else asking = go
+    }
+    asking?.let { go ->
+        PersonConsent(PersonUse.AI) { ok ->
+            asking = null
+            if (ok) { prefs.edit().putBoolean("ai_ok_${e.id}", true).apply(); go() }
+        }
+    }
     val left = remember(AiWork.rev) { AiWork.leftToday(ctx) }
     var style by rememberSaveable { mutableStateOf("fluff") }
     Section("AI 미리보기")
@@ -124,7 +136,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
     }
     Spacer(Modifier.height(8.dp))
     Button(
-        onClick = { AiWork.preview(ctx, e, style) }, enabled = busy == null && left > 0,
+        onClick = { guarded { AiWork.preview(ctx, e, style) } }, enabled = busy == null && left > 0,
         colors = ButtonDefaults.buttonColors(containerColor = Color(0x26FFFFFF), contentColor = Color.White,
             disabledContainerColor = Color(0x14FFFFFF), disabledContentColor = DIM),
         modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -153,7 +165,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
     val token = remember { Purchase.token(ctx) }
     val locked = Purchase.locked(token)
     Button(
-        onClick = { token?.let { AiWork.buy(ctx, e, it) } }, enabled = !locked && busy == null,
+        onClick = { token?.let { t -> guarded { AiWork.buy(ctx, e, t) } } }, enabled = !locked && busy == null,
         colors = ButtonDefaults.buttonColors(containerColor = GOLD, contentColor = Color(0xFF2A1D00),
             disabledContainerColor = Color(0x14FFFFFF), disabledContentColor = DIM),
         modifier = Modifier.fillMaxWidth().height(52.dp),
