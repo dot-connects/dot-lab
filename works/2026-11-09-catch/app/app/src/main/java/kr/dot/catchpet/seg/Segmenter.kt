@@ -8,6 +8,7 @@ import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.framework.image.MPImage
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
+import com.google.mediapipe.tasks.vision.facedetector.FaceDetector
 import com.google.mediapipe.tasks.vision.imagesegmenter.ImageSegmenter
 import com.google.mediapipe.tasks.vision.objectdetector.ObjectDetector
 import kr.dot.catchpet.game.Box
@@ -24,12 +25,16 @@ import kotlin.math.roundToInt
 /**
  * Finds real people / dogs / cats (research/seg-compare.md): DeepLab v3 confidence masks at 0.3 on the 90x160 grid;
  * when a kind's mask is empty, an ellipse inside the EfficientDet box stands in; a Tracker holds each kind's last
- * mask for 4 missed frames. Everything model-side runs on ONE thread (plan R16): the 300 ms loop and [onThread] jobs.
+ * mask for 4 missed frames. A person counts only with a face inside it (BlazeFace short range, operator 11-13: legs
+ * alone were caught as a person; faces farther than ~2 m are missed). Everything model-side runs on ONE thread
+ * (plan R16): the 300 ms loop and [onThread] jobs. The loop runs the box detector only every other pass (battery).
  */
 class Segmenter(private val ctx: Context) {
     private val exec = Executors.newSingleThreadScheduledExecutor { Thread(it, "segmenter") }
     private var seg: ImageSegmenter? = null
     private var det: ObjectDetector? = null
+    private var face: FaceDetector? = null
+    private var pass = 0
     // cat and dog share one tracker: DeepLab flips one animal between the two channels (seg-compare.md),
     // two trackers would hold a stale twin of the same animal
     private val people = Tracker(4)
@@ -47,7 +52,7 @@ class Segmenter(private val ctx: Context) {
             try {
                 if (paused) return@scheduleWithFixedDelay
                 val f = frames() ?: return@scheduleWithFixedDelay
-                val raw = run(f)
+                val raw = run(f, full = pass++ % 2 == 0)
                 masks = listOfNotNull(
                     people.update(raw.firstOrNull { it.kind == Mask.Kind.PERSON }),
                     animals.update(raw.firstOrNull { it.kind == Mask.Kind.DOG || it.kind == Mask.Kind.CAT }),
@@ -64,8 +69,9 @@ class Segmenter(private val ctx: Context) {
     /**
      * Raw masks of one upright frame (no tracking): at most one PERSON and one DOG|CAT. Model thread only.
      * The frame is scaled to long side 320 first (DeepLab works at 257 px anyway; the grid is 90x160).
+     * full = false skips the box detector fallback (the loop's odd passes; the Tracker bridges them).
      */
-    fun run(frame: Bitmap): List<Mask> {
+    fun run(frame: Bitmap, full: Boolean = true): List<Mask> {
         val s = 320f / max(frame.width, frame.height)
         val small = if (s < 1f) Bitmap.createScaledBitmap(frame, (frame.width * s).roundToInt(), (frame.height * s).roundToInt(), true) else frame
         val img = BitmapImageBuilder(small).build()
@@ -90,7 +96,7 @@ class Segmenter(private val ctx: Context) {
         val a = Mask(gw, gh, animal, if (catSum >= dogSum) Mask.Kind.CAT else Mask.Kind.DOG)
         if (p.area > 0) out += p
         if (a.area > 0) out += a
-        if (p.area == 0 || a.area == 0) {
+        if (full && (p.area == 0 || a.area == 0)) {
             // the detector fills in only the kinds DeepLab missed this frame
             val dets = detector().detect(img).detections()
             fun best(vararg names: String) = dets.filter { it.categories().firstOrNull()?.categoryName() in names }
@@ -108,6 +114,16 @@ class Segmenter(private val ctx: Context) {
                 out += ellipse(it, if (it.categories()[0].categoryName() == "cat") Mask.Kind.CAT else Mask.Kind.DOG)
             }
         }
+        out.firstOrNull { it.kind == Mask.Kind.PERSON }?.let { pm ->
+            val b = pm.box
+            val faces = faceDetector().detect(img).detections()
+            val hasFace = b != null && faces.any { d ->
+                val r = d.boundingBox()
+                val fx = (r.centerX() / small.width * gw).toInt(); val fy = (r.centerY() / small.height * gh).toInt()
+                fx in b.x0 - 3..b.x1 + 3 && fy in b.y0 - 3..b.y1 + 3
+            }
+            if (!hasFace) out.remove(pm)
+        }
         img.close()
         if (small !== frame) small.recycle()
         return out.filter { it.area > 0 }
@@ -115,7 +131,7 @@ class Segmenter(private val ctx: Context) {
 
     /** Stops the loop and frees the models (on their own thread). */
     fun close() {
-        exec.execute { seg?.close(); det?.close(); seg = null; det = null }
+        exec.execute { seg?.close(); det?.close(); face?.close(); seg = null; det = null; face = null }
         exec.shutdown()
     }
 
@@ -139,6 +155,15 @@ class Segmenter(private val ctx: Context) {
             .setCategoryAllowlist(listOf("person", "cat", "dog"))
             .build(),
     ).also { det = it }
+
+    private fun faceDetector(): FaceDetector = face ?: FaceDetector.createFromOptions(
+        ctx,
+        FaceDetector.FaceDetectorOptions.builder()
+            .setBaseOptions(BaseOptions.builder().setModelAssetPath("models/blaze_face_short_range.tflite").build())
+            .setRunningMode(RunningMode.IMAGE)
+            .setMinDetectionConfidence(0.5f)
+            .build(),
+    ).also { face = it }
 
     private fun floats(m: MPImage): FloatArray {
         val fb = ByteBufferExtractor.extract(m).order(ByteOrder.nativeOrder()).asFloatBuffer()

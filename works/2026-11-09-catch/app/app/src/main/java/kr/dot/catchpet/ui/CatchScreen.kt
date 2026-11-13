@@ -117,6 +117,12 @@ fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenD
     val ar = remember(arFailed) { if (wantAr && !arFailed) ArSource.open(ctx, owner) { arFailed = true } else null }
     val src: FrameSource = remember(ar) { ar ?: CameraXSource(ctx, owner) }
     val crit: CritterSource = remember(ar) { ar?.let { ArCritters(ctx.applicationContext, it) } ?: critters }
+    // the developer switch must show whether AR really runs (operator 11-13: "AR 을 켜도 바뀌는 게 없어")
+    LaunchedEffect(ar, arFailed) {
+        if (!wantAr) return@LaunchedEffect
+        val msg = if (ar != null) "AR 켜짐: 털 녀석이 바닥에 붙어요" else "일반 모드: " + (ArSource.note ?: "AR 이 멈췄어요")
+        android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_LONG).show()
+    }
     key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
 }
 
@@ -263,7 +269,11 @@ private class CatchGame(
             Claw.St.CARRY -> if (capsule == null) onCarry(c)
             Claw.St.DONE -> if (capsule == null) {
                 val r = c.result!!
-                say(if (r.target == null) "헛집었다" else "아깝다! (${(r.p * 100).roundToInt()}%)", false)
+                say(when {
+                    r.target == null -> "헛집었다"
+                    r.slipped -> "놓쳤다! 흔들려서 빠졌어요"
+                    else -> "아깝다! (${(r.p * 100).roundToInt()}%)"
+                }, false)
                 next()
             }
             else -> {}

@@ -36,6 +36,13 @@ object PetPrefs {
     fun setPlace(ctx: Context, z: PetBrain.Zone) { prefs(ctx).edit().putString("place", z.name).apply() }
     fun overlayOn(ctx: Context) = prefs(ctx).getBoolean("overlay", false)
     fun setOverlayOn(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("overlay", on).apply() }
+    /** The live wallpaper draws the pet on the home screen / on the lock screen only while these are on. */
+    fun homeOn(ctx: Context) = prefs(ctx).getBoolean("show_home", false)
+    fun lockOn(ctx: Context) = prefs(ctx).getBoolean("show_lock", false)
+    fun setShow(ctx: Context, key: String, on: Boolean) { prefs(ctx).edit().putBoolean(key, on).apply() }
+    /** Pet box size in dp (slider 32..112, default one app icon). */
+    fun size(ctx: Context) = prefs(ctx).getFloat("pet_size", 48f).coerceIn(32f, 112f)
+    fun setSize(ctx: Context, dp: Float) { prefs(ctx).edit().putFloat("pet_size", dp).apply() }
 
     /** Stand line (dp) on the bottom row: just above the dock (plan R5). */
     fun floorY(hDp: Float) = hDp * 0.88f - 48f
@@ -43,9 +50,11 @@ object PetPrefs {
 }
 
 /**
- * Foreground service holding the pet's 48 dp overlay window on the bottom row or a side wall. PetBrain decides;
- * this draws, moves the window, and forwards touches: tap = smile, two taps within 320 ms = dance,
- * hold 380 ms then drag = dangle, let go = PetBrain.drop picks the place.
+ * Foreground service holding the pet's overlay window (PetPrefs.size dp) on the bottom row or a side wall. PetBrain
+ * decides; this draws, moves the window, and forwards touches: tap = smile, two taps within 320 ms = dance,
+ * hold 380 ms or just drag = dangle, let go = PetBrain.drop picks the place (kept for next time).
+ * While this app's live wallpaper is visible (home / lock screen) the window hides: the wallpaper shows the pet there
+ * by its own switches. Ticks slow down while the pet sleeps or idles (battery review 11-13).
  */
 class PetService : Service() {
     private lateinit var wm: WindowManager
@@ -58,6 +67,7 @@ class PetService : Service() {
     private var charging = false
     private var chargeCheckedAt = 0L
     private var running = false
+    private var size = 48f
     private val density get() = resources.displayMetrics.density
 
     private val tick = object : Runnable {
@@ -67,10 +77,18 @@ class PetService : Service() {
                 chargeCheckedAt = now
                 charging = getSystemService(BatteryManager::class.java).isCharging
             }
-            brain?.step(min(now - lastMs, 100L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
+            val v = view
+            val hidden = PetWallpaper.visibleNow
+            v?.visibility = if (hidden) View.GONE else View.VISIBLE
+            brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
             lastMs = now
-            render()
-            handler.postDelayed(this, 33)
+            if (!hidden) render()
+            handler.postDelayed(this, when {
+                hidden -> 500L
+                brain?.act == PetBrain.Act.SLEEP -> 200L
+                brain?.act == PetBrain.Act.IDLE -> 66L
+                else -> 33L
+            })
         }
     }
 
@@ -124,14 +142,15 @@ class PetService : Service() {
     private fun newBrain(): PetBrain {
         val (w, h) = screenDp()
         val z = PetPrefs.place(this).let { if (it == PetBrain.Zone.BEHIND) PetBrain.Zone.FLOOR else it }  // behind = wallpaper
-        return PetBrain(z, w, h, PetPrefs.floorY(h), SIZE) { Math.random().toFloat() }
+        return PetBrain(z, w, h, PetPrefs.floorY(h), size) { Math.random().toFloat() }
     }
 
     private fun show() {
         hide()
         val cells = Frames.chosen(this)
         if (cells == null || !android.provider.Settings.canDrawOverlays(this)) { PetPrefs.setOverlayOn(this, false); stopSelf(); return }
-        val px = (SIZE * density).roundToInt()
+        size = PetPrefs.size(this)
+        val px = (size * density).roundToInt()
         val p = WindowManager.LayoutParams(
             px, px, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
@@ -173,16 +192,16 @@ class PetService : Service() {
         val v = view ?: return
         val p = params ?: return
         val t = animClock()
-        val lift = v.look.lift(b, t) * SIZE
+        val lift = v.look.lift(b, t) * size
         val upright = v.look.rotation(b) == 0f
         val (left, top) = when {
-            upright -> b.x - SIZE / 2 to b.y - SIZE - lift
-            b.zone == PetBrain.Zone.LEFT -> b.x + lift to b.y - SIZE / 2
-            else -> b.x - SIZE - lift to b.y - SIZE / 2
+            upright -> b.x - size / 2 to b.y - size - lift
+            b.zone == PetBrain.Zone.LEFT -> b.x + lift to b.y - size / 2
+            else -> b.x - size - lift to b.y - size / 2
         }
-        p.x = (left * density).roundToInt()
-        p.y = (top * density).roundToInt()
-        wm.updateViewLayout(v, p)
+        val nx = (left * density).roundToInt(); val ny = (top * density).roundToInt()
+        // moving the window is a call into the system: only when the pet really moved
+        if (nx != p.x || ny != p.y) { p.x = nx; p.y = ny; wm.updateViewLayout(v, p) }
         v.t = t
         v.invalidate()
     }
@@ -203,7 +222,7 @@ class PetService : Service() {
         val slop = 8 * density
         val hold = Runnable {
             holding = true
-            brain?.grab(downX / density, downY / density + SIZE / 2)
+            brain?.grab(downX / density, downY / density + size / 2)
         }
         v.setOnTouchListener { _, e ->
             val b = brain ?: return@setOnTouchListener false
@@ -215,12 +234,15 @@ class PetService : Service() {
                     handler.postDelayed(hold, HOLD_MS)
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    if (holding) b.drag(e.rawX / density, e.rawY / density + SIZE / 2)
-                    else if (!moved && hypot(e.rawX - downX, e.rawY - downY) > slop) { moved = true; handler.removeCallbacks(hold) }
+                    // dragging right away picks the pet up too (operator 11-13: a plain drag did nothing)
+                    if (!holding && !moved && hypot(e.rawX - downX, e.rawY - downY) > slop) {
+                        moved = true; handler.removeCallbacks(hold); hold.run()
+                    }
+                    if (holding) b.drag(e.rawX / density, e.rawY / density + size / 2)
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(hold)
-                    if (holding) b.drop(e.rawX / density, e.rawY / density + SIZE / 2)
+                    if (holding) { b.drop(e.rawX / density, e.rawY / density + size / 2); PetPrefs.setPlace(this, b.zone) }
                     else if (!moved && e.actionMasked == MotionEvent.ACTION_UP) {
                         val now = SystemClock.uptimeMillis()
                         if (now - lastTap <= DOUBLE_MS) b.doubleTap() else b.tap()
@@ -241,7 +263,6 @@ class PetService : Service() {
     }
 
     companion object {
-        const val SIZE = 48f       // dp, about one app icon
         const val HOLD_MS = 380L
         const val DOUBLE_MS = 320L
 
@@ -250,7 +271,7 @@ class PetService : Service() {
     }
 }
 
-/** The 48 dp box: the pet with its feet on the box edge that touches its line (bottom, or the wall side). */
+/** The pet's square box: the pet with its feet on the box edge that touches its line (bottom, or the wall side). */
 class PetView(ctx: Context, val look: PetLook, private val brain: PetBrain) : View(ctx) {
     var t = 0f
 

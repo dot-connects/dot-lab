@@ -73,15 +73,18 @@ class ClawTest {
 
     @Test fun chanceCentreEdgeOutside() {
         val m = body(30, 60, 100, 140)
-        assertEquals(0.9f, chance(m, 45, 100), 1e-4f)
-        assertEquals(0.2f, chance(m, 60, 100), 1e-4f)
+        assertEquals(0.55f, chance(m, 45, 100), 1e-4f)
+        assertEquals(0.10f, chance(m, 60, 100), 1e-4f)
         assertEquals(0f, chance(m, 80, 100), 1e-4f)
     }
 
-    private fun run(claw: Claw, targets: List<Mask>, ms: Int = 20000): List<Claw.St> {
+    private fun run(claw: Claw, targets: List<Mask>, ms: Int = 20000): List<Claw.St> = run(claw, ms) { targets }
+
+    /** targets(st) gives the frame's targets for the claw's current state (things moving mid-grab). */
+    private fun run(claw: Claw, ms: Int = 20000, targets: (Claw.St) -> List<Mask>): List<Claw.St> {
         val seen = mutableListOf(claw.st)
         repeat(ms / 16) {
-            claw.step(16f, targets, toMask)
+            claw.step(16f, targets(claw.st), toMask)
             if (claw.st != seen.last()) seen += claw.st
             if (claw.st == Claw.St.CARRY) claw.handedOff()
         }
@@ -114,6 +117,36 @@ class ClawTest {
         assertFalse(c.result!!.win)
         assertTrue("went through FALL: $seen", Claw.St.FALL in seen)
         assertEquals(Claw.St.DONE, c.st)
+    }
+
+    @Test fun shakingWhileGrippingHalvesTheChance() {
+        val still = body(30, 60, 100, 140)
+        val moved = body(52, 82, 100, 140)                     // centre moved past its half width -> full cut
+        val c = Claw(90f, 160f, 4f) { 0.99f }
+        c.aim(0.5f); c.release()
+        run(c) { if (it == Claw.St.GRIP) listOf(moved) else listOf(still) }
+        assertEquals(chance(still, 45, 100) * 0.5f, c.result!!.p, 1e-3f)
+    }
+
+    @Test fun aWinThatLeavesTheClawSlips() {
+        val m = body(30, 60, 140, 159)
+        val away = body(70, 89, 140, 159)
+        val c = Claw(90f, 400f, 4f) { 0f }                      // roll 0 always wins at the grip
+        c.aim(0.5f); c.release()
+        val seen = run(c) { if (it == Claw.St.UP || it == Claw.St.FALL) listOf(away) else listOf(m) }
+        assertTrue("went through FALL: $seen", Claw.St.FALL in seen)
+        assertFalse(c.result!!.win)
+        assertTrue(c.result!!.slipped)
+        assertFalse(Claw.St.CARRY in seen)
+    }
+
+    @Test fun aWinStillUnderTheClawCarries() {
+        val m = body(30, 60, 140, 159)
+        val c = Claw(90f, 400f, 4f) { 0f }
+        c.aim(0.5f); c.release()
+        val seen = run(c, listOf(m))
+        assertTrue(Claw.St.CARRY in seen)
+        assertFalse(c.result!!.slipped)
     }
 
     @Test fun nothingBelowIsAMiss() {

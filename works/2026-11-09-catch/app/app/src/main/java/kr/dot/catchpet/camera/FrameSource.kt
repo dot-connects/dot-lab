@@ -101,9 +101,9 @@ class CameraXSource(private val ctx: Context, private val owner: LifecycleOwner)
 
     private fun onFrame(img: ImageProxy) {
         img.use {
-            // ponytail: converts at most every 100 ms (segment loop is 300 ms); raise if GRIP frames look stale
+            // converts at most every 250 ms (segment loop is 300 ms): each conversion is two 720p copies (battery review 11-13)
             val now = System.currentTimeMillis()
-            if (now - lastMs < 100) return
+            if (now - lastMs < 250) return
             lastMs = now
             val rot = it.imageInfo.rotationDegrees
             val crop = it.cropRect

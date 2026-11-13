@@ -31,12 +31,10 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -63,17 +61,18 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kr.dot.catchpet.billing.Purchase
 import kr.dot.catchpet.dex.Dex
-import kr.dot.catchpet.pet.PetBrain.Zone
 import kr.dot.catchpet.pet.PetPrefs
 import kr.dot.catchpet.pet.PetService
 import kr.dot.catchpet.pet.PetWallpaper
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.math.max
+import kotlin.math.roundToInt
 
-private val PLACES = listOf(Zone.FLOOR to "아래 줄", Zone.LEFT to "왼쪽 벽", Zone.RIGHT to "오른쪽 벽", Zone.BEHIND to "아이콘 뒤")
-
-/** Pet settings: which pet, where it lives, overlay on/off (with the permission steps), and a developer corner. */
+/**
+ * Pet settings: which pet, its size, where it shows (over other apps = overlay, home / lock screen = live wallpaper;
+ * where on screen is set by dragging the pet itself), and a developer corner.
+ */
 @Composable
 fun PetScreen(onBack: () -> Unit) {
     val ctx = LocalContext.current
@@ -82,7 +81,9 @@ fun PetScreen(onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { Dex.list(ctx).filter { it.critterId != null || it.ai.owned } }
     }
     var chosen by remember { mutableStateOf(petId(ctx)) }
-    var place by remember { mutableStateOf(PetPrefs.place(ctx)) }
+    var size by remember { mutableStateOf(PetPrefs.size(ctx)) }
+    var home by remember { mutableStateOf(PetPrefs.homeOn(ctx)) }
+    var lock by remember { mutableStateOf(PetPrefs.lockOn(ctx)) }
     var on by remember { mutableStateOf(PetPrefs.overlayOn(ctx)) }
     var canDraw by remember { mutableStateOf(Settings.canDrawOverlays(ctx)) }
     var photoNote by remember { mutableStateOf<String?>(null) }
@@ -95,7 +96,7 @@ fun PetScreen(onBack: () -> Unit) {
             photoNote = if (ok) "배경 사진을 바꿨어요" else "사진을 읽지 못했어요"
         }
     }
-    fun restartIfOn() { if (on && place != Zone.BEHIND) PetService.start(ctx) }
+    fun restartIfOn() { if (on) PetService.start(ctx) }
 
     Column(Modifier.fillMaxSize().background(BG).safeDrawingPadding().verticalScroll(rememberScrollState())) {
         TextButton(onClick = onBack, modifier = Modifier.padding(8.dp)) { Text("‹ 뽑기", color = DIM, fontSize = 16.sp) }
@@ -120,41 +121,49 @@ fun PetScreen(onBack: () -> Unit) {
             }
             Spacer(Modifier.height(24.dp))
 
-            Title("어디에 살까요")
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                for ((z, label) in PLACES) FilterChip(
-                    selected = place == z, label = { Text(label) }, colors = chipColors(),
-                    onClick = {
-                        place = z; PetPrefs.setPlace(ctx, z)
-                        if (z == Zone.BEHIND) {
-                            if (on) { PetService.stop(ctx); on = false }
-                            openWallpaperPicker(ctx)
-                        } else restartIfOn()
-                    },
-                )
-            }
-            if (place == Zone.BEHIND) {
-                Text("배경화면을 '우리집 몬스터'로 바꾸면 녀석이 아이콘 뒤를 걸어 다녀요.", color = DIM, fontSize = 14.sp, modifier = Modifier.padding(top = 8.dp))
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { openWallpaperPicker(ctx) }) { Text("배경화면 설정 열기", color = GOLD) }
-                    TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                        Text("배경 사진 고르기", color = GOLD)
-                    }
-                }
-                photoNote?.let { Text(it, color = DIM, fontSize = 13.sp) }
-            } else {
-                Spacer(Modifier.height(16.dp))
-                when {
-                    chosen == null -> Text("도감에서 펫을 먼저 골라 주세요.", color = DIM, fontSize = 14.sp)
-                    !canDraw -> {
-                        Text("화면 위에 띄우려면 '다른 앱 위에 표시' 권한을 켜 주세요.", color = Color.White, fontSize = 15.sp)
-                        Spacer(Modifier.height(8.dp))
-                        BigButton("권한 설정 열기") {
-                            ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
+            Title("크기")
+            Slider(
+                value = size, valueRange = 32f..112f,
+                onValueChange = { size = it },
+                onValueChangeFinished = { PetPrefs.setSize(ctx, size); restartIfOn() },
+                colors = sliderColors(),
+            )
+            Text("녀석을 끌어서 아래 줄이나 양옆 벽에 놓을 수 있어요.", color = DIM, fontSize = 14.sp)
+            Spacer(Modifier.height(24.dp))
+
+            Title("어디에 보일까요")
+            when {
+                chosen == null -> Text("도감에서 펫을 먼저 골라 주세요.", color = DIM, fontSize = 14.sp)
+                else -> {
+                    Toggle("다른 앱 위", on) {
+                        when {
+                            !it -> { PetService.stop(ctx); on = false }
+                            !canDraw -> ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
+                            else -> notify.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     }
-                    on -> BigButton("펫 내리기", gold = false) { PetService.stop(ctx); on = false }
-                    else -> BigButton("펫 띄우기") { notify.launch(Manifest.permission.POST_NOTIFICATIONS) }
+                    if (!canDraw) Text("켜려면 '다른 앱 위에 표시' 권한을 허용해 주세요.", color = DIM, fontSize = 13.sp)
+                    Toggle("홈 화면", home) {
+                        home = it; PetPrefs.setShow(ctx, "show_home", it)
+                        if (it && !wallpaperIsOurs(ctx)) openWallpaperPicker(ctx)
+                    }
+                    Toggle("잠금화면", lock) {
+                        lock = it; PetPrefs.setShow(ctx, "show_lock", it)
+                        if (it && !wallpaperIsOurs(ctx)) openWallpaperPicker(ctx)
+                    }
+                    if (home || lock) {
+                        Text(
+                            "홈·잠금화면의 녀석은 배경화면 '우리집 몬스터'가 그려요. 잠금화면은 배경화면을 '홈 및 잠금화면'에 지정해야 하고, 폰에 따라 안 될 수 있어요.",
+                            color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
+                        )
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            TextButton(onClick = { openWallpaperPicker(ctx) }) { Text("배경화면 설정 열기", color = GOLD) }
+                            TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
+                                Text("배경 사진 고르기", color = GOLD)
+                            }
+                        }
+                        photoNote?.let { Text(it, color = DIM, fontSize = 13.sp) }
+                    }
                 }
             }
             Spacer(Modifier.height(40.dp))
@@ -183,38 +192,40 @@ private fun Developer(ctx: Context) {
         if (savedNote) Text(if (token.isBlank()) "토큰을 지웠어요" else "저장했어요", color = DIM, fontSize = 13.sp)
     }
     Spacer(Modifier.height(12.dp))
-    Text("털 녀석 크기", color = Color.White, fontSize = 15.sp)
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        for ((v, label) in listOf(0.25f to "1/4", 0.2f to "1/5")) FilterChip(
-            selected = scale == v, label = { Text(label) }, colors = chipColors(),
-            onClick = { scale = v; prefs.edit().putFloat("critter_scale", v).apply() },
-        )
-    }
+    // critter height = scale x 40 % of the screen: 0.1 -> 4 %, 0.6 -> 24 % (1/4 and 1/5 looked the same, 11-13)
+    Text("털 녀석 크기  ${(scale * 40).roundToInt()}% (화면 높이 대비)", color = Color.White, fontSize = 15.sp)
+    Slider(
+        value = scale, valueRange = 0.1f..0.6f,
+        onValueChange = { scale = it },
+        onValueChangeFinished = { prefs.edit().putFloat("critter_scale", scale).apply() },
+        colors = sliderColors(),
+    )
     Spacer(Modifier.height(12.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Text("AR 털 녀석 (실험)", color = Color.White, fontSize = 15.sp, modifier = Modifier.weight(1f))
         Switch(checked = ar, onCheckedChange = { ar = it; prefs.edit().putBoolean("ar", it).apply() })
     }
+    Text("털 녀석을 실제 바닥에 붙여 둬요. 뽑기 화면에 들어가면 켜졌는지 알려 줘요.", color = DIM, fontSize = 13.sp)
 }
+
+@Composable
+private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, color = Color.White, fontSize = 16.sp, modifier = Modifier.weight(1f))
+        Switch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun sliderColors() = SliderDefaults.colors(thumbColor = GOLD, activeTrackColor = GOLD, inactiveTrackColor = Color(0x33FFFFFF))
+
+private fun wallpaperIsOurs(ctx: Context): Boolean =
+    WallpaperManager.getInstance(ctx).wallpaperInfo?.component == ComponentName(ctx, PetWallpaper::class.java)
 
 @Composable
 private fun Title(t: String) {
     Text(t, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
 }
-
-@Composable
-private fun BigButton(label: String, gold: Boolean = true, onClick: () -> Unit) {
-    Button(
-        onClick = onClick,
-        colors = if (gold) ButtonDefaults.buttonColors(containerColor = GOLD, contentColor = Color(0xFF2A1D00))
-        else ButtonDefaults.buttonColors(containerColor = Color(0x26FFFFFF), contentColor = Color.White),
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-    ) { Text(label, fontSize = 17.sp, fontWeight = FontWeight.Bold) }
-}
-
-@Composable
-private fun chipColors() =
-    FilterChipDefaults.filterChipColors(labelColor = DIM, selectedContainerColor = GOLD, selectedLabelColor = Color(0xFF2A1D00))
 
 private fun openWallpaperPicker(ctx: Context) {
     val direct = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)

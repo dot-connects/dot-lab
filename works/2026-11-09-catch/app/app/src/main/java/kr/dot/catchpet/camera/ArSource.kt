@@ -252,10 +252,26 @@ class ArSource private constructor(
          * An AR camera, or null when ARCore is not installed and ready (not supported, not installed, still
          * checking) or the session cannot be made. The caller already holds the camera permission.
          */
+        /** Why the last open() gave no AR, in Korean for the toast (null = AR is on). */
+        @Volatile var note: String? = null; private set
+
         fun open(ctx: Context, owner: LifecycleOwner, onFail: () -> Unit): ArSource? {
             var s: Session? = null
+            note = null
             return try {
-                if (ArCoreApk.getInstance().checkAvailability(ctx) != ArCoreApk.Availability.SUPPORTED_INSTALLED) return null
+                val av = ArCoreApk.getInstance().checkAvailability(ctx)
+                if (av != ArCoreApk.Availability.SUPPORTED_INSTALLED) {
+                    note = when {
+                        av == ArCoreApk.Availability.SUPPORTED_NOT_INSTALLED || av == ArCoreApk.Availability.SUPPORTED_APK_TOO_OLD -> {
+                            // asks Play Store to install / update "Google Play AR 서비스"; the next catch screen tries again
+                            (ctx as? android.app.Activity)?.let { runCatching { ArCoreApk.getInstance().requestInstall(it, true) } }
+                            "Google Play AR 서비스를 설치하면 켜져요"
+                        }
+                        av.isTransient -> "AR 지원 여부를 확인 중이에요. 잠시 뒤 다시 들어와 주세요"
+                        else -> "이 폰은 AR 을 지원하지 않아요"
+                    }
+                    return null
+                }
                 s = Session(ctx)
                 // the biggest CPU image up to 1280 on the long side (GRIP cut-outs want detail; default is 640x480)
                 s.getSupportedCameraConfigs(CameraConfigFilter(s))
@@ -271,6 +287,7 @@ class ArSource private constructor(
                 ArSource(s, owner, onFail)
             } catch (t: Throwable) {
                 Log.w(TAG, "no AR session, using CameraX", t)
+                note = "AR 을 열지 못했어요"
                 runCatching { s?.close() }
                 null
             }

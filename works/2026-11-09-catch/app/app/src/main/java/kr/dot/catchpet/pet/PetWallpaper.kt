@@ -1,5 +1,6 @@
 package kr.dot.catchpet.pet
 
+import android.app.KeyguardManager
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -20,12 +21,18 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * "아이콘 뒤": a live wallpaper with the pet walking behind the home-screen icons (PetBrain zone BEHIND).
+ * The home / lock screen pet: a live wallpaper with the pet walking behind the icons (PetBrain zone BEHIND), drawn
+ * only where its switch is on (PetPrefs.homeOn / lockOn).
  * Background = the photo the user picked (filesDir/wallpaper.jpg, plan R9) or a soft gradient. A tap on the
  * empty home screen near the pet makes it smile.
  */
 class PetWallpaper : WallpaperService() {
     override fun onCreateEngine(): Engine = PetEngine()
+
+    companion object {
+        /** True while this wallpaper is on screen (not its preview): the overlay pet hides then (PetService). */
+        @Volatile var visibleNow = false
+    }
 
     private inner class PetEngine : Engine() {
         private val handler = Handler(Looper.getMainLooper())
@@ -39,13 +46,27 @@ class PetWallpaper : WallpaperService() {
         private val bg = Paint()
         private val bmpPaint = Paint(Paint.FILTER_BITMAP_FLAG)
 
+        private var shown: Boolean? = null
+
+        /** Home screen or lock screen, each by its own switch on the pet screen. */
+        private fun petHere(): Boolean =
+            if (getSystemService(KeyguardManager::class.java).isKeyguardLocked) PetPrefs.lockOn(this@PetWallpaper)
+            else PetPrefs.homeOn(this@PetWallpaper)
+
         private val tick = object : Runnable {
             override fun run() {
                 val now = SystemClock.uptimeMillis()
-                brain?.step(min(now - lastMs, 100L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), false)
+                val here = petHere()
+                brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), false)
                 lastMs = now
-                draw()
-                if (visible) handler.postDelayed(this, 50)
+                // without the pet only a change of screen (lock <-> home) needs a new picture
+                if (here || here != shown) draw(here)
+                shown = here
+                if (visible) handler.postDelayed(this, when {
+                    !here -> 500L
+                    brain?.act == PetBrain.Act.SLEEP -> 200L
+                    else -> 50L
+                })
             }
         }
 
@@ -53,18 +74,21 @@ class PetWallpaper : WallpaperService() {
             super.onSurfaceChanged(holder, format, width, height)
             reload()
             val w = width / density; val h = height / density
-            brain = PetBrain(PetBrain.Zone.BEHIND, w, h, PetPrefs.floorY(h), PetService.SIZE) { Math.random().toFloat() }
+            brain = PetBrain(PetBrain.Zone.BEHIND, w, h, PetPrefs.floorY(h), PetPrefs.size(this@PetWallpaper)) { Math.random().toFloat() }
             bg.shader = LinearGradient(0f, 0f, width.toFloat(), height.toFloat(),
                 intArrayOf(0xFFC9D8F5.toInt(), 0xFFE9CFE0.toInt(), 0xFFF6E2C8.toInt()), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
-            draw()
+            shown = null
+            draw(petHere())
         }
 
         override fun onVisibilityChanged(v: Boolean) {
             visible = v
+            if (!isPreview) visibleNow = v
             handler.removeCallbacks(tick)
             if (v) {
                 reload()
                 lastMs = SystemClock.uptimeMillis()
+                shown = null
                 handler.post(tick)
             }
         }
@@ -78,6 +102,8 @@ class PetWallpaper : WallpaperService() {
                 id + (kr.dot.catchpet.dex.Dex.get(this@PetWallpaper, id)?.ai?.sheet ?: "")
             }
             if (key != petKey || look == null) { petKey = key; look = Frames.chosen(this@PetWallpaper)?.let { PetLook(it) } }
+            val sz = PetPrefs.size(this@PetWallpaper)
+            brain?.let { b -> if (b.size != sz) brain = PetBrain(PetBrain.Zone.BEHIND, b.w, b.h, b.floorY, sz) { Math.random().toFloat() } }
             val f = File(filesDir, "wallpaper.jpg")
             val mod = if (f.isFile) f.lastModified() else 0L
             if (mod != photoKey) { photoKey = mod; photo = if (mod == 0L) null else BitmapFactory.decodeFile(f.path) }
@@ -85,6 +111,7 @@ class PetWallpaper : WallpaperService() {
 
         override fun onSurfaceDestroyed(holder: SurfaceHolder) {
             visible = false
+            if (!isPreview) visibleNow = false
             handler.removeCallbacks(tick)
             super.onSurfaceDestroyed(holder)
         }
@@ -92,7 +119,7 @@ class PetWallpaper : WallpaperService() {
         override fun onCommand(action: String?, x: Int, y: Int, z: Int, extras: Bundle?, resultRequested: Boolean): Bundle? {
             if (action == WallpaperManager.COMMAND_TAP) {
                 val b = brain
-                if (b != null && near(b, x / density, y / density)) { touchedAt = SystemClock.uptimeMillis(); b.tap() }
+                if (b != null && petHere() && near(b, x / density, y / density)) { touchedAt = SystemClock.uptimeMillis(); b.tap() }
             }
             return null
         }
@@ -100,7 +127,7 @@ class PetWallpaper : WallpaperService() {
         private fun near(b: PetBrain, x: Float, y: Float) =
             x in b.x - b.size..b.x + b.size && y in b.y - b.size * 1.6f..b.y + b.size * 0.6f
 
-        private fun draw() {
+        private fun draw(withPet: Boolean) {
             val holder = surfaceHolder
             val c = runCatching { holder.lockCanvas() }.getOrNull() ?: return
             try {
@@ -109,7 +136,7 @@ class PetWallpaper : WallpaperService() {
                 if (p != null) c.drawBitmap(p, centerCrop(p, w, h), Rect(0, 0, w, h), bmpPaint)
                 else c.drawRect(0f, 0f, w.toFloat(), h.toFloat(), bg)
                 val b = brain; val l = look
-                if (b != null && l != null) {
+                if (withPet && b != null && l != null) {
                     val t = animClock()
                     l.draw(c, b, t, b.x * density, b.y * density, b.size * density, l.lift(b, t))
                 }
