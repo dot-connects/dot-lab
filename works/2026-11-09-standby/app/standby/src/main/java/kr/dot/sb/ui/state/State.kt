@@ -6,6 +6,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import kr.dot.sb.model.City
 import kr.dot.sb.model.SleepSound
 import java.time.LocalDateTime
+import java.time.LocalTime
 
 /**
  * Everything the StandBy screens show, as plain values. The platform layer ([kr.dot.sb.platform]) produces it;
@@ -122,6 +123,8 @@ data class WeatherInfo(
     val offline: Boolean = false,
     /** Days after today, from the daily forecast. */
     val days: List<DayTemp> = emptyList(),
+    val sunrise: LocalTime? = null,
+    val sunset: LocalTime? = null,
 )
 
 @Immutable
