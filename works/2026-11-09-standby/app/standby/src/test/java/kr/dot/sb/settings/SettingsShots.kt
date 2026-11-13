@@ -11,6 +11,7 @@ import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -63,7 +64,14 @@ class SettingsShots {
     @Test fun home() = snap("home", phone, route = Routes.HOME)
     @Test fun homeFold() = snap("home-fold", fold, route = Routes.HOME)
     @Test fun homePaper() = snap("home-paper", phone, AppConfig(theme = kr.dot.sb.model.Theme.PAPER), route = Routes.HOME)
-    @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID, textSize = kr.dot.sb.model.TextSize.LARGE), route = Routes.HOME)
+    @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID, textSize = kr.dot.sb.model.TextSize.LARGE), route = Routes.THEME)
+    @Test fun homeBar() = snap("home-bar", phone, route = Routes.HOME, e = SettingsEnv(phone = Phone.BAR, foldable = false, granted = Perm.entries.associateWith { true }))
+    @Test fun themeNight() = snap("theme-night", phone, route = Routes.THEME) { onNodeWithText("밤").performClick() }
+    /** r10 preview pattern: scrolled past the full preview, the 96 dp mini overlays the top. */
+    @Test fun themeMini() = snap("theme-mini", "w411dp-h560dp-port-xxhdpi", route = Routes.THEME) {
+        onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1400f) }
+    }
     @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
     @Test fun boards() = snap("boards", tall, route = Routes.BOARDS)
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))

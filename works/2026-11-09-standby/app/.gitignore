@@ -7,3 +7,4 @@ local.properties
 standby/build/
 tools/baseline-r8/
 tools/baseline-r9/
+__pycache__/

@@ -33,6 +33,47 @@ import kr.dot.sb.ui.state.WeatherInfo
 import java.time.LocalDateTime
 import kotlin.math.min
 import kotlin.math.roundToInt
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.systemBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.PagerState
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.listSaver
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.sp
+import kr.dot.sb.data.NightRules
+import kr.dot.sb.model.DisplayOff
+import kr.dot.sb.ui.board.BoardView
+import kr.dot.sb.ui.clock.ClockFace
+import kr.dot.sb.ui.clock.ClockRegistry
+import kr.dot.sb.ui.state.StandbyActions
+import kr.dot.sb.ui.theme.clockStyle
+import kr.dot.sb.ui.theme.drawnTheme
+
+/** This phone's kind: a hinge phone gets the preview's 커버|안쪽 toggle, a bar phone has one screen (r10: no device menu). */
+enum class Phone { FOLD, FLIP, BAR }
 
 /** The screens a board can be previewed on (design-system §3.3). Sizes are landscape dp. */
 enum class PreviewDevice(val ko: String, val w: Int, val h: Int, val cover: Boolean) {
@@ -43,6 +84,15 @@ enum class PreviewDevice(val ko: String, val w: Int, val h: Int, val cover: Bool
 
     fun width(portrait: Boolean) = if (portrait) minOf(w, h) else maxOf(w, h)
     fun height(portrait: Boolean) = if (portrait) maxOf(w, h) else minOf(w, h)
+
+    companion object {
+        /** The preview follows the phone: Fold 커버/안쪽, Flip 커버/안쪽 (the inner screen is a bar-sized screen), bar = itself. */
+        fun of(phone: Phone, inner: Boolean) = when (phone) {
+            Phone.FOLD -> if (inner) FOLD_INNER else FOLD_COVER
+            Phone.FLIP -> if (inner) BAR else FLIP
+            Phone.BAR -> BAR
+        }
+    }
 }
 
 /**
@@ -134,5 +184,204 @@ object Sample {
             kr.dot.sb.ui.state.NotifItem("p2", "쿠팡", "com.coupang.mobile", "배송 완료", "문 앞에 도착했습니다", t - 12 * 60_000, plateColor = 0xFFE1393B),
             kr.dot.sb.ui.state.NotifItem("p3", "캘린더", "com.samsung.android.calendar", "팀 회의", "10:30 · 3층 회의실", t - 20 * 60_000, plateColor = 0xFF3478F6),
         )
+    }
+}
+
+// ---- r10 preview shell: one preview per screen, full at the top of the list, a 96 dp mini once it scrolls away --------
+
+/** What a slide draws for: the device, its orientation, and the sample state (night already decided). */
+class PreviewLook(val device: PreviewDevice, val portrait: Boolean, val night: Float, val state: StandbyState)
+
+/** One slide: [name] under the frame, [draw] = the StandBy content at real device size. [start] = the "처음" page (home). */
+class Slide(val name: String, val start: Boolean = false, val draw: @Composable BoxScope.(PreviewLook) -> Unit)
+
+/**
+ * A screen's preview (mockup `pv()`): [slides] swipe sideways, the first is the screen's own view. [cards] = the home
+ * pager (peeking cards with names, no mini). [fixed] = one device and no bar (폴드를 펼쳤을 때: "폴드 펼침").
+ */
+class Preview(
+    val config: AppConfig,
+    val slides: List<Slide>,
+    val caption: String? = null,
+    val cards: Boolean = false,
+    val fixed: PreviewDevice? = null,
+)
+
+/** The bar's choices, shared by the full preview and the mini (saved across rotation). */
+@Stable
+class PreviewState(night: Boolean = false, inner: Boolean = false, portrait: Boolean = false) {
+    var night by mutableStateOf(night)
+    var inner by mutableStateOf(inner)
+    var portrait by mutableStateOf(portrait)
+
+    companion object {
+        val Saver = listSaver<PreviewState, Boolean>({ listOf(it.night, it.inner, it.portrait) }, { PreviewState(it[0], it[1], it[2]) })
+    }
+}
+
+/** 밤 shows the night look only where the dream would: the holder's rule, with "it is dark and late". */
+private fun AppConfig.nightApplies(): Boolean =
+    NightRules.on(nightMode, displayOff, scheduled = true, auto = true, forceNight = drawnTheme().tokens.light)
+
+@Composable
+private fun rememberLook(p: Preview, st: PreviewState, phone: Phone): PreviewLook {
+    val dev = p.fixed ?: PreviewDevice.of(phone, st.inner)
+    val portrait = p.fixed == null && st.portrait
+    val night = if (st.night && p.config.nightApplies()) 1f else 0f
+    val state = remember(p.config, night) { Sample.state(p.config, night) }
+    return PreviewLook(dev, portrait, night, state)
+}
+
+private val PILL_BG = Color(0xD917181C)
+private val PILL_LINE = Color(0x1FFFFFFF)
+
+/** Two-way pill (낮|밤, 커버|안쪽, 가로|세로): 30 dp to the eye, 48 dp to the finger. */
+@Composable
+private fun Pick(a: String, b: String, second: Boolean, onPick: (Boolean) -> Unit) {
+    val acc = LocalAccent.current
+    Row(
+        Modifier.height(48.dp).drawBehind {
+            val h = 30.dp.toPx()
+            val top = (size.height - h) / 2
+            drawRoundRect(PILL_BG, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2))
+            drawRoundRect(PILL_LINE, Offset(0f, top), Size(size.width, h), CornerRadius(h / 2), style = Stroke(1.dp.toPx()))
+        }.padding(horizontal = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        listOf(a to false, b to true).forEach { (t, v) ->
+            val on = v == second
+            Box(Modifier.fillMaxHeight().clickable { onPick(v) }, Alignment.Center) {
+                Box(Modifier.height(26.dp).widthIn(min = 38.dp).clip(RoundedCornerShape(50)).background(if (on) acc else Color.Transparent).padding(horizontal = 10.dp), Alignment.Center) {
+                    T(t, 12.sp, if (on) 700 else 600, if (on) SK.bg else SK.muted, maxLines = 1)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DayNight(st: PreviewState) = Pick("낮", "밤", st.night) { st.night = it }
+
+/** Bar above the frame: [커버|안쪽] on a hinge phone, [가로|세로] on all, [낮|밤] on the right; a fixed device = its name. */
+@Composable
+private fun PreviewBar(p: Preview, st: PreviewState, phone: Phone) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+        if (p.fixed != null) {
+            Box(Modifier.height(48.dp), Alignment.Center) {
+                Box(Modifier.height(30.dp).clip(RoundedCornerShape(50)).background(PILL_BG).border(1.dp, PILL_LINE, RoundedCornerShape(50)).padding(horizontal = 12.dp), Alignment.Center) {
+                    T(p.fixed.ko, 12.sp, 600, maxLines = 1)
+                }
+            }
+        } else {
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                if (phone != Phone.BAR) Pick("커버", "안쪽", st.inner) { st.inner = it }
+                Pick("가로", "세로", st.portrait) { st.portrait = it }
+            }
+            DayNight(st)
+        }
+    }
+}
+
+/** One slide in its frame. In the phone list: landscape up to 250 dp tall, portrait 300 dp (mockup `.pv`). */
+@Composable
+private fun SlideFrame(s: Slide, look: PreviewLook, modifier: Modifier = Modifier, maxHeight: Dp = if (look.portrait) 300.dp else 250.dp, radius: Dp = 18.dp) {
+    PreviewFrame(look.device.width(look.portrait), look.device.height(look.portrait), modifier, maxHeight = maxHeight, radius = radius, night = look.night) { s.draw(this, look) }
+}
+
+/** The full preview: bar, swipeable slides, caption. Tapping a slide asks for full screen ([onFull] gets its index). */
+@Composable
+internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone: Phone, onFull: (Int) -> Unit) {
+    val look = rememberLook(p, st, phone)
+    val acc = LocalAccent.current
+    Column(Modifier.fillMaxWidth()) {
+        PreviewBar(p, st, phone)
+        Gap(4.dp)
+        HorizontalPager(
+            pager, Modifier.fillMaxWidth(), contentPadding = PaddingValues(end = if (p.cards) 36.dp else 0.dp),
+            pageSpacing = if (p.cards) 12.dp else 10.dp, verticalAlignment = Alignment.Top,
+        ) { i ->
+            val s = p.slides[i]
+            Column(Modifier.fillMaxWidth()) {
+                Box(Modifier.fillMaxWidth()) {
+                    SlideFrame(s, look, Modifier.fillMaxWidth(), radius = if (p.cards) 16.dp else 18.dp)
+                    Box(Modifier.matchParentSize().clickable(onClickLabel = "전체 화면") { onFull(i) })
+                }
+                if (p.cards) {
+                    Row(Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        T(s.name, 15.sp, 600, maxLines = 1)
+                        if (s.start) Pill("처음", acc, Modifier.padding(start = 8.dp))
+                    }
+                } else if (p.slides.size > 1) {
+                    T(s.name, 12.sp, 500, SK.muted, Modifier.fillMaxWidth().padding(top = 4.dp), maxLines = 1, align = TextAlign.Center)
+                }
+            }
+        }
+        val night = when {
+            !st.night || look.night > 0f -> null
+            p.config.displayOff == DisplayOff.NEVER -> "지금은 밤 화면이 꺼져 있어요"
+            else -> "밤에도 이렇게 보여요"
+        }
+        val tail = when {
+            p.cards -> "옆으로 넘기면 다른 페이지가 보여요 · 누르면 전체 화면"
+            p.slides.size > 1 -> "옆으로 넘기면 다른 페이지"
+            else -> null
+        }
+        T(
+            listOfNotNull(night, p.caption, tail).joinToString(" · "), 12.sp, 400, SK.muted,
+            Modifier.fillMaxWidth().heightIn(min = 22.dp).padding(top = 6.dp, start = 4.dp, end = 4.dp), align = TextAlign.Center, lineHeight = 16.sp,
+        )
+    }
+}
+
+/**
+ * The mini preview (mockup `.mini`): the current slide at 96 dp + 낮|밤 + [actions], over the top of the list. It only
+ * overlays (no height change), so showing it never moves the content; a tap scrolls back to the full preview.
+ */
+@Composable
+internal fun MiniPreview(p: Preview, st: PreviewState, pager: PagerState, phone: Phone, onTop: () -> Unit, actions: (@Composable () -> Unit)?) {
+    val look = rememberLook(p, st, phone)
+    val s = p.slides[pager.currentPage.coerceIn(0, p.slides.lastIndex)]
+    val ratio = look.device.width(look.portrait).toFloat() / look.device.height(look.portrait)
+    val none = remember { MutableInteractionSource() }
+    Row(
+        Modifier.fillMaxWidth().shadow(8.dp).background(SK.bg)
+            .drawBehind { drawLine(SK.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+            .clickable(interactionSource = none, indication = null, onClickLabel = "미리보기로 올라가기", onClick = onTop)
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size((96 * ratio).dp, 96.dp)) { SlideFrame(s, look, Modifier.matchParentSize(), maxHeight = 96.dp, radius = 10.dp) }
+        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            if (p.fixed == null) DayNight(st)
+            actions?.invoke()
+        }
+    }
+}
+
+/** Full screen: the slide at the device's own proportions on black; any tap closes. */
+@Composable
+internal fun FullScreenPreview(p: Preview, st: PreviewState, phone: Phone, index: Int, onClose: () -> Unit) {
+    val look = rememberLook(p, st, phone)
+    val none = remember { MutableInteractionSource() }
+    BoxWithConstraints(
+        Modifier.fillMaxSize().background(Color.Black /* literal-ok: behind the preview */).clickable(interactionSource = none, indication = null, onClick = onClose),
+        contentAlignment = Alignment.Center,
+    ) {
+        SlideFrame(p.slides[index.coerceIn(0, p.slides.lastIndex)], look, Modifier.fillMaxWidth(), maxHeight = maxHeight, radius = 0.dp)
+        Box(Modifier.align(Alignment.BottomCenter).systemBarsPadding().padding(bottom = 16.dp).clip(RoundedCornerShape(50)).background(SK.scrim).padding(horizontal = 14.dp, vertical = 8.dp)) {
+            T("화면을 누르면 닫혀요", 13.sp, 500, SK.text)
+        }
+    }
+}
+
+/** The StandBy pages as preview slides in pager order (widgets, clock, boards), the start page marked. */
+fun pageSlides(config: AppConfig): List<Slide> {
+    val widgets = widgetsBoard(config)
+    val face = ClockRegistry.pages(config.myClocks).first()
+    return listOf(
+        Slide("위젯", config.startPage <= 1) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) },
+        Slide("시계", config.startPage == 2) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) },
+    ) + config.boards.mapIndexed { i, b ->
+        Slide(b.name, config.startPage == BoardOps.FIRST_BOARD_PAGE + i) { l -> BoardView(b, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
     }
 }

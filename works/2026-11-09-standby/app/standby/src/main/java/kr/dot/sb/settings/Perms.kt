@@ -77,4 +77,15 @@ object Perms {
 
     /** Fold or Flip: has a hinge sensor. The mood-light settings only make sense there. */
     fun isFoldable(ctx: Context): Boolean = ctx.packageManager.hasSystemFeature("android.hardware.sensor.hinge_angle")
+
+    /**
+     * Fold, Flip or bar phone, for the preview's 커버|안쪽 toggle.
+     * ponytail: Samsung model prefix (SM-F7xx = Flip); any other hinge phone counts as a Fold. Read the display sizes
+     * (WindowManager) if a non-Samsung flip shows up.
+     */
+    fun phone(ctx: Context): Phone = when {
+        !isFoldable(ctx) -> Phone.BAR
+        android.os.Build.MODEL.startsWith("SM-F7") -> Phone.FLIP
+        else -> Phone.FOLD
+    }
 }

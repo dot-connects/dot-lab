@@ -44,6 +44,17 @@ import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.style.TextDecoration
+import kotlinx.coroutines.launch
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -84,6 +95,8 @@ object SK {
     val danger = Color(0xFFFF6B5E)
     val ok = Color(0xFF6FDC86)
     val scrim = Color(0xB3000000)
+    /** Reason a row is disabled (mockup .why). */
+    val why = Color(0xFFC9A56A)
 }
 
 val LocalAccent = compositionLocalOf { Color(0xFF76A6F3) }
@@ -153,42 +166,66 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, tint: Color = SK.muted, enabled: Boolea
 val LocalPreviewPane = compositionLocalOf { false }
 
 /**
- * A settings page. [header] = sticky preview above the scrolling [content]; [side] = preview block that scrolls with
- * the content on a phone. Width ≥ 600 dp (Fold inner, review S1): two panes — [header] + [side] on the left (55 %,
- * sticky), [content] on the right (45 %), same components.
+ * A settings page. [preview] (r10) = the screen's live preview: on a phone it is the first item of the list, and once it
+ * has scrolled away a 96 dp mini (+ [miniActions]) overlays the top without changing the list's height; a tap on the mini
+ * scrolls back up. Width >= 600 dp (Fold inner): two panes, the preview (+ [header], [side]) on the left 55 %, the rows on
+ * the right 45 %. [header] = sticky block above the list, [side] = block that scrolls with the list on a phone (pre-r10
+ * screens; they go when Tasks 11-12 port them to [preview]).
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier,
+    preview: Preview? = null,
+    miniActions: (@Composable () -> Unit)? = null,
     header: (@Composable ColumnScope.() -> Unit)? = null,
     side: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
-    BoxWithConstraints(modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
-        val twoPane = maxWidth >= 600.dp && (header != null || side != null)
-        Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
-            Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
-                T(title, if (onBack != null) 22.sp else 30.sp, 700, maxLines = 1)
-            }
-            if (twoPane) {
-                Row(Modifier.weight(1f).fillMaxWidth()) {
-                    CompositionLocalProvider(LocalPreviewPane provides true) {
-                        Column(Modifier.weight(0.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-                            header?.invoke(this)
+    val phone = LocalSettingsEnv.current.phone
+    val st = rememberSaveable(saver = PreviewState.Saver) { PreviewState() }
+    val pager = rememberPagerState(if (preview?.cards == true) preview.slides.indexOfFirst { it.start }.coerceAtLeast(0) else 0) { preview?.slides?.size ?: 0 }
+    var full by remember { mutableStateOf<Int?>(null) }
+    val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
+    Box(modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
+            val twoPane = maxWidth >= 600.dp && (header != null || side != null || preview != null)
+            Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
+                Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
+                    T(title, if (onBack != null) 22.sp else 30.sp, 700, maxLines = 1)
+                }
+                if (twoPane) {
+                    Row(Modifier.weight(1f).fillMaxWidth()) {
+                        CompositionLocalProvider(LocalPreviewPane provides true) {
+                            Column(Modifier.weight(0.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                                header?.invoke(this)
+                                fullPreview()
+                                side?.invoke(this)
+                            }
+                        }
+                        Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+                    }
+                } else {
+                    if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
+                    val scroll = rememberScrollState()
+                    var pvH by remember { mutableIntStateOf(0) }
+                    Box(Modifier.weight(1f).fillMaxWidth()) {
+                        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
+                            if (preview != null) Box(Modifier.fillMaxWidth().onSizeChanged { pvH = it.height }) { fullPreview() }
                             side?.invoke(this)
+                            content()
+                        }
+                        if (preview != null && !preview.cards) {
+                            val gap = with(LocalDensity.current) { 64.dp.roundToPx() }
+                            val mini by remember { derivedStateOf { pvH > 0 && scroll.value > pvH - gap } }
+                            val scope = rememberCoroutineScope()
+                            if (mini) MiniPreview(preview, st, pager, phone, { scope.launch { scroll.animateScrollTo(0) } }, miniActions)
                         }
                     }
-                    Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
-                }
-            } else {
-                if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
-                Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
-                    side?.invoke(this)
-                    content()
                 }
             }
         }
+        full?.let { i -> if (preview != null) FullScreenPreview(preview, st, phone, i) { full = null } }
     }
 }
 
@@ -215,16 +252,48 @@ fun Section(title: String?, footer: String? = null, content: GroupScope.() -> Un
     }
 }
 
+/**
+ * [badge] = red pill ("설정 필요"), green with [badgeOk] ("모두 켜짐"). [enabled] = false: muted, not clickable, [why]
+ * under the title in the reason colour.
+ */
 @Composable
-fun NavRow(title: String, onClick: () -> Unit, subtitle: String? = null, value: String? = null, badge: String? = null) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+fun NavRow(
+    title: String, onClick: () -> Unit, subtitle: String? = null, value: String? = null, badge: String? = null,
+    badgeOk: Boolean = false, enabled: Boolean = true, why: String? = null,
+) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled, onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
-            T(title, 16.sp, 500)
+            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted)
             if (subtitle != null) T(subtitle, 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp), maxLines = 2)
+            if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
         }
-        if (value != null) T(value, 14.sp, 400, SK.muted, Modifier.padding(start = 8.dp), maxLines = 1)
-        if (badge != null) Pill(badge, SK.danger, Modifier.padding(start = 8.dp))
-        Icon(Ic.CHEVRON, SK.muted.copy(alpha = 0.7f), 20.dp, Modifier.padding(start = 4.dp))
+        val dim = if (enabled) 1f else 0.38f
+        if (value != null) T(value, 14.sp, 400, SK.muted.copy(alpha = dim), Modifier.padding(start = 8.dp), maxLines = 1)
+        if (badge != null) Pill(badge, if (badgeOk) SK.ok else SK.danger, Modifier.padding(start = 8.dp))
+        Icon(Ic.CHEVRON, SK.muted.copy(alpha = 0.7f * dim), 20.dp, Modifier.padding(start = 4.dp))
+    }
+}
+
+/**
+ * Inline permission line under a row whose feature needs [perm] (r10: permissions live at the feature). Shows only
+ * while [perm] is missing; a tap opens the system page (a runtime permission asks in-app first, SettingsEnv.onPerm).
+ */
+@Composable
+fun PermLine(perm: Perm, modifier: Modifier = Modifier) {
+    val env = LocalSettingsEnv.current
+    if (env.granted[perm] == true) return
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClickLabel = perm.ko) { env.onPerm(perm) }.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(Modifier.size(8.dp).clip(CircleShape).background(SK.danger))
+        Text(
+            buildAnnotatedString {
+                append("설정 한 가지가 더 필요해요 · ")
+                withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) { append("설정하기") }
+            },
+            color = SK.danger, fontSize = 13.sp, fontFamily = Fonts.ui(500), fontWeight = FontWeight(500),
+        )
     }
 }
 

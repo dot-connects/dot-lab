@@ -78,6 +78,7 @@ class SettingsActivity : ComponentActivity() {
             LiveLux(route == Routes.NIGHT)
             val env = SettingsEnv(
                 foldable = Perms.isFoldable(this),
+                phone = Perms.phone(this),
                 granted = granted.value,
                 onPerm = ::onPermClick,
                 lux = lux.value,
