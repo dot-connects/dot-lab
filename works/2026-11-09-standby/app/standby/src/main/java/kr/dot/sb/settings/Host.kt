@@ -92,7 +92,7 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, env, back) else HomeScreen(config, nav, env)
         }
         route.startsWith("widget:") -> WidgetOptionsScreen(route, config, update, env, back) ?: HomeScreen(config, nav, env)
-        route == Routes.CLOCKS -> ClockListScreen(config, nav, back)
+        route == Routes.CLOCKS -> ClockScreen(config, update, nav, back)
         route.startsWith("clock:") -> {
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)

@@ -171,17 +171,13 @@ val LocalTwoPane = compositionLocalOf { false }
 /**
  * A settings page. [preview] (r10) = the screen's live preview: on a phone it is the first item of the list, and once it
  * has scrolled away a 96 dp mini (+ [miniActions]) overlays the top without changing the list's height; a tap on the mini
- * scrolls back up. Width >= 600 dp (Fold inner): two panes, the preview (+ [header], [side]) on the left 55 %, the rows on
- * the right 45 %. [header] = sticky block above the list, [side] = block that scrolls with the list on a phone (pre-r10
- * screens; they go when Tasks 11-12 port them to [preview]).
+ * scrolls back up. Width >= 600 dp (Fold inner): two panes, the preview on the left 55 %, the rows on the right 45 %.
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier,
     preview: Preview? = null,
     miniActions: (@Composable () -> Unit)? = null,
-    header: (@Composable ColumnScope.() -> Unit)? = null,
-    side: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val phone = LocalSettingsEnv.current.phone
@@ -191,7 +187,7 @@ fun Page(
     val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
     Box(modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
-            val twoPane = maxWidth >= 600.dp && (header != null || side != null || preview != null)
+            val twoPane = maxWidth >= 600.dp && preview != null
             Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
@@ -201,9 +197,7 @@ fun Page(
                     Row(Modifier.weight(1f).fillMaxWidth()) {
                         CompositionLocalProvider(LocalPreviewPane provides true) {
                             Column(Modifier.weight(0.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-                                header?.invoke(this)
                                 fullPreview()
-                                side?.invoke(this)
                             }
                         }
                         CompositionLocalProvider(LocalTwoPane provides true) {
@@ -211,13 +205,11 @@ fun Page(
                         }
                     }
                 } else {
-                    if (header != null) Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp)) { header() }
                     val scroll = rememberScrollState()
                     var pvH by remember { mutableIntStateOf(0) }
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
                             if (preview != null) Box(Modifier.fillMaxWidth().onSizeChanged { pvH = it.height }) { fullPreview() }
-                            side?.invoke(this)
                             content()
                         }
                         if (preview != null && !preview.cards) {
@@ -379,6 +371,25 @@ fun More(content: @Composable ColumnScope.() -> Unit) {
             Icon(if (shown) Ic.UP else Ic.DOWN, SK.muted, 18.dp, Modifier.padding(start = 4.dp))
         }
         if (shown) content()
+    }
+}
+
+/** Fixed colour sets as round swatches (mockup `.sol`): hard colour stops, or a diagonal blend ([blend], 솔라); [selected] = index or -1. */
+@Composable
+fun PresetSwatches(sets: List<List<Long>>, selected: Int, onSelect: (Int) -> Unit, blend: Boolean = false) {
+    FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        sets.forEachIndexed { i, set ->
+            Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "조합 ${i + 1}") { onSelect(i) }, Alignment.Center) {
+                if (i == selected) Box(Modifier.size(46.dp).border(2.dp, Color.White, CircleShape))
+                Canvas(Modifier.size(36.dp).clip(CircleShape)) {
+                    if (blend) drawRect(Brush.linearGradient(set.map { it.c() }))
+                    else set.forEachIndexed { j, c ->
+                        val w = size.width / set.size
+                        drawRect(c.c(), Offset(j * w, 0f), Size(w, size.height))
+                    }
+                }
+            }
+        }
     }
 }
 

@@ -146,7 +146,7 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.HANGUL -> c(Family.CLASSIC, "한글 시계", listOf(TEXT_COLOR, ACCENT_COLOR, SIZE, KFONT), emptyList(), ours = true, built = true)
         FaceId.ANALOG -> c(
             Family.CLASSIC, "아날로그", listOf(SHAPE, HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS),
-            listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, DAY_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
+            listOf(TICK_COLOR, NUMERAL_COLOR, DAY_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
         )
         FaceId.PHOTOS_TIME -> c(Family.CLASSIC, "사진 위 시간", listOf(TEXT_COLOR, SIZE, FONT), listOf(WEIGHT, StyleRow.FX), built = true)
         FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)

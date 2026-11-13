@@ -98,9 +98,22 @@ class SettingsShots {
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
-    @Test fun clocks() = snap("clocks", tall, route = Routes.CLOCKS)
-    @Test fun clockDigital() = snap("clock-digital", tall, route = Routes.clock(FaceId.DIGITAL))
-    @Test fun clockAnalog() = snap("clock-analog", tall, route = Routes.clock(FaceId.ANALOG))
+    private val tallest = "w411dp-h3000dp-port-xhdpi"
+    @Test fun clocks() = snap("clocks", tallest, route = Routes.CLOCKS)
+    @Test fun clocksFold() = snap("clocks-fold", "w932dp-h2000dp-port-xhdpi", route = Routes.CLOCKS)
+    /** Scrolled past the full preview: the mini carries the face name + 꾸미기 / 빼기. */
+    @Test fun clocksMini() = snap("clocks-mini", phone, route = Routes.CLOCKS) {
+        onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
+            .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1600f) }
+    }
+    /** A gallery clock that is not in 내 시계: [내 시계에 넣기]. */
+    @Test fun clocksBrowse() = snap("clocks-browse", phone, route = Routes.CLOCKS) { onNodeWithText("레트로").performScrollTo().performClick(); onNodeWithText("전광판").performScrollTo().performClick() }
+    @Test fun clockLed() = snap("clock-led", tall, route = Routes.clock(FaceId.LED))
+    @Test fun clockHangul() = snap("clock-hangul", tall, route = Routes.clock(FaceId.HANGUL))
+    @Test fun clockAnalog() = snap("clock-analog", tallest, route = Routes.clock(FaceId.ANALOG)) { onNodeWithText("자세히").performScrollTo().performClick() }
+    @Test fun clockColorBlock() = snap("clock-colorblock", tall, route = Routes.clock(FaceId.COLOR_BLOCK))
+    /** 색 조합 바꾸기 pressed once: a new combo, [이전 조합] enabled. */
+    @Test fun clockShuffle() = snap("clock-shuffle", tall, route = Routes.clock(FaceId.DIGITAL)) { onNodeWithText("색 조합 바꾸기").performClick() }
     @Test fun clockSolarFold() = snap("clock-solar-fold", foldTall, route = Routes.clock(FaceId.SOLAR))
     @Test fun notif() = snap("notif", phone, route = Routes.NOTIF)
     @Test fun notifFold() = snap("notif-fold", fold, route = Routes.NOTIF)

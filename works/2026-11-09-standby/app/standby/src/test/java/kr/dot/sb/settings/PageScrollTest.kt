@@ -19,7 +19,7 @@ import org.robolectric.annotation.Config
 /**
  * r10 preview pattern: the mini preview only overlays the list, so scrolling never jumps. Scrolls a previewed page down
  * and back up in 10 dp steps; the position must move monotonically, the mini shows once the full preview is gone and
- * hides again at the top. (Task 12 points this at the 시계 screen.)
+ * hides again at the top, on the real 시계 screen (the longest previewed page).
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -32,9 +32,7 @@ class PageScrollTest {
         val config = AppConfig()
         rule.setContent {
             SettingsTheme(SK.ok) {
-                Page("시계", {}, preview = Preview(config, pageSlides(config))) {
-                    Section("목록") { repeat(40) { i -> item { NavRow("줄 $i", {}) } } }
-                }
+                RouteHost(Routes.CLOCKS, config, {}, object : Nav { override fun push(route: String) {}; override fun back() {} }, SettingsEnv())
             }
         }
         val list = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.VerticalScrollAxisRange)).onFirst() // the page list; board slides have their own
