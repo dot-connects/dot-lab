@@ -77,9 +77,14 @@ fun ClockFace(
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
             // r10 faces draw as DIGITAL until their renderer lands (plan-r10 Tasks 6-9)
-            FaceId.DIGITAL, FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS, FaceId.FLIP, FaceId.LED,
+            FaceId.DIGITAL, FaceId.FLIP, FaceId.LED,
             FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
             -> DigitalFace(st, d, ink, inSlot, mod)
+            FaceId.THIN -> ThinFace(st, d, ink, inSlot, mod)
+            FaceId.SPLIT -> SplitFace(st, d, ink, inSlot, mod)
+            FaceId.COLOR_BLOCK -> ColorBlockFace(st, d, ink, inSlot, mod)
+            FaceId.STICKER -> StickerFace(st, d, ink, inSlot, mod)
+            FaceId.BALLS -> BallsFace(st, d, ink, inSlot, mod)
             FaceId.DESK -> DeskFace(st, d, ink, inSlot, mod)
             FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod)
             FaceId.FLOAT -> FloatFace(st, d, ink, inSlot, mod, hero)

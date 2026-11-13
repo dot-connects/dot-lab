@@ -1,5 +1,8 @@
 package kr.dot.sb.ui.clock
 
+import kr.dot.sb.model.FaceId
+import kr.dot.sb.model.FontId
+
 /**
  * Fixed colours of the r10 faces with their own look (mockup `PART`, `COMBO2`, `COMBO3`, `LEDS`; plan-r10 "New-face
  * colours"). Read at render time when the `ClockStyle` field is null; not theme-derived, `withTheme` leaves them.
@@ -19,6 +22,16 @@ object FaceDefaults {
     const val BAR = 0xFF30CEDA
     const val RIM = 0xFFFF9C56
     const val PAPER = 0xFFF4EFE6
+
+    /** Default digit font + weight of a new face (mockup); overrides the theme's THEME font. null = the theme's. */
+    fun font(face: FaceId): Pair<FontId, Int>? = when (face) {
+        FaceId.THIN -> FontId.OUTFIT to 100
+        FaceId.SPLIT -> FontId.BIG_SHOULDERS to 900
+        FaceId.COLOR_BLOCK -> FontId.BAGEL to 400
+        FaceId.STICKER -> FontId.TITAN to 400
+        FaceId.BALLS -> FontId.FREDOKA to 700
+        else -> null
+    }
 
     /** LED colours: 빨강, 초록, 파랑, 호박; the first is the default. */
     val LEDS = listOf(0xFFFF3A22, 0xFF3DFF6E, 0xFF3AA0FF, 0xFFFFB000)

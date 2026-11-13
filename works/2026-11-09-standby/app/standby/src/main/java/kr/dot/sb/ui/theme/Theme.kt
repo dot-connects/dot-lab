@@ -65,7 +65,8 @@ object Themes {
      * clocks sit on the page (Background.BLACK = page, D4b). Digits are [FontId.THEME] (D4b); SOLAR keeps its gradients.
      */
     private fun defaults(tk: ThemeTokens): (FaceId) -> ClockStyle = { face ->
-        val font = FontId.THEME; val weight = tk.digitWeight
+        // r10 faces with their own font (FaceDefaults) keep it under every theme
+        val (font, weight) = kr.dot.sb.ui.clock.FaceDefaults.font(face) ?: (FontId.THEME to tk.digitWeight)
         val ink = tk.ink.long(); val acc = tk.accent.long()
         val tick = tk.ink.copy(alpha = tk.ink2).compositeOver(tk.bg.base).long()
         when (face) {

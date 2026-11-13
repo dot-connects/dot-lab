@@ -22,6 +22,12 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int) {
     CONDENSED("좁게", "StandBy 디지털", 600),
     ROUNDED_HEAVY("둥글고 아주 굵게", "StandBy 플로트", 950),
     THIN("얇게", "StandBy 솔라", 350),
+    // r10 face fonts (plan-r10 Global Constraints: default font per new face)
+    OUTFIT("아주 가늘게", "Outfit", 100),
+    BIG_SHOULDERS("좁고 굵게", "Big Shoulders", 900),
+    BAGEL("통통하게", "Bagel Fat One", 400),
+    TITAN("스티커", "Titan One", 400),
+    FREDOKA("동글게", "Fredoka", 700),
 }
 
 /** r10 dropped RAINBOW and GLASS; [kr.dot.sb.settings.ConfigCodec] reads them as SOLID. */

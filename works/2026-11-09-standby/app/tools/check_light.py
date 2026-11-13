@@ -5,7 +5,8 @@
 For every DAYPAPER / RADIO day shot in the board, notif, clock and primitives groups, samples the four corners and
 the four edge midpoints inside the board margin (where only the page can be). Three or more samples darker than luminance 0.5
 fail: that is a black rectangle left by a face or a test harness; one or two are content reaching the edge (a side
-column, big digits). Night shots and faces that own their background by design (Solar, photo time) are skipped.
+column, big digits). Night shots and faces that own their background by design (Solar, photo time, r10 색 블록) are
+skipped.
 """
 import sys
 from pathlib import Path
@@ -36,7 +37,7 @@ def main() -> int:
     for th in THEMES:
         for g in GROUPS:
             for f in sorted((root / th / g).glob("*.png")):
-                if any(k in f.stem for k in ("night", "dusk", "solar", "photos_time")):
+                if any(k in f.stem for k in ("night", "dusk", "solar", "photos_time", "color_block")):
                     continue
                 seen += 1
                 im = Image.open(f).convert("RGB")

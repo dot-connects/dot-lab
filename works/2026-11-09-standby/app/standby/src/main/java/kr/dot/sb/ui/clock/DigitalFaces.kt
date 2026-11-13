@@ -158,24 +158,31 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
         val labelCap = ui.textSize * capR
         when (layout) {
             ClockLayout.IPHONE -> {
-                val sideW = max(SIDE_MIN.toPx(), rows.maxOf { ui.width(it) })
-                val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.025f * w
-                // B4 (r10): x0 + digits + gap + side column ≤ w − margin − 10 dp, so the ±8 dp burn-in shift never
-                // clips "6:30" (was w − 1.5 × margin with ×1.03 for every font: wide theme fonts ran to the edge)
+                // r10 "꽉 찬 숫자" (clocks.html c-full): info strip on the left with a rule on its right, digits up to
+                // 75 % H; 오전/오후 heads the strip in 12 h
+                val strip = (if (d.use24h) emptyList() else listOf(listOf(Seg(d.ampm, grey)))) + rows
+                val sideW = max(SIDE_MIN.toPx(), strip.maxOf { ui.width(it) })
+                // strip | 1.5 % W | rule | 1 % W | digits: the reserved hour width adds the rest of the mockup's 24 dp;
+                // wider gaps cost the Fold cover its ≥ 57 % H digits (ClockShots.digitalHeroSize)
+                val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.015f * w; val gg = 0.025f * w
+                // B4 (r10): strip + rule + digits ≤ w − 2 margins − 10 dp, so the ±8 dp burn-in shift never clips
                 val avail = w - 2 * margin - 10.dp.toPx()
                 val slack = if (condensed) 1.03f else 1f
-                val fs = fitSize(p, d, false, 0.69f * h * sizePct, (avail - sideW - g) * slack)
+                val fs = fitSize(p, d, false, 0.75f * h * sizePct, (avail - sideW - gg) * slack)
                 val cap = p.capEm * fs
-                // digits centred in the class's reserved width, so the side column never moves within the hour class
+                // digits centred in the class's reserved width, so the strip never moves within the hour class
                 val res = p.widestEm(d.h.length, d.use24h) * fs / slack
                 val tw = p.measureHm(d.h, d.m, fs)
-                val x0 = margin + (avail - (res + g + sideW)) / 2
+                val x0 = margin + (avail - (sideW + gg + res)) / 2
                 val capTop = (h - cap) / 2
-                val step = ui.textSize * 1.25f
+                val step = ui.textSize * 1.9f
+                val sTop = (h - strip.size * step) / 2
+                val rule = Paint().apply { color = grey; strokeWidth = max(1f, 1.dp.toPx()) }
                 return@FaceCanvas {
                     drawFaceBg(bg, w, h, 0f)
-                    p.drawHm(this, d.h, d.m, x0 + (res - tw) / 2, capTop + cap, fs, look)
-                    rows.forEachIndexed { i, r -> drawSegs(r, x0 + res + g, capTop + labelCap + i * step, ui) }
+                    strip.forEachIndexed { i, r -> drawSegs(r, x0, sTop + i * step + (step + labelCap) / 2, ui) }
+                    drawLine(x0 + sideW + g, sTop, x0 + sideW + g, sTop + strip.size * step, rule)
+                    p.drawHm(this, d.h, d.m, x0 + sideW + gg + (res - tw) / 2, capTop + cap, fs, look)
                 }
             }
             else -> {

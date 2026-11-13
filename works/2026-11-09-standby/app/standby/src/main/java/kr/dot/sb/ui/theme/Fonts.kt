@@ -53,5 +53,11 @@ object Fonts {
         // Sofia Sans Extra Condensed (digits subset): the iPhone StandBy Digital face, no artificial squeeze needed
         // THEME is resolved by StandbyTheme.digits; Sofia is only the theme-less fallback
         FontId.CONDENSED, FontId.THEME -> variable(R.font.sofia_xcond, weight, "sofia")
+        FontId.OUTFIT -> variable(R.font.outfit, weight, "outfit")
+        FontId.BIG_SHOULDERS -> variable(R.font.big_shoulders, weight, "bigshoulders")
+        FontId.FREDOKA -> variable(R.font.fredoka, weight, "fredoka")
+        // static single cuts: the variation setting is ignored
+        FontId.BAGEL -> variable(R.font.bagel_fat_one, weight, "bagel")
+        FontId.TITAN -> variable(R.font.titan_one, weight, "titan")
     }
 }

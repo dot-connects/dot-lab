@@ -174,6 +174,38 @@ class ClockShots(private val theme: Theme) {
         }
     }
 
+    /**
+     * r10 faces (plan-r10 shot budget): every theme on the Fold cover by day; IPHONE on all six devices day + night,
+     * a two-digit hour and the slot classes L / M / Sw / St / XSt.
+     */
+    private val r10 = listOf(FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS)
+
+    private fun r10Items(night: Boolean) = r10.map { "${it.name.lowercase()}-day" to face(it) } +
+        (if (night) r10.map { "${it.name.lowercase()}-night" to face(it, Fixtures.full(night = 1f)) } else emptyList())
+
+    private fun r10On(device: Device) {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        shots(device, r10Items(night = true))
+    }
+
+    @Test fun r10FoldCoverLand() {
+        val ten58 = Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58))
+        val extra = if (theme != Theme.IPHONE) emptyList() else
+            r10Items(night = true).filter { it.first.endsWith("night") } + r10.map { "${it.name.lowercase()}-10-58" to face(it, ten58) }
+        shots(Device.FOLD_COVER_L, r10Items(night = false) + extra)
+    }
+    @Test fun r10FoldCoverPort() = r10On(Device.FOLD_COVER_P)
+    @Test fun r10FoldInner() = r10On(Device.FOLD_INNER)
+    @Test fun r10BarLand() = r10On(Device.BAR_L)
+    @Test fun r10BarPort() = r10On(Device.BAR_P)
+    @Test fun r10Flip() = r10On(Device.FLIP)
+
+    @Test fun r10Slots() {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        val sizes = listOf("L" to (703 to 427), "M" to (337 to 419), "Sw" to (337 to 199), "St" to (220 to 419), "XSt" to (104 to 300))
+        shots(Device.FOLD_COVER_L, r10.flatMap { f -> sizes.map { (n, wh) -> "slot-${f.name.lowercase()}-$n" to slot(f, wh.first, wh.second) } })
+    }
+
     /** The same faces inside board slots (S square, XS, tall) to check inSlot fitting. */
     @Test fun inSlot() {
         val sizes = listOf("m" to (337 to 419), "xs" to (152 to 152), "wide" to (337 to 199))
