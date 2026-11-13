@@ -53,6 +53,8 @@ class Critters(
     private var lastCaughtAz: Float? = null
     private var spawns = 0
     private var yaw = 0f
+    private var yawGoal = 0f
+    private var lastRaw = Float.NaN
     private var pitchBase: Float? = null
     private var tilt = 0f   // degrees from the pitch the screen opened at
     private val sm = ctx.getSystemService(SensorManager::class.java)
@@ -72,7 +74,7 @@ class Critters(
     private val heightFrac get() = prefs.getFloat("critter_scale", 0.25f) * 0.4f
 
     override fun start() {
-        pitchBase = null
+        pitchBase = null; lastRaw = Float.NaN
         sm?.getDefaultSensor(Sensor.TYPE_ROTATION_VECTOR)?.let { sm.registerListener(this, it, SensorManager.SENSOR_DELAY_GAME) }
     }
 
@@ -84,14 +86,19 @@ class Critters(
         SensorManager.remapCoordinateSystem(rot, SensorManager.AXIS_X, SensorManager.AXIS_Z, remapped)
         SensorManager.getOrientation(remapped, ori)
         val a = Math.toDegrees(ori[0].toDouble()).toFloat()
-        yaw += diff(a, yaw) * 0.5f   // light smoothing
+        if (scene) {
+            // the drawn yard turns at half the phone's turn, smoothed more (operator 11-13 "너무 민감해")
+            if (!lastRaw.isNaN()) yawGoal += diff(a, lastRaw) * SCENE_GAIN
+            lastRaw = a
+            yaw += (yawGoal - yaw) * 0.25f
+        } else yaw += diff(a, yaw) * 0.5f   // light smoothing
         val p = Math.toDegrees(ori[1].toDouble()).toFloat()
         val base = pitchBase ?: p.also { pitchBase = it }
         tilt += ((p - base) - tilt) * 0.5f
     }
 
     /** Vertical shift of the floor, share of the view height (+ = down), from tilting since the screen opened. */
-    val shift01: Float get() = (PITCH_SIGN * tilt / VFOV_DEG).coerceIn(-0.3f, 0.3f)
+    val shift01: Float get() = (PITCH_SIGN * tilt * (if (scene) SCENE_GAIN else 1f) / VFOV_DEG).coerceIn(-0.3f, 0.3f)
 
     override fun onAccuracyChanged(s: Sensor?, accuracy: Int) {}
 
@@ -221,7 +228,9 @@ class Critters(
     companion object {
         const val COUNT = 3
         const val SCENE_COUNT = 6
-        const val SCENE_SPREAD_DEG = 90f
+        const val SCENE_SPREAD_DEG = 60f   // in yard degrees: 120 degrees of real turning at SCENE_GAIN
+        /** Camera-off yard: share of the phone's turn and tilt the yard follows (1 = like the camera). */
+        const val SCENE_GAIN = 0.5f
         /** Scene-mode critter size vs camera mode: mockup x1.3, then x0.8 (operator 11-13). */
         const val SCENE_SIZE = 1.04f
         // ponytail: vertical field of view and tilt direction guessed from the Android docs; calibrate on the phone

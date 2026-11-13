@@ -292,7 +292,7 @@ render();
  */
 window.__exportIcons = () => {
   const fg = document.createElement("canvas"); fg.width = fg.height = 432; const g = fg.getContext("2d");
-  const art = icon(false), k = 432 / S * 0.84;
+  const art = icon(false), k = 432 / S * 0.6;   // 0.84 cut the claw under launcher masks (operator 11-13)
   g.translate(216, 216); g.scale(k, k); g.translate(-CX, -(CY - 16));
   g.fillStyle = PAL.claw[pick.claw][1]; g.fillRect(CX - 9, -400, 18, 480);   // rod continues above the safe zone
   g.drawImage(art, 0, 0);
