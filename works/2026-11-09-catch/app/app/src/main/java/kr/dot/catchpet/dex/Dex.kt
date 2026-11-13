@@ -27,7 +27,23 @@ object Dex {
     )
 
     private val ENTRY_ID = Regex("^e(\\d+)$")
-    private val KIND_NAMES = mapOf("dog" to "강아지", "cat" to "고양이", "person" to "사람")
+    private val KIND_NAMES = mapOf(
+        "dog" to "강아지", "cat" to "고양이", "person" to "사람",
+        "bird" to "새", "cow" to "소", "horse" to "말", "sheep" to "양", "elephant" to "코끼리", "bear" to "곰",
+        "zebra" to "얼룩말", "giraffe" to "기린",
+        "hamster" to "햄스터", "rabbit" to "토끼", "turtle" to "거북이", "fish" to "물고기", "guinea pig" to "기니피그",
+        "lizard" to "도마뱀",
+    )
+
+    /** Korean name of a dex kind ("hamster" -> "햄스터"); unknown kinds show as they are. */
+    fun kindName(kind: String): String = KIND_NAMES[kind] ?: kind
+
+    /** "강아지를" / "곰을": the object particle after a Korean word (batchim decides). */
+    fun withObject(word: String): String {
+        val c = word.lastOrNull() ?: return word
+        val batchim = c in '\uAC00'..'\uD7A3' && (c - '\uAC00') % 28 != 0
+        return word + if (batchim) "을" else "를"
+    }
 
     fun root(ctx: Context) = File(ctx.filesDir, "dex")
     fun dir(ctx: Context, id: String) = File(root(ctx), id)
@@ -59,7 +75,7 @@ object Dex {
         val no = (usedNos.maxOrNull() ?: 0) + 1
         val id = "e$no"
         val name = if (critterId != null) critterName(ctx, critterId)
-        else "${KIND_NAMES[kind] ?: kind} ${all.count { it.kind == kind } + 1}"
+        else "${kindName(kind)} ${all.count { it.kind == kind } + 1}"
         dir(ctx, id).mkdirs()
         if (png != null) atomicWrite(file(ctx, id, "$pose.png"), png)
         return write(ctx, Entry(id, kind, name, no, critterId, listOf(pose), now, AiState(emptyList(), null, false)))

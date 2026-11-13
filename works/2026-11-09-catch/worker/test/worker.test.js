@@ -38,7 +38,7 @@ test("a valid request returns the model image and counts once", async () => {
 });
 
 test("bad style, kind, device or image never reaches the model", async () => {
-  for (const b of [ok({ style: "toon" }), ok({ kind: "horse" }), ok({ device: "x" }), ok({ device: "dev-ABCDEFGH" }), ok({ image: "" }), ok({ image: "A".repeat(2_000_001) }), ok({ image: "<script>" })]) {
+  for (const b of [ok({ style: "toon" }), ok({ kind: "dragon" }), ok({ device: "x" }), ok({ device: "dev-ABCDEFGH" }), ok({ image: "" }), ok({ image: "A".repeat(2_000_001) }), ok({ image: "<script>" })]) {
     assert.equal((await call(b)).status, 400, JSON.stringify(b).slice(0, 60));
   }
   assert.equal(calls.length, 0);
@@ -155,7 +155,7 @@ test("/sheet: needs x-app and a valid entry", async () => {
   assert.equal((await call(sheetBody(), { path: "/sheet", headers: { "x-purchase": "tok-123" } })).status, 404);
   assert.equal((await sheet(sheetBody({ entry: "" }))).status, 400);
   assert.equal((await sheet(sheetBody({ entry: "a/b" }))).status, 400);
-  assert.equal((await sheet(sheetBody({ kind: "fish" }))).status, 400);
+  assert.equal((await sheet(sheetBody({ kind: "dragon" }))).status, 400);
 });
 
 test("/sheet: an entry gets 2 calls, a token 10 a day", async () => {

@@ -10,9 +10,18 @@ data class Box(val x0: Int, val y0: Int, val x1: Int, val y1: Int) {
     val h get() = y1 - y0 + 1
 }
 
-/** A low-resolution 1-bit mask of one thing on screen (the segmenter's 90x160 grid, or a critter's ellipse). */
-class Mask(val w: Int, val h: Int, val bits: BooleanArray, val kind: Kind, val critterId: String? = null) {
-    enum class Kind { PERSON, DOG, CAT, CRITTER }
+/**
+ * A low-resolution 1-bit mask of one thing on screen (the segmenter's 90x160 grid, or a critter's ellipse).
+ * ANIMAL = any other real animal, named by [species] (an English word the AI prompt can use: "bird", "hamster" ...).
+ */
+class Mask(
+    val w: Int, val h: Int, val bits: BooleanArray, val kind: Kind,
+    val critterId: String? = null, val species: String? = null,
+) {
+    enum class Kind { PERSON, DOG, CAT, ANIMAL, CRITTER }
+
+    /** The dex kind string: person | dog | cat | critter | the species. */
+    val dexKind: String get() = species ?: kind.name.lowercase()
 
     init { require(bits.size == w * h) { "bits ${bits.size} != $w x $h" } }
 
@@ -43,7 +52,7 @@ class Mask(val w: Int, val h: Int, val bits: BooleanArray, val kind: Kind, val c
 
     companion object {
         /** The ellipse inscribed in box b: stands in when the segmenter misses but the detector or a critter gives a box. */
-        fun ellipseIn(w: Int, h: Int, b: Box, kind: Kind, critterId: String? = null): Mask {
+        fun ellipseIn(w: Int, h: Int, b: Box, kind: Kind, critterId: String? = null, species: String? = null): Mask {
             val bits = BooleanArray(w * h)
             val cx = (b.x0 + b.x1) / 2f; val cy = (b.y0 + b.y1) / 2f
             val rx = max(0.5f, b.w / 2f); val ry = max(0.5f, b.h / 2f)
@@ -51,7 +60,7 @@ class Mask(val w: Int, val h: Int, val bits: BooleanArray, val kind: Kind, val c
                 val u = (x - cx) / rx; val v = (y - cy) / ry
                 if (u * u + v * v <= 1f) bits[y * w + x] = true
             }
-            return Mask(w, h, bits, kind, critterId)
+            return Mask(w, h, bits, kind, critterId, species)
         }
     }
 }

@@ -11,7 +11,10 @@
 // A secret piped in from Windows PowerShell can carry a UTF-8 BOM and a newline (2026-11-12: OpenAI answered 400).
 export const secret = v => String(v ?? "").replace(/^\uFEFF/, "").trim();
 const ORIGINS = [/^https:\/\/dot-connects\.github\.io$/, /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/];
-const STYLES = ["fluff", "figure"], KINDS = ["dog", "cat", "person"];
+const STYLES = ["fluff", "figure"];
+// the app's dex kinds (Dex.KIND_NAMES): each is an English word the prompts use as is
+export const KINDS = ["dog", "cat", "person", "bird", "cow", "horse", "sheep", "elephant", "bear", "zebra", "giraffe",
+  "hamster", "rabbit", "turtle", "fish", "guinea pig", "lizard"];
 const IMAGE_MAX = 2_000_000;   // base64 chars, ~1.5 MB: the game sends a <= 512 px PNG
 const MODEL = "gpt-image-2.6-flare";
 const OPENAI_URL = "https://api.openai.com/v1/images/edits";

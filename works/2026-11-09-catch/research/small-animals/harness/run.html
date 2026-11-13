@@ -1,0 +1,74 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+import { FilesetResolver, ImageClassifier, InteractiveSegmenter, ObjectDetector, ImageSegmenter } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+const G = {
+  hamster: ["hamster"], guineapig: ["guinea pig"], rabbit: ["wood rabbit", "hare", "Angora"],
+  turtle: ["box turtle", "mud turtle", "terrapin", "loggerhead", "leatherback turtle"],
+  fish: ["goldfish", "tench", "anemone fish", "rock beauty", "puffer", "lionfish", "eel", "coho", "sturgeon", "gar", "barracouta"],
+  lizard: ["common iguana", "American chameleon", "whiptail", "agama", "frilled lizard", "alligator lizard", "Gila monster", "green lizard", "African chameleon", "Komodo dragon", "banded gecko"],
+};
+const L2G = {}; for (const [g, ls] of Object.entries(G)) for (const l of ls) L2G[l] = g;
+const log = []; window.__log = log;
+try {
+const fs = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+const mk = async (C, f, o = {}) => C.createFromOptions(fs, { baseOptions: { modelAssetPath: "models/" + f, delegate: "CPU" }, runningMode: "IMAGE", ...o });
+const cls = await mk(ImageClassifier, "efficientnet_lite0.tflite", { maxResults: -1 });
+const cls8 = await mk(ImageClassifier, "efficientnet_lite0_int8.tflite", { maxResults: -1 });
+const mt = await mk(InteractiveSegmenter, "magic_touch.tflite", { outputCategoryMask: true, outputConfidenceMasks: false });
+const det = await mk(ObjectDetector, "efficientdet_lite0.tflite", { scoreThreshold: 0.1, maxResults: 5 });
+const dl = await mk(ImageSegmenter, "deeplab_v3.tflite", { outputCategoryMask: true, outputConfidenceMasks: false });
+const list = await (await fetch("imgs/list.json")).json();
+const T = (k, t) => { (window.__ms ||= {})[k] ||= []; window.__ms[k].push(Math.round(t)); };
+function frame(img) { const s = 320 / Math.max(img.width, img.height), c = document.createElement("canvas");
+  c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext("2d").drawImage(img, 0, 0, c.width, c.height); return c; }
+function crop(src, x, y, w, h) { const c = document.createElement("canvas"); c.width = Math.max(8, Math.round(w)); c.height = Math.max(8, Math.round(h));
+  c.getContext("2d").drawImage(src, x, y, w, h, 0, 0, c.width, c.height); return c; }
+function score(res) { const g = {};
+  for (const c of res.classifications[0].categories) { const gg = L2G[c.categoryName]; if (gg) g[gg] = (g[gg] || 0) + c.score; }
+  const top = res.classifications[0].categories.slice(0, 5).map(c => [c.categoryName, +c.score.toFixed(3)]);
+  let best = null; for (const [k, v] of Object.entries(g)) if (!best || v > best[1]) best = [k, +v.toFixed(3)];
+  return { top, best: best || ["-", 0] }; }
+function classify(m, k, src) { const t = performance.now(); const r = score(m.classify(src)); T(k, performance.now() - t); return r; }
+function touch(src, x, y) { const t = performance.now(); let mask;
+  mt.segment(src, { keypoint: { x: x / src.width, y: y / src.height } }, r => { const m = r.categoryMask; mask = { w: m.width, h: m.height, a: Array.from(m.getAsUint8Array(), v => v === 0 ? 1 : 0) }; m.close(); });
+  T("magic_touch", performance.now() - t); return mask; }
+for (const it of list) {
+  const img = new Image(); img.src = "imgs/" + it.id + ".jpg"; try { await img.decode(); } catch { (window.__skip ||= []).push(it.id); continue; }
+  const f = frame(img), W = f.width, H = f.height, R = { id: it.id, cls: it.cls, W, H };
+  R.full = classify(cls, "cls_full_f32", f); R.full8 = classify(cls8, "cls_full_int8", f);
+  // (i) 3x3 half-size crops, stride quarter
+  let bi = null; const cw = W / 2, ch = H / 2; const t0 = performance.now();
+  for (let j = 0; j < 3; j++) for (let i = 0; i < 3; i++) { const x = i * W / 4, y = j * H / 4; const s = score(cls.classify(crop(f, x, y, cw, ch)));
+    if (!bi || s.best[1] > bi.s.best[1]) bi = { x, y, w: cw, h: ch, s }; }
+  T("grid9_cls", performance.now() - t0);
+  // refine: 2x2 of 0.75-size crops inside the best crop
+  let br = bi; const t1 = performance.now();
+  for (let j = 0; j < 2; j++) for (let i = 0; i < 2; i++) { const w = bi.w * .75, h = bi.h * .75, x = bi.x + i * bi.w * .25, y = bi.y + j * bi.h * .25;
+    const s = score(cls.classify(crop(f, x, y, w, h))); if (s.best[1] > br.s.best[1]) br = { x, y, w, h, s }; }
+  T("refine4_cls", performance.now() - t1);
+  R.grid = { box: [bi.x, bi.y, bi.w, bi.h], s: bi.s, mask: touch(f, bi.x + bi.w / 2, bi.y + bi.h / 2) };
+  R.gridR = { box: [br.x, br.y, br.w, br.h], s: br.s, mask: touch(f, br.x + br.w / 2, br.y + br.h / 2) };
+  // (ii) detector boxes (any COCO class) -> classify padded crop -> magic touch at the box centre
+  let t2 = performance.now(); const dets = det.detect(f).detections; T("detector", performance.now() - t2);
+  let bd = null; t2 = performance.now();
+  for (const d of dets) { const b = d.boundingBox, p = .1; const x = Math.max(0, b.originX - b.width * p), y = Math.max(0, b.originY - b.height * p);
+    const w = Math.min(W - x, b.width * (1 + 2 * p)), h = Math.min(H - y, b.height * (1 + 2 * p));
+    const s = score(cls.classify(crop(f, x, y, w, h))); if (!bd || s.best[1] > bd.s.best[1]) bd = { box: [b.originX, b.originY, b.width, b.height], s, dl: d.categories[0].categoryName + " " + d.categories[0].score.toFixed(2) }; }
+  T("det_crops_cls", performance.now() - t2);
+  let b8 = null; t2 = performance.now();
+  for (const d of dets) { const b = d.boundingBox, p = .1; const x = Math.max(0, b.originX - b.width * p), y = Math.max(0, b.originY - b.height * p);
+    const w = Math.min(W - x, b.width * (1 + 2 * p)), h = Math.min(H - y, b.height * (1 + 2 * p));
+    const s = score(cls8.classify(crop(f, x, y, w, h))); if (!b8 || s.best[1] > b8.best[1]) b8 = s; }
+  T("det_crops_cls_int8", performance.now() - t2); R.det8 = b8;
+  R.ndet = dets.length;
+  if (bd) R.det = { ...bd, mask: touch(f, bd.box[0] + bd.box[2] / 2, bd.box[1] + bd.box[3] / 2) };
+  // (iii) DeepLab any non-background class
+  let t3 = performance.now(); dl.segment(f, r => { const m = r.categoryMask; const a = m.getAsUint8Array();
+    R.deeplab = { mask: { w: m.width, h: m.height, a: Array.from(a, v => v ? 1 : 0) } }; m.close(); }); T("deeplab", performance.now() - t3);
+  // (iv) magic touch at the frame centre (baseline: "aim the camera at it")
+  R.centre = { mask: touch(f, W / 2, H / 2) };
+  R.img = f.toDataURL("image/jpeg", .8);
+  log.push(R);
+}
+window.__done = true;
+} catch (e) { window.__err = String(e.stack || e); }
+</script>

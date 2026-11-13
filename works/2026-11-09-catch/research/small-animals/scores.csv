@@ -1,0 +1,37 @@
+id,full_f32,full_int8,grid13_f32,detcrop_f32,detcrop_int8,det_box_label
+hamster_00,fish 0.001,lizard 0,lizard 0.024,fish 0.006,rabbit 0,book 0.42
+hamster_01,hamster 0.25,guineapig 0.02,hamster 0.782,hamster 0.536,guineapig 0.02,bird 0.56
+hamster_03,hamster 0.035,hamster 0.016,hamster 0.856,hamster 0.764,hamster 0.504,cat 0.45
+hamster_07,hamster 0.835,hamster 0.789,hamster 0.954,hamster 0.849,hamster 0.766,cat 0.49
+hamster_11,hamster 0.97,hamster 0.859,hamster 0.998,hamster 0.977,hamster 0.91,sheep 0.39
+hamster_20,rabbit 0.715,rabbit 0.633,rabbit 0.647,rabbit 0.725,rabbit 0.566,cat 0.56
+rabbit_03,guineapig 0.445,guineapig 0.324,guineapig 0.609,guineapig 0.586,guineapig 0.395,bed 0.65
+rabbit_04,rabbit 0.196,rabbit 0.469,rabbit 0.824,rabbit 0.519,rabbit 0.395,cat 0.83
+rabbit_05,rabbit 0.648,rabbit 0.883,rabbit 0.689,rabbit 0.713,rabbit 0.598,bird 0.39
+rabbit_08,rabbit 0.557,rabbit 0.156,rabbit 0.688,rabbit 0.589,rabbit 0.164,chair 0.22
+rabbit_12,rabbit 0.36,rabbit 0.371,rabbit 0.766,rabbit 0.268,rabbit 0.309,cat 0.78
+turtle_08,turtle 0.461,turtle 0.371,turtle 0.91,turtle 0.91,turtle 0.918,handbag 0.21
+turtle_09,turtle 0.889,turtle 0.887,turtle 0.904,turtle 0.891,turtle 0.883,bird 0.21
+turtle_10,turtle 0.881,turtle 0.707,turtle 0.937,turtle 0.916,turtle 0.93,dog 0.34
+turtle_11,turtle 0.735,turtle 0.758,turtle 0.966,turtle 0.902,turtle 0.926,apple 0.18
+turtle_12,lizard 0.001,lizard 0,rabbit 0.011,fish 0.007,fish 0.02,sheep 0.14
+turtle_16,turtle 0.913,turtle 0.941,turtle 0.937,turtle 0.957,turtle 0.969,teddy bear 0.30
+fish_03,fish 0.892,fish 0.898,fish 0.968,fish 0.798,fish 0.895,bird 0.81
+fish_06,fish 0.842,fish 0.484,fish 0.997,fish 0.926,fish 0.496,car 0.11
+fish_08,fish 0.146,fish 0.02,fish 0.881,fish 0.924,fish 0.266,bird 0.10
+fish_14,fish 0.011,fish 0.031,fish 0.499,fish 0.116,fish 0.457,bird 0.46
+fish_16,fish 0.043,turtle 0.02,lizard 0.525,lizard 0.032,turtle 0.051,bird 0.85
+fish_18,fish 0.056,fish 0.004,fish 0.195,fish 0.354,fish 0.078,apple 0.10
+fish_25,fish 0.064,turtle 0.02,fish 0.519,fish 0.619,fish 0.023,banana 0.36
+guineapig_04,guineapig 0.42,guineapig 0.277,guineapig 0.887,guineapig 0.674,guineapig 0.727,dog 0.41
+guineapig_09,guineapig 0.944,guineapig 0.996,guineapig 0.924,guineapig 0.867,guineapig 0.965,dog 0.63
+lizard_00,lizard 0.184,lizard 0.543,lizard 0.989,lizard 0.735,lizard 0.676,dog 0.12
+lizard_03,lizard 0.956,lizard 0.965,lizard 0.966,lizard 0.94,lizard 0.945,bird 0.66
+neg_00,lizard 0.001,turtle 0,lizard 0.003,lizard 0.001,fish 0,bed 0.56
+neg_09,lizard 0.002,turtle 0,lizard 0.003,rabbit 0.003,fish 0.004,couch 0.45
+neg_12,turtle 0,turtle 0,fish 0.004,fish 0.006,fish 0.008,chair 0.29
+neg_15,lizard 0.001,rabbit 0,fish 0.04,fish 0.013,fish 0.059,cell phone 0.15
+neg_18,fish 0.005,fish 0.008,fish 0.012,rabbit 0.007,rabbit 0.004,potted plant 0.47
+neg_21,rabbit 0,turtle 0,lizard 0.008,lizard 0.055,lizard 0.031,chair 0.11
+neg_28,fish 0.005,guineapig 0.004,lizard 0.016,hamster 0.008,rabbit 0.004,dog 0.44
+neg_29,fish 0.002,fish 0.004,fish 0.592,fish 0.062,fish 0.043,teddy bear 0.58

@@ -58,6 +58,7 @@ import kr.dot.catchpet.ar.ArCritters
 import kr.dot.catchpet.camera.ArSource
 import kr.dot.catchpet.camera.CameraXSource
 import kr.dot.catchpet.camera.FrameSource
+import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.game.Capsule
 import kr.dot.catchpet.game.Claw
 import kr.dot.catchpet.game.Mask
@@ -76,7 +77,7 @@ import kotlin.random.Random
 /** Where a catch goes (the Dex wires this). Called the moment the claw reaches the top (plan R6), before the capsule. */
 interface CatchSink {
     /** png: the cut-out (real things) or null (critters). label: the pose. True when the dex count grows. */
-    fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String): Boolean
+    fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Boolean
 }
 
 /** Virtual critters (ar/Critters): masks on the segmenter grid for the claw, drawn by the catch screen. */
@@ -311,7 +312,7 @@ private class CatchGame(
             val id = target.critterId ?: ""
             val (label, pic) = map?.let { critters.caught(id, it) } ?: ("front" to null)
             held = Grip(pic, null, 1f)
-            val grew = sink.onCaught(Mask.Kind.CRITTER, null, id, label)
+            val grew = sink.onCaught("critter", null, id, label)
             startCapsule(c, "털 녀석을 뽑았다!", grew)
             return
         }
@@ -326,12 +327,8 @@ private class CatchGame(
             c.handedOff(); next(); say("아깝다!", false)
             return
         }
-        val grew = sink.onCaught(target.kind, got.cut.bmp, null, "front")
-        startCapsule(c, grew = grew, text = when (target.kind) {
-            Mask.Kind.CAT -> "고양이를 뽑았다!"
-            Mask.Kind.DOG -> "강아지를 뽑았다!"
-            else -> "사람을 뽑았다!"
-        })
+        val grew = sink.onCaught(target.dexKind, got.cut.bmp, null, "front")
+        startCapsule(c, grew = grew, text = Dex.withObject(Dex.kindName(target.dexKind)) + " 뽑았다!")
     }
 
     private fun startCapsule(c: Claw, text: String, grew: Boolean) {
@@ -538,6 +535,6 @@ private class CatchGame(
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
-        private fun family(k: Mask.Kind) = if (k == Mask.Kind.CAT) Mask.Kind.DOG else k
+        private fun family(k: Mask.Kind) = if (k == Mask.Kind.PERSON || k == Mask.Kind.CRITTER) k else Mask.Kind.DOG
     }
 }

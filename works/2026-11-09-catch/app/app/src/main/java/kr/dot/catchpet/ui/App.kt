@@ -28,7 +28,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.catchpet.ar.Critters
 import kr.dot.catchpet.dex.Dex
-import kr.dot.catchpet.game.Mask
 import java.io.ByteArrayOutputStream
 import java.util.concurrent.Executors
 
@@ -71,12 +70,12 @@ class DexSink(private val ctx: Context) : CatchSink {
         count = all.size
     }
 
-    override fun onCaught(kind: Mask.Kind, png: Bitmap?, critterId: String?, label: String): Boolean {
+    override fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Boolean {
         val grew = critterId == null || critters.add(critterId)
         if (grew) count++
         writes.execute {
             val bytes = png?.let { b -> ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray() }
-            runCatching { Dex.add(ctx, kind.name.lowercase(), bytes, critterId, label) }
+            runCatching { Dex.add(ctx, kind, bytes, critterId, label) }
                 .onFailure { android.util.Log.e("DexSink", "save failed", it) }
         }
         return grew

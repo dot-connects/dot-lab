@@ -1,0 +1,28 @@
+<!doctype html><meta charset="utf-8"><body><script type="module">
+// ?m=<method>|cand  -> window.__out = dataURL of one contact sheet
+const q = new URLSearchParams(location.search), M = q.get("m"), TW = +(q.get("t") || 240), TH = TW, LH = 46, COLS = +(q.get("c") || 6), F = q.get("f");
+try {
+let items;
+if (M === "cand") items = (await (await fetch("cand/meta.json")).json()).filter(m => !F || m.cls === F).map(m => ({ src: "cand/" + m.id + ".jpg", lines: [m.id, m.title.slice(5, 40)] }));
+else {
+  const R = (await (await fetch("results.json")).json()).log;
+  items = R.map(r => { const x = M === "full" ? r.full : M === "full8" ? r.full8 : r[M];
+    const s = x?.s || x; const lines = [r.id + (M === "det" && x ? "  " + x.dl : "") + (M === "det" ? "  n=" + r.ndet : "")];
+    if (s?.best) lines.push(s.best[0] + " " + s.best[1] + " | " + s.top[0][0].slice(0, 16) + " " + s.top[0][1]);
+    return { src: r.img, mask: x?.mask, box: x?.box, lines, W: r.W, H: r.H }; });
+}
+const rows = Math.ceil(items.length / COLS), c = document.createElement("canvas"); c.width = COLS * TW; c.height = rows * (TH + LH);
+const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+for (const [k, it] of items.entries()) {
+  const img = new Image(); img.src = it.src; try { await img.decode(); } catch { continue; }
+  const s = Math.min(TW / img.width, TH / img.height), w = img.width * s, h = img.height * s, ox = (k % COLS) * TW + (TW - w) / 2, oy = Math.floor(k / COLS) * (TH + LH);
+  g.drawImage(img, ox, oy, w, h);
+  if (it.mask) { const m = it.mask, t = document.createElement("canvas"); t.width = m.w; t.height = m.h; const tg = t.getContext("2d"), id = tg.createImageData(m.w, m.h);
+    for (let i = 0; i < m.a.length; i++) if (m.a[i]) { id.data[i * 4] = 255; id.data[i * 4 + 1] = 0; id.data[i * 4 + 2] = 200; id.data[i * 4 + 3] = 120; }
+    tg.putImageData(id, 0, 0); g.drawImage(t, ox, oy, w, h); }
+  if (it.box) { const f = w / it.W; g.strokeStyle = "#0f0"; g.lineWidth = 2; g.strokeRect(ox + it.box[0] * f, oy + it.box[1] * f, it.box[2] * f, it.box[3] * f); }
+  g.fillStyle = "#000"; g.font = "12px sans-serif"; it.lines.forEach((l, i) => g.fillText(l, (k % COLS) * TW + 3, oy + TH + 14 + i * 15));
+}
+window.__out = c.toDataURL("image/png");
+} catch (e) { window.__err = String(e.stack || e); }
+</script>

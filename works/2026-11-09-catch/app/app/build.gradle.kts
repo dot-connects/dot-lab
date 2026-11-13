@@ -11,13 +11,20 @@ android {
         applicationId = "kr.dot.catchpet"
         minSdk = 34 // specialUse foreground service
         targetSdk = 35
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.2"
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
         buildConfigField("String", "WORKER", "\"https://dot-lab-catch.dotconnects.workers.dev\"")
     }
     buildFeatures { compose = true; buildConfig = true }
+    buildTypes {
+        // R8 on the debug build too: unshrunk dex was 32 MB, and the APK goes to the phone through a 30 MB hand-off
+        debug {
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

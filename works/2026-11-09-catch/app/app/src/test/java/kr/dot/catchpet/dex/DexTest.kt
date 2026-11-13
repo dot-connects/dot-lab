@@ -67,6 +67,14 @@ class DexTest {
         assertFalse(File(Dex.dir(ctx, "e4"), "meta.json.tmp").exists())   // written by rename
     }
 
+    @Test fun speciesNamesAndTheirParticle() {
+        val h = Dex.add(ctx, "hamster", png, null, "front")
+        assertEquals("햄스터 1", h.name)
+        assertEquals("햄스터를", Dex.withObject("햄스터"))
+        assertEquals("곰을", Dex.withObject(Dex.kindName("bear")))
+        assertEquals("사람을", Dex.withObject(Dex.kindName("person")))
+    }
+
     @Test fun getRejectsIdsThatAreNotEntries() {
         assertNull(Dex.get(ctx, "../x"))
     }
