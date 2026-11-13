@@ -107,8 +107,8 @@ internal fun notifPage(config: AppConfig, current: Int): Int? {
     return if (current in hits) current else hits.firstOrNull()
 }
 
-/** Test hook: start on clock face [face], in clock edit mode (optionally with the colour sheet), or with Now Playing open. */
-internal data class RootStart(val edit: Boolean = false, val sheet: Boolean = false, val nowPlaying: Boolean = false, val face: Int = 0, val bar: Boolean = false)
+/** Test hook: start on clock face [face] (null = the first of `myClocks`), in clock edit mode (optionally with the colour sheet), or with Now Playing open. */
+internal data class RootStart(val edit: Boolean = false, val sheet: Boolean = false, val nowPlaying: Boolean = false, val face: FaceId? = null, val bar: Boolean = false)
 
 /**
  * The whole StandBy surface: horizontal pages (widgets, photos, clocks, boards), the interrupt layers, night, the
@@ -137,7 +137,7 @@ internal fun RootImpl(
     val count by rememberUpdatedState(FIXED_PAGES + config.boards.size)
     // Hoisted above the display-off branch so waking returns to the same page and clock face.
     val pager = rememberPagerState(config.startPage.coerceIn(0, count - 1)) { count }
-    val clockPage = remember { mutableIntStateOf(start.face) }
+    val clockPage = remember { mutableStateOf(start.face) }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
     // cards ask for Now Playing (and the banner for the notification card) through the actions; the root owns both

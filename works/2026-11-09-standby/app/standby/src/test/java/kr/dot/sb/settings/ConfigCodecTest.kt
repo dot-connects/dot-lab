@@ -292,5 +292,25 @@ class ConfigCodecTest {
         assertEquals(listOf(exam), ConfigCodec.decode(ConfigCodec.encode(AppConfig(ddays = listOf(exam)))).ddays)
     }
 
+    @Test fun faceDefaultColoursRoundTripNullsOmitted() {   // (k) r10 per-face colours: null = FaceDefaults
+        val base = AppConfig().clockStyle(FaceId.DIGITAL)
+        assertTrue(styleJson(base).keys().asSequence().none { it in R10_COLOURS })
+        val set = base.copy(
+            hourColor = 1, minuteColor = 2, accentColor = 3, plateColor = 4, digitColor = 5, panelColor = 6, inkColor = 7,
+            dotColor = 8, faceColor = 9, calendarColor = 10, barColor = 11, rimColor = 12, paperColor = 13, ledColor = 14,
+            pairPreset = 3, trioPreset = 4,
+        )
+        assertEquals(R10_COLOURS, styleJson(set).keys().asSequence().filter { it in R10_COLOURS }.toSet())
+        for (s in listOf(base, set, base.copy(plateColor = 0xFF1E1E20))) {
+            val c = AppConfig(styles = mapOf(FaceId.FLIP to s))
+            assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
+        }
+    }
+
+    private val R10_COLOURS = setOf(
+        "hourColor", "minuteColor", "accentColor", "plateColor", "digitColor", "panelColor", "inkColor", "dotColor", "faceColor",
+        "calendarColor", "barColor", "rimColor", "paperColor", "ledColor", "pairPreset", "trioPreset",
+    )
+
     private fun styleJson(s: ClockStyle): JSONObject = JSONObject(ConfigCodec.encode(AppConfig(styles = mapOf(FaceId.DIGITAL to s)))).getJSONObject("styles").getJSONObject("DIGITAL")
 }

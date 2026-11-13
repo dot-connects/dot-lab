@@ -241,8 +241,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
             }
 
             Section("시계 스타일", footer = "이 화면의 시계 카드가 쓰는 스타일이에요.") {
-                val faces = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT, FaceId.DESK)
-                item { ControlRow(null) { ChipFlow(faces.map { it.ko }, faces.indexOf(board.clockFace).coerceAtLeast(0), { i -> edit { b -> b.copy(clockFace = faces[i]) } }) } }
+                val faces = kr.dot.sb.ui.clock.ClockRegistry.boardFaces
+                item { ControlRow(null) { ChipFlow(faces.map { kr.dot.sb.ui.clock.spec(it).ko }, faces.indexOf(board.clockFace).coerceAtLeast(0), { i -> edit { b -> b.copy(clockFace = faces[i]) } }) } }
                 item { NavRow("${board.clockFace.ko} 스타일 편집", { nav.push(Routes.clock(board.clockFace)) }) }
             }
 

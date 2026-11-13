@@ -34,7 +34,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +59,12 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.cards.Txt
 import kr.dot.sb.ui.cards.tap
+import kr.dot.sb.settings.MyClocks
 import kr.dot.sb.ui.clock.ClockFace
+import kr.dot.sb.ui.clock.ClockRegistry
+import kr.dot.sb.ui.clock.FaceDefaults
+import kr.dot.sb.ui.clock.StyleRow
+import kr.dot.sb.ui.clock.spec
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
 import kr.dot.sb.ui.theme.CandleLight
@@ -72,34 +77,33 @@ import kr.dot.sb.ui.theme.LocalInk
 /** iPhone edit mode shrinks the face to 67 % (frames solar-edit, float-colormenu). */
 private const val EDIT_SCALE = 0.67f
 
-/** The colour a face's swatch row edits (design §2.1): Analog = second hand, Solar = a whole palette. */
-private fun picked(face: FaceId, s: ClockStyle, c: Long): Boolean = when (face) {
-    FaceId.ANALOG -> s.secondColor == c
-    else -> s.color == c
-}
-
-private fun withColor(face: FaceId, s: ClockStyle, c: Long): ClockStyle =
-    if (face == FaceId.ANALOG) s.copy(color = c, secondColor = c) else s.copy(color = c)
-
 /**
- * Clocks page: vertical pager over [FaceId.CLOCKS] (spec C1), each face with its own style. Long press = iPhone edit
- * mode (spec C8): face card at 67 %, neighbour names above/below, dots right, colour circle → bottom colour sheet,
- * 완료 top-right; vertical swipes still change the face. [page] is hoisted so display-off keeps the face.
+ * Clocks page: vertical pager over the built faces of `AppConfig.myClocks` (plan-r10), each face with its own style.
+ * Long press = iPhone edit mode (spec C8): face card at 67 %, neighbour names above/below, dots right, colour circle →
+ * bottom sheet for the face's first colour or preset row ([kr.dot.sb.ui.clock.ClockSpec.sheetRow]), 완료 top-right;
+ * vertical swipes still change the face. [page] (the shown face; null = the first) is hoisted so display-off keeps it.
  */
 @Composable
 internal fun ClocksPage(
     state: StandbyState,
     config: AppConfig,
-    page: MutableIntState,
+    page: MutableState<FaceId?>,
     editing: Boolean,
     onEdit: (Boolean) -> Unit,
     sheetStart: Boolean,
     styleOf: (FaceId) -> ClockStyle,
     onPick: (FaceId, ClockStyle) -> Unit,
 ) {
-    val faces = FaceId.CLOCKS
-    val pager = rememberPagerState(page.intValue) { faces.size }
-    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { page.intValue = it } }
+    val faces = remember(config.myClocks) { ClockRegistry.pages(config.myClocks) }
+    val pager = rememberPagerState(MyClocks.page(faces, page.value, 0)) { faces.size }
+    val shown by rememberUpdatedState(faces)
+    LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { i -> shown.getOrNull(i)?.let { page.value = it } } }
+    // the list changed while showing: follow the face, else stay on the slot (clamped)
+    LaunchedEffect(faces) {
+        val i = MyClocks.page(faces, page.value, pager.currentPage)
+        page.value = faces[i]
+        if (i != pager.currentPage) pager.scrollToPage(i)
+    }
     var sheet by remember { mutableStateOf(sheetStart && editing) }
     if (!editing && sheet) sheet = false
     val edit by rememberUpdatedState(onEdit)
@@ -120,7 +124,7 @@ internal fun ClocksPage(
             Modifier.fillMaxSize().burnInBleed().pointerInput(editing) { if (!editing) detectTapGestures(onLongPress = { edit(true) }) },
             flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
         ) { p ->
-            val face = faces[p]
+            val face = faces.getOrElse(p) { faces.last() }
             Box(
                 Modifier.fillMaxSize().padding(BURN_IN_BLEED).graphicsLayer {
                     val sc = 1f - (1f - EDIT_SCALE) * k
@@ -134,17 +138,17 @@ internal fun ClocksPage(
             }
         }
 
-        val cur = pager.currentPage
+        val cur = pager.currentPage.coerceIn(0, faces.lastIndex)
         if (k > 0f) {
             val band = h * (1f - EDIT_SCALE) / 2
             val cap = max(16.dp, s * 0.04f)
             // Neighbour names above / below the card.
             faces.getOrNull(cur - 1)?.let {
-                Box(Modifier.fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) { Txt(it.ko, cap, ink.ink, weight = 600) }
+                Box(Modifier.fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) { Txt(spec(it).ko, cap, ink.ink, weight = 600) }
             }
             faces.getOrNull(cur + 1)?.let {
                 Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) {
-                    Txt(it.ko, cap, ink.ink, weight = 600)
+                    Txt(spec(it).ko, cap, ink.ink, weight = 600)
                 }
             }
             // 완료 pill, centred in the top band, right edge on the margin.
@@ -161,8 +165,8 @@ internal fun ClocksPage(
                 faces.size, cur, false, vertical = true, dot = dot, always = true, dim = ink.ink2.copy(alpha = 0.6f),
                 modifier = Modifier.align(Alignment.CenterStart).offset(x = w * (1f + EDIT_SCALE) / 2 + (w * (1f - EDIT_SCALE) / 2 - dot) * 0.3f).alpha(k),
             )
-            // White colour circle in the card's bottom-right corner (no colour edit on World, spec C8).
-            if (faces[cur] != FaceId.WORLD && !sheet) {
+            // White colour circle in the card's bottom-right corner (a face without a colour row has none).
+            if (spec(faces[cur]).sheetRow != null && !sheet) {
                 val d = s * EDIT_SCALE * 0.19f
                 val right = w * (1f + EDIT_SCALE) / 2
                 val bottom = h * (1f + EDIT_SCALE) / 2
@@ -185,14 +189,16 @@ internal fun ClocksPage(
             exit = slideOutVertically(tween(350, easing = FastOutSlowInEasing)) { it } + fadeOut(tween(350)),
         ) {
             val face = faces[cur]
-            ColorSheet(face, styleOf(face), ink, s, if (h > w) w - m * 2 else w * 0.74f, { onPick(face, it) }) { sheet = false }
+            spec(face).sheetRow?.let { row ->
+                ColorSheet(row, styleOf(face), ink, s, if (h > w) w - m * 2 else w * 0.74f, { onPick(face, it) }) { sheet = false }
+            }
         }
     }
 }
 
 /** Bottom colour sheet (frame float-colormenu): "색상" centred, ✕ right, one row of swatches (scrolls when narrow). */
 @Composable
-private fun ColorSheet(face: FaceId, style: ClockStyle, ink: Ink, s: Dp, width: Dp, onPick: (ClockStyle) -> Unit, onClose: () -> Unit) {
+private fun ColorSheet(row: StyleRow, style: ClockStyle, ink: Ink, s: Dp, width: Dp, onPick: (ClockStyle) -> Unit, onClose: () -> Unit) {
     val pad = max(16.dp, s * 0.05f)
     val d = max(30.dp, min(46.dp, s * 0.085f))
     Column(
@@ -212,15 +218,25 @@ private fun ColorSheet(face: FaceId, style: ClockStyle, ink: Ink, s: Dp, width: 
             horizontalArrangement = Arrangement.spacedBy(d * 0.42f),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            if (face == FaceId.SOLAR) {
-                ClockStyle.SOLAR_SETS.forEach { set ->
-                    Swatch(d, style.bgColor == set[0], ink, Brush.linearGradient(listOf(ink.accent(Color(set[0])), ink.accent(Color(set[1]))))) {
+            fun grad(cs: List<Long>): Brush = Brush.linearGradient(cs.map { ink.accent(Color(it)) })
+            fun solid(c: Long): Brush = androidx.compose.ui.graphics.SolidColor(ink.accent(Color(c)))
+            when (row) {
+                StyleRow.SOLAR -> ClockStyle.SOLAR_SETS.forEach { set ->
+                    Swatch(d, style.bgColor == set[0], ink, grad(set.take(2))) {
                         onPick(style.copy(bgColor = set[0], bgColor2 = set[1], color = set[2], color2 = set[3]))
                     }
                 }
-            } else {
-                ClockStyle.SWATCHES.forEach { c ->
-                    Swatch(d, picked(face, style, c), ink, androidx.compose.ui.graphics.SolidColor(ink.accent(Color(c)))) { onPick(withColor(face, style, c)) }
+                StyleRow.PAIR -> FaceDefaults.PAIRS.forEachIndexed { i, set ->
+                    Swatch(d, (style.pairPreset ?: 0) == i, ink, grad(set)) { onPick(style.copy(pairPreset = i)) }
+                }
+                StyleRow.TRIO -> FaceDefaults.TRIOS.forEachIndexed { i, set ->
+                    Swatch(d, (style.trioPreset ?: 0) == i, ink, grad(set)) { onPick(style.copy(trioPreset = i)) }
+                }
+                StyleRow.LED -> FaceDefaults.LEDS.forEach { c ->
+                    Swatch(d, (style.ledColor ?: FaceDefaults.LEDS[0]) == c, ink, solid(c)) { onPick(style.copy(ledColor = c)) }
+                }
+                else -> ClockStyle.SWATCHES.forEach { c ->
+                    Swatch(d, row.color(style) == c, ink, solid(c)) { onPick(row.withColor(style, c)) }
                 }
             }
         }

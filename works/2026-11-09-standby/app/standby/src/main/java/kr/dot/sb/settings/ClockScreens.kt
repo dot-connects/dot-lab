@@ -62,7 +62,7 @@ fun ClockListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
     }
     Page("시계 스타일", back) {
         Section("스탠바이 시계", footer = "시계 화면을 위아래로 넘기면 이 순서로 바뀌어요. 시계마다 서체, 색, 크기가 따로예요.") {
-            FaceId.CLOCKS.forEach { f -> item { row(f) } }
+            kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).forEach { f -> item { row(f) } }
         }
         Section("그 밖의 시계") {
             item { row(FaceId.DESK, "책상 화면의 큰 시계") }

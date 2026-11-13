@@ -75,9 +75,7 @@ enum class FaceId(val ko: String) {
     DIGITAL("디지털"), ANALOG("아날로그"), WORLD("세계"), SOLAR("솔라"), FLOAT("플로트"), DESK("책상"), PHOTOS_TIME("사진 위 시간"),
     // r10 clock gallery (plan-r10 Tasks 6-9); until their renderer lands they draw as DIGITAL
     THIN("가는 선"), SPLIT("시·분 나눔"), COLOR_BLOCK("색 블록"), STICKER("스티커"), BALLS("공 숫자"), FLIP("플립"), LED("LED"),
-    LCD("액정"), DOT_MATRIX("전광판"), WALL("벽시계"), CALENDAR("달력과 시계"), HANGUL("한글 시계"), DAY_BAR("하루 막대"), RIM("테두리 초");
-
-    companion object { val CLOCKS = listOf(DIGITAL, ANALOG, WORLD, SOLAR, FLOAT) }
+    LCD("액정"), DOT_MATRIX("전광판"), WALL("벽시계"), CALENDAR("달력과 시계"), HANGUL("한글 시계"), DAY_BAR("하루 막대"), RIM("테두리 초"),
 }
 
 data class ClockStyle(
@@ -104,6 +102,25 @@ data class ClockStyle(
     val tickColor: Long = 0xFF98989F,
     // world only
     val litDotColor: Long = 0xFF98989F,
+    // r10 faces with their own look (plan-r10): null = `ui.clock.FaceDefaults`, set only when edited
+    val hourColor: Long? = null,
+    val minuteColor: Long? = null,
+    /** 한글 시계 emphasis. */
+    val accentColor: Long? = null,
+    val plateColor: Long? = null,
+    val digitColor: Long? = null,
+    val panelColor: Long? = null,
+    val inkColor: Long? = null,
+    val dotColor: Long? = null,
+    val faceColor: Long? = null,
+    val calendarColor: Long? = null,
+    val barColor: Long? = null,
+    val rimColor: Long? = null,
+    val paperColor: Long? = null,
+    val ledColor: Long? = null,
+    /** Index into `FaceDefaults.PAIRS` (색 블록) / `FaceDefaults.TRIOS` (스티커, 공 숫자). */
+    val pairPreset: Int? = null,
+    val trioPreset: Int? = null,
 ) {
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */

@@ -52,13 +52,13 @@ class ScreenShots(private val name: String, private val device: Device, private 
         val start = when (k) {
             "edit" -> RootStart(edit = true)
             "sheet" -> RootStart(edit = true, sheet = true)
-            "sheet-solar" -> RootStart(edit = true, sheet = true, face = 3)
+            "sheet-solar" -> RootStart(edit = true, sheet = true, face = kr.dot.sb.model.FaceId.SOLAR)
             "np", "np-open" -> RootStart(nowPlaying = true)
             else -> RootStart()
         }
         rule.setContent {
             Box(Modifier.fillMaxSize().background(Color.Black)) {
-                RootImpl(state, AppConfig(startPage = page, theme = theme, ddays = Fixtures.ddays), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
+                RootImpl(state, AppConfig(startPage = page, theme = theme, ddays = Fixtures.ddays, myClocks = kr.dot.sb.settings.Migrations.OLD_CLOCKS), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, start)
             }
         }
         rule.mainClock.advanceTimeBy(if (k == "sheet-solar" || k == "sheet") 400 else if (k == "notif" || k == "notif-hidden") 2_200 else 32)

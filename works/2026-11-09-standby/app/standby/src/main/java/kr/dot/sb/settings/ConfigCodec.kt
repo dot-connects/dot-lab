@@ -157,7 +157,28 @@ object ConfigCodec {
         put("analogNumbers", s.analogNumbers.name); put("analogTicks", s.analogTicks.name)
         put("numeralColor", s.numeralColor); put("handColor", s.handColor); put("secondColor", s.secondColor)
         put("weekdayColor", s.weekdayColor); put("tickColor", s.tickColor); put("litDotColor", s.litDotColor)
+        R10_COLOURS.forEach { (k, get, _) -> get(s)?.let { put(k, it) } }   // null = FaceDefaults, omitted
     }
+
+    /** r10 per-face colours (nullable): key, read, write. Presets are indices, stored as numbers too. */
+    private val R10_COLOURS: List<Triple<String, (ClockStyle) -> Long?, (ClockStyle, Long?) -> ClockStyle>> = listOf(
+        Triple("hourColor", { s -> s.hourColor }, { s, v -> s.copy(hourColor = v) }),
+        Triple("minuteColor", { s -> s.minuteColor }, { s, v -> s.copy(minuteColor = v) }),
+        Triple("accentColor", { s -> s.accentColor }, { s, v -> s.copy(accentColor = v) }),
+        Triple("plateColor", { s -> s.plateColor }, { s, v -> s.copy(plateColor = v) }),
+        Triple("digitColor", { s -> s.digitColor }, { s, v -> s.copy(digitColor = v) }),
+        Triple("panelColor", { s -> s.panelColor }, { s, v -> s.copy(panelColor = v) }),
+        Triple("inkColor", { s -> s.inkColor }, { s, v -> s.copy(inkColor = v) }),
+        Triple("dotColor", { s -> s.dotColor }, { s, v -> s.copy(dotColor = v) }),
+        Triple("faceColor", { s -> s.faceColor }, { s, v -> s.copy(faceColor = v) }),
+        Triple("calendarColor", { s -> s.calendarColor }, { s, v -> s.copy(calendarColor = v) }),
+        Triple("barColor", { s -> s.barColor }, { s, v -> s.copy(barColor = v) }),
+        Triple("rimColor", { s -> s.rimColor }, { s, v -> s.copy(rimColor = v) }),
+        Triple("paperColor", { s -> s.paperColor }, { s, v -> s.copy(paperColor = v) }),
+        Triple("ledColor", { s -> s.ledColor }, { s, v -> s.copy(ledColor = v) }),
+        Triple("pairPreset", { s -> s.pairPreset?.toLong() }, { s, v -> s.copy(pairPreset = v?.toInt()) }),
+        Triple("trioPreset", { s -> s.trioPreset?.toLong() }, { s, v -> s.copy(trioPreset = v?.toInt()) }),
+    )
 
     /** Fields missing from [o] keep the value in [b] (the default for that face), including fields added after this save. */
     private fun style(o: JSONObject, b: ClockStyle) = b.copy(
@@ -171,7 +192,7 @@ object ConfigCodec {
         numeralColor = o.optLong("numeralColor", b.numeralColor), handColor = o.optLong("handColor", b.handColor),
         secondColor = o.optLong("secondColor", b.secondColor), weekdayColor = o.optLong("weekdayColor", b.weekdayColor),
         tickColor = o.optLong("tickColor", b.tickColor), litDotColor = o.optLong("litDotColor", b.litDotColor),
-    )
+    ).let { s -> R10_COLOURS.fold(s) { acc, (k, _, set) -> if (o.has(k) && !o.isNull(k)) set(acc, o.optLong(k)) else acc } }
 
     private fun board(b: Board) = JSONObject().apply {
         put("id", b.id); put("name", b.name); put("layout", b.layout.name)
