@@ -464,7 +464,7 @@ private fun MediaTime(e: Env, ms: Long, c: Color) = Txt(mmss(ms), 12.dp * e.look
 private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() -> Unit)?) {
     val w = e.w
     val pad = (w * 0.075f).coerceIn(12.dp, 32.dp)
-    val ts = (w * 0.068f).coerceIn(15.dp, 26.dp)
+    val ts = (w * 0.068f).coerceIn(15.dp, 26.dp) * e.look.textScale // text-size setting (title, artist); one line still ellipsizes
     val play = min((w * 0.19f).coerceIn(52.dp, 80.dp), w - pad * 2 - 96.dp).coerceAtLeast(48.dp) // prev + next keep 48 dp
     val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
     val video = m.kind == MediaKind.VIDEO
@@ -516,7 +516,7 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions, close: (()
         Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.fillMaxSize(), 0.dp)
         if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
             val pad = (s * 0.07f).coerceIn(12.dp, 32.dp)
-            val ts = (s * 0.07f).coerceIn(13.dp, 26.dp)
+            val ts = (s * 0.07f).coerceIn(13.dp, 26.dp) * e.look.textScale // text-size setting; one line still ellipsizes
             val play = (s * 0.24f).coerceIn(48.dp, 96.dp)
             val side = max(48.dp, play * 0.72f)
             val gap = ((e.w - play - side * 2) * 0.12f).coerceIn(0.dp, play * 0.9f)
