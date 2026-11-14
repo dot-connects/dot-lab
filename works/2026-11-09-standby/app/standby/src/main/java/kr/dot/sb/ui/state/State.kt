@@ -128,7 +128,11 @@ data class WeatherInfo(
 )
 
 @Immutable
-data class AgendaItem(val start: String, val title: String, val color: Long, val date: LocalDate? = null)
+data class AgendaItem(
+    val start: String, val title: String, val color: Long, val date: LocalDate? = null,
+    /** When it ends (null = all day / unknown): plan-r11 B4 drops ended items each minute without a new query. */
+    val end: java.time.LocalDateTime? = null,
+)
 
 @Immutable
 data class AlarmRinging(val label: String, val canSnooze: Boolean = true)

@@ -64,27 +64,36 @@ class SleepService : Service() {
 
     private fun play(g: Int) {
         var gen = NoiseGen(sound)
-        val buf = ShortArray(2048)
+        val buf = ShortArray(NoiseGen.CHUNK)
+        val min = AudioTrack.getMinBufferSize(NoiseGen.RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
         val track = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
             .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(NoiseGen.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-            .setBufferSizeInBytes(buf.size * 2 * 2)
+            .setBufferSizeInBytes(NoiseGen.bufferBytes(min))
             .setTransferMode(AudioTrack.MODE_STREAM)
             .build()
         track.play()
         var lastMin = -1
+        val chunkMs = NoiseGen.CHUNK * 1000L / NoiseGen.RATE
         try {
             while (running) {
-                if (gen.sound != sound) gen = NoiseGen(sound)
+                if (gen.sound != sound) {
+                    // a switch: drop what is buffered of the old sound so the two never overlap
+                    gen = NoiseGen(sound); track.pause(); track.flush(); track.play()
+                }
                 val left = timeLeft()
                 if (left < 0) break
                 val m = if (endAt != Long.MAX_VALUE) ((left + 59_999) / 60_000).toInt() else null
                 if ((m ?: -1) != lastMin) { lastMin = m ?: -1; SleepBus.state.value = SleepState(true, m) } // once a minute
-                gen.fill(buf, if (left < FADE_MS) left.toFloat() / FADE_MS else 1f)
-                track.write(buf, 0, buf.size) // blocks until the buffer drains: this is the only pacing
+                fun gain(ms: Long) = if (ms < FADE_MS) ms.coerceAtLeast(0).toFloat() / FADE_MS else 1f
+                gen.fill(buf, gain(left), gain(left - chunkMs)) // per-sample ramp across the chunk
+                track.write(buf, 0, buf.size) // blocks until there is room: this is the only pacing
             }
         } finally {
-            track.stop(); track.release()
+            // only this thread touches the track: pause + flush first, so the sound stops now rather than after the
+            // 500 ms buffer plays out (a stop is noticed within one 250 ms chunk)
+            runCatching { track.pause(); track.flush() }
+            track.release()
             // a newer start (this service, or a new one after a quick stop+start) owns the card and the service now
             synchronized(this) {
                 if (session.get() == g) {
@@ -97,7 +106,7 @@ class SleepService : Service() {
     }
 
     override fun onDestroy() {
-        running = false // the thread notices on its next buffer, releases the track and resets SleepBus
+        running = false // the thread notices on its next chunk, pauses + flushes + releases the track and resets SleepBus
         super.onDestroy()
     }
 

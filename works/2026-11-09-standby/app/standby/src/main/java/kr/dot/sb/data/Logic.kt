@@ -18,6 +18,28 @@ import kotlin.math.sqrt
  * A two-way switch that flips only after its condition held for a while (night lux, flat/upright pose, pick-up).
  * Light sensors report on change, so a steady value sends no event: callers wake up at [pendingMs] and call update again.
  */
+/**
+ * Trailing debounce with a max wait (plan-r11 B1): [request] at [now] gives when to fire — [waitMs] after the latest
+ * request, but never later than [maxWaitMs] after the first one of the burst. [fired] starts a new burst.
+ */
+class Debounce(private val waitMs: Long, private val maxWaitMs: Long) {
+    private var firstAt: Long? = null
+    fun request(now: Long): Long {
+        val first = firstAt ?: now.also { firstAt = it }
+        return minOf(now + waitMs, first + maxWaitMs)
+    }
+    fun fired() { firstAt = null }
+}
+
+/** plan-r11 B4: what the agenda/calendar cards show at [now] from the last calendar query. */
+object Agenda {
+    /** (today's agenda, at most 5; everything upcoming): items that ended before [now] are gone. */
+    fun visible(all: List<kr.dot.sb.ui.state.AgendaItem>, now: java.time.LocalDateTime): Pair<List<kr.dot.sb.ui.state.AgendaItem>, List<kr.dot.sb.ui.state.AgendaItem>> {
+        val left = all.filter { it.end == null || it.end.isAfter(now) }
+        return left.filter { it.date == now.toLocalDate() }.take(5) to left
+    }
+}
+
 class HoldSwitch(private val onMs: Long, private val offMs: Long) {
     var on = false
         private set

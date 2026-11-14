@@ -122,7 +122,7 @@ class Listener : NotificationListenerService() {
         runCatching { getSystemService(AudioManager::class.java).unregisterAudioPlaybackCallback(audio) }
         runCatching { unregisterReceiver(nextAlarm) }
         runCatching { unregisterReceiver(power) }
-        handler.removeCallbacksAndMessages(null)
+        handler.removeCallbacksAndMessages(null); shadeDebounce.fired()
         scope?.cancel(); scope = null
         if (ListenerBus.listener?.get() === this) ListenerBus.listener = null
         ListenerBus.shade.value = emptyList()
@@ -131,14 +131,23 @@ class Listener : NotificationListenerService() {
 
     override fun onNotificationPosted(sbn: StatusBarNotification, rankingMap: RankingMap) {
         handle(sbn, rankingMap)
-        publishShade()
+        publishShadeSoon()
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         ListenerBus.contentIntents.remove(sbn.key)
         if (sbn.key == alarmKey) { alarmKey = null; ListenerBus.setNotificationAlarm(null) }
         if (live.remove(sbn.key) != null) publishLive()
-        publishShade()
+        publishShadeSoon()
+    }
+
+    // plan-r11 B1: a burst of posts/removals (a chat, a group summary) rebuilds the shade once, at most 1 s late
+    private val shadeDebounce = kr.dot.sb.data.Debounce(300, 1_000)
+    private val shadeRun = Runnable { shadeDebounce.fired(); publishShade() }
+    private fun publishShadeSoon() {
+        val at = shadeDebounce.request(android.os.SystemClock.uptimeMillis())
+        handler.removeCallbacks(shadeRun)
+        handler.postAtTime(shadeRun, at)
     }
 
     private fun handle(sbn: StatusBarNotification, rm: RankingMap?) {

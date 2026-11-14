@@ -212,8 +212,9 @@ internal fun RootImpl(
         val th = LocalTheme.current
         val ink = remember(state.night, accent, th) { Ink.of(state.night, accent, th) }
         val layer = topLayer(state, npOpen)
-        val widgets = remember(config.widgetLeft, config.widgetRight) {
-            Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
+        // the per-card options (a clock card's own face, 11-14) ride along, as on the settings widgets board
+        val widgets = remember(config.widgetLeft, config.widgetRight, config.widgetOptions) {
+            Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight), options = config.widgetOptions)
         }
         CompositionLocalProvider(LocalInk provides ink, LocalNotifOpen provides notifOpen) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {

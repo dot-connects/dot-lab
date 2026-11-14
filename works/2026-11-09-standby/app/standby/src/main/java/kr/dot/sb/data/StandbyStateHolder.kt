@@ -19,6 +19,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import kr.dot.sb.ui.state.AgendaItem
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -182,6 +183,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         ctx.registerReceiver(nextAlarmRx, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) // sticky: the current value arrives at once
         media.start()
+        runCatching { ctx.contentResolver.registerContentObserver(android.provider.CalendarContract.Events.CONTENT_URI, true, calendarObs) }
         onConfiguration(ctx.resources.configuration.smallestScreenWidthDp, initial = true)
         for ((id, t) in timers) { t.finishIfDone(el()); scheduleTimerEnd(id) }
         publishTimers()
@@ -197,6 +199,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
                 publishHot()
                 if (photoKey != null && photoKey != (c.photoSource to c.photoFolders)) launch { reloadPhotos() }
                 if (c.city != lastCity) { lastCity = c.city; lastWeatherAt = 0; if (!_state.value.displayOff) launch { fetchWeather() } }
+                if (c.excludedCalendars != lastExcluded) { val first = lastExcluded == null; lastExcluded = c.excludedCalendars; if (!first) launch { refreshCalendar() } }
                 evaluate()
             }
         }
@@ -236,6 +239,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         runCatching { ctx.unregisterReceiver(nextAlarmRx) }
         runCatching { ctx.unregisterReceiver(batteryRx) }
         runCatching { ctx.unregisterReceiver(unplugRx) }
+        runCatching { ctx.contentResolver.unregisterContentObserver(calendarObs) }
+        calendarJob?.cancel()
         media.stop()
         lastNight = _state.value.night
         flushBrightness()
@@ -346,6 +351,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             launch { minuteLoop() }
             launch { every(30 * 60_000L, { lastWeatherAt }) { fetchWeather() } }
             launch { every(5 * 60_000L, { lastUsageAt }) { fetchUsage() } }
+            launch { every(15 * 60_000L, { lastCalendarAt }) { refreshCalendar(); true } }
             // a new set once every photo of the current one had its turn (at least 45 s); the interval is re-read each loop
             launch {
                 while (true) {
@@ -363,6 +369,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             _state.update { it.copy(now = t.truncatedTo(ChronoUnit.MINUTES), shiftX = sx, shiftY = sy) }
             publishTimers()
             if (memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
+            if (calendarDay != null && calendarDay != t.toLocalDate()) scope.launch { refreshCalendar() }
             refreshStatic(force = false)
             evaluate()
             delay(60_000L - (t.second * 1000L + t.nano / 1_000_000))
@@ -378,13 +385,49 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
 
     // ---- sources -----------------------------------------------------------------------------------------------
 
+    /** Next alarm and permissions each minute; the calendar comes from [refreshCalendar] (B4) and only re-filters here. */
     private suspend fun refreshStatic(force: Boolean) {
         if (!force && el() - lastStaticAt < 60_000) return
         lastStaticAt = el()
+        val (alarm, perms) = withContext(Dispatchers.IO) { DeviceSources.nextAlarm(ctx) to DeviceSources.permissions(ctx) }
+        val calendarOn = perms.calendar != _state.value.permissions.calendar // granted or taken away: query again
+        _state.update { it.copy(nextAlarm = alarm, permissions = perms) }
+        if (calendarOn) refreshCalendar() else publishAgenda()
+    }
+
+    // ---- calendar (plan-r11 B4): queried every 15 min, on a provider change, at date change, on an exclusion change -
+
+    private var calendarItems: List<AgendaItem>? = null
+    private var lastExcluded: Set<String>? = null
+    private var lastCalendarAt = 0L
+    private var calendarDay: LocalDate? = null
+    private var calendarJob: Job? = null
+    private val calendarObs = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
+        // a sync fires many changes: one query 2 s after the last
+        override fun onChange(selfChange: Boolean) {
+            calendarJob?.cancel()
+            calendarJob = scope.launch { delay(2_000); refreshCalendar() }
+        }
+    }
+
+    private var calendarLoaded = false
+
+    private suspend fun refreshCalendar() {
+        lastCalendarAt = System.currentTimeMillis()
         val now = LocalDateTime.now()
-        val (upcoming, alarm, perms) = withContext(Dispatchers.IO) { Triple(DeviceSources.upcoming(ctx, now, cfg.excludedCalendars), DeviceSources.nextAlarm(ctx), DeviceSources.permissions(ctx)) }
-        val agenda = upcoming?.filter { it.date == now.toLocalDate() }?.take(5)
-        _state.update { it.copy(agenda = agenda, upcoming = upcoming.orEmpty(), nextAlarm = alarm, permissions = perms) }
+        calendarDay = now.toLocalDate()
+        calendarItems = withContext(Dispatchers.IO) { DeviceSources.upcoming(ctx, now, cfg.excludedCalendars) }
+        calendarLoaded = true
+        publishAgenda()
+    }
+
+    /** Drop what ended since the query (no query): runs each minute. */
+    private fun publishAgenda() {
+        if (!calendarLoaded) return // before the first query: keep the empty start state (no "permission needed" flash)
+        val items = calendarItems
+        if (items == null) { _state.update { it.copy(agenda = null, upcoming = emptyList()) }; return }
+        val (agenda, upcoming) = Agenda.visible(items, LocalDateTime.now())
+        _state.update { if (it.agenda == agenda && it.upcoming == upcoming) it else it.copy(agenda = agenda, upcoming = upcoming) }
     }
 
     private suspend fun fetchWeather(): Boolean {

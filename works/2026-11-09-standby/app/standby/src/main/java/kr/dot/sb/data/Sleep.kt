@@ -63,12 +63,24 @@ class NoiseGen(val sound: SleepSound, seed: Long = System.nanoTime()) {
     }
 
     /** Fills [out] with signed 16-bit samples scaled by [gain] (0..1, the fade-out). */
-    fun fill(out: ShortArray, gain: Float) {
+    fun fill(out: ShortArray, gain: Float) = fill(out, gain, gain)
+
+    /** [out] with the gain going [from] → [to] sample by sample (the fade stays smooth with big chunks, plan-r11 B5). */
+    fun fill(out: ShortArray, from: Float, to: Float) {
         for (i in out.indices) {
             n++
-            out[i] = (sample().coerceIn(-1f, 1f) * gain * 0.6f * 32767f).toInt().toShort()
+            out[i] = (sample().coerceIn(-1f, 1f) * ramp(i, out.size, from, to) * 0.6f * 32767f).toInt().toShort()
         }
     }
 
-    companion object { const val RATE = 22050 }
+    companion object {
+        const val RATE = 22050
+        /** plan-r11 B5: write 250 ms at a time into a ≥ 500 ms buffer (four wakeups a second, not ten). */
+        const val CHUNK = RATE / 4
+        /** Bytes for 500 ms of 16-bit mono, or the device minimum when that is larger. */
+        fun bufferBytes(minBytes: Int): Int = maxOf(minBytes, RATE * 2 / 2)
+
+        /** Gain at sample [i] of [n], linear from [from] to [to] (exclusive end, so chunks join without a step). */
+        fun ramp(i: Int, n: Int, from: Float, to: Float): Float = from + (to - from) * i / n
+    }
 }

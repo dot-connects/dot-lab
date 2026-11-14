@@ -208,7 +208,8 @@ object DeviceSources {
                         // all-day instances are stored at UTC midnight
                         val at = Instant.ofEpochMilli(c.getLong(0)).atZone(if (allDay) ZoneId.of("UTC") else zone)
                         val t = if (allDay) "종일" else at.format(HM)
-                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, at.toLocalDate()))
+                        val end = if (allDay) null else Instant.ofEpochMilli(c.getLong(1)).atZone(zone).toLocalDateTime()
+                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, at.toLocalDate(), end))
                     }
                 }
             }
