@@ -1,6 +1,6 @@
 # 우리 집 몬스터 잡기 — 작업 폴더
 
-## 이어서 하기 (2026-11-13 새벽 기준 — 이제 **안드로이드 앱**이 본체)
+## 이어서 하기 (2026-11-15 기준 0.3.3 — 이제 **안드로이드 앱**이 본체)
 
 **웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:/DC/DD/docs/archive/2026-11-12-catch-app-plan-review`).
 동결된 웹 게임도 같은 Worker 를 쓰므로 이제 OpenAI(gpt-image-2.6-flare)로 그린다.
@@ -11,15 +11,16 @@
 | 털 녀석 | `ar/Critters.kt`(자이로), `ar/` AR(ARCore 1.48, 개발자 스위치) | 16마리 × 14장 굽기 `tools/bake-critters.mjs` → `assets/critters/`, 크기 1/4·1/5 스위치 |
 | 도감·상세 | `dex/Dex.kt`, `ui/DexScreen.kt`, `ui/DetailScreen.kt` | 원자 저장, 털 녀석 모습 합치기, AI 미리보기(하루 5), 구매 잠금 500원 |
 | AI | `ai/`, `worker/` | Worker 배포됨: /transform low, /sheet medium, 월 500센트 상한, `x-app: catchpet`, 디버그 구매 토큰 |
-| 펫 | `pet/PetBrain.kt`, `pet/PetService.kt`, `pet/PetWallpaper.kt`, `ui/PetScreen.kt` | 아래 줄 · 왼쪽 벽 · 오른쪽 벽(오버레이), 아이콘 뒤(라이브 배경화면) |
+| 펫 | `pet/PetBrain.kt`, `pet/PetService.kt`, `ui/PetScreen.kt` | 오버레이 하나: 켜기 + [홈 화면(사용정보 권한으로 런처가 위일 때만) \| 항상]. 라이브 배경화면·잠금화면은 11-14 삭제(안드로이드가 잠금 위 오버레이를 막음) |
+| 메뉴 모양 | `ui/Book.kt`, `mockups/menus.html` A안 | 하늘·잔디 바탕, 잉크 카드, Jua·고운돋움(Google 다운로드 글꼴), 소리 `ui/Sfx.kt` + `res/raw` (Kenney Interface Sounds, CC0, OpenGameArt) |
 
 - 빌드: `app/` 에서 `JAVA_HOME=C:/DC/tools/jdk-17 ./gradlew assembleDebug testDebugUnitTest`. APK 는 `%LOCALAPPDATA%/catchpet-build/app/outputs/apk/debug/`.
 - **트레이딩 틱 보호:** 06:00–07:00 · 08:30–09:10 · 15:30–16:30 · 22:00–23:50 KST(+05:30–06:00)에는 Gradle · 헤드리스 Chrome 금지(plan R12/R17).
-- 디버그 구매 토큰: `%USERPROFILE%\.catchpet-debug-purchase` (펫 화면 맨 아래 "개발자" 칸에 붙여 넣으면 구매가 열린다).
+- 디버그 구매 토큰: `%USERPROFILE%\.catchpet-debug-purchase` — debug 빌드는 빌드할 때 이 파일을 BuildConfig 에 넣어 AI 펫 그림이 무료(11-14). release 는 빈 값. 개발자 칸은 펫 화면 "펫" 제목 길게 누르기.
 
 **운영자가 할 일**
 1. **OpenAI API 키 교체** — 11-12 밤 Worker 로그 확인 중 키 원문이 세션 기록에 찍혔다. platform.openai.com 에서 폐기·새로 만들고 `dot-lab/scripts/wizard-catch-openai.bat` 을 다시 실행(BOM 버그는 고침).
-2. 아이콘 뒤 자리는 라이브 배경화면이라 원래 배경화면을 대신한다(기본 그라데이션, 사진 고르기 가능). 괜찮은지 판정.
+2. (11-14 해결: 라이브 배경화면 삭제, 펫은 홈 화면/항상 오버레이)
 3. 실폰 확인 목록(아래).
 
 **실폰 확인 목록 (PC 에 기기·에뮬레이터가 없어 아무것도 실폰에서 돌려 보지 못함)**
