@@ -1,5 +1,8 @@
 package kr.dot.catchpet.ui
 
+import kr.dot.catchpet.R
+import kotlin.math.abs
+
 import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
@@ -116,35 +119,28 @@ fun CatchScreen(sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenD
     val ask = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted = it; if (it) cameraOff = false }
     LaunchedEffect(Unit) { if (!granted && !cameraOff) ask.launch(Manifest.permission.CAMERA) }
     Box(Modifier.fillMaxSize()) {
-        if (!granted || cameraOff) SceneCatch(ctx, sink, dexCount, onOpenDex)
-        else CameraCatch(ctx, sink, critters, dexCount, onOpenDex)
-        // camera on/off, like the AR switch in Pokémon GO (operator 11-13)
-        Text(
-            if (!granted || cameraOff) "카메라 켜기" else "카메라 끄기",
-            color = androidx.compose.ui.graphics.Color.White, fontSize = 13.sp,
-            modifier = Modifier.windowInsetsPadding(WindowInsets.statusBars).padding(start = 12.dp, top = 10.dp)
-                .background(androidx.compose.ui.graphics.Color(0x66000000), RoundedCornerShape(50))
-                .clickable {
-                    when {
-                        cameraOff -> { cameraOff = false; prefs.edit().putBoolean("camera_off", false).apply(); if (!granted) ask.launch(Manifest.permission.CAMERA) }
-                        !granted -> ask.launch(Manifest.permission.CAMERA)
-                        else -> { cameraOff = true; prefs.edit().putBoolean("camera_off", true).apply() }
-                    }
-                }
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-        )
+        // camera on/off, like the AR switch in Pokémon GO (operator 11-13); drawn on the rail, top left
+        val toggle = {
+            when {
+                cameraOff -> { cameraOff = false; prefs.edit().putBoolean("camera_off", false).apply(); if (!granted) ask.launch(Manifest.permission.CAMERA) }
+                !granted -> ask.launch(Manifest.permission.CAMERA)
+                else -> { cameraOff = true; prefs.edit().putBoolean("camera_off", true).apply() }
+            }
+        }
+        if (!granted || cameraOff) SceneCatch(ctx, sink, dexCount, onOpenDex, toggle)
+        else CameraCatch(ctx, sink, critters, dexCount, onOpenDex, toggle)
     }
 }
 
 @Composable
-private fun SceneCatch(ctx: Context, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit) {
+private fun SceneCatch(ctx: Context, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit, onCamera: () -> Unit) {
     val crit = remember { Critters(ctx.applicationContext, scene = true) }
     val src = remember { SceneSource() }
-    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
+    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex, onCamera, cameraOn = false) }
 }
 
 @Composable
-private fun CameraCatch(ctx: Context, sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenDex: () -> Unit) {
+private fun CameraCatch(ctx: Context, sink: CatchSink, critters: CritterSource, dexCount: Int, onOpenDex: () -> Unit, onCamera: () -> Unit) {
     val owner = LocalLifecycleOwner.current
     // developer switch "AR 털 녀석": ARCore when it is installed and a session opens; any failure -> CameraX + gyro
     val wantAr = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getBoolean("ar", false) }
@@ -158,11 +154,14 @@ private fun CameraCatch(ctx: Context, sink: CatchSink, critters: CritterSource, 
         val msg = if (ar != null) "AR 켜짐: 털 녀석이 바닥에 붙어요" else "일반 모드: " + (ArSource.note ?: "AR 이 멈췄어요")
         android.widget.Toast.makeText(ctx, msg, android.widget.Toast.LENGTH_LONG).show()
     }
-    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex) }
+    key(src) { CatchView(ctx, src, crit, sink, dexCount, onOpenDex, onCamera, cameraOn = true) }
 }
 
 @Composable
-private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit) {
+private fun CatchView(
+    ctx: Context, src: FrameSource, critters: CritterSource, sink: CatchSink, dexCount: Int, onOpenDex: () -> Unit,
+    onCamera: () -> Unit, cameraOn: Boolean,
+) {
     val seg = remember { Segmenter(ctx.applicationContext) }
     val game = remember { CatchGame(src, seg, sink, critters) }
     DisposableEffect(Unit) {
@@ -191,7 +190,10 @@ private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, s
     game.topInset = WindowInsets.statusBars.getTop(dens) / dens.density
     game.bottomInset = WindowInsets.navigationBars.getBottom(dens) / dens.density
     game.dexCount = dexCount
+    game.cameraOn = cameraOn
+    remember { Sfx.init(ctx) }
     val openDex by rememberUpdatedState(onOpenDex)
+    val camera by rememberUpdatedState(onCamera)
 
     var tick by remember { mutableLongStateOf(0L) }
     LaunchedEffect(Unit) {
@@ -214,8 +216,8 @@ private fun CatchView(ctx: Context, src: FrameSource, critters: CritterSource, s
                     awaitEachGesture {
                         val down = awaitFirstDown()
                         val x = down.position.x / game.d; val y = down.position.y / game.d
-                        if (y < game.rail && x > game.w / 2) {          // the "도감 N" corner
-                            if (waitForUpOrCancellation() != null) openDex()
+                        if (y < game.rail) {          // the rail bar: "도감 N" on the right, the camera switch on the left
+                            if (waitForUpOrCancellation() != null) { if (x > game.w / 2) openDex() else camera() }
                             return@awaitEachGesture
                         }
                         val c = game.claw ?: return@awaitEachGesture
@@ -251,7 +253,9 @@ private class CatchGame(
     var topInset = 0f
     var bottomInset = 0f
     var dexCount = 0
+    var cameraOn = false
     var hint = true
+    private var railTickX = -1f
     var w = 0f; private set
     var h = 0f; private set
     val rail get() = topInset + 54f
@@ -262,6 +266,7 @@ private class CatchGame(
     private val dangle = Dangle { Random.nextFloat() }
     private var heldPose = Pose.REST
     private var arms = ClawArt.idle(1f)
+    private var clawScale = 1f       // a big catch (a person up close) gets a bigger claw, eased in
     private var hugTop = 0f          // dp, the grabbed body's top below the hub (fixed once it is lifted)
     private var heldCx = 0f          // dp, where the held thing's centre is drawn
     private var grabOff = 0f         // dp, thing centre minus claw x when it was grabbed (swings in under the claw)
@@ -326,15 +331,20 @@ private class CatchGame(
         toast?.let { it.t += dt; if (it.t > 1400f) toast = null }
         grip?.let { if (held == null && it.isDone) held = runCatching { it.get() }.getOrNull() }
 
+        // the carriage ticks along the rail as it moves (aiming and riding home)
+        val px = c.x * w
+        if (c.st == Claw.St.AIM) { if (railTickX < 0f || abs(px - railTickX) > 22f) { if (railTickX >= 0f) Sfx.play(R.raw.sfx_rail, 0.25f); railTickX = px } }
         val before = c.st
         c.step(dt, targets) { x, y -> m?.toGrid(x * d, y * d) ?: (-1 to -1) }
+        if (before == Claw.St.AIM && c.st == Claw.St.DOWN) Sfx.play(R.raw.sfx_drop, 0.5f)
+        if (before == Claw.St.GRIP && c.st == Claw.St.UP) Sfx.play(R.raw.sfx_lift, 0.45f)
         if (before == Claw.St.DOWN && c.st == Claw.St.GRIP) {
             onGrip(c.result!!)
             closedBuzz = false; dangle.reset()
             if (c.result?.target != null) { joltT = 0f; buzz(HapticFeedbackConstants.CLOCK_TICK) }
         }
         if (joltT >= 0f) { joltT += dt; if (joltT > 200f) joltT = -1f }
-        if (c.st == Claw.St.GRIP && !closedBuzz && c.t > Claw.DIG_MS + Claw.CLOSE_MS) { closedBuzz = true; buzz(HapticFeedbackConstants.CONTEXT_CLICK) }
+        if (c.st == Claw.St.GRIP && !closedBuzz && c.t > Claw.DIG_MS + Claw.CLOSE_MS) { closedBuzz = true; buzz(HapticFeedbackConstants.CONTEXT_CLICK); Sfx.play(R.raw.sfx_grip, 0.6f) }
         feel(c, before, dt, m)
         if (landT >= 0f) { landT += dt; if (landT > 320f) { landT = -1f; landFrozen = null; landGrip = null } }
         when (c.st) {
@@ -343,10 +353,11 @@ private class CatchGame(
                 val r = c.result!!
                 if (before == Claw.St.FALL) landedAfterFall(r)
                 say(when {
-                    r.target == null -> "헛집었다"
-                    r.slipped -> "놓쳤다! 흔들려서 빠졌어요"
-                    else -> "아깝다!"
+                    r.target == null -> AIR.random()
+                    r.slipped -> SLIPPED.random()
+                    else -> NEAR.random()
                 }, false)
+                if (before != Claw.St.FALL) Sfx.play(R.raw.sfx_miss, 0.4f)
                 next()
             }
             else -> {}
@@ -356,7 +367,7 @@ private class CatchGame(
             cap.step(dt); capT += dt
             if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
             if (cap.phase == Capsule.Phase.GONE) {
-                say(capText, true); pulse = 1f; next()
+                say(capText, true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f); next()
                 pendingPerson?.let { askPerson = it; pendingPerson = null }
             }
         }
@@ -366,7 +377,7 @@ private class CatchGame(
     private fun feel(c: Claw, before: Claw.St, dt: Float, m: ScreenMap?) {
         val r = c.result
         val tg = r?.target
-        if (tg == null || m == null || c.st !in LIFTED) { heldPose = Pose.REST; arms = ClawArt.idle(c.open); return }
+        if (tg == null || m == null || c.st !in LIFTED) { heldPose = Pose.REST; arms = ClawArt.idle(c.open); clawScale += (1f - clawScale) * min(1f, dt / 140f); return }
         val critter = tg.kind == Mask.Kind.CRITTER
         val now = targets.firstOrNull { sameThing(tg, it) }?.box
         val thingX = now?.let { m.gridToViewX((it.x0 + it.x1 + 1) / 2f) / d }
@@ -377,9 +388,12 @@ private class CatchGame(
         // the arms: spread past the body's sides as the claw settles on it, then close in under its widest point
         if (before == Claw.St.DOWN) hugTop = Claw.TIP * 0.5f
         if (c.st == Claw.St.GRIP) now?.let { hugTop = m.gridToViewY(it.y0.toFloat()) / d - c.y }
+        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
+        clawScale += (wantScale - clawScale) * min(1f, dt / 140f)
+        val s = clawScale
         if (c.bodyW > 0f) {
             val o = ((c.open - c.minOpen) / max(1e-3f, 1f - c.minOpen)).coerceIn(0f, 1f)
-            val on = ClawArt.on(ClawArt.Body(c.bodyW / 2f, hugTop, c.bodyH), o)
+            val on = ClawArt.on(ClawArt.Body(c.bodyW / 2f / s, hugTop / s, c.bodyH / s), o)
             arms = if (c.st == Claw.St.GRIP && c.t < Claw.DIG_MS) ClawArt.mix(ClawArt.idle(1f), on, c.t / Claw.DIG_MS) else on
         } else arms = ClawArt.idle(c.open)
         when (c.st) {
@@ -413,7 +427,7 @@ private class CatchGame(
     /** A dropped thing reached the floor: a critter lands where it fell, a photo bounces once before it fades. */
     private fun landedAfterFall(r: Claw.Result) {
         val tg = r.target ?: return
-        buzz(HapticFeedbackConstants.VIRTUAL_KEY)
+        buzz(HapticFeedbackConstants.VIRTUAL_KEY); Sfx.play(R.raw.sfx_land, 0.6f)
         if (tg.kind == Mask.Kind.CRITTER) tg.critterId?.let { critters.landed(it, heldCx * d) }
         else if (held?.cut != null) { landT = 0f; landFrozen = frozen; landGrip = held }
     }
@@ -455,7 +469,7 @@ private class CatchGame(
         }
         val got = held
         if (got?.cut == null || got.opaque < 0.05f) {
-            c.handedOff(); next(); say("아깝다!", false)
+            c.handedOff(); next(); say(NEAR.random(), false)
             return
         }
         val text = Dex.withObject(Dex.kindName(target.dexKind)) + " 뽑았다!"
@@ -537,13 +551,15 @@ private class CatchGame(
         val hang = if (c.st == Claw.St.UP || c.st == Claw.St.CARRY) dangle.rot * 0.35f else 0f
         val deg = Math.toDegrees(sw.toDouble()).toFloat() + hang
         cv.save(); cv.rotate(deg, cx, rail)
+        cv.save(); cv.scale(clawScale, clawScale, cx, c.y)
         ClawArt.back(cv, cx, c.y, rail, arms)
+        cv.restore()
         val hanging = c.st == Claw.St.UP || c.st == Claw.St.CARRY   // on the floor (GRIP) or falling it is not on the cable
         if (hanging) drawCatch(c, heldId, m)
         cv.restore()
         if (!hanging) drawCatch(c, heldId, m)
         capsule?.let { drawCapsule(cv, it, held?.cut, m) }
-        cv.save(); cv.rotate(deg, cx, rail)
+        cv.save(); cv.rotate(deg, cx, rail); cv.scale(clawScale, clawScale, cx, c.y)
         ClawArt.front(cv, cx, c.y, arms)
         cv.restore()
         topBar(cv)
@@ -633,6 +649,22 @@ private class CatchGame(
         fill.shader = LinearGradient(0f, r - 6f, 0f, r + 3f, 0xFFF2F4F8.toInt(), 0xFF7D838F.toInt(), Shader.TileMode.CLAMP)
         cv.drawRect(0f, r - 5f, w, r + 1f, fill)
         fill.shader = null
+        fill.color = 0xFF5E646F.toInt()
+        var bx = 18f
+        while (bx < w) { cv.drawCircle(bx, r - 2f, 1.6f, fill); bx += 46f }
+        // camera switch, top left
+        cv.save()
+        cv.translate(50f, r - 27f)
+        fill.color = argb(.1f, 255, 255, 255)
+        cv.drawRoundRect(-36f, -15f, 36f, 15f, 15f, 15f, fill)
+        stroke.strokeWidth = 1.6f; stroke.color = Color.WHITE; stroke.pathEffect = null
+        cv.drawRoundRect(-24f, -6f, -6f, 7f, 3f, 3f, stroke)
+        cv.drawCircle(-15f, 0.5f, 3.4f, stroke)
+        cv.drawRect(-19f, -8.5f, -13f, -6f, stroke)
+        if (!cameraOn) cv.drawLine(-25f, 9f, -5f, -9f, stroke)
+        text.textSize = 15f; text.textAlign = Paint.Align.CENTER; text.color = Color.WHITE
+        cv.drawText(if (cameraOn) "끄기" else "켜기", 14f, 5.5f, text)
+        cv.restore()
         // dex counter, top right (pulses when a capsule lands)
         val sc = 1f + 0.25f * sin(min(1f, pulse) * Math.PI.toFloat())
         cv.save()
@@ -664,6 +696,11 @@ private class CatchGame(
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
+        // what the toast says on a miss: one voice, a few lines so it does not repeat word for word
+        val AIR = listOf("헛집었다", "허공이었다", "아무것도 없었다")
+        val NEAR = listOf("아깝다!", "아슬아슬했다", "한 끗 차이!")
+        val SLIPPED = listOf("흔들려서 빠졌다", "미끄러졌다!")
+
         private fun family(k: Mask.Kind) = if (k == Mask.Kind.PERSON || k == Mask.Kind.CRITTER) k else Mask.Kind.DOG
     }
 }

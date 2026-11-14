@@ -34,7 +34,10 @@ class DexTest {
         val k = Dex.add(ctx, "critter", null, "ppiyak", "dir2")
         val c1 = Dex.add(ctx, "cat", png, null, "front")
         val d2 = Dex.add(ctx, "dog", png, null, "front")
-        assertEquals(listOf("강아지 1", "삐약", "고양이 1", "강아지 2"), listOf(d1, k, c1, d2).map { it.name })
+        assertEquals("삐약", k.name)
+        val real = listOf(d1, c1, d2).map { it.name }
+        assertEquals(3, real.toSet().size)                       // real catches get distinct pool names
+        assertTrue(real.all { it in Dex.NAMES })
         assertEquals(listOf(1, 2, 3, 4), Dex.list(ctx).map { it.no })
         assertTrue(Dex.list(ctx).all { Regex("^[A-Za-z0-9_-]{1,64}$").matches(it.id) })   // the Worker's entry regex
         assertTrue(Dex.file(ctx, d2.id, "front.png").readBytes().contentEquals(png))
@@ -49,7 +52,7 @@ class DexTest {
         assertEquals(listOf("ai/preview1.webp", "ai/preview2.webp"), back.ai.previews)
         assertEquals("ai/sheet.webp", back.ai.sheet)
         assertTrue(back.ai.owned)
-        assertEquals("사람 1", back.name)
+        assertEquals(e.name, back.name)
         assertTrue(Dex.file(ctx, e.id, "ai/preview2.webp").readBytes().contentEquals(byteArrayOf(8)))
     }
 
@@ -63,13 +66,13 @@ class DexTest {
         assertNull(Dex.get(ctx, "e2"))
         val next = Dex.add(ctx, "dog", png, null, "front")
         assertEquals(4, next.no)
-        assertEquals("강아지 2", next.name)
+        assertTrue(next.name in Dex.NAMES && next.name != Dex.list(ctx).first().name)
         assertFalse(File(Dex.dir(ctx, "e4"), "meta.json.tmp").exists())   // written by rename
     }
 
     @Test fun speciesNamesAndTheirParticle() {
         val h = Dex.add(ctx, "hamster", png, null, "front")
-        assertEquals("햄스터 1", h.name)
+        assertTrue(h.name in Dex.NAMES)
         assertEquals("햄스터를", Dex.withObject("햄스터"))
         assertEquals("곰을", Dex.withObject(Dex.kindName("bear")))
         assertEquals("사람을", Dex.withObject(Dex.kindName("person")))

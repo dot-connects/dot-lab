@@ -29,7 +29,7 @@ fun PersonConsent(use: PersonUse, onDone: (Boolean) -> Unit) {
     var agreed by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = { onDone(false) },
-        title = { Text(if (use == PersonUse.DEX) "사람을 뽑았어요" else "사람 사진으로 AI 그림 그리기") },
+        title = { Text(if (use == PersonUse.DEX) "사람을 뽑았어요" else "사람 사진으로 그림 그리기") },
         text = {
             Column {
                 Text(

@@ -74,8 +74,7 @@ object Dex {
         val usedNos = (all.map { it.no } + (root(ctx).list()?.mapNotNull { ENTRY_ID.find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: emptyList()))
         val no = (usedNos.maxOrNull() ?: 0) + 1
         val id = "e$no"
-        val name = if (critterId != null) critterName(ctx, critterId)
-        else "${kindName(kind)} ${all.count { it.kind == kind } + 1}"
+        val name = if (critterId != null) critterName(ctx, critterId) else cuteName(all.map { it.name }.toSet())
         dir(ctx, id).mkdirs()
         if (png != null) atomicWrite(file(ctx, id, "$pose.png"), png)
         return write(ctx, Entry(id, kind, name, no, critterId, listOf(pose), now, AiState(emptyList(), null, false)))
@@ -112,7 +111,27 @@ object Dex {
             val a = JSONArray(ctx.assets.open("critters/index.json").bufferedReader().use { it.readText() })
             (0 until a.length()).associate { a.getJSONObject(it).let { o -> o.getString("id") to o.getString("name") } }
         }.getOrDefault(emptyMap()).also { names = it }
-        return m[critterId] ?: critterId
+        return m[critterId] ?: "???"
+    }
+
+    /** Pet names for real catches (operator 11-14): an unused one from the pool, else the pool name + a number. */
+    val NAMES = listOf(
+        "보송이", "콩떡", "말랑이", "몽실이", "찹쌀이", "두부", "호떡", "꼬물이", "쿠키", "모찌",
+        "단추", "감자", "콩이", "보리", "솜이", "구름이", "도토리", "꿀떡", "젤리", "땅콩",
+        "호두", "밤비", "동글이", "토실이", "누룽지", "만두", "꽈배기", "붕어빵", "사탕", "별이",
+        "방울이", "몽이", "뭉치", "초코", "라떼", "쿵이", "포동이", "꼬미", "깨비", "버터",
+    )
+
+    fun cuteName(used: Set<String>, rnd: kotlin.random.Random = kotlin.random.Random.Default): String =
+        NAMES.filter { it !in used }.randomOrNull(rnd)
+            ?: generateSequence(2) { it + 1 }.map { "${NAMES.random(rnd)} $it" }.first { it !in used }
+
+    /** A new name from the detail screen; blank keeps the old one. */
+    @Synchronized
+    fun rename(ctx: Context, id: String, name: String): Entry? {
+        val e = get(ctx, id) ?: return null
+        val n = name.trim().take(12)
+        return if (n.isEmpty() || n == e.name) e else write(ctx, e.copy(name = n))
     }
 
     private fun write(ctx: Context, e: Entry): Entry {

@@ -67,7 +67,7 @@ object Yard {
     val standing: List<Thing> = Random(77).let { r ->
         // spread evenly round the ring (with jitter) so no view gets a forest and none gets nothing
         fun add(kind: Int, n: Int, f0: Float, f1: Float, off: Float) = List(n) { i -> Thing(kind, (i + off + r.nextFloat() * 0.6f) * 360f / n, f0 + r.nextFloat() * (f1 - f0), 0.8f + r.nextFloat() * 0.45f, r.nextFloat() * 6f) }
-        add(TREE, 7, 0.56f, 0.7f, 0f) + add(BUSH, 10, 0.6f, 0.93f, 0.3f) + add(GRASS, 14, 0.6f, 1.0f, 0.6f)
+        add(TREE, 7, 0.56f, 0.7f, 0f) + add(BUSH, 10, 0.6f, 0.93f, 0.3f) + add(GRASS, 14, 0.6f, 1.0f, 0.6f) + add(GRASS, 8, 0.9f, 1.04f, 0.15f)
     }
 
     private class Spot(val kind: Int, val az: Float, val f: Float, val c: Float)
@@ -212,7 +212,7 @@ object Yard {
                 val post = Path().apply {
                     moveTo(fx - pw / 2, v.hz); lineTo(fx - pw / 2, top + pw * 0.5f); lineTo(fx, top); lineTo(fx + pw / 2, top + pw * 0.5f); lineTo(fx + pw / 2, v.hz); close()
                 }
-                cv.drawPath(post, solid(if (v.pal.dark) 0xFFC4C9E0.toInt() else 0xFFFFFDF6.toInt())); cv.drawPath(post, ink(v, 3f))
+                cv.drawPath(post, solid(if (v.pal.dark) 0xFF8E97BF.toInt() else 0xFFFFFDF6.toInt())); cv.drawPath(post, ink(v, 3f))
             }
             az += step
         }
@@ -259,8 +259,14 @@ object Yard {
     private fun sphere(cv: Canvas, v: View, cx: Float, cy: Float, r: Float, c0: Int, c1: Int, c2: Int) {
         val b = sprites.getOrPut("ball$c0,$c1,$c2") {
             Bitmap.createBitmap(128, 128, Bitmap.Config.ARGB_8888).also { bm ->
-                val p = Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = RadialGradient(64f - 64f * 0.3f, 64f - 64f * 0.35f, 64f * 1.45f, intArrayOf(c0, c0, c1, c2), floatArrayOf(0f, 0.17f, 0.55f, 1f), Shader.TileMode.CLAMP) }
-                Canvas(bm).drawCircle(64f, 64f, 63f, p)
+                // cel shading like the fence and hills: a flat body, one shadow crescent, one small highlight
+                val cvb = Canvas(bm)
+                val p = Paint(Paint.ANTI_ALIAS_FLAG)
+                p.color = c2; cvb.drawCircle(64f, 64f, 63f, p)
+                cvb.save(); cvb.clipPath(Path().apply { addCircle(64f, 64f, 63f, Path.Direction.CW) })
+                p.color = c1; cvb.drawCircle(56f, 54f, 60f, p)
+                cvb.restore()
+                p.color = c0; cvb.drawOval(30f, 26f, 56f, 40f, p)
             }
         }
         rf.set(cx - r, cy - r, cx + r, cy + r)

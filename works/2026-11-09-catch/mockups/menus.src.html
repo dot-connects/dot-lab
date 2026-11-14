@@ -1,0 +1,187 @@
+<title>리얼뽑기 메뉴 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: three directions stacked, each = two phone screens (도감, 펫) side by side, wrapping to one column */
+:root{
+  --page:#eef1f4; --ink:#1d2430; --muted:#5b6574; --line:#d3d9e1;
+  --disp:"Jua","Gowun Dodum",system-ui,sans-serif; --body:"Gowun Dodum",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;--line:#2b333f;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;--line:#2b333f;color-scheme:dark}
+body{background:var(--page);color:var(--ink);font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1{font-family:var(--disp);font-weight:400;font-size:28px;margin:0 0 6px}
+.lead{color:var(--muted);margin:0 0 28px;max-width:60ch;line-height:1.6}
+section{margin-bottom:44px}
+section h2{font-family:var(--disp);font-weight:400;font-size:22px;margin:0 0 4px}
+section p.why{color:var(--muted);margin:0 0 14px;max-width:62ch;line-height:1.55}
+.pair{display:flex;flex-wrap:wrap;gap:18px}
+.pair>div{width:min(330px,100%);flex:0 0 auto}
+.phone{width:100%;aspect-ratio:9/19;border-radius:34px;overflow:hidden;position:relative;box-shadow:0 0 0 7px #0b0e13,0 18px 40px rgba(0,0,0,.25);flex:none}
+.phone .cap{position:absolute;left:0;right:0;bottom:-28px;text-align:center;color:var(--muted);font-size:13px}
+.label{font-size:13px;color:var(--muted);margin:10px 0 0 4px}
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;padding:38px 18px 18px;gap:12px;font-family:var(--body)}
+.scr img{image-rendering:auto}
+.row{display:flex;align-items:center;gap:10px}
+.grow{flex:1}
+
+/* ---------- A: 마당 그림책 (the yard's own look: sky, grass, ink outlines) ---------- */
+.A{background:linear-gradient(#bfe6ff 0 30%,#d9f2c9 30% 100%);color:#24331f}
+.A .top{display:flex;align-items:center;justify-content:space-between}
+.A .back{font-family:var(--disp);font-size:15px;background:#fff;border:2.5px solid #24331f;border-radius:999px;padding:4px 12px}
+.A .ttl{font-family:var(--disp);font-size:30px;color:#24331f;text-shadow:0 2px 0 #fff}
+.A .count{font-family:var(--disp);font-size:14px;background:#ffd84d;border:2.5px solid #24331f;border-radius:999px;padding:3px 10px}
+.A .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.A .card{background:#fffdf6;border:2.5px solid #24331f;border-radius:18px;padding:8px 4px 6px;text-align:center;box-shadow:0 4px 0 #24331f}
+.A .card img{width:62px;height:62px;object-fit:contain}
+.A .card b{display:block;font-family:var(--disp);font-weight:400;font-size:15px}
+.A .card small{font-size:11px;color:#5d6b57}
+.A .card.q{background:#e9f3e1;border-style:dashed;box-shadow:none;color:#8aa080}
+.A .card.q .sil{width:62px;height:62px;margin:0 auto;border-radius:50%;background:#c4d6b9}
+.A .panel{background:#fffdf6;border:2.5px solid #24331f;border-radius:20px;padding:12px 14px;box-shadow:0 4px 0 #24331f}
+.A .panel h3{font-family:var(--disp);font-weight:400;font-size:17px;margin:0 0 8px}
+.A .seg{display:flex;background:#e6f0dc;border:2.5px solid #24331f;border-radius:999px;padding:3px}
+.A .seg span{flex:1;text-align:center;font-family:var(--disp);padding:6px 0;border-radius:999px}
+.A .seg .on{background:#ffd84d;border:2px solid #24331f}
+.A .sw{width:50px;height:28px;border-radius:999px;background:#7cc46b;border:2.5px solid #24331f;position:relative}
+.A .sw::after{content:"";position:absolute;right:2px;top:2px;width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid #24331f}
+.A .sizes{display:flex;align-items:flex-end;justify-content:space-around;height:78px}
+.A .sizes img{border-radius:12px}
+.A .sizes .on{outline:3px solid #ffb703;outline-offset:3px}
+.A .note{font-size:12px;color:#5d6b57}
+
+/* ---------- B: 뽑기 기계 (cabinet: lacquered red frame, glass, chrome) ---------- */
+.B{background:#e8394a;color:#fff}
+.B::before{content:"";position:absolute;inset:30px 10px 10px;border-radius:24px;background:linear-gradient(160deg,rgba(255,255,255,.55),rgba(220,240,255,.25) 40%,rgba(255,255,255,.12));box-shadow:inset 0 0 0 3px #f6f7fa,inset 0 0 0 6px #b6bcc6}
+.B .scr{padding:44px 24px 22px}
+.B .marquee{background:#1b1f28;border-radius:12px;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;box-shadow:inset 0 0 0 2px #3a4150}
+.B .marquee .ttl{font-family:var(--disp);font-size:22px;color:#ffe066;letter-spacing:.04em}
+.B .led{font-family:ui-monospace,monospace;color:#ff6b6b;background:#0d0f14;border-radius:6px;padding:2px 8px;font-size:15px;letter-spacing:.12em}
+.B .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:6px 2px}
+.B .cap2{aspect-ratio:1;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff 0 18%,rgba(255,255,255,.6) 30%,rgba(255,255,255,.2) 60%),linear-gradient(#ffffff 0 50%,var(--c,#7fd1ff) 50%);box-shadow:inset 0 -6px 10px rgba(0,0,0,.12),0 3px 6px rgba(0,0,0,.2);display:grid;place-items:center;position:relative}
+.B .cap2 img{width:64%;height:64%;object-fit:contain}
+.B .cap2 b{position:absolute;bottom:-20px;left:0;right:0;text-align:center;font-family:var(--disp);font-weight:400;font-size:13px;color:#1b1f28}
+.B .cap2.q{--c:#c9ced6;filter:grayscale(1);opacity:.55}
+.B .grid{row-gap:28px}
+.B .plate{background:linear-gradient(#f6f7fa,#c9ced6);color:#1b1f28;border-radius:14px;padding:10px 12px;box-shadow:inset 0 0 0 1.5px #8d94a0}
+.B .plate h3{margin:0 0 6px;font-family:var(--disp);font-weight:400;font-size:16px}
+.B .btns{display:flex;gap:8px}
+.B .btn{flex:1;text-align:center;font-family:var(--disp);padding:9px 0;border-radius:12px;background:#2b313d;color:#fff;box-shadow:0 4px 0 #11141a}
+.B .btn.on{background:#ffd23f;color:#1b1f28;box-shadow:0 4px 0 #b08a00}
+.B .big{width:64px;height:64px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#ff8a8a,#d7192b 65%);box-shadow:0 6px 0 #8c0d18,inset 0 -4px 8px rgba(0,0,0,.25);margin:0 auto}
+.B .note{font-size:12px;color:#4b5260}
+
+/* ---------- C: 스티커 앨범 (pale sky paper, die-cut stickers, navy ink) ---------- */
+.C{background:#f3f7fb;background-image:radial-gradient(#cfdbe8 1.1px,transparent 1.2px);background-size:16px 16px;color:#22324a}
+.C .tabs{display:flex;gap:6px}
+.C .tab{font-family:var(--disp);font-size:15px;padding:6px 14px;border-radius:12px 12px 0 0;background:#dfe8f2;color:#5a6b82}
+.C .tab.on{background:#22324a;color:#fff}
+.C .page{background:#fff;border-radius:0 16px 16px 16px;padding:14px;box-shadow:0 1px 0 #d5dfea,0 10px 24px rgba(34,50,74,.08);display:flex;flex-direction:column;gap:12px;flex:1}
+.C .head{display:flex;align-items:baseline;gap:8px}
+.C .head .ttl{font-family:var(--disp);font-size:26px}
+.C .head small{color:#6b7b91}
+.C .bar{height:8px;border-radius:99px;background:#e5edf5;overflow:hidden}
+.C .bar i{display:block;height:100%;width:25%;background:#ff8fab}
+.C .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.C .st{text-align:center}
+.C .st .pic{width:70px;height:70px;margin:0 auto;filter:drop-shadow(0 0 0 #fff) drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 -2px 0 #fff) drop-shadow(0 3px 4px rgba(34,50,74,.25));transform:rotate(var(--r,0deg))}
+.C .st b{display:block;font-family:var(--disp);font-weight:400;font-size:14px}
+.C .st small{font-size:11px;color:#6b7b91}
+.C .st.q .pic{border:2px dashed #c3d0de;border-radius:14px;filter:none;display:grid;place-items:center;color:#a9b8c9;font-family:var(--disp);font-size:22px}
+.C .opt{display:flex;align-items:center;justify-content:space-between;border-bottom:1.5px dashed #d8e2ec;padding-bottom:10px}
+.C .opt b{font-family:var(--disp);font-weight:400;font-size:16px}
+.C .chips{display:flex;gap:6px}
+.C .chip{padding:6px 12px;border-radius:10px;background:#eef3f8;font-family:var(--disp);font-size:14px;color:#5a6b82}
+.C .chip.on{background:#22324a;color:#fff}
+.C .sw{width:46px;height:26px;border-radius:99px;background:#ff8fab;position:relative}
+.C .sw::after{content:"";position:absolute;right:3px;top:3px;width:20px;height:20px;border-radius:50%;background:#fff}
+.C .note{font-size:12px;color:#6b7b91}
+</style>
+
+<h1>리얼뽑기 메뉴 시안</h1>
+<p class="lead">도감과 펫 설정 화면을 같은 앱의 세계로 묶는 방향 세 가지입니다. 지금은 검정 바탕에 기본 스위치라 뽑기 마당과 따로 놀아요. 마음에 드는 방향 하나(또는 섞을 요소)를 골라 주세요.</p>
+
+<section>
+  <h2>A. 마당 그림책</h2>
+  <p class="why">뽑기 마당의 하늘·잔디 색과 굵은 잉크 외곽선을 메뉴까지 그대로 가져옵니다. 버튼이 종이 위에 놓인 듯 아래로 그림자가 집니다. 앱 전체가 한 동화책처럼 이어집니다.</p>
+  <div class="pair">
+    <div><div class="phone A"><div class="scr">
+      <div class="top"><span class="back">‹ 뽑기</span><span class="count">펫 설정</span></div>
+      <div class="row"><span class="ttl">도감</span><span class="grow"></span><span class="count">4 / 20</span></div>
+      <div class="grid">
+        <div class="card"><img src="IMG_monggeul"><b>몽글</b><small>털뭉치</small></div>
+        <div class="card"><img src="IMG_ppiyak"><b>삐약</b><small>털뭉치</small></div>
+        <div class="card"><img src="IMG_bamtol"><b>보송이</b><small>강아지</small></div>
+        <div class="card"><img src="IMG_dalsom"><b>콩떡</b><small>사람</small></div>
+        <div class="card q"><div class="sil"></div><b>???</b></div>
+        <div class="card q"><div class="sil"></div><b>???</b></div>
+      </div>
+    </div></div><div class="label">도감</div></div>
+    <div><div class="phone A"><div class="scr">
+      <div class="top"><span class="back">‹ 도감</span></div>
+      <span class="ttl">펫</span>
+      <div class="panel"><div class="row"><h3 class="grow" style="margin:0">펫 띄우기</h3><span class="sw"></span></div>
+        <div class="seg" style="margin-top:10px"><span class="on">홈 화면</span><span>항상</span></div>
+        <div class="note" style="margin-top:6px">홈 화면에서만 보이고, 앱을 열면 숨어요.</div></div>
+      <div class="panel"><h3>크기</h3>
+        <div class="sizes"><img src="IMG_monggeul" width="34"><img class="on" src="IMG_monggeul" width="50"><img src="IMG_monggeul" width="70"></div></div>
+      <div class="panel"><h3>누구를 띄울까</h3><div class="row"><img src="IMG_monggeul" width="46"><img src="IMG_ppiyak" width="46" style="opacity:.55"><img src="IMG_bamtol" width="46" style="opacity:.55"></div></div>
+    </div></div><div class="label">펫 설정</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>B. 뽑기 기계</h2>
+  <p class="why">메뉴가 기계 안쪽처럼 보입니다. 빨간 함체, 유리판, 크롬 테두리를 쓰고, 숫자는 LED, 버튼은 눌리는 기계 버튼입니다. 도감은 뽑은 캡슐이 진열된 모양입니다. 오락실 느낌이 가장 강합니다.</p>
+  <div class="pair">
+    <div><div class="phone B"><div class="scr">
+      <div class="marquee"><span class="ttl">도감</span><span class="led">04/20</span></div>
+      <div class="grid">
+        <div class="cap2" style="--c:#ffd1dc"><img src="IMG_monggeul"><b>몽글</b></div>
+        <div class="cap2" style="--c:#fff1a8"><img src="IMG_ppiyak"><b>삐약</b></div>
+        <div class="cap2" style="--c:#bde3ff"><img src="IMG_bamtol"><b>보송이</b></div>
+        <div class="cap2" style="--c:#d6f5c4"><img src="IMG_dalsom"><b>콩떡</b></div>
+        <div class="cap2 q"></div><div class="cap2 q"></div>
+      </div>
+    </div></div><div class="label">도감</div></div>
+    <div><div class="phone B"><div class="scr">
+      <div class="marquee"><span class="ttl">펫</span><span class="led">ON</span></div>
+      <div class="plate"><h3>어디에 띄울까</h3><div class="btns"><span class="btn on">홈 화면</span><span class="btn">항상</span></div>
+        <div class="note" style="margin-top:8px">홈 화면에서만 보이고, 앱을 열면 숨어요.</div></div>
+      <div class="plate"><h3>크기</h3><div class="btns"><span class="btn">작게</span><span class="btn on">보통</span><span class="btn">크게</span></div></div>
+      <div class="plate" style="text-align:center"><h3>펫 띄우기</h3><div class="big"></div></div>
+    </div></div><div class="label">펫 설정</div></div>
+  </div>
+</section>
+
+<section>
+  <h2>C. 스티커 앨범</h2>
+  <p class="why">도감을 스티커 수집첩처럼 꾸밉니다. 모눈 종이 위에 흰 테두리를 오린 스티커가 살짝 기울어 붙어 있고, 위에는 모은 정도 막대가 있습니다. 화면 이동은 책 탭으로 합니다. 조용하고 정돈된 느낌입니다.</p>
+  <div class="pair">
+    <div><div class="phone C"><div class="scr">
+      <div class="tabs"><span class="tab">뽑기</span><span class="tab on">도감</span><span class="tab">펫</span></div>
+      <div class="page">
+        <div class="head"><span class="ttl">도감</span><small>20마리 중 4마리</small></div>
+        <div class="bar"><i></i></div>
+        <div class="grid">
+          <div class="st"><img class="pic" src="IMG_monggeul" style="--r:-4deg"><b>몽글</b><small>털뭉치</small></div>
+          <div class="st"><img class="pic" src="IMG_ppiyak" style="--r:3deg"><b>삐약</b><small>털뭉치</small></div>
+          <div class="st"><img class="pic" src="IMG_bamtol" style="--r:-2deg"><b>보송이</b><small>강아지</small></div>
+          <div class="st"><img class="pic" src="IMG_dalsom" style="--r:5deg"><b>콩떡</b><small>사람</small></div>
+          <div class="st q"><div class="pic">?</div></div><div class="st q"><div class="pic">?</div></div>
+        </div>
+      </div>
+    </div></div><div class="label">도감</div></div>
+    <div><div class="phone C"><div class="scr">
+      <div class="tabs"><span class="tab">뽑기</span><span class="tab">도감</span><span class="tab on">펫</span></div>
+      <div class="page">
+        <div class="opt"><b>펫 띄우기</b><span class="sw"></span></div>
+        <div class="opt"><b>어디에</b><span class="chips"><span class="chip on">홈 화면</span><span class="chip">항상</span></span></div>
+        <div class="opt"><b>크기</b><span class="chips"><span class="chip">작게</span><span class="chip on">보통</span><span class="chip">크게</span></span></div>
+        <div><b style="font-family:var(--disp);font-weight:400;font-size:16px">누구를</b>
+          <div class="row" style="margin-top:8px"><img class="pic" src="IMG_monggeul" width="50" style="filter:drop-shadow(2px 0 0 #fff) drop-shadow(-2px 0 0 #fff) drop-shadow(0 2px 0 #fff) drop-shadow(0 3px 4px rgba(34,50,74,.25))"><img src="IMG_ppiyak" width="46" style="opacity:.5"><img src="IMG_bamtol" width="46" style="opacity:.5"></div></div>
+        <div class="note">홈 화면에서만 보이고, 앱을 열면 숨어요.</div>
+      </div>
+    </div></div><div class="label">펫 설정</div></div>
+  </div>
+</section>

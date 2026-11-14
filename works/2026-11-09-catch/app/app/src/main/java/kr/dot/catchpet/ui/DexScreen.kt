@@ -52,29 +52,33 @@ internal val BG = Color(0xFF101114)
 internal val DIM = Color(0xFF9AA0AB)
 internal val GOLD = Color(0xFFFFCF5A)
 
-/** The dex: capsule cells, 3 across. Real things show their cut-out, critters their baked front picture. */
+/** The dex: ink cards, 3 across (mockup A). Real things show their cut-out, critters their baked front picture. */
 @Composable
 fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val entries by produceState<List<Dex.Entry>?>(null) { value = withContext(Dispatchers.IO) { Dex.list(ctx) } }
-    Column(Modifier.fillMaxSize().background(BG).safeDrawingPadding()) {
-        Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = onBack) { Text("‹ 뽑기", color = DIM, fontSize = 16.sp) }
-            Text("도감 ${entries?.size ?: ""}", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
-                modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
-            TextButton(onClick = onPet) { Text("펫 설정", color = GOLD, fontSize = 16.sp) }
+    BookPage(scroll = false) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            InkPill("‹ 뽑기", onClick = onBack)
+            Spacer(Modifier.weight(1f))
+            InkPill("펫 설정", Book.Sun, onClick = onPet)
         }
-        val list = entries ?: return@Column
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Heading("도감")
+            Spacer(Modifier.weight(1f))
+            entries?.let { if (it.isNotEmpty()) InkPill("${it.size}마리", Book.Sun) }
+        }
+        val list = entries ?: return@BookPage
         if (list.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                Text("아직 뽑은 녀석이 없어요.\n뽑기 화면에서 집게를 내려 보세요!", color = DIM, fontSize = 17.sp,
+                Text("아직 뽑은 녀석이 없어요.\n뽑기 화면에서 집게를 내려 보세요!", fontSize = 17.sp,
                     textAlign = TextAlign.Center, lineHeight = 26.sp)
             }
-            return@Column
+            return@BookPage
         }
         LazyVerticalGrid(
-            GridCells.Fixed(3), contentPadding = PaddingValues(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(14.dp), verticalArrangement = Arrangement.spacedBy(18.dp),
+            GridCells.Fixed(3), contentPadding = PaddingValues(bottom = 24.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {
             items(list, key = { it.id }) { e -> DexCell(e) { onOpen(e.id) } }
         }
@@ -84,13 +88,16 @@ fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
 @Composable
 private fun DexCell(e: Dex.Entry, onClick: () -> Unit) {
     val pic = rememberPose(e, e.poses.first())
-    Column(Modifier.clickable(onClick = onClick), horizontalAlignment = Alignment.CenterHorizontally) {
-        Capsule(Modifier.fillMaxWidth().aspectRatio(0.74f)) {
-            pic?.let { Image(it, e.name, Modifier.fillMaxSize().padding(10.dp), contentScale = ContentScale.Fit) }
+    Column(
+        Modifier.padding(bottom = Book.DROP).inkCard().clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick)
+            .padding(top = 8.dp, bottom = 8.dp, start = 4.dp, end = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.1f), contentAlignment = Alignment.Center) {
+            pic?.let { Image(it, e.name, Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Fit) }
         }
-        Spacer(Modifier.height(6.dp))
-        Text(e.name, color = Color.White, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text("No.${e.no}", color = DIM, fontSize = 11.sp)
+        Text(e.name, fontFamily = Book.Display, fontSize = 15.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(if (e.critterId != null) "털뭉치" else Dex.kindName(e.kind), color = Book.Muted, fontSize = 11.sp)
     }
 }
 

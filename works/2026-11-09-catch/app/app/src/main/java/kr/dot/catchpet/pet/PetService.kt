@@ -44,7 +44,7 @@ object PetPrefs {
             .unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName) ==
             android.app.AppOpsManager.MODE_ALLOWED
     /** Pet box size in dp (slider 32..112, default one app icon). */
-    fun size(ctx: Context) = prefs(ctx).getFloat("pet_size", 48f).coerceIn(32f, 112f)
+    fun size(ctx: Context) = prefs(ctx).getFloat("pet_size", 56f).coerceIn(32f, 112f)
     fun setSize(ctx: Context, dp: Float) { prefs(ctx).edit().putFloat("pet_size", dp).apply() }
 
     /** Stand line (dp) on the bottom row: just above the dock (plan R5). */

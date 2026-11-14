@@ -1,5 +1,7 @@
 package kr.dot.catchpet.ui
 
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.Box
 import android.content.Context
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -54,58 +56,53 @@ private val STYLES = listOf("fluff" to "털뭉치", "figure" to "피규어")
 fun petId(ctx: Context): String? = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null)
 fun setPet(ctx: Context, id: String) { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().putString("pet", id).apply() }
 
-/** One entry: its poses; critters can be the pet; real things get AI previews and (unlocked) a bought pose sheet. */
+/** One entry (mockup A): its poses; critters can be the pet; real things get drawings and (unlocked) a pose sheet. */
 @Composable
 fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val rev = AiWork.rev
     val e = remember(id, rev) { Dex.get(ctx, id) }
-    Column(Modifier.fillMaxSize().background(BG).safeDrawingPadding().verticalScroll(rememberScrollState())) {
-        TextButton(onClick = onBack, modifier = Modifier.padding(8.dp)) { Text("‹ 도감", color = DIM, fontSize = 16.sp) }
+    BookPage {
+        Row { InkPill("‹ 도감", onClick = onBack) }
         if (e == null) {
-            Text("이 녀석을 찾지 못했어요.", color = DIM, fontSize = 17.sp, modifier = Modifier.padding(24.dp))
-            return@Column
+            Text("이 녀석을 찾지 못했어요.", fontSize = 17.sp)
+            return@BookPage
         }
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            Text(e.name, color = Color.White, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-            Text("No.${e.no} · ${SimpleDateFormat("yyyy.M.d", Locale.KOREA).format(Date(e.caughtAt))} 뽑음", color = DIM, fontSize = 14.sp)
-            Spacer(Modifier.height(20.dp))
-            Section("모습 ${e.poses.size}")
+        var renaming by remember { mutableStateOf(false) }
+        var shown by remember(e.id, e.name) { mutableStateOf(e.name) }
+        Column {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Heading(shown, 32.sp)
+                if (e.critterId == null) InkPill("이름 바꾸기", onClick = { renaming = true })
+            }
+            Note("${if (e.critterId != null) "털뭉치" else Dex.kindName(e.kind)} · No.${e.no} · ${SimpleDateFormat("yyyy.M.d", Locale.KOREA).format(Date(e.caughtAt))} 뽑음")
+        }
+        if (renaming) RenameDialog(shown, onDone = { n -> renaming = false; if (n != null) Dex.rename(ctx, e.id, n)?.let { shown = it.name } })
+        Panel("모습 ${e.poses.size}") {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 for (p in e.poses) Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Capsule(Modifier.width(104.dp).height(140.dp)) {
-                        rememberPose(e, p)?.let { Image(it, p, Modifier.fillMaxSize().padding(12.dp), contentScale = ContentScale.Fit) }
+                    Box(Modifier.width(96.dp).height(118.dp).background(Book.Field, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                        rememberPose(e, p)?.let { Image(it, p, Modifier.fillMaxSize().padding(10.dp), contentScale = ContentScale.Fit) }
                     }
-                    Text(POSE_NAMES[p] ?: p, color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                    Note(POSE_NAMES[p] ?: p, Modifier.padding(top = 4.dp))
                 }
             }
-            Spacer(Modifier.height(28.dp))
-            if (e.critterId != null || e.ai.owned) PetButton(ctx, e, onPet)
-            if (e.critterId == null) RealAi(ctx, e)
-            Spacer(Modifier.height(32.dp))
         }
+        if (e.critterId != null || e.ai.owned) PetButton(ctx, e, onPet)
+        if (e.critterId == null) RealAi(ctx, e)
+        Spacer(Modifier.height(24.dp))
     }
-}
-
-@Composable
-private fun Section(title: String) {
-    Text(title, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
 }
 
 @Composable
 private fun PetButton(ctx: Context, e: Dex.Entry, onPet: () -> Unit) {
     var current by remember(e.id) { mutableStateOf(petId(ctx) == e.id) }
-    if (current) {
-        Text("지금 펫이에요", color = GOLD, fontSize = 16.sp)
-        TextButton(onClick = onPet) { Text("펫 설정 열기", color = Color.White) }
-    } else {
-        Button(
-            onClick = { setPet(ctx, e.id); current = true },
-            colors = ButtonDefaults.buttonColors(containerColor = GOLD, contentColor = Color(0xFF2A1D00)),
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-        ) { Text("펫으로 쓰기", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
-    }
-    Spacer(Modifier.height(20.dp))
+    if (current) Panel {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("지금 펫이에요", fontFamily = Book.Display, fontSize = 17.sp, modifier = Modifier.weight(1f))
+            InkPill("펫 설정 열기", Book.Sun, onClick = onPet)
+        }
+    } else InkButton("펫으로 쓰기") { setPet(ctx, e.id); current = true }
 }
 
 @Composable
@@ -125,53 +122,58 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
     }
     val left = remember(AiWork.rev) { AiWork.leftToday(ctx) }
     var style by rememberSaveable { mutableStateOf("fluff") }
-    Section("AI 미리보기")
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        for ((k, label) in STYLES) FilterChip(
-            selected = style == k, onClick = { style = k }, label = { Text(label) },
-            colors = FilterChipDefaults.filterChipColors(labelColor = DIM, selectedContainerColor = GOLD, selectedLabelColor = Color(0xFF2A1D00)),
-        )
-        Spacer(Modifier.width(4.dp))
-        Text("오늘 ${left}번 남음", color = DIM, fontSize = 13.sp)
-    }
-    Spacer(Modifier.height(8.dp))
-    Button(
-        onClick = { guarded { AiWork.preview(ctx, e, style) } }, enabled = busy == null && left > 0,
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0x26FFFFFF), contentColor = Color.White,
-            disabledContainerColor = Color(0x14FFFFFF), disabledContentColor = DIM),
-        modifier = Modifier.fillMaxWidth().height(48.dp),
-    ) { Text(if (left > 0) "AI 미리보기 그리기" else "내일 다시 그릴 수 있어요") }
-    if (busy != null) Row(Modifier.padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        CircularProgressIndicator(Modifier.size(18.dp), color = GOLD, strokeWidth = 2.dp)
-        Text(if (busy == "sheet") "  펫 그림을 그리는 중이에요 (1~3분)" else "  그리는 중이에요 (1분쯤)", color = DIM, fontSize = 14.sp)
-    }
-    AiWork.message[e.id]?.let { Text(it, color = Color(0xFFFF8A80), fontSize = 14.sp, modifier = Modifier.padding(top = 10.dp)) }
-    if (e.ai.previews.isNotEmpty()) {
-        Spacer(Modifier.height(14.dp))
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+    Panel("그림으로 그려 보기") {
+        Seg(STYLES.map { (k, label) -> label to k }, style) { style = it }
+        Note("오늘 ${left}번 더 그릴 수 있어요")
+        InkButton(if (left > 0) "그려 보기" else "내일 다시 그릴 수 있어요", enabled = busy == null && left > 0, primary = false) {
+            guarded { AiWork.preview(ctx, e, style) }
+        }
+        if (busy != null) Row(verticalAlignment = Alignment.CenterVertically) {
+            CircularProgressIndicator(Modifier.size(18.dp), color = Book.Ink, strokeWidth = 2.dp)
+            Note(if (busy == "sheet") "  펫 그림을 그리는 중이에요 (1~3분)" else "  그리는 중이에요 (1분쯤)")
+        }
+        AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
+        if (e.ai.previews.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (p in e.ai.previews.asReversed()) rememberFile(e.id, p)?.let {
-                Image(it, "AI 미리보기", Modifier.size(150.dp).clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.Crop)
+                Image(it, "그려 본 그림", Modifier.size(140.dp).clip(RoundedCornerShape(14.dp)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)),
+                    contentScale = ContentScale.Crop)
             }
         }
     }
-    Spacer(Modifier.height(28.dp))
     if (e.ai.owned) {
         e.ai.sheet?.let { s -> rememberFile(e.id, s)?.let {
-            Section("펫 그림")
-            Image(it, "펫 그림", Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)), contentScale = ContentScale.FillWidth)
+            Panel("펫 그림") {
+                Image(it, "펫 그림", Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.FillWidth)
+            }
         } }
         return
     }
     val token = remember { Purchase.token(ctx) }
     val locked = Purchase.locked(token)
-    Button(
-        onClick = { token?.let { t -> guarded { AiWork.buy(ctx, e, t) } } }, enabled = !locked && busy == null,
-        colors = ButtonDefaults.buttonColors(containerColor = GOLD, contentColor = Color(0xFF2A1D00),
-            disabledContainerColor = Color(0x14FFFFFF), disabledContentColor = DIM),
-        modifier = Modifier.fillMaxWidth().height(52.dp),
-    ) {
-        val free = kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.isNotEmpty()
-        Text(if (free) "펫 그림 만들기 · 개발판 무료" else "펫으로 사기 · ${Purchase.PRICE_WON}원", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+    val free = kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.isNotEmpty()
+    InkButton(if (free) "펫 그림 만들기 · 개발판 무료" else "펫으로 사기 · ${Purchase.PRICE_WON}원", enabled = !locked && busy == null) {
+        token?.let { t -> guarded { AiWork.buy(ctx, e, t) } }
     }
-    if (locked) Text("출시 후 열려요", color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+    if (locked) Note("출시 후 열려요")
+}
+
+@Composable
+private fun RenameDialog(old: String, onDone: (String?) -> Unit) {
+    var text by remember { mutableStateOf(old) }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onDone(null) },
+        containerColor = Book.Paper,
+        title = { Text("이름 바꾸기", fontFamily = Book.Display, color = Book.Ink) },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = text, onValueChange = { text = it.take(12) }, singleLine = true,
+                supportingText = { Text("${text.length}/12") },
+                colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Book.Ink, unfocusedBorderColor = Book.Muted, cursorColor = Book.Ink,
+                    focusedTextColor = Book.Ink, unfocusedTextColor = Book.Ink),
+            )
+        },
+        confirmButton = { InkPill("바꾸기", Book.Sun, onClick = { onDone(text) }) },
+        dismissButton = { InkPill("그대로 두기", onClick = { onDone(null) }) },
+    )
 }
