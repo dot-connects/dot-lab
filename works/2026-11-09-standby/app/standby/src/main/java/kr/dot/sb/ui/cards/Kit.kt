@@ -80,7 +80,7 @@ data class CardLook(
     val hero: Boolean = true,
     val clockOnBoard: Boolean = false,
     val clockFace: FaceId = FaceId.DIGITAL,
-    /** Text-size setting (0.9 / 1 / 1.15): scales reading text only, never hero numbers (spec §0). */
+    /** Text-size setting (0.9 / 1 / 1.15): scales reading text, labels and captions, never hero numbers (spec §0). */
     val textScale: Float = 1f,
 ) {
     companion object {
@@ -112,7 +112,8 @@ internal class Env(
 ) {
     val s: Dp get() = sz.s
     val pad: Dp get() = sz.pad
-    val label: Dp get() = sz.label
+    /** Labels, kickers, details and a slot clock's date line ([LocalSlotLabel]) × the text-size setting. */
+    val label: Dp get() = sz.label * look.textScale
     val cls: SizeClass = SizeClass.of(sz.s)
     val wide: Boolean = w / h >= 1.5f
     val tall: Boolean = h / w >= 1.5f

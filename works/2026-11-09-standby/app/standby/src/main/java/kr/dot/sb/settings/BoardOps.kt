@@ -93,6 +93,21 @@ object BoardOps {
 
     fun replace(c: AppConfig, id: String, change: (Board) -> Board): AppConfig =
         c.copy(boards = c.boards.map { if (it.id == id) change(it) else it })
+
+    /** The widgets page's board id ([widgetsBoard]); its per-card options live in [AppConfig.widgetOptions]. */
+    const val WIDGETS = "widgets"
+
+    /** [b] with card [s]:[j]'s own face set to [face] (dropped when it is the board's face, so the board's chip still drives it). */
+    fun withFace(b: Board, s: Int, j: Int, face: kr.dot.sb.model.FaceId?): Board {
+        val k = "$s:$j"
+        val o = (b.options[k] ?: kr.dot.sb.model.SlotOptions()).copy(face = face?.takeIf { it != b.clockFace })
+        return b.copy(options = if (o == kr.dot.sb.model.SlotOptions()) b.options - k else b.options + (k to o))
+    }
+
+    /** 11-14 #7: the face picked with a clock card's arrows on StandBy, saved to that card of board [boardId]. */
+    fun setFace(c: AppConfig, boardId: String, s: Int, j: Int, face: kr.dot.sb.model.FaceId): AppConfig =
+        if (boardId == WIDGETS) c.copy(widgetOptions = withFace(Board(WIDGETS, "", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions), s, j, face).options)
+        else replace(c, boardId) { withFace(it, s, j, face) }
 }
 
 /**

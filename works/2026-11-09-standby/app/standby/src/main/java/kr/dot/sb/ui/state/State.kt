@@ -245,6 +245,14 @@ interface StandbyActions {
     fun moodShowing(on: Boolean) {}
     /** The mood light's auto-off ran out: the screen sleeps until touched. */
     fun moodDone() {}
+    /** Timer ring drag (11-14 #10): set timer [id] to [minutes] (stopped = focus length, paused = time left). */
+    fun timerSet(id: String, minutes: Int) {}
+    /** Alarm card: the clock app's alarm list (after unlock). */
+    fun openAlarmApp() {}
+    /** Alarm card [빠른 알람]: set an alarm at [at] in the clock app without its UI. */
+    fun setQuickAlarm(at: java.time.LocalDateTime) {}
+    /** Clock card arrows (11-14 #7): card [index] of stack [slot] on board [boardId] now shows [face]. */
+    fun setCardFace(boardId: String, slot: Int, index: Int, face: kr.dot.sb.model.FaceId) {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

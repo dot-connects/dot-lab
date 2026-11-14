@@ -72,6 +72,7 @@ class SettingsActivity : ComponentActivity() {
                 object : Nav {
                     override fun push(route: String) { stack = stack + route }
                     override fun back() { if (stack.size > 1) stack = stack.dropLast(1) }
+                    override fun replace(route: String) { stack = stack.dropLast(1) + route }
                 }
             }
             val route = stack.last()

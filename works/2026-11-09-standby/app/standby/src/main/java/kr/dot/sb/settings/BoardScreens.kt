@@ -4,6 +4,7 @@ import kr.dot.sb.data.UsageFeature
 import kr.dot.sb.ui.theme.clockStyle
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -103,7 +104,7 @@ fun PagesScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
                             on = Pages.isOn(config, p),
                             onToggle = if (p.index == Pages.CLOCK) null else { v -> update { Pages.setOn(it, p, v) } },
                             onClick = {
-                                nav.push(when (p.index) { 0 -> Routes.WIDGETS; 1 -> Routes.PHOTOS; Pages.CLOCK -> Routes.CLOCKS; else -> Routes.board(b!!.id) })
+                                nav.push(pageRoute(p))
                             },
                             onMove = if (b == null) null else { d -> update { BoardOps.move(it, i, d) } },
                             canUp = i > 0, canDown = i < config.boards.lastIndex,
@@ -192,24 +193,48 @@ fun StartPageScreen(config: AppConfig, update: Update, back: () -> Unit) {
 
 private fun <T> List<T>.swap(i: Int, d: Int): List<T> = moved(i, d)
 
+/** A card as the picker offers it: clock cards come once per face (11-14: the clock card shows any of 내 시계). */
+data class CardPick(val type: CardType, val face: FaceId? = null) {
+    val ko: String get() = if (face != null) "${type.ko} · ${kr.dot.sb.ui.clock.spec(face).ko}" else type.ko
+}
+
+/** What stack [s] of [b] holds, a clock card with its effective face. */
+internal fun picks(b: Board, s: Int): List<CardPick> = b.slots.getOrNull(s).orEmpty().mapIndexed { j, t ->
+    CardPick(t, if (t == CardType.CLOCK) b.options["$s:$j"]?.face ?: b.clockFace else null)
+}
+
+internal fun withFace(b: Board, s: Int, j: Int, face: FaceId?): Board = BoardOps.withFace(b, s, j, face)
+
+/** The faces a clock card can take: 내 시계 that draw in a slot, plus [keep] (a card's current face) if it left the list. */
+internal fun cardFaces(config: AppConfig, keep: Collection<FaceId?>): List<FaceId> =
+    (kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces } + keep.filterNotNull()).distinct()
+
 @Composable
-fun WidgetsScreen(config: AppConfig, update: Update, back: () -> Unit) {
+fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val state = remember(config.city, config.use24h) { Sample.state(config) }
     var pick by remember { mutableStateOf<Pair<Boolean, Int?>?>(null) } // (left?, index or null = append)
     val dev = PreviewDevice.FOLD_COVER
     val rects = LayoutGeo.slots(Layout.TWO, dev.w.toFloat(), dev.h.toFloat())
-    fun editSide(left: Boolean, f: (List<CardType>) -> List<CardType>) = update { if (left) it.copy(widgetLeft = f(it.widgetLeft)) else it.copy(widgetRight = f(it.widgetRight)) }
+    /** Edit one side as a board stack: [moved] maps old index -> new (null = gone), options follow (11-14 per-card face). */
+    fun editSide(left: Boolean, moved: (Int) -> Int?, f: (Board) -> Board = { it }, cards: (List<CardType>) -> List<CardType>) = update { c ->
+        val s = if (left) 0 else 1
+        val w = Board("widgets", "", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions)
+        val b = f(BoardOps.editStack(w, s, cards(w.slots[s]), moved))
+        c.copy(widgetLeft = b.slots[0], widgetRight = b.slots[1], widgetOptions = b.options)
+    }
     val first = Slide("위젯") { l -> BoardView(widgetsBoard(config), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
     Box(Modifier.fillMaxSize()) {
-        Page("위젯", back, preview = Preview(config, withPages(first, config, skip = "위젯"))) {
+        Page("위젯", back, preview = pagePreview(config, 0, first, nav)) {
             listOf(true to config.widgetLeft, false to config.widgetRight).forEach { (left, cards) ->
+                val wb = widgetsBoard(config)
                 CardStackSection(
                     title = if (left) "왼쪽 칸" else "오른쪽 칸",
                     cards = cards,
+                    labels = picks(wb, if (left) 0 else 1).map { it.ko },
                     onReplace = { j -> pick = left to j },
                     onAdd = { pick = left to null },
-                    onMove = { j, d -> editSide(left) { it.swap(j, d) } },
-                    onRemove = { j -> editSide(left) { l -> l.filterIndexed { k, _ -> k != j } } },
+                    onMove = { j, d -> editSide(left, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.swap(j, d) } },
+                    onRemove = { j -> editSide(left, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } } },
                     footer = if (left) null else "카드가 둘 이상이면 그 칸을 위아래로 넘겨요. 첫 번째 카드가 처음에 보여요.",
                 )
             }
@@ -218,14 +243,19 @@ fun WidgetsScreen(config: AppConfig, update: Update, back: () -> Unit) {
         if (p != null) {
             val (left, index) = p
             val r = rects[if (left) 0 else 1]
-            val stack = if (left) config.widgetLeft else config.widgetRight
+            val s = if (left) 0 else 1
+            val have = picks(widgetsBoard(config), s)
             CardPickerSheet(
                 title = (if (left) "왼쪽 칸" else "오른쪽 칸") + " · 카드 고르기",
                 slotW = r.w.toInt(), slotH = r.h.toInt(), config = config, state = state, accent = null, face = FaceId.DIGITAL,
-                current = index?.let { stack.getOrNull(it) }, taken = stack.toSet(), onDismiss = { pick = null },
+                current = index?.let { have.getOrNull(it) }, taken = have.toSet(), faces = cardFaces(config, have.map { it.face }), onDismiss = { pick = null },
                 onPick = { card ->
-                    editSide(left) { l -> if (index == null) l + card else l.mapIndexed { k, c -> if (k == index) card else c } }
-                    pick = null
+                    val j = index ?: have.size
+                    val stack = have.map { it.type }
+                    editSide(left, { k -> k.takeIf { it != index || stack[it] == card.type } }, { b -> withFace(b, s, j, card.face) }) { l ->
+                        if (index == null) l + card.type else l.mapIndexed { k, c -> if (k == index) card.type else c }
+                    }
+                    if (index != null) pick = null
                 },
             )
         }
@@ -235,12 +265,12 @@ fun WidgetsScreen(config: AppConfig, update: Update, back: () -> Unit) {
 // ---- 사진 (사진 고르기, operator 2026-11-13) --------------------------------------------------------------------------
 
 @Composable
-fun PhotosScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
+fun PhotosScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     val folders by androidx.compose.runtime.produceState(emptyList<Pair<String, Int>>(), env.granted[Perm.PHOTOS]) {
         value = kotlinx.coroutines.withContext(env.io) { env.photoFolders() }
     }
-    val first = pageSlides(config.copy(pagesOff = config.pagesOff - kr.dot.sb.model.PAGE_PHOTOS)).first { it.name == "사진" }
-    Page("사진", back, preview = Preview(config, withPages(first, config, skip = "사진"))) {
+    val first = pageSlides(config, include = 1).first { it.name == "사진" }
+    Page("사진", back, preview = pagePreview(config, 1, first, nav)) {
         Section("사진 고르기") {
             PhotoSource.entries.forEach { s ->
                 item { RadioRow(s.ko, null, config.photoSource == s, { update { it.copy(photoSource = s) } }) }
@@ -324,7 +354,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     }
 
     Box(Modifier.fillMaxSize()) {
-        Page(board.name, back, preview = Preview(config, listOf(first), caption = "칸을 누르면 카드를 고를 수 있어요", full = false)) {
+        Page(board.name, back, preview = pagePreview(config, BoardOps.FIRST_BOARD_PAGE + idx, first, nav, caption = "칸을 누르면 카드를 고를 수 있어요", full = false)) {
             Section("칸 나누기") {
                 item {
                     ControlRow(null) {
@@ -353,6 +383,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                 CardStackSection(
                     title = "칸 ${s + 1}" + if (stack.size > 1) " · 카드 ${stack.size}장 (위아래로 넘겨요)" else "",
                     cards = stack,
+                    labels = picks(board, s).map { it.ko },
                     onReplace = { j -> selected = s; pick = PickTarget(s, j) },
                     onAdd = { selected = s; pick = PickTarget(s, null) },
                     onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
@@ -376,7 +407,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                         }
                     }
                     item {
-                        val faces = kr.dot.sb.ui.clock.ClockRegistry.boardFaces
+                        // 내 시계 that draw in a slot, plus the page's current face if it left the list
+                        val faces = (kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces } + board.clockFace).distinct()
                         ControlRow("이 페이지의 시계") {
                             ChipFlow(faces.map { kr.dot.sb.ui.clock.spec(it).ko }, faces.indexOf(board.clockFace), { i -> edit { b -> b.copy(clockFace = faces[i]) } })
                         }
@@ -400,15 +432,18 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                 title = "칸 ${p.slot + 1} · 카드 고르기",
                 slotW = (r?.w ?: 300f).toInt(), slotH = (r?.h ?: 300f).toInt(),
                 config = config, state = state, accent = board.accent, face = board.clockFace,
-                current = p.index?.let { board.slots.getOrNull(p.slot)?.getOrNull(it) },
-                taken = board.slots.getOrNull(p.slot).orEmpty().toSet(),
+                current = p.index?.let { picks(board, p.slot).getOrNull(it) },
+                taken = picks(board, p.slot).toSet(),
+                faces = cardFaces(config, picks(board, p.slot).map { it.face }),
                 widget = true,
                 onDismiss = { pick = null },
-                onPick = { card ->
+                onPick = { pk ->
+                    val card = pk.type
                     val stack = board.slots.getOrNull(p.slot).orEmpty()
                     val j = p.index ?: stack.size
                     editSlot(p.slot, { k -> k.takeIf { it != p.index || stack[it] == card } }) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
-                    pick = null
+                    edit { b -> withFace(b, p.slot, j, pk.face) }
+                    if (p.index != null) pick = null
                     // a new phone widget card asks for its widget right away (a cancel leaves the "pick" placeholder)
                     if (card == CardType.WIDGET && stack.getOrNull(j) != card) pickWidget(env, update, id, "${p.slot}:$j")
                 },
@@ -444,6 +479,8 @@ private fun LayoutThumb(layout: Layout, on: Boolean, disabled: Boolean, modifier
 fun CardStackSection(
     title: String,
     cards: List<CardType>,
+    /** Row names (a clock card with its face); defaults to the card names. */
+    labels: List<String> = cards.map { it.ko },
     onReplace: (Int) -> Unit,
     onAdd: () -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -456,7 +493,7 @@ fun CardStackSection(
         cards.forEachIndexed { j, card ->
             item {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onReplace(j) }.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    T(card.ko, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
+                    T(labels.getOrElse(j) { card.ko }, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
                     if (card == CardType.WIDGET && onSettings != null) {
                         Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
                     }
@@ -489,36 +526,49 @@ fun CardPickerSheet(
     state: kr.dot.sb.ui.state.StandbyState,
     accent: Long?,
     face: FaceId,
-    current: CardType?,
-    taken: Set<CardType>,
+    current: CardPick?,
+    taken: Set<CardPick>,
+    /** The faces the clock card is offered in (11-14: 내 시계). */
+    faces: List<FaceId>,
     onDismiss: () -> Unit,
     /** The phone widget card is offered on boards only, never on the widgets page (D6). */
     widget: Boolean = false,
-    onPick: (CardType) -> Unit,
+    onPick: (CardPick) -> Unit,
 ) {
     val acc = LocalAccent.current
     Sheet(title, onDismiss) {
         T("칸 크기(${slotW}×${slotH}dp)에서 보이는 모습이에요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, bottom = 12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // the media card plays video too (r8) and one notification card replaced stack + list (r9): the old types stay only where a board already has them
-            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current }.chunked(2).forEach { row ->
+            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current?.type }
+                .flatMap { t -> if (t == CardType.CLOCK) faces.map { CardPick(t, it) } else listOf(CardPick(t)) }
+                .chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { card ->
                         val dup = card in taken && card != current
                         Column(Modifier.weight(1f).clickable(enabled = !dup) { onPick(card) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val shape = RoundedCornerShape(12.dp)
-                            Box(Modifier.fillMaxWidth().clip(shape).border(if (card == current) 2.dp else 0.dp, acc, shape)) {
+                            // border(0.dp) still draws a hairline: only the current tile gets one
+                            Box(Modifier.fillMaxWidth().clip(shape).then(if (card == current) Modifier.border(2.dp, acc, shape) else Modifier)) {
                                 PreviewFrame(slotW.coerceAtLeast(60), slotH.coerceAtLeast(60), Modifier.fillMaxWidth(), maxHeight = 150.dp, radius = 10.dp) {
-                                    BoardView(Board("pick", "", Layout.ONE, listOf(listOf(card)), accent, face), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
+                                    BoardView(Board("pick", "", Layout.ONE, listOf(listOf(card.type)), accent, card.face ?: face), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
                                 }
+                                // the live card's own taps (media buttons, pager) swallowed the pick (11-14 "카드 추가가 안돼"): one catcher on top
+                                Box(Modifier.matchParentSize().clickable(enabled = !dup) { onPick(card) })
+                                if (dup) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 20.dp) }
                             }
-                            T(card.ko + if (dup) " (이미 있어요)" else "", 14.sp, if (card == current) 700 else 500, if (dup) SK.muted else SK.text, Modifier.padding(start = 2.dp), maxLines = 1)
+                            Row(Modifier.fillMaxWidth().padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                                T(card.ko, 14.sp, if (card == current) 700 else 500, SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
+                                if (dup) T("추가됨", 14.sp, 700, acc, Modifier.padding(start = 6.dp), maxLines = 1)
+                            }
                         }
                     }
                     if (row.size == 1) Box(Modifier.weight(1f))
                 }
             }
         }
+        // add mode stays open for several cards (11-14); replacing a card picks and closes
+        if (current == null) ActionButton("완료", onDismiss, Modifier.fillMaxWidth().padding(top = 20.dp))
     }
 }
 

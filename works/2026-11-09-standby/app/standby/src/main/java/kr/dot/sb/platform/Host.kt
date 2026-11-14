@@ -83,8 +83,24 @@ class HostActions(
     }
     override fun photoTheme(bucket: String?) = holder.photoTheme(bucket)
     override fun setTheme(theme: kr.dot.sb.model.Theme) = kr.dot.sb.settings.ConfigStore.update(ctx) { it.withTheme(theme) }
+    override fun openAlarmApp() = host.unlockThen {
+        runCatching { ctx.startActivity(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
+    override fun setQuickAlarm(at: java.time.LocalDateTime) {
+        // EXTRA_SKIP_UI: the clock app sets it silently (SET_ALARM is a normal permission); no handler = nothing happens
+        runCatching {
+            ctx.startActivity(
+                Intent(android.provider.AlarmClock.ACTION_SET_ALARM).putExtra(android.provider.AlarmClock.EXTRA_HOUR, at.hour)
+                    .putExtra(android.provider.AlarmClock.EXTRA_MINUTES, at.minute).putExtra(android.provider.AlarmClock.EXTRA_SKIP_UI, true)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+            )
+        }
+    }
+    override fun setCardFace(boardId: String, slot: Int, index: Int, face: kr.dot.sb.model.FaceId) =
+        kr.dot.sb.settings.ConfigStore.update(ctx) { kr.dot.sb.settings.BoardOps.setFace(it, boardId, slot, index, face) }
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
+    override fun timerSet(id: String, minutes: Int) = holder.timerSet(id, minutes)
     override fun sleepToggle() = holder.sleepToggle()
     override fun sleepPick(sound: SleepSound, toggle: Boolean) = holder.sleepPick(sound, toggle)
     override fun sleepMinutesNext() = holder.sleepMinutesNext()

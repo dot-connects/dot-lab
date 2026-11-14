@@ -209,6 +209,25 @@ class ClockShots(private val theme: Theme) {
         shots(Device.FOLD_COVER_L, r10.flatMap { f -> sizes.map { (n, wh) -> "slot-${f.name.lowercase()}-$n" to slot(f, wh.first, wh.second) } })
     }
 
+    /**
+     * 글자 크기 크게 (11-14: the info lines under / beside the digits scale too, the digits do not): every face with an
+     * info line on the smallest screen (Flip cover), the Fold cover and the biggest (Fold inner). Nothing may overlap or
+     * leave the screen.
+     */
+    private fun large(device: Device) {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        val faces = listOf(FaceId.DIGITAL, FaceId.DESK, FaceId.ANALOG, FaceId.WORLD) + r10.filter { it != FaceId.DOT_MATRIX }
+        shots(device, faces.map { f ->
+            "large-${f.name.lowercase()}" to @Composable {
+                androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.theme.LocalTextScale provides kr.dot.sb.model.TextSize.LARGE.f) { face(f)() }
+            }
+        })
+    }
+    @Test fun largeFlip() = large(Device.FLIP)
+    @Test fun largeFoldCover() = large(Device.FOLD_COVER_L)
+    @Test fun largeFoldInner() = large(Device.FOLD_INNER)
+    @Test fun largeBarPort() = large(Device.BAR_P)
+
     /** The same faces inside board slots (S square, XS, tall) to check inSlot fitting. */
     @Test fun inSlot() {
         val sizes = listOf("m" to (337 to 419), "xs" to (152 to 152), "wide" to (337 to 199))

@@ -85,7 +85,7 @@ internal fun DayBarFace(
         val rise = weather?.sunrise?.let(::barPosition)
         val set = weather?.sunset?.let(::barPosition)
         val alarmAt = alarm?.let { barPosition(it.toLocalTime()) }
-        label.textSize = min(w, h) * (if (inSlot) 0.055f else 0.06f)
+        label.textSize = min(w, h) * (if (inSlot) 0.055f else 0.06f) * (if (vertical) 1f else d.ts) // vertical: hour ticks only
         val capRatio = label.capRatio()
         // landscape: the time and its small 오전/오후 share 62 % of the width (c-day), the info column takes the rest
         small.textSize = 26 * min(w, h) / 360f
@@ -93,6 +93,13 @@ internal fun DayBarFace(
         val fs = fitSize(painter, d, false, (if (vertical) 0.18f * h else 0.38f * h) * style.sizePct / 100f,
             if (vertical) w * 0.84f else w * 0.62f - ampmW)
         val cap = painter.capEm * fs
+        if (!vertical && d.ts > 1f) {
+            // 글자 크기 크게: the right column gives the extra size back before it would cut "월요일 · 11월 9일" (never below 보통)
+            val kk = min(w, h) / 360f
+            val colW = w * 0.951f - (w * 0.046f + painter.measureHm(d.h, d.m, fs) + ampmW) - 16 * kk
+            val need = maxOf(label.measureText("${d.weekday}요일 · ${d.month}월 ${d.day}일"), d.weatherLine?.let { label.measureText(it) } ?: 0f)
+            if (need > colW) label.textSize = maxOf(label.textSize / d.ts, label.textSize * 0.98f * colW / need) // 2 % slack: exact fit still ellipsizes
+        }
         val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = bar }
         val pale = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = sun }
         val base = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = track }
@@ -146,7 +153,7 @@ internal fun DayBarFace(
                     }
                 }
                 val x0 = w * 0.049f; val length = w * 0.902f; val y = 266 * k; val thick = 16 * k
-                small.textSize = 16 * k; small.color = bar
+                small.textSize = 16 * k; small.color = bar // on the bar, beside the alarm glyph: stays (LARGE ran into it)
                 drawText("하루의 ${(now * 100).toInt()}%", x0, 238 * k + small.capRatio() * small.textSize, small)
                 drawRoundRect(x0, y, x0 + length, y + thick, thick / 2, thick / 2, base)
                 if (rise != null && set != null && set > rise) drawRect(x0 + length * rise, y, x0 + length * set, y + thick, pale)
@@ -161,7 +168,7 @@ internal fun DayBarFace(
                     val tx = x0 + length * i / 4f - if (i == 0) 0f else if (i == 4) mono.measureText(tick) else mono.measureText(tick) / 2
                     drawText(tick, tx, scaleY, mono)
                 }
-                small.textSize = 15 * k; small.color = dim
+                small.textSize = 15 * k * d.ts; small.color = dim
                 fun sun(word: String, t: LocalTime?, at: Float?) {
                     if (t == null || at == null) return
                     val s = "$word ${t.hour}:%02d".format(t.minute)
@@ -215,13 +222,14 @@ internal fun RimFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, 
             val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
             val cap = painter.capEm * fs
             if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
-            label.textSize = min(w, h) * 0.053f
+            label.textSize = min(w, h) * 0.053f * d.ts
             // c-rim: "월요일 · 11월 9일 · 7° · ⏰ 6:30" 29 dp (of 360) under the digits' baseline, the pair centred
             val dim = ink.ink2.toArgb()
             val caption = if (!style.showInfo || inSlot) null else buildList {
                 add(Seg(d.infoLine(), dim))
                 d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
             }.let { if (label.width(it) <= w * 0.78f) it else listOf(Seg(d.infoLine(), dim)) }
+            if (caption != null) label.textSize *= min(1f, 0.9f * w / label.width(caption)) // one line, never past the edges
             val gap = 29 * min(w, h) / 360f
             val group = cap + if (caption == null) 0f else gap + label.capRatio() * label.textSize
             val capTop = (h - group) / 2

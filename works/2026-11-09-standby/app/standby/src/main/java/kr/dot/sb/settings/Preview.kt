@@ -197,7 +197,7 @@ class PreviewLook(val device: PreviewDevice, val portrait: Boolean, val night: F
 }
 
 /** One slide: [name] under the frame, [draw] = the StandBy content at real device size. [start] = the "처음" page (home). */
-class Slide(val name: String, val start: Boolean = false, val draw: @Composable BoxScope.(PreviewLook) -> Unit)
+class Slide(val name: String, val start: Boolean = false, val route: String? = null, val draw: @Composable BoxScope.(PreviewLook) -> Unit)
 
 /**
  * A screen's preview (mockup `pv()`): [slides] swipe sideways, the first is the screen's own view. [cards] = the home
@@ -213,6 +213,10 @@ class Preview(
     val night: Boolean = false,
     /** false = taps reach the slide (the page editor's slots) instead of opening full screen. */
     val full: Boolean = true,
+    /** The slide the pager opens on. */
+    val initial: Int = 0,
+    /** A page's own settings: the swipe settled on slide i (not [initial]), whose [Slide.route] opens instead. */
+    val onSettle: ((Int) -> Unit)? = null,
 )
 
 /** The bar's choices, shared by the full preview and the mini (saved across rotation). */
@@ -334,6 +338,7 @@ internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone:
         }
         val tail = when {
             p.cards -> "옆으로 넘기면 다른 페이지가 보여요 · 누르면 전체 화면"
+            p.onSettle != null && p.slides.size > 1 -> "옆으로 넘기면 다른 페이지 설정"
             p.slides.size > 1 -> "옆으로 넘기면 다른 페이지"
             else -> null
         }
@@ -385,23 +390,49 @@ internal fun FullScreenPreview(p: Preview, st: PreviewState, phone: Phone, index
     }
 }
 
-/** The StandBy pages that are on ([Pages.visible]) as preview slides in pager order, the start page marked. */
-fun pageSlides(config: AppConfig): List<Slide> {
+/**
+ * The StandBy pages that are on ([Pages.visible]) as preview slides in pager order, the start page marked, each with
+ * its settings route. [include] = a page index shown even when it is off (its own settings screen).
+ */
+fun pageSlides(config: AppConfig, include: Int? = null): List<Slide> {
     val widgets = widgetsBoard(config)
     val face = ClockRegistry.pages(config.myClocks).first()
-    val pages = Pages.visible(config)
-    val start = pages.getOrNull(Pages.start(config))?.index
+    val pages = pagesWith(config, include)
+    val start = Pages.visible(config).getOrNull(Pages.start(config))?.index
     return pages.map { p ->
+        val r = pageRoute(p)
         when (p.index) {
-            0 -> Slide("위젯", start == 0) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
-            1 -> Slide("사진", start == 1) { l ->
+            0 -> Slide("위젯", start == 0, r) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+            1 -> Slide("사진", start == 1, r) { l ->
                 val ink = kr.dot.sb.ui.theme.Ink.of(l.night, androidx.compose.ui.graphics.Color(config.clockStyle(kr.dot.sb.model.FaceId.DIGITAL).color), kr.dot.sb.ui.theme.LocalTheme.current)
                 androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.theme.LocalInk provides ink) {
                     kr.dot.sb.ui.screens.PhotosPage(l.state, config, StandbyActions.NONE, active = false)
                 }
             }
-            Pages.CLOCK -> Slide("시계", start == Pages.CLOCK) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
-            else -> Slide(p.board!!.name, start == p.index) { l -> BoardView(p.board, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+            Pages.CLOCK -> Slide("시계", start == Pages.CLOCK, r) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
+            else -> Slide(p.board!!.name, start == p.index, r) { l -> BoardView(p.board, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
         }
     }
+}
+
+/** The pages that are on, plus page [include] even when it is off, in pager order. */
+internal fun pagesWith(config: AppConfig, include: Int?): List<PageRef> = Pages.all(config).filter { Pages.isOn(config, it) || it.index == include }
+
+/** Where 페이지 구성 (and a swipe on a page's settings preview) opens page [p]. */
+internal fun pageRoute(p: PageRef): String = when (p.index) {
+    0 -> Routes.WIDGETS
+    1 -> Routes.PHOTOS
+    Pages.CLOCK -> Routes.CLOCKS
+    else -> Routes.board(p.board!!.id)
+}
+
+/**
+ * A page's own settings preview (11-14): every page in pager order with [own] drawn for page [index] (shown even when
+ * off), opening on it; a swipe that settles on another page opens that page's settings in place (no back step).
+ */
+internal fun pagePreview(config: AppConfig, index: Int, own: Slide, nav: Nav, caption: String? = null, full: Boolean = true): Preview {
+    val all = pageSlides(config, include = index)
+    val at = pagesWith(config, index).indexOfFirst { it.index == index }
+    val slides = all.mapIndexed { i, s -> if (i == at) Slide(own.name, s.start, s.route, own.draw) else s }
+    return Preview(config, slides, caption = caption, full = full, initial = at, onSettle = { i -> slides[i].route?.let(nav::replace) })
 }

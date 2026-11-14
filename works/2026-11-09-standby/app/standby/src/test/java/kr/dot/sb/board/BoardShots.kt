@@ -60,6 +60,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             }
             "noperm" -> Fixtures.full().copy(agenda = null, upcoming = emptyList(), permissions = Permissions(calendar = false))
             "noevents" -> Fixtures.full().copy(agenda = emptyList())
+            "noalarm" -> Fixtures.full().copy(nextAlarm = null)
             "nophoto" -> Fixtures.full().copy(memory = null)
             "playing", "playing-night" -> Fixtures.full(if (key == "playing-night") 1f else 0f).copy(sleep = SleepState(true, 32))
             "emptyB" -> Fixtures.full().let {
@@ -81,11 +82,29 @@ class BoardShots(private val name: String, private val device: Device, private v
 
         @JvmStatic
         @ParameterizedRobolectricTestRunner.Parameters(name = "{4}-{0}-{1}")
-        fun cases(): List<Array<Any>> = THEMES.flatMap { th -> (base() + if (th == Theme.IPHONE) nightCards() else emptyList()).map { it + th } }
+        fun cases(): List<Array<Any>> = THEMES.flatMap { th ->
+            (base() + (if (th == Theme.IPHONE) nightCards() else emptyList()) + (if (th == Theme.IPHONE || th == Theme.MOODLIGHT) alarmCards() else emptyList())).map { it + th }
+        }
+
+        /** 11-14 #8 alarm card: every size class, a big Fold-inner slot, and no alarm (IPHONE + MOODLIGHT only). */
+        private fun alarmCards(): List<Array<Any>> = CLASSES.map { (cls, layout, d) -> arrayOf<Any>("card-alarm-$cls", d, Board("card", "ALARM", layout, listOf(listOf(CardType.ALARM))), "full") } +
+            listOf(
+                arrayOf<Any>("card-alarm-L", Device.FOLD_INNER, Board("card", "ALARM", Layout.ONE, listOf(listOf(CardType.ALARM))), "full"),
+                arrayOf<Any>("card-alarm-M-none", Device.FOLD_COVER_L, Board("card", "ALARM", Layout.TWO, listOf(listOf(CardType.ALARM))), "noalarm"),
+            )
+
+        /** Every card kind, the analog clock included (since 11-14 a CLOCK card with the ANALOG face; same shot names). */
+        private val KINDS: List<String> = CardType.entries.filter { it != CardType.ALARM }.map { it.name }.let { listOf(it[0], "ANALOG") + it.drop(1) }
+
+        private val ANALOG_FACE = kr.dot.sb.model.SlotOptions(face = kr.dot.sb.model.FaceId.ANALOG)
+
+        private fun one(kind: String, layout: Layout): Board =
+            if (kind == "ANALOG") Board("card", kind, layout, listOf(listOf(CardType.CLOCK)), options = mapOf("0:0" to ANALOG_FACE))
+            else Board("card", kind, layout, listOf(listOf(CardType.valueOf(kind))))
 
         /** r9: night ignores the theme (candle), so every card at night is shot once, under IPHONE, on every device class. */
-        private fun nightCards(): List<Array<Any>> = CardType.entries.flatMap { t ->
-            CLASSES.map { (cls, layout, d) -> arrayOf<Any>("card-${t.name.lowercase()}-$cls-night", d, Board("card", t.name, layout, listOf(listOf(t))), "night") }
+        private fun nightCards(): List<Array<Any>> = KINDS.flatMap { t ->
+            CLASSES.map { (cls, layout, d) -> arrayOf<Any>("card-${t.lowercase()}-$cls-night", d, one(t, layout), "night") }
         }
 
         private fun base(): List<Array<Any>> {
@@ -94,15 +113,16 @@ class BoardShots(private val name: String, private val device: Device, private v
                 for (d in Device.entries) out += arrayOf("preset-${b.id}", d, b, "full")
                 out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
             }
-            for (t in CardType.entries) for ((cls, layout, d) in CLASSES) {
-                val b = Board("card", t.name, layout, listOf(listOf(t)))
-                out += arrayOf("card-${t.name.lowercase()}-$cls", d, b, "full")
-            }
+            for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")
             // text size LARGE (115 %, reading text only): every card per size class + two presets
-            for (t in CardType.entries) for ((cls, layout, d) in CLASSES) {
-                out += arrayOf("card-${t.name.lowercase()}-$cls-large", d, Board("card", t.name, layout, listOf(listOf(t))), "full-large")
-            }
+            for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls-large", d, one(t, layout), "full-large")
             for (b in Presets.boards().take(2)) for (d in listOf(Device.FOLD_COVER_L, Device.FLIP)) out += arrayOf("large-${b.id}", d, b, "full-large")
+            // 11-14: labels and captions scale too; the widgets page (first StandBy page) and big notification / calendar cards
+            val widgets = kr.dot.sb.settings.widgetsBoard(kr.dot.sb.model.AppConfig())
+            for (d in listOf(Device.FLIP, Device.FOLD_COVER_L, Device.FOLD_INNER)) out += arrayOf("large-widgets", d, widgets, "full-large")
+            for (t in listOf(CardType.NOTIF, CardType.CALENDAR, CardType.AGENDA)) {
+                out += arrayOf("card-${t.name.lowercase()}-L-large", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full-large")
+            }
             // the narrowest slots: Flip THREE (~110 dp wide), where Task 21 fixed SleepOne / TempRow crashes
             for (t in listOf(CardType.SLEEP, CardType.WEATHER, CardType.MUSIC, CardType.NOTIF, CardType.CLOCK)) {
                 out += arrayOf("card-${t.name.lowercase()}-XSt", Device.FLIP, Board("card", t.name, Layout.THREE, listOf(listOf(t))), "full")
@@ -116,9 +136,9 @@ class BoardShots(private val name: String, private val device: Device, private v
             }
             for ((cls, layout, d) in CLASSES) out += arrayOf("card-video-$cls", d, Board("card", "MUSIC", layout, listOf(listOf(CardType.MUSIC))), "full-video")
             // clocks, weather, calendar (spec §1): a big Fold-inner slot and portrait halves on top of the size classes
-            for (t in listOf(CardType.CLOCK, CardType.ANALOG, CardType.WEATHER, CardType.CALENDAR, CardType.AGENDA, CardType.DDAY, CardType.TIMER, CardType.MEMORIES, CardType.SLEEP, CardType.USAGE)) {
-                out += arrayOf("card-${t.name.lowercase()}-L", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full")
-                out += arrayOf("card-${t.name.lowercase()}-M", Device.FOLD_COVER_P, Board("card", t.name, Layout.TWO, listOf(listOf(t))), "full")
+            for (t in listOf("CLOCK", "ANALOG", "WEATHER", "CALENDAR", "AGENDA", "DDAY", "TIMER", "MEMORIES", "SLEEP", "USAGE")) {
+                out += arrayOf("card-${t.lowercase()}-L", Device.FOLD_INNER, one(t, Layout.ONE), "full")
+                out += arrayOf("card-${t.lowercase()}-M", Device.FOLD_COVER_P, one(t, Layout.TWO), "full")
             }
             // narrow tall weather (SMALL) + square calendar on the bar portrait; calendar without permission
             out += arrayOf("small-weather-calendar", Device.BAR_P, Board("small", "small", Layout.BIG2, listOf(listOf(CardType.CLOCK), listOf(CardType.WEATHER), listOf(CardType.CALENDAR))), "full")
@@ -147,10 +167,10 @@ class BoardShots(private val name: String, private val device: Device, private v
             }
             out += arrayOf("empty-a-night", Device.FOLD_COVER_L, e1, "emptyAnight")
             // Two clocks on one board (§5.1): hero keeps accent digits, the second is white / white hands.
-            val c = CardType.CLOCK; val a = CardType.ANALOG
+            val c = CardType.CLOCK
             val dual = listOf(
-                Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(a))),
-                Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(a), listOf(c), listOf(CardType.WEATHER))),
+                Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(c)), options = mapOf("1:0" to ANALOG_FACE)),
+                Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.WEATHER)), options = mapOf("0:0" to ANALOG_FACE)),
                 Board("dual-float", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.TIMER)), clockFace = kr.dot.sb.model.FaceId.FLOAT),
                 Board("dual-solar", "dual", Layout.TWO2, listOf(listOf(c), listOf(CardType.DDAY), listOf(c)), clockFace = kr.dot.sb.model.FaceId.SOLAR),
             )

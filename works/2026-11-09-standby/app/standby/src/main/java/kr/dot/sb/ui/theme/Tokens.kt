@@ -132,6 +132,13 @@ val LocalInk = compositionLocalOf { Ink.of(0f) }
 /** The board-wide label size of the slot a clock face sits in (null = not in a card): its date line uses it. */
 val LocalSlotLabel = compositionLocalOf<Dp?> { null }
 
+/**
+ * The 글자 크기 setting ([kr.dot.sb.model.TextSize.f], provided with the theme from the config): scales the small
+ * date / weather / alarm lines drawn with the clock faces. Never the big digits. Cards scale through
+ * [kr.dot.sb.ui.cards.CardLook.textScale] (same value).
+ */
+val LocalTextScale = compositionLocalOf { 1f }
+
 /** Derived accent shades (design-system §2.1: accDeep = S+0.35, L−0.25 floor 0.15; accLight = L+0.12). */
 object Hsl {
     internal fun toHsl(c: Color): FloatArray {

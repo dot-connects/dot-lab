@@ -22,6 +22,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.sb.model.AppConfig
@@ -38,7 +39,7 @@ import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.theme.withTheme
 
 /** The fixed first three pages (spec §1c) plus user boards, as the editor and the carousel list them. */
-internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board("widgets", "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight)))
+internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
 
 /** "(F)" rows: what a bar phone or a Flip sees instead of the control. */
 internal const val FOLD_WHY = "갤럭시 폴드처럼 안쪽 화면이 큰 폰에서만 쓸 수 있어요"
@@ -53,14 +54,11 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
     fun need(p: Perm) = if (p in missing) "설정 필요" else null
     Page("스탠바이", null, preview = Preview(config, pageSlides(config), cards = true)) {
         if (missing.isNotEmpty()) PermBanner(Perm.entries.size, Perm.entries.size - missing.size) { nav.push(Routes.PERMS) }
+        // 11-14 tree: card settings (시계, 날씨, 알림, 수면 소리, 알람, 카드에 쓰는 정보) live under 카드
         Section("화면") {
             item { NavRow("테마와 배경", { nav.push(Routes.THEME) }, value = config.theme.ko) }
             item { NavRow("페이지 구성", { nav.push(Routes.PAGES) }, subtitle = "위젯 · 사진 · 시계 + 내 페이지 ${config.boards.size}개") }
-            item { NavRow("시계", { nav.push(Routes.CLOCKS) }, value = "내 시계 ${config.myClocks.size}개") }
-            item {
-                val badge = need(Perm.NOTIFICATIONS)
-                NavRow("알림 표시", { nav.push(Routes.NOTIF) }, badge = badge, value = if (badge != null) null else if (config.showNotifications) "켜짐" else "꺼짐")
-            }
+            item { NavRow("카드", { nav.push(Routes.CARDS) }, subtitle = "시계 · 날씨 · 알림 · 수면 소리 · 알람 …", badge = need(Perm.NOTIFICATIONS)) }
         }
         Section("밤과 꺼짐") {
             item {
@@ -76,10 +74,8 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 val off = when (config.displayOff) { DisplayOff.AUTO -> "어두워지면 꺼짐"; DisplayOff.AFTER_20S -> "20초 뒤 꺼짐"; DisplayOff.NEVER -> "계속 켜 둠" }
                 NavRow("켜짐과 꺼짐", { nav.push(Routes.ONOFF) }, badge = badge, value = if (badge != null) null else "${if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"} · $off")
             }
-            item { NavRow("수면 소리", { nav.push(Routes.SOUND) }, value = "${config.sleepSound.ko} · ${config.sleepMinutes}분") }
         }
-        Section("알람과 폴드") {
-            item { NavRow("알람", { nav.push(Routes.ALARM) }, value = if (config.alarmScreen) "스탠바이 화면" else "시계 앱 화면") }
+        Section("폴드") {
             item {
                 val fold = env.phone == Phone.FOLD
                 NavRow(
@@ -88,9 +84,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 )
             }
         }
-        Section("정보와 권한") {
-            item { NavRow("날씨와 도시", { nav.push(Routes.WEATHER) }, value = config.city.name) }
-            item { NavRow("카드에 쓰는 정보", { nav.push(Routes.CARD_INFO) }) }
+        Section("정보") {
             item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 켜짐" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }
             item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }) }
         }
@@ -104,7 +98,7 @@ fun ThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
         ThemePicker(config, update)
         Section(null) {
             item {
-                ControlRow("글자 크기", note = "알림과 일정 글자가 바뀌어요. 큰 시계 숫자는 그대로예요. 미리보기를 옆으로 넘겨 일정이 있는 페이지에서 확인해요.") {
+                ControlRow("글자 크기", note = "카드 글자와 시계 아래 날짜·정보 줄이 바뀌어요. 큰 숫자는 그대로예요. 미리보기를 옆으로 넘겨 확인해요.") {
                     Segmented(TextSize.entries.map { it.ko }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
                 }
             }
@@ -126,8 +120,8 @@ fun ThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
 private val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12, 0xFF26142A, 0xFF1E1E20)
 
 /**
- * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it, no names, in a horizontal scroll, so
- * what you tap is what StandBy shows. Tap = switch (saved like every other setting).
+ * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it with its name under it (operator 11-14:
+ * names on), in a horizontal scroll, so what you tap is what StandBy shows. Tap = switch (saved like every other setting).
  */
 @Composable
 private fun ThemePicker(config: AppConfig, update: Update) {
@@ -141,16 +135,21 @@ private fun ThemePicker(config: AppConfig, update: Update) {
             items(Theme.entries) { th ->
                 val on = th == config.theme
                 val cfg = remember(config, th) { config.withTheme(th) }
-                Box(
+                Column(
                     Modifier.width(132.dp).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
-                        .then(if (on) Modifier.border(2.dp, acc, RoundedCornerShape(14.dp)) else Modifier).padding(8.dp),
+                        .then(if (on) Modifier.border(2.dp, acc, RoundedCornerShape(14.dp)) else Modifier)
+                        .clickable { update { it.withTheme(th) } }.padding(8.dp),
                 ) {
-                    kr.dot.sb.ui.theme.ProvideTheme(cfg) {
-                        PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
-                            BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                    Box(Modifier.fillMaxWidth()) {
+                        kr.dot.sb.ui.theme.ProvideTheme(cfg) {
+                            PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
+                                BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
+                            }
                         }
+                        // the thumbnail's own cards must not take the tap
+                        Box(Modifier.matchParentSize().clickable { update { it.withTheme(th) } })
                     }
-                    Box(Modifier.matchParentSize().clickable { update { it.withTheme(th) } })
+                    T(th.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.fillMaxWidth().padding(top = 6.dp), maxLines = 1, align = TextAlign.Center)
                 }
             }
         }

@@ -92,8 +92,10 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val gallery = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
     val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
+    var citySheet by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
     Page(
-        "시계", back, preview = Preview(config, withPages(first, config, skip = "시계")),
+        "시계", back, preview = pagePreview(config, Pages.CLOCK, first, nav),
         miniActions = { ClockActions(sel, config, update, nav, compact = true) },
     ) {
         ClockActions(sel, config, update, nav, compact = false)
@@ -132,7 +134,15 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
                     }
                 }
             }
+            WorldCitiesSection(config, update) { citySheet = true }
         }
+    }
+    if (citySheet) {
+        CitySheet("세계 시계 도시", taken = config.worldCities.map { it.name }.toSet(), onDismiss = { citySheet = false }) { c ->
+            update { s -> if (s.worldCities.any { it.name == c.name }) s else s.copy(worldCities = s.worldCities + c) }
+            citySheet = false
+        }
+    }
     }
 }
 
@@ -269,7 +279,7 @@ private fun GalleryCard(face: FaceId, on: Boolean, mine: Boolean, config: AppCon
     }
 }
 
-// ---- 꾸미기 (mockup SCREENS.style): rows from spec(face).rows / more, 색 조합 바꾸기 on top of the colours ------------------
+// ---- 꾸미기 (mockup SCREENS.style): [색 조합 바꾸기][이전 조합][기본으로] under the preview, then spec(face).rows / more -----
 
 private val FONT_ORDER = FontId.entries.filter { !it.hangul }
 private val HANGUL_FONTS = FontId.entries.filter { it.hangul }
@@ -293,27 +303,25 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
     val first = Slide(sp.ko) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
 
     Page("${sp.ko} 꾸미기", back, preview = Preview(config, listOf(first))) {
-        Section(null) {
-            sp.rows.filter(visible).forEach { r ->
-                if (shuffle && r == firstColour) item {
-                    Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ActionButton("색 조합 바꾸기", {
-                            val cur = config.clockStyle(face)
-                            prev = ColorShuffle.current(face, cur)
-                            // toString, not hashCode: enum hashCodes are identity-based and change every process
-                            val seed = cur.toString().hashCode() + presses++
-                            edit { ColorShuffle.apply(face, it, ColorShuffle.next(face, it, seed)) }
-                        }, Modifier.weight(1f), primary = false)
-                        ActionButton("이전 조합", { prev?.let { p -> edit { ColorShuffle.apply(face, it, p) } }; prev = null }, Modifier.weight(1f), primary = false, enabled = prev != null)
-                    }
-                }
-                item { StyleControl(r, face, style, config, update, ::edit, firstColour = r == firstColour) }
+        // 11-14: one row right under the preview, the same order in every editor: [색 조합 바꾸기] [이전 조합] [기본으로]
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (shuffle) {
+                ActionButton("색 조합 바꾸기", {
+                    val cur = config.clockStyle(face)
+                    prev = ColorShuffle.current(face, cur)
+                    // toString, not hashCode: enum hashCodes are identity-based and change every process
+                    val seed = cur.toString().hashCode() + presses++
+                    edit { ColorShuffle.apply(face, it, ColorShuffle.next(face, it, seed)) }
+                }, Modifier.weight(1.45f), primary = false) // the longest label: full width at 411 dp
+                ActionButton("이전 조합", { prev?.let { p -> edit { ColorShuffle.apply(face, it, p) } }; prev = null }, Modifier.weight(1f), primary = false, enabled = prev != null)
             }
+            ActionButton("기본으로", { prev = null; update { it.copy(styles = it.styles - face) } }, Modifier.weight(1f), primary = false, enabled = face in config.styles)
+        }
+        Section(null) {
+            sp.rows.filter(visible).forEach { r -> item { StyleControl(r, face, style, config, update, ::edit, firstColour = r == firstColour) } }
         }
         val more = sp.more.filter(visible)
         if (more.isNotEmpty()) More { Section(null) { more.forEach { r -> item { StyleControl(r, face, style, config, update, ::edit, firstColour = false) } } } }
-        Gap(24.dp)
-        ActionButton("테마 기본값으로 되돌리기", { prev = null; update { it.copy(styles = it.styles - face) } }, Modifier.fillMaxWidth(), primary = false)
     }
 }
 

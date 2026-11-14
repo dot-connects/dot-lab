@@ -91,7 +91,7 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val bottom = if (portrait) 0.86f * h else 0.854f * h
         val t = d.worldTime
         reg.textSize = 0.062f * s
-        bold.textSize = 0.058f * s
+        bold.textSize = 0.058f * s * d.ts
         val cityCap = bold.textSize * bold.capRatio()
         val ap = if (d.use24h) "" else d.worldAmPm + " "
         val timeCap = if (bar) min(0.35f * h, (0.47f * w - bx - reg.measureText(ap)) / p.widestEm(t.substringBefore(':').length, d.use24h) * p.capEm) * style.sizePct / 100f
@@ -104,7 +104,7 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
             moveTo(x, y + a * 0.45f); lineTo(x + a, y); lineTo(x + a * 0.58f, y + a); lineTo(x + a * 0.45f, y + a * 0.55f); close()
         }
         val alarm = d.alarmShort?.let { listOf(alarmSeg(grey), Seg(it, grey)) }
-        val small = android.text.TextPaint(reg).apply { textSize = 0.05f * s }
+        val small = android.text.TextPaint(reg).apply { textSize = 0.05f * s * d.ts }
         val alarmBase = 0.08f * h + small.textSize * small.capRatio()
         return@FaceCanvas {
             drawFaceBg(bg, w, h, 0f)

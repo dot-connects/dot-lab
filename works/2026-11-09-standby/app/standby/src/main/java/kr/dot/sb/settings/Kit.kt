@@ -43,7 +43,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
@@ -165,6 +168,9 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, tint: Color = SK.muted, enabled: Boolea
 /** True inside the left (preview) pane of a two-pane page: previews may use the pane's full height. */
 val LocalPreviewPane = compositionLocalOf { false }
 
+/** The preview bar state shared by the page-settings screens ([Preview.onSettle]); [RouteHost] provides it. */
+val LocalPageBar = compositionLocalOf<PreviewState?> { null }
+
 /** True on a two-pane page (Fold inner): [More] starts open there (consensus "자세히 open by default"). */
 val LocalTwoPane = compositionLocalOf { false }
 
@@ -181,8 +187,14 @@ fun Page(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val phone = LocalSettingsEnv.current.phone
-    val st = rememberSaveable(saver = PreviewState.Saver) { PreviewState(night = preview?.night == true) }
-    val pager = rememberPagerState(if (preview?.cards == true) preview.slides.indexOfFirst { it.start }.coerceAtLeast(0) else 0) { preview?.slides?.size ?: 0 }
+    val ownBar = rememberSaveable(saver = PreviewState.Saver) { PreviewState(night = preview?.night == true) }
+    val st = LocalPageBar.current?.takeIf { preview?.onSettle != null } ?: ownBar
+    val pager = rememberPagerState(if (preview?.cards == true) preview.slides.indexOfFirst { it.start }.coerceAtLeast(0) else preview?.initial ?: 0) { preview?.slides?.size ?: 0 }
+    if (preview?.onSettle != null) {
+        // a page's settings: settling on another page opens that page's settings (the new screen opens on it, no jump)
+        val cur by rememberUpdatedState(preview)
+        LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { if (it != cur.initial) cur.onSettle?.invoke(it) } }
+    }
     var full by remember { mutableStateOf<Int?>(null) }
     val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
     Box(modifier.fillMaxSize()) {

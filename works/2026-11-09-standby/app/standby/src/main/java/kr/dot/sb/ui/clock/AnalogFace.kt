@@ -100,7 +100,7 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
                         ThemedDigits("${d.h}:${d.m}", LocalTheme.current, ink, Modifier.size(fs * 2.3f, fs), color = c.num)
                         if (style.showInfo) {
                             val line = "${d.weekday}요일 ${d.month}월 ${d.day}일" + (d.temp?.let { " · $it" } ?: "")
-                            Txt(line, max(14.dp, fs * 0.16f), c.wk, Modifier.padding(top = 6.dp), weight = 500, num = true, maxW = fs * 2.3f)
+                            Txt(line, max(14.dp, fs * 0.16f) * d.ts, c.wk, Modifier.padding(top = 6.dp), weight = 500, num = true, maxW = fs * 2.3f)
                         }
                     }
                 }
@@ -126,9 +126,10 @@ private fun Info(d: FaceData, c: Hues, ink: Ink, fs: Dp, land: Boolean, room: Dp
         horizontalAlignment = if (land) Alignment.Start else Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(fs * 0.5f), // cap boxes: Hangul overhangs the cap and the baseline
     ) {
-        Txt("${d.weekday}요일", fs, c.wk, maxW = room)
+        // weekday and the info line follow 글자 크기; the big date does not
+        Txt("${d.weekday}요일", fs * d.ts, c.wk, maxW = room)
         Txt("${d.month}월 ${d.day}일", fs * 1.8f, ink.ink, num = true, maxW = room)
-        if (line.isNotEmpty()) Txt(line, fs, ink.ink2, weight = 500, num = true, maxW = room)
+        if (line.isNotEmpty()) Txt(line, fs * d.ts, ink.ink2, weight = 500, num = true, maxW = room)
     }
 }
 

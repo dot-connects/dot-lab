@@ -104,7 +104,7 @@ object BoardGrid {
         }
     }
 
-    private val CLOCKS = setOf(CardType.CLOCK, CardType.ANALOG)
+    private val CLOCKS = setOf(CardType.CLOCK)
     private val CLOCK_LIKE = CLOCKS + setOf(CardType.TIMER, CardType.DDAY)
 
     /**
@@ -131,7 +131,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     val firsts = board.slots.map { it.firstOrNull() }
     val hero = BoardGrid.hero(slots, firsts)
     val heroFace = when (firsts.getOrNull(hero)) {
-        CardType.ANALOG -> FaceId.ANALOG
+        CardType.CLOCK -> board.options["$hero:0"]?.face ?: board.clockFace
         null -> null
         else -> board.clockFace
     }
@@ -171,6 +171,8 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
                     Modifier.offset(r.x.dp, r.y.dp).size(r.w.dp, r.h.dp),
                     slotId = "${board.id}-$i", look = looks[i], dotsAtStart = r.x + r.w / 2 < w / 2,
                     options = { j -> board.options["$i:$j"] }, menu = { j -> "widget:${board.id}:$i:$j" },
+                    // previews (settings) pass NONE: no arrows there
+                    onFace = if (actions === StandbyActions.NONE) null else { j, f -> actions.setCardFace(board.id, i, j, f) },
                 )
             }
         }
@@ -194,9 +196,11 @@ fun SlotStack(
     /** Per-card options and settings route by stack index (phone widget). */
     options: (Int) -> SlotOptions? = { null },
     menu: (Int) -> String? = { null },
+    /** Clock card arrows: card j picked a face (null = no arrows, e.g. settings previews). */
+    onFace: ((Int, kr.dot.sb.model.FaceId) -> Unit)? = null,
 ) {
     if (cards.size <= 1) {
-        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, options(0), menu(0)) }
+        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, options(0), menu(0), onFace = onFace?.let { cb -> { f -> cb(0, f) } }) }
         return
     }
     val pager = rememberPagerState { cards.size }
@@ -213,7 +217,7 @@ fun SlotStack(
     val a by animateFloatAsState(if (show) 1f else 0f, tween(300), label = "dots")
     Box(modifier) {
         VerticalPager(pager, Modifier.fillMaxSize()) { p ->
-            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, options(p), menu(p))
+            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, options(p), menu(p), onFace = onFace?.let { cb -> { f -> cb(p, f) } })
         }
         if (a > 0f) {
             val ink = LocalInk.current

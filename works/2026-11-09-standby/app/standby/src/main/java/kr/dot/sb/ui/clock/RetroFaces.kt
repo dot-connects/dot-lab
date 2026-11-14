@@ -66,7 +66,7 @@ internal fun FlipFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         if (s < COMPACT_MIN.value) { FaceCanvas(Modifier) { compact(p, d, look) }; return@BoxWithConstraints }
         val k = s / 360f
         val margin = if (inSlot) 0.04f * s else 10f + 0.04f * s
-        val capSize = max(13f, 17f * k)
+        val capSize = max(13f, 17f * k) * d.ts
         val band = if (style.showInfo) capSize * 2.6f else 0f
         val boxW = maxWidth.value - 2 * margin
         val lines = if (maxHeight > maxWidth) listOf(d.h, d.m) else listOf(text)
@@ -95,6 +95,7 @@ internal fun FlipFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
                 add(Seg(d.infoLine(), dim))
                 d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
             }
+            ui.textSize *= min(1f, 0.9f * w / ui.width(segs)) // one line: shrink, never past the edges
             val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply {
                 this.style = Paint.Style.STROKE; strokeWidth = 1.5f * u; color = ThemeTokens.NIGHT_INK.copy(alpha = 0.35f).toArgb()
             }
@@ -207,7 +208,7 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
             val lk = if (lamps) k else k0
             val indX = max(margin, 34 * k)
             val x0 = if (lamps) max((w - rowW) / 2 + 30 * k, indX + 60 * k) else (w - rowW) / 2
-            mono.textSize = max(11.dp.toPx(), 15 * lk)
+            mono.textSize = max(11.dp.toPx(), 15 * lk) * d.ts
             val items = listOfNotNull(
                 if (d.use24h) null else "오전" to (d.now.hour < 12),
                 if (d.use24h) null else "오후" to (d.now.hour >= 12),
@@ -244,11 +245,11 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
         val pl = max(margin, 26 * k0); val pt = max(margin, 22 * k0)
         val pw = w - 2 * pl; val ph = h - 2 * pt
         val pk = min(ph / 316f, pw / (if (tall) 316f else 728f))
-        mono.textSize = 22 * pk; mono.letterSpacing = 0.06f
+        mono.textSize = 22 * pk * d.ts; mono.letterSpacing = 0.06f
         val topY = pt + 20 * pk + mono.capRatio() * mono.textSize
         val date = "%02d-%02d".format(d.month, d.day)
         val side = listOfNotNull(if (d.use24h) null else d.ampm, d.alarmShort?.let { "알람 $it" }, d.temp)
-        val sideSize = 20 * pk
+        val sideSize = 20 * pk * d.ts
         val sidePaint = android.text.TextPaint(mono).apply { textSize = sideSize; letterSpacing = 0f }
         val sideW = side.maxOfOrNull { sidePaint.measureText(it) } ?: 0f
         val avail = if (tall) pw - 92 * pk else pw - 46 * pk - 30 * pk - 38 * pk - sideW

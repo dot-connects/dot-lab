@@ -81,6 +81,8 @@ data class SlotOptions(
     val widgetMode: WidgetMode = WidgetMode.THEME,
     val radiusDp: Int = 22,
     val hideAtNight: Boolean = false,
+    /** A clock card's own face (null = the board's [Board.clockFace]). */
+    val face: FaceId? = null,
 )
 
 enum class ClockLayout(val ko: String) { IPHONE("기본"), CENTER("가운데"), TWO_LINES("두 줄") }
@@ -183,12 +185,15 @@ enum class Layout(val ko: String, val slots: Int) {
 }
 
 enum class CardType(val ko: String) {
-    CLOCK("시계"), ANALOG("아날로그 시계"), MUSIC("미디어"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
+    /** Any of 내 시계: the face is per card ([SlotOptions.face], else the board's [Board.clockFace]); 11-14 merged ANALOG in. */
+    CLOCK("시계"), MUSIC("미디어"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
     /** A home-screen AppWidget hosted in the slot (r9 D6); its id and look live in [Board.options]. Boards only. */
     WIDGET("폰 위젯"),
     /** The phone's notifications (r9: the old stack and list cards decode to this, D3). */
-    NOTIF("알림");
+    NOTIF("알림"),
+    /** 다음 알람 + [빠른 알람] [알람 앱 열기] (11-14 #8). */
+    ALARM("알람");
 
     val isNotif: Boolean get() = this == NOTIF
 }
@@ -250,8 +255,10 @@ data class AppConfig(
     val showNotifications: Boolean = true,
     val previewOnTapOnly: Boolean = false,
     val burnInShift: Boolean = true,
-    val widgetLeft: List<CardType> = listOf(CardType.ANALOG, CardType.CALENDAR, CardType.WEATHER),
+    val widgetLeft: List<CardType> = listOf(CardType.CLOCK, CardType.CALENDAR, CardType.WEATHER),
     val widgetRight: List<CardType> = listOf(CardType.CALENDAR, CardType.WEATHER, CardType.AGENDA),
+    /** The widgets page's per-card options by "side:index" (0 = left, 1 = right), like [Board.options]. */
+    val widgetOptions: Map<String, SlotOptions> = mapOf("0:0" to SlotOptions(face = FaceId.ANALOG)),
     /** A ringing alarm shows StandBy's own alarm screen (off = only the clock app's screen). */
     val alarmScreen: Boolean = true,
     /** A ringing alarm lights the fold's inner screen (foldables only). */
@@ -316,4 +323,32 @@ object Presets {
         b("bed", "잠자리", Layout.TWO, CardType.CLOCK, CardType.SLEEP),
         b("book", "책 (펼침)", Layout.BIG2, CardType.MEMORIES, CardType.WEATHER, CardType.CALENDAR),
     )
+}
+
+/** A [빠른 알람] choice: [minutes] from now, or the next [at] (the "직접 정하기" time). */
+data class QuickAlarm(val minutes: Int? = null, val at: java.time.LocalTime? = null) {
+    val label: String get() = when {
+        minutes != null -> "+" + listOfNotNull((minutes / 60).takeIf { it > 0 }?.let { "${it}시간" }, (minutes % 60).takeIf { it > 0 }?.let { "${it}분" }).joinToString(" ")
+        else -> "내일 ${at!!.hour}:%02d".format(at.minute)
+    }
+
+    /** When it rings, from [now] (seconds dropped): a clock time is its next occurrence. */
+    fun target(now: java.time.LocalDateTime): java.time.LocalDateTime {
+        val n = now.withSecond(0).withNano(0)
+        if (minutes != null) return n.plusMinutes(minutes.toLong())
+        val today = n.toLocalDate().atTime(at!!)
+        return if (today.isAfter(n)) today else today.plusDays(1)
+    }
+
+    companion object {
+        /** The sheet's fixed choices (operator 11-14: +5분 · +30분 · +1시간, then 직접 정하기). */
+        val PRESETS = listOf(QuickAlarm(minutes = 5), QuickAlarm(minutes = 30), QuickAlarm(minutes = 60))
+
+        /** 직접 정하기 starts on the next round half hour after [now] (21:41 → 22:00, 22:00 → 22:30). */
+        fun nextHalfHour(now: java.time.LocalDateTime): java.time.LocalTime {
+            val t = now.toLocalTime().withSecond(0).withNano(0)
+            val m = (t.minute / 30 + 1) * 30
+            return t.withMinute(0).plusMinutes(m.toLong())
+        }
+    }
 }

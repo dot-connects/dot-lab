@@ -163,12 +163,12 @@ val LocalBoardBg = staticCompositionLocalOf { BoardBg.THEME to Color(0xFF1A1430)
 @Composable
 fun ProvideTheme(theme: Theme, content: @Composable () -> Unit) = ProvideTheme(Themes.of(theme), BoardBg.THEME to Color(0xFF1A1430), content)
 
-/** Provide the config's drawn theme and board background (StandbyRoot, BoardView, CardView and settings call it). */
+/** Provide the config's drawn theme, board background and text size (StandbyRoot, BoardView, CardView and settings call it). */
 @Composable
-fun ProvideTheme(c: AppConfig, content: @Composable () -> Unit) = ProvideTheme(c.drawnTheme(), c.boardBg to Color(c.boardBgColor), content)
+fun ProvideTheme(c: AppConfig, content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalTextScale provides c.textSize.f) { ProvideTheme(c.drawnTheme(), c.boardBg to Color(c.boardBgColor), content) }
 
+/** Always provides (never "skip when equal"): a branch on the value would reset everything remembered below on a switch. */
 @Composable
-private fun ProvideTheme(t: StandbyTheme, bg: Pair<BoardBg, Color>, content: @Composable () -> Unit) {
-    if (LocalTheme.current === t && LocalBoardBg.current == bg) content()
-    else CompositionLocalProvider(LocalTheme provides t, LocalBoardBg provides bg, content = content)
-}
+private fun ProvideTheme(t: StandbyTheme, bg: Pair<BoardBg, Color>, content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalTheme provides t, LocalBoardBg provides bg, content = content)

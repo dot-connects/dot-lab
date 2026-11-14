@@ -58,12 +58,10 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
-/** The other pages after the screen's own slide (mockup `pv()`: leaf previews swipe on to the pages). */
-internal fun withPages(first: Slide, config: AppConfig, skip: String? = null) = listOf(first) + pageSlides(config).filter { it.name != skip }
 
-/** The whole StandBy surface at [state] on the clock page (notification and alarm previews draw the real overlays). */
-private fun rootSlide(name: String, config: AppConfig, state: (kr.dot.sb.ui.state.StandbyState) -> kr.dot.sb.ui.state.StandbyState) = Slide(name) { l ->
-    RootImpl(state(l.state), config.copy(startPage = Pages.CLOCK), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, RootStart())
+/** The whole StandBy surface at [state] on page [page] (notification and alarm previews draw the real overlays). */
+private fun rootSlide(name: String, config: AppConfig, page: Int = Pages.CLOCK, state: (kr.dot.sb.ui.state.StandbyState) -> kr.dot.sb.ui.state.StandbyState) = Slide(name) { l ->
+    RootImpl(state(l.state), config.copy(startPage = page), StandbyActions.NONE, Modifier.fillMaxSize(), { _, _ -> }, RootStart())
 }
 
 /** A stand-in where StandBy draws nothing of its own (mockup `.stand`). */
@@ -76,12 +74,20 @@ private val SAMPLE_NOTIF = BigNotification("pv", "카카오톡", "엄마", "저�
 
 @Composable
 fun NotifScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    val first = if (config.showNotifications) rootSlide("알림", config) { it.copy(notification = SAMPLE_NOTIF) } else rootSlide("알림", config) { it }
-    Page("알림 표시", back, preview = Preview(config, withPages(first, config), caption = if (config.showNotifications) null else "알림이 와도 화면은 그대로예요")) {
+    // every page as StandBy draws it, the banner over each one while 알림 보기 is on (11-14)
+    val slides = pageSlides(config).zip(Pages.visible(config)) { s, p ->
+        rootSlide(s.name, config, p.index) { st ->
+            // posted "now" in the sample's clock (epoch 0 read "20766일 전")
+            val at = st.now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
+            if (config.showNotifications) st.copy(notification = SAMPLE_NOTIF.copy(postedAtEpochMs = at)) else st
+        }
+    }
+    val preview = Preview(config, slides, caption = if (config.showNotifications) null else "알림이 와도 화면은 그대로예요", initial = Pages.start(config))
+    Page("알림 표시", back, preview = preview) {
         Section(null) {
             item {
                 Column {
-                    SwitchRow("알림 보기", config.showNotifications, { v -> update { it.copy(showNotifications = v) } }, subtitle = "받은 알림을 화면 가득 크게 보여줘요")
+                    SwitchRow("알림 보기", config.showNotifications, { v -> update { it.copy(showNotifications = v) } }, subtitle = "새 알림이 오면 화면 위쪽에 5초 동안 띄워요")
                     PermLine(Perm.NOTIFICATIONS)
                 }
             }
@@ -349,45 +355,43 @@ fun FoldScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> 
 
 @Composable
 fun WeatherScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    var sheet by remember { mutableStateOf<Boolean?>(null) } // true = 날씨 지역, false = 세계 시계 도시
+    var sheet by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
-        Page("날씨와 도시", back) {
+        Page("날씨", back) {
             Section(null, footer = "날씨는 Open-Meteo에서 30분마다 받아와요.") { item { NavRow("날씨 지역", { sheet = true }, value = config.city.name) } }
-            More {
-                Section("세계 시계 도시", footer = "세계 시계에 보이는 도시예요.") {
-                    item {
-                        ControlRow(null) {
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                val many = config.worldCities.size > 1
-                                config.worldCities.forEach { c ->
-                                    Row(
-                                        Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(SK.surface2)
-                                            .clickable(enabled = many) { update { s -> s.copy(worldCities = s.worldCities.filter { it != c }) } }.padding(start = 16.dp, end = if (many) 10.dp else 16.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                    ) { T(c.name, 14.sp, 500, SK.text); if (many) Icon(Ic.CLOSE, SK.muted, 18.dp, Modifier.padding(start = 6.dp)) }
-                                }
-                                Row(
-                                    Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).border(1.dp, SK.line, RoundedCornerShape(50)).clickable { sheet = false }.padding(horizontal = 14.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) { Icon(Ic.PLUS, LocalAccent.current, 16.dp); T("도시 더하기", 14.sp, 600, LocalAccent.current, Modifier.padding(start = 6.dp)) }
-                            }
-                        }
-                    }
-                }
-            }
         }
-        sheet?.let { weather ->
-            CitySheet(if (weather) "날씨 지역" else "세계 시계 도시", taken = if (weather) emptySet() else config.worldCities.map { it.name }.toSet(), onDismiss = { sheet = null }) { c ->
-                update { s -> if (weather) s.copy(city = c) else if (s.worldCities.any { it.name == c.name }) s else s.copy(worldCities = s.worldCities + c) }
-                sheet = null
-            }
-        }
+        if (sheet) CitySheet("날씨 지역", taken = emptySet(), onDismiss = { sheet = false }) { c -> update { it.copy(city = c) }; sheet = false }
     }
 }
 
+/** 세계 시계 도시 (11-14: on 시계, moved from 날씨): chips with ✕ and [도시 더하기], which asks [onAdd] for the city sheet. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+internal fun WorldCitiesSection(config: AppConfig, update: Update, onAdd: () -> Unit) =
+    Section("세계 시계 도시", footer = "세계 시계에 보이는 도시예요.") {
+        item {
+            ControlRow(null) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val many = config.worldCities.size > 1
+                    config.worldCities.forEach { c ->
+                        Row(
+                            Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(SK.surface2)
+                                .clickable(enabled = many) { update { s -> s.copy(worldCities = s.worldCities.filter { it != c }) } }.padding(start = 16.dp, end = if (many) 10.dp else 16.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) { T(c.name, 14.sp, 500, SK.text); if (many) Icon(Ic.CLOSE, SK.muted, 18.dp, Modifier.padding(start = 6.dp)) }
+                    }
+                    Row(
+                        Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).border(1.dp, SK.line, RoundedCornerShape(50)).clickable(onClick = onAdd).padding(horizontal = 14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) { Icon(Ic.PLUS, LocalAccent.current, 16.dp); T("도시 더하기", 14.sp, 600, LocalAccent.current, Modifier.padding(start = 6.dp)) }
+                }
+            }
+        }
+    }
+
 /** One city search sheet for both the weather city and the world-clock cities. */
 @Composable
-private fun CitySheet(title: String, taken: Set<String>, onDismiss: () -> Unit, onPick: (City) -> Unit) {
+internal fun CitySheet(title: String, taken: Set<String>, onDismiss: () -> Unit, onPick: (City) -> Unit) {
     var q by remember { mutableStateOf("") }
     Sheet(title, onDismiss) {
         Field(q, { q = it }, "도시 이름으로 찾기")
@@ -410,56 +414,78 @@ private fun CitySheet(title: String, taken: Set<String>, onDismiss: () -> Unit, 
 
 @Composable
 fun CardInfoScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
-    val calendars = remember(env.granted[Perm.CALENDAR]) { env.calendars() }
     Page("카드에 쓰는 정보", back) {
-        Section("D-day", footer = "D-day 카드에 보여요. 날짜가 지나면 D+로 세요.") {
-            config.ddays.forEachIndexed { i, d ->
+        DDaySection(config, update, env)
+        FocusSection(config, update)
+        CalendarSection(config, update, env)
+        UsageSection(config, update)
+    }
+}
+
+/** D-day 카드: the list + add row (also 카드 › D-day). */
+@Composable
+internal fun DDaySection(config: AppConfig, update: Update, env: SettingsEnv) =
+    Section("D-day", footer = "D-day 카드에 보여요. 날짜가 지나면 D+로 세요.") {
+        config.ddays.forEachIndexed { i, d ->
+            item {
+                Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        T(d.name, 16.sp, 500, SK.text, maxLines = 1)
+                        T(d.date.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일")), 13.sp, 400, SK.muted)
+                    }
+                    T(ddayText(env.today(), d.date), 16.sp, 700, LocalAccent.current)
+                    IconBtn(Ic.CLOSE, { update { s -> s.copy(ddays = s.ddays.filterIndexed { k, _ -> k != i }) } })
+                }
+            }
+        }
+        item { DDayAdd(env.today()) { d -> update { it.copy(ddays = it.ddays + d) } } }
+    }
+
+/** 타이머·뽀모도로 카드: 집중 · 휴식 minutes. */
+@Composable
+internal fun FocusSection(config: AppConfig, update: Update) =
+    Section("집중 · 휴식", footer = "타이머 카드의 한 번 집중하는 시간과 쉬는 시간이에요.") {
+        item { SliderRow("집중", "${config.focusMinutes}분", config.focusMinutes.toFloat(), 5f..60f, { v -> update { it.copy(focusMinutes = v.toInt()) } }, steps = 54) }
+        item { SliderRow("휴식", "${config.breakMinutes}분", config.breakMinutes.toFloat(), 1f..30f, { v -> update { it.copy(breakMinutes = v.toInt()) } }, steps = 28) }
+    }
+
+/** 오늘 일정 · 달력 카드: which calendars feed them. */
+@Composable
+internal fun CalendarSection(config: AppConfig, update: Update, env: SettingsEnv) {
+    val calendars = remember(env.granted[Perm.CALENDAR]) { env.calendars() }
+    Section("캘린더", footer = "끈 캘린더의 일정은 오늘 일정·달력 카드에 나오지 않아요.") {
+        if (calendars == null) item { Column { T("캘린더를 읽으려면 허용이 필요해요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)); PermLine(Perm.CALENDAR) } }
+        else if (calendars.isEmpty()) item { T("폰에 캘린더가 없어요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)) }
+        else calendars.groupBy { it.accountName }.forEach { (account, list) ->
+            item { T(account.ifBlank { "이 폰" }, 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp)) }
+            list.forEach { cal ->
                 item {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            T(d.name, 16.sp, 500, SK.text, maxLines = 1)
-                            T(d.date.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일")), 13.sp, 400, SK.muted)
-                        }
-                        T(ddayText(d.date), 16.sp, 700, LocalAccent.current)
-                        IconBtn(Ic.CLOSE, { update { s -> s.copy(ddays = s.ddays.filterIndexed { k, _ -> k != i }) } })
-                    }
+                    SwitchRow(cal.name, cal.key !in config.excludedCalendars, { on ->
+                        update { it.copy(excludedCalendars = if (on) it.excludedCalendars - cal.key else it.excludedCalendars + cal.key) }
+                    })
                 }
             }
-            item { DDayAdd { d -> update { it.copy(ddays = it.ddays + d) } } }
-        }
-        Section("집중 · 휴식", footer = "타이머 카드의 한 번 집중하는 시간과 쉬는 시간이에요.") {
-            item { SliderRow("집중", "${config.focusMinutes}분", config.focusMinutes.toFloat(), 5f..60f, { v -> update { it.copy(focusMinutes = v.toInt()) } }, steps = 54) }
-            item { SliderRow("휴식", "${config.breakMinutes}분", config.breakMinutes.toFloat(), 1f..30f, { v -> update { it.copy(breakMinutes = v.toInt()) } }, steps = 28) }
-        }
-        Section("캘린더", footer = "끈 캘린더의 일정은 오늘 일정·달력 카드에 나오지 않아요.") {
-            if (calendars == null) item { Column { T("캘린더를 읽으려면 허용이 필요해요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)); PermLine(Perm.CALENDAR) } }
-            else if (calendars.isEmpty()) item { T("폰에 캘린더가 없어요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)) }
-            else calendars.groupBy { it.accountName }.forEach { (account, list) ->
-                item { T(account.ifBlank { "이 폰" }, 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp)) }
-                list.forEach { cal ->
-                    item {
-                        SwitchRow(cal.name, cal.key !in config.excludedCalendars, { on ->
-                            update { it.copy(excludedCalendars = if (on) it.excludedCalendars - cal.key else it.excludedCalendars + cal.key) }
-                        })
-                    }
-                }
-            }
-        }
-        if (UsageFeature.enabled) Section(null) {
-            item { SwitchRow("Claude·Codex 사용량", config.usageEnabled, { v -> update { it.copy(usageEnabled = v) } }, subtitle = "사용량 카드에 보여요 · 개인용 빌드에만 있어요") }
         }
     }
 }
 
-private fun ddayText(date: LocalDate): String {
-    val n = ChronoUnit.DAYS.between(LocalDate.now(), date)
+/** Claude·Codex 사용량 카드 (personal build only). */
+@Composable
+internal fun UsageSection(config: AppConfig, update: Update) {
+    if (UsageFeature.enabled) Section(null) {
+        item { SwitchRow("Claude·Codex 사용량", config.usageEnabled, { v -> update { it.copy(usageEnabled = v) } }, subtitle = "사용량 카드에 보여요 · 개인용 빌드에만 있어요") }
+    }
+}
+
+private fun ddayText(today: LocalDate, date: LocalDate): String {
+    val n = ChronoUnit.DAYS.between(today, date)
     return if (n >= 0) "D-$n" else "D+${-n}"
 }
 
 @Composable
-private fun DDayAdd(onAdd: (DDay) -> Unit) {
+private fun DDayAdd(today: LocalDate, onAdd: (DDay) -> Unit) {
     var name by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(LocalDate.now().plusDays(30)) }
+    var date by remember { mutableStateOf(today.plusDays(30)) }
     var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Field(name, { name = it }, "새 D-day 이름")

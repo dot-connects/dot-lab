@@ -53,7 +53,7 @@ internal fun ThinFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         val dim = ink.ink2.toArgb()
         val sub = if (st.showInfo) d.infoLine() else null
         ui.letterSpacing = 0.34f
-        ui.textSize = 17 * k
+        ui.textSize = 17 * k * d.ts
         if (sub != null) ui.textSize *= min(1f, 0.9f * w / ui.measureText(sub))
         val subW = sub?.let { ui.measureText(it) } ?: 0f
         // hairline 6 dp under the digits, text 16 dp under the hairline (c-thin .sub)
@@ -107,7 +107,7 @@ internal fun SplitFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val minEm = p.minuteEm * 1.03f
         val top = if (d.use24h) null else d.ampm
         val bottom = if (style.showInfo) listOfNotNull("${d.weekday} ${d.day}", d.temp).joinToString(" · ") else null
-        ui.textSize = max(13.dp.toPx(), 15 * k)
+        ui.textSize = max(13.dp.toPx(), 15 * k) * d.ts
         ui.letterSpacing = 0.2f
         ui.color = dim
         val labCap = ui.capRatio() * ui.textSize

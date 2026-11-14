@@ -261,7 +261,7 @@ class RotationTracker {
 }
 
 /** Pomodoro per slot: focus/break, wall-clock based so display-off costs nothing. */
-class PomodoroTimer(private val focusSec: Int, private val breakSec: Int) {
+class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
     var mode = TimerMode.FOCUS
         private set
     var running = false
@@ -281,6 +281,17 @@ class PomodoroTimer(private val focusSec: Int, private val breakSec: Int) {
     }
 
     fun reset() { mode = TimerMode.FOCUS; leftMsAtStart = focusSec * 1000L; running = false }
+
+    /**
+     * Ring drag (11-14 #10): stopped at full length in focus = a new focus length; paused (or a stopped break) = the
+     * time left. Ignored while running. Returns true when it changed the focus length (the caller saves it).
+     */
+    fun set(sec: Int): Boolean {
+        if (running) return false
+        val full = leftMsAtStart >= total() * 1000L
+        return if (mode == TimerMode.FOCUS && full) { focusSec = sec; leftMsAtStart = sec * 1000L; true }
+        else { leftMsAtStart = sec * 1000L; false }
+    }
 
     /** Switches focus<->break (stopped, full length) when the running countdown is over. True when it did. */
     fun finishIfDone(nowMs: Long): Boolean {

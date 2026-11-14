@@ -12,6 +12,8 @@ typealias Update = ((AppConfig) -> AppConfig) -> Unit
 interface Nav {
     fun push(route: String)
     fun back()
+    /** Swap the current screen for [route] without a back step (a page's settings -> the page swiped to). */
+    fun replace(route: String) { back(); push(route) }
 }
 
 /** Everything the screens need from the device, as plain values so render tests can fix it. */
@@ -43,6 +45,8 @@ class SettingsEnv(
     val chargeTrail: () -> List<String> = { emptyList() },
     /** Where the slow lookups above run (shots pass Dispatchers.Unconfined so they load inline). */
     val io: kotlin.coroutines.CoroutineContext = kotlinx.coroutines.Dispatchers.IO,
+    /** Today (D-day count and the new D-day's default date); shots pin it so their PNGs do not change per day. */
+    val today: () -> java.time.LocalDate = { java.time.LocalDate.now() },
 ) {
     val missing: List<Perm> get() = Perm.entries.filter { granted[it] != true }
 }
@@ -68,6 +72,9 @@ object Routes {
     const val CARD_INFO = "cardinfo"
     const val PERMS = "perms"
     const val ABOUT = "about"
+    /** 카드 (11-14): the card list; [card] = one card's settings. */
+    const val CARDS = "cards"
+    fun card(t: kr.dot.sb.model.CardType) = "card:${t.name}"
     fun board(id: String) = "board:$id"
     fun clock(face: FaceId) = "clock:${face.name}"
     /** Options of the phone widget at stack [index] of [slot] (also opened by a long press on the card). */
@@ -77,7 +84,9 @@ object Routes {
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
 @Composable
 fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config) {
-    CompositionLocalProvider(LocalSettingsEnv provides env) { Route(route, config, update, nav, env) }
+    // the page-settings screens share one preview bar state, so 커버/세로/밤 survive a swipe to the next page's settings
+    val pageBar = androidx.compose.runtime.saveable.rememberSaveable(saver = PreviewState.Saver) { PreviewState() }
+    CompositionLocalProvider(LocalSettingsEnv provides env, LocalPageBar provides pageBar) { Route(route, config, update, nav, env) }
 }
 
 @Composable
@@ -87,8 +96,8 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.THEME -> ThemeScreen(config, update, back)
         route == Routes.PAGES -> PagesScreen(config, update, nav, back)
         route == Routes.START -> StartPageScreen(config, update, back)
-        route == Routes.WIDGETS -> WidgetsScreen(config, update, back)
-        route == Routes.PHOTOS -> PhotosScreen(config, update, env, back)
+        route == Routes.WIDGETS -> WidgetsScreen(config, update, nav, back)
+        route == Routes.PHOTOS -> PhotosScreen(config, update, nav, env, back)
         route.startsWith("board:") -> {
             val id = route.removePrefix("board:")
             if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, env, back) else HomeScreen(config, nav, env)
@@ -109,6 +118,11 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.CARD_INFO -> CardInfoScreen(config, update, env, back)
         route == Routes.PERMS -> PermsScreen(env, back)
         route == Routes.ABOUT -> AboutScreen(env, back)
+        route == Routes.CARDS -> CardsScreen(config, nav, env, back)
+        route.startsWith("card:") -> {
+            val t = runCatching { kr.dot.sb.model.CardType.valueOf(route.removePrefix("card:")) }.getOrNull()
+            if (t != null) CardScreen(t, config, update, env, back) else HomeScreen(config, nav, env)
+        }
         else -> HomeScreen(config, nav, env)
     }
 }

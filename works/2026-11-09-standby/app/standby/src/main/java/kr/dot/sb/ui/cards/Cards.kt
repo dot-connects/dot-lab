@@ -14,6 +14,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -40,6 +41,11 @@ import kr.dot.sb.ui.icons.SoundIcon
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -119,7 +125,25 @@ fun CardView(
     menu: String? = null,
     /** Full-screen Now Playing: no plate, the media body shows ✕ (calls this) and stays put on tap. */
     close: (() -> Unit)? = null,
+    /** Clock card: a tap shows arrows through 내 시계, the pick is saved through this (null = no arrows). */
+    onFace: ((FaceId) -> Unit)? = null,
 ) = ProvideTheme(config) {
+    // a clock card's own face (11-14) wins over the board's; while the arrows are up, the face being browsed wins
+    val saved = options?.face ?: look.clockFace
+    val sw = rememberFaceSwitch(saved)
+    @Suppress("NAME_SHADOWING") val look = (sw.face ?: sw.pending ?: saved).let { if (it != look.clockFace) look.copy(clockFace = it) else look }
+    if (type == CardType.CLOCK && onFace != null) {
+        val commit by androidx.compose.runtime.rememberUpdatedState(onFace)
+        // 3 s without a tap: the arrows go and the browsed face is saved to this card
+        LaunchedEffect(sw.touches) {
+            val f = sw.face ?: return@LaunchedEffect
+            delay(FACE_ARROWS_MS)
+            sw.face = null
+            if (f != saved) { sw.pending = f; commit(f) }
+        }
+        // until the saved config comes back with it (or 2 s), keep showing the pick: no flash of the old face
+        LaunchedEffect(sw.pending, saved) { if (sw.pending != null) { if (saved == sw.pending) sw.pending = null else { delay(2_000); sw.pending = null } } }
+    }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
@@ -137,10 +161,10 @@ fun CardView(
         val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
         val surface = if (type.isNotif || close != null) Modifier else plate
         CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
-            Box(Modifier.fillMaxSize().then(surface)) {
+            val arrows = type == CardType.CLOCK && onFace != null
+            Box(Modifier.fillMaxSize().then(surface).tap(if (arrows) { { sw.touch() } } else null)) {
                 when (type) {
                     CardType.CLOCK -> ClockCard(e, state, config)
-                    CardType.ANALOG -> AnalogCard(e, state)
                     CardType.MUSIC -> MediaCard(e, state, actions, close)
                     CardType.TIMER -> TimerCard(e, state, config, actions)
                     CardType.SLEEP -> SleepCard(e, state, config, actions)
@@ -153,7 +177,9 @@ fun CardView(
                     CardType.WIDGET -> PhoneWidget(e, options, actions, menu)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
+                    CardType.ALARM -> AlarmCard(e, state, config, actions)
                 }
+                if (arrows && sw.face != null) FaceArrows(e, faceCycle(config, saved), sw)
             }
         }
     }
@@ -161,14 +187,82 @@ fun CardView(
 
 // ---------------------------------------------------------------- clocks
 
+/** How long the clock card's arrows stay after the last tap (11-14 #7, mockup option A). */
+private const val FACE_ARROWS_MS = 3_000L
+
+/** The clock card's arrows: [face] = the face being browsed (null = hidden), [pending] = saved, not yet back from the config. */
+@androidx.compose.runtime.Stable
+internal class FaceSwitch(private val saved: () -> FaceId) {
+    var face by mutableStateOf<FaceId?>(null)
+    var pending by mutableStateOf<FaceId?>(null)
+    var touches by mutableIntStateOf(0)
+        private set
+
+    /** A tap on the card: show the arrows (or keep them up 3 s longer). */
+    fun touch() { if (face == null) face = pending ?: saved(); touches++ }
+
+    fun step(faces: List<FaceId>, d: Int) {
+        val i = faces.indexOf(face).coerceAtLeast(0)
+        face = faces[(i + d + faces.size) % faces.size]; touches++
+    }
+}
+
+@Composable
+internal fun rememberFaceSwitch(saved: FaceId): FaceSwitch {
+    val cur by androidx.compose.runtime.rememberUpdatedState(saved)
+    return remember { FaceSwitch { cur } }
+}
+
+/** The faces the arrows cycle: 내 시계 that draw in a slot, the card's own face first if it is not one of them. */
+private fun faceCycle(config: AppConfig, saved: FaceId): List<FaceId> {
+    val my = kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces }
+    return if (saved in my) my else listOf(saved) + my
+}
+
+/** Mockup option A: "<name> · n / N" pill on top, round chevrons inside the left and right edges, dots at the bottom. */
+@Composable
+private fun FaceArrows(e: Env, faces: List<FaceId>, sw: FaceSwitch) {
+    val f = sw.face ?: return
+    val i = faces.indexOf(f)
+    val ink = e.ink
+    val d = min(48.dp, e.short * 0.24f)
+    val inset = max(6.dp, e.pad * 0.4f)
+    Box(Modifier.fillMaxSize()) {
+        Box(Modifier.align(Alignment.TopCenter).padding(top = inset).clip(RoundedCornerShape(50)).background(ink.ink.copy(alpha = 0.12f)).padding(horizontal = 12.dp, vertical = 4.dp)) {
+            Txt("${kr.dot.sb.ui.clock.spec(f).ko} · ${i + 1} / ${faces.size}", e.meta, ink.ink, weight = 600, num = true)
+        }
+        listOf(-1 to Alignment.CenterStart, 1 to Alignment.CenterEnd).forEach { (dir, at) ->
+            // 48 dp to the finger, [d] to the eye
+            Box(Modifier.align(at).padding(horizontal = inset).size(max(d, 48.dp)).clickable(onClickLabel = if (dir < 0) "이전 시계" else "다음 시계") { sw.step(faces, dir) }, Alignment.Center) {
+                Box(Modifier.size(d).clip(CircleShape).background(ink.ink.copy(alpha = 0.14f)))
+                Canvas(Modifier.size(d * 0.5f)) {
+                    val w = size.width; val h = size.height
+                    val p = androidx.compose.ui.graphics.Path().apply {
+                        if (dir < 0) { moveTo(w * 0.62f, h * 0.2f); lineTo(w * 0.32f, h * 0.5f); lineTo(w * 0.62f, h * 0.8f) }
+                        else { moveTo(w * 0.38f, h * 0.2f); lineTo(w * 0.68f, h * 0.5f); lineTo(w * 0.38f, h * 0.8f) }
+                    }
+                    drawPath(p, ink.ink, style = Stroke(width = w * 0.11f, cap = StrokeCap.Round, join = androidx.compose.ui.graphics.StrokeJoin.Round))
+                }
+            }
+        }
+        Row(Modifier.align(Alignment.BottomCenter).padding(bottom = inset), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            faces.indices.forEach { k -> Box(Modifier.size(if (k == i) 14.dp else 6.dp, 6.dp).clip(RoundedCornerShape(50)).background(if (k == i) ink.ink else ink.ink3)) }
+        }
+    }
+}
+
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     val face = e.look.clockFace
     if (face == FaceId.DIGITAL) return DigitalCard(e, state, config)
-    // other faces picked for the board keep their own slot rendering
-    val style = config.clockStyle(face).copy(color = e.look.accent.argbLong(), showInfo = false)
+    // the old analog card (merged in 11-14) keeps its look until the user styles the analog face
+    if (face == FaceId.ANALOG && face !in config.styles) return AnalogCard(e, state)
+    // other faces picked for the board keep their own slot rendering. 내 시계 (11-14): a face the user styled draws as
+    // styled (no accent, no second-clock ink); theme defaults keep the board accent
+    val custom = face in config.styles
+    val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }.copy(showInfo = false)
     Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally) {
-        ClockFace(face, style, state, Modifier.fillMaxWidth().weight(1f), inSlot = true, hero = e.look.hero)
+        ClockFace(face, style, state, Modifier.fillMaxWidth().weight(1f), inSlot = true, hero = e.look.hero || custom)
         if (e.atLeastS) {
             Spacer(Modifier.height(e.gap))
             Detail(e, dateKo(e.today), align = TextAlign.Center)
@@ -194,20 +288,21 @@ private fun DateLine(e: Env, state: StandbyState, size: Dp) {
 /**
  * Digital clock card (spec §1): theme digits fill the slot, one line "9:41" when w/h ≥ 1.05 or the short side < 150,
  * else hours over minutes; the date line (13–20 dp) right under them. The user's own clock style (font/colour) wins
- * over the theme's. A second, smaller clock on the board draws its digits in ink.
+ * over the theme's, as styled (내 시계, 11-14). With theme defaults a second, smaller clock on the board draws its
+ * digits in ink.
  */
 @Composable
 private fun DigitalCard(e: Env, state: StandbyState, config: AppConfig) {
     val oneLine = e.w / e.h >= 1.05f || e.short < 150.dp
     val dl = (e.short * 0.055f).coerceIn(13.dp, 20.dp)
-    val own = config.styles[FaceId.DIGITAL]?.copy(color = e.look.accent.argbLong())
+    val own = config.styles[FaceId.DIGITAL]
     Column(
         Modifier.fillMaxSize().padding((e.short * 0.08f).coerceIn(10.dp, 32.dp)),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
     ) {
         ThemedDigits(
             clockText(state.now, state.use24h), e.t, e.ink, Modifier.fillMaxWidth().weight(1f, fill = false),
-            style = own, color = if (e.look.hero) null else e.ink.ink, twoLines = !oneLine,
+            style = own, color = if (e.look.hero || own != null) null else e.ink.ink, twoLines = !oneLine,
         )
         if (e.short >= 150.dp) {
             Spacer(Modifier.height(dl * 0.6f))
@@ -359,7 +454,7 @@ private fun MediaTransport(
 }
 
 @Composable
-private fun MediaTime(ms: Long, c: Color) = Txt(mmss(ms), 12.dp, c, num = true)
+private fun MediaTime(e: Env, ms: Long, c: Color) = Txt(mmss(ms), 12.dp * e.look.textScale, c, num = true)
 
 /**
  * Tall slot (w/h <= 0.82), YouTube Music portrait: art centred on top (video: 16:9 still), title and artist
@@ -388,9 +483,9 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() 
         Spacer(Modifier.height(gap))
         Bar(e, progress(m), ink)
         if (w >= 180.dp) Row(Modifier.fillMaxWidth().padding(top = 5.dp)) {
-            MediaTime(m.positionMs, e.readInk2)
+            MediaTime(e, m.positionMs, e.readInk2)
             Spacer(Modifier.weight(1f))
-            MediaTime(m.durationMs, e.readInk2)
+            MediaTime(e, m.durationMs, e.readInk2)
         }
         Spacer(Modifier.height(gap * 1.4f))
         // play disc = ink, glyph = the page colour (mockup: white disc + black glyph on the iPhone theme)
@@ -453,9 +548,9 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions, close: (()
                 Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(horizontal = pad).padding(bottom = pad * 0.8f),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (times) { MediaTime(m.positionMs, tc); Spacer(Modifier.width(10.dp)) }
+                if (times) { MediaTime(e, m.positionMs, tc); Spacer(Modifier.width(10.dp)) }
                 Bar(e, progress(m), fg, Modifier.weight(1f), track = fg.copy(alpha = 0.25f))
-                if (times) { Spacer(Modifier.width(10.dp)); MediaTime(m.durationMs, tc) }
+                if (times) { Spacer(Modifier.width(10.dp)); MediaTime(e, m.durationMs, tc) }
             }
         }
     }
@@ -479,9 +574,13 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val mode = if (t.mode == TimerMode.FOCUS) "집중" else "휴식"
     val paused = !t.running && t.leftSec < t.totalSec
     val label = if (paused) "$mode · 멈춤" else mode
-    val digits = AnnotatedString("%02d:%02d".format(t.leftSec / 60, t.leftSec % 60))
-    val dc = if (paused) e.ink.ink2 else e.ink.ink
-    val frac = if (t.totalSec > 0) 1f - t.leftSec.toFloat() / t.totalSec else 0f
+    // 11-14 #10: while not running, a drag along the ring sets the minutes (shown live, the ring filled to them)
+    var drag by remember(e.slotId) { mutableStateOf<Int?>(null) }
+    val ring = RingDrag(!t.running, drag ?: (t.leftSec + 59) / 60, { drag = it }) { m -> drag = null; actions.timerSet(e.slotId, m) }
+    val dl = drag
+    val digits = AnnotatedString(if (dl != null) "%02d:00".format(dl) else "%02d:%02d".format(t.leftSec / 60, t.leftSec % 60))
+    val dc = if (paused && dl == null) e.ink.ink2 else e.ink.ink
+    val frac = if (dl != null) dl / 60f else if (t.totalSec > 0) 1f - t.leftSec.toFloat() / t.totalSec else 0f
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
@@ -502,7 +601,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             val tw = iw - d - p
             val next = state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d에 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
             val gap = e.short * 0.05f
-            TimerRing(e, d, frac) { Txt(mode, (d * 0.16f).coerceAtLeast(e.meta), e.ink.accText, weight = 700, maxW = d * 0.7f) }
+            TimerRing(e, d, frac, ring) { Txt(mode, (d * 0.16f).coerceAtLeast(e.meta), e.ink.accText, weight = 700, maxW = d * 0.7f) }
             Spacer(Modifier.width(p))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
                 Txt(if (t.running) "$mode · $next" else label, e.meta, e.readInk2, weight = 500, maxW = tw, num = true)
@@ -515,7 +614,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly,
         ) {
             val d = min(iw, ih - 80.dp)
-            TimerRing(e, d, frac) {
+            TimerRing(e, d, frac, ring) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Hero(e, digits, d * 0.155f, dc, d * 0.72f)
                     Spacer(Modifier.height(6.dp))
@@ -527,12 +626,59 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     }
 }
 
+/**
+ * Ring drag (11-14 #10, a Time Timer): the touch at ([dx], [dy]) from the centre (y down) as minutes, 12 o'clock on top,
+ * clockwise, a full circle = 60. Snaps to the minute, clamped 1..60; crossing 12 o'clock holds the end the drag came
+ * from ([prev] near 60 stays 60, near 1 stays 1), so it never jumps across the top.
+ */
+internal fun ringMinutes(dx: Float, dy: Float, prev: Int): Int {
+    var deg = Math.toDegrees(kotlin.math.atan2(dx.toDouble(), (-dy).toDouble()))
+    if (deg < 0) deg += 360.0
+    val m = (deg / 6).roundToInt()
+    return when {
+        prev >= 45 && (m <= 15 || m >= 60) -> 60
+        prev <= 15 && (m >= 45 || m <= 0) -> 1
+        else -> m.coerceIn(1, 60)
+    }
+}
+
+/** The ring's drag: [on] (not running), [minutes] now, [onMove] while dragging, [onDone] on release. */
+private class RingDrag(val on: Boolean, val minutes: Int, val onMove: (Int) -> Unit, val onDone: (Int) -> Unit)
+
 /** Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for the elapsed [frac], [inner] centred. */
 @Composable
-private fun TimerRing(e: Env, d: Dp, frac: Float, inner: @Composable () -> Unit) {
+private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, inner: @Composable () -> Unit) {
     val track = e.ink.ink3
     val arc = e.ink.acc
-    Box(Modifier.size(d), contentAlignment = Alignment.Center) {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val cur by androidx.compose.runtime.rememberUpdatedState(drag)
+    val input = if (drag?.on != true) Modifier else Modifier.pointerInput(Unit) {
+        // only a drag that starts on the ring (±15 % of the radius) is the ring's; elsewhere the stack swipe keeps it
+        awaitEachGesture {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            val c = Offset(size.width / 2f, size.height / 2f)
+            val r = size.width / 2f
+            val dist = (down.position - c).getDistance()
+            if (kotlin.math.abs(dist - r * 0.93f) > r * 0.15f) return@awaitEachGesture
+            val g = cur ?: return@awaitEachGesture
+            down.consume()
+            var m = g.minutes
+            fun at(p: Offset) {
+                val n = ringMinutes(p.x - c.x, p.y - c.y, m)
+                if (n != m && n % 5 == 0) haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                m = n; g.onMove(n)
+            }
+            at(down.position)
+            while (true) {
+                val ch = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                if (!ch.pressed) break
+                at(ch.position); ch.consume()
+            }
+            g.onDone(m)
+        }
+    }
+    val label = if (drag?.on == true) Modifier.semantics { contentDescription = "타이머 링: 돌려서 시간 정하기" } else Modifier
+    Box(Modifier.size(d).then(input).then(label), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
             val sw = maxOf(6.dp.toPx(), size.minDimension * 0.065f)
             val tl = Offset(sw / 2, sw / 2)
@@ -1152,7 +1298,7 @@ private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaIte
             Row(Modifier.fillMaxWidth().height(rowH * 0.8f), verticalAlignment = Alignment.CenterVertically) {
                 DOW_SUN.forEachIndexed { i, s ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Txt(s, fs * 0.85f, if (i == 0) e.ink.weekday else e.readInk2, weight = 600)
+                        Txt(s, fs * 0.85f * e.look.textScale, if (i == 0) e.ink.weekday else e.readInk2, weight = 600) // weekday header = a label
                     }
                 }
             }

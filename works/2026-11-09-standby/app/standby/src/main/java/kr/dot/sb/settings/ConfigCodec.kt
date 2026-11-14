@@ -55,6 +55,7 @@ object ConfigCodec {
         put("burnInShift", c.burnInShift)
         put("widgetLeft", cards(c.widgetLeft))
         put("widgetRight", cards(c.widgetRight))
+        put("widgetOptions", options(c.widgetOptions))
         put("alarmScreen", c.alarmScreen)
         put("alarmGlow", c.alarmGlow)
         put("glowColor", c.glowColor)
@@ -71,6 +72,7 @@ object ConfigCodec {
         put("breakMinutes", c.breakMinutes)
         put("myClocks", JSONArray().also { a -> c.myClocks.forEach { a.put(it.name) } })
         put("excludedCalendars", JSONArray().also { a -> c.excludedCalendars.forEach { a.put(it) } })
+
         put("heatProtect", c.heatProtect)
         put("moodAutoOffMin", c.moodAutoOffMin)
         put("nightNotifQuiet", c.nightNotifQuiet)
@@ -94,6 +96,8 @@ object ConfigCodec {
         val (read, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme, r8 = v < 9) { so, base -> style(so, base) }
         // r10 dropped the width slider: every face draws at its default width
         val styles = read.mapValues { (f, s) -> s.copy(widthPct = Themes.of(theme).clockDefaults(f).widthPct) }
+        val left = stack(o.optJSONArray("widgetLeft"), d.widgetLeft)
+        val right = stack(o.optJSONArray("widgetRight"), d.widgetRight)
         return AppConfig(
             theme = theme,
             styles = styles,
@@ -118,8 +122,14 @@ object ConfigCodec {
             showNotifications = o.optBoolean("showNotifications", d.showNotifications),
             previewOnTapOnly = o.optBoolean("previewOnTapOnly", d.previewOnTapOnly),
             burnInShift = o.optBoolean("burnInShift", d.burnInShift),
-            widgetLeft = cards(o.optJSONArray("widgetLeft"), d.widgetLeft),
-            widgetRight = cards(o.optJSONArray("widgetRight"), d.widgetRight),
+            widgetLeft = left.first,
+            widgetRight = right.first,
+            widgetOptions = when {
+                o.has("widgetOptions") -> options(o.optJSONObject("widgetOptions"))
+                // a side that was not stored keeps its default faces
+                o.has("widgetLeft") || o.has("widgetRight") -> withFaces(d.widgetOptions.filterKeys { k -> !o.has(if (k.startsWith("0:")) "widgetLeft" else "widgetRight") }, listOf(left, right))
+                else -> d.widgetOptions
+            },
             alarmScreen = o.optBoolean("alarmScreen", d.alarmScreen),
             alarmGlow = o.optBoolean("alarmGlow", d.alarmGlow),
             glowColor = o.optLong("glowColor", d.glowColor),
@@ -208,12 +218,24 @@ object ConfigCodec {
         put("accent", b.accent ?: JSONObject.NULL)
         put("clockFace", b.clockFace.name)
         if (!b.on) put("on", false)
-        if (b.options.isNotEmpty()) put("options", JSONObject().also { o -> b.options.forEach { (k, v) -> o.put(k, slotOptions(v)) } })
+        if (b.options.isNotEmpty()) put("options", options(b.options))
+    }
+
+    private fun options(m: Map<String, SlotOptions>) = JSONObject().also { o -> m.forEach { (k, v) -> o.put(k, slotOptions(v)) } }
+    private fun options(o: JSONObject?): Map<String, SlotOptions> =
+        o?.let { oo -> oo.keys().asSequence().mapNotNull { k -> runCatching { k to slotOptions(oo.getJSONObject(k)) }.getOrNull() }.toMap() } ?: emptyMap()
+
+    /** [stacks] by slot index: their per-index faces (a stored ANALOG card) laid over [m]'s options. */
+    private fun withFaces(m: Map<String, SlotOptions>, stacks: List<Pair<List<CardType>, Map<Int, FaceId>>>): Map<String, SlotOptions> {
+        val out = m.toMutableMap()
+        stacks.forEachIndexed { s, (_, faces) -> faces.forEach { (j, f) -> val k = "$s:$j"; out[k] = (out[k] ?: SlotOptions()).copy(face = f) } }
+        return out
     }
 
     private fun slotOptions(s: SlotOptions) = JSONObject().apply {
         put("widgetId", s.widgetId ?: JSONObject.NULL); put("opacity", s.opacity.toDouble()); put("widgetMode", s.widgetMode.name)
         put("radiusDp", s.radiusDp); put("hideAtNight", s.hideAtNight)
+        s.face?.let { put("face", it.name) }
     }
 
     private fun slotOptions(o: JSONObject): SlotOptions {
@@ -222,17 +244,19 @@ object ConfigCodec {
             widgetId = if (o.has("widgetId") && !o.isNull("widgetId")) o.optInt("widgetId") else null,
             opacity = num(o, "opacity", d.opacity).coerceIn(0f, 1f), widgetMode = enumOf(o, "widgetMode", d.widgetMode),
             radiusDp = o.optInt("radiusDp", d.radiusDp), hideAtNight = o.optBoolean("hideAtNight", d.hideAtNight),
+            face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
         )
     }
 
     private fun board(o: JSONObject): Board {
-        val slots = o.optJSONArray("slots")?.let { a -> (0 until a.length()).map { cards(a.optJSONArray(it), emptyList()) } } ?: emptyList()
+        val stacks = o.optJSONArray("slots")?.let { a -> (0 until a.length()).map { stack(a.optJSONArray(it), emptyList()) } } ?: emptyList()
+        val slots = stacks.map { it.first }
         return BoardOps.fit(
             Board(
                 id = o.getString("id"), name = o.optString("name", "화면"), layout = enumOf(o, "layout", Layout.TWO), slots = slots,
                 accent = if (o.has("accent") && !o.isNull("accent")) o.optLong("accent") else null,
                 clockFace = enumOf(o, "clockFace", FaceId.DIGITAL),
-                options = o.optJSONObject("options")?.let { oo -> oo.keys().asSequence().mapNotNull { k -> runCatching { k to slotOptions(oo.getJSONObject(k)) }.getOrNull() }.toMap() } ?: emptyMap(),
+                options = withFaces(options(o.optJSONObject("options")), stacks),
                 on = o.optBoolean("on", true),
             ),
         )
@@ -246,11 +270,19 @@ object ConfigCodec {
     /** r9 merged cards: old names read as their new card (D3; r9 dev builds stored NOTIF_LIST), and a stack never holds the same card twice. */
     private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF, "NOTIF_LIST" to CardType.NOTIF, "VIDEO" to CardType.MUSIC)
 
-    private fun cards(a: JSONArray?, def: List<CardType>): List<CardType> =
-        if (a == null) def else (0 until a.length()).mapNotNull {
+    /**
+     * A stored stack and the faces it implies by new index: an "ANALOG" card (before 11-14) reads as CLOCK with the
+     * ANALOG face. A stack never holds the same card twice; two clocks count as different when their faces differ.
+     */
+    private fun stack(a: JSONArray?, def: List<CardType>): Pair<List<CardType>, Map<Int, FaceId>> {
+        if (a == null) return def to emptyMap()
+        val read = (0 until a.length()).mapNotNull {
             val n = a.optString(it)
-            CARD_ALIAS[n] ?: runCatching { CardType.valueOf(n) }.getOrNull()
+            if (n == "ANALOG") CardType.CLOCK to FaceId.ANALOG
+            else (CARD_ALIAS[n] ?: runCatching { CardType.valueOf(n) }.getOrNull())?.let { c -> c to null }
         }.distinct()
+        return read.map { it.first } to read.withIndex().mapNotNull { (j, p) -> p.second?.let { j to it } }.toMap()
+    }
 
     private fun city(c: City) = JSONObject().put("name", c.name).put("lat", c.lat).put("lon", c.lon)
     private fun city(o: JSONObject) = City(o.getString("name"), o.getDouble("lat"), o.getDouble("lon"))

@@ -57,7 +57,11 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             // r9 shot filters: -Pshot.themes=IPHONE,DAYPAPER -Pshot.group=board
-            all { t -> listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10") }
+            all { t ->
+                listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10")
+                // 11-14: test classes over parallel JVMs (8 cores, 16 GB); -Ptest.forks=1 to compare
+                t.maxParallelForks = (project.findProperty("test.forks") as String?)?.toInt() ?: 3; t.maxHeapSize = "1536m"
+            }
         }
     }
 }

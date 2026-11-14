@@ -71,7 +71,7 @@ internal fun ColorBlockFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Bo
         val capMax = (if (tall) 0.7f * a[3] else 0.58f * h) * sizePct
         val fs = minOf(capMax / p.capEm, 0.8f * a[2] / hourEm, 0.8f * b[2] / minEm)
         val cap = p.capEm * fs
-        ui.textSize = max(13.dp.toPx(), 20 * k)
+        ui.textSize = max(13.dp.toPx(), 20 * k) * d.ts
         val c1 = if (d.use24h) null else d.ampm
         val c2 = if (style.showInfo) listOfNotNull("${d.weekday}요일", d.temp).joinToString(" · ") else null
         val bleed = if (inSlot) 0f else BURN_IN_BLEED.toPx()
@@ -143,7 +143,7 @@ internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
         val rr = if (inSlot) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
         val bg = Paint().apply { color = paper }
         val pill = if (inSlot || !style.showInfo) null else listOfNotNull("${d.weekday}요일", d.temp).joinToString(" · ")
-        ui.textSize = max(13.dp.toPx(), 19 * k)
+        ui.textSize = max(13.dp.toPx(), 19 * k) * d.ts
         val pillBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = dark.toArgb() }
         fun glyph(c: Canvas, s: String, gx: Float, base: Float, color: Int) {
             pt.textSize = fs
@@ -204,7 +204,7 @@ internal fun BallsFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val digits = d.h + d.m
         val hl = d.h.length
         val cap = if (style.showInfo) d.infoLine() else null
-        ui.textSize = max(13.dp.toPx(), 18 * k)
+        ui.textSize = max(13.dp.toPx(), 18 * k) * d.ts
         if (cap != null) ui.textSize *= min(1f, 0.9f * w / ui.measureText(cap))
         val capH = if (cap == null) 0f else 22 * k + ui.textSize + 22 * k
         val margin = if (inSlot) 0.04f * w else Grid.margin(min(w, h).toDp()).toPx() + 10.dp.toPx()

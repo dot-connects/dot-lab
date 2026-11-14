@@ -51,6 +51,7 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalTextScale
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.Motion
 import java.time.LocalDateTime
@@ -63,7 +64,8 @@ fun ClockFace(
     analog: AnalogStyle = AnalogStyle.ROUND,
 ) {
     if (state.displayOff) { Box(modifier); return }
-    val data = FaceData.of(state)
+    // a face in a board slot takes its text size from the card's label (already scaled), so only full screen scales here
+    val data = FaceData.of(state).copy(ts = if (inSlot) 1f else LocalTextScale.current)
     // §5.1: a second clock draws its numerals in ink (white by day) without effects; Analog keeps its own colours.
     val st = if (hero || face == FaceId.ANALOG) style else style.copy(color = 0xFFFFFFFF, effect = Effect.SOLID)
     val th = LocalTheme.current
@@ -148,6 +150,8 @@ internal data class FaceData(
     val worldCity: City,
     val worldTime: String,
     val worldAmPm: String,
+    /** 글자 크기 for the info lines ([LocalTextScale]); faces multiply their small text by it, never the digits. */
+    val ts: Float = 1f,
 ) {
     val dateLong get() = "${month}월 ${day}일 ${weekday}요일"
 

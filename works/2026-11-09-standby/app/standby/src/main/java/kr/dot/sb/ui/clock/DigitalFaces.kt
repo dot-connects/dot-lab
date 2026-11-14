@@ -123,7 +123,7 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
             val xs = sz.s < 140.dp
             val two = style.layout == ClockLayout.TWO_LINES || portrait
             // r5 desk: "월요일 11월 9일 · 7°" right under the digits, weekday in the clock colour
-            ui.textSize = slotLabel?.toPx() ?: max(18.dp.toPx(), 0.075f * min(w, h))
+            ui.textSize = slotLabel?.toPx() ?: (max(18.dp.toPx(), 0.075f * min(w, h)) * d.ts)
             val info = if (xs || !style.showInfo) null else buildList {
                 add(Seg("${d.weekday}요일 ", accent)); add(Seg("${d.month}월 ${d.day}일", white))
                 d.temp?.let { add(Seg(" · $it", white)) }
@@ -141,7 +141,7 @@ internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
             }
         }
 
-        ui.textSize = 0.06f * min(w, h) / capR
+        ui.textSize = 0.06f * min(w, h) / capR * d.ts
         val wk = Seg(d.weekday + " ", accent)
         val alarm = d.alarmShort?.let { listOf(alarmSeg(grey), Seg(it, white)) }
         val rows = buildList {
@@ -258,8 +258,8 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         }
         // review C2: row pitch = digit cap / 3; title 0.38 × pitch, label 0.24 × pitch, floors 22 / 18 dp
         val pitch0 = p.capEm * fs / 3
-        lab.textSize = max(18.dp.toPx(), 0.24f * pitch0)
-        ttl.textSize = max(22.dp.toPx(), 0.38f * pitch0)
+        lab.textSize = max(18.dp.toPx(), 0.24f * pitch0) * d.ts
+        ttl.textSize = max(22.dp.toPx(), 0.38f * pitch0) * d.ts
         // each row = label cap-top … title baseline; rows spread space-between from rTop to rBottom
         val gapLT = lab.textSize * 0.55f
         val blockH = lab.textSize * labCap + gapLT + ttl.textSize * ttlCap
