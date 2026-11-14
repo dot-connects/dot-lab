@@ -217,7 +217,10 @@ private fun CatchView(
                         val down = awaitFirstDown()
                         val x = down.position.x / game.d; val y = down.position.y / game.d
                         if (y < game.rail) {          // the rail bar: "도감 N" on the right, the camera switch on the left
-                            if (waitForUpOrCancellation() != null) { if (x > game.w / 2) openDex() else camera() }
+                            if (waitForUpOrCancellation() != null) {
+                                if (x > game.w / 2) { if (game.idle) openDex() }
+                                else if (x < 96f && y > game.rail - 46f && game.idle) camera()   // not mid-round: a catch in flight would be lost
+                            }
                             return@awaitEachGesture
                         }
                         val c = game.claw ?: return@awaitEachGesture
@@ -254,6 +257,8 @@ private class CatchGame(
     var bottomInset = 0f
     var dexCount = 0
     var cameraOn = false
+    /** Nothing in flight: aiming, no capsule, no person waiting for consent. */
+    val idle get() = claw?.st == Claw.St.AIM && capsule == null && pendingPerson == null && askPerson == null
     var hint = true
     private var railTickX = -1f
     var w = 0f; private set

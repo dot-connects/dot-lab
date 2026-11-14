@@ -89,13 +89,14 @@ class Claw(
                 val tipY = y + TIP
                 val (mx, my) = toMask(x * screenW, tipY)
                 // the hub's underside stops on a body's top too (a side hit must not sink the hub into it)
+                // (the body under the hub's own width, not its bounding box: review 11-15)
                 val hubRow = toMask(x * screenW, y + HUB_BOTTOM).second
+                val hubHalf = max(2, mx - toMask(x * screenW - HUB_HALF, y).first)
                 var best: Pair<Mask, Int>? = null
                 for (m in targets) {
                     val col = m.firstRowInColumn(mx)
-                    val bx = m.box
-                    val onHub = bx != null && mx in bx.x0..bx.x1 && hubRow >= bx.y0 + (bx.y1 - bx.y0) / 10
-                    val row = when { col != null && my >= col -> col; onHub -> col ?: bx!!.y0; else -> continue }
+                    val under = m.firstRowInColumn(mx, hubHalf)
+                    val row = when { col != null && my >= col -> col; under != null && hubRow >= under -> under; else -> continue }
                     if (best == null || row < best.second) best = m to row
                 }
                 if (best != null) {
@@ -197,6 +198,7 @@ class Claw(
         const val TIP = 44f
         const val HOME_X = 0.1f      // rest at the left, back there after every round (operator 11-14)
         const val HOME_SPEED = 0.0008f   // screen widths per ms (~1 s across)
+        const val HUB_HALF = 15f      // the hub is 30 px wide
         const val HUB_BOTTOM = 10f   // the hub's underside below its centre
         const val MOTION_CUT = 0.5f    // moved half its width (or more) while gripping -> chance halved
         const val SLIP_MS = 200f

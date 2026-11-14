@@ -72,7 +72,7 @@ class PetService : Service() {
     private var running = false
     private var size = 48f
     private var homeOnly = true
-    private var home: String? = null
+    private var homes: Set<String> = emptySet()
     private var top: String? = null
     private var eventsAt = 0L
 
@@ -80,7 +80,7 @@ class PetService : Service() {
     private fun launcherOnTop(): Boolean {
         val usm = getSystemService(android.app.usage.UsageStatsManager::class.java)
         val end = System.currentTimeMillis()
-        if (end - eventsAt < 400L) return top == null || top == home   // the pet ticks at 30 fps; read events ~2x/s
+        if (end - eventsAt < 400L) return top == null || top in homes   // the pet ticks at 30 fps; read events ~2x/s
         val events = usm.queryEvents(if (eventsAt == 0L) end - 60 * 60_000L else eventsAt, end)
         eventsAt = end
         val e = android.app.usage.UsageEvents.Event()
@@ -88,7 +88,7 @@ class PetService : Service() {
             events.getNextEvent(e)
             if (e.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) top = e.packageName
         }
-        return top == null || top == home
+        return top == null || top in homes
     }
     private val density get() = resources.displayMetrics.density
 
@@ -106,7 +106,7 @@ class PetService : Service() {
             lastMs = now
             if (!hidden) render()
             handler.postDelayed(this, when {
-                hidden -> 500L
+                hidden -> 1000L   // hidden: check the top app once a second
                 brain?.act == PetBrain.Act.SLEEP -> 200L
                 brain?.act == PetBrain.Act.IDLE -> 66L
                 else -> 33L
@@ -173,7 +173,10 @@ class PetService : Service() {
         if (cells == null || !android.provider.Settings.canDrawOverlays(this)) { PetPrefs.setOverlayOn(this, false); stopSelf(); return }
         size = PetPrefs.size(this)
         homeOnly = PetPrefs.homeOnly(this) && PetPrefs.usageGranted(this)
-        home = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo?.packageName
+        // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
+        homes = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
+            .filter { it.priority >= 0 }   // Settings FallbackHome sits at -1000
+            .map { it.activityInfo.packageName }.filter { it != "android" && it != packageName }.toSet()
         eventsAt = 0L; top = null
         val px = (size * density).roundToInt()
         val p = WindowManager.LayoutParams(
