@@ -162,8 +162,8 @@ class ClawTest {
         val c = Claw(90f, 160f, 4f) { 0f }
         c.release(); c.release()
         assertEquals(Claw.St.DOWN, c.st)
-        c.aim(0.1f)
-        assertEquals(0.5f, c.x, 1e-6f)          // aiming is ignored once the claw drops
+        c.aim(0.7f)
+        assertEquals(Claw.HOME_X, c.x, 1e-6f)   // aiming is ignored once the claw drops
         c.next()
         assertEquals(Claw.St.AIM, c.st)
         assertNull(c.result)

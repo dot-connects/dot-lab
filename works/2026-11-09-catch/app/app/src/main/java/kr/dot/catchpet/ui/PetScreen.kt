@@ -63,15 +63,14 @@ import kr.dot.catchpet.billing.Purchase
 import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.pet.PetPrefs
 import kr.dot.catchpet.pet.PetService
-import kr.dot.catchpet.pet.PetWallpaper
 import java.io.ByteArrayOutputStream
 import java.io.File
 import kotlin.math.max
 import kotlin.math.roundToInt
 
 /**
- * Pet settings: which pet, its size, where it shows (over other apps = overlay, home / lock screen = live wallpaper;
- * where on screen is set by dragging the pet itself), and a developer corner.
+ * Pet settings: which pet, its size, on/off and where it shows (home screen only, or always over every app; where on
+ * screen is set by dragging the pet itself), and a developer corner. No wallpaper: operator 11-14.
  */
 @Composable
 fun PetScreen(onBack: () -> Unit) {
@@ -82,20 +81,16 @@ fun PetScreen(onBack: () -> Unit) {
     }
     var chosen by remember { mutableStateOf(petId(ctx)) }
     var size by remember { mutableStateOf(PetPrefs.size(ctx)) }
-    var home by remember { mutableStateOf(PetPrefs.homeOn(ctx)) }
-    var lock by remember { mutableStateOf(PetPrefs.lockOn(ctx)) }
+    var homeOnly by remember { mutableStateOf(PetPrefs.homeOnly(ctx)) }
+    var usage by remember { mutableStateOf(PetPrefs.usageGranted(ctx)) }
     var on by remember { mutableStateOf(PetPrefs.overlayOn(ctx)) }
     var canDraw by remember { mutableStateOf(Settings.canDrawOverlays(ctx)) }
-    var photoNote by remember { mutableStateOf<String?>(null) }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { canDraw = Settings.canDrawOverlays(ctx) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        canDraw = Settings.canDrawOverlays(ctx)
+        val u = PetPrefs.usageGranted(ctx); if (u != usage) { usage = u; if (on) PetService.start(ctx) }
+    }
 
     val notify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { PetService.start(ctx); on = true }
-    val pick = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) scope.launch {
-            val ok = withContext(Dispatchers.IO) { runCatching { copyWallpaper(ctx, uri) }.isSuccess }
-            photoNote = if (ok) "배경 사진을 바꿨어요" else "사진을 읽지 못했어요"
-        }
-    }
     fun restartIfOn() { if (on) PetService.start(ctx) }
 
     Column(Modifier.fillMaxSize().background(BG).safeDrawingPadding().verticalScroll(rememberScrollState())) {
@@ -135,7 +130,7 @@ fun PetScreen(onBack: () -> Unit) {
             when {
                 chosen == null -> Text("도감에서 펫을 먼저 골라 주세요.", color = DIM, fontSize = 14.sp)
                 else -> {
-                    Toggle("다른 앱 위", on) {
+                    Toggle("펫 띄우기", on) {
                         when {
                             !it -> { PetService.stop(ctx); on = false }
                             !canDraw -> ctx.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${ctx.packageName}")))
@@ -143,26 +138,30 @@ fun PetScreen(onBack: () -> Unit) {
                         }
                     }
                     if (!canDraw) Text("켜려면 '다른 앱 위에 표시' 권한을 허용해 주세요.", color = DIM, fontSize = 13.sp)
-                    Toggle("홈 화면", home) {
-                        home = it; PetPrefs.setShow(ctx, "show_home", it)
-                        if (it && !wallpaperIsOurs(ctx)) openWallpaperPicker(ctx)
-                    }
-                    Toggle("잠금화면", lock) {
-                        lock = it; PetPrefs.setShow(ctx, "show_lock", it)
-                        if (it && !wallpaperIsOurs(ctx)) openWallpaperPicker(ctx)
-                    }
-                    if (home || lock) {
-                        Text(
-                            "홈·잠금화면의 녀석은 배경화면 '리얼뽑기 펫'이 그려요. 잠금화면은 배경화면을 '홈 및 잠금화면'에 지정해야 하고, 폰에 따라 안 될 수 있어요.",
-                            color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp),
-                        )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            TextButton(onClick = { openWallpaperPicker(ctx) }) { Text("배경화면 설정 열기", color = GOLD) }
-                            TextButton(onClick = { pick.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }) {
-                                Text("배경 사진 고르기", color = GOLD)
-                            }
+                    Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        for ((label, v) in listOf("홈 화면" to true, "항상" to false)) {
+                            val sel = homeOnly == v
+                            Text(
+                                label, color = if (sel) BG else Color.White, fontSize = 15.sp,
+                                modifier = Modifier.clip(RoundedCornerShape(50)).background(if (sel) GOLD else Color(0x22FFFFFF))
+                                    .clickable {
+                                        homeOnly = v; PetPrefs.setHomeOnly(ctx, v); restartIfOn()
+                                        if (v && !usage) ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                                    }
+                                    .padding(horizontal = 18.dp, vertical = 9.dp),
+                            )
                         }
-                        photoNote?.let { Text(it, color = DIM, fontSize = 13.sp) }
+                    }
+                    Text(
+                        when {
+                            !homeOnly -> "어떤 앱을 쓰든 녀석이 화면 위에 있어요."
+                            usage -> "홈 화면에서만 보이고, 앱을 열면 숨어요."
+                            else -> "홈 화면에서만 보이려면 '사용정보 접근'에서 리얼뽑기를 허용해 주세요. 허용 전에는 항상 보여요."
+                        },
+                        color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp),
+                    )
+                    if (homeOnly && !usage) TextButton(onClick = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) {
+                        Text("사용정보 접근 열기", color = GOLD)
                     }
                 }
             }
@@ -219,30 +218,8 @@ private fun Toggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit)
 @Composable
 private fun sliderColors() = SliderDefaults.colors(thumbColor = GOLD, activeTrackColor = GOLD, inactiveTrackColor = Color(0x33FFFFFF))
 
-private fun wallpaperIsOurs(ctx: Context): Boolean =
-    WallpaperManager.getInstance(ctx).wallpaperInfo?.component == ComponentName(ctx, PetWallpaper::class.java)
-
 @Composable
 private fun Title(t: String) {
     Text(t, color = Color.White, fontSize = 17.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(bottom = 10.dp))
 }
 
-private fun openWallpaperPicker(ctx: Context) {
-    val direct = Intent(WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER)
-        .putExtra(WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT, ComponentName(ctx, PetWallpaper::class.java))
-    runCatching { ctx.startActivity(direct) }
-        .recoverCatching { ctx.startActivity(Intent(WallpaperManager.ACTION_LIVE_WALLPAPER_CHOOSER)) }
-}
-
-/** Copies the picked photo (upright, long side <= ~2000 px) to filesDir/wallpaper.jpg; the URI is not kept (plan R9). */
-private fun copyWallpaper(ctx: Context, uri: Uri) {
-    val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { dec, info, _ ->
-        val long = max(info.size.width, info.size.height)
-        var s = 1
-        while (long / (s * 2) >= 2000) s *= 2
-        dec.setTargetSampleSize(s)
-        dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-    }
-    val bytes = ByteArrayOutputStream().also { bmp.compress(Bitmap.CompressFormat.JPEG, 90, it) }.toByteArray()
-    Dex.atomicWrite(File(ctx.filesDir, "wallpaper.jpg"), bytes)
-}

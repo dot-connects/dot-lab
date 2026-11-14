@@ -36,10 +36,13 @@ object PetPrefs {
     fun setPlace(ctx: Context, z: PetBrain.Zone) { prefs(ctx).edit().putString("place", z.name).apply() }
     fun overlayOn(ctx: Context) = prefs(ctx).getBoolean("overlay", false)
     fun setOverlayOn(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("overlay", on).apply() }
-    /** The live wallpaper draws the pet on the home screen / on the lock screen only while these are on. */
-    fun homeOn(ctx: Context) = prefs(ctx).getBoolean("show_home", false)
-    fun lockOn(ctx: Context) = prefs(ctx).getBoolean("show_lock", false)
-    fun setShow(ctx: Context, key: String, on: Boolean) { prefs(ctx).edit().putBoolean(key, on).apply() }
+    /** Where the overlay shows: only over the home screen, or always (over every app). Operator 11-14. */
+    fun homeOnly(ctx: Context) = prefs(ctx).getBoolean("home_only", true)
+    fun setHomeOnly(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("home_only", on).apply() }
+    fun usageGranted(ctx: Context): Boolean =
+        ctx.getSystemService(android.app.AppOpsManager::class.java)
+            .unsafeCheckOpNoThrow(android.app.AppOpsManager.OPSTR_GET_USAGE_STATS, android.os.Process.myUid(), ctx.packageName) ==
+            android.app.AppOpsManager.MODE_ALLOWED
     /** Pet box size in dp (slider 32..112, default one app icon). */
     fun size(ctx: Context) = prefs(ctx).getFloat("pet_size", 48f).coerceIn(32f, 112f)
     fun setSize(ctx: Context, dp: Float) { prefs(ctx).edit().putFloat("pet_size", dp).apply() }
@@ -53,8 +56,8 @@ object PetPrefs {
  * Foreground service holding the pet's overlay window (PetPrefs.size dp) on the bottom row or a side wall. PetBrain
  * decides; this draws, moves the window, and forwards touches: tap = smile, two taps within 320 ms = dance,
  * hold 380 ms or just drag = dangle, let go = PetBrain.drop picks the place (kept for next time).
- * While this app's live wallpaper is visible (home / lock screen) the window hides: the wallpaper shows the pet there
- * by its own switches. Ticks slow down while the pet sleeps or idles (battery review 11-13).
+ * "Home only": the window hides while any app but the launcher is on top (usage events, read every tick).
+ * Ticks slow down while the pet sleeps or idles (battery review 11-13).
  */
 class PetService : Service() {
     private lateinit var wm: WindowManager
@@ -68,6 +71,25 @@ class PetService : Service() {
     private var chargeCheckedAt = 0L
     private var running = false
     private var size = 48f
+    private var homeOnly = true
+    private var home: String? = null
+    private var top: String? = null
+    private var eventsAt = 0L
+
+    /** Is the launcher the app on top? The last resumed activity in the usage events since the previous read. */
+    private fun launcherOnTop(): Boolean {
+        val usm = getSystemService(android.app.usage.UsageStatsManager::class.java)
+        val end = System.currentTimeMillis()
+        if (end - eventsAt < 400L) return top == null || top == home   // the pet ticks at 30 fps; read events ~2x/s
+        val events = usm.queryEvents(if (eventsAt == 0L) end - 60 * 60_000L else eventsAt, end)
+        eventsAt = end
+        val e = android.app.usage.UsageEvents.Event()
+        while (events.hasNextEvent()) {
+            events.getNextEvent(e)
+            if (e.eventType == android.app.usage.UsageEvents.Event.ACTIVITY_RESUMED) top = e.packageName
+        }
+        return top == null || top == home
+    }
     private val density get() = resources.displayMetrics.density
 
     private val tick = object : Runnable {
@@ -78,7 +100,7 @@ class PetService : Service() {
                 charging = getSystemService(BatteryManager::class.java).isCharging
             }
             val v = view
-            val hidden = PetWallpaper.visibleNow
+            val hidden = homeOnly && !launcherOnTop()
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
             lastMs = now
@@ -141,7 +163,7 @@ class PetService : Service() {
 
     private fun newBrain(): PetBrain {
         val (w, h) = screenDp()
-        val z = PetPrefs.place(this).let { if (it == PetBrain.Zone.BEHIND) PetBrain.Zone.FLOOR else it }  // behind = wallpaper
+        val z = PetPrefs.place(this).let { if (it == PetBrain.Zone.BEHIND) PetBrain.Zone.FLOOR else it }  // behind was the old wallpaper place
         return PetBrain(z, w, h, PetPrefs.floorY(h), size) { Math.random().toFloat() }
     }
 
@@ -150,6 +172,9 @@ class PetService : Service() {
         val cells = Frames.chosen(this)
         if (cells == null || !android.provider.Settings.canDrawOverlays(this)) { PetPrefs.setOverlayOn(this, false); stopSelf(); return }
         size = PetPrefs.size(this)
+        homeOnly = PetPrefs.homeOnly(this) && PetPrefs.usageGranted(this)
+        home = packageManager.resolveActivity(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)?.activityInfo?.packageName
+        eventsAt = 0L; top = null
         val px = (size * density).roundToInt()
         val p = WindowManager.LayoutParams(
             px, px, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,

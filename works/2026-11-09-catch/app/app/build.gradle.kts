@@ -11,16 +11,20 @@ android {
         applicationId = "kr.dot.catchpet"
         minSdk = 34 // specialUse foreground service
         targetSdk = 35
-        versionCode = 11
-        versionName = "0.3.0"
+        versionCode = 12
+        versionName = "0.3.1"
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
+        buildConfigField("String", "DEBUG_PURCHASE", "\"\"")
         buildConfigField("String", "WORKER", "\"https://dot-lab-catch.dotconnects.workers.dev\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     buildTypes {
         // R8 on the debug build too: unshrunk dex was 32 MB, and the APK goes to the phone through a 30 MB hand-off
         debug {
+            // dev builds buy AI pet sheets free (operator 11-14): the Worker's debug token, read from this PC, never committed
+            val token = File(System.getProperty("user.home"), ".catchpet-debug-purchase").takeIf { it.exists() }?.readText()?.trim().orEmpty()
+            buildConfigField("String", "DEBUG_PURCHASE", "\"$token\"")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
         }

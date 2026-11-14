@@ -33,7 +33,6 @@ class PetAppTest {
         val info = ctx.packageManager.getPackageInfo(ctx.packageName, PackageManager.GET_ACTIVITIES or PackageManager.GET_SERVICES)
         val names = (info.activities.orEmpty().map { it.name } + info.services.orEmpty().map { it.name })
         assertTrue("services: $names", names.contains("kr.dot.catchpet.pet.PetService"))
-        assertTrue("services: $names", names.contains("kr.dot.catchpet.pet.PetWallpaper"))
         for (n in names) Class.forName(n)
     }
 

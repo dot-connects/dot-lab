@@ -169,6 +169,9 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
         colors = ButtonDefaults.buttonColors(containerColor = GOLD, contentColor = Color(0xFF2A1D00),
             disabledContainerColor = Color(0x14FFFFFF), disabledContentColor = DIM),
         modifier = Modifier.fillMaxWidth().height(52.dp),
-    ) { Text("펫으로 사기 · ${Purchase.PRICE_WON}원", fontSize = 17.sp, fontWeight = FontWeight.Bold) }
+    ) {
+        val free = kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.isNotEmpty()
+        Text(if (free) "펫 그림 만들기 · 개발판 무료" else "펫으로 사기 · ${Purchase.PRICE_WON}원", fontSize = 17.sp, fontWeight = FontWeight.Bold)
+    }
     if (locked) Text("출시 후 열려요", color = DIM, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
 }

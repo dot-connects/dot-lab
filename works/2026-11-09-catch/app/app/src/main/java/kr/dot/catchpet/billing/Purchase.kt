@@ -11,6 +11,7 @@ object Purchase {
 
     fun token(ctx: Context): String? =
         ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString(KEY, null)?.trim()?.takeIf { it.isNotEmpty() }
+            ?: kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.takeIf { it.isNotEmpty() }   // dev builds: free sheets
 
     /** Blank clears the token. */
     fun saveToken(ctx: Context, s: String) {

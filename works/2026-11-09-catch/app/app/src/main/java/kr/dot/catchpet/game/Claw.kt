@@ -41,7 +41,8 @@ class Claw(
 
     val restY get() = railY + 28f
     var st = St.AIM; private set
-    var x = 0.5f; private set
+    var x = HOME_X; private set
+    private var aimed = false
     var y = restY; private set
     var open = 1f; private set
     var result: Result? = null; private set
@@ -69,7 +70,7 @@ class Claw(
     private var motion = 0f
     private var outMs = 0f
 
-    fun aim(x01: Float) { if (st == St.AIM) x = x01.coerceIn(0.06f, 0.94f) }
+    fun aim(x01: Float) { if (st == St.AIM) { x = x01.coerceIn(0.06f, 0.94f); aimed = true } }
 
     fun release() { if (st == St.AIM) { st = St.DOWN; t = 0f } }
 
@@ -80,7 +81,9 @@ class Claw(
     fun step(dtMs: Float, targets: List<Mask>, toMask: (Float, Float) -> Pair<Int, Int>) {
         t += dtMs
         when (st) {
-            St.AIM, St.CARRY, St.DONE -> {}
+            // untouched, the claw rides back to its home corner like a real crane
+            St.AIM -> if (!aimed) x = max(HOME_X, x - dtMs * HOME_SPEED)
+            St.CARRY, St.DONE -> {}
             St.DOWN -> {
                 y += dtMs * DOWN_SPEED
                 val tipY = y + TIP
@@ -183,7 +186,7 @@ class Claw(
 
     /** Straight back to aiming: no result screen, no button. */
     fun next() {
-        st = St.AIM; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f; slip01 = 0f; vy = 0f
+        st = St.AIM; aimed = false; open = 1f; y = restY; result = null; carryDy = 0f; t = 0f; slip01 = 0f; vy = 0f
     }
 
     private fun grip() { st = St.GRIP; t = 0f }
@@ -192,6 +195,8 @@ class Claw(
         const val DOWN_SPEED = 0.26f   // px/ms
         const val UP_SPEED = 0.15f
         const val TIP = 44f
+        const val HOME_X = 0.1f      // rest at the left, back there after every round (operator 11-14)
+        const val HOME_SPEED = 0.0008f   // screen widths per ms (~1 s across)
         const val HUB_BOTTOM = 10f   // the hub's underside below its centre
         const val MOTION_CUT = 0.5f    // moved half its width (or more) while gripping -> chance halved
         const val SLIP_MS = 200f

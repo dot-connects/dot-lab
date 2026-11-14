@@ -530,7 +530,6 @@ private class CatchGame(
         cv.drawRect(0f, 0f, w, h, fill); fill.shader = null
 
         val cx = c.x * w
-        if (c.st == Claw.St.AIM) aimGuide(cv, c, cx, m)
 
         // the claw's back half (cable, hub, back prong), then the catch, then the front arms around it. Claw and
         // catch swing together from the rail (a crane's pendulum); a falling catch tumbles on its own.
@@ -566,23 +565,6 @@ private class CatchGame(
             m.imageToViewX(cut.src.left.toFloat()) / d, m.imageToViewY(cut.src.top.toFloat()) / d,
             m.imageToViewX(cut.src.right.toFloat()) / d, m.imageToViewY(cut.src.bottom.toFloat()) / d,
         )
-    }
-
-    private fun aimGuide(cv: android.graphics.Canvas, c: Claw, cx: Float, m: ScreenMap?) {
-        var ly = h - bottomInset - 50f
-        var hit = false
-        if (m != null) {
-            val col = m.toGrid(cx * d, 0f).first
-            val row = targets.mapNotNull { it.firstRowInColumn(col) }.minOrNull()
-            if (row != null) { ly = m.gridToViewY(row + 0.5f) / d; hit = true }
-        }
-        stroke.strokeWidth = 1.5f; stroke.color = argb(.55f, 255, 255, 255)
-        stroke.pathEffect = android.graphics.DashPathEffect(floatArrayOf(3f, 7f), 0f)
-        cv.drawLine(cx, c.y + 52f, cx, ly, stroke)
-        stroke.pathEffect = null
-        stroke.strokeWidth = 2f; stroke.color = if (hit) YELLOW else argb(.4f, 255, 255, 255)
-        rect.set(cx - 13f, ly - 4.5f, cx + 13f, ly + 4.5f)
-        cv.drawOval(rect, stroke)
     }
 
     /** The catch on the claw: a critter (Critters draws it) or the cut-out photo. */
@@ -661,8 +643,6 @@ private class CatchGame(
         text.color = if (pulse > 0f) YELLOW else Color.WHITE
         cv.drawText("도감 ${dexCount - if (saved) 1 else 0}", 0f, 6f, text)
         cv.restore()
-        text.textSize = 14f; text.textAlign = Paint.Align.LEFT; text.color = argb(.55f, 255, 255, 255)
-        cv.drawText("리얼뽑기", 16f, r - 22f, text)
         text.textAlign = Paint.Align.CENTER
     }
 
