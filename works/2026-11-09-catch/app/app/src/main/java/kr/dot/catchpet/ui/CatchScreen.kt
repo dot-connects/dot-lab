@@ -224,6 +224,15 @@ private fun CatchView(
                             return@awaitEachGesture
                         }
                         val c = game.claw ?: return@awaitEachGesture
+                        if (game.onButton(x, y)) {
+                            game.pressed = true
+                            val up = waitForUpOrCancellation()   // null = cancelled (a system swipe): no drop
+                            game.pressed = false
+                            if (up != null && game.onButton(up.position.x / game.d, up.position.y / game.d) && c.st == Claw.St.AIM) {
+                                c.release(); game.hint = false
+                            }
+                            return@awaitEachGesture
+                        }
                         if (c.st != Claw.St.AIM) return@awaitEachGesture
                         c.aim(x / game.w)
                         while (true) {
@@ -231,7 +240,6 @@ private fun CatchView(
                             if (!ch.pressed) break
                             c.aim(ch.position.x / game.d / game.w)
                         }
-                        c.release(); game.hint = false
                     }
                 },
         ) {
@@ -257,6 +265,11 @@ private class CatchGame(
     var bottomInset = 0f
     var dexCount = 0
     var cameraOn = false
+    var pressed = false
+    /** The 집기 button: a round arcade button, bottom centre. */
+    val btnX get() = w / 2f
+    val btnY get() = h - bottomInset - 62f
+    fun onButton(x: Float, y: Float) = (x - btnX) * (x - btnX) + (y - btnY) * (y - btnY) <= BTN_R * BTN_R * 1.4f
     /** Nothing in flight: aiming, no capsule, no person waiting for consent. */
     val idle get() = claw?.st == Claw.St.AIM && capsule == null && pendingPerson == null && askPerson == null
     var hint = true
@@ -568,9 +581,10 @@ private class CatchGame(
         ClawArt.front(cv, cx, c.y, arms)
         cv.restore()
         topBar(cv)
+        drawButton(cv, c)
         if (hint) {
-            text.textSize = 18f; text.color = argb(.92f, 255, 255, 255); text.setShadowLayer(8f, 0f, 0f, Color.BLACK)
-            cv.drawText("집게를 좌우로 끌다가 놓으세요", w / 2, h - bottomInset - 28f, text)
+            text.textSize = 17f; text.color = argb(.92f, 255, 255, 255); text.setShadowLayer(8f, 0f, 0f, Color.BLACK)
+            cv.drawText("끌어서 맞추고 집기를 누르세요", w / 2, btnY - BTN_R - 18f, text)
             text.clearShadowLayer()
         }
         drawToast(cv)
@@ -683,6 +697,25 @@ private class CatchGame(
         text.textAlign = Paint.Align.CENTER
     }
 
+    /** A red arcade button with a chrome ring; pressed sinks it, grey while the claw is busy. */
+    private fun drawButton(cv: android.graphics.Canvas, c: Claw) {
+        val ready = c.st == Claw.St.AIM && capsule == null
+        val sink = if (pressed && ready) 4f else 0f
+        fill.shader = null
+        fill.color = argb(.35f, 0, 0, 0); cv.drawCircle(btnX, btnY + 7f, BTN_R + 6f, fill)
+        fill.shader = LinearGradient(0f, btnY - BTN_R - 6f, 0f, btnY + BTN_R + 6f, 0xFFF4F6FA.toInt(), 0xFF7D838F.toInt(), Shader.TileMode.CLAMP)
+        cv.drawCircle(btnX, btnY, BTN_R + 6f, fill)
+        fill.shader = null
+        fill.color = if (ready) 0xFF8C0D18.toInt() else 0xFF55595F.toInt(); cv.drawCircle(btnX, btnY + 5f, BTN_R, fill)
+        val top = if (ready) intArrayOf(0xFFFF8A8A.toInt(), 0xFFD7192B.toInt()) else intArrayOf(0xFFB9BDC4.toInt(), 0xFF80858D.toInt())
+        fill.shader = RadialGradient(btnX - 8f, btnY - 10f + sink, BTN_R * 1.2f, top, null, Shader.TileMode.CLAMP)
+        cv.drawCircle(btnX, btnY + sink, BTN_R, fill)
+        fill.shader = null
+        text.textSize = 19f; text.textAlign = Paint.Align.CENTER
+        text.color = if (ready) Color.WHITE else argb(.8f, 255, 255, 255)
+        cv.drawText("집기", btnX, btnY + sink + 7f, text)
+    }
+
     private fun drawToast(cv: android.graphics.Canvas) {
         val t = toast ?: return
         val a = when { t.t < 150f -> t.t / 150f; t.t > 1100f -> max(0f, 1f - (t.t - 1100f) / 300f); else -> 1f }
@@ -702,6 +735,7 @@ private class CatchGame(
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
         // what the toast says on a miss: one voice, a few lines so it does not repeat word for word
+        const val BTN_R = 34f
         val AIR = listOf("헛집었다", "허공이었다", "아무것도 없었다")
         val NEAR = listOf("아깝다!", "아슬아슬했다", "한 끗 차이!")
         val SLIPPED = listOf("흔들려서 빠졌다", "미끄러졌다!")
