@@ -1,11 +1,11 @@
 # 우리 집 몬스터 잡기 — 작업 폴더
 
-## 이어서 하기 (2026-11-15 기준 0.4.3 — 이제 **안드로이드 앱**이 본체)
+## 이어서 하기 (2026-11-15 기준 0.4.6 — 이제 **안드로이드 앱**이 본체)
 
 **웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:/DC/DD/docs/archive/2026-11-12-catch-app-plan-review`).
 동결된 웹 게임도 같은 Worker 를 쓰므로 이제 OpenAI(gpt-image-2.6-flare)로 그린다.
 
-**0.4.x (11-15) 한눈에:** 집기 버튼(`ui/ClawButton.kt`) · 확정 메뉴 시안 `mockups/allmenus.html` · 털뭉치/피규어 펫 각각(`Dex.AiState.sheets/petStyle`, Worker `/sheet style`) · 묶어서 뽑기 최대 3(`CatchGame.group`, kind `person+cat`, Worker `validKind`/`GROUP_*`) · 두 번 톡톡 구름(`pet/PetApps.kt`) · 누끼 `seg/HiRes.kt`(16MB 모델 첫 사람 때 내려받기) + `assets/models/selfie_segmenter.tflite` · 발열(`CatchGame.lively`, 세그 300/600ms).
+**0.4.x (11-15) 한눈에:** 집기 버튼(`ui/ClawButton.kt`) · 확정 메뉴 시안 `mockups/allmenus.html` · 털뭉치/피규어 펫 각각(`Dex.AiState.sheets/petStyle`, Worker `/sheet style`) · 묶어서 뽑기 최대 3(`CatchGame.group`, kind `person+cat`, Worker `validKind`/`GROUP_*`) · 두 번 톡톡 구름(`pet/PetApps.kt`) · 누끼 `seg/HiRes.kt`(16MB 모델 첫 사람 때 내려받기) + `assets/models/selfie_segmenter.tflite` · 발열(`CatchGame.lively`, 세그 300/600ms) · 12칸 동작표(`Sheet.KEYS12`, `-v12` 파일, Worker `layout`) · 구름 C안 + 키보드 피하기(`pet/KeyboardWatch.kt`) · 털뭉치 굽기 `tools/bake.html` `stride()`.
 
 | 부분 | 파일 | 상태 |
 |---|---|---|
