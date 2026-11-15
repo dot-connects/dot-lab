@@ -258,9 +258,8 @@ private fun AppsPanel() {
             }
         }
         Note(when (apps.size) {
-            0 -> "앱을 고르면 펫을 두 번 톡톡 눌러 바로 열 수 있어요. 비워 두면 춤춰요."
-            1 -> "두 번 톡톡 누르면 ${apps[0].label}이(가) 바로 열려요."
-            else -> "두 번 톡톡 누르면 말풍선에 ${apps.size}개 앱이 떠요(최대 ${kr.dot.catchpet.pet.PetApps.MAX}개)."
+            0 -> "앱을 고르면 두 번 톡톡 눌렀을 때 말풍선에 떠요. 말풍선 끝의 [펫 끄기]로 펫을 끌 수 있어요."
+            else -> "두 번 톡톡 누르면 말풍선에 ${apps.size}개 앱과 [펫 끄기]가 떠요(최대 ${kr.dot.catchpet.pet.PetApps.MAX}개)."
         })
     }
     if (picking) AppPicker(onDone = { picking = false; rev++ })

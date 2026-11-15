@@ -201,18 +201,16 @@ class PetService : Service() {
     /** Two taps: the chosen app, or the cloud of apps; nothing chosen = dance (operator 11-15). */
     private fun doubleTap(b: PetBrain) {
         closeBubble()
-        val apps = PetApps.load(this)
-        when (apps.size) {
-            0 -> b.doubleTap()
-            1 -> { b.tap(); PetApps.open(this, apps[0].pkg) }
-            else -> {
-                val p = params ?: return
-                val v = AppBubble(this, apps) { pkg -> closeBubble(); if (pkg != null) PetApps.open(this, pkg) }
-                val px = (size * density).roundToInt()
-                runCatching { wm.addView(v, v.params(p.x + px / 2, p.y, wm.currentWindowMetrics.bounds.width())) }.onSuccess { bubble = v }
-                b.tap()
-            }
+        // operator 11-15: the cloud always carries a "펫 끄기" at the end, so the chosen apps and the off switch share it
+        val apps = PetApps.load(this) + PetApps.App(PetApps.OFF, "펫 끄기", getDrawable(android.R.drawable.ic_menu_close_clear_cancel)!!)
+        val p = params ?: return
+        val v = AppBubble(this, apps) { pkg ->
+            closeBubble()
+            when (pkg) { null -> {}; PetApps.OFF -> PetService.stop(this); else -> PetApps.open(this, pkg) }
         }
+        val px = (size * density).roundToInt()
+        runCatching { wm.addView(v, v.params(p.x + px / 2, p.y, wm.currentWindowMetrics.bounds.width())) }.onSuccess { bubble = v }
+        if (apps.size == 1) b.doubleTap() else b.tap()   // nothing chosen: it still dances
     }
 
     private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) } }; bubble = null }

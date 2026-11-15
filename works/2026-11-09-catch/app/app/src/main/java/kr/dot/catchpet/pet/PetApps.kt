@@ -18,11 +18,13 @@ import kotlin.math.min
 import kotlin.math.roundToInt
 
 /**
- * Apps the pet opens on a double tap (operator 11-15): one = open it straight away, several = a thought-cloud bubble
- * over the pet (mockup allmenus C) with up to [MAX] icons; none = the pet dances as before.
+ * Apps the pet opens on a double tap (operator 11-15): a thought-cloud bubble over the pet (mockup allmenus C) with up
+ * to [MAX] chosen icons and a "펫 끄기" at the end; with none chosen the pet dances and the cloud holds only "펫 끄기".
  */
 object PetApps {
     const val MAX = 8
+    /** The cloud's last item: turn the floating pet off. */
+    const val OFF = "__pet_off__"
     private const val KEY = "pet_apps"
 
     class App(val pkg: String, val label: String, val icon: Drawable)
