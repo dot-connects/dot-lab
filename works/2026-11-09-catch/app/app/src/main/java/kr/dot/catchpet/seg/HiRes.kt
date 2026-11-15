@@ -15,7 +15,7 @@ import kotlin.concurrent.thread
  */
 object HiRes {
     private const val URL_ = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/1/selfie_multiclass_256x256.tflite"
-    private const val SIZE = 16_371_837L
+    private const val MIN_SIZE = 8_000_000L   // 16.4 MB today; a cut-off answer is far smaller
     private val busy = AtomicBoolean(false)
 
     fun file(ctx: Context) = File(ctx.filesDir, "models/selfie_multiclass_256x256.tflite")
@@ -23,7 +23,9 @@ object HiRes {
     /** Starts the download in the background unless the model is here or already coming. */
     fun fetch(ctx: Context) {
         val f = file(ctx)
-        if (f.isFile || !busy.compareAndSet(false, true)) return
+        val prefs = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
+        if (f.isFile || System.currentTimeMillis() - prefs.getLong("hires_failed", 0L) < 24 * 3600_000L) return
+        if (!busy.compareAndSet(false, true)) return
         thread(name = "hires-model", isDaemon = true) {
             try {
                 f.parentFile?.mkdirs()
@@ -31,9 +33,11 @@ object HiRes {
                 val c = URL(URL_).openConnection() as HttpURLConnection
                 c.connectTimeout = 15_000; c.readTimeout = 30_000
                 try { c.inputStream.use { i -> tmp.outputStream().use { o -> i.copyTo(o) } } } finally { c.disconnect() }
-                if (tmp.length() == SIZE && tmp.renameTo(f)) Log.i("HiRes", "model ready") else tmp.delete()
+                if (tmp.length() >= MIN_SIZE && tmp.renameTo(f)) Log.i("HiRes", "model ready")
+                else { tmp.delete(); prefs.edit().putLong("hires_failed", System.currentTimeMillis()).apply() }
             } catch (e: Exception) {
                 Log.w("HiRes", "download failed: ${e.message}")
+                prefs.edit().putLong("hires_failed", System.currentTimeMillis()).apply()
             } finally { busy.set(false) }
         }
     }

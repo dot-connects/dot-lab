@@ -40,10 +40,26 @@ object Yard {
         c(0xFF25553A), c(0xFF0E1326), c(0xFFFFF2B8), c(0xFF8C96C9), c(0x1496C8FF), c(0x29000000), c(0xFF4C5A9E), dark = true)
 
     /** The yard follows the clock: day 6-17, dusk 17-19, night otherwise. */
-    fun palNow(): Pal = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
-        in 6..16 -> DAY
-        in 17..18 -> DUSK
-        else -> NIGHT
+    fun palNow(): Pal {
+        val now = System.currentTimeMillis()
+        if (now - palAt > 60_000) { palAt = now; pal = when (Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) {
+            in 6..16 -> DAY
+            in 17..18 -> DUSK
+            else -> NIGHT
+        } }
+        return pal
+    }
+    private var palAt = 0L
+    private var pal = DAY
+
+    // a vertical gradient is rebuilt only when its ends or colours change (heat review 11-15: three new shaders a frame)
+    private val grads = HashMap<String, LinearGradient>()
+    private fun vgrad(key: String, y0: Float, y1: Float, colors: IntArray, stops: FloatArray?): LinearGradient {
+        val k = "$key|${y0.toInt()}|${y1.toInt()}|${colors.contentHashCode()}"
+        return grads[k] ?: LinearGradient(0f, y0, 0f, y1, colors, stops, Shader.TileMode.CLAMP).also {
+            if (grads.size > 64) grads.clear()
+            grads[k] = it
+        }
     }
 
     /** One frame's view: maps world (azimuth, feet line share of the height) to view px. */
@@ -98,7 +114,7 @@ object Yard {
 
     fun back(cv: Canvas, v: View) {
         val p = v.pal
-        fill.shader = LinearGradient(0f, v.hz - v.h * 0.62f, 0f, v.hz, p.sky0, p.sky1, Shader.TileMode.CLAMP)
+        fill.shader = vgrad("sky", v.hz - v.h * 0.62f, v.hz, intArrayOf(p.sky0, p.sky1), null)
         cv.drawRect(0f, 0f, v.w, v.hz.coerceAtLeast(0f), fill); fill.shader = null
         if (p.dark) for ((i, s) in stars.withIndex()) {
             val sx = v.x(s[0]); if (!v.on(sx, 4f)) continue
@@ -114,7 +130,7 @@ object Yard {
         v.x(55f).let { if (v.on(it, 160 * v.k)) house(cv, v, it, v.hz, v.h * 0.07f) }
         fence(cv, v, -20f, 40f, 2.4f, 0.045f)
         // floor: lighter far, darker near, soft flat patches
-        fill.shader = LinearGradient(0f, v.hz, 0f, v.h + v.dy.coerceAtLeast(0f), p.grass0, p.grass1, Shader.TileMode.CLAMP)
+        fill.shader = vgrad("floor", v.hz, v.h + v.dy.coerceAtLeast(0f), intArrayOf(p.grass0, p.grass1), null)
         cv.drawRect(0f, v.hz, v.w, v.h, fill); fill.shader = null
         for (d in patches) {
             val cx = v.x(d.az); val y = d.f * v.h + v.dy; val kk = (d.f - 0.52f) / 0.48f
@@ -124,11 +140,12 @@ object Yard {
         }
         // haze where the sky meets the ground
         val top = v.hz - v.h * 0.09f; val bot = v.hz + v.h * 0.07f; val hz0 = p.haze and 0xFFFFFF
-        fill.shader = LinearGradient(0f, top, 0f, bot, intArrayOf(hz0, hz0 or (0xAA shl 24), hz0), floatArrayOf(0f, 0.55f, 1f), Shader.TileMode.CLAMP)
+        fill.shader = vgrad("haze", top, bot, intArrayOf(hz0, hz0 or (0xAA shl 24), hz0), HAZE_STOPS)
         cv.drawRect(0f, top, v.w, bot, fill); fill.shader = null
         for (d in decor) spot(cv, v, d)
     }
 
+    private val HAZE_STOPS = floatArrayOf(0f, 0.55f, 1f)
     private val CLOUDS = arrayOf(floatArrayOf(-30f, 0.42f, 1.1f), floatArrayOf(70f, 0.3f, 0.8f), floatArrayOf(150f, 0.4f, 1f), floatArrayOf(230f, 0.34f, 0.9f), floatArrayOf(300f, 0.44f, 0.7f))
     private val FAR_TREES = arrayOf(floatArrayOf(-50f, 0.9f), floatArrayOf(15f, 1.1f), floatArrayOf(100f, 0.8f), floatArrayOf(200f, 1f), floatArrayOf(260f, 0.9f), floatArrayOf(-120f, 0.8f), floatArrayOf(150f, 0.7f))
 

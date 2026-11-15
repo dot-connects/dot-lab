@@ -206,7 +206,7 @@ private fun CatchView(
         var prev = 0L
         while (true) withFrameNanos { now ->
             // heat: at most ~60 frames a second, also on 90/120 Hz screens
-            if (prev != 0L && now - prev < 15_000_000L) return@withFrameNanos
+            if (prev != 0L && now - prev < (if (game.lively()) 15_000_000L else 32_000_000L)) return@withFrameNanos
             val dt = if (prev == 0L) 16f else ((now - prev) / 1e6f).coerceIn(0f, 48f)
             prev = now
             game.step(dt)
@@ -240,12 +240,15 @@ private fun CatchView(
                             return@awaitEachGesture
                         }
                         if (c.st != Claw.St.AIM) return@awaitEachGesture
+                        game.touching = true
                         c.aim(x / game.w)
-                        while (true) {
-                            val ch = awaitPointerEvent().changes.first()
-                            if (!ch.pressed) break
-                            c.aim(ch.position.x / game.d / game.w)
-                        }
+                        try {
+                            while (true) {
+                                val ch = awaitPointerEvent().changes.first()
+                                if (!ch.pressed) break
+                                c.aim(ch.position.x / game.d / game.w)
+                            }
+                        } finally { game.touching = false }
                     }
                 },
         ) {
@@ -315,6 +318,14 @@ private class CatchGame(
     private var vsw = 0f
     private var pulse = 0f
     private var toast: Toast? = null
+    var touching = false
+
+    /** Something on screen moves fast enough to need 60 fps (else 30: idle breathing and swaying read the same). */
+    fun lively(): Boolean {
+        val c = claw ?: return false
+        return touching || c.st != Claw.St.AIM || capsule != null || toast != null || landT >= 0f || pulse > 0f ||
+            abs(vsw) > 2e-4f || abs(swing) > 0.004f || abs(c.x - lastX) > 1e-4f
+    }
     private var frozen: Bitmap? = null
     private var grip: Future<Grip>? = null
     private var gripAt = 0f

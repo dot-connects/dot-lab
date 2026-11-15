@@ -100,7 +100,7 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
             modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50)).clickable { deleting = true }.padding(12.dp))
         Spacer(Modifier.height(16.dp))
     }
-    if (deleting && e != null) DeleteDialog(listOf(e), onDone = { yes -> deleting = false; if (yes) { removeEntries(ctx, listOf(e.id)); onBack() } })
+    if (deleting && e != null) DeleteDialog(listOf(e), onDone = { yes -> deleting = false; if (yes && removeEntries(ctx, listOf(e.id)) == 0) onBack() })
 }
 
 /** Makes [id] the pet and, when the pet is on screen, swaps it at once (operator 11-15: it did not change). */
@@ -110,25 +110,30 @@ internal fun usePet(ctx: Context, id: String) {
 }
 
 /** Deletes entries; the pet among them turns the floating pet off. */
-internal fun removeEntries(ctx: Context, ids: List<String>) {
+internal fun removeEntries(ctx: Context, ids: List<String>): Int {
     val pet = petId(ctx)
-    for (id in ids) Dex.delete(ctx, id)
-    if (pet != null && pet in ids) {
-        ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().remove("pet").apply()
+    val prefs = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
+    val gone = ids.filter { !AiWork.busy.containsKey(it) }   // a drawing in progress (maybe paid) finishes first
+    for (id in gone) { Dex.delete(ctx, id); prefs.edit().remove("ai_ok_$id").apply() }
+    if (pet != null && pet in gone) {
+        prefs.edit().remove("pet").apply()
         PetService.stop(ctx)
     }
+    return ids.size - gone.size
 }
 
 @Composable
 internal fun DeleteDialog(es: List<Dex.Entry>, onDone: (Boolean) -> Unit) {
     val who = if (es.size == 1) Dex.withObject(es[0].name) else "${es.size}마리를"
     val bought = es.any { it.ai.owned }
+    val drawing = es.count { AiWork.busy.containsKey(it.id) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = { onDone(false) },
         containerColor = Book.Paper,
         title = { Text("$who 지울까요?", fontFamily = Book.Display, color = Book.Ink) },
         text = {
-            Text("사진과 그려 본 그림이 이 폰에서 지워져요." + (if (bought) " 산 펫 그림도 함께 지워지고" else "") + " 되돌릴 수 없어요.",
+            Text("사진과 그려 본 그림이 이 폰에서 지워져요." + (if (bought) " 산 펫 그림도 함께 지워지고" else "") + " 되돌릴 수 없어요." +
+                (if (drawing > 0) " 지금 그리는 중인 ${drawing}마리는 다 그린 뒤에 지울 수 있어서 이번엔 빠져요." else ""),
                 fontFamily = Book.Body, color = Book.Ink)
         },
         confirmButton = { InkPill("지우기", Color(0xFFFF8A80), onClick = { onDone(true) }) },

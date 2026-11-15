@@ -46,8 +46,10 @@ object PetApps {
 
     /** The chosen apps still installed, in the chosen order. */
     fun load(ctx: Context): List<App> {
-        val all = installed(ctx).associateBy { it.pkg }
-        return chosen(ctx).mapNotNull { all[it] }
+        val pm = ctx.packageManager
+        return chosen(ctx).mapNotNull { pkg ->
+            runCatching { val ai = pm.getApplicationInfo(pkg, 0); App(pkg, pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai)) }.getOrNull()
+        }
     }
 
     fun open(ctx: Context, pkg: String): Boolean {

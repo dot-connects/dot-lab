@@ -110,7 +110,7 @@ class PetService : Service() {
                 hidden -> 1000L   // hidden: check the top app once a second
                 brain?.act == PetBrain.Act.SLEEP -> 200L
                 brain?.act == PetBrain.Act.IDLE -> 66L
-                else -> 33L
+                else -> 50L   // walking: 20 fps is enough at pet size (heat review 11-15)
             })
         }
     }

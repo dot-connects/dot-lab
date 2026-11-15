@@ -4,6 +4,7 @@ import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
+import kotlin.math.max
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 
@@ -84,7 +85,11 @@ object Dex {
             }
         }
         val usedNos = (all.map { it.no } + (root(ctx).list()?.mapNotNull { ENTRY_ID.find(it)?.groupValues?.get(1)?.toIntOrNull() } ?: emptyList()))
-        val no = (usedNos.maxOrNull() ?: 0) + 1
+        // numbers only go up: a deleted e5 must not come back as a new e5 (review 11-15: an unfinished drawing,
+        // a person's consent or the Worker's sheet slots of the old one would land on the new one)
+        val seq = File(root(ctx), "next.txt")
+        val no = max((usedNos.maxOrNull() ?: 0) + 1, runCatching { seq.readText().trim().toInt() }.getOrDefault(1))
+        root(ctx).mkdirs(); atomicWrite(seq, (no + 1).toString().toByteArray())
         val id = "e$no"
         val name = if (critterId != null) critterName(ctx, critterId) else cuteName(all.map { it.name }.toSet())
         dir(ctx, id).mkdirs()

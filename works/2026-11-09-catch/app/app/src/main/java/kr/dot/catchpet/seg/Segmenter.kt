@@ -59,20 +59,28 @@ class Segmenter(private val ctx: Context) {
 
     /** Segments [frames]() every 300 ms on the model thread. */
     fun start(frames: () -> Bitmap?) {
-        exec.scheduleWithFixedDelay({
+        lateinit var tick: Runnable
+        tick = Runnable {
+            if (closed) return@Runnable
             try {
-                if (paused) return@scheduleWithFixedDelay
-                val f = frames() ?: return@scheduleWithFixedDelay
-                val n = pass++
-                val raw = run(f, full = n % 2 == 0, pets = n % 4 == 0)
-                masks = listOfNotNull(
-                    people.update(raw.firstOrNull { it.kind == Mask.Kind.PERSON }),
-                    animals.update(raw.firstOrNull { it.kind == Mask.Kind.DOG || it.kind == Mask.Kind.CAT }),
-                )
+                val f = if (paused) null else frames()
+                if (f != null) {
+                    val n = pass++
+                    val raw = run(f, full = n % 2 == 0, pets = n % 4 == 0)
+                    if (raw.isNotEmpty()) seenAt = System.currentTimeMillis()
+                    masks = listOfNotNull(
+                        people.update(raw.firstOrNull { it.kind == Mask.Kind.PERSON }),
+                        animals.update(raw.firstOrNull { it.kind == Mask.Kind.DOG || it.kind == Mask.Kind.CAT }),
+                    )
+                }
             } catch (e: Exception) {
                 Log.w(TAG, "segment failed", e)
             }
-        }, 0, 300, TimeUnit.MILLISECONDS)
+            // heat review 11-15: an empty view is checked half as often
+            val quiet = System.currentTimeMillis() - seenAt > 2000
+            if (!closed && !exec.isShutdown) runCatching { exec.schedule(tick, if (quiet) 600L else 300L, TimeUnit.MILLISECONDS) }
+        }
+        exec.schedule(tick, 0, TimeUnit.MILLISECONDS)
     }
 
     /** Runs [block] on the model thread, after any loop pass in progress. */
@@ -189,7 +197,10 @@ class Segmenter(private val ctx: Context) {
     }
 
     /** Stops the loop and frees the models (on their own thread). */
+    @Volatile private var closed = false
+
     fun close() {
+        closed = true   // review 11-15: a delayed tick still ran after shutdown and rebuilt (leaked) every model
         exec.execute {
             seg?.close(); det?.close(); face?.close(); cls?.close(); touch?.close(); selfieBig?.close(); selfieSmall?.close(); selfieBig = null; selfieSmall = null
             seg = null; det = null; face = null; cls = null; touch = null
@@ -250,6 +261,22 @@ class Segmenter(private val ctx: Context) {
      */
     private fun faceIn(frame: Bitmap, pm: Mask): Boolean {
         val b = pm.box ?: return false
+        // the same person a moment ago had a face: no need to look again for 1 s (heat review 11-15)
+        val now = System.currentTimeMillis()
+        val last = faceBox
+        if (last != null && now - faceAt < 1000 && overlaps(last, b)) return true
+        return faceCheck(frame, pm, b).also { if (it) { faceBox = b; faceAt = now } else faceBox = null }
+    }
+    private var faceBox: Box? = null
+    private var faceAt = 0L
+    @Volatile private var seenAt = 0L
+    private fun overlaps(a: Box, b: Box): Boolean {
+        val iw = min(a.x1, b.x1) - max(a.x0, b.x0); val ih = min(a.y1, b.y1) - max(a.y0, b.y0)
+        if (iw <= 0 || ih <= 0) return false
+        return iw * ih * 2 > min(a.w * (a.y1 - a.y0 + 1), b.w * (b.y1 - b.y0 + 1))
+    }
+
+    private fun faceCheck(frame: Bitmap, pm: Mask, b: Box): Boolean {
         val sx = frame.width.toFloat() / pm.w; val sy = frame.height.toFloat() / pm.h
         val mx = b.w * sx * 0.2f; val my = b.h * sy * 0.2f
         val l = max(0, (b.x0 * sx - mx).toInt()); val t = max(0, (b.y0 * sy - my).toInt())
