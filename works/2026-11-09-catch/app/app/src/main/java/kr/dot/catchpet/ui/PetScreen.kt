@@ -148,7 +148,7 @@ fun PetScreen(onBack: () -> Unit) {
                     onClick = { kr.dot.catchpet.pet.KeyboardWatch.openSettings(ctx) })
             }
             Note(if (kbOn) "키보드가 열리면 녀석이 키보드 위로 올라가요." else
-                "꺼 둬도 홈이 아닌 앱에서는 녀석이 벽 위쪽에 머물러 키보드를 가리지 않아요. 켜면 어디서든 키보드만 딱 피해요. 누르면 리얼뽑기 스위치로 바로 가고, 켜면 이 화면으로 돌아와요.")
+                "꺼 둬도 홈이 아닌 앱에서는 녀석이 벽 위쪽에 머물러 키보드를 가리지 않아요(사용정보 접근을 허용했을 때). 켜면 어디서든 키보드만 딱 피해요. 누르면 리얼뽑기 스위치로 바로 가고, 켜면 이 화면으로 돌아와요.")
             if (!kbOn && kr.dot.catchpet.pet.KeyboardWatch.sideloaded(ctx)) {
                 Spacer(Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {

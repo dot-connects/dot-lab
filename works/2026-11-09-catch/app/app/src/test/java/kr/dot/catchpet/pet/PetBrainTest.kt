@@ -129,7 +129,7 @@ class PetBrainTest {
         val b = brain()
         b.upHigh(true)
         assertTrue(b.zone == Zone.LEFT || b.zone == Zone.RIGHT)
-        run(b, 30_000f) { assertTrue("stays in the upper half", it.y <= 800f * 0.5f + 0.01f) }
+        run(b, 30_000f) { assertTrue("whole pet stays above 45%", it.y + 24f <= 800f * 0.45f + 0.01f) }
         b.upHigh(false)
         assertEquals(Zone.FLOOR, b.zone)
     }
@@ -141,6 +141,24 @@ class PetBrainTest {
         b.drop(150f, 600f)
         assertEquals(Zone.LEFT, b.zone)
         assertTrue(b.y <= 400f)
+    }
+
+    @Test fun aTapOnAFlyingPetLetsItLand() {
+        val b = brain()
+        b.grab(200f, 300f)
+        b.fling(200f, 300f, vx = 1f, vy = 0f)
+        b.tap(); b.doubleTap()
+        assertEquals(Act.FALL, b.act)
+        run(b, 3000f)
+        assertEquals(700f, b.y, 0.01f)
+    }
+
+    @Test fun switchingAppsDoesNotWakeASleeper() {
+        val b = brain()
+        run(b, 10_000f, quiet = 180_000f)
+        assertEquals(Act.SLEEP, b.act)
+        b.upHigh(true)
+        assertEquals(Act.SLEEP, b.act)
     }
 
     @Test fun aThrownPetLandingWhileUpHighGoesBackUp() {
@@ -157,7 +175,7 @@ class PetBrainTest {
         b.grab(40f, 300f)
         b.drop(40f, 300f)
         assertEquals(Zone.LEFT, b.zone)
-        assertEquals(40f, b.slideOffset(), 0.01f)
+        assertEquals(40f - 24f, b.slideOffset(), 0.01f)   // from where the box's middle was
         run(b, 200f)
         assertEquals(0f, b.slideOffset(), 0.01f)
     }

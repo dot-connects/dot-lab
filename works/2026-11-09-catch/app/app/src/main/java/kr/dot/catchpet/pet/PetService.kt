@@ -110,7 +110,8 @@ class PetService : Service() {
             val home = if (homeOnly || usageOk) launcherOnTop() else false
             val hidden = homeOnly && !home
             // operator 11-15 plan A: away from home, without the keyboard watch, it stays high on a wall
-            brain?.upHigh(!homeOnly && !kbWatch && !home)
+            // only when usage access tells home from other apps: without it the pet keeps its floor (review 11-16 H1)
+            brain?.upHigh(usageOk && !homeOnly && !kbWatch && !home)
             if (hidden || bubble?.expired() == true) closeBubble()
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
@@ -217,7 +218,7 @@ class PetService : Service() {
         homes = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .filter { it.priority >= 0 }   // Settings FallbackHome sits at -1000
             .map { it.activityInfo.packageName }.filter { it != "android" && it != packageName }.toSet()
-        eventsAt = 0L; top = null
+        eventsAt = 0L   // keep `top`: after an hour in one app a rotation found no RESUMED event and read it as home
         val px = (size * density).roundToInt()
         val p = WindowManager.LayoutParams(
             px, px, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,

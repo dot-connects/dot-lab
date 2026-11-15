@@ -68,11 +68,13 @@ class PetBrain(
     fun upHigh(on: Boolean) {
         if (on == upHigh) return
         upHigh = on
+        val asleep = act == Act.SLEEP
         if (on) { if (act != Act.HANG && act != Act.FALL) goUp() }
         else if (movedUp) {
             movedUp = false
             if (onWall && act != Act.HANG && act != Act.FALL) { x = if (zone == Zone.LEFT) size else w - size; place(Zone.FLOOR) }
         }
+        if (asleep && act != Act.SLEEP) start(Act.SLEEP, Float.MAX_VALUE)   // switching apps doesn't wake it
         if (on && onWall) y = y.coerceIn(topLimit, max(topLimit, bottomLimit))
     }
 
@@ -85,7 +87,7 @@ class PetBrain(
     }
 
     val topLimit get() = h * 0.2f
-    val bottomLimit get() = if (upHigh) min(floorY - size, h * 0.5f) else floorY - size
+    val bottomLimit get() = if (upHigh) min(floorY - size, h * 0.45f - size / 2) else floorY - size
 
     /** Where the drawing puts the pet across the wall while it slides in (0 once it is there). */
     fun slideOffset(): Float {
@@ -161,6 +163,7 @@ class PetBrain(
 
     /** A tap: a smile, a big hop or a wiggle, so it is not the same every time (operator 11-15). */
     fun tap() {
+        if (act == Act.FALL || act == Act.HANG) return   // a tap on a flying pet left it walking in mid-air (review 11-16)
         val r = rnd()
         when {
             r < 0.45f -> start(Act.SMILE, 1400f)
@@ -169,7 +172,10 @@ class PetBrain(
         }
     }
 
-    fun doubleTap() { start(Act.DANCE, 3000f) }
+    fun doubleTap() {
+        if (act == Act.FALL || act == Act.HANG) return
+        start(Act.DANCE, 3000f)
+    }
 
     fun grab(px: Float, py: Float) { act = Act.HANG; t = 0f; x = px; y = py }
 
@@ -179,9 +185,9 @@ class PetBrain(
     fun drop(px: Float, py: Float) {
         x = px; y = py
         when {
-            px < w * 0.18f -> { place(Zone.LEFT); slideIn(px); movedUp = false }
-            px > w * 0.82f -> { place(Zone.RIGHT); slideIn(px - w); movedUp = false }
-            upHigh -> { place(if (px < w / 2) Zone.LEFT else Zone.RIGHT); slideIn(if (px < w / 2) px else px - w); movedUp = true }
+            px < w * 0.18f -> { place(Zone.LEFT); slideIn(px - size / 2); movedUp = false }
+            px > w * 0.82f -> { place(Zone.RIGHT); slideIn(px - w + size / 2); movedUp = false }
+            upHigh -> { place(if (px < w / 2) Zone.LEFT else Zone.RIGHT); slideIn(if (px < w / 2) px - size / 2 else px - w + size / 2); movedUp = true }
             zone == Zone.BEHIND -> place(Zone.BEHIND)
             else -> { zone = Zone.FLOOR; act = Act.FALL; vy = 0f; vx = 0f; t = 0f }
         }
