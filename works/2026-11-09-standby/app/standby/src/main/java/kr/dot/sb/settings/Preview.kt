@@ -70,7 +70,7 @@ import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.clock.ClockRegistry
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.theme.clockStyle
-import kr.dot.sb.ui.theme.drawnTheme
+import kr.dot.sb.ui.theme.baseTheme
 
 /** This phone's kind: a hinge phone gets the preview's 커버|안쪽 toggle, a bar phone has one screen (r10: no device menu). */
 enum class Phone { FOLD, FLIP, BAR }
@@ -233,7 +233,7 @@ class PreviewState(night: Boolean = false, inner: Boolean = false, portrait: Boo
 
 /** 밤 shows the night look only where the dream would: the holder's rule, with "it is dark and late". */
 private fun AppConfig.nightApplies(): Boolean =
-    NightRules.on(nightMode, displayOff, scheduled = true, auto = true, forceNight = drawnTheme().tokens.light)
+    NightRules.on(nightMode, displayOff, scheduled = true, auto = true, forceNight = baseTheme().tokens.light)
 
 @Composable
 private fun rememberLook(p: Preview, st: PreviewState, phone: Phone): PreviewLook {

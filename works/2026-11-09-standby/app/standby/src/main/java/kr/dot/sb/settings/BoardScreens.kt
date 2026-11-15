@@ -45,6 +45,7 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.SlotOptions
+import kr.dot.sb.ui.theme.drawnTheme
 import kr.dot.sb.model.WidgetMode
 import kotlin.math.roundToInt
 import androidx.compose.material3.Switch
@@ -331,6 +332,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     val acc = LocalAccent.current
     fun edit(f: (Board) -> Board) = update { BoardOps.replace(it, id, f) }
+    val cardPlates = config.boardBg == kr.dot.sb.model.BoardBg.THEME &&
+        config.drawnTheme().tokens.plateStyle.let { it == kr.dot.sb.ui.theme.PlateStyle.FILL || it == kr.dot.sb.ui.theme.PlateStyle.GLASS }
     /** [moved]: old stack index -> new one (null = the card left); a widget's options and id follow it (D6). */
     fun editSlot(slot: Int, moved: (Int) -> Int?, f: (List<CardType>) -> List<CardType>) = edit { b ->
         BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
@@ -389,6 +392,9 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                     onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
                     onRemove = { j -> editSlot(s, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } } },
                     onSettings = { j -> nav.push(Routes.widget(id, s, j)) },
+                    // 카드 색 only where cards are filled plates on the theme's own background (RULE / OUTLINE have none)
+                    plates = { j -> board.options["$s:$j"]?.plate },
+                    onPlate = if (!cardPlates) null else { j, c -> edit { b -> b.copy(options = b.options + ("$s:$j" to (b.options["$s:$j"] ?: SlotOptions()).copy(plate = c))) } },
                 )
             }
 
@@ -488,7 +494,11 @@ fun CardStackSection(
     footer: String? = null,
     /** Phone widget rows get a settings button (boards only). */
     onSettings: ((Int) -> Unit)? = null,
+    /** r11 카드 색: card [j]'s own plate (null = the theme's); with [onPlate] every other row's 설정 opens the picker. */
+    plates: (Int) -> Long? = { null },
+    onPlate: ((Int, Long?) -> Unit)? = null,
 ) {
+    var open by remember { mutableStateOf<Int?>(null) }
     Section(title, footer) {
         cards.forEachIndexed { j, card ->
             item {
@@ -496,6 +506,8 @@ fun CardStackSection(
                     T(labels.getOrElse(j) { card.ko }, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
                     if (card == CardType.WIDGET && onSettings != null) {
                         Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
+                    } else if (onPlate != null) {
+                        Box(Modifier.heightIn(min = 48.dp).clickable { open = if (open == j) null else j }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
                     }
                     if (cards.size > 1) {
                         Box(Modifier.size(44.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
@@ -504,6 +516,13 @@ fun CardStackSection(
                     } else {
                         T("바꾸기", 13.sp, 500, SK.muted, Modifier.padding(end = 12.dp))
                     }
+                }
+            }
+            if (onPlate != null && open == j && card != CardType.WIDGET) item {
+                val plate = plates(j)
+                ControlRow("카드 색", note = "이 카드만 다른 색이에요. 글자 색은 저절로 맞춰지고, 밤에는 밤 색이에요.") {
+                    Segmented(listOf("테마 색 따라감", "직접 고르기"), if (plate == null) 0 else 1, { i -> onPlate(j, if (i == 0) null else (plate ?: ClockStyle.SWATCHES[0])) })
+                    if (plate != null) ColorPalette(plate, { c -> onPlate(j, c) }, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }

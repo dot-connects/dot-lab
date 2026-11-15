@@ -3,6 +3,7 @@ package kr.dot.sb.ui.theme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
@@ -14,7 +15,10 @@ import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
+import kr.dot.sb.model.MyTheme
 import kr.dot.sb.model.Theme
+import kr.dot.sb.model.ThemeEdit
+import java.time.LocalTime
 
 /*
  * Theme system (r9): ten themes, one body per card/surface. Everything that differs between themes is a token
@@ -89,6 +93,12 @@ object Themes {
 
     private fun r9(id: Theme, tk: ThemeTokens) = StandbyTheme(id, tk, defaults(tk))
 
+    /**
+     * r11: [base] drawn with edited tokens [tk]. Clock defaults come from [still] (the edit without 시간 따라 흐름), so
+     * hero digits and hands follow an edited accent/ink but never the time of day.
+     */
+    fun edited(base: StandbyTheme, tk: ThemeTokens, still: ThemeTokens = tk): StandbyTheme = StandbyTheme(base.id, tk, defaults(still))
+
     val IPHONE = r9(Theme.IPHONE, ThemeTokens.IPHONE)
     val PAPER = r9(Theme.PAPER, ThemeTokens.PAPER)
     val MOODLIGHT = r9(Theme.MOODLIGHT, ThemeTokens.MOODLIGHT)
@@ -131,8 +141,70 @@ object Themes {
 /** The style [face] is drawn with: the user's own edit ([AppConfig.styles] holds edits only, r9 D4), else the theme's default. */
 fun AppConfig.clockStyle(face: FaceId): ClockStyle = styles[face] ?: drawnTheme().clockDefaults(face)
 
-/** The theme as this config draws it: on a dark board background a light theme is its dark twin ([Themes.on]). */
-fun AppConfig.drawnTheme(): StandbyTheme = Themes.on(theme, boardBg, Color(boardBgColor))
+/** The theme without the user's edit (r11): night logic and `light` read this, so night never changes with an edit. */
+fun AppConfig.baseTheme(): StandbyTheme = Themes.on(theme, boardBg, Color(boardBgColor))
+
+/**
+ * The theme as this config draws it: on a dark board background a light theme is its dark twin ([Themes.on]); on the
+ * theme background the theme's edit (r11, [AppConfig.themeEdits]) is applied, with 시간 따라 흐름 at [at] (null = no
+ * flow). No edit = the [baseTheme] instance itself.
+ */
+fun AppConfig.drawnTheme(at: LocalTime? = null): StandbyTheme {
+    val base = baseTheme()
+    val e = themeEdits[theme]
+    if (boardBg != BoardBg.THEME || e == null) return base
+    val bucket = if (e.flow != null && at != null) at.toSecondOfDay() / 600 + 1 else 0
+    return EditCache.get(Triple(theme, e, bucket)) {
+        val still = base.tokens.with(e)
+        val tk = if (bucket == 0) still else base.tokens.with(e, LocalTime.ofSecondOfDay((bucket - 1) * 600L))
+        Themes.edited(base, tk, still)
+    }
+}
+
+/** Edited themes by (theme, edit, 10-minute flow bucket): one immutable map swapped whole (holder thread + composition). */
+private object EditCache {
+    private const val MAX = 16
+    @Volatile private var map: Map<Triple<Theme, ThemeEdit, Int>, StandbyTheme> = emptyMap()
+
+    fun get(k: Triple<Theme, ThemeEdit, Int>, make: () -> StandbyTheme): StandbyTheme {
+        map[k]?.let { return it }
+        val v = make()
+        val m = LinkedHashMap(map)
+        m[k] = v
+        while (m.size > MAX) m.remove(m.keys.first())
+        map = m
+        return v
+    }
+}
+
+/** Colour fields of a [ClockStyle] the theme sets: what a theme change moves, and what an edit may rebase. */
+private val THEMED: List<Pair<(ClockStyle) -> Any, (ClockStyle, ClockStyle) -> ClockStyle>> = listOf(
+    { s: ClockStyle -> s.color } to { s, d -> s.copy(color = d.color) },
+    { s: ClockStyle -> s.color2 } to { s, d -> s.copy(color2 = d.color2) },
+    { s: ClockStyle -> s.background } to { s, d -> s.copy(background = d.background) },
+    { s: ClockStyle -> s.bgColor } to { s, d -> s.copy(bgColor = d.bgColor) },
+    { s: ClockStyle -> s.bgColor2 } to { s, d -> s.copy(bgColor2 = d.bgColor2) },
+    { s: ClockStyle -> s.numeralColor } to { s, d -> s.copy(numeralColor = d.numeralColor) },
+    { s: ClockStyle -> s.handColor } to { s, d -> s.copy(handColor = d.handColor) },
+    { s: ClockStyle -> s.secondColor } to { s, d -> s.copy(secondColor = d.secondColor) },
+    { s: ClockStyle -> s.weekdayColor } to { s, d -> s.copy(weekdayColor = d.weekdayColor) },
+    { s: ClockStyle -> s.tickColor } to { s, d -> s.copy(tickColor = d.tickColor) },
+    { s: ClockStyle -> s.litDotColor } to { s, d -> s.copy(litDotColor = d.litDotColor) },
+)
+
+/**
+ * r11 (plan round 3): kept clock styles from drawn theme [old] to [new], field by field: a colour still equal to
+ * [old]'s default moves to [new]'s, the user's own pick stays. A style left equal to the new default is dropped.
+ */
+private fun rebaseStyles(styles: Map<FaceId, ClockStyle>, old: StandbyTheme, new: StandbyTheme): Map<FaceId, ClockStyle> {
+    if (old === new) return styles
+    return styles.mapNotNull { (f, s) ->
+        val o = old.clockDefaults(f)
+        val d = new.clockDefaults(f)
+        val r = THEMED.fold(s) { acc, (get, set) -> if (get(s) == get(o)) set(acc, d) else acc }
+        if (r == d) null else f to r
+    }.toMap()
+}
 
 /**
  * The one way to change theme (r9 D4: settings, the pull-down panel and previews all call it). Edited clock styles keep
@@ -144,15 +216,45 @@ fun AppConfig.withTheme(th: Theme): AppConfig {
     val t = copy(theme = th).drawnTheme()
     val kept = styles.mapNotNull { (f, s) ->
         val d = t.clockDefaults(f)
-        val r = s.copy(
-            color = d.color, color2 = d.color2, background = d.background, bgColor = d.bgColor, bgColor2 = d.bgColor2,
-            numeralColor = d.numeralColor, handColor = d.handColor, secondColor = d.secondColor, weekdayColor = d.weekdayColor,
-            tickColor = d.tickColor, litDotColor = d.litDotColor,
-        )
+        val r = THEMED.fold(s) { acc, (_, set) -> set(acc, d) }
         if (r == d) null else f to r
     }.toMap()
     return copy(theme = th, styles = kept)
 }
+
+/**
+ * r11: set [th]'s edit (null or an empty edit clears it). Sanitised; when [th] is the current theme the kept clock
+ * styles are rebased ([rebaseStyles]) so an edited accent/ink reaches clocks whose font or size the user changed.
+ */
+fun AppConfig.withThemeEdit(th: Theme, e: ThemeEdit?): AppConfig {
+    val clean = e?.sanitized(th)?.takeUnless { it.isEmpty }
+    val edits = if (clean == null) themeEdits - th else themeEdits + (th to clean)
+    if (edits == themeEdits) return this
+    val next = copy(themeEdits = edits)
+    return if (th != theme) next else next.copy(styles = rebaseStyles(styles, drawnTheme(), next.drawnTheme()))
+}
+
+/** r11: the board background (and the 단색 colour), rebasing kept clock styles like [withThemeEdit]. */
+fun AppConfig.withBoardBg(bg: BoardBg, color: Long = boardBgColor): AppConfig {
+    if (bg == boardBg && color == boardBgColor) return this
+    val next = copy(boardBg = bg, boardBgColor = color)
+    return next.copy(styles = rebaseStyles(styles, drawnTheme(), next.drawnTheme()))
+}
+
+/** r11 내 테마 list (save, rename, delete). */
+fun AppConfig.withMyThemes(list: List<MyTheme>): AppConfig = copy(myThemes = list)
+
+/** r11: switch to a saved 내 테마 — its base theme on the theme background (so the look shows), with its edit. */
+fun AppConfig.applyMyTheme(m: MyTheme): AppConfig = withTheme(m.base).withBoardBg(BoardBg.THEME).withThemeEdit(m.base, m.edit)
+
+/**
+ * r11 시간 따라 흐름: the time edited themes are drawn at, in 10-minute steps (null = no flow). Dynamic, not static: only
+ * [ProvideTheme] reads it, and only for a config with a flow, so the root's 10-minute change recomposes nothing else.
+ */
+val LocalThemeTime = compositionLocalOf<LocalTime?> { null }
+
+/** [t] truncated to its 10-minute step (the flow's resolution). */
+fun themeTimeOf(t: LocalTime): LocalTime = LocalTime.ofSecondOfDay(t.toSecondOfDay() / 600 * 600L)
 
 val LocalTheme = staticCompositionLocalOf { Themes.IPHONE }
 
@@ -165,8 +267,16 @@ fun ProvideTheme(theme: Theme, content: @Composable () -> Unit) = ProvideTheme(T
 
 /** Provide the config's drawn theme, board background and text size (StandbyRoot, BoardView, CardView and settings call it). */
 @Composable
-fun ProvideTheme(c: AppConfig, content: @Composable () -> Unit) =
-    CompositionLocalProvider(LocalTextScale provides c.textSize.f) { ProvideTheme(c.drawnTheme(), c.boardBg to Color(c.boardBgColor), content) }
+fun ProvideTheme(c: AppConfig, content: @Composable () -> Unit) {
+    // the time is read only when this config draws a flow (unedited users never recompose from it)
+    val at = if (c.boardBg == BoardBg.THEME && c.themeEdits[c.theme]?.flow != null) LocalThemeTime.current else null
+    CompositionLocalProvider(LocalTextScale provides c.textSize.f) { ProvideTheme(c.drawnTheme(at), c.boardBg to Color(c.boardBgColor), content) }
+}
+
+/** [ProvideTheme] at [at] (StandbyRoot: the state's minute; settings: now or the editor's 아침/낮/저녁 chip). */
+@Composable
+fun ProvideTheme(c: AppConfig, at: LocalTime, content: @Composable () -> Unit) =
+    CompositionLocalProvider(LocalThemeTime provides themeTimeOf(at)) { ProvideTheme(c, content) }
 
 /** Always provides (never "skip when equal"): a branch on the value would reset everything remembered below on a switch. */
 @Composable

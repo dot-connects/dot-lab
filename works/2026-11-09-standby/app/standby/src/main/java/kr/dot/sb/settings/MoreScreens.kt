@@ -51,7 +51,7 @@ import kr.dot.sb.ui.screens.RootStart
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.StandbyActions
-import kr.dot.sb.ui.theme.drawnTheme
+import kr.dot.sb.ui.theme.baseTheme
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneOffset
@@ -106,7 +106,7 @@ fun NotifScreen(config: AppConfig, update: Update, back: () -> Unit) {
 @Composable
 fun NightScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     val never = config.displayOff == DisplayOff.NEVER
-    val th = config.drawnTheme()
+    val th = config.baseTheme()
     val light = th.tokens.light
     // a light theme always goes dark at night: a stored 안 씀 reads as 어두워지면 (the stored value comes back on a dark theme)
     val mode = if (light && config.nightMode == NightMode.OFF) NightMode.AUTO else config.nightMode

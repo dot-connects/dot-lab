@@ -9,6 +9,25 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.FontId
+import kr.dot.sb.model.GlowShape
+import kr.dot.sb.model.ThemeEdit
+import java.time.LocalTime
+
+/**
+ * 시간 따라 흐름 (plan-r11 A4): the colour at [t] over the day, linear in sRGB. 3 stops: 06:00 → 13:00 → 21:00;
+ * 2 stops: 06:00 → 21:00. Null 21:00–05:59 (night has no flow: the edit's own colour applies).
+ */
+fun flowColor(stops: List<Long>, t: LocalTime): Color? {
+    if (stops.size !in 2..3) return null
+    val m = t.toSecondOfDay() / 60f
+    if (m < 6 * 60f || m >= 21 * 60f) return null
+    val marks = if (stops.size == 3) listOf(6 * 60f, 13 * 60f, 21 * 60f) else listOf(6 * 60f, 21 * 60f)
+    val i = (1 until marks.size).first { m < marks[it] || it == marks.size - 1 }
+    val f = ((m - marks[i - 1]) / (marks[i] - marks[i - 1])).coerceIn(0f, 1f)
+    val a = Color(stops[i - 1]); val b = Color(stops[i])
+    fun ch(x: Float, y: Float) = x + (y - x) * f
+    return Color(ch(a.red, b.red), ch(a.green, b.green), ch(a.blue, b.blue), ch(a.alpha, b.alpha))
+}
 
 /*
  * r9 theme tokens (plan-r9 "Token values"): everything a card needs to draw itself in a theme. One layout per card
@@ -31,6 +50,8 @@ data class BgSpec(
     val glow: Color? = null,
     val glowAt: Offset = Offset(0.5f, 0.5f),
     val glowSize: Offset = Offset(0.6f, 0.55f),
+    /** r11 둘 (TWIN): a second glow of the same colour and size here (the mirror of [glowAt]). */
+    val glow2At: Offset? = null,
 ) {
     val base: Color get() = stops.first()
 }
@@ -84,6 +105,27 @@ object Contrast {
         return out
     }
 
+    /** r11 editor warnings (the settings screen words them: 글자가 흐려요 · 작은 글자가 흐려요 · 강조 색이 흐려요). */
+    enum class Warning { INK, INK2, ACCENT }
+
+    /**
+     * r11 A3: what [edited] made harder to read than the theme's own default [base]. Floors are relative (min of the
+     * usual floor and the base's own ratio), so a theme's intentional look (RADIO's accent) never warns. Manual picks
+     * below them are allowed; the editor only says so.
+     */
+    fun warnings(edited: ThemeTokens, base: ThemeTokens): List<Warning> {
+        fun ink(t: ThemeTokens) = t.surfaces.minOf { ratio(t.ink, it) }
+        fun ink2(t: ThemeTokens) = t.surfaces.minOf { ratio(t.ink.copy(alpha = t.ink2).compositeOver(it), it) }
+        fun accent(t: ThemeTokens) = t.pages.minOf { ratio(t.accent, t.plate.compositeOver(it)) }
+        // float noise on an unchanged token must not warn
+        fun low(v: Float, floor: Float, b: Float) = v < minOf(floor, b) - 0.01f
+        return listOfNotNull(
+            Warning.INK.takeIf { low(ink(edited), 4.5f, ink(base)) },
+            Warning.INK2.takeIf { low(ink2(edited), 3f, ink2(base)) },
+            Warning.ACCENT.takeIf { low(accent(edited), 3f, accent(base)) },
+        )
+    }
+
     /** [c] if it reaches 3:1 on every colour in [against] (translucent [c] composited first), else [fallback]. */
     fun safe(c: Color, against: List<Color>, fallback: Color): Color =
         if (against.all { ratio(c.compositeOver(it), it) >= 3f }) c else fallback
@@ -119,11 +161,20 @@ data class ThemeTokens(
     /** Label letter spacing in em. */
     val tracking: Float,
     val roles: Roles,
+    /** r11: the theme draws every role in its accent/ink pair ([Roles.mono]); set by `make`, read by [with]. */
+    val monoRoles: Boolean = false,
+    /** r11 NEON 빛 번짐 세기: scales the OUTLINE halo alphas (1 = the theme's). */
+    val halo: Float = 1f,
+    /** r11 PAPER 구분선 색: the RULE line colour (null = ink at 25 %). Not a surface. */
+    val rule: Color? = null,
 ) {
+    /** The page colours: each bg stop and the glow over it. */
+    val pages: List<Color> get() = bg.stops + (bg.glow?.let { g -> bg.stops.map { g.compositeOver(it) } } ?: emptyList())
+
     /** Every opaque colour text can sit on: each bg stop, the glow over it, and both plates composited over those. */
     val surfaces: List<Color>
         get() {
-            val pages = bg.stops + (bg.glow?.let { g -> bg.stops.map { g.compositeOver(it) } } ?: emptyList())
+            val pages = this.pages
             return pages + pages.map { plate.compositeOver(it) } + pages.map { plate2.compositeOver(it) }
         }
 
@@ -148,7 +199,86 @@ data class ThemeTokens(
         )
     }
 
+    /**
+     * r11: these tokens with the user's [e] (plan-r11 A2, the one place an edit is applied), at [at] for 시간 따라 흐름
+     * (null = no flow). Text colours are re-derived on the new surfaces: accent text by [Contrast.fit] (a hand-set
+     * accent text that still reads is kept), roles derived or mono as the theme does. [light] never changes; [fitLight]
+     * is only the direction text moves (a card's own plate, A6).
+     */
+    fun with(e: ThemeEdit, at: LocalTime? = null, fitLight: Boolean = light): ThemeTokens {
+        val strength = ((e.glowStrength ?: 0.5f) * 2f)
+        val flowC = e.flow?.let { f -> at?.let { flowColor(f, it) } }
+        var b = bg
+        e.bg?.let { s -> b = b.copy(stops = s.map { Color(it) }) }
+        val glow = b.glow
+        if (glow != null) {
+            // 무드등 / 촛불: the flow and the picked colour replace the glow's colour, its alpha stays the theme's × 세기
+            val c = flowC ?: e.glow?.let { Color(it) } ?: glow
+            b = b.copy(glow = c.copy(alpha = (glow.alpha * strength).coerceIn(0f, 1f)))
+        } else if (flowC != null) {
+            b = b.copy(stops = listOf(flowC) + b.stops.drop(1))   // 하늘: the top of the sky
+        }
+        e.glowAt?.let { (x, y) -> b = b.copy(glowAt = Offset(x, y)) }
+        when (e.glowShape) {
+            GlowShape.SUNSET -> b = b.copy(glowAt = Offset(0.5f, 1.15f), glowSize = Offset(1.1f, 0.8f), glow2At = null)
+            GlowShape.TWIN -> b = b.copy(glow2At = Offset(1f - b.glowAt.x, 1f - b.glowAt.y))
+            GlowShape.ROUND, null -> {}
+        }
+        val inkC = e.ink?.let { Color(it) } ?: ink
+        val acc = e.accent?.let { Color(it) } ?: accent
+        var p = plate
+        var p2 = plate2
+        e.plate?.let { v ->
+            val c = Color(v)
+            p = c.copy(alpha = plate.alpha)
+            p2 = Hsl.shift(c, if (light) -0.06f else 0.06f).copy(alpha = plate2.alpha)
+        }
+        // NEON / TERMINAL: the progress track is ink-tinted, so it follows an edited ink
+        if (plateStyle == PlateStyle.OUTLINE && e.ink != null) p2 = inkC.copy(alpha = plate2.alpha)
+        e.plateAlpha?.let { a -> p = p.copy(alpha = a); p2 = p2.copy(alpha = a) }
+        if (e.plateStyle == PlateStyle.GLASS) { p = p.copy(alpha = minOf(p.alpha, GLASS_MAX)); p2 = p2.copy(alpha = minOf(p2.alpha, GLASS_MAX)) }
+        val t = copy(
+            bg = b, ink = inkC, accent = acc, plate = p, plate2 = p2, plateStyle = e.plateStyle ?: plateStyle,
+            radiusRatio = e.radius ?: radiusRatio, halo = if (e.glowStrength != null) strength else halo,
+            rule = e.rule?.let { Color(it) } ?: rule,
+        )
+        val s = t.surfaces
+        // an untouched accent keeps its text colour as the theme set it (RADIO's hand-set one included)
+        val accText = if (e.accent == null) accentText else Contrast.fit(acc, s, fitLight, 4.5f)
+        val roles = if (monoRoles) Roles.mono(acc, inkC) else Roles.derive(Roles.IOS, s, fitLight)
+        return t.copy(accentText = accText, roles = roles)
+    }
+
+    /** r11 카드 색: one card's tokens on its own plate, and that plate composited over the page (what its text sits on). */
+    data class CardPlate(val tokens: ThemeTokens, val over: Color)
+
+    /**
+     * r11 A6 (plan round 4/5): these (drawn) tokens on a card whose plate is [c], at the theme's plate alpha (GLASS:
+     * [GLASS_MAX]). Ink, accent text and roles are fitted on that one surface, in the direction that reads better (dark
+     * text on a plate lighter than the black/white crossover); ink2/ink3 are raised where the secondary text would
+     * fall under 3:1 on it.
+     */
+    fun cardPlate(c: Long): CardPlate {
+        val a = if (plateStyle == PlateStyle.GLASS) GLASS_MAX else plate.alpha
+        val p = Color(c).copy(alpha = a)
+        val over = p.compositeOver(bg.base)
+        val s = listOf(over)
+        // dark text when black beats white on this plate (luminance > ≈ 0.18)
+        val lightPlate = Contrast.ratio(Color(0f, 0f, 0f), over) > Contrast.ratio(Color(1f, 1f, 1f), over)
+        val inkC = Contrast.fit(ink, s, lightPlate, 4.5f)
+        fun second(al: Float) = Contrast.ratio(inkC.copy(alpha = al).compositeOver(over), over)
+        var i2 = ink2
+        while (second(i2) < 3f && i2 < 1f) i2 = minOf(1f, i2 + 0.02f)
+        val p2 = Hsl.shift(Color(c), if (lightPlate) -0.06f else 0.06f).copy(alpha = if (plateStyle == PlateStyle.GLASS) GLASS_MAX else plate2.alpha)
+        val acc = Contrast.fit(accentText, s, lightPlate, 4.5f)
+        val roles = if (monoRoles) Roles.mono(accent, inkC) else Roles.derive(Roles.IOS, s, lightPlate)
+        return CardPlate(copy(ink = inkC, ink2 = i2, ink3 = (ink3 + (i2 - ink2)).coerceAtMost(1f), plate = p, plate2 = p2, accentText = acc, roles = roles), over)
+    }
+
     companion object {
+        /** 카드 모양 유리 caps both plates' alpha here (plan-r11 round 3), so the page shows through. */
+        const val GLASS_MAX = 0.55f
+
         /** The page [onDark] assumes: between the dark board presets (graphite, midnight, amber …). */
         val DARK_PAGE = Color(0xFF111113)
         val NIGHT_INK = Color(0xFFB9A48C)
@@ -168,7 +298,7 @@ data class ThemeTokens(
                 font, weight, digit, cap, light, mono, labelIcons, tracking, Roles.IOS,
             )
             val roles = if (monoRoles) Roles.mono(t.accent, t.ink) else Roles.derive(Roles.IOS, t.surfaces, light)
-            return t.copy(roles = roles)
+            return t.copy(roles = roles, monoRoles = monoRoles)
         }
 
         private val sofia: (Int) -> FontFamily = { Fonts.clock(FontId.CONDENSED, it) }

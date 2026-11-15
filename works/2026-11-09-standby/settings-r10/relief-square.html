@@ -1,0 +1,183 @@
+<title>입체 네모 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: control bar, then the same face in three slot shapes (wide screen, square card, tall card), notes under. */
+:root { --bg: #f2f1ee; --fg: #1b1c1f; --muted: #5d6068; --line: #d9d7d1; --chip: #fff; --accent: #b4461a; --ui: "IBM Plex Sans KR", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+h1 { font: 600 1.5rem/1.3 var(--ui); margin: 0; }
+.lede { margin: 6px 0 0; color: var(--muted); line-height: 1.6; max-width: 66ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; padding: 12px 0; border-block: 1px solid var(--line); }
+.grp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font-size: .78rem; color: var(--muted); }
+button.t { font: 500 .85rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+button.t[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.row { display: grid; grid-template-columns: 2.16fr 1fr .42fr; gap: 14px; align-items: end; }
+@media (max-width: 640px) { .row { grid-template-columns: 1fr; } .row .sq { max-width: 260px; } .row .tall { max-width: 130px; } }
+figure { margin: 0; display: grid; gap: 6px; min-width: 0; }
+figcaption { font-size: .82rem; color: var(--muted); }
+.slot { width: 100%; max-width: 100%; border-radius: 16px; overflow: hidden; background: #0a0a0a; box-shadow: 0 12px 28px rgba(0,0,0,.22); }
+.slot svg { display: block; width: 100%; height: auto; }
+ul.notes { margin: 0; padding-left: 1.1em; color: var(--muted); line-height: 1.65; font-size: .92rem; max-width: 72ch; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>입체 네모 · 다듬은 시안</h1>
+    <p class="lede">같은 시계를 세 가지 칸 모양(가로 화면 전체, 정사각형 카드, 세로로 긴 카드)에 그렸습니다. 지난 판을 바탕으로 바늘 길이는 그대로 두고, 고급스러움과 입체감을 다듬었습니다. 위 버튼으로 지난 판과 비교할 수 있습니다. 시계는 실제 시각으로 움직입니다.</p>
+  </header>
+  <div class="bar">
+    <div class="grp"><span class="lbl">판</span><button class="t" id="v-new" type="button" aria-pressed="true">다듬은 판</button><button class="t" id="v-old" type="button" aria-pressed="false">지난 판</button></div>
+    <div class="grp"><span class="lbl">다이얼</span><button class="t" id="c-ice" type="button" aria-pressed="true">아이스</button><button class="t" id="c-coal" type="button" aria-pressed="false">코얼</button><button class="t" id="c-beige" type="button" aria-pressed="false">베이지</button></div>
+  </div>
+  <div class="row">
+    <figure><div class="slot"><svg id="f-wide" aria-label="가로 화면"></svg></div><figcaption>가로 화면 전체</figcaption></figure>
+    <figure class="sq"><div class="slot"><svg id="f-sq" aria-label="정사각형 카드"></svg></div><figcaption>정사각형 카드</figcaption></figure>
+    <figure class="tall"><div class="slot"><svg id="f-tall" aria-label="세로 카드"></svg></div><figcaption>세로 카드</figcaption></figure>
+  </div>
+  <ul class="notes" id="notes-refined">
+    <li><b>바늘 길이는 늘 같습니다.</b> 지난 판처럼 짧은 쪽에 맞춘 고정 길이이고, 분침은 캡슐 바로 앞까지 닿습니다.</li>
+    <li><b>눈금 띠를 한 단 낮췄습니다.</b> 바깥 분 눈금이 놓인 띠가 다이얼보다 조금 어둡고 꺼져 있어, 안쪽과 바깥 테두리에 빛과 그늘이 걸립니다.</li>
+    <li><b>12·3·6·9 숫자를 금속으로 올렸습니다.</b> 은색 테두리 안을 다이얼 글자색으로 채운 숫자라 인쇄처럼 또렷이 읽히고, 붙인 숫자라 아래로 그림자가 집니다.</li>
+    <li><b>가운데 계단을 더 깊게 팠고</b>, 다이얼 전체에 옅은 사선 유리 광이 지나갑니다. 세로 칸에서는 캡슐과 숫자가 조금 커집니다.</li>
+  </ul>
+  <ul class="notes" id="notes-old" hidden>
+    <li>지난 판(앱에 들어간 상태): 인쇄된 12·3·6·9, 평평한 눈금 띠, 얕은 가운데 계단, 짧은 쪽에 맞춘 고정 길이 바늘.</li>
+  </ul>
+</div>
+
+<script>
+(() => {
+  const PAL = {
+    ice: { dial: "#dde7e6", ink: "#1d2626", acc: "#3a4040", lume: "#f3f8f2" },
+    coal: { dial: "#2a2c2f", ink: "#ecede9", acc: "#f08a3c", lume: "#e3f0dd" },
+    beige: { dial: "#e9dcc6", ink: "#25211b", acc: "#3d3a35", lume: "#fbf7ee" },
+  };
+  let p = PAL.ice, refined = true;
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, par) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (par) par.appendChild(e); return e; };
+  const dir = (deg) => { const a = deg * Math.PI / 180; return [Math.sin(a), -Math.cos(a)]; };
+  // ray from centre at `deg` meeting a rect of half sizes hw, hh (straight edges; corners treated square)
+  const hit = (deg, hw, hh) => { const [dx, dy] = dir(deg); const t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6)); return [dx * t, dy * t, t]; };
+  // edge normal at a point on the rect: which edge did the ray hit
+  const normalDeg = (x, y, hw, hh) => (Math.abs(Math.abs(x) - hw) < 1e-3 ? (x > 0 ? 90 : 270) : (y > 0 ? 180 : 0));
+  const faces = [];
+
+  function defs(svg, id) {
+    const d = el("defs", {}, svg);
+    const sh = (n, dx, dy, b, o) => { const f = el("filter", { id: id + n, x: "-60%", y: "-60%", width: "220%", height: "220%" }, d);
+      el("feDropShadow", { dx: dx * .35, dy: dy * .35, stdDeviation: b * .35, "flood-color": "#000", "flood-opacity": o * 1.3, result: "a" }, f);
+      el("feDropShadow", { in: "a", dx, dy, stdDeviation: b * 1.6, "flood-color": "#000", "flood-opacity": o * .8 }, f); };
+    sh("I", .5, .8, .45, .34); sh("H", 1, 1.6, .7, .3); sh("M", 1.5, 2.3, .9, .28); sh("S", 2, 3, 1, .26);
+    const sv = el("linearGradient", { id: id + "sv", x1: 0, y1: 0, x2: 1, y2: 1 }, d);
+    [[0, "#fff"], [.3, "#aeb2b8"], [.55, "#f7f8f9"], [.8, "#8a8e94"], [1, "#c9ccd0"]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, sv));
+    const lf = el("linearGradient", { id: id + "lf", x1: 0, y1: 0, x2: 1, y2: 0 }, d);
+    [[0, p.lume], [.45, "#fff"], [1, p.lume]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lf));
+    const lg = el("radialGradient", { id: id + "lg", cx: "36%", cy: "30%", r: "85%" }, d);
+    el("stop", { offset: 0, "stop-color": "#fff", "stop-opacity": .18 }, lg); el("stop", { offset: .6, "stop-color": "#fff", "stop-opacity": 0 }, lg); el("stop", { offset: 1, "stop-color": "#000", "stop-opacity": .14 }, lg);
+    const nm = el("linearGradient", { id: id + "nm", x1: 0, y1: 0, x2: 0, y2: 1 }, d);
+    [[0, "#ffffff"], [.45, "#c9ccd1"], [.55, "#8f9399"], [1, "#e6e8eb"]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, nm));
+    const bl = el("filter", { id: id + "blur", x: "-10%", y: "-10%", width: "120%", height: "120%" }, d); el("feGaussianBlur", { stdDeviation: .6 }, bl);
+    const gl = el("linearGradient", { id: id + "gl", x1: 0, y1: 0, x2: 1, y2: 1 }, d);
+    [[0, "#fff", .14], [.35, "#fff", 0], [.62, "#fff", 0], [.7, "#fff", .05], [.78, "#fff", 0]].forEach(([o, c, a]) => el("stop", { offset: o, "stop-color": c, "stop-opacity": a }, gl));
+    const dm = el("radialGradient", { id: id + "dm", cx: "38%", cy: "32%", r: "70%" }, d);
+    [[0, "#fff"], [.45, "#c3c6cb"], [1, "#55595f"]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, dm));
+    const st = el("linearGradient", { id: id + "st", x1: 0, y1: 0, x2: 0, y2: 1 }, d);
+    [[0, "#000", .26], [.5, "#000", 0], [.5, "#fff", 0], [1, "#fff", .7]].forEach(([o, c, a]) => el("stop", { offset: o, "stop-color": c, "stop-opacity": a }, st));
+  }
+  function capsule(g, id, x, y, deg, len, w) {
+    const c = el("g", { transform: `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${deg})` }, g);
+    el("rect", { x: -w / 2, y: -len / 2, width: w, height: len, rx: w / 2, fill: `url(#${id}sv)` }, c);
+    const r = Math.min(.5, w * .2);
+    el("rect", { x: -w / 2 + r, y: -len / 2 + r, width: w - 2 * r, height: len - 2 * r, rx: (w - 2 * r) / 2, fill: `url(#${id}lf)` }, c);
+    el("line", { x1: -w / 2 + .3, y1: -len / 2 + w / 2, x2: -w / 2 + .3, y2: len / 2 - w / 2, stroke: "#fff", "stroke-width": .15 }, c);
+  }
+  const handPath = (cx, cy, len, w, tail) => `M${cx - w * .45},${cy + tail} L${cx - w / 2},${cy - 3} L${cx - w * .42},${cy - len + w} Q${cx},${cy - len - w * .9} ${cx + w * .42},${cy - len + w} L${cx + w / 2},${cy - 3} L${cx + w * .45},${cy + tail} Z`;
+  const lumePath = (cx, cy, len, w) => { const iw = w - 1; return `M${cx - iw * .42},${cy - 4.5} L${cx - iw * .38},${cy - len + w + .3} Q${cx},${cy - len - iw * .4} ${cx + iw * .38},${cy - len + w + .3} L${cx + iw * .42},${cy - 4.5} Z`; };
+
+  function build(svg, W, H, id) {
+    svg.textContent = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); defs(svg, id);
+    const cx = W / 2, cy = H / 2, S = Math.min(W, H), L = Math.max(W, H);
+    const k = S / 100, kc = refined ? Math.max(S, L * .42) / 100 : k; // k = layout unit, kc = capsule/numeral unit
+    el("rect", { width: W, height: H, fill: p.dial }, svg); el("rect", { width: W, height: H, fill: `url(#${id}lg)` }, svg);
+    const m = 3.2 * k, band = 5.2 * k, hw = W / 2 - m, hh = H / 2 - m, rad = Math.min(S * .1, 9 * k);
+    el("rect", { x: cx - hw, y: cy - hh, width: 2 * hw, height: 2 * hh, rx: rad, fill: "none", stroke: p.ink, "stroke-width": .3 * k, opacity: .55 }, svg);
+    el("rect", { x: cx - hw + band, y: cy - hh + band, width: 2 * (hw - band), height: 2 * (hh - band), rx: Math.max(rad - band, 2), fill: "none", stroke: p.ink, "stroke-width": .22 * k, opacity: .45 }, svg);
+    if (refined) {
+      const ow = hw, oh = hh, iw2 = hw - band, ih2 = hh - band, r2 = Math.max(rad - band, 2);
+      const rr = (x, y, w, h, r) => `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
+      el("path", { d: rr(cx - ow, cy - oh, 2 * ow, 2 * oh, rad) + rr(cx - iw2, cy - ih2, 2 * iw2, 2 * ih2, r2), "fill-rule": "evenodd", fill: "rgba(0,0,0,.06)" }, svg);
+      el("rect", { x: cx - ow + .3 * k, y: cy - oh + .3 * k, width: 2 * ow - .6 * k, height: 2 * oh - .6 * k, rx: rad, fill: "none", stroke: `url(#${id}st)`, "stroke-width": .5 * k }, svg);
+      el("rect", { x: cx - iw2, y: cy - ih2, width: 2 * iw2, height: 2 * ih2, rx: r2, fill: "none", stroke: "rgba(255,255,255,.55)", "stroke-width": .35 * k, transform: `translate(0 ${.25 * k})` }, svg);
+    }
+    for (let i = 0; i < 60; i++) {
+      const [x, y] = hit(i * 6, hw, hh), nd = normalDeg(x, y, hw, hh), [nx, ny] = dir(nd), five = i % 5 === 0, len = (five ? 3.4 : 2) * k;
+      if (five && i % 15 === 0) continue;
+      el("line", { x1: cx + x, y1: cy + y, x2: cx + x - nx * len, y2: cy + y - ny * len, stroke: p.ink, "stroke-width": (five ? .55 : .3) * k }, svg);
+    }
+    for (const i of [0, 15, 30, 45]) { const [x, y] = hit(i * 6, hw - band / 2, hh - band / 2); el("text", { x: cx + x, y: cy + y, "font-family": "Jost", "font-size": 2.6 * k, fill: p.ink, opacity: .85, "text-anchor": "middle", "dominant-baseline": "central" }, svg).textContent = String(i || 60); }
+    // hour ring: capsules where each hour ray meets the inner rect
+    const ihw = hw - band - 4.6 * k, ihh = hh - band - 4.6 * k;
+    const ig = el("g", { filter: `url(#${id}I)` }, svg);
+    for (let h = 0; h < 12; h++) { const [x, y] = hit(h * 30, ihw, ihh), nd = normalDeg(x, y, ihw, ihh); capsule(ig, id, cx + x, cy + y, nd, 6.4 * kc, 2.25 * kc); }
+    // numerals
+    const nhw = ihw - 7.5 * k, nhh = ihh - 7.5 * k;
+    for (let h = 1; h <= 12; h++) {
+      if (h % 3) continue;
+      const [x, y] = hit(h * 30, nhw, nhh);
+      // applied numeral: a polished metal rim around a lacquer fill in the dial's ink colour, so it reads like print
+      if (refined) el("text", { x: cx + x, y: cy + y, "font-family": "Jost", "font-size": 8.4 * kc, "font-weight": 500, fill: p.ink, stroke: `url(#${id}nm)`, "stroke-width": .55 * kc, "paint-order": "stroke", "stroke-linejoin": "round", filter: `url(#${id}I)`, "text-anchor": "middle", "dominant-baseline": "central" }, svg).textContent = h;
+      else el("text", { x: cx + x, y: cy + y, "font-family": "Jost", "font-size": 7.4 * k, "font-weight": 400, fill: p.ink, "text-anchor": "middle", "dominant-baseline": "central" }, svg).textContent = h;
+    }
+    // recessed step: inner rect at the slot's ratio
+    const shw = nhw - 7 * k, shh = nhh - 7 * k;
+    if (shw > 4 * k && shh > 4 * k) {
+      el("rect", { x: cx - shw, y: cy - shh, width: 2 * shw, height: 2 * shh, rx: Math.max(rad * .6, 2), fill: refined ? "rgba(0,0,0,.045)" : "rgba(0,0,0,.025)", stroke: `url(#${id}st)`, "stroke-width": (refined ? .8 : .55) * k }, svg);
+      if (refined) el("rect", { x: cx - shw + .6 * k, y: cy - shh + .6 * k, width: 2 * shw - 1.2 * k, height: 2 * shh - 1.2 * k, rx: Math.max(rad * .6 - .6 * k, 1.5), fill: "none", stroke: "rgba(0,0,0,.08)", "stroke-width": 1.2 * k, filter: `url(#${id}blur)` }, svg);
+    }
+    // hands
+    const reach = (deg) => hit(deg, ihw - 3.6 * k, ihh - 3.6 * k)[2];
+    const H_ = el("g", { filter: `url(#${id}H)` }, svg), M_ = el("g", { filter: `url(#${id}M)` }, svg), S_ = el("g", { filter: `url(#${id}S)` }, svg);
+    const short = Math.min(ihw, ihh) - 3.6 * k;
+    el("circle", { cx, cy, r: 2.5 * k, fill: `url(#${id}dm)` }, svg); el("circle", { cx, cy, r: 1.1 * k, fill: "#6f747a" }, svg);
+    if (refined) el("rect", { width: W, height: H, fill: `url(#${id}gl)`, "pointer-events": "none" }, svg);
+    faces.push({ H_, M_, S_, cx, cy, k, reach, short, trackR: (deg) => hit(deg, hw - 1.5 * k, hh - 1.5 * k)[2] });
+  }
+  function drawHands(f, h, m, s) {
+    const hd = h * 30, md = m * 6, sd = s * 6, k = f.k;
+    const hl = f.short * .6, ml = f.short, sl = f.short + 4 * k;
+    const set = (g, len, w, tail, deg, sec) => {
+      g.textContent = "";
+      if (sec) { el("line", { x1: f.cx, y1: f.cy + 8 * k, x2: f.cx, y2: f.cy - len, stroke: p.acc, "stroke-width": .34 * k, "stroke-linecap": "round" }, g); el("circle", { cx: f.cx, cy: f.cy, r: 1.7 * k, fill: p.acc }, g); }
+      else { el("path", { d: handPath(f.cx, f.cy, len, w * k, tail * k), fill: `url(#${g.ownerSVGElement.id === "f-wide" ? "w" : g.ownerSVGElement.id === "f-sq" ? "q" : "t"}sv)` }, g);
+        el("path", { d: lumePath(f.cx, f.cy, len, w * k), fill: p.lume }, g); }
+      g.setAttribute("transform", `rotate(${deg} ${f.cx} ${f.cy})`);
+    };
+    set(f.H_, hl, 2.8, 3.5, hd); set(f.M_, ml, 2.2, 4.5, md); set(f.S_, sl, 0, 0, sd, true);
+  }
+  function all() {
+    faces.length = 0;
+    build(document.getElementById("f-wide"), 216, 100, "w");
+    build(document.getElementById("f-sq"), 100, 100, "q");
+    build(document.getElementById("f-tall"), 42, 100, "t");
+  }
+  const press = (on, off) => { on.setAttribute("aria-pressed", "true"); off.forEach(b => b.setAttribute("aria-pressed", "false")); };
+  const $ = (i) => document.getElementById(i);
+  const notes = () => { $("notes-refined").hidden = !refined; $("notes-old").hidden = refined; };
+  $("v-new").onclick = () => { refined = true; press($("v-new"), [$("v-old")]); notes(); all(); };
+  $("v-old").onclick = () => { refined = false; press($("v-old"), [$("v-new")]); notes(); all(); };
+  for (const c of ["ice", "coal", "beige"]) $("c-" + c).onclick = () => { p = PAL[c]; press($("c-" + c), ["ice", "coal", "beige"].filter(x => x !== c).map(x => $("c-" + x))); all(); };
+  function frame() {
+    const now = new Date(), s = now.getSeconds(), m = now.getMinutes() + s / 60, h = (now.getHours() % 12) + m / 60;
+    for (const f of faces) drawHands(f, h, m, s);
+    setTimeout(() => requestAnimationFrame(frame), 1000 - now.getMilliseconds());
+  }
+  all(); frame();
+})();
+</script>

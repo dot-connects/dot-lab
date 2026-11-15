@@ -1,0 +1,343 @@
+<title>입체 시계 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one column; sticky control bar, three full-screen dials (round, sector, capsule digital) with notes, then what the app lets you change. */
+:root {
+  --bg: #f2f1ee; --fg: #1b1c1f; --muted: #5d6068; --line: #d9d7d1; --chip: #ffffff; --accent: #b4461a;
+  --ui: "IBM Plex Sans KR", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 56px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 28px; }
+h1 { font: 600 1.6rem/1.25 var(--ui); margin: 0; text-wrap: balance; }
+.lede { margin: 6px 0 0; color: var(--muted); line-height: 1.6; max-width: 64ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 12px 22px; align-items: center; padding: 14px 0; border-block: 1px solid var(--line);
+  position: sticky; top: env(safe-area-inset-top, 0px); background: var(--bg); z-index: 5; }
+.grp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.lbl { font-size: .78rem; color: var(--muted); letter-spacing: .02em; margin-right: 2px; }
+.sw { width: 28px; height: 28px; border-radius: 50%; border: 1px solid rgba(0,0,0,.18); cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { outline: 2px solid var(--fg); outline-offset: 2px; }
+button.t { font: 500 .85rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+button.t[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button.t:disabled { opacity: .4; cursor: default; }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.dialname { font-size: .85rem; color: var(--muted); min-width: 5.5em; }
+section { display: grid; gap: 12px; }
+h2 { font: 600 1.1rem var(--ui); margin: 0; }
+h2 small { font-weight: 400; color: var(--muted); font-size: .85rem; margin-left: 6px; }
+ul.notes { margin: 0; padding-left: 1.1em; color: var(--muted); line-height: 1.65; font-size: .92rem; max-width: 70ch; }
+ul.notes li { margin: 2px 0; }
+.tw { overflow-x: auto; }
+table.can { border-collapse: collapse; font-size: .92rem; width: 100%; }
+table.can th, table.can td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.can th { font-weight: 500; color: var(--muted); font-size: .8rem; }
+.phone { width: 100%; max-width: 100%; aspect-ratio: 2.16; border-radius: 22px; background: #0a0a0a; padding: 7px; box-sizing: border-box;
+  box-shadow: 0 1px 0 #2c2c2c inset, 0 18px 40px rgba(0,0,0,.25); }
+.screen { position: relative; width: 100%; height: 100%; border-radius: 16px; overflow: hidden; }
+.screen svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>입체 시계 시안 · 둥근 · 섹터 · 캡슐 디지털</h1>
+    <p class="lede">여섯 번째 판입니다. A는 지난 판을 바탕으로 입체감을 더 올렸고, B와 C는 새로 디자인했습니다. 세 시계 모두 다이얼이 화면 전체를 채우고, 은테를 두른 야광 부품과 그 그림자로 깊이를 냅니다.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="시안 조절">
+    <div class="grp"><span class="lbl">다이얼</span><span id="sws" class="grp"></span><span class="dialname" id="dname"></span></div>
+    <div class="grp"><button class="t" id="shuf" type="button">색 조합 바꾸기</button><button class="t" id="undo" type="button" disabled>이전 조합</button></div>
+    <div class="grp"><span class="lbl">보기</span><button class="t" id="day" type="button" aria-pressed="true">낮</button><button class="t" id="lume" type="button" aria-pressed="false">야광</button></div>
+    <div class="grp"><span class="lbl">초침</span><button class="t" id="mv-q" type="button" aria-pressed="true">쿼츠 틱</button><button class="t" id="mv-s" type="button" aria-pressed="false">기계식 스윕</button></div>
+  </div>
+
+  <section>
+    <h2>A. 아날로그 <small>둥근 눈금</small></h2>
+    <div class="phone"><div class="screen"><svg id="s-round" viewBox="0 0 216 100" aria-label="둥근 눈금 아날로그 시계"></svg></div></div>
+    <ul class="notes">
+      <li>숫자 안쪽 원판을 한 단 꺼뜨렸습니다. 위쪽 턱에는 그늘이, 아래쪽 턱에는 빛이 걸립니다.</li>
+      <li>인덱스 캡슐을 더 두껍고 높게 세우고, 은테에 빛나는 모서리를 넣었습니다. 바로 아래 짙은 접지 그림자 위에 넓고 옅은 그림자가 한 겹 더 집니다.</li>
+      <li>바늘에 가운데 능선을 넣고, 축은 은색 돔으로 깎았습니다.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>B. 아날로그 <small>섹터 다이얼</small></h2>
+    <div class="phone"><div class="screen"><svg id="s-sector" viewBox="0 0 216 100" aria-label="섹터 다이얼 아날로그 시계"></svg></div></div>
+    <ul class="notes">
+      <li>빈티지 고급 시계의 섹터 다이얼입니다. 바깥은 네모 분 눈금, 안쪽은 둥근 시 링이고, 두 구역은 톤이 달라 단을 이룹니다.</li>
+      <li>네모 눈금 네 모서리에 5분 숫자가 몰리지 않게, 숫자는 변의 가운데와 모서리에만 둡니다.</li>
+      <li>시 링에는 12·3·6·9만 숫자이고 나머지는 캡슐 인덱스입니다. 가운데 원판은 한 단 더 꺼져 있습니다.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>C. 디지털 <small>캡슐 숫자</small></h2>
+    <div class="phone"><div class="screen"><svg id="s-digital" viewBox="0 0 216 100" aria-label="캡슐 숫자 디지털 시계"></svg></div></div>
+    <ul class="notes">
+      <li>숫자 획 하나하나가 아날로그 인덱스와 같은 은테 야광 캡슐입니다. 다이얼 위에 올라앉아 그림자를 드리웁니다.</li>
+      <li>꺼진 획은 다이얼에 옅게 새겨져 있어, 숫자가 바뀔 때 캡슐이 그 자리로 들어앉는 느낌이 납니다.</li>
+      <li>아래 가로 눈금을 따라 강조 색 캡슐이 초를 셉니다. 날짜는 오른쪽 위 작은 창 하나뿐입니다.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h2>앱에서 꾸밀 수 있는 것</h2>
+    <div class="tw"><table class="can">
+      <thead><tr><th>항목</th><th>아날로그 (둥근 · 섹터)</th><th>디지털</th></tr></thead>
+      <tbody>
+        <tr><td>다이얼 색</td><td colspan="2">시안의 색들 + 색 조합 바꾸기 + 직접 고르기 (내 시계 꾸미기)</td></tr>
+        <tr><td>강조 색</td><td>초침</td><td>초 캡슐</td></tr>
+        <tr><td>보기</td><td colspan="2">낮 / 야광 / 밤에만 야광</td></tr>
+        <tr><td>초침 움직임</td><td colspan="2">쿼츠 틱 / 기계식 스윕</td></tr>
+        <tr><td>숫자</td><td>숫자 / 인덱스만</td><td>24시간 / 12시간, 꺼진 획 보이기</td></tr>
+        <tr><td>날짜</td><td>–</td><td>날짜 창 켜기·끄기</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const DIALS = [
+    { n: "아이스", dial: "#dde7e6", ink: "#1d2626", acc: "#3a4040", lume: "#f3f8f2" },
+    { n: "베이지", dial: "#e9dcc6", ink: "#25211b", acc: "#3d3a35", lume: "#fbf7ee" },
+    { n: "크림", dial: "#f0ece2", ink: "#1f1e1b", acc: "#c94a1c", lume: "#fbfaf4" },
+    { n: "로즈", dial: "#efd2cb", ink: "#2a1d1a", acc: "#8a2c22", lume: "#fdf3ef" },
+    { n: "스카이", dial: "#cfe2ec", ink: "#14283a", acc: "#c94a1c", lume: "#f3f9fc" },
+    { n: "테니스", dial: "#2e6a4f", ink: "#eef1e8", acc: "#f4c84a", lume: "#e6f1dc" },
+    { n: "옐로", dial: "#f0d873", ink: "#2a2410", acc: "#2a2410", lume: "#fffbe6" },
+    { n: "코얼", dial: "#2a2c2f", ink: "#ecede9", acc: "#f08a3c", lume: "#e3f0dd" },
+  ];
+  const LUME = { dial: "#0e1718", ink: "#6fe0cf", acc: "#6fe0cf", lume: "#7ff2df" };
+  let cur = { ...DIALS[0] }, prev = null, sweep = false, lume = false;
+  const $ = (id) => document.getElementById(id);
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, p) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (p) p.appendChild(e); return e; };
+  const hsl = (h, s, l) => `hsl(${h} ${s}% ${l}%)`;
+  function shuffled() {
+    const h = Math.floor(Math.random() * 360);
+    if (Math.random() < .25) { const s = 25 + Math.random() * 30, l = 17 + Math.random() * 8;
+      return { n: "섞은 색", dial: hsl(h, s, l), ink: "#eeefe9", acc: hsl((h + 160 + Math.random() * 40) % 360, 85, 62), lume: "#e6f1dc" }; }
+    const s = 15 + Math.random() * 40, l = 80 + Math.random() * 8;
+    return { n: "섞은 색", dial: hsl(h, s, l), ink: hsl(h, 22, 12), acc: Math.random() < .5 ? hsl(h, 12, 24) : hsl((h + 170) % 360, 70, 45), lume: "#fbfaf3" };
+  }
+  const pal = () => lume ? { ...cur, ...LUME } : cur;
+  const dir = (deg) => { const a = deg * Math.PI / 180; return [Math.sin(a), -Math.cos(a)]; };
+  const rectPoint = (deg, hw, hh) => { const [dx, dy] = dir(deg); const t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6)); return [dx * t, dy * t]; };
+
+  function setup(svg, id) {
+    svg.textContent = "";
+    const p = pal(), defs = el("defs", {}, svg);
+    el("rect", { width: 216, height: 100, fill: p.dial }, svg);
+    const lg = el("radialGradient", { id: id + "-l", cx: "36%", cy: "30%", r: "85%" }, defs);
+    el("stop", { offset: 0, "stop-color": "#fff", "stop-opacity": lume ? .03 : .18 }, lg);
+    el("stop", { offset: .6, "stop-color": "#fff", "stop-opacity": 0 }, lg);
+    el("stop", { offset: 1, "stop-color": "#000", "stop-opacity": lume ? .35 : .14 }, lg);
+    el("rect", { width: 216, height: 100, fill: `url(#${id}-l)` }, svg);
+    const gr = el("filter", { id: id + "-grain", x: 0, y: 0, width: "100%", height: "100%" }, defs);
+    el("feTurbulence", { type: "fractalNoise", baseFrequency: 1.4, numOctaves: 2, seed: 7 }, gr);
+    el("feColorMatrix", { values: "0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 .07 0" }, gr);
+    el("rect", { width: 216, height: 100, filter: `url(#${id}-grain)` }, svg);
+    // two-layer shadows: a tight dark contact shadow + a wide soft one; lume view glows instead
+    const sh = (n, dx, dy, b, o) => { const f = el("filter", { id: id + n, x: "-60%", y: "-60%", width: "220%", height: "220%" }, defs);
+      if (lume) { el("feGaussianBlur", { in: "SourceGraphic", stdDeviation: .7, result: "g" }, f); const m = el("feMerge", {}, f); el("feMergeNode", { in: "g" }, m); el("feMergeNode", { in: "SourceGraphic" }, m); return; }
+      el("feDropShadow", { dx: dx * .35, dy: dy * .35, stdDeviation: b * .35, "flood-color": "#000", "flood-opacity": o * 1.3, result: "a" }, f);
+      el("feDropShadow", { in: "a", dx, dy, stdDeviation: b * 1.6, "flood-color": "#000", "flood-opacity": o * .8 }, f); };
+    sh("-sI", .55, .85, .45, .34); sh("-sH", 1.1, 1.7, .7, .3); sh("-sM", 1.6, 2.5, .9, .28); sh("-sS", 2.1, 3.2, 1, .26);
+    const sv = el("linearGradient", { id: id + "-silver", x1: 0, y1: 0, x2: 1, y2: 1 }, defs);
+    (lume ? [[0, "#34413f"], [1, "#1a2322"]] : [[0, "#ffffff"], [.3, "#aeb2b8"], [.55, "#f7f8f9"], [.8, "#8a8e94"], [1, "#c9ccd0"]]).forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, sv));
+    const lf = el("linearGradient", { id: id + "-lume", x1: 0, y1: 0, x2: 1, y2: 0 }, defs);
+    [[0, lume ? p.lume : shade(p.lume, -.06)], [.45, lume ? p.lume : "#ffffff"], [1, lume ? p.lume : shade(p.lume, -.1)]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, lf));
+    const cap = el("radialGradient", { id: id + "-dome", cx: "38%", cy: "32%", r: "70%" }, defs);
+    (lume ? [[0, "#3a4a47"], [1, "#121a1a"]] : [[0, "#ffffff"], [.45, "#c3c6cb"], [1, "#55595f"]]).forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, cap));
+    return p;
+  }
+  function shade(hex, d) { // lighten/darken a #rrggbb by d (-1..1)
+    const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + 255 * d)));
+    return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+  // Recessed step: a circle (or rounded rect) whose inside sits lower — shadow on the upper lip, light on the lower lip.
+  function stepCircle(svg, cx, cy, r) {
+    if (lume) { el("circle", { cx, cy, r, fill: "none", stroke: "rgba(111,224,207,.18)", "stroke-width": .25 }, svg); return; }
+    const g = el("linearGradient", { id: "st" + r + cx, x1: 0, y1: 0, x2: 0, y2: 1 }, svg.querySelector("defs"));
+    el("stop", { offset: 0, "stop-color": "#000", "stop-opacity": .26 }, g); el("stop", { offset: .5, "stop-color": "#000", "stop-opacity": 0 }, g);
+    el("stop", { offset: .5, "stop-color": "#fff", "stop-opacity": 0 }, g); el("stop", { offset: 1, "stop-color": "#fff", "stop-opacity": .7 }, g);
+    el("circle", { cx, cy, r, fill: "none", stroke: `url(#st${r}${cx})`, "stroke-width": .55 }, svg);
+    el("circle", { cx, cy, r: r - .5, fill: "rgba(0,0,0,.025)" }, svg);
+  }
+  function capsule(g, id, x, y, deg, len, w) {
+    const c = el("g", { transform: `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${deg.toFixed(2)})` }, g);
+    el("rect", { x: -w / 2, y: -len / 2, width: w, height: len, rx: w / 2, fill: `url(#${id}-silver)` }, c);
+    const r = Math.min(.5, w * .2);
+    el("rect", { x: -w / 2 + r, y: -len / 2 + r, width: w - 2 * r, height: len - 2 * r, rx: (w - 2 * r) / 2, fill: `url(#${id}-lume)` }, c);
+    if (!lume) {
+      el("rect", { x: -w / 2 + r, y: -len / 2 + r, width: w - 2 * r, height: len - 2 * r, rx: (w - 2 * r) / 2, fill: "none", stroke: "rgba(0,0,0,.16)", "stroke-width": .12 }, c);
+      el("line", { x1: -w / 2 + .32, y1: -len / 2 + w / 2, x2: -w / 2 + .32, y2: len / 2 - w / 2, stroke: "#fff", "stroke-width": .16 }, c);
+    }
+    return c;
+  }
+  function hands(svg, id, cx, cy, lenH, lenM, lenS) {
+    const p = pal();
+    const mk = (len, w, tail, f) => {
+      const g = el("g", { filter: `url(#${id}${f})` }, svg);
+      el("path", { d: `M${cx - w * .45},${cy + tail} L${cx - w / 2},${cy - 3} L${cx - w * .42},${cy - len + w} Q${cx},${cy - len - w * .9} ${cx + w * .42},${cy - len + w} L${cx + w / 2},${cy - 3} L${cx + w * .45},${cy + tail} Z`, fill: `url(#${id}-silver)` }, g);
+      const iw = w - 1;
+      el("path", { d: `M${cx - iw * .42},${cy - 4.5} L${cx - iw * .38},${cy - len + w + .3} Q${cx},${cy - len - iw * .4} ${cx + iw * .38},${cy - len + w + .3} L${cx + iw * .42},${cy - 4.5} Z`, fill: `url(#${id}-lume)` }, g);
+      if (!lume) el("line", { x1: cx, y1: cy + tail - .4, x2: cx, y2: cy - len - w * .55, stroke: "rgba(255,255,255,.65)", "stroke-width": .14 }, g);
+      return g;
+    };
+    const H = mk(lenH, 2.8, 3.5, "-sH"), M = mk(lenM, 2.2, 4.5, "-sM");
+    const S = el("g", { filter: `url(#${id}-sS)` }, svg);
+    el("line", { x1: cx, y1: cy + 8, x2: cx, y2: cy - lenS, stroke: p.acc, "stroke-width": .34, "stroke-linecap": "round" }, S);
+    el("circle", { cx, cy: cy + 6.2, r: .9, fill: p.acc }, S);
+    el("circle", { cx, cy, r: 1.7, fill: p.acc }, S);
+    el("circle", { cx, cy, r: 2.5, fill: `url(#${id}-dome)` }, svg);
+    el("circle", { cx, cy, r: 1.1, fill: lume ? p.ink : "#6f747a" }, svg);
+    el("circle", { cx: cx - .35, cy: cy - .4, r: .35, fill: lume ? "#0e1718" : "#f4f5f6" }, svg);
+    return { H, M, S, cx, cy };
+  }
+  const text = (svg, x, y, t, size, fill, extra = {}) =>
+    el("text", { x: x.toFixed(2), y: y.toFixed(2), "font-family": "Jost", "font-size": size, "font-weight": 400, fill, "text-anchor": "middle", "dominant-baseline": "central", ...extra }, svg).textContent = t;
+
+  const clocks = {};
+  // ---------- A. round ----------
+  function round() {
+    const svg = $("s-round"), id = "r", p = setup(svg, id), cx = 108, cy = 50, R = 43.6;
+    stepCircle(svg, cx, cy, 36.3);
+    const tk = el("g", {}, svg);
+    for (let i = 0; i < 60; i++) {
+      if (i % 5 === 0) continue;
+      const [dx, dy] = dir(i * 6);
+      el("line", { x1: cx + dx * R, y1: cy + dy * R, x2: cx + dx * (R - 2.6), y2: cy + dy * (R - 2.6), stroke: p.ink, "stroke-width": .55 }, tk);
+    }
+    for (let i = 5; i <= 60; i += 5) {
+      const [dx, dy] = dir(i * 6), r = R + 2.6, x = cx + dx * r, y = cy + dy * r;
+      text(svg, x, y, String(i).padStart(2, "0"), 2.3, p.ink, { transform: `rotate(${i * 6} ${x.toFixed(2)} ${y.toFixed(2)})`, opacity: .85 });
+    }
+    const ig = el("g", { filter: `url(#${id}-sI)` }, svg);
+    for (let h = 0; h < 12; h++) { const [dx, dy] = dir(h * 30), r = R - 3.3; capsule(ig, id, cx + dx * r, cy + dy * r, h * 30, 6.6, 2.15); }
+    for (let h = 1; h <= 12; h++) { const [dx, dy] = dir(h * 30); text(svg, cx + dx * 29.6, cy + dy * 29.6, String(h), 6.6, p.ink); }
+    clocks.round = hands(svg, id, cx, cy, 21.5, 36.5, 41);
+  }
+  // ---------- B. sector ----------
+  function sector() {
+    const svg = $("s-sector"), id = "q", p = setup(svg, id), cx = 108, cy = 50, S = 44.2, RH = 33.5;
+    // outer square zone a touch darker than the inner round zone
+    el("rect", { x: cx - S - 1.5, y: cy - S - 1.5, width: 2 * S + 3, height: 2 * S + 3, rx: 6, fill: lume ? "rgba(0,0,0,.25)" : "rgba(0,0,0,.045)" }, svg);
+    el("circle", { cx, cy, r: RH + 4.6, fill: p.dial }, svg);
+    el("circle", { cx, cy, r: RH + 4.6, fill: `url(#${id}-l)` }, svg);
+    stepCircle(svg, cx, cy, RH + 4.6);
+    // square minute track: ticks on the square, fine frame lines
+    el("rect", { x: cx - S, y: cy - S, width: 2 * S, height: 2 * S, rx: 4.5, fill: "none", stroke: p.ink, "stroke-width": .25, opacity: .55 }, svg);
+    el("rect", { x: cx - S + 3.4, y: cy - S + 3.4, width: 2 * S - 6.8, height: 2 * S - 6.8, rx: 3, fill: "none", stroke: p.ink, "stroke-width": .2, opacity: .45 }, svg);
+    for (let i = 0; i < 60; i++) {
+      const five = i % 5 === 0, [x1, y1] = rectPoint(i * 6, S, S), [x2, y2] = rectPoint(i * 6, S - (five ? 3.4 : 2), S - (five ? 3.4 : 2));
+      el("line", { x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2, stroke: p.ink, "stroke-width": five ? .55 : .3 }, svg);
+    }
+    for (const i of [0, 15, 30, 45]) { const [x, y] = rectPoint(i * 6, S - 6, S - 6); text(svg, cx + x, cy + y, String(i || 60), 2.6, p.ink, { opacity: .85 }); }
+    for (const i of [7.5, 22.5, 37.5, 52.5]) { const [x, y] = rectPoint(i * 6, S - 6.2, S - 6.2); el("circle", { cx: cx + x, cy: cy + y, r: .55, fill: p.ink, opacity: .7 }, svg); }
+    // hour ring: capsules, with numerals at 12/3/6/9
+    const ig = el("g", { filter: `url(#${id}-sI)` }, svg);
+    for (let h = 0; h < 12; h++) {
+      const [dx, dy] = dir(h * 30);
+      if (h % 3 === 0) continue;
+      capsule(ig, id, cx + dx * (RH + .4), cy + dy * (RH + .4), h * 30, 6, 2.1);
+    }
+    for (const h of [12, 3, 6, 9]) { const [dx, dy] = dir(h * 30); text(svg, cx + dx * (RH + .2), cy + dy * (RH + .2), String(h), 8, p.ink, { "font-weight": 400 }); }
+    for (let i = 0; i < 60; i++) { if (i % 5 === 0) continue; const [dx, dy] = dir(i * 6); el("circle", { cx: cx + dx * (RH + 2.6), cy: cy + dy * (RH + 2.6), r: .22, fill: p.ink, opacity: .6 }, svg); }
+    stepCircle(svg, cx, cy, 24);
+    clocks.sector = hands(svg, id, cx, cy, 19, 35, 41);
+  }
+  // ---------- C. capsule digital ----------
+  const SEG = { 0: "abcdef", 1: "bc", 2: "abged", 3: "abgcd", 4: "fgbc", 5: "afgcd", 6: "afgedc", 7: "abc", 8: "abcdefg", 9: "abcfgd" };
+  let digi = null;
+  function digital() {
+    const svg = $("s-digital"), id = "d", p = setup(svg, id);
+    const W = 24, H = 46, T = 4.6, gap = 5.2, colon = 9;
+    const total = 4 * W + 3 * gap + colon - gap, x0 = 108 - total / 2, top = 44 - H / 2;
+    const xs = [x0, x0 + W + gap, x0 + 2 * W + gap + colon, x0 + 3 * W + 2 * gap + colon];
+    const segGeom = (x) => {
+      const h2 = (H - T) / 2;
+      return {
+        a: [x + W / 2, top + T / 2, 90, W - T - .8], g: [x + W / 2, top + H / 2, 90, W - T - .8], d: [x + W / 2, top + H - T / 2, 90, W - T - .8],
+        f: [x + T / 2, top + T / 2 + h2 / 2, 0, h2 - .8], b: [x + W - T / 2, top + T / 2 + h2 / 2, 0, h2 - .8],
+        e: [x + T / 2, top + H / 2 + h2 / 2, 0, h2 - .8], c: [x + W - T / 2, top + H / 2 + h2 / 2, 0, h2 - .8],
+      };
+    };
+    const ghost = el("g", {}, svg), lit = el("g", { filter: `url(#${id}-sI)` }, svg);
+    const digits = xs.map((x) => {
+      const geo = segGeom(x), segs = {};
+      for (const k of "abcdefg") {
+        const [sx, sy, deg, len] = geo[k];
+        const gc = el("g", { transform: `translate(${sx} ${sy}) rotate(${deg})` }, ghost);
+        el("rect", { x: -T / 2, y: -len / 2, width: T, height: len, rx: T / 2, fill: lume ? "rgba(111,224,207,.05)" : "rgba(0,0,0,.035)", stroke: p.ink, "stroke-width": .14, "stroke-opacity": lume ? .25 : .16 }, gc);
+        segs[k] = capsule(lit, id, sx, sy, deg, len, T);
+      }
+      return segs;
+    });
+    // colon: two lume studs
+    const cxn = x0 + 2 * W + gap + colon / 2 - gap / 2 + gap / 2;
+    const studs = el("g", { filter: `url(#${id}-sI)` }, svg);
+    for (const dy of [-8, 8]) { el("circle", { cx: cxn, cy: top + H / 2 + dy, r: 2, fill: `url(#${id}-silver)` }, studs); el("circle", { cx: cxn, cy: top + H / 2 + dy, r: 1.45, fill: `url(#${id}-lume)` }, studs); }
+    // seconds scale
+    const sx0 = 108 - 70, sx1 = 108 + 70, sy = 86;
+    for (let i = 0; i <= 60; i++) { const x = sx0 + (sx1 - sx0) * i / 60, ten = i % 10 === 0, five = i % 5 === 0;
+      el("line", { x1: x, y1: sy, x2: x, y2: sy - (ten ? 3 : five ? 2 : 1.2), stroke: p.ink, "stroke-width": ten ? .45 : .25, opacity: .85 }, svg);
+      if (ten) text(svg, x, sy + 2.6, String(i), 2.2, p.ink, { opacity: .8 }); }
+    const mk = el("g", { filter: `url(#${id}-sM)` }, svg), marker = el("g", {}, mk);
+    el("rect", { x: -.8, y: -2.6, width: 1.6, height: 5.2, rx: .8, fill: p.acc }, marker);
+    // date window, cut into the dial
+    const dwx = 176, dwy = 9;
+    el("rect", { x: dwx, y: dwy, width: 22, height: 7, rx: 1, fill: `url(#${id}-silver)`, filter: `url(#${id}-sI)` }, svg);
+    el("rect", { x: dwx + .5, y: dwy + .5, width: 21, height: 6, rx: .7, fill: lume ? "#081010" : "#fbfaf6" }, svg);
+    if (!lume) el("rect", { x: dwx + .5, y: dwy + .5, width: 21, height: 1.6, rx: .7, fill: "rgba(0,0,0,.14)" }, svg);
+    const date = el("text", { x: dwx + 11, y: dwy + 3.7, "font-family": "Jost", "font-size": 3.2, "font-weight": 500, fill: lume ? p.ink : "#1d1d1d", "text-anchor": "middle", "dominant-baseline": "central", "letter-spacing": ".5" }, svg);
+    digi = { digits, marker, date, sx0, sx1, sy: sy - 4.4, last: "" };
+  }
+
+  function build() { round(); sector(); digital(); $("dname").textContent = lume ? "야광" : cur.n;
+    document.querySelectorAll(".sw").forEach((b, i) => b.setAttribute("aria-pressed", String(!lume && DIALS[i].n === cur.n))); }
+  DIALS.forEach((d) => {
+    const b = document.createElement("button"); b.className = "sw"; b.type = "button"; b.title = d.n; b.setAttribute("aria-label", d.n);
+    b.style.background = d.dial;
+    b.onclick = () => { prev = cur; cur = { ...d }; $("undo").disabled = false; build(); };
+    $("sws").appendChild(b);
+  });
+  $("shuf").onclick = () => { prev = cur; cur = shuffled(); $("undo").disabled = false; build(); };
+  $("undo").onclick = () => { if (!prev) return; const t = cur; cur = prev; prev = t; build(); };
+  const setLume = (v) => { lume = v; $("day").setAttribute("aria-pressed", String(!v)); $("lume").setAttribute("aria-pressed", String(v)); build(); };
+  $("day").onclick = () => setLume(false); $("lume").onclick = () => setLume(true);
+  const setMv = (s) => { sweep = s; $("mv-q").setAttribute("aria-pressed", String(!s)); $("mv-s").setAttribute("aria-pressed", String(s)); };
+  $("mv-q").onclick = () => setMv(false); $("mv-s").onclick = () => setMv(true);
+
+  const WD = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+  function frame() {
+    const now = new Date(), ms = now.getMilliseconds();
+    const s = now.getSeconds() + (sweep ? ms / 1000 : 0), m = now.getMinutes() + s / 60, h = (now.getHours() % 12) + m / 60;
+    const kick = sweep ? 0 : Math.max(0, 1 - ms / 90) * .5;
+    for (const c of [clocks.round, clocks.sector]) {
+      c.H.setAttribute("transform", `rotate(${h * 30} ${c.cx} ${c.cy})`);
+      c.M.setAttribute("transform", `rotate(${m * 6} ${c.cx} ${c.cy})`);
+      c.S.setAttribute("transform", `rotate(${s * 6 + kick} ${c.cx} ${c.cy})`);
+    }
+    digi.marker.setAttribute("transform", `translate(${(digi.sx0 + (digi.sx1 - digi.sx0) * s / 60).toFixed(2)} ${digi.sy})`);
+    const t = String(now.getHours()).padStart(2, "0") + String(now.getMinutes()).padStart(2, "0");
+    if (t !== digi.last) {
+      digi.last = t;
+      [...t].forEach((ch, i) => { const on = SEG[ch]; for (const k of "abcdefg") digi.digits[i][k].style.display = on.includes(k) ? "" : "none"; });
+      digi.date.textContent = `${WD[now.getDay()]} ${now.getDate()}`;
+    }
+    requestAnimationFrame(frame);
+  }
+  build();
+  requestAnimationFrame(frame);
+})();
+</script>

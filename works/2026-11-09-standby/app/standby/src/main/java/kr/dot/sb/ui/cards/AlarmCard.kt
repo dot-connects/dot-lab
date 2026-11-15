@@ -84,15 +84,20 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
                     val (ap, hm) = alarmTime(a, state.use24h)
                     val boxH = maxHeight
                     Column {
+                        val cap = min(boxH * 0.55f, 96.dp)
+                        val apSize = (cap * 0.42f).coerceAtLeast(e.meta)
+                        // 오전/오후 inline takes ≈ 2.1 em + a gap; a slot too narrow for that (Flip cover) stacks it above
+                        // the digits instead (12-hour mode needs it), and the digits get the full width
+                        val apW = apSize * 2.1f + cap * 0.12f
+                        val stacked = ap != null && e.cw - apW < cap * 0.6f // stack only when the digits would shrink to a sliver; St and Flip XS stay inline
+                        if (stacked) Txt(ap!!, min(apSize, e.read), ink.ink2, weight = 600, maxW = e.cw)
                         Row(verticalAlignment = Alignment.Bottom) {
-                            val cap = min(boxH * 0.55f, 96.dp)
-                            val apSize = (cap * 0.42f).coerceAtLeast(e.meta)
-                            if (ap != null) {
+                            if (ap != null && !stacked) {
                                 Txt(ap, apSize, ink.ink2, weight = 600)
                                 Spacer(Modifier.width(cap * 0.12f))
                             }
-                            // the digits get what 오전/오후 leaves (two Hangul ≈ 2.1 em), so a narrow slot shrinks them, never clips
-                            val room = e.cw - if (ap != null) apSize * 2.1f + cap * 0.12f else 0.dp
+                            // the digits get what 오전/오후 leaves, so a narrow slot shrinks them, never clips
+                            val room = e.cw - if (ap != null && !stacked) apW else 0.dp
                             Hero(e, AnnotatedString(hm), cap, ink.ink, room)
                         }
                         Spacer(Modifier.height(e.gap * 1.5f))

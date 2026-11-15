@@ -8,7 +8,12 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.DDay
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
+import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.Layout
+import kr.dot.sb.model.MyTheme
+import kr.dot.sb.model.Theme
+import kr.dot.sb.model.ThemeEdit
+import kr.dot.sb.ui.theme.PlateStyle
 import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
 import kr.dot.sb.model.PHOTO_INTERVAL_SEC
 import kr.dot.sb.model.PAGE_PHOTOS
@@ -80,7 +85,67 @@ object ConfigCodec {
         put("pagesOff", JSONArray().also { a -> c.pagesOff.forEach { a.put(it) } })
         put("photoSource", c.photoSource.name)
         put("photoFolders", JSONArray().also { a -> c.photoFolders.forEach { a.put(it) } })
+        // r11: only when used, so a config without edits encodes exactly as before
+        val edits = c.themeEdits.mapNotNull { (th, e) -> e.sanitized(th).takeUnless { it.isEmpty }?.let { th to it } }
+        if (edits.isNotEmpty()) put("themeEdits", JSONObject().also { o -> edits.forEach { (th, e) -> o.put(th.name, edit(e)) } })
+        if (c.myThemes.isNotEmpty()) put("myThemes", JSONArray().also { a ->
+            c.myThemes.forEach { m -> a.put(JSONObject().put("name", m.name).put("base", m.base.name).put("edit", edit(m.edit.sanitized(m.base)))) }
+        })
     }.toString()
+
+    /** One [ThemeEdit] as JSON (the editor's undo slot is saved this way). */
+    fun encodeEdit(e: ThemeEdit): String = edit(e).toString()
+
+    /** [encodeEdit] back, sanitised for [theme]; anything unreadable is the empty edit. */
+    fun decodeEdit(json: String, theme: Theme): ThemeEdit =
+        runCatching { edit(JSONObject(json), theme) }.getOrNull() ?: ThemeEdit()
+
+    private fun edit(e: ThemeEdit) = JSONObject().apply {
+        fun longs(l: List<Long>) = JSONArray().also { a -> l.forEach { a.put(it) } }
+        e.bg?.let { put("bg", longs(it)) }
+        e.glow?.let { put("glow", it) }
+        e.glowStrength?.let { put("glowStrength", it.toDouble()) }
+        e.glowAt?.let { put("glowAt", JSONArray().put(it.first.toDouble()).put(it.second.toDouble())) }
+        e.glowShape?.let { put("glowShape", it.name) }
+        e.plate?.let { put("plate", it) }
+        e.rule?.let { put("rule", it) }
+        e.plateAlpha?.let { put("plateAlpha", it.toDouble()) }
+        e.plateStyle?.let { put("plateStyle", it.name) }
+        e.radius?.let { put("radius", it.toDouble()) }
+        e.accent?.let { put("accent", it) }
+        e.ink?.let { put("ink", it) }
+        e.flow?.let { put("flow", longs(it)) }
+    }
+
+    /** A field that does not read is null (not the whole edit); the result is sanitised for [theme]. */
+    private fun edit(o: JSONObject, theme: Theme): ThemeEdit {
+        fun long(k: String): Long? = if (o.has(k) && !o.isNull(k)) runCatching { o.getLong(k) }.getOrNull() else null
+        fun float(k: String): Float? = if (o.has(k)) runCatching { o.getDouble(k).toFloat() }.getOrNull() else null
+        fun longs(k: String): List<Long>? = o.optJSONArray(k)?.let { a -> runCatching { (0 until a.length()).map { a.getLong(it) } }.getOrNull() }
+        return ThemeEdit(
+            bg = longs("bg"), glow = long("glow"), glowStrength = float("glowStrength"),
+            glowAt = o.optJSONArray("glowAt")?.let { a -> runCatching { a.getDouble(0).toFloat() to a.getDouble(1).toFloat() }.getOrNull() },
+            glowShape = runCatching { GlowShape.valueOf(o.getString("glowShape")) }.getOrNull(),
+            plate = long("plate"), rule = long("rule"), plateAlpha = float("plateAlpha"),
+            plateStyle = runCatching { PlateStyle.valueOf(o.getString("plateStyle")) }.getOrNull(),
+            radius = float("radius"), accent = long("accent"), ink = long("ink"), flow = longs("flow"),
+        ).sanitized(theme)
+    }
+
+    private fun themeEdits(o: JSONObject?): Map<Theme, ThemeEdit> = o?.let { oo ->
+        oo.keys().asSequence().mapNotNull { k ->
+            val th = runCatching { Theme.valueOf(k) }.getOrNull() ?: return@mapNotNull null
+            oo.optJSONObject(k)?.let { edit(it, th) }?.takeUnless { it.isEmpty }?.let { th to it }
+        }.toMap()
+    } ?: emptyMap()
+
+    private fun myThemes(a: JSONArray?): List<MyTheme> = a?.let {
+        (0 until a.length()).mapNotNull { i ->
+            val o = a.optJSONObject(i) ?: return@mapNotNull null
+            val base = runCatching { Theme.valueOf(o.getString("base")) }.getOrNull() ?: return@mapNotNull null
+            MyTheme(o.optString("name").trim().ifEmpty { "내 테마" }, base, o.optJSONObject("edit")?.let { edit(it, base) } ?: ThemeEdit())
+        }
+    } ?: emptyList()
 
     /** Any parse failure returns defaults; a bad field returns that field's default. */
     fun decode(json: String?): AppConfig {
@@ -157,6 +222,8 @@ object ConfigCodec {
             pagesOff = strings(o, "pagesOff")?.filter { it == PAGE_WIDGETS || it == PAGE_PHOTOS }?.toSet() ?: d.pagesOff,
             photoSource = enumOf(o, "photoSource", d.photoSource),
             photoFolders = strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
+            themeEdits = themeEdits(o.optJSONObject("themeEdits")),
+            myThemes = myThemes(o.optJSONArray("myThemes")),
         )
     }
 
@@ -176,6 +243,8 @@ object ConfigCodec {
         put("numeralColor", s.numeralColor); put("handColor", s.handColor); put("secondColor", s.secondColor)
         put("weekdayColor", s.weekdayColor); put("tickColor", s.tickColor); put("litDotColor", s.litDotColor)
         R10_COLOURS.forEach { (k, get, _) -> get(s)?.let { put(k, it) } }   // null = FaceDefaults, omitted
+        // r11 Part C (Relief faces); h24 null = the phone's setting, omitted
+        put("lumeView", s.lumeView.name); put("sweep", s.sweep); s.h24?.let { put("h24", it) }; put("ghost", s.ghost); put("squareNumerals", s.squareNumerals.name)
     }
 
     /** r10 per-face colours (nullable): key, read, write. Presets are indices, stored as numbers too. */
@@ -210,6 +279,9 @@ object ConfigCodec {
         numeralColor = o.optLong("numeralColor", b.numeralColor), handColor = o.optLong("handColor", b.handColor),
         secondColor = o.optLong("secondColor", b.secondColor), weekdayColor = o.optLong("weekdayColor", b.weekdayColor),
         tickColor = o.optLong("tickColor", b.tickColor), litDotColor = o.optLong("litDotColor", b.litDotColor),
+        lumeView = enumOf(o, "lumeView", b.lumeView), sweep = o.optBoolean("sweep", b.sweep),
+        h24 = if (o.has("h24")) o.opt("h24") as? Boolean else b.h24, ghost = o.optBoolean("ghost", b.ghost),
+        squareNumerals = enumOf(o, "squareNumerals", b.squareNumerals),
     ).let { s -> R10_COLOURS.fold(s) { acc, (k, _, set) -> if (o.has(k) && !o.isNull(k)) set(acc, o.optLong(k)) else acc } }
 
     private fun board(b: Board) = JSONObject().apply {
@@ -236,6 +308,7 @@ object ConfigCodec {
         put("widgetId", s.widgetId ?: JSONObject.NULL); put("opacity", s.opacity.toDouble()); put("widgetMode", s.widgetMode.name)
         put("radiusDp", s.radiusDp); put("hideAtNight", s.hideAtNight)
         s.face?.let { put("face", it.name) }
+        s.plate?.let { put("plate", it) }
     }
 
     private fun slotOptions(o: JSONObject): SlotOptions {
@@ -245,6 +318,7 @@ object ConfigCodec {
             opacity = num(o, "opacity", d.opacity).coerceIn(0f, 1f), widgetMode = enumOf(o, "widgetMode", d.widgetMode),
             radiusDp = o.optInt("radiusDp", d.radiusDp), hideAtNight = o.optBoolean("hideAtNight", d.hideAtNight),
             face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
+            plate = if (o.has("plate") && !o.isNull("plate")) runCatching { o.getLong("plate") }.getOrNull() else null,
         )
     }
 

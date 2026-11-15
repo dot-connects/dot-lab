@@ -83,11 +83,96 @@ data class SlotOptions(
     val hideAtNight: Boolean = false,
     /** A clock card's own face (null = the board's [Board.clockFace]). */
     val face: FaceId? = null,
+    /** r11 카드 색: this card's plate colour (null = the theme's); FILL/GLASS themes on the theme background, day only. */
+    val plate: Long? = null,
 )
+
+/** r11 theme editor: the glow's shape (무드등). */
+enum class GlowShape(val ko: String) { ROUND("둥근"), SUNSET("노을"), TWIN("둘") }
+
+/**
+ * r11 "테마 위에 내 색 입히기": one theme's edit; every field null = the theme's token. Applied in one place
+ * (`ThemeTokens.with` through `AppConfig.drawnTheme`) and only on the theme background. Colours are ARGB Longs.
+ */
+data class ThemeEdit(
+    /** 1..3 page stops (SKY: top / middle / bottom). */
+    val bg: List<Long>? = null,
+    /** 무드등, 촛불: the glow colour (its alpha stays the theme's). */
+    val glow: Long? = null,
+    /** 0..1, 0.5 = the theme's glow (multiplier 2 × value); NEON: the halo. */
+    val glowStrength: Float? = null,
+    /** Glow centre as 0..1 of the page. */
+    val glowAt: Pair<Float, Float>? = null,
+    val glowShape: GlowShape? = null,
+    /** Card colour (RADIO 판, FLIP plate); never on PAPER. */
+    val plate: Long? = null,
+    /** PAPER only: the rule-line colour. */
+    val rule: Long? = null,
+    /** 카드 진하기: absolute alpha of both plates, [PLATE_ALPHA]. */
+    val plateAlpha: Float? = null,
+    /** Only a style in [PLATE_OFFER] for the theme. */
+    val plateStyle: kr.dot.sb.ui.theme.PlateStyle? = null,
+    /** Corner radius ratio 0..0.2. */
+    val radius: Float? = null,
+    val accent: Long? = null,
+    val ink: Long? = null,
+    /** 시간 따라 흐름: 2..3 stops morning → (noon) → evening; null = off. */
+    val flow: List<Long>? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeEdit()
+
+    /**
+     * Within range for [theme] (codec decode/encode and every write): non-finite floats dropped, ranges clamped, lists of
+     * the wrong length dropped, fields the theme never offers dropped. Never throws.
+     */
+    fun sanitized(theme: Theme): ThemeEdit {
+        fun f(v: Float?, r: ClosedFloatingPointRange<Float>) = v?.takeIf { it.isFinite() }?.coerceIn(r.start, r.endInclusive)
+        return ThemeEdit(
+            // light themes stay light (night and the dark twins rely on it): page picks floored at HSL lightness 0.6
+            // 하늘 is edited as its three stops; any other theme takes 1..3
+            bg = bg?.takeIf { if (theme == Theme.SKY) it.size == 3 else it.size in 1..3 }?.let { s -> if (theme in LIGHT) s.map { kr.dot.sb.ui.theme.Hsl.floor(it, LIGHT_FLOOR) } else s },
+            glow = glow,
+            glowStrength = f(glowStrength, 0f..1f),
+            glowAt = glowAt?.takeIf { it.first.isFinite() && it.second.isFinite() }?.let { it.first.coerceIn(0f, 1f) to it.second.coerceIn(0f, 1f) },
+            glowShape = glowShape,
+            plate = plate.takeIf { theme != Theme.PAPER },
+            rule = rule.takeIf { theme == Theme.PAPER },
+            plateAlpha = f(plateAlpha, PLATE_ALPHA),
+            plateStyle = plateStyle?.takeIf { it in PLATE_OFFER[theme].orEmpty() },
+            radius = f(radius, 0f..0.2f),
+            accent = accent,
+            ink = ink,
+            flow = flow?.takeIf { it.size in 2..3 },
+        )
+    }
+
+    companion object {
+        /** 카드 진하기 range (plan-r11 round 4: 0.05 so 촛불's ≈ 0.06 plate is reachable). */
+        val PLATE_ALPHA = 0.05f..1f
+
+        /** Themes with a light page (ThemeTokens.light), and the lightness their page picks never go under. */
+        val LIGHT = setOf(Theme.DAYPAPER, Theme.RADIO)
+        const val LIGHT_FLOOR = 0.6f
+
+        /** 카드 모양 choices per theme (only 무드등 offers any). */
+        val PLATE_OFFER: Map<Theme, List<kr.dot.sb.ui.theme.PlateStyle>> = mapOf(
+            Theme.MOODLIGHT to listOf(kr.dot.sb.ui.theme.PlateStyle.FILL, kr.dot.sb.ui.theme.PlateStyle.GLASS, kr.dot.sb.ui.theme.PlateStyle.OUTLINE),
+        )
+    }
+}
+
+/** 내 테마로 저장: a theme plus its edit under a name; listed first in the theme strip. */
+data class MyTheme(val name: String, val base: Theme, val edit: ThemeEdit)
 
 enum class ClockLayout(val ko: String) { IPHONE("기본"), CENTER("가운데"), TWO_LINES("두 줄") }
 enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음"), DUO("Duo") }
 enum class AnalogTicks(val ko: String) { IPHONE("기본"), SHORT("짧게"), HOURS("정시만"), NONE("없음") }
+
+/** Relief faces' 보기 (r11 Part C): the day dial, the 야광 dial always, or 야광 only at night. */
+enum class LumeView(val ko: String) { DAY("낮"), LUME("야광"), NIGHT("밤에만 야광") }
+
+/** 입체 네모 hour numerals (12/3/6/9). */
+enum class SquareNumerals(val ko: String) { THIN("가는 숫자"), SANDWICH("파낸 야광"), NONE("숫자 없음") }
 
 /** Full-screen clock faces in vertical-swipe order (spec C1), plus the two other places a styled time appears. */
 enum class FaceId(val ko: String) {
@@ -95,6 +180,8 @@ enum class FaceId(val ko: String) {
     // r10 clock gallery (plan-r10 Tasks 6-9); until their renderer lands they draw as DIGITAL
     THIN("가는 선"), SPLIT("시·분 나눔"), COLOR_BLOCK("색 블록"), STICKER("스티커"), BALLS("공 숫자"), FLIP("플립"), LED("LED"),
     LCD("액정"), DOT_MATRIX("전광판"), WALL("벽시계"), CALENDAR("달력과 시계"), HANGUL("한글 시계"), DAY_BAR("하루 막대"), RIM("테두리 초"),
+    // r11 Part C (spec-relief-clocks.md): watch-dial faces with applied lume capsules
+    RELIEF("입체 시계"), RELIEF_SQUARE("입체 네모"), RELIEF_DIGITAL("입체 디지털"),
 }
 
 data class ClockStyle(
@@ -140,12 +227,23 @@ data class ClockStyle(
     /** Index into `FaceDefaults.PAIRS` (색 블록) / `FaceDefaults.TRIOS` (스티커, 공 숫자). */
     val pairPreset: Int? = null,
     val trioPreset: Int? = null,
+    // r11 Part C (Relief faces)
+    val lumeView: LumeView = LumeView.DAY,
+    /** 기계식 스윕 (true) or 쿼츠 틱 second hand. */
+    val sweep: Boolean = false,
+    /** 캡슐 디지털: 24 h (true) / 12 h (false); null = the phone's setting. */
+    val h24: Boolean? = null,
+    /** 캡슐 디지털: the engraved off segments. */
+    val ghost: Boolean = true,
+    /** 입체 네모: how 12/3/6/9 are made. */
+    val squareNumerals: SquareNumerals = SquareNumerals.THIN,
 ) {
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */
         fun default(face: FaceId): ClockStyle = when (face) {
             FaceId.DIGITAL, FaceId.DESK, FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS, FaceId.FLIP,
             FaceId.LED, FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
+            FaceId.RELIEF, FaceId.RELIEF_SQUARE, FaceId.RELIEF_DIGITAL,
             -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
             FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFF4D9BEF)
             FaceId.SOLAR -> ClockStyle(
@@ -299,6 +397,10 @@ data class AppConfig(
     val photoSource: PhotoSource = PhotoSource.PICKS,
     /** Album (bucket) names for [PhotoSource.FOLDERS]. */
     val photoFolders: List<String> = emptyList(),
+    /** r11 per-theme edits (never empty edits). Write with `withThemeEdit`; drawn only on [BoardBg.THEME]. */
+    val themeEdits: Map<Theme, ThemeEdit> = emptyMap(),
+    /** r11 내 테마. Write with `withMyThemes`. */
+    val myThemes: List<MyTheme> = emptyList(),
 )
 
 const val PAGE_WIDGETS = "widgets"

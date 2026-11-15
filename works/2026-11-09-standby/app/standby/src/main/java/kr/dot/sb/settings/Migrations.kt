@@ -38,6 +38,7 @@ object Migrations {
         // r10 faces never existed in r8; they read with the DIGITAL base
         FaceId.DIGITAL, FaceId.DESK, FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS, FaceId.FLIP,
         FaceId.LED, FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
+        FaceId.RELIEF, FaceId.RELIEF_SQUARE, FaceId.RELIEF_DIGITAL,
         -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
         FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFF4D9BEF)
         FaceId.SOLAR -> ClockStyle(

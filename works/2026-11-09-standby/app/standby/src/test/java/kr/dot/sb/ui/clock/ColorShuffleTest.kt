@@ -31,6 +31,8 @@ class ColorShuffleTest {
             FaceId.ANALOG -> listOf(s.handColor, s.secondColor, s.weekdayColor, s.numeralColor, s.tickColor) to pageBg
             FaceId.SPLIT -> listOf(s.hourColor!!, s.minuteColor!!) to pageBg
             FaceId.HANGUL -> (text + s.accentColor!!) to pageBg
+            // r11 Part C: the accent and the ink (derived from the dial) on the dial
+            FaceId.RELIEF, FaceId.RELIEF_SQUARE, FaceId.RELIEF_DIGITAL -> listOf(Relief.accent(s), Relief.preset(s).ink) to listOf(Relief.dial(s))
             else -> text to pageBg
         }
     }

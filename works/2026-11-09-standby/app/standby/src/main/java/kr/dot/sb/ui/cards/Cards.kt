@@ -79,6 +79,7 @@ import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
+import kr.dot.sb.ui.theme.PlateStyle
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.model.BoardBg
 import androidx.compose.ui.text.SpanStyle
@@ -147,8 +148,14 @@ fun CardView(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
-        val t = LocalTheme.current
-        val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t) }
+        val drawn = LocalTheme.current
+        // r11 카드 색: this card's own plate (FILL/GLASS themes on the theme background, day only); ink and roles fitted on it
+        val own = options?.plate?.takeIf {
+            state.night < 0.5f && config.boardBg == BoardBg.THEME && drawn.tokens.plateStyle.let { s -> s == PlateStyle.FILL || s == PlateStyle.GLASS }
+        }
+        val card = remember(drawn, own) { own?.let { drawn.tokens.cardPlate(it) } }
+        val t = remember(drawn, card) { card?.let { Themes.edited(drawn, it.tokens) } ?: drawn }
+        val ink = remember(state.night, look.accent, t, card) { Ink.of(state.night, look.accent, t, over = card?.over) }
         val today = state.now.toLocalDate()
         val e = remember(w, h, ink, look, slotId, today, t) {
             val own = Sizes.of(w, h, r = t.ramp)
@@ -160,7 +167,7 @@ fun CardView(
         // every card sits on the theme's plate (mockup "테마 전체"); the notification card wears it only while closed
         val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
         val surface = if (type.isNotif || close != null) Modifier else plate
-        CompositionLocalProvider(LocalInk provides ink, LocalSlotLabel provides e.label) {
+        CompositionLocalProvider(LocalTheme provides t, LocalInk provides ink, LocalSlotLabel provides e.label) {
             val arrows = type == CardType.CLOCK && onFace != null
             Box(Modifier.fillMaxSize().then(surface).tap(if (arrows) { { sw.touch() } } else null)) {
                 when (type) {

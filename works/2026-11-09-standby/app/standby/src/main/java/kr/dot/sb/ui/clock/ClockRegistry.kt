@@ -50,7 +50,9 @@ enum class StyleRow(val part: String? = null) {
     DAY_COLOR("요일 색"), CALENDAR_COLOR("달력 색"), ACCENT_COLOR("강조 색"), BAR_COLOR("막대 색"), RIM_COLOR("점 색"),
     PAPER_COLOR("바탕 색"),
     LED, PAIR, TRIO, SOLAR,
-    SIZE, FONT, KFONT, INFO, WEIGHT, FX, BG, LAYOUT, SHAPE, ANALOG_NUMBERS, ANALOG_TICKS, DIAL_FONT;
+    SIZE, FONT, KFONT, INFO, WEIGHT, FX, BG, LAYOUT, SHAPE, ANALOG_NUMBERS, ANALOG_TICKS, DIAL_FONT,
+    // r11 Part C (Relief faces)
+    LUME_VIEW, MOVEMENT, INDEX_ONLY, SQUARE_NUMERALS, HOURS, GHOST, DATE_WINDOW;
 
     val preset: Boolean get() = this == LED || this == PAIR || this == TRIO || this == SOLAR
 
@@ -70,9 +72,9 @@ enum class StyleRow(val part: String? = null) {
         PANEL_COLOR -> s.panelColor ?: FaceDefaults.PANEL
         INK_COLOR -> s.inkColor ?: FaceDefaults.INK
         DOT_COLOR -> s.dotColor ?: FaceDefaults.DOT
-        FACE_COLOR -> s.faceColor ?: FaceDefaults.FACE
+        FACE_COLOR -> if (face in Relief.FACES) Relief.dial(s) else s.faceColor ?: FaceDefaults.FACE
         CALENDAR_COLOR -> s.calendarColor ?: FaceDefaults.CALENDAR
-        ACCENT_COLOR -> s.accentColor ?: FaceDefaults.ACCENT
+        ACCENT_COLOR -> if (face in Relief.FACES) Relief.accent(s) else s.accentColor ?: FaceDefaults.ACCENT
         BAR_COLOR -> s.barColor ?: FaceDefaults.BAR
         RIM_COLOR -> s.rimColor ?: FaceDefaults.RIM
         PAPER_COLOR -> s.paperColor ?: FaceDefaults.PAPER
@@ -152,6 +154,9 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
         FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), ours = true, built = true)
         FaceId.WORLD -> c(Family.GAUGE, "세계", listOf(CITY_COLOR, LIT_COLOR, SIZE, FONT), DT, built = true)
+        FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY), emptyList(), built = true)
+        FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS), emptyList(), built = true)
+        FaceId.RELIEF_DIGITAL -> c(Family.RETRO, "입체 디지털", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.HOURS, StyleRow.GHOST, StyleRow.DATE_WINDOW), emptyList(), built = true)
     }
 }
 

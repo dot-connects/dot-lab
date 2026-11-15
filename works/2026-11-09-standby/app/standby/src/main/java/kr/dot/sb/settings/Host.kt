@@ -83,7 +83,7 @@ object Routes {
 
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
 @Composable
-fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config) {
+fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config, androidx.compose.runtime.remember { java.time.LocalTime.now() }) {
     // the page-settings screens share one preview bar state, so 커버/세로/밤 survive a swipe to the next page's settings
     val pageBar = androidx.compose.runtime.saveable.rememberSaveable(saver = PreviewState.Saver) { PreviewState() }
     CompositionLocalProvider(LocalSettingsEnv provides env, LocalPageBar provides pageBar) { Route(route, config, update, nav, env) }

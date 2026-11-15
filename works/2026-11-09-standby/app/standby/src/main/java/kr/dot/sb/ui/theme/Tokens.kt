@@ -6,6 +6,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
@@ -84,9 +85,10 @@ data class Ink(
         /**
          * Colours of [theme] at night fraction [night]. Dark themes lerp to the candle night; light themes lerp ink but
          * step bg/plates to black at 0.5. [accent] null = the theme accent; [page] overrides the contrast backdrop
-         * (a clock with its own background).
+         * (a clock with its own background). [over] (r11 카드 색) = what secondary text sits on: ink2/ink3/ink4 are
+         * composited over it instead of the page (null = the page, as before).
          */
-        fun of(night: Float, accent: Color? = null, theme: StandbyTheme = Themes.IPHONE, page: List<Color>? = null): Ink {
+        fun of(night: Float, accent: Color? = null, theme: StandbyTheme = Themes.IPHONE, page: List<Color>? = null, over: Color? = null): Ink {
             val n = night.coerceIn(0f, 1f)
             val t = theme.tokens
             val nt = t.night()
@@ -95,7 +97,8 @@ data class Ink(
             val bg = if (t.light) (if (dark) nt.bg.base else t.bg.base) else lerp(t.bg.base, nt.bg.base, n)
             val stops = if (t.light) (if (dark) nt.bg.stops else t.bg.stops) else t.bg.stops.map { lerp(it, nt.bg.base, n) }
             val inkC = lerp(t.ink, nt.ink, n)
-            fun alpha(al: Float) = inkC.copy(alpha = al).compositeOver(bg)
+            val under = over ?: bg
+            fun alpha(al: Float) = inkC.copy(alpha = al).compositeOver(under)
             val plate2 = if (t.light) (if (dark) nt.plate2 else t.plate2) else lerpPremul(t.plate2, nt.plate2, n)
             return Ink(
                 night = n,
@@ -103,7 +106,7 @@ data class Ink(
                 ink = inkC,
                 ink2 = alpha(t.ink2 + (nt.ink2 - t.ink2) * n),
                 ink3 = alpha(t.ink3 + (nt.ink3 - t.ink3) * n),
-                ink4 = plate2.compositeOver(bg),
+                ink4 = plate2.compositeOver(under),
                 red = lerp(t.roles.red, nt.roles.red, n),
                 acc = lerp(a, nt.accent, n),
                 accDeep = lerp(Hsl.deep(a), NIGHT_DIM, n),
@@ -158,6 +161,13 @@ object Hsl {
 
     fun deep(c: Color): Color { val (h, s, l) = toHsl(c); return of(h, s + 0.35f, fmax(0.15f, l - 0.25f), c.alpha) }
     fun light(c: Color): Color { val (h, s, l) = toHsl(c); return of(h, s, l + 0.12f, c.alpha) }
+    /** [c] with its HSL lightness moved by [d] (r11 plate2: ± 6 %). */
+    fun shift(c: Color, d: Float): Color { val (h, s, l) = toHsl(c); return of(h, s, l + d, c.alpha) }
+    /** [c] with HSL lightness at least [min] (r11: light themes' page picks stay light). */
+    fun floor(c: Long, min: Float): Long {
+        val (h, s, l) = toHsl(Color(c))
+        return if (l >= min - 0.01f) c else of(h, s, min, 1f).toArgb().toLong() and 0xFFFFFFFFL
+    }
 }
 
 /**

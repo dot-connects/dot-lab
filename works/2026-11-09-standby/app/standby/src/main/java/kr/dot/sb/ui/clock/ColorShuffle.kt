@@ -27,7 +27,7 @@ object ColorShuffle {
         WEEKDAY(StyleRow.DAY_COLOR), NUMERAL(StyleRow.NUMERAL_COLOR), TICK(StyleRow.TICK_COLOR), LIT(StyleRow.LIT_COLOR),
         PLATE(StyleRow.PLATE_COLOR), DIGIT(StyleRow.DIGIT_COLOR), PANEL(StyleRow.PANEL_COLOR), INK(StyleRow.INK_COLOR),
         DOT(StyleRow.DOT_COLOR), CALENDAR(StyleRow.CALENDAR_COLOR), ACCENT(StyleRow.ACCENT_COLOR), BAR(StyleRow.BAR_COLOR),
-        RIM(StyleRow.RIM_COLOR);
+        RIM(StyleRow.RIM_COLOR), FACE(StyleRow.FACE_COLOR);
 
         fun get(s: ClockStyle, face: FaceId): Long = when (this) {
             COLOR2 -> s.color2
@@ -74,6 +74,7 @@ object ColorShuffle {
             FaceId.DAY_BAR -> page(text, listOf(Field.BAR))
             FaceId.RIM -> page(text, listOf(Field.RIM))
             FaceId.DIGITAL, FaceId.THIN, FaceId.DESK, FaceId.FLOAT -> page(text)
+            FaceId.RELIEF, FaceId.RELIEF_SQUARE, FaceId.RELIEF_DIGITAL -> Plan(listOf(Field.ACCENT), listOf(Field.FACE), emptyList())
         }
     }
 
@@ -86,12 +87,13 @@ object ColorShuffle {
     fun apply(face: FaceId, s: ClockStyle, combo: Map<Field, Long>): ClockStyle =
         combo.entries.fold(s) { acc, (f, c) -> f.set(acc, c) }
 
-    private fun tone(c: Long, l: Float): Long {
+    /** [c] at HSL lightness [l] (r11: the theme shuffle draws its tones here too). */
+    internal fun tone(c: Long, l: Float): Long {
         val (h, sat, _) = Hsl.toHsl(Color(c))
         return Color.hsl(h, sat, l).toArgb().toLong() and 0xFFFFFFFFL
     }
 
-    private fun light(c: Long) = Color(c).luminance() > 0.4f
+    internal fun light(c: Long) = Color(c).luminance() > 0.4f
 
     /** A new combo for [face] from [s]; empty when the face has none. Same [seed] = same combo. */
     fun next(face: FaceId, s: ClockStyle, seed: Int): Map<Field, Long> {

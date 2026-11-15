@@ -42,7 +42,7 @@ import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.StandbyState
-import kr.dot.sb.ui.theme.drawnTheme
+import kr.dot.sb.ui.theme.baseTheme
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -258,7 +258,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             c.nightMode, c.displayOff,
             scheduled = c.nightMode == NightMode.SCHEDULE && NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour),
             auto = nightSw.night,
-            forceNight = c.drawnTheme().tokens.light,
+            forceNight = c.baseTheme().tokens.light,
         )
         setNight(if (nightOn) 1f else 0f)
         val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
@@ -274,7 +274,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun schedulePoll(now: Long) {
         pollJob?.cancel()
         val c = cfg
-        val luxNight = c.nightMode == NightMode.AUTO || (c.nightMode == NightMode.OFF && c.drawnTheme().tokens.light) // light theme: forced AUTO
+        val luxNight = c.nightMode == NightMode.AUTO || (c.nightMode == NightMode.OFF && c.baseTheme().tokens.light) // light theme: forced AUTO
         val waits = listOfNotNull(
             if (luxNight) nightSw.pendingMs(now) else null,
             if (cfg.displayOff != DisplayOff.NEVER) machine.idleLeftMs(now)?.takeIf { it > 0 } else null,

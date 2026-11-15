@@ -74,15 +74,15 @@ fun Modifier.themedSurface(t: StandbyTheme, ink: Ink, shape: Shape, custom: Bool
     return when (tk.plateStyle) {
         PlateStyle.FILL, PlateStyle.GLASS -> background(if (custom) PLATE_ON_CUSTOM else ink.plate, shape)
         PlateStyle.RULE -> drawBehind {
-            drawLine(ink.ink.copy(alpha = 0.25f), Offset.Zero, Offset(size.width, 0f), maxOf(1f, 1.dp.toPx()))
+            drawLine(tk.rule ?: ink.ink.copy(alpha = 0.25f), Offset.Zero, Offset(size.width, 0f), maxOf(1f, 1.dp.toPx()))
         }
         PlateStyle.OUTLINE -> {
             val glow = tk.digitStyle == DigitStyle.GLOW
             val line = if (glow) ink.ink else ink.ink.copy(alpha = 0.35f)
             val halo = if (!glow) this else drawBehind {
                 val o = shape.createOutline(size, layoutDirection, this)
-                drawOutline(o, line.copy(alpha = 0.08f), style = Stroke(10.dp.toPx()))
-                drawOutline(o, line.copy(alpha = 0.16f), style = Stroke(5.dp.toPx()))
+                drawOutline(o, line.copy(alpha = (0.08f * tk.halo).coerceIn(0f, 1f)), style = Stroke(10.dp.toPx()))
+                drawOutline(o, line.copy(alpha = (0.16f * tk.halo).coerceIn(0f, 1f)), style = Stroke(5.dp.toPx()))
             }
             halo.border(1.5.dp, line, shape)
         }
@@ -194,7 +194,7 @@ private val PRESETS: Map<BoardBg, Ground> = mapOf(
 
 private fun BgSpec.ground(): Ground = Ground(
     stops,
-    glow?.let { listOf(Glow(glowAt, glowSize, listOf(0f to it, .7f to it.copy(alpha = 0f)))) } ?: emptyList(),
+    glow?.let { g -> listOfNotNull(glowAt, glow2At).map { Glow(it, glowSize, listOf(0f to g, .7f to g.copy(alpha = 0f))) } } ?: emptyList(),
 )
 
 private fun ground(t: StandbyTheme, bg: BoardBg, custom: Color): Ground = when (bg) {

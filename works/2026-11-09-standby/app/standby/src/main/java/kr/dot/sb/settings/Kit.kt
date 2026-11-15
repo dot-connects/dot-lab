@@ -407,15 +407,15 @@ fun PresetSwatches(sets: List<List<Long>>, selected: Int, onSelect: (Int) -> Uni
 
 /** Named colour presets in one row + 직접 고르기 (mockup `.named`: 무드등 색). */
 @Composable
-fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChange: (Long) -> Unit) {
+fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChangeFinished: (() -> Unit)? = null, onChange: (Long) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val custom = names.none { it.second == color }
     Column(Modifier.fillMaxWidth()) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            names.forEach { (n, c) -> NamedDot(n, c.c(), c == color) { onChange(c) } }
+            names.forEach { (n, c) -> NamedDot(n, c.c(), c == color) { onChange(c); onChangeFinished?.invoke() } }
             NamedDot("직접 고르기", null, custom || open) { open = !open }
         }
-        if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp))
+        if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp), onChangeFinished)
     }
 }
 
@@ -469,32 +469,39 @@ fun ChipFlow(options: List<String>, selected: Int, onSelect: (Int) -> Unit, enab
 }
 
 @Composable
-fun SliderControl(value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit, steps: Int = 0) {
+fun SliderControl(value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit, steps: Int = 0, onChangeFinished: (() -> Unit)? = null) {
     val acc = LocalAccent.current
     Slider(
-        value, onChange, valueRange = range, steps = steps,
+        value, onChange, valueRange = range, steps = steps, onValueChangeFinished = onChangeFinished,
         colors = SliderDefaults.colors(thumbColor = acc, activeTrackColor = acc, inactiveTrackColor = SK.surface2, activeTickColor = Color.Transparent, inactiveTickColor = Color.Transparent),
     )
 }
 
 @Composable
-fun SliderRow(title: String, valueText: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit, steps: Int = 0, note: String? = null) {
+fun SliderRow(
+    title: String, valueText: String, value: Float, range: ClosedFloatingPointRange<Float>, onChange: (Float) -> Unit, steps: Int = 0, note: String? = null,
+    /** r11: called once when the drag ends (the editor writes the config only then). */
+    onChangeFinished: (() -> Unit)? = null,
+    /** r11: a small action at the end of the title row (the editor's 기본). */
+    trailing: (@Composable () -> Unit)? = null,
+) {
     Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = if (note != null) 12.dp else 4.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             T(title, 16.sp, 500, SK.text, Modifier.weight(1f))
             T(valueText, 14.sp, 500, SK.muted)
+            trailing?.invoke()
         }
-        SliderControl(value, range, onChange, steps)
+        SliderControl(value, range, onChange, steps, onChangeFinished)
         if (note != null) T(note, 13.sp, 400, SK.muted, lineHeight = 18.sp)
     }
 }
 
 @Composable
-fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = true, danger: Boolean = false, enabled: Boolean = true) {
+fun ActionButton(text: String, onClick: () -> Unit, modifier: Modifier = Modifier, primary: Boolean = true, danger: Boolean = false, enabled: Boolean = true, padH: Dp = 18.dp) {
     val acc = LocalAccent.current
     val bg = when { !enabled -> SK.surface2; danger -> SK.danger.copy(alpha = 0.16f); primary -> acc; else -> SK.surface2 }
     val fg = when { !enabled -> SK.muted; danger -> SK.danger; primary -> SK.bg; else -> SK.text }
-    Box(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp)).background(bg).clickable(enabled = enabled, onClick = onClick).padding(horizontal = 18.dp), Alignment.Center) {
+    Box(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(14.dp)).background(bg).clickable(enabled = enabled, onClick = onClick).padding(horizontal = padH), Alignment.Center) {
         T(text, 15.sp, 700, fg, maxLines = 1, align = TextAlign.Center)
     }
 }
@@ -522,14 +529,20 @@ private fun Dot(color: Color, selected: Boolean, onClick: () -> Unit, content: (
     }
 }
 
-/** Swatches + a "custom" dot that opens an HSV picker. [color] and the callback are ARGB Longs. */
+/**
+ * Swatches + a "custom" dot that opens an HSV picker. [color] and the callback are ARGB Longs. [onChangeFinished] (r11)
+ * = a swatch tap or the end of a picker drag: the theme editor previews [onChange] and writes the config only then.
+ */
 @Composable
-fun ColorPalette(color: Long, onChange: (Long) -> Unit, swatches: List<Long> = kr.dot.sb.model.ClockStyle.SWATCHES, modifier: Modifier = Modifier) {
+fun ColorPalette(
+    color: Long, onChange: (Long) -> Unit, swatches: List<Long> = kr.dot.sb.model.ClockStyle.SWATCHES, modifier: Modifier = Modifier,
+    onChangeFinished: (() -> Unit)? = null,
+) {
     var open by remember { mutableStateOf(false) }
     val custom = color !in swatches
     Column(modifier) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
-            swatches.forEach { Dot(it.c(), it == color, { onChange(it) }) }
+            swatches.forEach { Dot(it.c(), it == color, { onChange(it); onChangeFinished?.invoke() }) }
             Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = !open }, Alignment.Center) {
                 if (custom || open) Box(Modifier.size(40.dp).border(2.dp, Color.White, CircleShape))
                 Canvas(Modifier.size(30.dp).clip(CircleShape)) {
@@ -538,23 +551,25 @@ fun ColorPalette(color: Long, onChange: (Long) -> Unit, swatches: List<Long> = k
                 }
             }
         }
-        if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp))
+        if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp), onChangeFinished)
     }
 }
 
 @Composable
-fun HsvPicker(color: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifier) {
+fun HsvPicker(color: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifier, onChangeFinished: (() -> Unit)? = null) {
+    val done by rememberUpdatedState(onChangeFinished)
     val init = remember { FloatArray(3).also { android.graphics.Color.colorToHSV(color.toInt(), it) } }
     var h by remember { mutableFloatStateOf(init[0]) }
     var s by remember { mutableFloatStateOf(init[1]) }
     var v by remember { mutableFloatStateOf(init[2]) }
-    fun emit() = onChange(android.graphics.Color.HSVToColor(floatArrayOf(h, s, v)).toLong() and 0xFFFFFFFFL)
+    val change by rememberUpdatedState(onChange)
+    fun emit() = change(android.graphics.Color.HSVToColor(floatArrayOf(h, s, v)).toLong() and 0xFFFFFFFFL)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Canvas(
             Modifier.fillMaxWidth().height(150.dp).clip(RoundedCornerShape(12.dp))
-                .pointerInput(Unit) { detectTapGestures { o -> s = (o.x / size.width).coerceIn(0f, 1f); v = 1f - (o.y / size.height).coerceIn(0f, 1f); emit() } }
+                .pointerInput(Unit) { detectTapGestures { o -> s = (o.x / size.width).coerceIn(0f, 1f); v = 1f - (o.y / size.height).coerceIn(0f, 1f); emit(); done?.invoke() } }
                 .pointerInput(Unit) {
-                    detectDragGestures { c, _ -> s = (c.position.x / size.width).coerceIn(0f, 1f); v = 1f - (c.position.y / size.height).coerceIn(0f, 1f); emit() }
+                    detectDragGestures(onDragEnd = { done?.invoke() }, onDragCancel = { done?.invoke() }) { c, _ -> s = (c.position.x / size.width).coerceIn(0f, 1f); v = 1f - (c.position.y / size.height).coerceIn(0f, 1f); emit() }
                 },
         ) {
             drawRect(Brush.horizontalGradient(listOf(Color.White, Color.hsv(h, 1f, 1f))))
@@ -565,8 +580,8 @@ fun HsvPicker(color: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifi
         }
         Canvas(
             Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(15.dp))
-                .pointerInput(Unit) { detectTapGestures { o -> h = (o.x / size.width).coerceIn(0f, 1f) * 360f; emit() } }
-                .pointerInput(Unit) { detectDragGestures { c, _ -> h = (c.position.x / size.width).coerceIn(0f, 1f) * 360f; emit() } },
+                .pointerInput(Unit) { detectTapGestures { o -> h = (o.x / size.width).coerceIn(0f, 1f) * 360f; emit(); done?.invoke() } }
+                .pointerInput(Unit) { detectDragGestures(onDragEnd = { done?.invoke() }, onDragCancel = { done?.invoke() }) { c, _ -> h = (c.position.x / size.width).coerceIn(0f, 1f) * 360f; emit() } },
         ) {
             drawRect(Brush.horizontalGradient((0..6).map { Color.hsv(it * 60f % 360f, 1f, 1f) }))
             val x = (h / 360f).coerceIn(0f, 1f) * size.width
@@ -578,14 +593,14 @@ fun HsvPicker(color: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifi
 
 /** A labelled colour: dot + name; tapping expands the palette. For analog hand colours and the like. */
 @Composable
-fun ColorRow(title: String, color: Long, onChange: (Long) -> Unit) {
+fun ColorRow(title: String, color: Long, onChangeFinished: (() -> Unit)? = null, onChange: (Long) -> Unit) {
     var open by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth()) {
         Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { open = !open }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
             T(title, 16.sp, 500, SK.text, Modifier.weight(1f))
             Box(Modifier.size(28.dp).clip(CircleShape).background(color.c()).border(1.dp, Color.White.copy(alpha = 0.2f), CircleShape))
         }
-        if (open) ColorPalette(color, onChange, modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp))
+        if (open) ColorPalette(color, onChange, modifier = Modifier.padding(start = 8.dp, end = 8.dp, bottom = 8.dp), onChangeFinished = onChangeFinished)
     }
 }
 

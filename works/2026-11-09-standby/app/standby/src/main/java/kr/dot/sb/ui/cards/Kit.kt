@@ -217,13 +217,15 @@ internal fun Txt(
     if (maxCapH != null) fs = min(fs, maxCapH / cap)
     if (maxW != null) {
         val measurer = rememberTextMeasurer(cacheSize = 2)
-        val maxPx = with(density) { maxW.toPx() }
+        val maxPx = with(density) { maxW.coerceAtLeast(0.dp).toPx() }
         val f0 = fs
         fs = remember(text, f0, maxPx, fam, tnum) {
             val wPx = measurer.measure(text, styleOf(f0), maxLines = 1, softWrap = false).size.width
             if (wPx > maxPx && wPx > 0) f0 * (maxPx / wPx) * 0.97f else f0
         }
     }
+    // a slot too small for any text still never asks for a negative or zero size (TextStyle throws on a negative lineHeight)
+    fs = fs.coerceAtLeast(1.dp)
     BasicText(
         text, modifier.capBox(cap, fs), style = styleOf(fs), maxLines = lines,
         // Fitted values never ellipsize (§1.5): they were already shrunk to [maxW].

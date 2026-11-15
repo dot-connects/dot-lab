@@ -1,0 +1,194 @@
+<title>입체 네모 숫자 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@300;400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: control bar, a 3-column grid of the same square face with six numeral treatments, a wide preview of the picked one. */
+:root { --bg: #f2f1ee; --fg: #1b1c1f; --muted: #5d6068; --line: #d9d7d1; --chip: #fff; --accent: #b4461a; --ui: "IBM Plex Sans KR", system-ui, sans-serif; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #121315; --fg: #ecebe7; --muted: #9a9ca3; --line: #2a2c30; --chip: #1c1d20; --accent: #ff8a4c; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+.wrap { max-width: 1000px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 22px; }
+h1 { font: 600 1.5rem/1.3 var(--ui); margin: 0; }
+.lede { margin: 6px 0 0; color: var(--muted); line-height: 1.6; max-width: 66ch; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 20px; align-items: center; padding: 12px 0; border-block: 1px solid var(--line); }
+.grp { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.lbl { font-size: .78rem; color: var(--muted); }
+button.t { font: 500 .85rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+button.t[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:focus-visible, .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.opt { display: grid; gap: 8px; text-align: left; background: none; border: 0; padding: 0; color: inherit; font: inherit; cursor: pointer; }
+.opt .face { border-radius: 16px; overflow: hidden; box-shadow: 0 10px 24px rgba(0,0,0,.18); outline: 3px solid transparent; outline-offset: 3px; }
+.opt[aria-pressed="true"] .face { outline-color: var(--accent); }
+.opt svg { display: block; width: 100%; height: auto; }
+.opt b { font-weight: 600; font-size: .95rem; }
+.opt span { color: var(--muted); font-size: .84rem; line-height: 1.5; }
+.wide { border-radius: 18px; overflow: hidden; box-shadow: 0 14px 30px rgba(0,0,0,.22); }
+.wide svg { display: block; width: 100%; height: auto; }
+h2 { font: 600 1.05rem var(--ui); margin: 0; }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>입체 네모 · 숫자 시안 6가지</h1>
+    <p class="lede">바늘·캡슐·눈금은 지금 판 그대로 두고 12·3·6·9 숫자만 바꿨습니다. 고급 손목시계에서 실제로 쓰는 숫자 처리 방식들입니다. 하나를 누르면 아래 가로 화면 미리보기에 크게 보입니다. 다이얼 색을 바꿔 밝은·어두운 판에서 둘 다 읽히는지 보세요.</p>
+  </header>
+  <div class="bar">
+    <div class="grp"><span class="lbl">다이얼</span><button class="t" id="c-ice" type="button" aria-pressed="true">아이스</button><button class="t" id="c-beige" type="button" aria-pressed="false">베이지</button><button class="t" id="c-coal" type="button" aria-pressed="false">코얼</button><button class="t" id="c-tennis" type="button" aria-pressed="false">테니스</button></div>
+  </div>
+  <div class="grid" id="grid"></div>
+  <h2 id="wide-title">가로 화면 미리보기</h2>
+  <div class="wide"><svg id="wide" aria-label="가로 화면 미리보기"></svg></div>
+</div>
+
+<script>
+(() => {
+  const PAL = {
+    ice: { dial: "#dde7e6", ink: "#1d2626", acc: "#3a4040", lume: "#f3f8f2", dark: false },
+    beige: { dial: "#e9dcc6", ink: "#25211b", acc: "#3d3a35", lume: "#fbf7ee", dark: false },
+    coal: { dial: "#2a2c2f", ink: "#ecede9", acc: "#f08a3c", lume: "#e3f0dd", dark: true },
+    tennis: { dial: "#2e6a4f", ink: "#eef1e8", acc: "#f4c84a", lume: "#e6f1dc", dark: true },
+  };
+  const STYLES = [
+    { key: "bold", name: "1. 굵은 인쇄", note: "다이얼에 굵게 인쇄한 숫자. 가장 또렷하고 단정합니다. (Nomos·Junghans 류)" },
+    { key: "thin", name: "2. 가늘고 큰 인쇄", note: "얇은 획을 크게. 조용하고 세련된 탁상시계 느낌. 멀리서도 형태가 읽힙니다." },
+    { key: "sandwich", name: "3. 파낸 야광 숫자", note: "다이얼을 숫자 모양으로 파내고 아래 야광판이 보이는 방식. 위쪽 벽에 그늘이 져 깊이가 확실합니다. (Panerai 샌드위치 다이얼)" },
+    { key: "facet", name: "4. 각진 짙은 금속", note: "두 면으로 깎은 짙은 건메탈 숫자를 붙인 것. 밝은 판에선 진하게, 어두운 판에선 은색으로 바뀝니다. (Grand Seiko 류)" },
+    { key: "plaque", name: "5. 에나멜 명판", note: "작은 둥근 명판에 반전 숫자. 명판이 판 위에 올라앉아 그림자를 드리웁니다. 레일웨이·항공 시계 느낌." },
+    { key: "none", name: "6. 숫자 없음", note: "숫자 대신 12시에 캡슐 두 개, 3·6·9에 굵은 캡슐. 가장 미니멀합니다." },
+  ];
+  let p = PAL.ice, pick = "bold";
+  const NS = "http://www.w3.org/2000/svg";
+  const el = (t, a, par) => { const e = document.createElementNS(NS, t); for (const k in a) e.setAttribute(k, a[k]); if (par) par.appendChild(e); return e; };
+  const dir = (deg) => { const a = deg * Math.PI / 180; return [Math.sin(a), -Math.cos(a)]; };
+  const hit = (deg, hw, hh) => { const [dx, dy] = dir(deg); const t = Math.min(hw / Math.max(Math.abs(dx), 1e-6), hh / Math.max(Math.abs(dy), 1e-6)); return [dx * t, dy * t, t]; };
+  const normalDeg = (x, y, hw, hh) => (Math.abs(Math.abs(x) - hw) < 1e-3 ? (x > 0 ? 90 : 270) : (y > 0 ? 180 : 0));
+  const shade = (hex, d) => { const n = parseInt(hex.slice(1), 16), f = (c) => Math.max(0, Math.min(255, Math.round(c + 255 * d)));
+    return "#" + [n >> 16, (n >> 8) & 255, n & 255].map(f).map(v => v.toString(16).padStart(2, "0")).join(""); };
+  const faces = [];
+
+  function defs(svg, id) {
+    const d = el("defs", {}, svg);
+    const sh = (n, dx, dy, b, o) => { const f = el("filter", { id: id + n, x: "-60%", y: "-60%", width: "220%", height: "220%" }, d);
+      el("feDropShadow", { dx: dx * .35, dy: dy * .35, stdDeviation: b * .35, "flood-color": "#000", "flood-opacity": o * 1.3, result: "a" }, f);
+      el("feDropShadow", { in: "a", dx, dy, stdDeviation: b * 1.6, "flood-color": "#000", "flood-opacity": o * .8 }, f); };
+    sh("I", .5, .8, .45, .34); sh("H", 1, 1.6, .7, .3); sh("M", 1.5, 2.3, .9, .28); sh("S", 2, 3, 1, .26);
+    const grad = (gid, stops, x2 = 1, y2 = 1) => { const g = el("linearGradient", { id: id + gid, x1: 0, y1: 0, x2, y2 }, d); stops.forEach(([o, c, a]) => el("stop", { offset: o, "stop-color": c, "stop-opacity": a ?? 1 }, g)); };
+    grad("sv", [[0, "#fff"], [.3, "#aeb2b8"], [.55, "#f7f8f9"], [.8, "#8a8e94"], [1, "#c9ccd0"]]);
+    grad("lf", [[0, p.lume], [.45, "#fff"], [1, p.lume]], 1, 0);
+    grad("st", [[0, "#000", .26], [.5, "#000", 0], [.5, "#fff", 0], [1, "#fff", .7]], 0, 1);
+    grad("gl", [[0, "#fff", .14], [.35, "#fff", 0], [.62, "#fff", 0], [.7, "#fff", .05], [.78, "#fff", 0]]);
+    // facet metal: light upper-left face, dark lower-right face (hard split)
+    if (p.dark) grad("fc", [[0, "#ffffff"], [.49, "#d6d9dd"], [.51, "#8d9197"], [1, "#b7bbc0"]]);
+    else grad("fc", [[0, "#6a6f76"], [.49, "#3d4147"], [.51, "#15171a"], [1, "#2b2e33"]]);
+    const lg = el("radialGradient", { id: id + "lg", cx: "36%", cy: "30%", r: "85%" }, d);
+    el("stop", { offset: 0, "stop-color": "#fff", "stop-opacity": .18 }, lg); el("stop", { offset: .6, "stop-color": "#fff", "stop-opacity": 0 }, lg); el("stop", { offset: 1, "stop-color": "#000", "stop-opacity": .14 }, lg);
+    const dm = el("radialGradient", { id: id + "dm", cx: "38%", cy: "32%", r: "70%" }, d);
+    [[0, "#fff"], [.45, "#c3c6cb"], [1, "#55595f"]].forEach(([o, c]) => el("stop", { offset: o, "stop-color": c }, dm));
+    const bl = el("filter", { id: id + "blur", x: "-10%", y: "-10%", width: "120%", height: "120%" }, d); el("feGaussianBlur", { stdDeviation: .6 }, bl);
+    return d;
+  }
+  function capsule(g, id, x, y, deg, len, w) {
+    const c = el("g", { transform: `translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${deg})` }, g);
+    el("rect", { x: -w / 2, y: -len / 2, width: w, height: len, rx: w / 2, fill: `url(#${id}sv)` }, c);
+    const r = Math.min(.5, w * .2);
+    el("rect", { x: -w / 2 + r, y: -len / 2 + r, width: w - 2 * r, height: len - 2 * r, rx: (w - 2 * r) / 2, fill: `url(#${id}lf)` }, c);
+    el("line", { x1: -w / 2 + .3, y1: -len / 2 + w / 2, x2: -w / 2 + .3, y2: len / 2 - w / 2, stroke: "#fff", "stroke-width": .15 }, c);
+  }
+  // ---- the six numeral treatments ----
+  function numeral(svg, d, id, style, x, y, h, kc) {
+    const T = (attrs, parent = svg) => { const t = el("text", { x, y, "font-family": "Jost", "text-anchor": "middle", "dominant-baseline": "central", ...attrs }, parent); t.textContent = h; return t; };
+    if (style === "bold") T({ "font-size": 8.6 * kc, "font-weight": 600, fill: p.ink });
+    else if (style === "thin") T({ "font-size": 11.5 * kc, "font-weight": 300, fill: p.ink });
+    else if (style === "sandwich") {
+      const cid = `${id}clip${h}`, cp = el("clipPath", { id: cid }, d);
+      T({ "font-size": 10 * kc, "font-weight": 600 }, cp);
+      const g = el("g", { "clip-path": `url(#${cid})` }, svg);
+      el("rect", { x: x - 12 * kc, y: y - 12 * kc, width: 24 * kc, height: 24 * kc, fill: p.dark ? "#d7e6cf" : "#eef3e6" }, g); // lume plate below
+      // wall shadow: the dial's own edge throws a dark crescent onto the upper-left inside the cut
+      T({ "font-size": 10 * kc, "font-weight": 600, fill: "none", stroke: "rgba(0,0,0,.55)", "stroke-width": 1.1 * kc, transform: `translate(${.45 * kc} ${.7 * kc})`, filter: `url(#${id}blur)` }, g);
+      T({ "font-size": 10 * kc, "font-weight": 600, fill: "none", stroke: shade(p.dial, p.dark ? -.08 : -.32), "stroke-width": .45 * kc }); // cut edge
+      T({ "font-size": 10 * kc, "font-weight": 600, fill: "none", stroke: "rgba(255,255,255,.55)", "stroke-width": .2 * kc, transform: `translate(${.18 * kc} ${.28 * kc})` }); // lit lower lip
+    } else if (style === "facet") {
+      T({ "font-size": 9.6 * kc, "font-weight": 600, fill: `url(#${id}fc)`, stroke: p.dark ? "rgba(0,0,0,.35)" : "rgba(255,255,255,.5)", "stroke-width": .16 * kc, "paint-order": "stroke", filter: `url(#${id}I)` });
+    } else if (style === "plaque") {
+      const w = (String(h).length > 1 ? 11.5 : 8) * kc, hh = 8.6 * kc;
+      el("rect", { x: x - w / 2, y: y - hh / 2, width: w, height: hh, rx: 2 * kc, fill: p.ink, stroke: `url(#${id}sv)`, "stroke-width": .5 * kc, filter: `url(#${id}I)` }, svg);
+      el("rect", { x: x - w / 2 + .5 * kc, y: y - hh / 2 + .5 * kc, width: w - kc, height: hh * .42, rx: 1.6 * kc, fill: "#fff", opacity: .1 }, svg);
+      T({ "font-size": 6.4 * kc, "font-weight": 500, fill: p.dial });
+    }
+  }
+  function build(svg, W, H, id, style) {
+    svg.textContent = ""; svg.setAttribute("viewBox", `0 0 ${W} ${H}`); const d = defs(svg, id);
+    const cx = W / 2, cy = H / 2, S = Math.min(W, H), L = Math.max(W, H), k = S / 100, kc = Math.max(S, L * .42) / 100;
+    el("rect", { width: W, height: H, fill: p.dial }, svg); el("rect", { width: W, height: H, fill: `url(#${id}lg)` }, svg);
+    const m = 3.2 * k, band = 5.2 * k, hw = W / 2 - m, hh = H / 2 - m, rad = Math.min(S * .1, 9 * k);
+    const rr = (x, y, w, h, r) => `M${x + r},${y} H${x + w - r} A${r},${r} 0 0 1 ${x + w},${y + r} V${y + h - r} A${r},${r} 0 0 1 ${x + w - r},${y + h} H${x + r} A${r},${r} 0 0 1 ${x},${y + h - r} V${y + r} A${r},${r} 0 0 1 ${x + r},${y} Z`;
+    const iw2 = hw - band, ih2 = hh - band, r2 = Math.max(rad - band, 2);
+    el("path", { d: rr(cx - hw, cy - hh, 2 * hw, 2 * hh, rad) + rr(cx - iw2, cy - ih2, 2 * iw2, 2 * ih2, r2), "fill-rule": "evenodd", fill: "rgba(0,0,0,.06)" }, svg);
+    el("rect", { x: cx - hw + .3 * k, y: cy - hh + .3 * k, width: 2 * hw - .6 * k, height: 2 * hh - .6 * k, rx: rad, fill: "none", stroke: `url(#${id}st)`, "stroke-width": .5 * k }, svg);
+    el("rect", { x: cx - iw2, y: cy - ih2 + .25 * k, width: 2 * iw2, height: 2 * ih2, rx: r2, fill: "none", stroke: "rgba(255,255,255,.55)", "stroke-width": .35 * k }, svg);
+    el("rect", { x: cx - hw, y: cy - hh, width: 2 * hw, height: 2 * hh, rx: rad, fill: "none", stroke: p.ink, "stroke-width": .3 * k, opacity: .55 }, svg);
+    el("rect", { x: cx - iw2, y: cy - ih2, width: 2 * iw2, height: 2 * ih2, rx: r2, fill: "none", stroke: p.ink, "stroke-width": .22 * k, opacity: .45 }, svg);
+    for (let i = 0; i < 60; i++) {
+      if (i % 15 === 0) continue;
+      const [x, y] = hit(i * 6, hw, hh), [nx, ny] = dir(normalDeg(x, y, hw, hh)), five = i % 5 === 0, len = (five ? 3.4 : 2) * k;
+      el("line", { x1: cx + x, y1: cy + y, x2: cx + x - nx * len, y2: cy + y - ny * len, stroke: p.ink, "stroke-width": (five ? .55 : .3) * k }, svg);
+    }
+    for (const i of [0, 15, 30, 45]) { const [x, y] = hit(i * 6, hw - band / 2, hh - band / 2); el("text", { x: cx + x, y: cy + y, "font-family": "Jost", "font-size": 2.6 * k, fill: p.ink, opacity: .85, "text-anchor": "middle", "dominant-baseline": "central" }, svg).textContent = String(i || 60); }
+    const ihw = hw - band - 4.6 * k, ihh = hh - band - 4.6 * k;
+    const ig = el("g", { filter: `url(#${id}I)` }, svg);
+    for (let h = 0; h < 12; h++) {
+      const [x, y] = hit(h * 30, ihw, ihh), nd = normalDeg(x, y, ihw, ihh);
+      if (style === "none" && h === 0) { const [tx, ty] = dir(nd + 90); for (const s of [-1.6, 1.6]) capsule(ig, id, cx + x + tx * s * kc, cy + y + ty * s * kc, nd, 6.4 * kc, 2.25 * kc); continue; }
+      const big = style === "none" && h % 3 === 0;
+      capsule(ig, id, cx + x, cy + y, nd, (big ? 8 : 6.4) * kc, (big ? 3 : 2.25) * kc);
+    }
+    const nhw = ihw - 7.8 * kc, nhh = ihh - 7.8 * kc;
+    if (style !== "none") for (const h of [12, 3, 6, 9]) { const [x, y] = hit(h * 30, nhw, nhh); numeral(svg, d, id, style, cx + x, cy + y, h, kc); }
+    const shw = nhw - 7.5 * kc, shh = nhh - 7.5 * kc;
+    if (shw > 4 * k && shh > 4 * k) {
+      el("rect", { x: cx - shw, y: cy - shh, width: 2 * shw, height: 2 * shh, rx: Math.max(rad * .6, 2), fill: "rgba(0,0,0,.045)", stroke: `url(#${id}st)`, "stroke-width": .8 * k }, svg);
+      el("rect", { x: cx - shw + .6 * k, y: cy - shh + .6 * k, width: 2 * shw - 1.2 * k, height: 2 * shh - 1.2 * k, rx: Math.max(rad * .6 - .6 * k, 1.5), fill: "none", stroke: "rgba(0,0,0,.08)", "stroke-width": 1.2 * k, filter: `url(#${id}blur)` }, svg);
+    }
+    const short = Math.min(ihw, ihh) - 3.6 * k;
+    const H_ = el("g", { filter: `url(#${id}H)` }, svg), M_ = el("g", { filter: `url(#${id}M)` }, svg), S_ = el("g", { filter: `url(#${id}S)` }, svg);
+    el("circle", { cx, cy, r: 2.5 * k, fill: `url(#${id}dm)` }, svg); el("circle", { cx, cy, r: 1.1 * k, fill: "#6f747a" }, svg);
+    el("rect", { width: W, height: H, fill: `url(#${id}gl)`, "pointer-events": "none" }, svg);
+    faces.push({ H_, M_, S_, cx, cy, k, short, id });
+  }
+  const handPath = (cx, cy, len, w, tail) => `M${cx - w * .45},${cy + tail} L${cx - w / 2},${cy - 3} L${cx - w * .42},${cy - len + w} Q${cx},${cy - len - w * .9} ${cx + w * .42},${cy - len + w} L${cx + w / 2},${cy - 3} L${cx + w * .45},${cy + tail} Z`;
+  const lumePath = (cx, cy, len, w) => { const iw = w - 1; return `M${cx - iw * .42},${cy - 4.5} L${cx - iw * .38},${cy - len + w + .3} Q${cx},${cy - len - iw * .4} ${cx + iw * .38},${cy - len + w + .3} L${cx + iw * .42},${cy - 4.5} Z`; };
+  function hands(f, h, m, s) {
+    const k = f.k, set = (g, len, w, tail, deg, sec) => {
+      g.textContent = "";
+      if (sec) { el("line", { x1: f.cx, y1: f.cy + 8 * k, x2: f.cx, y2: f.cy - len, stroke: p.acc, "stroke-width": .34 * k, "stroke-linecap": "round" }, g); el("circle", { cx: f.cx, cy: f.cy, r: 1.7 * k, fill: p.acc }, g); }
+      else { el("path", { d: handPath(f.cx, f.cy, len, w * k, tail * k), fill: `url(#${f.id}sv)` }, g); el("path", { d: lumePath(f.cx, f.cy, len, w * k), fill: p.lume }, g); }
+      g.setAttribute("transform", `rotate(${deg} ${f.cx} ${f.cy})`);
+    };
+    set(f.H_, f.short * .6, 2.8, 3.5, h * 30); set(f.M_, f.short, 2.2, 4.5, m * 6); set(f.S_, f.short + 4 * k, 0, 0, s * 6, true);
+  }
+  const grid = document.getElementById("grid");
+  function all() {
+    faces.length = 0; grid.textContent = "";
+    for (const st of STYLES) {
+      const b = document.createElement("button"); b.className = "opt"; b.type = "button"; b.setAttribute("aria-pressed", String(st.key === pick));
+      b.innerHTML = `<div class="face"><svg aria-label="${st.name}"></svg></div><b>${st.name}</b><span>${st.note}</span>`;
+      b.onclick = () => { pick = st.key; all(); };
+      grid.appendChild(b);
+      build(b.querySelector("svg"), 100, 100, "g" + st.key, st.key);
+    }
+    build(document.getElementById("wide"), 216, 100, "wide", pick);
+    document.getElementById("wide-title").textContent = "가로 화면 미리보기 · " + STYLES.find(s => s.key === pick).name;
+    tick();
+  }
+  const $ = (i) => document.getElementById(i);
+  const cs = ["ice", "beige", "coal", "tennis"];
+  for (const c of cs) $("c-" + c).onclick = () => { p = PAL[c]; cs.forEach(x => $("c-" + x).setAttribute("aria-pressed", String(x === c))); all(); };
+  function tick() { const now = new Date(), s = now.getSeconds(), m = now.getMinutes() + s / 60, h = (now.getHours() % 12) + m / 60; for (const f of faces) hands(f, h, m, s); }
+  all(); setInterval(tick, 1000);
+})();
+</script>

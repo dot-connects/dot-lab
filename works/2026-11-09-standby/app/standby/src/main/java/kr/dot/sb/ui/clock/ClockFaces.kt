@@ -95,6 +95,9 @@ fun ClockFace(
             FaceId.BALLS -> BallsFace(st, d, ink, inSlot, mod)
             FaceId.DAY_BAR -> DayBarFace(st, d, ink, inSlot, state.weather, state.nextAlarm, mod)
             FaceId.RIM -> RimFace(st, d, ink, inSlot, mod)
+            FaceId.RELIEF -> ReliefFace(st, d, ink, inSlot, mod)
+            FaceId.RELIEF_SQUARE -> ReliefSquareFace(st, d, ink, inSlot, mod)
+            FaceId.RELIEF_DIGITAL -> ReliefDigitalFace(st, d, ink, inSlot, mod)
             FaceId.DESK -> DeskFace(st, d, ink, inSlot, mod)
             FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod)
             FaceId.FLOAT -> FloatFace(st, d, ink, inSlot, mod, hero)
@@ -104,7 +107,7 @@ fun ClockFace(
         }
     }
     // Analog and World never change size with the hour; the others crossfade only when the hour-digit class changes.
-    if (face == FaceId.ANALOG || face == FaceId.WALL || face == FaceId.WORLD || face == FaceId.DAY_BAR || face == FaceId.RIM) body(data, m)
+    if (face == FaceId.ANALOG || face == FaceId.WALL || face == FaceId.WORLD || face == FaceId.DAY_BAR || face == FaceId.RIM || face in Relief.FACES) body(data, m)
     else {
         // Crossfade only when the hour-digit class changes (twice a day); every other minute is a plain recomposition.
         val cls = data.h.length

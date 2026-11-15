@@ -134,7 +134,7 @@ internal fun RootImpl(
     modifier: Modifier,
     onStyleChange: (FaceId, ClockStyle) -> Unit,
     start: RootStart,
-) = ProvideTheme(config) {
+) = ProvideTheme(config, state.now.toLocalTime()) {
     val act by rememberUpdatedState(actions)
     // r10: only the pages that are on, in the full order; pages are passed around by their full-order index
     val pages by rememberUpdatedState(Pages.visible(config))
