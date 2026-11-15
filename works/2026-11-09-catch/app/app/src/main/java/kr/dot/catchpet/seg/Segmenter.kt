@@ -291,7 +291,14 @@ class Segmenter(private val ctx: Context) {
         val k = 640f / max(crop.width, crop.height)
         if (k < 1f) crop = Bitmap.createScaledBitmap(crop, (crop.width * k).roundToInt(), (crop.height * k).roundToInt(), true)
         val img = BitmapImageBuilder(crop).build()
-        return try { faceDetector().detect(img).detections().size } finally { img.close() }
+        val ks = crop.width.toFloat() / (r - l)
+        return try {
+            faceDetector().detect(img).detections().count { d ->
+                val bb = d.boundingBox()
+                val gx = ((l + bb.centerX() / ks) / sx).toInt(); val gy = ((t + bb.centerY() / ks) / sy).toInt()
+                (-1..1).any { dy -> (-1..1).any { dx -> pm.at(gx + dx, gy + dy) } }   // review 11-15: faces off the piece don't count
+            }
+        } finally { img.close() }
     }
 
     /**

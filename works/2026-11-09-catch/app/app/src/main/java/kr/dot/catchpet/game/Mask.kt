@@ -46,6 +46,12 @@ class Mask(
         return false
     }
 
+    /** This mask grown by [n] cells in every direction. */
+    fun grown(n: Int): Mask = Mask(w, h, BooleanArray(bits.size) { i ->
+        val x = i % w; val y = i / w
+        (-n..n).any { dy -> (-n..n).any { dx -> at(x + dx, y + dy) } }
+    }, kind, critterId, species)
+
     /** Every 4-connected piece of this mask, largest first. */
     fun pieces(): List<Mask> {
         val seen = BooleanArray(bits.size)

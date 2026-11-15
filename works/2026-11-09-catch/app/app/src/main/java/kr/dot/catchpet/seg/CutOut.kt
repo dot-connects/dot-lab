@@ -55,7 +55,7 @@ object CutOut {
     }
 
     /** The same cut with a ready alpha for [src] (frame px), e.g. the high-res person model's. */
-    fun make(frame: Bitmap, src: Rect, alpha: Bitmap): Cut {
+    fun make(frame: Bitmap, src: Rect, alpha: Bitmap, clip: Mask? = null): Cut {
         val k = 512f / max(src.width(), src.height())
         val out = Bitmap.createBitmap(max(1, (src.width() * k).roundToInt()), max(1, (src.height() * k).roundToInt()), Bitmap.Config.ARGB_8888)
         val c = Canvas(out)
@@ -64,6 +64,13 @@ object CutOut {
         c.drawBitmap(alpha, 0f, 0f, p)
         p.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
         c.drawBitmap(frame, -src.left.toFloat(), -src.top.toFloat(), p)
+        if (clip != null) {
+            // keep only what lies on the caught mask, grown by two cells so hair and hands at its edge stay
+            val a = alpha(clip.grown(2), frame.width, frame.height)
+            p.xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+            c.drawBitmap(a, -src.left.toFloat(), -src.top.toFloat(), p)
+            a.recycle()
+        }
         return Cut(out, src)
     }
 

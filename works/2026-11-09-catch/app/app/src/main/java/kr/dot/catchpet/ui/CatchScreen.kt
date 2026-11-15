@@ -500,11 +500,13 @@ private class CatchGame(
     private fun group(f: Bitmap, m: Mask, all: List<Mask>): Pair<Mask, String>? {
         var u = m
         val kinds = mutableListOf<String>()
-        fun count(p: Mask) = if (p.kind == Mask.Kind.PERSON) List(seg.faces(f, p).coerceIn(1, 3)) { "person" } else listOf(p.dexKind)
+        fun count(p: Mask) = if (p.kind == Mask.Kind.PERSON) List(seg.faces(f, p).coerceAtLeast(1)) { "person" } else listOf(p.dexKind)
         kinds += count(m)
         for (o in all) for (p in o.pieces()) {
-            if (p.area < 6 || !p.touches(u) || (o.kind == m.kind && p.touches(m) && iouCells(p, m) > 0.5f)) continue
+            // review 11-15: touching the grabbed piece itself (not a chain), and not the grabbed piece again
+            if (p.area < 6 || !p.touches(m) || (o.kind == m.kind && iouCells(p, m) > 0.5f)) continue
             u = u.plus(p); kinds += count(p)
+            if (kinds.size > MAX_GROUP) return null
         }
         return if (kinds.size in 2..MAX_GROUP) u to kinds.joinToString("+") else null
     }
@@ -516,7 +518,7 @@ private class CatchGame(
 
     private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true, kind: String? = null): Grip {
         val hi = if (hiRes && m.kind == Mask.Kind.PERSON) CutOut.srcOf(f, m, 0.15f)?.let { src ->
-            runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a).also { a.recycle() } }
+            runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a, clip = m).also { a.recycle() } }
         } else null
         val cut = hi ?: CutOut.make(f, m)
         return Grip(cut, CutOut.hole(f, m), cut?.let { CutOut.opaque(it.bmp) } ?: 0f, kind)

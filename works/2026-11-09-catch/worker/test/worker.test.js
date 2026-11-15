@@ -2,7 +2,7 @@ import { test, beforeEach, afterEach } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
-import { handle, MemoryCounts, D1Counts, callOpenAI, SHEET_PROMPT , secret } from "../src/index.js";
+import { handle, MemoryCounts, D1Counts, callOpenAI, SHEET_PROMPT , secret, validKind } from "../src/index.js";
 
 const PNG = "iVBORw0KGgo" + "A".repeat(200);   // only checked for being base64-ish and small
 const SITE = "https://dot-connects.github.io";
@@ -160,6 +160,12 @@ test("/sheet: style figure draws the figurine sheet without the fur-ball picture
   assert.equal((await sheet(sheetBody({ style: "fluff" }))).status, 200);   // the fur-ball sheet still has its own slots
   assert.equal(calls[1].ref, true);
   assert.equal((await sheet(sheetBody({ style: "ball" }))).status, 400);
+});
+
+test("group kinds: up to 3 known kinds joined by +, nothing else", () => {
+  assert.equal(validKind("person+cat"), true);
+  assert.equal(validKind("person+person+dog"), true);
+  for (const k of ["person+person+person+cat", "person+", "+cat", "person+dragon", "person cat", "", null, 3]) assert.equal(validKind(k), false, String(k));
 });
 
 test("/sheet: needs x-app and a valid entry", async () => {
