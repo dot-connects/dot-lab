@@ -63,6 +63,9 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.min
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.foundation.layout.FlowRow
 import kr.dot.sb.data.NightRules
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.ui.board.BoardView
@@ -112,8 +115,8 @@ fun PreviewFrame(
     content: @Composable BoxScope.() -> Unit,
 ) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
-        // two-pane page (review S1): the preview takes the pane width instead of the phone height cap
-        val cap = if (LocalPreviewPane.current) Dp.Infinity else maxHeight
+        // two-pane page (review S1): the preview takes the pane width, capped by the pane height instead of the phone cap
+        val cap = LocalPreviewPane.current ?: maxHeight
         val scale = min(maxWidth.value / w, cap.value / h)
         val shape = RoundedCornerShape(radius)
         Box(Modifier.size((w * scale).dp, (h * scale).dp).clip(shape).border(1.dp, SK.line, shape)) {
@@ -277,9 +280,11 @@ private fun Pick(a: String, b: String, second: Boolean, onPick: (Boolean) -> Uni
 private fun DayNight(st: PreviewState) = Pick("낮", "밤", st.night) { st.night = it }
 
 /** Bar above the frame: [커버|안쪽] on a hinge phone, [가로|세로] on all, [낮|밤] on the right; a fixed device = its name. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun PreviewBar(p: Preview, st: PreviewState, phone: Phone) {
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+    // plan-r13 C5: a narrow screen (Flip cover) wraps 낮|밤 to a second line instead of squeezing the pills
+    FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
         if (p.fixed != null) {
             Box(Modifier.height(48.dp), Alignment.Center) {
                 Box(Modifier.height(30.dp).clip(RoundedCornerShape(50)).background(PILL_BG).border(1.dp, PILL_LINE, RoundedCornerShape(50)).padding(horizontal = 12.dp), Alignment.Center) {
@@ -296,9 +301,15 @@ private fun PreviewBar(p: Preview, st: PreviewState, phone: Phone) {
     }
 }
 
-/** One slide in its frame. In the phone list: landscape up to 250 dp tall, portrait 300 dp (mockup `.pv`). */
+/**
+ * One slide in its frame. In the phone list: landscape up to 250 dp tall, portrait 300 dp (mockup `.pv`), and never more
+ * than half the screen (plan-r13 C3: a 320 dp landscape phone keeps rows in view).
+ */
 @Composable
-private fun SlideFrame(s: Slide, look: PreviewLook, modifier: Modifier = Modifier, maxHeight: Dp = if (look.portrait) 300.dp else 250.dp, radius: Dp = 18.dp) {
+private fun SlideFrame(
+    s: Slide, look: PreviewLook, modifier: Modifier = Modifier,
+    maxHeight: Dp = min(if (look.portrait) 300.dp else 250.dp, LocalConfiguration.current.screenHeightDp.dp * 0.5f), radius: Dp = 18.dp,
+) {
     PreviewFrame(
         look.device.width(look.portrait), look.device.height(look.portrait), modifier, maxHeight = maxHeight, radius = radius, night = look.night,
         overlay = { if (look.dim > 0f) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = look.dim))) /* literal-ok: dims the preview */ },
@@ -362,20 +373,24 @@ internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone:
  * overlays (no height change), so showing it never moves the content; a tap scrolls back to the full preview.
  */
 @Composable
-internal fun MiniPreview(p: Preview, st: PreviewState, pager: PagerState, phone: Phone, onTop: () -> Unit, actions: (@Composable () -> Unit)?) {
+internal fun MiniPreview(p: Preview, st: PreviewState, pager: PagerState, phone: Phone, onTop: () -> Unit, actions: (@Composable () -> Unit)?, size: Dp = 96.dp) {
     val look = rememberLook(p, st, phone)
     val s = p.slides[pager.currentPage.coerceIn(0, p.slides.lastIndex)]
     val ratio = look.device.width(look.portrait).toFloat() / look.device.height(look.portrait)
     val none = remember { MutableInteractionSource() }
     Row(
         Modifier.fillMaxWidth().shadow(8.dp).background(SK.bg)
-            .drawBehind { drawLine(SK.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+            .drawBehind { drawLine(SK.line, Offset(0f, this.size.height), Offset(this.size.width, this.size.height), 1.dp.toPx()) }
             .clickable(interactionSource = none, indication = null, onClickLabel = "미리보기로 올라가기", onClick = onTop)
-            .padding(horizontal = 16.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = if (size < 96.dp) 4.dp else 8.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size((96 * ratio).dp, 96.dp)) { SlideFrame(s, look, Modifier.matchParentSize(), maxHeight = 96.dp, radius = 10.dp) }
-        Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(Modifier.size(size * ratio, size)) { SlideFrame(s, look, Modifier.matchParentSize(), maxHeight = size, radius = 10.dp) }
+        // the 56 dp mini (short screens) puts 낮|밤 and the actions on one line
+        if (size < 96.dp) Row(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+            if (p.fixed == null) DayNight(st)
+            Box(Modifier.weight(1f, fill = false)) { actions?.invoke() }
+        } else Column(Modifier.weight(1f), horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
             if (p.fixed == null) DayNight(st)
             actions?.invoke()
         }

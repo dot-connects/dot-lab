@@ -37,13 +37,22 @@ import java.time.LocalDateTime
  * standby/build/shots/<theme>/<group>/<name>-<device>.png (run with -Proborazzi.test.record=true).
  * Tests must use @GraphicsMode(NATIVE) and @Config(sdk = [34]).
  */
-enum class Device(val qualifiers: String, val label: String) {
+enum class Device(val qualifiers: String, val label: String, val extra: Boolean = false) {
     FOLD_COVER_L("w751dp-h475dp-land-xhdpi", "fold-cover-land"),
     FOLD_COVER_P("w475dp-h751dp-port-xhdpi", "fold-cover-port"),
     FOLD_INNER("w932dp-h704dp-land-xhdpi", "fold-inner"),
     BAR_L("w780dp-h360dp-land-xxhdpi", "bar-land"),
     BAR_P("w360dp-h780dp-port-xxhdpi", "bar-port"),
     FLIP("w400dp-h362dp-land-xhdpi", "flip-cover"),
+    // plan-r13 C6: overlay and panel checks only ([extra]: not in the page/board matrices, see [MAIN])
+    FOLD_INNER_P("w673dp-h841dp-port-xhdpi", "fold-inner-port", true),
+    COVER_NARROW("w360dp-h800dp-port-xxhdpi", "cover-narrow", true),
+    FLIP_SMALL("w300dp-h300dp-land-xhdpi", "flip-small", true);
+
+    companion object {
+        /** The six devices every page and board matrix runs on. */
+        val MAIN: List<Device> = entries.filter { !it.extra }
+    }
 }
 
 /**

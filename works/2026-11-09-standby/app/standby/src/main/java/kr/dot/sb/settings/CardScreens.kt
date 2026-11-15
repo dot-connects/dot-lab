@@ -82,13 +82,19 @@ private fun cardValue(t: CardType, c: AppConfig): String? = when (t) {
 fun CardScreen(type: CardType, config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
     val title = if (type == CardType.CALENDAR) "오늘 일정 · 달력" else type.ko
     val slide = Slide(type.ko) { l -> BoardView(Board("card", type.ko, Layout.ONE, listOf(listOf(type))), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+    // D-day: the add row's date and its wheel sheet (over the page, not inside its scroll)
+    var date by remember { mutableStateOf(env.today()) }
+    var picking by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
     Page(title, back, preview = Preview(config, listOf(slide))) {
         when (type) {
             CardType.TIMER -> FocusSection(config, update)
-            CardType.DDAY -> DDaySection(config, update, env)
+            CardType.DDAY -> DDaySection(config, update, env, date) { picking = true }
             CardType.CALENDAR, CardType.AGENDA -> CalendarSection(config, update, env)
             CardType.USAGE -> UsageSection(config, update)
             else -> T("설정할 게 없는 카드예요", 15.sp, 500, SK.muted, Modifier.fillMaxWidth().padding(top = 24.dp, start = 16.dp))
         }
+    }
+    if (picking) DDayDateSheet(env.today(), date, { picking = false }) { date = it; picking = false }
     }
 }

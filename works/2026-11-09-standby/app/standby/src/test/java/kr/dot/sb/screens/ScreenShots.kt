@@ -109,11 +109,13 @@ class ScreenShots(private val name: String, private val device: Device, private 
                 Presets.boards().mapIndexed { i, b -> "board-${b.id}" to 3 + i }
             val out = mutableListOf<Array<Any>>()
             for ((n, p) in pages) {
-                for (d in Device.entries) out += arrayOf(n, d, "page", p)
+                for (d in Device.MAIN) out += arrayOf(n, d, "page", p)
                 out += arrayOf("$n-night", L, "page-night", p)
             }
             for (o in listOf("alarm", "notif", "notif-hidden", "live", "np", "np-open", "pills")) {
-                for (d in Device.entries) out += arrayOf(o, d, o, CLOCKS)
+                // plan-r13 C6: the extra small/odd screens only for the overlays that must clear a short or narrow screen
+                val small = o in setOf("alarm", "notif", "live", "pills")
+                for (d in Device.entries) if (!d.extra || small) out += arrayOf(o, d, o, CLOCKS)
                 out += arrayOf("$o-night", L, "$o-night", CLOCKS)
             }
             out += arrayOf("alarm-night", P, "alarm-night", CLOCKS)

@@ -82,6 +82,22 @@ abstract class SettingsShotKit {
     protected val someOff = AppConfig().let { c -> c.copy(pagesOff = setOf("photos"), boards = c.boards.map { if (it.id == "music") it.copy(on = false) else it }) }
     protected val folders = AppConfig(photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"))
     protected val tallest = "w411dp-h3000dp-port-xhdpi"
+
+    /** 위젯 고르기 with faked providers (Samsung Notes has a 4×4 that is too big for the slot). */
+    protected fun widgetChoices(): List<WidgetChoice> {
+        fun w(key: String, pkg: String, app: String, n: String, wd: Float, ht: Float, cells: String) = WidgetChoice(key, pkg, app, n, kr.dot.sb.platform.WidgetFit.Size(wd, ht), cells)
+        return listOf(
+            w("n1", "com.samsung.android.app.notes", "Samsung Notes", "메모", 250f, 110f, "4×2"),
+            w("n2", "com.samsung.android.app.notes", "Samsung Notes", "메모 목록", 250f, 110f, "4×2"),
+            w("n3", "com.samsung.android.app.notes", "Samsung Notes", "메모 (크게)", 250f, 400f, "4×4"),
+            w("c1", "com.samsung.android.calendar", "Samsung Calendar", "일정", 250f, 110f, "4×2"),
+            w("k1", "com.google.android.keep", "Keep 메모", "메모 하나", 110f, 110f, "2×2"),
+            w("g1", "com.google.android.googlequicksearchbox", "Google", "검색창", 250f, 40f, "4×1"),
+            w("x1", "com.sec.android.daemonapp", "날씨", "오늘 날씨", 110f, 110f, "2×2"),
+            w("t1", "com.kakao.talk", "카카오톡", "채팅방", 110f, 110f, "2×2"),
+            w("h1", "com.sec.android.app.shealth", "Samsung Health", "걸음 수", 110f, 110f, "2×2"),
+        )
+    }
 }
 
 /** Home, 테마와 배경, 카드 list and card pages, 알림, 날씨, 권한, 앱 정보. */
@@ -149,18 +165,7 @@ class SettingsPageShots : SettingsShotKit() {
 
     private fun widgetSheet(name: String, after: ComposeContentTestRule.() -> Unit) {
         RuntimeEnvironment.setQualifiers(phone)
-        fun w(key: String, pkg: String, app: String, n: String, wd: Float, ht: Float, cells: String) = WidgetChoice(key, pkg, app, n, kr.dot.sb.platform.WidgetFit.Size(wd, ht), cells)
-        val all = listOf(
-            w("n1", "com.samsung.android.app.notes", "Samsung Notes", "메모", 250f, 110f, "4×2"),
-            w("n2", "com.samsung.android.app.notes", "Samsung Notes", "메모 목록", 250f, 110f, "4×2"),
-            w("n3", "com.samsung.android.app.notes", "Samsung Notes", "메모 (크게)", 250f, 400f, "4×4"),
-            w("c1", "com.samsung.android.calendar", "Samsung Calendar", "일정", 250f, 110f, "4×2"),
-            w("k1", "com.google.android.keep", "Keep 메모", "메모 하나", 110f, 110f, "2×2"),
-            w("g1", "com.google.android.googlequicksearchbox", "Google", "검색창", 250f, 40f, "4×1"),
-            w("x1", "com.sec.android.daemonapp", "날씨", "오늘 날씨", 110f, 110f, "2×2"),
-            w("t1", "com.kakao.talk", "카카오톡", "채팅방", 110f, 110f, "2×2"),
-            w("h1", "com.sec.android.app.shealth", "Samsung Health", "걸음 수", 110f, 110f, "2×2"),
-        )
+        val all = widgetChoices()
         val slots = kr.dot.sb.platform.WidgetFit.slotSizes(kr.dot.sb.model.Layout.TWO, 0, 780f, 360f, cover = false)
         rule.setContent { SettingsTheme(SK.ok) { WidgetPickerSheet(all, slots, WidgetArt(), {}, {}) } }
         rule.waitForIdle()

@@ -373,15 +373,18 @@ internal fun AutoHideDots(
     else Row(modifier.alpha(a), horizontalArrangement = Arrangement.spacedBy(dot * 1.3f)) { dots() }
 }
 
-/** Screen margins: board `M`, widened symmetrically on the camera-hole axis (design §3.1). */
+/**
+ * Screen margins: board `M` (or [base]: an overlay's own margin), widened symmetrically on the camera-hole axis to clear
+ * the cutout (design §3.1). Without a cutout it is [base] all round.
+ */
 @Composable
-internal fun screenPadding(w: Dp, h: Dp): PaddingValues {
+internal fun screenPadding(w: Dp, h: Dp, base: Dp = Grid.margin(min(w, h))): PaddingValues {
     val density = LocalDensity.current
     val dir = LocalLayoutDirection.current
     val cut = WindowInsets.displayCutout
     val cx = with(density) { maxOf(cut.getLeft(this, dir), cut.getRight(this, dir)).toDp() }
     val cy = with(density) { maxOf(cut.getTop(this), cut.getBottom(this)).toDp() }
-    val m = Grid.margin(min(w, h))
+    val m = base
     return PaddingValues(horizontal = if (cx > 0.dp) max(m, cx + 8.dp) else m, vertical = if (cy > 0.dp) max(m, cy + 8.dp) else m)
 }
 

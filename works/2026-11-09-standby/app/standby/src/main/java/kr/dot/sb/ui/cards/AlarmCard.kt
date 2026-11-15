@@ -90,7 +90,11 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
                         // the digits instead (12-hour mode needs it), and the digits get the full width
                         val apW = apSize * 2.1f + cap * 0.12f
                         val stacked = ap != null && e.cw - apW < cap * 0.6f // stack only when the digits would shrink to a sliver; St and Flip XS stay inline
-                        if (stacked) Txt(ap!!, min(apSize, e.read), ink.ink2, weight = 600, maxW = e.cw)
+                        if (stacked) {
+                            Txt(ap!!, min(apSize, e.read), ink.ink2, weight = 600, maxW = e.cw)
+                            // r13: the digits' cap box starts at the cap line, so the stacked 오전 needs its own gap
+                            Spacer(Modifier.height(e.gap))
+                        }
                         Row(verticalAlignment = Alignment.Bottom) {
                             if (ap != null && !stacked) {
                                 Txt(ap, apSize, ink.ink2, weight = 600)
@@ -153,8 +157,8 @@ private fun QuickSheet(e: Env, config: AppConfig, state: StandbyState, onPick: (
         Column(Modifier.fillMaxSize().padding(e.pad), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val t = setting
             LabelRow(e, Ic.ALARM, if (t == null) "빠른 알람" else "시간 정하기", color = ink.accText)
-            Spacer(Modifier.weight(1f))
             if (t == null) {
+                Spacer(Modifier.weight(1f))
                 val p = kr.dot.sb.model.QuickAlarm.PRESETS
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pill(e, p[0].label, soft, Modifier.weight(1f)) { onPick(p[0]) }
@@ -165,9 +169,10 @@ private fun QuickSheet(e: Env, config: AppConfig, state: StandbyState, onPick: (
                     Pill(e, "직접 정하기", soft, Modifier.weight(1f)) { setting = kr.dot.sb.model.QuickAlarm.nextHalfHour(state.now) }
                 }
             } else {
-                // 24 h wheels (operator 11-14) side by side with [맞추기], so even a short slot has room
-                BoxWithConstraints(Modifier.fillMaxWidth()) {
-                    val item = min(44.dp, (maxWidth / 6))
+                // 24 h wheels (operator 11-14) side by side with [맞추기], so even a short slot has room; plan-r13 C5:
+                // three rows fit under the label in a short slot too
+                BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomCenter) {
+                    val item = min(min(44.dp, maxWidth / 6), maxHeight / 3)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Wheel(e, 24, t.hour, item, Modifier.weight(1f)) { h -> setting = setting?.withHour(h) }
                         Txt(":", e.head, ink.ink, weight = 700)
@@ -188,28 +193,40 @@ internal fun wheelStart(value: Int, size: Int): Int = size * (WHEEL_LAPS / 2) + 
 
 private const val WHEEL_LAPS = 200
 
-/** Number wheel 00..[size]-1 (vertical drag/fling, snapping, wrapping): three rows tall, the middle one picked. */
+/** Number wheel 00..[size]-1 in the card's ink: three rows tall, the middle one picked. */
 @Composable
 private fun Wheel(e: Env, size: Int, value: Int, item: androidx.compose.ui.unit.Dp, modifier: Modifier, onPick: (Int) -> Unit) {
-    val state = androidx.compose.foundation.lazy.rememberLazyListState(wheelStart(value, size))
+    val ink = e.ink
+    NumberWheel(size, value, item, ink.ink.copy(alpha = 0.10f), modifier, onPick = onPick) { v, on ->
+        Txt("%02d".format(v), item * 0.62f, if (on) ink.ink else ink.ink3, weight = if (on) 700 else 500, tnum = true, num = true)
+    }
+}
+
+/**
+ * Snapping wheel of 0..[size]-1 (vertical drag/fling): three rows of [item], the middle one on a [plate] and picked.
+ * [wrap] repeats the values both ways (hours, minutes, months, days); without it the list stops at both ends (years).
+ * [cell] draws value v (on = the picked row). Also the settings D-day date sheet (plan-r13 C2).
+ */
+@Composable
+internal fun NumberWheel(
+    size: Int, value: Int, item: androidx.compose.ui.unit.Dp, plate: Color, modifier: Modifier, wrap: Boolean = true,
+    onPick: (Int) -> Unit, cell: @Composable (v: Int, on: Boolean) -> Unit,
+) {
+    val state = androidx.compose.foundation.lazy.rememberLazyListState(if (wrap) wheelStart(value, size) else value)
     val fling = androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior(state)
     val pick by androidx.compose.runtime.rememberUpdatedState(onPick)
     LaunchedEffect(state) {
         androidx.compose.runtime.snapshotFlow { state.isScrollInProgress to state.firstVisibleItemIndex }.collect { (moving, i) -> if (!moving) pick(wheelValue(i, size)) }
     }
-    val ink = e.ink
     Box(modifier.height(item * 3), Alignment.Center) {
-        Box(Modifier.fillMaxWidth().height(item).clip(RoundedCornerShape(12.dp)).background(ink.ink.copy(alpha = 0.10f)))
+        Box(Modifier.fillMaxWidth().height(item).clip(RoundedCornerShape(12.dp)).background(plate))
         androidx.compose.foundation.lazy.LazyColumn(
             Modifier.fillMaxSize(), state = state, flingBehavior = fling,
             contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = item),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            items(size * WHEEL_LAPS) { i ->
-                val on = i == state.firstVisibleItemIndex
-                Box(Modifier.height(item).fillMaxWidth(), Alignment.Center) {
-                    Txt("%02d".format(wheelValue(i, size)), item * 0.62f, if (on) ink.ink else ink.ink3, weight = if (on) 700 else 500, tnum = true, num = true)
-                }
+            items(if (wrap) size * WHEEL_LAPS else size) { i ->
+                Box(Modifier.height(item).fillMaxWidth(), Alignment.Center) { cell(wheelValue(i, size), i == state.firstVisibleItemIndex) }
             }
         }
     }

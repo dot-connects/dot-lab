@@ -183,9 +183,9 @@ private fun HeatPill(textScale: Float) {
     val fg = lerp(Color(0xFFFFB05A), ink.ink, ink.night) // mockup orange; candle ink at night
     val line = lerp(Color.White.copy(alpha = 0.18f), ink.ink.copy(alpha = 0.35f), ink.night) // literal-ok: hairline on the black pill
     val shape = RoundedCornerShape(50)
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
         Row(
-            Modifier.align(Alignment.TopCenter).padding(top = 14.dp)
+            Modifier.align(Alignment.TopCenter).padding(top = screenPadding(maxWidth, maxHeight, 14.dp).calculateTopPadding())
                 .background(Color.Black, shape).border(1.dp, line, shape) // literal-ok: the pill is black in every theme (mockup)
                 .padding(horizontal = if (msg) 18.dp else 9.dp, vertical = if (msg) 10.dp else 9.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -228,7 +228,7 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                 if (events > 0) "오늘 일정 ${events}개" else null,
             ).joinToString(" · ")
             Column(
-                Modifier.fillMaxSize().padding(s * 0.07f),
+                Modifier.fillMaxSize().padding(screenPadding(w, h, s * 0.07f)),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
             ) {
                 Column(
@@ -460,10 +460,12 @@ private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState
     var dy by remember(n.key) { mutableFloatStateOf(0f) }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val m = Grid.margin(min(maxWidth, maxHeight))
-        val bw = min(maxWidth - m * 2, 520.dp)
+        // r13 C4: clear of a camera hole (sides in landscape, top in portrait); without one = M sides, M/2 top
+        val side = screenPadding(maxWidth, maxHeight).calculateLeftPadding(androidx.compose.ui.unit.LayoutDirection.Ltr)
+        val bw = min(maxWidth - side * 2, 520.dp)
         val shape = RoundedCornerShape(if (t.tokens.radiusRatio == 0f) 0.dp else 22.dp)
         Row(
-            Modifier.align(Alignment.TopCenter).padding(top = m * 0.5f).width(bw).height(64.dp)
+            Modifier.align(Alignment.TopCenter).padding(top = screenPadding(maxWidth, maxHeight, m * 0.5f).calculateTopPadding()).width(bw).height(64.dp)
                 .graphicsLayer { translationY = dy.coerceAtMost(0f) }
                 .background(ink.bg, shape).themedSurface(t, ink, shape).clip(shape)
                 .pointerInput(n.key) {

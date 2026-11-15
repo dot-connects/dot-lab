@@ -110,7 +110,7 @@ class BoardShots(private val name: String, private val device: Device, private v
         private fun base(): List<Array<Any>> {
             val out = mutableListOf<Array<Any>>()
             for (b in Presets.boards()) {
-                for (d in Device.entries) out += arrayOf("preset-${b.id}", d, b, "full")
+                for (d in Device.MAIN) out += arrayOf("preset-${b.id}", d, b, "full")
                 out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
             }
             for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")

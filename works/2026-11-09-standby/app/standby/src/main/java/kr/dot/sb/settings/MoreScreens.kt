@@ -18,10 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.DatePicker
-import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -54,9 +51,7 @@ import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.theme.baseTheme
-import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 
@@ -399,9 +394,9 @@ internal fun CitySheet(title: String, taken: Set<String>, onDismiss: () -> Unit,
 
 // ---- card settings sections (카드 › each card) ---------------------------------------------------------------
 
-/** D-day 카드: the list + add row (also 카드 › D-day). */
+/** D-day 카드: the list + add row (also 카드 › D-day). [date] = the add row's date; [onDate] opens the date sheet. */
 @Composable
-internal fun DDaySection(config: AppConfig, update: Update, env: SettingsEnv) =
+internal fun DDaySection(config: AppConfig, update: Update, env: SettingsEnv, date: LocalDate, onDate: () -> Unit) =
     Section("D-day", footer = "D-day 카드에 보여요. 날짜가 지나면 D+로 세요.") {
         config.ddays.forEachIndexed { i, d ->
             item {
@@ -415,7 +410,7 @@ internal fun DDaySection(config: AppConfig, update: Update, env: SettingsEnv) =
                 }
             }
         }
-        item { DDayAdd(env.today()) { d -> update { it.copy(ddays = it.ddays + d) } } }
+        item { DDayAdd(date, onDate) { d -> update { it.copy(ddays = it.ddays + d) } } }
     }
 
 /** 타이머·뽀모도로 카드: 집중 · 휴식 minutes. */
@@ -460,28 +455,65 @@ private fun ddayText(today: LocalDate, date: LocalDate): String {
 }
 
 @Composable
-private fun DDayAdd(today: LocalDate, onAdd: (DDay) -> Unit) {
+private fun DDayAdd(date: LocalDate, onDate: () -> Unit, onAdd: (DDay) -> Unit) {
     var name by remember { mutableStateOf("") }
-    var date by remember { mutableStateOf(today.plusDays(30)) }
-    var picking by remember { mutableStateOf(false) }
     Column(Modifier.fillMaxWidth().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Field(name, { name = it }, "새 D-day 이름")
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).background(SK.surface2).clickable { picking = true }.padding(horizontal = 14.dp), Alignment.CenterStart) {
-                T(date.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일")), 16.sp, 500, SK.text)
+            Box(Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).background(SK.surface2).clickable(onClick = onDate).padding(horizontal = 14.dp), Alignment.CenterStart) {
+                T(date.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일")), 16.sp, 500, SK.text, maxLines = 1)
             }
             ActionButton("추가", { onAdd(DDay(name.trim(), date)); name = "" }, enabled = name.isNotBlank())
         }
     }
-    if (picking) {
-        val st = rememberDatePickerState(initialSelectedDateMillis = date.atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli())
-        DatePickerDialog(
-            onDismissRequest = { picking = false },
-            confirmButton = { androidx.compose.material3.TextButton({ st.selectedDateMillis?.let { date = Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDate() }; picking = false }) { androidx.compose.material3.Text("확인") } },
-            dismissButton = { androidx.compose.material3.TextButton({ picking = false }) { androidx.compose.material3.Text("취소") } },
-        ) { DatePicker(st) }
+}
+
+/** [day] in [year]/[month], pulled back to the month's last day when it has fewer (1/31 → 2월 = 2/28, 2/29 in a leap year). */
+internal fun ddayDate(year: Int, month: Int, day: Int): LocalDate =
+    java.time.YearMonth.of(year, month).let { it.atDay(day.coerceIn(1, it.lengthOfMonth())) }
+
+/**
+ * plan-r13 C2: the D-day date as year (this year … +10) / month / day wheels (the alarm card's wheel), the day clamped when
+ * the month or year moves. Wide sheets put the date and [확인] beside the wheels so a 320 dp landscape phone shows both.
+ */
+@Composable
+internal fun DDayDateSheet(today: LocalDate, initial: LocalDate, onDismiss: () -> Unit, onDone: (LocalDate) -> Unit) {
+    var d by remember { mutableStateOf(initial) }
+    Sheet("D-day 날짜", onDismiss) {
+        val wheels = @Composable { m: Modifier ->
+            Row(m, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val item = 44.dp
+                kr.dot.sb.ui.cards.NumberWheel(11, (d.year - today.year).coerceIn(0, 10), item, SK.surface2, Modifier.weight(1.3f), wrap = false,
+                    onPick = { y -> d = ddayDate(today.year + y, d.monthValue, d.dayOfMonth) }) { v, on -> WheelText("${today.year + v}년", on) }
+                kr.dot.sb.ui.cards.NumberWheel(12, d.monthValue - 1, item, SK.surface2, Modifier.weight(1f),
+                    onPick = { mo -> d = ddayDate(d.year, mo + 1, d.dayOfMonth) }) { v, on -> WheelText("${v + 1}월", on) }
+                // a month of another length is a new wheel, opened on the clamped day
+                androidx.compose.runtime.key(d.lengthOfMonth()) {
+                    kr.dot.sb.ui.cards.NumberWheel(d.lengthOfMonth(), d.dayOfMonth - 1, item, SK.surface2, Modifier.weight(1f),
+                        onPick = { dd -> d = ddayDate(d.year, d.monthValue, dd + 1) }) { v, on -> WheelText("${v + 1}일", on) }
+                }
+            }
+        }
+        val done = @Composable { m: Modifier ->
+            Column(m, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                T(d.format(DateTimeFormatter.ofPattern("yyyy년 M월 d일")) + " · " + ddayText(today, d), 15.sp, 600, LocalAccent.current, maxLines = 2)
+                ActionButton("확인", { onDone(d) }, Modifier.fillMaxWidth())
+            }
+        }
+        androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = 4.dp)) {
+            if (maxWidth >= 480.dp) Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                wheels(Modifier.weight(2f))
+                done(Modifier.weight(1f))
+            } else Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                wheels(Modifier.fillMaxWidth())
+                done(Modifier.fillMaxWidth())
+            }
+        }
     }
 }
+
+@Composable
+private fun WheelText(text: String, on: Boolean) = T(text, 17.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, maxLines = 1)
 
 // ---- 권한 -----------------------------------------------------------------------------------------------------------
 

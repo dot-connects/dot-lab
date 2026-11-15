@@ -23,10 +23,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
@@ -58,6 +59,10 @@ import androidx.compose.ui.layout.positionInParent
 import androidx.compose.foundation.layout.offset
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
+import androidx.compose.ui.unit.max
+import androidx.compose.ui.unit.min
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextDecoration
@@ -169,8 +174,8 @@ fun IconBtn(ic: Ic, onClick: () -> Unit, tint: Color = SK.muted, enabled: Boolea
 
 // ---- page, sections, rows -----------------------------------------------------------------------------------------
 
-/** True inside the left (preview) pane of a two-pane page: previews may use the pane's full height. */
-val LocalPreviewPane = compositionLocalOf { false }
+/** Inside the left (preview) pane of a two-pane page: the frame height that fits the pane (null elsewhere). */
+val LocalPreviewPane = compositionLocalOf<Dp?> { null }
 
 /** The preview bar state shared by the page-settings screens ([Preview.onSettle]); [RouteHost] provides it. */
 val LocalPageBar = compositionLocalOf<PreviewState?> { null }
@@ -181,9 +186,10 @@ val LocalTwoPane = compositionLocalOf { false }
 /**
  * A settings page. [preview] (r10) = the screen's live preview: on a phone it is the first item of the list, and once it
  * has scrolled away a 96 dp mini (+ [miniActions]) overlays the top without changing the list's height; a tap on the mini
- * scrolls back up. Width >= 600 dp (Fold inner): two panes, the preview on the left 55 %, the rows on the right 45 %.
- * [sticky] (r13 사용자 지정: the tab row) sits after [content] and pins under the mini (or the top) once it scrolls there;
- * [after] follows it. A page with [sticky] is two-pane only in landscape and drops the mini below 480 dp tall.
+ * scrolls back up; below 420 dp tall the mini is 56 dp. Landscape and width >= 600 dp (Fold inner): two panes, the
+ * preview on the left 55 %, the rows on the right 45 % (Fold inner portrait = one column). [sticky] (r13 사용자 지정: the
+ * tab row) sits after [content] and pins under the mini (or the top) once it scrolls there; [after] follows it.
+ * Insets: the settings root pads for bars and cutouts; only the rows' scroll here (and [Sheet]) pad for the keyboard.
  */
 @Composable
 fun Page(
@@ -206,10 +212,11 @@ fun Page(
     var full by remember { mutableStateOf<Int?>(null) }
     val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
     Box(modifier.fillMaxSize()) {
-        BoxWithConstraints(Modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
-            // ponytail: the landscape-only two-pane rule applies to [sticky] pages only until plan-r13 Part C makes it global
-            val twoPane = maxWidth >= 600.dp && preview != null && (sticky == null || maxWidth > maxHeight)
-            val miniOk = sticky == null || maxHeight >= 480.dp
+        BoxWithConstraints(Modifier.fillMaxSize().background(SK.bg), contentAlignment = Alignment.TopCenter) {
+            // plan-r13 C3: the window's orientation (= width > height on a phone; a tall test viewport keeps its "land")
+            val land = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
+            val twoPane = maxWidth >= 600.dp && preview != null && land
+            val short = maxHeight < 420.dp
             Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
@@ -217,9 +224,12 @@ fun Page(
                 }
                 if (twoPane) {
                     Row(Modifier.weight(1f).fillMaxWidth()) {
-                        CompositionLocalProvider(LocalPreviewPane provides true) {
-                            Column(Modifier.weight(0.55f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-                                fullPreview()
+                        BoxWithConstraints(Modifier.weight(0.55f).fillMaxHeight()) {
+                            // the frame fits under the bar (52 dp), above the caption (up to two lines) and the 24 dp margin
+                            CompositionLocalProvider(LocalPreviewPane provides (maxHeight - 120.dp).coerceAtLeast(120.dp)) {
+                                Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+                                    fullPreview()
+                                }
                             }
                         }
                         CompositionLocalProvider(LocalTwoPane provides true) {
@@ -232,7 +242,7 @@ fun Page(
                     var miniH by remember { mutableIntStateOf(0) }
                     val gap = with(LocalDensity.current) { 64.dp.roundToPx() }
                     val past by remember { derivedStateOf { pvH > 0 && scroll.value > pvH - gap } }
-                    val mini = preview != null && !preview.cards && miniOk && past
+                    val mini = preview != null && !preview.cards && past
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         StickyScroll(scroll, Modifier.fillMaxSize(), if (mini) miniH else 0, sticky, after) {
                             if (preview != null) Box(Modifier.fillMaxWidth().onSizeChanged { pvH = it.height }) { fullPreview() }
@@ -241,7 +251,7 @@ fun Page(
                         if (mini && preview != null) {
                             val scope = rememberCoroutineScope()
                             Box(Modifier.fillMaxWidth().onSizeChanged { miniH = it.height }) {
-                                MiniPreview(preview, st, pager, phone, { scope.launch { scroll.animateScrollTo(0) } }, miniActions)
+                                MiniPreview(preview, st, pager, phone, { scope.launch { scroll.animateScrollTo(0) } }, miniActions, if (short) 56.dp else 96.dp)
                             }
                         }
                     }
@@ -262,7 +272,7 @@ private fun StickyScroll(
     sticky: (@Composable () -> Unit)?, after: (@Composable ColumnScope.() -> Unit)?, content: @Composable ColumnScope.() -> Unit,
 ) {
     var stickyY by remember { mutableIntStateOf(-1) }
-    Box(modifier) {
+    Box(modifier.imePadding()) {
         Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
             content()
             if (sticky != null) Box(Modifier.fillMaxWidth().onGloballyPositioned { stickyY = it.positionInParent().y.toInt() }.padding(vertical = 8.dp)) { sticky() }
@@ -643,15 +653,22 @@ fun ColorRow(title: String, color: Long, onChangeFinished: (() -> Unit)? = null,
 
 // ---- sheet ----------------------------------------------------------------------------------------------------------
 
-/** Bottom sheet drawn inside the screen (scrim + panel); simpler and more predictable than a window-based sheet. */
+/**
+ * Bottom sheet drawn inside the screen (scrim + panel); simpler and more predictable than a window-based sheet.
+ * plan-r13 C1: it rides on the keyboard; height = min(86 %, screen − keyboard), at least 200 dp (then its top stays on
+ * screen and the keyboard covers its bottom).
+ */
 @Composable
 fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
     val none = remember { MutableInteractionSource() }
     BoxWithConstraints(Modifier.fillMaxSize().background(SK.scrim).clickable(interactionSource = none, indication = null, onClick = onDismiss)) {
+        // the root drops its bottom bar padding while the keyboard is up (safeDrawing minus ime): the keyboard is measured from here
+        val ime = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
+        val cap = max(min(maxHeight * 0.86f, maxHeight - ime), 200.dp).coerceAtMost(maxHeight)
         Column(
-            Modifier.align(Alignment.BottomCenter).widthIn(max = 720.dp).fillMaxWidth().heightIn(max = maxHeight * 0.86f)
+            Modifier.align(Alignment.BottomCenter).padding(bottom = min(ime, maxHeight - cap)).widthIn(max = 720.dp).fillMaxWidth().heightIn(max = cap)
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(SK.surface)
-                .clickable(interactionSource = none, indication = null) {}.navigationBarsPadding(),
+                .clickable(interactionSource = none, indication = null) {},
         ) {
             Box(Modifier.align(Alignment.CenterHorizontally).padding(top = 10.dp).size(width = 36.dp, height = 4.dp).clip(RoundedCornerShape(2.dp)).background(SK.line))
             Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 4.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {

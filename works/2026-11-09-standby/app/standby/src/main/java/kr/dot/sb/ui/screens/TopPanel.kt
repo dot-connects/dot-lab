@@ -13,6 +13,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -94,7 +98,10 @@ internal fun TopPanel(
     val ink = LocalInk.current
     val t = LocalTheme.current
     val m = Grid.margin(min(w, h))
-    val pw = min(w - m * 2, 520.dp)
+    // r13 C4/C5: clear of a camera hole; taller than the screen (Flip cover, 568×320) it scrolls instead of clipping
+    val sp = screenPadding(w, h, m * 0.6f)
+    val top = sp.calculateTopPadding()
+    val pw = min(w - screenPadding(w, h).calculateLeftPadding(LayoutDirection.Ltr) * 2, 520.dp)
     val pad = 14.dp
     val shape = RoundedCornerShape(28.dp)
     val ctx = LocalContext.current
@@ -103,8 +110,8 @@ internal fun TopPanel(
     var vol by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVol.toFloat()) }
     Box(Modifier.fillMaxSize().background(SCRIM))
     Column(
-        modifier.padding(top = m * 0.6f).width(pw)
-            .background(ink.bg.copy(alpha = 0.94f), shape).themedSurface(t, ink, shape).padding(pad)
+        modifier.padding(top = top).width(pw).heightIn(max = h - top - m * 0.6f)
+            .background(ink.bg.copy(alpha = 0.94f), shape).themedSurface(t, ink, shape).clip(shape).verticalScroll(rememberScrollState()).padding(pad)
             .pointerInput(Unit) {
                 // any finger anywhere on the panel holds it open; the 4 s start when the last one lifts
                 awaitEachGesture {

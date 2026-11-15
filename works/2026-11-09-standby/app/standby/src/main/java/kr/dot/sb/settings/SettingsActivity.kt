@@ -19,6 +19,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.exclude
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -126,7 +132,8 @@ class SettingsActivity : ComponentActivity() {
                 chargeTrail = { kr.dot.sb.platform.ChargeStart.trail(this) },
             )
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
-                Box(Modifier.fillMaxSize()) {
+                // plan-r13 C1: bars and cutouts padded once here; the keyboard only by the page scroll and the sheets
+                Box(Modifier.fillMaxSize().background(SK.bg).windowInsetsPadding(WindowInsets.safeDrawing.exclude(WindowInsets.ime))) {
                     RouteHost(route, config, ::update, nav, env)
                     widgetMenu.value?.let { WidgetMenu(it, config) }
                     widgetAsk.value?.let { WidgetPicker(it, config) }
