@@ -69,6 +69,7 @@ fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
     // the pet may have been turned off from its cloud meanwhile: the badge follows
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload++ }
     val entries by produceState<List<Dex.Entry>?>(null, reload) { value = withContext(Dispatchers.IO) { Dex.list(ctx) } }
+    val allCritters = remember { Dex.critterIds(ctx) }
     var picked by remember { mutableStateOf(setOf<String>()) }
     var picking by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf(false) }
@@ -113,12 +114,31 @@ fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
                     onClick = { if (picking) picked = if (e.id in picked) picked - e.id else picked + e.id else onOpen(e.id) },
                     onLong = { picking = true; picked = picked + e.id })
             }
+            // the fur critters not met yet, as "?" at the end (operator 11-15: no count, no split)
+            if (!picking) {
+                val met = list.mapNotNull { it.critterId }.toSet()
+                items(allCritters.filter { it !in met }, key = { "missing-$it" }) { MissingCell() }
+            }
         }
         if (!picking && list.isNotEmpty()) Note("길게 누르면 여러 마리를 골라 지울 수 있어요.", Modifier.align(Alignment.CenterHorizontally))
     }
     if (asking) DeleteDialog(entries.orEmpty().filter { it.id in picked }) { yes ->
         asking = false
         if (yes) { removeEntries(ctx, picked.toList()); picked = emptySet(); picking = false; reload++ }
+    }
+}
+
+@Composable
+private fun MissingCell() {
+    Column(
+        Modifier.padding(bottom = Book.DROP).inkCard(dashed = true).padding(top = 8.dp, bottom = 8.dp, start = 4.dp, end = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.1f), contentAlignment = Alignment.Center) {
+            Text("?", fontFamily = Book.Display, fontSize = 34.sp, color = Book.Muted)
+        }
+        Text("???", fontFamily = Book.Display, fontSize = 15.sp, color = Book.Muted, maxLines = 1)
+        Text("털뭉치", color = Book.Muted, fontSize = 11.sp)
     }
 }
 

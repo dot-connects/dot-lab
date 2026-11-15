@@ -21,7 +21,7 @@ class PetBrain(
     private val rnd: () -> Float,
 ) {
     enum class Zone { FLOOR, LEFT, RIGHT, BEHIND }
-    enum class Act { IDLE, WALK, THINK, SMILE, DANCE, SLEEP, CLIMB, HANG, FALL, DIZZY }
+    enum class Act { IDLE, WALK, THINK, SMILE, DANCE, SLEEP, CLIMB, HANG, FALL, DIZZY, HOP, WIGGLE }
 
     var zone = zone; private set
     var act = Act.IDLE; private set
@@ -34,6 +34,10 @@ class PetBrain(
     private var t = 0f
     private var len = 3000f
     private var vy = 0f
+    private var vx = 0f
+    /** Let go near a wall: how far from it (x) the pet was, and ms since; the drawing slides it in over SLIDE_MS. */
+    private var slideFrom = 0f
+    private var slideMs = SLIDE_MS
 
     init { place(zone) }
 
@@ -54,8 +58,41 @@ class PetBrain(
         }
     }
 
+    /**
+     * Away from the home screen in "always" mode, without the keyboard watch: keep off the floor and high on a wall,
+     * where a keyboard never reaches (operator 11-15, plan A). [movedUp]: we took it there, so we bring it back down.
+     */
+    var upHigh = false; private set
+    private var movedUp = false
+
+    fun upHigh(on: Boolean) {
+        if (on == upHigh) return
+        upHigh = on
+        if (on) { if (act != Act.HANG && act != Act.FALL) goUp() }
+        else if (movedUp) {
+            movedUp = false
+            if (onWall && act != Act.HANG && act != Act.FALL) { x = if (zone == Zone.LEFT) size else w - size; place(Zone.FLOOR) }
+        }
+        if (on && onWall) y = y.coerceIn(topLimit, max(topLimit, bottomLimit))
+    }
+
+    /** Floor (or behind the icons) -> the nearer wall, in the upper half. */
+    private fun goUp() {
+        if (onWall) return
+        y = min(y, h * 0.45f)
+        place(if (x < w / 2) Zone.LEFT else Zone.RIGHT)
+        movedUp = true
+    }
+
     val topLimit get() = h * 0.2f
-    val bottomLimit get() = floorY - size
+    val bottomLimit get() = if (upHigh) min(floorY - size, h * 0.5f) else floorY - size
+
+    /** Where the drawing puts the pet across the wall while it slides in (0 once it is there). */
+    fun slideOffset(): Float {
+        if (!onWall || slideMs >= SLIDE_MS) return 0f
+        val k = 1f - slideMs / SLIDE_MS
+        return slideFrom * k * k
+    }
 
     /** Puts the pet on a place and calms it down. */
     fun place(z: Zone) {
@@ -81,7 +118,7 @@ class PetBrain(
 
     private fun pickNext() {
         val pool = when {
-            onWall -> listOf(Act.IDLE, Act.CLIMB, Act.CLIMB)
+            onWall -> if (bottomLimit - topLimit < 4f) listOf(Act.IDLE) else listOf(Act.IDLE, Act.CLIMB, Act.CLIMB)
             zone == Zone.BEHIND -> listOf(Act.IDLE, Act.WALK, Act.WALK)
             else -> listOf(Act.IDLE, Act.WALK, Act.THINK, Act.WALK)
         }
@@ -90,16 +127,23 @@ class PetBrain(
 
     fun step(dtMs: Float, sinceTouchMs: Float, night: Boolean, charging: Boolean) {
         t += dtMs
+        if (slideMs < SLIDE_MS) slideMs += dtMs
         when (act) {
             Act.HANG -> return
             Act.FALL -> {
                 vy += dtMs * GRAVITY
                 y = min(floorY, y + vy * dtMs)
-                if (y >= floorY) { vy = 0f; place(Zone.FLOOR); start(Act.DIZZY, DIZZY_MS) }   // dropped: lands dizzy (operator 11-15)
+                if (y < size) { y = size; vy = kotlin.math.abs(vy) * 0.5f }
+                // thrown: across the screen, bouncing off the side edges (operator 11-15, Shimeji)
+                x += vx * dtMs
+                if (x < size / 2) { x = size / 2; vx = -vx * 0.55f }
+                if (x > w - size / 2) { x = w - size / 2; vx = -vx * 0.55f }
+                if (y >= floorY) { vy = 0f; vx = 0f; place(Zone.FLOOR); start(Act.DIZZY, DIZZY_MS) }   // dropped: lands dizzy (operator 11-15)
                 return
             }
             Act.SLEEP -> return   // until touched
-            Act.SMILE, Act.DANCE, Act.DIZZY -> if (t < len) return
+            Act.SMILE, Act.DANCE, Act.HOP, Act.WIGGLE -> if (t < len) return
+            Act.DIZZY -> if (t < len) return else if (upHigh && !onWall) { goUp(); return }
             Act.WALK -> {
                 x += dir * WALK_SPEED * dtMs
                 if (x < size / 2 || x > w - size / 2) { dir = -dir; x = x.coerceIn(size / 2, w - size / 2) }
@@ -115,7 +159,15 @@ class PetBrain(
         }
     }
 
-    fun tap() { start(Act.SMILE, 1400f) }
+    /** A tap: a smile, a big hop or a wiggle, so it is not the same every time (operator 11-15). */
+    fun tap() {
+        val r = rnd()
+        when {
+            r < 0.45f -> start(Act.SMILE, 1400f)
+            r < 0.75f -> start(Act.HOP, 650f)
+            else -> start(Act.WIGGLE, 900f)
+        }
+    }
 
     fun doubleTap() { start(Act.DANCE, 3000f) }
 
@@ -127,11 +179,21 @@ class PetBrain(
     fun drop(px: Float, py: Float) {
         x = px; y = py
         when {
-            px < w * 0.18f -> place(Zone.LEFT)
-            px > w * 0.82f -> place(Zone.RIGHT)
+            px < w * 0.18f -> { place(Zone.LEFT); slideIn(px); movedUp = false }
+            px > w * 0.82f -> { place(Zone.RIGHT); slideIn(px - w); movedUp = false }
+            upHigh -> { place(if (px < w / 2) Zone.LEFT else Zone.RIGHT); slideIn(if (px < w / 2) px else px - w); movedUp = true }
             zone == Zone.BEHIND -> place(Zone.BEHIND)
-            else -> { zone = Zone.FLOOR; act = Act.FALL; vy = 0f; t = 0f }
+            else -> { zone = Zone.FLOOR; act = Act.FALL; vy = 0f; vx = 0f; t = 0f }
         }
+    }
+
+    private fun slideIn(dx: Float) { slideFrom = dx; slideMs = 0f }
+
+    /** Let go while moving fast (px/ms): it flies, bounces off the side edges and lands dizzy. */
+    fun fling(px: Float, py: Float, vx: Float, vy: Float) {
+        x = px; y = py
+        zone = Zone.FLOOR; act = Act.FALL; t = 0f; movedUp = false
+        this.vx = vx.coerceIn(-MAX_THROW, MAX_THROW); this.vy = vy.coerceIn(-MAX_THROW, MAX_THROW)
     }
 
     /** Which of the six pet pictures to draw now. */
@@ -140,7 +202,8 @@ class PetBrain(
         Act.HANG -> if ((tMs / 160f).toInt() % 2 == 0) "holdA" else "holdB"     // flailing while held
         Act.FALL -> "holdA"
         Act.DIZZY -> if (t < 700f) "fall" else "dazed"                         // flat on the belly, then sits up dazed
-        Act.SMILE -> "smile"
+        Act.SMILE, Act.HOP -> "smile"
+        Act.WIGGLE -> "front"
         Act.DANCE -> if ((tMs / 360f).toInt() % 2 == 0) "front" else "smile"
         Act.WALK, Act.CLIMB -> "walk${(tMs / 130f).toInt() % 4 + 1}"   // contact, passing, contact, passing
         Act.SLEEP -> if (onWall) "curl" else "sleep"
@@ -161,6 +224,9 @@ class PetBrain(
 
     companion object {
         const val DIZZY_MS = 1800f
+        const val SLIDE_MS = 120f       // let go near a wall: slides in (operator 11-15)
+        const val MAX_THROW = 3f        // px/ms
+        const val THROW_SPEED = 1.1f    // px/ms at let-go: faster than this is a throw
         const val WALK_SPEED = 0.022f    // px/ms
         const val CLIMB_SPEED = 0.018f
         const val GRAVITY = 0.003f       // px/ms²

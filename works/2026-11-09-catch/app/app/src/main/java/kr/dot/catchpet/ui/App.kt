@@ -47,7 +47,10 @@ fun App(openPet: Int = 0) {
         screen = if (screen == Screen.DETAIL) Screen.DEX else Screen.CATCH
     }
     when (screen) {
-        Screen.CATCH -> CatchScreen(sink, critters, sink.count) { screen = Screen.DEX }
+        Screen.CATCH -> {
+            androidx.compose.runtime.LaunchedEffect(Unit) { sink.refresh() }
+            CatchScreen(sink, critters, sink.count) { screen = Screen.DEX }
+        }
         Screen.DEX -> DexScreen(
             onOpen = { entryId = it; screen = Screen.DETAIL },
             onPet = { screen = Screen.PET },
@@ -63,25 +66,41 @@ fun App(openPet: Int = 0) {
  * background thread, in catch order, so the frame loop never waits on the disk.
  */
 class DexSink(private val ctx: Context) : CatchSink {
-    private val critters: MutableSet<String>
+    private val critters = HashSet<String>()
+    private val names = HashSet<String>()
     var count by mutableIntStateOf(0); private set
 
-    init {
-        val all = Dex.list(ctx)
-        critters = all.mapNotNull { it.critterId }.toMutableSet()
+    init { load(Dex.list(ctx)) }
+
+    private fun load(all: List<Dex.Entry>) {
+        critters.clear(); critters += all.mapNotNull { it.critterId }
+        names.clear(); names += all.map { it.name }
         count = all.size
     }
 
-    override fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Boolean {
-        val grew = critterId == null || critters.add(critterId)
-        if (grew) count++
+    /** Re-read the dex after the pending writes (deleting in the dex left the rail count high, review 11-15). */
+    fun refresh() {
         writes.execute {
-            val bytes = png?.let { b -> ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray() }
-            runCatching { Dex.add(ctx, kind, bytes, critterId, label) }
-                .onFailure { android.util.Log.e("DexSink", "save failed", it) }
+            val all = runCatching { Dex.list(ctx) }.getOrNull() ?: return@execute
+            main.post { load(all) }
         }
-        return grew
     }
 
-    private companion object { val writes = Executors.newSingleThreadExecutor() }
+    override fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Caught {
+        val grew = critterId == null || critters.add(critterId)
+        if (grew) count++
+        val name = if (critterId != null) Dex.critterName(ctx, critterId) else Dex.cuteName(names)
+        names += name
+        writes.execute {
+            val bytes = png?.let { b -> ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray() }
+            runCatching { Dex.add(ctx, kind, bytes, critterId, label, name = name) }
+                .onFailure { android.util.Log.e("DexSink", "save failed", it) }
+        }
+        return Caught(grew, name)
+    }
+
+    private companion object {
+        val writes = Executors.newSingleThreadExecutor()
+        val main = android.os.Handler(android.os.Looper.getMainLooper())
+    }
 }

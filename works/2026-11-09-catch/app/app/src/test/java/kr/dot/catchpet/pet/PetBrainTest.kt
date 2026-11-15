@@ -42,8 +42,7 @@ class PetBrainTest {
         run(b, 10_000f, quiet = 180_000f)
         assertEquals(Act.SLEEP, b.act)
         b.tap()
-        assertEquals(Act.SMILE, b.act)
-        assertEquals("smile", b.frame(0f))
+        assertTrue(b.act in listOf(Act.SMILE, Act.HOP, Act.WIGGLE))   // a tap picks one of three (operator 11-15)
     }
 
     @Test fun dropNearLeftSticksToTheWall() {
@@ -112,5 +111,54 @@ class PetBrainTest {
         b.keyboard(500f)
         assertTrue(b.y <= 500f - 4f - 48f)
         run(b, 20_000f) { assertTrue(it.y <= 500f - 4f - 48f + 0.01f) }
+    }
+
+    @Test fun aThrowBouncesOffTheWallAndLandsDizzy() {
+        val b = brain()
+        b.grab(200f, 300f)
+        b.fling(200f, 300f, vx = 2f, vy = -0.5f)
+        var bounced = false
+        run(b, 3000f) { if (it.x >= 400f - 24f - 0.01f) bounced = true }
+        assertTrue("hit the right wall", bounced)
+        assertTrue(b.x in 24f..376f)
+        assertEquals(Zone.FLOOR, b.zone)
+        assertEquals(700f, b.y, 0.01f)
+    }
+
+    @Test fun upHighTakesAFloorPetToAWallAboveTheKeyboardLine() {
+        val b = brain()
+        b.upHigh(true)
+        assertTrue(b.zone == Zone.LEFT || b.zone == Zone.RIGHT)
+        run(b, 30_000f) { assertTrue("stays in the upper half", it.y <= 800f * 0.5f + 0.01f) }
+        b.upHigh(false)
+        assertEquals(Zone.FLOOR, b.zone)
+    }
+
+    @Test fun upHighDropInTheMiddleSticksToTheNearerWall() {
+        val b = brain()
+        b.upHigh(true)
+        b.grab(150f, 600f)
+        b.drop(150f, 600f)
+        assertEquals(Zone.LEFT, b.zone)
+        assertTrue(b.y <= 400f)
+    }
+
+    @Test fun aThrownPetLandingWhileUpHighGoesBackUp() {
+        val b = brain()
+        b.upHigh(true)
+        b.grab(200f, 300f)
+        b.fling(200f, 300f, vx = 0f, vy = 0f)
+        run(b, 6000f)
+        assertTrue(b.zone == Zone.LEFT || b.zone == Zone.RIGHT)
+    }
+
+    @Test fun droppedNearAWallSlidesIn() {
+        val b = brain()
+        b.grab(40f, 300f)
+        b.drop(40f, 300f)
+        assertEquals(Zone.LEFT, b.zone)
+        assertEquals(40f, b.slideOffset(), 0.01f)
+        run(b, 200f)
+        assertEquals(0f, b.slideOffset(), 0.01f)
     }
 }

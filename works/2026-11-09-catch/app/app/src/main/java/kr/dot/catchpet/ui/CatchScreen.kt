@@ -90,9 +90,12 @@ import kotlin.random.Random
 
 /** Where a catch goes (the Dex wires this). Called the moment the claw reaches the top (plan R6), before the capsule. */
 interface CatchSink {
-    /** png: the cut-out (real things) or null (critters). label: the pose. True when the dex count grows. */
-    fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Boolean
+    /** png: the cut-out (real things) or null (critters). label: the pose. */
+    fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Caught
 }
+
+/** [grew]: the dex count went up (a new one, not a critter met again); [name]: what it is called in the dex. */
+data class Caught(val grew: Boolean, val name: String)
 
 /** Virtual critters (ar/Critters): masks on the segmenter grid for the claw, drawn by the catch screen. */
 interface CritterSource {
@@ -343,8 +346,13 @@ private class CatchGame(
     fun keepPerson(keep: Boolean) {
         val b = askPerson ?: return
         askPerson = null
-        if (keep) sink.onCaught(pendingKind, b, null, "front")
+        if (!keep) return
+        val r = sink.onCaught(pendingKind, b, null, "front")
+        say(caughtText(pendingKind, r.name), true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f)
     }
+
+    /** "강아지 도토리를 뽑았다!": what it is and the name it got (operator 11-15). */
+    private fun caughtText(kind: String, name: String) = Dex.withObject("${Dex.kindName(kind)} $name") + " 뽑았다!"
 
     fun setSize(wDp: Float, hDp: Float) {
         if (wDp == w && hDp == h) return
@@ -408,7 +416,8 @@ private class CatchGame(
             cap.step(dt); capT += dt
             if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
             if (cap.phase == Capsule.Phase.GONE) {
-                say(capText, true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f); next()
+                if (pendingPerson == null) { say(capText, true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
+                next()
                 pendingPerson?.let { askPerson = it; pendingPerson = null }
             }
         }
@@ -532,8 +541,8 @@ private class CatchGame(
             val id = target.critterId ?: ""
             val (label, pic) = map?.let { critters.caught(id, it) } ?: ("front" to null)
             held = Grip(pic, null, 1f)
-            val grew = sink.onCaught("critter", null, id, label)
-            startCapsule(c, "털 녀석을 뽑았다!", grew)
+            val r = sink.onCaught("critter", null, id, label)
+            startCapsule(c, if (r.grew) "새 친구! ${r.name}" else "${r.name} 또 왔네!", r.grew)
             return
         }
         val g = grip
@@ -549,15 +558,15 @@ private class CatchGame(
             return
         }
         val kind = got.kind ?: target.dexKind   // a group: "person+cat"
-        val text = Dex.withObject(Dex.kindName(kind)) + " 뽑았다!"
         if (Dex.hasPerson(kind)) {
-            // a person goes into the dex only after the consent dialog (shown when the capsule is gone)
+            // a person goes into the dex only after the consent dialog (shown when the capsule is gone); the
+            // cheer waits for it too (review 11-15: it celebrated, then "버리기")
             pendingPerson = got.cut.bmp; pendingKind = kind
-            startCapsule(c, grew = false, text = text)
+            startCapsule(c, grew = false, text = "")
             return
         }
-        val grew = sink.onCaught(kind, got.cut.bmp, null, "front")
-        startCapsule(c, grew = grew, text = text)
+        val r = sink.onCaught(kind, got.cut.bmp, null, "front")
+        startCapsule(c, grew = r.grew, text = caughtText(kind, r.name))
     }
 
     private fun startCapsule(c: Claw, text: String, grew: Boolean) {

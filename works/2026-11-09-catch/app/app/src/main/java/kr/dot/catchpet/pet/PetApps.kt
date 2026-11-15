@@ -148,6 +148,8 @@ class AppBubble(ctx: Context, private val apps: List<PetApps.App>, private val s
             PixelFormat.TRANSLUCENT,
         ).apply {
             gravity = Gravity.TOP or Gravity.START
+            fitInsetsTypes = 0   // same origin as the pet window
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
             when (side) {
                 PetBrain.Zone.LEFT -> { x = pet.right; y = pet.centerY() - hPx / 2 }
                 PetBrain.Zone.RIGHT -> { x = pet.left - wPx; y = pet.centerY() - hPx / 2 }

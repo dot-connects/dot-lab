@@ -87,6 +87,7 @@ class PetLook(private val cells: Map<String, Bitmap>) {
     /** How far the pet hops off its line now (in units of its size). */
     fun lift(b: PetBrain, t: Float): Float = when (b.act) {
         PetBrain.Act.SMILE -> abs(sin(t % 700f / 700f * PI)).toFloat() * 0.2f
+        PetBrain.Act.HOP -> sin((b.actMs / 650f).coerceIn(0f, 1f) * PI).toFloat() * 0.5f
         PetBrain.Act.DANCE -> sin(t / 360f % 1f * PI).toFloat() * 0.12f
         PetBrain.Act.WALK, PetBrain.Act.CLIMB -> abs(sin(t / 170f * PI)).toFloat() * 0.04f
         else -> 0f
@@ -103,6 +104,8 @@ class PetLook(private val cells: Map<String, Bitmap>) {
             PetBrain.Act.IDLE -> { val br = sin(t / 420f) * 0.035f; sx = 1 - br * 0.5f; sy = 1 + br }
             PetBrain.Act.SLEEP -> { val br = sin(t / 900f) * 0.03f; sx = 1 + br * 0.4f; sy = 1 - br }
             PetBrain.Act.THINK -> sway = sin(t / 300f) * 8f
+            PetBrain.Act.WIGGLE -> sway = sin(b.actMs / 55f) * 14f * (1f - b.actMs / 900f).coerceAtLeast(0f)
+            PetBrain.Act.HOP -> { val a = b.actMs; if (a < 90f) { sx = 1.12f; sy = 0.86f } }   // crouch, then up
             PetBrain.Act.DIZZY -> {
                 // a squash on landing, then a wobble that dies out
                 val a = b.actMs

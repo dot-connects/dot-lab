@@ -93,7 +93,7 @@ object Dex {
      * same entry and a new label adds a pose. png = the cut-out for real things, null for critters.
      */
     @Synchronized
-    fun add(ctx: Context, kind: String, png: ByteArray?, critterId: String?, label: String, now: Long = System.currentTimeMillis()): Entry {
+    fun add(ctx: Context, kind: String, png: ByteArray?, critterId: String?, label: String, now: Long = System.currentTimeMillis(), name: String? = null): Entry {
         val pose = poseOf(label)
         val all = list(ctx)
         if (critterId != null) {
@@ -109,7 +109,9 @@ object Dex {
         val no = max((usedNos.maxOrNull() ?: 0) + 1, runCatching { seq.readText().trim().toInt() }.getOrDefault(1))
         root(ctx).mkdirs(); atomicWrite(seq, (no + 1).toString().toByteArray())
         val id = "e$no"
-        val name = if (critterId != null) critterName(ctx, critterId) else cuteName(all.map { it.name }.toSet())
+        // the catch screen picks the name first so it can say it (operator 11-15); an existing one is never reused
+        val used = all.map { it.name }.toSet()
+        val name = if (critterId != null) critterName(ctx, critterId) else name?.takeIf { it !in used } ?: cuteName(used)
         dir(ctx, id).mkdirs()
         if (png != null) atomicWrite(file(ctx, id, "$pose.png"), png)
         return write(ctx, Entry(id, kind, name, no, critterId, listOf(pose), now, AiState(emptyList(), null, false)))
@@ -162,7 +164,10 @@ object Dex {
 
     private var names: Map<String, String>? = null
 
-    private fun critterName(ctx: Context, critterId: String): String {
+    /** Every critter id in index.json order (the dex shows the ones not met yet as "?"). */
+    fun critterIds(ctx: Context): List<String> { critterName(ctx, ""); return names.orEmpty().keys.toList() }
+
+    fun critterName(ctx: Context, critterId: String): String {
         val m = names ?: runCatching {
             val a = JSONArray(ctx.assets.open("critters/index.json").bufferedReader().use { it.readText() })
             (0 until a.length()).associate { a.getJSONObject(it).let { o -> o.getString("id") to o.getString("name") } }

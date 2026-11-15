@@ -90,7 +90,9 @@ class PetService : Service() {
         }
         return top == null || top in homes
     }
-    private val density get() = resources.displayMetrics.density
+    // the window context's density: the service's resources lag a fold / rotation switch, and a stale density put
+    // the wall past the screen edge (operator 11-15: "only its head shows on the right side")
+    private val density get() = (winCtx ?: this).resources.displayMetrics.density
 
     private val tick = object : Runnable {
         override fun run() {
@@ -100,7 +102,15 @@ class PetService : Service() {
                 charging = getSystemService(BatteryManager::class.java).isCharging
             }
             val v = view
-            val hidden = homeOnly && !launcherOnTop()
+            if (now - screenCheckedAt > 1000) {
+                screenCheckedAt = now
+                if (!brainFits()) { onScreenChanged(); return }   // show() posted a fresh tick
+                kbWatch = keyboardWatchOn(this@PetService)
+            }
+            val home = if (homeOnly || usageOk) launcherOnTop() else false
+            val hidden = homeOnly && !home
+            // operator 11-15 plan A: away from home, without the keyboard watch, it stays high on a wall
+            brain?.upHigh(!homeOnly && !kbWatch && !home)
             if (hidden || bubble?.expired() == true) closeBubble()
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
@@ -114,6 +124,11 @@ class PetService : Service() {
             })
         }
     }
+
+    private var screenCheckedAt = 0L
+    private var kbWatch = false
+    /** Usage access granted: we can tell home from other apps even in "always" mode. */
+    private var usageOk = false
 
     private val screen = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
@@ -175,6 +190,13 @@ class PetService : Service() {
         return b.width() / density to b.height() / density
     }
 
+    /** The brain was made for this screen (a missed or early config callback leaves it on the old one). */
+    private fun brainFits(): Boolean {
+        val b = brain ?: return true
+        val (w, h) = screenDp()
+        return kotlin.math.abs(b.w - w) < 1f && kotlin.math.abs(b.h - h) < 1f
+    }
+
     private fun newBrain(): PetBrain {
         val (w, h) = screenDp()
         val z = PetPrefs.place(this).let { if (it == PetBrain.Zone.BEHIND) PetBrain.Zone.FLOOR else it }  // behind was the old wallpaper place
@@ -188,7 +210,9 @@ class PetService : Service() {
         // a group (two or three together) is wider than one: a bigger box so each stays readable
         val group = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it) }?.kind?.contains('+') == true
         size = PetPrefs.size(this) * (if (group) 1.4f else 1f)
-        homeOnly = PetPrefs.homeOnly(this) && PetPrefs.usageGranted(this)
+        usageOk = PetPrefs.usageGranted(this)
+        homeOnly = PetPrefs.homeOnly(this) && usageOk
+        kbWatch = keyboardWatchOn(this)
         // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
         homes = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .filter { it.priority >= 0 }   // Settings FallbackHome sits at -1000
@@ -199,10 +223,16 @@ class PetService : Service() {
             px, px, WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
             WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
             PixelFormat.TRANSLUCENT,
-        ).apply { gravity = Gravity.TOP or Gravity.START }
+        ).apply {
+            gravity = Gravity.TOP or Gravity.START
+            // origin = the screen's corner, as the brain and the touch's rawX/rawY are (a cutout or status bar
+            // otherwise shifts the window and a right-wall pet ends up past the edge, review 11-16)
+            fitInsetsTypes = 0
+            layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
+        }
         val b = newBrain()
         b.keyboard(keyboardTop?.let { it / density })
-        val v = PetView(this, PetLook(cells), b)
+        val v = PetView(winCtx ?: this, PetLook(cells), b)
         attachTouch(v)
         brain = b
         params = p
@@ -220,7 +250,7 @@ class PetService : Service() {
         // operator 11-15: the cloud always carries [펫 설정 | 펫 끄기] under the chosen apps (mockup bubble C)
         val apps = PetApps.load(this)
         val p = params ?: return
-        val v = AppBubble(this, apps, b.zone) { pkg ->
+        val v = AppBubble(winCtx ?: this, apps, b.zone) { pkg ->
             closeBubble()
             when (pkg) {
                 null -> {}
@@ -243,6 +273,7 @@ class PetService : Service() {
 
     private fun hide() {
         closeBubble()
+        handler.removeCallbacksAndMessages(null)   // a pending long-press would grab the next brain (review 11-16)
         pause()
         view?.let { wm.removeView(it) }
         view = null
@@ -271,8 +302,8 @@ class PetService : Service() {
         val upright = v.look.rotation(b) == 0f
         val (left, top) = when {
             upright -> b.x - size / 2 to b.y - size - lift
-            b.zone == PetBrain.Zone.LEFT -> b.x + lift to b.y - size / 2
-            else -> b.x - size - lift to b.y - size / 2
+            b.zone == PetBrain.Zone.LEFT -> b.x + lift + b.slideOffset() to b.y - size / 2
+            else -> b.x - size - lift + b.slideOffset() to b.y - size / 2
         }
         val nx = (left * density).roundToInt(); val ny = (top * density).roundToInt()
         // moving the window is a call into the system: only when the pet really moved
@@ -292,7 +323,7 @@ class PetService : Service() {
     /** Rotated or unfolded: a new brain for the new screen, on the same edge at the same share of it. */
     private fun onScreenChanged() {
         val b = wm.maximumWindowMetrics.bounds
-        if (b.width() to b.height() == screenSize) return
+        if (b.width() to b.height() == screenSize && brainFits()) return
         screenSize = b.width() to b.height()
         val old = brain ?: return
         val (w0, h0) = old.w to old.h
@@ -308,6 +339,7 @@ class PetService : Service() {
         var holding = false
         var moved = false
         var lastTap = 0L
+        var vt: android.view.VelocityTracker? = null
         val slop = 8 * density
         val hold = Runnable {
             holding = true
@@ -316,6 +348,9 @@ class PetService : Service() {
         v.setOnTouchListener { _, e ->
             val b = brain ?: return@setOnTouchListener false
             touchedAt = SystemClock.uptimeMillis()
+            if (e.actionMasked == MotionEvent.ACTION_DOWN) { vt?.recycle(); vt = android.view.VelocityTracker.obtain() }
+            // raw coordinates: the window itself moves under the finger
+            MotionEvent.obtain(e).let { m -> m.setLocation(e.rawX, e.rawY); vt?.addMovement(m); m.recycle() }
             when (e.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
                     downX = e.rawX; downY = e.rawY
@@ -331,13 +366,21 @@ class PetService : Service() {
                 }
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                     handler.removeCallbacks(hold)
-                    if (holding) { b.drop(e.rawX / density, e.rawY / density + size / 2); PetPrefs.setPlace(this, b.zone) }
+                    if (holding) {
+                        val px = e.rawX / density; val py = e.rawY / density + size / 2
+                        vt?.computeCurrentVelocity(1)   // px per ms
+                        val vx = (vt?.xVelocity ?: 0f) / density; val vy = (vt?.yVelocity ?: 0f) / density
+                        if (e.actionMasked == MotionEvent.ACTION_UP && kotlin.math.hypot(vx, vy) > PetBrain.THROW_SPEED) b.fling(px, py, vx, vy)
+                        else b.drop(px, py)
+                        if (!b.upHigh) PetPrefs.setPlace(this, b.zone)
+                    }
                     else if (!moved && e.actionMasked == MotionEvent.ACTION_UP) {
                         val now = SystemClock.uptimeMillis()
                         if (now - lastTap <= DOUBLE_MS) doubleTap(b) else b.tap()
                         lastTap = now
                     }
                     holding = false
+                    vt?.recycle(); vt = null
                 }
             }
             render()
