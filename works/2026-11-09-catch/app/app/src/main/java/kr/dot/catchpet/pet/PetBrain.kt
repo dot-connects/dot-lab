@@ -16,7 +16,7 @@ class PetBrain(
     zone: Zone,
     val w: Float,
     val h: Float,
-    val floorY: Float,
+    private val baseFloor: Float,
     val size: Float = 48f,
     private val rnd: () -> Float,
 ) {
@@ -37,6 +37,23 @@ class PetBrain(
 
     init { place(zone) }
 
+    /** Top of the open keyboard (same units as y), or null; the pet stands and climbs above it (operator 11-15). */
+    private var keyboard: Float? = null
+    /** The stand line: above the dock, or just above the open keyboard. */
+    val floorY get() = keyboard?.let { min(baseFloor, it - 4f) } ?: baseFloor
+
+    /** The keyboard opened (its top) or closed (null): a pet on the floor or low on a wall moves with it. */
+    fun keyboard(top: Float?) {
+        if (top == keyboard) return
+        keyboard = top
+        if (act == Act.HANG || act == Act.FALL) return
+        when (zone) {
+            Zone.FLOOR -> y = floorY
+            Zone.LEFT, Zone.RIGHT -> y = y.coerceIn(topLimit, max(topLimit, bottomLimit))
+            Zone.BEHIND -> {}
+        }
+    }
+
     val topLimit get() = h * 0.2f
     val bottomLimit get() = floorY - size
 
@@ -46,8 +63,8 @@ class PetBrain(
         when (z) {
             Zone.FLOOR -> { y = floorY; x = x.coerceIn(size / 2, w - size / 2) }
             Zone.BEHIND -> { y = floorY - size * 3; x = x.coerceIn(size / 2, w - size / 2) }
-            Zone.LEFT -> { x = 0f; y = y.coerceIn(topLimit, bottomLimit) }
-            Zone.RIGHT -> { x = w; y = y.coerceIn(topLimit, bottomLimit) }
+            Zone.LEFT -> { x = 0f; y = y.coerceIn(topLimit, max(topLimit, bottomLimit)) }
+            Zone.RIGHT -> { x = w; y = y.coerceIn(topLimit, max(topLimit, bottomLimit)) }
         }
         start(Act.IDLE)
     }
@@ -89,7 +106,7 @@ class PetBrain(
             }
             Act.CLIMB -> {
                 y += dir * CLIMB_SPEED * dtMs
-                if (y < topLimit || y > bottomLimit) { dir = -dir; y = y.coerceIn(topLimit, bottomLimit) }
+                if (y < topLimit || y > bottomLimit) { dir = -dir; y = y.coerceIn(topLimit, max(topLimit, bottomLimit)) }
             }
             Act.IDLE, Act.THINK -> {}
         }

@@ -18,7 +18,8 @@ class AiClient(private val base: String, private val deviceId: String) {
     }
 
     /** image = the decoded picture bytes (webp), left = what the Worker says is left (previews today / sheet retries). */
-    class Reply(val image: ByteArray, val mime: String, val left: Int?)
+    /** [twelve]: the Worker drew the 4 x 3 sheet (an older Worker answers without "layout" = 3 x 2). */
+    class Reply(val image: ByteArray, val mime: String, val left: Int?, val twelve: Boolean = false)
 
     suspend fun preview(png: ByteArray, kind: String, style: String): Result<Reply> =
         post("/transform", body(png, mapOf("style" to style, "kind" to kind, "device" to deviceId)), null)
@@ -44,7 +45,7 @@ class AiClient(private val base: String, private val deviceId: String) {
                 val text = (if (status in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() } ?: ""
                 val o = runCatching { JSONObject(text) }.getOrNull()
                 if (status !in 200..299 || o == null || !o.has("image")) throw Fail(o?.optString("error")?.ifEmpty { null } ?: "http", status)
-                Reply(Base64.decode(o.getString("image"), Base64.DEFAULT), o.optString("mime", "image/webp"), if (o.has("left")) o.getInt("left") else null)
+                Reply(Base64.decode(o.getString("image"), Base64.DEFAULT), o.optString("mime", "image/webp"), if (o.has("left")) o.getInt("left") else null, o.optString("layout") == "12")
             } catch (e: IOException) {
                 throw Fail("net", 0)
             } finally { c.disconnect() }

@@ -132,9 +132,10 @@ object Dex {
 
     /** The bought pose sheet: stored and the entry becomes owned (usable as a pet). */
     @Synchronized
-    fun saveSheet(ctx: Context, id: String, img: ByteArray, ext: String = "webp", style: String = "fluff"): Entry {
+    fun saveSheet(ctx: Context, id: String, img: ByteArray, ext: String = "webp", style: String = "fluff", twelve: Boolean = true): Entry {
         val e = get(ctx, id) ?: error("no entry $id")
-        val name = "ai/sheet-$style-v12.$ext"   // 4 x 3 cells (Sheet.KEYS12); older "sheet*.ext" are 3 x 2
+        // "-v12" = 4 x 3 cells (Sheet.KEYS12), by what the Worker says it drew; plain "sheet*.ext" are 3 x 2
+        val name = if (twelve) "ai/sheet-$style-v12.$ext" else "ai/sheet-$style.$ext"
         atomicWrite(file(ctx, id, name), img)
         val pet = e.ai.petStyle ?: style   // the first one bought is the pet's look
         val sheets = e.ai.sheets + (style to name)

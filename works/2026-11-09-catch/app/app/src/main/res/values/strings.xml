@@ -1,3 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="keyboard_watch_label">리얼뽑기 · 펫이 키보드를 피함</string>
+    <string name="keyboard_watch_desc">키보드 창이 열렸는지만 봐요(화면 글자는 읽지 않아요). 키보드가 열려 있는 동안 펫이 키보드 위로 올라가요.</string>
 </resources>

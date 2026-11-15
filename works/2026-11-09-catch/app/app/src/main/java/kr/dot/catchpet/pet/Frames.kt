@@ -33,7 +33,9 @@ object Frames {
     /** Critter = baked assets; a real thing = its bought sheet cut in six. Missing cells fall back to front. */
     fun load(ctx: Context, e: Dex.Entry): Map<String, Bitmap>? {
         val raw: Map<String, Bitmap> = when {
-            e.critterId != null -> (Sheet.KEYS).associateWith { asset(ctx, e.critterId, it) ?: return null }
+            // the six old cells must load (front falls back); the newer six only where baked, else ALIAS
+            e.critterId != null -> Sheet.KEYS.associateWith { asset(ctx, e.critterId, it) ?: return null } +
+                Sheet.KEYS12.mapNotNull { k -> exact(ctx, "critters/${e.critterId}/$k.webp")?.let { k to it } }
             e.ai.owned && e.ai.sheet != null ->
                 BitmapFactory.decodeFile(Dex.file(ctx, e.id, e.ai.sheet).path)?.let { Sheet.cells(it, twelve = e.ai.sheet.contains("-v12")) } ?: return null
             else -> return null
@@ -43,6 +45,9 @@ object Frames {
         fun cell(k: String): Bitmap = trimmed.getOrPut(k) { trim(raw[k] ?: raw[ALIAS[k]] ?: front) }
         return CELLS.associateWith { cell(it) }
     }
+
+    private fun exact(ctx: Context, path: String): Bitmap? =
+        runCatching { ctx.assets.open(path).use(BitmapFactory::decodeStream) }.getOrNull()
 
     /** critters/<id>/<name>.webp, else that critter's front, else the grey placeholder (plan R19). */
     fun asset(ctx: Context, critterId: String, name: String): Bitmap? =

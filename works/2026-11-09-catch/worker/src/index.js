@@ -220,7 +220,7 @@ async function sheet(b, req, env, counts, day) {
   const r = await paidCall(job, CENTS.sheet, env, counts, day, async e => { if (!e.sent) { await counts.give(kEntry); await counts.give(kDay); } });
   if (r.off) return json({ error: "off" }, 503);
   if (r.err) return json({ error: "model" }, 502);
-  return json({ mime: r.img.mime, image: r.img.data, left: SHEET_PER_ENTRY - used });
+  return json({ mime: r.img.mime, image: r.img.data, left: SHEET_PER_ENTRY - used, layout: String(b.layout) === "12" ? "12" : "6" });
 }
 
 export async function handle(req, env, counts, { day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) } = {}) {   // KST day

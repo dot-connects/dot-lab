@@ -123,16 +123,21 @@ class PetService : Service() {
 
     override fun onBind(intent: Intent?) = null
 
+    private var winCtx: Context? = null
+    private val winCallbacks = object : android.content.ComponentCallbacks {
+        override fun onConfigurationChanged(newConfig: Configuration) = onScreenChanged()
+        @Deprecated("Deprecated in Java") override fun onLowMemory() {}
+    }
+
     override fun onCreate() {
         super.onCreate()
         // a window context follows rotation and fold switches; the service's own configuration may lag (눈금 FloatService)
         val win = createWindowContext(getSystemService(android.hardware.display.DisplayManager::class.java)
             .getDisplay(android.view.Display.DEFAULT_DISPLAY), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
-        win.registerComponentCallbacks(object : android.content.ComponentCallbacks {
-            override fun onConfigurationChanged(newConfig: Configuration) = onScreenChanged()
-            @Deprecated("Deprecated in Java") override fun onLowMemory() {}
-        })
+        winCtx = win
+        win.registerComponentCallbacks(winCallbacks)
         wm = win.getSystemService(WindowManager::class.java)
+        instance = this
         screenSize = wm.maximumWindowMetrics.bounds.let { it.width() to it.height() }
         registerReceiver(screen, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
@@ -196,6 +201,7 @@ class PetService : Service() {
             PixelFormat.TRANSLUCENT,
         ).apply { gravity = Gravity.TOP or Gravity.START }
         val b = newBrain()
+        b.keyboard(keyboardTop?.let { it / density })
         val v = PetView(this, PetLook(cells), b)
         attachTouch(v)
         brain = b
@@ -211,16 +217,26 @@ class PetService : Service() {
     /** Two taps: the chosen app, or the cloud of apps; nothing chosen = dance (operator 11-15). */
     private fun doubleTap(b: PetBrain) {
         closeBubble()
-        // operator 11-15: the cloud always carries a "펫 끄기" at the end, so the chosen apps and the off switch share it
-        val apps = PetApps.load(this) + PetApps.App(PetApps.OFF, "펫 끄기", getDrawable(android.R.drawable.ic_menu_close_clear_cancel)!!)
+        // operator 11-15: the cloud always carries [펫 설정 | 펫 끄기] under the chosen apps (mockup bubble C)
+        val apps = PetApps.load(this)
         val p = params ?: return
-        val v = AppBubble(this, apps) { pkg ->
+        val v = AppBubble(this, apps, b.zone) { pkg ->
             closeBubble()
-            when (pkg) { null -> {}; PetApps.OFF -> PetService.stop(this); else -> PetApps.open(this, pkg) }
+            when (pkg) {
+                null -> {}
+                PetApps.OFF -> PetService.stop(this)
+                PetApps.SETTINGS -> runCatching {
+                    startActivity(Intent(this, MainActivity::class.java).putExtra(MainActivity.OPEN_PET, true)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                }
+                else -> PetApps.open(this, pkg)
+            }
         }
         val px = (size * density).roundToInt()
-        runCatching { wm.addView(v, v.params(p.x + px / 2, p.y, wm.currentWindowMetrics.bounds.width())) }.onSuccess { bubble = v }
-        if (apps.size == 1) b.doubleTap() else b.tap()   // nothing chosen: it still dances
+        val screen = wm.currentWindowMetrics.bounds
+        runCatching { wm.addView(v, v.params(android.graphics.Rect(p.x, p.y, p.x + px, p.y + px), screen.width(), screen.height())) }
+            .onSuccess { bubble = v }
+        if (apps.isEmpty()) b.doubleTap() else b.tap()   // nothing chosen: it still dances
     }
 
     private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) } }; bubble = null }
@@ -330,12 +346,29 @@ class PetService : Service() {
     }
 
     override fun onDestroy() {
+        if (instance === this) instance = null
+        winCtx?.unregisterComponentCallbacks(winCallbacks)
         hide()
         unregisterReceiver(screen)
         super.onDestroy()
     }
 
     companion object {
+        private var instance: PetService? = null
+        private var keyboardTop: Int? = null
+
+        /** From [KeyboardWatch]: the keyboard's top edge on screen (px), or null when it is closed (눈금 FloatService). */
+        fun keyboard(top: Int?) {
+            if (top == keyboardTop) return
+            keyboardTop = top
+            instance?.let { s -> s.brain?.keyboard(top?.let { it / s.density }); s.render() }
+        }
+
+        /** The optional accessibility service that reports the keyboard is switched on. */
+        fun keyboardWatchOn(ctx: Context): Boolean =
+            (android.provider.Settings.Secure.getString(ctx.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "")
+                .contains("${ctx.packageName}/")
+
         const val HOLD_MS = 380L
         const val DOUBLE_MS = 320L
 

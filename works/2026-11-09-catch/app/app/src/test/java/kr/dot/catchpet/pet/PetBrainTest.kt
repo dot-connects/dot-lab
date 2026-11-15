@@ -10,7 +10,7 @@ import kotlin.random.Random
 class PetBrainTest {
     private fun brain(zone: Zone = Zone.FLOOR, seed: Int = 1): PetBrain {
         val r = Random(seed)
-        return PetBrain(zone, w = 400f, h = 800f, floorY = 700f, size = 48f) { r.nextFloat() }
+        return PetBrain(zone, w = 400f, h = 800f, baseFloor = 700f, size = 48f) { r.nextFloat() }
     }
 
     private fun run(b: PetBrain, ms: Float, quiet: Float = 0f, night: Boolean = false, charging: Boolean = false, each: (PetBrain) -> Unit = {}) {
@@ -92,5 +92,25 @@ class PetBrainTest {
         assertEquals(Act.DANCE, b.act)
         run(b, 3_100f)
         assertTrue(b.act != Act.DANCE)
+    }
+
+    @Test fun keyboardLiftsThePetAndLetsItBackDown() {
+        val b = brain()
+        b.keyboard(400f)
+        assertEquals(396f, b.y, 0.01f)
+        run(b, 20_000f) { assertTrue(it.y <= 396f) }   // walking stays on the keyboard line
+        b.grab(200f, 300f); b.drop(200f, 300f)
+        run(b, 3_000f)
+        assertEquals(396f, b.y, 0.01f)                  // a drop lands on the keyboard, not under it
+        b.keyboard(null)
+        assertEquals(700f, b.y, 0.01f)
+    }
+
+    @Test fun keyboardKeepsAWallPetAboveIt() {
+        val b = brain(Zone.RIGHT)
+        b.drop(390f, 600f)
+        b.keyboard(500f)
+        assertTrue(b.y <= 500f - 4f - 48f)
+        run(b, 20_000f) { assertTrue(it.y <= 500f - 4f - 48f + 0.01f) }
     }
 }

@@ -51,7 +51,7 @@ object AiWork {
 
     fun buy(ctx: Context, e: Dex.Entry, token: String, style: String) = run(ctx, e, "sheet-$style") { app ->
         client(app).sheet(cutOut(app, e), e.kind, e.id, token, style).onSuccess {
-            Dex.saveSheet(app, e.id, it.image, ext(it.mime), style)
+            Dex.saveSheet(app, e.id, it.image, ext(it.mime), style, twelve = it.twelve)
             Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
         }
     }

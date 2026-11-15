@@ -105,7 +105,12 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
 /** Makes [id] the pet and, when the pet is on screen, swaps it at once (operator 11-15: it did not change). */
 internal fun usePet(ctx: Context, id: String) {
     setPet(ctx, id)
-    if (PetPrefs.overlayOn(ctx) || android.provider.Settings.canDrawOverlays(ctx)) PetService.start(ctx)
+    if (android.provider.Settings.canDrawOverlays(ctx)) PetService.start(ctx)
+    else {   // review M3 (11-15): without the overlay permission nothing would happen; ask for it
+        android.widget.Toast.makeText(ctx, "'다른 앱 위에 표시'를 허용하고 다시 눌러 주세요", android.widget.Toast.LENGTH_LONG).show()
+        ctx.startActivity(android.content.Intent(android.provider.Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            android.net.Uri.parse("package:${ctx.packageName}")))
+    }
 }
 
 /** This entry is the pet on screen right now (the overlay is on). */
@@ -196,7 +201,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                         }
                     }
                     when {
-                        drawn == null -> {}
+                        drawn == null && !bought -> {}
                         busy == "sheet-$style" -> Note("펫 그림을 그리는 중 (1~3분)")
                         bought && isShownPet(ctx, e.id) && e.ai.petStyle == style -> InkPill("펫으로 쓰는 중", Book.Leaf)
                         bought -> InkPill("펫으로 쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })

@@ -143,7 +143,7 @@ test("/sheet: the right token gets a medium 1536x1024 sheet with the style pictu
   env.ALL_DAY = "0";
   const r = await sheet();
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { mime: "image/webp", image: "Zm9v", left: 1 });
+  assert.deepEqual(r.body, { mime: "image/webp", image: "Zm9v", left: 1, layout: "6" });
   assert.deepEqual({ q: calls[0].quality, s: calls[0].size, ref: calls[0].ref }, { q: "medium", s: "1536x1024", ref: true });
   assert.equal(calls[0].prompt, SHEET_PROMPT("cat"));
   assert.match(calls[0].prompt, /3 x 2 grid/);
@@ -318,4 +318,10 @@ test("a 4xx refusal keeps the day slot but gives the month's cents back (review 
   assert.equal(r.status, 502);
   assert.equal(counts.m.get("usd|2026-11"), 0, "a refusal is not billed: cents back");
   assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), 1, "the day slot stays used");
+});
+
+test("/sheet: says which layout it drew (the app names the file by it)", async () => {
+  env.DEBUG_PURCHASE = "tok-123";
+  assert.equal((await sheet(sheetBody({ layout: "12" }))).body.layout, "12");
+  assert.equal((await sheet(sheetBody({ entry: "e2" }))).body.layout, "6");
 });

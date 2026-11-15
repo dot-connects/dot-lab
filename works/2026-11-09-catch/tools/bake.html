@@ -1,6 +1,6 @@
 <!doctype html><meta charset="utf-8"><body><script type="module">
 // Bakes the 16 critters into PNGs for the Android app (plan Task 6 / R4): 8 view directions for catching and
-// the 6 pet cells. Driven by tools/bake-critters.mjs; results land in window.__out = { id: { name: dataURL } }.
+// the 12 pet cells. Driven by tools/bake-critters.mjs; results land in window.__out = { id: { name: dataURL } }.
 import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.min.js";
 import { makeCreature, SPECS } from "../site/js/creatures.js";
 
@@ -24,6 +24,25 @@ function shot(spec, { yaw = 0, pose = "idle", roll = 0, sx = 1, sy = 1, frame })
   return url;
 }
 
+// A step for a fur ball (operator 11-15: "crossing, not kangaroo hops"): the two feet split front/back and the paws
+// swing the other way. Feet = mirrored blobs placed by c low on the body; paws = mirrored blobs on a body below its
+// middle. A mirrored part is unfolded into its left and right copy so each can move on its own (k = +1 / -1 / 0).
+function stride(spec, k) {
+  if (!k) return spec;
+  const parts = [];
+  for (const e of spec.parts || []) {
+    const foot = e.kind === "blob" && e.mirror && e.c && e.c[1] < -0.15;
+    const paw = e.kind === "blob" && e.mirror && e.on && !e.wob && e.on_at[1] < 0 && e.on_at[1] > -0.8;
+    if (!foot && !paw) { parts.push(e); continue; }
+    for (const s of [-1, 1]) {
+      const rot = (e.rot || [0, 0, 0]).map((v, i) => i ? v * s : v);
+      if (foot) { const d = Math.max(e.r[2], e.r[0]) * 1.1 * k * s; parts.push({ ...e, mirror: false, rot, c: [s * e.c[0], e.c[1] + (d > 0 ? 0.03 : 0), e.c[2] + d] }); }
+      else { const y = Math.abs(e.on_at[0]) - 0.35 * k * s; parts.push({ ...e, mirror: false, rot, on_at: [s * Math.max(0.05, y), e.on_at[1]] }); }
+    }
+  }
+  return { ...spec, parts };
+}
+
 const out = {};
 for (const id of ids) {
   const spec = SPECS.find(s => s.id === id);
@@ -39,6 +58,16 @@ for (const id of ids) {
   o.walkB = shot(spec, { yaw: 90, pose: "hop", frame });
   o.sleep = shot(spec, { yaw: 90, pose: "caught", sx: 1.2, sy: 0.72, frame });
   o.curl = shot(spec, { pose: "caught", sx: 1.15, sy: 0.7, frame });
+  // 12-cell pet (operator 11-15): a 4-step walk with the feet crossing (stride), 
+  // held = stretched and swinging, dropped = a pancake, then sitting up tilted and dazed
+  o.walk1 = shot(stride(spec, 1), { yaw: 90, roll: -4, sx: 1.02, sy: 0.96, frame });   // contact: one foot ahead
+  o.walk2 = shot(spec, { yaw: 90, sx: 0.98, sy: 1.04, frame });                          // passing: feet together, up
+  o.walk3 = shot(stride(spec, -1), { yaw: 90, roll: -4, sx: 1.02, sy: 0.96, frame });  // contact: the other foot
+  o.walk4 = shot(spec, { yaw: 90, sx: 0.98, sy: 1.04, frame });
+  o.holdA = shot(spec, { roll: 12, sx: 0.9, sy: 1.08, frame });
+  o.holdB = shot(spec, { roll: -12, sx: 0.9, sy: 1.08, frame });
+  o.fall = shot(spec, { sx: 1.32, sy: 0.6, frame });
+  o.dazed = shot(spec, { roll: 13, sx: 1.04, sy: 0.92, frame });
   out[id] = o;
   window.__p = (window.__p || 0) + 1;
 }

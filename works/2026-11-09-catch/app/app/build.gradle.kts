@@ -11,8 +11,8 @@ android {
         applicationId = "kr.dot.catchpet"
         minSdk = 34 // specialUse foreground service
         targetSdk = 35
-        versionCode = 24
-        versionName = "0.4.5"
+        versionCode = 25
+        versionName = "0.4.6"
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
         buildConfigField("String", "DEBUG_PURCHASE", "\"\"")

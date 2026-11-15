@@ -35,9 +35,11 @@ enum class Screen { CATCH, DEX, DETAIL, PET }
 
 /** The whole app: one screen at a time, switched by a single state. Back goes to the catch screen. */
 @Composable
-fun App() {
+fun App(openPet: Int = 0) {
     val ctx = LocalContext.current
     var screen by rememberSaveable { mutableStateOf(Screen.CATCH) }
+    // the pet's cloud said "펫 설정"
+    androidx.compose.runtime.LaunchedEffect(openPet) { if (openPet > 0) screen = Screen.PET }
     var entryId by rememberSaveable { mutableStateOf<String?>(null) }
     val sink = remember { DexSink(ctx.applicationContext) }
     val critters = remember { Critters(ctx.applicationContext) }

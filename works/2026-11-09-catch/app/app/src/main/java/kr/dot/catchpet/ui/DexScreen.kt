@@ -2,6 +2,8 @@
 
 package kr.dot.catchpet.ui
 
+import androidx.lifecycle.compose.LifecycleEventEffect
+import androidx.lifecycle.Lifecycle
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,6 +66,8 @@ internal val GOLD = Color(0xFFFFCF5A)
 fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     var reload by remember { mutableStateOf(0) }
+    // the pet may have been turned off from its cloud meanwhile: the badge follows
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { reload++ }
     val entries by produceState<List<Dex.Entry>?>(null, reload) { value = withContext(Dispatchers.IO) { Dex.list(ctx) } }
     var picked by remember { mutableStateOf(setOf<String>()) }
     var picking by remember { mutableStateOf(false) }
