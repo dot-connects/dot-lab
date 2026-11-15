@@ -8,6 +8,7 @@ import kr.dot.sb.ui.theme.Look
 import kr.dot.sb.ui.theme.StripPick
 import kr.dot.sb.ui.theme.deleteMyTheme
 import kr.dot.sb.ui.theme.renameMyTheme
+import kr.dot.sb.ui.theme.restoreLook
 import kr.dot.sb.ui.theme.saveMyTheme
 import kr.dot.sb.ui.theme.switchFromPanel
 import kr.dot.sb.ui.theme.switchLook
@@ -88,6 +89,16 @@ class ThemeLooksTest {
         // back to a built-in drops the customFrom and the edit
         val back = sky.switchLook(Look.Builtin(Theme.SKY))
         assertTrue(back.themeEdits.isEmpty()); assertNull(back.customFrom)
+    }
+
+    @Test fun restoreLookBringsBackTheWholeLookAlone() {
+        val e = ThemeEdit(accent = 0xFF30CEDA)
+        val now = AppConfig().switchLook(Look.Builtin(Theme.NEON)).withThemeEdit(Theme.NEON, ThemeEdit(ink = 0xFF102030))
+        val back = now.restoreLook(Theme.MOODLIGHT, e, "내 테마 2")
+        assertEquals(Theme.MOODLIGHT, back.theme)
+        assertEquals(mapOf(Theme.MOODLIGHT to e), back.themeEdits)
+        assertEquals("내 테마 2", back.customFrom)
+        assertEquals(emptyMap<Theme, ThemeEdit>(), now.restoreLook(Theme.IPHONE, null, null).themeEdits)
     }
 
     @Test fun stripPickThreeCases() {

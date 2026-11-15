@@ -61,7 +61,9 @@ abstract class SettingsShotKit {
     )
     protected val bar = SettingsEnv(phone = Phone.BAR, foldable = false, granted = Perm.entries.associateWith { true })
 
-    protected fun snap(name: String, qualifiers: String, config: AppConfig = AppConfig(), route: String, e: SettingsEnv = env, after: ComposeContentTestRule.() -> Unit = {}) {
+    /** [screen] = capture every window (a dialog is a window of its own; onRoot sees only one). */
+    @OptIn(com.github.takahirom.roborazzi.ExperimentalRoborazziApi::class)
+    protected fun snap(name: String, qualifiers: String, config: AppConfig = AppConfig(), route: String, e: SettingsEnv = env, screen: Boolean = false, after: ComposeContentTestRule.() -> Unit = {}) {
         RuntimeEnvironment.setQualifiers(qualifiers)
         rule.setContent {
             var cfg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(config) }
@@ -72,7 +74,7 @@ abstract class SettingsShotKit {
         rule.waitForIdle()
         rule.after()
         rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots/settings/$name.png")
+        if (screen) com.github.takahirom.roborazzi.captureScreenRoboImage("build/shots/settings/$name.png") else rule.onRoot().captureRoboImage("build/shots/settings/$name.png")
     }
 
     /** Pages on/off: 사진 and 음악 switched off (dimmed, gone from 처음 보이는 페이지 and the preview). */

@@ -249,6 +249,18 @@ private fun DrawScope.draw(g: Ground, alpha: Float = 1f) {
     }
 }
 
+/**
+ * A SUNSET-shaped theme glow alone (the light rising from below, e.g. a 무드등 look migrated from 촛불), for a page that
+ * paints its own colour over [ThemeBackground] (the clocks page keeps `ink.bg` for edit mode). Day only, faded by [night].
+ */
+@Composable
+fun BottomGlow(t: StandbyTheme, night: Float, modifier: Modifier = Modifier) {
+    val bg = t.tokens.bg
+    if (bg.glow == null || bg.glowAt.y <= 1f || night >= 1f) return
+    val g = Ground(emptyList(), bg.ground().glows)
+    Canvas(modifier.fillMaxSize()) { draw(g, 1f - night.coerceIn(0f, 1f)) }
+}
+
 /** How far the burn-in shift moves the content layer ([BurnIn.MAX], r10). */
 val BURN_IN_BLEED: Dp = BurnIn.MAX.dp
 

@@ -15,7 +15,7 @@ an already-subset file. Variable axes (fvar/gvar/...) and all OpenType features 
 - Card fonts (plan-r13 A3, 글꼴 명조 · 둥근 고딕 · 손글씨): card_serif (GowunBatang-Bold), card_round (Jua-Regular),
   card_pen (NanumPenScript-Regular), subset to the same set as Pretendard from their full originals (each >= 1 MB, so
   never a subset of the clock subsets). Their cap height / em is printed for `CardFont.cap` (ui/theme/Fonts.kt).
-- Already subset or Hangul clock fonts (gowun, jua, nanum_pen, mplus, instrument, sofia) are left alone
+- Already subset or Hangul clock fonts (gowun, jua, nanum_pen, mplus, sofia) are left alone
   (see tools/kfont_chars.py).
 """
 import hashlib

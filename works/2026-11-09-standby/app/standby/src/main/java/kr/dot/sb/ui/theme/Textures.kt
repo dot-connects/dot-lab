@@ -72,16 +72,18 @@ object Textures {
             }
             Texture.METAL -> for (y in 0 until N) { val rgb = if (r() > 0.5f) WHITE else BLACK; rect(0, y, N, 1, argb(r() * 0.14f, rgb)) }
             Texture.FROST -> {
-                p.maskFilter = BlurMaskFilter(3f, BlurMaskFilter.Blur.NORMAL)
-                repeat(90) {
-                    p.color = argb(r() * 0.16f, WHITE)
+                // r13 step 4: the mockup's 90 blobs of 3–12 px at ≤ 16 % read as dirty glass on 무드등's cards (big
+                // specks); many small soft blobs at ≤ 7 % read as frost
+                p.maskFilter = BlurMaskFilter(2f, BlurMaskFilter.Blur.NORMAL)
+                repeat(220) {
+                    p.color = argb(r() * 0.07f, WHITE)
                     val x = r() * N; val y = r() * N
-                    val rad = 3f + r() * 9f
+                    val rad = 1.5f + r() * 3.5f
                     // drawn wrapped (r13 Part D): a blob cut at the tile edge showed the tile grid on 무드등's cards
                     for (dx in -1..1) for (dy in -1..1) c.drawCircle(x + dx * N, y + dy * N, rad, p)
                 }
                 p.maskFilter = null
-                specks(20)
+                specks(10)
             }
             Texture.SCANLINE -> for (y in 0 until N step 3) rect(0, y, N, 1, argb(0.45f, BLACK))
         }

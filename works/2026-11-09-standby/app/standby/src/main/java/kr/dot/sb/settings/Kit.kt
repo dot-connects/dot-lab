@@ -53,6 +53,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
@@ -178,12 +182,16 @@ val LocalTwoPane = compositionLocalOf { false }
  * A settings page. [preview] (r10) = the screen's live preview: on a phone it is the first item of the list, and once it
  * has scrolled away a 96 dp mini (+ [miniActions]) overlays the top without changing the list's height; a tap on the mini
  * scrolls back up. Width >= 600 dp (Fold inner): two panes, the preview on the left 55 %, the rows on the right 45 %.
+ * [sticky] (r13 사용자 지정: the tab row) sits after [content] and pins under the mini (or the top) once it scrolls there;
+ * [after] follows it. A page with [sticky] is two-pane only in landscape and drops the mini below 480 dp tall.
  */
 @Composable
 fun Page(
     title: String, onBack: (() -> Unit)?, modifier: Modifier = Modifier,
     preview: Preview? = null,
     miniActions: (@Composable () -> Unit)? = null,
+    sticky: (@Composable () -> Unit)? = null,
+    after: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val phone = LocalSettingsEnv.current.phone
@@ -199,7 +207,9 @@ fun Page(
     val fullPreview: @Composable () -> Unit = { if (preview != null) FullPreview(preview, st, pager, phone) { full = it } }
     Box(modifier.fillMaxSize()) {
         BoxWithConstraints(Modifier.fillMaxSize().background(SK.bg).systemBarsPadding(), contentAlignment = Alignment.TopCenter) {
-            val twoPane = maxWidth >= 600.dp && preview != null
+            // ponytail: the landscape-only two-pane rule applies to [sticky] pages only until plan-r13 Part C makes it global
+            val twoPane = maxWidth >= 600.dp && preview != null && (sticky == null || maxWidth > maxHeight)
+            val miniOk = sticky == null || maxHeight >= 480.dp
             Column(Modifier.widthIn(max = if (twoPane) 1200.dp else 720.dp).fillMaxSize()) {
                 Row(Modifier.fillMaxWidth().height(64.dp).padding(start = if (onBack != null) 4.dp else 20.dp, end = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                     if (onBack != null) { IconBtn(Ic.BACK, onBack, SK.text); Spacer(Modifier.width(4.dp)) }
@@ -213,28 +223,54 @@ fun Page(
                             }
                         }
                         CompositionLocalProvider(LocalTwoPane provides true) {
-                            Column(Modifier.weight(0.45f).fillMaxHeight().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp).padding(bottom = 40.dp)) { content() }
+                            StickyScroll(rememberScrollState(), Modifier.weight(0.45f).fillMaxHeight(), 0, sticky, after, content)
                         }
                     }
                 } else {
                     val scroll = rememberScrollState()
                     var pvH by remember { mutableIntStateOf(0) }
+                    var miniH by remember { mutableIntStateOf(0) }
+                    val gap = with(LocalDensity.current) { 64.dp.roundToPx() }
+                    val past by remember { derivedStateOf { pvH > 0 && scroll.value > pvH - gap } }
+                    val mini = preview != null && !preview.cards && miniOk && past
                     Box(Modifier.weight(1f).fillMaxWidth()) {
-                        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
+                        StickyScroll(scroll, Modifier.fillMaxSize(), if (mini) miniH else 0, sticky, after) {
                             if (preview != null) Box(Modifier.fillMaxWidth().onSizeChanged { pvH = it.height }) { fullPreview() }
                             content()
                         }
-                        if (preview != null && !preview.cards) {
-                            val gap = with(LocalDensity.current) { 64.dp.roundToPx() }
-                            val mini by remember { derivedStateOf { pvH > 0 && scroll.value > pvH - gap } }
+                        if (mini && preview != null) {
                             val scope = rememberCoroutineScope()
-                            if (mini) MiniPreview(preview, st, pager, phone, { scope.launch { scroll.animateScrollTo(0) } }, miniActions)
+                            Box(Modifier.fillMaxWidth().onSizeChanged { miniH = it.height }) {
+                                MiniPreview(preview, st, pager, phone, { scope.launch { scroll.animateScrollTo(0) } }, miniActions)
+                            }
                         }
                     }
                 }
             }
         }
         full?.let { i -> if (preview != null) FullScreenPreview(preview, st, phone, i) { full = null } }
+    }
+}
+
+/**
+ * The scrolling rows of a [Page]: [content], then [sticky] and [after]. Once [sticky] scrolls up to [pinTop] px it is
+ * drawn again pinned there (the copy in the list stays, so nothing below moves).
+ */
+@Composable
+private fun StickyScroll(
+    scroll: androidx.compose.foundation.ScrollState, modifier: Modifier, pinTop: Int,
+    sticky: (@Composable () -> Unit)?, after: (@Composable ColumnScope.() -> Unit)?, content: @Composable ColumnScope.() -> Unit,
+) {
+    var stickyY by remember { mutableIntStateOf(-1) }
+    Box(modifier) {
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal = 16.dp).padding(bottom = 40.dp)) {
+            content()
+            if (sticky != null) Box(Modifier.fillMaxWidth().onGloballyPositioned { stickyY = it.positionInParent().y.toInt() }.padding(vertical = 8.dp)) { sticky() }
+            after?.invoke(this)
+        }
+        if (sticky != null && stickyY >= 0 && stickyY - scroll.value < pinTop) {
+            Box(Modifier.offset { IntOffset(0, pinTop) }.fillMaxWidth().background(SK.bg).padding(horizontal = 16.dp, vertical = 8.dp)) { sticky() }
+        }
     }
 }
 

@@ -541,7 +541,7 @@ private val FONT_NAMES = mapOf(
     "inter" to "Inter", "nunito" to "Nunito", "pretendard" to "Pretendard", "sourceserif4" to "Source Serif 4", "robotoslab" to "Roboto Slab",
     "sofiasansextracondensed" to "Sofia Sans Extra Condensed", "mplusrounded1c" to "M PLUS Rounded 1c", "bagelfatone" to "Bagel Fat One",
     "barlowcondensed" to "Barlow Condensed", "bigshouldersdisplay" to "Big Shoulders Display", "fredoka" to "Fredoka", "gowunbatang" to "Gowun Batang",
-    "ibmplexmono" to "IBM Plex Mono", "instrumentserif" to "Instrument Serif", "jost" to "Jost", "jua" to "Jua", "nanumpenscript" to "Nanum Pen Script",
+    "ibmplexmono" to "IBM Plex Mono", "jost" to "Jost", "jua" to "Jua", "nanumpenscript" to "Nanum Pen Script",
     "oswald" to "Oswald", "outfit" to "Outfit", "playfairdisplay" to "Playfair Display", "titanone" to "Titan One",
 )
 

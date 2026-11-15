@@ -57,6 +57,8 @@ val LocalSettingsEnv = compositionLocalOf { SettingsEnv() }
 object Routes {
     const val HOME = "home"
     const val THEME = "theme"
+    /** r13 사용자 지정 (the strip's ＋). */
+    const val THEME_CUSTOM = "theme_custom"
     const val PAGES = "pages"
     const val START = "start"
     const val WIDGETS = "widgets"
@@ -93,7 +95,8 @@ fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: S
 private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) {
     val back = { nav.back() }
     when {
-        route == Routes.THEME -> ThemeScreen(config, update, back)
+        route == Routes.THEME -> ThemeScreen(config, update, nav, back)
+        route == Routes.THEME_CUSTOM -> CustomThemeScreen(config, update, back)
         route == Routes.PAGES -> PagesScreen(config, update, nav, back)
         route == Routes.START -> StartPageScreen(config, update, back)
         route == Routes.WIDGETS -> WidgetsScreen(config, update, nav, back)

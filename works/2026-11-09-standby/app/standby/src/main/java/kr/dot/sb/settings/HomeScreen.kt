@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -38,21 +39,15 @@ import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.theme.withBoardBg
 import kr.dot.sb.ui.theme.withTheme
-import java.time.LocalTime
 import kr.dot.sb.ui.theme.withThemeEdit
 import kr.dot.sb.ui.theme.applyMyTheme
 import kr.dot.sb.ui.theme.Look
 import kr.dot.sb.ui.theme.StripPick
 import kr.dot.sb.ui.theme.switchLook
-import kr.dot.sb.ui.theme.saveMyTheme
-import kr.dot.sb.ui.theme.nextMyThemeName
 import kr.dot.sb.ui.theme.renameMyTheme
 import kr.dot.sb.ui.theme.deleteMyTheme
-import kr.dot.sb.ui.theme.LocalThemeTime
-import kr.dot.sb.model.ThemeEdit
 import kr.dot.sb.model.MyTheme
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.getValue
@@ -112,37 +107,28 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
 }
 
 /**
- * 테마와 배경 (mockup SCREENS.theme): the theme strip (내 테마 first), the theme editor (r11), 글자 크기, 배경. The preview
- * swipes on to every page (글자 크기 shows on 모듈러) and shows the editor's draft while a colour or slider is held.
+ * 테마와 배경 (mockup SCREENS.theme, plan-r13 A4): the theme strip (내 테마 · built-ins · ＋ 사용자 지정), 글자 크기, 배경.
+ * The preview swipes on to every page (글자 크기 shows on 모듈러). Colours and shapes live in 사용자 지정.
  */
 @Composable
-fun ThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    // a held colour/slider (never saved); a new saved edit or theme drops it
-    var draft by remember(config.theme, config.themeEdits[config.theme]) { mutableStateOf<ThemeEdit?>(null) }
-    // the 아침/낮/저녁 preview chip (minute of the day), only while 시간 따라 흐름 is on
-    var previewAt by rememberSaveable(config.theme) { mutableStateOf<Int?>(null) }
-    val shown = remember(config, draft) { draft?.let { config.withThemeEdit(config.theme, it) } ?: config }
-    val at = previewAt?.let { LocalTime.of(it / 60, it % 60) } ?: LocalThemeTime.current ?: LocalTime.now()
-    kr.dot.sb.ui.theme.ProvideTheme(shown, at) {
-        Page("테마와 배경", back, preview = Preview(shown, pageSlides(shown))) {
-            ThemePicker(config, update)
-            ThemeEditorSection(config, update, draft, { draft = it }, previewAt.takeIf { shown.themeEdits[shown.theme]?.flow != null }, { previewAt = it })
-            Section(null) {
-                item {
-                    ControlRow("글자 크기", note = "카드 글자와 시계 아래 날짜·정보 줄이 바뀌어요. 큰 숫자는 그대로예요. 미리보기를 옆으로 넘겨 확인해요.") {
-                        Segmented(TextSize.entries.map { it.ko }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
-                    }
+fun ThemeScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
+    Page("테마와 배경", back, preview = Preview(config, pageSlides(config))) {
+        ThemePicker(config, update) { nav.push(Routes.THEME_CUSTOM) }
+        Section(null) {
+            item {
+                ControlRow("글자 크기", note = "카드 글자와 시계 아래 날짜·정보 줄이 바뀌어요. 큰 숫자는 그대로예요. 미리보기를 옆으로 넘겨 확인해요.") {
+                    Segmented(TextSize.entries.map { it.ko }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
                 }
             }
-            Section("배경", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
-                item {
-                    ControlRow(null) {
-                        // 단색 is folded into the editor's colours: its chip shows only while it is the stored choice
-                        val bgs = BoardBg.entries.filter { it != BoardBg.SOLID || it == config.boardBg }
-                        ChipFlow(bgs.map { it.ko }, bgs.indexOf(config.boardBg), { i -> update { it.withBoardBg(bgs[i]) } })
-                        if (config.boardBg == BoardBg.SOLID) {
-                            ColorPalette(config.boardBgColor, { c -> update { it.withBoardBg(BoardBg.SOLID, c) } }, BG_SWATCHES, Modifier.padding(top = 8.dp))
-                        }
+        }
+        Section("배경", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
+            item {
+                ControlRow(null) {
+                    // 단색 is folded into 사용자 지정's colours: its chip shows only while it is the stored choice
+                    val bgs = BoardBg.entries.filter { it != BoardBg.SOLID || it == config.boardBg }
+                    ChipFlow(bgs.map { it.ko }, bgs.indexOf(config.boardBg), { i -> update { it.withBoardBg(bgs[i]) } })
+                    if (config.boardBg == BoardBg.SOLID) {
+                        ColorPalette(config.boardBgColor, { c -> update { it.withBoardBg(BoardBg.SOLID, c) } }, BG_SWATCHES, Modifier.padding(top = 8.dp))
                     }
                 }
             }
@@ -155,40 +141,45 @@ internal val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12
 
 /**
  * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it with its name under it (operator 11-14:
- * names on), in a horizontal scroll, so what you tap is what StandBy shows. Tap = switch (saved like every other setting).
- * r11: 내 테마 come first with their names (no selected mark); long-press one for 이름 바꾸기 / 지우기. r13: every tap goes
- * through `switchLook`; while the look holds an unsaved edit it first asks (no silent loss).
+ * names on), in a horizontal scroll, so what you tap is what StandBy shows. r11: 내 테마 come first with their names;
+ * long-press one for 이름 바꾸기 / 지우기. r13 (plan-r13 A1): the marked tile is [StripPick]; built-in tiles show the theme
+ * unedited; [＋ 사용자 지정] at the end ([onCustom]) is marked "저장 안 함" while the look holds an edit saved nowhere,
+ * and every tap first asks then ([UnsavedGuard]).
  */
 @Composable
-private fun ThemePicker(config: AppConfig, update: Update) {
+private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit) {
     val state = remember(config.city, config.use24h) { Sample.state(config) }
     val board = remember(config.widgetLeft, config.widgetRight) { widgetsBoard(config) }
     val acc = LocalAccent.current
-    val list = rememberLazyListState((config.myThemes.size + Theme.entries.indexOf(config.theme) - 1).coerceAtLeast(0))
-    var confirm by remember { mutableStateOf<Look?>(null) }
+    val pick = StripPick.of(config)
+    // opens with the marked tile in view (one tile of context before it)
+    val at = when (pick) {
+        is Look.Mine -> config.myThemes.indexOf(pick.my)
+        is Look.Builtin -> config.myThemes.size + Theme.entries.indexOf(pick.theme)
+        else -> config.myThemes.size + Theme.entries.size
+    }
+    val list = rememberLazyListState((at - 1).coerceAtLeast(0))
+    var guard by remember { mutableStateOf<Look?>(null) }
     var menu by remember { mutableStateOf<MyTheme?>(null) }
     var renaming by remember { mutableStateOf<MyTheme?>(null) }
     fun tap(to: Look) {
         menu = null
-        // an edit that is in no saved 내 테마 would be lost: ask first
-        if (StripPick.of(config) == StripPick.Custom) confirm = to else update { it.switchLook(to) }
+        if (pick == StripPick.Custom) guard = to else update { it.switchLook(to) }
     }
     Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
         T("테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
         LazyRow(Modifier.fillMaxWidth(), list, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(config.myThemes) { m ->
                 val cfg = remember(config, m) { config.applyMyTheme(m) }
-                ThemeThumb(cfg, board, state, m.name, false, acc, { tap(Look.Mine(m)) }, { confirm = null; menu = m })
+                ThemeThumb(cfg, board, state, m.name, pick == Look.Mine(m), acc, { tap(Look.Mine(m)) }, { menu = m })
             }
             items(Theme.entries) { th ->
-                val cfg = remember(config, th) { config.withTheme(th) }
-                ThemeThumb(cfg, board, state, th.ko, th == config.theme, acc, { tap(Look.Builtin(th)) })
+                val cfg = remember(config, th) { config.withTheme(th).withThemeEdit(th, null) }
+                ThemeThumb(cfg, board, state, th.ko, pick == Look.Builtin(th), acc, { tap(Look.Builtin(th)) })
             }
-        }
-        confirm?.let { to ->
-            InlineAsk("지금 꾸민 색이 바뀌어요") {
-                ActionButton("바꾸기", { confirm = null; update { it.switchLook(to) } }, primary = false)
-                ActionButton("먼저 저장", { confirm = null; update { c -> c.saveMyTheme(nextMyThemeName(c.myThemes)).switchLook(to) } }, primary = false)
+            item {
+                val custom = pick == StripPick.Custom
+                ThemeThumb(if (custom) config else null, board, state, "＋ 사용자 지정", custom, acc, onCustom, badge = if (custom) "저장 안 함" else null)
             }
         }
         menu?.let { m ->
@@ -199,6 +190,7 @@ private fun ThemePicker(config: AppConfig, update: Update) {
             }
         }
     }
+    guard?.let { to -> UnsavedGuard(config, update, to, { guard = null }) }
     renaming?.let { m ->
         NameDialog("이름 바꾸기", m.name, { renaming = null }) { name ->
             renaming = null
@@ -207,11 +199,14 @@ private fun ThemePicker(config: AppConfig, update: Update) {
     }
 }
 
-/** One thumbnail of the strip: the widgets page drawn with [cfg], [name] under it. [onLong] = a 내 테마 (long-press menu). */
+/**
+ * One thumbnail of the strip: the widgets page drawn with [cfg] (null = a "＋" box), [name] under it, [badge] over the
+ * bottom of the picture. [onLong] = a 내 테마 (long-press menu).
+ */
 @Composable
 private fun ThemeThumb(
-    cfg: AppConfig, board: Board, state: kr.dot.sb.ui.state.StandbyState, name: String, on: Boolean, acc: androidx.compose.ui.graphics.Color,
-    onTap: () -> Unit, onLong: (() -> Unit)? = null,
+    cfg: AppConfig?, board: Board, state: kr.dot.sb.ui.state.StandbyState, name: String, on: Boolean, acc: androidx.compose.ui.graphics.Color,
+    onTap: () -> Unit, onLong: (() -> Unit)? = null, badge: String? = null,
 ) {
     // the gesture detector outlives recompositions: it calls the latest callbacks
     val tapNow by androidx.compose.runtime.rememberUpdatedState(onTap)
@@ -224,18 +219,22 @@ private fun ThemeThumb(
             .then(tap).padding(8.dp),
     ) {
         Box(Modifier.fillMaxWidth()) {
-            kr.dot.sb.ui.theme.ProvideTheme(cfg) {
+            if (cfg != null) kr.dot.sb.ui.theme.ProvideTheme(cfg) {
                 PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth(), radius = 8.dp) {
                     BoardView(board, state, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
                 }
-            }
+            } else Box(
+                Modifier.fillMaxWidth().aspectRatio(PreviewDevice.FOLD_COVER.w.toFloat() / PreviewDevice.FOLD_COVER.h).clip(RoundedCornerShape(8.dp))
+                    .background(SK.surface2),
+                Alignment.Center,
+            ) { T("＋", 28.sp, 500, SK.muted) }
+            if (badge != null) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp)) { Pill(badge, acc, filled = true) }
             // the thumbnail's own cards must not take the tap
             Box(Modifier.matchParentSize().then(tap))
         }
         StripLabel(name, on, acc)
     }
 }
-
 /** An inline question under the strip: a line of text and its buttons. */
 @Composable
 private fun InlineAsk(text: String, buttons: @Composable () -> Unit) {

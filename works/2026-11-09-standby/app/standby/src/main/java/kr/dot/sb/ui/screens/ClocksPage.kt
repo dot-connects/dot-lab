@@ -67,6 +67,7 @@ import kr.dot.sb.ui.clock.StyleRow
 import kr.dot.sb.ui.clock.spec
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
+import kr.dot.sb.ui.theme.BottomGlow
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.burnInBleed
@@ -111,7 +112,8 @@ internal fun ClocksPage(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // own page colour (edit mode dims it), overscanned for the burn-in shift
-        Box(Modifier.fillMaxSize().burnInBleed().background(lerp(ink.bg, ink.ink4, k)))
+        val theme = LocalTheme.current
+        Box(Modifier.fillMaxSize().burnInBleed().background(lerp(ink.bg, ink.ink4, k))) { BottomGlow(theme, maxOf(ink.night, k)) }
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
@@ -131,6 +133,7 @@ internal fun ClocksPage(
                     if (k > 0f) { clip = true; shape = RoundedCornerShape(s * 0.06f) }
                 }.background(ink.bg),
             ) {
+                BottomGlow(theme, ink.night) // the page paints ink.bg over ThemeBackground: the glow goes on it too
                 ClockFace(face, styleOf(face), state, Modifier.fillMaxSize(), analog = config.analogStyle)
             }
         }

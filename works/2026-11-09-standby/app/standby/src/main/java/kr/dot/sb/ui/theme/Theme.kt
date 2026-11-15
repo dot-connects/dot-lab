@@ -284,6 +284,10 @@ fun AppConfig.switchLook(to: Look): AppConfig {
     return c.copy(themeEdits = c.themeEdits.filterKeys { it == c.theme })
 }
 
+/** 이전 조합 (plan-r13 A4): back to [th] with [e] and [from]; like [switchLook], no other theme keeps an edit. */
+fun AppConfig.restoreLook(th: Theme, e: ThemeEdit?, from: String?): AppConfig =
+    withTheme(th).withThemeEdit(th, e).let { c -> c.copy(customFrom = from, themeEdits = c.themeEdits.filterKeys { it == th }) }
+
 /** StandBy's pull-down panel: an unsaved edit is kept as the next "내 테마 N" first (no dialog on the stand screen). */
 fun AppConfig.switchFromPanel(th: Theme): AppConfig =
     (if (StripPick.of(this) == StripPick.Custom) saveMyTheme(nextMyThemeName(myThemes)) else this).switchLook(Look.Builtin(th))

@@ -33,16 +33,20 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
         rule.setContent {
             var c by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(cfg) }
             SettingsTheme(c.clockStyle(FaceId.DIGITAL).color.c()) {
-                RouteHost(Routes.THEME, c, { f -> c = f(c); cfg = c }, nav, env)
+                RouteHost(Routes.THEME_CUSTOM, c, { f -> c = f(c); cfg = c }, nav, env)
             }
         }
         rule.waitForIdle()
-        // the first slider of the IPHONE editor is 카드 진하기 (모서리 comes after it)
+        // the first slider of the 카드 tab is 카드 진하기 (모서리 comes after it)
+        rule.onNodeWithText("카드").performScrollTo().performClick()
+        rule.waitForIdle()
         val sliders = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
         sliders[0].performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.4f) }
         rule.waitForIdle()
         val alpha = cfg.themeEdits[Theme.IPHONE]?.plateAlpha
         assertNotNull("slider saved no alpha", alpha)
+        rule.onNodeWithText("글자").performScrollTo().performClick()
+        rule.waitForIdle()
         // a swatch of 강조 색: the clickable dots right under its title
         val title = rule.onNodeWithText("강조 색").performScrollTo().fetchSemanticsNode().boundsInRoot
         val dots = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
