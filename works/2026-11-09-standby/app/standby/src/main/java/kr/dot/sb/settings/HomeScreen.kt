@@ -40,8 +40,14 @@ import kr.dot.sb.ui.theme.withBoardBg
 import kr.dot.sb.ui.theme.withTheme
 import java.time.LocalTime
 import kr.dot.sb.ui.theme.withThemeEdit
-import kr.dot.sb.ui.theme.withMyThemes
 import kr.dot.sb.ui.theme.applyMyTheme
+import kr.dot.sb.ui.theme.Look
+import kr.dot.sb.ui.theme.StripPick
+import kr.dot.sb.ui.theme.switchLook
+import kr.dot.sb.ui.theme.saveMyTheme
+import kr.dot.sb.ui.theme.nextMyThemeName
+import kr.dot.sb.ui.theme.renameMyTheme
+import kr.dot.sb.ui.theme.deleteMyTheme
 import kr.dot.sb.ui.theme.LocalThemeTime
 import kr.dot.sb.model.ThemeEdit
 import kr.dot.sb.model.MyTheme
@@ -150,8 +156,8 @@ internal val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12
 /**
  * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it with its name under it (operator 11-14:
  * names on), in a horizontal scroll, so what you tap is what StandBy shows. Tap = switch (saved like every other setting).
- * r11: 내 테마 come first with their names (no selected mark); long-press one for 이름 바꾸기 / 지우기. Tapping one whose
- * theme carries an unsaved edit first asks (no silent loss).
+ * r11: 내 테마 come first with their names (no selected mark); long-press one for 이름 바꾸기 / 지우기. r13: every tap goes
+ * through `switchLook`; while the look holds an unsaved edit it first asks (no silent loss).
  */
 @Composable
 private fun ThemePicker(config: AppConfig, update: Update) {
@@ -159,44 +165,36 @@ private fun ThemePicker(config: AppConfig, update: Update) {
     val board = remember(config.widgetLeft, config.widgetRight) { widgetsBoard(config) }
     val acc = LocalAccent.current
     val list = rememberLazyListState((config.myThemes.size + Theme.entries.indexOf(config.theme) - 1).coerceAtLeast(0))
-    var confirm by remember { mutableStateOf<MyTheme?>(null) }
+    var confirm by remember { mutableStateOf<Look?>(null) }
     var menu by remember { mutableStateOf<MyTheme?>(null) }
     var renaming by remember { mutableStateOf<MyTheme?>(null) }
-    fun tapMy(m: MyTheme) {
+    fun tap(to: Look) {
         menu = null
-        val cur = config.themeEdits[m.base]
-        // an edit that is in no saved 내 테마 would be replaced: ask first
-        if (cur != null && cur != m.edit && config.myThemes.none { it.base == m.base && it.edit == cur }) confirm = m
-        else update { it.applyMyTheme(m) }
+        // an edit that is in no saved 내 테마 would be lost: ask first
+        if (StripPick.of(config) == StripPick.Custom) confirm = to else update { it.switchLook(to) }
     }
     Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
         T("테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
         LazyRow(Modifier.fillMaxWidth(), list, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(config.myThemes) { m ->
                 val cfg = remember(config, m) { config.applyMyTheme(m) }
-                ThemeThumb(cfg, board, state, m.name, false, acc, { tapMy(m) }, { confirm = null; menu = m })
+                ThemeThumb(cfg, board, state, m.name, false, acc, { tap(Look.Mine(m)) }, { confirm = null; menu = m })
             }
             items(Theme.entries) { th ->
                 val cfg = remember(config, th) { config.withTheme(th) }
-                ThemeThumb(cfg, board, state, th.ko, th == config.theme, acc, { update { it.withTheme(th) } })
+                ThemeThumb(cfg, board, state, th.ko, th == config.theme, acc, { tap(Look.Builtin(th)) })
             }
         }
-        confirm?.let { m ->
+        confirm?.let { to ->
             InlineAsk("지금 꾸민 색이 바뀌어요") {
-                ActionButton("바꾸기", { confirm = null; update { it.applyMyTheme(m) } }, primary = false)
-                ActionButton("먼저 저장", {
-                    confirm = null
-                    update { c ->
-                        val keep = MyTheme(nextMyThemeName(c.myThemes), m.base, c.themeEdits[m.base] ?: ThemeEdit())
-                        c.withMyThemes(c.myThemes + keep).applyMyTheme(m)
-                    }
-                }, primary = false)
+                ActionButton("바꾸기", { confirm = null; update { it.switchLook(to) } }, primary = false)
+                ActionButton("먼저 저장", { confirm = null; update { c -> c.saveMyTheme(nextMyThemeName(c.myThemes)).switchLook(to) } }, primary = false)
             }
         }
         menu?.let { m ->
             InlineAsk(m.name) {
                 ActionButton("이름 바꾸기", { menu = null; renaming = m }, primary = false)
-                ActionButton("지우기", { menu = null; update { c -> c.withMyThemes(c.myThemes.toMutableList().also { l -> l.indexOf(m).takeIf { it >= 0 }?.let(l::removeAt) }) } }, primary = false, danger = true)
+                ActionButton("지우기", { menu = null; update { c -> c.deleteMyTheme(m) } }, primary = false, danger = true)
                 ActionButton("닫기", { menu = null }, primary = false)
             }
         }
@@ -204,7 +202,7 @@ private fun ThemePicker(config: AppConfig, update: Update) {
     renaming?.let { m ->
         NameDialog("이름 바꾸기", m.name, { renaming = null }) { name ->
             renaming = null
-            update { c -> c.withMyThemes(c.myThemes.toMutableList().also { l -> l.indexOf(m).takeIf { it >= 0 }?.let { i -> l[i] = m.copy(name = name) } }) }
+            update { c -> c.renameMyTheme(m, name) }
         }
     }
 }

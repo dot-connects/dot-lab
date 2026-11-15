@@ -90,27 +90,34 @@ data class SlotOptions(
 /** r11 theme editor: the glow's shape (무드등). */
 enum class GlowShape(val ko: String) { ROUND("둥근"), SUNSET("노을"), TWIN("둘") }
 
+/** r13 사용자 지정 (plan-r13 A2): 배경 종류, 테두리, 질감, 카드 글꼴, 글자 두께. */
+enum class BgKind { SOLID, GRADIENT, GLOW }
+enum class Border { NONE, THIN, THICK }
+enum class Texture { NONE, PAPER, GRAIN, LINEN, METAL, FROST }
+enum class CardFont { GOTHIC, SERIF, ROUND, PEN }
+enum class TextWeight { LIGHT, NORMAL, BOLD }
+
 /**
  * r11 "테마 위에 내 색 입히기": one theme's edit; every field null = the theme's token. Applied in one place
  * (`ThemeTokens.with` through `AppConfig.drawnTheme`) and only on the theme background. Colours are ARGB Longs.
  */
 data class ThemeEdit(
-    /** 1..3 page stops (SKY: top / middle / bottom). */
+    /** 1..3 page stops (SKY: top / middle / bottom; GRADIENT needs 3, else the drawing fills them). */
     val bg: List<Long>? = null,
     /** 무드등, 촛불: the glow colour (its alpha stays the theme's). */
     val glow: Long? = null,
-    /** 0..1, 0.5 = the theme's glow (multiplier 2 × value); NEON: the halo. */
+    /** 0..1, 0.5 = the theme's glow (multiplier 2 × value). r12 NEON/TERMINAL used it as the halo: v11 moved that to [textGlow]. */
     val glowStrength: Float? = null,
     /** Glow centre as 0..1 of the page. */
     val glowAt: Pair<Float, Float>? = null,
     val glowShape: GlowShape? = null,
-    /** Card colour (RADIO 판, FLIP plate); never on PAPER. */
+    /** Card colour (RADIO 판, FLIP plate). */
     val plate: Long? = null,
-    /** PAPER only: the rule-line colour. */
+    /** 구분선 색 (drawn when the card shape is RULE). */
     val rule: Long? = null,
     /** 카드 진하기: absolute alpha of both plates, [PLATE_ALPHA]. */
     val plateAlpha: Float? = null,
-    /** Only a style in [PLATE_OFFER] for the theme. */
+    /** 카드 모양: any style on any theme (r13). */
     val plateStyle: kr.dot.sb.ui.theme.PlateStyle? = null,
     /** Corner radius ratio 0..0.2. */
     val radius: Float? = null,
@@ -118,31 +125,44 @@ data class ThemeEdit(
     val ink: Long? = null,
     /** 시간 따라 흐름: 2..3 stops morning → (noon) → evening; null = off. */
     val flow: List<Long>? = null,
+    // r13 (plan-r13 A2)
+    val bgKind: BgKind? = null,
+    val border: Border? = null,
+    val borderColor: Long? = null,
+    val bgTexture: Texture? = null,
+    val cardTexture: Texture? = null,
+    /** 질감 정도 for both textures, [TEXTURE_AMT]; null = 0.5. */
+    val textureAmt: Float? = null,
+    val textFont: CardFont? = null,
+    val textWeight: TextWeight? = null,
+    /** 글자 빛 번짐 0..1 (0 = off, null = the theme's). */
+    val textGlow: Float? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeEdit()
 
     /**
      * Within range for [theme] (codec decode/encode and every write): non-finite floats dropped, ranges clamped, lists of
-     * the wrong length dropped, fields the theme never offers dropped. Never throws.
+     * the wrong length dropped, light-theme pages floored. Every field is allowed on every theme (r13). Never throws.
      */
     fun sanitized(theme: Theme): ThemeEdit {
         fun f(v: Float?, r: ClosedFloatingPointRange<Float>) = v?.takeIf { it.isFinite() }?.coerceIn(r.start, r.endInclusive)
         return ThemeEdit(
             // light themes stay light (night and the dark twins rely on it): page picks floored at HSL lightness 0.6
-            // 하늘 is edited as its three stops; any other theme takes 1..3
-            bg = bg?.takeIf { if (theme == Theme.SKY) it.size == 3 else it.size in 1..3 }?.let { s -> if (theme in LIGHT) s.map { kr.dot.sb.ui.theme.Hsl.floor(it, LIGHT_FLOOR) } else s },
+            bg = bg?.takeIf { it.size in 1..3 }?.let { s -> if (theme in LIGHT) s.map { kr.dot.sb.ui.theme.Hsl.floor(it, LIGHT_FLOOR) } else s },
             glow = glow,
             glowStrength = f(glowStrength, 0f..1f),
             glowAt = glowAt?.takeIf { it.first.isFinite() && it.second.isFinite() }?.let { it.first.coerceIn(0f, 1f) to it.second.coerceIn(0f, 1f) },
             glowShape = glowShape,
-            plate = plate.takeIf { theme != Theme.PAPER },
-            rule = rule.takeIf { theme == Theme.PAPER },
+            plate = plate,
+            rule = rule,
             plateAlpha = f(plateAlpha, PLATE_ALPHA),
-            plateStyle = plateStyle?.takeIf { it in PLATE_OFFER[theme].orEmpty() },
+            plateStyle = plateStyle,
             radius = f(radius, 0f..0.2f),
             accent = accent,
             ink = ink,
             flow = flow?.takeIf { it.size in 2..3 },
+            bgKind = bgKind, border = border, borderColor = borderColor, bgTexture = bgTexture, cardTexture = cardTexture,
+            textureAmt = f(textureAmt, TEXTURE_AMT), textFont = textFont, textWeight = textWeight, textGlow = f(textGlow, 0f..1f),
         )
     }
 
@@ -154,10 +174,8 @@ data class ThemeEdit(
         val LIGHT = setOf(Theme.DAYPAPER, Theme.RADIO)
         const val LIGHT_FLOOR = 0.6f
 
-        /** 카드 모양 choices per theme (only 무드등 offers any). */
-        val PLATE_OFFER: Map<Theme, List<kr.dot.sb.ui.theme.PlateStyle>> = mapOf(
-            Theme.MOODLIGHT to listOf(kr.dot.sb.ui.theme.PlateStyle.FILL, kr.dot.sb.ui.theme.PlateStyle.GLASS, kr.dot.sb.ui.theme.PlateStyle.OUTLINE),
-        )
+        /** 질감 정도 range (capped at 0.8 so small text stays readable, plan-r13 A4). */
+        val TEXTURE_AMT = 0.1f..0.8f
     }
 }
 
@@ -399,8 +417,10 @@ data class AppConfig(
     val photoFolders: List<String> = emptyList(),
     /** r11 per-theme edits (never empty edits). Write with `withThemeEdit`; drawn only on [BoardBg.THEME]. */
     val themeEdits: Map<Theme, ThemeEdit> = emptyMap(),
-    /** r11 내 테마. Write with `withMyThemes`. */
+    /** r11 내 테마. Write with `withMyThemes` / `saveMyTheme` / `renameMyTheme` / `deleteMyTheme`. */
     val myThemes: List<MyTheme> = emptyList(),
+    /** r13: the 내 테마 the current look came from (저장 prefills it); null = a built-in or never saved. */
+    val customFrom: String? = null,
 )
 
 const val PAGE_WIDGETS = "widgets"

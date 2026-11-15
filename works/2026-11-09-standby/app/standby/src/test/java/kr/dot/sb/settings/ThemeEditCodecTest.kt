@@ -1,6 +1,11 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.BgKind
+import kr.dot.sb.model.Border
+import kr.dot.sb.model.CardFont
+import kr.dot.sb.model.TextWeight
+import kr.dot.sb.model.Texture
 import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.MyTheme
 import kr.dot.sb.model.SlotOptions
@@ -66,13 +71,13 @@ class ThemeEditCodecTest {
         assertEquals(1f to 0f, m.glowAt)
         assertNull(m.bg); assertNull(m.flow)          // wrong lengths
         assertNull(m.glowShape)                       // unknown name
-        assertNull(m.plateStyle)                      // not offered by 무드등
+        assertEquals(PlateStyle.RULE, m.plateStyle)   // r13: every card shape on every theme
         assertEquals(0xFFFFD74B, m.accent)
-        assertEquals(ThemeEdit(rule = 4292392042), c.themeEdits[Theme.PAPER])   // plate never on PAPER
+        assertEquals(ThemeEdit(plate = 4278190080, rule = 4292392042), c.themeEdits[Theme.PAPER])   // r13: plate on PAPER too
         assertFalse(Theme.NEON in c.themeEdits)       // malformed entry dropped alone
         assertFalse(Theme.SKY in c.themeEdits)        // became empty: removed
         assertFalse(Theme.FLIP in c.themeEdits)       // a bad stop drops the list, then the edit is empty
-        assertEquals(null, ThemeEdit(bg = listOf(0xFF000000, 0xFF111111)).sanitized(Theme.SKY).bg)   // 하늘 needs its 3 stops
+        assertEquals(listOf(0xFF000000, 0xFF111111), ThemeEdit(bg = listOf(0xFF000000, 0xFF111111)).sanitized(Theme.SKY).bg)   // r13: any stop count
         assertEquals(listOf(MyTheme("ok", Theme.SKY, ThemeEdit(radius = 0.1f)), MyTheme("내 테마", Theme.FLIP, ThemeEdit())), c.myThemes)
         // a sanitised config re-encodes to itself
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
@@ -88,5 +93,41 @@ class ThemeEditCodecTest {
         // the editor's undo slot stores one edit as JSON (Saver)
         assertEquals(full, ConfigCodec.decodeEdit(ConfigCodec.encodeEdit(full), Theme.MOODLIGHT))
         assertEquals(ThemeEdit(), ConfigCodec.decodeEdit("garbage", Theme.MOODLIGHT))
+    }
+
+    /** plan-r13 A2: every new field set. */
+    private val r13 = ThemeEdit(
+        bg = listOf(0xFFE0D8C8), bgKind = BgKind.GLOW, plate = 0xFF2B2119, rule = 0xFFD8B46A, plateStyle = PlateStyle.RULE,
+        border = Border.THICK, borderColor = 0xFF808080, bgTexture = Texture.LINEN, cardTexture = Texture.FROST, textureAmt = 0.3f,
+        textFont = CardFont.PEN, textWeight = TextWeight.BOLD, textGlow = 0.6f,
+    )
+
+    @Test fun r13FieldsRoundTrip() {
+        val c = AppConfig(theme = Theme.PAPER, themeEdits = mapOf(Theme.PAPER to r13), myThemes = listOf(MyTheme("a", Theme.PAPER, r13)), customFrom = "a")
+        assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
+        assertEquals(r13, ConfigCodec.decodeEdit(ConfigCodec.encodeEdit(r13), Theme.PAPER))
+        // a customFrom naming no 내 테마 is dropped
+        assertNull(ConfigCodec.decode(ConfigCodec.encode(c.copy(customFrom = "gone"))).customFrom)
+    }
+
+    @Test fun r13GarbageReadsAsNull() {
+        val json = JSONObject(ConfigCodec.encode(AppConfig())).apply {
+            put("themeEdits", JSONObject("""{"PAPER": {"bgKind": "STRIPES", "border": 7, "borderColor": "x", "bgTexture": "WOOD", "cardTexture": null,
+                "textureAmt": "NaN", "textFont": "COMIC", "textWeight": [1], "textGlow": {"a": 1}, "accent": 4294956875}}"""))
+        }.toString()
+        assertEquals(mapOf(Theme.PAPER to ThemeEdit(accent = 4294956875)), ConfigCodec.decode(json).themeEdits)
+    }
+
+    @Test fun r13Clamps() {
+        assertEquals(ThemeEdit(textureAmt = 0.1f, textGlow = 1f), ThemeEdit(textureAmt = 0f, textGlow = 3f).sanitized(Theme.IPHONE))
+        assertEquals(ThemeEdit(textureAmt = 0.8f, textGlow = 0f), ThemeEdit(textureAmt = 0.95f, textGlow = -1f).sanitized(Theme.IPHONE))
+        assertEquals(ThemeEdit(), ThemeEdit(textureAmt = Float.NaN, textGlow = Float.POSITIVE_INFINITY).sanitized(Theme.IPHONE))
+        for (th in Theme.entries) for (ps in PlateStyle.entries) {
+            val e = ThemeEdit(plateStyle = ps, plate = 0xFF102030, rule = 0xFF405060, bg = listOf(0xFF203040))
+            assertEquals("$th $ps", e.copy(bg = null), e.sanitized(th).copy(bg = null))
+            assertEquals("$th keeps 1 stop", 1, e.sanitized(th).bg?.size)
+        }
+        // light themes keep their page floor
+        assertTrue(ThemeEdit(bg = listOf(0xFF000000)).sanitized(Theme.DAYPAPER).bg!![0] != 0xFF000000)
     }
 }

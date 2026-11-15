@@ -1,6 +1,11 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.BgKind
+import kr.dot.sb.model.Border
+import kr.dot.sb.model.CardFont
+import kr.dot.sb.model.TextWeight
+import kr.dot.sb.model.Texture
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.City
@@ -30,8 +35,11 @@ import java.time.LocalDate
  * so a save from an older or newer build (missing or unknown fields, renamed enum values) never crashes.
  */
 object ConfigCodec {
-    /** Stored schema: 9 = r9 (styles are overrides only), 10 = r10. Saves without "v" are r8 or r9 dev builds. */
-    const val VERSION = 10
+    /**
+     * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
+     * kept only for the current look). Saves without "v" are r8 or r9 dev builds.
+     */
+    const val VERSION = 11
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -91,6 +99,7 @@ object ConfigCodec {
         if (c.myThemes.isNotEmpty()) put("myThemes", JSONArray().also { a ->
             c.myThemes.forEach { m -> a.put(JSONObject().put("name", m.name).put("base", m.base.name).put("edit", edit(m.edit.sanitized(m.base)))) }
         })
+        c.customFrom?.let { put("customFrom", it) }
     }.toString()
 
     /** One [ThemeEdit] as JSON (the editor's undo slot is saved this way). */
@@ -115,6 +124,15 @@ object ConfigCodec {
         e.accent?.let { put("accent", it) }
         e.ink?.let { put("ink", it) }
         e.flow?.let { put("flow", longs(it)) }
+        e.bgKind?.let { put("bgKind", it.name) }
+        e.border?.let { put("border", it.name) }
+        e.borderColor?.let { put("borderColor", it) }
+        e.bgTexture?.let { put("bgTexture", it.name) }
+        e.cardTexture?.let { put("cardTexture", it.name) }
+        e.textureAmt?.let { put("textureAmt", it.toDouble()) }
+        e.textFont?.let { put("textFont", it.name) }
+        e.textWeight?.let { put("textWeight", it.name) }
+        e.textGlow?.let { put("textGlow", it.toDouble()) }
     }
 
     /** A field that does not read is null (not the whole edit); the result is sanitised for [theme]. */
@@ -125,10 +143,13 @@ object ConfigCodec {
         return ThemeEdit(
             bg = longs("bg"), glow = long("glow"), glowStrength = float("glowStrength"),
             glowAt = o.optJSONArray("glowAt")?.let { a -> runCatching { a.getDouble(0).toFloat() to a.getDouble(1).toFloat() }.getOrNull() },
-            glowShape = runCatching { GlowShape.valueOf(o.getString("glowShape")) }.getOrNull(),
+            glowShape = enumOrNull<GlowShape>(o, "glowShape"),
             plate = long("plate"), rule = long("rule"), plateAlpha = float("plateAlpha"),
-            plateStyle = runCatching { PlateStyle.valueOf(o.getString("plateStyle")) }.getOrNull(),
+            plateStyle = enumOrNull<PlateStyle>(o, "plateStyle"),
             radius = float("radius"), accent = long("accent"), ink = long("ink"), flow = longs("flow"),
+            bgKind = enumOrNull<BgKind>(o, "bgKind"), border = enumOrNull<Border>(o, "border"), borderColor = long("borderColor"),
+            bgTexture = enumOrNull<Texture>(o, "bgTexture"), cardTexture = enumOrNull<Texture>(o, "cardTexture"), textureAmt = float("textureAmt"),
+            textFont = enumOrNull<CardFont>(o, "textFont"), textWeight = enumOrNull<TextWeight>(o, "textWeight"), textGlow = float("textGlow"),
         ).sanitized(theme)
     }
 
@@ -224,7 +245,10 @@ object ConfigCodec {
             photoFolders = strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
             themeEdits = themeEdits(o.optJSONObject("themeEdits")),
             myThemes = myThemes(o.optJSONArray("myThemes")),
-        )
+        ).let { c ->
+            // a customFrom naming no 내 테마 is dropped
+            if (v < 11) Migrations.looks(c) else c.copy(customFrom = o.optString("customFrom").takeIf { n -> c.myThemes.any { it.name == n } })
+        }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
@@ -362,6 +386,9 @@ object ConfigCodec {
     private fun city(o: JSONObject) = City(o.getString("name"), o.getDouble("lat"), o.getDouble("lon"))
 
     private fun num(o: JSONObject, k: String, def: Float): Float = o.optDouble(k, def.toDouble()).let { if (it.isNaN()) def else it.toFloat() }
+
+    private inline fun <reified E : Enum<E>> enumOrNull(o: JSONObject, k: String): E? =
+        runCatching { enumValueOf<E>(o.getString(k)) }.getOrNull()
 
     private inline fun <reified E : Enum<E>> enumOf(o: JSONObject, k: String, def: E): E =
         runCatching { enumValueOf<E>(o.getString(k)) }.getOrDefault(def)

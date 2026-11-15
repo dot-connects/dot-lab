@@ -1,6 +1,10 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AnalogNumbers
+import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.MyTheme
+import kr.dot.sb.model.ThemeEdit
+import kr.dot.sb.ui.theme.nextMyThemeName
 import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.Background
 import kr.dot.sb.model.ClockStyle
@@ -23,6 +27,25 @@ object Migrations {
 
     /** The default D-day r9 shipped; v10 removes exactly this entry from older saves. */
     private val OLD_EXAM = DDay("수능", LocalDate.of(2026, 11, 19))
+
+    /**
+     * r13 (plan-r13 A1/A2), for saves before v11: NEON/TERMINAL `glowStrength` (their halo) moves to `textGlow` on every
+     * edit; then each theme edit equal to no 내 테마 becomes "내 테마 N" (Theme order). The current theme's edit stays
+     * applied with `customFrom` = its 내 테마; the other themes' edits are cleared.
+     */
+    fun looks(c: AppConfig): AppConfig {
+        fun halo(th: Theme, e: ThemeEdit) =
+            if (th != Theme.NEON && th != Theme.TERMINAL || e.glowStrength == null) e else e.copy(textGlow = e.glowStrength, glowStrength = null)
+        val edits = c.themeEdits.mapValues { (th, e) -> halo(th, e) }
+        var my = c.myThemes.map { it.copy(edit = halo(it.base, it.edit)) }
+        var from: String? = null
+        for (th in Theme.entries) {
+            val e = edits[th]?.takeUnless { it.isEmpty } ?: continue
+            val m = my.firstOrNull { it.base == th && it.edit == e } ?: MyTheme(nextMyThemeName(my), th, e).also { my = my + it }
+            if (th == c.theme) from = m.name
+        }
+        return c.copy(myThemes = my, themeEdits = edits.filterKeys { it == c.theme }, customFrom = from)
+    }
 
     /** Stored `myClocks`: missing = [OLD_CLOCKS]; unknown ids and repeats dropped; nothing left = [fresh]. */
     fun myClocks(a: JSONArray?, fresh: List<FaceId>): List<FaceId> {

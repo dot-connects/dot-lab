@@ -245,7 +245,66 @@ fun AppConfig.withBoardBg(bg: BoardBg, color: Long = boardBgColor): AppConfig {
 fun AppConfig.withMyThemes(list: List<MyTheme>): AppConfig = copy(myThemes = list)
 
 /** r11: switch to a saved 내 테마 — its base theme on the theme background (so the look shows), with its edit. */
-fun AppConfig.applyMyTheme(m: MyTheme): AppConfig = withTheme(m.base).withBoardBg(BoardBg.THEME).withThemeEdit(m.base, m.edit)
+fun AppConfig.applyMyTheme(m: MyTheme): AppConfig =
+    withTheme(m.base).withBoardBg(BoardBg.THEME).withThemeEdit(m.base, m.edit).copy(customFrom = m.name)
+
+/** The next free "내 테마 N". */
+fun nextMyThemeName(list: List<MyTheme>): String =
+    generateSequence(list.size + 1) { it + 1 }.map { "내 테마 $it" }.first { n -> list.none { it.name == n } }
+
+/** The tile the theme strip marks (plan-r13 A1): a [Look], or [Custom] = an edit saved in no 내 테마 ("저장 안 함"). */
+sealed interface StripPick {
+    data object Custom : StripPick
+
+    companion object {
+        /** The 내 테마 equal to (theme, edit) (the [AppConfig.customFrom] one first); else the built-in when unedited. */
+        fun of(c: AppConfig): StripPick {
+            val e = c.themeEdits[c.theme] ?: ThemeEdit()
+            val same = c.myThemes.filter { it.base == c.theme && it.edit == e }
+            (same.firstOrNull { it.name == c.customFrom } ?: same.firstOrNull())?.let { return Look.Mine(it) }
+            return if (e.isEmpty) Look.Builtin(c.theme) else Custom
+        }
+    }
+}
+
+/** What a strip tap switches to. */
+sealed interface Look : StripPick {
+    data class Builtin(val theme: Theme) : Look
+    data class Mine(val my: MyTheme) : Look
+}
+
+/**
+ * The one way to change the look (plan-r13 A1): built-in tile, 내 테마 tile, start chip, [버리기], panel. Every
+ * `themeEdits` entry except the target's is cleared, so a discarded edit never comes back.
+ */
+fun AppConfig.switchLook(to: Look): AppConfig {
+    val c = when (to) {
+        is Look.Builtin -> withTheme(to.theme).withThemeEdit(to.theme, null).copy(customFrom = null)
+        is Look.Mine -> applyMyTheme(to.my)
+    }
+    return c.copy(themeEdits = c.themeEdits.filterKeys { it == c.theme })
+}
+
+/** StandBy's pull-down panel: an unsaved edit is kept as the next "내 테마 N" first (no dialog on the stand screen). */
+fun AppConfig.switchFromPanel(th: Theme): AppConfig =
+    (if (StripPick.of(this) == StripPick.Custom) saveMyTheme(nextMyThemeName(myThemes)) else this).switchLook(Look.Builtin(th))
+
+/** 저장: the current look under [name]; an existing 내 테마 of that name is replaced in place (덮어쓰기), else appended. */
+fun AppConfig.saveMyTheme(name: String): AppConfig {
+    val m = MyTheme(name, theme, themeEdits[theme] ?: ThemeEdit())
+    val i = myThemes.indexOfFirst { it.name == name }
+    return copy(myThemes = if (i < 0) myThemes + m else myThemes.toMutableList().also { it[i] = m }, customFrom = name)
+}
+
+fun AppConfig.renameMyTheme(m: MyTheme, name: String): AppConfig = copy(
+    myThemes = myThemes.toMutableList().also { l -> l.indexOf(m).takeIf { it >= 0 }?.let { i -> l[i] = m.copy(name = name) } },
+    customFrom = if (customFrom == m.name) name else customFrom,
+)
+
+fun AppConfig.deleteMyTheme(m: MyTheme): AppConfig = copy(
+    myThemes = myThemes.toMutableList().also { it.remove(m) },
+    customFrom = customFrom.takeUnless { it == m.name },
+)
 
 /**
  * r11 시간 따라 흐름: the time edited themes are drawn at, in 10-minute steps (null = no flow). Dynamic, not static: only

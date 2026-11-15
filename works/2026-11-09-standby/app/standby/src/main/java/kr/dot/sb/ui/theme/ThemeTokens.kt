@@ -239,7 +239,8 @@ data class ThemeTokens(
         if (e.plateStyle == PlateStyle.GLASS) { p = p.copy(alpha = minOf(p.alpha, GLASS_MAX)); p2 = p2.copy(alpha = minOf(p2.alpha, GLASS_MAX)) }
         val t = copy(
             bg = b, ink = inkC, accent = acc, plate = p, plate2 = p2, plateStyle = e.plateStyle ?: plateStyle,
-            radiusRatio = e.radius ?: radiusRatio, halo = if (e.glowStrength != null) strength else halo,
+            // r13: a v11-migrated NEON/TERMINAL halo lives in textGlow (same number); plan-r13 A3 draws it fully
+            radiusRatio = e.radius ?: radiusRatio, halo = if (e.glowStrength != null) strength else e.textGlow?.let { it * 2f } ?: halo,
             rule = e.rule?.let { Color(it) } ?: rule,
         )
         val s = t.surfaces

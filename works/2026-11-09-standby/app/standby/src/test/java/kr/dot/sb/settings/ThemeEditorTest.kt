@@ -79,12 +79,19 @@ class ThemeEditorTest {
     }
 
     @Test fun undoSlotSurvivesTheSaver() {
-        val saver = UndoSlot.saver(Theme.MOODLIGHT)
+        val saver = UndoSlot.SAVER
         val scope = SaverScope { true }
-        for (u in listOf(UndoSlot.NONE, UndoSlot(true, null), UndoSlot(true, ThemeEdit(accent = 0xFF30CEDA, glowAt = 0.2f to 0.7f, plateStyle = PlateStyle.OUTLINE)))) {
+        val slots = listOf(
+            UndoSlot.NONE, UndoSlot(true, Theme.MOODLIGHT, null, null),
+            UndoSlot(true, Theme.NEON, ThemeEdit(accent = 0xFF30CEDA, glowAt = 0.2f to 0.7f, plateStyle = PlateStyle.OUTLINE, textGlow = 0.4f), "내 테마 1"),
+        )
+        for (u in slots) {
             val saved = with(saver) { scope.save(u) }!!
             assertEquals(u, saver.restore(saved))
         }
+        // r12 slots (an edit alone, or "-") are dropped
+        assertEquals(UndoSlot.NONE, saver.restore("-"))
+        assertEquals(UndoSlot.NONE, saver.restore(ConfigCodec.encodeEdit(ThemeEdit(accent = 0xFF30CEDA))))
     }
 
     @Test fun photoFillsOnlyTheThemesFields() {

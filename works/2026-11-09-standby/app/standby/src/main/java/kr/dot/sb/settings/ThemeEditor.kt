@@ -56,7 +56,9 @@ import kr.dot.sb.ui.theme.PlateStyle
 import kr.dot.sb.ui.theme.ThemeTokens
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.withBoardBg
-import kr.dot.sb.ui.theme.withMyThemes
+import kr.dot.sb.ui.theme.nextMyThemeName
+import kr.dot.sb.ui.theme.saveMyTheme
+import kr.dot.sb.ui.theme.withTheme
 import kr.dot.sb.ui.theme.withThemeEdit
 import kotlin.random.Random
 
@@ -81,14 +83,26 @@ sealed class Control(val field: EditField, val label: String) {
     class GlowPad : Control(EditField.GLOW_AT, "불빛 위치")
 }
 
-/** 이전 조합 (plan round 3): [has] = something to undo; [edit] null = undo back to "no edit". Saved as codec JSON. */
-data class UndoSlot(val has: Boolean, val edit: ThemeEdit?) {
+/**
+ * 이전 조합 (plan-r13 A4): [has] = something to undo, the whole look ([theme], [edit], [customFrom]); [edit] null = no
+ * edit. Saved as JSON; a slot it cannot read (an r12 one) is dropped.
+ */
+data class UndoSlot(val has: Boolean, val theme: Theme = Theme.IPHONE, val edit: ThemeEdit? = null, val customFrom: String? = null) {
     companion object {
-        val NONE = UndoSlot(false, null)
+        val NONE = UndoSlot(false)
 
-        fun saver(theme: Theme) = Saver<UndoSlot, String>(
-            save = { if (!it.has) "" else it.edit?.let(ConfigCodec::encodeEdit) ?: "-" },
-            restore = { s -> when (s) { "" -> NONE; "-" -> UndoSlot(true, null); else -> UndoSlot(true, ConfigCodec.decodeEdit(s, theme)) } },
+        val SAVER = Saver<UndoSlot, String>(
+            save = { u ->
+                if (!u.has) "" else org.json.JSONObject().put("theme", u.theme.name)
+                    .apply { u.edit?.let { put("edit", ConfigCodec.encodeEdit(it)) }; u.customFrom?.let { put("customFrom", it) } }.toString()
+            },
+            restore = { s ->
+                runCatching {
+                    val o = org.json.JSONObject(s)
+                    val th = Theme.valueOf(o.getString("theme"))
+                    UndoSlot(true, th, if (o.has("edit")) ConfigCodec.decodeEdit(o.getString("edit"), th) else null, if (o.has("customFrom")) o.getString("customFrom") else null)
+                }.getOrDefault(NONE)
+            },
         )
     }
 }
@@ -124,7 +138,7 @@ object ThemeEditor {
             Theme.PAPER -> listOf(bg("종이 색"), ink("잉크 색"), colour(EditField.RULE, "구분선 색", with(tk.ink.long(), sw)), accent("강조 색"))
             Theme.MOODLIGHT -> listOf(
                 bg("배경"), colour(EditField.GLOW, "불빛 색", with(glow!!, sw)), Control.Slider(EditField.GLOW_STRENGTH, "세기", 0f..1f),
-                Control.GlowPad(), Control.Shape(), Control.Flow(), Control.CardStyle(ThemeEdit.PLATE_OFFER.getValue(Theme.MOODLIGHT)),
+                Control.GlowPad(), Control.Shape(), Control.Flow(), Control.CardStyle(listOf(PlateStyle.FILL, PlateStyle.GLASS, PlateStyle.OUTLINE)),
                 alpha("진하기"), radius, accent("강조"), ink("글자"),
             )
             Theme.CANDLE -> listOf(
@@ -177,7 +191,7 @@ object ThemeEditor {
         EditField.BG -> e.copy(bg = v?.let { listOf(it) })
         EditField.SKY_TOP, EditField.SKY_MID, EditField.SKY_BOTTOM -> {
             val own = tk.bg.stops.map { it.long() }
-            val l = (e.bg ?: own).toMutableList().also { it[skyIndex(f)] = v ?: own[skyIndex(f)] }
+            val l = (e.bg?.takeIf { it.size == 3 } ?: own).toMutableList().also { it[skyIndex(f)] = v ?: own[skyIndex(f)] }
             e.copy(bg = l.takeIf { it != own })
         }
         EditField.GLOW -> e.copy(glow = v)
@@ -318,10 +332,6 @@ private val FLOW_KO = listOf("아침", "낮", "저녁")
 /** Preview chips 아침 · 낮 · 저녁 (plan round 3), minutes of the day. */
 private val FLOW_AT = listOf(7 * 60, 13 * 60, 19 * 60)
 
-/** The next free "내 테마 N". */
-internal fun nextMyThemeName(list: List<MyTheme>): String =
-    generateSequence(list.size + 1) { it + 1 }.map { "내 테마 $it" }.first { n -> list.none { it.name == n } }
-
 /**
  * The editor for the current theme. [draft] / [setDraft] = the screen-local edit while a colour or slider is held (the
  * preview shows it); [previewAt] / [setPreviewAt] = the 아침/낮/저녁 chip (minute of day, null = now).
@@ -346,12 +356,12 @@ internal fun ThemeEditorSection(
     val tk = Themes.of(theme).tokens
     val saved = config.themeEdits[theme]
     val cur = draft ?: saved ?: ThemeEdit()
-    var undo by rememberSaveable(theme, stateSaver = UndoSlot.saver(theme)) { mutableStateOf(UndoSlot.NONE) }
+    var undo by rememberSaveable(theme, stateSaver = UndoSlot.SAVER) { mutableStateOf(UndoSlot.NONE) }
     var presses by rememberSaveable(theme) { androidx.compose.runtime.mutableIntStateOf(0) }
     var naming by remember { mutableStateOf<String?>(null) }
     fun commit(e: ThemeEdit) = update { it.withThemeEdit(theme, e) }
     /** A whole-edit change [이전 조합] can take back. */
-    fun commitUndoable(e: ThemeEdit?) { undo = UndoSlot(true, saved); update { it.withThemeEdit(theme, e) } }
+    fun commitUndoable(e: ThemeEdit?) { undo = UndoSlot(true, theme, saved, config.customFrom); update { it.withThemeEdit(theme, e) } }
     val ctx = LocalContext.current
     val io = LocalSettingsEnv.current.io
     val scope = rememberCoroutineScope()
@@ -371,12 +381,12 @@ internal fun ThemeEditorSection(
                 val e = ThemeShuffle.next(theme, tk, cur, Random(cur.toString().hashCode() + presses++))
                 if (e != cur) commitUndoable(e)
             }, Modifier.weight(1.3f), primary = false, padH = 8.dp)
-            ActionButton("이전 조합", { val u = undo; undo = UndoSlot.NONE; if (u.has) update { it.withThemeEdit(theme, u.edit) } }, Modifier.weight(1f), primary = false, enabled = undo.has, padH = 8.dp)
+            ActionButton("이전 조합", { val u = undo; undo = UndoSlot.NONE; if (u.has) update { it.withTheme(u.theme).withThemeEdit(u.theme, u.edit).copy(customFrom = u.customFrom) } }, Modifier.weight(1f), primary = false, enabled = undo.has, padH = 8.dp)
             ActionButton("테마 기본으로", { commitUndoable(null) }, Modifier.weight(1.2f), primary = false, enabled = saved != null, padH = 8.dp)
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ActionButton("사진에서 색 뽑기", { photo.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) }, Modifier.weight(1f), primary = false)
-            ActionButton("내 테마로 저장", { naming = nextMyThemeName(config.myThemes) }, Modifier.weight(1f), primary = false, enabled = saved != null)
+            ActionButton("내 테마로 저장", { naming = config.customFrom ?: nextMyThemeName(config.myThemes) }, Modifier.weight(1f), primary = false, enabled = saved != null)
         }
         Section(null) {
             ThemeEditor.controls(theme).forEach { c ->
@@ -389,7 +399,7 @@ internal fun ThemeEditorSection(
     naming?.let { n ->
         NameDialog("내 테마로 저장", n, { naming = null }) { name ->
             naming = null
-            update { it.withMyThemes(it.myThemes + MyTheme(name, theme, it.themeEdits[theme] ?: ThemeEdit())) }
+            update { it.saveMyTheme(name) }
         }
     }
 }
