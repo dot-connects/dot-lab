@@ -1,0 +1,84 @@
+<title>리얼뽑기 집기 버튼</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: three phones side by side (wrap to one column), each the catch screen with one button style */
+:root{--page:#eef1f4;--ink:#1d2430;--muted:#5b6574;--disp:"Jua","Gowun Dodum",system-ui,sans-serif;--body:"Gowun Dodum",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}
+body{background:var(--page);color:var(--ink);font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1{font-family:var(--disp);font-weight:400;font-size:26px;margin:0 0 6px}
+.lead{color:var(--muted);margin:0 0 24px;max-width:62ch;line-height:1.6}
+.row{display:flex;flex-wrap:wrap;gap:22px}
+.item{width:min(300px,100%);flex:0 0 auto}
+.item h2{font-family:var(--disp);font-weight:400;font-size:20px;margin:12px 0 4px}
+.item p{color:var(--muted);margin:0;line-height:1.55;font-size:14px}
+.phone{position:relative;width:100%;aspect-ratio:360/780;border-radius:30px;overflow:hidden;background:#2a3566 url(BG_IMG) center/cover;box-shadow:0 0 0 6px #0b0e13,0 16px 36px rgba(0,0,0,.25)}
+/* the rail bar and claw, shared */
+.rail{position:absolute;left:0;right:0;top:0;height:13%;background:linear-gradient(rgba(10,11,14,.88),rgba(10,11,14,.55))}
+.rail::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;background:linear-gradient(#f2f4f8,#7d838f)}
+.pill{position:absolute;bottom:14px;height:26px;padding:0 12px;border-radius:13px;background:rgba(255,255,255,.12);color:#fff;font-size:13px;display:flex;align-items:center}
+.pill.l{left:12px}.pill.r{right:12px;font-size:15px}
+.cable{position:absolute;top:13%;left:30%;width:1.5px;height:9%;background:#e6e9ef}
+.claw{position:absolute;top:21%;left:calc(30% - 18px);width:36px;height:46px}
+.claw i{position:absolute;left:3px;right:3px;top:0;height:12px;border-radius:5px;background:linear-gradient(90deg,#80868f,#f6f7fa 45%,#6d727c)}
+.claw b{position:absolute;top:10px;width:16px;height:34px;border:4px solid #c8ccd4;border-radius:50%}
+.claw b.a{left:-6px;border-right-color:transparent;border-top-color:transparent}
+.claw b.c{right:-6px;border-left-color:transparent;border-top-color:transparent}
+.hint{position:absolute;left:0;right:0;text-align:center;color:#fff;font-size:14px;text-shadow:0 0 8px #000}
+
+/* round 2: real arcade buttons, smaller, bottom right */
+.btn{position:absolute;right:9%;bottom:6.5%;width:58px;height:58px}
+/* A: Sanwa-style: chrome bezel, glossy dome, printed label under it */
+.a .bez{position:absolute;inset:-7px;border-radius:50%;background:conic-gradient(from 200deg,#8a9099,#f7f8fa 25%,#aab0b9 45%,#5f656e 70%,#d9dde3 90%,#8a9099);box-shadow:0 7px 10px rgba(0,0,0,.45),inset 0 0 0 1px rgba(0,0,0,.35)}
+.a .well{position:absolute;inset:-1px;border-radius:50%;background:#3a0a10;box-shadow:inset 0 3px 4px rgba(0,0,0,.7)}
+.a .dome{position:absolute;inset:2px 2px 5px;border-radius:50%;background:radial-gradient(circle at 50% 120%,#7d0612 0 30%,transparent 60%),radial-gradient(circle at 42% 30%,#ff7a80,#e01b2c 45%,#a50d1b 80%);box-shadow:0 3px 0 #6a0510,inset 0 -4px 6px rgba(0,0,0,.25)}
+.a .dome::before{content:"";position:absolute;left:18%;top:10%;width:46%;height:26%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.85),rgba(255,255,255,0));transform:rotate(-18deg)}
+.a .lab{position:absolute;left:50%;top:calc(100% + 12px);transform:translateX(-50%);padding:2px 9px;border-radius:4px;background:linear-gradient(#2b2f37,#15181d);color:#f4f4f4;font-family:var(--disp);font-size:13px;letter-spacing:.08em;box-shadow:inset 0 0 0 1px #4a505a;white-space:nowrap}
+/* B: dome on a square steel plate with four screws, label engraved on the plate */
+.b .plate{position:absolute;inset:-14px -14px -32px;border-radius:10px;background:linear-gradient(135deg,#eef0f3,#a9afb8 55%,#d6dae0);box-shadow:0 6px 12px rgba(0,0,0,.4),inset 0 1px 0 #fff,inset 0 -1px 0 #7d838f}
+.b .plate i{position:absolute;width:6px;height:6px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fafafa,#6b717a);box-shadow:inset 0 0 0 1px #555}
+.b .plate i:nth-child(1){left:5px;top:5px}.b .plate i:nth-child(2){right:5px;top:5px}.b .plate i:nth-child(3){left:5px;bottom:5px}.b .plate i:nth-child(4){right:5px;bottom:5px}
+.b .plate span{position:absolute;left:0;right:0;bottom:5px;text-align:center;font-family:var(--disp);font-size:12px;color:#4a505a;text-shadow:0 1px 0 #fff}
+.b .dome{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 42% 30%,#ff7a80,#e01b2c 45%,#a50d1b 80%);box-shadow:0 0 0 4px #2b2f37,0 4px 0 4px #15181d,inset 0 -5px 7px rgba(0,0,0,.28)}
+.b .dome::before{content:"";position:absolute;left:18%;top:10%;width:46%;height:26%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.85),rgba(255,255,255,0));transform:rotate(-18deg)}
+/* C: translucent lit button: glowing ring when ready, word printed on the dome */
+.c .bez{position:absolute;inset:-6px;border-radius:50%;background:#1b1e24;box-shadow:0 6px 10px rgba(0,0,0,.45),inset 0 1px 0 #4a505a}
+.c .dome{position:absolute;inset:0;border-radius:50%;background:radial-gradient(circle at 50% 55%,#fff1f1 0 8%,#ff6b75 30%,#e3142a 62%,#8e0a17);box-shadow:0 0 14px 3px rgba(255,60,80,.75),inset 0 0 0 3px rgba(255,255,255,.35),inset 0 -6px 8px rgba(0,0,0,.3);display:grid;place-items:center;font-family:var(--disp);font-size:16px;color:#fff;text-shadow:0 1px 2px rgba(120,0,10,.8)}
+.c .dome::before{content:"";position:absolute;left:20%;top:8%;width:42%;height:22%;border-radius:50%;background:linear-gradient(rgba(255,255,255,.75),rgba(255,255,255,0))}
+</style>
+
+<h1>집기 버튼 시안 2</h1>
+<p class="lead">1번(빨간 오락실 버튼)으로 정하고, 오른쪽 아래로 옮겨 작게(지름 68→58) 만들었습니다. 진짜 버튼처럼 보이게 하는 방식 세 가지입니다. 하나를 골라 주세요.</p>
+<div class="row">
+  <div class="item">
+    <div class="phone">
+      <div class="rail"><span class="pill l">▣ 끄기</span><span class="pill r">도감 6</span></div>
+      <div class="cable"></div><div class="claw"><i></i><b class="a"></b><b class="c"></b></div>
+      <div class="hint" style="bottom:19%">끌어서 맞추고 집기를 누르세요</div>
+      <div class="btn a"><span class="bez"></span><span class="well"></span><span class="dome"></span><span class="lab">집기</span></div>
+    </div>
+    <h2>A. 크롬 링 + 이름표</h2>
+    <p>오락실 버튼(산와식)처럼 크롬 테두리 안에 반짝이는 빨간 돔이 박혀 있고, 아래에 검은 이름표 "집기"가 붙어 있습니다. 누르면 돔이 테두리 안으로 들어갑니다.</p>
+  </div>
+  <div class="item">
+    <div class="phone">
+      <div class="rail"><span class="pill l">▣ 끄기</span><span class="pill r">도감 6</span></div>
+      <div class="cable"></div><div class="claw"><i></i><b class="a"></b><b class="c"></b></div>
+      <div class="hint" style="bottom:19%">끌어서 맞추고 집기를 누르세요</div>
+      <div class="btn b"><span class="plate"><i></i><i></i><i></i><i></i><span>집기</span></span><span class="dome"></span></div>
+    </div>
+    <h2>B. 쇠 받침판</h2>
+    <p>나사 4개로 박은 네모난 쇠판 위에 빨간 돔이 있고, 판에 "집기"가 새겨져 있습니다. 기계에 달린 부품 느낌이 가장 강합니다.</p>
+  </div>
+  <div class="item">
+    <div class="phone">
+      <div class="rail"><span class="pill l">▣ 끄기</span><span class="pill r">도감 6</span></div>
+      <div class="cable"></div><div class="claw"><i></i><b class="a"></b><b class="c"></b></div>
+      <div class="hint" style="bottom:19%">끌어서 맞추고 집기를 누르세요</div>
+      <div class="btn c"><span class="bez"></span><span class="dome">집기</span></div>
+    </div>
+    <h2>C. 불 들어오는 버튼</h2>
+    <p>반투명 빨간 버튼 안에서 불이 켜져 있고(집게가 움직일 땐 꺼짐), 글씨가 버튼 위에 인쇄돼 있습니다. 밤 마당에서 가장 눈에 띕니다.</p>
+  </div>
+</div>
