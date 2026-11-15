@@ -411,9 +411,12 @@ private fun ResetChip(set: Boolean, reset: () -> Unit) =
 
 @Composable
 private fun ControlView(
-    c: Control, theme: Theme, tk: ThemeTokens, cur: ThemeEdit, setDraft: (ThemeEdit?) -> Unit, commit: (ThemeEdit) -> Unit,
+    c: Control, theme: Theme, tk: ThemeTokens, edit: ThemeEdit, setDraft: (ThemeEdit?) -> Unit, commit: (ThemeEdit) -> Unit,
     previewAt: Int?, setPreviewAt: (Int?) -> Unit,
 ) {
+    // read through state: `::pick` / `::release` are memoized without their captures, so a plain parameter went stale
+    // there and a swatch tap wrote its colour onto the first-seen edit (11-15: 강조 색 wiped 카드 진하기)
+    val cur by androidx.compose.runtime.rememberUpdatedState(edit)
     val f = c.field
     // a colour or slider being held: the latest draft, written once on release
     var held by remember { mutableStateOf<ThemeEdit?>(null) }
