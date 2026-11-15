@@ -3,7 +3,7 @@ package kr.dot.catchpet.game
 import kotlin.math.min
 import kotlin.math.pow
 
-/** The prize capsule (operator pick 11-12): wraps the catch, drops and bounces three times, rolls off to the right. */
+/** The prize capsule (operator pick 11-12, two-tone 11-15): wraps the catch, drops and bounces three times, rolls off to the right. */
 class Capsule(startX: Float, startY: Float, val floorY: Float, val screenW: Float) {
     enum class Phase { WRAP, DROP, ROLL, GONE }
 
@@ -44,5 +44,5 @@ class Capsule(startX: Float, startY: Float, val floorY: Float, val screenW: Floa
         }
     }
 
-    companion object { const val R = 64f }
+    companion object { const val R = 46f }   // smaller two-tone capsule (operator 11-15, mockup capsule A)
 }

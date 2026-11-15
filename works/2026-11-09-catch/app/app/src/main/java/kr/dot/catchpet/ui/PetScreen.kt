@@ -145,10 +145,18 @@ fun PetScreen(onBack: () -> Unit) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("키보드 피하기", fontFamily = Book.Display, fontSize = 18.sp, modifier = Modifier.weight(1f))
                 InkPill(if (kbOn) "켜짐" else "켜러 가기", if (kbOn) Book.Leaf else Book.Sun,
-                    onClick = { ctx.startActivity(Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)) })
+                    onClick = { kr.dot.catchpet.pet.KeyboardWatch.openSettings(ctx) })
             }
             Note(if (kbOn) "키보드가 열리면 녀석이 키보드 위로 올라가요." else
-                "선택 사항이에요. 접근성 → 설치된 앱 → 리얼뽑기를 켜면 녀석이 키보드를 가리지 않아요. 회색으로 막혀 있으면 앱 정보 ⋮ → 제한된 설정 허용을 먼저 눌러 주세요.")
+                "선택 사항이에요. 누르면 리얼뽑기 스위치로 바로 가요. 켜면 이 화면으로 돌아와요.")
+            if (!kbOn && kr.dot.catchpet.pet.KeyboardWatch.sideloaded(ctx)) {
+                Spacer(Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Note("스위치가 회색이면: 앱 정보 → 오른쪽 위 ⋮ → 제한된 설정 허용 → 다시 '켜러 가기'.", Modifier.weight(1f))
+                    Spacer(Modifier.width(8.dp))
+                    InkPill("앱 정보", onClick = { kr.dot.catchpet.pet.KeyboardWatch.openAppInfo(ctx) })
+                }
+            }
         }
 
         Panel {

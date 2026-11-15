@@ -21,7 +21,9 @@ fun animClock(): Float = (android.os.SystemClock.uptimeMillis() % 3_600_000L).to
 object Frames {
     /** What the pet draws; a 6-cell sheet or a critter fills the newer keys from its own (see [ALIAS]). */
     val CELLS = listOf("front", "smile", "walk1", "walk2", "walk3", "walk4", "sleep", "curl", "holdA", "holdB", "fall", "dazed")
-    private val ALIAS = mapOf("walk1" to "walkA", "walk2" to "front", "walk3" to "walkB", "walk4" to "front",
+    // a 6-cell sheet has two side steps: hold each for two beats (a "front" passing beat turned the pet to face us
+    // every other step, operator 11-15)
+    private val ALIAS = mapOf("walk1" to "walkA", "walk2" to "walkA", "walk3" to "walkB", "walk4" to "walkB",
         "holdA" to "smile", "holdB" to "front", "fall" to "sleep", "dazed" to "front")
 
     /** SharedPreferences "catchpet" / "pet" -> its six cells, or null (nothing chosen, or not usable as a pet). */

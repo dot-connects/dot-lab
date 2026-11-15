@@ -331,6 +331,7 @@ private class CatchGame(
     private var gripAt = 0f
     private var held: Grip? = null
     private var capsule: Capsule? = null
+    private var capColor = CAP_COLORS[0]
     private var capT = 0f
     private var capText = ""
     private var saved = false   // the catch is already in the dex but the capsule still rolls: show N-1 until GONE
@@ -564,6 +565,7 @@ private class CatchGame(
         saved = grew
         capText = text
         capT = 0f
+        capColor = CAP_COLORS.random()   // a different capsule each catch (operator 11-15)
         capsule = Capsule(c.x * w, c.y + 70f, floorY = h - bottomInset - 18f, screenW = w)
     }
 
@@ -686,41 +688,72 @@ private class CatchGame(
     private fun jolt(): Float = if (joltT < 0f) 0f else
         Math.toRadians(4.0).toFloat() * sin(joltT / 1000f * 14f * 2f * Math.PI.toFloat()) * max(0f, 1f - joltT / 120f)
 
+    /**
+     * Two-tone gashapon (mockup capsule A, operator 11-15): clear top, opaque coloured bottom with a seam band, a lid
+     * tab and three air holes. The catch sits high so the coloured half hides only about its lower third.
+     */
     private fun drawCapsule(cv: android.graphics.Canvas, cap: Capsule, cut: CutOut.Cut?, m: ScreenMap?) {
         val r = cap.r
+        val deg = Math.toDegrees(cap.rot.toDouble()).toFloat()
+        val k = min(1f, capT / 420f)
         cv.save()
-        cv.translate(cap.x, cap.y); cv.rotate(Math.toDegrees(cap.rot.toDouble()).toFloat())
-        if (r > 4f) {
-            path.reset(); path.addCircle(0f, 0f, r, Path.Direction.CW); cv.clipPath(path)
-            fill.color = argb(.12f, 255, 255, 255); cv.drawCircle(0f, 0f, r, fill)
-        }
+        cv.translate(cap.x, cap.y); cv.rotate(deg)
+        if (r > 4f) { path.reset(); path.addCircle(0f, 0f, r, Path.Direction.CW); cv.clipPath(path) }
         if (cut != null && m != null) {
-            // the catch shrinks into the capsule
+            // the catch shrinks into the capsule, its middle a fifth of the radius above the seam
             cutRect(m, cut)
             val bw = rect.width(); val bh = rect.height()
-            val sc = if (r > 0f) min(1f, r * 1.5f / max(bw, bh)) else 1f
-            val s2 = 1f + (sc - 1f) * min(1f, capT / 420f)
+            val sc = if (r > 0f) min(1f, r * 1.6f / max(bw, bh)) else 1f
+            val s2 = 1f + (sc - 1f) * k
+            cv.save()
+            cv.translate(0f, -0.2f * r * k)
             cv.scale(s2, s2)
             cv.translate(-rect.centerX(), -rect.centerY())
             cv.drawBitmap(cut.bmp, null, rect, bmpPaint)
+            cv.restore()
+        }
+        if (r > 4f) {
+            // the coloured bottom half, shaded light up-left to dark down-right
+            fill.shader = RadialGradient(-r * .25f, -r * .6f, r * 1.8f,
+                intArrayOf(shade(capColor, .35f), capColor, shade(capColor, -.32f)), floatArrayOf(0f, .5f, 1f), Shader.TileMode.CLAMP)
+            rect.set(-r, -r, r, r)
+            cv.drawArc(rect, 0f, 180f, true, fill)
+            fill.shader = null
+            fill.color = shade(capColor, -.45f); fill.alpha = 170
+            for (hx in floatArrayOf(-.32f, 0f, .32f)) cv.drawOval(hx * r - r * .06f, r * (if (hx == 0f) .64f else .54f) - r * .043f,
+                hx * r + r * .06f, r * (if (hx == 0f) .64f else .54f) + r * .043f, fill)
+            fill.alpha = 255
         }
         cv.restore()
         if (r <= 4f) return
         cv.save()
         cv.translate(cap.x, cap.y)
-        // glass: faint body with a bright rim, plus a highlight up-left
-        fill.shader = RadialGradient(0f, 0f, r, intArrayOf(argb(.06f, 255, 255, 255), argb(.06f, 255, 255, 255), argb(.55f, 255, 255, 255)), floatArrayOf(0f, .85f, 1f), Shader.TileMode.CLAMP)
-        cv.drawCircle(0f, 0f, r, fill)
-        fill.shader = RadialGradient(-r * .35f, -r * .4f, r * .5f, intArrayOf(argb(.75f, 255, 255, 255), argb(.12f, 255, 255, 255), 0), floatArrayOf(0f, .4f, 1f), Shader.TileMode.CLAMP)
+        // glass over the top half: a bright rim, a highlight up-left
+        fill.shader = RadialGradient(0f, 0f, r, intArrayOf(argb(.05f, 255, 255, 255), argb(.07f, 255, 255, 255), argb(.5f, 255, 255, 255)), floatArrayOf(0f, .82f, 1f), Shader.TileMode.CLAMP)
+        cv.save(); cv.rotate(deg); cv.clipRect(-r, -r, r, 0f); cv.drawCircle(0f, 0f, r, fill); cv.restore()
+        fill.shader = RadialGradient(-r * .35f, -r * .45f, r * .45f, intArrayOf(argb(.8f, 255, 255, 255), argb(.15f, 255, 255, 255), 0), floatArrayOf(0f, .45f, 1f), Shader.TileMode.CLAMP)
         cv.drawCircle(0f, 0f, r, fill)
         fill.shader = null
         stroke.color = argb(.7f, 255, 255, 255); stroke.strokeWidth = 1.5f
         cv.drawCircle(0f, 0f, r, stroke)
-        // seam
-        cv.rotate(Math.toDegrees(cap.rot.toDouble()).toFloat())
-        stroke.color = argb(.8f, 255, 207, 90); stroke.strokeWidth = 2f
-        cv.drawLine(-r, 0f, r, 0f, stroke)
+        // seam band and lid tab turn with the capsule
+        cv.rotate(deg)
+        val band = max(3f, r * .16f)
+        fill.color = shade(capColor, .2f)
+        cv.drawRoundRect(-r - 1f, -band / 2, r + 1f, band / 2, band / 2, band / 2, fill)
+        stroke.color = shade(capColor, -.25f); stroke.strokeWidth = 1.2f
+        cv.drawRoundRect(-r - 1f, -band / 2, r + 1f, band / 2, band / 2, band / 2, stroke)
+        fill.color = shade(capColor, .1f)
+        cv.drawRoundRect(r * .88f, -band * .8f, r * 1.1f, band * .8f, band * .45f, band * .45f, fill)
+        stroke.color = shade(capColor, -.3f)
+        cv.drawRoundRect(r * .88f, -band * .8f, r * 1.1f, band * .8f, band * .45f, band * .45f, stroke)
         cv.restore()
+    }
+
+    /** Lighter (k > 0) or darker (k < 0) of an opaque colour. */
+    private fun shade(c: Int, k: Float): Int {
+        fun f(v: Int) = (if (k > 0f) v + (255 - v) * k else v * (1f + k)).toInt().coerceIn(0, 255)
+        return Color.rgb(f(Color.red(c)), f(Color.green(c)), f(Color.blue(c)))
     }
 
     private fun topBar(cv: android.graphics.Canvas) {
@@ -781,6 +814,9 @@ private class CatchGame(
     }
 
     companion object {
+        /** Two-tone capsule colours, one picked at random per catch (operator 11-15 "다양하게"). */
+        val CAP_COLORS = intArrayOf(0xFFFF6B6B.toInt(), 0xFFFFB938.toInt(), 0xFF4DA8FF.toInt(), 0xFF4CCB8C.toInt(), 0xFFA98BFF.toInt(),
+            0xFFFF86C2.toInt(), 0xFFFF8F3D.toInt(), 0xFF2EC2CC.toInt(), 0xFF7E9CFF.toInt(), 0xFFE5484D.toInt())
         private const val TAG = "CatchGame"
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
