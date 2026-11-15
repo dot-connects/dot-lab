@@ -164,4 +164,14 @@ class ThemeLooksTest {
         // an edit already saved is not saved twice
         assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.switchLook(Look.Mine(p.myThemes[0])).switchFromPanel(Theme.NEON).myThemes)
     }
+
+    @Test fun duplicateNamesFromOldDataStaySelectable() {
+        // two 내 테마 of one name (saved before names were unique): tapping the second applies the second
+        val a1 = MyTheme("a", Theme.IPHONE, ThemeEdit(radius = 0.1f))
+        val a2 = MyTheme("a", Theme.NEON, ThemeEdit(textGlow = 0.3f))
+        val c = AppConfig(myThemes = listOf(a1, a2)).switchLook(Look.Mine(a2))
+        assertEquals(Theme.NEON, c.theme)
+        assertEquals(mapOf(Theme.NEON to a2.edit), c.themeEdits)
+        assertEquals(Look.Mine(a2), StripPick.of(c))
+    }
 }

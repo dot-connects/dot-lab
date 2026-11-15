@@ -161,6 +161,7 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit)
     var guard by remember { mutableStateOf<Look?>(null) }
     var menu by remember { mutableStateOf<MyTheme?>(null) }
     var renaming by remember { mutableStateOf<MyTheme?>(null) }
+    var deleting by remember { mutableStateOf<MyTheme?>(null) }
     fun tap(to: Look) {
         menu = null
         if (pick == StripPick.Custom) guard = to else update { it.switchLook(to) }
@@ -184,12 +185,21 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit)
         menu?.let { m ->
             InlineAsk(m.name) {
                 ActionButton("이름 바꾸기", { menu = null; renaming = m }, primary = false)
-                ActionButton("지우기", { menu = null; update { c -> c.deleteMyTheme(m) } }, primary = false, danger = true)
+                ActionButton("지우기", { menu = null; deleting = m }, primary = false, danger = true)
                 ActionButton("닫기", { menu = null }, primary = false)
             }
         }
     }
     guard?.let { to -> UnsavedGuard(config, update, to, { guard = null }) }
+    deleting?.let { m ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleting = null },
+            containerColor = SK.surface,
+            title = { T("'${m.name}'을 지울까요?", 18.sp, 700) },
+            confirmButton = { ActionButton("지우기", { deleting = null; update { c -> c.deleteMyTheme(m) } }, danger = true) },
+            dismissButton = { ActionButton("취소", { deleting = null }, primary = false) },
+        )
+    }
     renaming?.let { m ->
         NameDialog("이름 바꾸기", m.name, { renaming = null }, taken = config.myThemes - m, unique = true) { name ->
             renaming = null

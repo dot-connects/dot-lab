@@ -80,7 +80,7 @@ private fun Hosted(v: WidgetView, night: Boolean, w: Float, h: Float) {
     val light by v.light
     val p = remember(v, w, h) { placement(v, w, h) }
     LaunchedEffect(v, p) { v.updateAppWidgetSize(Bundle(), listOf(SizeF(p.w, p.h))) }
-    val paint = if (!night) null else Paint().apply { colorFilter = ColorMatrixColorFilter(if (light) LIGHT_AT_NIGHT else DARK_AT_NIGHT) }
+    val paint = remember(night, light) { if (!night) null else Paint().apply { colorFilter = ColorMatrixColorFilter(if (light) LIGHT_AT_NIGHT else DARK_AT_NIGHT) } }
     Box(Modifier.fillMaxSize(), Alignment.Center) {
         // a new host start (dream ended, activity back) remakes the holder so the factory takes the view back
         key(v, WidgetHost.epoch.intValue) {

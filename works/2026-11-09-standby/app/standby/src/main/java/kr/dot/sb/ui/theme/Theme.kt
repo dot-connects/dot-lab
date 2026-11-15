@@ -279,8 +279,9 @@ sealed interface Look : StripPick {
 fun AppConfig.switchLook(to: Look): AppConfig {
     val c = when (to) {
         is Look.Builtin -> withTheme(to.theme).withThemeEdit(to.theme, null).copy(customFrom = null)
-        // by name from the saved list: a guard [저장] may just have overwritten the 내 테마 being switched to
-        is Look.Mine -> applyMyTheme(myThemes.firstOrNull { it.name == to.my.name } ?: to.my)
+        // the tapped entry itself first (old data may hold two of one name); else by name: a guard [저장] may just
+        // have overwritten the 내 테마 being switched to
+        is Look.Mine -> applyMyTheme(myThemes.firstOrNull { it == to.my } ?: myThemes.firstOrNull { it.name == to.my.name } ?: to.my)
     }
     return c.copy(themeEdits = c.themeEdits.filterKeys { it == c.theme })
 }

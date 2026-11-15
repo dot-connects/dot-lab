@@ -266,7 +266,9 @@ fun Modifier.burnInBleed(): Modifier = layout { m, c ->
 /**
  * The page behind everything: the theme's bg (or the board background [bg] / [custom] colour / blurred [photo]), with
  * the candle night ([ThemeTokens.NIGHT_BG]) faded in by [night]; light themes step to it at 0.5. [candle] false = the
- * night is plain black, without the candle's glow (the clocks page).
+ * night is plain black, without the candle's glow (the clocks page). [over] = this paints over the same ground already
+ * drawn below (the clocks page over the board's THEME ground): the day ground is skipped when no night is mixed in and
+ * at full night only the black is drawn, so an always-on screen does not fill the page twice; the dusk ramp redraws it.
  */
 @Composable
 fun ThemeBackground(
@@ -277,8 +279,10 @@ fun ThemeBackground(
     custom: Color = Color(0xFF1A1430),
     photo: ImageBitmap? = null,
     candle: Boolean = true,
+    over: Boolean = false,
 ) {
     val n = if (t.tokens.light && bg == BoardBg.THEME) (if (night >= 0.5f) 1f else 0f) else night.coerceIn(0f, 1f)
+    if (over && n == 0f) return
     Box(modifier.fillMaxSize().burnInBleed()) {
         if (n < 1f) {
             if (bg == BoardBg.PHOTO_BLUR && photo != null) {

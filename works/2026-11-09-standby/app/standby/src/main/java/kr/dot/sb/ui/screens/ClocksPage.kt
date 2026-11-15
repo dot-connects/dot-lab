@@ -54,6 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.cards.Txt
@@ -111,9 +112,10 @@ internal fun ClocksPage(
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // the theme page (glow, gradient, texture) without the candle glow at night (plain black, as the page always
-        // was); edit mode dims it. Overscanned for the burn-in shift (ThemeBackground bleeds itself).
+        // was); edit mode dims it. Overscanned for the burn-in shift (ThemeBackground bleeds itself). On a THEME board
+        // the root already drew this ground: only the night is painted over it.
         val theme = LocalTheme.current
-        ThemeBackground(theme, ink.night, candle = false)
+        ThemeBackground(theme, ink.night, candle = false, over = config.boardBg == BoardBg.THEME)
         if (k > 0f) Box(Modifier.fillMaxSize().burnInBleed().background(ink.ink4.copy(alpha = ink.ink4.alpha * k)))
         val w = maxWidth
         val h = maxHeight

@@ -88,6 +88,8 @@ class SettingsActivity : ComponentActivity() {
                 mutableStateOf(
                     when {
                         section == null -> listOf(Routes.HOME)
+                        // a widget's own settings task (L2): its options screen is the bottom, so Back leaves to StandBy
+                        fromBoard -> listOf(section)
                         section == "photos" || section == "calendar" || section == "notifications" -> listOf(Routes.HOME, Routes.PERMS)
                         else -> listOf(Routes.HOME, section)
                     }.let { if (section == null && walkOffer.value) it + Routes.PERMS else it },
@@ -97,7 +99,7 @@ class SettingsActivity : ComponentActivity() {
             val nav = remember {
                 object : Nav {
                     override fun push(route: String) { stack = stack + route }
-                    override fun back() { if (stack.size > 1) stack = stack.dropLast(1) }
+                    override fun back() { if (stack.size > 1) stack = stack.dropLast(1) else finish() }
                     override fun replace(route: String) { stack = stack.dropLast(1) + route }
                 }
             }
@@ -136,12 +138,6 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
         }
-    }
-
-    override fun onNewIntent(intent: Intent) {
-        super.onNewIntent(intent)
-        setIntent(intent)
-        openWidgetSection()
     }
 
     /** A widget long press ("widget:<board>:<slot>:<index>" -> "<board>|<slot>:<index>"): 위젯 고르기 or the card's menu. */
