@@ -166,7 +166,8 @@ Theme strip, TopPanel chips, docs and shots drop the three. TDD for the mapping.
 6. 최근 켜짐 기록 → 앱 정보 › 문제 해결. FULL_SCREEN line once in 알람. World-city chip removes only via ✕.
 7. Home NavRow values (페이지 구성 "페이지 N개 · 처음: 시계"; 테마와 배경 = 내 테마 name or theme; 앱 정보 = version);
    value one line with ellipsis, never squeezing the title. Preview page-name row → that page's settings route.
-9. Card picker (operator 11-15 "시계가 너무 많아"): one 시계 tile instead of one per 내 시계 face; the placed clock card
+9. Card picker (operator 11-15 "시계가 너무 많아", "다시 누르면 해제"): an added card ("추가됨") tapped again in add mode is
+   removed from the slot (toggle; the tile shows the check until then). One 시계 tile instead of one per 내 시계 face; the placed clock card
    swipes through 내 시계 as it already does (implementer confirms the face = null / board face path; old per-face picks
    on existing boards keep working). 10. Widget setup (operator 11-15, Samsung Notes; research: today ~10 taps + scrolling a text list of 100+ rows):
    - Replace the AlertDialog (SettingsActivity.kt:132) with a Compose sheet "위젯 고르기": search field; "추천" row of

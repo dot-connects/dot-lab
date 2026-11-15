@@ -1,0 +1,320 @@
+<title>위젯 고르기 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;600;700;800&family=Inter:wght@300;500&display=swap" rel="stylesheet">
+<style>
+/* Layout: lede + step rail on top; one phone frame that walks the flow (board → picker → allow → note pick → board); on wide screens a second frame shows the placed widget's long-press menu. */
+:root {
+  --bg: #eeeef0; --fg: #17181c; --muted: #5b5e66; --line: #d6d7db; --chip: #ffffff; --accent: #2f6fd6;
+  --ui: "Gothic A1", system-ui, sans-serif;
+  --sk-bg: #0e0f12; --sk-surface: #17181c; --sk-surface2: #212228; --sk-line: #2a2c32; --sk-text: #ededef; --sk-muted: #9a9aa0; --sk-acc: #76a6f3; --sk-why: #c9a56a;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0b0c0e; --fg: #ececee; --muted: #a0a2a8; --line: #26282d; --chip: #17181c; --accent: #76a6f3; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0b0c0e; --fg: #ececee; --muted: #a0a2a8; --line: #26282d; --chip: #17181c; --accent: #76a6f3; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 24px; }
+h1 { font: 800 1.5rem/1.3 var(--ui); margin: 0; }
+.lede { margin: 8px 0 0; color: var(--muted); line-height: 1.65; max-width: 70ch; }
+.rail { display: flex; flex-wrap: wrap; gap: 6px; }
+.rail button { font: 600 .84rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 13px; cursor: pointer; }
+.rail button[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+.rail .n { opacity: .55; margin-right: 4px; font-variant-numeric: tabular-nums; }
+.stage { display: grid; grid-template-columns: minmax(0, 420px) minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 860px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+.cap { font-size: .8rem; color: var(--muted); margin: 0 0 8px; }
+.say { margin: 10px 0 0; color: var(--muted); font-size: .9rem; line-height: 1.6; min-height: 3.2em; }
+.say b { color: var(--fg); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.phone { position: relative; background: var(--sk-bg); color: var(--sk-text); border-radius: 30px; border: 1px solid #000; box-shadow: 0 18px 40px rgba(0,0,0,.28); overflow: hidden; width: 100%; aspect-ratio: 9 / 17.5; max-height: 820px; font-family: var(--ui); }
+.scr { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.scr[hidden] { display: none !important; }
+
+/* board (portrait standby) */
+.board { flex: 1; display: grid; grid-template-rows: auto 1fr 1fr; gap: 10px; padding: 46px 14px 18px; background: #000; }
+.bclock { font: 300 4.2rem/1 "Inter", sans-serif; letter-spacing: -.02em; text-align: center; color: #f5f5f7; padding: 6px 0 2px; }
+.bclock small { display: block; font: 500 .82rem var(--ui); letter-spacing: 0; opacity: .6; margin-top: 6px; }
+.slot { border-radius: 18px; background: #1c1c1e; position: relative; overflow: hidden; display: grid; place-items: center; }
+.slot.empty { background: transparent; border: 1.5px dashed #3a3a3e; color: #8e8e93; font-size: .88rem; text-align: center; cursor: pointer; }
+.slot.empty b { display: block; font-size: 1.6rem; font-weight: 400; margin-bottom: 4px; }
+.slot .press { position: absolute; inset: 0; border-radius: 18px; background: rgba(118,166,243,.18); opacity: 0; transition: opacity .3s; }
+.slot.pressing .press { opacity: 1; }
+.wx { padding: 14px 16px; align-self: stretch; justify-self: stretch; display: grid; align-content: space-between; color: #fff; background: linear-gradient(160deg, #2b6fd0, #4c93e6); }
+.wx .t { font: 300 2.2rem/1 "Inter"; }
+
+/* sheet */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 9%; background: var(--sk-surface); border-radius: 24px 24px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.grab { width: 36px; height: 4px; border-radius: 2px; background: var(--sk-line); margin: 10px auto 6px; }
+.sh-h { display: flex; align-items: baseline; gap: 8px; padding: 4px 18px 10px; }
+.sh-h h3 { margin: 0; font: 700 1.08rem var(--ui); }
+.sh-h span { color: var(--sk-muted); font-size: .78rem; margin-left: auto; }
+.search { margin: 0 16px 12px; display: flex; align-items: center; gap: 8px; background: var(--sk-surface2); border-radius: 12px; padding: 0 12px; height: 44px; }
+.search input { flex: 1; min-width: 0; background: none; border: 0; color: var(--sk-text); font: 500 .95rem var(--ui); outline: none; }
+.search svg { flex: none; }
+.scroll { flex: 1; overflow-y: auto; padding: 0 16px 20px; display: grid; gap: 18px; align-content: start; }
+.sec-t { font-size: 12.5px; font-weight: 600; color: var(--sk-muted); margin: 0 0 8px 2px; }
+.recs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.tile { background: var(--sk-surface2); border: 0; border-radius: 16px; padding: 10px; color: var(--sk-text); text-align: left; cursor: pointer; display: grid; gap: 8px; font: inherit; min-width: 0; }
+.tile:hover { background: #26272e; }
+.tile .pv { border-radius: 11px; overflow: hidden; aspect-ratio: 1.35; position: relative; }
+.tile .nm { display: flex; align-items: center; gap: 6px; font-size: .8rem; min-width: 0; }
+.tile .nm i { flex: none; width: 18px; height: 18px; border-radius: 5px; display: grid; place-items: center; font-style: normal; font-size: 10px; font-weight: 800; }
+.tile .nm span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tile .sz { margin-left: auto; color: var(--sk-muted); font-size: .72rem; font-variant-numeric: tabular-nums; flex: none; }
+.tile.big { opacity: .45; }
+.tile.big .sz { color: var(--sk-why); }
+.app { background: var(--sk-surface2); border-radius: 14px; overflow: hidden; }
+.app-h { width: 100%; display: flex; align-items: center; gap: 10px; padding: 0 14px; min-height: 52px; background: none; border: 0; color: var(--sk-text); font: 600 .92rem var(--ui); cursor: pointer; text-align: left; }
+.app-h i { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; font-style: normal; font-size: 12px; font-weight: 800; flex: none; }
+.app-h .c { margin-left: auto; color: var(--sk-muted); font-weight: 500; font-size: .8rem; }
+.app-h .chev { color: var(--sk-muted); transition: transform .2s; }
+.app[open] .app-h .chev { transform: rotate(90deg); }
+.app-b { display: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; padding: 0 12px 12px; }
+.app[open] .app-b { display: grid; }
+.app-b .tile { background: #1b1c21; }
+.hint { margin: 0 2px; font-size: .78rem; color: var(--sk-muted); line-height: 1.5; }
+
+/* widget previews (CSS stand-ins for the apps' real previews) */
+.n-note { position: absolute; inset: 0; background: #fffdf5; color: #2a2a2a; padding: 9px 10px; font-size: 9.5px; line-height: 1.45; }
+.n-note b { display: block; font-size: 11px; margin-bottom: 3px; color: #111; }
+.n-note u { text-decoration: none; display: block; height: 3px; background: #f2b84b; width: 38%; border-radius: 2px; margin-bottom: 5px; }
+.n-list { position: absolute; inset: 0; background: #fff; padding: 8px 9px; font-size: 9px; color: #333; display: grid; gap: 4px; align-content: start; }
+.n-list span { display: flex; gap: 5px; align-items: center; } .n-list span::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: #f2b84b; flex: none; }
+.cal { position: absolute; inset: 0; background: #fff; color: #222; padding: 7px; font-size: 7.5px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; align-content: start; text-align: center; }
+.cal b { grid-column: span 7; text-align: left; font-size: 9.5px; margin-bottom: 2px; }
+.cal .on { background: #3e7bfa; color: #fff; border-radius: 50%; }
+.agenda { position: absolute; inset: 0; background: #fff; color: #222; padding: 8px 9px; font-size: 9px; display: grid; gap: 5px; align-content: start; }
+.agenda span { border-left: 3px solid #3e7bfa; padding-left: 5px; }
+.keep { position: absolute; inset: 0; background: #fef6c4; color: #3a3410; padding: 8px 9px; font-size: 9px; line-height: 1.45; }
+.gsearch { position: absolute; inset: 0; background: #2a2b31; display: grid; place-items: center; }
+.gsearch div { width: 84%; height: 26%; border-radius: 99px; background: #3c3d44; display: flex; align-items: center; gap: 6px; padding: 0 9px; font: 800 11px "Inter"; color: #fff; }
+.wxp { position: absolute; inset: 0; background: linear-gradient(160deg, #2b6fd0, #4c93e6); color: #fff; padding: 8px 10px; display: grid; align-content: space-between; font-size: 9px; }
+.wxp b { font: 300 22px/1 "Inter"; }
+
+/* system bind dialog + note picker */
+.sys { position: absolute; left: 7%; right: 7%; top: 30%; background: #fff; color: #111; border-radius: 26px; padding: 22px 20px 14px; display: grid; gap: 12px; box-shadow: 0 20px 50px rgba(0,0,0,.5); }
+.sys h4 { margin: 0; font: 700 1rem var(--ui); }
+.sys p { margin: 0; font-size: .85rem; line-height: 1.55; color: #333; }
+.sys label { display: flex; gap: 10px; align-items: center; font-size: .86rem; padding: 8px 10px; border-radius: 12px; background: #f1f3f8; cursor: pointer; }
+.sys label.glow { box-shadow: 0 0 0 2px #3e7bfa; }
+.sys .acts { display: flex; justify-content: flex-end; gap: 6px; }
+.sys .acts button { font: 700 .9rem var(--ui); background: none; border: 0; color: #3e7bfa; padding: 10px 12px; border-radius: 10px; cursor: pointer; }
+.tip { position: absolute; left: 7%; right: 7%; top: 16%; background: var(--sk-surface2); color: var(--sk-text); border-radius: 14px; padding: 12px 14px; font-size: .84rem; line-height: 1.5; border: 1px solid var(--sk-line); }
+.tip b { color: var(--sk-acc); }
+.notes { flex: 1; background: #f7f7f7; color: #111; display: flex; flex-direction: column; }
+.notes-h { padding: 44px 18px 12px; font: 700 1.15rem var(--ui); display: flex; align-items: center; gap: 10px; }
+.notes-h small { font: 500 .78rem var(--ui); color: #777; margin-left: auto; }
+.notes-g { padding: 0 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.notes-g button { background: #fff; border: 1px solid #e3e3e3; border-radius: 14px; padding: 10px; text-align: left; font: 500 .74rem/1.45 var(--ui); color: #333; cursor: pointer; min-height: 96px; display: grid; align-content: start; gap: 4px; }
+.notes-g button b { font-size: .84rem; color: #111; }
+.notes-g button:hover { border-color: #f2b84b; }
+.notes-foot { margin-top: auto; padding: 12px 18px 20px; font-size: .74rem; color: #777; }
+
+/* placed */
+.placed .n-note { position: static; height: 100%; border-radius: 18px; padding: 14px 16px; font-size: .78rem; box-sizing: border-box; }
+.placed .n-note b { font-size: .95rem; }
+.toast { position: absolute; left: 50%; bottom: 22px; transform: translateX(-50%); background: rgba(40,40,46,.95); color: #fff; font-size: .8rem; padding: 9px 14px; border-radius: 99px; white-space: nowrap; }
+.menu { position: absolute; left: 14%; right: 14%; background: #2a2b31; border-radius: 16px; overflow: hidden; box-shadow: 0 14px 40px rgba(0,0,0,.6); }
+.menu button { display: flex; width: 100%; align-items: center; gap: 10px; background: none; border: 0; border-top: 1px solid #36373e; color: #ededef; font: 500 .92rem var(--ui); padding: 0 16px; min-height: 50px; cursor: pointer; text-align: left; }
+.menu button:first-child { border-top: 0; }
+.menu small { margin-left: auto; color: #8e8e93; font-size: .74rem; }
+.side { display: grid; gap: 18px; }
+.cmp { border-collapse: collapse; width: 100%; font-size: .88rem; }
+.cmp th, .cmp td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.cmp th { color: var(--muted); font-weight: 600; font-size: .8rem; }
+.cmp td:last-child, .cmp th:last-child { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tablewrap { overflow-x: auto; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>위젯 고르기</h1>
+    <p class="lede">삼성 노트 메모를 보드에 띄우는 흐름입니다. 위쪽 단계 버튼이나 화면 속 버튼을 눌러 따라가 보세요. 빈 칸을 길게 누르면 바로 위젯 고르기가 열리고, 추천 줄에서 한 번 누르면 칸 크기에 맞춰 놓입니다. 시스템 허용 창과 '어떤 메모' 고르기는 처음 한 번만 나와요.</p>
+  </header>
+  <div class="rail" role="group" aria-label="단계" id="rail"></div>
+  <div class="stage">
+    <div>
+      <p class="cap">세로 화면 · 빈 위젯 칸에서 시작</p>
+      <div class="phone" id="phone">
+        <!-- 1 board with empty slot -->
+        <div class="scr" data-s="board">
+          <div class="board">
+            <div class="bclock">10:09<small>11월 15일 일요일</small></div>
+            <div class="slot"><div class="wx" style="border-radius:18px"><span style="font-size:.8rem;opacity:.85">서울</span><span class="t">12°</span><span style="font-size:.78rem">맑음 · 최고 15° 최저 6°</span></div></div>
+            <div class="slot empty" id="emptySlot" role="button" tabindex="0"><div class="press"></div><div><b>＋</b>길게 눌러 위젯 고르기</div></div>
+          </div>
+        </div>
+        <!-- 2 picker sheet -->
+        <div class="scr" data-s="pick" hidden>
+          <div class="board" aria-hidden="true"><div class="bclock">10:09<small>11월 15일 일요일</small></div><div class="slot"></div><div class="slot"></div></div>
+          <div class="scrim"></div>
+          <div class="sheet" role="dialog" aria-label="위젯 고르기">
+            <div class="grab"></div>
+            <div class="sh-h"><h3>위젯 고르기</h3><span>칸 크기 4×2</span></div>
+            <label class="search"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9a9aa0" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input id="q" type="search" placeholder="앱이나 위젯 이름" aria-label="위젯 검색"></label>
+            <div class="scroll" id="scroll"></div>
+          </div>
+        </div>
+        <!-- 3 allow -->
+        <div class="scr" data-s="allow" hidden>
+          <div class="board" aria-hidden="true"><div class="bclock">10:09<small>11월 15일 일요일</small></div><div class="slot"></div><div class="slot"></div></div>
+          <div class="scrim"></div>
+          <div class="tip">처음 한 번만 나와요. <b>'항상 허용'</b>을 체크하면 다음부터는 이 창 없이 바로 놓여요.</div>
+          <div class="sys" role="dialog" aria-label="위젯 허용">
+            <h4>위젯을 만들고 데이터에 액세스하도록 스탠바이를 허용하시겠습니까?</h4>
+            <p>Samsung Notes의 위젯을 스탠바이에서 보여 줍니다.</p>
+            <label class="glow"><input type="checkbox" id="always" checked> 스탠바이가 위젯을 만들고 데이터에 액세스하도록 항상 허용</label>
+            <div class="acts"><button type="button" data-go="pick">취소</button><button type="button" data-go="note">만들기</button></div>
+          </div>
+        </div>
+        <!-- 4 Samsung Notes configure -->
+        <div class="scr" data-s="note" hidden>
+          <div class="notes">
+            <div class="notes-h">메모 선택<small>Samsung Notes</small></div>
+            <div class="notes-g">
+              <button type="button" data-go="placed"><b>장보기</b>우유, 계란, 두부<br>세제, 키친타월</button>
+              <button type="button" data-go="placed"><b>이번 주 할 일</b>보험 서류 보내기<br>치과 예약 확인</button>
+              <button type="button" data-go="placed"><b>아이디어</b>스탠바이 테마 7개<br>위젯 고르기 정리</button>
+              <button type="button" data-go="placed"><b>여행 준비</b>여권 · 충전기<br>환전 50만 원</button>
+            </div>
+            <div class="notes-foot">이 화면은 삼성 노트가 직접 띄워요. 메모를 고르면 바로 스탠바이로 돌아와요.</div>
+          </div>
+        </div>
+        <!-- 5 placed -->
+        <div class="scr placed" data-s="placed" hidden>
+          <div class="board">
+            <div class="bclock">10:09<small>11월 15일 일요일</small></div>
+            <div class="slot"><div class="wx" style="border-radius:18px"><span style="font-size:.8rem;opacity:.85">서울</span><span class="t">12°</span><span style="font-size:.78rem">맑음 · 최고 15° 최저 6°</span></div></div>
+            <div class="slot" id="placedSlot" style="background:transparent" role="button" tabindex="0" aria-label="삼성 노트 위젯, 길게 누르면 메뉴"><div class="n-note"><b>장보기</b><u></u>우유, 계란, 두부<br>세제, 키친타월<br>사과 한 봉지</div></div>
+          </div>
+          <div class="toast" id="toast">위젯을 놓았어요</div>
+        </div>
+        <!-- 6 long-press menu -->
+        <div class="scr placed" data-s="menu" hidden>
+          <div class="board">
+            <div class="bclock">10:09<small>11월 15일 일요일</small></div>
+            <div class="slot"><div class="wx" style="border-radius:18px"><span style="font-size:.8rem;opacity:.85">서울</span><span class="t">12°</span><span style="font-size:.78rem">맑음 · 최고 15° 최저 6°</span></div></div>
+            <div class="slot" style="background:transparent;outline:2px solid #76a6f3;outline-offset:3px"><div class="n-note"><b>장보기</b><u></u>우유, 계란, 두부<br>세제, 키친타월<br>사과 한 봉지</div></div>
+          </div>
+          <div class="scrim" style="background:rgba(0,0,0,.35)"></div>
+          <div class="menu" style="top:46%">
+            <button type="button" data-go="note">위젯 설정<small>다른 메모 고르기</small></button>
+            <button type="button" data-go="pick">바꾸기<small>다른 위젯</small></button>
+            <button type="button" data-go="placed">보이는 모습…<small>투명도 · 모서리 · 밤에 숨기기</small></button>
+            <button type="button" data-go="board">빼기</button>
+          </div>
+        </div>
+      </div>
+      <p class="say" id="say"></p>
+    </div>
+    <div class="side">
+      <section>
+        <p class="cap">누르는 횟수 (삼성 노트 메모 하나)</p>
+        <div class="tablewrap"><table class="cmp">
+          <thead><tr><th>지금</th><th>바뀐 뒤</th><th>횟수</th></tr></thead>
+          <tbody>
+            <tr><td>보드 길게 → 카드 더하기 → 폰 위젯 → 100개 넘는 글자 목록에서 찾기 → 허용 → 메모 고르기 → 완료 → 뒤로</td><td>—</td><td>약 10번 + 스크롤</td></tr>
+            <tr><td>—</td><td>빈 칸 길게 → 추천 '삼성 노트 · 메모' → 허용(처음만) → 메모 고르기</td><td>처음 4번</td></tr>
+            <tr><td>—</td><td>빈 칸 길게 → 추천 → 메모 고르기</td><td>그다음 3번</td></tr>
+            <tr><td>—</td><td>페이지 설정의 카드 더하기에서 시작할 때</td><td>+2번</td></tr>
+          </tbody>
+        </table></div>
+      </section>
+      <section>
+        <p class="cap">무엇이 달라지나</p>
+        <ul style="margin:0;padding-left:1.1em;line-height:1.75;color:var(--muted);font-size:.9rem">
+          <li><b style="color:var(--fg)">추천 줄</b>: 폰에 깔린 것만 — 삼성 노트, 삼성 캘린더, Keep, Google, 날씨.</li>
+          <li><b style="color:var(--fg)">앱별 묶음</b>: 아이콘과 이름을 누르면 그 앱의 위젯이 미리보기로 펼쳐져요. 검색도 돼요.</li>
+          <li><b style="color:var(--fg)">칸에 맞는 것 먼저</b>: 칸보다 큰 위젯은 흐리게 '칸보다 커요'.</li>
+          <li><b style="color:var(--fg)">한 번 누르면 끝</b>: 칸 크기에 맞춰 놓이고 바로 보드로 돌아와요.</li>
+          <li><b style="color:var(--fg)">길게 누르기</b>: 빈 칸은 위젯 고르기, 놓인 위젯은 위젯 설정 · 바꾸기 · 보이는 모습 · 빼기.</li>
+          <li>화면을 돌리거나 폴드를 펼쳐도 고르던 게 날아가지 않아요.</li>
+        </ul>
+      </section>
+      <section>
+        <p class="cap">피할 수 없는 것</p>
+        <p style="margin:0;color:var(--muted);font-size:.88rem;line-height:1.65">시스템 허용 창(처음 한 번), 삼성 노트의 '메모 선택' 화면(삼성 노트가 띄움), 위젯 모습은 각 앱이 만든 대로예요. 삼성 노트 앱 안의 '홈 화면에 추가'는 기본 런처로만 가서 스탠바이로는 못 와요.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const STEPS = [
+    ['board', '빈 칸', '빈 위젯 칸을 <b>길게 누르면</b> 위젯 고르기가 바로 열려요. (눌러 보세요)'],
+    ['pick', '위젯 고르기', '맨 위 <b>추천</b>에 폰에 있는 앱만 보여요. <b>삼성 노트 · 메모</b>를 누르세요. 아래 앱 묶음을 눌러 펼쳐 볼 수도 있어요.'],
+    ['allow', '허용 (처음만)', '안드로이드가 처음 한 번 묻는 창이에요. 위에 한 줄 안내가 떠요. <b>만들기</b>.'],
+    ['note', '메모 고르기', '삼성 노트가 직접 띄우는 화면이에요. 띄울 메모를 고르세요.'],
+    ['placed', '놓임', '칸 크기에 맞춰 놓이고 바로 보드로 돌아왔어요. 위젯을 <b>길게 누르면</b> 메뉴가 떠요.'],
+    ['menu', '길게 누르기 메뉴', '<b>위젯 설정</b>은 다른 메모로 바꾸기, <b>바꾸기</b>는 다른 위젯, <b>보이는 모습</b>은 지금 있는 옵션 화면이에요.'],
+  ];
+  const rail = $('rail');
+  STEPS.forEach(([k, l], i) => { const b = document.createElement('button'); b.type = 'button'; b.dataset.k = k; b.innerHTML = `<span class="n">${i + 1}</span>${l}`; b.onclick = () => go(k); rail.append(b); });
+  function go(k) {
+    document.querySelectorAll('.scr').forEach((s) => (s.hidden = s.dataset.s !== k));
+    rail.querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.k === k));
+    $('say').innerHTML = STEPS.find((s) => s[0] === k)[2];
+    if (k === 'placed') { $('toast').hidden = false; setTimeout(() => { $('toast').hidden = true; }, 2200); }
+  }
+  document.addEventListener('click', (e) => { const t = e.target.closest('[data-go]'); if (t) go(t.dataset.go); });
+
+  // long press helpers (also tap / Enter for keyboard and quick tries)
+  function longPress(el, to) {
+    let timer;
+    const start = () => { el.classList.add('pressing'); timer = setTimeout(() => { el.classList.remove('pressing'); go(to); }, 450); };
+    const stop = () => { clearTimeout(timer); el.classList.remove('pressing'); };
+    el.addEventListener('pointerdown', start); ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => el.addEventListener(ev, stop));
+    el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(to); } });
+    el.addEventListener('contextmenu', (e) => e.preventDefault());
+  }
+  longPress($('emptySlot'), 'pick');
+  longPress($('placedSlot'), 'menu');
+
+  // picker content
+  const PV = {
+    note: '<div class="n-note"><b>장보기</b><u></u>우유, 계란, 두부<br>세제, 키친타월</div>',
+    notelist: '<div class="n-list"><span>장보기</span><span>이번 주 할 일</span><span>아이디어</span><span>여행 준비</span></div>',
+    cal: '<div class="cal"><b>11월</b>' + Array.from({ length: 21 }, (_, i) => `<span class="${i === 14 ? 'on' : ''}">${i + 1}</span>`).join('') + '</div>',
+    agenda: '<div class="agenda"><span>오후 3:00 치과</span><span>내일 · 엄마 생신</span></div>',
+    keep: '<div class="keep"><b>Keep</b><br>택배 받기<br>필라테스 7시</div>',
+    google: '<div class="gsearch"><div><span style="color:#4285f4">G</span> 검색</div></div>',
+    wx: '<div class="wxp"><span>서울</span><b>12°</b><span>맑음</span></div>',
+  };
+  const APPS = [
+    { id: 'notes', name: 'Samsung Notes', ko: '삼성 노트', ic: 'N', bg: '#f2b84b', fg: '#3a2a00', widgets: [['메모', 'note', '4×2'], ['메모 목록', 'notelist', '4×2'], ['메모 (크게)', 'note', '4×4', true]] },
+    { id: 'cal', name: 'Samsung Calendar', ko: '삼성 캘린더', ic: '15', bg: '#3e7bfa', fg: '#fff', widgets: [['일정', 'agenda', '4×2'], ['월간 달력', 'cal', '4×4', true]] },
+    { id: 'keep', name: 'Keep 메모', ko: 'Keep', ic: 'K', bg: '#fbbc04', fg: '#3a2a00', widgets: [['메모 하나', 'keep', '2×2'], ['빠른 메모', 'keep', '4×1']] },
+    { id: 'google', name: 'Google', ko: 'Google', ic: 'G', bg: '#fff', fg: '#4285f4', widgets: [['검색창', 'google', '4×1']] },
+    { id: 'wx', name: '날씨', ko: '날씨', ic: '☀', bg: '#2b6fd0', fg: '#fff', widgets: [['오늘 날씨', 'wx', '2×2'], ['시간별 날씨', 'wx', '4×2']] },
+  ];
+  const OTHERS = [['카카오톡', 'K', '#fee500', '#3a2a00', 3], ['YouTube Music', '▶', '#ff0033', '#fff', 2], ['시계', '◷', '#555', '#fff', 4], ['배터리', '▮', '#2e8b57', '#fff', 1], ['Gmail', 'M', '#fff', '#d93025', 1], ['삼성 헬스', '♥', '#1b8a5a', '#fff', 5]];
+  const icon = (a) => `<i style="background:${a.bg};color:${a.fg}">${a.ic}</i>`;
+  function tile(a, w, rec) {
+    const [nm, pv, sz, big] = w;
+    return `<button type="button" class="tile${big ? ' big' : ''}" ${big ? '' : 'data-go="allow"'} aria-label="${a.ko} ${nm}${big ? ', 칸보다 커요' : ''}">
+      <div class="pv">${PV[pv]}</div><div class="nm">${rec ? icon(a) : ''}<span>${rec ? a.ko + ' · ' : ''}${nm}</span><span class="sz">${big ? '칸보다 커요' : sz}</span></div></button>`;
+  }
+  function render() {
+    const q = $('q').value.trim().toLowerCase();
+    const hit = (a, w) => !q || (a.name + a.ko + w[0]).toLowerCase().includes(q);
+    const rec = APPS.map((a) => [a, a.widgets.find((w) => !w[3])]).filter(([a, w]) => w && hit(a, w));
+    let html = '';
+    if (rec.length) html += `<section><p class="sec-t">추천</p><div class="recs">${rec.map(([a, w]) => tile(a, w, true)).join('')}</div></section>`;
+    const groups = APPS.filter((a) => a.widgets.some((w) => hit(a, w)));
+    html += `<section><p class="sec-t">앱별</p><div style="display:grid;gap:8px">${groups.map((a) => `<div class="app" ${q || a.id === 'notes' ? 'open' : ''} data-app><button type="button" class="app-h">${icon(a)}${a.ko}<span class="c">위젯 ${a.widgets.length}개</span><span class="chev">›</span></button><div class="app-b">${a.widgets.filter((w) => hit(a, w)).map((w) => tile(a, w, false)).join('')}</div></div>`).join('')}
+      ${OTHERS.filter((o) => !q || o[0].toLowerCase().includes(q)).map((o) => `<div class="app" data-app><button type="button" class="app-h"><i style="background:${o[2]};color:${o[3]}">${o[1]}</i>${o[0]}<span class="c">위젯 ${o[4]}개</span><span class="chev">›</span></button></div>`).join('')}</div></section>`;
+    if (!rec.length && !groups.length) html = '<p class="hint">찾는 위젯이 없어요. 앱 이름으로 찾아보세요.</p>';
+    html += '<p class="hint">칸보다 큰 위젯은 흐리게 보여요. 칸을 넓히면 쓸 수 있어요.</p>';
+    $('scroll').innerHTML = html;
+    $('scroll').querySelectorAll('[data-app] .app-h').forEach((h) => (h.onclick = () => { const a = h.parentElement; a.toggleAttribute('open'); }));
+  }
+  $('q').addEventListener('input', render);
+  render();
+  go('board');
+})();
+</script>
