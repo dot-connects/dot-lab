@@ -1,0 +1,427 @@
+<title>사용자 지정 테마 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@300;400;500;700;800&family=Gowun+Batang:wght@400;700&family=Jua&family=Nanum+Pen+Script&family=Inter:wght@300;500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: page explains on the left/top; two phone screens (테마와 배경 → 사용자 지정) side by side on desktop, stacked on phones; texture gallery below. */
+:root {
+  --bg: #eeeef0; --fg: #17181c; --muted: #5b5e66; --line: #d6d7db; --chip: #ffffff; --accent: #2f6fd6;
+  --ui: "Gothic A1", system-ui, sans-serif;
+  /* the app's own settings palette (Kit.kt SK) — the phone screens always use it */
+  --sk-bg: #0e0f12; --sk-surface: #17181c; --sk-surface2: #212228; --sk-line: #2a2c32; --sk-text: #ededef; --sk-muted: #9a9aa0; --sk-acc: #76a6f3; --sk-why: #c9a56a;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0b0c0e; --fg: #ececee; --muted: #a0a2a8; --line: #26282d; --chip: #17181c; --accent: #76a6f3; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0b0c0e; --fg: #ececee; --muted: #a0a2a8; --line: #26282d; --chip: #17181c; --accent: #76a6f3; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 28px; }
+h1 { font: 800 1.55rem/1.3 var(--ui); margin: 0; text-wrap: balance; }
+h2 { font: 700 1.1rem/1.4 var(--ui); margin: 0; }
+.lede { margin: 8px 0 0; color: var(--muted); line-height: 1.65; max-width: 68ch; }
+.lede b { color: var(--fg); }
+.screens { display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 28px; align-items: start; }
+@media (max-width: 900px) { .screens { grid-template-columns: minmax(0, 1fr); } }
+.cap { font-size: .8rem; color: var(--muted); margin: 0 0 8px; letter-spacing: .02em; }
+.vbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 10px; }
+button.t { font: 600 .85rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; cursor: pointer; }
+button.t[aria-pressed="true"] { background: var(--fg); color: var(--bg); border-color: var(--fg); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- phone screen (always the app's dark settings look) ---- */
+.phone { background: var(--sk-bg); color: var(--sk-text); border-radius: 28px; border: 1px solid #000; box-shadow: 0 18px 40px rgba(0,0,0,.28); overflow: hidden; max-width: 420px; width: 100%; font-family: "Gothic A1", system-ui, sans-serif; }
+.phone.wide { max-width: 520px; }
+.top { display: flex; align-items: center; gap: 8px; padding: 16px 16px 8px; font-weight: 700; font-size: 1.1rem; }
+.top .back { color: var(--sk-muted); font-weight: 400; }
+.body { padding: 0 16px 20px; display: grid; gap: 18px; }
+.sec-t { font-size: 13px; font-weight: 600; color: var(--sk-muted); margin: 0 0 8px 4px; }
+.group { background: var(--sk-surface); border-radius: 16px; }
+.row { padding: 12px 16px; border-top: 1px solid var(--sk-line); display: grid; gap: 8px; }
+.row:first-child { border-top: 0; }
+.row-h { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; }
+.row-h .v { margin-left: auto; color: var(--sk-muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.note { font-size: 12.5px; color: var(--sk-muted); line-height: 1.5; }
+.note.why { color: var(--sk-why); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 500 13.5px var(--ui); color: var(--sk-text); background: var(--sk-surface2); border: 0; border-radius: 999px; padding: 8px 13px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--sk-acc); color: var(--sk-bg); font-weight: 700; }
+.seg { display: flex; background: var(--sk-surface2); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg button { flex: 1; font: 500 13.5px var(--ui); color: var(--sk-muted); background: transparent; border: 0; border-radius: 10px; padding: 9px 4px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--sk-acc); color: var(--sk-bg); font-weight: 700; }
+.sw { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.dot { width: 34px; height: 34px; border-radius: 50%; border: 2px solid transparent; padding: 3px; background: none; cursor: pointer; }
+.dot i { display: block; width: 100%; height: 100%; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); }
+.dot[aria-pressed="true"] { border-color: #fff; }
+.dot.pick { position: relative; overflow: hidden; }
+.dot.pick i { background: conic-gradient(red, yellow, lime, cyan, blue, magenta, red); }
+.dot.pick input { position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%; }
+input[type=range] { width: 100%; accent-color: var(--sk-acc); }
+.reset { margin-left: 6px; font: 600 12px var(--ui); color: var(--sk-muted); background: none; border: 0; cursor: pointer; padding: 4px 6px; }
+.btns { display: grid; grid-template-columns: 1.3fr 1fr 1fr; gap: 8px; }
+.btn { font: 700 14px var(--ui); color: var(--sk-text); background: var(--sk-surface2); border: 0; border-radius: 14px; padding: 13px 8px; cursor: pointer; }
+.btn.pri { background: var(--sk-acc); color: var(--sk-bg); }
+.btn:disabled { color: var(--sk-muted); cursor: default; }
+.toast { font-size: 13px; color: #6fdc86; min-height: 1em; }
+.tabs { display: flex; gap: 4px; position: sticky; top: 0; }
+.pad { width: 200px; max-width: 100%; height: 110px; border-radius: 12px; background: var(--sk-surface2); border: 1px solid var(--sk-line); position: relative; cursor: crosshair; touch-action: none; }
+.pad b { position: absolute; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; border: 2px solid #fff; pointer-events: none; }
+.sub { padding-left: 10px; border-left: 2px solid var(--sk-line); display: grid; gap: 10px; }
+.hidden-g { display: none; }
+
+/* ---- theme strip (screen 1) ---- */
+.strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 8px; }
+.tile { background: none; border: 0; padding: 0; cursor: pointer; color: var(--sk-text); font: 500 12px var(--ui); display: grid; gap: 5px; text-align: center; }
+.tile span { display: block; aspect-ratio: 4 / 3; border-radius: 10px; border: 2px solid transparent; }
+.tile[aria-pressed="true"] span { border-color: var(--sk-acc); }
+.tile[aria-pressed="true"] { color: var(--sk-acc); font-weight: 700; }
+.tile.add span { border: 1.5px dashed var(--sk-muted); display: grid; place-items: center; font-size: 22px; color: var(--sk-muted); background: transparent; }
+
+/* ---- the StandBy preview ---- */
+.pv-wrap { position: sticky; top: 0; z-index: 2; background: var(--sk-bg); padding: 8px 0 10px; }
+.pv { position: relative; aspect-ratio: 2.05 / 1; border-radius: 16px; overflow: hidden; display: grid; grid-template-columns: 1.15fr 1fr; gap: 3.5%; padding: 4.5%; box-sizing: border-box; }
+.pv .bgl, .pv .tex { position: absolute; inset: 0; pointer-events: none; }
+.pv .tex { background-size: 160px; }
+.clock { position: relative; display: grid; align-content: center; gap: 4%; }
+.clock .time { font: 300 clamp(40px, 9.5vw, 86px)/1 "Inter", sans-serif; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
+.clock .date { font-size: clamp(11px, 1.9vw, 16px); opacity: .75; }
+.cards { position: relative; display: grid; gap: 7%; align-content: center; }
+.card { position: relative; overflow: hidden; padding: 7% 8%; display: grid; gap: 4px; min-width: 0; }
+.card .tx { position: absolute; inset: 0; pointer-events: none; background-size: 120px; }
+.card .k { font-size: clamp(10px, 1.6vw, 13px); opacity: .7; position: relative; }
+.card .m { font-size: clamp(13px, 2.3vw, 19px); position: relative; }
+.card .a { position: relative; }
+.flowbar { display: flex; gap: 6px; align-items: center; margin-top: 8px; font-size: 12.5px; color: var(--sk-muted); flex-wrap: wrap; }
+
+/* ---- texture gallery ---- */
+.gal { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 14px; }
+.gt { display: grid; gap: 6px; min-width: 0; }
+.gt .sq { aspect-ratio: 1; border-radius: 14px; position: relative; overflow: hidden; background: #2a2440; }
+.gt .sq .in { position: absolute; left: 14%; right: 14%; bottom: 14%; height: 34%; border-radius: 10px; background: rgba(28,24,40,.82); overflow: hidden; }
+.gt .sq .in i, .gt .sq > i { position: absolute; inset: 0; background-size: 120px; }
+.gt b { font-size: .95rem; }
+.gt p { margin: 0; font-size: .82rem; color: var(--muted); line-height: 1.5; }
+.decide { border-top: 1px solid var(--line); padding-top: 18px; display: grid; gap: 8px; max-width: 76ch; }
+.decide ul { margin: 0; padding-left: 1.2em; line-height: 1.7; color: var(--muted); }
+.decide li b { color: var(--fg); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>사용자 지정 테마</h1>
+    <p class="lede">테마 화면에는 <b>테마 · 글자 크기 · 배경</b>만 남깁니다. 색과 모양은 테마 줄 끝의 <b>＋ 사용자 지정</b>을 눌러 여는 화면 한 곳에서 다 바꿉니다. 무드등 불빛, 하늘 그라데이션, 네온 빛 번짐처럼 지금은 테마마다 따로 있던 것도 전부 이 화면에 있습니다. 오른쪽 화면은 실제로 눌러 볼 수 있고, 위의 미리보기가 바로 바뀝니다. 시계 숫자의 글꼴은 그대로이고, 글꼴은 카드 글자와 날짜 줄에만 적용됩니다.</p>
+  </header>
+
+  <div class="screens">
+    <!-- screen 1 -->
+    <section aria-label="테마와 배경 화면">
+      <p class="cap">① 테마와 배경 (정리된 모습)</p>
+      <div class="phone">
+        <div class="top"><span class="back">‹</span>테마와 배경</div>
+        <div class="body">
+          <div>
+            <p class="sec-t">테마</p>
+            <div class="strip" id="strip"></div>
+          </div>
+          <div class="group">
+            <div class="row"><div class="row-h">글자 크기</div>
+              <div class="seg" id="s1size"><button type="button">작게</button><button type="button" aria-pressed="true">보통</button><button type="button">크게</button></div>
+              <div class="note">카드 글자와 시계 아래 날짜·정보 줄이 바뀌어요. 큰 숫자는 그대로예요.</div>
+            </div>
+          </div>
+          <div>
+            <p class="sec-t">배경</p>
+            <div class="group"><div class="row"><div class="chips" id="s1bg"></div></div></div>
+            <p class="note" style="margin:8px 4px 0">배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.</p>
+          </div>
+          <p class="note">지금 화면의 <b style="color:var(--sk-text)">색 꾸미기</b> 묶음(10여 줄)은 여기서 빠지고 ＋ 사용자 지정으로 옮겨 갑니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- screen 2 -->
+    <section aria-label="사용자 지정 화면" id="custom">
+      <p class="cap">② 사용자 지정 — 구성 두 가지</p>
+      <div class="vbar" role="group" aria-label="구성">
+        <button type="button" class="t" data-var="A" aria-pressed="true">A · 한 화면에 묶음별로</button>
+        <button type="button" class="t" data-var="B" aria-pressed="false">B · 배경 / 카드 / 글자 탭</button>
+      </div>
+      <div class="phone wide">
+        <div class="top"><span class="back">‹</span>사용자 지정</div>
+        <div class="body" id="cbody">
+          <div class="pv-wrap">
+            <div class="pv" id="pv">
+              <div class="bgl" id="pvbg"></div><div class="tex" id="pvtex"></div>
+              <div class="clock"><div class="time">10:09</div><div class="date" id="pvdate">11월 15일 일요일 · 맑음 12°</div></div>
+              <div class="cards">
+                <div class="card"><div class="tx"></div><div class="k">날씨</div><div class="m"><span class="a">☀</span> 맑음 12°</div><div class="k">최고 15° · 최저 6°</div></div>
+                <div class="card"><div class="tx"></div><div class="k">오늘 일정</div><div class="m"><span class="a">오후 3:00</span> 치과</div><div class="k">내일 · 엄마 생신</div></div>
+              </div>
+            </div>
+            <div class="flowbar" id="flowbar" hidden>미리보기 <span class="chips" id="flowat"></span></div>
+          </div>
+
+          <div>
+            <p class="sec-t">어디서 시작할까요</p>
+            <div class="chips" id="base"></div>
+            <p class="note" style="margin:8px 4px 0">고른 테마의 색·모양을 그대로 불러와요. 그다음 아래에서 아무거나 바꿔요.</p>
+          </div>
+          <div class="btns">
+            <button type="button" class="btn" id="shuffle">색 조합 바꾸기</button>
+            <button type="button" class="btn" id="undo" disabled>이전 조합</button>
+            <button type="button" class="btn pri" id="save">저장</button>
+          </div>
+          <div class="toast" id="toast" aria-live="polite"></div>
+          <div class="seg tabs" id="tabs" hidden><button type="button" data-tab="bg" aria-pressed="true">배경</button><button type="button" data-tab="card" aria-pressed="false">카드</button><button type="button" data-tab="text" aria-pressed="false">글자</button></div>
+          <div data-g="bg"><p class="sec-t">배경</p><div class="group" id="g-bg"></div></div>
+          <div data-g="card"><p class="sec-t">카드</p><div class="group" id="g-card"></div></div>
+          <div data-g="text"><p class="sec-t">글자</p><div class="group" id="g-text"></div></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <section aria-labelledby="tex-h" style="display:grid;gap:14px">
+    <h2 id="tex-h">질감 종류</h2>
+    <p class="lede" style="margin:0">배경과 카드에 따로 깔 수 있어요. 모두 한 번 그려 두고 쓰는 정지 그림이라 켜 둬도 배터리와 발열은 그대로입니다. 오른쪽 위 시안에서 직접 골라 볼 수 있어요.</p>
+    <div class="gal" id="gal"></div>
+  </section>
+
+  <section class="decide" aria-labelledby="dec-h">
+    <h2 id="dec-h">정해 주실 것</h2>
+    <ul>
+      <li><b>구성 A / B</b>: A는 한 번에 다 보이지만 길고, B는 짧지만 탭을 오가야 합니다.</li>
+      <li><b>질감</b>: 위 9가지 중 남길 것. 추천은 종이결 · 필름 그레인 · 린넨 · 헤어라인 금속 · 서리 유리 다섯 개입니다.</li>
+      <li><b>글꼴 4종</b>(고딕 · 명조 · 둥근 고딕 · 손글씨): 카드 글자는 알림처럼 어떤 한글이든 나와서, 명조 · 둥근 고딕 · 손글씨는 지금 시계용으로 줄여 둔 파일 대신 상용 한글 전체가 든 파일이 필요합니다. 앱이 약 2~3MB 커질 것으로 예상합니다(아직 재 보지 않음).</li>
+      <li><b>기존 테마 10개</b>는 그대로 두고, 사용자 지정에서 만든 것은 '내 테마'로 테마 줄 앞쪽에 붙습니다.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const SW = ['#ffffff', '#ff9f0a', '#ff453a', '#ff6b9a', '#aa88fe', '#5e9cff', '#4ff0ff', '#59ff7a', '#ffd60a', '#c9a56a'];
+  const DARKS = ['#000000', '#0e0f12', '#1a1430', '#101c2a', '#13241a', '#2a1a12', '#26142a', '#f3eee4', '#d9d3c7'];
+  const CARDS = ['#1c1c1e', '#2a2440', '#1b2a3a', '#1f2d24', '#3a2a1f', '#e9e2d2', '#ffffff', '#000000'];
+  const FONTS = { 고딕: '"Gothic A1", sans-serif', 명조: '"Gowun Batang", serif', '둥근 고딕': '"Jua", sans-serif', 손글씨: '"Nanum Pen Script", cursive' };
+  const WEIGHTS = { 가늘게: 300, 보통: 500, 굵게: 800 };
+  // approximations of the ten built-in themes (what 어디서 시작할까요 loads)
+  const BASE = {
+    기본: { bgType: 'solid', bg: '#000000', card: '#1c1c1e', alpha: 1, cardShape: 'fill', radius: .18, ink: '#ffffff', accent: '#ff9f0a' },
+    '신문 1면': { bgType: 'solid', bg: '#1b1a17', card: '#1b1a17', alpha: 1, cardShape: 'line', radius: 0, border: 'thin', borderCol: '#e9e2d0', ink: '#e9e2d0', accent: '#d9472b', font: '명조', bgTex: 'paper', bgTexAmt: .5 },
+    무드등: { bgType: 'glow', bg: '#0d0a14', glow: '#aa88fe', glowStr: .55, glowAt: [.3, .35], cardShape: 'glass', card: '#2a2440', alpha: .5, radius: .16, ink: '#f2ecff', accent: '#ffd60a' },
+    촛불: { bgType: 'glow', bg: '#0a0705', glow: '#ff9c56', glowStr: .6, glowAt: [.5, .9], glowShape: 'sunset', card: '#1a120c', alpha: .2, radius: .14, ink: '#ffe9d2', accent: '#ff9f0a', flow: true },
+    '플립 시계': { bgType: 'solid', bg: '#111111', card: '#262626', alpha: 1, radius: .05, ink: '#e8e8e8', accent: '#ffffff', border: 'thin', borderCol: '#000000' },
+    하늘: { bgType: 'grad', g: ['#0b1d3a', '#1d3b6a', '#3a5a8c'], cardShape: 'glass', card: '#ffffff', alpha: .18, radius: .2, ink: '#ffffff', accent: '#ffd60a', flow: true },
+    종이: { bgType: 'solid', bg: '#f3eee4', card: '#e9e2d2', alpha: 1, radius: .12, ink: '#2a2620', accent: '#b4461a', bgTex: 'paper', bgTexAmt: .6, cardTex: 'paper', cardTexAmt: .4 },
+    '브라운 라디오': { bgType: 'solid', bg: '#cbbfa8', card: '#e9dfc9', alpha: 1, radius: .08, ink: '#2b2117', accent: '#c0392b', bgTex: 'linen', bgTexAmt: .5, border: 'thin', borderCol: '#8a7a60' },
+    네온: { bgType: 'solid', bg: '#050507', cardShape: 'line', card: '#050507', radius: .14, ink: '#ff4fd8', accent: '#4ff0ff', textGlow: .8 },
+    터미널: { bgType: 'solid', bg: '#020802', cardShape: 'line', card: '#020802', radius: 0, ink: '#59ff7a', accent: '#59ff7a', textGlow: .45, bgTex: 'scan', bgTexAmt: .6 },
+  };
+  const DEF = { bgType: 'solid', bg: '#000000', g: ['#0b1d3a', '#1d3b6a', '#3a5a8c'], glow: '#aa88fe', glowStr: .5, glowAt: [.3, .35], glowShape: 'round', flow: false,
+    flowCols: ['#ff9c56', '#aa88fe', '#5a3a6a'], flowAt: 1, bgTex: 'none', bgTexAmt: .5,
+    cardShape: 'fill', card: '#1c1c1e', alpha: 1, radius: .18, border: 'none', borderCol: '#ffffff', rule: '#ffffff', cardTex: 'none', cardTexAmt: .5,
+    ink: '#ffffff', accent: '#ff9f0a', font: '고딕', weight: '보통', textGlow: 0 };
+  const load = (name) => ({ ...DEF, ...JSON.parse(JSON.stringify(BASE[name])), baseName: name });
+  let S = load('무드등'), prev = null, variant = 'B', tab = 'bg';
+  document.querySelectorAll('[data-var]').forEach((x) => x.setAttribute('aria-pressed', x.dataset.var === 'B'));
+
+  // ---- textures: drawn once into tiles, used as data URIs ----
+  const TEX = { none: '없음', paper: '종이결', grain: '필름 그레인', linen: '린넨', metal: '헤어라인 금속', halftone: '망점', scan: '스캔라인', frost: '서리 유리', concrete: '콘크리트' };
+  const TEX_NOTE = { none: '매끈한 판.', paper: '섬유가 살짝 비치는 종이. 종이·신문 테마.', grain: '아주 고운 알갱이. 어느 색에나 무난.', linen: '가로세로 결의 천. 라디오·나무 느낌과 어울림.',
+    metal: '가로로 긁힌 머리카락 결. 입체 시계와 짝.', halftone: '인쇄물 망점. 신문 1면과 짝.', scan: '옛 모니터 가로줄. 터미널·네온.', frost: '뿌옇게 번진 유리. 무드등·하늘 카드.', concrete: '거친 돌 표면. 어두운 배경에.' };
+  const TEXURL = {};
+  function rnd(seed) { let s = seed; return () => (s = (s * 16807) % 2147483647) / 2147483647; }
+  function makeTex(kind) {
+    const c = document.createElement('canvas'), N = 160; c.width = c.height = N; const x = c.getContext('2d'); const r = rnd(kind.length * 977 + 13);
+    const px = (a) => { const d = x.createImageData(N, N); for (let i = 0; i < d.data.length; i += 4) { const v = r() > .5 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = r() * a; } x.putImageData(d, 0, 0); };
+    if (kind === 'grain') px(70);
+    else if (kind === 'paper') { px(28); for (let i = 0; i < 160; i++) { const al = (.06 + r() * .1).toFixed(3); x.strokeStyle = r() > .5 ? `rgba(255,255,255,${al})` : `rgba(0,0,0,${al})`; x.lineWidth = .6; x.beginPath(); const a = r() * 6.28, l = 4 + r() * 12, sx = r() * N, sy = r() * N; x.moveTo(sx, sy); x.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); x.stroke(); } }
+    else if (kind === 'linen') { for (let y = 0; y < N; y += 2) { x.fillStyle = `rgba(0,0,0,${.05 + r() * .12})`; x.fillRect(0, y, N, 1); } for (let i = 0; i < N; i += 2) { x.fillStyle = `rgba(255,255,255,${.03 + r() * .08})`; x.fillRect(i, 0, 1, N); } }
+    else if (kind === 'metal') { for (let y = 0; y < N; y++) { x.fillStyle = `rgba(${r() > .5 ? '255,255,255' : '0,0,0'},${r() * .14})`; x.fillRect(0, y, N, 1); } }
+    else if (kind === 'halftone') { x.fillStyle = 'rgba(0,0,0,.35)'; for (let y = 0; y < N; y += 6) for (let i = 0; i < N; i += 6) { x.beginPath(); x.arc(i + (y / 6 % 2) * 3, y, 1.3, 0, 6.29); x.fill(); } }
+    else if (kind === 'scan') { for (let y = 0; y < N; y += 3) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(0, y, N, 1); } }
+    else if (kind === 'frost') { x.filter = 'blur(3px)'; for (let i = 0; i < 90; i++) { x.fillStyle = `rgba(255,255,255,${r() * .16})`; x.beginPath(); x.arc(r() * N, r() * N, 3 + r() * 9, 0, 6.29); x.fill(); } x.filter = 'none'; px(20); }
+    else if (kind === 'concrete') { x.filter = 'blur(2px)'; for (let i = 0; i < 70; i++) { x.fillStyle = `rgba(${r() > .5 ? '255,255,255' : '0,0,0'},${r() * .12})`; x.beginPath(); x.arc(r() * N, r() * N, 4 + r() * 16, 0, 6.29); x.fill(); } x.filter = 'none'; px(45); }
+    return c.toDataURL();
+  }
+  Object.keys(TEX).forEach((k) => { if (k !== 'none') TEXURL[k] = makeTex(k); });
+
+  // ---- colour helpers ----
+  const hex2 = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+  const rgba = (h, a) => `rgba(${hex2(h).join(',')},${a})`;
+  const hsl = (h, s, l) => { const k = (n) => (n + h / 30) % 12, a = s * Math.min(l, 1 - l), f = (n) => l - a * Math.max(-1, Math.min(k(n) - 3, 9 - k(n), 1)); return '#' + [f(0), f(8), f(4)].map((v) => Math.round(v * 255).toString(16).padStart(2, '0')).join(''); };
+  const lum = (h) => { const [r, g, b] = hex2(h).map((v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }); return .2126 * r + .7152 * g + .0722 * b; };
+
+  // ---- preview ----
+  function render() {
+    const pv = $('pv'), bgl = $('pvbg');
+    const glowC = S.flow ? S.flowCols[S.flowAt] : S.glow;
+    let bg;
+    if (S.bgType === 'grad') bg = `linear-gradient(180deg, ${S.flow ? S.flowCols[S.flowAt] : S.g[0]}, ${S.g[1]} 55%, ${S.g[2]})`;
+    else if (S.bgType === 'glow') {
+      const a = Math.min(1, .25 + S.glowStr * .9), [gx, gy] = S.glowAt;
+      if (S.glowShape === 'sunset') bg = `radial-gradient(110% 80% at 50% 115%, ${rgba(glowC, a)}, transparent 70%), ${S.bg}`;
+      else if (S.glowShape === 'twin') bg = `radial-gradient(60% 75% at ${gx * 100}% ${gy * 100}%, ${rgba(glowC, a)}, transparent 70%), radial-gradient(60% 75% at ${(1 - gx) * 100}% ${(1 - gy) * 100}%, ${rgba(glowC, a * .8)}, transparent 70%), ${S.bg}`;
+      else bg = `radial-gradient(65% 85% at ${gx * 100}% ${gy * 100}%, ${rgba(glowC, a)}, transparent 72%), ${S.bg}`;
+    } else bg = S.bg;
+    bgl.style.background = bg;
+    const t = $('pvtex');
+    t.style.backgroundImage = S.bgTex === 'none' ? 'none' : `url(${TEXURL[S.bgTex]})`; t.style.opacity = S.bgTexAmt; t.style.mixBlendMode = 'overlay';
+    pv.style.color = S.ink; pv.style.fontFamily = FONTS[S.font];
+    const glowTxt = S.textGlow > 0 ? `0 0 ${4 + S.textGlow * 14}px ${rgba(S.ink, .4 + S.textGlow * .5)}` : 'none';
+    pv.querySelector('.time').style.textShadow = glowTxt;
+    pv.querySelectorAll('.card').forEach((c) => {
+      const glass = S.cardShape === 'glass', line = S.cardShape === 'line';
+      const a = glass ? Math.min(S.alpha, .55) : S.alpha;
+      c.style.background = line ? 'transparent' : rgba(S.card, a);
+      c.style.backdropFilter = glass ? 'blur(10px)' : 'none';
+      const bw = S.border === 'thick' ? 2.5 : S.border === 'thin' ? 1 : (line ? 1.5 : 0);
+      const bc = S.border === 'none' && line ? rgba(S.ink, .6) : S.borderCol;
+      c.style.border = bw ? `${bw}px solid ${bc}` : (glass ? `1px solid ${rgba('#ffffff', .14)}` : '0');
+      c.style.borderRadius = `${S.radius * 120}px`;
+      c.style.fontWeight = WEIGHTS[S.weight];
+      c.style.textShadow = glowTxt;
+      const tx = c.querySelector('.tx');
+      tx.style.backgroundImage = S.cardTex === 'none' ? 'none' : `url(${TEXURL[S.cardTex]})`; tx.style.opacity = S.cardTexAmt; tx.style.mixBlendMode = 'overlay';
+      c.querySelectorAll('.a').forEach((e) => (e.style.color = S.accent));
+    });
+    $('pvdate').style.fontWeight = WEIGHTS[S.weight];
+    $('flowbar').hidden = !S.flow;
+    $('undo').disabled = !prev;
+  }
+
+  // ---- control builders ----
+  const set = (patch) => { Object.assign(S, patch); build(); };
+  function el(html) { const d = document.createElement('div'); d.innerHTML = html.trim(); return d.firstChild; }
+  function row(label, value) { const r = el(`<div class="row"><div class="row-h">${label}${value != null ? `<span class="v">${value}</span>` : ''}</div></div>`); return r; }
+  function colours(r, cur, list, on) {
+    const w = el('<div class="sw"></div>');
+    [...new Set([cur, ...list])].forEach((c) => { const b = el(`<button type="button" class="dot" aria-label="${c}" aria-pressed="${c === cur}"><i style="background:${c}"></i></button>`); b.onclick = () => on(c); w.append(b); });
+    const p = el(`<label class="dot pick" aria-label="직접 고르기"><i></i><input type="color" value="${cur}"></label>`); p.querySelector('input').onchange = (e) => on(e.target.value); w.append(p);
+    r.append(w); return r;
+  }
+  function segs(r, opts, cur, on) { const s = el('<div class="seg"></div>'); opts.forEach(([v, l]) => { const b = el(`<button type="button" aria-pressed="${v === cur}">${l}</button>`); b.onclick = () => on(v); s.append(b); }); r.append(s); return r; }
+  function slider(r, v, min, max, step, on) { const i = el(`<input type="range" min="${min}" max="${max}" step="${step}" value="${v}">`); i.oninput = (e) => { on(+e.target.value, false); }; i.onchange = (e) => on(+e.target.value, true); r.append(i); return r; }
+  function texRow(key, amtKey, label) {
+    const r = row(label, S[key] === 'none' ? null : `${Math.round(S[amtKey] * 100)}%`);
+    const c = el('<div class="chips"></div>');
+    Object.entries(TEX).forEach(([k, l]) => { const b = el(`<button type="button" class="chip" aria-pressed="${S[key] === k}">${l}</button>`); b.onclick = () => set({ [key]: k }); c.append(b); });
+    r.append(c);
+    if (S[key] !== 'none') slider(r, S[amtKey], .1, 1, .05, (v, done) => { S[amtKey] = v; r.querySelector('.v').textContent = `${Math.round(v * 100)}%`; render(); });
+    return r;
+  }
+  const pct = (v) => `${Math.round(v * 100)}%`;
+
+  function build() {
+    // background
+    const gb = $('g-bg'); gb.replaceChildren();
+    gb.append(segs(row('배경 종류'), [['solid', '단색'], ['grad', '그라데이션'], ['glow', '불빛']], S.bgType, (v) => set({ bgType: v })));
+    if (S.bgType !== 'grad') gb.append(colours(row(S.bgType === 'glow' ? '바탕 색' : '배경 색'), S.bg, DARKS, (c) => set({ bg: c })));
+    if (S.bgType === 'grad') ['위', '가운데', '아래'].forEach((l, i) => gb.append(colours(row(`그라데이션 ${l}`), S.g[i], DARKS.concat(['#3a5a8c', '#5a3a6a']), (c) => { S.g[i] = c; build(); })));
+    if (S.bgType === 'glow') {
+      gb.append(colours(row('불빛 색'), S.glow, SW, (c) => set({ glow: c })));
+      const sr = row('불빛 세기', pct(S.glowStr));
+      gb.append(slider(sr, S.glowStr, 0, 1, .05, (v) => { S.glowStr = v; sr.querySelector('.v').textContent = pct(v); render(); }));
+      gb.append(segs(row('불빛 모양'), [['round', '둥근'], ['sunset', '노을'], ['twin', '둘']], S.glowShape, (v) => set({ glowShape: v })));
+      const pr = row('불빛 위치');
+      const pad = el(`<div class="pad" role="slider" aria-label="불빛 위치"><b style="left:${S.glowAt[0] * 100}%;top:${S.glowAt[1] * 100}%;background:${rgba(S.glow, .6)}"></b></div>`);
+      const mv = (e) => { const b = pad.getBoundingClientRect(); S.glowAt = [Math.min(1, Math.max(0, (e.clientX - b.left) / b.width)), Math.min(1, Math.max(0, (e.clientY - b.top) / b.height))]; const k = pad.firstChild; k.style.left = `${S.glowAt[0] * 100}%`; k.style.top = `${S.glowAt[1] * 100}%`; render(); };
+      pad.onpointerdown = (e) => { if (S.glowShape === 'sunset') return; pad.setPointerCapture(e.pointerId); mv(e); pad.onpointermove = mv; };
+      pad.onpointerup = () => (pad.onpointermove = null);
+      pr.append(pad); if (S.glowShape === 'sunset') pr.append(el('<div class="note why">노을은 아래에서 올라와서 위치가 정해져 있어요</div>'));
+      gb.append(pr);
+    }
+    if (S.bgType !== 'solid') {
+      const fr = row('시간 따라 흐름');
+      fr.append(segs(el('<div></div>'), [[false, '끄기'], [true, '켜기']], S.flow, (v) => set({ flow: v })).firstChild);
+      fr.append(el(`<div class="note">${S.bgType === 'glow' ? '불빛 색' : '하늘 위쪽 색'}이 아침 → 낮 → 저녁으로 천천히 바뀌어요. 밤에는 밤 화면이에요.</div>`));
+      if (S.flow) { const sub = el('<div class="sub"></div>'); ['아침', '낮', '저녁'].forEach((l, i) => sub.append(colours(el(`<div><div class="row-h" style="font-size:14px">${l}</div></div>`), S.flowCols[i], SW, (c) => { S.flowCols[i] = c; build(); }))); fr.append(sub); }
+      gb.append(fr);
+    }
+    gb.append(texRow('bgTex', 'bgTexAmt', '배경 질감'));
+
+    // cards
+    const gc = $('g-card'); gc.replaceChildren();
+    gc.append(segs(row('카드 모양'), [['fill', '판'], ['glass', '유리'], ['line', '선만']], S.cardShape, (v) => set({ cardShape: v })));
+    if (S.cardShape !== 'line') {
+      gc.append(colours(row('카드 색'), S.card, CARDS, (c) => set({ card: c })));
+      const max = S.cardShape === 'glass' ? .55 : 1;
+      const ar = row('카드 진하기', pct(Math.min(S.alpha, max) / max));
+      gc.append(slider(ar, Math.min(S.alpha, max), .05, max, .01, (v) => { S.alpha = v; ar.querySelector('.v').textContent = pct(v / max); render(); }));
+      if (S.cardShape === 'glass') ar.append(el('<div class="note">유리는 뒤가 비쳐 보이도록 55%까지만 진해져요.</div>'));
+    }
+    const rr = row('모서리', pct(S.radius / .2));
+    gc.append(slider(rr, S.radius, 0, .2, .005, (v) => { S.radius = v; rr.querySelector('.v').textContent = pct(v / .2); render(); }));
+    const br = segs(row('테두리'), [['none', '없음'], ['thin', '얇게'], ['thick', '굵게']], S.border, (v) => set({ border: v }));
+    if (S.border !== 'none') colours(br, S.borderCol, ['#ffffff', '#000000', ...SW.slice(1)], (c) => set({ borderCol: c }));
+    gc.append(br);
+    gc.append(colours(row('구분선 색'), S.rule, ['#ffffff', '#e9e2d0', ...SW.slice(1, 6)], (c) => set({ rule: c })).appendChild(el('<div class="note">일정·알림 카드 안의 가는 선. 지금은 신문 1면에만 있던 것.</div>')).parentNode);
+    gc.append(texRow('cardTex', 'cardTexAmt', '카드 질감'));
+
+    // text
+    const gt = $('g-text'); gt.replaceChildren();
+    gt.append(colours(row('글자 색'), S.ink, ['#ffffff', '#f2ecff', '#e9e2d0', '#2a2620', ...SW.slice(1)], (c) => set({ ink: c })));
+    gt.append(colours(row('강조 색'), S.accent, SW, (c) => set({ accent: c })));
+    const fr = row('글꼴');
+    const fc = el('<div class="chips"></div>');
+    Object.keys(FONTS).forEach((f) => { const b = el(`<button type="button" class="chip" aria-pressed="${S.font === f}" style="font-family:${FONTS[f]}">${f}</button>`); b.onclick = () => set({ font: f }); fc.append(b); });
+    fr.append(fc); fr.append(el('<div class="note">카드 글자와 날짜 줄만 바뀌어요. 시계 숫자는 시계 꾸미기에서 따로 정해요.</div>'));
+    gt.append(fr);
+    gt.append(segs(row('글자 두께'), Object.keys(WEIGHTS).map((w) => [w, w]), S.weight, (v) => set({ weight: v })));
+    const gr = row('글자 빛 번짐', S.textGlow ? pct(S.textGlow) : '끔');
+    gt.append(slider(gr, S.textGlow, 0, 1, .05, (v) => { S.textGlow = v; gr.querySelector('.v').textContent = v ? pct(v) : '끔'; render(); }));
+    gr.append(el('<div class="note">글자가 네온관처럼 빛나요. 지금은 네온·터미널에만 있던 것.</div>'));
+
+    // variant / tabs
+    document.querySelectorAll('[data-g]').forEach((g) => g.classList.toggle('hidden-g', variant === 'B' && g.dataset.g !== tab));
+    document.querySelectorAll('[data-g] .sec-t').forEach((t) => (t.hidden = variant === 'B'));
+    $('tabs').hidden = variant !== 'B';
+    $('tabs').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.dataset.tab === tab));
+    $('base').querySelectorAll('button').forEach((b) => b.setAttribute('aria-pressed', b.textContent === S.baseName));
+    $('flowat').replaceChildren(...['아침', '낮', '저녁'].map((l, i) => { const b = el(`<button type="button" class="chip" aria-pressed="${S.flowAt === i}">${l}</button>`); b.onclick = () => set({ flowAt: i }); return b; }));
+    render();
+  }
+
+  // ---- static parts ----
+  Object.keys(BASE).forEach((n) => { const b = el(`<button type="button" class="chip">${n}</button>`); b.onclick = () => { prev = S; S = load(n); build(); }; $('base').append(b); });
+  $('shuffle').onclick = () => {
+    prev = JSON.parse(JSON.stringify(S));
+    const r = Math.random, h = r() * 360 // shuffle below, pop = (h + 30 + r() * 120) % 360, light = lum(S.bg) > .4 && S.bgType === 'solid';
+    for (let i = 0; i < 30; i++) {
+      const bg = light ? hsl(h, .3, .9) : hsl(h, .35, .06), ink = light ? hsl(h, .3, .12) : hsl(h, .4, .94);
+      const n = { bg, g: [hsl(h, .4, .13), hsl((h + 20) % 360, .35, .2), hsl(pop, .35, .22)], glow: hsl(h, .6, .55), card: light ? hsl(h, .25, .84) : hsl(h, .25, .14), ink, accent: light ? hsl(pop, .7, .32) : hsl(pop, .85, .72), borderCol: hsl(pop, .5, .6) };
+      const c = (lum(n.ink) + .05) / (lum(n.bg) + .05); if (Math.max(c, 1 / c) >= 4.5) { Object.assign(S, n); break; }
+    }
+    build();
+  };
+  $('undo').onclick = () => { if (prev) { S = prev; prev = null; build(); } };
+  let saved = 0;
+  $('save').onclick = () => { saved++; $('toast').style.color = '#6fdc86'; $('toast').textContent = `'내 테마 ${saved}'로 저장했어요. 테마 줄 맨 앞에 붙어요.`; strip(); };
+  document.querySelectorAll('[data-var]').forEach((b) => (b.onclick = () => { variant = b.dataset.var; document.querySelectorAll('[data-var]').forEach((x) => x.setAttribute('aria-pressed', x === b)); build(); }));
+  $('tabs').querySelectorAll('button').forEach((b) => (b.onclick = () => { tab = b.dataset.tab; build(); }));
+
+  // screen 1: theme strip + background chips
+  const thumb = (n) => { const t = { ...DEF, ...BASE[n] }; const bg = t.bgType === 'grad' ? `linear-gradient(${t.g.join(',')})` : t.bgType === 'glow' ? `radial-gradient(70% 90% at ${t.glowAt[0] * 100}% ${t.glowAt[1] * 100}%, ${rgba(t.glow, .7)}, transparent 70%), ${t.bg}` : t.bg; return bg; };
+  let picked = '무드등';
+  function strip() {
+    const s = $('strip'); s.replaceChildren();
+    for (let i = saved; i >= 1; i--) { const b = el(`<button type="button" class="tile" aria-pressed="false"><span style="background:${thumb('무드등')}"></span>내 테마 ${i}</button>`); s.append(b); }
+    Object.keys(BASE).forEach((n) => { const b = el(`<button type="button" class="tile" aria-pressed="${n === picked}"><span style="background:${thumb(n)}"></span>${n}</button>`); b.onclick = () => { picked = n; strip(); }; s.append(b); });
+    const add = el('<a class="tile add" href="#custom"><span>＋</span>사용자 지정</a>'); add.style.textDecoration = 'none'; s.append(add);
+  }
+  strip();
+  ['테마 기본', '순검정', '그래파이트', '미드나잇', '앰버', '오로라', '시간 따라', '사진 흐림'].forEach((n, i) => { const b = el(`<button type="button" class="chip" aria-pressed="${i === 0}">${n}</button>`); b.onclick = () => $('s1bg').querySelectorAll('.chip').forEach((x) => x.setAttribute('aria-pressed', x === b)); $('s1bg').append(b); });
+  $('s1size').querySelectorAll('button').forEach((b) => (b.onclick = () => $('s1size').querySelectorAll('button').forEach((x) => x.setAttribute('aria-pressed', x === b))));
+
+  // texture gallery
+  Object.entries(TEX).forEach(([k, l]) => {
+    const u = k === 'none' ? 'none' : `url(${TEXURL[k]})`;
+    const g = el(`<div class="gt"><div class="sq"><i style="background-image:${u};mix-blend-mode:overlay;opacity:.8"></i><div class="in"><i style="background-image:${u};mix-blend-mode:overlay;opacity:.8"></i></div></div><b>${l}</b><p>${TEX_NOTE[k]}</p></div>`);
+    g.querySelector('.sq').style.background = `radial-gradient(70% 80% at 30% 30%, rgba(170,136,254,.55), transparent 70%), #1a1430`;
+    $('gal').append(g);
+  });
+
+  build();
+})();
+</script>
