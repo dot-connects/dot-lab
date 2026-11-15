@@ -228,7 +228,8 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
         <ul style="margin:0;padding-left:1.1em;line-height:1.75;color:var(--muted);font-size:.9rem">
           <li><b style="color:var(--fg)">추천 줄</b>: 폰에 깔린 것만 — 삼성 노트, 삼성 캘린더, Keep, Google, 날씨.</li>
           <li><b style="color:var(--fg)">앱별 묶음</b>: 아이콘과 이름을 누르면 그 앱의 위젯이 미리보기로 펼쳐져요. 검색도 돼요.</li>
-          <li><b style="color:var(--fg)">칸에 맞는 것 먼저</b>: 칸보다 큰 위젯은 흐리게 '칸보다 커요'.</li>
+          <li><b style="color:var(--fg)">칸에 들어가는 위젯만</b>: 위젯마다 정해진 최소 크기가 있어요. 그게 칸보다 크면 목록에서 빼요. 맨 아래 '더 큰 위젯 N개는 숨겼어요'.</li>
+          <li><b style="color:var(--fg)">놓이는 크기</b>: 늘어나는 위젯은 칸을 꽉 채우고, 크기가 고정된 위젯은 자기 크기로 칸 가운데에 놓여요.</li>
           <li><b style="color:var(--fg)">한 번 누르면 끝</b>: 칸 크기에 맞춰 놓이고 바로 보드로 돌아와요.</li>
           <li><b style="color:var(--fg)">길게 누르기</b>: 빈 칸은 위젯 고르기, 놓인 위젯은 위젯 설정 · 바꾸기 · 보이는 모습 · 빼기.</li>
           <li>화면을 돌리거나 폴드를 펼쳐도 고르던 게 날아가지 않아요.</li>
@@ -306,10 +307,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     let html = '';
     if (rec.length) html += `<section><p class="sec-t">추천</p><div class="recs">${rec.map(([a, w]) => tile(a, w, true)).join('')}</div></section>`;
     const groups = APPS.filter((a) => a.widgets.some((w) => hit(a, w)));
-    html += `<section><p class="sec-t">앱별</p><div style="display:grid;gap:8px">${groups.map((a) => `<div class="app" ${q || a.id === 'notes' ? 'open' : ''} data-app><button type="button" class="app-h">${icon(a)}${a.ko}<span class="c">위젯 ${a.widgets.length}개</span><span class="chev">›</span></button><div class="app-b">${a.widgets.filter((w) => hit(a, w)).map((w) => tile(a, w, false)).join('')}</div></div>`).join('')}
+    html += `<section><p class="sec-t">앱별</p><div style="display:grid;gap:8px">${groups.map((a) => `<div class="app" ${q || a.id === 'notes' ? 'open' : ''} data-app><button type="button" class="app-h">${icon(a)}${a.ko}<span class="c">위젯 ${a.widgets.filter((w) => !w[3]).length}개</span><span class="chev">›</span></button><div class="app-b">${a.widgets.filter((w) => !w[3] && hit(a, w)).map((w) => tile(a, w, false)).join('')}</div></div>`).join('')}
       ${OTHERS.filter((o) => !q || o[0].toLowerCase().includes(q)).map((o) => `<div class="app" data-app><button type="button" class="app-h"><i style="background:${o[2]};color:${o[3]}">${o[1]}</i>${o[0]}<span class="c">위젯 ${o[4]}개</span><span class="chev">›</span></button></div>`).join('')}</div></section>`;
     if (!rec.length && !groups.length) html = '<p class="hint">찾는 위젯이 없어요. 앱 이름으로 찾아보세요.</p>';
-    html += '<p class="hint">칸보다 큰 위젯은 흐리게 보여요. 칸을 넓히면 쓸 수 있어요.</p>';
+    const hidden = APPS.reduce((n, a) => n + a.widgets.filter((w) => w[3]).length, 0);
+    html += `<p class="hint">이 칸(4×2)에 들어가는 위젯만 보여요. 더 큰 위젯 ${hidden}개는 숨겼어요. 칸을 넓히면 보여요.</p>`;
     $('scroll').innerHTML = html;
     $('scroll').querySelectorAll('[data-app] .app-h').forEach((h) => (h.onclick = () => { const a = h.parentElement; a.toggleAttribute('open'); }));
   }

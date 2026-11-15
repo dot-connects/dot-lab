@@ -173,7 +173,7 @@ Theme strip, TopPanel chips, docs and shots drop the three. TDD for the mapping.
    - Replace the AlertDialog (SettingsActivity.kt:132) with a Compose sheet "위젯 고르기": search field; "추천" row of
      installed packages only (Samsung Notes com.samsung.android.app.notes, Samsung Calendar com.samsung.android.calendar,
      Keep, Google, weather); then grouped by app (icon + name, tap to expand) with previews (getWidgetPreview on 15+,
-     previewLayout, previewImage, icon); widgets that fit the slot first, larger ones dimmed "칸보다 커요".
+     previewLayout, previewImage, icon); only widgets whose minWidth/minHeight (minResizeWidth/Height when resizable) fit the slot are listed (operator 11-15); a last line "더 큰 위젯 N개는 숨겼어요. 칸을 넓히면 보여요". Placed: resizable widgets fill the slot, fixed-size ones sit centred at their own size.
    - One tap: allocate + bind with EXTRA_APPWIDGET_OPTIONS (slot size dp); configure only when required
      (skip when configuration_optional + reconfigurable); success closes the sheets back to the board.
    - Before the first system bind dialog one line: "다음 화면에서 '항상 허용'을 체크하면 이후엔 안 물어봐요".
