@@ -110,33 +110,36 @@ Review: /plan-review round 1 (4 lenses) → this revision; findings and answers 
   (SOLID: BG; GRADIENT: the 3 stops; GLOW: BG + GLOW); never bgKind, shapes, fonts, textures.
 - Known gap (Low): textures are not in `Contrast.warnings`; 질감 정도 capped at 0.8 to keep small text readable.
 
-## Part D — 기본 테마 다듬기 (operator picks 11-15, mockup `settings-r10/theme-polish.html`)
+## Part D — 테마 7개 (operator 11-15; mockup `settings-r10/theme-lineup.html`, picks below)
 
-Token changes in `ThemeTokens.kt` (`make(...)`), values exactly as the mockup's chosen column. Unchanged: 종이 (지금).
-Fonts, digit styles and shapes stay. Glow tuples are (colour, alpha, centre x, y, size) as in the mockup.
+**Lineup.** `Theme` keeps 7 entries: IPHONE 기본, DAYPAPER 종이, RADIO 라디오, MOODLIGHT 무드등, SKY 하늘, NEON 네온,
+TERMINAL 터미널. PAPER (신문 1면), CANDLE (촛불), FLIP (플립 시계) are removed.
+**Decode mapping (every version, so old saves and 내 테마 never fail):** theme name PAPER → DAYPAPER, CANDLE → MOODLIGHT,
+FLIP → IPHONE; for a stored *current* theme FLIP the digital clock style gets the FLIP face font/effect it showed
+(nearest: `DigitStyle.FLIP` via the clock face FLIP if the board's clock face is the theme default — implementer checks
+what FLIP drew and keeps the look as close as the faces allow); CANDLE → MOODLIGHT with `glowShape = SUNSET` and the
+candle colours as its edit (so it looks like the candle). Edits and 내 테마 on removed bases move to the mapped base.
+Theme strip, TopPanel chips, docs and shots drop the three. TDD for the mapping.
 
-| Theme | Pick | bg | glow(s) | ink | accent | plate (alpha) | radius px in mockup |
-|---|---|---|---|---|---|---|---|
-| 기본 IPHONE | 다듬기 | #000000 | — | #F5F5F7 | #FF9F0A | #1C1C1E (1), plate2 #2C2C2E | 16 |
-| 신문 1면 PAPER | 다듬기 | #11100D | — | #F2EADA | #E8BE62 | RULE | 0 |
-| 무드등 MOODLIGHT | 다듬기 | #120D0A | #FF9A4D .30 at .3,.38 size 1.0 | #FFF3E4 | #FFC27A | #2A1E16 (.72), plate2 one step lighter | 20 |
-| 촛불 CANDLE | 과감하게 | #080504 | #FF7A2E .34 at .5,1.12 size 1.05 + #FFD27A .22 at .5,1.0 size .45 | #F7E6CF | #FFC070 | #FFCD96 (.08) | 16 |
-| 플립 FLIP | 과감하게 | #1A1A1A | — | #F5F1E8 | #F5C400 | #2E2E2E (1), plate2 #383838 | 10 |
-| 하늘 SKY | 과감하게 | #0E1E46 → #4B3F86 → #B3605E | — | #FFFFFF | #FFE1B0 | dark glass #0E1030 (.30), plate2 (.38) | 20 |
-| 브라운 라디오 RADIO | 과감하게 | #CDC9C1 | — | #22201C | #C2470A (shape and text) | #F3F1ED (1), plate2 #E7E3DC | 14 |
-| 네온 NEON | 다듬기 | #05040C | #3A1E6E .55 at .25,.4 size .9 | #7DF9FF | #FF5EDB | OUTLINE | 14 |
-| 터미널 TERMINAL | 다듬기 | #04100A | #0F3A1E .6 at .5,.5 size 1.1 | #5CF28A | #FFB000 | OUTLINE | 3 |
+**Picks and token values** (from the Fable lineup table; ratios = fraction of the card's short side):
 
-- Radius: convert the mockup px (board ~ 300 px tall) to the token ratio by the same factor as today's values
-  (keep each theme's ratio change proportional: new = old × mockup_new / mockup_old).
-- 촛불's second, smaller yellow glow needs `BgSpec.glow2: Color?` (+ `glow2At`, `glow2Size`): a second colour, drawn after
-  the first. TWIN keeps using glow2At with the first colour.
-- 라디오 과감하게 "초록 표시등": the derived `green` role is pinned to #2F7D4F (still checked ≥ 3:1).
-- Night, onDark twins and the editor's `defaultFlow` follow automatically from the tokens.
-- Checks: TokenContrastTest (ink 4.5, ink2 3, accent text 4.5, roles 3) must pass with the new values; where one fails,
-  move only that colour's lightness until it passes and note it. Re-record the board/clock shots of the 9 changed themes
-  (IPHONE first, then one run per changed theme), committed separately as "theme polish".
-- Order: after step 2's baseline diff (so the diff checks only the A3 drawing), before A4.
+| Theme | Pick | Values |
+|---|---|---|
+| 기본 | 지금 | unchanged |
+| 종이 | 다듬기 | bg #F2EBDD + 종이결 .6 · ink #1F1B16, ink2 .78 · accent #A6360A (text same) · plate RULE, line thin #1F1B16 α.55 · radius 0 · card font 명조 · digits Source Serif 4 600 · roles sun #8F6200, red #B3261E, green #2F6B45 |
+| 라디오 | 과감하게 | bg gradient #D8D6D1 → #C9C7C1 → #B7B4AD + 헤어라인 금속 .45 · ink #1A1917, ink2 .68 · accent #E8590C, text #A83C08 · plate FILL #EEECE7 α1 + 헤어라인 금속 .3, border thin #1A1917 α.3 · radius .035 · digits Inter 700, tracking −.045 em · roles #A86F00 / #D2500A / #2E7D4F |
+| 무드등 | 다듬기 (둥근) | bg #120D0A · glow #FF9A4D α.30 at (.3,.38) size 1.0 · ink #FFF3E4, ink2 .66 · accent #FFC27A · plate GLASS #2A1E16 α.55 + 서리 유리 .5, border thin #FFD9B0 α.12 · radius .17 · digits Outfit 300 · roles #FFD27A / #FF8566 / #C7DB8E |
+| 하늘 | 다듬기 | stops #0E1E46 → #4B3F86 → #B3605E · ink #FFFFFF, ink2 .76 · accent #FFE1B0 · plate GLASS #0E1030 α.30, border thin #FFFFFF α.14 · radius .15 · digits Jost 300 · roles #FFE1B0 / #FFA08E / #A8E6C1 |
+| 네온 | 다듬기 | bg #05040C · glow #3A1E6E α.55 at (.25,.4) size .9 · ink #7DF9FF, ink2 .64 · accent #FF5EDB · OUTLINE thin ink α.9 + tube halo · radius .12 · digits Sofia 400 GLOW · card text glow weak (textGlow .3) · roles mono (accent) |
+| 터미널 | 과감하게 | bg #020A06 · glow #12452A α.55 at (.5,.5) size 1.25 · 스캔라인 .7 · ink #7CF7A0, ink2 .68 · accent #FFB000 · plate RULE, line thin #7CF7A0 α.5 · radius 0 · digits IBM Plex Mono 600 + weak glow · card text glow weak · card text: Pretendard with Latin/digit spans in IBM Plex Mono (numSpans with the mono family) · label icons replaced by a `>` prompt glyph · roles mono (accent) |
+
+- Glow tuples as the mockup draws them (radius = size × 70 % width / 90 % height, clear at 70 %) — map onto BgSpec
+  glowAt/glowSize so the board matches the mockup.
+- Jost is not bundled yet: add `jost` (already in res/font as a Latin subset — check) as a clock family if missing.
+- Roles: pinned per theme where listed (still ≥ 3:1 by TokenContrastTest); else derived as today.
+- Checks: TokenContrastTest must pass; a failing colour moves only its lightness, noted in the report. Board/clock shots
+  of the 6 changed themes re-recorded once each (IPHONE stays 0-diff), committed separately as "theme lineup".
+- Order: right after step 2 (A3 drawing, which supplies textures, borders, card fonts, glow2), before A4.
 
 ## Part B — 쉬운 설정
 

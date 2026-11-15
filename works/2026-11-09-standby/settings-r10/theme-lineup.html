@@ -1,0 +1,366 @@
+<title>StandBy 테마 라인업</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@200;300;400;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Gowun+Batang:wght@400;700&family=Sofia+Sans+Extra+Condensed:wght@400;600;700&family=Instrument+Serif:ital@1&family=Source+Serif+4:opsz,wght@8..60,600&family=Inter:wght@500;600;700&family=Outfit:wght@200;300&family=Jost:wght@200;300&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+/* Layout: one section per theme. Name + 성격 on top, then three phone screens (지금 / 다듬기 / 과감하게) with the
+   portrait of the picked one at the right edge; every size inside a screen is a multiple of --u (1% of its width),
+   so the same anatomy draws at any size. Picks collect at the end. */
+:root {
+  --bg: #e9e8e4; --fg: #16171a; --muted: #5a5c62; --line: #cfcec9; --chip: #f7f6f3; --accent: #1f4fc4; --bezel: #050506;
+  --ui: "IBM Plex Sans KR", "Gothic A1", system-ui, sans-serif;
+  --head: "Gowun Batang", "IBM Plex Sans KR", serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #0d0d0f; --fg: #ececec; --muted: #a3a4a9; --line: #2a2b2f; --chip: #18191c; --accent: #8fb0ff; --bezel: #000000; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #0d0d0f; --fg: #ececec; --muted: #a3a4a9; --line: #2a2b2f; --chip: #18191c; --accent: #8fb0ff; --bezel: #000000; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--ui); font-size: 15px; line-height: 1.6; }
+::selection { background: var(--accent); color: var(--bg); }
+.wrap { max-width: 1400px; margin: 0 auto; padding-block: 36px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 44px; }
+h1 { font: 700 2rem/1.25 var(--head); margin: 0; letter-spacing: -.01em; text-wrap: balance; }
+.lede { margin: 12px 0 0; color: var(--muted); max-width: 66ch; }
+.bulk { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 18px; color: var(--muted); font-size: .88rem; }
+.btn { font: 500 .88rem var(--ui); color: var(--fg); background: var(--chip); border: 1px solid var(--line); border-radius: 999px; padding: 7px 15px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+.btn:focus-visible, .opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+#list { display: grid; gap: 56px; }
+.theme { display: grid; gap: 16px; border-top: 1px solid var(--line); padding-top: 22px; }
+.th-h { display: grid; grid-template-columns: minmax(0, 11rem) minmax(0, 1fr); gap: 4px 24px; align-items: baseline; }
+.th-h h2 { font: 700 1.6rem/1.2 var(--head); margin: 0; }
+.th-h p { margin: 0; color: var(--muted); max-width: 62ch; }
+.row { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) minmax(0, .244fr); gap: 18px; align-items: start; }
+.row.x { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.xh { font: 600 .9rem var(--ui); margin: 10px 0 -6px; }
+.xh span { color: var(--muted); font-weight: 400; margin-left: 8px; }
+.opt { display: grid; gap: 9px; align-content: start; background: none; border: 0; padding: 0; color: inherit; font: inherit; text-align: left; min-width: 0; border-radius: 10px; }
+button.opt { cursor: pointer; }
+.cap { display: flex; gap: 8px; align-items: center; font-size: .9rem; min-width: 0; }
+.cap b { font-weight: 600; white-space: nowrap; }
+.cap .n { color: var(--muted); font-size: .78rem; font-variant-numeric: tabular-nums; margin-left: auto; white-space: nowrap; }
+.cap .n.bad { color: #c2362b; font-weight: 600; }
+.rb { width: 13px; height: 13px; border-radius: 50%; border: 1.5px solid var(--muted); flex: none; box-sizing: border-box; }
+.opt[aria-pressed="true"] .rb { border: 4px solid var(--accent); }
+.opt[aria-pressed="true"] .cap b { color: var(--accent); }
+.note { font-size: .86rem; line-height: 1.55; }
+.spec { color: var(--muted); font-size: .74rem; line-height: 1.55; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+
+/* ---- the phone screen ---- */
+.board { position: relative; aspect-ratio: 2.05 / 1; max-width: 100%; container-type: inline-size; border-radius: 4.4% / 9%; overflow: hidden; box-shadow: 0 0 0 3px var(--bezel), 0 0 0 4px rgba(128,128,128,.35), 0 18px 34px -16px rgba(0,0,0,.5); outline: 2px solid transparent; outline-offset: 7px; }
+.board.port { aspect-ratio: 1 / 2.05; border-radius: 9% / 4.4%; }
+.opt[aria-pressed="true"] .board { outline-color: var(--accent); }
+.bgl, .tex, .scr { position: absolute; inset: 0; }
+.tex { pointer-events: none; }
+.scr { --u: 1cqw; box-sizing: border-box; display: grid; grid-template-columns: 1.08fr 1fr; gap: calc(var(--u) * 3.6); padding: calc(var(--u) * 3.4) calc(var(--u) * 4.2); color: var(--ink); }
+.port .scr { --u: 2.05cqw; grid-template-columns: minmax(0, 1fr); align-content: center; gap: calc(var(--u) * 6); padding: calc(var(--u) * 6) calc(var(--u) * 2.7); }
+.clock { display: grid; align-content: center; justify-items: start; gap: calc(var(--u) * 2); min-width: 0; }
+.port .clock { justify-items: center; }
+.time { font-size: 16cqw; line-height: .84; white-space: nowrap; font-variant-numeric: lining-nums tabular-nums; font-feature-settings: "lnum", "tnum"; }
+.time span { display: inline-block; }
+.time i { font-style: inherit; position: relative; top: -.055em; }
+.date { font-family: var(--cf); font-weight: var(--kw); font-size: calc(var(--u) * 2.7); line-height: 1.3; color: var(--ink2); white-space: nowrap; }
+.date.top { align-self: start; justify-self: stretch; border-top: max(2px, calc(var(--u) * .34)) solid var(--ink); border-bottom: max(1px, calc(var(--u) * .14)) solid var(--ink); padding: .45em 0; color: var(--ink); letter-spacing: .04em; }
+.cards { display: grid; align-content: center; gap: calc(var(--u) * 1.5); min-width: 0; }
+.cards.colrule { border-left: max(1px, calc(var(--u) * .14)) solid var(--bc); padding-left: calc(var(--u) * 3.2); }
+.port .cards.colrule { border-left: 0; padding-left: 0; }
+.card { position: relative; display: grid; gap: calc(var(--u) * .45); padding: calc(var(--u) * 1.5) calc(var(--u) * 2.2); border-radius: var(--r); min-width: 0; font-family: var(--cf); text-shadow: var(--cg); box-sizing: border-box; }
+.card::before { content: ""; position: absolute; inset: 0; border-radius: inherit; background-image: var(--ctex); background-size: calc(var(--u) * 40); opacity: var(--ctexa); pointer-events: none; }
+.card > * { position: relative; }
+.p-fill, .p-glass { background: var(--pl); border: var(--bw) solid var(--bc); }
+.p-glass { -webkit-backdrop-filter: blur(calc(var(--u) * 2.4)) saturate(1.25); backdrop-filter: blur(calc(var(--u) * 2.4)) saturate(1.25); }
+.p-outline { background: var(--pl); border: var(--bw) solid var(--bc); box-shadow: var(--tube); }
+.p-rule { border-top: var(--bw) solid var(--bc); border-radius: 0; padding-inline: 0; padding-bottom: calc(var(--u) * .6); }
+.k { display: flex; justify-content: space-between; align-items: center; gap: calc(var(--u) * 1.5); font-size: calc(var(--u) * 2.45); font-weight: var(--kw); line-height: 1.3; color: var(--ink2); white-space: nowrap; min-width: 0; }
+.k b { font-weight: inherit; display: flex; align-items: center; gap: .4em; flex: none; }
+.k > span { overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.ic { display: inline-grid; place-items: center; width: 1.05em; height: 1.05em; text-shadow: none; }
+.ic svg { width: 100%; height: 100%; display: block; }
+.m { font-size: calc(var(--u) * 3.75); font-weight: var(--cw); line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; letter-spacing: -.005em; }
+.m em { font-style: normal; color: var(--acct); }
+.bar { height: max(2px, calc(var(--u) * .55)); border-radius: var(--br); background: var(--track); overflow: hidden; margin-top: calc(var(--u) * .5); }
+.bar i { display: block; height: 100%; width: 41%; border-radius: var(--br); }
+
+.port-fig { display: grid; gap: 9px; margin: 0; min-width: 0; }
+.port-fig figcaption { font-size: .9rem; color: var(--muted); white-space: nowrap; }
+.sum { display: grid; gap: 12px; border-top: 1px solid var(--line); padding-top: 22px; }
+.sum h2 { font: 700 1.6rem/1.2 var(--head); margin: 0; }
+.sum pre { margin: 0; white-space: pre-wrap; background: var(--chip); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font: 500 .95rem/1.75 var(--ui); max-width: 40rem; }
+.sum .btn { justify-self: start; }
+@media (max-width: 900px) {
+  .th-h { grid-template-columns: minmax(0, 1fr); }
+  .row { grid-template-columns: minmax(0, 1fr); gap: 26px; }
+  .row.x { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .port-fig { width: min(46%, 200px); }
+}
+</style>
+
+<div class="wrap">
+  <header>
+    <h1>StandBy 테마 라인업</h1>
+    <p class="lede">테마를 7개로 줄이고, 색만이 아니라 재질·글꼴·카드 모양까지 서로 다르게 다시 잡았습니다. 테마마다 <b>지금</b>, <b>다듬기</b>, <b>과감하게</b> 세 화면이 있고, 누르면 오른쪽 세로 화면이 그 안으로 바뀝니다. 고른 것은 맨 아래 '고른 안'에 모입니다. 화면 위 숫자는 카드 글자와 강조색의 대비이고 4.5 이상이면 멀리서도 읽힙니다.</p>
+    <div class="bulk"><span>한 번에 고르기</span><button type="button" class="btn" data-all="0">전부 지금</button><button type="button" class="btn" data-all="1">전부 다듬기</button><button type="button" class="btn" data-all="2">전부 과감하게</button></div>
+  </header>
+  <div id="list"></div>
+  <section class="sum" aria-labelledby="sum-h">
+    <h2 id="sum-h">고른 안</h2>
+    <pre id="sum"></pre>
+    <button type="button" class="btn" id="copy">복사</button>
+  </section>
+</div>
+
+<script>
+// digit fonts (the app's clock fonts) and card fonts (고딕 / 명조 / 고정폭)
+const F = {
+  sofia: { css: "'Sofia Sans Extra Condensed', 'Arial Narrow', sans-serif", n: 'Sofia Sans Extra Condensed' },
+  instr: { css: "'Instrument Serif', Georgia, serif", n: 'Instrument Serif italic', it: 1 },
+  sserif: { css: "'Source Serif 4', Georgia, serif", n: 'Source Serif 4' },
+  inter: { css: "'Inter', system-ui, sans-serif", n: 'Inter' },
+  outfit: { css: "'Outfit', system-ui, sans-serif", n: 'Outfit' },
+  jost: { css: "'Jost', system-ui, sans-serif", n: 'Jost' },
+  mono: { css: "'IBM Plex Mono', ui-monospace, monospace", n: 'IBM Plex Mono' },
+  gothic: { css: "'Gothic A1', system-ui, sans-serif", n: 'Pretendard' },
+};
+const CF = {
+  gothic: { css: "'Gothic A1', system-ui, sans-serif", n: '고딕', k: 400, m: 600 },
+  batang: { css: "'Gowun Batang', 'Gothic A1', serif", n: '명조', k: 400, m: 700 },
+  mono: { css: "'IBM Plex Mono', 'IBM Plex Sans KR', monospace", n: '고정폭', k: 500, m: 600 },
+};
+const IOS = { sun: '#FFD60A', red: '#FF453A', green: '#30D158' }, LIGHT = { sun: '#9A6A00', red: '#C2362B', green: '#2F7D4F' };
+const WARM = { sun: '#FFD27A', red: '#FF8566', green: '#C7DB8E' };
+
+// v: bg (colour or 3 stops) · glows [[colour, alpha, x, y, size]] · ink · ink2 (alpha) · accent (shapes) · accentText ·
+// plate [colour, alpha] · style fill/glass/outline/rule · border [colour, alpha, thin|thick] · r (fraction of the card's
+// short side; rmin = today's dp floor, in --u) · tex/cardTex [kind, amount] · digit [font, weight] · card font · roles
+const T = [
+  { name: '기본', why: '아이폰 StandBy의 문법 그대로입니다. 완전한 검정 위에 중립 회색 카드, 길쭉한 고딕 숫자. 색은 주황 한 가지만 씁니다.',
+    v: [
+      { bg: '#000000', ink: '#F6EFE6', ink2: .62, accent: '#FFAD5C', plate: ['#1C1A18', 1], style: 'fill', r: .075, rmin: 1.4, digit: ['sofia', 600], card: 'gothic', roles: IOS,
+        note: '카드가 갈색 기운이라 검정 위에서 탁합니다. 강조는 살구색.' },
+      { bg: '#000000', ink: '#F5F5F7', ink2: .60, accent: '#FF9F0A', plate: ['#1C1C1E', 1], style: 'fill', r: .13, digit: ['sofia', 600], card: 'gothic', roles: IOS,
+        note: '카드를 아이폰과 같은 중립 회색으로, 강조는 맑은 주황. 모서리를 조금 더 둥글게.' },
+      { bg: '#000000', ink: '#FFFFFF', ink2: .58, accent: '#FF9F0A', plate: ['#121214', 1], style: 'fill', border: ['#FFFFFF', .11, 'thin'], r: .2, digit: ['sofia', 700], colon: '#FF9F0A', card: 'gothic', roles: IOS,
+        note: '카드를 더 어둡게 가라앉히고 가장자리에 밝은 선 한 줄. 숫자는 굵게, 콜론만 주황.', extra: '콜론 색' },
+    ] },
+  { name: '종이', why: '신문 1면과 종이를 하나로 합쳤습니다. 결이 비치는 크림색 종이에 명조 글자, 카드는 상자 대신 구분선으로 나눈 단입니다.',
+    v: [
+      { bg: '#F3EEE4', ink: '#1D1A16', ink2: .60, accent: '#B23A0B', accentText: '#A6360A', plate: ['#E8E1D3', 1], style: 'fill', r: .055, rmin: 1.2, digit: ['sserif', 600], card: 'gothic', roles: LIGHT,
+        note: '매끈한 크림 바탕에 한 단계 진한 상자 카드. 카드 글자는 고딕.' },
+      { bg: '#F2EBDD', tex: ['paper', .6], ink: '#1F1B16', ink2: .78, accent: '#A6360A', style: 'rule', border: ['#1F1B16', .55, 'thin'], r: 0, digit: ['sserif', 600], card: 'batang',
+        roles: { sun: '#8F6200', red: '#B3261E', green: '#2F6B45' },
+        note: '종이결을 깔고 상자를 없앴습니다. 카드는 위쪽 구분선 하나, 글자는 명조.' },
+      { bg: '#FFF1E5', tex: ['paper', .75], ink: '#262321', ink2: .78, accent: '#990F3D', style: 'rule', border: ['#262321', .9, 'thick'], r: 0, digit: ['instr', 400], card: 'batang', dateTop: true, colRule: true,
+        roles: { sun: '#8F6200', red: '#990F3D', green: '#0D7680' },
+        note: '연어색 경제지. 기울인 세리프 숫자, 굵은 구분선, 날짜를 제호처럼 위로 올리고 단 사이에 세로선.', extra: '날짜 위쪽 배치 · 세로 단선' },
+    ] },
+  { name: '라디오', why: '브라운 라디오의 앞판입니다. 가로 결이 있는 따뜻한 회색 금속에 밝은 패널을 반듯한 격자로 놓고, 주황 하나와 초록 표시등만 켭니다.',
+    v: [
+      { bg: '#D9D3C7', ink: '#2A2723', ink2: .62, accent: '#E8641C', accentText: '#9C3D0D', plate: ['#EBE6DC', 1], style: 'fill', r: .065, rmin: 1.4, digit: ['inter', 500], card: 'gothic', roles: LIGHT,
+        note: '회색이 누렇게 뜨고 재질감이 없습니다.' },
+      { bg: '#CDC9C1', tex: ['metal', .4], ink: '#22201C', ink2: .66, accent: '#C2470A', accentText: '#B03F08', plate: ['#F3F1ED', 1], style: 'fill', r: .09, digit: ['inter', 600], track: -.03, card: 'gothic',
+        roles: { sun: '#A86F00', red: '#C2470A', green: '#2F7D4F' },
+        note: '맑은 회색에 헤어라인 금속 결. 흰 패널, 진한 주황, 초록 표시등.' },
+      { bg: ['#D8D6D1', '#C9C7C1', '#B7B4AD'], tex: ['metal', .45], ink: '#1A1917', ink2: .68, accent: '#E8590C', accentText: '#A83C08', plate: ['#EEECE7', 1], cardTex: ['metal', .3], style: 'fill', border: ['#1A1917', .3, 'thin'], r: .035, digit: ['inter', 700], track: -.045, card: 'gothic',
+        roles: { sun: '#A86F00', red: '#D2500A', green: '#2E7D4F' },
+        note: '위에서 빛을 받은 알루미늄 판. 패널은 모서리를 거의 세우고 새긴 듯한 가는 테두리, 숫자는 더 굵고 촘촘하게.' },
+    ] },
+  { name: '무드등', why: '무드등과 촛불을 합쳤습니다. 큰 불빛이 방을 채우고 카드는 그 빛이 비치는 반투명 유리입니다. 불빛 모양은 아래에서 따로 고릅니다.',
+    v: [
+      { bg: '#14100C', glows: [['#FFAA5A', .18, .3, .4, .7]], ink: '#FFF2E2', ink2: .60, accent: '#FFB36B', plate: ['#2B2119', 1], style: 'fill', r: .09, rmin: 1.9, digit: ['gothic', 300], card: 'gothic', roles: IOS,
+        note: '불빛이 작고 옅어서 갈색 화면처럼 보입니다. 카드는 막힌 판.' },
+      { bg: '#120D0A', glows: [['#FF9A4D', .30, .3, .38, 1.0]], ink: '#FFF3E4', ink2: .66, accent: '#FFC27A', plate: ['#2A1E16', .55], cardTex: ['frost', .5], style: 'glass', border: ['#FFD9B0', .12, 'thin'], r: .17, digit: ['outfit', 300], card: 'gothic', roles: WARM,
+        note: '시계 뒤에 큰 호박색 불빛. 카드는 서리 유리, 숫자는 둥글고 가는 글꼴.' },
+      { bg: '#080504', glows: [['#FF7A2E', .34, .5, 1.12, 1.05], ['#FFD27A', .22, .5, 1.0, .45]], ink: '#F7E6CF', ink2: .66, accent: '#FFC070', plate: ['#FFCD96', .08], cardTex: ['frost', .6], style: 'glass', border: ['#FFCD96', .18, 'thin'], r: .17, digit: ['outfit', 200], dglow: ['soft', '#FF9A4D'], card: 'gothic', roles: WARM,
+        note: '아래에서 올라오는 촛불. 바깥 주황에 안쪽 노란 심지, 카드는 빛을 머금은 얇은 유리, 숫자에도 옅은 온기.' },
+    ],
+    x: { label: '불빛 모양', hint: '과감하게의 색으로 그렸습니다', base: 2, pick: 1, items: [
+      { name: '둥근', p: { glows: [['#FF8A3A', .32, .28, .38, 1.0], ['#FFD27A', .18, .28, .38, .4]] } },
+      { name: '노을', p: {} },
+      { name: '둘', p: { glows: [['#FF8A3A', .28, .22, .3, .85], ['#FF7A2E', .30, .74, 1.15, .9]] } },
+    ] } },
+  { name: '하늘', why: '해 질 녘 하늘입니다. 남색에서 보라, 복숭아색으로 내려오는 바탕에 어두운 유리 카드. 시간대에 따라 하늘색이 바뀝니다.',
+    v: [
+      { bg: ['#1B2A4A', '#31355A', '#552D32'], ink: '#FFFFFF', ink2: .70, accent: '#FFD29A', plate: ['#FFFFFF', .14], style: 'glass', r: .075, rmin: 1.4, digit: ['gothic', 200], card: 'gothic', roles: IOS,
+        note: '맨 아래가 밤색이라 노을보다 탁합니다. 카드는 흰 유리.' },
+      { bg: ['#0E1E46', '#4B3F86', '#B3605E'], ink: '#FFFFFF', ink2: .76, accent: '#FFE1B0', plate: ['#0E1030', .30], style: 'glass', border: ['#FFFFFF', .14, 'thin'], r: .15, digit: ['jost', 300], card: 'gothic',
+        roles: { sun: '#FFE1B0', red: '#FFA08E', green: '#A8E6C1' },
+        note: '남색, 보라, 복숭아 지평선. 카드는 어두운 유리, 숫자는 가볍고 반듯한 글꼴.' },
+      { bg: ['#0E1E46', '#4B3F86', '#B3605E'], glows: [['#FFB37A', .36, .2, 1.08, .95], ['#FF7F6E', .16, .85, 1.0, .7]], ink: '#FFFFFF', ink2: .78, accent: '#FFE1B0', plate: ['#0B0D2A', .38], cardTex: ['frost', .4], style: 'glass', border: ['#FFFFFF', .2, 'thin'], r: .24, digit: ['jost', 200], card: 'gothic',
+        roles: { sun: '#FFE1B0', red: '#FFA08E', green: '#A8E6C1' },
+        note: '방금 진 해의 잔광을 시계 아래에 더했습니다. 유리는 조금 더 짙고 서리가 끼고, 숫자는 한 단계 더 가늘게.' },
+    ],
+    x: { label: '하루 흐름', hint: '과감하게 기준 · 고르는 칸이 아니라 보기', base: 1, items: [
+      { name: '새벽', p: { bg: ['#16224E', '#5A5E9C', '#D9978A'], plate: ['#0E1030', .45] } },
+      { name: '낮', p: { bg: ['#1C5AA6', '#3D84C6', '#86B6DC'], plate: ['#0E1030', .45], accent: '#FFF0C9', roles: { sun: '#FFE08A', red: '#FFB3A6', green: '#B9F0D0' } } },
+      { name: '노을', p: {} },
+      { name: '밤', p: { bg: ['#040817', '#0C1638', '#1B2552'], plate: ['#FFFFFF', .08], accent: '#C9D6FF', roles: { sun: '#C9D6FF', red: '#FFA08E', green: '#A8E6C1' } } },
+    ] } },
+  { name: '네온', why: '밤 골목의 네온사인입니다. 보랏빛 어둠에 청록 유리관 숫자, 카드는 채우지 않고 빛나는 테두리만 둡니다.',
+    v: [
+      { bg: '#000000', ink: '#7DF9FF', ink2: .55, accent: '#FF4FD8', plate: ['#7DF9FF', 0], style: 'outline', border: ['#7DF9FF', .9, 'thin'], tube: '#7DF9FF', r: .07, rmin: 1.4, digit: ['sofia', 400], dglow: ['tube', '#7DF9FF'], card: 'gothic',
+        roles: { sun: '#FF4FD8', red: '#FF4FD8', green: '#FF4FD8' },
+        note: '순검정이라 관이 허공에 떠 있지 않고 붙어 보입니다.' },
+      { bg: '#05040C', glows: [['#3A1E6E', .55, .25, .4, .9]], ink: '#7DF9FF', ink2: .64, accent: '#FF5EDB', plate: ['#7DF9FF', 0], style: 'outline', border: ['#7DF9FF', .9, 'thin'], tube: '#7DF9FF', r: .12, digit: ['sofia', 400], dglow: ['tube', '#7DF9FF'], cglow: ['soft', '#7DF9FF'], card: 'gothic',
+        roles: { sun: '#FF5EDB', red: '#FF5EDB', green: '#FF5EDB' },
+        note: '보랏빛 어둠을 깔아 관이 벽 앞에 떠 보입니다. 카드 글자에도 옅은 빛.' },
+      { bg: '#05040C', glows: [['#3A1E6E', .50, .25, .4, .9], ['#6E1E5A', .32, .85, .9, .7]], ink: '#DDFBFF', ink2: .70, accent: '#FF5EDB', accentText: '#FF9BE8', plate: ['#FF5EDB', .05], style: 'outline', border: ['#FF5EDB', .95, 'thick'], tube: '#FF5EDB', r: .3, digit: ['outfit', 300], dglow: ['tube', '#2FE6FF'], cglow: ['soft', '#2FE6FF'], card: 'gothic',
+        roles: { sun: '#FF9BE8', red: '#FF5EDB', green: '#7DF9FF' },
+        note: '두 색 간판. 글자는 하얗게 탄 관 속심에 청록 빛무리, 카드는 굵게 구부린 분홍 관. 숫자는 한 줄로 구부린 듯 둥글게.', extra: '글자 빛 색을 글자색과 따로' },
+    ] },
+  { name: '터미널', why: '오래된 모니터입니다. 가로 주사선, 고정폭 글자, 각진 모서리, 초록 인광에 호박색 강조. 번지는 유리관은 쓰지 않습니다.',
+    v: [
+      { bg: '#050805', ink: '#59FF7A', ink2: .55, accent: '#FFB000', plate: ['#59FF7A', 0], style: 'outline', border: ['#59FF7A', .5, 'thin'], r: .012, rmin: .5, digit: ['mono', 500], track: .02, card: 'mono',
+        roles: { sun: '#FFB000', red: '#FFB000', green: '#FFB000' },
+        note: '초록이 형광펜처럼 날카롭고 화면이 매끈합니다.' },
+      { bg: '#04100A', glows: [['#0F3A1E', .6, .5, .5, 1.1]], tex: ['scan', .45], ink: '#5CF28A', ink2: .64, accent: '#FFB000', plate: ['#5CF28A', 0], style: 'outline', border: ['#5CF28A', .5, 'thin'], r: 0, digit: ['mono', 500], track: .02, dglow: ['soft', '#5CF28A'], card: 'mono',
+        roles: { sun: '#FFB000', red: '#FFB000', green: '#FFB000' },
+        note: '인광 초록으로 누그러뜨리고 주사선과 가운데 옅은 빛. 모서리는 완전히 각지게.' },
+      { bg: '#020A06', glows: [['#12452A', .55, .5, .5, 1.25]], tex: ['scan', .7], ink: '#7CF7A0', ink2: .68, accent: '#FFB000', style: 'rule', border: ['#7CF7A0', .5, 'thin'], r: 0, digit: ['mono', 600], track: .02, dglow: ['soft', '#5CF28A'], cglow: ['soft', '#5CF28A'], card: 'mono', prompt: true,
+        roles: { sun: '#FFB000', red: '#FFB000', green: '#FFB000' },
+        note: '상자를 없애고 출력 화면처럼 줄로만 나눴습니다. 아이콘 자리에 프롬프트 기호, 주사선은 더 진하게.', extra: '아이콘 대신 > 기호' },
+    ] },
+];
+
+// ---- colour maths ----
+const rgb = (h) => [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16));
+const lum = ([r, g, b]) => { const f = (v) => { v /= 255; return v <= .03928 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4; }; return .2126 * f(r) + .7152 * f(g) + .0722 * f(b); };
+const ratio = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+const over = (top, a, base) => top.map((c, i) => Math.round(c * a + base[i] * (1 - a)));
+const rgba = (h, a) => `rgba(${rgb(h).join(',')},${a})`;
+const mix = (a, b, t) => a.map((c, i) => Math.round(c + (b[i] - c) * t));
+// the card surface at a point of the screen: page (gradient + glows, as drawn below) under the plate
+function surface(v, x, y) {
+  let c = Array.isArray(v.bg) ? (y < .55 ? mix(rgb(v.bg[0]), rgb(v.bg[1]), y / .55) : mix(rgb(v.bg[1]), rgb(v.bg[2]), (y - .55) / .45)) : rgb(v.bg);
+  for (const [g, a, gx, gy, s] of [...(v.glows || [])].reverse()) { const d = Math.hypot((x - gx) / (s * .7), (y - gy) / (s * .9)); if (d < .7) c = over(rgb(g), a * (1 - d / .7), c); }
+  return v.plate && v.plate[1] ? over(rgb(v.plate[0]), v.plate[1], c) : c;
+}
+// worst case over the three card positions on the right
+function contrast(v) {
+  const pts = [.2, .5, .85].map((y) => surface(v, .76, y)), min = (h, a = 1) => Math.min(...pts.map((s) => ratio(over(rgb(h), a, s), s)));
+  return { ink: min(v.ink), ink2: min(v.ink, v.ink2), acc: min(v.accentText || v.accent), role: Math.min(...Object.values(v.roles).map((h) => min(h))) };
+}
+const hex = (v) => (Array.isArray(v) ? v.join(' → ') : v);
+function specText(v) {
+  const d = F[v.digit[0]], out = ['배경 ' + hex(v.bg)];
+  if (v.tex) out.push(`${TEXN[v.tex[0]]} ${v.tex[1]}`);
+  out.push(`글자 ${v.ink}`, `강조 ${v.accent}${v.accentText ? ' (글자 ' + v.accentText + ')' : ''}`);
+  out.push(`${{ fill: '판', glass: '유리', outline: '테두리선', rule: '구분선' }[v.style]}${v.plate && v.plate[1] ? ` ${v.plate[0]} ${v.plate[1]}` : ''}${v.cardTex ? ` + ${TEXN[v.cardTex[0]]} ${v.cardTex[1]}` : ''}`);
+  if (v.border) out.push(`선 ${v.border[2] === 'thick' ? '굵게' : '가늘게'} ${v.border[0]} ${v.border[1]}`);
+  out.push(`모서리 ${v.r}`, `${d.n} ${v.digit[1]}`, `카드 ${CF[v.card].n}`);
+  if (v.extra) out.push(`앱에 새로 필요: ${v.extra}`);
+  return out.join(' · ');
+}
+const TEXN = { paper: '종이결', metal: '헤어라인 금속', frost: '서리 유리', scan: '스캔라인' };
+/*DOM*/
+
+// ---- textures: drawn once into tiles (same recipes as custom-theme.html) ----
+const TEXURL = {};
+function makeTex(kind) {
+  const c = document.createElement('canvas'), N = 160; c.width = c.height = N; const x = c.getContext('2d');
+  let s = kind.length * 977 + 13; const r = () => (s = (s * 16807) % 2147483647) / 2147483647;
+  const px = (a) => { const d = x.createImageData(N, N); for (let i = 0; i < d.data.length; i += 4) { const v = r() > .5 ? 255 : 0; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = r() * a; } x.putImageData(d, 0, 0); };
+  if (kind === 'paper') { px(28); for (let i = 0; i < 160; i++) { const al = (.06 + r() * .1).toFixed(3); x.strokeStyle = r() > .5 ? `rgba(255,255,255,${al})` : `rgba(0,0,0,${al})`; x.lineWidth = .6; x.beginPath(); const a = r() * 6.28, l = 4 + r() * 12, sx = r() * N, sy = r() * N; x.moveTo(sx, sy); x.lineTo(sx + Math.cos(a) * l, sy + Math.sin(a) * l); x.stroke(); } }
+  else if (kind === 'metal') { for (let y = 0; y < N; y++) { x.fillStyle = `rgba(${r() > .5 ? '255,255,255' : '0,0,0'},${r() * .14})`; x.fillRect(0, y, N, 1); } }
+  else if (kind === 'scan') { for (let y = 0; y < N; y += 4) { x.fillStyle = 'rgba(0,0,0,.45)'; x.fillRect(0, y, N, 2); } }
+  else if (kind === 'frost') { x.filter = 'blur(3px)'; for (let i = 0; i < 90; i++) { x.fillStyle = `rgba(255,255,255,${r() * .16})`; x.beginPath(); x.arc(r() * N, r() * N, 3 + r() * 9, 0, 6.29); x.fill(); } x.filter = 'none'; px(20); }
+  return c.toDataURL();
+}
+Object.keys(TEXN).forEach((k) => (TEXURL[k] = makeTex(k)));
+
+const ICON = {
+  sun: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.7" fill="currentColor"/><path d="M12 1.8v2.8M12 19.4v2.8M1.8 12h2.8M19.4 12h2.8M4.8 4.8l2 2M17.2 17.2l2 2M4.8 19.2l2-2M17.2 6.8l2-2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" fill="none"/></svg>',
+  dot: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6.2" fill="currentColor"/></svg>',
+  play: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7.5 4.6v14.8L20 12z" fill="currentColor"/></svg>',
+};
+const textGlow = (g) => !g ? 'none' : g[0] === 'tube' ? `0 0 .05em ${rgba(g[1], .95)}, 0 0 .2em ${rgba(g[1], .55)}, 0 0 .5em ${rgba(g[1], .25)}` : `0 0 .09em ${rgba(g[1], .5)}, 0 0 .32em ${rgba(g[1], .22)}`;
+const LINE = { thin: 'max(1px, calc(var(--u) * .14))', thick: 'max(2px, calc(var(--u) * .36))' };
+
+function board(v, port) {
+  const b = document.createElement('div'); b.className = 'board' + (port ? ' port' : '');
+  const glows = (v.glows || []).map(([c, a, x, y, s]) => `radial-gradient(${s * 70}% ${s * 90}% at ${x * 100}% ${y * 100}%, ${rgba(c, a)}, transparent 70%)`);
+  const base = Array.isArray(v.bg) ? `linear-gradient(180deg, ${v.bg[0]}, ${v.bg[1]} 55%, ${v.bg[2]})` : v.bg;
+  const d = F[v.digit[0]], cf = CF[v.card], R = v.roles;
+  const vars = {
+    '--ink': v.ink, '--ink2': rgba(v.ink, v.ink2), '--acct': v.accentText || v.accent, '--cf': cf.css, '--kw': cf.k, '--cw': cf.m,
+    '--r': `max(calc(var(--u) * ${(v.r * 11.3).toFixed(2)}), calc(var(--u) * ${v.rmin || 0}))`, '--br': v.r < .02 ? '0px' : '99px',
+    '--bw': v.border ? LINE[v.border[2]] : '0px', '--bc': v.border ? rgba(v.border[0], v.border[1]) : 'transparent',
+    '--pl': v.plate ? rgba(v.plate[0], v.plate[1]) : 'transparent', '--track': rgba(v.ink, .18), '--cg': textGlow(v.cglow),
+    '--tube': v.tube ? `0 0 calc(var(--u) * .5) ${rgba(v.tube, .7)}, 0 0 calc(var(--u) * 2.2) ${rgba(v.tube, .4)}, inset 0 0 calc(var(--u) * 1.4) ${rgba(v.tube, .2)}` : 'none',
+    '--ctex': v.cardTex ? `url(${TEXURL[v.cardTex[0]]})` : 'none', '--ctexa': v.cardTex ? v.cardTex[1] : 0,
+  };
+  const ic = (k, col) => `<span class="ic" style="color:${col}">${v.prompt ? '&gt;' : ICON[k]}</span>`;
+  const card = (k, col, label, side, main, bar) => `<div class="card p-${v.style}"><div class="k"><b>${ic(k, col)}${label}</b><span>${side}</span></div><div class="m">${main}</div>${bar || ''}</div>`;
+  const date = `<div class="date${v.dateTop ? ' top' : ''}">11월 15일 일요일</div>`;
+  b.innerHTML = `<div class="bgl" style="background:${[...glows, base].join(',')}"></div>
+    ${v.tex ? `<div class="tex" style="background-image:url(${TEXURL[v.tex[0]]});opacity:${v.tex[1]}"></div>` : ''}
+    <div class="scr" style="${Object.entries(vars).map(([k, x]) => `${k}:${x}`).join(';')}">
+      <div class="clock">${v.dateTop ? date : ''}<div class="time" style="font-family:${d.css};font-weight:${v.digit[1]};font-style:${d.it ? 'italic;font-variant-numeric:lining-nums;font-feature-settings:normal' : 'normal'};letter-spacing:${v.track || 0}em;text-shadow:${textGlow(v.dglow)}"><span>10<i style="color:${v.colon || 'inherit'};margin-right:${d.it ? '-.09em' : 0}">:</i>09</span></div>${v.dateTop ? '' : date}</div>
+      <div class="cards${v.colRule ? ' colrule' : ''}">
+        ${card('sun', R.sun, '날씨', '최고 15° · 최저 6°', '맑음 12°')}
+        ${card('dot', R.red, '오늘 일정', '내일 · 엄마 생신', '<em>오후 3:00</em> 치과')}
+        ${card('play', R.green, '음악', '1:42 / 4:13', '밤편지', `<div class="bar"><i style="background:${R.green}"></i></div>`)}
+      </div>
+    </div>`;
+  return b;
+}
+// size the digits to their column: measured once per screen, kept in cqw so it follows any resize
+function fit(root) {
+  (root || document).querySelectorAll('.time').forEach((t) => {
+    const bd = t.closest('.board'), W = bd.clientWidth; if (!W) return;
+    t.style.fontSize = '10cqw';
+    const w = t.firstElementChild.getBoundingClientRect().width, col = t.parentElement.clientWidth, port = bd.classList.contains('port');
+    t.style.fontSize = Math.min(10 * (col * (port ? .9 : .97)) / w, port ? 62 : 29).toFixed(2) + 'cqw';
+  });
+}
+
+const LBL = ['지금', '다듬기', '과감하게'];
+const pick = T.map(() => 1), xpick = T.map((t) => (t.x && t.x.pick != null ? t.x.pick : null));
+const list = document.getElementById('list'), ports = [];
+T.forEach((t, ti) => {
+  const sec = document.createElement('section'); sec.className = 'theme'; sec.setAttribute('aria-label', t.name);
+  sec.innerHTML = `<div class="th-h"><h2>${t.name}</h2><p>${t.why}</p></div><div class="row"></div>`;
+  const row = sec.querySelector('.row');
+  t.v.forEach((v, vi) => {
+    const o = document.createElement('button'); o.type = 'button'; o.className = 'opt'; o.dataset.t = ti; o.dataset.v = vi;
+    const c = contrast(v), bad = c.ink < 4.5 || c.acc < 4.5;
+    o.innerHTML = `<div class="cap"><i class="rb"></i><b>${LBL[vi]}</b><span class="n${bad ? ' bad' : ''}">글자 ${c.ink.toFixed(1)} · 강조 ${c.acc.toFixed(1)}</span></div>`;
+    o.append(board(v));
+    o.insertAdjacentHTML('beforeend', `<div class="note">${v.note}</div><div class="spec">${specText(v)}</div>`);
+    o.onclick = () => { pick[ti] = vi; sync(); };
+    row.append(o);
+  });
+  const fig = document.createElement('figure'); fig.className = 'port-fig'; fig.innerHTML = '<figcaption>세로</figcaption><div></div>'; row.append(fig); ports[ti] = fig;
+  if (t.x) {
+    sec.insertAdjacentHTML('beforeend', `<div class="xh">${t.x.label}<span>${t.x.hint}</span></div><div class="row x"></div>`);
+    const xr = sec.querySelector('.row.x');
+    t.x.items.forEach((it, xi) => {
+      const v = { ...t.v[t.x.base], ...it.p }, c = contrast(v), pickable = t.x.pick != null;
+      const o = document.createElement(pickable ? 'button' : 'div'); o.className = 'opt';
+      if (pickable) { o.type = 'button'; o.dataset.xt = ti; o.dataset.xv = xi; o.onclick = () => { xpick[ti] = xi; sync(); }; }
+      o.innerHTML = `<div class="cap">${pickable ? '<i class="rb"></i>' : ''}<b>${it.name}</b><span class="n${c.ink < 4.5 || c.acc < 4.5 ? ' bad' : ''}">글자 ${c.ink.toFixed(1)} · 강조 ${c.acc.toFixed(1)}</span></div>`;
+      o.append(board(v));
+      if (it.p.bg || it.p.glows) o.insertAdjacentHTML('beforeend', `<div class="spec">${it.p.bg ? hex(it.p.bg) : it.p.glows.map((g) => g.join(' ')).join(' + ')}${it.p.plate ? ` · 유리 ${it.p.plate[0]} ${it.p.plate[1]}` : ''}</div>`);
+      xr.append(o);
+    });
+  }
+  list.append(sec);
+});
+function sync() {
+  document.querySelectorAll('.opt[data-t]').forEach((o) => o.setAttribute('aria-pressed', pick[+o.dataset.t] === +o.dataset.v));
+  document.querySelectorAll('.opt[data-xt]').forEach((o) => o.setAttribute('aria-pressed', xpick[+o.dataset.xt] === +o.dataset.xv));
+  T.forEach((t, ti) => {
+    const key = String(pick[ti]), fig = ports[ti]; if (fig.dataset.key === key) return;
+    fig.dataset.key = key; fig.firstElementChild.textContent = `세로 · ${LBL[pick[ti]]}`;
+    fig.lastElementChild.replaceWith(board(t.v[pick[ti]], true)); fit(fig);
+  });
+  document.getElementById('sum').textContent = T.map((t, i) => `${t.name}: ${LBL[pick[i]]}${xpick[i] != null ? `\n${t.name} ${t.x.label}: ${t.x.items[xpick[i]].name}` : ''}`).join('\n');
+  document.getElementById('copy').textContent = '복사';
+}
+document.querySelectorAll('[data-all]').forEach((b) => (b.onclick = () => { pick.fill(+b.dataset.all); sync(); }));
+document.getElementById('copy').onclick = async () => {
+  const pre = document.getElementById('sum');
+  try { await navigator.clipboard.writeText(pre.textContent); document.getElementById('copy').textContent = '복사했어요'; }
+  catch { const r = document.createRange(); r.selectNodeContents(pre); const s = getSelection(); s.removeAllRanges(); s.addRange(r); document.getElementById('copy').textContent = '선택했어요. 길게 눌러 복사'; }
+};
+sync(); fit();
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fit());
+addEventListener('load', () => fit());
+</script>
