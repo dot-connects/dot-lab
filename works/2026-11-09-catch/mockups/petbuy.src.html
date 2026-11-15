@@ -1,0 +1,141 @@
+<title>리얼뽑기 펫 사기와 앱 말풍선</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: section 1 = detail + pet settings (one design each, menus look A); section 2 = three bubble styles on a home screen */
+:root{--page:#eef1f4;--ink:#1d2430;--muted:#5b6574;--disp:"Jua","Gowun Dodum",system-ui,sans-serif;--body:"Gowun Dodum",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}
+body{background:var(--page);color:var(--ink);font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1{font-family:var(--disp);font-weight:400;font-size:26px;margin:0 0 6px}
+h2.sec{font-family:var(--disp);font-weight:400;font-size:21px;margin:30px 0 4px}
+.lead{color:var(--muted);margin:0 0 18px;max-width:64ch;line-height:1.6}
+.row{display:flex;flex-wrap:wrap;gap:22px}
+.item{width:min(300px,100%);flex:0 0 auto}
+.item h3{font-family:var(--disp);font-weight:400;font-size:18px;margin:12px 0 4px}
+.item p{color:var(--muted);margin:0;line-height:1.55;font-size:14px}
+.phone{position:relative;width:100%;aspect-ratio:9/19.5;border-radius:30px;overflow:hidden;box-shadow:0 0 0 6px #0b0e13,0 16px 36px rgba(0,0,0,.25)}
+/* menus look A */
+.A{background:linear-gradient(#bfe6ff 0 28%,#d9f2c9 28%);color:#24331f;font-family:var(--body)}
+.A .scr{position:absolute;inset:0;padding:30px 14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.pillb{align-self:flex-start;font-family:var(--disp);font-size:13px;background:#fffdf6;border:2.5px solid #24331f;border-radius:999px;padding:3px 10px}
+.ttl{font-family:var(--disp);font-size:26px;text-shadow:0 2px 0 #fff;line-height:1}
+.note{font-size:11px;color:#5d6b57}
+.panel{background:#fffdf6;border:2.5px solid #24331f;border-radius:16px;padding:9px 10px;box-shadow:0 3px 0 #24331f;display:flex;flex-direction:column;gap:7px}
+.panel b{font-family:var(--disp);font-weight:400;font-size:15px}
+.seg{display:flex;background:#e6f0dc;border:2.5px solid #24331f;border-radius:999px;padding:2px}
+.seg span{flex:1;text-align:center;font-family:var(--disp);font-size:13px;padding:4px 0;border-radius:999px}
+.seg .on{background:#ffd84d;border:2px solid #24331f}
+.btnp{text-align:center;font-family:var(--disp);font-size:14px;background:#fffdf6;border:2.5px solid #24331f;border-radius:12px;padding:6px 0;box-shadow:0 3px 0 #24331f}
+.thumbs{display:flex;gap:6px}
+.thumbs div{width:64px;height:64px;border-radius:10px;border:2px solid #24331f;background:repeating-conic-gradient(#f1f3ef 0 25%,#fff 0 50%) 0 0/10px 10px;display:grid;place-items:center}
+.thumbs img{width:52px}
+.buy{display:flex;align-items:center;gap:8px}
+.buy .pic{width:46px;height:46px;border-radius:10px;background:#e6f0dc;display:grid;place-items:center}
+.buy .pic img{width:38px}
+.buy .nm{flex:1;min-width:0;font-family:var(--disp);font-size:13px;white-space:nowrap}
+.buy .nm small{display:block;font-family:var(--body);font-size:10px;color:#5d6b57}
+.bbtn{font-family:var(--disp);font-size:12px;background:#ffd84d;border:2.5px solid #24331f;border-radius:999px;padding:4px 9px;box-shadow:0 2px 0 #24331f;white-space:nowrap}
+.done{font-family:var(--disp);font-size:12px;color:#3d7a2f;border:2px solid #3d7a2f;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.use{font-family:var(--disp);font-size:12px;border:2.5px solid #24331f;border-radius:999px;padding:3px 8px;background:#fffdf6;white-space:nowrap}
+.use.on{background:#7cc46b}
+.apps{display:flex;flex-wrap:wrap;gap:8px}
+.app{width:38px;text-align:center;font-size:9px;color:#24331f}
+.app i{display:block;width:34px;height:34px;margin:0 auto 2px;border-radius:10px;background:var(--c)}
+.app.add i{background:#e6f0dc;border:2px dashed #5d6b57;display:grid;place-items:center;font-style:normal;font-family:var(--disp);font-size:18px;color:#5d6b57}
+/* home screen */
+.home{background:linear-gradient(160deg,#5a6fb5,#a07fc4 60%,#e7a9b8)}
+.grid{position:absolute;left:18px;right:18px;top:60px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px 10px}
+.grid i{display:block;width:44px;height:44px;border-radius:13px;margin:0 auto;background:rgba(255,255,255,.28)}
+.dock{position:absolute;left:14px;right:14px;bottom:18px;height:62px;border-radius:22px;background:rgba(255,255,255,.22)}
+.pet{position:absolute;left:42%;bottom:92px;width:72px}
+.bub{position:absolute;font-family:var(--body)}
+/* bubble A: speech bubble with a 2-row icon grid and a tail to the pet */
+.bA{left:14%;right:14%;bottom:168px;background:#fffdf6;border:2.5px solid #24331f;border-radius:18px;padding:10px;box-shadow:0 3px 0 #24331f}
+.bA::after{content:"";position:absolute;left:52%;bottom:-13px;width:18px;height:18px;background:#fffdf6;border-right:2.5px solid #24331f;border-bottom:2.5px solid #24331f;transform:rotate(45deg)}
+.bA .apps{justify-content:center}
+/* bubble B: icons fanned in an arc over the pet's head */
+.fan{position:absolute;width:40px;height:40px;border-radius:12px;background:var(--c);box-shadow:0 0 0 2.5px #fffdf6,0 3px 6px rgba(0,0,0,.3)}
+/* bubble C: thought bubble (cloud) with small circles to the pet */
+.bC{left:10%;right:20%;bottom:190px;background:#fffdf6;border-radius:40px;padding:12px 14px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.bC .apps{justify-content:center}
+.dot{position:absolute;border-radius:50%;background:#fffdf6;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+</style>
+
+<h1>펫 사기 · 앱 말풍선 시안</h1>
+<p class="lead">1부는 상세 화면과 펫 설정의 새 배치입니다(메뉴 A안 그대로). 2부는 펫을 두 번 톡톡 눌렀을 때 홈 화면에 뜨는 앱 말풍선 세 가지입니다. 2부에서 하나 골라 주시고, 1부에 고칠 점이 있으면 말씀해 주세요. 사람 사진 대신 털뭉치 그림을 넣었습니다.</p>
+
+<h2 class="sec">1부. 상세 화면 · 펫 설정</h2>
+<div class="row">
+  <div class="item">
+    <div class="phone A"><div class="scr">
+      <span class="pillb">‹ 도감</span>
+      <div><div class="ttl">감자</div><div class="note">사람 · No.6 · 2026.11.15 뽑음</div></div>
+      <div class="panel"><b>미리 그려 보기</b>
+        <div class="seg"><span class="on">털뭉치</span><span>피규어</span></div>
+        <div class="btnp">그려 보기 · 오늘 5번 남음</div>
+        <div class="thumbs"><div><img src="IMG_monggeul"></div><div><img src="IMG_ppiyak"></div></div>
+      </div>
+      <div class="panel"><b>펫으로 사기</b>
+        <div class="buy"><span class="pic"><img src="IMG_monggeul"></span><span class="nm">털뭉치 펫<small>여섯 가지 동작</small></span><span class="done">구매 완료</span><span class="use on">펫으로</span></div>
+        <div class="buy"><span class="pic"><img src="IMG_ppiyak"></span><span class="nm">피규어 펫<small>여섯 가지 동작</small></span><span class="bbtn">500원</span></div>
+      </div>
+    </div></div>
+    <h3>상세 화면</h3>
+    <p>그려 본 그림은 배경 없이(바둑판은 투명 표시) 계속 남습니다. "펫 그림" 칸은 없애고, 털뭉치·피규어를 따로 500원에 삽니다. 산 것은 "구매 완료"로 바뀌고, 둘 다 샀으면 [펫으로] 중 하나를 고릅니다.</p>
+  </div>
+  <div class="item">
+    <div class="phone A"><div class="scr">
+      <span class="pillb">‹ 뽑기</span>
+      <div class="ttl">펫</div>
+      <div class="panel"><div style="display:flex;align-items:center"><b style="flex:1">펫 띄우기</b><span style="width:40px;height:22px;border-radius:99px;background:#7cc46b;border:2.5px solid #24331f"></span></div>
+        <div class="seg"><span class="on">홈 화면</span><span>항상</span></div></div>
+      <div class="panel"><b>두 번 톡톡 누르면</b>
+        <div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app add"><i>+</i>추가</span></div>
+        <div class="note">하나면 바로 열고, 여러 개면 말풍선으로 띄워요(최대 8개). 비워 두면 춤춰요.</div></div>
+      <div class="panel"><b>누구를 띄울까</b><div style="display:flex;gap:8px"><img src="IMG_monggeul" width="40"><img src="IMG_ppiyak" width="40" style="opacity:.5"></div></div>
+    </div></div>
+    <h3>펫 설정</h3>
+    <p>"두 번 톡톡 누르면" 칸을 새로 둡니다. [+ 추가]를 누르면 폰의 앱 목록에서 고르고, 길게 누르면 뺍니다. 누구를 띄울까의 사람·동물은 사진이 아니라 산 펫 그림으로 보입니다.</p>
+  </div>
+</div>
+
+<h2 class="sec">2부. 홈 화면의 앱 말풍선</h2>
+<div class="row">
+  <div class="item">
+    <div class="phone home">
+      <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="bub bA"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span><span class="app"><i style="--c:#111"></i>음악</span></div></div>
+      <img class="pet" src="IMG_monggeul">
+      <div class="dock"></div>
+    </div>
+    <h3>A. 말풍선 카드</h3>
+    <p>메뉴와 같은 잉크 외곽선 말풍선에 앱 아이콘과 이름이 줄지어 있고, 꼬리가 펫을 가리킵니다. 바깥을 누르면 닫힙니다.</p>
+  </div>
+  <div class="item">
+    <div class="phone home">
+      <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <span class="fan" style="--c:#ffcc00;left:22%;bottom:150px"></span>
+      <span class="fan" style="--c:#ff3d3d;left:34%;bottom:186px"></span>
+      <span class="fan" style="--c:#3ddc84;left:calc(46% + 9px);bottom:200px"></span>
+      <span class="fan" style="--c:#4c8bf5;right:28%;bottom:186px"></span>
+      <span class="fan" style="--c:#111;right:16%;bottom:150px"></span>
+      <img class="pet" src="IMG_monggeul">
+      <div class="dock"></div>
+    </div>
+    <h3>B. 머리 위 부채꼴</h3>
+    <p>아이콘만 펫 머리 위에 반원으로 톡톡 튀어나옵니다. 이름이 없어 가장 가볍지만, 앱이 많으면 작아집니다.</p>
+  </div>
+  <div class="item">
+    <div class="phone home">
+      <div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="bub bC"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span></div></div>
+      <span class="dot" style="width:16px;height:16px;left:44%;bottom:168px"></span>
+      <span class="dot" style="width:9px;height:9px;left:49%;bottom:154px"></span>
+      <img class="pet" src="IMG_monggeul">
+      <div class="dock"></div>
+    </div>
+    <h3>C. 생각 구름</h3>
+    <p>펫이 생각하는 것처럼 구름 말풍선에 동그라미 두 개가 이어집니다. 가장 귀엽지만 A보다 칸이 좁습니다.</p>
+  </div>
+</div>

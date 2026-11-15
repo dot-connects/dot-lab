@@ -21,7 +21,7 @@ class PetBrain(
     private val rnd: () -> Float,
 ) {
     enum class Zone { FLOOR, LEFT, RIGHT, BEHIND }
-    enum class Act { IDLE, WALK, THINK, SMILE, DANCE, SLEEP, CLIMB, HANG, FALL }
+    enum class Act { IDLE, WALK, THINK, SMILE, DANCE, SLEEP, CLIMB, HANG, FALL, DIZZY }
 
     var zone = zone; private set
     var act = Act.IDLE; private set
@@ -76,11 +76,11 @@ class PetBrain(
             Act.FALL -> {
                 vy += dtMs * GRAVITY
                 y = min(floorY, y + vy * dtMs)
-                if (y >= floorY) { vy = 0f; place(Zone.FLOOR) }
+                if (y >= floorY) { vy = 0f; place(Zone.FLOOR); start(Act.DIZZY, DIZZY_MS) }   // dropped: lands dizzy (operator 11-15)
                 return
             }
             Act.SLEEP -> return   // until touched
-            Act.SMILE, Act.DANCE -> if (t < len) return
+            Act.SMILE, Act.DANCE, Act.DIZZY -> if (t < len) return
             Act.WALK -> {
                 x += dir * WALK_SPEED * dtMs
                 if (x < size / 2 || x > w - size / 2) { dir = -dir; x = x.coerceIn(size / 2, w - size / 2) }
@@ -117,7 +117,7 @@ class PetBrain(
 
     /** Which of the six pet pictures to draw now. */
     fun frame(tMs: Float): String = when (act) {
-        Act.IDLE, Act.THINK, Act.HANG, Act.FALL -> "front"
+        Act.IDLE, Act.THINK, Act.HANG, Act.FALL, Act.DIZZY -> "front"
         Act.SMILE -> "smile"
         Act.DANCE -> if ((tMs / 360f).toInt() % 2 == 0) "front" else "smile"
         Act.WALK, Act.CLIMB -> if ((tMs / 170f).toInt() % 2 == 0) "walkA" else "walkB"
@@ -135,6 +135,7 @@ class PetBrain(
     }
 
     companion object {
+        const val DIZZY_MS = 1800f
         const val WALK_SPEED = 0.022f    // px/ms
         const val CLIMB_SPEED = 0.018f
         const val GRAVITY = 0.003f       // px/ms²

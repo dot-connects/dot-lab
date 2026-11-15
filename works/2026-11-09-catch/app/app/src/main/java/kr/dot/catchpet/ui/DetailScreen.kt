@@ -134,7 +134,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
         }
         AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
         if (e.ai.previews.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (p in e.ai.previews.asReversed()) rememberFile(e.id, p)?.let {
+            for (p in e.ai.previews.asReversed()) rememberFile(e.id, p, keyGreen = true)?.let {
                 Image(it, "그려 본 그림", Modifier.size(140.dp).clip(RoundedCornerShape(14.dp)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)),
                     contentScale = ContentScale.Crop)
             }

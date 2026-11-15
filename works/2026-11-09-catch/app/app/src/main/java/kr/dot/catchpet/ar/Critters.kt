@@ -214,7 +214,7 @@ class Critters(
                 val taken = live.map { it.az } + listOfNotNull(lastCaughtAz)
                 if (taken.all { abs(diff(az, it)) >= 20f }) break
             }
-            val dir = rnd.nextInt(8)
+            val dir = FACING[rnd.nextInt(FACING.size)]
             val pic = Frames.asset(ctx, id, "dir$dir")?.let(Frames::trim) ?: return
             // scene mode: every other spawn hides behind a bush, a tree or a grass clump just in front of it
             val n = spawns++
@@ -263,3 +263,6 @@ class Critters(
         fun diff(a: Float, b: Float): Float = ((a - b) % 360f + 540f) % 360f - 180f
     }
 }
+
+/** Directions a critter may face: front and a little aside, so its face shows (dir 3-5 are its back). */
+internal val FACING = intArrayOf(0, 0, 1, 7)

@@ -1,5 +1,6 @@
 package kr.dot.catchpet.ui
 
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.layout.Box
@@ -133,7 +134,7 @@ fun PetScreen(onBack: () -> Unit) {
 
         Panel("크기") {
             // three sizes, each shown at the size it will have on the home screen
-            val pic = pet?.let { rememberPose(it, "front") }
+            val pic = pet?.let { rememberPetFront(it) }
             Row(Modifier.fillMaxWidth().height(124.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.Bottom) {
                 for ((label, dp) in SIZES) {
                     val sel = kotlin.math.abs(size - dp) < 1f
@@ -164,7 +165,7 @@ fun PetScreen(onBack: () -> Unit) {
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
-                        rememberPose(e, "front")?.let { Image(it, e.name, Modifier.size(54.dp).alpha(if (sel) 1f else 0.6f), contentScale = ContentScale.Fit) }
+                        rememberPetFront(e)?.let { Image(it, e.name, Modifier.size(54.dp).alpha(if (sel) 1f else 0.6f), contentScale = ContentScale.Fit) }
                             ?: Spacer(Modifier.size(54.dp))
                         Text(e.name, fontFamily = Book.Display, fontSize = 13.sp, maxLines = 1)
                     }
@@ -210,4 +211,14 @@ private fun Developer(ctx: Context) {
         }
         Note("털뭉치를 실제 바닥에 붙여 둬요. 뽑기 화면에 들어가면 켜졌는지 알려 줘요.")
     }
+}
+
+/** The pet's front picture as the overlay draws it (critter asset or the bought sheet's first cell). */
+@Composable
+private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBitmap? {
+    val ctx = LocalContext.current
+    val v by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, e.id, e.ai.sheet) {
+        value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.Frames.load(ctx, e)?.get("front")?.asImageBitmap() }
+    }
+    return v
 }

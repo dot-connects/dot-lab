@@ -87,7 +87,7 @@ fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
 
 @Composable
 private fun DexCell(e: Dex.Entry, onClick: () -> Unit) {
-    val pic = rememberPose(e, e.poses.first())
+    val pic = rememberPose(e, if (e.critterId != null) "front" else e.poses.first())
     Column(
         Modifier.padding(bottom = Book.DROP).inkCard().clip(RoundedCornerShape(18.dp)).clickable(onClick = onClick)
             .padding(top = 8.dp, bottom = 8.dp, start = 4.dp, end = 4.dp),
@@ -126,10 +126,13 @@ internal fun rememberPose(e: Dex.Entry, pose: String): ImageBitmap? {
 
 /** A file in the entry folder (previews, sheet), loaded off the main thread. */
 @Composable
-internal fun rememberFile(id: String, name: String): ImageBitmap? {
+internal fun rememberFile(id: String, name: String, keyGreen: Boolean = false): ImageBitmap? {
     val ctx = LocalContext.current
     val v by produceState<ImageBitmap?>(null, id, name) {
-        value = withContext(Dispatchers.IO) { BitmapFactory.decodeFile(Dex.file(ctx, id, name).path)?.asImageBitmap() }
+        value = withContext(Dispatchers.IO) {
+            val b = BitmapFactory.decodeFile(Dex.file(ctx, id, name).path) ?: return@withContext null
+            (if (keyGreen) keyed(b) else b).asImageBitmap()
+        }
     }
     return v
 }
@@ -142,4 +145,12 @@ fun posePicture(ctx: Context, e: Dex.Entry, pose: String): Bitmap? {
         runCatching { ctx.assets.open(p).use { BitmapFactory.decodeStream(it) } }.getOrNull()?.let { return it }
     }
     return null
+}
+
+/** The drawings come on a green screen: key it out so they sit on the page with no background. */
+private fun keyed(b: Bitmap): Bitmap {
+    val px = IntArray(b.width * b.height)
+    b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
+    for (i in px.indices) px[i] = kr.dot.catchpet.ai.Sheet.keyGreen(px[i])
+    return Bitmap.createBitmap(px, b.width, b.height, Bitmap.Config.ARGB_8888)
 }
