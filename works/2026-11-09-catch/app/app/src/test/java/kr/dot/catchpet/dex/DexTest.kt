@@ -81,4 +81,13 @@ class DexTest {
     @Test fun getRejectsIdsThatAreNotEntries() {
         assertNull(Dex.get(ctx, "../x"))
     }
+
+    @Test fun groupNamesReadAsOne() {
+        assertEquals("사람 둘", Dex.kindName("person+person"))
+        assertEquals("사람과 고양이", Dex.kindName("person+cat"))
+        assertEquals("사람 둘과 고양이", Dex.kindName("person+person+cat"))
+        assertEquals("사람, 고양이와 강아지", Dex.kindName("person+cat+dog"))
+        assertEquals("사람 셋을", Dex.withObject(Dex.kindName("person+person+person")))
+        assertTrue(Dex.hasPerson("cat+person") && !Dex.hasPerson("cat+cat"))
+    }
 }

@@ -37,6 +37,37 @@ class Mask(
 
     fun at(x: Int, y: Int): Boolean = x in 0 until w && y in 0 until h && bits[y * w + x]
 
+    /** Does any cell of this mask touch (or sit next to) a cell of [o]? Same grid. */
+    fun touches(o: Mask): Boolean {
+        for (i in bits.indices) if (bits[i]) {
+            val x = i % w; val y = i / w
+            for (dy in -1..1) for (dx in -1..1) if (o.at(x + dx, y + dy)) return true
+        }
+        return false
+    }
+
+    /** Every 4-connected piece of this mask, largest first. */
+    fun pieces(): List<Mask> {
+        val seen = BooleanArray(bits.size)
+        val out = mutableListOf<Mask>()
+        for (s in bits.indices) if (bits[s] && !seen[s]) {
+            val p = BooleanArray(bits.size); val st = ArrayDeque<Int>(); st.add(s); seen[s] = true; p[s] = true
+            while (st.isNotEmpty()) {
+                val i = st.removeLast(); val x = i % w; val y = i / w
+                for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                    if (nx !in 0 until w || ny !in 0 until h) continue
+                    val j = ny * w + nx
+                    if (bits[j] && !seen[j]) { seen[j] = true; p[j] = true; st.add(j) }
+                }
+            }
+            out += Mask(w, h, p, kind, critterId, species)
+        }
+        return out.sortedByDescending { it.area }
+    }
+
+    /** This mask's cells plus [o]'s, keeping this mask's kind. */
+    fun plus(o: Mask): Mask = Mask(w, h, BooleanArray(bits.size) { bits[it] || o.bits[it] }, kind, critterId, species)
+
     /** The 4-connected piece of this mask nearest (cx, cy), as its own mask (the whole mask if empty). */
     fun pieceNear(cx: Int, cy: Int): Mask {
         var seed = -1; var best = Long.MAX_VALUE

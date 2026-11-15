@@ -15,6 +15,15 @@ const STYLES = ["fluff", "figure"];
 // the app's dex kinds (Dex.KIND_NAMES): each is an English word the prompts use as is
 export const KINDS = ["dog", "cat", "person", "bird", "cow", "horse", "sheep", "elephant", "bear", "zebra", "giraffe",
   "hamster", "rabbit", "turtle", "fish", "guinea pig", "lizard"];
+// a group caught together (operator 11-15): up to 3 kinds joined by "+", e.g. "person+cat"
+export const validKind = k => typeof k === "string" && k.split("+").length <= 3 && k.split("+").every(x => KINDS.includes(x));
+const groupWho = k => { const a = k.split("+"); return a.length === 1 ? null : a.map(x => "a " + x).join(" and ") };
+export const GROUP_PROMPTS = {
+  fluff: k => `Image 1 is a real photo of ${groupWho(k)} together (${k.split("+").length} of them). Image 2 is the art style of our game creatures: small round pale 3D plush fur balls, soft felt/fur texture, tiny black dot eyes, small pink blush, short stubby feet, no outline, soft studio light.
+
+Draw EACH of them as its own chubby round fur-ball plush creature in exactly the style of image 2, keeping what makes each one recognisable (hair or fur colours and markings, glasses, clothing colours, never any text), and keep them TOGETHER the way they are in the photo: touching, side by side or one held by the other, the same relative sizes. All of them fully in view, centred as one group, front view, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
+  figure: k => `Image 1 is a real photo of ${groupWho(k)} together (${k.split("+").length} of them). Make a cute small 3D figurine set of THEM: each one its own figurine with its real body shape simplified, slightly chibi proportions (bigger heads), soft matte clay/plush 3D render, real colours, markings, glasses, face features and clothing colours (no text on clothes), tiny black dot eyes, small pink blush, gentle smiles. Keep them TOGETHER the way they are in the photo: touching, side by side or one held by the other, the same relative sizes. All of them fully in view, centred as one group, front three-quarter view, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
+};
 const IMAGE_MAX = 2_000_000;   // base64 chars, ~1.5 MB: the game sends a <= 512 px PNG
 const MODEL = "gpt-image-2.6-flare";
 const OPENAI_URL = "https://api.openai.com/v1/images/edits";
@@ -45,6 +54,18 @@ bottom row: 4) side view walking to the right, right foot forward; 5) lying down
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
 const SHEET_STYLES = ["fluff", "figure"];
+
+// a group's pose sheet (operator 11-15): the same group in every cell, always together
+const GROUP_LOOK = {
+  fluff: "each of them as its own chubby round fur-ball plush creature in exactly the style of image 2 (small round pale 3D plush fur balls, soft fur texture, tiny black dot eyes, small pink blush, short stubby feet)",
+  figure: "each of them as its own cute small 3D figurine: real body shape simplified, slightly chibi proportions (bigger heads), soft matte clay/plush 3D render, tiny black dot eyes, small pink blush",
+};
+export const GROUP_SHEET_PROMPT = (style, k) => `Image 1 is a real photo of ${groupWho(k)} together (${k.split("+").length} of them).${style === "fluff" ? " Image 2 shows the art style of our game creatures." : ""}
+
+Make a character pose sheet of THIS GROUP, ${GROUP_LOOK[style]}. Keep what makes each one recognisable: hair or fur colours and markings, glasses, face features, clothing colours (no text). In EVERY cell the SAME group appears TOGETHER, touching, with the same relative sizes. A 3 x 2 grid of equal square cells, every cell the same scale, the group centred in its cell with space around it:
+top row: 1) standing together, front view, calm; 2) front view, all with big happy smiles, eyes closed in joy; 3) side view walking together to the right, left feet forward.
+bottom row: 4) side view walking together to the right, right feet forward; 5) lying down together asleep, eyes closed; 6) curled up together asleep in one cosy round pile.
+No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
 const allowed = o => !!o && ORIGINS.some(r => r.test(o));
 function cors(origin) {
@@ -130,7 +151,7 @@ async function paidCall(job, cents, env, counts, day, onFail) {
 }
 
 async function transform(b, req, env, counts, day, origin) {
-  if (!STYLES.includes(b.style) || !KINDS.includes(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400, origin);
+  if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400, origin);
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503, origin);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429, origin); }
 
@@ -146,7 +167,7 @@ async function transform(b, req, env, counts, day, origin) {
     await counts.give(kAll); if (ipOk) await counts.give(kIp);
     return json({ error: "device" }, 429, origin);
   }
-  const job = { prompt: PROMPTS[b.style](b.kind), image: b.image, ref: b.style === "fluff", quality: "low", size: "1024x1024" };
+  const job = { prompt: (b.kind.includes("+") ? GROUP_PROMPTS : PROMPTS)[b.style](b.kind), image: b.image, ref: b.style === "fluff", quality: "low", size: "1024x1024" };
   // day slots come back unless OpenAI refused (4xx) or billed: a refused call keeps its slot, so junk images cannot
   // be retried for free until they drain the month (review M1, 2026-11-13); its money comes back in paidCall
   const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.sent || (!e.rejected && !e.billed)) { await counts.give(kDev); await counts.give(kIp); await counts.give(kAll); } });
@@ -158,7 +179,7 @@ async function transform(b, req, env, counts, day, origin) {
 async function sheet(b, req, env, counts, day) {
   const token = req.headers.get("x-purchase") || "";
   if (!secret(env.DEBUG_PURCHASE) || token !== secret(env.DEBUG_PURCHASE)) return json({ error: "purchase" }, 402);
-  if (!KINDS.includes(b.kind) || !goodDevice(b.device) || !goodImage(b.image) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "")) return json({ error: "bad request" }, 400);
+  if (!validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "")) return json({ error: "bad request" }, 400);
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
 
@@ -168,7 +189,9 @@ async function sheet(b, req, env, counts, day) {
   if (!(await counts.take(kDay, SHEET_PER_DAY))) return json({ error: "limit" }, 429);
   const used = await counts.take(kEntry, SHEET_PER_ENTRY);
   if (!used) { await counts.give(kDay); return json({ error: "limit" }, 429); }
-  const job = style === "figure"
+  const job = b.kind.includes("+")
+    ? { prompt: GROUP_SHEET_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
+    : style === "figure"
     ? { prompt: FIGURE_SHEET_PROMPT(b.kind), image: b.image, ref: false, quality: "medium", size: "1536x1024" }
     : { prompt: SHEET_PROMPT(b.kind), image: b.image, ref: true, quality: "medium", size: "1536x1024" };
   // an entry's 2 = one call + one retry, so a sent call keeps its slot; only a call that never left comes back

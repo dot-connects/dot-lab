@@ -172,7 +172,9 @@ class PetService : Service() {
         hide()
         val cells = Frames.chosen(this)
         if (cells == null || !android.provider.Settings.canDrawOverlays(this)) { PetPrefs.setOverlayOn(this, false); stopSelf(); return }
-        size = PetPrefs.size(this)
+        // a group (two or three together) is wider than one: a bigger box so each stays readable
+        val group = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it) }?.kind?.contains('+') == true
+        size = PetPrefs.size(this) * (if (group) 1.4f else 1f)
         homeOnly = PetPrefs.homeOnly(this) && PetPrefs.usageGranted(this)
         // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
         homes = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)

@@ -156,7 +156,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
     val prefs = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE) }
     var asking by remember { mutableStateOf<(() -> Unit)?>(null) }
     fun guarded(go: () -> Unit) {
-        if (e.kind != "person" || prefs.getBoolean("ai_ok_${e.id}", false)) go() else asking = go
+        if (!Dex.hasPerson(e.kind) || prefs.getBoolean("ai_ok_${e.id}", false)) go() else asking = go
     }
     asking?.let { go ->
         PersonConsent(PersonUse.AI) { ok ->

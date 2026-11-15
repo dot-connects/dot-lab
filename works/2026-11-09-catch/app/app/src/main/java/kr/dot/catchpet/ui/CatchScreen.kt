@@ -308,7 +308,7 @@ private class CatchGame(
     private var landGrip: Grip? = null
 
     private class Toast(val text: String, val good: Boolean) { var t = 0f }
-    private class Grip(val cut: CutOut.Cut?, val hole: Bitmap?, val opaque: Float)
+    private class Grip(val cut: CutOut.Cut?, val hole: Bitmap?, val opaque: Float, val kind: String? = null)
 
     private var map: ScreenMap? = null
     private var targets: List<Mask> = emptyList()
@@ -335,13 +335,14 @@ private class CatchGame(
     private var capText = ""
     private var saved = false   // the catch is already in the dex but the capsule still rolls: show N-1 until GONE
     private var pendingPerson: Bitmap? = null
+    private var pendingKind = "person"
     /** A caught person waiting for the player's "허락받았어요" (the game holds still meanwhile). */
     var askPerson by mutableStateOf<Bitmap?>(null); private set
 
     fun keepPerson(keep: Boolean) {
         val b = askPerson ?: return
         askPerson = null
-        if (keep) sink.onCaught("person", b, null, "front")
+        if (keep) sink.onCaught(pendingKind, b, null, "front")
     }
 
     fun setSize(wDp: Float, hDp: Float) {
@@ -483,18 +484,42 @@ private class CatchGame(
         grip = seg.onThread {
             // the touched person already passed the face check; the frozen frame is not checked again (it dropped
             // the fresh mask and the cut fell back to a mask up to 1.2 s old)
-            val fresh = seg.run(f, faces = false).filter { family(it.kind) == family(target.kind) }.maxByOrNull { iou(it, target) }
+            val all = seg.run(f, faces = false)
+            val fresh = all.filter { family(it.kind) == family(target.kind) }.maxByOrNull { iou(it, target) }
             val m = (fresh?.takeIf { iou(it, target) > 0f } ?: target).pieceNear(gx, gy)
-            makeGrip(f, m)
+            val g = group(f, m, all)
+            if (g == null) makeGrip(f, m) else makeGrip(f, g.first, hiRes = g.second.split('+').all { it == "person" }, kind = g.second)
         }
     }
 
-    private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true): Grip {
+    /**
+     * Touching people and animals are caught together, up to 3 (operator 11-15): the grabbed piece plus every piece of
+     * the other masks that touches it; people in one piece are counted by their faces. null = one alone or more than 3.
+     * Segmenter thread only.
+     */
+    private fun group(f: Bitmap, m: Mask, all: List<Mask>): Pair<Mask, String>? {
+        var u = m
+        val kinds = mutableListOf<String>()
+        fun count(p: Mask) = if (p.kind == Mask.Kind.PERSON) List(seg.faces(f, p).coerceIn(1, 3)) { "person" } else listOf(p.dexKind)
+        kinds += count(m)
+        for (o in all) for (p in o.pieces()) {
+            if (p.area < 6 || !p.touches(u) || (o.kind == m.kind && p.touches(m) && iouCells(p, m) > 0.5f)) continue
+            u = u.plus(p); kinds += count(p)
+        }
+        return if (kinds.size in 2..MAX_GROUP) u to kinds.joinToString("+") else null
+    }
+    private fun iouCells(a: Mask, b: Mask): Float {
+        var i = 0; var n = 0
+        for (k in a.bits.indices) { if (a.bits[k] && b.bits[k]) i++; if (a.bits[k] || b.bits[k]) n++ }
+        return if (n == 0) 0f else i.toFloat() / n
+    }
+
+    private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true, kind: String? = null): Grip {
         val hi = if (hiRes && m.kind == Mask.Kind.PERSON) CutOut.srcOf(f, m, 0.15f)?.let { src ->
             runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a).also { a.recycle() } }
         } else null
         val cut = hi ?: CutOut.make(f, m)
-        return Grip(cut, CutOut.hole(f, m), cut?.let { CutOut.opaque(it.bmp) } ?: 0f)
+        return Grip(cut, CutOut.hole(f, m), cut?.let { CutOut.opaque(it.bmp) } ?: 0f, kind)
     }
 
     /** At the top with a win: wait for the GRIP cut (max 1.5 s, then the old mask), save, then the capsule. */
@@ -520,14 +545,15 @@ private class CatchGame(
             c.handedOff(); next(); say(NEAR.random(), false)
             return
         }
-        val text = Dex.withObject(Dex.kindName(target.dexKind)) + " 뽑았다!"
-        if (target.kind == Mask.Kind.PERSON) {
+        val kind = got.kind ?: target.dexKind   // a group: "person+cat"
+        val text = Dex.withObject(Dex.kindName(kind)) + " 뽑았다!"
+        if (Dex.hasPerson(kind)) {
             // a person goes into the dex only after the consent dialog (shown when the capsule is gone)
-            pendingPerson = got.cut.bmp
+            pendingPerson = got.cut.bmp; pendingKind = kind
             startCapsule(c, grew = false, text = text)
             return
         }
-        val grew = sink.onCaught(target.dexKind, got.cut.bmp, null, "front")
+        val grew = sink.onCaught(kind, got.cut.bmp, null, "front")
         startCapsule(c, grew = grew, text = text)
     }
 
@@ -761,6 +787,7 @@ private class CatchGame(
         const val BTN_R = 23f        // dome radius (46 across; operator 11-15: smaller twice)
         const val PLATE_SIDE = 11f
         const val PLATE_FOOT = 25f   // the plate runs on below the dome for the label
+        const val MAX_GROUP = 3   // operator 11-15: at most 3 caught together
         val AIR = listOf("헛집었다", "허공이었다", "아무것도 없었다")
         val NEAR = listOf("아깝다!", "아슬아슬했다", "한 끗 차이!")
         val SLIPPED = listOf("흔들려서 빠졌다", "미끄러졌다!")

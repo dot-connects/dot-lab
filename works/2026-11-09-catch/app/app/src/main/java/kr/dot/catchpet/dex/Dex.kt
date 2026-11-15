@@ -49,7 +49,25 @@ object Dex {
     )
 
     /** Korean name of a dex kind ("hamster" -> "햄스터"); unknown kinds show as they are. */
-    fun kindName(kind: String): String = KIND_NAMES[kind] ?: kind
+    fun kindName(kind: String): String = if ('+' in kind) groupName(kind) else KIND_NAMES[kind] ?: kind
+
+    /** A group caught together (operator 11-15, up to 3): "사람 둘", "사람과 고양이", "사람 둘과 강아지". */
+    fun groupName(kind: String): String {
+        val counts = kind.split('+').groupingBy { it }.eachCount()
+        val parts = counts.map { (k, n) -> (KIND_NAMES[k] ?: k) + when (n) { 1 -> ""; 2 -> " 둘"; else -> " 셋" } }
+        if (parts.size == 1) return parts[0]
+        val head = parts.dropLast(1)
+        return (head.dropLast(1) + withAnd(head.last())).joinToString(", ") + " " + parts.last()
+    }
+
+    /** "사람과" / "고양이와": the "and" particle after a Korean word. */
+    private fun withAnd(word: String): String {
+        val c = word.lastOrNull() ?: return word
+        return word + if (c in '\uAC00'..'\uD7A3' && (c - '\uAC00') % 28 != 0) "과" else "와"
+    }
+
+    /** Does this kind (one or a group) have a person in it? People need consent. */
+    fun hasPerson(kind: String) = kind.split('+').contains("person")
 
     /** "강아지를" / "곰을": the object particle after a Korean word (batchim decides). */
     fun withObject(word: String): String {

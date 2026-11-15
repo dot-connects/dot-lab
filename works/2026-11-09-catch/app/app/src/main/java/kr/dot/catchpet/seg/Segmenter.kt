@@ -276,17 +276,22 @@ class Segmenter(private val ctx: Context) {
         return iw * ih * 2 > min(a.w * (a.y1 - a.y0 + 1), b.w * (b.y1 - b.y0 + 1))
     }
 
-    private fun faceCheck(frame: Bitmap, pm: Mask, b: Box): Boolean {
+    private fun faceCheck(frame: Bitmap, pm: Mask, b: Box): Boolean = faceCount(frame, pm, b) > 0
+
+    /** Faces in this person piece on the sharp crop (segmenter thread only); 0 when too small. */
+    fun faces(frame: Bitmap, pm: Mask): Int = pm.box?.let { faceCount(frame, pm, it) } ?: 0
+
+    private fun faceCount(frame: Bitmap, pm: Mask, b: Box): Int {
         val sx = frame.width.toFloat() / pm.w; val sy = frame.height.toFloat() / pm.h
         val mx = b.w * sx * 0.2f; val my = b.h * sy * 0.2f
         val l = max(0, (b.x0 * sx - mx).toInt()); val t = max(0, (b.y0 * sy - my).toInt())
         val r = min(frame.width, ((b.x1 + 1) * sx + mx).roundToInt()); val bt = min(frame.height, ((b.y1 + 1) * sy + my).roundToInt())
-        if (r - l < 8 || bt - t < 8) return false
+        if (r - l < 8 || bt - t < 8) return 0
         var crop = Bitmap.createBitmap(frame, l, t, r - l, bt - t)
         val k = 640f / max(crop.width, crop.height)
         if (k < 1f) crop = Bitmap.createScaledBitmap(crop, (crop.width * k).roundToInt(), (crop.height * k).roundToInt(), true)
         val img = BitmapImageBuilder(crop).build()
-        return try { faceDetector().detect(img).detections().isNotEmpty() } finally { img.close() }
+        return try { faceDetector().detect(img).detections().size } finally { img.close() }
     }
 
     /**
