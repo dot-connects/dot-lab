@@ -110,6 +110,34 @@ Review: /plan-review round 1 (4 lenses) → this revision; findings and answers 
   (SOLID: BG; GRADIENT: the 3 stops; GLOW: BG + GLOW); never bgKind, shapes, fonts, textures.
 - Known gap (Low): textures are not in `Contrast.warnings`; 질감 정도 capped at 0.8 to keep small text readable.
 
+## Part D — 기본 테마 다듬기 (operator picks 11-15, mockup `settings-r10/theme-polish.html`)
+
+Token changes in `ThemeTokens.kt` (`make(...)`), values exactly as the mockup's chosen column. Unchanged: 종이 (지금).
+Fonts, digit styles and shapes stay. Glow tuples are (colour, alpha, centre x, y, size) as in the mockup.
+
+| Theme | Pick | bg | glow(s) | ink | accent | plate (alpha) | radius px in mockup |
+|---|---|---|---|---|---|---|---|
+| 기본 IPHONE | 다듬기 | #000000 | — | #F5F5F7 | #FF9F0A | #1C1C1E (1), plate2 #2C2C2E | 16 |
+| 신문 1면 PAPER | 다듬기 | #11100D | — | #F2EADA | #E8BE62 | RULE | 0 |
+| 무드등 MOODLIGHT | 다듬기 | #120D0A | #FF9A4D .30 at .3,.38 size 1.0 | #FFF3E4 | #FFC27A | #2A1E16 (.72), plate2 one step lighter | 20 |
+| 촛불 CANDLE | 과감하게 | #080504 | #FF7A2E .34 at .5,1.12 size 1.05 + #FFD27A .22 at .5,1.0 size .45 | #F7E6CF | #FFC070 | #FFCD96 (.08) | 16 |
+| 플립 FLIP | 과감하게 | #1A1A1A | — | #F5F1E8 | #F5C400 | #2E2E2E (1), plate2 #383838 | 10 |
+| 하늘 SKY | 과감하게 | #0E1E46 → #4B3F86 → #B3605E | — | #FFFFFF | #FFE1B0 | dark glass #0E1030 (.30), plate2 (.38) | 20 |
+| 브라운 라디오 RADIO | 과감하게 | #CDC9C1 | — | #22201C | #C2470A (shape and text) | #F3F1ED (1), plate2 #E7E3DC | 14 |
+| 네온 NEON | 다듬기 | #05040C | #3A1E6E .55 at .25,.4 size .9 | #7DF9FF | #FF5EDB | OUTLINE | 14 |
+| 터미널 TERMINAL | 다듬기 | #04100A | #0F3A1E .6 at .5,.5 size 1.1 | #5CF28A | #FFB000 | OUTLINE | 3 |
+
+- Radius: convert the mockup px (board ~ 300 px tall) to the token ratio by the same factor as today's values
+  (keep each theme's ratio change proportional: new = old × mockup_new / mockup_old).
+- 촛불's second, smaller yellow glow needs `BgSpec.glow2: Color?` (+ `glow2At`, `glow2Size`): a second colour, drawn after
+  the first. TWIN keeps using glow2At with the first colour.
+- 라디오 과감하게 "초록 표시등": the derived `green` role is pinned to #2F7D4F (still checked ≥ 3:1).
+- Night, onDark twins and the editor's `defaultFlow` follow automatically from the tokens.
+- Checks: TokenContrastTest (ink 4.5, ink2 3, accent text 4.5, roles 3) must pass with the new values; where one fails,
+  move only that colour's lightness until it passes and note it. Re-record the board/clock shots of the 9 changed themes
+  (IPHONE first, then one run per changed theme), committed separately as "theme polish".
+- Order: after step 2's baseline diff (so the diff checks only the A3 drawing), before A4.
+
 ## Part B — 쉬운 설정
 
 1. **Permissions from the start:** all 8 counted as today. A fresh install (checked in `SettingsActivity`, the launcher:
