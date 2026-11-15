@@ -168,7 +168,18 @@ Theme strip, TopPanel chips, docs and shots drop the three. TDD for the mapping.
    value one line with ellipsis, never squeezing the title. Preview page-name row → that page's settings route.
 9. Card picker (operator 11-15 "시계가 너무 많아"): one 시계 tile instead of one per 내 시계 face; the placed clock card
    swipes through 내 시계 as it already does (implementer confirms the face = null / board face path; old per-face picks
-   on existing boards keep working). Widget setup: see the widget research result (added to Part B when decided).
+   on existing boards keep working). 10. Widget setup (operator 11-15, Samsung Notes; research: today ~10 taps + scrolling a text list of 100+ rows):
+   - Replace the AlertDialog (SettingsActivity.kt:132) with a Compose sheet "위젯 고르기": search field; "추천" row of
+     installed packages only (Samsung Notes com.samsung.android.app.notes, Samsung Calendar com.samsung.android.calendar,
+     Keep, Google, weather); then grouped by app (icon + name, tap to expand) with previews (getWidgetPreview on 15+,
+     previewLayout, previewImage, icon); widgets that fit the slot first, larger ones dimmed "칸보다 커요".
+   - One tap: allocate + bind with EXTRA_APPWIDGET_OPTIONS (slot size dp); configure only when required
+     (skip when configuration_optional + reconfigurable); success closes the sheets back to the board.
+   - Before the first system bind dialog one line: "다음 화면에서 '항상 허용'을 체크하면 이후엔 안 물어봐요".
+   - Empty widget card long-press opens the picker; placed widget long-press menu: 위젯 설정 (only if reconfigurable) ·
+     바꾸기 · 보이는 모습…; updateAppWidgetSize with portrait + landscape slot sizes, never below minWidth/minHeight
+     (scale instead); pending widget id kept in savedInstanceState (rotation/unfold mid-flow).
+   - Target: Samsung Notes first time 7 taps, later 5, from an empty card 3. Verify on the operator's phone.
 8. 처음 보이는 페이지 → sheet. Touch targets ≥ 48 dp (Segmented, ChipFlow, ▲▼✕, colour dots). Dead `Routes.CARD_INFO`
    removed with its two shot tests (SettingsShots.kt).
 
