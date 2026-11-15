@@ -722,9 +722,9 @@ private class CatchGame(
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)
         // what the toast says on a miss: one voice, a few lines so it does not repeat word for word
-        const val BTN_R = 29f        // dome radius (58 across)
-        const val PLATE_SIDE = 14f
-        const val PLATE_FOOT = 32f   // the plate runs on below the dome for the label
+        const val BTN_R = 23f        // dome radius (46 across; operator 11-15: smaller twice)
+        const val PLATE_SIDE = 11f
+        const val PLATE_FOOT = 25f   // the plate runs on below the dome for the label
         val AIR = listOf("헛집었다", "허공이었다", "아무것도 없었다")
         val NEAR = listOf("아깝다!", "아슬아슬했다", "한 끗 차이!")
         val SLIPPED = listOf("흔들려서 빠졌다", "미끄러졌다!")

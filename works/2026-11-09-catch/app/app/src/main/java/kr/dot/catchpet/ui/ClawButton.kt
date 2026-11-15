@@ -20,7 +20,15 @@ object ClawButton {
     private val text = Paint(Paint.ANTI_ALIAS_FLAG).apply { isFakeBoldText = true }
 
     fun draw(cv: Canvas, x: Float, y: Float, radius: Float, side: Float, foot: Float, ready: Boolean, pressed: Boolean) {
-        val r = radius
+        // drawn at the mockup size (dome 29) and scaled, so screws, label and bevels shrink with it
+        val k = radius / 29f
+        cv.save(); cv.scale(k, k, x, y)
+        drawBase(cv, x, y, side / k, foot / k, ready, pressed)
+        cv.restore()
+    }
+
+    private fun drawBase(cv: Canvas, x: Float, y: Float, side: Float, foot: Float, ready: Boolean, pressed: Boolean) {
+        val r = 29f
         val l = x - r - side; val t = y - r - side; val rt = x + r + side; val b = y + r + foot
         // plate: drop shadow, brushed steel, a light top edge and a dark rim
         fill.shader = null; fill.color = argb(.4f, 0, 0, 0)

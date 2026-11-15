@@ -17,7 +17,7 @@ class ButtonShotTest {
         val b = Bitmap.createBitmap((3 * 110 * s).toInt(), (150 * s).toInt(), Bitmap.Config.ARGB_8888)
         val cv = Canvas(b); cv.drawColor(0xFF8CC86F.toInt()); cv.scale(s, s)
         for ((i, st) in listOf(true to false, true to true, false to false).withIndex())
-            ClawButton.draw(cv, 55f + i * 110f, 60f, 29f, 14f, 32f, ready = st.first, pressed = st.second)
+            ClawButton.draw(cv, 55f + i * 110f, 60f, 23f, 11f, 25f, ready = st.first, pressed = st.second)
         File("build/outputs/roborazzi").mkdirs()
         File("build/outputs/roborazzi/button.png").outputStream().use { b.compress(Bitmap.CompressFormat.PNG, 100, it) }
     }
