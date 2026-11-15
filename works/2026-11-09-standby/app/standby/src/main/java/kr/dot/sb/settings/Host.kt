@@ -29,10 +29,20 @@ class SettingsEnv(
     val licenseNames: List<String> = emptyList(),
     val licenseText: (String) -> String = { "" },
     val versionName: String = "0.1.0",
-    /** Phone widget (r9 D6): pick a provider, bind it, run its configure screen; [done] gets the id (never on cancel). */
-    val pickWidget: (done: (Int) -> Unit) -> Unit = {},
+    /**
+     * Phone widget (r9 D6, plan-r13 B10): opens the 위젯 고르기 sheet for card [key] ("slot:index") of board [board]; the
+     * activity binds the pick and writes its id to that card (nothing on cancel).
+     */
+    val pickWidget: (board: String, key: String) -> Unit = { _, _ -> },
     /** The bound widget's own settings screen (its configure activity). */
     val configureWidget: (Int) -> Unit = {},
+    /** The widget can open its settings again (WIDGET_FEATURE_RECONFIGURABLE): 위젯 설정 shows only then. */
+    val widgetConfigurable: (Int) -> Boolean = { false },
+    /** plan-r13 B1: a fresh install opens 권한 first; [나중에] ends that ([onPermLater]). */
+    val permWalkOffer: Boolean = false,
+    /** [차례로 켜기]: every missing permission in turn. */
+    val onPermWalk: () -> Unit = {},
+    val onPermLater: () -> Unit = {},
     /** "앱 · 위젯" for a bound id, null when it is gone. */
     val widgetLabel: (Int) -> String? = { null },
     /** Every calendar on the phone (카드에 쓰는 정보 picker); null = no calendar permission. */
@@ -60,7 +70,6 @@ object Routes {
     /** r13 사용자 지정 (the strip's ＋). */
     const val THEME_CUSTOM = "theme_custom"
     const val PAGES = "pages"
-    const val START = "start"
     const val WIDGETS = "widgets"
     const val PHOTOS = "photos"
     const val CLOCKS = "clocks"
@@ -70,8 +79,6 @@ object Routes {
     const val SOUND = "sound"
     const val ALARM = "alarm"
     const val FOLD = "fold"
-    const val WEATHER = "weather"
-    const val CARD_INFO = "cardinfo"
     const val PERMS = "perms"
     const val ABOUT = "about"
     /** 카드 (11-14): the card list; [card] = one card's settings. */
@@ -98,7 +105,6 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.THEME -> ThemeScreen(config, update, nav, back)
         route == Routes.THEME_CUSTOM -> CustomThemeScreen(config, update, back)
         route == Routes.PAGES -> PagesScreen(config, update, nav, back)
-        route == Routes.START -> StartPageScreen(config, update, back)
         route == Routes.WIDGETS -> WidgetsScreen(config, update, nav, back)
         route == Routes.PHOTOS -> PhotosScreen(config, update, nav, env, back)
         route.startsWith("board:") -> {
@@ -117,11 +123,9 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.SOUND -> SoundScreen(config, update, env, back)
         route == Routes.ALARM -> AlarmScreen(config, update, nav, env, back)
         route == Routes.FOLD -> FoldScreen(config, update, env, back)
-        route == Routes.WEATHER -> WeatherScreen(config, update, back)
-        route == Routes.CARD_INFO -> CardInfoScreen(config, update, env, back)
         route == Routes.PERMS -> PermsScreen(env, back)
         route == Routes.ABOUT -> AboutScreen(env, back)
-        route == Routes.CARDS -> CardsScreen(config, nav, env, back)
+        route == Routes.CARDS -> CardsScreen(config, update, nav, env, back)
         route.startsWith("card:") -> {
             val t = runCatching { kr.dot.sb.model.CardType.valueOf(route.removePrefix("card:")) }.getOrNull()
             if (t != null) CardScreen(t, config, update, env, back) else HomeScreen(config, nav, env)

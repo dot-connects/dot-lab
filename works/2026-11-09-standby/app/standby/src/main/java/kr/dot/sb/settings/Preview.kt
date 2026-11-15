@@ -217,6 +217,8 @@ class Preview(
     val initial: Int = 0,
     /** A page's own settings: the swipe settled on slide i (not [initial]), whose [Slide.route] opens instead. */
     val onSettle: ((Int) -> Unit)? = null,
+    /** Home pager (plan-r13 B7): the name row under a card opens that page's settings ([Slide.route]). */
+    val onOpen: ((String) -> Unit)? = null,
 )
 
 /** The bar's choices, shared by the full preview and the mini (saved across rotation). */
@@ -322,9 +324,15 @@ internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone:
                     if (p.full) Box(Modifier.matchParentSize().clickable(onClickLabel = "전체 화면") { onFull(i) })
                 }
                 if (p.cards) {
-                    Row(Modifier.fillMaxWidth().padding(top = 8.dp, start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                        T(s.name, 15.sp, 600, maxLines = 1)
+                    val open = s.route?.takeIf { p.onOpen != null }
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 4.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp))
+                            .then(if (open != null) Modifier.clickable(onClickLabel = "${s.name} 설정") { p.onOpen?.invoke(open) } else Modifier).padding(start = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        T(s.name, 15.sp, 600, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
                         if (s.start) Pill("처음", acc, Modifier.padding(start = 8.dp))
+                        if (open != null) Icon(Ic.CHEVRON, SK.muted, 18.dp, Modifier.padding(start = 2.dp))
                     }
                 } else if (p.slides.size > 1) {
                     T(s.name, 12.sp, 500, SK.muted, Modifier.fillMaxWidth().padding(top = 4.dp), maxLines = 1, align = TextAlign.Center)
@@ -402,7 +410,7 @@ fun pageSlides(config: AppConfig, include: Int? = null): List<Slide> {
     return pages.map { p ->
         val r = pageRoute(p)
         when (p.index) {
-            0 -> Slide("위젯", start == 0, r) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+            0 -> Slide(WIDGETS_PAGE, start == 0, r) { l -> BoardView(widgets, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
             1 -> Slide("사진", start == 1, r) { l ->
                 val ink = kr.dot.sb.ui.theme.Ink.of(l.night, androidx.compose.ui.graphics.Color(config.clockStyle(kr.dot.sb.model.FaceId.DIGITAL).color), kr.dot.sb.ui.theme.LocalTheme.current)
                 androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.theme.LocalInk provides ink) {

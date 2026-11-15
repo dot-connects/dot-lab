@@ -108,7 +108,7 @@ enum class StyleRow(val part: String? = null) {
 }
 
 /**
- * A clock of the gallery. [rows] = 꾸미기 rows, [more] = its 자세히 rows (mockup `STYLE`); [ours] = the "우리만" badge;
+ * A clock of the gallery. [rows] = 꾸미기 rows, [more] = its 자세히 rows (mockup `STYLE`); [ours] = the "이 앱에만" badge;
  * [built] = its renderer exists (an unbuilt face is skipped by the clocks page and the board chips).
  */
 data class ClockSpec(

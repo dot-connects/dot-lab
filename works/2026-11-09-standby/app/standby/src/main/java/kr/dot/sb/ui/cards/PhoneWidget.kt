@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.cards
 
+import android.appwidget.AppWidgetProviderInfo
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
 import android.graphics.Paint
@@ -11,6 +12,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -29,10 +32,10 @@ import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.min
 import androidx.compose.ui.viewinterop.AndroidView
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.model.WidgetMode
+import kr.dot.sb.platform.WidgetFit
 import kr.dot.sb.platform.WidgetHost
 import kr.dot.sb.platform.WidgetView
 import kr.dot.sb.ui.state.StandbyActions
@@ -51,7 +54,7 @@ internal fun PhoneWidget(e: Env, o: SlotOptions?, actions: StandbyActions, menu:
     val opt = o ?: SlotOptions()
     val night = e.ink.night >= 0.5f
     if (night && opt.hideAtNight) return
-    val inset = (min(e.w, e.h) * 0.04f).coerceIn(6.dp, 14.dp)
+    val inset = WidgetFit.inset(e.w.value, e.h.value).dp
     val box = Modifier.fillMaxSize().padding(inset).alpha(opt.opacity).clip(RoundedCornerShape(opt.radiusDp.dp))
         .then(if (menu != null) Modifier.widgetLongPress { actions.openSettings(menu) } else Modifier)
     val id = opt.widgetId
@@ -68,19 +71,34 @@ internal fun PhoneWidget(e: Env, o: SlotOptions?, actions: StandbyActions, menu:
     }
 }
 
+/**
+ * plan-r13 B10: a resizable widget fills the slot, a fixed-size one sits centred at its own size; neither is laid out
+ * below its minimum (a smaller slot scales it down instead).
+ */
 @Composable
 private fun Hosted(v: WidgetView, night: Boolean, w: Float, h: Float) {
     val light by v.light
-    LaunchedEffect(v, w, h) { v.updateAppWidgetSize(Bundle(), listOf(SizeF(w, h))) }
+    val p = remember(v, w, h) { placement(v, w, h) }
+    LaunchedEffect(v, p) { v.updateAppWidgetSize(Bundle(), listOf(SizeF(p.w, p.h))) }
     val paint = if (!night) null else Paint().apply { colorFilter = ColorMatrixColorFilter(if (light) LIGHT_AT_NIGHT else DARK_AT_NIGHT) }
-    // a new host start (dream ended, activity back) remakes the holder so the factory takes the view back
-    key(v, WidgetHost.epoch.intValue) {
-        AndroidView(
-            factory = { (v.parent as? ViewGroup)?.removeView(v); v },
-            modifier = Modifier.fillMaxSize(),
-            update = { it.setLayerType(if (paint == null) View.LAYER_TYPE_NONE else View.LAYER_TYPE_HARDWARE, paint) },
-        )
+    Box(Modifier.fillMaxSize(), Alignment.Center) {
+        // a new host start (dream ended, activity back) remakes the holder so the factory takes the view back
+        key(v, WidgetHost.epoch.intValue) {
+            AndroidView(
+                factory = { (v.parent as? ViewGroup)?.removeView(v); v },
+                modifier = Modifier.requiredSize(p.w.dp, p.h.dp).graphicsLayer(scaleX = p.scale, scaleY = p.scale),
+                update = { it.setLayerType(if (paint == null) View.LAYER_TYPE_NONE else View.LAYER_TYPE_HARDWARE, paint) },
+            )
+        }
     }
+}
+
+private fun placement(v: WidgetView, w: Float, h: Float): WidgetFit.Placement {
+    val i = v.appWidgetInfo ?: return WidgetFit.Placement(w, h, 1f)
+    val dp = v.resources.displayMetrics.density
+    val rw = i.resizeMode and AppWidgetProviderInfo.RESIZE_HORIZONTAL != 0
+    val rh = i.resizeMode and AppWidgetProviderInfo.RESIZE_VERTICAL != 0
+    return WidgetFit.place(w, h, WidgetFit.min(i.minWidth / dp, i.minResizeWidth / dp, rw), WidgetFit.min(i.minHeight / dp, i.minResizeHeight / dp, rh), rw, rh)
 }
 
 /**

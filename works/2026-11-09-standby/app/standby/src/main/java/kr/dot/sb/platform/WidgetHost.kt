@@ -144,3 +144,37 @@ class WidgetView(ctx: Context) : AppWidgetHostView(ctx) {
         light.value = sum / 256 > 0.5
     }
 }
+
+/** plan-r13 B10: which widgets fit a slot, how a placed one is sized, when its configure screen must run. Sizes in dp. */
+object WidgetFit {
+    data class Size(val w: Float, val h: Float)
+
+    /** Laid out at [w]×[h] dp, drawn at [scale] (< 1 only when the slot is smaller than the widget's minimum). */
+    data class Placement(val w: Float, val h: Float, val scale: Float)
+
+    /** The phone widget card's inset (PhoneWidget): 4 % of the short side, 6..14 dp. */
+    fun inset(w: Float, h: Float): Float = (minOf(w, h) * 0.04f).coerceIn(6f, 14f)
+
+    /** minResizeWidth counts only on a resizable axis and only when it is set and below minWidth (AppWidgetProviderInfo docs). */
+    fun min(min: Float, minResize: Float, resizable: Boolean): Float = if (resizable && minResize > 0f && minResize < min) minResize else min
+
+    /** Listed when the minimum fits the slot in at least one orientation (the other one scales, [place]). */
+    fun fits(min: Size, slots: List<Size>): Boolean = slots.any { min.w <= it.w && min.h <= it.h }
+
+    /** Skip the provider's screen only when it says it is optional and can be opened later (위젯 설정). */
+    fun needsConfigure(hasConfigure: Boolean, optional: Boolean, reconfigurable: Boolean): Boolean = hasConfigure && !(optional && reconfigurable)
+
+    /** A resizable axis fills the slot, a fixed one keeps the minimum; never below the minimum, scaled down instead. */
+    fun place(slotW: Float, slotH: Float, minW: Float, minH: Float, resizeW: Boolean, resizeH: Boolean): Placement {
+        val w = if (resizeW) maxOf(slotW, minW) else minW
+        val h = if (resizeH) maxOf(slotH, minH) else minH
+        return Placement(w, h, minOf(1f, slotW / w, slotH / h))
+    }
+
+    /** Slot [slot] of [layout] on a [w]×[h] screen, landscape then portrait, less the card inset. */
+    fun slotSizes(layout: kr.dot.sb.model.Layout, slot: Int, w: Float, h: Float, cover: Boolean): List<Size> =
+        listOf(
+            kr.dot.sb.settings.LayoutGeo.slots(layout, maxOf(w, h), minOf(w, h)),
+            kr.dot.sb.settings.LayoutGeo.slots(layout, minOf(w, h), maxOf(w, h), coverPortrait = cover),
+        ).mapNotNull { it.getOrNull(slot) }.map { r -> inset(r.w, r.h).let { i -> Size(r.w - 2 * i, r.h - 2 * i) } }
+}

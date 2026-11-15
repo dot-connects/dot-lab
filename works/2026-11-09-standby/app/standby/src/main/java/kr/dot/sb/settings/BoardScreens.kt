@@ -66,7 +66,10 @@ private fun <T> List<T>.moved(i: Int, d: Int): List<T> {
 // ---- 페이지 구성 ----------------------------------------------------------------------------------------------------
 
 /** "위젯 · 사진 · 시계" + one line per kind of page (mockup `pages()`). */
-private fun pageName(p: PageRef) = p.board?.name ?: listOf("위젯", "사진", "시계")[p.index]
+internal fun pageName(p: PageRef) = p.board?.name ?: listOf(WIDGETS_PAGE, "사진", "시계")[p.index]
+
+/** The fixed first page as settings names it (plan-r13 B4: 위젯 → 위젯 페이지, apart from the phone-widget card). */
+internal const val WIDGETS_PAGE = "위젯 페이지"
 
 /**
  * 페이지 구성 (mockup SCREENS.pages + operator 2026-11-13): 처음 보이는 페이지, then every page in order with its
@@ -78,13 +81,14 @@ private fun pageName(p: PageRef) = p.board?.name ?: listOf("위젯", "사진", "
 fun PagesScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val state = remember(config.styles, config.boards, config.widgetLeft, config.widgetRight, config.city, config.use24h) { Sample.state(config) }
     var adding by remember { mutableStateOf(false) }
+    var starting by remember { mutableStateOf(false) }
     val visible = Pages.visible(config)
     val start = visible.getOrNull(Pages.start(config))
     val face = kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).first()
     Box(Modifier.fillMaxSize()) {
         Page("페이지 구성", back) {
-            Section(null) { item { NavRow("처음 보이는 페이지", { nav.push(Routes.START) }, value = start?.let(::pageName)) } }
-            Section("페이지 순서", footer = "위젯 · 사진 · 시계는 맨 앞에 고정돼요. 내 페이지는 ▲▼로 순서를 바꾸고, 누르면 고칠 수 있어요. 끈 페이지는 스탠바이에 나오지 않아요.") {
+            Section(null) { item { NavRow("처음 보이는 페이지", { starting = true }, value = start?.let(::pageName)) } }
+            Section("페이지 순서", footer = "위젯 페이지 · 사진 · 시계는 맨 앞에 고정돼요. 내 페이지는 ▲▼로 순서를 바꾸고, 누르면 고칠 수 있어요. 끈 페이지는 스탠바이에 나오지 않아요.") {
                 val all = Pages.all(config)
                 all.forEach { p ->
                     item {
@@ -116,6 +120,7 @@ fun PagesScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
             Gap(16.dp)
             ActionButton("페이지 추가", { adding = true }, Modifier.fillMaxWidth())
         }
+        if (starting) StartPageSheet(config, update) { starting = false }
         if (adding) Sheet("페이지 추가", { adding = false }) {
             Group {
                 item {
@@ -165,28 +170,32 @@ internal fun PageRow(
             colors = SwitchDefaults.colors(checkedThumbColor = SK.bg, checkedTrackColor = LocalAccent.current, checkedBorderColor = LocalAccent.current, uncheckedThumbColor = SK.muted, uncheckedTrackColor = SK.surface2, uncheckedBorderColor = SK.line),
         )
         if (onMove != null) {
-            Box(Modifier.size(44.dp).clickable(enabled = canUp) { onMove(-1) }, Alignment.Center) { Icon(Ic.UP, if (canUp) SK.muted else SK.line) }
-            Box(Modifier.size(44.dp).clickable(enabled = canDown) { onMove(1) }, Alignment.Center) { Icon(Ic.DOWN, if (canDown) SK.muted else SK.line) }
+            Box(Modifier.size(48.dp).clickable(enabled = canUp) { onMove(-1) }, Alignment.Center) { Icon(Ic.UP, if (canUp) SK.muted else SK.line) }
+            Box(Modifier.size(48.dp).clickable(enabled = canDown) { onMove(1) }, Alignment.Center) { Icon(Ic.DOWN, if (canDown) SK.muted else SK.line) }
         }
     }
 }
 
-/** 처음 보이는 페이지: the pages that are on; the start page is set only here (consensus). */
+/** 처음 보이는 페이지 (plan-r13 B8: a sheet): the pages that are on; a tap sets the start page and closes. */
 @Composable
-fun StartPageScreen(config: AppConfig, update: Update, back: () -> Unit) {
+private fun StartPageSheet(config: AppConfig, update: Update, onDismiss: () -> Unit) {
     val visible = Pages.visible(config)
     val start = visible.getOrNull(Pages.start(config))
-    Page("처음 보이는 페이지", back) {
-        Section(null, footer = "스탠바이가 켜질 때 처음 보이는 페이지예요. 끈 페이지는 여기에 없어요.") {
+    Sheet("처음 보이는 페이지", onDismiss) {
+        Group {
             visible.forEach { p ->
                 item {
-                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { update { it.copy(startPage = p.index) } }.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Row(
+                        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { update { it.copy(startPage = p.index) }; onDismiss() }.padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
                         T(pageName(p), 16.sp, 500, SK.text, Modifier.weight(1f))
                         if (p == start) Icon(Ic.CHECK, LocalAccent.current)
                     }
                 }
             }
         }
+        T("스탠바이가 켜질 때 처음 보이는 페이지예요. 끈 페이지는 여기에 없어요.", 13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), lineHeight = 18.sp)
     }
 }
 
@@ -194,7 +203,7 @@ fun StartPageScreen(config: AppConfig, update: Update, back: () -> Unit) {
 
 private fun <T> List<T>.swap(i: Int, d: Int): List<T> = moved(i, d)
 
-/** A card as the picker offers it: clock cards come once per face (11-14: the clock card shows any of 내 시계). */
+/** A card in a stack as its row names it: a clock card with the face it shows. */
 data class CardPick(val type: CardType, val face: FaceId? = null) {
     val ko: String get() = if (face != null) "${type.ko} · ${kr.dot.sb.ui.clock.spec(face).ko}" else type.ko
 }
@@ -203,12 +212,6 @@ data class CardPick(val type: CardType, val face: FaceId? = null) {
 internal fun picks(b: Board, s: Int): List<CardPick> = b.slots.getOrNull(s).orEmpty().mapIndexed { j, t ->
     CardPick(t, if (t == CardType.CLOCK) b.options["$s:$j"]?.face ?: b.clockFace else null)
 }
-
-internal fun withFace(b: Board, s: Int, j: Int, face: FaceId?): Board = BoardOps.withFace(b, s, j, face)
-
-/** The faces a clock card can take: 내 시계 that draw in a slot, plus [keep] (a card's current face) if it left the list. */
-internal fun cardFaces(config: AppConfig, keep: Collection<FaceId?>): List<FaceId> =
-    (kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces } + keep.filterNotNull()).distinct()
 
 @Composable
 fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
@@ -223,9 +226,10 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
         val b = f(BoardOps.editStack(w, s, cards(w.slots[s]), moved))
         c.copy(widgetLeft = b.slots[0], widgetRight = b.slots[1], widgetOptions = b.options)
     }
-    val first = Slide("위젯") { l -> BoardView(widgetsBoard(config), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
+    fun removeAt(left: Boolean, j: Int) = editSide(left, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
+    val first = Slide(WIDGETS_PAGE) { l -> BoardView(widgetsBoard(config), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
     Box(Modifier.fillMaxSize()) {
-        Page("위젯", back, preview = pagePreview(config, 0, first, nav)) {
+        Page(WIDGETS_PAGE, back, preview = pagePreview(config, 0, first, nav)) {
             listOf(true to config.widgetLeft, false to config.widgetRight).forEach { (left, cards) ->
                 val wb = widgetsBoard(config)
                 CardStackSection(
@@ -235,7 +239,7 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
                     onReplace = { j -> pick = left to j },
                     onAdd = { pick = left to null },
                     onMove = { j, d -> editSide(left, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.swap(j, d) } },
-                    onRemove = { j -> editSide(left, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } } },
+                    onRemove = { j -> removeAt(left, j) },
                     footer = if (left) null else "카드가 둘 이상이면 그 칸을 위아래로 넘겨요. 첫 번째 카드가 처음에 보여요.",
                 )
             }
@@ -244,17 +248,16 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
         if (p != null) {
             val (left, index) = p
             val r = rects[if (left) 0 else 1]
-            val s = if (left) 0 else 1
-            val have = picks(widgetsBoard(config), s)
+            val stack = if (left) config.widgetLeft else config.widgetRight
             CardPickerSheet(
                 title = (if (left) "왼쪽 칸" else "오른쪽 칸") + " · 카드 고르기",
                 slotW = r.w.toInt(), slotH = r.h.toInt(), config = config, state = state, accent = null, face = FaceId.DIGITAL,
-                current = index?.let { have.getOrNull(it) }, taken = have.toSet(), faces = cardFaces(config, have.map { it.face }), onDismiss = { pick = null },
+                current = index?.let { stack.getOrNull(it) }, taken = stack.toSet(), onDismiss = { pick = null },
+                onRemove = if (stack.size > 1) { t -> removeAt(left, stack.indexOf(t)) } else null,
                 onPick = { card ->
-                    val j = index ?: have.size
-                    val stack = have.map { it.type }
-                    editSide(left, { k -> k.takeIf { it != index || stack[it] == card.type } }, { b -> withFace(b, s, j, card.face) }) { l ->
-                        if (index == null) l + card.type else l.mapIndexed { k, c -> if (k == index) card.type else c }
+                    // a replaced card's options (clock face) stay only when the type is unchanged; a new clock card shows the page's clock
+                    editSide(left, { k -> k.takeIf { it != index || stack[it] == card } }) { l ->
+                        if (index == null) l + card else l.mapIndexed { k, c -> if (k == index) card else c }
                     }
                     if (index != null) pick = null
                 },
@@ -338,6 +341,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     fun editSlot(slot: Int, moved: (Int) -> Int?, f: (List<CardType>) -> List<CardType>) = edit { b ->
         BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
     }
+    fun removeAt(slot: Int, j: Int) = editSlot(slot, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
     val first = Slide(board.name) { l ->
         BoardView(board, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize())
         val w = l.device.width(l.portrait).toFloat()
@@ -375,8 +379,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                             }
                         }
                         if (bad.isNotEmpty()) {
-                            val lines = bad.joinToString("\n") { "${it.ko}: 칸이 ${LayoutGeo.smallest(it, dw, dh).toInt()}dp밖에 안 돼서 이 폰에선 못 써요" }
-                            T(lines, 13.sp, 400, SK.muted, Modifier.padding(top = 10.dp), lineHeight = 18.sp)
+                            T(bad.joinToString(" · ") { it.ko } + ": 이 폰에선 칸이 너무 작아요", 13.sp, 400, SK.muted, Modifier.padding(top = 10.dp), lineHeight = 18.sp)
                         }
                     }
                 }
@@ -390,7 +393,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                     onReplace = { j -> selected = s; pick = PickTarget(s, j) },
                     onAdd = { selected = s; pick = PickTarget(s, null) },
                     onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
-                    onRemove = { j -> editSlot(s, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } } },
+                    onRemove = { j -> removeAt(s, j) },
                     onSettings = { j -> nav.push(Routes.widget(id, s, j)) },
                     // 카드 색 only where cards are filled plates on the theme's own background (RULE / OUTLINE have none)
                     plates = { j -> board.options["$s:$j"]?.plate },
@@ -434,24 +437,22 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
         val p = pick
         if (p != null) {
             val r = LayoutGeo.slots(board.layout, dw, dh).getOrNull(p.slot)
+            val stack = board.slots.getOrNull(p.slot).orEmpty()
             CardPickerSheet(
                 title = "칸 ${p.slot + 1} · 카드 고르기",
                 slotW = (r?.w ?: 300f).toInt(), slotH = (r?.h ?: 300f).toInt(),
                 config = config, state = state, accent = board.accent, face = board.clockFace,
-                current = p.index?.let { picks(board, p.slot).getOrNull(it) },
-                taken = picks(board, p.slot).toSet(),
-                faces = cardFaces(config, picks(board, p.slot).map { it.face }),
+                current = p.index?.let { stack.getOrNull(it) },
+                taken = stack.toSet(),
                 widget = true,
                 onDismiss = { pick = null },
-                onPick = { pk ->
-                    val card = pk.type
-                    val stack = board.slots.getOrNull(p.slot).orEmpty()
+                onRemove = if (stack.size > 1) { t -> removeAt(p.slot, stack.indexOf(t)) } else null,
+                onPick = { card ->
                     val j = p.index ?: stack.size
                     editSlot(p.slot, { k -> k.takeIf { it != p.index || stack[it] == card } }) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
-                    edit { b -> withFace(b, p.slot, j, pk.face) }
-                    if (p.index != null) pick = null
-                    // a new phone widget card asks for its widget right away (a cancel leaves the "pick" placeholder)
-                    if (card == CardType.WIDGET && stack.getOrNull(j) != card) pickWidget(env, update, id, "${p.slot}:$j")
+                    // a new phone widget card asks for its widget right away and closes this sheet (a cancel leaves the empty card)
+                    if (card == CardType.WIDGET && stack.getOrNull(j) != card) { pick = null; env.pickWidget(id, "${p.slot}:$j") }
+                    else if (p.index != null) pick = null
                 },
             )
         }
@@ -507,12 +508,12 @@ fun CardStackSection(
                     if (card == CardType.WIDGET && onSettings != null) {
                         Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
                     } else if (onPlate != null) {
-                        Box(Modifier.heightIn(min = 48.dp).clickable { open = if (open == j) null else j }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
+                        Box(Modifier.heightIn(min = 48.dp).clickable { open = if (open == j) null else j }.padding(horizontal = 12.dp), Alignment.Center) { T("색", 14.sp, 600, LocalAccent.current) }
                     }
                     if (cards.size > 1) {
-                        Box(Modifier.size(44.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
-                        Box(Modifier.size(44.dp).clickable(enabled = j < cards.lastIndex) { onMove(j, 1) }, Alignment.Center) { Icon(Ic.DOWN, if (j < cards.lastIndex) SK.muted else SK.line) }
-                        Box(Modifier.size(44.dp).clickable { onRemove(j) }, Alignment.Center) { Icon(Ic.CLOSE, SK.muted) }
+                        Box(Modifier.size(48.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
+                        Box(Modifier.size(48.dp).clickable(enabled = j < cards.lastIndex) { onMove(j, 1) }, Alignment.Center) { Icon(Ic.DOWN, if (j < cards.lastIndex) SK.muted else SK.line) }
+                        Box(Modifier.size(48.dp).clickable { onRemove(j) }, Alignment.Center) { Icon(Ic.CLOSE, SK.muted) }
                     } else {
                         T("바꾸기", 13.sp, 500, SK.muted, Modifier.padding(end = 12.dp))
                     }
@@ -535,7 +536,11 @@ fun CardStackSection(
     }
 }
 
-/** "카드 고르기": every card rendered by the real BoardView at the slot's own size. */
+/**
+ * "카드 고르기": every card rendered by the real BoardView at the slot's own size. One 시계 tile (operator 11-15 "시계가
+ * 너무 많아"): a placed clock card shows the page's clock and swipes through 내 시계 on StandBy. Add mode ([current] null):
+ * an added card shows a check, and a second tap takes it out again ([onRemove]; null = the slot's last card, kept).
+ */
 @Composable
 fun CardPickerSheet(
     title: String,
@@ -545,40 +550,42 @@ fun CardPickerSheet(
     state: kr.dot.sb.ui.state.StandbyState,
     accent: Long?,
     face: FaceId,
-    current: CardPick?,
-    taken: Set<CardPick>,
-    /** The faces the clock card is offered in (11-14: 내 시계). */
-    faces: List<FaceId>,
+    current: CardType?,
+    taken: Set<CardType>,
     onDismiss: () -> Unit,
     /** The phone widget card is offered on boards only, never on the widgets page (D6). */
     widget: Boolean = false,
-    onPick: (CardPick) -> Unit,
+    onRemove: ((CardType) -> Unit)? = null,
+    onPick: (CardType) -> Unit,
 ) {
     val acc = LocalAccent.current
     Sheet(title, onDismiss) {
-        T("칸 크기(${slotW}×${slotH}dp)에서 보이는 모습이에요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, bottom = 12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // the media card plays video too (r8) and one notification card replaced stack + list (r9): the old types stay only where a board already has them
-            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current?.type }
-                .flatMap { t -> if (t == CardType.CLOCK) faces.map { CardPick(t, it) } else listOf(CardPick(t)) }
+            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current }
                 .chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { card ->
-                        val dup = card in taken && card != current
-                        Column(Modifier.weight(1f).clickable(enabled = !dup) { onPick(card) }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val added = card in taken && card != current
+                        val tap: (() -> Unit)? = when {
+                            !added -> ({ onPick(card) })
+                            current == null && onRemove != null -> ({ onRemove(card) })
+                            else -> null
+                        }
+                        Column(Modifier.weight(1f).clickable(enabled = tap != null) { tap?.invoke() }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val shape = RoundedCornerShape(12.dp)
                             // border(0.dp) still draws a hairline: only the current tile gets one
                             Box(Modifier.fillMaxWidth().clip(shape).then(if (card == current) Modifier.border(2.dp, acc, shape) else Modifier)) {
                                 PreviewFrame(slotW.coerceAtLeast(60), slotH.coerceAtLeast(60), Modifier.fillMaxWidth(), maxHeight = 150.dp, radius = 10.dp) {
-                                    BoardView(Board("pick", "", Layout.ONE, listOf(listOf(card.type)), accent, card.face ?: face), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
+                                    BoardView(Board("pick", "", Layout.ONE, listOf(listOf(card)), accent, face), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
                                 }
                                 // the live card's own taps (media buttons, pager) swallowed the pick (11-14 "카드 추가가 안돼"): one catcher on top
-                                Box(Modifier.matchParentSize().clickable(enabled = !dup) { onPick(card) })
-                                if (dup) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 20.dp) }
+                                Box(Modifier.matchParentSize().clickable(enabled = tap != null) { tap?.invoke() })
+                                if (added) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 20.dp) }
                             }
                             Row(Modifier.fillMaxWidth().padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                                 T(card.ko, 14.sp, if (card == current) 700 else 500, SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
-                                if (dup) T("추가됨", 14.sp, 700, acc, Modifier.padding(start = 6.dp), maxLines = 1)
+                                if (added) T("추가됨", 14.sp, 700, acc, Modifier.padding(start = 6.dp), maxLines = 1)
                             }
                         }
                     }
@@ -591,26 +598,11 @@ fun CardPickerSheet(
     }
 }
 
-// ---- phone widget options (r9 D6; a long press on the card opens this) -----------------------------------------------
+// ---- phone widget options (r9 D6; 보이는 모습… of the card's long-press menu) -----------------------------------------
 
 /** Option [key] ("slot:index") of board [boardId] through [f]. */
 private fun setWidget(update: Update, boardId: String, key: String, f: (SlotOptions) -> SlotOptions) =
     update { c -> BoardOps.replace(c, boardId) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
-
-/**
- * Provider pick + bind; the new id replaces the slot's old one, which the activity's update releases (removedWidgetIds).
- * The pick is async: when the card stopped being a phone widget meanwhile, nothing is written (the next process start's
- * sweep releases the unused id).
- */
-private fun pickWidget(env: SettingsEnv, update: Update, boardId: String, key: String) =
-    env.pickWidget { wid ->
-        update { c ->
-            val (slot, j) = key.split(':').map { it.toInt() }
-            val b = c.boards.firstOrNull { it.id == boardId }
-            if (b?.slots?.getOrNull(slot)?.getOrNull(j) != CardType.WIDGET) c
-            else BoardOps.replace(c, boardId) { bb -> bb.copy(options = bb.options + (key to (bb.options[key] ?: SlotOptions()).copy(widgetId = wid))) }
-        }
-    }
 
 /** Route "widget:<board>:<slot>:<index>"; null when that card is no longer a phone widget (the caller shows Home). */
 @Composable
@@ -626,13 +618,13 @@ fun WidgetOptionsScreen(route: String, config: AppConfig, update: Update, env: S
     val id = o.widgetId
     Page("폰 위젯", back) {
         Section(null) {
-            item { NavRow(if (id == null) "위젯 고르기" else "위젯 바꾸기", { pickWidget(env, update, board.id, key) }, subtitle = id?.let(env.widgetLabel) ?: "홈 화면 위젯 가운데 하나") }
-            if (id != null) item { NavRow("위젯 설정", { env.configureWidget(id) }, subtitle = "위젯 앱이 가진 설정 화면을 열어요") }
+            item { NavRow(if (id == null) "위젯 고르기" else "위젯 바꾸기", { env.pickWidget(board.id, key) }, subtitle = id?.let(env.widgetLabel) ?: "홈 화면 위젯 가운데 하나") }
+            if (id != null && env.widgetConfigurable(id)) item { NavRow("위젯 설정", { env.configureWidget(id) }, subtitle = "위젯 앱이 가진 설정 화면을 열어요") }
         }
-        Section("StandBy에서 보이는 모습", footer = "다크·라이트는 위젯 앱이 지원할 때만 바뀌어요. 밤에는 밝은 위젯을 뒤집어 어둡게 보여 줘요.") {
+        Section("StandBy에서 보이는 모습", footer = "어둡게·밝게는 위젯 앱이 지원할 때만 바뀌어요. 밤에는 밝은 위젯을 뒤집어 어둡게 보여 줘요.") {
             item { SliderRow("투명도", "${(o.opacity * 100).roundToInt()}%", o.opacity, 0f..1f, { v -> set { it.copy(opacity = v) } }) }
-            item { ControlRow("다크·라이트") { Segmented(WidgetMode.entries.map { it.ko }, o.widgetMode.ordinal, { i -> set { it.copy(widgetMode = WidgetMode.entries[i]) } }) } }
-            item { SliderRow("모서리", "${o.radiusDp}dp", o.radiusDp.toFloat(), 0f..40f, { v -> set { it.copy(radiusDp = v.roundToInt()) } }) }
+            item { ControlRow("어둡게·밝게") { Segmented(WidgetMode.entries.map { it.ko }, o.widgetMode.ordinal, { i -> set { it.copy(widgetMode = WidgetMode.entries[i]) } }) } }
+            item { SliderRow("모서리", "각지게 ↔ 둥글게", o.radiusDp.toFloat(), 0f..40f, { v -> set { it.copy(radiusDp = v.roundToInt()) } }) }
             item { SwitchRow("밤에 숨기기", o.hideAtNight, { on -> set { it.copy(hideAtNight = on) } }) }
         }
     }

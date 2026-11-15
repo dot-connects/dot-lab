@@ -307,13 +307,14 @@ fun NavRow(
     badgeOk: Boolean = false, enabled: Boolean = true, why: String? = null,
 ) {
     Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled, onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted)
+        // with a value the title keeps its own width and the value takes what is left (one line, ellipsis)
+        Column(if (value == null) Modifier.weight(1f) else Modifier) {
+            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted, maxLines = if (value == null) Int.MAX_VALUE else 1)
             if (subtitle != null) T(subtitle, 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp), maxLines = 2)
             if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
         }
         val dim = if (enabled) 1f else 0.38f
-        if (value != null) T(value, 14.sp, 400, SK.muted.copy(alpha = dim), Modifier.padding(start = 8.dp), maxLines = 1)
+        if (value != null) Box(Modifier.weight(1f).padding(start = 12.dp), Alignment.CenterEnd) { T(value, 14.sp, 400, SK.muted.copy(alpha = dim), maxLines = 1) }
         if (badge != null) Pill(badge, if (badgeOk) SK.ok else SK.danger, Modifier.padding(start = 8.dp))
         Icon(Ic.CHEVRON, SK.muted.copy(alpha = 0.7f * dim), 20.dp, Modifier.padding(start = 4.dp))
     }
@@ -480,7 +481,7 @@ fun Segmented(options: List<String>, selected: Int, onSelect: (Int) -> Unit, mod
         options.forEachIndexed { i, o ->
             val on = i == selected
             Box(
-                Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(10.dp)).background(if (on) acc else Color.Transparent)
+                Modifier.weight(1f).heightIn(min = 48.dp).clip(RoundedCornerShape(10.dp)).background(if (on) acc else Color.Transparent)
                     .clickable(enabled = enabled) { onSelect(i) }.padding(horizontal = 4.dp),
                 Alignment.Center,
             ) { T(o, 14.sp, if (on) 700 else 500, if (on) SK.bg else SK.muted, align = TextAlign.Center, maxLines = 1) }
@@ -496,7 +497,7 @@ fun ChipFlow(options: List<String>, selected: Int, onSelect: (Int) -> Unit, enab
             val on = i == selected
             val ok = enabled?.getOrNull(i) ?: true
             Box(
-                Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(if (on) acc else SK.surface2)
+                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50)).background(if (on) acc else SK.surface2)
                     .clickable(enabled = ok) { onSelect(i) }.padding(horizontal = 16.dp),
                 Alignment.Center,
             ) { T(o, 14.sp, if (on) 700 else 500, if (on) SK.bg else if (ok) SK.text else SK.muted.copy(alpha = 0.5f), maxLines = 1) }
@@ -559,7 +560,7 @@ fun Field(value: String, onChange: (String) -> Unit, hint: String, modifier: Mod
 
 @Composable
 private fun Dot(color: Color, selected: Boolean, onClick: () -> Unit, content: (@Composable () -> Unit)? = null) {
-    Box(Modifier.size(44.dp).clip(CircleShape).clickable(onClick = onClick), Alignment.Center) {
+    Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClick = onClick), Alignment.Center) {
         if (selected) Box(Modifier.size(40.dp).border(2.dp, Color.White, CircleShape))
         Box(Modifier.size(30.dp).clip(CircleShape).background(color).border(1.dp, Color.White.copy(alpha = 0.12f), CircleShape), Alignment.Center) { content?.invoke() }
     }
@@ -579,7 +580,7 @@ fun ColorPalette(
     Column(modifier) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(0.dp), verticalArrangement = Arrangement.spacedBy(0.dp)) {
             swatches.forEach { Dot(it.c(), it == color, { onChange(it); onChangeFinished?.invoke() }) }
-            Box(Modifier.size(44.dp).clip(CircleShape).clickable { open = !open }, Alignment.Center) {
+            Box(Modifier.size(48.dp).clip(CircleShape).clickable { open = !open }, Alignment.Center) {
                 if (custom || open) Box(Modifier.size(40.dp).border(2.dp, Color.White, CircleShape))
                 Canvas(Modifier.size(30.dp).clip(CircleShape)) {
                     drawCircle(Brush.sweepGradient(listOf(Color.Red, Color.Yellow, Color.Green, Color.Cyan, Color.Blue, Color.Magenta, Color.Red)))

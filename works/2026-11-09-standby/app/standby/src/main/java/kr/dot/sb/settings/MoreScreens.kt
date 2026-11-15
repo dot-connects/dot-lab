@@ -15,6 +15,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -70,7 +72,7 @@ private fun Stand(text: String) = Box(Modifier.fillMaxSize().background(SK.surfa
 
 private val SAMPLE_NOTIF = BigNotification("pv", "카카오톡", "엄마", "저녁 먹었어?", null, plateColor = 0xFFF5D000, postedAtEpochMs = 0)
 
-// ---- 알림 표시 ------------------------------------------------------------------------------------------------------
+// ---- 알림 ----------------------------------------------------------------------------------------------------------
 
 @Composable
 fun NotifScreen(config: AppConfig, update: Update, back: () -> Unit) {
@@ -83,7 +85,7 @@ fun NotifScreen(config: AppConfig, update: Update, back: () -> Unit) {
         }
     }
     val preview = Preview(config, slides, caption = if (config.showNotifications) null else "알림이 와도 화면은 그대로예요", initial = Pages.start(config))
-    Page("알림 표시", back, preview = preview) {
+    Page("알림", back, preview = preview) {
         Section(null) {
             item {
                 Column {
@@ -138,15 +140,16 @@ fun NightScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
         if (mode == NightMode.AUTO) More {
             Section(null) {
                 item { LuxRow(env.lux, config) }
+                // plan-r13 B4: the sliders move on the 어두움 정도 scale (right = darker); the stored lux keep their meaning
                 item {
-                    SliderRow("어두워졌다고 볼 밝기", "${config.nightEnterLux.toInt()} lx 이하", config.nightEnterLux, 1f..20f, { v ->
-                        if (!never) update { it.copy(nightEnterLux = v.toInt().toFloat(), nightExitLux = maxOf(it.nightExitLux, v.toInt() + 2f)) }
-                    }, steps = 18, note = "이 밝기가 5초 이어지면 밤 화면으로 바뀌어요")
+                    SliderRow("어두워졌다고 볼 밝기", "어두움 정도 ${DarkLevel.text(config.nightEnterLux)}", DarkLevel.of(config.nightEnterLux), DarkLevel.of(20f)..20f, { v ->
+                        if (!never) { val lux = DarkLevel.lux(v); update { it.copy(nightEnterLux = lux, nightExitLux = maxOf(it.nightExitLux, lux + 2f)) } }
+                    }, note = "이만큼 어두운 게 5초 이어지면 밤 화면으로 바뀌어요")
                 }
                 item {
-                    SliderRow("밝아졌다고 볼 밝기", "${config.nightExitLux.toInt()} lx 이상", config.nightExitLux, 3f..40f, { v ->
-                        if (!never) update { it.copy(nightExitLux = maxOf(v.toInt().toFloat(), it.nightEnterLux + 2f)) }
-                    }, steps = 36, note = "이 밝기가 1.5초 이어지면 원래 화면으로 돌아와요")
+                    SliderRow("밝아졌다고 볼 밝기", "어두움 정도 ${DarkLevel.text(config.nightExitLux)}", DarkLevel.of(config.nightExitLux), 1f..DarkLevel.of(3f), { v ->
+                        if (!never) update { it.copy(nightExitLux = maxOf(DarkLevel.lux(v), it.nightEnterLux + 2f)) }
+                    }, note = "이만큼 밝은 게 1.5초 이어지면 원래 화면으로 돌아와요")
                 }
             }
         }
@@ -182,9 +185,9 @@ private fun LuxRow(lux: Float?, config: AppConfig) {
     Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp), verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             T("지금 주변 밝기", 16.sp, 500)
-            T("센서 값을 바로바로 보여줘요", 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp))
+            T("어두움 정도 · 1(밝음)부터 20(캄캄함)까지", 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp))
         }
-        T(if (lux == null) "—" else "${if (lux < 10) "%.1f".format(lux) else lux.toInt().toString()} lx", 22.sp, 700, SK.text, Modifier.padding(end = 10.dp))
+        T(if (lux == null) "—" else DarkLevel.text(lux), 22.sp, 700, SK.text, Modifier.padding(end = 10.dp))
         if (lux != null) Pill(if (dark) "밤" else if (bright) "낮" else "중간", if (dark) LocalAccent.current else SK.muted)
     }
 }
@@ -225,7 +228,7 @@ fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
             }
             item {
                 SwitchRow(
-                    "밤에 알림이 와도 꺼진 화면 켜지 않기", config.nightNotifQuiet && !never, { v -> update { it.copy(nightNotifQuiet = v) } },
+                    "밤에 알림 오면 화면 켜기", NightWake.shown(config), { v -> update { NightWake.set(it, v) } },
                     subtitle = "밤 화면일 때만요. 알람은 그대로 울려요.", enabled = !never, why = "화면이 꺼지지 않아서 쓸 일이 없어요",
                 )
             }
@@ -234,12 +237,6 @@ fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
             Section(null) {
                 item { SwitchRow("발열 보호", config.heatProtect, { v -> update { it.copy(heatProtect = v) } }, subtitle = "배터리가 42도를 넘으면 화면을 절반쯤 어둡게 해요. 식으면 돌아와요.") }
                 item { SwitchRow("잔상 막기", config.burnInShift, { v -> update { it.copy(burnInShift = v) } }, subtitle = "1분마다 화면을 조금씩 옮겨서 잔상을 막아요") }
-            }
-            val trail = remember { env.chargeTrail() }
-            Section("최근 켜짐 기록", footer = "충전기를 꽂으면 여기에 기록이 남아요.") {
-                item {
-                    T(if (trail.isEmpty()) "아직 기록이 없어요" else trail.joinToString("\n"), 14.sp, 400, SK.muted, Modifier.padding(16.dp), lineHeight = 22.sp)
-                }
             }
         }
     }
@@ -288,35 +285,31 @@ fun AlarmScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
                     ControlRow("알람이 울릴 때", note = if (config.alarmScreen) "스탠바이가 켜져 있으면 큰 시계와 끄기·다시 알림 버튼을 보여줘요." else "시계 앱의 기본 알람 화면만 떠요.") {
                         Segmented(listOf("스탠바이 화면", "시계 앱 화면"), if (config.alarmScreen) 0 else 1, { i -> update { it.copy(alarmScreen = i == 0) } })
                     }
-                    if (config.alarmScreen) PermLine(Perm.FULL_SCREEN)
+                    // one line for both users of it (the StandBy alarm screen and the inner-screen glow)
+                    if (config.alarmScreen || (fold && config.alarmGlow)) PermLine(Perm.FULL_SCREEN)
                 }
             }
-            item {
-                Column {
-                    SwitchRow(
-                        "안쪽 화면 무드등", config.alarmGlow && fold, { v -> update { it.copy(alarmGlow = v) } },
-                        subtitle = if (fold) "알람이 울리면 펼친 안쪽 화면이 은은한 불빛이 돼요" else null, enabled = fold, why = FOLD_WHY,
-                    )
-                    if (fold) PermLine(Perm.FULL_SCREEN)
-                }
+            // plan-r13 B3: the inner-screen rows exist only on a Fold
+            if (fold) item {
+                SwitchRow("안쪽 화면 무드등", config.alarmGlow, { v -> update { it.copy(alarmGlow = v) } }, subtitle = "알람이 울리면 펼친 안쪽 화면이 은은한 불빛이 돼요")
             }
-            item {
+            if (fold) item {
                 Column {
-                    ControlRow("알람 전에 미리 밝히기", note = "시계 앱의 다음 알람보다 먼저 서서히 밝아져요.", enabled = fold, why = FOLD_WHY) {
-                        Segmented(offsets.map { if (it == 0) "끔" else "${it}분" }, offsets.indexOf(config.glowStartMinBefore).coerceAtLeast(0), { i -> update { it.copy(glowStartMinBefore = offsets[i]) } }, enabled = fold)
+                    ControlRow("알람 전에 미리 밝히기", note = "시계 앱의 다음 알람보다 먼저 서서히 밝아져요.") {
+                        Segmented(offsets.map { if (it == 0) "끔" else "${it}분" }, offsets.indexOf(config.glowStartMinBefore).coerceAtLeast(0), { i -> update { it.copy(glowStartMinBefore = offsets[i]) } })
                     }
-                    if (fold && config.glowStartMinBefore > 0) PermLine(Perm.EXACT_ALARM)
+                    if (config.glowStartMinBefore > 0) PermLine(Perm.EXACT_ALARM)
                 }
             }
         }
-        More {
+        if (fold) More {
             Section(null) {
                 item {
-                    ControlRow("밝아지는 시간", value = "${config.glowRampSec}초", enabled = fold, why = FOLD_WHY) {
-                        SliderControl(config.glowRampSec.toFloat(), 2f..20f, { v -> if (fold) update { it.copy(glowRampSec = v.toInt()) } }, steps = 17)
+                    ControlRow("밝아지는 시간", value = "${config.glowRampSec}초") {
+                        SliderControl(config.glowRampSec.toFloat(), 2f..20f, { v -> update { it.copy(glowRampSec = v.toInt()) } }, steps = 17)
                     }
                 }
-                item { NavRow("무드등 색", { nav.push(Routes.FOLD) }, value = GLOWS.firstOrNull { it.second == config.glowColor }?.first ?: "직접 고른 색", enabled = fold, why = FOLD_WHY) }
+                item { NavRow("무드등 색", { nav.push(Routes.FOLD) }, value = GLOWS.firstOrNull { it.second == config.glowColor }?.first ?: "직접 고른 색") }
             }
         }
     }
@@ -353,17 +346,6 @@ fun FoldScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> 
 
 // ---- 날씨와 도시 ----------------------------------------------------------------------------------------------------
 
-@Composable
-fun WeatherScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    var sheet by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxSize()) {
-        Page("날씨", back) {
-            Section(null, footer = "날씨는 Open-Meteo에서 30분마다 받아와요.") { item { NavRow("날씨 지역", { sheet = true }, value = config.city.name) } }
-        }
-        if (sheet) CitySheet("날씨 지역", taken = emptySet(), onDismiss = { sheet = false }) { c -> update { it.copy(city = c) }; sheet = false }
-    }
-}
-
 /** 세계 시계 도시 (11-14: on 시계, moved from 날씨): chips with ✕ and [도시 더하기], which asks [onAdd] for the city sheet. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -375,13 +357,18 @@ internal fun WorldCitiesSection(config: AppConfig, update: Update, onAdd: () -> 
                     val many = config.worldCities.size > 1
                     config.worldCities.forEach { c ->
                         Row(
-                            Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).background(SK.surface2)
-                                .clickable(enabled = many) { update { s -> s.copy(worldCities = s.worldCities.filter { it != c }) } }.padding(start = 16.dp, end = if (many) 10.dp else 16.dp),
+                            Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50)).background(SK.surface2).padding(start = 16.dp, end = if (many) 0.dp else 16.dp),
                             verticalAlignment = Alignment.CenterVertically,
-                        ) { T(c.name, 14.sp, 500, SK.text); if (many) Icon(Ic.CLOSE, SK.muted, 18.dp, Modifier.padding(start = 6.dp)) }
+                        ) {
+                            T(c.name, 14.sp, 500, SK.text)
+                            if (many) Box(
+                                Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "${c.name} 빼기") { update { s -> s.copy(worldCities = s.worldCities.filter { it != c }) } },
+                                Alignment.Center,
+                            ) { Icon(Ic.CLOSE, SK.muted, 18.dp) }
+                        }
                     }
                     Row(
-                        Modifier.heightIn(min = 40.dp).clip(RoundedCornerShape(50)).border(1.dp, SK.line, RoundedCornerShape(50)).clickable(onClick = onAdd).padding(horizontal = 14.dp),
+                        Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50)).border(1.dp, SK.line, RoundedCornerShape(50)).clickable(onClick = onAdd).padding(horizontal = 14.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) { Icon(Ic.PLUS, LocalAccent.current, 16.dp); T("도시 더하기", 14.sp, 600, LocalAccent.current, Modifier.padding(start = 6.dp)) }
                 }
@@ -410,17 +397,7 @@ internal fun CitySheet(title: String, taken: Set<String>, onDismiss: () -> Unit,
     }
 }
 
-// ---- 카드에 쓰는 정보 -----------------------------------------------------------------------------------------------
-
-@Composable
-fun CardInfoScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
-    Page("카드에 쓰는 정보", back) {
-        DDaySection(config, update, env)
-        FocusSection(config, update)
-        CalendarSection(config, update, env)
-        UsageSection(config, update)
-    }
-}
+// ---- card settings sections (카드 › each card) ---------------------------------------------------------------
 
 /** D-day 카드: the list + add row (also 카드 › D-day). */
 @Composable
@@ -515,6 +492,12 @@ fun PermsScreen(env: SettingsEnv, back: () -> Unit) {
     val ok = Perm.entries.filter { env.granted[it] == true }
     Page("권한", back) {
         T(if (need.isEmpty()) "필요한 항목이 모두 켜져 있어요" else "${need.size}개를 켜면 스탠바이가 제대로 움직여요", 15.sp, 500, if (need.isEmpty()) SK.ok else SK.muted, Modifier.padding(start = 4.dp, top = 4.dp))
+        // plan-r13 B1: one button walks every missing one in turn (each system page or question once)
+        if (need.isNotEmpty()) {
+            ActionButton("차례로 켜기", env.onPermWalk, Modifier.fillMaxWidth().padding(top = 16.dp))
+            T("하나씩 열어 드려요. 켜고 돌아오면 다음 것이 열려요.", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, top = 8.dp))
+        }
+        if (env.permWalkOffer) ActionButton(if (need.isEmpty()) "닫기" else "나중에", env.onPermLater, Modifier.fillMaxWidth().padding(top = 10.dp), primary = false)
         need.forEach { p ->
             Column(Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(16.dp)).background(SK.surface).padding(16.dp)) {
                 T(p.ko, 16.sp, 600)
@@ -551,6 +534,15 @@ fun AboutScreen(env: SettingsEnv, back: () -> Unit) {
         Section(null) {
             item { Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) { T("버전", 16.sp, 500, SK.text, Modifier.weight(1f)); T(env.versionName, 16.sp, 500, SK.muted) } }
         }
+        Section("문제 해결", footer = "충전기를 꽂으면 최근 켜짐 기록이 여기에 남아요.") {
+            item {
+                val trail = remember { env.chargeTrail() }
+                Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                    T("최근 켜짐 기록", 16.sp, 500, SK.text)
+                    T(if (trail.isEmpty()) "아직 기록이 없어요" else trail.joinToString("\n"), 14.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 22.sp)
+                }
+            }
+        }
         Section("글꼴 라이선스", footer = "스탠바이는 아래 오픈 글꼴을 앱에 넣어 써요. 항목을 누르면 라이선스 전문이 열려요.") {
             env.licenseNames.forEach { file ->
                 item {
@@ -567,4 +559,24 @@ fun AboutScreen(env: SettingsEnv, back: () -> Unit) {
             }
         }
     }
+}
+
+/** plan-r13 B5 "밤에 알림 오면 화면 켜기": the inverse of the stored [AppConfig.nightNotifQuiet]; off while 계속 켜 둠. */
+internal object NightWake {
+    fun shown(c: AppConfig): Boolean = !c.nightNotifQuiet && c.displayOff != DisplayOff.NEVER
+    fun set(c: AppConfig, on: Boolean): AppConfig = c.copy(nightNotifQuiet = !on)
+}
+
+/** plan-r13 B4 어두움 정도: a lux threshold shown as 1 (bright, [HI] lx) .. 20 (dark, [LO] lx) on a log scale; stored as lux. */
+internal object DarkLevel {
+    const val LO = 1f
+    const val HI = 40f
+    private val span = kotlin.math.ln(HI / LO)
+
+    fun of(lux: Float): Float = 1f + 19f * kotlin.math.ln(HI / lux.coerceIn(LO, HI)) / span
+
+    /** Rounded to 0.1 lx (the stored value). */
+    fun lux(level: Float): Float = (HI * kotlin.math.exp(-span * (level.coerceIn(1f, 20f) - 1f) / 19f) * 10f).let { kotlin.math.round(it) / 10f }
+
+    fun text(lux: Float): String = kotlin.math.round(of(lux)).toInt().toString()
 }

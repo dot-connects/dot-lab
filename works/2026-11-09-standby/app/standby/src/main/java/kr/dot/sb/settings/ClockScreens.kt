@@ -78,7 +78,7 @@ import kotlin.math.roundToInt
 
 // ---- 시계 (mockup SCREENS.clock): preview + 넣기/꾸미기/빼기, 내 시계 strip, 둘러보기 gallery ---------------------------
 
-/** The "우리만" badge (mockup `.uq`). */
+/** The "이 앱에만" badge (mockup `.uq`). */
 private val OURS = Color(0xFFFFAD5C)
 private val TILE_W = 118.dp
 private val TILE_GAP = 10.dp
@@ -273,7 +273,7 @@ private fun GalleryCard(face: FaceId, on: Boolean, mine: Boolean, config: AppCon
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             T(sp.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
             if (sp.ours) Box(Modifier.padding(start = 6.dp).border(1.dp, OURS, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) {
-                T("우리만", 10.sp, 700, OURS, maxLines = 1)
+                T("이 앱에만", 10.sp, 700, OURS, maxLines = 1)
             }
         }
     }
@@ -344,7 +344,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
         StyleRow.LED -> ControlRow("불빛 색") { NamedSwatches(LED_NAMES, style.ledColor ?: FaceDefaults.LEDS[0], onChange = { v -> edit { it.copy(ledColor = v) } }) }
         StyleRow.PAIR -> ControlRow("두 색 조합") { PresetSwatches(FaceDefaults.PAIRS, style.pairPreset ?: 0, { i -> edit { it.copy(pairPreset = i) } }) }
         StyleRow.TRIO -> ControlRow("색 조합") { PresetSwatches(FaceDefaults.TRIOS, style.trioPreset ?: 0, { i -> edit { it.copy(trioPreset = i) } }) }
-        StyleRow.SOLAR -> ControlRow("솔라 팔레트") {
+        StyleRow.SOLAR -> ControlRow("색 조합") {
             val sets = ClockStyle.SOLAR_SETS
             PresetSwatches(sets.map { it.take(2) }, sets.indexOfFirst { it[0] == style.bgColor && it[1] == style.bgColor2 }, { i ->
                 val set = sets[i]
@@ -365,7 +365,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
                 ColorPalette(style.color2, { v -> edit { it.copy(color2 = v) } })
             }
         }
-        StyleRow.BG -> ControlRow("배경") {
+        StyleRow.BG -> ControlRow("시계 배경") {
             Segmented(Background.entries.map { it.ko }, style.background.ordinal, { i -> edit { it.copy(background = Background.entries[i]) } })
             if (style.background != Background.BLACK) {
                 T(if (style.background == Background.GRADIENT) "시작 색" else "배경 색", 16.sp, 500, SK.text, Modifier.padding(top = 12.dp, bottom = 4.dp))
@@ -389,15 +389,16 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
         StyleRow.LUME_VIEW -> ControlRow("보기", note = "밤에는 밤 색으로 바뀌어요.") {
             Segmented(kr.dot.sb.model.LumeView.entries.map { it.ko }, style.lumeView.ordinal, { i -> edit { it.copy(lumeView = kr.dot.sb.model.LumeView.entries[i]) } })
         }
-        StyleRow.MOVEMENT -> ControlRow("초침") { Segmented(listOf("쿼츠 틱", "기계식 스윕"), if (style.sweep) 1 else 0, { i -> edit { it.copy(sweep = i == 1) } }) }
+        StyleRow.MOVEMENT -> ControlRow("초침") { Segmented(listOf("똑딱", "부드럽게"), if (style.sweep) 1 else 0, { i -> edit { it.copy(sweep = i == 1) } }) }
         StyleRow.INDEX_ONLY -> ControlRow("숫자") {
-            Segmented(listOf("숫자", "인덱스만"), if (style.analogNumbers == AnalogNumbers.NONE) 1 else 0, { i -> edit { it.copy(analogNumbers = if (i == 1) AnalogNumbers.NONE else AnalogNumbers.TWELVE) } })
+            Segmented(listOf("숫자", "눈금만"), if (style.analogNumbers == AnalogNumbers.NONE) 1 else 0, { i -> edit { it.copy(analogNumbers = if (i == 1) AnalogNumbers.NONE else AnalogNumbers.TWELVE) } })
         }
         StyleRow.SQUARE_NUMERALS -> ControlRow("숫자") {
             Segmented(kr.dot.sb.model.SquareNumerals.entries.map { it.ko }, style.squareNumerals.ordinal, { i -> edit { it.copy(squareNumerals = kr.dot.sb.model.SquareNumerals.entries[i]) } })
         }
-        StyleRow.HOURS -> ControlRow("시간 표시") {
-            Segmented(listOf("폰 설정 따라", "24시간", "12시간"), when (style.h24) { null -> 0; true -> 1; false -> 2 }, { i -> edit { it.copy(h24 = when (i) { 0 -> null; 1 -> true; else -> false }) } })
+        // plan-r13 B4: named apart from the global 시간 표시, in its order
+        StyleRow.HOURS -> ControlRow("이 시계만 시간 표시") {
+            Segmented(listOf("폰 설정 따라", "12시간", "24시간"), when (style.h24) { null -> 0; false -> 1; true -> 2 }, { i -> edit { it.copy(h24 = when (i) { 0 -> null; 1 -> false; else -> true }) } })
         }
         StyleRow.GHOST -> SwitchRow("꺼진 획 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 획이 다이얼에 옅게 새겨져요")
         StyleRow.DATE_WINDOW -> SwitchRow("날짜 창", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "오른쪽 위에 요일과 날짜를 보여요")

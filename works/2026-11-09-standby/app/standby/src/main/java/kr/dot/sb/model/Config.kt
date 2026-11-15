@@ -72,7 +72,7 @@ enum class TextSize(val ko: String, val f: Float) { SMALL("작게", 0.9f), NORMA
 enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("듀오") }
 
 /** Phone-widget slot (r9): follow the theme, or force the provider's dark / light layout (best effort). */
-enum class WidgetMode(val ko: String) { THEME("테마 따라"), DARK("늘 다크"), LIGHT("늘 라이트") }
+enum class WidgetMode(val ko: String) { THEME("테마 따라"), DARK("늘 어둡게"), LIGHT("늘 밝게") }
 
 /** Per-card options keyed by "slotIdx:stackIdx" on a [Board]; today only the phone-widget card has any. */
 data class SlotOptions(

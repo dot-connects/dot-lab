@@ -36,6 +36,10 @@ object ConfigStore {
         }
     }
 
+    /** "v" of the saved config, null = nothing saved yet (plan-r13 B1: a config from before r13 means the app was used). */
+    fun storedVersion(context: Context): Int? =
+        prefs(context).getString(KEY, null)?.let { runCatching { org.json.JSONObject(it).optInt("v") }.getOrNull() }
+
     /** Test seam: forget the in-memory copy so the next call reloads from SharedPreferences (a process restart). */
     internal fun forgetMemory() { synchronized(this) { loaded = false; state.value = AppConfig() } }
 }

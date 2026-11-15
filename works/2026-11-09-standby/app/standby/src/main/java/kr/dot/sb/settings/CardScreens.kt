@@ -1,9 +1,14 @@
 package kr.dot.sb.settings
 
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,7 +26,6 @@ import kr.dot.sb.ui.state.StandbyActions
  */
 internal fun cardRoute(t: CardType): String = when (t) {
     CardType.CLOCK -> Routes.CLOCKS
-    CardType.WEATHER -> Routes.WEATHER
     CardType.NOTIF -> Routes.NOTIF
     CardType.SLEEP -> Routes.SOUND
     CardType.ALARM -> Routes.ALARM
@@ -30,20 +34,32 @@ internal fun cardRoute(t: CardType): String = when (t) {
     else -> Routes.card(t)
 }
 
-/** The cards the list shows, in the picker's order (사용량 in the personal build only). */
-internal fun listedCards(): List<CardType> = CardType.entries.filter { it != CardType.USAGE || UsageFeature.enabled }
+/**
+ * The cards the list shows (plan-r13 B2): only cards with something to set, most used first; 오늘 일정 stands for
+ * 오늘 일정 · 달력 (one screen). 사용량 in the personal build only.
+ */
+internal fun listedCards(): List<CardType> = listOf(
+    CardType.NOTIF, CardType.ALARM, CardType.CLOCK, CardType.WEATHER, CardType.SLEEP, CardType.AGENDA, CardType.DDAY, CardType.TIMER,
+) + listOfNotNull(CardType.USAGE.takeIf { UsageFeature.enabled })
 
 @Composable
-fun CardsScreen(config: AppConfig, nav: Nav, env: SettingsEnv, back: () -> Unit) {
-    Page("카드", back) {
-        Section(null, footer = "페이지에 넣는 카드마다 쓰는 정보를 여기서 정해요.") {
-            listedCards().forEach { t ->
-                item {
-                    val badge = if (t == CardType.NOTIF && Perm.NOTIFICATIONS in env.missing) "설정 필요" else null
-                    NavRow(t.ko, { nav.push(cardRoute(t)) }, value = if (badge != null) null else cardValue(t, config), badge = badge)
+fun CardsScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
+    var city by remember { mutableStateOf(false) }
+    Box(Modifier.fillMaxSize()) {
+        Page("카드", back) {
+            Section(null, footer = "폰 위젯은 페이지에서 그 카드의 [설정]을 눌러요.") {
+                listedCards().forEach { t ->
+                    item {
+                        val badge = if (t == CardType.NOTIF && Perm.NOTIFICATIONS in env.missing) "설정 필요" else null
+                        val name = if (t == CardType.AGENDA) "오늘 일정 · 달력" else t.ko
+                        // 날씨 has one setting: its row opens the city sheet right here
+                        val open = if (t == CardType.WEATHER) ({ city = true }) else ({ nav.push(cardRoute(t)) })
+                        NavRow(name, open, value = if (badge != null) null else cardValue(t, config), badge = badge)
+                    }
                 }
             }
         }
+        if (city) CitySheet("날씨 지역", taken = emptySet(), onDismiss = { city = false }) { c -> update { it.copy(city = c) }; city = false }
     }
 }
 

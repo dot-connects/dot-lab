@@ -37,7 +37,7 @@ object Perms {
             Perm.NOTIFICATIONS to (ctx.packageName in NotificationManagerCompat.getEnabledListenerPackages(ctx)),
             Perm.POST to has(Manifest.permission.POST_NOTIFICATIONS),
             Perm.CALENDAR to has(Manifest.permission.READ_CALENDAR),
-            Perm.PHOTOS to has(Manifest.permission.READ_MEDIA_IMAGES),
+            Perm.PHOTOS to kr.dot.sb.data.DeviceSources.photos(ctx),
             Perm.FULL_SCREEN to (nm?.canUseFullScreenIntent() == true),
             Perm.EXACT_ALARM to (am?.canScheduleExactAlarms() == true),
             Perm.BATTERY to (pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true),
@@ -63,16 +63,19 @@ object Perms {
         Perm.POST -> listOf(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
     }
 
-    fun runtimePermission(p: Perm): String? = when (p) {
-        Perm.POST -> Manifest.permission.POST_NOTIFICATIONS
-        Perm.CALENDAR -> Manifest.permission.READ_CALENDAR
-        Perm.PHOTOS -> Manifest.permission.READ_MEDIA_IMAGES
-        else -> null
+    /** Asked in-app, together (photos: full or the user's selection); empty = a system page. */
+    fun runtimePermissions(p: Perm): List<String> = when (p) {
+        Perm.POST -> listOf(Manifest.permission.POST_NOTIFICATIONS)
+        Perm.CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
+        Perm.PHOTOS -> listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+        else -> emptyList()
     }
 
-    fun open(activity: Activity, p: Perm) {
-        for (i in intents(activity, p)) if (runCatching { activity.startActivity(i) }.isSuccess) return
+    /** The system page for [p]; false (after a toast) when none opens. */
+    fun open(activity: Activity, p: Perm): Boolean {
+        for (i in intents(activity, p)) if (runCatching { activity.startActivity(i) }.isSuccess) return true
         Toast.makeText(activity, "설정 화면을 열 수 없어요", Toast.LENGTH_LONG).show()
+        return false
     }
 
     /** Fold or Flip: has a hinge sensor. The mood-light settings only make sense there. */
@@ -87,5 +90,25 @@ object Perms {
         !isFoldable(ctx) -> Phone.BAR
         android.os.Build.MODEL.startsWith("SM-F7") -> Phone.FLIP
         else -> Phone.FOLD
+    }
+}
+
+/**
+ * plan-r13 B1 [차례로 켜기]: one pass over the missing permissions, each opened once. [advance] is called with the step
+ * that just finished (null to start); a report for any other step is a repeat (runtime callback and onResume both fire)
+ * and is ignored.
+ */
+data class PermWalk(val asked: Set<Perm> = emptySet(), val current: Perm? = null, val done: Boolean = false) {
+    fun advance(from: Perm?, missing: List<Perm>): PermWalk {
+        if (done || from != current) return this
+        val n = next(missing, asked) ?: return copy(current = null, done = true)
+        return copy(asked = asked + n, current = n)
+    }
+
+    companion object {
+        fun next(missing: List<Perm>, asked: Set<Perm>): Perm? = missing.firstOrNull { it !in asked }
+
+        /** Fresh install only: an update (or a config saved before r13, v <= 10) never walks; a finished walk never again. */
+        fun starts(fresh: Boolean, done: Boolean, storedVersion: Int?): Boolean = fresh && !done && (storedVersion == null || storedVersion > 10)
     }
 }

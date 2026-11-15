@@ -116,9 +116,9 @@ class ThemeEditorShots : SettingsShotKit() {
 
     @Test fun boardCardPlate() = board("board-card-plate", plated)
     @Test fun boardCardPlateNight() = board("board-card-plate-night", plated, night = 1f)
-    /** The board editor with a card row's 설정 open on 카드 색. */
+    /** The board editor with a card row's 색 open on 카드 색. */
     @Test fun boardEditorCardPlate() = snap("../theme-editor/board-editor-card-plate", tall, plated, route = Routes.board("modular")) {
-        onAllNodesWithText("설정")[0].performScrollTo().performClick()
+        onAllNodesWithText("색")[0].performScrollTo().performClick()
     }
 
     @Test fun boardMoodlightFlow() = board(

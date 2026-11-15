@@ -56,9 +56,6 @@ import androidx.compose.foundation.gestures.detectTapGestures
 /** The fixed first three pages (spec §1c) plus user boards, as the editor and the carousel list them. */
 internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
 
-/** "(F)" rows: what a bar phone or a Flip sees instead of the control. */
-internal const val FOLD_WHY = "갤럭시 폴드처럼 안쪽 화면이 큰 폰에서만 쓸 수 있어요"
-
 /**
  * Home (mockup SCREENS.home): the page pager (scrolls with the list), the permission banner while any of the eight
  * permissions is missing, then four groups of rows, each showing its current value.
@@ -67,12 +64,19 @@ internal const val FOLD_WHY = "갤럭시 폴드처럼 안쪽 화면이 큰 폰�
 fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
     val missing = env.missing
     fun need(p: Perm) = if (p in missing) "설정 필요" else null
-    Page("스탠바이", null, preview = Preview(config, pageSlides(config), cards = true)) {
+    Page("스탠바이", null, preview = Preview(config, pageSlides(config), cards = true, onOpen = nav::push)) {
         if (missing.isNotEmpty()) PermBanner(Perm.entries.size, Perm.entries.size - missing.size) { nav.push(Routes.PERMS) }
         // 11-14 tree: card settings (시계, 날씨, 알림, 수면 소리, 알람, 카드에 쓰는 정보) live under 카드
         Section("화면") {
-            item { NavRow("테마와 배경", { nav.push(Routes.THEME) }, value = config.theme.ko) }
-            item { NavRow("페이지 구성", { nav.push(Routes.PAGES) }, subtitle = "위젯 · 사진 · 시계 + 내 페이지 ${config.boards.size}개") }
+            item {
+                val look = (StripPick.of(config) as? Look.Mine)?.my?.name ?: config.theme.ko
+                NavRow("테마와 배경", { nav.push(Routes.THEME) }, value = look)
+            }
+            item {
+                val on = Pages.visible(config)
+                val start = on.getOrNull(Pages.start(config))?.let(::pageName)
+                NavRow("페이지 구성", { nav.push(Routes.PAGES) }, value = "페이지 ${on.size}개" + (start?.let { " · 처음: $it" } ?: ""))
+            }
             item { NavRow("카드", { nav.push(Routes.CARDS) }, subtitle = "시계 · 날씨 · 알림 · 수면 소리 · 알람 …", badge = need(Perm.NOTIFICATIONS)) }
         }
         Section("밤과 꺼짐") {
@@ -90,18 +94,13 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 NavRow("켜짐과 꺼짐", { nav.push(Routes.ONOFF) }, badge = badge, value = if (badge != null) null else "${if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"} · $off")
             }
         }
-        Section("폴드") {
-            item {
-                val fold = env.phone == Phone.FOLD
-                NavRow(
-                    "폴드를 펼쳤을 때", { nav.push(Routes.FOLD) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "책 화면",
-                    enabled = fold, why = FOLD_WHY,
-                )
-            }
+        // plan-r13 B3: a Fold-only section, gone on other phones
+        if (env.phone == Phone.FOLD) Section("폴드") {
+            item { NavRow("폴드를 펼쳤을 때", { nav.push(Routes.FOLD) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "책 화면") }
         }
         Section("정보") {
             item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 켜짐" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }
-            item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }) }
+            item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }) }
         }
     }
 }

@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTextInput
 import com.github.takahirom.roborazzi.captureRoboImage
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.DisplayOff
@@ -104,13 +105,16 @@ class SettingsHomeShots : SettingsShotKit() {
     }
     @Test fun notif() = snap("notif", phone, route = Routes.NOTIF)
     @Test fun notifFold() = snap("notif-fold", fold, route = Routes.NOTIF)
-    @Test fun weather() = snap("weather", phone, route = Routes.WEATHER)
-    @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.WEATHER) { onNodeWithText("날씨 지역").performClick() }
+    /** plan-r13 B2: the 날씨 row opens the city sheet over the card list. */
+    @Test fun weather() = snap("weather", phone, route = Routes.CARDS) { onNodeWithText("날씨").performClick() }
+    @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.CARDS) { onNodeWithText("날씨").performClick() }
     // 11-14 카드 tree: the list, a card with settings, a card without
     @Test fun cards() = snap("cards", tall, route = Routes.CARDS)
     @Test fun cardTimer() = snap("card-timer", phone, route = Routes.card(kr.dot.sb.model.CardType.TIMER))
     @Test fun cardMemories() = snap("card-memories", phone, route = Routes.card(kr.dot.sb.model.CardType.MEMORIES))
     @Test fun perms() = snap("perms", tall, route = Routes.PERMS)
+    /** plan-r13 B1: a fresh install opens here with [차례로 켜기] and [나중에]. */
+    @Test fun permsWalk() = snap("perms-walk", phone, route = Routes.PERMS, e = SettingsEnv(granted = mapOf(Perm.NOTIFICATIONS to true), permWalkOffer = true, today = { day }))
     @Test fun permsFold() = snap("perms-fold", fold, route = Routes.PERMS)
     @Test fun about() = snap("about", phone, route = Routes.ABOUT) { onNodeWithText("Inter").performClick() }
     @Test fun aboutFold() = snap("about-fold", fold, route = Routes.ABOUT)
@@ -124,7 +128,8 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun pages() = snap("pages", tall, someOff, route = Routes.PAGES)
     @Test fun pagesFold() = snap("pages-fold", foldTall, someOff, route = Routes.PAGES)
     @Test fun pagesAdd() = snap("pages-add", phone, BoardOps.delete(AppConfig(), 0), route = Routes.PAGES) { onNodeWithText("페이지 추가").performScrollTo().performClick() }
-    @Test fun start() = snap("start", phone, someOff.copy(startPage = 5), route = Routes.START)
+    /** plan-r13 B8: 처음 보이는 페이지 is a sheet over 페이지 구성. */
+    @Test fun start() = snap("start", phone, someOff.copy(startPage = 5), route = Routes.PAGES) { onNodeWithText("처음 보이는 페이지").performClick() }
     @Test fun widgets() = snap("widgets", tall, route = Routes.WIDGETS)
     @Test fun widgetsFold() = snap("widgets-fold", fold, route = Routes.WIDGETS)
     @Test fun photos() = snap("photos", tall, folders, route = Routes.PHOTOS)
@@ -132,6 +137,37 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
+    /** plan-r13 B10 위젯 고르기 with faked providers: 추천, apps folded but Samsung Notes opened, the 4×4 note hidden (too big). */
+    @Test fun widgetPicker() = widgetSheet("widget-picker") { onNodeWithText("Samsung Notes").performClick() }
+    @Test fun widgetPickerSearch() = widgetSheet("widget-picker-search") { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("메모") }
+    @Test fun widgetMenu() {
+        RuntimeEnvironment.setQualifiers(phone)
+        rule.setContent { SettingsTheme(SK.ok) { WidgetMenuSheet("Samsung Notes · 메모", true, {}, {}, {}, {}, {}) } }
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/shots/settings/widget-menu.png")
+    }
+
+    private fun widgetSheet(name: String, after: ComposeContentTestRule.() -> Unit) {
+        RuntimeEnvironment.setQualifiers(phone)
+        fun w(key: String, pkg: String, app: String, n: String, wd: Float, ht: Float, cells: String) = WidgetChoice(key, pkg, app, n, kr.dot.sb.platform.WidgetFit.Size(wd, ht), cells)
+        val all = listOf(
+            w("n1", "com.samsung.android.app.notes", "Samsung Notes", "메모", 250f, 110f, "4×2"),
+            w("n2", "com.samsung.android.app.notes", "Samsung Notes", "메모 목록", 250f, 110f, "4×2"),
+            w("n3", "com.samsung.android.app.notes", "Samsung Notes", "메모 (크게)", 250f, 400f, "4×4"),
+            w("c1", "com.samsung.android.calendar", "Samsung Calendar", "일정", 250f, 110f, "4×2"),
+            w("k1", "com.google.android.keep", "Keep 메모", "메모 하나", 110f, 110f, "2×2"),
+            w("g1", "com.google.android.googlequicksearchbox", "Google", "검색창", 250f, 40f, "4×1"),
+            w("x1", "com.sec.android.daemonapp", "날씨", "오늘 날씨", 110f, 110f, "2×2"),
+            w("t1", "com.kakao.talk", "카카오톡", "채팅방", 110f, 110f, "2×2"),
+            w("h1", "com.sec.android.app.shealth", "Samsung Health", "걸음 수", 110f, 110f, "2×2"),
+        )
+        val slots = kr.dot.sb.platform.WidgetFit.slotSizes(kr.dot.sb.model.Layout.TWO, 0, 780f, 360f, cover = false)
+        rule.setContent { SettingsTheme(SK.ok) { WidgetPickerSheet(all, slots, WidgetArt(), {}, {}) } }
+        rule.waitForIdle()
+        rule.after()
+        rule.waitForIdle()
+        rule.onRoot().captureRoboImage("build/shots/settings/$name.png")
+    }
     @Test fun night() = snap("night", tall, route = Routes.NIGHT)
     @Test fun nightFold() = snap("night-fold", foldTall, route = Routes.NIGHT)
     @Test fun nightNever() = snap("night-never", phone, AppConfig(displayOff = DisplayOff.NEVER), route = Routes.NIGHT)
@@ -169,6 +205,4 @@ class SettingsClockShots : SettingsShotKit() {
     @Test fun foldScreen() = snap("fold", tall, route = Routes.FOLD)
     @Test fun foldScreenFold() = snap("fold-fold", foldTall, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.FOLD)
     @Test fun clocksCities() = snap("clocks-cities", phone, route = Routes.CLOCKS) { onNodeWithText("자세히").performScrollTo().performClick(); onNodeWithText("도시 더하기").performScrollTo().performClick() }
-    @Test fun cardInfo() = snap("cardinfo", tall, AppConfig(excludedCalendars = setOf("com.google|me@example.com|대한민국 공휴일")), route = Routes.CARD_INFO)
-    @Test fun cardInfoFold() = snap("cardinfo-fold", foldTall, route = Routes.CARD_INFO, e = SettingsEnv(granted = mapOf(Perm.CALENDAR to false), today = { day }))
 }

@@ -38,7 +38,7 @@ class PagePreviewTest {
     fun ownPageFirstEvenWhenOff() {
         val c = AppConfig(pagesOff = setOf(PAGE_PHOTOS))
         val p = pagePreview(c, 1, Slide("사진") {}, Rec())
-        assertEquals(listOf("위젯", "사진", "시계"), p.slides.take(3).map { it.name })
+        assertEquals(listOf(WIDGETS_PAGE, "사진", "시계"), p.slides.take(3).map { it.name })
         assertEquals(1, p.initial)
         assertEquals(listOf(Routes.WIDGETS, Routes.PHOTOS, Routes.CLOCKS), p.slides.take(3).map { it.route })
         val board = c.boards.first()

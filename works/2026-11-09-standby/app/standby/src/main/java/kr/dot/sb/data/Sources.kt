@@ -155,10 +155,13 @@ object PhotoQueries {
 object DeviceSources {
     fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
 
+    /** Full photo access or the user-selected subset (Android 14 partial access, plan-r13 B1). */
+    fun photos(ctx: Context) = has(ctx, Manifest.permission.READ_MEDIA_IMAGES) || has(ctx, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
+
     fun permissions(ctx: Context) = Permissions(
         notifications = NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName),
         calendar = has(ctx, Manifest.permission.READ_CALENDAR),
-        photos = has(ctx, Manifest.permission.READ_MEDIA_IMAGES),
+        photos = photos(ctx),
     )
 
     private val HM = DateTimeFormatter.ofPattern("HH:mm")
@@ -247,7 +250,7 @@ object DeviceSources {
 
     /** Up to [n] random photos from [source] ([PhotoQueries]), decoded to <= 1280 px. null = no permission. */
     fun photos(ctx: Context, n: Int, source: PhotoSource = PhotoSource.PICKS, folders: List<String> = emptyList()): List<Photo>? {
-        if (!has(ctx, Manifest.permission.READ_MEDIA_IMAGES)) return null
+        if (!photos(ctx)) return null
         fun pool(s: PhotoSource) = PhotoQueries.of(s, folders, folders.toSet())
             .flatMap { q -> rows(ctx, q.selection, q.args.toTypedArray().takeIf { it.isNotEmpty() }, q.limit) }.distinctBy { it.id }
         // picked folders that no longer exist return no rows; nothing left reads as PICKS (no full-table folder scan)
@@ -271,7 +274,7 @@ object DeviceSources {
 
     /** A photo taken on today's day-of-year 1..15 years ago, or null. */
     fun memory(ctx: Context, today: LocalDate): Photo? {
-        if (!has(ctx, Manifest.permission.READ_MEDIA_IMAGES)) return null
+        if (!photos(ctx)) return null
         val zone = ZoneId.systemDefault()
         val sel = StringBuilder(); val args = ArrayList<String>()
         for (y in 1..15) {
