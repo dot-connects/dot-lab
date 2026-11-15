@@ -69,7 +69,7 @@ import kotlin.random.Random
  */
 
 /** One field of [ThemeEdit] a control writes (하늘's three stops are three fields of `bg`). */
-enum class EditField { BG, SKY_TOP, SKY_MID, SKY_BOTTOM, GLOW, GLOW_STRENGTH, GLOW_AT, GLOW_SHAPE, PLATE, RULE, PLATE_ALPHA, PLATE_STYLE, RADIUS, ACCENT, INK, FLOW }
+enum class EditField { BG, SKY_TOP, SKY_MID, SKY_BOTTOM, GLOW, GLOW_STRENGTH, GLOW_AT, GLOW_SHAPE, PLATE, RULE, PLATE_ALPHA, PLATE_STYLE, RADIUS, ACCENT, INK, FLOW, TEXT_GLOW }
 
 /** A row of the editor. [label] is what the row says; [field] what it writes. */
 sealed class Control(val field: EditField, val label: String) {
@@ -154,7 +154,7 @@ object ThemeEditor {
             )
             Theme.DAYPAPER -> listOf(bg("종이 색"), ink("잉크 색"), colour(EditField.PLATE, "카드 색", plates), accent("강조"))
             Theme.RADIO -> listOf(bg("본체 색"), colour(EditField.PLATE, "판 색", plates), accent("다이얼 색"), ink("글자"))
-            Theme.NEON -> listOf(colour(EditField.INK, "네온관 색", with(tk.ink.long(), sw)), accent("두 번째 네온"), Control.Slider(EditField.GLOW_STRENGTH, "빛 번짐 세기", 0f..1f))
+            Theme.NEON -> listOf(colour(EditField.INK, "네온관 색", with(tk.ink.long(), sw)), accent("두 번째 네온"), Control.Slider(EditField.TEXT_GLOW, "빛 번짐 세기", 0f..1f))
             Theme.TERMINAL -> listOf(
                 Control.Colour(EditField.INK, "형광 색", TERMINAL_INKS.map { it.second }, TERMINAL_INKS.map { it.first }), accent("강조"),
             )
@@ -205,19 +205,22 @@ object ThemeEditor {
     /** A slider's value in [e], else the theme's. */
     fun slider(f: EditField, e: ThemeEdit, tk: ThemeTokens): Float = when (f) {
         EditField.GLOW_STRENGTH -> e.glowStrength ?: 0.5f
+        // r13: NEON halo = textGlow (0.5 = the theme's halo)
+        EditField.TEXT_GLOW -> e.textGlow ?: 0.5f
         EditField.PLATE_ALPHA -> e.plateAlpha ?: tk.plate.alpha.coerceIn(ThemeEdit.PLATE_ALPHA)
         else -> e.radius ?: tk.radiusRatio
     }
 
     fun withSlider(f: EditField, e: ThemeEdit, v: Float?): ThemeEdit = when (f) {
         EditField.GLOW_STRENGTH -> e.copy(glowStrength = v)
+        EditField.TEXT_GLOW -> e.copy(textGlow = v)
         EditField.PLATE_ALPHA -> e.copy(plateAlpha = v)
         else -> e.copy(radius = v)
     }
 
     /** [f] cleared (the row's 기본). */
     fun reset(f: EditField, e: ThemeEdit, tk: ThemeTokens): ThemeEdit = when (f) {
-        EditField.GLOW_STRENGTH, EditField.PLATE_ALPHA, EditField.RADIUS -> withSlider(f, e, null)
+        EditField.GLOW_STRENGTH, EditField.TEXT_GLOW, EditField.PLATE_ALPHA, EditField.RADIUS -> withSlider(f, e, null)
         EditField.GLOW_AT -> e.copy(glowAt = null)
         EditField.GLOW_SHAPE -> e.copy(glowShape = null)
         EditField.PLATE_STYLE -> e.copy(plateStyle = null)
@@ -228,6 +231,7 @@ object ThemeEditor {
     /** True when [f] is set in [e] (the row's 기본 is enabled). */
     fun isSet(f: EditField, e: ThemeEdit): Boolean = when (f) {
         EditField.GLOW_STRENGTH -> e.glowStrength != null
+        EditField.TEXT_GLOW -> e.textGlow != null
         EditField.PLATE_ALPHA -> e.plateAlpha != null
         EditField.RADIUS -> e.radius != null
         EditField.GLOW_AT -> e.glowAt != null

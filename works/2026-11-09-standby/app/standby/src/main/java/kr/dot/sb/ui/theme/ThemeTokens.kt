@@ -8,8 +8,13 @@ import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import kr.dot.sb.model.BgKind
+import kr.dot.sb.model.Border
+import kr.dot.sb.model.CardFont
 import kr.dot.sb.model.FontId
 import kr.dot.sb.model.GlowShape
+import kr.dot.sb.model.TextWeight
+import kr.dot.sb.model.Texture
 import kr.dot.sb.model.ThemeEdit
 import java.time.LocalTime
 
@@ -50,8 +55,11 @@ data class BgSpec(
     val glow: Color? = null,
     val glowAt: Offset = Offset(0.5f, 0.5f),
     val glowSize: Offset = Offset(0.6f, 0.55f),
-    /** r11 둘 (TWIN): a second glow of the same colour and size here (the mirror of [glowAt]). */
+    /** r11 둘 (TWIN): a second glow here (the mirror of [glowAt]); same colour and size as the first when [glow2] is null. */
     val glow2At: Offset? = null,
+    /** r13: a second glow colour, drawn after the first at [glow2At] (else [glowAt]) and [glow2Size] (else [glowSize]). */
+    val glow2: Color? = null,
+    val glow2Size: Offset? = null,
 ) {
     val base: Color get() = stops.first()
 }
@@ -167,9 +175,33 @@ data class ThemeTokens(
     val halo: Float = 1f,
     /** r11 PAPER 구분선 색: the RULE line colour (null = ink at 25 %). Not a surface. */
     val rule: Color? = null,
+    // r13 (plan-r13 A3): defaults reproduce r12 exactly; every effect below is faded by night in the drawing code
+    /** Page texture (drawn in ThemeBackground) and plate texture (themedSurface), both at [textureAmt]. */
+    val bgTexture: Texture = Texture.NONE,
+    val cardTexture: Texture = Texture.NONE,
+    val textureAmt: Float = 0.5f,
+    /** Card words font (Txt default, overlays, photo captions); clock faces keep Pretendard. */
+    val cardFont: CardFont = CardFont.GOTHIC,
+    /** Text weight: an offset on Pretendard only (single-weight card fonts ignore it). */
+    val textWeight: TextWeight = TextWeight.NORMAL,
+    /** Border around FILL/GLASS/RULE plates; [borderColor] null = ink at 35 % (also the OUTLINE line colour when set). */
+    val border: Border = Border.NONE,
+    val borderColor: Color? = null,
+    /** Text glow 0..1; null = the theme's (NEON's own halo, no text shadow). */
+    val textGlow: Float? = null,
 ) {
-    /** The page colours: each bg stop and the glow over it. */
-    val pages: List<Color> get() = bg.stops + (bg.glow?.let { g -> bg.stops.map { g.compositeOver(it) } } ?: emptyList())
+    /** The page colours: each bg stop and the glow(s) over it. */
+    val pages: List<Color> get() = bg.stops + listOfNotNull(bg.glow, bg.glow2).flatMap { g -> bg.stops.map { g.compositeOver(it) } }
+
+    /**
+     * OUTLINE halo strength (multiplies the halo alphas; 0 = none): a set [textGlow] draws it at 2 x g whatever the
+     * digit style; else the theme's own halo on glowing digits (NEON). Other plate styles never draw it.
+     */
+    val haloAmt: Float
+        get() = if (plateStyle != PlateStyle.OUTLINE) 0f else textGlow?.let { it * 2f } ?: if (digitStyle == DigitStyle.GLOW) halo else 0f
+
+    /** Card text shadow strength (plan-r13 A3): a set, non-zero [textGlow] on any plate style but OUTLINE; else null. */
+    val textShadow: Float? get() = textGlow?.takeIf { it > 0f && plateStyle != PlateStyle.OUTLINE }
 
     /** Every opaque colour text can sit on: each bg stop, the glow over it, and both plates composited over those. */
     val surfaces: List<Color>
@@ -208,8 +240,22 @@ data class ThemeTokens(
     fun with(e: ThemeEdit, at: LocalTime? = null, fitLight: Boolean = light): ThemeTokens {
         val strength = ((e.glowStrength ?: 0.5f) * 2f)
         val flowC = e.flow?.let { f -> at?.let { flowColor(f, it) } }
+        val inkC = e.ink?.let { Color(it) } ?: ink
+        val acc = e.accent?.let { Color(it) } ?: accent
         var b = bg
-        e.bg?.let { s -> b = b.copy(stops = s.map { Color(it) }) }
+        // r13 background kind (plan-r13 A3); null = the theme's own kind with the picked stops
+        val base0 = e.bg?.firstOrNull()?.let { Color(it) } ?: bg.base
+        when (e.bgKind) {
+            BgKind.SOLID -> b = b.copy(stops = listOf(base0), glow = null, glow2 = null, glow2At = null)
+            BgKind.GRADIENT -> {
+                val d = if (light) -0.05f else 0.07f
+                val stops = e.bg?.takeIf { it.size == 3 }?.map { Color(it) } ?: listOf(base0, Hsl.shift(base0, d), Hsl.shift(base0, 2 * d))
+                b = b.copy(stops = stops, glow = null, glow2 = null, glow2At = null)
+            }
+            // the strength rule below scales the alpha: (theme glow alpha ?: 0.35) x 2 x (glowStrength ?: 0.5)
+            BgKind.GLOW -> b = b.copy(stops = listOf(base0), glow = b.glow ?: acc.copy(alpha = 0.35f))
+            null -> e.bg?.let { s -> b = b.copy(stops = s.map { Color(it) }) }
+        }
         val glow = b.glow
         if (glow != null) {
             // 무드등 / 촛불: the flow and the picked colour replace the glow's colour, its alpha stays the theme's × 세기
@@ -220,28 +266,40 @@ data class ThemeTokens(
         }
         e.glowAt?.let { (x, y) -> b = b.copy(glowAt = Offset(x, y)) }
         when (e.glowShape) {
-            GlowShape.SUNSET -> b = b.copy(glowAt = Offset(0.5f, 1.15f), glowSize = Offset(1.1f, 0.8f), glow2At = null)
-            GlowShape.TWIN -> b = b.copy(glow2At = Offset(1f - b.glowAt.x, 1f - b.glowAt.y))
+            GlowShape.SUNSET -> b = b.copy(glowAt = Offset(0.5f, 1.15f), glowSize = Offset(1.1f, 0.8f), glow2At = null, glow2 = null, glow2Size = null)
+            // TWIN: the mirror in the first colour
+            GlowShape.TWIN -> b = b.copy(glow2At = Offset(1f - b.glowAt.x, 1f - b.glowAt.y), glow2 = null, glow2Size = null)
             GlowShape.ROUND, null -> {}
         }
-        val inkC = e.ink?.let { Color(it) } ?: ink
-        val acc = e.accent?.let { Color(it) } ?: accent
         var p = plate
         var p2 = plate2
-        e.plate?.let { v ->
+        val shift = if (light) -0.06f else 0.06f
+        // r13: FILL/GLASS on a theme whose own plate is clear (RULE/OUTLINE: PAPER, NEON, TERMINAL) gets a visible plate
+        val clearToFill = (plateStyle == PlateStyle.RULE || plateStyle == PlateStyle.OUTLINE) &&
+            (e.plateStyle == PlateStyle.FILL || e.plateStyle == PlateStyle.GLASS)
+        if (clearToFill) {
+            val c = e.plate?.let { Color(it) } ?: Hsl.shift(b.base, shift)
+            val a = if (e.plateStyle == PlateStyle.GLASS) 0.45f else 0.85f
+            p = c.copy(alpha = a)
+            p2 = Hsl.shift(c, shift).copy(alpha = a)
+        } else e.plate?.let { v ->
             val c = Color(v)
             p = c.copy(alpha = plate.alpha)
-            p2 = Hsl.shift(c, if (light) -0.06f else 0.06f).copy(alpha = plate2.alpha)
+            p2 = Hsl.shift(c, shift).copy(alpha = plate2.alpha)
         }
         // NEON / TERMINAL: the progress track is ink-tinted, so it follows an edited ink
-        if (plateStyle == PlateStyle.OUTLINE && e.ink != null) p2 = inkC.copy(alpha = plate2.alpha)
+        if (plateStyle == PlateStyle.OUTLINE && e.ink != null && !clearToFill) p2 = inkC.copy(alpha = plate2.alpha)
         e.plateAlpha?.let { a -> p = p.copy(alpha = a); p2 = p2.copy(alpha = a) }
         if (e.plateStyle == PlateStyle.GLASS) { p = p.copy(alpha = minOf(p.alpha, GLASS_MAX)); p2 = p2.copy(alpha = minOf(p2.alpha, GLASS_MAX)) }
         val t = copy(
             bg = b, ink = inkC, accent = acc, plate = p, plate2 = p2, plateStyle = e.plateStyle ?: plateStyle,
-            // r13: a v11-migrated NEON/TERMINAL halo lives in textGlow (same number); plan-r13 A3 draws it fully
-            radiusRatio = e.radius ?: radiusRatio, halo = if (e.glowStrength != null) strength else e.textGlow?.let { it * 2f } ?: halo,
+            // glowStrength is the page glow only (v11 moved NEON/TERMINAL's halo to textGlow, drawn by [haloAmt])
+            radiusRatio = e.radius ?: radiusRatio,
             rule = e.rule?.let { Color(it) } ?: rule,
+            bgTexture = e.bgTexture ?: bgTexture, cardTexture = e.cardTexture ?: cardTexture, textureAmt = e.textureAmt ?: textureAmt,
+            cardFont = e.textFont ?: cardFont, textWeight = e.textWeight ?: textWeight,
+            border = e.border ?: border, borderColor = e.borderColor?.let { Color(it) } ?: borderColor,
+            textGlow = e.textGlow ?: textGlow,
         )
         val s = t.surfaces
         // an untouched accent keeps its text colour as the theme set it (RADIO's hand-set one included)

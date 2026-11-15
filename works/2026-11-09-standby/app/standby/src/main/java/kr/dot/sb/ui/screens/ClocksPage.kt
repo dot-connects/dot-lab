@@ -144,11 +144,11 @@ internal fun ClocksPage(
             val cap = max(16.dp, s * 0.04f)
             // Neighbour names above / below the card.
             faces.getOrNull(cur - 1)?.let {
-                Box(Modifier.fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) { Txt(spec(it).ko, cap, ink.ink, weight = 600) }
+                Box(Modifier.fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) { Txt(spec(it).ko, cap, ink.ink, weight = 600, family = LocalTheme.current.words(600)) }
             }
             faces.getOrNull(cur + 1)?.let {
                 Box(Modifier.align(Alignment.BottomCenter).fillMaxWidth().height(band).alpha(k), contentAlignment = Alignment.Center) {
-                    Txt(spec(it).ko, cap, ink.ink, weight = 600)
+                    Txt(spec(it).ko, cap, ink.ink, weight = 600, family = LocalTheme.current.words(600))
                 }
             }
             // 완료 pill, centred in the top band, right edge on the margin.
@@ -158,7 +158,7 @@ internal fun ClocksPage(
                     .alpha(k).height(pillH).clip(RoundedCornerShape(50)).background(ink.ink3).tap { edit(false) }
                     .padding(horizontal = pillH * 0.5f),
                 contentAlignment = Alignment.Center,
-            ) { Txt("완료", pillH * 0.42f, ink.ink, weight = 700) }
+            ) { Txt("완료", pillH * 0.42f, ink.ink, weight = 700, family = LocalTheme.current.words(700)) }
             // Face dots right of the card.
             val dot = max(6.dp, s * 0.018f)
             AutoHideDots(
@@ -206,7 +206,7 @@ private fun ColorSheet(face: FaceId, row: StyleRow, style: ClockStyle, ink: Ink,
             .tap {}.padding(top = pad * 0.9f, bottom = pad * 1.3f),
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = pad)) {
-            Txt("색상", max(20.dp, s * 0.05f), ink.ink, Modifier.align(Alignment.Center), weight = 700)
+            Txt("색상", max(20.dp, s * 0.05f), ink.ink, Modifier.align(Alignment.Center), weight = 700, family = LocalTheme.current.words(700))
             Box(
                 Modifier.align(Alignment.CenterEnd).size(d * 0.8f).clip(CircleShape).background(ink.ink4).tap(onClose),
                 contentAlignment = Alignment.Center,

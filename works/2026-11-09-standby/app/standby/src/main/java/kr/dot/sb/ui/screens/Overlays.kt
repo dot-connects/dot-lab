@@ -238,7 +238,7 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                     HeaderRow(Ic.ALARM, "$title · ${WEEK[state.now.dayOfWeek.value - 1]}요일", lab, ink.accText)
                     val th = min(if (land) h * 0.36f else w * 0.3f, 220.dp)
                     ThemedDigits(clockText(state.now, state.use24h), t, ink, Modifier.fillMaxWidth(0.86f).height(th), color = ink.ink)
-                    if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, num = true)
+                    if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, family = t.words(500), num = true)
                 }
                 val snooze = @Composable { m: Modifier -> AlarmPill(if (bw >= 170.dp) "다시 알림" else "다시", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
                 val stop = @Composable { m: Modifier -> AlarmPill("중단", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f)) }

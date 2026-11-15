@@ -102,7 +102,9 @@ class ThemeEditApplyTest {
     }
 
     @Test fun neonHaloAndPaperRule() {
-        assertEquals(2f, cfg(Theme.NEON, ThemeEdit(glowStrength = 1f)).drawnTheme().tokens.halo, 1e-4f)
+        // r13: the halo is textGlow (2 x g); glowStrength is the page glow only
+        assertEquals(2f, cfg(Theme.NEON, ThemeEdit(textGlow = 1f)).drawnTheme().tokens.haloAmt, 1e-4f)
+        assertEquals(1f, cfg(Theme.NEON, ThemeEdit(glowStrength = 1f)).drawnTheme().tokens.haloAmt, 1e-4f)
         assertEquals(Color(0xFFFF453A), cfg(Theme.PAPER, ThemeEdit(rule = 0xFFFF453A)).drawnTheme().tokens.rule)
         assertEquals(null, Themes.PAPER.tokens.rule)
     }

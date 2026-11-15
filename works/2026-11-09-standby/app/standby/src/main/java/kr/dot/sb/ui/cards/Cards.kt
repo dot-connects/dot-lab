@@ -819,7 +819,7 @@ private fun DdayCard(e: Env, config: AppConfig) {
     val iw = e.w - p * 2
     val showDate = e.short >= 150.dp
     val showBar = e.short >= 176.dp
-    val readCap = e.read * CAP_UI
+    val readCap = e.read * e.cap
     val texts = readCap + LG * 2 + (if (showDate) readCap + LG * 2 else 0.dp) + (if (showBar) p * 0.8f + 6.dp + LG + e.metaCap else 0.dp)
     // mockup: font min(0.4 h, w / 2.7) up to 180 → cap ≈ 0.3 h, ≤ 130
     val cap = minOf(e.h - p * 2 - texts, e.h * 0.3f, 130.dp)
@@ -918,7 +918,7 @@ private fun AgendaOne(e: Env, items: List<AgendaItem>, head: AnnotatedString) {
             Spacer(Modifier.width(12.dp))
             Column {
                 if (ev.start.first().isDigit()) Hero(e, AnnotatedString(ev.start), cap, e.ink.ink, maxW)
-                else Txt(ev.start, cap / CAP_UI, e.ink.ink, weight = 700, maxW = maxW)
+                else Txt(ev.start, cap / e.cap, e.ink.ink, weight = 700, maxW = maxW)
                 Spacer(Modifier.height(8.dp))
                 Txt(ev.title, title, e.ink.ink, weight = 700, maxW = maxW)
             }
@@ -940,12 +940,12 @@ internal fun WxIcon(e: Env, ic: Ic, modifier: Modifier) {
 /** Weather / calendar inset (mockup P(s)): 7 % of the short side, 12–28 dp. */
 internal val Env.p7: Dp get() = (min(w, h) * 0.07f).coerceIn(12.dp, 28.dp)
 /** One meta line (cap height) and the gap that separates header lines from the hero number. */
-private val Env.metaCap: Dp get() = meta * CAP_UI
+private val Env.metaCap: Dp get() = meta * cap
 private val LG = 8.dp
 /** Hour column (label, glyph, temperature) and the per-row pitch of hour / day / event lists. */
-private val Env.hourColH: Dp get() = metaCap + read * 1.6f + read * CAP_UI + 12.dp
+private val Env.hourColH: Dp get() = metaCap + read * 1.6f + read * cap + 12.dp
 private val Env.rowStep: Dp get() = read * 1.4f + 9.dp
-private val Env.evH: Dp get() = read * CAP_UI + 8.dp + metaCap
+private val Env.evH: Dp get() = read * cap + 8.dp + metaCap
 private val Env.evStep: Dp get() = evH + 12.dp
 
 /** Hero number in the theme's digit font, [cap] dp tall, shrunk to [maxW]. Slot-sized, never text-scaled (spec §0). */
@@ -1205,7 +1205,7 @@ private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
         }
         // the month, then "다가오는 날" in what is left
         CalendarShape.MONTH -> {
-            val headH = e.head * CAP_UI
+            val headH = e.head * e.cap
             val cell = min(iw / 7 / 1.1f, (ih - headH - 40.dp) / 6.4f)
             val left = ih - headH - LG * 2 - cell * 6.4f - e.metaCap - 10.dp
             val n = if (events.isEmpty() && !denied) 0 else ((left - 10.dp) / e.evStep).toInt().coerceIn(0, 5)
@@ -1241,7 +1241,7 @@ private fun CalHead(e: Env, size: Dp) {
 /** Head, the big day, then up to [max] coming events under it; whatever the events leave goes to the day. */
 @Composable
 private fun ColumnScope.DayAndEvents(e: Env, w: Dp, h: Dp, events: List<AgendaItem>, denied: Boolean, headSize: Dp, max: Int) {
-    val headH = headSize * CAP_UI + LG
+    val headH = headSize * e.cap + LG
     val fit = ((h - headH - h * 0.3f - 20.dp) / e.evStep).toInt().coerceIn(1, max)
     val n = minOf(fit, events.size.coerceAtLeast(1))
     val cap = h - headH - 20.dp - e.evStep * n

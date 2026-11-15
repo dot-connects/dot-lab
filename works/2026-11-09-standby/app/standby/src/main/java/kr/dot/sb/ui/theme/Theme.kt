@@ -47,6 +47,11 @@ class StandbyTheme(
 ) {
     /** Words (Korean + Latin) at a weight. */
     fun words(weight: Int): FontFamily = Fonts.ui(weight)
+    /** Card words (plan-r13 A3): the token font at [weight] after [cardWeight]; GOTHIC NORMAL = [words]. */
+    fun cardWords(weight: Int): FontFamily = Fonts.cardFamily(tokens.cardFont, cardWeight(weight))
+    /** [weight] with the token text weight (Pretendard only). */
+    fun cardWeight(weight: Int): Int = cardFontWeight(tokens.cardFont, tokens.textWeight, weight)
+    val cardCap: Float get() = tokens.cardFont.cap
     /** Widget numerals ("9", "7°", "20%", "D-10"): digit runs inside mixed text use it too. */
     val numerals: FontFamily get() = Fonts.rounded
     val numeralsCap: Float get() = 0.73f

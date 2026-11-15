@@ -47,7 +47,7 @@ class ThemeEditorTest {
 
     @Test fun tableMatchesThePlan() {
         fun f(th: Theme) = ThemeEditor.controls(th).map { it.field }.toSet()
-        assertEquals(setOf(EditField.INK, EditField.ACCENT, EditField.GLOW_STRENGTH), f(Theme.NEON))
+        assertEquals(setOf(EditField.INK, EditField.ACCENT, EditField.TEXT_GLOW), f(Theme.NEON))
         assertEquals(setOf(EditField.INK, EditField.ACCENT), f(Theme.TERMINAL))
         assertEquals(setOf(EditField.BG, EditField.INK, EditField.RULE, EditField.ACCENT), f(Theme.PAPER))
         assertTrue(EditField.PLATE !in f(Theme.PAPER))

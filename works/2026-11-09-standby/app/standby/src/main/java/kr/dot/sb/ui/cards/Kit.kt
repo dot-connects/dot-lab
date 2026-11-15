@@ -55,8 +55,12 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
 import androidx.compose.ui.text.font.FontSynthesis
 import androidx.compose.ui.text.font.FontWeight
-import kr.dot.sb.ui.theme.Fonts
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Shadow
+import kr.dot.sb.model.CardFont
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.effectFade
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.drawnTheme
 import kr.dot.sb.ui.theme.StandbyTheme
@@ -121,7 +125,9 @@ internal class Env(
     val ch: Dp get() = h - pad * 2
     /** Minimum gaps between template rows (§2.4). */
     val gap: Dp get() = s * 0.04f
-    val labelCap: Dp get() = label * CAP_UI
+    /** Cap height / em of the card words font (plan-r13 A3: the token font, Pretendard = [CAP_UI]). */
+    val cap: Float get() = t.cardCap
+    val labelCap: Dp get() = label * cap
     /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp × the text-size setting. */
     val read: Dp get() = 15.dp * look.textScale
     val meta: Dp get() = 13.dp * look.textScale
@@ -149,8 +155,10 @@ internal fun Modifier.capBox(cap: Float, size: Dp): Modifier = layout { m, c ->
 }
 
 /**
- * Board text. [size] is the font size in dp (slot-derived, ignores font scale). [maxW]/[maxCapH] shrink the size
- * so a value never clips or ellipsizes (§1.5); labels/details just ellipsize at the end.
+ * Board text. [family] null = the card words font (plan-r13 A3: token font and text weight, its cap, the text glow
+ * shadow); clock faces and edit chrome pass `words()` explicitly. [size] is the font size in dp (slot-derived, ignores
+ * font scale). [maxW]/[maxCapH] shrink the size so a value never clips or ellipsizes (§1.5); labels/details just
+ * ellipsize at the end.
  */
 @Composable
 internal fun Txt(
@@ -160,7 +168,7 @@ internal fun Txt(
     modifier: Modifier = Modifier,
     weight: Int = 600,
     family: FontFamily? = null,
-    cap: Float = CAP_UI,
+    cap: Float? = null,
     lines: Int = 1,
     align: TextAlign = TextAlign.Start,
     tnum: Boolean = false,
@@ -169,7 +177,11 @@ internal fun Txt(
     num: Boolean = false,
     tracking: Float = 0f,
     leading: Float = 1.15f,
-) = Txt(if (num) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking, leading)
+) {
+    // r13: M PLUS digits only in the Pretendard card font (or an explicit family); other card fonts draw their own digits
+    val spans = num && (family != null || LocalTheme.current.tokens.cardFont == CardFont.GOTHIC)
+    Txt(if (spans) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking, leading)
+}
 
 /** Runs of Latin/digits ("11°", "9:30", "C") in the theme's numeral font; Hangul stays in the words font. */
 internal fun numSpans(text: String, numerals: FontFamily, weight: Int): AnnotatedString = buildAnnotatedString {
@@ -190,7 +202,7 @@ internal fun Txt(
     modifier: Modifier = Modifier,
     weight: Int = 600,
     family: FontFamily? = null,
-    cap: Float = CAP_UI,
+    cap: Float? = null,
     lines: Int = 1,
     align: TextAlign = TextAlign.Start,
     tnum: Boolean = false,
@@ -201,12 +213,21 @@ internal fun Txt(
     /** Line height / size; multi-line Hangul sentences read better at 1.35 (r7). */
     leading: Float = 1.15f,
 ) {
-    val fam = family ?: LocalTheme.current.words(weight)
+    val t = LocalTheme.current
+    val w = if (family == null) t.cardWeight(weight) else weight
+    val fam = family ?: t.cardWords(weight)
+    val capF = cap ?: if (family == null) t.cardCap else CAP_UI
     val density = LocalDensity.current
+    // r13 text glow on card text (not on OUTLINE themes, which glow their plates): faded with the dusk ramp
+    val shadow = (if (family == null) t.tokens.textShadow else null)?.let { g ->
+        val ink = LocalInk.current
+        val f = effectFade(ink.night)
+        if (f <= 0f) null else Shadow(ink.ink.copy(alpha = (0.4f + 0.5f * g) * f), Offset.Zero, with(density) { (4f + 14f * g).dp.toPx() })
+    }
     fun styleOf(d: Dp) = TextStyle(
         color = color, fontSize = (d.value / density.fontScale).sp, fontFamily = fam,
         // static multi-weight families (rounded numerals) pick by weight; never fake bold
-        fontWeight = FontWeight(weight.coerceIn(1, 1000)), fontSynthesis = FontSynthesis.None,
+        fontWeight = FontWeight(w.coerceIn(1, 1000)), fontSynthesis = FontSynthesis.None, shadow = shadow,
         lineHeight = (d.value * leading / density.fontScale).sp, textAlign = align,
         fontFeatureSettings = if (tnum) "tnum" else null,
         platformStyle = PlatformTextStyle(includeFontPadding = false),
@@ -214,7 +235,7 @@ internal fun Txt(
         lineBreak = PHRASE, letterSpacing = tracking.em,
     )
     var fs = size
-    if (maxCapH != null) fs = min(fs, maxCapH / cap)
+    if (maxCapH != null) fs = min(fs, maxCapH / capF)
     if (maxW != null) {
         val measurer = rememberTextMeasurer(cacheSize = 2)
         val maxPx = with(density) { maxW.coerceAtLeast(0.dp).toPx() }
@@ -227,7 +248,7 @@ internal fun Txt(
     // a slot too small for any text still never asks for a negative or zero size (TextStyle throws on a negative lineHeight)
     fs = fs.coerceAtLeast(1.dp)
     BasicText(
-        text, modifier.capBox(cap, fs), style = styleOf(fs), maxLines = lines,
+        text, modifier.capBox(capF, fs), style = styleOf(fs), maxLines = lines,
         // Fitted values never ellipsize (§1.5): they were already shrunk to [maxW].
         overflow = if (maxW != null) TextOverflow.Visible else TextOverflow.Ellipsis, softWrap = lines > 1 && maxW == null,
     )
@@ -241,13 +262,13 @@ internal fun temp(c: Int): AnnotatedString = buildAnnotatedString {
     append("°")
 }
 
-/** Whether [text] at [size] (Pretendard [weight]) fits [maxW] on one line. */
+/** Whether [text] at [size] in [family] (default: the card words font at [weight], as [Txt] draws it) fits [maxW] on one line. */
 @Composable
-internal fun fitsOneLine(text: String, size: Dp, weight: Int, maxW: Dp): Boolean {
+internal fun fitsOneLine(text: String, size: Dp, weight: Int, maxW: Dp, family: FontFamily = LocalTheme.current.cardWords(weight)): Boolean {
     val measurer = rememberTextMeasurer(cacheSize = 2)
     val density = LocalDensity.current
-    return remember(text, size, weight, maxW) {
-        val style = TextStyle(fontSize = (size.value / density.fontScale).sp, fontFamily = Fonts.ui(weight))
+    return remember(text, size, weight, maxW, family) {
+        val style = TextStyle(fontSize = (size.value / density.fontScale).sp, fontFamily = family)
         measurer.measure(text, style, maxLines = 1, softWrap = false).size.width <= with(density) { maxW.toPx() }
     }
 }
@@ -337,7 +358,7 @@ internal fun LoadingCard(e: Env, icon: Ic, label: String, labelRow: (@Composable
     TextCard(e) {
         // the loaded card's own label composable when given, so loading and loaded never differ (review X6)
         if (labelRow != null) labelRow() else LabelRow(e, icon, label)
-        Box(Modifier.width(e.cw * 0.45f).height(min(e.sz.value * CAP_UI, e.ch * 0.3f)).clip(RoundedCornerShape(50)).background(e.ink.ink4))
+        Box(Modifier.width(e.cw * 0.45f).height(min(e.sz.value * e.cap, e.ch * 0.3f)).clip(RoundedCornerShape(50)).background(e.ink.ink4))
     }
 }
 

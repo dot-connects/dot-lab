@@ -12,6 +12,9 @@ an already-subset file. Variable axes (fvar/gvar/...) and all OpenType features 
   the app (notifications, media titles, city names) with a rarer syllable falls back to the system font for that glyph.
 - Clock-digit families (Latin only, no Hangul drawn with them): Basic Latin + Latin-1 + punctuation/symbols. That
   covers digits, ':', '.', '/', '%', '°', AM/PM and the English weekday/month names the faces print.
+- Card fonts (plan-r13 A3, 글꼴 명조 · 둥근 고딕 · 손글씨): card_serif (GowunBatang-Bold), card_round (Jua-Regular),
+  card_pen (NanumPenScript-Regular), subset to the same set as Pretendard from their full originals (each >= 1 MB, so
+  never a subset of the clock subsets). Their cap height / em is printed for `CardFont.cap` (ui/theme/Fonts.kt).
 - Already subset or Hangul clock fonts (gowun, jua, nanum_pen, mplus, instrument, sofia) are left alone
   (see tools/kfont_chars.py).
 """
@@ -45,7 +48,14 @@ ORIGINALS = {
     "roboto_slab": "786ae192477447d33c6672c3055fba7cbfe45184c9a79e77a14f15716ca05b16",
     "source_serif": "97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b",
     "titan_one": "563ff6de179bbd44bcd7d2a6c448d6dc3bf935834237cf1250e506e65cd86ff1",
+    # r13 card fonts, github.com/google/fonts ofl (GowunBatang-Bold, Jua-Regular, NanumPenScript-Regular)
+    "card_serif": "dbfcaa646e5831e7478524924f02906f550285a5050699b4e38c9950b3ec4b94",
+    "card_round": "769677aef240bfc3b9965f2b50748075bff885e6c6992fc591a3fb268279f898",
+    "card_pen": "6f0d1ab29c7894010dc88831fb7a0a51edb79136e450344183de5b1a8b52bd43",
 }
+
+CARD_FONTS = ["card_serif", "card_round", "card_pen"]
+CARD_MIN_BYTES = 1_000_000
 
 LATIN_FAMILIES = [
     "bagel_fat_one", "barlow_condensed_600", "big_shoulders", "fredoka", "inter", "jost", "nunito", "oswald",
@@ -91,15 +101,32 @@ def sha(p: pathlib.Path) -> str:
     return hashlib.sha256(p.read_bytes()).hexdigest()
 
 
+def cap_em(font: TTFont) -> float:
+    """OS/2 sCapHeight / unitsPerEm, or the height of 'H' when the table has none (version < 2 or 0)."""
+    em = font["head"].unitsPerEm
+    cap = getattr(font["OS/2"], "sCapHeight", 0)
+    if not cap:
+        gs = font.getGlyphSet()
+        from fontTools.pens.boundsPen import BoundsPen
+        pen = BoundsPen(gs)
+        gs[font.getBestCmap()[ord("H")]].draw(pen)
+        cap = pen.bounds[3]
+    return cap / em
+
+
 def run(name: str, unicodes: set[int]) -> None:
     src = SRC / f"{name}.ttf"
     want = ORIGINALS.get(name)
-    got = sha(src)
     if want is None:
-        print(f'    "{name}": "{got}",  # record me')
-    elif want != got:
+        sys.exit(f"{name}: no pinned original (add its sha256 to ORIGINALS)")
+    if name in CARD_FONTS and src.stat().st_size < CARD_MIN_BYTES:
+        sys.exit(f"{src}: {src.stat().st_size:,} bytes is not a full original (>= {CARD_MIN_BYTES:,})")
+    got = sha(src)
+    if want != got:
         sys.exit(f"{src}: sha256 {got} is not the original {want}")
     font = TTFont(src)
+    if name in CARD_FONTS:
+        print(f"{name}: cap height / em = {cap_em(font):.4f}")
     have = set(font.getBestCmap())
     opts = subset.Options()
     opts.layout_features = ["*"]
@@ -124,6 +151,8 @@ def main() -> None:
     titles = ranges((0x3000, 0x303F), (0xFF00, 0xFFEF), (0x2460, 0x24FF), (0x2600, 0x26FF), (0x0100, 0x017F))
     ui = ksx1001() | hangul | ranges((0x3130, 0x318F)) | LATIN | titles | src
     run("pretendard", ui)
+    for name in CARD_FONTS:
+        run(name, ui)
     for name in LATIN_FAMILIES:
         run(name, LATIN | {c for c in src if c < 0x2E80})  # plus any non-CJK symbol a source uses
 

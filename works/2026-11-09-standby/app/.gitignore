@@ -9,3 +9,4 @@ tools/baseline-r8/
 tools/baseline-r9/
 __pycache__/
 tools/fonts-original/
+.kotlin/

@@ -25,6 +25,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -45,6 +50,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.offset
 import kr.dot.sb.data.BurnIn
 import kr.dot.sb.model.BoardBg
+import kr.dot.sb.model.Border
+import kr.dot.sb.model.Texture
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FontId
@@ -71,21 +78,42 @@ val SCRIM = Color(0x73000000)
 fun Modifier.themedSurface(t: StandbyTheme, ink: Ink, shape: Shape, custom: Boolean = false): Modifier {
     val tk = t.tokens
     if (ink.night >= 0.5f) return background(ink.plate, shape)
-    return when (tk.plateStyle) {
+    // r13 effects (border, plate texture, a set text glow) fade with the dusk ramp: plan-r13 A3
+    val fade = effectFade(ink.night)
+    val plate = when (tk.plateStyle) {
         PlateStyle.FILL, PlateStyle.GLASS -> background(if (custom) PLATE_ON_CUSTOM else ink.plate, shape)
         PlateStyle.RULE -> drawBehind {
             drawLine(tk.rule ?: ink.ink.copy(alpha = 0.25f), Offset.Zero, Offset(size.width, 0f), maxOf(1f, 1.dp.toPx()))
         }
         PlateStyle.OUTLINE -> {
             val glow = tk.digitStyle == DigitStyle.GLOW
-            val line = if (glow) ink.ink else ink.ink.copy(alpha = 0.35f)
-            val halo = if (!glow) this else drawBehind {
+            val line = tk.borderColor ?: if (glow) ink.ink else ink.ink.copy(alpha = 0.35f)
+            // the theme's own halo (NEON) as before; a set text glow also fades with night
+            val amt = tk.haloAmt * (if (tk.textGlow != null) fade else 1f)
+            val halo = if (amt <= 0f) this else drawBehind {
                 val o = shape.createOutline(size, layoutDirection, this)
-                drawOutline(o, line.copy(alpha = (0.08f * tk.halo).coerceIn(0f, 1f)), style = Stroke(10.dp.toPx()))
-                drawOutline(o, line.copy(alpha = (0.16f * tk.halo).coerceIn(0f, 1f)), style = Stroke(5.dp.toPx()))
+                drawOutline(o, line.copy(alpha = (0.08f * amt).coerceIn(0f, 1f)), style = Stroke(10.dp.toPx()))
+                drawOutline(o, line.copy(alpha = (0.16f * amt).coerceIn(0f, 1f)), style = Stroke(5.dp.toPx()))
             }
             halo.border(1.5.dp, line, shape)
         }
+    }
+    val textured = plate.texture(tk.cardTexture, tk.textureAmt * fade, shape)
+    if (tk.border == Border.NONE || tk.plateStyle == PlateStyle.OUTLINE) return textured
+    val c = tk.borderColor ?: ink.ink.copy(alpha = 0.35f)
+    return textured.border(if (tk.border == Border.THICK) 2.5.dp else 1.dp, c.copy(alpha = c.alpha * fade), shape)
+}
+
+/** r13: how much of a day-only effect shows at [night]: 1 − night, gone from 0.5 (the candle night). */
+internal fun effectFade(night: Float): Float = if (night >= 0.5f) 0f else 1f - night.coerceIn(0f, 1f)
+
+/** [k] tiled over this element at [alpha], clipped to [shape] (plan-r13 A3); unchanged for NONE or alpha 0. */
+private fun Modifier.texture(k: Texture, alpha: Float, shape: Shape): Modifier {
+    if (k == Texture.NONE || alpha <= 0f) return this
+    return drawWithCache {
+        val brush = Textures.brush(k, density)!!
+        val clip = Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawWithCache)) }
+        onDrawBehind { clipPath(clip) { drawRect(brush, alpha = alpha) } }
     }
 }
 
@@ -192,10 +220,13 @@ private val PRESETS: Map<BoardBg, Ground> = mapOf(
     BoardBg.TIME_OF_DAY to Ground(ThemeTokens.SKY.bg.stops),
 )
 
-private fun BgSpec.ground(): Ground = Ground(
-    stops,
-    glow?.let { g -> listOfNotNull(glowAt, glow2At).map { Glow(it, glowSize, listOf(0f to g, .7f to g.copy(alpha = 0f))) } } ?: emptyList(),
-)
+private fun BgSpec.ground(): Ground {
+    fun glowOf(c: Color, at: Offset, size: Offset) = Glow(at, size, listOf(0f to c, .7f to c.copy(alpha = 0f)))
+    // TWIN: the mirror in the first colour; r13 glow2: its own colour, place and size
+    val first = glow?.let { g -> listOfNotNull(glowAt, glow2At.takeIf { glow2 == null }).map { glowOf(g, it, glowSize) } } ?: emptyList()
+    val second = glow2?.let { listOf(glowOf(it, glow2At ?: glowAt, glow2Size ?: glowSize)) } ?: emptyList()
+    return Ground(stops, first + second)
+}
 
 private fun ground(t: StandbyTheme, bg: BoardBg, custom: Color): Ground = when (bg) {
     BoardBg.THEME -> t.tokens.bg.ground()
@@ -256,6 +287,10 @@ fun ThemeBackground(
             } else {
                 val g = ground(t, bg, custom)
                 Canvas(Modifier.fillMaxSize()) { draw(g) }
+                // r13 page texture on the theme page, faded with the dusk ramp (plan-r13 A3)
+                val tex = t.tokens.bgTexture
+                val a = t.tokens.textureAmt * effectFade(n)
+                if (bg == BoardBg.THEME && tex != Texture.NONE && a > 0f) Box(Modifier.fillMaxSize().texture(tex, a, RectangleShape))
             }
         }
         if (n > 0f) {

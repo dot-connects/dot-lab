@@ -93,7 +93,8 @@ enum class GlowShape(val ko: String) { ROUND("둥근"), SUNSET("노을"), TWIN("
 /** r13 사용자 지정 (plan-r13 A2): 배경 종류, 테두리, 질감, 카드 글꼴, 글자 두께. */
 enum class BgKind { SOLID, GRADIENT, GLOW }
 enum class Border { NONE, THIN, THICK }
-enum class Texture { NONE, PAPER, GRAIN, LINEN, METAL, FROST }
+/** [SCANLINE] is for theme tokens only (1 px dark line every 3 px); the editor never offers it. */
+enum class Texture { NONE, PAPER, GRAIN, LINEN, METAL, FROST, SCANLINE }
 enum class CardFont { GOTHIC, SERIF, ROUND, PEN }
 enum class TextWeight { LIGHT, NORMAL, BOLD }
 

@@ -8,7 +8,9 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontVariation
 import androidx.compose.ui.text.font.FontWeight
 import kr.dot.sb.R
+import kr.dot.sb.model.CardFont
 import kr.dot.sb.model.FontId
+import kr.dot.sb.model.TextWeight
 
 /**
  * Bundled OFL fonts (licences in assets/licenses). Variable fonts: one Font per requested weight, cached.
@@ -49,6 +51,21 @@ object Fonts {
     /** IBM Plex Mono Medium (TERMINAL digits): one static 500 cut. */
     val plexMono: FontFamily by lazy { FontFamily(Font(R.font.plex_mono_500, FontWeight.Medium)) }
 
+    /**
+     * Card words in [font] (plan-r13 A3). GOTHIC = [ui] at [weight]; the others are single-weight subsets of their
+     * own full originals (res/font/card_*.ttf, never the clock subsets), one family each.
+     */
+    fun cardFamily(font: CardFont, weight: Int): FontFamily = when (font) {
+        CardFont.GOTHIC -> ui(weight)
+        CardFont.SERIF -> cardSerif
+        CardFont.ROUND -> cardRound
+        CardFont.PEN -> cardPen
+    }
+
+    private val cardSerif: FontFamily by lazy { FontFamily(Font(R.font.card_serif, FontWeight.Bold)) }
+    private val cardRound: FontFamily by lazy { FontFamily(Font(R.font.card_round, FontWeight.Normal)) }
+    private val cardPen: FontFamily by lazy { FontFamily(Font(R.font.card_pen, FontWeight.Normal)) }
+
     /** The clock family for a font choice at a weight. Stencil and Rails are Inter; their cut/outline is drawn by the clock renderer. */
     fun clock(id: FontId, weight: Int = id.defaultWeight): FontFamily = when (id) {
         FontId.BOLD, FontId.LIGHT, FontId.STENCIL, FontId.RAILS, FontId.THIN -> variable(R.font.inter, weight, "inter")
@@ -75,4 +92,20 @@ object Fonts {
         FontId.HANGUL_ROUND -> variable(R.font.jua, weight, "jua")
         FontId.HANGUL_PEN -> variable(R.font.nanum_pen, weight, "nanumpen")
     }
+}
+
+/** Cap height / em of each card font (OS/2 sCapHeight, printed by tools/subset_fonts.py); Txt's capBox reads it. */
+val CardFont.cap: Float
+    get() = when (this) {
+        CardFont.GOTHIC -> 0.707f // Pretendard
+        CardFont.SERIF -> 0.780f
+        CardFont.ROUND -> 0.711f
+        CardFont.PEN -> 0.674f
+    }
+
+/** Text weight on [font]: Pretendard (the only variable card font) moves LIGHT -200 / BOLD +200, clamped 100..900. */
+fun cardFontWeight(font: CardFont, tw: TextWeight, w: Int): Int = if (font != CardFont.GOTHIC) w else when (tw) {
+    TextWeight.LIGHT -> (w - 200).coerceIn(100, 900)
+    TextWeight.NORMAL -> w
+    TextWeight.BOLD -> (w + 200).coerceIn(100, 900)
 }
