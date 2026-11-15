@@ -36,6 +36,16 @@ top row: 1) standing, front view, calm; 2) front view, big happy smile with eyes
 bottom row: 4) side view walking to the right, right foot forward; 5) lying down asleep, eyes closed; 6) curled up asleep in a round ball.
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
+// the figurine look of PROMPTS.figure as a pose sheet (operator 11-15: both looks can be bought as a pet)
+export const FIGURE_SHEET_PROMPT = who => `Image 1 is a real photo of a ${who} (it may be seen from the side or lying down).
+
+Make a character pose sheet of THIS ${who} as a cute small 3D figurine of itself (not a ball): its real body shape simplified, slightly chibi proportions (bigger head), soft matte clay/plush 3D render, keep its real colours, markings, ear shape, face features and clothing colour (no text on clothes). Tiny black dot eyes, small pink blush. The SAME figurine appears 6 times in a 3 x 2 grid of equal square cells, every cell the same size and scale, the figurine centred in its cell with space around it:
+top row: 1) standing, front view, calm; 2) front view, big happy smile with eyes closed in joy; 3) side view walking to the right, left foot forward.
+bottom row: 4) side view walking to the right, right foot forward; 5) lying down asleep, eyes closed; 6) curled up asleep, sitting hugging its knees.
+No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
+
+const SHEET_STYLES = ["fluff", "figure"];
+
 const allowed = o => !!o && ORIGINS.some(r => r.test(o));
 function cors(origin) {
   return { "access-control-allow-origin": origin, "access-control-allow-methods": "POST, OPTIONS", "access-control-allow-headers": "content-type", "access-control-max-age": "86400", vary: "origin" };
@@ -152,11 +162,15 @@ async function sheet(b, req, env, counts, day) {
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
 
-  const kEntry = `sheet|${token}|${b.entry}`, kDay = `sheetday|${token}|${day}`;
+  const style = b.style ?? "fluff";   // apps before 0.3.8 send no style: the fur-ball sheet, same key as before
+  if (!SHEET_STYLES.includes(style)) return json({ error: "bad request" }, 400);
+  const kEntry = style === "fluff" ? `sheet|${token}|${b.entry}` : `sheet|${token}|${b.entry}|${style}`, kDay = `sheetday|${token}|${day}`;
   if (!(await counts.take(kDay, SHEET_PER_DAY))) return json({ error: "limit" }, 429);
   const used = await counts.take(kEntry, SHEET_PER_ENTRY);
   if (!used) { await counts.give(kDay); return json({ error: "limit" }, 429); }
-  const job = { prompt: SHEET_PROMPT(b.kind), image: b.image, ref: true, quality: "medium", size: "1536x1024" };
+  const job = style === "figure"
+    ? { prompt: FIGURE_SHEET_PROMPT(b.kind), image: b.image, ref: false, quality: "medium", size: "1536x1024" }
+    : { prompt: SHEET_PROMPT(b.kind), image: b.image, ref: true, quality: "medium", size: "1536x1024" };
   // an entry's 2 = one call + one retry, so a sent call keeps its slot; only a call that never left comes back
   const r = await paidCall(job, CENTS.sheet, env, counts, day, async e => { if (!e.sent) { await counts.give(kEntry); await counts.give(kDay); } });
   if (r.off) return json({ error: "off" }, 503);

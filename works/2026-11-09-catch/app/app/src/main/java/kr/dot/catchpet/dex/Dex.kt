@@ -13,7 +13,19 @@ import java.nio.file.StandardCopyOption
  * entry or a folder without meta (skipped). Ids are "e<no>", which also fits the Worker's entry regex.
  */
 object Dex {
-    data class AiState(val previews: List<String>, val sheet: String?, val owned: Boolean)
+    /**
+     * previews: drawn previews ("ai/preview-<style>-N.ext"; older ones have no style). sheets: bought pose sheets by
+     * style ("fluff" | "figure"); sheet = the one the pet uses (petStyle), owned = any bought (operator 11-15).
+     */
+    data class AiState(
+        val previews: List<String>, val sheet: String?, val owned: Boolean,
+        val sheets: Map<String, String> = emptyMap(), val petStyle: String? = null,
+    ) {
+        /** The latest preview drawn in this style, or null. */
+        fun previewFor(style: String): String? = previews.lastOrNull { it.startsWith("ai/preview-$style-") }
+        /** Previews from before styles were recorded. */
+        val oldPreviews get() = previews.filter { !it.startsWith("ai/preview-") }
+    }
 
     data class Entry(
         val id: String,
@@ -88,20 +100,40 @@ object Dex {
 
     /** Bytes as the Worker sent them (webp); the name keeps the count so earlier previews stay. */
     @Synchronized
-    fun savePreview(ctx: Context, id: String, img: ByteArray, ext: String = "webp"): Entry {
+    fun savePreview(ctx: Context, id: String, img: ByteArray, ext: String = "webp", style: String = "fluff"): Entry {
         val e = get(ctx, id) ?: error("no entry $id")
-        val name = "ai/preview${e.ai.previews.size + 1}.$ext"
+        val name = "ai/preview-$style-${e.ai.previews.size + 1}.$ext"
         atomicWrite(file(ctx, id, name), img)
         return write(ctx, e.copy(ai = e.ai.copy(previews = e.ai.previews + name)))
     }
 
     /** The bought pose sheet: stored and the entry becomes owned (usable as a pet). */
     @Synchronized
-    fun saveSheet(ctx: Context, id: String, img: ByteArray, ext: String = "webp"): Entry {
+    fun saveSheet(ctx: Context, id: String, img: ByteArray, ext: String = "webp", style: String = "fluff"): Entry {
         val e = get(ctx, id) ?: error("no entry $id")
-        val name = "ai/sheet.$ext"
+        val name = "ai/sheet-$style.$ext"
         atomicWrite(file(ctx, id, name), img)
-        return write(ctx, e.copy(ai = e.ai.copy(sheet = name, owned = true)))
+        val pet = e.ai.petStyle ?: style   // the first one bought is the pet's look
+        val sheets = e.ai.sheets + (style to name)
+        return write(ctx, e.copy(ai = e.ai.copy(sheets = sheets, owned = true, petStyle = pet, sheet = sheets[pet])))
+    }
+
+    /** Which bought look the pet uses. */
+    @Synchronized
+    fun setPetStyle(ctx: Context, id: String, style: String): Entry? {
+        val e = get(ctx, id) ?: return null
+        val s = e.ai.sheets[style] ?: return e
+        return write(ctx, e.copy(ai = e.ai.copy(petStyle = style, sheet = s)))
+    }
+
+    /** Removes an entry and every file in it (photos, drawings, sheets). Renamed first so a crash leaves no half entry. */
+    @Synchronized
+    fun delete(ctx: Context, id: String): Boolean {
+        if (!ENTRY_ID.matches(id)) return false
+        val d = dir(ctx, id)
+        if (!d.exists()) return false
+        val gone = File(root(ctx), ".gone-$id-${System.nanoTime()}")
+        return (if (d.renameTo(gone)) gone else d).deleteRecursively()
     }
 
     private var names: Map<String, String>? = null
@@ -139,7 +171,8 @@ object Dex {
             .put("id", e.id).put("kind", e.kind).put("name", e.name).put("no", e.no)
             .put("critterId", e.critterId ?: JSONObject.NULL)
             .put("poses", JSONArray(e.poses)).put("caughtAt", e.caughtAt)
-            .put("ai", JSONObject().put("previews", JSONArray(e.ai.previews)).put("sheet", e.ai.sheet ?: JSONObject.NULL).put("owned", e.ai.owned))
+            .put("ai", JSONObject().put("previews", JSONArray(e.ai.previews)).put("sheet", e.ai.sheet ?: JSONObject.NULL).put("owned", e.ai.owned)
+                .put("sheets", JSONObject(e.ai.sheets)).put("petStyle", e.ai.petStyle ?: JSONObject.NULL))
         atomicWrite(file(ctx, e.id, "meta.json"), o.toString().toByteArray())
         return e
     }
@@ -152,7 +185,14 @@ object Dex {
             o.getString("id").also { require(it == d.name) }, o.getString("kind"), o.getString("name"), o.getInt("no"),
             if (o.isNull("critterId")) null else o.getString("critterId"),
             o.getJSONArray("poses").strings(), o.getLong("caughtAt"),
-            AiState(ai.getJSONArray("previews").strings(), if (ai.isNull("sheet")) null else ai.getString("sheet"), ai.getBoolean("owned")),
+            ai.let { a ->
+                val sheet = if (a.isNull("sheet")) null else a.getString("sheet")
+                // before 11-15 there was one sheet and it was always the fur-ball look
+                val sheets = a.optJSONObject("sheets")?.let { s -> s.keys().asSequence().associateWith { s.getString(it) } }
+                    ?: (if (sheet != null) mapOf("fluff" to sheet) else emptyMap())
+                val pet = if (a.isNull("petStyle")) sheets.keys.firstOrNull() else a.optString("petStyle")
+                AiState(a.getJSONArray("previews").strings(), sheet, a.getBoolean("owned"), sheets, pet)
+            },
         )
     }.getOrNull()
 

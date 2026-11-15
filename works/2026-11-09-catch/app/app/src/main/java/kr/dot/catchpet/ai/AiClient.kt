@@ -23,8 +23,8 @@ class AiClient(private val base: String, private val deviceId: String) {
     suspend fun preview(png: ByteArray, kind: String, style: String): Result<Reply> =
         post("/transform", body(png, mapOf("style" to style, "kind" to kind, "device" to deviceId)), null)
 
-    suspend fun sheet(png: ByteArray, kind: String, entry: String, token: String): Result<Reply> =
-        post("/sheet", body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry)), token)
+    suspend fun sheet(png: ByteArray, kind: String, entry: String, token: String, style: String = "fluff"): Result<Reply> =
+        post("/sheet", body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to style)), token)
 
     private suspend fun post(path: String, json: String, token: String?): Result<Reply> = withContext(Dispatchers.IO) {
         runCatching {

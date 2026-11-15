@@ -151,6 +151,17 @@ test("/sheet: the right token gets a medium 1536x1024 sheet with the style pictu
   assert.match(calls[0].prompt, /#00FF00/);
 });
 
+test("/sheet: style figure draws the figurine sheet without the fur-ball picture and counts apart from fluff", async () => {
+  env.ALL_DAY = "0";
+  assert.equal((await sheet(sheetBody({ style: "figure" }))).status, 200);
+  assert.equal(calls[0].ref, false);
+  assert.match(calls[0].prompt, /figurine/);
+  assert.match(calls[0].prompt, /#00FF00/);
+  assert.equal((await sheet(sheetBody({ style: "fluff" }))).status, 200);   // the fur-ball sheet still has its own slots
+  assert.equal(calls[1].ref, true);
+  assert.equal((await sheet(sheetBody({ style: "ball" }))).status, 400);
+});
+
 test("/sheet: needs x-app and a valid entry", async () => {
   assert.equal((await call(sheetBody(), { path: "/sheet", headers: { "x-purchase": "tok-123" } })).status, 404);
   assert.equal((await sheet(sheetBody({ entry: "" }))).status, 400);

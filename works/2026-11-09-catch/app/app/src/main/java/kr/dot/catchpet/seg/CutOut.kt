@@ -54,6 +54,30 @@ object CutOut {
         return Cut(out, src)
     }
 
+    /** The same cut with a ready alpha for [src] (frame px), e.g. the high-res person model's. */
+    fun make(frame: Bitmap, src: Rect, alpha: Bitmap): Cut {
+        val k = 512f / max(src.width(), src.height())
+        val out = Bitmap.createBitmap(max(1, (src.width() * k).roundToInt()), max(1, (src.height() * k).roundToInt()), Bitmap.Config.ARGB_8888)
+        val c = Canvas(out)
+        c.scale(k, k)
+        val p = Paint(Paint.FILTER_BITMAP_FLAG)
+        c.drawBitmap(alpha, 0f, 0f, p)
+        p.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+        c.drawBitmap(frame, -src.left.toFloat(), -src.top.toFloat(), p)
+        return Cut(out, src)
+    }
+
+    /** Where make() would cut this mask from the frame: its box + 8 % (null if empty). */
+    fun srcOf(frame: Bitmap, m: Mask, margin: Float = 0.08f): Rect? {
+        val b = m.box ?: return null
+        val sx = frame.width.toFloat() / m.w; val sy = frame.height.toFloat() / m.h
+        val mx = b.w * sx * margin; val my = b.h * sy * margin
+        return Rect(
+            max(0, (b.x0 * sx - mx).toInt()), max(0, (b.y0 * sy - my).toInt()),
+            minOf(frame.width, ((b.x1 + 1) * sx + mx).roundToInt()), minOf(frame.height, ((b.y1 + 1) * sy + my).roundToInt()),
+        ).takeIf { it.width() > 0 && it.height() > 0 }
+    }
+
     /** Frame-sized layer: inside the mask a heavily blurred copy of the frame (the hole the catch leaves). */
     fun hole(frame: Bitmap, m: Mask): Bitmap {
         val tiny = Bitmap.createScaledBitmap(frame, max(1, frame.width / 24), max(1, frame.height / 24), true)

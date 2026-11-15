@@ -49,11 +49,11 @@ class DexTest {
         Dex.savePreview(ctx, e.id, byteArrayOf(8))
         Dex.saveSheet(ctx, e.id, byteArrayOf(7))
         val back = Dex.get(ctx, e.id)!!     // a fresh read from disk, as after an app restart
-        assertEquals(listOf("ai/preview1.webp", "ai/preview2.webp"), back.ai.previews)
-        assertEquals("ai/sheet.webp", back.ai.sheet)
+        assertEquals(listOf("ai/preview-fluff-1.webp", "ai/preview-fluff-2.webp"), back.ai.previews)
+        assertEquals("ai/sheet-fluff.webp", back.ai.sheet)
         assertTrue(back.ai.owned)
         assertEquals(e.name, back.name)
-        assertTrue(Dex.file(ctx, e.id, "ai/preview2.webp").readBytes().contentEquals(byteArrayOf(8)))
+        assertTrue(Dex.file(ctx, e.id, "ai/preview-fluff-2.webp").readBytes().contentEquals(byteArrayOf(8)))
     }
 
     @Test fun corruptOrHalfWrittenEntriesAreSkippedAndTheirNumbersNotReused() {

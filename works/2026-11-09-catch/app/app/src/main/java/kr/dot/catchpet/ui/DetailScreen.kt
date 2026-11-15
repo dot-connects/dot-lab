@@ -1,5 +1,8 @@
 package kr.dot.catchpet.ui
 
+import androidx.compose.foundation.clickable
+import kr.dot.catchpet.pet.PetPrefs
+import kr.dot.catchpet.pet.PetService
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import android.content.Context
@@ -56,12 +59,14 @@ private val STYLES = listOf("fluff" to "털뭉치", "figure" to "피규어")
 fun petId(ctx: Context): String? = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null)
 fun setPet(ctx: Context, id: String) { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().putString("pet", id).apply() }
 
-/** One entry (mockup A): its poses; critters can be the pet; real things get drawings and (unlocked) a pose sheet. */
+/** One entry (confirmed mockup allmenus 11-15): poses, one preview per look, each look bought apart, pet, delete. */
 @Composable
 fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
     val ctx = LocalContext.current
     val rev = AiWork.rev
-    val e = remember(id, rev) { Dex.get(ctx, id) }
+    var tick by remember { mutableStateOf(0) }
+    val e = remember(id, rev, tick) { Dex.get(ctx, id) }
+    var deleting by remember { mutableStateOf(false) }
     BookPage {
         Row { InkPill("‹ 도감", onClick = onBack) }
         if (e == null) {
@@ -88,25 +93,59 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
                 }
             }
         }
-        if (e.critterId != null || e.ai.owned) PetButton(ctx, e, onPet)
-        if (e.critterId == null) RealAi(ctx, e)
-        Spacer(Modifier.height(24.dp))
+        if (e.critterId != null) CritterPet(ctx, e) { tick++ }
+        else RealAi(ctx, e) { tick++ }
+        Spacer(Modifier.height(8.dp))
+        Text("도감에서 지우기", fontFamily = Book.Display, fontSize = 15.sp, color = Book.Warn,
+            modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50)).clickable { deleting = true }.padding(12.dp))
+        Spacer(Modifier.height(16.dp))
+    }
+    if (deleting && e != null) DeleteDialog(listOf(e), onDone = { yes -> deleting = false; if (yes) { removeEntries(ctx, listOf(e.id)); onBack() } })
+}
+
+/** Makes [id] the pet and, when the pet is on screen, swaps it at once (operator 11-15: it did not change). */
+internal fun usePet(ctx: Context, id: String) {
+    setPet(ctx, id)
+    if (PetPrefs.overlayOn(ctx)) PetService.start(ctx)
+}
+
+/** Deletes entries; the pet among them turns the floating pet off. */
+internal fun removeEntries(ctx: Context, ids: List<String>) {
+    val pet = petId(ctx)
+    for (id in ids) Dex.delete(ctx, id)
+    if (pet != null && pet in ids) {
+        ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().remove("pet").apply()
+        PetService.stop(ctx)
     }
 }
 
 @Composable
-private fun PetButton(ctx: Context, e: Dex.Entry, onPet: () -> Unit) {
-    var current by remember(e.id) { mutableStateOf(petId(ctx) == e.id) }
-    if (current) Panel {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("지금 펫이에요", fontFamily = Book.Display, fontSize = 17.sp, modifier = Modifier.weight(1f))
-            InkPill("펫 설정 열기", Book.Sun, onClick = onPet)
-        }
-    } else InkButton("펫으로 쓰기") { setPet(ctx, e.id); current = true }
+internal fun DeleteDialog(es: List<Dex.Entry>, onDone: (Boolean) -> Unit) {
+    val who = if (es.size == 1) Dex.withObject(es[0].name) else "${es.size}마리를"
+    val bought = es.any { it.ai.owned }
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { onDone(false) },
+        containerColor = Book.Paper,
+        title = { Text("$who 지울까요?", fontFamily = Book.Display, color = Book.Ink) },
+        text = {
+            Text("사진과 그려 본 그림이 이 폰에서 지워져요." + (if (bought) " 산 펫 그림도 함께 지워지고" else "") + " 되돌릴 수 없어요.",
+                fontFamily = Book.Body, color = Book.Ink)
+        },
+        confirmButton = { InkPill("지우기", Color(0xFFFF8A80), onClick = { onDone(true) }) },
+        dismissButton = { InkPill("그대로 두기", onClick = { onDone(false) }) },
+    )
 }
 
 @Composable
-private fun RealAi(ctx: Context, e: Dex.Entry) {
+private fun CritterPet(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
+    if (petId(ctx) == e.id) Panel { Text("펫이에요", fontFamily = Book.Display, fontSize = 17.sp) }
+    else InkButton("펫으로 쓰기") { usePet(ctx, e.id); changed() }
+}
+
+private val LOOKS = listOf("fluff" to "털뭉치", "figure" to "피규어")
+
+@Composable
+private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
     val busy = AiWork.busy[e.id]
     // a person's photo leaves the phone only after "허락받았어요" (asked once per dex entry)
     val prefs = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE) }
@@ -121,40 +160,57 @@ private fun RealAi(ctx: Context, e: Dex.Entry) {
         }
     }
     val left = remember(AiWork.rev) { AiWork.leftToday(ctx) }
-    var style by rememberSaveable { mutableStateOf("fluff") }
-    Panel("그림으로 그려 보기") {
-        Seg(STYLES.map { (k, label) -> label to k }, style) { style = it }
-        Note("오늘 ${left}번 더 그릴 수 있어요")
-        InkButton(if (left > 0) "그려 보기" else "내일 다시 그릴 수 있어요", enabled = busy == null && left > 0, primary = false) {
-            guarded { AiWork.preview(ctx, e, style) }
-        }
-        if (busy != null) Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(Modifier.size(18.dp), color = Book.Ink, strokeWidth = 2.dp)
-            Note(if (busy == "sheet") "  펫 그림을 그리는 중이에요 (1~3분)" else "  그리는 중이에요 (1분쯤)")
-        }
-        AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
-        if (e.ai.previews.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (p in e.ai.previews.asReversed()) rememberFile(e.id, p, keyGreen = true)?.let {
-                Image(it, "그려 본 그림", Modifier.size(140.dp).clip(RoundedCornerShape(14.dp)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)),
-                    contentScale = ContentScale.Crop)
+    // one preview per look: drawn = shown and the button is done (operator 11-15)
+    Panel("미리 그려 보기") {
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for ((style, label) in LOOKS) {
+                val drawn = e.ai.previewFor(style)
+                Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(112.dp).clip(RoundedCornerShape(14.dp)).background(Book.Field).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)),
+                        contentAlignment = Alignment.Center) {
+                        if (drawn != null) rememberFile(e.id, drawn, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Fit) }
+                        else if (busy == "preview-$style") CircularProgressIndicator(Modifier.size(22.dp), color = Book.Ink, strokeWidth = 2.dp)
+                        else Text("?", fontFamily = Book.Display, fontSize = 28.sp, color = Book.Muted)
+                    }
+                    if (drawn != null) Note("$label 그렸어요")
+                    else InkPill("$label 그려 보기", onClick = if (busy == null && left > 0) ({ guarded { AiWork.preview(ctx, e, style) } }) else null)
+                }
             }
         }
-    }
-    if (e.ai.owned) {
-        e.ai.sheet?.let { s -> rememberFile(e.id, s)?.let {
-            Panel("펫 그림") {
-                Image(it, "펫 그림", Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.FillWidth)
+        Note(if (left > 0) "스타일마다 한 번씩 그려 볼 수 있어요. 오늘 ${left}번 남았어요." else "오늘은 다 그렸어요. 내일 다시 그릴 수 있어요.")
+        if (e.ai.oldPreviews.isNotEmpty()) Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (p in e.ai.oldPreviews.asReversed()) rememberFile(e.id, p, keyGreen = true)?.let {
+                Image(it, "그려 본 그림", Modifier.size(72.dp), contentScale = ContentScale.Fit)
             }
-        } }
-        return
+        }
     }
     val token = remember { Purchase.token(ctx) }
     val locked = Purchase.locked(token)
     val free = kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.isNotEmpty()
-    InkButton(if (free) "펫 그림 만들기 · 개발판 무료" else "펫으로 사기 · ${Purchase.PRICE_WON}원", enabled = !locked && busy == null) {
-        token?.let { t -> guarded { AiWork.buy(ctx, e, t) } }
+    val isPet = petId(ctx) == e.id
+    Panel("펫으로 사기") {
+        for ((style, label) in LOOKS) {
+            val bought = e.ai.sheets.containsKey(style)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Box(Modifier.size(48.dp).background(Book.Field, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                    e.ai.previewFor(style)?.let { p -> rememberFile(e.id, p, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(4.dp), contentScale = ContentScale.Fit) } }
+                }
+                Text(label, fontFamily = Book.Display, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                when {
+                    busy == "sheet-$style" -> Note("그리는 중 (1~3분)")
+                    bought && isPet && e.ai.petStyle == style -> InkPill("펫이에요", Book.Leaf)
+                    bought -> {
+                        Note("구매 완료")
+                        InkPill("펫으로 쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
+                    }
+                    else -> InkPill(if (free) "개발판 무료" else "${Purchase.PRICE_WON}원", Book.Sun,
+                        onClick = if (!locked && busy == null) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                }
+            }
+        }
+        AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
+        if (locked) Note("출시 후 열려요")
     }
-    if (locked) Note("출시 후 열려요")
 }
 
 @Composable

@@ -37,6 +37,28 @@ class Mask(
 
     fun at(x: Int, y: Int): Boolean = x in 0 until w && y in 0 until h && bits[y * w + x]
 
+    /** The 4-connected piece of this mask nearest (cx, cy), as its own mask (the whole mask if empty). */
+    fun pieceNear(cx: Int, cy: Int): Mask {
+        var seed = -1; var best = Long.MAX_VALUE
+        for (i in bits.indices) if (bits[i]) {
+            val dx = (i % w - cx).toLong(); val dy = (i / w - cy).toLong()
+            val d = dx * dx + dy * dy
+            if (d < best) { best = d; seed = i }
+        }
+        if (seed < 0) return this
+        val out = BooleanArray(bits.size)
+        val stack = ArrayDeque<Int>(); stack.add(seed); out[seed] = true
+        while (stack.isNotEmpty()) {
+            val i = stack.removeLast(); val x = i % w; val y = i / w
+            for ((nx, ny) in arrayOf(x - 1 to y, x + 1 to y, x to y - 1, x to y + 1)) {
+                if (nx !in 0 until w || ny !in 0 until h) continue
+                val j = ny * w + nx
+                if (bits[j] && !out[j]) { out[j] = true; stack.add(j) }
+            }
+        }
+        return Mask(w, h, out, kind, critterId, species)
+    }
+
     /** First row (top down) with a set pixel in columns cx-halfWidth..cx+halfWidth, or null. */
     fun firstRowInColumn(cx: Int, halfWidth: Int = 2): Int? {
         for (y in 0 until h) for (dx in -halfWidth..halfWidth) if (at(cx + dx, y)) return y

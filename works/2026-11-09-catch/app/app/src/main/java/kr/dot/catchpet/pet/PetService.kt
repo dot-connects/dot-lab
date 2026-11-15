@@ -101,6 +101,7 @@ class PetService : Service() {
             }
             val v = view
             val hidden = homeOnly && !launcherOnTop()
+            if (hidden || bubble?.expired() == true) closeBubble()
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
             lastMs = now
@@ -195,7 +196,29 @@ class PetService : Service() {
         resume()
     }
 
+    private var bubble: AppBubble? = null
+
+    /** Two taps: the chosen app, or the cloud of apps; nothing chosen = dance (operator 11-15). */
+    private fun doubleTap(b: PetBrain) {
+        closeBubble()
+        val apps = PetApps.load(this)
+        when (apps.size) {
+            0 -> b.doubleTap()
+            1 -> { b.tap(); PetApps.open(this, apps[0].pkg) }
+            else -> {
+                val p = params ?: return
+                val v = AppBubble(this, apps) { pkg -> closeBubble(); if (pkg != null) PetApps.open(this, pkg) }
+                val px = (size * density).roundToInt()
+                runCatching { wm.addView(v, v.params(p.x + px / 2, p.y, wm.currentWindowMetrics.bounds.width())) }.onSuccess { bubble = v }
+                b.tap()
+            }
+        }
+    }
+
+    private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) } }; bubble = null }
+
     private fun hide() {
+        closeBubble()
         pause()
         view?.let { wm.removeView(it) }
         view = null
@@ -273,7 +296,7 @@ class PetService : Service() {
                     if (holding) { b.drop(e.rawX / density, e.rawY / density + size / 2); PetPrefs.setPlace(this, b.zone) }
                     else if (!moved && e.actionMasked == MotionEvent.ACTION_UP) {
                         val now = SystemClock.uptimeMillis()
-                        if (now - lastTap <= DOUBLE_MS) b.doubleTap() else b.tap()
+                        if (now - lastTap <= DOUBLE_MS) doubleTap(b) else b.tap()
                         lastTap = now
                     }
                     holding = false

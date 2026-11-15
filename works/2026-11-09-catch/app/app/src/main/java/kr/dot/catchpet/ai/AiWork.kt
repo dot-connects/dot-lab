@@ -42,15 +42,18 @@ object AiWork {
 
     private fun cutOut(ctx: Context, e: Dex.Entry) = Dex.file(ctx, e.id, "${e.poses.first()}.png").readBytes()
 
-    fun preview(ctx: Context, e: Dex.Entry, style: String) = run(ctx, e, "preview") { app ->
+    fun preview(ctx: Context, e: Dex.Entry, style: String) = run(ctx, e, "preview-$style") { app ->
         val r = client(app).preview(cutOut(app, e), e.kind, style)
-        r.onSuccess { rep -> rep.left?.let { setLeft(app, it) }; Dex.savePreview(app, e.id, rep.image, ext(rep.mime)) }
+        r.onSuccess { rep -> rep.left?.let { setLeft(app, it) }; Dex.savePreview(app, e.id, rep.image, ext(rep.mime), style) }
         r.onFailure { if ((it as? AiClient.Fail)?.code == "device") setLeft(app, 0) }
         r
     }
 
-    fun buy(ctx: Context, e: Dex.Entry, token: String) = run(ctx, e, "sheet") { app ->
-        client(app).sheet(cutOut(app, e), e.kind, e.id, token).onSuccess { Dex.saveSheet(app, e.id, it.image, ext(it.mime)) }
+    fun buy(ctx: Context, e: Dex.Entry, token: String, style: String) = run(ctx, e, "sheet-$style") { app ->
+        client(app).sheet(cutOut(app, e), e.kind, e.id, token, style).onSuccess {
+            Dex.saveSheet(app, e.id, it.image, ext(it.mime), style)
+            Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
+        }
     }
 
     private fun ext(mime: String) = when (mime) { "image/png" -> "png"; "image/jpeg" -> "jpg"; else -> "webp" }

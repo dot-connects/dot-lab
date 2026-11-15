@@ -192,6 +192,11 @@ private fun CatchView(
     game.bottomInset = WindowInsets.navigationBars.getBottom(dens) / dens.density
     game.dexCount = dexCount
     game.cameraOn = cameraOn
+    remember {
+        val p = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
+        game.hint = !p.getBoolean("hinted", false)
+        game.hinted = { p.edit().putBoolean("hinted", true).apply() }
+    }
     remember { Sfx.init(ctx) }
     val openDex by rememberUpdatedState(onOpenDex)
     val camera by rememberUpdatedState(onCamera)
@@ -230,7 +235,7 @@ private fun CatchView(
                             val up = waitForUpOrCancellation()   // null = cancelled (a system swipe): no drop
                             game.pressed = false
                             if (up != null && game.onButton(up.position.x / game.d, up.position.y / game.d) && c.st == Claw.St.AIM) {
-                                c.release(); game.hint = false
+                                c.release(); if (game.hint) { game.hint = false; game.hinted() }
                             }
                             return@awaitEachGesture
                         }
@@ -276,6 +281,8 @@ private class CatchGame(
     /** Nothing in flight: aiming, no capsule, no person waiting for consent. */
     val idle get() = claw?.st == Claw.St.AIM && capsule == null && pendingPerson == null && askPerson == null
     var hint = true
+    /** Remembers that the player has dropped the claw once (the first-run hint is gone for good). */
+    var hinted: () -> Unit = {}
     private var railTickX = -1f
     var w = 0f; private set
     var h = 0f; private set
@@ -460,14 +467,22 @@ private class CatchGame(
         val f = src.latest() ?: return
         frozen = f
         gripAt = time
+        // the claw's point in the mask grid: only the piece it touched is cut (review 11-15: jeans-only, two people)
+        val (gx, gy) = map?.toGrid((claw?.x ?: 0.5f) * w * d, (claw?.y ?: rail) * d + Claw.TIP * d) ?: (target.w / 2 to target.h / 2)
         grip = seg.onThread {
-            val fresh = seg.run(f).filter { family(it.kind) == family(target.kind) }.maxByOrNull { iou(it, target) }
-            makeGrip(f, fresh?.takeIf { iou(it, target) > 0f } ?: target)
+            // the touched person already passed the face check; the frozen frame is not checked again (it dropped
+            // the fresh mask and the cut fell back to a mask up to 1.2 s old)
+            val fresh = seg.run(f, faces = false).filter { family(it.kind) == family(target.kind) }.maxByOrNull { iou(it, target) }
+            val m = (fresh?.takeIf { iou(it, target) > 0f } ?: target).pieceNear(gx, gy)
+            makeGrip(f, m)
         }
     }
 
-    private fun makeGrip(f: Bitmap, m: Mask): Grip {
-        val cut = CutOut.make(f, m)
+    private fun makeGrip(f: Bitmap, m: Mask, hiRes: Boolean = true): Grip {
+        val hi = if (hiRes && m.kind == Mask.Kind.PERSON) CutOut.srcOf(f, m, 0.15f)?.let { src ->
+            runCatching { seg.personAlpha(f, src) }.onFailure { Log.w(TAG, "hi-res cut", it) }.getOrNull()?.let { a -> CutOut.make(f, src, a).also { a.recycle() } }
+        } else null
+        val cut = hi ?: CutOut.make(f, m)
         return Grip(cut, CutOut.hole(f, m), cut?.let { CutOut.opaque(it.bmp) } ?: 0f)
     }
 
@@ -486,7 +501,8 @@ private class CatchGame(
         if (held == null && g != null && !g.isDone && time - gripAt < 1500f) return
         if (held == null) {
             g?.cancel(false)
-            held = frozen?.let { f -> runCatching { makeGrip(f, target) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
+            // main thread: no model call here
+            held = frozen?.let { f -> runCatching { makeGrip(f, target, hiRes = false) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
         }
         val got = held
         if (got?.cut == null || got.opaque < 0.05f) {
@@ -586,6 +602,10 @@ private class CatchGame(
         topBar(cv)
         drawButton(cv, c)
         if (hint) {
+            // a slow ring around the button points at it
+            val k = (time % 1400f) / 1400f
+            stroke.pathEffect = null; stroke.strokeWidth = 3f; stroke.color = argb(.8f * (1f - k), 255, 216, 77)
+            cv.drawCircle(btnX, btnY, BTN_R + 10f + 22f * k, stroke)
             text.textSize = 17f; text.color = argb(.92f, 255, 255, 255); text.setShadowLayer(8f, 0f, 0f, Color.BLACK)
             cv.drawText("끌어서 맞추고 집기를 누르세요", w / 2, btnY - BTN_R - PLATE_SIDE - 16f, text)
             text.clearShadowLayer()
@@ -710,9 +730,14 @@ private class CatchGame(
         text.textSize = 20f
         val tw = text.measureText(t.text) + 34f
         val y = rail + 34f - (1f - a) * 8f
-        fill.color = if (t.good) argb(.95f * a, 255, 207, 90) else argb(.82f * a, 20, 22, 27)
+        // the menus' look (operator 11-15): paper (yellow for a catch), ink outline, a hard drop
+        fill.shader = null
+        fill.color = argb(a, 0x24, 0x33, 0x1F); cv.drawRoundRect(w / 2 - tw / 2, y + 3f, w / 2 + tw / 2, y + 39f, 18f, 18f, fill)
+        fill.color = if (t.good) argb(a, 0xFF, 0xD8, 0x4D) else argb(a, 0xFF, 0xFD, 0xF6)
         cv.drawRoundRect(w / 2 - tw / 2, y, w / 2 + tw / 2, y + 36f, 18f, 18f, fill)
-        text.color = if (t.good) Color.argb((255 * a).toInt(), 0x2A, 0x1D, 0) else Color.argb((255 * a).toInt(), 255, 255, 255)
+        stroke.pathEffect = null; stroke.strokeWidth = 2.5f; stroke.color = argb(a, 0x24, 0x33, 0x1F)
+        cv.drawRoundRect(w / 2 - tw / 2 + 1.25f, y + 1.25f, w / 2 + tw / 2 - 1.25f, y + 34.75f, 17f, 17f, stroke)
+        text.color = Color.argb((255 * a).toInt(), 0x24, 0x33, 0x1F)
         cv.drawText(t.text, w / 2, y + 25f, text)
     }
 

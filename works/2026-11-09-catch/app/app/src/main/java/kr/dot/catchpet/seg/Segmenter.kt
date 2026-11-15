@@ -84,7 +84,7 @@ class Segmenter(private val ctx: Context) {
      * full = false skips the box detector fallback (the loop's odd passes; the Tracker bridges them);
      * pets = true also looks for small pets when no other animal was found.
      */
-    fun run(frame: Bitmap, full: Boolean = true, pets: Boolean = full): List<Mask> {
+    fun run(frame: Bitmap, full: Boolean = true, pets: Boolean = full, faces: Boolean = true): List<Mask> {
         val s = 320f / max(frame.width, frame.height)
         val small = if (s < 1f) Bitmap.createScaledBitmap(frame, (frame.width * s).roundToInt(), (frame.height * s).roundToInt(), true) else frame
         val img = BitmapImageBuilder(small).build()
@@ -133,15 +133,8 @@ class Segmenter(private val ctx: Context) {
             }
         }
         if (pets && out.none { it.kind != Mask.Kind.PERSON }) smallPet(small, img, dets())?.let { out += it }
-        out.firstOrNull { it.kind == Mask.Kind.PERSON }?.let { pm ->
-            val b = pm.box
-            val faces = faceDetector().detect(img).detections()
-            val hasFace = b != null && faces.any { d ->
-                val r = d.boundingBox()
-                val fx = (r.centerX() / small.width * gw).toInt(); val fy = (r.centerY() / small.height * gh).toInt()
-                fx in b.x0 - 3..b.x1 + 3 && fy in b.y0 - 3..b.y1 + 3
-            }
-            if (!hasFace) out.remove(pm)
+        if (faces) out.firstOrNull { it.kind == Mask.Kind.PERSON }?.let { pm ->
+            if (!faceIn(frame, pm)) out.remove(pm)
         }
         img.close()
         if (small !== frame) small.recycle()
@@ -198,7 +191,7 @@ class Segmenter(private val ctx: Context) {
     /** Stops the loop and frees the models (on their own thread). */
     fun close() {
         exec.execute {
-            seg?.close(); det?.close(); face?.close(); cls?.close(); touch?.close()
+            seg?.close(); det?.close(); face?.close(); cls?.close(); touch?.close(); selfieBig?.close(); selfieSmall?.close(); selfieBig = null; selfieSmall = null
             seg = null; det = null; face = null; cls = null; touch = null
         }
         exec.shutdown()
@@ -250,6 +243,59 @@ class Segmenter(private val ctx: Context) {
             .setMinDetectionConfidence(0.5f)
             .build(),
     ).also { face = it }
+
+    /**
+     * Is there a face inside this person? Checked on the full-resolution frame cut to the person's box + 20 %
+     * (review 11-15: on the 320 px frame a face on a TV or 2 m away scores under the 0.5 cut, 0/30; on the crop 30/30).
+     */
+    private fun faceIn(frame: Bitmap, pm: Mask): Boolean {
+        val b = pm.box ?: return false
+        val sx = frame.width.toFloat() / pm.w; val sy = frame.height.toFloat() / pm.h
+        val mx = b.w * sx * 0.2f; val my = b.h * sy * 0.2f
+        val l = max(0, (b.x0 * sx - mx).toInt()); val t = max(0, (b.y0 * sy - my).toInt())
+        val r = min(frame.width, ((b.x1 + 1) * sx + mx).roundToInt()); val bt = min(frame.height, ((b.y1 + 1) * sy + my).roundToInt())
+        if (r - l < 8 || bt - t < 8) return false
+        var crop = Bitmap.createBitmap(frame, l, t, r - l, bt - t)
+        val k = 640f / max(crop.width, crop.height)
+        if (k < 1f) crop = Bitmap.createScaledBitmap(crop, (crop.width * k).roundToInt(), (crop.height * k).roundToInt(), true)
+        val img = BitmapImageBuilder(crop).build()
+        return try { faceDetector().detect(img).detections().isNotEmpty() } finally { img.close() }
+    }
+
+    /**
+     * The grabbed person's alpha for the frame cut to [src] (operator 11-15: small model on board, the big one fetched
+     * when needed): the high-res selfie multiclass (1 - background, separates blankets and sofas) once downloaded,
+     * else the 0.25 MB selfie segmenter in the APK (person confidence). A soft ramp 0.3..0.7.
+     */
+    fun personAlpha(frame: Bitmap, src: android.graphics.Rect): Bitmap? {
+        val big = HiRes.file(ctx)
+        val hi = big.isFile
+        if (!hi) HiRes.fetch(ctx)   // first person grab: fetch it for the next ones
+        val s = (if (hi) selfieBig else selfieSmall) ?: runCatching {
+            val path = if (hi) big.absolutePath else "models/selfie_segmenter.tflite"
+            ImageSegmenter.createFromOptions(ctx, ImageSegmenter.ImageSegmenterOptions.builder()
+                .setBaseOptions(BaseOptions.builder().setModelAssetPath(path).build())
+                .setRunningMode(RunningMode.IMAGE).setOutputConfidenceMasks(true).setOutputCategoryMask(false).build())
+        }.onFailure { Log.w(TAG, "person model", it); if (hi) big.delete() }.getOrNull()
+            ?.also { if (hi) selfieBig = it else selfieSmall = it } ?: return null
+        val crop = Bitmap.createBitmap(frame, src.left, src.top, src.width(), src.height())
+        val img = BitmapImageBuilder(crop).build()
+        try {
+            val conf = s.segment(img).confidenceMasks().orElse(null) ?: return null
+            val bg = conf[0]; val w = bg.width; val h = bg.height
+            val f = floats(bg)
+            conf.forEach { it.close() }
+            val px = IntArray(w * h) { i ->
+                val person = if (hi) 1f - f[i] else f[i]
+                val p = ((person - 0.3f) / 0.4f).coerceIn(0f, 1f)
+                ((p * p * (3 - 2 * p)) * 255).roundToInt() shl 24
+            }
+            val small = Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+            return Bitmap.createScaledBitmap(small, src.width(), src.height(), true).also { small.recycle() }
+        } finally { img.close() }
+    }
+    private var selfieBig: ImageSegmenter? = null
+    private var selfieSmall: ImageSegmenter? = null
 
     private fun floats(m: MPImage): FloatArray {
         val fb = ByteBufferExtractor.extract(m).order(ByteOrder.nativeOrder()).asFloatBuffer()

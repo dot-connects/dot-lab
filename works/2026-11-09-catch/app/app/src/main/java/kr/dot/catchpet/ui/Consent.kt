@@ -29,7 +29,8 @@ fun PersonConsent(use: PersonUse, onDone: (Boolean) -> Unit) {
     var agreed by remember { mutableStateOf(false) }
     AlertDialog(
         onDismissRequest = { onDone(false) },
-        title = { Text(if (use == PersonUse.DEX) "사람을 뽑았어요" else "사람 사진으로 그림 그리기") },
+        containerColor = Book.Paper, textContentColor = Book.Ink,
+        title = { Text(if (use == PersonUse.DEX) "사람을 뽑았어요" else "사람 사진으로 그림 그리기", fontFamily = Book.Display, color = Book.Ink) },
         text = {
             Column {
                 Text(
@@ -43,14 +44,15 @@ fun PersonConsent(use: PersonUse, onDone: (Boolean) -> Unit) {
                     Modifier.padding(top = 12.dp).clickable { agreed = !agreed },
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Checkbox(checked = agreed, onCheckedChange = { agreed = it })
+                    Checkbox(checked = agreed, onCheckedChange = { agreed = it },
+                        colors = androidx.compose.material3.CheckboxDefaults.colors(checkedColor = Book.Leaf, uncheckedColor = Book.Ink, checkmarkColor = androidx.compose.ui.graphics.Color.White))
                     Text("이 사람에게 허락받았어요")
                 }
             }
         },
         confirmButton = {
-            TextButton(onClick = { onDone(true) }, enabled = agreed) { Text(if (use == PersonUse.DEX) "도감에 넣기" else "그리기") }
+            InkPill(if (use == PersonUse.DEX) "도감에 넣기" else "그리기", if (agreed) Book.Sun else Book.Field, onClick = if (agreed) ({ onDone(true) }) else null)
         },
-        dismissButton = { TextButton(onClick = { onDone(false) }) { Text(if (use == PersonUse.DEX) "버리기" else "취소") } },
+        dismissButton = { InkPill(if (use == PersonUse.DEX) "버리기" else "취소", onClick = { onDone(false) }) },
     )
 }

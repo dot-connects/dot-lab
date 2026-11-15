@@ -14,6 +14,7 @@ object Sfx {
     private val ids = HashMap<Int, Int>()
 
     fun init(ctx: Context) {
+        mute = muted(ctx)
         if (pool != null) return
         val p = SoundPool.Builder().setMaxStreams(4)
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME)
@@ -23,7 +24,14 @@ object Sfx {
         pool = p
     }
 
+    private var mute = false
+
+    /** The "뽑기 소리" switch on the pet screen. */
+    fun muted(ctx: Context) = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getBoolean("mute", false)
+    fun setMuted(ctx: Context, on: Boolean) { mute = on; ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().putBoolean("mute", on).apply() }
+
     fun play(res: Int, vol: Float = 0.6f, rate: Float = 1f) {
+        if (mute) return
         val id = ids[res] ?: return
         pool?.play(id, vol, vol, 1, 0, rate)
     }

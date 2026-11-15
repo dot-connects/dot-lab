@@ -1,5 +1,7 @@
 package kr.dot.catchpet.ui
 
+import androidx.core.graphics.drawable.toBitmap
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.ui.draw.alpha
@@ -132,6 +134,16 @@ fun PetScreen(onBack: () -> Unit) {
             if (homeOnly && !usage) Row { InkPill("사용정보 접근 열기", Book.Sun, onClick = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) }
         }
 
+        AppsPanel()
+
+        Panel {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("뽑기 소리", fontFamily = Book.Display, fontSize = 18.sp, modifier = Modifier.weight(1f))
+                var sound by remember { mutableStateOf(!Sfx.muted(ctx)) }
+                InkSwitch(sound) { sound = it; Sfx.setMuted(ctx, !it) }
+            }
+        }
+
         Panel("크기") {
             // three sizes, each shown at the size it will have on the home screen
             val pic = pet?.let { rememberPetFront(it) }
@@ -221,4 +233,71 @@ private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBi
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.Frames.load(ctx, e)?.get("front")?.asImageBitmap() }
     }
     return v
+}
+
+/** "두 번 톡톡 누르면": the apps the pet opens; + opens the picker, a long press takes one out (operator 11-15). */
+@Composable
+private fun AppsPanel() {
+    val ctx = LocalContext.current
+    var picking by remember { mutableStateOf(false) }
+    var rev by remember { mutableStateOf(0) }
+    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList(), rev) {
+        value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.load(ctx) }
+    }
+    Panel("두 번 톡톡 누르면") {
+        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (a in apps) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(52.dp)) {
+                Image(rememberIcon(a.icon), a.label, Modifier.size(40.dp))
+                Text(a.label, fontSize = 10.sp, maxLines = 1)
+            }
+            Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(52.dp)
+                .clip(RoundedCornerShape(10.dp)).clickable { picking = true }) {
+                Box(Modifier.size(40.dp).border(2.dp, Book.Muted, RoundedCornerShape(10.dp)).background(Book.Field, RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center) { Text(if (apps.isEmpty()) "+" else "✎", fontFamily = Book.Display, fontSize = 20.sp, color = Book.Muted) }
+                Text(if (apps.isEmpty()) "추가" else "바꾸기", fontSize = 10.sp)
+            }
+        }
+        Note(when (apps.size) {
+            0 -> "앱을 고르면 펫을 두 번 톡톡 눌러 바로 열 수 있어요. 비워 두면 춤춰요."
+            1 -> "두 번 톡톡 누르면 ${apps[0].label}이(가) 바로 열려요."
+            else -> "두 번 톡톡 누르면 말풍선에 ${apps.size}개 앱이 떠요(최대 ${kr.dot.catchpet.pet.PetApps.MAX}개)."
+        })
+    }
+    if (picking) AppPicker(onDone = { picking = false; rev++ })
+}
+
+@Composable
+private fun rememberIcon(d: android.graphics.drawable.Drawable): androidx.compose.ui.graphics.ImageBitmap =
+    remember(d) { d.toBitmap(96, 96).asImageBitmap() }
+
+/** Full-screen list of installed apps with check marks; leaving saves (mockup allmenus "앱 고르기"). */
+@Composable
+private fun AppPicker(onDone: () -> Unit) {
+    val ctx = LocalContext.current
+    val all by produceState<List<kr.dot.catchpet.pet.PetApps.App>?>(null) { value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.installed(ctx) } }
+    var chosen by remember { mutableStateOf(kr.dot.catchpet.pet.PetApps.chosen(ctx)) }
+    fun close() { kr.dot.catchpet.pet.PetApps.setChosen(ctx, chosen); onDone() }
+    androidx.compose.ui.window.Dialog(onDismissRequest = { close() },
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+        BookPage {
+            Row { InkPill("‹ 펫", onClick = { close() }) }
+            Heading("열 앱 고르기", 26.sp)
+            Note("${chosen.size}개 골랐어요 · 최대 ${kr.dot.catchpet.pet.PetApps.MAX}개")
+            Panel {
+                val list = all
+                if (list == null) CircularProgressIndicator(color = Book.Ink)
+                else for (a in list) {
+                    val on = a.pkg in chosen
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
+                        chosen = if (on) chosen - a.pkg else if (chosen.size < kr.dot.catchpet.pet.PetApps.MAX) chosen + a.pkg else chosen
+                    }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Image(rememberIcon(a.icon), a.label, Modifier.size(32.dp))
+                        Text(a.label, modifier = Modifier.weight(1f), maxLines = 1)
+                        Box(Modifier.size(22.dp).background(if (on) Book.Leaf else Book.Paper, CircleShape).border(2.dp, Book.Ink, CircleShape),
+                            contentAlignment = Alignment.Center) { if (on) Text("✓", fontSize = 13.sp, color = Color.White) }
+                    }
+                }
+            }
+        }
+    }
 }
