@@ -88,6 +88,7 @@ fun PetScreen(onBack: () -> Unit) {
         value = withContext(Dispatchers.IO) { Dex.list(ctx).filter { it.critterId != null || it.ai.owned } }
     }
     var chosen by remember { mutableStateOf(petId(ctx)) }
+    var petLook by remember { mutableStateOf(petId(ctx)?.let { Dex.get(ctx, it)?.ai?.petStyle }) }
     var size by remember { mutableStateOf(PetPrefs.size(ctx)) }
     var dev by remember { mutableStateOf(false) }
     var askedDraw by remember { mutableStateOf(false) }
@@ -102,7 +103,7 @@ fun PetScreen(onBack: () -> Unit) {
 
     val notify = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { PetService.start(ctx); on = true }
     fun restartIfOn() { if (on) PetService.start(ctx) }
-    val pet = pets.firstOrNull { it.id == chosen }
+    val pet = pets.firstOrNull { it.id == chosen }?.let { p -> p.copy(ai = p.ai.copy(sheet = p.ai.sheets[petLook] ?: p.ai.sheet, petStyle = petLook ?: p.ai.petStyle)) }
 
     BookPage {
         Row { InkPill("‹ 뽑기", onClick = onBack) }
@@ -168,18 +169,25 @@ fun PetScreen(onBack: () -> Unit) {
         Panel("누구를 띄울까") {
             if (pets.isEmpty()) Note("털뭉치를 뽑거나 진짜 녀석의 펫 그림을 만들면 여기에 나와요.")
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (e in pets) {
-                    val sel = e.id == chosen
+                // each bought look is its own choice (operator 11-15: the figurine was missing here)
+                for ((e0, look) in pets.flatMap { p -> if (p.critterId != null || p.ai.sheets.isEmpty()) listOf(p to null) else p.ai.sheets.keys.map { p to it } }) {
+                    val e = if (look == null) e0 else e0.copy(ai = e0.ai.copy(sheet = e0.ai.sheets[look], petStyle = look))
+                    val sel = e.id == chosen && (look == null || look == petLook)
                     Column(
                         Modifier.width(76.dp).clip(RoundedCornerShape(14.dp))
                             .let { if (sel) it.background(Book.Sun.copy(alpha = 0.35f)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)) else it }
-                            .clickable { setPet(ctx, e.id); chosen = e.id; restartIfOn() }
+                            .clickable {
+                                setPet(ctx, e.id); chosen = e.id
+                                if (look != null) { Dex.setPetStyle(ctx, e.id, look); petLook = look }
+                                restartIfOn()
+                            }
                             .padding(6.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         rememberPetFront(e)?.let { Image(it, e.name, Modifier.size(54.dp).alpha(if (sel) 1f else 0.6f), contentScale = ContentScale.Fit) }
                             ?: Spacer(Modifier.size(54.dp))
                         Text(e.name, fontFamily = Book.Display, fontSize = 13.sp, maxLines = 1)
+                        if (look != null) Text(if (look == "figure") "피규어" else "털뭉치", fontSize = 10.sp, color = Book.Muted)
                     }
                 }
             }
@@ -229,7 +237,7 @@ private fun Developer(ctx: Context) {
 @Composable
 private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBitmap? {
     val ctx = LocalContext.current
-    val v by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, e.id, e.ai.sheet) {
+    val v by produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, e.id, e.ai.sheet, e.ai.petStyle) {
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.Frames.load(ctx, e)?.get("front")?.asImageBitmap() }
     }
     return v
@@ -288,7 +296,11 @@ private fun AppPicker(onDone: () -> Unit) {
                 else for (a in list) {
                     val on = a.pkg in chosen
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
-                        chosen = if (on) chosen - a.pkg else if (chosen.size < kr.dot.catchpet.pet.PetApps.MAX) chosen + a.pkg else chosen
+                        chosen = when {
+                            on -> chosen - a.pkg
+                            chosen.size < kr.dot.catchpet.pet.PetApps.MAX -> chosen + a.pkg
+                            else -> { android.widget.Toast.makeText(ctx, "최대 ${kr.dot.catchpet.pet.PetApps.MAX}개까지 고를 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); chosen }
+                        }
                     }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Image(rememberIcon(a.icon), a.label, Modifier.size(32.dp))
                         Text(a.label, modifier = Modifier.weight(1f), maxLines = 1)

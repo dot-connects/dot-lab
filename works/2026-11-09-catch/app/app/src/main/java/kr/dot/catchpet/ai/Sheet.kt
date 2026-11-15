@@ -7,7 +7,9 @@ import kotlin.math.roundToInt
 
 /** The bought 3x2 pose sheet (green background) -> six transparent pet frames. */
 object Sheet {
-    val KEYS = listOf("front", "smile", "walkA", "walkB", "sleep", "curl")   // row by row, left to right
+    val KEYS = listOf("front", "smile", "walkA", "walkB", "sleep", "curl")   // 3 x 2, row by row, left to right
+    /** 4 x 3 (operator 11-15): a 4-step walk with crossing arms and legs, flailing while held, a pratfall. */
+    val KEYS12 = listOf("front", "smile", "walk1", "walk2", "walk3", "walk4", "sleep", "curl", "holdA", "holdB", "fall", "dazed")
 
     /** k = g - max(r, b): k > 60 is background (alpha 0); 18 < k <= 60 is the edge: partly clear, green pulled down. */
     fun keyGreen(argb: Int): Int {
@@ -24,15 +26,17 @@ object Sheet {
      * Each third of the sheet is cut to the box of its non-green pixels plus a 6% margin (limbs that reach the
      * cell edge stay), then padded to a square with the feet on the bottom edge. A cell with nothing in it is skipped.
      */
-    fun cells(sheet: Bitmap): Map<String, Bitmap> {
+    fun cells(sheet: Bitmap, twelve: Boolean = false): Map<String, Bitmap> {
+        val keys = if (twelve) KEYS12 else KEYS
+        val cols = if (twelve) 4 else 3; val rows = if (twelve) 3 else 2
         val w = sheet.width; val h = sheet.height
         val px = IntArray(w * h)
         sheet.getPixels(px, 0, w, 0, 0, w, h)
         for (i in px.indices) px[i] = keyGreen(px[i])
         val out = LinkedHashMap<String, Bitmap>()
-        for ((i, key) in KEYS.withIndex()) {
-            val cx0 = (i % 3) * w / 3; val cx1 = (i % 3 + 1) * w / 3
-            val cy0 = (i / 3) * h / 2; val cy1 = (i / 3 + 1) * h / 2
+        for ((i, key) in keys.withIndex()) {
+            val cx0 = (i % cols) * w / cols; val cx1 = (i % cols + 1) * w / cols
+            val cy0 = (i / cols) * h / rows; val cy1 = (i / cols + 1) * h / rows
             var x0 = cx1; var y0 = cy1; var x1 = -1; var y1 = -1
             for (y in cy0 until cy1) for (x in cx0 until cx1) if ((px[y * w + x] ushr 24) > 24) {
                 if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y

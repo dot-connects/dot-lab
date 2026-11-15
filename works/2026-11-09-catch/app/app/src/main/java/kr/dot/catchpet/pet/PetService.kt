@@ -125,7 +125,15 @@ class PetService : Service() {
 
     override fun onCreate() {
         super.onCreate()
-        wm = getSystemService(WindowManager::class.java)
+        // a window context follows rotation and fold switches; the service's own configuration may lag (눈금 FloatService)
+        val win = createWindowContext(getSystemService(android.hardware.display.DisplayManager::class.java)
+            .getDisplay(android.view.Display.DEFAULT_DISPLAY), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
+        win.registerComponentCallbacks(object : android.content.ComponentCallbacks {
+            override fun onConfigurationChanged(newConfig: Configuration) = onScreenChanged()
+            @Deprecated("Deprecated in Java") override fun onLowMemory() {}
+        })
+        wm = win.getSystemService(WindowManager::class.java)
+        screenSize = wm.maximumWindowMetrics.bounds.let { it.width() to it.height() }
         registerReceiver(screen, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
@@ -158,7 +166,7 @@ class PetService : Service() {
     }
 
     private fun screenDp(): Pair<Float, Float> {
-        val b = wm.currentWindowMetrics.bounds
+        val b = wm.maximumWindowMetrics.bounds
         return b.width() / density to b.height() / density
     }
 
@@ -260,7 +268,21 @@ class PetService : Service() {
     // fold / unfold / rotation: a fresh brain for the new screen
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        if (view != null) show()
+        onScreenChanged()
+    }
+
+    private var screenSize = 0 to 0
+
+    /** Rotated or unfolded: a new brain for the new screen, on the same edge at the same share of it. */
+    private fun onScreenChanged() {
+        val b = wm.maximumWindowMetrics.bounds
+        if (b.width() to b.height() == screenSize) return
+        screenSize = b.width() to b.height()
+        val old = brain ?: return
+        val (w0, h0) = old.w to old.h
+        val (x01, y01) = old.x / w0 to old.y / h0
+        show()
+        brain?.keepAt(x01, y01)
     }
 
     @SuppressLint("ClickableViewAccessibility")

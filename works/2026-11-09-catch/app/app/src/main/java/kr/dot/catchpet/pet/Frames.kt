@@ -19,7 +19,10 @@ fun animClock(): Float = (android.os.SystemClock.uptimeMillis() % 3_600_000L).to
 
 /** The six pet pictures of the chosen pet, trimmed to their opaque pixels. */
 object Frames {
-    val CELLS = listOf("front", "smile", "walkA", "walkB", "sleep", "curl")
+    /** What the pet draws; a 6-cell sheet or a critter fills the newer keys from its own (see [ALIAS]). */
+    val CELLS = listOf("front", "smile", "walk1", "walk2", "walk3", "walk4", "sleep", "curl", "holdA", "holdB", "fall", "dazed")
+    private val ALIAS = mapOf("walk1" to "walkA", "walk2" to "front", "walk3" to "walkB", "walk4" to "front",
+        "holdA" to "smile", "holdB" to "front", "fall" to "sleep", "dazed" to "front")
 
     /** SharedPreferences "catchpet" / "pet" -> its six cells, or null (nothing chosen, or not usable as a pet). */
     fun chosen(ctx: Context): Map<String, Bitmap>? {
@@ -30,13 +33,15 @@ object Frames {
     /** Critter = baked assets; a real thing = its bought sheet cut in six. Missing cells fall back to front. */
     fun load(ctx: Context, e: Dex.Entry): Map<String, Bitmap>? {
         val raw: Map<String, Bitmap> = when {
-            e.critterId != null -> CELLS.associateWith { asset(ctx, e.critterId, it) ?: return null }
+            e.critterId != null -> (Sheet.KEYS).associateWith { asset(ctx, e.critterId, it) ?: return null }
             e.ai.owned && e.ai.sheet != null ->
-                BitmapFactory.decodeFile(Dex.file(ctx, e.id, e.ai.sheet).path)?.let { Sheet.cells(it) } ?: return null
+                BitmapFactory.decodeFile(Dex.file(ctx, e.id, e.ai.sheet).path)?.let { Sheet.cells(it, twelve = e.ai.sheet.contains("-v12")) } ?: return null
             else -> return null
         }
         val front = raw["front"] ?: raw.values.firstOrNull() ?: return null
-        return CELLS.associateWith { trim(raw[it] ?: front) }
+        val trimmed = HashMap<String, Bitmap>()
+        fun cell(k: String): Bitmap = trimmed.getOrPut(k) { trim(raw[k] ?: raw[ALIAS[k]] ?: front) }
+        return CELLS.associateWith { cell(it) }
     }
 
     /** critters/<id>/<name>.webp, else that critter's front, else the grey placeholder (plan R19). */
@@ -93,9 +98,10 @@ class PetLook(private val cells: Map<String, Bitmap>) {
             PetBrain.Act.THINK -> sway = sin(t / 300f) * 8f
             PetBrain.Act.DIZZY -> {
                 // a squash on landing, then a wobble that dies out
-                val land = (1f - t / 160f).coerceAtLeast(0f)
+                val a = b.actMs
+                val land = (1f - a / 160f).coerceAtLeast(0f)
                 sx = 1 + 0.16f * land; sy = 1 - 0.2f * land
-                sway = sin(t / 95f) * 13f * (1f - t / PetBrain.DIZZY_MS).coerceAtLeast(0f)
+                sway = sin(a / 95f) * 13f * (1f - a / PetBrain.DIZZY_MS).coerceAtLeast(0f)
             }
             PetBrain.Act.DANCE -> { val beat = t / 360f; sway = (if (beat.toInt() % 2 == 1) 10f else -10f) * sin(beat % 1f * PI).toFloat() }
             else -> {}
@@ -111,10 +117,10 @@ class PetLook(private val cells: Map<String, Bitmap>) {
         c.drawBitmap(bmp, null, dst, paint)
         c.restore()
         // small marks inside the box: "?" while thinking, "z" asleep (rotated with the pet)
-        if (b.act == PetBrain.Act.DIZZY && t > 120f) {
+        if (b.act == PetBrain.Act.DIZZY && b.actMs > 120f) {
             // two little stars circling over its head
             c.save(); c.translate(fx, fy); c.rotate(rotation(b))
-            label.textSize = s * 0.2f; label.alpha = (255 * (1f - t / PetBrain.DIZZY_MS).coerceIn(0f, 1f)).toInt()
+            label.textSize = s * 0.2f; label.alpha = (255 * (1f - b.actMs / PetBrain.DIZZY_MS).coerceIn(0f, 1f)).toInt()
             for (k in 0..1) {
                 val a = t / 170f + k * PI.toFloat()
                 c.drawText("\u2605", cos(a) * s * 0.28f, -s * 0.95f + sin(a) * s * 0.07f, label)

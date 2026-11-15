@@ -134,7 +134,7 @@ object Dex {
     @Synchronized
     fun saveSheet(ctx: Context, id: String, img: ByteArray, ext: String = "webp", style: String = "fluff"): Entry {
         val e = get(ctx, id) ?: error("no entry $id")
-        val name = "ai/sheet-$style.$ext"
+        val name = "ai/sheet-$style-v12.$ext"   // 4 x 3 cells (Sheet.KEYS12); older "sheet*.ext" are 3 x 2
         atomicWrite(file(ctx, id, name), img)
         val pet = e.ai.petStyle ?: style   // the first one bought is the pet's look
         val sheets = e.ai.sheets + (style to name)

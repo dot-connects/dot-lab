@@ -1,0 +1,76 @@
+<title>리얼뽑기 펫 말풍선</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: section 1 = detail + pet settings (one design each, menus look A); section 2 = three bubble styles on a home screen */
+:root{--page:#eef1f4;--ink:#1d2430;--muted:#5b6574;--disp:"Jua","Gowun Dodum",system-ui,sans-serif;--body:"Gowun Dodum",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}}
+:root[data-theme="dark"]{--page:#14181f;--ink:#eef2f7;--muted:#9aa5b4;color-scheme:dark}
+body{background:var(--page);color:var(--ink);font-family:var(--body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px 48px}
+h1{font-family:var(--disp);font-weight:400;font-size:26px;margin:0 0 6px}
+h2.sec{font-family:var(--disp);font-weight:400;font-size:21px;margin:30px 0 4px}
+.lead{color:var(--muted);margin:0 0 18px;max-width:64ch;line-height:1.6}
+.row{display:flex;flex-wrap:wrap;gap:22px}
+.item{width:min(300px,100%);flex:0 0 auto}
+.item h3{font-family:var(--disp);font-weight:400;font-size:18px;margin:12px 0 4px}
+.item p{color:var(--muted);margin:0;line-height:1.55;font-size:14px}
+.phone{position:relative;width:100%;aspect-ratio:9/19.5;border-radius:30px;overflow:hidden;box-shadow:0 0 0 6px #0b0e13,0 16px 36px rgba(0,0,0,.25)}
+/* menus look A */
+.A{background:linear-gradient(#bfe6ff 0 28%,#d9f2c9 28%);color:#24331f;font-family:var(--body)}
+.A .scr{position:absolute;inset:0;padding:30px 14px 14px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.pillb{align-self:flex-start;font-family:var(--disp);font-size:13px;background:#fffdf6;border:2.5px solid #24331f;border-radius:999px;padding:3px 10px}
+.ttl{font-family:var(--disp);font-size:26px;text-shadow:0 2px 0 #fff;line-height:1}
+.note{font-size:11px;color:#5d6b57}
+.panel{background:#fffdf6;border:2.5px solid #24331f;border-radius:16px;padding:9px 10px;box-shadow:0 3px 0 #24331f;display:flex;flex-direction:column;gap:7px}
+.panel b{font-family:var(--disp);font-weight:400;font-size:15px}
+.seg{display:flex;background:#e6f0dc;border:2.5px solid #24331f;border-radius:999px;padding:2px}
+.seg span{flex:1;text-align:center;font-family:var(--disp);font-size:13px;padding:4px 0;border-radius:999px}
+.seg .on{background:#ffd84d;border:2px solid #24331f}
+.btnp{text-align:center;font-family:var(--disp);font-size:14px;background:#fffdf6;border:2.5px solid #24331f;border-radius:12px;padding:6px 0;box-shadow:0 3px 0 #24331f}
+.thumbs{display:flex;gap:6px}
+.thumbs div{width:64px;height:64px;border-radius:10px;border:2px solid #24331f;background:repeating-conic-gradient(#f1f3ef 0 25%,#fff 0 50%) 0 0/10px 10px;display:grid;place-items:center}
+.thumbs img{width:52px}
+.buy{display:flex;align-items:center;gap:8px}
+.buy .pic{width:46px;height:46px;border-radius:10px;background:#e6f0dc;display:grid;place-items:center}
+.buy .pic img{width:38px}
+.buy .nm{flex:1;min-width:0;font-family:var(--disp);font-size:13px;white-space:nowrap}
+.buy .nm small{display:block;font-family:var(--body);font-size:10px;color:#5d6b57}
+.bbtn{font-family:var(--disp);font-size:12px;background:#ffd84d;border:2.5px solid #24331f;border-radius:999px;padding:4px 9px;box-shadow:0 2px 0 #24331f;white-space:nowrap}
+.done{font-family:var(--disp);font-size:12px;color:#3d7a2f;border:2px solid #3d7a2f;border-radius:999px;padding:3px 8px;white-space:nowrap}
+.use{font-family:var(--disp);font-size:12px;border:2.5px solid #24331f;border-radius:999px;padding:3px 8px;background:#fffdf6;white-space:nowrap}
+.use.on{background:#7cc46b}
+.apps{display:flex;flex-wrap:wrap;gap:8px}
+.app{width:38px;text-align:center;font-size:9px;color:#24331f}
+.app i{display:block;width:34px;height:34px;margin:0 auto 2px;border-radius:10px;background:var(--c)}
+.app.add i{background:#e6f0dc;border:2px dashed #5d6b57;display:grid;place-items:center;font-style:normal;font-family:var(--disp);font-size:18px;color:#5d6b57}
+/* home screen */
+.home{background:linear-gradient(160deg,#5a6fb5,#a07fc4 60%,#e7a9b8)}
+.grid{position:absolute;left:18px;right:18px;top:60px;display:grid;grid-template-columns:repeat(4,1fr);gap:20px 10px}
+.grid i{display:block;width:44px;height:44px;border-radius:13px;margin:0 auto;background:rgba(255,255,255,.28)}
+.dock{position:absolute;left:14px;right:14px;bottom:18px;height:62px;border-radius:22px;background:rgba(255,255,255,.22)}
+.pet{position:absolute;left:42%;bottom:92px;width:72px}
+.bub{position:absolute;font-family:var(--body)}
+/* bubble A: speech bubble with a 2-row icon grid and a tail to the pet */
+.bA{left:14%;right:14%;bottom:168px;background:#fffdf6;border:2.5px solid #24331f;border-radius:18px;padding:10px;box-shadow:0 3px 0 #24331f}
+.bA::after{content:"";position:absolute;left:52%;bottom:-13px;width:18px;height:18px;background:#fffdf6;border-right:2.5px solid #24331f;border-bottom:2.5px solid #24331f;transform:rotate(45deg)}
+.bA .apps{justify-content:center}
+/* bubble B: icons fanned in an arc over the pet's head */
+.fan{position:absolute;width:40px;height:40px;border-radius:12px;background:var(--c);box-shadow:0 0 0 2.5px #fffdf6,0 3px 6px rgba(0,0,0,.3)}
+/* bubble C: thought bubble (cloud) with small circles to the pet */
+.bC{left:10%;right:20%;bottom:190px;background:#fffdf6;border-radius:40px;padding:12px 14px;box-shadow:0 4px 12px rgba(0,0,0,.25)}
+.bC .apps{justify-content:center}
+.dot{position:absolute;border-radius:50%;background:#fffdf6;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+
+.cloud{position:absolute;background:#fffdf6;border-radius:30px;padding:10px 12px;box-shadow:0 4px 12px rgba(0,0,0,.25);width:58%}
+.cloud .apps{justify-content:center}
+.pets{position:absolute;width:62px}
+.row2{display:flex;gap:6px;margin-top:8px;justify-content:center}
+.pb{font-family:var(--disp);font-size:12px;border:2.5px solid #24331f;border-radius:999px;padding:3px 10px;background:#fffdf6;box-shadow:0 2px 0 #24331f;white-space:nowrap}
+.pb.off{background:#ffd8d2}
+.ic{position:absolute;width:26px;height:26px;border-radius:50%;border:2.5px solid #24331f;background:#fffdf6;display:grid;place-items:center;font-size:13px;box-shadow:0 2px 0 #24331f}
+.bar{display:flex;margin:8px -12px -10px;border-top:2px dashed #e1e6da}
+.bar span{flex:1;text-align:center;font-family:var(--disp);font-size:12px;padding:7px 0}
+.bar span+span{border-left:2px dashed #e1e6da;color:#b3261e}
+.wall{position:absolute;right:0;bottom:300px;width:56px;transform:rotate(-90deg)}
+</style>
+<h1>펫 말풍선 시안</h1><p class="lead">두 번 톡톡 했을 때의 생각 구름에 [펫 설정]·[펫 끄기]를 넣는 세 가지 방식입니다. 네 번째는 펫이 오른쪽 벽에 붙어 있을 때 구름이 왼쪽으로 열리는 모습입니다(왼쪽 벽이면 반대로). A·B·C 중 하나를 골라 주세요.</p><div class="row"><div class="item"><div class="phone home"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="cloud" style="left:18%;bottom:190px"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span></div><div class="row2"><span class="pb">⚙ 펫 설정</span><span class="pb off">펫 끄기</span></div></div><span class="dot" style="width:14px;height:14px;left:46%;bottom:168px"></span><span class="dot" style="width:8px;height:8px;left:calc(46% + 10px);bottom:154px"></span><img class="pets" src="IMG_m" style="left:42%;bottom:92px"><div class="dock"></div></div><h3>A. 알약 버튼 두 개</h3><p>앱 아래에 [⚙ 펫 설정]과 연한 빨강 [펫 끄기]. 가장 분명합니다.</p></div><div class="item"><div class="phone home"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="cloud" style="left:18%;bottom:190px"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span></div><span class="ic" style="left:-6px;top:-8px">⚙</span><span class="ic" style="right:-6px;top:-8px;background:#ffd8d2">✕</span></div><span class="dot" style="width:14px;height:14px;left:46%;bottom:168px"></span><span class="dot" style="width:8px;height:8px;left:calc(46% + 10px);bottom:154px"></span><img class="pets" src="IMG_m" style="left:42%;bottom:92px"><div class="dock"></div></div><h3>B. 모서리 동그라미</h3><p>구름 왼쪽 위 ⚙, 오른쪽 위 ✕. 구름이 가장 작고 깔끔하지만 글씨가 없습니다.</p></div><div class="item"><div class="phone home"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="cloud" style="left:18%;bottom:190px"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span></div><div class="bar"><span>펫 설정</span><span>펫 끄기</span></div></div><span class="dot" style="width:14px;height:14px;left:46%;bottom:168px"></span><span class="dot" style="width:8px;height:8px;left:calc(46% + 10px);bottom:154px"></span><img class="pets" src="IMG_m" style="left:42%;bottom:92px"><div class="dock"></div></div><h3>C. 아래 나눔 줄</h3><p>구름 아래쪽을 점선으로 나눠 [펫 설정 | 펫 끄기]. 메뉴처럼 차분합니다.</p></div><div class="item"><div class="phone home"><div class="grid"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><div class="cloud" style="right:22%;bottom:300px;width:52%"><div class="apps"><span class="app"><i style="--c:#ffcc00"></i>카톡</span><span class="app"><i style="--c:#ff3d3d"></i>유튜브</span><span class="app"><i style="--c:#3ddc84"></i>카메라</span><span class="app"><i style="--c:#4c8bf5"></i>지도</span></div><div class="row2"><span class="pb">⚙ 펫 설정</span><span class="pb off">펫 끄기</span></div></div><span class="dot" style="width:14px;height:14px;right:17%;bottom:330px"></span><span class="dot" style="width:8px;height:8px;right:12%;bottom:322px"></span><img src="IMG_m" style="position:absolute;right:-6px;bottom:300px;width:56px;transform:rotate(-90deg)"><div class="dock"></div></div><h3>오른쪽 벽일 때 (A)</h3><p>펫이 벽에 붙어 있으면 구름이 화면 안쪽으로 열리고 동그라미가 펫 쪽으로 이어집니다.</p></div></div>

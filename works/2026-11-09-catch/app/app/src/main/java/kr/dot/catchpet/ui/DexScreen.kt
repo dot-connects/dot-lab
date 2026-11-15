@@ -68,7 +68,7 @@ fun DexScreen(onOpen: (String) -> Unit, onPet: () -> Unit, onBack: () -> Unit) {
     var picked by remember { mutableStateOf(setOf<String>()) }
     var picking by remember { mutableStateOf(false) }
     var asking by remember { mutableStateOf(false) }
-    val pet = remember(reload) { petId(ctx) }
+    val pet = remember(reload) { petId(ctx)?.takeIf { kr.dot.catchpet.pet.PetPrefs.overlayOn(ctx) } }
     BookPage(scroll = false) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             if (picking) {

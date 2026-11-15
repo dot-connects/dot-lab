@@ -29,6 +29,8 @@ class PetBrain(
     var y = floorY; private set
     /** +1 = right (floor) / down (wall). */
     var dir = 1; private set
+    /** ms in the current act (the drawing times its squash, wobble and stars by it). */
+    val actMs get() = t
     private var t = 0f
     private var len = 3000f
     private var vy = 0f
@@ -117,20 +119,26 @@ class PetBrain(
 
     /** Which of the six pet pictures to draw now. */
     fun frame(tMs: Float): String = when (act) {
-        Act.IDLE, Act.THINK, Act.HANG, Act.FALL, Act.DIZZY -> "front"
+        Act.IDLE, Act.THINK -> "front"
+        Act.HANG -> if ((tMs / 160f).toInt() % 2 == 0) "holdA" else "holdB"     // flailing while held
+        Act.FALL -> "holdA"
+        Act.DIZZY -> if (t < 700f) "fall" else "dazed"                         // flat on the belly, then sits up dazed
         Act.SMILE -> "smile"
         Act.DANCE -> if ((tMs / 360f).toInt() % 2 == 0) "front" else "smile"
-        Act.WALK, Act.CLIMB -> if ((tMs / 170f).toInt() % 2 == 0) "walkA" else "walkB"
+        Act.WALK, Act.CLIMB -> "walk${(tMs / 130f).toInt() % 4 + 1}"   // contact, passing, contact, passing
         Act.SLEEP -> if (onWall) "curl" else "sleep"
     }
 
     /** Drawing rotation: feet into the wall. */
+    /** After a rotation: the same edge, at the same share of its length (operator 11-15). */
+    fun keepAt(x01: Float, y01: Float) { x = x01 * w; y = y01 * h; place(zone) }
+
     fun rotationDeg(): Float = when (zone) { Zone.LEFT -> 90f; Zone.RIGHT -> -90f; else -> 0f }
 
     /** Mirror the picture: walking left on the floor, or climbing the "wrong" way on a wall. */
     fun flip(): Boolean = when (zone) {
-        Zone.LEFT -> dir > 0
-        Zone.RIGHT -> dir < 0
+        Zone.LEFT -> dir < 0    // turned 90 deg: the picture's front points down the wall
+        Zone.RIGHT -> dir > 0   // turned -90 deg: it points up
         else -> dir < 0
     }
 

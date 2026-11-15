@@ -55,6 +55,26 @@ No text, no numbers, no grid lines. Background of the whole image: one flat soli
 
 const SHEET_STYLES = ["fluff", "figure"];
 
+// operator 11-15: walking with crossing arms and legs, flailing while held, a pratfall when dropped -> 12 cells
+const CELLS12 = `A 4 x 3 grid of 12 equal cells, every cell the same scale, the subject centred in its cell with space around it, feet at the same height in every cell of a row:
+row 1: 1) standing, front view, calm; 2) front view, big happy smile, eyes closed in joy; 3) side view walking to the right: LEFT leg forward and RIGHT arm forward (contact pose); 4) side view walking to the right: legs passing, both feet under the body, arms by the sides.
+row 2: 5) side view walking to the right: RIGHT leg forward and LEFT arm forward; 6) side view walking to the right: legs passing again, the other leg in front; 7) lying down asleep, eyes closed; 8) curled up asleep in a round ball.
+row 3: 9) lifted into the air (do NOT draw any hand or whoever lifts it), dangling, arms and legs flailing wide, surprised open mouth; 10) dangling with the arms and legs swung the other way, still flailing; 11) fallen flat on the belly after a tumble, arms and legs spread, dizzy swirl eyes; 12) sitting up on the floor, dizzy and dazed, one hand on the head.`;
+
+/** The 12-cell pose sheet: look = how it is drawn, who = what is in the photo. */
+export const SHEET12_PROMPT = (style, k) => {
+  const group = k.includes("+");
+  const who = group ? `${groupWho(k)} together (${k.split("+").length} of them)` : `a ${k}`;
+  const look = group ? GROUP_LOOK[style] : style === "fluff"
+    ? "ONE of our chubby round fur-ball plush creatures in exactly the style of image 2 (small round pale 3D plush fur ball, soft fur texture, tiny black dot eyes, small pink blush, short stubby arms and feet)"
+    : "a cute small 3D figurine of itself (not a ball): real body shape simplified, slightly chibi proportions (bigger head), soft matte clay/plush 3D render, tiny black dot eyes, small pink blush";
+  return `Image 1 is a real photo of ${who} (it may be seen from the side or lying down).${style === "fluff" ? " Image 2 shows the art style of our game creatures." : ""}
+
+Make a character pose sheet of THIS ${group ? "GROUP, each of them as" : ""} ${look}. Keep what makes ${group ? "each one" : "it"} recognisable: hair or fur colours and markings, glasses, ear shape, face, clothing colours (no text).${group ? " In EVERY cell the SAME group appears TOGETHER, touching, with the same relative sizes." : " The SAME character in every cell."}
+${CELLS12}
+No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
+};
+
 // a group's pose sheet (operator 11-15): the same group in every cell, always together
 const GROUP_LOOK = {
   fluff: "each of them as its own chubby round fur-ball plush creature in exactly the style of image 2 (small round pale 3D plush fur balls, soft fur texture, tiny black dot eyes, small pink blush, short stubby feet)",
@@ -189,7 +209,9 @@ async function sheet(b, req, env, counts, day) {
   if (!(await counts.take(kDay, SHEET_PER_DAY))) return json({ error: "limit" }, 429);
   const used = await counts.take(kEntry, SHEET_PER_ENTRY);
   if (!used) { await counts.give(kDay); return json({ error: "limit" }, 429); }
-  const job = b.kind.includes("+")
+  const job = String(b.layout) === "12"
+    ? { prompt: SHEET12_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
+    : b.kind.includes("+")
     ? { prompt: GROUP_SHEET_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
     : style === "figure"
     ? { prompt: FIGURE_SHEET_PROMPT(b.kind), image: b.image, ref: false, quality: "medium", size: "1536x1024" }
