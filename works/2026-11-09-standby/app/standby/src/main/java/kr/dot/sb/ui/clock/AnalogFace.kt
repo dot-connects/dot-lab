@@ -248,8 +248,10 @@ internal val fixedSecond: Int? = System.getProperty("shot.second")?.toIntOrNull(
 internal fun rememberSecond(): IntState {
     fixedSecond?.let { return remember { mutableIntStateOf(it) } }
     val second = remember { mutableIntStateOf(((System.currentTimeMillis() / 1000) % 60).toInt()) }
-    LaunchedEffect(Unit) {
-        while (true) {
+    // paused while covered or off screen (no wake-ups); resumes at the right second
+    val active = kr.dot.sb.ui.theme.LocalClockActive.current
+    LaunchedEffect(active) {
+        while (active) {
             val ms = System.currentTimeMillis()
             second.intValue = ((ms / 1000) % 60).toInt()
             // Wait off the frame clock so idle tests and the UI thread never spin on this ticker.

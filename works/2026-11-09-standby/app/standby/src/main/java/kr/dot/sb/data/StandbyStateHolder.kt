@@ -41,6 +41,7 @@ import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
+import kr.dot.sb.ui.state.LiveTicks
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.baseTheme
 import java.time.LocalDate
@@ -82,6 +83,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     )
     val state: StateFlow<StandbyState> = _state
 
+    /** r11 perf: per-second timer values and the media position, read only by those cards ([LiveTicks]). */
+    private val _ticks = MutableStateFlow(LiveTicks())
+    val ticks: StateFlow<LiveTicks> = _ticks
+
     /** Content rotation in degrees (0/90/180/270); only moves when [ownRotation] (dream). */
     private val _rotation = MutableStateFlow(0)
     val rotation: StateFlow<Int> = _rotation
@@ -102,9 +107,18 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     /** The unfold mood light is on screen (reported by StandbyRoot): keeps the display on. */
     private var mood = false
     private var notifWokeAt = -1L
-    private val media = MediaSource(ctx) { m -> _state.update { it.copy(media = m) } }
+    private val media = MediaSource(ctx) { m ->
+        val old = _state.value.media
+        // r11 perf: a position-only update (the 5 s refresh while playing) goes to the ticks, not the whole state
+        if (m != null && old != null && m.copy(positionMs = old.positionMs) == old) _ticks.update { it.copy(mediaPositionMs = m.positionMs) }
+        else { _ticks.update { it.copy(mediaPositionMs = null) }; _state.update { it.copy(media = m) } }
+    }
 
     private var lastLux: Float? = null
+    private var luxOn = false
+    /** What the last config needed ([Needs]); null = not checked since [start]. */
+    private var memWanted: Boolean? = null
+    private var photosWanted: Boolean? = null
     private var nightTarget = lastNight
     private var wasFlat = false
     private var lastMotionTouch = 0L
@@ -136,7 +150,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
     private val accelL = object : SensorEventListener {
-        override fun onSensorChanged(e: SensorEvent) = onAccel(e.values[0], e.values[1], e.values[2])
+        // batched events arrive in bursts: time each by its own timestamp (elapsed-realtime based), not by delivery
+        override fun onSensorChanged(e: SensorEvent) = onAccel(eventMs(e), e.values[0], e.values[1], e.values[2])
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
     /**
@@ -177,8 +192,11 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         startedAt = el()
         machine.touch(startedAt)
         nightSw.prime(lastNight >= 0.5f) // a dream restarted in the dark starts red, not day
-        sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(lightL, it, SensorManager.SENSOR_DELAY_NORMAL, 5_000_000) } // 5 s batching
-        sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(accelL, it, SensorManager.SENSOR_DELAY_UI) }
+        luxOn = false
+        syncLux(cfg)
+        // r11 perf: the motion filters are tuned for ~66 ms samples (SENSOR_DELAY_UI), so keep that rate but let the
+        // hardware batch 150 ms (about 7 wake-ups/s instead of 15); pick-up still answers within ~0.45 s
+        sm.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)?.let { sm.registerListener(accelL, it, SensorManager.SENSOR_DELAY_UI, ACCEL_BATCH_US) }
         ctx.registerReceiver(unplugRx, IntentFilter(Intent.ACTION_POWER_DISCONNECTED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(nextAlarmRx, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) // sticky: the current value arrives at once
@@ -197,6 +215,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
                 }
                 pushUi()
                 publishHot()
+                syncLux(c)
+                syncMedia(c)
                 if (photoKey != null && photoKey != (c.photoSource to c.photoFolders)) launch { reloadPhotos() }
                 if (c.city != lastCity) { lastCity = c.city; lastWeatherAt = 0; if (!_state.value.displayOff) launch { fetchWeather() } }
                 if (c.excludedCalendars != lastExcluded) { val first = lastExcluded == null; lastExcluded = c.excludedCalendars; if (!first) launch { refreshCalendar() } }
@@ -225,7 +245,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         }
         scope.launch {
             _state.map { it.timers.values.any { t -> t.running } }.distinctUntilChanged().collectLatest { r ->
-                while (r) { delay(1_000); if (!_state.value.displayOff) publishTimers() }
+                while (r) { delay(1_000); if (!_state.value.displayOff) publishTimers(full = false) }
             }
         }
         startVisible()
@@ -236,6 +256,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (!started) return
         started = false
         sm.unregisterListener(lightL); sm.unregisterListener(accelL)
+        luxOn = false
+        memWanted = null; photosWanted = null
         runCatching { ctx.unregisterReceiver(nextAlarmRx) }
         runCatching { ctx.unregisterReceiver(batteryRx) }
         runCatching { ctx.unregisterReceiver(unplugRx) }
@@ -330,8 +352,43 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (b != lastBrightness) { lastBrightness = b; host.setBrightness(b) }
     }
 
-    private fun onAccel(x: Float, y: Float, z: Float) {
+    private fun eventMs(e: SensorEvent): Long {
+        val t = e.timestamp / 1_000_000
         val now = el()
+        return if (kotlin.math.abs(now - t) < 2_000) t else now // a clock base that does not match: delivery time
+    }
+
+    /** r11 perf: the light sensor only while a rule reads lux ([Needs.lux]); re-checked on every config change. */
+    private fun syncLux(c: AppConfig) {
+        val want = Needs.lux(c.nightMode, c.displayOff, c.baseTheme().tokens.light)
+        if (want == luxOn) return
+        luxOn = want
+        if (want) sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(lightL, it, SensorManager.SENSOR_DELAY_NORMAL, 5_000_000) } // 5 s batching
+        else { sm.unregisterListener(lightL); lastLux = null }
+    }
+
+    /**
+     * r11 perf: slideshow photos only while the photos page is on, the memory picture only while a memories card or the
+     * blurred-photo background shows it; what is no longer needed is dropped from the state (its bitmaps go with it).
+     */
+    private fun syncMedia(c: AppConfig) {
+        val mem = Needs.memory(c)
+        val ph = Needs.photos(c)
+        val memChanged = mem != memWanted
+        val phChanged = ph != photosWanted
+        memWanted = mem; photosWanted = ph
+        if (memChanged && !mem) { memoryDay = null; _state.update { it.copy(memory = null) } }
+        if (phChanged && !ph) { photoKey = null; _state.update { it.copy(photos = null) } }
+        when {
+            // loadMemory reloads the photos too (their count depends on the memory)
+            memChanged && mem -> { val d = LocalDate.now(); memoryDay = d; scope.launch { loadMemory(d) } }
+            phChanged && ph -> scope.launch { reloadPhotos() }
+            // a dropped memory frees a photo slot (2 -> 3)
+            memChanged && ph -> scope.launch { reloadPhotos() }
+        }
+    }
+
+    private fun onAccel(now: Long, x: Float, y: Float, z: Float) {
         motion.update(now, x, y, z)
         if (ownRotation && rot.update(now, x, y, z)) _rotation.value = rot.degrees
         if (!exited && now - startedAt > 3_000 && motion.pickedUp) { exited = true; host.finish(); return } // E7
@@ -368,7 +425,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             val (sx, sy) = if (cfg.burnInShift) BurnIn.at(System.currentTimeMillis() / 60_000L) else (0 to 0)
             _state.update { it.copy(now = t.truncatedTo(ChronoUnit.MINUTES), shiftX = sx, shiftY = sy) }
             publishTimers()
-            if (memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
+            if (memWanted == true && memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
             if (calendarDay != null && calendarDay != t.toLocalDate()) scope.launch { refreshCalendar() }
             refreshStatic(force = false)
             evaluate()
@@ -454,6 +511,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun markUsageOffline() = _state.update { it.copy(usage = it.usage?.copy(offline = true)) }
 
     private suspend fun reloadPhotos() {
+        if (photosWanted != true) return
         lastPhotosAt = el()
         val n = if (_state.value.memory != null) 2 else 3 // max 3 bitmaps in memory
         val c = cfg
@@ -462,11 +520,14 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         val (p, buckets) = withContext(Dispatchers.IO) {
             DeviceSources.photos(ctx, n, c.photoSource, c.photoFolders) to have.ifEmpty { DeviceSources.folders(ctx).take(12).map { it.first } }
         }
+        if (photosWanted != true) return // the photos page went off while loading
         _state.update { it.copy(photos = p, photoBuckets = buckets) }
     }
 
     private suspend fun loadMemory(day: LocalDate) {
+        if (memWanted != true) return
         val m = withContext(Dispatchers.IO) { DeviceSources.memory(ctx, day) }
+        if (memWanted != true) return // switched off while loading
         _state.update { it.copy(memory = m) }
         reloadPhotos()
     }
@@ -503,10 +564,15 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
 
     private fun timer(id: String) = timers.getOrPut(id) { PomodoroTimer(cfg.focusMinutes * 60, cfg.breakMinutes * 60) }
 
-    private fun publishTimers() {
+    /** Timer values to the ticks; [full] = also into [StandbyState] (a start, stop, reset or end: the running set changed). */
+    private fun publishTimers(full: Boolean = true) {
         val now = el()
-        timers.values.forEach { it.finishIfDone(now) }
-        _state.update { it.copy(timers = timers.mapValues { (_, t) -> t.state(now) }) }
+        // a timer that ends on this tick changes the running set: always a full publish, and it wakes the screen
+        val ended = timers.values.map { it.finishIfDone(now) }.any { it }
+        val m = timers.mapValues { (_, t) -> t.state(now) }
+        _ticks.update { it.copy(timers = m) }
+        if (full || ended) _state.update { it.copy(timers = m) }
+        if (ended && !full) { machine.touch(now); evaluate() }
     }
 
     private fun scheduleTimerEnd(id: String) {
@@ -599,6 +665,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     companion object {
         /** Survive dream restarts: a pomodoro keeps running and the night look is right on the first frame. */
         private val timers = HashMap<String, PomodoroTimer>()
+        /** Accelerometer batching (r11 perf): the most a pick-up waits for delivery. */
+        private const val ACCEL_BATCH_US = 150_000
         @Volatile private var lastNight = 0f
     }
 }

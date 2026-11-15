@@ -258,6 +258,13 @@ fun themeTimeOf(t: LocalTime): LocalTime = LocalTime.ofSecondOfDay(t.toSecondOfD
 
 val LocalTheme = staticCompositionLocalOf { Themes.IPHONE }
 
+/**
+ * False while the page this is drawn on cannot be seen: an opaque overlay (alarm, live activity, Now Playing) covers
+ * it, or it is not the pager's current page. Clock tickers stop on false (r11 perf); default true (settings, previews).
+ * Dynamic, so a change recomposes only its readers.
+ */
+val LocalClockActive = compositionLocalOf { true }
+
 /** The board background below [LocalTheme] (settings previews draw it behind their content). */
 val LocalBoardBg = staticCompositionLocalOf { BoardBg.THEME to Color(0xFF1A1430) }
 

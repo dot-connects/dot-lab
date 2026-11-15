@@ -408,9 +408,11 @@ private fun NowPlaying(m: MediaInfo, state: StandbyState, config: AppConfig, act
     val ink = LocalInk.current
     val close by rememberUpdatedState(onClose)
     LaunchedEffect(m.playing) { if (!m.playing) { delay(5_000); close() } }
-    var pos by remember { mutableLongStateOf(m.positionMs) }
-    LaunchedEffect(m.positionMs, m.playing) {
-        pos = m.positionMs
+    // the 5 s position refresh comes through the ticks (r11 perf), the track itself through [m]
+    val base = kr.dot.sb.ui.state.LocalLiveTicks.current?.value?.mediaPositionMs ?: m.positionMs
+    var pos by remember { mutableLongStateOf(base) }
+    LaunchedEffect(base, m.playing) {
+        pos = base
         while (m.playing && pos < m.durationMs) { delay(1_000); pos = (pos + 1_000).coerceAtMost(m.durationMs) }
     }
     Box(

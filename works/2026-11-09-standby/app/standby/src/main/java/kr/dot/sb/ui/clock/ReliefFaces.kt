@@ -19,18 +19,26 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LongState
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
@@ -38,6 +46,7 @@ import kr.dot.sb.model.FontId
 import kr.dot.sb.model.LumeView
 import kr.dot.sb.model.SquareNumerals
 import kr.dot.sb.ui.theme.Ink
+import kr.dot.sb.ui.theme.LocalClockActive
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.ThemeTokens
 import kotlin.math.PI
@@ -163,12 +172,23 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
         val digits = String.format(java.util.Locale.ROOT, "%02d%02d", hh, d.now.minute).let { if (!use24 && hh < 10) " " + it.drop(1) else it }
         // 12 h with a one-digit hour and no engraved segments: the row moves half a digit left so it stays centred
         val shift = if (kind == RlKind.CAPSULE && digits[0] == ' ' && !style.ghost) -(RlStatic.W + RlStatic.GAP) / 2 else 0f
-        // static bitmap: built once per size + palette + style (never in draw)
-        val static = remember(kind, w, h, pal, style.analogNumbers, style.squareNumerals, style.ghost, style.showInfo, radius, tf, tfDate, tfThin, tfBold, shift) {
-            val fonts = RlFonts(tf, tfDate, tfThin, tfBold)
-            RlStatic.render(kind, geo, pal, numerals = style.analogNumbers != AnalogNumbers.NONE, squareNumerals = style.squareNumerals, ghost = style.ghost, date = style.showInfo, radius = radius, fonts = fonts, shift = shift).asImageBitmap()
+        // static bitmap: built once per size + palette + style, off the main thread (blurs and gradients over the whole
+        // face); until it is ready the previous one is stretched over the face, or on the first build the plain dial
+        // colour shows. It is the face's own size (the slot), never larger.
+        val build = {
+            RlStatic.render(kind, geo, pal, numerals = style.analogNumbers != AnalogNumbers.NONE, squareNumerals = style.squareNumerals, ghost = style.ghost, date = style.showInfo, radius = radius, fonts = RlFonts(tf, tfDate, tfThin, tfBold), shift = shift).asImageBitmap()
         }
-        Spacer(Modifier.fillMaxSize().drawBehind { drawImage(static) })
+        val keys = arrayOf<Any?>(kind, w, h, pal, style.analogNumbers, style.squareNumerals, style.ghost, style.showInfo, radius, tf, tfDate, tfThin, tfBold, shift)
+        // shots (fixed second) build in composition, so a capture never races the background build
+        val static: State<ImageBitmap?> = if (fixedSecond != null) remember(*keys) { mutableStateOf(build()) }
+            else produceState<ImageBitmap?>(null, *keys) { value = withContext(Dispatchers.Default) { build() } }
+        Spacer(
+            Modifier.fillMaxSize().drawBehind {
+                val img = static.value
+                if (img != null) drawImage(img, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
+                else drawRoundRect(Color(pal.dial), cornerRadius = CornerRadius(radius))
+            },
+        )
         val second = rememberSecond()
         if (kind == RlKind.CAPSULE) {
             val day = "${WEEKDAYS_EN[d.now.dayOfWeek.value - 1]} ${d.now.dayOfMonth}"
@@ -203,9 +223,11 @@ private val WEEKDAYS_EN = arrayOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN
 private fun rememberSweep(): LongState {
     fixedSecond?.let { s -> return remember { mutableLongStateOf(s * 1000L) } }
     val ms = remember { mutableLongStateOf(System.currentTimeMillis() % 60_000) }
-    LaunchedEffect(Unit) {
-        // a plain delay loop: requesting every vsync for hours would keep the display at 60-120 Hz
-        while (true) { ms.longValue = System.currentTimeMillis() % 60_000; delay(33) }
+    val active = LocalClockActive.current
+    LaunchedEffect(active) {
+        // a plain delay loop (requesting every vsync for hours would keep the display at 60-120 Hz); paused while the
+        // clock is covered or its page is off screen
+        while (active) { ms.longValue = System.currentTimeMillis() % 60_000; delay(33) }
     }
     return ms
 }

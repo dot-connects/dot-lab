@@ -1,6 +1,11 @@
 package kr.dot.sb.data
 
+import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.BoardBg
+import kr.dot.sb.model.CardType
 import kr.dot.sb.model.DisplayOff
+import kr.dot.sb.model.PAGE_PHOTOS
+import kr.dot.sb.model.PAGE_WIDGETS
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.MediaKind
@@ -437,3 +442,23 @@ data class NotifGroup(val items: List<NotifItem>) {
 /** Newest first; a group sorts by its newest item. Hidden items carry the app name as title, so they merge per app. */
 fun notifGroups(list: List<NotifItem>): List<NotifGroup> =
     list.sortedByDescending { it.postedAtEpochMs }.groupBy { it.packageName to it.title }.values.map { NotifGroup(it) }
+
+/** r11 perf: what a config needs from the device, so the holder registers sensors and loads pictures only then. */
+object Needs {
+    /**
+     * The light sensor: night by lux (AUTO, or OFF on a light theme, which is forced to AUTO) or the screen going off
+     * when dark (display-off AUTO). Schedule night on a dark theme with display-off 20 s / never needs none.
+     */
+    fun lux(nightMode: NightMode, displayOff: DisplayOff, lightTheme: Boolean): Boolean =
+        nightMode == NightMode.AUTO || (nightMode == NightMode.OFF && lightTheme) || displayOff == DisplayOff.AUTO
+
+    /** The slideshow photos: only while the photos page is on. */
+    fun photos(c: AppConfig): Boolean = PAGE_PHOTOS !in c.pagesOff
+
+    /** The memory picture: a memories card on a page that is on, or the blurred-photo background. */
+    fun memory(c: AppConfig): Boolean {
+        val widgets = if (PAGE_WIDGETS in c.pagesOff) emptyList() else c.widgetLeft + c.widgetRight
+        val cards = c.boards.filter { it.on }.flatMap { b -> b.slots.flatten() } + widgets
+        return c.boardBg == BoardBg.PHOTO_BLUR || CardType.MEMORIES in cards
+    }
+}

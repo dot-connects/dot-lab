@@ -78,6 +78,7 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
+import kr.dot.sb.ui.theme.LocalClockActive
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.Motion
@@ -228,7 +229,10 @@ internal fun RootImpl(
                     key = { pages.getOrNull(it)?.let { p -> if (p.board == null) "fixed-${p.index}" else p.board.id } ?: "p$it" },
                 ) { pos ->
                     val ref = pages.getOrNull(pos)
-                    Box(Modifier.fillMaxSize().padding(BURN_IN_BLEED)) { when (ref?.index) {
+                    // r11: a page under an opaque overlay or off screen lets its clocks stop ticking
+                    // the incoming page of a swipe ticks too ([targetPage]), so its clock is live as it slides in
+                    val active = layer == Layer.NONE && (pager.currentPage == pos || pager.targetPage == pos)
+                    CompositionLocalProvider(LocalClockActive provides active) { Box(Modifier.fillMaxSize().padding(BURN_IN_BLEED)) { when (ref?.index) {
                         0 -> BoardPage(widgets, state, config, boardActions)
                         1 -> PhotosPage(state, config, actions, active = pager.settledPage == pos && layer == Layer.NONE)
                         2 -> ClocksPage(
@@ -238,7 +242,7 @@ internal fun RootImpl(
                         )
                         null -> {}
                         else -> ref.board?.let { BoardPage(it, state, config, boardActions) }
-                    } }
+                    } } }
                 }
                 if (!editing && !mood) {
                     val s = min(w, h)

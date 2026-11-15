@@ -44,6 +44,9 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.disabled
+import androidx.compose.ui.semantics.role
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.geometry.Size
@@ -144,6 +147,14 @@ fun CardView(
         }
         // until the saved config comes back with it (or 2 s), keep showing the pick: no flash of the old face
         LaunchedEffect(sw.pending, saved) { if (sw.pending != null) { if (saved == sw.pending) sw.pending = null else { delay(2_000); sw.pending = null } } }
+    }
+    // r11 perf: the per-second values, read here only for the two cards that show them (Now Playing ticks its own)
+    val live = kr.dot.sb.ui.state.LocalLiveTicks.current
+    @Suppress("NAME_SHADOWING") val state = when {
+        live == null -> state
+        type == CardType.TIMER -> live.value.timers?.let { state.copy(timers = it) } ?: state
+        type == CardType.MUSIC && close == null -> live.value.mediaPositionMs?.let { p -> state.media?.let { state.copy(media = it.copy(positionMs = p)) } } ?: state
+        else -> state
     }
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
@@ -436,9 +447,13 @@ private val scrimDisc = Color.Black.copy(alpha = 0.42f)
 
 /** One transport button: [fill] disc behind the glyph; a 48 dp target at least. */
 @Composable
-private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, onClick: () -> Unit) {
+private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, label: String? = null, onClick: () -> Unit) {
+    // r11 a11y: a named button, disabled when it cannot act (no previous / next track); [label] overrides the glyph's name
+    @Suppress("NAME_SHADOWING") val label = label ?: when (ic) { Ic.PREV -> "이전"; Ic.NEXT -> "다음"; Ic.PAUSE -> "일시정지"; Ic.CLOSE -> "닫기"; else -> "재생" }
     Box(
-        Modifier.size(d).clip(CircleShape).background(fill).tap(if (enabled) onClick else null),
+        Modifier.size(d).clip(CircleShape).background(fill)
+            .semantics { contentDescription = label; role = Role.Button; if (!enabled) disabled() }
+            .tap(if (enabled) onClick else null),
         contentAlignment = Alignment.Center,
     ) { IconView(ic, if (enabled) fg else fg.copy(alpha = 0.4f), Modifier.size(d * 0.5f)) }
 }
@@ -477,7 +492,7 @@ private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() 
     val video = m.kind == MediaKind.VIDEO
     val ink = e.ink.ink
     Column(Modifier.fillMaxSize().padding(pad).tap(if (close == null) actions::openNowPlaying else null)) {
-        if (close != null) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { MediaBtn(Ic.CLOSE, 48.dp, Color.Transparent, e.readInk2, true, close) }
+        if (close != null) Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) { MediaBtn(Ic.CLOSE, 48.dp, Color.Transparent, e.readInk2, true, onClick = close) }
         BoxWithConstraints(Modifier.fillMaxWidth().weight(1f), contentAlignment = Alignment.Center) {
             val ah = min(maxHeight, if (video) maxWidth * (9f / 16f) else maxWidth)
             Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.size(if (video) maxWidth else ah, ah), (ah * 0.05f).coerceIn(8.dp, 18.dp))
@@ -592,7 +607,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val iw = e.w - p * 2
     val ih = e.h - p * 2
     val toggle = @Composable { d: Dp -> MediaBtn(if (t.running) Ic.PAUSE else Ic.PLAY, d, e.ink.acc, e.onAcc, true) { actions.timerToggle(e.slotId) } }
-    val stop = @Composable { d: Dp -> MediaBtn(Ic.CLOSE, d, e.ink.ink4, e.ink.ink, true) { actions.timerReset(e.slotId) } }
+    val stop = @Composable { d: Dp -> MediaBtn(Ic.CLOSE, d, e.ink.ink4, e.ink.ink, true, label = "초기화") { actions.timerReset(e.slotId) } }
     when {
         // short side < 150, or a ring that would come out smaller than its buttons
         e.short < 150.dp || (e.w / e.h < 1.35f && min(iw, ih - 80.dp) < 120.dp) -> Column(
@@ -735,7 +750,7 @@ private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             }
         }
         Row(Modifier.fillMaxWidth().height(foot), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MediaBtn(if (on) Ic.PAUSE else Ic.PLAY, foot, e.ink.ink, e.ink.bg, true, actions::sleepToggle)
+            MediaBtn(if (on) Ic.PAUSE else Ic.PLAY, foot, e.ink.ink, e.ink.bg, true, onClick = actions::sleepToggle)
             Txt(sleepLine(state, config, iw >= 320.dp), e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
             Box(Modifier.height(foot).tap(actions::sleepMinutesNext), contentAlignment = Alignment.Center) {
                 Box(Modifier.clip(RoundedCornerShape(if (e.plateRadius == 0.dp) 0 else 50)).background(e.ink.plate2).padding(horizontal = 12.dp, vertical = 8.dp)) {

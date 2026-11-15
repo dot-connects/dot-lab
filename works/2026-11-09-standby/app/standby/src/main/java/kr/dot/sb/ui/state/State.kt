@@ -2,6 +2,8 @@ package kr.dot.sb.ui.state
 
 import java.time.LocalDate
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.State
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.ui.graphics.ImageBitmap
 import kr.dot.sb.model.City
 import kr.dot.sb.model.SleepSound
@@ -261,3 +263,14 @@ interface StandbyActions {
 
     companion object { val NONE = object : StandbyActions {} }
 }
+
+/**
+ * r11 perf: the per-second values (running timers, the media position between track changes) kept out of
+ * [StandbyState], so a tick recomposes only the timer / media card that reads them, not the whole board.
+ * Null fields = use [StandbyState]'s own value.
+ */
+@Immutable
+data class LiveTicks(val timers: Map<String, TimerState>? = null, val mediaPositionMs: Long? = null)
+
+/** The holder's [LiveTicks] as a State (read `.value` inside the card); null = none (settings, previews, tests). */
+val LocalLiveTicks = compositionLocalOf<State<LiveTicks>?> { null }

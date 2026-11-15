@@ -62,24 +62,50 @@ class SleepService : Service() {
         if (!running || left <= 0) { running = false; -1L } else left
     }
 
+    /** A started track, or null when building or starting it failed (a half-built one is released). */
+    private fun openTrack(): AudioTrack? {
+        var t: AudioTrack? = null
+        return try {
+            val min = AudioTrack.getMinBufferSize(NoiseGen.RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+            t = AudioTrack.Builder()
+                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(NoiseGen.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+                .setBufferSizeInBytes(NoiseGen.bufferBytes(min))
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .build()
+            t.play()
+            t
+        } catch (e: Exception) {
+            android.util.Log.w(TAG, "audio track failed to start", e)
+            runCatching { t?.release() }
+            null
+        }
+    }
+
     private fun play(g: Int) {
         var gen = NoiseGen(sound)
         val buf = ShortArray(NoiseGen.CHUNK)
-        val min = AudioTrack.getMinBufferSize(NoiseGen.RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(NoiseGen.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
-            .setBufferSizeInBytes(NoiseGen.bufferBytes(min))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
-        track.play()
+        var track: AudioTrack? = null
+        var fails = 0 // consecutive failures (start or write); a good chunk resets it
         var lastMin = -1
         val chunkMs = NoiseGen.CHUNK * 1000L / NoiseGen.RATE
         try {
             while (running) {
+                // a dead or failed track is rebuilt with backoff; after the last try the service stops cleanly
+                fun failed(): Boolean {
+                    track?.let { t -> runCatching { t.release() } }
+                    track = null
+                    fails++
+                    if (!TrackWrite.mayRetry(fails)) { android.util.Log.w(TAG, "audio track gave up after $fails tries"); return false }
+                    Thread.sleep(TrackWrite.backoffMs(fails))
+                    return true
+                }
+                val t = track ?: openTrack()?.also { track = it } ?: if (failed()) continue else break
                 if (gen.sound != sound) {
                     // a switch: drop what is buffered of the old sound so the two never overlap
-                    gen = NoiseGen(sound); track.pause(); track.flush(); track.play()
+                    gen = NoiseGen(sound)
+                    // a dead track throws here instead of returning an error: same rebuild path
+                    try { t.pause(); t.flush(); t.play() } catch (e: IllegalStateException) { if (failed()) continue else break }
                 }
                 val left = timeLeft()
                 if (left < 0) break
@@ -87,13 +113,17 @@ class SleepService : Service() {
                 if ((m ?: -1) != lastMin) { lastMin = m ?: -1; SleepBus.state.value = SleepState(true, m) } // once a minute
                 fun gain(ms: Long) = if (ms < FADE_MS) ms.coerceAtLeast(0).toFloat() / FADE_MS else 1f
                 gen.fill(buf, gain(left), gain(left - chunkMs)) // per-sample ramp across the chunk
-                track.write(buf, 0, buf.size) // blocks until there is room: this is the only pacing
+                // blocks until there is room: this is the only pacing, so a write that fails must never loop on
+                val wrote = try { TrackWrite.writeAll(buf) { b, off, n -> t.write(b, off, n) } } catch (e: IllegalStateException) { false }
+                if (wrote) fails = 0
+                else if (failed()) continue else break
             }
+        } catch (e: InterruptedException) {
+            // only a backoff sleep can be interrupted; end like a stop
         } finally {
             // only this thread touches the track: pause + flush first, so the sound stops now rather than after the
             // 500 ms buffer plays out (a stop is noticed within one 250 ms chunk)
-            runCatching { track.pause(); track.flush() }
-            track.release()
+            track?.let { t -> runCatching { t.pause(); t.flush() }; runCatching { t.release() } }
             // a newer start (this service, or a new one after a quick stop+start) owns the card and the service now
             synchronized(this) {
                 if (session.get() == g) {
@@ -115,6 +145,7 @@ class SleepService : Service() {
         private const val MINUTES = "minutes"
         private const val ACTION_STOP = "kr.dot.sb.SLEEP_STOP"
         private const val FADE_MS = 10_000L
+        private const val TAG = "SleepService"
         /** Playback session across service instances: only the latest loop may report "off" or stop the service. */
         private val session = java.util.concurrent.atomic.AtomicInteger()
 
@@ -125,4 +156,28 @@ class SleepService : Service() {
 
         fun stop(ctx: Context) { ctx.stopService(Intent(ctx, SleepService::class.java)) }
     }
+}
+
+/** The sleep loop's AudioTrack writes and retry policy, kept pure so they can be tested without a device. */
+internal object TrackWrite {
+    /**
+     * Writes all of [buf] through [write] (AudioTrack.write: count written, or a negative error such as
+     * ERROR_DEAD_OBJECT). Partial writes continue where they stopped; an error or a zero write returns false, so the
+     * caller never spins without the blocking write's pacing.
+     */
+    inline fun writeAll(buf: ShortArray, write: (ShortArray, Int, Int) -> Int): Boolean {
+        var off = 0
+        while (off < buf.size) {
+            val n = write(buf, off, buf.size - off)
+            if (n <= 0) return false
+            off += n
+        }
+        return true
+    }
+
+    /** Up to three rebuilds after a failure, then the service stops. */
+    fun mayRetry(fails: Int): Boolean = fails <= 3
+
+    /** 250, 500, 1000 ms. */
+    fun backoffMs(fails: Int): Long = 250L shl (fails - 1).coerceIn(0, 4)
 }

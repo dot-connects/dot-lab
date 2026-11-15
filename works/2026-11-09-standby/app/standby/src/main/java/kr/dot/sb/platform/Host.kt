@@ -151,12 +151,14 @@ fun RotatedBox(degrees: Int, modifier: Modifier = Modifier, content: @Composable
 @Composable
 fun HostContent(holder: StandbyStateHolder, actions: StandbyActions) {
     val state by holder.state.collectAsState()
+    // r11 perf: handed down as a State, read only by the timer / media cards
+    val ticks = holder.ticks.collectAsState()
     val config by holder.uiConfig.collectAsState()
     val rotation by holder.rotation.collectAsState()
     RotatedBox(rotation, Modifier.fillMaxSize().background(Color.Black)) { // literal-ok: display off = pure black
         val ctx = androidx.compose.ui.platform.LocalContext.current
         // colour edits made in the clocks page edit mode persist like settings edits
-        androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalLiveWidgets provides true) {
+        androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalLiveWidgets provides true, kr.dot.sb.ui.state.LocalLiveTicks provides ticks) {
             StandbyRoot(state, config, actions, Modifier.fillMaxSize()) { face, style ->
                 kr.dot.sb.settings.ConfigStore.update(ctx) { it.copy(styles = it.styles + (face to style)) }
             }

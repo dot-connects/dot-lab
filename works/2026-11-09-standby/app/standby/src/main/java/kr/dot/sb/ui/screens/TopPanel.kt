@@ -62,6 +62,12 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SCRIM
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.ui.theme.withTheme
+import androidx.compose.ui.semantics.ProgressBarRangeInfo
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.progressBarRangeInfo
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.setProgress
+import androidx.compose.ui.semantics.stateDescription
 import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
@@ -110,8 +116,8 @@ internal fun TopPanel(
             },
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        PanelSlider(level, onLevel) { c -> sun(c) }
-        PanelSlider(vol, { v ->
+        PanelSlider("화면 밝기", level, onLevel) { c -> sun(c) }
+        PanelSlider("소리 크기", vol, { v ->
             vol = v
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, (v * maxVol).roundToInt(), 0)
         }) { c -> speaker(c) }
@@ -145,10 +151,17 @@ internal fun TopPanel(
 
 /** A 48 dp pill slider: track ink 16 %, fill ink, glyph at the left end (page colour on the fill). Touch or drag sets it. */
 @Composable
-private fun PanelSlider(value: Float, onValue: (Float) -> Unit, glyph: DrawScope.(Color) -> Unit) {
+private fun PanelSlider(label: String, value: Float, onValue: (Float) -> Unit, glyph: DrawScope.(Color) -> Unit) {
     val ink = LocalInk.current
     Box(
         Modifier.fillMaxWidth().height(48.dp).clip(CircleShape).background(ink.ink.copy(alpha = 0.16f))
+            // r11 a11y: TalkBack reads and moves it like a system slider
+            .semantics {
+                contentDescription = label
+                stateDescription = "${(value.coerceIn(0f, 1f) * 100).roundToInt()}%"
+                progressBarRangeInfo = ProgressBarRangeInfo(value.coerceIn(0f, 1f), 0f..1f)
+                setProgress { v -> onValue(v.coerceIn(0f, 1f)); true }
+            }
             .pointerInput(Unit) {
                 val widthPx = size.width.toFloat()
                 awaitEachGesture {
