@@ -155,7 +155,7 @@ internal fun Glow(c: Color, at: Offset, rx: Float, ry: Float, alpha: Float) {
     }
 }
 
-/** Pill / button shape: round, square on themes without corners (PAPER). */
+/** Pill / button shape: round, square on themes without corners (DAYPAPER, TERMINAL). */
 @Composable
 private fun pillShape(): Shape = if (LocalTheme.current.tokens.radiusRatio == 0f) RectangleShape else RoundedCornerShape(50)
 

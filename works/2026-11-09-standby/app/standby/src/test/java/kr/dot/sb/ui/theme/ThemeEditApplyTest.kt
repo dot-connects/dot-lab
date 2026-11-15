@@ -88,8 +88,8 @@ class ThemeEditApplyTest {
     }
 
     @Test fun inkOnlyEditKeepsAHandSetAccentText() {
-        val t = cfg(Theme.CANDLE, ThemeEdit(ink = 0xFFF0E0D0)).drawnTheme().tokens
-        assertEquals(Themes.CANDLE.tokens.accentText, t.accentText)
+        val t = cfg(Theme.RADIO, ThemeEdit(ink = 0xFF202020)).drawnTheme().tokens
+        assertEquals(Themes.RADIO.tokens.accentText, t.accentText)
     }
 
     @Test fun rolesFollowTheThemesRule() {
@@ -97,7 +97,7 @@ class ThemeEditApplyTest {
         assertEquals(Roles.mono(Color(0xFF6FDC86), Color(0xFFFFD74B)), neon.roles)
         // the ink-tinted progress track follows the ink
         assertEquals(Color(0xFFFFD74B).copy(alpha = Themes.NEON.tokens.plate2.alpha), neon.plate2)
-        val paper = cfg(Theme.PAPER, ThemeEdit(accent = 0xFF6FDC86)).drawnTheme().tokens
+        val paper = cfg(Theme.DAYPAPER, ThemeEdit(accent = 0xFF6FDC86)).drawnTheme().tokens
         assertNotEquals(Roles.mono(paper.accent, paper.ink), paper.roles)
     }
 
@@ -105,8 +105,8 @@ class ThemeEditApplyTest {
         // r13: the halo is textGlow (2 x g); glowStrength is the page glow only
         assertEquals(2f, cfg(Theme.NEON, ThemeEdit(textGlow = 1f)).drawnTheme().tokens.haloAmt, 1e-4f)
         assertEquals(1f, cfg(Theme.NEON, ThemeEdit(glowStrength = 1f)).drawnTheme().tokens.haloAmt, 1e-4f)
-        assertEquals(Color(0xFFFF453A), cfg(Theme.PAPER, ThemeEdit(rule = 0xFFFF453A)).drawnTheme().tokens.rule)
-        assertEquals(null, Themes.PAPER.tokens.rule)
+        assertEquals(Color(0xFFFF453A), cfg(Theme.DAYPAPER, ThemeEdit(rule = 0xFFFF453A)).drawnTheme().tokens.rule)
+        assertEquals(null, Themes.IPHONE.tokens.rule)
     }
 
     @Test fun flowChangesTheBackgroundButNotClockDefaults() {

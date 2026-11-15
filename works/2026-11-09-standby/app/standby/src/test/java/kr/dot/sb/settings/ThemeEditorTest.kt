@@ -49,12 +49,12 @@ class ThemeEditorTest {
         fun f(th: Theme) = ThemeEditor.controls(th).map { it.field }.toSet()
         assertEquals(setOf(EditField.INK, EditField.ACCENT, EditField.TEXT_GLOW), f(Theme.NEON))
         assertEquals(setOf(EditField.INK, EditField.ACCENT), f(Theme.TERMINAL))
-        assertEquals(setOf(EditField.BG, EditField.INK, EditField.RULE, EditField.ACCENT), f(Theme.PAPER))
-        assertTrue(EditField.PLATE !in f(Theme.PAPER))
+        assertEquals(setOf(EditField.BG, EditField.INK, EditField.RULE, EditField.ACCENT), f(Theme.DAYPAPER))
+        assertTrue(EditField.PLATE !in f(Theme.DAYPAPER))
         assertEquals(11, ThemeEditor.controls(Theme.MOODLIGHT).size)
         assertTrue(f(Theme.SKY).containsAll(listOf(EditField.SKY_TOP, EditField.SKY_MID, EditField.SKY_BOTTOM, EditField.FLOW)))
-        // only these three offer 시간 따라 흐름
-        assertEquals(setOf(Theme.MOODLIGHT, Theme.CANDLE, Theme.SKY), Theme.entries.filter { EditField.FLOW in f(it) }.toSet())
+        // only these two offer 시간 따라 흐름
+        assertEquals(setOf(Theme.MOODLIGHT, Theme.SKY), Theme.entries.filter { EditField.FLOW in f(it) }.toSet())
     }
 
     @Test fun shuffleNeverWarns() {

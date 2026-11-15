@@ -75,9 +75,9 @@ class ThemeLooksTest {
     }
 
     @Test fun switchLookClearsEveryOtherEntry() {
-        val c = AppConfig(theme = Theme.IPHONE).withThemeEdit(Theme.IPHONE, ThemeEdit(radius = 0.1f)).withThemeEdit(Theme.PAPER, ThemeEdit(accent = 0xFF30CEDA))
-        val paper = c.switchLook(Look.Builtin(Theme.PAPER))
-        assertEquals(Theme.PAPER, paper.theme)
+        val c = AppConfig(theme = Theme.IPHONE).withThemeEdit(Theme.IPHONE, ThemeEdit(radius = 0.1f)).withThemeEdit(Theme.DAYPAPER, ThemeEdit(accent = 0xFF30CEDA))
+        val paper = c.switchLook(Look.Builtin(Theme.DAYPAPER))
+        assertEquals(Theme.DAYPAPER, paper.theme)
         assertTrue(paper.themeEdits.isEmpty())
         assertNull(paper.customFrom)
         val m = MyTheme("m", Theme.SKY, ThemeEdit(radius = 0.15f))
@@ -92,7 +92,7 @@ class ThemeLooksTest {
 
     @Test fun stripPickThreeCases() {
         val m = MyTheme("m", Theme.IPHONE, ThemeEdit(radius = 0.1f))
-        val base = AppConfig(theme = Theme.IPHONE, myThemes = listOf(MyTheme("other", Theme.PAPER, m.edit), m))
+        val base = AppConfig(theme = Theme.IPHONE, myThemes = listOf(MyTheme("other", Theme.DAYPAPER, m.edit), m))
         assertEquals(Look.Builtin(Theme.IPHONE), StripPick.of(base))
         assertEquals(Look.Mine(m), StripPick.of(base.withThemeEdit(Theme.IPHONE, m.edit)))
         assertEquals(StripPick.Custom, StripPick.of(base.withThemeEdit(Theme.IPHONE, ThemeEdit(radius = 0.05f))))
@@ -100,7 +100,7 @@ class ThemeLooksTest {
 
     @Test fun saveOverwritesTheSameNameInPlace() {
         val e = ThemeEdit(accent = 0xFF30CEDA)
-        val list = listOf("a", "b", "c").map { MyTheme(it, Theme.PAPER, ThemeEdit(radius = 0.1f)) }
+        val list = listOf("a", "b", "c").map { MyTheme(it, Theme.DAYPAPER, ThemeEdit(radius = 0.1f)) }
         val c = AppConfig(theme = Theme.IPHONE, myThemes = list).withThemeEdit(Theme.IPHONE, e)
         val over = c.saveMyTheme("b")
         assertEquals(listOf(list[0], MyTheme("b", Theme.IPHONE, e), list[2]), over.myThemes)
@@ -111,7 +111,7 @@ class ThemeLooksTest {
     }
 
     @Test fun renameAndDeleteFollowCustomFrom() {
-        val a = MyTheme("a", Theme.PAPER, ThemeEdit(radius = 0.1f))
+        val a = MyTheme("a", Theme.DAYPAPER, ThemeEdit(radius = 0.1f))
         val b = MyTheme("b", Theme.IPHONE, ThemeEdit(radius = 0.12f))
         val c = AppConfig(myThemes = listOf(a, b), customFrom = "b")
         assertEquals("b", c.renameMyTheme(a, "x").customFrom)
@@ -127,9 +127,9 @@ class ThemeLooksTest {
     @Test fun panelSavesAnUnsavedEditFirst() {
         val e = ThemeEdit(radius = 0.1f)
         val c = AppConfig(theme = Theme.IPHONE).withThemeEdit(Theme.IPHONE, e)
-        val p = c.switchFromPanel(Theme.PAPER)
+        val p = c.switchFromPanel(Theme.DAYPAPER)
         assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.myThemes)
-        assertEquals(Theme.PAPER, p.theme)
+        assertEquals(Theme.DAYPAPER, p.theme)
         assertTrue(p.themeEdits.isEmpty())
         // an edit already saved is not saved twice
         assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.switchLook(Look.Mine(p.myThemes[0])).switchFromPanel(Theme.NEON).myThemes)

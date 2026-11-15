@@ -15,7 +15,7 @@ class NightColourTest {
 
     @Test fun fullNightIsTheSameInEveryTheme() {
         val ref = set(Ink.of(1f, Color(0xFF76A6F3), Themes.of(Theme.IPHONE)))
-        for (th in listOf(Theme.PAPER, Theme.SKY, Theme.DAYPAPER, Theme.NEON)) {
+        for (th in listOf(Theme.MOODLIGHT, Theme.SKY, Theme.DAYPAPER, Theme.NEON)) {
             assertEquals(th.name, ref, set(Ink.of(1f, Color(0xFFFF00AA), Themes.of(th))))
         }
     }

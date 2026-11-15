@@ -3,8 +3,8 @@
     python tools/check_light.py [shots_dir]     (default standby/build/shots) -> exit 1 on a dark sample
 
 For every DAYPAPER / RADIO day shot in the board, notif, clock and primitives groups, samples the four corners and
-the four edge midpoints inside the board margin (where only the page can be). Three or more samples darker than luminance 0.5
-fail: that is a black rectangle left by a face or a test harness; one or two are content reaching the edge (a side
+the four edge midpoints inside the board margin (where only the page can be). Three or more samples darker than luminance 0.3
+(r13: RADIO's lit-aluminium page ends at #B7B4AD, luminance ~0.45, with a metal grain on top) fail: that is a black rectangle left by a face or a test harness; one or two are content reaching the edge (a side
 column, big digits). Night shots and faces that own their background by design (Solar, photo time, r10 색 블록) are
 skipped.
 """
@@ -41,7 +41,7 @@ def main() -> int:
                     continue
                 seen += 1
                 im = Image.open(f).convert("RGB")
-                dark = [(x, y) for x, y in points(*im.size) if lum(im.getpixel((min(x, im.width - 1), min(y, im.height - 1)))) < 0.5]
+                dark = [(x, y) for x, y in points(*im.size) if lum(im.getpixel((min(x, im.width - 1), min(y, im.height - 1)))) < 0.3]
                 if len(dark) >= 3:
                     bad.append(f"{f.relative_to(root).as_posix()}: dark at {dark[:3]}")
     print("\n".join(bad) if bad else f"check_light: ok ({seen} shots)")

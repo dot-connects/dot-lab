@@ -88,7 +88,7 @@ abstract class SettingsShotKit {
 class SettingsHomeShots : SettingsShotKit() {
     @Test fun home() = snap("home", phone, route = Routes.HOME)
     @Test fun homeFold() = snap("home-fold", fold, route = Routes.HOME)
-    @Test fun homePaper() = snap("home-paper", phone, AppConfig(theme = kr.dot.sb.model.Theme.PAPER), route = Routes.HOME)
+    @Test fun homePaper() = snap("home-paper", phone, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER), route = Routes.HOME)
     @Test fun homeBar() = snap("home-bar", phone, route = Routes.HOME, e = bar)
     @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
     @Test fun theme() = snap("theme", tall, route = Routes.THEME)

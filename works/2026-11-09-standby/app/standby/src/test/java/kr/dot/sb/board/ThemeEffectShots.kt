@@ -60,8 +60,8 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
         // the two-slot notification card shows titles: every title carries KS X 1001-heavy text
         if (font) s = s.copy(notifications = s.notifications.mapIndexed { i, n -> n.copy(title = KS_TEXT.split(' ').drop(i * 3).take(3).joinToString(" "), text = KS_TEXT) })
         s = s.copy(timers = mapOf("fx-3" to s.timers.values.first()))
-        // glow2 is a token (no edit field): the page is drawn from CANDLE's tokens with a second, smaller yellow glow
-        val page = if (name == "glow2") Themes.edited(Themes.CANDLE, Themes.CANDLE.tokens.let {
+        // glow2 is a token (no edit field): the page is drawn from MOODLIGHT's tokens with a second, smaller yellow glow
+        val page = if (name == "glow2") Themes.edited(Themes.MOODLIGHT, Themes.MOODLIGHT.tokens.let {
             it.copy(bg = it.bg.copy(glow2 = Color(0x38FFD27A), glow2At = Offset(.5f, 1f), glow2Size = Offset(.45f, .4f)))
         }) else cfg.drawnTheme()
         rule.setContent { Box(Modifier.fillMaxSize()) { ThemeBackground(page, night); BoardView(board, s, cfg, StandbyActions.NONE) } }
@@ -82,7 +82,7 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
             name.startsWith("shape-") -> ThemeEdit(plateStyle = PlateStyle.valueOf(name.removePrefix("shape-").uppercase()))
             name.startsWith("font-") -> ThemeEdit(textFont = CardFont.valueOf(name.removePrefix("font-").uppercase()))
             name == "glow-text" -> ThemeEdit(textGlow = 0.8f)
-            name == "glow-halo" -> ThemeEdit(textGlow = 1f)
+            name == "glow-halo" -> ThemeEdit(plateStyle = PlateStyle.OUTLINE, textGlow = 1f)
             name == "glow-fill" -> ThemeEdit(plateStyle = PlateStyle.FILL, textGlow = 0.6f)
             name.startsWith("night-") -> NIGHT_EDIT
             else -> ThemeEdit()
@@ -95,9 +95,9 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
                 listOf("border-thin", "border-thick", "shape-glass", "shape-rule", "shape-outline", "font-serif", "font-round", "font-pen", "glow-text")
                     .map { arrayOf<Any>(it, Theme.IPHONE, 0f) } +
                 listOf(
-                    arrayOf<Any>("glow-halo", Theme.TERMINAL, 0f), // OUTLINE halo on a non-glowing theme
+                    arrayOf<Any>("glow-halo", Theme.TERMINAL, 0f), // OUTLINE picked on TERMINAL: the halo on a non-glowing theme
                     arrayOf<Any>("glow-fill", Theme.NEON, 0f), // NEON on FILL: a clear plate made visible, text shadow
-                    arrayOf<Any>("glow2", Theme.CANDLE, 0f),
+                    arrayOf<Any>("glow2", Theme.MOODLIGHT, 0f),
                     arrayOf<Any>("night-0", Theme.IPHONE, 0f),
                     arrayOf<Any>("night-0.3", Theme.IPHONE, 0.3f),
                     arrayOf<Any>("night-1", Theme.IPHONE, 1f),

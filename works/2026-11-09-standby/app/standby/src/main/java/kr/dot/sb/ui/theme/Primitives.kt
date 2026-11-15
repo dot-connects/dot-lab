@@ -71,7 +71,7 @@ private val PLATE_ON_CUSTOM = Color(0x12FFFFFF)
 val SCRIM = Color(0x73000000)
 
 /**
- * The theme's plate under a card. FILL/GLASS = filled plate, RULE = hairline on top (PAPER), OUTLINE = 1.5 dp line,
+ * The theme's plate under a card. FILL/GLASS = filled plate, RULE = hairline on top (DAYPAPER, TERMINAL), OUTLINE = 1.5 dp line,
  * with a soft glow when the digits glow (NEON). [custom] = the board has its own background (BoardBg ≠ THEME): plates
  * turn translucent. Night ≥ 0.5 = the candle plate, effects off.
  */
@@ -87,7 +87,8 @@ fun Modifier.themedSurface(t: StandbyTheme, ink: Ink, shape: Shape, custom: Bool
         }
         PlateStyle.OUTLINE -> {
             val glow = tk.digitStyle == DigitStyle.GLOW
-            val line = tk.borderColor ?: if (glow) ink.ink else ink.ink.copy(alpha = 0.35f)
+            // NEON's tube line: ink at 90 % (plan-r13 Part D)
+            val line = tk.borderColor ?: if (glow) ink.ink.copy(alpha = 0.9f) else ink.ink.copy(alpha = 0.35f)
             // the theme's own halo (NEON) as before; a set text glow also fades with night
             val amt = tk.haloAmt * (if (tk.textGlow != null) fade else 1f)
             val halo = if (amt <= 0f) this else drawBehind {
@@ -98,7 +99,7 @@ fun Modifier.themedSurface(t: StandbyTheme, ink: Ink, shape: Shape, custom: Bool
             halo.border(1.5.dp, line, shape)
         }
     }
-    val textured = plate.texture(tk.cardTexture, tk.textureAmt * fade, shape)
+    val textured = plate.texture(tk.cardTexture, (tk.cardTextureAmt ?: tk.textureAmt) * fade, shape)
     if (tk.border == Border.NONE || tk.plateStyle == PlateStyle.OUTLINE) return textured
     val c = tk.borderColor ?: ink.ink.copy(alpha = 0.35f)
     return textured.border(if (tk.border == Border.THICK) 2.5.dp else 1.dp, c.copy(alpha = c.alpha * fade), shape)
@@ -118,10 +119,10 @@ private fun Modifier.texture(k: Texture, alpha: Float, shape: Shape): Modifier {
 }
 
 /**
- * Hero digits in the theme's treatment. [style] null = the theme default (FontId.THEME at the theme weight); FLIP
- * tiles and GLOW apply only when the style is the theme font with a plain effect (D4b), and never at night ≥ 0.5.
+ * Hero digits in the theme's treatment. [style] null = the theme default (FontId.THEME at the theme weight); GLOW
+ * applies only when the style is the theme font with a plain effect (D4b), and never at night ≥ 0.5.
  * [twoLines] stacks hours over minutes ("9:41" → "9" / "41"). Autosized to the modifier's box; takes only the height
- * the digits need (FLIP: the tiles), so a wrap-height caller can put a line right under them.
+ * the digits need, so a wrap-height caller can put a line right under them.
  */
 @Composable
 fun ThemedDigits(
@@ -136,12 +137,9 @@ fun ThemedDigits(
     val tk = t.tokens
     val base = style ?: ClockStyle(FontId.THEME, tk.digitWeight, color = 0xFFFFFFFF) // colour unused: [c] below
     val themed = base.font == FontId.THEME && base.effect == Effect.SOLID && ink.night < 0.5f
-    val flip = themed && tk.digitStyle == DigitStyle.FLIP
     val st = if (themed && tk.digitStyle == DigitStyle.GLOW) base.copy(effect = Effect.GLOW) else base
-    // flip tiles carry ink digits (mockup); everything else the accent unless the caller's style says otherwise
-    val c = color ?: style?.let { Color(it.color) } ?: if (flip) ink.ink else ink.acc
+    val c = color ?: style?.let { Color(it.color) } ?: ink.acc
     val lines = if (twoLines) text.split(':').filter { it.isNotEmpty() } else listOf(text)
-    if (flip) return FlipDigits(lines, st, ink, tk, c, modifier)
     val widest = lines.maxBy { it.length }
     val p = rememberTimePainter(st, tnum = true)
     // as tall as the digits need (StyledTime's fit), centred: a line under a wrap-height caller sits right below them
@@ -216,8 +214,8 @@ private val PRESETS: Map<BoardBg, Ground> = mapOf(
             Glow(Offset(.85f, .8f), Offset(.6f, .7f), listOf(0f to c(0x59AF52DE), .7f to c(0x00AF52DE))),
         ),
     ),
-    // ponytail: one dusk set (SKY's stops); dawn/day/night sets once the operator picks them
-    BoardBg.TIME_OF_DAY to Ground(ThemeTokens.SKY.bg.stops),
+    // ponytail: one dusk set (r12 SKY's stops, frozen when r13 changed SKY); dawn/day/night sets once the operator picks them
+    BoardBg.TIME_OF_DAY to Ground(listOf(c(0xFF1B2A4A), c(0xFF31355A), c(0xFF552D32))),
 )
 
 private fun BgSpec.ground(): Ground {
@@ -298,15 +296,4 @@ fun ThemeBackground(
             Canvas(Modifier.fillMaxSize()) { draw(g, n) }
         }
     }
-}
-
-/**
- * The candle theme's bottom light alone (r10 "a candle lit below"), for a page that paints its own colour over
- * [ThemeBackground] (the clocks page keeps `ink.bg` for edit mode). Day only: night has its own [ThemeTokens.NIGHT_BG].
- */
-@Composable
-fun CandleLight(t: StandbyTheme, night: Float, modifier: Modifier = Modifier) {
-    if (t.id != kr.dot.sb.model.Theme.CANDLE || night >= 1f) return
-    val g = Ground(emptyList(), t.tokens.bg.ground().glows)
-    Canvas(modifier.fillMaxSize()) { draw(g, 1f - night.coerceIn(0f, 1f)) }
 }

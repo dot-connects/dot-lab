@@ -45,10 +45,7 @@ object Fonts {
         )
     }
 
-    /** Instrument Serif Italic (PAPER digits): one static 400 cut, Latin/digits subset. */
-    val instrumentItalic: FontFamily by lazy { FontFamily(Font(R.font.instrument_serif_italic, FontWeight.Normal)) }
-
-    /** IBM Plex Mono Medium (TERMINAL digits): one static 500 cut. */
+    /** IBM Plex Mono Medium (TERMINAL digits and card Latin): one static 500 cut. */
     val plexMono: FontFamily by lazy { FontFamily(Font(R.font.plex_mono_500, FontWeight.Medium)) }
 
     /**

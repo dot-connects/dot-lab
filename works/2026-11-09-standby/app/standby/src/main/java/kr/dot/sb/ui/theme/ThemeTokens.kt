@@ -43,7 +43,7 @@ fun flowColor(stops: List<Long>, t: LocalTime): Color? {
 enum class PlateStyle { FILL, RULE, GLASS, OUTLINE }
 
 /** How hero digits are treated beyond font and colour. */
-enum class DigitStyle { PLAIN, ITALIC, FLIP, GLOW }
+enum class DigitStyle { PLAIN, GLOW }
 
 /**
  * Page background: one stop = solid, more = vertical gradient (SKY: time of day); optional radial glow, centre [glowAt]
@@ -173,7 +173,7 @@ data class ThemeTokens(
     val monoRoles: Boolean = false,
     /** r11 NEON 빛 번짐 세기: scales the OUTLINE halo alphas (1 = the theme's). */
     val halo: Float = 1f,
-    /** r11 PAPER 구분선 색: the RULE line colour (null = ink at 25 %). Not a surface. */
+    /** 구분선 색: the RULE line colour (null = ink at 25 %). Not a surface. */
     val rule: Color? = null,
     // r13 (plan-r13 A3): defaults reproduce r12 exactly; every effect below is faded by night in the drawing code
     /** Page texture (drawn in ThemeBackground) and plate texture (themedSurface), both at [textureAmt]. */
@@ -189,6 +189,19 @@ data class ThemeTokens(
     val borderColor: Color? = null,
     /** Text glow 0..1; null = the theme's (NEON's own halo, no text shadow). */
     val textGlow: Float? = null,
+    // r13 Part D (theme lineup): defaults = r12
+    /** The role colours [Roles.derive] starts from (pinned sun/red/green per theme, else iOS). */
+    val roleBase: Roles = Roles.IOS,
+    /** Plate texture amount when it differs from the page's (RADIO); null = [textureAmt]. An edit's 질감 정도 sets both. */
+    val cardTextureAmt: Float? = null,
+    /** Hero digit letter spacing in em (RADIO -0.045), theme font only. */
+    val digitTracking: Float = 0f,
+    /** The theme's own card text shadow 0..1 when [textGlow] is unset (NEON, TERMINAL: weak). */
+    val cardGlow: Float? = null,
+    /** Latin/digit runs of card text in this family (TERMINAL: IBM Plex Mono); null = the rounded widget numerals. */
+    val latinFont: FontFamily? = null,
+    /** Label rows draw a `>` prompt instead of their icon (TERMINAL). */
+    val prompt: Boolean = false,
 ) {
     /** The page colours: each bg stop and the glow(s) over it. */
     val pages: List<Color> get() = bg.stops + listOfNotNull(bg.glow, bg.glow2).flatMap { g -> bg.stops.map { g.compositeOver(it) } }
@@ -200,8 +213,11 @@ data class ThemeTokens(
     val haloAmt: Float
         get() = if (plateStyle != PlateStyle.OUTLINE) 0f else textGlow?.let { it * 2f } ?: if (digitStyle == DigitStyle.GLOW) halo else 0f
 
-    /** Card text shadow strength (plan-r13 A3): a set, non-zero [textGlow] on any plate style but OUTLINE; else null. */
-    val textShadow: Float? get() = textGlow?.takeIf { it > 0f && plateStyle != PlateStyle.OUTLINE }
+    /**
+     * Card text shadow strength (plan-r13 A3): a set, non-zero [textGlow] on any plate style but OUTLINE; unset = the
+     * theme's own [cardGlow] (Part D); else null.
+     */
+    val textShadow: Float? get() = if (textGlow == null) cardGlow else textGlow.takeIf { it > 0f && plateStyle != PlateStyle.OUTLINE }
 
     /** Every opaque colour text can sit on: each bg stop, the glow over it, and both plates composited over those. */
     val surfaces: List<Color>
@@ -274,7 +290,7 @@ data class ThemeTokens(
         var p = plate
         var p2 = plate2
         val shift = if (light) -0.06f else 0.06f
-        // r13: FILL/GLASS on a theme whose own plate is clear (RULE/OUTLINE: PAPER, NEON, TERMINAL) gets a visible plate
+        // r13: FILL/GLASS on a theme whose own plate is clear (RULE/OUTLINE: DAYPAPER, NEON, TERMINAL) gets a visible plate
         val clearToFill = (plateStyle == PlateStyle.RULE || plateStyle == PlateStyle.OUTLINE) &&
             (e.plateStyle == PlateStyle.FILL || e.plateStyle == PlateStyle.GLASS)
         if (clearToFill) {
@@ -297,6 +313,7 @@ data class ThemeTokens(
             radiusRatio = e.radius ?: radiusRatio,
             rule = e.rule?.let { Color(it) } ?: rule,
             bgTexture = e.bgTexture ?: bgTexture, cardTexture = e.cardTexture ?: cardTexture, textureAmt = e.textureAmt ?: textureAmt,
+            cardTextureAmt = if (e.textureAmt != null) null else cardTextureAmt,
             cardFont = e.textFont ?: cardFont, textWeight = e.textWeight ?: textWeight,
             border = e.border ?: border, borderColor = e.borderColor?.let { Color(it) } ?: borderColor,
             textGlow = e.textGlow ?: textGlow,
@@ -304,7 +321,7 @@ data class ThemeTokens(
         val s = t.surfaces
         // an untouched accent keeps its text colour as the theme set it (RADIO's hand-set one included)
         val accText = if (e.accent == null) accentText else Contrast.fit(acc, s, fitLight, 4.5f)
-        val roles = if (monoRoles) Roles.mono(acc, inkC) else Roles.derive(Roles.IOS, s, fitLight)
+        val roles = if (monoRoles) Roles.mono(acc, inkC) else Roles.derive(roleBase, s, fitLight)
         return t.copy(accentText = accText, roles = roles)
     }
 
@@ -330,7 +347,7 @@ data class ThemeTokens(
         while (second(i2) < 3f && i2 < 1f) i2 = minOf(1f, i2 + 0.02f)
         val p2 = Hsl.shift(Color(c), if (lightPlate) -0.06f else 0.06f).copy(alpha = if (plateStyle == PlateStyle.GLASS) GLASS_MAX else plate2.alpha)
         val acc = Contrast.fit(accentText, s, lightPlate, 4.5f)
-        val roles = if (monoRoles) Roles.mono(accent, inkC) else Roles.derive(Roles.IOS, s, lightPlate)
+        val roles = if (monoRoles) Roles.mono(accent, inkC) else Roles.derive(roleBase, s, lightPlate)
         return CardPlate(copy(ink = inkC, ink2 = i2, ink3 = (ink3 + (i2 - ink2)).coerceAtMost(1f), plate = p, plate2 = p2, accentText = acc, roles = roles), over)
     }
 
@@ -350,67 +367,82 @@ data class ThemeTokens(
             bg: BgSpec, ink: Long, ink2: Float, ink3: Float, accent: Long, plate: Color, plate2: Color, style: PlateStyle,
             radius: Float, radiusMin: Int, font: (Int) -> FontFamily, weight: Int, digit: DigitStyle, cap: Float,
             light: Boolean = false, mono: Boolean = false, labelIcons: Boolean = false, tracking: Float = 0f,
-            accentText: Long = accent, monoRoles: Boolean = mono,
+            accentText: Long = accent, monoRoles: Boolean = mono, roleBase: Roles = Roles.IOS,
         ): ThemeTokens {
             val t = ThemeTokens(
                 bg, Color(ink), ink2, ink3, Color(accent), Color(accentText), plate, plate2, style, radius, radiusMin.dp,
-                font, weight, digit, cap, light, mono, labelIcons, tracking, Roles.IOS,
+                font, weight, digit, cap, light, mono, labelIcons, tracking, Roles.IOS, roleBase = roleBase,
             )
-            val roles = if (monoRoles) Roles.mono(t.accent, t.ink) else Roles.derive(Roles.IOS, t.surfaces, light)
+            val roles = if (monoRoles) Roles.mono(t.accent, t.ink) else Roles.derive(roleBase, t.surfaces, light)
             return t.copy(roles = roles, monoRoles = monoRoles)
         }
 
+        /** iOS roles with the theme's pinned sun (yellow), red and green (plan-r13 Part D table). */
+        private fun pinned(sun: Long, red: Long, green: Long) = Roles.IOS.copy(yellow = Color(sun), red = Color(red), green = Color(green))
+
+        /** A mockup glow at ([x], [y]) of [size]: CSS radii size x 70 % of the width and x 90 % of the height (clear at 70 %). */
+        private fun glow(c: Long, alpha: Float, x: Float, y: Float, size: Float, stops: List<Color>) =
+            BgSpec(stops, glow = Color(c).copy(alpha = alpha), glowAt = Offset(x, y), glowSize = Offset(size * 0.7f, size * 0.9f))
+
         private val sofia: (Int) -> FontFamily = { Fonts.clock(FontId.CONDENSED, it) }
-        private val pretendard: (Int) -> FontFamily = { Fonts.ui(it) }
         private val CLEAR = Color.Transparent
 
         val IPHONE = make(
             BgSpec(listOf(Color.Black)), 0xFFF6EFE6, .62f, .35f, 0xFFFFAD5C, Color(0xFF1C1A18), Color(0xFF2A2724),
             PlateStyle.FILL, .075f, 12, sofia, 600, DigitStyle.PLAIN, 0.655f, labelIcons = true,
         )
-        val PAPER = make(
-            BgSpec(listOf(Color(0xFF0E0D0B))), 0xFFECE4D4, .55f, .30f, 0xFFD8B46A, CLEAR, Color(0xFF1A1814),
-            PlateStyle.RULE, 0f, 0, { Fonts.instrumentItalic }, 400, DigitStyle.ITALIC, 0.72f, mono = true, monoRoles = false,
-            tracking = .04f,
-        )
-        val MOODLIGHT = make(
-            BgSpec(listOf(Color(0xFF14100C)), glow = rgba(0xFFAA5A2E), glowAt = Offset(.3f, .4f), glowSize = Offset(.7f, .6f)), 0xFFFFF2E2, .60f, .32f,
-            0xFFFFB36B, Color(0xFF2B2119), Color(0xFF3A2C21), PlateStyle.FILL, .09f, 16, pretendard, 300, DigitStyle.PLAIN,
-            0.707f, labelIcons = true,
-        )
-        val CANDLE = make(
-            BgSpec(listOf(Color(0xFF0C0805)), glow = rgba(0xFFA05047), glowAt = Offset(.5f, 1.15f)), 0xFFEAD9C2, .55f, .30f,
-            0xFFE3A35B, rgba(0xFFCD960F), rgba(0xFFCD961A), PlateStyle.FILL, .085f, 16, pretendard, 200, DigitStyle.PLAIN,
-            0.707f, labelIcons = true, accentText = 0xFFE6AD6C,
-        )
-        val FLIP = make(
-            BgSpec(listOf(Color(0xFF0C0C0C))), 0xFFF2F2F2, .55f, .30f, 0xFFFF9F0A, Color(0xFF1F1F1F), Color(0xFF2A2A2A),
-            PlateStyle.FILL, .05f, 10, sofia, 700, DigitStyle.FLIP, 0.655f,
-        )
-        /** Dusk stops darkened from #3A3F6B/#7A4148 so accent text passes 4.5:1 on glass at every stop. */
-        val SKY = make(
-            BgSpec(listOf(Color(0xFF1B2A4A), Color(0xFF31355A), Color(0xFF552D32))), 0xFFFFFFFF, .70f, .40f, 0xFFFFD29A,
-            rgba(0xFFFFFF24), rgba(0xFFFFFF33), PlateStyle.GLASS, .075f, 12, pretendard, 200, DigitStyle.PLAIN, 0.707f,
-            labelIcons = true,
-        )
+
+        /** 종이 (다듬기): paper grain, one hairline rule per card, serif card words. */
         val DAYPAPER = make(
-            BgSpec(listOf(Color(0xFFF3EEE4))), 0xFF1D1A16, .60f, .35f, 0xFFB23A0B, Color(0xFFE8E1D3), Color(0xFFDDD4C3),
-            PlateStyle.FILL, .055f, 10, { Fonts.clock(FontId.SERIF, it) }, 600, DigitStyle.PLAIN, 0.67f, light = true,
-            accentText = 0xFFA6360A,
-        )
-        /** Accent #E8641C is the operator's shape colour (2026-11-11, below 3:1 on the page by choice); text uses #9C3D0D. */
+            BgSpec(listOf(Color(0xFFF2EBDD))), 0xFF1F1B16, .78f, .35f, 0xFFA6360A, CLEAR, Color(0xFFDDD4C3),
+            PlateStyle.RULE, 0f, 0, { Fonts.clock(FontId.SERIF, it) }, 600, DigitStyle.PLAIN, 0.67f, light = true,
+            roleBase = pinned(0xFF8F6200, 0xFFB3261E, 0xFF2F6B45),
+        ).copy(bgTexture = Texture.PAPER, textureAmt = .6f, rule = Color(0xFF1F1B16).copy(alpha = .55f), cardFont = CardFont.SERIF)
+
+        /**
+         * 라디오 (과감하게): lit aluminium, near-square panels with an engraved line. Shape accent below 3:1 by choice (D12).
+         * Accent text #A83C08 darkened to #7C2C06 (HSL L -0.09) so it reads 4.5:1 on the darkest page stop; pinned roles
+         * are lifted by [Roles.derive] where they fall under 3:1.
+         */
         val RADIO = make(
-            BgSpec(listOf(Color(0xFFD9D3C7))), 0xFF2A2723, .62f, .38f, 0xFFE8641C, Color(0xFFEBE6DC), Color(0xFFE0DACE),
-            PlateStyle.FILL, .065f, 12, { Fonts.clock(FontId.BOLD, it) }, 500, DigitStyle.PLAIN, 0.7275f, light = true,
-            accentText = 0xFF9C3D0D,
+            BgSpec(listOf(Color(0xFFD8D6D1), Color(0xFFC9C7C1), Color(0xFFB7B4AD))), 0xFF1A1917, .68f, .38f, 0xFFE8590C,
+            Color(0xFFEEECE7), Hsl.shift(Color(0xFFEEECE7), -0.06f), PlateStyle.FILL, .035f, 4, { Fonts.clock(FontId.BOLD, it) }, 700,
+            DigitStyle.PLAIN, 0.7275f, light = true, accentText = 0xFF7C2C06, roleBase = pinned(0xFFA86F00, 0xFFD2500A, 0xFF2E7D4F),
+        ).copy(
+            bgTexture = Texture.METAL, textureAmt = .45f, cardTexture = Texture.METAL, cardTextureAmt = .3f,
+            border = Border.THIN, borderColor = Color(0xFF1A1917).copy(alpha = .3f), digitTracking = -.045f,
         )
+
+        /** 무드등 (다듬기, 둥근): a big amber light behind the clock, frosted glass cards. */
+        val MOODLIGHT = make(
+            glow(0xFFFF9A4D, .30f, .3f, .38f, 1f, listOf(Color(0xFF120D0A))), 0xFFFFF3E4, .66f, .32f, 0xFFFFC27A,
+            Color(0xFF2A1E16).copy(alpha = .55f), Hsl.shift(Color(0xFF2A1E16), 0.06f).copy(alpha = .55f), PlateStyle.GLASS,
+            .17f, 16, { Fonts.clock(FontId.OUTFIT, it) }, 300, DigitStyle.PLAIN, 0.676f, labelIcons = true,
+            roleBase = pinned(0xFFFFD27A, 0xFFFF8566, 0xFFC7DB8E),
+        ).copy(cardTexture = Texture.FROST, textureAmt = .5f, border = Border.THIN, borderColor = Color(0xFFFFD9B0).copy(alpha = .12f))
+
+        /** 하늘 (다듬기): navy, violet, peach horizon; dark glass cards. Horizon #B3605E darkened to #9E4C4A (L -0.08): white ink and the peach accent read 4.5:1 on it. */
+        val SKY = make(
+            BgSpec(listOf(Color(0xFF0E1E46), Color(0xFF4B3F86), Color(0xFF9E4C4A))), 0xFFFFFFFF, .76f, .40f, 0xFFFFE1B0,
+            Color(0xFF0E1030).copy(alpha = .30f), Hsl.shift(Color(0xFF0E1030), 0.06f).copy(alpha = .30f), PlateStyle.GLASS, .15f, 12,
+            { Fonts.clock(FontId.JOST, it) }, 300, DigitStyle.PLAIN, 0.70f, labelIcons = true,
+            roleBase = pinned(0xFFFFE1B0, 0xFFFFA08E, 0xFFA8E6C1),
+        ).copy(border = Border.THIN, borderColor = Color.White.copy(alpha = .14f))
+
+        /** 네온 (다듬기): violet dark behind cyan tubes; card words glow faintly. */
         val NEON = make(
-            BgSpec(listOf(Color.Black)), 0xFF7DF9FF, .55f, .30f, 0xFFFF4FD8, CLEAR, rgba(0x7DF9FF14),
-            PlateStyle.OUTLINE, .07f, 12, sofia, 400, DigitStyle.GLOW, 0.655f, mono = true,
-        )
+            glow(0xFF3A1E6E, .55f, .25f, .4f, .9f, listOf(Color(0xFF05040C))), 0xFF7DF9FF, .64f, .30f, 0xFFFF5EDB, CLEAR,
+            rgba(0x7DF9FF14), PlateStyle.OUTLINE, .12f, 12, sofia, 400, DigitStyle.GLOW, 0.655f, mono = true,
+        ).copy(cardGlow = .3f)
+
+        /** 터미널 (과감하게): phosphor green on scanlines, output rules instead of boxes, `>` prompts, mono Latin. */
         val TERMINAL = make(
-            BgSpec(listOf(Color(0xFF050805))), 0xFF59FF7A, .55f, .30f, 0xFFFFB000, CLEAR, rgba(0x59FF7A12),
-            PlateStyle.OUTLINE, .012f, 4, { Fonts.plexMono }, 500, DigitStyle.PLAIN, 0.698f, mono = true, tracking = .02f,
+            glow(0xFF12452A, .55f, .5f, .5f, 1.25f, listOf(Color(0xFF020A06))), 0xFF7CF7A0, .68f, .30f, 0xFFFFB000, CLEAR,
+            rgba(0x7CF7A012), PlateStyle.RULE, 0f, 0, { Fonts.plexMono }, 500, DigitStyle.GLOW, 0.698f, mono = true,
+            labelIcons = true, tracking = .02f,
+        ).copy(
+            bgTexture = Texture.SCANLINE, textureAmt = .7f, rule = Color(0xFF7CF7A0).copy(alpha = .5f), cardGlow = .3f,
+            latinFont = Fonts.plexMono, prompt = true,
         )
     }
 }

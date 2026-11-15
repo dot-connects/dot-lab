@@ -76,7 +76,9 @@ object Textures {
                 repeat(90) {
                     p.color = argb(r() * 0.16f, WHITE)
                     val x = r() * N; val y = r() * N
-                    c.drawCircle(x, y, 3f + r() * 9f, p)
+                    val rad = 3f + r() * 9f
+                    // drawn wrapped (r13 Part D): a blob cut at the tile edge showed the tile grid on 무드등's cards
+                    for (dx in -1..1) for (dy in -1..1) c.drawCircle(x + dx * N, y + dy * N, rad, p)
                 }
                 p.maskFilter = null
                 specks(20)

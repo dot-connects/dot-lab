@@ -135,7 +135,7 @@ internal class Env(
     /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
     val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)
-    /** Slot plate corner: the theme ratio of the short side, floored (PAPER: square). */
+    /** Slot plate corner: the theme ratio of the short side, floored (ratio 0, e.g. DAYPAPER: square). */
     val plateRadius: Dp get() = if (t.tokens.radiusRatio == 0f) 0.dp else max(t.tokens.radiusMin, s * t.tokens.radiusRatio)
     /** A lone value in a tall slot sizes from the long side too (review X9), so it fills instead of floating. */
     val loneDisplay: Dp get() = if (tall) max(sz.display, h * 0.6f * 0.56f) else sz.display
@@ -178,8 +178,11 @@ internal fun Txt(
     tracking: Float = 0f,
     leading: Float = 1.15f,
 ) {
-    // r13: M PLUS digits only in the Pretendard card font (or an explicit family); other card fonts draw their own digits
-    val spans = num && (family != null || LocalTheme.current.tokens.cardFont == CardFont.GOTHIC)
+    // r13: M PLUS digits only in the Pretendard card font (or an explicit family); other card fonts draw their own digits.
+    // A theme Latin font (TERMINAL mono) takes every Latin/digit run of Pretendard card text, num or not.
+    val tk = LocalTheme.current.tokens
+    val latin = family == null && tk.latinFont != null && tk.cardFont == CardFont.GOTHIC
+    val spans = latin || num && (family != null || tk.cardFont == CardFont.GOTHIC)
     Txt(if (spans) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking, leading)
 }
 
@@ -293,7 +296,9 @@ internal fun LabelRow(
         return
     }
     val iconBox = @Composable {
-        Box(Modifier.height(e.labelCap).wrapUnbounded()) { IconView(icon!!, color, Modifier.size(e.label), e.ink.bg) }
+        // TERMINAL: a `>` prompt in the icon's colour instead of the glyph (plan-r13 Part D)
+        if (e.t.tokens.prompt) Txt(">", e.label, color, weight = weight)
+        else Box(Modifier.height(e.labelCap).wrapUnbounded()) { IconView(icon!!, color, Modifier.size(e.label), e.ink.bg) }
     }
     Row(
         if (center) Modifier else Modifier.fillMaxWidth(),

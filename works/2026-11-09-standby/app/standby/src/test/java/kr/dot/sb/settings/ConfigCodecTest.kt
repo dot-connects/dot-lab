@@ -141,12 +141,12 @@ class ConfigCodecTest {
         r8.put("FLOAT", styleJson(Migrations.r8Default(FaceId.FLOAT).copy(sizePct = 80)))
         val c = ConfigCodec.decode(JSONObject().put("theme", "PAPER").put("styles", r8).toString())
         assertEquals(setOf(FaceId.FLOAT), c.styles.keys)
-        assertEquals(Themes.of(Theme.PAPER).clockDefaults(FaceId.DIGITAL), c.clockStyle(FaceId.DIGITAL))
+        assertEquals(Themes.of(Theme.DAYPAPER).clockDefaults(FaceId.DIGITAL), c.clockStyle(FaceId.DIGITAL))
     }
 
     @Test fun r9EditEqualToTheR8LookSurvivesARestart() {
         val edit = Migrations.r8Default(FaceId.DIGITAL)
-        val back = ConfigCodec.decode(ConfigCodec.encode(AppConfig(theme = Theme.PAPER, styles = mapOf(FaceId.DIGITAL to edit))))
+        val back = ConfigCodec.decode(ConfigCodec.encode(AppConfig(theme = Theme.DAYPAPER, styles = mapOf(FaceId.DIGITAL to edit))))
         assertEquals(edit.copy(widthPct = 100), back.styles[FaceId.DIGITAL])      // a versioned save skips the r8 "untouched" drop
     }
 
@@ -160,7 +160,7 @@ class ConfigCodecTest {
     }
 
     @Test fun themeSwitchSurvivesASaveAndFollowsTheNewTheme() {
-        val c = AppConfig(theme = Theme.PAPER).withTheme(Theme.MOODLIGHT)
+        val c = AppConfig(theme = Theme.DAYPAPER).withTheme(Theme.MOODLIGHT)
         val back = ConfigCodec.decode(ConfigCodec.encode(c))
         assertEquals(Themes.of(Theme.MOODLIGHT).clockDefaults(FaceId.DIGITAL), back.clockStyle(FaceId.DIGITAL))
     }
@@ -175,7 +175,7 @@ class ConfigCodecTest {
         assertEquals(def.background, s.background)
         assertEquals(80, s.sizePct)
         // a colour-only edit collapses back into the theme default (same-shape themes)
-        val candle = AppConfig(theme = Theme.CANDLE)
+        val candle = AppConfig(theme = Theme.MOODLIGHT)
         val only = candle.copy(styles = mapOf(FaceId.WORLD to candle.clockStyle(FaceId.WORLD).copy(color = 0xFF123456))).withTheme(Theme.SKY)
         assertEquals(null, only.styles[FaceId.WORLD])
     }
@@ -280,7 +280,7 @@ class ConfigCodecTest {
     @Test fun v9EditsSurviveAV10SaveAndLoad() {   // (i) the r8 drop is keyed on v < 9, not on the current version
         val digital = Migrations.r8Default(FaceId.DIGITAL).copy(widthPct = 100)   // an edit equal to the r8 look
         val analog = AppConfig().clockStyle(FaceId.ANALOG).copy(analogNumbers = AnalogNumbers.DUO, handColor = 0xFF112233)
-        val c = AppConfig(theme = Theme.PAPER, styles = mapOf(FaceId.DIGITAL to digital, FaceId.ANALOG to analog))
+        val c = AppConfig(theme = Theme.DAYPAPER, styles = mapOf(FaceId.DIGITAL to digital, FaceId.ANALOG to analog))
         val once = ConfigCodec.decode(v9(c))
         assertEquals(c.styles, once.styles)
         assertEquals(AnalogStyle.ROUND, once.analogStyle)

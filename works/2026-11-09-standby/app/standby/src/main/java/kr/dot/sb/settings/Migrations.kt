@@ -47,6 +47,45 @@ object Migrations {
         return c.copy(myThemes = my, themeEdits = edits.filterKeys { it == c.theme }, customFrom = from)
     }
 
+    /** r13 Part D: removed themes read as the theme that replaced them (every save version). */
+    val RENAMED = mapOf("PAPER" to Theme.DAYPAPER, "CANDLE" to Theme.MOODLIGHT, "FLIP" to Theme.IPHONE)
+
+    /**
+     * 촛불 as a 무드등 edit (mockup theme-lineup 무드등 과감하게): a 노을 light from below, warm ink, faint glass. Only the
+     * fields that differ from MOODLIGHT's tokens; glow strength .567 = the candle's α .34 over MOODLIGHT's .30 (× 2 rule).
+     */
+    val CANDLE_LOOK = ThemeEdit(
+        bg = listOf(0xFF080504), glow = 0xFFFF7A2E, glowStrength = 0.567f, glowShape = kr.dot.sb.model.GlowShape.SUNSET,
+        ink = 0xFFF7E6CF, accent = 0xFFFFC070, plate = 0xFFFFCD96, plateAlpha = 0.08f, textureAmt = 0.6f, borderColor = 0x2EFFCD96,
+    )
+    const val CANDLE_NAME = "촛불"
+
+    /**
+     * A save whose current theme was CANDLE (now MOODLIGHT + its edit): that look is also kept as the 내 테마 "촛불"
+     * (another name when taken by a different look) and marked as where the look came from.
+     */
+    fun candle(c: AppConfig): AppConfig {
+        val e = c.themeEdits[c.theme] ?: ThemeEdit()
+        val m = c.myThemes.firstOrNull { it.base == c.theme && it.edit == e }
+            ?: MyTheme(if (c.myThemes.none { it.name == CANDLE_NAME }) CANDLE_NAME else nextMyThemeName(c.myThemes), c.theme, e)
+        return c.copy(myThemes = if (m in c.myThemes) c.myThemes else c.myThemes + m, customFrom = m.name)
+    }
+
+    /**
+     * A save whose current theme was FLIP (now IPHONE): FLIP drew the DIGITAL clock as split-flap tiles, on the clocks
+     * page and in board cards. The FLIP face draws the same tiles, so DIGITAL becomes FLIP wherever it is the face:
+     * 내 시계, each board's clock face, and per-card faces. Clock style edits stay on their face.
+     */
+    fun flip(c: AppConfig): AppConfig {
+        fun f(x: FaceId?) = if (x == FaceId.DIGITAL) FaceId.FLIP else x
+        fun opts(m: Map<String, kr.dot.sb.model.SlotOptions>, board: FaceId?) = m.mapValues { (_, o) -> o.copy(face = f(o.face)?.takeIf { it != board }) }
+        return c.copy(
+            myClocks = c.myClocks.map { f(it)!! }.distinct(),
+            boards = c.boards.map { b -> val face = f(b.clockFace)!!; b.copy(clockFace = face, options = opts(b.options, face)) },
+            widgetOptions = opts(c.widgetOptions, null),
+        )
+    }
+
     /** Stored `myClocks`: missing = [OLD_CLOCKS]; unknown ids and repeats dropped; nothing left = [fresh]. */
     fun myClocks(a: JSONArray?, fresh: List<FaceId>): List<FaceId> {
         if (a == null) return OLD_CLOCKS

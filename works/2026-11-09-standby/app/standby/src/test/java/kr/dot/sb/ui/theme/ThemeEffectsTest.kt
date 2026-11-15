@@ -54,39 +54,41 @@ class ThemeEffectsTest {
     }
 
     @Test fun twinUsesTheFirstColourEvenWhenTheThemeHasASecond() {
-        val two = ThemeTokens.CANDLE.copy(bg = ThemeTokens.CANDLE.bg.copy(glow2 = Color(0xFFFFD27A), glow2At = Offset(.5f, 1f)))
-        val t = two.with(ThemeEdit(glowShape = GlowShape.TWIN))
+        val two = ThemeTokens.MOODLIGHT.copy(bg = ThemeTokens.MOODLIGHT.bg.copy(glow2 = Color(0xFFFFD27A), glow2At = Offset(.5f, 1f)))
+        val t = two.with(ThemeEdit(glowShape = GlowShape.TWIN, glowAt = 0.25f to 0.5f))
         assertNull(t.bg.glow2)
-        assertEquals(Offset(0.5f, 1f - 1.15f), t.bg.glow2At)
+        assertEquals(Offset(0.75f, 0.5f), t.bg.glow2At)
         // untouched shape keeps it
         assertEquals(Color(0xFFFFD27A), two.with(ThemeEdit(accent = 0xFF30CEDA)).bg.glow2)
     }
 
     @Test fun clearPlateThemesGetAVisiblePlate() {
-        for (tk in listOf(ThemeTokens.PAPER, ThemeTokens.NEON, ThemeTokens.TERMINAL)) {
+        for (tk in listOf(ThemeTokens.DAYPAPER, ThemeTokens.NEON, ThemeTokens.TERMINAL)) {
             val fill = tk.with(ThemeEdit(plateStyle = PlateStyle.FILL))
-            near(fill.plate, Hsl.shift(tk.bg.base, 0.06f).copy(alpha = 0.85f))
+            near(fill.plate, Hsl.shift(tk.bg.base, if (tk.light) -0.06f else 0.06f).copy(alpha = 0.85f))
             assertEquals(0.45f, tk.with(ThemeEdit(plateStyle = PlateStyle.GLASS)).plate.alpha, 0.001f)
             // the edit's own colour and 진하기 win
             val own = tk.with(ThemeEdit(plateStyle = PlateStyle.FILL, plate = 0xFF336699, plateAlpha = 0.5f))
             near(own.plate, Color(0xFF336699).copy(alpha = 0.5f))
         }
-        // CANDLE's faint FILL plate is its look: unchanged
-        val candle = ThemeTokens.CANDLE.with(ThemeEdit(plateStyle = PlateStyle.FILL))
-        assertEquals(ThemeTokens.CANDLE.plate, candle.plate)
+        // a theme with its own plate (MOODLIGHT glass) keeps it
+        assertEquals(ThemeTokens.MOODLIGHT.plate, ThemeTokens.MOODLIGHT.with(ThemeEdit(plateStyle = PlateStyle.FILL)).plate)
         // RULE/OUTLINE picked keep the plate as it was
         assertEquals(ThemeTokens.NEON.plate, ThemeTokens.NEON.with(ThemeEdit(plateStyle = PlateStyle.RULE)).plate)
     }
 
     @Test fun textGlowFollowsTheDrawnPlateStyle() {
-        // NEON's own halo, no text shadow
+        // NEON's own halo and its own weak card glow (Part D); TERMINAL (RULE) only the card glow
         assertEquals(1f, ThemeTokens.NEON.haloAmt, 0f)
-        assertNull(ThemeTokens.NEON.textShadow)
+        assertEquals(0.3f, ThemeTokens.NEON.textShadow!!, 0f)
         assertEquals(0f, ThemeTokens.TERMINAL.haloAmt, 0f)
-        // set: halo at 2 x g on OUTLINE whatever the digit style
+        assertEquals(0.3f, ThemeTokens.TERMINAL.textShadow!!, 0f)
+        // set: halo at 2 x g on OUTLINE whatever the digit style, and the set value replaces the own card glow
         assertEquals(1f, ThemeTokens.NEON.with(ThemeEdit(textGlow = 0.5f)).haloAmt, 1e-4f)
-        assertEquals(0.6f, ThemeTokens.TERMINAL.with(ThemeEdit(textGlow = 0.3f)).haloAmt, 1e-4f)
-        assertNull(ThemeTokens.TERMINAL.with(ThemeEdit(textGlow = 0.3f)).textShadow)
+        assertNull(ThemeTokens.NEON.with(ThemeEdit(textGlow = 0.5f)).textShadow)
+        val termOutline = ThemeTokens.TERMINAL.with(ThemeEdit(plateStyle = PlateStyle.OUTLINE, textGlow = 0.3f))
+        assertEquals(0.6f, termOutline.haloAmt, 1e-4f)
+        assertNull(termOutline.textShadow)
         assertEquals(0.8f, ThemeTokens.IPHONE.with(ThemeEdit(plateStyle = PlateStyle.OUTLINE, textGlow = 0.4f)).haloAmt, 1e-4f)
         // NEON on 판: a text shadow, no halo
         val neonFill = ThemeTokens.NEON.with(ThemeEdit(plateStyle = PlateStyle.FILL, textGlow = 0.5f))

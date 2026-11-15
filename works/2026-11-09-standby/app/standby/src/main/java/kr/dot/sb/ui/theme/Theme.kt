@@ -21,7 +21,7 @@ import kr.dot.sb.model.ThemeEdit
 import java.time.LocalTime
 
 /*
- * Theme system (r9): ten themes, one body per card/surface. Everything that differs between themes is a token
+ * Theme system (r9; r13 Part D: seven themes), one body per card/surface. Everything that differs between themes is a token
  * ([ThemeTokens]: colours, plates, digit font, radius); cards read colours from [Ink] and never branch on [Theme].
  * Adding a theme = one more [ThemeTokens] value and one `r9(...)` line in [Themes].
  */
@@ -52,9 +52,9 @@ class StandbyTheme(
     /** [weight] with the token text weight (Pretendard only). */
     fun cardWeight(weight: Int): Int = cardFontWeight(tokens.cardFont, tokens.textWeight, weight)
     val cardCap: Float get() = tokens.cardFont.cap
-    /** Widget numerals ("9", "7°", "20%", "D-10"): digit runs inside mixed text use it too. */
-    val numerals: FontFamily get() = Fonts.rounded
-    val numeralsCap: Float get() = 0.73f
+    /** Widget numerals ("9", "7°", "20%", "D-10"): digit runs inside mixed text use it too (TERMINAL: its mono). */
+    val numerals: FontFamily get() = tokens.latinFont ?: Fonts.rounded
+    val numeralsCap: Float get() = if (tokens.latinFont != null) tokens.digitCap else 0.73f
     val ramp: Ramp get() = Ramp.IPHONE
     /** Smallest text on a StandBy surface as a fraction of the screen short side. */
     val minText: Float get() = 0.038f
@@ -105,13 +105,10 @@ object Themes {
     fun edited(base: StandbyTheme, tk: ThemeTokens, still: ThemeTokens = tk): StandbyTheme = StandbyTheme(base.id, tk, defaults(still))
 
     val IPHONE = r9(Theme.IPHONE, ThemeTokens.IPHONE)
-    val PAPER = r9(Theme.PAPER, ThemeTokens.PAPER)
-    val MOODLIGHT = r9(Theme.MOODLIGHT, ThemeTokens.MOODLIGHT)
-    val CANDLE = r9(Theme.CANDLE, ThemeTokens.CANDLE)
-    val FLIP = r9(Theme.FLIP, ThemeTokens.FLIP)
-    val SKY = r9(Theme.SKY, ThemeTokens.SKY)
     val DAYPAPER = r9(Theme.DAYPAPER, ThemeTokens.DAYPAPER)
     val RADIO = r9(Theme.RADIO, ThemeTokens.RADIO)
+    val MOODLIGHT = r9(Theme.MOODLIGHT, ThemeTokens.MOODLIGHT)
+    val SKY = r9(Theme.SKY, ThemeTokens.SKY)
     val NEON = r9(Theme.NEON, ThemeTokens.NEON)
     val TERMINAL = r9(Theme.TERMINAL, ThemeTokens.TERMINAL)
 
@@ -131,13 +128,10 @@ object Themes {
 
     fun of(t: Theme): StandbyTheme = when (t) {
         Theme.IPHONE -> IPHONE
-        Theme.PAPER -> PAPER
-        Theme.MOODLIGHT -> MOODLIGHT
-        Theme.CANDLE -> CANDLE
-        Theme.FLIP -> FLIP
-        Theme.SKY -> SKY
         Theme.DAYPAPER -> DAYPAPER
         Theme.RADIO -> RADIO
+        Theme.MOODLIGHT -> MOODLIGHT
+        Theme.SKY -> SKY
         Theme.NEON -> NEON
         Theme.TERMINAL -> TERMINAL
     }

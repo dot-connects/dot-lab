@@ -110,7 +110,7 @@ data class UndoSlot(val has: Boolean, val theme: Theme = Theme.IPHONE, val edit:
 object ThemeEditor {
     /** Pages for the light themes (종이, 라디오). */
     private val LIGHT_BG = listOf(0xFFF3EEE4, 0xFFE9E2D2, 0xFFD9D3C7, 0xFFEDE6F0, 0xFFE3ECE6)
-    val TERMINAL_INKS = listOf("초록" to 0xFF59FF7A, "호박" to 0xFFFFB000, "흰색" to 0xFFE8E8E8)
+    val TERMINAL_INKS = listOf("초록" to 0xFF7CF7A0, "호박" to 0xFFFFB000, "흰색" to 0xFFE8E8E8)
 
     internal fun Color.long(): Long = toArgb().toLong() and 0xFFFFFFFFL
     private fun opaque(c: Color) = c.copy(alpha = 1f).long()
@@ -135,24 +135,18 @@ object ThemeEditor {
         val glow = tk.bg.glow?.let { opaque(it) }
         return when (theme) {
             Theme.IPHONE -> listOf(bg("배경 색"), colour(EditField.PLATE, "카드 색", plates), alpha("카드 진하기"), radius, accent("강조 색"), ink("글자 색"))
-            Theme.PAPER -> listOf(bg("종이 색"), ink("잉크 색"), colour(EditField.RULE, "구분선 색", with(tk.ink.long(), sw)), accent("강조 색"))
             Theme.MOODLIGHT -> listOf(
                 bg("배경"), colour(EditField.GLOW, "불빛 색", with(glow!!, sw)), Control.Slider(EditField.GLOW_STRENGTH, "세기", 0f..1f),
                 Control.GlowPad(), Control.Shape(), Control.Flow(), Control.CardStyle(listOf(PlateStyle.FILL, PlateStyle.GLASS, PlateStyle.OUTLINE)),
                 alpha("진하기"), radius, accent("강조"), ink("글자"),
             )
-            Theme.CANDLE -> listOf(
-                bg("배경"), colour(EditField.GLOW, "불꽃 빛 색", with(glow!!, sw)), Control.Slider(EditField.GLOW_STRENGTH, "세기", 0f..1f),
-                Control.Flow(), alpha("카드 진하기"), accent("강조"), ink("글자"),
-            )
-            Theme.FLIP -> listOf(bg("배경"), colour(EditField.PLATE, "플레이트 색", plates), accent("숫자 색"), ink("글자 색"), radius)
             Theme.SKY -> listOf(
                 colour(EditField.SKY_TOP, "하늘 위", with(tk.bg.stops[0].long(), BG_SWATCHES)),
                 colour(EditField.SKY_MID, "하늘 가운데", with(tk.bg.stops[1].long(), BG_SWATCHES)),
                 colour(EditField.SKY_BOTTOM, "하늘 아래", with(tk.bg.stops[2].long(), BG_SWATCHES)),
                 Control.Flow(), alpha("카드 유리 진하기"), accent("강조"), ink("글자"),
             )
-            Theme.DAYPAPER -> listOf(bg("종이 색"), ink("잉크 색"), colour(EditField.PLATE, "카드 색", plates), accent("강조"))
+            Theme.DAYPAPER -> listOf(bg("종이 색"), ink("잉크 색"), colour(EditField.RULE, "구분선 색", with(opaque(tk.rule ?: tk.ink), sw)), accent("강조"))
             Theme.RADIO -> listOf(bg("본체 색"), colour(EditField.PLATE, "판 색", plates), accent("다이얼 색"), ink("글자"))
             Theme.NEON -> listOf(colour(EditField.INK, "네온관 색", with(tk.ink.long(), sw)), accent("두 번째 네온"), Control.Slider(EditField.TEXT_GLOW, "빛 번짐 세기", 0f..1f))
             Theme.TERMINAL -> listOf(

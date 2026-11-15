@@ -32,7 +32,7 @@ class ThemeEditRulesTest {
     }
 
     @Test fun lightPlateUnderLightInkWarns() {
-        assertTrue(Contrast.Warning.INK in warn(Theme.FLIP, ThemeEdit(plate = 0xFFE0E0E0)))
+        assertTrue(Contrast.Warning.INK in warn(Theme.IPHONE, ThemeEdit(plate = 0xFFE0E0E0)))
     }
 
     // ---- A4 flow

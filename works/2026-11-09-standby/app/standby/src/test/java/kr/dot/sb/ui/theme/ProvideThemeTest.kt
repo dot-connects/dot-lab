@@ -26,10 +26,10 @@ class ProvideThemeTest {
 
     @Test
     fun rememberedStateSurvivesThemeSwitches() {
-        var config by mutableStateOf(AppConfig(theme = Theme.PAPER))
+        var config by mutableStateOf(AppConfig(theme = Theme.DAYPAPER))
         val seen = mutableListOf<Any>()
         rule.setContent { ProvideTheme(config) { LocalTheme.current; seen += remember { Any() } } }
-        for (th in listOf(Theme.IPHONE, Theme.NEON, Theme.IPHONE, Theme.PAPER)) {
+        for (th in listOf(Theme.IPHONE, Theme.NEON, Theme.IPHONE, Theme.DAYPAPER)) {
             config = config.withTheme(th)
             rule.waitForIdle()
         }

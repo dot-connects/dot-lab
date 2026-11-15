@@ -51,12 +51,12 @@ enum class Numerals(val ko: String) {
     fun convert(s: String): String = s
 }
 /**
- * The look of every StandBy surface. r5: A = iPhone (default), B = newspaper front page, C = mood lamp; r9 adds seven
- * (spec-r9 §4). [ko] is for logs and settings rows only — pickers show previews, never names.
+ * The look of every StandBy surface (plan-r13 Part D: seven, in strip order). r13 removed PAPER, CANDLE and FLIP;
+ * [kr.dot.sb.settings.ConfigCodec] reads them as DAYPAPER, MOODLIGHT (+ the candle edit) and IPHONE. [ko] is for
+ * logs and settings rows only — pickers show previews, never names.
  */
 enum class Theme(val ko: String) {
-    IPHONE("기본"), PAPER("신문 1면"), MOODLIGHT("무드등"), CANDLE("촛불"), FLIP("플립 시계"),
-    SKY("하늘"), DAYPAPER("종이"), RADIO("브라운 라디오"), NEON("네온"), TERMINAL("터미널"),
+    IPHONE("기본"), DAYPAPER("종이"), RADIO("라디오"), MOODLIGHT("무드등"), SKY("하늘"), NEON("네온"), TERMINAL("터미널"),
 }
 
 /** Board background (r9): the theme's own, or one of eight presets laid under translucent plates. */
@@ -105,14 +105,14 @@ enum class TextWeight { LIGHT, NORMAL, BOLD }
 data class ThemeEdit(
     /** 1..3 page stops (SKY: top / middle / bottom; GRADIENT needs 3, else the drawing fills them). */
     val bg: List<Long>? = null,
-    /** 무드등, 촛불: the glow colour (its alpha stays the theme's). */
+    /** 무드등: the glow colour (its alpha stays the theme's). */
     val glow: Long? = null,
     /** 0..1, 0.5 = the theme's glow (multiplier 2 × value). r12 NEON/TERMINAL used it as the halo: v11 moved that to [textGlow]. */
     val glowStrength: Float? = null,
     /** Glow centre as 0..1 of the page. */
     val glowAt: Pair<Float, Float>? = null,
     val glowShape: GlowShape? = null,
-    /** Card colour (RADIO 판, FLIP plate). */
+    /** Card colour (RADIO 판). */
     val plate: Long? = null,
     /** 구분선 색 (drawn when the card shape is RULE). */
     val rule: Long? = null,

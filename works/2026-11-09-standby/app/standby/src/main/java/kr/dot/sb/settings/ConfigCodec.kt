@@ -26,6 +26,7 @@ import kr.dot.sb.model.PAGE_WIDGETS
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.theme.Themes
+import kr.dot.sb.ui.theme.nextMyThemeName
 import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
@@ -153,18 +154,39 @@ object ConfigCodec {
         ).sanitized(theme)
     }
 
-    private fun themeEdits(o: JSONObject?): Map<Theme, ThemeEdit> = o?.let { oo ->
-        oo.keys().asSequence().mapNotNull { k ->
-            val th = runCatching { Theme.valueOf(k) }.getOrNull() ?: return@mapNotNull null
-            oo.optJSONObject(k)?.let { edit(it, th) }?.takeUnless { it.isEmpty }?.let { th to it }
-        }.toMap()
-    } ?: emptyMap()
+    /** A stored theme name, removed ones read as their replacement (r13 Part D, [Migrations.RENAMED]); unknown = null. */
+    private fun themeOf(name: String): Theme? = Migrations.RENAMED[name] ?: runCatching { Theme.valueOf(name) }.getOrNull()
+
+    /** An edit stored under theme name [name]: on CANDLE it is laid over [Migrations.CANDLE_LOOK] (its fields win). */
+    private fun storedEdit(name: String, o: JSONObject?): ThemeEdit? {
+        val th = themeOf(name) ?: return null
+        if (name != "CANDLE") return o?.let { edit(it, th) }
+        val m = edit(Migrations.CANDLE_LOOK)
+        o?.keys()?.forEach { k -> m.put(k, o.get(k)) }
+        return edit(m, th)
+    }
+
+    /**
+     * Theme edits by (mapped) theme, and the edits that lost their key to another old theme now sharing it (PAPER and
+     * DAYPAPER in a v10 save): the current theme's own entry [current] wins. A current CANDLE without an edit gets the
+     * candle look as its edit.
+     */
+    private fun themeEdits(o: JSONObject?, current: String): Pair<Map<Theme, ThemeEdit>, List<Pair<Theme, ThemeEdit>>> {
+        val names = o?.keys()?.asSequence()?.toList().orEmpty().let { if (current == "CANDLE" && "CANDLE" !in it) it + "CANDLE" else it }
+        val read = names.mapNotNull { k ->
+            val th = themeOf(k) ?: return@mapNotNull null
+            storedEdit(k, o?.optJSONObject(k))?.takeUnless { it.isEmpty }?.let { k to (th to it) }
+        }.sortedBy { it.first != current }.map { it.second }
+        val kept = read.distinctBy { it.first }
+        return kept.toMap() to (read - kept.toSet())
+    }
 
     private fun myThemes(a: JSONArray?): List<MyTheme> = a?.let {
         (0 until a.length()).mapNotNull { i ->
             val o = a.optJSONObject(i) ?: return@mapNotNull null
-            val base = runCatching { Theme.valueOf(o.getString("base")) }.getOrNull() ?: return@mapNotNull null
-            MyTheme(o.optString("name").trim().ifEmpty { "내 테마" }, base, o.optJSONObject("edit")?.let { edit(it, base) } ?: ThemeEdit())
+            val name = o.optString("base")
+            val base = themeOf(name) ?: return@mapNotNull null
+            MyTheme(o.optString("name").trim().ifEmpty { "내 테마" }, base, storedEdit(name, o.optJSONObject("edit")) ?: ThemeEdit())
         }
     } ?: emptyList()
 
@@ -176,8 +198,10 @@ object ConfigCodec {
 
     private fun fromJson(o: JSONObject): AppConfig {
         val d = AppConfig()
-        val theme = enumOf(o, "theme", d.theme)
+        val storedTheme = o.optString("theme")
+        val theme = themeOf(storedTheme) ?: d.theme
         val v = o.optInt("v")
+        val (edits, bumped) = themeEdits(o.optJSONObject("themeEdits"), storedTheme)
         // r8 = before the r9 schema; stays on 9 whatever VERSION becomes (a v9 edit equal to the r8 look is an edit)
         val (read, migratedAnalog) = Migrations.styles(o.optJSONObject("styles"), theme, r8 = v < 9) { so, base -> style(so, base) }
         // r10 dropped the width slider: every face draws at its default width
@@ -243,12 +267,16 @@ object ConfigCodec {
             pagesOff = strings(o, "pagesOff")?.filter { it == PAGE_WIDGETS || it == PAGE_PHOTOS }?.toSet() ?: d.pagesOff,
             photoSource = enumOf(o, "photoSource", d.photoSource),
             photoFolders = strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
-            themeEdits = themeEdits(o.optJSONObject("themeEdits")),
-            myThemes = myThemes(o.optJSONArray("myThemes")),
+            themeEdits = edits,
+            myThemes = bumped.fold(myThemes(o.optJSONArray("myThemes"))) { l, (th, e) -> l + MyTheme(nextMyThemeName(l), th, e) },
         ).let { c ->
+            // r13 Part D: a removed current theme keeps its look ([Migrations.candle] first, so 촛불 is the 내 테마 v10 finds)
+            if (storedTheme == "CANDLE") Migrations.candle(c) else c
+        }.let { c ->
             // a customFrom naming no 내 테마 is dropped
-            if (v < 11) Migrations.looks(c) else c.copy(customFrom = o.optString("customFrom").takeIf { n -> c.myThemes.any { it.name == n } })
-        }
+            if (v < 11) Migrations.looks(c)
+            else c.copy(customFrom = o.optString("customFrom").takeIf { n -> c.myThemes.any { it.name == n } } ?: c.customFrom)
+        }.let { c -> if (storedTheme == "FLIP") Migrations.flip(c) else c }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */

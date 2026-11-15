@@ -32,7 +32,7 @@ class ThemeEditCodecTest {
         val board = d.boards[0].let { it.copy(options = it.options + ("0:0" to SlotOptions(plate = 0xFFFFD74B))) }
         return d.copy(
             boards = listOf(board) + d.boards.drop(1),
-            themeEdits = mapOf(Theme.MOODLIGHT to full, Theme.PAPER to ThemeEdit(rule = 0xFFD8B46A, ink = 0xFFECE4D4)),
+            themeEdits = mapOf(Theme.MOODLIGHT to full, Theme.DAYPAPER to ThemeEdit(rule = 0xFFD8B46A, ink = 0xFFECE4D4)),
             myThemes = listOf(MyTheme("내 테마 1", Theme.MOODLIGHT, full), MyTheme("밤바다", Theme.SKY, ThemeEdit(bg = listOf(0xFF001020, 0xFF102040, 0xFF301830)))),
         )
     }
@@ -73,12 +73,12 @@ class ThemeEditCodecTest {
         assertNull(m.glowShape)                       // unknown name
         assertEquals(PlateStyle.RULE, m.plateStyle)   // r13: every card shape on every theme
         assertEquals(0xFFFFD74B, m.accent)
-        assertEquals(ThemeEdit(plate = 4278190080, rule = 4292392042), c.themeEdits[Theme.PAPER])   // r13: plate on PAPER too
+        assertEquals(ThemeEdit(plate = 4278190080, rule = 4292392042), c.themeEdits[Theme.DAYPAPER])   // r13: plate on a RULE theme too; PAPER reads as DAYPAPER
         assertFalse(Theme.NEON in c.themeEdits)       // malformed entry dropped alone
         assertFalse(Theme.SKY in c.themeEdits)        // became empty: removed
-        assertFalse(Theme.FLIP in c.themeEdits)       // a bad stop drops the list, then the edit is empty
+        assertFalse(Theme.IPHONE in c.themeEdits)       // a bad stop drops the list, then the edit is empty
         assertEquals(listOf(0xFF000000, 0xFF111111), ThemeEdit(bg = listOf(0xFF000000, 0xFF111111)).sanitized(Theme.SKY).bg)   // r13: any stop count
-        assertEquals(listOf(MyTheme("ok", Theme.SKY, ThemeEdit(radius = 0.1f)), MyTheme("내 테마", Theme.FLIP, ThemeEdit())), c.myThemes)
+        assertEquals(listOf(MyTheme("ok", Theme.SKY, ThemeEdit(radius = 0.1f)), MyTheme("내 테마", Theme.IPHONE, ThemeEdit())), c.myThemes)
         // a sanitised config re-encodes to itself
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
     }
@@ -103,9 +103,9 @@ class ThemeEditCodecTest {
     )
 
     @Test fun r13FieldsRoundTrip() {
-        val c = AppConfig(theme = Theme.PAPER, themeEdits = mapOf(Theme.PAPER to r13), myThemes = listOf(MyTheme("a", Theme.PAPER, r13)), customFrom = "a")
+        val c = AppConfig(theme = Theme.DAYPAPER, themeEdits = mapOf(Theme.DAYPAPER to r13), myThemes = listOf(MyTheme("a", Theme.DAYPAPER, r13)), customFrom = "a")
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
-        assertEquals(r13, ConfigCodec.decodeEdit(ConfigCodec.encodeEdit(r13), Theme.PAPER))
+        assertEquals(r13, ConfigCodec.decodeEdit(ConfigCodec.encodeEdit(r13), Theme.DAYPAPER))
         // a customFrom naming no 내 테마 is dropped
         assertNull(ConfigCodec.decode(ConfigCodec.encode(c.copy(customFrom = "gone"))).customFrom)
     }
@@ -115,7 +115,7 @@ class ThemeEditCodecTest {
             put("themeEdits", JSONObject("""{"PAPER": {"bgKind": "STRIPES", "border": 7, "borderColor": "x", "bgTexture": "WOOD", "cardTexture": null,
                 "textureAmt": "NaN", "textFont": "COMIC", "textWeight": [1], "textGlow": {"a": 1}, "accent": 4294956875}}"""))
         }.toString()
-        assertEquals(mapOf(Theme.PAPER to ThemeEdit(accent = 4294956875)), ConfigCodec.decode(json).themeEdits)
+        assertEquals(mapOf(Theme.DAYPAPER to ThemeEdit(accent = 4294956875)), ConfigCodec.decode(json).themeEdits)
     }
 
     @Test fun r13Clamps() {

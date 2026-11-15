@@ -97,9 +97,14 @@ internal class Look(
  * reused for every minute, so autosize never re-measures on a time change (design-system §2.3.1).
  * Hero digits are proportional ([tnum] false: a "1" is narrow, like iPhone); board numerals keep `tnum`.
  */
-internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, widthPct: Int, val numerals: Numerals, tnum: Boolean = false) {
+internal class TimePainter(
+    tf: Typeface, weight: Int, private val font: FontId, widthPct: Int, val numerals: Numerals, tnum: Boolean = false,
+    /** Letter spacing in em (the theme font's digit tracking, plan-r13 Part D RADIO). */
+    tracking: Float = 0f,
+) {
     val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         typeface = tf
+        letterSpacing = tracking
         fontVariationSettings = "'wght' $weight"
         // "StandBy 디지털" is Sofia Sans Extra Condensed (r5): already iPhone-narrow, no artificial squeeze
         textScaleX = widthPct / 100f
@@ -237,7 +242,8 @@ internal class TimePainter(tf: Typeface, weight: Int, private val font: FontId, 
 @Composable
 internal fun rememberTimePainter(style: ClockStyle, weight: Int = style.weight, tnum: Boolean = false): TimePainter {
     val tf = rememberClockTypeface(style.font, weight)
-    return remember(tf, weight, style.font, style.widthPct, style.numerals, tnum) { TimePainter(tf, weight, style.font, style.widthPct, style.numerals, tnum) }
+    val tr = if (style.font == FontId.THEME) LocalTheme.current.tokens.digitTracking else 0f
+    return remember(tf, weight, style.font, style.widthPct, style.numerals, tnum, tr) { TimePainter(tf, weight, style.font, style.widthPct, style.numerals, tnum, tr) }
 }
 
 /**

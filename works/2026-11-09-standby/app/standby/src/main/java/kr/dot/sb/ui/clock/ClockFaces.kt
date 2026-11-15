@@ -48,7 +48,6 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Background
 import kr.dot.sb.model.Effect
 import kr.dot.sb.model.FaceId
-import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTextScale
@@ -79,8 +78,7 @@ fun ClockFace(
     val m = modifier.semantics { contentDescription = "${data.ampm} ${data.h}:${data.m}" }
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
-            FaceId.DIGITAL -> if (!inSlot && th.id == Theme.FLIP && ink.night < 0.5f) FlipFace(st, d, ink, inSlot, mod)
-                else DigitalFace(st, d, ink, inSlot, mod)
+            FaceId.DIGITAL -> DigitalFace(st, d, ink, inSlot, mod)
             FaceId.FLIP -> FlipFace(st, d, ink, inSlot, mod)
             FaceId.LED -> SevenSegmentFace(st, d, ink, inSlot, false, mod)
             FaceId.LCD -> SevenSegmentFace(st, d, ink, inSlot, true, mod)
