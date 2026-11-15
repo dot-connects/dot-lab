@@ -166,6 +166,9 @@ Theme strip, TopPanel chips, docs and shots drop the three. TDD for the mapping.
 6. 최근 켜짐 기록 → 앱 정보 › 문제 해결. FULL_SCREEN line once in 알람. World-city chip removes only via ✕.
 7. Home NavRow values (페이지 구성 "페이지 N개 · 처음: 시계"; 테마와 배경 = 내 테마 name or theme; 앱 정보 = version);
    value one line with ellipsis, never squeezing the title. Preview page-name row → that page's settings route.
+9. Card picker (operator 11-15 "시계가 너무 많아"): one 시계 tile instead of one per 내 시계 face; the placed clock card
+   swipes through 내 시계 as it already does (implementer confirms the face = null / board face path; old per-face picks
+   on existing boards keep working). Widget setup: see the widget research result (added to Part B when decided).
 8. 처음 보이는 페이지 → sheet. Touch targets ≥ 48 dp (Segmented, ChipFlow, ▲▼✕, colour dots). Dead `Routes.CARD_INFO`
    removed with its two shot tests (SettingsShots.kt).
 
