@@ -122,7 +122,10 @@ class HostActions(
     override fun liveToggle() = holder.liveToggle()
     override fun retryFeeds() = holder.retryFeeds()
     override fun openSettings(section: String?) = host.unlockThen {
-        ctx.startActivity(Intent(ctx, SettingsActivity::class.java).putExtra("section", section).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        // a widget long press gets its own short-lived settings task: an open settings task would be brought forward
+        // as it was (stale menu), and finish() closes this one straight back to StandBy
+        val own = if (section?.startsWith("widget:") == true) Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS else 0
+        ctx.startActivity(Intent(ctx, SettingsActivity::class.java).putExtra("section", section).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or own))
     }
     override fun userActivity() = holder.touch()
     override fun pageChanged(page: Int) = holder.onPage(page)

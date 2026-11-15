@@ -351,10 +351,10 @@ internal fun PhotosTime(style: ClockStyle, d: FaceData, ink: Ink, modifier: Modi
 @Composable
 internal fun StyledTimeImpl(
     text: String, style: ClockStyle, ink: Ink, modifier: Modifier, color: Color, effects: Boolean, widest: String?,
-    align: Alignment.Horizontal,
+    align: Alignment.Horizontal, glow: Float = 1f,
 ) {
     val p = rememberTimePainter(style, tnum = true)
-    val look = Look.of(style, ink, base = color, effects = effects)
+    val look = Look.of(style, ink, base = color, effects = effects, glow = glow)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         val wEm = p.widestEm(widest ?: text)

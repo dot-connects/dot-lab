@@ -178,11 +178,13 @@ internal fun Txt(
     tracking: Float = 0f,
     leading: Float = 1.15f,
 ) {
-    // r13: M PLUS digits only in the Pretendard card font (or an explicit family); other card fonts draw their own digits.
+    // r13: M PLUS digits only in the Pretendard card font (or an explicit family); 명조/둥근 고딕 draw their own digits.
     // A theme Latin font (TERMINAL mono) takes every Latin/digit run of Pretendard card text, num or not.
     val tk = LocalTheme.current.tokens
     val latin = family == null && tk.latinFont != null && tk.cardFont == CardFont.GOTHIC
-    val spans = latin || num && (family != null || tk.cardFont == CardFont.GOTHIC)
+    // 손글씨 (Nanum Pen) draws Latin/digits at about half Pretendard's height: they go to the numeral font (review r13 M4)
+    val pen = family == null && tk.cardFont == CardFont.PEN
+    val spans = latin || pen || num && (family != null || tk.cardFont == CardFont.GOTHIC)
     Txt(if (spans) numSpans(text, LocalTheme.current.numerals, weight) else AnnotatedString(text), size, color, modifier, weight, family, cap, lines, align, tnum, maxW, maxCapH, tracking, leading)
 }
 

@@ -75,15 +75,9 @@ class SettingsActivity : ComponentActivity() {
             widgetAsk.value = b.getString("widgetAsk")
             widgetMenu.value = b.getString("widgetMenu")
             configuring = b.getBoolean("configuring")
+            widgetOptions = b.getBundle("widgetOptions")
         }
-        if (savedInstanceState == null && fromBoard) {
-            // "widget:<board>:<slot>:<index>" -> "<board>|<slot>:<index>"
-            val parts = intent.getStringExtra("section").orEmpty().split(':')
-            if (parts.size == 4) {
-                val t = "${parts[1]}|${parts[2]}:${parts[3]}"
-                if (widgetIdOf(ConfigStore.flow(this).value, t) == null) widgetAsk.value = t else widgetMenu.value = t
-            }
-        }
+        if (savedInstanceState == null) openWidgetSection()
         setContent {
             val config by ConfigStore.flow(this).collectAsState()
             // app start and every toggle: the job exists iff the option is on
@@ -108,6 +102,8 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
             val route = stack.last()
+            // the walk is offered once: shown = done, even when the user backs out of 권한 (review r13 M2)
+            if (route == Routes.PERMS && walkOffer.value) androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { walkDoneFile().createNewFile() } }
             LiveLux(route == Routes.NIGHT)
             val env = SettingsEnv(
                 foldable = Perms.isFoldable(this),
@@ -142,6 +138,23 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        openWidgetSection()
+    }
+
+    /** A widget long press ("widget:<board>:<slot>:<index>" -> "<board>|<slot>:<index>"): 위젯 고르기 or the card's menu. */
+    private fun openWidgetSection() {
+        if (!fromBoard) return
+        widgetAsk.value = null
+        widgetMenu.value = null
+        val parts = intent.getStringExtra("section").orEmpty().split(':')
+        if (parts.size != 4) return
+        val t = "${parts[1]}|${parts[2]}:${parts[3]}"
+        if (widgetIdOf(ConfigStore.flow(this).value, t) == null) widgetAsk.value = t else widgetMenu.value = t
+    }
+
     override fun onResume() {
         super.onResume()
         granted.value = Perms.granted(this)
@@ -161,6 +174,7 @@ class SettingsActivity : ComponentActivity() {
         outState.putString("widgetAsk", widgetAsk.value)
         outState.putString("widgetMenu", widgetMenu.value)
         outState.putBoolean("configuring", configuring)
+        outState.putBundle("widgetOptions", widgetOptions)
     }
 
     /** Every settings edit: widget ids that left the config (card, board or slot removed, widget swapped) are released (D6). */
@@ -247,8 +261,7 @@ class SettingsActivity : ComponentActivity() {
         val (boardId, key) = target.split('|').let { it[0] to it.getOrElse(1) { "0:0" } }
         val layout = config.boards.firstOrNull { it.id == boardId }?.layout ?: Layout.ONE
         val slot = key.substringBefore(':').toIntOrNull() ?: 0
-        val dev = PreviewDevice.of(Perms.phone(this), inner = false)
-        val slots = remember(layout, slot) { WidgetFit.slotSizes(layout, slot, dev.w.toFloat(), dev.h.toFloat(), dev.cover) }
+        val slots = remember(layout, slot) { slotScreen().let { (w, h, cover) -> WidgetFit.slotSizes(layout, slot, w, h, cover) } }
         val catalog = remember(target) { WidgetCatalog.load(this) }
         WidgetPickerSheet(catalog.choices, slots, catalog.art, onDismiss = { widgetAsk.value = null; if (fromBoard) finish() }) { c ->
             catalog.infos[c.key]?.let { bind(it, target, slots) }
@@ -269,6 +282,23 @@ class SettingsActivity : ComponentActivity() {
         )
     }
 
+    /**
+     * The screen (dp) the slot sizes are measured on: this window when it is the screen StandBy runs on (opened from
+     * StandBy, or a bar phone's only screen); else the preset main screen (a Fold's settings may sit on the inner one).
+     */
+    private fun slotScreen(): Triple<Float, Float, Boolean> {
+        val phone = Perms.phone(this)
+        if (fromBoard || phone == Phone.BAR) {
+            val b = windowManager.currentWindowMetrics.bounds
+            val d = resources.displayMetrics.density
+            val w = b.width() / d; val h = b.height() / d
+            // a Fold's cover screen (the inner one is near 700 dp on its short side)
+            return Triple(w, h, phone == Phone.FOLD && minOf(w, h) < 600f)
+        }
+        val dev = PreviewDevice.of(phone, inner = false)
+        return Triple(dev.w.toFloat(), dev.h.toFloat(), dev.cover)
+    }
+
     /** The slot's portrait and landscape sizes for the provider (min/max of both, and the exact list on 12+). */
     private fun sizeOptions(slots: List<WidgetFit.Size>) = Bundle().apply {
         putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, slots.minOf { it.w }.toInt())
@@ -279,6 +309,8 @@ class SettingsActivity : ComponentActivity() {
     }
 
     private fun bind(info: AppWidgetProviderInfo, target: String, slots: List<WidgetFit.Size>) {
+        // a second tile tap while the first id is still being bound or configured
+        if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) return
         val am = AppWidgetManager.getInstance(this)
         widgetId = WidgetHost.get(this).allocateAppWidgetId()
         widgetTarget = target
@@ -298,20 +330,29 @@ class SettingsActivity : ComponentActivity() {
     private fun bound() {
         val am = AppWidgetManager.getInstance(this)
         widgetOptions?.let { runCatching { am.updateAppWidgetOptions(widgetId, it) } }
-        val info = am.getAppWidgetInfo(widgetId)
-        val f = info?.widgetFeatures ?: 0
-        val must = info != null && WidgetFit.needsConfigure(
+        val info = am.getAppWidgetInfo(widgetId) ?: return widgetCancelled()
+        val f = info.widgetFeatures
+        val must = WidgetFit.needsConfigure(
             info.configure != null, f and AppWidgetProviderInfo.WIDGET_FEATURE_CONFIGURATION_OPTIONAL != 0, f and AppWidgetProviderInfo.WIDGET_FEATURE_RECONFIGURABLE != 0,
         )
         if (!must) return placed()
-        runCatching { WidgetHost.get(this).startAppWidgetConfigureActivityForResult(this, widgetId, 0, REQ_CONFIGURE, null) }.onFailure { placed() }
+        // a required set-up that cannot open leaves a widget that would show nothing: cancel instead
+        runCatching { WidgetHost.get(this).startAppWidgetConfigureActivityForResult(this, widgetId, 0, REQ_CONFIGURE, null) }.onFailure {
+            widgetCancelled()
+            Toast.makeText(this, "위젯 설정을 열 수 없어요", Toast.LENGTH_SHORT).show()
+        }
     }
 
     /** The new id goes to its card (the old one is released by [update]); the sheets close, and from StandBy so does this. */
     private fun placed() {
-        widgetTarget?.let { place(it, widgetId) }
+        widgetTarget?.let { t ->
+            place(t, widgetId)
+            // the card stopped being a phone widget meanwhile: the id has no home
+            if (widgetIdOf(ConfigStore.flow(this).value, t) != widgetId) WidgetHost.delete(this, widgetId)
+        }
         widgetTarget = null
         widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
+        widgetOptions = null
         widgetAsk.value = null
         if (fromBoard) finish()
     }
@@ -329,6 +370,7 @@ class SettingsActivity : ComponentActivity() {
         if (widgetId != AppWidgetManager.INVALID_APPWIDGET_ID) WidgetHost.delete(this, widgetId)
         widgetId = AppWidgetManager.INVALID_APPWIDGET_ID
         widgetTarget = null
+        widgetOptions = null
     }
 
     /** 위젯 설정 of a placed widget: its configure screen; a cancel keeps the widget. */

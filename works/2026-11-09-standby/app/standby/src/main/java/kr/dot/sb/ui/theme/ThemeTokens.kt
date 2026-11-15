@@ -198,6 +198,8 @@ data class ThemeTokens(
     val digitTracking: Float = 0f,
     /** The theme's own card text shadow 0..1 when [textGlow] is unset (NEON, TERMINAL: weak). */
     val cardGlow: Float? = null,
+    /** Strength of the hero digits' [DigitStyle.GLOW] (blur radius and alpha): 1 = NEON's, TERMINAL a weak .5. */
+    val digitGlow: Float = 1f,
     /** Latin/digit runs of card text in this family (TERMINAL: IBM Plex Mono); null = the rounded widget numerals. */
     val latinFont: FontFamily? = null,
     /** Label rows draw a `>` prompt instead of their icon (TERMINAL). */
@@ -441,7 +443,7 @@ data class ThemeTokens(
             rgba(0x7CF7A012), PlateStyle.RULE, 0f, 0, { Fonts.plexMono }, 500, DigitStyle.GLOW, 0.698f, mono = true,
             labelIcons = true, tracking = .02f,
         ).copy(
-            bgTexture = Texture.SCANLINE, textureAmt = .7f, rule = Color(0xFF7CF7A0).copy(alpha = .5f), cardGlow = .3f,
+            bgTexture = Texture.SCANLINE, textureAmt = .7f, rule = Color(0xFF7CF7A0).copy(alpha = .5f), cardGlow = .3f, digitGlow = .5f,
             latinFont = Fonts.plexMono, prompt = true,
         )
     }

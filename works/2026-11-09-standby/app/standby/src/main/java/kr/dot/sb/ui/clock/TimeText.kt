@@ -79,15 +79,17 @@ internal class Look(
     val c2: Int,
     /** Extra soft shadow (Solar contrast floor); 0 = none. */
     val shadow: Int = 0,
+    /** [Effect.GLOW] strength: blur radius and alpha scale (ThemeTokens.digitGlow). */
+    val glow: Float = 1f,
 ) {
     companion object {
-        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true): Look {
+        fun of(style: ClockStyle, ink: Ink, base: Color = Color(style.color), base2: Color = Color(style.color2), effects: Boolean = true, glow: Float = 1f): Look {
             val night = ink.night >= 0.5f
             val fx = when {
                 !effects || night -> Effect.SOLID
                 else -> style.effect
             }
-            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb())
+            return Look(fx, ink.accent(base).toArgb(), ink.accent(base2).toArgb(), glow = glow)
         }
     }
 }
@@ -183,9 +185,10 @@ internal class TimePainter(
         paint.reset(look, gl, top, if (gr.isNaN()) x + w else gr, bottom)
         if (look.effect == Effect.GLOW) {
             // Two blurs (0.05 em full, 0.22 em at 55 %), then the crisp fill on top.
-            paint.setShadowLayer(size * 0.22f, 0f, 0f, withAlpha(look.c1, 0.55f))
+            val g = look.glow
+            paint.setShadowLayer(size * 0.22f * g, 0f, 0f, withAlpha(look.c1, 0.55f * g))
             c.drawText(s, x, baseline, paint)
-            paint.setShadowLayer(size * 0.05f, 0f, 0f, look.c1)
+            paint.setShadowLayer(size * 0.05f * g, 0f, 0f, if (g >= 1f) look.c1 else withAlpha(look.c1, g))
             c.drawText(s, x, baseline, paint)
             paint.clearShadowLayer()
         }

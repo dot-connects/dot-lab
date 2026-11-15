@@ -279,7 +279,8 @@ sealed interface Look : StripPick {
 fun AppConfig.switchLook(to: Look): AppConfig {
     val c = when (to) {
         is Look.Builtin -> withTheme(to.theme).withThemeEdit(to.theme, null).copy(customFrom = null)
-        is Look.Mine -> applyMyTheme(to.my)
+        // by name from the saved list: a guard [저장] may just have overwritten the 내 테마 being switched to
+        is Look.Mine -> applyMyTheme(myThemes.firstOrNull { it.name == to.my.name } ?: to.my)
     }
     return c.copy(themeEdits = c.themeEdits.filterKeys { it == c.theme })
 }
@@ -299,10 +300,14 @@ fun AppConfig.saveMyTheme(name: String): AppConfig {
     return copy(myThemes = if (i < 0) myThemes + m else myThemes.toMutableList().also { it[i] = m }, customFrom = name)
 }
 
-fun AppConfig.renameMyTheme(m: MyTheme, name: String): AppConfig = copy(
+/** [m] renamed to [name]; a name another 내 테마 has is refused (덮어쓰기 would later pick the wrong one). */
+fun AppConfig.renameMyTheme(m: MyTheme, name: String): AppConfig = if (myThemeNameTaken(m, name)) this else copy(
     myThemes = myThemes.toMutableList().also { l -> l.indexOf(m).takeIf { it >= 0 }?.let { i -> l[i] = m.copy(name = name) } },
     customFrom = if (customFrom == m.name) name else customFrom,
 )
+
+/** True when a 내 테마 other than [m] is called [name] (trimmed). */
+fun AppConfig.myThemeNameTaken(m: MyTheme?, name: String): Boolean = myThemes.any { it != m && it.name == name.trim() }
 
 fun AppConfig.deleteMyTheme(m: MyTheme): AppConfig = copy(
     myThemes = myThemes.toMutableList().also { it.remove(m) },

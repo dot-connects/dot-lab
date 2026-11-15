@@ -28,13 +28,19 @@ object Textures {
     /** The tile of [k] (not [Texture.NONE]), made on first use. */
     fun tile(k: Texture): Bitmap = synchronized(tiles) { tiles.getOrPut(k) { make(k) } }
 
-    /** A repeating brush of [k] at [density] (px per dp); null for [Texture.NONE]. */
+    private val brushes = HashMap<Pair<Texture, Float>, ShaderBrush>()
+
+    /** A repeating brush of [k] at [density] (px per dp), made once per pair; null for [Texture.NONE]. */
     fun brush(k: Texture, density: Float): ShaderBrush? {
         if (k == Texture.NONE) return null
-        val sh = BitmapShader(tile(k), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
-        val s = TILE_DP * density / N
-        sh.setLocalMatrix(Matrix().apply { setScale(s, s) })
-        return ShaderBrush(sh)
+        return synchronized(brushes) {
+            brushes.getOrPut(k to density) {
+                val sh = BitmapShader(tile(k), Shader.TileMode.REPEAT, Shader.TileMode.REPEAT)
+                val s = TILE_DP * density / N
+                sh.setLocalMatrix(Matrix().apply { setScale(s, s) })
+                ShaderBrush(sh)
+            }
+        }
     }
 
     private fun argb(alpha: Float, rgb: Int): Int = ((alpha.coerceIn(0f, 1f) * 255).roundToInt() shl 24) or rgb

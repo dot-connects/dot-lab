@@ -8,6 +8,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -44,7 +45,7 @@ internal fun listedCards(): List<CardType> = listOf(
 
 @Composable
 fun CardsScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
-    var city by remember { mutableStateOf(false) }
+    var city by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
         Page("카드", back) {
             Section(null, footer = "폰 위젯은 페이지에서 그 카드의 [설정]을 눌러요.") {
@@ -83,8 +84,8 @@ fun CardScreen(type: CardType, config: AppConfig, update: Update, env: SettingsE
     val title = if (type == CardType.CALENDAR) "오늘 일정 · 달력" else type.ko
     val slide = Slide(type.ko) { l -> BoardView(Board("card", type.ko, Layout.ONE, listOf(listOf(type))), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
     // D-day: the add row's date and its wheel sheet (over the page, not inside its scroll)
-    var date by remember { mutableStateOf(env.today()) }
-    var picking by remember { mutableStateOf(false) }
+    var date by rememberSaveable { mutableStateOf(env.today()) }
+    var picking by rememberSaveable { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
     Page(title, back, preview = Preview(config, listOf(slide))) {
         when (type) {

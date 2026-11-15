@@ -423,18 +423,22 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
     // one level, not keyed by theme: a start chip changes the theme and must still be undoable
     var undo by rememberSaveable(stateSaver = UndoSlot.SAVER) { mutableStateOf(UndoSlot.NONE) }
     var presses by rememberSaveable { mutableIntStateOf(0) }
-    var naming by remember { mutableStateOf<String?>(null) }
-    var guard by remember { mutableStateOf<Look?>(null) }
+    var naming by rememberSaveable { mutableStateOf<String?>(null) }
+    // the guard's target as a key (a 내 테마 by name), so the dialog survives rotation
+    var guardKey by rememberSaveable { mutableStateOf<String?>(null) }
+    val guard = guardKey?.let { k -> lookOf(k, config) }
     val cur = draft ?: saved ?: ThemeEdit()
     val drawn = remember(theme, cur) { tk.with(cur) }
     val shown = remember(config, draft) { draft?.let { config.withThemeEdit(theme, it) } ?: config }
     val flowOn = shown.themeEdits[theme]?.flow != null
     val at = previewAt?.takeIf { flowOn }?.let { LocalTime.of(it / 60, it % 60) } ?: LocalThemeTime.current ?: LocalTime.now()
-    fun commit(e: ThemeEdit) = update { it.withThemeEdit(theme, e) }
-    fun keepUndo() { undo = UndoSlot(true, theme, saved, config.customFrom) }
-    fun start(th: Theme) {
+    // lambdas, not `::` references: a function reference is memoized without its captures, so after a start chip it
+    // kept writing the previous theme (review r13 H1)
+    val commit: (ThemeEdit) -> Unit = { e -> update { it.withThemeEdit(theme, e) } }
+    val keepUndo: () -> Unit = { undo = UndoSlot(true, theme, saved, config.customFrom) }
+    val start: (Theme) -> Unit = { th ->
         val to = Look.Builtin(th)
-        if (StripPick.of(config) == StripPick.Custom) guard = to else { keepUndo(); update { it.switchLook(to) } }
+        if (StripPick.of(config) == StripPick.Custom) guardKey = to.key() else { keepUndo(); update { it.switchLook(to) } }
     }
     val themed = config.boardBg == BoardBg.THEME
     kr.dot.sb.ui.theme.ProvideTheme(shown, at) {
@@ -446,8 +450,8 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
                 if (warn.isNotEmpty()) T(warn.joinToString(" · ") { it.ko() }, 13.sp, 500, SK.why, Modifier.padding(horizontal = 16.dp).padding(top = 8.dp))
                 Section(null) {
                     ThemeEditor.controls(theme).filter { it.tab == tab && ThemeEditor.visible(it, drawn) }.forEach { c ->
-                        // keyed: a row's own state (an open picker) must not pass to the row at its place in another tab
-                        item { androidx.compose.runtime.key(c.field) { ControlView(c, theme, tk, drawn, cur, { draft = it }, ::commit, previewAt.takeIf { flowOn }, { previewAt = it }) } }
+                        // keyed: a row's own state (an open picker) must not pass to the row at its place in another tab or theme
+                        item { androidx.compose.runtime.key(theme, c.field) { ControlView(c, theme, tk, drawn, cur, { draft = it }, commit, previewAt.takeIf { flowOn }, { previewAt = it }) } }
                     }
                 }
             } },
@@ -488,7 +492,7 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
             update { it.saveMyTheme(name) }
         }
     }
-    guard?.let { to -> UnsavedGuard(config, update, to, { guard = null }, onSwitch = ::keepUndo) }
+    guard?.let { to -> UnsavedGuard(config, update, to, { guardKey = null }, onSwitch = keepUndo) }
 }
 
 /** A row's title with a small 기본 that clears just this field. */
@@ -514,14 +518,16 @@ private fun ControlView(
     c: Control, theme: Theme, tk: ThemeTokens, drawn: ThemeTokens, edit: ThemeEdit, setDraft: (ThemeEdit?) -> Unit, commit: (ThemeEdit) -> Unit,
     previewAt: Int?, setPreviewAt: (Int?) -> Unit,
 ) {
-    // read through state: `::pick` / `::release` are memoized without their captures, so a plain parameter went stale
-    // there and a swatch tap wrote its colour onto the first-seen edit (11-15: 강조 색 wiped 카드 진하기)
+    // read through state, and no `::` references (memoized without their captures): a plain parameter went stale and a
+    // swatch tap wrote its colour onto the first-seen edit (11-15: 강조 색 wiped 카드 진하기)
     val cur by androidx.compose.runtime.rememberUpdatedState(edit)
+    val commitNow by androidx.compose.runtime.rememberUpdatedState(commit)
+    val draftNow by androidx.compose.runtime.rememberUpdatedState(setDraft)
     val f = c.field
     // a colour or slider being held: the latest draft, written once on release
     var held by remember { mutableStateOf<ThemeEdit?>(null) }
-    fun hold(e: ThemeEdit) { held = e; setDraft(e) }
-    fun release() { held?.let(commit); held = null }
+    val hold: (ThemeEdit) -> Unit = { e -> held = e; draftNow(e) }
+    val release: () -> Unit = { held?.let(commitNow); held = null }
     val reset = { commit(ThemeEditor.reset(f, cur, tk)) }
     val pad = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)
     when (c) {
@@ -530,8 +536,8 @@ private fun ControlView(
             EditTitle(label, ThemeEditor.isSet(f, cur), reset)
             val v = ThemeEditor.colour(f, cur) ?: ThemeEditor.token(f, drawn)
             val page = f == EditField.BG || f == EditField.GRAD_TOP || f == EditField.GRAD_MID || f == EditField.GRAD_BOTTOM
-            fun pick(x: Long) = hold(ThemeEditor.withColour(f, cur, if (theme in ThemeEdit.LIGHT && page) Hsl.floor(x, ThemeEdit.LIGHT_FLOOR) else x, tk))
-            ColorPalette(v, ::pick, c.swatches, onChangeFinished = ::release)
+            val pick: (Long) -> Unit = { x -> hold(ThemeEditor.withColour(f, cur, if (theme in ThemeEdit.LIGHT && page) Hsl.floor(x, ThemeEdit.LIGHT_FLOOR) else x, tk)) }
+            ColorPalette(v, pick, c.swatches, onChangeFinished = release)
         }
         is Control.Slider -> {
             // 유리 caps the cards at 55 %: the slider offers what is drawn and reads as % of that cap
@@ -545,7 +551,7 @@ private fun ControlView(
             SliderRow(
                 c.label, shown, v, range, { x -> hold(ThemeEditor.withSlider(f, cur, x)) },
                 note = if (glass) "유리는 뒤가 비쳐 보이도록 55%까지만 진해져요." else null,
-                onChangeFinished = ::release, trailing = { ResetChip(ThemeEditor.isSet(f, cur), reset) },
+                onChangeFinished = release, trailing = { ResetChip(ThemeEditor.isSet(f, cur), reset) },
             )
         }
         is Control.Choice -> Column(pad) {
@@ -567,7 +573,7 @@ private fun ControlView(
                 val v = ThemeEditor.textureAmt(f, cur, drawn)
                 SliderRow(
                     "질감 정도", pct(v), v, ThemeEdit.TEXTURE_AMT, { x -> hold(cur.copy(textureAmt = x)) },
-                    onChangeFinished = ::release, trailing = { ResetChip(cur.textureAmt != null) { commit(cur.copy(textureAmt = null)) } },
+                    onChangeFinished = release, trailing = { ResetChip(cur.textureAmt != null) { commit(cur.copy(textureAmt = null)) } },
                 )
             }
         }
@@ -576,7 +582,7 @@ private fun ControlView(
             val sunset = ThemeEditor.choice(EditField.GLOW_SHAPE, drawn) == GlowShape.SUNSET.ordinal
             val at = cur.glowAt ?: drawn.bg.glowAt.let { it.x to it.y }
             GlowPad(at, enabled = !sunset, glow = Color(ThemeEditor.colour(EditField.GLOW, cur) ?: ThemeEditor.token(EditField.GLOW, drawn)),
-                onMove = { p -> hold(cur.copy(glowAt = p)) }, onEnd = ::release)
+                onMove = { p -> hold(cur.copy(glowAt = p)) }, onEnd = release)
             if (sunset) T("노을은 아래에서 올라와서 위치가 정해져 있어요", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
         }
         // the stop rows (ColorRow) carry their own 16 dp, so only the text rows are padded here
@@ -591,13 +597,21 @@ private fun ControlView(
             val flow = cur.flow
             if (flow != null) {
                 flow.forEachIndexed { i, col ->
-                    ColorRow(FLOW_KO.getOrElse(i) { "저녁" }, col, onChangeFinished = ::release) { x -> hold(cur.copy(flow = flow.toMutableList().also { it[i] = x })) }
+                    ColorRow(FLOW_KO.getOrElse(i) { "저녁" }, col, onChangeFinished = release) { x -> hold(cur.copy(flow = flow.toMutableList().also { it[i] = x })) }
                 }
                 T("미리보기", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, top = 8.dp, bottom = 6.dp))
                 Box(Modifier.padding(horizontal = 16.dp)) { ChipFlow(FLOW_KO, FLOW_AT.indexOf(previewAt), { i -> setPreviewAt(FLOW_AT[i]) }) }
             }
         }
     }
+}
+
+/** A saveable key for [Look] ([lookOf] reads it back; a 내 테마 by name). */
+private fun Look.key(): String = when (this) { is Look.Builtin -> "B:${theme.name}"; is Look.Mine -> "M:${my.name}" }
+
+private fun lookOf(k: String, c: AppConfig): Look? = when {
+    k.startsWith("B:") -> runCatching { Look.Builtin(Theme.valueOf(k.drop(2))) }.getOrNull()
+    else -> c.myThemes.firstOrNull { it.name == k.drop(2) }?.let { Look.Mine(it) }
 }
 
 /** 불빛 위치: a square standing for the page; a tap or a drag moves the dot, the config is written when the finger lifts. */
@@ -629,7 +643,7 @@ private fun GlowPad(at: Pair<Float, Float>, enabled: Boolean, glow: Color, onMov
  */
 @Composable
 internal fun UnsavedGuard(config: AppConfig, update: Update, to: Look, done: () -> Unit, onSwitch: () -> Unit = {}) {
-    var naming by remember { mutableStateOf<String?>(null) }
+    var naming by rememberSaveable { mutableStateOf<String?>(null) }
     val n = naming
     if (n != null) {
         NameDialog("내 테마로 저장", n, done, taken = config.myThemes) { name -> onSwitch(); update { it.saveMyTheme(name).switchLook(to) }; done() }
@@ -649,17 +663,27 @@ internal fun UnsavedGuard(config: AppConfig, update: Update, to: Look, done: () 
     )
 }
 
-/** A name for a 내 테마 (save or rename): a field and [저장] (or [덮어쓰기] when [taken] has the name) / [취소]. */
+/**
+ * A name for a 내 테마 (save or rename): a field and [저장] (or [덮어쓰기] when [taken] has the name) / [취소].
+ * [unique] (rename): a name in [taken] is refused instead, with a short reason.
+ */
 @Composable
-internal fun NameDialog(title: String, initial: String, dismiss: () -> Unit, taken: List<MyTheme> = emptyList(), done: (String) -> Unit) {
-    var name by remember { mutableStateOf(initial) }
+internal fun NameDialog(title: String, initial: String, dismiss: () -> Unit, taken: List<MyTheme> = emptyList(), unique: Boolean = false, done: (String) -> Unit) {
+    var name by rememberSaveable { mutableStateOf(initial) }
     val over = taken.any { it.name == name.trim() }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = dismiss,
         containerColor = SK.surface,
         title = { T(title, 18.sp, 700) },
-        text = { Field(name, { name = it.take(20) }, "이름") },
-        confirmButton = { ActionButton(if (over) "덮어쓰기" else "저장", { name.trim().takeIf { it.isNotEmpty() }?.let(done) }, enabled = name.isNotBlank()) },
+        text = {
+            Column {
+                Field(name, { name = it.take(20) }, "이름")
+                if (unique && over) T("같은 이름이 있어요", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
+            }
+        },
+        confirmButton = {
+            ActionButton(if (over && !unique) "덮어쓰기" else "저장", { name.trim().takeIf { it.isNotEmpty() }?.let(done) }, enabled = name.isNotBlank() && !(unique && over))
+        },
         dismissButton = { ActionButton("취소", dismiss, primary = false) },
     )
 }

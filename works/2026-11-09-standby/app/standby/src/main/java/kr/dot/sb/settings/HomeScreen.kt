@@ -191,7 +191,7 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit)
     }
     guard?.let { to -> UnsavedGuard(config, update, to, { guard = null }) }
     renaming?.let { m ->
-        NameDialog("이름 바꾸기", m.name, { renaming = null }) { name ->
+        NameDialog("이름 바꾸기", m.name, { renaming = null }, taken = config.myThemes - m, unique = true) { name ->
             renaming = null
             update { c -> c.renameMyTheme(m, name) }
         }

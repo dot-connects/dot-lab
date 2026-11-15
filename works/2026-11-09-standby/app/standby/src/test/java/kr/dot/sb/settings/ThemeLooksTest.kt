@@ -135,6 +135,25 @@ class ThemeLooksTest {
         assertNull(gone.customFrom)
     }
 
+    @Test fun renameToATakenNameIsRefused() {
+        val a = MyTheme("a", Theme.DAYPAPER, ThemeEdit(radius = 0.1f))
+        val b = MyTheme("b", Theme.IPHONE, ThemeEdit(radius = 0.12f))
+        val c = AppConfig(myThemes = listOf(a, b), customFrom = "b")
+        assertEquals(c, c.renameMyTheme(a, "b"))
+        assertEquals(c, c.renameMyTheme(a, " b "))
+        // its own name (trimmed) is fine
+        assertEquals(listOf(a, b), c.renameMyTheme(a, "a").myThemes)
+    }
+
+    @Test fun savingOverATargetThenSwitchingUsesTheSavedEdit() {
+        // guard [저장] under the name of the 내 테마 being switched to: the switch applies the edit just saved
+        val old = MyTheme("a", Theme.IPHONE, ThemeEdit(radius = 0.1f))
+        val e = ThemeEdit(radius = 0.15f)
+        val c = AppConfig(theme = Theme.IPHONE, myThemes = listOf(old)).withThemeEdit(Theme.IPHONE, e)
+        val after = c.saveMyTheme("a").switchLook(Look.Mine(old))
+        assertEquals(e, after.themeEdits[Theme.IPHONE])
+    }
+
     @Test fun panelSavesAnUnsavedEditFirst() {
         val e = ThemeEdit(radius = 0.1f)
         val c = AppConfig(theme = Theme.IPHONE).withThemeEdit(Theme.IPHONE, e)

@@ -146,7 +146,7 @@ fun ThemedDigits(
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val lineH = minOf(maxHeight / lines.size, maxWidth / p.widestEm(widest) * (p.capEm + p.descEm) / 0.9f)
         Column(Modifier.fillMaxWidth().height(lineH * lines.size)) {
-            lines.forEach { StyledTime(it, st, ink, Modifier.fillMaxWidth().weight(1f), c, widest = widest) }
+            lines.forEach { StyledTime(it, st, ink, Modifier.fillMaxWidth().weight(1f), c, widest = widest, glow = tk.digitGlow) }
         }
     }
 }
@@ -249,18 +249,6 @@ private fun DrawScope.draw(g: Ground, alpha: Float = 1f) {
     }
 }
 
-/**
- * A SUNSET-shaped theme glow alone (the light rising from below, e.g. a 무드등 look migrated from 촛불), for a page that
- * paints its own colour over [ThemeBackground] (the clocks page keeps `ink.bg` for edit mode). Day only, faded by [night].
- */
-@Composable
-fun BottomGlow(t: StandbyTheme, night: Float, modifier: Modifier = Modifier) {
-    val bg = t.tokens.bg
-    if (bg.glow == null || bg.glowAt.y <= 1f || night >= 1f) return
-    val g = Ground(emptyList(), bg.ground().glows)
-    Canvas(modifier.fillMaxSize()) { draw(g, 1f - night.coerceIn(0f, 1f)) }
-}
-
 /** How far the burn-in shift moves the content layer ([BurnIn.MAX], r10). */
 val BURN_IN_BLEED: Dp = BurnIn.MAX.dp
 
@@ -277,7 +265,8 @@ fun Modifier.burnInBleed(): Modifier = layout { m, c ->
 
 /**
  * The page behind everything: the theme's bg (or the board background [bg] / [custom] colour / blurred [photo]), with
- * the candle night ([ThemeTokens.NIGHT_BG]) faded in by [night]; light themes step to it at 0.5.
+ * the candle night ([ThemeTokens.NIGHT_BG]) faded in by [night]; light themes step to it at 0.5. [candle] false = the
+ * night is plain black, without the candle's glow (the clocks page).
  */
 @Composable
 fun ThemeBackground(
@@ -287,6 +276,7 @@ fun ThemeBackground(
     bg: BoardBg = BoardBg.THEME,
     custom: Color = Color(0xFF1A1430),
     photo: ImageBitmap? = null,
+    candle: Boolean = true,
 ) {
     val n = if (t.tokens.light && bg == BoardBg.THEME) (if (night >= 0.5f) 1f else 0f) else night.coerceIn(0f, 1f)
     Box(modifier.fillMaxSize().burnInBleed()) {
@@ -304,7 +294,7 @@ fun ThemeBackground(
             }
         }
         if (n > 0f) {
-            val g = ThemeTokens.NIGHT_BG.ground()
+            val g = if (candle) ThemeTokens.NIGHT_BG.ground() else Ground(ThemeTokens.NIGHT_BG.stops)
             Canvas(Modifier.fillMaxSize()) { draw(g, n) }
         }
     }

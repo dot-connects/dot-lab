@@ -24,6 +24,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -473,18 +474,19 @@ internal fun ddayDate(year: Int, month: Int, day: Int): LocalDate =
     java.time.YearMonth.of(year, month).let { it.atDay(day.coerceIn(1, it.lengthOfMonth())) }
 
 /**
- * plan-r13 C2: the D-day date as year (this year … +10) / month / day wheels (the alarm card's wheel), the day clamped when
+ * plan-r13 C2: the D-day date as year (this year −30 … +10, so a past date counts up as D+) / month / day wheels (the alarm card's wheel), the day clamped when
  * the month or year moves. Wide sheets put the date and [확인] beside the wheels so a 320 dp landscape phone shows both.
  */
 @Composable
 internal fun DDayDateSheet(today: LocalDate, initial: LocalDate, onDismiss: () -> Unit, onDone: (LocalDate) -> Unit) {
-    var d by remember { mutableStateOf(initial) }
+    var d by rememberSaveable { mutableStateOf(initial) }
+    val y0 = today.year - 30
     Sheet("D-day 날짜", onDismiss) {
         val wheels = @Composable { m: Modifier ->
             Row(m, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val item = 44.dp
-                kr.dot.sb.ui.cards.NumberWheel(11, (d.year - today.year).coerceIn(0, 10), item, SK.surface2, Modifier.weight(1.3f), wrap = false,
-                    onPick = { y -> d = ddayDate(today.year + y, d.monthValue, d.dayOfMonth) }) { v, on -> WheelText("${today.year + v}년", on) }
+                kr.dot.sb.ui.cards.NumberWheel(41, (d.year - y0).coerceIn(0, 40), item, SK.surface2, Modifier.weight(1.3f), wrap = false,
+                    onPick = { y -> d = ddayDate(y0 + y, d.monthValue, d.dayOfMonth) }) { v, on -> WheelText("${y0 + v}년", on) }
                 kr.dot.sb.ui.cards.NumberWheel(12, d.monthValue - 1, item, SK.surface2, Modifier.weight(1f),
                     onPick = { mo -> d = ddayDate(d.year, mo + 1, d.dayOfMonth) }) { v, on -> WheelText("${v + 1}월", on) }
                 // a month of another length is a new wheel, opened on the clamped day

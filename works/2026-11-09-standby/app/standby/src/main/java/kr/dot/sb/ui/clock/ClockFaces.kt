@@ -201,4 +201,6 @@ fun StyledTime(
     effects: Boolean = true,
     widest: String? = null,
     align: Alignment.Horizontal = Alignment.CenterHorizontally,
-) = StyledTimeImpl(text, style, ink, modifier, color, effects, widest, align)
+    /** Glow strength for [Effect.GLOW] (the theme's ThemeTokens.digitGlow). */
+    glow: Float = 1f,
+) = StyledTimeImpl(text, style, ink, modifier, color, effects, widest, align, glow)

@@ -24,7 +24,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -80,8 +82,8 @@ private fun LetterIcon(app: String, modifier: Modifier) =
  */
 @Composable
 fun WidgetPickerSheet(all: List<WidgetChoice>, slots: List<WidgetFit.Size>, art: WidgetArt, onDismiss: () -> Unit, onPick: (WidgetChoice) -> Unit) {
-    var q by remember { mutableStateOf("") }
-    var open by remember { mutableStateOf(emptySet<String>()) }
+    var q by rememberSaveable { mutableStateOf("") }
+    var open by rememberSaveable { mutableStateOf(emptyList<String>()) }
     val fit = remember(all, slots) { all.filter { WidgetFit.fits(it.min, slots) } }
     val list = WidgetList.search(fit, q)
     Sheet("위젯 고르기", onDismiss) {
@@ -126,7 +128,8 @@ private fun Tiles(list: List<WidgetChoice>, art: WidgetArt, named: Boolean, onPi
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         list.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                row.forEach { c ->
+                // keyed: a tile's remembered preview must stay with its widget when a search shifts the list
+                row.forEach { c -> key(c.key) {
                     Column(
                         Modifier.weight(1f).clip(RoundedCornerShape(16.dp)).background(if (named) SK.surface2 else SK.surface).clickable(onClickLabel = "${c.app} ${c.name}") { onPick(c) }.padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -138,7 +141,7 @@ private fun Tiles(list: List<WidgetChoice>, art: WidgetArt, named: Boolean, onPi
                             if (c.cells != null) T(c.cells, 12.sp, 500, SK.muted, Modifier.padding(start = 4.dp), maxLines = 1)
                         }
                     }
-                }
+                } }
                 if (row.size == 1) Box(Modifier.weight(1f))
             }
         }
@@ -211,8 +214,10 @@ class WidgetCatalog(val choices: List<WidgetChoice>, val infos: Map<String, AppW
             val h = size.h.coerceAtLeast(40f)
             val s = minOf(maxWidth.value / w, maxHeight.value / h)
             AndroidView(
-                factory = { ctx -> FrameLayout(ctx).also { f -> runCatching { f.addView(views.apply(ctx, f)) } } },
+                factory = { ctx -> FrameLayout(ctx) },
                 modifier = Modifier.requiredSize(w.dp, h.dp).graphicsLayer(scaleX = s, scaleY = s),
+                // a reused view gets the new widget's layout
+                update = { f -> if (f.tag !== views) { f.tag = views; f.removeAllViews(); runCatching { f.addView(views.apply(f.context, f)) } } },
             )
         }
     }

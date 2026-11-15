@@ -58,4 +58,27 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
         assertNotNull("accent pick saved nothing", cfg.themeEdits[Theme.IPHONE]?.accent)
         assertEquals(alpha, cfg.themeEdits[Theme.IPHONE]?.plateAlpha)
     }
+    /** Review r13 H1: after a "어디서 시작할까요" chip, a slider writes the new theme's edit, never the old one's. */
+    @Test fun editAfterStartChipLandsOnTheNewTheme() {
+        RuntimeEnvironment.setQualifiers(tallest)
+        var cfg = AppConfig(theme = Theme.IPHONE)
+        rule.setContent {
+            var c by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(cfg) }
+            SettingsTheme(c.clockStyle(FaceId.DIGITAL).color.c()) {
+                RouteHost(Routes.THEME_CUSTOM, c, { f -> c = f(c); cfg = c }, nav, env)
+            }
+        }
+        rule.waitForIdle()
+        // the 카드 rows are composed under IPHONE first, then the chip switches the theme under them
+        rule.onNodeWithText("카드").performScrollTo().performClick()
+        rule.waitForIdle()
+        rule.onNodeWithText(Theme.MOODLIGHT.ko).performScrollTo().performClick()
+        rule.waitForIdle()
+        assertEquals(Theme.MOODLIGHT, cfg.theme)
+        val sliders = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+        sliders[0].performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.13f) }
+        rule.waitForIdle()
+        assertNotNull("the slider saved nothing on the new theme", cfg.themeEdits[Theme.MOODLIGHT])
+        assertEquals(setOf(Theme.MOODLIGHT), cfg.themeEdits.keys)
+    }
 }

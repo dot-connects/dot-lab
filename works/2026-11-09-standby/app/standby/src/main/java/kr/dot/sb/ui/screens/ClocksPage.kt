@@ -48,7 +48,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -67,7 +66,7 @@ import kr.dot.sb.ui.clock.StyleRow
 import kr.dot.sb.ui.clock.spec
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
-import kr.dot.sb.ui.theme.BottomGlow
+import kr.dot.sb.ui.theme.ThemeBackground
 import kr.dot.sb.ui.theme.LocalTheme
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.burnInBleed
@@ -111,9 +110,11 @@ internal fun ClocksPage(
     val ink = LocalInk.current
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
-        // own page colour (edit mode dims it), overscanned for the burn-in shift
+        // the theme page (glow, gradient, texture) without the candle glow at night (plain black, as the page always
+        // was); edit mode dims it. Overscanned for the burn-in shift (ThemeBackground bleeds itself).
         val theme = LocalTheme.current
-        Box(Modifier.fillMaxSize().burnInBleed().background(lerp(ink.bg, ink.ink4, k))) { BottomGlow(theme, maxOf(ink.night, k)) }
+        ThemeBackground(theme, ink.night, candle = false)
+        if (k > 0f) Box(Modifier.fillMaxSize().burnInBleed().background(ink.ink4.copy(alpha = ink.ink4.alpha * k)))
         val w = maxWidth
         val h = maxHeight
         val s = min(w, h)
@@ -131,9 +132,10 @@ internal fun ClocksPage(
                     scaleX = sc; scaleY = sc
                     // Rounded card only while editing: a full-screen Solar must keep its square corners.
                     if (k > 0f) { clip = true; shape = RoundedCornerShape(s * 0.06f) }
-                }.background(ink.bg),
+                },
             ) {
-                BottomGlow(theme, ink.night) // the page paints ink.bg over ThemeBackground: the glow goes on it too
+                // the page shows through; only the edit card (scaled over the dimmed page) carries its own copy
+                if (k > 0f) ThemeBackground(theme, ink.night, candle = false)
                 ClockFace(face, styleOf(face), state, Modifier.fillMaxSize(), analog = config.analogStyle)
             }
         }
