@@ -171,7 +171,7 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
         val hh = if (use24) d.now.hour else (d.now.hour + 11) % 12 + 1
         val digits = String.format(java.util.Locale.ROOT, "%02d%02d", hh, d.now.minute).let { if (!use24 && hh < 10) " " + it.drop(1) else it }
         // 12 h with a one-digit hour and no engraved segments: the row moves half a digit left so it stays centred
-        val shift = if (kind == RlKind.CAPSULE && digits[0] == ' ' && !style.ghost) -(RlStatic.W + RlStatic.GAP) / 2 else 0f
+        val shift = if (kind == RlKind.CAPSULE && !geo.portrait && digits[0] == ' ' && !style.ghost) -(RlStatic.W + RlStatic.GAP) / 2 else 0f
         // static bitmap: built once per size + palette + style, off the main thread (blurs and gradients over the whole
         // face); until it is ready the previous one is stretched over the face, or on the first build the plain dial
         // colour shows. It is the face's own size (the slot), never larger.
@@ -232,20 +232,55 @@ private fun rememberSweep(): LongState {
     return ms
 }
 
-/** Mockup units on screen: [u] px per unit, the dial centre ([cx], [cy]). */
-private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val cx: Float, val cy: Float) {
+/**
+ * Mockup units on screen: [u] px per unit, the dial centre ([cx], [cy]). [portrait] (C on an upright screen, r14 mockup
+ * `relPortrait`): hours over minutes, the colon studs side by side between the rows, date window above, scale under.
+ */
+private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val cx: Float, val cy: Float, val portrait: Boolean = false) {
     /** Half width / height in units (the short one is 50 for the analog faces). */
     val hw = w / 2f / u
     val hh = h / 2f / u
     fun x(v: Float) = cx + v * u
     fun y(v: Float) = cy + v * u
 
+    // C layout in units from the centre: each digit's left / top, the two colon studs (x, y, x, y), the seconds scale
+    val digitX: FloatArray
+    val digitY: FloatArray
+    val studs: FloatArray
+    val scaleHalf: Float
+    val scaleY: Float
+    init {
+        val dw = RlStatic.W; val gap = RlStatic.GAP
+        if (portrait) {
+            val x0 = -(2 * dw + gap) / 2
+            digitX = floatArrayOf(x0, x0 + dw + gap, x0, x0 + dw + gap)
+            digitY = floatArrayOf(-PORT_TOP, -PORT_TOP, PORT_ROW_GAP / 2, PORT_ROW_GAP / 2)
+            studs = floatArrayOf(-8f, 0f, 8f, 0f)
+            scaleHalf = (2 * dw + gap) / 2 + 4f
+            scaleY = PORT_TOP + 11f
+        } else {
+            digitX = FloatArray(4) { RlStatic.digitX(it) }
+            digitY = FloatArray(4) { -RlStatic.H / 2 }
+            val colon = (RlStatic.digitX(1) + dw + RlStatic.digitX(2)) / 2
+            studs = floatArrayOf(colon, -8f, colon, 8f)
+            scaleHalf = RlStatic.SCALE_HALF
+            scaleY = RlStatic.SCALE_Y
+        }
+    }
+
     companion object {
+        /** Portrait C: rows 17 units apart, the block (2 × 46 + 17) centred on [cy], so its top is 54.5 units up. */
+        const val PORT_ROW_GAP = 17f
+        const val PORT_TOP = RlStatic.H + PORT_ROW_GAP / 2
+
         fun of(kind: RlKind, w: Int, h: Int): RlGeo = when (kind) {
             // the round dials need 100 units across the short side
             RlKind.ROUND, RlKind.SQUARE -> RlGeo(kind, w, h, min(w, h) / 100f, w / 2f, h / 2f)
+            // upright: the digit pair takes 74 % of the width (capped so date window .. scale labels, ~145 units, fit
+            // the height); the block sits a little below the middle
+            RlKind.CAPSULE -> if (h > w * 1.15f) min(w * 0.74f / (2 * RlStatic.W + RlStatic.GAP), h / 160f).let { u -> RlGeo(kind, w, h, u, w / 2f, h * 0.53f, portrait = true) }
             // the digits + seconds scale need 150 units across, 100 down; the row sits 6 units above the middle
-            RlKind.CAPSULE -> min(w / 150f, h / 100f).let { u -> RlGeo(kind, w, h, u, w / 2f, h / 2f - 6f * u) }
+            else min(w / 150f, h / 100f).let { u -> RlGeo(kind, w, h, u, w / 2f, h / 2f - 6f * u) }
         }
     }
 }
@@ -581,21 +616,20 @@ private object RlStatic {
 
     const val W = 24f; const val H = 46f; const val T = 4.6f; const val GAP = 5.2f; const val COLON = 9f
     private const val TOTAL = 4 * W + 3 * GAP + COLON - GAP
-    private const val TOP = -H / 2
 
     fun digitX(i: Int): Float {
         val x0 = -TOTAL / 2
         return when (i) { 0 -> x0; 1 -> x0 + W + GAP; 2 -> x0 + 2 * W + GAP + COLON; else -> x0 + 3 * W + 2 * GAP + COLON }
     }
 
-    /** The seven segments of the digit at unit x [x] (mockup `segGeom`), keyed a..g. */
-    fun segments(x: Float): Map<Char, Seg> {
+    /** The seven segments of the digit at unit x [x], top [top] (mockup `segGeom`), keyed a..g. */
+    fun segments(x: Float, top: Float): Map<Char, Seg> {
         val h2 = (H - T) / 2
         return mapOf(
-            'a' to Seg(x + W / 2, TOP + T / 2, 90f, W - T - 0.8f), 'g' to Seg(x + W / 2, TOP + H / 2, 90f, W - T - 0.8f),
-            'd' to Seg(x + W / 2, TOP + H - T / 2, 90f, W - T - 0.8f),
-            'f' to Seg(x + T / 2, TOP + T / 2 + h2 / 2, 0f, h2 - 0.8f), 'b' to Seg(x + W - T / 2, TOP + T / 2 + h2 / 2, 0f, h2 - 0.8f),
-            'e' to Seg(x + T / 2, TOP + H / 2 + h2 / 2, 0f, h2 - 0.8f), 'c' to Seg(x + W - T / 2, TOP + H / 2 + h2 / 2, 0f, h2 - 0.8f),
+            'a' to Seg(x + W / 2, top + T / 2, 90f, W - T - 0.8f), 'g' to Seg(x + W / 2, top + H / 2, 90f, W - T - 0.8f),
+            'd' to Seg(x + W / 2, top + H - T / 2, 90f, W - T - 0.8f),
+            'f' to Seg(x + T / 2, top + T / 2 + h2 / 2, 0f, h2 - 0.8f), 'b' to Seg(x + W - T / 2, top + T / 2 + h2 / 2, 0f, h2 - 0.8f),
+            'e' to Seg(x + T / 2, top + H / 2 + h2 / 2, 0f, h2 - 0.8f), 'c' to Seg(x + W - T / 2, top + H / 2 + h2 / 2, 0f, h2 - 0.8f),
         )
     }
 
@@ -607,10 +641,12 @@ private object RlStatic {
 
     /**
      * Date window (mockup x 176, y 9 of 216 × 100): the top-right corner, but never farther from the digits than in the
-     * mockup (68 units right, 35 up of the row centre), so a tall screen keeps it just above them.
+     * mockup (68 units right, 35 up of the row centre), so a tall screen keeps it just above them. Portrait: centred,
+     * 9 units above the hours.
      */
     fun dateBox(g: RlGeo): RectF {
         val u = g.u
+        if (g.portrait) { val b = g.y(-RlGeo.PORT_TOP - 9f); return RectF(g.cx - 11f * u, b - 7f * u, g.cx + 11f * u, b) }
         val l = min(g.w - 40f * u, g.cx + 68f * u); val t = max(9f * u, g.cy - 35f * u)
         return RectF(l, t, l + 22f * u, t + 7f * u)
     }
@@ -620,7 +656,7 @@ private object RlStatic {
         if (ghost) {
             val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (p.glow || p.night) alpha(0xFF6FE0CF.toInt(), 0.05f) else alpha(BLACK, 0.035f) }
             val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = max(1f, 0.14f * u); color = alpha(p.ink, if (p.glow || p.night) 0.25f else 0.16f) }
-            for (i in 0 until 4) for (s in segments(digitX(i)).values) {
+            for (i in 0 until 4) for (s in segments(g.digitX[i], g.digitY[i]).values) {
                 c.save(); c.translate(g.x(s.x), g.y(s.y)); c.rotate(s.deg)
                 val r = RectF(-T / 2 * u, -s.len / 2 * u, T / 2 * u, s.len / 2 * u)
                 c.drawRoundRect(r, T / 2 * u, T / 2 * u, fill); c.drawRoundRect(r, T / 2 * u, T / 2 * u, edge)
@@ -628,9 +664,8 @@ private object RlStatic {
             }
         }
         // colon: two lume studs
-        val cx = (digitX(1) + W + digitX(2)) / 2 + shift
-        for (dy in listOf(-8f, 8f)) {
-            val x = g.x(cx); val y = g.y(dy)
+        for (k in 0 until 2) {
+            val x = g.x(g.studs[2 * k] + shift); val y = g.y(g.studs[2 * k + 1])
             if (p.night) { c.drawCircle(x, y, 2f * u, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = p.lume; if (!p.glow) { style = Paint.Style.STROKE; strokeWidth = max(1f, 0.25f * u) } }); continue }
             if (p.shadows) castShadow(c, u, S_I) { sp -> c.drawCircle(x, y, 2f * u, sp) }
             c.drawCircle(x, y, 2f * u, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = silver(x - 2f * u, y - 2f * u, x + 2f * u, y + 2f * u, p.glow) })
@@ -638,7 +673,7 @@ private object RlStatic {
         }
         // seconds scale
         for (i in 0..60) {
-            val x = g.x(-SCALE_HALF + 2 * SCALE_HALF * i / 60f); val y = g.y(SCALE_Y)
+            val x = g.x(-g.scaleHalf + 2 * g.scaleHalf * i / 60f); val y = g.y(g.scaleY)
             val ten = i % 10 == 0; val five = i % 5 == 0
             line(c, x, y, x, y - (if (ten) 3f else if (five) 2f else 1.2f) * u, (if (ten) 0.45f else 0.25f) * u, alpha(p.ink, 0.85f))
             if (ten) text(c, x, y + 2.6f * u, i.toString(), 2.2f * u, p.ink, tf, 0.8f)
@@ -803,7 +838,7 @@ private class RlLit(private val g: RlGeo, private val p: RlPal, tfDate: Typeface
             capsule(Canvas(it), g, p, bw / 2f, bh / 2f, deg, len, RlStatic.T)
         }
     }
-    private val segs = Array(4) { RlStatic.segments(RlStatic.digitX(it)) }
+    private val segs = Array(4) { RlStatic.segments(g.digitX[it], g.digitY[it]) }
     private val horiz = segs[0].getValue('a').let { stamp(it.deg, it.len) }
     private val vert = segs[0].getValue('b').let { stamp(it.deg, it.len) }
     private val paint = Paint()
@@ -842,8 +877,8 @@ private class RlMarker(private val g: RlGeo, private val p: RlPal) {
     private val paint = Paint(Paint.FILTER_BITMAP_FLAG)
 
     fun draw(c: Canvas, s: Float) {
-        val x = g.x(-RlStatic.SCALE_HALF + 2 * RlStatic.SCALE_HALF * (s % 60f) / 60f) - 0.8f * u - pad
-        val y = g.y(RlStatic.SCALE_Y - 4.4f) - 2.6f * u - pad
+        val x = g.x(-g.scaleHalf + 2 * g.scaleHalf * (s % 60f) / 60f) - 0.8f * u - pad
+        val y = g.y(g.scaleY - 4.4f) - 2.6f * u - pad
         c.drawBitmap(bmp, x, y, paint)
     }
 }

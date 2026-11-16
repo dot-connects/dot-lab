@@ -120,4 +120,12 @@ class ReliefShots {
     @Test fun flipCover() = shots(Device.FLIP, faces.map { f -> "${n(f)}-ice" to face(f) })
 
     @Test fun barPortrait() = shots(Device.BAR_P, faces.map { f -> "${n(f)}-ice" to face(f) })
+
+    /** r14 A4: 입체 디지털 upright (hours over minutes) on four dials, night, and a 12 h one-digit hour without engraved segments. */
+    @Test fun digitalPortrait() = FaceId.RELIEF_DIGITAL.let { f ->
+        shots(Device.FOLD_COVER_P, listOf("ice" to 0, "cream" to 2, "sky" to 4, "coal" to 7).map { (tag, i) -> "${n(f)}-port-$tag" to face(f, base(f).copy(faceColor = Relief.DIALS[i].dial)) } + listOf(
+            "${n(f)}-port-night" to face(f, state = Fixtures.full(night = 1f)),
+            "${n(f)}-port-12h-noghost" to face(f, base(f).copy(h24 = false, ghost = false)),
+        ))
+    }
 }

@@ -2,6 +2,8 @@
 
 package kr.dot.sb.settings
 
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -454,12 +456,12 @@ fun PresetSwatches(sets: List<List<Long>>, selected: Int, onSelect: (Int) -> Uni
 
 /** Named colour presets in one row + 직접 고르기 (mockup `.named`: 무드등 색). */
 @Composable
-fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChangeFinished: (() -> Unit)? = null, onChange: (Long) -> Unit) {
+fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChangeFinished: (() -> Unit)? = null, showNames: Boolean = true, onChange: (Long) -> Unit) {
     var open by remember { mutableStateOf(false) }
     val custom = names.none { it.second == color }
     Column(Modifier.fillMaxWidth()) {
         FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            names.forEach { (n, c) -> NamedDot(n, c.c(), c == color) { onChange(c); onChangeFinished?.invoke() } }
+            names.forEach { (n, c) -> NamedDot(n, c.c(), c == color, showNames) { onChange(c); onChangeFinished?.invoke() } }
             NamedDot("직접 고르기", null, custom || open) { open = !open }
         }
         if (open) HsvPicker(color, onChange, Modifier.padding(top = 8.dp), onChangeFinished)
@@ -467,8 +469,8 @@ fun NamedSwatches(names: List<Pair<String, Long>>, color: Long, onChangeFinished
 }
 
 @Composable
-private fun NamedDot(name: String, color: Color?, on: Boolean, onClick: () -> Unit) {
-    Column(Modifier.width(64.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+private fun NamedDot(name: String, color: Color?, on: Boolean, showName: Boolean = true, onClick: () -> Unit) {
+    Column(Modifier.width(64.dp).clip(RoundedCornerShape(12.dp)).clickable(onClick = onClick).then(if (showName) Modifier else Modifier.semantics { contentDescription = name }).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Box(Modifier.size(44.dp), Alignment.Center) {
             if (on) Box(Modifier.size(42.dp).border(2.dp, Color.White, CircleShape))
             if (color != null) Box(Modifier.size(30.dp).clip(CircleShape).background(color))
@@ -477,7 +479,7 @@ private fun NamedDot(name: String, color: Color?, on: Boolean, onClick: () -> Un
                 drawCircle(Color.White, radius = size.minDimension * 0.18f)
             }
         }
-        T(name, 11.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 2, align = TextAlign.Center)
+        if (showName) T(name, 11.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 2, align = TextAlign.Center)
     }
 }
 

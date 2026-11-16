@@ -331,7 +331,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
     val part = r.part
     if (r == StyleRow.FACE_COLOR && face in kr.dot.sb.ui.clock.Relief.FACES) {
         // the mockup's eight dials by name, plus 직접 고르기 (a custom dial derives its ink)
-        ControlRow("다이얼 색") { NamedSwatches(kr.dot.sb.ui.clock.Relief.DIALS.map { it.ko to it.dial }, kr.dot.sb.ui.clock.Relief.dial(style), onChange = { v -> edit { it.copy(faceColor = v) } }) }
+        ControlRow("다이얼 색") { NamedSwatches(kr.dot.sb.ui.clock.Relief.DIALS.map { it.ko to it.dial }, kr.dot.sb.ui.clock.Relief.dial(style), showNames = false, onChange = { v -> edit { it.copy(faceColor = v) } }) }
         return
     }
     if (part != null) {
