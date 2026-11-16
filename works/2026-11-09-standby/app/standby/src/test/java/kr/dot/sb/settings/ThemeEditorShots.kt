@@ -17,7 +17,6 @@ import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.MyTheme
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.ThemeEdit
 import kr.dot.sb.ui.screens.RootImpl
@@ -71,7 +70,7 @@ class ThemeEditorShots : SettingsShotKit() {
     }
     @Test fun customCard() = editor("custom-card", custom) { tab("카드") }
     @Test fun customText() = editor("custom-text", custom) { tab("글자") }
-    /** 명조 on 종이: 글자 두께 is off with its reason. */
+    /** 글자 on 종이 (명조 stays the theme's font). */
     @Test fun customTextPaper() = editor("custom-text-paper", AppConfig(theme = Theme.DAYPAPER)) { tab("글자") }
     @Test fun customGradient() = editor("custom-gradient", AppConfig().withThemeEdit(Theme.IPHONE, ThemeEdit(bgKind = kr.dot.sb.model.BgKind.GRADIENT)))
     /** Phone, scrolled past the preview: the mini on top, the tab row pinned under it. */
@@ -91,6 +90,10 @@ class ThemeEditorShots : SettingsShotKit() {
     @Test fun editorShuffle() = editor("editor-shuffle", AppConfig(), phone) { onNodeWithText("색 조합 바꾸기").performScrollTo().performClick() }
     /** The theme strip while the look is saved nowhere: ＋ 사용자 지정 marked "저장 안 함". */
     @Test fun themeUnsaved() = snap("../theme-editor/theme-unsaved", phone, custom, route = Routes.THEME)
+    /** r14 B5: the selected 내 테마 under a veil with the pencil. */
+    @Test fun themeMinePencil() = snap("../theme-editor/theme-mine-pencil", phone, moodCfg().withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood))).copy(customFrom = "보라 무드"), route = Routes.THEME)
+    /** r14 B5: 보라 무드 고치기 with a change not saved yet (되돌리기 and 저장 on). */
+    @Test fun mineEdit() = snap("../theme-editor/mine-edit", phone, custom, route = Routes.themeEdit("보라 무드"))
 
     private fun board(name: String, c: AppConfig, night: Float = 0f, now: LocalDateTime = Fixtures.now) {
         val d = Device.FOLD_COVER_L
@@ -107,20 +110,6 @@ class ThemeEditorShots : SettingsShotKit() {
     @Test fun boardMoodlightSunset() = board("board-moodlight-sunset", moodCfg(mood.copy(glowShape = GlowShape.SUNSET, plateStyle = PlateStyle.OUTLINE)))
     @Test fun boardMoodlightNight() = board("board-moodlight-night", moodCfg(), night = 1f)
     @Test fun boardMoodlightNightUnedited() = board("board-moodlight-night-unedited", AppConfig(theme = Theme.MOODLIGHT, ddays = Fixtures.ddays, startPage = 0), night = 1f)
-    /** 카드 색 (A6): 모듈러 with a yellow weather card and a dark red agenda card; text fitted on each plate. */
-    private val plated = AppConfig(ddays = Fixtures.ddays, startPage = 3).let { c ->
-        c.copy(boards = c.boards.map { b ->
-            if (b.id != "modular") b else b.copy(options = b.options + ("0:0" to SlotOptions(plate = 0xFFFFD74B)) + ("1:0" to SlotOptions(plate = 0xFFC0392B)))
-        })
-    }
-
-    @Test fun boardCardPlate() = board("board-card-plate", plated)
-    @Test fun boardCardPlateNight() = board("board-card-plate-night", plated, night = 1f)
-    /** The board editor with a card row's 색 open on 카드 색. */
-    @Test fun boardEditorCardPlate() = snap("../theme-editor/board-editor-card-plate", tall, plated, route = Routes.board("modular")) {
-        onAllNodesWithText("색")[0].performScrollTo().performClick()
-    }
-
     @Test fun boardMoodlightFlow() = board(
         "board-moodlight-flow-0930", moodCfg(mood.copy(flow = listOf(0xFFFF9C56, 0xFF4D9BEF, 0xFFAA88FE))), now = Fixtures.now.withHour(9).withMinute(30),
     )

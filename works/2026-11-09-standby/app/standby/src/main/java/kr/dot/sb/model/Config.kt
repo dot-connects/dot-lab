@@ -66,7 +66,6 @@ enum class BoardBg(val ko: String) {
 }
 
 /** Reading text size (r9): message / sender / meta only; hero numbers are slot-sized and never scaled. */
-enum class TextSize(val ko: String, val f: Float) { SMALL("작게", 0.9f), NORMAL("보통", 1f), LARGE("크게", 1.15f) }
 
 /** Full-screen analog dial layout (r9): round dial, edge-following square, four big numerals, bars only, half digital. */
 enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("듀오") }
@@ -83,8 +82,6 @@ data class SlotOptions(
     val hideAtNight: Boolean = false,
     /** A clock card's own face (null = the board's [Board.clockFace]). */
     val face: FaceId? = null,
-    /** r11 카드 색: this card's plate colour (null = the theme's); FILL/GLASS themes on the theme background, day only. */
-    val plate: Long? = null,
 )
 
 /** r11 theme editor: the glow's shape (무드등). */
@@ -134,8 +131,6 @@ data class ThemeEdit(
     val cardTexture: Texture? = null,
     /** 질감 정도 for both textures, [TEXTURE_AMT]; null = 0.5. */
     val textureAmt: Float? = null,
-    val textFont: CardFont? = null,
-    val textWeight: TextWeight? = null,
     /** 글자 빛 번짐 0..1 (0 = off, null = the theme's). */
     val textGlow: Float? = null,
 ) {
@@ -163,7 +158,7 @@ data class ThemeEdit(
             ink = ink,
             flow = flow?.takeIf { it.size in 2..3 },
             bgKind = bgKind, border = border, borderColor = borderColor, bgTexture = bgTexture, cardTexture = cardTexture,
-            textureAmt = f(textureAmt, TEXTURE_AMT), textFont = textFont, textWeight = textWeight, textGlow = f(textGlow, 0f..1f),
+            textureAmt = f(textureAmt, TEXTURE_AMT), textGlow = f(textGlow, 0f..1f),
         )
     }
 
@@ -401,7 +396,6 @@ data class AppConfig(
     val boardBg: BoardBg = BoardBg.THEME,
     /** Colour of [BoardBg.SOLID]. */
     val boardBgColor: Long = 0xFF1A1430,
-    val textSize: TextSize = TextSize.NORMAL,
     val analogStyle: AnalogStyle = AnalogStyle.ROUND,
     /** Faces of the clocks page, in swipe order (r10). A save without it (r9 and older) gets the old five. */
     val myClocks: List<FaceId> = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG),

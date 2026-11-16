@@ -245,8 +245,8 @@ interface StandbyActions {
     fun openPhoto(uri: String) {}
     /** Photos page: theme swipe; null = 추천, else the album name. */
     fun photoTheme(bucket: String?) {}
-    /** Pull-down panel theme preview: switch theme (through `withTheme`, saved like a settings edit). */
-    fun setTheme(theme: kr.dot.sb.model.Theme) {}
+    /** Pull-down panel look preview: switch to a 내 테마 or a built-in (`switchFromPanel`, saved like a settings edit). */
+    fun setLook(look: kr.dot.sb.ui.theme.Look) {}
     /** Brightness bar: 0..1 for the window, applied live. */
     fun setBrightness(value: Float) {}
     /** The unfold mood light is (not) on screen: while it is, the display stays on. */

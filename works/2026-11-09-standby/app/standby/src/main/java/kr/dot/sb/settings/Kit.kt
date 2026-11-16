@@ -147,7 +147,7 @@ fun T(
 
 // ---- icons (drawn, 2 dp round strokes) ---------------------------------------------------------------------------
 
-enum class Ic { BACK, CHEVRON, PLUS, CLOSE, UP, DOWN, CHECK }
+enum class Ic { BACK, CHEVRON, PLUS, CLOSE, UP, DOWN, CHECK, EDIT }
 
 @Composable
 fun Icon(ic: Ic, tint: Color = SK.muted, size: Dp = 22.dp, modifier: Modifier = Modifier) {
@@ -162,6 +162,8 @@ fun Icon(ic: Ic, tint: Color = SK.muted, size: Dp = 22.dp, modifier: Modifier = 
             Ic.CHECK -> p(0.2f, 0.52f, 0.42f, 0.72f, 0.8f, 0.3f)
             Ic.PLUS -> Path().apply { moveTo(0.5f * s, 0.2f * s); lineTo(0.5f * s, 0.8f * s); moveTo(0.2f * s, 0.5f * s); lineTo(0.8f * s, 0.5f * s) }
             Ic.CLOSE -> Path().apply { moveTo(0.27f * s, 0.27f * s); lineTo(0.73f * s, 0.73f * s); moveTo(0.73f * s, 0.27f * s); lineTo(0.27f * s, 0.73f * s) }
+            // pencil on the 24-unit grid: body M4 20 L4 16 L15 5 L19 9 L8 20 Z, ferrule M13 7 L17 11
+            Ic.EDIT -> p(4f / 24, 20f / 24, 4f / 24, 16f / 24, 15f / 24, 5f / 24, 19f / 24, 9f / 24, 8f / 24, 20f / 24).apply { close(); moveTo(13f / 24 * s, 7f / 24 * s); lineTo(17f / 24 * s, 11f / 24 * s) }
         }
         drawPath(path, tint, style = Stroke(width = s / 11f, cap = StrokeCap.Round, join = StrokeJoin.Round))
     }

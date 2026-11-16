@@ -157,12 +157,23 @@ class ThemeLooksTest {
     @Test fun panelSavesAnUnsavedEditFirst() {
         val e = ThemeEdit(radius = 0.1f)
         val c = AppConfig(theme = Theme.IPHONE).withThemeEdit(Theme.IPHONE, e)
-        val p = c.switchFromPanel(Theme.DAYPAPER)
+        val p = c.switchFromPanel(Look.Builtin(Theme.DAYPAPER))
         assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.myThemes)
         assertEquals(Theme.DAYPAPER, p.theme)
         assertTrue(p.themeEdits.isEmpty())
         // an edit already saved is not saved twice
-        assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.switchLook(Look.Mine(p.myThemes[0])).switchFromPanel(Theme.NEON).myThemes)
+        assertEquals(listOf(MyTheme("내 테마 1", Theme.IPHONE, e)), p.switchLook(Look.Mine(p.myThemes[0])).switchFromPanel(Look.Builtin(Theme.NEON)).myThemes)
+    }
+
+    @Test fun panelSavesAnUnsavedEditBeforeAMyTheme() {
+        val mine = MyTheme("a", Theme.DAYPAPER, ThemeEdit(radius = 0.05f))
+        val e = ThemeEdit(radius = 0.1f)
+        val c = AppConfig(theme = Theme.IPHONE, myThemes = listOf(mine)).withThemeEdit(Theme.IPHONE, e)
+        val p = c.switchFromPanel(Look.Mine(mine))
+        assertEquals(listOf(mine, MyTheme("내 테마 2", Theme.IPHONE, e)), p.myThemes)
+        assertEquals(Theme.DAYPAPER, p.theme)
+        assertEquals(mine.edit, p.themeEdits[Theme.DAYPAPER])
+        assertEquals(Look.Mine(mine), StripPick.of(p))
     }
 
     @Test fun duplicateNamesFromOldDataStaySelectable() {

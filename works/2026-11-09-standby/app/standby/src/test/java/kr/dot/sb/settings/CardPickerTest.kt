@@ -8,7 +8,6 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.onFirst
-import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.click
 import androidx.compose.ui.unit.dp
@@ -68,7 +67,6 @@ class CardPickerTest {
         val removed = mutableListOf<CardType>()
         var closed = false
         sheet(null, setOf(CardType.WEATHER, CardType.CLOCK), picked, removed) { closed = true }
-        rule.onAllNodesWithText("추가됨").assertCountEquals(2)
         tile(CardType.WEATHER.ko).performScrollTo().performTouchInput { click(androidx.compose.ui.geometry.Offset(centerX, 30.dp.toPx())) }
         rule.waitForIdle()
         assertEquals(emptyList<CardType>(), picked)

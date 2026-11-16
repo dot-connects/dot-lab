@@ -144,7 +144,7 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
         .coerceAtMost((slots.minOfOrNull { it.short } ?: 200f).dp * 0.16f).coerceAtMost((screenShort * 0.054f).dp)
     val pad = sizes.minOfOrNull { it.pad } ?: 12.dp
     val clock = BoardGrid.hasClock(firsts)
-    return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace, config.textSize.f) }
+    return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace) }
 }
 
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */

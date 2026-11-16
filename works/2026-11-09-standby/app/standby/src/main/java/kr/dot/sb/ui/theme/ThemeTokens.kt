@@ -316,7 +316,6 @@ data class ThemeTokens(
             rule = e.rule?.let { Color(it) } ?: rule,
             bgTexture = e.bgTexture ?: bgTexture, cardTexture = e.cardTexture ?: cardTexture, textureAmt = e.textureAmt ?: textureAmt,
             cardTextureAmt = if (e.textureAmt != null) null else cardTextureAmt,
-            cardFont = e.textFont ?: cardFont, textWeight = e.textWeight ?: textWeight,
             border = e.border ?: border, borderColor = e.borderColor?.let { Color(it) } ?: borderColor,
             textGlow = e.textGlow ?: textGlow,
         )
@@ -325,32 +324,6 @@ data class ThemeTokens(
         val accText = if (e.accent == null) accentText else Contrast.fit(acc, s, fitLight, 4.5f)
         val roles = if (monoRoles) Roles.mono(acc, inkC) else Roles.derive(roleBase, s, fitLight)
         return t.copy(accentText = accText, roles = roles)
-    }
-
-    /** r11 카드 색: one card's tokens on its own plate, and that plate composited over the page (what its text sits on). */
-    data class CardPlate(val tokens: ThemeTokens, val over: Color)
-
-    /**
-     * r11 A6 (plan round 4/5): these (drawn) tokens on a card whose plate is [c], at the theme's plate alpha (GLASS:
-     * [GLASS_MAX]). Ink, accent text and roles are fitted on that one surface, in the direction that reads better (dark
-     * text on a plate lighter than the black/white crossover); ink2/ink3 are raised where the secondary text would
-     * fall under 3:1 on it.
-     */
-    fun cardPlate(c: Long): CardPlate {
-        val a = if (plateStyle == PlateStyle.GLASS) GLASS_MAX else plate.alpha
-        val p = Color(c).copy(alpha = a)
-        val over = p.compositeOver(bg.base)
-        val s = listOf(over)
-        // dark text when black beats white on this plate (luminance > ≈ 0.18)
-        val lightPlate = Contrast.ratio(Color(0f, 0f, 0f), over) > Contrast.ratio(Color(1f, 1f, 1f), over)
-        val inkC = Contrast.fit(ink, s, lightPlate, 4.5f)
-        fun second(al: Float) = Contrast.ratio(inkC.copy(alpha = al).compositeOver(over), over)
-        var i2 = ink2
-        while (second(i2) < 3f && i2 < 1f) i2 = minOf(1f, i2 + 0.02f)
-        val p2 = Hsl.shift(Color(c), if (lightPlate) -0.06f else 0.06f).copy(alpha = if (plateStyle == PlateStyle.GLASS) GLASS_MAX else plate2.alpha)
-        val acc = Contrast.fit(accentText, s, lightPlate, 4.5f)
-        val roles = if (monoRoles) Roles.mono(accent, inkC) else Roles.derive(roleBase, s, lightPlate)
-        return CardPlate(copy(ink = inkC, ink2 = i2, ink3 = (ink3 + (i2 - ink2)).coerceAtMost(1f), plate = p, plate2 = p2, accentText = acc, roles = roles), over)
     }
 
     companion object {

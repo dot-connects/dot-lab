@@ -112,7 +112,7 @@ class SettingsHomeShots : SettingsShotKit() {
     @Test fun homeMoodlight() = snap("home-moodlight", phone, AppConfig(theme = kr.dot.sb.model.Theme.MOODLIGHT), route = Routes.HOME)
     @Test fun theme() = snap("theme", tall, route = Routes.THEME)
     @Test fun themeFold() = snap("theme-fold", fold, route = Routes.THEME)
-    @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID, textSize = kr.dot.sb.model.TextSize.LARGE), route = Routes.THEME)
+    @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID), route = Routes.THEME)
     @Test fun themeNight() = snap("theme-night", phone, route = Routes.THEME) { onNodeWithText("밤").performClick() }
     /** r10 preview pattern: scrolled past the full preview, the 96 dp mini overlays the top. */
     @Test fun themeMini() = snap("theme-mini", "w411dp-h560dp-port-xxhdpi", route = Routes.THEME) {

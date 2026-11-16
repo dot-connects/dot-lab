@@ -274,8 +274,8 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         }
         // review C2: row pitch = digit cap / 3; title 0.38 × pitch, label 0.24 × pitch, floors 22 / 18 dp
         val pitch0 = p.capEm * fs / 3
-        lab.textSize = max(18.dp.toPx(), 0.24f * pitch0) * d.ts
-        ttl.textSize = max(22.dp.toPx(), 0.38f * pitch0) * d.ts
+        lab.textSize = max(18.dp.toPx(), 0.24f * pitch0)
+        ttl.textSize = max(22.dp.toPx(), 0.38f * pitch0)
         // each row = label cap-top … title baseline; rows spread space-between from rTop to rBottom
         val gapLT = lab.textSize * 0.55f
         val blockH = lab.textSize * labCap + gapLT + ttl.textSize * ttlCap

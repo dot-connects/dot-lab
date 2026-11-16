@@ -8,6 +8,7 @@ import androidx.compose.ui.test.performClick
 import kr.dot.sb.Device
 import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.ui.theme.switchLook
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
@@ -41,6 +42,16 @@ class SmallScreenShots(private val device: Device) {
         rule.mainClock.autoAdvance = false
         rule.shot("small", "panel", device, Theme.IPHONE) {
             RootImpl(Fixtures.full(), AppConfig(startPage = 0, ddays = Fixtures.ddays), StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = true))
+        }
+    }
+
+    /** r14 B6: 내 테마 first in the theme row, the selected one marked. */
+    @Test fun panelMine() {
+        val m = kr.dot.sb.model.MyTheme("보라 무드", Theme.MOODLIGHT, kr.dot.sb.model.ThemeEdit(glow = 0xFFAA88FE))
+        val c = AppConfig(startPage = 0, ddays = Fixtures.ddays, myThemes = listOf(m)).switchLook(kr.dot.sb.ui.theme.Look.Mine(m))
+        rule.mainClock.autoAdvance = false
+        rule.shot("small", "panel-mine", device, Theme.IPHONE) {
+            RootImpl(Fixtures.full(), c, StandbyActions.NONE, Modifier, { _, _ -> }, RootStart(bar = true))
         }
     }
 

@@ -56,9 +56,8 @@ internal fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
-    val ts = e.look.textScale
-    val oneH = 28.dp * ts
-    val twoH = 46.dp * ts
+    val oneH = 28.dp
+    val twoH = 46.dp
     fun labH(full: Boolean) = if (full) e.meta * 1.3f * 3 + 4.dp else e.meta * 1.3f + 4.dp
     val rings = @Composable { d: Dp, full: Boolean, m: Modifier ->
         Row(m, horizontalArrangement = Arrangement.SpaceAround) {
@@ -88,7 +87,7 @@ internal fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
         e.w / e.h >= 1.25f -> {
             val full = ih >= 220.dp
             // the rings take the width the session column does not need (mockup: half the width; that left big slots empty)
-            val d = min(ih - labH(full) - 4.dp, max(iw * 0.5f - 10.dp, iw - 10.dp - p - 260.dp * ts) / 2)
+            val d = min(ih - labH(full) - 4.dp, max(iw * 0.5f - 10.dp, iw - 10.dp - p - 260.dp) / 2)
             val right = iw - (d * 2 + 10.dp) - p
             val two = ih >= twoH * 4 && right >= 220.dp
             val n = minOf(u.sessions.size, (ih / (if (two) twoH else oneH)).toInt())
@@ -236,7 +235,7 @@ private fun Footer(e: Env, u: UsageInfo, update: Boolean) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Box(Modifier.fillMaxWidth().height(1.dp).background(e.ink.ink4))
         u.bots.forEach { (name, st) ->
-            Row(Modifier.height(24.dp * e.look.textScale), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.height(24.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val busy = st == "busy"
                 val col = when (st) { "busy" -> e.ink.ink; "idle" -> e.ink.ink2; else -> e.ink.ink3 }
                 Canvas(Modifier.size(14.dp)) {

@@ -243,7 +243,6 @@ private fun NotifClosed(
     val pad = if (low) 10.dp else 14.dp
     val total = groups.sumOf { it.count }
     val nowMs = state.now.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
-    val k = e.look.textScale
     Box(Modifier.fillMaxSize().then(plate).tap(onOpen).padding(pad)) { // one target: rows are under 48 dp
         val ih = e.h - pad * 2
         when (tier) {
@@ -254,7 +253,7 @@ private fun NotifClosed(
                     if (clearAll != null) ClearBtn(e, clearAll)
                 }
                 Spacer(Modifier.width(12.dp))
-                val rowH = 36.dp * k
+                val rowH = 36.dp
                 Column(Modifier.weight(1f)) {
                     groups.take(floor(ih / rowH).toInt().coerceAtLeast(1)).forEach { GroupRow(e, state, actions, it, tier, rowH, nowMs) }
                 }
@@ -268,7 +267,7 @@ private fun NotifClosed(
                         if (clearAll != null) TextBtn(e, "모두 지우기", e.ink.ink2, clearAll)
                     } else if (clearAll != null) Box(Modifier.offset(x = 14.dp)) { ClearBtn(e, clearAll) }
                 }
-                val rowH = (if (low) 36.dp else if (tier == NotifTier.B) 44.dp else 40.dp) * k
+                val rowH = (if (low) 36.dp else if (tier == NotifTier.B) 44.dp else 40.dp)
                 val room = ih - headH
                 val cols = if (tier == NotifTier.E) 2 else 1
                 val fit = floor(room / rowH).toInt() * cols

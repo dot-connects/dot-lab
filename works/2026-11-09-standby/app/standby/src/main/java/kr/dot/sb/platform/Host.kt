@@ -82,7 +82,7 @@ class HostActions(
         }
     }
     override fun photoTheme(bucket: String?) = holder.photoTheme(bucket)
-    override fun setTheme(theme: kr.dot.sb.model.Theme) = kr.dot.sb.settings.ConfigStore.update(ctx) { it.switchFromPanel(theme) }
+    override fun setLook(look: kr.dot.sb.ui.theme.Look) = kr.dot.sb.settings.ConfigStore.update(ctx) { it.switchFromPanel(look) }
     override fun openAlarmApp() = host.unlockThen {
         runCatching { ctx.startActivity(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
     }

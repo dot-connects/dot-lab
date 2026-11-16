@@ -291,8 +291,8 @@ fun AppConfig.restoreLook(th: Theme, e: ThemeEdit?, from: String?): AppConfig =
     withTheme(th).withThemeEdit(th, e).let { c -> c.copy(customFrom = from, themeEdits = c.themeEdits.filterKeys { it == th }) }
 
 /** StandBy's pull-down panel: an unsaved edit is kept as the next "내 테마 N" first (no dialog on the stand screen). */
-fun AppConfig.switchFromPanel(th: Theme): AppConfig =
-    (if (StripPick.of(this) == StripPick.Custom) saveMyTheme(nextMyThemeName(myThemes)) else this).switchLook(Look.Builtin(th))
+fun AppConfig.switchFromPanel(to: Look): AppConfig =
+    (if (StripPick.of(this) == StripPick.Custom) saveMyTheme(nextMyThemeName(myThemes)) else this).switchLook(to)
 
 /** 저장: the current look under [name]; an existing 내 테마 of that name is replaced in place (덮어쓰기), else appended. */
 fun AppConfig.saveMyTheme(name: String): AppConfig {
@@ -345,7 +345,7 @@ fun ProvideTheme(theme: Theme, content: @Composable () -> Unit) = ProvideTheme(T
 fun ProvideTheme(c: AppConfig, content: @Composable () -> Unit) {
     // the time is read only when this config draws a flow (unedited users never recompose from it)
     val at = if (c.boardBg == BoardBg.THEME && c.themeEdits[c.theme]?.flow != null) LocalThemeTime.current else null
-    CompositionLocalProvider(LocalTextScale provides c.textSize.f) { ProvideTheme(c.drawnTheme(at), c.boardBg to Color(c.boardBgColor), content) }
+    ProvideTheme(c.drawnTheme(at), c.boardBg to Color(c.boardBgColor), content)
 }
 
 /** [ProvideTheme] at [at] (StandbyRoot: the state's minute; settings: now or the editor's 아침/낮/저녁 chip). */

@@ -67,6 +67,10 @@ import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SCRIM
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.ui.theme.withTheme
+import kr.dot.sb.ui.theme.withThemeEdit
+import kr.dot.sb.ui.theme.applyMyTheme
+import kr.dot.sb.ui.theme.Look
+import kr.dot.sb.ui.theme.StripPick
 import androidx.compose.ui.semantics.ProgressBarRangeInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.progressBarRangeInfo
@@ -93,7 +97,7 @@ internal fun barFraction(xDp: Float, screenWDp: Float): Float {
  */
 @Composable
 internal fun TopPanel(
-    level: Float, onLevel: (Float) -> Unit, onPress: (Boolean) -> Unit, onTheme: (Theme) -> Unit,
+    level: Float, onLevel: (Float) -> Unit, onPress: (Boolean) -> Unit, onLook: (Look) -> Unit,
     state: StandbyState, config: AppConfig, w: Dp, h: Dp, modifier: Modifier = Modifier,
 ) {
     val ink = LocalInk.current
@@ -132,13 +136,18 @@ internal fun TopPanel(
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, (v * maxVol).roundToInt(), 0)
         }) { c -> speaker(c) }
         val chipW = (pw - pad * 2 - 16.dp) / 3
-        val list = rememberLazyListState((Theme.entries.indexOf(config.theme) - 1).coerceAtLeast(0))
+        // r14 B6: 내 테마 first, then the built-ins; marked as the settings strip marks it
+        val looks = remember(config.myThemes) { config.myThemes.map { Look.Mine(it) } + Theme.entries.map { Look.Builtin(it) } }
+        val pick = StripPick.of(config)
+        val list = rememberLazyListState((looks.indexOf(pick).takeIf { it >= 0 } ?: looks.indexOf(Look.Builtin(config.theme))).minus(1).coerceAtLeast(0))
         val day = remember(state) { state.copy(night = 0f) }
         LazyRow(Modifier.fillMaxWidth().padding(top = 2.dp), list, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            items(Theme.entries) { th ->
+            items(looks) { look ->
                 val chip = RoundedCornerShape(16.dp)
-                val on = th == config.theme
-                val cfg = remember(config, th) { config.withTheme(th) }
+                val on = look == pick
+                val cfg = remember(config, look) {
+                    when (look) { is Look.Mine -> config.applyMyTheme(look.my); is Look.Builtin -> config.withTheme(look.theme).withThemeEdit(look.theme, null) }
+                }
                 Box(
                     Modifier.width(chipW).clip(chip)
                         .then(if (on) Modifier.border(2.dp, ink.ink, chip) else Modifier.background(ink.ink.copy(alpha = 0.06f)))
@@ -152,7 +161,8 @@ internal fun TopPanel(
                             }
                         }
                     }
-                    Box(Modifier.matchParentSize().testTag("theme-${th.name}").tap { onTheme(th) })
+                    val tag = when (look) { is Look.Mine -> "theme-mine-${look.my.name}"; is Look.Builtin -> "theme-${look.theme.name}" }
+                    Box(Modifier.matchParentSize().testTag(tag).tap { onLook(look) })
                 }
             }
         }

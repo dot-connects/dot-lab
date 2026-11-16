@@ -84,13 +84,11 @@ data class CardLook(
     val hero: Boolean = true,
     val clockOnBoard: Boolean = false,
     val clockFace: FaceId = FaceId.DIGITAL,
-    /** Text-size setting (0.9 / 1 / 1.15): scales reading text, labels and captions, never hero numbers (spec §0). */
-    val textScale: Float = 1f,
 ) {
     companion object {
         /** A card alone (no board): the user's colour for [face] if they set one, else the theme accent. */
         fun of(config: AppConfig, face: FaceId = FaceId.DIGITAL): CardLook =
-            CardLook(config.styles[face]?.let { Color(it.color) } ?: config.drawnTheme().tokens.accent, textScale = config.textSize.f)
+            CardLook(config.styles[face]?.let { Color(it.color) } ?: config.drawnTheme().tokens.accent)
     }
 }
 
@@ -116,8 +114,8 @@ internal class Env(
 ) {
     val s: Dp get() = sz.s
     val pad: Dp get() = sz.pad
-    /** Labels, kickers, details and a slot clock's date line ([LocalSlotLabel]) × the text-size setting. */
-    val label: Dp get() = sz.label * look.textScale
+    /** Labels, kickers and details. */
+    val label: Dp get() = sz.label
     val cls: SizeClass = SizeClass.of(sz.s)
     val wide: Boolean = w / h >= 1.5f
     val tall: Boolean = h / w >= 1.5f
@@ -128,10 +126,10 @@ internal class Env(
     /** Cap height / em of the card words font (plan-r13 A3: the token font, Pretendard = [CAP_UI]). */
     val cap: Float get() = t.cardCap
     val labelCap: Dp get() = label * cap
-    /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp × the text-size setting. */
-    val read: Dp get() = 15.dp * look.textScale
-    val meta: Dp get() = 13.dp * look.textScale
-    val head: Dp get() = 18.dp * look.textScale
+    /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp. */
+    val read: Dp get() = 15.dp
+    val meta: Dp get() = 13.dp
+    val head: Dp get() = 18.dp
     /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
     val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)

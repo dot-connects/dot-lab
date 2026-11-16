@@ -32,7 +32,6 @@ import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.NightMode
-import kr.dot.sb.model.TextSize
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.ui.board.BoardView
@@ -106,20 +105,13 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
 }
 
 /**
- * 테마와 배경 (mockup SCREENS.theme, plan-r13 A4): the theme strip (내 테마 · built-ins · ＋ 사용자 지정), 글자 크기, 배경.
- * The preview swipes on to every page (글자 크기 shows on 모듈러). Colours and shapes live in 사용자 지정.
+ * 테마와 배경 (mockup SCREENS.theme, plan-r13 A4): the theme strip (내 테마 · built-ins · ＋ 사용자 지정), 배경.
+ * The preview swipes on to every page. Colours and shapes live in 사용자 지정.
  */
 @Composable
 fun ThemeScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     Page("테마와 배경", back, preview = Preview(config, pageSlides(config))) {
-        ThemePicker(config, update) { nav.push(Routes.THEME_CUSTOM) }
-        Section(null) {
-            item {
-                ControlRow("글자 크기", note = "카드 글자와 시계 아래 날짜·정보 줄이 바뀌어요. 큰 숫자는 그대로예요. 미리보기를 옆으로 넘겨 확인해요.") {
-                    Segmented(TextSize.entries.map { it.ko }, config.textSize.ordinal, { i -> update { it.copy(textSize = TextSize.entries[i]) } })
-                }
-            }
-        }
+        ThemePicker(config, update, { nav.push(Routes.THEME_CUSTOM) }) { name -> nav.push(Routes.themeEdit(name)) }
         Section("배경", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
             item {
                 ControlRow(null) {
@@ -143,10 +135,11 @@ internal val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12
  * names on), in a horizontal scroll, so what you tap is what StandBy shows. r11: 내 테마 come first with their names;
  * long-press one for 이름 바꾸기 / 지우기. r13 (plan-r13 A1): the marked tile is [StripPick]; built-in tiles show the theme
  * unedited; [＋ 사용자 지정] at the end ([onCustom]) is marked "저장 안 함" while the look holds an edit saved nowhere,
- * and every tap first asks then ([UnsavedGuard]).
+ * and every tap first asks then ([UnsavedGuard]). r14 B5: the marked 내 테마 wears a veil and a pencil; tapping it opens
+ * 사용자 지정 in 고치기 mode for it ([onEdit]).
  */
 @Composable
-private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit) {
+private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit, onEdit: (String) -> Unit) {
     val state = remember(config.city, config.use24h) { Sample.state(config) }
     val board = remember(config.widgetLeft, config.widgetRight) { widgetsBoard(config) }
     val acc = LocalAccent.current
@@ -171,7 +164,8 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit)
         LazyRow(Modifier.fillMaxWidth(), list, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             items(config.myThemes) { m ->
                 val cfg = remember(config, m) { config.applyMyTheme(m) }
-                ThemeThumb(cfg, board, state, m.name, pick == Look.Mine(m), acc, { tap(Look.Mine(m)) }, { menu = m })
+                val on = pick == Look.Mine(m)
+                ThemeThumb(cfg, board, state, m.name, on, acc, { if (on) { menu = null; onEdit(m.name) } else tap(Look.Mine(m)) }, { menu = m }, pencil = on)
             }
             items(Theme.entries) { th ->
                 val cfg = remember(config, th) { config.withTheme(th).withThemeEdit(th, null) }
@@ -210,12 +204,12 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit)
 
 /**
  * One thumbnail of the strip: the widgets page drawn with [cfg] (null = a "＋" box), [name] under it, [badge] over the
- * bottom of the picture. [onLong] = a 내 테마 (long-press menu).
+ * bottom of the picture. [onLong] = a 내 테마 (long-press menu). [pencil]: a dark veil and a pencil over the picture.
  */
 @Composable
 private fun ThemeThumb(
     cfg: AppConfig?, board: Board, state: kr.dot.sb.ui.state.StandbyState, name: String, on: Boolean, acc: androidx.compose.ui.graphics.Color,
-    onTap: () -> Unit, onLong: (() -> Unit)? = null, badge: String? = null,
+    onTap: () -> Unit, onLong: (() -> Unit)? = null, badge: String? = null, pencil: Boolean = false,
 ) {
     // the gesture detector outlives recompositions: it calls the latest callbacks
     val tapNow by androidx.compose.runtime.rememberUpdatedState(onTap)
@@ -238,6 +232,9 @@ private fun ThemeThumb(
                 Alignment.Center,
             ) { T("＋", 28.sp, 500, SK.muted) }
             if (badge != null) Box(Modifier.align(Alignment.BottomCenter).padding(bottom = 6.dp)) { Pill(badge, acc, filled = true) }
+            if (pencil) Box(Modifier.matchParentSize().clip(RoundedCornerShape(8.dp)).background(androidx.compose.ui.graphics.Color.Black.copy(alpha = 0.55f)), Alignment.Center) {
+                Box(Modifier.size(38.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.EDIT, SK.bg, 20.dp) }
+            }
             // the thumbnail's own cards must not take the tap
             Box(Modifier.matchParentSize().then(tap))
         }

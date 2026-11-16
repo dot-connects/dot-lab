@@ -11,6 +11,7 @@ import kr.dot.sb.ui.screens.BAR_HIDE_MS
 import kr.dot.sb.ui.screens.RootImpl
 import kr.dot.sb.ui.screens.RootStart
 import kr.dot.sb.ui.state.StandbyActions
+import kr.dot.sb.ui.theme.Look
 import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
@@ -27,8 +28,8 @@ class TopPanelTest {
     @get:Rule val rule = createComposeRule()
 
     private class Rec : StandbyActions {
-        val themes = mutableListOf<Theme>()
-        override fun setTheme(theme: Theme) { themes += theme }
+        val looks = mutableListOf<Look>()
+        override fun setLook(look: Look) { looks += look }
     }
 
     private val chip = "theme-${Theme.entries[1].name}"
@@ -54,7 +55,7 @@ class TopPanelTest {
         val rec = show()
         rule.mainClock.advanceTimeBy(3_000)
         rule.onNodeWithTag(chip).performClick()
-        assertEquals(listOf(Theme.entries[1]), rec.themes)
+        assertEquals(listOf(Look.Builtin(Theme.entries[1])), rec.looks)
         rule.mainClock.advanceTimeBy(BAR_HIDE_MS - 300) // 6.7 s after opening: still up, the tap restarted the 4 s
         rule.onNodeWithTag(chip).assertExists()
         rule.mainClock.advanceTimeBy(600)

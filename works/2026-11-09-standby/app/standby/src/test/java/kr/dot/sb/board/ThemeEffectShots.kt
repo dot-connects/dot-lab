@@ -14,7 +14,6 @@ import kr.dot.sb.groupOn
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.Border
-import kr.dot.sb.model.CardFont
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Texture
@@ -52,13 +51,9 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
         if (!groupOn("effects")) return
         val d = Device.FOLD_COVER_L
         RuntimeEnvironment.setQualifiers(d.qualifiers)
-        val font = name.startsWith("font-")
         val cfg = AppConfig(theme = theme, ddays = Fixtures.ddays).withThemeEdit(theme, edit(name))
-        val board = if (font) Board("fx", "FONT", Layout.TWO, listOf(listOf(CardType.NOTIF), listOf(CardType.AGENDA)))
-        else Board("fx", "FX", Layout.FOUR, listOf(listOf(CardType.NOTIF), listOf(CardType.WEATHER), listOf(CardType.CALENDAR), listOf(CardType.TIMER)))
+        val board = Board("fx", "FX", Layout.FOUR, listOf(listOf(CardType.NOTIF), listOf(CardType.WEATHER), listOf(CardType.CALENDAR), listOf(CardType.TIMER)))
         var s = Fixtures.full(night)
-        // the two-slot notification card shows titles: every title carries KS X 1001-heavy text
-        if (font) s = s.copy(notifications = s.notifications.mapIndexed { i, n -> n.copy(title = KS_TEXT.split(' ').drop(i * 3).take(3).joinToString(" "), text = KS_TEXT) })
         s = s.copy(timers = mapOf("fx-3" to s.timers.values.first()))
         // glow2 is a token (no edit field): the page is drawn from MOODLIGHT's tokens with a second, smaller yellow glow
         val page = if (name == "glow2") Themes.edited(Themes.MOODLIGHT, Themes.MOODLIGHT.tokens.let {
@@ -70,9 +65,6 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
     }
 
     companion object {
-        /** KS X 1001 syllables with heavy finals and doubled consonants (every one is in the 2,350). */
-        const val KS_TEXT = "흙탕물에 꿇어앉아 닭갈비 핥던 넋, 밟힌 꽹과리 쐐기 뚫고 훑어본 왠지 낯선 숲속 옻칠 찜닭"
-
         private val NIGHT_EDIT = ThemeEdit(bgTexture = Texture.LINEN, cardTexture = Texture.GRAIN, textureAmt = 0.8f, border = Border.THICK, textGlow = 0.7f)
 
         fun edit(name: String): ThemeEdit = when {
@@ -80,7 +72,6 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
             name == "border-thin" -> ThemeEdit(border = Border.THIN)
             name == "border-thick" -> ThemeEdit(border = Border.THICK, borderColor = 0xFFFFAD5C)
             name.startsWith("shape-") -> ThemeEdit(plateStyle = PlateStyle.valueOf(name.removePrefix("shape-").uppercase()))
-            name.startsWith("font-") -> ThemeEdit(textFont = CardFont.valueOf(name.removePrefix("font-").uppercase()))
             name == "glow-text" -> ThemeEdit(textGlow = 0.8f)
             name == "glow-halo" -> ThemeEdit(plateStyle = PlateStyle.OUTLINE, textGlow = 1f)
             name == "glow-fill" -> ThemeEdit(plateStyle = PlateStyle.FILL, textGlow = 0.6f)
@@ -92,7 +83,7 @@ class ThemeEffectShots(private val name: String, private val theme: Theme, priva
         @ParameterizedRobolectricTestRunner.Parameters(name = "{0}-{1}")
         fun cases(): List<Array<Any>> =
             Texture.entries.filter { it != Texture.NONE }.map { arrayOf<Any>("tex-${it.name.lowercase()}", Theme.IPHONE, 0f) } +
-                listOf("border-thin", "border-thick", "shape-glass", "shape-rule", "shape-outline", "font-serif", "font-round", "font-pen", "glow-text")
+                listOf("border-thin", "border-thick", "shape-glass", "shape-rule", "shape-outline", "glow-text")
                     .map { arrayOf<Any>(it, Theme.IPHONE, 0f) } +
                 listOf(
                     arrayOf<Any>("glow-halo", Theme.TERMINAL, 0f), // OUTLINE picked on TERMINAL: the halo on a non-glowing theme

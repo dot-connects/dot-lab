@@ -3,12 +3,9 @@ package kr.dot.sb.settings
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.BgKind
 import kr.dot.sb.model.Border
-import kr.dot.sb.model.CardFont
-import kr.dot.sb.model.TextWeight
 import kr.dot.sb.model.Texture
 import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.MyTheme
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.ThemeEdit
 import kr.dot.sb.ui.theme.PlateStyle
@@ -28,10 +25,7 @@ class ThemeEditCodecTest {
     )
 
     private fun edited(): AppConfig {
-        val d = AppConfig()
-        val board = d.boards[0].let { it.copy(options = it.options + ("0:0" to SlotOptions(plate = 0xFFFFD74B))) }
-        return d.copy(
-            boards = listOf(board) + d.boards.drop(1),
+        return AppConfig().copy(
             themeEdits = mapOf(Theme.MOODLIGHT to full, Theme.DAYPAPER to ThemeEdit(rule = 0xFFD8B46A, ink = 0xFFECE4D4)),
             myThemes = listOf(MyTheme("내 테마 1", Theme.MOODLIGHT, full), MyTheme("밤바다", Theme.SKY, ThemeEdit(bg = listOf(0xFF001020, 0xFF102040, 0xFF301830)))),
         )
@@ -48,6 +42,22 @@ class ThemeEditCodecTest {
         val back = ConfigCodec.decode(old)
         assertTrue(back.themeEdits.isEmpty() && back.myThemes.isEmpty())
         assertEquals(old, ConfigCodec.encode(back))
+    }
+
+    /** r14 B1/B4: 글자 크기, 글꼴, 글자 두께 and 카드 색 are gone; an old save reads with them dropped and never writes them back. */
+    @Test fun removedSettingsAreReadAsDefaultsAndNotWritten() {
+        val json = JSONObject(ConfigCodec.encode(AppConfig())).apply {
+            put("textSize", "LARGE")
+            put("themeEdits", JSONObject("""{"DAYPAPER": {"radius": 0.1, "textFont": "PEN", "textWeight": "BOLD"}}"""))
+            val boards = getJSONArray("boards")
+            boards.getJSONObject(0).put("options", JSONObject("""{"0:0": {"plate": 4294956875, "hideAtNight": true}}"""))
+        }.toString()
+        val c = ConfigCodec.decode(json)
+        assertEquals(mapOf(Theme.DAYPAPER to ThemeEdit(radius = 0.1f)), c.themeEdits)
+        assertEquals(true, c.boards[0].options["0:0"]?.hideAtNight)
+        val out = ConfigCodec.encode(c)
+        for (k in listOf("textSize", "textFont", "textWeight", "\"plate\"")) assertFalse(k, out.contains(k))
+        assertEquals(c, ConfigCodec.decode(out))
     }
 
     @Test fun garbageIsSanitisedPerEntry() {
@@ -99,7 +109,7 @@ class ThemeEditCodecTest {
     private val r13 = ThemeEdit(
         bg = listOf(0xFFE0D8C8), bgKind = BgKind.GLOW, plate = 0xFF2B2119, rule = 0xFFD8B46A, plateStyle = PlateStyle.RULE,
         border = Border.THICK, borderColor = 0xFF808080, bgTexture = Texture.LINEN, cardTexture = Texture.FROST, textureAmt = 0.3f,
-        textFont = CardFont.PEN, textWeight = TextWeight.BOLD, textGlow = 0.6f,
+        textGlow = 0.6f,
     )
 
     @Test fun r13FieldsRoundTrip() {

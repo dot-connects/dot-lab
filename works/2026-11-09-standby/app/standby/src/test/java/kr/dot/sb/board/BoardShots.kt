@@ -11,7 +11,6 @@ import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Presets
-import kr.dot.sb.model.TextSize
 import kr.dot.sb.THEMES
 import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
@@ -47,7 +46,7 @@ class BoardShots(private val name: String, private val device: Device, private v
         // "-fill": the DIGITAL clock with r14 꽉 채우기
         val styles = if (!stateKey.endsWith("-fill")) emptyMap() else
             mapOf(kr.dot.sb.model.FaceId.DIGITAL to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(kr.dot.sb.model.FaceId.DIGITAL).copy(fill = true))
-        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
+        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays), StandbyActions.NONE) }
     }
 
     companion object {
@@ -55,7 +54,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
 
         /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
-        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-fill").removeSuffix("-large").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
+        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-fill").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
             "night" -> Fixtures.full(1f)
             "noart" -> Fixtures.full().let { it.copy(media = it.media!!.copy(art = null)) }
             "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
@@ -119,15 +118,6 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
             }
             for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")
-            // text size LARGE (115 %, reading text only): every card per size class + two presets
-            for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls-large", d, one(t, layout), "full-large")
-            for (b in Presets.boards().take(2)) for (d in listOf(Device.FOLD_COVER_L, Device.FLIP)) out += arrayOf("large-${b.id}", d, b, "full-large")
-            // 11-14: labels and captions scale too; the widgets page (first StandBy page) and big notification / calendar cards
-            val widgets = kr.dot.sb.settings.widgetsBoard(kr.dot.sb.model.AppConfig())
-            for (d in listOf(Device.FLIP, Device.FOLD_COVER_L, Device.FOLD_INNER)) out += arrayOf("large-widgets", d, widgets, "full-large")
-            for (t in listOf(CardType.NOTIF, CardType.CALENDAR, CardType.AGENDA)) {
-                out += arrayOf("card-${t.name.lowercase()}-L-large", Device.FOLD_INNER, Board("card", t.name, Layout.ONE, listOf(listOf(t))), "full-large")
-            }
             // the narrowest slots: Flip THREE (~110 dp wide), where Task 21 fixed SleepOne / TempRow crashes
             for (t in listOf(CardType.SLEEP, CardType.WEATHER, CardType.MUSIC, CardType.NOTIF, CardType.CLOCK)) {
                 out += arrayOf("card-${t.name.lowercase()}-XSt", Device.FLIP, Board("card", t.name, Layout.THREE, listOf(listOf(t))), "full")

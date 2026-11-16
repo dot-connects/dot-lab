@@ -257,7 +257,7 @@ internal fun RootImpl(
             val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
             if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
                 TopPanel(
-                    level, { v -> level = v; act.setBrightness(v) }, { barPressed = it; barTick++ }, { th -> act.setTheme(th) },
+                    level, { v -> level = v; act.setBrightness(v) }, { barPressed = it; barTick++ }, { look -> act.setLook(look) },
                     state, config, w, h, Modifier.align(Alignment.TopCenter),
                 )
             }

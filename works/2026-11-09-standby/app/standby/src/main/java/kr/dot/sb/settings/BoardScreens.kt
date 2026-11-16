@@ -203,16 +203,6 @@ private fun StartPageSheet(config: AppConfig, update: Update, onDismiss: () -> U
 
 private fun <T> List<T>.swap(i: Int, d: Int): List<T> = moved(i, d)
 
-/** A card in a stack as its row names it: a clock card with the face it shows. */
-data class CardPick(val type: CardType, val face: FaceId? = null) {
-    val ko: String get() = if (face != null) "${type.ko} · ${kr.dot.sb.ui.clock.spec(face).ko}" else type.ko
-}
-
-/** What stack [s] of [b] holds, a clock card with its effective face. */
-internal fun picks(b: Board, s: Int): List<CardPick> = b.slots.getOrNull(s).orEmpty().mapIndexed { j, t ->
-    CardPick(t, if (t == CardType.CLOCK) b.options["$s:$j"]?.face ?: b.clockFace else null)
-}
-
 @Composable
 fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val state = remember(config.city, config.use24h) { Sample.state(config) }
@@ -231,11 +221,9 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
     Box(Modifier.fillMaxSize()) {
         Page(WIDGETS_PAGE, back, preview = pagePreview(config, 0, first, nav)) {
             listOf(true to config.widgetLeft, false to config.widgetRight).forEach { (left, cards) ->
-                val wb = widgetsBoard(config)
                 CardStackSection(
                     title = if (left) "왼쪽 칸" else "오른쪽 칸",
                     cards = cards,
-                    labels = picks(wb, if (left) 0 else 1).map { it.ko },
                     onReplace = { j -> pick = left to j },
                     onAdd = { pick = left to null },
                     onMove = { j, d -> editSide(left, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.swap(j, d) } },
@@ -335,8 +323,6 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     val acc = LocalAccent.current
     fun edit(f: (Board) -> Board) = update { BoardOps.replace(it, id, f) }
-    val cardPlates = config.boardBg == kr.dot.sb.model.BoardBg.THEME &&
-        config.drawnTheme().tokens.plateStyle.let { it == kr.dot.sb.ui.theme.PlateStyle.FILL || it == kr.dot.sb.ui.theme.PlateStyle.GLASS }
     /** [moved]: old stack index -> new one (null = the card left); a widget's options and id follow it (D6). */
     fun editSlot(slot: Int, moved: (Int) -> Int?, f: (List<CardType>) -> List<CardType>) = edit { b ->
         BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
@@ -389,15 +375,11 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                 CardStackSection(
                     title = "칸 ${s + 1}" + if (stack.size > 1) " · 카드 ${stack.size}장 (위아래로 넘겨요)" else "",
                     cards = stack,
-                    labels = picks(board, s).map { it.ko },
                     onReplace = { j -> selected = s; pick = PickTarget(s, j) },
                     onAdd = { selected = s; pick = PickTarget(s, null) },
                     onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
                     onRemove = { j -> removeAt(s, j) },
                     onSettings = { j -> nav.push(Routes.widget(id, s, j)) },
-                    // 카드 색 only where cards are filled plates on the theme's own background (RULE / OUTLINE have none)
-                    plates = { j -> board.options["$s:$j"]?.plate },
-                    onPlate = if (!cardPlates) null else { j, c -> edit { b -> b.copy(options = b.options + ("$s:$j" to (b.options["$s:$j"] ?: SlotOptions()).copy(plate = c))) } },
                 )
             }
 
@@ -487,7 +469,6 @@ fun CardStackSection(
     title: String,
     cards: List<CardType>,
     /** Row names (a clock card with its face); defaults to the card names. */
-    labels: List<String> = cards.map { it.ko },
     onReplace: (Int) -> Unit,
     onAdd: () -> Unit,
     onMove: (Int, Int) -> Unit,
@@ -495,20 +476,14 @@ fun CardStackSection(
     footer: String? = null,
     /** Phone widget rows get a settings button (boards only). */
     onSettings: ((Int) -> Unit)? = null,
-    /** r11 카드 색: card [j]'s own plate (null = the theme's); with [onPlate] every other row's 설정 opens the picker. */
-    plates: (Int) -> Long? = { null },
-    onPlate: ((Int, Long?) -> Unit)? = null,
 ) {
-    var open by remember { mutableStateOf<Int?>(null) }
     Section(title, footer) {
         cards.forEachIndexed { j, card ->
             item {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onReplace(j) }.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    T(labels.getOrElse(j) { card.ko }, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
+                    T(card.ko, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
                     if (card == CardType.WIDGET && onSettings != null) {
                         Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
-                    } else if (onPlate != null) {
-                        Box(Modifier.heightIn(min = 48.dp).clickable { open = if (open == j) null else j }.padding(horizontal = 12.dp), Alignment.Center) { T("색", 14.sp, 600, LocalAccent.current) }
                     }
                     if (cards.size > 1) {
                         Box(Modifier.size(48.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
@@ -517,13 +492,6 @@ fun CardStackSection(
                     } else {
                         T("바꾸기", 13.sp, 500, SK.muted, Modifier.padding(end = 12.dp))
                     }
-                }
-            }
-            if (onPlate != null && open == j && card != CardType.WIDGET) item {
-                val plate = plates(j)
-                ControlRow("카드 색", note = "이 카드만 다른 색이에요. 글자 색은 저절로 맞춰지고, 밤에는 밤 색이에요.") {
-                    Segmented(listOf("테마 색 따라감", "직접 고르기"), if (plate == null) 0 else 1, { i -> onPlate(j, if (i == 0) null else (plate ?: ClockStyle.SWATCHES[0])) })
-                    if (plate != null) ColorPalette(plate, { c -> onPlate(j, c) }, modifier = Modifier.padding(top = 8.dp))
                 }
             }
         }
@@ -575,18 +543,17 @@ fun CardPickerSheet(
                         Column(Modifier.weight(1f).clickable(enabled = tap != null) { tap?.invoke() }, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             val shape = RoundedCornerShape(12.dp)
                             // border(0.dp) still draws a hairline: only the current tile gets one
-                            Box(Modifier.fillMaxWidth().clip(shape).then(if (card == current) Modifier.border(2.dp, acc, shape) else Modifier)) {
+                            Box(Modifier.fillMaxWidth().clip(shape).then(if (card == current || added) Modifier.border(2.dp, acc, shape) else Modifier)) {
                                 PreviewFrame(slotW.coerceAtLeast(60), slotH.coerceAtLeast(60), Modifier.fillMaxWidth(), maxHeight = 150.dp, radius = 10.dp) {
                                     BoardView(Board("pick", "", Layout.ONE, listOf(listOf(card)), accent, face), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
                                 }
                                 // the live card's own taps (media buttons, pager) swallowed the pick (11-14 "카드 추가가 안돼"): one catcher on top
                                 Box(Modifier.matchParentSize().clickable(enabled = tap != null) { tap?.invoke() })
-                                if (added) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(26.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 20.dp) }
+                                if (added) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f)), Alignment.Center) {
+                                    Box(Modifier.size(46.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 24.dp) }
+                                }
                             }
-                            Row(Modifier.fillMaxWidth().padding(start = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-                                T(card.ko, 14.sp, if (card == current) 700 else 500, SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
-                                if (added) T("추가됨", 14.sp, 700, acc, Modifier.padding(start = 6.dp), maxLines = 1)
-                            }
+                            T(card.ko, 14.sp, if (card == current) 700 else 500, SK.text, Modifier.padding(start = 2.dp), maxLines = 1)
                         }
                     }
                     if (row.size == 1) Box(Modifier.weight(1f))

@@ -20,7 +20,6 @@ import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.SlotOptions
-import kr.dot.sb.model.TextSize
 import kr.dot.sb.model.Theme
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.clockStyle
@@ -50,7 +49,7 @@ class ConfigCodecTest {
             ddays = listOf(DDay("수능", LocalDate.of(2026, 11, 19)), DDay("생일", LocalDate.of(2027, 2, 3))),
             city = City("부산", 35.1796, 129.0756), worldCities = listOf(City("도쿄", 35.6762, 139.6503)),
             usageEnabled = false, focusMinutes = 50, breakMinutes = 10, sleepMinutes = 90, theme = Theme.MOODLIGHT,
-            boardBg = BoardBg.AURORA, boardBgColor = 0xFF223344, textSize = TextSize.LARGE, analogStyle = AnalogStyle.BIG4,
+            boardBg = BoardBg.AURORA, boardBgColor = 0xFF223344, analogStyle = AnalogStyle.BIG4,
             sleepSound = SleepSound.WAVES, myClocks = listOf(FaceId.WALL, FaceId.DIGITAL),
             excludedCalendars = setOf("com.google|a@b.c|Work", "LOCAL|phone|Holidays"), heatProtect = false,
             moodAutoOffMin = 10, nightNotifQuiet = false, photoIntervalSec = 60,

@@ -3,8 +3,6 @@ package kr.dot.sb.settings
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.BgKind
 import kr.dot.sb.model.Border
-import kr.dot.sb.model.CardFont
-import kr.dot.sb.model.TextWeight
 import kr.dot.sb.model.Texture
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
@@ -48,7 +46,6 @@ object ConfigCodec {
         put("styles", JSONObject().also { o -> c.styles.forEach { (f, s) -> o.put(f.name, style(s)) } })   // overrides only
         put("boardBg", c.boardBg.name)
         put("boardBgColor", c.boardBgColor)
-        put("textSize", c.textSize.name)
         put("analogStyle", c.analogStyle.name)
         put("boards", JSONArray().also { a -> c.boards.forEach { a.put(board(it)) } })
         put("startPage", c.startPage)
@@ -131,8 +128,6 @@ object ConfigCodec {
         e.bgTexture?.let { put("bgTexture", it.name) }
         e.cardTexture?.let { put("cardTexture", it.name) }
         e.textureAmt?.let { put("textureAmt", it.toDouble()) }
-        e.textFont?.let { put("textFont", it.name) }
-        e.textWeight?.let { put("textWeight", it.name) }
         e.textGlow?.let { put("textGlow", it.toDouble()) }
     }
 
@@ -150,7 +145,7 @@ object ConfigCodec {
             radius = float("radius"), accent = long("accent"), ink = long("ink"), flow = longs("flow"),
             bgKind = enumOrNull<BgKind>(o, "bgKind"), border = enumOrNull<Border>(o, "border"), borderColor = long("borderColor"),
             bgTexture = enumOrNull<Texture>(o, "bgTexture"), cardTexture = enumOrNull<Texture>(o, "cardTexture"), textureAmt = float("textureAmt"),
-            textFont = enumOrNull<CardFont>(o, "textFont"), textWeight = enumOrNull<TextWeight>(o, "textWeight"), textGlow = float("textGlow"),
+            textGlow = float("textGlow"),
         ).sanitized(theme)
     }
 
@@ -213,7 +208,6 @@ object ConfigCodec {
             styles = styles,
             boardBg = enumOf(o, "boardBg", d.boardBg),
             boardBgColor = o.optLong("boardBgColor", d.boardBgColor),
-            textSize = enumOf(o, "textSize", d.textSize),
             analogStyle = if (o.has("analogStyle")) enumOf(o, "analogStyle", d.analogStyle) else migratedAnalog ?: d.analogStyle,
             boards = o.optJSONArray("boards")?.let { a -> (0 until a.length()).mapNotNull { runCatching { board(a.getJSONObject(it)) }.getOrNull() } } ?: d.boards,
             startPage = o.optInt("startPage", d.startPage),
@@ -364,7 +358,6 @@ object ConfigCodec {
         put("widgetId", s.widgetId ?: JSONObject.NULL); put("opacity", s.opacity.toDouble()); put("widgetMode", s.widgetMode.name)
         put("radiusDp", s.radiusDp); put("hideAtNight", s.hideAtNight)
         s.face?.let { put("face", it.name) }
-        s.plate?.let { put("plate", it) }
     }
 
     private fun slotOptions(o: JSONObject): SlotOptions {
@@ -374,7 +367,6 @@ object ConfigCodec {
             opacity = num(o, "opacity", d.opacity).coerceIn(0f, 1f), widgetMode = enumOf(o, "widgetMode", d.widgetMode),
             radiusDp = o.optInt("radiusDp", d.radiusDp), hideAtNight = o.optBoolean("hideAtNight", d.hideAtNight),
             face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
-            plate = if (o.has("plate") && !o.isNull("plate")) runCatching { o.getLong("plate") }.getOrNull() else null,
         )
     }
 

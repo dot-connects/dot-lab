@@ -38,11 +38,9 @@ import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.BgKind
 import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.Border
-import kr.dot.sb.model.CardFont
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.MyTheme
-import kr.dot.sb.model.TextWeight
 import kr.dot.sb.model.Texture
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.ThemeEdit
@@ -58,6 +56,8 @@ import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.ui.theme.nextMyThemeName
 import kr.dot.sb.ui.theme.restoreLook
 import kr.dot.sb.ui.theme.saveMyTheme
+import kr.dot.sb.ui.theme.renameMyTheme
+import kr.dot.sb.ui.theme.deleteMyTheme
 import kr.dot.sb.ui.theme.switchLook
 import kr.dot.sb.ui.theme.withBoardBg
 import kr.dot.sb.ui.theme.withThemeEdit
@@ -74,7 +74,7 @@ import kotlin.random.Random
 enum class EditField {
     BG_KIND, BG, GRAD_TOP, GRAD_MID, GRAD_BOTTOM, GLOW, GLOW_STRENGTH, GLOW_SHAPE, GLOW_AT, FLOW, BG_TEXTURE,
     PLATE_STYLE, PLATE, PLATE_ALPHA, RADIUS, BORDER, BORDER_COLOR, RULE, CARD_TEXTURE,
-    INK, ACCENT, TEXT_FONT, TEXT_WEIGHT, TEXT_GLOW,
+    INK, ACCENT, TEXT_GLOW,
 }
 
 enum class EditTab(val ko: String) { BG("배경"), CARD("카드"), TEXT("글자") }
@@ -166,8 +166,6 @@ object ThemeEditor {
             Control.Grain(EditField.CARD_TEXTURE, "카드 질감", card),
             Control.Colour(EditField.INK, "글자 색", text, inks),
             Control.Colour(EditField.ACCENT, "강조 색", text, with(tk.accent.long(), sw)),
-            Control.Choice(EditField.TEXT_FONT, "글꼴", text, listOf("고딕", "명조", "둥근 고딕", "손글씨")),
-            Control.Choice(EditField.TEXT_WEIGHT, "글자 두께", text, listOf("가늘게", "보통", "굵게")),
             Control.Slider(EditField.TEXT_GLOW, "글자 빛 번짐", text, 0f..1f),
         )
     }
@@ -273,8 +271,6 @@ object ThemeEditor {
         EditField.GLOW_SHAPE -> shapeOf(d).ordinal
         EditField.PLATE_STYLE -> PLATES.indexOf(d.plateStyle)
         EditField.BORDER -> d.border.ordinal
-        EditField.TEXT_FONT -> d.cardFont.ordinal
-        EditField.TEXT_WEIGHT -> d.textWeight.ordinal
         EditField.BG_TEXTURE -> TEXTURES.indexOf(d.bgTexture)
         EditField.CARD_TEXTURE -> TEXTURES.indexOf(d.cardTexture)
         else -> -1
@@ -285,8 +281,6 @@ object ThemeEditor {
         EditField.GLOW_SHAPE -> e.copy(glowShape = GlowShape.entries[i])
         EditField.PLATE_STYLE -> e.copy(plateStyle = PLATES[i])
         EditField.BORDER -> e.copy(border = Border.entries[i])
-        EditField.TEXT_FONT -> e.copy(textFont = CardFont.entries[i])
-        EditField.TEXT_WEIGHT -> e.copy(textWeight = TextWeight.entries[i])
         EditField.BG_TEXTURE -> e.copy(bgTexture = TEXTURES[i])
         EditField.CARD_TEXTURE -> e.copy(cardTexture = TEXTURES[i])
         else -> e
@@ -305,8 +299,6 @@ object ThemeEditor {
         EditField.PLATE_STYLE -> e.copy(plateStyle = null)
         EditField.FLOW -> e.copy(flow = null)
         EditField.BORDER -> e.copy(border = null)
-        EditField.TEXT_FONT -> e.copy(textFont = null)
-        EditField.TEXT_WEIGHT -> e.copy(textWeight = null)
         EditField.BG_TEXTURE -> e.copy(bgTexture = null)
         EditField.CARD_TEXTURE -> e.copy(cardTexture = null)
         else -> withColour(f, e, null, tk)
@@ -324,8 +316,6 @@ object ThemeEditor {
         EditField.PLATE_STYLE -> e.plateStyle != null
         EditField.FLOW -> e.flow != null
         EditField.BORDER -> e.border != null
-        EditField.TEXT_FONT -> e.textFont != null
-        EditField.TEXT_WEIGHT -> e.textWeight != null
         EditField.BG_TEXTURE -> e.bgTexture != null
         EditField.CARD_TEXTURE -> e.cardTexture != null
         else -> colour(f, e) != null
@@ -409,9 +399,11 @@ private val FLOW_AT = listOf(7 * 60, 13 * 60, 19 * 60)
 /**
  * 사용자 지정 (plan-r13 A4, mockup custom-theme.html layout B): preview, "어디서 시작할까요" chips, [색 조합 바꾸기]
  * [이전 조합] [저장], then the tabs 배경 · 카드 · 글자 (sticky) with the contrast warnings under them and the tab's rows.
+ * r14 B5 고치기 mode ([editing] = a 내 테마 name, mockup 4-A): "{name} 고치기", [되돌리기] [다른 이름으로] [저장] (overwrites it)
+ * and [이름 바꾸기] [지우기] instead of the start chips and the shuffle row.
  */
 @Composable
-fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
+fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editing: String? = null) {
     val theme = config.theme
     val tk = Themes.of(theme).tokens
     val saved = config.themeEdits[theme]
@@ -427,6 +419,11 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
     // the guard's target as a key (a 내 테마 by name), so the dialog survives rotation
     var guardKey by rememberSaveable { mutableStateOf<String?>(null) }
     val guard = guardKey?.let { k -> lookOf(k, config) }
+    // the 내 테마 being fixed, by name (a rename or 다른 이름으로 moves it); deleted elsewhere = plain 사용자 지정
+    var mineName by rememberSaveable { mutableStateOf(editing) }
+    val mine = mineName?.let { n -> config.myThemes.firstOrNull { it.name == n } }
+    var renaming by rememberSaveable { mutableStateOf(false) }
+    var deleting by rememberSaveable { mutableStateOf(false) }
     val cur = draft ?: saved ?: ThemeEdit()
     val drawn = remember(theme, cur) { tk.with(cur) }
     val shown = remember(config, draft) { draft?.let { config.withThemeEdit(theme, it) } ?: config }
@@ -443,7 +440,7 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
     val themed = config.boardBg == BoardBg.THEME
     kr.dot.sb.ui.theme.ProvideTheme(shown, at) {
         Page(
-            "사용자 지정", back, preview = Preview(shown, pageSlides(shown)),
+            mine?.let { "${it.name} 고치기" } ?: "사용자 지정", back, preview = Preview(shown, pageSlides(shown)),
             sticky = if (!themed) null else { { Segmented(EditTab.entries.map { it.ko }, tab.ordinal, { tab = EditTab.entries[it] }) } },
             after = if (!themed) null else { {
                 val warn = Contrast.warnings(drawn, tk)
@@ -463,6 +460,18 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
                             ActionButton("테마 기본으로 바꾸기", { update { it.withBoardBg(BoardBg.THEME) } }, primary = false)
                         }
                     }
+                }
+            } else if (mine != null) {
+                val changed = StripPick.of(config) != Look.Mine(mine)
+                T("고친 내용은 [저장]을 눌러야 '${mine.name}'에 덮어써져요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp), lineHeight = 18.sp)
+                Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionButton("되돌리기", { update { it.switchLook(Look.Mine(mine)) } }, Modifier.weight(1f), primary = false, enabled = changed, padH = 8.dp)
+                    ActionButton("다른 이름으로", { naming = nextMyThemeName(config.myThemes) }, Modifier.weight(1.3f), primary = false, padH = 8.dp)
+                    ActionButton("저장", { update { it.saveMyTheme(mine.name) } }, Modifier.weight(1f), enabled = changed, padH = 8.dp)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    ActionButton("이름 바꾸기", { renaming = true }, Modifier.weight(1f), primary = false, padH = 8.dp)
+                    ActionButton("지우기", { deleting = true }, Modifier.weight(1f), primary = false, danger = true, padH = 8.dp)
                 }
             } else {
                 Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
@@ -490,7 +499,25 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit) {
         NameDialog("내 테마로 저장", n, { naming = null }, taken = config.myThemes) { name ->
             naming = null
             update { it.saveMyTheme(name) }
+            if (mine != null) mineName = name
         }
+    }
+    if (renaming && mine != null) {
+        NameDialog("이름 바꾸기", mine.name, { renaming = false }, taken = config.myThemes - mine, unique = true) { name ->
+            renaming = false
+            update { c -> c.renameMyTheme(mine, name) }
+            mineName = name
+        }
+    }
+    if (deleting && mine != null) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { deleting = false },
+            containerColor = SK.surface,
+            title = { T("'${mine.name}'을 지울까요?", 18.sp, 700) },
+            // back to 테마와 배경 on 기본
+            confirmButton = { ActionButton("지우기", { deleting = false; update { c -> c.deleteMyTheme(mine).switchLook(Look.Builtin(Theme.IPHONE)) }; back() }, danger = true) },
+            dismissButton = { ActionButton("취소", { deleting = false }, primary = false) },
+        )
     }
     guard?.let { to -> UnsavedGuard(config, update, to, { guardKey = null }, onSwitch = keepUndo) }
 }
@@ -556,12 +583,7 @@ private fun ControlView(
         }
         is Control.Choice -> Column(pad) {
             EditTitle(c.label, ThemeEditor.isSet(f, cur), reset)
-            // Pretendard is the only card font with weights (plan-r13 A3)
-            val single = f == EditField.TEXT_WEIGHT && drawn.cardFont != CardFont.GOTHIC
-            val sel = ThemeEditor.choice(f, drawn)
-            if (c.options.size > 3 && f == EditField.TEXT_FONT) ChipFlow(c.options, sel, { i -> commit(ThemeEditor.withChoice(f, cur, i)) })
-            else Segmented(c.options, sel, { i -> commit(ThemeEditor.withChoice(f, cur, i)) }, enabled = !single)
-            if (single) T("이 글꼴은 두께가 하나예요", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
+            Segmented(c.options, ThemeEditor.choice(f, drawn), { i -> commit(ThemeEditor.withChoice(f, cur, i)) })
         }
         is Control.Grain -> Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
             Column(Modifier.padding(horizontal = 16.dp)) {

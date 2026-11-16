@@ -106,7 +106,7 @@ internal fun WallFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         val margin = if (inSlot) 0.04f * s else 10.dp.toPx() + 0.04f * s
         // the side block in mockup units (1 = 1 dp at a 360 dp height): its width is measured, its height fixed
         val unit = 1.dp.toPx()
-        val l = 22 * d.ts // weekday and info lines follow 글자 크기, the big date does not
+        val l = 22 // weekday and info lines follow 글자 크기, the big date does not
         fun sizes(k: Float) { wk.textSize = l * k; big.textSize = 68 * k; ui.textSize = l * k }
         sizes(unit)
         val sideW = maxOf(wk.measureText("${d.weekday}요일"), big.measureText("${d.month}월 ${d.day}일"), lines.maxOfOrNull { ui.width(it) } ?: 0f) / unit
@@ -184,7 +184,7 @@ internal fun WallFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
                     fun x(width: Float) = if (tall) g.sideX - width / 2 else g.sideX
                     var y = g.sideTop
                     val wkS = "${d.weekday}요일"; wk.color = weekC
-                    val l = 22 * d.ts
+                    val l = 22
                     drawText(wkS, x(wk.measureText(wkS)), y + l / 2 * k + wk.capRatio() * wk.textSize / 2, wk)
                     y += l * k + 6 * k
                     val dt = "${d.month}월 ${d.day}일"; big.color = ink.ink.toArgb()
@@ -241,7 +241,7 @@ internal fun CalendarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Bool
         val k = s / 360f
         val margin = if (inSlot) 0.04f * s else 10.dp.toPx() + 0.04f * s
         val dim = ink.ink2.toArgb()
-        ui.textSize = max(13.dp.toPx(), 20 * k) * d.ts
+        ui.textSize = max(13.dp.toPx(), 20 * k)
         var info = d.infoSegs(dim)
         if (ui.width(info) > 0.9f * w) info = d.infoSegs(dim, alarm = false)
         val infoCap = ui.capRatio() * ui.textSize
@@ -258,7 +258,7 @@ internal fun CalendarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Bool
         if (land && rtW < 0.9f * pw || !land && !tallFits) {
             // compact: the time and one date line
             val date = "${d.month}월 ${d.day}일 ${d.weekday}요일"
-            ui.textSize = max(13.dp.toPx(), min(24 * k * d.ts, 0.9f * w / ui.measureText(date) * ui.textSize))
+            ui.textSize = max(13.dp.toPx(), min(24 * k, 0.9f * w / ui.measureText(date) * ui.textSize))
             val gap = 16 * k
             val fs = fitSize(p, d, false, (0.8f * h - gap - infoCap) * sizePct, 0.9f * w)
             val cap = p.capEm * fs
@@ -340,7 +340,7 @@ internal fun HangulFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
         val dim = ink.ink2.toArgb(); val fg = ink.ink.toArgb()
         val tall = w < h * 1.3f
         // right column (landscape): "9:41" mono 44, then two dim 20 dp lines on top, two at the bottom
-        mono.textSize = 44 * k; ui.textSize = max(13.dp.toPx(), 20 * k) * d.ts
+        mono.textSize = 44 * k; ui.textSize = max(13.dp.toPx(), 20 * k)
         val num = "${d.h}:${d.m}"
         val topLines = listOf(listOf(Seg("${d.weekday}요일", dim)), listOf(Seg("${d.month}월 ${d.day}일", dim)))
         val botLines = listOfNotNull(d.weatherLine?.let { listOf(Seg(it, dim)) }, d.alarmShort?.let { listOf(alarmSeg(dim), Seg(" $it", dim)) })

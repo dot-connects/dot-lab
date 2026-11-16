@@ -78,11 +78,9 @@ import kr.dot.sb.ui.state.WeatherInfo
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.LocalTheme
-import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.ProvideTheme
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
-import kr.dot.sb.ui.theme.PlateStyle
 import kr.dot.sb.ui.theme.themedSurface
 import kr.dot.sb.model.BoardBg
 import androidx.compose.ui.text.SpanStyle
@@ -157,14 +155,8 @@ fun CardView(
     BoxWithConstraints(modifier.fillMaxSize()) {
         val w = maxWidth
         val h = maxHeight
-        val drawn = LocalTheme.current
-        // r11 카드 색: this card's own plate (FILL/GLASS themes on the theme background, day only); ink and roles fitted on it
-        val own = options?.plate?.takeIf {
-            state.night < 0.5f && config.boardBg == BoardBg.THEME && drawn.tokens.plateStyle.let { s -> s == PlateStyle.FILL || s == PlateStyle.GLASS }
-        }
-        val card = remember(drawn, own) { own?.let { drawn.tokens.cardPlate(it) } }
-        val t = remember(drawn, card) { card?.let { Themes.edited(drawn, it.tokens) } ?: drawn }
-        val ink = remember(state.night, look.accent, t, card) { Ink.of(state.night, look.accent, t, over = card?.over) }
+        val t = LocalTheme.current
+        val ink = remember(state.night, look.accent, t) { Ink.of(state.night, look.accent, t) }
         val today = state.now.toLocalDate()
         val e = remember(w, h, ink, look, slotId, today, t) {
             val own = Sizes.of(w, h, r = t.ramp)
@@ -176,7 +168,7 @@ fun CardView(
         // every card sits on the theme's plate (mockup "테마 전체"); the notification card wears it only while closed
         val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
         val surface = if (type.isNotif || close != null) Modifier else plate
-        CompositionLocalProvider(LocalTheme provides t, LocalInk provides ink, LocalSlotLabel provides e.label) {
+        CompositionLocalProvider(LocalTheme provides t, LocalInk provides ink) {
             val arrows = type == CardType.CLOCK && onFace != null
             Box(Modifier.fillMaxSize().then(surface).tap(if (arrows) { { sw.touch() } } else null)) {
                 when (type) {
@@ -293,7 +285,7 @@ private fun DateLine(e: Env, state: StandbyState, size: Dp) {
         withStyle(SpanStyle(color = if (e.look.hero) e.ink.accText else e.ink.ink)) { append("${dowKo(d)}요일") }
         append(rest)
     }
-    Txt(text, size * e.look.textScale, e.readInk2, weight = 500, align = TextAlign.Center, maxW = e.w)
+    Txt(text, size, e.readInk2, weight = 500, align = TextAlign.Center, maxW = e.w)
 }
 
 /**
@@ -443,7 +435,7 @@ private fun MediaTransport(
 }
 
 @Composable
-private fun MediaTime(e: Env, ms: Long, c: Color) = Txt(mmss(ms), 12.dp * e.look.textScale, c, num = true)
+private fun MediaTime(e: Env, ms: Long, c: Color) = Txt(mmss(ms), 12.dp, c, num = true)
 
 /**
  * Tall slot (w/h <= 0.82), YouTube Music portrait: art centred on top (video: 16:9 still), title and artist
@@ -453,7 +445,7 @@ private fun MediaTime(e: Env, ms: Long, c: Color) = Txt(mmss(ms), 12.dp * e.look
 private fun MediaTall(e: Env, m: MediaInfo, actions: StandbyActions, close: (() -> Unit)?) {
     val w = e.w
     val pad = (w * 0.075f).coerceIn(12.dp, 32.dp)
-    val ts = (w * 0.068f).coerceIn(15.dp, 26.dp) * e.look.textScale // text-size setting (title, artist); one line still ellipsizes
+    val ts = (w * 0.068f).coerceIn(15.dp, 26.dp) // text-size setting (title, artist); one line still ellipsizes
     val play = min((w * 0.19f).coerceIn(52.dp, 80.dp), w - pad * 2 - 96.dp).coerceAtLeast(48.dp) // prev + next keep 48 dp
     val gap = (w * 0.04f).coerceIn(8.dp, 18.dp)
     val video = m.kind == MediaKind.VIDEO
@@ -505,7 +497,7 @@ private fun MediaCover(e: Env, m: MediaInfo, actions: StandbyActions, close: (()
         Art(e, m.art, if (video) Ic.VIDEO else Ic.NOTE, Modifier.fillMaxSize(), 0.dp)
         if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
             val pad = (s * 0.07f).coerceIn(12.dp, 32.dp)
-            val ts = (s * 0.07f).coerceIn(13.dp, 26.dp) * e.look.textScale // text-size setting; one line still ellipsizes
+            val ts = (s * 0.07f).coerceIn(13.dp, 26.dp) // text-size setting; one line still ellipsizes
             val play = (s * 0.24f).coerceIn(48.dp, 96.dp)
             val side = max(48.dp, play * 0.72f)
             val gap = ((e.w - play - side * 2) * 0.12f).coerceIn(0.dp, play * 0.9f)
@@ -1287,7 +1279,7 @@ private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaIte
             Row(Modifier.fillMaxWidth().height(rowH * 0.8f), verticalAlignment = Alignment.CenterVertically) {
                 DOW_SUN.forEachIndexed { i, s ->
                     Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                        Txt(s, fs * 0.85f * e.look.textScale, if (i == 0) e.ink.weekday else e.readInk2, weight = 600) // weekday header = a label
+                        Txt(s, fs * 0.85f, if (i == 0) e.ink.weekday else e.readInk2, weight = 600) // weekday header = a label
                     }
                 }
             }

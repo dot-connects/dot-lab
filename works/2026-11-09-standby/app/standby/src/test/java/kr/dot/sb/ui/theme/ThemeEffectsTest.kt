@@ -104,12 +104,11 @@ class ThemeEffectsTest {
     @Test fun editFieldsReachTheTokens() {
         val t = ThemeTokens.IPHONE.with(
             ThemeEdit(
-                bgTexture = Texture.LINEN, cardTexture = Texture.FROST, textureAmt = 0.3f, textFont = CardFont.PEN,
-                textWeight = TextWeight.BOLD, border = Border.THICK, borderColor = 0xFF808080,
+                bgTexture = Texture.LINEN, cardTexture = Texture.FROST, textureAmt = 0.3f,
+                border = Border.THICK, borderColor = 0xFF808080,
             ),
         )
         assertEquals(Texture.LINEN, t.bgTexture); assertEquals(Texture.FROST, t.cardTexture); assertEquals(0.3f, t.textureAmt, 0f)
-        assertEquals(CardFont.PEN, t.cardFont); assertEquals(TextWeight.BOLD, t.textWeight)
         assertEquals(Border.THICK, t.border); assertEquals(Color(0xFF808080), t.borderColor)
         // an empty edit changes nothing new
         val e = ThemeTokens.IPHONE.with(ThemeEdit())

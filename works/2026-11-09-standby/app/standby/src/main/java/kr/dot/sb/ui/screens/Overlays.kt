@@ -103,7 +103,7 @@ internal fun Overlays(
     val bare = layer == Layer.NONE && !editing
     Faded(bare && state.live != null, state.live) { LivePill(it, actions) }
     // the live pill owns the top centre; the heat pill comes back (message first) once it is gone
-    Faded(bare && state.live == null && state.hot, if (state.hot) Unit else null) { HeatPill(config.textSize.f) }
+    Faded(bare && state.live == null && state.hot, if (state.hot) Unit else null) { HeatPill() }
     Faded(layer == Layer.NOW_PLAYING, state.media) { NowPlaying(it, state, config, actions) { onNowPlaying(false) } }
     // alarm and live glow in the theme accent, not the board clock's colour (accent-warm, spec-r9 §3)
     val night = LocalInk.current.night
@@ -176,7 +176,7 @@ internal const val HEAT_MSG_MS = 5_000L
 
 /** Heat protection pill (features.html §2 A): black pill top-centre, "뜨거워서 화면을 어둡게 했어요" 5 s, then the glyph alone. */
 @Composable
-private fun HeatPill(textScale: Float) {
+private fun HeatPill() {
     val ink = LocalInk.current
     var msg by remember { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(HEAT_MSG_MS); msg = false }
@@ -193,7 +193,7 @@ private fun HeatPill(textScale: Float) {
             IconView(Ic.THERMO, fg, Modifier.size(20.dp))
             if (msg) {
                 Spacer(Modifier.width(8.dp))
-                Txt("뜨거워서 화면을 어둡게 했어요", 17.dp * textScale, fg, weight = 700)
+                Txt("뜨거워서 화면을 어둡게 했어요", 17.dp, fg, weight = 700)
             }
         }
     }
@@ -448,11 +448,11 @@ private fun Banner(allowed: Boolean, state: StandbyState, config: AppConfig, act
         allowed && n != null,
         enter = slideInVertically(tween(Motion.LAYER_FADE_MS)) { -it } + fadeIn(tween(Motion.LAYER_FADE_MS)),
         exit = slideOutVertically(tween(Motion.LAYER_FADE_MS)) { -it } + fadeOut(tween(Motion.LAYER_FADE_MS)),
-    ) { last?.let { NotifBanner(it, it.hidden || config.previewOnTapOnly, state, config.textSize.f, actions) } }
+    ) { last?.let { NotifBanner(it, it.hidden || config.previewOnTapOnly, state, actions) } }
 }
 
 @Composable
-private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState, k: Float, actions: StandbyActions) {
+private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState, actions: StandbyActions) {
     val ink = LocalInk.current
     val t = LocalTheme.current
     val act by rememberUpdatedState(actions)
@@ -483,14 +483,14 @@ private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.Bottom) { // cap boxes: bottom = baseline
-                    Txt(if (hidden) n.appLabel else n.sender.ifBlank { n.appLabel }, 15.dp * k, ink.ink, Modifier.weight(1f), weight = 700)
+                    Txt(if (hidden) n.appLabel else n.sender.ifBlank { n.appLabel }, 15.dp, ink.ink, Modifier.weight(1f), weight = 700)
                     Spacer(Modifier.width(8.dp))
                     val time = ago(n.postedAtEpochMs, state)
-                    Txt(if (!hidden && bw >= 360.dp) "${n.appLabel} · $time" else time, 13.dp * k, ink.ink2, weight = 500, num = true)
+                    Txt(if (!hidden && bw >= 360.dp) "${n.appLabel} · $time" else time, 13.dp, ink.ink2, weight = 500, num = true)
                 }
                 if (!hidden && n.text.isNotBlank()) {
                     Spacer(Modifier.height(9.dp))
-                    Txt(n.text, 15.dp * k, lerp(ink.ink2, ink.ink, 0.5f), weight = 500)
+                    Txt(n.text, 15.dp, lerp(ink.ink2, ink.ink, 0.5f), weight = 500)
                 }
             }
         }

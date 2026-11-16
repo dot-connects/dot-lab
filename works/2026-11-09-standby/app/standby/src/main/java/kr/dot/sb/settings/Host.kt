@@ -69,6 +69,8 @@ object Routes {
     const val THEME = "theme"
     /** r13 사용자 지정 (the strip's ＋). */
     const val THEME_CUSTOM = "theme_custom"
+    /** r14 B5: 사용자 지정 in 고치기 mode for the 내 테마 [name]. */
+    fun themeEdit(name: String) = "theme_custom:$name"
     const val PAGES = "pages"
     const val WIDGETS = "widgets"
     const val PHOTOS = "photos"
@@ -107,6 +109,7 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
     when {
         route == Routes.THEME -> ThemeScreen(config, update, nav, back)
         route == Routes.THEME_CUSTOM -> CustomThemeScreen(config, update, back)
+        route.startsWith("theme_custom:") -> CustomThemeScreen(config, update, back, editing = route.removePrefix("theme_custom:"))
         route == Routes.PAGES -> PagesScreen(config, update, nav, back)
         route == Routes.WIDGETS -> WidgetsScreen(config, update, nav, back)
         route == Routes.PHOTOS -> PhotosScreen(config, update, nav, env, back)
