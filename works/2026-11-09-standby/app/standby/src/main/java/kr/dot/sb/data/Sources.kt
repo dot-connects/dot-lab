@@ -162,6 +162,7 @@ object DeviceSources {
         notifications = NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName),
         calendar = has(ctx, Manifest.permission.READ_CALENDAR),
         photos = photos(ctx),
+        exactAlarm = ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms(),
     )
 
     private val HM = DateTimeFormatter.ofPattern("HH:mm")

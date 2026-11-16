@@ -3,6 +3,7 @@ package kr.dot.sb.board
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -15,6 +16,7 @@ import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Theme
 import kr.dot.sb.shotPath
 import kr.dot.sb.ui.board.BoardView
+import kr.dot.sb.ui.state.Permissions
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.theme.ProvideTheme
 import org.junit.Rule
@@ -47,6 +49,16 @@ class TimerDragShots {
         rule.waitForIdle()
         rule.onRoot().captureRoboImage(shotPath(Theme.IPHONE, "board", name, Device.FOLD_COVER_L))
         rule.onNodeWithContentDescription("타이머 링: 돌려서 시간 정하기").performTouchInput { up() }
+    }
+
+    /** A running timer without exact alarms: the [알람 권한 켜기] line under the card (half slot). */
+    @Test fun exactAlarmHint() {
+        RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
+        val b = Board("b", "b", Layout.TWO, listOf(listOf(CardType.TIMER), listOf(CardType.WEATHER)))
+        val s = Fixtures.full().let { it.copy(timers = mapOf("b-0" to it.timers.values.first().copy(running = true)), permissions = Permissions(exactAlarm = false)) }
+        rule.setContent { ProvideTheme(Theme.IPHONE) { BoardView(b, s, AppConfig(), object : StandbyActions {}) } }
+        rule.onNodeWithText("알람 권한 켜기", substring = true).assertExists()
+        rule.onRoot().captureRoboImage(shotPath(Theme.IPHONE, "board", "timer-exact-hint", Device.FOLD_COVER_L))
     }
 
     @Test fun wide() = held(Layout.ONE, "timer-drag-25")

@@ -80,6 +80,12 @@ class DeviceTimerAlerts(ctx: Context) : TimerAlerts {
     private val app = ctx.applicationContext
     private var track: AudioTrack? = null
 
+    companion object {
+        private var one: DeviceTimerAlerts? = null
+        /** One player for the process: StandBy's card, the end alarm and [끄기] all reach the alert that is ringing. */
+        @Synchronized fun shared(ctx: Context) = one ?: DeviceTimerAlerts(ctx).also { one = it }
+    }
+
     override fun play(alert: TimerAlert, falling: Boolean, times: Int) {
         if (alert == TimerAlert.OFF) return
         val r = TimerSound.recipe(alert, falling)

@@ -15,6 +15,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.BatteryManager
 import android.os.PowerManager
+import kr.dot.sb.R
 import kr.dot.sb.settings.ConfigStore
 
 /** Which StandBy host is on screen right now (same process as the job, so a plain flag is enough). */
@@ -172,7 +173,7 @@ object ChargeStart {
             NOTIF_ID,
             Notification.Builder(ctx, Channels.CHARGE)
                 .setSmallIcon(android.R.drawable.ic_lock_idle_charging)
-                .setContentTitle("StandBy")
+                .setContentTitle(ctx.getString(R.string.app_name))
                 .setCategory(Notification.CATEGORY_ALARM)
                 .setFullScreenIntent(open, true)
                 .setContentIntent(open)

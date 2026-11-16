@@ -591,8 +591,12 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     // r14: a Time Timer — the arc is the time left on a 60-minute dial (25 min = 5/12), shrinking to 0; same scale as the drag
     val frac = if (dl != null) dl / 60f else t.leftSec / 3600f
     val p = e.p7
+    // a running timer without exact alarms may end minutes late with StandBy closed: one line under the card's content
+    val hint = t.running && !state.permissions.exactAlarm
+    val hintSize = max(11.dp, e.short * 0.05f)
+    val hintH = if (hint) hintSize * 2.2f else 0.dp
     val iw = e.w - p * 2
-    val ih = e.h - p * 2
+    val ih = e.h - p * 2 - hintH
     val sh = e.short
     val ratio = e.w / e.h
     val toggleLabel = if (t.running) "일시정지" else "재생"
@@ -605,6 +609,8 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
         }
     }
     val inDigits = @Composable { d: Dp -> Hero(e, digits, d * 0.26f * e.t.tokens.digitCap, dc, d * 0.78f) }
+    Column(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxWidth().weight(1f)) {
     when {
         sh < 200.dp && ratio < 1.35f -> Box(Modifier.fillMaxSize()) {
             val d = min(iw, ih)
@@ -662,6 +668,18 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
                 buttons()
             }
         }
+    }
+    }
+    if (hint) Row(
+        Modifier.fillMaxWidth().height(hintH).padding(horizontal = p).semantics { role = Role.Button }.tap(actions::openExactAlarm),
+        horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Top,
+    ) {
+        val line = buildAnnotatedString {
+            withStyle(SpanStyle(color = e.readInk2)) { append("정확한 시간에 알리려면 ") }
+            append("알람 권한 켜기")
+        }
+        Txt(line, hintSize, e.ink.accText, weight = 700, maxW = iw) // shrinks to fit a narrow card
+    }
     }
 }
 

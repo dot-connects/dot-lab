@@ -128,6 +128,10 @@ class HostActions(
         val own = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_MULTIPLE_TASK or Intent.FLAG_ACTIVITY_EXCLUDE_FROM_RECENTS
         ctx.startActivity(Intent(ctx, SettingsActivity::class.java).putExtra("section", section).addFlags(own))
     }
+    override fun openExactAlarm() = host.unlockThen {
+        val i = Intent(android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, android.net.Uri.parse("package:${ctx.packageName}"))
+        runCatching { ctx.startActivity(i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
     override fun userActivity() = holder.touch()
     override fun pageChanged(page: Int) = holder.onPage(page)
     override fun setBrightness(value: Float) = holder.setUserBrightness(value)

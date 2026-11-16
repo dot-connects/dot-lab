@@ -75,7 +75,7 @@ interface HostCallbacks {
  */
 class StandbyStateHolder(
     app: Context, private val host: HostCallbacks, private val ownRotation: Boolean,
-    private val alerts: TimerAlerts = DeviceTimerAlerts(app),
+    private val alerts: TimerAlerts = DeviceTimerAlerts.shared(app),
 ) {
     private val ctx = app.applicationContext
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) // new one per start(): stop() cancels it
@@ -215,8 +215,15 @@ class StandbyStateHolder(
         media.start()
         runCatching { ctx.contentResolver.registerContentObserver(android.provider.CalendarContract.Events.CONTENT_URI, true, calendarObs) }
         onConfiguration(ctx.resources.configuration.smallestScreenWidthDp, initial = true)
-        for ((id, t) in timers) { t.finishIfDone(el()); scheduleTimerEnd(id) }
+        // StandBy is on screen (opened from the end notification or not): that alert and notification are done
+        alerts.stop()
+        for (id in timers.keys) Timers.effects(ctx).clearEnd(id)
+        lastStaticAt = 0L // permissions (알람 권한) again on the first tick: back from a settings page
+        // a countdown that ran out while closed and was not ended by its alarm yet (Doze) ends now, with the card alert
+        for ((id, t) in timers) { finish(id, t, el()); scheduleTimerEnd(id) }
         publishTimers()
+        // a notification button or the end alarm changed a timer (Timers is shared): re-arm and show it
+        scope.launch { Timers.changed.collect { for (id in timers.keys) scheduleTimerEnd(id); publishTimers() } }
 
         scope.launch {
             cfgFlow.collect { c ->
@@ -615,22 +622,31 @@ class StandbyStateHolder(
 
     // ---- pomodoro ----------------------------------------------------------------------------------------------
 
-    private fun timer(id: String) = timers.getOrPut(id) { PomodoroTimer(cfg.focusMinutes * 60, cfg.breakMinutes * 60) }
+    /** Every slot's timer, shared with the notification buttons and the end alarm ([Timers]). */
+    private val timers get() = Timers.all(ctx)
+    private fun timer(id: String) = Timers.get(ctx, id)
+
+    /** A change made here: persisted, alarm and ongoing notification refreshed; an end heads-up of [id] goes away. */
+    private fun saved(id: String) { alerts.stop(); Timers.effects(ctx).clearEnd(id); Timers.save(ctx, id, el()) }
 
     /** Timer values to the ticks; [full] = also into [StandbyState] (a start, stop, reset or end: the running set changed). */
     private fun publishTimers(full: Boolean = true) {
         val now = el()
         // a timer that ends on this tick changes the running set: always a full publish, and it wakes the screen
-        val ended = timers.values.map { finish(it, now) }.any { it }
+        val ended = timers.map { (id, t) -> finish(id, t, now) }.any { it }
         val m = timers.mapValues { (_, t) -> t.state(now) }
         _ticks.update { it.copy(timers = m) }
         if (full || ended) _state.update { it.copy(timers = m) }
         if (ended && !full) { machine.touch(now); evaluate() }
     }
 
-    /** [PomodoroTimer.finishIfDone] plus the end alert (3 rounds; falling when a break ended, i.e. back in focus). */
-    private fun finish(t: PomodoroTimer, now: Long): Boolean {
+    /**
+     * [PomodoroTimer.finishIfDone] plus the end alert in the card (3 rounds; falling when a break ended, i.e. back in
+     * focus). The holder runs only while StandBy shows, so no heads-up: [Timers.onAlarm] leaves this one to us.
+     */
+    private fun finish(id: String, t: PomodoroTimer, now: Long): Boolean {
         if (!t.finishIfDone(now)) return false
+        Timers.save(ctx, id, now)
         alerts.play(cfg.timerAlert, falling = t.mode == TimerMode.FOCUS, times = 3)
         return true
     }
@@ -641,7 +657,7 @@ class StandbyStateHolder(
         if (!t.running) return
         endJobs[id] = scope.launch {
             delay(t.leftMs(el()) + 50)
-            if (finish(t, el())) { publishTimers(); machine.touch(el()); evaluate() } // wakes the screen when focus/break ends
+            if (finish(id, t, el())) { publishTimers(); machine.touch(el()); evaluate() } // wakes the screen when focus/break ends
         }
     }
 
@@ -665,12 +681,13 @@ class StandbyStateHolder(
     fun mediaNext() = media.next()
     fun mediaPrev() = media.prev()
     val mediaPackage get() = media.packageName
-    fun timerToggle(id: String) { alerts.stop(); timer(id).toggle(el()); scheduleTimerEnd(id); publishTimers() }
-    fun timerReset(id: String) { alerts.stop(); timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
-    fun timerSwitch(id: String) { alerts.stop(); if (timer(id).switchMode()) publishTimers() }
+    fun timerToggle(id: String) { timer(id).toggle(el()); saved(id); scheduleTimerEnd(id); publishTimers() }
+    fun timerReset(id: String) { timer(id).reset(); saved(id); endJobs[id]?.cancel(); publishTimers() }
+    fun timerSwitch(id: String) { if (timer(id).switchMode()) { saved(id); publishTimers() } else alerts.stop() }
     /** Timer ring drag: a stopped timer's new focus length (saved like 카드 › 타이머) or a paused one's time left. */
     fun timerSet(id: String, minutes: Int) {
         if (timer(id).set(minutes * 60)) ConfigStore.update(ctx) { it.copy(focusMinutes = minutes) }
+        Timers.save(ctx, id, el())
         publishTimers()
     }
     fun sleepToggle() {
@@ -724,11 +741,10 @@ class StandbyStateHolder(
     }
 
     companion object {
-        /** Survive dream restarts: a pomodoro keeps running and the night look is right on the first frame. */
-        private val timers = HashMap<String, PomodoroTimer>()
         /** Accelerometer batching (r11 perf): the most a pick-up waits for delivery. */
         private const val ACCEL_BATCH_US = 150_000
         private const val HEAT_LOG_MS = 10 * 60_000L
+        /** Survives dream restarts: the night look is right on the first frame. */
         @Volatile private var lastNight = 0f
     }
 }

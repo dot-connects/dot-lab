@@ -80,6 +80,7 @@
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
         <receiver android:name=".platform.GlowReceiver" android:exported="false" />
+        <receiver android:name=".platform.TimerReceiver" android:exported="false" />
         <service
             android:name=".platform.StandbyTile"
             android:exported="true"

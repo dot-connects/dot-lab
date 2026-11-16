@@ -288,7 +288,7 @@ class RotationTracker {
 }
 
 /** Pomodoro per slot: focus/break, wall-clock based so display-off costs nothing. */
-class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
+class PomodoroTimer(private var focusSec: Int, private var breakSec: Int) {
     var mode = TimerMode.FOCUS
         private set
     var running = false
@@ -308,6 +308,12 @@ class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
     }
 
     fun reset() { mode = TimerMode.FOCUS; leftMsAtStart = focusSec * 1000L; running = false }
+
+    /** Settings lengths: taken only while stopped at full length; a running or paused session keeps its own total. */
+    fun lengths(focus: Int, brk: Int) {
+        if (running || leftMsAtStart != total() * 1000L) return // != : a stopped break dragged to its own minutes keeps them
+        focusSec = focus; breakSec = brk; leftMsAtStart = total() * 1000L
+    }
 
     /**
      * Ring drag (11-14 #10): stopped at full length in focus = a new focus length; paused (or a stopped break) = the
@@ -338,6 +344,17 @@ class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
     }
 
     fun state(nowMs: Long) = TimerState(mode, ((leftMs(nowMs) + 999) / 1000).toInt(), total(), running)
+
+    /** When the running countdown reaches 0 (elapsedRealtime); null while stopped. */
+    fun endAt(): Long? = if (running) startedAt + leftMsAtStart else null
+
+    fun snap() = TimerSnap(mode, running, leftMsAtStart, startedAt, focusSec, breakSec)
+
+    companion object {
+        fun of(s: TimerSnap) = PomodoroTimer(s.focusSec, s.breakSec).apply {
+            mode = s.mode; running = s.running; leftMsAtStart = s.leftMs; startedAt = s.startedAt
+        }
+    }
 }
 
 object MediaKinds {

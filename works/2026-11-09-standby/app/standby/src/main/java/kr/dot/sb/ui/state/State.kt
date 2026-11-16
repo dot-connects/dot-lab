@@ -221,6 +221,8 @@ data class Permissions(
     val notifications: Boolean = true,
     val calendar: Boolean = true,
     val photos: Boolean = true,
+    /** Exact alarms (SCHEDULE_EXACT_ALARM, off by default on Android 14): the timer end on time. */
+    val exactAlarm: Boolean = true,
 )
 
 /** What a tap or button on a StandBy screen asks the platform to do. */
@@ -237,6 +239,8 @@ interface StandbyActions {
     fun timerReset(id: String) {}
     /** Timer ring long press (r15 §4): focus<->break at full length, only while not running. */
     fun timerSwitch(id: String) {}
+    /** Timer card hint: the system page that allows exact alarms (after unlock). */
+    fun openExactAlarm() {}
     fun sleepToggle() {}
     /** Sleep card: [sound] becomes the chosen one. [toggle] plays it (stops it if it is the one playing); else it only switches a playing sound. */
     fun sleepPick(sound: SleepSound, toggle: Boolean) {}
