@@ -85,7 +85,7 @@ app: on start, queryPurchasesAsync → any PURCHASED but unconsumed token is re-
 - Tap → bottom sheet with 3 reasons (이상하거나 불쾌해요 / 사람이 잘못 그려졌어요 / 기타) → `POST /report`
   `{device, entry, kind, style, reason}` (no image upload) → D1 `reports` → "알려 줘서 고마워요".
   The reported picture is hidden on that phone at once (can be shown again from detail).
-- Operator reads reports with `node worker/tools/reports.mjs` (D1 query); counted weekly by hand for now.
+- Operator reads reports with one `wrangler d1 execute ... SELECT * FROM reports` command (in the README); counted weekly by hand for now.
 
 ## 5. Release build
 
@@ -99,7 +99,7 @@ app: on start, queryPurchasesAsync → any PURCHASED but unconsumed token is re-
 
 ## 6. Store paperwork (Claude drafts, operator pastes)
 
-- Privacy policy page: `dot-lab/site/privacy/catchpet.html` (Korean, plain): camera frames stay on the phone;
+- Privacy policy page: `works/2026-11-09-catch/page/privacy.html` (Korean, plain): camera frames stay on the phone;
   a caught picture is sent to our server and OpenAI only when the user asks for an AI picture; OpenAI is
   called with storage off; purchase tokens and reports kept in Cloudflare D1; sheets in R2 for 30 days;
   no accounts, no ads, no analytics; contact = developer email.
