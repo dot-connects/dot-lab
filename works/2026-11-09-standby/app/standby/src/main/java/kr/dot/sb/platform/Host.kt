@@ -100,6 +100,7 @@ class HostActions(
         kr.dot.sb.settings.ConfigStore.update(ctx) { kr.dot.sb.settings.BoardOps.setFace(it, boardId, slot, index, face) }
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
+    override fun timerSwitch(id: String) = holder.timerSwitch(id)
     override fun timerSet(id: String, minutes: Int) = holder.timerSet(id, minutes)
     override fun sleepToggle() = holder.sleepToggle()
     override fun sleepPick(sound: SleepSound, toggle: Boolean) = holder.sleepPick(sound, toggle)

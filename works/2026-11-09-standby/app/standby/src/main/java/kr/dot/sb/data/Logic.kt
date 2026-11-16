@@ -320,6 +320,14 @@ class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
         else { leftMsAtStart = sec * 1000L; false }
     }
 
+    /** Ring long press (r15 §4): focus<->break at the other mode's full length. Ignored while running; true when it switched. */
+    fun switchMode(): Boolean {
+        if (running) return false
+        mode = if (mode == TimerMode.FOCUS) TimerMode.BREAK else TimerMode.FOCUS
+        leftMsAtStart = total() * 1000L
+        return true
+    }
+
     /** Switches focus<->break (stopped, full length) when the running countdown is over. True when it did. */
     fun finishIfDone(nowMs: Long): Boolean {
         if (!running || leftMs(nowMs) > 0) return false

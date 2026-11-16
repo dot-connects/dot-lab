@@ -84,8 +84,12 @@ class BoardShots(private val name: String, private val device: Device, private v
             }
             else -> Fixtures.full()
         }.let { if (it.media != null && key.endsWith("-video")) video(it) else it }
-            // the fixture timer (18:24 left) in every slot of the board; "paused" stops it
-            .let { s -> s.copy(timers = s.timers + b.slots.indices.associate { "${b.id}-$it" to s.timers.values.first().copy(running = key != "paused") }) }
+            // the fixture timer (18:24 left) in every slot of the board; "paused" stops it, "break" is a running 04:12 of 5 min break
+            .let { s ->
+                val t = s.timers.values.first().copy(running = key != "paused")
+                val t2 = if (key == "break") t.copy(mode = kr.dot.sb.ui.state.TimerMode.BREAK, leftSec = 252, totalSec = 300) else t
+                s.copy(timers = s.timers + b.slots.indices.associate { "${b.id}-$it" to t2 })
+            }
 
         /** Layouts that put slot 0 into each size class (§3.3): L / M / S wide / S tall on the Fold cover, XS on the Flip. */
         private val CLASSES = listOf(
@@ -166,6 +170,8 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-agenda-M-noperm", Device.FOLD_COVER_L, Board("card", "AGENDA", Layout.TWO, listOf(listOf(CardType.AGENDA))), "noperm")
             out += arrayOf("card-agenda-Sw-empty", Device.FOLD_COVER_L, Board("card", "AGENDA", Layout.FOUR, listOf(listOf(CardType.AGENDA))), "noevents")
             for ((cls, layout, d) in CLASSES) out += arrayOf("card-timer-$cls-paused", d, Board("card", "TIMER", layout, listOf(listOf(CardType.TIMER))), "paused")
+            // r15 §4: a break (green arc + 휴식) in every size class
+            for ((cls, layout, d) in CLASSES) out += arrayOf("card-timer-$cls-break", d, Board("card", "TIMER", layout, listOf(listOf(CardType.TIMER))), "break")
             for ((cls, layout, d) in CLASSES) out += arrayOf("card-sleep-$cls-playing", d, Board("card", "SLEEP", layout, listOf(listOf(CardType.SLEEP))), "playing")
             out += arrayOf("card-sleep-M-playing-night", Device.FOLD_COVER_L, Board("card", "SLEEP", Layout.TWO, listOf(listOf(CardType.SLEEP))), "playing-night")
             out += arrayOf("card-sleep-L-playing", Device.FOLD_INNER, Board("card", "SLEEP", Layout.ONE, listOf(listOf(CardType.SLEEP))), "playing")

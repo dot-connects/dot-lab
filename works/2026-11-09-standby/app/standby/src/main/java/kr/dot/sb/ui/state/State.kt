@@ -235,6 +235,8 @@ interface StandbyActions {
     fun openNowPlaying() {}
     fun timerToggle(id: String) {}
     fun timerReset(id: String) {}
+    /** Timer ring long press (r15 §4): focus<->break at full length, only while not running. */
+    fun timerSwitch(id: String) {}
     fun sleepToggle() {}
     /** Sleep card: [sound] becomes the chosen one. [toggle] plays it (stops it if it is the one playing); else it only switches a playing sound. */
     fun sleepPick(sound: SleepSound, toggle: Boolean) {}

@@ -337,6 +337,9 @@ enum class UnfoldAction(val ko: String) { BOOK_BOARD("책 보드"), MOOD_LIGHT("
 /** r10: one "백색소음" (the old brown-noise generator); stored PINK/BROWN read as WHITE. */
 enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), FIRE("장작불"), WHITE("백색소음") }
 
+/** Timer end alert (r15 §5): played 3 times when a countdown ends; tones in platform/TimerSound. */
+enum class TimerAlert(val ko: String) { TWO_TONE("맑은 두 음"), BELL("부드러운 종"), RISING("오르는 세 음"), VIBRATE("진동만"), OFF("끄기") }
+
 /** Sleep timer choices (settings chips, the sleep card's minutes chip). */
 val SLEEP_MINUTES = listOf(15, 30, 45, 60, 90)
 
@@ -390,6 +393,7 @@ data class AppConfig(
     val sleepMinutes: Int = 45,
     val focusMinutes: Int = 25,
     val breakMinutes: Int = 5,
+    val timerAlert: TimerAlert = TimerAlert.TWO_TONE,
     /** Look of every StandBy surface; clock styles stay per clock on top of it. Change it with `withTheme`. */
     val theme: Theme = Theme.IPHONE,
     val boardBg: BoardBg = BoardBg.THEME,

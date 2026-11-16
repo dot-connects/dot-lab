@@ -37,6 +37,9 @@ import kr.dot.sb.platform.Brightness
 import kr.dot.sb.platform.ChargeStart
 import kr.dot.sb.platform.ListenerBus
 import kr.dot.sb.platform.SleepService
+import kr.dot.sb.platform.DeviceTimerAlerts
+import kr.dot.sb.platform.TimerAlerts
+import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.state.AlarmRinging
@@ -70,7 +73,10 @@ interface HostCallbacks {
  * receivers, [stop] cancels everything. Work happens only while something changes: a minute ticker aligned to the
  * minute boundary, sensor events, and (only while the screen is on) feed polls. Off state = tickers cancelled.
  */
-class StandbyStateHolder(app: Context, private val host: HostCallbacks, private val ownRotation: Boolean) {
+class StandbyStateHolder(
+    app: Context, private val host: HostCallbacks, private val ownRotation: Boolean,
+    private val alerts: TimerAlerts = DeviceTimerAlerts(app),
+) {
     private val ctx = app.applicationContext
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) // new one per start(): stop() cancels it
     private val cfgFlow = ConfigStore.flow(ctx)
@@ -615,11 +621,18 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun publishTimers(full: Boolean = true) {
         val now = el()
         // a timer that ends on this tick changes the running set: always a full publish, and it wakes the screen
-        val ended = timers.values.map { it.finishIfDone(now) }.any { it }
+        val ended = timers.values.map { finish(it, now) }.any { it }
         val m = timers.mapValues { (_, t) -> t.state(now) }
         _ticks.update { it.copy(timers = m) }
         if (full || ended) _state.update { it.copy(timers = m) }
         if (ended && !full) { machine.touch(now); evaluate() }
+    }
+
+    /** [PomodoroTimer.finishIfDone] plus the end alert (3 rounds; falling when a break ended, i.e. back in focus). */
+    private fun finish(t: PomodoroTimer, now: Long): Boolean {
+        if (!t.finishIfDone(now)) return false
+        alerts.play(cfg.timerAlert, falling = t.mode == TimerMode.FOCUS, times = 3)
+        return true
     }
 
     private fun scheduleTimerEnd(id: String) {
@@ -628,7 +641,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         if (!t.running) return
         endJobs[id] = scope.launch {
             delay(t.leftMs(el()) + 50)
-            if (t.finishIfDone(el())) { publishTimers(); machine.touch(el()); evaluate() } // wakes the screen when focus/break ends
+            if (finish(t, el())) { publishTimers(); machine.touch(el()); evaluate() } // wakes the screen when focus/break ends
         }
     }
 
@@ -654,6 +667,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     val mediaPackage get() = media.packageName
     fun timerToggle(id: String) { timer(id).toggle(el()); scheduleTimerEnd(id); publishTimers() }
     fun timerReset(id: String) { timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
+    fun timerSwitch(id: String) { if (timer(id).switchMode()) publishTimers() }
     /** Timer ring drag: a stopped timer's new focus length (saved like 카드 › 타이머) or a paused one's time left. */
     fun timerSet(id: String, minutes: Int) {
         if (timer(id).set(minutes * 60)) ConfigStore.update(ctx) { it.copy(focusMinutes = minutes) }

@@ -82,6 +82,7 @@ object ConfigCodec {
         put("sleepMinutes", c.sleepMinutes)
         put("focusMinutes", c.focusMinutes)
         put("breakMinutes", c.breakMinutes)
+        put("timerAlert", c.timerAlert.name)
         put("myClocks", JSONArray().also { a -> c.myClocks.forEach { a.put(it.name) } })
         put("excludedCalendars", JSONArray().also { a -> c.excludedCalendars.forEach { a.put(it) } })
 
@@ -253,6 +254,7 @@ object ConfigCodec {
             sleepMinutes = o.optInt("sleepMinutes", d.sleepMinutes),
             focusMinutes = o.optInt("focusMinutes", d.focusMinutes),
             breakMinutes = o.optInt("breakMinutes", d.breakMinutes),
+            timerAlert = enumOf(o, "timerAlert", d.timerAlert),
             myClocks = Migrations.myClocks(o.optJSONArray("myClocks"), d.myClocks),
             excludedCalendars = o.optJSONArray("excludedCalendars")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.toSet() } ?: d.excludedCalendars,
             heatProtect = o.optBoolean("heatProtect", d.heatProtect),

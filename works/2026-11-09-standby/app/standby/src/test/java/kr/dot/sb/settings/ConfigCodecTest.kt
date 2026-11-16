@@ -49,7 +49,7 @@ class ConfigCodecTest {
             glowColor = 0xFF85D4BA, glowStartMinBefore = 10, glowRampSec = 9, onUnfold = UnfoldAction.MOOD_LIGHT,
             ddays = listOf(DDay("수능", LocalDate.of(2026, 11, 19)), DDay("생일", LocalDate.of(2027, 2, 3))),
             city = City("부산", 35.1796, 129.0756), worldCities = listOf(City("도쿄", 35.6762, 139.6503)),
-            usageEnabled = false, focusMinutes = 50, breakMinutes = 10, sleepMinutes = 90, theme = Theme.MOODLIGHT,
+            usageEnabled = false, focusMinutes = 50, breakMinutes = 10, timerAlert = kr.dot.sb.model.TimerAlert.BELL, sleepMinutes = 90, theme = Theme.MOODLIGHT,
             boardBg = BoardBg.AURORA, boardBgColor = 0xFF223344, analogStyle = AnalogStyle.BIG4,
             sleepSound = SleepSound.WAVES, myClocks = listOf(FaceId.WALL, FaceId.DIGITAL),
             excludedCalendars = setOf("com.google|a@b.c|Work", "LOCAL|phone|Holidays"), heatProtect = false,

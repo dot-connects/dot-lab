@@ -48,6 +48,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.onLongClick
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -561,6 +562,25 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val mode = if (t.mode == TimerMode.FOCUS) "집중" else "휴식"
     val paused = !t.running && t.leftSec < t.totalSec
     val label = if (paused) "$mode · 멈춤" else mode
+    // r15 §4: focus = accent, break = the theme's green (arc and label)
+    val modeColor = if (t.mode == TimerMode.FOCUS) e.ink.acc else e.ink.green
+    val modeText = if (t.mode == TimerMode.FOCUS) e.ink.accText else e.ink.green
+    // long press (not running) switches; for 1.5 s a pill names the new mode in place of the label
+    var flash by remember(e.slotId) { mutableIntStateOf(0) }
+    LaunchedEffect(flash) { if (flash != 0) { delay(1_500); flash = 0 } }
+    val hold = if (t.running) null else RingHold(if (t.mode == TimerMode.FOCUS) "휴식으로 바꾸기" else "집중으로 바꾸기") {
+        flash = if (t.mode == TimerMode.FOCUS) 1 else 2 // 1 = now break, 2 = now focus
+        actions.timerSwitch(e.slotId)
+    }
+    val labelView = @Composable { size: Dp, maxW: Dp ->
+        if (flash == 0) Txt(label, size, modeText, weight = 700, maxW = maxW)
+        else {
+            val c = if (flash == 1) e.ink.green else e.ink.acc
+            Box(Modifier.clip(CircleShape).background(c).padding(horizontal = size * 0.6f, vertical = size * 0.2f)) {
+                Txt(if (flash == 1) "휴식으로 바뀜" else "집중으로 바뀜", size * 0.9f, e.ink.on(c), weight = 700, maxW = maxW - size * 1.2f)
+            }
+        }
+    }
     // 11-14 #10: while not running, a drag along the ring sets the minutes (shown live, the ring filled to them)
     var drag by remember(e.slotId) { mutableStateOf<Int?>(null) }
     val ring = RingDrag(!t.running, drag ?: (t.leftSec + 59) / 60, { drag = it }) { m -> drag = null; actions.timerSet(e.slotId, m) }
@@ -588,9 +608,9 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
         sh < 200.dp && ratio < 1.35f -> Box(Modifier.fillMaxSize()) {
             val d = min(iw, ih)
             Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
-                TimerRing(e, d, frac, ring, TimerTap(toggleLabel, toggle)) {
+                TimerRing(e, d, frac, modeColor, ring, hold, TimerTap(toggleLabel, toggle)) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(d * 0.05f)) {
-                        Txt(label, d * 0.1f, e.ink.accText, weight = 700, maxW = d * 0.7f)
+                        labelView(d * 0.1f, d * 0.7f)
                         inDigits(d)
                         IconView(if (t.running) Ic.PAUSE else Ic.PLAY, e.ink.ink2, Modifier.size(d * 0.13f))
                     }
@@ -615,9 +635,9 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
                 Modifier.fillMaxSize().padding(p), verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
             ) {
-                TimerRing(e, d, frac, ring) { inDigits(d) }
+                TimerRing(e, d, frac, modeColor, ring, hold) { inDigits(d) }
                 Column(Modifier.widthIn(max = tw), verticalArrangement = Arrangement.spacedBy(sh * 0.045f)) {
-                    Txt(label, d * 0.115f, e.ink.accText, weight = 700, maxW = tw)
+                    labelView(d * 0.115f, tw)
                     // cap boxes end at the baseline: leave the line's room between the two
                     Txt(sub, subSize, e.readInk2, Modifier.padding(top = subSize * 0.1f), weight = 500, maxW = tw, num = true)
                     buttons()
@@ -632,10 +652,10 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
                 Modifier.fillMaxSize().padding(p), horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
             ) {
-                TimerRing(e, d, frac, ring) {
+                TimerRing(e, d, frac, modeColor, ring, hold) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(d * 0.05f)) {
                         inDigits(d)
-                        Txt(label, d * 0.085f, e.ink.accText, weight = 700, maxW = d * 0.72f)
+                        labelView(d * 0.085f, d * 0.72f)
                     }
                 }
                 buttons()
@@ -662,17 +682,22 @@ private fun TimerBtn(ic: Ic, w: Dp, h: Dp, fill: Color, fg: Color, label: String
 }
 
 /** Where a touch on the ring goes. */
-internal enum class RingTouch { DRAG, TAP, NONE }
+internal enum class RingTouch { DRAG, TAP, HOLD, NONE }
 
 /**
  * A touch [dist] from the ring's centre (in radii): on the band (0.93 ± 0.15) of a [settable] (stopped) timer it drags
- * the minutes; elsewhere inside the circle it toggles when the ring [tap]s (small slots); else the page keeps it.
+ * the minutes; elsewhere inside the circle it toggles when the ring [tap]s (small slots), else a stopped timer only
+ * takes a long press there (HOLD); else the page keeps it. A stopped timer's long press switches mode on all three.
  */
 internal fun ringTouch(dist: Float, settable: Boolean, tap: Boolean): RingTouch = when {
     settable && kotlin.math.abs(dist - 0.93f) <= 0.15f -> RingTouch.DRAG
     tap && dist <= 1f -> RingTouch.TAP
+    settable && dist <= 1f -> RingTouch.HOLD
     else -> RingTouch.NONE
 }
+
+/** The ring's long press (not running): [label] names it, [onHold] switches focus<->break. */
+private class RingHold(val label: String, val onHold: () -> Unit)
 
 /** The ring as the start/pause button (small slots): [label] names it, [onTap] toggles. */
 private class TimerTap(val label: String, val onTap: () -> Unit)
@@ -697,31 +722,65 @@ internal fun ringMinutes(dx: Float, dy: Float, prev: Int): Int {
 private class RingDrag(val on: Boolean, val minutes: Int, val onMove: (Int) -> Unit, val onDone: (Int) -> Unit)
 
 /**
- * Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for [frac] (time left), [inner] centred. Stroke
- * max(5 dp, 6.2 %). [tap] makes the inside of the circle the start/pause button ([ringTouch] routes each touch).
+ * Progress ring [d] wide: ink3 track, [arc] (the mode's colour) from 12 o'clock for [frac] (time left), [inner] centred.
+ * Stroke max(5 dp, 6.2 %). [tap] makes the inside of the circle the start/pause button, [hold] its long press
+ * ([ringTouch] routes each touch). A press waits for up, touch slop or the long-press timeout, so it is one of tap,
+ * drag or long press, never two; a stopped ring consumes the down, so the board's long press never sees it.
  */
 @Composable
-private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, tap: TimerTap? = null, inner: @Composable () -> Unit) {
+private fun TimerRing(
+    e: Env, d: Dp, frac: Float, arc: Color, drag: RingDrag? = null, hold: RingHold? = null, tap: TimerTap? = null,
+    inner: @Composable () -> Unit,
+) {
     val track = e.ink.ink3
-    val arc = e.ink.acc
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val cur by androidx.compose.runtime.rememberUpdatedState(drag)
     val tapCur by androidx.compose.runtime.rememberUpdatedState(tap)
+    val holdCur by androidx.compose.runtime.rememberUpdatedState(hold)
     val input = if (drag?.on != true && tap == null) Modifier else Modifier.pointerInput(Unit) {
         // only a drag that starts on the ring (±15 % of the radius) is the ring's; elsewhere the stack swipe keeps it
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             val c = Offset(size.width / 2f, size.height / 2f)
             val r = size.width / 2f
-            val dist = (down.position - c).getDistance()
-            when (ringTouch(dist / r, cur?.on == true, tapCur != null)) {
-                RingTouch.NONE -> return@awaitEachGesture
-                // a tap: no consume on the way down, so a page swipe that starts here still turns the page (and cancels it)
-                RingTouch.TAP -> { if (waitForUpOrCancellation() != null) tapCur?.onTap?.invoke(); return@awaitEachGesture }
-                RingTouch.DRAG -> Unit
+            val kind = ringTouch((down.position - c).getDistance() / r, cur?.on == true, tapCur != null)
+            if (kind == RingTouch.NONE) return@awaitEachGesture
+            val h = holdCur
+            // stopped: the ring owns the press (pagers still take a swipe: they do not need an unconsumed down)
+            if (kind == RingTouch.DRAG || h != null) down.consume()
+            var last: androidx.compose.ui.input.pointer.PointerInputChange? = null
+            val decided = withTimeoutOrNull(viewConfiguration.longPressTimeoutMillis) {
+                var done = false
+                while (!done) {
+                    val ch = awaitPointerEvent().changes.firstOrNull { it.id == down.id }
+                    last = ch
+                    done = ch == null || !ch.pressed || (ch.position - down.position).getDistance() > viewConfiguration.touchSlop
+                    if (!done && kind == RingTouch.DRAG) ch!!.consume()
+                }
+                true
             }
+            if (decided == null) {
+                // held still: a long press. Running (no hold) = nothing here; stopped = switch, and swallow the rest
+                if (h == null) return@awaitEachGesture
+                haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
+                h.onHold()
+                do { val ev = awaitPointerEvent(); ev.changes.forEach { it.consume() } } while (ev.changes.any { it.pressed })
+                return@awaitEachGesture
+            }
+            val ch = last ?: return@awaitEachGesture
+            if (!ch.pressed) {
+                // released in time: a tap toggles (small rings); a tap on the band sets the minutes there
+                if (ch.isConsumed && kind != RingTouch.DRAG) return@awaitEachGesture
+                ch.consume()
+                when (kind) {
+                    RingTouch.TAP -> tapCur?.onTap?.invoke()
+                    RingTouch.DRAG -> cur?.let { g -> g.onDone(ringMinutes(down.position.x - c.x, down.position.y - c.y, g.minutes)) }
+                    else -> Unit
+                }
+                return@awaitEachGesture
+            }
+            if (kind != RingTouch.DRAG) return@awaitEachGesture // moved: the page's swipe
             val g = cur ?: return@awaitEachGesture
-            down.consume()
             var m = g.minutes
             fun at(p: Offset) {
                 val n = ringMinutes(p.x - c.x, p.y - c.y, m)
@@ -729,10 +788,11 @@ private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, tap: T
                 m = n; g.onMove(n)
             }
             at(down.position)
+            at(ch.position); ch.consume()
             while (true) {
-                val ch = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
-                if (!ch.pressed) break
-                at(ch.position); ch.consume()
+                val mv = awaitPointerEvent().changes.firstOrNull { it.id == down.id } ?: break
+                if (!mv.pressed) break
+                at(mv.position); mv.consume()
             }
             g.onDone(m)
         }
@@ -742,8 +802,12 @@ private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, tap: T
         tap != null -> Modifier.semantics {
             contentDescription = listOfNotNull(tap.label, hint).joinToString(" · "); role = Role.Button
             onClick(tap.label) { tap.onTap(); true }
+            if (hold != null) onLongClick(hold.label) { hold.onHold(); true }
         }
-        hint != null -> Modifier.semantics { contentDescription = hint }
+        hint != null -> Modifier.semantics {
+            contentDescription = hint
+            if (hold != null) onLongClick(hold.label) { hold.onHold(); true }
+        }
         else -> Modifier
     }
     Box(Modifier.size(d).then(input).then(label), contentAlignment = Alignment.Center) {

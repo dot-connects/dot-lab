@@ -44,6 +44,7 @@ import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.SLEEP_MINUTES
 import kr.dot.sb.model.SleepSound
+import kr.dot.sb.model.TimerAlert
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.screens.RootImpl
@@ -414,13 +415,28 @@ internal fun DDaySection(config: AppConfig, update: Update, env: SettingsEnv, da
         item { DDayAdd(date, onDate) { d -> update { it.copy(ddays = it.ddays + d) } } }
     }
 
-/** 타이머·뽀모도로 카드: 집중 · 휴식 minutes. */
+/** 타이머·뽀모도로 카드: 집중 · 휴식 minutes, and the end alert (r15 §5; a tap also plays it once). */
 @Composable
-internal fun FocusSection(config: AppConfig, update: Update) =
+internal fun FocusSection(config: AppConfig, update: Update) {
     Section("집중 · 휴식", footer = "타이머 카드의 한 번 집중하는 시간과 쉬는 시간이에요.") {
         item { SliderRow("집중", "${config.focusMinutes}분", config.focusMinutes.toFloat(), 5f..60f, { v -> update { it.copy(focusMinutes = v.toInt()) } }, steps = 54) }
         item { SliderRow("휴식", "${config.breakMinutes}분", config.breakMinutes.toFloat(), 1f..30f, { v -> update { it.copy(breakMinutes = v.toInt()) } }, steps = 28) }
     }
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val player = remember { kr.dot.sb.platform.DeviceTimerAlerts(ctx) }
+    Section("끝나면 알리기", footer = "타이머가 끝나면 3번 알려요. 무음·진동 모드나 방해 금지 중에는 진동만 해요. 누르면 한 번 들려줘요.") {
+        for (a in TimerAlert.entries) item {
+            val sub = when (a) {
+                TimerAlert.TWO_TONE -> "딩-동 · 진동 짧게 두 번"
+                TimerAlert.BELL -> "한 번 울리고 길게 사라짐 · 진동 길게 한 번"
+                TimerAlert.RISING -> "도-미-솔 · 휴식이 끝나면 솔-미-도"
+                TimerAlert.VIBRATE -> "소리 없이 진동만"
+                TimerAlert.OFF -> null
+            }
+            RadioRow(a.ko, sub, config.timerAlert == a, { update { it.copy(timerAlert = a) }; player.play(a, falling = false, times = 1) })
+        }
+    }
+}
 
 /** 오늘 일정 · 달력 카드: which calendars feed them. */
 @Composable
