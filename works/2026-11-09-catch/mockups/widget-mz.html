@@ -1,0 +1,164 @@
+<title>리얼뽑기 MZ 가족사진</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: one column, four concepts; each at 2x2 and 4x2 on a dark and a light wallpaper */
+:root{
+  --bg:#F3F5EE; --fg:#24331F; --muted:#5D6B57; --line:#D7DDCF;
+  --ink:#24331F; --paper:#FFFDF6; --sun:#FFC94A;
+  --f:"Gothic A1",system-ui,sans-serif; --hand:"Gaegu","Gothic A1",cursive;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161B14;--fg:#EEF2E8;--muted:#AAB5A3;--line:#33402E;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161B14;--fg:#EEF2E8;--muted:#AAB5A3;--line:#33402E;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1{font-size:22px;margin:0} h2{font-size:17px;margin:0}
+p{color:var(--muted);margin:0;line-height:1.55;font-size:14px}
+.tag{display:inline-block;background:var(--sun);color:var(--ink);font-weight:800;border-radius:6px;padding:1px 8px;margin-right:6px}
+.opt{display:flex;flex-direction:column;gap:10px}
+.walls{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.wall{border-radius:16px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.dark{background:linear-gradient(160deg,#1E3B44 0 50%,#3d5a5f 50%)}
+.light{background:linear-gradient(160deg,#F7E6D8,#E9C9B5)}
+svg.w{width:100%;display:block}
+.lbl{font-size:10px;color:#fff;opacity:.7}
+.light .lbl{color:#5D6B57}
+</style>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gaegu:wght@700&display=swap">
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ball" viewBox="0 0 32 32"><path d="M12 26v2.5M20 26v2.5" stroke="#24331F" stroke-width="2.4" stroke-linecap="round"/><path d="M16.0 5.8 L17.2 7.4 L18.9 6.2 L19.6 8.1 L21.5 7.3 L21.6 9.3 L23.7 9.2 L23.2 11.1 L25.3 11.5 L24.3 13.2 L26.1 14.1 L24.6 15.5 L26.1 16.9 L24.3 17.8 L25.3 19.5 L23.2 19.9 L23.7 21.8 L21.6 21.7 L21.5 23.7 L19.6 22.9 L18.9 24.8 L17.2 23.6 L16.0 25.2 L14.8 23.6 L13.1 24.8 L12.4 22.9 L10.5 23.7 L10.4 21.7 L8.3 21.8 L8.8 19.9 L6.7 19.5 L7.7 17.8 L5.9 16.9 L7.4 15.5 L5.9 14.1 L7.7 13.2 L6.7 11.5 L8.8 11.1 L8.3 9.2 L10.4 9.3 L10.5 7.3 L12.4 8.1 L13.1 6.2 L14.8 7.4Z" fill="currentColor" stroke="#24331F" stroke-width="1.4" stroke-linejoin="round"/><circle cx="13" cy="15.5" r="1.5" fill="#24331F"/><circle cx="19" cy="15.5" r="1.5" fill="#24331F"/><circle cx="10.6" cy="18.4" r="1.3" fill="#FF8FA3"/><circle cx="21.4" cy="18.4" r="1.3" fill="#FF8FA3"/></symbol>
+  <!-- sticker: a white cut line around the shape, a soft shadow -->
+  <filter id="st" x="-20%" y="-20%" width="140%" height="140%"><feMorphology in="SourceAlpha" operator="dilate" radius="2.2" result="d"/><feFlood flood-color="#fff"/><feComposite in2="d" operator="in" result="w"/><feDropShadow in="w" dx="0" dy="1.5" stdDeviation="1.2" flood-opacity=".35" result="ws"/><feMerge><feMergeNode in="ws"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  <filter id="sh"><feDropShadow dx="0" dy="1.5" stdDeviation="1.2" flood-opacity=".35"/></filter>
+  <symbol id="spark" viewBox="0 0 10 10"><path d="M5 0Q5.6 4.4 10 5Q5.6 5.6 5 10Q4.4 5.6 0 5Q4.4 4.4 5 0Z" fill="#FFE27A" stroke="#24331F" stroke-width=".6"/></symbol>
+  <symbol id="heart" viewBox="0 0 10 10"><path d="M5 9C1 6 0 4 1.2 2.3C2.4.7 4.3 1.3 5 2.8C5.7 1.3 7.6.7 8.8 2.3C10 4 9 6 5 9Z" fill="#FF8FA3" stroke="#24331F" stroke-width=".6"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+<h1>MZ 가족사진 위젯</h1>
+<p>네 가지 방법을 2×2와 4×2에 그려 봤어요. 왼쪽은 어두운 배경화면, 오른쪽은 밝은 배경화면이고, 모든 방법에서 얼굴은 다 보입니다.</p>
+
+<!-- A sticker -->
+<section class="opt">
+<h2><span class="tag">A</span>스티커 가족사진 (추천)</h2>
+<div class="walls">
+<div class="wall dark"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100">
+  <g filter="url(#st)">
+    <use href="#ball" x="2" y="8" width="36" height="36" style="color:#FFD8A8" transform="rotate(-7 20 26)"/>
+    <use href="#ball" x="32" y="2" width="36" height="36" style="color:#CFE8FF" transform="rotate(5 50 20)"/>
+    <use href="#ball" x="62" y="8" width="36" height="36" style="color:#E7DDF7" transform="rotate(8 80 26)"/>
+    <use href="#ball" x="0" y="46" width="42" height="42" style="color:#F4EFE7" transform="rotate(4 21 67)"/>
+    <use href="#ball" x="29" y="50" width="42" height="42" style="color:#FFC2CF" transform="rotate(-4 50 71)"/>
+    <use href="#ball" x="58" y="46" width="42" height="42" style="color:#D6F0C2" transform="rotate(6 79 67)"/>
+  </g>
+  <use href="#spark" x="88" y="2" width="9" height="9"/><use href="#heart" x="3" y="40" width="8" height="8"/>
+  <text x="50" y="99" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="8" fill="#fff" stroke="#24331F" stroke-width="1.6" paint-order="stroke">우리 가족 ♡</text>
+</svg></div>
+<div class="wall light"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100">
+  <g filter="url(#st)">
+    <use href="#ball" x="14" y="6" width="36" height="36" style="color:#FFD8A8" transform="rotate(-7 32 24)"/>
+    <use href="#ball" x="50" y="6" width="36" height="36" style="color:#CFE8FF" transform="rotate(6 68 24)"/>
+    <use href="#ball" x="0" y="46" width="42" height="42" style="color:#F4EFE7" transform="rotate(4 21 67)"/>
+    <use href="#ball" x="29" y="50" width="42" height="42" style="color:#FFC2CF" transform="rotate(-4 50 71)"/>
+    <use href="#ball" x="58" y="46" width="42" height="42" style="color:#D6F0C2" transform="rotate(6 79 67)"/>
+  </g>
+  <use href="#spark" x="4" y="4" width="9" height="9"/><use href="#heart" x="88" y="40" width="8" height="8"/>
+  <text x="50" y="99" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="8" fill="#fff" stroke="#24331F" stroke-width="1.6" paint-order="stroke">11.16 우리 가족</text>
+</svg></div>
+</div>
+<div class="wall dark"><span class="lbl">4×2</span>
+<svg class="w" viewBox="0 0 200 100">
+  <g filter="url(#st)">
+    <use href="#ball" x="30" y="6" width="38" height="38" style="color:#FFD8A8" transform="rotate(-6 49 25)"/>
+    <use href="#ball" x="81" y="2" width="38" height="38" style="color:#CFE8FF" transform="rotate(4 100 21)"/>
+    <use href="#ball" x="132" y="6" width="38" height="38" style="color:#E7DDF7" transform="rotate(7 151 25)"/>
+    <use href="#ball" x="6" y="46" width="46" height="46" style="color:#F4EFE7" transform="rotate(5 29 69)"/>
+    <use href="#ball" x="77" y="50" width="46" height="46" style="color:#FFC2CF" transform="rotate(-4 100 73)"/>
+    <use href="#ball" x="148" y="46" width="46" height="46" style="color:#D6F0C2" transform="rotate(6 171 69)"/>
+  </g>
+  <use href="#spark" x="8" y="10" width="10" height="10"/><use href="#spark" x="180" y="20" width="7" height="7"/><use href="#heart" x="60" y="52" width="8" height="8"/>
+  <text x="100" y="99" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="8" fill="#fff" stroke="#24331F" stroke-width="1.6" paint-order="stroke">우리 가족 ♡ 2026.11.16</text>
+</svg></div>
+<p>펫마다 흰 스티커 테두리, 살짝씩 기울임. 뒷줄은 앞줄 틈에서 얼굴 높이만큼 올라서 몸만 가려집니다. 반짝이·하트 몇 개와 손글씨 한 줄. 배경은 그대로 없음.</p>
+</section>
+
+<!-- B photo booth -->
+<section class="opt">
+<h2><span class="tag">B</span>인생네컷</h2>
+<div class="walls">
+<div class="wall dark"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100" filter="url(#sh)">
+  <rect x="6" y="2" width="88" height="96" rx="4" fill="#FFFDF6"/>
+  <rect x="11" y="7" width="38" height="36" rx="2" fill="#FFE3EA"/><rect x="51" y="7" width="38" height="36" rx="2" fill="#DDEFFF"/>
+  <rect x="11" y="45" width="38" height="36" rx="2" fill="#E6F6DA"/><rect x="51" y="45" width="38" height="36" rx="2" fill="#FFF0CF"/>
+  <use href="#ball" x="14" y="9" width="32" height="32" style="color:#FFC2CF"/><use href="#ball" x="54" y="9" width="32" height="32" style="color:#CFE8FF"/>
+  <use href="#ball" x="14" y="47" width="32" height="32" style="color:#D6F0C2"/><use href="#ball" x="54" y="47" width="32" height="32" style="color:#FFD8A8"/>
+  <text x="50" y="92" text-anchor="middle" font-family="Gothic A1" font-weight="800" font-size="6.5" fill="#24331F">리얼뽑기 · 2026.11.16</text>
+</svg></div>
+<div class="wall light"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100" filter="url(#sh)">
+  <rect x="6" y="2" width="88" height="96" rx="4" fill="#24331F"/>
+  <rect x="11" y="7" width="38" height="36" rx="2" fill="#FFE3EA"/><rect x="51" y="7" width="38" height="36" rx="2" fill="#DDEFFF"/>
+  <rect x="11" y="45" width="38" height="36" rx="2" fill="#E6F6DA"/><rect x="51" y="45" width="38" height="36" rx="2" fill="#FFF0CF"/>
+  <use href="#ball" x="14" y="9" width="32" height="32" style="color:#FFC2CF"/><use href="#ball" x="54" y="9" width="32" height="32" style="color:#CFE8FF"/>
+  <use href="#ball" x="14" y="47" width="32" height="32" style="color:#D6F0C2"/><use href="#ball" x="54" y="47" width="32" height="32" style="color:#FFD8A8"/>
+  <text x="50" y="92" text-anchor="middle" font-family="Gothic A1" font-weight="800" font-size="6.5" fill="#FFFDF6">리얼뽑기 · 2026.11.16</text>
+</svg></div>
+</div>
+<div class="wall dark"><span class="lbl">4×2</span>
+<svg class="w" viewBox="0 0 200 100" filter="url(#sh)">
+  <rect x="4" y="6" width="192" height="88" rx="4" fill="#FFFDF6"/>
+  <g><rect x="9" y="11" width="29" height="66" rx="2" fill="#FFE3EA"/><rect x="40" y="11" width="29" height="66" rx="2" fill="#DDEFFF"/><rect x="71" y="11" width="29" height="66" rx="2" fill="#E6F6DA"/><rect x="102" y="11" width="29" height="66" rx="2" fill="#FFF0CF"/><rect x="133" y="11" width="29" height="66" rx="2" fill="#EDE4FA"/><rect x="164" y="11" width="29" height="66" rx="2" fill="#FFE3EA"/></g>
+  <use href="#ball" x="9" y="30" width="29" height="29" style="color:#FFC2CF"/><use href="#ball" x="40" y="30" width="29" height="29" style="color:#CFE8FF"/><use href="#ball" x="71" y="30" width="29" height="29" style="color:#D6F0C2"/><use href="#ball" x="102" y="30" width="29" height="29" style="color:#FFD8A8"/><use href="#ball" x="133" y="30" width="29" height="29" style="color:#E7DDF7"/><use href="#ball" x="164" y="30" width="29" height="29" style="color:#F4EFE7"/>
+  <text x="100" y="88" text-anchor="middle" font-family="Gothic A1" font-weight="800" font-size="6.5" fill="#24331F">리얼뽑기 · 2026.11.16</text>
+</svg></div>
+<p>칸마다 한 마리, 겹침 0. 대신 종이 프레임이 생겨서 "배경 없이"와는 반대예요. 위젯 쪽 칸이 작아지면 펫도 작아집니다.</p>
+</section>
+
+<!-- C polaroid -->
+<section class="opt">
+<h2><span class="tag">C</span>폴라로이드</h2>
+<div class="walls">
+<div class="wall dark"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100" filter="url(#sh)"><g transform="rotate(-5 50 50)">
+  <rect x="12" y="6" width="76" height="88" rx="2" fill="#FFFDF6"/><rect x="18" y="12" width="64" height="58" fill="#CFE6EC"/>
+  <use href="#ball" x="20" y="16" width="26" height="26" style="color:#FFD8A8"/><use href="#ball" x="54" y="16" width="26" height="26" style="color:#CFE8FF"/>
+  <use href="#ball" x="18" y="40" width="30" height="30" style="color:#F4EFE7"/><use href="#ball" x="36" y="42" width="30" height="30" style="color:#FFC2CF"/><use href="#ball" x="54" y="40" width="30" height="30" style="color:#D6F0C2"/>
+  <text x="50" y="86" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="9" fill="#24331F">우리 가족 ♡</text>
+  <rect x="38" y="1" width="24" height="9" fill="#FFC94A" opacity=".75" transform="rotate(4 50 5)"/>
+</g></svg></div>
+<div class="wall light"><span class="lbl">1×1</span>
+<svg class="w" viewBox="0 0 100 100" filter="url(#sh)"><g transform="rotate(5 50 50)">
+  <rect x="22" y="14" width="56" height="68" rx="2" fill="#FFFDF6"/><rect x="27" y="19" width="46" height="44" fill="#FFE3EA"/>
+  <use href="#ball" x="30" y="21" width="40" height="40" style="color:#F4EFE7"/>
+  <text x="50" y="76" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="8" fill="#24331F">몽글</text>
+</g></svg></div>
+</div>
+<p>기울인 폴라로이드 한 장에 가족, 마스킹테이프, 손글씨. 가장 "사진" 같지만 종이 여백 때문에 펫이 30% 정도 작아지고 2×1에는 안 맞아요.</p>
+</section>
+
+<!-- D selfie -->
+<section class="opt">
+<h2><span class="tag">D</span>단체 셀카</h2>
+<div class="walls">
+<div class="wall dark"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100"><g filter="url(#sh)" transform="rotate(-6 50 50)">
+  <use href="#ball" x="62" y="4" width="22" height="22" style="color:#E7DDF7"/><use href="#ball" x="40" y="8" width="26" height="26" style="color:#CFE8FF"/><use href="#ball" x="70" y="24" width="26" height="26" style="color:#FFD8A8"/>
+  <use href="#ball" x="16" y="18" width="32" height="32" style="color:#D6F0C2"/>
+  <use href="#ball" x="2" y="40" width="58" height="58" style="color:#F4EFE7"/>
+</g>
+<text x="80" y="66" text-anchor="middle" font-family="Gaegu" font-weight="700" font-size="9" fill="#fff" stroke="#24331F" stroke-width="1.6" paint-order="stroke">치즈~</text>
+<text x="96" y="97" text-anchor="end" font-family="monospace" font-size="6" fill="#FF9B3D">'26 11 16</text></svg></div>
+<div class="wall light"><span class="lbl">2×2</span>
+<svg class="w" viewBox="0 0 100 100"><g filter="url(#sh)" transform="rotate(-6 50 50)">
+  <use href="#ball" x="44" y="6" width="28" height="28" style="color:#CFE8FF"/><use href="#ball" x="68" y="22" width="28" height="28" style="color:#FFD8A8"/>
+  <use href="#ball" x="2" y="38" width="60" height="60" style="color:#FFC2CF"/>
+</g>
+<use href="#heart" x="70" y="56" width="10" height="10"/>
+<text x="96" y="97" text-anchor="end" font-family="monospace" font-size="6" fill="#FF9B3D">'26 11 16</text></svg></div>
+</div>
+<p>한 마리(지금 떠 있는 펫)가 앞에서 크게 셀카를 찍고, 나머지는 뒤로 갈수록 작게 얼굴을 내밀어요. 크기 차이로 얼굴이 안 겹치지만 6마리면 뒤쪽이 많이 작아요.</p>
+</section>
+</div>

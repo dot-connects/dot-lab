@@ -1,0 +1,117 @@
+<title>리얼뽑기 위젯 작은 메뉴</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* layout: one column; part 1 = where the tap menu opens, part 2 = how the family stands so every face shows */
+:root{
+  --bg:#F3F5EE; --fg:#24331F; --muted:#5D6B57; --line:#D7DDCF;
+  --ink:#24331F; --paper:#FFFDF6; --sun:#FFC94A; --pink:#FF8FA3; --sky:#9FD8FF; --leaf:#BFE3A6; --warn:#C0392B;
+  --f:"Gothic A1",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#161B14;--fg:#EEF2E8;--muted:#AAB5A3;--line:#33402E;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#161B14;--fg:#EEF2E8;--muted:#AAB5A3;--line:#33402E;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+.wrap{max-width:440px;margin:0 auto;display:flex;flex-direction:column;gap:26px}
+h1{font-size:22px;margin:0} h2{font-size:17px;margin:0}
+p{color:var(--muted);margin:0;line-height:1.55;font-size:14px}
+.tag{display:inline-block;background:var(--sun);color:var(--ink);font-weight:800;border-radius:6px;padding:1px 8px;margin-right:6px}
+.tag.no{background:#E9ECE4;color:#5D6B57}
+.opt{display:flex;flex-direction:column;gap:10px}
+.home{position:relative;border-radius:20px;height:360px;background:linear-gradient(160deg,#1E3B44 0 46%,#C9A98A 46%);overflow:hidden}
+.wid{position:absolute;border:1.5px dashed rgba(255,255,255,.35);border-radius:12px}
+.wid svg{position:absolute;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.35))}
+/* small popup */
+.pop{position:absolute;background:var(--paper);border:2px solid var(--ink);box-shadow:0 3px 0 var(--ink);border-radius:16px;padding:6px;display:flex;gap:6px}
+.pop .t{width:46px;display:flex;flex-direction:column;align-items:center;gap:2px;border-radius:11px;border:2px solid var(--ink);padding:4px 0 3px;font-size:10px;font-weight:800;color:#24331F}
+.pop .t svg{width:26px;height:26px;position:static;filter:none}
+.t.p{background:var(--sky)}.t.d{background:var(--leaf)}.t.c{background:var(--pink)}
+.tail{position:absolute;width:14px;height:14px;background:var(--paper);border-right:2px solid var(--ink);border-bottom:2px solid var(--ink);transform:rotate(45deg)}
+.inner{position:absolute;inset:0;border-radius:12px;background:rgba(255,253,246,.92);display:flex;align-items:center;justify-content:center;gap:6px}
+.inner .t{width:40px;display:flex;flex-direction:column;align-items:center;border-radius:10px;border:2px solid var(--ink);padding:3px 0;font-size:9px;font-weight:800;color:#24331F}
+.inner .t svg{width:22px;height:22px;position:static;filter:none}
+/* family frames */
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fr{position:relative;aspect-ratio:1;border-radius:14px;background:linear-gradient(160deg,#1E3B44 0 46%,#C9A98A 46%);overflow:hidden}
+.fr.w{aspect-ratio:2/1;grid-column:span 2}
+.fr svg{position:absolute;filter:drop-shadow(0 2px 1.5px rgba(0,0,0,.35))}
+.cap{font-size:12px;color:var(--muted);text-align:center;margin-top:4px}
+.x{position:absolute;width:18px;height:18px;border-radius:50%;border:2px solid var(--warn)}
+hr{border:0;border-top:1px solid var(--line);margin:0}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <symbol id="ball" viewBox="0 0 32 32"><path d="M12 26v2.5M20 26v2.5" stroke="#24331F" stroke-width="2.4" stroke-linecap="round"/><path d="M16.0 5.8 L17.2 7.4 L18.9 6.2 L19.6 8.1 L21.5 7.3 L21.6 9.3 L23.7 9.2 L23.2 11.1 L25.3 11.5 L24.3 13.2 L26.1 14.1 L24.6 15.5 L26.1 16.9 L24.3 17.8 L25.3 19.5 L23.2 19.9 L23.7 21.8 L21.6 21.7 L21.5 23.7 L19.6 22.9 L18.9 24.8 L17.2 23.6 L16.0 25.2 L14.8 23.6 L13.1 24.8 L12.4 22.9 L10.5 23.7 L10.4 21.7 L8.3 21.8 L8.8 19.9 L6.7 19.5 L7.7 17.8 L5.9 16.9 L7.4 15.5 L5.9 14.1 L7.7 13.2 L6.7 11.5 L8.8 11.1 L8.3 9.2 L10.4 9.3 L10.5 7.3 L12.4 8.1 L13.1 6.2 L14.8 7.4Z" fill="currentColor" stroke="#24331F" stroke-width="1.4" stroke-linejoin="round"/><circle cx="13" cy="15.5" r="1.5" fill="#24331F"/><circle cx="19" cy="15.5" r="1.5" fill="#24331F"/><circle cx="10.6" cy="18.4" r="1.3" fill="#FF8FA3"/><circle cx="21.4" cy="18.4" r="1.3" fill="#FF8FA3"/></symbol>
+  <symbol id="b-pet" viewBox="0 0 32 32"><path d="M12 25.5v2.3M20 25.5v2.3" stroke="#24331F" stroke-width="2.6" stroke-linecap="round"/><path d="M16.0 5.8 L17.2 7.4 L18.9 6.2 L19.6 8.1 L21.5 7.3 L21.6 9.3 L23.7 9.2 L23.2 11.1 L25.3 11.5 L24.3 13.2 L26.1 14.1 L24.6 15.5 L26.1 16.9 L24.3 17.8 L25.3 19.5 L23.2 19.9 L23.7 21.8 L21.6 21.7 L21.5 23.7 L19.6 22.9 L18.9 24.8 L17.2 23.6 L16.0 25.2 L14.8 23.6 L13.1 24.8 L12.4 22.9 L10.5 23.7 L10.4 21.7 L8.3 21.8 L8.8 19.9 L6.7 19.5 L7.7 17.8 L5.9 16.9 L7.4 15.5 L5.9 14.1 L7.7 13.2 L6.7 11.5 L8.8 11.1 L8.3 9.2 L10.4 9.3 L10.5 7.3 L12.4 8.1 L13.1 6.2 L14.8 7.4Z" fill="#FFFDF6" stroke="#24331F" stroke-width="2" stroke-linejoin="round"/><circle cx="13" cy="15.5" r="1.7" fill="#24331F"/><circle cx="19" cy="15.5" r="1.7" fill="#24331F"/><path d="M27 3.5v5M24.8 5.6 27 3.4l2.2 2.2" fill="none" stroke="#24331F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="b-dex" viewBox="0 0 32 32"><rect x="6" y="4" width="20" height="24" rx="3" fill="#FFFDF6" stroke="#24331F" stroke-width="2.6"/><path d="M10 4v24" stroke="#24331F" stroke-width="2.6"/><circle cx="18" cy="13" r="4" fill="#FF8FA3" stroke="#24331F" stroke-width="2"/><path d="M14 21h8" stroke="#24331F" stroke-width="2.4" stroke-linecap="round"/></symbol>
+  <symbol id="b-catch" viewBox="0 0 32 32"><circle cx="16" cy="16" r="11" fill="#FFFDF6" stroke="#24331F" stroke-width="2.6"/><path d="M5 16a11 11 0 0 0 22 0z" fill="#FFC94A" stroke="#24331F" stroke-width="2.6" stroke-linejoin="round"/><rect x="4" y="14.2" width="24" height="3.6" rx="1.8" fill="#FFFDF6" stroke="#24331F" stroke-width="2"/></symbol>
+</defs></svg>
+
+<div class="wrap">
+<h1>위젯 작은 메뉴 · 얼굴 다 보이게</h1>
+
+<section class="opt">
+<h2><span class="tag">1-A</span>위젯 옆에 작은 말풍선</h2>
+<div class="home">
+  <div class="wid" style="left:52%;top:58%;width:40%;height:34%">
+    <svg style="left:8%;bottom:4%;width:44%;color:#F4EFE7"><use href="#ball"/></svg>
+    <svg style="left:48%;bottom:4%;width:44%;color:#FFC2CF"><use href="#ball"/></svg>
+  </div>
+  <div class="pop" style="right:6%;top:calc(58% - 74px)">
+    <span class="t p"><svg><use href="#b-pet"/></svg>띄우기</span><span class="t d"><svg><use href="#b-dex"/></svg>도감</span><span class="t c"><svg><use href="#b-catch"/></svg>뽑기</span>
+  </div>
+  <div class="tail" style="right:28%;top:calc(58% - 18px)"></div>
+</div>
+<p>누른 위젯 바로 위(자리가 없으면 아래)에 작은 말풍선이 뜹니다. 화면은 어두워지지 않고, 바깥을 누르면 닫혀요. 펫 띄우기를 누르면 같은 말풍선 안에서 가족 얼굴들이 한 줄로 바뀌어 고릅니다.</p>
+</section>
+
+<section class="opt">
+<h2><span class="tag">1-B</span>위젯 안에서 버튼으로 바뀌기</h2>
+<div class="home">
+  <div class="wid" style="left:52%;top:58%;width:40%;height:34%">
+    <div class="inner"><span class="t p"><svg><use href="#b-pet"/></svg>띄우기</span><span class="t d"><svg><use href="#b-dex"/></svg>도감</span><span class="t c"><svg><use href="#b-catch"/></svg>뽑기</span></div>
+  </div>
+</div>
+<p>누르면 위젯 자체가 버튼 세 개로 바뀌고, 5초 뒤 다시 가족사진으로 돌아옵니다. 대신 1×1에서는 버튼이 너무 작아지고, 펫 고르기는 결국 따로 창을 띄워야 해요.</p>
+</section>
+
+<hr>
+<section class="opt">
+<h2>얼굴 가려짐</h2>
+<div class="pair">
+  <div><div class="fr">
+    <svg style="left:14%;bottom:30%;width:40%;color:#FFD8A8"><use href="#ball"/></svg>
+    <svg style="left:46%;bottom:30%;width:40%;color:#CFE8FF"><use href="#ball"/></svg>
+    <svg style="left:2%;bottom:2%;width:48%;color:#F4EFE7"><use href="#ball"/></svg>
+    <svg style="left:50%;bottom:2%;width:48%;color:#FFC2CF"><use href="#ball"/></svg>
+    <span class="x" style="left:30%;top:42%"></span><span class="x" style="left:62%;top:42%"></span>
+  </div><div class="cap"><span class="tag no">지금</span>뒷줄 얼굴이 앞줄 머리에 가려짐</div></div>
+  <div><div class="fr">
+    <svg style="left:-4%;top:2%;width:42%;color:#FFD8A8"><use href="#ball"/></svg>
+    <svg style="left:62%;top:2%;width:42%;color:#CFE8FF"><use href="#ball"/></svg>
+    <svg style="left:2%;bottom:2%;width:48%;color:#F4EFE7"><use href="#ball"/></svg>
+    <svg style="left:50%;bottom:2%;width:48%;color:#FFC2CF"><use href="#ball"/></svg>
+  </div><div class="cap"><span class="tag">A</span>뒷줄을 올리고 틈으로</div></div>
+</div>
+<div class="pair">
+  <div class="fr w">
+    <svg style="left:12%;top:4%;width:22%;color:#D6F0C2"><use href="#ball"/></svg>
+    <svg style="left:39%;top:4%;width:22%;color:#FFD8A8"><use href="#ball"/></svg>
+    <svg style="left:66%;top:4%;width:22%;color:#CFE8FF"><use href="#ball"/></svg>
+    <svg style="left:0;bottom:2%;width:26%;color:#E7DDF7"><use href="#ball"/></svg>
+    <svg style="left:37%;bottom:2%;width:26%;color:#F4EFE7"><use href="#ball"/></svg>
+    <svg style="left:74%;bottom:2%;width:26%;color:#FFC2CF"><use href="#ball"/></svg>
+  </div>
+</div>
+<p><b>A (추천):</b> 뒷줄은 앞줄 사이 틈에 서고, 몸 아래쪽 절반만 앞줄 뒤로 숨게 높이를 올립니다. 얼굴(위쪽 절반)은 항상 다 보여요. 대신 한 마리당 크기가 조금 작아집니다. 사진 펫(인형·컵 등)도 위쪽 절반을 얼굴로 봅니다.</p>
+<div class="pair">
+  <div class="fr w">
+    <svg style="left:1%;bottom:10%;width:20%;color:#D6F0C2"><use href="#ball"/></svg>
+    <svg style="left:17%;bottom:10%;width:20%;color:#FFD8A8"><use href="#ball"/></svg>
+    <svg style="left:33%;bottom:10%;width:20%;color:#F4EFE7"><use href="#ball"/></svg>
+    <svg style="left:49%;bottom:10%;width:20%;color:#CFE8FF"><use href="#ball"/></svg>
+    <svg style="left:65%;bottom:10%;width:20%;color:#FFC2CF"><use href="#ball"/></svg>
+    <svg style="left:81%;bottom:10%;width:20%;color:#E7DDF7"><use href="#ball"/></svg>
+  </div>
+</div>
+<p><b>B:</b> 넓은 위젯은 한 줄로 어깨만 살짝 겹쳐 섭니다. 얼굴은 절대 안 겹치지만 정사각 위젯에서는 많이 작아져요(2×2에 6마리면 한 줄 대신 A).</p>
+</section>
+</div>

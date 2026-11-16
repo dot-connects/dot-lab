@@ -95,14 +95,6 @@ object PetWidgets {
         val who = cast(ctx, if (one) 1 else if (low) 3 else 6)
         val pics = who.mapNotNull { e -> Frames.load(ctx, e)?.let { it[cell] ?: it["front"] } }
 
-        fun pet(b: Bitmap, cx: Float, foot: Float, size: Float) {
-            val s = size / max(b.width, b.height)
-            val bw = b.width * s; val bh = b.height * s
-            p.color = 0x40000000; c.drawOval(cx - bw * 0.36f, foot - size * 0.05f, cx + bw * 0.36f, foot + size * 0.04f, p)
-            p.color = Color.BLACK   // opaque again: the shadow left the paint at 25 % alpha (operator 11-16 "too see-through")
-            c.drawBitmap(b, null, RectF(cx - bw / 2, foot - bh, cx + bw / 2, foot), p)
-        }
-
         if (pics.isEmpty()) {
             // nothing to show yet: a paper ball with "?" (opaque, so it reads on any wallpaper)
             val r = min(w, h) * 0.34f
@@ -113,33 +105,55 @@ object PetWidgets {
             c.drawText("?", w / 2f, h / 2f + r * 0.36f, t)
             return bmp
         }
-        val (back, front) = rows(pics.size)
-        val foot = h * 0.97f
-        val frontSize = min(w * 0.98f / front, h * (if (back > 0) 0.66f else 0.94f))
-        val backSize = frontSize * 0.86f
-        // back row first (it sits behind), then the front; the floating pet (first) stands front middle
-        val frontPics = middleFirst(pics.take(front))
-        val backPics = pics.drop(front)
-        for (i in backPics.indices) pet(backPics[i], w * (i + 1f) / (back + 1f), foot - frontSize * 0.42f, backSize)
-        for (i in frontPics.indices) pet(frontPics[i], w * (i + 0.5f) / front, foot, frontSize)
+        // a group selfie (operator 11-16, mockup widget-selfie): the floating pet big at the front left, the rest
+        // fanned over its head and to the right; no outline, no date, only a soft shadow and a slight tilt
+        val wide = w >= h * 1.6f
+        val box = if (wide) 200f else 100f
+        val slots = slots(pics.size, wide)
+        val u = min(w / box, h / 100f) * 0.93f            // the slot box fitted in, bottom centred, room for the tilt
+        val ox = (w - box * u) / 2f; val oy = h - 100f * u - h * 0.02f
+        val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x66000000; maskFilter = android.graphics.BlurMaskFilter(max(1f, 2.5f * u), android.graphics.BlurMaskFilter.Blur.NORMAL) }
+        c.save()
+        c.rotate(-5f, w / 2f, h / 2f)
+        // farthest (smallest) first, the selfie taker last
+        for (i in slots.indices.sortedWith(compareBy<Int>({ it == 0 }, { slots[it][2] }))) {
+            val b = pics[i]; val (x, foot, size) = slots[i]
+            val sz = size * u
+            val sc = sz / max(b.width, b.height)
+            val bw = b.width * sc; val bh = b.height * sc
+            val r = RectF(ox + x * u - bw / 2, oy + foot * u - bh, ox + x * u + bw / 2, oy + foot * u)
+            val a = b.extractAlpha()
+            c.drawBitmap(a, null, RectF(r).apply { offset(0f, 1.6f * u) }, shadow)
+            a.recycle()
+            p.color = Color.BLACK   // opaque: a paint alpha would show through the pet (operator 11-16)
+            c.drawBitmap(b, null, r, p)
+        }
+        c.restore()
         return bmp
     }
 
-    /** How many stand in the back and front rows for [n] pets (mockup widget-family A). */
-    internal fun rows(n: Int): Pair<Int, Int> = when (n) {
-        in 0..3 -> 0 to n
-        4 -> 2 to 2
-        5 -> 2 to 3
-        else -> 3 to 3
-    }
+    /** Where each pet stands: x centre, foot y, size, in a 100 x 100 box (200 x 100 when wide); slot 0 = the selfie taker. */
+    internal fun slots(n: Int, wide: Boolean): List<FloatArray> = (if (wide) WIDE else SQUARE)[n.coerceIn(1, 6) - 1]
+        .map { floatArrayOf(it[0], it[1], it[2]) }
 
-    /** [list]'s first item moved to the middle slot: 1 2 3 -> 2 1 3. */
-    internal fun <T> middleFirst(list: List<T>): List<T> {
-        if (list.size < 3) return list
-        val rest = list.drop(1).toMutableList()
-        rest.add(list.size / 2, list[0])
-        return rest
-    }
+    // a farther pet's feet stay above every nearer pet's head, so no face is ever covered (operator 11-16)
+    private val SQUARE = listOf(
+        listOf(f(50, 99, 84)),
+        listOf(f(34, 99, 64), f(78, 52, 40)),
+        listOf(f(34, 99, 60), f(72, 48, 34), f(84, 93, 30)),
+        listOf(f(32, 99, 58), f(46, 37, 28), f(77, 44, 30), f(84, 91, 28)),
+        listOf(f(31, 99, 56), f(24, 38, 26), f(52, 31, 26), f(80, 41, 28), f(82, 88, 28)),
+        listOf(f(30, 99, 54), f(18, 40, 24), f(42, 32, 24), f(66, 31, 24), f(87, 47, 24), f(81, 91, 28)),
+    )
+    private val WIDE = listOf(
+        listOf(f(100, 99, 90)),
+        listOf(f(64, 99, 84), f(140, 80, 60)),
+        listOf(f(50, 99, 76), f(120, 62, 46), f(164, 97, 40)),
+        listOf(f(46, 99, 74), f(110, 58, 42), f(154, 54, 38), f(150, 99, 38)),
+        listOf(f(44, 99, 74), f(104, 60, 40), f(146, 50, 38), f(182, 60, 32), f(136, 99, 36)),
+        listOf(f(42, 99, 74), f(100, 60, 40), f(140, 50, 38), f(178, 58, 34), f(116, 99, 34), f(156, 99, 34)),
+    )
+    private fun f(x: Int, foot: Int, size: Int) = floatArrayOf(x.toFloat(), foot.toFloat(), size.toFloat())
 }
 
 /** The one widget's receiver (the class name stays: widgets placed before keep working). */
