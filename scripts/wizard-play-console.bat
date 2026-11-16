@@ -228,9 +228,10 @@ Write-Host ''
 Say '1) 개발자 계정 만들기            — 지금 (5단계)'
 Say '2) 테스트 그룹 만들기            — 지금, 1번과 같이 해도 됨 (2단계)'
 Say '3) 앱 비공개 테스트 시작         — Claude 가 AAB(업로드용 앱 파일)를 만든 뒤 (3단계)'
-Say '4) ACT Party 로 테스터 맞교환    — 3번 검토가 끝나 참여 링크가 나온 뒤 (4단계)'
+Say '4) ACT Party 로 테스터 맞교환    — 보충용: 소개 페이지·릴스로 12명이 안 모일 때 (4단계)'
 Say '5) 참여 인원 기록 · 14일 날짜   — 사람이 늘거나 줄 때마다'
 Say '6) 프로덕션(정식 출시) 신청      — 12명 × 14일이 지난 뒤 (2단계)'
+Say '7) 결제·무결성 연결              — 3번에서 앱을 만든 뒤, AAB 올리기 전에 (5단계)'
 $part = Read-Host "`n  번호"
 
 switch ($part) {
@@ -365,7 +366,7 @@ switch ($part) {
   Note '검토가 끝나기 전엔 링크가 안 열려요. 아직이면 Enter 로 넘기고, 승인 뒤 메뉴 3번 → 이 단계만 다시 하세요.'
   $optin = Ask-St "$($K)_OPTIN" '참여 링크 (https://play.google.com/apps/testing/...)'
   if ($optin) {
-    Say '이 링크로 메뉴 4번(ACT Party 등록)을 하면 됩니다.'
+    Say '이 링크를 Claude 에게 보내 주세요 — 소개 페이지와 릴스 게시 준비(manifest)를 마칩니다. 모자라면 메뉴 4번(ACT Party).'
     if (Confirm-Yes '지인에게 보낼 설치 안내 글도 복사할까요?') {
       Copy-Text @"
 $($App.Name) 테스트 열렸어! 고마워 🙏
@@ -472,7 +473,71 @@ $($App.Name) 테스트 열렸어! 고마워 🙏
   Wait-Enter 'Enter 로 마무리'
 }
 
-default { Warn '1~6 중에서 골라 주세요. 다시 실행하면 됩니다.'; exit 0 }
+'7' {
+  $TotalStages = 5
+  Banner '결제·무결성 연결 (Google Cloud 서비스 계정 하나)'
+
+  Stage 'Google Cloud 프로젝트 + API 2개'
+  Say '서버가 "진짜 Play 앱인지", "결제가 됐는지" Google 에 물어보려면 Cloud 서비스 계정이 하나 필요해요. 무료예요.'
+  Open-Url 'https://console.cloud.google.com/projectcreate'
+  Step "계정 주인($(St-Get 'OWNER_ACCOUNT'))으로 로그인 → 프로젝트 이름: 예) dot-play → 만들기"
+  Step '위쪽 검색창에서 "Google Play Android Developer API" → 사용'
+  Step '같은 방법으로 "Play Integrity API" → 사용'
+  Write-Host ''
+  Note '프로젝트 번호(숫자 12자리 정도)는 대시보드 "프로젝트 정보" 카드에 있어요.'
+  [void](Ask-St 'CLOUD_PROJECT' '프로젝트 번호 (숫자)')
+  Wait-Enter 'Enter 로 다음'
+
+  Stage '서비스 계정 + 키를 서버에 넣기'
+  Open-Url 'https://console.cloud.google.com/iam-admin/serviceaccounts'
+  Step '"서비스 계정 만들기" → 이름: catch-play → 만들고 계속 → 역할은 비워 두고 완료'
+  Step '만든 계정 클릭 → "키" 탭 → 키 추가 → 새 키 만들기 → JSON → 파일이 내려받아짐'
+  Step '같은 화면 맨 위의 이메일(…@…iam.gserviceaccount.com)을 복사'
+  [void](Ask-St 'SA_EMAIL' '서비스 계정 이메일')
+  Write-Host ''
+  $jf = Read-Host '  내려받은 JSON 파일 경로 (탐색기에서 파일을 이 창으로 끌어다 놓아도 돼요)'
+  $jf = $jf.Trim('"', ' ')
+  if ($jf -and (Test-Path $jf)) {
+    $worker = 'C:\DC\DD\dot-lab\works\2026-11-09-catch\worker'
+    $json = [IO.File]::ReadAllText($jf).Trim()
+    Push-Location $worker
+    try {
+      $OutputEncoding = New-Object System.Text.UTF8Encoding $false   # a BOM broke a key once (11-12)
+      $json | npx wrangler@4 secret put GOOGLE_SA | Out-Host
+      if ($LASTEXITCODE -eq 0) { Write-Host '  ✓ 서버에 GOOGLE_SA 를 넣었어요 (값은 화면에 안 나와요)' -ForegroundColor Green; St-Set 'GOOGLE_SA_SET' (Today) }
+      else { Warn 'wrangler 가 실패했어요. 위 메시지를 캡처해서 Claude 에게 보내 주세요.'; $script:Skipped += 'GOOGLE_SA 넣기' }
+    } finally { Pop-Location }
+    if (Confirm-Yes '키 파일은 서버에 들어갔으니 PC 에서 지울까요? (권장)') { Remove-Item $jf; Note '지웠어요.' }
+  } else { Warn '파일을 못 찾았어요 — 나중에 메뉴 7번 → 2단계를 다시 하세요.'; $script:Skipped += 'GOOGLE_SA 넣기' }
+  Wait-Enter 'Enter 로 다음'
+
+  Stage 'Play Console 에 서비스 계정 초대'
+  Open-Url 'https://play.google.com/console'
+  Step '왼쪽 "사용자 및 권한" → "새 사용자 초대"'
+  Step "이메일: $(St-Get 'SA_EMAIL')"
+  Step '앱 권한: 리얼뽑기 추가 → "재무 데이터 보기" + "주문 및 구독 관리" 체크 → 초대'
+  Note '권한이 서버에 닿기까지 길게는 하루가 걸릴 수 있어요.'
+  Wait-Enter '초대했으면 Enter'
+
+  Stage '앱 무결성 연결 + 서명 인증서'
+  Step '리얼뽑기 → 왼쪽 "테스트 및 출시" → "앱 무결성" → Play Integrity API: 위 Cloud 프로젝트 연결'
+  Step '같은 페이지 "앱 서명" → "앱 서명 키 인증서"의 SHA-256 지문 복사 (AB:CD:… 형태)'
+  Note '앱 서명 키는 첫 AAB 를 올린 뒤에 보여요. 아직이면 Enter 로 넘기고, AAB 를 올린 뒤 이 단계만 다시 하세요.'
+  [void](Ask-St 'CERT_SHA256' 'SHA-256 지문')
+  Say '이 두 값(프로젝트 번호, 지문)은 Claude 가 앱과 서버에 넣어요: "메뉴 7 끝났어" 라고만 알려 주세요.'
+  Wait-Enter 'Enter 로 다음'
+
+  Stage '인앱 상품 2개 + 무료 테스트 구매'
+  Step '리얼뽑기 → "수익 창출" → "인앱 상품" → 상품 만들기 (판매자 계정이 있어야 보여요 — 메뉴 1번 5단계)'
+  Step '상품 ID: sheet_fluff · 이름: 털뭉치 펫 그림 · 가격 500원 → 저장 → 활성화'
+  Step '상품 ID: sheet_figure · 이름: 피규어 펫 그림 · 가격 500원 → 저장 → 활성화'
+  Warn '상품 ID 는 바꿀 수 없어요. 철자를 그대로.'
+  Step '왼쪽 아래 "설정" → "라이선스 테스트" → 운영자 Gmail 추가 → 저장 (이 계정은 결제가 무료로 시험돼요)'
+  if (Confirm-Yes '상품 2개와 라이선스 테스트까지 했나요?') { St-Set 'PRODUCTS' (Today) } else { $script:Skipped += '인앱 상품·라이선스 테스트' }
+  Wait-Enter 'Enter 로 마무리'
+}
+
+default { Warn '1~7 중에서 골라 주세요. 다시 실행하면 됩니다.'; exit 0 }
 }
 
 Finish
