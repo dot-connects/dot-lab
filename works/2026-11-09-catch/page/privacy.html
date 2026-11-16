@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>리얼뽑기 개인정보 처리방침</title>
+<meta name="description" content="리얼뽑기 앱이 어떤 정보를 어디에 보내고 얼마나 두는지.">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#fafbfc;--ink:#17202a;--muted:#4a5562;--blue:#2f6fe4;--line:#e3e8ee;--sans:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+html{background:var(--bg)}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);word-break:keep-all;line-height:1.65}
+main{max-width:640px;margin:0 auto;padding:28px max(16px,env(safe-area-inset-right)) 48px max(16px,env(safe-area-inset-left));box-sizing:border-box}
+h1{font-size:26px;line-height:1.25;margin:0 0 4px}
+.date{color:var(--muted);font-size:14px;margin:0 0 24px}
+h2{font-size:18px;margin:28px 0 8px;padding-top:16px;border-top:1px solid var(--line)}
+p,li{font-size:15.5px}
+ul{padding-left:20px}
+table{width:100%;border-collapse:collapse;font-size:14.5px;margin:8px 0}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);white-space:nowrap}
+a{color:var(--blue)}
+</style>
+</head>
+<body>
+<main>
+<h1>리얼뽑기 개인정보 처리방침</h1>
+<p class="date">D:OT · 시행 2026년 11월 16일</p>
+
+<p>리얼뽑기는 카메라로 강아지·고양이·사람을 집게로 뽑아 도감에 모으고, 털뭉치 펫으로 만드는 안드로이드 앱입니다.
+가입이 없고, 광고와 사용 분석 도구를 쓰지 않습니다. 아래는 앱이 다루는 정보 전부입니다.</p>
+
+<h2>1. 폰 안에만 있는 것</h2>
+<ul>
+  <li><b>카메라 화면</b>: 뽑기 화면에서 동물·사람을 찾는 계산은 폰 안에서만 합니다. 카메라 영상은 어디에도 보내지 않습니다.</li>
+  <li><b>뽑은 사진과 도감</b>: 뽑은 순간 오려 낸 그림과 도감 기록은 앱 저장 공간에만 둡니다. 앱을 지우면 함께 지워집니다.</li>
+  <li><b>사용 정보 접근(선택)</b>: "홈 화면에서만 펫 보이기"를 켜면, 지금 홈 화면인지 알기 위해 맨 앞 앱의 이름만 폰 안에서 확인합니다. 기록하거나 보내지 않습니다.</li>
+</ul>
+
+<h2>2. 서버로 보내는 것 (사용자가 누를 때만)</h2>
+<table>
+  <tr><th>무엇을</th><td>도감의 그림 한 장(오려 낸 그림), 종류(예: 고양이), 앱이 처음 실행 때 만든 무작위 기기 번호</td></tr>
+  <tr><th>언제</th><td>상세 화면에서 "그려 보기"나 "펫 그림"을 눌렀을 때만</td></tr>
+  <tr><th>어디로</th><td>우리 서버(Cloudflare Workers) → 그림을 그리는 OpenAI 이미지 API. OpenAI 는 API 로 받은 데이터를 모델 학습에 쓰지 않고, 남용 감시를 위해 최대 30일 보관한 뒤 지웁니다(<a href="https://platform.openai.com/docs/guides/your-data">OpenAI API 데이터 정책</a>).</td></tr>
+  <tr><th>왜</th><td>그 그림을 털뭉치·피규어 그림으로 그려 돌려주기 위해</td></tr>
+  <tr><th>얼마나</th><td>보낸 그림은 그리고 나면 서버에 남기지 않습니다. 단, 산 펫 그림은 같은 구매로 다시 받을 수 있게 그린 결과만 30일 보관 후 자동 삭제합니다.</td></tr>
+</table>
+<p>사람이 찍힌 그림은 보내기 전에 "사진 속 사람에게 물어봤나요?"를 한 번 더 묻습니다.</p>
+
+<h2>3. 서버에 남는 것</h2>
+<ul>
+  <li><b>사용 횟수</b>: 하루 몇 번 그렸는지 세는 숫자(기기 번호·날짜 단위). 남용을 막는 용도입니다.</li>
+  <li><b>구매 기록</b>: Google Play 가 준 구매 토큰과 상품 이름, 처리 상태. 한 번 산 그림을 두 번 그리지 않고, 실패하면 다시 받게 하는 용도입니다. 결제 정보(카드 등)는 Google 이 처리하며 우리는 받지 않습니다.</li>
+  <li><b>신고</b>: 그림 아래 "신고"를 누르면 기기 번호·도감 번호·종류·이유만 저장합니다(그림은 보내지 않음).</li>
+  <li><b>앱 확인</b>: Google Play Integrity 로 "Play 에서 받은 진짜 앱인지"만 확인하고 결과는 저장하지 않습니다.</li>
+</ul>
+<p>이 기록은 Cloudflare 의 해외 서버에 저장되며, 이름·전화번호·이메일처럼 사람을 알아볼 수 있는 정보와 연결되지 않습니다.</p>
+
+<h2>4. 지우기</h2>
+<p>폰 안의 정보는 앱 안에서 도감을 지우거나 앱을 지우면 사라집니다. 서버의 사용 횟수·구매·신고 기록을 지우고 싶으면 아래 메일로 앱의 기기 번호(설정 화면에 표시)를 알려 주세요. 7일 안에 지웁니다.</p>
+
+<h2>5. 아이</h2>
+<p>리얼뽑기는 만 13세 미만 아이를 대상으로 하지 않습니다.</p>
+
+<h2>6. 바뀔 때</h2>
+<p>내용이 바뀌면 이 페이지에 날짜와 함께 올립니다.</p>
+
+<h2>7. 연락처</h2>
+<p>D:OT · <a id="mail" href="mailto:DEV_EMAIL">DEV_EMAIL</a></p>
+<!-- DEV_EMAIL: the Play developer email from the wizard (state DEV_EMAIL); replace both before the store listing -->
+</main>
+</body>
+</html>
