@@ -6,6 +6,14 @@ posted BEFORE the Play listing, as soon as the closed test's opt-in link works; 
 Reference study: 10 real ads (Clawee, DOLLPICK, 캐치돌 TVC, Shijima, Xiaomi pet widget, Pocket Pals,
 Pokémon GO ×3); notes in `research/reel-refs.md`. Process lessons: memory `feedback_lab_ad_reel_process`.
 
+## Footage picked (operator 11-16: one cat for the whole reel)
+
+The dark tortie of Sam Lion's Pexels set: B01 (owner on the bed with the phone, cat beside, face cropped) opens,
+A10 (the same cat's face, eyes on the camera) is the app camera view and the closing reaction shot, C01 (hand holding
+a green-screen phone) carries the home screen. No free clip shows a cat pawing a phone, so the closing beat is a
+reaction cut: the pet walks on the phone -> the real cat stares at the camera. The pet is a real 12-cell sheet drawn by
+the Worker from an A10 frame (`reel/frames/pet-sheet.webp`, 11-16, dev token). Mockups: claude.ai artifact TFzcAGK3vacPvgBQdwgwFX.
+
 ## What the references taught (applied)
 
 1. Real scene first; app UI late, small and short (Clawee 3 s, Pokémon GO KR 11 s for 3 s).
