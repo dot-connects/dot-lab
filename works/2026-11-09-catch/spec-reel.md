@@ -14,6 +14,11 @@ a green-screen phone) carries the home screen. No free clip shows a cat pawing a
 reaction cut: the pet walks on the phone -> the real cat stares at the camera. The pet is a real 12-cell sheet drawn by
 the Worker from an A10 frame (`reel/frames/pet-sheet.webp`, 11-16, dev token). Mockups: claude.ai artifact TFzcAGK3vacPvgBQdwgwFX.
 
+**Look picked (operator 11-16): A, warm live action, heavy wide captions at the bottom, slow push-ins, ~21 s; app scenes
+must be the REAL app screens**, not redrawn mockups: the operator screen-records the dev app on the phone (catch on a
+monitor playing A10, capsule, dex, pet sheet, the pet on the home screen) and the reel composites those recordings
+(home screen into C01's green phone). Redrawing stays the fallback only for a beat the recording cannot give.
+
 ## What the references taught (applied)
 
 1. Real scene first; app UI late, small and short (Clawee 3 s, Pokémon GO KR 11 s for 3 s).
