@@ -57,6 +57,7 @@ abstract class SettingsShotKit {
         },
         photoFolders = { listOf("Camera" to 1240, "Screenshots" to 312, "여행" to 86, "KakaoTalk" to 54) },
         chargeTrail = { listOf("11월 12일 23:12 · 무선 충전 → 켜짐", "11월 11일 08:05 · 케이블 충전 → 켜짐") },
+        launcherApps = { kr.dot.sb.Fixtures.apps() },
         io = kotlinx.coroutines.Dispatchers.Unconfined,
         today = { day },
     )
@@ -83,20 +84,9 @@ abstract class SettingsShotKit {
     protected val folders = AppConfig(photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"))
     protected val tallest = "w411dp-h3000dp-port-xhdpi"
 
-    /** 위젯 고르기 with faked providers (Samsung Notes has a 4×4 that is too big for the slot). */
-    protected fun widgetChoices(): List<WidgetChoice> {
-        fun w(key: String, pkg: String, app: String, n: String, wd: Float, ht: Float, cells: String) = WidgetChoice(key, pkg, app, n, kr.dot.sb.platform.WidgetFit.Size(wd, ht), cells)
-        return listOf(
-            w("n1", "com.samsung.android.app.notes", "Samsung Notes", "메모", 250f, 110f, "4×2"),
-            w("n2", "com.samsung.android.app.notes", "Samsung Notes", "메모 목록", 250f, 110f, "4×2"),
-            w("n3", "com.samsung.android.app.notes", "Samsung Notes", "메모 (크게)", 250f, 400f, "4×4"),
-            w("c1", "com.samsung.android.calendar", "Samsung Calendar", "일정", 250f, 110f, "4×2"),
-            w("k1", "com.google.android.keep", "Keep 메모", "메모 하나", 110f, 110f, "2×2"),
-            w("g1", "com.google.android.googlequicksearchbox", "Google", "검색창", 250f, 40f, "4×1"),
-            w("x1", "com.sec.android.daemonapp", "날씨", "오늘 날씨", 110f, 110f, "2×2"),
-            w("t1", "com.kakao.talk", "카카오톡", "채팅방", 110f, 110f, "2×2"),
-            w("h1", "com.sec.android.app.shealth", "Samsung Health", "걸음 수", 110f, 110f, "2×2"),
-        )
+    /** A board with an 앱 바로가기 card holding two apps (앱 고르기 route "apps:desk:0:0"). */
+    protected val withApps = AppConfig().let { c ->
+        BoardOps.replace(c, "desk") { b -> b.copy(slots = listOf(listOf(kr.dot.sb.model.CardType.APPS)) + b.slots.drop(1), options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(apps = listOf("app.2", "app.0")))) }
     }
 }
 
@@ -153,26 +143,9 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
-    /** plan-r13 B10 위젯 고르기 with faked providers: 추천, apps folded but Samsung Notes opened, the 4×4 note hidden (too big). */
-    @Test fun widgetPicker() = widgetSheet("widget-picker") { onNodeWithText("Samsung Notes").performClick() }
-    @Test fun widgetPickerSearch() = widgetSheet("widget-picker-search") { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("메모") }
-    @Test fun widgetMenu() {
-        RuntimeEnvironment.setQualifiers(phone)
-        rule.setContent { SettingsTheme(SK.ok) { WidgetMenuSheet("Samsung Notes · 메모", true, {}, {}, {}, {}, {}) } }
-        rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots/settings/widget-menu.png")
-    }
-
-    private fun widgetSheet(name: String, after: ComposeContentTestRule.() -> Unit) {
-        RuntimeEnvironment.setQualifiers(phone)
-        val all = widgetChoices()
-        val slots = kr.dot.sb.platform.WidgetFit.slotSizes(kr.dot.sb.model.Layout.TWO, 0, 780f, 360f, cover = false)
-        rule.setContent { SettingsTheme(SK.ok) { WidgetPickerSheet(all, slots, WidgetArt(), {}, {}) } }
-        rule.waitForIdle()
-        rule.after()
-        rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots/settings/$name.png")
-    }
+    /** r14 C1 앱 고르기: two picked (veil + check), then a search. */
+    @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.apps("desk", 0, 0))
+    @Test fun appPickerSearch() = snap("app-picker-search", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("카") }
     @Test fun night() = snap("night", tall, route = Routes.NIGHT)
     @Test fun nightFold() = snap("night-fold", foldTall, route = Routes.NIGHT)
     @Test fun nightNever() = snap("night-never", phone, AppConfig(displayOff = DisplayOff.NEVER), route = Routes.NIGHT)

@@ -46,8 +46,6 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.theme.drawnTheme
-import kr.dot.sb.model.WidgetMode
-import kotlin.math.roundToInt
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.draw.alpha
@@ -379,7 +377,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                     onAdd = { selected = s; pick = PickTarget(s, null) },
                     onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
                     onRemove = { j -> removeAt(s, j) },
-                    onSettings = { j -> nav.push(Routes.widget(id, s, j)) },
+                    onSettings = { j -> nav.push(Routes.apps(id, s, j)) },
                 )
             }
 
@@ -426,14 +424,14 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                 config = config, state = state, accent = board.accent, face = board.clockFace,
                 current = p.index?.let { stack.getOrNull(it) },
                 taken = stack.toSet(),
-                widget = true,
+                apps = true,
                 onDismiss = { pick = null },
                 onRemove = if (stack.size > 1) { t -> removeAt(p.slot, stack.indexOf(t)) } else null,
                 onPick = { card ->
                     val j = p.index ?: stack.size
                     editSlot(p.slot, { k -> k.takeIf { it != p.index || stack[it] == card } }) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
-                    // a new phone widget card asks for its widget right away and closes this sheet (a cancel leaves the empty card)
-                    if (card == CardType.WIDGET && stack.getOrNull(j) != card) { pick = null; env.pickWidget(id, "${p.slot}:$j") }
+                    // a new 앱 바로가기 card opens 앱 고르기 right away and closes this sheet
+                    if (card == CardType.APPS && stack.getOrNull(j) != card) { pick = null; nav.push(Routes.apps(id, p.slot, j)) }
                     else if (p.index != null) pick = null
                 },
             )
@@ -474,7 +472,7 @@ fun CardStackSection(
     onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
     footer: String? = null,
-    /** Phone widget rows get a settings button (boards only). */
+    /** 앱 바로가기 rows get a 앱 고르기 button (boards only). */
     onSettings: ((Int) -> Unit)? = null,
 ) {
     Section(title, footer) {
@@ -482,8 +480,8 @@ fun CardStackSection(
             item {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onReplace(j) }.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     T(card.ko, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
-                    if (card == CardType.WIDGET && onSettings != null) {
-                        Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("설정", 14.sp, 600, LocalAccent.current) }
+                    if (card == CardType.APPS && onSettings != null) {
+                        Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("앱 고르기", 14.sp, 600, LocalAccent.current) }
                     }
                     if (cards.size > 1) {
                         Box(Modifier.size(48.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
@@ -521,8 +519,8 @@ fun CardPickerSheet(
     current: CardType?,
     taken: Set<CardType>,
     onDismiss: () -> Unit,
-    /** The phone widget card is offered on boards only, never on the widgets page (D6). */
-    widget: Boolean = false,
+    /** 앱 바로가기 is offered on boards only, never on the widgets page (its options live on boards). */
+    apps: Boolean = false,
     onRemove: ((CardType) -> Unit)? = null,
     onPick: (CardType) -> Unit,
 ) {
@@ -530,7 +528,7 @@ fun CardPickerSheet(
     Sheet(title, onDismiss) {
         Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
             // the media card plays video too (r8) and one notification card replaced stack + list (r9): the old types stay only where a board already has them
-            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.WIDGET || widget)) || it == current }
+            CardType.entries.filter { ((it != CardType.USAGE || UsageFeature.enabled) && (it != CardType.APPS || apps)) || it == current }
                 .chunked(2).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { card ->
@@ -565,35 +563,67 @@ fun CardPickerSheet(
     }
 }
 
-// ---- phone widget options (r9 D6; 보이는 모습… of the card's long-press menu) -----------------------------------------
+// ---- 앱 고르기 (plan-r14 C1) ------------------------------------------------------------------------------------------
 
-/** Option [key] ("slot:index") of board [boardId] through [f]. */
-private fun setWidget(update: Update, boardId: String, key: String, f: (SlotOptions) -> SlotOptions) =
-    update { c -> BoardOps.replace(c, boardId) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
-
-/** Route "widget:<board>:<slot>:<index>"; null when that card is no longer a phone widget (the caller shows Home). */
+/** Route "apps:<board>:<slot>:<index>"; null when that card is no longer 앱 바로가기 (the caller shows Home). */
 @Composable
-fun WidgetOptionsScreen(route: String, config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit): Unit? {
+fun AppPickerScreen(route: String, config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit): Unit? {
     val parts = route.split(':')
     val board = config.boards.firstOrNull { it.id == parts.getOrNull(1) } ?: return null
     val slot = parts.getOrNull(2)?.toIntOrNull() ?: return null
     val j = parts.getOrNull(3)?.toIntOrNull() ?: return null
-    if (board.slots.getOrNull(slot)?.getOrNull(j) != CardType.WIDGET) return null
+    if (board.slots.getOrNull(slot)?.getOrNull(j) != CardType.APPS) return null
     val key = "$slot:$j"
-    val o = board.options[key] ?: SlotOptions()
-    val set = { f: (SlotOptions) -> SlotOptions -> setWidget(update, board.id, key, f) }
-    val id = o.widgetId
-    Page("폰 위젯", back) {
-        Section(null) {
-            item { NavRow(if (id == null) "위젯 고르기" else "위젯 바꾸기", { env.pickWidget(board.id, key) }, subtitle = id?.let(env.widgetLabel) ?: "홈 화면 위젯 가운데 하나") }
-            if (id != null && env.widgetConfigurable(id)) item { NavRow("위젯 설정", { env.configureWidget(id) }, subtitle = "위젯 앱이 가진 설정 화면을 열어요") }
-        }
-        Section("StandBy에서 보이는 모습", footer = "어둡게·밝게는 위젯 앱이 지원할 때만 바뀌어요. 밤에는 밝은 위젯을 뒤집어 어둡게 보여 줘요.") {
-            item { SliderRow("투명도", "${(o.opacity * 100).roundToInt()}%", o.opacity, 0f..1f, { v -> set { it.copy(opacity = v) } }) }
-            item { ControlRow("어둡게·밝게") { Segmented(WidgetMode.entries.map { it.ko }, o.widgetMode.ordinal, { i -> set { it.copy(widgetMode = WidgetMode.entries[i]) } }) } }
-            item { SliderRow("모서리", "각지게 ↔ 둥글게", o.radiusDp.toFloat(), 0f..40f, { v -> set { it.copy(radiusDp = v.roundToInt()) } }) }
-            item { SwitchRow("밤에 숨기기", o.hideAtNight, { on -> set { it.copy(hideAtNight = on) } }) }
-        }
+    val all by androidx.compose.runtime.produceState<List<kr.dot.sb.ui.cards.AppEntry>?>(null) {
+        value = kotlinx.coroutines.withContext(env.io) { env.launcherApps() }
+    }
+    AppPicker(all, board.options[key]?.apps.orEmpty(), back) { picked ->
+        update { c -> BoardOps.replace(c, board.id) { b -> b.copy(options = b.options + (key to (b.options[key] ?: SlotOptions()).copy(apps = picked))) } }
     }
     return Unit
+}
+
+/** Launcher apps four a row with a search field; picked ones wear the card picker's veil + check, in tap order. */
+@Composable
+fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, back: () -> Unit, onPicked: (List<String>) -> Unit) {
+    var q by rememberSaveable { mutableStateOf("") }
+    var full by remember { mutableStateOf(false) }
+    val acc = LocalAccent.current
+    Page("앱 고르기", back) {
+        Field(q, { q = it }, "앱 이름")
+        T(if (full) "${kr.dot.sb.model.MAX_APPS}개까지 고를 수 있어요" else "고른 앱 ${picked.size}/${kr.dot.sb.model.MAX_APPS} · 누른 순서대로 놓여요", 13.sp, 500, if (full) acc else SK.muted, Modifier.padding(start = 4.dp, top = 12.dp, bottom = 12.dp))
+        val list = all?.filter { q.isBlank() || it.label.contains(q.trim(), ignoreCase = true) }
+        when {
+            list == null -> T("앱 목록을 불러오는 중이에요", 15.sp, 500, SK.muted, Modifier.padding(16.dp))
+            list.isEmpty() -> T("찾는 앱이 없어요", 15.sp, 500, SK.muted, Modifier.padding(16.dp))
+            else -> Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                list.chunked(4).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        row.forEach { a ->
+                            val on = a.pkg in picked
+                            Column(
+                                Modifier.weight(1f).clickable {
+                                    full = !on && picked.size >= kr.dot.sb.model.MAX_APPS
+                                    if (on) onPicked(picked - a.pkg) else if (!full) onPicked(picked + a.pkg)
+                                },
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)), Alignment.Center) {
+                                    val bmp = a.icon
+                                    if (bmp != null) androidx.compose.foundation.Image(bmp, null, Modifier.size(56.dp))
+                                    else Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(SK.surface2), Alignment.Center) { T(a.label.take(1), 22.sp, 700, SK.muted) }
+                                    if (on) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f)), Alignment.Center) {
+                                        Box(Modifier.size(32.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 18.dp) }
+                                    }
+                                }
+                                T(a.label, 12.sp, if (on) 700 else 500, SK.text, maxLines = 1, align = TextAlign.Center)
+                            }
+                        }
+                        repeat(4 - row.size) { Box(Modifier.weight(1f)) }
+                    }
+                }
+            }
+        }
+    }
 }

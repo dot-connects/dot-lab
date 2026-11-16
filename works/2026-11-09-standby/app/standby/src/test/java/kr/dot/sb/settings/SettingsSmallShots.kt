@@ -53,15 +53,7 @@ class SettingsSmallShots(private val label: String, private val q: String) : Set
     @Test fun weatherKeyboard() = small("weather-keyboard", route = Routes.CARDS, keyboard = true) { onNodeWithText("날씨").performScrollTo().performClick() }
     @Test fun ddaySheet() = small("dday-sheet", route = Routes.card(kr.dot.sb.model.CardType.DDAY)) { onNodeWithText("2026년 11월 9일").performScrollTo().performClick() }
 
-    @Test fun widgetPicker() {
-        RuntimeEnvironment.setQualifiers(q)
-        val slots = kr.dot.sb.platform.WidgetFit.slotSizes(kr.dot.sb.model.Layout.TWO, 0, 780f, 360f, cover = false)
-        rule.setContent { SettingsTheme(SK.ok) { WidgetPickerSheet(widgetChoices(), slots, WidgetArt(), {}, {}) } }
-        rule.waitForIdle()
-        rule.onNodeWithText("Samsung Notes").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onRoot().captureRoboImage("build/shots/settings/small/widget-picker-$label.png")
-    }
+    @Test fun appPicker() = small("app-picker", withApps, Routes.apps("desk", 0, 0))
 
     private fun small(name: String, config: AppConfig = AppConfig(), route: String, keyboard: Boolean = false, after: ComposeContentTestRule.() -> Unit = {}) {
         RuntimeEnvironment.setQualifiers(q)

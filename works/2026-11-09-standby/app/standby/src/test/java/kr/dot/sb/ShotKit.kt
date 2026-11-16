@@ -89,6 +89,16 @@ fun ComposeContentTestRule.shot(
 object Fixtures {
     val now: LocalDateTime = LocalDateTime.of(2026, 11, 9, 21, 41)
 
+    /** 앱 바로가기 (r14 C1): Robolectric has no launcher apps, so cards and the picker get these colour squares. */
+    fun apps(): List<kr.dot.sb.ui.cards.AppEntry> = listOf(
+        "Samsung Notes" to 0xFFF5B400, "카카오톡" to 0xFFFEE500, "캘린더" to 0xFF4D9BEF, "카메라" to 0xFF6B6B70, "YouTube" to 0xFFFF0033,
+        "시계" to 0xFF30CEDA, "Spotify" to 0xFF1ED760, "메시지" to 0xFF6FDC86, "지도" to 0xFFAA88FE, "설정" to 0xFF9A9893,
+    ).mapIndexed { i, (label, c) ->
+        val bmp = android.graphics.Bitmap.createBitmap(144, 144, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(c.toInt()) }
+        kr.dot.sb.ui.cards.AppEntry("app.$i", label, bmp.asImageBitmap())
+    }
+    val appLookup: (android.content.Context, String) -> kr.dot.sb.ui.cards.AppEntry? = { _, pkg -> apps().firstOrNull { it.pkg == pkg } }
+
     /** r10 dropped the default D-day: shots keep drawing the D-day card with the old ("수능", 2026-11-19) entry. */
     val ddays = listOf(kr.dot.sb.model.DDay("수능", java.time.LocalDate.of(2026, 11, 19)))
 

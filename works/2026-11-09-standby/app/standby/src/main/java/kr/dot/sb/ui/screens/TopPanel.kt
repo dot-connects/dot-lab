@@ -26,7 +26,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
@@ -55,7 +54,6 @@ import kr.dot.sb.settings.PreviewDevice
 import kr.dot.sb.settings.PreviewFrame
 import kr.dot.sb.settings.widgetsBoard
 import kr.dot.sb.ui.board.BoardView
-import kr.dot.sb.ui.cards.LocalLiveWidgets
 import kr.dot.sb.ui.cards.Txt
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.state.StandbyActions
@@ -153,12 +151,9 @@ internal fun TopPanel(
                         .then(if (on) Modifier.border(2.dp, ink.ink, chip) else Modifier.background(ink.ink.copy(alpha = 0.06f)))
                         .padding(6.dp),
                 ) {
-                    // previews never host a live phone widget (one view per widget id, D6)
-                    CompositionLocalProvider(LocalLiveWidgets provides false) {
-                        ProvideTheme(cfg) {
-                            PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth().alpha(1f - 0.15f * state.night), radius = 10.dp, night = 0f) {
-                                BoardView(widgetsBoard(cfg), day, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
-                            }
+                    ProvideTheme(cfg) {
+                        PreviewFrame(PreviewDevice.FOLD_COVER.w, PreviewDevice.FOLD_COVER.h, Modifier.fillMaxWidth().alpha(1f - 0.15f * state.night), radius = 10.dp, night = 0f) {
+                            BoardView(widgetsBoard(cfg), day, cfg, StandbyActions.NONE, Modifier.fillMaxSize())
                         }
                     }
                     val tag = when (look) { is Look.Mine -> "theme-mine-${look.my.name}"; is Look.Builtin -> "theme-${look.theme.name}" }

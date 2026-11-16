@@ -16,9 +16,12 @@
     <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
     <!-- Android 14 "select photos" partial access: requested together with READ_MEDIA_IMAGES -->
     <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
-    <!-- phone widget card: package visibility for AppWidgetManager.getInstalledProviders -->
+    <!-- 앱 바로가기 card: package visibility for the launcher apps (앱 고르기, getLaunchIntentForPackage) -->
     <queries>
-        <intent><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent>
+        <intent>
+            <action android:name="android.intent.action.MAIN" />
+            <category android:name="android.intent.category.LAUNCHER" />
+        </intent>
     </queries>
 
     <application

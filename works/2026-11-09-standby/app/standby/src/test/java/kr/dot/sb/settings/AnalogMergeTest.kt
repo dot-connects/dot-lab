@@ -15,13 +15,13 @@ class AnalogMergeTest {
     @Test fun boardAnalogCardsBecomeClockCardsWithTheAnalogFace() {
         val c = ConfigCodec.decode(
             """{"boards":[{"id":"a","layout":"TWO","clockFace":"DIGITAL","slots":[["CLOCK","ANALOG","WEATHER"],["ANALOG"]],
-            |"options":{"0:1":{"hideAtNight":true}}}]}""".trimMargin(),
+            |"options":{"0:1":{"apps":["com.a"]}}}]}""".trimMargin(),
         )
         val b = c.boards[0]
         assertEquals(listOf(listOf(CardType.CLOCK, CardType.CLOCK, CardType.WEATHER), listOf(CardType.CLOCK)), b.slots)
         assertEquals(FaceId.DIGITAL, b.clockFace)
         assertEquals(null, b.options["0:0"]?.face) // the digital clock keeps the board's face
-        assertEquals(SlotOptions(hideAtNight = true, face = FaceId.ANALOG), b.options["0:1"])
+        assertEquals(SlotOptions(apps = listOf("com.a"), face = FaceId.ANALOG), b.options["0:1"])
         assertEquals(FaceId.ANALOG, b.options["1:0"]?.face)
     }
 

@@ -40,12 +40,6 @@ object BoardOps {
         return b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) newStack else l }, options = options)
     }
 
-    /** Widget ids present in [old] but gone from [new]; the caller releases them (`AppWidgetHost.deleteAppWidgetId`). */
-    fun removedWidgetIds(old: AppConfig, new: AppConfig): List<Int> = (widgetIds(old) - widgetIds(new)).toList()
-
-    /** Every widget id the boards hold. */
-    fun widgetIds(c: AppConfig): Set<Int> = c.boards.flatMap { b -> b.options.values.mapNotNull { it.widgetId } }.toSet()
-
     fun withLayout(b: Board, layout: Layout): Board = fit(b.copy(layout = layout))
 
     private fun freshId(c: AppConfig): String {
@@ -59,8 +53,7 @@ object BoardOps {
 
     fun duplicate(c: AppConfig, i: Int): AppConfig {
         val src = c.boards.getOrNull(i) ?: return c
-        // a hosted widget belongs to one slot: the copy gets the options without the id (it asks for its own)
-        val copy = src.copy(id = freshId(c), name = src.name + " 복사", options = src.options.mapValues { it.value.copy(widgetId = null) })
+        val copy = src.copy(id = freshId(c), name = src.name + " 복사")
         val start = if (c.startPage > FIRST_BOARD_PAGE + i) c.startPage + 1 else c.startPage
         return c.copy(boards = c.boards.toMutableList().apply { add(i + 1, copy) }, startPage = start)
     }

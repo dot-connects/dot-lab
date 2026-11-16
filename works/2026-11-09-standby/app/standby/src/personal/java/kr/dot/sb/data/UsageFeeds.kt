@@ -18,7 +18,6 @@ object UsageFeature {
 
     fun feed(ctx: Context): UsageFeed = object : UsageFeed {
         override suspend fun fetch(): UsageInfo? {
-            if (!Feeds.onWifi(ctx)) return null
             return try {
                 withContext(Dispatchers.IO) { UsageParser.parse(UsageFeeds.usageText(ctx), System.currentTimeMillis() / 1000) }
             } catch (e: Exception) { null }

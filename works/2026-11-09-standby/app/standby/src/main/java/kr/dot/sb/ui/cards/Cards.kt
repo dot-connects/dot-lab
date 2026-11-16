@@ -75,6 +75,7 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.ui.state.TimerState
 import kr.dot.sb.ui.state.WeatherInfo
+import kr.dot.sb.ui.state.FeedError
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.LocalTheme
@@ -182,7 +183,7 @@ fun CardView(
                     CardType.WEATHER -> WeatherCard(e, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e, state, actions)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
-                    CardType.WIDGET -> PhoneWidget(e, options, actions, menu)
+                    CardType.APPS -> AppsCard(e, options, actions, menu)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
                     CardType.ALARM -> AlarmCard(e, state, config, actions)
@@ -918,12 +919,23 @@ internal fun Hero(e: Env, text: AnnotatedString, cap: Dp, color: Color, maxW: Dp
 @Composable
 private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val wx = state.weather
+    val err = state.weatherError
     if (wx == null) {
-        LoadingCard(e, Ic.ARROW, config.city.name) { WeatherLabel(e, config.city.name) }
+        if (err == null) LoadingCard(e, Ic.ARROW, config.city.name) { WeatherLabel(e, config.city.name) }
+        else FeedErrorCard(
+            e, { WeatherLabel(e, config.city.name) }, "날씨를 아직 못 불러왔어요",
+            if (err == FeedError.NO_NETWORK) "인터넷 연결을 확인해 주세요. 연결되면 곧 다시 불러와요." else "날씨 서버가 답하지 않아요. 잠시 뒤 다시 불러와요.",
+            actions::retryFeeds,
+        )
         return
     }
     val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
-    val tc = if (nowSec - wx.fetchedAtEpochSec > 3 * 3600) e.ink.ink2 else e.ink.ink
+    StaleFrame(e, wx.offline || nowSec - wx.fetchedAtEpochSec > 2 * 3600, wx.fetchedAtEpochSec, actions::retryFeeds) { ee -> WeatherBody(ee, wx, actions) }
+}
+
+@Composable
+private fun WeatherBody(e: Env, wx: WeatherInfo, actions: StandbyActions) {
+    val tc = e.ink.ink
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
@@ -1012,10 +1024,10 @@ private fun WeatherCard(e: Env, state: StandbyState, config: AppConfig, actions:
     }
 }
 
-/** "서울 · 대체로 흐림" (offline: "서울 · 21:40 기준 · 연결 안 됨"), city bold, the rest in the secondary ink. */
+/** "서울 · 대체로 흐림" (stale data says "HH:MM 기준" in [StaleFrame]), city bold, the rest in the secondary ink. */
 @Composable
 private fun CityLine(e: Env, wx: WeatherInfo, sky: Boolean) {
-    val rest = if (wx.offline) " · ${hhmm(wx.fetchedAtEpochSec)} 기준 · 연결 안 됨" else if (sky) " · ${wx.condition.ko}" else ""
+    val rest = if (sky) " · ${wx.condition.ko}" else ""
     val text = buildAnnotatedString {
         append(wx.city)
         withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(rest) }

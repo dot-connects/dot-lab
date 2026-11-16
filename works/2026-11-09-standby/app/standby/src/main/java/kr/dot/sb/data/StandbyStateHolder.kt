@@ -43,6 +43,11 @@ import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.LiveTicks
 import kr.dot.sb.ui.state.StandbyState
+import kr.dot.sb.ui.state.FeedError
+import kr.dot.sb.ui.state.usageFailed
+import kr.dot.sb.ui.state.usageLoaded
+import kr.dot.sb.ui.state.weatherFailed
+import kr.dot.sb.ui.state.weatherLoaded
 import kr.dot.sb.ui.theme.baseTheme
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -518,28 +523,30 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         _state.update { if (it.agenda == agenda && it.upcoming == upcoming) it else it.copy(agenda = agenda, upcoming = upcoming) }
     }
 
+    // plan-r14 C2: any network (the forecast is a few KB); the error kind only, never the exception (URLs carry tokens)
     private suspend fun fetchWeather(): Boolean {
-        if (!Feeds.onWifi(ctx)) { markWeatherOffline(); return false }
+        if (!Feeds.online(ctx)) { markWeatherOffline(FeedError.NO_NETWORK); return false }
         val city = cfg.city
         return try {
             val w = withContext(Dispatchers.IO) { WeatherParser.parse(Feeds.weatherText(city.lat, city.lon), city.name, System.currentTimeMillis() / 1000) }
             lastWeatherAt = System.currentTimeMillis()
-            _state.update { it.copy(weather = w) }
+            _state.update { it.weatherLoaded(w) }
             true
-        } catch (e: Exception) { markWeatherOffline(); false }
+        } catch (e: Exception) { markWeatherOffline(FeedError.FAILED); false }
     }
 
-    private fun markWeatherOffline() = _state.update { it.copy(weather = it.weather?.copy(offline = true)) }
+    private fun markWeatherOffline(e: FeedError) = _state.update { it.weatherFailed(e) }
 
     private suspend fun fetchUsage(): Boolean {
         if (!UsageFeature.enabled || !cfg.usageEnabled) { lastUsageAt = System.currentTimeMillis(); return true }
-        val u = usageFeed.fetch() ?: run { markUsageOffline(); return false }
+        if (!Feeds.online(ctx)) { markUsageOffline(FeedError.NO_NETWORK); return false }
+        val u = usageFeed.fetch() ?: run { markUsageOffline(FeedError.FAILED); return false }
         lastUsageAt = System.currentTimeMillis()
-        _state.update { it.copy(usage = u) }
+        _state.update { it.usageLoaded(u) }
         return true
     }
 
-    private fun markUsageOffline() = _state.update { it.copy(usage = it.usage?.copy(offline = true)) }
+    private fun markUsageOffline(e: FeedError) = _state.update { it.usageFailed(e) }
 
     private suspend fun reloadPhotos() {
         if (photosWanted != true) return

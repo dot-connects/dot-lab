@@ -23,10 +23,13 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     /** Started by the plug-in notification ([ChargeStart]): it lives only as long as the charger and the lock screen. */
     private var chargeStart = false
     private var endRx: BroadcastReceiver? = null
+    /** r14 C1: an unlock this activity asked for (open an app): the unlock close below must not race its launch. */
+    private var unlocking = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StandbyPresence.alive = true
+        clearOldWidgetHost(this)
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
         if (intent.getBooleanExtra(EXTRA_TILE, false)) {
             val bm = getSystemService(BatteryManager::class.java)
@@ -48,6 +51,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             // unlock ends it (unplug: the state holder, for every start path); the exit swipe goes through HostActions.exit()
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {
+                    if (unlocking) return
                     ChargeStart.log(c, "닫힘 · 잠금 해제")
                     finish()
                 }
@@ -76,9 +80,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         super.onStart()
         StandbyPresence.activity = true
         holder.start()
-        WidgetHost.start(this, ::unlockThen)
         window.lowRefreshRate()
-        WidgetHost.sweep(this, kr.dot.sb.settings.BoardOps.widgetIds(kr.dot.sb.settings.ConfigStore.flow(this).value))
     }
 
     override fun onResume() {
@@ -90,7 +92,6 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         StandbyPresence.activity = false
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder.stop()
-        WidgetHost.stop(::unlockThen)
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
         if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
         super.onStop()
@@ -112,10 +113,18 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     }
 
     override fun unlockThen(block: () -> Unit) {
+        unlocking = true
         getSystemService(KeyguardManager::class.java).requestDismissKeyguard(
             this,
             object : KeyguardManager.KeyguardDismissCallback() {
-                override fun onDismissSucceeded() = block()
+                override fun onDismissSucceeded() {
+                    unlocking = false
+                    block()
+                    // a charge-started StandBy ends with the unlock (manual / tile StandBy stays)
+                    if (chargeStart && !isFinishing) { ChargeStart.log(this@StandbyActivity, "닫힘 · 잠금 해제"); finish() }
+                }
+                override fun onDismissCancelled() { unlocking = false }
+                override fun onDismissError() { unlocking = false }
             },
         )
     }
@@ -126,4 +135,14 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         const val EXTRA_TILE = "kr.dot.sb.TILE"
         const val LOW_BATTERY = 20
     }
+}
+
+private const val OLD_WIDGET_HOST_ID = 0x5B0A
+
+/** r14 C1: the phone-widget card (r9-r13) is gone; its host's ids are released once (the system keeps them until then). */
+internal fun clearOldWidgetHost(ctx: Context) {
+    val p = ctx.getSharedPreferences("widgets", Context.MODE_PRIVATE)
+    if (p.getBoolean("widgetsCleared", false)) return
+    runCatching { android.appwidget.AppWidgetHost(ctx.applicationContext, OLD_WIDGET_HOST_ID).deleteHost() }
+    p.edit().putBoolean("widgetsCleared", true).apply()
 }

@@ -14,6 +14,13 @@ object Feeds {
         return caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) || caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
     }
 
+    /** An active network that reached the internet (Wi-Fi or mobile data): the feeds' NO_NETWORK test. */
+    fun online(ctx: Context): Boolean {
+        val cm = ctx.getSystemService(ConnectivityManager::class.java)
+        val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
     fun weatherText(lat: Double, lon: Double): String = get(WeatherParser.url(lat, lon), 8000, null)
 
     internal fun get(url: String, timeoutMs: Int, auth: String?): String {

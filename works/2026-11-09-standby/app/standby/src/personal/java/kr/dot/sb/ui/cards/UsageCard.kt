@@ -31,6 +31,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
+import kr.dot.sb.ui.state.FeedError
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.state.UsageInfo
@@ -50,9 +51,23 @@ import kotlin.math.PI
  */
 @Composable
 internal fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
-    val u = state.usage ?: return LoadingCard(e, Ic.USAGE, "사용량")
+    val u = state.usage
+    if (u == null) {
+        val err = state.usageError ?: return LoadingCard(e, Ic.USAGE, "사용량")
+        return FeedErrorCard(
+            e, { LabelRow(e, Ic.USAGE, "사용량") }, "PC 소식을 아직 못 받았어요",
+            if (err == FeedError.NO_NETWORK) "인터넷 연결을 확인해 주세요. 연결되면 곧 다시 받아요."
+            else "PC가 켜져 있고 인터넷에 연결되어 있으면 5분 안에 보여요.",
+            actions::retryFeeds,
+        )
+    }
     val nowSec = state.now.atZone(ZoneId.systemDefault()).toEpochSecond()
     val dim = u.offline || nowSec - u.fetchedAtEpochSec > 3 * 3600
+    StaleFrame(e, dim, u.fetchedAtEpochSec, actions::retryFeeds) { ee -> UsageBody(ee, u, nowSec, dim, actions) }
+}
+
+@Composable
+private fun UsageBody(e: Env, u: UsageInfo, nowSec: Long, dim: Boolean, actions: StandbyActions) {
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
@@ -85,9 +100,11 @@ internal fun UsageCard(e: Env, state: StandbyState, actions: StandbyActions) {
             Box(Modifier.fillMaxSize().padding(p).then(tap), contentAlignment = Alignment.Center) { rings(d, false, Modifier.fillMaxWidth()) }
         }
         e.w / e.h >= 1.25f -> {
-            val full = ih >= 220.dp
             // the rings take the width the session column does not need (mockup: half the width; that left big slots empty)
-            val d = min(ih - labH(full) - 4.dp, max(iw * 0.5f - 10.dp, iw - 10.dp - p - 260.dp) / 2)
+            fun dOf(full: Boolean) = min(ih - labH(full) - 4.dp, max(iw * 0.5f - 10.dp, iw - 10.dp - p - 260.dp) / 2)
+            // the 5시간 / 7일 lines need ~150 dp a ring (r14 C2: a stale card's shorter body overlapped them)
+            val full = ih >= 220.dp && dOf(true) >= 110.dp
+            val d = dOf(full)
             val right = iw - (d * 2 + 10.dp) - p
             val two = ih >= twoH * 4 && right >= 220.dp
             val n = minOf(u.sessions.size, (ih / (if (two) twoH else oneH)).toInt())

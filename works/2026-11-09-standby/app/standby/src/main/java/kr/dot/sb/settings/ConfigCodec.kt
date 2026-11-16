@@ -21,6 +21,7 @@ import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
 import kr.dot.sb.model.PHOTO_INTERVAL_SEC
 import kr.dot.sb.model.PAGE_PHOTOS
 import kr.dot.sb.model.PAGE_WIDGETS
+import kr.dot.sb.model.MAX_APPS
 import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.theme.Themes
@@ -355,20 +356,15 @@ object ConfigCodec {
     }
 
     private fun slotOptions(s: SlotOptions) = JSONObject().apply {
-        put("widgetId", s.widgetId ?: JSONObject.NULL); put("opacity", s.opacity.toDouble()); put("widgetMode", s.widgetMode.name)
-        put("radiusDp", s.radiusDp); put("hideAtNight", s.hideAtNight)
+        if (s.apps.isNotEmpty()) put("apps", JSONArray().also { a -> s.apps.forEach { a.put(it) } })
         s.face?.let { put("face", it.name) }
     }
 
-    private fun slotOptions(o: JSONObject): SlotOptions {
-        val d = SlotOptions()
-        return SlotOptions(
-            widgetId = if (o.has("widgetId") && !o.isNull("widgetId")) o.optInt("widgetId") else null,
-            opacity = num(o, "opacity", d.opacity).coerceIn(0f, 1f), widgetMode = enumOf(o, "widgetMode", d.widgetMode),
-            radiusDp = o.optInt("radiusDp", d.radiusDp), hideAtNight = o.optBoolean("hideAtNight", d.hideAtNight),
-            face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
-        )
-    }
+    /** r14 C1: the old phone-widget keys (widgetId, opacity, widgetMode, radiusDp, hideAtNight) are dropped. */
+    private fun slotOptions(o: JSONObject): SlotOptions = SlotOptions(
+        apps = strings(o, "apps")?.distinct()?.take(MAX_APPS) ?: emptyList(),
+        face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
+    )
 
     private fun board(o: JSONObject): Board {
         val stacks = o.optJSONArray("slots")?.let { a -> (0 until a.length()).map { stack(a.optJSONArray(it), emptyList()) } } ?: emptyList()
@@ -390,7 +386,7 @@ object ConfigCodec {
     private fun cards(l: List<CardType>) = JSONArray().also { a -> l.forEach { a.put(it.name) } }
 
     /** r9 merged cards: old names read as their new card (D3; r9 dev builds stored NOTIF_LIST), and a stack never holds the same card twice. */
-    private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF, "NOTIF_LIST" to CardType.NOTIF, "VIDEO" to CardType.MUSIC)
+    private val CARD_ALIAS = mapOf("NOTIF_STACK" to CardType.NOTIF, "NOTIF_LIST" to CardType.NOTIF, "VIDEO" to CardType.MUSIC, "WIDGET" to CardType.APPS)
 
     /**
      * A stored stack and the faces it implies by new index: an "ANALOG" card (before 11-14) reads as CLOCK with the

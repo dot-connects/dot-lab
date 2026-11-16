@@ -46,7 +46,11 @@ class BoardShots(private val name: String, private val device: Device, private v
         // "-fill": the DIGITAL clock with r14 꽉 채우기
         val styles = if (!stateKey.endsWith("-fill")) emptyMap() else
             mapOf(kr.dot.sb.model.FaceId.DIGITAL to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(kr.dot.sb.model.FaceId.DIGITAL).copy(fill = true))
-        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays), StandbyActions.NONE) }
+        rule.shot("board", name, device, theme, s.night, open) {
+            androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalAppLookup provides Fixtures.appLookup) {
+                BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays), StandbyActions.NONE)
+            }
+        }
     }
 
     companion object {
@@ -64,6 +68,12 @@ class BoardShots(private val name: String, private val device: Device, private v
             "noevents" -> Fixtures.full().copy(agenda = emptyList())
             "noalarm" -> Fixtures.full().copy(nextAlarm = null)
             "nophoto" -> Fixtures.full().copy(memory = null)
+            // r14 C2: a first fetch that failed, and data from a failed refresh
+            "wxnonet" -> Fixtures.full().copy(weather = null, weatherError = kr.dot.sb.ui.state.FeedError.NO_NETWORK)
+            "wxfailed" -> Fixtures.full().copy(weather = null, weatherError = kr.dot.sb.ui.state.FeedError.FAILED)
+            "wxstale" -> Fixtures.full().let { it.copy(weather = it.weather!!.copy(offline = true)) }
+            "usagefailed" -> Fixtures.full().copy(usage = null, usageError = kr.dot.sb.ui.state.FeedError.FAILED)
+            "usagestale" -> Fixtures.full().let { it.copy(usage = it.usage!!.copy(offline = true)) }
             "playing", "playing-night" -> Fixtures.full(if (key == "playing-night") 1f else 0f).copy(sleep = SleepState(true, 32))
             "emptyB" -> Fixtures.full().let {
                 it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
@@ -147,9 +157,14 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-sleep-L-playing", Device.FOLD_INNER, Board("card", "SLEEP", Layout.ONE, listOf(listOf(CardType.SLEEP))), "playing")
             // usage (personal build; the public build draws its empty stub): a tall slot gets the bots + last update
             out += arrayOf("card-usage-tall", Device.BAR_P, Board("card", "USAGE", Layout.ONE, listOf(listOf(CardType.USAGE))), "full")
-            // phone widget: shots never host a real widget (D6), a bound card draws the placeholder at its opacity / radius
-            out += arrayOf("card-widget-M-bound", Device.FOLD_COVER_L, Board("card", "WIDGET", Layout.TWO, listOf(listOf(CardType.WIDGET)),
-                options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(widgetId = 7, opacity = 0.7f, radiusDp = 8))), "full")
+            // r14 C1 앱 바로가기 with 3 and 8 apps (the plain card-apps-* shots are the empty state)
+            for ((n, cls, layout, d) in listOf(Quad(3, "M", Layout.TWO, Device.FOLD_COVER_L), Quad(8, "L", Layout.ONE, Device.FOLD_COVER_L), Quad(3, "Sw", Layout.FOUR, Device.FOLD_COVER_L)))
+                out += arrayOf("card-apps-$cls-$n", d, Board("card", "APPS", layout, listOf(listOf(CardType.APPS)), options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(apps = (0 until n).map { "app.$it" }))), "full")
+            // r14 C2 feed states (mockup 2b / 2c / 3b) in the mockup's slot (portrait half of the Fold cover) and an S slot
+            for ((key, kind) in listOf("wxnonet" to CardType.WEATHER, "wxfailed" to CardType.WEATHER, "wxstale" to CardType.WEATHER, "usagefailed" to CardType.USAGE, "usagestale" to CardType.USAGE)) {
+                out += arrayOf("card-${kind.name.lowercase()}-M-$key", Device.FOLD_COVER_P, Board("card", kind.name, Layout.TWO, listOf(listOf(kind))), key)
+                out += arrayOf("card-${kind.name.lowercase()}-Sw-$key", Device.FOLD_COVER_L, Board("card", kind.name, Layout.FOUR, listOf(listOf(kind))), key)
+            }
             out += arrayOf("card-memories-M-nophoto", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "nophoto")
             out += arrayOf("card-memories-M-noperm", Device.FOLD_COVER_L, Board("card", "MEMORIES", Layout.TWO, listOf(listOf(CardType.MEMORIES))), "emptyB")
             out += arrayOf("card-music-M-noart", Device.FOLD_COVER_L, Board("card", "MUSIC", Layout.TWO, listOf(listOf(CardType.MUSIC))), "noart")
@@ -177,3 +192,5 @@ class BoardShots(private val name: String, private val device: Device, private v
         }
     }
 }
+
+private data class Quad(val n: Int, val cls: String, val layout: Layout, val device: Device)

@@ -136,7 +136,7 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
 
 /** A 48 dp button: [bg] plate, its text in whichever ink reads on it. */
 @Composable
-private fun Pill(e: Env, text: String, bg: Color, modifier: Modifier, onClick: () -> Unit) {
+internal fun Pill(e: Env, text: String, bg: Color, modifier: Modifier, onClick: () -> Unit) {
     val solid = bg.alpha == 1f
     Box(modifier.height(48.dp).clip(RoundedCornerShape(50)).background(bg).tap(onClick), Alignment.Center) {
         Txt(text, e.meta, if (solid) e.ink.on(bg) else e.ink.ink, weight = 600, align = TextAlign.Center, maxW = 200.dp)

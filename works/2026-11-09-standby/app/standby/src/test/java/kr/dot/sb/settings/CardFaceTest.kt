@@ -12,12 +12,12 @@ import org.junit.Test
 /** 11-14 #7: the face picked with the clock card's arrows is saved to that one card (boards and the widgets page). */
 class CardFaceTest {
     private val b = Board("b1", "b", Layout.TWO, listOf(listOf(CardType.CLOCK, CardType.WEATHER), listOf(CardType.CLOCK)),
-        options = mapOf("0:0" to SlotOptions(hideAtNight = true)))
+        options = mapOf("0:0" to SlotOptions(apps = listOf("com.a"))))
     private val c = AppConfig(boards = listOf(b))
 
     @Test fun boardCardKeepsItsOtherOptions() {
         val out = BoardOps.setFace(c, "b1", 0, 0, FaceId.FLIP).boards[0]
-        assertEquals(SlotOptions(hideAtNight = true, face = FaceId.FLIP), out.options["0:0"])
+        assertEquals(SlotOptions(apps = listOf("com.a"), face = FaceId.FLIP), out.options["0:0"])
         assertEquals(null, out.options["1:0"])
     }
 

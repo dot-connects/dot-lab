@@ -38,14 +38,12 @@ class StandbyDream : DreamService(), HostCallbacks {
         StandbyPresence.dream = true
         window?.lowRefreshRate()
         holder?.start()
-        WidgetHost.start(this, ::unlockThen)
     }
 
     override fun onDreamingStopped() {
         StandbyPresence.dream = false
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder?.stop()
-        WidgetHost.stop(::unlockThen)
         super.onDreamingStopped()
     }
 

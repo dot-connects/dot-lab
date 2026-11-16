@@ -26,6 +26,9 @@ data class StandbyState(
     val media: MediaInfo? = null,
     val usage: UsageInfo? = null,
     val weather: WeatherInfo? = null,
+    /** plan-r14 C2: why the first fetch failed (only while [usage] / [weather] is null; cleared on success). */
+    val usageError: FeedError? = null,
+    val weatherError: FeedError? = null,
     /** null = calendar permission missing; empty = no events today. */
     val agenda: List<AgendaItem>? = emptyList(),
     /** Today and the next 14 days, at most 8 (calendar card: events list, "다가오는 날"). */
@@ -99,6 +102,15 @@ data class UsageInfo(
     /** content, trading bot state (busy | idle | off). */
     val bots: List<Pair<String, String>> = emptyList(),
 )
+
+/** plan-r14 C2: a feed with no data yet failed for want of a network, or the fetch itself failed. */
+enum class FeedError { NO_NETWORK, FAILED }
+
+/** A failed refresh: kept data turns [WeatherInfo.offline]; with none yet the card shows [e] instead of loading forever. */
+fun StandbyState.weatherFailed(e: FeedError) = copy(weather = weather?.copy(offline = true), weatherError = if (weather == null) e else null)
+fun StandbyState.weatherLoaded(w: WeatherInfo) = copy(weather = w, weatherError = null)
+fun StandbyState.usageFailed(e: FeedError) = copy(usage = usage?.copy(offline = true), usageError = if (usage == null) e else null)
+fun StandbyState.usageLoaded(u: UsageInfo) = copy(usage = u, usageError = null)
 
 /** The PC usage feed; only the personal build has a real one (UsageFeature). Null = the fetch failed. */
 interface UsageFeed {
@@ -217,6 +229,8 @@ interface StandbyActions {
     fun mediaNext() {}
     fun mediaPrev() {}
     fun openMediaApp() {}
+    /** 앱 바로가기: unlock, then open [pkg]'s launcher activity. */
+    fun openApp(pkg: String) {}
     /** The media card's second tap: the full-screen Now Playing (StandbyRoot owns it). */
     fun openNowPlaying() {}
     fun timerToggle(id: String) {}

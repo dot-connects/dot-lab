@@ -21,6 +21,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -140,6 +141,11 @@ internal class Env(
     val loneValue: Dp get() = if (tall) max(sz.value, h * 0.6f * 0.30f) else sz.value
     val atLeastS: Boolean get() = cls >= SizeClass.S
     val atLeastM: Boolean get() = cls >= SizeClass.M
+
+    /** The same card laid out [h] tall (sizes re-derived as [Cards] does for a slot). */
+    fun withHeight(h: Dp): Env = kr.dot.sb.ui.theme.Sizes.of(w, h, r = t.ramp).let { own ->
+        Env(w, h, own.copy(label = look.labelSize ?: own.label, pad = look.pad ?: own.pad), own.label, ink, look, num, numCap, slotId, today, t)
+    }
 }
 
 /** Cap-top → last-baseline box: the reported height starts at the first line's cap-top and ends on the last baseline. */
@@ -364,6 +370,39 @@ internal fun LoadingCard(e: Env, icon: Ic, label: String, labelRow: (@Composable
         // the loaded card's own label composable when given, so loading and loaded never differ (review X6)
         if (labelRow != null) labelRow() else LabelRow(e, icon, label)
         Box(Modifier.width(e.cw * 0.45f).height(min(e.sz.value * e.cap, e.ch * 0.3f)).clip(RoundedCornerShape(50)).background(e.ink.ink4))
+    }
+}
+
+/** plan-r14 C2 (mockup 2b/3b): a feed that never loaded says why, with 다시 시도; small slots keep the title and retry on tap. */
+@Composable
+internal fun FeedErrorCard(e: Env, labelRow: @Composable () -> Unit, title: String, hint: String, retry: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(e.pad).tap(if (e.atLeastS) null else retry)) {
+        labelRow()
+        Column(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterVertically)) {
+            Txt(title, e.head, e.ink.ink, weight = 800, maxW = e.cw, lines = 3)
+            if (e.atLeastS) {
+                Txt(hint, e.meta, e.readInk2, weight = 500, maxW = e.cw, lines = 4)
+                Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), retry)
+            }
+        }
+    }
+}
+
+/**
+ * plan-r14 C2 (mockup 2c): data from an old or failed refresh at 55 % over a full-ink "HH:MM 기준" + 다시 시도 row; the
+ * content gets the slot minus that row. Small slots only fade and retry on tap.
+ */
+@Composable
+internal fun StaleFrame(e: Env, stale: Boolean, fetchedAtSec: Long, retry: () -> Unit, content: @Composable (Env) -> Unit) {
+    if (!stale) return content(e)
+    if (!e.atLeastS) return Box(Modifier.fillMaxSize().alpha(0.55f).tap(retry)) { content(e) }
+    val row = 48.dp + e.pad
+    Column(Modifier.fillMaxSize()) {
+        Box(Modifier.weight(1f).alpha(0.55f)) { content(e.withHeight(e.h - row)) }
+        Row(Modifier.fillMaxWidth().height(row).padding(start = e.pad, end = e.pad, bottom = e.pad), verticalAlignment = Alignment.CenterVertically) {
+            Txt("${hhmm(fetchedAtSec)} 기준", e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
+            Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), retry)
+        }
     }
 }
 

@@ -29,22 +29,13 @@ class SettingsEnv(
     val licenseNames: List<String> = emptyList(),
     val licenseText: (String) -> String = { "" },
     val versionName: String = "0.1.0",
-    /**
-     * Phone widget (r9 D6, plan-r13 B10): opens the 위젯 고르기 sheet for card [key] ("slot:index") of board [board]; the
-     * activity binds the pick and writes its id to that card (nothing on cancel).
-     */
-    val pickWidget: (board: String, key: String) -> Unit = { _, _ -> },
-    /** The bound widget's own settings screen (its configure activity). */
-    val configureWidget: (Int) -> Unit = {},
-    /** The widget can open its settings again (WIDGET_FEATURE_RECONFIGURABLE): 위젯 설정 shows only then. */
-    val widgetConfigurable: (Int) -> Boolean = { false },
+    /** 앱 고르기 (plan-r14 C1): the phone's launcher apps, sorted by label; slow, called on [io]. */
+    val launcherApps: () -> List<kr.dot.sb.ui.cards.AppEntry> = { emptyList() },
     /** plan-r13 B1: a fresh install opens 권한 first; [나중에] ends that ([onPermLater]). */
     val permWalkOffer: Boolean = false,
     /** [차례로 켜기]: every missing permission in turn. */
     val onPermWalk: () -> Unit = {},
     val onPermLater: () -> Unit = {},
-    /** "앱 · 위젯" for a bound id, null when it is gone. */
-    val widgetLabel: (Int) -> String? = { null },
     /** Every calendar on the phone (카드에 쓰는 정보 picker); null = no calendar permission. */
     val calendars: () -> List<kr.dot.sb.data.CalendarInfo>? = { null },
     /** Albums with their photo counts (사진 고르기). */
@@ -88,8 +79,8 @@ object Routes {
     fun card(t: kr.dot.sb.model.CardType) = "card:${t.name}"
     fun board(id: String) = "board:$id"
     fun clock(face: FaceId) = "clock:${face.name}"
-    /** Options of the phone widget at stack [index] of [slot] (also opened by a long press on the card). */
-    fun widget(board: String, slot: Int, index: Int) = "widget:$board:$slot:$index"
+    /** 앱 고르기 of the 앱 바로가기 card at stack [index] of [slot] (also opened by a tap on the empty card in StandBy). */
+    fun apps(board: String, slot: Int, index: Int) = "apps:$board:$slot:$index"
 }
 
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
@@ -117,7 +108,7 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             val id = route.removePrefix("board:")
             if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, env, back) else HomeScreen(config, nav, env)
         }
-        route.startsWith("widget:") -> WidgetOptionsScreen(route, config, update, env, back) ?: HomeScreen(config, nav, env)
+        route.startsWith("apps:") -> AppPickerScreen(route, config, update, env, back) ?: HomeScreen(config, nav, env)
         route == Routes.CLOCKS -> ClockScreen(config, update, nav, back)
         route.startsWith("clock:") -> {
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()

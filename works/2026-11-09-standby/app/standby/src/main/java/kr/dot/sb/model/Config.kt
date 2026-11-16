@@ -70,16 +70,13 @@ enum class BoardBg(val ko: String) {
 /** Full-screen analog dial layout (r9): round dial, edge-following square, four big numerals, bars only, half digital. */
 enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("듀오") }
 
-/** Phone-widget slot (r9): follow the theme, or force the provider's dark / light layout (best effort). */
-enum class WidgetMode(val ko: String) { THEME("테마 따라"), DARK("늘 어둡게"), LIGHT("늘 밝게") }
+/** 앱 바로가기: the most apps one card holds. */
+const val MAX_APPS = 8
 
-/** Per-card options keyed by "slotIdx:stackIdx" on a [Board]; today only the phone-widget card has any. */
+/** Per-card options keyed by "slotIdx:stackIdx" on a [Board]. */
 data class SlotOptions(
-    val widgetId: Int? = null,
-    val opacity: Float = 1f,
-    val widgetMode: WidgetMode = WidgetMode.THEME,
-    val radiusDp: Int = 22,
-    val hideAtNight: Boolean = false,
+    /** 앱 바로가기 card (plan-r14 C1): package names in tap order, at most [MAX_APPS]. */
+    val apps: List<String> = emptyList(),
     /** A clock card's own face (null = the board's [Board.clockFace]). */
     val face: FaceId? = null,
 )
@@ -304,8 +301,8 @@ enum class CardType(val ko: String) {
     /** Any of 내 시계: the face is per card ([SlotOptions.face], else the board's [Board.clockFace]); 11-14 merged ANALOG in. */
     CLOCK("시계"), MUSIC("미디어"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
-    /** A home-screen AppWidget hosted in the slot (r9 D6); its id and look live in [Board.options]. Boards only. */
-    WIDGET("폰 위젯"),
+    /** Launcher shortcuts (plan-r14 C1, replaced the r9 phone widget); the packages live in [SlotOptions.apps]. Boards only. */
+    APPS("앱 바로가기"),
     /** The phone's notifications (r9: the old stack and list cards decode to this, D3). */
     NOTIF("알림"),
     /** 다음 알람 + [빠른 알람] [알람 앱 열기] (11-14 #8). */

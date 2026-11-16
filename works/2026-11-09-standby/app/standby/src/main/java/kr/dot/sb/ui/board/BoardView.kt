@@ -170,7 +170,7 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
                     cards, state, config, actions,
                     Modifier.offset(r.x.dp, r.y.dp).size(r.w.dp, r.h.dp),
                     slotId = "${board.id}-$i", look = looks[i], dotsAtStart = r.x + r.w / 2 < w / 2,
-                    options = { j -> board.options["$i:$j"] }, menu = { j -> "widget:${board.id}:$i:$j" },
+                    options = { j -> board.options["$i:$j"] }, menu = { j -> "apps:${board.id}:$i:$j" },
                     // previews (settings) pass NONE: no arrows there
                     onFace = if (actions === StandbyActions.NONE) null else { j, f -> actions.setCardFace(board.id, i, j, f) },
                 )
