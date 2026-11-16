@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -36,6 +37,9 @@ import java.time.Duration
 import java.time.LocalDateTime
 
 private val WEEKDAYS = arrayOf("월", "화", "수", "목", "금", "토", "일")
+
+/** r15: alarm buttons are rounded squares like the timer's (TimerBtn): corner 30 % of the height, not pills. */
+private val BTN = RoundedCornerShape(30)
 
 /** "내일 화요일 · 8시간 49분 뒤" (11-14 #8 option A): day word, weekday, time left (seconds dropped). */
 internal fun alarmLine(now: LocalDateTime, alarm: LocalDateTime): String {
@@ -117,8 +121,8 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
                 // a fixed height before Pill's own 48 dp wins (the later size is coerced into it)
                 val ph = if (big) max(48.dp, min(e.w, e.h) * 0.104f) else 48.dp
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill(e, "빠른 알람", ink.acc, Modifier.weight(1f).height(ph)) { sheet = true }
-                    Pill(e, "알람 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f).height(ph), actions::openAlarmApp)
+                    Pill(e, "빠른 알람", ink.acc, Modifier.weight(1f).height(ph), BTN) { sheet = true }
+                    Pill(e, "알람 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f).height(ph), BTN, actions::openAlarmApp)
                 }
             }
         }
@@ -139,11 +143,11 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
     }
 }
 
-/** A 48 dp button: [bg] plate, its text in whichever ink reads on it. */
+/** A 48 dp button: [bg] plate, its text in whichever ink reads on it. [shape] defaults to a pill. */
 @Composable
-internal fun Pill(e: Env, text: String, bg: Color, modifier: Modifier, onClick: () -> Unit) {
+internal fun Pill(e: Env, text: String, bg: Color, modifier: Modifier, shape: Shape = RoundedCornerShape(50), onClick: () -> Unit) {
     val solid = bg.alpha == 1f
-    Box(modifier.height(48.dp).clip(RoundedCornerShape(50)).background(bg).tap(onClick), Alignment.Center) {
+    Box(modifier.height(48.dp).clip(shape).background(bg).tap(onClick), Alignment.Center) {
         Txt(text, e.meta, if (solid) e.ink.on(bg) else e.ink.ink, weight = 600, align = TextAlign.Center, maxW = 200.dp)
     }
 }
@@ -166,12 +170,12 @@ private fun QuickSheet(e: Env, config: AppConfig, state: StandbyState, onPick: (
                 Spacer(Modifier.weight(1f))
                 val p = kr.dot.sb.model.QuickAlarm.PRESETS
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill(e, p[0].label, soft, Modifier.weight(1f)) { onPick(p[0]) }
-                    Pill(e, p[1].label, soft, Modifier.weight(1f)) { onPick(p[1]) }
+                    Pill(e, p[0].label, soft, Modifier.weight(1f), BTN) { onPick(p[0]) }
+                    Pill(e, p[1].label, soft, Modifier.weight(1f), BTN) { onPick(p[1]) }
                 }
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill(e, p[2].label, soft, Modifier.weight(1f)) { onPick(p[2]) }
-                    Pill(e, "직접 정하기", soft, Modifier.weight(1f)) { setting = kr.dot.sb.model.QuickAlarm.nextHalfHour(state.now) }
+                    Pill(e, p[2].label, soft, Modifier.weight(1f), BTN) { onPick(p[2]) }
+                    Pill(e, "직접 정하기", soft, Modifier.weight(1f), BTN) { setting = kr.dot.sb.model.QuickAlarm.nextHalfHour(state.now) }
                 }
             } else {
                 // 24 h wheels (operator 11-14) side by side with [맞추기], so even a short slot has room; plan-r13 C5:
@@ -182,7 +186,7 @@ private fun QuickSheet(e: Env, config: AppConfig, state: StandbyState, onPick: (
                         Wheel(e, 24, t.hour, item, Modifier.weight(1f)) { h -> setting = setting?.withHour(h) }
                         Txt(":", e.head, ink.ink, weight = 700)
                         Wheel(e, 60, t.minute, item, Modifier.weight(1f)) { m -> setting = setting?.withMinute(m) }
-                        Pill(e, "맞추기", ink.acc, Modifier.weight(1.2f)) { setting?.let { onPick(kr.dot.sb.model.QuickAlarm(at = it)) } }
+                        Pill(e, "맞추기", ink.acc, Modifier.weight(1.2f), BTN) { setting?.let { onPick(kr.dot.sb.model.QuickAlarm(at = it)) } }
                     }
                 }
             }

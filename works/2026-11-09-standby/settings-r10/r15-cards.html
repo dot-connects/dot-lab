@@ -155,4 +155,58 @@ td.n{font-family:var(--f-num)}
     b.classList.add('play');setTimeout(()=>b.classList.remove('play'),900)}));
 })();
 </script>
+<style>
+.tn-row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start;margin:14px 0 30px}
+.tn-ph{width:300px;max-width:calc(100vw - 32px);background:linear-gradient(#2b3140,#1a1d24);border-radius:26px;padding:14px 10px 18px;box-sizing:border-box;display:flex;flex-direction:column;gap:8px}
+.tn-sb{display:flex;justify-content:space-between;font-size:11px;color:#cfd3dc;padding:0 8px 4px;font-family:var(--f-num)}
+.tn-n{background:#2a2e36;border-radius:20px;padding:12px 14px;color:#eef0f4}
+.tn-h{display:flex;align-items:center;gap:6px;font-size:11px;color:#aab0bb}
+.tn-h i{width:16px;height:16px;border-radius:50%;background:var(--acc);display:inline-block}
+.tn-t{font-size:15px;font-weight:700;margin-top:6px;display:flex;align-items:baseline;gap:8px}
+.tn-t .num{font-family:var(--f-num);font-weight:600;font-size:22px}
+.tn-s{font-size:12.5px;color:#c4c9d2;margin-top:2px}
+.tn-bar{height:4px;border-radius:2px;background:#454a55;margin-top:9px;overflow:hidden}.tn-bar b{display:block;height:100%}
+.tn-a{display:flex;gap:8px;margin-top:10px}.tn-a span{flex:1;text-align:center;font-size:12.5px;font-weight:700;padding:8px 0;border-radius:12px;background:#3a3f4a}
+.tn-a span.p{background:var(--acc);color:#2a1a08}
+.tn-hu{box-shadow:0 8px 24px rgba(0,0,0,.5);border:1.5px solid rgba(255,171,92,.6)}
+.tn-lock{width:300px;max-width:calc(100vw - 32px);background:#0b0c0f;border-radius:26px;padding:26px 10px 18px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px;align-items:stretch}
+.tn-lock .clk{text-align:center;font-family:var(--f-num);font-size:54px;font-weight:500;color:#e8e8ea;line-height:1}
+.tn-lock .dt{text-align:center;font-size:12px;color:#9a9da5;margin-bottom:8px}
+.tn-cap{font-size:13px;color:var(--ink2);max-width:300px;line-height:1.5;margin-top:6px}.tn-cap b{color:var(--fg)}
+</style>
+<h2>6. 타이머 앱 알림 — 스탠드 스크린이 닫혀 있어도</h2>
+<p class="lead">타이머를 켜면 알림 칸에 <b>도는 동안 알림</b>이 고정으로 뜹니다(남은 시간이 1초마다 줄고, 멈춤·초기화 버튼). 시간이 다 되면 스탠드 스크린이 닫혀 있어도 폰 알람 기능으로 제때 <b>끝 알림</b>이 위에 크게 뜨고, 고르신 소리·진동이 3번 울립니다. 잠금 화면에도 보입니다. 스탠드 스크린이 떠 있을 때는 지금처럼 카드에서 알리고, 위에 뜨는 알림은 생략합니다.</p>
+<div class="tn-row">
+ <div><div class="tn-ph"><div class="tn-sb"><span>14:07</span><span>▮▮▮ 87%</span></div>
+  <div class="tn-n"><div class="tn-h"><i></i>Stand Screen · 타이머</div>
+   <div class="tn-t"><span style="color:var(--acc)">집중</span><span class="num">18:24</span></div>
+   <div class="tn-s">14:25에 휴식</div>
+   <div class="tn-bar"><b style="width:74%;background:var(--acc)"></b></div>
+   <div class="tn-a"><span class="p">멈춤</span><span>초기화</span></div></div>
+  <div class="tn-n" style="opacity:.55"><div class="tn-h"><i style="background:#fee500"></i>카카오톡 · 3분 전</div><div class="tn-s">엄마: 저녁 먹었니?</div></div>
+ </div><div class="tn-cap"><b>① 도는 동안</b> · 알림 칸 맨 위에 고정, 밀어도 안 지워짐. 소리·진동 없음. 막대 = 남은 시간.</div></div>
+
+ <div><div class="tn-ph"><div class="tn-sb"><span>14:07</span><span>▮▮▮ 87%</span></div>
+  <div class="tn-n"><div class="tn-h"><i style="background:#7fd19a"></i>Stand Screen · 타이머</div>
+   <div class="tn-t"><span style="color:#7fd19a">휴식</span><span class="num">03:51</span></div>
+   <div class="tn-s">14:11에 집중</div>
+   <div class="tn-bar"><b style="width:77%;background:#7fd19a"></b></div>
+   <div class="tn-a"><span class="p" style="background:#7fd19a;color:#0d2414">멈춤</span><span>초기화</span></div></div>
+ </div><div class="tn-cap"><b>휴식 중</b> · 카드와 같은 초록. 멈춘 상태면 "멈춤 · 12:34 남음" + [계속] 버튼.</div></div>
+
+ <div><div class="tn-ph" style="background:linear-gradient(#3a4256,#20242d)"><div class="tn-sb"><span>14:25</span><span>▮▮▮ 86%</span></div>
+  <div class="tn-n tn-hu"><div class="tn-h"><i></i>Stand Screen · 타이머 · 지금</div>
+   <div class="tn-t">집중 25분이 끝났어요</div>
+   <div class="tn-s">잠깐 쉬어요 · 휴식 5분</div>
+   <div class="tn-a"><span class="p" style="background:#7fd19a;color:#0d2414">휴식 시작</span><span>끄기</span></div></div>
+  <div style="height:120px"></div>
+ </div><div class="tn-cap"><b>② 끝났을 때 (폰 쓰는 중)</b> · 화면 위에 크게 뜨고 소리·진동 3번. [휴식 시작] = 바로 다음 타이머, [끄기] = 소리 멈춤.</div></div>
+
+ <div><div class="tn-lock"><div class="clk">14:25</div><div class="dt">11월 16일 월요일</div>
+  <div class="tn-n tn-hu"><div class="tn-h"><i></i>Stand Screen · 타이머 · 지금</div>
+   <div class="tn-t">집중 25분이 끝났어요</div>
+   <div class="tn-s">잠깐 쉬어요 · 휴식 5분</div>
+   <div class="tn-a"><span class="p" style="background:#7fd19a;color:#0d2414">휴식 시작</span><span>끄기</span></div></div>
+ </div><div class="tn-cap"><b>잠금 화면</b> · 화면이 꺼져 있었으면 켜지며 같은 알림. 휴식이 끝나면 "휴식 끝 · 다시 집중할까요?" + [집중 시작].</div></div>
+</div>
 </div></body></html>

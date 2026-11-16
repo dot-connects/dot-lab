@@ -390,7 +390,7 @@ internal fun FeedErrorCard(e: Env, labelRow: @Composable () -> Unit, title: Stri
             Txt(title, e.head, e.ink.ink, weight = 800, maxW = e.cw, lines = 3)
             if (e.atLeastS) {
                 Txt(hint, e.meta, e.readInk2, weight = 500, maxW = e.cw, lines = 4)
-                Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), retry)
+                Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), onClick = retry)
             }
         }
     }
@@ -409,7 +409,7 @@ internal fun StaleFrame(e: Env, stale: Boolean, fetchedAtSec: Long, retry: () ->
         Box(Modifier.weight(1f).alpha(0.55f)) { content(e.withHeight(e.h - row)) }
         Row(Modifier.fillMaxWidth().height(row).padding(start = e.pad, end = e.pad, bottom = e.pad), verticalAlignment = Alignment.CenterVertically) {
             Txt("${hhmm(fetchedAtSec)} 기준", e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
-            Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), retry)
+            Pill(e, "다시 시도", e.ink.ink.copy(alpha = 0.12f), Modifier.width(112.dp), onClick = retry)
         }
     }
 }

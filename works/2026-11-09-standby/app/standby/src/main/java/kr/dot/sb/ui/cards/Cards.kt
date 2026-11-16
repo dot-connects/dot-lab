@@ -1203,7 +1203,8 @@ private fun WeatherBody(e: Env, wx: WeatherInfo, actions: StandbyActions) {
                 }
             }
         }
-        // square / tall: hours row + day rows as they fit, the leftover goes to the number (mockup weather v3)
+        // square / tall: hours row + day rows as they fit, the leftover goes to the number (mockup weather v3); what the
+        // capped number cannot take (tall slots) is spread evenly over every gap instead of pooling under the number
         WeatherShape.STACK -> {
             val tMax = min(180.dp, iw * 0.8f)
             var rest = ih - head
@@ -1212,14 +1213,17 @@ private fun WeatherBody(e: Env, wx: WeatherInfo, actions: StandbyActions) {
             val n = minOf(hours.size, (iw / 44.dp).toInt())
             val row = n >= 3 && rest >= e.hourColH + 12.dp
             if (row) rest -= e.hourColH + 12.dp
-            val days = ((rest - 10.dp) / e.rowStep).toInt().coerceIn(0, minOf(5, wx.days.size + 1))
+            val days = ((rest - 10.dp) / e.rowStep).toInt().coerceIn(0, minOf(6, wx.days.size + 1))
             rest -= e.rowStep * days
-            t = min(tMax, t + rest - 4.dp)
+            val grow = t + rest - 4.dp
+            t = min(tMax, grow)
+            val gaps = (if (row && days > 0) 2 else 1) + (days - 1).coerceAtLeast(0)
+            val g = (grow - t) / gaps
             Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
                 now(t, iw, true)
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp + g)) {
                     if (row) HourRow(e, hours.take(n))
-                    if (days > 0) DayRows(e, wx, days)
+                    if (days > 0) DayRows(e, wx, days, arrangement = Arrangement.spacedBy(9.dp + g))
                 }
             }
         }
