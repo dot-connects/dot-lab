@@ -14,7 +14,9 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
+import android.util.SizeF
 import android.widget.RemoteViews
+import kr.dot.catchpet.MainActivity
 import kr.dot.catchpet.R
 import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.pet.Frames
@@ -23,26 +25,25 @@ import kr.dot.catchpet.pet.Talk
 import java.util.Calendar
 import java.util.concurrent.Executors
 import kotlin.math.max
-import kotlin.math.min
-import kotlin.math.roundToInt
 
 /**
- * The one home widget (operator 11-16, mockup widget-family A): the widget family standing together, no background
- * and no buttons, at any size. A tap opens [WidgetMenu]. 1x1 = the floating pet alone; a low widget = one row of
- * up to three; otherwise two rows of up to six. Still pictures: redrawn every 30 min (the pose follows the hour)
- * and on any dex or family change.
+ * The one home widget (operator 11-16, mockup widget-sizes v2): the chosen pet alone, no background, at 1x1, 2x1,
+ * 1x2 or 2x2 (the launcher picks the layout by size). A tap on the pet floats it or puts it down ([WidgetToggle]);
+ * from 2x1 up, [도감] and [뽑기] sit beside or under it. Awake with a sky dot while floating, asleep with "z z" when
+ * not. Redrawn every 30 min (the pose follows the hour) and whenever the pet or its on/off changes.
  */
 object PetWidgets {
     private val work = Executors.newSingleThreadExecutor()
 
-    /** Redraw every placed widget (a catch, a deleted entry, another pet, a family change). Any thread. */
+    /** Redraw every placed widget. Any thread. */
     fun refresh(ctx: Context) {
         val app = ctx.applicationContext
         work.execute {
             // Dex.write calls this on every save: never let a widget problem throw on this thread (review 11-16)
             runCatching {
                 val mgr = AppWidgetManager.getInstance(app) ?: return@runCatching
-                for (id in mgr.getAppWidgetIds(ComponentName(app, Yard::class.java))) draw(app, mgr, id)
+                val ids = mgr.getAppWidgetIds(ComponentName(app, Yard::class.java))
+                if (ids.isNotEmpty()) mgr.updateAppWidget(ids, views(app))
             }.onFailure { Log.w("PetWidgets", "refresh", it) }
         }
     }
@@ -50,110 +51,79 @@ object PetWidgets {
     internal fun update(ctx: Context, ids: IntArray, done: () -> Unit) {
         val app = ctx.applicationContext
         work.execute {
-            try { runCatching { val mgr = AppWidgetManager.getInstance(app); for (id in ids) draw(app, mgr, id) } } finally { done() }
+            try { runCatching { AppWidgetManager.getInstance(app).updateAppWidget(ids, views(app)) }.onFailure { Log.w("PetWidgets", "update", it) } }
+            finally { done() }
         }
     }
 
-    private fun draw(ctx: Context, mgr: AppWidgetManager, id: Int) {
-        runCatching {
-            val o = mgr.getAppWidgetOptions(id)
-            // portrait: min width x max height, landscape: max width x min height; nothing yet = 2x2
-            val land = ctx.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            val wDp = o.getInt(if (land) AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 }?.toFloat() ?: 110f
-            val hDp = o.getInt(if (land) AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 }?.toFloat() ?: 110f
-            val d = ctx.resources.displayMetrics.density
-            val k = min(d, 600f / max(wDp, hDp))   // keeps the bitmap small enough for RemoteViews
-            val v = RemoteViews(ctx.packageName, R.layout.widget_image)
-            v.setImageViewBitmap(R.id.art, render(ctx, wDp, hDp, k))
-            v.setOnClickPendingIntent(R.id.art, PendingIntent.getActivity(ctx, 1,
-                Intent(ctx, WidgetMenu::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK),
-                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT))
-            mgr.updateAppWidget(id, v)
-        }.onFailure { Log.w("PetWidgets", "draw $id", it) }
+    /** One RemoteViews per size; the launcher shows the largest that fits (all sizes in dp). */
+    private fun views(ctx: Context): RemoteViews {
+        val on = PetPrefs.overlayOn(ctx)
+        val art = render(ctx, on)
+        fun v(layout: Int, buttons: Boolean) = RemoteViews(ctx.packageName, layout).apply {
+            setImageViewBitmap(R.id.art, art)
+            val toggle = PendingIntent.getActivity(ctx, 1,
+                Intent(ctx, WidgetToggle::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+                PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
+            setOnClickPendingIntent(R.id.root, toggle)
+            setOnClickPendingIntent(R.id.art, toggle)
+            if (buttons) {
+                setOnClickPendingIntent(R.id.btn_dex, open(ctx, "dex", 2))
+                setOnClickPendingIntent(R.id.btn_catch, open(ctx, "catch", 3))
+            }
+        }
+        return RemoteViews(mapOf(
+            SizeF(40f, 40f) to v(R.layout.widget_1x1, false),
+            SizeF(100f, 40f) to v(R.layout.widget_2x1, true),
+            SizeF(40f, 100f) to v(R.layout.widget_1x2, true),
+            SizeF(100f, 100f) to v(R.layout.widget_2x2, true),
+        ))
     }
 
-    /** Who stands on a widget: 1x1 = the floating pet; else the family (the floating pet first), or the pet alone. */
-    internal fun cast(ctx: Context, max: Int): List<Dex.Entry> {
-        val pet = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null)?.let { Dex.get(ctx, it) }
-        val fam = Family.entries(ctx)
-        if (max == 1 || fam.isEmpty()) return listOfNotNull(pet ?: fam.firstOrNull())
-        val first = fam.firstOrNull { it.id == pet?.id && PetPrefs.overlayOn(ctx) }
-        return (listOfNotNull(first) + fam.filter { it !== first }).take(max)
-    }
+    private fun open(ctx: Context, to: String, code: Int): PendingIntent =
+        PendingIntent.getActivity(ctx, code, Intent(ctx, MainActivity::class.java).putExtra(MainActivity.OPEN, to)
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
 
-    /** The widget picture, [wDp] x [hDp] at [k] px per dp, transparent around the pets. */
-    internal fun render(ctx: Context, wDp: Float, hDp: Float, k: Float): Bitmap {
-        val w = (wDp * k).roundToInt().coerceAtLeast(1); val h = (hDp * k).roundToInt().coerceAtLeast(1)
-        val bmp = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+    private const val PX = 256   // one square picture for every size; the layouts fit it in
+
+    /** The pet, transparent around it: awake + a sky dot while floating, asleep + "z z" when not. */
+    internal fun render(ctx: Context, on: Boolean): Bitmap {
+        val bmp = Bitmap.createBitmap(PX, PX, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
         val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        val cell = when (Talk.slot(Calendar.getInstance().get(Calendar.HOUR_OF_DAY))) {
-            Talk.Slot.NOON -> "smile"; Talk.Slot.NIGHT -> "sleep"; else -> "front"
-        }
-        val one = wDp < 90f && hDp < 90f
-        val low = hDp < 90f
-        val who = cast(ctx, if (one) 1 else if (low) 3 else 6)
-        val pics = who.mapNotNull { e -> Frames.load(ctx, e)?.let { it[cell] ?: it["front"] } }
-
-        if (pics.isEmpty()) {
-            // nothing to show yet: a paper ball with "?" (opaque, so it reads on any wallpaper)
-            val r = min(w, h) * 0.34f
-            p.color = 0xFFFFFDF6.toInt(); c.drawCircle(w / 2f, h / 2f, r, p)
-            p.style = Paint.Style.STROKE; p.strokeWidth = r * 0.08f; p.color = 0xFF24331F.toInt(); c.drawCircle(w / 2f, h / 2f, r, p)
+        val ink = 0xFF24331F.toInt()
+        val cell = if (!on) "sleep" else if (Talk.slot(Calendar.getInstance().get(Calendar.HOUR_OF_DAY)) == Talk.Slot.NOON) "smile" else "front"
+        val e = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null)?.let { Dex.get(ctx, it) }
+        val pic = e?.let { Frames.load(ctx, it) }?.let { it[cell] ?: it["front"] }
+        if (pic == null) {
+            // nothing chosen yet: a paper ball with "?" (opaque, so it reads on any wallpaper)
+            val r = PX * 0.34f
+            p.color = 0xFFFFFDF6.toInt(); c.drawCircle(PX / 2f, PX / 2f, r, p)
+            p.style = Paint.Style.STROKE; p.strokeWidth = r * 0.08f; p.color = ink; c.drawCircle(PX / 2f, PX / 2f, r, p)
             p.style = Paint.Style.FILL
-            val t = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; color = 0xFF24331F.toInt(); textAlign = Paint.Align.CENTER; textSize = r }
-            c.drawText("?", w / 2f, h / 2f + r * 0.36f, t)
+            val t = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; color = ink; textAlign = Paint.Align.CENTER; textSize = r }
+            c.drawText("?", PX / 2f, PX / 2f + r * 0.36f, t)
             return bmp
         }
-        // a group selfie (operator 11-16, mockup widget-selfie): the floating pet big at the front left, the rest
-        // fanned over its head and to the right; no outline, no date, only a soft shadow and a slight tilt
-        val wide = w >= h * 1.6f
-        val box = if (wide) 200f else 100f
-        val slots = slots(pics.size, wide)
-        val u = min(w / box, h / 100f) * 0.93f            // the slot box fitted in, bottom centred, room for the tilt
-        val ox = (w - box * u) / 2f; val oy = h - 100f * u - h * 0.02f
-        val shadow = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0x66000000; maskFilter = android.graphics.BlurMaskFilter(max(1f, 2.5f * u), android.graphics.BlurMaskFilter.Blur.NORMAL) }
-        c.save()
-        c.rotate(-5f, w / 2f, h / 2f)
-        // farthest (smallest) first, the selfie taker last
-        for (i in slots.indices.sortedWith(compareBy<Int>({ it == 0 }, { slots[it][2] }))) {
-            val b = pics[i]; val (x, foot, size) = slots[i]
-            val sz = size * u
-            val sc = sz / max(b.width, b.height)
-            val bw = b.width * sc; val bh = b.height * sc
-            val r = RectF(ox + x * u - bw / 2, oy + foot * u - bh, ox + x * u + bw / 2, oy + foot * u)
-            val a = b.extractAlpha()
-            c.drawBitmap(a, null, RectF(r).apply { offset(0f, 1.6f * u) }, shadow)
-            a.recycle()
-            p.color = Color.BLACK   // opaque: a paint alpha would show through the pet (operator 11-16)
-            c.drawBitmap(b, null, r, p)
+        val size = PX * 0.86f
+        val s = size / max(pic.width, pic.height)
+        val bw = pic.width * s; val bh = pic.height * s
+        val foot = PX * 0.95f
+        p.color = 0x40000000; c.drawOval(PX / 2f - bw * 0.36f, foot - size * 0.05f, PX / 2f + bw * 0.36f, foot + size * 0.04f, p)
+        p.color = Color.BLACK   // opaque again: the shadow left the paint at 25 % alpha (operator 11-16 "too see-through")
+        c.drawBitmap(pic, null, RectF(PX / 2f - bw / 2, foot - bh, PX / 2f + bw / 2, foot), p)
+        if (on) {
+            p.color = 0xFF9FD8FF.toInt(); c.drawCircle(PX * 0.86f, PX * 0.12f, PX * 0.06f, p)
+            p.style = Paint.Style.STROKE; p.strokeWidth = PX * 0.016f; p.color = ink; c.drawCircle(PX * 0.86f, PX * 0.12f, PX * 0.06f, p)
+            p.style = Paint.Style.FILL
+        } else {
+            val t = Paint(Paint.ANTI_ALIAS_FLAG).apply { typeface = Typeface.DEFAULT_BOLD; textAlign = Paint.Align.RIGHT; textSize = PX * 0.13f }
+            t.style = Paint.Style.STROKE; t.strokeWidth = PX * 0.025f; t.color = ink; c.drawText("z z", PX * 0.97f, PX * 0.16f, t)
+            t.style = Paint.Style.FILL; t.color = Color.WHITE; c.drawText("z z", PX * 0.97f, PX * 0.16f, t)
         }
-        c.restore()
         return bmp
     }
-
-    /** Where each pet stands: x centre, foot y, size, in a 100 x 100 box (200 x 100 when wide); slot 0 = the selfie taker. */
-    internal fun slots(n: Int, wide: Boolean): List<FloatArray> = (if (wide) WIDE else SQUARE)[n.coerceIn(1, 6) - 1]
-        .map { floatArrayOf(it[0], it[1], it[2]) }
-
-    // a farther pet's feet stay above every nearer pet's head, so no face is ever covered (operator 11-16)
-    private val SQUARE = listOf(
-        listOf(f(50, 99, 84)),
-        listOf(f(34, 99, 64), f(78, 52, 40)),
-        listOf(f(34, 99, 60), f(72, 48, 34), f(84, 93, 30)),
-        listOf(f(32, 99, 58), f(46, 37, 28), f(77, 44, 30), f(84, 91, 28)),
-        listOf(f(31, 99, 56), f(24, 38, 26), f(52, 31, 26), f(80, 41, 28), f(82, 88, 28)),
-        listOf(f(30, 99, 54), f(18, 40, 24), f(42, 32, 24), f(66, 31, 24), f(87, 47, 24), f(81, 91, 28)),
-    )
-    private val WIDE = listOf(
-        listOf(f(100, 99, 90)),
-        listOf(f(64, 99, 84), f(140, 80, 60)),
-        listOf(f(50, 99, 76), f(120, 62, 46), f(164, 97, 40)),
-        listOf(f(46, 99, 74), f(110, 58, 42), f(154, 54, 38), f(150, 99, 38)),
-        listOf(f(44, 99, 74), f(104, 60, 40), f(146, 50, 38), f(182, 60, 32), f(136, 99, 36)),
-        listOf(f(42, 99, 74), f(100, 60, 40), f(140, 50, 38), f(178, 58, 34), f(116, 99, 34), f(156, 99, 34)),
-    )
-    private fun f(x: Int, foot: Int, size: Int) = floatArrayOf(x.toFloat(), foot.toFloat(), size.toFloat())
 }
 
 /** The one widget's receiver (the class name stays: widgets placed before keep working). */

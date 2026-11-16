@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- a widget button: colour tile, ink outline (mockup widget-icons B) -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFBFE3A6" />
+    <stroke android:width="2dp" android:color="#FF24331F" />
+    <corners android:radius="12dp" />
+</shape>

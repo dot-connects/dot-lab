@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- one widget, 1x1 up to 2x2 (operator 11-16, mockup widget-sizes v2) -->
 <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
     android:minWidth="40dp"
     android:minHeight="40dp"
     android:minResizeWidth="40dp"
     android:minResizeHeight="40dp"
+    android:maxResizeWidth="200dp"
+    android:maxResizeHeight="200dp"
     android:targetCellWidth="2"
-    android:targetCellHeight="2"
+    android:targetCellHeight="1"
     android:updatePeriodMillis="1800000"
-    android:initialLayout="@layout/widget_image"
+    android:initialLayout="@layout/widget_2x1"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:description="@string/widget_yard_desc" />

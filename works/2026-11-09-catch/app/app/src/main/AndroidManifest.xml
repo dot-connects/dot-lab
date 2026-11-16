@@ -35,9 +35,9 @@
         <!-- AR is an opt-in experiment: never ask Play to require or install ARCore -->
         <meta-data android:name="com.google.ar.core" android:value="optional" tools:replace="android:value" />
 
-        <!-- a tap on the home widget: a small sheet over home (operator 11-16, mockup widget-brag 1-A) -->
+        <!-- a tap on the home widget's pet: float it or put it down, no screen (operator 11-16, mockup widget-sizes v2) -->
         <activity
-            android:name=".widget.WidgetMenu"
+            android:name=".widget.WidgetToggle"
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"

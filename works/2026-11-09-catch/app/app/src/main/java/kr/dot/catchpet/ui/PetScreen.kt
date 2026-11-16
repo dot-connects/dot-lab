@@ -187,8 +187,6 @@ fun PetScreen(onBack: () -> Unit) {
             Note("녀석을 끌어서 아래 줄이나 양옆 벽에 놓을 수 있어요.")
         }
 
-        FamilyPanel(pets)
-
         AppsPanel(onPick = { picking = true })
 
         Panel {
@@ -257,41 +255,6 @@ private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBi
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.Frames.load(ctx, e)?.get("front")?.asImageBitmap() }
     }
     return v
-}
-
-/** "위젯 가족사진": which pets stand on the home widget (operator 11-16); the same toggle as the dex detail's. */
-@Composable
-private fun FamilyPanel(pets: List<Dex.Entry>) {
-    val ctx = LocalContext.current
-    val can = pets.filter { kr.dot.catchpet.widget.Family.canJoin(it) }
-    var fam by remember { mutableStateOf(kr.dot.catchpet.widget.Family.ids(ctx).toSet()) }
-    Panel("위젯 가족사진") {
-        if (can.isEmpty()) Note("털뭉치를 뽑거나 펫 그림을 만들면 여기서 고를 수 있어요.")
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            for (e in can) {
-                val inFam = e.id in fam
-                Column(
-                    Modifier.width(76.dp).clip(RoundedCornerShape(14.dp))
-                        .let { if (inFam) it.background(Book.Sun.copy(alpha = 0.35f)).border(2.dp, Book.Ink, RoundedCornerShape(14.dp)) else it }
-                        .clickable {
-                            if (kr.dot.catchpet.widget.Family.toggle(ctx, e.id)) fam = kr.dot.catchpet.widget.Family.ids(ctx).toSet()
-                            else android.widget.Toast.makeText(ctx, "위젯 가족은 ${kr.dot.catchpet.widget.Family.MAX}마리까지예요. 한 마리를 빼 주세요", android.widget.Toast.LENGTH_SHORT).show()
-                        }
-                        .padding(6.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    Box {
-                        rememberPetFront(e)?.let { Image(it, e.name, Modifier.size(54.dp).alpha(if (inFam) 1f else 0.6f), contentScale = ContentScale.Fit) }
-                            ?: Spacer(Modifier.size(54.dp))
-                        if (inFam) Box(Modifier.align(Alignment.TopEnd).size(18.dp).background(Book.Leaf, CircleShape).border(2.dp, Book.Ink, CircleShape),
-                            contentAlignment = Alignment.Center) { Text("✓", fontSize = 11.sp, color = Color.White, lineHeight = 11.sp) }
-                    }
-                    Text(e.name, fontFamily = Book.Display, fontSize = 13.sp, maxLines = 1)
-                }
-            }
-        }
-        Note("고른 녀석들이 홈 화면 위젯에 함께 서요 (${fam.count { id -> can.any { it.id == id } }}/${kr.dot.catchpet.widget.Family.MAX}). 위젯을 누르면 펫 띄우기·도감·뽑기가 떠요.")
-    }
 }
 
 /** "두 번 톡톡 누르면": the apps the pet opens; + opens the picker, a long press takes one out (operator 11-15). */
