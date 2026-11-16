@@ -552,3 +552,23 @@ test("L2: reports stop at 20 a device a day", async () => {
   for (let i = 0; i < 20; i++) assert.equal((await rep()).status, 200);
   assert.equal((await rep()).status, 429);
 });
+
+test("security: a billed or refused free draw keeps its slot; only an unsent or 5xx one comes back", async () => {
+  env.callModel = async () => { throw Object.assign(new Error("x"), { sent: true, rejected: true }); };   // 4xx: junk image
+  assert.equal((await paid()).status, 502);
+  env.callModel = async () => { throw Object.assign(new Error("x"), { sent: true, billed: true }); };
+  assert.equal((await paid()).status, 502);
+  env.callModel = async () => { throw Object.assign(new Error("x"), { sent: true }); };                  // 5xx
+  assert.equal((await paid()).status, 502);
+  env.callModel = async job => { calls.push(job); return { mime: "image/webp", data: "Zm9v" }; };
+  assert.equal((await paid()).body.free_left, 0, "two kept, one handed back");
+});
+
+test("security: IPv6 addresses count per /64 network", async () => {
+  env.FREE_IP_DAY = "2";
+  const from = (ip, device) => call(sheetBody({ layout: "12", device }), { path: "/sheet", headers: { ...APP, "cf-connecting-ip": ip } });
+  assert.equal((await from("2001:db8:1:2:aaaa::1", "dev-v6aaaaa1")).status, 200);
+  assert.equal((await from("2001:db8:1:2:bbbb::9", "dev-v6aaaaa2")).status, 200);
+  assert.equal((await from("2001:db8:1:2:cccc::5", "dev-v6aaaaa3")).body.error, "free");
+  assert.equal((await from("2001:db8:1:3::5", "dev-v6aaaaa4")).status, 200, "another /64");
+});

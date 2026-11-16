@@ -155,6 +155,8 @@ export class D1Counts {
   }
 }
 
+// one IPv6 user holds a whole /64: count per network, not per address (security review)
+export const ipKey = ip => (ip && ip.includes(":") ? ip.split(":").slice(0, 4).join(":") + "::/64" : ip || "?");
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
 const goodImage = s => typeof s === "string" && !!s && s.length <= IMAGE_MAX && /^[A-Za-z0-9+/=]+$/.test(s);
 const goodDevice = s => /^dev-[a-z0-9]{8,32}$/.test(s || "");
@@ -193,7 +195,7 @@ async function transform(b, req, env, counts, day, origin, dev) {
   }
 
   const perDev = num(env.DEVICE_DAY, 5), all = num(env.ALL_DAY, 30), perIp = num(env.IP_DAY, 15);
-  const kAll = `${day}|all`, kDev = `${day}|${b.device}`, kIp = `${day}|ip:${req.headers.get("cf-connecting-ip") || "?"}`;
+  const kAll = `${day}|all`, kDev = `${day}|${b.device}`, kIp = `${day}|ip:${ipKey(req.headers.get("cf-connecting-ip"))}`;
   if (!(await counts.take(kAll, all))) return json({ error: "all" }, 429, origin);
   let used = 0, ipOk = 0;
   try {
@@ -269,15 +271,17 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
   if (!token) {   // a test-period free sheet: reserved before the draw, handed back if it fails (review H1)
     const total = num(env.FREE_SHEETS, 0);
     // a device id is app-made (a reinstall = 3 more): one network and everyone are capped a day too (security review)
-    const kIp = `${day}|freeip:${req.headers.get("cf-connecting-ip") || "?"}`, kAll = `${day}|freeall`;
+    const kIp = `${day}|freeip:${ipKey(req.headers.get("cf-connecting-ip"))}`, kAll = `${day}|freeall`;
     if (!(await counts.take(kAll, num(env.FREE_ALL_DAY, 60)))) return json({ error: "free" }, 429);
     if (!(await counts.take(kIp, num(env.FREE_IP_DAY, 6)))) { await counts.give(kAll); return json({ error: "free" }, 429); }
     if (!(await ledger.takeFree(b.device, total))) { await counts.give(kIp); await counts.give(kAll); return json({ error: "free" }, 429); }
-    const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {});
-    if (r.off || r.err) {
-      await ledger.giveFree(b.device); await counts.give(kIp); await counts.give(kAll);
-      return r.off ? json({ error: "off" }, 503) : json({ error: "model" }, 502);
-    }
+    // the transform rule: a slot comes back only if the call never left or OpenAI failed on its side (5xx, not billed);
+    // a refused junk image or a billed empty answer keeps it, so failures cannot be farmed (security review)
+    const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async e => {
+      if (!e.sent || (!e.rejected && !e.billed)) { await ledger.giveFree(b.device); await counts.give(kIp); await counts.give(kAll); }
+    });
+    if (r.off) return json({ error: "off" }, 503);
+    if (r.err) return json({ error: "model" }, 502);
     return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b), free_left: await ledger.freeLeft(b.device, total) });
   }
 
