@@ -55,6 +55,16 @@ class ReliefCodecTest {
         assertEquals(0xFF123456, back.color)
     }
 
+    @Test fun clearBgRoundTripsAndIsWrittenOnlyWhenOn() {
+        val d = AppConfig()
+        val on = d.copy(styles = d.styles + (FaceId.RELIEF to d.clockStyle(FaceId.RELIEF).copy(clearBg = true)))
+        assertEquals(on, round(on))
+        assertTrue("\"cb\":true" in ConfigCodec.encode(on))
+        val off = d.copy(styles = d.styles + (FaceId.RELIEF to d.clockStyle(FaceId.RELIEF)))
+        assertTrue("\"cb\"" !in ConfigCodec.encode(off))
+        assertEquals(false, round(off).styles.getValue(FaceId.RELIEF).clearBg)
+    }
+
     @Test fun unknownValuesFallBack() {
         val c = AppConfig(styles = mapOf(FaceId.RELIEF to ClockStyle.default(FaceId.RELIEF)))
         val o = JSONObject(ConfigCodec.encode(c))

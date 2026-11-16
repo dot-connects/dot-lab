@@ -271,7 +271,10 @@ private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     if (face == FaceId.ANALOG && face !in config.styles) return AnalogCard(e, state)
     val custom = face in config.styles
     val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }
-    ClockFace(face, style, state, Modifier.fillMaxSize().padding(e.pad), inSlot = true, hero = e.look.hero || custom)
+    // a face with its own background fills the whole card (clipped to its shape), its content still inside the pad
+    val own = kr.dot.sb.ui.clock.ownBg(face, style)
+    val m = if (own) Modifier.fillMaxSize().clip(RoundedCornerShape(e.plateRadius)).padding(e.pad) else Modifier.fillMaxSize().padding(e.pad)
+    ClockFace(face, style, state, m, inSlot = true, hero = e.look.hero || custom, bleed = if (own) e.pad else 0.dp)
 }
 
 /** Short side of the slot; < 150 dp drops the date (spec §1 clock). */
@@ -562,7 +565,8 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val dl = drag
     val digits = AnnotatedString(if (dl != null) "%02d:00".format(dl) else "%02d:%02d".format(t.leftSec / 60, t.leftSec % 60))
     val dc = if (paused && dl == null) e.ink.ink2 else e.ink.ink
-    val frac = if (dl != null) dl / 60f else if (t.totalSec > 0) 1f - t.leftSec.toFloat() / t.totalSec else 0f
+    // r14: a Time Timer — the arc is the time left on a 60-minute dial (25 min = 5/12), shrinking to 0; same scale as the drag
+    val frac = if (dl != null) dl / 60f else t.leftSec / 3600f
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
@@ -627,7 +631,7 @@ internal fun ringMinutes(dx: Float, dy: Float, prev: Int): Int {
 /** The ring's drag: [on] (not running), [minutes] now, [onMove] while dragging, [onDone] on release. */
 private class RingDrag(val on: Boolean, val minutes: Int, val onMove: (Int) -> Unit, val onDone: (Int) -> Unit)
 
-/** Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for the elapsed [frac], [inner] centred. */
+/** Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for [frac] (time left), [inner] centred. */
 @Composable
 private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, inner: @Composable () -> Unit) {
     val track = e.ink.ink3

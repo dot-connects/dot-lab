@@ -16,6 +16,7 @@ import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
@@ -312,7 +313,7 @@ private fun contrast(a: Int, b: Int): Float {
 }
 
 @Composable
-internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) {
     val bg = bgColors(style, ink, nightPlate = Ink.NIGHT_PLATE)
     val base = Look.of(style, ink)
     // Contrast floor (§4.3): digits vs local bg ≥ 3:1, else weight ≥ 500 + soft dark shadow.
@@ -325,13 +326,14 @@ internal fun SolarFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val w = size.width; val h = size.height
         val two = (if (inSlot) h > w * 1.15f else w < h * 1.45f) || style.layout == ClockLayout.TWO_LINES
         val sizePct = style.sizePct / 100f
-        val r = if (inSlot) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
+        val r = if (inSlot && slotBleed == 0.dp) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
         val gap = 0.03f * h
         val fs = if (inSlot) fitSize(p, d, two, (if (two) 0.32f else 0.5f) * h * sizePct, 0.8f * w)
         else fitSize(p, d, two, (if (two) 0.30f else 0.40f) * h * sizePct, (if (two) 0.76f else 0.68f) * w)
         val cap = p.capEm * fs
         val top = (h - (if (two) 2 * cap + gap else cap)) / 2
-        val bleed = if (inSlot) 0f else BURN_IN_BLEED.toPx() // full screen: the plate overscans for the burn-in shift
+        // full screen: the plate overscans for the burn-in shift; a clock card: to the card edge
+        val bleed = if (inSlot) slotBleed.toPx() else BURN_IN_BLEED.toPx()
         return@FaceCanvas {
             if (bleed > 0f) { save(); translate(-bleed, -bleed); drawFaceBg(bg, w + 2 * bleed, h + 2 * bleed, r); restore() }
             else drawFaceBg(bg, w, h, r)

@@ -30,6 +30,10 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.luminance
@@ -116,57 +120,67 @@ object Relief {
      * What draws now. Night (>= 0.5) follows the app's night rule: night ink on the night page, no grain/light/shadows;
      * the 야광 views keep their glowing capsules there, 낮 shows them as outlines.
      */
-    internal fun palette(s: ClockStyle, nightBg: Int?): RlPal {
+    internal fun palette(s: ClockStyle, nightBg: Int?, clearInk: Int? = null): RlPal {
+        val clear = clearInk != null
         if (nightBg != null) {
             val ni = ThemeTokens.NIGHT_INK.toArgb()
-            return RlPal(nightBg, ni, ni, ni, glow = s.lumeView != LumeView.DAY, night = true)
+            return RlPal(nightBg, ni, ni, ni, glow = s.lumeView != LumeView.DAY, night = true, clear = clear)
         }
         val p = if (s.lumeView == LumeView.LUME) LUME else preset(s)
-        val acc = if (s.lumeView == LumeView.LUME) LUME.acc else accent(s)
-        return RlPal(p.dial.toInt(), p.ink.toInt(), acc.toInt(), p.lume.toInt(), glow = s.lumeView == LumeView.LUME, night = false)
+        // 배경 투명: a preset's accent was picked for its dial (아이스's is near-black), so the second hand takes the ink
+        // unless the user chose an accent
+        val acc = if (s.lumeView == LumeView.LUME) LUME.acc else if (clearInk != null && s.accentColor == null) clearInk.toLong() else accent(s)
+        return RlPal(p.dial.toInt(), clearInk ?: p.ink.toInt(), acc.toInt(), p.lume.toInt(), glow = s.lumeView == LumeView.LUME, night = false, clear = clear)
     }
 }
 
 /** The Jost weights the static layer draws with. */
 internal class RlFonts(val regular: Typeface, val medium: Typeface, val thin: Typeface, val bold: Typeface)
 
-/** Resolved colours (ARGB ints). [glow] = lume look (glowing capsules, no cast shadows); [night] = flat night drawing. */
-internal data class RlPal(val dial: Int, val ink: Int, val acc: Int, val lume: Int, val glow: Boolean, val night: Boolean) {
+/**
+ * Resolved colours (ARGB ints). [glow] = lume look (glowing capsules, no cast shadows); [night] = flat night drawing;
+ * [clear] = 배경 투명 (no dial, light, grain or gloss; [ink] is the theme's).
+ */
+internal data class RlPal(val dial: Int, val ink: Int, val acc: Int, val lume: Int, val glow: Boolean, val night: Boolean, val clear: Boolean = false) {
     val shadows: Boolean get() = !glow && !night
 }
 
 private enum class RlKind { ROUND, SQUARE, CAPSULE }
 
 @Composable
-internal fun ReliefFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) = ReliefDial(RlKind.ROUND, style, d, ink, inSlot, modifier)
+internal fun ReliefFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) = ReliefDial(RlKind.ROUND, style, d, ink, inSlot, modifier, slotBleed)
 
 @Composable
-internal fun ReliefSquareFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) = ReliefDial(RlKind.SQUARE, style, d, ink, inSlot, modifier)
+internal fun ReliefSquareFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) = ReliefDial(RlKind.SQUARE, style, d, ink, inSlot, modifier, slotBleed)
 
 @Composable
-internal fun ReliefDigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) = ReliefDial(RlKind.CAPSULE, style, d, ink, inSlot, modifier)
+internal fun ReliefDigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) = ReliefDial(RlKind.CAPSULE, style, d, ink, inSlot, modifier, slotBleed)
 
 @Composable
-private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp) {
     // keyed on night on/off + the theme's final night page (not ink.bg, which lerps during the ramp): the static bitmap
     // is built once per transition, not on every ramp step
     val nightBg = if (ink.night >= 0.5f) LocalTheme.current.tokens.night().bg.base.toArgb() else null
-    val pal = remember(style, nightBg) { Relief.palette(style, nightBg) }
+    // 배경 투명: no dial, the track/numerals/scale in the theme ink so they read on the card plate or page
+    val clearInk = if (style.clearBg) ink.ink.toArgb() else null
+    val pal = remember(style, nightBg, clearInk) { Relief.palette(style, nightBg, clearInk) }
     val tf = rememberClockTypeface(FontId.JOST, 400)
     val tfDate = rememberClockTypeface(FontId.JOST, 500)
     val tfThin = rememberClockTypeface(FontId.JOST, 300)
     val tfBold = rememberClockTypeface(FontId.JOST, 600)
-    val radius = with(LocalDensity.current) { if (inSlot) 14f * density else 0f }
-    BoxWithConstraints(modifier) {
+    val bleed = with(LocalDensity.current) { slotBleed.roundToPx() }
+    // bleeding to the card edge: square here, the card clips it to its shape
+    val radius = with(LocalDensity.current) { if (inSlot && bleed == 0) 14f * density else 0f }
+    BoxWithConstraints(modifier.overscan(bleed)) {
         val w = constraints.maxWidth
         val h = constraints.maxHeight
         if (w <= 0 || h <= 0) return@BoxWithConstraints
-        if (min(w, h) < with(LocalDensity.current) { COMPACT_MIN.toPx() }) {
+        if (min(w, h) - 2 * bleed < with(LocalDensity.current) { COMPACT_MIN.toPx() }) {
             val p = rememberTimePainter(style)
             FaceCanvas(Modifier) { compact(p, d, Look(kr.dot.sb.model.Effect.SOLID, pal.ink, pal.ink)) }
             return@BoxWithConstraints
         }
-        val geo = remember(kind, w, h) { RlGeo.of(kind, w, h) }
+        val geo = remember(kind, w, h, bleed) { RlGeo.of(kind, w, h, bleed.toFloat()) }
         val use24 = style.h24 ?: d.use24h
         val hh = if (use24) d.now.hour else (d.now.hour + 11) % 12 + 1
         val digits = String.format(java.util.Locale.ROOT, "%02d%02d", hh, d.now.minute).let { if (!use24 && hh < 10) " " + it.drop(1) else it }
@@ -186,7 +200,7 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
             Modifier.fillMaxSize().drawBehind {
                 val img = static.value
                 if (img != null) drawImage(img, dstSize = IntSize(size.width.toInt(), size.height.toInt()))
-                else drawRoundRect(Color(pal.dial), cornerRadius = CornerRadius(radius))
+                else if (!pal.clear) drawRoundRect(Color(pal.dial), cornerRadius = CornerRadius(radius))
             },
         )
         val second = rememberSecond()
@@ -216,6 +230,12 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
     }
 }
 
+/** Lays the content out [px] beyond this box on every side (the caller clips): the dial reaches the card edge. */
+private fun Modifier.overscan(px: Int): Modifier = if (px <= 0) this else layout { m, c ->
+    val p = m.measure(Constraints.fixed(c.maxWidth + 2 * px, c.maxHeight + 2 * px))
+    layout(c.maxWidth, c.maxHeight) { p.place(-px, -px) }
+}
+
 private val WEEKDAYS_EN = arrayOf("MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN") // literal-ok: the dial's date window (mockup)
 
 /** 기계식 스윕: milliseconds into the minute, at most 30 times a second while composed (shots: the fixed second). */
@@ -236,10 +256,10 @@ private fun rememberSweep(): LongState {
  * Mockup units on screen: [u] px per unit, the dial centre ([cx], [cy]). [portrait] (C on an upright screen, r14 mockup
  * `relPortrait`): hours over minutes, the colon studs side by side between the rows, date window above, scale under.
  */
-private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val cx: Float, val cy: Float, val portrait: Boolean = false) {
-    /** Half width / height in units (the short one is 50 for the analog faces). */
-    val hw = w / 2f / u
-    val hh = h / 2f / u
+private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val cx: Float, val cy: Float, val portrait: Boolean = false, val ins: Float = 0f) {
+    /** Half width / height in units inside the [ins] margin (the short one is 50 for the analog faces). */
+    val hw = (w / 2f - ins) / u
+    val hh = (h / 2f - ins) / u
     fun x(v: Float) = cx + v * u
     fun y(v: Float) = cy + v * u
 
@@ -273,14 +293,18 @@ private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val 
         const val PORT_ROW_GAP = 17f
         const val PORT_TOP = RlStatic.H + PORT_ROW_GAP / 2
 
-        fun of(kind: RlKind, w: Int, h: Int): RlGeo = when (kind) {
-            // the round dials need 100 units across the short side
-            RlKind.ROUND, RlKind.SQUARE -> RlGeo(kind, w, h, min(w, h) / 100f, w / 2f, h / 2f)
-            // upright: the digit pair takes 74 % of the width (capped so date window .. scale labels, ~145 units, fit
-            // the height); the block sits a little below the middle
-            RlKind.CAPSULE -> if (h > w * 1.15f) min(w * 0.74f / (2 * RlStatic.W + RlStatic.GAP), h / 160f).let { u -> RlGeo(kind, w, h, u, w / 2f, h * 0.53f, portrait = true) }
-            // the digits + seconds scale need 150 units across, 100 down; the row sits 6 units above the middle
-            else min(w / 150f, h / 100f).let { u -> RlGeo(kind, w, h, u, w / 2f, h / 2f - 6f * u) }
+        /** [ins] = px of dial around the content (the dial bleeding to a card edge): layout uses the box inside it. */
+        fun of(kind: RlKind, w: Int, h: Int, ins: Float = 0f): RlGeo {
+            val iw = w - 2 * ins; val ih = h - 2 * ins
+            return when (kind) {
+                // the round dials need 100 units across the short side
+                RlKind.ROUND, RlKind.SQUARE -> RlGeo(kind, w, h, min(iw, ih) / 100f, w / 2f, h / 2f, ins = ins)
+                // upright: the digit pair takes 74 % of the width (capped so date window .. scale labels, ~145 units, fit
+                // the height); the block sits a little below the middle
+                RlKind.CAPSULE -> if (ih > iw * 1.15f) min(iw * 0.74f / (2 * RlStatic.W + RlStatic.GAP), ih / 160f).let { u -> RlGeo(kind, w, h, u, w / 2f, ins + ih * 0.53f, portrait = true, ins = ins) }
+                // the digits + seconds scale need 150 units across, 100 down; the row sits 6 units above the middle
+                else min(iw / 150f, ih / 100f).let { u -> RlGeo(kind, w, h, u, w / 2f, h / 2f - 6f * u, ins = ins) }
+            }
         }
     }
 }
@@ -394,6 +418,7 @@ private object RlStatic {
 
     /** Dial colour, the soft top-left light with edge falloff, grain (none at night). */
     private fun background(c: Canvas, g: RlGeo, p: RlPal, full: RectF) {
+        if (p.clear) return
         c.drawRect(full, Paint().apply { color = p.dial })
         if (p.night) return
         // mockup `-l`: radial from (36 %, 30 %), radius 85 % of each side (an ellipse on a wide screen)
@@ -559,8 +584,8 @@ private object RlStatic {
                 else cutNumeral(c, g, p, x, y, t, kc, fonts.bold)
             }
         }
-        // faint diagonal glass gloss over the whole face (off at night)
-        if (!p.night) {
+        // faint diagonal glass gloss over the whole face (off at night and with no dial)
+        if (!p.night && !p.clear) {
             val gloss = LinearGradient(0f, 0f, g.w.toFloat(), g.h.toFloat(),
                 intArrayOf(alpha(WHITE, 0.14f), alpha(WHITE, 0f), alpha(WHITE, 0f), alpha(WHITE, 0.05f), alpha(WHITE, 0f)),
                 floatArrayOf(0f, 0.35f, 0.62f, 0.7f, 0.78f), Shader.TileMode.CLAMP)
@@ -647,7 +672,7 @@ private object RlStatic {
     fun dateBox(g: RlGeo): RectF {
         val u = g.u
         if (g.portrait) { val b = g.y(-RlGeo.PORT_TOP - 9f); return RectF(g.cx - 11f * u, b - 7f * u, g.cx + 11f * u, b) }
-        val l = min(g.w - 40f * u, g.cx + 68f * u); val t = max(9f * u, g.cy - 35f * u)
+        val l = min(g.w - g.ins - 40f * u, g.cx + 68f * u); val t = max(g.ins + 9f * u, g.cy - 35f * u)
         return RectF(l, t, l + 22f * u, t + 7f * u)
     }
 

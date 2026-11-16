@@ -172,6 +172,8 @@ class SettingsClockShots : SettingsShotKit() {
     @Test fun clockHangul() = snap("clock-hangul", tall, route = Routes.clock(FaceId.HANGUL))
     @Test fun clockAnalog() = snap("clock-analog", tallest, route = Routes.clock(FaceId.ANALOG)) { onNodeWithText("자세히").performScrollTo().performClick() }
     @Test fun clockColorBlock() = snap("clock-colorblock", tall, route = Routes.clock(FaceId.COLOR_BLOCK))
+    /** 11-16: 입체 시계's rows down to 배경 투명. */
+    @Test fun clockRelief() = snap("clock-relief", tallest, route = Routes.clock(FaceId.RELIEF)) { onNodeWithText("배경 투명").performScrollTo() }
     /** 색 조합 바꾸기 pressed once: a new combo, [이전 조합] enabled. */
     @Test fun clockShuffle() = snap("clock-shuffle", tall, route = Routes.clock(FaceId.DIGITAL)) { onNodeWithText("색 조합 바꾸기").performClick() }
     @Test fun clockSolarFold() = snap("clock-solar-fold", foldTall, route = Routes.clock(FaceId.SOLAR))

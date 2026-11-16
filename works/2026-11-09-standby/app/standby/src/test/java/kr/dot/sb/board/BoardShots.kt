@@ -44,8 +44,12 @@ class BoardShots(private val name: String, private val device: Device, private v
             { mainClock.autoAdvance = false; onRoot().performClick(); mainClock.advanceTimeBy(400) }
         }
         // "-fill": the DIGITAL clock with r14 꽉 채우기
-        val styles = if (!stateKey.endsWith("-fill")) emptyMap() else
-            mapOf(kr.dot.sb.model.FaceId.DIGITAL to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(kr.dot.sb.model.FaceId.DIGITAL).copy(fill = true))
+        // "-own": the board's own-background clock styled (11-16: fills the card), "-own-clear" with 배경 투명
+        val styles = when {
+            stateKey.endsWith("-fill") -> mapOf(kr.dot.sb.model.FaceId.DIGITAL to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(kr.dot.sb.model.FaceId.DIGITAL).copy(fill = true))
+            "-own" in stateKey -> mapOf(board.clockFace to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(board.clockFace).copy(clearBg = stateKey.endsWith("-clear")))
+            else -> emptyMap()
+        }
         rule.shot("board", name, device, theme, s.night, open) {
             androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalAppLookup provides Fixtures.appLookup) {
                 BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays), StandbyActions.NONE)
@@ -58,7 +62,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
 
         /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
-        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-fill").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
+        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-clear").removeSuffix("-own").removeSuffix("-fill").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
             "night" -> Fixtures.full(1f)
             "noart" -> Fixtures.full().let { it.copy(media = it.media!!.copy(art = null)) }
             "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
@@ -125,6 +129,8 @@ class BoardShots(private val name: String, private val device: Device, private v
                 for (d in Device.MAIN) out += arrayOf("preset-${b.id}", d, b, "full")
                 // r14: 작업 책상 with the DIGITAL clock filling its slot
                 if (b.id == "desk") out += arrayOf("preset-desk-fill", Device.FOLD_COVER_L, b, "full-fill")
+                // 11-16: 작업 책상 with 입체 시계, filling its card and with 배경 투명
+                if (b.id == "desk") for (k in listOf("own", "own-clear")) out += arrayOf("preset-desk-relief-$k", Device.FOLD_COVER_L, b.copy(clockFace = kr.dot.sb.model.FaceId.RELIEF), "full-$k")
                 out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
             }
             for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")
@@ -144,6 +150,10 @@ class BoardShots(private val name: String, private val device: Device, private v
             for (t in listOf("CLOCK", "ANALOG", "WEATHER", "CALENDAR", "AGENDA", "DDAY", "TIMER", "MEMORIES", "SLEEP", "USAGE")) {
                 out += arrayOf("card-${t.lowercase()}-L", Device.FOLD_INNER, one(t, Layout.ONE), "full")
                 out += arrayOf("card-${t.lowercase()}-M", Device.FOLD_COVER_P, one(t, Layout.TWO), "full")
+            }
+            // 11-16: own-background faces in an M card, filling it and with 배경 투명
+            for (f in listOf(kr.dot.sb.model.FaceId.RELIEF_DIGITAL, kr.dot.sb.model.FaceId.RELIEF_SQUARE, kr.dot.sb.model.FaceId.STICKER, kr.dot.sb.model.FaceId.COLOR_BLOCK)) for (k in listOf("own", "own-clear")) {
+                out += arrayOf("card-${f.name.lowercase().replace('_', '-')}-M-$k", Device.FOLD_COVER_L, Board("card", "CLOCK", Layout.TWO, listOf(listOf(CardType.CLOCK)), clockFace = f), "full-$k")
             }
             // narrow tall weather (SMALL) + square calendar on the bar portrait; calendar without permission
             out += arrayOf("small-weather-calendar", Device.BAR_P, Board("small", "small", Layout.BIG2, listOf(listOf(CardType.CLOCK), listOf(CardType.WEATHER), listOf(CardType.CALENDAR))), "full")

@@ -54,7 +54,9 @@ enum class StyleRow(val part: String? = null) {
     // r11 Part C (Relief faces)
     LUME_VIEW, MOVEMENT, INDEX_ONLY, SQUARE_NUMERALS, HOURS, GHOST, DATE_WINDOW,
     // r14 디지털 (plan-r14 A2)
-    ACCENT_MIDDLE, FILL, OVERLAP;
+    ACCENT_MIDDLE, FILL, OVERLAP,
+    // 11-16: faces with their own background
+    CLEAR_BG;
 
     val preset: Boolean get() = this == LED || this == PAIR || this == TRIO || this == SOLAR
 
@@ -133,8 +135,8 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.THIN -> c(Family.SIMPLE, "가는 선", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.SPLIT -> c(Family.SIMPLE, "시·분 나눔", listOf(HOUR_COLOR, MINUTE_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.DESK -> c(Family.SIMPLE, "책상", listOf(TEXT_COLOR, SIZE, FONT), DT, built = true)
-        FaceId.COLOR_BLOCK -> c(Family.POP, "색 블록", listOf(PAIR, SIZE, FONT, INFO), emptyList(), built = true)
-        FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO), listOf(PAPER_COLOR), ours = true, built = true)
+        FaceId.COLOR_BLOCK -> c(Family.POP, "색 블록", listOf(PAIR, SIZE, FONT, INFO, StyleRow.CLEAR_BG), emptyList(), built = true)
+        FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO, StyleRow.CLEAR_BG), listOf(PAPER_COLOR), ours = true, built = true)
         FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), ours = true, built = true)
         FaceId.SOLAR -> c(Family.POP, "솔라", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
         // r14: legacy id only (old saves read it as DIGITAL); never listed
@@ -157,11 +159,18 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
         FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), ours = true, built = true)
         FaceId.WORLD -> c(Family.GAUGE, "세계", listOf(CITY_COLOR, LIT_COLOR, SIZE, FONT), DT, built = true)
-        FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY), emptyList(), built = true)
-        FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS), emptyList(), built = true)
-        FaceId.RELIEF_DIGITAL -> c(Family.RETRO, "입체 디지털", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.HOURS, StyleRow.GHOST, StyleRow.DATE_WINDOW), emptyList(), built = true)
+        FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY, StyleRow.CLEAR_BG), emptyList(), built = true)
+        FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS, StyleRow.CLEAR_BG), emptyList(), built = true)
+        FaceId.RELIEF_DIGITAL -> c(Family.RETRO, "입체 디지털", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.HOURS, StyleRow.GHOST, StyleRow.DATE_WINDOW, StyleRow.CLEAR_BG), emptyList(), built = true)
     }
 }
+
+/**
+ * The face paints its own background in a slot (the relief dials, 색 블록, 스티커, a coloured Solar), so a clock card
+ * gives it the whole card; 배경 투명 ([ClockStyle.clearBg]) turns that off.
+ */
+fun ownBg(face: FaceId, s: ClockStyle): Boolean =
+    !s.clearBg && (StyleRow.CLEAR_BG in spec(face).rows || face == FaceId.SOLAR && s.background != kr.dot.sb.model.Background.BLACK)
 
 object ClockRegistry {
     /** Every face in gallery order (by family, then declaration order); FLOAT is a legacy id (r14). */

@@ -8,6 +8,8 @@ package kr.dot.sb.ui.clock
  *       A whole face filling [modifier]'s box: full screen, or fitted into a board slot when [inSlot] (no side column,
  *       date row below in slot label size, no background except Solar's rounded plate; XS slot = digits only).
  *       [analog] = `AppConfig.analogStyle` (full screen only; a slot always gets the round dial).
+ *       [bleed] (slot, [ownBg] faces): the face lays out in [modifier]'s box but paints its background this far beyond
+ *       it on every side, square-cornered; the caller clips it (a clock card: to the card shape).
  *       [hero] = false: a second clock on a board (design-system §5.1) — digits in white `ink`, no effects.
  *       PHOTOS_TIME is given the whole photo screen and places the time itself (right edge 92 % W, cap-top 10 % H,
  *       cap 15 % H, autosized inside x 72-92 %, y 10-28 %).
@@ -42,6 +44,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.City
 import kr.dot.sb.model.ClockStyle
@@ -59,7 +63,7 @@ import java.time.ZoneId
 @Composable
 fun ClockFace(
     face: FaceId, style: ClockStyle, state: StandbyState, modifier: Modifier = Modifier, inSlot: Boolean = false, hero: Boolean = true,
-    analog: AnalogStyle = AnalogStyle.ROUND,
+    analog: AnalogStyle = AnalogStyle.ROUND, bleed: Dp = 0.dp,
 ) {
     if (state.displayOff) { Box(modifier); return }
     val data = FaceData.of(state)
@@ -87,16 +91,16 @@ fun ClockFace(
             FaceId.HANGUL -> HangulFace(st, d, ink, inSlot, mod)
             FaceId.THIN -> ThinFace(st, d, ink, inSlot, mod)
             FaceId.SPLIT -> SplitFace(st, d, ink, inSlot, mod)
-            FaceId.COLOR_BLOCK -> ColorBlockFace(st, d, ink, inSlot, mod)
-            FaceId.STICKER -> StickerFace(st, d, ink, inSlot, mod)
+            FaceId.COLOR_BLOCK -> ColorBlockFace(st, d, ink, inSlot, mod, bleed)
+            FaceId.STICKER -> StickerFace(st, d, ink, inSlot, mod, bleed)
             FaceId.BALLS -> BallsFace(st, d, ink, inSlot, mod)
             FaceId.DAY_BAR -> DayBarFace(st, d, ink, inSlot, state.weather, state.nextAlarm, mod)
             FaceId.RIM -> RimFace(st, d, ink, inSlot, mod)
-            FaceId.RELIEF -> ReliefFace(st, d, ink, inSlot, mod)
-            FaceId.RELIEF_SQUARE -> ReliefSquareFace(st, d, ink, inSlot, mod)
-            FaceId.RELIEF_DIGITAL -> ReliefDigitalFace(st, d, ink, inSlot, mod)
+            FaceId.RELIEF -> ReliefFace(st, d, ink, inSlot, mod, bleed)
+            FaceId.RELIEF_SQUARE -> ReliefSquareFace(st, d, ink, inSlot, mod, bleed)
+            FaceId.RELIEF_DIGITAL -> ReliefDigitalFace(st, d, ink, inSlot, mod, bleed)
             FaceId.DESK -> DeskFace(st, d, ink, inSlot, mod)
-            FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod)
+            FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod, bleed)
             FaceId.ANALOG -> AnalogFace(st, d, ink, inSlot, mod, analog)
             FaceId.WORLD -> WorldFace(st, d, ink, inSlot, mod)
             FaceId.PHOTOS_TIME -> PhotosTime(st, d, ink, mod)

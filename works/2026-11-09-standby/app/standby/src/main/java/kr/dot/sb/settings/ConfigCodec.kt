@@ -295,6 +295,7 @@ object ConfigCodec {
         put("lumeView", s.lumeView.name); put("sweep", s.sweep); s.h24?.let { put("h24", it) }; put("ghost", s.ghost); put("squareNumerals", s.squareNumerals.name)
         // r14 디지털 options; absent = false
         if (s.accentMiddle) put("am", true); if (s.fill) put("fl", true); if (s.overlap) put("ov", true)
+        if (s.clearBg) put("cb", true)
     }
 
     /** r10 per-face colours (nullable): key, read, write. Presets are indices, stored as numbers too. */
@@ -333,6 +334,7 @@ object ConfigCodec {
         h24 = if (o.has("h24")) o.opt("h24") as? Boolean else b.h24, ghost = o.optBoolean("ghost", b.ghost),
         squareNumerals = enumOf(o, "squareNumerals", b.squareNumerals),
         accentMiddle = o.optBoolean("am", false), fill = o.optBoolean("fl", false), overlap = o.optBoolean("ov", false),
+        clearBg = o.optBoolean("cb", false),
     ).let { s -> R10_COLOURS.fold(s) { acc, (k, _, set) -> if (o.has(k) && !o.isNull(k)) set(acc, o.optLong(k)) else acc } }
 
     private fun board(b: Board) = JSONObject().apply {

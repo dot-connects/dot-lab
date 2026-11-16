@@ -9,6 +9,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
@@ -44,15 +45,16 @@ private fun Canvas.plate(w: Float, h: Float, bleed: Float, r: Float, paint: (Can
  * boxes stack the halves. Night: both halves black with a night rule between them.
  */
 @Composable
-internal fun ColorBlockFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+internal fun ColorBlockFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) {
     val p = rememberTimePainter(style)
     val ui = rememberUi(700)
     val n = ink.night
     val pair = FaceDefaults.PAIRS[(style.pairPreset ?: 0).coerceIn(0, FaceDefaults.PAIRS.lastIndex)].map { Color(it) }
     // night fades the plate out to the night page (its candle glow stays), mockup .n = black halves
-    val halves = pair.map { it.copy(alpha = 1f - n).toArgb() }
+    // 배경 투명: no halves, digits and captions in the theme ink
+    val halves = pair.map { it.copy(alpha = if (style.clearBg) 0f else 1f - n).toArgb() }
     // dark digits unless the half is really dark (pairs 3 and 4 have a near-black half); the mockup's pink keeps dark
-    val dayOn = pair.map { if (it.luminance() > 0.12f) Color(DARK) else Color(FaceDefaults.PAPER) }
+    val dayOn = pair.map { if (style.clearBg) ink.ink else if (it.luminance() > 0.12f) Color(DARK) else Color(FaceDefaults.PAPER) }
     val on = dayOn.map { lerp(it, NIGHT_INK, n) }
     val capC = dayOn.map { lerp(it, Ink.NIGHT_DIM, n).toArgb() }
     val fallback = Look.of(style, ink)
@@ -74,8 +76,8 @@ internal fun ColorBlockFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Bo
         ui.textSize = max(13.dp.toPx(), 20 * k)
         val c1 = if (d.use24h) null else d.ampm
         val c2 = if (style.showInfo) listOfNotNull("${d.weekday}요일", d.temp).joinToString(" · ") else null
-        val bleed = if (inSlot) 0f else BURN_IN_BLEED.toPx()
-        val r = if (inSlot) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
+        val bleed = if (inSlot) slotBleed.toPx() else BURN_IN_BLEED.toPx()
+        val r = if (inSlot && bleed == 0f) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
         val fill = Paint(Paint.ANTI_ALIAS_FLAG)
         val rule = Paint().apply { color = TimePainter.withAlpha(Ink.NIGHT_DIM.toArgb(), n); strokeWidth = 2.dp.toPx() }
         val pad = 26 * k; val low = h - 18 * k - 0.2f * ui.textSize
@@ -109,14 +111,16 @@ private val STICK_DROP = floatArrayOf(0f, 6f, 0f)
  * tilted dark pill "월요일 · 7°" bottom-right. Night: black page, plain night digits, no outline, shadow or pill plate.
  */
 @Composable
-internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
+internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier, slotBleed: Dp = 0.dp) {
     val p = rememberTimePainter(style)
     val ui = rememberUi(700)
     val n = ink.night
     val night = n >= 0.5f
     val trio = FaceDefaults.TRIOS[(style.trioPreset ?: 0).coerceIn(0, FaceDefaults.TRIOS.lastIndex)]
     val paperC = Color(style.paperColor ?: FaceDefaults.PAPER)
-    val paper = paperC.copy(alpha = 1f - n).toArgb()
+    val paper = paperC.copy(alpha = if (style.clearBg) 0f else 1f - n).toArgb()
+    // the colon is white on its own paper; 배경 투명 puts it on the card, so theme ink
+    val colonC = if (style.clearBg) ink.ink else Color.White
     val dark = Color(0xFF16130F)
     val fallback = Look.of(style, ink)
     FaceCanvas(modifier) {
@@ -139,8 +143,8 @@ internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
         val colonX = xs[hl] - colonW - 6 * r
         val capTop = (h - cap) / 2
         val pt = p.paint
-        val bleed = if (inSlot) 0f else BURN_IN_BLEED.toPx()
-        val rr = if (inSlot) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
+        val bleed = if (inSlot) slotBleed.toPx() else BURN_IN_BLEED.toPx()
+        val rr = if (inSlot && bleed == 0f) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
         val bg = Paint().apply { color = paper }
         val pill = if (inSlot || !style.showInfo) null else listOfNotNull("${d.weekday}요일", d.temp).joinToString(" · ")
         ui.textSize = max(13.dp.toPx(), 19 * k)
@@ -163,7 +167,7 @@ internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
             plate(w, h, bleed, rr) { c, pw, ph, _ -> c.drawRect(0f, 0f, pw, ph, bg) }
             for (i in digits.indices) {
                 // mockup stacking: each sticker over the previous one, the colon over the hour
-                if (i == hl) glyph(this, ":", colonX, capTop + cap - 10 * r, lerp(Color.White, NIGHT_INK, n).toArgb()) // literal-ok: sticker colon is white on its own paper (c-stick .cl)
+                if (i == hl) glyph(this, ":", colonX, capTop + cap - 10 * r, lerp(colonC, NIGHT_INK, n).toArgb()) // literal-ok: sticker colon is white on its own paper (c-stick .cl)
                 val cx = xs[i] + adv[i] / 2; val cy = capTop + cap / 2
                 save(); rotate(STICK_TILT[i % 3], cx, cy)
                 glyph(this, digits[i].toString(), xs[i], capTop + cap + STICK_DROP[i % 3] * r, lerp(Color(trio[i % 3]), NIGHT_INK, n).toArgb())

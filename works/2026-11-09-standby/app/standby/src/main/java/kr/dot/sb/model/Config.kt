@@ -252,6 +252,8 @@ data class ClockStyle(
     val accentMiddle: Boolean = false,
     val fill: Boolean = false,
     val overlap: Boolean = false,
+    /** 배경 투명: a face with its own background draws on the card plate / page instead, in theme ink. */
+    val clearBg: Boolean = false,
 ) {
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */
