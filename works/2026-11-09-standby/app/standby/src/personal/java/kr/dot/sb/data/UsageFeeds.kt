@@ -36,6 +36,8 @@ object UsageFeeds {
         if (lan != null && Feeds.onWifi(ctx) && BuildConfig.LAN_TOKEN.isNotEmpty() && UsageParser.isPrivateHttp(lan)) {
             try { return Feeds.get(lan, 1500, "Bearer " + BuildConfig.LAN_TOKEN) } catch (e: Exception) { errors += "lan:${e.javaClass.simpleName}" }
         }
+        // Telegram needs the internet: on Wi-Fi that did not validate, the LAN route was the only one
+        if (!Feeds.online(ctx)) throw IllegalStateException("offline " + errors.joinToString())
         if (BuildConfig.STATUS_BOT_TOKEN.isEmpty()) throw IllegalStateException("no bot token " + errors.joinToString())
         try {
             val chat = Feeds.get(

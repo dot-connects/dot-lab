@@ -48,4 +48,11 @@ class FeedStateTest {
         assertTrue(s.weather!!.offline)
         assertTrue(s.usage!!.offline)
     }
+
+    @Test fun unvalidatedWifiStillTriesLan() {
+        assertFalse(Feeds.noNetwork(validated = false, wifi = true, lan = true)) // usage: LAN route runs
+        assertTrue(Feeds.noNetwork(validated = false, wifi = true, lan = false)) // weather: needs the internet
+        assertTrue(Feeds.noNetwork(validated = false, wifi = false, lan = true)) // nothing at all
+        assertFalse(Feeds.noNetwork(validated = true, wifi = false, lan = false))
+    }
 }

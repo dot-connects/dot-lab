@@ -37,7 +37,7 @@ object Brightness {
 
     fun fromBar(p: Float): Float = MIN + (1f - MIN) * Math.pow(p.coerceIn(0f, 1f).toDouble(), GAMMA).toFloat()
 
-    /** AUTO shows as the bar of 0.5; anything under [MIN] (OFF, NaN) as the bar's start. */
+    /** AUTO shows as window 0.5 (bar ≈ 0.73); anything under [MIN] (OFF, NaN) as the bar's start. */
     fun toBar(v: Float): Float {
         val w = if (v == AUTO) 0.5f else clamp(v)
         return Math.pow(((w - MIN) / (1f - MIN)).toDouble(), 1.0 / GAMMA).toFloat().coerceIn(0f, 1f)

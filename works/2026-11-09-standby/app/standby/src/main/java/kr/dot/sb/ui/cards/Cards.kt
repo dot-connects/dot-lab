@@ -134,7 +134,7 @@ fun CardView(
     onFace: ((FaceId) -> Unit)? = null,
 ) = ProvideTheme(config) {
     // a clock card's own face (11-14) wins over the board's; while the arrows are up, the face being browsed wins
-    val saved = options?.face ?: look.clockFace
+    val saved = (options?.face ?: look.clockFace).let { if (type == CardType.CLOCK) kr.dot.sb.ui.clock.ClockRegistry.cardFace(it, config.myClocks) else it }
     val sw = rememberFaceSwitch(saved)
     @Suppress("NAME_SHADOWING") val look = (sw.face ?: sw.pending ?: saved).let { if (it != look.clockFace) look.copy(clockFace = it) else look }
     if (type == CardType.CLOCK && onFace != null) {
@@ -194,7 +194,7 @@ fun CardView(
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
                     CardType.ALARM -> AlarmCard(g, state, config, actions)
                 }
-                if (arrows && sw.face != null) FaceArrows(e, faceCycle(config, saved), sw)
+                if (arrows && sw.face != null) FaceArrows(e, kr.dot.sb.ui.clock.ClockRegistry.boardPages(config.myClocks), sw)
             }
         }
     }
@@ -226,12 +226,6 @@ internal class FaceSwitch(private val saved: () -> FaceId) {
 internal fun rememberFaceSwitch(saved: FaceId): FaceSwitch {
     val cur by androidx.compose.runtime.rememberUpdatedState(saved)
     return remember { FaceSwitch { cur } }
-}
-
-/** The faces the arrows cycle: 내 시계 that draw in a slot, the card's own face first if it is not one of them. */
-private fun faceCycle(config: AppConfig, saved: FaceId): List<FaceId> {
-    val my = kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces }
-    return if (saved in my) my else listOf(saved) + my
 }
 
 /** Mockup option A: "<name> · n / N" pill on top, round chevrons inside the left and right edges, dots at the bottom. */
@@ -273,8 +267,8 @@ private fun FaceArrows(e: Env, faces: List<FaceId>, sw: FaceSwitch) {
  */
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
-    // a face removed from 내 시계 leaves every card that showed it (falls back to the first of 내 시계)
-    val face = e.look.clockFace.let { f -> kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).let { mine -> if (f in mine) f else mine.first() } }
+    // a face removed from 내 시계 leaves every card that showed it (falls back to the first of 내 시계 that fits a slot)
+    val face = kr.dot.sb.ui.clock.ClockRegistry.cardFace(e.look.clockFace, config.myClocks)
     if (face == FaceId.ANALOG && face !in config.styles) return AnalogCard(e, state)
     val custom = face in config.styles
     val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }

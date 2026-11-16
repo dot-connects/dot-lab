@@ -181,4 +181,10 @@ object ClockRegistry {
 
     /** Board editor clock chips: built faces that draw in a slot (사진 위 시간 places itself on a photo screen). */
     val boardFaces: List<FaceId> get() = all.filter { spec(it).built && it != FaceId.PHOTOS_TIME }
+
+    /** A clock card's choices (arrows, editor chips): 내 시계 that draw in a slot; none = digital. */
+    fun boardPages(myClocks: List<FaceId>): List<FaceId> = pages(myClocks).filter { it in boardFaces }.ifEmpty { listOf(FaceId.DIGITAL) }
+
+    /** What a clock card set to [face] draws: [face] while it is in [boardPages], else the first of them. */
+    fun cardFace(face: FaceId, myClocks: List<FaceId>): FaceId = boardPages(myClocks).let { if (face in it) face else it.first() }
 }

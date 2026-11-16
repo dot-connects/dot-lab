@@ -92,6 +92,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         StandbyPresence.activity = false
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder.stop()
+        unlocking = false // a lost dismiss callback must not keep the unlock close off for good
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
         if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
         super.onStop()

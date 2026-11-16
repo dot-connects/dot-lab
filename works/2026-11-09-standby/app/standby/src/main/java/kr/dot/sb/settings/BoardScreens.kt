@@ -400,10 +400,10 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                         }
                     }
                     item {
-                        // 내 시계 that draw in a slot, plus the page's current face if it left the list
-                        val faces = (kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).filter { it in kr.dot.sb.ui.clock.ClockRegistry.boardFaces } + board.clockFace).distinct()
+                        // 내 시계 that draw in a slot; a face that left the list shows as the one the card falls back to
+                        val faces = kr.dot.sb.ui.clock.ClockRegistry.boardPages(config.myClocks)
                         ControlRow("이 페이지의 시계") {
-                            ChipFlow(faces.map { kr.dot.sb.ui.clock.spec(it).ko }, faces.indexOf(board.clockFace), { i -> edit { b -> b.copy(clockFace = faces[i]) } })
+                            ChipFlow(faces.map { kr.dot.sb.ui.clock.spec(it).ko }, faces.indexOf(kr.dot.sb.ui.clock.ClockRegistry.cardFace(board.clockFace, config.myClocks)), { i -> edit { b -> b.copy(clockFace = faces[i]) } })
                         }
                     }
                 }

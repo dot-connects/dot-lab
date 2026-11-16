@@ -334,6 +334,8 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var barFrom = Float.NaN
     /** [hot] when the brightness was last applied: a change is the heat cap moving ("열" in the trail). */
     private var hotApplied = false
+    /** Last "열" trail line (elapsed ms); [Long.MIN_VALUE] / 2 = never, so the first one always logs. */
+    private var heatLoggedAt = Long.MIN_VALUE / 2
 
     /**
      * Live from the on-screen bar ([p] = bar position, r14 perceptual curve): shown at once, written to the config once
@@ -382,7 +384,12 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         val b = Brightness.target(off, nightOn, cfg, hot)
         if (b != lastBrightness) {
             // screen off/on is not logged: it repeats all night and would push the charge-start lines out of the trail
-            if (!off && lastBrightness != Brightness.OFF) logBrightness(if (hot != hotApplied) "열" else "밤", lastBrightness, b)
+            // a battery near 42 °C toggles the heat cap often: one "열" line per 10 min at most, for the same reason
+            val heat = hot != hotApplied
+            if (!off && lastBrightness != Brightness.OFF && (!heat || el() - heatLoggedAt >= HEAT_LOG_MS)) {
+                if (heat) heatLoggedAt = el()
+                logBrightness(if (heat) "열" else "밤", lastBrightness, b)
+            }
             lastBrightness = b; host.setBrightness(b)
         }
         hotApplied = hot
@@ -539,8 +546,10 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
 
     private suspend fun fetchUsage(): Boolean {
         if (!UsageFeature.enabled || !cfg.usageEnabled) { lastUsageAt = System.currentTimeMillis(); return true }
-        if (!Feeds.online(ctx)) { markUsageOffline(FeedError.NO_NETWORK); return false }
-        val u = usageFeed.fetch() ?: run { markUsageOffline(FeedError.FAILED); return false }
+        val validated = Feeds.online(ctx)
+        if (Feeds.noNetwork(validated, Feeds.onWifi(ctx), lan = true)) { markUsageOffline(FeedError.NO_NETWORK); return false }
+        // unvalidated Wi-Fi: only the LAN route ran, so its failure reads as no internet
+        val u = usageFeed.fetch() ?: run { markUsageOffline(if (validated) FeedError.FAILED else FeedError.NO_NETWORK); return false }
         lastUsageAt = System.currentTimeMillis()
         _state.update { it.usageLoaded(u) }
         return true
@@ -705,6 +714,7 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
         private val timers = HashMap<String, PomodoroTimer>()
         /** Accelerometer batching (r11 perf): the most a pick-up waits for delivery. */
         private const val ACCEL_BATCH_US = 150_000
+        private const val HEAT_LOG_MS = 10 * 60_000L
         @Volatile private var lastNight = 0f
     }
 }

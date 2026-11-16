@@ -317,6 +317,8 @@ internal fun NotifCard(e: Env, state: StandbyState, actions: StandbyActions, pla
     // r15 §3 밀어서 지우기: off after 30 s without a dismiss, when the screen goes off (stop) or the card leaves the screen
     var sc by remember { mutableStateOf(SwipeClear()) }
     LaunchedEffect(sc) { if (sc.on) { delay(SWIPE_IDLE_MS); sc = sc.off() } }
+    // the display dims off while the activity stays started (no ON_STOP)
+    LaunchedEffect(state.displayOff) { if (state.displayOff) sc = sc.off() }
     val life = androidx.lifecycle.compose.LocalLifecycleOwner.current
     DisposableEffect(life) {
         val o = LifecycleEventObserver { _, ev -> if (ev == Lifecycle.Event.ON_STOP) sc = sc.off() }

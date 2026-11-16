@@ -21,6 +21,9 @@ object Feeds {
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
+    /** Skip a fetch as NO_NETWORK? A feed with a home-LAN route ([lan]) still tries it on Wi-Fi that did not validate. */
+    fun noNetwork(validated: Boolean, wifi: Boolean, lan: Boolean): Boolean = !validated && !(lan && wifi)
+
     fun weatherText(lat: Double, lon: Double): String = get(WeatherParser.url(lat, lon), 8000, null)
 
     internal fun get(url: String, timeoutMs: Int, auth: String?): String {

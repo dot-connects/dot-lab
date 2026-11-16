@@ -14,7 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.produceState
+import androidx.lifecycle.compose.currentStateAsState
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.EmptyCoroutineContext
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -57,7 +62,8 @@ fun launcherApps(ctx: Context): List<AppEntry> {
 }
 
 /** How a card finds an app; shots swap in fakes (Robolectric has no launcher apps). */
-val LocalAppLookup = staticCompositionLocalOf<(Context, String) -> AppEntry?> { ::appEntry }
+private val realLookup: (Context, String) -> AppEntry? = ::appEntry
+val LocalAppLookup = staticCompositionLocalOf { realLookup }
 
 /**
  * 앱 바로가기 (plan-r14 C1): the picked apps as an icon grid sized to their count, labels from M up; tap = unlock and open.
@@ -68,8 +74,14 @@ internal fun AppsCard(e: Env, o: SlotOptions?, actions: StandbyActions, menu: St
     val ctx = LocalContext.current
     val lookup = LocalAppLookup.current
     val pkgs = o?.apps.orEmpty()
-    // one lookup per package list: no Drawable -> Bitmap per recomposition
-    val apps = remember(pkgs, lookup) { pkgs.mapNotNull { lookup(ctx, it) } }
+    // looked up off the main thread, again on every resume (an app installed / removed meanwhile); the last list stays up
+    val resumed = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle.currentStateAsState().value
+        .isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
+    val loaded by produceState<List<AppEntry>?>(null, pkgs, lookup, resumed) {
+        // the PackageManager lookup goes to IO; a fake (shots) stays on the frame so the capture sees it
+        if (resumed || value == null) value = withContext(if (lookup === realLookup) Dispatchers.IO else EmptyCoroutineContext) { pkgs.mapNotNull { lookup(ctx, it) } }
+    }
+    val apps = loaded ?: return // first lookup still running: a bare plate for a moment
     if (apps.isEmpty()) {
         TextCard(e, Modifier.tap(menu?.let { m -> { actions.openSettings(m) } })) {
             LabelRow(e, null, "앱 바로가기")
