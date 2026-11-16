@@ -7,6 +7,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import kr.dot.sb.Fixtures
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.platform.Brightness
 import kr.dot.sb.ui.screens.RootImpl
 import kr.dot.sb.ui.screens.RootStart
 import kr.dot.sb.ui.state.StandbyActions
@@ -33,7 +34,8 @@ class BrightnessSwipeTest {
 
     private fun swipe(dxFraction: Float): Rec {
         val rec = Rec()
-        rule.setContent { RootImpl(Fixtures.full(), AppConfig(dayBrightness = 0.5f), rec, Modifier, { _, _ -> }, RootStart()) }
+        // r14: the bar is perceptual; start it in the middle
+        rule.setContent { RootImpl(Fixtures.full(), AppConfig(dayBrightness = Brightness.fromBar(0.5f)), rec, Modifier, { _, _ -> }, RootStart()) }
         rule.waitForIdle()
         rule.onRoot().performTouchInput {
             val x = centerX

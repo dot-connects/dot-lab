@@ -568,12 +568,15 @@ fun AboutScreen(env: SettingsEnv, back: () -> Unit) {
         Section(null) {
             item { Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) { T("버전", 16.sp, 500, SK.text, Modifier.weight(1f)); T(env.versionName, 16.sp, 500, SK.muted) } }
         }
-        Section("문제 해결", footer = "충전기를 꽂으면 최근 켜짐 기록이 여기에 남아요.") {
-            item {
-                val trail = remember { env.chargeTrail() }
-                Column(Modifier.fillMaxWidth().padding(16.dp)) {
-                    T("최근 켜짐 기록", 16.sp, 500, SK.text)
-                    T(if (trail.isEmpty()) "아직 기록이 없어요" else trail.joinToString("\n"), 14.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 22.sp)
+        // r14 B8: the trail is for the operator (no adb); the public build writes it but does not show it
+        if (kr.dot.sb.BuildConfig.FLAVOR == "personal") {
+            Section("문제 해결", footer = "충전기를 꽂으면 최근 켜짐 기록이 여기에 남아요.") {
+                item {
+                    val trail = remember { env.chargeTrail() }
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        T("최근 켜짐 기록", 16.sp, 500, SK.text)
+                        T(if (trail.isEmpty()) "아직 기록이 없어요" else trail.joinToString("\n"), 14.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 22.sp)
+                    }
                 }
             }
         }

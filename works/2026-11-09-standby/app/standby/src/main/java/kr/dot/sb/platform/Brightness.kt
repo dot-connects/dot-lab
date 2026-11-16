@@ -27,7 +27,21 @@ object Brightness {
         if (c.heatProtect && hot && (v == AUTO || v > HOT_MAX)) HOT_MAX else v
 
     /** What the bar shows first: the stored value, or a middle value while day brightness follows auto. */
-    fun shown(night: Boolean, c: AppConfig): Float = if (night) c.nightMaxBrightness else c.dayBrightness ?: 0.5f
+    fun shown(night: Boolean, c: AppConfig): Float = toBar(if (night) c.nightMaxBrightness else c.dayBrightness ?: AUTO)
+
+    /**
+     * r14: the bar is perceptual, the window value linear (a linear bar looked near full from its middle on OLED).
+     * Bar p in 0..1 <-> window MIN + (1 - MIN) * p^2.2. Stored values stay window values.
+     */
+    private const val GAMMA = 2.2
+
+    fun fromBar(p: Float): Float = MIN + (1f - MIN) * Math.pow(p.coerceIn(0f, 1f).toDouble(), GAMMA).toFloat()
+
+    /** AUTO shows as the bar of 0.5; anything under [MIN] (OFF, NaN) as the bar's start. */
+    fun toBar(v: Float): Float {
+        val w = if (v == AUTO) 0.5f else clamp(v)
+        return Math.pow(((w - MIN) / (1f - MIN)).toDouble(), 1.0 / GAMMA).toFloat().coerceIn(0f, 1f)
+    }
 
     /** An edit from the bar lands in the night cap at night, in the day value otherwise. */
     fun store(c: AppConfig, night: Boolean, v: Float): AppConfig =

@@ -30,7 +30,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
         if (intent.getBooleanExtra(EXTRA_TILE, false)) {
             val bm = getSystemService(BatteryManager::class.java)
-            if (!bm.isCharging && bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) <= LOW_BATTERY) { finish(); return }
+            if (ChargeStart.plugged(this) == 0 && bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) <= LOW_BATTERY) { finish(); return }
             // without a charger the screen stays on: leave at LOW_BATTERY % (re-checked on every battery change)
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {
@@ -41,8 +41,10 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         }
         if (chargeStart) {
             ChargeStart.cancelNotification(this)
-            ChargeStart.log(this, "화면 열림")
-            if (!getSystemService(BatteryManager::class.java).isCharging) { ChargeStart.log(this, "닫힘 · 이미 뽑힘"); finish(); return } // unplugged before we got here
+            val plugged = ChargeStart.plugged(this)
+            ChargeStart.log(this, "화면 열림 · ${ChargeStart.sinceLaunch()} · plugged=$plugged")
+            // r14 D: plugged, not isCharging (false at 85 % battery protection / while a pad starts)
+            if (plugged == 0) { ChargeStart.log(this, "닫힘 · 이미 뽑힘"); finish(); return } // unplugged before we got here
             // unlock ends it (unplug: the state holder, for every start path); the exit swipe goes through HostActions.exit()
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {

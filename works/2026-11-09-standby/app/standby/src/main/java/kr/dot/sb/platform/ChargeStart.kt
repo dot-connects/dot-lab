@@ -93,6 +93,16 @@ object ChargeStart {
 
     fun cancelNotification(ctx: Context) = ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
 
+    /**
+     * Sticky ACTION_BATTERY_CHANGED EXTRA_PLUGGED (0 = no power source). r14 D: "is a charger there" is this, not
+     * BatteryManager.isCharging, which reads false at the 85 % battery protection stop and while a pad starts up.
+     */
+    internal fun plugged(ctx: Context): Int =
+        ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
+
+    /** ms since the last launch notification, for the trail ("–" when none in this process). */
+    internal fun sinceLaunch(): String = lastLaunchMs.takeIf { it > 0 }?.let { "${System.currentTimeMillis() - it}ms" } ?: "–"
+
     // ---- on-device trail: the last few attempts, shown in settings (the operator has no adb) ----
     private const val LOG_KEY = "trail"
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("charge_start", Context.MODE_PRIVATE)

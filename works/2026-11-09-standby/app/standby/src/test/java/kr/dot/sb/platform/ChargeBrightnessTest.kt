@@ -60,9 +60,11 @@ class ChargeBrightnessTest {
     }
 
     @Test fun barShowsStoredValueOrMiddleWhileAuto() {
-        assertEquals(0.5f, Brightness.shown(night = false, c = AppConfig(dayBrightness = null)))
-        assertEquals(0.9f, Brightness.shown(night = false, c = AppConfig(dayBrightness = 0.9f)))
-        assertEquals(0.3f, Brightness.shown(night = true, c = AppConfig(nightMaxBrightness = 0.3f)))
+        // r14: the bar is perceptual, so it shows the stored window value through toBar
+        assertEquals(Brightness.toBar(0.5f), Brightness.shown(night = false, c = AppConfig(dayBrightness = null)))
+        assertEquals(Brightness.toBar(0.9f), Brightness.shown(night = false, c = AppConfig(dayBrightness = 0.9f)))
+        assertEquals(Brightness.toBar(0.3f), Brightness.shown(night = true, c = AppConfig(nightMaxBrightness = 0.3f)))
+        assertEquals(0.9f, Brightness.fromBar(Brightness.shown(night = false, c = AppConfig(dayBrightness = 0.9f))), 1e-4f)
     }
 
     @Test fun barFractionMapsFingerAlongTheBar() {

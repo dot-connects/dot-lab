@@ -49,6 +49,8 @@ data class StandbyState(
     val unfolded: Boolean = false,
     /** Heat protection is dimming the screen (battery ≥ 42 °C until ≤ 40 °C, and the option is on). */
     val hot: Boolean = false,
+    /** r14 B7: heat protection holds the value the bar asks for at [kr.dot.sb.platform.Brightness.HOT_MAX] (panel hint). */
+    val brightCapped: Boolean = false,
     /** Burn-in shift offset in dp, applied to the content layer. */
     val shiftX: Int = 0,
     val shiftY: Int = 0,

@@ -48,6 +48,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.temporal.ChronoUnit
+import kotlin.math.roundToInt
 
 /** What the screen host (dream or activity) must do for the holder. */
 interface HostCallbacks {
@@ -324,13 +325,23 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private var pendingBrightness: Float? = null
     private var brightJob: Job? = null
 
-    /** Live from the on-screen bar: shown at once, written to the config once the finger has paused (not per frame). */
-    fun setUserBrightness(v: Float) {
-        val b = Brightness.clamp(v)
+    /** Window value before the current bar edit, for the trail. */
+    private var barFrom = Float.NaN
+    /** [hot] when the brightness was last applied: a change is the heat cap moving ("열" in the trail). */
+    private var hotApplied = false
+
+    /**
+     * Live from the on-screen bar ([p] = bar position, r14 perceptual curve): shown at once, written to the config once
+     * the finger has paused (not per frame).
+     */
+    fun setUserBrightness(p: Float) {
+        val b = Brightness.clamp(Brightness.fromBar(p))
         val w = Brightness.applied(b, cfg, hot)
+        if (pendingBrightness == null) barFrom = lastBrightness
         lastBrightness = w
         host.setBrightness(w)
         pendingBrightness = b
+        publishCapped()
         brightJob?.cancel()
         brightJob = scope.launch { delay(500); flushBrightness() }
     }
@@ -338,7 +349,21 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
     private fun flushBrightness() {
         val b = pendingBrightness ?: return
         pendingBrightness = null
+        logBrightness("막대", barFrom, lastBrightness) // one line per edit, not per frame
         ConfigStore.update(ctx) { Brightness.store(it, nightTarget >= 0.5f, b) }
+    }
+
+    /** The bar asks for more than heat protection lets through (same test as [Brightness.applied]). */
+    private fun publishCapped() {
+        val v = pendingBrightness ?: if (nightTarget >= 0.5f) cfg.nightMaxBrightness else cfg.dayBrightness ?: Brightness.AUTO
+        val capped = Brightness.applied(v, cfg, hot) != v
+        if (_state.value.brightCapped != capped) _state.update { it.copy(brightCapped = capped) }
+    }
+
+    /** r14 B7 trail (settings, personal build): "밝기 {source} {old}→{new}". */
+    private fun logBrightness(source: String, old: Float, new: Float) {
+        fun pct(v: Float) = when { v.isNaN() -> "–"; v == Brightness.AUTO -> "자동"; else -> "${(v * 100).roundToInt()}%" }
+        ChargeStart.log(ctx, "밝기 $source ${pct(old)}→${pct(new)}")
     }
 
     private fun setOff(off: Boolean, nightOn: Boolean) {
@@ -346,10 +371,16 @@ class StandbyStateHolder(app: Context, private val host: HostCallbacks, private 
             _state.update { it.copy(displayOff = off) }
             if (off) { visibleJob?.cancel(); visibleJob = null } else startVisible()
         }
+        publishCapped()
         // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
         if (!off && pendingBrightness != null) return
         val b = Brightness.target(off, nightOn, cfg, hot)
-        if (b != lastBrightness) { lastBrightness = b; host.setBrightness(b) }
+        if (b != lastBrightness) {
+            // screen off/on is not logged: it repeats all night and would push the charge-start lines out of the trail
+            if (!off && lastBrightness != Brightness.OFF) logBrightness(if (hot != hotApplied) "열" else "밤", lastBrightness, b)
+            lastBrightness = b; host.setBrightness(b)
+        }
+        hotApplied = hot
     }
 
     private fun eventMs(e: SensorEvent): Long {

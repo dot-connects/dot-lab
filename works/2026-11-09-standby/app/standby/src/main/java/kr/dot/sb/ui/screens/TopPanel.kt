@@ -56,6 +56,7 @@ import kr.dot.sb.settings.PreviewFrame
 import kr.dot.sb.settings.widgetsBoard
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.cards.LocalLiveWidgets
+import kr.dot.sb.ui.cards.Txt
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
@@ -124,6 +125,8 @@ internal fun TopPanel(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         PanelSlider("화면 밝기", level, onLevel) { c -> sun(c) }
+        // r14 B7: above Brightness.HOT_MAX the bar moves but the screen does not; say why
+        if (state.brightCapped) Txt("폰이 뜨거워서 35%까지만 밝아져요", 13.dp, ink.ink.copy(alpha = 0.75f), Modifier.padding(start = 14.dp), weight = 500, family = t.words(500))
         PanelSlider("소리 크기", vol, { v ->
             vol = v
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, (v * maxVol).roundToInt(), 0)

@@ -99,8 +99,7 @@ class GlowReceiver : BroadcastReceiver() {
         /** Full-screen-intent notification: the only way to light a screen over the lock screen (confirmed by the probe). */
         fun showIfInner(ctx: Context, source: GlowSource) { if (isInner(ctx) && charging(ctx)) post(ctx, source) } // unplugged = StandBy is not running: no glow
 
-        private fun charging(ctx: Context): Boolean =
-            ctx.getSystemService(BatteryManager::class.java).isCharging
+        private fun charging(ctx: Context): Boolean = ChargeStart.plugged(ctx) != 0 // r14 D: plugged, not isCharging
 
         private val lastPostAt = HashMap<GlowSource, Long>() // main thread only (receivers, dream)
 
