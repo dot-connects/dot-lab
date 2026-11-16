@@ -73,14 +73,14 @@ class TimerRingTest {
         assertEquals(TimerMode.BREAK, t.mode)
         assertEquals(5 * 60, t.state(0).leftSec)
         assertEquals(5 * 60, t.state(0).totalSec)
-        t.toggle(0); t.toggle(60_000) // paused at 4:00 of the break: a switch still gives a full focus
-        assertTrue(t.switchMode())
-        assertEquals(TimerMode.FOCUS, t.mode)
-        assertEquals(25 * 60, t.state(60_000).leftSec)
-        assertFalse(t.state(60_000).running)
+        t.toggle(0); t.toggle(60_000) // paused at 4:00 of the break: a switch would wipe the time left
+        assertFalse(t.switchMode())
+        assertEquals(TimerMode.BREAK, t.mode)
+        assertEquals(4 * 60, t.state(60_000).leftSec)
         t.toggle(60_000) // running: ignored
         assertFalse(t.switchMode())
-        assertEquals(TimerMode.FOCUS, t.mode)
         assertTrue(t.state(60_000).running)
+        t.toggle(300_000) // paused at 0:00... (finished) is switchable again
+        assertEquals(0, t.state(300_000).leftSec)
     }
 }

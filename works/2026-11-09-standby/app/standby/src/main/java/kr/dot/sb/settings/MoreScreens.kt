@@ -433,7 +433,7 @@ internal fun FocusSection(config: AppConfig, update: Update) {
                 TimerAlert.VIBRATE -> "소리 없이 진동만"
                 TimerAlert.OFF -> null
             }
-            RadioRow(a.ko, sub, config.timerAlert == a, { update { it.copy(timerAlert = a) }; player.play(a, falling = false, times = 1) })
+            RadioRow(a.ko, sub, config.timerAlert == a, { update { it.copy(timerAlert = a) }; player.stop(); player.play(a, falling = false, times = 1) })
         }
     }
 }

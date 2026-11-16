@@ -23,6 +23,7 @@ import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.TimerState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -55,12 +56,12 @@ class TimerDragTest {
     }
 
     /** The board as StandbyRoot's BoardPage has it: a long press anywhere opens the page settings. */
-    private fun page(qualifiers: String, layout: Layout, running: Boolean) {
+    private fun page(qualifiers: String, layout: Layout, running: Boolean, left: Int = 1500) {
         RuntimeEnvironment.setQualifiers(qualifiers)
         val slots = List(layout.slots) { if (it == 0) listOf(CardType.TIMER, CardType.WEATHER) else listOf(CardType.WEATHER) }
         val b = Board("b", "b", layout, slots)
         // a stack: the card id is slot-card
-        val s = Fixtures.full().copy(timers = mapOf("b-0-0" to TimerState(leftSec = 600, totalSec = 1500, running = running)))
+        val s = Fixtures.full().copy(timers = mapOf("b-0-0" to TimerState(leftSec = left, totalSec = 1500, running = running)))
         rule.setContent {
             Box(Modifier.fillMaxSize().pointerInput(Unit) { detectTapGestures(onLongPress = { boardLong++ }) }) { BoardView(b, s, AppConfig(), actions) }
         }
@@ -78,13 +79,31 @@ class TimerDragTest {
         assertEquals(emptyList<Int>(), set)
     }
 
-    @Test fun longPressOnTheBandSwitchesWithoutSettingMinutes() {
+    @Test fun longPressOnTheBandNeverSwitches() {
         page(wide, Layout.ONE, running = false)
         rule.onNodeWithContentDescription(ring).performTouchInput { longClick(Offset(centerX, centerY - width / 2f * 0.93f)) }
         rule.waitForIdle()
-        assertEquals(1, switched)
+        assertEquals(0, switched)
         assertEquals(0, boardLong)
-        assertEquals(emptyList<Int>(), set)
+    }
+
+    @Test fun slowDragOnTheBandOfAPausedRingStillSetsMinutes() {
+        page(wide, Layout.ONE, running = false, left = 600)
+        rule.onNodeWithContentDescription(ring).performTouchInput {
+            val r = width / 2f * 0.93f
+            swipe(Offset(centerX, centerY - r), Offset(centerX + r, centerY), 1500) // far past the long-press timeout
+        }
+        rule.waitForIdle()
+        assertEquals(0, switched)
+        assertTrue(set.isNotEmpty())
+        assertEquals(15, set.last())
+    }
+
+    @Test fun longPressInsideAPausedRingDoesNothing() {
+        page(wide, Layout.ONE, running = false, left = 600)
+        rule.onNodeWithContentDescription(ring).performTouchInput { longClick(center) }
+        rule.waitForIdle()
+        assertEquals(0, switched)
     }
 
     @Test fun longPressOnARunningRingDoesNotSwitch() {

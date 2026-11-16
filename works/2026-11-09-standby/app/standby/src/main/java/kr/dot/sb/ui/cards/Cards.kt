@@ -568,7 +568,8 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     // long press (not running) switches; for 1.5 s a pill names the new mode in place of the label
     var flash by remember(e.slotId) { mutableIntStateOf(0) }
     LaunchedEffect(flash) { if (flash != 0) { delay(1_500); flash = 0 } }
-    val hold = if (t.running) null else RingHold(if (t.mode == TimerMode.FOCUS) "휴식으로 바꾸기" else "집중으로 바꾸기") {
+    val hold = if (t.running || (t.leftSec in 1 until t.totalSec)) null else // not while paused mid-session: it would wipe the time left
+         RingHold(if (t.mode == TimerMode.FOCUS) "휴식으로 바꾸기" else "집중으로 바꾸기") {
         flash = if (t.mode == TimerMode.FOCUS) 1 else 2 // 1 = now break, 2 = now focus
         actions.timerSwitch(e.slotId)
     }
@@ -759,7 +760,7 @@ private fun TimerRing(
                 }
                 true
             }
-            if (decided == null) {
+            if (decided == null && kind != RingTouch.DRAG) { // a finger resting on the band is not a long press
                 // held still: a long press. Running (no hold) = nothing here; stopped = switch, and swallow the rest
                 if (h == null) return@awaitEachGesture
                 haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.LongPress)
@@ -767,7 +768,7 @@ private fun TimerRing(
                 do { val ev = awaitPointerEvent(); ev.changes.forEach { it.consume() } } while (ev.changes.any { it.pressed })
                 return@awaitEachGesture
             }
-            val ch = last ?: return@awaitEachGesture
+            val ch = last ?: (if (kind == RingTouch.DRAG) down else return@awaitEachGesture)
             if (!ch.pressed) {
                 // released in time: a tap toggles (small rings); a tap on the band sets the minutes there
                 if (ch.isConsumed && kind != RingTouch.DRAG) return@awaitEachGesture

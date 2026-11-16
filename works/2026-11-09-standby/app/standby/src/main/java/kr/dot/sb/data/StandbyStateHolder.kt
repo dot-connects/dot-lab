@@ -665,9 +665,9 @@ class StandbyStateHolder(
     fun mediaNext() = media.next()
     fun mediaPrev() = media.prev()
     val mediaPackage get() = media.packageName
-    fun timerToggle(id: String) { timer(id).toggle(el()); scheduleTimerEnd(id); publishTimers() }
-    fun timerReset(id: String) { timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
-    fun timerSwitch(id: String) { if (timer(id).switchMode()) publishTimers() }
+    fun timerToggle(id: String) { alerts.stop(); timer(id).toggle(el()); scheduleTimerEnd(id); publishTimers() }
+    fun timerReset(id: String) { alerts.stop(); timer(id).reset(); endJobs[id]?.cancel(); publishTimers() }
+    fun timerSwitch(id: String) { alerts.stop(); if (timer(id).switchMode()) publishTimers() }
     /** Timer ring drag: a stopped timer's new focus length (saved like 카드 › 타이머) or a paused one's time left. */
     fun timerSet(id: String, minutes: Int) {
         if (timer(id).set(minutes * 60)) ConfigStore.update(ctx) { it.copy(focusMinutes = minutes) }

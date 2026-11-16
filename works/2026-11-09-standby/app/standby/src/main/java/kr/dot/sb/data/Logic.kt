@@ -322,7 +322,7 @@ class PomodoroTimer(private var focusSec: Int, private val breakSec: Int) {
 
     /** Ring long press (r15 §4): focus<->break at the other mode's full length. Ignored while running; true when it switched. */
     fun switchMode(): Boolean {
-        if (running) return false
+        if (running || leftMsAtStart in 1 until total() * 1000L) return false // paused mid-session keeps its time
         mode = if (mode == TimerMode.FOCUS) TimerMode.BREAK else TimerMode.FOCUS
         leftMsAtStart = total() * 1000L
         return true

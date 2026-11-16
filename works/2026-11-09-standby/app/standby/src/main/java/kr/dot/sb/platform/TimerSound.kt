@@ -19,6 +19,9 @@ import kotlin.math.sin
 fun interface TimerAlerts {
     /** [alert] [times] rounds; [falling] = a break ended (오르는 세 음 goes down). */
     fun play(alert: TimerAlert, falling: Boolean, times: Int)
+
+    /** Cuts a ringing alert (the user acted). */
+    fun stop() {}
 }
 
 /** r15 §5 recipes (the mockup's Web Audio JS): sine tones, 10 ms exponential attack, exponential fade; a vibration pattern. */
@@ -92,6 +95,11 @@ class DeviceTimerAlerts(ctx: Context) : TimerAlerts {
         thread(isDaemon = true, name = "timer-alert") { runCatching { playPcm(TimerSound.pcm(r, times)) } }
     }
 
+    override fun stop() {
+        synchronized(this) { track?.let { runCatching { it.stop() } } }
+        runCatching { app.getSystemService(VibratorManager::class.java).defaultVibrator.cancel() }
+    }
+
     private fun quiet(): Boolean {
         val am = app.getSystemService(AudioManager::class.java)
         val f = app.getSystemService(NotificationManager::class.java).currentInterruptionFilter
@@ -100,17 +108,19 @@ class DeviceTimerAlerts(ctx: Context) : TimerAlerts {
     }
 
     private fun playPcm(pcm: ShortArray) {
-        val t = AudioTrack.Builder()
+        var t: AudioTrack? = null
+        try {
+            t = AudioTrack.Builder()
             .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
             .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(TimerSound.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
             .setTransferMode(AudioTrack.MODE_STATIC).setBufferSizeInBytes(pcm.size * 2).build()
-        t.write(pcm, 0, pcm.size)
-        // a newer alert (a second preview tap) cuts the one still playing
-        synchronized(this) { track?.let { runCatching { it.stop() } }; track = t }
-        t.play()
-        Thread.sleep(pcm.size * 1000L / TimerSound.RATE + 200)
-        synchronized(this) { if (track === t) track = null }
-        runCatching { t.stop() }
-        t.release()
+            t.write(pcm, 0, pcm.size)
+            // a newer alert (a second preview tap, two timers ending together) cuts the one still playing
+            synchronized(this) { track?.let { runCatching { it.stop() } }; track = t; t.play() }
+            Thread.sleep(pcm.size * 1000L / TimerSound.RATE + 200)
+        } finally {
+            synchronized(this) { if (track === t) track = null }
+            t?.let { runCatching { it.stop() }; it.release() }
+        }
     }
 }
