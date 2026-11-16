@@ -14,6 +14,10 @@ MONTH_CENTS = "500"
 DEV_MONTH_CENTS = "2000"
 PKG = "kr.dot.catchpet"
 FREE_SHEETS = "3"
+# free sheets a day per network and for everyone (device ids are app-made); bought sheets' own month guard
+FREE_IP_DAY = "6"
+FREE_ALL_DAY = "60"
+PAID_MONTH_CENTS = "5000"
 CERT_SHA256 = ""
 
 [[d1_databases]]

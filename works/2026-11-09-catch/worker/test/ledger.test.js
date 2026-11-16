@@ -36,11 +36,11 @@ test("fail -> the next claim draws again", async () => {
   assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 3000), { go: "busy" }, "and is drawing again");
 });
 
-test("a drawing row older than 3 minutes is taken over (a Worker died mid-draw)", async () => {
+test("a drawing row older than 10 minutes is taken over (a Worker died mid-draw)", async () => {
   await led.claim("T", "sheet_fluff", "dev-a", 1000);
-  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 179_000), { go: "busy" });
-  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 181_000), { go: "draw" });
-  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 182_000), { go: "busy" });
+  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 599_000), { go: "busy" });
+  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 601_000), { go: "draw" });
+  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 1000 + 602_000), { go: "busy" });
 });
 
 test("two claims racing on one fresh token: exactly one is new", async () => {
@@ -62,7 +62,7 @@ test("forget frees a token Google refused", async () => {
 
 test("free sheets count per device", async () => {
   assert.equal(await led.freeLeft("dev-a", 3), 3);
-  await led.useFree("dev-a"); await led.useFree("dev-a"); await led.useFree("dev-a");
+  await led.takeFree("dev-a", 3); await led.takeFree("dev-a", 3); await led.takeFree("dev-a", 3);
   assert.equal(await led.freeLeft("dev-a", 3), 0);
   assert.equal(await led.freeLeft("dev-b", 3), 3);
   assert.equal(await led.freeLeft("dev-a", 0), 0, "FREE_SHEETS 0 = none");
@@ -72,4 +72,18 @@ test("reports are stored", async () => {
   await led.report({ device: "dev-a", entry: "e1", kind: "cat", style: "fluff", reason: "odd" }, 7);
   assert.deepEqual({ ...sqlite.prepare("SELECT * FROM reports").get() },
     { at: 7, device: "dev-a", entry: "e1", kind: "cat", style: "fluff", reason: "odd" });
+});
+
+test("takeFree reserves atomically up to the total and giveFree hands one back", async () => {
+  const got = await Promise.all(Array.from({ length: 5 }, () => led.takeFree("dev-a", 3)));
+  assert.equal(got.filter(Boolean).length, 3);
+  await led.giveFree("dev-a");
+  assert.equal(await led.freeLeft("dev-a", 3), 1);
+  assert.equal(await led.takeFree("dev-b", 0), false);
+});
+
+test("L3: a drawing row is taken over only after 10 minutes (a draw can take 3+)", async () => {
+  await led.claim("T", "sheet_fluff", "dev-a", 0);
+  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 590_000), { go: "busy" });
+  assert.deepEqual(await led.claim("T", "sheet_fluff", "dev-a", 601_000), { go: "draw" });
 });

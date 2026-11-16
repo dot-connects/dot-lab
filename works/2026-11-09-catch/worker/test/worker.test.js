@@ -371,7 +371,7 @@ test("integrity: each bad verdict is a 403 and never reaches the model; no servi
   google.verdict = () => ({ ...verdict(), requestDetails: { ...verdict().requestDetails, requestHash: "other body" } });
   assert.equal((await call(ok())).status, 403, "a token made for another request");
   google.decodeIntegrity = async () => { throw Object.assign(new Error("x"), { status: 500 }); };
-  assert.equal((await call(ok())).status, 403);
+  assert.equal((await call(ok())).status, 503, "Google trouble is retryable, not a refusal");
   delete env.google;
   assert.deepEqual((await call(ok())).body, { error: "off" });
   assert.equal(calls.length, 0);
@@ -475,4 +475,80 @@ test("the dev token still draws sheets and previews with no integrity at all", a
   delete env.google;
   assert.equal((await sheet()).status, 200);
   assert.equal((await call(ok(), { headers: { "x-app": "catchpet", "x-purchase": "tok-123" } })).status, 200);
+});
+
+// ---------- review round 1 (2026-11-16): H1, M1-M4, L2-L4 + security review ----------
+
+test("H1: parallel free requests cannot draw more than FREE_SHEETS", async () => {
+  let release; const gate = new Promise(r => { release = r; });
+  env.callModel = async job => { calls.push(job); await gate; return { mime: "image/webp", data: "Zm9v" }; };
+  const all = Promise.all(Array.from({ length: 6 }, () => paid()));
+  await new Promise(r => setTimeout(r, 20));
+  release();
+  const rs = await all;
+  assert.equal(rs.filter(r => r.status === 200).length, 3);
+  assert.equal(rs.filter(r => r.body.error === "free").length, 3);
+  assert.equal(calls.length, 3);
+});
+
+test("security: free sheets also stop per IP and for everyone a day", async () => {
+  env.FREE_IP_DAY = "4"; env.FREE_ALL_DAY = "100";
+  for (const d of ["dev-aaaaaaa1", "dev-aaaaaaa2"]) for (let i = 0; i < 2; i++) assert.equal((await paid({ device: d })).status, 200);
+  assert.equal((await paid({ device: "dev-aaaaaaa3" })).body.error, "free", "5th free sheet from one network");
+  env.FREE_IP_DAY = "100"; env.FREE_ALL_DAY = "5";
+  assert.equal((await paid({ device: "dev-aaaaaaa4" })).status, 200);
+  assert.equal((await paid({ device: "dev-aaaaaaa5" })).body.error, "free", "6th free sheet today for everyone");
+});
+
+test("M1: a taken-over or failed row is checked with Google again before drawing", async () => {
+  purchases.set("PT6", { purchaseState: 0, consumptionState: 0 });
+  env.callModel = async () => { throw Object.assign(new Error("x"), { sent: true }); };
+  assert.equal((await paid({ product: "sheet_fluff", purchaseToken: "PT6" })).status, 502);
+  purchases.set("PT6", { purchaseState: 1, consumptionState: 0 });   // refunded meanwhile
+  env.callModel = async job => { calls.push(job); return { mime: "image/webp", data: "Zm9v" }; };
+  assert.deepEqual((await paid({ product: "sheet_fluff", purchaseToken: "PT6" })).body, { error: "purchase" });
+  assert.equal(calls.length, 0);
+});
+
+test("M2: a Google outage is a retryable 503, only 400/404/410 mean a bad purchase", async () => {
+  purchases.set("PT7", { purchaseState: 0, consumptionState: 0 });
+  for (const st of [500, 503, 429, 401, 403]) {
+    google.getPurchase = async () => { throw Object.assign(new Error("x"), { status: st }); };
+    assert.deepEqual((await paid({ product: "sheet_fluff", purchaseToken: "PT7" })).body, { error: "busy" }, String(st));
+  }
+  google.getPurchase = async () => { throw Object.assign(new Error("x"), { status: 410 }); };
+  assert.deepEqual((await paid({ product: "sheet_fluff", purchaseToken: "PT7" })).body, { error: "purchase" });
+  google.getPurchase = async (e, p, t) => purchases.get(t);
+  assert.equal((await paid({ product: "sheet_fluff", purchaseToken: "PT7" })).status, 200, "the token was not burned");
+  google.decodeIntegrity = async () => { throw Object.assign(new Error("x"), { status: 503 }); };
+  assert.deepEqual((await call(ok())).body, { error: "busy" });
+  google.decodeIntegrity = async () => { throw Object.assign(new Error("x"), { status: 400 }); };
+  assert.deepEqual((await call(ok())).body, { error: "integrity" });
+});
+
+test("M3: paid sheets have their own ceiling, so free testers cannot block buyers", async () => {
+  env.MONTH_CENTS = "8";
+  assert.equal((await paid()).status, 200);                       // free sheet: public 8
+  assert.equal((await paid({ device: "dev-bbbbbbbb" })).body.error, "off");
+  purchases.set("PT8", { purchaseState: 0, consumptionState: 0 });
+  assert.equal((await paid({ product: "sheet_fluff", purchaseToken: "PT8" })).status, 200);
+  assert.equal(counts.m.get("paidusd|2026-11"), 8);
+  env.MONTH_CENTS = "0";
+  purchases.set("PT9", { purchaseState: 0, consumptionState: 0 });
+  assert.equal((await paid({ product: "sheet_fluff", purchaseToken: "PT9" })).body.error, "off", "the master switch still stops it");
+});
+
+test("M4: a failed R2 write still hands over the drawn sheet and consumes", async () => {
+  purchases.set("PT10", { purchaseState: 0, consumptionState: 0 });
+  env.SHEETS.put = async () => { throw new Error("r2 down"); };
+  const r = await paid({ product: "sheet_fluff", purchaseToken: "PT10" });
+  assert.equal(r.status, 200);
+  assert.equal(r.body.image, "Zm9v");
+  assert.deepEqual(google.consumed, ["PT10"]);
+});
+
+test("L2: reports stop at 20 a device a day", async () => {
+  const rep = () => call({ device: "dev-aaaaaaaa", entry: "e1", kind: "cat", style: "fluff", reason: "odd" }, { path: "/report" });
+  for (let i = 0; i < 20; i++) assert.equal((await rep()).status, 200);
+  assert.equal((await rep()).status, 429);
 });

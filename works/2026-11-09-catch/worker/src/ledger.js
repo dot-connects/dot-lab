@@ -1,10 +1,10 @@
 // The purchase ledger: one Play purchase token draws one sheet, ever. Every step is one atomic SQL statement, so two
 // requests with the same token can never both draw (D1 runs each statement on its own).
-//   absent  -> claim inserts "drawing"            -> {go:"new"}  (the caller then asks Google; refused -> forget)
-//   drawing -> claim within 3 min                 -> {go:"busy"}; older -> taken over -> {go:"draw"}
+//   absent  -> claim inserts "drawing"            -> {go:"new"}  (the caller asks Google on new AND draw; refused -> forget/fail)
+//   drawing -> claim within 10 min                -> {go:"busy"}; older -> taken over -> {go:"draw"}
 //   failed  -> claim                              -> {go:"draw"}
 //   done    -> claim                              -> {go:"cached", key, layout, consumed}
-const STALE = 180_000;
+const STALE = 600_000;   // above any draw (medium 1536 can take 3+ min): a live draw is never taken over (review L3)
 
 export class Ledger {
   constructor(db) { this.db = db; }
@@ -34,7 +34,12 @@ export class Ledger {
     const r = await this.#q("SELECT n FROM free WHERE device = ?1", device).first();
     return Math.max(0, total - (r ? r.n : 0));
   }
-  async useFree(device) { await this.#q("INSERT INTO free (device, n) VALUES (?1, 1) ON CONFLICT(device) DO UPDATE SET n = n + 1", device).run(); }
+  /** Reserve one free sheet before drawing (atomic, review H1); giveFree hands it back when the draw fails. */
+  async takeFree(device, total) {
+    if (!(total > 0)) return false;
+    return !!(await this.#q("INSERT INTO free (device, n) VALUES (?1, 1) ON CONFLICT(device) DO UPDATE SET n = n + 1 WHERE n < ?2 RETURNING n", device, total).first());
+  }
+  async giveFree(device) { await this.#q("UPDATE free SET n = n - 1 WHERE device = ?1 AND n > 0", device).run(); }
 
   async report({ device, entry, kind, style, reason }, now) {
     await this.#q("INSERT INTO reports (at, device, entry, kind, style, reason) VALUES (?1, ?2, ?3, ?4, ?5, ?6)", now, device, entry, kind, style, reason).run();

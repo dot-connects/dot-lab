@@ -162,9 +162,12 @@ const goodDevice = s => /^dev-[a-z0-9]{8,32}$/.test(s || "");
 /** Reserve the month's cents, call the model, refund the cents only if the request never left for OpenAI. */
 // dev = the operator's debug token (the dev app): its own month ceiling DEV_MONTH_CENTS, so testing never eats the
 // public ceiling and the public never blocks testing; MONTH_CENTS = "0" still stops both (operator 11-16).
+// bucket "paid" = bought sheets, on PAID_MONTH_CENTS (a runaway guard only): free testers can never block a buyer (review M3)
+const BUCKETS = { pub: ["usd", "MONTH_CENTS", 500], dev: ["devusd", "DEV_MONTH_CENTS", 2000], paid: ["paidusd", "PAID_MONTH_CENTS", 5000] };
 async function paidCall(job, cents, env, counts, day, onFail, dev = false) {
-  const kUsd = `${dev ? "devusd" : "usd"}|${day.slice(0, 7)}`;
-  const cap = num(env.MONTH_CENTS, 500) <= 0 ? 0 : dev ? num(env.DEV_MONTH_CENTS, 2000) : num(env.MONTH_CENTS, 500);
+  const [key, capVar, capDefault] = BUCKETS[dev === true ? "dev" : dev || "pub"];
+  const kUsd = `${key}|${day.slice(0, 7)}`;
+  const cap = num(env.MONTH_CENTS, 500) <= 0 ? 0 : num(env[capVar], capDefault);
   if (cap <= 0 || !(await counts.add(kUsd, cents, cap))) { await onFail({}); return { off: true }; }
   try {
     return { img: await (env.callModel || callOpenAI)(job, env) };
@@ -238,7 +241,10 @@ async function integrity(req, env, path, b, text) {
     const r = integrityVerdict(v, { pkg: env.PKG || "kr.dot.catchpet", certHex: certHex(env.CERT_SHA256), requestHash: want, now: Date.now() });
     if (r !== "ok") console.log("integrity", r);
     return r;
-  } catch (e) { console.log("integrity call", e?.status); return e?.status === 0 ? "off" : "google"; }
+  } catch (e) {
+    console.log("integrity call", e?.status);
+    return e?.status === 0 ? "off" : (e?.status === 400 ? "badtoken" : "busy");   // Google trouble is retryable (review M2)
+  }
 }
 
 async function sheet(b, req, env, counts, day, dev, ledger, text) {
@@ -256,17 +262,22 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
   }
 
   const ig = await integrity(req, env, "/sheet", b, text);
-  if (ig === "off") return json({ error: "off" }, 503);
+  if (ig === "off" || ig === "busy") return json({ error: ig }, 503);
   if (ig !== "ok") return json({ error: "integrity" }, 403);
 
   const token = typeof b.purchaseToken === "string" ? b.purchaseToken : "";
-  if (!token) {   // a test-period free sheet
+  if (!token) {   // a test-period free sheet: reserved before the draw, handed back if it fails (review H1)
     const total = num(env.FREE_SHEETS, 0);
-    if ((await ledger.freeLeft(b.device, total)) <= 0) return json({ error: "free" }, 429);
+    // a device id is app-made (a reinstall = 3 more): one network and everyone are capped a day too (security review)
+    const kIp = `${day}|freeip:${req.headers.get("cf-connecting-ip") || "?"}`, kAll = `${day}|freeall`;
+    if (!(await counts.take(kAll, num(env.FREE_ALL_DAY, 60)))) return json({ error: "free" }, 429);
+    if (!(await counts.take(kIp, num(env.FREE_IP_DAY, 6)))) { await counts.give(kAll); return json({ error: "free" }, 429); }
+    if (!(await ledger.takeFree(b.device, total))) { await counts.give(kIp); await counts.give(kAll); return json({ error: "free" }, 429); }
     const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {});
-    if (r.off) return json({ error: "off" }, 503);
-    if (r.err) return json({ error: "model" }, 502);
-    await ledger.useFree(b.device);   // only a delivered sheet uses one up
+    if (r.off || r.err) {
+      await ledger.giveFree(b.device); await counts.give(kIp); await counts.give(kAll);
+      return r.off ? json({ error: "off" }, 503) : json({ error: "model" }, 502);
+    }
     return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b), free_left: await ledger.freeLeft(b.device, total) });
   }
 
@@ -285,22 +296,29 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
     if (!c.consumed) await consume();
     return json({ mime: o.httpMetadata?.contentType || "image/webp", image: bytesB64(new Uint8Array(await o.arrayBuffer())), layout: c.layout });
   }
-  if (c.go === "new") {
-    let p;
-    try { p = await g.getPurchase(env, b.product, token); }
-    catch (e) {
-      console.log("purchase check", e?.status);
-      await ledger.forget(token);
-      return e?.status === 0 ? json({ error: "off" }, 503) : json({ error: "purchase" }, 402);
-    }
-    const v = purchaseVerdict(p);
-    if (v !== "ok") { await ledger.forget(token); return json({ error: v === "pending" ? "pending" : "purchase" }, 402); }
+  // "new" and "draw" (a failed or dead earlier try) both ask Google first: a refund in between draws nothing (review M1)
+  const drop = async () => (c.go === "new" ? ledger.forget(token) : ledger.fail(token));
+  let p;
+  try { p = await g.getPurchase(env, b.product, token); }
+  catch (e) {
+    console.log("purchase check", e?.status);
+    await drop();
+    if (e?.status === 0) return json({ error: "off" }, 503);
+    // only "this token is not a purchase" is final; a Google outage or our auth trouble is retryable (review M2)
+    return [400, 404, 410].includes(e?.status) ? json({ error: "purchase" }, 402) : json({ error: "busy" }, 503);
   }
-  const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {});
+  const v = purchaseVerdict(p);
+  if (v !== "ok") { await drop(); return json({ error: v === "pending" ? "pending" : "purchase" }, 402); }
+  const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {}, "paid");
   if (r.off || r.err) { await ledger.fail(token); return r.off ? json({ error: "off" }, 503) : json({ error: "model" }, 502); }
-  const key = `sheet/${await sha256hex(token)}`;
-  await env.SHEETS.put(key, b64bytes(r.img.data), { httpMetadata: { contentType: r.img.mime } });
-  await ledger.finish(token, key, layoutOf(b));
+  try {
+    const key = `sheet/${await sha256hex(token)}`;
+    await env.SHEETS.put(key, b64bytes(r.img.data), { httpMetadata: { contentType: r.img.mime } });
+    await ledger.finish(token, key, layoutOf(b));
+  } catch (e) {   // the sheet is drawn and paid for: hand it over anyway (review M4); a later retry would draw again
+    console.log("store failed", e?.message);
+    await ledger.fail(token).catch(() => {});
+  }
   await consume();
   return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b) });
 }
@@ -309,7 +327,9 @@ const REASONS = ["odd", "person", "other"];
 
 export async function handle(req, env, counts, { day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), ledger = new Ledger(env.DB) } = {}) {   // KST day
   const origin = req.headers.get("origin"), app = req.headers.get("x-app") === "catchpet";
-  const dev = app && !origin && !!secret(env.DEBUG_PURCHASE) && (req.headers.get("x-purchase") || "") === secret(env.DEBUG_PURCHASE);
+  const dbg = secret(env.DEBUG_PURCHASE), given = req.headers.get("x-purchase") || "";
+  // compared as digests so the time taken says nothing about the token (review L4)
+  const dev = app && !origin && !!dbg && !!given && (await sha256hex(given)) === (await sha256hex(dbg));
   if (origin ? !allowed(origin) : !app) return json({ error: "origin" }, 403);   // no Origin = the app, no CORS headers
   if (req.method === "OPTIONS" && origin) return new Response(null, { status: 204, headers: cors(origin) });
   const url = new URL(req.url), path = url.pathname;
@@ -329,6 +349,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
   if (path === "/report") {
     if (!goodDevice(b.device) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "") || !validKind(b.kind) || !STYLES.includes(b.style) || !REASONS.includes(b.reason)) return json({ error: "bad request" }, 400);
     if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
+    if (!(await counts.take(`${day}|report:${b.device}`, 20))) return json({ error: "slow down" }, 429);   // review L2
     await ledger.report(b, Date.now());
     return json({ ok: true });
   }
@@ -336,7 +357,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
   if (!dev) {
     if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400);
     const ig = await integrity(req, env, "/transform", b, text);
-    if (ig === "off") return json({ error: "off" }, 503);
+    if (ig === "off" || ig === "busy") return json({ error: ig }, 503);
     if (ig !== "ok") return json({ error: "integrity" }, 403);
   }
   return transform(b, req, env, counts, day, null, dev);
