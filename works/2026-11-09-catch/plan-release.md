@@ -15,7 +15,7 @@
 - Products: `sheet_fluff`, `sheet_figure`, consumable, 500 won each; one purchase token = one sheet (group or single).
 - `FREE_SHEETS`: closed test `"3"`, production `"0"`; counted per device only after the sheet is stored.
 - Integrity accept rule: `PLAY_RECOGNIZED`, package `kr.dot.catchpet`, cert digest = `CERT_SHA256`, `MEETS_DEVICE_INTEGRITY`, `requestHash` match, token age < 300 s.
-- Debug bypass: header `x-purchase` equal to secret `DEBUG_PURCHASE` skips integrity and billing (dev builds only; release builds carry no token).
+- Debug bypass = the dev app `kr.dot.catchpet.dev` (done 11-16, 0e85d1d): header `x-purchase` equal to secret `DEBUG_PURCHASE` skips integrity, billing and day/entry counters, on `DEV_MONTH_CENTS`; release builds carry no token. Keep this path working in Task 4.
 - Never log request headers, purchase tokens, integrity tokens or the service-account key. No `wrangler tail` on this Worker.
 - Secrets piped from Windows must be BOM-free (`secret()` strips; wizard uses `New-Object System.Text.UTF8Encoding $false`).
 - targetSdk/compileSdk 36. versionName 0.6.0, versionCode 600.

@@ -96,6 +96,10 @@ app: on start, queryPurchasesAsync → any PURCHASED but unconsumed token is re-
 - `versionCode` from `versionName` (0.6.0 → 600), first Play build 0.6.0.
 - Minify off for the first closed test (TFLite/ARCore reflection risk); revisit before production.
 - Release hides: developer panel, AR switch stays behind the hidden long-press.
+- Dev app (operator 11-16): the debug build is `kr.dot.catchpet.dev` "리얼뽑기 개발", installs beside the Play app,
+  carries the operator's `DEBUG_PURCHASE` token: previews and pet sheets redraw without limits (tap a drawn picture,
+  [다시] under a bought sheet). Worker: the token skips integrity, billing and day/entry counters and spends its own
+  month ceiling `DEV_MONTH_CENTS` (2000); `MONTH_CENTS = "0"` still stops it.
 
 ## 6. Store paperwork (Claude drafts, operator pastes)
 

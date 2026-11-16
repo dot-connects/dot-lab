@@ -16,12 +16,17 @@ android {
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
         buildConfigField("String", "DEBUG_PURCHASE", "\"\"")
+        manifestPlaceholders["appLabel"] = "리얼뽑기"
         buildConfigField("String", "WORKER", "\"https://dot-lab-catch.dotconnects.workers.dev\"")
     }
     buildFeatures { compose = true; buildConfig = true }
     buildTypes {
         // R8 on the debug build too: unshrunk dex was 32 MB, and the APK goes to the phone through a 30 MB hand-off
         debug {
+            // the dev app (operator 11-16): installs beside the Play app, redraws AI pictures free on the operator's token
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
+            manifestPlaceholders["appLabel"] = "리얼뽑기 개발"
             // dev builds buy AI pet sheets free (operator 11-14): the Worker's debug token, read from this PC, never committed
             val token = File(System.getProperty("user.home"), ".catchpet-debug-purchase").takeIf { it.exists() }?.readText()?.trim().orEmpty()
             buildConfigField("String", "DEBUG_PURCHASE", "\"$token\"")

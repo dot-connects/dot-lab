@@ -193,7 +193,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
             for ((style, label) in LOOKS) {
                 val drawn = preview(style)
                 val bought = e.ai.sheets.containsKey(style)
-                val canDraw = drawn == null && busy == null && left > 0
+                val canDraw = (drawn == null || AiWork.dev) && busy == null && left > 0   // dev app: tap again to redraw
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(label, fontFamily = Book.Display, fontSize = 16.sp)
                     Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Book.Field)
@@ -201,8 +201,8 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                         .let { if (canDraw) it.clickable { guarded { AiWork.preview(ctx, e, style) } } else it },
                         contentAlignment = Alignment.Center) {
                         when {
-                            drawn != null -> rememberFile(e.id, drawn, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit) }
                             busy == "preview-$style" -> CircularProgressIndicator(Modifier.size(26.dp), color = Book.Ink, strokeWidth = 2.dp)
+                            drawn != null -> rememberFile(e.id, drawn, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit) }
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("?", fontFamily = Book.Display, fontSize = 40.sp, color = Book.Muted)
                                 Note(if (left > 0) "눌러서 그려 보기" else "내일 다시")
@@ -213,6 +213,10 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                         drawn == null && !bought -> {}
                         busy == "sheet-$style" -> Note("펫 그림을 그리는 중 (1~3분)")
                         bought && isShownPet(ctx, e.id) && e.ai.petStyle == style -> InkPill("펫으로 쓰는 중", Book.Leaf)
+                        bought && AiWork.dev -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            InkPill("쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
+                            InkPill("다시", Book.Paper, onClick = if (busy == null) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                        }
                         bought -> InkPill("펫으로 쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
                         else -> InkPill(if (free) "구매 · 개발판 무료" else "구매 · ${Purchase.PRICE_WON}원", Book.Sun,
                             onClick = if (!locked && busy == null) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
@@ -220,7 +224,11 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                 }
             }
         }
-        Note(if (left > 0) "스타일마다 한 번 그려 볼 수 있어요 · 오늘 ${left}번 남음" else "오늘은 다 그렸어요. 내일 다시 그릴 수 있어요")
+        Note(when {
+            AiWork.dev -> "개발판 · 그림을 누르면 몇 번이든 다시 그려요"
+            left > 0 -> "스타일마다 한 번 그려 볼 수 있어요 · 오늘 ${left}번 남음"
+            else -> "오늘은 다 그렸어요. 내일 다시 그릴 수 있어요"
+        })
         AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
         if (locked) Note("구매는 출시 후 열려요")
     }

@@ -29,7 +29,7 @@
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher"
-        android:label="리얼뽑기"
+        android:label="${appLabel}"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
 
         <!-- AR is an opt-in experiment: never ask Play to require or install ARCore -->

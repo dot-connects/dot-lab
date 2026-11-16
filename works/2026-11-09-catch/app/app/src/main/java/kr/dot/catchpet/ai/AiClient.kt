@@ -21,8 +21,9 @@ class AiClient(private val base: String, private val deviceId: String) {
     /** [twelve]: the Worker drew the 4 x 3 sheet (an older Worker answers without "layout" = 3 x 2). */
     class Reply(val image: ByteArray, val mime: String, val left: Int?, val twelve: Boolean = false)
 
-    suspend fun preview(png: ByteArray, kind: String, style: String): Result<Reply> =
-        post("/transform", body(png, mapOf("style" to style, "kind" to kind, "device" to deviceId)), null)
+    /** [devToken]: the dev app's token, so the Worker skips the day limit. */
+    suspend fun preview(png: ByteArray, kind: String, style: String, devToken: String? = null): Result<Reply> =
+        post("/transform", body(png, mapOf("style" to style, "kind" to kind, "device" to deviceId)), devToken)
 
     suspend fun sheet(png: ByteArray, kind: String, entry: String, token: String, style: String = "fluff"): Result<Reply> =
         post("/sheet", body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to style, "layout" to "12")), token)

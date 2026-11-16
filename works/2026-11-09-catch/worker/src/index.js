@@ -9,8 +9,8 @@
 // on its own month ceiling DEV_MONTH_CENTS; empty = /sheet refused).
 // Set ALL_DAY = "0" to stop previews, MONTH_CENTS = "0" to stop every AI call at once.
 
-// A secret piped in from Windows PowerShell can carry a UTF-8 BOM and a newline (2026-11-12: OpenAI answered 400).
-export const secret = v => String(v ?? "").replace(/^\uFEFF/, "").trim();
+import { secret } from "./secret.js";
+export { secret };
 const ORIGINS = [/^https:\/\/dot-connects\.github\.io$/, /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/];
 const STYLES = ["fluff", "figure"];
 // the app's dex kinds (Dex.KIND_NAMES): each is an English word the prompts use as is

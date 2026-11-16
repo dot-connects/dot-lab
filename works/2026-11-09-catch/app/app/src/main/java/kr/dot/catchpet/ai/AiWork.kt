@@ -30,8 +30,12 @@ object AiWork {
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
     private fun today() = LocalDate.now(ZoneOffset.ofHours(9)).toString()   // the Worker counts by KST day
 
+    /** The dev app (debug build with the operator's token): unlimited previews and redraws. */
+    val dev: Boolean get() = BuildConfig.DEBUG_PURCHASE.isNotEmpty()
+
     /** Previews left today as last heard from the Worker (5 on a new day). */
     fun leftToday(ctx: Context): Int {
+        if (dev) return 99
         val p = prefs(ctx)
         return if (p.getString("ai_day", null) == today()) p.getInt("ai_left", PER_DAY) else PER_DAY
     }
@@ -43,7 +47,7 @@ object AiWork {
     private fun cutOut(ctx: Context, e: Dex.Entry) = Dex.file(ctx, e.id, "${e.poses.first()}.png").readBytes()
 
     fun preview(ctx: Context, e: Dex.Entry, style: String) = run(ctx, e, "preview-$style") { app ->
-        val r = client(app).preview(cutOut(app, e), e.kind, style)
+        val r = client(app).preview(cutOut(app, e), e.kind, style, if (dev) BuildConfig.DEBUG_PURCHASE else null)
         r.onSuccess { rep -> rep.left?.let { setLeft(app, it) }; Dex.savePreview(app, e.id, rep.image, ext(rep.mime), style) }
         r.onFailure { if ((it as? AiClient.Fail)?.code == "device") setLeft(app, 0) }
         r
