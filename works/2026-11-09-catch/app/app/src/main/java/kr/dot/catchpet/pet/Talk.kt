@@ -52,12 +52,13 @@ object Talk {
         now - st.at >= GAP_MS && (day != st.day || st.count < DAY_MAX)
 
     /**
-     * The line to say now, or null. A situation always speaks when pacing allows; a plain unlock only by [CHANCE].
+     * The line to say now, or null. A situation or an unlock ([sure]) always speaks when pacing allows; a home return only by [CHANCE]
+     * (operator 11-16: the 30 % roll on unlock read as "it never talks").
      * Never the same line twice in a row.
      */
-    fun pick(now: Long, day: Long, hour: Int, why: Why?, name: String, st: State, rnd: () -> Float): String? {
+    fun pick(now: Long, day: Long, hour: Int, why: Why?, name: String, st: State, rnd: () -> Float, sure: Boolean = false): String? {
         if (!allowed(now, day, st)) return null
-        if (why == null && rnd() >= CHANCE) return null
+        if (why == null && !sure && rnd() >= CHANCE) return null
         val pool = lines(why, hour).map { it.replace("{name}", name) }.filter { it != st.last }
         if (pool.isEmpty()) return null
         return pool[(rnd() * pool.size).toInt().coerceIn(0, pool.size - 1)]

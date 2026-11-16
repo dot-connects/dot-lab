@@ -21,6 +21,8 @@ class TalkTest {
     @Test fun aPlainUnlockSpeaksOnlyByChance() {
         assertNull(Talk.pick(t0, day, 9, null, "몽글", Talk.State(), { 0.9f }))
         assertTrue(Talk.pick(t0, day, 9, null, "몽글", Talk.State(), { 0.1f }) != null)
+        // an unlock always speaks, whatever the roll
+        assertTrue(Talk.pick(t0, day, 9, null, "몽글", Talk.State(), sure = true, rnd = { 0.9f }) != null)
     }
 
     @Test fun aSituationAlwaysSpeaksAndComesFirst() {

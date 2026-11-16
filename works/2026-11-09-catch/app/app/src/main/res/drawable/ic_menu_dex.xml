@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- widget menu icon, set B (operator 11-16, mockup widget-icons) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="32dp" android:height="32dp" android:viewportWidth="32" android:viewportHeight="32">
+    <path android:pathData="M9,4h14a3,3 0,0 1,3,3v18a3,3 0,0 1,-3,3h-14a3,3 0,0 1,-3,-3v-18a3,3 0,0 1,3,-3Z" android:strokeColor="#FF24331F" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#FFFFFDF6"/>
+    <path android:pathData="M10,4v24" android:strokeColor="#FF24331F" android:strokeWidth="2.6" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+    <path android:pathData="M14,13a4,4 0,1 0,8,0a4,4 0,1 0,-8,0Z" android:strokeColor="#FF24331F" android:strokeWidth="2" android:strokeLineCap="round" android:strokeLineJoin="round" android:fillColor="#FFFF8FA3"/>
+    <path android:pathData="M14,21h8" android:strokeColor="#FF24331F" android:strokeWidth="2.4" android:strokeLineCap="round" android:strokeLineJoin="round"/>
+</vector>

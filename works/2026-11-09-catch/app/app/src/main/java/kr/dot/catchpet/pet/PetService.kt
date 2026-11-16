@@ -153,7 +153,7 @@ class PetService : Service() {
             when (i.action) {
                 Intent.ACTION_SCREEN_OFF -> { closeTalk(); pause() }
                 Intent.ACTION_SCREEN_ON -> resume()
-                Intent.ACTION_USER_PRESENT -> wantTalkAt = SystemClock.uptimeMillis()
+                Intent.ACTION_USER_PRESENT -> { wantTalkAt = SystemClock.uptimeMillis(); unlockAt = wantTalkAt }
                 Intent.ACTION_POWER_CONNECTED -> { chargedAt = SystemClock.uptimeMillis(); wantTalkAt = chargedAt }
             }
         }
@@ -164,6 +164,7 @@ class PetService : Service() {
     /** An unlock or a plug-in asked for a line; tried on the next ticks while the pet shows on home (5 s). */
     private var wantTalkAt = 0L
     private var chargedAt = 0L
+    private var unlockAt = 0L
     private var petName = ""
     private var wasHome = true
 
@@ -187,7 +188,7 @@ class PetService : Service() {
         val wall = System.currentTimeMillis()
         val day = java.time.LocalDate.now().toEpochDay()
         val st = PetPrefs.talkState(this)
-        val line = Talk.pick(wall, day, Calendar.getInstance().get(Calendar.HOUR_OF_DAY), why, petName.ifEmpty { "나" }, st) { Math.random().toFloat() } ?: return
+        val line = Talk.pick(wall, day, Calendar.getInstance().get(Calendar.HOUR_OF_DAY), why, petName.ifEmpty { "나" }, st, sure = now - unlockAt < 6000, rnd = { Math.random().toFloat() }) ?: return
         PetPrefs.setTalkState(this, Talk.said(wall, day, st, line))
         when (why) { is Talk.Why.NewFriend -> PetPrefs.setFriend(this, null); Talk.Why.Missed -> PetPrefs.setMissedSaid(this); else -> {} }
         // the pet is usually asleep by the time the phone is unlocked or plugged in: it wakes to say it (review 11-16 H1)

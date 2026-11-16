@@ -97,6 +97,16 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
                     // spec-extras 3: share a card of it; a person asks first
                     InkPill("자랑하기", Book.Sun, onClick = { if (Dex.hasPerson(e.kind)) bragPerson = e else ShareCard.share(ctx, e) })
                 }
+                // operator 11-16: the home widget shows its family; only what can float can join
+                if (kr.dot.catchpet.widget.Family.canJoin(e)) {
+                    var inFamily by remember(e.id) { mutableStateOf(kr.dot.catchpet.widget.Family.has(ctx, e.id)) }
+                    Row(Modifier.padding(top = 6.dp)) {
+                        InkPill(if (inFamily) "✓ 위젯 가족" else "+ 위젯 가족", if (inFamily) Book.Sun else Book.Paper, onClick = {
+                            if (kr.dot.catchpet.widget.Family.toggle(ctx, e.id)) inFamily = !inFamily
+                            else android.widget.Toast.makeText(ctx, "위젯 가족은 ${kr.dot.catchpet.widget.Family.MAX}마리까지예요. 한 마리를 빼 주세요", android.widget.Toast.LENGTH_SHORT).show()
+                        })
+                    }
+                }
             }
         }
         if (renaming) RenameDialog(shown, onDone = { n -> renaming = false; if (n != null) Dex.rename(ctx, e.id, n)?.let { shown = it.name } })

@@ -233,11 +233,6 @@ private fun CatchView(
                             }
                             return@awaitEachGesture
                         }
-                        game.bragAt(x, y)?.let { b ->
-                            if (waitForUpOrCancellation() == null) return@awaitEachGesture   // a drag away is not a tap
-                            if (b.person) bragPerson = b else ShareCard.share(ctx, b)
-                            return@awaitEachGesture
-                        }
                         val c = game.claw ?: return@awaitEachGesture
                         if (game.onButton(x, y)) {
                             game.pressed = true
@@ -265,6 +260,13 @@ private fun CatchView(
             drawIntoCanvas { game.render(it.nativeCanvas) }
         }
         if (game.askPerson != null) PersonConsent(PersonUse.DEX) { game.keepPerson(it) }
+        // operator 11-16: the card stays on screen until [닫기] or [자랑하기]
+        game.bragCard?.let { b ->
+            BragCard(b, onClose = { game.bragCard = null }) {
+                game.bragCard = null
+                if (b.person) bragPerson = b else ShareCard.share(ctx, b)
+            }
+        }
         bragPerson?.let { b -> PersonConsent(PersonUse.SHARE) { ok -> bragPerson = null; if (ok) ShareCard.share(ctx, b) } }
     }
 }
@@ -317,23 +319,14 @@ private class CatchGame(
     private var landFrozen: Bitmap? = null
     private var landGrip: Grip? = null
 
-    private class Toast(val text: String, val good: Boolean, val brag: Brag? = null) {
+    private class Toast(val text: String, val good: Boolean) {
         var t = 0f
-        val life get() = if (brag != null) BRAG_MS else 1400f
+        val life get() = 1400f
     }
     /** What the next win toast offers to share, kept from the catch (the cut-out is gone after reset, review 11-16). */
     private var capBrag: Brag? = null
-    /** The [자랑하기] pill on screen (dp), empty when none. */
-    private val bragBox = RectF()
-
-    /** A tap on the toast's [자랑하기]: the thing to share, or null. */
-    fun bragAt(x: Float, y: Float): Brag? {
-        val t = toast ?: return null
-        val b = t.brag ?: return null
-        if (!bragBox.contains(x, y)) return null
-        toast = null
-        return b
-    }
+    /** The card shown over the game after a catch, until [닫기] or [자랑하기] (operator 11-16, mockup 2-A). */
+    var bragCard by mutableStateOf<Brag?>(null)
     private class Grip(val cut: CutOut.Cut?, val hole: Bitmap?, val opaque: Float, val kind: String? = null)
 
     private var map: ScreenMap? = null
@@ -371,7 +364,7 @@ private class CatchGame(
         askPerson = null
         if (!keep) return
         val r = sink.onCaught(pendingKind, b, null, "front", capColor)
-        say(caughtText(pendingKind, r.name), true, Brag(r.name, pendingKind, b, null, capColor)); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f)
+        say(caughtText(pendingKind, r.name), true); bragCard = Brag(r.name, pendingKind, b, null, capColor); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f)
     }
 
     /** "강아지 도토리를 뽑았다!": what it is and the name it got (operator 11-15). */
@@ -440,7 +433,7 @@ private class CatchGame(
             cap.step(dt); capT += dt
             if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
             if (cap.phase == Capsule.Phase.GONE) {
-                if (pendingPerson == null) { say(capText, true, capBrag); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
+                if (pendingPerson == null) { say(capText, true); bragCard = capBrag; pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
                 capBrag = null
                 next()
                 pendingPerson?.let { askPerson = it; pendingPerson = null }
@@ -615,7 +608,7 @@ private class CatchGame(
         frozen = null; grip = null; held = null; capsule = null; saved = false
     }
 
-    private fun say(text: String, good: Boolean, brag: Brag? = null) { toast = Toast(text, good, brag) }
+    private fun say(text: String, good: Boolean) { toast = Toast(text, good) }
 
     // ---------- drawing (dp) ----------
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -803,22 +796,10 @@ private class CatchGame(
         cv.drawRoundRect(w / 2 - tw / 2 + 1.25f, y + 1.25f, w / 2 + tw / 2 - 1.25f, y + 34.75f, 17f, 17f, stroke)
         text.color = Color.argb((255 * a).toInt(), 0x24, 0x33, 0x1F)
         cv.drawText(t.text, w / 2, y + 25f, text)
-        bragBox.setEmpty()
-        if (t.brag == null) return
-        // [자랑하기] under the toast: yellow pill, ink outline, a hard drop (the menus' look)
-        text.textSize = 16f
-        val pw = text.measureText("자랑하기") + 30f
-        val py = y + 46f
-        bragBox.set(w / 2 - pw / 2 - 8f, py - 8f, w / 2 + pw / 2 + 8f, py + 40f)   // a little larger to hit
-        fill.color = argb(a, 0x24, 0x33, 0x1F); cv.drawRoundRect(w / 2 - pw / 2, py + 3f, w / 2 + pw / 2, py + 33f, 15f, 15f, fill)
-        fill.color = argb(a, 0xFF, 0xFD, 0xF6); cv.drawRoundRect(w / 2 - pw / 2, py, w / 2 + pw / 2, py + 30f, 15f, 15f, fill)
-        cv.drawRoundRect(w / 2 - pw / 2 + 1.25f, py + 1.25f, w / 2 + pw / 2 - 1.25f, py + 28.75f, 14f, 14f, stroke)
-        cv.drawText("자랑하기", w / 2, py + 21f, text)
     }
 
     companion object {
         private const val TAG = "CatchGame"
-        const val BRAG_MS = 6000f   // a win toast with [자랑하기] stays this long (spec-extras 3)
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)

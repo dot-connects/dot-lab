@@ -25,6 +25,9 @@ import kotlin.math.max
 class Brag(val name: String, val kind: String, val pic: Bitmap?, val critterId: String?, val cap: Int, val at: Long = System.currentTimeMillis()) {
     val person get() = Dex.hasPerson(kind)
 
+    /** A critter's catch carries no picture: read its front cell (off the main thread). */
+    fun ready(ctx: Context): Brag = if (pic == null && critterId != null) Brag(name, kind, Frames.asset(ctx, critterId, "front"), critterId, cap, at) else this
+
     companion object {
         /** A dex entry: a critter's front picture, a real thing's cut-out photo (its first pose). */
         fun of(ctx: Context, e: Dex.Entry): Brag {
@@ -79,6 +82,7 @@ object ShareCard {
         // a soft shadow on the grass, then the capsule with the catch inside
         val r = 330f; val cx = W / 2f; val cy = 690f
         p.color = 0x33243319; c.drawOval(cx - r * 0.8f, cy + r * 0.86f, cx + r * 0.8f, cy + r * 1.06f, p)
+        p.color = Color.BLACK   // opaque again: the shadow left the paint at 20 % alpha (operator 11-16)
         CapsuleArt.draw(c, cx, cy, r, -8f, b.cap) { cv ->
             val pic = b.pic ?: return@draw
             val k = r * 1.6f / max(pic.width, pic.height)
@@ -117,7 +121,7 @@ object ShareCard {
 
     /** Render, save under cache/share/ (a new name each time), and the share-sheet intent. */
     private fun make(ctx: Context, b0: Brag): Intent {
-        val b = if (b0.pic == null && b0.critterId != null) Brag(b0.name, b0.kind, Frames.asset(ctx, b0.critterId, "front"), b0.critterId, b0.cap, b0.at) else b0
+        val b = b0.ready(ctx)
         val dir = File(ctx.cacheDir, "share").apply { mkdirs() }
         dir.listFiles()?.filter { System.currentTimeMillis() - it.lastModified() > 3_600_000L }?.forEach { it.delete() }
         val f = File(dir, "brag-${System.currentTimeMillis()}.png")
