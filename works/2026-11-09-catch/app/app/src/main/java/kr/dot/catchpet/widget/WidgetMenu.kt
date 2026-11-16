@@ -77,7 +77,6 @@ class WidgetMenu : ComponentActivity() {
         setPet(this, id)
         if (Settings.canDrawOverlays(this)) PetService.start(this)
         else { open("pet"); return }   // no overlay permission yet: the pet screen asks for it
-        PetWidgets.refresh(this)
         finish()
     }
 
@@ -145,7 +144,7 @@ class WidgetMenu : ComponentActivity() {
             repeat(4 - row.size) { Box(Modifier.weight(1f)) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            if (on) Small("펫 내리기", Modifier.weight(1f)) { PetService.stop(this@WidgetMenu); PetWidgets.refresh(this@WidgetMenu); finish() }
+            if (on) Small("펫 내리기", Modifier.weight(1f)) { PetService.stop(this@WidgetMenu); finish() }
             Small("도감", Modifier.weight(1f)) { open("dex") }
         }
     }

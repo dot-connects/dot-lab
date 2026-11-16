@@ -35,7 +35,12 @@ object PetPrefs {
         runCatching { PetBrain.Zone.valueOf(prefs(ctx).getString("place", null)!!) }.getOrDefault(PetBrain.Zone.FLOOR)
     fun setPlace(ctx: Context, z: PetBrain.Zone) { prefs(ctx).edit().putString("place", z.name).apply() }
     fun overlayOn(ctx: Context) = prefs(ctx).getBoolean("overlay", false)
-    fun setOverlayOn(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("overlay", on).apply() }
+    fun setOverlayOn(ctx: Context, on: Boolean) {
+        if (overlayOn(ctx) == on) return
+        prefs(ctx).edit().putBoolean("overlay", on).commit()   // the widget reads it next
+        // the widget puts the floating pet front middle: redraw on every on/off, from any screen (operator 11-16)
+        kr.dot.catchpet.widget.PetWidgets.refresh(ctx)
+    }
     /** Where the overlay shows: only over the home screen, or always (over every app). Operator 11-14. */
     fun homeOnly(ctx: Context) = prefs(ctx).getBoolean("home_only", true)
     fun setHomeOnly(ctx: Context, on: Boolean) { prefs(ctx).edit().putBoolean("home_only", on).apply() }
@@ -57,6 +62,9 @@ object PetPrefs {
         prefs(ctx).edit().putLong("talk_at", s.at).putLong("talk_day", s.day).putInt("talk_n", s.count).putString("talk_last", s.last).apply()
     }
     /** A new dex friend the pet has not greeted yet (set when a catch grows the dex). */
+    /** The pet's own lines (unlock, charger, home return) on or off; the double-tap bubble is separate (operator 11-16). */
+    fun talkOn(ctx: Context) = prefs(ctx).getBoolean("talk_on", true)
+    fun setTalkOn(ctx: Context, on: Boolean) = prefs(ctx).edit().putBoolean("talk_on", on).apply()
     fun friend(ctx: Context): String? = prefs(ctx).getString("talk_friend", null)
     fun setFriend(ctx: Context, name: String?) { prefs(ctx).edit().putString("talk_friend", name).apply() }
     fun openedAt(ctx: Context) = prefs(ctx).getLong("opened_at", 0L)
@@ -170,6 +178,7 @@ class PetService : Service() {
 
     private fun tryTalk(now: Long, home: Boolean) {
         if (wantTalkAt == 0L) return
+        if (!PetPrefs.talkOn(this)) { wantTalkAt = 0L; return }
         if (now - wantTalkAt > 5000) { wantTalkAt = 0L; return }
         val b = brain ?: return
         // on home only; without usage access we cannot tell, then a pet that is not up high counts as home
