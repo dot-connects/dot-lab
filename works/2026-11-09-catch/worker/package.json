@@ -1,1 +1,1 @@
-{"type":"module","private":true,"scripts":{"test":"node --test test/worker.test.js test/google.test.js test/verdicts.test.js"}}
+{"type":"module","private":true,"scripts":{"test":"node --test test/worker.test.js test/google.test.js test/verdicts.test.js test/ledger.test.js"}}
