@@ -10,6 +10,9 @@
 // Set ALL_DAY = "0" to stop previews, MONTH_CENTS = "0" to stop every AI call at once.
 
 import { secret } from "./secret.js";
+import { decodeIntegrity, getPurchase, consumePurchase } from "./google.js";
+import { purchaseVerdict, integrityVerdict, certHex, requestHash, PRODUCT_STYLE } from "./verdicts.js";
+import { Ledger } from "./ledger.js";
 export { secret };
 const ORIGINS = [/^https:\/\/dot-connects\.github\.io$/, /^http:\/\/(127\.0\.0\.1|localhost)(:\d+)?$/];
 const STYLES = ["fluff", "figure"];
@@ -207,41 +210,138 @@ async function transform(b, req, env, counts, day, origin, dev) {
   return json({ mime: r.img.mime, image: r.img.data, left: perDev - used }, 200, origin);
 }
 
-async function sheet(b, req, env, counts, day, dev) {
-  if (!dev) return json({ error: "purchase" }, 402);
-  if (!validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "")) return json({ error: "bad request" }, 400);
-  if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
-  if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
-
-  const style = b.style ?? "fluff";   // apps before 0.3.8 send no style: the fur-ball sheet, same key as before
-  if (!SHEET_STYLES.includes(style)) return json({ error: "bad request" }, 400);
-  const job = String(b.layout) === "12"
+function sheetJob(b, style) {
+  return String(b.layout) === "12"
     ? { prompt: SHEET12_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
     : b.kind.includes("+")
     ? { prompt: GROUP_SHEET_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
     : style === "figure"
     ? { prompt: FIGURE_SHEET_PROMPT(b.kind), image: b.image, ref: false, quality: "medium", size: "1536x1024" }
     : { prompt: SHEET_PROMPT(b.kind), image: b.image, ref: true, quality: "medium", size: "1536x1024" };
-  // the dev token draws without entry/day limits (operator 11-16: redraw as often as wanted on the dev ceiling)
-  const r = await paidCall(job, CENTS.sheet, env, counts, day, async () => {}, true);
-  if (r.off) return json({ error: "off" }, 503);
-  if (r.err) return json({ error: "model" }, 502);
-  return json({ mime: r.img.mime, image: r.img.data, layout: String(b.layout) === "12" ? "12" : "6" });
+}
+const layoutOf = b => (String(b.layout) === "12" ? "12" : "6");
+
+// ---------- Play: integrity, purchases, free test sheets (spec-release.md §2-§4) ----------
+
+const google = env => env.google || { decodeIntegrity, getPurchase, consumePurchase };
+const bytesB64 = u8 => { let s = ""; for (let i = 0; i < u8.length; i += 0x8000) s += String.fromCharCode(...u8.subarray(i, i + 0x8000)); return btoa(s); };
+const sha256hex = async t => Array.from(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(t))), x => x.toString(16).padStart(2, "0")).join("");
+
+/** "ok" | "off" (no service account: nothing can be checked) | a failure reason. Statuses only in logs. */
+async function integrity(req, env, path, b, text) {
+  if (!env.google && !secret(env.GOOGLE_SA)) return "off";
+  const tok = req.headers.get("x-integrity") || "";
+  if (!tok) return "missing";
+  try {
+    const v = await google(env).decodeIntegrity(env, tok);
+    const want = await requestHash(path, b.device, text);
+    const r = integrityVerdict(v, { pkg: env.PKG || "kr.dot.catchpet", certHex: certHex(env.CERT_SHA256), requestHash: want, now: Date.now() });
+    if (r !== "ok") console.log("integrity", r);
+    return r;
+  } catch (e) { console.log("integrity call", e?.status); return e?.status === 0 ? "off" : "google"; }
 }
 
-export async function handle(req, env, counts, { day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10) } = {}) {   // KST day
+async function sheet(b, req, env, counts, day, dev, ledger, text) {
+  if (!validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "")) return json({ error: "bad request" }, 400);
+  const style = b.style ?? "fluff";   // apps before 0.3.8 send no style: the fur-ball sheet
+  if (!SHEET_STYLES.includes(style)) return json({ error: "bad request" }, 400);
+  if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
+  if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
+
+  if (dev) {   // the dev app: no integrity, no purchase, no limits, its own month ceiling (operator 11-16)
+    const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {}, true);
+    if (r.off) return json({ error: "off" }, 503);
+    if (r.err) return json({ error: "model" }, 502);
+    return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b) });
+  }
+
+  const ig = await integrity(req, env, "/sheet", b, text);
+  if (ig === "off") return json({ error: "off" }, 503);
+  if (ig !== "ok") return json({ error: "integrity" }, 403);
+
+  const token = typeof b.purchaseToken === "string" ? b.purchaseToken : "";
+  if (!token) {   // a test-period free sheet
+    const total = num(env.FREE_SHEETS, 0);
+    if ((await ledger.freeLeft(b.device, total)) <= 0) return json({ error: "free" }, 429);
+    const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {});
+    if (r.off) return json({ error: "off" }, 503);
+    if (r.err) return json({ error: "model" }, 502);
+    await ledger.useFree(b.device);   // only a delivered sheet uses one up
+    return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b), free_left: await ledger.freeLeft(b.device, total) });
+  }
+
+  if (token.length > 512 || PRODUCT_STYLE[b.product] !== style) return json({ error: "bad request" }, 400);
+  const g = google(env);
+  const consume = async () => {
+    try { if (await g.consumePurchase(env, b.product, token)) await ledger.markConsumed(token); }
+    catch (e) { console.log("consume", e?.status); }   // the app consumes too; Google refunds only unacknowledged buys
+  };
+  const c = await ledger.claim(token, b.product, b.device, Date.now());
+  if (c.go === "mismatch") return json({ error: "bad request" }, 400);
+  if (c.go === "busy") return json({ error: "busy" }, 409);
+  if (c.go === "cached") {
+    const o = await env.SHEETS.get(c.key);
+    if (!o) { await ledger.fail(token); return json({ error: "busy" }, 409); }   // expired from R2: the next try draws again
+    if (!c.consumed) await consume();
+    return json({ mime: o.httpMetadata?.contentType || "image/webp", image: bytesB64(new Uint8Array(await o.arrayBuffer())), layout: c.layout });
+  }
+  if (c.go === "new") {
+    let p;
+    try { p = await g.getPurchase(env, b.product, token); }
+    catch (e) {
+      console.log("purchase check", e?.status);
+      await ledger.forget(token);
+      return e?.status === 0 ? json({ error: "off" }, 503) : json({ error: "purchase" }, 402);
+    }
+    const v = purchaseVerdict(p);
+    if (v !== "ok") { await ledger.forget(token); return json({ error: v === "pending" ? "pending" : "purchase" }, 402); }
+  }
+  const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {});
+  if (r.off || r.err) { await ledger.fail(token); return r.off ? json({ error: "off" }, 503) : json({ error: "model" }, 502); }
+  const key = `sheet/${await sha256hex(token)}`;
+  await env.SHEETS.put(key, b64bytes(r.img.data), { httpMetadata: { contentType: r.img.mime } });
+  await ledger.finish(token, key, layoutOf(b));
+  await consume();
+  return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b) });
+}
+
+const REASONS = ["odd", "person", "other"];
+
+export async function handle(req, env, counts, { day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), ledger = new Ledger(env.DB) } = {}) {   // KST day
   const origin = req.headers.get("origin"), app = req.headers.get("x-app") === "catchpet";
   const dev = app && !origin && !!secret(env.DEBUG_PURCHASE) && (req.headers.get("x-purchase") || "") === secret(env.DEBUG_PURCHASE);
   if (origin ? !allowed(origin) : !app) return json({ error: "origin" }, 403);   // no Origin = the app, no CORS headers
   if (req.method === "OPTIONS" && origin) return new Response(null, { status: 204, headers: cors(origin) });
-  const path = new URL(req.url).pathname;
-  if (req.method !== "POST" || !(path === "/transform" || (path === "/sheet" && app))) return json({ error: "not found" }, 404, origin);
-  if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + 2000) return json({ error: "too big" }, 413, origin);
-  const b = await req.json().catch(() => null);
-  if (!b || typeof b !== "object") return json({ error: "bad request" }, 400, origin);
-  return path === "/sheet" ? sheet(b, req, env, counts, day, dev) : transform(b, req, env, counts, day, origin, dev);
+  const url = new URL(req.url), path = url.pathname;
+  if (origin) return json({ error: "off" }, 503, origin);   // the frozen web game: AI is app-only now, it keeps its own picture
+  if (req.method === "GET" && path === "/quota") {
+    const device = url.searchParams.get("device") || "";
+    if (!goodDevice(device)) return json({ error: "bad request" }, 400);
+    const total = num(env.FREE_SHEETS, 0);
+    return json({ free_left: await ledger.freeLeft(device, total), free_total: total });
+  }
+  if (req.method !== "POST" || !["/transform", "/sheet", "/report"].includes(path)) return json({ error: "not found" }, 404);
+  if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + 2000) return json({ error: "too big" }, 413);
+  const text = await req.text();
+  let b = null;
+  try { b = JSON.parse(text); } catch {}
+  if (!b || typeof b !== "object") return json({ error: "bad request" }, 400);
+  if (path === "/report") {
+    if (!goodDevice(b.device) || !/^[A-Za-z0-9_-]{1,64}$/.test(b.entry || "") || !validKind(b.kind) || !STYLES.includes(b.style) || !REASONS.includes(b.reason)) return json({ error: "bad request" }, 400);
+    if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
+    await ledger.report(b, Date.now());
+    return json({ ok: true });
+  }
+  if (path === "/sheet") return sheet(b, req, env, counts, day, dev, ledger, text);
+  if (!dev) {
+    if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400);
+    const ig = await integrity(req, env, "/transform", b, text);
+    if (ig === "off") return json({ error: "off" }, 503);
+    if (ig !== "ok") return json({ error: "integrity" }, 403);
+  }
+  return transform(b, req, env, counts, day, null, dev);
 }
 
 export default {
-  async fetch(req, env) { return handle(req, env, new D1Counts(env.DB)); },
+  async fetch(req, env) { return handle(req, env, new D1Counts(env.DB), { ledger: new Ledger(env.DB) }); },
 };

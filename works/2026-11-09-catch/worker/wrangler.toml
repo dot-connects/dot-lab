@@ -12,6 +12,9 @@ ALL_DAY = "30"
 MONTH_CENTS = "500"
 # the dev app (operator's DEBUG_PURCHASE token) has no day/entry limits and its own month ceiling
 DEV_MONTH_CENTS = "2000"
+PKG = "kr.dot.catchpet"
+FREE_SHEETS = "3"
+CERT_SHA256 = ""
 
 [[d1_databases]]
 binding = "DB"
@@ -23,3 +26,12 @@ database_id = "02666d84-fbb2-4e62-b5f7-c8d43e9edfe0"
 name = "LIMIT"
 namespace_id = "2612"
 simple = { limit = 10, period = 60 }
+
+# Play release (spec-release.md): package, test-period free sheets ("0" in production),
+# the app-signing certificate SHA-256 from Play Console (App integrity > App signing; empty = no app passes integrity).
+# Secret GOOGLE_SA = the service-account JSON (wizard menu 7); without it non-dev AI calls answer 503 off.
+
+# paid sheets kept 30 days so a purchase token never draws twice (bucket lifecycle rule: expire after 30 days)
+[[r2_buckets]]
+binding = "SHEETS"
+bucket_name = "dot-lab-catch-sheets"
