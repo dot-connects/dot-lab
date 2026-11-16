@@ -35,18 +35,6 @@
         <!-- AR is an opt-in experiment: never ask Play to require or install ARCore -->
         <meta-data android:name="com.google.ar.core" android:value="optional" tools:replace="android:value" />
 
-        <!-- Optional: keeps the floating pet above the keyboard (window list only). -->
-        <service
-            android:name=".pet.KeyboardWatch"
-            android:exported="false"
-            android:label="@string/keyboard_watch_label"
-            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
-            <intent-filter>
-                <action android:name="android.accessibilityservice.AccessibilityService" />
-            </intent-filter>
-            <meta-data android:name="android.accessibilityservice" android:resource="@xml/keyboard_watch" />
-        </service>
-
         <activity
             android:name=".MainActivity"
             android:exported="true"

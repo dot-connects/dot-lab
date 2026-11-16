@@ -72,7 +72,7 @@ class PetBrainTest {
         val b = brain(Zone.RIGHT, seed = 3)
         run(b, 60_000f) {
             assertTrue("y=${it.y}", it.y in 160f..652f)
-            assertTrue("act ${it.act}", it.act in setOf(Act.IDLE, Act.CLIMB, Act.SLEEP, Act.SMILE, Act.DANCE))
+            assertTrue("act ${it.act}", it.act in setOf(Act.IDLE, Act.CLIMB, Act.SLEEP, Act.SMILE))
         }
     }
 
@@ -85,32 +85,22 @@ class PetBrainTest {
         assertEquals("sleep", f.frame(0f))
     }
 
-    @Test fun doubleTapDancesThenCarriesOn() {
+    @Test fun ponderingStandsStillUntilTheCloudCloses() {
         val b = brain()
-        b.doubleTap()
-        assertEquals(Act.DANCE, b.act)
-        run(b, 3_100f)
-        assertTrue(b.act != Act.DANCE)
+        b.ponder(true)
+        val x = b.x
+        run(b, 20_000f) { assertEquals(Act.PONDER, it.act); assertEquals(x, it.x, 0.01f) }
+        b.ponder(false)
+        assertEquals(Act.IDLE, b.act)
     }
 
-    @Test fun keyboardLiftsThePetAndLetsItBackDown() {
-        val b = brain()
-        b.keyboard(400f)
-        assertEquals(396f, b.y, 0.01f)
-        run(b, 20_000f) { assertTrue(it.y <= 396f) }   // walking stays on the keyboard line
-        b.grab(200f, 300f); b.drop(200f, 300f)
-        run(b, 3_000f)
-        assertEquals(396f, b.y, 0.01f)                  // a drop lands on the keyboard, not under it
-        b.keyboard(null)
-        assertEquals(700f, b.y, 0.01f)
-    }
-
-    @Test fun keyboardKeepsAWallPetAboveIt() {
-        val b = brain(Zone.RIGHT)
-        b.drop(390f, 600f)
-        b.keyboard(500f)
-        assertTrue(b.y <= 500f - 4f - 48f)
-        run(b, 20_000f) { assertTrue(it.y <= 500f - 4f - 48f + 0.01f) }
+    @Test fun anotherPetKeepsThePlace() {
+        val b = brain(Zone.LEFT)
+        b.grab(10f, 300f); b.drop(10f, 300f)
+        val c = PetBrain(Zone.RIGHT, w = 400f, h = 800f, baseFloor = 700f, size = 48f) { 0.5f }
+        c.takeOver(b)
+        assertEquals(Zone.LEFT, c.zone)
+        assertEquals(300f, c.y, 0.01f)
     }
 
     @Test fun aThrowBouncesOffTheWallAndLandsDizzy() {
@@ -129,7 +119,7 @@ class PetBrainTest {
         val b = brain()
         b.upHigh(true)
         assertTrue(b.zone == Zone.LEFT || b.zone == Zone.RIGHT)
-        run(b, 30_000f) { assertTrue("whole pet stays above 45%", it.y + 24f <= 800f * 0.45f + 0.01f) }
+        run(b, 30_000f) { assertTrue("whole pet stays above 60%", it.y + 24f <= 800f * 0.6f + 0.01f) }
         b.upHigh(false)
         assertEquals(Zone.FLOOR, b.zone)
     }
@@ -140,14 +130,14 @@ class PetBrainTest {
         b.grab(150f, 600f)
         b.drop(150f, 600f)
         assertEquals(Zone.LEFT, b.zone)
-        assertTrue(b.y <= 400f)
+        assertTrue(b.y <= 480f)
     }
 
     @Test fun aTapOnAFlyingPetLetsItLand() {
         val b = brain()
         b.grab(200f, 300f)
         b.fling(200f, 300f, vx = 1f, vy = 0f)
-        b.tap(); b.doubleTap()
+        b.tap(); b.ponder(true)
         assertEquals(Act.FALL, b.act)
         run(b, 3000f)
         assertEquals(700f, b.y, 0.01f)

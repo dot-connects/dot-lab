@@ -171,7 +171,7 @@ private fun CatchView(
     DisposableEffect(Unit) {
         seg.start(src::latest)
         critters.start()
-        onDispose { critters.stop(); seg.close(); src.close() }
+        onDispose { Sfx.motor(0f); critters.stop(); seg.close(); src.close() }
     }
     // Home / screen off: stop the model loop and the sensors; back: start them again (review M3)
     val life = androidx.compose.ui.platform.LocalLifecycleOwner.current
@@ -179,7 +179,7 @@ private fun CatchView(
         var stopped = false
         val obs = androidx.lifecycle.LifecycleEventObserver { _, e ->
             when (e) {
-                androidx.lifecycle.Lifecycle.Event.ON_STOP -> if (!stopped) { stopped = true; seg.paused = true; critters.stop() }
+                androidx.lifecycle.Lifecycle.Event.ON_STOP -> if (!stopped) { stopped = true; Sfx.motor(0f); seg.paused = true; critters.stop() }
                 androidx.lifecycle.Lifecycle.Event.ON_START -> if (stopped) { stopped = false; seg.paused = false; critters.start() }
                 else -> {}
             }
@@ -385,6 +385,7 @@ private class CatchGame(
         if (c.st == Claw.St.AIM) { if (railTickX < 0f || abs(px - railTickX) > 22f) { if (railTickX >= 0f) Sfx.play(R.raw.sfx_rail, 0.25f); railTickX = px } }
         val before = c.st
         c.step(dt, targets) { x, y -> m?.toGrid(x * d, y * d) ?: (-1 to -1) }
+        Sfx.motor(when (c.st) { Claw.St.DOWN -> 0.85f; Claw.St.UP -> 1.15f; else -> 0f })
         if (before == Claw.St.AIM && c.st == Claw.St.DOWN) Sfx.play(R.raw.sfx_drop, 0.5f)
         if (before == Claw.St.GRIP && c.st == Claw.St.UP) Sfx.play(R.raw.sfx_lift, 0.45f)
         if (before == Claw.St.DOWN && c.st == Claw.St.GRIP) {

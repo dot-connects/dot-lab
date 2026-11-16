@@ -105,14 +105,14 @@ class PetService : Service() {
             if (now - screenCheckedAt > 1000) {
                 screenCheckedAt = now
                 if (!brainFits()) { onScreenChanged(); return }   // show() posted a fresh tick
-                kbWatch = keyboardWatchOn(this@PetService)
             }
             val home = if (homeOnly || usageOk) launcherOnTop() else false
             val hidden = homeOnly && !home
-            // operator 11-15 plan A: away from home, without the keyboard watch, it stays high on a wall
+            // operator 11-15 plan A: away from home it stays high on a wall, clear of any keyboard;
             // only when usage access tells home from other apps: without it the pet keeps its floor (review 11-16 H1)
-            brain?.upHigh(usageOk && !homeOnly && !kbWatch && !home)
+            brain?.upHigh(usageOk && !homeOnly && !home)
             if (hidden || bubble?.expired() == true) closeBubble()
+            if (bubble != null) brain?.ponder(true)   // a tap's smile is over: back to thinking
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
             lastMs = now
@@ -127,7 +127,6 @@ class PetService : Service() {
     }
 
     private var screenCheckedAt = 0L
-    private var kbWatch = false
     /** Usage access granted: we can tell home from other apps even in "always" mode. */
     private var usageOk = false
 
@@ -153,7 +152,6 @@ class PetService : Service() {
         winCtx = win
         win.registerComponentCallbacks(winCallbacks)
         wm = win.getSystemService(WindowManager::class.java)
-        instance = this
         screenSize = wm.maximumWindowMetrics.bounds.let { it.width() to it.height() }
         registerReceiver(screen, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
@@ -205,6 +203,7 @@ class PetService : Service() {
     }
 
     private fun show() {
+        val old = brain   // another pet or size, or a new screen: it stays where it was
         hide()
         val cells = Frames.chosen(this)
         if (cells == null || !android.provider.Settings.canDrawOverlays(this)) { PetPrefs.setOverlayOn(this, false); stopSelf(); return }
@@ -213,7 +212,6 @@ class PetService : Service() {
         size = PetPrefs.size(this) * (if (group) 1.4f else 1f)
         usageOk = PetPrefs.usageGranted(this)
         homeOnly = PetPrefs.homeOnly(this) && usageOk
-        kbWatch = keyboardWatchOn(this)
         // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
         homes = packageManager.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0)
             .filter { it.priority >= 0 }   // Settings FallbackHome sits at -1000
@@ -232,7 +230,7 @@ class PetService : Service() {
             layoutInDisplayCutoutMode = WindowManager.LayoutParams.LAYOUT_IN_DISPLAY_CUTOUT_MODE_ALWAYS
         }
         val b = newBrain()
-        b.keyboard(keyboardTop?.let { it / density })
+        old?.let(b::takeOver)
         val v = PetView(winCtx ?: this, PetLook(cells), b)
         attachTouch(v)
         brain = b
@@ -245,7 +243,7 @@ class PetService : Service() {
 
     private var bubble: AppBubble? = null
 
-    /** Two taps: the chosen app, or the cloud of apps; nothing chosen = dance (operator 11-15). */
+    /** Two taps: the cloud of apps, while the pet stands and thinks (operator 11-15, 11-16). */
     private fun doubleTap(b: PetBrain) {
         closeBubble()
         // operator 11-15: the cloud always carries [펫 설정 | 펫 끄기] under the chosen apps (mockup bubble C)
@@ -267,10 +265,10 @@ class PetService : Service() {
         val screen = wm.currentWindowMetrics.bounds
         runCatching { wm.addView(v, v.params(android.graphics.Rect(p.x, p.y, p.x + px, p.y + px), screen.width(), screen.height())) }
             .onSuccess { bubble = v }
-        if (apps.isEmpty()) b.doubleTap() else b.tap()   // nothing chosen: it still dances
+        if (bubble != null) b.ponder(true)
     }
 
-    private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) } }; bubble = null }
+    private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) }; brain?.ponder(false) }; bubble = null }
 
     private fun hide() {
         closeBubble()
@@ -326,11 +324,8 @@ class PetService : Service() {
         val b = wm.maximumWindowMetrics.bounds
         if (b.width() to b.height() == screenSize && brainFits()) return
         screenSize = b.width() to b.height()
-        val old = brain ?: return
-        val (w0, h0) = old.w to old.h
-        val (x01, y01) = old.x / w0 to old.y / h0
+        if (brain == null) return
         show()
-        brain?.keepAt(x01, y01)
     }
 
     @SuppressLint("ClickableViewAccessibility")
@@ -390,7 +385,6 @@ class PetService : Service() {
     }
 
     override fun onDestroy() {
-        if (instance === this) instance = null
         winCtx?.unregisterComponentCallbacks(winCallbacks)
         hide()
         unregisterReceiver(screen)
@@ -398,21 +392,6 @@ class PetService : Service() {
     }
 
     companion object {
-        private var instance: PetService? = null
-        private var keyboardTop: Int? = null
-
-        /** From [KeyboardWatch]: the keyboard's top edge on screen (px), or null when it is closed (눈금 FloatService). */
-        fun keyboard(top: Int?) {
-            if (top == keyboardTop) return
-            keyboardTop = top
-            instance?.let { s -> s.brain?.keyboard(top?.let { it / s.density }); s.render() }
-        }
-
-        /** The optional accessibility service that reports the keyboard is switched on. */
-        fun keyboardWatchOn(ctx: Context): Boolean =
-            (android.provider.Settings.Secure.getString(ctx.contentResolver, android.provider.Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES) ?: "")
-                .contains("${ctx.packageName}/")
-
         const val HOLD_MS = 380L
         const val DOUBLE_MS = 320L
 

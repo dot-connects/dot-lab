@@ -43,8 +43,17 @@ object Frames {
             else -> return null
         }
         val front = raw["front"] ?: raw.values.firstOrNull() ?: return null
+        fun src(k: String): Bitmap = raw[k] ?: raw[ALIAS[k]] ?: front
+        // the walk steps share one cut: trimmed one by one, a raised leg or a narrower step moved the body left and
+        // right every beat (operator 11-16: "arms and legs look awkward")
+        val walk = WALK.map(::src)
+        val walkBox = if (walk.all { it.width == walk[0].width && it.height == walk[0].height })
+            walk.mapNotNull(::box).reduceOrNull { a, b -> intArrayOf(minOf(a[0], b[0]), minOf(a[1], b[1]), maxOf(a[2], b[2]), maxOf(a[3], b[3])) } else null
         val trimmed = HashMap<String, Bitmap>()
-        fun cell(k: String): Bitmap = trimmed.getOrPut(k) { trim(raw[k] ?: raw[ALIAS[k]] ?: front) }
+        fun cell(k: String): Bitmap = trimmed.getOrPut(k) {
+            val b = src(k)
+            if (k in WALK && walkBox != null) crop(b, walkBox) else trim(b)
+        }
         return CELLS.associateWith { cell(it) }
     }
 
@@ -56,13 +65,18 @@ object Frames {
         listOf("critters/$critterId/$name.webp", "critters/$critterId/front.webp", "critters/_placeholder/front.webp")
             .firstNotNullOfOrNull { p -> runCatching { ctx.assets.open(p).use(BitmapFactory::decodeStream) }.getOrNull() }
 
+    private val WALK = listOf("walk1", "walk2", "walk3", "walk4")
+
     /** Cut away transparent margins so the pet fills its box. */
-    fun trim(b: Bitmap): Bitmap {
+    fun trim(b: Bitmap): Bitmap = box(b)?.let { crop(b, it) } ?: b
+
+    private fun box(b: Bitmap): IntArray? {
         val px = IntArray(b.width * b.height)
         b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
-        val r = opaqueBox(px, b.width, b.height) ?: return b
-        return Bitmap.createBitmap(b, r[0], r[1], r[2] - r[0] + 1, r[3] - r[1] + 1)
+        return opaqueBox(px, b.width, b.height)
     }
+
+    private fun crop(b: Bitmap, r: IntArray): Bitmap = Bitmap.createBitmap(b, r[0], r[1], r[2] - r[0] + 1, r[3] - r[1] + 1)
 
     /** [x0, y0, x1, y1] (inclusive) of pixels with alpha > minAlpha, or null when none. */
     internal fun opaqueBox(px: IntArray, w: Int, h: Int, minAlpha: Int = 16): IntArray? {
@@ -88,8 +102,8 @@ class PetLook(private val cells: Map<String, Bitmap>) {
     fun lift(b: PetBrain, t: Float): Float = when (b.act) {
         PetBrain.Act.SMILE -> abs(sin(t % 700f / 700f * PI)).toFloat() * 0.2f
         PetBrain.Act.HOP -> sin((b.actMs / 650f).coerceIn(0f, 1f) * PI).toFloat() * 0.5f
-        PetBrain.Act.DANCE -> sin(t / 360f % 1f * PI).toFloat() * 0.12f
-        PetBrain.Act.WALK, PetBrain.Act.CLIMB -> abs(sin(t / 170f * PI)).toFloat() * 0.04f
+        // one small bob per step, highest mid passing frame (walk2 / walk4 start at 130 ms of each 260 ms step)
+        PetBrain.Act.WALK, PetBrain.Act.CLIMB -> abs(sin((t - 65f) / 260f * PI)).toFloat() * 0.025f
         else -> 0f
     }
 
@@ -113,7 +127,11 @@ class PetLook(private val cells: Map<String, Bitmap>) {
                 sx = 1 + 0.16f * land; sy = 1 - 0.2f * land
                 sway = sin(a / 95f) * 13f * (1f - a / PetBrain.DIZZY_MS).coerceAtLeast(0f)
             }
-            PetBrain.Act.DANCE -> { val beat = t / 360f; sway = (if (beat.toInt() % 2 == 1) 10f else -10f) * sin(beat % 1f * PI).toFloat() }
+            PetBrain.Act.PONDER -> {
+                // head tilted to one side and held, slow breath: no side to side (operator 11-16)
+                sway = 9f * (b.actMs / 250f).coerceAtMost(1f)
+                val br = sin(t / 700f) * 0.02f; sx = 1 - br * 0.5f; sy = 1 + br
+            }
             else -> {}
         }
         val k = s / unit
@@ -135,6 +153,15 @@ class PetLook(private val cells: Map<String, Bitmap>) {
                 val a = t / 170f + k * PI.toFloat()
                 c.drawText("\u2605", cos(a) * s * 0.28f, -s * 0.95f + sin(a) * s * 0.07f, label)
             }
+            c.restore()
+            return
+        }
+        if (b.act == PetBrain.Act.PONDER) {
+            // thought dots over its head, one more every 400 ms
+            c.save(); c.translate(fx, fy); c.rotate(rotation(b))
+            label.textSize = s * 0.26f; label.alpha = 230
+            val n = (b.actMs / 400f).toInt() % 4
+            for (i in 0 until n) c.drawText("•", s * (0.18f + i * 0.13f), -s * (0.8f + i * 0.06f), label)
             c.restore()
             return
         }

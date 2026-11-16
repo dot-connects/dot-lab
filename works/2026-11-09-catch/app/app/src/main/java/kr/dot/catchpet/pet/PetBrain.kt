@@ -21,7 +21,7 @@ class PetBrain(
     private val rnd: () -> Float,
 ) {
     enum class Zone { FLOOR, LEFT, RIGHT, BEHIND }
-    enum class Act { IDLE, WALK, THINK, SMILE, DANCE, SLEEP, CLIMB, HANG, FALL, DIZZY, HOP, WIGGLE }
+    enum class Act { IDLE, WALK, THINK, SMILE, PONDER, SLEEP, CLIMB, HANG, FALL, DIZZY, HOP, WIGGLE }
 
     var zone = zone; private set
     var act = Act.IDLE; private set
@@ -41,26 +41,13 @@ class PetBrain(
 
     init { place(zone) }
 
-    /** Top of the open keyboard (same units as y), or null; the pet stands and climbs above it (operator 11-15). */
-    private var keyboard: Float? = null
-    /** The stand line: above the dock, or just above the open keyboard. */
-    val floorY get() = keyboard?.let { min(baseFloor, it - 4f) } ?: baseFloor
-
-    /** The keyboard opened (its top) or closed (null): a pet on the floor or low on a wall moves with it. */
-    fun keyboard(top: Float?) {
-        if (top == keyboard) return
-        keyboard = top
-        if (act == Act.HANG || act == Act.FALL) return
-        when (zone) {
-            Zone.FLOOR -> y = floorY
-            Zone.LEFT, Zone.RIGHT -> y = y.coerceIn(topLimit, max(topLimit, bottomLimit))
-            Zone.BEHIND -> {}
-        }
-    }
+    /** The stand line, just above the dock. */
+    val floorY get() = baseFloor
 
     /**
-     * Away from the home screen in "always" mode, without the keyboard watch: keep off the floor and high on a wall,
-     * where a keyboard never reaches (operator 11-15, plan A). [movedUp]: we took it there, so we bring it back down.
+     * Away from the home screen in "always" mode: keep off the floor and on the upper part of a wall, where a
+     * keyboard never reaches (operator 11-15 plan A; the keyboard watch is gone, 11-16). [movedUp]: we took it
+     * there, so we bring it back down.
      */
     var upHigh = false; private set
     private var movedUp = false
@@ -81,13 +68,13 @@ class PetBrain(
     /** Floor (or behind the icons) -> the nearer wall, in the upper half. */
     private fun goUp() {
         if (onWall) return
-        y = min(y, h * 0.45f)
+        y = min(y, UP_SHARE * h)
         place(if (x < w / 2) Zone.LEFT else Zone.RIGHT)
         movedUp = true
     }
 
     val topLimit get() = h * 0.2f
-    val bottomLimit get() = if (upHigh) min(floorY - size, h * 0.45f - size / 2) else floorY - size
+    val bottomLimit get() = if (upHigh) min(floorY - size, UP_SHARE * h - size / 2) else floorY - size
 
     /** Where the drawing puts the pet across the wall while it slides in (0 once it is there). */
     fun slideOffset(): Float {
@@ -144,7 +131,8 @@ class PetBrain(
                 return
             }
             Act.SLEEP -> return   // until touched
-            Act.SMILE, Act.DANCE, Act.HOP, Act.WIGGLE -> if (t < len) return
+            Act.SMILE, Act.HOP, Act.WIGGLE -> if (t < len) return
+            Act.PONDER -> return   // until the cloud closes
             Act.DIZZY -> if (t < len) return else if (upHigh && !onWall) { goUp(); return }
             Act.WALK -> {
                 x += dir * WALK_SPEED * dtMs
@@ -172,9 +160,10 @@ class PetBrain(
         }
     }
 
-    fun doubleTap() {
-        if (act == Act.FALL || act == Act.HANG) return
-        start(Act.DANCE, 3000f)
+    /** The app cloud is open: it stops where it is and thinks until the cloud closes (operator 11-16). */
+    fun ponder(on: Boolean) {
+        if (!on) { if (act == Act.PONDER) start(Act.IDLE); return }
+        if (act !in setOf(Act.HANG, Act.FALL, Act.DIZZY, Act.SLEEP, Act.PONDER)) start(Act.PONDER, Float.MAX_VALUE)
     }
 
     fun grab(px: Float, py: Float) { act = Act.HANG; t = 0f; x = px; y = py }
@@ -210,14 +199,20 @@ class PetBrain(
         Act.DIZZY -> if (t < 700f) "fall" else "dazed"                         // flat on the belly, then sits up dazed
         Act.SMILE, Act.HOP -> "smile"
         Act.WIGGLE -> "front"
-        Act.DANCE -> if ((tMs / 360f).toInt() % 2 == 0) "front" else "smile"
+        Act.PONDER -> "front"
         Act.WALK, Act.CLIMB -> "walk${(tMs / 130f).toInt() % 4 + 1}"   // contact, passing, contact, passing
         Act.SLEEP -> if (onWall) "curl" else "sleep"
     }
 
-    /** Drawing rotation: feet into the wall. */
-    /** After a rotation: the same edge, at the same share of its length (operator 11-15). */
-    fun keepAt(x01: Float, y01: Float) { x = x01 * w; y = y01 * h; place(zone) }
+    /**
+     * A new brain for the same pet window (rotation, fold, another pet, another size): the same place at the same
+     * share of the screen (operator 11-15; 11-16 "a new pet on the left wall came back on the right").
+     */
+    fun takeOver(o: PetBrain) {
+        zone = o.zone; upHigh = o.upHigh; movedUp = o.movedUp
+        x = o.x / o.w * w; y = o.y / o.h * h
+        place(zone)
+    }
 
     fun rotationDeg(): Float = when (zone) { Zone.LEFT -> 90f; Zone.RIGHT -> -90f; else -> 0f }
 
@@ -230,6 +225,7 @@ class PetBrain(
 
     companion object {
         const val DIZZY_MS = 1800f
+        const val UP_SHARE = 0.6f       // away from home it stays on the top 60 % of a wall (operator 11-16)
         const val SLIDE_MS = 120f       // let go near a wall: slides in (operator 11-15)
         const val MAX_THROW = 3f        // px/ms
         const val THROW_SPEED = 1.1f    // px/ms at let-go: faster than this is a throw

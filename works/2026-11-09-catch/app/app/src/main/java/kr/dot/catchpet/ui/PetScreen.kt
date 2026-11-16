@@ -91,6 +91,7 @@ fun PetScreen(onBack: () -> Unit) {
     var petLook by remember { mutableStateOf(petId(ctx)?.let { Dex.get(ctx, it)?.ai?.petStyle }) }
     var size by remember { mutableStateOf(PetPrefs.size(ctx)) }
     var dev by remember { mutableStateOf(false) }
+    var picking by remember { mutableStateOf(false) }
     var askedDraw by remember { mutableStateOf(false) }
     var homeOnly by remember { mutableStateOf(PetPrefs.homeOnly(ctx)) }
     var usage by remember { mutableStateOf(PetPrefs.usageGranted(ctx)) }
@@ -106,6 +107,7 @@ fun PetScreen(onBack: () -> Unit) {
     fun restartIfOn() { if (on) PetService.start(ctx) }
     val pet = pets.firstOrNull { it.id == chosen }?.let { p -> p.copy(ai = p.ai.copy(sheet = p.ai.sheets[petLook] ?: p.ai.sheet, petStyle = petLook ?: p.ai.petStyle)) }
 
+    if (picking) { AppPicker(onDone = { picking = false }); return }
     BookPage {
         Row { InkPill("‹ 뽑기", onClick = onBack) }
         Heading("펫", modifier = Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { dev = true }) })
@@ -129,35 +131,16 @@ fun PetScreen(onBack: () -> Unit) {
                 if (v && !usage) ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
             }
             Note(when {
-                !homeOnly -> "어떤 앱을 쓰든 녀석이 화면 위에 있어요."
+                // operator 11-16: say that in other apps it only sits on the sides
+                !homeOnly && usage -> "앱을 쓰는 동안에도 녀석이 늘 있어요. 다만 홈이 아닌 앱에서는 키보드를 가리지 않게 양옆 벽 위쪽에만 붙어 있어요."
+                !homeOnly -> "앱을 쓰는 동안에도 녀석이 늘 있어요. 앱에서는 양옆 벽 위쪽에만 붙어 있게 하려면 '사용정보 접근'에서 리얼뽑기를 허용해 주세요. 허용 전에는 바닥에도 내려와요."
                 usage -> "홈 화면에서만 보이고, 앱을 열면 숨어요."
                 else -> "홈 화면에서만 보이려면 '사용정보 접근'에서 리얼뽑기를 허용해 주세요. 허용 전에는 항상 보여요."
             })
-            if (homeOnly && !usage) Row { InkPill("사용정보 접근 열기", Book.Sun, onClick = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) }
+            if (!usage) Row { InkPill("사용정보 접근 열기", Book.Sun, onClick = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) }
         }
 
-        AppsPanel()
-
-        // operator 11-15: optional, so the pet never sits on the keyboard (accessibility window list, as in 눈금)
-        var kbOn by remember { mutableStateOf(PetService.keyboardWatchOn(ctx)) }
-        LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { kbOn = PetService.keyboardWatchOn(ctx) }
-        Panel {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("키보드 피하기", fontFamily = Book.Display, fontSize = 18.sp, modifier = Modifier.weight(1f))
-                InkPill(if (kbOn) "켜짐" else "켜러 가기", if (kbOn) Book.Leaf else Book.Sun,
-                    onClick = { kr.dot.catchpet.pet.KeyboardWatch.openSettings(ctx) })
-            }
-            Note(if (kbOn) "키보드가 열리면 녀석이 키보드 위로 올라가요." else
-                "꺼 둬도 홈이 아닌 앱에서는 녀석이 벽 위쪽에 머물러 키보드를 가리지 않아요(사용정보 접근을 허용했을 때). 켜면 어디서든 키보드만 딱 피해요. 누르면 리얼뽑기 스위치로 바로 가고, 켜면 이 화면으로 돌아와요.")
-            if (!kbOn && kr.dot.catchpet.pet.KeyboardWatch.sideloaded(ctx)) {
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Note("스위치가 회색이면: 앱 정보 → 오른쪽 위 ⋮ → 제한된 설정 허용 → 다시 '켜러 가기'.", Modifier.weight(1f))
-                    Spacer(Modifier.width(8.dp))
-                    InkPill("앱 정보", onClick = { kr.dot.catchpet.pet.KeyboardWatch.openAppInfo(ctx) })
-                }
-            }
-        }
+        AppsPanel(onPick = { picking = true })
 
         Panel {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -267,11 +250,9 @@ private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBi
 
 /** "두 번 톡톡 누르면": the apps the pet opens; + opens the picker, a long press takes one out (operator 11-15). */
 @Composable
-private fun AppsPanel() {
+private fun AppsPanel(onPick: () -> Unit) {
     val ctx = LocalContext.current
-    var picking by remember { mutableStateOf(false) }
-    var rev by remember { mutableStateOf(0) }
-    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList(), rev) {
+    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList()) {
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.load(ctx) }
     }
     Panel("두 번 톡톡 누르면") {
@@ -281,7 +262,7 @@ private fun AppsPanel() {
                 Text(a.label, fontSize = 10.sp, maxLines = 1)
             }
             Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(52.dp)
-                .clip(RoundedCornerShape(10.dp)).clickable { picking = true }) {
+                .clip(RoundedCornerShape(10.dp)).clickable(onClick = onPick)) {
                 Box(Modifier.size(40.dp).border(2.dp, Book.Muted, RoundedCornerShape(10.dp)).background(Book.Field, RoundedCornerShape(10.dp)),
                     contentAlignment = Alignment.Center) { Text(if (apps.isEmpty()) "+" else "✎", fontFamily = Book.Display, fontSize = 20.sp, color = Book.Muted) }
                 Text(if (apps.isEmpty()) "추가" else "바꾸기", fontSize = 10.sp)
@@ -292,7 +273,6 @@ private fun AppsPanel() {
             else -> "두 번 톡톡 누르면 말풍선에 ${apps.size}개 앱과 [펫 끄기]가 떠요(최대 ${kr.dot.catchpet.pet.PetApps.MAX}개)."
         })
     }
-    if (picking) AppPicker(onDone = { picking = false; rev++ })
 }
 
 @Composable
@@ -305,15 +285,18 @@ private fun AppPicker(onDone: () -> Unit) {
     val ctx = LocalContext.current
     val all by produceState<List<kr.dot.catchpet.pet.PetApps.App>?>(null) { value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.installed(ctx) } }
     var chosen by remember { mutableStateOf(kr.dot.catchpet.pet.PetApps.chosen(ctx)) }
+    // the ones already chosen sit on top (operator 11-16); fixed at opening so a tap doesn't make rows jump
+    val first = remember { chosen }
     fun close() { kr.dot.catchpet.pet.PetApps.setChosen(ctx, chosen); onDone() }
-    androidx.compose.ui.window.Dialog(onDismissRequest = { close() },
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
+    // a page in the activity, not a Dialog window: on the Fold8 the dialog's bottom was cut (operator 11-16)
+    androidx.activity.compose.BackHandler { close() }
+    run {
         BookPage {
             Row { InkPill("‹ 펫", onClick = { close() }) }
             Heading("열 앱 고르기", 26.sp)
             Note("${chosen.size}개 골랐어요 · 최대 ${kr.dot.catchpet.pet.PetApps.MAX}개")
             Panel {
-                val list = all
+                val list = all?.sortedBy { it.pkg !in first }
                 if (list == null) CircularProgressIndicator(color = Book.Ink)
                 else for (a in list) {
                     val on = a.pkg in chosen

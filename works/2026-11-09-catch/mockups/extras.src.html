@@ -1,0 +1,283 @@
+<title>리얼뽑기 다음 기능 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: four stacked proposals, each a phone at real proportion beside its controls; the app's own sky/grass/ink world */
+:root {
+  --sky: #bfe6ff; --grass: #d9f2c9; --paper: #fffdf6; --ink: #24331f; --muted: #5d6b57; --sun: #ffd84d; --leaf: #7cc46b;
+  --page: #eef6e6;
+  --display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 48px; }
+main { max-width: 980px; margin: 0 auto; display: grid; gap: 28px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; text-wrap: balance; }
+.lead { color: var(--muted); margin: 4px 0 0; max-width: 62ch; }
+.card { background: var(--paper); border: 2.5px solid var(--ink); border-radius: 20px; box-shadow: 0 4px 0 var(--ink);
+  padding: 18px; display: grid; grid-template-columns: 270px 1fr; gap: 22px; align-items: start; }
+@media (max-width: 640px) { .card { grid-template-columns: 1fr; justify-items: center; } .info { justify-self: stretch; } }
+.info { min-width: 0; display: grid; gap: 10px; }
+.tag { font-family: var(--display); font-size: 14px; background: var(--sun); border: 2px solid var(--ink); border-radius: 99px; padding: 1px 10px; justify-self: start; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 24px; margin: 0; }
+.info p { margin: 0; max-width: 60ch; }
+.info ul { margin: 0; padding-left: 18px; color: var(--muted); font-size: 14px; display: grid; gap: 3px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+button { font-family: var(--display); font-size: 15px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink);
+  border-radius: 99px; padding: 5px 14px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+button.on { background: var(--sun); }
+button:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
+
+/* the phone */
+.phone { width: 260px; max-width: 100%; aspect-ratio: 9 / 19; border: 3px solid var(--ink); border-radius: 30px; position: relative; overflow: hidden;
+  background: linear-gradient(#9fc6e8, #c9dff0 55%, #e9d9c7); }
+.phone.eve { background: linear-gradient(#f1a98a, #f6c9a0 55%, #e8c9b0); }
+.phone.night { background: linear-gradient(#1f2c4a, #33456b 60%, #4d5a78); }
+.phone.noon { background: linear-gradient(#8fd0ff, #c7ecff 55%, #e7f4d9); }
+.status { position: absolute; inset: 8px 14px auto; display: flex; justify-content: space-between; font-size: 10px; color: #fff; font-family: system-ui, sans-serif; text-shadow: 0 1px 2px #0005; z-index: 3; }
+.grid { position: absolute; left: 18px; right: 18px; top: 46px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px 10px; }
+.ic { aspect-ratio: 1; border-radius: 12px; background: #ffffffb0; box-shadow: 0 1px 3px #0002; }
+.dock { position: absolute; left: 12px; right: 12px; bottom: 14px; height: 46px; border-radius: 18px; background: #ffffff70; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 8px 14px; }
+.dock .ic { background: #fffd; }
+.pet { position: absolute; width: 50px; height: 50px; bottom: 64px; left: 150px; z-index: 2; transition: left 1.4s linear; }
+.pet img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.pet.flip img { transform: scaleX(-1); }
+
+/* 1: talk bubble */
+.say { position: absolute; bottom: 124px; left: 96px; max-width: 150px; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px;
+  padding: 6px 10px; font-family: var(--display); font-size: 14px; line-height: 1.3; z-index: 3; transition: opacity .25s, transform .25s; }
+.say::after { content: ""; position: absolute; bottom: -8px; left: 74px; width: 12px; height: 12px; background: var(--paper);
+  border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
+.say.off { opacity: 0; transform: translateY(6px); }
+
+/* 2: widget */
+.widget { position: absolute; left: 18px; top: 46px; border-radius: 22px; overflow: hidden; border: 2px solid var(--ink);
+  background: linear-gradient(var(--sky) 0 55%, var(--grass) 55%); box-shadow: 0 2px 6px #0003; z-index: 2; }
+.widget.w22 { width: 104px; height: 104px; }
+.widget.w41 { width: calc(100% - 36px); height: 74px; }
+.widget img { position: absolute; bottom: 10px; width: 54px; height: 54px; object-fit: contain; }
+.w22 img { left: 25px; } .w41 img { left: 12px; }
+.widget .nm { position: absolute; font-family: var(--display); font-size: 13px; }
+.w22 .nm { left: 10px; top: 7px; } .w41 .nm { left: 78px; top: 12px; font-size: 15px; }
+.widget .ln { position: absolute; font-size: 11px; color: var(--muted); }
+.w22 .ln { display: none; } .w41 .ln { left: 78px; top: 36px; }
+.widget .go { position: absolute; right: 8px; bottom: 8px; font-family: var(--display); font-size: 11px; background: var(--sun); border: 1.5px solid var(--ink); border-radius: 99px; padding: 0 7px; }
+.grid.under { top: 166px; }
+.grid.under41 { top: 136px; }
+
+/* 3: share card */
+.share { width: 260px; max-width: 100%; aspect-ratio: 4 / 5; border: 3px solid var(--ink); border-radius: 18px; position: relative; overflow: hidden;
+  background: linear-gradient(var(--sky) 0 58%, var(--grass) 58%); }
+.share .hd { position: absolute; top: 14px; left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 22px; }
+.share .dt { position: absolute; top: 46px; left: 0; right: 0; text-align: center; font-size: 12px; color: var(--muted); }
+.share svg { position: absolute; left: 50%; top: 52%; width: 200px; height: 140px; transform: translate(-50%, -50%); }
+.share .ft { position: absolute; left: 0; right: 0; bottom: 0; padding: 8px 12px; background: var(--paper); border-top: 2px solid var(--ink);
+  display: flex; justify-content: space-between; align-items: center; font-size: 11px; }
+.share .ft b { font-family: var(--display); font-weight: 400; font-size: 14px; }
+
+/* 4: charging */
+.cord { position: absolute; bottom: -4px; left: 50%; width: 4px; height: 0; background: var(--ink); transform: translateX(-50%); transition: height .5s; z-index: 1; }
+.cord.on { height: 70px; }
+.chg { position: absolute; bottom: 120px; left: 0; right: 0; text-align: center; font-family: var(--display); font-size: 13px; color: #fff; text-shadow: 0 1px 3px #0007; opacity: 0; transition: opacity .4s; z-index: 3; }
+.chg.on { opacity: 1; }
+.zz { position: absolute; font-family: var(--display); color: #fff; font-size: 14px; text-shadow: 0 1px 2px #0006; opacity: 0; z-index: 3; }
+.zz.on { animation: zz 2.4s infinite; }
+@keyframes zz { 0% { opacity: 0; transform: translate(0,0) } 20% { opacity: 1 } 100% { opacity: 0; transform: translate(10px,-22px) } }
+@media (prefers-reduced-motion: reduce) { .pet, .say, .cord { transition: none; } .zz.on { animation: none; opacity: 1; } }
+.note { font-size: 13px; color: var(--muted); }
+</style>
+
+<main>
+  <header>
+    <h1>다음에 넣을 네 가지</h1>
+    <p class="lead">펫 화면 기능 시안이에요. 털뭉치는 몽글로 그렸고, 버튼을 누르면 실제로 어떻게 움직일지 볼 수 있어요.</p>
+  </header>
+
+  <!-- 1 -->
+  <section class="card" aria-labelledby="t1">
+    <div class="phone" id="p1">
+      <div class="status"><span id="clock1">8:12</span><span>●●● 87%</span></div>
+      <div class="grid"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+      <div class="say" id="say1">좋은 아침!</div>
+      <div class="pet" id="pet1"><img src="{{front}}" alt="몽글"></div>
+      <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+    </div>
+    <div class="info">
+      <span class="tag">1 · 혼잣말</span>
+      <h2 id="t1">가끔 한마디 하는 녀석</h2>
+      <p>홈 화면을 켜면 가끔 녀석 머리 위에 짧은 말이 4초 떴다 사라져요. 시간대와 녀석 상태에 맞는 말을 골라요.</p>
+      <div class="btns" role="group" aria-label="시간대">
+        <button type="button" data-t="morning" class="on">아침</button>
+        <button type="button" data-t="noon">낮</button>
+        <button type="button" data-t="eve">저녁</button>
+        <button type="button" data-t="night">밤</button>
+        <button type="button" id="next1">다른 말</button>
+      </div>
+      <ul>
+        <li>10분에 한 번까지만 말해요. 탭하면 바로 사라져요.</li>
+        <li>말은 우리가 미리 써 둔 문장에서만 골라요(시간대별 6~8개).</li>
+        <li>녀석 이름을 넣은 말도 섞어요: "몽글 여기 있어".</li>
+        <li>앱을 쓰는 중(벽에 붙어 있을 때)에는 말하지 않아요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="card" aria-labelledby="t2">
+    <div class="phone noon" id="p2">
+      <div class="status"><span>13:40</span><span>●●● 64%</span></div>
+      <div class="widget w22" id="wg"><span class="nm">몽글</span><span class="ln" id="wln">밥 먹었어? 나는 먹었어</span><img src="{{smile}}" alt=""><span class="go">뽑기</span></div>
+      <div class="grid under" id="grid2"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+      <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+    </div>
+    <div class="info">
+      <span class="tag">2 · 홈 화면 위젯</span>
+      <h2 id="t2">펫을 꺼 둬도 보이는 녀석</h2>
+      <p>홈 화면에 붙이는 위젯이에요. 지금 띄운 녀석이 시간대에 맞는 모습으로 앉아 있고, 누르면 리얼뽑기가 열려요. 펫을 띄우기 싫은 사람도 녀석을 볼 수 있어요.</p>
+      <div class="btns" role="group" aria-label="위젯 크기">
+        <button type="button" data-w="w22" class="on">2×2</button>
+        <button type="button" data-w="w41">4×1</button>
+        <button type="button" id="sleep2">밤 모습</button>
+      </div>
+      <ul>
+        <li>위젯은 움직이지 않아요. 안드로이드가 30분에 한 번만 그림을 바꿔 줘요.</li>
+        <li>4×1 은 혼잣말(1번) 한 줄을 같이 보여 줘요.</li>
+        <li>권한이 따로 필요 없어요.</li>
+        <li>아이폰판을 만들게 되면 이 위젯이 펫 자리를 대신해요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="card" aria-labelledby="t3">
+    <div class="share" id="card3">
+      <div class="hd">새 친구! 몽글</div>
+      <div class="dt">2026.11.16 · 털뭉치 · 도감 12번째</div>
+      <svg viewBox="0 0 200 140" aria-hidden="true">
+        <path id="capB" d="M30 92 a70 70 0 0 0 140 0 Z" fill="#f05a5a" stroke="#24331f" stroke-width="3"/>
+        <image href="{{front}}" x="55" y="10" width="90" height="90"/>
+        <g transform="rotate(-24 40 60)"><path id="capT" d="M10 62 a52 52 0 0 1 104 0 Z" fill="#fff6e0" stroke="#24331f" stroke-width="3" opacity=".95" transform="translate(-30 -40)"/></g>
+        <rect x="30" y="88" width="140" height="8" rx="3" fill="#24331f" opacity=".85"/>
+      </svg>
+      <div class="ft"><span><b>리얼뽑기</b><br>뭐든 찍으면 캡슐에 담겨요</span><span>앱 받기 →</span></div>
+    </div>
+    <div class="info">
+      <span class="tag">3 · 공유 카드</span>
+      <h2 id="t3">뽑은 녀석 자랑하기</h2>
+      <p>캡슐이 열린 순간을 한 장의 그림으로 만들어 카톡·인스타로 보내요. 그림 아래에 앱 링크가 같이 붙어요.</p>
+      <div class="btns">
+        <button type="button" id="col3">다른 캡슐 색</button>
+        <button type="button" id="kind3">사람·동물일 때</button>
+      </div>
+      <ul>
+        <li>뽑기 화면의 "새 친구!" 문구 옆, 그리고 도감 상세에 [자랑하기] 버튼이 생겨요.</li>
+        <li>캡슐 색은 그때 뽑힌 색 그대로예요.</li>
+        <li>사람이 찍힌 건 공유 전에 한 번 더 물어봐요.</li>
+        <li>몇 번 뽑았는지 같은 숫자는 넣지 않아요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card" aria-labelledby="t4">
+    <div class="phone night" id="p4">
+      <div class="status"><span>23:05</span><span id="bat4">●●● 31%</span></div>
+      <div class="grid"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+      <div class="chg" id="chg4">충전 중이라 잘게…</div>
+      <div class="zz" id="zz4" style="left:150px;bottom:110px">z</div>
+      <div class="pet" id="pet4" style="left:40px"><img src="{{front}}" alt="몽글"></div>
+      <div class="cord" id="cord4"></div>
+      <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+    </div>
+    <div class="info">
+      <span class="tag">4 · 충전 반응</span>
+      <h2 id="t4">충전기를 꽂으면 달려와 자는 녀석</h2>
+      <p>충전기를 꽂는 순간 녀석이 화면 아래 가운데(충전 단자 쪽)로 달려가 몸을 말고 잠들어요. 빼면 기지개 켜고 다시 돌아다녀요.</p>
+      <div class="btns">
+        <button type="button" id="plug4">충전기 꽂기</button>
+      </div>
+      <ul>
+        <li>지금도 충전 중이면 30초 뒤 잠들어요. 이건 꽂는 순간 바로 반응하게 바꾸는 거예요.</li>
+        <li>벽에 붙어 있을 때(다른 앱 사용 중)는 그 자리에서 잠만 들어요.</li>
+        <li>사용 권한 추가 없음. 진동 없음.</li>
+      </ul>
+    </div>
+  </section>
+  <p class="note">시안이라 문장과 색은 바꿀 수 있어요. 고르신 것만 앱에 넣을게요.</p>
+</main>
+
+<script>
+const IMG = { front: "{{front}}", smile: "{{smile}}", walk1: "{{walk1}}", walk3: "{{walk3}}", sleep: "{{sleep}}" };
+// 1: talk lines by time of day
+const LINES = {
+  morning: ["좋은 아침!", "아직 졸려…", "몽글 여기 있어", "오늘 뭐 뽑을 거야?", "기지개 쭉—", "물 한 잔 마셔"],
+  noon: ["밥 먹었어?", "심심해…", "몽글 여기 있어", "햇빛 좋다", "나 좀 봐 줘", "뭐 하고 있어?"],
+  eve: ["오늘 수고했어", "배고파…", "노을 예쁘다", "몽글 여기 있어", "같이 쉬자", "뭐 먹을 거야?"],
+  night: ["이제 잘 시간이야", "졸려…", "몽글 여기 있어", "내일 또 놀자", "폰 그만 보고 자", "별 보인다"],
+};
+const CLOCK = { morning: "8:12", noon: "13:40", eve: "18:55", night: "23:30" };
+let t1 = "morning", i1 = 0;
+const say1 = document.getElementById("say1"), p1 = document.getElementById("p1");
+function talk() {
+  say1.classList.add("off");
+  setTimeout(() => { const l = LINES[t1]; i1 = (i1 + 1) % l.length; say1.textContent = l[i1]; say1.classList.remove("off"); }, 250);
+}
+document.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b));
+  t1 = b.dataset.t; i1 = -1; p1.className = "phone " + (t1 === "morning" ? "" : t1);
+  document.getElementById("clock1").textContent = CLOCK[t1];
+  document.querySelector("#pet1 img").src = t1 === "night" ? IMG.sleep : IMG.front;
+  talk();
+}));
+document.getElementById("next1").addEventListener("click", talk);
+
+// 2: widget size and night look
+const wg = document.getElementById("wg"), grid2 = document.getElementById("grid2");
+document.querySelectorAll("[data-w]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-w]").forEach(x => x.classList.toggle("on", x === b));
+  wg.className = "widget " + b.dataset.w; grid2.className = "grid " + (b.dataset.w === "w22" ? "under" : "under41");
+}));
+let night2 = false;
+document.getElementById("sleep2").addEventListener("click", e => {
+  night2 = !night2; e.currentTarget.classList.toggle("on", night2);
+  document.getElementById("p2").className = "phone " + (night2 ? "night" : "noon");
+  wg.querySelector("img").src = night2 ? IMG.sleep : IMG.smile;
+  document.getElementById("wln").textContent = night2 ? "쿨쿨… 내일 또 놀자" : "밥 먹었어? 나는 먹었어";
+});
+
+// 3: capsule colours (the app's two-tone pairs) and kinds
+const CAPS = ["#f05a5a", "#4f8ff0", "#f0b43c", "#5cc48a", "#b07cf0", "#f07cb4", "#3cc4c4", "#ff8a4c"];
+let c3 = 0;
+document.getElementById("col3").addEventListener("click", () => { c3 = (c3 + 1) % CAPS.length; document.getElementById("capB").setAttribute("fill", CAPS[c3]); });
+let k3 = false;
+document.getElementById("kind3").addEventListener("click", e => {
+  k3 = !k3; e.currentTarget.classList.toggle("on", k3);
+  document.querySelector("#card3 .hd").textContent = k3 ? "강아지 도토리를 뽑았다!" : "새 친구! 몽글";
+  document.querySelector("#card3 .dt").textContent = k3 ? "2026.11.16 · 강아지 · 진짜 녀석" : "2026.11.16 · 털뭉치 · 도감 12번째";
+});
+
+// 4: plug in / out
+const pet4 = document.getElementById("pet4"), img4 = pet4.querySelector("img");
+let plugged = false, walkTimer = 0;
+function walk(to, done) {
+  const from = parseFloat(pet4.style.left);
+  pet4.classList.toggle("flip", to < from);
+  let f = 0; clearInterval(walkTimer);
+  walkTimer = setInterval(() => { f++; img4.src = f % 2 ? IMG.walk1 : IMG.walk3; }, 130);
+  pet4.style.left = to + "px";
+  setTimeout(() => { clearInterval(walkTimer); img4.src = IMG.front; done && done(); }, 1400);
+}
+document.getElementById("plug4").addEventListener("click", e => {
+  plugged = !plugged; e.currentTarget.textContent = plugged ? "충전기 빼기" : "충전기 꽂기";
+  document.getElementById("cord4").classList.toggle("on", plugged);
+  document.getElementById("bat4").textContent = plugged ? "⚡ 31%" : "●●● 31%";
+  if (plugged) walk(105, () => { img4.src = IMG.sleep; document.getElementById("chg4").classList.add("on"); document.getElementById("zz4").classList.add("on"); });
+  else {
+    document.getElementById("chg4").classList.remove("on"); document.getElementById("zz4").classList.remove("on");
+    img4.src = IMG.smile; setTimeout(() => walk(40), 700);
+  }
+});
+</script>
