@@ -14,13 +14,11 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.Bundle
 import android.util.Log
-import android.util.SizeF
 import android.widget.RemoteViews
 import kr.dot.catchpet.MainActivity
 import kr.dot.catchpet.R
 import kr.dot.catchpet.dex.Dex
 import kr.dot.catchpet.pet.Frames
-import kr.dot.catchpet.pet.PetPrefs
 import kr.dot.catchpet.pet.Talk
 import java.util.Calendar
 import java.util.concurrent.Executors
@@ -28,7 +26,7 @@ import kotlin.math.max
 
 /**
  * The one home widget (operator 11-16, mockup widget-sizes v2): the chosen pet alone, no background, at 1x1, 2x1,
- * 1x2 or 2x2 (the launcher picks the layout by size). A tap on the pet floats it or puts it down ([WidgetToggle]);
+ * 1x2 or 2x2 (the layout by its proportions, [shape]). A tap on the pet floats it or puts it down ([toggle]);
  * from 2x1 up, [도감] and [뽑기] sit beside or under it. Awake with a sky dot while floating, asleep with "z z" when
  * not. Redrawn every 30 min (the pose follows the hour) and whenever the pet or its on/off changes.
  */
@@ -42,8 +40,7 @@ object PetWidgets {
             // Dex.write calls this on every save: never let a widget problem throw on this thread (review 11-16)
             runCatching {
                 val mgr = AppWidgetManager.getInstance(app) ?: return@runCatching
-                val ids = mgr.getAppWidgetIds(ComponentName(app, Yard::class.java))
-                if (ids.isNotEmpty()) mgr.updateAppWidget(ids, views(app))
+                for (id in mgr.getAppWidgetIds(ComponentName(app, Yard::class.java))) mgr.updateAppWidget(id, views(app, mgr, id))
             }.onFailure { Log.w("PetWidgets", "refresh", it) }
         }
     }
@@ -51,33 +48,60 @@ object PetWidgets {
     internal fun update(ctx: Context, ids: IntArray, done: () -> Unit) {
         val app = ctx.applicationContext
         work.execute {
-            try { runCatching { AppWidgetManager.getInstance(app).updateAppWidget(ids, views(app)) }.onFailure { Log.w("PetWidgets", "update", it) } }
+            try { runCatching { val mgr = AppWidgetManager.getInstance(app); for (id in ids) mgr.updateAppWidget(id, views(app, mgr, id)) }.onFailure { Log.w("PetWidgets", "update", it) } }
             finally { done() }
         }
     }
 
-    /** One RemoteViews per size; the launcher shows the largest that fits (all sizes in dp). */
-    private fun views(ctx: Context): RemoteViews {
-        val on = PetPrefs.overlayOn(ctx)
-        val art = render(ctx, on)
-        fun v(layout: Int, buttons: Boolean) = RemoteViews(ctx.packageName, layout).apply {
-            setImageViewBitmap(R.id.art, art)
-            val toggle = PendingIntent.getActivity(ctx, 1,
-                Intent(ctx, WidgetToggle::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_NO_ANIMATION),
+    enum class Shape(val layout: Int, val buttons: Boolean) {
+        ONE(R.layout.widget_1x1, false), WIDE(R.layout.widget_2x1, true), TALL(R.layout.widget_1x2, true), BIG(R.layout.widget_2x2, true)
+    }
+
+    /**
+     * Which layout for a widget [w] x [h] dp. By its proportions, not fixed dp: launcher cells run from ~70 to
+     * ~120 dp, and the size-map picked 1x2 for a 1x1 and 2x2 for a 2x1 on the operator's Fold (11-16).
+     */
+    internal fun shape(w: Float, h: Float): Shape = when {
+        w >= h * 1.5f -> Shape.WIDE
+        h >= w * 1.5f -> Shape.TALL
+        minOf(w, h) >= 150f -> Shape.BIG
+        else -> Shape.ONE
+    }
+
+    private fun views(ctx: Context, mgr: AppWidgetManager, id: Int): RemoteViews {
+        val o = mgr.getAppWidgetOptions(id)
+        // portrait: min width x max height, landscape: max width x min height; nothing yet = 2x1
+        val land = ctx.resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        val w = o.getInt(if (land) AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH).takeIf { it > 0 }?.toFloat() ?: 110f
+        val h = o.getInt(if (land) AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT).takeIf { it > 0 }?.toFloat() ?: 60f
+        val sh = shape(w, h)
+        // the service's own state, not the saved switch: right after adding the widget it shows what is on screen
+        val on = kr.dot.catchpet.pet.PetService.alive
+        return RemoteViews(ctx.packageName, sh.layout).apply {
+            setImageViewBitmap(R.id.art, render(ctx, on))
+            // a broadcast, not an activity: no window flashes and the pet starts at once (operator 11-16)
+            val toggle = PendingIntent.getBroadcast(ctx, 1, Intent(ctx, Yard::class.java).setAction(Yard.TOGGLE),
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
             setOnClickPendingIntent(R.id.root, toggle)
             setOnClickPendingIntent(R.id.art, toggle)
-            if (buttons) {
+            if (sh.buttons) {
                 setOnClickPendingIntent(R.id.btn_dex, open(ctx, "dex", 2))
                 setOnClickPendingIntent(R.id.btn_catch, open(ctx, "catch", 3))
             }
         }
-        return RemoteViews(mapOf(
-            SizeF(40f, 40f) to v(R.layout.widget_1x1, false),
-            SizeF(100f, 40f) to v(R.layout.widget_2x1, true),
-            SizeF(40f, 100f) to v(R.layout.widget_1x2, true),
-            SizeF(100f, 100f) to v(R.layout.widget_2x2, true),
-        ))
+    }
+
+    /** A tap on the pet: put it down, or float it (a widget tap may start the foreground service). */
+    internal fun toggle(ctx: Context) {
+        val app = ctx.applicationContext
+        when {
+            kr.dot.catchpet.pet.PetService.alive -> kr.dot.catchpet.pet.PetService.stop(app)
+            app.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null) == null ->
+                android.widget.Toast.makeText(app, "앱의 펫 화면에서 띄울 녀석을 먼저 골라 주세요", android.widget.Toast.LENGTH_LONG).show()
+            !android.provider.Settings.canDrawOverlays(app) ->
+                android.widget.Toast.makeText(app, "앱의 펫 화면에서 '다른 앱 위에 표시'를 먼저 허용해 주세요", android.widget.Toast.LENGTH_LONG).show()
+            else -> runCatching { kr.dot.catchpet.pet.PetService.start(app) }.onFailure { Log.w("PetWidgets", "start", it) }
+        }
     }
 
     private fun open(ctx: Context, to: String, code: Int): PendingIntent =
@@ -128,6 +152,12 @@ object PetWidgets {
 
 /** The one widget's receiver (the class name stays: widgets placed before keep working). */
 class Yard : AppWidgetProvider() {
+    override fun onReceive(ctx: Context, i: Intent) {
+        if (i.action == TOGGLE) PetWidgets.toggle(ctx) else super.onReceive(ctx, i)
+    }
+
+    companion object { const val TOGGLE = "kr.dot.catchpet.WIDGET_TOGGLE" }
+
     override fun onUpdate(ctx: Context, mgr: AppWidgetManager, ids: IntArray) {
         val r = goAsync()
         PetWidgets.update(ctx, ids) { r.finish() }

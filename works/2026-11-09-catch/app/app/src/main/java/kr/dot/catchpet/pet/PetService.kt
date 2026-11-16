@@ -37,9 +37,7 @@ object PetPrefs {
     fun overlayOn(ctx: Context) = prefs(ctx).getBoolean("overlay", false)
     fun setOverlayOn(ctx: Context, on: Boolean) {
         if (overlayOn(ctx) == on) return
-        prefs(ctx).edit().putBoolean("overlay", on).commit()   // the widget reads it next
-        // the widget puts the floating pet front middle: redraw on every on/off, from any screen (operator 11-16)
-        kr.dot.catchpet.widget.PetWidgets.refresh(ctx)
+        prefs(ctx).edit().putBoolean("overlay", on).apply()
     }
     /** Where the overlay shows: only over the home screen, or always (over every app). Operator 11-14. */
     fun homeOnly(ctx: Context) = prefs(ctx).getBoolean("home_only", true)
@@ -235,6 +233,7 @@ class PetService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+        alive = true
         // a window context follows rotation and fold switches; the service's own configuration may lag (눈금 FloatService)
         val win = createWindowContext(getSystemService(android.hardware.display.DisplayManager::class.java)
             .getDisplay(android.view.Display.DEFAULT_DISPLAY), WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY, null)
@@ -258,7 +257,9 @@ class PetService : Service() {
         } catch (e: Exception) {
             stopSelf(); return START_NOT_STICKY
         }
+        if (intent?.action == ACTION_FADE_OUT) { fadeOut(); return START_NOT_STICKY }
         show()   // every start re-reads the pet and the place
+        kr.dot.catchpet.widget.PetWidgets.refresh(this)   // the widget wakes up with it
         return START_NOT_STICKY
     }
 
@@ -329,7 +330,10 @@ class PetService : Service() {
         params = p
         view = v
         touchedAt = SystemClock.uptimeMillis()
+        windowAt(b, v)?.let { (x, y) -> p.x = x; p.y = y }
+        v.alpha = 0f
         wm.addView(v, p)
+        v.animate().alpha(1f).setDuration(FADE_MS).start()
         resume()
     }
 
@@ -366,6 +370,7 @@ class PetService : Service() {
         closeBubble(); closeTalk()
         handler.removeCallbacksAndMessages(null)   // a pending long-press would grab the next brain (review 11-16)
         pause()
+        view?.animate()?.cancel()   // a fade-out's end action must not stop a pet that was just turned on again
         view?.let { wm.removeView(it) }
         view = null
         brain = null
@@ -384,11 +389,8 @@ class PetService : Service() {
     }
 
     /** The window is the pet's 48 dp box; hopping moves the window, not the drawing (so nothing is clipped). */
-    private fun render() {
-        val b = brain ?: return
-        val v = view ?: return
-        val p = params ?: return
-        val t = animClock()
+    /** The window's corner (px) for the pet where its brain has it. */
+    private fun windowAt(b: PetBrain, v: PetView, t: Float = animClock()): Pair<Int, Int>? {
         val lift = v.look.lift(b, t) * size
         val upright = v.look.rotation(b) == 0f
         val (left, top) = when {
@@ -396,7 +398,15 @@ class PetService : Service() {
             b.zone == PetBrain.Zone.LEFT -> b.x + lift + b.slideOffset() to b.y - size / 2
             else -> b.x - size - lift + b.slideOffset() to b.y - size / 2
         }
-        val nx = (left * density).roundToInt(); val ny = (top * density).roundToInt()
+        return (left * density).roundToInt() to (top * density).roundToInt()
+    }
+
+    private fun render() {
+        val b = brain ?: return
+        val v = view ?: return
+        val p = params ?: return
+        val t = animClock()
+        val (nx, ny) = windowAt(b, v, t) ?: return
         // moving the window is a call into the system: only when the pet really moved
         if (nx != p.x || ny != p.y) { p.x = nx; p.y = ny; wm.updateViewLayout(v, p); moveTalk() }
         v.t = t
@@ -476,10 +486,19 @@ class PetService : Service() {
         }
     }
 
+    /** Turned off: the pet fades out, then the service stops (operator 11-16 "smoothly"). */
+    private fun fadeOut() {
+        closeBubble(); closeTalk()
+        val v = view ?: run { stopSelf(); return }
+        v.animate().alpha(0f).setDuration(FADE_MS).withEndAction { stopSelf() }.start()
+    }
+
     override fun onDestroy() {
+        alive = false
         winCtx?.unregisterComponentCallbacks(winCallbacks)
         hide()
         unregisterReceiver(screen)
+        kr.dot.catchpet.widget.PetWidgets.refresh(this)   // the widget falls asleep with it
         super.onDestroy()
     }
 
@@ -488,7 +507,17 @@ class PetService : Service() {
         const val DOUBLE_MS = 320L
 
         fun start(ctx: Context) { PetPrefs.setOverlayOn(ctx, true); ctx.startForegroundService(Intent(ctx, PetService::class.java)) }
-        fun stop(ctx: Context) { PetPrefs.setOverlayOn(ctx, false); ctx.stopService(Intent(ctx, PetService::class.java)) }
+        fun stop(ctx: Context) {
+            PetPrefs.setOverlayOn(ctx, false)
+            // running: ask it to fade out first; a start call can be refused from the background, then stop at once
+            if (!alive || runCatching { ctx.startService(Intent(ctx, PetService::class.java).setAction(ACTION_FADE_OUT)) }.isFailure)
+                ctx.stopService(Intent(ctx, PetService::class.java))
+        }
+
+        /** The service is running in this process (the widget's truth for awake / asleep). */
+        @Volatile var alive = false; private set
+        private const val ACTION_FADE_OUT = "kr.dot.catchpet.FADE_OUT"
+        private const val FADE_MS = 220L
     }
 }
 
