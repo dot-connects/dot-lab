@@ -156,7 +156,22 @@ export class D1Counts {
 }
 
 // one IPv6 user holds a whole /64: count per network, not per address (security review)
-export const ipKey = ip => (ip && ip.includes(":") ? ip.split(":").slice(0, 4).join(":") + "::/64" : ip || "?");
+// expanded to 8 groups first, so every spelling of one /64 is one key; anything malformed shares the "?" bucket
+export function ipKey(ip) {
+  if (!ip || typeof ip !== "string") return "?";
+  if (!ip.includes(":")) return /^\d{1,3}(\.\d{1,3}){3}$/.test(ip) ? ip : "?";
+  let t = ip.toLowerCase();
+  const v4 = t.match(/:(\d{1,3}(?:\.\d{1,3}){3})$/);   // an IPv4 tail fills the last two groups
+  if (v4) t = t.slice(0, -v4[1].length) + "0:0";
+  const halves = t.split("::");
+  if (halves.length > 2) return "?";
+  const head = halves[0] ? halves[0].split(":") : [], tail = halves.length === 2 && halves[1] ? halves[1].split(":") : [];
+  const fill = 8 - head.length - tail.length;
+  if (halves.length === 1 ? fill !== 0 : fill < 1) return "?";
+  const g = [...head, ...Array(halves.length === 2 ? fill : 0).fill("0"), ...tail];
+  if (!g.every(x => /^[0-9a-f]{1,4}$/.test(x))) return "?";
+  return g.slice(0, 4).map(x => x.replace(/^0+(?=.)/, "")).join(":") + "::/64";
+}
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
 const goodImage = s => typeof s === "string" && !!s && s.length <= IMAGE_MAX && /^[A-Za-z0-9+/=]+$/.test(s);
 const goodDevice = s => /^dev-[a-z0-9]{8,32}$/.test(s || "");

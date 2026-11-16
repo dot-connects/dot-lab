@@ -572,3 +572,13 @@ test("security: IPv6 addresses count per /64 network", async () => {
   assert.equal((await from("2001:db8:1:2:cccc::5", "dev-v6aaaaa3")).body.error, "free");
   assert.equal((await from("2001:db8:1:3::5", "dev-v6aaaaa4")).status, 200, "another /64");
 });
+
+test("ipKey expands IPv6 before cutting the /64; junk shares one bucket", async () => {
+  const { ipKey } = await import("../src/index.js");
+  const k = ipKey("2001:db8:0:0:1::5");
+  assert.equal(k, "2001:db8:0:0::/64");
+  for (const ip of ["2001:db8::5", "2001:db8::2:5", "2001:DB8:0:0:ffff::", "2001:0db8:0000:0000::1", "2001:db8::1.2.3.4"]) assert.equal(ipKey(ip), k, ip);
+  assert.equal(ipKey("2001:db8:0:1::5"), "2001:db8:0:1::/64");
+  assert.equal(ipKey("203.0.113.7"), "203.0.113.7");
+  for (const bad of ["1:2:3:4:5:6:7:8:9", "2001::db8::1", "zz::1", "", null]) assert.equal(ipKey(bad), "?", String(bad));
+});
