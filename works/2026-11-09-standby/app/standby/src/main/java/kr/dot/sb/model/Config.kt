@@ -21,7 +21,7 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int, val h
     SLAB("슬랩", "Slab", 700),
     RAILS("레일", "Rails", 800),
     CONDENSED("좁게", "StandBy 디지털", 600),
-    ROUNDED_HEAVY("둥글고 아주 굵게", "StandBy 플로트", 950),
+    ROUNDED_HEAVY("둥근 굵은 글씨", "StandBy 플로트", 950),
     THIN("얇게", "StandBy 솔라", 350),
     // r10 face fonts (plan-r10 Global Constraints: default font per new face)
     OUTFIT("아주 가늘게", "Outfit", 100),

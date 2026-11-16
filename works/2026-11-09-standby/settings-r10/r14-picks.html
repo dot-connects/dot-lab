@@ -62,12 +62,53 @@ p.lead{color:var(--mute);margin:0 0 18px;line-height:1.6;max-width:68ch}
 .ed .sub{font-size:13px;color:var(--mute);margin:6px 0 12px}
 .tabs{display:flex;gap:6px;margin-bottom:12px}.tabs b{flex:1;text-align:center;padding:8px;border-radius:10px;background:#1c1d22;font-size:14px}.tabs b.on{background:var(--acc);color:#2a1a08}
 .btns{display:flex;gap:8px}.btns b{flex:1;text-align:center;padding:11px;border-radius:12px;background:#24252b;font-size:14px}.btns b.p{background:var(--acc);color:#2a1a08}
+.ap{background:#0e0f12;padding:14px 12px;box-sizing:border-box;display:flex;flex-direction:column;gap:10px}
+.ap-top{display:flex;gap:12px;align-items:center;font-size:17px}.ap-top span{font-size:22px;color:var(--mute)}
+.ap-pin{background:#17181d;border-radius:14px;padding:10px;box-shadow:0 6px 12px rgba(0,0,0,.45)}
+.ap-cap{font-size:11px;color:var(--mute);margin-bottom:8px}
+.ap-strip{display:flex;gap:6px}.ap-strip i{position:relative;width:34px;height:34px;border-radius:9px;flex:none}
+.ap-strip i.ap-empty{background:none;border:1.5px dashed #3a3b42;box-sizing:border-box}
+.ap-strip em{position:absolute;left:-4px;top:-5px;font-style:normal;font-size:9px;font-weight:800;background:var(--acc);color:#2a1a08;border-radius:8px;padding:0 4px}
+.ap-strip u{position:absolute;right:-4px;top:-5px;text-decoration:none;font-size:10px;background:#3a3b42;color:#fff;border-radius:50%;width:14px;height:14px;line-height:14px;text-align:center}
+.ap-card{display:grid;grid-template-columns:repeat(3,1fr);gap:4px 8px;background:#1c1c1c;border-radius:14px;padding:12px 10px 8px;justify-items:center}
+.ap-card i{width:40px;height:40px;border-radius:10px}.ap-card s{text-decoration:none;font-size:9px;color:#bbb;white-space:nowrap;overflow:hidden;max-width:64px;text-overflow:ellipsis}
+.ap-search{background:#1e1f24;border-radius:12px;padding:10px 12px;font-size:13px;color:var(--mute)}
+.ap-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px 8px;justify-items:center}
+.ap-grid i{width:42px;height:42px;border-radius:11px;position:relative}
+.ap-grid i.on::after{content:"✓";position:absolute;inset:0;margin:auto;width:22px;height:22px;border-radius:50%;background:var(--acc);color:#2a1a08;font-size:13px;font-weight:900;font-style:normal;display:flex;align-items:center;justify-content:center;box-shadow:0 0 0 30px rgba(0,0,0,.45)}
+.ap-grid i.on{overflow:hidden}
 </style>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gothic+A1:wght@400;500;700;800;900&family=Jost:wght@500;600;700&display=swap">
 
 <div class="wrap">
   <h1>StandBy r14 시안 2</h1>
-  <p class="lead">정해진 것: 카드 고르기 B, 내 테마 연필 A(연필만). 남은 것은 1번 입체 디지털 세로입니다.</p>
+  <p class="lead">새로 고를 것: 5번 앱 고르기 화면 위쪽 미리보기 (A 또는 B). 1~4번은 정해졌습니다.</p>
+
+  <h2>5. 앱 고르기 — 고른 앱을 맨 위에</h2>
+  <p class="lead">고른 앱이 목록 어디에 있든 맨 위에 늘 보이게 합니다. 목록을 내려도 위에 붙어 있습니다. 위의 앱을 누르면 빠집니다. 순서는 누른 순서 그대로입니다.</p>
+  <div class="row">
+    <div class="opt"><div class="phone ap">
+      <div class="ap-top"><span>‹</span><b>앱 고르기</b></div>
+      <div class="ap-pin"><div class="ap-cap">고른 앱 3/8 · 누르면 빠져요</div>
+        <div class="ap-strip"><i style="background:#f5b100"><em>1</em><u>×</u></i><i style="background:#4b9bf0"><em>2</em><u>×</u></i><i style="background:#ffe600"><em>3</em><u>×</u></i><i class="ap-empty"></i><i class="ap-empty"></i></div></div>
+      <div class="ap-search">앱 이름</div>
+      <div class="ap-grid">
+        <i class="on" style="background:#f5b100"></i><i style="background:#ffe600" class="on"></i><i style="background:#4b9bf0" class="on"></i><i style="background:#6c6c72"></i>
+        <i style="background:#ff0033"></i><i style="background:#30ccd8"></i><i style="background:#1ed760"></i><i style="background:#72dd8a"></i>
+        <i style="background:#a98bff"></i><i style="background:#9a9893"></i>
+      </div></div><b>A · 고른 앱 줄</b><span class="lead" style="margin:0;max-width:250px">번호가 붙은 아이콘 한 줄. 빈 칸은 남은 자리(최대 8)입니다.</span></div>
+    <div class="opt"><div class="phone ap">
+      <div class="ap-top"><span>‹</span><b>앱 고르기</b></div>
+      <div class="ap-pin"><div class="ap-cap">카드 미리보기 · 누르면 빠져요</div>
+        <div class="ap-card"><i style="background:#f5b100"></i><i style="background:#4b9bf0"></i><i style="background:#ffe600"></i>
+          <s>Samsung Notes</s><s>캘린더</s><s>카카오톡</s></div></div>
+      <div class="ap-search">앱 이름</div>
+      <div class="ap-grid">
+        <i class="on" style="background:#f5b100"></i><i style="background:#ffe600" class="on"></i><i style="background:#4b9bf0" class="on"></i><i style="background:#6c6c72"></i>
+        <i style="background:#ff0033"></i><i style="background:#30ccd8"></i><i style="background:#1ed760"></i><i style="background:#72dd8a"></i>
+        <i style="background:#a98bff"></i><i style="background:#9a9893"></i>
+      </div></div><b>B · 카드 모양 그대로</b><span class="lead" style="margin:0;max-width:250px">스탠바이 화면에 놓일 카드 모양으로 보여 줍니다. 몇 개를 고르면 어떻게 배치되는지 바로 보입니다.</span></div>
+  </div>
 
   <h2>1. 입체 디지털 세로 — 가로 화면과 같은 재질로</h2>
   <p class="lead">가로 화면의 그리기를 그대로 옮겼습니다. 은테 + 야광 알약 칸, 흐린 윤곽만 있는 꺼진 칸, 은테 날짜창(위 그늘), 초 눈금과 손잡이까지 같습니다. 배치만 B(날짜창 위 가운데, 시·분 두 줄, 가운데 점 둘, 초 눈금 아래)입니다. 다이얼 색 4가지.</p>

@@ -267,7 +267,8 @@ private fun FaceArrows(e: Env, faces: List<FaceId>, sw: FaceSwitch) {
  */
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
-    val face = e.look.clockFace
+    // a face removed from 내 시계 leaves every card that showed it (falls back to the first of 내 시계)
+    val face = e.look.clockFace.let { f -> kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).let { mine -> if (f in mine) f else mine.first() } }
     if (face == FaceId.ANALOG && face !in config.styles) return AnalogCard(e, state)
     val custom = face in config.styles
     val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }

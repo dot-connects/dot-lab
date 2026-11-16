@@ -15,6 +15,10 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.ui.unit.Dp
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -589,9 +593,10 @@ fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, bac
     var q by rememberSaveable { mutableStateOf("") }
     var full by remember { mutableStateOf(false) }
     val acc = LocalAccent.current
-    Page("앱 고르기", back) {
+    // 11-16 (r14 picks 5-A): the picked apps in tap order, pinned above the search; a tap there unpicks
+    Page("앱 고르기", back, sticky = { PickedStrip(all, picked, full, acc) { p -> full = false; onPicked(picked - p) } }, after = {
         Field(q, { q = it }, "앱 이름")
-        T(if (full) "${kr.dot.sb.model.MAX_APPS}개까지 고를 수 있어요" else "고른 앱 ${picked.size}/${kr.dot.sb.model.MAX_APPS} · 누른 순서대로 놓여요", 13.sp, 500, if (full) acc else SK.muted, Modifier.padding(start = 4.dp, top = 12.dp, bottom = 12.dp))
+        Spacer(Modifier.height(14.dp))
         val list = all?.filter { q.isBlank() || it.label.contains(q.trim(), ignoreCase = true) }
         when {
             list == null -> T("앱 목록을 불러오는 중이에요", 15.sp, 500, SK.muted, Modifier.padding(16.dp))
@@ -610,9 +615,7 @@ fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, bac
                                 verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)), Alignment.Center) {
-                                    val bmp = a.icon
-                                    if (bmp != null) androidx.compose.foundation.Image(bmp, null, Modifier.size(56.dp))
-                                    else Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(SK.surface2), Alignment.Center) { T(a.label.take(1), 22.sp, 700, SK.muted) }
+                                    AppIcon(a, 56.dp)
                                     if (on) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f)), Alignment.Center) {
                                         Box(Modifier.size(32.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 18.dp) }
                                     }
@@ -625,5 +628,45 @@ fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, bac
                 }
             }
         }
+    }) {}
+}
+
+@Composable
+private fun AppIcon(a: kr.dot.sb.ui.cards.AppEntry?, size: Dp, fallback: String = a?.label.orEmpty()) {
+    val bmp = a?.icon
+    if (bmp != null) androidx.compose.foundation.Image(bmp, null, Modifier.size(size))
+    else Box(Modifier.size(size).clip(RoundedCornerShape(size / 4)).background(SK.surface2), Alignment.Center) { T(fallback.take(1), (size.value * 0.4f).sp, 700, SK.muted) }
+}
+
+/** Caption + one row of the picked icons (order badge, x badge) and dashed slots up to MAX_APPS; scrolls sideways when narrow. */
+@Composable
+private fun PickedStrip(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, full: Boolean, acc: Color, onUnpick: (String) -> Unit) {
+    val max = kr.dot.sb.model.MAX_APPS
+    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(SK.surface).padding(12.dp)) {
+        T(if (full) "${max}개까지 고를 수 있어요" else "고른 앱 ${picked.size}/$max · 누르면 빠져요", 13.sp, 500, if (full) acc else SK.muted, Modifier.padding(bottom = 4.dp))
+        Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 8.dp, start = 6.dp, end = 6.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            picked.forEachIndexed { i, p ->
+                val a = all?.firstOrNull { it.pkg == p }
+                Box(Modifier.size(48.dp).clickable { onUnpick(p) }) {
+                    Box(Modifier.size(48.dp).clip(RoundedCornerShape(12.dp))) { AppIcon(a, 48.dp, a?.label ?: p.substringAfterLast('.')) }
+                    Box(Modifier.align(Alignment.TopStart).offset((-6).dp, (-6).dp).clip(RoundedCornerShape(8.dp)).background(acc).padding(horizontal = 5.dp)) { T("${i + 1}", 11.sp, 800, SK.bg) }
+                    Box(Modifier.align(Alignment.TopEnd).offset(6.dp, (-6).dp).size(18.dp).clip(CircleShape).background(SK.line), Alignment.Center) { Icon(Ic.CLOSE, SK.text, 12.dp) }
+                }
+            }
+            repeat(max - picked.size) { DashedSlot() }
+        }
+    }
+}
+
+@Composable
+private fun DashedSlot() {
+    val c = SK.line
+    androidx.compose.foundation.Canvas(Modifier.size(48.dp)) {
+        val w = 1.5.dp.toPx()
+        drawRoundRect(
+            c, topLeft = androidx.compose.ui.geometry.Offset(w / 2, w / 2), size = androidx.compose.ui.geometry.Size(size.width - w, size.height - w),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(12.dp.toPx()),
+            style = androidx.compose.ui.graphics.drawscope.Stroke(w, pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(floatArrayOf(4.dp.toPx(), 3.dp.toPx()))),
+        )
     }
 }

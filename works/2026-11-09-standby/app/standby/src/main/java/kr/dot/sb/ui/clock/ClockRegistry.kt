@@ -131,8 +131,8 @@ fun spec(id: FaceId): ClockSpec {
     fun c(f: Family, ko: String, rows: List<StyleRow>, more: List<StyleRow>, ours: Boolean = false, built: Boolean = false) =
         ClockSpec(id, f, ko, ours, rows, more, built)
     return when (id) {
-        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
-        FaceId.THIN -> c(Family.SIMPLE, "가는 선", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
+        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털 1", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
+        FaceId.THIN -> c(Family.SIMPLE, "디지털 2", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.SPLIT -> c(Family.SIMPLE, "시·분 나눔", listOf(HOUR_COLOR, MINUTE_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.DESK -> c(Family.SIMPLE, "책상", listOf(TEXT_COLOR, SIZE, FONT), DT, built = true)
         FaceId.COLOR_BLOCK -> c(Family.POP, "색 블록", listOf(PAIR, SIZE, FONT, INFO, StyleRow.CLEAR_BG), emptyList(), built = true)

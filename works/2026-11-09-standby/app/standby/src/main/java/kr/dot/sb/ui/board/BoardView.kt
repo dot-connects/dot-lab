@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
@@ -147,6 +148,25 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     return slots.indices.map { CardLook(accent, label, pad, it == hero, clock, board.clockFace) }
 }
 
+/**
+ * The card a slot stack showed last (11-16), per slot id ("boardId-slotIdx"), in its own SharedPreferences so a swipe
+ * never writes the config. Stored by card type (a stack never holds the same type twice), so a card added before it
+ * doesn't shift it. The notification card is never stored: a banner tap jumps there on its own.
+ */
+object LastCard {
+    private const val PREFS = "last_card"
+
+    fun start(stored: String?, cards: List<CardType>): Int = cards.indexOfFirst { it.name == stored }.coerceAtLeast(0)
+
+    fun keyOf(card: CardType): String? = if (card.isNotif) null else card.name
+
+    fun read(ctx: android.content.Context, slotId: String): String? =
+        ctx.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString(slotId, null)
+
+    fun write(ctx: android.content.Context, slotId: String, key: String) =
+        ctx.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().putString(slotId, key).apply()
+}
+
 /** OWNER: board agent. One board: layout grid, slots (stacks), cards, shared label size, hero accent. */
 @Composable
 fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: StandbyActions, modifier: Modifier = Modifier) = ProvideTheme(config) {
@@ -173,6 +193,7 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
                     options = { j -> board.options["$i:$j"] }, menu = { j -> "apps:${board.id}:$i:$j" },
                     // previews (settings) pass NONE: no arrows there
                     onFace = if (actions === StandbyActions.NONE) null else { j, f -> actions.setCardFace(board.id, i, j, f) },
+                    rememberCard = actions !== StandbyActions.NONE,
                 )
             }
         }
@@ -198,12 +219,19 @@ fun SlotStack(
     menu: (Int) -> String? = { null },
     /** Clock card arrows: card j picked a face (null = no arrows, e.g. settings previews). */
     onFace: ((Int, kr.dot.sb.model.FaceId) -> Unit)? = null,
+    /** Start on the card last settled on in this slot and store each settle ([LastCard]); off for settings previews. */
+    rememberCard: Boolean = false,
 ) {
     if (cards.size <= 1) {
         cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, options(0), menu(0), onFace = onFace?.let { cb -> { f -> cb(0, f) } }) }
         return
     }
-    val pager = rememberPagerState { cards.size }
+    val ctx = LocalContext.current
+    val start = remember(slotId) { if (rememberCard) LastCard.start(LastCard.read(ctx, slotId), cards) else 0 }
+    val pager = rememberPagerState(start) { cards.size }
+    if (rememberCard) LaunchedEffect(pager.settledPage) {
+        cards.getOrNull(pager.settledPage)?.let(LastCard::keyOf)?.let { LastCard.write(ctx, slotId, it) }
+    }
     // banner tap: bring this stack's notification card up so it can open
     val openReq = LocalNotifOpen.current
     LaunchedEffect(openReq?.value) {

@@ -301,7 +301,7 @@ private class RlGeo(val kind: RlKind, val w: Int, val h: Int, val u: Float, val 
                 RlKind.ROUND, RlKind.SQUARE -> RlGeo(kind, w, h, min(iw, ih) / 100f, w / 2f, h / 2f, ins = ins)
                 // upright: the digit pair takes 74 % of the width (capped so date window .. scale labels, ~145 units, fit
                 // the height); the block sits a little below the middle
-                RlKind.CAPSULE -> if (ih > iw * 1.15f) min(iw * 0.74f / (2 * RlStatic.W + RlStatic.GAP), ih / 160f).let { u -> RlGeo(kind, w, h, u, w / 2f, ins + ih * 0.53f, portrait = true, ins = ins) }
+                RlKind.CAPSULE -> if (ih > iw * 1.15f) min(iw * 0.74f / (2 * RlStatic.W + RlStatic.GAP), ih / 160f).let { u -> RlGeo(kind, w, h, u, w / 2f, ins + ih * 0.5f, portrait = true, ins = ins) }
                 // the digits + seconds scale need 150 units across, 100 down; the row sits 6 units above the middle
                 else min(iw / 150f, ih / 100f).let { u -> RlGeo(kind, w, h, u, w / 2f, h / 2f - 6f * u, ins = ins) }
             }
@@ -679,8 +679,10 @@ private object RlStatic {
     private fun capsuleStatic(c: Canvas, g: RlGeo, p: RlPal, ghost: Boolean, date: Boolean, tf: Typeface, shift: Float) {
         val u = g.u
         if (ghost) {
-            val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = if (p.glow || p.night) alpha(0xFF6FE0CF.toInt(), 0.05f) else alpha(BLACK, 0.035f) }
-            val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = max(1f, 0.14f * u); color = alpha(p.ink, if (p.glow || p.night) 0.25f else 0.16f) }
+            // r14: a dark dial (코얼, clear-bg on a dark card) needs a lighter, stronger ghost or lit digits look lopsided
+            val darkDial = !(p.glow || p.night) && android.graphics.Color.luminance(p.ink) > 0.5f // light ink = dark ground
+            val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = when { p.glow || p.night -> alpha(0xFF6FE0CF.toInt(), 0.05f); darkDial -> alpha(0xFFFFFFFF.toInt(), 0.07f); else -> alpha(BLACK, 0.035f) } }
+            val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; strokeWidth = max(1f, 0.14f * u); color = alpha(p.ink, when { p.glow || p.night -> 0.25f; darkDial -> 0.32f; else -> 0.16f }) }
             for (i in 0 until 4) for (s in segments(g.digitX[i], g.digitY[i]).values) {
                 c.save(); c.translate(g.x(s.x), g.y(s.y)); c.rotate(s.deg)
                 val r = RectF(-T / 2 * u, -s.len / 2 * u, T / 2 * u, s.len / 2 * u)

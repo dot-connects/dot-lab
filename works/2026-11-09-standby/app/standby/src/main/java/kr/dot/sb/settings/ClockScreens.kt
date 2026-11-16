@@ -356,7 +356,13 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
         StyleRow.INFO -> SwitchRow("날짜와 날씨 표시", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "요일·날짜·기온·다음 알람을 같이 보여요")
         StyleRow.FONT, StyleRow.DIAL_FONT -> ControlRow(
             when { r == StyleRow.DIAL_FONT -> "시계판 숫자 서체"; face == FaceId.FLIP -> "판 위 숫자 서체"; else -> "서체" },
-        ) { FontGrid(FONT_ORDER, style.font, "12") { f, w -> edit { it.copy(font = f, weight = w) } } }
+        ) {
+            FontGrid(FONT_ORDER, style.font, "12") { f, w ->
+                // 11-16: on 디지털, 둥근 굵은 글씨 is one tap to the old look (middle digit in accent + overlap); both stay switchable
+                val look = face == FaceId.DIGITAL && f == FontId.ROUNDED_HEAVY
+                edit { if (look) it.copy(font = f, weight = w, accentMiddle = true, overlap = true) else it.copy(font = f, weight = w) }
+            }
+        }
         StyleRow.KFONT -> ControlRow("서체", note = "한글을 쓸 수 있는 서체만 보여요.") { FontGrid(HANGUL_FONTS, style.font, "아홉") { f, w -> edit { it.copy(font = f, weight = w) } } }
         StyleRow.FX -> ControlRow("효과", note = "밤에는 모든 효과가 꺼져요.") {
             Segmented(Effect.entries.map { it.ko }, style.effect.ordinal, { i -> edit { it.copy(effect = Effect.entries[i]) } })
