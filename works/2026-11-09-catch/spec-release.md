@@ -12,6 +12,8 @@ Scope: `app/`, `worker/`, a privacy page on the dot-lab site, store listing file
 | 2 | Testers | ACT Party 1:1 exchange, 14–15 trades, after the closed-test release |
 | 3 | Purchase check | Worker verifies each purchase token with Google before drawing |
 | 4 | Abuse guard | Play Integrity: Worker accepts AI calls only from a Play-recognized copy of our app |
+| 5 | Test period | pet sheets free up to 3 per device, the 4th on costs 500 won (real Play purchase). Switch off at production |
+| 6 | Testers come from | the reel → lab site page → [안드로이드 먼저 해 보기] (group + opt-in); ACT Party only to top up |
 
 ## 1. Play rules that hit this app (checked 2026-11-16)
 
@@ -52,6 +54,11 @@ worker:
 app: on start, queryPurchasesAsync → any PURCHASED but unconsumed token is re-sent (recovers a crash mid-draw).
 ```
 
+- Test-period free sheets: Worker var `FREE_SHEETS` (closed test = "3", production = "0").
+  `/sheet` without a purchase token is accepted while D1 `free[device] < FREE_SHEETS` (integrity-verified device id;
+  counted only after the sheet is stored, so a failed draw does not use one up). The app asks `GET /quota` → `{free_left}`
+  and shows "테스트 기간 무료 · N장 남음" instead of the price until it reaches 0, then the 500-won button.
+  A reinstall makes a new device id (another 3); the month cap bounds that. Free sheets use the same drawing path.
 - Token state machine (`absent → drawing → done | failed`, failed → drawing on retry) is pure JS and TDD'd.
 - One token draws one sheet. A `done` token returns the stored sheet (R2, 30 days) instead of drawing again.
 - Price text comes from `ProductDetails.formattedPrice`, not the hard-coded `PRICE_WON`.
@@ -119,7 +126,17 @@ Gmail (test purchases cost nothing) → in-app products `sheet_fluff`, `sheet_fi
   mid-draw, reopen → sheet arrives once; report a picture; airplane mode → "돈은 나가지 않았어요".
 - `zipalign -c -P 16` / bundletool check for 16 KB on every `.so`.
 
+## 9. Lab site page and manifest
+
+- New landing page `works/2026-11-09-catch/page/index.html` (the frozen web game `site/` stays unlisted and untouched;
+  earlier works untouched): the reel, three lines on what the app does, [안드로이드 먼저 해 보기] → a short two-step
+  box (그룹 가입 → 참여 링크), "아이폰은 아직 안 돼요", later swapped for a Google Play badge (one constant).
+- Added to the lab site list like the other works; `manifest.json` (kind work, reel, cover, caption, blog_html,
+  link = the landing page, status ready only once the opt-in link works). content-system posts blog/Instagram/Threads.
+
 ## Open (not blocking the plan)
+
+- Free sheets after production: `FREE_SHEETS = 0` by default; the operator may pick a launch freebie later.
 
 - Group-sheet price stays 500 won although its OpenAI cost is higher — revisit with real numbers after release.
 - Weekly report count could later go to the hub bot; not now.

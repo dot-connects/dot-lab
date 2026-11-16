@@ -1,7 +1,8 @@
 # 리얼뽑기 — 광고 릴스 (spec)
 
 2026-11-16. Operator picks: free live-action stock footage + our app scenes redrawn, "pro-made" look,
-paid real-pet sheet shown with a small 500원 line at the end, CTA = Play badge (post after the Play listing is live).
+posted BEFORE the Play listing, as soon as the closed test's opt-in link works; CTA = "안드로이드 먼저 해 보기 · 프로필 링크"
+→ lab site landing page (spec-release §9) → testers. Paid real-pet sheet shown as a small line at the end.
 Reference study: 10 real ads (Clawee, DOLLPICK, 캐치돌 TVC, Shijima, Xiaomi pet widget, Pocket Pals,
 Pokémon GO ×3); notes in `research/reel-refs.md`. Process lessons: memory `feedback_lab_ad_reel_process`.
 
@@ -23,7 +24,9 @@ Pokémon GO ×3); notes in `research/reel-refs.md`. Process lessons: memory `fee
 | 6.5–9 | Two-tone capsule falls, pops open in a burst → dex card fills "도감 N" (1 s) | 캡슐을 열면 |
 | 9–15.5 | The cat's own fluffy pet (real Worker sheet of the stock cat) walks along a real-looking home screen edge, climbs the wall, tapped → smiles, talk cloud | 털뭉치가 돼서 내 폰에 산다 |
 | 15.5–18 | Live action: the real cat paws at the phone where the pet is walking (match on the paw) | (sfx only) |
-| 18–20.5 | End card in the app's sky/grass look: pet in the widget, 리얼뽑기, Google Play badge, small line "우리 아이 펫 그림 500원 · 털뭉치 16마리 무료" | 리얼뽑기 |
+| 18–20.5 | End card in the app's sky/grass look: pet in the widget, 리얼뽑기, "안드로이드 먼저 해 보기 · 프로필 링크", small line "테스트 기간 우리 아이 펫 그림 3장 무료" | 리얼뽑기 |
+
+After the Play release a second cut swaps only the end card (Google Play badge, "우리 아이 펫 그림 500원 · 털뭉치 16마리 무료").
 
 The 15.5–18 shot loops into 0 s visually (same cat, same sofa).
 
@@ -60,7 +63,7 @@ The 15.5–18 shot loops into 0 s visually (same cat, same sofa).
    stock clips (grade, screen replacement by chroma key, motion blur).
 5. Voice: bright young female voice samples on the video, operator picks (Gemini TTS free quota ~10/day, shared).
 6. One review panel (6 personas on 0.5 s frame sheets), then fixes.
-7. `out/reel.mp4` + cover frame. Publish after the Play listing exists (CTA is the store badge).
+7. `out/reel.mp4` + cover frame → `manifest.json` (status ready only once the opt-in link works) → content-system posts.
 
 ## Checks
 
