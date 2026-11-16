@@ -203,21 +203,34 @@ function Show-Dday($App) {
 }
 
 # ── menu ──────────────────────────────────────────────────────────────────
+# Testers come from ACT Party (kr.testerparty.tester_party, actparty.app): a free 1:1 exchange board.
+# It needs a live closed test (opt-in link or package name), so recruiting starts after menu 3.
+# Read 2026-11-16: actparty.app how.html, guides/google-group.html, guides/production-form.html, terms.html.
+
+function Notes-File($App) { Join-Path $env:USERPROFILE ".dot-play-feedback-$($App.Key).txt" }
 
 Clear-Host
-Write-Host "`n  Google Play 출시 위자드 — 리얼뽑기 · 따로 같이 네컷 · 주차 앱 (계정 하나, 테스터 묶음 하나)" -ForegroundColor Cyan
+Write-Host "`n  Google Play 출시 위자드 — 리얼뽑기 · 따로 같이 네컷 · 주차 앱 (계정 하나, 테스트 그룹 하나)" -ForegroundColor Cyan
 Note "진행 기록: $StateFile (비밀 정보 없음)"
 Write-Host ''
-$dev = St-Get 'DEV_NAME'; $grp = St-Get 'TESTER_GROUP'; $cnt = St-Get 'TESTER_COUNT'
+$dev = St-Get 'DEV_NAME'; $grp = St-Get 'TESTER_GROUP'
 Say ("개발자 계정: " + $(if (St-Get 'SIGNUP_DATE') { "$dev ($(St-Get 'SIGNUP_DATE') 가입)" } else { '아직' }))
-Say ("테스터 그룹: " + $(if ($grp) { "$grp · 모인 사람 $cnt 명" } else { '아직' }))
-foreach ($k in '1','2','3') { if (St-Get "$($Apps[$k].Key)_TRACK") { Show-Dday $Apps[$k] } }
+Say ("테스트 그룹: " + $(if ($grp) { $grp } else { '아직' }))
+foreach ($k in '1','2','3') {
+  $a = $Apps[$k]
+  if (St-Get "$($a.Key)_TRACK") {
+    $t = St-Get "$($a.Key)_TRADES"
+    if ($t) { Say "$($a.Name): ACT Party 맞교환 $t 건" }
+    Show-Dday $a
+  }
+}
 Write-Host ''
-Say '1) 개발자 계정 만들기          — 지금 (5단계)'
-Say '2) 테스터 12명 모으기          — 지금, 1번과 같이 해도 됨 (3단계)'
-Say '3) 앱 비공개 테스트 시작       — Claude 가 AAB(업로드용 앱 파일)를 만든 뒤 (4단계)'
-Say '4) 참여 인원 기록 · 14일 날짜 — 사람이 늘거나 줄 때마다'
-Say '5) 프로덕션(정식 출시) 신청    — 12명 × 14일이 지난 뒤 (2단계)'
+Say '1) 개발자 계정 만들기            — 지금 (5단계)'
+Say '2) 테스트 그룹 만들기            — 지금, 1번과 같이 해도 됨 (2단계)'
+Say '3) 앱 비공개 테스트 시작         — Claude 가 AAB(업로드용 앱 파일)를 만든 뒤 (3단계)'
+Say '4) ACT Party 로 테스터 맞교환    — 3번 검토가 끝나 참여 링크가 나온 뒤 (4단계)'
+Say '5) 참여 인원 기록 · 14일 날짜   — 사람이 늘거나 줄 때마다'
+Say '6) 프로덕션(정식 출시) 신청      — 12명 × 14일이 지난 뒤 (2단계)'
 $part = Read-Host "`n  번호"
 
 switch ($part) {
@@ -228,7 +241,7 @@ switch ($part) {
 
   Stage '준비물 확인'
   Say '시작 전에 아래 5가지가 있어야 해요.'
-  Step '계정 주인이 될 Google 계정 — 나중에 옮기기 어려우니 계속 쓸 계정으로'
+  Step '계정 주인이 될 Google 계정 — 나중에 옮기기 어려우니 계속 쓸 개인 Gmail 로 (회사·학교 Workspace 계정 X)'
   Step '해외 결제가 되는 카드 — 등록비 $25 (한 번만, 약 3만 6천 원)'
   Step '신분증 (주민등록증·운전면허증·여권) — 이름이 결제 프로필 이름과 똑같아야 함'
   Step 'Android 10 이상 실폰 (루팅 안 된 것) — 폴드 OK'
@@ -258,7 +271,7 @@ switch ($part) {
   Open-Url 'https://play.google.com/console'
   Step '홈 화면의 할 일 목록에서 "본인 확인(Verify your identity)" 을 연다'
   Step '신분증 사진을 올린다 — 결제 프로필 이름과 다르면 그 자리에서 프로필을 고칠 수 있어요'
-  Note '검토는 며칠 걸릴 수 있어요. 기다리는 동안 다음 단계와 메뉴 2번(테스터 모으기)을 먼저 해도 됩니다.'
+  Note '검토는 며칠 걸릴 수 있어요. 기다리는 동안 다음 단계와 메뉴 2번(테스트 그룹)을 먼저 해도 됩니다.'
   if (Confirm-Yes '신분증을 제출했나요?') { St-Set 'ID_SUBMITTED' (Today) } else { $script:Skipped += '본인 확인(신분증) 제출' }
   Wait-Enter 'Enter 로 다음'
 
@@ -283,52 +296,46 @@ switch ($part) {
 }
 
 '2' {
-  $TotalStages = 3
-  Banner '테스터 12명 모으기 (세 앱 공용 그룹 하나)'
+  $TotalStages = 2
+  Banner '테스트 그룹 만들기 (세 앱 공용 Google 그룹 하나)'
 
   Stage 'Google 그룹 만들기'
-  Say '테스터를 Google 그룹 하나로 모으면, 세 앱 테스트에 그룹 이메일만 넣으면 끝이에요.'
+  Say 'ACT Party 상대와 지인 모두 이 그룹에 가입하면 테스터가 돼요. 세 앱 테스트에 그룹 이메일만 넣으면 끝이에요.'
   Open-Url 'https://groups.google.com/my-groups'
+  Step "계정 주인($(St-Get 'OWNER_ACCOUNT')) 개인 Gmail 로 로그인 (Workspace 계정 그룹은 밖에서 가입 불가)"
   Step '"그룹 만들기" → 이름: 예) D:OT 테스터 · 그룹 이메일: 예) dot-testers'
-  Step '개인정보 설정: "가입할 수 있는 사용자" = "웹에 있는 모든 사용자"(누구나 바로 가입)'
+  Step '"그룹을 검색할 수 있는 사용자" = "웹의 모든 사용자"'
+  Step '"그룹에 가입할 수 있는 사용자" = "웹의 모든 사용자가 가입 가능" (요청 승인 방식 X — 한 명씩 승인해야 해요)'
   Step '나머지는 기본값 → 그룹 만들기'
+  Note '이미 만들었다면 그룹 설정 → 일반에서 위 두 칸만 확인하세요. 비공개로 두면 상대에게 "콘텐츠를 사용할 수 없음" 이 떠요.'
   Write-Host ''
   $grp = Ask-St 'TESTER_GROUP' '그룹 이메일 (예: dot-testers@googlegroups.com)'
-  if (-not $grp) { $script:Skipped += '테스터 그룹 이메일'; Wait-Enter; break }
+  if (-not $grp) { $script:Skipped += '테스트 그룹 이메일'; Wait-Enter; break }
+  St-Set 'TESTER_JOIN' ("https://groups.google.com/g/" + ($grp -split '@')[0])
   Wait-Enter 'Enter 로 다음'
 
-  Stage '초대 글 보내기'
-  $prefix = ($grp -split '@')[0]
-  $join = "https://groups.google.com/g/$prefix"
-  St-Set 'TESTER_JOIN' $join
-  Say '아래 글을 친구·가족에게 보내세요. 14~15명을 모으면 안전해요 (한 명이 빠져 12명 밑이 되면 14일을 처음부터 다시 셉니다).'
-  Copy-Text @"
-부탁 하나만 할게! 내가 만든 안드로이드 앱 3개(리얼뽑기 · 따로 같이 네컷 · 주차 앱)를 Play 스토어에 올리려는데, 테스터 12명이 2주 동안 필요해.
-1) 이 링크로 그룹 가입 (Play 스토어 쓰는 그 Google 계정으로): $join
-2) 앱이 준비되면 설치 링크를 따로 보낼게.
-3) 설치하고 14일 동안만 지우지 말아 줘. 가끔 한 번 열어 보고, 이상한 거 있으면 한 줄만 알려 줘!
-(안드로이드 폰만 돼. 아이폰은 안 돼 ㅠ)
+  Stage '지인 테스터 (선택)'
+  Say '주 테스터는 ACT Party 맞교환(메뉴 4번)이에요. 안드로이드 쓰는 지인이 있으면 같이 넣으면 맞교환 수가 줄어요.'
+  Say '지인에게는 앱이 열린 뒤(메뉴 3번 끝) 참여 링크와 함께 보내는 게 한 번에 끝나서 편해요.'
+  if (Confirm-Yes '지금 지인에게 그룹 가입부터 부탁할까요? (초대 글을 클립보드에 복사)') {
+    Copy-Text @"
+부탁 하나만 할게! 내가 만든 안드로이드 앱을 Play 스토어에 올리려는데 테스터가 필요해.
+1) 이 링크로 그룹 가입 (Play 스토어 쓰는 그 Google 계정으로): $(St-Get 'TESTER_JOIN')
+2) 앱이 열리면 설치 링크를 따로 보낼게. 설치하고 14일 동안만 지우지 말아 줘!
+(안드로이드 폰만 돼)
 "@
-  Note '테스터 교환 모임(서로 앱 테스트해 주는 커뮤니티)을 쓰면 링크를 Claude 에게 알려 주세요.'
-  Wait-Enter 'Enter 로 다음'
-
-  Stage '모인 사람 수 기록'
-  Open-Url "$join/members"
-  Step '그룹 회원 목록에서 사람 수를 센다 (본인 제외)'
-  $n = Ask-St 'TESTER_COUNT' '지금 모인 사람 수'
-  if (-not ($n -match '^\d+$') -or [int]$n -lt 12) { Note "아직 $n 명. 사람이 늘면 메뉴 2번 → 3단계만 다시 하거나 메뉴 4번으로 기록하세요." }
-  else { Write-Host "  ✓ $n 명 — 앱이 준비되면 메뉴 3번으로." -ForegroundColor Green }
+  }
   Wait-Enter 'Enter 로 마무리'
 }
 
 '3' {
   $App = Pick-App
   $K = $App.Key
-  $TotalStages = 4
+  $TotalStages = 3
   Banner "$($App.Name) 비공개 테스트 시작"
 
   Stage '앱 만들기'
-  if (-not (St-Get 'TESTER_GROUP')) { Warn '테스터 그룹이 아직 없어요 — 메뉴 2번 먼저.' }
+  if (-not (St-Get 'TESTER_GROUP')) { Warn '테스트 그룹이 아직 없어요 — 메뉴 2번 먼저.' }
   Open-Url 'https://play.google.com/console'
   Step '"앱 만들기" 버튼'
   Step "앱 이름: $($App.Name) · 기본 언어: 한국어 – ko-KR · 앱/게임: $($App.Kind) · 무료"
@@ -338,47 +345,93 @@ switch ($part) {
   Wait-Enter '앱이 만들어지면 Enter'
 
   Stage '비공개 테스트 트랙 + AAB 올리기'
-  Step '왼쪽 "테스트 및 출시" → "비공개 테스트" → 기본 트랙(알파) "트랙 관리"'
-  Step "테스터 탭: 'Google 그룹' 칸에 $(St-Get 'TESTER_GROUP') 입력 · 피드백 받을 이메일 입력 → 저장"
-  Step '국가/지역 탭: 대한민국 추가 → 저장'
+  Step '왼쪽 "테스트 및 출시" → "테스트" → "비공개 테스트" → 기본 트랙(알파) "트랙 관리"'
+  Step "테스터 탭: 'Google 그룹' 칸에 $(St-Get 'TESTER_GROUP') 전체 주소 입력 → 칩으로 바뀌면 저장 · 피드백 이메일 입력"
+  Step '국가/지역 탭: "모든 국가/지역" 추가 → 저장 (ACT Party 상대는 해외에도 있어요. 빠지면 "내 나라에서 사용 불가" 로 조용히 탈락)'
   Step '"새 버전 만들기" → "Play 앱 서명" 사용(Google 이 서명 키 보관) → 계속'
   $aab = Ask-St "$($K)_AAB" 'AAB 파일 경로 (Claude 가 알려 준 경로)' $App.Aab
   if ($aab -and -not (Test-Path $aab)) { Warn "그 경로에 파일이 없어요: $aab — Claude 에게 AAB 위치를 물어보세요." }
   Step 'AAB 파일을 끌어다 놓기 → 출시 노트: "첫 테스트 버전" → 다음 → 저장'
   Step '"버전 검토" → 오류가 없으면 "비공개 테스트 트랙에 출시 시작"'
+  Step '"게시 개요"에서 변경사항을 검토로 보내기 (테스터·국가 변경도 여기서 보내야 적용돼요)'
   Write-Host ''
   Warn '대시보드 "앱 설정" 할 일(개인정보 처리방침 URL · 앱 액세스 · 광고 · 콘텐츠 등급 · 타겟층 · 데이터 보안 등)이 남아 있으면 검토로 못 보내요.'
   Note '그 답안은 Claude 가 미리 문서로 준비해 둡니다. 막히는 칸은 캡처해서 보내 주세요. 첫 검토는 며칠 걸릴 수 있어요.'
-  if (Confirm-Yes '비공개 테스트 출시(검토 보내기)까지 했나요?') { St-Set "$($K)_TRACK" (Today) } else { $script:Skipped += "$($App.Name) 비공개 테스트 출시"; Wait-Enter; break }
+  if (Confirm-Yes '검토 보내기까지 했나요?') { St-Set "$($K)_TRACK" (Today) } else { $script:Skipped += "$($App.Name) 비공개 테스트 출시"; Wait-Enter; break }
   Wait-Enter 'Enter 로 다음'
 
-  Stage '테스터에게 설치 링크 보내기'
+  Stage '참여 링크 받기'
   Step '검토가 끝나면: 비공개 테스트 → 트랙 → 테스터 탭 맨 아래 "테스터 참여 방법" → "웹에서 참여" 링크 복사'
-  Note '검토가 끝나기 전엔 링크가 안 열려요. 아직이면 Enter 로 넘기고, 승인 뒤 메뉴 3번을 다시 실행하세요.'
+  Note '검토가 끝나기 전엔 링크가 안 열려요. 아직이면 Enter 로 넘기고, 승인 뒤 메뉴 3번 → 이 단계만 다시 하세요.'
   $optin = Ask-St "$($K)_OPTIN" '참여 링크 (https://play.google.com/apps/testing/...)'
   if ($optin) {
-    Copy-Text @"
+    Say '이 링크로 메뉴 4번(ACT Party 등록)을 하면 됩니다.'
+    if (Confirm-Yes '지인에게 보낼 설치 안내 글도 복사할까요?') {
+      Copy-Text @"
 $($App.Name) 테스트 열렸어! 고마워 🙏
-1) 이 링크 열고 "테스터 되기" 누르기: $optin
-2) 같은 화면의 Play 스토어 링크로 설치
-3) 14일 동안 지우지만 말아 줘. 가끔 열어서 써 보고, 이상한 거 있으면 한 줄만 알려 줘!
+1) 그룹 가입 (아직이면): $(St-Get 'TESTER_JOIN')
+2) 이 링크 열고 "테스터 되기": $optin
+3) 같은 화면의 Play 스토어 링크로 설치 → 14일 동안 지우지 말기. 이상한 거 있으면 한 줄만 알려 줘!
 "@
-  } else { $script:Skipped += "$($App.Name) 참여 링크 보내기 (승인 뒤 메뉴 3번)" }
-  Wait-Enter 'Enter 로 다음'
-
-  Stage '14일 시작일 기록'
-  Say '14일은 "테스터 되기"를 누른 사람이 12명이 된 날부터 셉니다.'
-  $n = Read-Host '  지금 "테스터 되기"를 누른 사람 수 (모르면 Enter)'
-  if ($n -match '^\d+$' -and [int]$n -ge 12) {
-    if (-not (St-Get "$($K)_START")) { St-Set "$($K)_START" (Today) }
-    Show-Dday $App
-  } else { Note '12명이 되는 날 메뉴 4번으로 기록하세요.' }
+    }
+  } else { $script:Skipped += "$($App.Name) 참여 링크 (승인 뒤 메뉴 3번)" }
   Wait-Enter 'Enter 로 마무리'
 }
 
 '4' {
   $App = Pick-App
   $K = $App.Key
+  $TotalStages = 4
+  Banner "$($App.Name) 테스터 맞교환 (ACT Party)"
+
+  Stage 'ACT Party 앱 설치'
+  if (-not (St-Get "$($K)_OPTIN")) { Warn '참여 링크가 아직 없어요 — 메뉴 3번을 끝낸 뒤 오세요. (등록에 참여 링크나 패키지 이름이 필요해요)' }
+  Say 'ACT Party = 개발자끼리 서로의 비공개 테스트에 참여해 주는 무료 맞교환 앱이에요. 유료 기능 없음.'
+  Open-Url 'https://play.google.com/store/apps/details?id=kr.testerparty.tester_party'
+  Step 'PC 에서 열면 "설치" → 폰 선택, 또는 폰 Play 스토어에서 "ACT Party" 검색'
+  Step '앱을 열고 안내대로 가입·로그인'
+  Step '"사용 정보 접근(Usage access)" 허용 요청이 나오면 허용 — 상대 앱을 매일 열었는지 이걸로 자동 기록해요'
+  Note '웹 콘솔도 있어요: https://actparty.app  (앱 안 화면 이름은 아직 직접 확인 못 함 — 다르면 캡처해서 Claude 에게)'
+  Wait-Enter '가입이 끝나면 Enter'
+
+  Stage '내 앱 등록'
+  Open-Url 'https://actparty.app/console.html?new=1'
+  Step '앱 등록(새 앱)에 아래 둘 중 하나를 넣는다:'
+  Say "    참여 링크: $(St-Get "$($K)_OPTIN")"
+  Say "    패키지 이름: $($App.Pkg)"
+  Step '설명은 짧게: 어떤 앱인지 한 줄 + "매일 한 번 열어 주세요"'
+  Warn 'Play 스토어 리뷰·별점을 서로 써 주자는 요청은 금지예요 (Play 정책 위반, ACT Party 약관 위반).'
+  Wait-Enter '등록이 끝나면 Enter'
+
+  Stage '맞교환하기 (14~15건)'
+  Say '1:1 맞교환이에요: 상대가 내 앱을 14일 테스트하면, 나도 상대 앱을 14일 테스트해요.'
+  Step '게시판에서 상대 앱을 골라 교환 제안 → 또는 내 앱에 온 제안을 수락'
+  Step '상대 앱: 상대 그룹 가입 → 상대 참여 링크에서 "테스터 되기" → Play 스토어에서 설치 → 한 번 열기'
+  Step '14일 동안 지우지 않고, 하루 한 번 열기 (ACT Party 가 자동 기록, 상대에게 내 기록이 보여요)'
+  Step '12명 + 여유로 14~15건을 목표로 — 한 명이 빠지면 그 사람 대신 들어온 사람이 14일을 새로 채워야 해요'
+  Write-Host ''
+  Warn "내 폰에 남의 앱 14~15개를 14일 동안 둬야 해요. 중간에 지우면 상대도 빠질 수 있고 내 평판(카르마)이 깎여요."
+  Note '한 번의 교환으로 우리 앱 세 개를 같이 테스트받을 수 있는지는 페이지에 없어요 — 리얼뽑기부터 하고, 상대에게 물어보세요.'
+  $t = Ask-St "$($K)_TRADES" '지금까지 성사된 교환 수'
+  Wait-Enter 'Enter 로 다음'
+
+  Stage '피드백 모으기 (정식 출시 신청에 필요)'
+  Say '정식 출시 신청서에 "테스터 피드백 요약"과 "그걸 보고 바꾼 점"을 써야 해요 (각 300자).'
+  Step 'ACT Party 채팅·피드백으로 받은 말을 날짜와 함께 메모 파일에 적어 두세요'
+  Step 'Claude 에게 "피드백 메모 반영해 줘" 하면 고칠 건 고치고, 바꾼 점을 같은 파일에 적어 둘게요'
+  $nf = Notes-File $App
+  if (-not (Test-Path $nf)) { [IO.File]::WriteAllText($nf, "# $($App.Name) 테스터 피드백 (날짜 · 누가 · 내용)`r`n`r`n") }
+  Note "메모 파일: $nf"
+  if (Confirm-Yes '메모 파일을 메모장으로 열까요?') { Start-Process notepad.exe $nf }
+  Write-Host ''
+  Say '상대 12명이 "테스터 되기"를 누른 날, 메뉴 5번으로 기록하면 신청 가능 날짜가 나와요.'
+  Wait-Enter 'Enter 로 마무리'
+}
+
+'5' {
+  $App = Pick-App
+  $K = $App.Key
+  Say 'Play Console → 비공개 테스트 → 트랙에서 참여(opt-in)한 테스터 수를 보거나, ACT Party 진행 중 교환 수 + 지인 수로 셉니다.'
   $n = Read-Host '  지금 "테스터 되기"를 누른 사람 수'
   if ($n -match '^\d+$' -and [int]$n -ge 12) {
     if (-not (St-Get "$($K)_START")) { St-Set "$($K)_START" (Today) }
@@ -392,7 +445,7 @@ $($App.Name) 테스트 열렸어! 고마워 🙏
   Write-Host ''
 }
 
-'5' {
+'6' {
   $App = Pick-App
   $K = $App.Key
   $TotalStages = 2
@@ -402,21 +455,24 @@ $($App.Name) 테스트 열렸어! 고마워 🙏
   Show-Dday $App
   $start = St-Get "$($K)_START"
   if (-not $start -or ([datetime]$start).AddDays(14) -gt (Get-Date)) { Warn '아직 14일이 안 됐어요. 지금 신청하면 거절돼요.' }
-  Step '신청서에 "테스터 피드백 요약"과 "그걸 보고 바꾼 점"을 써야 해요.'
-  Step 'Claude 에게 "리얼뽑기 프로덕션 신청 답안 써 줘" 라고 하면 테스트 기간 변경 기록으로 초안을 만들어 드려요.'
+  Say '신청서는 3부분 9문항, 자유 입력은 각 300자예요. 결정적인 건 두 개:'
+  Step '"테스터에게 받은 피드백 요약과 모은 방법"'
+  Step '"비공개 테스트로 알게 된 것을 바탕으로 앱을 어떻게 바꿨는지"'
+  Note "피드백 메모: $(Notes-File $App)"
+  Step "Claude 에게 `"$($App.Name) 프로덕션 신청 답안 써 줘`" — 메모와 테스트 기간 변경 기록으로 9문항 초안을 만들어 드려요."
   Wait-Enter '답안이 준비되면 Enter'
 
   Stage '신청서 보내기'
   Open-Url 'https://play.google.com/console'
   Step "$($App.Name) → 대시보드 → '프로덕션 액세스 신청'"
   Step '세 부분(비공개 테스트 · 앱 정보 · 출시 준비)을 Claude 답안으로 채운다'
-  Step '테스터 모집이 얼마나 쉬웠는지 고르기 → 제출'
-  Note '검토는 보통 7일 이하. 테스터 수·참여가 부족하면 "더 테스트하세요" 가 나올 수 있어요.'
+  Step '테스터 모집 난이도: 사실대로 (테스터 교환 앱으로 모았다고 써도 돼요)'
+  Note '검토는 보통 7일 이하. 거절되면 다시 신청하면 되고, 테스터들의 참여 기간은 그대로 유지돼요.'
   if (Confirm-Yes '제출했나요?') { St-Set "$($K)_APPLIED" (Today) } else { $script:Skipped += "$($App.Name) 프로덕션 신청" }
   Wait-Enter 'Enter 로 마무리'
 }
 
-default { Warn '1~5 중에서 골라 주세요. 다시 실행하면 됩니다.'; exit 0 }
+default { Warn '1~6 중에서 골라 주세요. 다시 실행하면 됩니다.'; exit 0 }
 }
 
 Finish
