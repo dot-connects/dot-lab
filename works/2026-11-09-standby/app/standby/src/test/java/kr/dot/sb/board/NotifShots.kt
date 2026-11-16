@@ -2,6 +2,7 @@ package kr.dot.sb.board
 
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.performClick
 import kr.dot.sb.Device
@@ -38,7 +39,9 @@ class NotifShots(private val name: String, private val device: Device, private v
     @Test fun shot() {
         val s = stateOf(stateKey)
         // "open": tap the 배송 완료 row (tier A has no names: tap the count) and capture before the 10 s idle close
-        val open: (ComposeContentTestRule.() -> Unit)? = if (!stateKey.startsWith("open")) null else {
+        val open: (ComposeContentTestRule.() -> Unit)? = if (stateKey == "swipe") {
+            { onAllNodesWithContentDescription("밀어서 지우기")[0].performClick(); waitForIdle() }
+        } else if (!stateKey.startsWith("open")) null else {
             {
                 mainClock.autoAdvance = false
                 val row = onAllNodesWithText("배송 완료")
@@ -84,6 +87,9 @@ class NotifShots(private val name: String, private val device: Device, private v
             out += arrayOf("D-two-hidden", Device.FOLD_COVER_L, two, "hidden")
             out += arrayOf("D-two-open-hidden", Device.FOLD_COVER_L, two, "open-hidden")
             out += arrayOf("four-noaccess", Device.FOLD_COVER_L, four, "noaccess")
+            // r15 §3: 밀어서 지우기 on ("swipe" taps the switch first), and the extra phone shapes
+            for ((n, b, d) in listOf(Triple("E-one", one, Device.FOLD_COVER_L), Triple("D-two", two, Device.FOLD_COVER_L), Triple("B-three", three, Device.FOLD_COVER_L), Triple("S-four", four, Device.BAR_L))) out += arrayOf("$n-swipe", d, b, "swipe")
+            for (d in listOf(Device.FOLD_INNER_P, Device.COVER_NARROW, Device.FLIP_SMALL)) for ((n, b) in listOf("E-one" to one, "D-two" to two, "S-four" to four)) out += arrayOf("$n-full", d, b, "full")
             return out
         }
     }

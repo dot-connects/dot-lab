@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kotlinx.coroutines.delay
 import kr.dot.sb.model.AppConfig
@@ -71,6 +72,8 @@ internal fun alarmTime(a: LocalDateTime, use24h: Boolean): Pair<String?, String>
 internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
     val a = state.nextAlarm
     val small = !e.atLeastS || min(e.w, e.h) < 150.dp
+    // r15 §2: a big slot centres the time, sizes it from the height and grows the buttons
+    val big = min(e.w, e.h) >= 300.dp
     var sheet by remember { mutableStateOf(false) }
     var done by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(done) { if (done != null) { delay(3_000); done = null } }
@@ -78,13 +81,13 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
     Box(Modifier.fillMaxSize().tap(actions::openAlarmApp)) {
         Column(Modifier.fillMaxSize().padding(e.pad)) {
             LabelRow(e, Ic.ALARM, "다음 알람", color = ink.accText)
-            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.BottomStart) {
+            BoxWithConstraints(Modifier.weight(1f).fillMaxWidth(), contentAlignment = if (big) Alignment.CenterStart else Alignment.BottomStart) {
                 if (a == null) Txt("켜진 알람이 없어요", e.head, e.readInk2, weight = 600, maxW = e.cw)
                 else {
                     val (ap, hm) = alarmTime(a, state.use24h)
                     val boxH = maxHeight
                     Column {
-                        val cap = min(boxH * 0.55f, 96.dp)
+                        val cap = if (big) min(boxH * 0.6f, max(96.dp, e.h * 0.27f)) else min(boxH * 0.55f, 96.dp)
                         val apSize = (cap * 0.42f).coerceAtLeast(e.meta)
                         // 오전/오후 inline takes ≈ 2.1 em + a gap; a slot too narrow for that (Flip cover) stacks it above
                         // the digits instead (12-hour mode needs it), and the digits get the full width
@@ -111,9 +114,11 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
             }
             if (!small) {
                 Spacer(Modifier.height(e.gap * 2))
+                // a fixed height before Pill's own 48 dp wins (the later size is coerced into it)
+                val ph = if (big) max(48.dp, min(e.w, e.h) * 0.104f) else 48.dp
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Pill(e, "빠른 알람", ink.acc, Modifier.weight(1f)) { sheet = true }
-                    Pill(e, "알람 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f), actions::openAlarmApp)
+                    Pill(e, "빠른 알람", ink.acc, Modifier.weight(1f).height(ph)) { sheet = true }
+                    Pill(e, "알람 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f).height(ph), actions::openAlarmApp)
                 }
             }
         }

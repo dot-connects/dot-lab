@@ -21,7 +21,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -60,6 +59,19 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.layout.boundsInWindow
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
@@ -75,17 +87,33 @@ import kr.dot.sb.ui.theme.themedSurface
 import java.time.ZoneId
 import kotlin.math.abs
 import kotlin.math.floor
-import kotlin.math.sign
 
 /*
  * The notification card (spec-r9 §1 "Notifications (stack + list merged)", mockup tab 알림). One body for all ten
  * themes. Closed (the usual look): one plate for the whole card, quiet rows without boxes, same app + conversation
  * merged with a count, overflow as overlapped icons + "+N", a dot + bold for anything under 10 minutes old. Layout by
  * [notifTier]. "내용 열기" or a row → open: one plate per notification (sender 18 + message 15), scrolls; "접기" or
- * 10 s without a touch closes it. Swipe a row or plate sideways = remove it from the phone.
+ * 10 s without a touch closes it. r15 §3: sideways drags turn the page unless 밀어서 지우기 is on; then a row or plate
+ * swiped left is removed from the phone (no "모두 지우기").
  */
 
 private const val IDLE_CLOSE_MS = 10_000L
+
+/** r15 §3: 밀어서 지우기 turns itself off after this long without a dismiss. */
+internal const val SWIPE_IDLE_MS = 30_000L
+
+/**
+ * 밀어서 지우기 (r15 §3), transient UI state (never saved). Off: sideways drags on the card belong to the page, rows only
+ * open. On: rows swipe left to clear and the card keeps every sideways drag. [uses] counts dismisses, so each one
+ * restarts the [SWIPE_IDLE_MS] wait.
+ */
+@androidx.compose.runtime.Immutable
+internal data class SwipeClear(val on: Boolean = false, val uses: Int = 0) {
+    fun toggle(): SwipeClear = if (on) SwipeClear() else SwipeClear(on = true)
+    fun dismissed(): SwipeClear = if (on) copy(uses = uses + 1) else this
+    /** Idle timeout, screen off, or the card left the screen. */
+    fun off(): SwipeClear = SwipeClear()
+}
 
 /** Set by the root when the new-notification banner is tapped; the first notification card composed opens and clears it. */
 internal val LocalNotifOpen = compositionLocalOf<MutableState<Boolean>?> { null }
@@ -143,36 +171,111 @@ private fun BadgedIcon(e: Env, g: NotifGroup, d: Dp) {
 }
 
 /**
- * Horizontal swipe that throws the element out past a third of its width (or on a fling), else springs back. The
- * offset is read only inside the graphics layer, so a drag redraws one layer and recomposes nothing. A notification
- * the app pins ([clearable] false) follows the finger reluctantly and always comes back.
+ * A row (closed) or plate (open). With 밀어서 지우기 off it is just [content] (taps only, sideways drags go to the page).
+ * On: a 3 dp accent bar on its left, and a swipe left throws it out past a third of its width (or on a fling), else it
+ * springs back; the strip it uncovers is the warn colour with "지우기". Rightwards it only gives a little. The offset is
+ * read only in draw / graphics layers, so a drag recomposes nothing. A notification the app pins ([clearable] false)
+ * follows the finger reluctantly and always comes back.
  */
 @Composable
-private fun Modifier.swipeAway(key: String, clearable: Boolean, onClear: () -> Unit): Modifier {
+private fun SwipeRow(
+    e: Env, key: String, on: Boolean, clearable: Boolean, onClear: () -> Unit, modifier: Modifier = Modifier,
+    content: @Composable (Modifier) -> Unit,
+) {
+    if (!on) return content(modifier)
     var dx by remember(key) { mutableFloatStateOf(0f) }
     var width by remember { mutableIntStateOf(1) }
     val fling = with(LocalDensity.current) { 800.dp.toPx() }
     val clear by rememberUpdatedState(onClear)
-    val drag = rememberDraggableState { d -> dx += if (clearable) d else d * 0.2f }
-    return onSizeChanged { width = it.width.coerceAtLeast(1) }
-        .draggable(
-            drag, Orientation.Horizontal,
-            onDragStopped = { v ->
-                val w = width.toFloat()
-                val out = clearable && (abs(dx) > w / 3f || (abs(v) > fling && sign(v) == sign(dx) && abs(dx) > w * 0.08f))
-                if (out) {
-                    animate(dx, sign(dx) * w * 1.1f, animationSpec = tween(170)) { x, _ -> dx = x }
-                    clear()
-                } else {
-                    animate(dx, 0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { x, _ -> dx = x }
+    val drag = rememberDraggableState { d -> dx += if (clearable && dx + d < 0f) d else d * 0.2f }
+    val warn = e.ink.red
+    val acc = e.ink.acc
+    Box(modifier.onSizeChanged { width = it.width.coerceAtLeast(1) }) {
+        // the uncovered strip: warn colour + "지우기", clipped to what the row has left
+        Box(
+            Modifier.matchParentSize().drawWithContent {
+                if (dx < 0f) clipRect(left = size.width + dx) {
+                    drawRect(warn)
+                    this@drawWithContent.drawContent()
                 }
             },
+            contentAlignment = Alignment.CenterEnd,
+        ) { Txt("지우기", e.meta, e.on(warn), Modifier.padding(end = 14.dp), weight = 800) }
+        content(
+            Modifier.fillMaxSize()
+                .draggable(
+                    drag, Orientation.Horizontal,
+                    onDragStopped = { v ->
+                        val w = width.toFloat()
+                        val out = clearable && dx < 0f && (-dx > w / 3f || (v < -fling && -dx > w * 0.08f))
+                        if (out) {
+                            animate(dx, -w * 1.1f, animationSpec = tween(170)) { x, _ -> dx = x }
+                            clear()
+                        } else {
+                            animate(dx, 0f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) { x, _ -> dx = x }
+                        }
+                    },
+                )
+                .graphicsLayer {
+                    translationX = dx
+                    alpha = 1f - (abs(dx) / width).coerceIn(0f, 1f) * 0.8f
+                }
+                // one bar per row (rows touch: a full-height bar would run into the next one)
+                .drawWithContent {
+                    drawContent()
+                    val bw = 3.dp.toPx()
+                    drawRoundRect(acc, Offset(0f, size.height * 0.15f), androidx.compose.ui.geometry.Size(bw, size.height * 0.7f), androidx.compose.ui.geometry.CornerRadius(bw / 2))
+                },
         )
-        .graphicsLayer {
-            translationX = dx
-            alpha = 1f - (abs(dx) / width).coerceIn(0f, 1f) * 0.8f
-        }
+    }
 }
+
+/**
+ * The 밀어서 지우기 switch (r15 §3): an outlined pill with "⇠ 밀어서 지우기" when off, filled with the accent when on;
+ * [iconOnly] keeps just the arrow (small slots). The touch target is 48 dp tall and at least 48 wide.
+ */
+@Composable
+private fun SwipeToggle(e: Env, on: Boolean, iconOnly: Boolean, onClick: () -> Unit) {
+    val fg = if (on) e.on(e.ink.acc) else e.ink.ink2
+    val shape = RoundedCornerShape(50)
+    Box(
+        Modifier.requiredHeight(48.dp).widthIn(min = 48.dp)
+            .semantics { contentDescription = "밀어서 지우기"; stateDescription = if (on) "켜짐" else "꺼짐"; role = Role.Switch }
+            .tap(onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Row(
+            Modifier.clip(shape).then(if (on) Modifier.background(e.ink.acc) else Modifier.border(1.5.dp, e.ink.ink4, shape))
+                .padding(horizontal = if (iconOnly) 8.dp else 11.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            DashArrow(fg, Modifier.size(e.meta * 1.1f, e.meta))
+            if (!iconOnly) Txt("밀어서 지우기", e.meta, fg, weight = 700)
+        }
+    }
+}
+
+/** "⇠": a dashed leftwards arrow, drawn (the card fonts have no such glyph). */
+@Composable
+private fun DashArrow(color: Color, modifier: Modifier) = androidx.compose.foundation.Canvas(modifier) {
+    val w = size.width
+    val h = size.height
+    val sw = h * 0.13f
+    val y = h / 2
+    val head = h * 0.36f
+    drawLine(color, Offset(sw, y), Offset(sw + head, y - head), sw, StrokeCap.Round)
+    drawLine(color, Offset(sw, y), Offset(sw + head, y + head), sw, StrokeCap.Round)
+    var x = sw
+    while (x < w - sw) {
+        drawLine(color, Offset(x, y), Offset(minOf(x + w * 0.2f, w - sw), y), sw, StrokeCap.Round)
+        x += w * 0.32f
+    }
+}
+
+/** "알림을 왼쪽으로 밀면 지워져요 · 버튼을 다시 누르면 끝" under the rows while 밀어서 지우기 is on. */
+@Composable
+private fun SwipeHint(e: Env, modifier: Modifier = Modifier) =
+    Txt("알림을 왼쪽으로 밀면 지워져요 · 버튼을 다시 누르면 끝", e.meta * 0.85f, e.ink.ink2, modifier.fillMaxWidth(), weight = 500, align = TextAlign.Center)
 
 /** Empty / no-access state: bell (or lock) and one line, centred on the card plate. */
 @Composable
@@ -195,14 +298,6 @@ private fun TextBtn(e: Env, text: String, color: Color, onClick: () -> Unit) {
     }
 }
 
-/** The ✕ "clear all" button (narrow tiers): an 18 dp glyph in a 48 dp target. */
-@Composable
-private fun ClearBtn(e: Env, onClick: () -> Unit) {
-    Box(Modifier.requiredSize(48.dp).tap(onClick), contentAlignment = Alignment.Center) {
-        IconView(Ic.CLOSE, e.ink.ink2, Modifier.size(18.dp))
-    }
-}
-
 /**
  * The notification card. [plate] = the theme's card plate (CardView), worn only while closed: open, each
  * notification sits on its own plate.
@@ -219,24 +314,42 @@ internal fun NotifCard(e: Env, state: StandbyState, actions: StandbyActions, pla
         state.notifications.isEmpty() -> return NotifEmpty(e, plate, Ic.BELL, "알림 없음", null)
     }
     val groups = remember(state.notifications) { notifGroups(state.notifications) }
-    val clearAll = state.notifications.filter { it.clearable }.map { it.key }.takeIf { it.isNotEmpty() }?.let { keys -> { actions.notificationClear(keys) } }
+    // r15 §3 밀어서 지우기: off after 30 s without a dismiss, when the screen goes off (stop) or the card leaves the screen
+    var sc by remember { mutableStateOf(SwipeClear()) }
+    LaunchedEffect(sc) { if (sc.on) { delay(SWIPE_IDLE_MS); sc = sc.off() } }
+    val life = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(life) {
+        val o = LifecycleEventObserver { _, ev -> if (ev == Lifecycle.Event.ON_STOP) sc = sc.off() }
+        life.lifecycle.addObserver(o)
+        onDispose { life.lifecycle.removeObserver(o) }
+    }
+    val swipe = Swipe(sc.on, { sc = sc.toggle() }) { keys -> sc = sc.dismissed(); actions.notificationClear(keys) }
+    val card = Modifier.fillMaxSize()
+        .onGloballyPositioned { c ->
+            val r = c.boundsInWindow()
+            if (sc.on && r.width * r.height < c.size.width * c.size.height * 0.5f) sc = sc.off()
+        }
+        // on: the card keeps the sideways drags its rows leave, so the page never turns under a swipe
+        .draggable(rememberDraggableState { }, Orientation.Horizontal, enabled = sc.on)
     if (open) {
         Box(
-            Modifier.fillMaxSize().pointerInput(Unit) {
+            card.pointerInput(Unit) {
                 awaitPointerEventScope { while (true) { awaitPointerEvent(PointerEventPass.Initial); touched++ } }
             },
-        ) { NotifOpen(e, state, actions, clearAll) { open = false } }
+        ) { NotifOpen(e, state, actions, swipe) { open = false } }
     } else {
-        NotifClosed(e, state, actions, groups, plate, clearAll) { open = true }
+        Box(card) { NotifClosed(e, state, groups, plate, swipe) { open = true } }
     }
 }
+
+/** What rows need from 밀어서 지우기: whether it is [on], the switch, and the clear (which counts as a use). */
+private class Swipe(val on: Boolean, val toggle: () -> Unit, val clear: (List<String>) -> Unit)
 
 // ---------------------------------------------------------------- closed
 
 @Composable
 private fun NotifClosed(
-    e: Env, state: StandbyState, actions: StandbyActions, groups: List<NotifGroup>, plate: Modifier,
-    clearAll: (() -> Unit)?, onOpen: () -> Unit,
+    e: Env, state: StandbyState, groups: List<NotifGroup>, plate: Modifier, swipe: Swipe, onOpen: () -> Unit,
 ) {
     val tier = notifTier(e.w.value, e.h.value)
     val low = e.h < 240.dp
@@ -250,12 +363,12 @@ private fun NotifClosed(
             NotifTier.S -> Row(Modifier.fillMaxSize()) {
                 Column(Modifier.width(44.dp).fillMaxHeight(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween) {
                     Txt(total.toString(), e.head * 1.1f, e.ink.ink, weight = 700, num = true)
-                    if (clearAll != null) ClearBtn(e, clearAll)
+                    SwipeToggle(e, swipe.on, iconOnly = true, swipe.toggle)
                 }
                 Spacer(Modifier.width(12.dp))
                 val rowH = 36.dp
                 Column(Modifier.weight(1f)) {
-                    groups.take(floor(ih / rowH).toInt().coerceAtLeast(1)).forEach { GroupRow(e, state, actions, it, tier, rowH, nowMs) }
+                    groups.take(floor(ih / rowH).toInt().coerceAtLeast(1)).forEach { GroupRow(e, state, swipe, it, tier, rowH, nowMs) }
                 }
             }
             else -> Column(Modifier.fillMaxSize()) {
@@ -264,8 +377,8 @@ private fun NotifClosed(
                     Txt("알림 $total", e.meta, e.ink.ink, Modifier.weight(1f), weight = 600, num = true)
                     if (tier == NotifTier.D || tier == NotifTier.E) {
                         TextBtn(e, "내용 열기", e.ink.accText, onOpen)
-                        if (clearAll != null) TextBtn(e, "모두 지우기", e.ink.ink2, clearAll)
-                    } else if (clearAll != null) Box(Modifier.offset(x = 14.dp)) { ClearBtn(e, clearAll) }
+                        SwipeToggle(e, swipe.on, iconOnly = false, swipe.toggle)
+                    } else SwipeToggle(e, swipe.on, iconOnly = true, swipe.toggle)
                 }
                 val rowH = (if (low) 36.dp else if (tier == NotifTier.B) 44.dp else 40.dp)
                 val room = ih - headH
@@ -273,7 +386,7 @@ private fun NotifClosed(
                 val fit = floor(room / rowH).toInt() * cols
                 val n = if (groups.size <= fit) groups.size else (floor((room - 32.dp) / rowH).toInt() * cols).coerceAtLeast(1)
                 val shown = groups.take(n)
-                val row = @Composable { g: NotifGroup -> GroupRow(e, state, actions, g, tier, rowH, nowMs) }
+                val row = @Composable { g: NotifGroup -> GroupRow(e, state, swipe, g, tier, rowH, nowMs) }
                 if (cols == 2) {
                     val per = (n + 1) / 2
                     Row(horizontalArrangement = Arrangement.spacedBy(28.dp)) {
@@ -282,6 +395,11 @@ private fun NotifClosed(
                     }
                 } else shown.forEach { row(it) }
                 if (groups.size > n) Cluster(e, groups.drop(n))
+                // the hint only where the rows leave room for it
+                if (swipe.on && room - (if (groups.size > n) 32.dp else 0.dp) - rowH * ((n + cols - 1) / cols) >= 28.dp) {
+                    Spacer(Modifier.weight(1f))
+                    SwipeHint(e)
+                }
             }
         }
     }
@@ -290,14 +408,13 @@ private fun NotifClosed(
 /** One quiet row: icon, sender (bold + dot when fresh), count, app name (wide), time. B: time under the sender. */
 @Composable
 private fun GroupRow(
-    e: Env, state: StandbyState, actions: StandbyActions, g: NotifGroup, tier: NotifTier, rowH: Dp, nowMs: Long,
-) {
+    e: Env, state: StandbyState, swipe: Swipe, g: NotifGroup, tier: NotifTier, rowH: Dp, nowMs: Long,
+) = SwipeRow(e, g.head.key, swipe.on, g.items.all { it.clearable }, { swipe.clear(g.items.map { it.key }) }, Modifier.fillMaxWidth().height(rowH)) { m ->
     val n = g.head
     val fresh = nowMs - n.postedAtEpochMs < FRESH_MS
     val count = @Composable { if (g.count > 1) Txt(g.count.toString(), e.meta, e.ink.ink2, weight = 500, num = true) }
     Row(
-        Modifier.fillMaxWidth().height(rowH)
-            .swipeAway(n.key, g.items.all { it.clearable }) { actions.notificationClear(g.items.map { it.key }) },
+        m.padding(start = if (swipe.on) 9.dp else 0.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         NotifIcon(e, n, if (tier == NotifTier.B) 22.dp else 20.dp)
@@ -360,10 +477,10 @@ private fun IconGrid(e: Env, groups: List<NotifGroup>, total: Int, ih: Dp) {
 /**
  * Open: header ("알림 N", "접기", "모두 지우기"), then every notification on its own plate like the lock screen:
  * icon + app + time, sender (head), message (newest 4 lines, others 2). Small slots put the sender beside the icon.
- * Tap a plate = open the app; swipe = remove.
+ * Tap a plate = open the app; with 밀어서 지우기 on, swipe left = remove.
  */
 @Composable
-private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clearAll: (() -> Unit)?, onClose: () -> Unit) {
+private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, swipe: Swipe, onClose: () -> Unit) {
     val list = state.notifications
     val compact = min(e.w, e.h) < 176.dp
     val pad = if (compact) 12.dp else 16.dp
@@ -372,15 +489,15 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clea
         Row(Modifier.fillMaxWidth().height(40.dp).padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Txt("알림 ${list.size}", e.head, e.ink.ink, Modifier.weight(1f), weight = 700, num = true)
             TextBtn(e, "접기", e.ink.accText, onClose)
-            if (clearAll != null && e.w >= 200.dp) TextBtn(e, "모두 지우기", e.ink.ink2, clearAll)
+            SwipeToggle(e, swipe.on, iconOnly = e.w < 300.dp, swipe.toggle)
         }
         LazyColumn(Modifier.weight(1f).fillMaxWidth().fadeBottom(36.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             itemsIndexed(list, key = { _, n -> n.key }) { i, n ->
                 val text = if (n.hidden) "내용 숨김" else n.text
                 val time = @Composable { if (e.w >= 200.dp) Txt(ago(n.postedAtEpochMs, state), e.meta, e.ink.ink2, weight = 500, num = true) }
+                SwipeRow(e, n.key, swipe.on, n.clearable, { swipe.clear(listOf(n.key)) }, Modifier.animateItem().fillMaxWidth().then(if (swipe.on) Modifier.clip(shape) else Modifier)) { m ->
                 Column(
-                    Modifier.animateItem().fillMaxWidth()
-                        .swipeAway(n.key, n.clearable) { actions.notificationClear(listOf(n.key)) }
+                    m.fillMaxWidth()
                         .tap { actions.notificationTap(n.key) }
                         .themedSurface(e.t, e.ink, shape)
                         .padding(pad),
@@ -401,8 +518,10 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, clea
                         Txt(text, e.read, if (n.hidden) e.ink.ink2 else e.ink.ink, weight = 500, lines = lines, leading = LEADING)
                     }
                 }
+                }
             }
         }
+        if (swipe.on && e.h >= 240.dp) SwipeHint(e, Modifier.padding(top = 6.dp))
     }
 }
 

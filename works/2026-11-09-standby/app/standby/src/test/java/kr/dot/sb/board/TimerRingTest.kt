@@ -1,7 +1,9 @@
 package kr.dot.sb.board
 
 import kr.dot.sb.data.PomodoroTimer
+import kr.dot.sb.ui.cards.RingTouch
 import kr.dot.sb.ui.cards.ringMinutes
+import kr.dot.sb.ui.cards.ringTouch
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Test
@@ -49,5 +51,16 @@ class TimerRingTest {
         t.toggle(60_000) // running: a set is ignored
         t.set(5 * 60)
         assertEquals(10 * 60, t.state(60_000).leftSec)
+    }
+
+    @Test fun ringBandDragsWhenSettableInsideTapsOutsideNothing() {
+        // r15: on the band (0.93 r ± 0.15) a stopped timer drags; inside the circle a tap toggles; outside nothing
+        assertEquals(RingTouch.DRAG, ringTouch(0.93f, settable = true, tap = true))
+        assertEquals(RingTouch.DRAG, ringTouch(1.05f, settable = true, tap = true))
+        assertEquals(RingTouch.TAP, ringTouch(0.3f, settable = true, tap = true))
+        assertEquals(RingTouch.TAP, ringTouch(0.93f, settable = false, tap = true)) // running: the whole circle toggles
+        assertEquals(RingTouch.NONE, ringTouch(1.2f, settable = true, tap = true))
+        assertEquals(RingTouch.NONE, ringTouch(0.3f, settable = true, tap = false)) // rings with buttons beside them
+        assertEquals(RingTouch.NONE, ringTouch(0.93f, settable = false, tap = false))
     }
 }

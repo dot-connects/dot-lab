@@ -112,6 +112,8 @@ internal class Env(
     val slotId: String,
     val today: LocalDate,
     val t: StandbyTheme = Themes.IPHONE,
+    /** Reading-size factor: 1 = the fixed spec §0 sizes; [grown] sets it from the slot. */
+    private val scale: Float = 1f,
 ) {
     val s: Dp get() = sz.s
     val pad: Dp get() = sz.pad
@@ -127,10 +129,16 @@ internal class Env(
     /** Cap height / em of the card words font (plan-r13 A3: the token font, Pretendard = [CAP_UI]). */
     val cap: Float get() = t.cardCap
     val labelCap: Dp get() = label * cap
-    /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp. */
-    val read: Dp get() = 15.dp
-    val meta: Dp get() = 13.dp
-    val head: Dp get() = 18.dp
+    /** Reading roles (spec §0, "두 단계 작게"): message 15, sender/header 18, app/time 13 dp ([grown]: scaled together). */
+    val read: Dp get() = 15.dp * scale
+    val meta: Dp get() = 13.dp * scale
+    val head: Dp get() = 18.dp * scale
+
+    /**
+     * r15 mockup §2: the reading roles grown with the slot, body = short side × 5.4 % (15–24 dp), the others in step.
+     * Only agenda, D-day, weather, sleep and alarm use it; the notification card keeps the fixed sizes.
+     */
+    fun grown(): Env = Env(w, h, sz, ownLabel, ink, look, num, numCap, slotId, today, t, (min(w, h) * 0.054f).coerceIn(15.dp, 24.dp) / 15.dp)
     /** Secondary reading lines: night red ink2 on a plate is ~2.6:1, so message lines take the primary ink at night. */
     val readInk2: Color get() = lerp(ink.ink2, ink.ink, ink.night)
     val bar: Dp get() = max(4.dp, s * 0.025f)
@@ -144,7 +152,7 @@ internal class Env(
 
     /** The same card laid out [h] tall (sizes re-derived as [Cards] does for a slot). */
     fun withHeight(h: Dp): Env = kr.dot.sb.ui.theme.Sizes.of(w, h, r = t.ramp).let { own ->
-        Env(w, h, own.copy(label = look.labelSize ?: own.label, pad = look.pad ?: own.pad), own.label, ink, look, num, numCap, slotId, today, t)
+        Env(w, h, own.copy(label = look.labelSize ?: own.label, pad = look.pad ?: own.pad), own.label, ink, look, num, numCap, slotId, today, t, scale)
     }
 }
 

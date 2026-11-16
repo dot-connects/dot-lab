@@ -151,6 +151,10 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("card-${t.lowercase()}-L", Device.FOLD_INNER, one(t, Layout.ONE), "full")
                 out += arrayOf("card-${t.lowercase()}-M", Device.FOLD_COVER_P, one(t, Layout.TWO), "full")
             }
+            // r15: the redesigned cards on the extra phone shapes too (Fold inner portrait, narrow cover, small Flip)
+            for (t in listOf("TIMER", "AGENDA", "DDAY", "WEATHER", "SLEEP", "ALARM")) for (d in listOf(Device.FOLD_INNER_P, Device.COVER_NARROW, Device.FLIP_SMALL)) {
+                for ((cls, layout) in listOf("L" to Layout.ONE, "M" to Layout.TWO, "S" to Layout.FOUR)) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")
+            }
             // 11-16: own-background faces in an M card, filling it and with 배경 투명
             for (f in listOf(kr.dot.sb.model.FaceId.RELIEF_DIGITAL, kr.dot.sb.model.FaceId.RELIEF_SQUARE, kr.dot.sb.model.FaceId.STICKER, kr.dot.sb.model.FaceId.COLOR_BLOCK)) for (k in listOf("own", "own-clear")) {
                 out += arrayOf("card-${f.name.lowercase().replace('_', '-')}-M-$k", Device.FOLD_COVER_L, Board("card", "CLOCK", Layout.TWO, listOf(listOf(CardType.CLOCK)), clockFace = f), "full-$k")

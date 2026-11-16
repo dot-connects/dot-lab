@@ -47,8 +47,12 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.disabled
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -169,6 +173,8 @@ fun CardView(
         // every card sits on the theme's plate (mockup "테마 전체"); the notification card wears it only while closed
         val plate = Modifier.themedSurface(t, ink, RoundedCornerShape(e.plateRadius), custom = config.boardBg != BoardBg.THEME)
         val surface = if (type.isNotif || close != null) Modifier else plate
+        // r15 §2: these cards read in sizes grown with the slot (the notification card keeps the fixed ones)
+        val g = remember(e) { e.grown() }
         CompositionLocalProvider(LocalTheme provides t, LocalInk provides ink) {
             val arrows = type == CardType.CLOCK && onFace != null
             Box(Modifier.fillMaxSize().then(surface).tap(if (arrows) { { sw.touch() } } else null)) {
@@ -176,17 +182,17 @@ fun CardView(
                     CardType.CLOCK -> ClockCard(e, state, config)
                     CardType.MUSIC -> MediaCard(e, state, actions, close)
                     CardType.TIMER -> TimerCard(e, state, config, actions)
-                    CardType.SLEEP -> SleepCard(e, state, config, actions)
-                    CardType.DDAY -> DdayCard(e, config)
-                    CardType.AGENDA -> AgendaCard(e, state, actions)
+                    CardType.SLEEP -> SleepCard(g, state, config, actions)
+                    CardType.DDAY -> DdayCard(g, config)
+                    CardType.AGENDA -> AgendaCard(g, state, actions)
                     CardType.USAGE -> UsageCard(e, state, actions)
-                    CardType.WEATHER -> WeatherCard(e, state, config, actions)
+                    CardType.WEATHER -> WeatherCard(g, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e, state, actions)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
                     CardType.APPS -> AppsCard(e, options, actions, menu)
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
-                    CardType.ALARM -> AlarmCard(e, state, config, actions)
+                    CardType.ALARM -> AlarmCard(g, state, config, actions)
                 }
                 if (arrows && sw.face != null) FaceArrows(e, faceCycle(config, saved), sw)
             }
@@ -548,10 +554,11 @@ internal const val MEDIA_CONTROLS_MS = 3_000L
 // ---------------------------------------------------------------- timer, sleep, d-day
 
 /**
- * Timer · pomodoro (spec §1): accent arc on an ink3 ring, digits in the theme's digit font. Square/tall: digits + mode
- * inside the ring, pause/stop under it; wide (w/h ≥ 1.35): ring left, "집중 · 18:45에 휴식" + digits + buttons right;
- * short side < 150 (or a ring under 120): mode, digits, one pause button. [TimerState] has no session count, so the mode stands alone
- * ("집중", not the mockup's "집중 2/4").
+ * Timer · pomodoro (spec §1, r15 mockup §1): always a ring with the digits inside (26 % of its width), the accent arc =
+ * time left on a 60-minute dial. Only the buttons move: small squares (short side < 200, w/h < 1.35) tap inside the
+ * ring to start / pause and reset from a 24 dp corner chip; wide slots (w/h ≥ 1.35) put state, next time and the
+ * buttons right of the ring; others one button row right under it. Buttons are rounded squares, short side × 13 %
+ * (36–56 dp) tall, start/pause 1.6× wide, 48 dp to the finger. [TimerState] has no session count ("집중", not "집중 2/4").
  */
 @Composable
 private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: StandbyActions) {
@@ -571,47 +578,110 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val p = e.p7
     val iw = e.w - p * 2
     val ih = e.h - p * 2
-    val toggle = @Composable { d: Dp -> MediaBtn(if (t.running) Ic.PAUSE else Ic.PLAY, d, e.ink.acc, e.onAcc, true) { actions.timerToggle(e.slotId) } }
-    val stop = @Composable { d: Dp -> MediaBtn(Ic.CLOSE, d, e.ink.ink4, e.ink.ink, true, label = "초기화") { actions.timerReset(e.slotId) } }
+    val sh = e.short
+    val ratio = e.w / e.h
+    val toggleLabel = if (t.running) "일시정지" else "재생"
+    val toggle = { actions.timerToggle(e.slotId) }
+    val bh = (sh * 0.13f).coerceIn(36.dp, 56.dp)
+    val buttons = @Composable {
+        Row(horizontalArrangement = Arrangement.spacedBy(bh * 0.25f), verticalAlignment = Alignment.CenterVertically) {
+            TimerBtn(if (t.running) Ic.PAUSE else Ic.PLAY, bh * 1.6f, bh, e.ink.acc, e.onAcc, toggleLabel, onClick = toggle)
+            TimerBtn(Ic.CLOSE, bh, bh, e.ink.ink4, e.ink.ink, "초기화") { actions.timerReset(e.slotId) }
+        }
+    }
+    val inDigits = @Composable { d: Dp -> Hero(e, digits, d * 0.26f * e.t.tokens.digitCap, dc, d * 0.78f) }
     when {
-        // short side < 150, or a ring that would come out smaller than its buttons
-        e.short < 150.dp || (e.w / e.h < 1.35f && min(iw, ih - 80.dp) < 120.dp) -> Column(
-            Modifier.fillMaxSize().padding(p),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
-        ) {
-            Txt(label, e.meta, e.ink.accText, weight = 700, maxW = iw)
-            Hero(e, digits, ih - 48.dp - e.meta - 16.dp, dc, iw)
-            toggle(48.dp)
-        }
-        e.w / e.h >= 1.35f -> Row(Modifier.fillMaxSize().padding(p), verticalAlignment = Alignment.CenterVertically) {
-            val d = min(ih, iw * 0.45f)
-            val tw = iw - d - p
-            val next = state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d에 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
-            val gap = e.short * 0.05f
-            TimerRing(e, d, frac, ring) { Txt(mode, (d * 0.16f).coerceAtLeast(e.meta), e.ink.accText, weight = 700, maxW = d * 0.7f) }
-            Spacer(Modifier.width(p))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(gap)) {
-                Txt(if (t.running) "$mode · $next" else label, e.meta, e.readInk2, weight = 500, maxW = tw, num = true)
-                Hero(e, digits, ih - e.meta * 1.4f - 52.dp - gap * 2, dc, tw) // as wide as the column allows
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) { toggle(52.dp); stop(52.dp) }
-            }
-        }
-        else -> Column(
-            Modifier.fillMaxSize().padding(p),
-            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            val d = min(iw, ih - 80.dp)
-            TimerRing(e, d, frac, ring) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Hero(e, digits, d * 0.155f, dc, d * 0.72f)
-                    Spacer(Modifier.height(6.dp))
-                    Txt(label, if (d >= 200.dp) e.read else e.meta, e.ink.accText, weight = 700, maxW = d * 0.72f)
+        sh < 200.dp && ratio < 1.35f -> Box(Modifier.fillMaxSize()) {
+            val d = min(iw, ih)
+            Box(Modifier.fillMaxSize().padding(p), contentAlignment = Alignment.Center) {
+                TimerRing(e, d, frac, ring, TimerTap(toggleLabel, toggle)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(d * 0.05f)) {
+                        Txt(label, d * 0.1f, e.ink.accText, weight = 700, maxW = d * 0.7f)
+                        inDigits(d)
+                        IconView(if (t.running) Ic.PAUSE else Ic.PLAY, e.ink.ink2, Modifier.size(d * 0.13f))
+                    }
                 }
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) { toggle(56.dp); stop(48.dp) }
+            // reset: a 24 dp chip 4 dp in from the corner, its 48 dp target inside the card
+            Box(Modifier.align(Alignment.TopEnd).size(48.dp), contentAlignment = Alignment.TopEnd) {
+                Box(Modifier.padding(4.dp)) { TimerBtn(Ic.CLOSE, 24.dp, 24.dp, e.ink.ink4, e.ink.ink, "초기화", target = false) { actions.timerReset(e.slotId) } }
+                Box(Modifier.matchParentSize().semantics { contentDescription = "초기화"; role = Role.Button }.tap { actions.timerReset(e.slotId) })
+            }
+        }
+        // ring left (as tall as the slot, at most half its width), state · next time · buttons right; the group centred
+        ratio >= 1.35f -> {
+            val d = min(ih, iw * 0.5f)
+            val gap = sh * 0.07f
+            val tw = iw - d - gap
+            val sub = if (t.running) state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d에 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
+            else if (t.leftSec >= t.totalSec) "${t.totalSec / 60}분 · 원을 돌려 바꾸기" // not started yet
+            else "${t.totalSec / 60}분 중 %02d:%02d 남음".format(t.leftSec / 60, t.leftSec % 60)
+            val subSize = max(11.dp, d * 0.06f)
+            Row(
+                Modifier.fillMaxSize().padding(p), verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(gap, Alignment.CenterHorizontally),
+            ) {
+                TimerRing(e, d, frac, ring) { inDigits(d) }
+                Column(Modifier.widthIn(max = tw), verticalArrangement = Arrangement.spacedBy(sh * 0.045f)) {
+                    Txt(label, d * 0.115f, e.ink.accText, weight = 700, maxW = tw)
+                    // cap boxes end at the baseline: leave the line's room between the two
+                    Txt(sub, subSize, e.readInk2, Modifier.padding(top = subSize * 0.1f), weight = 500, maxW = tw, num = true)
+                    buttons()
+                }
+            }
+        }
+        // square / tall: ring and buttons as one group, the gap short side × 4.5 %
+        else -> {
+            val gap = sh * 0.045f
+            val d = min(iw, ih - bh - gap)
+            Column(
+                Modifier.fillMaxSize().padding(p), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(gap, Alignment.CenterVertically),
+            ) {
+                TimerRing(e, d, frac, ring) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(d * 0.05f)) {
+                        inDigits(d)
+                        Txt(label, d * 0.085f, e.ink.accText, weight = 700, maxW = d * 0.72f)
+                    }
+                }
+                buttons()
+            }
         }
     }
 }
+
+/** Timer button (r15): a rounded square [w]×[h], corner 30 % of [h]; its touch target ([target]) at least 48 dp, centred. */
+@Composable
+private fun TimerBtn(ic: Ic, w: Dp, h: Dp, fill: Color, fg: Color, label: String, target: Boolean = true, onClick: () -> Unit) {
+    val face = @Composable {
+        Box(Modifier.size(w, h).clip(RoundedCornerShape(h * 0.3f)).background(fill), contentAlignment = Alignment.Center) {
+            IconView(ic, fg, Modifier.size(h * 0.5f))
+        }
+    }
+    if (!target) return face()
+    Box(Modifier.size(w, h), contentAlignment = Alignment.Center) {
+        Box(
+            Modifier.requiredSize(max(w, 48.dp), max(h, 48.dp)).semantics { contentDescription = label; role = Role.Button }.tap(onClick),
+            contentAlignment = Alignment.Center,
+        ) { face() }
+    }
+}
+
+/** Where a touch on the ring goes. */
+internal enum class RingTouch { DRAG, TAP, NONE }
+
+/**
+ * A touch [dist] from the ring's centre (in radii): on the band (0.93 ± 0.15) of a [settable] (stopped) timer it drags
+ * the minutes; elsewhere inside the circle it toggles when the ring [tap]s (small slots); else the page keeps it.
+ */
+internal fun ringTouch(dist: Float, settable: Boolean, tap: Boolean): RingTouch = when {
+    settable && kotlin.math.abs(dist - 0.93f) <= 0.15f -> RingTouch.DRAG
+    tap && dist <= 1f -> RingTouch.TAP
+    else -> RingTouch.NONE
+}
+
+/** The ring as the start/pause button (small slots): [label] names it, [onTap] toggles. */
+private class TimerTap(val label: String, val onTap: () -> Unit)
 
 /**
  * Ring drag (11-14 #10, a Time Timer): the touch at ([dx], [dy]) from the centre (y down) as minutes, 12 o'clock on top,
@@ -632,21 +702,30 @@ internal fun ringMinutes(dx: Float, dy: Float, prev: Int): Int {
 /** The ring's drag: [on] (not running), [minutes] now, [onMove] while dragging, [onDone] on release. */
 private class RingDrag(val on: Boolean, val minutes: Int, val onMove: (Int) -> Unit, val onDone: (Int) -> Unit)
 
-/** Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for [frac] (time left), [inner] centred. */
+/**
+ * Progress ring [d] wide: ink3 track, accent arc from 12 o'clock for [frac] (time left), [inner] centred. Stroke
+ * max(5 dp, 6.2 %). [tap] makes the inside of the circle the start/pause button ([ringTouch] routes each touch).
+ */
 @Composable
-private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, inner: @Composable () -> Unit) {
+private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, tap: TimerTap? = null, inner: @Composable () -> Unit) {
     val track = e.ink.ink3
     val arc = e.ink.acc
     val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
     val cur by androidx.compose.runtime.rememberUpdatedState(drag)
-    val input = if (drag?.on != true) Modifier else Modifier.pointerInput(Unit) {
+    val tapCur by androidx.compose.runtime.rememberUpdatedState(tap)
+    val input = if (drag?.on != true && tap == null) Modifier else Modifier.pointerInput(Unit) {
         // only a drag that starts on the ring (±15 % of the radius) is the ring's; elsewhere the stack swipe keeps it
         awaitEachGesture {
             val down = awaitFirstDown(requireUnconsumed = false)
             val c = Offset(size.width / 2f, size.height / 2f)
             val r = size.width / 2f
             val dist = (down.position - c).getDistance()
-            if (kotlin.math.abs(dist - r * 0.93f) > r * 0.15f) return@awaitEachGesture
+            when (ringTouch(dist / r, cur?.on == true, tapCur != null)) {
+                RingTouch.NONE -> return@awaitEachGesture
+                // a tap: no consume on the way down, so a page swipe that starts here still turns the page (and cancels it)
+                RingTouch.TAP -> { if (waitForUpOrCancellation() != null) tapCur?.onTap?.invoke(); return@awaitEachGesture }
+                RingTouch.DRAG -> Unit
+            }
             val g = cur ?: return@awaitEachGesture
             down.consume()
             var m = g.minutes
@@ -664,10 +743,18 @@ private fun TimerRing(e: Env, d: Dp, frac: Float, drag: RingDrag? = null, inner:
             g.onDone(m)
         }
     }
-    val label = if (drag?.on == true) Modifier.semantics { contentDescription = "타이머 링: 돌려서 시간 정하기" } else Modifier
+    val hint = if (drag?.on == true) "타이머 링: 돌려서 시간 정하기" else null
+    val label = when {
+        tap != null -> Modifier.semantics {
+            contentDescription = listOfNotNull(tap.label, hint).joinToString(" · "); role = Role.Button
+            onClick(tap.label) { tap.onTap(); true }
+        }
+        hint != null -> Modifier.semantics { contentDescription = hint }
+        else -> Modifier
+    }
     Box(Modifier.size(d).then(input).then(label), contentAlignment = Alignment.Center) {
         Canvas(Modifier.fillMaxSize()) {
-            val sw = maxOf(6.dp.toPx(), size.minDimension * 0.065f)
+            val sw = maxOf(5.dp.toPx(), size.minDimension * 0.062f)
             val tl = Offset(sw / 2, sw / 2)
             val sz = Size(size.width - sw, size.height - sw)
             drawArc(track, 0f, 360f, false, tl, sz, style = Stroke(sw))
@@ -693,7 +780,9 @@ private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val g = tileGrid(SleepSound.entries.size, iw.value, (ih - foot - 10.dp).value)
     val t = minOf(g.tileW, g.tileH).dp
     if (e.short < 150.dp || t < 48.dp) return SleepOne(e, state, config, actions)
-    val th = minOf(g.tileH, g.tileW * 1.15f).dp
+    // r15 §2: a big wide slot's tiles take the whole height (no empty bands), with bigger discs
+    val fill = e.w > e.h && e.short >= 300.dp
+    val th = if (fill) g.tileH.dp else minOf(g.tileH, g.tileW * 1.15f).dp
     val named = t >= 78.dp
     val shape = RoundedCornerShape(if (e.plateRadius == 0.dp) 0.dp else min(22.dp, t * 0.25f))
     Column(Modifier.fillMaxSize().padding(p), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -707,7 +796,7 @@ private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: S
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
                         ) {
-                            SoundDisc(e, s, t * if (named) 0.5f else 0.62f, lit)
+                            SoundDisc(e, s, t * if (named && !fill) 0.5f else 0.6f, lit)
                             if (named) Txt(s.ko, e.meta, if (s == cur) e.ink.ink else e.readInk2, weight = if (lit) 700 else 500, maxW = g.tileW.dp - 8.dp)
                         }
                     }
@@ -715,7 +804,8 @@ private fun SleepCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             }
         }
         Row(Modifier.fillMaxWidth().height(foot), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            MediaBtn(if (on) Ic.PAUSE else Ic.PLAY, foot, e.ink.ink, e.ink.bg, true, onClick = actions::sleepToggle)
+            if (fill) TimerBtn(if (on) Ic.PAUSE else Ic.PLAY, foot * 1.6f, foot, e.ink.ink, e.ink.bg, if (on) "일시정지" else "재생", onClick = actions::sleepToggle)
+            else MediaBtn(if (on) Ic.PAUSE else Ic.PLAY, foot, e.ink.ink, e.ink.bg, true, onClick = actions::sleepToggle)
             Txt(sleepLine(state, config, iw >= 320.dp), e.meta, e.readInk2, Modifier.weight(1f), weight = 500, num = true)
             Box(Modifier.height(foot).tap(actions::sleepMinutesNext), contentAlignment = Alignment.Center) {
                 Box(Modifier.clip(RoundedCornerShape(if (e.plateRadius == 0.dp) 0 else 50)).background(e.ink.plate2).padding(horizontal = 12.dp, vertical = 8.dp)) {
@@ -784,20 +874,24 @@ private fun DdayCard(e: Env, config: AppConfig) {
     val iw = e.w - p * 2
     val showDate = e.short >= 150.dp
     val showBar = e.short >= 176.dp
-    val readCap = e.read * e.cap
-    val texts = readCap + LG * 2 + (if (showDate) readCap + LG * 2 else 0.dp) + (if (showBar) p * 0.8f + 6.dp + LG + e.metaCap else 0.dp)
-    // mockup: font min(0.4 h, w / 2.7) up to 180 → cap ≈ 0.3 h, ≤ 130
-    val cap = minOf(e.h - p * 2 - texts, e.h * 0.3f, 130.dp)
+    // r15 §2: a big card (short side ≥ 300) is always centred, its number up to 0.33 h and its words a step larger
+    val big = e.short >= 300.dp
+    val words = if (big) e.read * 1.2f else e.read
+    val barH = max(6.dp, e.h * 0.016f)
+    val readCap = words * e.cap
+    val texts = readCap + LG * 2 + (if (showDate) readCap + LG * 2 else 0.dp) + (if (showBar) p * 0.8f + barH + LG + e.metaCap else 0.dp)
+    // mockup: font min(0.4 h, w / 2.7) up to 180 → cap ≈ 0.3 h, ≤ 130 (big: 0.33 h, no ceiling)
+    val cap = minOf(e.h - p * 2 - texts, e.h * if (big) 0.33f else 0.3f, if (big) e.h else 130.dp)
     Column(
         Modifier.fillMaxSize().padding(p), verticalArrangement = Arrangement.Center,
-        horizontalAlignment = if (e.w / e.h >= 1.6f) Alignment.Start else Alignment.CenterHorizontally,
+        horizontalAlignment = if (e.w / e.h >= 1.6f && !big) Alignment.Start else Alignment.CenterHorizontally,
     ) {
-        Txt(dd.name, e.read, e.ink.accText, weight = 700)
+        Txt(dd.name, words, e.ink.accText, weight = 700)
         Spacer(Modifier.height(LG * 2))
         Hero(e, AnnotatedString(txt), cap, e.ink.ink, iw)
         if (showDate) {
             Spacer(Modifier.height(LG * 2))
-            Txt(dateKo(dd.date), e.read, e.readInk2, weight = 500)
+            Txt(dateKo(dd.date), words, e.readInk2, weight = 500)
         }
         if (showBar) {
             // ponytail: a fixed 100-day countdown window (DDay has no start date); store one if the operator wants it
@@ -805,7 +899,7 @@ private fun DdayCard(e: Env, config: AppConfig) {
             val left = if (n > 0) "${(100 - n).coerceAtLeast(0)}일 지남 · ${n}일 남음" else if (n == 0L) "오늘" else "${-n}일 지남"
             val from = "시작 ${start.monthValue}월 ${start.dayOfMonth}일"
             Spacer(Modifier.height(p * 0.8f))
-            Bar(e, (100 - n) / 100f, e.ink.acc, Modifier.height(6.dp))
+            Bar(e, (100 - n) / 100f, e.ink.acc, Modifier.height(barH))
             Spacer(Modifier.height(LG))
             Row(Modifier.fillMaxWidth()) {
                 if (fitsOneLine("$from    $left", e.meta, 500, iw)) {
@@ -840,13 +934,15 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
         if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}") }
     }
     if (!items.isNullOrEmpty() && e.h < 220.dp) return AgendaOne(e, items, head)
+    if (items != null && items.size >= 2 && e.w >= 400.dp && e.w / e.h >= 1.2f) return AgendaWide(e, items, head)
     Column(Modifier.fillMaxSize().padding(p).tap(if (items == null) ({ actions.openSettings("calendar") }) else null)) {
         Txt(head, e.meta, e.ink.ink, weight = 700)
         Spacer(Modifier.height(LG * 2))
         when {
             items == null -> Txt("캘린더 권한 필요 · 눌러서 설정", e.read, e.readInk2, weight = 500, lines = 2)
             items.isEmpty() -> Txt("남은 일정 없음", e.read, e.readInk2, weight = 500)
-            else -> Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            // r15 §2: the rows spread over the height instead of piling up at the top
+            else -> Column(Modifier.weight(1f), verticalArrangement = Arrangement.SpaceEvenly) {
                 shown.chunked(cols).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(p)) {
                         row.forEach { Box(Modifier.weight(1f)) { EventRow(e, it, it.start) } }
@@ -855,9 +951,46 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
                 }
             }
         }
-        if (more > 0) {
-            Spacer(Modifier.weight(1f))
-            Txt("외 ${more}개", e.meta, e.readInk2, weight = 500)
+        if (more > 0) Txt("외 ${more}개", e.meta, e.readInk2, weight = 500)
+    }
+}
+
+/**
+ * r15 §2 (mockup "일정 큰 칸"): a wide slot shows the next event large on the left (time as a [Hero], title 1.5× the
+ * body) and the rest spread over the height on the right, "외 N개" for what does not fit.
+ */
+@Composable
+private fun AgendaWide(e: Env, items: List<AgendaItem>, head: AnnotatedString) {
+    val p = e.p7
+    val iw = e.w - p * 2
+    val body = e.h - p * 2 - e.metaCap - LG * 2
+    val lw = (iw - p) * (1.05f / 2.05f)
+    val ev = items.first()
+    val title = e.read * 1.5f
+    val cap = min(body * 0.3f, lw * 0.25f)
+    val rest = items.drop(1)
+    val fit = (body / e.evStep).toInt().coerceAtLeast(1)
+    val n = if (rest.size <= fit) rest.size else (fit - 1).coerceAtLeast(1)
+    Column(Modifier.fillMaxSize().padding(p)) {
+        Txt(head, e.meta, e.ink.ink, weight = 700)
+        Spacer(Modifier.height(LG * 2))
+        Row(Modifier.weight(1f).fillMaxWidth()) {
+            Row(Modifier.width(lw).fillMaxHeight(), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.width(max(4.dp, e.read * 0.3f)).height(cap * 1.25f + 8.dp + title * 1.3f).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
+                Spacer(Modifier.width(e.read * 0.8f))
+                val maxW = lw - e.read * 1.2f
+                Column {
+                    if (ev.start.first().isDigit()) Hero(e, AnnotatedString(ev.start), cap, e.ink.ink, maxW)
+                    else Txt(ev.start, cap / e.cap, e.ink.ink, weight = 700, maxW = maxW)
+                    Spacer(Modifier.height(title * 0.45f))
+                    Txt(ev.title, title, e.ink.ink, weight = 700, maxW = maxW)
+                }
+            }
+            Spacer(Modifier.width(p))
+            Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.SpaceEvenly) {
+                rest.take(n).forEach { EventRow(e, it, it.start) }
+                if (rest.size > n) Txt("외 ${rest.size - n}개", e.meta, e.readInk2, weight = 500)
+            }
         }
     }
 }
@@ -993,16 +1126,21 @@ private fun WeatherBody(e: Env, wx: WeatherInfo, actions: StandbyActions) {
             Row(mod) {
                 Column(Modifier.width(lw).fillMaxHeight(), verticalArrangement = Arrangement.SpaceBetween) {
                     CityLine(e, wx, true)
-                    TempRow(e, wx, min(ih - head, lw * 0.75f), lw, tc)
+                    // r15 §2: the number from the height (0.28 h cap ≈ 40 % font), so the icon and ring fit beside it
+                    TempRow(e, wx, minOf(ih - head, lw * 0.75f, e.h * 0.28f), lw, tc)
                     Txt("최고 ${wx.highC}° · 최저 ${wx.lowC}°", e.meta, e.readInk2, weight = 500, num = true)
                 }
                 Spacer(Modifier.width(p))
+                // r15 §2: hours on top, the days spread down to the bottom
                 Column(
                     Modifier.weight(1f).fillMaxHeight(),
-                    verticalArrangement = if (days > 0) Arrangement.SpaceEvenly else Arrangement.Center,
+                    verticalArrangement = if (days > 0) Arrangement.Top else Arrangement.Center,
                 ) {
                     if (n > 0) HourRow(e, hours.take(n))
-                    if (days > 0) DayRows(e, wx, days)
+                    if (days > 0) {
+                        Spacer(Modifier.height(LG * 2))
+                        DayRows(e, wx, days, Modifier.weight(1f), Arrangement.SpaceEvenly)
+                    }
                 }
             }
         }
@@ -1097,14 +1235,14 @@ private fun HourList(e: Env, hours: List<HourTemp>) {
 
 /** Today + the next days: "화 ☀ 0° ━━━ 9°", the range bar placed on the shared low–high scale. */
 @Composable
-private fun DayRows(e: Env, wx: WeatherInfo, n: Int) {
+private fun DayRows(e: Env, wx: WeatherInfo, n: Int, modifier: Modifier = Modifier, arrangement: Arrangement.Vertical = Arrangement.spacedBy(9.dp)) {
     val days = (listOf(DayTemp(e.today, wx.highC, wx.lowC, wx.condition)) + wx.days).take(n)
     val lo = days.minOf { it.lowC }
     val span = (days.maxOf { it.highC } - lo).coerceAtLeast(1).toFloat()
     val track = e.ink.ink3
     val fill = if (e.t.tokens.monoIcons) Brush.horizontalGradient(listOf(e.ink.ink2, e.ink.ink)) else Brush.horizontalGradient(listOf(e.ink.blue, e.ink.sun))
     val numW = e.read * 2.4f
-    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+    Column(modifier, verticalArrangement = arrangement) {
         days.forEach { d ->
             Row(Modifier.fillMaxWidth().height(e.read * 1.4f), verticalAlignment = Alignment.CenterVertically) {
                 Txt(if (d.date == e.today) "오늘" else dowKo(d.date), e.read, e.ink.ink, Modifier.width(e.read * 2.6f), weight = 600)
