@@ -38,9 +38,9 @@ import java.time.LocalDate
 object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
-     * kept only for the current look). Saves without "v" are r8 or r9 dev builds.
+     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL). Saves without "v" are r8 or r9 dev builds.
      */
-    const val VERSION = 11
+    const val VERSION = 12
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -277,6 +277,7 @@ object ConfigCodec {
             if (v < 11) Migrations.looks(c)
             else c.copy(customFrom = o.optString("customFrom").takeIf { n -> c.myThemes.any { it.name == n } } ?: c.customFrom)
         }.let { c -> if (storedTheme == "FLIP") Migrations.flip(c) else c }
+            .let { c -> if (v < 12) Migrations.floatToDigital(c) else c }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
@@ -297,6 +298,8 @@ object ConfigCodec {
         R10_COLOURS.forEach { (k, get, _) -> get(s)?.let { put(k, it) } }   // null = FaceDefaults, omitted
         // r11 Part C (Relief faces); h24 null = the phone's setting, omitted
         put("lumeView", s.lumeView.name); put("sweep", s.sweep); s.h24?.let { put("h24", it) }; put("ghost", s.ghost); put("squareNumerals", s.squareNumerals.name)
+        // r14 디지털 options; absent = false
+        if (s.accentMiddle) put("am", true); if (s.fill) put("fl", true); if (s.overlap) put("ov", true)
     }
 
     /** r10 per-face colours (nullable): key, read, write. Presets are indices, stored as numbers too. */
@@ -334,6 +337,7 @@ object ConfigCodec {
         lumeView = enumOf(o, "lumeView", b.lumeView), sweep = o.optBoolean("sweep", b.sweep),
         h24 = if (o.has("h24")) o.opt("h24") as? Boolean else b.h24, ghost = o.optBoolean("ghost", b.ghost),
         squareNumerals = enumOf(o, "squareNumerals", b.squareNumerals),
+        accentMiddle = o.optBoolean("am", false), fill = o.optBoolean("fl", false), overlap = o.optBoolean("ov", false),
     ).let { s -> R10_COLOURS.fold(s) { acc, (k, _, set) -> if (o.has(k) && !o.isNull(k)) set(acc, o.optLong(k)) else acc } }
 
     private fun board(b: Board) = JSONObject().apply {

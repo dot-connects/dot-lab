@@ -1,5 +1,6 @@
 package kr.dot.sb.ui.clock
 
+import android.graphics.BlendMode
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.text.TextPaint
@@ -19,12 +20,13 @@ import androidx.compose.ui.unit.dp
 import kr.dot.sb.model.ClockLayout
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.Effect
+import kr.dot.sb.model.FontId
 import kr.dot.sb.ui.theme.BURN_IN_BLEED
+import kr.dot.sb.ui.theme.DigitStyle
 import kr.dot.sb.ui.theme.Fonts
 import kr.dot.sb.ui.theme.Grid
 import kr.dot.sb.ui.theme.Ink
 import kr.dot.sb.ui.theme.LocalTheme
-import kr.dot.sb.ui.theme.LocalSlotLabel
 import kr.dot.sb.ui.theme.SizeClass
 import kr.dot.sb.ui.theme.Sizes
 import kotlin.math.max
@@ -79,15 +81,69 @@ internal fun fitSize(p: TimePainter, d: FaceData, twoLines: Boolean, maxCap: Flo
     return min(maxCap / p.capEm, maxW / wEm)
 }
 
-/** Draw "h:mm" (one line, horizontally centred on [cx]) or hours over minutes; [capTop] = top of the first line. */
-internal fun Canvas.drawTime(p: TimePainter, d: FaceData, size: Float, twoLines: Boolean, gap: Float, cx: Float, capTop: Float, look: Look) {
+/**
+ * Draw "h:mm" (one line, horizontally centred on [cx]) or hours over minutes; [capTop] = top of the first line.
+ * [mid] = the look of digit index 1 (r14 가운데 숫자 색), one line only.
+ */
+internal fun Canvas.drawTime(p: TimePainter, d: FaceData, size: Float, twoLines: Boolean, gap: Float, cx: Float, capTop: Float, look: Look, mid: Look? = null) {
     val cap = p.capEm * size
     if (twoLines) {
         p.draw(this, d.h, cx - p.measure(d.h, size) / 2, capTop + cap, size, look)
         p.draw(this, d.m, cx - p.measure(d.m, size) / 2, capTop + 2 * cap + gap, size, look)
     } else {
-        p.drawHm(this, d.h, d.m, cx - p.measureHm(d.h, d.m, size) / 2, capTop + cap, size, look)
+        p.drawHm(this, d.h, d.m, cx - p.measureHm(d.h, d.m, size) / 2, capTop + cap, size, look, mid = mid)
     }
+}
+
+/**
+ * r14 살짝 겹치기 (the old 둥근 굵은 글씨 placement, design-system §4.3 Float): in em, digits overlap by 0.12 inside a
+ * group and just touch across the colon. Widths depend only on the hour-digit class (§2.3.1).
+ */
+private class Overlap(p: TimePainter) {
+    val a = p.digitAdv.max()
+    val inStep = a - 0.12f
+    val crossStep = a + 0.02f
+    fun lineEm(d: FaceData, two: Boolean) =
+        if (two) (d.h.length.coerceAtLeast(2) - 1) * inStep + a else (d.h.length + d.m.length - 2) * inStep + crossStep + a
+}
+
+/** Overlapping digits, alternately tilted ±3°, each blended with [blend] inside one layer; colon = two discs on top. */
+private fun Canvas.drawOverlap(
+    p: TimePainter, o: Overlap, d: FaceData, fs: Float, two: Boolean, gap: Float, cx: Float, top: Float,
+    look: Look, mid: Look?, blend: Paint, colon: Paint, w: Float, h: Float,
+) {
+    val digits = d.h + d.m
+    val hl = d.h.length
+    val cap = p.capEm * fs
+    val xs = FloatArray(digits.length); val line = IntArray(digits.length)
+    if (two) {
+        for ((li, s) in listOf(d.h, d.m).withIndex()) {
+            val lw = ((s.length - 1) * o.inStep + o.a) * fs
+            for (k in s.indices) { val i = if (li == 0) k else hl + k; xs[i] = cx - lw / 2 + k * o.inStep * fs; line[i] = li }
+        }
+    } else {
+        var x = cx - ((digits.length - 2) * o.inStep + o.crossStep + o.a) * fs / 2
+        for (i in digits.indices) { xs[i] = x; x += (if (i == hl - 1) o.crossStep else o.inStep) * fs }
+    }
+    saveLayer(0f, 0f, w, h, null)
+    for (i in digits.indices) {
+        val capTop = top + line[i] * (cap + gap)
+        val base = capTop + cap
+        val gx = xs[i] + o.a * fs / 2
+        save()
+        rotate(if (i % 2 == 0) 3f else -3f, gx, capTop + cap / 2)
+        saveLayer(xs[i] - fs, capTop - fs, xs[i] + 2 * fs, base + fs, blend)
+        val s = digits[i].toString()
+        p.draw(this, s, gx - p.measure(s, fs) / 2, base, fs, if (i == 1 && !two && mid != null) mid else look)
+        restore(); restore()
+    }
+    if (!two) {
+        val colonX = (xs[hl - 1] + o.a * fs + xs[hl]) / 2
+        val r = min(0.025f * w, 0.07f * fs)
+        drawCircle(colonX, top + cap * 0.27f, r, colon)
+        drawCircle(colonX, top + cap * 0.71f, r, colon)
+    }
+    restore()
 }
 
 @Composable
@@ -98,115 +154,75 @@ internal fun rememberUi(weight: Int): TextPaint {
 
 /* ------------------------------------------------------------------ Digital */
 
-/** Side column width reserved on Digital (review X1): fixed so the hero never shrinks for a long label. */
-private val SIDE_MIN = 100.dp
-
+/**
+ * 디지털, full screen and in a board card (plan-r14 A1): digits with one info row under them, centred as one block:
+ * [오전/오후 ·] 월 9 · 7° · alarm 6:30 (weather and alarm only when known; alarm dropped first, then weather, when the
+ * row is wider than the block). Options 가운데 숫자 색 / 꽉 채우기 / 살짝 겹치기 = [ClockStyle.accentMiddle] / fill / overlap.
+ */
 @Composable
 internal fun DigitalFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, modifier: Modifier) {
-    val p = rememberTimePainter(style)
+    val tk = LocalTheme.current.tokens
+    // a card keeps the theme's digit treatment (ThemedDigits): theme font with a plain effect glows by day
+    val glow = inSlot && tk.digitStyle == DigitStyle.GLOW && style.font == FontId.THEME && style.effect == Effect.SOLID && ink.night < 0.5f
+    val st = if (glow) style.copy(effect = Effect.GLOW) else style
+    val p = rememberTimePainter(st)
     val ui = rememberUi(500)
-    val look = Look.of(style, ink)
-    val slotLabel = LocalSlotLabel.current
-    // Sofia (StandBy 디지털) has no kerning to reserve slack for: ×1.03 cancels widestEm's slack for it only (B4)
-    val condensed = LocalTheme.current.digits(style.font, style.weight) === kr.dot.sb.ui.theme.Fonts.clock(kr.dot.sb.model.FontId.CONDENSED, style.weight)
+    val look = Look.of(st, ink, glow = if (inSlot) tk.digitGlow else 1f)
+    // a two-colour run keeps its gradient
+    val mid = if (style.accentMiddle && look.effect != Effect.TWO_COLOR) Look(look.effect, ink.accDeep.toArgb(), look.c2, look.shadow, look.glow) else null
+    val mix = if (ink.tokens.light && ink.night < 0.5f) BlendMode.MULTIPLY else BlendMode.SCREEN
+    val colon = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TimePainter.withAlpha(ink.ink2.toArgb(), 0.85f); blendMode = mix }
+    val blend = Paint().apply { blendMode = if (style.font == FontId.RAILS) BlendMode.SRC_OVER else mix }
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
-        val portrait = h > w * 1.15f
         val bg = if (inSlot) null else bgColors(style, ink)
         val sizePct = style.sizePct / 100f
         val accent = ink.acc.toArgb(); val white = ink.ink.toArgb(); val grey = ink.ink2.toArgb()
         val capR = ui.capRatio()
-
-        if (inSlot) {
-            val sz = Sizes.of(w.toDp(), h.toDp())
-            // the card already took its pad off: only a really small box drops the date line
-            val xs = sz.s < 140.dp
-            val two = style.layout == ClockLayout.TWO_LINES || portrait
-            // r5 desk: "월요일 11월 9일 · 7°" right under the digits, weekday in the clock colour
-            ui.textSize = slotLabel?.toPx() ?: (max(18.dp.toPx(), 0.075f * min(w, h)) * d.ts)
-            val info = if (xs || !style.showInfo) null else buildList {
-                add(Seg("${d.weekday}요일 ", accent)); add(Seg("${d.month}월 ${d.day}일", white))
-                d.temp?.let { add(Seg(" · $it", white)) }
-            }.let { segs -> if (ui.width(segs) > w) listOf(Seg("${d.weekday}요일 ", accent), Seg("${d.month}월 ${d.day}일", white)) else segs }
-            val infoH = if (info == null) 0f else ui.textSize * capR + sz.label.toPx() * 0.9f
-            val gap = h * 0.04f
-            val maxCap = ((if (xs) h * 0.8f else h * 0.86f - sz.pad.toPx() - infoH) - if (two) gap else 0f) / (if (two) 2 else 1) * sizePct
-            val fs = fitSize(p, d, two, maxCap, w * 0.9f)
-            val cap = p.capEm * fs
-            val blockH = (if (two) 2 * cap + gap else cap) + infoH
-            val top = (h - blockH) / 2
-            return@FaceCanvas {
-                drawTime(p, d, fs, two, gap, w / 2, top, look)
-                if (info != null) drawSegs(info, (w - ui.width(info)) / 2, top + blockH, ui)
-            }
+        // full screen: portrait and near-square screens (w/h < 1.45: Fold inner, Flip) stack the digits
+        val two = style.layout == ClockLayout.TWO_LINES || (if (inSlot) h > w * 1.15f else w < h * 1.45f)
+        // the card already took its pad off: only a really small box drops the info row
+        val showInfo = style.showInfo && !(inSlot && Sizes.of(w.toDp(), h.toDp()).s < 140.dp)
+        val gap = 0.04f * h
+        val maxW = w * if (style.fill) (if (inSlot) 1f else 0.94f) else (if (inSlot) 0.9f else 0.86f)
+        val margin = if (inSlot) 0f else 2 * Grid.margin(min(w, h).toDp()).toPx()
+        fun maxCap(infoH: Float) = sizePct * when {
+            style.fill && two -> min(0.46f * h, (h - infoH - margin - gap) / 2)
+            style.fill -> min(0.92f * h, h - infoH - margin)
+            two -> if (inSlot) (0.86f * h - infoH - gap) / 2 else min(0.36f * h, (0.86f * h - infoH - gap) / 2)
+            else -> if (inSlot) 0.86f * h - infoH else min(0.62f * h, 0.86f * h - infoH)
         }
-
-        ui.textSize = 0.06f * min(w, h) / capR * d.ts
-        val wk = Seg(d.weekday + " ", accent)
-        val alarm = d.alarmShort?.let { listOf(alarmSeg(grey), Seg(it, white)) }
-        val rows = buildList {
-            add(listOf(wk, Seg(d.day.toString(), white)))
-            d.temp?.let { add(listOf(Seg(it, white))) }
-            alarm?.let { add(it) }
+        val ov = if (style.overlap) Overlap(p) else null
+        fun fit(cap: Float) = if (ov != null) min(cap / p.capEm, maxW / ov.lineEm(d, two)) else fitSize(p, d, two, cap, maxW)
+        fun infoSize(fs: Float) = max(16.dp.toPx(), p.capEm * fs * 0.16f)
+        // row height: its cap + 0.7 × the text size of air above it
+        fun rowH() = ui.textSize * (capR + 0.7f)
+        val sep = Seg(" · ", grey)
+        fun row(weather: Boolean, alarm: Boolean): List<Seg> = buildList {
+            if (!d.use24h) { add(Seg(d.ampm, white)); add(sep) }
+            add(Seg(d.weekday + " ", accent)); add(Seg(d.day.toString(), white))
+            if (weather) d.temp?.let { add(sep); add(Seg(it, white)) }
+            if (alarm) d.alarmShort?.let { add(sep); add(alarmSeg(white)); add(Seg(it, white)) }
         }
-        val layout = when {
-            // portrait, and near-square screens (w/h < 1.45: Fold inner, Flip) where a side column would shrink the digits
-            portrait || w < h * 1.45f -> ClockLayout.TWO_LINES
-            !style.showInfo && style.layout == ClockLayout.IPHONE -> ClockLayout.CENTER
-            else -> style.layout
+        var fs = fit(maxCap(0f))
+        var info: List<Seg>? = null
+        if (showInfo) {
+            ui.textSize = infoSize(fs)
+            fs = fit(maxCap(rowH()))
+            ui.textSize = infoSize(fs) // smaller digits: a row no taller than the space kept for it
+            val r = listOf(row(true, true), row(true, false)).firstOrNull { ui.width(it) <= maxW } ?: row(false, false)
+            if (ui.width(r) > maxW) ui.textSize *= maxW / ui.width(r)
+            info = r
         }
-        val labelCap = ui.textSize * capR
-        when (layout) {
-            ClockLayout.IPHONE -> {
-                // r10 "꽉 찬 숫자" (clocks.html c-full): info strip on the left with a rule on its right, digits up to
-                // 75 % H; 오전/오후 heads the strip in 12 h
-                val strip = (if (d.use24h) emptyList() else listOf(listOf(Seg(d.ampm, grey)))) + rows
-                val sideW = max(SIDE_MIN.toPx(), strip.maxOf { ui.width(it) })
-                // strip | 1.5 % W | rule | 1 % W | digits: the reserved hour width adds the rest of the mockup's 24 dp;
-                // wider gaps cost the Fold cover its ≥ 57 % H digits (ClockShots.digitalHeroSize)
-                val margin = Grid.margin(min(w, h).toDp()).toPx(); val g = 0.015f * w; val gg = 0.025f * w
-                // B4 (r10): strip + rule + digits ≤ w − 2 margins − 10 dp, so the ±8 dp burn-in shift never clips
-                val avail = w - 2 * margin - 10.dp.toPx()
-                val slack = if (condensed) 1.03f else 1f
-                val fs = fitSize(p, d, false, 0.75f * h * sizePct, (avail - sideW - gg) * slack)
-                val cap = p.capEm * fs
-                // digits centred in the class's reserved width, so the strip never moves within the hour class
-                val res = p.widestEm(d.h.length, d.use24h) * fs / slack
-                val tw = p.measureHm(d.h, d.m, fs)
-                val x0 = margin + (avail - (sideW + gg + res)) / 2
-                val capTop = (h - cap) / 2
-                val step = ui.textSize * 1.9f
-                val sTop = (h - strip.size * step) / 2
-                val rule = Paint().apply { color = grey; strokeWidth = max(1f, 1.dp.toPx()) }
-                return@FaceCanvas {
-                    drawFaceBg(bg, w, h, 0f)
-                    strip.forEachIndexed { i, r -> drawSegs(r, x0, sTop + i * step + (step + labelCap) / 2, ui) }
-                    drawLine(x0 + sideW + g, sTop, x0 + sideW + g, sTop + strip.size * step, rule)
-                    p.drawHm(this, d.h, d.m, x0 + sideW + gg + (res - tw) / 2, capTop + cap, fs, look)
-                }
-            }
-            else -> {
-                val two = layout == ClockLayout.TWO_LINES
-                val info = if (!style.showInfo) null else buildList<Seg> {
-                    add(wk); add(Seg(d.day.toString(), white))
-                    d.temp?.let { add(Seg("  ·  $it", white)) }
-                    alarm?.let { add(Seg("  ·  ", white)); addAll(it) }
-                }
-                // one info row: shrink (never wrap) when it is wider than the screen (portrait)
-                if (info != null) ui.textSize *= min(1f, 0.9f * w / ui.width(info))
-                val infoH = if (info == null) 0f else ui.textSize * capR + 0.06f * h
-                val gap = 0.04f * h
-                val maxCap = if (two) min(0.36f * h, (0.86f * h - infoH - gap) / 2) else min(0.62f * h, 0.86f * h - infoH)
-                val fs = fitSize(p, d, two, maxCap * sizePct, 0.86f * w)
-                val cap = p.capEm * fs
-                val blockH = (if (two) 2 * cap + gap else cap) + infoH
-                val top = (h - blockH) / 2
-                return@FaceCanvas {
-                    drawFaceBg(bg, w, h, 0f)
-                    drawTime(p, d, fs, two, gap, w / 2, top, look)
-                    if (info != null) drawSegs(info, (w - ui.width(info)) / 2, top + blockH, ui)
-                }
-            }
+        val infoH = if (info == null) 0f else rowH()
+        val cap = p.capEm * fs
+        val blockH = (if (two) 2 * cap + gap else cap) + infoH
+        val top = (h - blockH) / 2
+        return@FaceCanvas {
+            drawFaceBg(bg, w, h, 0f)
+            if (ov != null) drawOverlap(p, ov, d, fs, two, gap, w / 2, top, look, mid, blend, colon, w, h)
+            else drawTime(p, d, fs, two, gap, w / 2, top, look, if (two) null else mid)
+            info?.let { drawSegs(it, (w - ui.width(it)) / 2, top + blockH, ui) }
         }
     }
 }

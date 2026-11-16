@@ -159,12 +159,24 @@ internal class TimePainter(
     fun measureHm(h: String, m: String, size: Float): Float = measure(h, size) + colonRun * size + measure(m, size)
 
     /** "h:mm" with the tight colon; one gradient spans the whole run. [colon] = its own look (theme B: accent colon). */
-    fun drawHm(c: Canvas, h: String, m: String, x: Float, baseline: Float, size: Float, look: Look, colon: Look = look) {
+    fun drawHm(c: Canvas, h: String, m: String, x: Float, baseline: Float, size: Float, look: Look, colon: Look = look, mid: Look? = null) {
         val wh = measure(h, size)
         val r = x + measureHm(h, m, size)
-        draw(c, h, x, baseline, size, look, x, r)
+        // [mid] (r14 가운데 숫자 색): digit index 1 of "h" + "m" — the 4 of "9:41", the 0 of "10:41"
+        drawRun(c, h, if (h.length > 1) mid else null, x, baseline, size, look, r)
         draw(c, ":", x + wh - colonAdv * size * (1 - COLON) / 2, baseline, size, colon, x, r)
-        draw(c, m, x + wh + colonRun * size, baseline, size, look, x, r)
+        drawRun(c, m, if (h.length > 1) null else mid, x + wh + colonRun * size, baseline, size, look, r, gl = x, at = 0)
+    }
+
+    /** [s] from [x], its character [at] in [mid] when given (gradient spans [gl]..[gr] either way). */
+    private fun drawRun(c: Canvas, s: String, mid: Look?, x: Float, baseline: Float, size: Float, look: Look, gr: Float, gl: Float = x, at: Int = 1) {
+        if (mid == null) return draw(c, s, x, baseline, size, look, gl, gr)
+        val pre = s.substring(0, at)
+        if (pre.isNotEmpty()) draw(c, pre, x, baseline, size, look, gl, gr)
+        val mx = x + measure(pre, size)
+        draw(c, s.substring(at, at + 1), mx, baseline, size, mid, gl, gr)
+        val post = s.substring(at + 1)
+        if (post.isNotEmpty()) draw(c, post, mx + measure(s.substring(at, at + 1), size), baseline, size, look, gl, gr)
     }
 
     /**

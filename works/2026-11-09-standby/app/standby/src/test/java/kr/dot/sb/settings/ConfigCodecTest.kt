@@ -87,7 +87,7 @@ class ConfigCodecTest {
 
     @Test fun emptyOrBrokenSavesGiveDefaults() {
         assertEquals(AppConfig(), ConfigCodec.decode(null))
-        assertEquals(AppConfig(myClocks = Migrations.OLD_CLOCKS), ConfigCodec.decode("{}"))   // no myClocks = an upgrade
+        assertEquals(AppConfig(myClocks = Migrations.OLD_CLOCKS - FaceId.FLOAT), ConfigCodec.decode("{}"))   // no myClocks = an upgrade (r14: FLOAT left)
         assertEquals(AppConfig(), ConfigCodec.decode("not json {{{"))
     }
 
@@ -103,7 +103,7 @@ class ConfigCodecTest {
         val digital = c.clockStyle(FaceId.DIGITAL)
         assertEquals(Migrations.r8Default(FaceId.DIGITAL).font, digital.font)   // unknown font value
         assertEquals(300, digital.weight)
-        assertEquals(null, c.styles[FaceId.FLOAT])          // never stored = follows the theme
+        assertEquals(null, c.styles[FaceId.ANALOG])         // never stored = follows the theme
         assertEquals(1, c.boards.size)                     // the board without an id is dropped
         assertEquals(Layout.TWO, c.boards[0].layout)       // unknown layout
         assertEquals(2, c.boards[0].slots.size)            // slots refitted to the layout
@@ -138,9 +138,9 @@ class ConfigCodecTest {
 
     @Test fun r8UntouchedStylesAreDroppedEditsKept() {
         val r8 = JSONObject().also { o -> FaceId.entries.forEach { f -> o.put(f.name, styleJson(Migrations.r8Default(f))) } }
-        r8.put("FLOAT", styleJson(Migrations.r8Default(FaceId.FLOAT).copy(sizePct = 80)))
+        r8.put("WORLD", styleJson(Migrations.r8Default(FaceId.WORLD).copy(sizePct = 80)))
         val c = ConfigCodec.decode(JSONObject().put("theme", "PAPER").put("styles", r8).toString())
-        assertEquals(setOf(FaceId.FLOAT), c.styles.keys)
+        assertEquals(setOf(FaceId.WORLD), c.styles.keys)
         assertEquals(Themes.of(Theme.DAYPAPER).clockDefaults(FaceId.DIGITAL), c.clockStyle(FaceId.DIGITAL))
     }
 
@@ -265,7 +265,8 @@ class ConfigCodecTest {
     }
 
     @Test fun upgradeKeepsTheOldFiveFreshInstallGetsTheNewFour() {   // (g)
-        assertEquals(listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT), ConfigCodec.decode(v9(AppConfig())).myClocks)
+        // r14: the fifth, FLOAT, reads as DIGITAL, already first
+        assertEquals(listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR), ConfigCodec.decode(v9(AppConfig())).myClocks)
         assertEquals(listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG), ConfigCodec.decode(null).myClocks)
         assertEquals(listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG), AppConfig().myClocks)
     }

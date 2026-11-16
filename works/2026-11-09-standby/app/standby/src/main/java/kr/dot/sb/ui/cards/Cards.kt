@@ -93,8 +93,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.withStyle
 import kr.dot.sb.ui.clock.rememberSecond
-import kr.dot.sb.ui.screens.clockText
-import kr.dot.sb.ui.theme.ThemedDigits
 import kotlin.math.cos
 import kotlin.math.sin
 import kotlin.math.roundToInt
@@ -269,23 +267,18 @@ private fun FaceArrows(e: Env, faces: List<FaceId>, sw: FaceSwitch) {
     }
 }
 
+/**
+ * A board's clock card. The analog card (merged in 11-14) keeps its look until the user styles the analog face. Every
+ * other face draws itself in the padded slot, its own date included (r14: DIGITAL too, with its info row). 내 시계
+ * (11-14): a face the user styled draws as styled; theme defaults take the board accent, a second clock draws in ink.
+ */
 @Composable
 private fun ClockCard(e: Env, state: StandbyState, config: AppConfig) {
     val face = e.look.clockFace
-    if (face == FaceId.DIGITAL) return DigitalCard(e, state, config)
-    // the old analog card (merged in 11-14) keeps its look until the user styles the analog face
     if (face == FaceId.ANALOG && face !in config.styles) return AnalogCard(e, state)
-    // other faces picked for the board keep their own slot rendering. 내 시계 (11-14): a face the user styled draws as
-    // styled (no accent, no second-clock ink); theme defaults keep the board accent
     val custom = face in config.styles
-    val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }.copy(showInfo = false)
-    Column(Modifier.fillMaxSize().padding(e.pad), horizontalAlignment = Alignment.CenterHorizontally) {
-        ClockFace(face, style, state, Modifier.fillMaxWidth().weight(1f), inSlot = true, hero = e.look.hero || custom)
-        if (e.atLeastS) {
-            Spacer(Modifier.height(e.gap))
-            Detail(e, dateKo(e.today), align = TextAlign.Center)
-        }
-    }
+    val style = config.clockStyle(face).let { if (custom) it else it.copy(color = e.look.accent.argbLong()) }
+    ClockFace(face, style, state, Modifier.fillMaxSize().padding(e.pad), inSlot = true, hero = e.look.hero || custom)
 }
 
 /** Short side of the slot; < 150 dp drops the date (spec §1 clock). */
@@ -301,32 +294,6 @@ private fun DateLine(e: Env, state: StandbyState, size: Dp) {
         append(rest)
     }
     Txt(text, size * e.look.textScale, e.readInk2, weight = 500, align = TextAlign.Center, maxW = e.w)
-}
-
-/**
- * Digital clock card (spec §1): theme digits fill the slot, one line "9:41" when w/h ≥ 1.05 or the short side < 150,
- * else hours over minutes; the date line (13–20 dp) right under them. The user's own clock style (font/colour) wins
- * over the theme's, as styled (내 시계, 11-14). With theme defaults a second, smaller clock on the board draws its
- * digits in ink.
- */
-@Composable
-private fun DigitalCard(e: Env, state: StandbyState, config: AppConfig) {
-    val oneLine = e.w / e.h >= 1.05f || e.short < 150.dp
-    val dl = (e.short * 0.055f).coerceIn(13.dp, 20.dp)
-    val own = config.styles[FaceId.DIGITAL]
-    Column(
-        Modifier.fillMaxSize().padding((e.short * 0.08f).coerceIn(10.dp, 32.dp)),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center,
-    ) {
-        ThemedDigits(
-            clockText(state.now, state.use24h), e.t, e.ink, Modifier.fillMaxWidth().weight(1f, fill = false),
-            style = own, color = if (e.look.hero || own != null) null else e.ink.ink, twoLines = !oneLine,
-        )
-        if (e.short >= 150.dp) {
-            Spacer(Modifier.height(dl * 0.6f))
-            DateLine(e, state, dl)
-        }
-    }
 }
 
 /**

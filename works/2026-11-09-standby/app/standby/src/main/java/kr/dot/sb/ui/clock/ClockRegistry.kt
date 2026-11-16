@@ -52,7 +52,9 @@ enum class StyleRow(val part: String? = null) {
     LED, PAIR, TRIO, SOLAR,
     SIZE, FONT, KFONT, INFO, WEIGHT, FX, BG, LAYOUT, SHAPE, ANALOG_NUMBERS, ANALOG_TICKS, DIAL_FONT,
     // r11 Part C (Relief faces)
-    LUME_VIEW, MOVEMENT, INDEX_ONLY, SQUARE_NUMERALS, HOURS, GHOST, DATE_WINDOW;
+    LUME_VIEW, MOVEMENT, INDEX_ONLY, SQUARE_NUMERALS, HOURS, GHOST, DATE_WINDOW,
+    // r14 디지털 (plan-r14 A2)
+    ACCENT_MIDDLE, FILL, OVERLAP;
 
     val preset: Boolean get() = this == LED || this == PAIR || this == TRIO || this == SOLAR
 
@@ -127,7 +129,7 @@ fun spec(id: FaceId): ClockSpec {
     fun c(f: Family, ko: String, rows: List<StyleRow>, more: List<StyleRow>, ours: Boolean = false, built: Boolean = false) =
         ClockSpec(id, f, ko, ours, rows, more, built)
     return when (id) {
-        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT + LAYOUT, built = true)
+        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
         FaceId.THIN -> c(Family.SIMPLE, "가는 선", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.SPLIT -> c(Family.SIMPLE, "시·분 나눔", listOf(HOUR_COLOR, MINUTE_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.DESK -> c(Family.SIMPLE, "책상", listOf(TEXT_COLOR, SIZE, FONT), DT, built = true)
@@ -135,7 +137,8 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO), listOf(PAPER_COLOR), ours = true, built = true)
         FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), ours = true, built = true)
         FaceId.SOLAR -> c(Family.POP, "솔라", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
-        FaceId.FLOAT -> c(Family.POP, "둥근 굵은 글씨", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT + LAYOUT, built = true)
+        // r14: legacy id only (old saves read it as DIGITAL); never listed
+        FaceId.FLOAT -> c(Family.POP, "둥근 굵은 글씨", emptyList(), emptyList())
         FaceId.FLIP -> c(Family.RETRO, "플립 시계", listOf(PLATE_COLOR, DIGIT_COLOR, SIZE, FONT, INFO), emptyList(), built = true)
         FaceId.LED -> c(Family.RETRO, "빨간 LED", listOf(StyleRow.LED, SIZE), emptyList(), built = true)
         FaceId.LCD -> c(Family.RETRO, "액정 시계", listOf(PANEL_COLOR, INK_COLOR, SIZE), emptyList(), built = true)
@@ -161,8 +164,8 @@ fun spec(id: FaceId): ClockSpec {
 }
 
 object ClockRegistry {
-    /** Every face in gallery order (by family, then declaration order). */
-    val all: List<FaceId> = FaceId.entries.sortedBy { spec(it).family }
+    /** Every face in gallery order (by family, then declaration order); FLOAT is a legacy id (r14). */
+    val all: List<FaceId> = (FaceId.entries - FaceId.FLOAT).sortedBy { spec(it).family }
 
     /** The clocks page: the built faces of [myClocks] in order; none built = digital only. */
     fun pages(myClocks: List<FaceId>): List<FaceId> = myClocks.filter { spec(it).built }.ifEmpty { listOf(FaceId.DIGITAL) }

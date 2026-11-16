@@ -60,7 +60,7 @@ class ClockShots(private val theme: Theme) {
 
     @get:Rule val rule = createComposeRule()
 
-    private val faces = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT, FaceId.DESK, FaceId.PHOTOS_TIME)
+    private val faces = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.DESK, FaceId.PHOTOS_TIME)
 
     private fun shots(device: Device, items: List<Pair<String, @Composable () -> Unit>>) {
         RuntimeEnvironment.setQualifiers(device.qualifiers)
@@ -107,13 +107,14 @@ class ClockShots(private val theme: Theme) {
 
     @Test fun styleMatrix() {
         val dig = ClockStyle.default(FaceId.DIGITAL)
-        val flt = ClockStyle.default(FaceId.FLOAT)
+        // r14: the old 둥근 굵은 글씨 look = DIGITAL in its font with 가운데 숫자 색 + 살짝 겹치기
+        val flt = dig.copy(font = FontId.ROUNDED_HEAVY, weight = 950, color = 0xFF4D9BEF, accentMiddle = true, overlap = true)
         val ana = ClockStyle.default(FaceId.ANALOG)
         val sol = ClockStyle.default(FaceId.SOLAR)
         val items = FontId.entries.filter { !it.hangul }.map { "font-${it.name.lowercase()}" to face(FaceId.DIGITAL, style = dig.copy(font = it, weight = it.defaultWeight)) } +
-            Effect.entries.map { "fx-${it.name.lowercase()}" to face(FaceId.FLOAT, style = flt.copy(effect = it)) } +
+            Effect.entries.map { "fx-${it.name.lowercase()}" to face(FaceId.DIGITAL, style = flt.copy(effect = it)) } +
             listOf(
-                "fx-glow-night" to face(FaceId.FLOAT, Fixtures.full(night = 1f), flt.copy(effect = Effect.GLOW)),
+                "fx-glow-night" to face(FaceId.DIGITAL, Fixtures.full(night = 1f), flt.copy(effect = Effect.GLOW)),
                 "digital-stencil-glow" to face(FaceId.DIGITAL, style = dig.copy(font = FontId.STENCIL, weight = 800, effect = Effect.GLOW)),
                 "analog-roman" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.ROMAN)),
                 "analog-four" to face(FaceId.ANALOG, style = ana.copy(analogNumbers = AnalogNumbers.FOUR, secondColor = 0xFFE9893A)),
@@ -123,12 +124,16 @@ class ClockShots(private val theme: Theme) {
                 "digital-twolines" to face(FaceId.DIGITAL, style = dig.copy(layout = ClockLayout.TWO_LINES)),
                 "digital-10-58" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58))),
                 "digital-20-08-24h" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 20, 8), use24h = true)),
-                "float-10-58" to face(FaceId.FLOAT, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58))),
-                "float-20-08-24h" to face(FaceId.FLOAT, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 20, 8), use24h = true)),
+                "digital-overlap-10-58" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58)), flt),
+                "digital-overlap-20-08-24h" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 20, 8), use24h = true), flt),
+                "digital-fill" to face(FaceId.DIGITAL, style = dig.copy(fill = true)),
+                "digital-fill-twolines" to face(FaceId.DIGITAL, style = dig.copy(fill = true, layout = ClockLayout.TWO_LINES)),
+                "digital-accent" to face(FaceId.DIGITAL, style = dig.copy(accentMiddle = true)),
+                "digital-accent-10-58" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 10, 58)), dig.copy(accentMiddle = true)),
                 "world-24h" to face(FaceId.WORLD, Fixtures.full().copy(use24h = true)),
                 "desk-empty" to face(FaceId.DESK, StandbyState(now = Fixtures.now)),
                 "styled-time" to styled(dig),
-                "float-1-05" to face(FaceId.FLOAT, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 13, 5))),
+                "digital-overlap-1-05" to face(FaceId.DIGITAL, Fixtures.full().copy(now = LocalDateTime.of(2026, 11, 9, 13, 5)), flt),
                 "world-london" to face(FaceId.WORLD, Fixtures.full().copy(worldCity = City("런던", 51.5072, -0.1276), worldZoneId = "Europe/London")),
             ) + ClockStyle.SOLAR_SETS.mapIndexed { i, c ->
                 "solar-set$i" to face(FaceId.SOLAR, style = sol.copy(bgColor = c[0], bgColor2 = c[1], color = c[2], color2 = c[3]))
@@ -168,9 +173,9 @@ class ClockShots(private val theme: Theme) {
         }
     }
 
-    private fun slot(f: FaceId, w: Int, h: Int): @Composable () -> Unit = {
+    private fun slot(f: FaceId, w: Int, h: Int, style: ClockStyle = Themes.of(theme).clockDefaults(f)): @Composable () -> Unit = {
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            ClockFace(f, Themes.of(theme).clockDefaults(f), Fixtures.full(), Modifier.size(w.dp, h.dp), inSlot = true)
+            ClockFace(f, style, Fixtures.full(), Modifier.size(w.dp, h.dp), inSlot = true)
         }
     }
 
@@ -231,9 +236,9 @@ class ClockShots(private val theme: Theme) {
     /** The same faces inside board slots (S square, XS, tall) to check inSlot fitting. */
     @Test fun inSlot() {
         val sizes = listOf("m" to (337 to 419), "xs" to (152 to 152), "wide" to (337 to 199))
-        val items = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.SOLAR, FaceId.FLOAT).flatMap { f ->
+        val items = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.SOLAR).flatMap { f ->
             sizes.map { (n, wh) -> "slot-${f.name.lowercase()}-$n" to slot(f, wh.first, wh.second) }
-        }
+        } + sizes.map { (n, wh) -> "slot-digital-fill-$n" to slot(FaceId.DIGITAL, wh.first, wh.second, Themes.of(theme).clockDefaults(FaceId.DIGITAL).copy(fill = true)) }
         shots(Device.FOLD_COVER_L, items)
     }
 }

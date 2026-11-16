@@ -25,7 +25,7 @@ package kr.dot.sb.ui.clock
  *       changes per minute; null = every digit position takes the widest digit. Tabular digits (board numerals).
  *
  * Lightness: faces recompose only when their minute-level inputs change; layout is cached per size/style in
- * drawWithCache. Per-frame work happens only in the Float roll (400 ms), the twice-a-day size crossfade (400 ms) and
+ * drawWithCache. Per-frame work happens only in the twice-a-day size crossfade (400 ms) and
  * the analog second hand (1 Hz, its own layer).
  */
 
@@ -78,7 +78,8 @@ fun ClockFace(
     val m = modifier.semantics { contentDescription = "${data.ampm} ${data.h}:${data.m}" }
     val body: @Composable (FaceData, Modifier) -> Unit = { d, mod ->
         when (face) {
-            FaceId.DIGITAL -> DigitalFace(st, d, ink, inSlot, mod)
+            // FLOAT: legacy id of r13 and older, drawn as DIGITAL (plan-r14 A1)
+            FaceId.DIGITAL, FaceId.FLOAT -> DigitalFace(st, d, ink, inSlot, mod)
             FaceId.FLIP -> FlipFace(st, d, ink, inSlot, mod)
             FaceId.LED -> SevenSegmentFace(st, d, ink, inSlot, false, mod)
             FaceId.LCD -> SevenSegmentFace(st, d, ink, inSlot, true, mod)
@@ -98,7 +99,6 @@ fun ClockFace(
             FaceId.RELIEF_DIGITAL -> ReliefDigitalFace(st, d, ink, inSlot, mod)
             FaceId.DESK -> DeskFace(st, d, ink, inSlot, mod)
             FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod)
-            FaceId.FLOAT -> FloatFace(st, d, ink, inSlot, mod, hero)
             FaceId.ANALOG -> AnalogFace(st, d, ink, inSlot, mod, analog)
             FaceId.WORLD -> WorldFace(st, d, ink, inSlot, mod)
             FaceId.PHOTOS_TIME -> PhotosTime(st, d, ink, mod)

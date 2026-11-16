@@ -76,14 +76,29 @@ object Migrations {
      * page and in board cards. The FLIP face draws the same tiles, so DIGITAL becomes FLIP wherever it is the face:
      * 내 시계, each board's clock face, and per-card faces. Clock style edits stay on their face.
      */
-    fun flip(c: AppConfig): AppConfig {
-        fun f(x: FaceId?) = if (x == FaceId.DIGITAL) FaceId.FLIP else x
+    fun flip(c: AppConfig): AppConfig = swapFace(c, FaceId.DIGITAL, FaceId.FLIP)
+
+    /** [from] becomes [to] in 내 시계 (same position, repeats dropped), each board's clock face and per-card faces. */
+    private fun swapFace(c: AppConfig, from: FaceId, to: FaceId): AppConfig {
+        fun f(x: FaceId?) = if (x == from) to else x
         fun opts(m: Map<String, kr.dot.sb.model.SlotOptions>, board: FaceId?) = m.mapValues { (_, o) -> o.copy(face = f(o.face)?.takeIf { it != board }) }
         return c.copy(
             myClocks = c.myClocks.map { f(it)!! }.distinct(),
             boards = c.boards.map { b -> val face = f(b.clockFace)!!; b.copy(clockFace = face, options = opts(b.options, face)) },
             widgetOptions = opts(c.widgetOptions, null),
         )
+    }
+
+    /**
+     * r14 (plan-r14 A1), saves before v12, after [flip]: 둥근 굵은 글씨 (FLOAT) is gone and reads as DIGITAL wherever
+     * it is the face. Its stored style becomes the DIGITAL style (centre digit in accent, overlapping digits) only when
+     * the user had no digital clock of their own (DIGITAL neither in 내 시계 nor styled); otherwise it is dropped.
+     */
+    fun floatToDigital(c: AppConfig): AppConfig {
+        val float = c.styles[FaceId.FLOAT]
+        val move = float != null && FaceId.DIGITAL !in c.myClocks && FaceId.DIGITAL !in c.styles
+        val styles = (c.styles - FaceId.FLOAT).let { if (move) it + (FaceId.DIGITAL to float!!.copy(accentMiddle = true, overlap = true)) else it }
+        return swapFace(c, FaceId.FLOAT, FaceId.DIGITAL).copy(styles = styles)
     }
 
     /** Stored `myClocks`: missing = [OLD_CLOCKS]; unknown ids and repeats dropped; nothing left = [fresh]. */

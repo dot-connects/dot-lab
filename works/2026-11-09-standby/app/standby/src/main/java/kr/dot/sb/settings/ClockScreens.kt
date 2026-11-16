@@ -376,7 +376,14 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
                 ColorPalette(style.bgColor2, { v -> edit { it.copy(bgColor2 = v) } })
             }
         }
-        StyleRow.LAYOUT -> ControlRow("배치") { Segmented(ClockLayout.entries.map { it.ko }, style.layout.ordinal, { i -> edit { it.copy(layout = ClockLayout.entries[i]) } }) }
+        // r14: the iPhone side strip is gone; a stored IPHONE draws (and shows) as 가운데
+        StyleRow.LAYOUT -> ControlRow("배치") {
+            val ls = listOf(ClockLayout.CENTER, ClockLayout.TWO_LINES)
+            Segmented(ls.map { it.ko }, if (style.layout == ClockLayout.TWO_LINES) 1 else 0, { i -> edit { it.copy(layout = ls[i]) } })
+        }
+        StyleRow.ACCENT_MIDDLE -> SwitchRow("가운데 숫자 색", style.accentMiddle, { v -> edit { it.copy(accentMiddle = v) } }, subtitle = "가운데 숫자 하나를 진한 색으로 칠해요 (한 줄일 때)")
+        StyleRow.FILL -> SwitchRow("꽉 채우기", style.fill, { v -> edit { it.copy(fill = v) } }, subtitle = "숫자를 화면에 꽉 차게 키워요")
+        StyleRow.OVERLAP -> SwitchRow("살짝 겹치기", style.overlap, { v -> edit { it.copy(overlap = v) } }, subtitle = "숫자끼리 조금 겹치고 살짝 기울어요")
         StyleRow.SHAPE -> ControlRow("모양") { AnalogStylePicker(config, style, update) }
         StyleRow.ANALOG_NUMBERS -> {
             // DUO stays a decode-only alias of TWELVE (D7)

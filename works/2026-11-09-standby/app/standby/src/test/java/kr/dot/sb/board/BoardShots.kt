@@ -44,7 +44,10 @@ class BoardShots(private val name: String, private val device: Device, private v
         val open: (ComposeContentTestRule.() -> Unit)? = if (!stateKey.startsWith("open")) null else {
             { mainClock.autoAdvance = false; onRoot().performClick(); mainClock.advanceTimeBy(400) }
         }
-        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, ddays = Fixtures.ddays, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
+        // "-fill": the DIGITAL clock with r14 꽉 채우기
+        val styles = if (!stateKey.endsWith("-fill")) emptyMap() else
+            mapOf(kr.dot.sb.model.FaceId.DIGITAL to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(kr.dot.sb.model.FaceId.DIGITAL).copy(fill = true))
+        rule.shot("board", name, device, theme, s.night, open) { BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays, textSize = if (stateKey.endsWith("-large")) TextSize.LARGE else TextSize.NORMAL), StandbyActions.NONE) }
     }
 
     companion object {
@@ -52,7 +55,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
 
         /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
-        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-large").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
+        fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-fill").removeSuffix("-large").removeSuffix("-video").removePrefix("open").removePrefix("-")) {
             "night" -> Fixtures.full(1f)
             "noart" -> Fixtures.full().let { it.copy(media = it.media!!.copy(art = null)) }
             "emptyA", "emptyAnight" -> Fixtures.full(if (key == "emptyAnight") 1f else 0f).let {
@@ -111,6 +114,8 @@ class BoardShots(private val name: String, private val device: Device, private v
             val out = mutableListOf<Array<Any>>()
             for (b in Presets.boards()) {
                 for (d in Device.MAIN) out += arrayOf("preset-${b.id}", d, b, "full")
+                // r14: 작업 책상 with the DIGITAL clock filling its slot
+                if (b.id == "desk") out += arrayOf("preset-desk-fill", Device.FOLD_COVER_L, b, "full-fill")
                 out += arrayOf("night-${b.id}", Device.FOLD_COVER_L, b, "night")
             }
             for (t in KINDS) for ((cls, layout, d) in CLASSES) out += arrayOf("card-${t.lowercase()}-$cls", d, one(t, layout), "full")
@@ -171,7 +176,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             val dual = listOf(
                 Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(c)), options = mapOf("1:0" to ANALOG_FACE)),
                 Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.WEATHER)), options = mapOf("0:0" to ANALOG_FACE)),
-                Board("dual-float", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.TIMER)), clockFace = kr.dot.sb.model.FaceId.FLOAT),
+                Board("dual-digital", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.TIMER))),
                 Board("dual-solar", "dual", Layout.TWO2, listOf(listOf(c), listOf(CardType.DDAY), listOf(c)), clockFace = kr.dot.sb.model.FaceId.SOLAR),
             )
             for (b in dual) {

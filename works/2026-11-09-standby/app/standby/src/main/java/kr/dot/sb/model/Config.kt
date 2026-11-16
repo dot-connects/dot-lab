@@ -256,6 +256,10 @@ data class ClockStyle(
     val ghost: Boolean = true,
     /** 입체 네모: how 12/3/6/9 are made. */
     val squareNumerals: SquareNumerals = SquareNumerals.THIN,
+    // r14 디지털 (plan-r14 A2): digit index 1 in accDeep, digits as big as the box allows, overlapping tilted digits
+    val accentMiddle: Boolean = false,
+    val fill: Boolean = false,
+    val overlap: Boolean = false,
 ) {
     companion object {
         /** iPhone look per face (canon §2-3, design-system §2.1). */
