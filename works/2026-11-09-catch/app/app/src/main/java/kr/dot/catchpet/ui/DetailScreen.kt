@@ -60,7 +60,10 @@ private val STYLES = listOf("fluff" to "털뭉치", "figure" to "피규어")
 
 /** The chosen pet: a dex entry id in SharedPreferences "catchpet" / "pet" (the pet overlay reads it). */
 fun petId(ctx: Context): String? = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString("pet", null)
-fun setPet(ctx: Context, id: String) { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().putString("pet", id).apply() }
+fun setPet(ctx: Context, id: String) {
+    ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).edit().putString("pet", id).commit()   // the widget reads it next
+    kr.dot.catchpet.widget.PetWidgets.refresh(ctx)
+}
 
 /** One entry (confirmed mockup allmenus 11-15): poses, one preview per look, each look bought apart, pet, delete. */
 @Composable
@@ -70,6 +73,7 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
     var tick by remember { mutableStateOf(0) }
     val e = remember(id, rev, tick) { Dex.get(ctx, id) }
     var deleting by remember { mutableStateOf(false) }
+    var bragPerson by remember { mutableStateOf<Dex.Entry?>(null) }
     // the pet may have been turned off from its own bubble meanwhile
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { tick++ }
     BookPage {
@@ -88,7 +92,11 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
             Column(Modifier.weight(1f)) {
                 Heading(shown, 30.sp)
                 Note("${if (e.critterId != null) "털뭉치" else Dex.kindName(e.kind)} · No.${e.no} · ${SimpleDateFormat("yyyy.M.d", Locale.KOREA).format(Date(e.caughtAt))} 뽑음")
-                if (e.critterId == null) Row(Modifier.padding(top = 4.dp)) { InkPill("이름 바꾸기", onClick = { renaming = true }) }
+                Row(Modifier.padding(top = 4.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (e.critterId == null) InkPill("이름 바꾸기", onClick = { renaming = true })
+                    // spec-extras 3: share a card of it; a person asks first
+                    InkPill("자랑하기", Book.Sun, onClick = { if (Dex.hasPerson(e.kind)) bragPerson = e else ShareCard.share(ctx, e) })
+                }
             }
         }
         if (renaming) RenameDialog(shown, onDone = { n -> renaming = false; if (n != null) Dex.rename(ctx, e.id, n)?.let { shown = it.name } })
@@ -99,6 +107,7 @@ fun DetailScreen(id: String, onPet: () -> Unit, onBack: () -> Unit) {
             modifier = Modifier.align(Alignment.CenterHorizontally).clip(RoundedCornerShape(50)).clickable { deleting = true }.padding(12.dp))
         Spacer(Modifier.height(16.dp))
     }
+    bragPerson?.let { b -> PersonConsent(PersonUse.SHARE) { ok -> bragPerson = null; if (ok) ShareCard.share(ctx, b) } }
     if (deleting && e != null) DeleteDialog(listOf(e), onDone = { yes -> deleting = false; if (yes && removeEntries(ctx, listOf(e.id)) == 0) onBack() })
 }
 

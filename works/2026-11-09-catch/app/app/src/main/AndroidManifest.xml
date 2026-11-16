@@ -54,5 +54,29 @@
                 android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
                 android:value="floating pet" />
         </service>
+
+        <!-- 자랑하기: the card PNG goes to the share sheet from cache/share/ (spec-extras 3) -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.share"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/share_paths" />
+        </provider>
+
+        <receiver android:name=".widget.Yard" android:exported="false" android:label="@string/widget_yard_desc">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_yard" />
+        </receiver>
+
+        <receiver android:name=".widget.Wide" android:exported="false" android:label="@string/widget_wide_desc">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_wide" />
+        </receiver>
+
+        <receiver android:name=".widget.Sticker" android:exported="false" android:label="@string/widget_sticker_desc">
+            <intent-filter><action android:name="android.appwidget.action.APPWIDGET_UPDATE" /></intent-filter>
+            <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_sticker" />
+        </receiver>
     </application>
 </manifest>

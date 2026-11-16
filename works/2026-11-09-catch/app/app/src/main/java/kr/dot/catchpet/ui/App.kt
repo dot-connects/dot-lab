@@ -35,11 +35,13 @@ enum class Screen { CATCH, DEX, DETAIL, PET }
 
 /** The whole app: one screen at a time, switched by a single state. Back goes to the catch screen. */
 @Composable
-fun App(openPet: Int = 0) {
+fun App(openSeq: Int = 0, openTo: String = "pet") {
     val ctx = LocalContext.current
     var screen by rememberSaveable { mutableStateOf(Screen.CATCH) }
-    // the pet's cloud said "펫 설정"
-    androidx.compose.runtime.LaunchedEffect(openPet) { if (openPet > 0) screen = Screen.PET }
+    // the pet's cloud said "펫 설정", or a widget's [뽑기] / [도감]
+    androidx.compose.runtime.LaunchedEffect(openSeq) {
+        if (openSeq > 0) screen = when (openTo) { "dex" -> Screen.DEX; "catch" -> Screen.CATCH; else -> Screen.PET }
+    }
     var entryId by rememberSaveable { mutableStateOf<String?>(null) }
     val sink = remember { DexSink(ctx.applicationContext) }
     val critters = remember { Critters(ctx.applicationContext) }
@@ -86,16 +88,18 @@ class DexSink(private val ctx: Context) : CatchSink {
         }
     }
 
-    override fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Caught {
+    override fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String, cap: Int): Caught {
         val grew = critterId == null || critters.add(critterId)
         if (grew) count++
         val name = if (critterId != null) Dex.critterName(ctx, critterId) else Dex.cuteName(names)
         names += name
         writes.execute {
             val bytes = png?.let { b -> ByteArrayOutputStream().also { b.compress(Bitmap.CompressFormat.PNG, 100, it) }.toByteArray() }
-            runCatching { Dex.add(ctx, kind, bytes, critterId, label, name = name) }
+            runCatching { Dex.add(ctx, kind, bytes, critterId, label, name = name, cap = cap) }
                 .onFailure { android.util.Log.e("DexSink", "save failed", it) }
         }
+        // the floating pet greets a new friend next time it talks (spec-extras 1)
+        if (grew) kr.dot.catchpet.pet.PetPrefs.setFriend(ctx, name)
         return Caught(grew, name)
     }
 

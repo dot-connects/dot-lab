@@ -91,7 +91,7 @@ import kotlin.random.Random
 /** Where a catch goes (the Dex wires this). Called the moment the claw reaches the top (plan R6), before the capsule. */
 interface CatchSink {
     /** png: the cut-out (real things) or null (critters). label: the pose. */
-    fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String): Caught
+    fun onCaught(kind: String, png: Bitmap?, critterId: String?, label: String, cap: Int): Caught
 }
 
 /** [grew]: the dex count went up (a new one, not a critter met again); [name]: what it is called in the dex. */
@@ -205,6 +205,7 @@ private fun CatchView(
     val camera by rememberUpdatedState(onCamera)
 
     var tick by remember { mutableLongStateOf(0L) }
+    var bragPerson by remember { mutableStateOf<Brag?>(null) }
     LaunchedEffect(Unit) {
         var prev = 0L
         while (true) withFrameNanos { now ->
@@ -230,6 +231,11 @@ private fun CatchView(
                                 if (x > game.w / 2) { if (game.idle) openDex() }
                                 else if (x < 96f && y > game.rail - 46f && game.idle) camera()   // not mid-round: a catch in flight would be lost
                             }
+                            return@awaitEachGesture
+                        }
+                        game.bragAt(x, y)?.let { b ->
+                            if (waitForUpOrCancellation() == null) return@awaitEachGesture   // a drag away is not a tap
+                            if (b.person) bragPerson = b else ShareCard.share(ctx, b)
                             return@awaitEachGesture
                         }
                         val c = game.claw ?: return@awaitEachGesture
@@ -259,6 +265,7 @@ private fun CatchView(
             drawIntoCanvas { game.render(it.nativeCanvas) }
         }
         if (game.askPerson != null) PersonConsent(PersonUse.DEX) { game.keepPerson(it) }
+        bragPerson?.let { b -> PersonConsent(PersonUse.SHARE) { ok -> bragPerson = null; if (ok) ShareCard.share(ctx, b) } }
     }
 }
 
@@ -310,7 +317,23 @@ private class CatchGame(
     private var landFrozen: Bitmap? = null
     private var landGrip: Grip? = null
 
-    private class Toast(val text: String, val good: Boolean) { var t = 0f }
+    private class Toast(val text: String, val good: Boolean, val brag: Brag? = null) {
+        var t = 0f
+        val life get() = if (brag != null) BRAG_MS else 1400f
+    }
+    /** What the next win toast offers to share, kept from the catch (the cut-out is gone after reset, review 11-16). */
+    private var capBrag: Brag? = null
+    /** The [자랑하기] pill on screen (dp), empty when none. */
+    private val bragBox = RectF()
+
+    /** A tap on the toast's [자랑하기]: the thing to share, or null. */
+    fun bragAt(x: Float, y: Float): Brag? {
+        val t = toast ?: return null
+        val b = t.brag ?: return null
+        if (!bragBox.contains(x, y)) return null
+        toast = null
+        return b
+    }
     private class Grip(val cut: CutOut.Cut?, val hole: Bitmap?, val opaque: Float, val kind: String? = null)
 
     private var map: ScreenMap? = null
@@ -334,7 +357,7 @@ private class CatchGame(
     private var gripAt = 0f
     private var held: Grip? = null
     private var capsule: Capsule? = null
-    private var capColor = CAP_COLORS[0]
+    private var capColor = CapColors.CAP_COLORS[0]
     private var capT = 0f
     private var capText = ""
     private var saved = false   // the catch is already in the dex but the capsule still rolls: show N-1 until GONE
@@ -347,8 +370,8 @@ private class CatchGame(
         val b = askPerson ?: return
         askPerson = null
         if (!keep) return
-        val r = sink.onCaught(pendingKind, b, null, "front")
-        say(caughtText(pendingKind, r.name), true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f)
+        val r = sink.onCaught(pendingKind, b, null, "front", capColor)
+        say(caughtText(pendingKind, r.name), true, Brag(r.name, pendingKind, b, null, capColor)); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f)
     }
 
     /** "강아지 도토리를 뽑았다!": what it is and the name it got (operator 11-15). */
@@ -377,7 +400,7 @@ private class CatchGame(
         vsw *= 0.992f.pow(dt)
         swing = (swing + vsw * dt * 0.06f).coerceIn(-0.3f, 0.3f)
         pulse = max(0f, pulse - dt / 500f)
-        toast?.let { it.t += dt; if (it.t > 1400f) toast = null }
+        toast?.let { it.t += dt; if (it.t > it.life) toast = null }
         grip?.let { if (held == null && it.isDone) held = runCatching { it.get() }.getOrNull() }
 
         // the carriage ticks along the rail as it moves (aiming and riding home)
@@ -417,7 +440,8 @@ private class CatchGame(
             cap.step(dt); capT += dt
             if (was == Capsule.Phase.WRAP && cap.phase == Capsule.Phase.DROP) c.handedOff()   // claw lets go
             if (cap.phase == Capsule.Phase.GONE) {
-                if (pendingPerson == null) { say(capText, true); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
+                if (pendingPerson == null) { say(capText, true, capBrag); pulse = 1f; Sfx.play(R.raw.sfx_win, 0.6f) }
+                capBrag = null
                 next()
                 pendingPerson?.let { askPerson = it; pendingPerson = null }
             }
@@ -542,7 +566,9 @@ private class CatchGame(
             val id = target.critterId ?: ""
             val (label, pic) = map?.let { critters.caught(id, it) } ?: ("front" to null)
             held = Grip(pic, null, 1f)
-            val r = sink.onCaught("critter", null, id, label)
+            capColor = CapColors.random()   // a different capsule each catch (operator 11-15), stored with it
+            val r = sink.onCaught("critter", null, id, label, capColor)
+            capBrag = Brag(r.name, "critter", null, id, capColor)   // its picture is read when shared
             startCapsule(c, if (r.grew) "새 친구! ${r.name}" else "${r.name} 또 왔네!", r.grew)
             return
         }
@@ -559,6 +585,7 @@ private class CatchGame(
             return
         }
         val kind = got.kind ?: target.dexKind   // a group: "person+cat"
+        capColor = CapColors.random()
         if (Dex.hasPerson(kind)) {
             // a person goes into the dex only after the consent dialog (shown when the capsule is gone); the
             // cheer waits for it too (review 11-15: it celebrated, then "버리기")
@@ -566,7 +593,8 @@ private class CatchGame(
             startCapsule(c, grew = false, text = "")
             return
         }
-        val r = sink.onCaught(kind, got.cut.bmp, null, "front")
+        val r = sink.onCaught(kind, got.cut.bmp, null, "front", capColor)
+        capBrag = Brag(r.name, kind, got.cut.bmp, null, capColor)
         startCapsule(c, grew = r.grew, text = caughtText(kind, r.name))
     }
 
@@ -575,7 +603,6 @@ private class CatchGame(
         saved = grew
         capText = text
         capT = 0f
-        capColor = CAP_COLORS.random()   // a different capsule each catch (operator 11-15)
         capsule = Capsule(c.x * w, c.y + 70f, floorY = h - bottomInset - 18f, screenW = w)
     }
 
@@ -588,7 +615,7 @@ private class CatchGame(
         frozen = null; grip = null; held = null; capsule = null; saved = false
     }
 
-    private fun say(text: String, good: Boolean) { toast = Toast(text, good) }
+    private fun say(text: String, good: Boolean, brag: Brag? = null) { toast = Toast(text, good, brag) }
 
     // ---------- drawing (dp) ----------
     private val fill = Paint(Paint.ANTI_ALIAS_FLAG)
@@ -704,66 +731,21 @@ private class CatchGame(
      */
     private fun drawCapsule(cv: android.graphics.Canvas, cap: Capsule, cut: CutOut.Cut?, m: ScreenMap?) {
         val r = cap.r
-        val deg = Math.toDegrees(cap.rot.toDouble()).toFloat()
         val k = min(1f, capT / 420f)
-        cv.save()
-        cv.translate(cap.x, cap.y); cv.rotate(deg)
-        if (r > 4f) { path.reset(); path.addCircle(0f, 0f, r, Path.Direction.CW); cv.clipPath(path) }
-        if (cut != null && m != null) {
+        CapsuleArt.draw(cv, cap.x, cap.y, r, Math.toDegrees(cap.rot.toDouble()).toFloat(), capColor) { inner ->
+            if (cut == null || m == null) return@draw
             // the catch shrinks into the capsule, its middle a fifth of the radius above the seam
             cutRect(m, cut)
             val bw = rect.width(); val bh = rect.height()
             val sc = if (r > 0f) min(1f, r * 1.6f / max(bw, bh)) else 1f
             val s2 = 1f + (sc - 1f) * k
-            cv.save()
-            cv.translate(0f, -0.2f * r * k)
-            cv.scale(s2, s2)
-            cv.translate(-rect.centerX(), -rect.centerY())
-            cv.drawBitmap(cut.bmp, null, rect, bmpPaint)
-            cv.restore()
+            inner.save()
+            inner.translate(0f, -0.2f * r * k)
+            inner.scale(s2, s2)
+            inner.translate(-rect.centerX(), -rect.centerY())
+            inner.drawBitmap(cut.bmp, null, rect, bmpPaint)
+            inner.restore()
         }
-        if (r > 4f) {
-            // the coloured bottom half, shaded light up-left to dark down-right
-            fill.shader = RadialGradient(-r * .25f, -r * .6f, r * 1.8f,
-                intArrayOf(shade(capColor, .35f), capColor, shade(capColor, -.32f)), floatArrayOf(0f, .5f, 1f), Shader.TileMode.CLAMP)
-            rect.set(-r, -r, r, r)
-            cv.drawArc(rect, 0f, 180f, true, fill)
-            fill.shader = null
-            fill.color = shade(capColor, -.45f); fill.alpha = 170
-            for (hx in floatArrayOf(-.32f, 0f, .32f)) cv.drawOval(hx * r - r * .06f, r * (if (hx == 0f) .64f else .54f) - r * .043f,
-                hx * r + r * .06f, r * (if (hx == 0f) .64f else .54f) + r * .043f, fill)
-            fill.alpha = 255
-        }
-        cv.restore()
-        if (r <= 4f) return
-        cv.save()
-        cv.translate(cap.x, cap.y)
-        // glass over the top half: a bright rim, a highlight up-left
-        fill.shader = RadialGradient(0f, 0f, r, intArrayOf(argb(.05f, 255, 255, 255), argb(.07f, 255, 255, 255), argb(.5f, 255, 255, 255)), floatArrayOf(0f, .82f, 1f), Shader.TileMode.CLAMP)
-        cv.save(); cv.rotate(deg); cv.clipRect(-r, -r, r, 0f); cv.drawCircle(0f, 0f, r, fill); cv.restore()
-        fill.shader = RadialGradient(-r * .35f, -r * .45f, r * .45f, intArrayOf(argb(.8f, 255, 255, 255), argb(.15f, 255, 255, 255), 0), floatArrayOf(0f, .45f, 1f), Shader.TileMode.CLAMP)
-        cv.drawCircle(0f, 0f, r, fill)
-        fill.shader = null
-        stroke.color = argb(.7f, 255, 255, 255); stroke.strokeWidth = 1.5f
-        cv.drawCircle(0f, 0f, r, stroke)
-        // seam band and lid tab turn with the capsule
-        cv.rotate(deg)
-        val band = max(3f, r * .16f)
-        fill.color = shade(capColor, .2f)
-        cv.drawRoundRect(-r - 1f, -band / 2, r + 1f, band / 2, band / 2, band / 2, fill)
-        stroke.color = shade(capColor, -.25f); stroke.strokeWidth = 1.2f
-        cv.drawRoundRect(-r - 1f, -band / 2, r + 1f, band / 2, band / 2, band / 2, stroke)
-        fill.color = shade(capColor, .1f)
-        cv.drawRoundRect(r * .88f, -band * .8f, r * 1.1f, band * .8f, band * .45f, band * .45f, fill)
-        stroke.color = shade(capColor, -.3f)
-        cv.drawRoundRect(r * .88f, -band * .8f, r * 1.1f, band * .8f, band * .45f, band * .45f, stroke)
-        cv.restore()
-    }
-
-    /** Lighter (k > 0) or darker (k < 0) of an opaque colour. */
-    private fun shade(c: Int, k: Float): Int {
-        fun f(v: Int) = (if (k > 0f) v + (255 - v) * k else v * (1f + k)).toInt().coerceIn(0, 255)
-        return Color.rgb(f(Color.red(c)), f(Color.green(c)), f(Color.blue(c)))
     }
 
     private fun topBar(cv: android.graphics.Canvas) {
@@ -807,7 +789,7 @@ private class CatchGame(
 
     private fun drawToast(cv: android.graphics.Canvas) {
         val t = toast ?: return
-        val a = when { t.t < 150f -> t.t / 150f; t.t > 1100f -> max(0f, 1f - (t.t - 1100f) / 300f); else -> 1f }
+        val a = when { t.t < 150f -> t.t / 150f; t.t > t.life - 300f -> max(0f, 1f - (t.t - t.life + 300f) / 300f); else -> 1f }
         if (a <= 0f) return
         text.textSize = 20f
         val tw = text.measureText(t.text) + 34f
@@ -821,13 +803,22 @@ private class CatchGame(
         cv.drawRoundRect(w / 2 - tw / 2 + 1.25f, y + 1.25f, w / 2 + tw / 2 - 1.25f, y + 34.75f, 17f, 17f, stroke)
         text.color = Color.argb((255 * a).toInt(), 0x24, 0x33, 0x1F)
         cv.drawText(t.text, w / 2, y + 25f, text)
+        bragBox.setEmpty()
+        if (t.brag == null) return
+        // [자랑하기] under the toast: yellow pill, ink outline, a hard drop (the menus' look)
+        text.textSize = 16f
+        val pw = text.measureText("자랑하기") + 30f
+        val py = y + 46f
+        bragBox.set(w / 2 - pw / 2 - 8f, py - 8f, w / 2 + pw / 2 + 8f, py + 40f)   // a little larger to hit
+        fill.color = argb(a, 0x24, 0x33, 0x1F); cv.drawRoundRect(w / 2 - pw / 2, py + 3f, w / 2 + pw / 2, py + 33f, 15f, 15f, fill)
+        fill.color = argb(a, 0xFF, 0xFD, 0xF6); cv.drawRoundRect(w / 2 - pw / 2, py, w / 2 + pw / 2, py + 30f, 15f, 15f, fill)
+        cv.drawRoundRect(w / 2 - pw / 2 + 1.25f, py + 1.25f, w / 2 + pw / 2 - 1.25f, py + 28.75f, 14f, 14f, stroke)
+        cv.drawText("자랑하기", w / 2, py + 21f, text)
     }
 
     companion object {
-        /** Two-tone capsule colours, one picked at random per catch (operator 11-15 "다양하게"). */
-        val CAP_COLORS = intArrayOf(0xFFFF6B6B.toInt(), 0xFFFFB938.toInt(), 0xFF4DA8FF.toInt(), 0xFF4CCB8C.toInt(), 0xFFA98BFF.toInt(),
-            0xFFFF86C2.toInt(), 0xFFFF8F3D.toInt(), 0xFF2EC2CC.toInt(), 0xFF7E9CFF.toInt(), 0xFFE5484D.toInt())
         private const val TAG = "CatchGame"
+        const val BRAG_MS = 6000f   // a win toast with [자랑하기] stays this long (spec-extras 3)
         private val YELLOW = 0xFFFFCF5A.toInt()
         private fun argb(a: Float, r: Int, g: Int, b: Int) = Color.argb((a * 255).roundToInt().coerceIn(0, 255), r, g, b)
         private val LIFTED = setOf(Claw.St.GRIP, Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)

@@ -1,0 +1,363 @@
+<title>혼잣말 위젯 자랑 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* layout: three features, each a row of A/B/C phones (side-scroll on a phone) + the rules under it; the app's sky/grass/ink world */
+:root {
+  --sky: #bfe6ff; --grass: #d9f2c9; --paper: #fffdf6; --ink: #24331f; --muted: #5d6b57; --sun: #ffd84d; --leaf: #7cc46b; --warn: #b3261e;
+  --page: #eef6e6;
+  --display: "Jua", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --body: "Gowun Dodum", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.55; margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px 56px; }
+main { max-width: 1040px; margin: 0 auto; display: grid; gap: 34px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 30px; margin: 0; }
+.lead { color: var(--muted); margin: 4px 0 0; max-width: 64ch; }
+section { display: grid; gap: 14px; }
+.sh { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { font-family: var(--display); font-size: 14px; background: var(--sun); border: 2px solid var(--ink); border-radius: 99px; padding: 1px 10px; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 25px; margin: 0; }
+h3 { font-family: var(--display); font-weight: 400; font-size: 18px; margin: 0; }
+.row { display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 12px; }
+.opt { flex: 0 0 236px; scroll-snap-align: start; display: grid; gap: 8px; align-content: start; }
+.opt p { margin: 0; font-size: 13px; color: var(--muted); }
+.opt .nm { font-family: var(--display); font-size: 17px; }
+.panel { background: var(--paper); border: 2.5px solid var(--ink); border-radius: 18px; box-shadow: 0 4px 0 var(--ink); padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.panel ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; font-size: 13.5px; width: 100%; min-width: 520px; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1.5px dashed #cfd8c6; vertical-align: top; }
+th { font-family: var(--display); font-weight: 400; font-size: 14px; white-space: nowrap; }
+td.k { white-space: nowrap; color: var(--muted); }
+button { font-family: var(--display); font-size: 14px; color: var(--ink); background: var(--paper); border: 2px solid var(--ink);
+  border-radius: 99px; padding: 4px 12px; box-shadow: 0 3px 0 var(--ink); cursor: pointer; }
+button:active { transform: translateY(2px); box-shadow: 0 1px 0 var(--ink); }
+button.on { background: var(--sun); }
+button:focus-visible { outline: 3px solid var(--leaf); outline-offset: 2px; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; }
+.ask { border-left: 4px solid var(--sun); padding-left: 10px; font-size: 14px; }
+
+/* phone + home screen */
+.phone { width: 236px; aspect-ratio: 9 / 19; border: 3px solid var(--ink); border-radius: 28px; position: relative; overflow: hidden;
+  background: linear-gradient(#9fc6e8, #c9dff0 55%, #e9d9c7); }
+.phone.night { background: linear-gradient(#1f2c4a, #33456b 60%, #4d5a78); }
+.status { position: absolute; inset: 7px 13px auto; display: flex; justify-content: space-between; font-size: 9.5px; color: #fff; font-family: system-ui, sans-serif; text-shadow: 0 1px 2px #0005; z-index: 4; }
+.grid { position: absolute; left: 16px; right: 16px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px 11px; }
+.ic { aspect-ratio: 1; border-radius: 11px; background: #ffffffb0; box-shadow: 0 1px 3px #0002; }
+.dock { position: absolute; left: 10px; right: 10px; bottom: 12px; height: 46px; border-radius: 17px; background: #ffffff70; display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 7px 13px; }
+.dock .ic { background: #fffd; }
+.pet { position: absolute; width: 46px; height: 46px; z-index: 2; }
+.pet img { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+/* 1: three bubble styles */
+.b-cloud { position: absolute; background: var(--paper); border-radius: 18px; padding: 7px 12px; font-family: var(--display); font-size: 13.5px; line-height: 1.3;
+  box-shadow: 0 3px 8px #0003; z-index: 3; white-space: nowrap; }
+.b-cloud::before, .b-cloud::after { content: ""; position: absolute; background: var(--paper); border-radius: 50%; }
+.b-cloud::before { width: 13px; height: 13px; left: calc(50% - 10px); bottom: -11px; }
+.b-cloud::after { width: 7px; height: 7px; left: calc(50% + 2px); bottom: -21px; }
+.b-tail { position: absolute; background: var(--paper); border: 2px solid var(--ink); border-radius: 14px; padding: 5px 11px; font-family: var(--display); font-size: 13.5px; line-height: 1.3; z-index: 3; white-space: nowrap; box-shadow: 0 3px 0 var(--ink); }
+.b-tail::after { content: ""; position: absolute; left: calc(50% - 6px); bottom: -8px; width: 11px; height: 11px; background: var(--paper);
+  border-right: 2px solid var(--ink); border-bottom: 2px solid var(--ink); transform: rotate(45deg); }
+.b-text { position: absolute; font-family: var(--display); font-size: 16px; color: #fff; z-index: 3; white-space: nowrap;
+  text-shadow: -2px 0 var(--ink), 2px 0 var(--ink), 0 -2px var(--ink), 0 2px var(--ink), -1.5px -1.5px var(--ink), 1.5px 1.5px var(--ink), -1.5px 1.5px var(--ink), 1.5px -1.5px var(--ink); }
+.b-wall { font-size: 12.5px; }
+
+/* 2: widgets */
+.wd { position: absolute; z-index: 2; }
+.wA { left: 16px; top: 40px; width: 96px; height: 96px; border-radius: 22px; overflow: hidden; background: linear-gradient(var(--sky) 0 56%, var(--grass) 56%); box-shadow: 0 2px 6px #0003; }
+.wA img { position: absolute; left: 22px; bottom: 9px; width: 52px; height: 52px; object-fit: contain; }
+.wA .n { position: absolute; left: 10px; top: 7px; font-family: var(--display); font-size: 12.5px; }
+.wA .s { position: absolute; right: 9px; top: 8px; font-size: 11px; }
+.wB { left: 16px; right: 16px; top: 40px; height: 116px; border-radius: 22px; background: var(--paper); box-shadow: 0 2px 6px #0003; overflow: hidden; }
+.wB .yard { position: absolute; left: 0; top: 0; bottom: 0; width: 82px; background: linear-gradient(var(--sky) 0 58%, var(--grass) 58%); }
+.wB img { position: absolute; left: 12px; bottom: 14px; width: 58px; height: 58px; object-fit: contain; }
+.wB .n { position: absolute; left: 92px; top: 10px; font-family: var(--display); font-size: 15px; }
+.wB .l { position: absolute; left: 92px; right: 10px; top: 33px; font-size: 11.5px; color: var(--muted); line-height: 1.35; }
+.wB .bb { position: absolute; left: 92px; right: 10px; bottom: 10px; display: flex; gap: 6px; }
+.wB .bb span { flex: 1; text-align: center; font-family: var(--display); font-size: 12px; border: 1.5px solid var(--ink); border-radius: 99px; padding: 2px 0; }
+.wB .bb span:first-child { background: var(--sun); }
+.wC { right: 20px; top: 210px; width: 58px; height: 58px; }
+.wC img { width: 100%; height: 100%; object-fit: contain; filter: drop-shadow(0 2px 2px #0004); }
+.wC .z { position: absolute; right: -6px; top: -8px; font-family: var(--display); color: #fff; font-size: 13px; text-shadow: 0 1px 2px #0007; }
+.strip { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.strip figure { margin: 0; flex: 0 0 auto; display: grid; gap: 4px; justify-items: center; font-size: 12px; color: var(--muted); }
+.mini { width: 96px; height: 96px; border-radius: 22px; position: relative; overflow: hidden; border: 2px solid var(--ink); }
+.mini img { position: absolute; left: 22px; bottom: 9px; width: 52px; height: 52px; object-fit: contain; }
+.mini .n { position: absolute; left: 10px; top: 7px; font-family: var(--display); font-size: 12.5px; }
+
+/* 3: share cards */
+.card { position: relative; overflow: hidden; border: 3px solid var(--ink); border-radius: 16px; background: linear-gradient(var(--sky) 0 60%, var(--grass) 60%); }
+.cA { width: 236px; aspect-ratio: 4 / 5; }
+.cB { width: 200px; aspect-ratio: 9 / 16; }
+.cC { width: 236px; aspect-ratio: 1; background: var(--paper); padding: 12px 12px 0; }
+.card .hd { position: absolute; left: 0; right: 0; text-align: center; font-family: var(--display); }
+.card .dt { position: absolute; left: 0; right: 0; text-align: center; font-size: 11px; color: var(--muted); }
+.card svg.cap { position: absolute; left: 50%; transform: translateX(-50%); overflow: visible; }
+.card .ft { position: absolute; left: 0; right: 0; bottom: 0; padding: 7px 11px; background: var(--paper); border-top: 2px solid var(--ink);
+  display: flex; justify-content: space-between; align-items: center; font-size: 10.5px; gap: 6px; }
+.card .ft b { font-family: var(--display); font-weight: 400; font-size: 13px; }
+.card .qr { width: 30px; height: 30px; border: 2px solid var(--ink); border-radius: 4px; background:
+  repeating-linear-gradient(90deg, var(--ink) 0 3px, transparent 3px 6px), repeating-linear-gradient(0deg, var(--ink) 0 3px, transparent 3px 7px); background-blend-mode: multiply; opacity: .75; }
+.cC .photo { position: relative; height: 73%; border-radius: 6px; overflow: hidden; background: linear-gradient(var(--sky) 0 60%, var(--grass) 60%); border: 2px solid var(--ink); }
+.cC .cap2 { position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%); overflow: visible; }
+.cC .hand { font-family: var(--display); text-align: center; font-size: 18px; margin-top: 8px; }
+.cC .sub { text-align: center; font-size: 10.5px; color: var(--muted); }
+/* entry points */
+.shot { width: 236px; border: 3px solid var(--ink); border-radius: 22px; overflow: hidden; position: relative; aspect-ratio: 9 / 10; background: linear-gradient(#2a2f35, #45403a); }
+.shot .toast { position: absolute; left: 12px; right: 12px; bottom: 16px; background: var(--paper); border: 2px solid var(--ink); border-radius: 16px; box-shadow: 0 3px 0 var(--ink); padding: 9px 11px; display: flex; align-items: center; gap: 8px; }
+.shot .toast span { font-family: var(--display); font-size: 15px; flex: 1; }
+.shot .toast i { font-style: normal; font-family: var(--display); font-size: 13px; background: var(--sun); border: 2px solid var(--ink); border-radius: 99px; padding: 2px 10px; }
+.shot svg { position: absolute; left: 50%; top: 22%; transform: translateX(-50%); overflow: visible; }
+.shot.dex { background: linear-gradient(var(--sky) 0 30%, var(--grass) 30%); }
+.shot.dex .pic { position: absolute; left: 50%; top: 14%; width: 110px; height: 110px; transform: translateX(-50%); background: var(--paper); border: 2.5px solid var(--ink); border-radius: 18px; display: grid; place-items: center; }
+.shot.dex .pic img { width: 84px; height: 84px; object-fit: contain; }
+.shot.dex .nm2 { position: absolute; left: 0; right: 0; top: 58%; text-align: center; font-family: var(--display); font-size: 20px; }
+.shot.dex .acts { position: absolute; left: 14px; right: 14px; bottom: 16px; display: flex; gap: 8px; }
+.shot.dex .acts i { flex: 1; text-align: center; font-style: normal; font-family: var(--display); font-size: 13px; border: 2px solid var(--ink); border-radius: 99px; padding: 4px 0; background: var(--paper); box-shadow: 0 3px 0 var(--ink); }
+.shot.dex .acts i.hi { background: var(--sun); }
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<main>
+  <header>
+    <h1>혼잣말 · 위젯 · 자랑하기</h1>
+    <p class="lead">세 기능을 각각 A·B·C 세 가지로 그렸어요. 마음에 드는 안과, 맨 아래 "정해 주세요"의 답을 알려 주시면 그대로 설계해서 만들게요. 폰에서는 줄을 옆으로 밀면 다음 안이 나와요.</p>
+  </header>
+
+  <!-- ===== 1 ===== -->
+  <section aria-labelledby="h1s">
+    <div class="sh"><span class="tag">1</span><h2 id="h1s">혼잣말</h2></div>
+    <div class="btns" role="group" aria-label="시간대">
+      <button type="button" data-t="morning" class="on">아침 8시</button><button type="button" data-t="noon">낮 1시</button><button type="button" data-t="eve">저녁 7시</button><button type="button" data-t="night">밤 11시</button><button type="button" data-t="caught">방금 새 친구</button><button type="button" data-t="back">사흘 만에 앱</button>
+    </div>
+    <div class="row">
+      <div class="opt">
+        <div class="phone t1"><div class="status"><span class="clk">8:12</span><span>●●● 87%</span></div>
+          <div class="grid" style="top:40px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="b-cloud line" style="left:60px;bottom:126px">좋은 아침!</div>
+          <div class="pet" style="left:96px;bottom:62px"><img class="pf" src="{{front}}" alt="몽글"></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">A · 구름</span><p>두 번 톡톡 했을 때 뜨는 앱 구름과 같은 모양. 테두리 없이 그림자만, 작은 구름 두 개가 녀석을 가리켜요.</p>
+      </div>
+      <div class="opt">
+        <div class="phone t1"><div class="status"><span class="clk">8:12</span><span>●●● 87%</span></div>
+          <div class="grid" style="top:40px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="b-tail line" style="left:62px;bottom:122px">좋은 아침!</div>
+          <div class="pet" style="left:96px;bottom:62px"><img class="pf" src="{{front}}" alt="몽글"></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">B · 만화 말풍선</span><p>앱 화면처럼 진한 테두리 + 아래 그림자 + 꼬리. 배경화면이 어떤 색이어도 잘 읽혀요.</p>
+      </div>
+      <div class="opt">
+        <div class="phone t1"><div class="status"><span class="clk">8:12</span><span>●●● 87%</span></div>
+          <div class="grid" style="top:40px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="b-text line" style="left:70px;bottom:116px">좋은 아침!</div>
+          <div class="pet" style="left:96px;bottom:62px"><img class="pf" src="{{front}}" alt="몽글"></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">C · 글자만</span><p>상자 없이 흰 글자에 진한 테두리. 가장 가볍지만 아이콘 위에 겹치면 덜 보여요.</p>
+      </div>
+      <div class="opt">
+        <div class="phone t1"><div class="status"><span class="clk">8:12</span><span>●●● 87%</span></div>
+          <div class="grid" style="top:40px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="b-tail b-wall line" style="right:56px;top:262px">좋은 아침!</div>
+          <div class="pet" style="right:0;top:256px;transform:rotate(-90deg)"><img class="pf" src="{{front}}" alt="몽글"></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">벽에 있을 때 (B)</span><p>홈에서 벽에 붙어 있으면 말풍선은 화면 안쪽으로, 꼬리는 녀석 쪽으로.</p>
+      </div>
+    </div>
+    <div class="cols">
+      <div class="panel">
+        <h3>언제 말하나</h3>
+        <ul>
+          <li>홈 화면이 보일 때만. 화면을 켜고 홈으로 왔을 때 30% 확률로.</li>
+          <li>한 번 말하면 10분은 조용히. 하루 최대 12번.</li>
+          <li>4초 보였다가 사라져요. 탭하면 바로 사라지고 녀석이 웃어요.</li>
+          <li>다른 앱을 쓰는 중(벽 위쪽), 자는 중, 끌고 있는 중, 앱 구름이 떠 있을 때는 말하지 않아요.</li>
+          <li>상황 말(새 친구·오랜만·충전)은 시간대 말보다 먼저 나와요. 같은 말은 연달아 안 나와요.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h3>말 목록 (예시, 고쳐 주셔도 돼요)</h3>
+        <div class="tablewrap"><table>
+          <tr><th>상황</th><th>말 (녀석 이름 = 몽글)</th></tr>
+          <tr><td class="k">아침 5~11시</td><td>좋은 아침! · 아직 졸려… · 기지개 쭉 · 물 한 잔 마셔 · 오늘 뭐 뽑을 거야?</td></tr>
+          <tr><td class="k">낮 11~17시</td><td>밥 먹었어? · 심심해… · 햇빛 좋다 · 나 좀 봐 줘 · 몽글 여기 있어</td></tr>
+          <tr><td class="k">저녁 17~22시</td><td>오늘 수고했어 · 배고파… · 같이 쉬자 · 뭐 먹을 거야?</td></tr>
+          <tr><td class="k">밤 22~5시</td><td>이제 잘 시간이야 · 내일 또 놀자 · 폰 그만 보고 자 · 졸려…</td></tr>
+          <tr><td class="k">방금 새 친구</td><td>새 친구 생겼다! · (새 녀석 이름) 반가워!</td></tr>
+          <tr><td class="k">사흘 넘게 앱 안 열림</td><td>보고 싶었어 · 요즘 뭐 뽑았어?</td></tr>
+          <tr><td class="k">충전기 꽂음</td><td>밥 먹는 중이구나 · 나도 충전할래</td></tr>
+        </table></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 2 ===== -->
+  <section aria-labelledby="h2s">
+    <div class="sh"><span class="tag">2</span><h2 id="h2s">홈 화면 위젯</h2></div>
+    <div class="row">
+      <div class="opt">
+        <div class="phone"><div class="status"><span>13:40</span><span>●●● 64%</span></div>
+          <div class="wd wA"><span class="n">몽글</span><span class="s">☀</span><img src="{{smile}}" alt=""></div>
+          <div class="grid" style="top:40px;left:128px;grid-template-columns:repeat(2,1fr)"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="grid" style="top:160px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">A · 2×2 마당</span><p>하늘과 풀밭 위에 녀석. 이름과 시간대 표시만. 누르면 뽑기 화면.</p>
+      </div>
+      <div class="opt">
+        <div class="phone"><div class="status"><span>13:40</span><span>●●● 64%</span></div>
+          <div class="wd wB"><div class="yard"></div><img src="{{smile}}" alt=""><span class="n">몽글</span><span class="l">밥 먹었어? 나는 먹었어</span><div class="bb"><span>뽑기</span><span>도감</span></div></div>
+          <div class="grid" style="top:180px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">B · 4×2 한마디</span><p>혼잣말 한 줄이 같이 나와요(1번과 같은 목록). [뽑기]·[도감] 바로 가기.</p>
+      </div>
+      <div class="opt">
+        <div class="phone"><div class="status"><span>13:40</span><span>●●● 64%</span></div>
+          <div class="grid" style="top:40px"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div>
+          <div class="wd wC"><img src="{{smile}}" alt=""></div>
+          <div class="dock"><i class="ic"></i><i class="ic"></i><i class="ic"></i><i class="ic"></i></div></div>
+        <span class="nm">C · 1×1 스티커</span><p>배경 없이 녀석만. 아이콘 사이에 앉아 있는 느낌. 펫 띄우기와 가장 비슷해요.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>시간대마다 바뀌는 모습 (A로 보면)</h3>
+      <div class="strip">
+        <figure><div class="mini" style="background:linear-gradient(#ffe7b0 0 56%,var(--grass) 56%)"><span class="n">몽글</span><img src="{{front}}" alt=""></div>아침 · 서 있음</figure>
+        <figure><div class="mini" style="background:linear-gradient(var(--sky) 0 56%,var(--grass) 56%)"><span class="n">몽글</span><img src="{{smile}}" alt=""></div>낮 · 웃음</figure>
+        <figure><div class="mini" style="background:linear-gradient(#f6b98f 0 56%,#cfe3b8 56%)"><span class="n">몽글</span><img src="{{front}}" alt=""></div>저녁 · 노을</figure>
+        <figure><div class="mini" style="background:linear-gradient(#2c3a5c 0 56%,#566b4c 56%)"><span class="n" style="color:#fff">몽글</span><img src="{{sleep}}" alt=""></div>밤 · 잠</figure>
+      </div>
+      <ul>
+        <li>위젯은 움직이지 않아요. 안드로이드가 위젯 그림을 30분에 한 번만 바꿔 줘서, 시간대가 바뀔 때 그림이 바뀌어요.</li>
+        <li>펫을 바꾸면 위젯도 바로 바뀌어요. 아직 고른 녀석이 없으면 "털뭉치를 뽑아 주세요" 그림.</li>
+        <li>권한이 따로 필요 없고, 펫 띄우기를 꺼 둬도 돼요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ===== 3 ===== -->
+  <section aria-labelledby="h3s">
+    <div class="sh"><span class="tag">3</span><h2 id="h3s">자랑하기 (공유 카드)</h2></div>
+    <div class="btns">
+      <button type="button" id="who3">진짜 녀석으로 보기</button><button type="button" id="col3">다른 캡슐 색</button>
+    </div>
+    <div class="row">
+      <div class="opt">
+        <div class="card cA">
+          <div class="hd ttl" style="top:12px;font-size:21px">새 친구! 몽글</div>
+          <div class="dt sub3" style="top:42px">2026.11.16 · 털뭉치</div>
+          <svg class="cap" style="top:72px" width="190" height="150" viewBox="0 0 190 150" aria-hidden="true">
+            <g transform="rotate(-22 40 40)"><path class="capT" d="M8 66 a56 56 0 0 1 112 0 Z" transform="translate(-14 -28)" fill="#ffd84d" stroke="#24331f" stroke-width="3"/></g>
+            <image class="who" href="{{front}}" x="40" y="8" width="110" height="110"/>
+            <path class="capB" d="M22 104 a73 46 0 0 0 146 0 Z" fill="#f05a5a" stroke="#24331f" stroke-width="3"/>
+            <rect x="20" y="99" width="150" height="9" rx="4" fill="#24331f"/>
+          </svg>
+          <div class="ft"><span><b>리얼뽑기</b><br>찍으면 캡슐에 담겨요</span><i class="qr"></i></div>
+        </div>
+        <span class="nm">A · 4:5 피드 카드</span><p>인스타 피드·카톡에 딱 맞는 크기. 위 제목, 가운데 열린 캡슐, 아래 앱 이름과 링크.</p>
+      </div>
+      <div class="opt">
+        <div class="card cB">
+          <div class="hd ttl" style="top:38px;font-size:22px">새 친구! 몽글</div>
+          <div class="dt sub3" style="top:70px">2026.11.16 · 털뭉치</div>
+          <svg class="cap" style="top:122px" width="170" height="150" viewBox="0 0 190 150" aria-hidden="true">
+            <g transform="rotate(-22 40 40)"><path class="capT" d="M8 66 a56 56 0 0 1 112 0 Z" transform="translate(-14 -28)" fill="#ffd84d" stroke="#24331f" stroke-width="3"/></g>
+            <image class="who" href="{{front}}" x="40" y="8" width="110" height="110"/>
+            <path class="capB" d="M22 104 a73 46 0 0 0 146 0 Z" fill="#f05a5a" stroke="#24331f" stroke-width="3"/>
+            <rect x="20" y="99" width="150" height="9" rx="4" fill="#24331f"/>
+          </svg>
+          <div class="ft" style="padding:10px 11px 14px"><span><b>리얼뽑기</b><br>찍으면 캡슐에 담겨요</span><i class="qr"></i></div>
+        </div>
+        <span class="nm">B · 9:16 스토리</span><p>인스타 스토리용 세로. 위아래 여백이 커서 스티커·글을 올리기 좋아요.</p>
+      </div>
+      <div class="opt">
+        <div class="card cC">
+          <div class="photo">
+            <svg class="cap2" width="150" height="130" viewBox="0 0 190 150" aria-hidden="true">
+              <g transform="rotate(-22 40 40)"><path class="capT" d="M8 66 a56 56 0 0 1 112 0 Z" transform="translate(-14 -28)" fill="#ffd84d" stroke="#24331f" stroke-width="3"/></g>
+              <image class="who" href="{{front}}" x="40" y="8" width="110" height="110"/>
+              <path class="capB" d="M22 104 a73 46 0 0 0 146 0 Z" fill="#f05a5a" stroke="#24331f" stroke-width="3"/>
+              <rect x="20" y="99" width="150" height="9" rx="4" fill="#24331f"/>
+            </svg>
+          </div>
+          <div class="hand ttl">새 친구! 몽글</div>
+          <div class="sub sub3">2026.11.16 · 털뭉치 · 리얼뽑기</div>
+        </div>
+        <span class="nm">C · 폴라로이드</span><p>흰 테두리 사진 한 장. 가장 깔끔하지만 링크는 공유 글에만 붙어요(그림에는 앱 이름만).</p>
+      </div>
+    </div>
+    <div class="row">
+      <div class="opt">
+        <div class="shot">
+          <svg width="150" height="130" viewBox="0 0 190 150" aria-hidden="true">
+            <g transform="rotate(-22 40 40)"><path class="capT" d="M8 66 a56 56 0 0 1 112 0 Z" transform="translate(-14 -28)" fill="#ffd84d" stroke="#24331f" stroke-width="3"/></g>
+            <image class="who" href="{{front}}" x="40" y="8" width="110" height="110"/>
+            <path class="capB" d="M22 104 a73 46 0 0 0 146 0 Z" fill="#f05a5a" stroke="#24331f" stroke-width="3"/>
+            <rect x="20" y="99" width="150" height="9" rx="4" fill="#24331f"/>
+          </svg>
+          <div class="toast"><span class="ttl">새 친구! 몽글</span><i>자랑하기</i></div>
+        </div>
+        <span class="nm">들어가는 곳 ① 뽑은 직후</span><p>캡슐이 열리고 뜨는 문구 옆에 [자랑하기]. 6초 뒤 문구와 같이 사라져요.</p>
+      </div>
+      <div class="opt">
+        <div class="shot dex">
+          <div class="pic"><img class="who2" src="{{front}}" alt=""></div>
+          <div class="nm2 nm3">몽글</div>
+          <div class="acts"><i>펫으로 띄우기</i><i class="hi">자랑하기</i></div>
+        </div>
+        <span class="nm">들어가는 곳 ② 도감 상세</span><p>도감에서 녀석을 열면 아래에 [자랑하기]. 예전에 뽑은 것도 보낼 수 있어요.</p>
+      </div>
+    </div>
+    <div class="panel">
+      <h3>자랑하기를 누르면</h3>
+      <ul>
+        <li>카드 그림을 만들어 안드로이드 공유 창을 열어요(카톡, 인스타, 메시지 등 폰에 있는 앱).</li>
+        <li>같이 가는 글: "리얼뽑기에서 몽글을 뽑았어! (링크)".</li>
+        <li>진짜 녀석(사람·동물·물건)은 오려 낸 사진이 캡슐에 들어가요. 사람이 찍힌 건 보내기 전에 "사진 속 사람에게 물어봤나요?"를 한 번 물어요.</li>
+        <li>캡슐 색은 그때 뽑힌 두 색 그대로. 뽑은 횟수 같은 숫자는 넣지 않아요.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section aria-labelledby="h4s">
+    <div class="sh"><span class="tag">?</span><h2 id="h4s">정해 주세요</h2></div>
+    <div class="panel">
+      <p class="ask"><b>1 혼잣말</b> — 말풍선 A·B·C 중 하나. 말 목록은 이대로 시작해도 될까요(나중에 고치기 쉬워요)?</p>
+      <p class="ask"><b>2 위젯</b> — A·B·C 중 하나, 또는 둘(예: A + C)을 같이 넣을 수도 있어요.</p>
+      <p class="ask"><b>3 자랑하기</b> — 카드 A·B·C 중 하나. 링크는 아직 플레이 스토어에 없으니, 출시 전에는 무엇을 붙일까요? (스토어 주소가 생기면 그걸로 바꿔요)</p>
+    </div>
+  </section>
+</main>
+
+<script>
+const IMG = { front: "{{front}}", smile: "{{smile}}", sleep: "{{sleep}}", dog: "{{dog}}" };
+const SAY = { morning: ["좋은 아침!", "8:12", "front", ""], noon: ["밥 먹었어?", "13:40", "smile", ""], eve: ["오늘 수고했어", "19:05", "front", ""],
+  night: ["이제 잘 시간이야", "23:10", "front", "night"], caught: ["새 친구 생겼다!", "15:22", "smile", ""], back: ["보고 싶었어", "10:30", "front", ""] };
+document.querySelectorAll("[data-t]").forEach(b => b.addEventListener("click", () => {
+  document.querySelectorAll("[data-t]").forEach(x => x.classList.toggle("on", x === b));
+  const [line, clk, pose, cls] = SAY[b.dataset.t];
+  document.querySelectorAll(".line").forEach(e => e.textContent = line);
+  document.querySelectorAll(".t1 .clk").forEach(e => e.textContent = clk);
+  document.querySelectorAll(".t1 .pf").forEach(e => e.src = IMG[pose]);
+  document.querySelectorAll(".phone.t1").forEach(e => e.classList.toggle("night", cls === "night"));
+}));
+const PAIRS = [["#ffd84d", "#f05a5a"], ["#bfe6ff", "#4f8ff0"], ["#f7c8e0", "#b07cf0"], ["#d9f2c9", "#3fae6a"], ["#ffe1c2", "#ff8a4c"], ["#fffdf6", "#3cc4c4"]];
+let pi = 0;
+document.getElementById("col3").addEventListener("click", () => {
+  pi = (pi + 1) % PAIRS.length;
+  document.querySelectorAll(".capT").forEach(e => e.setAttribute("fill", PAIRS[pi][0]));
+  document.querySelectorAll(".capB").forEach(e => e.setAttribute("fill", PAIRS[pi][1]));
+});
+let real = false;
+document.getElementById("who3").addEventListener("click", e => {
+  real = !real; e.currentTarget.textContent = real ? "털뭉치로 보기" : "진짜 녀석으로 보기";
+  document.querySelectorAll(".who").forEach(x => x.setAttribute("href", real ? IMG.dog : IMG.front));
+  document.querySelectorAll(".who2").forEach(x => x.src = real ? IMG.dog : IMG.front);
+  document.querySelectorAll(".ttl").forEach(x => x.textContent = real ? "강아지 도토리를 뽑았다!" : "새 친구! 몽글");
+  document.querySelectorAll(".sub3").forEach(x => x.textContent = real ? "2026.11.16 · 강아지 · 진짜 녀석" : "2026.11.16 · 털뭉치");
+  document.querySelectorAll(".nm3").forEach(x => x.textContent = real ? "도토리" : "몽글");
+});
+</script>

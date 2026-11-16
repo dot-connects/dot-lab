@@ -50,6 +50,19 @@ object PetPrefs {
     /** Stand line (dp) on the bottom row: just above the dock (plan R5). */
     fun floorY(hDp: Float) = hDp * 0.88f - 48f
     fun night(): Boolean = Calendar.getInstance().get(Calendar.HOUR_OF_DAY).let { it >= 22 || it < 7 }
+
+    // talk (spec-extras 1): what was said, the friend caught since, when the app was last opened
+    fun talkState(ctx: Context) = prefs(ctx).let { Talk.State(it.getLong("talk_at", 0L), it.getLong("talk_day", -1L), it.getInt("talk_n", 0), it.getString("talk_last", null)) }
+    fun setTalkState(ctx: Context, s: Talk.State) {
+        prefs(ctx).edit().putLong("talk_at", s.at).putLong("talk_day", s.day).putInt("talk_n", s.count).putString("talk_last", s.last).apply()
+    }
+    /** A new dex friend the pet has not greeted yet (set when a catch grows the dex). */
+    fun friend(ctx: Context): String? = prefs(ctx).getString("talk_friend", null)
+    fun setFriend(ctx: Context, name: String?) { prefs(ctx).edit().putString("talk_friend", name).apply() }
+    fun openedAt(ctx: Context) = prefs(ctx).getLong("opened_at", 0L)
+    fun setOpenedAt(ctx: Context, at: Long) { prefs(ctx).edit().putLong("opened_at", at).putBoolean("missed_said", false).apply() }
+    fun missedSaid(ctx: Context) = prefs(ctx).getBoolean("missed_said", false)
+    fun setMissedSaid(ctx: Context) { prefs(ctx).edit().putBoolean("missed_said", true).apply() }
 }
 
 /**
@@ -112,6 +125,11 @@ class PetService : Service() {
             // only when usage access tells home from other apps: without it the pet keeps its floor (review 11-16 H1)
             brain?.upHigh(usageOk && !homeOnly && !home)
             if (hidden || bubble?.expired() == true) closeBubble()
+            if (hidden || talk?.expired() == true || brain?.upHigh == true) closeTalk()
+            // coming back to home from another app also gives it a chance to talk (spec 1, review 11-16 M1)
+            if (usageOk && home && !wasHome) wantTalkAt = now
+            wasHome = home
+            if (!hidden) tryTalk(now, home)
             if (bubble != null) brain?.ponder(true)   // a tap's smile is over: back to thinking
             v?.visibility = if (hidden) View.GONE else View.VISIBLE
             brain?.step(min(now - lastMs, 250L).toFloat(), (now - touchedAt).toFloat(), PetPrefs.night(), charging)
@@ -132,8 +150,69 @@ class PetService : Service() {
 
     private val screen = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
-            if (i.action == Intent.ACTION_SCREEN_OFF) pause() else resume()
+            when (i.action) {
+                Intent.ACTION_SCREEN_OFF -> { closeTalk(); pause() }
+                Intent.ACTION_SCREEN_ON -> resume()
+                Intent.ACTION_USER_PRESENT -> wantTalkAt = SystemClock.uptimeMillis()
+                Intent.ACTION_POWER_CONNECTED -> { chargedAt = SystemClock.uptimeMillis(); wantTalkAt = chargedAt }
+            }
         }
+    }
+
+    // --- talk (spec-extras 1) ---
+    private var talk: TalkBubble? = null
+    /** An unlock or a plug-in asked for a line; tried on the next ticks while the pet shows on home (5 s). */
+    private var wantTalkAt = 0L
+    private var chargedAt = 0L
+    private var petName = ""
+    private var wasHome = true
+
+    private fun tryTalk(now: Long, home: Boolean) {
+        if (wantTalkAt == 0L) return
+        if (now - wantTalkAt > 5000) { wantTalkAt = 0L; return }
+        val b = brain ?: return
+        // on home only; without usage access we cannot tell, then a pet that is not up high counts as home
+        val onHome = if (usageOk) home else !b.upHigh
+        if (!onHome || b.upHigh || bubble != null || talk != null || view?.visibility != View.VISIBLE) return
+        if (b.act == PetBrain.Act.HANG || b.act == PetBrain.Act.FALL || b.act == PetBrain.Act.PONDER) { wantTalkAt = 0L; return }
+        wantTalkAt = 0L
+        val friend = PetPrefs.friend(this)
+        val missed = !PetPrefs.missedSaid(this) && PetPrefs.openedAt(this).let { it > 0 && System.currentTimeMillis() - it > 3 * 86_400_000L }
+        val why = when {
+            friend != null -> Talk.Why.NewFriend(friend)
+            chargedAt > 0 && now - chargedAt < 60_000 -> Talk.Why.Charging
+            missed -> Talk.Why.Missed
+            else -> null
+        }
+        val wall = System.currentTimeMillis()
+        val day = java.time.LocalDate.now().toEpochDay()
+        val st = PetPrefs.talkState(this)
+        val line = Talk.pick(wall, day, Calendar.getInstance().get(Calendar.HOUR_OF_DAY), why, petName.ifEmpty { "나" }, st) { Math.random().toFloat() } ?: return
+        PetPrefs.setTalkState(this, Talk.said(wall, day, st, line))
+        when (why) { is Talk.Why.NewFriend -> PetPrefs.setFriend(this, null); Talk.Why.Missed -> PetPrefs.setMissedSaid(this); else -> {} }
+        // the pet is usually asleep by the time the phone is unlocked or plugged in: it wakes to say it (review 11-16 H1)
+        if (b.act == PetBrain.Act.SLEEP) { touchedAt = now; b.wake() }
+        val v = TalkBubble(winCtx ?: this, line, b.zone) { closeTalk(); touchedAt = SystemClock.uptimeMillis(); brain?.smile() }
+        val screen = wm.currentWindowMetrics.bounds
+        runCatching { wm.addView(v, v.params(petRect(), screen.width(), screen.height())) }.onSuccess { talk = v }
+    }
+
+    private fun petRect(): android.graphics.Rect {
+        val p = params ?: return android.graphics.Rect()
+        val px = (size * density).roundToInt()
+        return android.graphics.Rect(p.x, p.y, p.x + px, p.y + px)
+    }
+
+    private fun closeTalk() { talk?.let { runCatching { wm.removeView(it) } }; talk = null }
+
+    /** The cloud follows the pet while it walks. */
+    private fun moveTalk() {
+        val v = talk ?: return
+        val p = v.layoutParams as? WindowManager.LayoutParams ?: return
+        val (x, y) = p.x to p.y
+        val screen = wm.currentWindowMetrics.bounds
+        v.place(p, petRect(), screen.width(), screen.height())
+        if (p.x != x || p.y != y) runCatching { wm.updateViewLayout(v, p) }
     }
 
     override fun onBind(intent: Intent?) = null
@@ -156,6 +235,8 @@ class PetService : Service() {
         registerReceiver(screen, IntentFilter().apply {
             addAction(Intent.ACTION_SCREEN_OFF)
             addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_POWER_CONNECTED)
         }, RECEIVER_NOT_EXPORTED)
     }
 
@@ -210,6 +291,7 @@ class PetService : Service() {
         // a group (two or three together) is wider than one: a bigger box so each stays readable
         val group = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it) }?.kind?.contains('+') == true
         size = PetPrefs.size(this) * (if (group) 1.4f else 1f)
+        petName = getSharedPreferences("catchpet", MODE_PRIVATE).getString("pet", null)?.let { kr.dot.catchpet.dex.Dex.get(this, it)?.name }.orEmpty()
         usageOk = PetPrefs.usageGranted(this)
         homeOnly = PetPrefs.homeOnly(this) && usageOk
         // every installed launcher counts (the default one may be unset, i.e. the chooser); our own app hides the pet
@@ -245,7 +327,7 @@ class PetService : Service() {
 
     /** Two taps: the cloud of apps, while the pet stands and thinks (operator 11-15, 11-16). */
     private fun doubleTap(b: PetBrain) {
-        closeBubble()
+        closeBubble(); closeTalk()
         // operator 11-15: the cloud always carries [펫 설정 | 펫 끄기] under the chosen apps (mockup bubble C)
         val apps = PetApps.load(this)
         val p = params ?: return
@@ -271,7 +353,7 @@ class PetService : Service() {
     private fun closeBubble() { bubble?.let { runCatching { wm.removeView(it) }; brain?.ponder(false) }; bubble = null }
 
     private fun hide() {
-        closeBubble()
+        closeBubble(); closeTalk()
         handler.removeCallbacksAndMessages(null)   // a pending long-press would grab the next brain (review 11-16)
         pause()
         view?.let { wm.removeView(it) }
@@ -306,7 +388,7 @@ class PetService : Service() {
         }
         val nx = (left * density).roundToInt(); val ny = (top * density).roundToInt()
         // moving the window is a call into the system: only when the pet really moved
-        if (nx != p.x || ny != p.y) { p.x = nx; p.y = ny; wm.updateViewLayout(v, p) }
+        if (nx != p.x || ny != p.y) { p.x = nx; p.y = ny; wm.updateViewLayout(v, p); moveTalk() }
         v.t = t
         v.invalidate()
     }

@@ -290,23 +290,48 @@ private fun AppPicker(onDone: () -> Unit) {
     fun close() { kr.dot.catchpet.pet.PetApps.setChosen(ctx, chosen); onDone() }
     // a page in the activity, not a Dialog window: on the Fold8 the dialog's bottom was cut (operator 11-16)
     androidx.activity.compose.BackHandler { close() }
-    run {
-        BookPage {
-            Row { InkPill("‹ 펫", onClick = { close() }) }
-            Heading("열 앱 고르기", 26.sp)
-            Note("${chosen.size}개 골랐어요 · 최대 ${kr.dot.catchpet.pet.PetApps.MAX}개")
-            Panel {
-                val list = all?.sortedBy { it.pkg !in first }
-                if (list == null) CircularProgressIndicator(color = Book.Ink)
-                else for (a in list) {
-                    val on = a.pkg in chosen
-                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable {
-                        chosen = when {
-                            on -> chosen - a.pkg
-                            chosen.size < kr.dot.catchpet.pet.PetApps.MAX -> chosen + a.pkg
-                            else -> { android.widget.Toast.makeText(ctx, "최대 ${kr.dot.catchpet.pet.PetApps.MAX}개까지 고를 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); chosen }
+    val max = kr.dot.catchpet.pet.PetApps.MAX
+    fun toggle(pkg: String) {
+        chosen = when {
+            pkg in chosen -> chosen - pkg
+            chosen.size < max -> chosen + pkg
+            else -> { android.widget.Toast.makeText(ctx, "최대 ${max}개까지 고를 수 있어요", android.widget.Toast.LENGTH_SHORT).show(); chosen }
+        }
+    }
+    BookPage(scroll = false) {
+        Row { InkPill("‹ 펫", onClick = { close() }) }
+        Heading("열 앱 고르기", 26.sp)
+        // the chosen ones stay pinned above the list while it scrolls (operator 11-16, mockup picker A)
+        Panel {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text("고른 앱", fontFamily = Book.Display, fontSize = 16.sp, modifier = Modifier.weight(1f))
+                Note("${chosen.size}/$max · 누르면 빠져요")
+            }
+            val byPkg = all?.associateBy { it.pkg }.orEmpty()
+            val picked = chosen.mapNotNull { byPkg[it] }
+            if (picked.isEmpty()) Note("아래에서 앱을 골라 주세요")
+            else Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (a in picked) Column(horizontalAlignment = Alignment.CenterHorizontally,
+                    modifier = Modifier.width(48.dp).clip(RoundedCornerShape(10.dp)).clickable { toggle(a.pkg) }) {
+                    Box {
+                        Image(rememberIcon(a.icon), a.label, Modifier.padding(top = 4.dp, end = 4.dp).size(36.dp))
+                        Box(Modifier.align(Alignment.TopEnd).size(16.dp).background(Book.Ink, CircleShape), contentAlignment = Alignment.Center) {
+                            Text("×", fontSize = 11.sp, color = Color.White, lineHeight = 11.sp)
                         }
-                    }.padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    }
+                    Text(a.label, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+        }
+        val list = all?.sortedBy { it.pkg !in first }
+        Box(Modifier.weight(1f).fillMaxWidth().inkCard()) {
+            if (list == null) CircularProgressIndicator(color = Book.Ink, modifier = Modifier.align(Alignment.Center))
+            else androidx.compose.foundation.lazy.LazyColumn(contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp)) {
+                items(list.size, key = { list[it].pkg }) { i ->
+                    val a = list[i]
+                    val on = a.pkg in chosen
+                    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)).clickable { toggle(a.pkg) }.padding(vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Image(rememberIcon(a.icon), a.label, Modifier.size(32.dp))
                         Text(a.label, modifier = Modifier.weight(1f), maxLines = 1)
                         Box(Modifier.size(22.dp).background(if (on) Book.Leaf else Book.Paper, CircleShape).border(2.dp, Book.Ink, CircleShape),

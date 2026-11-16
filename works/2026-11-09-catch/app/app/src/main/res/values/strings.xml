@@ -1,3 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="widget_desc">리얼뽑기 녀석</string>
+    <string name="widget_catch">뽑기</string>
+    <string name="widget_dex">도감</string>
+    <string name="widget_yard_desc">마당에 있는 녀석</string>
+    <string name="widget_wide_desc">녀석의 한마디와 뽑기·도감 바로 가기</string>
+    <string name="widget_sticker_desc">녀석만 홈 화면에</string>
 </resources>

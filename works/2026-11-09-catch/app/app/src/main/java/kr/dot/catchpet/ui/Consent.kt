@@ -18,7 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 
 /** Where a person's photo goes next: kept on this phone, or sent out for an AI picture. */
-enum class PersonUse { DEX, AI }
+enum class PersonUse { DEX, AI, SHARE }
 
 /**
  * A face photo is personal information (operator 11-13): before a caught person goes into the dex, and before a
@@ -30,11 +30,13 @@ fun PersonConsent(use: PersonUse, onDone: (Boolean) -> Unit) {
     AlertDialog(
         onDismissRequest = { onDone(false) },
         containerColor = Book.Paper, textContentColor = Book.Ink,
-        title = { Text(if (use == PersonUse.DEX) "사람을 뽑았어요" else "사람 사진으로 그림 그리기", fontFamily = Book.Display, color = Book.Ink) },
+        title = { Text(when (use) { PersonUse.DEX -> "사람을 뽑았어요"; PersonUse.AI -> "사람 사진으로 그림 그리기"; PersonUse.SHARE -> "사람이 나온 사진이에요" }, fontFamily = Book.Display, color = Book.Ink) },
         text = {
             Column {
                 Text(
-                    if (use == PersonUse.DEX)
+                    if (use == PersonUse.SHARE)
+                        "자랑하기를 누르면 이 사진이 고른 앱으로 보내져요. 찍힌 사람에게 보내도 된다고 허락받은 경우에만 보내 주세요."
+                    else if (use == PersonUse.DEX)
                         "얼굴이 나온 사진은 개인정보예요. 이 사진은 이 폰의 도감에만 저장돼요. 찍힌 사람에게 허락받은 경우에만 넣어 주세요."
                     else
                         "그림을 그리려면 이 사진이 우리 서버를 거쳐 OpenAI 로 보내져요. 우리 서버는 사진을 저장하지 않고, " +
@@ -51,7 +53,7 @@ fun PersonConsent(use: PersonUse, onDone: (Boolean) -> Unit) {
             }
         },
         confirmButton = {
-            InkPill(if (use == PersonUse.DEX) "도감에 넣기" else "그리기", if (agreed) Book.Sun else Book.Field, onClick = if (agreed) ({ onDone(true) }) else null)
+            InkPill(when (use) { PersonUse.DEX -> "도감에 넣기"; PersonUse.AI -> "그리기"; PersonUse.SHARE -> "보내기" }, if (agreed) Book.Sun else Book.Field, onClick = if (agreed) ({ onDone(true) }) else null)
         },
         dismissButton = { InkPill(if (use == PersonUse.DEX) "버리기" else "취소", onClick = { onDone(false) }) },
     )

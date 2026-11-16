@@ -9,14 +9,15 @@ import androidx.compose.runtime.mutableIntStateOf
 import kr.dot.catchpet.ui.App
 
 class MainActivity : ComponentActivity() {
-    /** Bumped when the pet's cloud asks for the pet settings; the app switches to that screen. */
-    private val openPet = mutableIntStateOf(0)
+    /** Bumped when the pet's cloud or a widget asks for a screen; [openTo] says which ("pet" / "dex" / "catch"). */
+    private val openSeq = mutableIntStateOf(0)
+    private var openTo = "pet"
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         if (savedInstanceState == null) take(intent)
-        setContent { App(openPet.intValue) }
+        setContent { App(openSeq.intValue, openTo) }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -24,7 +25,22 @@ class MainActivity : ComponentActivity() {
         take(intent)
     }
 
-    private fun take(i: Intent?) { if (i?.getBooleanExtra(OPEN_PET, false) == true) openPet.intValue++ }
+    override fun onResume() {
+        super.onResume()
+        kr.dot.catchpet.pet.PetPrefs.setOpenedAt(this, System.currentTimeMillis())   // the pet's "보고 싶었어" counts from here
+    }
 
-    companion object { const val OPEN_PET = "open_pet" }
+    private fun take(i: Intent?) {
+        val to = when {
+            i?.getBooleanExtra(OPEN_PET, false) == true -> "pet"
+            else -> i?.getStringExtra(OPEN) ?: return
+        }
+        openTo = to; openSeq.intValue++
+    }
+
+    companion object {
+        const val OPEN_PET = "open_pet"
+        /** "dex" or "catch": a widget's button (spec-extras 2). */
+        const val OPEN = "open"
+    }
 }

@@ -37,6 +37,8 @@ object Dex {
         val poses: List<String>,   // labels; real things have <label>.png in the entry folder
         val caughtAt: Long,
         val ai: AiState,
+        /** The capsule colour it came in (spec-extras 3); null for entries caught before 0.5. */
+        val cap: Int? = null,
     )
 
     private val ENTRY_ID = Regex("^e(\\d+)$")
@@ -93,7 +95,7 @@ object Dex {
      * same entry and a new label adds a pose. png = the cut-out for real things, null for critters.
      */
     @Synchronized
-    fun add(ctx: Context, kind: String, png: ByteArray?, critterId: String?, label: String, now: Long = System.currentTimeMillis(), name: String? = null): Entry {
+    fun add(ctx: Context, kind: String, png: ByteArray?, critterId: String?, label: String, now: Long = System.currentTimeMillis(), name: String? = null, cap: Int? = null): Entry {
         val pose = poseOf(label)
         val all = list(ctx)
         if (critterId != null) {
@@ -114,7 +116,7 @@ object Dex {
         val name = if (critterId != null) critterName(ctx, critterId) else name?.takeIf { it !in used } ?: cuteName(used)
         dir(ctx, id).mkdirs()
         if (png != null) atomicWrite(file(ctx, id, "$pose.png"), png)
-        return write(ctx, Entry(id, kind, name, no, critterId, listOf(pose), now, AiState(emptyList(), null, false)))
+        return write(ctx, Entry(id, kind, name, no, critterId, listOf(pose), now, AiState(emptyList(), null, false), cap))
     }
 
     /** Every readable entry by number; a folder whose meta can't be read is skipped. */
@@ -159,7 +161,7 @@ object Dex {
         val d = dir(ctx, id)
         if (!d.exists()) return false
         val gone = File(root(ctx), ".gone-$id-${System.nanoTime()}")
-        return (if (d.renameTo(gone)) gone else d).deleteRecursively()
+        return (if (d.renameTo(gone)) gone else d).deleteRecursively().also { kr.dot.catchpet.widget.PetWidgets.refresh(ctx) }
     }
 
     private var names: Map<String, String>? = null
@@ -202,7 +204,9 @@ object Dex {
             .put("poses", JSONArray(e.poses)).put("caughtAt", e.caughtAt)
             .put("ai", JSONObject().put("previews", JSONArray(e.ai.previews)).put("sheet", e.ai.sheet ?: JSONObject.NULL).put("owned", e.ai.owned)
                 .put("sheets", JSONObject(e.ai.sheets)).put("petStyle", e.ai.petStyle ?: JSONObject.NULL))
+            .put("cap", e.cap ?: JSONObject.NULL)
         atomicWrite(file(ctx, e.id, "meta.json"), o.toString().toByteArray())
+        kr.dot.catchpet.widget.PetWidgets.refresh(ctx)   // a new name, look or first pet shows on the home widgets
         return e
     }
 
@@ -222,6 +226,7 @@ object Dex {
                 val pet = if (a.isNull("petStyle")) sheets.keys.firstOrNull() else a.optString("petStyle")
                 AiState(a.getJSONArray("previews").strings(), sheet, a.getBoolean("owned"), sheets, pet)
             },
+            if (o.isNull("cap")) null else o.optInt("cap"),
         )
     }.getOrNull()
 

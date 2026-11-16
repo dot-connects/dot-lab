@@ -160,6 +160,12 @@ class PetBrain(
         }
     }
 
+    /** Its talk cloud was tapped away: a smile (not on a flying pet). */
+    fun smile() { if (act != Act.FALL && act != Act.HANG) start(Act.SMILE, 1400f) }
+
+    /** Woken to talk (an unlock or a plug-in, review 11-16). */
+    fun wake() { if (act == Act.SLEEP) start(Act.IDLE) }
+
     /** The app cloud is open: it stops where it is and thinks until the cloud closes (operator 11-16). */
     fun ponder(on: Boolean) {
         if (!on) { if (act == Act.PONDER) start(Act.IDLE); return }
