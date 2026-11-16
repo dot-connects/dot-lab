@@ -5,11 +5,13 @@ compatibility_date = "2026-10-01"
 # Photo transform for 「우리 집 몬스터 잡기」 (OpenAI images/edits). Secrets: `npx wrangler@4 secret put OPENAI_KEY`
 # (without it every AI route answers 503 and the game keeps its on-device fluff picture) and DEBUG_PURCHASE
 # (the /sheet token until real billing; unset or empty = /sheet answers 402).
-# MONTH_CENTS = the month's money ceiling over /transform + /sheet ("0" = AI off).
+# MONTH_CENTS = the public month's money ceiling over /transform + /sheet ("0" = AI off, dev included).
 [vars]
 DEVICE_DAY = "5"
 ALL_DAY = "30"
 MONTH_CENTS = "500"
+# the dev app (operator's DEBUG_PURCHASE token) has no day/entry limits and its own month ceiling
+DEV_MONTH_CENTS = "2000"
 
 [[d1_databases]]
 binding = "DB"

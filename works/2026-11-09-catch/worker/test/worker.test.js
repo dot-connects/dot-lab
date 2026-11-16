@@ -143,7 +143,7 @@ test("/sheet: the right token gets a medium 1536x1024 sheet with the style pictu
   env.ALL_DAY = "0";
   const r = await sheet();
   assert.equal(r.status, 200);
-  assert.deepEqual(r.body, { mime: "image/webp", image: "Zm9v", left: 1, layout: "6" });
+  assert.deepEqual(r.body, { mime: "image/webp", image: "Zm9v", layout: "6" });
   assert.deepEqual({ q: calls[0].quality, s: calls[0].size, ref: calls[0].ref }, { q: "medium", s: "1536x1024", ref: true });
   assert.equal(calls[0].prompt, SHEET_PROMPT("cat"));
   assert.match(calls[0].prompt, /3 x 2 grid/);
@@ -175,35 +175,39 @@ test("/sheet: needs x-app and a valid entry", async () => {
   assert.equal((await sheet(sheetBody({ kind: "dragon" }))).status, 400);
 });
 
-test("/sheet: an entry gets 2 calls, a token 10 a day", async () => {
-  assert.equal((await sheet()).body.left, 1);
-  assert.equal((await sheet()).body.left, 0);
-  const r = await sheet();
-  assert.equal(r.status, 429);
-  assert.equal(r.body.error, "limit");
-  assert.equal(calls.length, 2);
-  for (let i = 0; i < 8; i++) assert.equal((await sheet(sheetBody({ entry: `x${i}` }))).status, 200, `entry ${i}`);
-  assert.equal((await sheet(sheetBody({ entry: "fresh" }))).status, 429);
-  assert.equal(calls.length, 10);
+test("dev token: sheets have no entry or day limit", async () => {
+  for (let i = 0; i < 12; i++) assert.equal((await sheet()).status, 200, `call ${i}`);
+  assert.equal(calls.length, 12);
+});
+
+test("dev token: app previews skip the day counters and say no 'left'", async () => {
+  const dev = b => call(b, { origin: null, headers: { "x-app": "catchpet", "x-purchase": "tok-123" } });
+  for (let i = 0; i < 7; i++) { const r = await dev(ok()); assert.equal(r.status, 200, `call ${i}`); assert.equal(r.body.left, undefined); }
+  assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), undefined);
+  assert.equal(counts.m.get("devusd|2026-11"), 35);
+  const wrong = await call(ok(), { origin: null, headers: { "x-app": "catchpet", "x-purchase": "nope" } });
+  assert.equal(wrong.body.left, 4, "a wrong token is an ordinary preview");
 });
 
 // ---------- money ----------
 
-test("the monthly cap: previews 5 and sheets 8 cents, over MONTH_CENTS = 503 off", async () => {
-  env.MONTH_CENTS = "20";
-  assert.equal((await call(ok())).status, 200);           // 5
-  assert.equal((await sheet()).status, 200);              // 13
-  assert.equal((await call(ok())).status, 200);           // 18
-  const r = await call(ok({ device: "dev-cccccccc" }));   // 23 > 20
+test("the monthly caps: public MONTH_CENTS and the dev DEV_MONTH_CENTS are apart, MONTH_CENTS 0 stops both", async () => {
+  env.MONTH_CENTS = "15"; env.DEV_MONTH_CENTS = "16";
+  for (let i = 0; i < 3; i++) assert.equal((await call(ok({ device: `dev-aaaaaaa${i}` }))).status, 200);   // 15
+  const r = await call(ok({ device: "dev-cccccccc" }));   // 20 > 15
   assert.equal(r.status, 503);
   assert.equal(r.body.error, "off");
-  assert.equal((await sheet(sheetBody({ entry: "e2" }))).status, 503);   // 26 > 20
-  assert.equal(calls.length, 3);
-  assert.equal(counts.m.get("usd|2026-11"), 18);
   assert.equal(counts.m.get("2026-11-11|dev-cccccccc"), 0, "an over-cap call gives the day slot back");
-  assert.equal(counts.m.get("sheet|tok-123|e2"), 0, "and the sheet slot");
-  delete env.MONTH_CENTS;   // default 500
+  assert.equal((await sheet()).status, 200);              // dev 8
+  assert.equal((await sheet()).status, 200);              // dev 16
+  assert.equal((await sheet()).status, 503);              // dev 24 > 16
+  assert.equal(counts.m.get("usd|2026-11"), 15);
+  assert.equal(counts.m.get("devusd|2026-11"), 16);
+  env.MONTH_CENTS = "0"; env.DEV_MONTH_CENTS = "1000";
+  assert.equal((await sheet()).status, 503, "the master switch stops dev calls too");
+  delete env.MONTH_CENTS; delete env.DEV_MONTH_CENTS;   // defaults 500 / 2000
   assert.equal((await call(ok({ device: "dev-cccccccc" }))).status, 200);
+  assert.equal((await sheet()).status, 200);
 });
 
 test("cents come back only when the call never left for OpenAI", async () => {
@@ -211,12 +215,12 @@ test("cents come back only when the call never left for OpenAI", async () => {
   assert.equal((await call(ok())).status, 502);
   assert.equal((await sheet()).status, 502);
   assert.equal(counts.m.get("usd|2026-11"), 0);
-  assert.equal(counts.m.get("sheet|tok-123|e1"), 0, "an unsent sheet keeps its retry");
+  assert.equal(counts.m.get("devusd|2026-11"), 0);
   env.callModel = async () => { throw Object.assign(new Error("model HTTP 400"), { sent: true }); };
   assert.equal((await call(ok())).status, 502);
   assert.equal((await sheet()).status, 502);
-  assert.equal(counts.m.get("usd|2026-11"), 13);
-  assert.equal(counts.m.get("sheet|tok-123|e1"), 1);
+  assert.equal(counts.m.get("usd|2026-11"), 5);
+  assert.equal(counts.m.get("devusd|2026-11"), 8);
 });
 
 test("counts.add: atomic up to the limit, 0 when it would go over, negative refunds (memory and D1 SQL)", async () => {
