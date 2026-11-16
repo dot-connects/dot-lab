@@ -7,6 +7,8 @@
 
 **0.4.x (11-15) 한눈에:** 집기 버튼(`ui/ClawButton.kt`) · 확정 메뉴 시안 `mockups/allmenus.html` · 털뭉치/피규어 펫 각각(`Dex.AiState.sheets/petStyle`, Worker `/sheet style`) · 묶어서 뽑기 최대 3(`CatchGame.group`, kind `person+cat`, Worker `validKind`/`GROUP_*`) · 두 번 톡톡 구름(`pet/PetApps.kt`) · 누끼 `seg/HiRes.kt`(16MB 모델 첫 사람 때 내려받기) + `assets/models/selfie_segmenter.tflite` · 발열(`CatchGame.lively`, 세그 300/600ms) · 12칸 동작표(`Sheet.KEYS12`, `-v12` 파일, Worker `layout`) · 구름 C안 + 키보드 피하기(`pet/KeyboardWatch.kt`) · 털뭉치 굽기 `tools/bake.html` `stride()`.
 
+**0.5.5 (11-16):** 위젯 하나 `widget/PetWidgets.kt` — 지금 펫 1마리, 모양은 가로세로 비율(`shape`, 테스트 `WidgetShapeTest`, 레이아웃 `widget_1x1/2x1/1x2/2x2`), 탭 = `Yard.TOGGLE` broadcast 로 띄우기/내리기, 상태 = `PetService.alive`(시작·종료 때 다시 그림), 펫 창은 자리 잡고 페이드. 뽑은 뒤 `ui/BragCard.kt`. 혼잣말 끄기 `PetPrefs.talkOn`. 위젯 시안 `mockups/widget-*.html`.
+
 **0.5.0 (11-16):** 혼잣말 `pet/Talk.kt`(표·속도, 테스트 `TalkTest`) + `TalkBubble` · 위젯 `widget/PetWidgets.kt`(Yard·Wide·Sticker) · 자랑하기 `ui/ShareCard.kt` + 캡슐 그림 `ui/CapsuleArt.kt`, 색은 `Dex.Entry.cap` · 앱 고르기 고정 줄. 0.4.9: 걷기 프레임 공통 자르기 `Frames.load`, 집게 `Sfx.motor`, 키보드 접근성 제거, `PetBrain.takeOver`·`ponder`. 설계 `spec-extras.md`.
 
 **0.4.7 (11-16):** 투톤 캡슐(`CatchScreen.drawCapsule`, `CAP_COLORS`, 시안 `mockups/capsule.html` A) · 키보드 A안(`PetBrain.upHigh`, 사용정보 필요) · 던지기 `PetBrain.fling` · 벽 미끄러짐 `slideOffset` · 톡 반응 HOP/WIGGLE · 이름 문구 `Caught` · 도감 "?" `MissingCell` · 폴드: density 는 창 context, 1초 `brainFits`, 창 `fitInsetsTypes = 0`.
