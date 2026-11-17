@@ -76,8 +76,8 @@ android {
             // r9 shot filters: -Pshot.themes=IPHONE,DAYPAPER -Pshot.group=board
             all { t ->
                 listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10")
-                // 11-14: test classes over parallel JVMs (8 cores, 16 GB); -Ptest.forks=1 to compare
-                t.maxParallelForks = (project.findProperty("test.forks") as String?)?.toInt() ?: 3; t.maxHeapSize = "1536m"
+                // test classes over parallel JVMs; 2 by default (4C/8T, 16 GB laptop, all-session heavy-job rule 2026-11-17), -Ptest.forks=1 next to a render
+                t.maxParallelForks = (project.findProperty("test.forks") as String?)?.toInt() ?: 2; t.maxHeapSize = "1536m"
             }
         }
     }
