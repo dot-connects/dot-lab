@@ -7,9 +7,9 @@ import kotlin.math.roundToInt
 /** Pure pixel steps on unpremultiplied ARGB ints (JVM-testable). */
 object Pixels {
     /**
-     * Every pixel made opaque over white. The image model reads a transparent cut-out's clear area as part of the
-     * picture and painted a smeared fur-coloured background instead of the green key (11-17, twice in a row); the
-     * same cut on white came back clean. Sent images go through this.
+     * Every pixel made opaque over white. With a transparent cut-out the image model answered with a transparent
+     * background instead of the green key (fine: keyGreen keeps alpha) but lost the fur's colours (a tortie came back
+     * grey, 11-17, twice); the same cut on white kept its markings and came back on green. Sent images go through this.
      */
     fun onWhite(px: IntArray): IntArray = IntArray(px.size) { i ->
         val c = px[i]; val a = c ushr 24
