@@ -28,7 +28,8 @@ export const GROUP_PROMPTS = {
 Draw EACH of them as its own chubby round fur-ball plush creature in exactly the style of image 2, keeping what makes each one recognisable (hair or fur colours and markings, glasses, clothing colours, anything they hold or carry, never any text), and keep them TOGETHER the way they are in the photo: touching, side by side or one held by the other, the same relative sizes. All of them fully in view, centred as one group, front view, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
   figure: k => `Image 1 is a real photo of ${groupWho(k)} together (${k.split("+").length} of them). Make a cute small 3D figurine set of THEM: each one its own figurine with its real body shape simplified, slightly chibi proportions (bigger heads), soft matte clay/plush 3D render, real colours, markings, glasses, face features and clothing colours (no text on clothes), tiny black dot eyes, small pink blush, gentle smiles. Keep them TOGETHER the way they are in the photo: touching, side by side or one held by the other, the same relative sizes. All of them fully in view, centred as one group, front three-quarter view, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
 };
-const IMAGE_MAX = 2_000_000;   // base64 chars, ~1.5 MB: the game sends a <= 512 px PNG
+const IMAGE_MAX = 2_000_000;
+const LOOK_MAX = 800_000;   // base64 chars of the chosen preview sent with /sheet (a webp of ~100-300 KB)   // base64 chars, ~1.5 MB: the game sends a <= 512 px PNG
 const MODEL = "gpt-image-2.6-flare";
 const OPENAI_URL = "https://api.openai.com/v1/images/edits";
 const STYLE_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-09-catch/site/img/style-ref.jpg";
@@ -84,6 +85,17 @@ ${HELD}
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 };
 
+/** The 12-cell sheet drawn from the chosen preview (image 2): the same character, only the pose changes. */
+export const LOOK_SHEET_PROMPT = k => {
+  const group = k.includes("+");
+  return `Image 1 is a real photo of ${group ? `${groupWho(k)} together` : `a ${k}`}. Image 2 is ${group ? "THIS group" : "THIS character"} already drawn in our style.
+
+Make a character pose sheet of exactly the ${group ? "group" : "character"} in image 2: the same look in every detail (face, eyes, colours, fur or hair, clothes, proportions, style, and anything it holds). Only the pose changes. Use image 1 only to understand the real subject.${group ? " In EVERY cell the SAME group appears TOGETHER, touching, with the same relative sizes." : ""}
+${CELLS12}
+${HELD}
+No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
+};
+
 // a group's pose sheet (operator 11-15): the same group in every cell, always together
 const GROUP_LOOK = {
   fluff: "each of them as its own chubby round fur-ball plush creature in exactly the style of image 2 (small round pale 3D plush fur balls, soft fur texture, tiny black dot eyes, small pink blush, short stubby feet)",
@@ -117,11 +129,12 @@ async function styleImage() {
  * Errors carry .sent once the request left for OpenAI (the money reservation then stays) and .billed when OpenAI
  * answered 200 without a picture. One retry on 5xx, none on 4xx.
  */
-export async function callOpenAI({ prompt, image, ref, quality, size }, env) {
+export async function callOpenAI({ prompt, image, ref, look, quality, size }, env) {
   const form = new FormData();
   for (const [k, v] of Object.entries({ model: env.MODEL || MODEL, prompt, quality, size, output_format: "webp", output_compression: "80" })) form.append(k, v);
   form.append("image[]", new Blob([b64bytes(image)], { type: "image/png" }), "photo.png");
-  if (ref) form.append("image[]", new Blob([await styleImage()], { type: "image/jpeg" }), "style.jpg");
+  if (look) form.append("image[]", new Blob([b64bytes(look)], { type: "image/webp" }), "look.webp");
+  else if (ref) form.append("image[]", new Blob([await styleImage()], { type: "image/jpeg" }), "style.jpg");
   const sent = e => Object.assign(e, { sent: true });
   for (let attempt = 0; ; attempt++) {
     let r;
@@ -180,6 +193,7 @@ export function ipKey(ip) {
   return g.slice(0, 4).map(x => x.replace(/^0+(?=.)/, "")).join(":") + "::/64";
 }
 const num = (v, d) => (v === undefined || v === "" ? d : +v);   // "0" is a real limit (the off switch)
+const goodLook = s => typeof s === "string" && !!s && s.length <= LOOK_MAX && /^[A-Za-z0-9+/=]+$/.test(s);
 const goodImage = s => typeof s === "string" && !!s && s.length <= IMAGE_MAX && /^[A-Za-z0-9+/=]+$/.test(s);
 const goodDevice = s => /^dev-[a-z0-9]{8,32}$/.test(s || "");
 
@@ -238,6 +252,8 @@ async function transform(b, req, env, counts, day, origin, dev) {
 }
 
 function sheetJob(b, style) {
+  // operator 11-18: the pet is the preview the player liked, in poses: that picture goes in as image 2
+  if (String(b.layout) === "12" && goodLook(b.look)) return { prompt: LOOK_SHEET_PROMPT(b.kind), image: b.image, look: b.look, quality: "medium", size: "1536x1024" };
   return String(b.layout) === "12"
     ? { prompt: SHEET12_PROMPT(style, b.kind), image: b.image, ref: style === "fluff", quality: "medium", size: "1536x1024" }
     : b.kind.includes("+")
@@ -367,7 +383,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
     return json({ free_left: await ledger.freeLeft(device, total), free_total: total });
   }
   if (req.method !== "POST" || !["/transform", "/sheet", "/report"].includes(path)) return json({ error: "not found" }, 404);
-  if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + 2000) return json({ error: "too big" }, 413);
+  if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + LOOK_MAX + 2000) return json({ error: "too big" }, 413);
   const text = await req.text();
   let b = null;
   try { b = JSON.parse(text); } catch {}
