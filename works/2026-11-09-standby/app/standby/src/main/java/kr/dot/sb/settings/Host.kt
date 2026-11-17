@@ -44,6 +44,8 @@ class SettingsEnv(
     val playSample: (kr.dot.sb.model.SleepSound) -> Unit = {},
     /** Recent charger-start log lines (켜짐과 꺼짐 자세히). */
     val chargeTrail: () -> List<String> = { emptyList() },
+    /** plan-r15 measurement log (personal build, 정보): charge-start grants and paths, posture samples, fold postures. */
+    val measureLog: () -> List<String> = { emptyList() },
     /** Where the slow lookups above run (shots pass Dispatchers.Unconfined so they load inline). */
     val io: kotlin.coroutines.CoroutineContext = kotlinx.coroutines.Dispatchers.IO,
     /** Today (D-day count and the new D-day's default date); shots pin it so their PNGs do not change per day. */

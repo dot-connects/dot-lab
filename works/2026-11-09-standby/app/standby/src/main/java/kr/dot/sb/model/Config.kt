@@ -368,6 +368,8 @@ data class AppConfig(
     val startOnCharge: Boolean = true,
     /** Only a wireless charger starts StandBy (a cable does not). */
     val chargeWirelessOnly: Boolean = false,
+    /** plan-r15 C2: with [chargeWirelessOnly], only a phone lying in landscape starts StandBy (가로로 놓였을 때만 켜기). */
+    val startLandscapeOnly: Boolean = false,
     val displayOff: DisplayOff = DisplayOff.AUTO,
     val motionToWake: Boolean = true,
     val showNotifications: Boolean = true,

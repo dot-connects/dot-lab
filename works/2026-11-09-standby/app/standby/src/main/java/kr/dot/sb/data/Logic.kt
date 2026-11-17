@@ -379,6 +379,25 @@ object AlarmActions {
 }
 
 /**
+ * plan-r15 C1: which alarm opens the takeover. [ringing] = a clock-app alarm notification that shows a snooze button or
+ * a full-screen intent; [clock] = any clock-app alarm notification still posted; [audio] = something plays with
+ * USAGE_ALARM. Audio alone (our own timer tone, a preview, a sibling flavor's tone) never opens it: it needs a clock
+ * notification to stand behind it.
+ */
+object AlarmTakeover {
+    fun <T : Any> pick(ringing: T?, clock: T?, audio: Boolean): T? = ringing ?: if (audio) clock else null
+}
+
+/**
+ * plan-r15 C4: the pre-alarm glow fires only while the alarm it was armed for is still the user's next one. Once ours
+ * has fired, the phone's next alarm clock is the user's own; [nextIsOurs] = a sibling flavor's glow alarm hides it, so
+ * the stored time is trusted then.
+ */
+object GlowFire {
+    fun valid(stored: Long, next: Long?, nextIsOurs: Boolean): Boolean = stored > 0 && (nextIsOurs || next == stored)
+}
+
+/**
  * Package ids of this app's flavors (personal, public, the old public test id). With two on one phone each must ignore
  * the other's notifications and glow alarm, or they react to each other (plan-r15 A2).
  */

@@ -3,11 +3,15 @@ package kr.dot.sb.platform
 import android.app.Notification
 import android.app.PendingIntent
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
+import android.media.AudioFocusRequest
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.IBinder
 import android.os.SystemClock
@@ -25,6 +29,41 @@ class SleepService : Service() {
     @Volatile private var sound = SleepSound.RAIN
     @Volatile private var endAt = Long.MAX_VALUE
     private var thread: Thread? = null
+
+    // plan-r15 C5: audio focus. Lost (or not given yet) = paused, a transient duck = quieter; the loop applies both.
+    @Volatile private var paused = false
+    @Volatile private var volume = 1f
+    private var focus: AudioFocusRequest? = null
+    private var noisyRx: BroadcastReceiver? = null
+
+    private fun requestFocus() {
+        if (focus != null) return
+        val f = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
+            .setAudioAttributes(ATTRS)
+            .setAcceptsDelayedFocusGain(true)
+            .setWillPauseWhenDucked(false)
+            .setOnAudioFocusChangeListener { c ->
+                when (c) {
+                    AudioManager.AUDIOFOCUS_GAIN -> { paused = false; volume = 1f }
+                    AudioManager.AUDIOFOCUS_LOSS, AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> paused = true
+                    AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> volume = DUCK
+                }
+            }
+            .build()
+        focus = f
+        paused = getSystemService(AudioManager::class.java).requestAudioFocus(f) != AudioManager.AUDIOFOCUS_REQUEST_GRANTED
+        // headphones out: stop rather than go on from the speaker
+        noisyRx = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) { running = false; stopSelf() }
+        }.also { registerReceiver(it, IntentFilter(AudioManager.ACTION_AUDIO_BECOMING_NOISY), RECEIVER_NOT_EXPORTED) }
+    }
+
+    private fun releaseFocus() {
+        focus?.let { f -> runCatching { getSystemService(AudioManager::class.java).abandonAudioFocusRequest(f) } }
+        focus = null
+        noisyRx?.let { runCatching { unregisterReceiver(it) } }
+        noisyRx = null
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -52,6 +91,7 @@ class SleepService : Service() {
             running = true
             session.incrementAndGet()
         }
+        requestFocus()
         thread = Thread({ play(g) }, "sleep-noise").also { it.start() }
         return START_NOT_STICKY
     }
@@ -68,7 +108,7 @@ class SleepService : Service() {
         return try {
             val min = AudioTrack.getMinBufferSize(NoiseGen.RATE, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
             t = AudioTrack.Builder()
-                .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
+                .setAudioAttributes(ATTRS)
                 .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(NoiseGen.RATE).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
                 .setBufferSizeInBytes(NoiseGen.bufferBytes(min))
                 .setTransferMode(AudioTrack.MODE_STREAM)
@@ -101,6 +141,15 @@ class SleepService : Service() {
                     return true
                 }
                 val t = track ?: openTrack()?.also { track = it } ?: if (failed()) continue else break
+                if (paused) {
+                    // focus lost: hold the track (the timer keeps counting) until it comes back
+                    if (t.playState == AudioTrack.PLAYSTATE_PLAYING) runCatching { t.pause() }
+                    if (timeLeft() < 0) break
+                    Thread.sleep(250)
+                    continue
+                }
+                if (t.playState != AudioTrack.PLAYSTATE_PLAYING) try { t.play() } catch (e: IllegalStateException) { if (failed()) continue else break }
+                runCatching { t.setVolume(volume) }
                 if (gen.sound != sound) {
                     // a switch: drop what is buffered of the old sound so the two never overlap
                     gen = NoiseGen(sound)
@@ -137,6 +186,7 @@ class SleepService : Service() {
 
     override fun onDestroy() {
         running = false // the thread notices on its next chunk, pauses + flushes + releases the track and resets SleepBus
+        releaseFocus()
         super.onDestroy()
     }
 
@@ -145,6 +195,9 @@ class SleepService : Service() {
         private const val MINUTES = "minutes"
         private const val ACTION_STOP = "kr.dot.sb.SLEEP_STOP"
         private const val FADE_MS = 10_000L
+        private const val DUCK = 0.2f
+        private val ATTRS: AudioAttributes =
+            AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build()
         private const val TAG = "SleepService"
         /** Playback session across service instances: only the latest loop may report "off" or stop the service. */
         private val session = java.util.concurrent.atomic.AtomicInteger()

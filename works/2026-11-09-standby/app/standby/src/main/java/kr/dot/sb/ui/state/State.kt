@@ -151,7 +151,8 @@ data class AgendaItem(
 )
 
 @Immutable
-data class AlarmRinging(val label: String, val canSnooze: Boolean = true)
+/** [canSnooze] / [canStop] = the clock app's notification has that action (plan-r15 C1); neither = only 닫기. */
+data class AlarmRinging(val label: String, val canSnooze: Boolean = true, val canStop: Boolean = true)
 
 @Immutable
 data class BigNotification(
@@ -248,6 +249,8 @@ interface StandbyActions {
     fun sleepMinutesNext() {}
     fun alarmSnooze() {}
     fun alarmStop() {}
+    /** 닫기 on an alarm without snooze/stop actions: hides the takeover until that alarm ends (plan-r15 C1). */
+    fun alarmClose() {}
     fun notificationTap(key: String) {}
     /** New-notification banner tap: the board's notification card opens expanded (StandbyRoot owns it); no card → the app. */
     fun openNotifCard(key: String) = notificationTap(key)

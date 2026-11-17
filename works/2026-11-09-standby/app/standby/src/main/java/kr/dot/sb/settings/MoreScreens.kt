@@ -213,6 +213,14 @@ fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
                 )
             }
             item {
+                // plan-r15 C2: a separate check, only under 무선 충전일 때만
+                SwitchRow(
+                    "가로로 놓였을 때만 켜기", config.startLandscapeOnly, { v -> update { it.copy(startLandscapeOnly = v) } },
+                    subtitle = "폰을 세로로 두면 뜨지 않아요", enabled = config.startOnCharge && config.chargeWirelessOnly,
+                    why = "무선 충전일 때만을 켜면 쓸 수 있어요",
+                )
+            }
+            item {
                 ControlRow("화면 꺼짐", note = notes[config.displayOff.ordinal]) {
                     Segmented(listOf("어두워지면", "20초 뒤", "계속 켜 둠"), config.displayOff.ordinal, { i -> update { it.copy(displayOff = DisplayOff.entries[i]) } })
                 }
@@ -592,6 +600,18 @@ fun AboutScreen(env: SettingsEnv, back: () -> Unit) {
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         T("최근 켜짐 기록", 16.sp, 500, SK.text)
                         T(if (trail.isEmpty()) "아직 기록이 없어요" else trail.joinToString("\n"), 14.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 22.sp)
+                    }
+                }
+                // plan-r15 Order step 2: the measurement round's log, read-only, newest first; 복사 for sending it on
+                item {
+                    val lines = remember { env.measureLog() }
+                    val clip = androidx.compose.ui.platform.LocalClipboardManager.current
+                    Column(Modifier.fillMaxWidth().padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            T("측정 기록", 16.sp, 500, SK.text, Modifier.weight(1f))
+                            if (lines.isNotEmpty()) ActionButton("복사", { clip.setText(androidx.compose.ui.text.AnnotatedString(lines.joinToString("\n"))) }, primary = false)
+                        }
+                        T(if (lines.isEmpty()) "아직 기록이 없어요" else lines.joinToString("\n"), 12.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 17.sp)
                     }
                 }
             }

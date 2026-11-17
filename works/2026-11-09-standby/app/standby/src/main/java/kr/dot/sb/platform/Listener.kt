@@ -52,6 +52,8 @@ class Listener : NotificationListenerService() {
     private val handler = Handler(Looper.getMainLooper())
     private var scope: CoroutineScope? = null
     private var alarmKey: String? = null
+    /** plan-r15 C1: a clock-app alarm notification that is not ringing (yet); an alarm tone needs one to open the takeover. */
+    private var clockKey: String? = null
     private val live = LinkedHashMap<String, Pair<Long, LiveActivity>>()
     private var audioAlarm = false
     /** Shade icons, decoded once per notification ("key|kind") or app ("pkg:"); pruned to what is listed. */
@@ -137,6 +139,7 @@ class Listener : NotificationListenerService() {
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         ListenerBus.contentIntents.remove(sbn.key)
         if (sbn.key == alarmKey) { alarmKey = null; ListenerBus.setNotificationAlarm(null) }
+        if (sbn.key == clockKey) { clockKey = null; ListenerBus.setClockAlarm(null) }
         if (live.remove(sbn.key) != null) publishLive()
         publishShadeSoon()
     }
@@ -150,7 +153,12 @@ class Listener : NotificationListenerService() {
         handler.postAtTime(shadeRun, at)
     }
 
+    /** plan-r15 C3: one malformed notification must not take the listener (and the charge start in it) down. */
     private fun handle(sbn: StatusBarNotification, rm: RankingMap?) {
+        runCatching { handleOne(sbn, rm) }.onFailure { android.util.Log.w(TAG, "notification ${sbn.packageName} failed", it) }
+    }
+
+    private fun handleOne(sbn: StatusBarNotification, rm: RankingMap?) {
         val n = sbn.notification
         val x = n.extras
         val tmpl = x.getString(Notification.EXTRA_TEMPLATE).orEmpty()
@@ -182,13 +190,18 @@ class Listener : NotificationListenerService() {
 
     private fun alarm(sbn: StatusBarNotification) {
         val n = sbn.notification
-        val actions = n.actions.orEmpty().map { it.title.toString() to it.actionIntent }
+        val actions = n.actions.orEmpty().map { it.title?.toString().orEmpty() to it.actionIntent }
         val src = ListenerBus.alarmFrom(
             n.extras.getCharSequence(Notification.EXTRA_TITLE)?.toString()?.ifBlank { null } ?: "알람",
             actions, n.fullScreenIntent ?: n.contentIntent,
         )
         // a ringing alarm shows a snooze button or a full-screen intent; the "next alarm" notice has neither
-        if (n.fullScreenIntent == null && src.snooze == null && actions.none { AlarmActions.isSnooze(it.first) }) return
+        if (n.fullScreenIntent == null && src.snooze == null && actions.none { AlarmActions.isSnooze(it.first) }) {
+            clockKey = sbn.key
+            ListenerBus.setClockAlarm(src)
+            return
+        }
+        if (sbn.key == clockKey) { clockKey = null; ListenerBus.setClockAlarm(null) }
         alarmKey = sbn.key
         ListenerBus.setNotificationAlarm(src)
     }
@@ -287,6 +300,10 @@ class Listener : NotificationListenerService() {
 
     /** Rebuild the notification cards' list from the active notifications. Runs on post/remove only. */
     internal fun publishShade() {
+        runCatching { publishShadeNow() }.onFailure { android.util.Log.w(TAG, "shade failed", it) }
+    }
+
+    private fun publishShadeNow() {
         val active = runCatching { activeNotifications }.getOrNull() ?: return
         val ranking = runCatching { currentRanking }.getOrNull()
         val cfg = ConfigStore.flow(this).value
@@ -354,6 +371,7 @@ class Listener : NotificationListenerService() {
     }
 
     private companion object {
+        const val TAG = "Listener"
         /** ponytail: newest 24 only (a group chat can keep 50); the cards never show more than a screenful anyway. */
         const val MAX_SHADE = 24
         /** Icons draw at most ~60 dp; 96 px is sharp on xhdpi and light (37 KB each). */

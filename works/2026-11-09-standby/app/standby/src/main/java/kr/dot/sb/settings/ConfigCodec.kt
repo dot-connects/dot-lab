@@ -37,9 +37,10 @@ import java.time.LocalDate
 object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
-     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL). Saves without "v" are r8 or r9 dev builds.
+     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15. Saves without "v" are r8 or r9 dev
+     * builds.
      */
-    const val VERSION = 12
+    const val VERSION = 13
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -60,6 +61,7 @@ object ConfigCodec {
         put("dayBrightness", c.dayBrightness?.toDouble() ?: JSONObject.NULL)
         put("startOnCharge", c.startOnCharge)
         put("chargeWirelessOnly", c.chargeWirelessOnly)
+        put("startLandscapeOnly", c.startLandscapeOnly)
         put("displayOff", c.displayOff.name)
         put("motionToWake", c.motionToWake)
         put("showNotifications", c.showNotifications)
@@ -190,8 +192,11 @@ object ConfigCodec {
     /** Any parse failure returns defaults; a bad field returns that field's default. */
     fun decode(json: String?): AppConfig {
         if (json.isNullOrBlank()) return AppConfig()
-        return try { fromJson(JSONObject(json)) } catch (e: Exception) { AppConfig() }
+        return decodeOrNull(json) ?: AppConfig()
     }
+
+    /** plan-r15 C8: null when [json] does not parse (ConfigStore then tries its backup before the defaults). */
+    fun decodeOrNull(json: String): AppConfig? = try { fromJson(JSONObject(json)) } catch (e: Exception) { null }
 
     private fun fromJson(o: JSONObject): AppConfig {
         val d = AppConfig()
@@ -223,6 +228,7 @@ object ConfigCodec {
             dayBrightness = if (o.has("dayBrightness") && !o.isNull("dayBrightness")) num(o, "dayBrightness", 0.5f).coerceIn(0f, 1f) else null,
             startOnCharge = o.optBoolean("startOnCharge", d.startOnCharge),
             chargeWirelessOnly = o.optBoolean("chargeWirelessOnly", d.chargeWirelessOnly),
+            startLandscapeOnly = o.optBoolean("startLandscapeOnly", d.startLandscapeOnly),
             displayOff = enumOf(o, "displayOff", d.displayOff),
             motionToWake = o.optBoolean("motionToWake", d.motionToWake),
             showNotifications = o.optBoolean("showNotifications", d.showNotifications),

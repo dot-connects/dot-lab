@@ -6,10 +6,10 @@ import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
-import android.content.Intent
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kr.dot.sb.data.AlarmActions
+import kr.dot.sb.data.AlarmTakeover
 import kr.dot.sb.ui.state.BigNotification
 import kr.dot.sb.ui.state.LiveActivity
 import kr.dot.sb.ui.state.NotifItem
@@ -58,25 +58,25 @@ object ListenerBus {
     }
 
     @Volatile private var fromNotification: AlarmSource? = null
+    /** plan-r15 C1: a clock-app alarm notification that is not (yet) ringing; audio alone needs one behind it. */
+    @Volatile private var fromClock: AlarmSource? = null
     @Volatile private var fromAudio = false
 
     fun setNotificationAlarm(a: AlarmSource?) { fromNotification = a; recompute() }
+    fun setClockAlarm(a: AlarmSource?) { fromClock = a; recompute() }
     fun setAudioAlarm(on: Boolean) { fromAudio = on; recompute() }
 
     private fun recompute() {
-        alarm.value = fromNotification ?: if (fromAudio) AlarmSource("알람", null, null, null) else null
+        alarm.value = AlarmTakeover.pick(fromNotification, fromClock, fromAudio)
     }
 
-    fun snooze(ctx: Context) = fire(ctx, alarm.value?.snooze)
-    fun stop(ctx: Context) = fire(ctx, alarm.value?.stop)
+    fun snooze(ctx: Context) = fire(alarm.value?.snooze)
+    fun stop(ctx: Context) = fire(alarm.value?.stop)
 
-    /** Fire the clock app's own action; without one, open the clock app so the user can finish it there. */
-    private fun fire(ctx: Context, pi: PendingIntent?) {
+    /** Fire the clock app's own action; without one, its tap intent (no guessed clock app: plan-r15 C1). */
+    private fun fire(pi: PendingIntent?) {
         if (pi != null && runCatching { pi.send() }.isSuccess) return
-        val open = alarm.value?.open
-        if (open != null && runCatching { open.send() }.isSuccess) return
-        ctx.packageManager.getLaunchIntentForPackage("com.sec.android.app.clockpackage")
-            ?.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)?.let { runCatching { ctx.startActivity(it) } }
+        alarm.value?.open?.let { runCatching { it.send() } }
     }
 
     /** Picks the snooze/stop actions out of a notification's action list by title (Korean and English variants). */

@@ -241,13 +241,17 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                     if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, family = t.words(500), num = true)
                 }
                 val snooze = @Composable { m: Modifier -> AlarmPill(if (bw >= 170.dp) "다시 알림" else "다시", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
-                val stop = @Composable { m: Modifier -> AlarmPill("중단", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f)) }
+                // plan-r15 C1: a button only for an action the clock app's notification has; neither = 닫기 (hides this screen)
+                val none = !a.canSnooze && !a.canStop
+                val stop = @Composable { m: Modifier ->
+                    AlarmPill(if (none) "닫기" else "중단", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, if (none) actions::alarmClose else actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f))
+                }
                 if (land) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (a.canSnooze) snooze(Modifier.size(bw, bh))
-                    stop(Modifier.size(bw, bh))
+                    if (a.canStop || none) stop(Modifier.size(bw, bh))
                 } else Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (a.canSnooze) snooze(Modifier.size(bw, bh))
-                    stop(Modifier.size(bw, bh))
+                    if (a.canStop || none) stop(Modifier.size(bw, bh))
                 }
             }
         }

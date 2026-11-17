@@ -32,8 +32,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         clearOldWidgetHost(this)
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
         if (intent.getBooleanExtra(EXTRA_TILE, false)) {
-            val bm = getSystemService(BatteryManager::class.java)
-            if (ChargeStart.plugged(this) == 0 && bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) <= LOW_BATTERY) { finish(); return }
+            if (lowBattery(this)) { finish(); return }
             // without a charger the screen stays on: leave at LOW_BATTERY % (re-checked on every battery change)
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {
@@ -43,6 +42,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             }.also { registerReceiver(it, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) }
         }
         if (chargeStart) {
+            StandbyPresence.chargeActivity = java.lang.ref.WeakReference(this)
             ChargeStart.cancelNotification(this)
             val plugged = ChargeStart.plugged(this)
             ChargeStart.log(this, "화면 열림 · ${ChargeStart.sinceLaunch()} · plugged=$plugged")
@@ -70,10 +70,8 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         holder = StandbyStateHolder(this, this, ownRotation = false)
         val actions = HostActions(this, holder, this)
         setContent { HostContent(holder, actions) }
-        // manual start only: a dream hand-over (PendingUnlock) must not pop a dialog over the lock screen
-        if (PendingUnlock.block == null && checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
-        }
+        // plan-r15 C9: no POST request here any more (it popped over the lock screen); first run and 권한 ask for it
+        PostureProbe.attach(this, "스탠바이")
     }
 
     override fun onStart() {
@@ -93,13 +91,15 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
         holder.stop()
         unlocking = false // a lost dismiss callback must not keep the unlock close off for good
-        // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen
-        if (chargeStart && !isChangingConfigurations && !isFinishing) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
+        // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen. Covered by our
+        // own mood light is not that (plan-r15 C6): the glow ends us itself if the side key comes while it is on top
+        if (chargeStart && !isChangingConfigurations && !isFinishing && !GlowPresence.covering) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
         super.onStop()
     }
 
     override fun onDestroy() {
         StandbyPresence.alive = false
+        if (StandbyPresence.chargeActivity?.get() === this) StandbyPresence.chargeActivity = null
         endRx?.let { unregisterReceiver(it) }
         super.onDestroy()
     }
@@ -135,6 +135,29 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     companion object {
         const val EXTRA_TILE = "kr.dot.sb.TILE"
         const val LOW_BATTERY = 20
+
+        /** No charger and the battery at [LOW_BATTERY] % or less: a manual start would only drain it. */
+        fun lowBattery(ctx: Context): Boolean =
+            ChargeStart.plugged(ctx) == 0 && ctx.getSystemService(BatteryManager::class.java).getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) <= LOW_BATTERY
+
+        /**
+         * plan-r15 C9: a manual start (tile, the coming 지금 보기 button) goes through the tile path and its low-battery
+         * guard; refused = a toast that says why. True = started.
+         */
+        fun startNow(ctx: Context): Boolean {
+            if (refused(ctx)) return false
+            ctx.startActivity(intentNow(ctx))
+            return true
+        }
+
+        /** The low-battery guard with its toast ("충전기에 꽂으면 켤 수 있어요"). */
+        fun refused(ctx: Context): Boolean {
+            if (!lowBattery(ctx)) return false
+            android.widget.Toast.makeText(ctx, "충전기에 꽂으면 켤 수 있어요", android.widget.Toast.LENGTH_SHORT).show()
+            return true
+        }
+
+        fun intentNow(ctx: Context): Intent = Intent(ctx, StandbyActivity::class.java).putExtra(EXTRA_TILE, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     }
 }
 

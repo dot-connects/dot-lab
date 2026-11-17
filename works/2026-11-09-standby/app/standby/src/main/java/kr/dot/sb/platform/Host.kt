@@ -107,6 +107,7 @@ class HostActions(
     override fun sleepMinutesNext() = holder.sleepMinutesNext()
     override fun alarmSnooze() = ListenerBus.snooze(ctx)
     override fun alarmStop() = ListenerBus.stop(ctx)
+    override fun alarmClose() = holder.closeAlarm()
     override fun notificationTap(key: String) {
         val pi = holder.notificationIntentOf(key)
         val pkg = holder.notificationPackageOf(key)

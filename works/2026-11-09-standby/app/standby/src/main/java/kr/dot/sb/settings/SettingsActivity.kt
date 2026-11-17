@@ -61,6 +61,7 @@ class SettingsActivity : ComponentActivity() {
         val fresh = runCatching { packageManager.getPackageInfo(packageName, 0).let { it.firstInstallTime == it.lastUpdateTime } }.getOrDefault(false)
         walkOffer.value = PermWalk.starts(fresh, walkDoneFile().exists(), ConfigStore.storedVersion(this))
         kr.dot.sb.platform.clearOldWidgetHost(this)
+        kr.dot.sb.platform.PostureProbe.attach(this, "설정") // plan-r15 measurement (personal build, foldables)
         setContent {
             val config by ConfigStore.flow(this).collectAsState()
             // app start and every toggle: the job exists iff the option is on
@@ -108,6 +109,7 @@ class SettingsActivity : ComponentActivity() {
                 photoFolders = { kr.dot.sb.data.DeviceSources.folders(this) },
                 playSample = ::playSample,
                 chargeTrail = { kr.dot.sb.platform.ChargeStart.trail(this) },
+                measureLog = { kr.dot.sb.platform.Measure.lines(this) },
             )
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
                 // plan-r13 C1: bars and cutouts padded once here; the keyboard only by the page scroll and the sheets

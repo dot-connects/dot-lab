@@ -29,6 +29,7 @@ import android.widget.TextView
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.launch
+import kr.dot.sb.data.GlowFire
 import kr.dot.sb.data.HeatRule
 import kr.dot.sb.data.MoodLatch
 import kr.dot.sb.data.MoodPhase
@@ -62,6 +63,13 @@ object GlowScheduler {
         return ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("real", 0L).takeIf { it > 0 }
     }
 
+    /** At fire time: the alarm ours was armed for is still the user's next one (plan-r15 C4, [GlowFire]). */
+    fun stillValid(ctx: Context): Boolean {
+        val stored = ctx.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("real", 0L)
+        val info = ctx.getSystemService(AlarmManager::class.java).nextAlarmClock
+        return GlowFire.valid(stored, info?.triggerTime, info != null && ours(ctx, info))
+    }
+
     fun reschedule(ctx: Context) {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val mins = ConfigStore.flow(ctx).value.glowStartMinBefore
@@ -87,8 +95,15 @@ enum class GlowSource {
     }
 }
 
+/** plan-r15 C6: our mood light is on top of StandBy (onStart..onStop); StandBy must not take that for the side key. */
+object GlowPresence {
+    @Volatile var covering = false
+}
+
 class GlowReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
+        // plan-r15 C4: ours has fired, so the next alarm clock is the user's own; moved or deleted since = no glow
+        if (!GlowScheduler.stillValid(context)) { ChargeStart.log(context, "무드등 건너뜀 · 알람이 바뀜"); return }
         showIfInner(context, GlowSource.PRE_ALARM)
     }
 
@@ -272,8 +287,41 @@ class GlowActivity : ComponentActivity() {
             setOnClickListener { onClick(); finish() }
         }
         val lp = { LinearLayout.LayoutParams(0, 220, 1f).apply { setMargins(16, 0, 16, 0) } }
-        addView(pill("다시 알림", Color.parseColor("#F2A65E"), Color.BLACK) { ListenerBus.snooze(this@GlowActivity) }, lp())
-        addView(pill("중단", Color.parseColor("#35508F"), Color.WHITE) { ListenerBus.stop(this@GlowActivity) }, lp())
+        // plan-r15 C1: only the actions the clock app's notification has; neither = 닫기
+        val a = ListenerBus.alarm.value
+        if (a?.snooze != null) addView(pill("다시 알림", Color.parseColor("#F2A65E"), Color.BLACK) { ListenerBus.snooze(this@GlowActivity) }, lp())
+        if (a?.stop != null) addView(pill("중단", Color.parseColor("#35508F"), Color.WHITE) { ListenerBus.stop(this@GlowActivity) }, lp())
+        if (a?.snooze == null && a?.stop == null) addView(pill("닫기", Color.parseColor("#35508F"), Color.WHITE) {}, lp())
+    }
+
+    override fun onStart() {
+        super.onStart()
+        GlowPresence.covering = true
+    }
+
+    /** Shown on a lit screen at least once: a stop with the screen off after that is the side key, not the wake-up. */
+    private var shownLit = false
+
+    override fun onResume() {
+        super.onResume()
+        if (getSystemService(android.os.PowerManager::class.java).isInteractive) shownLit = true
+    }
+
+    /**
+     * plan-r15 C6: the side key while the glow is on top. The glow leaves, and so does a charge-started StandBy under
+     * it, so the next wake shows the lock screen; the screen-off is counted as ours ([StandbyPresence.lastHiddenMs]).
+     */
+    override fun onStop() {
+        if (shownLit && !isChangingConfigurations && !getSystemService(android.os.PowerManager::class.java).isInteractive) {
+            StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
+            StandbyPresence.chargeActivity?.get()?.takeIf { !it.isFinishing }?.let {
+                ChargeStart.log(this, "닫힘 · 무드등 위에서 화면 꺼짐")
+                it.finish()
+            }
+            if (!isFinishing) finish()
+        }
+        GlowPresence.covering = false
+        super.onStop()
     }
 
     override fun onDestroy() {

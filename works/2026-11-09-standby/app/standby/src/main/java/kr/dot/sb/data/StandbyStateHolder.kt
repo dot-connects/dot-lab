@@ -244,8 +244,10 @@ class StandbyStateHolder(
         }
         scope.launch {
             ListenerBus.alarm.collect { a ->
+                if (a !== alarmClosed) alarmClosed = null
                 // off: the clock app's own alarm screen is the only one (StandBy stays as it is)
-                _state.update { it.copy(alarm = a?.takeIf { cfg.alarmScreen }?.let { s -> AlarmRinging(s.label, true) }) }
+                val shown = a?.takeIf { cfg.alarmScreen && a !== alarmClosed }
+                _state.update { it.copy(alarm = shown?.let { s -> AlarmRinging(s.label, s.snooze != null, s.stop != null) }) }
                 machine.touch(el()); evaluate() // alarm preempts everything and wakes OFF; when it ends the idle time restarts
             }
         }
@@ -709,6 +711,14 @@ class StandbyStateHolder(
         runCatching { SleepService.start(ctx, cfg.sleepSound, cfg.sleepMinutes) }.onFailure { SleepBus.state.value = SleepState() }
     }
     fun dismissNotification() { notifJob?.cancel(); endNotification(null) }
+
+    /** plan-r15 C1 닫기: the alarm has no snooze/stop action here; hide its takeover until it ends. */
+    private var alarmClosed: kr.dot.sb.platform.AlarmSource? = null
+    fun closeAlarm() {
+        alarmClosed = ListenerBus.alarm.value ?: return
+        _state.update { it.copy(alarm = null) }
+        machine.touch(el()); evaluate()
+    }
     fun notificationIntentOf(key: String) = ListenerBus.contentIntents[key]
     fun notificationPackageOf(key: String) = _state.value.notifications.firstOrNull { it.key == key }?.packageName
 

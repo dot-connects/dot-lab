@@ -36,6 +36,7 @@ class StandbyDream : DreamService(), HostCallbacks {
     override fun onDreamingStarted() {
         super.onDreamingStarted()
         StandbyPresence.dream = true
+        if (Measure.on) Measure.log(this, "dream 시작 · plugged=${ChargeStart.plugged(this)} · ${Measure.grants(this)}")
         window?.lowRefreshRate()
         holder?.start()
     }
