@@ -42,6 +42,9 @@ fun App(openSeq: Int = 0, openTo: String = "pet") {
     androidx.compose.runtime.LaunchedEffect(openSeq) {
         if (openSeq > 0) screen = when (openTo) { "dex" -> Screen.DEX; "catch" -> Screen.CATCH; else -> Screen.PET }
     }
+    // first launch: the three intro cards, then the catch screen (which asks for the camera)
+    var intro by rememberSaveable { mutableStateOf(!Intro.seen(ctx)) }
+    if (intro) { IntroScreen { intro = false }; return }
     var entryId by rememberSaveable { mutableStateOf<String?>(null) }
     val sink = remember { DexSink(ctx.applicationContext) }
     val critters = remember { Critters(ctx.applicationContext) }

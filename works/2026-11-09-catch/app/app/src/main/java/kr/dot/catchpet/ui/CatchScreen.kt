@@ -456,7 +456,8 @@ private class CatchGame(
         // the arms: spread past the body's sides as the claw settles on it, then close in under its widest point
         if (before == Claw.St.DOWN) hugTop = Claw.TIP * 0.5f
         if (c.st == Claw.St.GRIP) now?.let { hugTop = m.gridToViewY(it.y0.toFloat()) / d - c.y }
-        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
+        // the big-catch claw shrinks back once the capsule takes the catch: a 1.5x claw round a 46 dp capsule looked odd (operator 11-17)
+        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM && capsule == null) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
         clawScale += (wantScale - clawScale) * min(1f, dt / 140f)
         val s = clawScale
         if (c.bodyW > 0f) {

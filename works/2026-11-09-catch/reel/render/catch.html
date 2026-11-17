@@ -323,7 +323,7 @@ function feel(before, dt) {
   if (before === "UP" && c.st === "CARRY") dangle.w += dangle.rot >= 0 ? .03 : -.03;
   if (before === "DOWN") hugTop = TIP * .5;
   if (c.st === "GRIP") hugTop = b.y0 / GH * H - c.y;
-  const want = c.bodyW > 0 ? clamp(c.bodyW / 2 / 56, 1, 1.5) : 1;
+  const want = c.bodyW > 0 && !cap ? clamp(c.bodyW / 2 / 56, 1, 1.5) : 1;   // shrinks back once the capsule takes the catch (app, 11-17)
   clawScale += (want - clawScale) * Math.min(1, dt / 140);
   const s = clawScale, o = clamp((c.open - c.minOpen) / Math.max(1e-3, 1 - c.minOpen), 0, 1);
   const on = armsOn({ a: c.bodyW / 2 / s, top: hugTop / s, h: c.bodyH / s }, o);
