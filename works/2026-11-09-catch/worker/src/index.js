@@ -41,8 +41,9 @@ Draw THIS ${who} as one of our creatures: keep what makes it recognisable (its f
   figure: who => `Image 1 is a real photo of a ${who}. Make a cute small 3D figurine of THIS ${who} itself (not a ball): its real body shape and pose simplified, slightly chibi proportions (bigger head), soft matte clay/plush 3D render, keep its real colours, markings, ear shape, face features and clothing colour (no text on clothes). Tiny black dot eyes, small pink blush, gentle smile. Full body, front three-quarter view, centred, standing, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
 };
 
-// operator 11-17: a person hugging a teddy kept it in the preview but lost it on the pet (the poses' free hands)
-const HELD = "If it holds or carries anything in the photo (a soft toy, a phone, a book, a bag, a cup), that thing stays with it in EVERY cell: hugged in the arms while standing, smiling or asleep, carried in one arm while walking, still clutched while dangling or fallen.";
+// operator 11-17: the pet must look like the photo (and the preview) in every pose — a teddy hugged in the photo was
+// lost on the pet (the poses' free hands); the same goes for clothes, hair, skin and whatever else it has on
+const HELD = "In EVERY cell keep everything it has in the photo: the same clothes, hairstyle, skin or fur colours, accessories, and anything it holds or carries (a toy, a phone, a book, anything): hugged in the arms while standing, smiling or asleep, carried in one arm while walking, still clutched while dangling or fallen.";
 
 export const SHEET_PROMPT = who => `Image 1 is a real photo of a ${who} (it may be seen from the side or lying down). Image 2 shows the art style of our game creatures: small round pale 3D plush fur balls, soft fur texture, tiny black dot eyes, small pink blush, short stubby feet, no outline, soft studio light.
 
