@@ -1,0 +1,414 @@
+<meta charset="utf-8">
+<title>Stand Screen 릴스 콘티 v10</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&display=swap">
+<style>
+/* Layout: dark page, left = live 3D 9:16 film, right = shot list. Stacks on phones. */
+:root{
+  --bg:#0a0a0b; --panel:#141416; --line:#26262a; --fg:#ececee; --ink2:#9b9ba3; --acc:#ffab5c;
+  --f:"Noto Sans KR",system-ui,-apple-system,"Malgun Gothic",sans-serif;
+  color-scheme:dark;
+}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);line-height:1.55}
+.wrap{max-width:1100px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:22px;font-weight:700;margin:0 0 4px;letter-spacing:-.01em}
+.lead{color:var(--ink2);font-size:14px;margin:0 0 22px;max-width:68ch}
+.grid{display:grid;grid-template-columns:minmax(0,400px) minmax(0,1fr);gap:32px;align-items:start}
+@media(max-width:840px){.grid{grid-template-columns:minmax(0,1fr)}}
+.stage{position:relative;width:100%;max-width:400px;aspect-ratio:9/16;border-radius:14px;overflow:hidden;background:#000}
+#bg{position:absolute;inset:0}
+#gl{position:absolute;inset:0;width:100%;height:100%;display:block}
+/* captions sit just under the phone, above the Reels account/caption overlay (bottom ~20 %) */
+.cap{position:absolute;left:0;right:0;bottom:25%;text-align:center;color:#f4f4f6;opacity:0;transform:translateY(6px);transition:opacity .4s ease,transform .4s ease;padding:0 20px;text-shadow:0 2px 12px #000;pointer-events:none}
+.cap.on{opacity:1;transform:none}
+.cap .l{font-size:22px;font-weight:600;letter-spacing:-.02em}
+.cap .s{display:block;font-size:13px;font-weight:400;color:#d0d0d6;margin-top:4px;letter-spacing:.01em}
+.veil{position:absolute;inset:0;background:#000;pointer-events:none}
+.end{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:0 24px;pointer-events:none}
+.end .a,.end .b{display:flex;flex-direction:column;align-items:center;gap:8px;opacity:0;transform:translateY(6px);transition:opacity .7s ease,transform .7s ease}
+.end .on{opacity:1;transform:none}
+.end img{width:64px;height:64px;border-radius:15px}
+.end b{font-size:28px;font-weight:700;letter-spacing:-.03em}
+.end .s{font-size:13px;font-weight:400;color:#d0d0d6}
+.end .b{margin-top:40px;padding-top:22px;border-top:1px solid rgba(255,255,255,.14);gap:6px;min-width:220px}
+.end .tag{font-size:11px;font-weight:700;letter-spacing:.14em;color:#ffab5c}
+.end .big{font-size:19px;font-weight:700;letter-spacing:-.02em}
+.end .cta{font-size:18px;font-weight:700;color:#fff;margin-top:6px}
+.ui{display:flex;gap:10px;align-items:center;margin-top:12px;max-width:400px}
+.ui button{font:inherit;font-size:14px;font-weight:700;padding:9px 16px;border-radius:10px;border:0;background:var(--fg);color:#000;cursor:pointer}
+.ui button:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.bar{flex:1;height:14px;display:flex;align-items:center;cursor:pointer}.bar span{flex:1;height:3px;background:var(--line);border-radius:2px;overflow:hidden}.bar i{display:block;height:100%;width:0;background:var(--fg)}
+.t{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums;min-width:44px;text-align:right}
+.load{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:#777;font-size:13px}
+.beats{display:flex;flex-direction:column;gap:8px}
+.beat{display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel);cursor:pointer}
+.beat.now{border-color:var(--fg)}
+.beat .k{font-size:12px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.beat .c{font-size:15px;font-weight:700}
+.beat .m{font-size:13px;color:var(--ink2)}
+.notes{margin-top:24px;border-top:1px solid var(--line);padding-top:16px;display:grid;gap:10px;font-size:14px}
+.notes h2{font-size:15px;margin:0}
+.notes p{margin:0;color:var(--ink2);max-width:72ch}
+.notes b{color:var(--fg)}
+</style>
+
+<div class="wrap">
+  <h1>Stand Screen 릴스 콘티 v9</h1>
+  <p class="lead">v8에서 오프닝을 무선 충전 스탠드로 바꾸고 폰 외형을 다듬은 판입니다. 32초, 모든 컷이 0.5초 박자(120 BPM)에 맞습니다. 폰을 무선 충전 스탠드에 올려놓으며 시작하고, 배경은 진짜 검정에 색이 천천히만 번집니다. 카드는 폰 화면 안에서, 기기는 한 대씩 보여 줍니다. 화면은 새로 찍은 것(21:24, 실제 사진·앨범 표지·앱 아이콘)입니다.</p>
+  <div class="grid">
+    <div>
+      <div class="stage" id="stage">
+        <div id="bg"></div>
+        <div id="room" style="position:absolute;inset:0;opacity:0;overflow:hidden;background:linear-gradient(#16304a,#0a1420 62%)">
+          <i style="position:absolute;left:-2%;top:-4%;width:11%;height:58%;background:linear-gradient(#2f5f8f,transparent);filter:blur(14px);opacity:.3"></i>
+          <i style="position:absolute;left:13%;top:-4%;width:8%;height:54%;background:linear-gradient(#2f5f8f,transparent);filter:blur(12px);opacity:.25"></i>
+          <i style="position:absolute;left:25%;top:-4%;width:12%;height:57%;background:linear-gradient(#2f5f8f,transparent);filter:blur(16px);opacity:.35"></i>
+          <i style="position:absolute;left:41%;top:-4%;width:7%;height:52%;background:linear-gradient(#2f5f8f,transparent);filter:blur(12px);opacity:.25"></i>
+        </div>
+        <canvas id="gl"></canvas>
+        <div id="scrim" style="position:absolute;left:0;right:0;bottom:0;height:55%;background:linear-gradient(transparent,rgba(0,0,0,.95));opacity:0;transition:opacity .5s ease;pointer-events:none"></div>
+        <div class="cap" id="cap"><span class="l" id="capL"></span><span class="s" id="capS"></span></div>
+        <div class="end" id="end">
+          <div class="a" id="endA"><img src="s/icon.png" alt=""><b>Stand Screen</b><span class="s">충전하는 동안, 시계가 됩니다</span></div>
+          <div class="b" id="endB"><span class="tag">TESTER</span><span class="big">먼저 써 보실 분을 찾습니다</span><span class="s">Android · 14일 테스트</span><span class="cta">프로필 링크에서 신청</span></div>
+        </div>
+        <div class="veil" id="veil"></div>
+        <div class="load" id="load">불러오는 중…</div>
+      </div>
+      <div class="ui"><button id="play" type="button">재생</button><div class="bar" id="bar"><span><i id="prog"></i></span></div><span class="t" id="time">0.0초</span></div>
+    </div>
+    <div>
+      <div class="beats" id="beats"></div>
+      <div class="notes">
+        <h2>v8에서 바뀐 것</h2>
+        <p><b>무선 충전 스탠드.</b> 케이블이 없어졌습니다. 어두운 무광 스탠드에 폰을 올려놓으면 얇은 링 불빛이 한 번 번지고 화면이 켜집니다.</p>
+        <p><b>폰 외형.</b> 모서리를 훨씬 둥글게, 두께는 얇게, 옆면은 둥글게 깎고 베젤을 얇고 고르게 했습니다. 새틴 티타늄 마감입니다. 벽의 폰·폴드·플립 모두 같습니다.</p>
+        <p><b>시작·끝 시계 후보.</b> 주소 끝에 <b>#open=a…e&amp;end=f…h</b> 를 붙이면 후보가 바뀝니다(기본 e·h = 지금 시계).</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {RoomEnvironment} from 'three/addons/environments/RoomEnvironment.js';
+
+const $=id=>document.getElementById(id);
+const HERO=[["h00","#ffad5c"],["h01","#c0aa91"],["h02","#c7b1a2"],["h03","#f0a658"],["h04","#ffd93d"],["h05","#ffd93c"],["h06","#adb89d"],["h07","#ff3a21"],["h08","#ffd031"],["h09","#ff5edb"],["h10","#c08674"],["h11","#a22e01"],["h12","#ffb500"],["h13","#603f24"],["h14","#ffb900"],["h15","#ff9c56"]];
+const TILES=[...Array(69)].map((_,i)=>"t/c"+String(i).padStart(3,"0")+".jpg").concat([...Array(56)].map((_,i)=>"t/b"+String(i).padStart(3,"0")+".jpg"));
+const LOOKS=[["s/m0.jpg","#ffab5c"],["s/m1.jpg","#4fd8ff"],["s/m2.jpg","#b9b4aa"],["s/m3.jpg","#d8c8a8"],["s/m4.jpg","#7a68c8"],["s/m5.jpg","#5fe08a"],["s/plate.jpg","#ffd93d"],["s/book.jpg","#4fd8ff"],["s/exam.jpg","#c0482a"],["s/mood.jpg","#8a62b8"]];
+const TOTAL=32;
+// clock candidates: window.OPEN / window.END (set before renderAt) or #open=a&end=g. default e / h = the v8 clocks
+const OPENERS={a:["v/open_a.jpg","#8d9096"],b:["v/open_b.jpg","#a9bdbb"],c:["v/open_c.jpg","#c98a4e"],d:["v/open_d.jpg","#ffad5c"],e:["h/h00.jpg","#ffad5c"]};
+const ENDS={f:["v/end_f_day.jpg","v/end_f_night.jpg"],g:["v/end_g_day.jpg","v/end_g_night.jpg"],h:["v/end_h_day.jpg","v/end_h_night.jpg"]};
+{const H=new URLSearchParams(location.hash.slice(1));window.OPEN??=H.get('open')||'e';window.END??=H.get('end')||'f'}
+const opener=()=>OPENERS[window.OPEN]||OPENERS.e, ending=()=>ENDS[window.END]||ENDS.f;
+// faces in shot 1 switch on the beat, doubling up at the end
+const FACE_T=[2,2.5,3,3.5,4,4.5,5,5.25,5.5,5.75], FACES=[0,9,4,7,11,3,12,14,2,5];
+
+const SHOTS=[
+  {t:0,k:"충전", m:"어둠 속 스탠드와 폰 실루엣. 폰이 무선 충전 스탠드에 놓이고(0.8초) 얇은 링 불빛이 한 번 번진 뒤 화면이 켜짐."},
+  {t:2,k:"시계가 바뀜", m:"박자마다 시계가 바뀌고 끝에서 두 배로 빨라짐. 배경은 시계 색을 천천히 따라감.", c:["충전하는 동안,","시계가 됩니다."]},
+  {t:6,k:"폰 벽", m:"둘레에서 폰들이 솟아 화면을 채움. 8.2초부터 바깥 폰부터 거꾸로 물러나고 카메라는 같은 축으로 가운데 폰까지 들어감(컷 없음). 위·아래 폰 두 대만 어둡게 남음.", c:["시계만 23가지."]},
+  {t:9.5,k:"카드 조합", m:"시계가 왼쪽 카드 자리로 줄어들고 카드가 한 장씩 올라옴. 0.8초마다 다른 조합: 시계+날씨+달력 → 추억+음악 → 2×2 → 4칸. 위·아래 폰은 반 박자 늦게 다른 테마 보드로.", c:["필요한 것만 골라","한 화면에."]},
+  {t:13,k:"꾸미기", m:"같은 보드가 테마 6개로, 이어서 직접 꾸민 카드와 다른 배치로.", c:["색도, 질감도,","모양까지, 내 마음대로."]},
+  {t:18,k:"모든 화면", m:"가로 폰이 세로로 돌며 화면이 다시 맞춰짐 → 카메라가 옆으로 흘러 폴드, 플립을 한 대씩.", c:["가로든 세로든,","폴드도, 플립도."]},
+  {t:22,k:"밤", m:"접힌 폴드의 바깥 화면 시계가 밤 화면으로 어두워지고 조명이 꺼짐. 방은 푸른 저녁 침실로(짙은 탁자, 창가 빛).", c:["불을 끄면, 은은하게."]},
+  {t:24,k:"무드등", m:"같은 컷. 같은 폰이 아래 모서리를 축으로 뒤로 기울며 텐트로 벌어짐(24.0–25.2초) → 25.3초에 안쪽 불이 켜지고 탁자에 빛이 번짐 → 자막.", c:["살짝 펼치면, 무드등이 됩니다."]},
+  {t:28.5,k:"이름 + 테스터", m:"아이콘·이름, 이어서 테스터 모집과 신청 방법."},
+];
+
+// ---------- renderer ----------
+const canvas=$('gl'), stage=$('stage');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.0;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+const pm=new THREE.PMREMGenerator(renderer);scene.environment=pm.fromScene(new RoomEnvironment(),0.04).texture;
+const camera=new THREE.PerspectiveCamera(30,9/16,1,3000);
+const key=new THREE.DirectionalLight(0xffffff,2.2);scene.add(key);
+const rim=new THREE.DirectionalLight(0xffe2c0,0);scene.add(rim);
+const amb=new THREE.AmbientLight(0xffffff,.15);scene.add(amb);
+function size(){const r=stage.getBoundingClientRect();renderer.setSize(r.width,r.height,false);camera.aspect=r.width/r.height;camera.updateProjectionMatrix()}
+addEventListener('resize',()=>{size();renderAt(cur)});
+
+// ---------- devices ----------
+function rshape(w,h,r){const s=new THREE.Shape(),x=-w/2,y=-h/2,q=Math.PI/2;s.moveTo(x+r,y);s.lineTo(x+w-r,y);s.absarc(x+w-r,y+r,r,-q,0);s.lineTo(x+w,y+h-r);s.absarc(x+w-r,y+h-r,r,0,q);s.lineTo(x+r,y+h);s.absarc(x+r,y+h-r,r,q,2*q);s.lineTo(x,y+r);s.absarc(x+r,y+r,r,2*q,3*q);return s}
+function rrect(w,h,r){const g=new THREE.ShapeGeometry(rshape(w,h,r),8),p=g.attributes.position,uv=g.attributes.uv;for(let i=0;i<p.count;i++)uv.setXY(i,(p.getX(i)+w/2)/w,(p.getY(i)+h/2)/h);return g}
+/** rounded slab w×h×d: real corner radius r (a rounded box caps it at d/2 = the boxy look), sides rounded by bv */
+function slab(w,h,r,d,bv=.1){const g=new THREE.ExtrudeGeometry(rshape(w-2*bv,h-2*bv,Math.max(.05,r-bv)),{depth:d-2*bv,bevelEnabled:true,bevelThickness:bv,bevelSize:bv,bevelSegments:3,curveSegments:8});g.center();return g}
+const bodyMat=new THREE.MeshPhysicalMaterial({color:0x9c9891,metalness:1,roughness:.36,clearcoat:.25,clearcoatRoughness:.5,envMapIntensity:1.15}); // satin titanium
+const glassMat=new THREE.MeshPhysicalMaterial({color:0x000000,metalness:0,roughness:.05,transparent:true,opacity:.2,envMapIntensity:2.6});
+const blackMat=new THREE.MeshBasicMaterial({color:0x050505});
+const GEO={};
+// screens never write depth: the crossfade layer (opacity 0) must not hide the layer under it
+function scrMat(){return new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false,transparent:true,depthWrite:false})}
+/** screen sw×sh in a metal body; body (bw,bh) defaults to screen + an even bezel, depth d, screen offset dy (flip cover sits high). */
+function device(sw,sh,{bz=.2,rad=.95,bw,bh,dy=0,d=.62}={}){
+  bw=bw??sw+2*bz;bh=bh??sh+2*bz;const k=[sw,sh,bw,bh,rad,dy,d].join(),R=rad+bz,bv=.1,z=d/2;
+  if(!GEO[k])GEO[k]={body:slab(bw,bh,R,d,bv),scr:rrect(sw,sh,rad),glass:rrect(bw-2*bv+.03,bh-2*bv+.03,R-bv)};
+  const G=GEO[k],g=new THREE.Group();const body=new THREE.Mesh(G.body,bodyMat);body.position.y=-dy;g.add(body);
+  const front=new THREE.Mesh(G.glass,blackMat);front.position.set(0,-dy,z+.004);g.add(front);
+  const a=scrMat(),b=scrMat();const sa=new THREE.Mesh(G.scr,a),sb=new THREE.Mesh(G.scr,b);sa.position.z=z+.012;sb.position.z=z+.014;sa.renderOrder=1;sb.renderOrder=2;g.add(sa,sb);
+  const gl=new THREE.Mesh(G.glass,glassMat);gl.position.set(0,-dy,z+.02);gl.renderOrder=3;g.add(gl);g.userData.scr=a;g.userData.scr2=b;g.userData.z=z;b.opacity=0;return g}
+const phone=()=>device(15.5,15.5*1080/2340);
+
+// ---------- textures ----------
+const TL=new THREE.TextureLoader();const tex={};
+function load(src){return new Promise(r=>{TL.load(src,t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=renderer.capabilities.getMaxAnisotropy();tex[src]=t;r()},undefined,()=>r())})}
+const heroSrc=i=>"h/"+HERO[i][0]+".jpg";
+function put(m,src,op){const t=tex[src];if(t&&m.map!==t){m.map=t;m.needsUpdate=true}m.opacity=op;m.color.setScalar(op>0?1:0)}
+/** screen = a, crossfading to b by k (0..1) */
+function setScr(p,a,k=0,b=null,dim=1){put(p.userData.scr,a,dim);put(p.userData.scr2,b??a,b?k*dim:0)}
+
+// ---------- scene objects ----------
+const COLS=9,ROWS=21,GX=17.4,GY=8.7;
+const field=new THREE.Group();scene.add(field);
+const cells=[];
+function rnd(n){let x=Math.sin(n*127.1+311.7)*43758.5453;return x-Math.floor(x)}
+for(let r=0;r<ROWS;r++)for(let c=0;c<COLS;c++){
+  const gx=c-(COLS-1)/2, gy=r-(ROWS-1)/2, off=(r%2)*.5;
+  const p=phone();cells.push({p,x:(gx+off-.25)*GX,y:gy*GY,d:Math.hypot(gx+off-.25,gy*.9),seed:r*COLS+c,keep:c===4&&Math.abs(gy)===2?Math.sign(gy):0});field.add(p);
+}
+field.position.x=.25*GX; // the centre cell sits exactly where the hero phone is
+const DMAX=Math.max(...cells.map(o=>o.d));
+const hero=phone();scene.add(hero);
+// card pages inside the hero screen: one plane per real card, [file, x, y, w, h] in 2340x1080 screen px
+const PAGES=[[["p/a0.jpg", 60, 60, 1303, 960], ["p/a1.jpg", 1411, 60, 869, 456], ["p/a2.jpg", 1411, 564, 869, 456]], [["p/b0.jpg", 60, 60, 1399, 960], ["p/b1.jpg", 1507, 60, 773, 960]], [["p/c0.jpg", 60, 60, 1086, 456], ["p/c1.jpg", 1194, 60, 1086, 456], ["p/c2.jpg", 60, 564, 1086, 456], ["p/c3.jpg", 1194, 564, 1086, 456]], [["p/d0.jpg", 96, 60, 501, 960], ["p/d1.jpg", 645, 60, 501, 960], ["p/d2.jpg", 1194, 60, 501, 960], ["p/d3.jpg", 1743, 60, 501, 960]]];
+const PAGE_T=[9.5,10.3,11.1,11.9], U=15.5/2340, DEG=Math.PI/180;
+const NBR=[["p/n0.jpg","p/n1.jpg","p/n2.jpg","p/n3.jpg"],["p/n4.jpg","p/n5.jpg","p/n6.jpg","p/n7.jpg"]]; // other-theme boards on the phones above / below
+const board=new THREE.Group();board.position.z=hero.userData.z+.016;hero.add(board);
+const pageCards=PAGES.map(pg=>pg.map(([src,x,y,w,h])=>{
+  const c=new THREE.Mesh(rrect(w*U,h*U,64*U),new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false,transparent:true,depthWrite:false,depthTest:false}));
+  c.renderOrder=2;c.userData={src,x:(x+w/2)*U-7.75,y:540*U-(y+h/2)*U};board.add(c);return c}));
+// open fold (crease line) and closed flip (cover screen high, hinge below)
+const fold=device(14.4,14.4*1408/1864,{bz:.24,rad:.8,d:.5});
+{const crease=new THREE.Mesh(new THREE.PlaneGeometry(.06,14.4*1408/1864),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.07,toneMapped:false}));crease.position.z=fold.userData.z+.03;fold.add(crease)}
+const FW=6.6,FH=6.6*724/800;
+const flip=device(FW,FH,{bw:FW+.9,bh:FH+2.4,rad:.85,dy:.75,d:1.2});
+{const hinge=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,FW-1.2,24),new THREE.MeshPhysicalMaterial({color:0x6d6a65,metalness:1,roughness:.4}));hinge.rotation.z=Math.PI/2;hinge.position.set(0,-(FH+2.4)/2+.2-.75,0);flip.add(hinge)}
+[fold,flip].forEach(p=>scene.add(p));
+// tent fold for the mood light: hinge on top along x, two panels standing on a walnut table, inner screens lit
+const mood=new THREE.Group();scene.add(mood);
+const TW=10.9,TH=7.4;
+function moodTex(top){const c=document.createElement('canvas');c.width=64;c.height=256;const x=c.getContext('2d');const g=x.createLinearGradient(0,0,0,256);
+  const T=new THREE.Color(top),B=new THREE.Color(T.r*.45,T.g*.3,T.b*.25);g.addColorStop(0,'#'+T.getHexString());g.addColorStop(1,'#'+B.getHexString());x.fillStyle=g;x.fillRect(0,0,64,256);
+  const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t}
+const tentMat=new THREE.MeshStandardMaterial({color:0x1a1b1e,metalness:.6,roughness:.45,envMapIntensity:.15});
+const moodMap=moodTex('#ffb36b');
+const PANEL=slab(TW,TH,.6,.42,.09),CW=TW-.44,CH=TH-.44; // cover screen 1.503:1, see mk9_assets.py
+const panels=[1,-1].map(sgn=>{const pv=new THREE.Group(); // sgn 1 = front panel (faces the camera), -1 = back
+  const body=new THREE.Mesh(PANEL,tentMat);body.position.set(0,-TH/2,sgn*.21);body.castShadow=true;pv.add(body);
+  const m=new THREE.MeshBasicMaterial({map:moodMap,toneMapped:false,fog:false});
+  const inner=new THREE.Mesh(rrect(TW-.5,TH-.5,.4),m);inner.position.set(0,-TH/2,-sgn*.012);if(sgn>0)inner.rotation.y=Math.PI;pv.add(inner);
+  pv.userData={m,sgn};mood.add(pv);return pv});
+const coverMat=new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false,fog:false});
+{const g=new THREE.Mesh(rrect(TW-.16,TH-.16,.52),blackMat);g.position.set(0,-TH/2,.425);panels[0].add(g);
+  const clock=new THREE.Mesh(rrect(CW,CH,.38),coverMat);clock.position.set(0,-TH/2,.432);panels[0].add(clock)}
+const dayMat=new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false,fog:false,transparent:true,depthWrite:false});
+{const d=new THREE.Mesh(rrect(CW,CH,.38),dayMat);d.position.set(0,-TH/2,.436);d.renderOrder=2;panels[0].add(d)}
+const hingeBar=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,TW-.4,16),tentMat);hingeBar.rotation.z=Math.PI/2;mood.add(hingeBar);
+// light: the inner screens are the only warm source - a lamp inside the tent, a spot from the hinge down, a pool on the table
+const moodLamp=new THREE.PointLight(0xffb36b,0,34,1.8);moodLamp.position.set(0,3,-.8);mood.add(moodLamp);moodLamp.castShadow=true;moodLamp.shadow.bias=-.004;
+const moodSpot=new THREE.SpotLight(0xffa860,0,30,55*DEG,.9,1.5);moodSpot.target.position.set(0,0,-.5);mood.add(moodSpot,moodSpot.target);moodSpot.castShadow=true;moodSpot.shadow.mapSize.set(1024,1024);moodSpot.shadow.bias=-.003;moodSpot.shadow.radius=6;
+renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+const pool=(()=>{const c=document.createElement('canvas');c.width=256;c.height=128;const x=c.getContext('2d');
+  const g=x.createRadialGradient(128,64,0,128,64,128);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.5,'rgba(255,255,255,.4)');g.addColorStop(1,'rgba(255,255,255,0)');
+  x.setTransform(1,0,0,.5,0,32);x.fillStyle=g;x.fillRect(0,-64,256,256);
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(26,20),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),color:0xffb36b,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false,toneMapped:false,fog:false}));
+  m.rotation.x=-Math.PI/2;m.position.set(5.5,.03,-1.5);mood.add(m);return m})();
+const table=new THREE.Mesh(new THREE.PlaneGeometry(120,70),new THREE.MeshStandardMaterial({color:0x2a1a10,roughness:.5,metalness:0,envMapIntensity:0}));
+table.rotation.x=-Math.PI/2;table.position.set(0,0,19);table.receiveShadow=true;table.material.transparent=true;table.renderOrder=-1;pool.renderOrder=1;scene.add(table);
+// wireless stand: low matte base with a thin light ring, a soft dark rest behind the phone. no logo, no white puck
+const dock=new THREE.Group();scene.add(dock);
+const LEAN=-.15, PH=15.5*1080/2340+.4; // the phone leans back on the rest; body height
+const dockMats=[new THREE.MeshStandardMaterial({color:0x232325,roughness:.8,metalness:.1,envMapIntensity:.5,transparent:true}),new THREE.MeshStandardMaterial({color:0x2c2c30,roughness:1,metalness:0,envMapIntensity:.3,transparent:true})];
+const ringMat=new THREE.MeshBasicMaterial({color:0xffffff,toneMapped:false,transparent:true});
+const dockGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:pool.material.map,color:0xffe4c2,blending:THREE.AdditiveBlending,depthWrite:false,transparent:true,toneMapped:false,opacity:0}));
+const dockLight=new THREE.PointLight(0xffe4c2,0,22,1.6);
+{const pts=[[0,0],[5.0,0],[5.2,.12],[5.2,.42],[5.1,.6],[4.86,.7],[0,.7]].map(([x,y])=>new THREE.Vector2(x,y));
+  const base=new THREE.Mesh(new THREE.LatheGeometry(pts,72),dockMats[0]);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(4.98,.045,8,96),ringMat);ring.rotation.x=Math.PI/2;ring.position.y=.66;
+  const foot=new THREE.Group();foot.add(base,ring);foot.position.set(0,-PH/2*Math.cos(LEAN)-.58,.1);
+  const rest=new THREE.Group();rest.rotation.x=LEAN;const pad=new THREE.Mesh(slab(5.6,6.6,2.2,.56,.22),dockMats[1]);pad.position.set(0,-.55,-hero.userData.z-.29);rest.add(pad);
+  dockGlow.scale.set(19,6,1);dockGlow.position.set(0,foot.position.y+.7,1.2);dockLight.position.set(0,foot.position.y+1.3,3.2);
+  dock.add(foot,rest,dockGlow,dockLight)}
+/** stand under the hero (same yaw); g = ring light 0..1, a = presence 0..1 */
+function dockAt(yaw,g,a){dock.visible=a>0;dock.rotation.y=yaw;dock.position.y=-1.2*(1-a);dockMats.forEach(m=>m.opacity=a);
+  ringMat.color.set(0xffe9cf).multiplyScalar(g);ringMat.opacity=a;dockGlow.material.opacity=.5*g*a;dockLight.intensity=26*g*a}
+const hemi=new THREE.HemisphereLight(0x3a5f8a,0x0a0806,0);scene.add(hemi);
+const FOG=new THREE.FogExp2(0x0c141c,.007);
+
+// ---------- helpers ----------
+const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x));
+const lin=(t,a,b)=>clamp((t-a)/(b-a));
+const eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2;
+const eo=x=>1-Math.pow(1-x,3);
+const mix=(a,b,k)=>a+(b-a)*k;
+const step=(T,t)=>{let i=0;while(i<T.length-1&&t>=T[i+1])i++;return i};
+const faceIdx=t=>FACES[step(FACE_T,t)];
+const lookIdx=t=>clamp(Math.floor((t-13)/.5),0,LOOKS.length-1);
+
+// backdrop: a target colour per moment, averaged over the last 0.8 s so it drifts instead of flashing
+function target(t){
+  if(t<2)return [opener()[1],.5*lin(t,1,2)];
+  if(t<6)return [faceIdx(t)?HERO[faceIdx(t)][1]:opener()[1],.6];
+  if(t<9)return ['#7d8796',mix(.6,.35,lin(t,6,7))];
+  if(t<13)return ['#8a93a6',.3];
+  if(t<18)return [LOOKS[lookIdx(t)][1],.55];
+  if(t<22)return ['#9aa6bb',.3];
+  if(t<24.5)return ['#c1ab91',mix(.4,.06,lin(t,22.6,23.8))];
+  return ['#000000',0];
+}
+const HS={},A=new THREE.Color(),Acc=new THREE.Color(),In=new THREE.Color(),Out=new THREE.Color();
+function bg(t){
+  let r=0,g=0,b=0,amt=0;const n=8;
+  for(let i=0;i<n;i++){const [c,a]=target(Math.max(0,t-i*.1));A.set(c);r+=A.r;g+=A.g;b+=A.b;amt+=a}
+  Acc.setRGB(r/n,g/n,b/n);amt/=n;
+  Acc.getHSL(HS,THREE.SRGBColorSpace); // HSL in display space: lightness .02 really is near-black
+  In.setHSL(HS.h,HS.s*.5*amt,.02+.17*amt,THREE.SRGBColorSpace);Out.setHSL(HS.h,HS.s*.4*amt,.01+.05*amt,THREE.SRGBColorSpace);
+  $('bg').style.background=`radial-gradient(110% 70% at 50% 40%, #${In.getHexString()} 0%, #${Out.getHexString()} 60%, #000 100%)`}
+
+let cur=0;
+function renderAt(t){
+  cur=t;
+  const sh=SHOTS.findLastIndex(s=>t>=s.t);
+  bg(t);
+
+  field.visible=false;mood.visible=table.visible=board.visible=false;hemi.intensity=0;camera.fov=30;
+  {const x=tex[heroSrc(0)];x.repeat.set(1,1);x.offset.set(0,0)}
+  fold.visible=false;flip.visible=false;hero.visible=true;dock.visible=false;
+  hero.position.set(0,0,0);hero.rotation.set(0,0,0);
+  key.position.set(-30,40,60);key.intensity=2.2;rim.intensity=0;rim.color.set(0xffe2c0);scene.fog=null;amb.intensity=.15;
+  const P=new THREE.Vector3(),L=new THREE.Vector3();
+
+  if(sh===0){ // silhouette from frame 0; the phone is set onto the stand (0.8 s), the ring pulses once, the screen wakes
+    const k=eio(lin(t,0,2)),set=eio(lin(t,.05,.8)),yaw=mix(-.55,-.3,k);
+    P.set(mix(9,2,k),mix(-2.5,-1,k),mix(42,60,k));L.set(mix(4,0,k),mix(-.5,0,k),0);
+    hero.rotation.set(LEAN+.12*(1-set),yaw,0);hero.position.set(-Math.sin(yaw)*-1.4*(1-set),2.4*(1-set),1.4*(1-set));
+    dockAt(yaw,.1+.9*lin(t,.8,1.05)*(1-.7*eio(lin(t,1.05,2))),1); // one pulse, then a low steady glow
+    key.intensity=.55;rim.intensity=mix(2.5,4.5,lin(t,0,1.2));rim.position.set(mix(50,-40,lin(t,0,2)),20,-10);
+    setScr(hero,opener()[0],0,null,eo(lin(t,.95,1.55)));
+  }else if(sh===1){ // on the stand; the stand fades out before the wall
+    const k=lin(t,2,6),yaw=mix(-.3,.1,eio(k));
+    P.set(mix(2,0,k),mix(-1,0,k),mix(60,74,eio(k)));L.set(0,0,0);
+    hero.rotation.set(LEAN*(1-eio(lin(t,5.1,6))),yaw,0);dockAt(yaw,.37,1-eio(lin(t,5,5.7)));
+    setScr(hero,faceIdx(t)?heroSrc(faceIdx(t)):opener()[0]);
+    rim.intensity=3.2;rim.position.set(-50,25,-30);
+  }else if(sh===2||sh===3){ // wall in, wall out around the centre phone, card pages inside it: one continuous move
+    field.visible=true;
+    const k=eio(lin(t,6,8.2)),q=eio(lin(t,8.2,9.5));
+    P.set(mix(0,10,k),mix(0,-34,k),mix(74,170,k));L.set(0,mix(0,-4,k),0);
+    P.lerp(new THREE.Vector3(0,0,64),q);L.lerp(new THREE.Vector3(0,0,0),q);
+    const wave=d=>Math.sin(t*1.7-d*.55)*.12*lin(t,6.6,7.6)*(1-lin(t,8.2,8.9));
+    {const w=wave(.25);hero.rotation.set(w,w*.6,0)}
+    if(t>=9.5){ // slow orbit, then settle into the first frame of the themes shot
+      const c=lin(t,9.5,13),yaw=mix(0,9,c)*DEG,z=mix(64,58,c),e=eio(lin(t,12.2,13));
+      P.set(-Math.sin(yaw)*z,0,Math.cos(yaw)*z).lerp(new THREE.Vector3(0,-2,60),e);L.set(0,-1.2*e,0);hero.rotation.set(.18*e,.26*e,.02*e)}
+    const beat=Math.floor((t-6)/.5);
+    for(const o of cells){
+      if(o.d<.5||t>=9.5&&!o.keep){o.p.visible=false;continue}
+      const aIn=eo(clamp((t-(6.2+o.d*.24))/.7)),w=wave(o.d);
+      const swap=(t>7.5&&t<8.2&&rnd(o.seed*7+beat)<.12)?beat:0,tile=o.keep<0?heroSrc(14):TILES[Math.floor(rnd(o.seed+swap*13.7)*TILES.length)];
+      o.p.rotation.set(w,w*.6,0);
+      if(o.keep){ // the phones two rows above / below stay, come closer and dim; later show other boards half a beat after each page
+        const m=eio(lin(t,8.4,9.3)),g=eio(lin(t,12.6,13)),dim=mix(1,o.keep<0?.2:.4,m)*(1-g);
+        o.p.visible=true;o.p.position.set(o.x,o.keep*mix(2*GY,o.keep<0?12:10.2,m),mix(mix(-50,0,aIn),-6,m)-24*g);o.p.scale.setScalar(mix(.6,1,aIn)*(1-g));
+        const S=[tile,...NBR[o.keep>0?0:1]],T=[0,...PAGE_T.map(x=>x+.4)],i=step(T,t),f=eo(lin(t,T[i],T[i]+.25));
+        put(o.p.userData.scr,S[Math.max(i-1,0)],dim*(1-f));put(o.p.userData.scr2,S[i],dim*f);
+      }else{ // everyone else leaves in reverse of the entry: outer rings first
+        const a=aIn*(1-eio(clamp((t-(8.2+(DMAX-o.d)*.05))/.45)));
+        o.p.visible=a>.001;o.p.position.set(o.x,o.y,mix(-50,0,a));o.p.scale.setScalar(mix(.6,1,a));setScr(o.p,tile);
+      }
+    }
+    // centre screen: the clock shrinks into the left card slot, then the pages
+    const s=eio(lin(t,9,9.28)),sc=mix(1,.83,s),hx=tex[heroSrc(0)]; // clamped texture transform: the clock shrinks inside the screen
+    setScr(hero,heroSrc(0),0,null,1-lin(t,9.28,9.45));hx.repeat.set(1/sc,1/sc);hx.offset.set(.5-(.5+-3.035/15.5*s)/sc,.5-.5/sc);
+    board.visible=t>=9;
+    pageCards.forEach((pg,i)=>{const N=PAGE_T[i+1]??99,out=lin(t,N,N+.2);
+      pg.forEach((c,j)=>{let a,dy=0;
+        if(i===0){a=j?eo(lin(t,9.15+.12*(j-1),9.45+.12*(j-1))):lin(t,9.28,9.45);dy=j?-(1-a)*.9:0}
+        else a=eo(lin(t,PAGE_T[i]+.06*j,PAGE_T[i]+.06*j+.24));
+        c.visible=a>0&&out<1;c.material.opacity=a*(1-out);c.scale.setScalar((i?mix(.94,1,a):1)*mix(1,.97,out));c.position.set(c.userData.x,c.userData.y+dy,-.3*out)})});
+    rim.intensity=2*lin(t,9,9.6);rim.position.set(50,30,-30);
+  }else if(sh===4){ // one board, many looks
+    const k=lin(t,13,18);
+    P.set(0,mix(-2,1,k),mix(60,55,k));L.set(0,-1.2+2*eio(lin(t,13,14)),0);
+    hero.rotation.set(mix(.18,.1,k),mix(.26,-.16,eio(k)),mix(.02,-.02,k));
+    setScr(hero,LOOKS[lookIdx(t)][0]);
+    rim.intensity=2.4;rim.position.set(50,30,-30);
+  }else if(sh===5){ // rotate to portrait, then glide to the fold, then the flip
+    const r=eio(lin(t,18.2,18.8)), g1=eio(lin(t,19.1,19.7)), g2=eio(lin(t,20.5,21.1));
+    fold.visible=flip.visible=true;
+    hero.position.set(0,3.6,0);hero.rotation.set(.05,mix(-.1,.12,lin(t,18,19.6)),r*Math.PI/2);
+    setScr(hero,"s/land.jpg",eio(lin(t,18.35,18.65)),"s/port.jpg");
+    fold.position.set(24,2,0);fold.rotation.set(.06,mix(-.35,-.08,g1),0);setScr(fold,"s/fold.jpg");
+    flip.position.set(44,2.6,0);flip.rotation.set(.06,mix(-.4,-.12,g2),0);setScr(flip,"s/flip.jpg");
+    const x=mix(mix(0,24,g1),44,g2), z=mix(mix(58,62,g1),46,g2);
+    P.set(x-2,0,z);L.set(x,1,0);
+    rim.intensity=2;rim.position.set(-40,30,-30);
+  }else if(sh===6||sh===7){ // one shot: the folded fold goes to night, the room turns to dusk, it tilts into a tent, the light switches on
+    hero.visible=false;mood.visible=table.visible=true;camera.fov=24;scene.fog=FOG;
+    const dim=lin(t,22.4,23.6),b=eio(lin(t,22.8,24)); // lights out, blue room in
+    const o=eio(lin(t,24,25.2)),h=25*DEG*o,yaw=mix(-6,-25,o)*DEG,yh=TH*Math.cos(h);
+    panels.forEach(p=>{p.position.y=yh;p.rotation.x=-p.userData.sgn*h});hingeBar.position.y=yh+.04;
+    // pivot = the front panel's bottom edge, fixed on the table; at full open the hinge is over the origin
+    const R=TH*Math.sin(25*DEG),r=TH*Math.sin(h);
+    mood.rotation.set(0,yaw,0);mood.position.set(R*Math.sin(-25*DEG)-r*Math.sin(yaw),0,R*Math.cos(25*DEG)-r*Math.cos(yaw));
+    const lit=eo(lin(t,25.3,25.55)),bloom=eo(lin(t,25.3,25.9)); // switch on, then the pool spreads
+    panels.forEach(p=>p.userData.m.color.setScalar(lit));
+    const [eDay,eNight]=ending();
+    if(coverMat.map!==tex[eNight]){coverMat.map=tex[eNight];coverMat.needsUpdate=true}coverMat.color.setScalar(mix(1,.8,b));
+    if(dayMat.map!==tex[eDay]){dayMat.map=tex[eDay];dayMat.needsUpdate=true}dayMat.opacity=1-eio(lin(t,22.6,23.6));
+    moodLamp.intensity=60*lit;moodSpot.position.set(0,yh-.3,0);moodSpot.intensity=90*bloom;
+    pool.material.opacity=.8*bloom;pool.scale.setScalar(mix(.55,1,bloom));
+    table.material.opacity=b;hemi.intensity=.25*b;amb.intensity=.15*(1-b);key.intensity=mix(2.2,.15,dim)*(1-b);
+    rim.color.set(0xffe2c0).lerp(new THREE.Color(0x6f9fd8),b);rim.intensity=mix(mix(2,.3,dim),1,b);rim.position.set(mix(-50,-40,b),mix(25,30,b),mix(-30,-50,b));
+    $('room').style.opacity=b;
+    const w=.2*lin(t,22,28.5)+.8*eio(lin(t,23.6,25.6)); // slow drift + one ease around the tilt
+    P.set(mix(-1.32,-2.5,w),mix(14.85,12,w),mix(59.6,58,w));L.set(mix(-1.32,.3,w),mix(3.05,2.6,w),mix(2.83,0,w));
+  }else{hero.visible=false}
+  camera.position.copy(P);camera.up.set(0,1,0);camera.lookAt(L);camera.updateProjectionMatrix();if(sh!==6&&sh!==7)$('room').style.opacity=0;
+
+  // captions
+  let line="",sub="";
+  if(sh===1||sh===0&&t>=1.3){line=t<4?"충전하는 동안,":"시계가 됩니다."}
+  else if(sh===2&&t>6.8&&t<8.3){line="시계만 23가지."}
+  else if(t>9.4&&t<11&&sh<4){line="필요한 것만 골라"}
+  else if(t>11.2&&t<12.7&&sh<4){line="한 화면에."}
+  else if(sh===4){line=t<16?"색도, 질감도,":"모양까지, 내 마음대로."}
+  else if(sh===5){line=t<19.5?"가로든 세로든,":"폴드도, 플립도."}
+  else if((sh===6||sh===7)&&t>22.5&&t<24.4){line="불을 끄면, 은은하게."}
+  else if(sh===7&&t>25.8&&t<28){line="살짝 펼치면, 무드등이 됩니다.";sub=""}
+  const gap=(a,b)=>t>a&&t<b;
+  const on=!!line&&!(sh<=1&&(t<1.3||gap(3.85,4.1)||t>5.9))&&!(sh===4&&(t<13.3||gap(15.85,16.1)||t>17.85))&&!(sh===5&&(t<18.3||gap(19.35,19.6)||t>21.9));
+  if(line){$('capL').textContent=line;$('capS').textContent=sub}
+  $('cap').classList.toggle('on',on);$('scrim').style.opacity=(sh===2&&t>6.6&&t<8.4||t>9.3&&t<12.75)?1:0;
+  $('endA').classList.toggle('on',sh===8&&t>28.7);$('endB').classList.toggle('on',sh===8&&t>29.7);
+  // veil: only a dip into the night and the end card
+  const dip=(c,w=.18)=>1-clamp(Math.abs(t-c)/w);
+  $('veil').style.opacity=Math.max(dip(18,.08),dip(22,.12),lin(t,28,28.5)*(t<28.55?1:0));
+  renderer.render(scene,camera);
+  SHOTS.forEach((s,i)=>s.el&&s.el.classList.toggle('now',i===sh));
+  $('prog').style.width=(t/TOTAL*100)+'%';$('time').textContent=t.toFixed(1)+'초';
+}
+window.renderAt=renderAt;
+
+// ---------- ui ----------
+SHOTS.forEach((s,i)=>{const n=SHOTS[i+1]?.t??TOTAL;const el=document.createElement('div');el.className='beat';
+  el.innerHTML=`<div class="k">${s.t.toFixed(1)}–${n.toFixed(1)}초</div><div><div class="c">${s.k}</div><div class="m">${s.c?'“'+s.c.join(' ')+'” · ':''}${s.m}</div></div>`;
+  el.onclick=()=>{off=s.t+.01;t0=null;renderAt(off)};s.el=el;$('beats').appendChild(el)});
+let t0=null,off=0,playing=false;const btn=$('play');
+function tick(now){if(!playing)return;if(t0===null)t0=now-off*1000;const t=(now-t0)/1000;if(t>=TOTAL){off=TOTAL;renderAt(TOTAL-.01);playing=false;btn.textContent='다시';return}renderAt(t);requestAnimationFrame(tick)}
+btn.onclick=()=>{if(playing){off=(performance.now()-t0)/1000;playing=false;btn.textContent='재생';return}if(off>=TOTAL)off=0;playing=true;t0=null;btn.textContent='멈춤';requestAnimationFrame(tick)};
+$('bar').onclick=e=>{const r=e.currentTarget.getBoundingClientRect();off=clamp((e.clientX-r.left)/r.width)*TOTAL;t0=null;if(!playing)renderAt(off)};
+
+size();
+const ALL=[...HERO.map((_,i)=>heroSrc(i)),...TILES,...PAGES.flat().map(c=>c[0]),...NBR.flat(),...LOOKS.map(l=>l[0]),"s/land.jpg","s/port.jpg","s/fold.jpg","s/flip.jpg",...Object.values(OPENERS).map(o=>o[0]),...Object.values(ENDS).flat()];
+await Promise.all(ALL.map(load));
+pageCards.flat().forEach(c=>{c.material.map=tex[c.userData.src]});
+$('load').remove();
+renderAt(3.2);off=0;window.__ready=true;
+</script>
