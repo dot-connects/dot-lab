@@ -1,0 +1,315 @@
+<title>리얼뽑기 아이콘 2차</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Dodum&family=Jua&display=swap">
+<style>
+/* Layout: one card per icon (big preview, a home-screen row at 48 px, notes), then all four side by side. */
+:root {
+  --bg: #F7F3EA; --card: #FFFFFF; --fg: #2A2420; --dim: #74695F; --line: #E4DBCD; --accent: #C98316; --good: #2F7D4F; --weak: #B4532A;
+  --display: "Jua", "Gowun Dodum", system-ui, sans-serif; --body: "Gowun Dodum", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #16130F; --card: #221E19; --fg: #F2ECE4; --dim: #A99E92; --line: #3A332B; --accent: #F2BC52; --good: #7FD3A0; --weak: #F0A27C; color-scheme: dark } }
+:root[data-theme="dark"] { --bg: #16130F; --card: #221E19; --fg: #F2ECE4; --dim: #A99E92; --line: #3A332B; --accent: #F2BC52; --good: #7FD3A0; --weak: #F0A27C; color-scheme: dark }
+body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 15px; margin: 0; }
+main { max-width: 1040px; margin: 0 auto; padding: 28px 16px 48px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 32px; margin: 0 0 6px; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 20px; margin: 0; }
+.lede { color: var(--dim); margin: 0 0 18px; max-width: 64ch; line-height: 1.6; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 22px; padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.cute ol { margin: 0; padding-left: 20px; line-height: 1.7; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; margin: 16px 0; }
+.tag { color: var(--accent); font-size: 13px; }
+.big { width: 220px; height: 220px; border-radius: 22%; justify-self: center; display: block; }
+.home { border-radius: 16px; padding: 12px 8px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  background: linear-gradient(160deg, #6F86B8, #B79BC4 55%, #E9B9A0); }
+.app { display: grid; justify-items: center; gap: 4px; min-width: 0; }
+.app span { font-size: 11px; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.45); white-space: nowrap; }
+.ic { width: 48px; height: 48px; border-radius: 50%; display: block; overflow: hidden; position: relative; }
+.ic.plain { background: #fff; display: grid; place-items: center; }
+.ic.plain i { display: block; width: 22px; height: 22px; }
+.ic.now { background: linear-gradient(135deg, #FFDCE4, #FF9FB5); }
+.ic.now img { position: absolute; width: 150%; left: -25%; top: -25%; }
+.notes { margin: 0; display: grid; gap: 6px; line-height: 1.55; font-size: 14px; }
+.notes b { font-weight: 700; }
+.notes .g b { color: var(--good); } .notes .w b { color: var(--weak); }
+</style>
+<main>
+  <h1>리얼뽑기 아이콘 2차 시안</h1>
+  <p class="lede">주인공을 개에서 털뭉치 모찌(카오스 고양이)로 바꾼 세 가지예요. 모두 새로 그렸고, 큰 그림은 스토어용, 아래 줄은 홈 화면에 놓였을 때 크기(48)예요.</p>
+  <section class="card cute">
+    <h2>지금 아이콘이 귀여운 이유</h2>
+    <ol>
+      <li>유리에 얼굴을 바짝 댄 어안 구도. 코가 한가운데 크게, 눈은 가장자리로 작게 밀려서 "나 좀 꺼내 줘" 표정이 돼요.</li>
+      <li>요소가 셋뿐(집게, 유리구슬, 얼굴)이고 큰 원 하나라 작게 줄여도 모양이 읽혀요.</li>
+      <li>딸기우유 분홍 바탕에 따뜻한 털, 유리 반짝임, 볼터치 같은 말랑한 질감.</li>
+    </ol>
+  </section>
+  <div class="grid" id="grid"></div>
+  <section class="card">
+    <h2>넷을 나란히</h2>
+    <div class="home" id="all"></div>
+  </section>
+</main>
+<script>
+const S = 512, CX = 256, TAU = Math.PI * 2, INK = "#24331F";
+const PINK = ["#FFDCE4", "#FF9FB5"], SKY = ["#D3EEFF", "#8FCBF7"], SILVER = ["#7D8594", "#EEF1F5"];
+const FUR = { cream: "#F6E9D6", char: "#575350", grey: "#8E8882", tan: "#D2A06C", earIn: "#F7A9B8", nose: "#F28DA2", cheek: "rgba(255,110,145,.5)" };
+const cv = (w, h) => { const c = document.createElement("canvas"); c.width = w; c.height = h; return c; };
+const rng = (seed) => () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+const fill = (g, col, f) => { g.fillStyle = col; g.beginPath(); f(); g.fill(); };
+
+// ---- shared parts
+function claw(g, armPath, ink) {
+  const [dark, light] = SILVER, edge = ink || dark;
+  const metal = g.createLinearGradient(CX - 150, 0, CX + 150, 0);
+  metal.addColorStop(0, dark); metal.addColorStop(.5, light); metal.addColorStop(1, dark);
+  g.fillStyle = edge; g.fillRect(CX - 10, -400, 20, 476);   // rod runs up out of the launcher mask
+  if (ink) { g.fillStyle = light; g.fillRect(CX - 4, -400, 8, 476); }
+  g.lineCap = g.lineJoin = "round";
+  for (const s of [-1, 1]) { g.strokeStyle = edge; g.lineWidth = ink ? 24 : 20; armPath(g, s); g.strokeStyle = metal; g.lineWidth = 12; armPath(g, s); }
+  g.fillStyle = metal; g.beginPath(); g.roundRect(CX - 40, 66, 80, 34, 12); g.fill();
+  g.strokeStyle = edge; g.lineWidth = ink ? 7 : 3; g.stroke();
+  fill(g, "#F2C14E", () => g.arc(CX, 83, 7, 0, TAU));
+}
+const armGrip = (cy, R) => (g, s) => {   // closed around a ball of radius R
+  const a = Math.PI * (1.5 + s * 0.36), px = CX + Math.cos(a) * (R + 6), py = cy + Math.sin(a) * (R + 6);
+  g.beginPath(); g.moveTo(CX + s * 28, 94);
+  g.quadraticCurveTo(CX + s * 165, 76, px + s * 8, py);
+  g.quadraticCurveTo(px + s * 4, py + 28, px - s * 12, py + 32); g.stroke();
+};
+const armOpen = (g, s) => {   // open, about to grab
+  g.beginPath(); g.moveTo(CX + s * 28, 94);
+  g.quadraticCurveTo(CX + s * 160, 66, CX + s * 178, 150);
+  g.quadraticCurveTo(CX + s * 182, 192, CX + s * 156, 208); g.stroke();
+};
+function fluff(g, cx, cy, r, n = 22, amp = .06) {   // scalloped fur-ball outline
+  g.beginPath();
+  for (let i = 0; i <= 720; i++) { const t = i / 720 * TAU, rr = r * (1 - amp * .5 + amp * Math.abs(Math.sin(t * n / 2))); g.lineTo(cx + Math.cos(t) * rr, cy + Math.sin(t) * rr); }
+  g.closePath();
+}
+function soft(g, x, y, rad, col, core = .25) {
+  const p = g.createRadialGradient(x, y, rad * core, x, y, rad); p.addColorStop(0, col); p.addColorStop(1, col + "00");
+  fill(g, p, () => g.arc(x, y, rad, 0, TAU));
+}
+
+// ---- the fur-ball 모찌, flat (options B and C)
+function mochi(g, cx, cy, r, o = {}) {
+  const ink = o.ink, P = (deg, rad, s) => [cx + s * Math.sin(deg * Math.PI / 180) * rad, cy - Math.cos(deg * Math.PI / 180) * rad];
+  g.save(); g.lineJoin = g.lineCap = "round";
+  if (o.feet) for (const s of [-1, 1]) {
+    fill(g, "#FFF7EC", () => g.ellipse(cx + s * .36 * r, cy + .96 * r, .21 * r, .13 * r, 0, 0, TAU));
+    if (ink) { g.strokeStyle = INK; g.lineWidth = r * .06; g.stroke(); }
+  }
+  for (const s of [-1, 1]) {   // pointed ears: the cat cue in the silhouette
+    const col = s < 0 ? FUR.char : "#6A5F58";
+    g.beginPath(); g.moveTo(...P(13, .9 * r, s)); g.lineTo(...P(37, 1.4 * r, s)); g.lineTo(...P(58, .9 * r, s)); g.closePath();
+    g.fillStyle = col; g.fill(); g.strokeStyle = ink ? INK : col; g.lineWidth = r * (ink ? .065 : .08); g.stroke();
+    fill(g, FUR.earIn, () => { g.moveTo(...P(24, 1.0 * r, s)); g.lineTo(...P(37, 1.25 * r, s)); g.lineTo(...P(49, 1.0 * r, s)); g.closePath(); });
+  }
+  const body = g.createRadialGradient(cx - .2 * r, cy - .3 * r, r * .1, cx, cy, r * 1.05);
+  body.addColorStop(0, "#FFF8EE"); body.addColorStop(1, "#EAD6BC");
+  fluff(g, cx, cy, r); g.fillStyle = body; g.fill();
+  g.save(); g.clip();
+  const blob = (col, x, y, rx, ry, rot) => fill(g, col, () => g.ellipse(cx + x * r, cy + y * r, rx * r, ry * r, rot, 0, TAU));
+  blob(FUR.char, -.52, -.66, .62, .44, -.45); blob(FUR.tan, .46, -.82, .44, .3, .35);   // tortie patches
+  blob(FUR.char, .86, .12, .36, .52, .15); blob(FUR.grey, -.8, .52, .42, .4, 0); blob(FUR.tan, -.92, -.02, .2, .26, 0);
+  soft(g, cx, cy + .22 * r, r * .62, "#FFFAF2");   // pale muzzle and belly
+  const rnd = rng(7); g.lineWidth = Math.max(1, r * .012);
+  for (let i = 0; i < 520; i++) {
+    const a = rnd() * TAU, d = Math.sqrt(rnd()) * r, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, L = r * (.03 + rnd() * .04);
+    g.strokeStyle = rnd() < .5 ? "rgba(255,250,240,.4)" : "rgba(60,45,35,.16)";
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+  }
+  const sh = g.createRadialGradient(cx - .15 * r, cy - .25 * r, r * .5, cx, cy, r * 1.05);
+  sh.addColorStop(0, "rgba(70,45,30,0)"); sh.addColorStop(1, "rgba(70,45,30,.22)");
+  g.fillStyle = sh; g.fillRect(cx - 2 * r, cy - 2 * r, 4 * r, 4 * r);
+  g.restore();
+  if (ink) { fluff(g, cx, cy, r); g.strokeStyle = INK; g.lineWidth = r * .065; g.stroke(); }
+  // face
+  const fy = cy + (o.faceDy || 0) * r, dark = "#221A17";
+  for (const s of [-1, 1]) {
+    const ex = cx + s * .37 * r, ey = fy - .06 * r;
+    if (o.mood === "smile") { g.strokeStyle = dark; g.lineWidth = r * .065; g.beginPath(); g.arc(ex, ey + .07 * r, .12 * r, Math.PI * 1.15, Math.PI * 1.85); g.stroke(); }
+    else { fill(g, dark, () => g.arc(ex, ey, .115 * r, 0, TAU)); fill(g, "#fff", () => g.arc(ex - .035 * r, ey - .04 * r, .04 * r, 0, TAU)); }
+    fill(g, FUR.cheek, () => g.ellipse(cx + s * .6 * r, fy + .17 * r, .16 * r, .095 * r, 0, 0, TAU));
+    g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = r * .02;
+    for (const k of [-1, 1]) { g.beginPath(); g.moveTo(cx + s * .5 * r, fy + .2 * r + k * .03 * r); g.lineTo(cx + s * .96 * r, fy + .22 * r + k * .1 * r); g.stroke(); }
+  }
+  g.fillStyle = g.strokeStyle = FUR.nose; g.lineWidth = r * .035;
+  g.beginPath(); g.moveTo(cx - .06 * r, fy + .08 * r); g.lineTo(cx + .06 * r, fy + .08 * r); g.lineTo(cx, fy + .14 * r); g.closePath(); g.fill(); g.stroke();
+  if (o.mood === "smile") {
+    fill(g, "#7A2E3A", () => { g.moveTo(cx - .11 * r, fy + .22 * r); g.quadraticCurveTo(cx, fy + .18 * r, cx + .11 * r, fy + .22 * r);
+      g.quadraticCurveTo(cx + .11 * r, fy + .4 * r, cx, fy + .4 * r); g.quadraticCurveTo(cx - .11 * r, fy + .4 * r, cx - .11 * r, fy + .22 * r); });
+    fill(g, "#FF8FA3", () => g.ellipse(cx, fy + .35 * r, .065 * r, .04 * r, 0, 0, TAU));
+  } else {
+    g.strokeStyle = dark; g.lineWidth = r * .04; g.beginPath(); g.moveTo(cx - .13 * r, fy + .2 * r);
+    g.quadraticCurveTo(cx - .06 * r, fy + .29 * r, cx, fy + .18 * r); g.quadraticCurveTo(cx + .06 * r, fy + .29 * r, cx + .13 * r, fy + .2 * r); g.stroke();
+  }
+  g.restore();
+}
+
+// ---- A: 모찌's face pressed to the glass (the dog icon's fisheye, redrawn as the fur-ball cat)
+const A = { CY: 292, R: 160, warp: 0.27 };
+function faceA() {
+  const { CY, R } = A, c = cv(S, S), g = c.getContext("2d"), NX = CX, NY = CY + 6;
+  const fur = g.createRadialGradient(NX, NY, 10, CX, CY, R * 1.1);
+  fur.addColorStop(0, "#FBEFDD"); fur.addColorStop(.6, "#EAD4B6"); fur.addColorStop(1, "#B9A48C");
+  g.fillStyle = fur; g.fillRect(0, 0, S, S);
+  soft(g, CX - 98, CY - 44, 92, FUR.char, .6); soft(g, CX + 66, CY - 92, 78, "#C99A66", .6); soft(g, CX - 16, CY - 118, 52, "#C99A66", .5);
+  soft(g, CX + 112, CY + 22, 80, FUR.char, .6); soft(g, CX - 74, CY + 100, 74, FUR.grey, .6); soft(g, CX + 60, CY + 120, 60, "#C99A66", .5);
+  g.lineJoin = g.lineCap = "round";
+  const P = (deg, rad, s) => [CX + s * Math.sin(deg * Math.PI / 180) * rad, CY - Math.cos(deg * Math.PI / 180) * rad];
+  for (const s of [-1, 1]) {   // ears end up squeezed against the top rim
+    g.beginPath(); g.moveTo(...P(12, R * .5, s)); g.lineTo(...P(35, R * .93, s)); g.lineTo(...P(60, R * .5, s)); g.closePath();
+    g.fillStyle = g.strokeStyle = "#3B3634"; g.lineWidth = 10; g.fill(); g.stroke();
+    fill(g, FUR.earIn, () => { g.moveTo(...P(24, R * .58, s)); g.lineTo(...P(35, R * .85, s)); g.lineTo(...P(49, R * .58, s)); g.closePath(); });
+  }
+  soft(g, NX, NY + 14, 70, "#FFFCF6");
+  const rnd = rng(13);
+  for (let i = 0; i < 2200; i++) {
+    const x = rnd() * S, y = rnd() * S, dx = x - NX, dy = y - NY, dist = Math.hypot(dx, dy);
+    if (dist < 30 || dist > R * 1.1) continue;
+    const a = Math.atan2(dy, dx) + (rnd() - .5) * .5, L = 2 + dist * 0.05 + rnd() * 3;
+    g.strokeStyle = rnd() < .5 ? "rgba(255,250,238,.34)" : "rgba(50,35,25,.2)"; g.lineWidth = 1;
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * L, y + Math.sin(a) * L); g.stroke();
+  }
+  for (const s of [-1, 1]) {
+    for (let r = 0; r < 3; r++) for (let k = 0; k < 3; k++) fill(g, "rgba(60,40,30,.4)", () => g.arc(NX + s * (26 + k * 9 + r * 3), NY + 26 + r * 8 - k * 2, 1.5, 0, TAU));
+    g.strokeStyle = "rgba(255,255,255,.9)"; g.lineWidth = 2.2;
+    for (const k of [-1, 0, 1]) { g.beginPath(); g.moveTo(NX + s * 34, NY + 30 + k * 6); g.quadraticCurveTo(NX + s * 90, NY + 24 + k * 16, NX + s * 150, NY + 30 + k * 34); g.stroke(); }
+    // dot eyes, stretched along the radius so the glass squeezes them back to round
+    const ex = CX + s * 58, ey = CY - 50, rot = Math.atan2(ey - CY, ex - CX);
+    fill(g, "#17110F", () => g.ellipse(ex, ey, 27, 16, rot, 0, TAU));
+    fill(g, "rgba(255,255,255,.95)", () => g.ellipse(ex - 4, ey - 8, 8, 4.5, rot, 0, TAU));
+    fill(g, "rgba(255,255,255,.5)", () => g.arc(ex + 5, ey + 7, 2.2, 0, TAU));
+    fill(g, FUR.cheek, () => g.ellipse(ex + s * 22, ey + 48, 20, 11, 0, 0, TAU));
+  }
+  g.strokeStyle = "rgba(60,35,30,.8)"; g.lineWidth = 2.6;
+  g.beginPath(); g.moveTo(NX, NY + 14); g.lineTo(NX, NY + 24);
+  g.moveTo(NX - 22, NY + 27); g.quadraticCurveTo(NX - 10, NY + 37, NX, NY + 24); g.quadraticCurveTo(NX + 10, NY + 37, NX + 22, NY + 27); g.stroke();
+  const nose = g.createRadialGradient(NX - 5, NY - 8, 1, NX, NY, 24);   // small pink jelly nose, the glass makes it big
+  nose.addColorStop(0, "#FFC2CD"); nose.addColorStop(1, "#E77990");
+  fill(g, nose, () => { g.moveTo(NX - 15, NY - 7); g.bezierCurveTo(NX - 10, NY - 12, NX + 10, NY - 12, NX + 15, NY - 7);
+    g.bezierCurveTo(NX + 16, NY + 1, NX + 5, NY + 14, NX, NY + 14); g.bezierCurveTo(NX - 5, NY + 14, NX - 16, NY + 1, NX - 15, NY - 7); });
+  fill(g, "rgba(255,255,255,.75)", () => g.ellipse(NX - 5, NY - 6, 5, 2, -0.2, 0, TAU));
+  const cone = g.createRadialGradient(NX, NY, R * .3, CX, CY, R * 1.05);
+  cone.addColorStop(0, "rgba(0,0,0,0)"); cone.addColorStop(1, "rgba(0,0,0,.26)");
+  g.fillStyle = cone; g.fillRect(0, 0, S, S);
+  return c;
+}
+function bulge(src, CY, R, warp) {   // fisheye, same as mockups/icon.html
+  const out = cv(S, S), si = src.getContext("2d").getImageData(0, 0, S, S).data;
+  const o = out.getContext("2d"), od = o.createImageData(S, S), d = od.data;
+  for (let y = CY - R; y < CY + R; y++) for (let x = CX - R; x < CX + R; x++) {
+    const dx = x - CX, dy = y - CY, r = Math.hypot(dx, dy) / R;
+    if (r >= 1) continue;
+    const k = warp + (1 - warp) * Math.pow(r, 1.6);
+    const fx = CX + dx * k, fy = CY + dy * k, x0 = Math.floor(fx), y0 = Math.floor(fy), tx = fx - x0, ty = fy - y0, i = (y * S + x) * 4;
+    for (let ch = 0; ch < 3; ch++) {
+      const p = (yy, xx) => si[(yy * S + xx) * 4 + ch];
+      d[i + ch] = (p(y0, x0) * (1 - tx) + p(y0, x0 + 1) * tx) * (1 - ty) + (p(y0 + 1, x0) * (1 - tx) + p(y0 + 1, x0 + 1) * tx) * ty;
+    }
+    d[i + 3] = 255;
+  }
+  o.putImageData(od, 0, 0); return out;
+}
+let warpedA;
+function drawA(g) {
+  const { CY, R } = A, rim = "rgba(235,228,215,.75)";
+  fill(g, "rgba(90,60,40,.18)", () => g.ellipse(CX, CY + R + 20, R * .72, 13, 0, 0, TAU));
+  g.drawImage(warpedA ||= bulge(faceA(), CY, R, A.warp), 0, 0);
+  const ring = g.createRadialGradient(CX, CY, R * .8, CX, CY, R);
+  ring.addColorStop(0, "rgba(30,20,15,0)"); ring.addColorStop(.8, "rgba(30,20,15,.16)"); ring.addColorStop(1, rim);
+  fill(g, ring, () => g.arc(CX, CY, R, 0, TAU));
+  g.strokeStyle = "rgba(255,255,255,.85)"; g.lineWidth = 12; g.lineCap = "round";
+  g.beginPath(); g.arc(CX, CY, R - 20, Math.PI * 1.12, Math.PI * 1.36); g.stroke();
+  g.lineWidth = 6; g.strokeStyle = "rgba(255,255,255,.5)"; g.beginPath(); g.arc(CX, CY, R - 15, Math.PI * 1.72, Math.PI * 1.86); g.stroke();
+  fill(g, "rgba(255,255,255,.9)", () => g.arc(CX - R * .38, CY - R * .5, 6, 0, TAU));
+  g.strokeStyle = rim; g.lineWidth = 4; g.beginPath(); g.arc(CX, CY, R - 2, 0, TAU); g.stroke();
+  claw(g, armGrip(CY, R));
+}
+
+// ---- B: the claw holds the fur-ball itself, no glass
+function drawB(g) {
+  const cy = 304, r = 138;
+  fill(g, "rgba(90,60,40,.18)", () => g.ellipse(CX, cy + r + 34, r * .7, 12, 0, 0, TAU));
+  mochi(g, CX, cy, r, { mood: "smile", feet: true });
+  claw(g, armGrip(cy, r + 2));
+}
+
+// ---- C: peeking out of the capsule half, app-menu ink outlines with the hard drop
+function drawC(g) {
+  const L = cv(S, S + 400), x = L.getContext("2d"); x.translate(0, 400);
+  const by = 318, br = 146;
+  claw(x, armOpen, INK);
+  mochi(x, CX, 262, 126, { mood: "dot", ink: true, faceDy: -.2 });
+  const bowl = x.createLinearGradient(0, by, 0, by + br); bowl.addColorStop(0, "#FFE27A"); bowl.addColorStop(1, "#FFC938");
+  x.lineJoin = "round"; x.strokeStyle = INK; x.lineWidth = 8;
+  x.beginPath(); x.arc(CX, by, br, 0, Math.PI); x.closePath(); x.fillStyle = bowl; x.fill(); x.stroke();
+  x.save(); x.strokeStyle = "rgba(255,255,255,.75)"; x.lineWidth = 12; x.lineCap = "round";
+  x.beginPath(); x.arc(CX, by, br - 26, Math.PI * .68, Math.PI * .86); x.stroke(); x.restore();
+  x.beginPath(); x.roundRect(CX - br - 10, by - 14, br * 2 + 20, 30, 15); x.fillStyle = "#FFD84D"; x.fill(); x.stroke();
+  for (const s of [-1, 1]) {   // paws over the rim
+    x.beginPath(); x.ellipse(CX + s * 80, by - 12, 27, 19, 0, 0, TAU); x.fillStyle = "#FFF7EC"; x.fill(); x.lineWidth = 7; x.stroke();
+    x.lineWidth = 4; for (const k of [-1, 1]) { x.beginPath(); x.moveTo(CX + s * 80 + k * 9, by - 4); x.lineTo(CX + s * 80 + k * 9, by + 5); x.stroke(); }
+  }
+  const sh = cv(L.width, L.height), y = sh.getContext("2d");   // hard ink drop, like the menu cards
+  y.drawImage(L, 0, 0); y.globalCompositeOperation = "source-in"; y.fillStyle = INK; y.fillRect(0, 0, sh.width, sh.height);
+  g.drawImage(sh, 0, -400 + 10); g.drawImage(L, 0, -400);
+}
+
+const OPTS = [
+  { id: "A", name: "유리에 코 박은 모찌", bg: PINK, mid: 276, draw: drawA,
+    good: "지금 아이콘의 구도와 어안 매력을 그대로 잇고 주인공만 털뭉치 고양이로 바뀌어요. 분홍 젤리 코, 수염, 뾰족 귀.",
+    weak: "귀가 유리 안쪽 가장자리로 눌려서 48 크기에서는 고양이보다 '동그란 얼굴'로 먼저 읽혀요." },
+  { id: "B", name: "집게에 들린 털뭉치", bg: PINK, mid: 276, draw: drawB,
+    good: "유리를 빼고 털뭉치를 통째로 보여 줘서 귀 달린 공 실루엣이 가장 또렷해요. 릴스 속 모찌와 바로 이어져요.",
+    weak: "유리 반짝임과 코 박은 표정이 없어져 지금 아이콘의 장난스러움은 줄어요." },
+  { id: "C", name: "캡슐에서 빼꼼", bg: SKY, mid: 262, draw: drawC,
+    good: "앱 메뉴와 같은 잉크 테두리, 하늘색, 노란 캡슐이라 앱을 열었을 때 그림체가 이어져요. 작아도 선이 또렷해요.",
+    weak: "집게, 털뭉치, 캡슐 세 덩어리라 가장 복잡하고, 지금 분홍 아이콘과는 인상이 많이 달라요." },
+];
+
+function foreground(o) {   // 432 px adaptive foreground: art inside the 66 dp safe circle
+  const c = cv(432, 432), g = c.getContext("2d"), k = 432 / S * 0.6;
+  g.translate(216, 216); g.scale(k, k); g.translate(-CX, -o.mid); o.draw(g); return c;
+}
+function gradient(g, o, size) { const b = g.createLinearGradient(0, 0, size, size); b.addColorStop(0, o.bg[0]); b.addColorStop(1, o.bg[1]); return b; }
+function store(o) {
+  const c = cv(S, S), g = c.getContext("2d"); g.fillStyle = gradient(g, o, S); g.fillRect(0, 0, S, S); o.draw(g); return c;
+}
+function launcher(o) {   // what a launcher shows: the middle 72 of 108 dp
+  const c = cv(288, 288), g = c.getContext("2d");
+  g.translate(-72, -72); g.fillStyle = gradient(g, o, 432); g.fillRect(0, 0, 432, 432); g.drawImage(foreground(o), 0, 0); return c;
+}
+window.__exportIcons = (id = "A") => {
+  const o = OPTS.find((x) => x.id === id);
+  return { fg: foreground(o).toDataURL("image/png"), store: store(o).toDataURL("image/png"), bg: o.bg.slice() };
+};
+
+// ---- page
+const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text) e.textContent = text; return e; };
+function plain(color, radius) { const d = el("div", "ic plain"), i = el("i"); i.style.background = color; i.style.borderRadius = radius; d.append(i); return d; }
+function nowIcon() { const d = el("div", "ic now"), i = el("img"); i.src = "img/now-fg.png"; i.alt = ""; d.append(i); return d; }
+function ourIcon(o) { const c = launcher(o); c.className = "ic"; return c; }
+function app(icon, label) { const a = el("div", "app"); a.append(icon, el("span", "", label)); return a; }
+function homeRow(icon) {
+  const h = el("div", "home");
+  h.append(app(plain("#4C8DF6", "50%"), "카메라"), app(plain("#E0558A", "6px"), "갤러리"), app(icon, "리얼뽑기"), app(plain("#3BA55D", "50% 50% 50% 4px"), "메시지"));
+  return h;
+}
+function card(tag, name, big, icon, good, weak) {
+  const c = el("section", "card"); big.classList.add("big");
+  const n = el("div", "notes"), a = el("div", "g"), b = el("div", "w");
+  a.append(el("b", "", "좋은 점 "), good); b.append(el("b", "", "약한 점 "), weak); n.append(a, b);
+  c.append(el("div", "tag", tag), el("h2", "", name), big, homeRow(icon), n);
+  return c;
+}
+const grid = document.getElementById("grid"), all = document.getElementById("all");
+const nowBig = el("img"); nowBig.src = "img/now.png"; nowBig.alt = "지금 아이콘";
+grid.append(card("지금", "코 박은 강아지", nowBig, nowIcon(), "귀엽고 한눈에 기억돼요.", "광고 릴스 주인공은 고양이 모찌라서 아이콘과 어긋나요."));
+all.append(app(nowIcon(), "지금"));
+for (const o of OPTS) {
+  grid.append(card("시안 " + o.id, o.name, store(o), ourIcon(o), o.good, o.weak));
+  all.append(app(ourIcon(o), "시안 " + o.id));
+}
+</script>
