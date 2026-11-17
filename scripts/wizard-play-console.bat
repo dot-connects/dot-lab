@@ -401,6 +401,7 @@ $($App.Name) 테스트 열렸어! 고마워 🙏
   Say "    참여 링크: $(St-Get "$($K)_OPTIN")"
   Say "    패키지 이름: $($App.Pkg)"
   Step '설명은 짧게: 어떤 앱인지 한 줄 + "매일 한 번 열어 주세요"'
+  Step '해외 테스터도 있어요: 설명 끝에 영어 한 줄 (예: Korean only for now - open it once a day, thanks!)'
   Warn 'Play 스토어 리뷰·별점을 서로 써 주자는 요청은 금지예요 (Play 정책 위반, ACT Party 약관 위반).'
   Wait-Enter '등록이 끝나면 Enter'
 
