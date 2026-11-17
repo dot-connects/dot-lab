@@ -275,8 +275,12 @@ internal fun DeskFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean,
         }
         // review C2: row pitch = digit cap / 3; title 0.38 × pitch, label 0.24 × pitch, floors 22 / 18 dp
         val pitch0 = p.capEm * fs / 3
-        lab.textSize = max(18.dp.toPx(), 0.24f * pitch0)
-        ttl.textSize = max(22.dp.toPx(), 0.38f * pitch0)
+        // plan-r15 E9 #9: a near-square screen (stacked, not tall: Fold inner) keeps the rows at the Flip cover's share
+        // of the short side, so they grow with the screen instead of sitting on the dp floors
+        val sq = portrait && h <= w * 1.15f && !inSlot
+        val s = min(w, h)
+        lab.textSize = maxOf(18.dp.toPx(), 0.24f * pitch0, if (sq) 0.042f * s else 0f)
+        ttl.textSize = maxOf(22.dp.toPx(), 0.38f * pitch0, if (sq) 0.052f * s else 0f)
         // each row = label cap-top … title baseline; rows spread space-between from rTop to rBottom
         val gapLT = lab.textSize * 0.55f
         val blockH = lab.textSize * labCap + gapLT + ttl.textSize * ttlCap

@@ -198,6 +198,47 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
         val margin = if (inSlot) 0.04f * s else 10.dp.toPx() + 0.04f * s
         val tall = h > w
         val k0 = s / 360f
+        // plan-r15 E9 #3 / #7: portrait LED and every tall compact box stack hours over minutes (LCD-portrait geometry,
+        // no panel for the LED; the compact LCD keeps its plate), the lamps in one row on top
+        if (h > w * 1.15f && (compact || !lcd)) {
+            val g = if (compact) 16f / 170f else 26f / 270f
+            val rg = if (compact) 26f / 170f else 0.13f
+            val lampH = if (compact) 0f else 56 * k0
+            val dh = if (compact) min(0.78f * w / (2 + g * 1.8f) * 1.8f, 0.9f * h / (2 + rg))
+                else min(0.3f * h * style.sizePct / 100f, (w - 2 * margin) / (2 / 1.8f + g))
+            val gap = g * dh; val rowGap = rg * dh
+            val rowW = 2 * dh / 1.8f + gap
+            val top = (h - (2 * dh + rowGap)) / 2 + lampH / 2
+            val x0 = (w - rowW) / 2 + if (compact) 0.02f * w else 0f
+            val hh = d.h.padStart(2, ' ')
+            mono.textSize = max(11.dp.toPx(), 16 * k0)
+            val items = listOfNotNull(
+                if (d.use24h) null else "오전" to (d.now.hour < 12),
+                if (d.use24h) null else "오후" to (d.now.hour >= 12),
+                "알람" to (d.alarm != null),
+            )
+            val lampOn = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = on; if (glow != 0) setShadowLayer(5 * k0, 0f, 0f, glow) }
+            val lampOff = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                if (n >= 0.5f) { this.style = Paint.Style.STROKE; strokeWidth = 1.dp.toPx(); color = Ink.NIGHT_DIM.toArgb() } else color = off
+            }
+            val r = 6 * k0
+            val back = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = plate }
+            val skew = if (lcd) 0.07f else 0.0875f
+            return@FaceCanvas {
+                if (lcd) drawRoundRect(0f, 0f, w, h, 0.08f * s, 0.08f * s, back)
+                segRow(hh, 2, x0, top, dh, gap, 0f, 0f, skew, on, off, glow)
+                segRow(d.m, 2, x0, top + dh + rowGap, dh, gap, 0f, 0f, skew, on, off, glow)
+                if (compact) return@FaceCanvas
+                mono.color = dim
+                items.forEachIndexed { i, (label, lit) ->
+                    val cx = w / 2 + (i - (items.size - 1) / 2f) * 84 * k0
+                    val y = top - 44 * k0
+                    val lw = mono.measureText(label)
+                    drawCircle(cx - lw / 2 - r * 1.5f, y, r, if (lit) lampOn else lampOff)
+                    drawText(label, cx - lw / 2 + r, y + mono.capRatio() * mono.textSize / 2, mono)
+                }
+            }
+        }
         if (compact || !lcd) {
             // LED row: 150 × 270 digits, 26 dp gaps, 26 dp colon squares 70 apart; the lamps take ~100 dp on the left
             val lamps = !compact && !tall
@@ -246,6 +287,7 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
         // LCD: the plate, then everything in plate units (316 × 728 dp in the mockup)
         val pl = max(margin, 26 * k0); val pt = max(margin, 22 * k0)
         val pw = w - 2 * pl; val ph = h - 2 * pt
+        if (w < h * 1.35f) return@FaceCanvas lcdSquare(d, pl, pt, pw, ph, nd, style.sizePct, on, off, plate, n, bold, mono)
         val pk = min(ph / 316f, pw / 728f)
         mono.textSize = 22 * pk; mono.letterSpacing = 0.06f
         val topY = pt + 20 * pk + mono.capRatio() * mono.textSize
@@ -288,7 +330,10 @@ internal fun DotMatrixFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boo
     val columns = glyphs.sumOf { it[0].length } + glyphs.size - 1 + 4
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
-        if (h > w * 18f / 13f) return@FaceCanvas dotPortrait(d, w, h, on, off)
+        // plan-r15 E9 #6: two rows from h > 1.1 w (M slots too); near-square landscape = one row as large as the width
+        // allows (decision A), unlit dots over the whole frame
+        if (h > w * 1.1f) return@FaceCanvas dotPortrait(d, w, h, on, off)
+        if (w < h * 1.5f) return@FaceCanvas dotWide(text, w, h, on, off)
         val margin = if (inSlot) 4.dp.toPx() else 10.dp.toPx()
         val pitch = min((w - 2 * margin) / columns, (h - 2 * margin) / 9f) * style.sizePct / 100f
         val x0 = (w - columns * pitch) / 2
@@ -314,29 +359,95 @@ internal fun DotMatrixFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boo
  * the minutes row (5 × 7 glyphs, 2 empty rows between), the 16-row block centred on the grid. Lit dots get a soft halo.
  */
 private fun dotPortrait(d: FaceData, w: Float, h: Float, on: Int, off: Int): Canvas.() -> Unit {
-    val p = w / 13f
-    val rows = kotlin.math.ceil(h / p).toInt()
-    val top = kotlin.math.round(h / 2 / p).toInt() - 8
+    // the pitch also fits 18 rows, so a box just taller than wide (h > 1.1 w) still holds both rows
+    val p = min(w / 13f, h / 18f)
+    // whole dots only (an M slot must not draw past its edge), the grid centred in the box
+    val rows = kotlin.math.floor(h / p + 0.01f).toInt()
+    val cols = kotlin.math.floor(w / p + 0.01f).toInt().let { if (it % 2 == 0) it - 1 else it }
+    val x0 = (w - cols * p) / 2; val y0 = (h - rows * p) / 2
+    val top = rows / 2 - 8
     val lit = HashSet<Pair<Int, Int>>()
     fun put(text: String, row0: Int) {
         val gw = text.length * 6 - 1
-        var col = (13 - gw) / 2
+        var col = (cols - gw) / 2
         for (ch in text) {
             DotGlyphs.getValue(ch).forEachIndexed { r, bits -> bits.forEachIndexed { c, b -> if (b == '1') lit.add(col + c to row0 + r) } }
             col += 6
         }
     }
     put(d.h, top); put(d.m, top + 9)
+    return dotGrid(lit, x0, y0, p, cols, rows, on, off)
+}
+
+/** 전광판 near-square landscape (plan-r15 E9 #6 A): "h:mm" in one row at pitch W/(glyph columns + 2), dots over the whole frame. */
+private fun dotWide(text: String, w: Float, h: Float, on: Int, off: Int): Canvas.() -> Unit {
+    val cols = text.sumOf { DotGlyphs.getValue(it)[0].length } + text.length - 1 + 2
+    val p = w / cols
+    val rows = kotlin.math.floor(h / p + 0.01f).toInt().let { if (it % 2 == 0) it - 1 else it }
+    val lit = HashSet<Pair<Int, Int>>()
+    var col = 1
+    for (ch in text) {
+        val g = DotGlyphs.getValue(ch)
+        g.forEachIndexed { r, bits -> bits.forEachIndexed { c, b -> if (b == '1') lit.add(col + c to (rows - 7) / 2 + r) } }
+        col += g[0].length + 1
+    }
+    return dotGrid(lit, 0f, (h - rows * p) / 2, p, cols, rows, on, off)
+}
+
+/** A [cols] × [rows] dot grid from ([x0], [y0]) at pitch [p]; lit dots get a soft halo. */
+private fun dotGrid(lit: Set<Pair<Int, Int>>, x0: Float, y0: Float, p: Float, cols: Int, rows: Int, on: Int, off: Int): Canvas.() -> Unit {
     val halo = (on and 0x00FFFFFF) or (((on ushr 24) * 0.25f).toInt() shl 24)
     return {
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        for (r in 0 until rows) for (c in 0 until 13) {
-            val x = (c + 0.5f) * p; val y = (r + 0.5f) * p
+        for (r in 0 until rows) for (c in 0 until cols) {
+            val x = x0 + (c + 0.5f) * p; val y = y0 + (r + 0.5f) * p
             if ((c to r) in lit) {
                 paint.color = halo; drawCircle(x, y, p * 0.62f, paint)
                 paint.color = on; drawCircle(x, y, p * 0.4f, paint)
             } else { paint.color = off; drawCircle(x, y, p * 0.4f, paint) }
         }
+    }
+}
+
+/**
+ * 액정 near-square (plan-r15 E9 #7, w/h < 1.35: Fold inner, Flip cover): weekday and MM-DD on top, the digit row 85 %
+ * of the panel width in the middle, 오전/오후 · alarm · temperature in one row at the bottom. Panel units [tk] =
+ * min(ph/316, pw/520).
+ */
+private fun lcdSquare(
+    d: FaceData, pl: Float, pt: Float, pw: Float, ph: Float, nd: Int, sizePct: Int, on: Int, off: Int, plate: Int, n: Float,
+    bold: android.text.TextPaint, mono: android.text.TextPaint,
+): Canvas.() -> Unit {
+    val tk = min(ph / 316f, pw / 520f)
+    val ts = 22 * tk
+    val g = 20f / 212f
+    val dh = min(0.85f * pw / (nd / 1.8f + nd * g), ph - 2 * (22 * tk + ts + 34 * tk)) * sizePct.coerceAtMost(100) / 100f
+    val rowW = segRowW(nd, dh, g * dh, g * dh) - g * dh
+    val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = plate }
+    val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 2 * tk
+        color = if (n >= 0.5f) ThemeTokens.NIGHT_INK.copy(alpha = 0.3f).toArgb() else 0x40000000
+    }
+    val date = "%02d-%02d".format(d.month, d.day)
+    val r = 14 * tk
+    return {
+        drawRoundRect(pl, pt, pl + pw, pt + ph, r, r, panel)
+        drawRoundRect(pl + tk, pt + tk, pl + pw - tk, pt + ph - tk, r, r, edge)
+        bold.color = on; bold.textSize = ts
+        mono.color = on; mono.textSize = ts; mono.letterSpacing = 0f
+        val topY = pt + 22 * tk + ts * 0.75f
+        drawText("${d.weekday}요일", pl + 30 * tk, topY, bold)
+        drawText(date, pl + pw - 30 * tk - mono.measureText(date), topY, mono)
+        segRow(d.h + d.m, d.h.length, pl + (pw - rowW) / 2, pt + (ph - dh) / 2, dh, g * dh, g * dh, 56f / 212f * dh, 0.07f, on, off, 0)
+        val botY = pt + ph - 24 * tk
+        if (!d.use24h) drawText(d.ampm, pl + 30 * tk, botY, bold)
+        d.alarmShort?.let {
+            val al = mono.measureText(it) + ts * 1.15f
+            val x = pl + pw / 2 - al / 2
+            drawAlarmGlyph(x, botY - bold.capRatio() * ts / 2, ts, on)
+            drawText(it, x + ts * 1.15f, botY, mono)
+        }
+        d.temp?.let { drawText(it, pl + pw - 30 * tk - bold.measureText(it), botY, bold) }
     }
 }
 

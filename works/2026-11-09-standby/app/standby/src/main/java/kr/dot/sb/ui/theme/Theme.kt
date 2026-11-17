@@ -92,6 +92,8 @@ object Themes {
             )
             FaceId.SOLAR -> ClockStyle.default(face).copy(font = font, weight = weight)
             FaceId.PHOTOS_TIME -> ClockStyle(font, weight, color = 0xFFFFFFFF)
+            // plan-r15 E9 #12: 날짜·요일 starts off on the two relief dials
+            FaceId.RELIEF, FaceId.RELIEF_SQUARE -> ClockStyle(font, weight, color = acc, litDotColor = tick, showInfo = false)
             else -> ClockStyle(font, weight, color = acc, litDotColor = tick)
         }
     }

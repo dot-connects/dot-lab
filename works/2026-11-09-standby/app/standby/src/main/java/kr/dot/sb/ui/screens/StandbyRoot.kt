@@ -74,6 +74,9 @@ import kr.dot.sb.data.MoodPhase
 import kr.dot.sb.data.MoodTimer
 import kr.dot.sb.platform.Brightness
 import kr.dot.sb.ui.board.BoardView
+import kr.dot.sb.ui.board.LastCard
+import kr.dot.sb.settings.MyClocks
+import androidx.compose.ui.platform.LocalContext
 import kr.dot.sb.ui.state.StandbyActions
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.Grid
@@ -142,7 +145,15 @@ internal fun RootImpl(
     val pages by rememberUpdatedState(Pages.visible(config))
     // Hoisted above the display-off branch so waking returns to the same page and clock face.
     val pager = rememberPagerState(Pages.start(config)) { pages.size }
-    val clockPage = remember { mutableStateOf(start.face) }
+    // plan-r15 E10: with rotation on the clocks page reopens on the face it showed last (settings previews pass NONE)
+    val ctx = LocalContext.current
+    val remembers = actions !== StandbyActions.NONE
+    val clockPage = remember {
+        mutableStateOf(start.face ?: if (remembers && config.rotateClocks) LastCard.face(LastCard.read(ctx, LastCard.CLOCK_FACE), MyClocks.pages(config)) else null)
+    }
+    LaunchedEffect(clockPage.value) {
+        if (remembers && config.rotateClocks) clockPage.value?.let { LastCard.write(ctx, LastCard.CLOCK_FACE, it.name) }
+    }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
     // cards ask for Now Playing (and the banner for the notification card) through the actions; the root owns both

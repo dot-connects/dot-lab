@@ -219,11 +219,17 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
             val hands = remember(geo, pal) { RlHands(geo, pal) }
             val sweep = if (style.sweep) rememberSweep() else null
             val hr = d.now.hour % 12; val mn = d.now.minute
+            // plan-r15 E9 #12 날짜·요일 (default off): weekday over, date under the dial in the empty top/bottom of an
+            // upright screen, pressed into the dial; only where that band has room for it
+            val words = rememberUi(500)
+            val dates = remember(geo, pal, words, style.showInfo, d.weekday, d.month, d.day) {
+                if (style.showInfo) RlDates.of(geo, pal, words, "${d.weekday}요일", "${d.month}월 ${d.day}일") else null
+            }
             Spacer(
                 Modifier.fillMaxSize().drawBehind {
                     // no boxing per frame: plain branches, primitives only
                     val s = if (sweep != null) sweep.longValue / 1000f else second.intValue.toFloat()
-                    drawIntoCanvas { hands.draw(it.nativeCanvas, hr, mn, s) }
+                    drawIntoCanvas { dates?.draw(it.nativeCanvas); hands.draw(it.nativeCanvas, hr, mn, s) }
                 },
             )
         }
@@ -765,8 +771,21 @@ private class RlHands(private val g: RlGeo, private val p: RlPal) {
         }
     }
 
-    private val hour = Hand(lens.first, 2.8f, 3.5f, S_H)
-    private val minute = Hand(lens.second, 2.2f, 4.5f, S_M)
+    private var hour = Hand(lens.first, 2.8f, 3.5f, S_H)
+    private var minute = Hand(lens.second, 2.2f, 4.5f, S_M)
+
+    // plan-r15 E9 #12: an upright 입체 네모 reaches its hands toward the capsule ring along their own angle (the long
+    // axis has room the short one lacks); rebuilt once a minute. Capped so the shadow bitmap (short side + 8) holds them.
+    private val tall = g.kind == RlKind.SQUARE && g.hh > g.hw * 1.15f
+    private var builtFor = -1
+    private fun reach(deg: Float): Float = rectPoint(deg, g.hw - RlStatic.SQ_RING, g.hh - RlStatic.SQ_RING).let { (x, y) -> kotlin.math.hypot(x, y) } - 4.7f
+    private fun fit(h: Int, m: Int) {
+        if (!tall || builtFor == h * 60 + m) return
+        builtFor = h * 60 + m
+        val md = m * 6f; val hd = (h + m / 60f) * 30f
+        minute = Hand(min(54f, min(reach(md), reach(md + 6f))).coerceAtLeast(lens.second), 2.2f, 4.5f, S_M)
+        hour = Hand((0.6f * min(54f, min(reach(hd), reach(hd + 0.5f)))).coerceAtLeast(lens.first), 2.8f, 3.5f, S_H)
+    }
 
     private val u = g.u; private val cx = g.cx; private val cy = g.cy
     private val accPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = p.acc; strokeWidth = 0.34f * u; strokeCap = Paint.Cap.ROUND }
@@ -789,6 +808,7 @@ private class RlHands(private val g: RlGeo, private val p: RlPal) {
 
     /** [h] 0..11, [m] 0..59, [s] seconds (fractional when sweeping). */
     fun draw(c: Canvas, h: Int, m: Int, s: Float) {
+        fit(h, m)
         val sec = s % 60f
         hour.draw(c, (h + (m + sec / 60f) / 60f) * 30f)
         minute.draw(c, (m + sec / 60f) * 6f)
@@ -907,5 +927,38 @@ private class RlMarker(private val g: RlGeo, private val p: RlPal) {
         val x = g.x(-g.scaleHalf + 2 * g.scaleHalf * (s % 60f) / 60f) - 0.8f * u - pad
         val y = g.y(g.scaleY - 4.4f) - 2.6f * u - pad
         c.drawBitmap(bmp, x, y, paint)
+    }
+}
+
+/**
+ * 입체 시계 / 입체 네모 날짜·요일 (plan-r15 E9 #12): [top] centred in the band above the dial, [bottom] in the band
+ * under it (네모: between the 50-unit circle and the 12 / 6 numerals). Day: printed in the dial ink with a light lip
+ * under it (pressed in); night and 야광: the ink alone. Null when the screen is not upright or a band is under 9 units.
+ */
+private class RlDates(private val x: Float, private val y0: Float, private val y1: Float, private val top: String, private val bottom: String, private val ink: Paint, private val lip: Paint?) {
+    fun draw(c: Canvas) {
+        for ((t, y) in listOf(top to y0, bottom to y1)) {
+            lip?.let { c.drawText(t, x, y + 0.04f * it.textSize, it) }
+            c.drawText(t, x, y, ink)
+        }
+    }
+
+    companion object {
+        fun of(g: RlGeo, p: RlPal, words: android.text.TextPaint, top: String, bottom: String): RlDates? {
+            if (g.kind == RlKind.CAPSULE || g.hh <= g.hw * 1.15f) return null
+            // band: from the 50-unit dial to the screen edge (round) or to the inner side of the 12 / 6 numerals (네모)
+            val outer = if (g.kind == RlKind.SQUARE) g.hh - RlStatic.SQ_RING - 13.8f else g.hh
+            if (outer - 50f < 9f) return null
+            val mid = (50f + outer) / 2
+            val size = min(7.5f, 0.6f * (outer - 50f)) * g.u
+            fun paint(color: Int) = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                typeface = words.typeface; textSize = size; textAlign = Paint.Align.CENTER; this.color = color
+            }
+            val ink = paint(alpha(p.ink, if (p.night || p.glow) 0.7f else 0.8f))
+            val lip = if (p.night || p.glow || p.clear) null else paint(alpha(WHITE, 0.75f))
+            // baseline so the cap sits centred on the band's middle
+            val half = size * words.capRatio() / 2
+            return RlDates(g.cx, g.y(-mid) + half, g.y(mid) + half, top, bottom, ink, lip)
+        }
     }
 }

@@ -208,6 +208,25 @@ class ClockShots(private val theme: Theme) {
     @Test fun r10BarPort() = r10On(Device.BAR_P)
     @Test fun r10Flip() = r10On(Device.FLIP)
 
+    /** plan-r15 E9: every face on the two extra frames (Fold inner upright, a small square Flip cover), IPHONE. */
+    @Test fun e9FoldInnerPort() {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        shots(Device.FOLD_INNER_P, (faces + r10).map { "${it.name.lowercase()}-day" to face(it) })
+    }
+    @Test fun e9FlipSmall() {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        shots(Device.FLIP_SMALL, (faces + r10).map { "${it.name.lowercase()}-day" to face(it) })
+    }
+
+    /** plan-r15 E9: the slot classes for 세계, 책상 and 사진 위 시간 (photo screen = a flat blue page behind the slot). */
+    @Test fun e9Slots() {
+        org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
+        val sizes = listOf("L" to (703 to 427), "M" to (337 to 419), "Sw" to (337 to 199), "St" to (220 to 419), "XSt" to (104 to 300))
+        shots(Device.FOLD_COVER_L, listOf(FaceId.WORLD, FaceId.DESK, FaceId.PHOTOS_TIME).flatMap { f ->
+            sizes.map { (n, wh) -> "slot-${f.name.lowercase()}-$n" to slot(f, wh.first, wh.second) }
+        })
+    }
+
     @Test fun r10Slots() {
         org.junit.Assume.assumeTrue(theme == Theme.IPHONE)
         val sizes = listOf("L" to (703 to 427), "M" to (337 to 419), "Sw" to (337 to 199), "St" to (220 to 419), "XSt" to (104 to 300))

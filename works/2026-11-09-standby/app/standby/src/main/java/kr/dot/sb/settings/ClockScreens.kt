@@ -444,6 +444,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
         }
         StyleRow.GHOST -> SwitchRow("꺼진 획 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 획이 다이얼에 옅게 새겨져요")
         StyleRow.DATE_WINDOW -> SwitchRow("날짜 창", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "오른쪽 위에 요일과 날짜를 보여요")
+        StyleRow.DATE_DAY -> SwitchRow("날짜·요일", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "세워 두면 위아래 빈 곳에 요일과 날짜를 보여요")
         else -> Unit // colour rows are handled above
     }
 }

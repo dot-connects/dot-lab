@@ -119,7 +119,22 @@ class ReliefShots {
 
     @Test fun flipCover() = shots(Device.FLIP, faces.map { f -> "${n(f)}-ice" to face(f) })
 
-    @Test fun barPortrait() = shots(Device.BAR_P, faces.map { f -> "${n(f)}-ice" to face(f) })
+    @Test fun barPortrait() = shots(Device.BAR_P, faces.map { f -> "${n(f)}-ice" to face(f) } + listOf(FaceId.RELIEF, FaceId.RELIEF_SQUARE).flatMap { f ->
+        // plan-r15 E9 #12: 날짜·요일 on (day, 코얼, night) and the longer 네모 hands
+        listOf(
+            "${n(f)}-date" to face(f, base(f).copy(showInfo = true)),
+            "${n(f)}-date-coal" to face(f, base(f).copy(showInfo = true, faceColor = Relief.COAL.dial)),
+            "${n(f)}-date-night" to face(f, base(f).copy(showInfo = true, lumeView = LumeView.NIGHT), Fixtures.full(night = 1f)),
+        )
+    })
+
+    /** plan-r15 E9: the relief faces on the frames the matrix lacked (bar landscape, Fold inner both ways, small Flip). */
+    private fun e9(dev: Device) = shots(dev, faces.map { f -> "${n(f)}-ice" to face(f) } + listOf(FaceId.RELIEF, FaceId.RELIEF_SQUARE).map { f -> "${n(f)}-date" to face(f, base(f).copy(showInfo = true)) })
+    @Test fun e9BarLand() = e9(Device.BAR_L)
+    @Test fun e9FoldInner() = e9(Device.FOLD_INNER)
+    @Test fun e9FoldInnerPort() = e9(Device.FOLD_INNER_P)
+    @Test fun e9FlipSmall() = e9(Device.FLIP_SMALL)
+    @Test fun e9FoldCoverPort() = e9(Device.FOLD_COVER_P)
 
     /** r14 A4: 입체 디지털 upright (hours over minutes) on four dials, night, and a 12 h one-digit hour without engraved segments. */
     @Test fun digitalPortrait() = FaceId.RELIEF_DIGITAL.let { f ->

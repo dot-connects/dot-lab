@@ -1,6 +1,7 @@
 package kr.dot.sb.board
 
 import kr.dot.sb.model.CardType
+import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.board.LastCard
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -20,8 +21,17 @@ class LastCardTest {
 
     @Test fun unknownName_firstCard() = assertEquals(0, LastCard.start("NO_SUCH_CARD", stack))
 
-    @Test fun notifIsNeverRemembered() {
-        assertEquals(null, LastCard.keyOf(CardType.NOTIF))
-        assertEquals("WEATHER", LastCard.keyOf(CardType.WEATHER))
+    // plan-r15 E10: the notification card is remembered like any card
+    @Test fun notifIsRemembered() {
+        assertEquals("NOTIF", LastCard.keyOf(CardType.NOTIF))
+        assertEquals(1, LastCard.start(LastCard.keyOf(CardType.NOTIF), listOf(CardType.CLOCK, CardType.NOTIF)))
     }
+
+    private val faces = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.ANALOG)
+
+    @Test fun clockFace_storedAndListed_thatFace() = assertEquals(FaceId.FLIP, LastCard.face("FLIP", faces))
+
+    @Test fun clockFace_removedFromMyClocks_firstPage() = assertEquals(null, LastCard.face("WORLD", faces))
+
+    @Test fun clockFace_nothingStored_firstPage() = assertEquals(null, LastCard.face(null, faces))
 }
