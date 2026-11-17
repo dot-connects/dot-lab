@@ -385,6 +385,8 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
   if (req.method !== "POST" || !["/transform", "/sheet", "/report"].includes(path)) return json({ error: "not found" }, 404);
   if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + LOOK_MAX + 2000) return json({ error: "too big" }, 413);
   const text = await req.text();
+  // Content-Length can be absent (chunked) or wrong: the body itself is held to the same cap (Codex review 11-18)
+  if (text.length > IMAGE_MAX + LOOK_MAX + 2000) return json({ error: "too big" }, 413);
   let b = null;
   try { b = JSON.parse(text); } catch {}
   if (!b || typeof b !== "object") return json({ error: "bad request" }, 400);
