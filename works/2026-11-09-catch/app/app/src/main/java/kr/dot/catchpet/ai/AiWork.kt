@@ -44,7 +44,15 @@ object AiWork {
 
     private fun client(ctx: Context) = AiClient(BuildConfig.WORKER, AiClient.deviceId(ctx))
 
-    private fun cutOut(ctx: Context, e: Dex.Entry) = Dex.file(ctx, e.id, "${e.poses.first()}.png").readBytes()
+    /** The cut-out as sent: flattened on white (a transparent one broke the green key, Pixels.onWhite). */
+    private fun cutOut(ctx: Context, e: Dex.Entry): ByteArray {
+        val raw = Dex.file(ctx, e.id, "${e.poses.first()}.png").readBytes()
+        val b = android.graphics.BitmapFactory.decodeByteArray(raw, 0, raw.size) ?: return raw
+        val px = IntArray(b.width * b.height); b.getPixels(px, 0, b.width, 0, 0, b.width, b.height)
+        val flat = android.graphics.Bitmap.createBitmap(kr.dot.catchpet.seg.Pixels.onWhite(px), b.width, b.height, android.graphics.Bitmap.Config.ARGB_8888)
+        b.recycle()
+        return java.io.ByteArrayOutputStream().use { o -> flat.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, o); flat.recycle(); o.toByteArray() }
+    }
 
     fun preview(ctx: Context, e: Dex.Entry, style: String) = run(ctx, e, "preview-$style") { app ->
         val r = client(app).preview(cutOut(app, e), e.kind, style, if (dev) BuildConfig.DEBUG_PURCHASE else null)

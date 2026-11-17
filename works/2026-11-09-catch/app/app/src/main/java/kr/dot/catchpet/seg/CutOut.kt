@@ -85,11 +85,21 @@ object CutOut {
         ).takeIf { it.width() > 0 && it.height() > 0 }
     }
 
-    /** Frame-sized layer: inside the mask a heavily blurred copy of the frame (the hole the catch leaves). */
+    /**
+     * Frame-sized layer: inside the mask, what was around the catch, smeared in (the hole it leaves). Was a blurred
+     * copy of the frame, i.e. a blurred ghost of the very thing just caught, which read as a broken screen for the
+     * 3 s of lift and capsule (review 11-17); now the hole takes its colours from outside the (grown) mask only.
+     */
     fun hole(frame: Bitmap, m: Mask): Bitmap {
-        val tiny = Bitmap.createScaledBitmap(frame, max(1, frame.width / 24), max(1, frame.height / 24), true)
-        val out = Bitmap.createScaledBitmap(tiny, frame.width, frame.height, true).copy(Bitmap.Config.ARGB_8888, true)
-        tiny.recycle()
+        val sw = max(1, frame.width / 12); val sh = max(1, frame.height / 12)
+        val tiny = Bitmap.createScaledBitmap(frame, sw, sh, true)
+        val px = IntArray(sw * sh); tiny.getPixels(px, 0, sw, 0, 0, sw, sh); tiny.recycle()
+        val ga = alpha(m.grown(1), sw, sh)
+        val ap = IntArray(sw * sh); ga.getPixels(ap, 0, sw, 0, 0, sw, sh); ga.recycle()
+        val known = FloatArray(sw * sh) { i -> 1f - (ap[i] ushr 24) / 255f }
+        val small = Bitmap.createBitmap(Pixels.fill(px, known, sw, sh), sw, sh, Bitmap.Config.ARGB_8888)
+        val out = Bitmap.createScaledBitmap(small, frame.width, frame.height, true).copy(Bitmap.Config.ARGB_8888, true)
+        small.recycle()
         val a = alpha(m, frame.width, frame.height)
         Canvas(out).drawBitmap(a, 0f, 0f, Paint().apply { xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN) })
         a.recycle()
