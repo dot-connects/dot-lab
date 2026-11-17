@@ -1,7 +1,6 @@
 package kr.dot.sb.settings
 
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -44,7 +43,6 @@ import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.customActions
@@ -86,10 +84,11 @@ private val TILE_GAP = 10.dp
 fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     var sel by rememberSaveable { mutableStateOf(config.myClocks.firstOrNull() ?: FaceId.DIGITAL) }
     var fam by rememberSaveable { mutableStateOf<Family?>(null) }
-    val state = remember(config) { Sample.state(config) }
+    val own = rememberOwnPhotos(config.photoFolders)
+    val state = remember(config, own) { Sample.state(config).withPhotos(own) }
     val gallery = remember { BringIntoViewRequester() }
     val scope = rememberCoroutineScope()
-    val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
+    val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
     var citySheet by remember { mutableStateOf(false) }
     Box(Modifier.fillMaxSize()) {
     Page(
@@ -171,8 +170,6 @@ private fun Thumb(face: FaceId, config: AppConfig, state: StandbyState, inSlot: 
     val (w, h) = if (inSlot) 376 to 238 else PreviewDevice.FOLD_COVER.w to PreviewDevice.FOLD_COVER.h
     Box(Modifier.fillMaxWidth().then(if (border != null) Modifier.border(1.5.dp, border, shape) else Modifier)) {
         PreviewFrame(w, h, Modifier.fillMaxWidth(), radius = 8.dp) {
-            // 사진 위 시간 sits on a photo in StandBy; show it on the sample one
-            if (face == FaceId.PHOTOS_TIME) state.photos?.firstOrNull()?.let { Image(it.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop) }
             ClockFace(face, config.clockStyle(face), state, Modifier.fillMaxSize(), inSlot = inSlot, analog = config.analogStyle)
         }
     }
@@ -295,7 +292,8 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
         face != FaceId.ANALOG || (r != StyleRow.ANALOG_NUMBERS && r != StyleRow.ANALOG_TICKS) || config.analogStyle == AnalogStyle.ROUND || config.analogStyle == AnalogStyle.RECT
     }
     val firstColour = sp.rows.firstOrNull { it.part != null || it.preset }
-    val first = Slide(sp.ko) { l -> ClockFace(face, config.clockStyle(face), l.state, Modifier.fillMaxSize(), analog = config.analogStyle) }
+    val own = rememberOwnPhotos(if (face == FaceId.PHOTOS_TIME) config.photoFolders else emptyList())
+    val first = Slide(sp.ko) { l -> ClockFace(face, config.clockStyle(face), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
 
     Page("${sp.ko} 꾸미기", back, preview = Preview(config, listOf(first))) {
         // 11-14: one row right under the preview, the same order in every editor: [색 조합 바꾸기] [이전 조합] [기본으로]
@@ -470,3 +468,20 @@ private fun AnalogStylePicker(config: AppConfig, style: ClockStyle, update: Upda
         }
     }
 }
+
+/**
+ * plan-r15 E4: one photo from the picked folders for the 사진 위 시간 previews, loaded off the main thread; null = no
+ * folders or nothing readable (the previews keep the sample photo).
+ */
+@Composable
+private fun rememberOwnPhotos(folders: List<String>): List<kr.dot.sb.ui.state.Photo>? {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    return androidx.compose.runtime.produceState<List<kr.dot.sb.ui.state.Photo>?>(null, folders) {
+        if (folders.isEmpty()) return@produceState
+        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            runCatching { kr.dot.sb.data.PhotoIndex.get(ctx, folders).let { kr.dot.sb.data.PhotoIndex.photos(ctx, it, null, 1) } }.getOrNull()
+        }?.takeIf { it.isNotEmpty() }
+    }.value
+}
+
+private fun StandbyState.withPhotos(own: List<kr.dot.sb.ui.state.Photo>?) = if (own == null) this else copy(photos = own)

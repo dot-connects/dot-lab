@@ -29,6 +29,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.DisplayOff
+import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.SLEEP_MINUTES
 import kr.dot.sb.model.SleepSound
@@ -473,7 +474,7 @@ class StandbyStateHolder(
             launch {
                 while (true) {
                     delay(maxOf(45_000L, cfg.photoIntervalSec * 1000L * (_state.value.photos?.size ?: 0)))
-                    if (page == 1) reloadPhotos()
+                    if (photosShowing()) reloadPhotos()
                 }
             }
         }
@@ -556,7 +557,11 @@ class StandbyStateHolder(
             lastWeatherAt = System.currentTimeMillis()
             _state.update { it.weatherLoaded(w) }
             true
-        } catch (e: Exception) { markWeatherOffline(FeedError.FAILED); false }
+        } catch (e: Exception) {
+            // class name only (no message: some feed URLs carry tokens); personal build's measure log
+            kr.dot.sb.platform.Measure.log(ctx, "날씨 실패 · ${city.name} · ${e.javaClass.simpleName}")
+            markWeatherOffline(FeedError.FAILED); false
+        }
     }
 
     private fun markWeatherOffline(e: FeedError) = _state.update { it.weatherFailed(e) }
@@ -672,11 +677,14 @@ class StandbyStateHolder(
     fun moodShowing(on: Boolean) { if (on != mood) { mood = on; evaluate() } }
     /** Mood light auto-off ran out: sticky off until a touch (which then shows the board). */
     fun moodDone() { mood = false; MoodLatch.done = true; machine.sleep(); evaluate() }
+    /** The photos page, or the clock page while 사진 위 시간 is among its faces (plan-r15 E4: it draws them too). */
+    private fun photosShowing() = page == 1 || (page == 2 && FaceId.PHOTOS_TIME in cfg.myClocks)
+
     fun onPage(p: Int) {
         page = p
         // "first entry = clock, then the last viewed page": remembered through startPage (not while the unfold rule steers it)
         if (!_state.value.unfolded) ConfigStore.update(ctx) { it.copy(startPage = p) }
-        if (p == 1 && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() }
+        if (photosShowing() && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() }
     }
     /** Photos page chip swipe: null = every folder, else one picked folder; a view filter, the folder list stays. */
     fun photoTheme(folder: String?) = ConfigStore.update(ctx) { it.copy(photoFilter = folder?.takeIf { f -> f in it.photoFolders }) }

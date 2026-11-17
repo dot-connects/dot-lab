@@ -36,6 +36,7 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
     private val handler = Handler(Looper.getMainLooper())
     private var controller: MediaController? = null
     private var artKey = ""
+    private var artSrc: android.graphics.Bitmap? = null
     private var art: androidx.compose.ui.graphics.ImageBitmap? = null
 
     private val sessions = MediaSessionManager.OnActiveSessionsChangedListener { pick(it) }
@@ -91,10 +92,15 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
         val artist = meta.getString(MediaMetadata.METADATA_KEY_ARTIST) ?: meta.getString(MediaMetadata.METADATA_KEY_ALBUM_ARTIST)
             ?: meta.getString(MediaMetadata.METADATA_KEY_DISPLAY_SUBTITLE) ?: ""
         val key = "${c.packageName}|$title|$artist"
-        if (key != artKey) {
+        // Players (YouTube Music) often publish the title first and the cover a moment later for the same track: re-read the
+        // bitmap on every metadata update and rescale only when it is a different bitmap, else the cover never appears.
+        val bmp = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
+            ?: meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+        if (key != artKey || bmp !== artSrc) {
+            if (key != artKey) kr.dot.sb.platform.Measure.log(ctx, "미디어 · ${c.packageName} · 그림 ${if (bmp != null) "${bmp.width}x${bmp.height}" else "없음"}" +
+                " · uri ${listOf(MediaMetadata.METADATA_KEY_ALBUM_ART_URI, MediaMetadata.METADATA_KEY_ART_URI, MediaMetadata.METADATA_KEY_DISPLAY_ICON_URI).count { meta.getString(it) != null }}")
             artKey = key
-            val bmp = meta.getBitmap(MediaMetadata.METADATA_KEY_ALBUM_ART) ?: meta.getBitmap(MediaMetadata.METADATA_KEY_ART)
-                ?: meta.getBitmap(MediaMetadata.METADATA_KEY_DISPLAY_ICON)
+            artSrc = bmp
             art = bmp?.let { scaleDown(it, 512).asImageBitmap() }
         }
         val playing = st.state == PlaybackState.STATE_PLAYING

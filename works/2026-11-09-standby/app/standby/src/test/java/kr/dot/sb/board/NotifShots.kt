@@ -38,14 +38,14 @@ class NotifShots(private val name: String, private val device: Device, private v
 
     @Test fun shot() {
         val s = stateOf(stateKey)
-        // "open": tap the 배송 완료 row (tier A has no names: tap the count) and capture before the 10 s idle close
+        // "open": tap the 배송 완료 row (tier A has no names: tap "알림 N") and capture before the 10 s idle close
         val open: (ComposeContentTestRule.() -> Unit)? = if (stateKey == "swipe") {
             { onAllNodesWithContentDescription("밀어서 지우기")[0].performClick(); waitForIdle() }
         } else if (!stateKey.startsWith("open")) null else {
             {
                 mainClock.autoAdvance = false
                 val row = onAllNodesWithText("배송 완료")
-                (if (row.fetchSemanticsNodes().isNotEmpty()) row else onAllNodesWithText(s.notifications.size.toString()))[0].performClick()
+                (if (row.fetchSemanticsNodes().isNotEmpty()) row else onAllNodesWithText("알림 ${s.notifications.size}"))[0].performClick()
                 mainClock.advanceTimeBy(400)
             }
         }

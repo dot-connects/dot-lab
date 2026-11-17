@@ -1473,11 +1473,12 @@ private fun EventRow(e: Env, ev: AgendaItem, time: String) = Row {
 
 /**
  * The calendar's own event colour, its lightness stepped until it reaches 3:1 on the page and plate (pastels darken on
- * light themes instead of falling back to ink); night maps it to the candle like every role.
+ * light themes instead of falling back to ink); night maps it to the candle like every role. plan-r15 D4: only the
+ * night map, not [Ink.safe]: a gradient page stop (하늘, 라디오) turned every bar into plain ink.
  */
 private fun eventInk(e: Env, argb: Long): Color {
     val light = e.t.tokens.light && e.ink.night < 0.5f
-    return e.ink.mapped(Contrast.fit(Color(argb), listOf(e.ink.bg, e.ink.plate.compositeOver(e.ink.bg)), light))
+    return lerp(Contrast.fit(Color(argb), listOf(e.ink.bg, e.ink.plate.compositeOver(e.ink.bg)), light), Ink.NIGHT_DIM, e.ink.night)
 }
 
 private fun whenKo(e: Env, ev: AgendaItem): String {

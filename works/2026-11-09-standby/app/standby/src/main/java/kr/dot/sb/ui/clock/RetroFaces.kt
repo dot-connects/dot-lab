@@ -175,7 +175,7 @@ private fun segRowW(n: Int, digitH: Float, gap: Float, colon: Float) = n * digit
 /**
  * 빨간 LED (c-led) and 액정 (c-lcd): one seven-segment renderer (clocks.html `seg7`, off segments at 12 % / 9 %).
  * LED: digits 270 dp tall at 360, skewed −5°, a glow by day, 오전/오후/알람 lamps on the left (above the digits in a
- * tall box). LCD: a [ClockStyle.panelColor] plate inset 22 × 26 dp with [ClockStyle.inkColor] digits 212 dp tall
+ * tall box). LCD (landscape; portrait = [lcdPortrait]): a [ClockStyle.panelColor] plate inset 22 × 26 dp with [ClockStyle.inkColor] digits 212 dp tall
  * skewed −4°, weekday and MM-DD on top, 오전 / 알람 / temperature on the right. Night: night ink, off segments hidden,
  * the plate black and outlined. Compact: the digits only.
  */
@@ -191,6 +191,7 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
     val dim = lerp(day.copy(alpha = 0.6f), Ink.NIGHT_DIM, n).toArgb()
     val chars = d.h + d.m
     val nd = chars.length
+    val bold = rememberUi(700)
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height; val s = min(w, h)
         val compact = s < COMPACT_MIN.toPx()
@@ -241,10 +242,11 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
                 }
             }
         }
+        if (tall) return@FaceCanvas lcdPortrait(d, w, h, margin, style.sizePct, on, off, plate, n, bold, mono)
         // LCD: the plate, then everything in plate units (316 × 728 dp in the mockup)
         val pl = max(margin, 26 * k0); val pt = max(margin, 22 * k0)
         val pw = w - 2 * pl; val ph = h - 2 * pt
-        val pk = min(ph / 316f, pw / (if (tall) 316f else 728f))
+        val pk = min(ph / 316f, pw / 728f)
         mono.textSize = 22 * pk; mono.letterSpacing = 0.06f
         val topY = pt + 20 * pk + mono.capRatio() * mono.textSize
         val date = "%02d-%02d".format(d.month, d.day)
@@ -252,10 +254,10 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
         val sideSize = 20 * pk
         val sidePaint = android.text.TextPaint(mono).apply { textSize = sideSize; letterSpacing = 0f }
         val sideW = side.maxOfOrNull { sidePaint.measureText(it) } ?: 0f
-        val avail = if (tall) pw - 92 * pk else pw - 46 * pk - 30 * pk - 38 * pk - sideW
+        val avail = pw - 46 * pk - 30 * pk - 38 * pk - sideW
         val dk = min(pk * style.sizePct / 100f, avail / segRowW(nd, 212f, 20f, 20f))
         val dh = 212 * dk
-        val rowTop = pt + (ph - dh) / 2 - (if (tall) 40 * pk else 8 * pk)
+        val rowTop = pt + (ph - dh) / 2 - 8 * pk
         val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = plate }
         val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             this.style = Paint.Style.STROKE; strokeWidth = 2 * pk
@@ -271,8 +273,7 @@ internal fun SevenSegmentFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: 
             segRow(chars, d.h.length, pl + 46 * pk, rowTop, dh, 20 * dk, 20 * dk, 56 * dk, 0.07f, on, off, 0)
             sidePaint.color = on
             side.forEachIndexed { i, t ->
-                if (tall) drawText(t, pl + 46 * pk, rowTop + dh + 40 * pk + i * sideSize * 1.5f, sidePaint)
-                else drawText(t, pl + pw - 38 * pk - sidePaint.measureText(t), rowTop + 8 * pk + sidePaint.capRatio() * sideSize + i * sideSize * 1.5f, sidePaint)
+                drawText(t, pl + pw - 38 * pk - sidePaint.measureText(t), rowTop + 8 * pk + sidePaint.capRatio() * sideSize + i * sideSize * 1.5f, sidePaint)
             }
         }
     }
@@ -287,6 +288,7 @@ internal fun DotMatrixFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boo
     val columns = glyphs.sumOf { it[0].length } + glyphs.size - 1 + 4
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
+        if (h > w * 18f / 13f) return@FaceCanvas dotPortrait(d, w, h, on, off)
         val margin = if (inSlot) 4.dp.toPx() else 10.dp.toPx()
         val pitch = min((w - 2 * margin) / columns, (h - 2 * margin) / 9f) * style.sizePct / 100f
         val x0 = (w - columns * pitch) / 2
@@ -304,5 +306,89 @@ internal fun DotMatrixFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boo
                 drawCircle(x0 + (col + 0.5f) * pitch, y0 + (row + 0.5f) * pitch, pitch * 0.36f, p)
             }
         }
+    }
+}
+
+/**
+ * 전광판 portrait (plan-r15 E1, r15-mock F.dotA): unlit dots over the whole screen at pitch W/13, the hours row over
+ * the minutes row (5 × 7 glyphs, 2 empty rows between), the 16-row block centred on the grid. Lit dots get a soft halo.
+ */
+private fun dotPortrait(d: FaceData, w: Float, h: Float, on: Int, off: Int): Canvas.() -> Unit {
+    val p = w / 13f
+    val rows = kotlin.math.ceil(h / p).toInt()
+    val top = kotlin.math.round(h / 2 / p).toInt() - 8
+    val lit = HashSet<Pair<Int, Int>>()
+    fun put(text: String, row0: Int) {
+        val gw = text.length * 6 - 1
+        var col = (13 - gw) / 2
+        for (ch in text) {
+            DotGlyphs.getValue(ch).forEachIndexed { r, bits -> bits.forEachIndexed { c, b -> if (b == '1') lit.add(col + c to row0 + r) } }
+            col += 6
+        }
+    }
+    put(d.h, top); put(d.m, top + 9)
+    val halo = (on and 0x00FFFFFF) or (((on ushr 24) * 0.25f).toInt() shl 24)
+    return {
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+        for (r in 0 until rows) for (c in 0 until 13) {
+            val x = (c + 0.5f) * p; val y = (r + 0.5f) * p
+            if ((c to r) in lit) {
+                paint.color = halo; drawCircle(x, y, p * 0.62f, paint)
+                paint.color = on; drawCircle(x, y, p * 0.4f, paint)
+            } else { paint.color = off; drawCircle(x, y, p * 0.4f, paint) }
+        }
+    }
+}
+
+/**
+ * 액정 portrait (plan-r15 E2, r15-mock F.lcdA at 270 × 585): one plate over the whole screen; weekday left and MM-DD
+ * right above a rule; 오전/오후 (12 h) over the HH row and the MM row (big 7-seg, ghost segments, the pair centred
+ * between the rules); under the lower rule the next alarm left and the temperature right. Mockup units [u] =
+ * min(W/270, H/585); the digits take what the rules leave.
+ */
+private fun lcdPortrait(
+    d: FaceData, w: Float, h: Float, margin: Float, sizePct: Int, on: Int, off: Int, plate: Int, n: Float,
+    bold: android.text.TextPaint, mono: android.text.TextPaint,
+): Canvas.() -> Unit {
+    val u = min(w / 270f, h / 585f)
+    val inset = max(margin * 0.5f, 8 * u)
+    val l = inset; val t = inset; val r = w - inset; val b = h - inset
+    val side = 20 * u
+    val rule1 = t + 58 * u
+    val rule2 = b - 69 * u
+    // digits: 170 tall, 16 apart, rows 26 apart, 46 above for 오전/오후 and 30 below (mockup)
+    val dk = min((rule2 - rule1) / 442f, (r - l - 2 * side) / 216f) * sizePct.coerceAtMost(100) / 100f
+    val dh = 170 * dk; val gap = 16 * dk
+    val rowW = 2 * dh * 100f / 180f + gap
+    val blockTop = rule1 + ((rule2 - rule1) - 442 * dk) / 2 + 46 * dk
+    val x0 = (w - rowW) / 2 + 6 * dk
+    val hh = d.h.padStart(2, ' ')
+    val panel = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = plate }
+    val edge = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        style = Paint.Style.STROKE; strokeWidth = 2 * u
+        color = if (n >= 0.5f) ThemeTokens.NIGHT_INK.copy(alpha = 0.3f).toArgb() else 0x40000000
+    }
+    val rule = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = TimePainter.withAlpha(on, 0.25f) }
+    val date = "%02d-%02d".format(d.month, d.day)
+    return {
+        drawRoundRect(l, t, r, b, 22 * u, 22 * u, panel)
+        drawRoundRect(l + u, t + u, r - u, b - u, 22 * u, 22 * u, edge)
+        bold.color = on; bold.textSize = 18 * u
+        drawText("${d.weekday}요일", l + side, t + 44 * u, bold)
+        mono.color = on; mono.textSize = 18 * u; mono.letterSpacing = 0f
+        drawText(date, r - side - mono.measureText(date), t + 44 * u, mono)
+        drawRect(l + side, rule1, r - side, rule1 + 1.5f * u, rule)
+        if (!d.use24h) { bold.textSize = 14 * u; drawText(d.ampm, l + side + 2 * u, blockTop - 8 * dk, bold) }
+        segRow(hh, 2, x0, blockTop, dh, gap, 0f, 0f, 0.07f, on, off, 0)
+        segRow(d.m, 2, x0, blockTop + dh + 26 * dk, dh, gap, 0f, 0f, 0.07f, on, off, 0)
+        drawRect(l + side, rule2, r - side, rule2 + 1.5f * u, rule)
+        val base = b - 33 * u
+        d.alarmShort?.let {
+            bold.textSize = 17 * u
+            val cap = bold.capRatio() * bold.textSize
+            drawAlarmGlyph(l + side, base - cap / 2, bold.textSize, on)
+            drawText(it, l + side + bold.textSize * 1.25f, base, bold)
+        }
+        d.temp?.let { bold.textSize = 20 * u; drawText(it, r - side - bold.measureText(it), base, bold) }
     }
 }

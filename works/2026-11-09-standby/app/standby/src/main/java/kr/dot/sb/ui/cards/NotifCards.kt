@@ -453,12 +453,12 @@ private fun Cluster(e: Env, rest: List<NotifGroup>) {
     }
 }
 
-/** Tier A: the total on top, then a two-column grid of badged icons; the last cell turns into "+N" when they overflow. */
+/** Tier A: "알림 N" on top, then a two-column grid of badged icons; the last cell turns into "+N" when they overflow. */
 @Composable
 private fun IconGrid(e: Env, groups: List<NotifGroup>, total: Int, ih: Dp) {
     val cell = 44.dp
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.height(24.dp), contentAlignment = Alignment.CenterStart) { Txt(total.toString(), e.meta, e.ink.ink, weight = 600, num = true) }
+        Box(Modifier.height(24.dp), contentAlignment = Alignment.CenterStart) { Txt("알림 $total", e.meta, e.ink.ink, weight = 600, num = true) } // plan-r15 D3: never a bare number
         val rows = floor((ih - 24.dp) / cell).toInt().coerceAtLeast(1)
         val slots = rows * 2
         val many = groups.size > slots

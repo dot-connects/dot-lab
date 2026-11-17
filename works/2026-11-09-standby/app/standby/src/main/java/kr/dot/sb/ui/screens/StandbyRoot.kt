@@ -58,6 +58,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
@@ -217,13 +219,19 @@ internal fun RootImpl(
         val widgets = remember(config.widgetLeft, config.widgetRight, config.widgetOptions) {
             Board("widgets", "위젯", Layout.TWO, listOf(config.widgetLeft, config.widgetRight), options = config.widgetOptions)
         }
+        // plan-r15 D2: a banner or live pill over a short screen shrinks the pages (pinned at the bottom) below it
+        val band = if (h > w) 0.dp else overlayBand(state, config, layer, editing, w, h)
+        val fit by animateFloatAsState(((h - band - 4.dp) / h).coerceAtMost(1f), tween(Motion.LAYER_FADE_MS), label = "band")
         CompositionLocalProvider(LocalInk provides ink, LocalNotifOpen provides notifOpen) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {
                 // sleep wins over mood: at DONE the holder sleeps the display and a touch wakes to the board
                 if (mood) MoodLight(config.glowColor, ink, config.moodAutoOffMin, state.alarm != null, { moodOff = true; act.moodDone() }) { moodOff = true }
                 // the pager clips its bounds: it takes the burn-in bleed itself, each page is padded back in
                 else HorizontalPager(
-                    pager, Modifier.fillMaxSize().burnInBleed(),
+                    pager,
+                    Modifier.fillMaxSize().graphicsLayer {
+                        if (fit < 1f) { scaleX = fit; scaleY = fit; transformOrigin = TransformOrigin(0.5f, 1f) }
+                    }.burnInBleed(),
                     userScrollEnabled = !editing,
                     flingBehavior = PagerDefaults.flingBehavior(pager, snapAnimationSpec = spring(dampingRatio = 1f, stiffness = 400f)),
                     key = { pages.getOrNull(it)?.let { p -> if (p.board == null) "fixed-${p.index}" else p.board.id } ?: "p$it" },
@@ -239,6 +247,7 @@ internal fun RootImpl(
                             state, config, clockPage, editing, { editing = it }, start.sheet,
                             styleOf = { f -> edits[f] ?: config.clockStyle(f) },
                             onPick = { f, s -> edits[f] = s; onStyleChange(f, s) },
+                            onPickPhotos = { actions.openSettings("photos") },
                         )
                         null -> {}
                         else -> ref.board?.let { BoardPage(it, state, config, boardActions) }

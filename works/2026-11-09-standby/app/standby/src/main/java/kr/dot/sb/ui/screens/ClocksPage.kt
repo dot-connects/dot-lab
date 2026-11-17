@@ -93,6 +93,8 @@ internal fun ClocksPage(
     sheetStart: Boolean,
     styleOf: (FaceId) -> ClockStyle,
     onPick: (FaceId, ClockStyle) -> Unit,
+    /** 사진 위 시간 with no photos: its hint opens the photos settings (plan-r15 E4). */
+    onPickPhotos: () -> Unit = {},
 ) {
     val faces = remember(config.myClocks) { ClockRegistry.pages(config.myClocks) }
     val pager = rememberPagerState(MyClocks.page(faces, page.value, 0)) { faces.size }
@@ -109,6 +111,7 @@ internal fun ClocksPage(
     val edit by rememberUpdatedState(onEdit)
     val k by animateFloatAsState(if (editing) 1f else 0f, tween(350, easing = FastOutSlowInEasing), label = "edit")
     val ink = LocalInk.current
+    val back = remember(config.photoIntervalSec, onPickPhotos) { kr.dot.sb.ui.clock.PhotoBack(config.photoIntervalSec, onPickPhotos) }
 
     BoxWithConstraints(Modifier.fillMaxSize()) {
         // the theme page (glow, gradient, texture) without the candle glow at night (plain black, as the page always
@@ -138,7 +141,7 @@ internal fun ClocksPage(
             ) {
                 // the page shows through; only the edit card (scaled over the dimmed page) carries its own copy
                 if (k > 0f) ThemeBackground(theme, ink.night, candle = false)
-                ClockFace(face, styleOf(face), state, Modifier.fillMaxSize(), analog = config.analogStyle)
+                ClockFace(face, styleOf(face), state, Modifier.fillMaxSize(), analog = config.analogStyle, photo = back)
             }
         }
 

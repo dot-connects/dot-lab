@@ -577,7 +577,7 @@ private fun ControlView(
             }
             SliderRow(
                 c.label, shown, v, range, { x -> hold(ThemeEditor.withSlider(f, cur, x)) },
-                note = if (glass) "유리는 뒤가 비쳐 보이도록 55%까지만 진해져요." else null,
+                note = if (glass) "유리는 끝까지 올려도 뒤가 조금 비쳐요." else null, // plan-r15 D5: no 55 % beside a slider reading 100 %
                 onChangeFinished = release, trailing = { ResetChip(ThemeEditor.isSet(f, cur), reset) },
             )
         }

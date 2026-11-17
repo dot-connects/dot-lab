@@ -5,6 +5,7 @@ import kr.dot.sb.model.BoardBg
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.PAGE_PHOTOS
+import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.PAGE_WIDGETS
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.ui.state.LiveActivity
@@ -505,8 +506,8 @@ object Needs {
     fun lux(nightMode: NightMode, displayOff: DisplayOff, lightTheme: Boolean): Boolean =
         nightMode == NightMode.AUTO || (nightMode == NightMode.OFF && lightTheme) || displayOff == DisplayOff.AUTO
 
-    /** The slideshow photos: only while the photos page is on. */
-    fun photos(c: AppConfig): Boolean = PAGE_PHOTOS !in c.pagesOff
+    /** The slideshow photos: while the photos page is on, or 사진 위 시간 is one of the clock page's faces (plan-r15 E4). */
+    fun photos(c: AppConfig): Boolean = PAGE_PHOTOS !in c.pagesOff || FaceId.PHOTOS_TIME in c.myClocks
 
     /** The memory picture: a memories card on a page that is on, or the blurred-photo background. */
     fun memory(c: AppConfig): Boolean {

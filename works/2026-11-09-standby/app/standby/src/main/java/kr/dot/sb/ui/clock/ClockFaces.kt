@@ -11,6 +11,8 @@ package kr.dot.sb.ui.clock
  *       [bleed] (slot, [ownBg] faces): the face lays out in [modifier]'s box but paints its background this far beyond
  *       it on every side, square-cornered; the caller clips it (a clock card: to the card shape).
  *       [hero] = false: a second clock on a board (design-system §5.1) — digits in white `ink`, no effects.
+ *       [photo] (PHOTOS_TIME only): draw a photo of `state.photos` behind the time ([PhotoBackdrop]); null = the
+ *       caller draws the photos (the photos page).
  *       PHOTOS_TIME is given the whole photo screen and places the time itself (right edge 92 % W, cap-top 10 % H,
  *       cap 15 % H, autosized inside x 72-92 %, y 10-28 %).
  *       Night = state.night (candle night). displayOff = draws nothing and stops the analog ticker.
@@ -36,6 +38,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.remember
@@ -64,9 +67,11 @@ import java.time.ZoneId
 fun ClockFace(
     face: FaceId, style: ClockStyle, state: StandbyState, modifier: Modifier = Modifier, inSlot: Boolean = false, hero: Boolean = true,
     analog: AnalogStyle = AnalogStyle.ROUND, bleed: Dp = 0.dp,
+    photo: PhotoBack? = PhotoBack(),
 ) {
     if (state.displayOff) { Box(modifier); return }
     val data = FaceData.of(state)
+    val next = remember(face, state.agenda, state.upcoming, data.now) { if (face == FaceId.DAY_BAR) nextEvent(state) else null }
     // §5.1: a second clock draws its numerals in ink (white by day) without effects; Analog keeps its own colours.
     val st = if (hero || face == FaceId.ANALOG) style else style.copy(color = 0xFFFFFFFF, effect = Effect.SOLID)
     val th = LocalTheme.current
@@ -94,7 +99,7 @@ fun ClockFace(
             FaceId.COLOR_BLOCK -> ColorBlockFace(st, d, ink, inSlot, mod, bleed)
             FaceId.STICKER -> StickerFace(st, d, ink, inSlot, mod, bleed)
             FaceId.BALLS -> BallsFace(st, d, ink, inSlot, mod)
-            FaceId.DAY_BAR -> DayBarFace(st, d, ink, inSlot, state.weather, state.nextAlarm, mod)
+            FaceId.DAY_BAR -> DayBarFace(st, d, ink, inSlot, state.weather, state.nextAlarm, next, mod)
             FaceId.RIM -> RimFace(st, d, ink, inSlot, mod)
             FaceId.RELIEF -> ReliefFace(st, d, ink, inSlot, mod, bleed)
             FaceId.RELIEF_SQUARE -> ReliefSquareFace(st, d, ink, inSlot, mod, bleed)
@@ -103,7 +108,10 @@ fun ClockFace(
             FaceId.SOLAR -> SolarFace(st, d, ink, inSlot, mod, bleed)
             FaceId.ANALOG -> AnalogFace(st, d, ink, inSlot, mod, analog)
             FaceId.WORLD -> WorldFace(st, d, ink, inSlot, mod)
-            FaceId.PHOTOS_TIME -> PhotosTime(st, d, ink, mod)
+            FaceId.PHOTOS_TIME -> if (photo == null) PhotosTime(st, d, ink, mod) else Box(mod) {
+                PhotoBackdrop(state, photo, ink)
+                PhotosTime(st, d, ink, Modifier.fillMaxSize())
+            }
         }
     }
     // Analog and World never change size with the hour; the others crossfade only when the hour-digit class changes.

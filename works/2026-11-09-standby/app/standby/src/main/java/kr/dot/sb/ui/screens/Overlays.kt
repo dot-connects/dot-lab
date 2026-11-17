@@ -83,6 +83,7 @@ import kotlin.math.roundToInt
 
 /** New-notification banner (spec-r9 §1): on screen this long, then it slides away. */
 internal const val BANNER_MS = 5_000L
+private val BANNER_H = 64.dp
 
 private val WEEK = arrayOf("월", "화", "수", "목", "금", "토", "일")
 
@@ -114,6 +115,24 @@ internal fun Overlays(
         Faded(layer == Layer.ALARM, state.alarm) { AlarmScreen(it, state, actions) }
     }
     Banner(layer != Layer.ALARM && !editing && config.showNotifications, state, config, actions)
+}
+
+/**
+ * plan-r15 D2: how far down the banner or the live pill reaches (0 dp = neither shows over the pages). On a screen
+ * that is not tall the root shrinks the pages under this band, so neither covers the clock digits.
+ */
+@Composable
+internal fun overlayBand(state: StandbyState, config: AppConfig, layer: Layer, editing: Boolean, w: Dp, h: Dp): Dp {
+    if (layer != Layer.NONE || editing) return 0.dp
+    val s = min(w, h)
+    return when {
+        config.showNotifications && state.notification != null -> screenPadding(w, h, Grid.margin(s) * 0.5f).calculateTopPadding() + BANNER_H
+        state.live != null -> {
+            val t = max(18.dp, s * 0.05f)
+            max(h * 0.03f, screenPadding(w, h).calculateTopPadding() - t * 1.2f) + t * 2.2f
+        }
+        else -> 0.dp
+    }
 }
 
 /** 350 ms fade that keeps showing the last value while it fades out after the state went null. */
@@ -231,16 +250,17 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                 Modifier.fillMaxSize().padding(screenPadding(w, h, s * 0.07f)),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.SpaceBetween,
             ) {
+                // plan-r15 D1: the digits take what the buttons leave, so the subtitle never runs under them (flip-small)
                 Column(
-                    Modifier.fillMaxWidth().padding(top = if (land) 0.dp else s * 0.08f),
+                    Modifier.fillMaxWidth().weight(1f).padding(top = if (land) 0.dp else s * 0.08f, bottom = s * 0.03f),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(s * 0.03f),
                 ) {
                     HeaderRow(Ic.ALARM, "$title · ${WEEK[state.now.dayOfWeek.value - 1]}요일", lab, ink.accText)
                     val th = min(if (land) h * 0.36f else w * 0.3f, 220.dp)
-                    ThemedDigits(clockText(state.now, state.use24h), t, ink, Modifier.fillMaxWidth(0.86f).height(th), color = ink.ink)
+                    ThemedDigits(clockText(state.now, state.use24h), t, ink, Modifier.fillMaxWidth(0.86f).weight(1f, fill = false).height(th), color = ink.ink)
                     if (info.isNotEmpty()) Txt(info, lab, ink.ink2, weight = 500, family = t.words(500), num = true)
                 }
-                val snooze = @Composable { m: Modifier -> AlarmPill(if (bw >= 170.dp) "다시 알림" else "다시", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
+                val snooze = @Composable { m: Modifier -> AlarmPill("다시 알림", ink.acc, ink.onAcc, bh, m, actions::alarmSnooze) }
                 // plan-r15 C1: a button only for an action the clock app's notification has; neither = 닫기 (hides this screen)
                 val none = !a.canSnooze && !a.canStop
                 val stop = @Composable { m: Modifier ->
@@ -469,7 +489,7 @@ private fun NotifBanner(n: BigNotification, hidden: Boolean, state: StandbyState
         val bw = min(maxWidth - side * 2, 520.dp)
         val shape = RoundedCornerShape(if (t.tokens.radiusRatio == 0f) 0.dp else 22.dp)
         Row(
-            Modifier.align(Alignment.TopCenter).padding(top = screenPadding(maxWidth, maxHeight, m * 0.5f).calculateTopPadding()).width(bw).height(64.dp)
+            Modifier.align(Alignment.TopCenter).padding(top = screenPadding(maxWidth, maxHeight, m * 0.5f).calculateTopPadding()).width(bw).height(BANNER_H)
                 .graphicsLayer { translationY = dy.coerceAtMost(0f) }
                 .background(ink.bg, shape).themedSurface(t, ink, shape).clip(shape)
                 .pointerInput(n.key) {

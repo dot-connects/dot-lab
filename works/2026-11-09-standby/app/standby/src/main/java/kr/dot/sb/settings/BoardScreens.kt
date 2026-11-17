@@ -329,7 +329,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                     .border(if (on) 4.dp else 2.dp, if (on) acc else Color.White.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
                     .clickable(onClickLabel = "칸 ${i + 1} 카드 고르기") { selected = i; pick = PickTarget(i, 0) },
             ) {
-                Box(Modifier.padding(12.dp).clip(RoundedCornerShape(50)).background(if (on) acc else SK.scrim).padding(horizontal = 16.dp, vertical = 4.dp)) {
+                // plan-r15 D5: the badge straddles the slot's top edge (centred), clear of the card's own header
+                Box(Modifier.align(Alignment.TopCenter).offset(y = (-17).dp).clip(RoundedCornerShape(50)).background(if (on) acc else SK.scrim).padding(horizontal = 16.dp, vertical = 4.dp)) {
                     T("칸 ${i + 1}", 22.sp, 700, if (on) SK.bg else SK.text)
                 }
             }

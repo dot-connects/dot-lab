@@ -659,8 +659,8 @@ fun ColorRow(title: String, color: Long, onChangeFinished: (() -> Unit)? = null,
 
 /**
  * Bottom sheet drawn inside the screen (scrim + panel); simpler and more predictable than a window-based sheet.
- * plan-r13 C1: it rides on the keyboard; height = min(86 %, screen − keyboard), at least 200 dp (then its top stays on
- * screen and the keyboard covers its bottom).
+ * plan-r13 C1: it rides on the keyboard; height = 86 % (at least 200 dp), or with the keyboard up everything above
+ * it (at least 120 dp).
  */
 @Composable
 fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.() -> Unit) {
@@ -668,7 +668,8 @@ fun Sheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope
     BoxWithConstraints(Modifier.fillMaxSize().background(SK.scrim).clickable(interactionSource = none, indication = null, onClick = onDismiss)) {
         // the root drops its bottom bar padding while the keyboard is up (safeDrawing minus ime): the keyboard is measured from here
         val ime = with(LocalDensity.current) { WindowInsets.ime.getBottom(this).toDp() }
-        val cap = max(min(maxHeight * 0.86f, maxHeight - ime), 200.dp).coerceAtMost(maxHeight)
+        // plan-r15 D5: with the keyboard up the whole sheet stays above it (its list scrolls), so results are never under it
+        val cap = (if (ime > 0.dp) max(maxHeight - ime, 120.dp) else max(maxHeight * 0.86f, 200.dp)).coerceAtMost(maxHeight)
         Column(
             Modifier.align(Alignment.BottomCenter).padding(bottom = min(ime, maxHeight - cap)).widthIn(max = 720.dp).fillMaxWidth().heightIn(max = cap)
                 .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(SK.surface)
