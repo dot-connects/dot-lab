@@ -13,6 +13,7 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
+import kr.dot.sb.platform.StandbyDream
 
 /** The eight things StandBy needs the user to grant, mockup `PERMS` order and plain names (r10 checklist). */
 enum class Perm(val ko: String, val why: String, val button: String) {
@@ -33,7 +34,8 @@ object Perms {
         val pm = ctx.getSystemService(PowerManager::class.java)
         fun has(p: String) = ctx.checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
         return mapOf(
-            Perm.DREAM to (runCatching { Settings.Secure.getString(ctx.contentResolver, "screensaver_components") }.getOrNull()?.contains(ctx.packageName) == true),
+            Perm.DREAM to (runCatching { Settings.Secure.getString(ctx.contentResolver, "screensaver_components") }.getOrNull()
+                ?.split(',')?.any { ComponentName.unflattenFromString(it.trim()) == ComponentName(ctx, StandbyDream::class.java) } == true),
             Perm.NOTIFICATIONS to (ctx.packageName in NotificationManagerCompat.getEnabledListenerPackages(ctx)),
             Perm.POST to has(Manifest.permission.POST_NOTIFICATIONS),
             Perm.CALENDAR to has(Manifest.permission.READ_CALENDAR),

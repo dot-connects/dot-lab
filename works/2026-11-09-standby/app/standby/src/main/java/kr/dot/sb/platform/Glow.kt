@@ -33,6 +33,7 @@ import kr.dot.sb.data.HeatRule
 import kr.dot.sb.data.MoodLatch
 import kr.dot.sb.data.MoodPhase
 import kr.dot.sb.data.MoodTimer
+import kr.dot.sb.data.OurApps
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.settings.SettingsActivity
@@ -51,7 +52,8 @@ object GlowScheduler {
         ctx, 10, Intent(ctx, GlowReceiver::class.java).setAction(PRE), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private fun ours(ctx: Context, info: AlarmManager.AlarmClockInfo) = info.showIntent?.creatorPackage == ctx.packageName
+    // a sibling flavor's glow alarm counts too, else the two apps keep pulling each other's alarm earlier
+    private fun ours(ctx: Context, info: AlarmManager.AlarmClockInfo) = OurApps.isOurs(info.showIntent?.creatorPackage, ctx.packageName)
 
     /** The user's real next alarm (ours is hidden: its real time was stored when it was armed). */
     fun nextAlarmMs(ctx: Context): Long? {

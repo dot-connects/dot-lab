@@ -378,6 +378,15 @@ object AlarmActions {
         pkg in CLOCK_PACKAGES && (category == "alarm" || fullScreen)
 }
 
+/**
+ * Package ids of this app's flavors (personal, public, the old public test id). With two on one phone each must ignore
+ * the other's notifications and glow alarm, or they react to each other (plan-r15 A2).
+ */
+object OurApps {
+    val IDS = setOf("kr.dot.standby", "kr.dot.standscreen", "kr.dot.standby.pub")
+    fun isOurs(pkg: String?, own: String) = pkg == own || pkg in IDS
+}
+
 /** What a posted notification is for (spec 2 interrupt table). */
 enum class NotifKind { IGNORE, ALARM, LIVE, BIG }
 
@@ -386,7 +395,7 @@ object NotifRules {
         pkg: String, own: String, category: String?, ongoing: Boolean, groupSummary: Boolean, importance: Int,
         fullScreen: Boolean, hasProgress: Boolean, isMedia: Boolean, secret: Boolean, passesFilter: Boolean,
     ): NotifKind = when {
-        pkg == own -> NotifKind.IGNORE
+        OurApps.isOurs(pkg, own) -> NotifKind.IGNORE
         AlarmActions.isAlarm(pkg, category, fullScreen) -> NotifKind.ALARM
         isMedia || category == "transport" || category == "call" -> NotifKind.IGNORE
         ongoing -> if (hasProgress) NotifKind.LIVE else NotifKind.IGNORE
@@ -401,7 +410,7 @@ object ShadeRules {
         pkg: String, own: String, category: String?, ongoing: Boolean, foreground: Boolean, groupSummary: Boolean,
         fullScreen: Boolean, isMedia: Boolean, importance: Int, hiddenFromShade: Boolean,
     ): Boolean = !(
-        pkg == own ||
+        OurApps.isOurs(pkg, own) ||
             AlarmActions.isAlarm(pkg, category, fullScreen) || // the alarm screen owns it
             ongoing || foreground || // downloads, deliveries, services: the live pill or nothing
             isMedia || category == "transport" || category == "call" || // the music card / the call screen

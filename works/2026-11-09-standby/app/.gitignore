@@ -10,3 +10,7 @@ tools/baseline-r9/
 __pycache__/
 tools/fonts-original/
 .kotlin/
+# release signing keys live outside the repo (plan-r15 A3); never commit one
+*.jks
+*.keystore
+upload.properties

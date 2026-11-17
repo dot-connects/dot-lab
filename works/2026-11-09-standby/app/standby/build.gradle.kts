@@ -14,6 +14,12 @@ val nungeum = Properties().apply {
 }
 fun secret(key: String) = "\"" + nungeum.getProperty(key, "") + "\""
 
+// Public release upload key, created by tools/make_upload_key.py outside the repo. Missing -> unsigned public release.
+val upload = Properties().apply {
+    val f = file("${System.getProperty("user.home")}/.standscreen/upload.properties")
+    if (f.exists()) f.inputStream().use { load(it) }
+}
+
 android {
     namespace = "kr.dot.sb"
     compileSdk = 36
@@ -21,22 +27,33 @@ android {
         applicationId = "kr.dot.standby"
         minSdk = 34
         targetSdk = 36
-        versionCode = 13
-        versionName = "0.4.0"
+        versionCode = 14
+        versionName = "0.5.0"
     }
     // personal = the operator's phone (usage card + PC feed + secrets); public = release builds, no secret anywhere
-    // (tools/check_secrets.py scans both APKs). Different ids so both can sit on one phone.
+    // (tools/check_secrets.py scans both APKs and the AAB). Different ids so both can sit on one phone.
+    signingConfigs {
+        if (upload.getProperty("storeFile") != null) create("upload") {
+            storeFile = file(upload.getProperty("storeFile"))
+            storePassword = upload.getProperty("storePassword")
+            keyAlias = upload.getProperty("keyAlias")
+            keyPassword = upload.getProperty("keyPassword")
+        }
+    }
     flavorDimensions += "dist"
     productFlavors {
         create("personal") {
             dimension = "dist"
+            // the debug key in release too: the operator's installed app updates in place (a key change = reinstall)
+            signingConfig = signingConfigs.getByName("debug")
             buildConfigField("String", "STATUS_BOT_TOKEN", secret("statusBotToken"))
             buildConfigField("String", "STATUS_CHAT_ID", secret("statusChatId"))
             buildConfigField("String", "LAN_TOKEN", secret("lanToken"))
         }
         create("public") {
             dimension = "dist"
-            applicationIdSuffix = ".pub"
+            applicationId = "kr.dot.standscreen"
+            signingConfig = signingConfigs.findByName("upload")
         }
     }
     buildFeatures { compose = true; buildConfig = true }
@@ -45,7 +62,7 @@ android {
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-            signingConfig = signingConfigs.getByName("debug")
+            // no signingConfig here: a buildType's overrides the flavor's (personal = debug, public = upload)
         }
     }
     compileOptions {

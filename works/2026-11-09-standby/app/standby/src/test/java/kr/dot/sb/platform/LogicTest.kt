@@ -206,6 +206,7 @@ class LogicTest {
     @Test fun notificationClassification() {
         assertEquals(NotifKind.BIG, kind())
         assertEquals(NotifKind.IGNORE, kind(pkg = "kr.dot.standby"))
+        assertEquals(NotifKind.IGNORE, kind(pkg = "kr.dot.standscreen")) // the sibling flavor on the same phone
         assertEquals(NotifKind.IGNORE, kind(summary = true))
         assertEquals(NotifKind.IGNORE, kind(importance = 2))
         assertEquals(NotifKind.IGNORE, kind(filter = false))
