@@ -41,11 +41,15 @@ Draw THIS ${who} as one of our creatures: keep what makes it recognisable (its f
   figure: who => `Image 1 is a real photo of a ${who}. Make a cute small 3D figurine of THIS ${who} itself (not a ball): its real body shape and pose simplified, slightly chibi proportions (bigger head), soft matte clay/plush 3D render, keep its real colours, markings, ear shape, face features and clothing colour (no text on clothes). Tiny black dot eyes, small pink blush, gentle smile. Full body, front three-quarter view, centred, standing, square image, no text. Background: one flat solid pure green (#00FF00) colour edge to edge, no floor, no shadow, no gradient.`,
 };
 
+// operator 11-17: a person hugging a teddy kept it in the preview but lost it on the pet (the poses' free hands)
+const HELD = "If it holds or carries anything in the photo (a soft toy, a phone, a book, a bag, a cup), that thing stays with it in EVERY cell: hugged in the arms while standing, smiling or asleep, carried in one arm while walking, still clutched while dangling or fallen.";
+
 export const SHEET_PROMPT = who => `Image 1 is a real photo of a ${who} (it may be seen from the side or lying down). Image 2 shows the art style of our game creatures: small round pale 3D plush fur balls, soft fur texture, tiny black dot eyes, small pink blush, short stubby feet, no outline, soft studio light.
 
 Make a character pose sheet of THIS ${who} as ONE of our chubby round fur-ball plush creatures, in exactly the style of image 2. Keep what makes it recognisable: its exact fur colours and where its markings are, ear shape, nose and face. The SAME creature appears 6 times in a 3 x 2 grid of equal square cells, every cell the same size and scale, the creature centred in its cell with space around it:
 top row: 1) standing, front view, calm; 2) front view, big happy smile with eyes closed in joy; 3) side view walking to the right, left foot forward.
 bottom row: 4) side view walking to the right, right foot forward; 5) lying down asleep, eyes closed; 6) curled up asleep in a round ball.
+${HELD}
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
 // the figurine look of PROMPTS.figure as a pose sheet (operator 11-15: both looks can be bought as a pet)
@@ -54,6 +58,7 @@ export const FIGURE_SHEET_PROMPT = who => `Image 1 is a real photo of a ${who} (
 Make a character pose sheet of THIS ${who} as a cute small 3D figurine of itself (not a ball): its real body shape simplified, slightly chibi proportions (bigger head), soft matte clay/plush 3D render, keep its real colours, markings, ear shape, face features and clothing colour (no text on clothes). Tiny black dot eyes, small pink blush. The SAME figurine appears 6 times in a 3 x 2 grid of equal square cells, every cell the same size and scale, the figurine centred in its cell with space around it:
 top row: 1) standing, front view, calm; 2) front view, big happy smile with eyes closed in joy; 3) side view walking to the right, left foot forward.
 bottom row: 4) side view walking to the right, right foot forward; 5) lying down asleep, eyes closed; 6) curled up asleep, sitting hugging its knees.
+${HELD}
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
 const SHEET_STYLES = ["fluff", "figure"];
@@ -75,6 +80,7 @@ export const SHEET12_PROMPT = (style, k) => {
 
 Make a character pose sheet of THIS ${group ? "GROUP, each of them as" : ""} ${look}. Keep what makes ${group ? "each one" : "it"} recognisable: hair or fur colours and markings, glasses, ear shape, face, clothing colours (no text).${group ? " In EVERY cell the SAME group appears TOGETHER, touching, with the same relative sizes." : " The SAME character in every cell."}
 ${CELLS12}
+${HELD}
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 };
 
@@ -88,6 +94,7 @@ export const GROUP_SHEET_PROMPT = (style, k) => `Image 1 is a real photo of ${gr
 Make a character pose sheet of THIS GROUP, ${GROUP_LOOK[style]}. Keep what makes each one recognisable: hair or fur colours and markings, glasses, face features, clothing colours (no text). In EVERY cell the SAME group appears TOGETHER, touching, with the same relative sizes. A 3 x 2 grid of equal square cells, every cell the same scale, the group centred in its cell with space around it:
 top row: 1) standing together, front view, calm; 2) front view, all with big happy smiles, eyes closed in joy; 3) side view walking together to the right, left feet forward.
 bottom row: 4) side view walking together to the right, right feet forward; 5) lying down together asleep, eyes closed; 6) curled up together asleep in one cosy round pile.
+${HELD}
 No text, no numbers, no grid lines. Background of the whole image: one flat solid pure green (#00FF00), no floor, no shadows.`;
 
 const allowed = o => !!o && ORIGINS.some(r => r.test(o));
