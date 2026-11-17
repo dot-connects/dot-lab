@@ -16,11 +16,11 @@ fun secret(key: String) = "\"" + nungeum.getProperty(key, "") + "\""
 
 android {
     namespace = "kr.dot.sb"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "kr.dot.standby"
         minSdk = 34
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 13
         versionName = "0.4.0"
     }
