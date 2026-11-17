@@ -1,0 +1,304 @@
+<title>Stand Screen r15 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+/* Layout: one column of decision sections; each section = a row of phone-screen options (canvas), label + one-line rationale under each. */
+:root{
+  --bg:#f5f5f3; --panel:#ffffff; --line:#e3e2de; --fg:#1b1b1d; --ink2:#6c6c72; --acc:#d9822b;
+  --f:"Noto Sans KR",system-ui,"Malgun Gothic",sans-serif; --mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#111113;--panel:#1a1a1d;--line:#2b2b30;--fg:#ececee;--ink2:#9d9da5;--acc:#ffab5c;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111113;--panel:#1a1a1d;--line:#2b2b30;--fg:#ececee;--ink2:#9d9da5;--acc:#ffab5c;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);line-height:1.55}
+.wrap{max-width:1180px;margin:0 auto;padding-block:32px 72px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:-.02em}
+.lead{color:var(--ink2);max-width:70ch;margin:0 0 8px}
+section{margin-top:44px;border-top:1px solid var(--line);padding-top:22px}
+h2{font-size:18px;margin:0 0 4px;letter-spacing:-.01em;text-wrap:balance}
+.why{color:var(--ink2);font-size:14px;margin:0 0 18px;max-width:72ch}
+.row{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.opt{width:220px;max-width:100%;display:flex;flex-direction:column;gap:8px}
+.opt.wide{width:300px}
+.ph{background:#000;border-radius:26px;padding:7px;box-shadow:0 1px 0 var(--line),0 10px 30px rgba(0,0,0,.18)}
+.ph canvas{display:block;width:100%;height:auto;border-radius:20px}
+.k{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--acc);letter-spacing:.06em}
+.t{font-weight:700;font-size:15px}
+.d{font-size:13px;color:var(--ink2)}
+.now{font-size:12px;color:var(--ink2);font-family:var(--mono)}
+.note{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px;font-size:14px;max-width:72ch;margin-top:18px}
+.note b{color:var(--fg)}
+</style>
+
+<div class="wrap">
+  <h1>Stand Screen r15 시안</h1>
+  <p class="lead">세로 모드에서 어색했던 시계 세 가지와 앱 바로가기 카드의 아이콘 색을 다시 그렸습니다. 샘플 시각은 월요일 21:24, 7°, 알람 6:30입니다. 마음에 드는 안의 기호(예: 전광판 B, 액정 A)만 알려 주세요.</p>
+  <p class="now">맨 왼쪽 회색 테두리 = 지금 앱 모습</p>
+
+  <section>
+    <h2>전광판 · 세로</h2>
+    <p class="why">지금은 가로판 그대로 가운데에 작게 떠서 화면의 80%가 빈 검정입니다.</p>
+    <div class="row">
+      <div class="opt"><div class="ph" style="background:#555"><canvas data-f="dotNow"></canvas></div><span class="k">지금</span><span class="d">가로판을 그대로 축소.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="dotA"></canvas></div><span class="k">A</span><span class="t">두 줄로 크게</span><span class="d">시 위, 분 아래. 점이 화면 전체에 깔리고 숫자가 화면을 꽉 채움. 멀리서도 보임.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="dotB"></canvas></div><span class="k">B</span><span class="t">정류장 안내판</span><span class="d">위에 시간, 아래 줄마다 날짜·날씨·알람이 같은 점으로. 정보가 많은 쪽.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>액정 · 세로</h2>
+    <p class="why">지금은 가로 액정 하나를 세로로 늘려 숫자 아래가 비고, 글자 줄이 왼쪽으로 몰립니다.</p>
+    <div class="row">
+      <div class="opt"><div class="ph" style="background:#555"><canvas data-f="lcdNow"></canvas></div><span class="k">지금</span><span class="d">가로판을 세로로 늘림.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="lcdA"></canvas></div><span class="k">A</span><span class="t">탁상시계 두 줄</span><span class="d">시·분을 위아래로 크게, 위 줄 요일·날짜, 아래 줄 알람·기온. 꺼진 칸이 비쳐 보이는 진짜 액정 느낌.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="lcdB"></canvas></div><span class="k">B</span><span class="t">세 칸 패널</span><span class="d">날짜 칸, 큰 시간 칸, 알람·기온 칸으로 나눈 날씨 탁상시계. 칸마다 할 말이 하나.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>하루 막대 · 세로</h2>
+    <p class="why">지금은 세로 막대 옆 숫자만 남고 이름표(해 뜸·알람)가 사라져, 화면 절반이 비어 보입니다.</p>
+    <div class="row">
+      <div class="opt"><div class="ph" style="background:#555"><canvas data-f="barNow"></canvas></div><span class="k">지금</span><span class="d">막대만 남고 설명이 빠짐.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="barA"></canvas></div><span class="k">A</span><span class="t">물이 차오르듯</span><span class="d">화면 전체가 하루만큼 아래에서 위로 차 있음(지금 89%). 해 뜸·해 짐·알람이 가는 선으로. 가장 단순하고 인상적.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="barB"></canvas></div><span class="k">B</span><span class="t">세로 시간표</span><span class="d">왼쪽 막대에 하루 일정이 제 시각 자리에 이름표로 붙음. 큰 시간은 위. 일정이 많은 날에 좋음.</span></div>
+      <div class="opt"><div class="ph"><canvas data-f="barC"></canvas></div><span class="k">C</span><span class="t">가로 막대 아래로</span><span class="d">가로 모드 그대로 큰 시간 + 아래 가로 막대, 가운데에 다음 일정 두 줄. 가로와 같은 모양이라 돌려도 익숙함.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>앱 바로가기 · 아이콘 색</h2>
+    <p class="why">됩니다. 안드로이드 13부터 앱 아이콘에 '단색 모양'이 함께 들어 있어서(홈 화면 '테마 아이콘'과 같은 원리) 그 모양을 테마 색으로 칠할 수 있습니다. 단색 모양이 없는 앱은 원래 색으로 둡니다(홈 화면도 같은 방식). 카드 설정에 "아이콘 색" 한 줄로 고르게 합니다.</p>
+    <div class="row">
+      <div class="opt wide"><div class="ph"><canvas data-f="appsOrig"></canvas></div><span class="k">1</span><span class="t">원래 색</span><span class="d">지금 방식. 어떤 앱인지 가장 빨리 알아봄.</span></div>
+      <div class="opt wide"><div class="ph"><canvas data-f="appsTheme"></canvas></div><span class="k">2</span><span class="t">테마 색</span><span class="d">판은 카드 색, 모양은 테마 강조색. 보드와 하나로 보임. 추천.</span></div>
+      <div class="opt wide"><div class="ph"><canvas data-f="appsInk"></canvas></div><span class="k">3</span><span class="t">글자 색</span><span class="d">판 없이 모양만 글자 색으로. 가장 조용함, 밤 화면과 잘 맞음.</span></div>
+    </div>
+    <div class="row" style="margin-top:18px">
+      <div class="opt wide"><div class="ph"><canvas data-f="appsThemeNeon"></canvas></div><span class="k">2 · 네온</span><span class="d">테마가 바뀌면 같이 바뀜.</span></div>
+      <div class="opt wide"><div class="ph"><canvas data-f="appsThemePaper"></canvas></div><span class="k">2 · 종이</span><span class="d">밝은 테마에서도 대비 유지.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>설정 · 홈 다시 묶기</h2>
+    <p class="why">사용성 검토 결론: 지금 홈은 '만든 사람의 구조'(화면 / 카드 / 밤과 꺼짐 / 정보)라서 알람·알림·사진을 이름으로 못 찾고, 모든 화면 위의 기기·방향·낮밤 막대가 개발 도구처럼 보입니다. 하려는 일 기준 7줄로 다시 묶고, 줄마다 아이콘과 지금 값, 미리보기 막대는 없앱니다.</p>
+    <div class="row">
+      <div class="opt wide"><div class="ph set"><div class="scr">
+        <div class="lt">Stand Screen</div>
+        <div class="pv"><div class="pvc"><span class="pt">21:24</span><span class="pd">월요일 11월 9일 · 7°</span></div><div class="dots"><i class="on"></i><i></i><i></i><i></i></div><button class="go">지금 보기</button></div>
+        <div class="ban"><b>충전할 때 자동으로 켜지게 하려면 한 가지만 더 해 주세요</b><span class="btn">켜러 가기</span></div>
+        <div class="grp">
+          <div class="r"><i class="ic" style="--c:#ff9f0a">◷</i><span>시계</span><em>디지털</em></div>
+          <div class="r"><i class="ic" style="--c:#bf5af2">◐</i><span>테마</span><em>기본</em></div>
+          <div class="r"><i class="ic" style="--c:#0a84ff">▦</i><span>페이지와 카드</span><em>8개</em></div>
+          <div class="r"><i class="ic" style="--c:#30d158">▣</i><span>사진</span><em>알아서 고르기</em></div>
+        </div>
+        <div class="grp">
+          <div class="r"><i class="ic" style="--c:#5e5ce6">☾</i><span>밤 화면</span><em>방이 어두우면</em></div>
+          <div class="r"><i class="ic" style="--c:#34c759">⚡</i><span>자동으로 켜기·끄기</span><em>충전하면 켜짐</em></div>
+          <div class="r"><i class="ic" style="--c:#ff453a">●</i><span>알림과 알람</span><em>켜짐</em></div>
+        </div>
+        <div class="grp"><div class="r"><i class="ic" style="--c:#8e8e93">i</i><span>정보</span><em></em></div></div>
+      </div></div><span class="k">홈</span><span class="t">일 기준 7줄</span><span class="d">"카드" 묶음을 풀어 알람·알림·사진이 이름으로 보임. 미리보기는 한 장, 페이지는 점으로.</span></div>
+
+      <div class="opt wide"><div class="ph set"><div class="scr">
+        <div class="nav">‹ 설정</div><div class="lt sm">밤 화면</div>
+        <div class="night"><span>21:24</span></div>
+        <div class="grp"><div class="seg3"><b>끔</b><b class="on">방이 어두우면</b><b>시간 정하기</b></div></div>
+        <div class="foot">방에 불을 끄면 화면이 어둡고 따뜻한 색으로 바뀌어요.</div>
+        <div class="grp">
+          <div class="r col"><span>밤 밝기</span><div class="sl"><small>어둡게</small><div class="tr"><i style="width:30%"></i></div><small>밝게</small></div></div>
+          <div class="r col"><span>얼마나 어두우면 밤으로 볼까요</span><div class="sl"><small>조금만</small><div class="tr"><i style="width:55%"></i></div><small>캄캄할 때만</small></div></div>
+        </div>
+        <div class="grp">
+          <div class="r"><span>밤에도 알림 오면 화면 켜기</span><em class="sw"></em></div>
+          <div class="r"><span>움직이면 잠깐 밝게</span><em class="sw on"></em></div>
+        </div>
+        <div class="foot">꺼 두면 밤에는 알림이 와도 조용해요.</div>
+      </div></div><span class="k">하위 화면</span><span class="t">숫자 없는 조절</span><span class="d">"밤 밝기 30%", "어두움 정도 14", "5초 이어지면" 대신 양 끝 낱말. 큰 미리보기는 시계·테마·페이지·밤 화면에만.</span></div>
+
+      <div class="opt wide"><div class="ph set"><div class="scr">
+        <div class="nav">‹ 설정</div><div class="lt sm">시계</div>
+        <div class="cpv"><span>21:24</span></div>
+        <div class="tiles">
+          <div class="tl on"><b>21:24</b><span>디지털</span></div>
+          <div class="tl"><b style="font-family:Georgia,serif;font-weight:400">21:24</b><span>가는 선</span></div>
+          <div class="tl"><b class="flip">21 24</b><span>플립</span></div>
+          <div class="tl"><b style="letter-spacing:.2em">◷</b><span>아날로그</span></div>
+          <div class="tl"><b style="color:#ffb21e;font-family:'IBM Plex Mono'">21:24</b><span>전광판</span></div>
+          <div class="tl"><b style="font-weight:900">스물한시</b><span>한글 시계</span></div>
+        </div>
+        <div class="grp"><div class="r"><span>모든 시계 보기</span><em>23개</em></div><div class="r"><span>꾸미기</span><em>색 · 글꼴 · 크기</em></div><div class="r"><span>여러 시계 돌려 보기</span><em>끔</em></div></div>
+      </div></div><span class="k">시계</span><span class="t">한 번 눌러 바꾸기</span><span class="d">타일을 누르면 바로 그 시계. 23개는 "모든 시계 보기"로, 돌려 보기·순서는 한 단계 아래로.</span></div>
+    </div>
+  </section>
+
+  <section>
+    <h2>설정 · 처음 켤 때 4단계</h2>
+    <p class="why">지금은 설치하자마자 권한 8개와 주황 버튼 8개가 먼저 뜹니다. 실제로 꼭 필요한 건 '충전하면 자동으로 켜기' 하나뿐이라, 나머지 7개는 그 기능을 켤 때 그 자리에서 묻습니다.</p>
+    <div class="row">
+      <div class="opt"><div class="ph set"><div class="scr ob"><small class="stp">1 / 4</small><h3>시계를 골라 주세요</h3><div class="tiles two"><div class="tl on"><b>21:24</b><span>디지털</span></div><div class="tl"><b class="flip">21 24</b><span>플립</span></div><div class="tl"><b>◷</b><span>아날로그</span></div><div class="tl"><b style="font-weight:900">스물한시</b><span>한글</span></div><div class="tl"><b style="color:#ffb21e;font-family:'IBM Plex Mono'">21:24</b><span>전광판</span></div><div class="tl"><b style="font-family:Georgia,serif;font-weight:400">21:24</b><span>가는 선</span></div></div><span class="cta">다음</span></div></div><span class="k">1</span><span class="d">누르면 바로 적용. 나중에 바꿀 수 있다고 한 줄.</span></div>
+      <div class="opt"><div class="ph set"><div class="scr ob"><small class="stp">2 / 4</small><h3>분위기를 골라 주세요</h3><div class="sw7"><i style="--a:#1c1c1e;--b:#ffab5c" class="on"></i><i style="--a:#efe7d8;--b:#c0482a"></i><i style="--a:#d9d5cc;--b:#3a3a3a"></i><i style="--a:#2a1a10;--b:#e0a060"></i><i style="--a:#2b2f6b;--b:#f5a3a3"></i><i style="--a:#120c2e;--b:#4fd8ff"></i><i style="--a:#06130b;--b:#5fe08a"></i></div><div class="tn">기본 · 종이 · 라디오 · 무드등 · 하늘 · 네온 · 터미널</div><span class="cta">다음</span></div></div><span class="k">2</span><span class="d">테마 7개를 색 견본으로.</span></div>
+      <div class="opt"><div class="ph set"><div class="scr ob"><small class="stp">3 / 4</small><h3>충전하면 자동으로 켜지게</h3><p class="ex">다음 화면에서 <b>Stand Screen</b>을 골라 주세요.</p><div class="sys"><div class="sr">시계</div><div class="sr">사진 테이블</div><div class="sr hi">Stand Screen <span>✓</span></div><div class="sr">색상</div></div><span class="cta">켜러 가기</span><span class="later">나중에</span></div></div><span class="k">3</span><span class="d">꼭 필요한 권한 하나만, 누를 곳을 그림으로.</span></div>
+      <div class="opt"><div class="ph set"><div class="scr ob"><small class="stp">4 / 4</small><h3>준비됐어요</h3><div class="done"><div class="lie"><span>21:24</span></div></div><p class="ex">충전기에 꽂고 옆으로 눕혀 보세요.</p><span class="cta">지금 보기</span></div></div><span class="k">4</span><span class="d">끝 화면에서 바로 미리 보기.</span></div>
+    </div>
+  </section>
+
+  <div class="note"><b>함께 바뀌는 말 (일부):</b> 스탠바이 → Stand Screen · 타이머·뽀모도로 → 집중 타이머 · 발열 보호 → 뜨거워지면 화면 어둡게 · 잔상 막기 → 화면 자국 막기 · 계속 켜 둠 → 끄지 않기 · 내 시계 / 둘러보기 → 쓰는 시계 / 모든 시계 · 카드 더하기 / 내 시계에 넣기 / 페이지 추가 → 모두 "추가" · 사용자 지정 → 직접 만들기. 전체 목록은 계획서에 넣습니다.</div>
+</div>
+<style>
+.ph.set{background:#000}
+.scr{background:#000;color:#f2f2f4;border-radius:20px;padding:14px 12px 18px;font-size:13px;display:flex;flex-direction:column;gap:10px;min-height:560px}
+.lt{font-size:24px;font-weight:700;letter-spacing:-.02em;padding:6px 4px 0}.lt.sm{font-size:22px;padding-top:0}
+.nav{color:#ffab5c;font-size:13px;padding:0 2px}
+.pv{background:#1c1c1e;border-radius:14px;padding:12px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.pvc{width:100%;aspect-ratio:2.17;background:linear-gradient(135deg,#1d1d20,#0d0d0f);border-radius:9px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.pt{font-size:36px;font-weight:500;color:#ffab5c;letter-spacing:-.02em;line-height:1}.pd{font-size:10px;color:#8b8b93;margin-top:4px}
+.dots{display:flex;gap:5px}.dots i{width:5px;height:5px;border-radius:50%;background:#48484e}.dots i.on{background:#f2f2f4}
+.go{font:inherit;font-weight:700;font-size:13px;border:0;border-radius:999px;background:#ffab5c;color:#2a1a08;padding:7px 18px}
+.ban{background:#2a2216;border-radius:12px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;font-size:12px}.ban b{font-weight:600;line-height:1.4}
+.btn{align-self:flex-start;background:#ffab5c;color:#2a1a08;font-weight:700;border-radius:8px;padding:4px 10px;font-size:12px}
+.grp{background:#1c1c1e;border-radius:12px;overflow:hidden}
+.r{display:flex;align-items:center;gap:10px;padding:10px 12px;border-top:1px solid #2c2c30;min-height:22px}.grp .r:first-child{border-top:0}
+.r span{flex:1;min-width:0}.r em{font-style:normal;color:#8b8b93;font-size:12px;white-space:nowrap}.r em::after{content:" ›";color:#5a5a60}
+.r em.sw::after{content:none}.sw{width:34px;height:20px;border-radius:999px;background:#3a3a3e;position:relative}.sw::before{content:"";position:absolute;width:16px;height:16px;border-radius:50%;background:#fff;top:2px;left:2px}.sw.on{background:#34c759}.sw.on::before{left:16px}
+.ic{width:26px;height:26px;border-radius:7px;background:var(--c);color:#fff;font-style:normal;display:grid;place-items:center;font-size:14px;font-weight:700;flex:none}
+.r.col{flex-direction:column;align-items:stretch;gap:6px}
+.sl{display:flex;align-items:center;gap:8px}.sl small{font-size:10px;color:#8b8b93;white-space:nowrap}.tr{flex:1;height:4px;border-radius:2px;background:#3a3a3e;position:relative}.tr i{position:absolute;left:0;top:0;bottom:0;background:#ffab5c;border-radius:2px}.tr i::after{content:"";position:absolute;right:-8px;top:-6px;width:16px;height:16px;border-radius:50%;background:#fff}
+.foot{font-size:11px;color:#8b8b93;padding:0 6px;margin-top:-4px;line-height:1.45}
+.night{aspect-ratio:2.17;border-radius:12px;background:#0b0705;display:grid;place-items:center}.night span{font-size:40px;color:#9c6a3c;font-weight:500}
+.seg3{display:flex;padding:3px;gap:3px;background:#2c2c30;margin:8px;border-radius:9px}.seg3 b{flex:1;text-align:center;font-size:11px;font-weight:500;padding:6px 0;border-radius:7px;color:#cfcfd4}.seg3 b.on{background:#636366;color:#fff;font-weight:700}
+.cpv{aspect-ratio:2.17;border-radius:12px;background:#0d0d0f;display:grid;place-items:center}.cpv span{font-size:44px;color:#ffab5c;font-weight:500}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.tiles.two{grid-template-columns:repeat(2,1fr)}
+.tl{background:#1c1c1e;border-radius:10px;padding:10px 4px 6px;display:flex;flex-direction:column;align-items:center;gap:4px;border:1.5px solid transparent}.tl.on{border-color:#ffab5c}
+.tl b{font-size:15px;font-weight:600;color:#f2f2f4;white-space:nowrap}.tl span{font-size:10px;color:#8b8b93}
+.flip{background:#2c2c30;border-radius:4px;padding:0 4px;letter-spacing:.08em}
+.ob{gap:14px;padding-top:24px}.ob h3{font-size:20px;margin:0;letter-spacing:-.02em;text-wrap:balance}.stp{color:#8b8b93;font-size:11px}
+.cta{margin-top:auto;text-align:center;background:#ffab5c;color:#2a1a08;font-weight:700;border-radius:12px;padding:11px 0}
+.later{text-align:center;color:#8b8b93;font-size:12px;margin-top:-6px}
+.ex{margin:0;color:#c9c9ce;font-size:13px;line-height:1.5}.ex b{color:#fff}
+.sw7{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.sw7 i{aspect-ratio:1;border-radius:12px;background:linear-gradient(135deg,var(--a) 55%,var(--b) 55%);border:1.5px solid #2c2c30}.sw7 i.on{border-color:#ffab5c}
+.tn{font-size:11px;color:#8b8b93;line-height:1.5}
+.sys{background:#f2f2f6;border-radius:12px;overflow:hidden;color:#111}.sr{padding:10px 12px;border-top:1px solid #dcdce0;font-size:12px;display:flex;justify-content:space-between}.sr:first-child{border-top:0}.sr.hi{background:#ffe8cc;font-weight:700;outline:2px solid #ff9f0a;outline-offset:-2px}.sr span{color:#ff9f0a}
+.done{display:grid;place-items:center;padding:20px 0}.lie{width:88%;aspect-ratio:2.17;border-radius:14px;background:#0d0d0f;border:3px solid #3a3a3e;display:grid;place-items:center;position:relative}.lie span{font-size:38px;color:#ffab5c}.lie::after{content:"";position:absolute;right:-16px;top:44%;width:16px;height:5px;background:#ddd;border-radius:2px}
+</style>
+
+<script>
+const H=21,M=24, W=270, HT=585, DPR=2;
+const pad=n=>String(n).padStart(2,"0");
+const HH=pad(H), MM=pad(M);
+const FONT='"Noto Sans KR","Malgun Gothic",sans-serif';
+function mk(c,w=W,h=HT){c.width=w*DPR;c.height=h*DPR;const x=c.getContext("2d");x.scale(DPR,DPR);return x}
+
+/* ---------- dot matrix ---------- */
+const G5={"0":["01110","10001","10011","10101","11001","10001","01110"],"1":["00100","01100","00100","00100","00100","00100","01110"],"2":["01110","10001","00001","00010","00100","01000","11111"],"3":["11111","00010","00100","00010","00001","10001","01110"],"4":["00010","00110","01010","10010","11111","00010","00010"],"5":["11111","10000","11110","00001","00001","10001","01110"],"6":["00110","01000","10000","11110","10001","10001","01110"],"7":["11111","00001","00010","00100","01000","01000","01000"],"8":["01110","10001","10001","01110","10001","10001","01110"],"9":["01110","10001","10001","01111","00001","00010","01100"],":":["0","0","1","0","1","0","0"]};
+function glyphGrid(str,scale=1){ // -> array of rows of 0/1 with 1-col gaps
+  const rows=[];for(let r=0;r<7;r++){let line=[];[...str].forEach((ch,i)=>{const g=G5[ch][r];if(i)line.push(0);for(const b of g)line.push(+b)});rows.push(line)}
+  if(scale===1)return rows;const out=[];for(const r of rows){const l=r.flatMap(v=>Array(scale).fill(v));for(let s=0;s<scale;s++)out.push(l)}return out}
+function textGrid(text,rows,cols){ // sample a Korean line into a dot grid
+  const c=document.createElement("canvas");c.width=cols;c.height=rows;const x=c.getContext("2d");
+  x.fillStyle="#000";x.fillRect(0,0,cols,rows);x.fillStyle="#fff";x.font=`700 ${rows+1}px ${FONT}`;x.textBaseline="middle";x.fillText(text,0,rows/2+.5);
+  const d=x.getImageData(0,0,cols,rows).data,g=[];for(let r=0;r<rows;r++){g.push([]);for(let k=0;k<cols;k++)g[r].push(d[(r*cols+k)*4]>110?1:0)}return g}
+function dots(x,grid,ox,oy,p,on="#ffb21e",off="#2a1d06"){
+  grid.forEach((row,r)=>row.forEach((v,k)=>{x.beginPath();x.arc(ox+k*p+p/2,oy+r*p+p/2,p*.4,0,7);x.fillStyle=v?on:off;x.fill();if(v){x.save();x.globalAlpha=.25;x.beginPath();x.arc(ox+k*p+p/2,oy+r*p+p/2,p*.62,0,7);x.fill();x.restore()}}))}
+function field(x,p,off="#1d1404"){for(let y=p/2;y<HT;y+=p)for(let k=p/2;k<W;k+=p){x.beginPath();x.arc(k,y,p*.4,0,7);x.fillStyle=off;x.fill()}}
+const F={};
+F.dotNow=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);const g=glyphGrid(HH+":"+MM);const p=W/(g[0].length+2);dots(x,Array.from({length:9},(_,r)=>r===0||r===8?Array(g[0].length+2).fill(0):[0,...g[r-1],0]),0,HT/2-4.5*p,p)};
+F.dotA=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);const p=W/13;field(x,p);
+  const a=glyphGrid(HH,1),b=glyphGrid(MM,1);
+  const big=g=>g.map(r=>r.flatMap(v=>[v])); // 11 cols wide, scale via pitch
+  const gp=p, gw=11, ox=(W-gw*gp)/2;
+  const hrow=Math.round(HT/2/gp)-8;
+  dots(x,a,ox,(hrow)*gp,gp); dots(x,b,ox,(hrow+9)*gp,gp);
+  // note: scale 1 at pitch W/13 makes each digit 5 dots = 104px wide
+};
+F.dotB=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);const cols=60,p=W/cols;field(x,p);
+  const t=glyphGrid(HH+":"+MM,2);const ox=Math.floor((cols-t[0].length)/2)*p;dots(x,t,ox,6*p,p);
+  const lines=[["11.9 월요일","#ffb21e"],["7° 흐림","#ffb21e"],["알람 06:30","#ff6a3d"],["독서 22:30","#7fd4ff"]];
+  lines.forEach(([s,col],i)=>dots(x,textGrid(s,11,cols-4),2*p,(30+i*18)*p,p,col,"#00000000"));
+  x.fillStyle="#3a2a08";x.fillRect(2*p,26*p,W-4*p,1)};
+
+/* ---------- LCD 7-seg ---------- */
+const SEG={"0":"abcdef","1":"bc","2":"abged","3":"abgcd","4":"fgbc","5":"afgcd","6":"afgedc","7":"abc","8":"abcdefg","9":"abcdfg","-":"g"};
+function seg(x,ch,X,Y,w,h,on,off){const t=w*.17,sk=w*.12,lit=SEG[ch]||"";
+  const P={a:[[t,0],[w-t,0],[w-t*1.6,t],[t*1.6,t]],d:[[t*1.6,h-t],[w-t*1.6,h-t],[w-t,h],[t,h]],g:[[t*1.2,h/2-t/2],[w-t*1.2,h/2-t/2],[w-t*.6,h/2],[w-t*1.2,h/2+t/2],[t*1.2,h/2+t/2],[t*.6,h/2]],
+    f:[[0,t],[t,t*1.6],[t,h/2-t*.6],[0,h/2-t*.2]],b:[[w,t],[w,h/2-t*.2],[w-t,h/2-t*.6],[w-t,t*1.6]],e:[[0,h/2+t*.2],[t,h/2+t*.6],[t,h-t*1.6],[0,h-t]],c:[[w,h/2+t*.2],[w,h-t],[w-t,h-t*1.6],[w-t,h/2+t*.6]]};
+  for(const k of "abcdefg"){x.beginPath();P[k].forEach(([px,py],i)=>{const xx=X+px+sk*(1-py/h);i?x.lineTo(xx,Y+py):x.moveTo(xx,Y+py)});x.closePath();x.fillStyle=lit.includes(k)?on:off;x.fill()}}
+function segStr(x,s,X,Y,w,h,gap,on,off){[...s].forEach((ch,i)=>{if(ch===":"){x.fillStyle=on;x.fillRect(X+w*.3,Y+h*.3,w*.16,w*.16);x.fillRect(X+w*.22,Y+h*.66,w*.16,w*.16);X+=w*.55;return}seg(x,ch,X,Y,w,h,on,off);X+=w+gap})}
+const LBG="#aeb9a0",LON="#1c2216",LOFF="rgba(28,34,22,.09)";
+function lcdPanel(x,X,Y,w,h,r=14){x.fillStyle=LBG;x.beginPath();x.roundRect(X,Y,w,h,r);x.fill();const g=x.createLinearGradient(0,Y,0,Y+h);g.addColorStop(0,"rgba(255,255,255,.18)");g.addColorStop(1,"rgba(0,0,0,.06)");x.fillStyle=g;x.fill()}
+function lcdText(x,s,X,Y,size,align="left",w=600){x.fillStyle=LON;x.font=`${w} ${size}px ${FONT}`;x.textAlign=align;x.textBaseline="alphabetic";x.fillText(s,X,Y)}
+F.lcdNow=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);lcdPanel(x,10,10,W-20,HT-20);lcdText(x,"월요일",26,40,15,"left",500);lcdText(x,"11-09",W-26,40,15,"right");segStr(x,"9:41",30,230,42,74,8,LON,LOFF);["오후","알람 6:30","7°"].forEach((s,i)=>lcdText(x,s,30,340+i*22,13,"left",500))};
+F.lcdA=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);lcdPanel(x,8,8,W-16,HT-16,22);
+  lcdText(x,"월요일",28,52,18,"left",700);x.font=`600 18px ${'"IBM Plex Mono"'}`;x.textAlign="right";x.fillStyle=LON;x.fillText("11-09",W-28,52);
+  x.fillStyle="rgba(28,34,22,.25)";x.fillRect(28,66,W-56,1.5);
+  lcdText(x,"PM",30,104,14,"left",700);
+  const dw=92,dh=170;segStr(x,HH,(W-(2*dw+16))/2+6,112,dw,dh,16,LON,LOFF);segStr(x,MM,(W-(2*dw+16))/2+6,112+dh+26,dw,dh,16,LON,LOFF);
+  x.fillStyle="rgba(28,34,22,.25)";x.fillRect(28,508,W-56,1.5);
+  lcdText(x,"⏰ 06:30",28,544,17,"left",700);lcdText(x,"7°",W-28,544,20,"right",700)};
+F.lcdB=c=>{const x=mk(c);x.fillStyle="#0c0c0c";x.fillRect(0,0,W,HT);
+  lcdPanel(x,12,14,W-24,108,16);lcdText(x,"월요일",30,52,17,"left",700);segStr(x,"11-09",112,40,24,44,6,LON,LOFF);lcdText(x,"11월",30,98,13,"left",500);lcdText(x,"흐림",W-30,98,13,"right",500);
+  lcdPanel(x,12,134,W-24,250,16);lcdText(x,"PM",30,166,13,"left",700);segStr(x,HH+":"+MM,24,190,46,150,6,LON,LOFF);
+  lcdPanel(x,12,396,W-24,175,16);lcdText(x,"알람",30,428,13,"left",700);segStr(x,"06:30",28,442,26,52,5,LON,LOFF);
+  x.fillStyle="rgba(28,34,22,.25)";x.fillRect(30,510,W-60,1.2);lcdText(x,"기온",30,536,13,"left",700);segStr(x,"7",W-100,516,26,46,5,LON,LOFF);lcdText(x,"°C",W-30,556,15,"right",700)};
+
+/* ---------- day bar ---------- */
+const ACC="#ffab5c", CYAN="#3fd2e0", INK="#f2f2f4", MUTE="#8b8b93";
+const frac=(H*60+M)/1440;
+function T(x,s,X,Y,size,col=INK,w=500,align="left"){x.fillStyle=col;x.font=`${w} ${size}px ${FONT}`;x.textAlign=align;x.fillText(s,X,Y)}
+F.barNow=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);T(x,"9:41",W/2,105,80,ACC,500,"center");
+  x.fillStyle=CYAN;x.beginPath();x.roundRect(98,180,10,280*.9,5);x.fill();x.fillStyle="#444";x.beginPath();x.roundRect(98,180+252,10,28,5);x.fill();
+  [0,6,12,18,24].forEach((h,i)=>T(x,""+h,128,190+i*68,14,MUTE))};
+F.barA=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);
+  const top=HT*(1-frac);const g=x.createLinearGradient(0,top,0,HT);g.addColorStop(0,"#3a2410");g.addColorStop(1,"#130b05");x.fillStyle=g;x.fillRect(0,top,W,HT-top);
+  x.fillStyle=ACC;x.fillRect(0,top,W,2);
+  const yAt=hm=>HT*(1-hm/24);
+  [[7+5/60,"해 뜸 7:05"],[17+25/60,"해 짐 5:25"]].forEach(([h,s])=>{const y=yAt(h);x.fillStyle="rgba(255,255,255,.22)";x.fillRect(16,y,W-32,1);T(x,s,W-16,y-6,11,MUTE,500,"right")});
+  const ya=yAt(6.5+24*0);x.setLineDash([3,4]);x.strokeStyle="#ff7b54";x.beginPath();x.moveTo(16,ya);x.lineTo(W-16,ya);x.stroke();x.setLineDash([]);T(x,"알람 6:30",16,ya-6,11,"#ff7b54",700);
+  [0,6,12,18].forEach(h=>T(x,(h||"0")+"시",16,yAt(h)-4,10,"rgba(255,255,255,.35)"));
+  T(x,HH+":"+MM,W/2,250,64,INK,500,"center");T(x,"오늘의 89% · 월요일 11월 9일",W/2,280,12,"rgba(255,255,255,.7)",500,"center")};
+F.barB=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);
+  T(x,HH+":"+MM,W-20,92,58,ACC,500,"right");T(x,"월요일 11월 9일 · 7° 흐림",W-20,118,12,MUTE,500,"right");
+  const y0=150,y1=HT-26,bx=34,yAt=h=>y0+(y1-y0)*h/24;
+  x.fillStyle="#26262a";x.beginPath();x.roundRect(bx,y0,10,y1-y0,5);x.fill();x.fillStyle=CYAN;x.beginPath();x.roundRect(bx,y0,10,(y1-y0)*frac,5);x.fill();
+  x.fillStyle="#fff";x.fillRect(bx-5,yAt(H+M/60)-1,20,3);
+  for(let h=0;h<=24;h+=3)T(x,""+h,bx-8,yAt(h)+4,10,"rgba(255,255,255,.35)",500,"right");
+  [[6.5,"알람 6:30","#ff7b54"],[7.08,"해 뜸","#ffd36b"],[9.5,"팀 회의","#4ea1ff"],[13,"병원 예약","#ff9f0a"],[17.42,"해 짐","#ffd36b"],[19,"헬스","#30d158"],[22.5,"독서 모임","#ff375f"]].forEach(([h,s,col])=>{const y=yAt(h);x.fillStyle=col;x.beginPath();x.arc(bx+5,y,3,0,7);x.fill();x.fillRect(bx+14,y-.5,14,1);T(x,s,bx+34,y+4,13,h<H+M/60?MUTE:INK,h<H+M/60?400:700)});
+  T(x,"지금",bx+34,yAt(H+M/60)+4,12,"#fff",700)};
+F.barC=c=>{const x=mk(c);x.fillStyle="#000";x.fillRect(0,0,W,HT);
+  T(x,HH+":"+MM,W/2,170,84,ACC,500,"center");T(x,"월요일 11월 9일 · 7° 흐림",W/2,202,13,MUTE,500,"center");
+  [["22:30","독서 모임","#ff375f"],["내일 06:30","알람","#ff7b54"]].forEach(([a,b,col],i)=>{const y=290+i*44;x.fillStyle="#17171a";x.beginPath();x.roundRect(24,y-26,W-48,36,10);x.fill();x.fillStyle=col;x.fillRect(36,y-17,3,18);T(x,a,48,y-2,13,MUTE,500);T(x,b,W-36,y-2,14,INK,700,"right")});
+  const by=470;T(x,"하루의 89%",24,by-12,11,CYAN,700);x.fillStyle="#26262a";x.beginPath();x.roundRect(24,by,W-48,10,5);x.fill();x.fillStyle=CYAN;x.beginPath();x.roundRect(24,by,(W-48)*frac,10,5);x.fill();
+  x.fillStyle="#fff";x.fillRect(24+(W-48)*frac-1,by-4,3,18);
+  [0,6,12,18,24].forEach(h=>T(x,""+h,24+(W-48)*h/24,by+30,10,MUTE,500,"center"));T(x,"해 뜸 7:05 · 해 짐 5:25",W/2,by+56,11,MUTE,500,"center")};
+
+/* ---------- app icons ---------- */
+const APPS=[["메모","#f7b500","memo"],["캘린더","#ffffff","cal"],["카메라","#5f6168","cam"],["시계","#1b1b1d","clock"],["음악","#6a48f0","music"],["메시지","#2f8cff","msg"],["지도","#e2ece2","map"],["갤러리","#f4874a","photo"]];
+function glyph(x,k,cx,cy,s,col){x.save();x.translate(cx,cy);x.fillStyle=col;x.strokeStyle=col;x.lineWidth=s*.09;x.lineCap="round";x.lineJoin="round";
+  const r=s/2;
+  if(k==="memo"){x.strokeRect(-r*.55,-r*.7,r*1.1,r*1.4);for(let i=0;i<3;i++){x.beginPath();x.moveTo(-r*.3,-r*.35+i*r*.3);x.lineTo(r*.3,-r*.35+i*r*.3);x.stroke()}}
+  if(k==="cal"){x.font=`900 ${s*.62}px ${FONT}`;x.textAlign="center";x.textBaseline="middle";x.fillText("9",0,r*.12);x.font=`700 ${s*.22}px ${FONT}`;x.fillText("월",0,-r*.62)}
+  if(k==="cam"){x.strokeRect(-r*.7,-r*.42,r*1.4,r*.95);x.beginPath();x.arc(0,r*.05,r*.3,0,7);x.stroke();x.fillRect(-r*.25,-r*.6,r*.5,r*.18)}
+  if(k==="clock"){x.beginPath();x.arc(0,0,r*.68,0,7);x.stroke();x.beginPath();x.moveTo(0,0);x.lineTo(0,-r*.45);x.moveTo(0,0);x.lineTo(r*.32,r*.12);x.stroke()}
+  if(k==="music"){x.beginPath();x.moveTo(-r*.25,r*.45);x.lineTo(-r*.25,-r*.55);x.lineTo(r*.45,-r*.7);x.lineTo(r*.45,r*.3);x.stroke();x.beginPath();x.arc(-r*.42,r*.45,r*.18,0,7);x.arc(r*.28,r*.3,r*.18,0,7);x.fill()}
+  if(k==="msg"){x.beginPath();x.ellipse(0,-r*.05,r*.7,r*.5,0,0,7);x.fill();x.beginPath();x.moveTo(-r*.35,r*.3);x.lineTo(-r*.5,r*.7);x.lineTo(-r*.05,r*.38);x.fill()}
+  if(k==="map"){x.beginPath();x.arc(0,-r*.2,r*.35,0,7);x.fill();x.beginPath();x.moveTo(-r*.3,-r*.05);x.lineTo(0,r*.65);x.lineTo(r*.3,-r*.05);x.fill()}
+  if(k==="photo"){x.strokeRect(-r*.68,-r*.5,r*1.36,r*1.0);x.beginPath();x.moveTo(-r*.6,r*.42);x.lineTo(-r*.15,-r*.1);x.lineTo(r*.15,r*.18);x.lineTo(r*.3,r*.02);x.lineTo(r*.6,r*.42);x.fill()}
+  x.restore()}
+const ORIG={memo:["#ffd24a","#fff"],cal:["#ffffff","#1b1b1d"],cam:["#4b4d54","#e8e8ec"],clock:["#1b1b1d","#ffffff"],music:["#6a48f0","#fff"],msg:["#2f8cff","#fff"],map:["#e6efe6","#e8453c"],photo:["#f4874a","#fff"]};
+function appsCard(c,mode,theme){const w=300,h=200;const x=mk(c,w,h);
+  const TH={base:{page:"#000",card:"#1c1c1e",ink:"#f2f2f4",acc:"#ffab5c",plate:"#2c2c30",mute:"#8b8b93"},neon:{page:"#07051a",card:"#120c2e",ink:"#e9f7ff",acc:"#4fd8ff",plate:"#1d1748",mute:"#8a86b8",glow:true},paper:{page:"#e9e3d6",card:"#f7f3ea",ink:"#2b2722",acc:"#c0482a",plate:"#ebe4d4",mute:"#8d857a"}}[theme];
+  x.fillStyle=TH.page;x.fillRect(0,0,w,h);x.fillStyle=TH.card;x.beginPath();x.roundRect(8,8,w-16,h-16,18);x.fill();
+  if(TH.glow){x.strokeStyle="rgba(79,216,255,.55)";x.lineWidth=1.2;x.stroke()}
+  T(x,"앱 바로가기",22,32,11,TH.mute,500);
+  APPS.forEach(([lab,,k],i)=>{const col=i%4,row=Math.floor(i/4);const cx=50+col*67,cy=74+row*66,s=40;
+    if(mode==="orig"){const [bg,fg]=ORIG[k];x.fillStyle=bg;x.beginPath();x.roundRect(cx-s/2,cy-s/2,s,s,11);x.fill();glyph(x,k,cx,cy,s*.62,fg)}
+    else if(mode==="theme"){x.fillStyle=TH.plate;x.beginPath();x.roundRect(cx-s/2,cy-s/2,s,s,11);x.fill();glyph(x,k,cx,cy,s*.62,TH.acc)}
+    else{glyph(x,k,cx,cy,s*.7,TH.ink)}
+    T(x,lab,cx,cy+s/2+13,9.5,TH.mute,500,"center")})}
+F.appsOrig=c=>appsCard(c,"orig","base");F.appsTheme=c=>appsCard(c,"theme","base");F.appsInk=c=>appsCard(c,"ink","base");
+F.appsThemeNeon=c=>appsCard(c,"theme","neon");F.appsThemePaper=c=>appsCard(c,"theme","paper");
+
+function draw(){document.querySelectorAll("canvas[data-f]").forEach(c=>{try{F[c.dataset.f](c)}catch(e){console.error(c.dataset.f,e)}})}
+draw();(document.fonts?.ready||Promise.resolve()).then(draw);
+</script>

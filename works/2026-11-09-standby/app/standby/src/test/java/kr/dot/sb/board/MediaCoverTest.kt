@@ -56,8 +56,10 @@ class MediaCoverTest {
         rule.mainClock.advanceTimeBy(50)
     }
 
-    private fun controls(shown: Boolean) =
-        if (shown) rule.onNodeWithText("Ditto").assertExists() else rule.onNodeWithText("Ditto").assertDoesNotExist()
+    private fun controls(shown: Boolean) {
+        val title = Fixtures.full().media!!.title
+        if (shown) rule.onNodeWithText(title).assertExists() else rule.onNodeWithText(title).assertDoesNotExist()
+    }
 
     @Test fun tapRevealsControlsForThreeSeconds() {
         show()

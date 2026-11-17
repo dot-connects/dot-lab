@@ -85,17 +85,18 @@ fun ComposeContentTestRule.shot(
     onRoot().captureRoboImage(shotPath(theme, group, name, device))
 }
 
-/** Deterministic sample data: 9:41 on 2026-11-09 (Mon), with every feed filled. */
+/** Deterministic sample data: 21:24 on 2026-11-09 (Mon), with every feed filled. (Not 9:41: that reads as Apple's.) */
 object Fixtures {
-    val now: LocalDateTime = LocalDateTime.of(2026, 11, 9, 21, 41)
+    val now: LocalDateTime = LocalDateTime.of(2026, 11, 9, 21, 24)
 
-    /** 앱 바로가기 (r14 C1): Robolectric has no launcher apps, so cards and the picker get these colour squares. */
-    fun apps(): List<kr.dot.sb.ui.cards.AppEntry> = listOf(
-        "Samsung Notes" to 0xFFF5B400, "카카오톡" to 0xFFFEE500, "캘린더" to 0xFF4D9BEF, "카메라" to 0xFF6B6B70, "YouTube" to 0xFFFF0033,
-        "시계" to 0xFF30CEDA, "Spotify" to 0xFF1ED760, "메시지" to 0xFF6FDC86, "지도" to 0xFFAA88FE, "설정" to 0xFF9A9893,
-    ).mapIndexed { i, (label, c) ->
-        val bmp = android.graphics.Bitmap.createBitmap(144, 144, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(c.toInt()) }
-        kr.dot.sb.ui.cards.AppEntry("app.$i", label, bmp.asImageBitmap())
+    /** 앱 바로가기 (r14 C1): Robolectric has no launcher apps, so cards and the picker get generic drawn icons (no brand marks). */
+    private val APP_ICONS = listOf(
+        "메모" to "memo", "캘린더" to "calendar", "카메라" to "camera", "시계" to "clock", "음악" to "music",
+        "메시지" to "message", "지도" to "maps", "설정" to "settings", "갤러리" to "photos", "날씨" to "weather",
+    )
+
+    fun apps(): List<kr.dot.sb.ui.cards.AppEntry> = APP_ICONS.mapIndexed { i, (label, icon) ->
+        kr.dot.sb.ui.cards.AppEntry("app.$i", label, image("icon_$icon.png"))
     }
     val appLookup: (android.content.Context, String) -> kr.dot.sb.ui.cards.AppEntry? = { _, pkg -> apps().firstOrNull { it.pkg == pkg } }
 
@@ -118,13 +119,19 @@ object Fixtures {
         return bmp.asImageBitmap()
     }
 
-    val art: ImageBitmap by lazy { gradient(300, 300, 0xFF7FB3FF.toInt(), 0xFFF4B8D4.toInt(), 0xFFFFF1C4.toInt()) }
-    val photo: ImageBitmap by lazy { gradient(900, 600, 0xFF3F6D8C.toInt(), 0xFFE8E2C8.toInt(), 0xFF2F4A36.toInt()) }
+    /** Real photos (Unsplash License, credits in test/resources/fixtures/NOTICE.md) so shots and the reel look lived-in. */
+    private fun image(name: String): ImageBitmap =
+        Fixtures::class.java.classLoader!!.getResourceAsStream("fixtures/$name")!!.use { android.graphics.BitmapFactory.decodeStream(it) }.asImageBitmap()
+
+    val art: ImageBitmap by lazy { image("art.jpg") }
+    val photo: ImageBitmap by lazy { image("photo.jpg") }
+    val memoryPhoto: ImageBitmap by lazy { image("memory.jpg") }
+    val cafe: ImageBitmap by lazy { image("cafe.jpg") }
 
     fun full(night: Float = 0f): StandbyState = StandbyState(
         now = now,
         night = night,
-        media = MediaInfo("YouTube Music", "com.google.android.apps.youtube.music", MediaKind.MUSIC, "Ditto", "NewJeans", art, true, 72_000, 186_000),
+        media = MediaInfo("YouTube Music", "com.google.android.apps.youtube.music", MediaKind.MUSIC, "새벽 드라이브", "루멘 애비뉴", art, true, 72_000, 186_000),
         // mockup "사용량" v3: left 80 / 51 / 100 / 91 %, pace .55 / .62; sessions busy · wait · idle · off
         usage = UsageInfo(
             UsageWindow(20, 1794230400, 0.55), UsageWindow(49, 1794308400, 0.62), UsageWindow(0, 1794192419), UsageWindow(9, 1794574925, 0.62), 1794228000,
@@ -156,8 +163,8 @@ object Fixtures {
         ),
         nextAlarm = LocalDateTime.of(2026, 11, 10, 6, 30),
         timers = mapOf("desk-1" to TimerState(leftSec = 18 * 60 + 24, running = true)),
-        photos = listOf(Photo(photo, "설악산", "2025년 10월 18일")),
-        memory = Photo(photo, "설악산", "2023년 11월 9일", yearsAgo = 3),
+        photos = listOf(Photo(photo, "올림픽공원", "2025년 10월 18일")),
+        memory = Photo(memoryPhoto, "광안리", "2023년 11월 9일", yearsAgo = 3),
         notifications = notifs(),
     )
 

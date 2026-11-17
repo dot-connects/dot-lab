@@ -78,8 +78,6 @@ import kotlin.math.roundToInt
 
 // ---- 시계 (mockup SCREENS.clock): preview + 넣기/꾸미기/빼기, 내 시계 strip, 둘러보기 gallery ---------------------------
 
-/** The "이 앱에만" badge (mockup `.uq`). */
-private val OURS = Color(0xFFFFAD5C)
 private val TILE_W = 118.dp
 private val TILE_GAP = 10.dp
 
@@ -272,9 +270,6 @@ private fun GalleryCard(face: FaceId, on: Boolean, mine: Boolean, config: AppCon
         }
         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
             T(sp.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
-            if (sp.ours) Box(Modifier.padding(start = 6.dp).border(1.dp, OURS, RoundedCornerShape(5.dp)).padding(horizontal = 5.dp, vertical = 1.dp)) {
-                T("이 앱에만", 10.sp, 700, OURS, maxLines = 1)
-            }
         }
     }
 }

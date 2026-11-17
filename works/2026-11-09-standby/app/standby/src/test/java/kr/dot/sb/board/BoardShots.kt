@@ -59,7 +59,7 @@ class BoardShots(private val name: String, private val device: Device, private v
 
     companion object {
         private fun video(s: StandbyState) =
-            s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.photo))
+            s.copy(media = s.media!!.copy(appLabel = "YouTube", kind = MediaKind.VIDEO, title = "비 오는 밤 카페 재즈 3시간", artist = "재즈 채널", art = Fixtures.cafe))
 
         /** States are built inside the sandbox (Bitmap needs Robolectric), parameters only carry a key. */
         fun stateOf(key: String, b: Board): StandbyState = when (key.removeSuffix("-clear").removeSuffix("-own").removeSuffix("-fill").removeSuffix("-video").removePrefix("open").removePrefix("-")) {

@@ -112,11 +112,11 @@ enum class StyleRow(val part: String? = null) {
 }
 
 /**
- * A clock of the gallery. [rows] = 꾸미기 rows, [more] = its 자세히 rows (mockup `STYLE`); [ours] = the "이 앱에만" badge;
+ * A clock of the gallery. [rows] = 꾸미기 rows, [more] = its 자세히 rows (mockup `STYLE`);
  * [built] = its renderer exists (an unbuilt face is skipped by the clocks page and the board chips).
  */
 data class ClockSpec(
-    val id: FaceId, val family: Family, val ko: String, val ours: Boolean,
+    val id: FaceId, val family: Family, val ko: String,
     val rows: List<StyleRow>, val more: List<StyleRow>, val built: Boolean,
 ) {
     /** What the clocks-page long-press sheet edits: the first colour or preset row (plan-r10 Decisions). */
@@ -128,16 +128,16 @@ private val DT = listOf(WEIGHT, StyleRow.FX, StyleRow.BG)
 
 /** The registry: one exhaustive `when`, so a new [FaceId] does not compile without its spec. */
 fun spec(id: FaceId): ClockSpec {
-    fun c(f: Family, ko: String, rows: List<StyleRow>, more: List<StyleRow>, ours: Boolean = false, built: Boolean = false) =
-        ClockSpec(id, f, ko, ours, rows, more, built)
+    fun c(f: Family, ko: String, rows: List<StyleRow>, more: List<StyleRow>, built: Boolean = false) =
+        ClockSpec(id, f, ko, rows, more, built)
     return when (id) {
         FaceId.DIGITAL -> c(Family.SIMPLE, "디지털 1", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
         FaceId.THIN -> c(Family.SIMPLE, "디지털 2", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.SPLIT -> c(Family.SIMPLE, "시·분 나눔", listOf(HOUR_COLOR, MINUTE_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.DESK -> c(Family.SIMPLE, "책상", listOf(TEXT_COLOR, SIZE, FONT), DT, built = true)
         FaceId.COLOR_BLOCK -> c(Family.POP, "색 블록", listOf(PAIR, SIZE, FONT, INFO, StyleRow.CLEAR_BG), emptyList(), built = true)
-        FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO, StyleRow.CLEAR_BG), listOf(PAPER_COLOR), ours = true, built = true)
-        FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), ours = true, built = true)
+        FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO, StyleRow.CLEAR_BG), listOf(PAPER_COLOR), built = true)
+        FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), built = true)
         FaceId.SOLAR -> c(Family.POP, "솔라", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
         // r14: legacy id only (old saves read it as DIGITAL); never listed
         FaceId.FLOAT -> c(Family.POP, "둥근 굵은 글씨", emptyList(), emptyList())
@@ -149,15 +149,15 @@ fun spec(id: FaceId): ClockSpec {
             Family.CLASSIC, "벽시계", listOf(HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS, INFO),
             listOf(FACE_COLOR, TICK_COLOR, NUMERAL_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
         )
-        FaceId.CALENDAR -> c(Family.CLASSIC, "달력과 시계", listOf(TEXT_COLOR, CALENDAR_COLOR, SIZE, FONT), listOf(WEIGHT), ours = true, built = true)
-        FaceId.HANGUL -> c(Family.CLASSIC, "한글 시계", listOf(TEXT_COLOR, ACCENT_COLOR, SIZE, KFONT), emptyList(), ours = true, built = true)
+        FaceId.CALENDAR -> c(Family.CLASSIC, "달력과 시계", listOf(TEXT_COLOR, CALENDAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
+        FaceId.HANGUL -> c(Family.CLASSIC, "한글 시계", listOf(TEXT_COLOR, ACCENT_COLOR, SIZE, KFONT), emptyList(), built = true)
         FaceId.ANALOG -> c(
             Family.CLASSIC, "아날로그", listOf(SHAPE, HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS),
             listOf(TICK_COLOR, NUMERAL_COLOR, DAY_COLOR, ANALOG_TICKS, DIAL_FONT, SIZE), built = true,
         )
         FaceId.PHOTOS_TIME -> c(Family.CLASSIC, "사진 위 시간", listOf(TEXT_COLOR, SIZE, FONT), listOf(WEIGHT, StyleRow.FX), built = true)
         FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
-        FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), ours = true, built = true)
+        FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), built = true)
         FaceId.WORLD -> c(Family.GAUGE, "세계", listOf(CITY_COLOR, LIT_COLOR, SIZE, FONT), DT, built = true)
         FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY, StyleRow.CLEAR_BG), emptyList(), built = true)
         FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS, StyleRow.CLEAR_BG), emptyList(), built = true)
