@@ -14,6 +14,8 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.GlowShape
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.MyTheme
+import kr.dot.sb.model.Mood
+import kr.dot.sb.model.IconStyle
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.ThemeEdit
 import kr.dot.sb.ui.theme.PlateStyle
@@ -37,10 +39,10 @@ import java.time.LocalDate
 object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
-     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs). Saves without "v" are r8 or r9 dev
+     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs), 15 = r15 E5/E8 (rotateClocks, mood). Saves without "v" are r8 or r9 dev
      * builds.
      */
-    const val VERSION = 14
+    const val VERSION = 15
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -86,6 +88,9 @@ object ConfigCodec {
         put("breakMinutes", c.breakMinutes)
         put("timerAlert", c.timerAlert.name)
         put("myClocks", JSONArray().also { a -> c.myClocks.forEach { a.put(it.name) } })
+        put("rotateClocks", c.rotateClocks)
+        put("mood", JSONObject().put("bright", c.mood.bright.toDouble()).put("color", c.mood.color).put("effect", c.mood.effect.name).put("speed", c.mood.speed.toDouble()))
+        put("tentClock", c.tentClock)
         put("excludedCalendars", JSONArray().also { a -> c.excludedCalendars.forEach { a.put(it) } })
 
         put("heatProtect", c.heatProtect)
@@ -262,6 +267,14 @@ object ConfigCodec {
             breakMinutes = o.optInt("breakMinutes", d.breakMinutes),
             timerAlert = enumOf(o, "timerAlert", d.timerAlert),
             myClocks = Migrations.myClocks(o.optJSONArray("myClocks"), d.myClocks),
+            rotateClocks = o.optBoolean("rotateClocks", d.rotateClocks),
+            mood = o.optJSONObject("mood")?.let { m ->
+                Mood(
+                    bright = num(m, "bright", d.mood.bright).coerceIn(0f, 1f), color = m.optLong("color", d.mood.color),
+                    effect = enumOf(m, "effect", d.mood.effect), speed = num(m, "speed", d.mood.speed).coerceIn(0f, 1f),
+                )
+            } ?: d.mood.copy(color = o.optLong("glowColor", d.mood.color)), // before v15 the mood light used the glow colour
+            tentClock = o.optBoolean("tentClock", d.tentClock),
             excludedCalendars = o.optJSONArray("excludedCalendars")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.toSet() } ?: d.excludedCalendars,
             heatProtect = o.optBoolean("heatProtect", d.heatProtect),
             moodAutoOffMin = o.optInt("moodAutoOffMin", d.moodAutoOffMin).takeIf { it in MOOD_AUTO_OFF_MIN } ?: d.moodAutoOffMin,
@@ -282,6 +295,8 @@ object ConfigCodec {
         }.let { c -> if (storedTheme == "FLIP") Migrations.flip(c) else c }
             .let { c -> c.copy(photoFilter = o.optString("photoFilter").takeIf { it in c.photoFolders }) }
             .let { c -> if (v < 12) Migrations.floatToDigital(c) else c }
+            // plan-r15 E5: before v15 every clock in the list rotated; one clock = no rotation
+            .let { c -> if (v < 15) c.copy(rotateClocks = c.myClocks.size > 1) else c }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
@@ -369,12 +384,14 @@ object ConfigCodec {
     private fun slotOptions(s: SlotOptions) = JSONObject().apply {
         if (s.apps.isNotEmpty()) put("apps", JSONArray().also { a -> s.apps.forEach { a.put(it) } })
         s.face?.let { put("face", it.name) }
+        if (s.iconStyle != IconStyle.ORIGINAL) put("iconStyle", s.iconStyle.name)
     }
 
     /** r14 C1: the old phone-widget keys (widgetId, opacity, widgetMode, radiusDp, hideAtNight) are dropped. */
     private fun slotOptions(o: JSONObject): SlotOptions = SlotOptions(
         apps = strings(o, "apps")?.distinct()?.take(MAX_APPS) ?: emptyList(),
         face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
+        iconStyle = enumOf(o, "iconStyle", IconStyle.ORIGINAL),
     )
 
     private fun board(o: JSONObject): Board {

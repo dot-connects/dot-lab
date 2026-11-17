@@ -368,7 +368,6 @@ fun Pill(text: String, color: Color, modifier: Modifier = Modifier, filled: Bool
 /** [why] = the reason under the title while disabled (mockup `.why`). */
 @Composable
 fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subtitle: String? = null, enabled: Boolean = true, why: String? = null) {
-    val acc = LocalAccent.current
     Row(
         Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled) { onChange(!checked) }.padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -379,15 +378,19 @@ fun SwitchRow(title: String, checked: Boolean, onChange: (Boolean) -> Unit, subt
             if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 2.dp), lineHeight = 18.sp)
         }
         Spacer(Modifier.width(12.dp))
-        Switch(
-            checked, null, enabled = enabled,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = SK.bg, checkedTrackColor = acc, checkedBorderColor = acc,
-                uncheckedThumbColor = SK.muted, uncheckedTrackColor = SK.surface2, uncheckedBorderColor = SK.line,
-                disabledCheckedTrackColor = acc.copy(alpha = 0.4f), disabledUncheckedTrackColor = SK.surface2,
-            ),
-        )
+        Switch(checked, null, enabled = enabled, colors = accentSwitch())
     }
+}
+
+/** plan-r15 F0: every settings switch is a Material3 switch in the theme accent (never a default or iOS green). */
+@Composable
+fun accentSwitch(): androidx.compose.material3.SwitchColors {
+    val acc = LocalAccent.current
+    return SwitchDefaults.colors(
+        checkedThumbColor = SK.bg, checkedTrackColor = acc, checkedBorderColor = acc,
+        uncheckedThumbColor = SK.muted, uncheckedTrackColor = SK.surface2, uncheckedBorderColor = SK.line,
+        disabledCheckedTrackColor = acc.copy(alpha = 0.4f), disabledUncheckedTrackColor = SK.surface2,
+    )
 }
 
 /** Title row with a body slot underneath (segmented control, chips, slider …). */

@@ -213,6 +213,18 @@ everything the normal pull-down panel has (brightness, volume, theme / 내 테�
 Copy under 펼치면: "90° 넘게 펼치면 안쪽 화면이 무드등으로 켜져요. 켜진 뒤에는 다시 좁혀서 텐트처럼 세워도 계속 켜져
 있어요." (operator: once on, narrowing keeps it on).
 
+E10 Remember everything across close/reopen (operator 2026-11-17: "모든 페이지, 카드가 기억되는 거 맞아?"). Root cause
+of the report: `BoardView.kt:161` `LastCard.keyOf` returns null for the notification card on purpose, so reopening shows
+the card before it. Fix: store NOTIF like any card (drop the exclusion and its comment `:154`, update `LastCardTest.kt:24`
+to expect it remembered). Also remember the clock page's current face when rotation is on (`StandbyRoot.kt:145`, same
+`last_card` prefs, key "clock-face"). Pages are already stored (`startPage`).
+E9 decisions (operator 2026-11-17, mockup https://claude.ai/artifact/6ztnkSgYkHJ2MqdMHQ4tL5): all 12 items as drawn;
+전광판 near-square = **A** (one row, as large as the width allows); 입체 시계·입체 네모 get a "날짜·요일" switch (style
+showInfo, like 입체 디지털's 날짜 창; default off) and show weekday/date in the empty top/bottom only when it is on.
+E9 Clock layouts in every frame (operator: 스티커·공 숫자·LED·테두리 초 portrait not optimised; check all faces in
+landscape/portrait full screen, near-square, split slots and cards) — fix list comes from the Fable audit
+(scratchpad clock-audit.jpg), applied after E5–E8.
+
 ## Part F — settings rework (UX review §5, §6)
 
 F1 Home = large title "Stand Screen", one preview card with page dots + **지금 보기** button (H7), banner only when the
@@ -264,6 +276,15 @@ F11 Full copy pass (operator 2026-11-17: "앱에 있는 모든 문구 정돈"): 
 listed in `settings-r10/r15-copy-all.md` (file:line → now → new), style rules at its top (해요체, plain words, one term
 per concept, brand "Stand Screen", no raw numbers per F6); the operator skims the table before it is applied; applied
 together with F7 (same commit per screen, tests updated with the copy).
+F0 Look rule (operator 2026-11-17: "아이폰을 베낀 건 아닌지"): keep the app's own Android identity — Material3 switches
+in the theme accent (never iOS green #34C759), row icons = accent line glyphs without coloured tiles (no iOS Settings
+squircles), back = Android arrow + title (no "‹ 설정" text), segmented = the existing accent pill. The r15 mockup's
+iOS-looking bits (green switches, tile icons, ‹ back) are not to be copied.
+F12 Calendar picker (operator 2026-11-17 picked **B**, mockup https://claude.ai/artifact/R1vjijdHCxdnRc7uJPJAur): in
+오늘 일정 · 달력 settings, one summary line "켠 캘린더의 이번 주 일정 N개", calendars grouped by account (phone /
+each Google account / subscribed: holidays, birthdays) with colour dot, name, "이번 주 N개" and a switch; tapping a
+row expands that calendar's events for the next 7 days (date · title · time); per-account 모두 끄기/켜기. Reads the
+phone's CalendarContract (existing calendar permission path).
 F9 Theme editor: basic view = 색 조합 바꾸기 + 배경색 · 카드 모양 · 글자색; the rest under 더 꾸미기; long-press menus →
 visible ⋯ button.
 

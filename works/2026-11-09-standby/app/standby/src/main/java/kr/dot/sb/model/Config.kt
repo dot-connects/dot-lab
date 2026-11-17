@@ -79,6 +79,26 @@ data class SlotOptions(
     val apps: List<String> = emptyList(),
     /** A clock card's own face (null = the board's [Board.clockFace]). */
     val face: FaceId? = null,
+    /** 앱 바로가기 icon colour (plan-r15 E6). */
+    val iconStyle: IconStyle = IconStyle.ORIGINAL,
+)
+
+/** 앱 바로가기 icons: the app's own colours, or its monochrome layer in the theme accent (API 33+, else original). */
+enum class IconStyle { ORIGINAL, THEMED }
+
+/** plan-r15 E8: the unfold mood light's motion. */
+enum class MoodEffect(val ko: String) { STILL("그대로"), CYCLE("색 바뀜"), BREATHE("숨쉬기"), CANDLE("촛불") }
+
+/**
+ * plan-r15 E8 mood light: [bright] = bar position 0..1 (perceptual, [kr.dot.sb.platform.Brightness.fromBar]) up to the
+ * panel maximum; [speed] 0..1 = 천천히..빠르게 for the effects.
+ */
+data class Mood(val bright: Float = 0.6f, val color: Long = 0xFFFFB36B, val effect: MoodEffect = MoodEffect.STILL, val speed: Float = 0.5f)
+
+/** Mood light colours: the glow colours + 분홍/보라/하늘 (E8). */
+val MOOD_COLORS = listOf(
+    "따뜻한 주황" to 0xFFFFB36BL, "호박" to 0xFFFFA81FL, "빨강" to 0xFFFF453AL, "민트" to 0xFF85D4BAL, "흰색" to 0xFFFFFFFFL,
+    "분홍" to 0xFFFF8FB8L, "보라" to 0xFFB48CFFL, "하늘" to 0xFF7CC8FFL,
 )
 
 /** r11 theme editor: the glow's shape (무드등). */
@@ -404,12 +424,18 @@ data class AppConfig(
     val analogStyle: AnalogStyle = AnalogStyle.ROUND,
     /** Faces of the clocks page, in swipe order (r10). A save without it (r9 and older) gets the old five. */
     val myClocks: List<FaceId> = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.HANGUL, FaceId.ANALOG),
+    /** plan-r15 E5 여러 시계 돌려 보기: off = the clocks page shows only `myClocks[0]` (clock cards keep the whole list). */
+    val rotateClocks: Boolean = true,
     /** Calendars hidden from agenda/calendar cards, keyed "accountType|accountName|calendarName" (ids get reused). */
     val excludedCalendars: Set<String> = emptySet(),
     /** Dim to 35 % while the battery is hot (r10). */
     val heatProtect: Boolean = true,
     /** Unfold mood light turns itself off after this many minutes; 0 = never. One of [MOOD_AUTO_OFF_MIN]. */
     val moodAutoOffMin: Int = 0,
+    /** plan-r15 E8: brightness, colour, effect and speed of the unfold mood light. */
+    val mood: Mood = Mood(),
+    /** plan-r15 E7: while the mood light is on, the outer screen shows the clock (dual-screen, where the phone allows it). */
+    val tentClock: Boolean = true,
     /** At night a notification never wakes a screen that is off (the alarm always does). */
     val nightNotifQuiet: Boolean = true,
     /** Seconds per photo on the photos page. One of [PHOTO_INTERVAL_SEC]. */

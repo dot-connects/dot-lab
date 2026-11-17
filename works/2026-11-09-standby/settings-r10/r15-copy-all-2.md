@@ -162,3 +162,12 @@ Rules and part 1: `r15-copy-all-1.md`.
 - 한글 문자열 1140개 (`src/main`, 주석 제외) 중 사용자에게 보이는 것 1080개를 확인.
 - 바뀜 약 394개 (두 파일 합쳐 표 194줄 — 한 줄에 여러 개가 묶인 곳 있음, 삭제 포함).
 - **unchanged 686**
+
+## Operator decisions 2026-11-17 (names)
+
+- 솔라 → **파스텔** (font second name follows: "StandBy 솔라" → "파스텔")
+- 플로트 → **풍선** (font second name "StandBy 플로트" → "풍선")
+- 미니멀 → stays **미니멀**
+- 듀오 → **시계 둘**
+- 파낸 야광 (입체 네모 numeral option) → **새긴 숫자**
+- 권한 screen title stays **권한**; 미디어 stays; 심플/팝/레트로/클래식 stay (계기 → 눈금); no period on StandBy-screen empty states.

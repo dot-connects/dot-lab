@@ -29,9 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
@@ -41,6 +39,9 @@ import kr.dot.sb.model.City
 import kr.dot.sb.model.DDay
 import kr.dot.sb.model.DisplayOff
 import kr.dot.sb.model.MOOD_AUTO_OFF_MIN
+import kr.dot.sb.model.MOOD_COLORS
+import kr.dot.sb.model.Mood
+import kr.dot.sb.model.MoodEffect
 import kr.dot.sb.model.NightMode
 import kr.dot.sb.model.SLEEP_MINUTES
 import kr.dot.sb.model.SleepSound
@@ -314,7 +315,8 @@ fun AlarmScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
                         SliderControl(config.glowRampSec.toFloat(), 2f..20f, { v -> update { it.copy(glowRampSec = v.toInt()) } }, steps = 17)
                     }
                 }
-                item { NavRow("무드등 색", { nav.push(Routes.FOLD) }, value = GLOWS.firstOrNull { it.second == config.glowColor }?.first ?: "직접 고른 색") }
+                // plan-r15 E8: the unfold mood light has its own colour now (폴드); this one is the alarm glow's
+                item { ControlRow("무드등 색", note = "알람이 울릴 때 안쪽 화면이 이 색으로 천천히 밝아져요.") { NamedSwatches(GLOWS, config.glowColor) { c -> update { it.copy(glowColor = c) } } } }
             }
         }
     }
@@ -323,20 +325,35 @@ fun AlarmScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
 @Composable
 fun FoldScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
     val book = config.boards.firstOrNull { it.id == "book" }
-    val glow = config.glowColor.c()
+    val glow = config.mood.color.c()
     val first = if (config.onUnfold == UnfoldAction.BOOK_BOARD && book != null) Slide("펼친 화면") { l -> BoardView(book, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
-    else Slide("펼친 화면") { Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(glow, lerp(glow, Color.Black, 0.62f))))) } // literal-ok: glow fades to black
+    else Slide("펼친 화면") { Box(Modifier.fillMaxSize().background(glow)) } // plan-r15 E8: one flat colour
     Page("폴드를 펼쳤을 때", back, preview = Preview(config, listOf(first), fixed = PreviewDevice.FOLD_INNER)) {
         Section(null) {
             item {
                 Column {
-                    ControlRow("펼치면", note = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "펼친 안쪽 화면이 은은한 불빛이 돼요." else "스탠바이가 켜져 있는 동안 펼치면 \"책 (펼침)\" 페이지를 보여줘요.") {
+                    ControlRow("펼치면", note = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "90° 넘게 펼치면 안쪽 화면이 무드등으로 켜져요. 켜진 뒤에는 다시 좁혀서 텐트처럼 세워도 계속 켜져 있어요." else "스탠바이가 켜져 있는 동안 펼치면 \"책 (펼침)\" 페이지를 보여줘요.") {
                         Segmented(listOf("책 화면", "무드등"), config.onUnfold.ordinal, { i -> update { it.copy(onUnfold = UnfoldAction.entries[i]) } })
                     }
                     PermLine(Perm.FULL_SCREEN)
                 }
             }
-            item { ControlRow("무드등 색", note = "펼쳤을 때와 알람이 울릴 때 안쪽 화면이 이 색으로 천천히 밝아져요.") { NamedSwatches(GLOWS, config.glowColor) { c -> update { it.copy(glowColor = c) } } } }
+            if (config.onUnfold == UnfoldAction.MOOD_LIGHT) {
+                val m = config.mood
+                fun mood(f: (Mood) -> Mood) = update { it.copy(mood = f(it.mood)) }
+                item { WordSlider("밝기", "어둡게", "밝게", m.bright) { v -> mood { it.copy(bright = v) } } }
+                item { ControlRow("색") { NamedSwatches(MOOD_COLORS, m.color) { c -> mood { it.copy(color = c) } } } }
+                item {
+                    Column {
+                        ControlRow("효과") { Segmented(MoodEffect.entries.map { it.ko }, m.effect.ordinal, { i -> mood { it.copy(effect = MoodEffect.entries[i]) } }) }
+                        if (m.effect != MoodEffect.STILL) WordSlider("빠르기", "천천히", "빠르게", m.speed) { v -> mood { it.copy(speed = v) } }
+                    }
+                }
+                // E7: dual screen exists only on a Fold
+                if (env.phone == Phone.FOLD) item {
+                    SwitchRow("무드등 켤 때 바깥 화면에 시계", config.tentClock, { v -> update { it.copy(tentClock = v) } }, subtitle = "텐트처럼 세우면 바깥 화면에 시계가 보여요. 위에서 끌어내리면 무드등 밝기·색을 바꿀 수 있어요.")
+                }
+            }
             if (config.onUnfold == UnfoldAction.MOOD_LIGHT) item {
                 ControlRow("무드등 자동 끄기", note = "시간이 되면 천천히 어두워지다 꺼져요.") {
                     Segmented(MOOD_AUTO_OFF_MIN.map { if (it == 0) "끄지 않음" else "${it}분" }, MOOD_AUTO_OFF_MIN.indexOf(config.moodAutoOffMin).coerceAtLeast(0), { i -> update { it.copy(moodAutoOffMin = MOOD_AUTO_OFF_MIN[i]) } })
@@ -346,6 +363,18 @@ fun FoldScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> 
         Gap(20.dp)
         ActionButton("무드등 테스트", env.onGlowTest, Modifier.fillMaxWidth())
         T("지금 설정으로 안쪽 화면을 잠깐 밝혀 봐요.", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp))
+    }
+}
+
+/** plan-r15 F6: a slider with words at both ends instead of a number. */
+@Composable
+private fun WordSlider(title: String, low: String, high: String, value: Float, onChange: (Float) -> Unit) {
+    ControlRow(title) {
+        SliderControl(value, 0f..1f, onChange)
+        Row(Modifier.fillMaxWidth()) {
+            T(low, 13.sp, 500, SK.muted, Modifier.weight(1f))
+            T(high, 13.sp, 500, SK.muted)
+        }
     }
 }
 

@@ -1,6 +1,5 @@
 package kr.dot.sb.settings
 
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -15,32 +14,25 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.PathEffect
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -52,7 +44,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
-import kotlinx.coroutines.launch
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.model.AnalogStyle
 import kr.dot.sb.model.AnalogTicks
@@ -74,52 +65,49 @@ import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.clockStyle
 import kotlin.math.roundToInt
 
-// ---- 시계 (mockup SCREENS.clock): preview + 넣기/꾸미기/빼기, 내 시계 strip, 둘러보기 gallery ---------------------------
+// ---- 시계 (plan-r15 E5/F4): preview, six tiles, 모든 시계 보기 · 꾸미기 · 여러 시계 돌려 보기 ---------------------------
 
 private val TILE_W = 118.dp
 private val TILE_GAP = 10.dp
 
-@OptIn(ExperimentalFoundationApi::class)
+/** The main grid's six faces (plan-r15 F4); the rest are under 모든 시계 보기. */
+private val MAIN_FACES = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.ANALOG, FaceId.HANGUL, FaceId.DOT_MATRIX, FaceId.THIN)
+
+/**
+ * A tile tap on 시계 / 모든 시계 (E5): rotation on = preview only (이 시계 쓰기 commits); rotation off = the clock
+ * becomes `myClocks[0]` at once ([MyClocks.pick]).
+ */
+private fun tapClock(f: FaceId, config: AppConfig, update: Update, select: (FaceId) -> Unit) {
+    select(f)
+    if (!config.rotateClocks) update { it.copy(myClocks = MyClocks.pick(it.myClocks, f, MyClocks.cardFaces(it))) }
+}
+
 @Composable
 fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     var sel by rememberSaveable { mutableStateOf(config.myClocks.firstOrNull() ?: FaceId.DIGITAL) }
-    var fam by rememberSaveable { mutableStateOf<Family?>(null) }
     val own = rememberOwnPhotos(config.photoFolders)
     val state = remember(config, own) { Sample.state(config).withPhotos(own) }
-    val gallery = remember { BringIntoViewRequester() }
-    val scope = rememberCoroutineScope()
     val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
     var citySheet by remember { mutableStateOf(false) }
+    val now = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
     Box(Modifier.fillMaxSize()) {
     Page(
         "시계", back, preview = pagePreview(config, Pages.CLOCK, first, nav),
-        miniActions = { ClockActions(sel, config, update, nav, compact = true) },
+        miniActions = { ClockActions(sel, config, update, compact = true) },
     ) {
-        ClockActions(sel, config, update, nav, compact = false)
-
-        val my = config.myClocks
-        Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
-            T("내 시계 · ${my.size}개", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
-            MyStrip(my, sel, config, state, update, { sel = it }) { scope.launch { gallery.bringIntoView() } }
-            T(
-                "스탠바이에서 시계 페이지를 위아래로 넘기면 이 순서로 바뀌어요. 누르면 위 미리보기에 보이고, 길게 눌러 옆으로 끌면 순서가 바뀌어요.",
-                13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), lineHeight = 18.sp,
-            )
-        }
-
-        Column(Modifier.fillMaxWidth().padding(top = 24.dp).bringIntoViewRequester(gallery)) {
-            T("둘러보기 · ${ClockRegistry.all.size}개", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
-            FamilyChips(fam) { fam = it }
-            Gap(12.dp)
-            ClockRegistry.all.filter { fam == null || spec(it).family == fam }.chunked(2).forEach { pair ->
+        ClockActions(sel, config, update, compact = false)
+        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            MAIN_FACES.chunked(3).forEach { row ->
                 Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    pair.forEach { f -> GalleryCard(f, f == sel, f in my, config, state, Modifier.weight(1f)) { sel = f } }
-                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                    row.forEach { f -> GalleryCard(f, f == sel, config, state, Modifier.weight(1f)) { tapClock(f, config, update) { sel = it } } }
                 }
             }
-            T("누르면 위 미리보기에 보여요. 마음에 들면 \"내 시계에 넣기\"를 눌러요.", 13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp), lineHeight = 18.sp)
         }
-
+        Section(null) {
+            item { NavRow("모든 시계 보기", { nav.push(Routes.CLOCKS_ALL) }, value = "${ClockRegistry.all.size}개") }
+            item { NavRow("꾸미기", { nav.push(Routes.clock(now)) }, subtitle = spec(now).ko, value = "색 · 글꼴 · 크기") }
+            item { NavRow("여러 시계 돌려 보기", { nav.push(Routes.CLOCKS_ROTATE) }, value = if (config.rotateClocks) "켬 · ${config.myClocks.size}개" else "끔") }
+        }
         More {
             Section(null) {
                 item {
@@ -143,22 +131,81 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     }
 }
 
-/** Name of the previewed clock + [꾸미기][빼기] or [내 시계에 넣기] (mockup `clockAct`); [compact] = inside the mini preview. */
+/** 모든 시계 (E5): every face by family, the same tap rule as the main grid. */
 @Composable
-private fun ClockActions(face: FaceId, config: AppConfig, update: Update, nav: Nav, compact: Boolean) {
+fun AllClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
+    var sel by rememberSaveable { mutableStateOf(config.myClocks.firstOrNull() ?: FaceId.DIGITAL) }
+    var fam by rememberSaveable { mutableStateOf<Family?>(null) }
+    val own = rememberOwnPhotos(config.photoFolders)
+    val state = remember(config, own) { Sample.state(config).withPhotos(own) }
+    val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
+    Page("모든 시계", back, preview = Preview(config, listOf(first)), miniActions = { ClockActions(sel, config, update, compact = true) }) {
+        ClockActions(sel, config, update, compact = false)
+        Gap(16.dp)
+        FamilyChips(fam) { fam = it }
+        Gap(12.dp)
+        ClockRegistry.all.filter { fam == null || spec(it).family == fam }.chunked(2).forEach { pair ->
+            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                pair.forEach { f -> GalleryCard(f, f == sel, config, state, Modifier.weight(1f)) { tapClock(f, config, update) { sel = it } } }
+                if (pair.size == 1) Spacer(Modifier.weight(1f))
+            }
+        }
+    }
+}
+
+/**
+ * 여러 시계 돌려 보기 (E5): the rotation switch, 쓰는 시계 (drag to reorder) and every face, picked ones dimmed with the
+ * card picker's centred check. A tap on a picked face removes it (never the last one), on another adds it at the end.
+ */
+@Composable
+fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
+    val state = remember(config) { Sample.state(config) }
     val my = config.myClocks
-    val i = my.indexOf(face)
-    Row(Modifier.fillMaxWidth().padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+    var hint by remember { mutableIntStateOf(0) }
+    LaunchedEffect(hint) { if (hint > 0) { kotlinx.coroutines.delay(3_000); hint = 0 } }
+    Page("여러 시계 돌려 보기", back) {
+        Section(null, footer = "켜면 Stand Screen 시계 페이지를 위아래로 넘겨 쓰는 시계를 차례로 볼 수 있어요. 끄면 첫 번째 시계만 보여요.") {
+            item { SwitchRow("여러 시계 돌려 보기", config.rotateClocks, { v -> update { it.copy(rotateClocks = v) } }) }
+        }
+        Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
+            T("쓰는 시계", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
+            MyStrip(my, config, state, update)
+            T("길게 눌러 옆으로 끌면 순서가 바뀌어요. 시계 카드도 이 시계들 중에서 골라요.", 13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), lineHeight = 18.sp)
+        }
+        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
+            T("모든 시계", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
+            if (hint > 0) T("시계는 하나 이상 있어야 해요.", 14.sp, 600, LocalAccent.current, Modifier.padding(start = 16.dp, bottom = 8.dp))
+            ClockRegistry.all.chunked(2).forEach { pair ->
+                Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    pair.forEach { f ->
+                        PickTile(f, f in my, config, state, Modifier.weight(1f)) {
+                            when {
+                                f !in my -> update { it.copy(myClocks = MyClocks.add(it.myClocks, f)) }
+                                my.size <= 1 -> hint++
+                                else -> update { it.copy(myClocks = MyClocks.remove(it.myClocks, f)) }
+                            }
+                        }
+                    }
+                    if (pair.size == 1) Spacer(Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+/** Name of the previewed clock + where it stands; with rotation on, [이 시계 쓰기] puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
+@Composable
+private fun ClockActions(face: FaceId, config: AppConfig, update: Update, compact: Boolean) {
+    val i = config.myClocks.indexOf(face)
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
             T(spec(face).ko, 15.sp, 700, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-            if (!compact) T(if (i >= 0) "내 시계 ${i + 1}번째" else "둘러보는 중", 12.sp, 500, SK.muted, Modifier.padding(start = 8.dp), maxLines = 1)
+            if (!compact) T(
+                when { i == 0 -> "지금 쓰는 시계"; i > 0 && config.rotateClocks -> "돌려 보기 ${i + 1}번째"; else -> "둘러보는 중" },
+                12.sp, 500, SK.muted, Modifier.padding(start = 8.dp), maxLines = 1,
+            )
         }
-        if (i >= 0) {
-            ActionButton("꾸미기", { nav.push(Routes.clock(face)) }, primary = false)
-            ActionButton("빼기", { update { it.copy(myClocks = MyClocks.remove(it.myClocks, face)) } }, primary = false, enabled = my.size > 1)
-        } else {
-            ActionButton("내 시계에 넣기", { update { it.copy(myClocks = MyClocks.add(it.myClocks, face)) } })
-        }
+        if (config.rotateClocks && i != 0) ActionButton("이 시계 쓰기", { update { it.copy(myClocks = MyClocks.use(it.myClocks, face)) } })
     }
 }
 
@@ -194,20 +241,18 @@ private fun FamilyChips(fam: Family?, onPick: (Family?) -> Unit) {
     }
 }
 
-/** 내 시계: tap selects, long-press + drag sideways reorders ([MyClocks.move]), ✕ removes, + scrolls to 둘러보기. */
+/** 쓰는 시계: long-press + drag sideways reorders ([MyClocks.move]); removing is a tap on the picked tile below. */
 @Composable
-private fun MyStrip(my: List<FaceId>, sel: FaceId, config: AppConfig, state: StandbyState, update: Update, onSelect: (FaceId) -> Unit, onAdd: () -> Unit) {
-    val acc = LocalAccent.current
+private fun MyStrip(my: List<FaceId>, config: AppConfig, state: StandbyState, update: Update) {
     val step = with(LocalDensity.current) { (TILE_W + TILE_GAP).toPx() }
     var drag by remember { mutableStateOf<Pair<Int, Float>?>(null) } // index, dx px
     fun move(from: Int, to: Int) = update { it.copy(myClocks = MyClocks.move(it.myClocks, from, to)) }
     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
         my.forEachIndexed { i, f ->
-            val on = f == sel
             val dx = drag?.takeIf { it.first == i }?.second
             Column(
                 Modifier.width(TILE_W).zIndex(if (dx != null) 1f else 0f).graphicsLayer { translationX = dx ?: 0f; if (dx != null) { scaleX = 1.05f; scaleY = 1.05f } }
-                    .clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
+                    .clip(RoundedCornerShape(14.dp)).background(SK.surface)
                     .pointerInput(f, i, my.size) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = { drag = i to 0f },
@@ -222,52 +267,42 @@ private fun MyStrip(my: List<FaceId>, sel: FaceId, config: AppConfig, state: Sta
                             if (i < my.lastIndex) CustomAccessibilityAction("뒤로 옮기기") { move(i, i + 1); true } else null,
                         )
                     }
-                    .clickable(onClickLabel = "미리보기에 보기") { onSelect(f) }.padding(8.dp),
+                    .padding(8.dp),
             ) {
-                Box {
-                    Thumb(f, config, state, inSlot = false, border = if (on) acc else null)
-                    if (my.size > 1) Box(
-                        Modifier.align(Alignment.TopEnd).offset(x = 14.dp, y = (-14).dp).size(48.dp).clip(CircleShape)
-                            .clickable(onClickLabel = "빼기") { update { it.copy(myClocks = MyClocks.remove(it.myClocks, f)) } },
-                        Alignment.Center,
-                    ) {
-                        Box(Modifier.size(24.dp).clip(CircleShape).background(SK.surface2).border(1.dp, SK.line, CircleShape), Alignment.Center) { Icon(Ic.CLOSE, SK.text, 16.dp) }
-                    }
-                }
-                T("${i + 1}. ${spec(f).ko}", 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.padding(top = 8.dp), maxLines = 1)
+                Thumb(f, config, state, inSlot = false, border = null)
+                T("${i + 1}. ${spec(f).ko}", 13.sp, 500, SK.text, Modifier.padding(top = 8.dp), maxLines = 1)
             }
-        }
-        val line = SK.line
-        Column(
-            Modifier.width(TILE_W).height(104.dp).clip(RoundedCornerShape(14.dp))
-                .drawBehind {
-                    val px = 1.5.dp.toPx()
-                    drawRoundRect(line, style = Stroke(px, pathEffect = PathEffect.dashPathEffect(floatArrayOf(6.dp.toPx(), 4.dp.toPx()))), cornerRadius = CornerRadius(14.dp.toPx()))
-                }
-                .clickable(onClick = onAdd),
-            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Icon(Ic.PLUS, acc)
-            T("시계 넣기", 13.sp, 600, acc, Modifier.padding(top = 6.dp))
         }
     }
 }
 
 @Composable
-private fun GalleryCard(face: FaceId, on: Boolean, mine: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
+private fun GalleryCard(face: FaceId, on: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
     val acc = LocalAccent.current
-    val sp = spec(face)
     Column(
         modifier.clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface).clickable(onClick = onClick)
             .padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
     ) {
-        Box {
-            Thumb(face, config, state, inSlot = true, border = if (on) acc else null)
-            if (mine) Box(Modifier.align(Alignment.TopEnd).padding(6.dp).size(22.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 16.dp) }
+        Thumb(face, config, state, inSlot = true, border = if (on) acc else null)
+        T(spec(face).ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.padding(top = 8.dp), maxLines = 1)
+    }
+}
+
+/** A face in 여러 시계 돌려 보기: picked = dimmed whole tile + 46 dp centred check (CardPickerSheet look). */
+@Composable
+private fun PickTile(face: FaceId, picked: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
+    val acc = LocalAccent.current
+    Column(
+        modifier.clip(RoundedCornerShape(14.dp)).background(SK.surface)
+            .clickable(onClickLabel = if (picked) "빼기" else "추가", onClick = onClick).padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 10.dp),
+    ) {
+        Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(8.dp)).then(if (picked) Modifier.border(2.dp, acc, RoundedCornerShape(8.dp)) else Modifier)) {
+            Thumb(face, config, state, inSlot = true, border = null)
+            if (picked) Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = 0.55f)), Alignment.Center) { // literal-ok: the card picker's veil
+                Box(Modifier.size(46.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.CHECK, SK.bg, 24.dp) }
+            }
         }
-        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            T(sp.ko, 13.sp, if (on) 700 else 500, if (on) acc else SK.text, Modifier.weight(1f, fill = false), maxLines = 1)
-        }
+        T(spec(face).ko, 13.sp, if (picked) 700 else 500, SK.text, Modifier.padding(top = 8.dp), maxLines = 1)
     }
 }
 

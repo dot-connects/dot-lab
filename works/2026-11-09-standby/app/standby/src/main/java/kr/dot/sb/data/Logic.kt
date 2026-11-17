@@ -159,6 +159,47 @@ object MoodTimer {
 }
 
 /**
+ * plan-r15 E8 mood light effects at [tMs] since start: the flat colour (ARGB) and a level 0..1 for it. [Mood.speed]
+ * 0..1 = 천천히..빠르게. 색 바뀜 eases through [kr.dot.sb.model.MOOD_COLORS] from the picked colour; 숨쉬기 dims slowly
+ * to 55 % and back; 촛불 flickers a little (three detuned sines, no randomness, so it never jumps).
+ */
+object MoodFx {
+    /** Frame step while an effect runs: slow changes need no 60 fps on a big panel. */
+    const val FRAME_MS = 50L
+
+    fun at(m: kr.dot.sb.model.Mood, tMs: Long): Pair<Long, Float> {
+        val t = tMs / 1000.0
+        val sp = m.speed.coerceIn(0f, 1f).toDouble()
+        return when (m.effect) {
+            kr.dot.sb.model.MoodEffect.STILL -> m.color to 1f
+            kr.dot.sb.model.MoodEffect.CYCLE -> {
+                val pal = kr.dot.sb.model.MOOD_COLORS.map { it.second }
+                val start = pal.indexOf(m.color).coerceAtLeast(0)
+                val per = 24.0 - 20.0 * sp // seconds per colour
+                val x = t / per
+                val i = x.toLong()
+                val f = (x - i).toFloat().let { it * it * (3 - 2 * it) } // smoothstep
+                lerpArgb(pal[((start + i) % pal.size).toInt()], pal[((start + i + 1) % pal.size).toInt()], f) to 1f
+            }
+            kr.dot.sb.model.MoodEffect.BREATHE -> {
+                val per = 12.0 - 9.0 * sp
+                m.color to (0.55 + 0.45 * (0.5 + 0.5 * kotlin.math.cos(2 * Math.PI * t / per))).toFloat()
+            }
+            kr.dot.sb.model.MoodEffect.CANDLE -> {
+                val w = 0.6 + 2.4 * sp
+                val n = 0.06 * kotlin.math.sin(t * 2.3 * w) + 0.04 * kotlin.math.sin(t * 5.1 * w + 1.3) + 0.03 * kotlin.math.sin(t * 8.7 * w + 2.1)
+                m.color to (0.87 + n).toFloat().coerceIn(0f, 1f)
+            }
+        }
+    }
+
+    private fun lerpArgb(a: Long, b: Long, f: Float): Long {
+        fun ch(sh: Int) = (((a shr sh) and 0xFF) + (((b shr sh) and 0xFF) - ((a shr sh) and 0xFF)) * f).toLong().coerceIn(0, 255) shl sh
+        return 0xFF000000L or ch(16) or ch(8) or ch(0)
+    }
+}
+
+/**
  * The unfold mood light ended by its timer: no host shows another one until the phone is folded again (any host that
  * sees the fold resets it) or the charger goes in again. Process-wide on purpose: dream, activity and GlowActivity share it.
  */

@@ -96,7 +96,7 @@ internal fun ClocksPage(
     /** 사진 위 시간 with no photos: its hint opens the photos settings (plan-r15 E4). */
     onPickPhotos: () -> Unit = {},
 ) {
-    val faces = remember(config.myClocks) { ClockRegistry.pages(config.myClocks) }
+    val faces = remember(config.myClocks, config.rotateClocks) { MyClocks.pages(config) }
     val pager = rememberPagerState(MyClocks.page(faces, page.value, 0)) { faces.size }
     val shown by rememberUpdatedState(faces)
     LaunchedEffect(pager) { snapshotFlow { pager.settledPage }.collect { i -> shown.getOrNull(i)?.let { page.value = it } } }

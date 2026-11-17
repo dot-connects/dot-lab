@@ -363,6 +363,7 @@ class StandbyStateHolder(
         val b = Brightness.clamp(Brightness.fromBar(p))
         val w = Brightness.applied(b, cfg, hot)
         if (pendingBrightness == null) barFrom = lastBrightness
+        pendingMood = mood
         lastBrightness = w
         host.setBrightness(w)
         pendingBrightness = b
@@ -375,8 +376,13 @@ class StandbyStateHolder(
         val b = pendingBrightness ?: return
         pendingBrightness = null
         logBrightness("막대", barFrom, lastBrightness) // one line per edit, not per frame
-        ConfigStore.update(ctx) { Brightness.store(it, nightTarget >= 0.5f, b) }
+        // plan-r15 E8: over the mood light the bar is the mood light's own brightness
+        if (pendingMood) ConfigStore.update(ctx) { it.copy(mood = it.mood.copy(bright = Brightness.toBar(b))) }
+        else ConfigStore.update(ctx) { Brightness.store(it, nightTarget >= 0.5f, b) }
     }
+
+    /** The bar edit in [pendingBrightness] was made over the mood light. */
+    private var pendingMood = false
 
     /** The bar asks for more than heat protection lets through (same test as [Brightness.applied]). */
     private fun publishCapped() {
@@ -399,7 +405,8 @@ class StandbyStateHolder(
         publishCapped()
         // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
         if (!off && pendingBrightness != null) return
-        val b = Brightness.target(off, nightOn, cfg, hot)
+        // plan-r15 E8: the mood light has its own brightness, up to the panel maximum (heat protection still caps it)
+        val b = if (!off && mood) Brightness.applied(Brightness.fromBar(cfg.mood.bright), cfg, hot) else Brightness.target(off, nightOn, cfg, hot)
         if (b != lastBrightness) {
             // screen off/on is not logged: it repeats all night and would push the charge-start lines out of the trail
             // a battery near 42 °C toggles the heat cap often: one "열" line per 10 min at most, for the same reason
@@ -678,7 +685,7 @@ class StandbyStateHolder(
     /** Mood light auto-off ran out: sticky off until a touch (which then shows the board). */
     fun moodDone() { mood = false; MoodLatch.done = true; machine.sleep(); evaluate() }
     /** The photos page, or the clock page while 사진 위 시간 is among its faces (plan-r15 E4: it draws them too). */
-    private fun photosShowing() = page == 1 || (page == 2 && FaceId.PHOTOS_TIME in cfg.myClocks)
+    private fun photosShowing() = page == 1 || (page == 2 && FaceId.PHOTOS_TIME in kr.dot.sb.settings.MyClocks.pages(cfg))
 
     fun onPage(p: Int) {
         page = p

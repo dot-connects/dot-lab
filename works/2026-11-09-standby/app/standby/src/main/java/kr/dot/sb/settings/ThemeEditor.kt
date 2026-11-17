@@ -612,7 +612,7 @@ private fun ControlView(
             val on = cur.flow != null
             Row(Modifier.fillMaxWidth().padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 T(c.label, 16.sp, 500, SK.text, Modifier.weight(1f))
-                androidx.compose.material3.Switch(on, { v -> commit(cur.copy(flow = if (v) ThemeEditor.defaultFlow(drawn) else null)); if (!v) setPreviewAt(null) })
+                androidx.compose.material3.Switch(on, { v -> commit(cur.copy(flow = if (v) ThemeEditor.defaultFlow(drawn) else null)); if (!v) setPreviewAt(null) }, colors = accentSwitch())
             }
             T(if (drawn.bg.glow != null) "불빛 색이 아침 → 낮 → 저녁으로 천천히 바뀌어요. 밤에는 밤 화면이에요." else "배경 위쪽 색이 아침 → 낮 → 저녁으로 천천히 바뀌어요. 밤에는 밤 화면이에요.",
                 13.sp, 400, SK.muted, Modifier.padding(start = 16.dp, end = 16.dp, top = 4.dp), lineHeight = 18.sp)

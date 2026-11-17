@@ -72,6 +72,9 @@ object Routes {
     const val WIDGETS = "widgets"
     const val PHOTOS = "photos"
     const val CLOCKS = "clocks"
+    /** plan-r15 E5: 모든 시계 and 여러 시계 돌려 보기 under 시계. */
+    const val CLOCKS_ALL = "clocks_all"
+    const val CLOCKS_ROTATE = "clocks_rotate"
     const val NOTIF = "notif"
     const val NIGHT = "night"
     const val ONOFF = "onoff"
@@ -116,6 +119,8 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         }
         route.startsWith("apps:") -> AppPickerScreen(route, config, update, env, back) ?: HomeScreen(config, nav, env)
         route == Routes.CLOCKS -> ClockScreen(config, update, nav, back)
+        route == Routes.CLOCKS_ALL -> AllClocksScreen(config, update, back)
+        route == Routes.CLOCKS_ROTATE -> RotateClocksScreen(config, update, back)
         route.startsWith("clock:") -> {
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)

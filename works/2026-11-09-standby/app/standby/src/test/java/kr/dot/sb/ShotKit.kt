@@ -96,7 +96,21 @@ object Fixtures {
     )
 
     fun apps(): List<kr.dot.sb.ui.cards.AppEntry> = APP_ICONS.mapIndexed { i, (label, icon) ->
-        kr.dot.sb.ui.cards.AppEntry("app.$i", label, image("icon_$icon.png"))
+        // plan-r15 E6: two apps in three have a monochrome layer (테마 색); app.2, 5, 8 keep their colours
+        kr.dot.sb.ui.cards.AppEntry("app.$i", label, image("icon_$icon.png"), if (i % 3 != 2) monoGlyph(i) else null)
+    }
+
+    /** A stand-in monochrome layer: a ring with [i]+1 dots (generic, no brand marks). */
+    private fun monoGlyph(i: Int): ImageBitmap {
+        val px = 144
+        val b = android.graphics.Bitmap.createBitmap(px, px, android.graphics.Bitmap.Config.ARGB_8888)
+        val c = android.graphics.Canvas(b)
+        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply { color = android.graphics.Color.WHITE; style = android.graphics.Paint.Style.STROKE; strokeWidth = 12f }
+        c.drawCircle(px / 2f, px / 2f, px * 0.32f, p)
+        p.style = android.graphics.Paint.Style.FILL
+        val n = i % 3 + 1
+        repeat(n) { k -> c.drawCircle(px / 2f + (k - (n - 1) / 2f) * 26f, px / 2f, 9f, p) }
+        return b.asImageBitmap()
     }
     val appLookup: (android.content.Context, String) -> kr.dot.sb.ui.cards.AppEntry? = { _, pkg -> apps().firstOrNull { it.pkg == pkg } }
 

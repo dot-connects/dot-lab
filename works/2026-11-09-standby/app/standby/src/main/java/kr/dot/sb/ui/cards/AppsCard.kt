@@ -24,6 +24,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
@@ -31,13 +32,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.core.graphics.drawable.toBitmap
+import kr.dot.sb.model.IconStyle
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.state.StandbyActions
 import kotlin.math.ceil
 import kotlin.math.sqrt
 
-/** A launchable app: label and icon (null = the icon could not be drawn). */
-class AppEntry(val pkg: String, val label: String, val icon: ImageBitmap?)
+/**
+ * A launchable app: label and icon (null = the icon could not be drawn). [mono] = the adaptive icon's monochrome layer
+ * (API 33+, plan-r15 E6 테마 색), cropped to the safe zone; null = the app has none.
+ */
+class AppEntry(val pkg: String, val label: String, val icon: ImageBitmap?, val mono: ImageBitmap? = null)
 
 private const val ICON_PX = 144
 
@@ -46,7 +51,19 @@ fun appEntry(ctx: Context, pkg: String): AppEntry? {
     val pm = ctx.packageManager
     if (pm.getLaunchIntentForPackage(pkg) == null) return null
     val info = runCatching { pm.getApplicationInfo(pkg, 0) }.getOrNull() ?: return null
-    return AppEntry(pkg, pm.getApplicationLabel(info).toString(), runCatching { pm.getApplicationIcon(info).toBitmap(ICON_PX, ICON_PX).asImageBitmap() }.getOrNull())
+    val d = runCatching { pm.getApplicationIcon(info) }.getOrNull()
+    return AppEntry(pkg, pm.getApplicationLabel(info).toString(), runCatching { d?.toBitmap(ICON_PX, ICON_PX)?.asImageBitmap() }.getOrNull(), runCatching { mono(d) }.getOrNull())
+}
+
+/** The monochrome layer of an adaptive icon at [ICON_PX], its 108 dp layer cropped to the 72 dp safe zone. */
+private fun mono(d: android.graphics.drawable.Drawable?): ImageBitmap? {
+    if (android.os.Build.VERSION.SDK_INT < 33 || d !is android.graphics.drawable.AdaptiveIconDrawable) return null
+    val m = d.monochrome ?: return null
+    val bmp = android.graphics.Bitmap.createBitmap(ICON_PX, ICON_PX, android.graphics.Bitmap.Config.ARGB_8888)
+    val inset = ICON_PX / 4 // 108 / 72 = 1.5: the layer spans 1.5x the visible icon
+    m.setBounds(-inset, -inset, ICON_PX + inset, ICON_PX + inset)
+    m.draw(android.graphics.Canvas(bmp))
+    return bmp.asImageBitmap()
 }
 
 /** Every launcher app (앱 고르기), sorted by label, this app left out. Blocking: call off the main thread. */
@@ -107,7 +124,12 @@ internal fun AppsCard(e: Env, o: SlotOptions?, actions: StandbyActions, menu: St
                         verticalArrangement = Arrangement.Center,
                     ) {
                         val bmp = a.icon
-                        if (bmp != null) Image(bmp, a.label, Modifier.size(icon), colorFilter = filter)
+                        val mono = a.mono?.takeIf { o?.iconStyle == IconStyle.THEMED }
+                        // 테마 색: the monochrome layer in the accent on a plate a step off the card's own (no layer = own colours)
+                        if (mono != null) Box(Modifier.size(icon).clip(RoundedCornerShape(icon * 0.28f)).background(e.ink.plate2), Alignment.Center) {
+                            Image(mono, a.label, Modifier.size(icon), colorFilter = ColorFilter.tint(e.ink.acc))
+                        }
+                        else if (bmp != null) Image(bmp, a.label, Modifier.size(icon), colorFilter = filter)
                         else Box(Modifier.size(icon).clip(RoundedCornerShape(icon * 0.28f)).background(e.ink.plate2), Alignment.Center) {
                             Txt(a.label.take(1), icon * 0.4f, e.ink.ink2, weight = 700)
                         }

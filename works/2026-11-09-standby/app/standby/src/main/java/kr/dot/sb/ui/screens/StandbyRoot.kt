@@ -29,7 +29,6 @@ import androidx.compose.foundation.pager.PagerDefaults
 import androidx.compose.foundation.pager.PagerState
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.systemGestureExclusion
-import androidx.compose.ui.graphics.Brush
 import kr.dot.sb.ui.cards.tap
 import kr.dot.sb.ui.cards.LocalNotifOpen
 import androidx.compose.runtime.rememberCoroutineScope
@@ -191,7 +190,8 @@ internal fun RootImpl(
     val canBar by rememberUpdatedState(!state.displayOff && !editing && topLayer(state, npOpen) == Layer.NONE)
     // the swipe that opens the bar keeps going as a slider: sideways travel moves the level from where it was (r8)
     var slideBase by remember { mutableFloatStateOf(0f) }
-    val barOpen by rememberUpdatedState({ level = Brightness.shown(nightNow, config); slideBase = level; barOn = true; barPressed = true; barTick++ })
+    // plan-r15 E8: over the mood light the bar is the mood light's brightness (the holder stores it there)
+    val barOpen by rememberUpdatedState({ level = if (mood) config.mood.bright else Brightness.shown(nightNow, config); slideBase = level; barOn = true; barPressed = true; barTick++ })
     val barSlide by rememberUpdatedState({ d: Float ->
         val v = (slideBase + d).coerceIn(0f, 1f)
         if (v != level) { level = v; act.setBrightness(v) }
@@ -225,7 +225,7 @@ internal fun RootImpl(
         CompositionLocalProvider(LocalInk provides ink, LocalNotifOpen provides notifOpen) {
             Box(Modifier.fillMaxSize().offset(state.shiftX.dp, state.shiftY.dp)) {
                 // sleep wins over mood: at DONE the holder sleeps the display and a touch wakes to the board
-                if (mood) MoodLight(config.glowColor, ink, config.moodAutoOffMin, state.alarm != null, { moodOff = true; act.moodDone() }) { moodOff = true }
+                if (mood) MoodLight(config.mood, ink, config.moodAutoOffMin, state.alarm != null, { moodOff = true; act.moodDone() }) { moodOff = true }
                 // the pager clips its bounds: it takes the burn-in bleed itself, each page is padded back in
                 else HorizontalPager(
                     pager,
@@ -278,14 +278,21 @@ internal fun RootImpl(
 }
 
 /**
- * Warm full-screen light (spec M1), same colours as the glow screen: static, so it costs nothing. Auto-off (r10,
+ * Full-screen light (spec M1), one flat colour over the whole screen (plan-r15 E8, no gradient) with the picked effect
+ * ([MoodFx], 20 frames/s only while an effect runs; 그대로 is static, so it costs nothing). Auto-off (r10,
  * [MoodTimer]): after [minutes] (0 = never) it fades to black over the last minute, then [onDone]. A tap during the fade
  * restarts the timer, otherwise it closes ([onTap]); a ringing [alarm] cancels the timer.
  */
 @Composable
-private fun MoodLight(color: Long, ink: Ink, minutes: Int, alarm: Boolean, onDone: () -> Unit, onTap: () -> Unit) {
-    val top = ink.mapped(Color(color or 0xFF000000L))
-    val bottom = Color(top.red * 0.45f, top.green * 0.3f, top.blue * 0.25f)
+private fun MoodLight(m: kr.dot.sb.model.Mood, ink: Ink, minutes: Int, alarm: Boolean, onDone: () -> Unit, onTap: () -> Unit) {
+    var fx by remember { mutableStateOf(m.color to 1f) }
+    LaunchedEffect(m) {
+        fx = m.color to 1f
+        if (m.effect == kr.dot.sb.model.MoodEffect.STILL) return@LaunchedEffect
+        val t0 = android.os.SystemClock.elapsedRealtime()
+        while (true) { fx = kr.dot.sb.data.MoodFx.at(m, android.os.SystemClock.elapsedRealtime() - t0); delay(kr.dot.sb.data.MoodFx.FRAME_MS) }
+    }
+    val flat = ink.mapped(Color(fx.first or 0xFF000000L))
     var from by remember { mutableLongStateOf(android.os.SystemClock.elapsedRealtime()) }
     var k by remember { mutableFloatStateOf(1f) }
     var cancelled by remember { mutableStateOf(false) }
@@ -305,9 +312,52 @@ private fun MoodLight(color: Long, ink: Ink, minutes: Int, alarm: Boolean, onDon
     Box(
         Modifier.fillMaxSize().burnInBleed()
             .background(Color.Black) // literal-ok: the mood light fades to black, whatever the theme
-            .background(Brush.verticalGradient(listOf(top, bottom)), alpha = k)
+            .background(flat.copy(alpha = k * fx.second))
             .tap { if (k < 1f) from = android.os.SystemClock.elapsedRealtime() else onTap() },
     )
+}
+
+/**
+ * plan-r15 E7: the clock on the fold's outer screen while the inner screen is the mood light (tent). Shows `myClocks[0]`
+ * in night colours; the top-edge pull opens the usual panel (brightness of this screen, volume, theme / 내 테마) with the
+ * mood light's own controls below (E8). [level] / [onLevel] = this screen's brightness (bar position).
+ */
+@Composable
+fun TentClock(
+    state: StandbyState, config: AppConfig, level: Float, onLevel: (Float) -> Unit,
+    onLook: (kr.dot.sb.ui.theme.Look) -> Unit, onMood: (kr.dot.sb.model.Mood) -> Unit, startBar: Boolean = false,
+) = ProvideTheme(config, state.now.toLocalTime()) {
+    val night = state.copy(night = 1f)
+    var barOn by remember { mutableStateOf(startBar) }
+    var barPressed by remember { mutableStateOf(false) }
+    var barTick by remember { mutableIntStateOf(0) }
+    var slideBase by remember { mutableFloatStateOf(0f) }
+    val lvl by rememberUpdatedState(level)
+    val set by rememberUpdatedState(onLevel)
+    LaunchedEffect(barOn, barTick, barPressed) { if (barOn && !barPressed) { delay(BAR_HIDE_MS); barOn = false } }
+    BoxWithConstraints(
+        Modifier.fillMaxSize().background(Color.Black) // literal-ok: night clock on the outer screen
+            .pointerInput(Unit) {
+                rootGestures({}, {}, { true }, { slideBase = lvl; barOn = true; barPressed = true; barTick++ }, { d -> set((slideBase + d).coerceIn(0f, 1f)) }, { barPressed = false; barTick++ })
+            },
+    ) {
+        val th = LocalTheme.current
+        val bw = maxWidth
+        val bh = maxHeight
+        val face = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
+        val ink = remember(th, config) { Ink.of(1f, Color(config.clockStyle(FaceId.DIGITAL).color), th) }
+        CompositionLocalProvider(LocalInk provides ink) {
+            ThemeBackground(th, 1f)
+            kr.dot.sb.ui.clock.ClockFace(face, config.clockStyle(face), night, Modifier.fillMaxSize().padding(BURN_IN_BLEED), analog = config.analogStyle)
+            val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
+            if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
+                TopPanel(
+                    level, onLevel, { barPressed = it; barTick++ }, onLook, night, config, bw, bh, Modifier.align(Alignment.TopCenter),
+                    extra = { MoodPanel(config.mood, onMood) },
+                )
+            }
+        }
+    }
 }
 
 /** A board (or the widgets page). Long press asks for the editor, which needs the unlocked phone (spec D2). */

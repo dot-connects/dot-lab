@@ -51,7 +51,6 @@ import kr.dot.sb.model.Layout
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.theme.drawnTheme
 import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.draw.alpha
 import kr.dot.sb.model.PHOTO_INTERVAL_SEC
 import kr.dot.sb.ui.board.BoardView
@@ -168,7 +167,7 @@ internal fun PageRow(
         }
         if (onToggle != null) Switch(
             on, onToggle, Modifier.padding(horizontal = 4.dp),
-            colors = SwitchDefaults.colors(checkedThumbColor = SK.bg, checkedTrackColor = LocalAccent.current, checkedBorderColor = LocalAccent.current, uncheckedThumbColor = SK.muted, uncheckedTrackColor = SK.surface2, uncheckedBorderColor = SK.line),
+            colors = accentSwitch(),
         )
         if (onMove != null) {
             Box(Modifier.size(48.dp).clickable(enabled = canUp) { onMove(-1) }, Alignment.Center) { Icon(Ic.UP, if (canUp) SK.muted else SK.line) }
@@ -570,15 +569,34 @@ fun AppPickerScreen(route: String, config: AppConfig, update: Update, env: Setti
     val all by androidx.compose.runtime.produceState<List<kr.dot.sb.ui.cards.AppEntry>?>(null) {
         value = kotlinx.coroutines.withContext(env.io) { env.launcherApps() }
     }
-    AppPicker(all, board.options[key]?.apps.orEmpty(), back) { picked ->
-        update { c -> BoardOps.replace(c, board.id) { b -> b.copy(options = b.options + (key to (b.options[key] ?: SlotOptions()).copy(apps = picked))) } }
-    }
+    val opts = board.options[key] ?: SlotOptions()
+    fun edit(f: (SlotOptions) -> SlotOptions) =
+        update { c -> BoardOps.replace(c, board.id) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
+    AppPicker(all, opts.apps, back, top = { AppsLook(opts, config) { st -> edit { it.copy(iconStyle = st) } } }) { picked -> edit { it.copy(apps = picked) } }
     return Unit
+}
+
+/** plan-r15 E6: 아이콘 색 (원래 색 / 테마 색) above a live preview of this 앱 바로가기 card. */
+@Composable
+private fun AppsLook(opts: SlotOptions, config: AppConfig, onStyle: (kr.dot.sb.model.IconStyle) -> Unit) {
+    val state = remember(config) { Sample.state(config) }
+    val styles = kr.dot.sb.model.IconStyle.entries
+    Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        T("아이콘 색", 16.sp, 500, SK.text, Modifier.padding(start = 4.dp, bottom = 8.dp))
+        Segmented(listOf("원래 색", "테마 색"), styles.indexOf(opts.iconStyle), { i -> onStyle(styles[i]) })
+        if (opts.iconStyle == kr.dot.sb.model.IconStyle.THEMED) {
+            T("테마 색을 지원하지 않는 앱은 원래 색으로 보여요.", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp), lineHeight = 18.sp)
+        }
+        Spacer(Modifier.height(12.dp))
+        PreviewFrame(376, 238, Modifier.fillMaxWidth(), radius = 12.dp) {
+            BoardView(Board("apps", "", Layout.ONE, listOf(listOf(CardType.APPS)), options = mapOf("0:0" to opts)), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
+        }
+    }
 }
 
 /** Launcher apps four a row with a search field; picked ones wear the card picker's veil + check, in tap order. */
 @Composable
-fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, back: () -> Unit, onPicked: (List<String>) -> Unit) {
+fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, back: () -> Unit, top: @Composable () -> Unit = {}, onPicked: (List<String>) -> Unit) {
     var q by rememberSaveable { mutableStateOf("") }
     var full by remember { mutableStateOf(false) }
     val acc = LocalAccent.current
@@ -617,7 +635,7 @@ fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, bac
                 }
             }
         }
-    }) {}
+    }) { top() }
 }
 
 @Composable

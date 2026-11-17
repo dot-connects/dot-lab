@@ -97,6 +97,8 @@ internal fun barFraction(xDp: Float, screenWDp: Float): Float {
 internal fun TopPanel(
     level: Float, onLevel: (Float) -> Unit, onPress: (Boolean) -> Unit, onLook: (Look) -> Unit,
     state: StandbyState, config: AppConfig, w: Dp, h: Dp, modifier: Modifier = Modifier,
+    /** plan-r15 E8: more rows under the theme strip (the mood light's controls on the outer-screen clock). */
+    extra: (@Composable () -> Unit)? = null,
 ) {
     val ink = LocalInk.current
     val t = LocalTheme.current
@@ -161,7 +163,52 @@ internal fun TopPanel(
                 }
             }
         }
+        extra?.invoke()
     }
+}
+
+/**
+ * plan-r15 E8, the mood light's rows in the outer-screen panel: 무드등 밝기, colour dots, effect pills and 빠르기 (with an
+ * effect). The same choices as settings › 폴드, drawn in the panel's ink.
+ */
+@Composable
+internal fun MoodPanel(m: kr.dot.sb.model.Mood, onMood: (kr.dot.sb.model.Mood) -> Unit) {
+    val ink = LocalInk.current
+    val t = LocalTheme.current
+    Txt("무드등", 15.dp, ink.ink, Modifier.padding(start = 6.dp, top = 6.dp), weight = 700, family = t.words(700))
+    PanelSlider("무드등 밝기", m.bright, { v -> onMood(m.copy(bright = v)) }) { c -> sun(c) }
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        kr.dot.sb.model.MOOD_COLORS.forEach { (name, c) ->
+            val on = c == m.color
+            Box(
+                Modifier.size(36.dp).clip(CircleShape).then(if (on) Modifier.border(2.dp, ink.ink, CircleShape) else Modifier)
+                    .padding(4.dp).clip(CircleShape).background(Color(c)).semantics { contentDescription = name }.tap { onMood(m.copy(color = c)) },
+            )
+        }
+    }
+    androidx.compose.foundation.layout.Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        kr.dot.sb.model.MoodEffect.entries.forEach { e ->
+            val on = e == m.effect
+            Box(
+                Modifier.weight(1f).height(40.dp).clip(CircleShape).background(if (on) ink.ink else ink.ink.copy(alpha = 0.16f)).tap { onMood(m.copy(effect = e)) },
+                Alignment.Center,
+            ) { Txt(e.ko, 13.dp, if (on) ink.on(ink.ink) else ink.ink, weight = 600, family = t.words(600)) }
+        }
+    }
+    if (m.effect != kr.dot.sb.model.MoodEffect.STILL) PanelSlider("빠르기", m.speed, { v -> onMood(m.copy(speed = v)) }) { c -> wave(c) }
+}
+
+/** A small sine for 빠르기. */
+private fun DrawScope.wave(color: Color) {
+    val p = Path()
+    val w = size.width
+    val h = size.height
+    for (i in 0..24) {
+        val x = w * i / 24f
+        val y = h / 2 - sin(i / 24f * 2 * Math.PI * 1.5).toFloat() * h * 0.3f
+        if (i == 0) p.moveTo(x, y) else p.lineTo(x, y)
+    }
+    drawPath(p, color, style = Stroke(1.8.dp.toPx(), cap = StrokeCap.Round))
 }
 
 /** A 48 dp pill slider: track ink 16 %, fill ink, glyph at the left end (page colour on the fill). Touch or drag sets it. */

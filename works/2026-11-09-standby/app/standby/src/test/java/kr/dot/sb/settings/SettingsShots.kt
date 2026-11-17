@@ -70,7 +70,9 @@ abstract class SettingsShotKit {
         rule.setContent {
             var cfg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(config) }
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
-                RouteHost(route, cfg, { f -> cfg = f(cfg) }, nav, e)
+                androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalAppLookup provides kr.dot.sb.Fixtures.appLookup) {
+                    RouteHost(route, cfg, { f -> cfg = f(cfg) }, nav, e)
+                }
             }
         }
         rule.waitForIdle()
@@ -145,6 +147,8 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
     /** r14 C1 앱 고르기: two picked (veil + check), then a search. */
     @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.apps("desk", 0, 0))
+    /** plan-r15 E6: 테마 색 picked, the card preview draws the monochrome layers in the accent (app.2 has none). */
+    @Test fun appPickerThemed() = snap("app-picker-themed", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNodeWithText("테마 색").performClick() }
     @Test fun appPickerSearch() = snap("app-picker-search", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("카") }
     @Test fun night() = snap("night", tall, route = Routes.NIGHT)
     @Test fun nightFold() = snap("night-fold", foldTall, route = Routes.NIGHT)
@@ -161,13 +165,17 @@ class SettingsPageShots : SettingsShotKit() {
 class SettingsClockShots : SettingsShotKit() {
     @Test fun clocks() = snap("clocks", tallest, route = Routes.CLOCKS)
     @Test fun clocksFold() = snap("clocks-fold", "w932dp-h2000dp-port-xhdpi", route = Routes.CLOCKS)
-    /** Scrolled past the full preview: the mini carries the face name + 꾸미기 / 빼기. */
+    /** Scrolled past the full preview: the mini carries the face name (+ 이 시계 쓰기). */
     @Test fun clocksMini() = snap("clocks-mini", phone, route = Routes.CLOCKS) {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1600f) }
     }
-    /** A gallery clock that is not in 내 시계: [내 시계에 넣기]. */
-    @Test fun clocksBrowse() = snap("clocks-browse", phone, route = Routes.CLOCKS) { onNodeWithText("레트로").performScrollTo().performClick(); onNodeWithText("전광판").performScrollTo().performClick() }
+    /** plan-r15 E5: 모든 시계, a face not in the list previewed with rotation on: [이 시계 쓰기]. */
+    @Test fun clocksBrowse() = snap("clocks-browse", phone, route = Routes.CLOCKS_ALL) { onNodeWithText("레트로").performScrollTo().performClick(); onNodeWithText("전광판").performScrollTo().performClick() }
+    /** 여러 시계 돌려 보기: switch, 쓰는 시계 strip, picked faces dimmed with the centred check. */
+    @Test fun clocksRotate() = snap("clocks-rotate", tallest, route = Routes.CLOCKS_ROTATE)
+    /** Rotation off: the main grid, no [이 시계 쓰기]. */
+    @Test fun clocksOne() = snap("clocks-one", phone, AppConfig(rotateClocks = false), route = Routes.CLOCKS)
     @Test fun clockLed() = snap("clock-led", tall, route = Routes.clock(FaceId.LED))
     @Test fun clockHangul() = snap("clock-hangul", tall, route = Routes.clock(FaceId.HANGUL))
     @Test fun clockAnalog() = snap("clock-analog", tallest, route = Routes.clock(FaceId.ANALOG)) { onNodeWithText("자세히").performScrollTo().performClick() }

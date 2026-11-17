@@ -25,6 +25,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     private var endRx: BroadcastReceiver? = null
     /** r14 C1: an unlock this activity asked for (open an app): the unlock close below must not race its launch. */
     private var unlocking = false
+    private val tent = Tent(this)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,7 +69,14 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             hide(WindowInsetsCompat.Type.systemBars())
         }
         holder = StandbyStateHolder(this, this, ownRotation = false)
-        val actions = HostActions(this, holder, this)
+        val base = HostActions(this, holder, this)
+        // plan-r15 E7: the mood light on the inner screen brings the clock to the outer screen (where the phone allows it)
+        val actions = object : kr.dot.sb.ui.state.StandbyActions by base {
+            override fun moodShowing(on: Boolean) {
+                base.moodShowing(on)
+                if (on && kr.dot.sb.settings.ConfigStore.flow(this@StandbyActivity).value.tentClock) tent.start() else tent.stop()
+            }
+        }
         setContent { HostContent(holder, actions) }
         // plan-r15 C9: no POST request here any more (it popped over the lock screen); first run and 권한 ask for it
         PostureProbe.attach(this, "스탠바이")
@@ -98,6 +106,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     }
 
     override fun onDestroy() {
+        tent.stop()
         StandbyPresence.alive = false
         if (StandbyPresence.chargeActivity?.get() === this) StandbyPresence.chargeActivity = null
         endRx?.let { unregisterReceiver(it) }

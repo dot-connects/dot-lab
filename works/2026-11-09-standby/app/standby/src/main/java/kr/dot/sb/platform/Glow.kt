@@ -150,7 +150,12 @@ class GlowReceiver : BroadcastReceiver() {
     }
 }
 
-/** Warm full-screen light on the Fold inner screen over the lock screen; plain Views, no Compose (light). */
+/**
+ * Full-screen light on the Fold inner screen over the lock screen; plain Views, no Compose (light). One flat colour
+ * (plan-r15 E8). The unfold mood light ([isMood]: UNFOLD / TEST) takes [kr.dot.sb.model.Mood] (colour, brightness up to
+ * the panel maximum, effect) and, where the phone allows it, shows the clock on the outer screen ([Tent], E7); the alarm
+ * glows keep the glow colour and the day/night ramp.
+ */
 class GlowActivity : ComponentActivity() {
     private val handler = Handler(Looper.getMainLooper())
     private var ramp: ValueAnimator? = null
@@ -176,19 +181,33 @@ class GlowActivity : ComponentActivity() {
         }
     }
     private val moodTick = Runnable { moodStep() }
+    /** Unfold mood light (not an alarm glow): mood colour, brightness and effect apply. */
+    private var isMood = false
+    private var mood = kr.dot.sb.model.Mood()
+    private var fxFrom = 0L
+    /** The effect's level ([MoodFx]), times [level] and [moodK]. */
+    private var fxK = 1f
+    private val fxTick = object : Runnable {
+        override fun run() {
+            val (c, k) = kr.dot.sb.data.MoodFx.at(mood, android.os.SystemClock.elapsedRealtime() - fxFrom)
+            glow.setBackgroundColor(c.toInt() or (0xFF shl 24)); fxK = k; render()
+            if (mood.effect != kr.dot.sb.model.MoodEffect.STILL) handler.postDelayed(this, kr.dot.sb.data.MoodFx.FRAME_MS)
+        }
+    }
+    private var tent: Tent? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val cfg = ConfigStore.flow(this).value
         if (GlowSource.of(intent) == GlowSource.UNFOLD) moodMin = cfg.moodAutoOffMin
+        isMood = GlowSource.of(intent).let { it == GlowSource.UNFOLD || it == GlowSource.TEST }
+        mood = cfg.mood
         moodFrom = android.os.SystemClock.elapsedRealtime()
         registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), RECEIVER_NOT_EXPORTED)
-        val top = cfg.glowColor.toInt() or (0xFF shl 24)
-        val bottom = Color.rgb((Color.red(top) * .45f).toInt(), (Color.green(top) * .3f).toInt(), (Color.blue(top) * .25f).toInt())
         glow = View(this).apply {
             alpha = 0f
-            background = GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM, intArrayOf(top, bottom))
+            setBackgroundColor((if (isMood) mood.color else cfg.glowColor).toInt() or (0xFF shl 24))
         }
         val root = FrameLayout(this).apply {
             setBackgroundColor(Color.BLACK)
@@ -222,7 +241,25 @@ class GlowActivity : ComponentActivity() {
             ListenerBus.alarm.collect { a -> if (a != null) { seen = true; cancelMood() } else if (seen) finish() }
         }
         moodStep()
+        if (isMood) {
+            restartFx()
+            // settings or the outer-screen panel changed the mood light: colour, effect and brightness follow at once
+            lifecycleScope.launch {
+                ConfigStore.flow(this@GlowActivity).collect { c ->
+                    if (c.mood != mood) { mood = c.mood; restartFx(); if (started) { baseBrightness = moodBrightness(); applyBrightness() } }
+                }
+            }
+            if (cfg.tentClock) tent = Tent(this).also { it.start() }
+        }
     }
+
+    private fun restartFx() {
+        handler.removeCallbacks(fxTick)
+        fxFrom = android.os.SystemClock.elapsedRealtime()
+        fxTick.run()
+    }
+
+    private fun moodBrightness() = Brightness.fromBar(mood.bright)
 
     /** One auto-off step: sleep until the fade starts, then step the fade, then black and gone. */
     private fun moodStep() {
@@ -244,7 +281,7 @@ class GlowActivity : ComponentActivity() {
 
     private fun cancelMood() { moodMin = 0; moodStep() }
 
-    private fun render() { glow.alpha = level * moodK }
+    private fun render() { glow.alpha = level * moodK * fxK }
 
     private fun applyBrightness() {
         val b = baseBrightness ?: return
@@ -267,9 +304,10 @@ class GlowActivity : ComponentActivity() {
     private fun startRamp(sec: Int) {
         if (started) return
         started = true
-        val target = if (night) 0.35f else 0.9f
+        // the mood light: full colour at its own brightness; an alarm glow: dimmer colour at night, under the night cap
+        val target = if (isMood) 1f else if (night) 0.35f else 0.9f
         val cap = ConfigStore.flow(this).value.nightMaxBrightness
-        baseBrightness = if (night) cap else 0.8f
+        baseBrightness = if (isMood) moodBrightness() else if (night) cap else 0.8f
         applyBrightness()
         ramp = ValueAnimator.ofFloat(0f, target).apply {
             duration = sec.coerceAtLeast(1) * 1000L
@@ -325,6 +363,7 @@ class GlowActivity : ComponentActivity() {
     }
 
     override fun onDestroy() {
+        tent?.stop()
         ramp?.cancel()
         lightL?.let { lightSm?.unregisterListener(it) }
         runCatching { unregisterReceiver(batteryRx) }
