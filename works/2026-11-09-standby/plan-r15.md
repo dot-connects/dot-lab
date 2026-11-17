@@ -193,10 +193,25 @@ documents rear display mode (One UI 6.0+) but not dual-screen. So:
 - Spike in the measurement APK (step 2): log the rear-area capabilities (`presentOnArea` status) on the operator's Fold
   at closed, tent (~30–60°) and open, plus which display the app runs on at each angle (the angle where the inner
   screen takes over).
-- If PRESENT_ON_AREA is AVAILABLE: when the mood light runs on the inner screen, present the clock face
+- Measured 2026-11-17 on the operator's Fold: PRESENT_ON_AREA = AVAILABLE whenever the app is on the inner display
+  (933×704 dp), UNAVAILABLE on the cover. The cover turns off as the inner turns on; the switch happens around the
+  flex angle (hinge sensor reports only 0°/90°), so the tent must be opened to ~80–100° (flex), not 30–60°.
+  The reel's tent opening follows that (~90°).
+- If PRESENT_ON_AREA is AVAILABLE (it is, on the operator's Fold): when the mood light runs on the inner screen, present the clock face
   (`myClocks[0]`, night colours) on the outer display; ends with the mood light (`onSessionEnded` handled; the system
   dialog appears when it asks). Setting under 자동으로 켜기·끄기 → 폴드: "무드등 켤 때 바깥 화면에 시계".
 - If not available: report to the operator with the measured angles; the reel shows only what the app can do.
+
+E8 Mood light options (operator 2026-11-17, mockup https://claude.ai/artifact/WhzeZkLiykCEK5uL4fmVDN): the whole inner
+screen one flat colour (no top→bottom gradient, `StandbyRoot.MoodLight` + `Glow.kt` glow screen), brightness slider up
+to the panel maximum (window brightness override), colours = existing GLOWS + 분홍/보라/하늘, effect 그대로 / 색 바뀜
+(eases through the palette) / 숨쉬기 (slow dim–bright) / 촛불 (gentle flicker), 빠르기 slider for effects. Stored in
+config (codec field `mood`: bright, color, effect, speed). The same controls appear in settings (폴드) and in a
+pull-down panel on the cover-screen clock (E7 presentation), so tent users adjust from the outside. That panel keeps
+everything the normal pull-down panel has (brightness, volume, theme / 내 테마) and adds the mood section; operator
+2026-11-17: "무드등이 켜져 있어도 원래 있던 밝기·음량·테마 선택은 같이 있어야 해".
+Copy under 펼치면: "90° 넘게 펼치면 안쪽 화면이 무드등으로 켜져요. 켜진 뒤에는 다시 좁혀서 텐트처럼 세워도 계속 켜져
+있어요." (operator: once on, narrowing keeps it on).
 
 ## Part F — settings rework (UX review §5, §6)
 
@@ -238,6 +253,17 @@ round). Text-matching tests are updated in the same commit as the copy they matc
 F8 정보 gets 처음 설정으로 (confirm dialog; releases persisted folder grants; deletes `perm_walk_done` and bypasses the
 `fresh` install check in `PermWalk.starts`, `Perms.kt:113`, so first run shows again) at the bottom,
 privacy policy link, 글꼴 라이선스, version.
+F10 Tips (operator 2026-11-17, mockup https://claude.ai/artifact/ESndgkT2kxVhzg1DECTmBL): ① one-time in-place tips
+(one per session, edge pill 4 s, never repeats; stored as a seen-set in config): first StandBy → pull-down bar nudge
+"↓ 위에서 끌어내리면 테마·밝기"; first timer card → press ripple "길게 누르면 집중 ↔ 휴식"; first tent → cover screen
+"↓ 무드등 밝기·색"; plus the other hidden gestures (clock page up/down + long-press, board long-press, stacked cards,
+photos up/down, banner swipe up, notif swipe-left, clock card face choice, side key → lock screen next). ② 설정 › 팁
+(above 정보): grouped by Stand Screen 화면 / 카드 / 폴드, a small looping gesture drawing per row, '새' until used,
+tap = demo in the preview. ③ one footer line under the related setting (timer, theme, fold, …), gesture in bold.
+F11 Full copy pass (operator 2026-11-17: "앱에 있는 모든 문구 정돈"): every user-visible string in `src/**` (kt + res)
+listed in `settings-r10/r15-copy-all.md` (file:line → now → new), style rules at its top (해요체, plain words, one term
+per concept, brand "Stand Screen", no raw numbers per F6); the operator skims the table before it is applied; applied
+together with F7 (same commit per screen, tests updated with the copy).
 F9 Theme editor: basic view = 색 조합 바꾸기 + 배경색 · 카드 모양 · 글자색; the rest under 더 꾸미기; long-press menus →
 visible ⋯ button.
 

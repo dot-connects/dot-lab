@@ -15,9 +15,7 @@
     <!-- plan-r15 C2: the listener path holds the CPU for the charge-start posture window (<= 15 s) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
-    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
-    <!-- Android 14 "select photos" partial access: requested together with READ_MEDIA_IMAGES -->
-    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <!-- photos: picked folders through the system folder picker (SAF), no media permission (plan-r15 B1) -->
     <!-- 앱 바로가기 card: package visibility for the launcher apps (앱 고르기, getLaunchIntentForPackage) -->
     <queries>
         <intent>

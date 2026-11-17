@@ -54,7 +54,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.ui.draw.alpha
 import kr.dot.sb.model.PHOTO_INTERVAL_SEC
-import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.board.BoardView
 import kr.dot.sb.ui.state.StandbyActions
 import java.util.Collections
@@ -106,7 +105,7 @@ fun PagesScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
                                 }
                             },
                             title = pageName(p),
-                            subtitle = when (p.index) { 0 -> "두 칸 · 카드 쌓기"; 1 -> config.photoSource.ko; Pages.CLOCK -> "내 시계 ${config.myClocks.size}개"; else -> b!!.layout.ko },
+                            subtitle = when (p.index) { 0 -> "두 칸 · 카드 쌓기"; 1 -> if (config.photoFolders.isEmpty()) "폴더를 골라 주세요" else "폴더 ${config.photoFolders.size}개"; Pages.CLOCK -> "내 시계 ${config.myClocks.size}개"; else -> b!!.layout.ko },
                             start = p == start,
                             on = Pages.isOn(config, p),
                             onToggle = if (p.index == Pages.CLOCK) null else { v -> update { Pages.setOn(it, p, v) } },
@@ -256,42 +255,31 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
     }
 }
 
-// ---- 사진 (사진 고르기, operator 2026-11-13) --------------------------------------------------------------------------
+// ---- 사진 (plan-r15 B1: picked folders, system folder picker) ------------------------------------------------------------
 
 @Composable
 fun PhotosScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
-    val folders by androidx.compose.runtime.produceState(emptyList<Pair<String, Int>>(), env.granted[Perm.PHOTOS]) {
-        value = kotlinx.coroutines.withContext(env.io) { env.photoFolders() }
+    // names first from the URI, then the index's names, counts and broken folders (slow: a full folder read)
+    val folders by androidx.compose.runtime.produceState(config.photoFolders.map { kr.dot.sb.data.PhotoFolder(it, kr.dot.sb.data.PhotoIndex.fallbackName(it), null, false) }, config.photoFolders) {
+        value = kotlinx.coroutines.withContext(env.io) { env.photoFolders(config.photoFolders) }
     }
     val first = pageSlides(config, include = 1).first { it.name == "사진" }
     Page("사진", back, preview = pagePreview(config, 1, first, nav)) {
-        Section("사진 고르기") {
-            PhotoSource.entries.forEach { s ->
-                item { RadioRow(s.ko, null, config.photoSource == s, { update { it.copy(photoSource = s) } }) }
-            }
-            item { PermLine(Perm.PHOTOS) }
-        }
-        if (config.photoSource == PhotoSource.FOLDERS) Section("폴더", footer = "고른 폴더가 없으면 추천 사진을 보여줘요.") {
-            if (folders.isEmpty()) item { T("사진이 있는 폴더가 없어요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)) }
-            folders.forEach { (name, count) ->
+        Section("폴더", footer = "고른 폴더의 사진이 사진 페이지, 추억 카드, 사진 흐림 배경에 나와요. 카메라 사진은 DCIM › Camera에 있어요. 저장소 맨 위와 Download 폴더는 Android가 막아 고를 수 없어요.") {
+            if (folders.isEmpty()) item { T("폴더를 골라 주세요", 15.sp, 500, SK.muted, Modifier.padding(16.dp)) }
+            folders.forEach { f ->
                 item {
-                    val on = name in config.photoFolders
-                    Row(
-                        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { update { it.copy(photoFolders = if (on) it.photoFolders - name else it.photoFolders + name) } }.padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
+                    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
-                            T(name, 16.sp, 500, SK.text, maxLines = 1)
-                            T("사진 ${count}장", 13.sp, 400, SK.muted)
+                            T(f.name, 16.sp, 500, SK.text, maxLines = 1)
+                            val sub = if (f.broken) "읽을 수 없어요 · 다시 골라 주세요" else f.count?.let { "사진 ${it}장" }
+                            if (sub != null) T(sub, 13.sp, 400, if (f.broken) SK.danger else SK.muted)
                         }
-                        Box(
-                            Modifier.size(24.dp).clip(RoundedCornerShape(6.dp)).background(if (on) LocalAccent.current else Color.Transparent)
-                                .border(2.dp, if (on) LocalAccent.current else SK.muted, RoundedCornerShape(6.dp)),
-                            Alignment.Center,
-                        ) { if (on) Icon(Ic.CHECK, SK.bg, 18.dp) }
+                        ActionButton("빼기", { env.removeFolder(f.uri) }, primary = false)
                     }
                 }
             }
+            item { ActionButton("폴더 고르기", env.pickFolder, Modifier.padding(16.dp)) }
         }
         Section(null) {
             item {

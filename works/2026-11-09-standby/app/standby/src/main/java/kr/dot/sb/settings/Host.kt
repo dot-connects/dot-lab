@@ -38,8 +38,12 @@ class SettingsEnv(
     val onPermLater: () -> Unit = {},
     /** Every calendar on the phone (카드에 쓰는 정보 picker); null = no calendar permission. */
     val calendars: () -> List<kr.dot.sb.data.CalendarInfo>? = { null },
-    /** Albums with their photo counts (사진 고르기). */
-    val photoFolders: () -> List<Pair<String, Int>> = { emptyList() },
+    /** plan-r15 B1: the picked folders read through the shared photo index (names, counts, broken); slow, on [io]. */
+    val photoFolders: (List<String>) -> List<kr.dot.sb.data.PhotoFolder> = { f -> f.map { kr.dot.sb.data.PhotoFolder(it, it, null, false) } },
+    /** 폴더 고르기: the system folder picker; the picked tree is added to the config. */
+    val pickFolder: () -> Unit = {},
+    /** 빼기: the folder leaves the config and its grant is released. */
+    val removeFolder: (String) -> Unit = {},
     /** 수면 소리: play [SleepSound] for 3 s. */
     val playSample: (kr.dot.sb.model.SleepSound) -> Unit = {},
     /** Recent charger-start log lines (켜짐과 꺼짐 자세히). */

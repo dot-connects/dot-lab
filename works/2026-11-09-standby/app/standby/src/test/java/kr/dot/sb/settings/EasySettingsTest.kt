@@ -27,7 +27,7 @@ class EasySettingsTest {
     }
 
     @Test fun aSecondAdvanceForTheSameStepIsIgnored() {
-        val missing = listOf(Perm.POST, Perm.CALENDAR, Perm.PHOTOS)
+        val missing = listOf(Perm.POST, Perm.CALENDAR, Perm.BATTERY)
         val w = PermWalk().advance(null, missing).advance(Perm.POST, missing)
         assertEquals(Perm.CALENDAR, w.current)
         assertEquals(w, w.advance(Perm.POST, missing)) // the runtime callback and onResume both report POST

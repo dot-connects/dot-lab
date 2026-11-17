@@ -41,7 +41,6 @@ import kr.dot.sb.platform.DeviceTimerAlerts
 import kr.dot.sb.platform.TimerAlerts
 import kr.dot.sb.ui.state.TimerMode
 import kr.dot.sb.settings.ConfigStore
-import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.ui.state.AlarmRinging
 import kr.dot.sb.ui.state.SleepState
 import kr.dot.sb.ui.state.LiveTicks
@@ -146,8 +145,10 @@ class StandbyStateHolder(
     private var lastPhotosAt = 0L
     private var memoryDay: LocalDate? = null
     private var lastCity = cfg.city
-    /** Photo source last loaded ([AppConfig.photoSource] + folders); a change reloads the photos page. */
-    private var photoKey: Pair<PhotoSource, List<String>>? = null
+    /** Folders + chip filter last loaded; a change reloads the photos page. */
+    private var photoKey: Pair<List<String>, String?>? = null
+    /** Folders the memory picture was last picked from; a change picks again. */
+    private var memFolders: List<String>? = null
 
     private var visibleJob: Job? = null
     private var pollJob: Job? = null
@@ -236,7 +237,8 @@ class StandbyStateHolder(
                 publishHot()
                 syncLux(c)
                 syncMedia(c)
-                if (photoKey != null && photoKey != (c.photoSource to c.photoFolders)) launch { reloadPhotos() }
+                if (photoKey != null && photoKey != (c.photoFolders to c.photoFilter)) launch { reloadPhotos() }
+                if (memWanted == true && memFolders != null && memFolders != c.photoFolders) launch { loadMemory(LocalDate.now()) }
                 if (c.city != lastCity) { lastCity = c.city; lastWeatherAt = 0; if (!_state.value.displayOff) launch { fetchWeather() } }
                 if (c.excludedCalendars != lastExcluded) { val first = lastExcluded == null; lastExcluded = c.excludedCalendars; if (!first) launch { refreshCalendar() } }
                 evaluate()
@@ -435,7 +437,7 @@ class StandbyStateHolder(
         val memChanged = mem != memWanted
         val phChanged = ph != photosWanted
         memWanted = mem; photosWanted = ph
-        if (memChanged && !mem) { memoryDay = null; _state.update { it.copy(memory = null) } }
+        if (memChanged && !mem) { memoryDay = null; memFolders = null; _state.update { it.copy(memory = null) } }
         if (phChanged && !ph) { photoKey = null; _state.update { it.copy(photos = null) } }
         when {
             // loadMemory reloads the photos too (their count depends on the memory)
@@ -577,20 +579,21 @@ class StandbyStateHolder(
         lastPhotosAt = el()
         val n = if (_state.value.memory != null) 2 else 3 // max 3 bitmaps in memory
         val c = cfg
-        photoKey = c.photoSource to c.photoFolders
-        val have = _state.value.photoBuckets
-        val (p, buckets) = withContext(Dispatchers.IO) {
-            DeviceSources.photos(ctx, n, c.photoSource, c.photoFolders) to have.ifEmpty { DeviceSources.folders(ctx).take(12).map { it.first } }
-        }
+        photoKey = c.photoFolders to c.photoFilter
+        // plan-r15 B1: picks from the shared index (rebuilt on a folder change or after 6 h), never re-lists
+        val (p, s) = withContext(Dispatchers.IO) { PhotoIndex.get(ctx, c.photoFolders).let { s -> PhotoIndex.photos(ctx, s, c.photoFilter, n) to s } }
         if (photosWanted != true) return // the photos page went off while loading
-        _state.update { it.copy(photos = p, photoBuckets = buckets) }
+        val hint = PhotoIndex.hint(c.photoFolders, s)
+        _state.update { it.copy(photos = p.takeIf { hint == null }, photoFolders = s.list().map { f -> f.uri to f.name }, photoHint = hint) }
     }
 
     private suspend fun loadMemory(day: LocalDate) {
         if (memWanted != true) return
-        val m = withContext(Dispatchers.IO) { DeviceSources.memory(ctx, day) }
+        val folders = cfg.photoFolders
+        memFolders = folders
+        val (m, hint) = withContext(Dispatchers.IO) { PhotoIndex.get(ctx, folders).let { s -> PhotoIndex.memory(ctx, s, day) to PhotoIndex.hint(folders, s) } }
         if (memWanted != true) return // switched off while loading
-        _state.update { it.copy(memory = m) }
+        _state.update { it.copy(memory = m, photoHint = hint) }
         reloadPhotos()
     }
 
@@ -675,10 +678,8 @@ class StandbyStateHolder(
         if (!_state.value.unfolded) ConfigStore.update(ctx) { it.copy(startPage = p) }
         if (p == 1 && el() - lastPhotosAt > 30_000) scope.launch { reloadPhotos() }
     }
-    /** Photos page theme swipe: null = 추천, else one album; written to the config like 사진 고르기 (one source of truth). */
-    fun photoTheme(bucket: String?) = ConfigStore.update(ctx) {
-        if (bucket == null) it.copy(photoSource = PhotoSource.PICKS) else it.copy(photoSource = PhotoSource.FOLDERS, photoFolders = listOf(bucket))
-    }
+    /** Photos page chip swipe: null = every folder, else one picked folder; a view filter, the folder list stays. */
+    fun photoTheme(folder: String?) = ConfigStore.update(ctx) { it.copy(photoFilter = folder?.takeIf { f -> f in it.photoFolders }) }
     fun mediaPlayPause() = media.playPause()
     fun mediaNext() = media.next()
     fun mediaPrev() = media.prev()

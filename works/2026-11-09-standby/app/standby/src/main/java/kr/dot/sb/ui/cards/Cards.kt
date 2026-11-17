@@ -1547,8 +1547,9 @@ private fun DayGrid(e: Env, start: LocalDate, weeks: Int, events: List<AgendaIte
 private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val p = state.memory
     if (p == null) {
-        if (!state.permissions.photos) {
-            StateCard(e, Ic.PHOTO, "추억", Ic.LOCK, null, "권한 필요 · 눌러서 설정") { actions.openSettings("photos") }
+        val hint = state.photoHint
+        if (hint != null) {
+            StateCard(e, Ic.PHOTO, "추억", null, null, "$hint · 눌러서 고르기") { actions.openSettings("photos") }
         } else {
             StateCard(e, Ic.PHOTO, "추억", null, "추억 없음", null, null)
         }

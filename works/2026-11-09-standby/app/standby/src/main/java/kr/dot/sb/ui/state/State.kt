@@ -42,11 +42,13 @@ data class StandbyState(
     val liveExpanded: Boolean = false,
     val timers: Map<String, TimerState> = emptyMap(),
     val sleep: SleepState = SleepState(),
-    /** Photos page queue (already decoded at screen size); null = permission missing. */
+    /** Photos page queue (already decoded at screen size); null = no readable folder ([photoHint] says why). */
     val photos: List<Photo>? = emptyList(),
     val memory: Photo? = null,
-    /** Album names for the Photos page themes (after 추천); empty until the first load. */
-    val photoBuckets: List<String> = emptyList(),
+    /** The picked folders (tree URI to name) for the photos page chips (after 전체); empty until the first load. */
+    val photoFolders: List<Pair<String, String>> = emptyList(),
+    /** plan-r15 B1: "폴더를 골라 주세요" / "다시 골라 주세요" in place of photos and 추억; null = fine. */
+    val photoHint: String? = null,
     val permissions: Permissions = Permissions(),
     /** Fold inner screen open (book posture). */
     val unfolded: Boolean = false,
@@ -221,7 +223,6 @@ data class Photo(val image: ImageBitmap, val place: String, val date: String, va
 data class Permissions(
     val notifications: Boolean = true,
     val calendar: Boolean = true,
-    val photos: Boolean = true,
     /** Exact alarms (SCHEDULE_EXACT_ALARM, off by default on Android 14): the timer end on time. */
     val exactAlarm: Boolean = true,
 )
@@ -266,8 +267,8 @@ interface StandbyActions {
     fun pageChanged(page: Int) {}
     /** Photos page: caption tap opens the photo in the gallery (after unlock). */
     fun openPhoto(uri: String) {}
-    /** Photos page: theme swipe; null = 추천, else the album name. */
-    fun photoTheme(bucket: String?) {}
+    /** Photos page: chip swipe; null = every folder, else one picked folder's tree URI (a view filter). */
+    fun photoTheme(folder: String?) {}
     /** Pull-down panel look preview: switch to a 내 테마 or a built-in (`switchFromPanel`, saved like a settings edit). */
     fun setLook(look: kr.dot.sb.ui.theme.Look) {}
     /** Brightness bar: 0..1 for the window, applied live. */

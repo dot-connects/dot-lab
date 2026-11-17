@@ -15,15 +15,14 @@ import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
 import kr.dot.sb.platform.StandbyDream
 
-/** The eight things StandBy needs the user to grant, mockup `PERMS` order and plain names (r10 checklist). */
+/** The seven things StandBy needs the user to grant, mockup `PERMS` order and plain names (r10 checklist). Photos need none (plan-r15 B1). */
 enum class Perm(val ko: String, val why: String, val button: String) {
     DREAM("충전 중 스탠바이 띄우기", "충전 중 화면이 꺼질 때 스탠바이가 뜨게 해요", "선택하기"),
-    NOTIFICATIONS("알림 읽기", "큰 알림, 음악 재생, 알람을 읽어요", "허용하기"),
+    NOTIFICATIONS("알림 읽기", "큰 알림, 음악 재생, 알람을 읽어요. 알림 내용은 폰 밖으로 나가지 않아요", "허용하기"),
     POST("알림 띄우기", "무드등과 알람 화면을 띄우는 데 필요해요", "허용하기"),
     FULL_SCREEN("잠금 화면 위에 띄우기", "잠금 화면 위에 알람과 무드등을 띄워요", "허용하기"),
     EXACT_ALARM("알람 시각 미리 알기", "알람 전에 미리 밝히기에 필요해요", "허용하기"),
     CALENDAR("캘린더", "오늘 일정 카드에 써요", "허용하기"),
-    PHOTOS("사진", "사진 페이지와 추억 카드에 써요", "허용하기"),
     BATTERY("밤새 멈추지 않게 하기", "밤새 켜져 있어도 앱이 멈추지 않게 해요", "설정 열기"),
 }
 
@@ -39,7 +38,6 @@ object Perms {
             Perm.NOTIFICATIONS to (ctx.packageName in NotificationManagerCompat.getEnabledListenerPackages(ctx)),
             Perm.POST to has(Manifest.permission.POST_NOTIFICATIONS),
             Perm.CALENDAR to has(Manifest.permission.READ_CALENDAR),
-            Perm.PHOTOS to kr.dot.sb.data.DeviceSources.photos(ctx),
             Perm.FULL_SCREEN to (nm?.canUseFullScreenIntent() == true),
             Perm.EXACT_ALARM to (am?.canScheduleExactAlarms() == true),
             Perm.BATTERY to (pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true),
@@ -61,15 +59,14 @@ object Perms {
         Perm.FULL_SCREEN -> listOf(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.EXACT_ALARM -> listOf(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.BATTERY -> listOf(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
-        Perm.CALENDAR, Perm.PHOTOS -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
+        Perm.CALENDAR -> listOf(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.POST -> listOf(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, ctx.packageName), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
     }
 
-    /** Asked in-app, together (photos: full or the user's selection); empty = a system page. */
+    /** Asked in-app; empty = a system page. */
     fun runtimePermissions(p: Perm): List<String> = when (p) {
         Perm.POST -> listOf(Manifest.permission.POST_NOTIFICATIONS)
         Perm.CALENDAR -> listOf(Manifest.permission.READ_CALENDAR)
-        Perm.PHOTOS -> listOf(Manifest.permission.READ_MEDIA_IMAGES, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
         else -> emptyList()
     }
 

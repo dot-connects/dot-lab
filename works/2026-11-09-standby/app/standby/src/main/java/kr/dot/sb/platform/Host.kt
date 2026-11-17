@@ -81,7 +81,7 @@ class HostActions(
             runCatching { ctx.startActivity(Intent(Intent.ACTION_VIEW).setDataAndType(android.net.Uri.parse(uri), "image/*").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)) }
         }
     }
-    override fun photoTheme(bucket: String?) = holder.photoTheme(bucket)
+    override fun photoTheme(folder: String?) = holder.photoTheme(folder)
     override fun setLook(look: kr.dot.sb.ui.theme.Look) = kr.dot.sb.settings.ConfigStore.update(ctx) { it.switchFromPanel(look) }
     override fun openAlarmApp() = host.unlockThen {
         runCatching { ctx.startActivity(Intent(android.provider.AlarmClock.ACTION_SHOW_ALARMS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }

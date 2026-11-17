@@ -34,6 +34,9 @@ import androidx.compose.ui.Modifier
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.FaceId
 
+/** The folder picker opens at DCIM (a hint: the picker may ignore it). */
+private val DCIM = android.provider.DocumentsContract.buildDocumentUri("com.android.externalstorage.documents", "primary:DCIM")
+
 /**
  * Launcher activity: one activity, in-app navigation by route string ([RouteHost]).
  * Config lives in [ConfigStore]; permission state is re-read every time the user comes back from a system page.
@@ -66,7 +69,7 @@ class SettingsActivity : ComponentActivity() {
             val config by ConfigStore.flow(this).collectAsState()
             // app start and every toggle: the job exists iff the option is on
             androidx.compose.runtime.LaunchedEffect(config.startOnCharge) { kr.dot.sb.platform.ChargeStart.sync(this@SettingsActivity) }
-            // StandBy opens settings at a section: "board:<id>", "clock:<FACE>", or a permission need ("photos")
+            // StandBy opens settings at a section: "board:<id>", "clock:<FACE>", "photos" (the folder list), or a permission need
             val section = intent.getStringExtra("section")
             var stack by rememberSaveable {
                 mutableStateOf(
@@ -74,7 +77,7 @@ class SettingsActivity : ComponentActivity() {
                         section == null -> listOf(Routes.HOME)
                         // the card's own settings task: 앱 고르기 is the bottom, so Back leaves to StandBy
                         section.startsWith("apps:") -> listOf(section)
-                        section == "photos" || section == "calendar" || section == "notifications" -> listOf(Routes.HOME, Routes.PERMS)
+                        section == "calendar" || section == "notifications" -> listOf(Routes.HOME, Routes.PERMS)
                         else -> listOf(Routes.HOME, section)
                     }.let { if (section == null && walkOffer.value) it + Routes.PERMS else it },
                 )
@@ -106,7 +109,9 @@ class SettingsActivity : ComponentActivity() {
                 onPermWalk = ::startWalk,
                 onPermLater = { endWalk(); nav.back() },
                 calendars = { kr.dot.sb.data.DeviceSources.calendars(this) },
-                photoFolders = { kr.dot.sb.data.DeviceSources.folders(this) },
+                photoFolders = { f -> kr.dot.sb.data.PhotoIndex.get(this, f).list() },
+                pickFolder = { pickFolder.launch(DCIM) },
+                removeFolder = ::removeFolder,
                 playSample = ::playSample,
                 chargeTrail = { kr.dot.sb.platform.ChargeStart.trail(this) },
                 measureLog = { kr.dot.sb.platform.Measure.lines(this) },
@@ -118,6 +123,22 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // ---- 사진 폴더 (plan-r15 B1): the system folder picker, no media permission ------------------------------------------
+
+    private val pickFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
+        if (uri == null) return@registerForActivityResult
+        // without a persisted grant the folder is unreadable after a restart (PhotoIndex would drop it)
+        if (runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isFailure) {
+            Toast.makeText(this, "이 폴더는 고를 수 없어요", Toast.LENGTH_SHORT).show(); return@registerForActivityResult
+        }
+        update { it.withPhotoFolders(it.photoFolders + uri.toString()) }
+    }
+
+    private fun removeFolder(uri: String) {
+        update { it.withPhotoFolders(it.photoFolders - uri) }
+        runCatching { contentResolver.releasePersistableUriPermission(android.net.Uri.parse(uri), Intent.FLAG_GRANT_READ_URI_PERMISSION) }
     }
 
     override fun onResume() {

@@ -416,22 +416,23 @@ data class AppConfig(
     val photoIntervalSec: Int = 15,
     /** Fixed pages switched off in 페이지 구성: [PAGE_WIDGETS] / [PAGE_PHOTOS] (the clock page is always on). */
     val pagesOff: Set<String> = emptySet(),
-    val photoSource: PhotoSource = PhotoSource.PICKS,
-    /** Album (bucket) names for [PhotoSource.FOLDERS]. */
+    /** plan-r15 B1: SAF tree URIs the user picked (photos page, 추억, 사진 흐림); write with [withPhotoFolders]. */
     val photoFolders: List<String> = emptyList(),
+    /** Photos-page chip: one of [photoFolders], null = every folder. A view filter only, never rewrites the list. */
+    val photoFilter: String? = null,
     /** r11 per-theme edits (never empty edits). Write with `withThemeEdit`; drawn only on [BoardBg.THEME]. */
     val themeEdits: Map<Theme, ThemeEdit> = emptyMap(),
     /** r11 내 테마. Write with `withMyThemes` / `saveMyTheme` / `renameMyTheme` / `deleteMyTheme`. */
     val myThemes: List<MyTheme> = emptyList(),
     /** r13: the 내 테마 the current look came from (저장 prefills it); null = a built-in or never saved. */
     val customFrom: String? = null,
-)
+) {
+    /** The picked folders; a [photoFilter] no longer among them goes back to every folder. */
+    fun withPhotoFolders(list: List<String>) = copy(photoFolders = list.distinct(), photoFilter = photoFilter?.takeIf { it in list })
+}
 
 const val PAGE_WIDGETS = "widgets"
 const val PAGE_PHOTOS = "photos"
-
-/** Where the photos page takes its pictures from (r10 사진 고르기). */
-enum class PhotoSource(val ko: String) { PICKS("추천: 즐겨찾기 + 최근"), RECENT("최근 사진"), FOLDERS("폴더 고르기") }
 
 val MOOD_AUTO_OFF_MIN = listOf(0, 3, 10, 15)
 val PHOTO_INTERVAL_SEC = listOf(10, 15, 30, 60, 300)

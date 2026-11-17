@@ -37,10 +37,10 @@ import java.time.LocalDate
 object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
-     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15. Saves without "v" are r8 or r9 dev
+     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs). Saves without "v" are r8 or r9 dev
      * builds.
      */
-    const val VERSION = 13
+    const val VERSION = 14
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -93,7 +93,7 @@ object ConfigCodec {
         put("nightNotifQuiet", c.nightNotifQuiet)
         put("photoIntervalSec", c.photoIntervalSec)
         put("pagesOff", JSONArray().also { a -> c.pagesOff.forEach { a.put(it) } })
-        put("photoSource", c.photoSource.name)
+        c.photoFilter?.let { put("photoFilter", it) }
         put("photoFolders", JSONArray().also { a -> c.photoFolders.forEach { a.put(it) } })
         // r11: only when used, so a config without edits encodes exactly as before
         val edits = c.themeEdits.mapNotNull { (th, e) -> e.sanitized(th).takeUnless { it.isEmpty }?.let { th to it } }
@@ -268,8 +268,8 @@ object ConfigCodec {
             nightNotifQuiet = o.optBoolean("nightNotifQuiet", d.nightNotifQuiet),
             photoIntervalSec = o.optInt("photoIntervalSec", d.photoIntervalSec).takeIf { it in PHOTO_INTERVAL_SEC } ?: d.photoIntervalSec,
             pagesOff = strings(o, "pagesOff")?.filter { it == PAGE_WIDGETS || it == PAGE_PHOTOS }?.toSet() ?: d.pagesOff,
-            photoSource = enumOf(o, "photoSource", d.photoSource),
-            photoFolders = strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
+            // plan-r15 B1: before v14 these were MediaStore album names (and photoSource PICKS/RECENT): none is a SAF grant
+            photoFolders = if (v < 14) d.photoFolders else strings(o, "photoFolders")?.distinct() ?: d.photoFolders,
             themeEdits = edits,
             myThemes = bumped.fold(myThemes(o.optJSONArray("myThemes"))) { l, (th, e) -> l + MyTheme(nextMyThemeName(l), th, e) },
         ).let { c ->
@@ -280,6 +280,7 @@ object ConfigCodec {
             if (v < 11) Migrations.looks(c)
             else c.copy(customFrom = o.optString("customFrom").takeIf { n -> c.myThemes.any { it.name == n } } ?: c.customFrom)
         }.let { c -> if (storedTheme == "FLIP") Migrations.flip(c) else c }
+            .let { c -> c.copy(photoFilter = o.optString("photoFilter").takeIf { it in c.photoFolders }) }
             .let { c -> if (v < 12) Migrations.floatToDigital(c) else c }
     }
 

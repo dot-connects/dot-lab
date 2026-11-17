@@ -45,7 +45,6 @@ import androidx.compose.ui.unit.max
 import androidx.compose.ui.unit.min
 import kotlinx.coroutines.delay
 import kr.dot.sb.model.AppConfig
-import kr.dot.sb.model.PhotoSource
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.ui.cards.Ic
@@ -61,8 +60,8 @@ import kr.dot.sb.ui.theme.LocalInk
 import kr.dot.sb.ui.theme.burnInBleed
 import kotlin.math.abs
 
-/** Photo themes (spec P1, P0 part): 추천 + the user's albums; on-device labels (자연, 반려동물 …) are P1. */
-private const val RECOMMENDED = "추천"
+/** plan-r15 B1: the first chip, every picked folder; the others are the picked folders by name. */
+private const val ALL = "전체"
 
 /**
  * Photos page (design §4.4): photo fills, 1 s crossfade every `photoIntervalSec` (r10, default 15 s), Ken Burns to
@@ -74,13 +73,10 @@ private const val RECOMMENDED = "추천"
 internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: StandbyActions, active: Boolean) {
     val ink = LocalInk.current
     val act by rememberUpdatedState(actions)
-    // the chips are 사진 고르기 itself (r10): the theme shown comes from the config, a swipe writes it back
-    val themes = remember(state.photoBuckets, config.photoFolders) { (listOf(RECOMMENDED) + state.photoBuckets + config.photoFolders).distinct() }
-    val one = config.photoFolders.singleOrNull()?.takeIf { config.photoSource == PhotoSource.FOLDERS }
-    val theme = one?.let { themes.indexOf(it) } ?: 0
-    // several folders picked in settings: the swipe would replace them with one, so it does nothing
-    val multi = config.photoSource == PhotoSource.FOLDERS && config.photoFolders.size > 1
-    val cur by rememberUpdatedState(Triple(theme, themes, multi))
+    // plan-r15 B1: the chips are a view filter over the picked folders (config.photoFilter); the folder list stays
+    val themes = remember(state.photoFolders) { listOf<Pair<String?, String>>(null to ALL) + state.photoFolders }
+    val theme = themes.indexOfFirst { it.first == config.photoFilter }.coerceAtLeast(0)
+    val cur by rememberUpdatedState(theme to themes)
     var pillKey by remember { mutableIntStateOf(0) }
     var pill by remember { mutableStateOf(false) }
     LaunchedEffect(pillKey) { if (pillKey > 0) { pill = true; delay(1_500); pill = false } }
@@ -90,10 +86,10 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
             var dy = 0f
             detectVerticalDragGestures(
                 onDragStart = { dy = 0f },
-                onDragEnd = { if (abs(dy) > 48.dp.toPx() && !cur.third) {
+                onDragEnd = { if (abs(dy) > 48.dp.toPx() && cur.second.size > 2) {
                     val (t, list) = cur
                     val next = Math.floorMod(t + if (dy < 0) 1 else -1, list.size); pillKey++
-                    act.photoTheme(list.getOrNull(next)?.takeIf { next > 0 })
+                    act.photoTheme(list[next].first)
                 } },
             ) { _, d -> dy += d }
         },
@@ -104,8 +100,8 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
         val s = min(w, h)
         val photos = state.photos
         when {
-            photos == null -> Placeholder(Ic.LOCK, "사진 접근 권한 필요", "눌러서 설정") { actions.openSettings("photos") }
-            photos.isEmpty() -> Placeholder(Ic.PHOTO, "사진 없음", "앨범을 추가하면 여기 나와요", null)
+            photos == null -> Placeholder(Ic.PHOTO, state.photoHint ?: "폴더를 골라 주세요", "눌러서 고르기") { actions.openSettings("photos") }
+            photos.isEmpty() -> Placeholder(Ic.PHOTO, "사진 없음", "사진이 있는 폴더를 고르면 여기 나와요") { actions.openSettings("photos") }
             else -> {
                 var idx by remember { mutableIntStateOf(0) }
                 val shuffleMs = config.photoIntervalSec * 1000L
@@ -142,7 +138,7 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
         ) {
             val t = max(18.dp, s * 0.045f)
             Box(Modifier.clip(RoundedCornerShape(50)).background(ink.ink4.copy(alpha = 0.85f)).padding(horizontal = t * 0.9f, vertical = t * 0.6f)) {
-                Txt(themes[theme.coerceIn(0, themes.lastIndex)], t, ink.ink, weight = 700)
+                Txt(themes[theme.coerceIn(0, themes.lastIndex)].second, t, ink.ink, weight = 700)
             }
         }
     }

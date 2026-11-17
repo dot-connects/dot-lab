@@ -55,8 +55,11 @@ import androidx.compose.foundation.gestures.detectTapGestures
 /** The fixed first three pages (spec §1c) plus user boards, as the editor and the carousel list them. */
 internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
 
+/** plan-r15 B2: the privacy policy, published from the dot-lab repo (GitHub Pages). */
+internal const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-09-standby/page/privacy.html"
+
 /**
- * Home (mockup SCREENS.home): the page pager (scrolls with the list), the permission banner while any of the eight
+ * Home (mockup SCREENS.home): the page pager (scrolls with the list), the permission banner while any of the seven
  * permissions is missing, then four groups of rows, each showing its current value.
  */
 @Composable
@@ -100,6 +103,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
         Section("정보") {
             item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 켜짐" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }
             item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }) }
+            item { val uri = androidx.compose.ui.platform.LocalUriHandler.current; NavRow("개인정보처리방침", { runCatching { uri.openUri(PRIVACY_URL) } }) }
         }
     }
 }
@@ -118,6 +122,13 @@ fun ThemeScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
                     // 단색 is folded into 사용자 지정's colours: its chip shows only while it is the stored choice
                     val bgs = BoardBg.entries.filter { it != BoardBg.SOLID || it == config.boardBg }
                     ChipFlow(bgs.map { it.ko }, bgs.indexOf(config.boardBg), { i -> update { it.withBoardBg(bgs[i]) } })
+                    // plan-r15 B1: 사진 흐림 draws the picked folders' photos; none picked = the plain ground
+                    if (config.boardBg == BoardBg.PHOTO_BLUR && config.photoFolders.isEmpty()) {
+                        Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                            T("폴더를 골라 주세요", 14.sp, 500, SK.muted, Modifier.weight(1f))
+                            ActionButton("고르기", { nav.push(Routes.PHOTOS) }, primary = false)
+                        }
+                    }
                     if (config.boardBg == BoardBg.SOLID) {
                         ColorPalette(config.boardBgColor, { c -> update { it.withBoardBg(BoardBg.SOLID, c) } }, BG_SWATCHES, Modifier.padding(top = 8.dp))
                     }

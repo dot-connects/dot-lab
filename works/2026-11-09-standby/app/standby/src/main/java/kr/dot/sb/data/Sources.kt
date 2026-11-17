@@ -7,19 +7,15 @@ import android.content.ContentUris
 import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.ImageDecoder
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
 import android.net.Uri
-import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
 import android.provider.CalendarContract
-import android.provider.MediaStore
-import kr.dot.sb.model.PhotoSource
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.app.NotificationManagerCompat
 import kr.dot.sb.platform.GlowScheduler
@@ -27,7 +23,6 @@ import kr.dot.sb.platform.Listener
 import kr.dot.sb.ui.state.AgendaItem
 import kr.dot.sb.ui.state.MediaInfo
 import kr.dot.sb.ui.state.Permissions
-import kr.dot.sb.ui.state.Photo
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -132,36 +127,13 @@ data class CalendarInfo(val id: Long, val accountType: String, val accountName: 
     val key: String get() = "$accountType|$accountName|$name"
 }
 
-/** One MediaStore image query: selection, its args, newest-first row limit. */
-data class PhotoQuery(val selection: String, val args: List<String>, val limit: Int)
-
-/** Which photos each 사진 고르기 mode reads (pure, so the choice is tested without a device). */
-object PhotoQueries {
-    private const val TAKEN = "${MediaStore.Images.Media.DATE_TAKEN}>0"
-    private val PICKS = listOf(PhotoQuery("${MediaStore.Images.Media.IS_FAVORITE}=1", emptyList(), 100), PhotoQuery(TAKEN, emptyList(), 200))
-
-    /** FOLDERS keeps the [folders] that still exist in [existing]; none left (or none picked) reads as PICKS. */
-    fun of(source: PhotoSource, folders: List<String>, existing: Set<String>): List<PhotoQuery> = when (source) {
-        PhotoSource.PICKS -> PICKS
-        PhotoSource.RECENT -> listOf(PhotoQuery(TAKEN, emptyList(), 200))
-        PhotoSource.FOLDERS -> folders.filter { it in existing }.distinct().let { f ->
-            if (f.isEmpty()) PICKS
-            else listOf(PhotoQuery("${MediaStore.Images.Media.BUCKET_DISPLAY_NAME} IN (${f.joinToString(",") { "?" }})", f, 200))
-        }
-    }
-}
-
-/** Calendar, alarm clock, photos: each returns null when its permission is missing. Blocking: call from IO. */
+/** Calendar and alarm clock: each returns null when its permission is missing. Blocking: call from IO. */
 object DeviceSources {
     fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
-
-    /** Full photo access or the user-selected subset (Android 14 partial access, plan-r13 B1). */
-    fun photos(ctx: Context) = has(ctx, Manifest.permission.READ_MEDIA_IMAGES) || has(ctx, Manifest.permission.READ_MEDIA_VISUAL_USER_SELECTED)
 
     fun permissions(ctx: Context) = Permissions(
         notifications = NotificationManagerCompat.getEnabledListenerPackages(ctx).contains(ctx.packageName),
         calendar = has(ctx, Manifest.permission.READ_CALENDAR),
-        photos = photos(ctx),
         exactAlarm = ctx.getSystemService(AlarmManager::class.java).canScheduleExactAlarms(),
     )
 
@@ -222,85 +194,4 @@ object DeviceSources {
 
     fun nextAlarm(ctx: Context): LocalDateTime? =
         GlowScheduler.nextAlarmMs(ctx)?.let { LocalDateTime.ofInstant(Instant.ofEpochMilli(it), ZoneId.systemDefault()) }
-
-    private val DATE = DateTimeFormatter.ofPattern("yyyy.M.d")
-    private val IMAGES: Uri = MediaStore.Images.Media.EXTERNAL_CONTENT_URI
-
-    private fun query(ctx: Context, selection: String?, args: Array<String>?, limit: Int) = ctx.contentResolver.query(
-        IMAGES,
-        arrayOf(MediaStore.Images.Media._ID, MediaStore.Images.Media.DATE_TAKEN, MediaStore.Images.Media.BUCKET_DISPLAY_NAME),
-        Bundle().apply {
-            putString(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION, selection)
-            putStringArray(android.content.ContentResolver.QUERY_ARG_SQL_SELECTION_ARGS, args)
-            putStringArray(android.content.ContentResolver.QUERY_ARG_SORT_COLUMNS, arrayOf(MediaStore.Images.Media.DATE_TAKEN))
-            putInt(android.content.ContentResolver.QUERY_ARG_SORT_DIRECTION, android.content.ContentResolver.QUERY_SORT_DIRECTION_DESCENDING)
-            putInt(android.content.ContentResolver.QUERY_ARG_LIMIT, limit)
-        },
-        null,
-    )
-
-    private data class Row(val id: Long, val takenMs: Long, val bucket: String)
-
-    private fun rows(ctx: Context, selection: String?, args: Array<String>?, limit: Int): List<Row> = try {
-        buildList {
-            query(ctx, selection, args, limit)?.use { c ->
-                while (c.moveToNext()) add(Row(c.getLong(0), c.getLong(1), c.getString(2) ?: ""))
-            }
-        }
-    } catch (e: SecurityException) { emptyList() }
-
-    /** Up to [n] random photos from [source] ([PhotoQueries]), decoded to <= 1280 px. null = no permission. */
-    fun photos(ctx: Context, n: Int, source: PhotoSource = PhotoSource.PICKS, folders: List<String> = emptyList()): List<Photo>? {
-        if (!photos(ctx)) return null
-        fun pool(s: PhotoSource) = PhotoQueries.of(s, folders, folders.toSet())
-            .flatMap { q -> rows(ctx, q.selection, q.args.toTypedArray().takeIf { it.isNotEmpty() }, q.limit) }.distinctBy { it.id }
-        // picked folders that no longer exist return no rows; nothing left reads as PICKS (no full-table folder scan)
-        val pool = pool(source).ifEmpty { if (source == PhotoSource.FOLDERS) pool(PhotoSource.PICKS) else emptyList() }
-        val out = ArrayList<Photo>(n)
-        for (r in pool.shuffled()) {
-            if (out.size >= n) break
-            decode(ctx, r, null)?.let { out += it }
-        }
-        return out
-    }
-
-    /** Every album with photos and its photo count, biggest first (사진 고르기 folder list, the photos page's chips). */
-    fun folders(ctx: Context): List<Pair<String, Int>> = try {
-        buildMap<String, Int> {
-            ctx.contentResolver.query(IMAGES, arrayOf(MediaStore.Images.Media.BUCKET_DISPLAY_NAME), null, null, null)?.use { c ->
-                while (c.moveToNext()) c.getString(0)?.takeIf { it.isNotBlank() }?.let { put(it, (get(it) ?: 0) + 1) }
-            }
-        }.entries.sortedByDescending { it.value }.map { it.key to it.value }
-    } catch (e: SecurityException) { emptyList() }
-
-    /** A photo taken on today's day-of-year 1..15 years ago, or null. */
-    fun memory(ctx: Context, today: LocalDate): Photo? {
-        if (!photos(ctx)) return null
-        val zone = ZoneId.systemDefault()
-        val sel = StringBuilder(); val args = ArrayList<String>()
-        for (y in 1..15) {
-            val d = today.minusYears(y.toLong())
-            if (sel.isNotEmpty()) sel.append(" OR ")
-            sel.append("(${MediaStore.Images.Media.DATE_TAKEN}>=? AND ${MediaStore.Images.Media.DATE_TAKEN}<?)")
-            args += d.atStartOfDay(zone).toInstant().toEpochMilli().toString()
-            args += d.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli().toString()
-        }
-        val r = rows(ctx, sel.toString(), args.toTypedArray(), 30).randomOrNull() ?: return null
-        val years = today.year - Instant.ofEpochMilli(r.takenMs).atZone(zone).year
-        return decode(ctx, r, years)
-    }
-
-    private fun decode(ctx: Context, r: Row, yearsAgo: Int?): Photo? = runCatching {
-        val uri = ContentUris.withAppendedId(IMAGES, r.id)
-        val bmp = ImageDecoder.decodeBitmap(ImageDecoder.createSource(ctx.contentResolver, uri)) { dec, info, _ ->
-            // decode straight to <= 1280 px (one bitmap, no full-size or scale copy); size is post-EXIF, rotation is kept
-            val k = 1280f / maxOf(info.size.width, info.size.height)
-            if (k < 1f) dec.setTargetSize((info.size.width * k).toInt().coerceAtLeast(1), (info.size.height * k).toInt().coerceAtLeast(1))
-            dec.allocator = ImageDecoder.ALLOCATOR_SOFTWARE
-        }
-        val taken = Instant.ofEpochMilli(r.takenMs).atZone(ZoneId.systemDefault()).toLocalDate()
-        // no reverse geocoding: the album name stands in for the place, and the camera roll has none worth showing
-        val place = if (r.bucket.equals("Camera", true)) "" else r.bucket
-        Photo(bmp.asImageBitmap(), place, taken.format(DATE), yearsAgo, uri.toString())
-    }.getOrNull()
 }

@@ -268,7 +268,7 @@ class ConfigCodecTest {
         val c = AppConfig(
             myClocks = listOf(FaceId.HANGUL, FaceId.RIM), excludedCalendars = setOf("a|b|c"), heatProtect = false,
             moodAutoOffMin = 15, nightNotifQuiet = false, photoIntervalSec = 300,
-            pagesOff = setOf("photos"), photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"),
+            pagesOff = setOf("photos"), photoFolders = listOf(TREE_CAM, TREE_TRIP), photoFilter = TREE_TRIP,
             boards = AppConfig().boards.mapIndexed { i, b -> if (i == 1) b.copy(on = false) else b },
         )
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
@@ -278,6 +278,21 @@ class ConfigCodecTest {
         assertEquals(AppConfig().photoIntervalSec, bad.photoIntervalSec)
         // a board that is on stores nothing extra
         assertTrue(!JSONObject(ConfigCodec.encode(AppConfig())).getJSONArray("boards").getJSONObject(0).has("on"))
+    }
+
+    @Test fun v13AlbumNamesAndSourcesReadAsNoFolders() {   // plan-r15 B1: no old value is a SAF grant
+        for (src in listOf("PICKS", "RECENT", "FOLDERS")) {
+            val old = JSONObject(ConfigCodec.encode(AppConfig())).put("v", 13).put("photoSource", src)
+                .put("photoFolders", JSONArray(listOf("Camera", "여행"))).put("photoFilter", "Camera").toString()
+            val c = ConfigCodec.decode(old)
+            assertEquals(emptyList<String>(), c.photoFolders)
+            assertEquals(null, c.photoFilter)
+        }
+        // a v14 save keeps its tree URIs; a filter naming no picked folder goes back to every folder
+        val v14 = AppConfig(photoFolders = listOf(TREE_CAM, TREE_TRIP))
+        assertEquals(v14.photoFolders, ConfigCodec.decode(ConfigCodec.encode(v14)).photoFolders)
+        assertEquals(null, ConfigCodec.decode(JSONObject(ConfigCodec.encode(v14)).put("photoFilter", "content://gone").toString()).photoFilter)
+        assertEquals(null, v14.copy(photoFilter = TREE_TRIP).withPhotoFolders(listOf(TREE_CAM)).photoFilter)
     }
 
     @Test fun upgradeKeepsTheOldFiveFreshInstallGetsTheNewFour() {   // (g)
@@ -334,4 +349,9 @@ class ConfigCodecTest {
     )
 
     private fun styleJson(s: ClockStyle): JSONObject = JSONObject(ConfigCodec.encode(AppConfig(styles = mapOf(FaceId.DIGITAL to s)))).getJSONObject("styles").getJSONObject("DIGITAL")
+
+    private companion object {
+        const val TREE_CAM = "content://com.android.externalstorage.documents/tree/primary%3ADCIM%2FCamera"
+        const val TREE_TRIP = "content://com.android.externalstorage.documents/tree/primary%3APictures%2F%EC%97%AC%ED%96%89"
+    }
 }

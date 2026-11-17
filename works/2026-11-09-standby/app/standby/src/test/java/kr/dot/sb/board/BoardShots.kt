@@ -80,7 +80,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             "usagestale" -> Fixtures.full().let { it.copy(usage = it.usage!!.copy(offline = true)) }
             "playing", "playing-night" -> Fixtures.full(if (key == "playing-night") 1f else 0f).copy(sleep = SleepState(true, 32))
             "emptyB" -> Fixtures.full().let {
-                it.copy(media = null, usage = null, memory = null, permissions = Permissions(photos = false), weather = it.weather!!.copy(offline = true))
+                it.copy(media = null, usage = null, memory = null, photoHint = "폴더를 골라 주세요", weather = it.weather!!.copy(offline = true))
             }
             else -> Fixtures.full()
         }.let { if (it.media != null && key.endsWith("-video")) video(it) else it }

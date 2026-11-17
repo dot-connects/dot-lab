@@ -45,7 +45,7 @@ abstract class SettingsShotKit {
     protected val nav = object : Nav { override fun push(route: String) {}; override fun back() {} }
     protected val env = SettingsEnv(
         foldable = true,
-        granted = mapOf(Perm.DREAM to false, Perm.NOTIFICATIONS to true, Perm.CALENDAR to true, Perm.PHOTOS to true, Perm.FULL_SCREEN to true, Perm.EXACT_ALARM to false, Perm.BATTERY to false),
+        granted = mapOf(Perm.DREAM to false, Perm.NOTIFICATIONS to true, Perm.CALENDAR to true, Perm.FULL_SCREEN to true, Perm.EXACT_ALARM to false, Perm.BATTERY to false),
         lux = 2.4f,
         licenseNames = listOf("LICENSE-robotoslab.txt", "OFL-inter.txt", "OFL-nunito.txt", "OFL-pretendard.txt", "OFL-sourceserif4.txt"),
         licenseText = { "Copyright 2020 The Inter Project Authors\nThis Font Software is licensed under the SIL Open Font License, Version 1.1." },
@@ -55,7 +55,7 @@ abstract class SettingsShotKit {
                 kr.dot.sb.data.CalendarInfo(3, "LOCAL", "", "가족", 0xFFFF9C56),
             )
         },
-        photoFolders = { listOf("Camera" to 1240, "Screenshots" to 312, "여행" to 86, "KakaoTalk" to 54) },
+        photoFolders = { f -> f.mapIndexed { i, u -> kr.dot.sb.data.PhotoFolder(u, listOf("Camera", "여행", "KakaoTalk")[i % 3], listOf(1240, 86, 54)[i % 3], broken = i == 2) } },
         chargeTrail = { listOf("11월 12일 23:12 · 무선 충전 → 켜짐", "11월 11일 08:05 · 케이블 충전 → 켜짐") },
         launcherApps = { kr.dot.sb.Fixtures.apps() },
         io = kotlinx.coroutines.Dispatchers.Unconfined,
@@ -81,7 +81,7 @@ abstract class SettingsShotKit {
 
     /** Pages on/off: 사진 and 음악 switched off (dimmed, gone from 처음 보이는 페이지 and the preview). */
     protected val someOff = AppConfig().let { c -> c.copy(pagesOff = setOf("photos"), boards = c.boards.map { if (it.id == "music") it.copy(on = false) else it }) }
-    protected val folders = AppConfig(photoSource = kr.dot.sb.model.PhotoSource.FOLDERS, photoFolders = listOf("Camera", "여행"))
+    protected val folders = AppConfig(photoFolders = listOf("content://t/tree/primary%3ADCIM%2FCamera", "content://t/tree/primary%3APictures%2Ftrip", "content://t/tree/sd%3AKakaoTalk"))
     protected val tallest = "w411dp-h3000dp-port-xhdpi"
 
     /** A board with an 앱 바로가기 card holding two apps (앱 고르기 route "apps:desk:0:0"). */
