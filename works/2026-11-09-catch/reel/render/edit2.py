@@ -149,7 +149,7 @@ def main() -> None:
                 play.append((starts[i] + tt, f_, min(1, v * gain)))
     (OUT / "sfx.json").write_text(json.dumps({"play": play, "starts": starts, "total": t0}, indent=1), encoding="utf-8")
     dst = R.parent.parent / "out" / "reel-rough2.mp4"
-    args = ["ffmpeg", "-v", "error", "-y", "-framerate", str(FPS), "-i", str(OUT / "frames" / "%04d.png")]
+    args = ["ffmpeg", "-v", "error", "-threads", "2", "-y", "-framerate", str(FPS), "-i", str(OUT / "frames" / "%04d.png")]
     for _, f_, _ in play:
         args += ["-i", str(raw / f"{f_}.ogg")]
     parts = [f"[{k + 1}:a]volume={v:.2f},adelay={int(t * 1000)}|{int(t * 1000)}[a{k}]" for k, (t, _, v) in enumerate(play)]

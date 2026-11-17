@@ -1,6 +1,9 @@
 // Fake-clock frame grabber for the reel's app scenes.
 // node reel/render/render.mjs <page.html?query> <frames> <outDir> [port]
 // Needs `python -m http.server <port> --bind 127.0.0.1 --directory C:/DC/DD/dot-lab` running (default 8766).
+// Heavy-job rule (memory reference_heavy_job_rule.md): run it BelowNormal on two logical threads, Chrome inherits both:
+//   cmd //c "start /b /wait /belownormal /affinity 30 node render.mjs <page> <frames> <outDir>"   (or /affinity C0)
+// and claim the render slot with the other sessions first.
 // Calls window.frame() once per frame (the page steps its own clock 1/30 s) and writes outDir/%04d.png,
 // then outDir/events.json (sound cues). Headless Chrome, CPU only; ~1 frame/s on this laptop.
 import { spawn } from "node:child_process";

@@ -137,7 +137,7 @@ def main() -> None:
     down = [c[0] for c in cues if c[1] == "drop"]; lift = [c[0] for c in cues if c[1] == "lift"]
     if down: play.append((down[0], "sfx_motor", .85 * .5, .25))
     if lift: play.append((lift[0], "sfx_motor", 1.0 * .5, .67))
-    args = ["ffmpeg", "-v", "error", "-y", "-framerate", str(FPS), "-i", str(OUT / "frames" / "%04d.png")]
+    args = ["ffmpeg", "-v", "error", "-threads", "2", "-y", "-framerate", str(FPS), "-i", str(OUT / "frames" / "%04d.png")]
     for _, f, _, _ in play:
         args += ["-i", str(raw / f"{f}.ogg")]
     parts = []
