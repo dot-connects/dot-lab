@@ -15,9 +15,15 @@ reaction cut: the pet walks on the phone -> the real cat stares at the camera. T
 the Worker from an A10 frame (`reel/frames/pet-sheet.webp`, 11-16, dev token). Mockups: claude.ai artifact TFzcAGK3vacPvgBQdwgwFX.
 
 **Look picked (operator 11-16): A, warm live action, heavy wide captions at the bottom, slow push-ins, ~21 s; app scenes
-must be the REAL app screens**, not redrawn mockups: the operator screen-records the dev app on the phone (catch on a
-monitor playing A10, capsule, dex, pet sheet, the pet on the home screen) and the reel composites those recordings
-(home screen into C01's green phone). Redrawing stays the fallback only for a beat the recording cannot give.
+must be the REAL app screens**, not redrawn mockups. 11-17 route B (operator OK): the operator does not film (memory),
+and the Android emulator (AEHD, Pixel 7 API 35, dev app installed, virtual-scene camera) froze this laptop for 2 min
+per command and could not aim its camera at a poster, so it was shut down. The app scenes are instead **ports of the
+app's own drawing code** to Canvas/CSS with a fake clock (`reel/render/`): `catch.html` = CatchScreen.render + Claw/
+Capsule/ClawArt/CapsuleArt/ClawButton/Dangle at the same dp, speeds and colours, the camera = A09 (same cat, whole
+body; A10's close head left no lift), the cut-out from the app's own `magic_touch.tflite`; `dex.html` = DexScreen +
+Book; `home.html` = PetService/PetLook/PetBrain/TalkBubble/Sheet.cells with the cat's real 12-cell sheet at the size
+slider's max (112 dp). The one emulator screenshot of the dev app is the reference they were checked against.
+`phone_comp.py` keys the home render into C01's green phone; `edit.py` cuts, grades and mixes the app's own sfx.
 
 ## What the references taught (applied)
 

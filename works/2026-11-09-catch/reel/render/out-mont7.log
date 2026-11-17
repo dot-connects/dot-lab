@@ -1,0 +1,7 @@
+frame 1/158 t=0   3s
+frame 31/158 t=1000   59s
+frame 61/158 t=2000   118s
+frame 91/158 t=3000   153s
+frame 121/158 t=4000   176s
+frame 151/158 t=5000   200s
+no page errors

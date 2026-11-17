@@ -1,0 +1,5 @@
+frame 1/92 t=0   2s
+frame 31/92 t=1000   28s
+frame 61/92 t=2000   55s
+frame 91/92 t=3000   79s
+no page errors

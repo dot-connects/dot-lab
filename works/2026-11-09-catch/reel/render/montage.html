@@ -1,0 +1,68 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>fur-ball montage render</title>
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<script type="module">
+// Reel montage (operator 11-17): other real cats and dogs pop into fur-balls one after another, then they all bounce
+// together with 모찌. Each real one is cut with the app's magic_touch (cutmany.html) and turned into a fur-ball by
+// the app's own preview call (/transform, fluff) on the white-flattened cut. People wave or sit like anyone at home (operator 11-17: not posed models). 0.55 s per animal, then 0.8 s all together. Fake clock.
+const DT = 1000 / 30, cv = document.getElementById("cv"), g = cv.getContext("2d");
+const D = 2.625, W = 1080 / D, H = 1920 / D;
+const LIST = ["src00", "f01", "e01", "src01", "f03", "e04", "e02"], STEP = .5;
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+const back = x => { x = clamp(x, 0, 1); const c = 1.9; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
+function keyed(img) {   // Sheet.keyGreen on a single picture, cut to its pixels
+  const c = new OffscreenCanvas(img.width, img.height), cg = c.getContext("2d"); cg.drawImage(img, 0, 0);
+  const id = cg.getImageData(0, 0, c.width, c.height), d = id.data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let p = 0; p < d.length; p += 4) { const m = Math.max(d[p], d[p + 2]), k = d[p + 1] - m; if (k > 60) d[p + 3] = 0; else if (k > 18) { d[p + 3] = Math.floor(d[p + 3] * (60 - k) / 42); d[p + 1] = m; }
+    if (d[p + 3] > 24) { const q = p / 4, x = q % c.width, y = Math.floor(q / c.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }
+  cg.putImageData(id, 0, 0); const o = new OffscreenCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext("2d").drawImage(c, -x0, -y0); return o;
+}
+let items = [], mochi, time = 0;
+const puffs = Array.from({ length: 16 }, (_, i) => ({ a: i / 16 * Math.PI * 2 + (i % 3) * .3, v: 110 + (i * 37 % 70), r: 6 + (i * 13 % 7), c: i % 3 }));
+const fit = (img, h) => [h * img.width / img.height, h];
+function render() {
+  const t = time / 1000, i = Math.floor(t / STEP);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  if (i < LIST.length) {
+    const it = items[i], u = t - i * STEP;
+    g.filter = "blur(16px) brightness(.7)"; const s = Math.max(1080 / it.bg.width, 1920 / it.bg.height);
+    g.drawImage(it.bg, (1080 - it.bg.width * s) / 2 - 30, (1920 - it.bg.height * s) / 2 - 30, it.bg.width * s + 60, it.bg.height * s + 60); g.filter = "none";
+    // the real one stays where it is in its own shot (sharp over the blurred shot), then pops in place
+    const ox = (1080 - it.bg.width * s) / 2, oy = (1920 - it.bg.height * s) / 2, [l, tp, r, bt] = it.box;
+    const rx = (ox + l * it.bg.width * s) / D, ry = (oy + tp * it.bg.height * s) / D, rw = (r - l) * it.bg.width * s / D, rh = (bt - tp) * it.bg.height * s / D;
+    g.setTransform(D, 0, 0, D, 0, 0);
+    const cx = clamp(rx + rw / 2, W * .25, W * .75), cy = clamp(ry + rh / 2, H * .3, H * .7);
+    if (u < .24) g.drawImage(it.cut, rx, ry, rw, rh);
+    if (u >= .22) {
+      const f = 1 - ease((u - .22) / .25); g.fillStyle = `rgba(255,255,255,${.9 * f})`; g.fillRect(0, 0, W, H);
+      for (const p of puffs) { const v = u - .22, d = p.v * ease(v / .4), a = clamp(1 - v / .35, 0, 1);
+        g.fillStyle = [`rgba(255,253,246,${a})`, `rgba(255,216,77,${a})`, `rgba(255,170,190,${a})`][p.c]; g.beginPath(); g.arc(cx + Math.cos(p.a) * d, cy + Math.sin(p.a) * d, p.r, 0, 7); g.fill(); }
+      const k = back((u - .24) / .22), [w, h] = fit(it.fluff, clamp(Math.max(rh, rw) * .8, H * .26, H * .4) * k);
+      g.save(); g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 14 * D; g.shadowOffsetY = 5 * D; g.drawImage(it.fluff, cx - w / 2, cy - h / 2, w, h); g.restore();
+    }
+    return;
+  }
+  // all together on the menus' sky and grass, bouncing out of step
+  const u = t - LIST.length * STEP;
+  g.setTransform(D, 0, 0, D, 0, 0);
+  const lg = g.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, "#BFE6FF"); lg.addColorStop(.56, "#BFE6FF"); lg.addColorStop(.56, "#D9F2C9"); lg.addColorStop(1, "#D9F2C9");
+  g.fillStyle = lg; g.fillRect(0, 0, W, H);
+  const all = [...items.map(x => x.fluff), mochi], pos = [[.14, .46], [.38, .43], [.62, .43], [.86, .46], [.14, .7], [.38, .67], [.62, .67], [.86, .7]];
+  all.forEach((img, j) => {
+    const k = back((u - j * .05) / .25), hop = Math.abs(Math.sin((u * 2.2 + j * .37) * Math.PI)) * 14, [w, h] = fit(img, 96 * k);
+    const [px, py] = pos[j];
+    g.drawImage(img, px * W - w / 2, py * H - h - hop, w, h);
+  });
+}
+window.ready = (async () => {
+  items = await Promise.all(LIST.map(async n => ({ bg: await load(`mont/${n}.jpg`), cut: await load(`out-mont/${n}-cut.png`), fluff: keyed(await load(`out-mont/${n}-fluff.webp`)), box: (await (await fetch(`out-mont/${n}.json`)).json()).box })));
+  const sh = await load("../frames/pet-sheet-fluff-white.webp"), c = new OffscreenCanvas(sh.width / 4, sh.height / 3); c.getContext("2d").drawImage(sh, -sh.width / 4, 0);
+  mochi = keyed(c); return true;
+})();
+let n = 0;
+window.frame = async () => { if (n++ > 0) time += DT; render(); return { url: cv.toDataURL("image/png"), st: "", cap: null, toast: false, t: Math.round(time) }; };
+window.events = () => ({ events: LIST.map((_, i) => [Math.round((i * STEP + .22) * 1000), "pop", .6]) });
+</script>

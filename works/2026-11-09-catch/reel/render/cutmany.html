@@ -1,0 +1,43 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>montage cut-outs</title>
+<script type="module">
+// Montage subjects cut with the app's own magic_touch.tflite at a keypoint (as Segmenter.kt), soft edge from the
+// confidence, largest blob under the keypoint; saved like CutOut.make (512 long side) and flattened on white like
+// AiWork.cutOut (Pixels.onWhite). window.cuts() -> [{name, cut (transparent), white, box}] as data URLs.
+import { FilesetResolver, InteractiveSegmenter } from "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs";
+const LIST = [["e01", .55, .42], ["e02", .55, .45], ["e04", .5, .55], ["f01", .5, .55], ["f03", .5, .55]];
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+const url = c => c.convertToBlob({ type: "image/png" }).then(b => new Promise(r => { const f = new FileReader(); f.onload = () => r(f.result); f.readAsDataURL(b); }));
+window.ready = (async () => {
+  const files = await FilesetResolver.forVisionTasks("https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm");
+  window.seg = await InteractiveSegmenter.createFromOptions(files, { baseOptions: { modelAssetPath: "/works/2026-11-09-catch/app/app/src/main/assets/models/magic_touch.tflite", delegate: "CPU" },
+    outputConfidenceMasks: true, outputCategoryMask: false });
+  return true;
+})();
+window.cuts = async () => {
+  const out = [];
+  for (const [name, kx, ky] of LIST) {
+    const img = await load(`mont/${name}.jpg`), W = img.width, H = img.height;
+    const c = new OffscreenCanvas(W, H); c.getContext("2d").drawImage(img, 0, 0);
+    const m = await new Promise(r => seg.segment(c, { keypoint: { x: kx, y: ky } }, o => { const k = o.confidenceMasks[0]; r({ d: new Float32Array(k.getAsFloat32Array()), w: k.width, h: k.height }); }));
+    // blob under the keypoint on the model grid
+    const on = new Uint8Array(m.w * m.h), keep = new Uint8Array(m.w * m.h);
+    for (let i = 0; i < on.length; i++) on[i] = m.d[i] > .5;
+    const st = [[Math.floor(kx * m.w), Math.floor(ky * m.h)]];
+    while (st.length) { const [x, y] = st.pop(); if (x < 0 || y < 0 || x >= m.w || y >= m.h) continue; const i = y * m.w + x; if (!on[i] || keep[i]) continue; keep[i] = 1; st.push([x + 1, y], [x - 1, y], [x, y + 1], [x, y - 1]); }
+    let x0 = m.w, y0 = m.h, x1 = -1, y1 = -1;
+    const a = new OffscreenCanvas(m.w, m.h), ag = a.getContext("2d"), id = ag.createImageData(m.w, m.h);
+    for (let y = 0; y < m.h; y++) for (let x = 0; x < m.w; x++) { const i = y * m.w + x; if (keep[i]) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } id.data[i * 4 + 3] = keep[i] ? Math.round(Math.min(1, m.d[i] * 1.4) * 255) : 0; }
+    ag.putImageData(id, 0, 0);
+    const sx = W / m.w, sy = H / m.h, mx = (x1 - x0 + 1) * sx * .08, my = (y1 - y0 + 1) * sy * .08;
+    const l = Math.max(0, x0 * sx - mx), t = Math.max(0, y0 * sy - my), r = Math.min(W, (x1 + 1) * sx + mx), b = Math.min(H, (y1 + 1) * sy + my);
+    const k = 512 / Math.max(r - l, b - t), cut = new OffscreenCanvas(Math.round((r - l) * k), Math.round((b - t) * k)), cg = cut.getContext("2d");
+    cg.scale(k, k); cg.translate(-l, -t); cg.imageSmoothingQuality = "high"; cg.drawImage(a, 0, 0, W, H);
+    cg.globalCompositeOperation = "source-in"; cg.drawImage(img, 0, 0);
+    const white = new OffscreenCanvas(cut.width, cut.height), wg = white.getContext("2d"); wg.fillStyle = "#fff"; wg.fillRect(0, 0, cut.width, cut.height); wg.drawImage(cut, 0, 0);
+    out.push({ name, cut: await url(cut), white: await url(white), box: [l / W, t / H, r / W, b / H] });
+  }
+  return out;
+};
+</script>

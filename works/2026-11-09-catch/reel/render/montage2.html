@@ -1,0 +1,69 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>fur-ball grid render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=block">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<script type="module">
+// Montage v2 (review 11-17, cut 4: the one-by-one pops went by too fast): six cells in a 2 x 3 grid, each playing its
+// own live shot; from 0.6 s one cell every 0.35 s pops (flash + puffs) into that subject's fur-ball on the menus'
+// sky/grass card, then all six hop together. The fur-balls come from the app's own preview call on the white-flattened
+// magic_touch cut (cutmany.html). Each cell's last live frame is the very frame the cut came from. Fake clock, 4.5 s.
+const DT = 1000 / 30, cv = document.getElementById("cv"), g = cv.getContext("2d");
+// cut 7: ?p0=&gap= (s) slow the pops, ?y0=&cell=&bg= move the grid into the reel's safe area
+const Q = new URLSearchParams(location.search);
+const LIST = ["src00", "f01", "e01", "src01", "f03", "e04"], P0 = +(Q.get("p0") ?? .6), GAP = +(Q.get("gap") ?? .35), FR = 74;
+const CW = +(Q.get("cell") ?? 470), CH = CW, GX = 20, GY = 20, X0 = (1080 - 2 * CW - GX) / 2, Y0 = +(Q.get("y0") ?? 350);   // px
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+const back = x => { x = clamp(x, 0, 1); const c = 1.9; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
+function keyed(img) {
+  const c = new OffscreenCanvas(img.width, img.height), cg = c.getContext("2d"); cg.drawImage(img, 0, 0);
+  const id = cg.getImageData(0, 0, c.width, c.height), d = id.data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let p = 0; p < d.length; p += 4) { const m = Math.max(d[p], d[p + 2]), k = d[p + 1] - m; if (k > 60) d[p + 3] = 0; else if (k > 18) { d[p + 3] = Math.floor(d[p + 3] * (60 - k) / 42); d[p + 1] = m; }
+    if (d[p + 3] > 24) { const q = p / 4, x = q % c.width, y = Math.floor(q / c.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }
+  cg.putImageData(id, 0, 0); const o = new OffscreenCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext("2d").drawImage(c, -x0, -y0); return o;
+}
+const cache = new Map();
+const frame = (n, i) => { const k = `${n}/${i}`; if (!cache.has(k)) cache.set(k, load(`mont/vid/${n}/${String(i).padStart(4, "0")}.jpg`)); return cache.get(k); };
+let items = [], time = 0;
+const puffs = Array.from({ length: 12 }, (_, i) => ({ a: i / 12 * Math.PI * 2 + (i % 3) * .3, v: 120 + (i * 37 % 80), r: 12 + (i * 13 % 10), c: i % 3 }));
+async function cell(j, t) {
+  const it = items[j], x = X0 + (j % 2) * (CW + GX), y = Y0 + Math.floor(j / 2) * (CH + GY), P = P0 + GAP * j, u = t - P;
+  g.save(); g.beginPath(); g.roundRect(x, y, CW, CH, 63); g.clip();
+  if (u < .06) {   // live: cover-fit, centred on the subject
+    const im = await frame(it.n, clamp(FR - Math.round((P - t) * 30 * Math.min(1, (FR - 1) / (P * 30))), 1, FR)   /* a late cell plays slower instead of waiting on frame 1 */);
+    const [l, tp, r, bt] = it.box, cx = (l + r) / 2 * im.width, cy = (tp + bt) / 2 * im.height;
+    const s = Math.max(CW / im.width, CH / im.height, CW * .8 / ((r - l) * im.width), CH * .8 / ((bt - tp) * im.height));
+    g.drawImage(im, clamp(x + CW / 2 - cx * s, x + CW - im.width * s, x), clamp(y + CH / 2 - cy * s, y + CH - im.height * s, y), im.width * s, im.height * s);
+  } else {         // the fur-ball on the menus' card
+    const lg = g.createLinearGradient(0, y, 0, y + CH); lg.addColorStop(0, "#BFE6FF"); lg.addColorStop(.62, "#BFE6FF"); lg.addColorStop(.62, "#D9F2C9"); lg.addColorStop(1, "#D9F2C9");
+    g.fillStyle = lg; g.fillRect(x, y, CW, CH);
+    const k = back((u - .06) / .3), hop = t > P0 + GAP * 5 + .5 ? Math.abs(Math.sin((t * 2.1 + j * .37) * Math.PI)) * 24 : 0;
+    const f = it.fluff, h = CH * .7 * k, w = h * f.width / f.height, ww = Math.min(w, CW * .86), hh = h * ww / w;
+    g.save(); g.shadowColor = "rgba(36,51,31,.28)"; g.shadowBlur = 20; g.shadowOffsetY = 10;
+    g.drawImage(f, x + CW / 2 - ww / 2, y + CH * .86 - hh - hop, ww, hh); g.restore();
+  }
+  if (u >= 0 && u < .45) {   // flash and puffs
+    const fl = 1 - ease(u / .3); g.fillStyle = `rgba(255,255,255,${.95 * fl})`; g.fillRect(x, y, CW, CH);
+    for (const p of puffs) { const d = p.v * ease(u / .4), a = clamp(1 - u / .4, 0, 1);
+      g.fillStyle = [`rgba(255,253,246,${a})`, `rgba(255,216,77,${a})`, `rgba(255,170,190,${a})`][p.c]; g.beginPath(); g.arc(x + CW / 2 + Math.cos(p.a) * d, y + CH / 2 + Math.sin(p.a) * d, p.r, 0, 7); g.fill(); }
+  }
+  g.restore();
+  g.strokeStyle = "#24331F"; g.lineWidth = 8; g.beginPath(); g.roundRect(x + 4, y + 4, CW - 8, CH - 8, 60); g.stroke();
+}
+async function render() {
+  const t = time / 1000;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = Q.get("bg") ?? "#FFF6EA"; g.fillRect(0, 0, 1080, 1920);
+  for (let j = 0; j < LIST.length; j++) await cell(j, t);
+}
+window.ready = (async () => {
+  await document.fonts.load("20px Jua");
+  items = await Promise.all(LIST.map(async n => ({ n, fluff: keyed(await load(`out-mont/${n}-fluff.webp`)), box: (await (await fetch(`out-mont/${n}.json`)).json()).box })));
+  return true;
+})();
+let n = 0;
+window.frame = async () => { if (n++ > 0) time += DT; await render(); return { url: cv.toDataURL("image/png"), st: "", cap: null, toast: false, t: Math.round(time) }; };
+window.events = () => ({ events: LIST.map((_, i) => [Math.round((P0 + GAP * i) * 1000), "pop", .6]) });
+</script>

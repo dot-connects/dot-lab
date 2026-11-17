@@ -1,0 +1,113 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>end card render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Noto+Sans+KR:wght@500;800;900&display=block">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<script type="module">
+// Animated end card in the app's menu look (ui/Book.kt: sky over grass, paper, ink outline, hard drop, Jua):
+// 모찌 walks in (its sheet's walk cells at the app's 130 ms) and smiles, its figure twin pops beside it ("피규어도"),
+// the name drops, the CTA presses once, the promise sits big in yellow, the CTA under it. Fake clock, 3 s.
+const DT = 1000 / 30, cv = document.getElementById("cv"), g = cv.getContext("2d");
+const D = 2.625, W = 1080 / D, H = 1920 / D;
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+const back = x => { x = clamp(x, 0, 1); const c = 1.7; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
+function cells(img) {
+  const out = [];
+  for (let i = 0; i < 12; i++) {
+    const c = new OffscreenCanvas(img.width / 4, img.height / 3), cg = c.getContext("2d"); cg.drawImage(img, -(i % 4) * img.width / 4, -Math.floor(i / 4) * img.height / 3);
+    const id = cg.getImageData(0, 0, c.width, c.height), d = id.data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let p = 0; p < d.length; p += 4) { const m = Math.max(d[p], d[p + 2]), k = d[p + 1] - m; if (k > 60) d[p + 3] = 0; else if (k > 18) { d[p + 3] = Math.floor(d[p + 3] * (60 - k) / 42); d[p + 1] = m; }
+      if (d[p + 3] > 24) { const q = p / 4, x = q % c.width, y = Math.floor(q / c.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }
+    cg.putImageData(id, 0, 0); const o = new OffscreenCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext("2d").drawImage(c, -x0, -y0); out.push(o);
+  }
+  return out;
+}
+let fl, fg, ic, time = 0;
+// cut 7 (?v=7): the reel's second half is one quiet slate (the home wallpaper's tones), so the end card stays on it:
+// the app icon, the name, one modest promise line, the pet walking in over the CTA, the link line. All inside the
+// reel's safe area (y 300-1400 px). Type = the captions' (Noto Sans KR 900, white; the CTA the one yellow thing).
+const V7 = new URLSearchParams(location.search).get("v") === "7";
+function render7() {
+  const t = time / 1000, NS = "'Noto Sans KR'";
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  const lg = g.createLinearGradient(0, 0, 400, 1920); lg.addColorStop(0, "#232D38"); lg.addColorStop(.55, "#3A4753"); lg.addColorStop(1, "#4E5459");
+  g.fillStyle = lg; g.fillRect(0, 0, 1080, 1920);
+  g.textAlign = "center"; g.textBaseline = "alphabetic";
+  // the app icon pops
+  const k = back((t - .05) / .35), s = 280 * k, ix = 540, iy = 450;
+  if (s > 1) {
+    g.save(); g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 40; g.shadowOffsetY = 14;
+    const ig = g.createLinearGradient(ix - s / 2, iy - s / 2, ix + s / 2, iy + s / 2); ig.addColorStop(0, "#D3EEFF"); ig.addColorStop(1, "#8FCBF7");
+    g.beginPath(); g.roundRect(ix - s / 2, iy - s / 2, s, s, s * .29); g.fillStyle = ig; g.fill(); g.shadowColor = "transparent"; g.clip();
+    g.drawImage(ic, ix - s * .75, iy - s * .75, s * 1.5, s * 1.5); g.restore();
+  }
+  g.globalAlpha = clamp((t - .3) / .25, 0, 1); g.fillStyle = "#FFFFFF"; g.font = `900 104px ${NS}`; g.fillText("리얼뽑기", 540, 745);
+  g.globalAlpha = clamp((t - .7) / .3, 0, 1) * .82; g.font = `500 46px ${NS}`; g.fillText("우리 아이가 내 폰에 사는 펫으로", 540, 830); g.globalAlpha = 1;
+  // the CTA, then the pet walks in along its top edge and smiles
+  const ck = back((t - .9) / .3), press = t > 1.75 && t < 1.93 ? 1 : 0, cy = 1235, ch = 136;
+  if (ck > 0) {
+    g.save(); g.translate(540, cy); g.scale(ck, ck);
+    g.font = `800 56px ${NS}`; const tw = g.measureText("안드로이드 먼저 해 보기").width + 120;
+    g.fillStyle = "#1B2118"; g.beginPath(); g.roundRect(-tw / 2, -ch / 2 + 10, tw, ch, ch / 2); g.fill();
+    g.fillStyle = "#FFD84D"; g.beginPath(); g.roundRect(-tw / 2, -ch / 2 + 10 * press, tw, ch, ch / 2); g.fill();
+    g.fillStyle = "#1B2118"; g.fillText("안드로이드 먼저 해 보기", 0, 20 + 10 * press); g.restore();
+  }
+  g.globalAlpha = clamp((t - 1.3) / .3, 0, 1) * .9; g.fillStyle = "#FFFFFF"; g.font = `500 44px ${NS}`; g.fillText("프로필 링크에서", 540, 1392); g.globalAlpha = 1;
+  const floor = cy - ch / 2 + 6, walkEnd = 1.5, x = -140 + (540 + 140) * ease(t / walkEnd), walking = t < walkEnd;
+  const img = walking ? fl[2 + Math.floor(time / 130) % 4] : fl[1];
+  const hop = walking ? Math.abs(Math.sin((time - 65) / 260 * Math.PI)) * 8 : Math.abs(Math.sin((t - walkEnd) * Math.PI / .55)) * 44 * clamp(1 - (t - walkEnd) / 1.7, 0, 1);
+  const ph = 250, pw = ph * img.width / img.height;
+  g.drawImage(img, x - pw / 2, floor - ph - hop + (press && !walking ? 10 : 0), pw, ph);
+}
+function pill(text, x, y, font, fill, press = 0) {
+  g.font = font; const tw = g.measureText(text).width + 40, h = 46;
+  g.fillStyle = "#24331F"; g.beginPath(); g.roundRect(x - tw / 2, y + 4, tw, h, h / 2); g.fill();
+  g.fillStyle = fill; g.beginPath(); g.roundRect(x - tw / 2, y + 4 * press, tw, h, h / 2); g.fill();
+  g.strokeStyle = "#24331F"; g.lineWidth = 2.5; g.stroke();
+  g.fillStyle = "#24331F"; g.textAlign = "center"; g.fillText(text, x, y + 4 * press + 31);
+}
+function render() {
+  if (V7) return render7();
+  const t = time / 1000;
+  g.setTransform(D, 0, 0, D, 0, 0);
+  const lg = g.createLinearGradient(0, 0, 0, H); lg.addColorStop(0, "#BFE6FF"); lg.addColorStop(.5, "#BFE6FF"); lg.addColorStop(.5, "#D9F2C9"); lg.addColorStop(1, "#D9F2C9");
+  g.fillStyle = lg; g.fillRect(0, 0, W, H);
+  // the name drops in
+  const nk = back((t - .15) / .4); g.save(); g.globalAlpha = clamp(t / .2, 0, 1); g.translate(W / 2, H * .16 + 18 - 40 * (1 - nk));
+  g.font = "52px Jua"; g.textAlign = "center"; g.fillStyle = "#fff"; g.fillText("리얼뽑기", 0, 4); g.fillStyle = "#24331F"; g.fillText("리얼뽑기", 0, 0); g.restore();
+  // 모찌 walks in from the left to the middle-left, then smiles and hops
+  const floor = H * .5 + 8, walkEnd = .9, x = -60 + (W * .38 + 60) * ease(t / walkEnd);
+  const walking = t < walkEnd, img = walking ? fl[2 + Math.floor(time / 130) % 4] : fl[1];
+  const hop = walking ? Math.abs(Math.sin((time - 65) / 260 * Math.PI)) * 4 : Math.abs(Math.sin((t - walkEnd) * Math.PI / .55)) * 16 * clamp(1 - (t - walkEnd) / 1.6, 0, 1);
+  const ph = 150, pw = ph * img.width / img.height;
+  g.drawImage(img, x - pw / 2, floor - ph - hop, pw, ph);
+  // its figure twin pops in beside it
+  if (t > 1.0) { const k = back((t - 1.0) / .3), fh = 130 * k, fw = fh * fg[1].width / fg[1].height;
+    g.drawImage(fg[1], W * .68 - fw / 2, floor - fh, fw, fh);
+    g.globalAlpha = clamp((t - 1.2) / .2, 0, 1); g.font = "13px Jua"; g.fillStyle = "#24331F"; g.textAlign = "center"; g.fillText("털뭉치", W * .38, floor + 22); g.fillText("피규어", W * .68, floor + 22); g.globalAlpha = 1; }
+  // hierarchy (review 11-17, cut 4): the promise one quiet line, the CTA the strongest thing, nothing under 78 %
+  if (t > .9) { g.globalAlpha = clamp((t - .9) / .25, 0, 1); g.font = "20px Jua"; g.textAlign = "center"; g.fillStyle = "#24331F";
+    g.fillText("우리 아이도 움직이는 털뭉치로", W / 2, H * .6 + 7); g.globalAlpha = 1; }
+  if (t > .6) {
+    const k = back((t - .6) / .3), press = t > 1.0 && t < 1.18 ? 1 : 0;
+    g.save(); g.translate(W / 2, H * .69); g.scale(k, k);
+    g.font = "26px Jua"; const tw = g.measureText("안드로이드 먼저 해 보기").width + 56, hh = 64;
+    g.fillStyle = "#24331F"; g.beginPath(); g.roundRect(-tw / 2, -hh / 2 + 5, tw, hh, hh / 2); g.fill();
+    g.fillStyle = "#FFD84D"; g.beginPath(); g.roundRect(-tw / 2, -hh / 2 + 5 * press, tw, hh, hh / 2); g.fill();
+    g.strokeStyle = "#24331F"; g.lineWidth = 3; g.stroke();
+    g.fillStyle = "#24331F"; g.textAlign = "center"; g.fillText("안드로이드 먼저 해 보기", 0, 9 + 5 * press); g.restore();
+  }
+  if (t > 1.2) { g.globalAlpha = clamp((t - 1.2) / .25, 0, 1); g.font = "15px Jua"; g.fillStyle = "#5D6B57"; g.textAlign = "center"; g.fillText("프로필 링크에서", W / 2, H * .765 + 6); g.globalAlpha = 1; }
+}
+window.ready = (async () => {
+  await Promise.all([document.fonts.load("64px 'Black Han Sans'"), document.fonts.load("26px Jua"), ...[500, 800, 900].map(w => document.fonts.load(`${w} 40px 'Noto Sans KR'`, "리얼뽑기 우리 아이가 내 폰에 사는 펫으로 안드로이드 먼저 해 보기 프로필 링크에서"))]);
+  ic = await load("/works/2026-11-09-catch/app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png");
+  const [a, b] = await Promise.all([load("../frames/pet-sheet-fluff-white.webp"), load("../frames/pet-sheet-figure.webp")]);
+  fl = cells(a); fg = cells(b); return true;
+})();
+let n = 0;
+window.frame = async () => { if (n++ > 0) time += DT; render(); return { url: cv.toDataURL("image/png"), st: "", cap: null, toast: false, t: Math.round(time) }; };
+window.events = () => ({ events: V7 ? [[50, "pop", .4], [1500, "boing", .5], [1750, "tap", .5]] : [[1000, "pop", .5], [1700, "tap", .5], [900, "boing", .4]] });
+</script>

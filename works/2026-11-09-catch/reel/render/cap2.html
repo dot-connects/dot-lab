@@ -1,0 +1,31 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=411.43">
+<title>reel caption v2</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=block">
+<style>
+/* Captions v2 (review 11-17, cut 4): the app's own card look so the whole reel reads as one brand. Jua 30 sp, one line,
+   cream pill, ink text and 3 dp ink outline, 4 dp hard lip (like the dex cards); the one *marked* word sits on a yellow
+   highlighter block. ?t=우리 집 *모찌*를&y=73&hl=1  (y = centre in % of the height; hl=0 renders without the highlight,
+   so the edit can sweep it in left to right). Shot on black and on white; capmatte.py recovers the alpha. */
+:root{--paper:#FFFDF6;--ink:#24331F;--sun:#FFD84D}
+html,body{margin:0;width:411.43px;height:731.43px;overflow:hidden}
+.pill{position:absolute;left:50%;transform:translate(-50%,-50%);white-space:nowrap;font:400 30px/1 Jua,sans-serif;color:var(--ink);
+  background:var(--paper);border-radius:999px;padding:13px 22px 12px;box-shadow:0 4px 0 var(--ink),inset 0 0 0 3px var(--ink)}
+.pill mark{color:inherit;background:var(--sun);border-radius:8px;padding:0 5px;margin:0 -1px;box-decoration-break:clone}
+.pill.nohl mark{background:transparent}
+</style>
+<div class="pill" id="c"></div>
+<script>
+const q = new URLSearchParams(location.search);
+document.body.style.background = q.get("bg") ?? "#000";
+const c = document.getElementById("c");
+c.style.top = (q.get("y") ?? "73") + "%";
+if (q.get("hl") === "0") c.classList.add("nohl");
+// text nodes only (the line comes from the URL); *word* -> <mark>
+(q.get("t") ?? "").split(/(\*[^*]+\*)/).forEach(part => {
+  if (part.startsWith("*") && part.endsWith("*")) { const m = document.createElement("mark"); m.textContent = part.slice(1, -1); c.append(m); }
+  else if (part) c.append(part);
+});
+window.ready = document.fonts.load("30px Jua").then(() => document.fonts.ready).then(() => true);
+</script>

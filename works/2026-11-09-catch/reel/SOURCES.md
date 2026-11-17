@@ -66,3 +66,28 @@ Page URL pattern: `https://www.pexels.com/video/<id>/` (redirects to the slugged
 - **C: C01** (27380944). Indoor (bookshelf), hand holds a clean green screen straight-on, portrait. Runner-up **C09** (9558964): person raises the green phone to camera, good for the 'phone rises into frame' beat, but gray studio, not a living room.
 - **Same-cat pair:** B01-B05 and A09/A10 are the same animal (dark tortie/tabby, Sam Lion). But A09/A10 are awake, not asleep, so the sleeping shot would need a different cat. The [A] [B] [S] clips (A01, A02, A04, A06, A07, A08) look like one gray/lilac British shorthair (A07 looks creamier under warm light), but none has a phone clip.
 - Dog backup D: D02 (beagle on sofa, calm, portrait). No dog + phone clip collected.
+
+## E. Candid people (2026-11-17, waving + baby prioritised; studio picks rejected)
+
+| # | Page URL | Author | Licence | Source res | File (rendition) | Len | Note |
+|---|---|---|---|---|---|---|---|
+| E01 | https://www.pexels.com/video/6222171/ | Antonius Ferret | Pexels | 2160x3840 | 720x1280 | 10 s | short-haired woman at a home dining table, waves and laughs at someone off camera; warm window light, upper body; whole + sharp ~6.9 s |
+| E02 | https://www.pexels.com/video/36593023/ | Frank Litschel | Pexels | 2160x3840 | 720x1280 | 6 s | young man opens a glass door at home and waves hello, full body, natural room; first 1.5 s is door only; best ~4.1 s |
+| E03 | https://www.pexels.com/video/8677654/ | Timur Weber | Pexels | 2160x3840 | 720x1280 | 7 s | woman sitting outdoors in a park waves off camera, bright daylight; close (head + shoulders, hand), not whole upper body; best ~2.2 s |
+| E04 | https://www.pexels.com/video/6250165/ | Kampus Production | Pexels | 3840x2160 | 1280x720 | 11 s | toddler girl sitting on a bed, smiling/laughing, whole baby, bright white bedroom, landscape; best ~5.3 s (same set: 6250176) |
+| E05 | https://www.pexels.com/video/6250127/ | Kampus Production | Pexels | 3840x2160 | 1280x720 | 9 s | dad lifts a laughing baby girl overhead, plain light-grey wall at home, landscape; baby clearest ~6.2 s |
+| E06 | https://www.pexels.com/video/31502850/ | Алина Мелехина | Pexels | 1080x2336 | 720x1558 | 7 s | baby crawling on a grey sofa in a living room, portrait but baby small in frame; best ~3.4 s |
+
+Rejected after download (scratch only): 8160560 / 8160566 (girl waving, teal studio backdrop), 8628499 (man, studio), 10373983 (man in office waving into camera, posed), 3196565 / 4185305 (crawling baby cropped), 35287925 (blurry).
+
+## F. Lively dogs (2026-11-17)
+
+| # | Page URL | Author | Licence | Source res | File (rendition) | Len | Note |
+|---|---|---|---|---|---|---|---|
+| F01 | https://www.pexels.com/video/32320875/ | Orhan Pergel | Pexels | 1080x1920 | 720x1280 | 7 s | fluffy brown/white puppy (collie-type mix) trots straight to camera across sunny lawn, low angle; whole dog sharp ~3.6-5.1 s |
+| F02 | https://www.pexels.com/video/7481862/ | cottonbro studio | Pexels | 2160x4096 | 720x1366 | 24 s | corgi runs toward camera across snowy beach, then plays with a hand close up; whole dog ~7.3 s (small), close ~21 s |
+| F03 | https://www.pexels.com/video/19799858/ | Rin Gakusho | Pexels | 1080x1920 | 720x1280 | 12 s | shiba standing on dry grass, tongue out, looks around then turns away; low angle, bright sun; whole + sharp ~3.7 s |
+| F04 | https://www.pexels.com/video/16573252/ | Kmeel.com Videos | Pexels | 1920x1080 | 1280x720 | 9 s | black poodle bounds across a field with a stick, slow motion, landscape, dog small in frame; best ~6.6 s |
+| F05 | https://www.pexels.com/video/10871101/ | Anna Bondarenko | Pexels | 1080x1920 | 720x1280 | 5 s | white spitz/samoyed runs from the back of a snowy garden to camera, ends nose-in-lens; whole dog ~2.6 s |
+
+Rejected after download (scratch only): 5728454 (shiba, beige studio backdrop), 13260951 (dog cut off by frame), 33955356 / 37589222 (corgi from behind / far on leash, 20-32 MB), 35172441 (fisheye, white dog), 38978558 / 39564505 (head close-ups).

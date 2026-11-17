@@ -1,3 +1,23 @@
 
 # stock footage
 reel/stock/
+# render inputs/outputs (re-made by reel/render/*: frames extracted from stock, rendered frames)
+reel/render/a09/
+reel/render/a10/
+reel/render/b01/
+reel/render/c01/
+reel/render/out-*/
+reel/render/*.mp4
+reel/render/*-strip.jpg
+reel/render/sheet*.jpg
+reel/render/mont/
+reel/render/*.bak
+reel/render/*check*.jpg
+reel/render/review*.jpg
+reel/render/*cands.jpg
+reel/render/*-strip.jpg
+reel/render/a09b.jpg
+reel/render/mont-*.jpg
+reel/render/persontries.jpg
+reel/render/alphacheck.jpg
+reel/render/__pycache__/

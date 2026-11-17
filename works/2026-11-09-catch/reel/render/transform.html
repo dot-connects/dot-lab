@@ -1,0 +1,113 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>capsule pop render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&display=block">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<script type="module">
+// Reel beat "it becomes a fur-ball" (review 11-17 fix 1): the app's two-tone capsule (ui/CapsuleArt.kt, ported) holding
+// the real cut-out comes to the middle, shakes, pops in a white flash with fur puffs, and the cat's own pet (the
+// sheet's front / smile cells, cut like Sheet.cells) jumps out at ~40 % of the screen height. Not an app screen:
+// an ad transition between the catch and the home screen. Fake clock: window.frame() per 1/30 s. 1.9 s.
+const Q = new URLSearchParams(location.search);
+const NAME = Q.get("name") ?? "모찌", COL = Q.get("cap") ?? "#FF6B6B", FROM = Q.get("from") === "center";
+// cut 7: ?v=7&x0=&y0=&r0= (dp) = one shot with the catch: the capsule starts where catch.html left it, on the catch
+// shot's own clean plate (?bg=, drawn as is), floats to the middle growing, shakes, pops at 1.1 s
+const V7 = Q.get("v") === "7", X0 = +(Q.get("x0") ?? 0), Y0 = +(Q.get("y0") ?? 0), R0 = +(Q.get("r0") ?? 46), F = FROM || V7;
+const DT = 1000 / 30, cv = document.getElementById("cv"), g = cv.getContext("2d");
+const D = 2.625, W = 1080 / D, H = 1920 / D;
+const load = s => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = s; });
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v)), ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+const back = x => { x = clamp(x, 0, 1); const c = 1.9; return 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2; };
+const hex = c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16)), css = ([r, gg, b], a = 1) => `rgba(${r},${gg},${b},${a})`;
+const shade = (c, k) => c.map(v => clamp(Math.trunc(k > 0 ? v + (255 - v) * k : v * (1 + k)), 0, 255));
+const col = hex(COL);
+function cell(img, i) {   // Sheet.cells: key the green, cut cell i of the 4 x 3 sheet to its pixels
+  const w = img.width, h = img.height, c = new OffscreenCanvas(w / 4, h / 3), cg = c.getContext("2d");
+  cg.drawImage(img, -(i % 4) * w / 4, -Math.floor(i / 4) * h / 3);
+  const id = cg.getImageData(0, 0, c.width, c.height), d = id.data; let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+  for (let p = 0; p < d.length; p += 4) { const m = Math.max(d[p], d[p + 2]), k = d[p + 1] - m; if (k > 60) d[p + 3] = 0; else if (k > 18) { d[p + 3] = Math.floor(d[p + 3] * (60 - k) / 42); d[p + 1] = m; }
+    if (d[p + 3] > 24) { const q = p / 4, x = q % c.width, y = Math.floor(q / c.width); x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); } }
+  cg.putImageData(id, 0, 0); const o = new OffscreenCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext("2d").drawImage(c, -x0, -y0); return o;
+}
+function capsule(x, y, r, deg, open, inside) {   // CapsuleArt.draw, plus the two halves parting by `open`
+  const rad = deg * Math.PI / 180, gap = open * r * 1.6;
+  // bottom (coloured) half
+  g.save(); g.translate(x, y + gap * .35); g.rotate(rad + open * .5);
+  g.save(); g.beginPath(); g.arc(0, 0, r, 0, Math.PI * 2); g.clip(); if (open < .05) inside(); g.restore();
+  const rg = g.createRadialGradient(-r * .25, -r * .6, 0, -r * .25, -r * .6, r * 1.8);
+  rg.addColorStop(0, css(shade(col, .35))); rg.addColorStop(.5, css(col)); rg.addColorStop(1, css(shade(col, -.32)));
+  g.fillStyle = rg; g.beginPath(); g.moveTo(r, 0); g.arc(0, 0, r, 0, Math.PI); g.closePath(); g.fill();
+  g.fillStyle = css(shade(col, -.45), .67);
+  for (const hx of [-.32, 0, .32]) { g.beginPath(); g.ellipse(hx * r, r * (hx === 0 ? .64 : .54), r * .06, r * .043, 0, 0, 7); g.fill(); }
+  const band = Math.max(3, r * .16); g.fillStyle = css(shade(col, .2)); g.beginPath(); g.roundRect(-r - 1, -band / 2, 2 * r + 2, band, band / 2); g.fill();
+  g.strokeStyle = css(shade(col, -.25)); g.lineWidth = r * .026; g.stroke();
+  g.restore();
+  // top (clear) half
+  g.save(); g.translate(x, y - gap * .65); g.rotate(rad - open * .7);
+  const gl = g.createRadialGradient(0, 0, 0, 0, 0, r); gl.addColorStop(0, "rgba(255,255,255,.05)"); gl.addColorStop(.82, "rgba(255,255,255,.07)"); gl.addColorStop(1, "rgba(255,255,255,.55)");
+  g.fillStyle = gl; g.beginPath(); g.moveTo(-r, 0); g.arc(0, 0, r, Math.PI, Math.PI * 2); g.closePath(); g.fill();
+  const hl = g.createRadialGradient(-r * .35, -r * .45, 0, -r * .35, -r * .45, r * .45); hl.addColorStop(0, "rgba(255,255,255,.8)"); hl.addColorStop(.45, "rgba(255,255,255,.15)"); hl.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = hl; g.beginPath(); g.arc(0, 0, r, Math.PI, Math.PI * 2); g.fill();
+  g.strokeStyle = "rgba(255,255,255,.75)"; g.lineWidth = Math.max(1.5, r * .033); g.beginPath(); g.arc(0, 0, r, Math.PI, Math.PI * 2); g.stroke();
+  g.restore();
+}
+let bg, cut, front, smile, time = 0;
+const puffs = Array.from({ length: 22 }, (_, i) => ({ a: i / 22 * Math.PI * 2 + (i % 3) * .21, v: 150 + (i * 37 % 90), r: 7 + (i * 13 % 9), c: i % 3 }));
+function render() {
+  // from=center (Fable review 3): the catch shot zoomed into the closed capsule, so it starts in place, already big
+  const t = V7 ? time / 1000 - .25 : time / 1000 + (FROM ? .45 : 0);
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // the room behind, blurred and dimmed, a warm light from the middle
+  g.filter = V7 ? "none" : FROM ? "blur(24px) brightness(.8)" : "blur(18px) brightness(.62) saturate(1.1)"; V7 ? g.drawImage(bg, 0, 0, 1080, 1920) : g.drawImage(bg, -40, -40, 1160, 2000); g.filter = "none";
+  if (V7) { g.fillStyle = `rgba(0,0,0,${.2 * ease(time / 600)})`; g.fillRect(0, 0, 1080, 1920); }
+  g.setTransform(D, 0, 0, D, 0, 0);
+  const glow = g.createRadialGradient(W / 2, H * .46, 0, W / 2, H * .46, W * .9);
+  glow.addColorStop(0, `rgba(255,236,190,${(V7 ? .35 * ease(time / 600) : .35) + .4 * ease((t - .85) / .2) * (1 - ease((t - 1.2) / .6))})`); glow.addColorStop(1, "rgba(255,236,190,0)");
+  g.fillStyle = glow; g.fillRect(0, 0, W, H);
+  const cx = W / 2, cy = H * (F ? .52 : .46);
+  const m = clamp(time / 600, 0, 1), mv = m * m * (3 - 2 * m);   // v7: the float to the middle, ease in-out
+  // 0-0.45 s: rises from the bottom and grows (46 dp -> 120 dp); 0.45-0.85 s: shakes harder; 0.85 s: pops
+  const k = ease(t / .45), r = V7 ? R0 + (112 - R0) * mv + 8 * ease((t - .45) / .4) : FROM ? W * .25 + (120 - W * .25) * ease((t - .45) / .4) : 46 + 74 * k, y = V7 ? Y0 + (cy - Y0) * mv : FROM ? cy : H * .88 + (cy - H * .88) * k;
+  const shake = t > .45 && t < .85 ? Math.sin((t - .45) * 60) * (4 + 14 * (t - .45) / .4) : 0;
+  const open = ease((t - .85) / .25);
+  if (t < 1.25) capsule(V7 ? X0 + (cx - X0) * mv : cx, y, r, shake, open, () => {
+    const cw = cut.width, ch = cut.height, s = r * 1.6 / Math.max(cw, ch);
+    const f = F ? .8 : 1;   // capFit=head, as the catch shot drew it
+    g.drawImage(cut, -cw * s * f / 2, -ch * s * f / 2 - r * .2 - (F ? r * .25 : 0), cw * s * f, ch * s * f);
+  });
+  // the flash and fur puffs
+  if (t >= .85) {
+    const f = 1 - ease((t - .85) / .35);
+    g.fillStyle = `rgba(255,255,255,${.95 * f})`; g.fillRect(0, 0, W, H);
+    for (const p of puffs) {
+      const u = t - .85, d = p.v * ease(u / .7), a = clamp(1 - u / .9, 0, 1);
+      g.fillStyle = [`rgba(255,253,246,${a})`, `rgba(255,216,77,${a})`, `rgba(255,170,190,${a})`][p.c];
+      g.beginPath(); g.arc(cx + Math.cos(p.a) * d, cy + Math.sin(p.a) * d * .9, Math.max(0, p.r * (1 - u / 1.4)), 0, 7); g.fill();
+    }
+  }
+  // the pet jumps out: overshoot to ~40 % of the height, then smiles
+  if (t >= .9) {
+    const s = back((t - .9) / .35), img = t > 1.35 ? smile : front, ph = H * .4 * s, pw = ph * img.width / img.height;
+    const bob = t > 1.35 ? Math.abs(Math.sin((t - 1.35) * Math.PI / .55)) * 10 : 0;
+    g.save(); g.shadowColor = "rgba(0,0,0,.35)"; g.shadowBlur = 18 * D; g.shadowOffsetY = 6 * D;
+    g.drawImage(img, cx - pw / 2, cy + H * .2 - ph - bob, pw, ph); g.restore();
+  }
+  if (t >= 1.2) {   // name chip in the menus' look (paper, ink outline, hard drop)
+    const a = ease((t - 1.2) / .2), y0 = cy + H * .2 + 18 + (1 - a) * 12;
+    g.globalAlpha = a; g.font = "26px Jua"; g.textAlign = "center"; const tw = g.measureText(NAME).width + 44;
+    g.fillStyle = "#24331F"; g.beginPath(); g.roundRect(cx - tw / 2, y0 + 4, tw, 44, 22); g.fill();
+    g.fillStyle = "#FFD84D"; g.beginPath(); g.roundRect(cx - tw / 2, y0, tw, 44, 22); g.fill();
+    g.strokeStyle = "#24331F"; g.lineWidth = 2.5; g.stroke();
+    g.fillStyle = "#24331F"; g.fillText(NAME, cx, y0 + 31); g.globalAlpha = 1;
+  }
+}
+window.ready = (async () => {
+  await document.fonts.load("26px Jua");
+  const [b0, c0, sh] = await Promise.all([load(Q.get("bg") ?? "out-catch-a09/0100.png"), load(Q.get("cut") ?? "out-catch-a09/cut.png"), load("../frames/" + (Q.get("sheet") ?? "pet-sheet-fluff-white.webp"))]);
+  bg = b0; cut = c0; front = cell(sh, 0); smile = cell(sh, 1); return true;
+})();
+let n = 0;
+window.frame = async () => { if (n++ > 0) time += DT; render(); return { url: cv.toDataURL("image/png"), st: "", cap: null, toast: false, t: Math.round(time) }; };
+window.events = () => ({ events: V7 ? [[700, "shake", .4], [1100, "pop", .8], [1150, "boing", .6]] : [[450, "shake", .4], [850, "pop", .8], [900, "boing", .6]] });
+</script>

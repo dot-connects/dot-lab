@@ -1,0 +1,23 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=411.43">
+<title>reel caption</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&display=block">
+<style>
+/* Look A captions (operator pick 11-16): heavy, wide, bottom, second line yellow. Transparent page, one shot per line.
+   1 CSS px = 1 dp at 2.625 -> 1080 x 1920. ?t=line1|line2 */
+html,body{margin:0;width:411.43px;height:731.43px;overflow:hidden}
+.cap{position:absolute;left:5%;right:5%;bottom:17%;text-align:center;font:400 40px/1.12 "Black Han Sans",sans-serif;color:#fff;
+  letter-spacing:.01em;word-break:keep-all;
+  text-shadow:0 2.5px 0 rgba(0,0,0,.5),0 0 14px rgba(0,0,0,.55),0 0 2px rgba(0,0,0,.6)}
+.cap em{font-style:normal;color:#ffd84d}
+</style>
+<div class="cap" id="c"></div>
+<script>
+const q = new URLSearchParams(location.search), t = (q.get("t") ?? "").split("|");
+document.body.style.background = q.get("bg") ?? "#000";
+if (q.get("pos") === "top") Object.assign(document.getElementById("c").style, { bottom: "auto", top: q.get("y") ?? "16%" });   // shot on black and on white; capmatte.py recovers the alpha
+const c = document.getElementById("c");   // text nodes, not innerHTML (the line comes from the URL)
+t.forEach((l, i) => { if (i) { c.append(document.createElement("br")); const em = document.createElement("em"); em.textContent = l; c.append(em); } else c.append(l); });
+window.ready = document.fonts.load('40px "Black Han Sans"').then(() => document.fonts.ready).then(() => true);
+</script>

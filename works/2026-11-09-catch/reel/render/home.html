@@ -1,0 +1,448 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>home screen pet render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Jua&family=Google+Sans+Flex:wght@400;500&display=block">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,1,0&display=block">
+<style>html,body{margin:0;background:#000}canvas{display:block}</style>
+<canvas id="cv" width="1080" height="1920"></canvas>
+<script type="module">
+// The pet on a home screen as the app draws it, full screen like a screen recording (1080 x 1920 at 2.625).
+// Ported 1:1 from the app: pet/PetService.kt (windowAt, tap / double tap 320 ms / throw at > 1.1 px/ms),
+// pet/Frames.kt PetLook + load, pet/PetBrain.kt (WALK 0.022, CLIMB 0.018, GRAVITY 0.003, bounce 0.55, DIZZY 1800 ms,
+// drop near a wall -> LEFT/RIGHT + slide-in 120 ms, frames), pet/TalkBubble.kt + Talk.kt lines, pet/PetApps.kt
+// AppBubble (the double tap's shortcut cloud with [펫 설정 | 펫 끄기]), ai/Sheet.kt cells/keyGreen.
+// The cat's own 12-cell sheet from its exact cut-out, pet size 112 dp (the slider's max). The launcher is a
+// Pixel-style home with themed (monochrome) icons from Material Symbols, the cat's own photo as wallpaper and our
+// app's full-colour icon; no brand logos (round 2: full-colour generic icons, a painted wallpaper, the real widget). Fake clock: window.frame() per 1/30 s.
+const Q = new URLSearchParams(location.search);
+// cut 7 (11-17): ?look=oneui = a quiet Galaxy-like home (flat icons, an out-of-focus dark wallpaper, no widget);
+// ?v=7 = the slower script (T7); ?skip=<ms> fast-forwards the clock before the first frame (for test shots)
+const LOOK = Q.get("look"), V7 = Q.get("v") === "7";
+const NAME = Q.get("name") ?? "모찌", SIZE = +(Q.get("size") ?? 56);   // the app's default (PetPrefs.size 56 dp, review 11-17)
+const FPS = 30, DT = 1000 / FPS;
+const cv = document.getElementById("cv"), g = cv.getContext("2d");
+const D = 2.625, W = 1080 / D, H = 1920 / D;
+const FLOOR = H * 0.88 - 48;                       // PetPrefs.floorY
+const load = src => new Promise(r => { const im = new Image(); im.onload = () => r(im); im.src = src; });
+const clamp = (v, a, b) => Math.min(b, Math.max(a, v));
+const ease = x => 1 - (1 - clamp(x, 0, 1)) ** 3;
+
+// ---------- Sheet.cells(twelve) + Frames.load ----------
+const KEYS12 = ["front", "smile", "walk1", "walk2", "walk3", "walk4", "sleep", "curl", "holdA", "holdB", "fall", "dazed"];
+function cells(img) {
+  const w = img.width, h = img.height, c = new OffscreenCanvas(w, h), cg = c.getContext("2d");
+  cg.drawImage(img, 0, 0); const id = cg.getImageData(0, 0, w, h), d = id.data;
+  for (let i = 0; i < d.length; i += 4) { const m = Math.max(d[i], d[i + 2]), k = d[i + 1] - m; if (k > 60) d[i + 3] = 0; else if (k > 18) { d[i + 3] = Math.floor(d[i + 3] * (60 - k) / 42); d[i + 1] = m; } }
+  // reel only: clean the dark green fringe (review 11-17): edge pixels lose 1 px of alpha and their green spill
+  const a0 = new Uint8ClampedArray(w * h); for (let i = 0; i < w * h; i++) a0[i] = d[i * 4 + 3];
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const i = y * w + x; if (!a0[i]) continue;
+    const mn = Math.min(a0[i], a0[i - 1], a0[i + 1], a0[i - w], a0[i + w]);
+    if (mn < 255) { d[i * 4 + 3] = mn; d[i * 4 + 1] = Math.min(d[i * 4 + 1], Math.max(d[i * 4], d[i * 4 + 2])); }
+  }
+  cg.putImageData(id, 0, 0);
+  const out = {};
+  KEYS12.forEach((key, i) => {
+    const cx0 = Math.floor((i % 4) * w / 4), cx1 = Math.floor((i % 4 + 1) * w / 4), cy0 = Math.floor(Math.floor(i / 4) * h / 3), cy1 = Math.floor((Math.floor(i / 4) + 1) * h / 3);
+    let x0 = cx1, y0 = cy1, x1 = -1, y1 = -1;
+    for (let y = cy0; y < cy1; y++) for (let x = cx0; x < cx1; x++) if (d[(y * w + x) * 4 + 3] > 24) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+    if (x1 < 0) return;
+    const mx = Math.round((x1 - x0 + 1) * .06), my = Math.round((y1 - y0 + 1) * .06);
+    x0 = Math.max(0, x0 - mx); x1 = Math.min(w - 1, x1 + mx); y0 = Math.max(0, y0 - my); y1 = Math.min(h - 1, y1 + my);
+    const bw = x1 - x0 + 1, bh = y1 - y0 + 1, side = Math.max(bw, bh), sq = new OffscreenCanvas(side, side);
+    sq.getContext("2d").drawImage(c, x0, y0, bw, bh, Math.floor((side - bw) / 2), side - bh, bw, bh);
+    out[key] = sq;
+  });
+  return out;
+}
+function opaqueBox(c) {
+  const d = c.getContext("2d").getImageData(0, 0, c.width, c.height).data;
+  let x0 = c.width, y0 = c.height, x1 = -1, y1 = -1;
+  for (let y = 0; y < c.height; y++) for (let x = 0; x < c.width; x++) if (d[(y * c.width + x) * 4 + 3] > 16) { x0 = Math.min(x0, x); x1 = Math.max(x1, x); y0 = Math.min(y0, y); y1 = Math.max(y1, y); }
+  return [x0, y0, x1, y1];
+}
+const crop = (c, [x0, y0, x1, y1]) => { const o = new OffscreenCanvas(x1 - x0 + 1, y1 - y0 + 1); o.getContext("2d").drawImage(c, -x0, -y0); return o; };
+function petCells(raw) {
+  const WALK = ["walk1", "walk2", "walk3", "walk4"], boxes = WALK.map(k => opaqueBox(raw[k]));
+  const wb = [Math.min(...boxes.map(b => b[0])), Math.min(...boxes.map(b => b[1])), Math.max(...boxes.map(b => b[2])), Math.max(...boxes.map(b => b[3]))];
+  const out = {}; for (const k of KEYS12) out[k] = WALK.includes(k) ? crop(raw[k], wb) : crop(raw[k], opaqueBox(raw[k]));
+  return out;
+}
+
+// ---------- PetBrain ----------
+const S = SIZE;
+const b = { act: "IDLE", t: 0, len: 1e9, x: V7 ? 96 : 130, y: FLOOR, dir: 1, zone: "FLOOR", vx: 0, vy: 0, slideFrom: 0, slideMs: 120 };
+const start = (a, ms = 1e9, dir) => { b.act = a; b.t = 0; b.len = ms; if (dir) b.dir = dir; };
+const onWall = () => b.zone === "LEFT" || b.zone === "RIGHT";
+const topLimit = () => H * .2, bottomLimit = () => FLOOR - S;
+function place(z) {
+  b.zone = z;
+  if (z === "FLOOR") { b.y = FLOOR; b.x = clamp(b.x, S / 2, W - S / 2); }
+  if (z === "LEFT") { b.x = 0; b.y = clamp(b.y, topLimit(), bottomLimit()); }
+  if (z === "RIGHT") { b.x = W; b.y = clamp(b.y, topLimit(), bottomLimit()); }
+  start("IDLE");
+}
+function drop(px, py) {
+  b.x = px; b.y = py;
+  if (px > W * .82) { place("RIGHT"); b.slideFrom = px - W + S / 2; b.slideMs = 0; }
+  else if (px < W * .18) { place("LEFT"); b.slideFrom = px - S / 2; b.slideMs = 0; }
+  else { b.zone = "FLOOR"; start("FALL"); b.vx = 0; b.vy = 0; }
+}
+function fling(px, py, vx, vy) { b.x = px; b.y = py; b.zone = "FLOOR"; start("FALL"); b.vx = clamp(vx, -3, 3); b.vy = clamp(vy, -3, 3); }
+function stepBrain(dt) {
+  b.t += dt; if (b.slideMs < 120) b.slideMs += dt;
+  if (b.act === "HANG") return;
+  if (b.act === "FALL") {
+    b.vy += dt * .003; b.y = Math.min(FLOOR, b.y + b.vy * dt);
+    if (b.y < S) { b.y = S; b.vy = Math.abs(b.vy) * .5; }
+    b.x += b.vx * dt;
+    if (b.x < S / 2) { b.x = S / 2; b.vx = -b.vx * .55; events.push([time, "bonk"]); }
+    if (b.x > W - S / 2) { b.x = W - S / 2; b.vx = -b.vx * .55; events.push([time, "bonk"]); }
+    if (b.y >= FLOOR) { b.vy = 0; b.vx = 0; place("FLOOR"); start("DIZZY", 1800); events.push([time, "land"]); }
+    return;
+  }
+  if (["SMILE", "HOP", "DIZZY"].includes(b.act) && b.t >= b.len) start("WALK", 1e9, b.dir);
+  if (b.act === "WALK") { b.x += b.dir * .022 * dt; if (b.x < S / 2 || b.x > W - S / 2) { b.dir = -b.dir; b.x = clamp(b.x, S / 2, W - S / 2); } }
+  if (b.act === "CLIMB") { b.y += b.dir * .018 * dt; if (b.y < topLimit() || b.y > bottomLimit()) { b.dir = -b.dir; b.y = clamp(b.y, topLimit(), bottomLimit()); } }
+}
+const frameKey = t => ({ IDLE: "front", SMILE: "smile", HOP: "smile", FALL: "holdA",
+  HANG: Math.floor(t / 160) % 2 === 0 ? "holdA" : "holdB", DIZZY: b.t < 700 ? "fall" : "dazed",
+  WALK: `walk${Math.floor(t / 130) % 4 + 1}`, CLIMB: `walk${Math.floor(t / 130) % 4 + 1}` })[b.act];
+const rotation = () => (b.act === "HANG" || b.act === "FALL") ? 0 : b.zone === "LEFT" ? 90 : b.zone === "RIGHT" ? -90 : 0;
+const flip = () => b.zone === "LEFT" ? b.dir < 0 : b.zone === "RIGHT" ? b.dir > 0 : b.dir < 0;
+function lift(t) {
+  if (b.act === "SMILE") return Math.abs(Math.sin(t % 700 / 700 * Math.PI)) * .2;
+  if (b.act === "HOP") return Math.sin(clamp(b.t / 650, 0, 1) * Math.PI) * .5;
+  if (b.act === "WALK" || b.act === "CLIMB") return Math.abs(Math.sin((t - 65) / 260 * Math.PI)) * .025;
+  return 0;
+}
+const slide = () => (!onWall() || b.slideMs >= 120) ? 0 : b.slideFrom * (1 - b.slideMs / 120) ** 2;
+let cellsMap, unit;
+// the feet point on screen (PetService.windowAt + PetView: feet on the box edge that touches the line)
+function feet(t) {
+  const l = lift(t) * S;
+  if (rotation() === 0) return [b.x, b.y - l];
+  return b.zone === "LEFT" ? [b.x + l + slide(), b.y] : [b.x - l + slide(), b.y];
+}
+function drawPet(t) {
+  const bmp = cellsMap[frameKey(t)] ?? cellsMap.front;
+  let sx = 1, sy = 1, sway = 0;
+  if (b.act === "IDLE") { const br = Math.sin(t / 420) * .035; sx = 1 - br * .5; sy = 1 + br; }
+  if (b.act === "DIZZY") { const a = b.t, land = Math.max(0, 1 - a / 160); sx = 1 + .16 * land; sy = 1 - .2 * land; sway = Math.sin(a / 95) * 13 * Math.max(0, 1 - a / 1800); }
+  const k = S / unit, bw = bmp.width * k, bh = bmp.height * k, [fx, fy] = feet(t);
+  g.save(); g.translate(fx, fy); g.rotate((rotation() + sway) * Math.PI / 180); g.scale(flip() ? -sx : sx, sy);
+  g.drawImage(bmp, -bw / 2, -bh, bw, bh); g.restore();
+  if (b.act === "DIZZY" && b.t > 120) {
+    g.save(); g.translate(fx, fy); g.fillStyle = `rgba(51,54,61,${clamp(1 - b.t / 1800, 0, 1)})`; g.font = `700 ${S * .2}px 'Noto Sans KR'`; g.textAlign = "center";
+    for (let i = 0; i < 2; i++) { const a = t / 170 + i * Math.PI; g.fillText("★", Math.cos(a) * S * .28, -S * .95 + Math.sin(a) * S * .07); }
+    g.restore();
+  }
+}
+const petRect = () => { const [fx, fy] = feet(time); return rotation() === 0 ? [fx - S / 2, fy - S, S, S] : b.zone === "RIGHT" ? [fx - S, fy - S / 2, S, S] : [fx, fy - S / 2, S, S]; };
+
+// ---------- clouds ----------
+function talk(text, a) {
+  if (a <= 0) return;
+  g.font = "700 13px 'Noto Sans KR'"; g.textBaseline = "alphabetic";
+  const bodyW = Math.ceil(g.measureText(text).width + 24), bodyH = Math.ceil(13 * 1.17 + 14), pad = 8, wPx = bodyW + pad * 2, hPx = bodyH + pad * 2 + 22;
+  const [px, py, pw] = petRect();
+  const x = clamp(px + pw / 2 - wPx / 2, 0, W - wPx), y = clamp(py - hPx + pad, 0, H - hPx);
+  g.save(); g.globalAlpha = a; g.translate(x, y);
+  g.shadowColor = "rgba(0,0,0,.25)"; g.shadowBlur = 6 * D; g.shadowOffsetY = 2 * D; g.fillStyle = "#FFFDF6";
+  g.beginPath(); g.roundRect(pad, pad, bodyW, bodyH, 18); g.fill();
+  const mx = pad + bodyW / 2;
+  g.beginPath(); g.arc(mx - 5, pad + bodyH + 7, 6, 0, 7); g.fill(); g.beginPath(); g.arc(mx + 3, pad + bodyH + 17, 3.5, 0, 7); g.fill();
+  g.shadowColor = "transparent"; g.fillStyle = "#24331F"; g.textAlign = "center"; g.fillText(text, mx, pad + 7 + 13 * .95);
+  g.restore();
+}
+const CLOUD_APPS = [["카메라", "photo_camera"], ["메시지", "chat"], ["음악", "music_note"], ["리얼뽑기", "ours"]];
+let cloudBox = null;
+function appCloud(a) {   // PetApps.AppBubble, floor side: above the pet's box
+  if (a <= 0) return;
+  const cols = 4, cell = 58, pad = 16, bar = 40, bodyW = Math.max(cols * cell + pad * 2, 200), bodyH = (cell + 12) + pad + bar, puff = 30;
+  const [px, py, pw] = petRect();
+  const x = clamp(px + pw / 2 - bodyW / 2, 0, W - bodyW), y = clamp(py - bodyH - puff, 0, H);
+  cloudBox = { x, y, bodyW, bodyH, cell, pad };
+  g.save(); g.globalAlpha = a; g.translate(x, y);
+  const s0 = .85 + .15 * a; g.translate(bodyW / 2, bodyH); g.scale(s0, s0); g.translate(-bodyW / 2, -bodyH);
+  g.shadowColor = "rgba(0,0,0,.25)"; g.shadowBlur = 8 * D; g.shadowOffsetY = 3 * D; g.fillStyle = "#FFFDF6";
+  g.beginPath(); g.roundRect(4, 4, bodyW - 8, bodyH - 8, 30); g.fill();
+  g.beginPath(); g.arc(bodyW / 2 - 6, bodyH + 5, 8, 0, 7); g.fill(); g.beginPath(); g.arc(bodyW / 2 + 2, bodyH + 19, 4.5, 0, 7); g.fill();
+  g.shadowColor = "transparent";
+  const gx = (bodyW - cols * cell) / 2;
+  CLOUD_APPS.forEach(([label, sym], i) => {
+    const cx = gx + i * cell + cell / 2, cy = pad + 20;
+    themed(cx, cy, 40, sym);
+    g.fillStyle = "#24331F"; g.font = "400 10px 'Noto Sans KR'"; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(label, cx, pad + 40 + 13);
+  });
+  const top = bodyH - bar;
+  g.strokeStyle = "#E1E6DA"; g.lineWidth = 2; g.setLineDash([5, 4]);
+  g.beginPath(); g.moveTo(14, top); g.lineTo(bodyW - 14, top); g.moveTo(bodyW / 2, top + 8); g.lineTo(bodyW / 2, bodyH - 12); g.stroke(); g.setLineDash([]);
+  g.font = "700 13px 'Noto Sans KR'"; g.fillStyle = "#24331F"; g.fillText("펫 설정", bodyW / 4, top + bar / 2 + 3); g.fillStyle = "#B3261E"; g.fillText("펫 끄기", bodyW * 3 / 4, top + bar / 2 + 3);
+  g.restore();
+}
+
+// ---------- the launcher (review 11-17 round 2: a real Pixel home, the app's real widget) ----------
+// Pixel Launcher 4 x 5: side padding 20 dp, rows of 104 dp from under the status bar, 56 dp round icons with
+// white 12 sp labels + shadow, At a Glance in row 0, dock + search pill + gesture bar. Latin and digits in Google
+// Sans Flex (the Pixel system font, on Google Fonts), Hangul falls through to Noto Sans KR as on a real Pixel.
+// The wallpaper is wall-home.jpg (a lake at dusk, painted by a script; no brand, no stock people).
+let icon, wall, catScreen, petFront;
+const UI = "'Google Sans Flex','Noto Sans KR'", INK = "#24331F";
+const glyph = (name, x, y, px, col) => { g.fillStyle = col; g.font = `${px}px 'Material Symbols Rounded'`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText(name, x, y); };
+// full-colour generic icons: [top, bottom, glyph colour, glyph]; PAINT draws the ones a real phone draws specially
+const ICONS = {
+  schedule: ["#3C4263", "#161A30"], calendar_month: ["#FFFFFF", "#EDF0F5"], partly_cloudy_day: ["#7CCBFF", "#2B78E8"], photo_camera: ["#565B66", "#22252B"],
+  photo_library: ["#FF9D6E", "#E63E6D", "#FFFFFF", "image"], sticky_note_2: ["#FFCF55", "#F59B0B", "#FFFFFF", "sticky_note_2"],
+  map: ["#62D69C", "#17995C", "#FFFFFF", "location_on"], music_note: ["#A982FF", "#6033DD", "#FFFFFF", "music_note"],
+  calculate: ["#4D525D", "#24272D", "#FFB74D", "calculate"], mic: ["#FFFFFF", "#E8ECF2", "#E5393B", "mic"],
+  folder: ["#66B3FF", "#1D6CE4", "#FFFFFF", "folder"], settings: ["#9BA5B3", "#586271", "#FFFFFF", "settings"],
+  call: ["#5FE37E", "#14A246", "#FFFFFF", "call"], chat: ["#72B6FF", "#1D68E8", "#FFFFFF", "chat_bubble"], language: ["#FFFFFF", "#E8ECF2", "#F2611C", "language"],
+};
+const PAINT = {
+  schedule(cx, cy, s) {   // the hands at 10:10
+    g.strokeStyle = "#FFFFFF"; g.lineCap = "round";
+    for (const [deg, len, lw] of [[305, .19, .075], [60, .29, .055]]) { const a = (deg - 90) * Math.PI / 180; g.lineWidth = s * lw; g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(a) * s * len, cy + Math.sin(a) * s * len); g.stroke(); }
+    g.fillStyle = "#FF8A4C"; g.beginPath(); g.arc(cx, cy, s * .05, 0, 7); g.fill();
+  },
+  calendar_month(cx, cy, s) {   // today's date under a coral band
+    g.fillStyle = "#F2564A"; g.fillRect(cx - s / 2, cy - s / 2, s, s * .32);
+    g.fillStyle = "#39435A"; g.font = `500 ${s * .4}px ${UI}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("17", cx, cy + s * .15);
+  },
+  partly_cloudy_day(cx, cy, s) {
+    g.fillStyle = "#FFD84D"; g.beginPath(); g.arc(cx + s * .11, cy - s * .1, s * .17, 0, 7); g.fill();
+    glyph("cloud", cx - s * .04, cy + s * .08, s * .52, "#FFFFFF");
+  },
+  photo_camera(cx, cy, s) {   // a lens
+    g.fillStyle = "#16181C"; g.strokeStyle = "#8D95A5"; g.lineWidth = s * .035; g.beginPath(); g.arc(cx, cy, s * .27, 0, 7); g.fill(); g.stroke();
+    const lg = g.createLinearGradient(0, cy - s * .15, 0, cy + s * .15); lg.addColorStop(0, "#6C9BFF"); lg.addColorStop(1, "#1A3CA3");
+    g.fillStyle = lg; g.beginPath(); g.arc(cx, cy, s * .15, 0, 7); g.fill();
+    g.fillStyle = "rgba(255,255,255,.85)"; g.beginPath(); g.arc(cx - s * .05, cy - s * .06, s * .035, 0, 7); g.fill();
+    g.fillStyle = "#FF5A4F"; g.beginPath(); g.arc(cx + s * .27, cy - s * .27, s * .04, 0, 7); g.fill();
+  },
+};
+// one launcher icon: a rounded-square mask (One UI / most Korean phones; operator 11-17 "다 동그라미야?"), a soft drop shadow, light from the top; ours keeps its adaptive icon
+function themed(cx, cy, s, name) {
+  if (LOOK === "oneui") return flat(cx, cy, s, name);
+  const r = s / 2, ours = name === "ours", [c0, c1, fg, gl] = ours ? ["#D3EEFF", "#8FCBF7"] : ICONS[name];
+  g.save();
+  g.shadowColor = "rgba(0,0,0,.3)"; g.shadowBlur = 4 * D; g.shadowOffsetY = 1.5 * D;
+  const lg = ours ? g.createLinearGradient(cx - r, cy - r, cx + r, cy + r) : g.createLinearGradient(0, cy - r, 0, cy + r);
+  lg.addColorStop(0, c0); lg.addColorStop(1, c1);
+  g.beginPath(); g.roundRect(cx - r, cy - r, s, s, s * .3); g.fillStyle = lg; g.fill(); g.shadowColor = "transparent"; g.clip();
+  if (ours) { const f = s * 1.5; g.drawImage(icon, cx - f / 2, cy - f / 2, f, f); }
+  else {
+    if (PAINT[name]) PAINT[name](cx, cy, s); else glyph(gl, cx, cy + s * .02, s * .56, fg);
+    const hl = g.createLinearGradient(0, cy - r, 0, cy + r); hl.addColorStop(0, "rgba(255,255,255,.2)"); hl.addColorStop(.5, "rgba(255,255,255,0)"); hl.addColorStop(1, "rgba(0,0,0,.1)");
+    g.fillStyle = hl; g.fillRect(cx - r, cy - r, s, s);
+  }
+  g.restore();
+}
+// [label, icon, column, row]; the widget takes columns 2-3 of rows 1-2
+const APPS = [["시계", "schedule", 0, 1], ["캘린더", "calendar_month", 1, 1], ["날씨", "partly_cloudy_day", 0, 2], ["사진", "photo_library", 1, 2],
+  ["메모", "sticky_note_2", 0, 3], ["지도", "map", 1, 3], ["음악", "music_note", 2, 3], ["리얼뽑기", "ours", 3, 3],
+  ["계산기", "calculate", 0, 4], ["녹음", "mic", 1, 4], ["파일", "folder", 2, 4], ["설정", "settings", 3, 4]];
+const DOCK = ["call", "chat", "language", "photo_camera"];
+const ICON_S = 56, PADX = 20, CW = (W - PADX * 2) / 4, ROW_TOP = 44, ROW_H = 104;
+const colX = c => PADX + CW * (c + .5), rowY = r => ROW_TOP + ROW_H * r + 42;   // an icon's centre
+const ourIcon = () => LOOK === "oneui" ? [colX(3), ONE_ROW] : [colX(3), rowY(3)];
+// ---------- the quiet home (cut 7; operator 11-17: "너무 알록달록하니까 가짜 같다") ----------
+// One UI habits: flat one-colour squircles with a white glyph, colours a step under the real ones so the pet and our
+// icon are the brightest things; one row of apps + the dock, the top left free (the reel's caption sits there).
+const ONE_ROW = 300, ONE_DOCK = H - 100, ONE_S = 52;
+const FLAT = { call: ["#3E9E62", "call"], chat: ["#4A7FCB", "chat_bubble"], language: ["#6660B4", "language"], photo_camera: ["#C2574F", "photo_camera"],
+  gallery: ["#A9567C", "filter_vintage"], calendar: ["#35897F", ""], settings: ["#64707F", "settings"], music_note: ["#5868B0", "music_note"] };
+function flat(cx, cy, s, name) {
+  const r = s / 2;
+  g.save(); g.beginPath(); g.roundRect(cx - r, cy - r, s, s, s * .29);
+  if (name === "ours") { const lg = g.createLinearGradient(cx - r, cy - r, cx + r, cy + r); lg.addColorStop(0, "#D3EEFF"); lg.addColorStop(1, "#8FCBF7"); g.fillStyle = lg; g.fill(); g.clip(); const f = s * 1.5; g.drawImage(icon, cx - f / 2, cy - f / 2, f, f); }
+  else {
+    const [c0, gl] = FLAT[name]; g.fillStyle = c0; g.fill();
+    if (gl) glyph(gl, cx, cy + s * .02, s * .54, "#FFFFFF");
+    else { g.fillStyle = "#FFFFFF"; g.font = `500 ${s * .44}px ${UI}`; g.textAlign = "center"; g.textBaseline = "middle"; g.fillText("17", cx, cy + s * .04); }
+  }
+  g.restore(); g.textBaseline = "alphabetic";
+}
+let wallOne;
+function launcherOne() {
+  if (!wallOne) {   // the room photo far out of focus, dark and low in colour (blur lengths are device px, so paint it once at 1:1)
+    wallOne = new OffscreenCanvas(1080, 1920); const w = wallOne.getContext("2d");
+    const lg = w.createLinearGradient(0, 0, 400, 1920); lg.addColorStop(0, "#232D38"); lg.addColorStop(.55, "#3A4753"); lg.addColorStop(1, "#5A5E60");
+    w.fillStyle = lg; w.fillRect(0, 0, 1080, 1920);
+    w.globalAlpha = .4; w.filter = "blur(70px) saturate(.6) brightness(.6)"; w.drawImage(wall, -160, -160, 1400, 2240); w.filter = "none"; w.globalAlpha = 1;
+  }
+  g.drawImage(wallOne, 0, 0, W, H);
+  g.textBaseline = "alphabetic"; g.fillStyle = "#FFFFFF"; g.font = `500 14px ${UI}`; g.textAlign = "left"; g.fillText("9:41", 24, 23);
+  g.textAlign = "right"; g.font = "17px 'Material Symbols Rounded'"; g.fillText("wifi signal_cellular_4_bar battery_5_bar", W - 16, 25);
+  g.fillStyle = "#000"; g.beginPath(); g.arc(W / 2, 17, 5.5, 0, 7); g.fill();
+  [["갤러리", "gallery"], ["캘린더", "calendar"], ["설정", "settings"], ["리얼뽑기", "ours"]].forEach(([label, name], i) => {
+    flat(colX(i), ONE_ROW, ONE_S, name);
+    shade(true); g.fillStyle = "#FFFFFF"; g.font = `400 12px ${UI}`; g.textAlign = "center"; g.fillText(label, colX(i), ONE_ROW + ONE_S / 2 + 17); shade(false);
+  });
+  for (const [i, a] of [[-1, .95], [1, .4]]) { g.fillStyle = `rgba(255,255,255,${a})`; g.beginPath(); g.arc(W / 2 + i * 6, H - 50, 2.5, 0, 7); g.fill(); }
+  DOCK.forEach((name, i) => flat(colX(i), ONE_DOCK, ONE_S, name));
+  g.fillStyle = "rgba(255,255,255,.85)"; g.beginPath(); g.roundRect(W / 2 - 54, H - 11, 108, 4, 2); g.fill();
+}
+// the cut 7 script (ms): every beat holds about 3 s (operator: the double tap cloud went by too fast)
+// 0 walks right; 700 the unlock line; 2200 tap on the cloud -> smile; 3700 double tap -> the shortcut cloud, open 2.6 s;
+// 6300 a tap beside it closes the cloud (PetApps: a tap anywhere else closes it); 7000 grab, 7800 throw: across the
+// whole screen, off the edges, lands dizzy 1.8 s; 10800 grab, 11700 let go at the right edge: sticks, climbs
+const T7 = { talk: 700, tapCloud: 2200, dbl: 3700, closeCloud: 6300, grab: 7000, throwAt: 7800, grab2: 10800, wallAt: 11700 };
+function script7() {
+  const t = time, T = T7;
+  if (t < 1 && b.act === "IDLE") start("WALK", 1e9, 1);
+  talkA = t >= T.talk && t < T.tapCloud ? Math.min(1, (t - T.talk) / 120) : 0;
+  if (t >= T.tapCloud && !b.s1) { b.s1 = 1; tapAt.push([t, ...topOf()]); start("SMILE", 1400); events.push([t, "tap"]); }
+  if (t >= T.dbl && !b.s2) { b.s2 = 1; const p = centerOf(); tapAt.push([t, ...p], [t + 180, ...p]); events.push([t, "tap"], [t + 180, "tap"]); start("IDLE"); }
+  cloudA = t >= T.dbl + 200 && t < T.closeCloud + 150 ? clamp(Math.min((t - T.dbl - 200) / 160, (T.closeCloud + 150 - t) / 150), 0, 1) : 0;
+  if (t >= T.closeCloud && !b.s3) { b.s3 = 1; tapAt.push([t, W * .78, H * .56]); events.push([t, "tap"]); }
+  if (t >= T.closeCloud + 350 && !b.s4) { b.s4 = 1; start("WALK", 1e9, 1); }
+  if (t >= T.grab && t < T.throwAt) {
+    if (!grabStart) { grabStart = centerOf(); events.push([t, "grab"]); }
+    const k = ease((t - T.grab) / (T.throwAt - T.grab)), fx = grabStart[0] + (W * .56 - grabStart[0]) * k * k, fy = grabStart[1] + (H * .44 - grabStart[1]) * k;
+    if (b.act !== "HANG") start("HANG");
+    b.x = fx; b.y = fy + S / 2; finger = [fx, fy];
+  }
+  if (t >= T.throwAt && !b.s5) { b.s5 = 1; finger = null; fling(b.x, b.y, 1.6, -1.1); events.push([t, "whoosh"]); }
+  if (t >= T.grab2 && t < T.wallAt) {
+    if (!grabEnd) { grabEnd = centerOf(); events.push([t, "grab"]); }
+    const k = ease((t - T.grab2) / (T.wallAt - T.grab2)), fx = grabEnd[0] + (W * .9 - grabEnd[0]) * k, fy = grabEnd[1] + (H * .5 - grabEnd[1]) * k;
+    if (b.act !== "HANG") start("HANG");
+    b.x = fx; b.y = fy + S / 2; finger = [fx, fy];
+  }
+  if (t >= T.wallAt && !b.s6) { b.s6 = 1; finger = null; drop(b.x, b.y); events.push([t, "stick"]); }
+  if (b.s6 && b.act === "IDLE" && b.t > 500) start("CLIMB", 1e9, -1);
+}
+const shade = on => { g.shadowColor = on ? "rgba(0,0,0,.5)" : "transparent"; g.shadowBlur = on ? 3 * D : 0; g.shadowOffsetY = on ? 1 * D : 0; };
+// res/drawable/ic_menu_dex.xml and ic_menu_catch.xml: [pathData, stroke width, fill]
+const IC_DEX = [["M9,4h14a3,3 0,0 1,3,3v18a3,3 0,0 1,-3,3h-14a3,3 0,0 1,-3,-3v-18a3,3 0,0 1,3,-3Z", 2.6, "#FFFDF6"], ["M10,4v24", 2.6], ["M14,13a4,4 0,1 0,8,0a4,4 0,1 0,-8,0Z", 2, "#FF8FA3"], ["M14,21h8", 2.4]];
+const IC_CATCH = [["M5,16a11,11 0,1 0,22,0a11,11 0,1 0,-22,0Z", 2.6, "#FFFDF6"], ["M5,16a11,11 0,0 0,22,0Z", 2.6, "#FFC94A"], ["M5.8,14.2h20.4a1.8,1.8 0,0 1,0,3.6h-20.4a1.8,1.8 0,0 1,0,-3.6Z", 2, "#FFFDF6"]];
+function vec(paths, x, y) {
+  g.save(); g.translate(x, y); g.lineCap = "round"; g.lineJoin = "round"; g.strokeStyle = INK;
+  for (const [d, sw, fill] of paths) { const p = new Path2D(d); if (fill) { g.fillStyle = fill; g.fill(p); } g.lineWidth = sw; g.stroke(p); }
+  g.restore();
+}
+// The app's 2 x 2 widget as the app draws it (widget/PetWidgets.render + res/layout/widget_2x2.xml): no card, the
+// pet on the wallpaper with its ground shadow and the sky dot of a floating pet, then [도감] [뽑기] (widget_btn_leaf /
+// widget_btn_pink: colour tile, 2 dp ink outline, 12 dp corners, 32 dp icon, 14 sp bold). Still, as a widget is.
+function widget(x, y, w, h) {
+  const a = Math.min(w, h - 50), ax = x + (w - a) / 2, ay = y + (h - 50 - a) / 2;   // the square art, fitCenter above the buttons
+  if (petFront) {
+    const size = a * .86, s = size / Math.max(petFront.width, petFront.height), bw = petFront.width * s, bh = petFront.height * s, foot = ay + a * .95, mx = ax + a / 2;
+    g.fillStyle = "rgba(0,0,0,.25)"; g.beginPath(); g.ellipse(mx, foot - size * .005, bw * .36, size * .045, 0, 0, 7); g.fill();
+    g.drawImage(petFront, mx - bw / 2, foot - bh, bw, bh);
+    g.fillStyle = "#9FD8FF"; g.strokeStyle = INK; g.lineWidth = a * .016; g.beginPath(); g.arc(ax + a * .86, ay + a * .12, a * .06, 0, 7); g.fill(); g.stroke();
+  }
+  g.font = "700 14px 'Noto Sans KR'"; g.textAlign = "left"; g.textBaseline = "middle";
+  const btns = [["도감", "#BFE3A6", IC_DEX], ["뽑기", "#FF8FA3", IC_CATCH]].map(([t, c, ic]) => [t, c, ic, 6 + 32 + 4 + g.measureText(t).width + 12]);
+  let bx = x + (w - btns.reduce((n, v) => n + v[3] + 8, 0)) / 2 + 4; const by = y + h - 46;
+  for (const [t, c, ic, bwid] of btns) {
+    g.fillStyle = c; g.strokeStyle = INK; g.lineWidth = 2; g.beginPath(); g.roundRect(bx + 1, by + 1, bwid - 2, 38, 11); g.fill(); g.stroke();
+    vec(ic, bx + 6, by + 4); g.fillStyle = INK; g.fillText(t, bx + 42, by + 20.5);
+    bx += bwid + 8;
+  }
+}
+function launcher() {
+  g.drawImage(wall, 0, 0, W, H);
+  // status bar: clock, two notification icons, punch hole, wifi / signal / battery
+  g.textBaseline = "alphabetic"; g.fillStyle = "#FFFFFF"; g.font = `500 14px ${UI}`; g.textAlign = "left"; g.fillText("9:41", 24, 23);
+  g.font = "15px 'Material Symbols Rounded'"; g.fillText("chat_bubble mail", 60, 24);
+  g.textAlign = "right"; g.font = "17px 'Material Symbols Rounded'"; g.fillText("wifi signal_cellular_4_bar battery_5_bar", W - 16, 25);
+  g.fillStyle = "#000"; g.beginPath(); g.arc(W / 2, 17, 5.5, 0, 7); g.fill();
+  // At a Glance: the date, then the weather
+  shade(true); g.fillStyle = "#FFFFFF"; g.textAlign = "left"; g.font = `400 22px ${UI}`; g.fillText("11월 17일 화요일", 26, 96);
+  g.font = `400 16px ${UI}`; g.fillText("14°C", 54, 124);
+  g.fillStyle = "#FFD84D"; g.beginPath(); g.arc(41, 113, 6, 0, 7); g.fill(); shade(false);
+  glyph("cloud", 35, 120, 19, "#FFFFFF"); g.textBaseline = "alphabetic";
+  widget(colX(2) - CW / 2 + 4, ROW_TOP + ROW_H + 4, CW * 2 - 8, ROW_H * 2 - 8);
+  for (const [label, name, c, r] of APPS) {
+    themed(colX(c), rowY(r), ICON_S, name);
+    shade(true); g.fillStyle = "#FFFFFF"; g.font = `400 12px ${UI}`; g.textAlign = "center"; g.textBaseline = "alphabetic"; g.fillText(label, colX(c), rowY(r) + ICON_S / 2 + 17); shade(false);
+  }
+  DOCK.forEach((name, i) => themed(colX(i), H - 112, ICON_S, name));
+  // the search pill: tonal surface, search left, mic + lens right
+  g.save(); g.shadowColor = "rgba(0,0,0,.22)"; g.shadowBlur = 4 * D; g.shadowOffsetY = 1 * D; g.fillStyle = "#EDEBF7";
+  g.beginPath(); g.roundRect(PADX, H - 72, W - PADX * 2, 50, 25); g.fill(); g.restore();
+  glyph("search", PADX + 26, H - 46, 24, "#3B4260"); glyph("mic", W - PADX - 62, H - 46, 23, "#3B4260"); glyph("center_focus_weak", W - PADX - 26, H - 46, 23, "#3B4260");
+  g.textBaseline = "alphabetic";
+  g.fillStyle = "rgba(255,255,255,.9)"; g.beginPath(); g.roundRect(W / 2 - 54, H - 11, 108, 4, 2); g.fill();
+}
+function touch(x, y, k, hold = false) {   // Android "show taps": a soft white dot and a ring spreading out
+  if (k < 0 || k > 1) return;
+  g.fillStyle = `rgba(255,255,255,${hold ? .35 : .35 * (1 - k)})`; g.beginPath(); g.arc(x, y, 20, 0, 7); g.fill();
+  if (!hold) { g.strokeStyle = `rgba(255,255,255,${.7 * (1 - k)})`; g.lineWidth = 2; g.beginPath(); g.arc(x, y, 20 + 18 * k, 0, 7); g.stroke(); }
+}
+
+// ---------- the script (ms) ----------
+// 0     walks right; the unlock line pops at 300 ("{name} 여기 있어", Talk NOON)
+// 1500  tap on the cloud: it closes, the pet smiles (TalkBubble onTap -> smile 1400)
+// 3000  double tap on the pet (taps 180 ms apart, under DOUBLE_MS 320): the shortcut cloud opens (AppBubble)
+// 4100  tap on 리얼뽑기 in the cloud: the app opens (launch zoom 380 ms) on its catch screen, held to 5300
+// 5300  back home; 5500 the finger grabs the pet (HANG), drags it up-right, 6150 flings (> 1.1 px/ms)
+//       -> FALL, bounces off the right edge, lands DIZZY
+// 8400  grabs it again, drags to the right edge, 9300 lets go: sticks to the wall (slide-in), then climbs
+const events = [];
+let time = 0, talkA = 0, cloudA = 0, appK = -1, finger = null, tapAt = [], appFrom = [W / 2, H / 2];
+const T = { talk: 300, tapCloud: 1500, dbl: 3000, pick: 4900, back: 6100, grab: 6300, throwAt: 6950, grab2: 9200, wallAt: 10100 };   // the cloud holds 1.5 s open (review 11-17)
+let grabStart = null, grabEnd = null;
+const centerOf = () => { const [x, y, w, h] = petRect(); return [x + w / 2, y + h / 2]; };
+const topOf = () => { const [x, y, w] = petRect(); return [x + w / 2, y - 30]; };
+function script() {
+  if (V7) return script7();
+  const t = time;
+  if (t < 1 && b.act === "IDLE") start("WALK", 1e9, 1);
+  talkA = t >= T.talk && t < T.tapCloud ? Math.min(1, (t - T.talk) / 120) : 0;
+  if (t >= T.tapCloud && !b.s1) { b.s1 = 1; tapAt.push([t, ...topOf()]); start("SMILE", 1400); events.push([t, "tap"]); }
+  if (t >= T.dbl && !b.s2) { b.s2 = 1; const p = centerOf(); tapAt.push([t, ...p], [t + 180, ...p]); events.push([t, "tap"], [t + 180, "tap"]); start("IDLE"); }
+  cloudA = t >= T.dbl + 200 && t < T.pick + 80 ? Math.min(1, (t - T.dbl - 200) / 160) : 0;
+  if (t >= T.pick && !b.s3 && cloudBox) { b.s3 = 1; const c = cloudBox, cx = c.x + (c.bodyW - 4 * c.cell) / 2 + 3.5 * c.cell, cy = c.y + c.pad + 20; tapAt.push([t, cx, cy]); events.push([t, "tap"]); appFrom = [cx, cy]; }
+  appK = t >= T.pick + 80 && t < T.back ? (t - T.pick - 80) : -1;
+  if (t >= T.back && !b.s4) { b.s4 = 1; events.push([t, "home"]); b.x = 150; place("FLOOR"); start("WALK", 1e9, 1); }
+  if (t >= T.grab && t < T.throwAt) {
+    if (!grabStart) { grabStart = centerOf(); events.push([t, "grab"]); }
+    const k = ease((t - T.grab) / (T.throwAt - T.grab)), fx = grabStart[0] + (W * .62 - grabStart[0]) * k * k, fy = grabStart[1] + (H * .42 - grabStart[1]) * k;
+    if (b.act !== "HANG") start("HANG");
+    b.x = fx; b.y = fy + S / 2; finger = [fx, fy];
+  }
+  if (t >= T.throwAt && !b.s5) { b.s5 = 1; finger = null; fling(b.x, b.y, 1.6, -1.1); events.push([t, "whoosh"]); }
+  if (t >= T.grab2 && t < T.wallAt) {
+    if (!grabEnd) { grabEnd = centerOf(); events.push([t, "grab"]); }
+    const k = ease((t - T.grab2) / (T.wallAt - T.grab2)), fx = grabEnd[0] + (W * .9 - grabEnd[0]) * k, fy = grabEnd[1] + (H * .45 - grabEnd[1]) * k;
+    if (b.act !== "HANG") start("HANG");
+    b.x = fx; b.y = fy + S / 2; finger = [fx, fy];
+  }
+  if (t >= T.wallAt && !b.s6) { b.s6 = 1; finger = null; drop(b.x, b.y); events.push([t, "stick"]); }
+  if (b.s6 && b.act === "IDLE" && b.t > 500) start("CLIMB", 1e9, -1);
+}
+
+function render() {
+  g.setTransform(D, 0, 0, D, 0, 0);
+  LOOK === "oneui" ? launcherOne() : launcher(); drawPet(time);
+  talk(`${NAME} 여기 있어`, talkA);
+  appCloud(cloudA);
+  for (const [t0, x, y] of tapAt) touch(x, y, (time - t0) / 350);
+  if (finger) touch(finger[0], finger[1], 0, true);
+  if (appK >= 0) {   // the app opens from where it was tapped: a rounded window growing to full screen
+    const k = ease(appK / 380), x0 = appFrom[0] - 20, y0 = appFrom[1] - 20;
+    const x = x0 * (1 - k), y = y0 * (1 - k), w = 40 + (W - 40) * k, h = 40 + (H - 40) * k;
+    g.save(); g.globalAlpha = clamp(appK / 120, 0, 1); g.beginPath(); g.roundRect(x, y, w, h, 24 * (1 - k) + 2); g.clip();
+    g.drawImage(catScreen, x, y, w, h); g.restore();
+  }
+}
+
+window.ready = (async () => {
+  await Promise.all([document.fonts.load("14px Jua"), document.fonts.load("700 13px 'Noto Sans KR'"), document.fonts.load("400 12px 'Noto Sans KR'"), document.fonts.load("500 14px 'Noto Sans KR'"),
+    document.fonts.load("24px 'Material Symbols Rounded'", "photo_camera"),
+    document.fonts.load("400 12px 'Google Sans Flex'", "9:41 17 14°C"), document.fonts.load("500 14px 'Google Sans Flex'", "9:41 17"),
+    ...[400, 700].map(w => document.fonts.load(`${w} 12px 'Noto Sans KR'`, "11월 17일 화요일 도감 뽑기 펫 설정 끄기 여기 있어" + NAME + "갤러리캘린더설정" + APPS.map(a => a[0]).join("") + CLOUD_APPS.map(a => a[0]).join("")))]);
+  const [sheet, ic, wp, cs] = await Promise.all([load("../frames/" + (Q.get("sheet") ?? "pet-sheet-fluff-white.webp")),
+    load("/works/2026-11-09-catch/app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png"),
+    load(Q.get("wall") ?? "a10/0030.jpg"), load(Q.get("app") ?? "out-catch-a09/0040.png")]);
+  icon = ic; wall = wp; catScreen = cs; cellsMap = petCells(cells(sheet)); petFront = cellsMap.smile; unit = Math.max(...Object.values(cellsMap).map(c => Math.max(c.width, c.height)));
+  script(); for (let k = Math.round(+(Q.get("skip") ?? 0) / DT); k > 0; k--) { time += DT; script(); stepBrain(DT); }
+  return true;
+})();
+let n = 0;
+window.frame = async () => { if (n++ > 0) { time += DT; script(); stepBrain(DT); } else script(); render(); return { url: cv.toDataURL("image/png"), st: b.act + ":" + b.zone, cap: null, toast: false, t: Math.round(time) }; };
+window.events = () => ({ events, icon: ourIcon().map(v => v / W) });
+</script>

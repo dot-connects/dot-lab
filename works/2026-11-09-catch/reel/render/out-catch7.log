@@ -1,0 +1,7 @@
+frame 1/152 t=0 AIM  5s
+frame 31/152 t=1000 AIM  31s
+frame 61/152 t=2000 GRIP  65s
+frame 91/152 t=3000 UP  91s
+frame 121/152 t=4000 CARRY WRAP 114s
+frame 151/152 t=5000 EXIT WRAP 148s
+errors: INFO: Created TensorFlow Lite XNNPACK delegate for CPU.

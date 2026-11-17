@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=411.43">
+<title>reel end card</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Jua&family=Gowun+Dodum&display=block">
+<style>
+/* End card in the app's own menu look (ui/Book.kt: sky over grass, paper + ink outline + hard drop, Jua).
+   The pet is the cat's own sheet ("smile" cell). Copy (spec-reel): name, CTA, the small free line. */
+:root{--sky:#BFE6FF;--grass:#D9F2C9;--paper:#FFFDF6;--ink:#24331F;--muted:#5D6B57;--sun:#FFD84D}
+html,body{margin:0;width:411.43px;height:731.43px;overflow:hidden}
+body{background:linear-gradient(var(--sky) 0 58%,var(--grass) 58% 100%);color:var(--ink);font-family:"Gowun Dodum",sans-serif;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;text-align:center}
+.widget{width:150px;height:150px;border-radius:34px;background:var(--paper);box-shadow:0 5px 0 var(--ink),inset 0 0 0 3px var(--ink);
+  display:grid;place-items:center}
+.widget img{width:120px;height:120px;object-fit:contain}
+.name{font:400 64px/1 "Black Han Sans",sans-serif;letter-spacing:.02em;text-shadow:0 3px 0 #fff}
+.cta{font:22px/1.2 Jua,sans-serif;background:var(--sun);border-radius:999px;padding:12px 22px;box-shadow:0 4px 0 var(--ink),inset 0 0 0 2.5px var(--ink)}
+.small{font-size:15px;color:var(--muted);margin-top:2px}
+</style>
+<div class="widget"><img id="pet" alt=""></div>
+<div class="name">리얼뽑기</div>
+<div class="cta">안드로이드 먼저 해 보기 · 프로필 링크</div>
+<div class="small">테스트 기간 우리 아이 펫 그림 3장 무료</div>
+<script>
+document.getElementById("pet").src = new URLSearchParams(location.search).get("pet") ?? "../frames/pet-smile.png";
+window.ready = Promise.all([document.fonts.load('64px "Black Han Sans"'), document.fonts.load("22px Jua"), document.fonts.load("15px 'Gowun Dodum'"),
+  document.getElementById("pet").decode()]).then(() => document.fonts.ready).then(() => true);
+</script>

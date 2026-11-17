@@ -1,0 +1,5 @@
+frame 1/104 t=0   1s
+frame 31/104 t=1000   12s
+frame 61/104 t=2000   23s
+frame 91/104 t=3000   34s
+no page errors

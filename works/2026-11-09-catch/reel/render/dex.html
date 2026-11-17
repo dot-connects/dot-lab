@@ -1,0 +1,74 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=411.43">
+<title>dex screen render</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=Noto+Sans+KR:wght@700&display=block">
+<style>
+/* ui/DexScreen.kt + ui/Book.kt (BookPage, Heading, InkPill, inkCard) ported to CSS, 1 CSS px = 1 dp.
+   Rendered at 411.43 x 731.43 with device scale 2.625 (= 1080 x 1920). */
+:root{--sky:#BFE6FF;--grass:#D9F2C9;--paper:#FFFDF6;--ink:#24331F;--muted:#5D6B57;--sun:#FFD84D;--line:2.5px;--drop:4px}
+html,body{margin:0;width:411.43px;height:731.43px;overflow:hidden}
+body{background:linear-gradient(var(--sky) 0 28%,var(--grass) 28% 100%);font:15px "Gowun Dodum",sans-serif;color:var(--ink)}
+.page{position:absolute;inset:28px 0 16px 0;padding:8px 18px;display:flex;flex-direction:column;gap:14px;box-sizing:border-box}
+.row{display:flex;align-items:center}
+.sp{flex:1}
+.pill{font:15px/1.35 Jua,sans-serif;padding:6px 14px;margin-bottom:2px;border-radius:999px;background:var(--paper);box-shadow:inset 0 0 0 var(--line) var(--ink)}
+.pill.sun{background:var(--sun)}
+h1{margin:0;font:400 30px/1.2 Jua,sans-serif;text-shadow:0 1.52px 0 #fff}
+.grid{display:grid;grid-template-columns:repeat(3,1fr);column-gap:10px;row-gap:14px}
+.cell{position:relative;margin-bottom:var(--drop)}
+.card{position:relative;border-radius:18px;background:var(--paper);box-shadow:0 var(--drop) 0 var(--ink),inset 0 0 0 var(--line) var(--ink);
+  padding:8px 4px;display:flex;flex-direction:column;align-items:center}
+.card.dash{box-shadow:none;outline:2.5px dashed var(--muted);outline-offset:-2.5px}
+.pic{width:100%;aspect-ratio:1.1;display:grid;place-items:center}
+.pic img{width:calc(100% - 12px);height:calc(100% - 12px);object-fit:contain}
+.q{font:34px Jua,sans-serif;color:var(--muted)}
+.name{font:15px/1.3 Jua,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.kind{font-size:11px;line-height:1.35;color:var(--muted)}
+.status{position:absolute;top:0;left:0;right:0;height:28px;font:700 14px "Noto Sans KR",sans-serif;color:#1d2a1a}
+.status .t{position:absolute;left:26px;top:4px}
+.status svg{position:absolute;right:18px;top:6px}
+.nav{position:absolute;left:50%;bottom:6px;width:108px;height:4px;margin-left:-54px;border-radius:2px;background:rgba(36,51,31,.75)}
+</style>
+<div class="status"><span class="t">9:41</span><svg width="34" height="16" viewBox="0 0 34 16"><path d="M0 14h14V1z" fill="#1d2a1a"/><rect x="22" y="1.5" width="8" height="13" rx="1.5" fill="#1d2a1a"/><rect x="24" y="0" width="4" height="2" fill="#1d2a1a"/></svg></div>
+<div class="page">
+  <div class="row"><span class="pill">‹ 뽑기</span><span class="sp"></span><span class="pill sun">펫 설정</span></div>
+  <div class="row"><h1>도감</h1><span class="sp"></span><span class="pill sun" id="count"></span></div>
+  <div class="grid" id="grid"></div>
+</div>
+<div class="nav"></div>
+<script type="module">
+const Q = new URLSearchParams(location.search);
+const NAME = Q.get("name") ?? "모찌", CUT = /^[\w\-/.]+$/.test(Q.get("cut") ?? "") && !(Q.get("cut") ?? "").includes("..") ? Q.get("cut") : "out-catch-a09/cut.png";
+// the seven fur critters met before (Dex order = catch number), then the cat; the rest show as "?" (MissingCell)
+const MET = (Q.get("met") ?? "monggeul,ppiyak,dalsom,bamtol,nyangsom,pengsom,huhu").split(",");
+const A = "/works/2026-11-09-catch/app/app/src/main/assets/critters/";
+window.ready = (async () => {
+  const idx = await (await fetch(A + "index.json")).json();
+  const name = Object.fromEntries(idx.map(o => [o.id, o.name]));
+  const cells = [...MET.map(id => ({ pic: `${A}${id}/front.webp`, name: name[id], kind: "털뭉치" })), { pic: CUT, name: NAME, kind: "고양이" }];
+  document.getElementById("count").textContent = `${Q.get("count") ?? cells.length}마리`;
+  const grid = document.getElementById("grid");
+  // DOM nodes, not innerHTML: name / cut / met come from the URL (security review 11-17)
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const card = (pic, name, kind, dash) => {
+    const cell = el("div", "cell"), c = el("div", dash ? "card dash" : "card"), p = el("div", "pic");
+    if (pic) { const im = el("img"); im.alt = ""; im.src = pic; p.append(im); } else p.append(el("span", "q", "?"));
+    const n = el("div", "name", name); if (dash) n.style.color = "var(--muted)";
+    c.append(p, n, el("div", "kind", kind)); cell.append(c); return cell;
+  };
+  grid.replaceChildren(...cells.map(c => card(c.pic, c.name, c.kind, false)), ...idx.filter(o => !MET.includes(o.id)).map(() => card(null, "???", "털뭉치", true)));
+  if (Q.get("stamp") === "1") {   // reel: the new card marked (yellow ring + NEW), as the edit zooms on it
+    const c8 = grid.children[cells.length - 1].querySelector(".card");
+    c8.style.boxShadow = "0 4px 0 var(--ink),inset 0 0 0 2.5px var(--ink),0 0 0 5px var(--sun)";
+    const tag = document.createElement("span"); tag.textContent = "NEW";
+    Object.assign(tag.style, { position: "absolute", top: "-9px", right: "-6px", font: "13px Jua", background: "var(--sun)", padding: "1px 8px", borderRadius: "99px", boxShadow: "inset 0 0 0 2px var(--ink)" });
+    c8.append(tag);
+  }
+  await Promise.all([...document.images].map(i => i.decode().catch(() => {})));
+  await document.fonts.ready;
+  const r = grid.children[cells.length - 1].getBoundingClientRect();
+  window.cuts = async () => [{ name: "card8", rect: [r.left / 411.43, r.top / 731.43, r.right / 411.43, r.bottom / 731.43] }];
+  return true;
+})();
+</script>
