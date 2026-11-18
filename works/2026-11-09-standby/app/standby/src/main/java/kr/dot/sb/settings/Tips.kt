@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -103,7 +104,11 @@ object Tips {
 fun GestureGlyph(g: Gesture, color: Color, modifier: Modifier = Modifier, size: Dp = 40.dp) {
     // a delay loop, not an infinite transition: render tests wait for idle and an endless animation never is (shots draw t = 0)
     var t by remember { androidx.compose.runtime.mutableFloatStateOf(0f) }
-    androidx.compose.runtime.LaunchedEffect(g) { var k = 0; while (true) { kotlinx.coroutines.delay(40); k = (k + 1) % 40; t = k / 40f } }
+    val life = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle
+    androidx.compose.runtime.LaunchedEffect(g, life) {
+        var k = 0
+        life.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) { while (true) { kotlinx.coroutines.delay(40); k = (k + 1) % 40; t = k / 40f } }
+    }
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
         val k = (t * 1.25f).coerceAtMost(1f) // a short rest at the end of each loop

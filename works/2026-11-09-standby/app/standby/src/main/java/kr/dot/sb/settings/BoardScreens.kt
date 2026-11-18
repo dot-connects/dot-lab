@@ -281,6 +281,9 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
     val state = remember(config.city, config.use24h) { Sample.state(config) }
     var pick by remember { mutableStateOf<Pair<Boolean, Int?>?>(null) } // (left?, index or null = append)
     var undo by remember { mutableStateOf<Pair<String, AppConfig>?>(null) }
+    // the removal itself is edit 1; any later edit would be wiped by restoring the earlier config, so it drops the bar
+    var undoEdits by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(config) { if (undo != null && ++undoEdits > 1) undo = null }
     val dev = PreviewDevice.FOLD_COVER
     val rects = LayoutGeo.slots(Layout.TWO, dev.w.toFloat(), dev.h.toFloat())
     /** Edit one side as a board stack: [moved] maps old index -> new (null = gone), options follow (11-14 per-card face). */
@@ -292,7 +295,7 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
     }
     fun removeAt(left: Boolean, j: Int) {
         val card = (if (left) config.widgetLeft else config.widgetRight).getOrNull(j)
-        if (card != null) undo = "${card.ko} 뺐어요" to config
+        if (card != null) { undo = "${card.ko} 뺐어요" to config; undoEdits = 0 }
         editSide(left, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
     }
     val first = Slide(WIDGETS_PAGE) { l -> BoardView(widgetsBoard(config), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
@@ -388,6 +391,9 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     var pick by remember { mutableStateOf<PickTarget?>(null) }
     var deleting by remember { mutableStateOf(false) }
     var undo by remember { mutableStateOf<Pair<String, AppConfig>?>(null) }
+    // the removal itself is edit 1; any later edit would be wiped by restoring the earlier config, so it drops the bar
+    var undoEdits by remember { androidx.compose.runtime.mutableIntStateOf(0) }
+    androidx.compose.runtime.LaunchedEffect(config) { if (undo != null && ++undoEdits > 1) undo = null }
     val names = slotNames(board.layout)
     // layouts too small for this phone's main screen are disabled (the preview's own toggles only change the picture)
     val dev = PreviewDevice.of(env.phone, inner = false)
@@ -401,7 +407,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
         BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
     }
     fun removeAt(slot: Int, j: Int) {
-        board.slots.getOrNull(slot)?.getOrNull(j)?.let { undo = "${it.ko} 뺐어요" to config }
+        board.slots.getOrNull(slot)?.getOrNull(j)?.let { undo = "${it.ko} 뺐어요" to config; undoEdits = 0 }
         editSlot(slot, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
     }
     val first = Slide(board.name) { l ->

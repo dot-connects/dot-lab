@@ -51,9 +51,8 @@ internal fun BoxScope.TipOverlay(config: AppConfig, at: TipContext?, busy: Boole
         done = true
         shown = t
         seen(t.name)
-        delay(4_000)
-        shown = null
     }
+    LaunchedEffect(shown) { if (shown != null) { delay(4_000); shown = null } }
     val t = shown
     AnimatedVisibility(t != null && !busy, Modifier.align(if (t?.gesture == Gesture.PULL_DOWN) Alignment.TopCenter else Alignment.BottomCenter), enter = fadeIn(), exit = fadeOut()) {
         if (t != null) Row(
