@@ -45,8 +45,48 @@ object PetApps {
             .sortedBy { it.label }
     }
 
-    /** The chosen apps still installed, in the chosen order. */
+    /** Which apps the cloud shows (operator 11-18): the chosen ones, the last [AUTO] used, or the [AUTO] most used this week. */
+    enum class Mode { CHOSEN, RECENT, FREQUENT }
+    const val AUTO = 6
+    private const val KEY_MODE = "pet_apps_mode"
+    fun mode(ctx: Context): Mode = runCatching { Mode.valueOf(PetPrefs.prefs(ctx).getString(KEY_MODE, null)!!) }.getOrDefault(Mode.CHOSEN)
+    fun setMode(ctx: Context, m: Mode) { PetPrefs.prefs(ctx).edit().putString(KEY_MODE, m.name).apply() }
+
+    /** What the cloud shows; the usage modes fall back to the chosen apps until usage access is granted. */
     fun load(ctx: Context): List<App> {
+        val m = mode(ctx)
+        if (m == Mode.CHOSEN || !PetPrefs.usageGranted(ctx)) return chosenApps(ctx)
+        return used(ctx, m == Mode.RECENT)
+    }
+
+    /**
+     * Apps from usage stats, launchers, our own app and apps without an icon left out: [recent] = by last use over 3 days,
+     * else by foreground time over 7 days.
+     */
+    fun used(ctx: Context, recent: Boolean): List<App> {
+        val pm = ctx.packageManager
+        val usm = ctx.getSystemService(android.app.usage.UsageStatsManager::class.java)
+        val now = System.currentTimeMillis()
+        val days = if (recent) 3 else 7
+        val homes = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0).map { it.activityInfo.packageName }.toSet()
+        return usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, now - days * 86_400_000L, now)
+            .filter { it.totalTimeInForeground > 0 && it.packageName != ctx.packageName && it.packageName !in homes }
+            .groupBy { it.packageName }
+            .mapValues { (_, s) -> if (recent) s.maxOf { it.lastTimeUsed } else s.sumOf { it.totalTimeInForeground } }
+            .entries.sortedByDescending { it.value }
+            .asSequence()
+            .filter { pm.getLaunchIntentForPackage(it.key) != null }
+            .mapNotNull { (pkg, _) -> appOf(ctx, pkg) }
+            .take(AUTO).toList()
+    }
+
+    private fun appOf(ctx: Context, pkg: String): App? {
+        val pm = ctx.packageManager
+        return runCatching { val ai = pm.getApplicationInfo(pkg, 0); App(pkg, pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai)) }.getOrNull()
+    }
+
+    /** The chosen apps still installed, in the chosen order. */
+    fun chosenApps(ctx: Context): List<App> {
         val pm = ctx.packageManager
         return chosen(ctx).mapNotNull { pkg ->
             runCatching { val ai = pm.getApplicationInfo(pkg, 0); App(pkg, pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai)) }.getOrNull()

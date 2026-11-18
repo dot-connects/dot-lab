@@ -261,10 +261,36 @@ private fun rememberPetFront(e: Dex.Entry): androidx.compose.ui.graphics.ImageBi
 @Composable
 private fun AppsPanel(onPick: () -> Unit) {
     val ctx = LocalContext.current
-    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList()) {
+    var mode by remember { mutableStateOf(kr.dot.catchpet.pet.PetApps.mode(ctx)) }
+    var usage by remember { mutableStateOf(PetPrefs.usageGranted(ctx)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { usage = PetPrefs.usageGranted(ctx) }
+    val auto = mode != kr.dot.catchpet.pet.PetApps.Mode.CHOSEN
+    val showAuto = auto && usage
+    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList(), mode, usage) {
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.load(ctx) }
     }
     Panel("두 번 톡톡 누르면") {
+        // operator 11-18: recent / most used this week / chosen (the first two need usage access; Android hides other apps' open tasks)
+        Seg(listOf("최근 앱" to kr.dot.catchpet.pet.PetApps.Mode.RECENT, "자주 쓴 앱" to kr.dot.catchpet.pet.PetApps.Mode.FREQUENT,
+            "직접 선택" to kr.dot.catchpet.pet.PetApps.Mode.CHOSEN), mode) { v ->
+            mode = v; kr.dot.catchpet.pet.PetApps.setMode(ctx, v)
+            if (v != kr.dot.catchpet.pet.PetApps.Mode.CHOSEN && !usage) ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+        if (auto && !usage) {
+            Note("최근 앱·자주 쓴 앱을 보려면 '사용정보 접근'에서 리얼뽑기를 허용해 주세요. 허용 전에는 고른 앱이 떠요.")
+            Row { InkPill("사용정보 접근 열기", Book.Sun, onClick = { ctx.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS)) }) }
+        }
+        if (showAuto) {
+            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                for (a in apps) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(52.dp)) {
+                    Image(rememberIcon(a.icon), a.label, Modifier.size(40.dp))
+                    Text(a.label, fontSize = 10.sp, maxLines = 1)
+                }
+            }
+            Note(if (mode == kr.dot.catchpet.pet.PetApps.Mode.RECENT) "두 번 톡톡 누르면 방금까지 쓴 앱 ${kr.dot.catchpet.pet.PetApps.AUTO}개가 최근 순서로 떠요."
+                else "두 번 톡톡 누르면 최근 일주일 동안 오래 쓴 앱 ${kr.dot.catchpet.pet.PetApps.AUTO}개가 떠요.")
+            return@Panel
+        }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             for (a in apps) Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.width(52.dp)) {
                 Image(rememberIcon(a.icon), a.label, Modifier.size(40.dp))
