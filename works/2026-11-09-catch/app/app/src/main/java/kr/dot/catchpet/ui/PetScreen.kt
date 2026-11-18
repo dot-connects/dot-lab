@@ -264,9 +264,10 @@ private fun AppsPanel(onPick: () -> Unit) {
     var mode by remember { mutableStateOf(kr.dot.catchpet.pet.PetApps.mode(ctx)) }
     var usage by remember { mutableStateOf(PetPrefs.usageGranted(ctx)) }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { usage = PetPrefs.usageGranted(ctx) }
+    var count by remember { mutableStateOf(kr.dot.catchpet.pet.PetApps.count(ctx)) }
     val auto = mode != kr.dot.catchpet.pet.PetApps.Mode.CHOSEN
     val showAuto = auto && usage
-    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList(), mode, usage) {
+    val apps by produceState<List<kr.dot.catchpet.pet.PetApps.App>>(emptyList(), mode, usage, count) {
         value = withContext(Dispatchers.IO) { kr.dot.catchpet.pet.PetApps.load(ctx) }
     }
     Panel("두 번 톡톡 누르면") {
@@ -287,8 +288,9 @@ private fun AppsPanel(onPick: () -> Unit) {
                     Text(a.label, fontSize = 10.sp, maxLines = 1)
                 }
             }
-            Note(if (mode == kr.dot.catchpet.pet.PetApps.Mode.RECENT) "두 번 톡톡 누르면 방금까지 쓴 앱 ${kr.dot.catchpet.pet.PetApps.AUTO}개가 최근 순서로 떠요."
-                else "두 번 톡톡 누르면 최근 일주일 동안 오래 쓴 앱 ${kr.dot.catchpet.pet.PetApps.AUTO}개가 떠요.")
+            Seg(kr.dot.catchpet.pet.PetApps.COUNTS.map { "${it}개" to it }, count) { n -> count = n; kr.dot.catchpet.pet.PetApps.setCount(ctx, n) }
+            Note(if (mode == kr.dot.catchpet.pet.PetApps.Mode.RECENT) "두 번 톡톡 누르면 방금까지 쓴 앱 ${count}개가 최근 순서로 떠요."
+                else "두 번 톡톡 누르면 최근 일주일 동안 오래 쓴 앱 ${count}개가 떠요.")
             return@Panel
         }
         Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(10.dp)) {

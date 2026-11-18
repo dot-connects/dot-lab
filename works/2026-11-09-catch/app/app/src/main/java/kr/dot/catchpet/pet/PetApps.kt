@@ -45,10 +45,14 @@ object PetApps {
             .sortedBy { it.label }
     }
 
-    /** Which apps the cloud shows (operator 11-18): the chosen ones, the last [AUTO] used, or the [AUTO] most used this week. */
+    /** Which apps the cloud shows (operator 11-18): the chosen ones, the last [count] used, or the [count] most used this week. */
     enum class Mode { CHOSEN, RECENT, FREQUENT }
-    const val AUTO = 6
+    /** How many apps the usage modes show: 4, 6 or 8 (operator 11-18). */
+    val COUNTS = listOf(4, 6, 8)
     private const val KEY_MODE = "pet_apps_mode"
+    private const val KEY_COUNT = "pet_apps_count"
+    fun count(ctx: Context): Int = PetPrefs.prefs(ctx).getInt(KEY_COUNT, 6).takeIf { it in COUNTS } ?: 6
+    fun setCount(ctx: Context, n: Int) { PetPrefs.prefs(ctx).edit().putInt(KEY_COUNT, n).apply() }
     fun mode(ctx: Context): Mode = runCatching { Mode.valueOf(PetPrefs.prefs(ctx).getString(KEY_MODE, null)!!) }.getOrDefault(Mode.CHOSEN)
     fun setMode(ctx: Context, m: Mode) { PetPrefs.prefs(ctx).edit().putString(KEY_MODE, m.name).apply() }
 
@@ -77,7 +81,7 @@ object PetApps {
             .asSequence()
             .filter { pm.getLaunchIntentForPackage(it.key) != null }
             .mapNotNull { (pkg, _) -> appOf(ctx, pkg) }
-            .take(AUTO).toList()
+            .take(count(ctx)).toList()
     }
 
     private fun appOf(ctx: Context, pkg: String): App? {
@@ -108,7 +112,8 @@ object PetApps {
 @SuppressLint("ViewConstructor", "ClickableViewAccessibility")
 class AppBubble(ctx: Context, private val apps: List<PetApps.App>, private val side: PetBrain.Zone, private val onPick: (String?) -> Unit) : View(ctx) {
     private val d = resources.displayMetrics.density
-    private val cols = min(4, apps.size).coerceAtLeast(1)
+    // operator 11-18: up to 4 in one row; 5-6 as rows of 3; 7-8 as rows of 4
+    private val cols = (if (apps.size in 5..6) 3 else min(4, apps.size)).coerceAtLeast(1)
     private val rows = if (apps.isEmpty()) 0 else ceil(apps.size / cols.toFloat()).toInt()
     private val cell = 58 * d
     private val pad = 16 * d
