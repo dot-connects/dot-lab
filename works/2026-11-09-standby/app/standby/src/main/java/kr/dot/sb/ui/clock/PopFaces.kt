@@ -129,19 +129,32 @@ internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
         val k = min(w, h) / 360f
         val digits = d.h + d.m
         val hl = d.h.length
+        // plan-r15 E9 #1: portrait (and M/St slots) stacks hours over minutes, the wider row 80 % of the width, no colon
+        val two = h > w * 1.15f
+        val pillH = if (inSlot || !style.showInfo || !two) 0f else 86 * k
         // width of the hour class: every digit at the widest advance, colon pulled in 6 dp each side
         val colonEm = p.colonAdv
         val widthEm = (digits.length * p.digitAdv.max()) + colonEm
-        val fs = min(0.52f * h * style.sizePct / 100f / p.capEm, 0.82f * w / widthEm)
+        val fs = if (two) min((0.76f * h - pillH) / (2 * p.capEm + 0.2f) * style.sizePct / 100f, 0.8f * w / (max(hl, 2) * p.digitAdv.max()))
+            else min(0.52f * h * style.sizePct / 100f / p.capEm, 0.82f * w / widthEm)
         val r = fs / 268f // one mockup px at this digit size
         val cap = p.capEm * fs
         val adv = digits.map { p.measure(it.toString(), fs) }
         val colonW = p.measure(":", fs) - 12 * r
-        var x = (w - adv.sum() - colonW) / 2
         val xs = FloatArray(digits.length)
-        for (i in digits.indices) { if (i == hl) x += colonW; xs[i] = x; x += adv[i] }
+        // baseline per digit (the second row 0.2 em under the first in portrait)
+        val bases = FloatArray(digits.length)
+        val capTop = if (two) (h - pillH - (2 * cap + 0.2f * fs)) / 2 else (h - cap) / 2
+        if (two) {
+            for ((row, range) in listOf(0 until hl, hl until digits.length).withIndex()) {
+                var rx = (w - range.sumOf { adv[it].toDouble() }.toFloat()) / 2
+                for (i in range) { xs[i] = rx; rx += adv[i]; bases[i] = capTop + cap + row * (cap + 0.2f * fs) }
+            }
+        } else {
+            var x = (w - adv.sum() - colonW) / 2
+            for (i in digits.indices) { if (i == hl) x += colonW; xs[i] = x; x += adv[i]; bases[i] = capTop + cap }
+        }
         val colonX = xs[hl] - colonW - 6 * r
-        val capTop = (h - cap) / 2
         val pt = p.paint
         val bleed = if (inSlot) slotBleed.toPx() else BURN_IN_BLEED.toPx()
         val rr = if (inSlot && bleed == 0f) max(0.05f * min(w, h), 12.dp.toPx()) else 0f
@@ -167,16 +180,17 @@ internal fun StickerFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boole
             plate(w, h, bleed, rr) { c, pw, ph, _ -> c.drawRect(0f, 0f, pw, ph, bg) }
             for (i in digits.indices) {
                 // mockup stacking: each sticker over the previous one, the colon over the hour
-                if (i == hl) glyph(this, ":", colonX, capTop + cap - 10 * r, lerp(colonC, NIGHT_INK, n).toArgb()) // literal-ok: sticker colon is white on its own paper (c-stick .cl)
-                val cx = xs[i] + adv[i] / 2; val cy = capTop + cap / 2
+                if (i == hl && !two) glyph(this, ":", colonX, capTop + cap - 10 * r, lerp(colonC, NIGHT_INK, n).toArgb()) // literal-ok: sticker colon is white on its own paper (c-stick .cl)
+                val cx = xs[i] + adv[i] / 2; val cy = bases[i] - cap / 2
                 save(); rotate(STICK_TILT[i % 3], cx, cy)
-                glyph(this, digits[i].toString(), xs[i], capTop + cap + STICK_DROP[i % 3] * r, lerp(Color(trio[i % 3]), NIGHT_INK, n).toArgb())
+                glyph(this, digits[i].toString(), xs[i], bases[i] + STICK_DROP[i % 3] * r, lerp(Color(trio[i % 3]), NIGHT_INK, n).toArgb())
                 restore()
             }
             if (pill != null) {
                 val tw = ui.measureText(pill)
                 val pw = tw + 32 * k; val ph = ui.textSize + 22 * k
-                val px = w - 30 * k - pw; val py = h - 26 * k - ph
+                // portrait: bottom centre (plan-r15 E9 #1)
+                val px = if (two) (w - pw) / 2 else w - 30 * k - pw; val py = h - (if (two) 30 else 26) * k - ph
                 save(); rotate(-5f, px + pw / 2, py + ph / 2)
                 if (!night) drawRoundRect(px, py, px + pw, py + ph, ph / 2, ph / 2, pillBg)
                 ui.color = if (night) Ink.NIGHT_DIM.toArgb() else paperC.toArgb()
@@ -212,18 +226,30 @@ internal fun BallsFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         if (cap != null) ui.textSize *= min(1f, 0.9f * w / ui.measureText(cap))
         val capH = if (cap == null) 0f else 22 * k + ui.textSize + 22 * k
         val margin = if (inSlot) 0.04f * w else Grid.margin(min(w, h).toDp()).toPx() + 10.dp.toPx()
+        // plan-r15 E9 #2: portrait (and M/St slots) = hour ball(s) on top, the two minute balls below, no colon
+        val two = h > w * 1.15f
         // row = n circles + colon column (dot 22 dp) with n gaps of 16 dp, all in units of the 214 dp circle
         val units = digits.length + (digits.length * 16f + 22f) / 214f
-        val dia = minOf(0.594f * h * style.sizePct / 100f, (w - 2 * margin) / units, 0.9f * h - capH)
+        val dia = if (two) min((w - 2 * margin) / 2.1f, (0.8f * h - capH) / 2.2f) * style.sizePct / 100f
+            else minOf(0.594f * h * style.sizePct / 100f, (w - 2 * margin) / units, 0.9f * h - capH)
         if (dia < 48.dp.toPx() || min(w, h) < COMPACT_MIN.toPx()) return@FaceCanvas compact(p, d, fallback)
         val u = dia / 214f
         val fs = minOf(158 * u, 0.55f * dia / p.capEm, 0.8f * dia / p.digitAdv.max())
-        val cy = (h - capH) / 2
-        var x = (w - units * dia) / 2
+        val rowGap = 0.1f * dia
+        val cy = if (two) (h - capH - 2 * dia - rowGap) / 2 + dia / 2 else (h - capH) / 2
         val xs = FloatArray(digits.length); var colonCx = 0f
-        for (i in digits.indices) {
-            if (i == hl) { colonCx = x + 11 * u; x += 22 * u + 16 * u }
-            xs[i] = x; x += dia + 16 * u
+        val cys = FloatArray(digits.length) { cy }
+        if (two) {
+            for ((row, range) in listOf(0 until hl, hl until digits.length).withIndex()) {
+                var rx = (w - range.count() * dia - (range.count() - 1) * rowGap) / 2
+                for (i in range) { xs[i] = rx; rx += dia + rowGap; cys[i] = cy + row * (dia + rowGap) }
+            }
+        } else {
+            var x = (w - units * dia) / 2
+            for (i in digits.indices) {
+                if (i == hl) { colonCx = x + 11 * u; x += 22 * u + 16 * u }
+                xs[i] = x; x += dia + 16 * u
+            }
         }
         val ball = Paint(Paint.ANTI_ALIAS_FLAG)
         val ring = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -234,15 +260,17 @@ internal fun BallsFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val capY = h - 22 * k - 0.2f * ui.textSize
         return@FaceCanvas {
             for (i in digits.indices) {
-                val bx = xs[i] + dia / 2
+                val bx = xs[i] + dia / 2; val by = cys[i]
                 ball.color = TimePainter.withAlpha(trio[i % 3].toInt(), 1f - n)
-                drawCircle(bx, cy, dia / 2, ball)
-                if (n > 0f) drawCircle(bx, cy, dia / 2 - 1.5f * u, ring)
+                drawCircle(bx, by, dia / 2, ball)
+                if (n > 0f) drawCircle(bx, by, dia / 2 - 1.5f * u, ring)
                 val s = digits[i].toString()
-                p.draw(this, s, bx - p.measure(s, fs) / 2, cy + p.capEm * fs / 2, fs, look)
+                p.draw(this, s, bx - p.measure(s, fs) / 2, by + p.capEm * fs / 2, fs, look)
             }
-            drawCircle(colonCx, cy - 33 * u, 11 * u, dot)
-            drawCircle(colonCx, cy + 33 * u, 11 * u, dot)
+            if (!two) {
+                drawCircle(colonCx, cy - 33 * u, 11 * u, dot)
+                drawCircle(colonCx, cy + 33 * u, 11 * u, dot)
+            }
             if (cap != null) { ui.color = ink.ink2.toArgb(); drawText(cap, (w - ui.measureText(cap)) / 2, capY, ui) }
         }
     }

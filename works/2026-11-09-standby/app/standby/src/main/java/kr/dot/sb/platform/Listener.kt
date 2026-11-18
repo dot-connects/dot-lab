@@ -115,6 +115,9 @@ class Listener : NotificationListenerService() {
         registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply {
             addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON)
         }, RECEIVER_NOT_EXPORTED)
+        if (ChargeStart.plugged(this) != 0 && !getSystemService(android.os.PowerManager::class.java).isInteractive) {
+            ChargeStart.fire(this, "알림 연결", force = true)
+        }
         val rm0 = runCatching { currentRanking }.getOrNull()
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()

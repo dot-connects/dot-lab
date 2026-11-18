@@ -126,6 +126,16 @@ class GlowReceiver : BroadcastReceiver() {
          * after the mood light's timer ran out stays dark until the phone is folded again ([MoodLatch]).
          */
         fun post(ctx: Context, source: GlowSource) {
+            if (source == GlowSource.UNFOLD) {
+                val cfg = ConfigStore.flow(ctx).value
+                val reason = ChargeRules.allowed(cfg.startOnCharge, ChargeStart.plugged(ctx), cfg.chargeWirelessOnly)
+                if (reason != null) {
+                    ChargeStart.log(ctx, "무드등 건너뜀 · $reason · source=$source")
+                    Measure.log(ctx, "무드등 건너뜀 · $reason · source=$source")
+                    return
+                }
+                Measure.log(ctx, "무드등 요청 · source=$source")
+            }
             if (source == GlowSource.UNFOLD && MoodLatch.done) return
             val now = android.os.SystemClock.elapsedRealtime()
             if (now - (lastPostAt[source] ?: Long.MIN_VALUE / 2) < 5_000) return
@@ -173,8 +183,14 @@ class GlowActivity : ComponentActivity() {
     /** Window brightness before the heat cap; null until the ramp starts. */
     private var baseBrightness: Float? = null
     private var hot = false
+    private var lastPlugged: Int? = null
     private val batteryRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
+            val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+            if (plugged != lastPlugged) {
+                lastPlugged = plugged
+                if (!checkChargeRule(plugged)) return
+            }
             val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
             val h = HeatRule.next(t, hot)
             if (h != hot) { hot = h; applyBrightness() }
@@ -196,8 +212,22 @@ class GlowActivity : ComponentActivity() {
     }
     private var tent: Tent? = null
 
+    private fun checkChargeRule(plugged: Int? = null, entering: Boolean = false): Boolean {
+        if (GlowSource.of(intent) != GlowSource.UNFOLD) return true
+        val cfg = ConfigStore.flow(this).value
+        val reason = ChargeRules.allowed(cfg.startOnCharge, plugged ?: ChargeStart.plugged(this), cfg.chargeWirelessOnly) ?: return true
+        val line = "${if (entering) "무드등 건너뜀" else "닫힘 · 규칙"} · $reason · source=UNFOLD"
+        ChargeStart.log(this, line)
+        Measure.log(this, line)
+        tent?.stop()
+        finish()
+        return false
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (!checkChargeRule(entering = true)) return
+        if (GlowSource.of(intent) == GlowSource.UNFOLD) Measure.log(this, "무드등 시작 · source=UNFOLD")
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val cfg = ConfigStore.flow(this).value
         if (GlowSource.of(intent) == GlowSource.UNFOLD) moodMin = cfg.moodAutoOffMin
@@ -239,6 +269,16 @@ class GlowActivity : ComponentActivity() {
         var seen = false
         lifecycleScope.launch {
             ListenerBus.alarm.collect { a -> if (a != null) { seen = true; cancelMood() } else if (seen) finish() }
+        }
+        var chargeOptions = cfg.startOnCharge to cfg.chargeWirelessOnly
+        lifecycleScope.launch {
+            ConfigStore.flow(this@GlowActivity).collect { c ->
+                val options = c.startOnCharge to c.chargeWirelessOnly
+                if (options != chargeOptions) {
+                    chargeOptions = options
+                    checkChargeRule()
+                }
+            }
         }
         moodStep()
         if (isMood) {
@@ -291,6 +331,8 @@ class GlowActivity : ComponentActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        if (!checkChargeRule(entering = true)) return
+        if (GlowSource.of(intent) == GlowSource.UNFOLD) Measure.log(this, "무드등 재개 · source=UNFOLD")
         // the pre-alarm / alarm glow takes over an open unfold mood light: no auto-off then
         val s = GlowSource.of(intent)
         if (s == GlowSource.PRE_ALARM || s == GlowSource.ALARM) cancelMood()

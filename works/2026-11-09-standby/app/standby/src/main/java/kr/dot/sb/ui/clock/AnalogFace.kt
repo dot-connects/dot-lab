@@ -80,9 +80,11 @@ internal fun AnalogFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
             inSlot -> dial(AnalogStyle.ROUND, Modifier.size(s))
             kind == AnalogStyle.ROUND -> {
                 val pad = s * 0.07f
-                val dd = min(s - pad * 2, if (land) w * 0.52f else h * 0.62f)
-                val room = if (land) w - dd - pad * 3 else w - pad * 2
-                val info = style.showInfo && (if (land) room > 160.dp else h - dd - pad * 3 > 90.dp)
+                val dd0 = min(s - pad * 2, if (land) w * 0.52f else h * 0.62f)
+                val room = if (land) w - dd0 - pad * 3 else w - pad * 2
+                val info = style.showInfo && (if (land) room > 160.dp else h - dd0 - pad * 3 > 90.dp)
+                // plan-r15 E9 #10: with no info beside or under it the dial takes 80 % of the short side
+                val dd = if (info) dd0 else s * 0.8f
                 val fs = (s * 0.05f).coerceIn(14.dp, 24.dp)
                 val body = @Composable {
                     dial(AnalogStyle.ROUND, Modifier.size(dd))

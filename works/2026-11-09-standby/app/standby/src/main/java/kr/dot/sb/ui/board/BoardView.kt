@@ -151,14 +151,21 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
 /**
  * The card a slot stack showed last (11-16), per slot id ("boardId-slotIdx"), in its own SharedPreferences so a swipe
  * never writes the config. Stored by card type (a stack never holds the same type twice), so a card added before it
- * doesn't shift it. The notification card is never stored: a banner tap jumps there on its own.
+ * doesn't shift it. The notification card is stored too (plan-r15 E10). The clocks page keeps its rotating face here
+ * under [CLOCK_FACE].
  */
 object LastCard {
     private const val PREFS = "last_card"
 
     fun start(stored: String?, cards: List<CardType>): Int = cards.indexOfFirst { it.name == stored }.coerceAtLeast(0)
 
-    fun keyOf(card: CardType): String? = if (card.isNotif) null else card.name
+    fun keyOf(card: CardType): String = card.name
+
+    /** Key of the clocks page's last face (rotation on). */
+    const val CLOCK_FACE = "clock-face"
+
+    /** The clocks page reopens on [stored] if it is still one of [faces]; null = the first page. */
+    fun face(stored: String?, faces: List<FaceId>): FaceId? = faces.firstOrNull { it.name == stored }
 
     fun read(ctx: android.content.Context, slotId: String): String? =
         ctx.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString(slotId, null)

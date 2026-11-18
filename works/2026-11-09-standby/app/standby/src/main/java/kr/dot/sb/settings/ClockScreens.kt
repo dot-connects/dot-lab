@@ -451,8 +451,9 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
         StyleRow.HOURS -> ControlRow("이 시계의 12시간/24시간") {
             Segmented(listOf("폰 설정 따라", "12시간", "24시간"), when (style.h24) { null -> 0; false -> 1; true -> 2 }, { i -> edit { it.copy(h24 = when (i) { 0 -> null; 1 -> false; else -> true }) } })
         }
-        StyleRow.GHOST -> SwitchRow("꺼진 숫자 흐리게 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 숫자 자리가 옅게 보여요.")
+        StyleRow.GHOST -> SwitchRow("꺼진 획 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 획이 다이얼에 옅게 새겨져요.")
         StyleRow.DATE_WINDOW -> SwitchRow("날짜 창", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "오른쪽 위에 요일과 날짜를 보여줘요.")
+        StyleRow.DATE_DAY -> SwitchRow("날짜·요일", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "세워 두면 위아래 빈 곳에 요일과 날짜를 보여줘요.")
         else -> Unit // colour rows are handled above
     }
 }

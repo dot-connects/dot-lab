@@ -43,6 +43,14 @@ object Measure {
 
     fun lines(ctx: Context): List<String> = prefs(ctx).getString(KEY, "").orEmpty().lines().filter { it.isNotBlank() }
 
+    /** Automatic-start options and battery status at the decision, including protection-charge pauses. */
+    fun charge(ctx: Context): String {
+        val cfg = kr.dot.sb.settings.ConfigStore.flow(ctx).value
+        val battery = ctx.registerReceiver(null, android.content.IntentFilter(android.content.Intent.ACTION_BATTERY_CHANGED))
+        val status = battery?.getIntExtra(android.os.BatteryManager.EXTRA_STATUS, -1) ?: -1
+        return "opt=${if (cfg.startOnCharge) 1 else 0} wl=${if (cfg.chargeWirelessOnly) 1 else 0} land=${if (cfg.startLandscapeOnly) 1 else 0} status=$status"
+    }
+
     /** The grants a charge start depends on (B4), plus the system's screen-saver switches where readable. */
     fun grants(ctx: Context): String {
         val g = Perms.granted(ctx)

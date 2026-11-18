@@ -280,8 +280,10 @@ data class ClockStyle(
         fun default(face: FaceId): ClockStyle = when (face) {
             FaceId.DIGITAL, FaceId.DESK, FaceId.THIN, FaceId.SPLIT, FaceId.COLOR_BLOCK, FaceId.STICKER, FaceId.BALLS, FaceId.FLIP,
             FaceId.LED, FaceId.LCD, FaceId.DOT_MATRIX, FaceId.WALL, FaceId.CALENDAR, FaceId.HANGUL, FaceId.DAY_BAR, FaceId.RIM,
-            FaceId.RELIEF, FaceId.RELIEF_SQUARE, FaceId.RELIEF_DIGITAL,
+            FaceId.RELIEF_DIGITAL,
             -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3)
+            // plan-r15 E9 #12: 입체 시계 / 입체 네모 날짜·요일 starts off
+            FaceId.RELIEF, FaceId.RELIEF_SQUARE -> ClockStyle(FontId.CONDENSED, 700, widthPct = 94, color = 0xFF76A6F3, showInfo = false)
             FaceId.FLOAT -> ClockStyle(FontId.ROUNDED_HEAVY, 950, color = 0xFF4D9BEF)
             FaceId.SOLAR -> ClockStyle(
                 FontId.THIN, 350, color = 0xFFDCCAF7, color2 = 0xFF9DF0F7, effect = Effect.TWO_COLOR,

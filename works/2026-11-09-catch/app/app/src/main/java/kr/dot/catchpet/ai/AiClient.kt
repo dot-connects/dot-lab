@@ -25,8 +25,10 @@ class AiClient(private val base: String, private val deviceId: String) {
     suspend fun preview(png: ByteArray, kind: String, style: String, devToken: String? = null): Result<Reply> =
         post("/transform", body(png, mapOf("style" to style, "kind" to kind, "device" to deviceId)), devToken)
 
-    suspend fun sheet(png: ByteArray, kind: String, entry: String, token: String, style: String = "fluff"): Result<Reply> =
-        post("/sheet", body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to style, "layout" to "12")), token)
+    /** [look] = the preview the player saw (operator 11-18: the pet is that picture in poses), null = none drawn. */
+    suspend fun sheet(png: ByteArray, kind: String, entry: String, token: String, style: String = "fluff", look: ByteArray? = null): Result<Reply> =
+        post("/sheet", body(png, mapOf("kind" to kind, "device" to deviceId, "entry" to entry, "style" to style, "layout" to "12") +
+            (look?.let { mapOf("look" to Base64.encodeToString(it, Base64.NO_WRAP)) } ?: emptyMap())), token)
 
     private suspend fun post(path: String, json: String, token: String?): Result<Reply> = withContext(Dispatchers.IO) {
         runCatching {

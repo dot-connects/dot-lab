@@ -22,7 +22,11 @@ import java.time.ZoneOffset
  */
 object AiWork {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    val busy = mutableStateMapOf<String, String>()      // entry id -> "preview" | "sheet"
+    // "<entry id>|<what>" -> what ("preview-fluff", "sheet-figure", ...): the two looks of one photo draw at once
+    // (operator 11-17); Dex's writes are synchronized
+    val busy = mutableStateMapOf<String, String>()
+    fun busyOf(id: String): Set<String> = busy.keys.filter { it.startsWith("$id|") }.map { it.substringAfter('|') }.toSet()
+    fun isBusy(id: String) = busy.keys.any { it.startsWith("$id|") }
     val message = mutableStateMapOf<String, String>()   // entry id -> last error, in Korean
     var rev by mutableIntStateOf(0); private set        // bumps when an entry got a new picture
 
@@ -40,7 +44,12 @@ object AiWork {
         return if (p.getString("ai_day", null) == today()) p.getInt("ai_left", PER_DAY) else PER_DAY
     }
 
-    private fun setLeft(ctx: Context, n: Int) { prefs(ctx).edit().putString("ai_day", today()).putInt("ai_left", n).apply() }
+    // two looks can draw at once: an earlier answer arriving last must not raise the count again (Codex review 11-18)
+    private fun setLeft(ctx: Context, n: Int) {
+        val p = prefs(ctx)
+        val v = if (p.getString("ai_day", null) == today()) minOf(n, p.getInt("ai_left", n)) else n
+        p.edit().putString("ai_day", today()).putInt("ai_left", v).apply()
+    }
 
     private fun client(ctx: Context) = AiClient(BuildConfig.WORKER, AiClient.deviceId(ctx))
 
@@ -62,24 +71,31 @@ object AiWork {
     }
 
     fun buy(ctx: Context, e: Dex.Entry, token: String, style: String) = run(ctx, e, "sheet-$style") { app ->
-        client(app).sheet(cutOut(app, e), e.kind, e.id, token, style).onSuccess {
+        client(app).sheet(cutOut(app, e), e.kind, e.id, token, style, look(app, e, style)).onSuccess {
             Dex.saveSheet(app, e.id, it.image, ext(it.mime), style, twelve = it.twelve)
             Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
         }
     }
 
+    /** The preview shown for this look (the detail screen's rule), if one was drawn and fits the Worker's 800 k chars. */
+    private fun look(ctx: Context, e: Dex.Entry, style: String): ByteArray? {
+        val name = e.ai.previewFor(style) ?: e.ai.oldPreviews.getOrNull(if (style == "fluff") 0 else 1) ?: return null
+        return runCatching { Dex.file(ctx, e.id, name).readBytes() }.getOrNull()?.takeIf { it.size < 580_000 }
+    }
+
     private fun ext(mime: String) = when (mime) { "image/png" -> "png"; "image/jpeg" -> "jpg"; else -> "webp" }
 
     private fun run(ctx: Context, e: Dex.Entry, what: String, work: suspend (Context) -> Result<*>) {
-        if (busy.containsKey(e.id)) return
+        val key = "${e.id}|$what"
+        if (busy.containsKey(key)) return
         val app = ctx.applicationContext
-        busy[e.id] = what
+        busy[key] = what
         message.remove(e.id)
         scope.launch {
             val r = runCatching { work(app).getOrThrow() }
             r.exceptionOrNull()?.let { Log.w("AiWork", "$what failed: ${it.message}") }
             withContext(Dispatchers.Main) {
-                busy.remove(e.id)
+                busy.remove(key)
                 r.exceptionOrNull()?.let { message[e.id] = (it as? AiClient.Fail)?.text ?: aiMessage(null, 0) }
                 rev++
             }

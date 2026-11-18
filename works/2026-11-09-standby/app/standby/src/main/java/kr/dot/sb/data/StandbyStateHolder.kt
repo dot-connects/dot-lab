@@ -36,6 +36,7 @@ import kr.dot.sb.model.SleepSound
 import kr.dot.sb.model.UnfoldAction
 import kr.dot.sb.platform.Brightness
 import kr.dot.sb.platform.ChargeStart
+import kr.dot.sb.platform.ChargeRules
 import kr.dot.sb.platform.ListenerBus
 import kr.dot.sb.platform.SleepService
 import kr.dot.sb.platform.DeviceTimerAlerts
@@ -61,6 +62,7 @@ import kotlin.math.roundToInt
 /** What the screen host (dream or activity) must do for the holder. */
 interface HostCallbacks {
     fun finish()
+    fun finishForChargeRule(reason: String) = finish()
     /** 0..1, or -1f for "system auto". */
     fun setBrightness(b: Float)
     /** Run [block] after the keyguard is dismissed (dream: hand over to the activity first). */
@@ -76,6 +78,7 @@ interface HostCallbacks {
 class StandbyStateHolder(
     app: Context, private val host: HostCallbacks, private val ownRotation: Boolean,
     private val alerts: TimerAlerts = DeviceTimerAlerts.shared(app),
+    private val automatic: Boolean = false,
 ) {
     private val ctx = app.applicationContext
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) // new one per start(): stop() cancels it
@@ -136,6 +139,7 @@ class StandbyStateHolder(
     private var lastMotionTouch = 0L
     private var startedAt = 0L
     private var exited = false
+    private var lastPlugged: Int? = null
     private var lastBrightness = Float.NaN
     private var page = 0
     private var started = false
@@ -175,6 +179,7 @@ class StandbyStateHolder(
     private val unplugRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
             ChargeStart.rearmNow(ctx)
+            if (automatic) { checkChargeRule(0); return }
             if (!exited) { exited = true; ChargeStart.log(ctx, "닫힘 · 충전기 뽑힘"); host.finish() }
         }
     }
@@ -184,6 +189,11 @@ class StandbyStateHolder(
     /** Heat protection: battery temperature (tenths of °C) on every BATTERY_CHANGED; a change re-applies the brightness. */
     private val batteryRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
+            val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
+            if (plugged != lastPlugged) {
+                lastPlugged = plugged
+                if (!checkChargeRule(plugged)) return
+            }
             val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
             val h = HeatRule.next(t, hot)
             if (h == hot) return
@@ -193,6 +203,18 @@ class StandbyStateHolder(
         }
     }
 
+    private fun checkChargeRule(plugged: Int? = null): Boolean {
+        if (!automatic) return true
+        val c = cfg
+        val reason = ChargeRules.allowed(c.startOnCharge, plugged ?: ChargeStart.plugged(ctx), c.chargeWirelessOnly) ?: return true
+        if (!exited) {
+            exited = true
+            ChargeStart.log(ctx, "닫힘 · 규칙 · $reason")
+            host.finishForChargeRule(reason)
+        }
+        return false
+    }
+
     private fun publishHot() {
         val h = hot && cfg.heatProtect
         if (_state.value.hot != h) _state.update { it.copy(hot = h) }
@@ -200,9 +222,11 @@ class StandbyStateHolder(
 
     fun start() {
         if (started) return
+        if (!checkChargeRule()) return
         started = true
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         exited = false
+        lastPlugged = null
         startedAt = el()
         machine.touch(startedAt)
         nightSw.prime(lastNight >= 0.5f) // a dream restarted in the dark starts red, not day
@@ -227,8 +251,14 @@ class StandbyStateHolder(
         // a notification button or the end alarm changed a timer (Timers is shared): re-arm and show it
         scope.launch { Timers.changed.collect { for (id in timers.keys) scheduleTimerEnd(id); publishTimers() } }
 
+        var chargeOptions = cfg.startOnCharge to cfg.chargeWirelessOnly
         scope.launch {
             cfgFlow.collect { c ->
+                val options = c.startOnCharge to c.chargeWirelessOnly
+                if (options != chargeOptions) {
+                    chargeOptions = options
+                    if (!checkChargeRule()) return@collect
+                }
                 _state.update {
                     var n = it.copy(use24h = c.use24h ?: DateFormat.is24HourFormat(ctx), worldCity = c.worldCities.firstOrNull() ?: it.worldCity)
                     if (!c.burnInShift) n = n.copy(shiftX = 0, shiftY = 0)

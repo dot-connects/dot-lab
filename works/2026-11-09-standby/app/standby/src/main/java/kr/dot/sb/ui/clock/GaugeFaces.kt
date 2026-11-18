@@ -76,6 +76,7 @@ internal fun DayBarFace(
     FaceCanvas(modifier) {
         val w = size.width; val h = size.height
         if (min(w, h).toDp() < 120.dp) {
+            if (h > w * 1.15f) return@FaceCanvas compact(painter, d, look) // plan-r15 E9 #11: two rows in a tall box
             val fs = fitSize(painter, d, false, h * 0.72f * style.sizePct / 100f, w * 0.88f)
             val cap = painter.capEm * fs
             return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
@@ -197,22 +198,28 @@ internal fun RimFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean, 
         FaceCanvas(Modifier) {
             val w = size.width; val h = size.height
             val compact = min(w, h).toDp() < 120.dp
-            val fs = fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
-            val cap = painter.capEm * fs
-            if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
+            if (compact && h > w * 1.15f) return@FaceCanvas compact(painter, d, look) // plan-r15 E9 #11
+            // plan-r15 E9 #4: portrait stacks hours over minutes like 디지털, the minute pair 70 % of the width
+            val two = !compact && h > w * 1.15f
             label.textSize = min(w, h) * 0.053f
             // c-rim: "월요일 · 11월 9일 · 7° · ⏰ 6:30" 29 dp (of 360) under the digits' baseline, the pair centred
             val dim = ink.ink2.toArgb()
-            val caption = if (!style.showInfo || inSlot) null else buildList {
+            val caption = if (compact || !style.showInfo || inSlot) null else buildList {
                 add(Seg(d.infoLine(), dim))
                 d.alarmShort?.let { add(Seg(" · ", dim)); add(alarmSeg(dim)); add(Seg(it, dim)) }
             }.let { if (label.width(it) <= w * 0.78f) it else listOf(Seg(d.infoLine(), dim)) }
             if (caption != null) label.textSize *= min(1f, 0.9f * w / label.width(caption)) // one line, never past the edges
             val gap = 29 * min(w, h) / 360f
-            val group = cap + if (caption == null) 0f else gap + label.capRatio() * label.textSize
+            val capH = if (caption == null) 0f else gap + label.capRatio() * label.textSize
+            val fs = if (two) fitSize(painter, d, true, (0.62f * h - capH) / 2.16f * style.sizePct / 100f, w * 0.7f)
+                else fitSize(painter, d, false, h * (if (compact) 0.72f else 0.46f) * style.sizePct / 100f, w * 0.78f)
+            val cap = painter.capEm * fs
+            if (compact) return@FaceCanvas { drawTime(painter, d, fs, false, 0f, w / 2, (h - cap) / 2, look) }
+            val rowGap = 0.16f * cap
+            val group = (if (two) 2 * cap + rowGap else cap) + capH
             val capTop = (h - group) / 2
             return@FaceCanvas {
-                drawTime(painter, d, fs, false, 0f, w / 2, capTop, look)
+                drawTime(painter, d, fs, two, rowGap, w / 2, capTop, look)
                 if (caption != null) drawSegs(caption, (w - label.width(caption)) / 2, capTop + group, label)
             }
         }

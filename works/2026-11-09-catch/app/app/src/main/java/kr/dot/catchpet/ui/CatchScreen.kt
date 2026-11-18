@@ -349,6 +349,12 @@ private class CatchGame(
     private var grip: Future<Grip>? = null
     private var gripAt = 0f
     private var held: Grip? = null
+    // a person's precise cut (face count + person model) can take seconds: the tracked mask's quick cut rides the
+    // claw meanwhile, else the claw rose empty and the person stayed in the frame until the capsule (operator 11-17)
+    private var quick: Future<Grip>? = null
+    private var quickHeld: Grip? = null
+    // the precise cut only when it is usable (Codex review 11-18: an empty one hid a good quick cut)
+    private val shown get() = held?.takeIf { it.cut != null && it.opaque >= 0.05f } ?: quickHeld ?: held
     private var capsule: Capsule? = null
     private var capColor = CapColors.CAP_COLORS[0]
     private var capT = 0f
@@ -395,6 +401,7 @@ private class CatchGame(
         pulse = max(0f, pulse - dt / 500f)
         toast?.let { it.t += dt; if (it.t > it.life) toast = null }
         grip?.let { if (held == null && it.isDone) held = runCatching { it.get() }.getOrNull() }
+        quick?.let { if (quickHeld == null && it.isDone) quickHeld = runCatching { it.get() }.getOrNull() }
 
         // the carriage ticks along the rail as it moves (aiming and riding home)
         val px = c.x * w
@@ -456,7 +463,8 @@ private class CatchGame(
         // the arms: spread past the body's sides as the claw settles on it, then close in under its widest point
         if (before == Claw.St.DOWN) hugTop = Claw.TIP * 0.5f
         if (c.st == Claw.St.GRIP) now?.let { hugTop = m.gridToViewY(it.y0.toFloat()) / d - c.y }
-        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
+        // the big-catch claw shrinks back once the capsule takes the catch: a 1.5x claw round a 46 dp capsule looked odd (operator 11-17)
+        val wantScale = if (c.bodyW > 0f && c.st != Claw.St.AIM && capsule == null) (c.bodyW / 2f / 56f).coerceIn(1f, 1.5f) else 1f
         clawScale += (wantScale - clawScale) * min(1f, dt / 140f)
         val s = clawScale
         if (c.bodyW > 0f) {
@@ -497,7 +505,7 @@ private class CatchGame(
         val tg = r.target ?: return
         buzz(HapticFeedbackConstants.VIRTUAL_KEY); Sfx.play(R.raw.sfx_land, 0.6f)
         if (tg.kind == Mask.Kind.CRITTER) tg.critterId?.let { critters.landed(it, heldCx * d) }
-        else if (held?.cut != null) { landT = 0f; landFrozen = frozen; landGrip = held }
+        else if (shown?.cut != null) { landT = 0f; landFrozen = frozen; landGrip = shown }
     }
 
     /** The tips touched something: freeze that frame and re-segment it on the model thread (plan R7, R16). */
@@ -507,6 +515,7 @@ private class CatchGame(
         val f = src.latest() ?: return
         frozen = f
         gripAt = time
+        quick = java.util.concurrent.ForkJoinPool.commonPool().submit(java.util.concurrent.Callable { makeGrip(f, target, hiRes = false) })
         // the claw's point in the mask grid: only the piece it touched is cut (review 11-15: jeans-only, two people)
         val (gx, gy) = map?.toGrid((claw?.x ?: 0.5f) * w * d, (claw?.y ?: rail) * d + Claw.TIP * d) ?: (target.w / 2 to target.h / 2)
         grip = seg.onThread {
@@ -570,9 +579,9 @@ private class CatchGame(
         if (held == null) {
             g?.cancel(false)
             // main thread: no model call here
-            held = frozen?.let { f -> runCatching { makeGrip(f, target, hiRes = false) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
+            held = quickHeld ?: frozen?.let { f -> runCatching { makeGrip(f, target, hiRes = false) }.onFailure { Log.w(TAG, "cut failed", it) }.getOrNull() }
         }
-        val got = held
+        val got = shown
         if (got?.cut == null || got.opaque < 0.05f) {
             c.handedOff(); next(); say(NEAR.random(), false)
             return
@@ -606,6 +615,7 @@ private class CatchGame(
 
     private fun reset() {
         frozen = null; grip = null; held = null; capsule = null; saved = false
+        quick?.cancel(false); quick = null; quickHeld = null
     }
 
     private fun say(text: String, good: Boolean) { toast = Toast(text, good) }
@@ -629,7 +639,7 @@ private class CatchGame(
         if (f != null && m != null && c.st != Claw.St.AIM) {
             imageRect(m)
             cv.drawBitmap(f, null, rect, bmpPaint)
-            held?.hole?.let { cv.drawBitmap(it, null, rect, bmpPaint) }
+            shown?.hole?.let { cv.drawBitmap(it, null, rect, bmpPaint) }
         }
         // a dropped photo bouncing once in its hole before the live view takes over
         val lf = landFrozen; val lg = landGrip
@@ -666,7 +676,7 @@ private class CatchGame(
         if (hanging) drawCatch(c, heldId, m)
         cv.restore()
         if (!hanging) drawCatch(c, heldId, m)
-        capsule?.let { drawCapsule(cv, it, held?.cut, m) }
+        capsule?.let { drawCapsule(cv, it, shown?.cut, m) }
         cv.save(); cv.rotate(deg, cx, rail); cv.scale(clawScale, clawScale, cx, c.y)
         ClawArt.front(cv, cx, c.y, arms)
         cv.restore()
@@ -705,7 +715,7 @@ private class CatchGame(
             critters.drawHeld(cv, m, heldId, heldCx * d, c.carryDy * d, heldPose)
             cv.restore()
         }
-        val cut = held?.cut
+        val cut = shown?.cut
         if (cut != null && c.st in listOf(Claw.St.UP, Claw.St.FALL, Claw.St.CARRY)) {
             cutRect(m, cut)
             rect.offset(0f, c.carryDy)

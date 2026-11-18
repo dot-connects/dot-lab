@@ -338,7 +338,9 @@ internal fun HangulFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
         val k = s / 360f
         val margin = if (inSlot) 0.05f * s else 10.dp.toPx() + 0.04f * s
         val dim = ink.ink2.toArgb(); val fg = ink.ink.toArgb()
-        val tall = w < h * 1.3f
+        // plan-r15 E9 #8: below w/h 1.4 (Fold inner too) no side column; portrait = words 90 % of the width
+        val tall = w < h * 1.4f
+        val portrait = h > w * 1.15f
         // right column (landscape): "9:41" mono 44, then two dim 20 dp lines on top, two at the bottom
         mono.textSize = 44 * k; ui.textSize = max(13.dp.toPx(), 20 * k)
         val num = "${d.h}:${d.m}"
@@ -350,12 +352,12 @@ internal fun HangulFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolea
         val all = (0 until 24).map { hangulTime(it, 0, d.use24h).second } + (0 until 60).map { hangulTime(0, it, d.use24h).third }
         words.textSize = 100f
         val widest = all.maxOf { words.measureText(it) } / 100f
-        val left = if (tall) margin else max(margin, 56 * k)
+        val left = if (portrait) 0.05f * w else if (tall) margin else max(margin, 56 * k)
         val under = if (tall) "$num · ${d.weekday}요일 ${d.month}월 ${d.day}일" else null
         val underH = if (under == null) 0f else 24 * k + ui.capRatio() * ui.textSize
         val apH = if (amPm == null) 0f else 24 * k + 10 * k
         val maxW = (if (tall) w - 2 * left else colX - left - 24 * k)
-        val fs = minOf(116 * k * style.sizePct / 100f, maxW / widest, (h - 2 * margin - apH - underH) / (2 * 1.14f))
+        val fs = minOf(if (portrait) maxW / widest * style.sizePct / 100f else 116 * k * style.sizePct / 100f, maxW / widest, (h - 2 * margin - apH - underH) / (2 * 1.14f))
         words.textSize = fs
         ap.textSize = 24 * k * min(1f, fs / (116 * k)); ap.letterSpacing = 0.3f
         val lh = 1.14f * fs

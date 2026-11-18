@@ -46,18 +46,46 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val w = size.width; val h = size.height
         val portrait = h > w * 1.15f
         val s = min(w, h)
-        // a bar phone (w/h ≥ 1.8, r10): the city/time block takes a left column with the time ≥ 35 % H, the map the rest
+        // a bar phone (w/h ≥ 1.8, r10): the city/time block takes a left column with the time ≥ 35 % H, the map the rest.
+        // Others (plan-r15 E9 #5): portrait = "오후 9:24" 60 % of the width under a full-width map; landscape = time cap
+        // 30 % H bottom-left, the map up and to the right. 오전/오후 at half the time cap.
         val bar = w >= 1.8f * h
-        // map box → square cells, centred in the box
-        val bx0 = if (portrait) 0.06f * w else if (bar) 0.5f * w else 0.128f * w
-        val bx1 = if (portrait) 0.94f * w else 0.936f * w
-        val by0 = if (portrait) 0.24f * h else 0.129f * h
-        val by1 = if (portrait) 0.62f * h else 0.861f * h
+        val bx = 0.074f * w
+        val t = d.worldTime
+        val ap = if (d.use24h) "" else d.worldAmPm + " "
+        val tEm = p.widestEm(t.substringBefore(':').length, d.use24h)
+        reg.textSize = 100f
+        val rowCaps = tEm / p.capEm + 0.5f * reg.measureText(ap) / 100f // "오후 9:24" width in time caps
+        val bottom = if (bar) 0.854f * h else if (portrait) 0.9f * h else 0.92f * h
+        val timeCap = when {
+            bar -> {
+                reg.textSize = 0.062f * s
+                min(0.35f * h, (0.47f * w - bx - reg.measureText(ap)) / tEm * p.capEm)
+            }
+            portrait -> 0.6f * w / rowCaps
+            else -> min(0.3f * h, (0.86f * w - bx) / rowCaps)
+        } * style.sizePct / 100f
+        reg.textSize = if (bar) 0.062f * s else 0.5f * timeCap
+        bold.textSize = (if (bar) 0.058f else if (portrait) 0.075f else 0.062f) * s
+        val cityBase = bottom - timeCap - (if (bar) 0.045f else 0.05f) * s
+        // map box → square cells
         val rows = WORLD_MAP.size; val cols = WORLD_MAP[0].length
-        val cell = min((bx1 - bx0) / cols, (by1 - by0) / rows)
-        val mx0 = (bx0 + bx1 - cell * cols) / 2
-        // portrait: centre the map between the alarm row and the city/time block
-        val my0 = if (portrait) (0.14f * h + 0.86f * h - 0.25f * s - cell * rows) / 2 else (by0 + by1 - cell * rows) / 2
+        val cell = when {
+            bar -> min((0.936f * w - 0.5f * w) / cols, (0.861f * h - 0.129f * h) / rows)
+            portrait -> 0.94f * w / cols
+            else -> min(0.84f * w / cols, 0.44f * h / rows)
+        }
+        val mx0 = when {
+            bar -> (0.5f * w + 0.936f * w - cell * cols) / 2
+            portrait -> (w - cell * cols) / 2
+            else -> 0.95f * w - cell * cols
+        }
+        // portrait: centred between the alarm row and the city label
+        val my0 = when {
+            bar -> (0.129f * h + 0.861f * h - cell * rows) / 2
+            portrait -> (0.12f * h + cityBase - bold.textSize - cell * rows) / 2
+            else -> 0.125f * h
+        }
         val mw = cell * cols; val mh = cell * rows
         val (decl, sslon) = sun(d.now)
         val rad = (PI / 180).toFloat()
@@ -87,17 +115,8 @@ internal fun WorldFace(style: ClockStyle, d: FaceData, ink: Ink, inSlot: Boolean
         val cityY = my0 + (MAP_LAT0 - d.worldCity.lat.toFloat()) / (MAP_LAT0 - MAP_LAT1) * mh
 
         // bottom-left block: city label over the time
-        val bx = 0.074f * w
-        val bottom = if (portrait) 0.86f * h else 0.854f * h
-        val t = d.worldTime
-        reg.textSize = 0.062f * s
-        bold.textSize = 0.058f * s
         val cityCap = bold.textSize * bold.capRatio()
-        val ap = if (d.use24h) "" else d.worldAmPm + " "
-        val timeCap = if (bar) min(0.35f * h, (0.47f * w - bx - reg.measureText(ap)) / p.widestEm(t.substringBefore(':').length, d.use24h) * p.capEm) * style.sizePct / 100f
-        else 0.105f * s * style.sizePct / 100f
         val fs = timeCap / p.capEm
-        val cityBase = bottom - timeCap - 0.045f * s
         val arrow = Path().apply {
             // location arrow (filled), size = city cap
             val a = cityCap * 1.05f; val x = bx; val y = cityBase - cityCap

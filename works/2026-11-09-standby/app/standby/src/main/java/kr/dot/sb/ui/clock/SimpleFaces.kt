@@ -16,9 +16,18 @@ import kotlin.math.min
 
 /* r10 심플 faces (clocks.html c-thin, c-split; plan-r10 Task 6). 1 mockup px = 1 dp on a 780 × 360 box. */
 
-/** The compact fallback of every r10 face (rendering contract): digits only, one line, centred in the box. */
+/**
+ * The compact fallback of every r10 face (rendering contract): digits only, centred in the box; one line, or hours over
+ * minutes (wider row 80 % of the width) in a tall box (plan-r15 E9 #11, the XSt slot).
+ */
 internal fun CacheDrawScope.compact(p: TimePainter, d: FaceData, look: Look): Canvas.() -> Unit {
     val w = size.width; val h = size.height
+    if (h > w * 1.15f) {
+        // gap 0.22 cap: two caps + gap fill at most 80 % of the height
+        val fs = fitSize(p, d, true, 0.8f * h / 2.22f, 0.8f * w)
+        val gap = 0.22f * p.capEm * fs
+        return { drawTime(p, d, fs, true, gap, w / 2, (h - 2 * p.capEm * fs - gap) / 2, look) }
+    }
     val fs = fitSize(p, d, false, 0.8f * h, 0.9f * w)
     return { drawTime(p, d, fs, false, 0f, w / 2, (h - p.capEm * fs) / 2, look) }
 }

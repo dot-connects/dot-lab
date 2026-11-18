@@ -53,6 +53,8 @@ enum class StyleRow(val part: String? = null) {
     SIZE, FONT, KFONT, INFO, WEIGHT, FX, BG, LAYOUT, SHAPE, ANALOG_NUMBERS, ANALOG_TICKS, DIAL_FONT,
     // r11 Part C (Relief faces)
     LUME_VIEW, MOVEMENT, INDEX_ONLY, SQUARE_NUMERALS, HOURS, GHOST, DATE_WINDOW,
+    // plan-r15 E9 #12: 입체 시계 / 입체 네모 weekday and date on an upright screen
+    DATE_DAY,
     // r14 디지털 (plan-r14 A2)
     ACCENT_MIDDLE, FILL, OVERLAP,
     // 11-16: faces with their own background
@@ -159,8 +161,8 @@ fun spec(id: FaceId): ClockSpec {
         FaceId.DAY_BAR -> c(Family.GAUGE, "하루 막대", listOf(TEXT_COLOR, BAR_COLOR, SIZE, FONT), listOf(WEIGHT), built = true)
         FaceId.RIM -> c(Family.GAUGE, "테두리 초", listOf(TEXT_COLOR, RIM_COLOR, SIZE, FONT, INFO), listOf(WEIGHT), built = true)
         FaceId.WORLD -> c(Family.GAUGE, "세계", listOf(CITY_COLOR, LIT_COLOR, SIZE, FONT), DT, built = true)
-        FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY, StyleRow.CLEAR_BG), emptyList(), built = true)
-        FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS, StyleRow.CLEAR_BG), emptyList(), built = true)
+        FaceId.RELIEF -> c(Family.CLASSIC, "입체 시계", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.INDEX_ONLY, StyleRow.DATE_DAY, StyleRow.CLEAR_BG), emptyList(), built = true)
+        FaceId.RELIEF_SQUARE -> c(Family.CLASSIC, "입체 네모", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.MOVEMENT, StyleRow.SQUARE_NUMERALS, StyleRow.DATE_DAY, StyleRow.CLEAR_BG), emptyList(), built = true)
         FaceId.RELIEF_DIGITAL -> c(Family.RETRO, "입체 디지털", listOf(FACE_COLOR, ACCENT_COLOR, StyleRow.LUME_VIEW, StyleRow.HOURS, StyleRow.GHOST, StyleRow.DATE_WINDOW, StyleRow.CLEAR_BG), emptyList(), built = true)
     }
 }

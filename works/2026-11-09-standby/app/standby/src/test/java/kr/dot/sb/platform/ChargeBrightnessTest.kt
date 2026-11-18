@@ -12,7 +12,16 @@ class ChargeBrightnessTest {
         dream: Boolean = false, activity: Boolean = false, notif: Boolean = true, fsi: Boolean = true,
     ) = ChargeRules.decide(on, charging, interactive, locked, dream, activity, notif, fsi)
 
-    @Test fun screenOffLockedLaunches() = assertEquals(ChargeVerdict.LAUNCH, decide())
+    // 11-18: the screen saver ignored 무선 충전일 때만 and ran all night on a cable; one rule for every start path now
+    @Test fun chargerRule() {
+        val ac = android.os.BatteryManager.BATTERY_PLUGGED_AC
+        val usb = android.os.BatteryManager.BATTERY_PLUGGED_USB
+        val pad = android.os.BatteryManager.BATTERY_PLUGGED_WIRELESS
+        assertEquals(listOf(false, true, true, true), listOf(0, ac, usb, pad).map { ChargeRules.chargerOk(it, wirelessOnly = false) })
+        assertEquals(listOf(false, false, false, true), listOf(0, ac, usb, pad).map { ChargeRules.chargerOk(it, wirelessOnly = true) })
+    }
+
+    @Test fun screenOffLockedLaunches()= assertEquals(ChargeVerdict.LAUNCH, decide())
     @Test fun screenOnButLockedLaunches() = assertEquals(ChargeVerdict.LAUNCH, decide(interactive = true, locked = true))
     @Test fun screenOffAndUnlockedLaunches() = assertEquals(ChargeVerdict.LAUNCH, decide(interactive = false, locked = false))
     @Test fun usingTheUnlockedPhoneSkips() = assertEquals(ChargeVerdict.USING_PHONE, decide(interactive = true, locked = false))
