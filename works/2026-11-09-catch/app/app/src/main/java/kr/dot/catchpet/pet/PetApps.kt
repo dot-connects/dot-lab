@@ -45,8 +45,52 @@ object PetApps {
             .sortedBy { it.label }
     }
 
-    /** The chosen apps still installed, in the chosen order. */
+    /** Which apps the cloud shows (operator 11-18): the chosen ones, the last [count] used, or the [count] most used this week. */
+    enum class Mode { CHOSEN, RECENT, FREQUENT }
+    /** How many apps the usage modes show: 4, 6 or 8 (operator 11-18). */
+    val COUNTS = listOf(4, 6, 8)
+    private const val KEY_MODE = "pet_apps_mode"
+    private const val KEY_COUNT = "pet_apps_count"
+    fun count(ctx: Context): Int = PetPrefs.prefs(ctx).getInt(KEY_COUNT, 6).takeIf { it in COUNTS } ?: 6
+    fun setCount(ctx: Context, n: Int) { PetPrefs.prefs(ctx).edit().putInt(KEY_COUNT, n).apply() }
+    fun mode(ctx: Context): Mode = runCatching { Mode.valueOf(PetPrefs.prefs(ctx).getString(KEY_MODE, null)!!) }.getOrDefault(Mode.CHOSEN)
+    fun setMode(ctx: Context, m: Mode) { PetPrefs.prefs(ctx).edit().putString(KEY_MODE, m.name).apply() }
+
+    /** What the cloud shows; the usage modes fall back to the chosen apps until usage access is granted. */
     fun load(ctx: Context): List<App> {
+        val m = mode(ctx)
+        if (m == Mode.CHOSEN || !PetPrefs.usageGranted(ctx)) return chosenApps(ctx)
+        return used(ctx, m == Mode.RECENT)
+    }
+
+    /**
+     * Apps from usage stats, launchers, our own app and apps without an icon left out: [recent] = by last use over 3 days,
+     * else by foreground time over 7 days.
+     */
+    fun used(ctx: Context, recent: Boolean): List<App> {
+        val pm = ctx.packageManager
+        val usm = ctx.getSystemService(android.app.usage.UsageStatsManager::class.java)
+        val now = System.currentTimeMillis()
+        val days = if (recent) 3 else 7
+        val homes = pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_HOME), 0).map { it.activityInfo.packageName }.toSet()
+        return usm.queryUsageStats(android.app.usage.UsageStatsManager.INTERVAL_DAILY, now - days * 86_400_000L, now)
+            .filter { it.totalTimeInForeground > 0 && it.packageName != ctx.packageName && it.packageName !in homes }
+            .groupBy { it.packageName }
+            .mapValues { (_, s) -> if (recent) s.maxOf { it.lastTimeUsed } else s.sumOf { it.totalTimeInForeground } }
+            .entries.sortedByDescending { it.value }
+            .asSequence()
+            .filter { pm.getLaunchIntentForPackage(it.key) != null }
+            .mapNotNull { (pkg, _) -> appOf(ctx, pkg) }
+            .take(count(ctx)).toList()
+    }
+
+    private fun appOf(ctx: Context, pkg: String): App? {
+        val pm = ctx.packageManager
+        return runCatching { val ai = pm.getApplicationInfo(pkg, 0); App(pkg, pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai)) }.getOrNull()
+    }
+
+    /** The chosen apps still installed, in the chosen order. */
+    fun chosenApps(ctx: Context): List<App> {
         val pm = ctx.packageManager
         return chosen(ctx).mapNotNull { pkg ->
             runCatching { val ai = pm.getApplicationInfo(pkg, 0); App(pkg, pm.getApplicationLabel(ai).toString(), pm.getApplicationIcon(ai)) }.getOrNull()
@@ -68,7 +112,8 @@ object PetApps {
 @SuppressLint("ViewConstructor", "ClickableViewAccessibility")
 class AppBubble(ctx: Context, private val apps: List<PetApps.App>, private val side: PetBrain.Zone, private val onPick: (String?) -> Unit) : View(ctx) {
     private val d = resources.displayMetrics.density
-    private val cols = min(4, apps.size).coerceAtLeast(1)
+    // operator 11-18: up to 4 in one row; 5-6 as rows of 3; 7-8 as rows of 4
+    private val cols = (if (apps.size in 5..6) 3 else min(4, apps.size)).coerceAtLeast(1)
     private val rows = if (apps.isEmpty()) 0 else ceil(apps.size / cols.toFloat()).toInt()
     private val cell = 58 * d
     private val pad = 16 * d
