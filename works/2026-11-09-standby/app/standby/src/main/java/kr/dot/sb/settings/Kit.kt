@@ -116,6 +116,9 @@ object SK {
 val LocalAccent = compositionLocalOf { Color(0xFF76A6F3) }
 
 fun Long.c(): Color = Color(this)
+
+/** [this] + 을/를 by its last syllable's final consonant (장작불을, 파도를). */
+fun String.obj(): String = this + if (lastOrNull()?.let { it in '가'..'힣' && (it - '가') % 28 != 0 } == true) "을" else "를"
 fun Color.toLongArgb(): Long = toArgb().toLong() and 0xFFFFFFFFL
 
 @Composable
@@ -147,13 +150,57 @@ fun T(
 
 // ---- icons (drawn, 2 dp round strokes) ---------------------------------------------------------------------------
 
-enum class Ic { BACK, CHEVRON, PLUS, CLOSE, UP, DOWN, CHECK, EDIT }
+/**
+ * Settings glyphs. plan-r15 F0/F1: the home rows' line icons (THEME, PAGES, TIP, INFO; the rest come from the cards'
+ * icon set), GEAR on card rows, MORE (⋯) instead of long-press menus, HANDLE for drag order in 편집.
+ */
+enum class Ic { BACK, CHEVRON, PLUS, CLOSE, UP, DOWN, CHECK, EDIT, GEAR, MORE, HANDLE, THEME, PAGES, TIP, INFO, BOLT }
 
 @Composable
 fun Icon(ic: Ic, tint: Color = SK.muted, size: Dp = 22.dp, modifier: Modifier = Modifier) {
     Canvas(modifier.size(size)) {
         val s = this.size.minDimension
+        val stroke = Stroke(width = s / 11f, cap = StrokeCap.Round, join = StrokeJoin.Round)
         fun p(vararg xy: Float) = Path().apply { xy.toList().chunked(2).forEachIndexed { i, (x, y) -> if (i == 0) moveTo(x * s, y * s) else lineTo(x * s, y * s) } }
+        fun ring(x: Float, y: Float, r: Float) = drawCircle(tint, r * s, Offset(x * s, y * s), style = stroke)
+        fun dot(x: Float, y: Float, r: Float) = drawCircle(tint, r * s, Offset(x * s, y * s))
+        when (ic) {
+            Ic.GEAR -> {
+                ring(0.5f, 0.5f, 0.16f)
+                for (k in 0 until 8) {
+                    val a = k * Math.PI / 4
+                    val c = kotlin.math.cos(a).toFloat(); val n = kotlin.math.sin(a).toFloat()
+                    drawLine(tint, Offset((0.5f + 0.27f * c) * s, (0.5f + 0.27f * n) * s), Offset((0.5f + 0.36f * c) * s, (0.5f + 0.36f * n) * s), s / 11f, StrokeCap.Round)
+                }
+                ring(0.5f, 0.5f, 0.27f)
+                return@Canvas
+            }
+            Ic.MORE -> { dot(0.25f, 0.5f, 0.07f); dot(0.5f, 0.5f, 0.07f); dot(0.75f, 0.5f, 0.07f); return@Canvas }
+            Ic.THEME -> {
+                ring(0.5f, 0.5f, 0.32f)
+                drawArc(tint, 90f, 180f, true, Offset(0.18f * s, 0.18f * s), Size(0.64f * s, 0.64f * s))
+                return@Canvas
+            }
+            Ic.PAGES -> {
+                for ((x, y) in listOf(0.16f to 0.2f, 0.54f to 0.2f, 0.16f to 0.54f, 0.54f to 0.54f)) {
+                    drawRoundRect(tint, Offset(x * s, y * s), Size(0.3f * s, 0.26f * s), androidx.compose.ui.geometry.CornerRadius(0.05f * s), style = stroke)
+                }
+                return@Canvas
+            }
+            Ic.TIP -> {
+                ring(0.5f, 0.4f, 0.22f)
+                drawPath(p(0.4f, 0.74f, 0.6f, 0.74f), tint, style = stroke)
+                drawPath(p(0.43f, 0.86f, 0.57f, 0.86f), tint, style = stroke)
+                return@Canvas
+            }
+            Ic.INFO -> {
+                ring(0.5f, 0.5f, 0.36f)
+                drawPath(p(0.5f, 0.46f, 0.5f, 0.68f), tint, style = stroke)
+                dot(0.5f, 0.33f, 0.05f)
+                return@Canvas
+            }
+            else -> Unit
+        }
         val path = when (ic) {
             Ic.BACK -> p(0.62f, 0.2f, 0.32f, 0.5f, 0.62f, 0.8f)
             Ic.CHEVRON -> p(0.38f, 0.2f, 0.68f, 0.5f, 0.38f, 0.8f)
@@ -164,8 +211,11 @@ fun Icon(ic: Ic, tint: Color = SK.muted, size: Dp = 22.dp, modifier: Modifier = 
             Ic.CLOSE -> Path().apply { moveTo(0.27f * s, 0.27f * s); lineTo(0.73f * s, 0.73f * s); moveTo(0.73f * s, 0.27f * s); lineTo(0.27f * s, 0.73f * s) }
             // pencil on the 24-unit grid: body M4 20 L4 16 L15 5 L19 9 L8 20 Z, ferrule M13 7 L17 11
             Ic.EDIT -> p(4f / 24, 20f / 24, 4f / 24, 16f / 24, 15f / 24, 5f / 24, 19f / 24, 9f / 24, 8f / 24, 20f / 24).apply { close(); moveTo(13f / 24 * s, 7f / 24 * s); lineTo(17f / 24 * s, 11f / 24 * s) }
+            Ic.BOLT -> p(0.56f, 0.12f, 0.26f, 0.56f, 0.5f, 0.56f, 0.44f, 0.88f, 0.74f, 0.44f, 0.5f, 0.44f).apply { close() }
+            Ic.HANDLE -> Path().apply { for (y in listOf(0.34f, 0.5f, 0.66f)) { moveTo(0.22f * s, y * s); lineTo(0.78f * s, y * s) } }
+            else -> Path()
         }
-        drawPath(path, tint, style = Stroke(width = s / 11f, cap = StrokeCap.Round, join = StrokeJoin.Round))
+        drawPath(path, tint, style = stroke)
     }
 }
 
@@ -204,10 +254,11 @@ fun Page(
     after: (@Composable ColumnScope.() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit,
 ) {
+    // plan-r15 F2: the preview follows this window (cover / inner, rotation)
     val phone = LocalSettingsEnv.current.phone
     val ownBar = rememberSaveable(saver = PreviewState.Saver) { PreviewState(night = preview?.night == true) }
     val st = LocalPageBar.current?.takeIf { preview?.onSettle != null } ?: ownBar
-    val pager = rememberPagerState(if (preview?.cards == true) preview.slides.indexOfFirst { it.start }.coerceAtLeast(0) else preview?.initial ?: 0) { preview?.slides?.size ?: 0 }
+    val pager = rememberPagerState(preview?.initial ?: 0) { preview?.slides?.size ?: 0 }
     if (preview?.onSettle != null) {
         // a page's settings: settling on another page opens that page's settings (the new screen opens on it, no jump)
         val cur by rememberUpdatedState(preview)
@@ -246,7 +297,7 @@ fun Page(
                     var miniH by remember { mutableIntStateOf(0) }
                     val gap = with(LocalDensity.current) { 64.dp.roundToPx() }
                     val past by remember { derivedStateOf { pvH > 0 && scroll.value > pvH - gap } }
-                    val mini = preview != null && !preview.cards && past
+                    val mini = preview != null && past
                     Box(Modifier.weight(1f).fillMaxWidth()) {
                         StickyScroll(scroll, Modifier.fillMaxSize(), if (mini) miniH else 0, sticky, after) {
                             if (preview != null) Box(Modifier.fillMaxWidth().onSizeChanged { pvH = it.height }) { fullPreview() }
@@ -319,8 +370,11 @@ fun Section(title: String?, footer: String? = null, content: GroupScope.() -> Un
 fun NavRow(
     title: String, onClick: () -> Unit, subtitle: String? = null, value: String? = null, badge: String? = null,
     badgeOk: Boolean = false, enabled: Boolean = true, why: String? = null,
+    /** plan-r15 F0: an accent line glyph before the title (no coloured tile). */
+    lead: (@Composable () -> Unit)? = null,
 ) {
     Row(Modifier.fillMaxWidth().heightIn(min = 60.dp).clickable(enabled = enabled, onClick = onClick).padding(start = 16.dp, end = 12.dp, top = 10.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (lead != null) { Box(Modifier.size(24.dp), Alignment.Center) { lead() }; Spacer(Modifier.width(14.dp)) }
         // with a value the title keeps its own width and the value takes what is left (one line, ellipsis)
         Column(if (value == null) Modifier.weight(1f) else Modifier) {
             T(title, 16.sp, 500, if (enabled) SK.text else SK.muted, maxLines = if (value == null) Int.MAX_VALUE else 1)
@@ -342,15 +396,29 @@ fun NavRow(
 fun PermLine(perm: Perm, modifier: Modifier = Modifier) {
     val env = LocalSettingsEnv.current
     if (env.granted[perm] == true) return
+    PermLineRow(perm, modifier) { env.onPerm(perm) }
+}
+
+/** plan-r15 B4/F3: one line for a feature needing several grants ([Perm.CHARGE_START]); a tap asks the missing ones in turn. */
+@Composable
+fun PermLine(perms: List<Perm>, modifier: Modifier = Modifier) {
+    val env = LocalSettingsEnv.current
+    val first = perms.firstOrNull { env.granted[it] != true } ?: return
+    PermLineRow(first, modifier) { env.onPermWalkOf(perms) }
+}
+
+@Composable
+private fun PermLineRow(perm: Perm, modifier: Modifier, onClick: () -> Unit) {
     Row(
-        modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClickLabel = perm.ko) { env.onPerm(perm) }.padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
+        modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(onClickLabel = perm.ko + " 허용하기", onClick = onClick).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(8.dp).clip(CircleShape).background(SK.danger))
         Text(
             buildAnnotatedString {
-                append("설정 한 가지가 더 필요해요 · ")
-                withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) { append("설정하기") }
+                // plan-r15 F7: the line names what the grant is for
+                append(perm.need + " · ")
+                withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) { append("허용하기") }
             },
             color = SK.danger, fontSize = 13.sp, fontFamily = Fonts.ui(500), fontWeight = FontWeight(500),
         )
@@ -423,9 +491,9 @@ fun RadioRow(title: String, subtitle: String?, selected: Boolean, onClick: () ->
     }
 }
 
-/** "자세히" (mockup `more()`): folded rows; open from the start on a two-pane page. */
+/** "자세히" (mockup `more()`): folded rows; open from the start on a two-pane page. [label]: 더 꾸미기 in the theme editor (F9). */
 @Composable
-fun More(content: @Composable ColumnScope.() -> Unit) {
+fun More(label: String = "자세히", content: @Composable ColumnScope.() -> Unit) {
     var open by rememberSaveable { mutableStateOf<Boolean?>(null) }
     val shown = open ?: LocalTwoPane.current
     Column(Modifier.fillMaxWidth()) {
@@ -433,7 +501,7 @@ fun More(content: @Composable ColumnScope.() -> Unit) {
             Modifier.padding(top = 16.dp).heightIn(min = 48.dp).clip(RoundedCornerShape(50)).clickable { open = !shown }.padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            T("자세히", 14.sp, 600, SK.muted)
+            T(label, 14.sp, 600, SK.muted)
             Icon(if (shown) Ic.UP else Ic.DOWN, SK.muted, 18.dp, Modifier.padding(start = 4.dp))
         }
         if (shown) content()
@@ -445,7 +513,7 @@ fun More(content: @Composable ColumnScope.() -> Unit) {
 fun PresetSwatches(sets: List<List<Long>>, selected: Int, onSelect: (Int) -> Unit, blend: Boolean = false) {
     FlowRow(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
         sets.forEachIndexed { i, set ->
-            Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "조합 ${i + 1}") { onSelect(i) }, Alignment.Center) {
+            Box(Modifier.size(48.dp).clip(CircleShape).clickable(onClickLabel = "색 조합 ${i + 1} 고르기") { onSelect(i) }, Alignment.Center) {
                 if (i == selected) Box(Modifier.size(46.dp).border(2.dp, Color.White, CircleShape))
                 Canvas(Modifier.size(36.dp).clip(CircleShape)) {
                     if (blend) drawRect(Brush.linearGradient(set.map { it.c() }))
@@ -641,7 +709,71 @@ fun HsvPicker(color: Long, onChange: (Long) -> Unit, modifier: Modifier = Modifi
             val x = (h / 360f).coerceIn(0f, 1f) * size.width
             drawCircle(Color.White, 12.dp.toPx(), Offset(x.coerceIn(12.dp.toPx(), size.width - 12.dp.toPx()), size.height / 2), style = Stroke(3.dp.toPx()))
         }
-        T("#%06X".format(color.toInt() and 0xFFFFFF), 13.sp, 500, SK.muted)
+        // plan-r15 F6: no hex code under the picker
+    }
+}
+
+/** plan-r15 F6: a slider with words at both ends instead of a number ([note] = one line under it). */
+@Composable
+fun WordSlider(
+    title: String, low: String, high: String, value: Float, onChange: (Float) -> Unit,
+    range: ClosedFloatingPointRange<Float> = 0f..1f, note: String? = null, enabled: Boolean = true, why: String? = null,
+    onChangeFinished: (() -> Unit)? = null, trailing: (@Composable () -> Unit)? = null,
+) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            T(title, 16.sp, 500, if (enabled) SK.text else SK.muted, Modifier.weight(1f))
+            trailing?.invoke()
+        }
+        SliderControl(value, range, { v -> if (enabled) onChange(v) }, onChangeFinished = onChangeFinished)
+        Row(Modifier.fillMaxWidth()) {
+            T(low, 13.sp, 500, SK.muted, Modifier.weight(1f))
+            T(high, 13.sp, 500, SK.muted)
+        }
+        if (!enabled && why != null) T(why, 13.sp, 400, SK.why, Modifier.padding(top = 8.dp), lineHeight = 18.sp)
+        else if (note != null) T(note, 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp), lineHeight = 18.sp)
+    }
+}
+
+/** plan-r15 F10 ③: a footer line under a setting with the gesture in bold ("**…**" marks it). */
+@Composable
+fun TipLine(text: String, modifier: Modifier = Modifier) {
+    val parts = text.split("**")
+    Text(
+        buildAnnotatedString {
+            parts.forEachIndexed { i, s -> if (i % 2 == 1) withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, color = SK.text)) { append(s) } else append(s) }
+        },
+        modifier.padding(horizontal = 16.dp, vertical = 8.dp), color = SK.muted, fontSize = 13.sp, lineHeight = 18.sp, fontFamily = Fonts.ui(400), fontWeight = FontWeight(400),
+    )
+}
+
+/**
+ * plan-r15 F5: the one delete question ("'이름' 페이지를 지울까요?") used for pages, themes and D-days.
+ */
+@Composable
+fun DeleteDialog(title: String, onDismiss: () -> Unit, onDelete: () -> Unit) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = SK.surface,
+        title = { T(title, 18.sp, 700) },
+        confirmButton = { ActionButton("지우기", { onDismiss(); onDelete() }, danger = true) },
+        dismissButton = { ActionButton("취소", onDismiss, primary = false) },
+    )
+}
+
+/** plan-r15 F5: "○○ 뺐어요 · 되돌리기" after a light removal; [onUndo] puts it back. Leaves after 4 s. */
+@Composable
+fun UndoBar(text: String, key: Any, onUndo: () -> Unit, onGone: () -> Unit) {
+    val gone by rememberUpdatedState(onGone)
+    LaunchedEffect(key) { kotlinx.coroutines.delay(4_000); gone() }
+    Row(
+        Modifier.fillMaxWidth().padding(top = 12.dp).clip(RoundedCornerShape(14.dp)).background(SK.surface2).padding(start = 16.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        T(text, 14.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
+        Box(Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).clickable { onUndo(); gone() }.padding(horizontal = 14.dp), Alignment.Center) {
+            T("되돌리기", 14.sp, 700, LocalAccent.current)
+        }
     }
 }
 

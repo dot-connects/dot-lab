@@ -62,7 +62,8 @@ class SettingsActivity : ComponentActivity() {
         enableEdgeToEdge(statusBarStyle = SystemBarStyle.dark(Color.TRANSPARENT), navigationBarStyle = SystemBarStyle.dark(Color.TRANSPARENT))
         granted.value = Perms.granted(this)
         val fresh = runCatching { packageManager.getPackageInfo(packageName, 0).let { it.firstInstallTime == it.lastUpdateTime } }.getOrDefault(false)
-        walkOffer.value = PermWalk.starts(fresh, walkDoneFile().exists(), ConfigStore.storedVersion(this))
+        firstRun = PermWalk.starts(fresh, walkDoneFile().exists(), ConfigStore.storedVersion(this), again = againFile().exists())
+        restoreWalk(savedInstanceState)
         kr.dot.sb.platform.clearOldWidgetHost(this)
         kr.dot.sb.platform.PostureProbe.attach(this, "설정") // plan-r15 measurement (personal build, foldables)
         setContent {
@@ -74,14 +75,25 @@ class SettingsActivity : ComponentActivity() {
             var stack by rememberSaveable {
                 mutableStateOf(
                     when {
+                        // plan-r15 F3: a fresh install (or 처음 설정으로) opens the four first-run steps alone
+                        section == null && firstRun -> listOf(Routes.FIRST_RUN)
                         section == null -> listOf(Routes.HOME)
                         // the card's own settings task: 앱 고르기 is the bottom, so Back leaves to StandBy
                         section.startsWith("apps:") -> listOf(section)
-                        section == "calendar" || section == "notifications" -> listOf(Routes.HOME, Routes.PERMS)
+                        // a card asking for its grant opens where that grant's line is
+                        section == "calendar" -> listOf(Routes.HOME, Routes.card(kr.dot.sb.model.CardType.CALENDAR))
+                        section == "notifications" -> listOf(Routes.HOME, Routes.ALERTS)
                         else -> listOf(Routes.HOME, section)
-                    }.let { if (section == null && walkOffer.value) it + Routes.PERMS else it },
+                    },
                 )
             }
+            // the first run ends here for good; 처음 설정으로 brings it back ([reset])
+            val endFirstRun = {
+                runCatching { walkDoneFile().createNewFile(); againFile().delete() }
+                firstRun = false
+                stack = listOf(Routes.HOME)
+            }
+            restart = { stack = listOf(Routes.FIRST_RUN) }
             BackHandler(stack.size > 1) { stack = stack.dropLast(1) }
             val nav = remember {
                 object : Nav {
@@ -91,8 +103,6 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
             val route = stack.last()
-            // the walk is offered once: shown = done, even when the user backs out of 권한 (review r13 M2)
-            if (route == Routes.PERMS && walkOffer.value) androidx.compose.runtime.LaunchedEffect(Unit) { runCatching { walkDoneFile().createNewFile() } }
             LiveLux(route == Routes.NIGHT)
             val env = SettingsEnv(
                 foldable = Perms.isFoldable(this),
@@ -105,10 +115,12 @@ class SettingsActivity : ComponentActivity() {
                 licenseText = { f -> runCatching { assets.open("licenses/$f").bufferedReader().use { it.readText() } }.getOrDefault("") },
                 versionName = runCatching { packageManager.getPackageInfo(packageName, 0).versionName }.getOrNull() ?: "",
                 launcherApps = { kr.dot.sb.ui.cards.launcherApps(this) },
-                permWalkOffer = walkOffer.value,
-                onPermWalk = ::startWalk,
-                onPermLater = { endWalk(); nav.back() },
+                onPermWalkOf = ::startWalk,
+                onShowNow = { kr.dot.sb.platform.StandbyActivity.startNow(this) },
+                onFirstRunDone = endFirstRun,
+                onReset = ::reset,
                 calendars = { kr.dot.sb.data.DeviceSources.calendars(this) },
+                weekEvents = { kr.dot.sb.data.DeviceSources.week(this, java.time.LocalDate.now()) },
                 photoFolders = { f -> kr.dot.sb.data.PhotoIndex.get(this, f).list() },
                 pickFolder = { pickFolder.launch(DCIM) },
                 removeFolder = ::removeFolder,
@@ -131,7 +143,8 @@ class SettingsActivity : ComponentActivity() {
         if (uri == null) return@registerForActivityResult
         // without a persisted grant the folder is unreadable after a restart (PhotoIndex would drop it)
         if (runCatching { contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }.isFailure) {
-            Toast.makeText(this, "이 폴더는 고를 수 없어요", Toast.LENGTH_SHORT).show(); return@registerForActivityResult
+            Toast.makeText(this, "이 폴더는 고를 수 없어요. 다른 폴더를 골라 주세요.", Toast.LENGTH_SHORT).show(); return@registerForActivityResult
+
         }
         update { it.withPhotoFolders(it.photoFolders + uri.toString()) }
     }
@@ -155,17 +168,57 @@ class SettingsActivity : ComponentActivity() {
 
     private fun update(f: (AppConfig) -> AppConfig) = ConfigStore.update(this, f)
 
-    // ---- permissions: one at a time, or [차례로 켜기] (plan-r13 B1) ----------------------------------------------------
-    // ponytail: the walk lives in fields; a rotation mid-walk ends it quietly (the next launch offers it again).
+    // ---- permissions: one at a time, or a walk over a list (plan-r13 B1, plan-r15 F3) ---------------------------------
 
     private val walk = mutableStateOf<PermWalk?>(null)
-    private val walkOffer = mutableStateOf(false)
+    /** The perms the current walk covers ([Perm.CHARGE_START] on the first run, all of them in 권한). */
+    private var walkScope: List<Perm> = Perm.entries
+    private var firstRun by mutableStateOf(false)
+    /** Set by the composition: back to the first-run steps after [reset]. */
+    private var restart: () -> Unit = {}
     /** The walk opened a system page for its current step; [away] = this activity was paused since (the user left). */
     private var opened = false
     private var away = false
 
-    /** No-backup: a phone restored from a backup, with none of the permissions, still gets the walk. */
+    /** No-backup: a phone restored from a backup, with none of the permissions, still gets the first run. */
     private fun walkDoneFile() = java.io.File(noBackupFilesDir, "perm_walk_done")
+    /** plan-r15 F8: 처음 설정으로 asked for the first run again (it opens whatever the install looks like). */
+    private fun againFile() = java.io.File(noBackupFilesDir, "first_run_again")
+
+    /** plan-r15 F3: a walk survives rotation and a fold (the system page it opened comes back to a new activity). */
+    override fun onSaveInstanceState(out: Bundle) {
+        super.onSaveInstanceState(out)
+        val w = walk.value ?: return
+        out.putStringArrayList("walkAsked", ArrayList(w.asked.map { it.name }))
+        out.putString("walkCurrent", w.current?.name)
+        out.putStringArrayList("walkScope", ArrayList(walkScope.map { it.name }))
+        out.putBoolean("walkOpened", opened)
+        out.putBoolean("walkAway", away)
+    }
+
+    private fun restoreWalk(b: Bundle?) {
+        val asked = b?.getStringArrayList("walkAsked") ?: return
+        fun names(l: List<String>) = l.mapNotNull { n -> runCatching { Perm.valueOf(n) }.getOrNull() }
+        walk.value = PermWalk(names(asked).toSet(), b.getString("walkCurrent")?.let { n -> runCatching { Perm.valueOf(n) }.getOrNull() })
+        walkScope = names(b.getStringArrayList("walkScope").orEmpty())
+        opened = b.getBoolean("walkOpened")
+        // a system page shown across the rotation counts as left: onResume moves on
+        away = b.getBoolean("walkAway") || opened
+    }
+
+    /**
+     * plan-r15 F8 처음 설정으로: the config back to defaults, every persisted folder grant released, and the first run
+     * opens again (the done mark goes, the "again" mark makes [PermWalk.starts] skip the fresh-install check).
+     */
+    private fun reset() {
+        contentResolver.persistedUriPermissions.forEach { p ->
+            runCatching { contentResolver.releasePersistableUriPermission(p.uri, Intent.FLAG_GRANT_READ_URI_PERMISSION) }
+        }
+        update { AppConfig() }
+        runCatching { walkDoneFile().delete(); againFile().createNewFile() }
+        firstRun = true
+        restart()
+    }
 
     private fun ask(p: Perm) {
         val names = Perms.runtimePermissions(p)
@@ -177,7 +230,8 @@ class SettingsActivity : ComponentActivity() {
         if (Perms.open(this, p)) { if (step) { opened = true; away = false } } else if (step) step(p)
     }
 
-    private fun startWalk() {
+    private fun startWalk(scope: List<Perm>) {
+        walkScope = scope
         walk.value = PermWalk()
         step(null)
     }
@@ -186,7 +240,7 @@ class SettingsActivity : ComponentActivity() {
     private fun step(from: Perm?) {
         val w = walk.value ?: return
         granted.value = Perms.granted(this)
-        val next = w.advance(from, Perm.entries.filter { granted.value[it] != true })
+        val next = w.advance(from, walkScope.filter { granted.value[it] != true })
         if (next == w) return
         walk.value = next
         val p = next.current
@@ -195,8 +249,6 @@ class SettingsActivity : ComponentActivity() {
 
     private fun endWalk() {
         walk.value = null
-        walkOffer.value = false
-        runCatching { walkDoneFile().createNewFile() }
     }
 
     private val main = android.os.Handler(android.os.Looper.getMainLooper())
@@ -211,7 +263,7 @@ class SettingsActivity : ComponentActivity() {
 
     private fun testGlow() {
         val i = Intent().setClassName(packageName, "kr.dot.sb.platform.GlowActivity").putExtra("source", "TEST").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (runCatching { startActivity(i) }.isFailure) Toast.makeText(this, "무드등을 열 수 없어요", Toast.LENGTH_SHORT).show()
+        if (runCatching { startActivity(i) }.isFailure) Toast.makeText(this, "무드등이 안 켜져요. 잠시 뒤 다시 눌러 주세요.", Toast.LENGTH_SHORT).show()
     }
 
     /** Ambient light only while the night screen is open (the sensor costs battery). */

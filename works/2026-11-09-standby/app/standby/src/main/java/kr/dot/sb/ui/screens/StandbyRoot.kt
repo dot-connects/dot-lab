@@ -262,6 +262,8 @@ internal fun RootImpl(
                     )
                 }
                 Overlays(state, config, boardActions, layer, editing, onNowPlaying = { npOpen = it })
+                // plan-r15 F10: one tip per session for the page on screen
+                TipOverlay(config, pages.getOrNull(pager.settledPage)?.let { p -> kr.dot.sb.settings.TipContext(p.index, (p.board ?: widgets.takeIf { p.index == 0 })?.slots.orEmpty()) }, editing || mood || npOpen || layer != Layer.NONE) { act.tipSeen(it) }
             }
             val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")
             if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
@@ -325,7 +327,7 @@ private fun MoodLight(m: kr.dot.sb.model.Mood, ink: Ink, minutes: Int, alarm: Bo
 @Composable
 fun TentClock(
     state: StandbyState, config: AppConfig, level: Float, onLevel: (Float) -> Unit,
-    onLook: (kr.dot.sb.ui.theme.Look) -> Unit, onMood: (kr.dot.sb.model.Mood) -> Unit, startBar: Boolean = false,
+    onLook: (kr.dot.sb.ui.theme.Look) -> Unit, onMood: (kr.dot.sb.model.Mood) -> Unit, startBar: Boolean = false, onTipSeen: (String) -> Unit = {},
 ) = ProvideTheme(config, state.now.toLocalTime()) {
     val night = state.copy(night = 1f)
     var barOn by remember { mutableStateOf(startBar) }
@@ -356,6 +358,7 @@ fun TentClock(
                     extra = { MoodPanel(config.mood, onMood) },
                 )
             }
+            TipOverlay(config, kr.dot.sb.settings.TipContext(-1, tent = true), barOn, onTipSeen) // plan-r15 F10: first tent
         }
     }
 }

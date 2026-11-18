@@ -285,6 +285,8 @@ interface StandbyActions {
     fun setQuickAlarm(at: java.time.LocalDateTime) {}
     /** Clock card arrows (11-14 #7): card [index] of stack [slot] on board [boardId] now shows [face]. */
     fun setCardFace(boardId: String, slot: Int, index: Int, face: kr.dot.sb.model.FaceId) {}
+    /** plan-r15 F10: a one-time tip was shown; it never shows again. */
+    fun tipSeen(name: String) {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

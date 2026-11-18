@@ -63,6 +63,8 @@ import kr.dot.sb.ui.clock.StyleRow
 import kr.dot.sb.ui.clock.spec
 import kr.dot.sb.ui.state.StandbyState
 import kr.dot.sb.ui.theme.clockStyle
+import kr.dot.sb.ui.theme.baseTheme
+import androidx.compose.ui.semantics.contentDescription
 import kotlin.math.roundToInt
 
 // ---- 시계 (plan-r15 E5/F4): preview, six tiles, 모든 시계 보기 · 꾸미기 · 여러 시계 돌려 보기 ---------------------------
@@ -71,7 +73,7 @@ private val TILE_W = 118.dp
 private val TILE_GAP = 10.dp
 
 /** The main grid's six faces (plan-r15 F4); the rest are under 모든 시계 보기. */
-private val MAIN_FACES = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.ANALOG, FaceId.HANGUL, FaceId.DOT_MATRIX, FaceId.THIN)
+internal val MAIN_FACES = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.ANALOG, FaceId.HANGUL, FaceId.DOT_MATRIX, FaceId.THIN)
 
 /**
  * A tile tap on 시계 / 모든 시계 (E5): rotation on = preview only (이 시계 쓰기 commits); rotation off = the clock
@@ -89,10 +91,12 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val state = remember(config, own) { Sample.state(config).withPhotos(own) }
     val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
     var citySheet by remember { mutableStateOf(false) }
+    var weatherSheet by remember { mutableStateOf(false) }
     val now = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
     Box(Modifier.fillMaxSize()) {
+    // plan-r15 F2: only this screen's clock (no swipe to the other pages' settings)
     Page(
-        "시계", back, preview = pagePreview(config, Pages.CLOCK, first, nav),
+        "시계", back, preview = Preview(config, listOf(first)),
         miniActions = { ClockActions(sel, config, update, compact = true) },
     ) {
         ClockActions(sel, config, update, compact = false)
@@ -108,20 +112,22 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
             item { NavRow("꾸미기", { nav.push(Routes.clock(now)) }, subtitle = spec(now).ko, value = "색 · 글꼴 · 크기") }
             item { NavRow("여러 시계 돌려 보기", { nav.push(Routes.CLOCKS_ROTATE) }, value = if (config.rotateClocks) "켬 · ${config.myClocks.size}개" else "끔") }
         }
-        More {
-            Section(null) {
-                item {
-                    ControlRow("시간 표시") {
-                        Segmented(
-                            listOf("폰 설정 따라", "12시간", "24시간"), when (config.use24h) { null -> 0; false -> 1; true -> 2 },
-                            { i -> update { it.copy(use24h = when (i) { 0 -> null; 1 -> false; else -> true }) } },
-                        )
-                    }
+        // plan-r15 F1b: the global time and place settings (날씨 지역 feeds the info line, 하루 막대 and the weather card)
+        Section(null) {
+            item {
+                ControlRow("시간 표시") {
+                    Segmented(
+                        listOf("폰 설정 따라", "12시간", "24시간"), when (config.use24h) { null -> 0; false -> 1; true -> 2 },
+                        { i -> update { it.copy(use24h = when (i) { 0 -> null; 1 -> false; else -> true }) } },
+                    )
                 }
             }
-            WorldCitiesSection(config, update) { citySheet = true }
+            item { NavRow("날씨 지역", { weatherSheet = true }, value = config.city.name, subtitle = "날씨 카드와 시계의 날씨 줄에 써요.") }
         }
+        TipLine(Tip.CLOCK_SWIPE.line)
+        More { WorldCitiesSection(config, update) { citySheet = true } }
     }
+    if (weatherSheet) CitySheet("날씨 지역", taken = emptySet(), onDismiss = { weatherSheet = false }) { c -> update { it.copy(city = c) }; weatherSheet = false }
     if (citySheet) {
         CitySheet("세계 시계 도시", taken = config.worldCities.map { it.name }.toSet(), onDismiss = { citySheet = false }) { c ->
             update { s -> if (s.worldCities.any { it.name == c.name }) s else s.copy(worldCities = s.worldCities + c) }
@@ -164,7 +170,7 @@ fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
     var hint by remember { mutableIntStateOf(0) }
     LaunchedEffect(hint) { if (hint > 0) { kotlinx.coroutines.delay(3_000); hint = 0 } }
     Page("여러 시계 돌려 보기", back) {
-        Section(null, footer = "켜면 Stand Screen 시계 페이지를 위아래로 넘겨 쓰는 시계를 차례로 볼 수 있어요. 끄면 첫 번째 시계만 보여요.") {
+        Section(null, footer = "켜면 시계 화면에서 위아래로 넘길 때 다음 시계가 나와요. 끄면 첫 번째 시계만 보여요.") {
             item { SwitchRow("여러 시계 돌려 보기", config.rotateClocks, { v -> update { it.copy(rotateClocks = v) } }) }
         }
         Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
@@ -193,18 +199,12 @@ fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
     }
 }
 
-/** Name of the previewed clock + where it stands; with rotation on, [이 시계 쓰기] puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
+/** Name of the previewed clock; with rotation on, [이 시계 쓰기] puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
 @Composable
 private fun ClockActions(face: FaceId, config: AppConfig, update: Update, compact: Boolean) {
     val i = config.myClocks.indexOf(face)
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Row(Modifier.weight(1f), verticalAlignment = Alignment.Bottom) {
-            T(spec(face).ko, 15.sp, 700, maxLines = 1, modifier = Modifier.weight(1f, fill = false))
-            if (!compact) T(
-                when { i == 0 -> "지금 쓰는 시계"; i > 0 && config.rotateClocks -> "돌려 보기 ${i + 1}번째"; else -> "둘러보는 중" },
-                12.sp, 500, SK.muted, Modifier.padding(start = 8.dp), maxLines = 1,
-            )
-        }
+        T(spec(face).ko, 15.sp, 700, maxLines = 1, modifier = Modifier.weight(1f))
         if (config.rotateClocks && i != 0) ActionButton("이 시계 쓰기", { update { it.copy(myClocks = MyClocks.use(it.myClocks, face)) } })
     }
 }
@@ -277,7 +277,7 @@ private fun MyStrip(my: List<FaceId>, config: AppConfig, state: StandbyState, up
 }
 
 @Composable
-private fun GalleryCard(face: FaceId, on: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
+internal fun GalleryCard(face: FaceId, on: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
     val acc = LocalAccent.current
     Column(
         modifier.clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface).clickable(onClick = onClick)
@@ -310,7 +310,9 @@ private fun PickTile(face: FaceId, picked: Boolean, config: AppConfig, state: St
 
 private val FONT_ORDER = FontId.entries.filter { !it.hangul }
 private val HANGUL_FONTS = FontId.entries.filter { it.hangul }
-private val LED_NAMES = listOf("빨강", "초록", "파랑", "호박").zip(FaceDefaults.LEDS)
+private val LED_NAMES = listOf("빨강", "초록", "파랑", "호박빛").zip(FaceDefaults.LEDS)
+/** plan-r15 F11: fonts shown by their "12" sample only (their names are read out, not printed). */
+private val UNNAMED_FONTS = setOf(FontId.STENCIL, FontId.SLAB, FontId.RAILS, FontId.JOST, FontId.PLAYFAIR)
 
 @Composable
 fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -> Unit) {
@@ -330,7 +332,9 @@ fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -
     val own = rememberOwnPhotos(if (face == FaceId.PHOTOS_TIME) config.photoFolders else emptyList())
     val first = Slide(sp.ko) { l -> ClockFace(face, config.clockStyle(face), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
 
-    Page("${sp.ko} 꾸미기", back, preview = Preview(config, listOf(first))) {
+    // plan-r15 F2: 낮|밤 only where the night look differs (light themes, the 야광 clocks)
+    val dayNight = config.baseTheme().tokens.light || face in kr.dot.sb.ui.clock.Relief.FACES
+    Page("${sp.ko} 꾸미기", back, preview = Preview(config, listOf(first), dayNight = dayNight)) {
         // 11-14: one row right under the preview, the same order in every editor: [색 조합 바꾸기] [이전 조합] [기본으로]
         Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             if (shuffle) {
@@ -359,7 +363,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
     val part = r.part
     if (r == StyleRow.FACE_COLOR && face in kr.dot.sb.ui.clock.Relief.FACES) {
         // the mockup's eight dials by name, plus 직접 고르기 (a custom dial derives its ink)
-        ControlRow("다이얼 색") { NamedSwatches(kr.dot.sb.ui.clock.Relief.DIALS.map { it.ko to it.dial }, kr.dot.sb.ui.clock.Relief.dial(style), showNames = false, onChange = { v -> edit { it.copy(faceColor = v) } }) }
+        ControlRow("시계판 색") { NamedSwatches(kr.dot.sb.ui.clock.Relief.DIALS.map { it.ko to it.dial }, kr.dot.sb.ui.clock.Relief.dial(style), showNames = false, onChange = { v -> edit { it.copy(faceColor = v) } }) }
         return
     }
     if (part != null) {
@@ -379,11 +383,16 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
                 edit { it.copy(bgColor = set[0], bgColor2 = set[1], color = set[2], color2 = set[3], effect = Effect.TWO_COLOR, background = Background.GRADIENT) }
             }, blend = true)
         }
-        StyleRow.SIZE -> SliderRow("크기", "${style.sizePct}%", style.sizePct.toFloat(), 60f..130f, { v -> edit { it.copy(sizePct = v.toInt()) } })
-        StyleRow.WEIGHT -> SliderRow("굵기", "${style.weight}", style.weight.toFloat(), 100f..950f, { v -> edit { it.copy(weight = (v / 50).roundToInt() * 50) } })
-        StyleRow.INFO -> SwitchRow("날짜와 날씨 표시", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "요일·날짜·기온·다음 알람을 같이 보여요")
+        // plan-r15 F6: words at both ends, no % or weight number
+        StyleRow.SIZE -> WordSlider("크기", "작게", "크게", style.sizePct.toFloat(), { v -> edit { it.copy(sizePct = v.toInt()) } }, range = 60f..130f)
+        StyleRow.WEIGHT -> WordSlider("굵기", "가늘게", "굵게", style.weight.toFloat(), { v -> edit { it.copy(weight = (v / 50).roundToInt() * 50) } }, range = 100f..950f)
+        StyleRow.INFO -> Column {
+            SwitchRow("날짜와 날씨 보기", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "요일·날짜·기온·다음 알람을 같이 보여줘요.")
+            // plan-r15 F3: 하루 막대 and the info line read the calendar
+            if (style.showInfo && face == FaceId.DAY_BAR) PermLine(Perm.CALENDAR)
+        }
         StyleRow.FONT, StyleRow.DIAL_FONT -> ControlRow(
-            when { r == StyleRow.DIAL_FONT -> "시계판 숫자 서체"; face == FaceId.FLIP -> "판 위 숫자 서체"; else -> "서체" },
+            when { r == StyleRow.DIAL_FONT -> "시계판 숫자 글꼴"; face == FaceId.FLIP -> "판 위 숫자 글꼴"; else -> "글꼴" },
         ) {
             FontGrid(FONT_ORDER, style.font, "12") { f, w ->
                 // 11-16: on 디지털, 둥근 굵은 글씨 is one tap to the old look (middle digit in accent + overlap); both stay switchable
@@ -391,7 +400,7 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
                 edit { if (look) it.copy(font = f, weight = w, accentMiddle = true, overlap = true) else it.copy(font = f, weight = w) }
             }
         }
-        StyleRow.KFONT -> ControlRow("서체", note = "한글을 쓸 수 있는 서체만 보여요.") { FontGrid(HANGUL_FONTS, style.font, "아홉") { f, w -> edit { it.copy(font = f, weight = w) } } }
+        StyleRow.KFONT -> ControlRow("글꼴", note = "한글을 쓸 수 있는 글꼴만 보여요.") { FontGrid(HANGUL_FONTS, style.font, "아홉") { f, w -> edit { it.copy(font = f, weight = w) } } }
         StyleRow.FX -> ControlRow("효과", note = "밤에는 모든 효과가 꺼져요.") {
             Segmented(Effect.entries.map { it.ko }, style.effect.ordinal, { i -> edit { it.copy(effect = Effect.entries[i]) } })
             if (style.effect == Effect.TWO_COLOR) {
@@ -415,10 +424,10 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
             val ls = listOf(ClockLayout.CENTER, ClockLayout.TWO_LINES)
             Segmented(ls.map { it.ko }, if (style.layout == ClockLayout.TWO_LINES) 1 else 0, { i -> edit { it.copy(layout = ls[i]) } })
         }
-        StyleRow.ACCENT_MIDDLE -> SwitchRow("가운데 숫자 색", style.accentMiddle, { v -> edit { it.copy(accentMiddle = v) } }, subtitle = "가운데 숫자 하나를 진한 색으로 칠해요 (한 줄일 때)")
-        StyleRow.FILL -> SwitchRow("꽉 채우기", style.fill, { v -> edit { it.copy(fill = v) } }, subtitle = "숫자를 화면에 꽉 차게 키워요")
-        StyleRow.OVERLAP -> SwitchRow("살짝 겹치기", style.overlap, { v -> edit { it.copy(overlap = v) } }, subtitle = "숫자끼리 조금 겹치고 살짝 기울어요")
-        StyleRow.CLEAR_BG -> SwitchRow("배경 투명", style.clearBg, { v -> edit { it.copy(clearBg = v) } }, subtitle = "시계 판 없이 카드 배경 위에 그려요")
+        StyleRow.ACCENT_MIDDLE -> SwitchRow("가운데 숫자 색", style.accentMiddle, { v -> edit { it.copy(accentMiddle = v) } }, subtitle = "한 줄일 때 가운데 숫자만 다른 색으로 칠해요.")
+        StyleRow.FILL -> SwitchRow("꽉 채우기", style.fill, { v -> edit { it.copy(fill = v) } }, subtitle = "숫자를 화면에 꽉 차게 키워요.")
+        StyleRow.OVERLAP -> SwitchRow("살짝 겹치기", style.overlap, { v -> edit { it.copy(overlap = v) } }, subtitle = "숫자끼리 조금 겹치고 살짝 기울어요.")
+        StyleRow.CLEAR_BG -> SwitchRow("배경 없애기", style.clearBg, { v -> edit { it.copy(clearBg = v) } }, subtitle = "시계 뒤 판을 없애고 카드 배경이 보이게 해요.")
         StyleRow.SHAPE -> ControlRow("모양") { AnalogStylePicker(config, style, update) }
         StyleRow.ANALOG_NUMBERS -> {
             // DUO stays a decode-only alias of TWELVE (D7)
@@ -439,11 +448,11 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
             Segmented(kr.dot.sb.model.SquareNumerals.entries.map { it.ko }, style.squareNumerals.ordinal, { i -> edit { it.copy(squareNumerals = kr.dot.sb.model.SquareNumerals.entries[i]) } })
         }
         // plan-r13 B4: named apart from the global 시간 표시, in its order
-        StyleRow.HOURS -> ControlRow("이 시계만 시간 표시") {
+        StyleRow.HOURS -> ControlRow("이 시계의 12시간/24시간") {
             Segmented(listOf("폰 설정 따라", "12시간", "24시간"), when (style.h24) { null -> 0; false -> 1; true -> 2 }, { i -> edit { it.copy(h24 = when (i) { 0 -> null; 1 -> false; else -> true }) } })
         }
-        StyleRow.GHOST -> SwitchRow("꺼진 획 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 획이 다이얼에 옅게 새겨져요")
-        StyleRow.DATE_WINDOW -> SwitchRow("날짜 창", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "오른쪽 위에 요일과 날짜를 보여요")
+        StyleRow.GHOST -> SwitchRow("꺼진 숫자 흐리게 보이기", style.ghost, { v -> edit { it.copy(ghost = v) } }, subtitle = "켜지지 않은 숫자 자리가 옅게 보여요.")
+        StyleRow.DATE_WINDOW -> SwitchRow("날짜 창", style.showInfo, { v -> edit { it.copy(showInfo = v) } }, subtitle = "오른쪽 위에 요일과 날짜를 보여줘요.")
         else -> Unit // colour rows are handled above
     }
 }
@@ -468,9 +477,10 @@ private fun FontTile(font: FontId, on: Boolean, sample: String, modifier: Modifi
     val shape = RoundedCornerShape(14.dp)
     val th = kr.dot.sb.ui.theme.LocalTheme.current
     val w = if (font == FontId.THEME) th.tokens.digitWeight else font.defaultWeight
+    val unnamed = font in UNNAMED_FONTS
     Column(
         modifier.clip(shape).background(if (on) SK.surface2 else SK.bg).border(if (on) 2.dp else 1.dp, if (on) acc else SK.line, shape)
-            .clickable(onClick = onClick).padding(vertical = 10.dp, horizontal = 4.dp),
+            .clickable(onClick = onClick).then(if (unnamed) Modifier.semantics { contentDescription = font.ko } else Modifier).padding(vertical = 10.dp, horizontal = 4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(Modifier.height(56.dp), Alignment.Center) {
@@ -479,7 +489,8 @@ private fun FontTile(font: FontId, on: Boolean, sample: String, modifier: Modifi
                 fontWeight = FontWeight(w.coerceIn(100, 900)), maxLines = 1,
             )
         }
-        T(font.ko, 12.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 1, align = TextAlign.Center)
+        if (!unnamed) T(font.ko, 12.sp, if (on) 700 else 500, if (on) SK.text else SK.muted, Modifier.padding(top = 2.dp), maxLines = 1, align = TextAlign.Center)
+
     }
 }
 

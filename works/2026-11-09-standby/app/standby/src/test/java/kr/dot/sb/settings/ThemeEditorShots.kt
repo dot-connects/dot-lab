@@ -51,7 +51,11 @@ class ThemeEditorShots : SettingsShotKit() {
     private fun editor(name: String, c: AppConfig, q: String = tallest, screen: Boolean = false, after: androidx.compose.ui.test.junit4.ComposeContentTestRule.() -> Unit = {}) =
         snap("../theme-editor/$name", q, c, route = Routes.THEME_CUSTOM, screen = screen, after = after)
 
-    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.tab(name: String) { onNodeWithText(name).performScrollTo().performClick() }
+    /** plan-r15 F9: the tabs live under 더 꾸미기 (open from the start on a two-pane page). */
+    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.tab(name: String) {
+        if (onAllNodesWithText(name).fetchSemanticsNodes().isEmpty()) { onNodeWithText("더 꾸미기").performScrollTo().performClick(); waitForIdle() }
+        onNodeWithText(name).performScrollTo().performClick()
+    }
 
     /** Scrolls the rows by [px]: the page's first vertical scroller, or on a two-pane page ([pane]) the last (the right pane). */
     private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.scrollRows(px: Float, pane: Boolean = false) =
@@ -66,6 +70,7 @@ class ThemeEditorShots : SettingsShotKit() {
         .withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood))).copy(customFrom = "보라 무드")
 
     @Test fun editorMoodlight() = editor("editor-moodlight", moodCfg(mood.copy(flow = listOf(0xFFFF9C56, 0xFFAA5A2E, 0xFFAA88FE))).withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood)))) {
+        tab("배경")
         onAllNodesWithText("낮").let { it[it.fetchSemanticsNodes().size - 1] }.performScrollTo().performClick()
     }
     @Test fun customCard() = editor("custom-card", custom) { tab("카드") }
@@ -88,7 +93,7 @@ class ThemeEditorShots : SettingsShotKit() {
     @Test fun editorPreset() = editor("editor-preset", AppConfig(theme = Theme.MOODLIGHT, boardBg = kr.dot.sb.model.BoardBg.AURORA))
     /** [색 조합 바꾸기] pressed once on 기본. */
     @Test fun editorShuffle() = editor("editor-shuffle", AppConfig(), phone) { onNodeWithText("색 조합 바꾸기").performScrollTo().performClick() }
-    /** The theme strip while the look is saved nowhere: ＋ 사용자 지정 marked "저장 안 함". */
+    /** The theme strip while the look is saved nowhere: ＋ 직접 만들기 marked "저장 전". */
     @Test fun themeUnsaved() = snap("../theme-editor/theme-unsaved", phone, custom, route = Routes.THEME)
     /** r14 B5: the selected 내 테마 under a veil with the pencil. */
     @Test fun themeMinePencil() = snap("../theme-editor/theme-mine-pencil", phone, moodCfg().withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood))).copy(customFrom = "보라 무드"), route = Routes.THEME)

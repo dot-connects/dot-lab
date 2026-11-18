@@ -53,76 +53,91 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.gestures.detectTapGestures
 
 /** The fixed first three pages (spec §1c) plus user boards, as the editor and the carousel list them. */
-internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "위젯", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
+internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "기본 페이지", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
 
 /** plan-r15 B2: the privacy policy, published from the dot-lab repo (GitHub Pages). */
 internal const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-09-standby/page/privacy.html"
 
 /**
- * Home (mockup SCREENS.home): the page pager (scrolls with the list), the permission banner while any of the seven
- * permissions is missing, then four groups of rows, each showing its current value.
+ * Home (plan-r15 F1, mockup r15 "설정 · 홈 다시 묶기"): large title, one preview of the pages that are on (dots) with
+ * [지금 보기], the banner only while charge-start's screen saver is missing, then the seven rows by task, each with an
+ * accent line icon and its current value ("설정 필요" when a default-on feature lacks its grant), then 팁 and 정보.
  */
 @Composable
 fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
     val missing = env.missing
-    fun need(p: Perm) = if (p in missing) "설정 필요" else null
-    Page("스탠바이", null, preview = Preview(config, pageSlides(config), cards = true, onOpen = nav::push)) {
-        if (missing.isNotEmpty()) PermBanner(Perm.entries.size, Perm.entries.size - missing.size) { nav.push(Routes.PERMS) }
-        // 11-14 tree: card settings (시계, 날씨, 알림, 수면 소리, 알람, 카드에 쓰는 정보) live under 카드
-        Section("화면") {
+    val need = "설정 필요"
+    Page("Stand Screen", null, preview = Preview(config, pageSlides(config), initial = Pages.start(config))) {
+        ActionButton("지금 보기", env.onShowNow, Modifier.fillMaxWidth().padding(top = 12.dp))
+        if (Perm.DREAM in missing) PermBanner { env.onPermWalkOf(Perm.CHARGE_START) }
+        Section(null) {
+            item { NavRow("시계", { nav.push(Routes.CLOCKS) }, value = kr.dot.sb.ui.clock.spec(config.myClocks.firstOrNull() ?: kr.dot.sb.model.FaceId.DIGITAL).ko, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.ALARM) }) }
             item {
-                val look = (StripPick.of(config) as? Look.Mine)?.my?.name ?: config.theme.ko
-                NavRow("테마와 배경", { nav.push(Routes.THEME) }, value = look)
+                val look = (StripPick.of(config) as? Look.Mine)?.my?.name ?: if (StripPick.of(config) == StripPick.Custom) "직접 만든 테마" else config.theme.ko
+                NavRow("테마", { nav.push(Routes.THEME) }, value = look, lead = { Icon(Ic.THEME, LocalAccent.current, 22.dp) })
+            }
+            item { NavRow("페이지와 카드", { nav.push(Routes.PAGES) }, value = "${Pages.visible(config).size}개", lead = { Icon(Ic.PAGES, LocalAccent.current, 22.dp) }) }
+            item {
+                val off = Pages.all(config).none { it.index == 1 && Pages.isOn(config, it) }
+                val badge = if (!off && config.photoFolders.isEmpty()) need else null
+                NavRow("사진", { nav.push(Routes.PHOTOS) }, value = if (badge != null) null else if (off) "끔" else "폴더 ${config.photoFolders.size}개", badge = badge, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.PHOTO) })
+            }
+            item { NavRow("밤 화면", { nav.push(Routes.NIGHT) }, value = nightValue(config), lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.MOON) }) }
+            item {
+                val badge = if (config.startOnCharge && Perm.CHARGE_START.any { it in missing }) need else null
+                val v = if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"
+                NavRow("자동으로 켜기·끄기", { nav.push(Routes.ONOFF) }, value = if (badge != null) null else v, badge = badge, lead = { Icon(Ic.BOLT, LocalAccent.current, 22.dp) })
             }
             item {
-                val on = Pages.visible(config)
-                val start = on.getOrNull(Pages.start(config))?.let(::pageName)
-                NavRow("페이지 구성", { nav.push(Routes.PAGES) }, value = "페이지 ${on.size}개" + (start?.let { " · 처음: $it" } ?: ""))
-            }
-            item { NavRow("카드", { nav.push(Routes.CARDS) }, subtitle = "시계 · 날씨 · 알림 · 수면 소리 · 알람 …", badge = need(Perm.NOTIFICATIONS)) }
-        }
-        Section("밤과 꺼짐") {
-            item {
-                val v = when (config.nightMode) {
-                    NightMode.OFF -> "안 씀"
-                    NightMode.AUTO -> "어두워지면"
-                    NightMode.SCHEDULE -> "정한 시간에 %02d–%02d".format(config.nightStartHour, config.nightEndHour)
-                }
-                NavRow("밤 화면", { nav.push(Routes.NIGHT) }, value = v)
-            }
-            item {
-                val badge = need(Perm.DREAM)
-                val off = when (config.displayOff) { DisplayOff.AUTO -> "어두워지면 꺼짐"; DisplayOff.AFTER_20S -> "20초 뒤 꺼짐"; DisplayOff.NEVER -> "계속 켜 둠" }
-                NavRow("켜짐과 꺼짐", { nav.push(Routes.ONOFF) }, badge = badge, value = if (badge != null) null else "${if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"} · $off")
+                val badge = if ((config.showNotifications || config.alarmScreen) && Perm.NOTIFICATIONS in missing) need else null
+                NavRow("알림과 알람", { nav.push(Routes.ALERTS) }, value = if (badge != null) null else if (config.showNotifications) "알림 켜짐" else "알림 끔", badge = badge, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.BELL) })
             }
         }
-        // plan-r13 B3: a Fold-only section, gone on other phones
-        if (env.phone == Phone.FOLD) Section("폴드") {
-            item { NavRow("폴드를 펼쳤을 때", { nav.push(Routes.FOLD) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "책 화면") }
-        }
-        Section("정보") {
-            item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 켜짐" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }
-            item { NavRow("앱 정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }) }
-            item { val uri = androidx.compose.ui.platform.LocalUriHandler.current; NavRow("개인정보처리방침", { runCatching { uri.openUri(PRIVACY_URL) } }) }
+        Section(null) {
+            item {
+                val fresh = Tip.entries.count { it.name !in config.tipsSeen }
+                NavRow("팁", { nav.push(Routes.TIPS) }, value = if (fresh > 0) "새 팁 ${fresh}개" else null, lead = { Icon(Ic.TIP, LocalAccent.current, 22.dp) })
+            }
+            item { NavRow("정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }, lead = { Icon(Ic.INFO, LocalAccent.current, 22.dp) }) }
         }
     }
 }
 
+/** 밤 화면's value on Home and in its own radios: 끔 / 방이 어두워지면 / 밤 10시~아침 7시. */
+internal fun nightValue(c: AppConfig): String = when (c.nightMode) {
+    NightMode.OFF -> "끔"
+    NightMode.AUTO -> "방이 어두워지면"
+    NightMode.SCHEDULE -> hourWords(c.nightStartHour) + "~" + hourWords(c.nightEndHour)
+}
+
+/** An hour in words (plan-r15 F7: 시간은 말로): 22 → 밤 10시, 7 → 아침 7시, 13 → 낮 1시, 0 → 밤 12시. */
+internal fun hourWords(h: Int): String {
+    val part = when (h) { in 5..9 -> "아침"; in 10..16 -> "낮"; in 17..19 -> "저녁"; else -> "밤" }
+    val twelve = (h % 12).let { if (it == 0) 12 else it }
+    return "$part ${twelve}시"
+}
+
+/** A cards-set glyph as a settings row icon (outlined, in the accent). */
+@Composable
+private fun HomeIcon(ic: kr.dot.sb.ui.cards.Ic) =
+    kr.dot.sb.ui.cards.IconView(ic, LocalAccent.current, Modifier.size(22.dp), bg = SK.surface, stroke = true)
+
 /**
- * 테마와 배경 (mockup SCREENS.theme, plan-r13 A4): the theme strip (내 테마 · built-ins · ＋ 사용자 지정), 배경.
- * The preview swipes on to every page. Colours and shapes live in 사용자 지정.
+ * 테마 (mockup SCREENS.theme, plan-r13 A4, plan-r15 F1): the theme strip (내 테마 · built-ins · ＋ 직접 만들기), 배경,
+ * the pull-down tip. The preview swipes on to every page. Colours and shapes live in 직접 만들기.
  */
 @Composable
 fun ThemeScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
-    Page("테마와 배경", back, preview = Preview(config, pageSlides(config))) {
+    Page("테마", back, preview = Preview(config, pageSlides(config), initial = Pages.start(config))) {
         ThemePicker(config, update, { nav.push(Routes.THEME_CUSTOM) }) { name -> nav.push(Routes.themeEdit(name)) }
-        Section("배경", footer = "배경을 고르면 카드 판이 반투명해져요. 밤에는 늘 검정이에요.") {
+        TipLine(Tip.PULL_DOWN.line)
+        Section("배경", footer = "배경을 고르면 카드가 비쳐 보여요. 밤에는 늘 검정이에요.") {
             item {
                 ControlRow(null) {
-                    // 단색 is folded into 사용자 지정's colours: its chip shows only while it is the stored choice
+                    // 단색 is folded into 직접 만들기's colours: its chip shows only while it is the stored choice
                     val bgs = BoardBg.entries.filter { it != BoardBg.SOLID || it == config.boardBg }
                     ChipFlow(bgs.map { it.ko }, bgs.indexOf(config.boardBg), { i -> update { it.withBoardBg(bgs[i]) } })
-                    // plan-r15 B1: 사진 흐림 draws the picked folders' photos; none picked = the plain ground
+                    // plan-r15 B1: 내 사진 흐리게 draws the picked folders' photos; none picked = the plain ground
                     if (config.boardBg == BoardBg.PHOTO_BLUR && config.photoFolders.isEmpty()) {
                         Row(Modifier.fillMaxWidth().padding(top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                             T("폴더를 골라 주세요", 14.sp, 500, SK.muted, Modifier.weight(1f))
@@ -143,11 +158,11 @@ internal val BG_SWATCHES = listOf(0xFF1A1430, 0xFF101C2A, 0xFF13241A, 0xFF2A1A12
 
 /**
  * "테마" row (spec-r9 §2): every [Theme] as the real widgets page drawn in it with its name under it (operator 11-14:
- * names on), in a horizontal scroll, so what you tap is what StandBy shows. r11: 내 테마 come first with their names;
- * long-press one for 이름 바꾸기 / 지우기. r13 (plan-r13 A1): the marked tile is [StripPick]; built-in tiles show the theme
- * unedited; [＋ 사용자 지정] at the end ([onCustom]) is marked "저장 안 함" while the look holds an edit saved nowhere,
- * and every tap first asks then ([UnsavedGuard]). r14 B5: the marked 내 테마 wears a veil and a pencil; tapping it opens
- * 사용자 지정 in 고치기 mode for it ([onEdit]).
+ * names on), in a horizontal scroll, so what you tap is what StandBy shows. r11: 내 테마 come first with their names.
+ * plan-r15 F9: each 내 테마 has a visible ⋯ (이름 바꾸기 / 지우기) instead of a long-press menu. r13 (plan-r13 A1): the
+ * marked tile is [StripPick]; built-in tiles show the theme unedited; [＋ 직접 만들기] at the end ([onCustom]) is marked
+ * "저장 전" while the look holds an edit saved nowhere, and every tap first asks then ([UnsavedGuard]). r14 B5: the marked
+ * 내 테마 wears a veil and a pencil; tapping it opens 직접 만들기 in 꾸미기 mode for it ([onEdit]).
  */
 @Composable
 private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit, onEdit: (String) -> Unit) {
@@ -176,7 +191,7 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit,
             items(config.myThemes) { m ->
                 val cfg = remember(config, m) { config.applyMyTheme(m) }
                 val on = pick == Look.Mine(m)
-                ThemeThumb(cfg, board, state, m.name, on, acc, { if (on) { menu = null; onEdit(m.name) } else tap(Look.Mine(m)) }, { menu = m }, pencil = on)
+                ThemeThumb(cfg, board, state, m.name, on, acc, { if (on) { menu = null; onEdit(m.name) } else tap(Look.Mine(m)) }, onMore = { menu = if (menu == m) null else m }, pencil = on)
             }
             items(Theme.entries) { th ->
                 val cfg = remember(config, th) { config.withTheme(th).withThemeEdit(th, null) }
@@ -184,7 +199,7 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit,
             }
             item {
                 val custom = pick == StripPick.Custom
-                ThemeThumb(if (custom) config else null, board, state, "＋ 사용자 지정", custom, acc, onCustom, badge = if (custom) "저장 안 함" else null)
+                ThemeThumb(if (custom) config else null, board, state, "＋ 직접 만들기", custom, acc, onCustom, badge = if (custom) "저장 전" else null)
             }
         }
         menu?.let { m ->
@@ -196,15 +211,7 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit,
         }
     }
     guard?.let { to -> UnsavedGuard(config, update, to, { guard = null }) }
-    deleting?.let { m ->
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleting = null },
-            containerColor = SK.surface,
-            title = { T("'${m.name}'을 지울까요?", 18.sp, 700) },
-            confirmButton = { ActionButton("지우기", { deleting = null; update { c -> c.deleteMyTheme(m) } }, danger = true) },
-            dismissButton = { ActionButton("취소", { deleting = null }, primary = false) },
-        )
-    }
+    deleting?.let { m -> DeleteDialog("'${m.name}' 테마를 지울까요?", { deleting = null }) { update { c -> c.deleteMyTheme(m) } } }
     renaming?.let { m ->
         NameDialog("이름 바꾸기", m.name, { renaming = null }, taken = config.myThemes - m, unique = true) { name ->
             renaming = null
@@ -215,22 +222,20 @@ private fun ThemePicker(config: AppConfig, update: Update, onCustom: () -> Unit,
 
 /**
  * One thumbnail of the strip: the widgets page drawn with [cfg] (null = a "＋" box), [name] under it, [badge] over the
- * bottom of the picture. [onLong] = a 내 테마 (long-press menu). [pencil]: a dark veil and a pencil over the picture.
+ * bottom of the picture. [onMore] = a 내 테마: a ⋯ button beside the name opens its menu. [pencil]: a dark veil and a
+ * pencil over the picture.
  */
 @Composable
-private fun ThemeThumb(
+internal fun ThemeThumb(
     cfg: AppConfig?, board: Board, state: kr.dot.sb.ui.state.StandbyState, name: String, on: Boolean, acc: androidx.compose.ui.graphics.Color,
-    onTap: () -> Unit, onLong: (() -> Unit)? = null, badge: String? = null, pencil: Boolean = false,
+    onTap: () -> Unit, onMore: (() -> Unit)? = null, badge: String? = null, pencil: Boolean = false,
+    /** First run: the tile takes its cell's width. */
+    wide: Boolean = false,
 ) {
-    // the gesture detector outlives recompositions: it calls the latest callbacks
-    val tapNow by androidx.compose.runtime.rememberUpdatedState(onTap)
-    val long by androidx.compose.runtime.rememberUpdatedState(onLong)
-    val tap = if (onLong == null) Modifier.clickable(onClick = onTap)
-        else Modifier.pointerInput(Unit) { detectTapGestures(onLongPress = { long?.invoke() }, onTap = { tapNow() }) }
     Column(
-        Modifier.width(132.dp).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
+        (if (wide) Modifier.fillMaxWidth() else Modifier.width(132.dp)).clip(RoundedCornerShape(14.dp)).background(if (on) acc.copy(alpha = 0.16f) else SK.surface)
             .then(if (on) Modifier.border(2.dp, acc, RoundedCornerShape(14.dp)) else Modifier)
-            .then(tap).padding(8.dp),
+            .clickable(onClick = onTap).padding(8.dp),
     ) {
         Box(Modifier.fillMaxWidth()) {
             if (cfg != null) kr.dot.sb.ui.theme.ProvideTheme(cfg) {
@@ -247,9 +252,13 @@ private fun ThemeThumb(
                 Box(Modifier.size(38.dp).clip(CircleShape).background(acc), Alignment.Center) { Icon(Ic.EDIT, SK.bg, 20.dp) }
             }
             // the thumbnail's own cards must not take the tap
-            Box(Modifier.matchParentSize().then(tap))
+            Box(Modifier.matchParentSize().clickable(onClick = onTap))
         }
-        StripLabel(name, on, acc)
+        if (onMore == null) StripLabel(name, on, acc)
+        else Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) { StripLabel(name, on, acc) }
+            Box(Modifier.size(36.dp).clip(CircleShape).clickable(onClickLabel = "$name 메뉴 열기", onClick = onMore), Alignment.Center) { Icon(Ic.MORE, SK.muted, 20.dp) }
+        }
     }
 }
 /** An inline question under the strip: a line of text and its buttons. */
@@ -261,19 +270,17 @@ private fun InlineAsk(text: String, buttons: @Composable () -> Unit) {
     }
 }
 
-/** "충전 중 스탠바이가 뜨려면 설정이 더 필요해요 · 8개 중 M개 완료" (mockup .banner), only while something is missing. */
+/** plan-r15 F1: "충전할 때 자동으로 켜지게 하려면 한 가지만 더 해 주세요 · 켜러 가기", only while the screen saver is missing. */
 @Composable
-private fun PermBanner(total: Int, done: Int, onClick: () -> Unit) {
+private fun PermBanner(onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(16.dp)).background(SK.surface).clickable(onClick = onClick)
+        Modifier.fillMaxWidth().padding(top = 16.dp).clip(RoundedCornerShape(16.dp)).background(SK.surface)
             .padding(start = 16.dp, end = 12.dp, top = 14.dp, bottom = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(SK.danger))
-        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            T("충전 중 스탠바이가 뜨려면 설정이 더 필요해요", 15.sp, 700)
-            T("${total}개 중 ${done}개 완료", 13.sp, 400, SK.muted, Modifier.padding(top = 2.dp))
-        }
-        Icon(Ic.CHEVRON, SK.muted, 20.dp)
+        T("충전할 때 자동으로 켜지게 하려면 한 가지만 더 해 주세요", 15.sp, 700, SK.text, Modifier.weight(1f).padding(start = 12.dp, end = 8.dp), lineHeight = 20.sp)
+        ActionButton("켜러 가기", onClick, padH = 14.dp)
     }
 }
+

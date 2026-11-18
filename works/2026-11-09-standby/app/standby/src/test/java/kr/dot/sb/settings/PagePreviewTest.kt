@@ -49,14 +49,13 @@ class PagePreviewTest {
         RuntimeEnvironment.setQualifiers("w411dp-h914dp-port-xxhdpi")
         val nav = Rec()
         rule.setContent { SettingsTheme(SK.ok) { RouteHost(route, AppConfig(), {}, nav, SettingsEnv()) } }
-        rule.onNodeWithText("옆으로 넘기면 다른 페이지 설정").assertExists()
         rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).onFirst()
             .performTouchInput { if (left) swipeLeft() else swipeRight() }
         rule.waitForIdle()
         return nav.log
     }
 
-    @Test fun swipeOnPhotosOpensClock() = assertEquals(listOf("replace ${Routes.CLOCKS}"), swipe(Routes.PHOTOS, left = true))
+    @Test fun swipeOnWidgetsOpensPhotos() = assertEquals(listOf("replace ${Routes.PHOTOS}"), swipe(Routes.WIDGETS, left = true))
 
-    @Test fun swipeBackOnPhotosOpensWidgets() = assertEquals(listOf("replace ${Routes.WIDGETS}"), swipe(Routes.PHOTOS, left = false))
+    @Test fun swipeBackOnFirstBoardOpensClock() = assertEquals(listOf("replace ${Routes.CLOCKS}"), swipe(Routes.board(AppConfig().boards.first().id), left = false))
 }

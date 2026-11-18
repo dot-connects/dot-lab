@@ -267,7 +267,7 @@ class ConfigCodecTest {
     @Test fun newFieldsRoundTrip() {   // (f)
         val c = AppConfig(
             myClocks = listOf(FaceId.HANGUL, FaceId.RIM), excludedCalendars = setOf("a|b|c"), heatProtect = false,
-            moodAutoOffMin = 15, nightNotifQuiet = false, photoIntervalSec = 300,
+            moodAutoOffMin = 15, nightNotifQuiet = false, photoIntervalSec = 300, tipsSeen = setOf("PULL_DOWN", "TIMER_HOLD"),
             pagesOff = setOf("photos"), photoFolders = listOf(TREE_CAM, TREE_TRIP), photoFilter = TREE_TRIP,
             boards = AppConfig().boards.mapIndexed { i, b -> if (i == 1) b.copy(on = false) else b },
         )
@@ -293,6 +293,21 @@ class ConfigCodecTest {
         assertEquals(v14.photoFolders, ConfigCodec.decode(ConfigCodec.encode(v14)).photoFolders)
         assertEquals(null, ConfigCodec.decode(JSONObject(ConfigCodec.encode(v14)).put("photoFilter", "content://gone").toString()).photoFilter)
         assertEquals(null, v14.copy(photoFilter = TREE_TRIP).withPhotoFolders(listOf(TREE_CAM)).photoFilter)
+    }
+
+    /** plan-r15 E9 (v16): a stored 입체 시계 / 입체 네모 style loses its old showInfo = true; other faces and v16 saves keep it. */
+    @Test fun v15ReliefStylesTurnTheDateOffOnce() {
+        val styles = mapOf(
+            FaceId.RELIEF to ClockStyle(FontId.BOLD, 700, color = 0xFFFFFFFF, showInfo = true), FaceId.RELIEF_SQUARE to ClockStyle(FontId.BOLD, 700, color = 0xFFFFFFFF, showInfo = true), FaceId.DIGITAL to ClockStyle(FontId.BOLD, 700, color = 0xFFFFFFFF, showInfo = true),
+        )
+        val saved = JSONObject(ConfigCodec.encode(AppConfig(styles = styles)))
+        val old = ConfigCodec.decode(saved.put("v", 15).toString())
+        assertEquals(false, old.styles[FaceId.RELIEF]?.showInfo)
+        assertEquals(false, old.styles[FaceId.RELIEF_SQUARE]?.showInfo)
+        assertEquals(true, old.styles[FaceId.DIGITAL]?.showInfo)
+        // switched on again after the update: a v16 save keeps it
+        val again = old.copy(styles = old.styles + (FaceId.RELIEF to ClockStyle(FontId.BOLD, 700, color = 0xFFFFFFFF, showInfo = true)))
+        assertEquals(true, ConfigCodec.decode(ConfigCodec.encode(again)).styles[FaceId.RELIEF]?.showInfo)
     }
 
     @Test fun upgradeKeepsTheOldFiveFreshInstallGetsTheNewFour() {   // (g)

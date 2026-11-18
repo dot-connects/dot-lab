@@ -39,10 +39,10 @@ import java.time.LocalDate
 object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
-     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs), 15 = r15 E5/E8 (rotateClocks, mood). Saves without "v" are r8 or r9 dev
+     * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs), 15 = r15 E5/E8 (rotateClocks, mood), 16 = r15 E9 (입체 시계/입체 네모 date off unless switched on again). Saves without "v" are r8 or r9 dev
      * builds.
      */
-    const val VERSION = 15
+    const val VERSION = 16
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -91,6 +91,7 @@ object ConfigCodec {
         put("rotateClocks", c.rotateClocks)
         put("mood", JSONObject().put("bright", c.mood.bright.toDouble()).put("color", c.mood.color).put("effect", c.mood.effect.name).put("speed", c.mood.speed.toDouble()))
         put("tentClock", c.tentClock)
+        put("tipsSeen", JSONArray().also { a -> c.tipsSeen.forEach { a.put(it) } })
         put("excludedCalendars", JSONArray().also { a -> c.excludedCalendars.forEach { a.put(it) } })
 
         put("heatProtect", c.heatProtect)
@@ -275,6 +276,7 @@ object ConfigCodec {
                 )
             } ?: d.mood.copy(color = o.optLong("glowColor", d.mood.color)), // before v15 the mood light used the glow colour
             tentClock = o.optBoolean("tentClock", d.tentClock),
+            tipsSeen = o.optJSONArray("tipsSeen")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.toSet() } ?: d.tipsSeen,
             excludedCalendars = o.optJSONArray("excludedCalendars")?.let { a -> (0 until a.length()).map { a.optString(it) }.filter { it.isNotEmpty() }.toSet() } ?: d.excludedCalendars,
             heatProtect = o.optBoolean("heatProtect", d.heatProtect),
             moodAutoOffMin = o.optInt("moodAutoOffMin", d.moodAutoOffMin).takeIf { it in MOOD_AUTO_OFF_MIN } ?: d.moodAutoOffMin,
@@ -297,6 +299,9 @@ object ConfigCodec {
             .let { c -> if (v < 12) Migrations.floatToDigital(c) else c }
             // plan-r15 E5: before v15 every clock in the list rotated; one clock = no rotation
             .let { c -> if (v < 15) c.copy(rotateClocks = c.myClocks.size > 1) else c }
+            // plan-r15 E9: 입체 시계 and 입체 네모 got a 날짜·요일 switch, off by default; an older stored style carried
+            // showInfo = true from the old default and would show the date after the update
+            .let { c -> if (v < 16) Migrations.reliefDateOff(c) else c }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
@@ -399,7 +404,7 @@ object ConfigCodec {
         val slots = stacks.map { it.first }
         return BoardOps.fit(
             Board(
-                id = o.getString("id"), name = o.optString("name", "화면"), layout = enumOf(o, "layout", Layout.TWO), slots = slots,
+                id = o.getString("id"), name = o.optString("name", "페이지"), layout = enumOf(o, "layout", Layout.TWO), slots = slots,
                 accent = if (o.has("accent") && !o.isNull("accent")) o.optLong("accent") else null,
                 clockFace = enumOf(o, "clockFace", FaceId.DIGITAL),
                 options = withFaces(options(o.optJSONObject("options")), stacks),

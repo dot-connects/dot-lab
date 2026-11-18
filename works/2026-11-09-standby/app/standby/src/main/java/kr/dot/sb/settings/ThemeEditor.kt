@@ -88,7 +88,7 @@ sealed class Control(val field: EditField, val label: String, val tab: EditTab) 
     class Choice(field: EditField, label: String, tab: EditTab, val options: List<String>) : Control(field, label, tab)
     /** A texture's chips, then 질감 정도 while it is not 없음 (one amount for both textures). */
     class Grain(field: EditField, label: String, tab: EditTab) : Control(field, label, tab)
-    class Flow : Control(EditField.FLOW, "시간 따라 흐름", EditTab.BG)
+    class Flow : Control(EditField.FLOW, "시간에 따라 색 바뀜", EditTab.BG)
     /** 불빛 위치: a small square pad (plan round 3), off with 노을. */
     class GlowPad : Control(EditField.GLOW_AT, "불빛 위치", EditTab.BG)
 }
@@ -122,11 +122,14 @@ object ThemeEditor {
     private val LIGHT_BG = listOf(0xFFF3EEE4, 0xFFE9E2D2, 0xFFD9D3C7, 0xFFEDE6F0, 0xFFE3ECE6)
     val TERMINAL_INKS = listOf(0xFF7CF7A0, 0xFFFFB000, 0xFFE8E8E8)
 
-    /** 카드 모양 in the order the row offers them (판 · 유리 · 테두리선 · 구분선). */
+    /** 카드 모양 in the order the row offers them (채움 · 유리 · 테두리만 · 줄만). */
     val PLATES = listOf(PlateStyle.FILL, PlateStyle.GLASS, PlateStyle.OUTLINE, PlateStyle.RULE)
     /** The textures the editor offers (SCANLINE is a token-only texture). */
     val TEXTURES = listOf(Texture.NONE, Texture.PAPER, Texture.GRAIN, Texture.LINEN, Texture.METAL, Texture.FROST)
-    val TEXTURE_KO = listOf("없음", "종이결", "필름 그레인", "린넨", "헤어라인 금속", "서리 유리")
+    val TEXTURE_KO = listOf("없음", "종이결", "모래알", "린넨", "금속결", "뿌연 유리")
+
+    /** plan-r15 F9: the basic view's rows (배경 색 · 카드 모양 · 글자 색); everything else is under 더 꾸미기. */
+    val BASIC = setOf(EditField.BG, EditField.GRAD_TOP, EditField.GRAD_MID, EditField.GRAD_BOTTOM, EditField.PLATE_STYLE, EditField.INK)
 
     internal fun Color.long(): Long = toArgb().toLong() and 0xFFFFFFFFL
     private fun opaque(c: Color) = c.copy(alpha = 1f).long()
@@ -147,22 +150,22 @@ object ThemeEditor {
         return listOf(
             Control.Choice(EditField.BG_KIND, "배경 종류", bg, listOf("단색", "그라데이션", "불빛")),
             Control.Colour(EditField.BG, "배경 색", bg, with(tk.bg.base.long(), pages)),
-            Control.Colour(EditField.GRAD_TOP, "그라데이션 위", bg, stop(0)),
-            Control.Colour(EditField.GRAD_MID, "그라데이션 가운데", bg, stop(1)),
-            Control.Colour(EditField.GRAD_BOTTOM, "그라데이션 아래", bg, stop(2)),
+            Control.Colour(EditField.GRAD_TOP, "위쪽 색", bg, stop(0)),
+            Control.Colour(EditField.GRAD_MID, "가운데 색", bg, stop(1)),
+            Control.Colour(EditField.GRAD_BOTTOM, "아래쪽 색", bg, stop(2)),
             Control.Colour(EditField.GLOW, "불빛 색", bg, with(opaque(tk.bg.glow ?: tk.accent), sw)),
             Control.Slider(EditField.GLOW_STRENGTH, "불빛 세기", bg, 0f..1f),
             Control.Choice(EditField.GLOW_SHAPE, "불빛 모양", bg, GlowShape.entries.map { it.ko }),
             Control.GlowPad(),
             Control.Flow(),
             Control.Grain(EditField.BG_TEXTURE, "배경 질감", bg),
-            Control.Choice(EditField.PLATE_STYLE, "카드 모양", card, listOf("판", "유리", "테두리선", "구분선")),
+            Control.Choice(EditField.PLATE_STYLE, "카드 모양", card, listOf("채움", "유리", "테두리만", "줄만")),
             Control.Colour(EditField.PLATE, "카드 색", card, plates),
             Control.Slider(EditField.PLATE_ALPHA, "카드 진하기", card, ThemeEdit.PLATE_ALPHA),
             Control.Slider(EditField.RADIUS, "모서리", card, 0f..0.2f),
             Control.Choice(EditField.BORDER, "테두리", card, listOf("없음", "얇게", "굵게")),
             Control.Colour(EditField.BORDER_COLOR, "테두리 색", card, with(opaque(tk.borderColor ?: tk.ink), listOf(0xFFFFFFFF, 0xFF000000) + sw)),
-            Control.Colour(EditField.RULE, "구분선 색", card, with(opaque(tk.rule ?: tk.ink), sw)),
+            Control.Colour(EditField.RULE, "줄 색", card, with(opaque(tk.rule ?: tk.ink), sw)),
             Control.Grain(EditField.CARD_TEXTURE, "카드 질감", card),
             Control.Colour(EditField.INK, "글자 색", text, inks),
             Control.Colour(EditField.ACCENT, "강조 색", text, with(tk.accent.long(), sw)),
@@ -387,9 +390,9 @@ object ThemeShuffle {
 
 /** Korean for the editor's warnings (amber under the tabs). */
 private fun Contrast.Warning.ko(): String = when (this) {
-    Contrast.Warning.INK -> "글자가 흐려요"
-    Contrast.Warning.INK2 -> "작은 글자가 흐려요"
-    Contrast.Warning.ACCENT -> "강조 색이 흐려요"
+    Contrast.Warning.INK -> "글자가 잘 안 보여요. 글자 색을 바꿔 보세요."
+    Contrast.Warning.INK2 -> "작은 글자가 잘 안 보여요."
+    Contrast.Warning.ACCENT -> "강조 색이 잘 안 보여요."
 }
 
 private val FLOW_KO = listOf("아침", "낮", "저녁")
@@ -439,34 +442,40 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
     }
     val themed = config.boardBg == BoardBg.THEME
     kr.dot.sb.ui.theme.ProvideTheme(shown, at) {
+        // plan-r15 F9: basic rows first (배경 색 · 카드 모양 · 글자 색), the tabs and every other row under 더 꾸미기
+        val rows = ThemeEditor.controls(theme).filter { ThemeEditor.visible(it, drawn) }
+        val row: @Composable (Control) -> Unit = { c ->
+            // keyed: a row's own state (an open picker) must not pass to the row at its place in another tab or theme
+            androidx.compose.runtime.key(theme, c.field) { ControlView(c, theme, tk, drawn, cur, { draft = it }, commit, previewAt.takeIf { flowOn }, { previewAt = it }) }
+        }
         Page(
-            mine?.let { "${it.name} 고치기" } ?: "사용자 지정", back, preview = Preview(shown, pageSlides(shown)),
-            sticky = if (!themed) null else { { Segmented(EditTab.entries.map { it.ko }, tab.ordinal, { tab = EditTab.entries[it] }) } },
+            mine?.let { "${it.name} 꾸미기" } ?: "직접 만들기", back,
+            preview = Preview(shown, pageSlides(shown), dayNight = tk.light, initial = Pages.start(shown)),
             after = if (!themed) null else { {
                 val warn = Contrast.warnings(drawn, tk)
-                if (warn.isNotEmpty()) T(warn.joinToString(" · ") { it.ko() }, 13.sp, 500, SK.why, Modifier.padding(horizontal = 16.dp).padding(top = 8.dp))
-                Section(null) {
-                    ThemeEditor.controls(theme).filter { it.tab == tab && ThemeEditor.visible(it, drawn) }.forEach { c ->
-                        // keyed: a row's own state (an open picker) must not pass to the row at its place in another tab or theme
-                        item { androidx.compose.runtime.key(theme, c.field) { ControlView(c, theme, tk, drawn, cur, { draft = it }, commit, previewAt.takeIf { flowOn }, { previewAt = it }) } }
-                    }
+                if (warn.isNotEmpty()) T(warn.joinToString(" · ") { it.ko() }, 13.sp, 500, SK.why, Modifier.padding(horizontal = 16.dp).padding(top = 8.dp), lineHeight = 18.sp)
+                Section(null) { rows.filter { it.field in ThemeEditor.BASIC }.forEach { c -> item { row(c) } } }
+                More("더 꾸미기") {
+                    Gap(8.dp)
+                    Segmented(EditTab.entries.map { it.ko }, tab.ordinal, { tab = EditTab.entries[it] })
+                    Section(null) { rows.filter { it.tab == tab && it.field !in ThemeEditor.BASIC }.forEach { c -> item { row(c) } } }
                 }
             } },
         ) {
             if (!themed) {
                 Section(null) {
                     item {
-                        ControlRow(null, note = "배경을 '테마 기본'으로 두면 꾸민 색·글꼴이 보여요") {
+                        ControlRow(null, note = "배경을 '테마 기본'으로 두면 꾸민 색·글꼴이 보여요.") {
                             ActionButton("테마 기본으로 바꾸기", { update { it.withBoardBg(BoardBg.THEME) } }, primary = false)
                         }
                     }
                 }
             } else if (mine != null) {
                 val changed = StripPick.of(config) != Look.Mine(mine)
-                T("고친 내용은 [저장]을 눌러야 '${mine.name}'에 덮어써져요", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp), lineHeight = 18.sp)
+                T("바꾼 내용은 저장을 눌러야 '${mine.name}'에 남아요.", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp), lineHeight = 18.sp)
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ActionButton("되돌리기", { update { it.switchLook(Look.Mine(mine)) } }, Modifier.weight(1f), primary = false, enabled = changed, padH = 8.dp)
-                    ActionButton("다른 이름으로", { naming = nextMyThemeName(config.myThemes) }, Modifier.weight(1.3f), primary = false, padH = 8.dp)
+                    ActionButton("다른 이름으로 저장", { naming = nextMyThemeName(config.myThemes) }, Modifier.weight(1.6f), primary = false, padH = 8.dp)
                     ActionButton("저장", { update { it.saveMyTheme(mine.name) } }, Modifier.weight(1f), enabled = changed, padH = 8.dp)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -475,9 +484,9 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
                 }
             } else {
                 Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
-                    T("어디서 시작할까요", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
+                    T("바탕이 될 테마", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
                     ChipFlow(Theme.entries.map { it.ko }, Theme.entries.indexOf(theme), { i -> start(Theme.entries[i]) })
-                    T("고른 테마의 색·모양을 그대로 불러와요. 그다음 아래에서 아무거나 바꿔요.", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp), lineHeight = 18.sp)
+                    T("고른 테마의 색과 모양에서 시작해요. 아래에서 마음대로 바꿔 보세요.", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, end = 4.dp, top = 8.dp), lineHeight = 18.sp)
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 16.dp, bottom = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     ActionButton("색 조합 바꾸기", {
@@ -509,16 +518,8 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
             mineName = name
         }
     }
-    if (deleting && mine != null) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { deleting = false },
-            containerColor = SK.surface,
-            title = { T("'${mine.name}'을 지울까요?", 18.sp, 700) },
-            // back to 테마와 배경 on 기본
-            confirmButton = { ActionButton("지우기", { deleting = false; update { c -> c.deleteMyTheme(mine).switchLook(Look.Builtin(Theme.IPHONE)) }; back() }, danger = true) },
-            dismissButton = { ActionButton("취소", { deleting = false }, primary = false) },
-        )
-    }
+    // back to 테마 on 기본
+    if (deleting && mine != null) DeleteDialog("'${mine.name}' 테마를 지울까요?", { deleting = false }) { update { c -> c.deleteMyTheme(mine).switchLook(Look.Builtin(Theme.IPHONE)) }; back() }
     guard?.let { to -> UnsavedGuard(config, update, to, { guardKey = null }, onSwitch = keepUndo) }
 }
 
@@ -538,7 +539,13 @@ private fun ResetChip(set: Boolean, reset: () -> Unit) =
         T("기본", 13.sp, 600, if (set) SK.muted else SK.line)
     }
 
-private fun pct(v: Float) = "${kotlin.math.round(v * 100).toInt()}%"
+/** plan-r15 F6: the words at a slider's ends. */
+private fun ends(f: EditField): Pair<String, String> = when (f) {
+    EditField.PLATE_ALPHA -> "비치게" to "진하게"
+    EditField.RADIUS -> "각지게" to "둥글게"
+    EditField.TEXT_GLOW -> "없이" to "많이 번지게"
+    else -> "약하게" to "세게"
+}
 
 @Composable
 private fun ControlView(
@@ -571,13 +578,10 @@ private fun ControlView(
             val glass = f == EditField.PLATE_ALPHA && drawn.plateStyle == PlateStyle.GLASS
             val range = if (glass) c.range.start..ThemeTokens.GLASS_MAX else c.range
             val v = ThemeEditor.slider(f, cur, drawn).coerceIn(range)
-            val shown = when {
-                f == EditField.TEXT_GLOW && v <= 0f -> "끔"
-                else -> pct(v / range.endInclusive)
-            }
-            SliderRow(
-                c.label, shown, v, range, { x -> hold(ThemeEditor.withSlider(f, cur, x)) },
-                note = if (glass) "유리는 끝까지 올려도 뒤가 조금 비쳐요." else null, // plan-r15 D5: no 55 % beside a slider reading 100 %
+            val (low, high) = ends(f)
+            WordSlider(
+                c.label, low, high, v, { x -> hold(ThemeEditor.withSlider(f, cur, x)) }, range = range,
+                note = if (glass) "유리는 뒤가 비쳐 보여야 해서 끝까지 진해지지 않아요." else null,
                 onChangeFinished = release, trailing = { ResetChip(ThemeEditor.isSet(f, cur), reset) },
             )
         }
@@ -593,8 +597,8 @@ private fun ControlView(
             val on = (if (f == EditField.BG_TEXTURE) drawn.bgTexture else drawn.cardTexture) != Texture.NONE
             if (on) {
                 val v = ThemeEditor.textureAmt(f, cur, drawn)
-                SliderRow(
-                    "질감 정도", pct(v), v, ThemeEdit.TEXTURE_AMT, { x -> hold(cur.copy(textureAmt = x)) },
+                WordSlider(
+                    "질감 정도", "옅게", "짙게", v, { x -> hold(cur.copy(textureAmt = x)) }, range = ThemeEdit.TEXTURE_AMT,
                     onChangeFinished = release, trailing = { ResetChip(cur.textureAmt != null) { commit(cur.copy(textureAmt = null)) } },
                 )
             }
@@ -605,7 +609,7 @@ private fun ControlView(
             val at = cur.glowAt ?: drawn.bg.glowAt.let { it.x to it.y }
             GlowPad(at, enabled = !sunset, glow = Color(ThemeEditor.colour(EditField.GLOW, cur) ?: ThemeEditor.token(EditField.GLOW, drawn)),
                 onMove = { p -> hold(cur.copy(glowAt = p)) }, onEnd = release)
-            if (sunset) T("노을은 아래에서 올라와서 위치가 정해져 있어요", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
+            if (sunset) T("노을은 늘 아래에서 올라와서 자리를 옮길 수 없어요.", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
         }
         // the stop rows (ColorRow) carry their own 16 dp, so only the text rows are padded here
         is Control.Flow -> Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
@@ -674,7 +678,7 @@ internal fun UnsavedGuard(config: AppConfig, update: Update, to: Look, done: () 
     androidx.compose.material3.AlertDialog(
         onDismissRequest = done,
         containerColor = SK.surface,
-        title = { T("저장 안 한 꾸미기가 사라져요", 18.sp, 700) },
+        title = { T("저장하지 않은 꾸미기가 사라져요. 저장할까요?", 18.sp, 700, lineHeight = 24.sp) },
         confirmButton = {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActionButton("저장", { naming = config.customFrom ?: nextMyThemeName(config.myThemes) }, padH = 14.dp)
@@ -700,7 +704,8 @@ internal fun NameDialog(title: String, initial: String, dismiss: () -> Unit, tak
         text = {
             Column {
                 Field(name, { name = it.take(20) }, "이름")
-                if (unique && over) T("같은 이름이 있어요", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
+                if (unique && over) T("같은 이름이 있어요. 다른 이름을 써 주세요.", 13.sp, 400, SK.why, Modifier.padding(top = 8.dp))
+
             }
         },
         confirmButton = {

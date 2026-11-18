@@ -15,14 +15,14 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int, val h
     BOLD("굵게", "Bold", 800),
     LIGHT("가늘게", "Light", 250),
     ROUNDED("둥글게", "Rounded", 800),
-    STENCIL("스텐실", "Stencil", 800),
+    STENCIL("끊어진 글씨", "Stencil", 800),
     SERIF("명조", "Serif", 500),
     SERIF_HEAVY("굵은 명조", "Serif Heavy", 900),
-    SLAB("슬랩", "Slab", 700),
-    RAILS("레일", "Rails", 800),
-    CONDENSED("좁게", "StandBy 디지털", 600),
-    ROUNDED_HEAVY("둥근 굵은 글씨", "StandBy 플로트", 950),
-    THIN("얇게", "StandBy 솔라", 350),
+    SLAB("네모 받침", "Slab", 700),
+    RAILS("줄무늬", "Rails", 800),
+    CONDENSED("좁게", "디지털", 600),
+    ROUNDED_HEAVY("둥근 굵은 글씨", "풍선", 950),
+    THIN("얇게", "파스텔", 350),
     // r10 face fonts (plan-r10 Global Constraints: default font per new face)
     OUTFIT("아주 가늘게", "Outfit", 100),
     BIG_SHOULDERS("좁고 굵게", "Big Shoulders", 900),
@@ -32,8 +32,8 @@ enum class FontId(val ko: String, val ios: String, val defaultWeight: Int, val h
     OSWALD("길쭉하게", "Oswald", 600),
     PLEX_MONO("타자기", "IBM Plex Mono", 500),
     BARLOW("반듯하게", "Barlow Condensed", 600),
-    JOST("기하학", "Jost", 500),
-    PLAYFAIR("굵은 장식 명조", "Playfair Display", 800),
+    JOST("동그란 글씨", "Jost", 500),
+    PLAYFAIR("멋 낸 명조", "Playfair Display", 800),
     // 한글 시계 fonts (mockup KFONTS)
     HANGUL_SERIF("명조", "Gowun Batang", 700, hangul = true),
     HANGUL_GOTHIC("고딕", "Pretendard", 700, hangul = true),
@@ -61,14 +61,14 @@ enum class Theme(val ko: String) {
 
 /** Board background (r9): the theme's own, or one of eight presets laid under translucent plates. */
 enum class BoardBg(val ko: String) {
-    THEME("테마 기본"), BLACK("순검정"), GRAPHITE("그래파이트"), MIDNIGHT("미드나잇"), AMBER("앰버"), AURORA("오로라"),
-    TIME_OF_DAY("시간 따라"), PHOTO_BLUR("사진 흐림"), SOLID("단색 고르기"),
+    THEME("테마 기본"), BLACK("검정"), GRAPHITE("진회색"), MIDNIGHT("남색빛"), AMBER("호박빛"), AURORA("오로라"),
+    TIME_OF_DAY("시간에 따라"), PHOTO_BLUR("내 사진 흐리게"), SOLID("색 직접 고르기"),
 }
 
 /** Reading text size (r9): message / sender / meta only; hero numbers are slot-sized and never scaled. */
 
 /** Full-screen analog dial layout (r9): round dial, edge-following square, four big numerals, bars only, half digital. */
-enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("듀오") }
+enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판"), BIG4("큰 숫자 4개"), MINIMAL("미니멀"), DUO("시계 둘") }
 
 /** 앱 바로가기: the most apps one card holds. */
 const val MAX_APPS = 8
@@ -97,12 +97,12 @@ data class Mood(val bright: Float = 0.6f, val color: Long = 0xFFFFB36B, val effe
 
 /** Mood light colours: the glow colours + 분홍/보라/하늘 (E8). */
 val MOOD_COLORS = listOf(
-    "따뜻한 주황" to 0xFFFFB36BL, "호박" to 0xFFFFA81FL, "빨강" to 0xFFFF453AL, "민트" to 0xFF85D4BAL, "흰색" to 0xFFFFFFFFL,
+    "주황" to 0xFFFFB36BL, "호박빛" to 0xFFFFA81FL, "빨강" to 0xFFFF453AL, "민트" to 0xFF85D4BAL, "흰색" to 0xFFFFFFFFL,
     "분홍" to 0xFFFF8FB8L, "보라" to 0xFFB48CFFL, "하늘" to 0xFF7CC8FFL,
 )
 
 /** r11 theme editor: the glow's shape (무드등). */
-enum class GlowShape(val ko: String) { ROUND("둥근"), SUNSET("노을"), TWIN("둘") }
+enum class GlowShape(val ko: String) { ROUND("둥글게"), SUNSET("노을"), TWIN("두 곳") }
 
 /** r13 사용자 지정 (plan-r13 A2): 배경 종류, 테두리, 질감, 카드 글꼴, 글자 두께. */
 enum class BgKind { SOLID, GRADIENT, GLOW }
@@ -196,18 +196,18 @@ data class ThemeEdit(
 data class MyTheme(val name: String, val base: Theme, val edit: ThemeEdit)
 
 enum class ClockLayout(val ko: String) { IPHONE("기본"), CENTER("가운데"), TWO_LINES("두 줄") }
-enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("12개"), ROMAN("로마"), NONE("없음"), DUO("Duo") }
+enum class AnalogNumbers(val ko: String) { FOUR("12·3·6·9"), TWELVE("1~12 모두"), ROMAN("로마 숫자"), NONE("없음"), DUO("Duo") }
 enum class AnalogTicks(val ko: String) { IPHONE("기본"), SHORT("짧게"), HOURS("정시만"), NONE("없음") }
 
 /** Relief faces' 보기 (r11 Part C): the day dial, the 야광 dial always, or 야광 only at night. */
 enum class LumeView(val ko: String) { DAY("낮"), LUME("야광"), NIGHT("밤에만 야광") }
 
 /** 입체 네모 hour numerals (12/3/6/9). */
-enum class SquareNumerals(val ko: String) { THIN("가는 숫자"), SANDWICH("파낸 야광"), NONE("숫자 없음") }
+enum class SquareNumerals(val ko: String) { THIN("가는 숫자"), SANDWICH("새긴 숫자"), NONE("숫자 없음") }
 
 /** Full-screen clock faces in vertical-swipe order (spec C1), plus the two other places a styled time appears. */
 enum class FaceId(val ko: String) {
-    DIGITAL("디지털"), ANALOG("아날로그"), WORLD("세계"), SOLAR("솔라"), FLOAT("플로트"), DESK("책상"), PHOTOS_TIME("사진 위 시간"),
+    DIGITAL("디지털"), ANALOG("아날로그"), WORLD("세계"), SOLAR("파스텔"), FLOAT("풍선"), DESK("책상"), PHOTOS_TIME("사진 위 시간"),
     // r10 clock gallery (plan-r10 Tasks 6-9); until their renderer lands they draw as DIGITAL
     THIN("가는 선"), SPLIT("시·분 나눔"), COLOR_BLOCK("색 블록"), STICKER("스티커"), BALLS("공 숫자"), FLIP("플립"), LED("LED"),
     LCD("액정"), DOT_MATRIX("전광판"), WALL("벽시계"), CALENDAR("달력과 시계"), HANGUL("한글 시계"), DAY_BAR("하루 막대"), RIM("테두리 초"),
@@ -321,7 +321,7 @@ enum class Layout(val ko: String, val slots: Int) {
 
 enum class CardType(val ko: String) {
     /** Any of 내 시계: the face is per card ([SlotOptions.face], else the board's [Board.clockFace]); 11-14 merged ANALOG in. */
-    CLOCK("시계"), MUSIC("미디어"), TIMER("타이머·뽀모도로"), SLEEP("수면 소리"),
+    CLOCK("시계"), MUSIC("미디어"), TIMER("집중 타이머"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
     /** Launcher shortcuts (plan-r14 C1, replaced the r9 phone widget); the packages live in [SlotOptions.apps]. Boards only. */
     APPS("앱 바로가기"),
@@ -351,14 +351,14 @@ data class Board(
     val on: Boolean = true,
 )
 
-enum class NightMode(val ko: String) { AUTO("자동 (조도)"), SCHEDULE("시간 예약"), OFF("끔") }
-enum class DisplayOff(val ko: String) { AUTO("자동"), AFTER_20S("20초 후"), NEVER("안 함") }
-enum class UnfoldAction(val ko: String) { BOOK_BOARD("책 보드"), MOOD_LIGHT("무드등") }
+enum class NightMode(val ko: String) { AUTO("방이 어두워지면"), SCHEDULE("정한 시간에"), OFF("끔") }
+enum class DisplayOff(val ko: String) { AUTO("방이 어두우면"), AFTER_20S("20초 뒤"), NEVER("끄지 않기") }
+enum class UnfoldAction(val ko: String) { BOOK_BOARD("펼친 화면"), MOOD_LIGHT("무드등") }
 /** r10: one "백색소음" (the old brown-noise generator); stored PINK/BROWN read as WHITE. */
 enum class SleepSound(val ko: String) { RAIN("빗소리"), WAVES("파도"), FIRE("장작불"), WHITE("백색소음") }
 
 /** Timer end alert (r15 §5): played 3 times when a countdown ends; tones in platform/TimerSound. */
-enum class TimerAlert(val ko: String) { TWO_TONE("맑은 두 음"), BELL("부드러운 종"), RISING("오르는 세 음"), VIBRATE("진동만"), OFF("끄기") }
+enum class TimerAlert(val ko: String) { TWO_TONE("맑은 두 음"), BELL("부드러운 종"), RISING("오르는 세 음"), VIBRATE("진동만"), OFF("끔") }
 
 /** Sleep timer choices (settings chips, the sleep card's minutes chip). */
 val SLEEP_MINUTES = listOf(15, 30, 45, 60, 90)
@@ -436,6 +436,8 @@ data class AppConfig(
     val mood: Mood = Mood(),
     /** plan-r15 E7: while the mood light is on, the outer screen shows the clock (dual-screen, where the phone allows it). */
     val tentClock: Boolean = true,
+    /** plan-r15 F10: tips already shown or tried ([kr.dot.sb.settings.Tip] names); a tip in here never pops up again. */
+    val tipsSeen: Set<String> = emptySet(),
     /** At night a notification never wakes a screen that is off (the alarm always does). */
     val nightNotifQuiet: Boolean = true,
     /** Seconds per photo on the photos page. One of [PHOTO_INTERVAL_SEC]. */
@@ -469,12 +471,13 @@ object Presets {
 
     /** Mockup r4 presets (desk = iPhone-less "책상" face kept as a board). */
     fun boards(): List<Board> = listOf(
-        b("modular", "모듈러", Layout.TWO2, CardType.WEATHER, CardType.AGENDA, CardType.MUSIC),
+        b("modular", "한눈에", Layout.TWO2, CardType.WEATHER, CardType.AGENDA, CardType.MUSIC),
         // the usage card exists only in the personal build
         b("desk", "작업 책상", Layout.BIG2, CardType.CLOCK, CardType.TIMER, if (kr.dot.sb.data.UsageFeature.enabled) CardType.USAGE else CardType.TIMER),
         b("music", "음악", Layout.TWO, CardType.CLOCK, CardType.MUSIC),
         b("bed", "잠자리", Layout.TWO, CardType.CLOCK, CardType.SLEEP),
-        b("book", "책 (펼침)", Layout.BIG2, CardType.MEMORIES, CardType.WEATHER, CardType.CALENDAR),
+        b("book", "펼친 화면", Layout.BIG2,
+ CardType.MEMORIES, CardType.WEATHER, CardType.CALENDAR),
     )
 }
 

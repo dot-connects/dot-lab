@@ -37,7 +37,9 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
             }
         }
         rule.waitForIdle()
-        // the first slider of the 카드 tab is 카드 진하기 (모서리 comes after it)
+        // the first slider of the 카드 tab is 카드 진하기 (모서리 comes after it); the tabs are under 더 꾸미기 (F9)
+        rule.onNodeWithText("더 꾸미기").performScrollTo().performClick()
+        rule.waitForIdle()
         rule.onNodeWithText("카드").performScrollTo().performClick()
         rule.waitForIdle()
         val sliders = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
@@ -70,6 +72,8 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
         }
         rule.waitForIdle()
         // the 카드 rows are composed under IPHONE first, then the chip switches the theme under them
+        rule.onNodeWithText("더 꾸미기").performScrollTo().performClick()
+        rule.waitForIdle()
         rule.onNodeWithText("카드").performScrollTo().performClick()
         rule.waitForIdle()
         rule.onNodeWithText(Theme.MOODLIGHT.ko).performScrollTo().performClick()

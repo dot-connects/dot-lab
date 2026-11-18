@@ -106,6 +106,7 @@ class Tent(private val activity: ComponentActivity) {
             state, config, Brightness.toBar(config.nightMaxBrightness), ::setBrightness,
             onLook = { look -> ConfigStore.update(activity) { it.switchFromPanel(look) } },
             onMood = { m -> ConfigStore.update(activity) { it.copy(mood = m) } },
+            onTipSeen = { t -> ConfigStore.update(activity) { it.copy(tipsSeen = it.tipsSeen + t) } },
         )
     }
 }

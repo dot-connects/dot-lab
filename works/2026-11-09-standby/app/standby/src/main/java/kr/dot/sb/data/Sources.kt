@@ -133,6 +133,9 @@ data class CalendarInfo(val id: Long, val accountType: String, val accountName: 
     val key: String get() = "$accountType|$accountName|$name"
 }
 
+/** One event instance for the settings calendar picker (plan-r15 F12); [calendarId] = [CalendarInfo.id]. */
+data class WeekEvent(val calendarId: Long, val at: LocalDateTime, val allDay: Boolean, val title: String)
+
 /** Calendar and alarm clock: each returns null when its permission is missing. Blocking: call from IO. */
 object DeviceSources {
     fun has(ctx: Context, perm: String) = ctx.checkSelfPermission(perm) == PackageManager.PERMISSION_GRANTED
@@ -192,6 +195,30 @@ object DeviceSources {
                         val t = if (allDay) "종일" else at.format(HM)
                         val end = if (allDay) null else Instant.ofEpochMilli(c.getLong(1)).atZone(zone).toLocalDateTime()
                         add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, at.toLocalDate(), end))
+                    }
+                }
+            }
+        } catch (e: SecurityException) { null }
+    }
+
+    /**
+     * plan-r15 F12: every event of every calendar from [today] through the next 7 days (settings' calendar picker counts
+     * and lists them per calendar, the switches decide nothing here). Null = no permission. At most 500 rows.
+     */
+    fun week(ctx: Context, today: java.time.LocalDate): List<WeekEvent>? {
+        if (!has(ctx, Manifest.permission.READ_CALENDAR)) return null
+        val zone = ZoneId.systemDefault()
+        val start = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = today.plusDays(7).atStartOfDay(zone).toInstant().toEpochMilli()
+        val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also { ContentUris.appendId(it, start); ContentUris.appendId(it, end) }.build()
+        val cols = arrayOf(CalendarContract.Instances.CALENDAR_ID, CalendarContract.Instances.BEGIN, CalendarContract.Instances.TITLE, CalendarContract.Instances.ALL_DAY)
+        return try {
+            buildList {
+                ctx.contentResolver.query(uri, cols, null, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
+                    while (c.moveToNext() && size < 500) {
+                        val allDay = c.getInt(3) == 1
+                        val at = Instant.ofEpochMilli(c.getLong(1)).atZone(if (allDay) ZoneId.of("UTC") else zone).toLocalDateTime()
+                        add(WeekEvent(c.getLong(0), at, allDay, c.getString(2)?.ifBlank { null } ?: "(제목 없음)"))
                     }
                 }
             }

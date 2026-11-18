@@ -53,6 +53,31 @@ class EasySettingsTest {
         assertFalse(PermWalk.starts(fresh = true, done = true, storedVersion = null))
     }
 
+    /** plan-r15 F8 처음 설정으로: the first run opens again on an old install, until it is done. */
+    @Test fun resetBringsTheFirstRunBackOnce() {
+        assertTrue(PermWalk.starts(fresh = false, done = false, storedVersion = 10, again = true))
+        assertFalse(PermWalk.starts(fresh = false, done = true, storedVersion = 15, again = true))
+    }
+
+    /** plan-r15 F10: the pull-down nudge comes first; a seen tip never comes back; the tent gets only its own. */
+    @Test fun tipsNeverRepeat() {
+        val clock = TipContext(Pages.CLOCK)
+        assertEquals(Tip.PULL_DOWN, Tips.pick(AppConfig(), clock))
+        val seen = AppConfig(tipsSeen = setOf(Tip.PULL_DOWN.name))
+        assertEquals(Tip.CLOCK_SWIPE, Tips.pick(seen, clock))
+        assertEquals(Tip.CLOCK_HOLD, Tips.pick(seen.copy(tipsSeen = seen.tipsSeen + Tip.CLOCK_SWIPE.name), clock))
+        assertNull(Tips.pick(AppConfig(tipsSeen = Tip.entries.map { it.name }.toSet()), clock))
+        assertEquals(Tip.TENT, Tips.pick(AppConfig(), TipContext(-1, tent = true)))
+        assertNull(Tips.pick(AppConfig(tipsSeen = setOf(Tip.TENT.name)), TipContext(-1, tent = true)))
+    }
+
+    /** plan-r15 F6: one 밤 감지 slider; the exit threshold always follows at enter + 2 lx (never at or below enter). */
+    @Test fun nightDetectKeepsExitAboveEnter() {
+        val c = NightDetect.set(AppConfig(nightEnterLux = 3f, nightExitLux = 40f), DarkLevel.of(10f))
+        assertEquals(10f, c.nightEnterLux, 0.05f)
+        assertEquals(c.nightEnterLux + 2f, c.nightExitLux, 1e-4f)
+    }
+
     // ---- B5 night notification switch (shown inverted, stored meaning unchanged) ----
 
     @Test fun nightWakeSwitchIsTheInverseOfQuiet() {

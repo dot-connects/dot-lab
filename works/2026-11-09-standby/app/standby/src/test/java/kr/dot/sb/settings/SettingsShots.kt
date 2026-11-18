@@ -10,6 +10,7 @@ import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performClick
@@ -58,6 +59,13 @@ abstract class SettingsShotKit {
         photoFolders = { f -> f.mapIndexed { i, u -> kr.dot.sb.data.PhotoFolder(u, listOf("Camera", "여행", "KakaoTalk")[i % 3], listOf(1240, 86, 54)[i % 3], broken = i == 2) } },
         chargeTrail = { listOf("11월 12일 23:12 · 무선 충전 → 켜짐", "11월 11일 08:05 · 케이블 충전 → 켜짐") },
         launcherApps = { kr.dot.sb.Fixtures.apps() },
+        weekEvents = {
+            val d = day.atTime(9, 30)
+            listOf(
+                kr.dot.sb.data.WeekEvent(1, d, false, "팀 회의"), kr.dot.sb.data.WeekEvent(1, d.plusDays(2).withHour(13), false, "병원 예약"),
+                kr.dot.sb.data.WeekEvent(2, d.plusDays(4).withHour(0), true, "임시 공휴일"), kr.dot.sb.data.WeekEvent(3, d.plusDays(1).withHour(19), false, "가족 저녁"),
+            )
+        },
         io = kotlinx.coroutines.Dispatchers.Unconfined,
         today = { day },
     )
@@ -92,7 +100,7 @@ abstract class SettingsShotKit {
     }
 }
 
-/** Home, 테마와 배경, 카드 list and card pages, 알림, 날씨, 권한, 앱 정보. */
+/** Home, 테마, card pages, 알림과 알람, 날씨 지역, 권한, 정보, 팁, the first run. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -105,27 +113,42 @@ class SettingsHomeShots : SettingsShotKit() {
     @Test fun theme() = snap("theme", tall, route = Routes.THEME)
     @Test fun themeFold() = snap("theme-fold", fold, route = Routes.THEME)
     @Test fun homeLook() = snap("home-look", tall, AppConfig(theme = kr.dot.sb.model.Theme.DAYPAPER, boardBg = kr.dot.sb.model.BoardBg.SOLID), route = Routes.THEME)
-    @Test fun themeNight() = snap("theme-night", phone, route = Routes.THEME) { onNodeWithText("밤").performClick() }
     /** r10 preview pattern: scrolled past the full preview, the 96 dp mini overlays the top. */
     @Test fun themeMini() = snap("theme-mini", "w411dp-h560dp-port-xxhdpi", route = Routes.THEME) {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1400f) }
     }
-    @Test fun notif() = snap("notif", phone, route = Routes.NOTIF)
-    @Test fun notifFold() = snap("notif-fold", fold, route = Routes.NOTIF)
-    /** plan-r13 B2: the 날씨 row opens the city sheet over the card list. */
-    @Test fun weather() = snap("weather", phone, route = Routes.CARDS) { onNodeWithText("날씨").performClick() }
-    @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.CARDS) { onNodeWithText("날씨").performClick() }
-    // 11-14 카드 tree: the list, a card with settings, a card without
-    @Test fun cards() = snap("cards", tall, route = Routes.CARDS)
-    @Test fun cardTimer() = snap("card-timer", phone, route = Routes.card(kr.dot.sb.model.CardType.TIMER))
-    @Test fun cardMemories() = snap("card-memories", phone, route = Routes.card(kr.dot.sb.model.CardType.MEMORIES))
+    /** plan-r15 F1: 알림과 알람 (the old 알림 and 알람 screens in one). */
+    @Test fun notif() = snap("notif", tall, route = Routes.ALERTS)
+    @Test fun notifFold() = snap("notif-fold", foldTall, route = Routes.ALERTS)
+    /** plan-r15 F1b: 날씨 지역 lives on 시계 (the city sheet over it). */
+    @Test fun weather() = snap("weather", phone, route = Routes.CLOCKS) { onNodeWithText("날씨 지역").performScrollTo().performClick() }
+    @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.card(kr.dot.sb.model.CardType.WEATHER)) { onNodeWithText("날씨 지역").performClick() }
+    // card gears: a card with settings, one without, the calendar picker (F12) with one calendar open
+    @Test fun cardTimer() = snap("card-timer", tall, route = Routes.card(kr.dot.sb.model.CardType.TIMER))
+    @Test fun cardMemories() = snap("card-memories", phone, route = Routes.card(kr.dot.sb.model.CardType.APPS))
+    @Test fun cardCalendar() = snap("card-calendar", tall, route = Routes.card(kr.dot.sb.model.CardType.CALENDAR)) { onNodeWithText("내 일정").performScrollTo().performClick() }
+    @Test fun cardDdayDelete() = snap("card-dday-delete", phone, AppConfig(ddays = kr.dot.sb.Fixtures.ddays), route = Routes.card(kr.dot.sb.model.CardType.DDAY), screen = true) {
+        onAllNodes(androidx.compose.ui.test.hasContentDescription("지우기", substring = true)).onFirst().performScrollTo().performClick()
+    }
     @Test fun perms() = snap("perms", tall, route = Routes.PERMS)
-    /** plan-r13 B1: a fresh install opens here with [차례로 켜기] and [나중에]. */
-    @Test fun permsWalk() = snap("perms-walk", phone, route = Routes.PERMS, e = SettingsEnv(granted = mapOf(Perm.NOTIFICATIONS to true), permWalkOffer = true, today = { day }))
     @Test fun permsFold() = snap("perms-fold", fold, route = Routes.PERMS)
-    @Test fun about() = snap("about", phone, route = Routes.ABOUT) { onNodeWithText("Inter").performClick() }
+    @Test fun about() = snap("about", tall, route = Routes.ABOUT) { onNodeWithText("Inter").performScrollTo().performClick() }
     @Test fun aboutFold() = snap("about-fold", fold, route = Routes.ABOUT)
+    /** plan-r15 F8: 처음 설정으로 asks once. */
+    @Test fun aboutReset() = snap("about-reset", phone, route = Routes.ABOUT, screen = true) { onNodeWithText("처음 설정으로").performScrollTo().performClick() }
+    /** plan-r15 F10 ②: 팁, one row tapped (its demo over the preview, its "새" gone). */
+    @Test fun tips() = snap("tips", tallest, route = Routes.TIPS) { onNodeWithText("타이머 길게 누르기").performScrollTo().performClick() }
+    /** plan-r15 F3: the four first-run steps (phone, flip cover, 780 x 360). */
+    private fun firstRun(name: String, q: String, steps: Int) = snap(name, q, route = Routes.FIRST_RUN) {
+        repeat(steps) { onNodeWithText(if (it == 2) "나중에" else "다음").performScrollTo().performClick(); waitForIdle() }
+    }
+    @Test fun firstRun1() = firstRun("first-run-1", tall, 0)
+    @Test fun firstRun2() = firstRun("first-run-2", tall, 1)
+    @Test fun firstRun3() = firstRun("first-run-3", tall, 2)
+    @Test fun firstRun4() = firstRun("first-run-4", tall, 3)
+    @Test fun firstRunFlip() = firstRun("first-run-3-flip", "w400dp-h362dp-land-xhdpi", 2)
+    @Test fun firstRunBar() = firstRun("first-run-1-bar", "w780dp-h360dp-land-xxhdpi", 0)
 }
 
 /** 페이지 구성, the page editors (위젯, 사진, boards, card picker), 밤 화면, 켜짐과 꺼짐. */
@@ -135,6 +158,8 @@ class SettingsHomeShots : SettingsShotKit() {
 class SettingsPageShots : SettingsShotKit() {
     @Test fun pages() = snap("pages", tall, someOff, route = Routes.PAGES)
     @Test fun pagesFold() = snap("pages-fold", foldTall, someOff, route = Routes.PAGES)
+    /** plan-r15 F5: 편집 shows the switches and the drag handles. */
+    @Test fun pagesEdit() = snap("pages-edit", tall, someOff, route = Routes.PAGES) { onNodeWithText("편집").performClick() }
     @Test fun pagesAdd() = snap("pages-add", phone, BoardOps.delete(AppConfig(), 0), route = Routes.PAGES) { onNodeWithText("페이지 추가").performScrollTo().performClick() }
     /** plan-r13 B8: 처음 보이는 페이지 is a sheet over 페이지 구성. */
     @Test fun start() = snap("start", phone, someOff.copy(startPage = 5), route = Routes.PAGES) { onNodeWithText("처음 보이는 페이지").performClick() }
@@ -144,7 +169,7 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun photosFold() = snap("photos-fold", foldTall, folders, route = Routes.PHOTOS)
     @Test fun boardEditor() = snap("board-editor", tall, route = Routes.board("desk"))
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
-    @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 더하기")[0].performScrollTo().performClick() }
+    @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 추가")[0].performScrollTo().performClick() }
     /** r14 C1 앱 고르기: two picked (veil + check), then a search. */
     @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.apps("desk", 0, 0))
     /** plan-r15 E6: 테마 색 picked, the card preview draws the monochrome layers in the accent (app.2 has none). */
@@ -181,16 +206,14 @@ class SettingsClockShots : SettingsShotKit() {
     @Test fun clockAnalog() = snap("clock-analog", tallest, route = Routes.clock(FaceId.ANALOG)) { onNodeWithText("자세히").performScrollTo().performClick() }
     @Test fun clockColorBlock() = snap("clock-colorblock", tall, route = Routes.clock(FaceId.COLOR_BLOCK))
     /** 11-16: 입체 시계's rows down to 배경 투명. */
-    @Test fun clockRelief() = snap("clock-relief", tallest, route = Routes.clock(FaceId.RELIEF)) { onNodeWithText("배경 투명").performScrollTo() }
+    @Test fun clockRelief() = snap("clock-relief", tallest, route = Routes.clock(FaceId.RELIEF)) { onNodeWithText("배경 없애기").performScrollTo() }
     /** 색 조합 바꾸기 pressed once: a new combo, [이전 조합] enabled. */
     @Test fun clockShuffle() = snap("clock-shuffle", tall, route = Routes.clock(FaceId.DIGITAL)) { onNodeWithText("색 조합 바꾸기").performClick() }
     @Test fun clockSolarFold() = snap("clock-solar-fold", foldTall, route = Routes.clock(FaceId.SOLAR))
-    @Test fun sound() = snap("sound", phone, route = Routes.SOUND) { onNodeWithText("파도").performClick() }
+    @Test fun sound() = snap("sound", phone, route = Routes.SOUND) { onAllNodesWithText("파도").let { it[it.fetchSemanticsNodes().size - 1] }.performScrollTo().performClick() } // the card preview has its own chip
     @Test fun soundFold() = snap("sound-fold", fold, route = Routes.SOUND)
-    @Test fun alarm() = snap("alarm", tall, route = Routes.ALARM)
-    @Test fun alarmFold() = snap("alarm-fold", foldTall, route = Routes.ALARM)
-    @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALARM, e = bar)
-    @Test fun foldScreen() = snap("fold", tall, route = Routes.FOLD)
-    @Test fun foldScreenFold() = snap("fold-fold", foldTall, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.FOLD)
-    @Test fun clocksCities() = snap("clocks-cities", phone, route = Routes.CLOCKS) { onNodeWithText("자세히").performScrollTo().performClick(); onNodeWithText("도시 더하기").performScrollTo().performClick() }
+    @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALERTS, e = bar)
+    /** 자동으로 켜기·끄기 on a Fold with the mood light (펼쳤을 때 lives here now). */
+    @Test fun foldScreen() = snap("fold", tallest, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.ONOFF)
+    @Test fun clocksCities() = snap("clocks-cities", phone, route = Routes.CLOCKS) { onNodeWithText("자세히").performScrollTo().performClick(); onNodeWithText("도시 추가").performScrollTo().performClick() }
 }

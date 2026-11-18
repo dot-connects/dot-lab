@@ -154,4 +154,9 @@ object Migrations {
         }
         return out to analog
     }
+
+    /** plan-r15 E9 (codec v16): stored 입체 시계 / 입체 네모 styles start with the new 날짜·요일 switch off. */
+    fun reliefDateOff(c: AppConfig): AppConfig = c.copy(
+        styles = c.styles.mapValues { (f, s) -> if (f == FaceId.RELIEF || f == FaceId.RELIEF_SQUARE) s.copy(showInfo = false) else s },
+    )
 }

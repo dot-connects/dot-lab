@@ -15,6 +15,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
@@ -47,10 +48,16 @@ class SettingsSmallShots(private val label: String, private val q: String) : Set
     @Test fun home() = small("home", route = Routes.HOME)
     @Test fun theme() = small("theme", route = Routes.THEME)
     @Test fun customBg() = small("custom-bg", custom, Routes.THEME_CUSTOM)
-    @Test fun customCard() = small("custom-card", custom, Routes.THEME_CUSTOM) { onNodeWithText("카드").performScrollTo().performClick() }
-    @Test fun customText() = small("custom-text", custom, Routes.THEME_CUSTOM) { onNodeWithText("글자").performScrollTo().performClick() }
-    @Test fun cards() = small("cards", route = Routes.CARDS)
-    @Test fun weatherKeyboard() = small("weather-keyboard", route = Routes.CARDS, keyboard = true) { onNodeWithText("날씨").performScrollTo().performClick() }
+    /** plan-r15 F9: the tabs are under 더 꾸미기. */
+    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.tab(name: String) {
+        if (onAllNodesWithText(name).fetchSemanticsNodes().isEmpty()) { onNodeWithText("더 꾸미기").performScrollTo().performClick(); waitForIdle() }
+        onNodeWithText(name).performScrollTo().performClick()
+    }
+    @Test fun customCard() = small("custom-card", custom, Routes.THEME_CUSTOM) { tab("카드") }
+    @Test fun customText() = small("custom-text", custom, Routes.THEME_CUSTOM) { tab("글자") }
+    @Test fun cards() = small("cards", route = Routes.PAGES)
+    @Test fun weatherKeyboard() = small("weather-keyboard", route = Routes.card(kr.dot.sb.model.CardType.WEATHER), keyboard = true) { onNodeWithText("날씨 지역").performScrollTo().performClick() }
+    @Test fun firstRun() = small("first-run", route = Routes.FIRST_RUN)
     @Test fun ddaySheet() = small("dday-sheet", route = Routes.card(kr.dot.sb.model.CardType.DDAY)) { onNodeWithText("2026년 11월 9일").performScrollTo().performClick() }
 
     @Test fun appPicker() = small("app-picker", withApps, Routes.apps("desk", 0, 0))

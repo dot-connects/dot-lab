@@ -31,11 +31,6 @@ class SettingsEnv(
     val versionName: String = "0.1.0",
     /** 앱 고르기 (plan-r14 C1): the phone's launcher apps, sorted by label; slow, called on [io]. */
     val launcherApps: () -> List<kr.dot.sb.ui.cards.AppEntry> = { emptyList() },
-    /** plan-r13 B1: a fresh install opens 권한 first; [나중에] ends that ([onPermLater]). */
-    val permWalkOffer: Boolean = false,
-    /** [차례로 켜기]: every missing permission in turn. */
-    val onPermWalk: () -> Unit = {},
-    val onPermLater: () -> Unit = {},
     /** Every calendar on the phone (카드에 쓰는 정보 picker); null = no calendar permission. */
     val calendars: () -> List<kr.dot.sb.data.CalendarInfo>? = { null },
     /** plan-r15 B1: the picked folders read through the shared photo index (names, counts, broken); slow, on [io]. */
@@ -54,6 +49,16 @@ class SettingsEnv(
     val io: kotlin.coroutines.CoroutineContext = kotlinx.coroutines.Dispatchers.IO,
     /** Today (D-day count and the new D-day's default date); shots pin it so their PNGs do not change per day. */
     val today: () -> java.time.LocalDate = { java.time.LocalDate.now() },
+    /** plan-r15 F1 지금 보기: open Stand Screen now (the tile path and its low-battery guard). */
+    val onShowNow: () -> Unit = {},
+    /** plan-r15 F3: ask these [Perm]s in this order, each missing one once (first-run step 3, 자동으로 켜기·끄기). */
+    val onPermWalkOf: (List<Perm>) -> Unit = {},
+    /** plan-r15 F3: the first run finished or was skipped (it never opens again by itself). */
+    val onFirstRunDone: () -> Unit = {},
+    /** plan-r15 F8 처음 설정으로: defaults back, folder grants released, the first run opens again. */
+    val onReset: () -> Unit = {},
+    /** plan-r15 F12: this week's events of every calendar (the picker's counts); null = no calendar permission. Slow, on [io]. */
+    val weekEvents: () -> List<kr.dot.sb.data.WeekEvent>? = { null },
 ) {
     val missing: List<Perm> get() = Perm.entries.filter { granted[it] != true }
 }
@@ -75,16 +80,25 @@ object Routes {
     /** plan-r15 E5: 모든 시계 and 여러 시계 돌려 보기 under 시계. */
     const val CLOCKS_ALL = "clocks_all"
     const val CLOCKS_ROTATE = "clocks_rotate"
+    /** plan-r15 F3: the four first-run steps. */
+    const val FIRST_RUN = "first_run"
+    /** plan-r15 F1 알림과 알람 (the old 알림 and 알람 screens and the Fold alarm rows). */
+    const val ALERTS = "alerts"
+    /** plan-r15 F10 팁. */
+    const val TIPS = "tips"
+    /** Old routes (a saved stack, StandBy's links): 알림 / 알람 open [ALERTS], 폴드 opens [ONOFF], 카드 opens [PAGES]. */
     const val NOTIF = "notif"
-    const val NIGHT = "night"
-    const val ONOFF = "onoff"
-    const val SOUND = "sound"
     const val ALARM = "alarm"
     const val FOLD = "fold"
-    const val PERMS = "perms"
-    const val ABOUT = "about"
-    /** 카드 (11-14): the card list; [card] = one card's settings. */
     const val CARDS = "cards"
+    const val NIGHT = "night"
+    /** 자동으로 켜기·끄기 (plan-r15 F1b: with 펼쳤을 때 on a Fold). */
+    const val ONOFF = "onoff"
+    const val SOUND = "sound"
+    const val PERMS = "perms"
+    /** 정보 (plan-r15 F8). */
+    const val ABOUT = "about"
+    /** One card type's settings (plan-r15 F1b: opened from a card's gear in 페이지와 카드). */
     fun card(t: kr.dot.sb.model.CardType) = "card:${t.name}"
     fun board(id: String) = "board:$id"
     fun clock(face: FaceId) = "clock:${face.name}"
@@ -95,7 +109,7 @@ object Routes {
 /** One route = one screen. Unknown routes (a board that was deleted, a stale saved route) fall back to Home. */
 @Composable
 fun RouteHost(route: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv) = kr.dot.sb.ui.theme.ProvideTheme(config, androidx.compose.runtime.remember { java.time.LocalTime.now() }) {
-    // the page-settings screens share one preview bar state, so 커버/세로/밤 survive a swipe to the next page's settings
+    // the page-settings screens share one 낮|밤 state, so it survives a swipe to the next page's settings
     val pageBar = androidx.compose.runtime.saveable.rememberSaveable(saver = PreviewState.Saver) { PreviewState() }
     CompositionLocalProvider(LocalSettingsEnv provides env, LocalPageBar provides pageBar) {
         // one state per route: nav.replace to the next board's settings must not reuse this one's remembered state
@@ -125,18 +139,18 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)
         }
-        route == Routes.NOTIF -> NotifScreen(config, update, back)
+        route == Routes.FIRST_RUN -> FirstRunScreen(config, update, env)
+        route == Routes.ALERTS || route == Routes.NOTIF || route == Routes.ALARM -> AlertsScreen(config, update, env, back)
         route == Routes.NIGHT -> NightScreen(config, update, nav, env, back)
-        route == Routes.ONOFF -> OnOffScreen(config, update, env, back)
-        route == Routes.SOUND -> SoundScreen(config, update, env, back)
-        route == Routes.ALARM -> AlarmScreen(config, update, nav, env, back)
-        route == Routes.FOLD -> FoldScreen(config, update, env, back)
+        route == Routes.ONOFF || route == Routes.FOLD -> OnOffScreen(config, update, env, back)
+        route == Routes.SOUND -> CardScreen(kr.dot.sb.model.CardType.SLEEP, config, update, nav, env, back)
         route == Routes.PERMS -> PermsScreen(env, back)
-        route == Routes.ABOUT -> AboutScreen(env, back)
-        route == Routes.CARDS -> CardsScreen(config, update, nav, env, back)
+        route == Routes.ABOUT -> AboutScreen(nav, env, back)
+        route == Routes.TIPS -> TipsScreen(config, update, back)
+        route == Routes.CARDS -> PagesScreen(config, update, nav, back)
         route.startsWith("card:") -> {
             val t = runCatching { kr.dot.sb.model.CardType.valueOf(route.removePrefix("card:")) }.getOrNull()
-            if (t != null) CardScreen(t, config, update, env, back) else HomeScreen(config, nav, env)
+            if (t != null) CardScreen(t, config, update, nav, env, back) else HomeScreen(config, nav, env)
         }
         else -> HomeScreen(config, nav, env)
     }

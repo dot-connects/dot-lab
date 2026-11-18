@@ -49,7 +49,7 @@ object BoardOps {
     }
 
     fun add(c: AppConfig): AppConfig =
-        c.copy(boards = c.boards + Board(freshId(c), "새 화면", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(CardType.WEATHER))))
+        c.copy(boards = c.boards + Board(freshId(c), "새 페이지", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(CardType.WEATHER))))
 
     fun duplicate(c: AppConfig, i: Int): AppConfig {
         val src = c.boards.getOrNull(i) ?: return c
