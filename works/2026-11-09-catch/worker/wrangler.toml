@@ -9,7 +9,7 @@ compatibility_date = "2026-10-01"
 [vars]
 # operator 11-18: free previews per device in all, free pet sheets per device (test period)
 PREVIEW_FREE = "10"
-ALL_DAY = "30"
+ALL_DAY = "150"   # 12 testers x 10 previews fit in one day (review 11-19 L8)
 MONTH_CENTS = "2000"
 # the dev app (operator's DEBUG_PURCHASE token) has no day/entry limits and its own month ceiling
 DEV_MONTH_CENTS = "2000"

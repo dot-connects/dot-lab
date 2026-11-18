@@ -85,14 +85,16 @@ test("the whole site stops at ALL_DAY a day", async () => {
   assert.equal(calls.length, 3);
 });
 
-test("ALL_DAY comes from wrangler.toml and is 30", async () => {
+test("ALL_DAY comes from wrangler.toml and caps the site day", async () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
   env.ALL_DAY = toml.match(/^ALL_DAY\s*=\s*"(\d+)"/m)[1];
-  assert.equal(env.ALL_DAY, "30");
+  const n = +env.ALL_DAY;
+  assert.ok(n >= 120, "12 testers x 10 previews must fit in one day");
   assert.equal(toml.match(/^PREVIEW_FREE\s*=\s*"(\d+)"/m)[1], "10");
   assert.equal(toml.match(/^FREE_SHEETS\s*=\s*"(\d+)"/m)[1], "5");
-  env.IP_DAY = "100";
-  for (let i = 0; i < 30; i++) assert.equal((await call(ok({ device: `dev-${String(Math.floor(i / 5)).padStart(8, "0")}` }))).status, 200, `call ${i}`);
+  env.IP_DAY = String(n + 100);
+  env.MONTH_CENTS = String(n * 10);   // the money ceiling is its own test
+  for (let i = 0; i < n; i++) assert.equal((await call(ok({ device: `dev-${String(Math.floor(i / 5)).padStart(8, "0")}` }))).status, 200, `call ${i}`);
   assert.equal((await call(ok({ device: "dev-zzzzzzzz" }))).body.error, "all");
 });
 
@@ -583,4 +585,13 @@ test("ipKey expands IPv6 before cutting the /64; junk shares one bucket", async 
   assert.equal(ipKey("2001:db8:0:1::5"), "2001:db8:0:1::/64");
   assert.equal(ipKey("203.0.113.7"), "203.0.113.7");
   for (const bad of ["1:2:3:4:5:6:7:8:9", "2001::db8::1", "zz::1", "", null]) assert.equal(ipKey(bad), "?", String(bad));
+});
+
+test("a counter failure answers busy 503, never 'your free ones are gone' (review 11-19)", async () => {
+  ledger.takeFree = async () => { throw new Error("D1 down"); };
+  const pv = await call(ok());
+  assert.equal(pv.status, 503); assert.equal(pv.body.error, "busy");
+  const sh = await paid();
+  assert.equal(sh.status, 503); assert.equal(sh.body.error, "busy");
+  assert.equal(calls.length, 0, "no model call");
 });

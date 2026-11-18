@@ -222,7 +222,6 @@ const previewJob = b => ({ prompt: (b.kind.includes("+") ? GROUP_PROMPTS : PROMP
 async function transform(b, req, env, counts, day, origin, dev, ledger) {
   if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400, origin);
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503, origin);
-  if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429, origin); }
   if (dev) {   // the dev app: no day counters, its own month ceiling
     const r = await paidCall(previewJob(b), CENTS.preview, env, counts, day, async () => {}, true);
     if (r.off) return json({ error: "off" }, 503, origin);
@@ -234,14 +233,15 @@ async function transform(b, req, env, counts, day, origin, dev, ledger) {
   const perDev = num(env.PREVIEW_FREE, 10), all = num(env.ALL_DAY, 30), perIp = num(env.IP_DAY, 15);
   const kAll = `${day}|all`, kDev = `pv:${b.device}`, kIp = `${day}|ip:${ipKey(req.headers.get("cf-connecting-ip"))}`;
   if (!(await counts.take(kAll, all))) return json({ error: "all" }, 429, origin);
-  let used = false, ipOk = 0;
+  let used = false, ipOk = 0, broke = false;
   try {
     ipOk = await counts.take(kIp, perIp);
     if (ipOk) used = await ledger.takeFree(kDev, perDev);
-  } catch (e) { console.log("counter failed", e?.message); }
+  } catch (e) { broke = true; console.log("counter failed", e?.message); }
   if (!ipOk || !used) {
     await counts.give(kAll); if (ipOk) await counts.give(kIp);
-    return json({ error: "device" }, 429, origin);
+    // a D1 failure is ours: "busy", not "your previews are gone" (review 11-19 L5)
+    return broke ? json({ error: "busy" }, 503, origin) : json({ error: "device" }, 429, origin);
   }
   const job = previewJob(b);
   // day slots come back unless OpenAI refused (4xx) or billed: a refused call keeps its slot, so junk images cannot
@@ -293,7 +293,6 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
   const style = b.style ?? "fluff";   // apps before 0.3.8 send no style: the fur-ball sheet
   if (!SHEET_STYLES.includes(style)) return json({ error: "bad request" }, 400);
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503);
-  if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429); }
 
   if (dev) {   // the dev app: no integrity, no purchase, no limits, its own month ceiling (operator 11-16)
     const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async () => {}, true);
@@ -313,7 +312,10 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
     const kIp = `${day}|freeip:${ipKey(req.headers.get("cf-connecting-ip"))}`, kAll = `${day}|freeall`;
     if (!(await counts.take(kAll, num(env.FREE_ALL_DAY, 60)))) return json({ error: "free" }, 429);
     if (!(await counts.take(kIp, num(env.FREE_IP_DAY, 6)))) { await counts.give(kAll); return json({ error: "free" }, 429); }
-    if (!(await ledger.takeFree(b.device, total))) { await counts.give(kIp); await counts.give(kAll); return json({ error: "free" }, 429); }
+    let got = false;
+    try { got = await ledger.takeFree(b.device, total); }
+    catch (e) { console.log("counter failed", e?.message); await counts.give(kIp); await counts.give(kAll); return json({ error: "busy" }, 503); }
+    if (!got) { await counts.give(kIp); await counts.give(kAll); return json({ error: "free" }, 429); }
     // the transform rule: a slot comes back only if the call never left or OpenAI failed on its side (5xx, not billed);
     // a refused junk image or a billed empty answer keeps it, so failures cannot be farmed (security review)
     const r = await paidCall(sheetJob(b, style), CENTS.sheet, env, counts, day, async e => {
@@ -367,6 +369,8 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
 }
 
 const REASONS = ["odd", "person", "other"];
+// one rate-limit gate for every metered path, before integrity: a junk token must not cost a Google call (review 11-19 L4)
+const slow = async (req, env) => !!env.LIMIT && !(await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success;
 
 export async function handle(req, env, counts, { day = new Date(Date.now() + 9 * 3600e3).toISOString().slice(0, 10), ledger = new Ledger(env.DB) } = {}) {   // KST day
   const origin = req.headers.get("origin"), app = req.headers.get("x-app") === "catchpet";
@@ -378,6 +382,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
   const url = new URL(req.url), path = url.pathname;
   if (origin) return json({ error: "off" }, 503, origin);   // the frozen web game: AI is app-only now, it keeps its own picture
   if (req.method === "GET" && path === "/quota") {
+    if (await slow(req, env)) return json({ error: "slow down" }, 429);
     const device = url.searchParams.get("device") || "";
     if (!goodDevice(device)) return json({ error: "bad request" }, 400);
     const total = num(env.FREE_SHEETS, 0), pv = num(env.PREVIEW_FREE, 10);
@@ -399,6 +404,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
     await ledger.report(b, Date.now());
     return json({ ok: true });
   }
+  if (await slow(req, env)) return json({ error: "slow down" }, 429);
   if (path === "/sheet") return sheet(b, req, env, counts, day, dev, ledger, text);
   if (!dev) {
     if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400);
