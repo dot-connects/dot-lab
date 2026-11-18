@@ -17,13 +17,13 @@ const verdict = (extra = {}) => ({
   appIntegrity: { appRecognitionVerdict: "PLAY_RECOGNIZED", packageName: "kr.dot.catchpet", certificateSha256Digest: [CERT] },
   deviceIntegrity: { deviceRecognitionVerdict: ["MEETS_DEVICE_INTEGRITY"] }, ...extra });
 
-async function call(body, { origin = null, method = "POST", path = "/transform", headers = APP } = {}) {
+async function call(body, { origin = null, method = "POST", path = "/transform", headers = APP, day = "2026-11-11" } = {}) {
   const h = { "content-type": "application/json", ...headers };
   if (origin) h.origin = origin;
   const text = body ? JSON.stringify(body) : undefined;
   nextHash = body ? await requestHash(path, body.device, text) : "";
   const req = new Request("https://w.test" + path, { method, headers: h, body: text });
-  const res = await handle(req, env, counts, { day: "2026-11-11", ledger });
+  const res = await handle(req, env, counts, { day, ledger });
   return { status: res.status, body: res.headers.get("content-type")?.includes("json") ? await res.json() : null, res };
 }
 const ok = (extra = {}) => ({ style: "fluff", kind: "dog", device: "dev-aaaaaaaa", image: PNG, ...extra });
@@ -43,7 +43,7 @@ beforeEach(() => {
     getPurchase: async (e, product, token) => { if (!purchases.has(token)) throw Object.assign(new Error("x"), { status: 410 }); return purchases.get(token); },
     consumePurchase: async (e, product, token) => { google.consumed.push(token); return true; } };
   const r2 = new Map();
-  env = { OPENAI_KEY: "k", DEVICE_DAY: "5", ALL_DAY: "100", DEBUG_PURCHASE: "tok-123", CERT_SHA256: "AB:CD:EF:12:34:56:78:90", FREE_SHEETS: "3", google,
+  env = { OPENAI_KEY: "k", PREVIEW_FREE: "5", ALL_DAY: "100", DEBUG_PURCHASE: "tok-123", CERT_SHA256: "AB:CD:EF:12:34:56:78:90", FREE_SHEETS: "3", google,
     SHEETS: { m: r2, put: async (k, v, o) => { r2.set(k, { v, o }); }, get: async k => r2.has(k) ? { arrayBuffer: async () => r2.get(k).v.buffer, httpMetadata: r2.get(k).o.httpMetadata } : null },
     callModel: async (job) => { calls.push(job); return { mime: "image/webp", data: "Zm9v" }; } };
 });
@@ -66,13 +66,14 @@ test("bad style, kind, device or image never reaches the model", async () => {
   assert.equal(calls.length, 0);
 });
 
-test("a device gets DEVICE_DAY images a day, then 429 without calling the model", async () => {
+test("a device gets PREVIEW_FREE previews in all (not a day), then 429 without calling the model", async () => {
   for (let i = 0; i < 5; i++) assert.equal((await call(ok())).status, 200);
   const r = await call(ok());
   assert.equal(r.status, 429);
   assert.equal(r.body.error, "device");
   assert.equal(calls.length, 5);
   assert.equal((await call(ok({ device: "dev-bbbbbbbb" }))).status, 200);   // another device still can
+  assert.equal((await call(ok(), { day: "2026-11-12" })).body.error, "device", "a new day gives none back (operator 11-18)");
 });
 
 test("the whole site stops at ALL_DAY a day", async () => {
@@ -88,7 +89,8 @@ test("ALL_DAY comes from wrangler.toml and is 30", async () => {
   const toml = readFileSync(new URL("../wrangler.toml", import.meta.url), "utf8");
   env.ALL_DAY = toml.match(/^ALL_DAY\s*=\s*"(\d+)"/m)[1];
   assert.equal(env.ALL_DAY, "30");
-  assert.equal(toml.match(/^DEVICE_DAY\s*=\s*"(\d+)"/m)[1], "5");
+  assert.equal(toml.match(/^PREVIEW_FREE\s*=\s*"(\d+)"/m)[1], "10");
+  assert.equal(toml.match(/^FREE_SHEETS\s*=\s*"(\d+)"/m)[1], "5");
   env.IP_DAY = "100";
   for (let i = 0; i < 30; i++) assert.equal((await call(ok({ device: `dev-${String(Math.floor(i / 5)).padStart(8, "0")}` }))).status, 200, `call ${i}`);
   assert.equal((await call(ok({ device: "dev-zzzzzzzz" }))).body.error, "all");
@@ -226,7 +228,7 @@ test("the monthly caps: public MONTH_CENTS and the dev DEV_MONTH_CENTS are apart
   const r = await call(ok({ device: "dev-cccccccc" }));   // 20 > 15
   assert.equal(r.status, 503);
   assert.equal(r.body.error, "off");
-  assert.equal(counts.m.get("2026-11-11|dev-cccccccc"), 0, "an over-cap call gives the day slot back");
+  assert.equal(await ledger.freeLeft("pv:dev-cccccccc", 5), 5, "an over-cap call gives the preview back");
   assert.equal((await sheet()).status, 200);              // dev 8
   assert.equal((await sheet()).status, 200);              // dev 16
   assert.equal((await sheet()).status, 503);              // dev 24 > 16
@@ -336,7 +338,7 @@ test("a 5xx twice through the real handler: one retry, a 502, and the cents stay
   assert.equal(r.status, 502);
   assert.equal(sent.length, 2);
   assert.equal(counts.m.get("usd|2026-11"), 5);
-  assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), 0, "an unbilled failure gives the day slot back");
+  assert.equal(await ledger.freeLeft("pv:dev-aaaaaaaa", 5), 5, "an unbilled failure gives the preview back");
 });
 
 test("a BOM or newline around a secret is ignored (PowerShell pipe)", () => {
@@ -350,7 +352,7 @@ test("a 4xx refusal keeps the day slot but gives the month's cents back (review 
   const r = await call(ok({ style: "figure" }));
   assert.equal(r.status, 502);
   assert.equal(counts.m.get("usd|2026-11"), 0, "a refusal is not billed: cents back");
-  assert.equal(counts.m.get("2026-11-11|dev-aaaaaaaa"), 1, "the day slot stays used");
+  assert.equal(await ledger.freeLeft("pv:dev-aaaaaaaa", 5), 4, "the preview stays used");
 });
 
 test("/sheet: says which layout it drew (the app names the file by it)", async () => {
@@ -393,7 +395,7 @@ test("free test sheets: 3 per device, a failed draw does not use one, then 429 f
 test("/quota tells the app what is left", async () => {
   await paid();
   const q = await call(null, { method: "GET", path: "/quota?device=dev-aaaaaaaa" });
-  assert.deepEqual(q.body, { free_left: 2, free_total: 3 });
+  assert.deepEqual(q.body, { free_left: 2, free_total: 3, preview_left: 5, preview_total: 5 });
   assert.equal((await call(null, { method: "GET", path: "/quota?device=x" })).status, 400);
 });
 

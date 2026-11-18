@@ -227,11 +227,11 @@ foreach ($k in '1','2','3') {
 Write-Host ''
 Say '1) 개발자 계정 만들기            — 지금 (5단계)'
 Say '2) 테스트 그룹 만들기            — 지금, 1번과 같이 해도 됨 (2단계)'
-Say '3) 앱 비공개 테스트 시작         — Claude 가 AAB(업로드용 앱 파일)를 만든 뒤 (3단계)'
+Say '3) 앱 비공개 테스트 시작         — 앱 만들기 → 7번(1~4단계) → Claude 가 AAB 를 만든 뒤 이어서 (3단계)'
 Say '4) ACT Party 로 테스터 맞교환    — 보충용: 소개 페이지·릴스로 12명이 안 모일 때 (4단계)'
 Say '5) 참여 인원 기록 · 14일 날짜   — 사람이 늘거나 줄 때마다'
 Say '6) 프로덕션(정식 출시) 신청      — 12명 × 14일이 지난 뒤 (2단계)'
-Say '7) 결제·무결성 연결              — 3번에서 앱을 만든 뒤, AAB 올리기 전에 (5단계)'
+Say '7) 결제·무결성 연결              — 3번 1단계(앱 만들기) 바로 뒤. 5단계(결제 상품)는 두 번째 버전부터'
 $part = Read-Host "`n  번호"
 
 switch ($part) {
@@ -337,13 +337,29 @@ switch ($part) {
 
   Stage '앱 만들기'
   if (-not (St-Get 'TESTER_GROUP')) { Warn '테스트 그룹이 아직 없어요 — 메뉴 2번 먼저.' }
-  Open-Url 'https://play.google.com/console'
-  Step '"앱 만들기" 버튼'
-  Step "앱 이름: $($App.Name) · 기본 언어: 한국어 – ko-KR · 앱/게임: $($App.Kind) · 무료"
-  Step '정책 동의 체크 2개 → 앱 만들기'
-  Note "패키지 이름($($App.Pkg))은 첫 AAB 를 올릴 때 정해지고 바꿀 수 없어요. Claude 가 만든 AAB 만 올리세요."
-  St-Set "$($K)_APP" (Today)
-  Wait-Enter '앱이 만들어지면 Enter'
+  if (St-Get "$($K)_APP") {
+    Say "$($App.Name) 앱은 $(St-Get "$($K)_APP") 에 만들었어요 — 이 단계는 건너뜁니다."
+  } else {
+    Open-Url 'https://play.google.com/console'
+    Step '"앱 만들기" 버튼'
+    Step "앱 이름: $($App.Name) · 기본 언어: 한국어 – ko-KR · 앱/게임: $($App.Kind) · 무료"
+    Step '정책 동의 체크 2개 → 앱 만들기'
+    Note "패키지 이름($($App.Pkg))은 첫 AAB 를 올릴 때 정해지고 바꿀 수 없어요. Claude 가 만든 AAB 만 올리세요."
+    St-Set "$($K)_APP" (Today)
+    Wait-Enter '앱이 만들어지면 Enter'
+  }
+  # operator 11-18: the first AAB already checks "진짜 Play 앱" so testers get the free previews and pet sheets;
+  # that needs the Cloud project number inside the app, so menu 7 (stages 1-4) comes before the upload
+  if ($K -eq 'CATCH' -and -not (St-Get 'AAB_READY')) {
+    Write-Host ''
+    Warn '다음은 AAB 올리기인데, 그 전에 순서가 하나 있어요.'
+    Step '이 창을 닫고 위자드를 다시 열어 메뉴 7번 → 1~4단계를 해요 (Cloud 프로젝트 · 서버 키 · 서비스 계정 초대 · 앱 무결성 연결)'
+    Note '4단계의 SHA-256 지문은 아직 안 보여요 — 그 칸은 Enter 로 넘기면 돼요.'
+    Step "Claude 에게 '메뉴 7 1~4 끝, 프로젝트 번호 $(St-Get 'CLOUD_PROJECT')' 라고 보내요"
+    Step 'Claude 가 AAB 경로를 알려 주면 메뉴 3번을 다시 열어요 (앱 만들기는 건너뛰고 AAB 올리기부터 나와요)'
+    if (Confirm-Yes 'Claude 가 이미 "AAB 준비됐어요" 라고 했나요?') { St-Set 'AAB_READY' (Today) }
+    else { $script:Skipped += '메뉴 7번 1~4단계 → Claude 가 AAB 준비 → 메뉴 3번 다시'; Wait-Enter; break }
+  }
 
   Stage '비공개 테스트 트랙 + AAB 올리기'
   Step '왼쪽 "테스트 및 출시" → "테스트" → "비공개 테스트" → 기본 트랙(알파) "트랙 관리"'
@@ -523,12 +539,18 @@ $($App.Name) 테스트 열렸어! 고마워 🙏
   Stage '앱 무결성 연결 + 서명 인증서'
   Step '리얼뽑기 → 왼쪽 "테스트 및 출시" → "앱 무결성" → Play Integrity API: 위 Cloud 프로젝트 연결'
   Step '같은 페이지 "앱 서명" → "앱 서명 키 인증서"의 SHA-256 지문 복사 (AB:CD:… 형태)'
-  Note '앱 서명 키는 첫 AAB 를 올린 뒤에 보여요. 아직이면 Enter 로 넘기고, AAB 를 올린 뒤 이 단계만 다시 하세요.'
+  Note '앱 서명 키는 첫 AAB 를 올린 뒤에 보여요. 아직이면 Enter 로 넘기고, AAB 를 올린 뒤 메뉴 7번 → 이 단계만 다시 하세요.'
   [void](Ask-St 'CERT_SHA256' 'SHA-256 지문')
-  Say '이 두 값(프로젝트 번호, 지문)은 Claude 가 앱과 서버에 넣어요: "메뉴 7 끝났어" 라고만 알려 주세요.'
+  if (-not (St-Get 'CERT_SHA256')) {
+    Say "AAB 를 올리기 전이면: Claude 에게 '메뉴 7 1~4 끝, 프로젝트 번호 $(St-Get 'CLOUD_PROJECT')' 라고 보내 주세요. 5단계(결제 상품)는 지금 건너뛰어요."
+    Wait-Enter 'Enter 로 마무리'; break
+  }
+  Say "AAB 를 올린 뒤라면: Claude 에게 SHA-256 지문을 보내 주세요 — 서버에 넣으면 테스터의 무료 그림이 열려요."
+  Say '이 두 값(프로젝트 번호, 지문)은 Claude 가 앱과 서버에 넣어요.'
   Wait-Enter 'Enter 로 다음'
 
   Stage '인앱 상품 2개 + 무료 테스트 구매'
+  Note 'Play 는 결제 기능이 든 AAB 가 올라간 뒤에야 상품을 만들게 해 줘요. 첫 버전(무료 미리보기 10 · 펫 그림 5)엔 결제가 없어서, 두 번째 버전을 올린 뒤에 하세요.'
   Step '리얼뽑기 → "수익 창출" → "인앱 상품" → 상품 만들기 (판매자 계정이 있어야 보여요 — 메뉴 1번 5단계)'
   Step '상품 ID: sheet_fluff · 이름: 털뭉치 펫 그림 · 가격 500원 → 저장 → 활성화'
   Step '상품 ID: sheet_figure · 이름: 피규어 펫 그림 · 가격 500원 → 저장 → 활성화'

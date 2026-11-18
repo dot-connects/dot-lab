@@ -1,7 +1,7 @@
 // 「우리 집 몬스터 잡기」 transform: a caught dog / cat / person cut-out -> an image model -> a cute picture of THAT one.
 // /transform (web game + app preview): style "fluff" = our pale fur-ball creatures (a style reference image goes along),
 // "figure" = a small 3D figurine of itself. /sheet (app, bought): a 3 x 2 pose sheet of the fur-ball for the pet.
-// The photo is passed through and never stored. Cost guards: DEVICE_DAY previews per device a day, ALL_DAY previews for
+// The photo is passed through and never stored. Cost guards: PREVIEW_FREE previews per device in all, ALL_DAY previews for
 // everyone (a device id is client-made, so ALL_DAY is the real ceiling; IP_DAY keeps one network from eating it all),
 // and MONTH_CENTS = a money ceiling for the month over both routes (cents reserved before each OpenAI call).
 // The Origin / x-app check only keeps other web pages out; it is not a cost guard (any client can send the header).
@@ -219,7 +219,7 @@ async function paidCall(job, cents, env, counts, day, onFail, dev = false) {
 
 const previewJob = b => ({ prompt: (b.kind.includes("+") ? GROUP_PROMPTS : PROMPTS)[b.style](b.kind), image: b.image, ref: b.style === "fluff", quality: "low", size: "1024x1024" });
 
-async function transform(b, req, env, counts, day, origin, dev) {
+async function transform(b, req, env, counts, day, origin, dev, ledger) {
   if (!STYLES.includes(b.style) || !validKind(b.kind) || !goodDevice(b.device) || !goodImage(b.image)) return json({ error: "bad request" }, 400, origin);
   if (!secret(env.OPENAI_KEY)) return json({ error: "off" }, 503, origin);
   if (env.LIMIT) { const { success } = await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" }); if (!success) return json({ error: "slow down" }, 429, origin); }
@@ -230,13 +230,14 @@ async function transform(b, req, env, counts, day, origin, dev) {
     return json({ mime: r.img.mime, image: r.img.data }, 200, origin);
   }
 
-  const perDev = num(env.DEVICE_DAY, 5), all = num(env.ALL_DAY, 30), perIp = num(env.IP_DAY, 15);
-  const kAll = `${day}|all`, kDev = `${day}|${b.device}`, kIp = `${day}|ip:${ipKey(req.headers.get("cf-connecting-ip"))}`;
+  // operator 11-18: PREVIEW_FREE previews per device in all (not a day), on top of the network and site day caps
+  const perDev = num(env.PREVIEW_FREE, 10), all = num(env.ALL_DAY, 30), perIp = num(env.IP_DAY, 15);
+  const kAll = `${day}|all`, kDev = `pv:${b.device}`, kIp = `${day}|ip:${ipKey(req.headers.get("cf-connecting-ip"))}`;
   if (!(await counts.take(kAll, all))) return json({ error: "all" }, 429, origin);
-  let used = 0, ipOk = 0;
+  let used = false, ipOk = 0;
   try {
     ipOk = await counts.take(kIp, perIp);
-    if (ipOk) used = await counts.take(kDev, perDev);
+    if (ipOk) used = await ledger.takeFree(kDev, perDev);
   } catch (e) { console.log("counter failed", e?.message); }
   if (!ipOk || !used) {
     await counts.give(kAll); if (ipOk) await counts.give(kIp);
@@ -245,10 +246,10 @@ async function transform(b, req, env, counts, day, origin, dev) {
   const job = previewJob(b);
   // day slots come back unless OpenAI refused (4xx) or billed: a refused call keeps its slot, so junk images cannot
   // be retried for free until they drain the month (review M1, 2026-11-13); its money comes back in paidCall
-  const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.sent || (!e.rejected && !e.billed)) { await counts.give(kDev); await counts.give(kIp); await counts.give(kAll); } });
+  const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.sent || (!e.rejected && !e.billed)) { await ledger.giveFree(kDev); await counts.give(kIp); await counts.give(kAll); } });
   if (r.off) return json({ error: "off" }, 503, origin);
   if (r.err) return json({ error: "model" }, 502, origin);
-  return json({ mime: r.img.mime, image: r.img.data, left: perDev - used }, 200, origin);
+  return json({ mime: r.img.mime, image: r.img.data, left: await ledger.freeLeft(kDev, perDev) }, 200, origin);
 }
 
 function sheetJob(b, style) {
@@ -379,8 +380,9 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
   if (req.method === "GET" && path === "/quota") {
     const device = url.searchParams.get("device") || "";
     if (!goodDevice(device)) return json({ error: "bad request" }, 400);
-    const total = num(env.FREE_SHEETS, 0);
-    return json({ free_left: await ledger.freeLeft(device, total), free_total: total });
+    const total = num(env.FREE_SHEETS, 0), pv = num(env.PREVIEW_FREE, 10);
+    return json({ free_left: await ledger.freeLeft(device, total), free_total: total,
+                  preview_left: await ledger.freeLeft(`pv:${device}`, pv), preview_total: pv });
   }
   if (req.method !== "POST" || !["/transform", "/sheet", "/report"].includes(path)) return json({ error: "not found" }, 404);
   if (+(req.headers.get("content-length") || 0) > IMAGE_MAX + LOOK_MAX + 2000) return json({ error: "too big" }, 413);
@@ -404,7 +406,7 @@ export async function handle(req, env, counts, { day = new Date(Date.now() + 9 *
     if (ig === "off" || ig === "busy") return json({ error: ig }, 503);
     if (ig !== "ok") return json({ error: "integrity" }, 403);
   }
-  return transform(b, req, env, counts, day, null, dev);
+  return transform(b, req, env, counts, day, null, dev, ledger);
 }
 
 export default {

@@ -7,13 +7,14 @@ compatibility_date = "2026-10-01"
 # (the /sheet token until real billing; unset or empty = /sheet answers 402).
 # MONTH_CENTS = the public month's money ceiling over /transform + /sheet ("0" = AI off, dev included).
 [vars]
-DEVICE_DAY = "5"
+# operator 11-18: free previews per device in all, free pet sheets per device (test period)
+PREVIEW_FREE = "10"
 ALL_DAY = "30"
 MONTH_CENTS = "500"
 # the dev app (operator's DEBUG_PURCHASE token) has no day/entry limits and its own month ceiling
 DEV_MONTH_CENTS = "2000"
 PKG = "kr.dot.catchpet"
-FREE_SHEETS = "3"
+FREE_SHEETS = "5"
 # free sheets a day per network and for everyone (device ids are app-made); bought sheets' own month guard
 FREE_IP_DAY = "6"
 FREE_ALL_DAY = "60"
