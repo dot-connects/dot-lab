@@ -7,6 +7,7 @@ import com.google.android.play.core.integrity.StandardIntegrityManager.PrepareIn
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityToken
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenProvider
 import com.google.android.play.core.integrity.StandardIntegrityManager.StandardIntegrityTokenRequest
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.tasks.await
@@ -33,6 +34,8 @@ object Integrity {
             try {
                 val t: StandardIntegrityToken = provider(ctx).request(StandardIntegrityTokenRequest.builder().setRequestHash(hash).build()).await()
                 return t.token()
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 Log.w("Integrity", "token failed (try ${attempt + 1}): ${e.message}")
                 lock.withLock { provider = null }

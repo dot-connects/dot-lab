@@ -52,6 +52,8 @@ class AiClient(private val base: String, private val deviceId: String, private v
         runCatching {
             // the Integrity token is bound to this exact body (the Worker hashes the text it received)
             val proof = if (token == null) integrity?.invoke(RequestHash.of(path, deviceId, json)) else null
+            // no token at all is Play's or our trouble (offline Play services, not linked yet): don't blame the device
+            if (token == null && integrity != null && proof == null) throw Fail("noproof", 0)
             val c = (URL(base.trimEnd('/') + path).openConnection() as HttpURLConnection)
             try {
                 c.requestMethod = "POST"

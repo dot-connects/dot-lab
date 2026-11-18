@@ -4,6 +4,9 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
+// Play Integrity: the Google Cloud project number linked in Play Console (wizard menu 7); 0 = not linked yet
+val cloudProject = 0L
+
 android {
     namespace = "kr.dot.catchpet"
     compileSdk = 36
@@ -18,8 +21,7 @@ android {
         buildConfigField("String", "DEBUG_PURCHASE", "\"\"")
         manifestPlaceholders["appLabel"] = "리얼뽑기"
         buildConfigField("String", "WORKER", "\"https://dot-lab-catch.dotconnects.workers.dev\"")
-        // Play Integrity: the Google Cloud project number linked in Play Console (wizard menu 7); 0 = not linked yet
-        buildConfigField("long", "CLOUD_PROJECT", "0L")
+        buildConfigField("long", "CLOUD_PROJECT", "${cloudProject}L")
     }
     buildFeatures { compose = true; buildConfig = true }
     // Play upload key (plan-release Task 6): kept outside the repo, password in the user env var, never committed
@@ -98,4 +100,9 @@ dependencies {
     testImplementation("io.github.takahirom.roborazzi:roborazzi:1.32.2")
     testImplementation("io.github.takahirom.roborazzi:roborazzi-compose:1.32.2")
     debugImplementation("androidx.compose.ui:ui-test-manifest")
+}
+
+// an AAB without the project number draws nothing for any tester (every call fails integrity): refuse to build it
+tasks.matching { it.name == "bundleRelease" }.configureEach {
+    doFirst { check(cloudProject != 0L) { "cloudProject is 0: put the Play Console project number in app/build.gradle.kts" } }
 }
