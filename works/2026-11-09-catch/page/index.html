@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>리얼뽑기 · D:OT lab</title>
+<meta name="description" content="폰으로 비추고 집게로 집으면, 찍힌 모습 그대로 털뭉치가 돼서 내 폰에 살아요. 안드로이드 먼저.">
+<meta property="og:title" content="리얼뽑기 — 우리 집 고양이가 내 폰에 살아요">
+<meta property="og:description" content="폰으로 비추고 집게로 집으면, 찍힌 모습 그대로 털뭉치가 돼서 나와요.">
+<meta property="og:image" content="https://dot-connects.github.io/dot-lab/works/2026-11-09-catch/out/cover.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&family=IBM+Plex+Sans+KR:wght@400;700&display=swap">
+<style>
+/* operator 11-18 picked mockup B (mockups/landing.html): dex cards in the app's own palette */
+:root{--paper:#FFFDF6;--ink:#24331F;--muted:#5D6B57;--sun:#FFD84D;--grass:#D9F2C9;--field:#E6F0DC;--leaf:#7CC46B;
+  --disp:"Jua","Malgun Gothic",sans-serif;--body:"Gowun Dodum","IBM Plex Sans KR","Malgun Gothic",sans-serif;--ui:"IBM Plex Sans KR","Malgun Gothic",sans-serif;color-scheme:light}
+html{background:var(--paper)}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ui);word-break:keep-all}
+main{max-width:460px;margin:0 auto;box-sizing:border-box;display:grid;gap:20px;
+  padding:28px max(18px,env(safe-area-inset-right)) calc(32px + env(safe-area-inset-bottom)) max(18px,env(safe-area-inset-left))}
+.top{font:700 12px var(--ui);letter-spacing:.06em;color:var(--muted);text-decoration:none}
+h1{font:400 36px/1.15 var(--disp);margin:0;text-wrap:balance}
+h1 em{font-style:normal;background:linear-gradient(transparent 55%,var(--sun) 55%)}
+.sub{margin:-8px 0 0;color:var(--muted);font:16px/1.55 var(--body)}
+video{display:block;width:100%;aspect-ratio:9/16;border-radius:22px;border:3px solid var(--ink);background:#2E3944;object-fit:cover}
+.cards{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{border:2.5px solid var(--ink);border-radius:16px;overflow:hidden;background:var(--field);min-width:0;margin:0}
+.card img{display:block;width:100%;height:auto;aspect-ratio:1;object-fit:cover}
+.card figcaption{padding:7px 9px;font:400 16px var(--disp);background:var(--paper);border-top:2.5px solid var(--ink)}
+.card small{display:block;font:12.5px var(--ui);color:var(--muted)}
+.how{display:grid;gap:14px}
+.how div{display:grid;grid-template-columns:96px 1fr;gap:14px;align-items:center}
+.how img{width:96px;height:auto;border-radius:12px;border:2px solid var(--ink)}
+.how p{margin:0;font:15.5px/1.55 var(--body)}
+.how b{font:400 19px var(--disp);display:block}
+.cta{display:block;width:100%;border:3px solid var(--ink);background:var(--sun);color:var(--ink);font:400 22px var(--disp);
+  padding:15px 10px;border-radius:999px;box-shadow:0 4px 0 var(--ink);cursor:pointer}
+.cta:active{transform:translateY(3px);box-shadow:0 1px 0 var(--ink)}
+.cta:focus-visible,.steps a:focus-visible{outline:3px solid var(--leaf);outline-offset:3px}
+.steps{display:grid;gap:12px;background:#fff;border:2px solid var(--ink);border-radius:18px;padding:16px;font-size:15px;line-height:1.55}
+.steps b{font:400 18px var(--disp)}
+.steps a{display:inline-block;margin-top:6px;font-weight:700;color:var(--ink);background:var(--grass);border-radius:10px;padding:8px 14px;text-decoration:none}
+.steps .soon{display:inline-block;margin-top:6px;color:var(--muted);font-size:14px}
+.no{margin:0;font-size:14px;color:var(--muted);text-align:center}
+footer{display:flex;justify-content:center;gap:14px;font-size:13px}
+footer a{color:var(--muted)}
+[hidden]{display:none!important}
+@media (prefers-reduced-motion: reduce){.cta:active{transform:none}}
+</style>
+</head>
+<body>
+<main>
+  <a class="top" href="../../../">D:OT lab · 그냥 시켜봄</a>
+  <h1>우리 집 고양이가<br><em>내 폰에 살아요</em></h1>
+  <p class="sub">폰으로 비추고 집게로 집으면, 찍힌 모습 그대로 털뭉치가 돼서 나와요.</p>
+  <video src="../out/reel.mp4" poster="img/poster.webp" controls playsinline preload="none"></video>
+
+  <div class="cards">
+    <figure class="card"><img src="img/kid.webp" width="360" height="360" alt="곰인형을 안은 아이 털뭉치"><figcaption>곰인형 안은 아이<small>안고 있던 것도 같이</small></figcaption></figure>
+    <figure class="card"><img src="img/book.webp" width="360" height="360" alt="책 읽는 사람 털뭉치"><figcaption>책 읽는 언니<small>머리도 옷도 그대로</small></figcaption></figure>
+    <figure class="card"><img src="img/poodle.webp" width="360" height="360" alt="공을 문 푸들 털뭉치"><figcaption>공 문 푸들<small>물고 있던 공까지</small></figcaption></figure>
+    <figure class="card"><img src="img/cat.webp" width="360" height="360" alt="고양이 털뭉치"><figcaption>소파 위 고양이<small>털 색 그대로</small></figcaption></figure>
+  </div>
+
+  <div class="how">
+    <div><img src="img/catch.webp" width="240" height="427" alt="카메라 화면 위 인형뽑기 집게"><p><b>집게로 뽑고</b>카메라에 비친 진짜 녀석을 집어요. 캡슐이 열리면 털뭉치가 나와요.</p></div>
+    <div><img src="img/apps.webp" width="240" height="427" alt="홈 화면의 털뭉치와 앱 말풍선"><p><b>홈 화면에서 같이 살고</b>톡 치면 좋아하고, 두 번 치면 최근 앱이나 자주 쓰는 앱을 꺼내 줘요.</p></div>
+  </div>
+
+  <button class="cta" id="try" aria-expanded="false" aria-controls="steps">안드로이드 먼저 해 보기</button>
+  <div class="steps" id="steps" hidden>
+    <div><b>1. 테스터 그룹 가입</b><br>Google 계정으로 그룹에 들어와요.<br><span data-link="group"></span></div>
+    <div><b>2. 참여하고 받기</b><br>참여 링크에서 '테스터 되기'를 누르고 Play 스토어에서 받아요.<br><span data-link="optin"></span></div>
+  </div>
+  <p class="no">아이폰은 아직 안 돼요.</p>
+  <footer><a href="privacy.html">개인정보 처리방침</a><a href="../../../">다른 작품</a></footer>
+</main>
+<script>
+// The closed-test links (spec-release.md 9); empty until the Play account and the tester group exist.
+const LINKS = { group: "", optin: "" };
+const LABEL = { group: "그룹 가입하기 →", optin: "참여 링크 열기 →" };
+for (const el of document.querySelectorAll("[data-link]")) {
+  const url = LINKS[el.dataset.link];
+  el.outerHTML = url ? `<a href="${url}" target="_blank" rel="noopener">${LABEL[el.dataset.link]}</a>` : `<span class="soon">링크를 곧 열어요</span>`;
+}
+const btn = document.getElementById("try"), steps = document.getElementById("steps");
+btn.addEventListener("click", () => { steps.hidden = !steps.hidden; btn.setAttribute("aria-expanded", String(!steps.hidden)); });
+</script>
+</body>
+</html>
