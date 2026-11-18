@@ -129,7 +129,7 @@ internal fun isShownPet(ctx: Context, id: String) = petId(ctx) == id && PetPrefs
 internal fun removeEntries(ctx: Context, ids: List<String>): Int {
     val pet = petId(ctx)
     val prefs = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
-    val gone = ids.filter { !AiWork.busy.containsKey(it) }   // a drawing in progress (maybe paid) finishes first
+    val gone = ids.filter { !AiWork.isBusy(it) }   // a drawing in progress (maybe paid) finishes first
     for (id in gone) { Dex.delete(ctx, id); prefs.edit().remove("ai_ok_$id").apply() }
     if (pet != null && pet in gone) {
         prefs.edit().remove("pet").apply()
@@ -142,7 +142,7 @@ internal fun removeEntries(ctx: Context, ids: List<String>): Int {
 internal fun DeleteDialog(es: List<Dex.Entry>, onDone: (Boolean) -> Unit) {
     val who = if (es.size == 1) Dex.withObject(es[0].name) else "${es.size}마리를"
     val bought = es.any { it.ai.owned }
-    val drawing = es.count { AiWork.busy.containsKey(it.id) }
+    val drawing = es.count { AiWork.isBusy(it.id) }
     androidx.compose.material3.AlertDialog(
         onDismissRequest = { onDone(false) },
         containerColor = Book.Paper,
@@ -167,7 +167,7 @@ private val LOOKS = listOf("fluff" to "털뭉치", "figure" to "피규어")
 
 @Composable
 private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
-    val busy = AiWork.busy[e.id]
+    val busy = AiWork.busyOf(e.id)
     // a person's photo leaves the phone only after "허락받았어요" (asked once per dex entry)
     val prefs = remember { ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE) }
     var asking by remember { mutableStateOf<(() -> Unit)?>(null) }
@@ -193,7 +193,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
             for ((style, label) in LOOKS) {
                 val drawn = preview(style)
                 val bought = e.ai.sheets.containsKey(style)
-                val canDraw = (drawn == null || AiWork.dev) && busy == null && left > 0   // dev app: tap again to redraw
+                val canDraw = (drawn == null || AiWork.dev) && "preview-$style" !in busy && left > 0   // dev app: tap again to redraw
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(label, fontFamily = Book.Display, fontSize = 16.sp)
                     Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Book.Field)
@@ -201,7 +201,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                         .let { if (canDraw) it.clickable { guarded { AiWork.preview(ctx, e, style) } } else it },
                         contentAlignment = Alignment.Center) {
                         when {
-                            busy == "preview-$style" -> CircularProgressIndicator(Modifier.size(26.dp), color = Book.Ink, strokeWidth = 2.dp)
+                            "preview-$style" in busy -> CircularProgressIndicator(Modifier.size(26.dp), color = Book.Ink, strokeWidth = 2.dp)
                             drawn != null -> rememberFile(e.id, drawn, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit) }
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("?", fontFamily = Book.Display, fontSize = 40.sp, color = Book.Muted)
@@ -211,15 +211,15 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                     }
                     when {
                         drawn == null && !bought -> {}
-                        busy == "sheet-$style" -> Note("펫 그림을 그리는 중 (1~3분)")
+                        "sheet-$style" in busy -> Note("펫 그림을 그리는 중 (1~3분)")
                         bought && isShownPet(ctx, e.id) && e.ai.petStyle == style -> InkPill("펫으로 쓰는 중", Book.Leaf)
                         bought && AiWork.dev -> Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             InkPill("쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
-                            InkPill("다시", Book.Paper, onClick = if (busy == null) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                            InkPill("다시", Book.Paper, onClick = if ("sheet-$style" !in busy) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
                         }
                         bought -> InkPill("펫으로 쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
                         else -> InkPill(if (free) "구매 · 개발판 무료" else "구매 · ${Purchase.PRICE_WON}원", Book.Sun,
-                            onClick = if (!locked && busy == null) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                            onClick = if (!locked && "sheet-$style" !in busy) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
                     }
                 }
             }
