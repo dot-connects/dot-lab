@@ -27,7 +27,7 @@
 - 디버그 구매 토큰: `%USERPROFILE%\.catchpet-debug-purchase` — debug 빌드는 빌드할 때 이 파일을 BuildConfig 에 넣어 AI 펫 그림이 무료(11-14). release 는 빈 값. 개발자 칸은 펫 화면 "펫" 제목 길게 누르기.
 
 **운영자가 할 일**
-1. **OpenAI API 키 교체** — 11-12 밤 Worker 로그 확인 중 키 원문이 세션 기록에 찍혔다. platform.openai.com 에서 폐기·새로 만들고 `dot-lab/scripts/wizard-catch-openai.bat` 을 다시 실행(BOM 버그는 고침).
+1. (11-19 운영자 결정: OpenAI 키는 교체하지 않음. 11-12 노출은 로컬 세션 기록뿐이고 Worker 월 상한이 지출을 막는다. 키가 새거나 이상 지출이 보이면 platform.openai.com 에서 폐기 후 `dot-lab/scripts/wizard-catch-openai.bat` 재실행)
 2. (11-14 해결: 라이브 배경화면 삭제, 펫은 홈 화면/항상 오버레이)
 3. 실폰 확인 목록(아래).
 
