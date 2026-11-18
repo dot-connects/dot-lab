@@ -10,7 +10,7 @@ compatibility_date = "2026-10-01"
 # operator 11-18: free previews per device in all, free pet sheets per device (test period)
 PREVIEW_FREE = "10"
 ALL_DAY = "30"
-MONTH_CENTS = "500"
+MONTH_CENTS = "2000"
 # the dev app (operator's DEBUG_PURCHASE token) has no day/entry limits and its own month ceiling
 DEV_MONTH_CENTS = "2000"
 PKG = "kr.dot.catchpet"
