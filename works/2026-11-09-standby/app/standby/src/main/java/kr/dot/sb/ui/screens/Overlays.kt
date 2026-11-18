@@ -32,7 +32,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
-import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
@@ -433,12 +432,8 @@ private fun NowPlaying(m: MediaInfo, state: StandbyState, config: AppConfig, act
     val close by rememberUpdatedState(onClose)
     LaunchedEffect(m.playing) { if (!m.playing) { delay(5_000); close() } }
     // the 5 s position refresh comes through the ticks (r11 perf), the track itself through [m]
-    val base = kr.dot.sb.ui.state.LocalLiveTicks.current?.value?.mediaPositionMs ?: m.positionMs
-    var pos by remember { mutableLongStateOf(base) }
-    LaunchedEffect(base, m.playing) {
-        pos = base
-        while (m.playing && pos < m.durationMs) { delay(1_000); pos = (pos + 1_000).coerceAtMost(m.durationMs) }
-    }
+    // operator 2026-11-18: the holder steps the position every second from the player's anchor
+    val pos = kr.dot.sb.ui.state.LocalLiveTicks.current?.value?.mediaPositionMs ?: m.positionMs
     Box(
         Modifier.fillMaxSize().tap {}.pointerInput(Unit) {
             var dy = 0f

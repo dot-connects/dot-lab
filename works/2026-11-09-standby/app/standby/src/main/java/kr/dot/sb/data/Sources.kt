@@ -39,6 +39,14 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
     private var artSrc: android.graphics.Bitmap? = null
     private var art: androidx.compose.ui.graphics.ImageBitmap? = null
 
+    /** The player's last reported position (operator 2026-11-18: the live position is computed from it, not polled). */
+    private var anchor: MediaClock.Anchor? = null
+
+    /** Position now, from the last anchor: cheap, no binder call (the 1 s ticks use it). */
+    fun speed(): Float = anchor?.speed ?: 1f
+
+    fun positionNow(): Long? = anchor?.takeIf { controller != null }?.let { MediaClock.position(it, SystemClock.elapsedRealtime()) }
+
     private val sessions = MediaSessionManager.OnActiveSessionsChangedListener { pick(it) }
     private val cb = object : MediaController.Callback() {
         override fun onPlaybackStateChanged(state: PlaybackState?) = publish()
@@ -104,14 +112,15 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
             art = bmp?.let { scaleDown(it, 512).asImageBitmap() }
         }
         val playing = st.state == PlaybackState.STATE_PLAYING
-        val pos = if (playing) st.position + ((SystemClock.elapsedRealtime() - st.lastPositionUpdateTime) * st.playbackSpeed).toLong() else st.position
         val dur = meta.getLong(MediaMetadata.METADATA_KEY_DURATION).coerceAtLeast(0)
+        val a = MediaClock.Anchor(st.position, st.lastPositionUpdateTime, st.playbackSpeed, dur, playing).also { anchor = it }
+        val pos = MediaClock.position(a, SystemClock.elapsedRealtime())
         val pm = ctx.packageManager
         val label = runCatching { pm.getApplicationLabel(pm.getApplicationInfo(c.packageName, 0)).toString() }.getOrDefault(c.packageName)
         onChange(
             MediaInfo(
                 label, c.packageName, MediaKinds.kind(c.packageName), title, artist, art, playing,
-                if (dur > 0) pos.coerceIn(0, dur) else pos.coerceAtLeast(0), dur,
+                pos, dur,
                 canPrev = st.actions and PlaybackState.ACTION_SKIP_TO_PREVIOUS != 0L,
                 canNext = st.actions and PlaybackState.ACTION_SKIP_TO_NEXT != 0L,
             ),
@@ -125,6 +134,25 @@ class MediaSource(private val ctx: Context, private val onChange: (MediaInfo?) -
             val f = maxSide.toFloat() / m
             return Bitmap.createScaledBitmap(b, (b.width * f).toInt().coerceAtLeast(1), (b.height * f).toInt().coerceAtLeast(1), true)
         }
+    }
+}
+
+/**
+ * Media position from the player's anchor (position at `at` on the elapsedRealtime clock, times speed). The screen
+ * steps exactly when the track's second changes, like the player's own counter, so time and bar move together.
+ */
+object MediaClock {
+    data class Anchor(val positionMs: Long, val at: Long, val speed: Float, val durationMs: Long, val playing: Boolean)
+
+    fun position(a: Anchor, now: Long): Long {
+        val p = if (a.playing && a.at > 0) a.positionMs + ((now - a.at) * a.speed).toLong() else a.positionMs
+        return if (a.durationMs > 0) p.coerceIn(0, a.durationMs) else p.coerceAtLeast(0)
+    }
+
+    /** Wall time until the track reaches its next whole second (50 ms..1 s; 1 s when the speed is zero or negative). */
+    fun untilNextSecond(positionMs: Long, speed: Float): Long {
+        if (speed <= 0f) return 1_000
+        return ((1_000 - positionMs.mod(1_000L)) / speed).toLong().coerceIn(50, 1_000)
     }
 }
 

@@ -225,7 +225,7 @@ private fun LuxRow(lux: Float?, config: AppConfig) {
 // ---- 자동으로 켜기·끄기 (plan-r15 F1b: with 펼쳤을 때 on a Fold) ----------------------------------------------------
 
 @Composable
-fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
+fun OnOffScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     val never = config.displayOff == DisplayOff.NEVER
     val notes = listOf(
         "폰을 안 쓰는데 방이 어두우면 화면을 꺼요.", "20초 동안 만지지 않으면 화면을 꺼요.",
@@ -275,7 +275,10 @@ fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
             if (env.granted[Perm.BATTERY] != true) item { PermLine(Perm.BATTERY) }
         }
         TipLine(Tip.SIDE_KEY.line)
-        if (env.phone == Phone.FOLD) UnfoldSection(config, update, env)
+        // operator 2026-11-18: the fold rows live one level down so this screen stays short
+        if (env.phone == Phone.FOLD) Section(null) {
+            item { NavRow("펼쳤을 때", { nav.push(Routes.FOLD) }, value = if (config.onUnfold == UnfoldAction.MOOD_LIGHT) "무드등" else "펼친 화면") }
+        }
         More {
             Section(null) {
                 item { SwitchRow("뜨거워지면 화면 어둡게", config.heatProtect, { v -> update { it.copy(heatProtect = v) } }, subtitle = "폰이 식으면 다시 밝아져요.") }
@@ -285,11 +288,17 @@ fun OnOffScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () ->
     }
 }
 
+/** 펼쳤을 때, one level under 자동으로 켜기·끄기 (operator 2026-11-18). */
+@Composable
+fun FoldScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
+    Page("펼쳤을 때", back) { UnfoldSection(config, update, env) }
+}
+
 /** 펼쳤을 때 (the old 폴드를 펼쳤을 때 screen, plan-r15 F1b): 펼친 화면 / 무드등 and the mood light's options. */
 @Composable
 private fun UnfoldSection(config: AppConfig, update: Update, env: SettingsEnv) {
     val moodOn = config.onUnfold == UnfoldAction.MOOD_LIGHT
-    Section("펼쳤을 때") {
+    Section(null) {
         item {
             Column {
                 ControlRow("펼치면", note = if (moodOn) "90° 넘게 펼치면 안쪽 화면이 무드등으로 켜져요. 켜진 뒤에는 다시 좁혀서 텐트처럼 세워도 계속 켜져 있어요." else "Stand Screen이 켜져 있을 때 펼치면 \"펼친 화면\" 페이지를 보여줘요.") {

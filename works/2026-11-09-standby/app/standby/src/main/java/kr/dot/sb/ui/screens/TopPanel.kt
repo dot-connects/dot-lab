@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
@@ -99,6 +100,8 @@ internal fun TopPanel(
     state: StandbyState, config: AppConfig, w: Dp, h: Dp, modifier: Modifier = Modifier,
     /** plan-r15 E8: more rows under the theme strip (the mood light's controls on the outer-screen clock). */
     extra: (@Composable () -> Unit)? = null,
+    /** Operator 2026-11-18: a tap outside the panel closes it at once instead of waiting out the 4 s. */
+    onClose: () -> Unit = {},
 ) {
     val ink = LocalInk.current
     val t = LocalTheme.current
@@ -113,7 +116,7 @@ internal fun TopPanel(
     val audio = remember { ctx.getSystemService(AudioManager::class.java) }
     val maxVol = remember { audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1) }
     var vol by remember { mutableFloatStateOf(audio.getStreamVolume(AudioManager.STREAM_MUSIC) / maxVol.toFloat()) }
-    Box(Modifier.fillMaxSize().background(SCRIM))
+    Box(Modifier.fillMaxSize().background(SCRIM).pointerInput(Unit) { detectTapGestures { onClose() } })
     Column(
         modifier.padding(top = top).width(pw).heightIn(max = h - top - m * 0.6f)
             .background(ink.bg.copy(alpha = 0.94f), shape).themedSurface(t, ink, shape).clip(shape).verticalScroll(rememberScrollState()).padding(pad)

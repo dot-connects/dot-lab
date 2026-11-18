@@ -280,7 +280,7 @@ internal fun RootImpl(
             if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
                 TopPanel(
                     level, { v -> level = v; act.setBrightness(v) }, { barPressed = it; barTick++ }, { look -> act.setLook(look) },
-                    state, config, w, h, Modifier.align(Alignment.TopCenter),
+                    state, config, w, h, Modifier.align(Alignment.TopCenter), onClose = { barOn = false },
                 )
             }
             // keep the system back-swipe off the board pager's edges (spec E4/R7); the system honours ~200 dp per edge
@@ -366,7 +366,7 @@ fun TentClock(
             if (a > 0f) Box(Modifier.fillMaxSize().alpha(a)) {
                 TopPanel(
                     level, onLevel, { barPressed = it; barTick++ }, onLook, night, config, bw, bh, Modifier.align(Alignment.TopCenter),
-                    extra = { MoodPanel(config.mood, onMood) },
+                    extra = { MoodPanel(config.mood, onMood) }, onClose = { barOn = false },
                 )
             }
             TipOverlay(config, kr.dot.sb.settings.TipContext(-1, tent = true), barOn, onTipSeen) // plan-r15 F10: first tent

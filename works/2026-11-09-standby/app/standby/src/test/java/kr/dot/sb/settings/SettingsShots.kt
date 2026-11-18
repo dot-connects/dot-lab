@@ -214,6 +214,6 @@ class SettingsClockShots : SettingsShotKit() {
     @Test fun soundFold() = snap("sound-fold", fold, route = Routes.SOUND)
     @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALERTS, e = bar)
     /** 자동으로 켜기·끄기 on a Fold with the mood light (펼쳤을 때 lives here now). */
-    @Test fun foldScreen() = snap("fold", tallest, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.ONOFF)
+    @Test fun foldScreen() = snap("fold", tallest, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.FOLD)
     @Test fun clocksCities() = snap("clocks-cities", phone, route = Routes.CLOCKS) { onNodeWithText("자세히").performScrollTo().performClick(); onNodeWithText("도시 추가").performScrollTo().performClick() }
 }

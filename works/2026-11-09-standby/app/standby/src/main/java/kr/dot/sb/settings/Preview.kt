@@ -225,11 +225,14 @@ class Preview(
 
 /** The 낮|밤 choice, shared by the full preview and the mini (saved across rotation). */
 @Stable
-class PreviewState(night: Boolean = false) {
+class PreviewState(night: Boolean = false, portrait: Boolean = false) {
     var night by mutableStateOf(night)
 
+    /** Operator 2026-11-18: landscape by default (StandBy is mostly used lying down); 가로|세로 flips it per screen. */
+    var portrait by mutableStateOf(portrait)
+
     companion object {
-        val Saver = listSaver<PreviewState, Boolean>({ listOf(it.night) }, { PreviewState(it[0]) })
+        val Saver = listSaver<PreviewState, Boolean>({ listOf(it.night, it.portrait) }, { PreviewState(it[0], it.getOrElse(1) { false }) })
     }
 }
 
@@ -254,9 +257,9 @@ internal fun windowDevice(phone: Phone, wDp: Int, hDp: Int): Pair<PreviewDevice,
 @Composable
 private fun rememberLook(p: Preview, st: PreviewState, phone: Phone): PreviewLook {
     val cfg = LocalConfiguration.current
-    val (win, port) = windowDevice(phone, cfg.screenWidthDp, cfg.screenHeightDp)
+    val (win, _) = windowDevice(phone, cfg.screenWidthDp, cfg.screenHeightDp)
     val dev = p.fixed ?: win
-    val portrait = p.fixed == null && port
+    val portrait = p.fixed == null && st.portrait
     val night = if (st.night && p.config.nightApplies()) 1f else 0f
     val state = remember(p.config, night) { Sample.state(p.config, night) }
     return PreviewLook(dev, portrait, night, state).also { if (night > 0f) it.dim = 1f - (0.4f + p.config.nightMaxBrightness * 2f).coerceAtMost(1f) }
@@ -321,7 +324,10 @@ internal fun PageDots(count: Int, current: Int, modifier: Modifier = Modifier) {
 internal fun FullPreview(p: Preview, st: PreviewState, pager: PagerState, phone: Phone, onFull: (Int) -> Unit) {
     val look = rememberLook(p, st, phone)
     Column(Modifier.fillMaxWidth()) {
-        if (p.dayNight && p.fixed == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) { DayNight(st) } else Gap(8.dp)
+        if (p.fixed == null) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
+            Pick("가로", "세로", st.portrait) { st.portrait = it }
+            if (p.dayNight) DayNight(st)
+        } else Gap(8.dp)
         HorizontalPager(pager, Modifier.fillMaxWidth(), pageSpacing = 10.dp, verticalAlignment = Alignment.Top) { i ->
             Box(Modifier.fillMaxWidth()) {
                 SlideFrame(p.slides[i], look, Modifier.fillMaxWidth())

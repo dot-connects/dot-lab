@@ -112,7 +112,7 @@ private fun ChargeStep(env: SettingsEnv) {
             }
         }
     }
-    Section("필요한 것", footer = "알림 내용은 폰 밖으로 나가지 않아요.") {
+    Section("필요한 것") {
         Perm.CHARGE_START.forEach { p ->
             item {
                 val ok = env.granted[p] == true

@@ -291,10 +291,19 @@ class StandbyStateHolder(
             ListenerBus.live.collect { l -> _state.update { it.copy(live = l, liveExpanded = if (l == null) false else it.liveExpanded) } }
         }
         scope.launch { SleepBus.state.collect { s -> _state.update { it.copy(sleep = s) } } }
-        // media position moves only while playing: refresh every 5 s then, never otherwise
+        // operator 2026-11-18: time and bar step every second, computed from the player's anchor, only while playing on a
+        // lit screen; a full re-read every 30 s covers players that report a stale anchor (play/pause/seek arrive at once)
         scope.launch {
-            _state.map { it.media?.playing == true }.distinctUntilChanged().collectLatest { p ->
-                while (p) { delay(5_000); if (!_state.value.displayOff) media.publish() }
+            _state.map { it.media?.playing == true && !it.displayOff }.distinctUntilChanged().collectLatest { on ->
+                var sinceRead = 0L
+                while (on) {
+                    val pos = media.positionNow() ?: break
+                    _ticks.update { it.copy(mediaPositionMs = pos) }
+                    val wait = MediaClock.untilNextSecond(pos, media.speed())
+                    delay(wait)
+                    sinceRead += wait
+                    if (sinceRead >= 30_000) { sinceRead = 0; media.publish() }
+                }
             }
         }
         scope.launch {
