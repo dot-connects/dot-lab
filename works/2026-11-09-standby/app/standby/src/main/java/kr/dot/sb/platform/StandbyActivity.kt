@@ -16,6 +16,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kr.dot.sb.data.HostCallbacks
 import kr.dot.sb.data.StandbyStateHolder
+import kr.dot.sb.settings.ConfigStore
 
 /** Manual start / preview, and the unlocked hand-over target of the dream (same UI, system rotation). */
 class StandbyActivity : ComponentActivity(), HostCallbacks {
@@ -47,8 +48,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             ChargeStart.cancelNotification(this)
             val plugged = ChargeStart.plugged(this)
             ChargeStart.log(this, "화면 열림 · ${ChargeStart.sinceLaunch()} · plugged=$plugged")
-            // r14 D: plugged, not isCharging (false at 85 % battery protection / while a pad starts)
-            if (plugged == 0) { ChargeStart.log(this, "닫힘 · 이미 뽑힘"); finish(); return } // unplugged before we got here
+            if (!checkChargeRule()) return
             // unlock ends it (unplug: the state holder, for every start path); the exit swipe goes through HostActions.exit()
             endRx = object : BroadcastReceiver() {
                 override fun onReceive(c: Context, i: Intent) {
@@ -68,7 +68,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
         }
-        holder = StandbyStateHolder(this, this, ownRotation = false)
+        holder = StandbyStateHolder(this, this, ownRotation = false, automatic = chargeStart)
         val base = HostActions(this, holder, this)
         // plan-r15 E7: the mood light on the inner screen brings the clock to the outer screen (where the phone allows it)
         val actions = object : kr.dot.sb.ui.state.StandbyActions by base {
@@ -84,6 +84,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onStart() {
         super.onStart()
+        if (!checkChargeRule() || !::holder.isInitialized || isFinishing) return
         StandbyPresence.activity = true
         holder.start()
         window.lowRefreshRate()
@@ -96,8 +97,8 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onStop() {
         StandbyPresence.activity = false
-        StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
-        holder.stop()
+        if (!getSystemService(android.os.PowerManager::class.java).isInteractive) StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
+        if (::holder.isInitialized) holder.stop()
         unlocking = false // a lost dismiss callback must not keep the unlock close off for good
         // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen. Covered by our
         // own mood light is not that (plan-r15 C6): the glow ends us itself if the side key comes while it is on top
@@ -115,8 +116,19 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
-        holder.onConfiguration(newConfig.smallestScreenWidthDp)
+        if (::holder.isInitialized) holder.onConfiguration(newConfig.smallestScreenWidthDp)
     }
+
+    private fun checkChargeRule(): Boolean {
+        if (!chargeStart) return true
+        val cfg = ConfigStore.flow(this).value
+        val reason = ChargeRules.allowed(cfg.startOnCharge, ChargeStart.plugged(this), cfg.chargeWirelessOnly) ?: return true
+        ChargeStart.log(this, "닫힘 · 규칙 · $reason")
+        finishForChargeRule(reason)
+        return false
+    }
+
+    override fun finishForChargeRule(reason: String) { tent.stop(); finish() }
 
     override fun setBrightness(b: Float) {
         window.attributes = window.attributes.apply { screenBrightness = b }

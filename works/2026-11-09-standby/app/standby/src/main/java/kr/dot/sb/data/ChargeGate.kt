@@ -30,12 +30,18 @@ object ChargeGate {
         return Stats(window.map { it[0] }.average().toFloat(), window.map { it[1] }.average().toFloat(), window.map { it[2] }.average().toFloat(), std, n)
     }
 
+    /** Orientation is independent of motion: a moving portrait phone is still not landscape. */
+    fun landscape(window: List<FloatArray>, opts: Opts = Opts()): Boolean =
+        stats(window)?.let { landscape(it, opts) } ?: false
+
+    private fun landscape(s: Stats, opts: Opts): Boolean = abs(s.x) > opts.landscapeX && abs(s.x) > abs(s.y)
+
     fun posture(window: List<FloatArray>, opts: Opts): Posture {
         val s = stats(window) ?: return Posture.NONE
         return when {
             s.std > opts.moveStd -> Posture.MOVING
             s.z < opts.faceDownZ -> Posture.FACE_DOWN
-            opts.landscapeOnly && !(abs(s.x) > opts.landscapeX && abs(s.x) > abs(s.y)) -> Posture.NOT_LANDSCAPE
+            opts.landscapeOnly && !landscape(s, opts) -> Posture.NOT_LANDSCAPE
             else -> Posture.STILL
         }
     }
