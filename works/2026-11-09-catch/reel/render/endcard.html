@@ -29,6 +29,7 @@ let fl, fg, ic, time = 0;
 // the app icon, the name, one modest promise line, the pet walking in over the CTA, the link line. All inside the
 // reel's safe area (y 300-1400 px). Type = the captions' (Noto Sans KR 900, white; the CTA the one yellow thing).
 const V7 = new URLSearchParams(location.search).get("v") === "7";
+const LINE = new URLSearchParams(location.search).get("line") ?? "우리 아이가 내 폰에 사는 펫으로";   // cut 9: the promise line follows the script
 function render7() {
   const t = time / 1000, NS = "'Noto Sans KR'";
   g.setTransform(1, 0, 0, 1, 0, 0);
@@ -44,7 +45,7 @@ function render7() {
     g.drawImage(ic, ix - s * .75, iy - s * .75, s * 1.5, s * 1.5); g.restore();
   }
   g.globalAlpha = clamp((t - .3) / .25, 0, 1); g.fillStyle = "#FFFFFF"; g.font = `900 104px ${NS}`; g.fillText("리얼뽑기", 540, 745);
-  g.globalAlpha = clamp((t - .7) / .3, 0, 1) * .82; g.font = `500 46px ${NS}`; g.fillText("우리 아이가 내 폰에 사는 펫으로", 540, 830); g.globalAlpha = 1;
+  g.globalAlpha = clamp((t - .7) / .3, 0, 1) * .82; g.font = `500 46px ${NS}`; g.fillText(LINE, 540, 830); g.globalAlpha = 1;
   // the CTA, then the pet walks in along its top edge and smiles
   const ck = back((t - .9) / .3), press = t > 1.75 && t < 1.93 ? 1 : 0, cy = 1235, ch = 136;
   if (ck > 0) {
@@ -102,7 +103,7 @@ function render() {
   if (t > 1.2) { g.globalAlpha = clamp((t - 1.2) / .25, 0, 1); g.font = "15px Jua"; g.fillStyle = "#5D6B57"; g.textAlign = "center"; g.fillText("프로필 링크에서", W / 2, H * .765 + 6); g.globalAlpha = 1; }
 }
 window.ready = (async () => {
-  await Promise.all([document.fonts.load("64px 'Black Han Sans'"), document.fonts.load("26px Jua"), ...[500, 800, 900].map(w => document.fonts.load(`${w} 40px 'Noto Sans KR'`, "리얼뽑기 우리 아이가 내 폰에 사는 펫으로 안드로이드 먼저 해 보기 프로필 링크에서"))]);
+  await Promise.all([document.fonts.load("64px 'Black Han Sans'"), document.fonts.load("26px Jua"), ...[500, 800, 900].map(w => document.fonts.load(`${w} 40px 'Noto Sans KR'`, "리얼뽑기 우리 아이가 내 폰에 사는 펫으로 안드로이드 먼저 해 보기 프로필 링크에서 움직이는 털뭉치로도," + (new URLSearchParams(location.search).get("line") ?? "")))]);
   ic = await load("/works/2026-11-09-catch/app/app/src/main/res/mipmap-xxxhdpi/ic_launcher_foreground.png");
   const [a, b] = await Promise.all([load("../frames/pet-sheet-fluff-white.webp"), load("../frames/pet-sheet-figure.webp")]);
   fl = cells(a); fg = cells(b); return true;

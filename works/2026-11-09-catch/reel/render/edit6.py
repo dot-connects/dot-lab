@@ -24,6 +24,9 @@ OUT = R / "out-reel7"
 FPS, W, H = 30, 1080, 1920
 INK, WHITE, SUN = (27, 33, 24), (255, 255, 255), (255, 216, 77)
 FONT = "C:/Windows/Fonts/NotoSansKR-VF.ttf"
+DST = None     # edit7.py sets these: the output file, and a voice track (wav on the cut's clock) to lay over the sfx
+VOICE = None
+ONLY = None    # a set of cut names: frames of the other cuts are kept as they are on disk (a one-shot fix without a full rebuild)
 
 
 def ease(x: float) -> float:
@@ -142,6 +145,8 @@ def main() -> None:
         i = max(k for k in range(len(CUTS)) if starts[k] <= t + 1e-6)
         name, dur, fn, _, _ = CUTS[i]
         lt = min(dur - 1e-3, t - starts[i])
+        if ONLY and name not in ONLY and (OUT / "frames" / f"{f + 1:04d}.png").is_file():
+            continue
         im = fn(lt).convert("RGB").copy()
         for cap, c0, c1 in caps[name]:
             im = put_cap(im, cap, lt - c0, c1 - lt)
@@ -161,14 +166,18 @@ def main() -> None:
             if 0 <= tt < c[1] and n in SOUND and v > 0:
                 fname, gain = SOUND[n]; play.append((starts[i] + tt, fname, min(1, v * gain)))
     (OUT / "sfx.json").write_text(json.dumps({"play": play, "starts": starts, "total": t0}, indent=1), encoding="utf-8")
-    dst = R.parent.parent / "out" / "reel-rough7.mp4"
+    dst = DST or R.parent.parent / "out" / "reel-rough7.mp4"
     args = ["ffmpeg", "-v", "error", "-threads", "2", "-y", "-framerate", str(FPS), "-i", str(OUT / "frames" / "%04d.png")]
     for _, fname, _ in play:
         args += ["-i", str(raw / f"{fname}.ogg")]
     parts = [f"[{k + 1}:a]volume={v:.2f},adelay={int(t * 1000)}|{int(t * 1000)}[a{k}]" for k, (t, _, v) in enumerate(play)]
     mix = ";".join(parts) + ";" + "".join(f"[a{k}]" for k in range(len(play))) + f"amix=inputs={len(play)}:normalize=0,apad,atrim=0:{t0:.3f}[aout]"
+    if VOICE:   # the voice on top, the sfx ducked under it while it talks (as voice_mix.py)
+        args += ["-i", str(VOICE)]
+        mix = mix.replace("[aout]", "[sfx0]") + (f";[{len(play) + 1}:a]volume=1.6,asplit[v1][v2];[sfx0][v1]sidechaincompress=threshold=0.05:ratio=4:release=250[sfx];"
+                                                  "[sfx][v2]amix=inputs=2:normalize=0,alimiter=limit=0.95[aout]")
     args += ["-filter_complex", mix, "-map", "0:v", "-map", "[aout]", "-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18",
-             "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", str(dst)]
+             "-c:a", "aac", "-b:a", "160k", "-t", f"{t0:.3f}", "-movflags", "+faststart", str(dst)]
     subprocess.run(args, check=True)
     print("wrote", dst, f"{t0:.1f}s")
 
