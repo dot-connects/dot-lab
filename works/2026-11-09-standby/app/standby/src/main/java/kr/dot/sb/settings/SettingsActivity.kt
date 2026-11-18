@@ -1,5 +1,6 @@
 package kr.dot.sb.settings
 
+import kr.dot.sb.ui.theme.drawnTheme
 import kr.dot.sb.ui.theme.clockStyle
 import android.content.Intent
 import android.graphics.Color
@@ -79,7 +80,8 @@ class SettingsActivity : ComponentActivity() {
                         section == null && firstRun -> listOf(Routes.FIRST_RUN)
                         section == null -> listOf(Routes.HOME)
                         // the card's own settings task: 앱 고르기 is the bottom, so Back leaves to StandBy
-                        section.startsWith("apps:") -> listOf(section)
+                        section.startsWith("apps:") -> listOf(legacyCardRoute(section, config) ?: Routes.HOME)
+                        section.startsWith("card:") -> listOf(section)
                         // a card asking for its grant opens where that grant's line is
                         section == "calendar" -> listOf(Routes.HOME, Routes.card(kr.dot.sb.model.CardType.CALENDAR))
                         section == "notifications" -> listOf(Routes.HOME, Routes.ALERTS)
@@ -128,7 +130,7 @@ class SettingsActivity : ComponentActivity() {
                 chargeTrail = { kr.dot.sb.platform.ChargeStart.trail(this) },
                 measureLog = { kr.dot.sb.platform.Measure.lines(this) },
             )
-            SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
+            SettingsTheme(config.drawnTheme().tokens.accent) { // operator 2026-11-18: settings follow the theme accent, not a clock colour
                 // plan-r13 C1: bars and cutouts padded once here; the keyboard only by the page scroll and the sheets
                 Box(Modifier.fillMaxSize().background(SK.bg).windowInsetsPadding(WindowInsets.safeDrawing.exclude(WindowInsets.ime))) {
                     RouteHost(route, config, ::update, nav, env)

@@ -98,7 +98,7 @@ class HostActions(
         }
     }
     override fun setCardFace(boardId: String, slot: Int, index: Int, face: kr.dot.sb.model.FaceId) =
-        kr.dot.sb.settings.ConfigStore.update(ctx) { kr.dot.sb.settings.BoardOps.setFace(it, boardId, slot, index, face) }
+        kr.dot.sb.settings.ConfigStore.update(ctx) { kr.dot.sb.settings.BoardOps.setFace(it, face) }
     override fun timerToggle(id: String) = holder.timerToggle(id)
     override fun timerReset(id: String) = holder.timerReset(id)
     override fun timerSwitch(id: String) = holder.timerSwitch(id)

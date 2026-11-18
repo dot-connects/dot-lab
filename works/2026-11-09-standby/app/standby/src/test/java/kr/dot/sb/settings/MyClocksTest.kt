@@ -7,7 +7,6 @@ import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Mood
 import kr.dot.sb.model.MoodEffect
-import kr.dot.sb.model.SlotOptions
 import org.json.JSONArray
 import org.json.JSONObject
 import kr.dot.sb.model.FaceId.ANALOG
@@ -64,26 +63,26 @@ class MyClocksTest {
         val none = AppConfig(myClocks = my, boards = listOf(board(CardType.WEATHER)), widgetLeft = emptyList(), widgetRight = emptyList())
         assertEquals(emptySet<FaceId>(), MyClocks.cardFaces(none))
         // a card set to a face that left the list draws the first board face
-        assertEquals(setOf(DIGITAL), MyClocks.cardFaces(none.copy(boards = listOf(board(CardType.CLOCK, face = FaceId.WALL)))))
-        val own = board(CardType.CLOCK).copy(options = mapOf("0:0" to SlotOptions(face = FLIP)))
-        assertEquals(setOf(FLIP), MyClocks.cardFaces(none.copy(boards = listOf(own))))
+        val cards = none.copy(boards = listOf(board(CardType.CLOCK)), clockCardFace = FaceId.WALL)
+        assertEquals(setOf(DIGITAL), MyClocks.cardFaces(cards))
+        assertEquals(setOf(FLIP), MyClocks.cardFaces(cards.copy(clockCardFace = FLIP)))
+        assertEquals(setOf(DIGITAL), MyClocks.cardFaces(cards.copy(clockCardFace = null)))
     }
 
-    @Test fun clockPageShowsOnlyTheFirstWithoutRotation() {
+    @Test fun clockPageKeepsTheListRegardlessOfTheLegacyFlag() {
         val c = AppConfig(myClocks = my)
         assertEquals(my, MyClocks.pages(c))
-        assertEquals(listOf(DIGITAL), MyClocks.pages(c.copy(rotateClocks = false)))
+        assertEquals(my, MyClocks.pages(c.copy(rotateClocks = false)))
+        assertEquals(listOf(FLIP), MyClocks.pages(c.copy(myClocks = listOf(FLIP), rotateClocks = false)))
     }
 
-    @Test fun rotationMigratesFromTheListSize() {
+    @Test fun oldListsAlwaysEnableRotation() {
         fun v14(vararg ids: String) = ConfigCodec.decode(
             JSONObject(ConfigCodec.encode(AppConfig())).put("v", 14).put("myClocks", JSONArray(ids.toList())).apply { remove("rotateClocks") }.toString(),
         ).rotateClocks
-        assertEquals(false, v14("FLIP"))
+        assertEquals(true, v14("FLIP"))
         assertEquals(true, v14("FLIP", "DIGITAL"))
         assertEquals(true, ConfigCodec.decode(null).rotateClocks)   // fresh install rotates the default four
-        val off = AppConfig(rotateClocks = false)
-        assertEquals(off, ConfigCodec.decode(ConfigCodec.encode(off)))   // v15 keeps the stored flag
     }
 
     @Test fun moodTakesTheOldGlowColourAndRoundTrips() {

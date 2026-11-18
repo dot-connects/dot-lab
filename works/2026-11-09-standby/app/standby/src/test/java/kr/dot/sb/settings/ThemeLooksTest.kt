@@ -26,6 +26,8 @@ class ThemeLooksTest {
     private fun v10(theme: Theme, edits: String, my: String? = null): String =
         JSONObject(ConfigCodec.encode(AppConfig(theme = theme))).apply {
             put("v", 10)
+            remove("appsCard"); remove("clockCardFace")
+            put("widgetOptions", JSONObject("""{"0:0":{"face":"ANALOG"}}"""))
             put("themeEdits", JSONObject(edits))
             my?.let { put("myThemes", JSONArray(it)) }
         }.toString()
@@ -71,7 +73,7 @@ class ThemeLooksTest {
         assertEquals(AppConfig(), ConfigCodec.decode(null))
         assertEquals(AppConfig(), ConfigCodec.decode(ConfigCodec.encode(AppConfig())))
         // a v10 save without edits gains nothing
-        val old = JSONObject(ConfigCodec.encode(AppConfig())).put("v", 10).toString()
+        val old = v10(Theme.IPHONE, "{}")
         assertEquals(AppConfig(), ConfigCodec.decode(old))
     }
 

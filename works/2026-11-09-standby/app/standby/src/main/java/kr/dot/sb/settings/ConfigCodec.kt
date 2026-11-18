@@ -41,9 +41,9 @@ object ConfigCodec {
     /**
      * Stored schema: 9 = r9 (styles are overrides only), 10 = r10, 11 = r13 (NEON/TERMINAL halo in `textGlow`, edits
      * kept only for the current look), 12 = r14 (FLOAT read as DIGITAL), 13 = r15, 14 = r15 B1 (photoFolders = SAF tree URIs), 15 = r15 E5/E8 (rotateClocks, mood), 16 = r15 E9 (입체 시계/입체 네모 date off unless switched on again). Saves without "v" are r8 or r9 dev
-     * builds.
+     * builds. 17 = global apps-card options and clock-card face, migrated from the first instance in page order.
      */
-    const val VERSION = 16
+    const val VERSION = 17
 
     fun encode(c: AppConfig): String = JSONObject().apply {
         put("v", VERSION)
@@ -72,7 +72,8 @@ object ConfigCodec {
         put("burnInShift", c.burnInShift)
         put("widgetLeft", cards(c.widgetLeft))
         put("widgetRight", cards(c.widgetRight))
-        put("widgetOptions", options(c.widgetOptions))
+        put("appsCard", slotOptions(c.appsCard.copy(face = null)))
+        put("clockCardFace", c.clockCardFace?.name ?: JSONObject.NULL)
         put("alarmScreen", c.alarmScreen)
         put("alarmGlow", c.alarmGlow)
         put("glowColor", c.glowColor)
@@ -246,9 +247,11 @@ object ConfigCodec {
             widgetOptions = when {
                 o.has("widgetOptions") -> options(o.optJSONObject("widgetOptions"))
                 // a side that was not stored keeps its default faces
-                o.has("widgetLeft") || o.has("widgetRight") -> withFaces(d.widgetOptions.filterKeys { k -> !o.has(if (k.startsWith("0:")) "widgetLeft" else "widgetRight") }, listOf(left, right))
-                else -> d.widgetOptions
+                o.has("widgetLeft") || o.has("widgetRight") -> withFaces(mapOf("0:0" to SlotOptions(face = FaceId.ANALOG)).filterKeys { k -> !o.has(if (k.startsWith("0:")) "widgetLeft" else "widgetRight") }, listOf(left, right))
+                else -> if (v < 17) mapOf("0:0" to SlotOptions(face = FaceId.ANALOG)) else emptyMap()
             },
+            appsCard = o.optJSONObject("appsCard")?.let { slotOptions(it).copy(face = null) } ?: d.appsCard,
+            clockCardFace = if (o.has("clockCardFace") && o.isNull("clockCardFace")) null else enumOrNull<FaceId>(o, "clockCardFace") ?: d.clockCardFace,
             alarmScreen = o.optBoolean("alarmScreen", d.alarmScreen),
             alarmGlow = o.optBoolean("alarmGlow", d.alarmGlow),
             glowColor = o.optLong("glowColor", d.glowColor),
@@ -269,7 +272,7 @@ object ConfigCodec {
             breakMinutes = o.optInt("breakMinutes", d.breakMinutes),
             timerAlert = enumOf(o, "timerAlert", d.timerAlert),
             myClocks = Migrations.myClocks(o.optJSONArray("myClocks"), d.myClocks),
-            rotateClocks = o.optBoolean("rotateClocks", d.rotateClocks),
+            rotateClocks = true, // all saved clock lists rotate, including old single-clock saves
             mood = o.optJSONObject("mood")?.let { m ->
                 Mood(
                     bright = num(m, "bright", d.mood.bright).coerceIn(0f, 1f), color = m.optLong("color", d.mood.color),
@@ -298,11 +301,11 @@ object ConfigCodec {
         }.let { c -> if (storedTheme == "FLIP") Migrations.flip(c) else c }
             .let { c -> c.copy(photoFilter = o.optString("photoFilter").takeIf { it in c.photoFolders }) }
             .let { c -> if (v < 12) Migrations.floatToDigital(c) else c }
-            // plan-r15 E5: before v15 every clock in the list rotated; one clock = no rotation
-            .let { c -> if (v < 15) c.copy(rotateClocks = c.myClocks.size > 1) else c }
             // plan-r15 E9: 입체 시계 and 입체 네모 got a 날짜·요일 switch, off by default; an older stored style carried
             // showInfo = true from the old default and would show the date after the update
             .let { c -> if (v < 16) Migrations.reliefDateOff(c) else c }
+            .let { c -> if (v < 17) Migrations.globalCards(c) else c }
+            .let { c -> c.copy(widgetOptions = emptyMap(), boards = c.boards.map { it.copy(options = emptyMap()) }) }
     }
 
     /** r10 removals: RAINBOW/GLASS draw as SOLID (explicitly, not the face's base effect); pink/brown noise is the one WHITE. */
@@ -373,10 +376,8 @@ object ConfigCodec {
         put("accent", b.accent ?: JSONObject.NULL)
         put("clockFace", b.clockFace.name)
         if (!b.on) put("on", false)
-        if (b.options.isNotEmpty()) put("options", options(b.options))
     }
 
-    private fun options(m: Map<String, SlotOptions>) = JSONObject().also { o -> m.forEach { (k, v) -> o.put(k, slotOptions(v)) } }
     private fun options(o: JSONObject?): Map<String, SlotOptions> =
         o?.let { oo -> oo.keys().asSequence().mapNotNull { k -> runCatching { k to slotOptions(oo.getJSONObject(k)) }.getOrNull() }.toMap() } ?: emptyMap()
 

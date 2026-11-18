@@ -77,7 +77,7 @@ object Routes {
     const val WIDGETS = "widgets"
     const val PHOTOS = "photos"
     const val CLOCKS = "clocks"
-    /** plan-r15 E5: 모든 시계 and 여러 시계 돌려 보기 under 시계. */
+    /** Legacy browse route, now opening the add screen. */
     const val CLOCKS_ALL = "clocks_all"
     const val CLOCKS_ROTATE = "clocks_rotate"
     /** plan-r15 F3: the four first-run steps. */
@@ -91,6 +91,7 @@ object Routes {
     const val ALARM = "alarm"
     const val FOLD = "fold"
     const val CARDS = "cards"
+    const val CARD_LIST = "cards-list"
     const val NIGHT = "night"
     /** 자동으로 켜기·끄기 (plan-r15 F1b: with 펼쳤을 때 on a Fold). */
     const val ONOFF = "onoff"
@@ -98,11 +99,11 @@ object Routes {
     const val PERMS = "perms"
     /** 정보 (plan-r15 F8). */
     const val ABOUT = "about"
-    /** One card type's settings (plan-r15 F1b: opened from a card's gear in 페이지와 카드). */
+    /** One card type's global settings. */
     fun card(t: kr.dot.sb.model.CardType) = "card:${t.name}"
     fun board(id: String) = "board:$id"
     fun clock(face: FaceId) = "clock:${face.name}"
-    /** 앱 고르기 of the 앱 바로가기 card at stack [index] of [slot] (also opened by a tap on the empty card in StandBy). */
+    /** Legacy per-instance route, resolved to the current global app-card settings. */
     fun apps(board: String, slot: Int, index: Int) = "apps:$board:$slot:$index"
 }
 
@@ -131,10 +132,12 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             val id = route.removePrefix("board:")
             if (config.boards.any { it.id == id }) BoardEditorScreen(id, config, update, nav, env, back) else HomeScreen(config, nav, env)
         }
-        route.startsWith("apps:") -> AppPickerScreen(route, config, update, env, back) ?: HomeScreen(config, nav, env)
+        route.startsWith("apps:") -> {
+            val target = legacyCardRoute(route, config)
+            if (target != null) Route(target, config, update, nav, env) else HomeScreen(config, nav, env)
+        }
         route == Routes.CLOCKS -> ClockScreen(config, update, nav, back)
-        route == Routes.CLOCKS_ALL -> AllClocksScreen(config, update, back)
-        route == Routes.CLOCKS_ROTATE -> RotateClocksScreen(config, update, back)
+        route == Routes.CLOCKS_ALL || route == Routes.CLOCKS_ROTATE -> RotateClocksScreen(config, update, back)
         route.startsWith("clock:") -> {
             val face = runCatching { FaceId.valueOf(route.removePrefix("clock:")) }.getOrNull()
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)
@@ -149,9 +152,15 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.ABOUT -> AboutScreen(config, nav, env, back)
         route == Routes.TIPS -> TipsScreen(config, update, back)
         route == Routes.CARDS -> PagesScreen(config, update, nav, back)
+        route == Routes.CARD_LIST -> CardListScreen(config, nav, back)
         route.startsWith("card:") -> {
             val t = runCatching { kr.dot.sb.model.CardType.valueOf(route.removePrefix("card:")) }.getOrNull()
-            if (t != null) CardScreen(t, config, update, nav, env, back) else HomeScreen(config, nav, env)
+            when {
+                t == null -> HomeScreen(config, nav, env)
+                t == kr.dot.sb.model.CardType.APPS -> AppPickerScreen(config, update, env, back)
+                cardRoute(t) != route -> Route(cardRoute(t), config, update, nav, env)
+                else -> CardScreen(t, config, update, nav, env, back)
+            }
         }
         else -> HomeScreen(config, nav, env)
     }

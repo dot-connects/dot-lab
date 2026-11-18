@@ -40,7 +40,6 @@ import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Layout
 import kr.dot.sb.ui.cards.LocalNotifOpen
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.cards.CardLook
 import kr.dot.sb.ui.cards.CardView
 import kr.dot.sb.ui.state.StandbyActions
@@ -132,12 +131,13 @@ private fun looks(board: Board, config: AppConfig, slots: List<SlotRect>, screen
     val firsts = board.slots.map { it.firstOrNull() }
     val hero = BoardGrid.hero(slots, firsts)
     val heroFace = when (firsts.getOrNull(hero)) {
-        CardType.CLOCK -> board.options["$hero:0"]?.face ?: board.clockFace
+        CardType.CLOCK -> kr.dot.sb.ui.clock.ClockRegistry.cardFace(config.clockCardFace ?: FaceId.DIGITAL, config.myClocks)
         null -> null
         else -> board.clockFace
     }
     // plan Global Constraints: board accent, else the user's own clock colour (styles = edits only), else the theme's
-    val accent = (board.accent ?: heroFace?.let { config.styles[it]?.color })?.let { Color(it) } ?: t.tokens.accent
+    // operator 2026-11-18: board accent, else the theme's; a clock card's colour no longer recolours the page
+    val accent = board.accent?.let { Color(it) } ?: t.tokens.accent
     val sizes = slots.map { Sizes.of(it.w.dp, it.h.dp, r = t.ramp) }
     val floor = (screenShort * t.minText).dp
     // r7: also capped at 6.2 % of the screen, so a lone full-size slot never gets 40 dp labels
@@ -187,7 +187,7 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
         val w = maxWidth.value
         val h = maxHeight.value
         val slots = remember(board.layout, w, h, cutX, cutY) { BoardGrid.slots(board.layout, w, h, cutX, cutY) }
-        val looks = remember(board, config.styles, slots, t) { looks(board, config, slots, min(w, h), t) }
+        val looks = remember(board, config.styles, config.clockCardFace, config.myClocks, slots, t) { looks(board, config, slots, min(w, h), t) }
         val ink = Ink.of(state.night, looks.firstOrNull()?.accent, t)
         CompositionLocalProvider(LocalInk provides ink) {
             slots.forEachIndexed { i, r ->
@@ -197,7 +197,6 @@ fun BoardView(board: Board, state: StandbyState, config: AppConfig, actions: Sta
                     cards, state, config, actions,
                     Modifier.offset(r.x.dp, r.y.dp).size(r.w.dp, r.h.dp),
                     slotId = "${board.id}-$i", look = looks[i], dotsAtStart = r.x + r.w / 2 < w / 2,
-                    options = { j -> board.options["$i:$j"] }, menu = { j -> "apps:${board.id}:$i:$j" },
                     // previews (settings) pass NONE: no arrows there
                     onFace = if (actions === StandbyActions.NONE) null else { j, f -> actions.setCardFace(board.id, i, j, f) },
                     rememberCard = actions !== StandbyActions.NONE,
@@ -221,16 +220,13 @@ fun SlotStack(
     slotId: String = "stack",
     look: CardLook = CardLook.of(config),
     dotsAtStart: Boolean = false,
-    /** Per-card options and settings route by stack index (phone widget). */
-    options: (Int) -> SlotOptions? = { null },
-    menu: (Int) -> String? = { null },
     /** Clock card arrows: card j picked a face (null = no arrows, e.g. settings previews). */
     onFace: ((Int, kr.dot.sb.model.FaceId) -> Unit)? = null,
     /** Start on the card last settled on in this slot and store each settle ([LastCard]); off for settings previews. */
     rememberCard: Boolean = false,
 ) {
     if (cards.size <= 1) {
-        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, options(0), menu(0), onFace = onFace?.let { cb -> { f -> cb(0, f) } }) }
+        cards.firstOrNull()?.let { CardView(it, state, config, actions, modifier, slotId, look, onFace = onFace?.let { cb -> { f -> cb(0, f) } }) }
         return
     }
     val ctx = LocalContext.current
@@ -252,7 +248,7 @@ fun SlotStack(
     val a by animateFloatAsState(if (show) 1f else 0f, tween(300), label = "dots")
     Box(modifier) {
         VerticalPager(pager, Modifier.fillMaxSize()) { p ->
-            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, options(p), menu(p), onFace = onFace?.let { cb -> { f -> cb(p, f) } })
+            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, onFace = onFace?.let { cb -> { f -> cb(p, f) } })
         }
         if (a > 0f) {
             val ink = LocalInk.current

@@ -643,7 +643,7 @@ class StandbyStateHolder(
         val folders = cfg.photoFolders
         memFolders = folders
         val (m, hint) = withContext(Dispatchers.IO) { PhotoIndex.get(ctx, folders).let { s -> PhotoIndex.memory(ctx, s, day) to PhotoIndex.hint(folders, s) } }
-        if (memWanted != true) return // switched off while loading
+        if (memWanted != true || cfg.photoFolders != folders) return // switched off or folders changed while loading
         _state.update { it.copy(memory = m, photoHint = hint) }
         reloadPhotos()
     }

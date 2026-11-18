@@ -34,19 +34,12 @@ object MyClocks {
 
     /** The faces the clock cards of [c] draw now (boards and the widgets page), resolved like the cards resolve them. */
     fun cardFaces(c: AppConfig): Set<FaceId> {
-        val pages = c.boards.map { Triple(it.slots, it.options, it.clockFace) } +
-            Triple(listOf(c.widgetLeft, c.widgetRight), c.widgetOptions, FaceId.DIGITAL) // the widgets page draws as a default Board
-        return pages.flatMap { (slots, options, face) ->
-            slots.flatMapIndexed { s, stack ->
-                stack.withIndex().filter { it.value == CardType.CLOCK }.map { (j, _) ->
-                    ClockRegistry.cardFace(options["$s:$j"]?.face ?: face, c.myClocks)
-                }
-            }
-        }.toSet()
+        val cards = c.widgetLeft + c.widgetRight + c.boards.flatMap { it.slots.flatten() }
+        return if (CardType.CLOCK in cards) setOf(ClockRegistry.cardFace(c.clockCardFace ?: FaceId.DIGITAL, c.myClocks)) else emptySet()
     }
 
-    /** The clocks page: the whole list while rotating, else only `[0]` (clock cards keep the whole list). */
-    fun pages(c: AppConfig): List<FaceId> = ClockRegistry.pages(if (c.rotateClocks) c.myClocks else c.myClocks.take(1))
+    /** The clocks page always follows the whole list. */
+    fun pages(c: AppConfig): List<FaceId> = ClockRegistry.pages(c.myClocks)
 
     /** Page to show in [pages]: [face]'s index, else [current] clamped (the shown clock was removed). */
     fun page(pages: List<FaceId>, face: FaceId?, current: Int): Int =

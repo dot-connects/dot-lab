@@ -47,14 +47,16 @@ class ThemeEditCodecTest {
     /** r14 B1/B4: 글자 크기, 글꼴, 글자 두께 and 카드 색 are gone; an old save reads with them dropped and never writes them back. */
     @Test fun removedSettingsAreReadAsDefaultsAndNotWritten() {
         val json = JSONObject(ConfigCodec.encode(AppConfig())).apply {
+            put("v", 16)
             put("textSize", "LARGE")
             put("themeEdits", JSONObject("""{"DAYPAPER": {"radius": 0.1, "textFont": "PEN", "textWeight": "BOLD"}}"""))
             val boards = getJSONArray("boards")
+            boards.getJSONObject(0).getJSONArray("slots").put(0, org.json.JSONArray("""["APPS"]"""))
             boards.getJSONObject(0).put("options", JSONObject("""{"0:0": {"plate": 4294956875, "apps": ["com.a"]}}"""))
         }.toString()
         val c = ConfigCodec.decode(json)
         assertEquals(mapOf(Theme.DAYPAPER to ThemeEdit(radius = 0.1f)), c.themeEdits)
-        assertEquals(listOf("com.a"), c.boards[0].options["0:0"]?.apps)
+        assertEquals(listOf("com.a"), c.appsCard.apps)
         val out = ConfigCodec.encode(c)
         for (k in listOf("textSize", "textFont", "textWeight", "\"plate\"")) assertFalse(k, out.contains(k))
         assertEquals(c, ConfigCodec.decode(out))

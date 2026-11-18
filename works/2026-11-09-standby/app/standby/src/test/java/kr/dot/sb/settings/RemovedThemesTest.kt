@@ -1,12 +1,8 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AppConfig
-import kr.dot.sb.model.Board
-import kr.dot.sb.model.CardType
 import kr.dot.sb.model.FaceId
-import kr.dot.sb.model.Layout
 import kr.dot.sb.model.MyTheme
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.model.Theme
 import kr.dot.sb.model.ThemeEdit
 import org.json.JSONArray
@@ -100,10 +96,10 @@ class RemovedThemesTest {
     }
 
     @Test fun flipDigitalClocksBecomeTheFlipFace() {
-        val boards = JSONArray().put(ConfigCodecBoards.json(Board("a", "a", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(CardType.CLOCK)),
-            clockFace = FaceId.DIGITAL, options = mapOf("1:0" to SlotOptions(face = FaceId.ANALOG)))))
-            .put(ConfigCodecBoards.json(Board("b", "b", Layout.TWO, listOf(listOf(CardType.CLOCK), listOf(CardType.CLOCK)),
-                clockFace = FaceId.ANALOG, options = mapOf("0:0" to SlotOptions(face = FaceId.DIGITAL)))))
+        val boards = JSONArray("""[
+            {"id":"a","layout":"TWO","slots":[["CLOCK"],["CLOCK"]],"clockFace":"DIGITAL","options":{"1:0":{"face":"ANALOG"}}},
+            {"id":"b","layout":"TWO","slots":[["CLOCK"],["CLOCK"]],"clockFace":"ANALOG","options":{"0:0":{"face":"DIGITAL"}}}
+        ]""")
         val c = saved(11, "FLIP") {
             put("boards", boards)
             put("myClocks", JSONArray(listOf("DIGITAL", "FLIP", "ANALOG")))
@@ -111,10 +107,13 @@ class RemovedThemesTest {
         }
         assertEquals(listOf(FaceId.FLIP, FaceId.ANALOG), c.myClocks)
         assertEquals(FaceId.FLIP, c.boards[0].clockFace)
-        assertEquals(FaceId.ANALOG, c.boards[0].options["1:0"]?.face)
         assertEquals(FaceId.ANALOG, c.boards[1].clockFace)
-        assertEquals(FaceId.FLIP, c.boards[1].options["0:0"]?.face)
-        assertEquals(FaceId.FLIP, c.widgetOptions["0:0"]?.face)
+        assertEquals(FaceId.FLIP, c.clockCardFace)
+        val boardFirst = saved(11, "FLIP") {
+            put("boards", JSONArray().put(boards.getJSONObject(1)))
+            put("widgetLeft", JSONArray()); put("widgetRight", JSONArray())
+        }
+        assertEquals(FaceId.FLIP, boardFirst.clockCardFace)
         assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
     }
 
@@ -127,9 +126,4 @@ class RemovedThemesTest {
         val c = saved(11, "FLIP", edits = """{"FLIP": {"plate": 4280295456}}""")
         assertEquals(mapOf(Theme.IPHONE to ThemeEdit(plate = 0xFF202020)), c.themeEdits)
     }
-}
-
-/** Board JSON as the codec writes it (through a full encode, so the test never re-implements the format). */
-private object ConfigCodecBoards {
-    fun json(b: Board): JSONObject = JSONObject(ConfigCodec.encode(AppConfig(boards = listOf(b)))).getJSONArray("boards").getJSONObject(0)
 }

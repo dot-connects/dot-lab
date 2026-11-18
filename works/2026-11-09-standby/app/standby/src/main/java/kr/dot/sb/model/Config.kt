@@ -73,7 +73,7 @@ enum class AnalogStyle(val ko: String) { ROUND("둥근 판"), RECT("네모 판")
 /** 앱 바로가기: the most apps one card holds. */
 const val MAX_APPS = 8
 
-/** Per-card options keyed by "slotIdx:stackIdx" on a [Board]. */
+/** Global app-card options; face is retained for decoding pre-v17 per-instance options. */
 data class SlotOptions(
     /** 앱 바로가기 card (plan-r14 C1): package names in tap order, at most [MAX_APPS]. */
     val apps: List<String> = emptyList(),
@@ -327,7 +327,7 @@ enum class Layout(val ko: String, val slots: Int) {
 }
 
 enum class CardType(val ko: String) {
-    /** Any of 내 시계: the face is per card ([SlotOptions.face], else the board's [Board.clockFace]); 11-14 merged ANALOG in. */
+    /** Any of 내 시계: every clock card uses [AppConfig.clockCardFace]. */
     CLOCK("시계"), MUSIC("미디어"), TIMER("집중 타이머"), SLEEP("수면 소리"),
     DDAY("D-day"), AGENDA("오늘 일정"), USAGE("Claude·Codex 사용량"), WEATHER("날씨"), CALENDAR("달력"), MEMORIES("추억"),
     /** Launcher shortcuts (plan-r14 C1, replaced the r9 phone widget); the packages live in [SlotOptions.apps]. Boards only. */
@@ -352,7 +352,7 @@ data class Board(
     val accent: Long? = null,
     /** Which clock style the board's clock-like cards use. */
     val clockFace: FaceId = FaceId.DIGITAL,
-    /** [SlotOptions] by "slotIdx:stackIdx"; [kr.dot.sb.settings.BoardOps] keeps the keys aligned with [slots]. */
+    /** Decode-only pre-v17 options by "slotIdx:stackIdx". */
     val options: Map<String, SlotOptions> = emptyMap(),
     /** Off = stays in 페이지 구성 (dimmed) but leaves the pager (r10). */
     val on: Boolean = true,
@@ -404,8 +404,11 @@ data class AppConfig(
     val burnInShift: Boolean = true,
     val widgetLeft: List<CardType> = listOf(CardType.CLOCK, CardType.CALENDAR, CardType.WEATHER),
     val widgetRight: List<CardType> = listOf(CardType.CALENDAR, CardType.WEATHER, CardType.AGENDA),
-    /** The widgets page's per-card options by "side:index" (0 = left, 1 = right), like [Board.options]. */
-    val widgetOptions: Map<String, SlotOptions> = mapOf("0:0" to SlotOptions(face = FaceId.ANALOG)),
+    /** Decode-only pre-v17 options by "side:index". */
+    val widgetOptions: Map<String, SlotOptions> = emptyMap(),
+    val appsCard: SlotOptions = SlotOptions(),
+    /** null keeps the legacy DIGITAL fallback; fresh installs start with the analog card. */
+    val clockCardFace: FaceId? = FaceId.ANALOG,
     /** A ringing alarm shows StandBy's own alarm screen (off = only the clock app's screen). */
     val alarmScreen: Boolean = true,
     /** A ringing alarm lights the fold's inner screen (foldables only). */

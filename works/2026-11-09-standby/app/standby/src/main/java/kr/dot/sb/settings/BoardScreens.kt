@@ -112,7 +112,7 @@ fun PagesScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val start = visible.getOrNull(Pages.start(config))
     val face = kr.dot.sb.ui.clock.ClockRegistry.pages(config.myClocks).first()
     Box(Modifier.fillMaxSize()) {
-        Page("페이지와 카드", back) {
+        Page("페이지", back) {
             Section(null) { item { NavRow("처음 보이는 페이지", { starting = true }, value = start?.let(::pageName)) } }
             Row(Modifier.fillMaxWidth().padding(top = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 T("페이지", 13.sp, 600, SK.muted, Modifier.weight(1f).padding(start = 16.dp))
@@ -287,17 +287,13 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
     androidx.compose.runtime.LaunchedEffect(config) { if (undo != null && ++undoEdits > 1) undo = null }
     val dev = PreviewDevice.FOLD_COVER
     val rects = LayoutGeo.slots(Layout.TWO, dev.w.toFloat(), dev.h.toFloat())
-    /** Edit one side as a board stack: [moved] maps old index -> new (null = gone), options follow (11-14 per-card face). */
-    fun editSide(left: Boolean, moved: (Int) -> Int?, f: (Board) -> Board = { it }, cards: (List<CardType>) -> List<CardType>) = update { c ->
-        val s = if (left) 0 else 1
-        val w = Board("widgets", "", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions)
-        val b = f(BoardOps.editStack(w, s, cards(w.slots[s]), moved))
-        c.copy(widgetLeft = b.slots[0], widgetRight = b.slots[1], widgetOptions = b.options)
+    fun editSide(left: Boolean, cards: (List<CardType>) -> List<CardType>) = update { c ->
+        if (left) c.copy(widgetLeft = cards(c.widgetLeft)) else c.copy(widgetRight = cards(c.widgetRight))
     }
     fun removeAt(left: Boolean, j: Int) {
         val card = (if (left) config.widgetLeft else config.widgetRight).getOrNull(j)
         if (card != null) { undo = "${card.ko} 뺐어요" to config; undoEdits = 0 }
-        editSide(left, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
+        editSide(left) { l -> l.filterIndexed { k, _ -> k != j } }
     }
     val first = Slide(WIDGETS_PAGE) { l -> BoardView(widgetsBoard(config), l.state, config, StandbyActions.NONE, Modifier.fillMaxSize()) }
     Box(Modifier.fillMaxSize()) {
@@ -308,9 +304,8 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
                     cards = cards,
                     onReplace = { j -> pick = left to j },
                     onAdd = { pick = left to null },
-                    onMove = { j, d -> editSide(left, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.swap(j, d) } },
+                    onMove = { j, d -> editSide(left) { it.swap(j, d) } },
                     onRemove = { j -> removeAt(left, j) },
-                    onGear = { j -> nav.push(cardRoute(cards[j])) },
                     footer = if (left) null else "카드가 여러 장이면 위아래로 넘겨 봐요. 맨 위 카드가 먼저 보여요.",
                 )
             }
@@ -327,8 +322,7 @@ fun WidgetsScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit)
                 current = index?.let { stack.getOrNull(it) }, taken = stack.toSet(), onDismiss = { pick = null },
                 onRemove = if (stack.size > 1) { t -> removeAt(left, stack.indexOf(t)) } else null,
                 onPick = { card ->
-                    // a replaced card's options (clock face) stay only when the type is unchanged; a new clock card shows the page's clock
-                    editSide(left, { k -> k.takeIf { it != index || stack[it] == card } }) { l ->
+                    editSide(left) { l ->
                         if (index == null) l + card else l.mapIndexed { k, c -> if (k == index) card else c }
                     }
                     if (index != null) pick = null
@@ -382,7 +376,7 @@ private data class PickTarget(val slot: Int, val index: Int?) // index null = ap
 
 /**
  * One board (mockup SCREENS.edit): the preview is this page with tappable slots (tap = pick a card), then 칸 나누기, the
- * stacks per slot, and 자세히 (이름, 강조 색, 이 페이지의 시계, 복제, 지우기 — 작업 책상 is never deleted).
+ * stacks per slot, and 자세히 (이름, 강조 색, 복제, 지우기 — 작업 책상 is never deleted).
  */
 @Composable
 fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
@@ -403,13 +397,12 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
     val state = remember(config.styles, config.city, config.use24h) { Sample.state(config) }
     val acc = LocalAccent.current
     fun edit(f: (Board) -> Board) = update { BoardOps.replace(it, id, f) }
-    /** [moved]: old stack index -> new one (null = the card left); a widget's options and id follow it (D6). */
-    fun editSlot(slot: Int, moved: (Int) -> Int?, f: (List<CardType>) -> List<CardType>) = edit { b ->
-        BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }), moved)
+    fun editSlot(slot: Int, f: (List<CardType>) -> List<CardType>) = edit { b ->
+        BoardOps.editStack(b, slot, f(b.slots.getOrElse(slot) { emptyList() }))
     }
     fun removeAt(slot: Int, j: Int) {
         board.slots.getOrNull(slot)?.getOrNull(j)?.let { undo = "${it.ko} 뺐어요" to config; undoEdits = 0 }
-        editSlot(slot, { k -> if (k < j) k else if (k == j) null else k - 1 }) { l -> l.filterIndexed { k, _ -> k != j } }
+        editSlot(slot) { l -> l.filterIndexed { k, _ -> k != j } }
     }
     val first = Slide(board.name) { l ->
         BoardView(board, l.state, config, StandbyActions.NONE, Modifier.fillMaxSize())
@@ -461,10 +454,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                     cards = stack,
                     onReplace = { j -> selected = s; pick = PickTarget(s, j) },
                     onAdd = { selected = s; pick = PickTarget(s, null) },
-                    onMove = { j, d -> editSlot(s, { k -> when (k) { j -> j + d; j + d -> j; else -> k } }) { it.moved(j, d) } },
+                    onMove = { j, d -> editSlot(s) { it.moved(j, d) } },
                     onRemove = { j -> removeAt(s, j) },
-                    onSettings = { j -> nav.push(Routes.apps(id, s, j)) },
-                    onGear = { j -> nav.push(cardRoute(stack[j])) },
                 )
             }
             if (board.slots.any { it.size > 1 }) TipLine(Tip.STACK_SWIPE.line)
@@ -483,13 +474,7 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                             if (board.accent != null) ColorPalette(board.accent, { c -> edit { b -> b.copy(accent = c) } }, modifier = Modifier.padding(top = 8.dp))
                         }
                     }
-                    item {
-                        // 내 시계 that draw in a slot; a face that left the list shows as the one the card falls back to
-                        val faces = kr.dot.sb.ui.clock.ClockRegistry.boardPages(config.myClocks)
-                        ControlRow("이 페이지의 시계") {
-                            ChipFlow(faces.map { kr.dot.sb.ui.clock.spec(it).ko }, faces.indexOf(kr.dot.sb.ui.clock.ClockRegistry.cardFace(board.clockFace, config.myClocks)), { i -> edit { b -> b.copy(clockFace = faces[i]) } })
-                        }
-                    }
+
                 }
                 Gap(16.dp)
                 ActionButton("복사", { update { BoardOps.duplicate(it, idx) }; back() }, Modifier.fillMaxWidth(), primary = false)
@@ -516,11 +501,8 @@ fun BoardEditorScreen(id: String, config: AppConfig, update: Update, nav: Nav, e
                 onDismiss = { pick = null },
                 onRemove = if (stack.size > 1) { t -> removeAt(p.slot, stack.indexOf(t)) } else null,
                 onPick = { card ->
-                    val j = p.index ?: stack.size
-                    editSlot(p.slot, { k -> k.takeIf { it != p.index || stack[it] == card } }) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
-                    // a new 앱 바로가기 card opens 앱 고르기 right away and closes this sheet
-                    if (card == CardType.APPS && stack.getOrNull(j) != card) { pick = null; nav.push(Routes.apps(id, p.slot, j)) }
-                    else if (p.index != null) pick = null
+                    editSlot(p.slot) { l -> if (p.index == null) l + card else l.mapIndexed { k, c -> if (k == p.index) card else c } }
+                    if (p.index != null) pick = null
                 },
             )
         }
@@ -549,7 +531,7 @@ private fun LayoutThumb(layout: Layout, on: Boolean, disabled: Boolean, modifier
 
 // ---- stacks and the card picker (shared with the widgets screen) ------------------------------------------------------
 
-/** One slot's stack: rows of cards (tap = swap), a gear for the card's settings, reorder, remove, and an add row. */
+/** One slot's stack: rows of cards (tap = swap), reorder, remove, and an add row. */
 @Composable
 fun CardStackSection(
     title: String,
@@ -560,22 +542,13 @@ fun CardStackSection(
     onMove: (Int, Int) -> Unit,
     onRemove: (Int) -> Unit,
     footer: String? = null,
-    /** 앱 바로가기 rows get a 앱 고르기 button (boards only). */
-    onSettings: ((Int) -> Unit)? = null,
-    /** plan-r15 F5: a gear on cards with settings ([hasGear]) opens them. */
-    onGear: ((Int) -> Unit)? = null,
+
 ) {
     Section(title, footer) {
         cards.forEachIndexed { j, card ->
             item {
                 Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable { onReplace(j) }.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                     T(card.ko, 16.sp, 500, SK.text, Modifier.weight(1f), maxLines = 1)
-                    if (card == CardType.APPS && onSettings != null) {
-                        Box(Modifier.heightIn(min = 48.dp).clickable { onSettings(j) }.padding(horizontal = 12.dp), Alignment.Center) { T("앱 고르기", 14.sp, 600, LocalAccent.current) }
-                    }
-                    if (onGear != null && hasGear(card)) {
-                        Box(Modifier.size(48.dp).clickable(onClickLabel = "${card.ko} 설정 열기") { onGear(j) }, Alignment.Center) { Icon(Ic.GEAR, LocalAccent.current, 22.dp) }
-                    }
                     if (cards.size > 1) {
                         Box(Modifier.size(48.dp).clickable(enabled = j > 0) { onMove(j, -1) }, Alignment.Center) { Icon(Ic.UP, if (j > 0) SK.muted else SK.line) }
                         Box(Modifier.size(48.dp).clickable(enabled = j < cards.lastIndex) { onMove(j, 1) }, Alignment.Center) { Icon(Ic.DOWN, if (j < cards.lastIndex) SK.muted else SK.line) }
@@ -612,7 +585,7 @@ fun CardPickerSheet(
     current: CardType?,
     taken: Set<CardType>,
     onDismiss: () -> Unit,
-    /** 앱 바로가기 is offered on boards only, never on the widgets page (its options live on boards). */
+    /** 앱 바로가기 is offered on boards only, never on the widgets page (matching the existing picker). */
     apps: Boolean = false,
     onRemove: ((CardType) -> Unit)? = null,
     onPick: (CardType) -> Unit,
@@ -658,26 +631,19 @@ fun CardPickerSheet(
 
 // ---- 앱 고르기 (plan-r14 C1) ------------------------------------------------------------------------------------------
 
-/** Route "apps:<board>:<slot>:<index>"; null when that card is no longer 앱 바로가기 (the caller shows Home). */
+/** Global app-card settings, shared by every page. */
 @Composable
-fun AppPickerScreen(route: String, config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit): Unit? {
-    val parts = route.split(':')
-    val board = config.boards.firstOrNull { it.id == parts.getOrNull(1) } ?: return null
-    val slot = parts.getOrNull(2)?.toIntOrNull() ?: return null
-    val j = parts.getOrNull(3)?.toIntOrNull() ?: return null
-    if (board.slots.getOrNull(slot)?.getOrNull(j) != CardType.APPS) return null
-    val key = "$slot:$j"
-    val opts = board.options[key] ?: SlotOptions()
+fun AppPickerScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
+    val opts = config.appsCard
     val all by androidx.compose.runtime.produceState<List<kr.dot.sb.ui.cards.AppEntry>?>(null, opts.appSource) {
         if (opts.appSource == AppSource.PICKED) value = kotlinx.coroutines.withContext(env.io) { env.launcherApps() }
     }
     fun edit(f: (SlotOptions) -> SlotOptions) =
-        update { c -> BoardOps.replace(c, board.id) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
+        update { c -> c.copy(appsCard = f(c.appsCard)) }
     val top: @Composable () -> Unit = { AppsLook(opts, config, ::edit) }
     if (opts.appSource == AppSource.PICKED) {
         AppPicker(all, opts.apps, back, top = top) { picked -> edit { it.copy(apps = picked) } }
-    } else Page("앱 고르기", back) { top() }
-    return Unit
+    } else Page("앱 바로가기", back) { top() }
 }
 
 /** Source, count and icon colour above a live preview of this app card. */
@@ -707,7 +673,7 @@ private fun AppsLook(opts: SlotOptions, config: AppConfig, edit: ((SlotOptions) 
         }
         Spacer(Modifier.height(12.dp))
         PreviewFrame(376, 238, Modifier.fillMaxWidth(), radius = 12.dp) {
-            BoardView(Board("apps", "", Layout.ONE, listOf(listOf(CardType.APPS)), options = mapOf("0:0" to opts)), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
+            BoardView(Board("apps", "", Layout.ONE, listOf(listOf(CardType.APPS))), state, config, StandbyActions.NONE, Modifier.fillMaxSize())
         }
     }
 }
@@ -719,7 +685,7 @@ fun AppPicker(all: List<kr.dot.sb.ui.cards.AppEntry>?, picked: List<String>, bac
     var full by remember { mutableStateOf(false) }
     val acc = LocalAccent.current
     // 11-16 (r14 picks 5-A): the picked apps in tap order, pinned above the search; a tap there unpicks
-    Page("앱 고르기", back, sticky = { PickedStrip(all, picked, full, acc) { p -> full = false; onPicked(picked - p) } }, after = {
+    Page("앱 바로가기", back, sticky = { PickedStrip(all, picked, full, acc) { p -> full = false; onPicked(picked - p) } }, after = {
         Field(q, { q = it }, "앱 이름")
         Spacer(Modifier.height(14.dp))
         val list = all?.filter { q.isBlank() || it.label.contains(q.trim(), ignoreCase = true) }

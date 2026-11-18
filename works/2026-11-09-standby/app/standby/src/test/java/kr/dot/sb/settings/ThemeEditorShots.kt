@@ -34,7 +34,7 @@ import org.robolectric.annotation.GraphicsMode
 import java.time.LocalDateTime
 
 /**
- * plan-r11 A7 / r13 A4 → standby/build/shots/theme-editor/: 사용자 지정 (3 tabs, phone and landscape, guard); StandBy with an edited 무드등
+ * standby/build/shots/theme-editor/: three editor sections, phone and landscape, guard; StandBy with an edited mood light
  * (day, sunset, night = the unedited night, flow at 09:30); a board with one card's own plate.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -51,10 +51,9 @@ class ThemeEditorShots : SettingsShotKit() {
     private fun editor(name: String, c: AppConfig, q: String = tallest, screen: Boolean = false, after: androidx.compose.ui.test.junit4.ComposeContentTestRule.() -> Unit = {}) =
         snap("../theme-editor/$name", q, c, route = Routes.THEME_CUSTOM, screen = screen, after = after)
 
-    /** plan-r15 F9: the tabs live under 더 꾸미기 (open from the start on a two-pane page). */
-    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.tab(name: String) {
-        if (onAllNodesWithText(name).fetchSemanticsNodes().isEmpty()) { onNodeWithText("더 꾸미기").performScrollTo().performClick(); waitForIdle() }
-        onNodeWithText(name).performScrollTo().performClick()
+    /** Scroll through the group's controls so the capture includes more than its heading. */
+    private fun androidx.compose.ui.test.junit4.ComposeContentTestRule.group(name: String) {
+        onNodeWithText(name).performScrollTo()
     }
 
     /** Scrolls the rows by [px]: the page's first vertical scroller, or on a two-pane page ([pane]) the last (the right pane). */
@@ -70,20 +69,21 @@ class ThemeEditorShots : SettingsShotKit() {
         .withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood))).copy(customFrom = "보라 무드")
 
     @Test fun editorMoodlight() = editor("editor-moodlight", moodCfg(mood.copy(flow = listOf(0xFFFF9C56, 0xFFAA5A2E, 0xFFAA88FE))).withMyThemes(listOf(MyTheme("보라 무드", Theme.MOODLIGHT, mood)))) {
-        tab("배경")
+        group("배경 종류")
         onAllNodesWithText("낮").let { it[it.fetchSemanticsNodes().size - 1] }.performScrollTo().performClick()
     }
-    @Test fun customCard() = editor("custom-card", custom) { tab("카드") }
-    @Test fun customText() = editor("custom-text", custom) { tab("글자") }
+    @Test fun customBg() = editor("custom-bg", custom) { group("배경 질감") }
+    @Test fun customCard() = editor("custom-card", custom) { group("카드 질감") }
+    @Test fun customText() = editor("custom-text", custom) { group("글자 빛 번짐") }
     /** 글자 on 종이 (명조 stays the theme's font). */
-    @Test fun customTextPaper() = editor("custom-text-paper", AppConfig(theme = Theme.DAYPAPER)) { tab("글자") }
+    @Test fun customTextPaper() = editor("custom-text-paper", AppConfig(theme = Theme.DAYPAPER)) { group("글자 빛 번짐") }
     @Test fun customGradient() = editor("custom-gradient", AppConfig().withThemeEdit(Theme.IPHONE, ThemeEdit(bgKind = kr.dot.sb.model.BgKind.GRADIENT)))
-    /** Phone, scrolled past the preview: the mini on top, the tab row pinned under it. */
-    @Test fun customScrolled() = editor("custom-scrolled", custom, phone) { tab("카드"); scrollRows(1400f) }
-    @Test fun customLand780() = editor("custom-land780", custom, land780) { tab("카드") }
-    @Test fun customLand780Scrolled() = editor("custom-land780-scrolled", custom, land780) { tab("카드"); scrollRows(900f, pane = true) }
+    /** Phone, scrolled past the preview: the mini stays on top of the continuous controls. */
+    @Test fun customScrolled() = editor("custom-scrolled", custom, phone) { group("카드 모양"); scrollRows(1400f) }
+    @Test fun customLand780() = editor("custom-land780", custom, land780) { group("카드 모양") }
+    @Test fun customLand780Scrolled() = editor("custom-land780-scrolled", custom, land780) { group("카드 모양"); scrollRows(900f, pane = true) }
     @Test fun customLand568() = editor("custom-land568", custom, land568)
-    /** 568 x 320: no mini (too short), only the tab row pinned. */
+    /** 568 x 320: no mini because the screen is too short. */
     @Test fun customLand568Scrolled() = editor("custom-land568-scrolled", custom, land568) { scrollRows(900f) }
     /** A start chip while the look is saved nowhere: the guard. */
     @Test fun customGuard() = editor("custom-guard", custom, phone, screen = true) { onNodeWithText("네온").performScrollTo().performClick() }

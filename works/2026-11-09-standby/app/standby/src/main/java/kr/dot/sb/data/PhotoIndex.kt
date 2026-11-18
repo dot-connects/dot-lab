@@ -166,19 +166,20 @@ object PhotoIndex {
         return out
     }
 
-    /**
-     * A photo of today's month-day 1..15 years ago, or null. Only these few candidates read EXIF DateTimeOriginal: a
-     * photo whose EXIF names another day is skipped; EXIF gives the year when present.
-     */
+    /** Exact anniversary, nearest day within a week, then any decodable indexed photo. */
     fun memory(ctx: Context, s: Snap, today: LocalDate): Photo? {
         val zone = ZoneId.systemDefault()
-        val md = MonthDay.from(today)
-        fun inRange(d: LocalDate) = MonthDay.from(d) == md && (today.year - d.year) in 1..15
-        val cand = s.byDay[md].orEmpty().filter { inRange(Instant.ofEpochMilli(it.ms).atZone(zone).toLocalDate()) }
-        for (i in cand.shuffled().take(10)) {
-            val day = exifDay(ctx, uri(i)) ?: Instant.ofEpochMilli(i.ms).atZone(zone).toLocalDate()
-            if (!inRange(day)) continue
-            decode(ctx, s, i, day, today.year - day.year)?.let { return it }
+        val items = s.byDay.values.flatten()
+        fun date(i: Item) = Instant.ofEpochMilli(i.ms).atZone(zone).toLocalDate()
+        for (kind in MemoryKind.entries) {
+            val ranked = MemorySelection.candidates(items, today, kind, date = ::date)
+            val candidates = if (kind == MemoryKind.ANY) ranked else ranked.take(10)
+            for (i in candidates) {
+                val day = if (kind == MemoryKind.ANY) date(i) else exifDay(ctx, uri(i)) ?: date(i)
+                if (kind != MemoryKind.ANY && MemorySelection.kind(day, today) != kind) continue
+                val years = if (kind == MemoryKind.ANY) null else today.year - day.year
+                decode(ctx, s, i, day, years)?.let { return it.copy(memoryKind = kind) }
+            }
         }
         return null
     }

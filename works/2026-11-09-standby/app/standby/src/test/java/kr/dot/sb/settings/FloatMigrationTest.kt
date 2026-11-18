@@ -4,7 +4,6 @@ import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.ClockStyle
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.FontId
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.model.Theme
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -18,6 +17,10 @@ class FloatMigrationTest {
     /** [c] as a v11 save (before FLOAT left), optionally under a removed theme name. */
     private fun v11(c: AppConfig, theme: String? = null): String = JSONObject(ConfigCodec.encode(c)).apply {
         put("v", 11)
+        remove("appsCard"); remove("clockCardFace")
+        // The current encoder no longer writes the per-card fields a v11 save contained.
+        put("widgetOptions", JSONObject("""{"0:0":{"face":"FLOAT"}}"""))
+        getJSONArray("boards").getJSONObject(1).put("options", JSONObject("""{"0:0":{"face":"FLOAT"}}"""))
         theme?.let { put("theme", it) }
     }.toString()
 
@@ -28,11 +31,11 @@ class FloatMigrationTest {
             boards = d.boards.mapIndexed { i, b ->
                 when (i) {
                     0 -> b.copy(clockFace = FaceId.FLOAT)
-                    1 -> b.copy(clockFace = FaceId.ANALOG, options = mapOf("0:0" to SlotOptions(face = FaceId.FLOAT)))
+                    1 -> b.copy(clockFace = FaceId.ANALOG)
                     else -> b
                 }
             },
-            widgetOptions = mapOf("0:0" to SlotOptions(face = FaceId.FLOAT)),
+            clockCardFace = FaceId.FLOAT,
         )
     }
 
@@ -42,8 +45,14 @@ class FloatMigrationTest {
         assertEquals(float.copy(accentMiddle = true, overlap = true), c.styles[FaceId.DIGITAL])
         assertNull(c.styles[FaceId.FLOAT])
         assertEquals(FaceId.DIGITAL, c.boards[0].clockFace)
-        assertEquals(FaceId.DIGITAL, c.boards[1].options["0:0"]!!.face)
-        assertEquals(FaceId.DIGITAL, c.widgetOptions["0:0"]!!.face)
+        assertEquals(FaceId.DIGITAL, c.clockCardFace)
+        assertEquals(FaceId.ANALOG, c.boards[1].clockFace)
+        val boardFirst = JSONObject(v11(saved(listOf(FaceId.ANALOG, FaceId.FLOAT), mapOf(FaceId.FLOAT to float)))).apply {
+            put("widgetLeft", org.json.JSONArray())
+            put("widgetRight", org.json.JSONArray())
+            getJSONArray("boards").remove(0)
+        }
+        assertEquals(FaceId.DIGITAL, ConfigCodec.decode(boardFirst.toString()).clockCardFace)
     }
 
     @Test fun floatStyleIsDroppedWhenTheUserHadADigitalClock() {

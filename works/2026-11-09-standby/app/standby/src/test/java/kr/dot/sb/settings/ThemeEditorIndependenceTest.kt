@@ -13,6 +13,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import kr.dot.sb.model.FaceId
 import kr.dot.sb.model.Theme
+import kr.dot.sb.model.ThemeEdit
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Test
@@ -27,6 +28,11 @@ import org.robolectric.annotation.GraphicsMode
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
 class ThemeEditorIndependenceTest : SettingsShotKit() {
+    // The alpha range identifies this slider even when background sliders precede it.
+    private fun plateAlpha() = rule.onNode(SemanticsMatcher("card alpha slider") {
+        it.config.getOrElseNullable(SemanticsProperties.ProgressBarRangeInfo) { null }?.range?.start == ThemeEdit.PLATE_ALPHA.start
+    })
+
     @Test fun alphaSurvivesAccentPick() {
         RuntimeEnvironment.setQualifiers(tallest)
         var cfg = AppConfig(theme = Theme.IPHONE)
@@ -37,20 +43,14 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
             }
         }
         rule.waitForIdle()
-        // the first slider of the 카드 tab is 카드 진하기 (모서리 comes after it); the tabs are under 더 꾸미기 (F9)
-        rule.onNodeWithText("더 꾸미기").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("카드").performScrollTo().performClick()
-        rule.waitForIdle()
-        val sliders = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
-        sliders[0].performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.4f) }
+        plateAlpha().performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.4f) }
         rule.waitForIdle()
         val alpha = cfg.themeEdits[Theme.IPHONE]?.plateAlpha
         assertNotNull("slider saved no alpha", alpha)
-        rule.onNodeWithText("글자").performScrollTo().performClick()
+        rule.onNodeWithText("글자 빛 번짐").performScrollTo()
         rule.waitForIdle()
         // a swatch of 강조 색: the clickable dots right under its title
-        val title = rule.onNodeWithText("강조 색").performScrollTo().fetchSemanticsNode().boundsInRoot
+        val title = rule.onNodeWithText("강조 색").fetchSemanticsNode().boundsInRoot
         val dots = rule.onAllNodes(hasClickAction()).fetchSemanticsNodes()
             .filter { it.boundsInRoot.top > title.bottom && it.boundsInRoot.top < title.bottom + 200f && it.boundsInRoot.width < 200f }
             .sortedBy { it.boundsInRoot.left }
@@ -71,16 +71,13 @@ class ThemeEditorIndependenceTest : SettingsShotKit() {
             }
         }
         rule.waitForIdle()
-        // the 카드 rows are composed under IPHONE first, then the chip switches the theme under them
-        rule.onNodeWithText("더 꾸미기").performScrollTo().performClick()
-        rule.waitForIdle()
-        rule.onNodeWithText("카드").performScrollTo().performClick()
+        // Card rows are composed under IPHONE first, then the chip switches the theme under them.
+        plateAlpha().performScrollTo()
         rule.waitForIdle()
         rule.onNodeWithText(Theme.MOODLIGHT.ko).performScrollTo().performClick()
         rule.waitForIdle()
         assertEquals(Theme.MOODLIGHT, cfg.theme)
-        val sliders = rule.onAllNodes(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
-        sliders[0].performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.13f) }
+        plateAlpha().performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.SetProgress) { it(0.13f) }
         rule.waitForIdle()
         assertNotNull("the slider saved nothing on the new theme", cfg.themeEdits[Theme.MOODLIGHT])
         assertEquals(setOf(Theme.MOODLIGHT), cfg.themeEdits.keys)

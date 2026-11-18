@@ -68,6 +68,16 @@ class ConfigCodecTest {
         assertEquals(AppConfig(), ConfigCodec.decode(ConfigCodec.encode(AppConfig())))
     }
 
+    @Test fun storedRotationFlagIsIgnoredWithoutChangingOtherSettings() {
+        val c = changed().copy(rotateClocks = false, clockCardFace = FaceId.DIGITAL)
+        val encoded = ConfigCodec.encode(c)
+        assertFalse(JSONObject(encoded).getBoolean("rotateClocks"))
+        for (version in listOf(14, 15, ConfigCodec.VERSION)) {
+            val stored = JSONObject(encoded).put("v", version).toString()
+            assertEquals(c.copy(rotateClocks = true), ConfigCodec.decode(stored))
+        }
+    }
+
     @Test fun dayBrightnessNullMeansAutoAndSurvives() {
         assertEquals(null, ConfigCodec.decode(ConfigCodec.encode(AppConfig(dayBrightness = null))).dayBrightness)
         assertEquals(0.35f, ConfigCodec.decode(ConfigCodec.encode(AppConfig(dayBrightness = 0.35f))).dayBrightness)
@@ -186,28 +196,13 @@ class ConfigCodecTest {
         assertEquals(AppConfig().clockStyle(FaceId.DIGITAL), c.copy(styles = c.styles - FaceId.DIGITAL).clockStyle(FaceId.DIGITAL))
     }
 
-    @Test fun slotOptionsRoundTripAndFollowTheirCard() {
-        val b = Board("a", "a", Layout.TWO, listOf(listOf(CardType.CLOCK, CardType.WEATHER), listOf(CardType.MUSIC)),
-            options = mapOf("0:1" to SlotOptions(apps = listOf("com.a", "com.b")), "1:0" to SlotOptions(face = FaceId.FLIP)))
-        val c = AppConfig(boards = listOf(b))
-        assertEquals(c, ConfigCodec.decode(ConfigCodec.encode(c)))
-        // remove the first card of stack 0: the option moves from 0:1 to 0:0
-        val moved = BoardOps.editStack(b, 0, listOf(CardType.WEATHER)) { j -> if (j == 0) null else j - 1 }
-        assertEquals(setOf("0:0", "1:0"), moved.options.keys)
-        // layout shrinks to one slot: slot 1's options go
-        val one = BoardOps.withLayout(b, Layout.ONE)
-        assertEquals(setOf("0:1"), one.options.keys)
-        // a duplicated board keeps its apps
-        assertEquals(b.options, BoardOps.duplicate(c, 0).boards[1].options)
-    }
-
     /** r14 C1: a saved 폰 위젯 card reads as an empty 앱 바로가기 and is written back without the widget keys. */
     @Test fun oldWidgetSlotReadsAsEmptyApps() {
         val json = """{"boards":[{"id":"a","layout":"TWO","slots":[["WIDGET"],["CLOCK"]],
             |"options":{"0:0":{"widgetId":7,"opacity":0.5,"widgetMode":"DARK","radiusDp":8,"hideAtNight":true}}}]}""".trimMargin()
-        val b = ConfigCodec.decode(json).boards[0]
-        assertEquals(listOf(CardType.APPS), b.slots[0])
-        assertEquals(emptyList<String>(), b.options["0:0"]?.apps)
+        val c = ConfigCodec.decode(json)
+        assertEquals(listOf(CardType.APPS), c.boards[0].slots[0])
+        assertEquals(emptyList<String>(), c.appsCard.apps)
         val out = ConfigCodec.encode(ConfigCodec.decode(json))
         for (k in listOf("widgetId", "opacity", "widgetMode", "radiusDp", "hideAtNight", "\"WIDGET\"")) assertFalse(k, out.contains(k))
         assertEquals(ConfigCodec.decode(json), ConfigCodec.decode(out))
@@ -218,28 +213,28 @@ class ConfigCodecTest {
         val board = Board("a", "a", Layout.ONE, listOf(listOf(CardType.APPS)))
         for (source in AppSource.entries) for (count in listOf(4, 6, 8)) {
             val opts = SlotOptions(apps = picked, appSource = source, appCount = count)
-            val config = AppConfig(boards = listOf(board.copy(options = mapOf("0:0" to opts))))
+            val config = AppConfig(boards = listOf(board), appsCard = opts)
             val json = ConfigCodec.encode(config)
             assertEquals(config, ConfigCodec.decode(json))
-            val stored = JSONObject(json).getJSONArray("boards").getJSONObject(0).getJSONObject("options").getJSONObject("0:0")
+            val stored = JSONObject(json).getJSONObject("appsCard")
             assertEquals(source != AppSource.PICKED, stored.has("appSource"))
             assertEquals(count != 4, stored.has("appCount"))
         }
         val old = """{"boards":[{"id":"a","layout":"ONE","slots":[["APPS"]],"options":{"0:0":{"apps":["com.a","com.b"]}}}]}"""
-        assertEquals(SlotOptions(apps = picked), ConfigCodec.decode(old).boards[0].options["0:0"])
+        assertEquals(SlotOptions(apps = picked), ConfigCodec.decode(old).appsCard)
         for (bad in listOf(-1, 0, 5, 7, 9, 4.5, 6.5, "invalid", JSONObject.NULL)) {
             val json = JSONObject(old).apply {
                 getJSONArray("boards").getJSONObject(0).getJSONObject("options").getJSONObject("0:0")
                     .put("appSource", "RECENT").put("appCount", bad)
             }
-            assertEquals(SlotOptions(apps = picked, appSource = AppSource.RECENT, appCount = 4), ConfigCodec.decode(json.toString()).boards[0].options["0:0"])
+            assertEquals(SlotOptions(apps = picked, appSource = AppSource.RECENT, appCount = 4), ConfigCodec.decode(json.toString()).appsCard)
         }
     }
 
     @Test fun appsKeepTheirOrderAndCap() {
         val many = (1..10).map { "com.app$it" }
-        val c = AppConfig(boards = listOf(Board("a", "a", Layout.ONE, listOf(listOf(CardType.APPS)), options = mapOf("0:0" to SlotOptions(apps = many.reversed())))))
-        assertEquals(many.reversed().take(8), ConfigCodec.decode(ConfigCodec.encode(c)).boards[0].options["0:0"]?.apps)
+        val c = AppConfig(appsCard = SlotOptions(apps = many.reversed()))
+        assertEquals(many.reversed().take(8), ConfigCodec.decode(ConfigCodec.encode(c)).appsCard.apps)
     }
 
     // ---- r10 (plan-r10 Task 2)

@@ -208,11 +208,17 @@ internal fun ClocksPage(
 private fun ColorSheet(face: FaceId, row: StyleRow, style: ClockStyle, ink: Ink, s: Dp, width: Dp, onPick: (ClockStyle) -> Unit, onClose: () -> Unit) {
     val pad = max(16.dp, s * 0.05f)
     val d = max(30.dp, min(46.dp, s * 0.085f))
+    // operator 2026-11-18: 되돌리기 puts back the style this sheet opened with
+    val opened = remember(face) { style }
     Column(
         Modifier.width(width).clip(RoundedCornerShape(topStart = pad * 1.4f, topEnd = pad * 1.4f)).background(ink.ink3)
             .tap {}.padding(top = pad * 0.9f, bottom = pad * 1.3f),
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = pad)) {
+            if (style != opened) Box(
+                Modifier.align(Alignment.CenterStart).clip(RoundedCornerShape(50)).background(ink.ink4).tap { onPick(opened) }
+                    .padding(horizontal = d * 0.4f, vertical = d * 0.18f),
+            ) { Txt("되돌리기", max(14.dp, s * 0.035f), ink.ink, weight = 600, family = LocalTheme.current.words(600)) }
             Txt("색", max(20.dp, s * 0.05f), ink.ink, Modifier.align(Alignment.Center), weight = 700, family = LocalTheme.current.words(700))
             Box(
                 Modifier.align(Alignment.CenterEnd).size(d * 0.8f).clip(CircleShape).background(ink.ink4).tap(onClose),

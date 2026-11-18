@@ -117,15 +117,15 @@ internal fun Overlays(
 }
 
 /**
- * plan-r15 D2: how far down the banner or the live pill reaches (0 dp = neither shows over the pages). On a screen
- * that is not tall the root shrinks the pages under this band, so neither covers the clock digits.
+ * plan-r15 D2: how far down the live pill reaches (0 dp = none over the pages). On a screen that is not tall the root
+ * shrinks the pages under this band, so it does not cover the clock digits. The notification banner only floats on top.
  */
 @Composable
 internal fun overlayBand(state: StandbyState, config: AppConfig, layer: Layer, editing: Boolean, w: Dp, h: Dp): Dp {
     if (layer != Layer.NONE || editing) return 0.dp
     val s = min(w, h)
     return when {
-        config.showNotifications && state.notification != null -> screenPadding(w, h, Grid.margin(s) * 0.5f).calculateTopPadding() + BANNER_H
+        // operator 2026-11-18: a notification banner floats over the page; the page keeps its size
         state.live != null -> {
             val t = max(18.dp, s * 0.05f)
             max(h * 0.03f, screenPadding(w, h).calculateTopPadding() - t * 1.2f) + t * 2.2f

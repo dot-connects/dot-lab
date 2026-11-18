@@ -22,6 +22,22 @@ import java.time.LocalDate
  * style equal to what r8 shipped as the default is an untouched clock and is dropped on read.
  */
 object Migrations {
+    /** v17: widgets left, widgets right, then boards, slots and stacks in their stored order. */
+    fun globalCards(c: AppConfig): AppConfig {
+        val pages = listOf(Triple(listOf(c.widgetLeft, c.widgetRight), c.widgetOptions, FaceId.DIGITAL)) +
+            c.boards.map { Triple(it.slots, it.options, it.clockFace) }
+        val cards = pages.flatMap { (slots, options, boardFace) ->
+            slots.flatMapIndexed { s, stack -> stack.mapIndexed { j, type ->
+                val opt = options["$s:$j"] ?: kr.dot.sb.model.SlotOptions()
+                type to if (type == kr.dot.sb.model.CardType.CLOCK) opt.copy(face = opt.face ?: boardFace) else opt
+            } }
+        }
+        return c.copy(
+            appsCard = cards.firstOrNull { it.first == kr.dot.sb.model.CardType.APPS }?.second?.copy(face = null) ?: kr.dot.sb.model.SlotOptions(),
+            clockCardFace = cards.firstOrNull { it.first == kr.dot.sb.model.CardType.CLOCK }?.second?.face,
+        )
+    }
+
     /** The clocks page of r9 and older: a save without `myClocks` keeps these (plan-r10 "upgrade keeps the user's clocks"). */
     val OLD_CLOCKS = listOf(FaceId.DIGITAL, FaceId.ANALOG, FaceId.WORLD, FaceId.SOLAR, FaceId.FLOAT)
 
@@ -86,6 +102,7 @@ object Migrations {
             myClocks = c.myClocks.map { f(it)!! }.distinct(),
             boards = c.boards.map { b -> val face = f(b.clockFace)!!; b.copy(clockFace = face, options = opts(b.options, face)) },
             widgetOptions = opts(c.widgetOptions, null),
+            clockCardFace = f(c.clockCardFace),
         )
     }
 

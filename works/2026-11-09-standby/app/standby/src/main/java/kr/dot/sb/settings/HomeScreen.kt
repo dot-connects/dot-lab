@@ -53,7 +53,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.foundation.gestures.detectTapGestures
 
 /** The fixed first three pages (spec §1c) plus user boards, as the editor and the carousel list them. */
-internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "기본 페이지", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions))
+internal fun widgetsBoard(c: AppConfig) = BoardOps.fit(Board(BoardOps.WIDGETS, "기본 페이지", Layout.TWO, listOf(c.widgetLeft, c.widgetRight)))
 
 /** plan-r15 B2: the privacy policy, published from the dot-lab repo (GitHub Pages). */
 internal const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-09-standby/page/privacy.html"
@@ -76,11 +76,11 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 val look = (StripPick.of(config) as? Look.Mine)?.my?.name ?: if (StripPick.of(config) == StripPick.Custom) "직접 만든 테마" else config.theme.ko
                 NavRow("테마", { nav.push(Routes.THEME) }, value = look, lead = { Icon(Ic.THEME, LocalAccent.current, 22.dp) })
             }
-            item { NavRow("페이지와 카드", { nav.push(Routes.PAGES) }, value = "${Pages.visible(config).size}개", lead = { Icon(Ic.PAGES, LocalAccent.current, 22.dp) }) }
+            item { NavRow("페이지", { nav.push(Routes.PAGES) }, value = "${Pages.visible(config).size}개", lead = { Icon(Ic.PAGES, LocalAccent.current, 22.dp) }) }
             item {
-                val off = Pages.all(config).none { it.index == 1 && Pages.isOn(config, it) }
-                val badge = if (!off && config.photoFolders.isEmpty()) need else null
-                NavRow("사진", { nav.push(Routes.PHOTOS) }, value = if (badge != null) null else if (off) "끔" else "폴더 ${config.photoFolders.size}개", badge = badge, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.PHOTO) })
+                // operator 2026-11-18: 사진 (the folders) moved into 카드 › 추억; its "설정 필요" shows on 카드
+                val used = kr.dot.sb.data.Needs.photos(config) || kr.dot.sb.data.Needs.memory(config)
+                NavRow("카드", { nav.push(Routes.CARD_LIST) }, badge = if (used && config.photoFolders.isEmpty()) need else null, lead = { Icon(Ic.GEAR, LocalAccent.current, 22.dp) })
             }
             item { NavRow("밤 화면", { nav.push(Routes.NIGHT) }, value = nightValue(config), lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.MOON) }) }
             item {
@@ -98,7 +98,14 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
                 val fresh = Tip.entries.count { it.name !in config.tipsSeen }
                 NavRow("팁", { nav.push(Routes.TIPS) }, value = if (fresh > 0) "새 팁 ${fresh}개" else null, lead = { Icon(Ic.TIP, LocalAccent.current, 22.dp) })
             }
-            item { NavRow("정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }, lead = { Icon(Ic.INFO, LocalAccent.current, 22.dp) }) }
+            // operator 2026-11-18: the version, plus "권한 n개 필요" when a permission still in use is missing
+            item {
+                val need = Perms.forConfig(config).count { env.granted[it] != true }
+                NavRow(
+                    "정보", { nav.push(Routes.ABOUT) }, value = env.versionName.ifEmpty { null }, badge = if (need > 0) "권한 ${need}개 필요" else null,
+                    lead = { Icon(Ic.INFO, LocalAccent.current, 22.dp) },
+                )
+            }
         }
     }
 }

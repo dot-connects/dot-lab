@@ -65,8 +65,8 @@ import java.time.LocalTime
 import kotlin.random.Random
 
 /*
- * r13 사용자 지정 (plan-r13 A4): one universal list of controls, each tagged with its tab (배경 · 카드 · 글자); the open
- * tab filters it and [ThemeEditor.visible] hides the rows that do nothing for the drawn look. Every write goes through
+ * One universal list of controls, grouped into background, card and text sections.
+ * [ThemeEditor.visible] hides the rows that do nothing for the drawn look. Every write goes through
  * AppConfig.withThemeEdit; colours and sliders preview a screen-local draft and write once on release.
  */
 
@@ -128,16 +128,13 @@ object ThemeEditor {
     val TEXTURES = listOf(Texture.NONE, Texture.PAPER, Texture.GRAIN, Texture.LINEN, Texture.METAL, Texture.FROST)
     val TEXTURE_KO = listOf("없음", "종이결", "모래알", "린넨", "금속결", "뿌연 유리")
 
-    /** plan-r15 F9: the basic view's rows (배경 색 · 카드 모양 · 글자 색); everything else is under 더 꾸미기. */
-    val BASIC = setOf(EditField.BG, EditField.GRAD_TOP, EditField.GRAD_MID, EditField.GRAD_BOTTOM, EditField.PLATE_STYLE, EditField.INK)
-
     internal fun Color.long(): Long = toArgb().toLong() and 0xFFFFFFFFL
     private fun opaque(c: Color) = c.copy(alpha = 1f).long()
 
     /** The theme's own colour first, then [rest] (a row with no edit shows the theme's colour selected). */
     private fun with(own: Long, rest: List<Long>) = (listOf(own) + rest).distinct()
 
-    /** Every row of the editor, in tab order (plan-r13 A4 list); swatches start from [theme]'s own colours. */
+    /** Every row of the editor, in section order; swatches start from [theme]'s own colours. */
     fun controls(theme: Theme): List<Control> {
         val tk = Themes.of(theme).tokens
         val sw = ClockStyle.SWATCHES
@@ -401,7 +398,7 @@ private val FLOW_AT = listOf(7 * 60, 13 * 60, 19 * 60)
 
 /**
  * 사용자 지정 (plan-r13 A4, mockup custom-theme.html layout B): preview, "어디서 시작할까요" chips, [색 조합 바꾸기]
- * [이전 조합] [저장], then the tabs 배경 · 카드 · 글자 (sticky) with the contrast warnings under them and the tab's rows.
+ * [이전 조합] [저장], then contrast warnings and the background, card and text sections.
  * r14 B5 고치기 mode ([editing] = a 내 테마 name, mockup 4-A): "{name} 고치기", [되돌리기] [다른 이름으로] [저장] (overwrites it)
  * and [이름 바꾸기] [지우기] instead of the start chips and the shuffle row.
  */
@@ -414,7 +411,6 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
     var draft by remember(theme, saved) { mutableStateOf<ThemeEdit?>(null) }
     // the 아침/낮/저녁 preview chip (minute of the day), only while 시간 따라 흐름 is on
     var previewAt by rememberSaveable(theme) { mutableStateOf<Int?>(null) }
-    var tab by rememberSaveable { mutableStateOf(EditTab.BG) }
     // one level, not keyed by theme: a start chip changes the theme and must still be undoable
     var undo by rememberSaveable(stateSaver = UndoSlot.SAVER) { mutableStateOf(UndoSlot.NONE) }
     var presses by rememberSaveable { mutableIntStateOf(0) }
@@ -442,10 +438,9 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
     }
     val themed = config.boardBg == BoardBg.THEME
     kr.dot.sb.ui.theme.ProvideTheme(shown, at) {
-        // plan-r15 F9: basic rows first (배경 색 · 카드 모양 · 글자 색), the tabs and every other row under 더 꾸미기
         val rows = ThemeEditor.controls(theme).filter { ThemeEditor.visible(it, drawn) }
         val row: @Composable (Control) -> Unit = { c ->
-            // keyed: a row's own state (an open picker) must not pass to the row at its place in another tab or theme
+            // A row's open picker must not pass to another field or theme when visible controls change.
             androidx.compose.runtime.key(theme, c.field) { ControlView(c, theme, tk, drawn, cur, { draft = it }, commit, previewAt.takeIf { flowOn }, { previewAt = it }) }
         }
         Page(
@@ -454,11 +449,8 @@ fun CustomThemeScreen(config: AppConfig, update: Update, back: () -> Unit, editi
             after = if (!themed) null else { {
                 val warn = Contrast.warnings(drawn, tk)
                 if (warn.isNotEmpty()) T(warn.joinToString(" · ") { it.ko() }, 13.sp, 500, SK.why, Modifier.padding(horizontal = 16.dp).padding(top = 8.dp), lineHeight = 18.sp)
-                Section(null) { rows.filter { it.field in ThemeEditor.BASIC }.forEach { c -> item { row(c) } } }
-                More("더 꾸미기") {
-                    Gap(8.dp)
-                    Segmented(EditTab.entries.map { it.ko }, tab.ordinal, { tab = EditTab.entries[it] })
-                    Section(null) { rows.filter { it.tab == tab && it.field !in ThemeEditor.BASIC }.forEach { c -> item { row(c) } } }
+                EditTab.entries.forEach { group ->
+                    Section(group.ko) { rows.filter { it.tab == group }.forEach { c -> item { row(c) } } }
                 }
             } },
         ) {

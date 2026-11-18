@@ -149,10 +149,10 @@ internal fun RootImpl(
     val ctx = LocalContext.current
     val remembers = actions !== StandbyActions.NONE
     val clockPage = remember {
-        mutableStateOf(start.face ?: if (remembers && config.rotateClocks) LastCard.face(LastCard.read(ctx, LastCard.CLOCK_FACE), MyClocks.pages(config)) else null)
+        mutableStateOf(start.face ?: if (remembers) LastCard.face(LastCard.read(ctx, LastCard.CLOCK_FACE), MyClocks.pages(config)) else null)
     }
     LaunchedEffect(clockPage.value) {
-        if (remembers && config.rotateClocks) clockPage.value?.let { LastCard.write(ctx, LastCard.CLOCK_FACE, it.name) }
+        if (remembers) clockPage.value?.let { LastCard.write(ctx, LastCard.CLOCK_FACE, it.name) }
     }
     var editing by remember { mutableStateOf(start.edit) }
     var npOpen by remember { mutableStateOf(start.nowPlaying) }
@@ -222,13 +222,12 @@ internal fun RootImpl(
         )
         val w = maxWidth
         val h = maxHeight
-        val accent = Color(config.clockStyle(FaceId.DIGITAL).color)
+        // operator 2026-11-18: the accent is the theme's (with its 강조 색 edit); a clock's own colour stays on that clock
         val th = LocalTheme.current
-        val ink = remember(state.night, accent, th) { Ink.of(state.night, accent, th) }
+        val ink = remember(state.night, th) { Ink.of(state.night, null, th) }
         val layer = topLayer(state, npOpen)
-        // the per-card options (a clock card's own face, 11-14) ride along, as on the settings widgets board
-        val widgets = remember(config.widgetLeft, config.widgetRight, config.widgetOptions) {
-            Board("widgets", "기본 페이지", Layout.TWO, listOf(config.widgetLeft, config.widgetRight), options = config.widgetOptions)
+        val widgets = remember(config.widgetLeft, config.widgetRight) {
+            Board("widgets", "기본 페이지", Layout.TWO, listOf(config.widgetLeft, config.widgetRight))
         }
         // plan-r15 D2: a banner or live pill over a short screen shrinks the pages (pinned at the bottom) below it
         val band = if (h > w) 0.dp else overlayBand(state, config, layer, editing, w, h)
@@ -358,7 +357,7 @@ fun TentClock(
         val bw = maxWidth
         val bh = maxHeight
         val face = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
-        val ink = remember(th, config) { Ink.of(1f, Color(config.clockStyle(FaceId.DIGITAL).color), th) }
+        val ink = remember(th, config) { Ink.of(1f, null, th) }
         CompositionLocalProvider(LocalInk provides ink) {
             ThemeBackground(th, 1f)
             kr.dot.sb.ui.clock.ClockFace(face, config.clockStyle(face), night, Modifier.fillMaxSize().padding(BURN_IN_BLEED), analog = config.analogStyle)

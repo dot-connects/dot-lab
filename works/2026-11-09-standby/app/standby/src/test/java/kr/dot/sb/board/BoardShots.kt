@@ -11,6 +11,7 @@ import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.Layout
 import kr.dot.sb.model.Presets
+import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.THEMES
 import kr.dot.sb.model.Theme
 import kr.dot.sb.shot
@@ -34,7 +35,7 @@ import org.robolectric.annotation.GraphicsMode
 @RunWith(ParameterizedRobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
-class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String, private val theme: Theme) {
+class BoardShots(private val name: String, private val device: Device, private val board: Board, private val stateKey: String, private val apps: SlotOptions, private val theme: Theme) {
     @get:Rule val rule = createComposeRule()
 
     @Test fun shot() {
@@ -50,9 +51,12 @@ class BoardShots(private val name: String, private val device: Device, private v
             "-own" in stateKey -> mapOf(board.clockFace to kr.dot.sb.ui.theme.Themes.of(theme).clockDefaults(board.clockFace).copy(clearBg = stateKey.endsWith("-clear")))
             else -> emptyMap()
         }
+        val config = AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays, appsCard = apps, clockCardFace = board.clockFace).let {
+            it.copy(myClocks = (it.myClocks + board.clockFace).distinct())
+        }
         rule.shot("board", name, device, theme, s.night, open) {
             androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalAppLookup provides Fixtures.appLookup) {
-                BoardView(board, s, AppConfig(theme = theme, styles = styles, ddays = Fixtures.ddays), StandbyActions.NONE)
+                BoardView(board, s, config, StandbyActions.NONE)
             }
         }
     }
@@ -101,9 +105,9 @@ class BoardShots(private val name: String, private val device: Device, private v
         )
 
         @JvmStatic
-        @ParameterizedRobolectricTestRunner.Parameters(name = "{4}-{0}-{1}")
+        @ParameterizedRobolectricTestRunner.Parameters(name = "{5}-{0}-{1}")
         fun cases(): List<Array<Any>> = THEMES.flatMap { th ->
-            (base() + (if (th == Theme.IPHONE) nightCards() else emptyList()) + (if (th == Theme.IPHONE || th == Theme.MOODLIGHT) alarmCards() else emptyList())).map { it + th }
+            (base() + (if (th == Theme.IPHONE) nightCards() else emptyList()) + (if (th == Theme.IPHONE || th == Theme.MOODLIGHT) alarmCards() else emptyList())).map { (if (it.size == 4) it + SlotOptions() else it) + th }
         }
 
         /** 11-14 #8 alarm card: every size class, a big Fold-inner slot, and no alarm (IPHONE + MOODLIGHT only). */
@@ -116,10 +120,8 @@ class BoardShots(private val name: String, private val device: Device, private v
         /** Every card kind, the analog clock included (since 11-14 a CLOCK card with the ANALOG face; same shot names). */
         private val KINDS: List<String> = CardType.entries.filter { it != CardType.ALARM }.map { it.name }.let { listOf(it[0], "ANALOG") + it.drop(1) }
 
-        private val ANALOG_FACE = kr.dot.sb.model.SlotOptions(face = kr.dot.sb.model.FaceId.ANALOG)
-
         private fun one(kind: String, layout: Layout): Board =
-            if (kind == "ANALOG") Board("card", kind, layout, listOf(listOf(CardType.CLOCK)), options = mapOf("0:0" to ANALOG_FACE))
+            if (kind == "ANALOG") Board("card", kind, layout, listOf(listOf(CardType.CLOCK)), clockFace = kr.dot.sb.model.FaceId.ANALOG)
             else Board("card", kind, layout, listOf(listOf(CardType.valueOf(kind))))
 
         /** r9: night ignores the theme (candle), so every card at night is shot once, under IPHONE, on every device class. */
@@ -179,7 +181,7 @@ class BoardShots(private val name: String, private val device: Device, private v
             out += arrayOf("card-usage-tall", Device.BAR_P, Board("card", "USAGE", Layout.ONE, listOf(listOf(CardType.USAGE))), "full")
             // r14 C1 앱 바로가기 with 3 and 8 apps (the plain card-apps-* shots are the empty state)
             for ((n, cls, layout, d) in listOf(Quad(3, "M", Layout.TWO, Device.FOLD_COVER_L), Quad(8, "L", Layout.ONE, Device.FOLD_COVER_L), Quad(3, "Sw", Layout.FOUR, Device.FOLD_COVER_L)))
-                out += arrayOf("card-apps-$cls-$n", d, Board("card", "APPS", layout, listOf(listOf(CardType.APPS)), options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(apps = (0 until n).map { "app.$it" }))), "full")
+                out += arrayOf("card-apps-$cls-$n", d, Board("card", "APPS", layout, listOf(listOf(CardType.APPS))), "full", SlotOptions(apps = (0 until n).map { "app.$it" }))
             // r14 C2 feed states (mockup 2b / 2c / 3b) in the mockup's slot (portrait half of the Fold cover) and an S slot
             for ((key, kind) in listOf("wxnonet" to CardType.WEATHER, "wxfailed" to CardType.WEATHER, "wxstale" to CardType.WEATHER, "usagefailed" to CardType.USAGE, "usagestale" to CardType.USAGE)) {
                 out += arrayOf("card-${kind.name.lowercase()}-M-$key", Device.FOLD_COVER_P, Board("card", kind.name, Layout.TWO, listOf(listOf(kind))), key)
@@ -196,11 +198,11 @@ class BoardShots(private val name: String, private val device: Device, private v
                 out += arrayOf("empty-b", d, e2, "emptyB")
             }
             out += arrayOf("empty-a-night", Device.FOLD_COVER_L, e1, "emptyAnight")
-            // Two clocks on one board (§5.1): hero keeps accent digits, the second is white / white hands.
+            // Two clocks share a face: hero keeps accent digits, the second is white / white hands.
             val c = CardType.CLOCK
             val dual = listOf(
-                Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(c)), options = mapOf("1:0" to ANALOG_FACE)),
-                Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.WEATHER)), options = mapOf("0:0" to ANALOG_FACE)),
+                Board("dual-clock-analog", "dual", Layout.TWO, listOf(listOf(c), listOf(c))),
+                Board("dual-analog-clock", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.WEATHER)), clockFace = kr.dot.sb.model.FaceId.ANALOG),
                 Board("dual-digital", "dual", Layout.BIG2, listOf(listOf(c), listOf(c), listOf(CardType.TIMER))),
                 Board("dual-solar", "dual", Layout.TWO2, listOf(listOf(c), listOf(CardType.DDAY), listOf(c)), clockFace = kr.dot.sb.model.FaceId.SOLAR),
             )

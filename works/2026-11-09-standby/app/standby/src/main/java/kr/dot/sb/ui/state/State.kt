@@ -217,7 +217,7 @@ data class TimerState(val mode: TimerMode = TimerMode.FOCUS, val leftSec: Int = 
 data class SleepState(val playing: Boolean = false, val minutesLeft: Int? = null)
 
 @Immutable
-data class Photo(val image: ImageBitmap, val place: String, val date: String, val yearsAgo: Int? = null, val uri: String? = null)
+data class Photo(val image: ImageBitmap, val place: String, val date: String, val yearsAgo: Int? = null, val uri: String? = null, val memoryKind: kr.dot.sb.data.MemoryKind = if (yearsAgo == null) kr.dot.sb.data.MemoryKind.ANY else kr.dot.sb.data.MemoryKind.TODAY)
 
 @Immutable
 data class Permissions(

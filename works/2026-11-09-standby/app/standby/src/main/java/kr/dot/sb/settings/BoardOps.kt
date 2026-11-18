@@ -27,17 +27,10 @@ object BoardOps {
 
     private fun key(k: String): Pair<Int, Int>? = k.split(':').takeIf { it.size == 2 }?.let { (a, c) -> a.toIntOrNull()?.let { s -> c.toIntOrNull()?.let { s to it } } }
 
-    /**
-     * Edit stack [slot] of [b]: [newStack] replaces it and [moved] maps an old stack index to its new one (null =
-     * removed). Options follow their card; removed cards drop theirs (r9 D6).
-     */
-    fun editStack(b: Board, slot: Int, newStack: List<CardType>, moved: (Int) -> Int?): Board {
+    /** Replace one stack; global card settings stay on AppConfig. */
+    fun editStack(b: Board, slot: Int, newStack: List<CardType>): Board {
         if (slot !in b.slots.indices) return b
-        val options = b.options.mapNotNull { (k, v) ->
-            val (s, j) = key(k) ?: return@mapNotNull null
-            if (s != slot) k to v else moved(j)?.takeIf { it in newStack.indices }?.let { "$slot:$it" to v }
-        }.toMap()
-        return b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) newStack else l }, options = options)
+        return b.copy(slots = b.slots.mapIndexed { i, l -> if (i == slot) newStack else l }, options = emptyMap())
     }
 
     fun withLayout(b: Board, layout: Layout): Board = fit(b.copy(layout = layout))
@@ -53,7 +46,7 @@ object BoardOps {
 
     fun duplicate(c: AppConfig, i: Int): AppConfig {
         val src = c.boards.getOrNull(i) ?: return c
-        val copy = src.copy(id = freshId(c), name = src.name + " 복사")
+        val copy = src.copy(id = freshId(c), name = src.name + " 복사", options = emptyMap())
         val start = if (c.startPage > FIRST_BOARD_PAGE + i) c.startPage + 1 else c.startPage
         return c.copy(boards = c.boards.toMutableList().apply { add(i + 1, copy) }, startPage = start)
     }
@@ -87,20 +80,12 @@ object BoardOps {
     fun replace(c: AppConfig, id: String, change: (Board) -> Board): AppConfig =
         c.copy(boards = c.boards.map { if (it.id == id) change(it) else it })
 
-    /** The widgets page's board id ([widgetsBoard]); its per-card options live in [AppConfig.widgetOptions]. */
+    /** The widgets page's board id. */
     const val WIDGETS = "widgets"
 
-    /** [b] with card [s]:[j]'s own face set to [face] (dropped when it is the board's face, so the board's chip still drives it). */
-    fun withFace(b: Board, s: Int, j: Int, face: kr.dot.sb.model.FaceId?): Board {
-        val k = "$s:$j"
-        val o = (b.options[k] ?: kr.dot.sb.model.SlotOptions()).copy(face = face?.takeIf { it != b.clockFace })
-        return b.copy(options = if (o == kr.dot.sb.model.SlotOptions()) b.options - k else b.options + (k to o))
-    }
+    /** A clock card's arrows update the shared face for every clock card. */
+    fun setFace(c: AppConfig, face: kr.dot.sb.model.FaceId): AppConfig = c.copy(clockCardFace = face)
 
-    /** 11-14 #7: the face picked with a clock card's arrows on StandBy, saved to that card of board [boardId]. */
-    fun setFace(c: AppConfig, boardId: String, s: Int, j: Int, face: kr.dot.sb.model.FaceId): AppConfig =
-        if (boardId == WIDGETS) c.copy(widgetOptions = withFace(Board(WIDGETS, "", Layout.TWO, listOf(c.widgetLeft, c.widgetRight), options = c.widgetOptions), s, j, face).options)
-        else replace(c, boardId) { withFace(it, s, j, face) }
 }
 
 /**

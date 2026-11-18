@@ -126,16 +126,13 @@ fun CardView(
     modifier: Modifier = Modifier,
     slotId: String = type.name,
     look: CardLook = CardLook.of(config),
-    /** This card's [kr.dot.sb.model.SlotOptions] and its settings route (phone widget only). */
-    options: kr.dot.sb.model.SlotOptions? = null,
-    menu: String? = null,
     /** Full-screen Now Playing: no plate, the media body shows ✕ (calls this) and stays put on tap. */
     close: (() -> Unit)? = null,
     /** Clock card: a tap shows arrows through 내 시계, the pick is saved through this (null = no arrows). */
     onFace: ((FaceId) -> Unit)? = null,
 ) = ProvideTheme(config) {
-    // a clock card's own face (11-14) wins over the board's; while the arrows are up, the face being browsed wins
-    val saved = (options?.face ?: look.clockFace).let { if (type == CardType.CLOCK) kr.dot.sb.ui.clock.ClockRegistry.cardFace(it, config.myClocks) else it }
+    // Browsing is temporary; committing a face updates every clock card.
+    val saved = if (type == CardType.CLOCK) kr.dot.sb.ui.clock.ClockRegistry.cardFace(config.clockCardFace ?: FaceId.DIGITAL, config.myClocks) else look.clockFace
     val sw = rememberFaceSwitch(saved)
     @Suppress("NAME_SHADOWING") val look = (sw.face ?: sw.pending ?: saved).let { if (it != look.clockFace) look.copy(clockFace = it) else look }
     if (type == CardType.CLOCK && onFace != null) {
@@ -190,7 +187,7 @@ fun CardView(
                     CardType.WEATHER -> WeatherCard(g, state, config, actions)
                     CardType.CALENDAR -> CalendarCard(e, state, actions)
                     CardType.MEMORIES -> MemoriesCard(e, state, actions)
-                    CardType.APPS -> AppsCard(e, options, actions, menu)
+                    CardType.APPS -> AppsCard(e, config.appsCard, actions, kr.dot.sb.settings.Routes.card(CardType.APPS))
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
                     CardType.ALARM -> AlarmCard(g, state, config, actions)
@@ -1552,7 +1549,7 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
         if (hint != null) {
             StateCard(e, Ic.PHOTO, "추억", null, null, "$hint · 눌러서 고르기") { actions.openSettings("photos") }
         } else {
-            StateCard(e, Ic.PHOTO, "추억", null, "오늘의 추억이 없어요", null, null)
+            StateCard(e, Ic.PHOTO, "추억", null, "보여줄 사진이 없어요", null, null)
         }
         return
     }
@@ -1563,7 +1560,12 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
         Image(p.image, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, colorFilter = nightFilter(e.ink.night))
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(0.5f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.6f)))) // scrim
         Column(Modifier.align(Alignment.BottomStart).padding(pad)) {
-            Txt(p.yearsAgo?.let { "${it}년 전 오늘" } ?: p.place, e.head, fg, weight = 700, maxW = cw, num = true)
+            val label = when (p.memoryKind) {
+                kr.dot.sb.data.MemoryKind.TODAY -> "${p.yearsAgo}년 전 오늘"
+                kr.dot.sb.data.MemoryKind.NEAR -> "${p.yearsAgo}년 전 이맘때"
+                kr.dot.sb.data.MemoryKind.ANY -> p.date
+            }
+            Txt(label, e.head, fg, weight = 700, maxW = cw, num = true)
             if (e.short >= 150.dp) {
                 Spacer(Modifier.height(8.dp))
                 // one line; the short date ("설악산 · 2023.11.9") when the long one does not fit

@@ -58,7 +58,6 @@ import kr.dot.sb.ui.clock.ClockFace
 import kr.dot.sb.ui.clock.ClockRegistry
 import kr.dot.sb.ui.clock.ColorShuffle
 import kr.dot.sb.ui.clock.FaceDefaults
-import kr.dot.sb.ui.clock.Family
 import kr.dot.sb.ui.clock.StyleRow
 import kr.dot.sb.ui.clock.spec
 import kr.dot.sb.ui.state.StandbyState
@@ -67,22 +66,13 @@ import kr.dot.sb.ui.theme.baseTheme
 import androidx.compose.ui.semantics.contentDescription
 import kotlin.math.roundToInt
 
-// ---- 시계 (plan-r15 E5/F4): preview, six tiles, 모든 시계 보기 · 꾸미기 · 여러 시계 돌려 보기 ---------------------------
+// ---- Clock preview, the user's clocks, add and customize ---------------------------
 
 private val TILE_W = 118.dp
 private val TILE_GAP = 10.dp
 
-/** The main grid's six faces (plan-r15 F4); the rest are under 모든 시계 보기. */
+/** The six faces offered during first-run setup. */
 internal val MAIN_FACES = listOf(FaceId.DIGITAL, FaceId.FLIP, FaceId.ANALOG, FaceId.HANGUL, FaceId.DOT_MATRIX, FaceId.THIN)
-
-/**
- * A tile tap on 시계 / 모든 시계 (E5): rotation on = preview only (이 시계 쓰기 commits); rotation off = the clock
- * becomes `myClocks[0]` at once ([MyClocks.pick]).
- */
-private fun tapClock(f: FaceId, config: AppConfig, update: Update, select: (FaceId) -> Unit) {
-    select(f)
-    if (!config.rotateClocks) update { it.copy(myClocks = MyClocks.pick(it.myClocks, f, MyClocks.cardFaces(it))) }
-}
 
 @Composable
 fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
@@ -92,7 +82,9 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
     var citySheet by remember { mutableStateOf(false) }
     var weatherSheet by remember { mutableStateOf(false) }
-    val now = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
+    LaunchedEffect(config.myClocks) {
+        if (sel !in config.myClocks) sel = config.myClocks.firstOrNull() ?: FaceId.DIGITAL
+    }
     Box(Modifier.fillMaxSize()) {
     // plan-r15 F2: only this screen's clock (no swipe to the other pages' settings)
     Page(
@@ -100,17 +92,16 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
         miniActions = { ClockActions(sel, config, update, compact = true) },
     ) {
         ClockActions(sel, config, update, compact = false)
-        Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
-            MAIN_FACES.chunked(3).forEach { row ->
-                Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    row.forEach { f -> GalleryCard(f, f == sel, config, state, Modifier.weight(1f)) { tapClock(f, config, update) { sel = it } } }
+        Row(Modifier.fillMaxWidth().padding(top = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+            config.myClocks.chunked(2).forEach { pair ->
+                Column(Modifier.width(TILE_W), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
+                    pair.forEach { f -> GalleryCard(f, f == sel, config, state, Modifier.fillMaxWidth()) { sel = f } }
                 }
             }
         }
         Section(null) {
-            item { NavRow("모든 시계 보기", { nav.push(Routes.CLOCKS_ALL) }, value = "${ClockRegistry.all.size}개") }
-            item { NavRow("꾸미기", { nav.push(Routes.clock(now)) }, subtitle = spec(now).ko, value = "색 · 글꼴 · 크기") }
-            item { NavRow("여러 시계 돌려 보기", { nav.push(Routes.CLOCKS_ROTATE) }, value = if (config.rotateClocks) "켬 · ${config.myClocks.size}개" else "끔") }
+            item { NavRow("시계 추가하기", { nav.push(Routes.CLOCKS_ROTATE) }) }
+            item { NavRow("꾸미기", { nav.push(Routes.clock(sel)) }, subtitle = spec(sel).ko, value = "색 · 글꼴 · 크기") }
         }
         // plan-r15 F1b: the global time and place settings (날씨 지역 feeds the info line, 하루 막대 and the weather card)
         Section(null) {
@@ -137,30 +128,8 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     }
 }
 
-/** 모든 시계 (E5): every face by family, the same tap rule as the main grid. */
-@Composable
-fun AllClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
-    var sel by rememberSaveable { mutableStateOf(config.myClocks.firstOrNull() ?: FaceId.DIGITAL) }
-    var fam by rememberSaveable { mutableStateOf<Family?>(null) }
-    val own = rememberOwnPhotos(config.photoFolders)
-    val state = remember(config, own) { Sample.state(config).withPhotos(own) }
-    val first = Slide(spec(sel).ko) { l -> ClockFace(sel, config.clockStyle(sel), l.state.withPhotos(own), Modifier.fillMaxSize(), analog = config.analogStyle) }
-    Page("모든 시계", back, preview = Preview(config, listOf(first)), miniActions = { ClockActions(sel, config, update, compact = true) }) {
-        ClockActions(sel, config, update, compact = false)
-        Gap(16.dp)
-        FamilyChips(fam) { fam = it }
-        Gap(12.dp)
-        ClockRegistry.all.filter { fam == null || spec(it).family == fam }.chunked(2).forEach { pair ->
-            Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                pair.forEach { f -> GalleryCard(f, f == sel, config, state, Modifier.weight(1f)) { tapClock(f, config, update) { sel = it } } }
-                if (pair.size == 1) Spacer(Modifier.weight(1f))
-            }
-        }
-    }
-}
-
 /**
- * 여러 시계 돌려 보기 (E5): the rotation switch, 쓰는 시계 (drag to reorder) and every face, picked ones dimmed with the
+ * Add clocks: the selected strip (drag to reorder) and every face, picked ones dimmed with the
  * card picker's centred check. A tap on a picked face removes it (never the last one), on another adds it at the end.
  */
 @Composable
@@ -169,14 +138,11 @@ fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
     val my = config.myClocks
     var hint by remember { mutableIntStateOf(0) }
     LaunchedEffect(hint) { if (hint > 0) { kotlinx.coroutines.delay(3_000); hint = 0 } }
-    Page("여러 시계 돌려 보기", back) {
-        Section(null, footer = "켜면 시계 화면에서 위아래로 넘길 때 다음 시계가 나와요. 끄면 첫 번째 시계만 보여요.") {
-            item { SwitchRow("여러 시계 돌려 보기", config.rotateClocks, { v -> update { it.copy(rotateClocks = v) } }) }
-        }
+    Page("시계 추가하기", back) {
         Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
             T("쓰는 시계", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
             MyStrip(my, config, state, update)
-            T("길게 눌러 옆으로 끌면 순서가 바뀌어요. 시계 카드도 이 시계들 중에서 골라요.", 13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), lineHeight = 18.sp)
+            T("시계 화면에서 위아래로 넘기면 이 순서대로 바뀌어요. 길게 눌러 옆으로 끌면 순서가 바뀌어요.", 13.sp, 400, SK.muted, Modifier.padding(horizontal = 16.dp, vertical = 8.dp), lineHeight = 18.sp)
         }
         Column(Modifier.fillMaxWidth().padding(top = 16.dp)) {
             T("모든 시계", 13.sp, 600, SK.muted, Modifier.padding(start = 16.dp, bottom = 8.dp))
@@ -199,13 +165,13 @@ fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
     }
 }
 
-/** Name of the previewed clock; with rotation on, [이 시계 쓰기] puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
+/** Name of the previewed clock; the use action puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
 @Composable
 private fun ClockActions(face: FaceId, config: AppConfig, update: Update, compact: Boolean) {
     val i = config.myClocks.indexOf(face)
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
         T(spec(face).ko, 15.sp, 700, maxLines = 1, modifier = Modifier.weight(1f))
-        if (config.rotateClocks && i != 0) ActionButton("이 시계 쓰기", { update { it.copy(myClocks = MyClocks.use(it.myClocks, face)) } })
+        if (i != 0) ActionButton("이 시계 쓰기", { update { it.copy(myClocks = MyClocks.use(it.myClocks, face)) } })
     }
 }
 
@@ -218,25 +184,6 @@ private fun Thumb(face: FaceId, config: AppConfig, state: StandbyState, inSlot: 
     Box(Modifier.fillMaxWidth().then(if (border != null) Modifier.border(1.5.dp, border, shape) else Modifier)) {
         PreviewFrame(w, h, Modifier.fillMaxWidth(), radius = 8.dp) {
             ClockFace(face, config.clockStyle(face), state, Modifier.fillMaxSize(), inSlot = inSlot, analog = config.analogStyle)
-        }
-    }
-}
-
-/** 전체 + the five families in one sideways-scrolling line (mockup `.famchips`). */
-@Composable
-private fun FamilyChips(fam: Family?, onPick: (Family?) -> Unit) {
-    val acc = LocalAccent.current
-    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        (listOf(null) + Family.entries).forEach { f ->
-            val on = f == fam
-            Box(
-                Modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(50)).clickable { onPick(f) },
-                Alignment.Center,
-            ) {
-                Box(Modifier.heightIn(min = 38.dp).clip(RoundedCornerShape(50)).background(if (on) acc else SK.surface2).padding(horizontal = 14.dp), Alignment.Center) {
-                    T(f?.ko ?: "전체", 14.sp, if (on) 700 else 500, if (on) SK.bg else SK.text, maxLines = 1)
-                }
-            }
         }
     }
 }
@@ -288,7 +235,7 @@ internal fun GalleryCard(face: FaceId, on: Boolean, config: AppConfig, state: St
     }
 }
 
-/** A face in 여러 시계 돌려 보기: picked = dimmed whole tile + 46 dp centred check (CardPickerSheet look). */
+/** A face in the add screen: picked = dimmed whole tile + 46 dp centred check (CardPickerSheet look). */
 @Composable
 private fun PickTile(face: FaceId, picked: Boolean, config: AppConfig, state: StandbyState, modifier: Modifier, onClick: () -> Unit) {
     val acc = LocalAccent.current
@@ -312,7 +259,7 @@ private val FONT_ORDER = FontId.entries.filter { !it.hangul }
 private val HANGUL_FONTS = FontId.entries.filter { it.hangul }
 private val LED_NAMES = listOf("빨강", "초록", "파랑", "호박빛").zip(FaceDefaults.LEDS)
 /** plan-r15 F11: fonts shown by their "12" sample only (their names are read out, not printed). */
-private val UNNAMED_FONTS = setOf(FontId.STENCIL, FontId.SLAB, FontId.RAILS, FontId.JOST, FontId.PLAYFAIR)
+private val UNNAMED_FONTS = emptySet<FontId>() // operator 2026-11-18: every font tile shows its name
 
 @Composable
 fun ClockStyleScreen(face: FaceId, config: AppConfig, update: Update, back: () -> Unit) {
@@ -397,7 +344,8 @@ private fun StyleControl(r: StyleRow, face: FaceId, style: ClockStyle, config: A
             FontGrid(FONT_ORDER, style.font, "12") { f, w ->
                 // 11-16: on 디지털, 둥근 굵은 글씨 is one tap to the old look (middle digit in accent + overlap); both stay switchable
                 val look = face == FaceId.DIGITAL && f == FontId.ROUNDED_HEAVY
-                edit { if (look) it.copy(font = f, weight = w, accentMiddle = true, overlap = true) else it.copy(font = f, weight = w) }
+                // operator 2026-11-18: a new font keeps colour and size only; its own look (middle colour, overlap) resets
+                edit { it.copy(font = f, weight = w, accentMiddle = look, overlap = look) }
             }
         }
         StyleRow.KFONT -> ControlRow("글꼴", note = "한글을 쓸 수 있는 글꼴만 보여요.") { FontGrid(HANGUL_FONTS, style.font, "아홉") { f, w -> edit { it.copy(font = f, weight = w) } } }

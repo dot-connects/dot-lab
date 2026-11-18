@@ -17,7 +17,6 @@ import kr.dot.sb.data.UsageApps
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.CardType
-import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.platform.StandbyDream
 
 /**
@@ -47,11 +46,8 @@ enum class Perm(val ko: String, val why: String, val button: String, val need: S
 object Perms {
     /** Usage access is listed only while an app card takes its apps from usage history. */
     fun forConfig(config: AppConfig): List<Perm> {
-        fun usesUsage(slots: List<List<CardType>>, options: Map<String, SlotOptions>) = slots.withIndex().any { (s, stack) ->
-            stack.withIndex().any { (j, card) -> card == CardType.APPS && (options["$s:$j"]?.appSource ?: AppSource.PICKED) != AppSource.PICKED }
-        }
-        val usage = config.boards.any { usesUsage(it.slots, it.options) } ||
-            usesUsage(listOf(config.widgetLeft, config.widgetRight), config.widgetOptions)
+        val cards = config.widgetLeft + config.widgetRight + config.boards.flatMap { it.slots.flatten() }
+        val usage = CardType.APPS in cards && config.appsCard.appSource != AppSource.PICKED
         return Perm.entries.filter { it != Perm.USAGE || usage }
     }
 

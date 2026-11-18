@@ -80,6 +80,7 @@ abstract class SettingsShotKit {
             var cfg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(config) }
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
                 androidx.compose.runtime.CompositionLocalProvider(
+                    LocalTipDemoProgress provides 0.45f, // Fixed scene frame: no demo coroutine in screenshot runs.
                     kr.dot.sb.ui.cards.LocalAppLookup provides kr.dot.sb.Fixtures.appLookup,
                     kr.dot.sb.ui.cards.LocalUsageApps provides { _, _, n ->
                         if (e.granted[Perm.USAGE] == true) listOf("app.3", "app.1", "app.2", "app.0").take(n) else null
@@ -100,10 +101,8 @@ abstract class SettingsShotKit {
     protected val folders = AppConfig(photoFolders = listOf("content://t/tree/primary%3ADCIM%2FCamera", "content://t/tree/primary%3APictures%2Ftrip", "content://t/tree/sd%3AKakaoTalk"))
     protected val tallest = "w411dp-h3000dp-port-xhdpi"
 
-    /** A board with an 앱 바로가기 card holding two apps (앱 고르기 route "apps:desk:0:0"). */
-    protected val withApps = AppConfig().let { c ->
-        BoardOps.replace(c, "desk") { b -> b.copy(slots = listOf(listOf(kr.dot.sb.model.CardType.APPS)) + b.slots.drop(1), options = mapOf("0:0" to kr.dot.sb.model.SlotOptions(apps = listOf("app.2", "app.0")))) }
-    }
+    /** The shared apps-card settings with two picked apps. */
+    protected val withApps = AppConfig(appsCard = kr.dot.sb.model.SlotOptions(apps = listOf("app.2", "app.0")))
 }
 
 /** Home, 테마, card pages, 알림과 알람, 날씨 지역, 권한, 정보, 팁, the first run. */
@@ -143,8 +142,20 @@ class SettingsHomeShots : SettingsShotKit() {
     @Test fun aboutFold() = snap("about-fold", fold, route = Routes.ABOUT)
     /** plan-r15 F8: 처음 설정으로 asks once. */
     @Test fun aboutReset() = snap("about-reset", phone, route = Routes.ABOUT, screen = true) { onNodeWithText("처음 설정으로").performScrollTo().performClick() }
-    /** plan-r15 F10 ②: 팁, one row tapped (its demo over the preview, its "새" gone). */
-    @Test fun tips() = snap("tips", tallest, route = Routes.TIPS) { onNodeWithText("타이머 길게 누르기").performScrollTo().performClick() }
+    /** Inline tips: collapsed list, the pull-down panel, and the timer after its hold. */
+    @Test fun tips() = snap("tips", tallest, route = Routes.TIPS)
+    @Test fun tipsOpen() = snap("tips-open", tallest, route = Routes.TIPS) { onNodeWithText("위에서 끌어내리기").performScrollTo().performClick() }
+    @Test fun tipsOpenTimer() = snap("tips-open-timer", tallest, route = Routes.TIPS) { onNodeWithText("타이머 가운데 길게 누르기").performScrollTo().performClick() }
+    // every scene once at the fixed frame, for review (operator 2026-11-18: tips made properly)
+    @Test fun tipClockSwipe() = snap("tip-clock_swipe", tallest, route = Routes.TIPS) { onNodeWithText("시계를 위아래로 넘기기").performScrollTo().performClick() }
+    @Test fun tipClockHold() = snap("tip-clock_hold", tallest, route = Routes.TIPS) { onNodeWithText("시계를 길게 누르기").performScrollTo().performClick() }
+    @Test fun tipPhotosSwipe() = snap("tip-photos_swipe", tallest, route = Routes.TIPS) { onNodeWithText("사진을 위아래로 넘기기").performScrollTo().performClick() }
+    @Test fun tipBoardHold() = snap("tip-board_hold", tallest, route = Routes.TIPS) { onNodeWithText("페이지를 길게 누르기").performScrollTo().performClick() }
+    @Test fun tipBannerUp() = snap("tip-banner_up", tallest, route = Routes.TIPS) { onNodeWithText("알림을 위로 밀기").performScrollTo().performClick() }
+    @Test fun tipSideKey() = snap("tip-side_key", tallest, route = Routes.TIPS) { onNodeWithText("옆 버튼 누르기").performScrollTo().performClick() }
+    @Test fun tipNotifSwipe() = snap("tip-notif_swipe", tallest, route = Routes.TIPS) { onNodeWithText("알림 밀어서 지우기").performScrollTo().performClick() }
+    @Test fun tipStackSwipe() = snap("tip-stack_swipe", tallest, route = Routes.TIPS) { onNodeWithText("겹친 카드 넘기기").performScrollTo().performClick() }
+    @Test fun tipClockCard() = snap("tip-clock_card", tallest, route = Routes.TIPS) { onNodeWithText("시계 카드 넘기기").performScrollTo().performClick() }
     /** plan-r15 F3: the four first-run steps (phone, flip cover, 780 x 360). */
     private fun firstRun(name: String, q: String, steps: Int) = snap(name, q, route = Routes.FIRST_RUN) {
         repeat(steps) { onNodeWithText(if (it == 2) "나중에" else "다음").performScrollTo().performClick(); waitForIdle() }
@@ -177,8 +188,8 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun boardEditorFold() = snap("board-editor-fold", foldTall, route = Routes.board("modular"))
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 추가")[0].performScrollTo().performClick() }
     /** r14 C1 앱 고르기: two picked (veil + check), then a search. */
-    @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.apps("desk", 0, 0))
-    @Test fun appPickerRecent() = snap("app-picker-recent", phone, withApps, route = Routes.apps("desk", 0, 0)) {
+    @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.card(kr.dot.sb.model.CardType.APPS))
+    @Test fun appPickerRecent() = snap("app-picker-recent", phone, withApps, route = Routes.card(kr.dot.sb.model.CardType.APPS)) {
         onNodeWithText("최근 사용").performClick()
         onNode(androidx.compose.ui.test.hasSetTextAction()).assertDoesNotExist()
         onNodeWithText("직접 선택").performClick()
@@ -187,8 +198,8 @@ class SettingsPageShots : SettingsShotKit() {
         onNodeWithText("4개").assertIsDisplayed()
     }
     /** plan-r15 E6: 테마 색 picked, the card preview draws the monochrome layers in the accent (app.2 has none). */
-    @Test fun appPickerThemed() = snap("app-picker-themed", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNodeWithText("테마 색").performClick() }
-    @Test fun appPickerSearch() = snap("app-picker-search", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("카") }
+    @Test fun appPickerThemed() = snap("app-picker-themed", phone, withApps, route = Routes.card(kr.dot.sb.model.CardType.APPS)) { onNodeWithText("테마 색").performClick() }
+    @Test fun appPickerSearch() = snap("app-picker-search", phone, withApps, route = Routes.card(kr.dot.sb.model.CardType.APPS)) { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("카") }
     @Test fun night() = snap("night", tall, route = Routes.NIGHT)
     @Test fun nightFold() = snap("night-fold", foldTall, route = Routes.NIGHT)
     @Test fun nightNever() = snap("night-never", phone, AppConfig(displayOff = DisplayOff.NEVER), route = Routes.NIGHT)
@@ -209,12 +220,10 @@ class SettingsClockShots : SettingsShotKit() {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1600f) }
     }
-    /** plan-r15 E5: 모든 시계, a face not in the list previewed with rotation on: [이 시계 쓰기]. */
-    @Test fun clocksBrowse() = snap("clocks-browse", phone, route = Routes.CLOCKS_ALL) { onNodeWithText("레트로").performScrollTo().performClick(); onNodeWithText("전광판").performScrollTo().performClick() }
-    /** 여러 시계 돌려 보기: switch, 쓰는 시계 strip, picked faces dimmed with the centred check. */
+    /** Add clocks: the selected strip and all faces, picked ones dimmed with the centred check. */
     @Test fun clocksRotate() = snap("clocks-rotate", tallest, route = Routes.CLOCKS_ROTATE)
-    /** Rotation off: the main grid, no [이 시계 쓰기]. */
-    @Test fun clocksOne() = snap("clocks-one", phone, AppConfig(rotateClocks = false), route = Routes.CLOCKS)
+    /** A single selected clock still uses the same scrolling grid. */
+    @Test fun clocksOne() = snap("clocks-one", phone, AppConfig(myClocks = listOf(FaceId.DIGITAL)), route = Routes.CLOCKS)
     @Test fun clockLed() = snap("clock-led", tall, route = Routes.clock(FaceId.LED))
     @Test fun clockHangul() = snap("clock-hangul", tall, route = Routes.clock(FaceId.HANGUL))
     @Test fun clockAnalog() = snap("clock-analog", tallest, route = Routes.clock(FaceId.ANALOG)) { onNodeWithText("자세히").performScrollTo().performClick() }
