@@ -6,21 +6,38 @@ plugins {
 
 android {
     namespace = "kr.dot.catchpet"
-    compileSdk = 35
+    compileSdk = 36
     defaultConfig {
         applicationId = "kr.dot.catchpet"
         minSdk = 34 // specialUse foreground service
-        targetSdk = 35
-        versionCode = 34
-        versionName = "0.5.5"
+        targetSdk = 36
+        versionCode = 600
+        versionName = "0.6.0"
         ndk { abiFilters += "arm64-v8a" }
         // Worker that draws the AI pictures (works/2026-11-09-catch/worker)
         buildConfigField("String", "DEBUG_PURCHASE", "\"\"")
         manifestPlaceholders["appLabel"] = "리얼뽑기"
         buildConfigField("String", "WORKER", "\"https://dot-lab-catch.dotconnects.workers.dev\"")
+        // Play Integrity: the Google Cloud project number linked in Play Console (wizard menu 7); 0 = not linked yet
+        buildConfigField("long", "CLOUD_PROJECT", "0L")
     }
     buildFeatures { compose = true; buildConfig = true }
+    // Play upload key (plan-release Task 6): kept outside the repo, password in the user env var, never committed
+    signingConfigs {
+        create("release") {
+            storeFile = file(System.getProperty("user.home") + "/.catchpet-upload.jks")
+            storePassword = System.getenv("CATCHPET_KS_PASS")
+            keyAlias = "upload"
+            keyPassword = System.getenv("CATCHPET_KS_PASS")
+        }
+    }
     buildTypes {
+        release {
+            signingConfig = signingConfigs.getByName("release")
+            // minified like the debug build the operator tests, so the Play build runs the same code
+            isMinifyEnabled = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
         // R8 on the debug build too: unshrunk dex was 32 MB, and the APK goes to the phone through a 30 MB hand-off
         debug {
             // the dev app (operator 11-16): installs beside the Play app, redraws AI pictures free on the operator's token
@@ -66,7 +83,9 @@ dependencies {
     implementation("androidx.camera:camera-camera2:$camerax")
     implementation("androidx.camera:camera-lifecycle:$camerax")
     implementation("androidx.camera:camera-view:$camerax")
-    implementation("com.google.mediapipe:tasks-vision:0.10.14")
+    implementation("com.google.mediapipe:tasks-vision:0.10.26")
+    implementation("com.google.android.play:integrity:1.4.0")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.9.0")
     // AR critters behind the developer switch (manifest: AR optional, the app runs without ARCore)
     implementation("com.google.ar:core:1.48.0")
 

@@ -221,13 +221,13 @@ private fun Developer(ctx: Context) {
     var scale by remember { mutableStateOf(prefs.getFloat("critter_scale", 0.25f)) }
     var ar by remember { mutableStateOf(prefs.getBoolean("ar", false)) }
     Panel("개발자") {
-        OutlinedTextField(
+        if (kr.dot.catchpet.BuildConfig.DEBUG) OutlinedTextField(
             value = token, onValueChange = { token = it; savedNote = false }, singleLine = true,
             label = { Text("디버그 구매 토큰") }, modifier = Modifier.fillMaxWidth(),
             colors = OutlinedTextFieldDefaults.colors(focusedTextColor = Book.Ink, unfocusedTextColor = Book.Ink,
                 focusedBorderColor = Book.Ink, unfocusedBorderColor = Book.Muted, focusedLabelColor = Book.Ink, unfocusedLabelColor = Book.Muted),
         )
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (kr.dot.catchpet.BuildConfig.DEBUG) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             InkPill("저장", Book.Sun, onClick = { Purchase.saveToken(ctx, token); savedNote = true })
             if (savedNote) Note(if (token.isBlank()) "토큰을 지웠어요" else "저장했어요")
         }

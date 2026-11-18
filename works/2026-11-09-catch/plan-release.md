@@ -240,6 +240,9 @@ wrangler.toml: `[[r2_buckets]] binding = "SHEETS"  bucket_name = "dot-lab-catch-
 
 ### Task 13: Ship the closed-test build
 
+- [ ] Before the closed test opens (operator 11-18): ask the operator whether the OpenAI API credit was topped up
+  (testers' free previews 10 + sheets 5 ≈ $0.9 each; MONTH_CENTS = $20). Claude cannot read the balance; after the
+  first tester calls, check `npx wrangler@4 tail` for OpenAI 429 `insufficient_quota`.
 - [ ] After wizard menu 7: fill `CLOUD_PROJECT`, `CERT_SHA256`; `npm test`; `npx wrangler@4 deploy`; `bundleRelease`; hand the AAB path to the operator (wizard menu 3).
 - [ ] Live check with the operator's license-tester phone: free sheet ×3 → 4th shows the price → test purchase → sheet arrives once; kill the app mid-draw → reopen → arrives once, not charged twice; airplane mode during draw → "돈은 나가지 않았어요"; report a picture → row in `reports` (`npx wrangler@4 d1 execute dot-lab-catch --remote --command "SELECT * FROM reports ORDER BY at DESC LIMIT 5"`).
 - [ ] `/done` review, wrap-up (ROADMAP, T-0162, CONTEXT).

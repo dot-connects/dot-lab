@@ -13,8 +13,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kr.dot.catchpet.BuildConfig
 import kr.dot.catchpet.dex.Dex
-import java.time.LocalDate
-import java.time.ZoneOffset
 
 /**
  * AI requests run here, on an app-wide scope (plan R16): leaving the detail screen doesn't cancel a 1-3 minute
@@ -30,28 +28,45 @@ object AiWork {
     val message = mutableStateMapOf<String, String>()   // entry id -> last error, in Korean
     var rev by mutableIntStateOf(0); private set        // bumps when an entry got a new picture
 
-    const val PER_DAY = 5
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE)
-    private fun today() = LocalDate.now(ZoneOffset.ofHours(9)).toString()   // the Worker counts by KST day
 
     /** The dev app (debug build with the operator's token): unlimited previews and redraws. */
     val dev: Boolean get() = BuildConfig.DEBUG_PURCHASE.isNotEmpty()
 
-    /** Previews left today as last heard from the Worker (5 on a new day). */
-    fun leftToday(ctx: Context): Int {
-        if (dev) return 99
+    /**
+     * Free previews / free pet sheets left on this device as last heard from the Worker (operator 11-18: 10 and 5 in
+     * all). -1 = not heard yet. [refresh] asks the Worker; each answer of a call lowers the count too.
+     */
+    class Left(val preview: Int, val previewTotal: Int, val sheet: Int, val sheetTotal: Int)
+    fun left(ctx: Context): Left {
+        if (dev) return Left(99, 99, 99, 99)
         val p = prefs(ctx)
-        return if (p.getString("ai_day", null) == today()) p.getInt("ai_left", PER_DAY) else PER_DAY
+        return Left(p.getInt("q_preview", -1), p.getInt("q_preview_total", 10), p.getInt("q_sheet", -1), p.getInt("q_sheet_total", 5))
+    }
+
+    fun refresh(ctx: Context) {
+        if (dev) return
+        val app = ctx.applicationContext
+        scope.launch {
+            client(app).quota().onSuccess { q ->
+                prefs(app).edit().putInt("q_preview", q.previewLeft).putInt("q_preview_total", q.previewTotal)
+                    .putInt("q_sheet", q.freeLeft).putInt("q_sheet_total", q.freeTotal).apply()
+                withContext(Dispatchers.Main) { rev++ }
+            }
+        }
     }
 
     // two looks can draw at once: an earlier answer arriving last must not raise the count again (Codex review 11-18)
-    private fun setLeft(ctx: Context, n: Int) {
+    private fun lower(ctx: Context, key: String, n: Int) {
         val p = prefs(ctx)
-        val v = if (p.getString("ai_day", null) == today()) minOf(n, p.getInt("ai_left", n)) else n
-        p.edit().putString("ai_day", today()).putInt("ai_left", v).apply()
+        val old = p.getInt(key, n)
+        p.edit().putInt(key, if (old < 0) n else minOf(n, old)).apply()
     }
 
-    private fun client(ctx: Context) = AiClient(BuildConfig.WORKER, AiClient.deviceId(ctx))
+    private fun client(ctx: Context): AiClient {
+        val proof: suspend (String) -> String? = { hash -> Integrity.token(ctx, hash) }
+        return AiClient(BuildConfig.WORKER, AiClient.deviceId(ctx), if (dev) null else proof)
+    }
 
     /** The cut-out as sent: flattened on white (a transparent one broke the green key, Pixels.onWhite). */
     private fun cutOut(ctx: Context, e: Dex.Entry): ByteArray {
@@ -65,13 +80,15 @@ object AiWork {
 
     fun preview(ctx: Context, e: Dex.Entry, style: String) = run(ctx, e, "preview-$style") { app ->
         val r = client(app).preview(cutOut(app, e), e.kind, style, if (dev) BuildConfig.DEBUG_PURCHASE else null)
-        r.onSuccess { rep -> rep.left?.let { setLeft(app, it) }; Dex.savePreview(app, e.id, rep.image, ext(rep.mime), style) }
-        r.onFailure { if ((it as? AiClient.Fail)?.code == "device") setLeft(app, 0) }
+        r.onSuccess { rep -> rep.left?.let { lower(app, "q_preview", it) }; Dex.savePreview(app, e.id, rep.image, ext(rep.mime), style) }
+        r.onFailure { if ((it as? AiClient.Fail)?.code == "device") lower(app, "q_preview", 0) }
         r
     }
 
-    fun buy(ctx: Context, e: Dex.Entry, token: String, style: String) = run(ctx, e, "sheet-$style") { app ->
+    /** [token]: the dev app's token; null = a free test sheet (the Worker counts it). */
+    fun buy(ctx: Context, e: Dex.Entry, token: String?, style: String) = run(ctx, e, "sheet-$style") { app ->
         client(app).sheet(cutOut(app, e), e.kind, e.id, token, style, look(app, e, style)).onSuccess {
+            it.freeLeft?.let { n -> lower(app, "q_sheet", n) }
             Dex.saveSheet(app, e.id, it.image, ext(it.mime), style, twelve = it.twelve)
             Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
         }

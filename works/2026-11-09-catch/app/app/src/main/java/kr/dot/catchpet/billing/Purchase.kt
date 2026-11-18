@@ -9,7 +9,8 @@ object Purchase {
 
     fun locked(debugToken: String?): Boolean = debugToken.isNullOrBlank()
 
-    fun token(ctx: Context): String? =
+    // release builds never read a saved debug token (plan-release Task 6): only dev builds unlock with it
+    fun token(ctx: Context): String? = if (!kr.dot.catchpet.BuildConfig.DEBUG) null else
         ctx.getSharedPreferences("catchpet", Context.MODE_PRIVATE).getString(KEY, null)?.trim()?.takeIf { it.isNotEmpty() }
             ?: kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.takeIf { it.isNotEmpty() }   // dev builds: free sheets
 

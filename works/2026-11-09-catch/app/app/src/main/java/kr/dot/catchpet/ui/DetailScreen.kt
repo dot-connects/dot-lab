@@ -34,6 +34,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -180,10 +181,12 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
             if (ok) { prefs.edit().putBoolean("ai_ok_${e.id}", true).apply(); go() }
         }
     }
-    val left = remember(AiWork.rev) { AiWork.leftToday(ctx) }
+    // operator 11-18: free previews (10) and free pet sheets (5) per device, the counts written on the buttons
+    LaunchedEffect(e.id) { AiWork.refresh(ctx) }
+    val left = remember(AiWork.rev) { AiWork.left(ctx) }
     val token = remember { Purchase.token(ctx) }
-    val locked = Purchase.locked(token)
     val free = kr.dot.catchpet.BuildConfig.DEBUG_PURCHASE.isNotEmpty()
+    val sheetsLeft = left.sheet != 0   // -1 = not heard yet: let the Worker decide
     // previews from before the look was recorded: the first counts as fur-ball, the second as figurine
     val old = e.ai.oldPreviews
     fun preview(style: String) = e.ai.previewFor(style) ?: old.getOrNull(if (style == "fluff") 0 else 1)
@@ -193,7 +196,7 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
             for ((style, label) in LOOKS) {
                 val drawn = preview(style)
                 val bought = e.ai.sheets.containsKey(style)
-                val canDraw = (drawn == null || AiWork.dev) && "preview-$style" !in busy && left > 0   // dev app: tap again to redraw
+                val canDraw = (drawn == null || AiWork.dev) && "preview-$style" !in busy && left.preview != 0   // dev app: tap again to redraw
                 Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(label, fontFamily = Book.Display, fontSize = 16.sp)
                     Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(16.dp)).background(Book.Field)
@@ -205,7 +208,11 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                             drawn != null -> rememberFile(e.id, drawn, keyGreen = true)?.let { Image(it, label, Modifier.fillMaxSize().padding(8.dp), contentScale = ContentScale.Fit) }
                             else -> Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text("?", fontFamily = Book.Display, fontSize = 40.sp, color = Book.Muted)
-                                Note(if (left > 0) "눌러서 그려 보기" else "내일 다시")
+                                Note(when {
+                                    left.preview == 0 -> "무료 미리보기 끝"
+                                    left.preview > 0 && !AiWork.dev -> "눌러서 그려 보기\n무료 ${left.preview}/${left.previewTotal}"
+                                    else -> "눌러서 그려 보기"
+                                })
                             }
                         }
                     }
@@ -218,19 +225,23 @@ private fun RealAi(ctx: Context, e: Dex.Entry, changed: () -> Unit) {
                             InkPill("다시", Book.Paper, onClick = if ("sheet-$style" !in busy) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
                         }
                         bought -> InkPill("펫으로 쓰기", Book.Sun, onClick = { Dex.setPetStyle(ctx, e.id, style); usePet(ctx, e.id); changed() })
-                        else -> InkPill(if (free) "구매 · 개발판 무료" else "구매 · ${Purchase.PRICE_WON}원", Book.Sun,
-                            onClick = if (!locked && "sheet-$style" !in busy) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                        free -> InkPill("구매 · 개발판 무료", Book.Sun,
+                            onClick = if ("sheet-$style" !in busy) ({ token?.let { t -> guarded { AiWork.buy(ctx, e, t, style) } } }) else null)
+                        // the release app: free test sheets first (the Worker counts them); Play purchase comes next version
+                        sheetsLeft -> InkPill(if (left.sheet > 0) "펫 만들기 · 무료 ${left.sheet}장 남음" else "펫 만들기 · 무료", Book.Sun,
+                            onClick = if ("sheet-$style" !in busy) ({ guarded { AiWork.buy(ctx, e, null, style) } }) else null)
+                        else -> InkPill("구매 · ${Purchase.PRICE_WON}원", Book.Sun, onClick = null)
                     }
                 }
             }
         }
         Note(when {
             AiWork.dev -> "개발판 · 그림을 누르면 몇 번이든 다시 그려요"
-            left > 0 -> "스타일마다 한 번 그려 볼 수 있어요 · 오늘 ${left}번 남음"
-            else -> "오늘은 다 그렸어요. 내일 다시 그릴 수 있어요"
+            left.preview < 0 -> "스타일마다 한 번 그려 볼 수 있어요"
+            else -> "무료 미리보기 ${maxOf(left.preview, 0)}/${left.previewTotal}번 · 무료 펫 그림 ${maxOf(left.sheet, 0)}/${left.sheetTotal}장 남음"
         })
         AiWork.message[e.id]?.let { Note(it, color = Book.Warn) }
-        if (locked) Note("구매는 출시 후 열려요")
+        if (!free && left.sheet == 0) Note("무료 펫 그림을 다 썼어요. 구매는 다음 버전에서 열려요")
     }
 }
 
