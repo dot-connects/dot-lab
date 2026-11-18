@@ -91,3 +91,25 @@ Rejected after download (scratch only): 8160560 / 8160566 (girl waving, teal stu
 | F05 | https://www.pexels.com/video/10871101/ | Anna Bondarenko | Pexels | 1080x1920 | 720x1280 | 5 s | white spitz/samoyed runs from the back of a snowy garden to camera, ends nose-in-lens; whole dog ~2.6 s |
 
 Rejected after download (scratch only): 5728454 (shiba, beige studio backdrop), 13260951 (dog cut off by frame), 33955356 / 37589222 (corgi from behind / far on leash, 20-32 MB), 35172441 (fisheye, white dog), 38978558 / 39564505 (head close-ups).
+
+## G. Grid cells of cut 9d: what each cell is, and the "holding something" picks (2026-11-17/18)
+
+Downloaded the same way as above (videos `download/video/<id>/?w=..&h=..`, photos `images.pexels.com/photos/<id>/pexels-photo-<id>.jpeg?w=1280`), files in `reel/stock/G/` (git-ignored), stills in `reel/render/mont/`, live frames in `reel/render/mont/vid/`. Contact sheets: `reel/stock/G-sheet.jpg`, `G2-sheet.jpg`.
+Author = 미확인 where the Pexels page was not read: the pages answer 403 to a script (2026-11-18), so the names below come from this file's older rows or from a web search snippet (marked). "AI generated" mark on the pages: not checked for the same reason.
+
+| Cell | Name | Page URL | Author | Licence | Kind | In 9d | Note |
+|---|---|---|---|---|---|---|---|
+| 1 | f01 | https://www.pexels.com/video/32320875/ | Orhan Pergel | Pexels | video | yes | = F01 above, puppy trotting to camera |
+| 2 | e01 | https://www.pexels.com/video/6222171/ | Antonius Ferret | Pexels | video | yes | = E01 above, woman waving at a dining table |
+| 3 | g06 | https://www.pexels.com/photo/4437668/ | 미확인 | Pexels | photo | yes | toddler standing with a teddy held in front, dark studio backdrop; the cell frames face + teddy and pushes in slowly (a photo has no motion) |
+| 4 | g02 | https://www.pexels.com/video/6830910/ | Vlada Karpovich (search snippet, 미확인) | Pexels | video | yes | woman in a hoodie reading a book on a sofa, tea beside her; still at 4 s |
+| 5 | g01 | https://www.pexels.com/video/853747/ | 미확인 | Pexels | video | yes | brown poodle on a sofa with a tennis ball in its mouth, landscape; still at 7 s |
+| 6 | src00 | https://www.pexels.com/video/30022530/ | [A] [B] [S] | Pexels | video | yes | = A07 above (cream cat on a teal-grey sofa); no record of the pick was kept, matched by comparing `mont/src00.jpg` with the ten A clips (mean grey difference 0.9, next best 33.7) |
+| - | g03 | https://www.pexels.com/photo/5240467/ | 미확인 | Pexels | photo | 미사용 | boy hugging a teddy outdoors; replaced by g06 (operator 11-17) |
+| - | g05 | https://www.pexels.com/photo/6951659/ | Artem Podrez (search snippet, 미확인) | Pexels | photo | 미사용 | curly-haired girl with a plush bunny by a window; fur-ball kept the bunny |
+| - | g04 | https://www.pexels.com/photo/4173028/ | 미확인 | Pexels | photo | 미사용 | girl in an armchair hugging a teddy; the cut grabbed the chair, posed look |
+
+Rejected after download (stock/G only): video 4651947 / 4651948 (dog with a ball, far too small in frame); photos 5801247, 8919892 (dark, child small), 3855442 (shirtless child), 5088937 (no face), 10566192, 10566188, 3251699.
+
+Fur-ball pictures of these cells: the app's own preview call (Worker `/transform`, style fluff) on the 512 px white-flattened cut, `reel/render/out-mont/<name>-fluff.webp`; g01 and g02 are the tries on Worker version 8e5669a0 (the ball and the book stay), earlier tries kept beside them.
+
