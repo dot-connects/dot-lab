@@ -115,7 +115,7 @@ class NotifGestureTest {
     @Test fun onTheCardKeepsSideDragsOffItsRowsToo() {
         show()
         toggle()
-        rule.onNodeWithText("알림 ${Fixtures.full().notifications.size}", useUnmergedTree = true).performTouchInput { swipeLeft(durationMillis = 400) }
+        rule.onNodeWithText("알림 ${Fixtures.full().notifications.size}개", useUnmergedTree = true).performTouchInput { swipeLeft(durationMillis = 400) }
         rule.waitForIdle()
         assertEquals(0f, paged)
     }

@@ -47,7 +47,7 @@ class TimerDragTest {
         override fun timerSwitch(id: String) { switched++ }
         override fun timerToggle(id: String) { toggled++ }
     }
-    private val ring = "타이머 링: 돌려서 시간 정하기"
+    private val ring = "돌려서 시간 정하기"
 
     private fun show() {
         RuntimeEnvironment.setQualifiers("w751dp-h475dp-land-xhdpi")

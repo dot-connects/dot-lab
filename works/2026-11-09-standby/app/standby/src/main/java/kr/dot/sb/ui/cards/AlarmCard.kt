@@ -122,7 +122,7 @@ internal fun AlarmCard(e: Env, state: StandbyState, config: AppConfig, actions: 
                 val ph = if (big) max(48.dp, min(e.w, e.h) * 0.104f) else 48.dp
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Pill(e, "빠른 알람", ink.acc, Modifier.weight(1f).height(ph), BTN) { sheet = true }
-                    Pill(e, "알람 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f).height(ph), BTN, actions::openAlarmApp)
+                    Pill(e, "시계 앱 열기", ink.ink.copy(alpha = 0.12f), Modifier.weight(1f).height(ph), BTN, actions::openAlarmApp)
                 }
             }
         }

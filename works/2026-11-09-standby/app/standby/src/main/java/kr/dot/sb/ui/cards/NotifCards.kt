@@ -275,7 +275,7 @@ private fun DashArrow(color: Color, modifier: Modifier) = androidx.compose.found
 /** "알림을 왼쪽으로 밀면 지워져요 · 버튼을 다시 누르면 끝" under the rows while 밀어서 지우기 is on. */
 @Composable
 private fun SwipeHint(e: Env, modifier: Modifier = Modifier) =
-    Txt("알림을 왼쪽으로 밀면 지워져요 · 버튼을 다시 누르면 끝", e.meta * 0.85f, e.ink.ink2, modifier.fillMaxWidth(), weight = 500, align = TextAlign.Center)
+    Txt("알림을 왼쪽으로 밀면 지워져요 · 버튼을 다시 누르면 끝나요", e.meta * 0.85f, e.ink.ink2, modifier.fillMaxWidth(), weight = 500, align = TextAlign.Center)
 
 /** Empty / no-access state: bell (or lock) and one line, centred on the card plate. */
 @Composable
@@ -310,8 +310,8 @@ internal fun NotifCard(e: Env, state: StandbyState, actions: StandbyActions, pla
     val req = LocalNotifOpen.current
     LaunchedEffect(req?.value) { if (req?.value == true) { req.value = false; open = true; touched++ } }
     when {
-        !state.permissions.notifications -> return NotifEmpty(e, plate, Ic.LOCK, "권한 필요 · 눌러서 설정") { actions.openSettings("notifications") }
-        state.notifications.isEmpty() -> return NotifEmpty(e, plate, Ic.BELL, "알림 없음", null)
+        !state.permissions.notifications -> return NotifEmpty(e, plate, Ic.LOCK, "눌러서 알림 허용하기") { actions.openSettings("notifications") }
+        state.notifications.isEmpty() -> return NotifEmpty(e, plate, Ic.BELL, "새 알림이 없어요", null)
     }
     val groups = remember(state.notifications) { notifGroups(state.notifications) }
     // r15 §3 밀어서 지우기: off after 30 s without a dismiss, when the screen goes off (stop) or the card leaves the screen
@@ -376,9 +376,9 @@ private fun NotifClosed(
             else -> Column(Modifier.fillMaxSize()) {
                 val headH = if (low) 32.dp else 40.dp
                 Row(Modifier.fillMaxWidth().height(headH), verticalAlignment = Alignment.CenterVertically) {
-                    Txt("알림 $total", e.meta, e.ink.ink, Modifier.weight(1f), weight = 600, num = true)
+                    Txt("알림 ${total}개", e.meta, e.ink.ink, Modifier.weight(1f), weight = 600, num = true)
                     if (tier == NotifTier.D || tier == NotifTier.E) {
-                        TextBtn(e, "내용 열기", e.ink.accText, onOpen)
+                        TextBtn(e, "내용 보기", e.ink.accText, onOpen)
                         SwipeToggle(e, swipe.on, iconOnly = false, swipe.toggle)
                     } else SwipeToggle(e, swipe.on, iconOnly = true, swipe.toggle)
                 }
@@ -458,7 +458,7 @@ private fun Cluster(e: Env, rest: List<NotifGroup>) {
 private fun IconGrid(e: Env, groups: List<NotifGroup>, total: Int, ih: Dp) {
     val cell = 44.dp
     Column(Modifier.fillMaxSize()) {
-        Box(Modifier.height(24.dp), contentAlignment = Alignment.CenterStart) { Txt("알림 $total", e.meta, e.ink.ink, weight = 600, num = true) } // plan-r15 D3: never a bare number
+        Box(Modifier.height(24.dp), contentAlignment = Alignment.CenterStart) { Txt("알림 ${total}개", e.meta, e.ink.ink, weight = 600, num = true) } // plan-r15 D3: never a bare number
         val rows = floor((ih - 24.dp) / cell).toInt().coerceAtLeast(1)
         val slots = rows * 2
         val many = groups.size > slots
@@ -489,7 +489,7 @@ private fun NotifOpen(e: Env, state: StandbyState, actions: StandbyActions, swip
     val shape = RoundedCornerShape(max(e.plateRadius * 0.85f, if (e.plateRadius == 0.dp) 0.dp else 10.dp))
     Column(Modifier.fillMaxSize()) {
         Row(Modifier.fillMaxWidth().height(40.dp).padding(start = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Txt("알림 ${list.size}", e.head, e.ink.ink, Modifier.weight(1f), weight = 700, num = true)
+            Txt("알림 ${list.size}개", e.head, e.ink.ink, Modifier.weight(1f), weight = 700, num = true)
             TextBtn(e, "접기", e.ink.accText, onClose)
             SwipeToggle(e, swipe.on, iconOnly = e.w < 300.dp, swipe.toggle)
         }

@@ -54,9 +54,9 @@ class LiveTicksTest {
         val s = Fixtures.full().let { it.copy(media = it.media!!.copy(canPrev = false, art = null)) }
         rule.setContent { BoardView(board, s, AppConfig(), StandbyActions.NONE) }
         rule.onNodeWithContentDescription("일시정지").assertExists()
-        rule.onNodeWithContentDescription("다음").assertExists()
-        rule.onNodeWithContentDescription("이전").assertIsNotEnabled()
-        val role = rule.onNodeWithContentDescription("다음").fetchSemanticsNode().config[SemanticsProperties.Role]
+        rule.onNodeWithContentDescription("다음 곡").assertExists()
+        rule.onNodeWithContentDescription("이전 곡").assertIsNotEnabled()
+        val role = rule.onNodeWithContentDescription("다음 곡").fetchSemanticsNode().config[SemanticsProperties.Role]
         assertEquals(androidx.compose.ui.semantics.Role.Button, role)
     }
 
@@ -65,7 +65,7 @@ class LiveTicksTest {
         val board = Board("b", "", Layout.ONE, listOf(listOf(CardType.TIMER)))
         val s = Fixtures.full().copy(timers = mapOf("b-0" to TimerState(leftSec = 3 * 60, running = true)))
         rule.setContent { BoardView(board, s, AppConfig(), StandbyActions.NONE) }
-        rule.onNodeWithContentDescription("초기화").assertExists()
+        rule.onNodeWithContentDescription("타이머 처음으로").assertExists()
         rule.onNodeWithContentDescription("일시정지").assertExists()
         assertEquals(0, rule.onAllNodesWithContentDescription("재생").fetchSemanticsNodes().size)
     }

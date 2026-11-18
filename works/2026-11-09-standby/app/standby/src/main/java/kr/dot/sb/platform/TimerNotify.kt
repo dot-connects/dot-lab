@@ -58,21 +58,21 @@ class DeviceTimerEffects(ctx: Context) : TimerEffects {
         if (s.running && left > 0) {
             val end = LocalTime.now().plusSeconds(s.leftSec.toLong())
             b.setContentTitle(word)
-                .setContentText("%d:%02d에 %s".format(end.hour, end.minute, if (focus) "휴식" else "집중"))
+                .setContentText("%d:%02d부터 %s".format(end.hour, end.minute, if (focus) "휴식" else "집중"))
                 .setWhen(System.currentTimeMillis() + left).setShowWhen(true)
                 .setUsesChronometer(true).setChronometerCountDown(true)
                 // gone at 0 instead of counting below it while a late (inexact) end alarm is still on its way
                 .setTimeoutAfter(left)
-                .addAction(action(id, TimerAction.PAUSE, "멈춤"))
+                .addAction(action(id, TimerAction.PAUSE, "멈추기"))
         } else if (s.running) {
             b.setContentTitle(word).setContentText("시간이 다 됐어요").setShowWhen(false) // the end alarm has not fired yet
         } else {
             b.setContentTitle("멈춤 · %02d:%02d 남음".format(s.leftSec / 60, s.leftSec % 60))
                 .setContentText("$word ${s.totalSec / 60}분")
                 .setShowWhen(false)
-                .addAction(action(id, TimerAction.START, "계속"))
+                .addAction(action(id, TimerAction.START, "계속하기"))
         }
-        nm.notify(id, ONGOING, b.addAction(action(id, TimerAction.RESET, "초기화")).build())
+        nm.notify(id, ONGOING, b.addAction(action(id, TimerAction.RESET, "처음으로")).build())
     }
 
     override fun ended(id: String, t: PomodoroTimer) {
@@ -101,7 +101,7 @@ class DeviceTimerEffects(ctx: Context) : TimerEffects {
         val th = ConfigStore.flow(app).value.baseTheme().tokens
         return Notification.Builder(app, channel)
             .setSmallIcon(android.R.drawable.ic_lock_idle_alarm)
-            .setSubText("타이머")
+            .setSubText("집중 타이머")
             .setColor((if (focus) th.accent else th.roles.green).toArgb())
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setContentIntent(open())

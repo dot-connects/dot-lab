@@ -212,7 +212,7 @@ private fun HeatPill() {
             IconView(Ic.THERMO, fg, Modifier.size(20.dp))
             if (msg) {
                 Spacer(Modifier.width(8.dp))
-                Txt("뜨거워서 화면을 어둡게 했어요", 17.dp, fg, weight = 700)
+                Txt("폰이 뜨거워서 화면을 어둡게 했어요", 17.dp, fg, weight = 700)
             }
         }
     }
@@ -264,7 +264,7 @@ private fun AlarmScreen(a: AlarmRinging, state: StandbyState, actions: StandbyAc
                 // plan-r15 C1: a button only for an action the clock app's notification has; neither = 닫기 (hides this screen)
                 val none = !a.canSnooze && !a.canStop
                 val stop = @Composable { m: Modifier ->
-                    AlarmPill(if (none) "닫기" else "중단", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, if (none) actions::alarmClose else actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f))
+                    AlarmPill(if (none) "닫기" else "끄기", ink.ink.copy(alpha = 0.16f), ink.ink, bh, m, if (none) actions::alarmClose else actions::alarmStop, outline = ink.ink.copy(alpha = 0.75f))
                 }
                 if (land) Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     if (a.canSnooze) snooze(Modifier.size(bw, bh))

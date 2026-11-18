@@ -45,7 +45,7 @@ class NotifShots(private val name: String, private val device: Device, private v
             {
                 mainClock.autoAdvance = false
                 val row = onAllNodesWithText("배송 완료")
-                (if (row.fetchSemanticsNodes().isNotEmpty()) row else onAllNodesWithText("알림 ${s.notifications.size}"))[0].performClick()
+                (if (row.fetchSemanticsNodes().isNotEmpty()) row else onAllNodesWithText("알림 ${s.notifications.size}개"))[0].performClick()
                 mainClock.advanceTimeBy(400)
             }
         }

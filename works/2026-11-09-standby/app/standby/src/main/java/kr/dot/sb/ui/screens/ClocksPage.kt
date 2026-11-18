@@ -213,7 +213,7 @@ private fun ColorSheet(face: FaceId, row: StyleRow, style: ClockStyle, ink: Ink,
             .tap {}.padding(top = pad * 0.9f, bottom = pad * 1.3f),
     ) {
         Box(Modifier.fillMaxWidth().padding(horizontal = pad)) {
-            Txt("색상", max(20.dp, s * 0.05f), ink.ink, Modifier.align(Alignment.Center), weight = 700, family = LocalTheme.current.words(700))
+            Txt("색", max(20.dp, s * 0.05f), ink.ink, Modifier.align(Alignment.Center), weight = 700, family = LocalTheme.current.words(700))
             Box(
                 Modifier.align(Alignment.CenterEnd).size(d * 0.8f).clip(CircleShape).background(ink.ink4).tap(onClose),
                 contentAlignment = Alignment.Center,

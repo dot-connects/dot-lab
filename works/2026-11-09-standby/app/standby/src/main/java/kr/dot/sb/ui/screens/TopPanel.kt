@@ -130,7 +130,7 @@ internal fun TopPanel(
     ) {
         PanelSlider("화면 밝기", level, onLevel) { c -> sun(c) }
         // r14 B7: above Brightness.HOT_MAX the bar moves but the screen does not; say why
-        if (state.brightCapped) Txt("폰이 뜨거워서 35%까지만 밝아져요", 13.dp, ink.ink.copy(alpha = 0.75f), Modifier.padding(start = 14.dp), weight = 500, family = t.words(500))
+        if (state.brightCapped) Txt("폰이 뜨거워서 덜 밝게 켜요", 13.dp, ink.ink.copy(alpha = 0.75f), Modifier.padding(start = 14.dp), weight = 500, family = t.words(500))
         PanelSlider("소리 크기", vol, { v ->
             vol = v
             audio.setStreamVolume(AudioManager.STREAM_MUSIC, (v * maxVol).roundToInt(), 0)

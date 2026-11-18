@@ -98,11 +98,11 @@ object Channels {
     fun ensure(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(GLOW, "무드등", NotificationManager.IMPORTANCE_HIGH).apply { setSound(null, null) })
-        nm.createNotificationChannel(NotificationChannel(CHARGE, "충전 시작", NotificationManager.IMPORTANCE_HIGH).apply { setSound(null, null) })
+        nm.createNotificationChannel(NotificationChannel(CHARGE, "충전하면 자동으로 켜기", NotificationManager.IMPORTANCE_HIGH).apply { setSound(null, null) })
         nm.createNotificationChannel(NotificationChannel(SLEEP, "수면 소리", NotificationManager.IMPORTANCE_LOW))
-        nm.createNotificationChannel(NotificationChannel(TIMER, "타이머 진행", NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null); enableVibration(false) })
+        nm.createNotificationChannel(NotificationChannel(TIMER, "집중 타이머 진행 중", NotificationManager.IMPORTANCE_LOW).apply { setSound(null, null); enableVibration(false) })
         // silent: the alert tones come from DeviceTimerAlerts (one sound, the card's)
-        nm.createNotificationChannel(NotificationChannel(TIMER_END, "타이머 끝", NotificationManager.IMPORTANCE_HIGH).apply {
+        nm.createNotificationChannel(NotificationChannel(TIMER_END, "집중 타이머 끝남", NotificationManager.IMPORTANCE_HIGH).apply {
             setSound(null, null); enableVibration(false); lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
         })
     }

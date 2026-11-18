@@ -414,7 +414,7 @@ private val scrimDisc = Color.Black.copy(alpha = 0.42f)
 @Composable
 private fun MediaBtn(ic: Ic, d: Dp, fill: Color, fg: Color, enabled: Boolean, label: String? = null, onClick: () -> Unit) {
     // r11 a11y: a named button, disabled when it cannot act (no previous / next track); [label] overrides the glyph's name
-    @Suppress("NAME_SHADOWING") val label = label ?: when (ic) { Ic.PREV -> "이전"; Ic.NEXT -> "다음"; Ic.PAUSE -> "일시정지"; Ic.CLOSE -> "닫기"; else -> "재생" }
+    @Suppress("NAME_SHADOWING") val label = label ?: when (ic) { Ic.PREV -> "이전 곡"; Ic.NEXT -> "다음 곡"; Ic.PAUSE -> "일시정지"; Ic.CLOSE -> "닫기"; else -> "재생" }
     Box(
         Modifier.size(d).clip(CircleShape).background(fill)
             .semantics { contentDescription = label; role = Role.Button; if (!enabled) disabled() }
@@ -578,7 +578,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
         else {
             val c = if (flash == 1) e.ink.green else e.ink.acc
             Box(Modifier.clip(CircleShape).background(c).padding(horizontal = size * 0.6f, vertical = size * 0.2f)) {
-                Txt(if (flash == 1) "휴식으로 바뀜" else "집중으로 바뀜", size * 0.9f, e.ink.on(c), weight = 700, maxW = maxW - size * 1.2f)
+                Txt(if (flash == 1) "휴식으로 바꿨어요" else "집중으로 바꿨어요", size * 0.9f, e.ink.on(c), weight = 700, maxW = maxW - size * 1.2f)
             }
         }
     }
@@ -605,7 +605,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
     val buttons = @Composable {
         Row(horizontalArrangement = Arrangement.spacedBy(bh * 0.25f), verticalAlignment = Alignment.CenterVertically) {
             TimerBtn(if (t.running) Ic.PAUSE else Ic.PLAY, bh * 1.6f, bh, e.ink.acc, e.onAcc, toggleLabel, onClick = toggle)
-            TimerBtn(Ic.CLOSE, bh, bh, e.ink.ink4, e.ink.ink, "초기화") { actions.timerReset(e.slotId) }
+            TimerBtn(Ic.CLOSE, bh, bh, e.ink.ink4, e.ink.ink, "타이머 처음으로") { actions.timerReset(e.slotId) }
         }
     }
     val inDigits = @Composable { d: Dp -> Hero(e, digits, d * 0.26f * e.t.tokens.digitCap, dc, d * 0.78f) }
@@ -625,8 +625,8 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             }
             // reset: a 24 dp chip 4 dp in from the corner, its 48 dp target inside the card
             Box(Modifier.align(Alignment.TopEnd).size(48.dp), contentAlignment = Alignment.TopEnd) {
-                Box(Modifier.padding(4.dp)) { TimerBtn(Ic.CLOSE, 24.dp, 24.dp, e.ink.ink4, e.ink.ink, "초기화", target = false) { actions.timerReset(e.slotId) } }
-                Box(Modifier.matchParentSize().semantics { contentDescription = "초기화"; role = Role.Button }.tap { actions.timerReset(e.slotId) })
+                Box(Modifier.padding(4.dp)) { TimerBtn(Ic.CLOSE, 24.dp, 24.dp, e.ink.ink4, e.ink.ink, "타이머 처음으로", target = false) { actions.timerReset(e.slotId) } }
+                Box(Modifier.matchParentSize().semantics { contentDescription = "타이머 처음으로"; role = Role.Button }.tap { actions.timerReset(e.slotId) })
             }
         }
         // ring left (as tall as the slot, at most half its width), state · next time · buttons right; the group centred
@@ -634,7 +634,7 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
             val d = min(ih, iw * 0.5f)
             val gap = sh * 0.07f
             val tw = iw - d - gap
-            val sub = if (t.running) state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d에 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
+            val sub = if (t.running) state.now.plusSeconds(t.leftSec.toLong()).let { "%d:%02d부터 %s".format(it.hour, it.minute, if (t.mode == TimerMode.FOCUS) "휴식" else "집중") }
             else if (t.leftSec >= t.totalSec) "${t.totalSec / 60}분 · 원을 돌려 바꾸기" // not started yet
             else "${t.totalSec / 60}분 중 %02d:%02d 남음".format(t.leftSec / 60, t.leftSec % 60)
             val subSize = max(11.dp, d * 0.06f)
@@ -675,8 +675,8 @@ private fun TimerCard(e: Env, state: StandbyState, config: AppConfig, actions: S
         horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.Top,
     ) {
         val line = buildAnnotatedString {
-            withStyle(SpanStyle(color = e.readInk2)) { append("정확한 시간에 알리려면 ") }
-            append("알람 권한 켜기")
+            withStyle(SpanStyle(color = e.readInk2)) { append("제때 알리려면 ") }
+            append("허용하기")
         }
         Txt(line, hintSize, e.ink.accText, weight = 700, maxW = iw) // shrinks to fit a narrow card
     }
@@ -816,7 +816,7 @@ private fun TimerRing(
             g.onDone(m)
         }
     }
-    val hint = if (drag?.on == true) "타이머 링: 돌려서 시간 정하기" else null
+    val hint = if (drag?.on == true) "돌려서 시간 정하기" else null
     val label = when {
         tap != null -> Modifier.semantics {
             contentDescription = listOfNotNull(tap.label, hint).joinToString(" · "); role = Role.Button
@@ -942,7 +942,7 @@ private fun SleepOne(e: Env, state: StandbyState, config: AppConfig, actions: St
 private fun DdayCard(e: Env, config: AppConfig) {
     val dd = config.ddays.filter { !it.date.isBefore(e.today) }.minByOrNull { it.date } ?: config.ddays.firstOrNull()
     if (dd == null) {
-        StateCard(e, Ic.CALENDAR, "D-day", null, "일정 없음", null, null)
+        StateCard(e, Ic.CALENDAR, "D-day", null, "D-day를 추가해 주세요", null, null)
         return
     }
     val n = ChronoUnit.DAYS.between(e.today, dd.date)
@@ -1008,7 +1008,7 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val head = buildAnnotatedString {
         withStyle(SpanStyle(color = e.ink.accText)) { append("${dowKo(e.today)}요일") }
         append(" ${e.today.dayOfMonth}")
-        if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}") }
+        if (!items.isNullOrEmpty()) withStyle(SpanStyle(color = e.readInk2, fontWeight = FontWeight.Medium)) { append(" · 남은 일정 ${items.size}개") }
     }
     if (!items.isNullOrEmpty() && e.h < 220.dp) return AgendaOne(e, items, head)
     if (items != null && items.size >= 2 && e.w >= 400.dp && e.w / e.h >= 1.2f) return AgendaWide(e, items, head)
@@ -1016,8 +1016,8 @@ private fun AgendaCard(e: Env, state: StandbyState, actions: StandbyActions) {
         Txt(head, e.meta, e.ink.ink, weight = 700)
         Spacer(Modifier.height(LG * 2))
         when {
-            items == null -> Txt("캘린더 권한 필요 · 눌러서 설정", e.read, e.readInk2, weight = 500, lines = 2)
-            items.isEmpty() -> Txt("남은 일정 없음", e.read, e.readInk2, weight = 500)
+            items == null -> Txt("눌러서 캘린더 허용하기", e.read, e.readInk2, weight = 500, lines = 2)
+            items.isEmpty() -> Txt("오늘 남은 일정이 없어요", e.read, e.readInk2, weight = 500)
             // r15 §2: the rows spread over the height instead of piling up at the top
             else -> Column(Modifier.weight(1f), verticalArrangement = Arrangement.SpaceEvenly) {
                 shown.chunked(cols).forEach { row ->
@@ -1414,7 +1414,7 @@ private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
                 MonthGrid(e, events, Modifier.fillMaxWidth().weight(1f))
                 if (n > 0) {
                     Spacer(Modifier.height(LG * 2))
-                    Txt("다가오는 날", e.meta, e.readInk2, weight = 600)
+                    Txt("다가오는 일정", e.meta, e.readInk2, weight = 600)
                     Spacer(Modifier.height(10.dp))
                     EventList(e, events, n, denied)
                 }
@@ -1451,7 +1451,7 @@ private fun ColumnScope.DayAndEvents(e: Env, w: Dp, h: Dp, events: List<AgendaIt
 @Composable
 private fun EventList(e: Env, events: List<AgendaItem>, n: Int, denied: Boolean) {
     if (denied || events.isEmpty()) {
-        Txt(if (denied) "캘린더 권한 필요 · 눌러서 설정" else "다가오는 일정 없음", e.meta, e.readInk2, weight = 500)
+        Txt(if (denied) "눌러서 캘린더 허용하기" else "다가오는 일정이 없어요", e.meta, e.readInk2, weight = 500)
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -1552,7 +1552,7 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
         if (hint != null) {
             StateCard(e, Ic.PHOTO, "추억", null, null, "$hint · 눌러서 고르기") { actions.openSettings("photos") }
         } else {
-            StateCard(e, Ic.PHOTO, "추억", null, "추억 없음", null, null)
+            StateCard(e, Ic.PHOTO, "추억", null, "오늘의 추억이 없어요", null, null)
         }
         return
     }

@@ -328,7 +328,7 @@ class GlowActivity : ComponentActivity() {
         // plan-r15 C1: only the actions the clock app's notification has; neither = 닫기
         val a = ListenerBus.alarm.value
         if (a?.snooze != null) addView(pill("다시 알림", Color.parseColor("#F2A65E"), Color.BLACK) { ListenerBus.snooze(this@GlowActivity) }, lp())
-        if (a?.stop != null) addView(pill("중단", Color.parseColor("#35508F"), Color.WHITE) { ListenerBus.stop(this@GlowActivity) }, lp())
+        if (a?.stop != null) addView(pill("끄기", Color.parseColor("#35508F"), Color.WHITE) { ListenerBus.stop(this@GlowActivity) }, lp())
         if (a?.snooze == null && a?.stop == null) addView(pill("닫기", Color.parseColor("#35508F"), Color.WHITE) {}, lp())
     }
 

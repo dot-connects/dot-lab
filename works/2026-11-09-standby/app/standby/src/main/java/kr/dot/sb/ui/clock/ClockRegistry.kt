@@ -37,14 +37,14 @@ import kr.dot.sb.ui.clock.StyleRow.TRIO
 import kr.dot.sb.ui.clock.StyleRow.WEIGHT
 
 /** Gallery families (consensus); declaration order = gallery order. */
-enum class Family(val ko: String) { SIMPLE("심플"), POP("팝"), RETRO("레트로"), CLASSIC("클래식"), GAUGE("계기") }
+enum class Family(val ko: String) { SIMPLE("심플"), POP("팝"), RETRO("레트로"), CLASSIC("클래식"), GAUGE("눈금") }
 
 /**
  * One 꾸미기 row (mockup `STYLE` keys 1:1). [part] = a colour row's label (mockup `PART`); null for the other rows.
  * Preset rows ([LED], [PAIR], [TRIO], [SOLAR]) pick from a fixed list instead of a free colour.
  */
 enum class StyleRow(val part: String? = null) {
-    TEXT_COLOR("글자 색"), HOUR_COLOR("시 색"), MINUTE_COLOR("분 색"), CITY_COLOR("도시 색"), LIT_COLOR("밝은 점 색"),
+    TEXT_COLOR("글자 색"), HOUR_COLOR("시 숫자 색"), MINUTE_COLOR("분 숫자 색"), CITY_COLOR("도시 색"), LIT_COLOR("밝은 점 색"),
     PLATE_COLOR("판 색"), DIGIT_COLOR("숫자 색"), PANEL_COLOR("판 색"), INK_COLOR("글자 색"), DOT_COLOR("점 색"),
     HAND_COLOR("바늘 색"), SECOND_COLOR("초침 색"), FACE_COLOR("판 색"), TICK_COLOR("눈금 색"), NUMERAL_COLOR("숫자 색"),
     DAY_COLOR("요일 색"), CALENDAR_COLOR("달력 색"), ACCENT_COLOR("강조 색"), BAR_COLOR("막대 색"), RIM_COLOR("점 색"),
@@ -131,19 +131,19 @@ fun spec(id: FaceId): ClockSpec {
     fun c(f: Family, ko: String, rows: List<StyleRow>, more: List<StyleRow>, built: Boolean = false) =
         ClockSpec(id, f, ko, rows, more, built)
     return when (id) {
-        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털 1", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
-        FaceId.THIN -> c(Family.SIMPLE, "디지털 2", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
+        FaceId.DIGITAL -> c(Family.SIMPLE, "디지털", listOf(TEXT_COLOR, SIZE, FONT, INFO, StyleRow.ACCENT_MIDDLE, StyleRow.FILL, StyleRow.OVERLAP), DT + LAYOUT, built = true)
+        FaceId.THIN -> c(Family.SIMPLE, "가는 선", listOf(TEXT_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.SPLIT -> c(Family.SIMPLE, "시·분 나눔", listOf(HOUR_COLOR, MINUTE_COLOR, SIZE, FONT, INFO), DT, built = true)
         FaceId.DESK -> c(Family.SIMPLE, "책상", listOf(TEXT_COLOR, SIZE, FONT), DT, built = true)
         FaceId.COLOR_BLOCK -> c(Family.POP, "색 블록", listOf(PAIR, SIZE, FONT, INFO, StyleRow.CLEAR_BG), emptyList(), built = true)
         FaceId.STICKER -> c(Family.POP, "스티커", listOf(TRIO, SIZE, FONT, INFO, StyleRow.CLEAR_BG), listOf(PAPER_COLOR), built = true)
         FaceId.BALLS -> c(Family.POP, "공 숫자", listOf(TRIO, SIZE, FONT, INFO), listOf(DIGIT_COLOR), built = true)
-        FaceId.SOLAR -> c(Family.POP, "솔라", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
+        FaceId.SOLAR -> c(Family.POP, "파스텔", listOf(StyleRow.SOLAR, TEXT_COLOR, SIZE, FONT, INFO), listOf(WEIGHT, StyleRow.FX, LAYOUT), built = true)
         // r14: legacy id only (old saves read it as DIGITAL); never listed
         FaceId.FLOAT -> c(Family.POP, "둥근 굵은 글씨", emptyList(), emptyList())
-        FaceId.FLIP -> c(Family.RETRO, "플립 시계", listOf(PLATE_COLOR, DIGIT_COLOR, SIZE, FONT, INFO), emptyList(), built = true)
-        FaceId.LED -> c(Family.RETRO, "빨간 LED", listOf(StyleRow.LED, SIZE), emptyList(), built = true)
-        FaceId.LCD -> c(Family.RETRO, "액정 시계", listOf(PANEL_COLOR, INK_COLOR, SIZE), emptyList(), built = true)
+        FaceId.FLIP -> c(Family.RETRO, "플립", listOf(PLATE_COLOR, DIGIT_COLOR, SIZE, FONT, INFO), emptyList(), built = true)
+        FaceId.LED -> c(Family.RETRO, "LED", listOf(StyleRow.LED, SIZE), emptyList(), built = true)
+        FaceId.LCD -> c(Family.RETRO, "액정", listOf(PANEL_COLOR, INK_COLOR, SIZE), emptyList(), built = true)
         FaceId.DOT_MATRIX -> c(Family.RETRO, "전광판", listOf(DOT_COLOR, SIZE), emptyList(), built = true)
         FaceId.WALL -> c(
             Family.CLASSIC, "벽시계", listOf(HAND_COLOR, SECOND_COLOR, ANALOG_NUMBERS, INFO),

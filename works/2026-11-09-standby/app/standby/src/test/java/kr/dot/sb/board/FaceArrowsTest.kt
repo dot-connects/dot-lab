@@ -42,15 +42,15 @@ class FaceArrowsTest {
         rule.setContent { BoardView(b, Fixtures.full(), config, actions) }
         rule.onRoot().performTouchInput { click(center) }
         rule.mainClock.advanceTimeBy(100)
-        rule.onNodeWithText("디지털 1 · 1 / 3").assertExists()
+        rule.onNodeWithText("디지털 · 1 / 3").assertExists()
         rule.onNode(androidx.compose.ui.test.SemanticsMatcher("다음 시계") { it.config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsActions.OnClick) { null }?.label == "다음 시계" })
             .performTouchInput { click(center) }
         rule.mainClock.advanceTimeBy(100)
-        rule.onNodeWithText("플립 시계 · 2 / 3").assertExists()
+        rule.onNodeWithText("플립 · 2 / 3").assertExists()
         rule.mainClock.advanceTimeBy(2_500)
         assertEquals(emptyList<String>(), saved) // still browsing
         rule.mainClock.advanceTimeBy(600)
         assertEquals(listOf("b1 0:0 FLIP"), saved)
-        rule.onNodeWithText("플립 시계 · 2 / 3").assertDoesNotExist()
+        rule.onNodeWithText("플립 · 2 / 3").assertDoesNotExist()
     }
 }

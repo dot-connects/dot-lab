@@ -39,7 +39,7 @@ class TimerDragShots {
         val slots = if (layout == Layout.ONE) listOf(listOf(CardType.TIMER)) else listOf(listOf(CardType.TIMER), listOf(CardType.WEATHER))
         val b = Board("b", "b", layout, slots)
         rule.setContent { ProvideTheme(Theme.IPHONE) { BoardView(b, Fixtures.full().copy(timers = emptyMap()), AppConfig(), object : StandbyActions {}) } }
-        rule.onNodeWithContentDescription("타이머 링: 돌려서 시간 정하기").performTouchInput {
+        rule.onNodeWithContentDescription("돌려서 시간 정하기").performTouchInput {
             val r = width / 2f * 0.95f
             val a = Math.toRadians(150.0) // 25 min
             down(Offset(centerX + 1f, centerY - r))
@@ -48,16 +48,16 @@ class TimerDragShots {
         }
         rule.waitForIdle()
         rule.onRoot().captureRoboImage(shotPath(Theme.IPHONE, "board", name, Device.FOLD_COVER_L))
-        rule.onNodeWithContentDescription("타이머 링: 돌려서 시간 정하기").performTouchInput { up() }
+        rule.onNodeWithContentDescription("돌려서 시간 정하기").performTouchInput { up() }
     }
 
-    /** A running timer without exact alarms: the [알람 권한 켜기] line under the card (half slot). */
+    /** A running timer without exact alarms: the [제때 알리려면 허용하기] line under the card (half slot). */
     @Test fun exactAlarmHint() {
         RuntimeEnvironment.setQualifiers(Device.FOLD_COVER_L.qualifiers)
         val b = Board("b", "b", Layout.TWO, listOf(listOf(CardType.TIMER), listOf(CardType.WEATHER)))
         val s = Fixtures.full().let { it.copy(timers = mapOf("b-0" to it.timers.values.first().copy(running = true)), permissions = Permissions(exactAlarm = false)) }
         rule.setContent { ProvideTheme(Theme.IPHONE) { BoardView(b, s, AppConfig(), object : StandbyActions {}) } }
-        rule.onNodeWithText("알람 권한 켜기", substring = true).assertExists()
+        rule.onNodeWithText("제때 알리려면 허용하기", substring = true).assertExists()
         rule.onRoot().captureRoboImage(shotPath(Theme.IPHONE, "board", "timer-exact-hint", Device.FOLD_COVER_L))
     }
 

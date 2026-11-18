@@ -101,7 +101,7 @@ internal fun PhotosPage(state: StandbyState, config: AppConfig, actions: Standby
         val photos = state.photos
         when {
             photos == null -> Placeholder(Ic.PHOTO, state.photoHint ?: "폴더를 골라 주세요", "눌러서 고르기") { actions.openSettings("photos") }
-            photos.isEmpty() -> Placeholder(Ic.PHOTO, "사진 없음", "사진이 있는 폴더를 고르면 여기 나와요") { actions.openSettings("photos") }
+            photos.isEmpty() -> Placeholder(Ic.PHOTO, "사진이 없어요", "사진이 있는 폴더를 고르면 여기 나와요") { actions.openSettings("photos") }
             else -> {
                 var idx by remember { mutableIntStateOf(0) }
                 val shuffleMs = config.photoIntervalSec * 1000L

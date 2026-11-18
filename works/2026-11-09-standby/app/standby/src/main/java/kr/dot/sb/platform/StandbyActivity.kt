@@ -162,7 +162,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         /** The low-battery guard with its toast ("충전기에 꽂으면 켤 수 있어요"). */
         fun refused(ctx: Context): Boolean {
             if (!lowBattery(ctx)) return false
-            android.widget.Toast.makeText(ctx, "충전기에 꽂으면 켤 수 있어요", android.widget.Toast.LENGTH_SHORT).show()
+            android.widget.Toast.makeText(ctx, "충전기에 꽂으면 켤 수 있어요.", android.widget.Toast.LENGTH_SHORT).show()
             return true
         }
 
