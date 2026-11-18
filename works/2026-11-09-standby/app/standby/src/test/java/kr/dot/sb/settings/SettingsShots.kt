@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.ComposeContentTestRule
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -46,7 +47,7 @@ abstract class SettingsShotKit {
     protected val nav = object : Nav { override fun push(route: String) {}; override fun back() {} }
     protected val env = SettingsEnv(
         foldable = true,
-        granted = mapOf(Perm.DREAM to false, Perm.NOTIFICATIONS to true, Perm.CALENDAR to true, Perm.FULL_SCREEN to true, Perm.EXACT_ALARM to false, Perm.BATTERY to false),
+        granted = mapOf(Perm.DREAM to false, Perm.NOTIFICATIONS to true, Perm.CALENDAR to true, Perm.FULL_SCREEN to true, Perm.EXACT_ALARM to false, Perm.BATTERY to false, Perm.USAGE to true),
         lux = 2.4f,
         licenseNames = listOf("LICENSE-robotoslab.txt", "OFL-inter.txt", "OFL-nunito.txt", "OFL-pretendard.txt", "OFL-sourceserif4.txt"),
         licenseText = { "Copyright 2020 The Inter Project Authors\nThis Font Software is licensed under the SIL Open Font License, Version 1.1." },
@@ -78,7 +79,12 @@ abstract class SettingsShotKit {
         rule.setContent {
             var cfg by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(config) }
             SettingsTheme(config.clockStyle(FaceId.DIGITAL).color.c()) {
-                androidx.compose.runtime.CompositionLocalProvider(kr.dot.sb.ui.cards.LocalAppLookup provides kr.dot.sb.Fixtures.appLookup) {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    kr.dot.sb.ui.cards.LocalAppLookup provides kr.dot.sb.Fixtures.appLookup,
+                    kr.dot.sb.ui.cards.LocalUsageApps provides { _, _, n ->
+                        if (e.granted[Perm.USAGE] == true) listOf("app.3", "app.1", "app.2", "app.0").take(n) else null
+                    },
+                ) {
                     RouteHost(route, cfg, { f -> cfg = f(cfg) }, nav, e)
                 }
             }
@@ -172,6 +178,14 @@ class SettingsPageShots : SettingsShotKit() {
     @Test fun boardPicker() = snap("board-picker", phone, route = Routes.board("desk")) { onAllNodesWithText("카드 추가")[0].performScrollTo().performClick() }
     /** r14 C1 앱 고르기: two picked (veil + check), then a search. */
     @Test fun appPicker() = snap("app-picker", phone, withApps, route = Routes.apps("desk", 0, 0))
+    @Test fun appPickerRecent() = snap("app-picker-recent", phone, withApps, route = Routes.apps("desk", 0, 0)) {
+        onNodeWithText("최근 사용").performClick()
+        onNode(androidx.compose.ui.test.hasSetTextAction()).assertDoesNotExist()
+        onNodeWithText("직접 선택").performClick()
+        onNodeWithText("고른 앱 2/8 · 누르면 빼요").assertIsDisplayed()
+        onNodeWithText("최근 사용").performClick()
+        onNodeWithText("4개").assertIsDisplayed()
+    }
     /** plan-r15 E6: 테마 색 picked, the card preview draws the monochrome layers in the accent (app.2 has none). */
     @Test fun appPickerThemed() = snap("app-picker-themed", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNodeWithText("테마 색").performClick() }
     @Test fun appPickerSearch() = snap("app-picker-search", phone, withApps, route = Routes.apps("desk", 0, 0)) { onNode(androidx.compose.ui.test.hasSetTextAction()).performTextInput("카") }

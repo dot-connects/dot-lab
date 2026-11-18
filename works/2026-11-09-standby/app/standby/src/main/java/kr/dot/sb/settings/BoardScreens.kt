@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.Board
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.ClockStyle
@@ -666,24 +667,41 @@ fun AppPickerScreen(route: String, config: AppConfig, update: Update, env: Setti
     val j = parts.getOrNull(3)?.toIntOrNull() ?: return null
     if (board.slots.getOrNull(slot)?.getOrNull(j) != CardType.APPS) return null
     val key = "$slot:$j"
-    val all by androidx.compose.runtime.produceState<List<kr.dot.sb.ui.cards.AppEntry>?>(null) {
-        value = kotlinx.coroutines.withContext(env.io) { env.launcherApps() }
-    }
     val opts = board.options[key] ?: SlotOptions()
+    val all by androidx.compose.runtime.produceState<List<kr.dot.sb.ui.cards.AppEntry>?>(null, opts.appSource) {
+        if (opts.appSource == AppSource.PICKED) value = kotlinx.coroutines.withContext(env.io) { env.launcherApps() }
+    }
     fun edit(f: (SlotOptions) -> SlotOptions) =
         update { c -> BoardOps.replace(c, board.id) { b -> b.copy(options = b.options + (key to f(b.options[key] ?: SlotOptions()))) } }
-    AppPicker(all, opts.apps, back, top = { AppsLook(opts, config) { st -> edit { it.copy(iconStyle = st) } } }) { picked -> edit { it.copy(apps = picked) } }
+    val top: @Composable () -> Unit = { AppsLook(opts, config, ::edit) }
+    if (opts.appSource == AppSource.PICKED) {
+        AppPicker(all, opts.apps, back, top = top) { picked -> edit { it.copy(apps = picked) } }
+    } else Page("앱 고르기", back) { top() }
     return Unit
 }
 
-/** plan-r15 E6: 아이콘 색 (원래 색 / 테마 색) above a live preview of this 앱 바로가기 card. */
+/** Source, count and icon colour above a live preview of this app card. */
 @Composable
-private fun AppsLook(opts: SlotOptions, config: AppConfig, onStyle: (kr.dot.sb.model.IconStyle) -> Unit) {
+private fun AppsLook(opts: SlotOptions, config: AppConfig, edit: ((SlotOptions) -> SlotOptions) -> Unit) {
     val state = remember(config) { Sample.state(config) }
     val styles = kr.dot.sb.model.IconStyle.entries
+    val sources = listOf(AppSource.RECENT, AppSource.FREQUENT, AppSource.PICKED)
     Column(Modifier.fillMaxWidth().padding(bottom = 16.dp)) {
+        T("앱 고르는 방법", 16.sp, 500, SK.text, Modifier.padding(start = 4.dp, bottom = 8.dp))
+        Segmented(listOf("최근 사용", "자주 사용", "직접 선택"), sources.indexOf(opts.appSource), { i -> edit { it.copy(appSource = sources[i]) } })
+        if (opts.appSource != AppSource.PICKED) {
+            Spacer(Modifier.height(16.dp))
+            val counts = listOf(4, 6, 8)
+            T("앱 개수", 16.sp, 500, SK.text, Modifier.padding(start = 4.dp, bottom = 8.dp))
+            Segmented(listOf("4개", "6개", "8개"), counts.indexOf(opts.appCount), { i -> edit { it.copy(appCount = counts[i]) } })
+            val note = if (opts.appSource == AppSource.RECENT) "마지막으로 쓴 순서대로 보여줘요. Stand Screen을 다시 켤 때마다 바뀌어요."
+                else "최근 일주일 동안 오래 쓴 순서대로 보여줘요."
+            T(note, 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp), lineHeight = 18.sp)
+            PermLine(Perm.USAGE)
+        }
+        Spacer(Modifier.height(16.dp))
         T("아이콘 색", 16.sp, 500, SK.text, Modifier.padding(start = 4.dp, bottom = 8.dp))
-        Segmented(listOf("원래 색", "테마 색"), styles.indexOf(opts.iconStyle), { i -> onStyle(styles[i]) })
+        Segmented(listOf("원래 색", "테마 색"), styles.indexOf(opts.iconStyle), { i -> edit { it.copy(iconStyle = styles[i]) } })
         if (opts.iconStyle == kr.dot.sb.model.IconStyle.THEMED) {
             T("테마 색을 지원하지 않는 앱은 원래 색으로 보여요.", 13.sp, 400, SK.muted, Modifier.padding(top = 8.dp, start = 4.dp), lineHeight = 18.sp)
         }

@@ -81,7 +81,12 @@ data class SlotOptions(
     val face: FaceId? = null,
     /** 앱 바로가기 icon colour (plan-r15 E6). */
     val iconStyle: IconStyle = IconStyle.ORIGINAL,
+    val appSource: AppSource = AppSource.PICKED,
+    /** Number of apps from usage history: 4, 6 or 8; ignored for [AppSource.PICKED]. */
+    val appCount: Int = 4,
 )
+
+enum class AppSource { PICKED, RECENT, FREQUENT }
 
 /** 앱 바로가기 icons: the app's own colours, or its monochrome layer in the theme accent (API 33+, else original). */
 enum class IconStyle { ORIGINAL, THEMED }

@@ -32,6 +32,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.min
 import androidx.core.graphics.drawable.toBitmap
+import kr.dot.sb.data.UsageApps
+import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.IconStyle
 import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.ui.state.StandbyActions
@@ -82,27 +84,45 @@ fun launcherApps(ctx: Context): List<AppEntry> {
 private val realLookup: (Context, String) -> AppEntry? = ::appEntry
 val LocalAppLookup = staticCompositionLocalOf { realLookup }
 
+/** Null means usage access is missing; shots can supply a fixed package list. */
+private val realUsage: (Context, AppSource, Int) -> List<String>? = { ctx, source, n ->
+    if (UsageApps.granted(ctx)) UsageApps.load(ctx, source, n) else null
+}
+val LocalUsageApps = staticCompositionLocalOf { realUsage }
+
 /**
- * 앱 바로가기 (plan-r14 C1): the picked apps as an icon grid sized to their count, labels from M up; tap = unlock and open.
- * No apps (or none still installed): "앱을 골라 주세요", tap = 앱 고르기 in settings ([menu] = that route).
+ * App shortcuts from picked packages or usage history, sized to their count; tap = unlock and open.
+ * No apps or missing usage access: show a prompt that opens this card's settings ([menu]).
  */
 @Composable
 internal fun AppsCard(e: Env, o: SlotOptions?, actions: StandbyActions, menu: String?) {
     val ctx = LocalContext.current
     val lookup = LocalAppLookup.current
+    val usage = LocalUsageApps.current
     val pkgs = o?.apps.orEmpty()
+    val source = o?.appSource ?: AppSource.PICKED
+    val count = o?.appCount ?: 4
     // looked up off the main thread, again on every resume (an app installed / removed meanwhile); the last list stays up
     val resumed = androidx.lifecycle.compose.LocalLifecycleOwner.current.lifecycle.currentStateAsState().value
         .isAtLeast(androidx.lifecycle.Lifecycle.State.RESUMED)
-    val loaded by produceState<List<AppEntry>?>(null, pkgs, lookup, resumed) {
-        // the PackageManager lookup goes to IO; a fake (shots) stays on the frame so the capture sees it
-        if (resumed || value == null) value = withContext(if (lookup === realLookup) Dispatchers.IO else EmptyCoroutineContext) { pkgs.mapNotNull { lookup(ctx, it) } }
+    val loaded by produceState<Pair<Boolean, List<AppEntry>>?>(null, ctx, pkgs, source, count, lookup, usage, resumed) {
+        // Real lookups go to IO; fakes stay on the frame so the capture sees them.
+        val io = lookup === realLookup || (source != AppSource.PICKED && usage === realUsage)
+        if (resumed || value == null) value = withContext(if (io) Dispatchers.IO else EmptyCoroutineContext) {
+            val selected = if (source == AppSource.PICKED) pkgs else usage(ctx, source, count)
+            (selected != null) to selected.orEmpty().mapNotNull { lookup(ctx, it) }
+        }
     }
-    val apps = loaded ?: return // first lookup still running: a bare plate for a moment
+    val (granted, apps) = loaded ?: return // first lookup still running: a bare plate for a moment
     if (apps.isEmpty()) {
         TextCard(e, Modifier.tap(menu?.let { m -> { actions.openSettings(m) } })) {
             LabelRow(e, null, "앱 바로가기")
-            Txt("앱을 골라 주세요", e.sz.title, e.ink.ink2, weight = 700, maxW = e.cw, lines = 2)
+            val text = when {
+                source == AppSource.PICKED -> "앱을 골라 주세요"
+                !granted -> "사용 기록 허용이 필요해요"
+                else -> "최근에 쓴 앱이 없어요"
+            }
+            Txt(text, e.sz.title, e.ink.ink2, weight = 700, maxW = e.cw, lines = 2)
         }
         return
     }

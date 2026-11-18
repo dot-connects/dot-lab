@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- OWNER: platform agent (the settings agent may add activities it needs, nothing else). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools">
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
@@ -15,6 +15,8 @@
     <!-- plan-r15 C2: the listener path holds the CPU for the charge-start posture window (<= 15 s) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <!-- App shortcuts can use recent or frequent apps after the user grants usage access. -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     <!-- photos: picked folders through the system folder picker (SAF), no media permission (plan-r15 B1) -->
     <!-- 앱 바로가기 card: package visibility for the launcher apps (앱 고르기, getLaunchIntentForPackage) -->
     <queries>

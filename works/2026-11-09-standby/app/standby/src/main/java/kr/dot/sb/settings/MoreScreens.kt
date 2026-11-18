@@ -618,14 +618,15 @@ private fun WheelText(text: String, on: Boolean) = T(text, 17.sp, if (on) 700 el
 
 /** Checklist (consensus): the missing ones first with a big button each and a plain reason, the allowed ones as one line. */
 @Composable
-fun PermsScreen(env: SettingsEnv, back: () -> Unit) {
-    val need = Perm.entries.filter { env.granted[it] != true }
-    val ok = Perm.entries.filter { env.granted[it] == true }
+fun PermsScreen(config: AppConfig, env: SettingsEnv, back: () -> Unit) {
+    val perms = Perms.forConfig(config)
+    val need = perms.filter { env.granted[it] != true }
+    val ok = perms.filter { env.granted[it] == true }
     Page("권한", back) {
         T(if (need.isEmpty()) "모두 허용했어요." else "아래를 허용하면 모든 기능을 쓸 수 있어요.", 15.sp, 500, if (need.isEmpty()) SK.ok else SK.muted, Modifier.padding(start = 4.dp, top = 4.dp))
         // plan-r13 B1: one button walks every missing one in turn (each system page or question once)
         if (need.isNotEmpty()) {
-            ActionButton("차례로 허용하기", { env.onPermWalkOf(Perm.entries) }, Modifier.fillMaxWidth().padding(top = 16.dp))
+            ActionButton("차례로 허용하기", { env.onPermWalkOf(perms) }, Modifier.fillMaxWidth().padding(top = 16.dp))
             T("하나씩 열어 드려요. 허용하고 돌아오면 다음으로 넘어가요.", 13.sp, 400, SK.muted, Modifier.padding(start = 4.dp, top = 8.dp))
         }
         need.forEach { p ->
@@ -663,9 +664,9 @@ private val FONT_NAMES = mapOf(
 
 /** 정보: 권한, 개인정보 처리방침, 버전, (personal) 문제 해결, 글꼴 라이선스, then 처음 설정으로 behind one question. */
 @Composable
-fun AboutScreen(nav: Nav, env: SettingsEnv, back: () -> Unit) {
+fun AboutScreen(config: AppConfig, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     var resetting by rememberSaveable { mutableStateOf(false) }
-    val missing = env.missing
+    val missing = Perms.forConfig(config).filter { env.granted[it] != true }
     Page("정보", back) {
         Section(null, footer = "알림 내용은 폰 밖으로 나가지 않아요.") {
             item { NavRow("권한", { nav.push(Routes.PERMS) }, badge = if (missing.isEmpty()) "모두 허용" else "${missing.size}개 필요", badgeOk = missing.isEmpty()) }

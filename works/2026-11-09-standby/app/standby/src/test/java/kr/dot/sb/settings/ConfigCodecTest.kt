@@ -2,6 +2,7 @@ package kr.dot.sb.settings
 
 import kr.dot.sb.model.AnalogNumbers
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.Background
 import kr.dot.sb.model.CardType
 import kr.dot.sb.model.City
@@ -210,6 +211,29 @@ class ConfigCodecTest {
         val out = ConfigCodec.encode(ConfigCodec.decode(json))
         for (k in listOf("widgetId", "opacity", "widgetMode", "radiusDp", "hideAtNight", "\"WIDGET\"")) assertFalse(k, out.contains(k))
         assertEquals(ConfigCodec.decode(json), ConfigCodec.decode(out))
+    }
+
+    @Test fun appSourceRoundTripAndLegacyDefaults() {
+        val picked = listOf("com.a", "com.b")
+        val board = Board("a", "a", Layout.ONE, listOf(listOf(CardType.APPS)))
+        for (source in AppSource.entries) for (count in listOf(4, 6, 8)) {
+            val opts = SlotOptions(apps = picked, appSource = source, appCount = count)
+            val config = AppConfig(boards = listOf(board.copy(options = mapOf("0:0" to opts))))
+            val json = ConfigCodec.encode(config)
+            assertEquals(config, ConfigCodec.decode(json))
+            val stored = JSONObject(json).getJSONArray("boards").getJSONObject(0).getJSONObject("options").getJSONObject("0:0")
+            assertEquals(source != AppSource.PICKED, stored.has("appSource"))
+            assertEquals(count != 4, stored.has("appCount"))
+        }
+        val old = """{"boards":[{"id":"a","layout":"ONE","slots":[["APPS"]],"options":{"0:0":{"apps":["com.a","com.b"]}}}]}"""
+        assertEquals(SlotOptions(apps = picked), ConfigCodec.decode(old).boards[0].options["0:0"])
+        for (bad in listOf(-1, 0, 5, 7, 9, 4.5, 6.5, "invalid", JSONObject.NULL)) {
+            val json = JSONObject(old).apply {
+                getJSONArray("boards").getJSONObject(0).getJSONObject("options").getJSONObject("0:0")
+                    .put("appSource", "RECENT").put("appCount", bad)
+            }
+            assertEquals(SlotOptions(apps = picked, appSource = AppSource.RECENT, appCount = 4), ConfigCodec.decode(json.toString()).boards[0].options["0:0"])
+        }
     }
 
     @Test fun appsKeepTheirOrderAndCap() {

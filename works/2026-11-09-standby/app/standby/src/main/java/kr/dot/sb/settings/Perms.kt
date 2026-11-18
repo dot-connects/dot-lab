@@ -13,10 +13,15 @@ import android.os.PowerManager
 import android.provider.Settings
 import android.widget.Toast
 import androidx.core.app.NotificationManagerCompat
+import kr.dot.sb.data.UsageApps
+import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.AppSource
+import kr.dot.sb.model.CardType
+import kr.dot.sb.model.SlotOptions
 import kr.dot.sb.platform.StandbyDream
 
 /**
- * The seven things StandBy needs the user to grant, mockup `PERMS` order (r10 checklist). Photos need none (plan-r15
+ * The things StandBy needs the user to grant, mockup `PERMS` order (r10 checklist). Photos need none (plan-r15
  * B1). plan-r15 F3/F7: [ko] names the effect, [why] says what you get, [need] is the [PermLine] at the feature.
  */
 enum class Perm(val ko: String, val why: String, val button: String, val need: String) {
@@ -27,6 +32,7 @@ enum class Perm(val ko: String, val why: String, val button: String, val need: S
     EXACT_ALARM("타이머가 제때 끝나게", "집중 타이머와 미리 밝히기가 정한 시간에 딱 맞춰 움직여요.", "허용하기", "제때 알리려면 허용이 필요해요"),
     CALENDAR("캘린더", "오늘 일정과 달력 카드에 일정을 보여줘요.", "허용하기", "일정을 보려면 허용이 필요해요"),
     BATTERY("밤새 꺼지지 않게 하기", "밤새 켜 두어도 앱이 멈추지 않아요.", "켜러 가기", "밤새 켜 두려면 허용이 필요해요"),
+    USAGE("최근 쓴 앱 보기", "앱 바로가기 카드에 최근에 쓰거나 자주 쓴 앱을 보여줘요. 사용 기록은 폰 밖으로 나가지 않아요.", "허용하기", "최근 쓴 앱을 보려면 허용이 필요해요"),
     ;
 
     companion object {
@@ -39,6 +45,16 @@ enum class Perm(val ko: String, val why: String, val button: String, val need: S
 }
 
 object Perms {
+    /** Usage access is listed only while an app card takes its apps from usage history. */
+    fun forConfig(config: AppConfig): List<Perm> {
+        fun usesUsage(slots: List<List<CardType>>, options: Map<String, SlotOptions>) = slots.withIndex().any { (s, stack) ->
+            stack.withIndex().any { (j, card) -> card == CardType.APPS && (options["$s:$j"]?.appSource ?: AppSource.PICKED) != AppSource.PICKED }
+        }
+        val usage = config.boards.any { usesUsage(it.slots, it.options) } ||
+            usesUsage(listOf(config.widgetLeft, config.widgetRight), config.widgetOptions)
+        return Perm.entries.filter { it != Perm.USAGE || usage }
+    }
+
     fun granted(ctx: Context): Map<Perm, Boolean> {
         val am = ctx.getSystemService(AlarmManager::class.java)
         val nm = ctx.getSystemService(NotificationManager::class.java)
@@ -53,6 +69,7 @@ object Perms {
             Perm.FULL_SCREEN to (nm?.canUseFullScreenIntent() == true),
             Perm.EXACT_ALARM to (am?.canScheduleExactAlarms() == true),
             Perm.BATTERY to (pm?.isIgnoringBatteryOptimizations(ctx.packageName) == true),
+            Perm.USAGE to UsageApps.granted(ctx),
         )
     }
 
@@ -68,6 +85,7 @@ object Perms {
     fun intents(ctx: Context, p: Perm): List<Intent> = when (p) {
         Perm.DREAM -> dreamIntents()
         Perm.NOTIFICATIONS -> listOf(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+        Perm.USAGE -> listOf(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, pkg(ctx)), Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         Perm.FULL_SCREEN -> listOf(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.EXACT_ALARM -> listOf(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))
         Perm.BATTERY -> listOf(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))

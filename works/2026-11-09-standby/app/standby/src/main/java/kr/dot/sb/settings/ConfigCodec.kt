@@ -1,6 +1,7 @@
 package kr.dot.sb.settings
 
 import kr.dot.sb.model.AppConfig
+import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.BgKind
 import kr.dot.sb.model.Border
 import kr.dot.sb.model.Texture
@@ -390,6 +391,8 @@ object ConfigCodec {
         if (s.apps.isNotEmpty()) put("apps", JSONArray().also { a -> s.apps.forEach { a.put(it) } })
         s.face?.let { put("face", it.name) }
         if (s.iconStyle != IconStyle.ORIGINAL) put("iconStyle", s.iconStyle.name)
+        if (s.appSource != AppSource.PICKED) put("appSource", s.appSource.name)
+        if (s.appCount != 4) put("appCount", s.appCount)
     }
 
     /** r14 C1: the old phone-widget keys (widgetId, opacity, widgetMode, radiusDp, hideAtNight) are dropped. */
@@ -397,6 +400,8 @@ object ConfigCodec {
         apps = strings(o, "apps")?.distinct()?.take(MAX_APPS) ?: emptyList(),
         face = if (o.has("face")) runCatching { FaceId.valueOf(o.getString("face")) }.getOrNull() else null,
         iconStyle = enumOf(o, "iconStyle", IconStyle.ORIGINAL),
+        appSource = enumOf(o, "appSource", AppSource.PICKED),
+        appCount = o.optDouble("appCount", 4.0).takeIf { it in listOf(4.0, 6.0, 8.0) }?.toInt() ?: 4,
     )
 
     private fun board(o: JSONObject): Board {

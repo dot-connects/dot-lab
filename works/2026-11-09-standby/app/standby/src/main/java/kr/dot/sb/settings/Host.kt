@@ -145,8 +145,8 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
         route == Routes.ONOFF -> OnOffScreen(config, update, nav, env, back)
         route == Routes.FOLD -> FoldScreen(config, update, env, back)
         route == Routes.SOUND -> CardScreen(kr.dot.sb.model.CardType.SLEEP, config, update, nav, env, back)
-        route == Routes.PERMS -> PermsScreen(env, back)
-        route == Routes.ABOUT -> AboutScreen(nav, env, back)
+        route == Routes.PERMS -> PermsScreen(config, env, back)
+        route == Routes.ABOUT -> AboutScreen(config, nav, env, back)
         route == Routes.TIPS -> TipsScreen(config, update, back)
         route == Routes.CARDS -> PagesScreen(config, update, nav, back)
         route.startsWith("card:") -> {
