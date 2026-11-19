@@ -94,10 +94,7 @@ private val OK = Color(0xFF3A8A4F)
 private val GRAB = Color(0x80808080)
 private val SCRIM = Color(0x6B000000)
 
-/** Mockup body line-height 1.6 with CSS half-leading (no trimming). */
-private fun ts(size: TextUnit, weight: FontWeight = FontWeight.Normal, color: Color = FG, lh: Float = 1.6f, family: FontFamily? = null, ls: TextUnit = TextUnit.Unspecified) =
-    TextStyle(fontSize = size, fontWeight = weight, color = color, lineHeight = lh.em, fontFamily = family, letterSpacing = ls,
-        lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None))
+/* ts(): Theme.kt (same values) */
 
 /** Compose keeps a line at least as tall as the font; the mockup's CSS line-height under ~1.2 (.big .f .9, .heard 1.25) trims it. */
 private fun Modifier.tight(lineHeight: TextUnit, lines: Int = 1) = layout { m, c ->

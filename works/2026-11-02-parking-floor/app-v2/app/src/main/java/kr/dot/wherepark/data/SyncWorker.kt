@@ -29,6 +29,7 @@ object SyncEngine {
                     }
                 },
             )
+            if (r.isSuccess) kr.dot.wherepark.family.JoinFlow.startPush(ctx)  // token upload in the background, like after a join
             val e = r.exceptionOrNull()
             if (e is ApiException && e.status in 400..499 && e.status != 429) {
                 Log.w("wp-sync", "createGroup rejected: $e")

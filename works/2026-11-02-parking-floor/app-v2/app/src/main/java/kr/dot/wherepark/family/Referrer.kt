@@ -37,6 +37,7 @@ object Referrer {
                 override fun onInstallReferrerServiceDisconnected() {}
             })
         } catch (_: Exception) {
+            runCatching { client.endConnection() }  // startConnection threw: the listener never runs, so close here
         }
     }
 }

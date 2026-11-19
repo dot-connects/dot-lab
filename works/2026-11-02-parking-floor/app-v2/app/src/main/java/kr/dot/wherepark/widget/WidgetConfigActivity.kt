@@ -111,9 +111,7 @@ class WidgetConfigActivity : ComponentActivity() {
         val app = applicationContext
         val mgr = AppWidgetManager.getInstance(app)
         if (spec.appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            // from the app: the launcher asks where to put it; the pin callback moves this spec to the new id
-            WidgetSpecs.putNext(app, spec)
-            mgr.requestPinAppWidget(ComponentName(app, WidgetReceiver::class.java), null, WidgetReceiver.pinnedCallback(app))
+            pinWidget(app, spec)
             finish(); return
         }
         WidgetSpecs.put(app, spec)
@@ -121,6 +119,15 @@ class WidgetConfigActivity : ComponentActivity() {
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, spec.appWidgetId))
         finish()
     }
+}
+
+/** From the app (settings, onboarding step 4): the launcher asks where to put it; the pin callback moves [spec] to the new id. */
+fun pinWidget(ctx: Context, spec: WidgetSpec = WidgetSpecs.default(AppWidgetManager.INVALID_APPWIDGET_ID)): Boolean {
+    val app = ctx.applicationContext
+    val mgr = AppWidgetManager.getInstance(app)
+    if (!mgr.isRequestPinAppWidgetSupported) return false
+    WidgetSpecs.putNext(app, spec)
+    return mgr.requestPinAppWidget(ComponentName(app, WidgetReceiver::class.java), null, WidgetReceiver.pinnedCallback(app))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

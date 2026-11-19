@@ -3,15 +3,14 @@ package kr.dot.wherepark.family
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.Image
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -19,70 +18,85 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
-import kr.dot.wherepark.R
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.Invite
+import kr.dot.wherepark.ui.AppPrefs
+import kr.dot.wherepark.ui.Btn
+import kr.dot.wherepark.ui.BtnKind
+import kr.dot.wherepark.ui.Ic
+import kr.dot.wherepark.ui.WCard
+import kr.dot.wherepark.ui.WScreen
+import kr.dot.wherepark.ui.Wp
+import kr.dot.wherepark.ui.WpTheme
+import kr.dot.wherepark.ui.gro
+import kr.dot.wherepark.ui.trimLine
+import kr.dot.wherepark.ui.ts
 
-/** 가족 초대 (sender side): KakaoTalk, other apps, QR, code with [복사]. */
+/** 가족 초대 (mockup section 6, sender side): KakaoTalk, other apps, QR, code with [복사]. */
+@Composable
+internal fun InviteScreen(inv: Invite?, failed: Boolean, back: () -> Unit, kakao: (Invite) -> Unit, other: (Invite) -> Unit, copy: (Invite) -> Unit) =
+    WScreen("가족 초대", onBack = back) {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("같이 쓸 가족에게 보내요", Modifier.trimLine(26.4.sp), style = ts(22.sp, FontWeight.ExtraBold, lh = 1.2f, family = gro(800), ls = (-0.02).em))
+            Text("받은 사람은 링크만 누르면 돼요. 가입은 없어요.", style = ts(15.sp, color = Wp.MU))
+            if (inv == null) {
+                Text(if (failed) "초대를 만들지 못했어요. 인터넷 연결을 확인하고 다시 열어 주세요" else "초대를 만드는 중이에요", style = ts(14.sp, color = Wp.MU))
+            } else {
+                Btn("카카오톡으로 보내기", BtnKind.KAKAO) { kakao(inv) }
+                Btn("다른 앱으로 보내기", BtnKind.GHOST) { other(inv) }
+                WCard {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text("옆에 있으면 카메라로", Modifier.padding(bottom = 8.dp), style = ts(13.sp, color = Wp.MU), textAlign = TextAlign.Center)
+                        val bmp = remember(inv.link) { InviteShare.qr(inv.link).asImageBitmap() }
+                        Box(Modifier.size(150.dp).clip(RoundedCornerShape(8.dp)).background(Color.White).padding(8.dp)) {
+                            Image(bmp, "초대 QR", Modifier.fillMaxWidth(), filterQuality = FilterQuality.None)
+                        }
+                    }
+                }
+                var copied by remember { mutableStateOf(false) }
+                WCard {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Column(Modifier.weight(1f)) {
+                            Text("초대 코드", style = ts(13.sp, color = Wp.MU))
+                            Text(inv.code, style = ts(17.sp, FontWeight.ExtraBold, family = gro(800), ls = .02.em), maxLines = 1)
+                            Text("24시간 · 한 번 쓸 수 있어요", style = ts(12.sp, color = Wp.MU))
+                        }
+                        Btn(if (copied) "복사됨" else "복사", BtnKind.NT, Modifier.width(84.dp), h = 44.dp, size = 14.sp, lead = { Ic("copy", 17.dp) }) { copy(inv); copied = true }
+                    }
+                }
+            }
+        }
+    }
+
 class InviteActivity : ComponentActivity() {
     private var invite by mutableStateOf<Invite?>(null)
     private var failed by mutableStateOf(false)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        enableEdgeToEdge()
         val app = applicationContext
-        Thread { Api.invite(app).fold({ invite = it }, { failed = true }) }.start()
+        Thread { Api.invite(app).let { r -> runOnUiThread { r.fold({ invite = it }, { failed = true }) } } }.start()
         setContent {
-            Screen("가족 초대", onBack = { finish() }) {
-                Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("같이 쓸 가족에게 보내요", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = FG)
-                    Text("받은 사람은 링크만 누르면 돼요. 가입은 없어요.", fontSize = 14.sp, color = MU)
-                    val inv = invite
-                    if (inv == null) {
-                        Text(if (failed) "초대를 만들지 못했어요. 네트워크를 확인하고 다시 열어 주세요" else "초대를 만드는 중이에요", fontSize = 14.sp, color = MU)
-                    } else {
-                        Btn("카카오톡으로 보내기", "fill", KAKAO, Color(0xFF191919)) { InviteShare.sendKakao(this@InviteActivity, inv.link) }
-                        Btn("다른 앱으로 보내기") { InviteShare.sendOther(this@InviteActivity, inv.link) }
-                        Card {
-                            Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("옆에 있으면 카메라로", fontSize = 13.sp, color = MU)
-                                Spacer(Modifier.size(8.dp))
-                                val bmp = remember(inv.link) { InviteShare.qr(inv.link).asImageBitmap() }
-                                Image(bmp, "초대 QR", Modifier.size(200.dp))
-                            }
-                        }
-                        var copied by remember { mutableStateOf(false) }
-                        Card {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Column(Modifier.weight(1f)) {
-                                    Text("초대 코드", fontSize = 13.sp, color = MU)
-                                    Text(inv.code, fontSize = 17.sp, fontWeight = FontWeight.ExtraBold, color = FG, maxLines = 1)
-                                    Text("24시간 · 한 번 쓸 수 있어요", fontSize = 12.sp, color = MU)
-                                }
-                                Row(
-                                    Modifier.heightIn(min = 48.dp).border(1.5.dp, FG, RoundedCornerShape(14.dp))
-                                        .clickable { InviteShare.copyCode(this@InviteActivity, inv.code); copied = true }.padding(horizontal = 16.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                ) {
-                                    Ic(R.drawable.ic_copy, 17)
-                                    Spacer(Modifier.width(6.dp))
-                                    Text(if (copied) "복사됨" else "복사", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = FG)
-                                }
-                            }
-                        }
-                    }
-                }
+            WpTheme(AppPrefs.bigText(this)) {
+                InviteScreen(invite, failed, back = { finish() }, kakao = { InviteShare.sendKakao(this, it.link) },
+                    other = { InviteShare.sendOther(this, it.link) }, copy = { InviteShare.copyCode(this, it.code) })
             }
         }
     }

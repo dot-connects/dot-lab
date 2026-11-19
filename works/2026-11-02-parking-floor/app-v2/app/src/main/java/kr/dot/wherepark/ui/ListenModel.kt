@@ -144,7 +144,16 @@ class ListenModel(
         if (m.editId != null) {
             val cur = car?.let { ParkStore.latest(ctx, it.id) }?.takeIf { it.id == m.editId } ?: return save(spot, null, null)
             commit(cur.copy(spot = spot))
+            if (editOnly) close()
         } else save(spot, if (m.why == ManualWhy.CONFIRM) lastRaw else null, lastName)
+    }
+
+    /** 차 상세 [고치기]: straight to the edit form for [p]; saving closes the sheet (same park id, contracts "fix"). */
+    private var editOnly = false
+    fun edit(p: Park) {
+        car = cars.firstOrNull { it.id == p.carId } ?: car
+        held = true; editOnly = true
+        state = Sheet.Manual(ManualWhy.EDIT, p.spot, floors(), editId = p.id)
     }
 
     fun fix() {

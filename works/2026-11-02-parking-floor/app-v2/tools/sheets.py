@@ -1,6 +1,7 @@
 """Mockup vs render contact sheet for the widgets (based on StandBy tools/sheets.py).
 
     python tools/sheets.py            -> shots/contact-widget.png (+ numbers printed)
+    python tools/sheets.py app        -> shots/contact-app.png (app screens, plan-v2 task 10; see app_main)
 
 1. Captures the mockup (mockups/v2/final/preview.html) in headless Chrome at 2x, twice: strength 100 % and 30 %, with a probe
    script that reports every widget's box, its text boxes (with baselines) and mic boxes.
@@ -168,5 +169,133 @@ def main() -> int:
     return 0
 
 
+# ---------- app screens (task 10) ----------
+APP_SHOTS = ROOT / "shots" / "app"
+B = 7                          # .phone border (px)
+# mockup phone id -> render name (shots/app/<name>-mock.png); None = system UI, not renderable in a unit test
+APP = [("homeA", "home"), ("homeA", "home-font200"), ("det", "detail"), ("kiosk", "plate"), ("set", "settings-onecar"), ("set", "settings"), ("carset", "caredit"),
+       ("ob1", "ob1"), ("ob2", "ob2"), ("obp", "ob3-practice"), ("ob3", "ob4"), ("inv", "invite"), ("join", "join"), ("fam", "family"),
+       ("cfg", "../widget/config"), ("ntf", None), ("qs", None)]
+CARDS = ["st0-none", "st1-pend", "st2-ok", "st3-gone", "st4-old", "st5-nomic"]
+APP_IDS = sorted({a for a, _ in APP})
+
+# every element with its own text: the box of its text nodes, relative to the phone screen (inside the 7 px border)
+APP_PROBE = """<script>
+addEventListener('load',()=>document.fonts.ready.then(()=>setTimeout(()=>{
+ const out={};
+ const boxes=(root,R,inset)=>{const els=[];root.querySelectorAll('*').forEach(e=>{
+   const tn=[...e.childNodes].filter(n=>n.nodeType===3&&n.textContent.trim());if(!tn.length)return;
+   const g=document.createRange();g.setStartBefore(tn[0]);g.setEndAfter(tn[tn.length-1]);const q=g.getBoundingClientRect();if(!q.width)return;
+   els.push({text:tn.map(n=>n.textContent).join('').replace(/\\s+/g,' ').trim(),x:q.left-R.left-inset,y:q.top-R.top-inset,w:q.width,h:q.height})});return els};
+ %s.forEach(id=>{const el=document.getElementById(id),R=el.getBoundingClientRect();out[id]={x:R.left+scrollX,y:R.top+scrollY,w:R.width,h:R.height,els:boxes(el,R,7)}});
+ document.querySelectorAll('.stcell .card').forEach((el,i)=>{const R=el.getBoundingClientRect();out['st'+i]={x:R.left+scrollX,y:R.top+scrollY,w:R.width,h:R.height,els:boxes(el,R,0),card:1}});
+ out.H=document.documentElement.scrollHeight;
+ const p=document.createElement('pre');p.id='OUT';p.textContent=JSON.stringify(out);document.body.appendChild(p);
+},800)))</script>"""
+
+
+def app_capture(tmp: Path) -> tuple[dict, Image.Image]:
+    page = MOCK.parent / "_appprobe.html"   # next to the mockup so its relative images (app icon) load
+    page.write_text(MOCK.read_text(encoding="utf-8") + APP_PROBE % json.dumps(APP_IDS), encoding="utf-8")
+    try:
+        common = [CHROME, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--virtual-time-budget=15000", f"--user-data-dir={tmp / 'chr'}"]
+        dom = subprocess.run(common + ["--window-size=1240,3000", "--dump-dom", page.as_uri()], capture_output=True, timeout=120).stdout.decode("utf-8", "replace")
+        geo = json.loads(html.unescape(re.search(r'<pre id="OUT">(.*?)</pre>', dom, re.S).group(1)))
+        (tmp / "geo.json").write_text(json.dumps(geo, ensure_ascii=False), encoding="utf-8")
+        png = tmp / "app.png"
+        subprocess.run(common + [f"--window-size=1240,{int(geo['H']) + 50}", f"--force-device-scale-factor={K}", f"--screenshot={png}", page.as_uri()],
+                       capture_output=True, timeout=180)
+        return geo, Image.open(png).convert("RGB")
+    finally:
+        page.unlink()
+
+
+def norm(t: str) -> str:
+    return re.sub(r"\s+", " ", t.replace(" ", " ")).strip()
+
+
+def app_compare(mock_els: list, rend_els: list, mock: Image.Image, rend: Image.Image):
+    """Worst text dx / dy (dp) over texts found in both, matched / total, the offenders, and colour notes."""
+    dxs, dys, bad = [], [], []
+    matched = 0
+    for e in mock_els:
+        t = norm(e["text"])
+        cand = [r for r in rend_els if norm(r["text"]) == t]
+        if not cand:
+            continue
+        matched += 1
+        mcx, mcy = e["x"] + e["w"] / 2, e["y"] + e["h"] / 2
+        r = min(cand, key=lambda r: abs(r["y"] + r["h"] / 2 - mcy) + abs(r["x"] + r["w"] / 2 - mcx))
+        dx = min(abs(r["x"] - e["x"]), abs(r["x"] + r["w"] - e["x"] - e["w"]), abs(r["x"] + r["w"] / 2 - mcx))
+        dy = abs(r["y"] + r["h"] / 2 - mcy)
+        dxs.append(dx); dys.append(dy)
+        if max(dx, dy) > 4:
+            bad.append(f"{t[:14]} {dx:.0f}/{dy:.0f}")
+    notes = []
+    for name, (x, y) in {"bg": (3, 200), "mid": (mock.width // K // 2, 140)}.items():
+        pt = (x * K, y * K)
+        if pt[1] < mock.height and pt[1] < rend.height:
+            notes.append(f"{name} {hexof(mock.getpixel(pt))}/{hexof(rend.getpixel(pt))}")
+    def acc(im):
+        return sum(1 for p in im.resize((im.width // 4, im.height // 4)).get_flattened_data() if abs(p[0] - 255) < 12 and abs(p[1] - 106) < 14 and abs(p[2] - 19) < 14)
+    notes.append(f"orange px {acc(mock)}/{acc(rend)}")
+    return max(dxs, default=0), max(dys, default=0), matched, len(mock_els), bad, notes
+
+
+def app_main() -> int:
+    tmp = Path(tempfile.mkdtemp(prefix="asheet"))
+    sys.stdout.reconfigure(encoding="utf-8")
+    geo, im = app_capture(tmp)
+    print("mockup boxes:", tmp / "geo.json")
+    rows = []
+    pairs = list(APP) + [(f"st{i}", c) for i, c in enumerate(CARDS)]
+    for mid, name in pairs:
+        g = geo[mid]
+        inset = 0 if g.get("card") else B
+        mock = im.crop((round((g["x"] + inset) * K), round((g["y"] + inset) * K), round((g["x"] + g["w"] - inset) * K), round((g["y"] + g["h"] - inset) * K)))
+        rend, nums = None, ("system UI (tile, shade): drawn by Android, check on device" if name is None else "missing render")
+        if name is not None:
+            f = APP_SHOTS / (f"{name}.png" if name.startswith("st") else f"{name}-mock.png")
+            if f.exists():
+                rend = Image.open(f).convert("RGB")
+                jf = f.with_suffix(".json")
+                if jf.exists() and not name.endswith("font200"):
+                    dx, dy, ok, n, bad, notes = app_compare(g["els"], json.loads(jf.read_text(encoding="utf-8")), mock, rend)
+                    flag = "OK " if max(dx, dy) <= 4 else "OFF"
+                    nums = f"text {ok}/{n} matched, dx {dx:.1f} dy {dy:.1f} dp | " + " ".join(notes)
+                    print(f"{flag} {name:16} {mock.width // K}x{mock.height // K} vs {rend.width // K}x{rend.height // K}  {nums}")
+                    if bad:
+                        print("      over 4 dp: " + "; ".join(bad[:14]))
+                else:
+                    nums = "200 % font: wrapping / clipping by eye" if name.endswith("font200") else "no text boxes (Task 7 shot)"
+                    print(f"--- {name:16} {nums}")
+        rows.append((name or mid, mock, rend, nums))
+    font = ImageFont.load_default()
+    S = 2                                                    # sheet at half the 2x capture = 1 px per dp
+    cw = max(r[1].width for r in rows) // S
+    per = 3
+    cell_w = 2 * cw + 30
+    lines = [rows[i:i + per] for i in range(0, len(rows), per)]
+    hs = [max(max(r[1].height, r[2].height if r[2] else 0) // S for r in ln) + 40 for ln in lines]
+    sheet = Image.new("RGB", (per * cell_w + 20, sum(hs) + 20), (32, 32, 34))
+    d = ImageDraw.Draw(sheet)
+    y = 10
+    for ln, h in zip(lines, hs):
+        for j, (name, mock, rend, nums) in enumerate(ln):
+            x = 10 + j * cell_w
+            d.text((x, y), f"{name}   mockup | render", fill=(230, 230, 230), font=font)
+            sheet.paste(mock.resize((mock.width // S, mock.height // S)), (x, y + 14))
+            if rend is None:
+                d.line((x + cw + 8, y + 14, x + 2 * cw + 8, y + h - 26), fill=(220, 40, 40), width=3)
+            else:
+                sheet.paste(rend.resize((rend.width // S, rend.height // S)), (x + cw + 8, y + 14))
+            d.text((x, y + h - 22), nums[:95], fill=(160, 160, 160), font=font)
+        y += h
+    out = ROOT / "shots" / "contact-app.png"
+    sheet.quantize(colors=256, method=Image.Quantize.MEDIANCUT, dither=Image.Dither.NONE).save(out, optimize=True)
+    print(out, f"{out.stat().st_size // 1024} KB")
+    return 0
+
+
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(app_main() if sys.argv[1:] == ["app"] else main())

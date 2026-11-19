@@ -34,6 +34,7 @@ object Kit {
         if (joined) FamilyStore.save(c, "m1", "s1", "우리", listOf(me))
         Api.transport = net
         SyncEngine.notify = { _, t -> notices += t }
+        kr.dot.wherepark.family.JoinFlow.startPush = {}
         return c
     }
 
