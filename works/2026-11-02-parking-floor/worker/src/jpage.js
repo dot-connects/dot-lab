@@ -28,7 +28,7 @@ p{font-size:14px;margin:16px 0 0;line-height:1.5}
   var codeEl = document.getElementById("code");
   codeEl.textContent = code;
   var intent = "intent://dot-lab-parking.dotconnects.workers.dev/j?c=" + encodeURIComponent(code) +
-    "#Intent;scheme=https;package=kr.dot.wherepark;S.browser_fallback_url=" + encodeURIComponent(location.href) + ";end";
+    "#Intent;scheme=https;package=kr.dot.wherepark;S.browser_fallback_url=" + encodeURIComponent("https://play.google.com/store/apps/details?id=kr.dot.wherepark&referrer=" + encodeURIComponent("code=" + code)) + ";end";
   document.getElementById("open").href = intent;
   document.getElementById("copy").addEventListener("click", function () {
     var btn = this;

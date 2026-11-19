@@ -23,7 +23,8 @@ object Merge {
         // refused PutCar (CarStore.localOnly): the server never had the car, so its absence is not a family deletion
         val localOnly = CarStore.localOnly(ctx).filter { it !in serverIds }.toSet()
         val keepLocal = CarStore.cars(ctx).filter { it.id in localOnly && it.id !in deleted && it.id !in localCars }
-        val keepPark = ops.filterIsInstance<Op.PutPark>().map { it.carId }.toSet() + localOnly
+        // pending park/undo/state ops win over the pulled park until they are sent
+        val keepPark = ops.filter { it is Op.PutPark || it is Op.Undo || it is Op.State }.map { it.carId }.toSet() + localOnly
         val cars = (st.cars.filter { it.id !in deleted && it.id !in localCars } + localCars.values + keepLocal).sortedBy { it.order }
         CarStore.setLocalOnly(ctx, localOnly)
         CarStore.replaceFromServer(ctx, cars)

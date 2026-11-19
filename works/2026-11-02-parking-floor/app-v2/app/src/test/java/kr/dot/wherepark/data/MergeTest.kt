@@ -47,6 +47,13 @@ class MergeTest {
         assertEquals(5L, ParkStore.latest(ctx, "a")!!.id); assertEquals(9L, ParkStore.latest(ctx, "b")!!.id)
     }
 
+    @Test fun pendingStateOrUndoKeepsLocalPark() {
+        ParkStore.save(ctx, park("a", 5)); SyncQueue.add(ctx, Op.Undo("a", 5))
+        ParkStore.save(ctx, park("b", 2)); SyncQueue.add(ctx, Op.State("b", ParkState.DRIVING))
+        merge(st(listOf(car("a"), car("b")), mapOf("a" to park("a", 7), "b" to park("b", 9))))
+        assertEquals(5L, ParkStore.latest(ctx, "a")!!.id); assertEquals(2L, ParkStore.latest(ctx, "b")!!.id)
+    }
+
     @Test fun pendingCarOpKeepsLocalCar() {
         SyncQueue.add(ctx, Op.PutCar(car("a").copy(name = "내 이름")))
         merge(st(listOf(car("a").copy(name = "서버 이름"), car("b", 1))))
