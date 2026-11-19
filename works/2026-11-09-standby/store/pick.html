@@ -1,0 +1,70 @@
+<title>Stand Screen 스토어 샷 고르기</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<style>
+:root{--bg:#F4F1EC;--card:#FFFFFF;--line:#E2DDD5;--fg:#1B1A18;--mut:#6E6A64;--acc:#E0782E;--on:#FFFFFF;
+  --f:"Noto Sans KR",system-ui,"Malgun Gothic",sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0E0F12;--card:#1A1B1F;--line:#2A2B31;--fg:#ECEAE7;--mut:#9B9AA0;--acc:#FFAA5C;--on:#1B1209;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0E0F12;--card:#1A1B1F;--line:#2A2B31;--fg:#ECEAE7;--mut:#9B9AA0;--acc:#FFAA5C;--on:#1B1209;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f);line-height:1.5}
+.wrap{max-width:1100px;margin:0 auto;padding-block:24px 120px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1{font-size:22px;margin:0 0 4px;text-wrap:balance}
+.lead{margin:0 0 20px;color:var(--mut);font-size:14px;max-width:62ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+.c{position:relative;display:flex;flex-direction:column;gap:4px;background:var(--card);border:2px solid var(--line);border-radius:14px;padding:8px 8px 12px;cursor:pointer;min-width:0}
+.c input{position:absolute;opacity:0;pointer-events:none}
+.c img{width:100%;border-radius:8px;display:block;aspect-ratio:16/9;background:#000}
+.c b{font-size:15px;font-weight:500;padding:4px 4px 0}
+.c .w{font-size:12px;color:var(--mut);padding:0 4px}
+.c .n{position:absolute;top:14px;left:14px;min-width:30px;height:30px;padding:0 8px;border-radius:15px;background:rgba(0,0,0,.6);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.c.on{border-color:var(--acc)}
+.c.on .n{background:var(--acc);color:var(--on)}
+.bar{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+  padding-block:12px calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.bar .in{max-width:1100px;margin:0 auto;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.bar .t{flex:1;min-width:0;font-size:14px}
+.bar code{font-size:14px;color:var(--acc);word-break:break-all}
+.bar button{font:inherit;font-size:14px;font-weight:500;border:0;border-radius:20px;padding:8px 16px;background:var(--acc);color:var(--on);cursor:pointer}
+.bar button.g{background:transparent;color:var(--mut);border:1px solid var(--line)}
+</style>
+<div class="wrap">
+  <h1>스토어 스크린샷 고르기</h1>
+  <p class="lead">실제 앱 화면 22장이에요. 칸 나눔 5가지, 테마 7가지, 카드는 화면마다 다르게 섞었어요. 스토어에 올릴 순서대로 눌러 주세요(2~8장, 첫 장이 가장 크게 보여요). 다 고르면 아래 순서를 복사해 보내 주시면 돼요. 제목 문구 수정도 같이 적어 주세요.</p>
+  <div class="grid" id="g">
+<!--CARDS-->
+  </div>
+</div>
+<div class="bar"><div class="in">
+  <div class="t">고른 순서 <span id="cnt">0</span>/8 · <code id="ord">아직 없음</code></div>
+  <button class="g" id="clr" type="button">다시 고르기</button>
+  <button id="cp" type="button">순서 복사</button>
+</div></div>
+<script>
+const order = [];
+const cards = [...document.querySelectorAll('.c')];
+function draw() {
+  cards.forEach(c => {
+    const i = order.indexOf(c.dataset.id);
+    c.classList.toggle('on', i >= 0);
+    c.querySelector('input').checked = i >= 0;
+    c.querySelector('.n').textContent = i >= 0 ? (i + 1) + '번째' : c.dataset.id.slice(1);
+  });
+  document.getElementById('cnt').textContent = order.length;
+  document.getElementById('ord').textContent = order.length ? order.join(' ') : '아직 없음';
+  try { localStorage.setItem('pick', JSON.stringify(order)); } catch (e) {}
+}
+cards.forEach(c => c.addEventListener('click', e => {
+  e.preventDefault();
+  const id = c.dataset.id, i = order.indexOf(id);
+  if (i >= 0) order.splice(i, 1); else if (order.length < 8) order.push(id);
+  draw();
+}));
+document.getElementById('clr').onclick = () => { order.length = 0; draw(); };
+document.getElementById('cp').onclick = () => {
+  const t = '스토어 샷 순서: ' + order.join(' ');
+  navigator.clipboard.writeText(t).then(() => { document.getElementById('cp').textContent = '복사했어요'; },
+    () => { const r = document.createRange(); r.selectNodeContents(document.getElementById('ord')); getSelection().removeAllRanges(); getSelection().addRange(r); });
+};
+try { const s = JSON.parse(localStorage.getItem('pick') || '[]'); s.forEach(x => cards.some(c => c.dataset.id === x) && order.push(x)); } catch (e) {}
+draw();
+</script>
