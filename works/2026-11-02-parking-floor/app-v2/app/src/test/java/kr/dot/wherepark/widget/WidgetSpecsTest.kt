@@ -37,6 +37,16 @@ class WidgetSpecsTest {
         assertEquals(Shape.ROW, WidgetSpecs.get(ctx, 9).shape)
     }
 
+    /** The launcher may run the config screen before the pin callback arrives: the saved settings stay, NEXT is dropped. */
+    @Test fun claimNextKeepsConfigSavedSpec() {
+        WidgetSpecs.put(ctx, WidgetSpec(5, Shape.PILLAR, null, 60, Palette.default(Shape.PILLAR), null))
+        WidgetSpecs.putNext(ctx, WidgetSpec(0, Shape.TICKET, "w", 30, Palette.default(Shape.TICKET), null))
+        assertFalse(WidgetSpecs.claimNext(ctx, 5))
+        assertEquals(Shape.PILLAR, WidgetSpecs.get(ctx, 5).shape); assertEquals(60, WidgetSpecs.get(ctx, 5).strength)
+        assertFalse(Prefs.obj(ctx, "wp_widgets").has("next"))
+        assertFalse(WidgetSpecs.claimNext(ctx, 6))
+    }
+
     @Test fun claimNextUnderConcurrency() {
         WidgetSpecs.putNext(ctx, WidgetSpec(0, Shape.DOT, null, 100, Palette.default(Shape.DOT), null))
         val wins = java.util.concurrent.atomic.AtomicInteger()

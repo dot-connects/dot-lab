@@ -54,13 +54,18 @@ object WidgetSpecs {
     /** Settings for the widget the app is about to pin (requestPinAppWidget gives no id up front). */
     fun putNext(ctx: Context, s: WidgetSpec) = put(ctx, s, NEXT)
 
-    /** The pin callback hands the new id: the pending settings move to it, read and written under one lock. */
+    /**
+     * The pin callback hands the new id: the pending settings move to it, read and written under one lock.
+     * If that id already has settings (the launcher ran the config screen first), those win and NEXT is just cleared.
+     */
     fun claimNext(ctx: Context, id: Int): Boolean = synchronized(this) {
         val all = Prefs.obj(ctx, KEY)
         val next = all.optJSONObject(NEXT) ?: return@synchronized false
-        all.put(id.toString(), next); all.remove(NEXT)
+        val claimed = !all.has(id.toString())
+        if (claimed) all.put(id.toString(), next)
+        all.remove(NEXT)
         Prefs.put(ctx, KEY, all)
-        true
+        claimed
     }
 
     fun put(ctx: Context, s: WidgetSpec, key: String = s.appWidgetId.toString()) = synchronized(this) {
@@ -105,6 +110,10 @@ class WidgetReceiver : AppWidgetProvider() {
         private val MIC_SLOTS = intArrayOf(R.id.m0, R.id.m1, R.id.m2, R.id.m3)
         private val ROW_SLOTS = intArrayOf(R.id.r0, R.id.r1, R.id.r2, R.id.r3)
         private val ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+        /** Receiver work in arrival order, one at a time. */
+        private val worker = java.util.concurrent.Executors.newSingleThreadExecutor()
+        /** One draw at a time, spec read inside: a late draw can never post an older spec over a newer one. */
+        private val drawLock = Any()
 
         /** Same value at every size so each size's slot opens the same PendingIntent. */
         fun requestCode(appWidgetId: Int, carIndex: Int, kind: String): Int = appWidgetId * 16 + carIndex * 2 + (if (kind == "MIC") 0 else 1)
@@ -138,7 +147,9 @@ class WidgetReceiver : AppWidgetProvider() {
             else listOf(SizeF(300f, 140f))
         }
 
-        fun update(ctx: Context, mgr: AppWidgetManager, id: Int) {
+        fun update(ctx: Context, mgr: AppWidgetManager, id: Int) = synchronized(drawLock) { draw(ctx, mgr, id) }
+
+        private fun draw(ctx: Context, mgr: AppWidgetManager, id: Int) {
             val spec = WidgetSpecs.get(ctx, id)
             val cars = CarStore.cars(ctx)
             val parks = cars.associate { it.id to ParkStore.latest(ctx, it.id) }
@@ -199,21 +210,21 @@ class WidgetReceiver : AppWidgetProvider() {
     /** Drawing every size takes longer than the main thread should: all work runs on a worker, the broadcast kept alive by goAsync. */
     override fun onReceive(context: Context, intent: Intent) {
         val pending = goAsync()
-        Thread {
+        worker.execute {
             try {
                 when (intent.action) {
                     Intent.ACTION_BOOT_COMPLETED -> refreshAll(context)
                     ACTION_MIDNIGHT -> if (ours(context, intent)) refreshAll(context)
                     ACTION_PINNED -> if (ours(context, intent)) {
                         val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
-                        if (id != AppWidgetManager.INVALID_APPWIDGET_ID && WidgetSpecs.claimNext(context, id)) update(context, AppWidgetManager.getInstance(context), id)
+                        if (id != AppWidgetManager.INVALID_APPWIDGET_ID) { WidgetSpecs.claimNext(context, id); update(context, AppWidgetManager.getInstance(context), id) }
                     }
                     else -> super.onReceive(context, intent)   // onUpdate / onAppWidgetOptionsChanged / onDeleted, on this worker
                 }
             } finally {
                 pending.finish()
             }
-        }.start()
+        }
     }
 
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
