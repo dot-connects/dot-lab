@@ -1,5 +1,14 @@
 # 우리 집 몬스터 잡기 — 작업 폴더
 
+## 지금 (2026-11-19, 0.6.0 출시 준비)
+
+- 앱 0.6.0: 서명 AAB(API 36, 16KB 정렬). `cloudProject`(app/build.gradle.kts 맨 위)가 0이면 `bundleRelease` 가 멈춘다.
+- 다음: 운영자 `scripts/wizard-play-console.bat` 메뉴 7 1~4 → 프로젝트 번호 → `cloudProject` 넣고 AAB → 메뉴 3 업로드 →
+  "앱 서명 키 인증서" SHA-256 → `worker/wrangler.toml` CERT_SHA256 → `npm test` → `npx wrangler@4 deploy`.
+- 테스트 열기 전: 운영자에게 OpenAI 충전 확인(plan-release Task 13), `wrangler tail` 로 insufficient_quota 확인.
+- 업로드 키: `~/.catchpet-upload.jks`(백업 `C:\DC\ignore\catchpet-upload-key\`), 비밀번호는 사용자 환경변수 `CATCHPET_KS_PASS`.
+- 남은 Low(/done 11-19): Integrity 실패 원인 구분, 앱 시작 때 Integrity 준비, 구름 로드 메인 스레드, 사용 기록 없을 때 빈 구름, /quota 분당 한도 공유.
+
 ## 이어서 하기 (2026-11-16 기준 0.4.7 — 이제 **안드로이드 앱**이 본체)
 
 **웹 `site/` 는 동결했다.** 앞으로 작품은 `app/` 네이티브 앱(kr.dot.catchpet 0.2.0) 하나다. 설계는 `spec-app.md`, 계획은 `plan-app.md`(/plan-review 4회, High 11·2·1·0, 기록 `C:/DC/DD/docs/archive/2026-11-12-catch-app-plan-review`).
