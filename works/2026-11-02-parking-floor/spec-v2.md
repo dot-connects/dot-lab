@@ -71,18 +71,11 @@ kr.dot.wherepark
 
 ## 3. 데이터 모델
 
-```kotlin
-data class Car(val id: String, val name: String, val color: Int, val plate: String?, val order: Int)   // 가족당 ≤4
-data class Spot(val floor: Floor, val zone: String?, val number: Int?, val memo: String?)               // Floor = B(n) | G(n)
-data class Park(val id: Long, val carId: String, val spot: Spot, val atMs: Long, val byId: String, val byName: String,
-                val raw: String?, val photo: String?, val state: ParkState)                               // raw = 인식 원문
-enum class ParkState { PARKED, DRIVING }      // DRIVING = 그 차 BT 재연결로 자동, 또는 [가져갔어요]
-data class Pending(val parkId: Long, val carId: String, val tries: Int)   // SyncQueue 항목
-```
+**정본은 `contracts-v2.md`**(전송 형식 §1, Kotlin 이름 §2, 동기화 규칙 §3). 요점만:
 
-- **차마다 최근 기록 1건**만 가족에게 공유한다. 내 이력은 폰 안에만(최근 50건, "내 기록" 화면). 가족에게 출입 이력이 보이지 않게(05 결론 5).
-- 위치 좌표는 저장·전송하지 않는다. 층·구역·번호·메모·차 이름만(family-legal: 측위 정보가 아니면 위치정보법 밖일 가능성. 장소 이름도 v1은 넣지 않는다).
-- `Floor` 표기: 지하 = `B1..B9`, 지상 = `1층..` 내부 값 `-1..-9 / 1..`. 앱 설정 "P층 = 지하"(일부 주차장 표기)는 v1.1.
+- 차마다 최근 기록 1건(+ 직전 1건 prev, 되돌리기용)만 가족과 공유. 내 이력은 폰 안 최근 50건.
+- 서버로 가는 것: 층·구역·번호·기둥·메모·차 이름·색·번호판(선택)·사진(선택)·가족 이름. 안 가는 것: 음성, 인식 원문, 위치 좌표, BT 주소.
+- 층 표기: 화면 "B2"/"2F"/"옥상", 전송 "B2"/"2F"/"ROOF".
 
 ## 4. 말로 기록하기
 
@@ -108,23 +101,23 @@ data class Pending(val parkId: Long, val carId: String, val tries: Int)   // Syn
 
 ### 4.3 SpotParser (규칙, TDD)
 
-입력 = 인식 원문, 출력 = `ParseResult(spot, ambiguity, leftover)`.
+입력 = 인식 원문, 출력 = `ParseResult(spot, ambiguity, options, carName)`(contracts §2, 남는 말은 spot.memo).
 
 1. 정규화: 공백·문장부호 정리, 한자어·고유어 수사 → 숫자(`KoNum`: 일~구십구, 하나~아흔아홉, "서른일곱" → 37), 영문 글자 읽기(비/씨/디/이/에프 → B/C/D/E/F, "비투" → B2).
 2. 층: `지하 N층 | B N | 비 N | 지하 N` → B N. "지상"·"N층"만 있으면 지상이지만 **지하 없이 "2층"은 ambiguity=FLOOR_SIGN**(칩: 지하 2층 / 지상 2층). 같은 주차장에서 한 번 고르면 다음엔 안 묻는다(장소 키 = 그 차 BT + 시간대, v1은 "마지막 선택" 1개만 기억).
 3. 구역: 글자 1개(A~Z, 가~하) 또는 "N구역". "이 구역"처럼 이(2)/E가 겹치면 ambiguity=ZONE(칩 2개).
-4. 번호: 1~999, "N번". 기둥 표기 "가-3", "C-12"는 구역+번호로.
+4. 번호: 1~999, "N번". 기둥 표기("기둥 가 3", "가-3 기둥")는 pillar 필드로.
 5. 자기 정정: "아니", "아니다", "말고" 뒤의 값이 앞 값을 덮는다("37번 아니 38번" → 38).
 6. 남은 말 → `memo`("엘리베이터 옆", "3번 출구 쪽"). 숫자 하나만 남은 "3번 출구"는 번호로 먹지 않는다(출구·게이트·입구 앞뒤 단어 목록).
-7. 아무 층도 못 찾으면 실패(직접 입력으로).
+7. 층도 기둥도 못 찾으면 실패(직접 입력으로).
 
 **고정 테스트:** 03 §1.5의 34줄을 `SpotParserTest` 표로 옮기고, 실기기에서 모은 원문을 계속 보탠다. 이 파일이 파서의 정본이다.
 
 ### 4.4 저장 직후
 
 - 로컬 저장 즉시 위젯 갱신, 시트에 "저장했어요" + 전송 상태 줄(`가족에게 보냈어요` / `신호가 잡히면 가족에게 보내요`), 8초 되돌리기 막대, [고치기]·[사진].
-- 되돌리기 = 로컬 이전 기록 복원 + 아직 안 보냈으면 큐에서 빼고, 이미 보냈으면 이전 기록을 다시 PUT(서버는 `id` 같은 기록을 덮어씀, §6).
-- [사진]: CameraX 없이 `ACTION_IMAGE_CAPTURE` → 1600px 긴 변·JPEG 80으로 줄여 로컬 저장 → 큐로 업로드. 다음 주차 기록이 생기면 그 차의 이전 사진은 폰·서버 모두 지운다.
+- 되돌리기 = contracts-v2.md §3(전송 전 = 큐 교체, 전송 후 = `POST /v2/cars/{id}/undo`).
+- [사진]: CameraX 없이 `ACTION_IMAGE_CAPTURE` → 1600px 긴 변·JPEG 80으로 줄여 로컬 저장 → 큐로 업로드. 사진은 되돌리기용으로 직전 기록 1건까지 남기고 그보다 오래된 것은 지운다(최대 30일).
 - 차 상세에서 층·칸을 눌러 언제든 고친다(같은 park id로 PUT).
 
 ## 5. 차·블루투스·운행 중
@@ -132,12 +125,12 @@ data class Pending(val parkId: Long, val carId: String, val tries: Int)   // Syn
 - **연결:** 차 편집 → [차 블루투스 연결] → CompanionDeviceManager `associate`(BT 권한 대화상자, 위치 권한 없음). 0.4.1 `CarLink` 흐름을 옮긴다.
 - **감지:** CDM `startObservingDevicePresence` — 상주 서비스 없이 시스템이 `CompanionDeviceService`를 깨운다(tech-light). 끊김 = 주차 후보, 다시 붙음 = 운행 시작.
 - **끊김 알림(ExitNotifier):** "흰 차에서 내렸어요. 어디에 댔어요?" [말하기][층 고르기][안 댔어요]. 같은 차 30분 안 1회, `setTimeoutAfter(10분)`, [안 댔어요] 3번 연속이면 "이 차 알림 끌까요?" 제안. 끊긴 뒤 2분 안에 다시 붙으면(시동 재걸기) 알림을 거둔다.
-- **운행 중:** 그 차 BT가 다시 붙으면 `ParkState.DRIVING`으로 바꾸고 PUT(가족 위젯에 "엄마 운행 중"). 수동 [가져갔어요]는 차 상세의 보조 버튼. 다음 주차 기록이 들어오면 PARKED로.
+- **운행 중:** 그 차 BT가 다시 붙으면 `State(DRIVING)` op(contracts §3, 가족 위젯에 "엄마 운행 중"). 수동 [가져갔어요]는 차 상세의 보조 버튼. 다음 주차 기록이 들어오면 PARKED로.
 - BT 연결표(주소 ↔ carId)는 폰마다 로컬. 서버에 올리지 않는다.
 
 ## 6. 서버 (Worker `dot-lab-parking`)
 
-v1 라우트(0.4.1)는 그대로 두고 `/v2/*`를 더한다. 같은 D1, 같은 인증(Bearer `memberId.secret`).
+v1 라우트(0.4.1)는 그대로 두고 `/v2/*`를 더한다. **정확한 전송 형식·라우트(undo, peek, token 포함)는 `contracts-v2.md` §1이 정본**이다. 같은 D1, 같은 인증(Bearer `memberId.secret`).
 
 | 라우트 | 내용 |
 |---|---|
@@ -145,19 +138,12 @@ v1 라우트(0.4.1)는 그대로 두고 `/v2/*`를 더한다. 같은 D1, 같은 
 | `POST /v2/invites` | v1과 같음(12자, 24h, 1회용, 가족당 최신 1개). 응답에 `link` = `https://<도메인>/j#<code>` |
 | `GET /v2/state` | 가족 전체: members(이름, 마지막 활동, me, owner), cars, 차별 최근 park(+by, mine), 사진 유무 |
 | `PUT /v2/cars/{id}` `DELETE /v2/cars/{id}` | 차 만들기·고치기·지우기(가족당 ≤4) |
-| `PUT /v2/cars/{id}/park` | 차별 최근 기록. 같은 `id`는 덮어씀(고치기·되돌리기·운행 중), 다른 id는 `atMs`가 더 새것만(지금 v1 규칙을 차 단위로) |
-| `PUT /v2/cars/{id}/photo` `GET` `DELETE` | R2 `PHOTOS` 버킷, ≤400KB JPEG, 키 `g/{group}/{car}/{parkId}.jpg`, 다음 기록·30일 지나면 삭제(크론 1일 1회) |
+| `PUT /v2/cars/{id}/park` · `/undo` · `/state` | 차별 최근 기록·되돌리기·운행 중 — 규칙은 contracts §1·§3 |
+| `PUT /v2/cars/{id}/photo` `GET` | R2 `PHOTOS` 버킷, ≤400KB JPEG, 키 `g/{group}/{car}/{parkId}.jpg`, 다음 기록·30일 지나면 삭제(크론 1일 1회) |
 | `DELETE /v2/members/{id}` | 본인 / 방장 / **대상의 last_seen이 30일 넘었으면 누구나**(분실 폰 정리, 01 결론 4) |
 | `DELETE /v2/me` | 내 데이터 지우기(설정 > 정보). 마지막 1명이면 가족 전체 삭제 |
 
-스키마 추가 (`schema.sql`):
-
-```sql
-CREATE TABLE IF NOT EXISTS cars (id TEXT PRIMARY KEY, group_id TEXT NOT NULL, json TEXT NOT NULL, ord INTEGER NOT NULL, updated INTEGER NOT NULL);
-CREATE TABLE IF NOT EXISTS parks2 (group_id TEXT NOT NULL, car_id TEXT NOT NULL, json TEXT NOT NULL, by_name TEXT, by_id TEXT,
-  updated INTEGER NOT NULL, PRIMARY KEY (group_id, car_id));
-ALTER TABLE members ADD COLUMN last_seen INTEGER;   -- 인증된 요청마다 갱신(분 단위로 묶어 쓰기 줄임)
-```
+스키마·라우트 정본 = `contracts-v2.md` §1(마이그레이션 `worker/migrations/2026-11-19-v2.sql`, 재실행 안전 스크립트 `worker/tools/migrate_v2.py`; 새 DB용 `schema.sql`에도 같은 테이블을 더함).
 
 - 푸시: v1처럼 data-only FCM(`type: park|cars|members`, `carId`). 받는 폰이 `GET /v2/state`로 당겨 온다(푸시에 자리 문자열을 싣지 않음).
 - 합류 알림: 새 멤버가 들어오면 가족 폰에 보이는 알림("엄마가 가족에 들어왔어요").
@@ -165,7 +151,7 @@ ALTER TABLE members ADD COLUMN last_seen INTEGER;   -- 인증된 요청마다 �
 
 ## 7. 가족 초대·합류
 
-- **링크:** `https://<도메인>/j#<code>` — 코드는 `#` 뒤(서버·로그에 안 남음). 도메인 = dot-lab Pages 사이트 아래 `/j`(운영자 확정, 별도 도메인 안 삼), `/.well-known/assetlinks.json`에 앱 서명 지문.
+- **링크:** `https://<도메인>/j#<code>` — 코드는 `#` 뒤(서버·로그에 안 남음). 도메인 = Worker 주소 `dot-lab-parking.dotconnects.workers.dev/j` — dot-lab Pages는 `/dot-lab/` 하위 경로라 App Links 검증 파일(`/.well-known/assetlinks.json`, 도메인 루트만 읽음)을 둘 수 없어 Worker가 `/j` 페이지와 검증 파일을 함께 서빙(plan-review 1라운드, 비용 0).
   - 앱 있음 → App Links로 JoinActivity가 바로 열림.
   - 앱 없음 → `/j` 페이지가 Play 링크로 보냄(`&referrer=code%3D...`) → 설치 후 첫 실행에서 Install Referrer로 코드 읽음(90일) → JoinActivity.
   - 카톡 인앱 브라우저에서 App Links가 안 열리면 `/j` 페이지의 [앱으로 열기] 버튼(intent:// 스킴). **실기기 확인 필요**(01 UNVERIFIED).
@@ -178,8 +164,8 @@ ALTER TABLE members ADD COLUMN last_seen INTEGER;   -- 인증된 요청마다 �
 ### 8.1 그리는 방식
 
 - **AppWidgetProvider 1개**, 위젯마다 설정(`WidgetConfigActivity`, Android 12+ 재설정 가능): 무엇을(모든 차 / 차 하나), 모양(줄 목록·포스터·기둥 띠·점 행렬·주차권 중 하나, 스타일 단계 없음), 배경 진하기 0~100, 색 셔플 결과(팔레트 시드), 되돌리기 1단계.
-- **WidgetRenderer:** 위젯 하나 = Canvas 비트맵 1장(번들 글꼴·그라데이션·그림자 그대로) + RemoteViews 위의 투명 클릭 영역(차 줄마다 마이크 48dp, 줄 나머지 = 앱의 그 차 상세). `contentDescription`에 "흰 차 지하 2층 C구역 37번, 아빠 14시 32분" 전체.
-- 크기: `OPTION_APPWIDGET_SIZES`로 받은 dp × density로 그림. 비트맵 메모리 상한(위젯당 `6×w×h`바이트, Android 17) 안에 들도록 큰 위젯은 해상도를 낮춤. 크기 바꿀 때마다 다시 그림.
+- **WidgetRenderer:** 위젯 하나 = Canvas 비트맵 1장(번들 글꼴·그라데이션·그림자 그대로) + RemoteViews 위의 투명 클릭 영역(차 줄마다 마이크 44dp 이상, 줄 나머지 = 앱의 그 차 상세). `contentDescription`에 "흰 차 지하 2층 C구역 37번, 아빠 14시 32분" 전체.
+- 크기: `OPTION_APPWIDGET_SIZES`로 받은 dp × density로 그림. 비트맵 합계가 RemoteViews 상한(화면 크기 기준, plan Task 7) 안에 들도록 큰 크기부터 해상도를 낮춤. 크기 바꿀 때마다 다시 그림.
 - 배경 흐림 없음. 진하기 60% 미만은 반투명 막 + 글자 외곽선, 글자색은 **배경화면 대표색**과 섞은 실제 배경으로 대비 계산(시안 v10 로직 이식). 배경화면 대표색은 `WallpaperManager.getWallpaperColors`(권한 불필요). 사진 배경 0%에서도 막이 남는 것은 의도(4.5:1 유지).
 - 갱신: 로컬 저장·푸시 수신·설정 변경·1분 단위 경과 시간은 **매분 갱신하지 않는다** — "2시간 4분째"는 위젯에서 빼고 "14:32"만(앱·상세에서만 경과 시간). 2일 넘은 기록은 날짜.
 
@@ -241,7 +227,7 @@ ALTER TABLE members ADD COLUMN last_seen INTEGER;   -- 인증된 요청마다 �
 
 1. v1 범위 = §1 표 그대로(요금 타이머·묻기·잠금화면·iPhone 링크·공유로 받기는 v1.1).
 2. applicationId = `kr.dot.wherepark`.
-3. 초대 링크 = dot-lab Pages 사이트 `/j`.
+3. 초대 링크 = dot-lab 사이트 `/j`로 정했으나 App Links 검증 제약으로 Worker 주소 `/j`로 옮김(같은 무료, 계획 리뷰 1라운드).
 4. 주 버튼 = 주황 바탕 + 검정 글자.
 5. 사진 = 다음 기록 때 삭제, 최대 30일.
 
