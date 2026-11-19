@@ -4,6 +4,8 @@
 // Stored per family: members, open invites, the latest park (floor, pillar, building name; no coordinates).
 
 import { sendData } from "./fcm.js";
+import * as v2 from "./v2.js";
+import { renderJoinPage } from "./jpage.js";
 
 const INVITE_MS = 24 * 60 * 60 * 1000;
 const MAX_MEMBERS = 8;
@@ -11,11 +13,11 @@ const NAME_MAX = 12;
 const BODY_MAX = 4096;
 const FUTURE_MS = 5 * 60 * 1000;
 
-const json = (body, status = 200) =>
+export const json = (body, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json; charset=utf-8" } });
-const fail = (status, error) => json({ error }, status);
+export const fail = (status, error) => json({ error }, status);
 
-function randomId(bytes) {
+export function randomId(bytes) {
   const b = crypto.getRandomValues(new Uint8Array(bytes));
   return [...b].map(x => x.toString(16).padStart(2, "0")).join("");
 }
@@ -34,7 +36,7 @@ export async function sha256(text) {
   return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, "0")).join("");
 }
 
-const cleanName = n => String(n || "").trim().slice(0, NAME_MAX);
+export const cleanName = n => String(n || "").trim().slice(0, NAME_MAX);
 
 /** The park fields phones may send; everything else is dropped. */
 export function cleanPark(p, now = Date.now()) {
@@ -53,7 +55,7 @@ export function cleanPark(p, now = Date.now()) {
   };
 }
 
-async function member(req, store) {
+export async function member(req, store) {
   const auth = req.headers.get("authorization") || "";
   const m = auth.match(/^Bearer ([0-9a-f]{16})\.([0-9a-f]{64})$/);
   if (!m) return null;
@@ -62,7 +64,7 @@ async function member(req, store) {
   return row;
 }
 
-async function body(req) {
+export async function body(req) {
   try {
     const text = await req.text();
     if (text.length > BODY_MAX) return null;
@@ -70,14 +72,15 @@ async function body(req) {
   } catch { return null; }
 }
 
-async function newMember(store, groupId, name, owner) {
+export async function newMember(store, groupId, name, owner) {
   const id = randomId(8), secret = randomId(32);
-  await store.addMember({ id, groupId, name, secretHash: await sha256(secret), fcmToken: null, owner, created: Date.now() });
+  const created = Date.now();
+  await store.addMember({ id, groupId, name, secretHash: await sha256(secret), fcmToken: null, owner, created, lastSeen: created });
   return { memberId: id, secret, token: `${id}.${secret}` };
 }
 
 /** Wakes the other phones; a failed push is not an error for the sender. */
-async function notify(env, store, groupId, exceptId, data) {
+export async function notify(env, store, groupId, exceptId, data) {
   if (!env.FCM_SA) return { sent: 0, failed: 0, reason: "no-push" };
   const tokens = (await store.members(groupId)).filter(m => m.id !== exceptId && m.fcmToken).map(m => m.fcmToken);
   let sent = 0, failed = 0, reason = null;
@@ -97,6 +100,13 @@ export async function handle(req, env, store, ctx) {
   const url = new URL(req.url);
   const path = url.pathname.replace(/\/+$/, "");
   const now = Date.now();
+
+  if (path.startsWith("/v2/")) return v2.handle(req, env, store, ctx);
+  if (req.method === "GET" && path === "/j") return new Response(renderJoinPage(env), { headers: { "content-type": "text/html; charset=utf-8" } });
+  if (req.method === "GET" && path === "/.well-known/assetlinks.json") {
+    const fingerprints = String(env.ASSETLINKS_SHA256 || "").split(",").map(x => x.trim()).filter(Boolean);
+    return json(fingerprints.map(fingerprint => ({ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: "kr.dot.wherepark", sha256_cert_fingerprints: [fingerprint] } })));
+  }
 
   // unauthenticated routes are rate limited per IP when the binding exists (wrangler.toml)
   if ((path === "/v1/groups" || path === "/v1/join") && env.LIMIT) {
@@ -180,12 +190,17 @@ export async function handle(req, env, store, ctx) {
     const rest = (await store.members(me.groupId)).filter(m => m.id !== del[1]);
     await store.removeMember(me.groupId, del[1]);
     // an owner leaving hands the family to the oldest member; the last one out clears the family
-    if (rest.length === 0) await store.dropGroup(me.groupId);
+    if (rest.length === 0) { await v2.deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }
     else if (!rest.some(m => m.owner)) await store.makeOwner(rest[0].id);
     return json({ ok: true });
   }
 
   return fail(404, "route");
+}
+
+export async function scheduled(event, env, ctx, store) {
+  if (!store) { const { D1Store } = await import("./store.js"); store = new D1Store(env.DB); }
+  await store.expirePhotos((event.scheduledTime || Date.now()) - 30 * 86400_000);
 }
 
 export default {
@@ -198,4 +213,5 @@ export default {
       return fail(500, "server");
     }
   },
+  scheduled,
 };

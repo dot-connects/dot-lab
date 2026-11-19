@@ -2,6 +2,17 @@ name = "dot-lab-parking"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
+[vars]
+LINK_BASE = "https://dot-lab-parking.dotconnects.workers.dev/j"
+ASSETLINKS_SHA256 = "<signing fingerprint>"
+
+[triggers]
+crons = ["0 18 * * *"]
+
+[[r2_buckets]]
+binding = "PHOTOS"
+bucket_name = "dot-lab-parking-photos"
+
 # Family sync for the parking floor app. Secret FCM_SA (Firebase service account JSON) is set with
 # `npx wrangler@4 secret put FCM_SA`; without it parks are stored and pulled, but nobody is woken.
 [[d1_databases]]
