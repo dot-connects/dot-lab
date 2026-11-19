@@ -57,12 +57,7 @@ object Push {
     /** Background thread only (blocks on the token). Uploads the token, or falls back to the 15-minute pull when there is none. */
     fun start(ctx: Context) {
         val token = token(ctx)
-        if (token == null) {
-            schedulePull(ctx)
-        } else {
-            cancelPull(ctx)
-            Api.setFcmToken(ctx, token)
-        }
+        if (token != null && Api.setFcmToken(ctx, token)) cancelPull(ctx) else schedulePull(ctx)
     }
 
     fun token(ctx: Context): String? {
@@ -101,7 +96,7 @@ object Push {
         val carId = data["carId"]
         val oldPark = carId?.let { ParkStore.latest(ctx, it) }
         val st = Api.state(ctx).getOrNull() ?: return
-        Merge.state(ctx, st, gen)  // false = queue changed; that queue's own sync pulls again
+        if (!Merge.state(ctx, st, gen)) return  // queue changed: nothing merged, the next pull notifies
         WidgetRefresh.request(ctx)
         when (type) {
             "park" -> {
@@ -120,13 +115,18 @@ object Push {
         }
     }
 
+    /** Called once from App.onCreate. */
+    fun createChannels(ctx: Context) {
+        val nm = ctx.getSystemService(NotificationManager::class.java)
+        nm.createNotificationChannel(NotificationChannel(CH_PARK, "가족이 댔을 때", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_DRIVE, "운행 시작", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_JOIN, "가족 참여", NotificationManager.IMPORTANCE_DEFAULT))
+    }
+
     internal fun postNotification(ctx: Context, channel: String, id: Int, text: String) {
         if (ctx.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) return
         try {
             val nm = ctx.getSystemService(NotificationManager::class.java)
-            nm.createNotificationChannel(NotificationChannel(CH_PARK, "가족이 댔을 때", NotificationManager.IMPORTANCE_DEFAULT))
-            nm.createNotificationChannel(NotificationChannel(CH_DRIVE, "운행 시작", NotificationManager.IMPORTANCE_DEFAULT))
-            nm.createNotificationChannel(NotificationChannel(CH_JOIN, "가족 참여", NotificationManager.IMPORTANCE_DEFAULT))
             nm.notify(id, Notification.Builder(ctx, channel).setSmallIcon(android.R.drawable.ic_dialog_info).setContentTitle("어디댔어").setContentText(text).setAutoCancel(true).build())
         } catch (e: RuntimeException) {
             Log.w("wp-push", "notify failed: $e")
@@ -156,7 +156,6 @@ class PushService : FirebaseMessagingService() {
     }
 
     override fun onNewToken(token: String) {
-        Push.cancelPull(this)
-        Api.setFcmToken(this, token)
+        if (Api.setFcmToken(this, token)) Push.cancelPull(this) else Push.schedulePull(this)
     }
 }

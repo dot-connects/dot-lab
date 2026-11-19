@@ -4,13 +4,20 @@ import android.Manifest
 import android.content.Context
 import kr.dot.wherepark.data.FakeNet
 import kr.dot.wherepark.data.Kit
+import kr.dot.wherepark.core.ParkState
+import kr.dot.wherepark.data.Api
+import kr.dot.wherepark.data.FamilyStore
 import kr.dot.wherepark.data.Kit.car
+import kr.dot.wherepark.data.Op
+import kr.dot.wherepark.data.Prefs
+import kr.dot.wherepark.data.SyncQueue
 import kr.dot.wherepark.data.Kit.park
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.Wire
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -68,6 +75,49 @@ class PushTest {
         serve(serverState(100, listOf("나", "민지")))
         Push.handle(ctx, mapOf("type" to "members"))
         assertEquals(listOf(Push.CH_JOIN to "민지가 가족에 들어왔어요"), posted)
+    }
+
+    @Test fun firstPullWithNoKnownMembersDoesNotNotify() {
+        net.handler = { m, p, _, _ -> if (m == "GET" && p == "/v2/state") 200 to serverState(100, listOf("나", "민지")) else 200 to "{}" }
+        Prefs.sp(ctx).edit().clear().commit()  // nothing known locally yet, but still joined below
+        FamilyStore.save(ctx, "m1", "s1", "우리", emptyList())
+        Push.handle(ctx, mapOf("type" to "members"))
+        assertTrue(posted.isEmpty())
+    }
+
+    @Test fun carsMessagePullsWithoutNotifying() {
+        serve(serverState(100))
+        Push.handle(ctx, mapOf("type" to "cars"))
+        assertEquals(100L, ParkStore.latest(ctx, "a")?.id)
+        assertTrue(posted.isEmpty())
+    }
+
+    @Test fun driveNotifiesOnlyWhenEnabled() {
+        val driving = JSONObject(serverState(100))
+        driving.getJSONObject("parks").put("a", JSONObject(Kit.serverPark(park("a", 100, state = ParkState.DRIVING), "아빠")).put("drivingBy", "아빠"))
+        serve(driving.toString())
+        Push.handle(ctx, mapOf("type" to "park", "carId" to "a"))
+        assertTrue(posted.isEmpty())  // default off
+        Push.setEnabled(ctx, "drive:a", true)
+        ParkStore.clearCar(ctx, "a")  // the first pull already stored it; a new drive must look new
+        Push.handle(ctx, mapOf("type" to "park", "carId" to "a"))
+        assertEquals(listOf(Push.CH_DRIVE to "아빠가 운행을 시작했어요"), posted)
+    }
+
+    @Test fun discardedMergeDoesNotNotify() {
+        net.handler = { m, p, _, _ ->
+            if (m == "GET" && p == "/v2/state") { SyncQueue.add(ctx, Op.PutCar(car("z"))); 200 to serverState(100) } else 200 to "{}"
+        }
+        Push.handle(ctx, mapOf("type" to "park", "carId" to "a"))
+        assertTrue(posted.isEmpty())
+    }
+
+    @Test fun tokenConfirmedOnlyOn2xxWhileJoined() {
+        assertTrue(Api.setFcmToken(ctx, "t"))
+        net.handler = { _, _, _, _ -> 500 to null }
+        assertFalse(Api.setFcmToken(ctx, "t"))
+        Prefs.sp(ctx).edit().clear().commit()
+        assertFalse(Api.setFcmToken(ctx, "t"))
     }
 
     @Test fun realPostSkipsSilentlyWithoutPermission() {

@@ -159,9 +159,11 @@ object Api {
         return ok(authed(ctx, auth, "POST", "/v2/invites")).map { Invite(it.getString("code"), it.getLong("expiresAt"), it.getString("link")) }
     }
 
-    fun setFcmToken(ctx: Context, token: String?) {
-        val auth = FamilyStore.auth(ctx) ?: return
-        if (token != null) authed(ctx, auth, "PUT", "/v2/token", JSONObject().put("fcmToken", token))
+    /** true only when the server stored the token (2xx while joined); callers keep the pull fallback otherwise. */
+    fun setFcmToken(ctx: Context, token: String?): Boolean {
+        val auth = FamilyStore.auth(ctx) ?: return false
+        if (token == null) return false
+        return authed(ctx, auth, "PUT", "/v2/token", JSONObject().put("fcmToken", token)).first in 200..299
     }
 
     fun removeMember(ctx: Context, id: String): Result<Unit> {
