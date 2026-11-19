@@ -80,7 +80,10 @@ class Listener : NotificationListenerService() {
                     handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
                 }
                 // after the keyguard has locked and StandBy (if it was up) has stopped
-                Intent.ACTION_SCREEN_OFF -> handler.postDelayed({ ChargeStart.onScreenOff(this@Listener) }, 1500)
+                Intent.ACTION_SCREEN_OFF -> {
+                    val own = ChargeStart.screenOffNow() // before StandBy stops, so a quick wake already sees it
+                    handler.postDelayed({ ChargeStart.onScreenOff(this@Listener, own) }, 1500)
+                }
                 Intent.ACTION_SCREEN_ON -> ChargeStart.onScreenOn(this@Listener)
                 else -> ChargeStart.rearmNow(c)
             }

@@ -177,7 +177,7 @@ object PhotoIndex {
             for (i in candidates) {
                 val day = if (kind == MemoryKind.ANY) date(i) else exifDay(ctx, uri(i)) ?: date(i)
                 if (kind != MemoryKind.ANY && MemorySelection.kind(day, today) != kind) continue
-                val years = if (kind == MemoryKind.ANY) null else today.year - day.year
+                val years = if (kind == MemoryKind.ANY) null else MemorySelection.years(day, today)
                 decode(ctx, s, i, day, years)?.let { return it.copy(memoryKind = kind) }
             }
         }

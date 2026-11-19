@@ -37,7 +37,6 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -121,12 +120,9 @@ internal fun TipDemo(tip: Tip, config: AppConfig, active: Boolean, modifier: Mod
             PreviewFrame(device.w, device.h, modifier, radius = 18.dp) {
                 Box(Modifier.fillMaxSize().clipToBounds().clearAndSetSemantics { contentDescription = "${tip.title} 미리보기" }) {
                     Scene(tip, config, state, faces, device, progress * duration(tip))
-                    // TopPanel contains a real volume slider. A demo must never send touches to live controls.
-                    Box(Modifier.matchParentSize().pointerInput(Unit) {
-                        awaitPointerEventScope {
-                            while (true) awaitPointerEvent(PointerEventPass.Initial).changes.forEach { it.consume() }
-                        }
-                    })
+                    // TopPanel contains a real volume slider. This top sibling takes the hit so the scene never gets touches;
+                    // it consumes nothing, so the settings list still scrolls when dragged over the demo.
+                    Box(Modifier.matchParentSize().pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } })
                 }
             }
         }

@@ -84,7 +84,7 @@ class SettingsActivity : ComponentActivity() {
                         section.startsWith("card:") -> listOf(section)
                         // a card asking for its grant opens where that grant's line is
                         section == "calendar" -> listOf(Routes.HOME, Routes.card(kr.dot.sb.model.CardType.CALENDAR))
-                        section == "notifications" -> listOf(Routes.HOME, Routes.ALERTS)
+                        section == "notifications" -> listOf(Routes.HOME, Routes.CARD_LIST, Routes.NOTIF)
                         else -> listOf(Routes.HOME, section)
                     },
                 )

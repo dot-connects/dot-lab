@@ -150,22 +150,37 @@ object ChargeStart {
      * phone's own lock screen (operator 2026-11-13, replaces r9's "StandBy again on the next wake"). StandBy returns at
      * the next screen-off from normal use or the next plug-in.
      */
-    fun onScreenOff(ctx: Context) {
-        if (plugged(ctx) == 0) return // plan-r15 C7: no charger, nothing to start (no re-arm, no log line)
+    /**
+     * Called the moment the screen goes off (not after the settle delay), while StandBy still counts as showing: a
+     * side-key press on StandBy sets [manualOff] before any wake can be seen. Returns whether the screen-off was ours.
+     */
+    fun screenOffNow(): Boolean {
         val own = StandbyPresence.activity || StandbyPresence.dream || GlowPresence.covering ||
             android.os.SystemClock.elapsedRealtime() - StandbyPresence.lastHiddenMs < 4_000L
-        if (own) { manualOff = true; log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음엔 폰 화면") }
-        else fire(ctx, "화면 꺼짐", force = true)
+        if (own) manualOff = true
+        return own
     }
 
-    // ponytail: process memory only; if the process dies in between, the next wake shows StandBy as before
+    /** The settled screen-off ([own] = [screenOffNow] at the moment it went off). */
+    fun onScreenOff(ctx: Context, own: Boolean) {
+        if (plugged(ctx) == 0) return // plan-r15 C7: no charger, nothing to start (no re-arm, no log line)
+        if (own || screenOffNow()) { log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음 화면 꺼짐까지 폰 화면"); return }
+        manualOff = false
+        fire(ctx, "화면 꺼짐", force = true)
+    }
+
+    /**
+     * operator 2026-11-19: after the side key on StandBy, nothing brings StandBy back while the screen stays on (the
+     * charging job, a re-arm, the wake itself); only the next screen-off from normal use or a new plug-in decides again.
+     * ponytail: process memory only; if the process dies in between, the next wake may show StandBy as before
+     */
     @Volatile private var manualOff = false
 
     /** The screen woke on the lock screen while charging and no StandBy is waiting behind it. */
     fun onScreenOn(ctx: Context) {
         if (plugged(ctx) == 0) return // plan-r15 C7
         if (StandbyPresence.alive || StandbyPresence.dream) return
-        if (manualOff) { manualOff = false; log(ctx, "화면 켜짐 · 직접 껐음 → 폰 화면"); return }
+        if (manualOff) { log(ctx, "화면 켜짐 · 직접 껐음 → 폰 화면"); return }
         fire(ctx, "화면 켜짐", force = true)
     }
 
@@ -235,6 +250,7 @@ object ChargeStart {
         // first, so a failure below cannot leave us unarmed; never while the job's own window runs (C2)
         if (jobDone == null && !jobWindow) arm(ctx, REARM_MS, replace = true)
         fun skip(): Boolean { if (jobDone != null) arm(ctx, REARM_MS, replace = true); return false }
+        if (manualOff) { record("직접 껐음 → 다음 화면 꺼짐까지 안 띄움"); return skip() } // Measure only: the 8-line trail would fill with job ticks
         // the listener and the job both see one plug-in; the second one within a minute does nothing
         if (!force && System.currentTimeMillis() - lastLaunchMs < 60_000L) { record("이미 띄움"); return skip() }
         if (sampling) { record("자세 확인 중이라 건너뜀"); return skip() }

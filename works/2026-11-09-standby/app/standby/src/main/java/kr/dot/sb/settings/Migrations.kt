@@ -33,7 +33,9 @@ object Migrations {
             } }
         }
         return c.copy(
-            appsCard = cards.firstOrNull { it.first == kr.dot.sb.model.CardType.APPS }?.second?.copy(face = null) ?: kr.dot.sb.model.SlotOptions(),
+            // the first apps card that has apps (an unpicked card on an earlier page must not wipe the user's list)
+            appsCard = cards.filter { it.first == kr.dot.sb.model.CardType.APPS }.let { a -> a.firstOrNull { it.second.apps.isNotEmpty() } ?: a.firstOrNull() }
+                ?.second?.copy(face = null) ?: kr.dot.sb.model.SlotOptions(),
             clockCardFace = cards.firstOrNull { it.first == kr.dot.sb.model.CardType.CLOCK }?.second?.face,
         )
     }

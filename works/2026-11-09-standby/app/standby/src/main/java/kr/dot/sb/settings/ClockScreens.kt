@@ -89,9 +89,9 @@ fun ClockScreen(config: AppConfig, update: Update, nav: Nav, back: () -> Unit) {
     // plan-r15 F2: only this screen's clock (no swipe to the other pages' settings)
     Page(
         "시계", back, preview = Preview(config, listOf(first)),
-        miniActions = { ClockActions(sel, config, update, compact = true) },
+        miniActions = { ClockActions(compact = true) },
     ) {
-        ClockActions(sel, config, update, compact = false)
+        ClockActions(compact = false)
         Row(Modifier.fillMaxWidth().padding(top = 16.dp).horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(TILE_GAP)) {
             config.myClocks.chunked(2).forEach { pair ->
                 Column(Modifier.width(TILE_W), verticalArrangement = Arrangement.spacedBy(TILE_GAP)) {
@@ -165,13 +165,11 @@ fun RotateClocksScreen(config: AppConfig, update: Update, back: () -> Unit) {
     }
 }
 
-/** Name of the previewed clock; the use action puts it first ([MyClocks.use]). [compact] = inside the mini preview. */
+/** operator 2026-11-19: a fixed "내 시계" heading (each tile already names its clock), no 이 시계 쓰기. [compact] = inside the mini preview. */
 @Composable
-private fun ClockActions(face: FaceId, config: AppConfig, update: Update, compact: Boolean) {
-    val i = config.myClocks.indexOf(face)
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (compact) 0.dp else 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-        T(spec(face).ko, 15.sp, 700, maxLines = 1, modifier = Modifier.weight(1f))
-        if (i != 0) ActionButton("이 시계 쓰기", { update { it.copy(myClocks = MyClocks.use(it.myClocks, face)) } })
+private fun ClockActions(compact: Boolean) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(top = if (compact) 0.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+        T("내 시계", 15.sp, 700, maxLines = 1)
     }
 }
 

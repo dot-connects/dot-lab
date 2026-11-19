@@ -23,7 +23,8 @@ import kr.dot.sb.ui.state.StandbyActions
 
 /** Shared settings destinations for card types. */
 internal fun cardRoute(t: CardType): String = when (t) {
-    CardType.NOTIF, CardType.ALARM -> Routes.ALERTS
+    CardType.NOTIF -> Routes.NOTIF
+    CardType.ALARM -> Routes.ALARM
     CardType.MEMORIES -> Routes.PHOTOS
     // 오늘 일정 and 달력 share one screen (the calendar picker)
     CardType.AGENDA -> Routes.card(CardType.CALENDAR)
@@ -54,13 +55,14 @@ internal fun legacyCardRoute(route: String, config: AppConfig): String? {
 fun CardListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
     Page("카드", back) {
         Section(null) {
-            CardType.entries.forEach { type ->
+            // operator 2026-11-19: no 시계 row (시계 has its own home row), 오늘 일정 and 달력 are one row
+            CardType.entries.filter { it != CardType.CLOCK && it != CardType.AGENDA }.forEach { type ->
                 item {
                     val enabled = hasCardSettings(type)
                     // operator 2026-11-18: 추억 is where the photo folders live (photos page, 사진 위 시간, 사진 흐림 use them too)
                     val photos = type == CardType.MEMORIES
                     val needPhotos = photos && config.photoFolders.isEmpty() && (kr.dot.sb.data.Needs.photos(config) || kr.dot.sb.data.Needs.memory(config))
-                    NavRow(if (photos) "추억 · 사진 폴더" else type.ko, { nav.push(Routes.card(type)) }, enabled = enabled,
+                    NavRow(if (photos) "추억 · 사진 폴더" else if (type == CardType.CALENDAR) "오늘 일정 · 달력" else type.ko, { nav.push(Routes.card(type)) }, enabled = enabled,
                         subtitle = if (!enabled) "설정할 게 없어요" else if (photos) "사진 페이지와 사진 위 시간도 이 폴더를 써요" else null,
                         value = if (photos && !needPhotos) "폴더 ${config.photoFolders.size}개" else null,
                         badge = if (needPhotos) "설정 필요" else null,

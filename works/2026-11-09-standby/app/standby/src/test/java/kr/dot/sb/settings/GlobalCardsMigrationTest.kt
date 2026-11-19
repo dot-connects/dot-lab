@@ -31,6 +31,12 @@ class GlobalCardsMigrationTest {
         assertNull(c.clockCardFace)
     }
 
+    @Test fun anEmptyEarlierAppsCardDoesNotWipeALaterList() {
+        val empty = """{"id":"a","layout":"ONE","slots":[["APPS"]]}"""
+        val json = """{"v":16,"widgetLeft":["CALENDAR"],"widgetRight":["WEATHER"],"boards":[$empty,${board("b", "com.b")}]}"""
+        assertEquals(listOf("com.b"), ConfigCodec.decode(json).appsCard.apps)
+    }
+
     @Test fun globalFieldsRoundTrip() {
         val c = AppConfig(appsCard = SlotOptions(apps = listOf("com.x"), appSource = AppSource.FREQUENT, appCount = 6), clockCardFace = FaceId.ANALOG)
         val back = ConfigCodec.decode(ConfigCodec.encode(c))

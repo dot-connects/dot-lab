@@ -1570,9 +1570,11 @@ private fun MemoriesCard(e: Env, state: StandbyState, actions: StandbyActions) {
                 Spacer(Modifier.height(8.dp))
                 // one line; the short date ("설악산 · 2023.11.9") when the long one does not fit
                 val size = if (e.short >= 200.dp) e.read else e.meta
-                val long = listOf(p.place, p.date).filter { it.isNotBlank() }.joinToString(" · ")
+                // ANY already shows the date as its title
+                val dated = p.memoryKind != kr.dot.sb.data.MemoryKind.ANY
+                val long = listOf(p.place, if (dated) p.date else "").filter { it.isNotBlank() }.joinToString(" · ")
                 val digits = Regex("\\d+").findAll(p.date).map { it.value }.toList()
-                val short = if (digits.size == 3) listOf(p.place, digits.joinToString(".")).filter { it.isNotBlank() }.joinToString(" · ") else long
+                val short = if (dated && digits.size == 3) listOf(p.place, digits.joinToString(".")).filter { it.isNotBlank() }.joinToString(" · ") else long
                 Txt(if (fitsOneLine(long, size, 500, cw)) long else short, size, fg.copy(alpha = 0.8f), weight = 500, tnum = true, maxW = cw)
             }
         }

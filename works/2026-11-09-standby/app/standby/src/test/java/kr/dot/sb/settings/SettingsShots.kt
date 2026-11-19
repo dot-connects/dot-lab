@@ -105,7 +105,7 @@ abstract class SettingsShotKit {
     protected val withApps = AppConfig(appsCard = kr.dot.sb.model.SlotOptions(apps = listOf("app.2", "app.0")))
 }
 
-/** Home, 테마, card pages, 알림과 알람, 날씨 지역, 권한, 정보, 팁, the first run. */
+/** Home, 테마, card pages, 알림, 알람, 날씨 지역, 권한, 정보, 팁, the first run. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -123,9 +123,11 @@ class SettingsHomeShots : SettingsShotKit() {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1400f) }
     }
-    /** plan-r15 F1: 알림과 알람 (the old 알림 and 알람 screens in one). */
-    @Test fun notif() = snap("notif", tall, route = Routes.ALERTS)
-    @Test fun notifFold() = snap("notif-fold", foldTall, route = Routes.ALERTS)
+    /** operator 2026-11-19: 카드 › 알림 and 카드 › 알람 are separate screens. */
+    @Test fun notif() = snap("notif", tall, route = Routes.NOTIF)
+    @Test fun alarm() = snap("alarm", tall, route = Routes.ALARM)
+    @Test fun alarmFold() = snap("alarm-fold", foldTall, route = Routes.ALARM)
+    @Test fun cardList() = snap("card-list", tall, route = Routes.CARD_LIST)
     /** plan-r15 F1b: 날씨 지역 lives on 시계 (the city sheet over it). */
     @Test fun weather() = snap("weather", phone, route = Routes.CLOCKS) { onNodeWithText("날씨 지역").performScrollTo().performClick() }
     @Test fun weatherFold() = snap("weather-fold", fold, route = Routes.card(kr.dot.sb.model.CardType.WEATHER)) { onNodeWithText("날씨 지역").performClick() }
@@ -215,7 +217,7 @@ class SettingsPageShots : SettingsShotKit() {
 class SettingsClockShots : SettingsShotKit() {
     @Test fun clocks() = snap("clocks", tallest, route = Routes.CLOCKS)
     @Test fun clocksFold() = snap("clocks-fold", "w932dp-h2000dp-port-xhdpi", route = Routes.CLOCKS)
-    /** Scrolled past the full preview: the mini carries the face name (+ 이 시계 쓰기). */
+    /** Scrolled past the full preview: the mini carries the fixed 내 시계 heading. */
     @Test fun clocksMini() = snap("clocks-mini", phone, route = Routes.CLOCKS) {
         onAllNodes(androidx.compose.ui.test.SemanticsMatcher.keyIsDefined(androidx.compose.ui.semantics.SemanticsProperties.VerticalScrollAxisRange))[0]
             .performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.ScrollBy) { it(0f, 1600f) }
@@ -235,7 +237,7 @@ class SettingsClockShots : SettingsShotKit() {
     @Test fun clockSolarFold() = snap("clock-solar-fold", foldTall, route = Routes.clock(FaceId.SOLAR))
     @Test fun sound() = snap("sound", phone, route = Routes.SOUND) { onAllNodesWithText("파도").let { it[it.fetchSemanticsNodes().size - 1] }.performScrollTo().performClick() } // the card preview has its own chip
     @Test fun soundFold() = snap("sound-fold", fold, route = Routes.SOUND)
-    @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALERTS, e = bar)
+    @Test fun alarmBar() = snap("alarm-bar", tall, AppConfig(alarmScreen = false), route = Routes.ALARM, e = bar)
     /** 자동으로 켜기·끄기 on a Fold with the mood light (펼쳤을 때 lives here now). */
     @Test fun foldScreen() = snap("fold", tallest, AppConfig(onUnfold = kr.dot.sb.model.UnfoldAction.MOOD_LIGHT, moodAutoOffMin = 10), route = Routes.FOLD)
     @Test fun clocksCities() = snap("clocks-cities", phone, route = Routes.CLOCKS) { onNodeWithText("자세히").performScrollTo().performClick(); onNodeWithText("도시 추가").performScrollTo().performClick() }

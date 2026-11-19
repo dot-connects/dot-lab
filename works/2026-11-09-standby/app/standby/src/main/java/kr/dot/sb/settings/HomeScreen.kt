@@ -80,17 +80,15 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
             item {
                 // operator 2026-11-18: 사진 (the folders) moved into 카드 › 추억; its "설정 필요" shows on 카드
                 val used = kr.dot.sb.data.Needs.photos(config) || kr.dot.sb.data.Needs.memory(config)
-                NavRow("카드", { nav.push(Routes.CARD_LIST) }, badge = if (used && config.photoFolders.isEmpty()) need else null, lead = { Icon(Ic.GEAR, LocalAccent.current, 22.dp) })
+                // operator 2026-11-19: 알림·알람 live in 카드 now, so their missing permission shows here too
+                val alerts = (config.showNotifications || config.alarmScreen) && Perm.NOTIFICATIONS in missing
+                NavRow("카드", { nav.push(Routes.CARD_LIST) }, badge = if (alerts || used && config.photoFolders.isEmpty()) need else null, lead = { Icon(Ic.GEAR, LocalAccent.current, 22.dp) })
             }
             item { NavRow("밤 화면", { nav.push(Routes.NIGHT) }, value = nightValue(config), lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.MOON) }) }
             item {
                 val badge = if (config.startOnCharge && Perm.CHARGE_START.any { it in missing }) need else null
                 val v = if (config.startOnCharge) "충전하면 켜짐" else "직접 켤 때만"
                 NavRow("자동으로 켜기·끄기", { nav.push(Routes.ONOFF) }, value = if (badge != null) null else v, badge = badge, lead = { Icon(Ic.BOLT, LocalAccent.current, 22.dp) })
-            }
-            item {
-                val badge = if ((config.showNotifications || config.alarmScreen) && Perm.NOTIFICATIONS in missing) need else null
-                NavRow("알림과 알람", { nav.push(Routes.ALERTS) }, value = if (badge != null) null else if (config.showNotifications) "알림 켜짐" else "알림 끔", badge = badge, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.BELL) })
             }
         }
         Section(null) {

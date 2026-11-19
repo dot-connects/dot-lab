@@ -75,7 +75,7 @@ private val SAMPLE_NOTIF = BigNotification("pv", "카카오톡", "엄마", "저�
 private val GLOWS = listOf("주황" to 0xFFFFB36BL, "호박빛" to 0xFFFFA81FL, "빨강" to 0xFFFF453AL, "민트" to 0xFF85D4BAL, "흰색" to 0xFFFFFFFFL)
 
 @Composable
-fun AlertsScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit) {
+fun AlertsScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -> Unit, alarm: Boolean) {
     val fold = env.phone == Phone.FOLD
     val startPage = Pages.visible(config).getOrNull(Pages.start(config))?.index ?: Pages.CLOCK
     val notif = rootSlide("알림", config, startPage) { st ->
@@ -83,10 +83,12 @@ fun AlertsScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -
         val at = st.now.atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli()
         if (config.showNotifications) st.copy(notification = SAMPLE_NOTIF.copy(postedAtEpochMs = at)) else st
     }
-    val alarm = if (config.alarmScreen) rootSlide("알람", config) { it.copy(alarm = AlarmRinging("알람")) } else Slide("알람") { Stand("시계 앱의 알람 화면") }
+    val alarmSlide = if (config.alarmScreen) rootSlide("알람", config) { it.copy(alarm = AlarmRinging("알람")) } else Slide("알람") { Stand("시계 앱의 알람 화면") }
     val offsets = listOf(0, 5, 10, 15)
-    Page("알림과 알람", back, preview = Preview(config, listOf(notif, alarm), caption = if (config.showNotifications) null else "알림이 와도 화면은 그대로예요.")) {
-        Section("알림") {
+    // operator 2026-11-19: 알림 and 알람 are separate screens (카드 › 알림, 카드 › 알람)
+    Page(if (alarm) "알람" else "알림", back,
+        preview = if (alarm) Preview(config, listOf(alarmSlide)) else Preview(config, listOf(notif), caption = if (config.showNotifications) null else "알림이 와도 화면은 그대로예요.")) {
+        if (!alarm) Section(null) {
             item {
                 Column {
                     SwitchRow("알림 보기", config.showNotifications, { v -> update { it.copy(showNotifications = v) } }, subtitle = "새 알림이 오면 화면 위쪽에 잠깐 보여줘요.")
@@ -100,7 +102,7 @@ fun AlertsScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -
                 )
             }
         }
-        Section("알람", footer = "알람 시간과 소리는 시계 앱에서 정해요.") {
+        if (alarm) Section(null, footer = "알람 시간과 소리는 시계 앱에서 정해요.") {
             item {
                 Column {
                     ControlRow("알람이 울릴 때", note = if (config.alarmScreen) "Stand Screen이 켜져 있으면 큰 시계와 끄기·다시 알림 버튼을 보여줘요." else "시계 앱의 원래 알람 화면이 나와요.") {
@@ -125,7 +127,7 @@ fun AlertsScreen(config: AppConfig, update: Update, env: SettingsEnv, back: () -
                 }
             }
         }
-        if (fold) More {
+        if (alarm && fold) More {
             Section(null) {
                 item {
                     ControlRow("밝아지는 시간", value = "${config.glowRampSec}초") {

@@ -22,6 +22,13 @@ class MemorySelectionTest {
         assertEquals(MemoryKind.NEAR, MemorySelection.kind(LocalDate.of(2022, 12, 29), jan2))
     }
 
+    @Test fun yearsCountToTheNearestAnniversary() {
+        val jan3 = LocalDate.of(2026, 1, 3)
+        assertEquals(MemoryKind.ANY, MemorySelection.kind(LocalDate.of(2025, 12, 30), jan3)) // 4 days ago, not a memory
+        assertEquals(1, MemorySelection.years(LocalDate.of(2024, 12, 30), jan3))
+        assertEquals(2, MemorySelection.years(LocalDate.of(2024, 1, 2), LocalDate.of(2025, 12, 29)))
+    }
+
     @Test fun nearestNearDayComesFirst() {
         val days = listOf(LocalDate.of(2021, 11, 24), LocalDate.of(2022, 11, 19), LocalDate.of(2019, 11, 13))
         val ranked = MemorySelection.candidates(days, today, MemoryKind.NEAR, Random(1)) { it }

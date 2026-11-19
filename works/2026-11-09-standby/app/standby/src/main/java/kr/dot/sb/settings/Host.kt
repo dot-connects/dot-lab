@@ -86,7 +86,7 @@ object Routes {
     const val ALERTS = "alerts"
     /** plan-r15 F10 팁. */
     const val TIPS = "tips"
-    /** Old routes (a saved stack, StandBy's links): 알림 / 알람 open [ALERTS], 폴드 opens [ONOFF], 카드 opens [PAGES]. */
+    /** 알림 / 알람 card screens ([ALERTS] is the old combined route, now 알림); 폴드 opens [ONOFF], 카드 opens [PAGES]. */
     const val NOTIF = "notif"
     const val ALARM = "alarm"
     const val FOLD = "fold"
@@ -143,7 +143,8 @@ private fun Route(route: String, config: AppConfig, update: Update, nav: Nav, en
             if (face != null) ClockStyleScreen(face, config, update, back) else HomeScreen(config, nav, env)
         }
         route == Routes.FIRST_RUN -> FirstRunScreen(config, update, env)
-        route == Routes.ALERTS || route == Routes.NOTIF || route == Routes.ALARM -> AlertsScreen(config, update, env, back)
+        route == Routes.ALERTS || route == Routes.NOTIF -> AlertsScreen(config, update, env, back, alarm = false)
+        route == Routes.ALARM -> AlertsScreen(config, update, env, back, alarm = true)
         route == Routes.NIGHT -> NightScreen(config, update, nav, env, back)
         route == Routes.ONOFF -> OnOffScreen(config, update, nav, env, back)
         route == Routes.FOLD -> FoldScreen(config, update, env, back)
