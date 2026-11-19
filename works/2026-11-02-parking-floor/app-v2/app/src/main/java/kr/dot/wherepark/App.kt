@@ -11,6 +11,7 @@ class App : Application() {
     override fun onCreate() {
         super.onCreate()
         Push.createChannels(this)
+        kr.dot.wherepark.family.Referrer.captureOnce(this)
         WidgetRefresh.hook = WidgetReceiver::refreshAll
         ListenModel.styleOf = WidgetSpecs::styleFor
     }
