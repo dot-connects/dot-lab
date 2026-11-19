@@ -121,4 +121,43 @@ class ExitNotifierTest {
         assertEquals(null, CarLinkStore.address(c, "a"))
         assertEquals("BB:BB", CarLinkStore.address(c, "b"))
     }
+
+    private class FakeCdm(val assoc: List<Pair<Int, String?>>) : Cdm {
+        val gone = mutableListOf<Int>()
+        override fun associations() = assoc
+        override fun disassociate(id: Int) { gone += id }
+        override fun stopObserving(address: String) {}
+    }
+
+    @Test fun unlinkClearsExitStateAndSetting() {
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        ExitNotifier.setEnabled(c, "a", false)
+        CarLink.unlink(c, "a", FakeCdm(listOf(1 to "AA:AA")))
+        assertTrue(ExitNotifier.enabled(c, "a"))
+        assertFalse(kr.dot.wherepark.data.Prefs.obj(c, "wp_exit").has("a"))
+    }
+
+    @Test fun unlinkWithoutAssociationIsSafe() {
+        CarLink.unlink(c, "a", FakeCdm(emptyList()))
+        assertEquals(null, CarLinkStore.address(c, "a"))
+    }
+
+    @Test fun removingCarUnlinksIt() {
+        CarStore.remove(c, "a")
+        assertEquals(null, CarLinkStore.address(c, "a"))
+    }
+
+    @Test fun serverRemovalUnlinksIt() {
+        CarStore.replaceFromServer(c, emptyList())
+        assertEquals(null, CarLinkStore.address(c, "a"))
+    }
+
+    @Test fun reappearWithoutGoneRecordNeedsOldPark() {
+        ParkStore.save(c, Kit.park("a", 1, atMs = t - 60_000))
+        ExitNotifier.onAppeared(c, "AA:AA")
+        assertEquals(ParkState.PARKED, ParkStore.latest(c, "a")!!.state)
+        ParkStore.save(c, Kit.park("a", 2, atMs = t - 3 * 60_000))
+        ExitNotifier.onAppeared(c, "AA:AA")
+        assertEquals(ParkState.DRIVING, ParkStore.latest(c, "a")!!.state)
+    }
 }

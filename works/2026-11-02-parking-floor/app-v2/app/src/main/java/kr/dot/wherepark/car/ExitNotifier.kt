@@ -76,6 +76,8 @@ object ExitNotifier {
         putSlot(ctx, carId, s)
         val p = ParkStore.latest(ctx, carId) ?: return
         if (p.state == ParkState.DRIVING) return
+        // No "gone" record (process restarted, or first connect): only count it as driving when the park is at least 2 minutes old.
+        if (gone == 0L && now() - p.atMs < REAPPEAR_MS) return
         ParkStore.save(ctx, p.copy(state = ParkState.DRIVING, drivingBy = FamilyStore.me(ctx)?.name))
         SyncQueue.add(ctx, Op.State(carId, ParkState.DRIVING))
         SyncQueue.kick(ctx)
@@ -88,6 +90,13 @@ object ExitNotifier {
         val latest = ParkStore.latest(ctx, carId)?.id ?: 0L
         val n = (if (s.optLong("parkId", 0) == latest) s.optInt("nots", 0) else 0) + 1
         putSlot(ctx, carId, s.put("nots", n).put("parkId", latest))
+        cancel(ctx, carId)
+    }
+
+    /** Drops every per-car trace: throttle/count slot and the "exit:" setting (keys of Push, "wp_notif"). */
+    fun forget(ctx: Context, carId: String) = synchronized(SyncQueue) {
+        Prefs.put(ctx, KEY, Prefs.obj(ctx, KEY).also { it.remove(carId) })
+        Prefs.put(ctx, "wp_notif", Prefs.obj(ctx, "wp_notif").also { it.remove("exit:$carId") })
         cancel(ctx, carId)
     }
 

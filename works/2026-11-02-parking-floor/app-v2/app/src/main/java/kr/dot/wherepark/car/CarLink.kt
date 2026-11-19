@@ -21,12 +21,12 @@ interface Cdm {
 }
 
 private class RealCdm(ctx: Context) : Cdm {
-    private val cdm = ctx.getSystemService(CompanionDeviceManager::class.java)
-    override fun associations() = cdm.myAssociations.map { it.id to it.deviceMacAddress?.toString() }
-    override fun disassociate(id: Int) = cdm.disassociate(id)
+    private val cdm: CompanionDeviceManager? = ctx.getSystemService(CompanionDeviceManager::class.java)
+    override fun associations() = cdm?.myAssociations?.map { it.id to it.deviceMacAddress?.toString() }.orEmpty()
+    override fun disassociate(id: Int) { cdm?.disassociate(id) }
 
     @Suppress("DEPRECATION")
-    override fun stopObserving(address: String) = cdm.stopObservingDevicePresence(address)
+    override fun stopObserving(address: String) { cdm?.stopObservingDevicePresence(address) }
 }
 
 /** Per-car Bluetooth link: one companion association per car; removing a car never touches the others. */
@@ -57,12 +57,17 @@ object CarLink {
             override fun onAssociationCreated(associationInfo: AssociationInfo) {
                 val address = associationInfo.deviceMacAddress?.toString()?.let(::norm)
                 if (address == null) return onDone(false)
+                val old = CarLinkStore.address(activity, carId)
+                if (old != null && norm(old) != address) dropAssociation(activity, carId, RealCdm(activity))
                 CarLinkStore.set(activity, carId, address)
                 try {
                     @Suppress("DEPRECATION")
                     cdm.startObservingDevicePresence(address)
                     onDone(true)
                 } catch (_: Exception) {
+                    // no presence callbacks means a useless link: roll it back
+                    try { cdm.disassociate(associationInfo.id) } catch (_: Exception) {}
+                    CarLinkStore.set(activity, carId, null)
                     onDone(false)
                 }
             }
@@ -71,8 +76,13 @@ object CarLink {
         })
     }
 
-    /** Removes only [carId]'s association and link. Other cars keep theirs. */
+    /** Removes only [carId]'s association and link, and its exit-notice state. Other cars keep theirs. Safe with no association. */
     fun unlink(ctx: Context, carId: String, cdm: Cdm = RealCdm(ctx)) {
+        dropAssociation(ctx, carId, cdm)
+        ExitNotifier.forget(ctx, carId)
+    }
+
+    internal fun dropAssociation(ctx: Context, carId: String, cdm: Cdm) {
         val address = CarLinkStore.address(ctx, carId) ?: return
         cdm.associations().filter { it.second?.let(::norm) == norm(address) }.forEach { (id, addr) ->
             try {
