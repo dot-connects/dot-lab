@@ -1,0 +1,9 @@
+<resources>
+    <!-- ListenActivity: transparent window, the sheet draws its own scrim -->
+    <style name="Theme.WP.Translucent" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowSoftInputMode">adjustResize</item>
+    </style>
+</resources>
