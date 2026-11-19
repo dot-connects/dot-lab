@@ -1,0 +1,13 @@
+plugins {
+    id("com.android.application") version "8.10.1" apply false
+    id("org.jetbrains.kotlin.android") version "2.0.21" apply false
+    id("org.jetbrains.kotlin.plugin.compose") version "2.0.21" apply false
+    id("io.github.takahirom.roborazzi") version "1.29.0" apply false
+}
+
+// Build output lives outside C:\DC: a sync tool there locks build/ and breaks incremental deletes.
+// WP_BUILD_DIR lets parallel worktrees build without sharing one output folder.
+subprojects {
+    val root = System.getenv("WP_BUILD_DIR") ?: "${System.getenv("LOCALAPPDATA")}/wherepark-build"
+    layout.buildDirectory.set(file("$root/${project.name}"))
+}

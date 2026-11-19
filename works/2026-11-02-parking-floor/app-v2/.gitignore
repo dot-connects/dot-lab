@@ -1,0 +1,6 @@
+local.properties
+firebase.properties
+*.keystore
+*.jks
+build/
+.gradle/
