@@ -241,7 +241,8 @@ async function transform(b, req, env, counts, day, origin, dev, ledger) {
   if (!ipOk || !used) {
     await counts.give(kAll); if (ipOk) await counts.give(kIp);
     // a D1 failure is ours: "busy", not "your previews are gone" (review 11-19 L5)
-    return broke ? json({ error: "busy" }, 503, origin) : json({ error: "device" }, 429, origin);
+    // a network's day cap is not the device's own count: "all", so the app keeps its "N left" (review 11-19 M1)
+    return broke ? json({ error: "busy" }, 503, origin) : json({ error: ipOk ? "device" : "all" }, 429, origin);
   }
   const job = previewJob(b);
   // day slots come back unless OpenAI refused (4xx) or billed: a refused call keeps its slot, so junk images cannot
@@ -249,7 +250,7 @@ async function transform(b, req, env, counts, day, origin, dev, ledger) {
   const r = await paidCall(job, CENTS.preview, env, counts, day, async e => { if (!e.sent || (!e.rejected && !e.billed)) { await ledger.giveFree(kDev); await counts.give(kIp); await counts.give(kAll); } });
   if (r.off) return json({ error: "off" }, 503, origin);
   if (r.err) return json({ error: "model" }, 502, origin);
-  return json({ mime: r.img.mime, image: r.img.data, left: await ledger.freeLeft(kDev, perDev) }, 200, origin);
+  return json({ mime: r.img.mime, image: r.img.data, left: await ledger.freeLeft(kDev, perDev).catch(() => null) }, 200, origin);
 }
 
 function sheetJob(b, style) {
@@ -310,8 +311,8 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
     const total = num(env.FREE_SHEETS, 0);
     // a device id is app-made (a reinstall = 3 more): one network and everyone are capped a day too (security review)
     const kIp = `${day}|freeip:${ipKey(req.headers.get("cf-connecting-ip"))}`, kAll = `${day}|freeall`;
-    if (!(await counts.take(kAll, num(env.FREE_ALL_DAY, 60)))) return json({ error: "free" }, 429);
-    if (!(await counts.take(kIp, num(env.FREE_IP_DAY, 6)))) { await counts.give(kAll); return json({ error: "free" }, 429); }
+    if (!(await counts.take(kAll, num(env.FREE_ALL_DAY, 60)))) return json({ error: "all" }, 429);
+    if (!(await counts.take(kIp, num(env.FREE_IP_DAY, 6)))) { await counts.give(kAll); return json({ error: "all" }, 429); }
     let got = false;
     try { got = await ledger.takeFree(b.device, total); }
     catch (e) { console.log("counter failed", e?.message); await counts.give(kIp); await counts.give(kAll); return json({ error: "busy" }, 503); }
@@ -323,7 +324,7 @@ async function sheet(b, req, env, counts, day, dev, ledger, text) {
     });
     if (r.off) return json({ error: "off" }, 503);
     if (r.err) return json({ error: "model" }, 502);
-    return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b), free_left: await ledger.freeLeft(b.device, total) });
+    return json({ mime: r.img.mime, image: r.img.data, layout: layoutOf(b), free_left: await ledger.freeLeft(b.device, total).catch(() => null) });
   }
 
   if (token.length > 512 || PRODUCT_STYLE[b.product] !== style) return json({ error: "bad request" }, 400);

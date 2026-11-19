@@ -91,7 +91,7 @@ object AiWork {
             it.freeLeft?.let { n -> lower(app, "q_sheet", n) }
             Dex.saveSheet(app, e.id, it.image, ext(it.mime), style, twelve = it.twelve)
             Done.notify(app, e.name, style)   // the 1-3 minutes may pass on another screen
-        }
+        }.onFailure { if ((it as? AiClient.Fail)?.code == "free") lower(app, "q_sheet", 0) }
     }
 
     /** The preview shown for this look (the detail screen's rule), if one was drawn and fits the Worker's 800 k chars. */

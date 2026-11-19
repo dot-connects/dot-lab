@@ -498,10 +498,10 @@ test("H1: parallel free requests cannot draw more than FREE_SHEETS", async () =>
 test("security: free sheets also stop per IP and for everyone a day", async () => {
   env.FREE_IP_DAY = "4"; env.FREE_ALL_DAY = "100";
   for (const d of ["dev-aaaaaaa1", "dev-aaaaaaa2"]) for (let i = 0; i < 2; i++) assert.equal((await paid({ device: d })).status, 200);
-  assert.equal((await paid({ device: "dev-aaaaaaa3" })).body.error, "free", "5th free sheet from one network");
+  assert.equal((await paid({ device: "dev-aaaaaaa3" })).body.error, "all", "5th free sheet from one network");
   env.FREE_IP_DAY = "100"; env.FREE_ALL_DAY = "5";
   assert.equal((await paid({ device: "dev-aaaaaaa4" })).status, 200);
-  assert.equal((await paid({ device: "dev-aaaaaaa5" })).body.error, "free", "6th free sheet today for everyone");
+  assert.equal((await paid({ device: "dev-aaaaaaa5" })).body.error, "all", "6th free sheet today for everyone");
 });
 
 test("M1: a taken-over or failed row is checked with Google again before drawing", async () => {
@@ -573,7 +573,7 @@ test("security: IPv6 addresses count per /64 network", async () => {
   const from = (ip, device) => call(sheetBody({ layout: "12", device }), { path: "/sheet", headers: { ...APP, "cf-connecting-ip": ip } });
   assert.equal((await from("2001:db8:1:2:aaaa::1", "dev-v6aaaaa1")).status, 200);
   assert.equal((await from("2001:db8:1:2:bbbb::9", "dev-v6aaaaa2")).status, 200);
-  assert.equal((await from("2001:db8:1:2:cccc::5", "dev-v6aaaaa3")).body.error, "free");
+  assert.equal((await from("2001:db8:1:2:cccc::5", "dev-v6aaaaa3")).body.error, "all");
   assert.equal((await from("2001:db8:1:3::5", "dev-v6aaaaa4")).status, 200, "another /64");
 });
 
