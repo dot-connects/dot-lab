@@ -138,6 +138,7 @@ function Finish {
 # Firebase for the parking app family push. Writes app/firebase.properties (gitignored) from google-services.json
 # and stores the service account as the Worker secret FCM_SA. Neither file goes into git.
 $App = 'C:\DC\DD\dot-lab\works\2026-11-02-parking-floor\app'
+$AppV2 = 'C:\DC\DD\dot-lab\works\2026-11-02-parking-floor\app-v2'
 $Worker = 'C:\DC\DD\dot-lab\works\2026-11-02-parking-floor\worker'
 $Downloads = Join-Path $HOME 'Downloads'
 
@@ -151,7 +152,7 @@ function Pick-File([string]$Prompt, [string]$Pattern) {
   return $p
 }
 
-$TotalStages = 4
+$TotalStages = 5
 
 Banner '주차층: 가족 알림(Firebase) 연결'
 
@@ -181,6 +182,30 @@ if ($gs) {
   $script:Written += 'firebase.properties'
   Write-Host '  ✓ 앱 설정 저장 (git 에 올라가지 않음)' -ForegroundColor Green
 } else { $script:Skipped += 'google-services.json → firebase.properties' }
+Wait-Enter '다음으로 (Enter)'
+
+Stage '어디댔어 v2 앱 등록 → app-v2\firebase.properties'
+Say '같은 Firebase 프로젝트에 v2 앱(kr.dot.wherepark)을 하나 더 등록합니다. 새 프로젝트를 만들지 마세요(Worker 의 FCM_SA 가 바뀌어 기존 앱 알림이 끊깁니다).'
+Step 'Firebase 콘솔 → 같은 프로젝트(dot-lab-parking) 첫 화면에서 앱 추가 → 안드로이드.'
+Step 'Android 패키지 이름: kr.dot.wherepark  (닉네임은 어디댔어, SHA-1은 비워 둠) → 앱 등록.'
+Step '"google-services.json 다운로드" 를 누르고, 나머지 단계는 "다음"으로 넘겨 끝냅니다. (기존 app\firebase.properties 는 그대로 둡니다)'
+$gs2 = Pick-File 'google-services.json 경로 (v2 앱 등록 뒤 받은 것)' 'google-services*.json'
+if ($gs2) {
+  $j2 = Get-Content $gs2 -Raw -Encoding UTF8 | ConvertFrom-Json
+  $c2 = $j2.client | Where-Object { $_.client_info.android_client_info.package_name -eq 'kr.dot.wherepark' } | Select-Object -First 1
+  if ($c2) {
+    $lines2 = @(
+      "apiKey=$($c2.api_key[0].current_key)",
+      "appId=$($c2.client_info.mobilesdk_app_id)",
+      "projectId=$($j2.project_info.project_id)",
+      "senderId=$($j2.project_info.project_number)"
+    )
+    [IO.File]::WriteAllLines((Join-Path $AppV2 'firebase.properties'), [string[]]$lines2)
+    $script:Written += 'app-v2 firebase.properties'
+    Write-Host '  ✓ v2 앱 설정 저장 (git 에 올라가지 않음)' -ForegroundColor Green
+  } else { Warn 'kr.dot.wherepark 앱이 이 파일에 없습니다. 앱 등록 뒤 파일을 다시 받으세요.'; $script:Skipped += 'v2 firebase.properties (kr.dot.wherepark 없음)' }
+} else { $script:Skipped += 'google-services.json → app-v2\firebase.properties' }
+Note '이 값이 없으면 v2 앱은 15분마다 서버에서 가져오는 방식으로 동작합니다(알림은 늦음).'
 Wait-Enter '다음으로 (Enter)'
 
 Stage '서비스 계정 키 → Cloudflare 비밀값'
