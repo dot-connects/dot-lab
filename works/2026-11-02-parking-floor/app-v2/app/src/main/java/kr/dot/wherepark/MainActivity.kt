@@ -46,6 +46,10 @@ import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.LocalData
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import androidx.compose.runtime.produceState
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.Prefs
@@ -123,11 +127,12 @@ class MainActivity : ComponentActivity() {
     private val camera = registerForActivityResult(ActivityResultContracts.TakePicture()) { ok ->
         val (p, f) = pendingShot ?: return@registerForActivityResult
         pendingShot = null
-        if (ok) Thread { ListenModel(applicationContext, p.carId, null, "app").photoTaken(p, f); runOnUiThread { tick++ } }.start()
+        if (ok) Thread { ListenModel(applicationContext, p.carId, null, "app").photoTaken(p, f); onUi { tick++ } }.start()
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        joinLaunched = savedInstanceState?.getBoolean("join_launched") ?: false
         enableEdgeToEdge()
         bigText = AppPrefs.bigText(this)
         route()
@@ -178,10 +183,24 @@ class MainActivity : ComponentActivity() {
         Thread {
             WidgetRefresh.request(app)  // re-reads the wallpaper colours (no broadcast for wallpaper changes)
             Push.start(app)
-            if (FamilyStore.joined(app) && SyncEngine.pull(app)) runOnUiThread { tick++ }
+            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ }
         }.start()
         publishShortcuts()
     }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        outState.putBoolean("join_launched", joinLaunched)
+    }
+
+    /** 차 편집 has no save button: also save when the app goes to the background. */
+    override fun onStop() {
+        super.onStop()
+        saveDraft()
+    }
+
+    /** Results of background work land only while this screen is alive. */
+    private fun onUi(f: () -> Unit) = runOnUiThread { if (!isFinishing && !isDestroyed) f() }
 
     override fun onDestroy() {
         rec?.destroy(); rec = null
@@ -227,14 +246,14 @@ class MainActivity : ComponentActivity() {
     // home
 
     @Composable
-    private fun Home(@Suppress("UNUSED_PARAMETER") t: Int) {
-        val d = HomeData.load(this, System.currentTimeMillis(), WidgetReceiver.micReady(this))
+    private fun Home(t: Int) {
+        val d = remember(t) { HomeData.load(this, System.currentTimeMillis(), WidgetReceiver.micReady(this)) }
         HomeScreen(d, AppActions(
             speak = ::listen, openCar = { go(Nav.Detail(it)) }, plate = { go(Nav.Plate(it)) }, settings = { go(Nav.Settings) },
             fixMic = { listen(null) }, newFamily = ::recreateFamily, retryGroup = ::recreateFamily,
             joinByCode = { startActivity(Intent(this, JoinActivity::class.java)) },
         ))
-        val carry = if (FamilyStore.joined(this)) FamilyStore.carryOver(this) else emptyList()
+        val carry = remember(t) { if (FamilyStore.joined(this)) FamilyStore.carryOver(this) else emptyList() }
         if (carry.isNotEmpty()) AlertDialog(
             onDismissRequest = {}, containerColor = Wp.SF,
             text = { Text("차 ${carry.size}대를 새 가족으로 가져갈까요?") },
@@ -261,9 +280,12 @@ class MainActivity : ComponentActivity() {
     // car detail
 
     @Composable
-    private fun Detail(car: Car, @Suppress("UNUSED_PARAMETER") t: Int) {
-        val park = ParkStore.latest(this, car.id)
-        val photo = park?.let { File(filesDir, "photos/${it.carId}_${it.id}.jpg") }?.takeIf { it.exists() && it.length() > 0 }
+    private fun Detail(car: Car, t: Int) {
+        val park = remember(car.id, t) { ParkStore.latest(this, car.id) }
+        // local file, else the family member's upload (photo=true) fetched once and cached; off the main thread
+        val photo by produceState<File?>(null, park?.id, park?.photo, t) {
+            value = park?.let { p -> withContext(Dispatchers.IO) { LocalData.photo(applicationContext, p) } }
+        }
         DetailScreen(car, park, photo, System.currentTimeMillis(), DetailActions(
             back = ::back, edit = { go(Nav.Edit(car.id)) }, fix = { listen(car.id, "edit") }, speak = { listen(car.id) },
             plate = { go(Nav.Plate(car.id)) }, history = { go(Nav.History(car.id)) },
@@ -292,7 +314,7 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Edit(n: Nav.Edit) {
-        val cars = CarStore.cars(this)
+        val cars = remember(n) { CarStore.cars(this) }
         val d = draft?.takeIf { it.first == n }?.second ?: run {
             val car = cars.firstOrNull { it.id == n.carId }
                 ?: Car(UUID.randomUUID().toString(), "", Wp.CAR_COLORS.first { c -> cars.none { it.color == c } }, null, (cars.maxOfOrNull { it.order } ?: -1) + 1)
@@ -309,12 +331,18 @@ class MainActivity : ComponentActivity() {
 
     /** Leaving 차 편집 saves it (no save button in the mockup); a new car with no name is dropped. */
     private fun leaving() {
+        val n = draft?.first ?: return
+        if (top != n) return
+        saveDraft(leaving = true)
+        draft = null
+    }
+
+    private fun saveDraft(leaving: Boolean = false) {
         val (n, d) = draft ?: return
         if (top != n) return
-        draft = null
         val id = draftLinkId ?: return
         val old = CarStore.cars(this).firstOrNull { it.id == id }
-        if (d.name.isBlank()) { if (old == null) CarLink.unlink(this, id); return }
+        if (d.name.isBlank()) { if (old == null && leaving) CarLink.unlink(this, id); return }
         val car = Car(id, d.name.trim(), d.color, d.plate.trim().ifEmpty { null }, old?.order ?: ((CarStore.cars(this).maxOfOrNull { it.order } ?: -1) + 1))
         if (car == old) return
         if (old == null && CarStore.cars(this).size >= 4) { Toast.makeText(this, "차는 4대까지예요", Toast.LENGTH_SHORT).show(); return }
@@ -337,7 +365,7 @@ class MainActivity : ComponentActivity() {
 
     /** BLUETOOTH_CONNECT first, then the system companion picker (no location permission). */
     private fun linkBt(carId: String, done: () -> Unit) {
-        val run = { CarLink.associate(this, carId) { runOnUiThread(done) } }
+        val run = { CarLink.associate(this, carId) { onUi(done) } }
         if (CarLink.hasPermission(this)) run() else { afterBt = run; btAsk.launch(Manifest.permission.BLUETOOTH_CONNECT) }
     }
 
@@ -374,13 +402,13 @@ class MainActivity : ComponentActivity() {
         val app = applicationContext
         Thread {
             val ok = !FamilyStore.joined(app) || Api.deleteMe(app).isSuccess
-            runOnUiThread {
-                if (!ok) { Toast.makeText(this, "인터넷 연결을 확인해 주세요", Toast.LENGTH_SHORT).show(); return@runOnUiThread }
-                CarStore.cars(app).forEach { CarLink.unlink(app, it.id) }
-                File(filesDir, "photos").deleteRecursively()
-                Prefs.sp(app).edit().clear().commit()
-                getSystemService(ShortcutManager::class.java)?.removeAllDynamicShortcuts()
+            if (ok) {
+                LocalData.wipe(app)
+                app.getSystemService(ShortcutManager::class.java)?.removeAllDynamicShortcuts()
                 WidgetRefresh.request(app)
+            }
+            onUi {
+                if (!ok) { Toast.makeText(this, "인터넷 연결을 확인해 주세요", Toast.LENGTH_SHORT).show(); return@onUi }
                 bigText = false
                 joinLaunched = true  // a used invite code is gone with the prefs; do not reopen the join screen
                 reset(Nav.Onb(1))

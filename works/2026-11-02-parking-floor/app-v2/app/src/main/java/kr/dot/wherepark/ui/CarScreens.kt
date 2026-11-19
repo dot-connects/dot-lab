@@ -72,8 +72,12 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
                 WhoLine(park.byName.ifBlank { null }, HomeCards.whenFull(park.atMs, now) + if (park.state == ParkState.DRIVING) " · 운행 중" else " · " + HomeCards.ago(park.atMs, now))
                 park.spot.memo?.let { MemoLine("note", it) }
                 if (photo != null) {
-                    val bmp = remember(photo.path, photo.lastModified()) { BitmapFactory.decodeFile(photo.path, BitmapFactory.Options().apply { inSampleSize = 4 })?.asImageBitmap() }
-                    if (bmp != null) Image(bmp, "주차 사진", Modifier.padding(top = 10.dp).fillMaxWidth().height(96.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop)
+                    val bmp by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, photo.path, photo.lastModified()) {
+                        value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                            BitmapFactory.decodeFile(photo.path, BitmapFactory.Options().apply { inSampleSize = 4 })?.asImageBitmap()
+                        }
+                    }
+                    bmp?.let { b -> Image(b, "주차 사진", Modifier.padding(top = 10.dp).fillMaxWidth().height(96.dp).clip(RoundedCornerShape(14.dp)), contentScale = ContentScale.Crop) }
                 }
             }
         }

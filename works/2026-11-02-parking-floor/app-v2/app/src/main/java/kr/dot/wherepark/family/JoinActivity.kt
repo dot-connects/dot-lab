@@ -131,7 +131,7 @@ class JoinActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        model = JoinModel(applicationContext, main = { f -> runOnUiThread { f() } })
+        model = JoinModel(applicationContext, main = { f -> runOnUiThread { if (!isFinishing && !isDestroyed) f() } })
         model.useCode(JoinCode.fromUri(intent?.data) ?: Referrer.pendingCode(this))
         setContent {
             WpTheme(AppPrefs.bigText(this)) {

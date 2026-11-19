@@ -13,6 +13,8 @@ object CarLinkStore {
         return o.keys().asSequence().firstOrNull { o.getString(it) == address }
     }
 
+    fun carIds(ctx: Context): List<String> = Prefs.obj(ctx, KEY).keys().asSequence().toList()
+
     fun set(ctx: Context, carId: String, address: String?) = synchronized(SyncQueue) {
         val o = Prefs.obj(ctx, KEY)
         if (address != null) o.keys().asSequence().filter { o.getString(it) == address }.toList().forEach { o.remove(it) }

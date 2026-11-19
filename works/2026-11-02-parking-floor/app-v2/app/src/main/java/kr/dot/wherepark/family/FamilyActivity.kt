@@ -128,8 +128,10 @@ class FamilyActivity : ComponentActivity() {
         super.onResume()
         load()
         val app = applicationContext
-        Thread { Api.state(app).onSuccess { st -> FamilyStore.setState(app, st.groupName, st.members); runOnUiThread { load() } } }.start()
+        Thread { Api.state(app).onSuccess { st -> FamilyStore.setState(app, st.groupName, st.members); onUi { load() } } }.start()
     }
+
+    private fun onUi(f: () -> Unit) = runOnUiThread { if (!isFinishing && !isDestroyed) f() }
 
     /** Main thread only (Compose state). */
     private fun load() { members = FamilyStore.members(this); group = FamilyStore.groupName(this) ?: "우리 가족" }
@@ -150,7 +152,7 @@ class FamilyActivity : ComponentActivity() {
         Thread {
             val r = Api.removeMember(app, m.id)
             if (r.isSuccess) Api.state(app).onSuccess { FamilyStore.setState(app, it.groupName, it.members) }
-            runOnUiThread { error = if (r.isSuccess) null else "내보내지 못했어요. 다시 해 주세요"; load() }
+            onUi { error = if (r.isSuccess) null else "내보내지 못했어요. 다시 해 주세요"; load() }
         }.start()
     }
 
@@ -158,7 +160,7 @@ class FamilyActivity : ComponentActivity() {
         val app = applicationContext
         Thread {
             val r = Api.deleteMe(app)
-            runOnUiThread { if (r.isSuccess) finish() else error = "나가지 못했어요. 인터넷 연결을 확인해 주세요" }
+            onUi { if (r.isSuccess) finish() else error = "나가지 못했어요. 인터넷 연결을 확인해 주세요" }
         }.start()
     }
 }

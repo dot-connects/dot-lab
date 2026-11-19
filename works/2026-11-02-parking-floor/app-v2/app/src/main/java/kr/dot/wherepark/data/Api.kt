@@ -19,6 +19,10 @@ object Discarded : Exception("create result discarded")
 /** The only network seam: tests plug a fake. [auth] is "memberId.secret" (Bearer is added here). Throws IOException offline. */
 interface Transport {
     fun send(method: String, path: String, auth: String?, body: ByteArray?, contentType: String?): Pair<Int, String?>
+
+    /** GET of a binary body (photos). The default maps a text body back to bytes as ISO-8859-1 (enough for fakes). */
+    fun bytes(path: String, auth: String?): Pair<Int, ByteArray?> =
+        send("GET", path, auth, null, null).let { (s, t) -> s to t?.toByteArray(Charsets.ISO_8859_1) }
 }
 
 object HttpTransport : Transport {
@@ -38,6 +42,19 @@ object HttpTransport : Transport {
             val code = c.responseCode
             val text = (if (code in 200..299) c.inputStream else c.errorStream)?.bufferedReader()?.use { it.readText() }
             return code to text
+        } finally {
+            c.disconnect()
+        }
+    }
+
+    override fun bytes(path: String, auth: String?): Pair<Int, ByteArray?> {
+        val c = URL(BuildConfig.SYNC_URL + path).openConnection() as HttpURLConnection
+        try {
+            c.connectTimeout = 8000
+            c.readTimeout = 30_000
+            if (auth != null) c.setRequestProperty("authorization", "Bearer $auth")
+            val code = c.responseCode
+            return code to (if (code in 200..299) c.inputStream.use { it.readBytes() } else null)
         } finally {
             c.disconnect()
         }
@@ -164,6 +181,14 @@ object Api {
         val auth = FamilyStore.auth(ctx) ?: return false
         if (token == null) return false
         return authed(ctx, auth, "PUT", "/v2/token", JSONObject().put("fcmToken", token)).first in 200..299
+    }
+
+    /** A family member's photo for [parkId] (GET /v2/cars/{id}/photo?park=). null = none (404), offline or refused. */
+    fun photo(ctx: Context, carId: String, parkId: Long): ByteArray? {
+        val auth = FamilyStore.auth(ctx) ?: return null
+        val (status, body) = try { transport.bytes("/v2/cars/$carId/photo?park=$parkId", auth) } catch (_: IOException) { return null }
+        if (status == 401) FamilyStore.dropIfSame(ctx, auth)
+        return if (status in 200..299) body?.takeIf { it.isNotEmpty() } else null
     }
 
     fun removeMember(ctx: Context, id: String): Result<Unit> {

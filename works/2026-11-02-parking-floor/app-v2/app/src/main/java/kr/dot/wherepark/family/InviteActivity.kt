@@ -92,7 +92,7 @@ class InviteActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val app = applicationContext
-        Thread { Api.invite(app).let { r -> runOnUiThread { r.fold({ invite = it }, { failed = true }) } } }.start()
+        Thread { Api.invite(app).let { r -> runOnUiThread { if (!isFinishing && !isDestroyed) r.fold({ invite = it }, { failed = true }) } } }.start()
         setContent {
             WpTheme(AppPrefs.bigText(this)) {
                 InviteScreen(invite, failed, back = { finish() }, kakao = { InviteShare.sendKakao(this, it.link) },
