@@ -40,14 +40,14 @@ class SyncQueueTest {
     @Test fun keysFollowContract() {
         SyncQueue.add(ctx, Op.PutCar(car("a"))); SyncQueue.add(ctx, Op.Undo("b", 5)); SyncQueue.add(ctx, Op.PutPark(park("c", 1)))
         SyncQueue.add(ctx, Op.State("d", ParkState.DRIVING)); SyncQueue.add(ctx, Op.PutPhoto("e", 7, "/x.jpg"))
-        assertEquals(listOf("car:a", "undo:b", "park:c", "state:d", "photo:e:7"), keys())
+        assertEquals(listOf("car:a", "undo:b:5", "park:c", "state:d", "photo:e:7"), keys())
     }
 
     // row: processing order car -> undo -> park -> state -> photo, even when photo was added first
     @Test fun processingOrderIsByKindNotArrival() {
         SyncQueue.add(ctx, Op.PutPhoto("a", 1, "/none.jpg")); SyncQueue.add(ctx, Op.State("b", ParkState.DRIVING))
         SyncQueue.add(ctx, Op.PutPark(park("a", 1))); SyncQueue.add(ctx, Op.Undo("c", 3)); SyncQueue.add(ctx, Op.PutCar(car("a")))
-        assertEquals(listOf("car:a", "undo:c", "park:a", "state:b", "photo:a:1"), keys())
+        assertEquals(listOf("car:a", "undo:c:3", "park:a", "state:b", "photo:a:1"), keys())
         SyncEngine.run(ctx)
         assertEquals(listOf("PUT /v2/cars/a", "POST /v2/cars/c/undo", "PUT /v2/cars/a/park", "POST /v2/cars/b/state"), net.calls.filter { !it.startsWith("GET") })
     }
@@ -81,7 +81,7 @@ class SyncQueueTest {
     }
 
     // row: no family -> nothing queued
-    @Test fun noFamilyNothingQueued() {
+    @Test fun noFamilyNoPendingNothingQueued() {
         FamilyStore.clear(ctx)
         SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
         assertTrue(SyncQueue.ops(ctx).isEmpty())
@@ -203,6 +203,50 @@ class SyncQueueTest {
         net.handler = { _, p, _, _ -> if (p == "/v2/groups") { FamilyStore.clearPendingGroup(ctx); 200 to Kit.groupJson() } else 200 to "{}" }
         SyncEngine.run(ctx)
         assertFalse(FamilyStore.joined(ctx)); assertTrue(net.calls.contains("DELETE /v2/me"))
+    }
+
+    // fix round: ops queue while a pendingGroup waits; the park is uploaded after the group exists
+    @Test fun parkQueuedWhilePendingGroupIsUploadedAndSurvivesMerge() {
+        FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
+        CarStore.upsert(ctx, car("c_1")); ParkStore.save(ctx, park("c_1", 5)); SyncQueue.add(ctx, Op.PutPark(park("c_1", 5)))
+        assertEquals(listOf("park:c_1"), keys())
+        net.handler = { m, p, _, _ ->
+            when {
+                p == "/v2/groups" -> 200 to Kit.groupJson()
+                m == "GET" -> 200 to """{"groupName":"새 가족","members":[],"cars":[${Wire.carJson(car("c_1"))}],"parks":{"c_1":${Kit.serverPark(park("c_1", 5))}}}"""
+                else -> 200 to "{}"
+            }
+        }
+        assertTrue(SyncEngine.run(ctx))
+        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_1", "PUT /v2/cars/c_1/park"), net.calls.filter { !it.startsWith("GET") })
+        assertEquals(5L, ParkStore.latest(ctx, "c_1")!!.id); assertEquals(5L, ParkStore.latest(ctx, "c_1")!!.atMs)
+    }
+
+    @Test fun reFamilyAfter401UploadsLatestPark() {
+        CarStore.upsert(ctx, car("c_1")); ParkStore.save(ctx, park("c_1", 7))
+        FamilyStore.dropIfSame(ctx, "m1.s1"); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
+        net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
+        assertTrue(SyncEngine.run(ctx))
+        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_1", "PUT /v2/cars/c_1/park"), net.calls.filter { !it.startsWith("GET") })
+    }
+
+    @Test fun undoBeforePickMeansPutParkIsNeverMarkedStarted() {
+        ParkStore.save(ctx, park("a", 1)); ParkStore.save(ctx, park("a", 2)); SyncQueue.add(ctx, Op.PutPark(park("a", 2)))
+        ParkStore.undo(ctx, "a")
+        SyncEngine.run(ctx)
+        assertFalse(ParkStore.sendStarted(ctx, 2)); assertTrue(ParkStore.sendStarted(ctx, 1))
+    }
+
+    @Test fun severalUndosAccumulateInSeqOrder() {
+        SyncQueue.add(ctx, Op.Undo("a", 3)); SyncQueue.add(ctx, Op.Undo("a", 2)); SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
+        assertEquals(listOf("undo:a:3", "undo:a:2", "park:a"), keys())
+    }
+
+    @Test fun createGroup4xxKeepsErrorFlagAndClearsPending() {
+        FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
+        net.handler = { _, _, _, _ -> 400 to """{"error":"name"}""" }
+        assertTrue(SyncEngine.run(ctx))
+        assertNull(FamilyStore.pendingGroup(ctx)); assertEquals("name", FamilyStore.groupCreateError(ctx))
     }
 
     @Test fun noPendingGroupNoFamilyDoesNothing() {

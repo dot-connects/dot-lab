@@ -34,7 +34,7 @@ sealed interface Op {
         override fun withSeq(s: Long) = copy(seq = s)
     }
     data class Undo(override val carId: String, val parkId: Long, override val seq: Long = 0) : Op {
-        override val key get() = "undo:$carId"
+        override val key get() = "undo:$carId:$parkId"
         override fun withSeq(s: Long) = copy(seq = s)
     }
     data class State(override val carId: String, val state: ParkState, override val seq: Long = 0) : Op {
@@ -100,9 +100,9 @@ object SyncQueue {
 
     fun generation(ctx: Context): Long = gen.get()
 
-    /** No family = nothing to sync: new records stay local only. */
+    /** No family and no pendingGroup (after a 401) = new records stay local only; with a pendingGroup ops wait for SyncWorker to create it. */
     fun add(ctx: Context, op: Op) = synchronized(this) {
-        if (!FamilyStore.joined(ctx)) return@synchronized
+        if (!FamilyStore.joined(ctx) && FamilyStore.pendingGroup(ctx) == null) return@synchronized
         val list = read(ctx).toMutableList()
         if (op !is Op.PutCar && op !is Op.DelCar && list.any { it is Op.DelCar && it.carId == op.carId }) return@synchronized
         var o = op

@@ -22,12 +22,19 @@ object SyncEngine {
             val r = Api.createGroup(
                 ctx, pg.first, pg.second,
                 guard = { !FamilyStore.joined(ctx) && FamilyStore.pendingGroup(ctx) == pg },
-                onSaved = { CarStore.cars(ctx).forEach { SyncQueue.add(ctx, Op.PutCar(it)) } },
+                onSaved = {
+                    CarStore.cars(ctx).forEach { c ->
+                        SyncQueue.add(ctx, Op.PutCar(c))
+                        ParkStore.latest(ctx, c.id)?.let { SyncQueue.add(ctx, Op.PutPark(it)) }
+                    }
+                },
             )
             val e = r.exceptionOrNull()
             if (e is ApiException && e.status in 400..499 && e.status != 429) {
                 Log.w("wp-sync", "createGroup rejected: $e")
-                synchronized(SyncQueue) { if (FamilyStore.pendingGroup(ctx) == pg) FamilyStore.clearPendingGroup(ctx) }
+                synchronized(SyncQueue) {
+                    if (FamilyStore.pendingGroup(ctx) == pg) { FamilyStore.setGroupCreateError(ctx, e.error.ifEmpty { "${e.status}" }); FamilyStore.clearPendingGroup(ctx) }
+                }
                 return true
             }
             if (e != null && e !== Discarded) return false
@@ -36,7 +43,8 @@ object SyncEngine {
         while (guard++ < 1000) {
             val op = SyncQueue.ops(ctx).firstOrNull() ?: break
             val auth = FamilyStore.auth(ctx) ?: break
-            if (op is Op.PutPark) ParkStore.markSendStarted(ctx, op.park.id)
+            // pick and mark under one lock: an undo that lands first replaces the op and we skip this one
+            if (op is Op.PutPark && SyncQueue.ifCurrent(ctx, op) { ParkStore.markSendStarted(ctx, op.park.id); true } == null) continue
             SyncQueue.inFlight = op.key to op.seq
             val (status, body) = try { Api.exec(ctx, op, auth) } finally { SyncQueue.inFlight = null }
             if (!settle(ctx, op, auth, status, body)) return false

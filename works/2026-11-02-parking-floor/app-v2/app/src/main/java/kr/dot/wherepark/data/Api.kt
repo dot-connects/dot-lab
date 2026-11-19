@@ -64,8 +64,14 @@ object Photo {
     fun bytes(path: String): ByteArray? {
         val f = File(path)
         if (!f.exists()) return null
-        val bmp = BitmapFactory.decodeFile(path) ?: return null
-        return shrink(bmp)
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(path, bounds)
+        var sample = 1
+        while (maxOf(bounds.outWidth, bounds.outHeight) / sample > 2048) sample *= 2
+        val bmp = BitmapFactory.decodeFile(path, BitmapFactory.Options().apply { inSampleSize = sample }) ?: return null
+        val out = shrink(bmp)
+        if (out.size >= LIMIT) { android.util.Log.w("wp-sync", "photo still ${out.size} B at 1024 px, dropped"); return null }  // never send near the 400 KB cap
+        return out
     }
 }
 
@@ -135,6 +141,7 @@ object Api {
                 SyncQueue.restoreMissing(ctx, backup)
                 if (pending != null && FamilyStore.pendingGroup(ctx) == null) FamilyStore.setPendingGroup(ctx, pending.first, pending.second)
             }
+            if (pending != null || backup.isNotEmpty()) SyncQueue.kick(ctx)
             return Result.failure(e)
         }
         val st = Wire.state(j)

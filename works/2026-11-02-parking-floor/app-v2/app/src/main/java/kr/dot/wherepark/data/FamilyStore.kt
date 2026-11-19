@@ -38,7 +38,12 @@ object FamilyStore {
 
     fun setPendingGroup(ctx: Context, name: String, groupName: String) = synchronized(SyncQueue) {
         Prefs.put(ctx, PENDING, JSONObject().put("name", name).put("groupName", groupName))
+        Prefs.put(ctx, "wp_create_error", null)
     }
+
+    /** Why the last createGroup was refused (4xx), for onboarding to show; cleared when a new pendingGroup is set. */
+    fun groupCreateError(ctx: Context): String? = Prefs.sp(ctx).getString("wp_create_error", null)
+    fun setGroupCreateError(ctx: Context, error: String?) = Prefs.put(ctx, "wp_create_error", error)
 
     fun clearPendingGroup(ctx: Context) = Prefs.put(ctx, PENDING, null)
 
