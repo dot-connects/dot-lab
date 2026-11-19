@@ -4,7 +4,7 @@ compatibility_date = "2026-10-01"
 
 [vars]
 LINK_BASE = "https://dot-lab-parking.dotconnects.workers.dev/j"
-ASSETLINKS_SHA256 = "<signing fingerprint>"
+ASSETLINKS_SHA256 = "A0:76:B2:C4:7A:25:9D:0D:54:52:0B:C9:9C:16:2A:00:0E:CC:80:0D:11:CE:43:B9:AB:0F:ED:3B:7E:AF:13:CB"
 
 [triggers]
 crons = ["0 18 * * *"]
