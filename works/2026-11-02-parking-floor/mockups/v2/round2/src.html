@@ -1,0 +1,759 @@
+<title>어디댔어 최종 시안</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@500;600;700;800;900&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Big+Shoulders+Display:wght@700;800;900&family=Big+Shoulders+Stencil+Display:wght@800;900&family=Doto:wght@700;900&family=Space+Mono:wght@400;700&family=IBM+Plex+Mono:wght@500;600;700&family=Space+Grotesk:wght@500;700&family=Archivo:wght@500;700&family=Playfair+Display:wght@800;900&family=Chakra+Petch:wght@600;700&family=Archivo+Narrow:wght@600&family=Gothic+A1:wght@400;700&family=Black+Han+Sans&family=Noto+Sans+KR:wght@400;500;700;900&display=swap">
+<style>
+/* Gallery wall of phones. App chrome and every sheet = Braun base (warm grey, black grotesk, flat orange for speak + one primary per screen); sheets borrow only numeral face + accent from the chosen widget */
+:root{
+  --bg:#ecebe8; --panel:#fafaf8; --fg:#1b1c1e; --muted:#62656b; --line:#d6d3cd; --accent:#1b1c1e;
+  --ui:"IBM Plex Sans KR","Noto Sans KR",system-ui,sans-serif; --num:"Big Shoulders Display","Arial Narrow",sans-serif;
+  /* Braun app tokens (shuffled by the tone buttons) */
+  --app-bg:#e9e7e3; --app-sf:#f6f5f2; --app-fg:#161616; --app-mu:#6c6a66; --app-ln:#d5d2cc; --app-acc:#ff6a13; --app-ok:#3a8a4f; --app-in:#ffffff;
+  --gro:"Inter Tight","Archivo",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#151617;--panel:#1f2022;--fg:#ecebe8;--muted:#a2a4a9;--line:#35373b;--accent:#ecebe8;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151617;--panel:#1f2022;--fg:#ecebe8;--muted:#a2a4a9;--line:#35373b;--accent:#ecebe8;color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.6}
+.wrap{max-width:1240px;margin:0 auto;padding-block:24px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:44px}
+h1{font-family:var(--gro);font-weight:900;font-size:clamp(40px,8vw,68px);line-height:.95;margin:0;letter-spacing:-.02em}
+h2{font-size:21px;margin:0 0 4px;text-wrap:balance}
+.lede{color:var(--muted);max-width:70ch;margin:6px 0 0}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);padding-block:10px;display:flex;flex-wrap:wrap;gap:8px 14px;align-items:center;border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--panel)}
+.seg button{all:unset;cursor:pointer;padding:6px 12px;font-size:13.5px;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--accent);color:var(--bg)}
+.seg button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+.lbl{font-size:12.5px;color:var(--muted)}
+.row{display:flex;flex-wrap:wrap;gap:26px;align-items:flex-start}
+.cap{font-size:13px;color:var(--muted);max-width:340px;margin:8px 0 0}
+.cap b{color:var(--fg)}
+figure{margin:0}
+
+/* phone */
+.phone{width:340px;max-width:100%;height:720px;border-radius:38px;border:7px solid #141414;background:var(--app-bg);color:var(--app-fg);overflow:hidden;position:relative;display:flex;flex-direction:column;font-family:var(--ui);box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.sb{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font-family:var(--gro);font-weight:600;font-size:12.5px}
+.scr{flex:1;overflow:hidden;padding:6px 16px 16px;display:flex;flex-direction:column;gap:12px;position:relative}
+.top{display:flex;align-items:center;gap:10px}
+.top h3{margin:0;font-family:var(--gro);font-weight:800;font-size:22px;letter-spacing:-.01em}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--app-acc);display:inline-block}
+.ico{margin-left:auto;width:40px;height:40px;border-radius:50%;display:grid;place-items:center;background:var(--app-sf);box-shadow:0 1px 0 rgba(255,255,255,.7) inset,0 1px 2px rgba(0,0,0,.12)}
+.card{background:var(--app-sf);border-radius:22px;padding:14px 16px;box-shadow:0 1px 0 rgba(255,255,255,.75) inset,0 2px 6px rgba(0,0,0,.08)}
+.carh{display:flex;align-items:center;gap:8px;font-size:13.5px;color:var(--app-mu)}
+.sw{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.2)}
+.spot{display:flex;align-items:baseline;gap:10px;margin:2px 0}
+.spot .f{font-family:var(--gro);font-weight:900;font-size:64px;line-height:.95;letter-spacing:-.03em}
+.spot .s{font-family:var(--gro);font-weight:800;font-size:32px;letter-spacing:-.02em}
+.who{font-size:14.5px}
+.who .mu{color:var(--app-mu)}
+.memo{font-size:13.5px;background:var(--app-bg);border-radius:10px;padding:6px 10px;margin-top:8px;display:flex;gap:6px;align-items:center;color:var(--app-fg)}
+.memo svg{color:var(--app-mu)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.chips span{font-size:13px;padding:7px 12px;border-radius:999px;background:var(--app-bg);color:var(--app-fg)}
+.tag{font-size:12px;padding:2px 8px;border-radius:999px;background:var(--app-acc);color:#fff;font-weight:600}
+.tag.ok{background:var(--app-ok)}
+.tag.gone{background:var(--app-mu)}
+.bigmic{margin-top:auto;align-self:center;width:84px;height:84px;border-radius:50%;background:var(--app-acc);display:grid;place-items:center;color:#fff;box-shadow:0 4px 0 rgba(0,0,0,.18),0 10px 18px rgba(255,106,19,.35)}
+.bigmic+.lab{align-self:center;font-size:13.5px;color:var(--app-mu)}
+.tabs{display:flex;gap:6px;background:var(--app-sf);border-radius:999px;padding:4px}
+.tabs span{flex:1;text-align:center;padding:7px 0;border-radius:999px;font-size:13.5px;color:var(--app-mu)}
+.tabs span.on{background:var(--app-fg);color:var(--app-sf)}
+.list{display:grid;gap:0;background:var(--app-sf);border-radius:20px;overflow:hidden}
+.li{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--app-ln);font-size:14.5px;min-height:52px}
+.li:last-child{border-bottom:0}
+.li .r{margin-left:auto;color:var(--app-mu);font-size:13.5px;text-align:right}
+.tg{margin-left:auto;width:44px;height:26px;border-radius:999px;background:var(--app-ln);position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.tg.on{background:var(--app-ok)}.tg.on::after{left:21px}
+.sect{font-size:12.5px;color:var(--app-mu);margin:4px 4px -4px;font-weight:600;letter-spacing:.02em}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;height:52px;border-radius:999px;font-weight:600;font-size:15.5px;background:var(--app-fg);color:var(--app-sf)}
+.btn.acc{background:var(--app-acc);color:#fff}
+.btn.ghost{background:transparent;color:var(--app-fg);border:1.5px solid var(--app-ln)}
+.h{font-family:var(--gro);font-weight:800;font-size:26px;line-height:1.2;letter-spacing:-.02em;margin:0}
+.p{font-size:15px;color:var(--app-mu);margin:0}
+.steps{display:flex;gap:6px}.steps i{flex:1;height:4px;border-radius:2px;background:var(--app-ln)}.steps i.on{background:var(--app-fg)}
+.plate{background:#fff;color:#111;border:3px solid #111;border-radius:12px;font-family:var(--gro);font-weight:800;font-size:46px;text-align:center;padding:10px 0;letter-spacing:.02em}
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.42)}
+.sheetw{position:absolute;left:0;right:0;bottom:0;border-radius:26px 26px 0 0;overflow:hidden}
+.grab{width:40px;height:5px;border-radius:3px;background:rgba(128,128,128,.5);margin:8px auto 0}
+.keys{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.keys span{height:46px;border-radius:12px;background:var(--app-sf);display:grid;place-items:center;font-family:var(--gro);font-weight:800;font-size:20px}
+.keys span.on{background:var(--app-fg);color:var(--app-sf)}
+.np{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.np span{height:42px;border-radius:12px;background:var(--app-sf);display:grid;place-items:center;font-family:var(--gro);font-weight:700;font-size:18px}
+.sheetw.savpad .sh{padding-top:56px}
+.dd{display:flex;align-items:center;gap:10px;height:56px;padding:0 14px;border-radius:16px;background:var(--app-sf);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.08),0 6px 14px -8px rgba(0,0,0,.18)}
+.dd .ddl{font-size:12.5px;color:var(--app-mu);width:34px}
+.dd .ddv{flex:1;font-family:var(--gro);font-weight:800;font-size:20px;letter-spacing:-.01em}
+.dd svg{color:var(--app-mu)}
+.notif{background:var(--app-sf);border-radius:22px;padding:12px 14px;display:grid;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.notif .nh{display:flex;gap:8px;align-items:center;font-size:12.5px;color:var(--app-mu)}
+.notif .nh img{width:18px;height:18px;border-radius:5px}
+.notif .nt{font-weight:700;font-size:15px}
+.notif .nb{font-size:14px}
+.notif .na{display:flex;gap:16px;font-size:14px;font-weight:600;color:var(--app-acc);padding-top:4px}
+.shade{background:#2a2a2c;color:#eee;--app-sf:#3a3a3d;--app-mu:#b3b3b8;--app-fg:#f2f2f2}
+.tiles{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.tile{border-radius:22px;padding:12px 14px;background:#4a4a4e;display:flex;gap:10px;align-items:center;font-size:13.5px;min-height:64px}
+.tile.on{background:#ffd6bd;color:#2a1405}
+.tile b{display:block;font-size:14px}
+.qr{width:150px;height:150px;margin:0 auto;background:#fff;padding:8px;border-radius:8px}.qr svg{width:100%;height:100%;display:block}
+.avatars{display:flex}.avatars span{width:38px;height:38px;border-radius:50%;border:3px solid var(--app-sf);margin-left:-8px;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--app-bg)}
+.avatars span:first-child{margin-left:0}
+.wg-home{border-radius:26px;padding:22px 14px;display:grid;gap:14px;justify-items:center;min-height:190px;width:340px;max-width:100%}
+.wp-sky{background:radial-gradient(120% 70% at 20% 10%,#cfe3f2 0,#9cc4e0 38%,transparent 60%),radial-gradient(90% 60% at 90% 100%,#e9c9a0 0,#d8a978 40%,transparent 70%),linear-gradient(180deg,#a9cde6,#e7d2b4)}
+.wp-night{background:radial-gradient(6px 6px at 18% 30%,#ffd28a 50%,transparent 51%),radial-gradient(5px 5px at 70% 22%,#ff9d6b 50%,transparent 51%),radial-gradient(7px 7px at 82% 64%,#ffe7b0 50%,transparent 51%),radial-gradient(120% 80% at 50% 120%,#3b2b4a,#141822 60%),#141822}
+.wp-photo{background:radial-gradient(40% 30% at 30% 35%,#f5f0e1 0,transparent 70%),radial-gradient(50% 40% at 75% 60%,#6f8f5a 0,transparent 70%),radial-gradient(60% 50% at 20% 85%,#c7a46a 0,transparent 70%),linear-gradient(135deg,#d9cba8,#7e9a6c 55%,#3f5a3a)}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(340px,100%),1fr));gap:20px}
+.wcell{display:grid;gap:8px;justify-items:start}
+.wcell h4{margin:0;font-size:15px}
+.thumbs{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.thumbs div{border-radius:10px;height:40px;display:grid;place-items:center;text-align:center;font-family:var(--num);font-weight:900;font-size:16px;line-height:1;border:2px solid transparent}
+.thumbs div.on{border-color:var(--app-acc)}
+.thumbs small{display:none}
+/*THEME_CSS*/
+/* app surfaces get the same manners so widgets and app match */
+.card,.list,.ico,.keys span,.np span,.tabs{box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.08),0 6px 14px -6px rgba(0,0,0,.16)}
+.card{background:linear-gradient(180deg,rgba(255,255,255,.5),rgba(255,255,255,0) 40%),var(--app-sf)}
+.bigmic{background:radial-gradient(120% 120% at 35% 25%,rgba(255,255,255,.4),rgba(255,255,255,0) 45%),var(--app-acc);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),inset 0 -5px 10px rgba(0,0,0,.18),0 3px 4px rgba(0,0,0,.15),0 14px 26px -6px rgba(255,106,19,.55)}
+.btn.acc{background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 60%),var(--app-acc);box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 2px 3px rgba(0,0,0,.12),0 8px 16px -6px rgba(255,106,19,.5)}
+.tg.on{box-shadow:inset 0 1px 2px rgba(0,0,0,.25)}
+
+.opbar{display:flex;align-items:center;gap:10px;font-size:13px;color:var(--muted)}
+.opbar input{width:180px;accent-color:#ff6a13}
+.opcell{display:grid;gap:6px;background:var(--app-sf);border-radius:18px;padding:12px 14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.08)}
+.opcell div{display:flex;justify-content:space-between;font-size:14.5px}
+.opcell input{width:100%;accent-color:var(--app-acc)}
+
+
+/* ===== Widgets v10: 4 skeletons (줄 목록 R, 포스터 T, 기둥 띠 F, 단면도 X) + 6 skins for the row list (N A B M P S). =====
+   Everything is drawable as one Canvas bitmap (Android RemoteViews): flat fills, linear gradients, plain shadows.
+   No backdrop blur. Surface = --wtx (texture) over --wgl (highlight) over --wsf (colour at --wop) over --wsc (scrim, set by
+   fitText at low strength). --wdk = 1 on dark surfaces (light text). */
+.wx{--wbg:#f4f3f0;--wfg:#161616;--wmu:#5d5b57;--wacc:#ff6a13;--wnum:"Inter Tight",sans-serif;--wsub:var(--wnum);--wdk:0;
+  --wln:color-mix(in srgb,var(--wfg) 13%,transparent);--whi:calc(.55 - .48*var(--wdk));
+  --wpn:rgba(255,255,255,calc((.62 - .53*var(--wdk))*var(--wop,1)));
+  --wbgx:color-mix(in srgb,var(--wbg) calc(var(--wop,1)*100%),transparent);--wsf:var(--wbgx);
+  --wgl:linear-gradient(180deg,rgba(255,255,255,calc(var(--whi)*var(--wop,1))),rgba(255,255,255,0) 44%);--wtx:none;
+  width:280px;max-width:100%;padding:8px 9px 8px 13px;display:grid;gap:6px;align-self:center;border-radius:var(--wr,22px);
+  color:var(--wfg);font-family:var(--ui);font-feature-settings:"tnum";text-shadow:var(--wts,none);
+  background:var(--wtx),var(--wgl),linear-gradient(var(--wsf),var(--wsf)),var(--wsc,transparent);border:1px solid color-mix(in srgb,var(--wfg) 6%,transparent);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,calc(var(--whi)*1.5)),0 1px 2px rgba(0,0,0,.10),0 12px 24px -12px rgba(0,0,0,.38)}
+.wx .car{display:grid;grid-template-columns:auto 1fr 44px;align-items:center;column-gap:10px;min-height:44px}
+.wx .sp{display:flex;align-items:baseline;gap:6px;min-width:0}
+.wx .f{font-family:var(--wnum);font-weight:900;font-size:38px;line-height:.9;letter-spacing:-.03em}
+.wx .s{font-family:var(--wsub);font-weight:800;font-size:19px;line-height:1;letter-spacing:-.01em}
+.wx .sp.emp .f{color:var(--wmu)}
+.wx .sp.emp .s{font-family:var(--ui);font-weight:700;font-size:17px;letter-spacing:-.01em}
+.wx .meta{display:grid;justify-items:end;gap:1px;min-width:0}
+.wx .nm,.wx .wh{font-size:12px;line-height:1.3;white-space:nowrap}
+.wx .nm{display:flex;align-items:center;gap:5px;font-weight:700;color:var(--wfg)}
+/* the car colour dot always has a thin outline so a white car shows on a light widget */
+.wx .nm i{width:8px;height:8px;border-radius:50%;flex:none;box-shadow:0 0 0 1px color-mix(in srgb,var(--wfg) 48%,transparent)}
+.wx .wh{color:var(--wmu)}
+.wx .wh b{color:var(--wfg);font-weight:600}
+.wx .wh.pend{display:flex;align-items:center;gap:3px}
+.wx .hr{height:1px;background:var(--wln);margin-right:54px}
+.wx .note{font-size:12px;line-height:1.3;color:var(--wmu);border-top:1px solid var(--wln);padding-top:6px}
+/* one mic style per widget: every row uses the same button */
+.wx .mic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.22),rgba(255,255,255,0) 55%),var(--wacc);
+  box-shadow:inset 0 -1px 0 rgba(0,0,0,.22),0 1px 2px rgba(0,0,0,.2),0 5px 9px -5px rgba(0,0,0,.4)}
+.wx .mic.off{background:none;box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--wfg) 38%,transparent);color:var(--wmu);position:relative}
+.wx .mic.off svg rect{fill:currentColor}.wx .mic.off svg path{stroke:currentColor}
+.wx .mic.off::before{content:"";position:absolute;width:26px;height:1.5px;background:currentColor;transform:rotate(-45deg)}
+/* one car: head line (name | who when), floor over spot, mic shares the spot rows */
+.wx.one{width:150px;padding:8px 9px 9px 12px;grid-template-columns:1fr 44px;gap:0 4px}
+.wx.one .hd{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.wx.one .sp{grid-column:1;flex-direction:column;align-items:flex-start;gap:2px;margin-top:6px}
+.wx.one .f{font-size:52px}
+.wx.one .s{font-size:22px}
+.wx.one .mic{grid-column:2;align-self:end}
+
+/* materials (shuffle): matte, gloss, paper, metal, soft. No glass: transparency is the strength slider's job. */
+.wx[data-mat=matte]{--wgl:none;box-shadow:0 1px 2px rgba(0,0,0,.14),0 10px 20px -10px rgba(0,0,0,.35)}
+.wx[data-mat=gloss]{--wgl:linear-gradient(180deg,rgba(255,255,255,calc(var(--whi)*.95*var(--wop,1))),rgba(255,255,255,calc(var(--whi)*.16*var(--wop,1))) 48%,rgba(255,255,255,0) 52%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,calc(var(--whi)*1.7)),inset 0 -2px 6px rgba(0,0,0,.12),0 12px 26px -10px rgba(0,0,0,.45)}
+.wx[data-mat=paper]{--wgl:none;border-color:color-mix(in srgb,var(--wfg) 16%,transparent);
+  box-shadow:inset 0 0 0 3px color-mix(in srgb,var(--wbg) calc(var(--wop,1)*100%),transparent),inset 0 0 0 4px color-mix(in srgb,var(--wfg) 12%,transparent),0 1px 1px rgba(0,0,0,.12),0 6px 10px -6px rgba(0,0,0,.28)}
+.wx[data-mat=metal]{--wgl:linear-gradient(160deg,rgba(255,255,255,calc(var(--whi)*.7*var(--wop,1))),rgba(255,255,255,0) 42%,rgba(0,0,0,.09));
+  box-shadow:inset 0 1px 0 rgba(255,255,255,calc(var(--whi)*1.3)),inset 0 -1px 0 rgba(0,0,0,.2),0 10px 22px -10px rgba(0,0,0,.45)}
+.wx[data-mat=soft]{--wgl:none;box-shadow:-4px -4px 10px rgba(255,255,255,.4),6px 7px 14px rgba(0,0,0,.24),inset 0 0 0 1px rgba(255,255,255,.14)}
+
+/* ---- row-list skins ---- (kN 기본 = the base above: Braun light grey + orange) */
+/* A dot matrix: dot digits; the floor letter is a normal heavy face because a dot-matrix B reads as 8 or E */
+.wx.kA{--wbg:#0e0e0e;--wfg:#f2f2f2;--wmu:#a8a8a8;--wdk:1;--wacc:#181818;
+  --wtx:radial-gradient(color-mix(in srgb,var(--wfg) calc(var(--wop,1)*11%),transparent) 1px,transparent 1.3px) 0 0/6px 6px}
+.wx.kA .f{font-family:"Doto",monospace;letter-spacing:0;font-size:40px}
+.wx.kA .f .fa{font-family:"Inter Tight",sans-serif;font-weight:900;font-size:.86em;letter-spacing:-.02em;margin-right:2px}
+.wx.kA .s{font-family:"Space Mono",monospace;font-weight:700;font-size:18px;letter-spacing:-.02em}
+.wx.kA .mic{position:relative;background:var(--wacc);box-shadow:inset 0 0 0 1.5px rgba(242,242,242,.72),0 4px 8px -3px rgba(0,0,0,.5)}
+.wx.kA .mic::after{content:"";position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:#e8352b}
+.wx.one.kA .f{font-size:54px}
+/* B recorder: spot lives in an inset LCD, button has a machined ring */
+.wx.kB{--wbg:#e5e4e0;--wacc:#ff5b1f}
+.wx.kB .sp{background:linear-gradient(180deg,#131613,#222622);color:#f7a35c;border-radius:9px;padding:6px 10px 5px;width:max-content;
+  text-shadow:none;box-shadow:inset 0 2px 3px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,calc(var(--whi)*1.4))}
+.wx.kB .sp.emp .f,.wx.kB .sp.emp .s{color:inherit}
+.wx.kB .f{font-size:31px}.wx.kB .s{font-size:17px}
+.wx.kB .mic{width:40px;height:40px;margin:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--wfg) 9%,transparent),inset 0 -1px 0 rgba(0,0,0,.22),0 5px 9px -5px rgba(0,0,0,.4)}
+.wx.one.kB .sp{padding:7px 10px 6px;gap:3px;min-width:76px}
+.wx.one.kB .f{font-size:42px}.wx.one.kB .s{font-size:20px}
+/* M bubble: every spot is a speech bubble. No tail, no badge dot: one squarer corner is the only cue. */
+.wx.kM{--wbg:#e8e6e2}
+.wx.kM .sp{background:linear-gradient(180deg,#fefdfb,#f1efea);color:#141414;border-radius:14px 14px 14px 4px;padding:6px 12px 5px;width:max-content;text-shadow:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.16),0 5px 8px -5px rgba(0,0,0,.3)}
+.wx.kM .sp.emp .f{color:#6a6863}
+.wx.kM .f{font-size:30px;letter-spacing:-.04em}.wx.kM .s{font-size:17px}
+.wx.one.kM .sp{padding:8px 12px 7px;border-radius:16px 16px 16px 5px;min-width:78px}
+.wx.one.kM .f{font-size:42px}.wx.one.kM .s{font-size:20px}
+/* P ticket: printed mono, mic sits on a tear-off stub behind a perforation */
+.wx.kP{--wbg:#f5f0e4;--wfg:#1e1b16;--wmu:#645d50;--wacc:#1e1b16;--wnum:"IBM Plex Mono",monospace;position:relative;border-radius:var(--wr,14px);
+  --wpf:color-mix(in srgb,var(--wfg) 30%,transparent)}
+.wx.kP::before{content:"";position:absolute;top:6px;bottom:6px;right:58px;border-left:1.5px dashed var(--wpf)}
+.wx.kP .f{font-weight:700;font-size:34px;letter-spacing:-.05em}
+.wx.kP .s{font-weight:600;font-size:18px;letter-spacing:-.02em}
+.wx.kP .wh{font-family:"IBM Plex Mono",var(--ui)}
+.wx.kP .meta{padding-right:5px}
+.wx.kP .hr{height:0;background:none;border-top:1.5px dashed var(--wpf);margin-right:50px}
+.wx.one.kP::before{display:none}
+.wx.one.kP .hd{padding-bottom:5px;border-bottom:1.5px dashed var(--wpf)}
+.wx.one.kP .f{font-size:46px}
+/* S split-flap: every character on its own flap */
+.wx.kS{--wbg:#17171a;--wfg:#f4f1e8;--wmu:#cfa954;--wdk:1;--wacc:#e2a336;border-radius:var(--wr,16px)}
+.wx.kS .sp{gap:6px;align-items:flex-end}
+.fl{display:inline-flex;gap:2px}
+.wx .fl b{position:relative;display:grid;place-items:center;width:25px;height:35px;border-radius:4px;font-family:var(--wnum,"Inter Tight"),sans-serif;font-weight:800;font-size:25px;line-height:1;overflow:hidden;color:#f4f1e8;text-shadow:none;
+  background:linear-gradient(180deg,#34343a 0,#2a2a2f 49%,#1d1d20 51%,#27272b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 1px 2px rgba(0,0,0,.55)}
+.wx .fl b::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
+.wx .fl.sm b{width:17px;height:24px;font-size:16px;border-radius:3px}
+.wx .fl.ko b{font-family:var(--ui);font-size:13px;font-weight:700}
+.wx.one.kS .sp{gap:4px;align-items:flex-start}
+.wx.one.kS .fl b{width:31px;height:42px;font-size:31px}
+.wx.one.kS .fl.sm b{width:19px;height:26px;font-size:17px}
+.wx.one.kS .fl.ko b{font-size:13px}
+
+/* ---- F pillar: each car is a painted column, the colour band carries the car name. 2 side by side; 3-4 cars = 2x2 ---- */
+.wx.kF{--wbg:#e9e7e2;--wnum:"Big Shoulders Display",sans-serif;--wacc:#161616;padding:7px;grid-template-columns:1fr 1fr;gap:7px}
+.wx.kF .pil{display:grid;grid-template-columns:1fr auto;align-items:center;background:var(--wpn);border-radius:calc(var(--wr,22px) - 8px);overflow:hidden;padding-bottom:7px;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,calc(var(--whi)*.6)),0 1px 2px rgba(0,0,0,.14)}
+.wx.kF .pil:last-child:nth-child(odd){grid-column:1/-1}
+.wx.kF .band{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:6px;height:21px;padding:0 9px 0 10px;text-shadow:none;
+  background-image:linear-gradient(180deg,rgba(255,255,255,.2),rgba(0,0,0,.08))}
+.wx.kF .band .nm,.wx.kF .band .wh,.wx.kF .band .wh b{color:#fff}
+.wx.kF .band .nm i{box-shadow:0 0 0 1px rgba(255,255,255,.7)}
+.wx.kF .pil .f{font-size:46px;letter-spacing:0;padding:5px 0 0 10px}
+.wx.kF .pil .sp.emp{padding:5px 0 0 10px;min-height:46px;align-items:center}.wx.kF .pil .sp.emp .f{padding:0}
+.wx.kF .pil .mic{margin:4px 8px 0 0}
+.wx.kF .ln{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:6px;padding:1px 9px 0 10px}
+.wx.kF .ln .s{font-size:18px}
+.wx.one.kF{display:grid;grid-template-columns:1fr auto;padding:0 0 9px;overflow:hidden}
+.wx.one.kF .band{height:23px;padding:0 10px 0 12px}
+.wx.one.kF .sp{padding-left:13px}
+.wx.one.kF .f{font-size:58px;letter-spacing:0}
+.wx.one.kF .mic{margin-right:9px}
+
+/* ---- T poster: first car large, the others as strips. Order is the fixed car order (never by recency); only size differs ---- */
+.wx.kT{--wbg:#121212;--wfg:#f5f2ec;--wmu:#aca79e;--wdk:1;--wacc:#ff5a1f;padding:0;gap:0;overflow:hidden;border-radius:var(--wr,20px)}
+.wx.kT .hero{display:grid;grid-template-columns:auto 1fr 44px;align-items:center;column-gap:11px;height:78px;padding:0 9px 0 9px;overflow:hidden}
+.wx.kT .big{font-family:var(--wnum);font-weight:900;font-size:100px;line-height:.72;letter-spacing:-.06em;color:var(--wbig,var(--wacc));align-self:end;margin-bottom:-1px}
+.wx.kT .hi{display:grid;justify-items:start;gap:1px;min-width:0}
+.wx.kT .hi .s{font-size:27px;letter-spacing:-.03em;margin-bottom:3px}
+.wx.kT .strip{display:grid;grid-template-columns:auto auto 1fr 44px;align-items:center;column-gap:7px;height:46px;padding:0 9px 0 12px;
+  border-top:1px solid var(--wln);background:color-mix(in srgb,var(--wfg) 5%,transparent)}
+.wx.kT .strip .f{font-size:25px;color:var(--wbig,var(--wacc))}
+.wx.kT .strip .s{font-size:16px}
+.wx.one.kT{display:block;position:relative;width:164px;height:104px}
+.wx.one.kT .hd{padding:8px 10px 0 12px}
+.wx.one.kT .big{position:absolute;left:8px;bottom:7px;font-size:74px;margin:0}
+.wx.one.kT .s{position:absolute;right:11px;top:27px;font-size:21px}
+.wx.one.kT .mic{position:absolute;right:8px;bottom:8px;width:44px;height:44px}
+
+/* ---- X section: the building cut. Floors with a car are full slabs, the floors between are thin ---- */
+.wx.kX{--wbg:#f4f3ef;--wfg:#151515;--wmu:#5f5d58;--wsl:color-mix(in srgb,var(--wfg) 24%,transparent);padding:7px 9px 8px 0;gap:0}
+.wx.kX .xg{height:4px;margin-left:48px;background:repeating-linear-gradient(135deg,var(--wsl) 0 1.2px,transparent 1.2px 5px)}
+.wx.kX .xr,.wx.kX .xe{display:grid;grid-template-columns:48px 1fr}
+.wx.kX .xr>.f{font-size:28px;letter-spacing:-.04em;text-align:center;align-self:center;line-height:1}
+.wx.kX .xc,.wx.kX .xe i{border-left:2px solid var(--wsl);border-top:1.5px solid var(--wsl)}
+.wx.kX .xe i{grid-column:2;height:6px}
+.wx.kX>:last-child i,.wx.kX>:last-child .xc{border-bottom:1.5px solid var(--wsl)}
+.wx.kX .xc{display:grid;grid-template-columns:auto 1fr 44px;align-items:center;column-gap:8px;min-height:44px;padding-left:9px;background:var(--wpn)}
+.wx.kX .chip{display:inline-flex;align-items:center;background:var(--wfg);color:var(--wbg);border-radius:8px;padding:5px 9px 4px;text-shadow:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.2),0 4px 6px -3px rgba(0,0,0,.35)}
+.wx.kX .chip .s{font-size:18px}
+.wx.kX .mic,.wx.kT .mic{width:40px;height:40px;justify-self:center}
+.wx.one.kX{width:218px;grid-template-columns:1fr;padding:7px 8px 8px 0}
+.wx.one.kX .xc{grid-template-columns:1fr 44px;grid-template-rows:auto auto;align-content:center;row-gap:2px;min-height:46px;padding-left:8px}
+.wx.one.kX .chip{grid-area:1/1;justify-self:start;padding:4px 8px 3px}
+.wx.one.kX .meta{grid-area:2/1;display:flex;gap:6px;justify-self:start}
+.wx.one.kX .mic{grid-area:1/2/3/3;align-self:center}
+
+/* ===== r3 app rules: orange = speak + one primary per screen, flat with a 1px darker bottom edge ===== */
+.bigmic{background:var(--app-acc);box-shadow:inset 0 -1px 0 #cf520b,0 2px 5px rgba(0,0,0,.2)}
+.bigmic.sm{width:60px;height:60px;margin-top:0}
+.scr>*{flex-shrink:0}
+.bigmic+.lab{display:flex;align-items:center;gap:6px;color:var(--app-fg)}
+.btn.acc{background:var(--app-acc);color:#1a0f06;box-shadow:inset 0 -1px 0 #cf520b}
+.btn.nt{background:var(--app-sf);color:var(--app-fg);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.1)}
+.chips span{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 14px}
+.chips .cm{width:44px;padding:0;justify-content:center;color:var(--app-acc)}
+.notif .na{color:var(--app-fg)}.notif .na .say{color:var(--app-acc)}
+.spot .edit{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 10px;border-radius:999px;background:var(--app-bg);font-size:13px;color:var(--app-mu)}
+/* widget settings: 4 skeleton thumbs + skin chips */
+.sks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sks div{display:grid;justify-items:center;gap:2px;padding:7px 2px 6px;border-radius:14px;background:var(--app-sf);font-size:12px;color:var(--app-mu);border:2px solid transparent;cursor:pointer}
+.sks div.on{border-color:var(--app-fg);color:var(--app-fg);font-weight:600}
+.pres{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.pres span{min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--app-sf);font-size:13px;color:var(--app-mu);cursor:pointer}
+.pres span.on{background:var(--app-fg);color:var(--app-sf)}
+/* one Braun sheet for listening / saved; it borrows only --wnum (numeral face) and --wacc (accent) from the chosen widget */
+.bs{background:var(--app-bg);color:var(--app-fg);padding:0 16px 20px;display:grid;gap:12px;--wnum:"Inter Tight",sans-serif;--wacc:#ff6a13}
+.bs .bh{display:flex;align-items:center;gap:7px;font-size:14px;min-height:44px}
+.bs .bh .x{margin-left:auto;min-height:44px;display:flex;align-items:center;padding:0 14px;border-radius:999px;background:var(--app-sf);font-weight:600;font-size:14px}
+.bs .cseg{margin-left:auto;display:flex;gap:4px;font-size:13px}
+.bs .cseg span{min-height:36px;display:flex;align-items:center;padding:0 12px;border-radius:999px;background:var(--app-sf);color:var(--app-mu)}
+.bs .cseg span.on{background:var(--app-fg);color:var(--app-sf);font-weight:600}
+.bs .wave{display:flex;align-items:center;gap:3px;height:40px}
+.bs .wave i{flex:1;border-radius:2px;background:var(--wacc);min-height:3px}
+@media (prefers-reduced-motion:no-preference){.bs .wave i{animation:wv .9s ease-in-out infinite alternate}}
+@keyframes wv{from{transform:scaleY(.45)}to{transform:scaleY(1)}}
+.bs .heard{font-size:30px;font-weight:700;line-height:1.25;letter-spacing:-.02em}
+.bs .heard i{display:inline-block;width:2px;height:28px;background:var(--wacc);vertical-align:-4px;margin-left:3px}
+.bs .mu{font-size:13.5px;color:var(--app-mu)}
+.bs .big{display:flex;align-items:baseline;gap:12px;font-family:var(--wnum)}
+.bs .big .f{font-weight:900;font-size:84px;line-height:.9;letter-spacing:-.03em}
+.bs .big .s{font-weight:800;font-size:40px;letter-spacing:-.02em}
+.bs.kA .fa{font-family:"Inter Tight",sans-serif;font-size:.86em}
+.bs .send{display:flex;gap:6px;align-items:center;font-size:14px}
+.bs .send svg{color:var(--app-ok)}
+.bs .undo{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:center;background:var(--app-sf);border-radius:16px;padding:0 14px 10px;font-size:14.5px}
+.bs .undo b{min-height:44px;display:flex;align-items:center}
+.bs .undo i{grid-column:1/-1;height:4px;border-radius:2px;background:linear-gradient(90deg,var(--wacc) 75%,var(--app-ln) 75%)}
+.bs .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.bs .acts .btn{height:48px;font-size:14.5px}
+.fx{display:grid;align-content:center;gap:1px;height:60px;padding:0 12px;border-radius:16px;background:var(--app-sf);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.08)}
+.fx small{font-size:12px;color:var(--app-mu)}
+.fx b{display:flex;align-items:center;justify-content:space-between;font-family:var(--gro);font-weight:800;font-size:20px}
+.fx b svg{color:var(--app-mu)}
+.fx.foc{outline:2px solid var(--app-fg)}
+.fx.foc b i{display:inline-block;width:2px;height:20px;background:var(--app-fg);margin-left:2px}
+/* gallery headings + state grid */
+.wgrid .wgh{grid-column:1/-1;margin:10px 0 -6px;font-size:16px}
+.wgrid .wgh small{font-weight:400;color:var(--muted);font-size:13px;margin-left:6px}
+.wcell h4 small{font-weight:400;color:var(--muted);font-size:12.5px;margin-left:4px}
+.stgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(300px,100%),1fr));gap:18px 20px;margin-top:12px}
+.stcell{display:grid;gap:8px;align-content:start;justify-items:start}
+.stcell h4{margin:0;font-size:14px}
+.stcell .wg-home{min-height:0;width:300px;padding:10px}
+.stcell .card{width:300px;max-width:100%;color:var(--app-fg);font-family:var(--ui)}
+.stcell .card .spot .f{font-size:44px}.stcell .card .spot .s{font-size:24px}
+.stcell .card .chips{display:none}
+
+#wshuf:focus-visible,#wundo:focus-visible{outline:2px solid var(--app-acc);outline-offset:2px}
+.sheetw .sh{border-radius:26px 26px 0 0;padding:20px 18px 24px;display:grid;gap:10px;position:relative}
+@media (prefers-reduced-motion:no-preference){.pulse{animation:pl 1.2s ease-in-out infinite alternate}}
+@keyframes pl{from{transform:scale(.96)}to{transform:scale(1.04)}}
+</style>
+
+<div class="wrap">
+<header>
+  <h1>어디댔어 — 최종 시안</h1>
+  <p class="lede">이름 <b>어디댔어</b> · 아이콘 <b>브라운 버튼</b> · 말투 <b>해요</b> · 앱 바탕 <b>밝은 회색 + 주황</b>. 위젯 모양은 <b>뼈대 3개</b>(줄 목록 · 포스터 · 기둥 띠) 중에서 위젯마다 고르고, 줄 목록은 <b>스타일 3개</b>(기본 · 점 행렬 · 주차권)로 겉모습을 바꿔요. 위젯은 <b>모든 차</b> / <b>한 대 고정</b> 두 종류예요. 앱 화면과 말하는 시트는 전부 브라운 바탕 하나이고, 시트는 고른 위젯에서 숫자 글씨체와 강조색만 빌려 와요. 이 페이지가 구현의 기준(정본)이에요.</p>
+</header>
+
+<div class="bar" role="toolbar" aria-label="보기 설정">
+  <span class="lbl">위젯 뼈대</span>
+  <span class="seg" id="sk"></span>
+  <span id="prw" style="display:contents"><span class="lbl">줄 목록 스타일</span><span class="seg" id="pr"></span></span>
+</div>
+
+<section>
+  <h2>1. 위젯 — 뼈대 3 + 줄 목록 스타일 3</h2>
+  <p class="lede">뼈대는 구조가 다르고, 스타일은 줄 목록의 겉모습만 달라요. 어느 것이든 위계는 같아요: 층이 가장 크고, 그다음 칸, 차 이름·누가·언제는 12px 이상. 줄마다 그 차의 마이크가 있고, 한 위젯 안의 마이크는 전부 같은 모양이에요. 차 순서는 등록한 순서로 고정이고(최근 순으로 바뀌지 않아요), 포스터는 첫 차를 크기로만 강조해요. 위젯은 흐림 효과 없이 단색·선형 그라데이션·그림자만 써서 안드로이드 위젯 비트맵 한 장으로 그릴 수 있어요. 배경 진하기를 낮추면 흐림 대신 반투명 막과 글자 테두리로 읽히게 해요.</p>
+  <div class="bar" style="position:static;border:0;padding:6px 0"><span class="lbl">배경화면</span><span class="seg" id="wp"><button data-v="sky" aria-pressed="true">밝은 하늘</button><button data-v="photo">사진</button><button data-v="night">밤</button></span><span class="opbar">배경 진하기 <input type="range" class="opr" min="0" max="100" value="100" aria-label="위젯 배경 진하기"> <b class="opv">100%</b></span></div>
+  <div class="wgrid" id="wgrid"></div>
+</section>
+
+<section>
+  <h2>2. 상태 — 줄 목록 위젯과 앱 홈 카드</h2>
+  <p class="lede">기록이 없을 때, 지하라 아직 못 보냈을 때, 누가 차를 가져갔을 때, 기록이 오래됐을 때, 마이크를 못 쓸 때, 그리고 차가 1 · 3 · 4대일 때 이렇게 보여요. "운행 중"은 그 차의 블루투스가 다시 연결되면 자동으로 바뀌어요.</p>
+  <div class="stgrid" id="stgrid"></div>
+</section>
+
+<section>
+  <h2>3. 위젯을 놓을 때 · 앱 홈</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="cfg" style="height:790px"></div><p class="cap"><b>위젯 설정.</b> [모양]에서 뼈대 3개 중 하나를 고르고, 줄 목록이면 [스타일] 3개 중 하나를 골라요(위젯마다 따로). [배경 진하기]로 0~100% 투명도를 정해요. [색 바꿔 보기]를 누를 때마다 색(5계열) · 재질(무광·유광·종이·금속·소프트) · 숫자 글씨체(7종) · 모서리가 무작위로 바뀌어요(글자가 안 읽히는 조합은 건너뜀, 점 행렬은 점 숫자 고정). [되돌리기]는 바로 전 색 한 번. 위젯을 홈 화면에 놓으면 이 화면이 뜨고, 나중에 위젯을 길게 눌러 다시 바꿀 수 있어요.</p></figure>
+    <figure><div class="phone" id="homeA" style="height:750px"></div><p class="cap"><b>홈 (확정 · 카드 목록).</b> 차마다 카드 한 장. 카드의 마이크는 그 차에 저장해요. 아래 큰 버튼은 어느 차에 저장할지 이름을 보여 줘요("흰 차에 저장"). 말에 다른 차 이름이 있으면 그 차로, 없으면 마지막에 탄 차로. 주황은 말하기와 화면마다 주 버튼 하나에만 써요.</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>4. 말하는 화면 — 브라운 시트 하나</h2>
+  <p class="lede">위젯 마이크나 블루투스 알림을 누르면 앱 전체가 아니라 아래쪽 시트만 올라와요. 시트 디자인은 하나이고, 위 막대에서 뼈대·스타일을 바꾸면 숫자 글씨체와 강조색(소리 막대, 되돌리기 줄)만 따라 바뀌어요.</p>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="lsn"></div><p class="cap"><b>① 듣는 중.</b> 소리 크기 막대가 움직이고, 들리는 대로 큰 글자(30px)로 바로 떠요. 말소리는 폰 안에서 글자로 바꿔요. [취소]로 저장 없이 닫아요.</p></figure>
+    <figure><div class="phone" id="sav"></div><p class="cap"><b>② 저장됨.</b> "저장했어요"와 보내기 상태를 따로 보여 줘요: 신호가 있으면 "가족에게 보냈어요", 없으면 "신호가 잡히면 가족에게 보내요". 오른쪽 위에서 차를 바꾸고, 8초 동안 되돌리기, [고치기] · [사진]. 층·칸이 아닌 말("엘리베이터 옆")은 메모로.</p></figure>
+    <figure><div class="phone" id="fail"></div><p class="cap"><b>③ 두 번 못 알아들으면.</b> 층과 구역은 드롭다운, 번호는 숫자 키패드로 바로 쳐요. "이 주차장에서 썼던 층"은 기록이 있을 때만 보여요.</p></figure>
+    <figure><div class="phone" id="amb"></div><p class="cap"><b>④ 애매할 때만 물어요.</b> "이 구역"이 2인지 E인지, "지하" 없이 "2층"이라고 했을 때.</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>5. 차 상세 · 차량번호 크게</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="det"></div><p class="cap"><b>차 상세.</b> 층·칸을 누르면 언제든 고칠 수 있어요. 주차 시간, 무료 시간 타이머, 사진, 메모, 내 기록(나만 보여요). [가져갔어요]는 보조 버튼이에요. 누르면 가족 위젯에 "운행 중"으로 바뀌어요(차 블루투스가 다시 연결되면 누르지 않아도 자동).</p></figure>
+    <figure><div class="phone" id="kiosk"></div><p class="cap"><b>차량번호 크게.</b> 주차장 "내 차 찾기" 기계나 출구 정산기 앞에서. [번호 복사]는 아파트 방문차량 등록용이에요.</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>6. 가족 초대</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="inv"></div><p class="cap"><b>보내는 쪽.</b> 카톡으로 링크 한 번이 기본이에요. 옆에 있으면 QR. 코드는 [복사]해서 문자에 붙여 넣으면 돼요(받는 쪽은 앱에서 붙여 넣기 한 번).</p></figure>
+    <figure><div class="phone" id="join"></div><p class="cap"><b>받는 쪽.</b> 링크를 누르면(앱이 없으면 설치 후 자동으로) 이 화면 하나. 로그인 없어요. 들어가기 전에는 가족 이름과 인원("민지네 가족 · 3명")만 보이고, 구성원 이름은 안 보여요.</p></figure>
+    <figure><div class="phone" id="fam"></div><p class="cap"><b>가족 관리.</b> 마지막 활동이 보이고, 30일 넘게 안 쓴 폰은 누구나 내보낼 수 있어요(폰 잃어버렸을 때).</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>7. 설정</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="set" style="height:990px"></div><p class="cap"><b>한 화면 5묶음 (길어서 스크롤).</b> 내 차 · 알림(나만) · 가족 · 보기 · 정보. [알림 시험]은 알림 묶음 안에 있고, 블루투스 연결이 됐는지 바로 확인해요. 위젯 모양은 위젯마다 정하니까 여기에는 없어요. 맨 아래 정보에 개인정보 처리방침 · 내 데이터 지우기 · 문의 · 버전.</p></figure>
+    <figure><div class="phone" id="carset"></div><p class="cap"><b>차 편집.</b> 별명, 색, 차량번호, 연결할 블루투스. 차는 4대까지.</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>8. 첫 실행</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone" id="ob1"></div><p class="cap"><b>1/4.</b> 무엇을 하는 앱인지 한 문장. 알림 권한만 여기서.</p></figure>
+    <figure><div class="phone" id="ob2"></div><p class="cap"><b>2/4.</b> 차 이름과 블루투스. 이 사이에 Wi-Fi면 한국어 음성팩을 조용히 받아요(지하에서 쓰려고).</p></figure>
+    <figure><div class="phone" id="obp"></div><p class="cap"><b>3/4 · 한번 말해 보세요.</b> 주차장에 가기 전에 마이크 권한과 폰 안 음성팩을 여기서 확인해요(그림은 성공한 상태). 말소리는 폰 안에서만 글자로 바꾸고 서버로 보내지 않아요. 음성팩이 없거나 안 들리면 손으로 골라 넣는 화면으로 가요.</p></figure>
+    <figure><div class="phone" id="ob3"></div><p class="cap"><b>4/4.</b> 가족 초대는 나중에도 돼요. 끝나면 [위젯 놓기]. 카메라 권한은 사진을 처음 붙일 때 물어요.</p></figure>
+  </div>
+</section>
+
+<section>
+  <h2>9. 알림 · 빠른 설정 · 바로가기</h2>
+  <div class="row" style="margin-top:12px">
+    <figure><div class="phone shade" id="ntf"></div><p class="cap"><b>알림 4종.</b> 차에서 내리면(블루투스 끊김) · 가족이 댔을 때 · "어디 댔어요?" 질문 · 요금 타이머. 질문은 알림에서 바로 말로 답해요. 차에서 내렸을 때 알림은 10분 뒤 사라져요 · 같은 차는 30분에 한 번만 보내요.</p></figure>
+    <figure><div class="phone shade" id="qs"></div><p class="cap"><b>빠른 설정 타일 + 아이콘 길게 누르기.</b> 위젯을 안 놓은 가족도 상단바에서 바로 말해요.</p></figure>
+  </div>
+</section>
+</div>
+
+<script>
+/*THEME_JS*/
+
+/* widget sample data: up to 4 cars, always in this fixed order (never re-sorted by recency) */
+const WC4=[{n:"흰 차",dot:"#f4f1ea",f:"B2",s:"C37",who:"아빠",t:"14:32",fl:"#2f7d4f"},{n:"회색 차",dot:"#8e9399",f:"B4",s:"A12",who:"엄마",t:"어제",fl:"#2d5da8"},
+ {n:"검정 차",dot:"#1c1c1c",f:"B3",s:"D08",who:"민지",t:"09:10",fl:"#b5562b"},{n:"파란 차",dot:"#2d5da8",f:"B1",s:"F21",who:"아빠",t:"월요일",fl:"#6a4a9c"}];
+const WC=WC4.slice(0,2);
+let PAL=null,PREV=null,HASPREV=false;
+const FL=(c,p)=>p?(WC4.findIndex(x=>x.n===c.n)%2?p.fl2:p.fl1):c.fl;
+const PS=p=>p?`data-mat="${p.mat}" style="--wbg:${p.bg};--wfg:${p.fg};--wmu:${p.mu};--wdk:${p.fg==="#ffffff"?1:0};--wr:${p.r};--wnum:${p.font};--wsub:${p.font};${p.acc?`--wacc:${p.acc};`:""}"`:"";
+const WMIC=(c="currentColor",s=24)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="${c}"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+const HR='<div class="hr"></div>';
+/* random palette that stays readable: text >= 4.5:1 on surface, white on car colours >= 4.5:1, mic accent vs surface >= 2:1 */
+function hsl(h,s,l){s/=100;l/=100;const k=n=>(n+h/30)%12,a=s*Math.min(l,1-l),f=n=>l-a*Math.max(-1,Math.min(k(n)-3,9-k(n),1));return "#"+[f(0),f(8),f(4)].map(x=>Math.round(x*255).toString(16).padStart(2,"0")).join("")}
+function lum(hex){const v=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255).map(c=>c<=.03928?c/12.92:((c+.055)/1.055)**2.4);return .2126*v[0]+.7152*v[1]+.0722*v[2]}
+function cr(a,b){const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)}
+const R=(a,b)=>a+Math.random()*(b-a);
+/* seven clearly different numeral faces, all loaded at the weight used; single quotes because PS() writes them into style="" */
+const FONTS=[["'Inter Tight',sans-serif","고딕"],["'Big Shoulders Display',sans-serif","좁은 고딕"],["'IBM Plex Mono',monospace","고정폭"],["'Doto',monospace","점 숫자"],["'Big Shoulders Stencil Display',sans-serif","스텐실"],["'Playfair Display',serif","세리프"],["'Chakra Petch',sans-serif","각진 고딕"]];
+const pickNot=(arr,cur)=>{const o=arr.filter(x=>x!==cur);return o[Math.floor(Math.random()*o.length)]};
+function randomPal(k){
+  // five families so a shuffle can land anywhere: pastel, bold, deep, mono, complementary; corners vary too
+  const fam=pickNot(["pastel","bold","deep","mono","comp"],PAL&&PAL.fam);
+  for(let n=0;n<300;n++){
+    const h=R(0,360);let bg,acc;
+    if(fam==="pastel"){bg=hsl(h,R(35,75),R(82,92));acc=hsl((h+R(150,210))%360,R(55,85),R(42,55))}
+    else if(fam==="bold"){bg=hsl(h,R(60,95),R(42,58));acc=Math.random()<.5?"#111111":"#ffffff"}
+    else if(fam==="deep"){bg=hsl(h,R(35,75),R(12,24));acc=hsl((h+R(20,60))%360,R(70,95),R(55,68))}
+    else if(fam==="mono"){bg=hsl(h,R(0,6),Math.random()<.5?R(88,97):R(8,18));acc=Math.random()<.6?"#ff6a13":hsl(R(0,360),R(70,90),R(48,58))}
+    else {bg=hsl(h,R(45,80),R(30,70));acc=hsl((h+180)%360,R(60,90),R(45,65))}
+    const fg=cr("#ffffff",bg)>=cr("#111111",bg)?"#ffffff":"#111111";
+    const mu=fg==="#ffffff"?"rgba(255,255,255,.86)":"rgba(17,17,17,.76)";
+    const muHex=fg==="#ffffff"?mixHex(bg,"#ffffff",.86):mixHex(bg,"#111111",.76);
+    const onAcc=acc&&cr("#ffffff",acc)>=cr("#111111",acc)?"#ffffff":"#111111";
+    const fl1=hsl(R(0,360),R(45,80),R(28,40)),fl2=hsl(R(0,360),R(45,80),R(28,40));
+    if(cr(fg,bg)<4.5||cr(muHex,bg)<4.5||(acc&&cr(acc,bg)<(k==="T"?3:1.6))||cr("#ffffff",fl1)<4.5||cr("#ffffff",fl2)<4.5)continue;
+    const mat=pickNot(["matte","gloss","paper","metal","soft"],PAL&&PAL.mat);
+    const font=k==="A"?FONTS[3]:pickNot(FONTS,PAL&&FONTS.find(x=>x[1]===PAL.fontName));
+    return {bg,fg,mu,acc:k==="A"?null:acc,onAcc,fl1,fl2,r:[10,16,22,28,34][Math.floor(Math.random()*5)]+"px",fam,mat,font:font[0],fontName:k==="A"?"점 숫자(고정)":font[1]};
+  }
+  return null;
+}
+function mixHex(a,b,t){const pa=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16)),pb=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));return "#"+pa.map((x,i)=>Math.round(x+(pb[i]-x)*t).toString(16).padStart(2,"0")).join("")}
+
+
+/* v10 widgets. Keys: row-list skins N 기본, A 점 행렬, B 녹음기, M 말풍선, P 주차권, S 플립 보드; skeletons T 포스터, F 기둥 띠, X 단면도.
+   W(key,pal,cars,{nomic}) = all-cars widget, W1(key,pal,car) = one-car widget. Each row's mic saves to that car.
+   Car states: st "none" 기록 없음, "pend" 전송 대기, "gone" 운행 중 (set when that car's Bluetooth reconnects); an old record just shows a date in t. */
+const fsplit=f=>{const m=/^([A-Za-z]*)(.*)$/.exec(f);return (m[1]?`<span class="fa">${m[1]}</span>`:"")+m[2]};
+const spv=c=>c.st==="none"?{f:"–",s:"",emp:1}:c.st==="gone"?{f:"",s:"운행 중",emp:1}:{f:c.f,s:c.s};
+const wsp=c=>{const v=spv(c);return `<div class="sp${v.emp?" emp":""}">${v.f?`<span class="f">${fsplit(v.f)}</span>`:""}${v.s?`<span class="s">${v.s}</span>`:""}</div>`};
+const flap=(str,cls="")=>`<span class="fl ${cls}">${[...str].map(ch=>`<b>${ch}</b>`).join("")}</span>`;
+const fsp=c=>{const v=spv(c);return `<div class="sp">${v.emp?(v.f?flap("––"):flap("운행중","sm ko")):flap(v.f)+flap(v.s,"sm")}</div>`};
+const UPI=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg>`;
+const wnm=c=>`<div class="nm"><i style="background:${c.dot}"></i>${c.n}</div>`;
+const wwho=c=>c.st==="none"?`<div class="wh">기록 없음</div>`:c.st==="gone"?`<div class="wh"><b>${c.who}</b> ${c.t} 출발</div>`:c.st==="pend"?`<div class="wh pend">${UPI}전송 대기</div>`:`<div class="wh"><b>${c.who}</b> ${c.t}</div>`;
+const wmeta=c=>`<div class="meta">${wnm(c)}${wwho(c)}</div>`;
+const wmic=(k,p,c,off)=>`<span class="mic${off?" off":""}" role="button" aria-label="${c.n} 위치 말하기">${WMIC(k==="A"?"#f2f2f2":k==="S"&&!p?"#17171a":(p&&p.onAcc)||"#fff",20)}</span>`;
+const FLOORS=["B1","B2","B3","B4"];
+function W(k,p=null,cars=WC,o={}){
+  const mic=c=>wmic(k,p,c,o.nomic),note=o.nomic?`<div class="note"${k==="F"?' style="grid-column:1/-1"':k==="T"||k==="X"?' style="padding:6px 12px 8px"':""}>마이크·음성팩이 필요해요 · 눌러서 켜기</div>`:"";
+  const fx=c=>{const v=spv(c);return v.f?fsplit(v.f):"&nbsp;"},sx=c=>spv(c).s;
+  if(k==="F")return `<div class="wx kF" ${PS(p)}>${cars.map(c=>`<div class="pil"><div class="band" style="background-color:${FL(c,p)}">${wnm(c)}</div><span class="f">${fx(c)}</span>${mic(c)}<div class="ln"><span class="s">${sx(c)}</span>${wwho(c)}</div></div>`).join("")}${note}</div>`;
+  if(k==="T"){const c=cars[0];return `<div class="wx kT" ${PS(p)}><div class="hero"><span class="big">${fx(c)}</span><div class="hi"><span class="s">${sx(c)}</span>${wnm(c)}${wwho(c)}</div>${mic(c)}</div>${cars.slice(1).map(c=>`<div class="strip"><span class="f">${fx(c)}</span><span class="s">${sx(c)}</span>${wmeta(c)}${mic(c)}</div>`).join("")}${note}</div>`}
+  if(k==="X"){const row=c=>`<div class="xr"><span class="f">${fx(c)}</span><div class="xc"><span class="chip"><span class="s">${sx(c)||"기록 없음"}</span></span>${wmeta(c)}${mic(c)}</div></div>`;
+    return `<div class="wx kX" ${PS(p)}>${cars.filter(c=>spv(c).emp).map(row).join("")}<div class="xg"></div>${FLOORS.map(f=>{const here=cars.filter(c=>!spv(c).emp&&c.f===f);return here.length?here.map(row).join(""):`<div class="xe"><i></i></div>`}).join("")}${note}</div>`}
+  return `<div class="wx k${k}" ${PS(p)}>${cars.map(c=>`<div class="car">${(k==="S"?fsp:wsp)(c)}${wmeta(c)}${mic(c)}</div>`).join(HR)}${note}</div>`;
+}
+function W1(k,p=null,c=WC[0]){
+  const hd=`<div class="hd">${wnm(c)}${wwho(c)}</div>`,mic=wmic(k,p,c);
+  if(k==="F")return `<div class="wx one kF" ${PS(p)}><div class="band" style="background-color:${FL(c,p)}">${wnm(c)}${wwho(c)}</div>${wsp(c)}${mic}</div>`;
+  if(k==="T")return `<div class="wx one kT" ${PS(p)}>${hd}<span class="big">${fsplit(c.f)}</span><span class="s">${c.s}</span>${mic}</div>`;
+  if(k==="X")return W("X",p,[c]).replace('class="wx kX"','class="wx one kX"');
+  return `<div class="wx one k${k}" ${PS(p)}>${hd}${(k==="S"?fsp:wsp)(c)}${mic}</div>`;
+}
+
+/* Readable text at any background strength, with no blur (RemoteViews cannot blur). For every widget on a wallpaper:
+   blend the surface (at --wop) over the wallpaper's sample colours and pick the text colour. If that is not enough, add a
+   translucent scrim under the surface (black under light text, white under dark text) and nudge the surface the same
+   way, one step at a time, until numbers and labels reach 4.5:1 on every sample. Below 60% the text also gets a halo. */
+const WPS={sky:["#cfe3f2","#9cc4e0","#a9cde6","#e7d2b4","#d8a978","#e9c9a0"],night:["#141822","#241f33","#3b2b4a"],photo:["#f5f0e1","#d9cba8","#c7a46a","#7e9a6c","#6f8f5a","#3f5a3a"]};
+let _probe;
+function rgba(v){ // any CSS colour -> [r,g,b,a] with r,g,b 0..255
+  if(!_probe){_probe=document.createElement("i");_probe.style.display="none";document.body.appendChild(_probe)}
+  _probe.style.color="";_probe.style.color=v;const s=getComputedStyle(_probe).color,n=s.match(/-?[\d.]+(e-?\d+)?/g).map(Number);
+  return s.startsWith("color(")?[n[0]*255,n[1]*255,n[2]*255,n[3]??1]:[n[0],n[1],n[2],n[3]??1]}
+const _lin=c=>{c/=255;return c<=.03928?c/12.92:((c+.055)/1.055)**2.4};
+const lum3=c=>.2126*_lin(c[0])+.7152*_lin(c[1])+.0722*_lin(c[2]);
+const cr3=(a,b)=>{const x=lum3(a),y=lum3(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+const over=(top,a,bot)=>[0,1,2].map(i=>top[i]*a+bot[i]*(1-a));
+const DARK=[17,17,17,.78],LIGHT=[255,255,255,.88];
+function fitText(e,wop){
+  const cs=getComputedStyle(e);
+  if(!e.dataset.base)e.dataset.base=JSON.stringify(["--wbg","--wfg","--wmu","--wacc"].map(k=>rgba(cs.getPropertyValue(k).trim()||"#000")));
+  const [B,F0,M0,ACC]=JSON.parse(e.dataset.base),a=wop*B[3];
+  const WS=(WPS[(e.closest(".wg-home").className.match(/wp-(\w+)/)||[])[1]]||WPS.sky).map(rgba);
+  const pol=f=>lum3(f)>.4;                                   // true = light text
+  const cands=[[F0,M0],[F0,pol(F0)?LIGHT:DARK],[DARK,DARK],[LIGHT,LIGHT]];
+  const effs=(lt,L)=>{const pole=lt?[0,0,0]:[255,255,255],Bp=over(pole,L*.1,B),sc=L*.07;
+    return {Bp,sc,pole,bg:WS.map(w=>over(Bp,a,over(pole,sc,w)))}};
+  const worst=(col,bgs)=>Math.min(...bgs.map(bg=>cr3(over(col,col[3]??1,bg),bg)));
+  let pick=null,best=null;
+  // pass 0 keeps the theme's own text polarity while a light scrim (<= 28%) is enough; pass 1 lets the text flip,
+  // so a low strength stays see-through instead of turning into a heavy scrim
+  search:for(const [set,maxL] of [[cands.slice(0,2),4],[cands,9]])for(let L=0;L<=maxL;L++)for(const [f,m] of set){const lt=pol(f),x=effs(lt,L),sc=Math.min(worst([...f.slice(0,3),1],x.bg),worst(m,x.bg));
+    if(!best||sc>best.score)best={f,m,lt,L,score:sc,...x};
+    if(sc>=4.5){pick=best={f,m,lt,L,score:sc,...x};break search}}
+  const r=pick||best,css=c=>`rgba(${c.slice(0,3).map(Math.round).join(",")},${c[3]??1})`,st=e.style;
+  st.setProperty("--wfg",css([...r.f.slice(0,3),1]));st.setProperty("--wmu",css(r.m));st.setProperty("--wdk",r.lt?1:0);
+  st.setProperty("--wbg",css([...r.Bp,B[3]]));st.setProperty("--wsc",r.sc&&wop<.995?css([...r.pole,r.sc]):"transparent");
+  // accent-coloured numerals (T poster) need 3:1 as large text: shift the accent toward the text pole just far enough
+  let big=null;for(let t=0;t<=1.001;t+=.15){const c=over(r.lt?[255,255,255]:[0,0,0],t,ACC);if(Math.min(...r.bg.map(bg=>cr3(c,bg)))>=3){big=t?css([...c,1]):"";break}}
+  if(big)st.setProperty("--wbig",big);else if(big===null)st.setProperty("--wbig","var(--wfg)");else st.removeProperty("--wbig");
+  st.setProperty("--wts",wop<.6?(r.lt?"0 0 2px rgba(0,0,0,.6),0 1px 3px rgba(0,0,0,.45)":"0 0 2px rgba(255,255,255,.8),0 0 5px rgba(255,255,255,.55)"):"none");
+  return r.score;
+}
+
+const IP={
+ note:'<path d="M6 3.5h8.5L18 7v13.5H6z"/><path d="M14.5 3.5V7H18M9 11h6M9 14.5h6M9 18h3.5"/>',
+ shuffle:'<path d="M3.5 7.5h3.2c2.2 0 3.3 1 4.6 3.1l1.4 2.8c1.3 2.1 2.4 3.1 4.6 3.1h3"/><path d="M3.5 16.5h3.2c1.4 0 2.4-.4 3.2-1.2M14.2 8.7c.8-.8 1.8-1.2 3.2-1.2h2.9"/><path d="M18 5l2.5 2.5L18 10M18 14l2.5 2.5L18 19"/>',
+ gear:'<circle cx="12" cy="12" r="3.2"/><path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4L18 18M6 18l1.6-1.6M16.4 7.6L18 6"/>',
+ pen:'<path d="M5 19l.8-3.6L15.6 5.6a1.9 1.9 0 0 1 2.8 2.8L8.6 18.2z"/><path d="M13.8 7.4l2.8 2.8"/>',
+ back:'<path d="M14.5 5.5L8 12l6.5 6.5"/>',
+ wifi:'<path d="M3.5 9.2a12 12 0 0 1 17 0M6.6 12.4a7.6 7.6 0 0 1 10.8 0M9.7 15.6a3.2 3.2 0 0 1 4.6 0"/><circle cx="12" cy="18.6" r=".6"/>',
+ bt:'<path d="M7.5 8l9 8-4.5 3.8V4.2L16.5 8l-9 8"/>',
+ torch:'<path d="M8 3.5h8l-1.2 5.5H9.2z"/><path d="M9.2 9h5.6v11.5H9.2zM12 13v2.5"/>',
+ car:'<path d="M5 15.5l1.4-5.1A2 2 0 0 1 8.3 9h7.4a2 2 0 0 1 1.9 1.4l1.4 5.1"/><path d="M4 15.5h16v3H4z"/><path d="M6 18.5V20M18 18.5V20"/><circle cx="7.6" cy="17" r=".5"/><circle cx="16.4" cy="17" r=".5"/>',
+ ask:'<path d="M4.5 5.5h15v10.5h-8.5L7 19.5V16H4.5z"/><path d="M10.2 9a1.9 1.9 0 1 1 2.6 1.8c-.5.2-.8.6-.8 1.1M12 13.8v.1"/>',
+ copy:'<rect x="8" y="8" width="11.5" height="11.5" rx="2"/><path d="M15.5 8V5.5a1.5 1.5 0 0 0-1.5-1.5H5.5A1.5 1.5 0 0 0 4 5.5V14a1.5 1.5 0 0 0 1.5 1.5H8"/>',
+ chev:'<path d="M7 9.5l5 5 5-5"/>',
+ check:'<path d="M5 12.5l4.2 4.2L19 7"/>',
+ mic:'<rect x="9" y="3.5" width="6" height="10.5" rx="3"/><path d="M6 11a6 6 0 0 0 12 0M12 17v3.5"/>',
+};
+const ic=(n,s=20,w=1.7)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">${IP[n]}</svg>`;
+
+/* widget look = one of 4 skeletons; the row list also takes one of 6 skins. key() is the CSS/renderer key in use. */
+const SK=[{k:"R",name:"줄 목록"},{k:"T",name:"포스터"},{k:"F",name:"기둥 띠"}];
+const PRE=[{k:"N",name:"기본"},{k:"A",name:"점 행렬"},{k:"P",name:"주차권"}];
+/* what the Braun sheets borrow from the chosen widget: numeral face + accent, nothing else */
+const SKIN={N:["'Inter Tight',sans-serif","#ff6a13"],A:["'Doto',monospace","#e8352b"],B:["'Inter Tight',sans-serif","#ff5b1f"],M:["'Inter Tight',sans-serif","#ff6a13"],P:["'IBM Plex Mono',monospace","#1e1b16"],
+ S:["'Inter Tight',sans-serif","#e2a336"],T:["'Inter Tight',sans-serif","#ff5a1f"],F:["'Big Shoulders Display',sans-serif","#161616"],X:["'Inter Tight',sans-serif","#ff6a13"]};
+const t=T.yo;
+let sk="R",pre="N",wp="sky",WOP=1;
+const key=()=>sk==="R"?pre:sk;
+const IC='<img src="ic-min-braun.jpg" alt="" style="width:18px;height:18px;border-radius:5px">';
+const SB=`<div class="sb"><span>14:36</span><span>● ▲ 82%</span></div>`;
+const MICW=(c="#fff",s=30)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="${c}"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
+IP.del='<path d="M9 6h10.5v12H9L3.5 12z"/><path d="M12.2 9.6l4.6 4.8M16.8 9.6l-4.6 4.8"/>';
+IP.cam='<path d="M4.5 8h3l1.5-2.5h6L16.5 8h3v10.5h-15z"/><circle cx="12" cy="13" r="3.2"/>';
+IP.up='<path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/>';
+
+function widgets(){setTimeout(applyOp);
+  const tile=(inner,st="")=>`<div class="wg-home wp-${wp}" style="${st}">${inner}</div>`;
+  const cell=(title,k)=>`<div class="wcell"><h4>${title}</h4>${tile(W(k))}${tile(W1(k),"min-height:0")}</div>`;
+  const one=(title,inner)=>`<div class="wcell"><h4>${title}</h4>${tile(inner,"min-height:0")}</div>`;
+  document.getElementById("wgrid").innerHTML=
+    `<h3 class="wgh">뼈대 3<small>위: 모든 차 · 아래: 한 대 고정</small></h3>`+SK.map(d=>cell(`${d.name}${d.k==="R"?" <small>기본 스타일</small>":""}`,d.k==="R"?"N":d.k)).join("")+
+    `<h3 class="wgh">줄 목록 스타일 3<small>뼈대는 같고 겉모습만 달라요 (기본은 위 첫 칸)</small></h3>`+PRE.slice(1).map(d=>cell(d.name,d.k)).join("")+
+    `<h3 class="wgh">차가 3~4대일 때<small>순서는 등록한 순서 그대로</small></h3>`+one("기둥 띠 · 3대 <small>셋째가 한 줄을 다 써요</small>",W("F",null,WC4.slice(0,3)))+one("기둥 띠 · 4대 <small>2×2</small>",W("F",null,WC4))+one("포스터 · 3대 <small>첫 차만 크게, 순서 고정</small>",W("T",null,WC4.slice(0,3)));
+}
+
+const CAR=[{c:"#f4f1ea",n:"흰 차",f:"B2",s:"C37",who:"아빠",when:"오늘 14:32",ago:"2시간 4분째",memo:"엘리베이터 옆, 3번 출구 쪽",st:""},{c:"#8e9399",n:"회색 차",f:"B4",s:"A12",who:"엄마",when:"어제 19:05",ago:"",memo:"",st:"gone"}];
+/* app home card. st: "" 정상, none, pend, gone, old, nomic */
+const homeCard=(x,i)=>{const tag={gone:`<span class="tag gone" style="margin-left:auto">${x.who} 운행 중</span>`,pend:`<span class="tag gone" style="margin-left:auto;display:inline-flex;gap:3px;align-items:center">${ic("up",12,2.4)}전송 대기</span>`,old:`<span class="tag gone" style="margin-left:auto">3일 전</span>`,none:"",nomic:""}[x.st]??`<span class="tag ok" style="margin-left:auto">${x.ago}</span>`;
+  const body=x.st==="none"?`<div class="spot"><span class="f" style="color:var(--app-mu)">–</span></div><div class="who"><span class="mu">아직 기록이 없어요. 마이크를 눌러 말해 보세요</span></div>`
+    :`<div class="spot" style="${x.st==="gone"?"opacity:.4":""}"><span class="f">${x.f}</span><span class="s">${x.s}</span></div><div class="who"><b>${x.who}</b> <span class="mu">${x.when}</span></div>`;
+  const extra={pend:`<div class="memo">${ic("up",16)}신호가 잡히면 가족에게 보내요</div>`,gone:`<div class="memo">${ic("bt",16)}블루투스가 다시 연결됐어요</div>`,nomic:`<div class="memo" style="justify-content:space-between">${ic("mic",16)}<span style="flex:1">마이크 권한 · 음성팩이 필요해요</span><b>켜기</b></div>`}[x.st]||(x.memo?`<div class="memo">${ic("note",16)}${x.memo}</div>`:"");
+  return `<div class="card"><div class="carh"><span class="sw" style="background:${x.c}"></span>${x.n}${tag}</div>${body}${extra}
+    <div class="chips"><span class="cm" role="button" aria-label="${x.n}에 말로 저장">${ic("mic",20,2)}</span>${i===0?`<span>차량번호</span><span>무료 1:56 남음</span>`:`<span>어디 댔어요? 묻기</span>`}</div></div>`};
+
+function states(){
+  const c0=WC4[0],c1=WC4[1],h0=CAR[0];
+  const rows=[
+   ["기록 없음",[{...c0,st:"none"},c1],{},{...h0,st:"none",memo:""}],
+   ["저장 직후 · 가족에게 전송 대기 (오프라인)",[{...c0,st:"pend"},c1],{},{...h0,st:"pend",when:"방금",memo:""}],
+   ["정상",[c0,c1],{},h0],
+   ["가져감 · 운행 중 <small>그 차 블루투스가 다시 연결되면 자동</small>",[c0,{...c1,st:"gone",t:"15:10"}],{},{...CAR[1],who:"엄마",st:"gone"}],
+   ["오래된 기록 <small>2일 넘으면 날짜</small>",[{...c0,t:"11월 16일"},c1],{},{...h0,st:"old",when:"11월 16일 14:32",memo:""}],
+   ["마이크 · 음성팩 필요",[c0,c1],{nomic:1},{...h0,st:"nomic"}],
+   ["차 1대",[c0],{},null],["차 3대",WC4.slice(0,3),{},null],["차 4대",WC4,{},null]];
+  document.getElementById("stgrid").innerHTML=rows.map(([h,cars,o,hc])=>`<div class="stcell"><h4>${h}</h4><div class="wg-home wp-sky">${W("N",null,cars,o)}</div>${hc?homeCard(hc,0):""}</div>`).join("");
+}
+
+function screens(){setTimeout(applyOp);
+  const k=key(),skin=SKIN[k],acc=PAL&&PAL.acc&&cr(PAL.acc,"#e9e7e3")>=1.6?PAL.acc:skin[1];
+  const bs=`class="sheetw bs k${k}" style="--wnum:${PAL&&k!=="A"?PAL.font:skin[0]};--wacc:${acc}"`;
+  const TH_SVG={R:'<rect x="5" y="6" width="20" height="7" rx="2"/><circle cx="41" cy="9.5" r="3.5"/><rect x="5" y="19" width="20" height="7" rx="2"/><circle cx="41" cy="22.5" r="3.5"/>',
+    T:'<rect x="5" y="4" width="24" height="16" rx="2"/><rect x="33" y="6" width="10" height="3" rx="1.5"/><rect x="5" y="24" width="38" height="4" rx="2"/>',
+    F:'<rect x="6" y="4" width="16" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="6" y="4" width="16" height="6" rx="2"/><rect x="26" y="4" width="16" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="26" y="4" width="16" height="6" rx="2"/>',
+    X:'<path d="M12 4v24M12 7h32M12 11h32M12 21h32M12 25h32" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="16" y="13.5" width="12" height="5" rx="1.5"/><rect x="2" y="13" width="6" height="6" rx="1"/>'};
+  set("cfg",`${SB}<div class="scr" style="gap:10px"><div class="top"><h3>위젯 꾸미기</h3></div>
+    <div class="sect">무엇을 보여 줄까요</div><div class="tabs"><span class="on">모든 차</span><span>흰 차만</span><span>회색 차만</span></div>
+    <div class="sect">모양</div><div class="sks">${SK.map(x=>`<div data-sk="${x.k}" class="${x.k===sk?"on":""}" role="button"><svg width="48" height="32" viewBox="0 0 48 32" fill="currentColor" aria-hidden="true">${TH_SVG[x.k]}</svg>${x.name}</div>`).join("")}</div>
+    ${sk==="R"?`<div class="sect">스타일</div><div class="pres">${PRE.map(x=>`<span data-pre="${x.k}" class="${x.k===pre?"on":""}" role="button">${x.name}</span>`).join("")}</div>`:""}
+    <div class="wg-home wp-sky" style="min-height:0;padding:10px;width:100%;align-content:center;flex:none"><div id="wprev" style="display:contents">${W(k,PAL)}</div></div>
+    <div style="display:flex;gap:8px"><button id="wshuf" class="btn ghost" style="all:unset;cursor:pointer;flex:1;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14.5px;background:var(--app-sf);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.1),0 6px 12px -6px rgba(0,0,0,.2)">${ic("shuffle",18)}색 바꿔 보기</button><button id="wundo" style="all:unset;cursor:pointer;height:44px;padding:0 16px;border-radius:999px;display:flex;align-items:center;font-size:14px;color:var(--app-mu);${HASPREV?"":"opacity:.4;pointer-events:none"}">되돌리기</button></div>
+    ${PAL?`<div style="font-size:12px;color:var(--app-mu);margin:-4px 4px 0">지금: ${({pastel:"파스텔",bold:"원색",deep:"깊은 색",mono:"무채색",comp:"보색"})[PAL.fam]} · ${({matte:"무광",gloss:"유광",paper:"종이",metal:"금속",soft:"소프트"})[PAL.mat]} · ${PAL.fontName}</div>`:""}
+    <div class="opcell"><div><span>배경 진하기</span><b class="opv">${Math.round(WOP*100)}%</b></div><input type="range" class="opr" min="0" max="100" value="${Math.round(WOP*100)}" aria-label="위젯 배경 진하기"></div>
+    <div class="btn acc" style="margin-top:auto">홈 화면에 놓기</div></div>`);
+  set("homeA",`${SB}<div class="scr" style="gap:10px"><div class="top"><img src="ic-min-braun.jpg" alt="" style="width:34px;height:34px;border-radius:10px"><h3>어디댔어</h3><span class="ico">${ic("gear",20)}</span></div>${CAR.map(homeCard).join("")}
+    <div class="bigmic" role="button" aria-label="흰 차에 말로 저장">${MICW()}</div><div class="lab"><span class="sw" style="background:#f4f1ea"></span><b>흰 차</b>에 저장</div></div>`);
+  const behind=`${SB}<div class="scr" style="filter:blur(1px)"><div class="top"><h3>어디댔어</h3></div>${homeCard(CAR[0],0)}</div><div class="scrim"></div>`;
+  const carTo=`<span class="sw" style="background:#f4f1ea"></span><span><b>흰 차</b>에 저장</span>`;
+  set("lsn",`${behind}<div ${bs}><div class="grab"></div>
+    <div class="bh">${carTo}<span class="x" role="button">취소</span></div>
+    <div class="wave" aria-label="소리 크기">${Array.from({length:30},(_,i)=>`<i style="height:${5+((i*53)%31)}px;animation-delay:-${(i*37)%90/100}s"></i>`).join("")}</div>
+    <div class="heard">지하 2층 C<i></i></div>
+    <div class="mu">듣고 있어요 · 다 말하면 저장돼요</div></div>`);
+  set("sav",`${behind}<div ${bs}><div class="grab"></div>
+    <div class="bh"><span style="color:var(--app-ok);display:flex">${ic("check",20,2.4)}</span><b style="font-size:17px">저장했어요</b><span class="cseg"><span class="on">흰 차</span><span>회색 차</span></span></div>
+    <div class="big"><span class="f">${fsplit("B2")}</span><span class="s">C37</span></div>
+    <div class="memo" style="margin-top:0">${ic("note",16)}엘리베이터 옆</div>
+    <div class="send">${ic("check",16,2.2)}가족에게 보냈어요</div>
+    <div class="undo"><b>되돌리기</b><span class="mu">8초</span><i></i></div>
+    <div class="acts"><div class="btn nt">${ic("pen",17)}고치기</div><div class="btn nt">${ic("cam",18)}사진</div></div></div>`);
+  const fx=(lab,val,foc)=>`<div class="fx${foc?" foc":""}"><small>${lab}</small><b><span>${val}${foc?"<i></i>":""}</span>${foc?"":ic("chev",18)}</b></div>`;
+  set("fail",`${behind}<div class="sheetw" style="background:var(--app-bg);padding:0 16px 18px;display:grid;gap:10px"><div class="grab"></div>
+    <div style="display:flex;align-items:center;gap:8px"><div style="flex:1"><div style="font-weight:700;font-size:17px">잘 안 들렸어요</div><div style="font-size:13.5px;color:var(--app-mu)">골라서 넣어 주세요</div></div><span style="min-height:44px;display:flex;align-items:center;gap:5px;padding:0 12px;border-radius:999px;background:var(--app-sf);font-size:13.5px;font-weight:600"><span style="color:var(--app-acc);display:flex">${ic("mic",16,2)}</span>다시 말하기</span></div>
+    <div><div style="font-size:12.5px;color:var(--app-mu);margin-bottom:5px">이 주차장에서 썼던 층</div><div class="chips" style="margin:0"><span style="background:var(--app-fg);color:var(--app-sf)">B2</span><span style="background:var(--app-sf)">B3</span></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">${fx("층","B2")}${fx("구역","C")}${fx("번호","37",1)}</div>
+    <div class="np">${[1,2,3,4,5,6,7,8,9,"",0,ic("del",20)].map(x=>`<span${x===""?' style="visibility:hidden"':""}>${x}</span>`).join("")}</div>
+    <div class="btn acc">B2 · C37 저장</div></div>`);
+  set("amb",`${behind}<div class="sheetw" style="background:var(--app-bg);padding:14px 16px 22px;display:grid;gap:12px"><div class="grab"></div><div style="font-size:14px;color:var(--app-mu)">"지하 이층 이 구역 삼십칠"</div><div style="font-weight:700;font-size:18px">구역이 어느 쪽이에요?</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">${["B2 · 2-37","B2 · E37"].map((x,i)=>`<div class="card" style="text-align:center;font-family:var(--gro);font-weight:900;font-size:26px;white-space:nowrap;padding:14px 6px;${i===1?"outline:2px solid var(--app-fg)":""}">${x}</div>`).join("")}</div>
+    <div style="font-size:13px;color:var(--app-mu)">한 번 고르면 이 주차장에선 다시 묻지 않아요</div><div class="btn ghost">다시 말하기</div></div>`);
+  set("det",`${SB}<div class="scr"><div class="top"><span style="display:grid;place-items:center;width:32px;height:40px;margin-left:-8px">${ic("back",22,2)}</span><h3>흰 차</h3><span class="ico">${ic("gear",19)}</span></div>
+    <div class="card"><div class="spot" role="button" aria-label="층과 칸 고치기"><span class="f">B2</span><span class="s">C37</span><span class="edit">${ic("pen",15)}고치기</span></div><div class="who"><b>아빠</b> <span class="mu">오늘 14:32 · 2시간 4분째</span></div><div class="memo">${ic("note",16)}엘리베이터 옆, 3번 출구 쪽</div>
+    <div style="height:96px;border-radius:14px;margin-top:10px;background:linear-gradient(135deg,#9a9890,#5d5c57);display:grid;place-items:end start;padding:8px;color:#fff;font-size:12px">기둥 사진</div></div>
+    <div class="card" style="display:flex;align-items:center;gap:12px"><div><div style="font-size:13px;color:var(--app-mu)">무료 시간 남음</div><div style="font-family:var(--gro);font-weight:800;font-size:30px">1:56</div></div><div style="margin-left:auto;font-size:13px;color:var(--app-mu);text-align:right">4시간 무료<br>18:32에 알려 줄게요</div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px"><div class="btn nt">차량번호</div><div class="btn nt">사진 바꾸기</div></div>
+    <div class="list"><div class="li">내 기록<span class="r">나만 보여요 ›</span></div></div>
+    <div class="btn ghost" style="margin-top:auto">가져갔어요</div></div>`);
+  set("kiosk",`<div class="sb" style="background:#fff"><span>14:36</span><span>● ▲ 82%</span></div><div class="scr" style="background:#fff;justify-content:center;gap:18px"><div style="text-align:center;font-size:15px;color:#555">흰 차 · 기계에 이 번호를 넣으세요</div>
+    <div class="plate">12가 3456</div><div style="text-align:center;font-family:var(--gro);font-weight:900;font-size:110px;line-height:.9;letter-spacing:-.03em">3456</div>
+    <div style="text-align:center;font-size:14px;color:#555">뒤 네 자리만 넣는 기계가 많아요</div><div class="btn" style="background:#111;color:#fff">번호 복사</div><div style="text-align:center;font-size:13px;color:#777">화면이 꺼지지 않게 밝게 켜 둘게요</div></div>`);
+  set("inv",`${SB}<div class="scr"><div class="top"><span style="display:grid;place-items:center;width:32px;height:40px;margin-left:-8px">${ic("back",22,2)}</span><h3>가족 초대</h3></div>
+    <div class="h" style="font-size:22px">같이 쓸 가족에게 보내요</div><p class="p">받은 사람은 링크만 누르면 돼요. 가입은 없어요.</p>
+    <div class="btn" style="background:#fee500;color:#191919">카카오톡으로 보내기</div><div class="btn ghost">다른 앱으로 보내기</div>
+    <div class="card" style="text-align:center"><div style="font-size:13px;color:var(--app-mu);margin-bottom:8px">옆에 있으면 카메라로</div><div class="qr">${qr()}</div></div>
+    <div class="card" style="display:flex;align-items:center;gap:12px"><div style="flex:1;min-width:0"><div style="font-size:13px;color:var(--app-mu)">초대 코드</div><div style="font-family:var(--gro);font-weight:800;font-size:17px;letter-spacing:.02em;white-space:nowrap">K7QM-28XP-4HDA</div><div style="font-size:12px;color:var(--app-mu)">24시간 · 한 번 쓸 수 있어요</div></div><div class="btn nt" style="height:44px;padding:0 16px;font-size:14px;gap:6px">${ic("copy",17)}복사</div></div></div>`);
+  set("join",`${SB}<div class="scr" style="justify-content:center;gap:18px;text-align:center"><img src="ic-min-braun.jpg" alt="" style="width:88px;height:88px;border-radius:24px;margin:0 auto">
+    <div class="h">가족 초대를 받았어요</div><div style="font-size:18px;font-weight:600">민지네 가족 · 3명</div>
+    <p class="p">들어가면 가족 차의 주차 자리가<br>이 폰 위젯에도 보여요</p>
+    <div class="card" style="text-align:left"><div style="font-size:13px;color:var(--app-mu)">가족에게 보일 내 이름</div><div style="font-size:18px;font-weight:600;border-bottom:2px solid var(--app-fg);padding:4px 0">엄마</div></div>
+    <div class="btn acc">들어가기</div><div style="font-size:13px;color:var(--app-mu)">내 위치는 공유되지 않아요. 차 자리만 보여요</div></div>`);
+  set("fam",`${SB}<div class="scr"><div class="top"><span style="display:grid;place-items:center;width:32px;height:40px;margin-left:-8px">${ic("back",22,2)}</span><h3>가족</h3></div>
+    <div class="list">${[["아빠","이 폰 · 방장","방금"],["엄마","","2시간 전"],["민지","","3일 전"],["옛날 폰 (민지)","","41일 전"]].map((x,i)=>`<div class="li"><span class="avatars"><span>${x[0].slice(0,2)}</span></span><div>${x[0]}<div style="font-size:12.5px;color:var(--app-mu)">${x[1]||"마지막 활동 "+x[2]}</div></div>${i===3?`<span class="r" style="color:var(--app-fg);font-weight:600">내보내기</span>`:`<span class="r">${i?x[2]:""}</span>`}</div>`).join("")}</div>
+    <div style="font-size:13px;color:var(--app-mu);padding:0 4px">30일 넘게 안 쓴 폰은 누구나 내보낼 수 있어요. 잃어버린 폰 정리용이에요.</div>
+    <div class="btn acc" style="margin-top:auto">가족 초대하기</div><div class="btn ghost">가족에서 나가기</div></div>`);
+  set("set",`${SB}<div class="scr" style="gap:10px"><div class="top"><h3>설정</h3></div>
+    <div class="sect">내 차</div><div class="list"><div class="li"><span class="sw" style="background:#f4f1ea"></span>흰 차<span class="r">차 블루투스 연결됨</span></div><div class="li"><span class="sw" style="background:#8e9399"></span>회색 차<span class="r">연결 안 함</span></div><div class="li">＋ 차 추가</div></div>
+    <div class="sect">알림 · 나만 적용돼요</div><div class="list"><div class="li">차에서 내리면 물어보기<span class="tg on"></span></div><div class="li">가족이 댔을 때<span class="tg on"></span></div><div class="li">가족이 가져갔을 때<span class="tg"></span></div><div class="li">알림 시험<span class="r">지금 한 번 보내 보기 ›</span></div></div>
+    <div class="sect">가족</div><div class="list"><div class="li">민지네 가족 · 3명<span class="r">›</span></div></div>
+    <div class="sect">보기</div><div class="list"><div class="li">글자 크게<span class="tg"></span></div></div>
+    <div class="sect">정보</div><div class="list"><div class="li">개인정보 처리방침<span class="r">›</span></div><div class="li">내 데이터 지우기<span class="r">›</span></div><div class="li">문의<span class="r">›</span></div><div class="li">버전<span class="r">1.0.0</span></div></div></div>`);
+  set("carset",`${SB}<div class="scr"><div class="top"><span style="display:grid;place-items:center;width:32px;height:40px;margin-left:-8px">${ic("back",22,2)}</span><h3>흰 차</h3></div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu)">별명</div><div style="font-size:20px;font-weight:600">흰 차</div></div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu);margin-bottom:8px">색</div><div style="display:flex;gap:10px">${["#f4f1ea","#8e9399","#1c1c1c","#2d5da8","#c2412d","#2f7d4f"].map((c,i)=>`<span style="width:36px;height:36px;border-radius:50%;background:${c};border:1px solid rgba(0,0,0,.2);${i?"":"outline:2px solid var(--app-fg);outline-offset:2px"}"></span>`).join("")}</div></div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu)">차량번호 (선택)</div><div style="font-size:20px;font-weight:600">12가 3456</div></div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu)">이 차의 블루투스</div><div style="font-size:17px;font-weight:600">MY CAR 7F2</div><div style="font-size:12.5px;color:var(--app-mu)">끊기면 "어디에 댔어요?" 알림을 보내고, 다시 연결되면 "운행 중"으로 바꿔요</div></div>
+    <div class="btn ghost" style="margin-top:auto;color:#c2412d">이 차 지우기</div></div>`);
+  const steps=n=>`<div class="steps">${[1,2,3,4].map(i=>`<i class="${i<=n?"on":""}"></i>`).join("")}</div>`;
+  set("ob1",`${SB}<div class="scr" style="gap:18px">${steps(1)}
+    <div style="flex:1;display:grid;place-items:center"><div style="text-align:center"><img src="ic-min-braun.jpg" alt="" style="width:120px;height:120px;border-radius:32px"><div class="h" style="margin-top:22px">차를 대고<br>말로 남기면</div><p class="p" style="margin-top:10px">가족 폰 위젯에도 바로 떠요.<br>"지하 2층 C37" 한마디면 돼요.</p></div></div>
+    <div class="btn acc">시작하기</div><div style="text-align:center;font-size:12.5px;color:var(--app-mu)">차에서 내리면 물어볼 수 있게 알림을 허용해 주세요</div></div>`);
+  set("ob2",`${SB}<div class="scr" style="gap:14px">${steps(2)}
+    <div class="h">어느 차예요?</div><div class="card"><div style="font-size:13px;color:var(--app-mu)">별명</div><div style="font-size:20px;font-weight:600;border-bottom:2px solid var(--app-fg)">흰 차</div></div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu)">차량번호 (선택)</div><div style="font-size:20px;color:var(--app-mu)">12가 3456</div></div>
+    <div class="card" style="display:flex;gap:12px;align-items:center"><div style="width:44px;height:44px;border-radius:50%;display:grid;place-items:center;background:var(--app-bg)">${ic("bt",22)}</div><div><div style="font-weight:600">차 블루투스 연결</div><div style="font-size:13px;color:var(--app-mu)">내리면 "어디에 댔어요?" 하고 물어봐요</div></div></div>
+    <div style="font-size:13px;color:var(--app-ok);display:flex;gap:6px;align-items:center"><span class="dot" style="background:var(--app-ok)"></span>지하에서도 알아듣게 음성팩 받는 중 · Wi-Fi</div>
+    <div class="btn acc" style="margin-top:auto">다음</div><div style="text-align:center;font-size:13px;color:var(--app-mu)">차는 나중에 더 넣을 수 있어요</div></div>`);
+  const okl=(a,b)=>`<div class="li"><span style="color:var(--app-ok);display:flex">${ic("check",18,2.4)}</span>${a}<span class="r">${b}</span></div>`;
+  set("obp",`${SB}<div class="scr" style="gap:12px">${steps(3)}
+    <div class="h">한번 말해 보세요</div><p class="p">주차장에 가기 전에 여기서 한 번만요. "지하 2층 C37"처럼 말하면 돼요.</p>
+    <div class="list">${okl("마이크 권한","허용됨")}${okl("한국어 음성팩","받았어요")}</div>
+    <div class="card"><div style="font-size:13px;color:var(--app-mu)">이렇게 들렸어요 · "지하 2층 C37"</div><div class="spot"><span class="f">B2</span><span class="s">C37</span></div><div style="font-size:14px;color:var(--app-ok);display:flex;gap:6px;align-items:center;font-weight:600">${ic("check",16,2.4)}잘 들려요. 지하에서도 이렇게 돼요</div></div>
+    <div style="font-size:13px;color:var(--app-mu)">말소리는 폰 안에서 글자로 바꿔요. 음성팩을 못 받았거나 잘 안 들리면 층·구역을 손으로 골라 넣을 수 있어요.</div>
+    <div style="display:flex;align-items:center;gap:12px;margin-top:auto"><div class="bigmic sm" role="button" aria-label="다시 말해 보기">${MICW("#fff",24)}</div><div style="font-size:13.5px;color:var(--app-mu)">다시 말해 보기</div></div>
+    <div class="btn acc">다음</div></div>`);
+  set("ob3",`${SB}<div class="scr" style="gap:14px">${steps(4)}
+    <div class="h">가족과 같이 볼까요?</div><p class="p">누가 차를 댔든 내 위젯에 떠요.</p>
+    <div class="wg-home wp-sky" style="width:100%;min-height:0;padding:18px 16px">${W1("N")}</div>
+    <div class="btn" style="background:#fee500;color:#191919">카카오톡으로 초대</div><div class="btn ghost">나중에</div>
+    <div class="btn acc" style="margin-top:auto">위젯 놓고 끝내기</div></div>`);
+  set("ntf",`<div class="sb"><span>14:36</span><span>● ▲ 82%</span></div><div class="scr" style="gap:10px"><div style="font-family:var(--gro);font-weight:300;font-size:44px">14:36</div>
+    <div class="notif"><div class="nh">${IC}어디댔어 · 방금</div><div class="nt">흰 차에서 내렸어요. 어디에 댔어요?</div><div class="na"><span class="say" style="display:inline-flex;gap:5px;align-items:center">${ic("mic",16,2)}말하기</span><span>층 고르기</span><span>안 댔어요</span></div></div>
+    <div class="notif"><div class="nh">${IC}어디댔어 · 5분 전</div><div class="nt">아빠가 흰 차를 댔어요</div><div class="nb"><b style="font-family:var(--gro);font-size:20px">B2 · C37</b> 엘리베이터 옆</div></div>
+    <div class="notif"><div class="nh">${IC}어디댔어 · 1분 전</div><div class="nt">민지가 물어요: 회색 차 어디 댔어요?</div><div class="na"><span class="say" style="display:inline-flex;gap:5px;align-items:center">${ic("mic",16,2)}말로 답하기</span><span>가져갔어요</span></div></div>
+    <div class="notif"><div class="nh">${IC}어디댔어 · 진행 중</div><div class="nt">무료 1:56 남음</div><div style="height:6px;border-radius:3px;background:#555"><div style="width:52%;height:100%;border-radius:3px;background:#d8d8d8"></div></div></div></div>`);
+  set("qs",`<div class="sb"><span>14:36</span><span>● ▲ 82%</span></div><div class="scr" style="gap:12px"><div class="tiles"><div class="tile">${ic("wifi",22)}<span><b>Wi-Fi</b>집</span></div><div class="tile">${ic("bt",22)}<span><b>블루투스</b>켜짐</span></div><div class="tile on">${MICW("#2a1405",22)}<span><b>어디댔어</b>눌러서 말하기</span></div><div class="tile">${ic("torch",22)}<span><b>손전등</b></span></div></div>
+    <div style="margin-top:20px;display:grid;justify-items:center;gap:8px"><img src="ic-min-braun.jpg" alt="" style="width:60px;height:60px;border-radius:18px"><div style="background:var(--app-sf);border-radius:18px;padding:6px;display:grid;width:220px">${[["mic","말로 남기기"],["car","흰 차 어디?"],["ask","가족에게 묻기"]].map(([i,x])=>`<div style="padding:10px 12px;font-size:14.5px;display:flex;gap:10px;align-items:center">${ic(i,19)}${x}</div>`).join("")}</div><div style="font-size:12.5px;color:var(--app-mu)">아이콘 길게 누르기</div></div></div>`);
+}
+
+function qr(){let r="",x=7;const N=25;for(let i=0;i<N;i++)for(let j=0;j<N;j++){x=(x*1103515245+12345)&0x7fffffff;const fin=(a,b)=>a<7&&b<7;const inF=fin(i,j)||fin(i,N-1-j)||fin(N-1-i,j);if(inF){const a=i<7?i:N-1-i,b=j<7?j:N-1-j;if(a===0||a===6||b===0||b===6||(a>1&&a<5&&b>1&&b<5))r+=`<rect x="${j}" y="${i}" width="1" height="1"/>`}else if((x>>16)%2)r+=`<rect x="${j}" y="${i}" width="1" height="1"/>`}return `<svg viewBox="0 0 25 25" shape-rendering="crispEdges" aria-label="초대 QR 예시">${r}</svg>`}
+function applyOp(){document.documentElement.style.setProperty("--wop",WOP);document.querySelectorAll(".opv").forEach(e=>e.textContent=Math.round(WOP*100)+"%");document.querySelectorAll(".opr").forEach(e=>{if(+e.value!==Math.round(WOP*100))e.value=Math.round(WOP*100)});document.querySelectorAll(".wg-home .wx").forEach(e=>fitText(e,WOP))}
+document.addEventListener("input",e=>{if(e.target.classList.contains("opr")){WOP=e.target.value/100;applyOp()}});
+function set(id,html){document.getElementById(id).innerHTML=html}
+const TONES=[{},{"--app-bg":"#ffffff","--app-sf":"#f3f2ef","--app-ln":"#e3e1dc"},{"--app-bg":"#1b1b1a","--app-sf":"#272725","--app-fg":"#efede8","--app-mu":"#a9a6a0","--app-ln":"#3a3936"}];
+function tone(i){const r=document.documentElement.style;["--app-bg","--app-sf","--app-fg","--app-mu","--app-ln"].forEach(k=>r.removeProperty(k));Object.entries(TONES[i]).forEach(([k,v])=>r.setProperty(k,v))}
+function seg(id,fn){const el=document.getElementById(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));fn(b.dataset.v)})}
+function segs(){document.getElementById("sk").innerHTML=SK.map(d=>`<button data-v="${d.k}" aria-pressed="${d.k===sk}">${d.name}</button>`).join("");
+  document.getElementById("pr").innerHTML=PRE.map(d=>`<button data-v="${d.k}" aria-pressed="${d.k===pre}">${d.name}</button>`).join("");
+  document.getElementById("prw").style.display=sk==="R"?"contents":"none"}
+function pick(s,p){if(s)sk=s;if(p)pre=p;PAL=null;PREV=null;HASPREV=false;segs();screens()}
+seg("wp",v=>{wp=v;widgets()});
+seg("sk",v=>pick(v));seg("pr",v=>pick(null,v));
+document.addEventListener("click",e=>{
+  if(e.target.closest("#wshuf")){const np=randomPal(key());if(np){PREV=PAL;PAL=np;HASPREV=true;screens()}}
+  if(e.target.closest("#wundo")){PAL=PREV;PREV=null;HASPREV=false;screens()}
+  const a=e.target.closest("[data-sk]"),b=e.target.closest("[data-pre]");if(a)pick(a.dataset.sk);else if(b)pick(null,b.dataset.pre);
+});
+segs();widgets();states();screens();applyOp();
+</script>
