@@ -210,4 +210,45 @@ class ListenModelTest {
         assertEquals("내 차", c.name); assertEquals(c.id, (m.state as Sheet.Saved).park.carId)
         assertFalse(SyncQueue.ops(ctx).none { it is Op.PutCar })
     }
+
+    private fun withPhoto(m: ListenModel): kr.dot.wherepark.core.Park {
+        m.result("지하 4층 A 1")
+        val p = (m.state as Sheet.Saved).park
+        val f = m.photoFile(p)
+        android.graphics.Bitmap.createBitmap(40, 30, android.graphics.Bitmap.Config.ARGB_8888)
+            .let { b -> f.outputStream().use { b.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, it) } }
+        m.hold()
+        m.photoTaken(p, f)
+        assertTrue((m.state as Sheet.Saved).photo)
+        assertEquals(1, SyncQueue.ops(ctx).filterIsInstance<Op.PutPhoto>().size)
+        return p
+    }
+
+    @Test fun undoDropsThePhotoOpAndFile() {
+        val m = model("a")
+        val p = withPhoto(m)
+        m.undo()
+        assertTrue(SyncQueue.ops(ctx).none { it is Op.PutPhoto })
+        assertFalse(m.photoFile(p).exists())
+    }
+
+    @Test fun switchCarMovesThePhoto() {
+        val m = model("a")
+        val p = withPhoto(m)
+        m.switchCar("b")
+        val n = (m.state as Sheet.Saved)
+        assertTrue(n.photo)
+        val op = SyncQueue.ops(ctx).filterIsInstance<Op.PutPhoto>().single()
+        assertEquals("b", op.carId); assertEquals(n.park.id, op.parkId); assertEquals(m.photoFile(n.park).path, op.file)
+        assertTrue(java.io.File(op.file).exists()); assertFalse(m.photoFile(p).exists())
+    }
+
+    @Test fun switchCarHoldsTheSheet() {
+        val m = model("a")
+        m.result("지하 4층 A 1")
+        m.switchCar("b")
+        assertTrue(m.held)
+        m.timeout((m.state as Sheet.Saved).park.id)
+        assertEquals(0, closed)
+    }
 }

@@ -386,11 +386,11 @@ private fun Manual(m: ListenModel, s: Sheet.Manual, f: Faces, acts: SheetActions
             }
         }
         if (s.why == ManualWhy.NO_PACK) {
-            if (s.downloading) Text("받고 있어요. Wi-Fi에 연결되면 받아져요", style = ts(13.5.sp, color = MU))
+            if (s.downloading) Text("다 받으면 다시 열어 주세요", style = ts(13.5.sp, color = MU))
             else Pill("Wi-Fi에서 음성팩 받기", acts.downloadPack, size = 13.5.sp, modifier = Modifier.fillMaxWidth())
         }
         if (s.floors.isNotEmpty()) Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-            Text("이 주차장에서 썼던 층", style = ts(12.5.sp, color = MU))
+            Text("이 차가 썼던 층", style = ts(12.5.sp, color = MU))
             FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 s.floors.forEach { fl ->
                     val on = fl == floor

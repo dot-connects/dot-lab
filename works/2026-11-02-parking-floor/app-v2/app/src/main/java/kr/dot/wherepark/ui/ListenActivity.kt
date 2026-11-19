@@ -60,7 +60,17 @@ class ListenActivity : ComponentActivity() {
                 photo = ::takePhoto,
             ))
         }
-        begin()
+        val restored = savedInstanceState?.getString(SHOT_CAR)?.let { c ->
+            val id = savedInstanceState.getLong(SHOT_PARK)
+            kr.dot.wherepark.data.ParkStore.history(this, c).firstOrNull { it.id == id }?.let { p -> p to File(savedInstanceState.getString(SHOT_FILE)!!) }
+        }
+        if (restored != null) { shot = restored; model.restore(restored.first) } else begin()
+    }
+
+    /** Keeps the pending camera shot across a process death while the camera app is in front. */
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        shot?.let { (p, f) -> outState.putString(SHOT_CAR, p.carId); outState.putLong(SHOT_PARK, p.id); outState.putString(SHOT_FILE, f.path) }
     }
 
     private fun denials(): Int = Prefs.sp(this).getString(DENIALS, null)?.toIntOrNull() ?: 0
@@ -149,5 +159,8 @@ class ListenActivity : ComponentActivity() {
     private companion object {
         const val LANG = "ko-KR"
         const val DENIALS = "wp_mic_denials"
+        const val SHOT_CAR = "shot_car"
+        const val SHOT_PARK = "shot_park"
+        const val SHOT_FILE = "shot_file"
     }
 }

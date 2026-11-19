@@ -164,9 +164,29 @@ class ListenModel(
         val s = state as? Sheet.Saved ?: return
         if (id == s.park.carId) return
         val to = cars.firstOrNull { it.id == id } ?: return
+        held = true
+        // the photo follows the record: park it aside, undo drops the old op, then re-queue it under the new park id
+        val old = photoFile(s.park)
+        val moved = if (s.photo && old.exists()) File(old.path + ".move").takeIf { old.renameTo(it) } else null
         undoPark(s.park)
         car = to
         save(s.park.spot, s.park.raw, null, to)
+        val n = state as? Sheet.Saved ?: return
+        if (moved != null) {
+            val nf = photoFile(n.park)
+            if (moved.renameTo(nf)) {
+                SyncQueue.add(ctx, Op.PutPhoto(n.park.carId, n.park.id, nf.path))
+                SyncQueue.kick(ctx)
+                state = n.copy(photo = true)
+            }
+        }
+    }
+
+    /** Process death while the camera was open: back to the saved sheet of that park. */
+    fun restore(p: Park) {
+        held = true
+        car = cars.firstOrNull { it.id == p.carId } ?: car
+        state = Sheet.Saved(p, sentLine(p))
     }
 
     fun refreshSent() { (state as? Sheet.Saved)?.let { state = it.copy(sent = sentLine(it.park)) } }
@@ -196,10 +216,15 @@ class ListenModel(
         state = Sheet.Saved(p, sentLine(p))
     }
 
+    /** Also drops the undone park's photo op and file, so no orphan upload is left behind. */
     private fun undoPark(p: Park) {
-        synchronized(SyncQueue) {
-            if (ParkStore.latest(ctx, p.carId)?.id == p.id) ParkStore.undo(ctx, p.carId)
+        val undone = synchronized(SyncQueue) {
+            if (ParkStore.latest(ctx, p.carId)?.id != p.id) return@synchronized false
+            ParkStore.undo(ctx, p.carId)
+            SyncQueue.dropKey(ctx, Op.PutPhoto(p.carId, p.id, "").key)
+            true
         }
+        if (undone) photoFile(p).delete()
         SyncQueue.kick(ctx)
         WidgetRefresh.request(ctx)
     }
@@ -261,7 +286,9 @@ class ListenModel(
         val long = maxOf(src.width, src.height)
         val m = Matrix()
         if (long > 1600) m.postScale(1600f / long, 1600f / long)
-        when (ExifInterface(f.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)) {
+        val orientation = runCatching { ExifInterface(f.path).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL) }
+            .getOrDefault(ExifInterface.ORIENTATION_NORMAL)
+        when (orientation) {
             ExifInterface.ORIENTATION_ROTATE_90 -> m.postRotate(90f)
             ExifInterface.ORIENTATION_ROTATE_180 -> m.postRotate(180f)
             ExifInterface.ORIENTATION_ROTATE_270 -> m.postRotate(270f)
