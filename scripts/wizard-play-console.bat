@@ -183,13 +183,18 @@ $Apps = @{
            Aab = (Join-Path $env:LOCALAPPDATA 'catchpet-build\app\outputs\bundle\release\app-release.aab') }
   '2' = @{ Key = 'DUO';   Name = '따로 같이 네컷'; Kind = '앱';   Pkg = '(T-0188 에서 정함)'; Aab = '' }
   '3' = @{ Key = 'PARK';  Name = '주차 앱';        Kind = '앱';   Pkg = '(T-0189 에서 정함)'; Aab = '' }
+  '4' = @{ Key = 'STAND'; Name = 'Stand Screen';   Kind = '앱';   Pkg = 'kr.dot.standscreen';
+           Aab = (Join-Path $env:LOCALAPPDATA 'standby-build\standby\outputs\bundle\publicRelease\standby-public-release.aab') }
 }
+# Stand Screen (T-0162, 0.6.2 final 2026-11-19): Play answers are in works/2026-11-09-standby/docs/play-declarations.md.
+$StandDocs = 'C:\DC\DD\dot-lab\works\2026-11-09-standby\docs\play-declarations.md'
+$StandKey = Join-Path $env:USERPROFILE '.standscreen\upload.jks'
 
 function Pick-App {
-  Say '어느 앱인가요?   1) 리얼뽑기   2) 따로 같이 네컷   3) 주차 앱'
+  Say '어느 앱인가요?   1) 리얼뽑기   2) 따로 같이 네컷   3) 주차 앱   4) Stand Screen'
   $n = Read-Host '  번호 [Enter = 1]'
   if (-not $n) { $n = '1' }
-  if (-not $Apps.ContainsKey($n)) { Warn '1~3 중에서 고르세요. 리얼뽑기로 진행합니다.'; $n = '1' }
+  if (-not $Apps.ContainsKey($n)) { Warn '1~4 중에서 고르세요. 리얼뽑기로 진행합니다.'; $n = '1' }
   return $Apps[$n]
 }
 
@@ -210,13 +215,13 @@ function Show-Dday($App) {
 function Notes-File($App) { Join-Path $env:USERPROFILE ".dot-play-feedback-$($App.Key).txt" }
 
 Clear-Host
-Write-Host "`n  Google Play 출시 위자드 — 리얼뽑기 · 따로 같이 네컷 · 주차 앱 (계정 하나, 테스트 그룹 하나)" -ForegroundColor Cyan
+Write-Host "`n  Google Play 출시 위자드 — 리얼뽑기 · 따로 같이 네컷 · 주차 앱 · Stand Screen (계정 하나, 테스트 그룹 하나)" -ForegroundColor Cyan
 Note "진행 기록: $StateFile (비밀 정보 없음)"
 Write-Host ''
 $dev = St-Get 'DEV_NAME'; $grp = St-Get 'TESTER_GROUP'
 Say ("개발자 계정: " + $(if (St-Get 'SIGNUP_DATE') { "$dev ($(St-Get 'SIGNUP_DATE') 가입)" } else { '아직' }))
 Say ("테스트 그룹: " + $(if ($grp) { $grp } else { '아직' }))
-foreach ($k in '1','2','3') {
+foreach ($k in '1','2','3','4') {
   $a = $Apps[$k]
   if (St-Get "$($a.Key)_TRACK") {
     $t = St-Get "$($a.Key)_TRADES"
@@ -227,7 +232,7 @@ foreach ($k in '1','2','3') {
 Write-Host ''
 Say '1) 개발자 계정 만들기            — 지금 (5단계)'
 Say '2) 테스트 그룹 만들기            — 지금, 1번과 같이 해도 됨 (2단계)'
-Say '3) 앱 비공개 테스트 시작         — 앱 만들기 → 7번(1~4단계) → Claude 가 AAB 를 만든 뒤 이어서 (3단계)'
+Say '3) 앱 비공개 테스트 시작         — 앱 만들기 → (리얼뽑기: 7번 1~4단계 / Stand Screen: 업로드 키) → Claude 가 AAB 를 만든 뒤 이어서 (3단계)'
 Say '4) ACT Party 로 테스터 맞교환    — 보충용: 소개 페이지·릴스로 12명이 안 모일 때 (4단계)'
 Say '5) 참여 인원 기록 · 14일 날짜   — 사람이 늘거나 줄 때마다'
 Say '6) 프로덕션(정식 출시) 신청      — 12명 × 14일이 지난 뒤 (2단계)'
@@ -361,6 +366,24 @@ switch ($part) {
     else { $script:Skipped += '메뉴 7번 1~4단계 → Claude 가 AAB 준비 → 메뉴 3번 다시'; Wait-Enter; break }
   }
 
+  # Stand Screen: the operator makes the upload key once, then Claude builds the signed AAB (bundlePublicRelease)
+  if ($K -eq 'STAND' -and -not (St-Get 'STAND_AAB_READY')) {
+    Write-Host ''
+    Warn 'AAB 를 올리기 전에 업로드 키가 필요해요 (한 번만).'
+    if (Test-Path $StandKey) { Write-Host "  ✓ 업로드 키가 이미 있어요: $StandKey" -ForegroundColor Green }
+    elseif (Confirm-Yes '지금 업로드 키를 만들까요? (비밀번호는 자동 생성, 화면에 안 나와요)') {
+      & python 'C:\DC\DD\dot-lab\works\2026-11-09-standby\app\tools\make_upload_key.py' | Out-Host
+      if (Test-Path $StandKey) { St-Set 'STAND_KEY' (Today) } else { Warn '키를 못 만들었어요. 위 메시지를 캡처해서 Claude 에게 보내 주세요.' }
+    }
+    if (Test-Path $StandKey) {
+      Warn "$(Split-Path $StandKey) 폴더를 USB·클라우드 등 PC 밖에 백업하세요. 잃으면 Google 에 키 재설정을 요청해야 해요."
+      Step "Claude 에게 'Stand Screen AAB 만들어 줘' 라고 보내요 (아무 세션이나 — T-0162 에 순서가 있어요)"
+      Step 'Claude 가 AAB 경로를 알려 주면 메뉴 3번 → 4) Stand Screen 을 다시 열어요'
+      if (Confirm-Yes 'Claude 가 이미 "AAB 준비됐어요" 라고 했나요?') { St-Set 'STAND_AAB_READY' (Today) }
+    }
+    if (-not (St-Get 'STAND_AAB_READY')) { $script:Skipped += 'Stand Screen 업로드 키 → Claude 가 AAB 준비 → 메뉴 3번 다시'; Wait-Enter; break }
+  }
+
   Stage '비공개 테스트 트랙 + AAB 올리기'
   Step '왼쪽 "테스트 및 출시" → "테스트" → "비공개 테스트" → 기본 트랙(알파) "트랙 관리"'
   Step "테스터 탭: 'Google 그룹' 칸에 $(St-Get 'TESTER_GROUP') 전체 주소 입력 → 칩으로 바뀌면 저장 · 피드백 이메일 입력"
@@ -374,6 +397,10 @@ switch ($part) {
   Write-Host ''
   Warn '대시보드 "앱 설정" 할 일(개인정보 처리방침 URL · 앱 액세스 · 광고 · 콘텐츠 등급 · 타겟층 · 데이터 보안 등)이 남아 있으면 검토로 못 보내요.'
   Note '그 답안은 Claude 가 미리 문서로 준비해 둡니다. 막히는 칸은 캡처해서 보내 주세요. 첫 검토는 며칠 걸릴 수 있어요.'
+  if ($K -eq 'STAND') {
+    Say "Stand Screen 답안(권한 신고 4개 · 데이터 보안 · 콘텐츠 등급 · 타겟층 · 앱 액세스): $StandDocs"
+    if (Confirm-Yes '답안 문서를 메모장으로 열까요?') { Start-Process notepad.exe $StandDocs }
+  }
   if (Confirm-Yes '검토 보내기까지 했나요?') { St-Set "$($K)_TRACK" (Today) } else { $script:Skipped += "$($App.Name) 비공개 테스트 출시"; Wait-Enter; break }
   Wait-Enter 'Enter 로 다음'
 

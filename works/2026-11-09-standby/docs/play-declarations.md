@@ -74,15 +74,16 @@ no exact-alarm declaration form. If the Console still asks, paste:
 
 Why "No": the only data leaving the device is the chosen city's latitude/longitude for the weather (Open-Meteo,
 `api.open-meteo.com`). That is not the user's location (no location permission; the city is picked from a list), it is not
-linked to a user, and it is not stored by us. Notifications, calendar and photos are processed on the device only
-("processed ephemerally on device" is not "collected" in Play's definition).
+linked to a user, and it is not stored by us. Notifications, calendar, photos and app usage
+(the 앱 바로가기 card's 최근/자주 사용, PACKAGE_USAGE_STATS, optional) are processed on the device only ("processed
+ephemerally on device" is not "collected" in Play's definition).
 
 **KO (설명 칸이 있으면)**
-> 알림·캘린더·사진은 폰 안에서만 읽고 외부로 보내지 않습니다. 날씨를 위해 사용자가 고른 도시의 위도·경도만 Open-Meteo에
+> 알림·캘린더·사진·앱 사용 기록은 폰 안에서만 읽고 외부로 보내지 않습니다. 날씨를 위해 사용자가 고른 도시의 위도·경도만 Open-Meteo에
 > 보내며, 이는 기기 위치가 아니고 사용자와 연결되지 않습니다. 광고, 분석 도구, 계정이 없습니다.
 
 **EN**
-> Notifications, calendar and photos are read on the device and never sent. For weather, only the latitude/longitude of
+> Notifications, calendar, photos and app usage are read on the device and never sent. For weather, only the latitude/longitude of
 > the city the user picked is sent to Open-Meteo; it is not the device location and not linked to the user. No ads, no
 > analytics, no account.
 
@@ -102,7 +103,7 @@ linked to a user, and it is not stored by us. Notifications, calendar and photos
 
 **EN**
 > No login. Turn the screen on and plug in the charger, or add the Stand Screen quick-settings tile and tap it, to see
-> the screen. Notification access, calendar and photo folders are optional (Settings → 권한, Settings → 사진).
+> the screen. Notification access, calendar, usage access and photo folders are optional (Settings → 정보 → 권한, Settings → 카드 → 추억 · 사진 폴더).
 
 ## 8. Tester invite (closed test)
 
