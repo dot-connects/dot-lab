@@ -35,7 +35,7 @@ Drafted 2026-11-18. Lab copy rules: no "AI" word in the first line, no "무료" 
 
 ## 그래픽
 - 아이콘 512×512: `out/store-icon-512.png` (있음).
-- 그래픽 이미지 1024×500: Claude 가 앱 그림으로 만든다 (아직).
+- 그래픽 이미지 1024×500: `store/graphics/feature-1024x500.png` (있음, 11-19).
 - 휴대전화 스크린샷 4장 (운영자가 폰에서 캡처 → Claude 가 다듬음):
 
 ## 찍을 화면
