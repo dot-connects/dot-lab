@@ -96,7 +96,6 @@ async function route(req, env, store, ctx) {
 
   const me = await member(req, store);
   if (!me) return fail(401, "auth");
-  if (!me.lastSeen || now - me.lastSeen >= 60_000) await store.touchMember(me.id, now);
 
   if (req.method === "POST" && path === "/v2/invites") {
     const code = newCode(), expiresAt = now + DAY;
@@ -199,6 +198,7 @@ async function route(req, env, store, ctx) {
         return json({ ok: true });
       }
       if (req.method === "GET") {
+        if (!cur.park.photo) return fail(404, "photo");
         const object = await env.PHOTOS.get(key);
         return object ? new Response(object.body, { headers: { "content-type": "image/jpeg" } }) : fail(404, "photo");
       }
@@ -210,7 +210,7 @@ async function route(req, env, store, ctx) {
     const id = target ? target[1] : me.id;
     const victim = await store.member(id);
     if (!victim || victim.groupId !== me.groupId) return fail(404, "member");
-    if (id !== me.id && !me.owner && now - (victim.lastSeen ?? victim.created) <= 30 * DAY) return fail(403, "owner");
+    if (id !== me.id && !me.owner && (victim.owner || now - (victim.lastSeen ?? victim.created) <= 30 * DAY)) return fail(403, "owner");
     const rest = (await store.members(me.groupId)).filter(x => x.id !== id);
     await store.removeMember(me.groupId, id);
     if (!rest.length) { await deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }

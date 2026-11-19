@@ -32,7 +32,8 @@ def main():
     if args.remote == args.local:
         parser.error("choose exactly one of --remote or --local")
     location = "--remote" if args.remote else "--local"
-    for statement in MIGRATION.read_text(encoding="utf-8").split(";"):
+    sql = chr(10).join(l for l in MIGRATION.read_text(encoding="utf-8").splitlines() if not l.lstrip().startswith("--"))
+    for statement in sql.split(";"):
         statement = statement.strip()
         if not statement:
             continue

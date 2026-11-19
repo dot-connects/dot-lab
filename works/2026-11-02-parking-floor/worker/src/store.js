@@ -69,6 +69,10 @@ export class D1Store {
     const r = await this.db.prepare("DELETE FROM parks2 WHERE group_id=? AND car_id=? AND json_extract(json,'$.id')=? AND updated=?").bind(groupId, carId, cur.park.id, cur.updated).run();
     return (r.meta?.changes ?? 0) > 0;
   }
+  async expiredPhotos(cutoff) {
+    const { results } = await this.db.prepare("SELECT group_id, car_id, json, prev_json FROM parks2 WHERE (json_extract(json,'$.atMs') < ?1 AND json_extract(json,'$.photo') = 1) OR (prev_json IS NOT NULL AND json_extract(prev_json,'$.park.atMs') < ?1 AND json_extract(prev_json,'$.park.photo') = 1)").bind(cutoff).all();
+    return results.flatMap(r => photoKeys(r.group_id, r.car_id, JSON.parse(r.json), r.prev_json ? JSON.parse(r.prev_json) : null, cutoff));
+  }
   async expirePhotos(cutoff) {
     await this.db.prepare("UPDATE parks2 SET json = json_set(json, '$.photo', json('false')) WHERE json_extract(json, '$.atMs') < ? AND json_extract(json, '$.photo') = 1").bind(cutoff).run();
     await this.db.prepare("UPDATE parks2 SET prev_json = json_set(prev_json, '$.park.photo', json('false')) WHERE prev_json IS NOT NULL AND json_extract(prev_json, '$.park.atMs') < ? AND json_extract(prev_json, '$.park.photo') = 1").bind(cutoff).run();
@@ -93,6 +97,8 @@ export class D1Store {
     ).bind(groupId, JSON.stringify(v.park), v.by, v.byId, v.updated).run();
   }
 }
+
+const photoKeys = (groupId, carId, park, prev, cutoff) => [park, prev?.park].filter(p => p && p.photo && p.atMs < cutoff).map(p => ({ groupId, carId, parkId: p.id }));
 
 const rowMember = r => ({
   id: r.id, groupId: r.group_id, name: r.name, secretHash: r.secret_hash, fcmToken: r.fcm_token, owner: !!r.owner, created: r.created, lastSeen: r.last_seen,
@@ -134,6 +140,11 @@ export class MemoryStore {
     const now = await this.park2(groupId, carId);
     if (!now || now.park.id !== cur.park.id || now.updated !== cur.updated) return false;
     await this.removePark2(groupId, carId); return true;
+  }
+  async expiredPhotos(cutoff) {
+    const out = [];
+    for (const [groupId, group] of this.parks2ByGroup) for (const [carId, v] of group) out.push(...photoKeys(groupId, carId, v.park, v.prev, cutoff));
+    return out;
   }
   async expirePhotos(cutoff) {
     for (const group of this.parks2ByGroup.values()) for (const v of group.values()) {

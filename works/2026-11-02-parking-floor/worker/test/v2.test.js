@@ -115,24 +115,33 @@ test("photo size, current id and replacement cleanup", async () => {
   assert.equal(objects.size, 0);
 });
 
-test("inactive member threshold and null lastSeen fallback", async () => {
+test("inactive member threshold, null lastSeen fallback, owner never removable by non-owner", async () => {
   const { call, family, store } = setup();
   const { owner, guest } = await family();
-  const victim = await store.member(owner.memberId);
-  victim.lastSeen = Date.now() - 29 * 86400_000;
+  const ownerRow = await store.member(owner.memberId);
+  ownerRow.lastSeen = Date.now() - 31 * 86400_000;
   assert.equal((await call("DELETE", `/v2/members/${owner.memberId}`, null, guest.token)).status, 403);
-  victim.lastSeen = Date.now() - 31 * 86400_000;
-  assert.equal((await call("DELETE", `/v2/members/${owner.memberId}`, null, guest.token)).status, 200);
-  const code = (await call("POST", "/v2/invites", null, guest.token)).body.code;
+  ownerRow.lastSeen = Date.now();
+  const code = (await call("POST", "/v2/invites", null, owner.token)).body.code;
   const other = (await call("POST", "/v2/join", { code, name: "Other" })).body;
-  const guestRow = await store.member(guest.memberId);
-  guestRow.owner = false;
   const otherRow = await store.member(other.memberId);
+  otherRow.lastSeen = Date.now() - 29 * 86400_000;
+  assert.equal((await call("DELETE", `/v2/members/${other.memberId}`, null, guest.token)).status, 403);
   otherRow.lastSeen = null;
   otherRow.created = Date.now() - 29 * 86400_000;
   assert.equal((await call("DELETE", `/v2/members/${other.memberId}`, null, guest.token)).status, 403);
   otherRow.created = Date.now() - 31 * 86400_000;
   assert.equal((await call("DELETE", `/v2/members/${other.memberId}`, null, guest.token)).status, 200);
+});
+
+test("a v1 authenticated request refreshes last_seen", async () => {
+  const { call, family, store } = setup();
+  const { guest } = await family();
+  const row = await store.member(guest.memberId);
+  row.lastSeen = Date.now() - 120_000;
+  const before = row.lastSeen;
+  assert.equal((await call("GET", "/v1/park", null, guest.token)).status, 200);
+  assert.ok((await store.member(guest.memberId)).lastSeen > before);
 });
 
 test("v1 final-member deletion removes v2 storage and photos", async () => {
@@ -161,9 +170,7 @@ test("member removal, owner handoff, group cleanup and scheduled expiry", async 
   const a = await family(), b = await family();
   assert.equal((await call("DELETE", `/v2/members/${b.guest.memberId}`, null, a.owner.token)).status, 404);
   assert.equal((await call("DELETE", `/v2/members/${a.owner.memberId}`, null, a.guest.token)).status, 403);
-  const ownerRow = await store.member(a.owner.memberId);
-  ownerRow.lastSeen = Date.now() - 31 * 86400_000;
-  assert.equal((await call("DELETE", `/v2/members/${a.owner.memberId}`, null, a.guest.token)).status, 200);
+  assert.equal((await call("DELETE", "/v2/me", null, a.owner.token)).status, 200);
   assert.equal((await store.member(a.guest.memberId)).owner, true);
   const gid = a.guest.groupId;
   await call("PUT", "/v2/cars/c_1234abcd", { car: car() }, a.guest.token);
@@ -285,4 +292,26 @@ test("two concurrent uploads for the same park leave the object", async () => {
   assert.deepEqual([a.status, b.status], [200, 200]);
   assert.equal((await store.park2(owner.groupId, id)).park.photo, true);
   assert.equal(objects.size, 1);
+});
+
+test("photo GET needs photo=true on the current park; scheduled deletes expired objects", async () => {
+  const { call, family, store, env, objects } = setup();
+  const { owner } = await family();
+  const id = "c_1234abcd";
+  await call("PUT", `/v2/cars/${id}`, { car: car() }, owner.token);
+  await call("PUT", `/v2/cars/${id}/park`, { park: park(100) }, owner.token);
+  env.PHOTOS.put("g/x", new Uint8Array(1));
+  objects.set(`g/${owner.groupId}/${id}/100.jpg`, new Uint8Array(1));
+  assert.equal((await call("GET", `/v2/cars/${id}/photo?park=100`, null, owner.token)).status, 404);
+  objects.delete("g/x");
+  await call("PUT", `/v2/cars/${id}/photo?park=100`, new Uint8Array(1), owner.token, { "content-length": "1", "content-type": "image/jpeg" });
+  assert.equal((await call("GET", `/v2/cars/${id}/photo?park=100`, null, owner.token)).status, 200);
+  await call("PUT", `/v2/cars/${id}/park`, { park: park(200) }, owner.token);
+  await call("PUT", `/v2/cars/${id}/photo?park=200`, new Uint8Array(1), owner.token, { "content-length": "1", "content-type": "image/jpeg" });
+  const cur = await store.park2(owner.groupId, id);
+  cur.prev.park.photo = true;
+  objects.set(`g/${owner.groupId}/${id}/100.jpg`, new Uint8Array(1));
+  await scheduled({ scheduledTime: Date.now() + 31 * 86400_000 }, env, { waitUntil() {} }, store);
+  assert.equal(objects.size, 0);
+  assert.equal((await call("GET", `/v2/cars/${id}/photo?park=200`, null, owner.token)).status, 404);
 });

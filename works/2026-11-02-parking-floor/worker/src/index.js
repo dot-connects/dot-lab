@@ -61,6 +61,9 @@ export async function member(req, store) {
   if (!m) return null;
   const row = await store.member(m[1]);
   if (!row || row.secretHash !== (await sha256(m[2]))) return null;
+  // shared by v1 and v2 so every authenticated request keeps last_seen fresh (60 s throttle)
+  const now = Date.now();
+  if (!row.lastSeen || now - row.lastSeen >= 60_000) await store.touchMember(row.id, now);
   return row;
 }
 
@@ -200,7 +203,10 @@ export async function handle(req, env, store, ctx) {
 
 export async function scheduled(event, env, ctx, store) {
   if (!store) { const { D1Store } = await import("./store.js"); store = new D1Store(env.DB); }
-  await store.expirePhotos((event.scheduledTime || Date.now()) - 30 * 86400_000);
+  const cutoff = (event.scheduledTime || Date.now()) - 30 * 86400_000;
+  // objects first: a crash before the flag flip is retried next run (delete is idempotent)
+  for (const k of await store.expiredPhotos(cutoff)) await env.PHOTOS?.delete(`g/${k.groupId}/${k.carId}/${k.parkId}.jpg`);
+  await store.expirePhotos(cutoff);
 }
 
 export default {
