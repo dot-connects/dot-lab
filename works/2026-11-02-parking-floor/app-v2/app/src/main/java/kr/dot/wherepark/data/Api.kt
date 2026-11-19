@@ -165,6 +165,7 @@ object Api {
         synchronized(SyncQueue) {
             FamilyStore.save(ctx, j.getString("memberId"), j.getString("secret"), st.groupName, st.members)
             FamilyStore.setCarryOver(ctx, if (oldAlone) oldCars else emptyList())  // before the merge: carried cars keep their links
+            CarStore.setLocalOnly(ctx, emptySet())  // refusals belonged to the old family; carry-over decides these cars now
             Merge.write(ctx, st)
         }
         WidgetRefresh.request(ctx)
