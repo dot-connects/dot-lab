@@ -86,6 +86,7 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging:25.1.3")
     implementation("com.android.installreferrer:installreferrer:2.2")
     implementation("com.google.zxing:core:3.5.3")
+    implementation("androidx.fragment:fragment:1.8.5") // lintVital: transitive fragment 1.1.0 trips InvalidFragmentVersionForActivityResult
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation(bom)
