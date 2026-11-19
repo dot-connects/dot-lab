@@ -111,9 +111,9 @@ class WidgetConfigActivity : ComponentActivity() {
         val app = applicationContext
         val mgr = AppWidgetManager.getInstance(app)
         if (spec.appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            // from the app: the launcher asks where to put it; the new widget picks this spec up on its first draw
+            // from the app: the launcher asks where to put it; the pin callback moves this spec to the new id
             WidgetSpecs.putNext(app, spec)
-            mgr.requestPinAppWidget(ComponentName(app, WidgetReceiver::class.java), null, null)
+            mgr.requestPinAppWidget(ComponentName(app, WidgetReceiver::class.java), null, WidgetReceiver.pinnedCallback(app))
             finish(); return
         }
         WidgetSpecs.put(app, spec)

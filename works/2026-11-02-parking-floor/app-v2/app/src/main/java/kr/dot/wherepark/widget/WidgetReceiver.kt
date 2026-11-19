@@ -48,13 +48,20 @@ object WidgetSpecs {
         }.getOrNull()
     }
 
-    /** A widget with no settings yet takes the one chosen in the app before pinning (once), else the defaults. */
-    fun get(ctx: Context, id: Int): WidgetSpec = spec(id, Prefs.obj(ctx, KEY).optJSONObject(id.toString()))
-        ?: spec(id, Prefs.obj(ctx, KEY).optJSONObject(NEXT))?.also { put(ctx, it); synchronized(this) { val all = Prefs.obj(ctx, KEY); all.remove(NEXT); Prefs.put(ctx, KEY, all) } }
-        ?: default(id).also { put(ctx, it) }   // stored so a later app-pinned widget's settings are not taken by this one
+    /** Read-only: the widget's saved settings, else the defaults. Only the config screen and [claimNext] write. */
+    fun get(ctx: Context, id: Int): WidgetSpec = spec(id, Prefs.obj(ctx, KEY).optJSONObject(id.toString())) ?: default(id)
 
     /** Settings for the widget the app is about to pin (requestPinAppWidget gives no id up front). */
     fun putNext(ctx: Context, s: WidgetSpec) = put(ctx, s, NEXT)
+
+    /** The pin callback hands the new id: the pending settings move to it, read and written under one lock. */
+    fun claimNext(ctx: Context, id: Int): Boolean = synchronized(this) {
+        val all = Prefs.obj(ctx, KEY)
+        val next = all.optJSONObject(NEXT) ?: return@synchronized false
+        all.put(id.toString(), next); all.remove(NEXT)
+        Prefs.put(ctx, KEY, all)
+        true
+    }
 
     fun put(ctx: Context, s: WidgetSpec, key: String = s.appWidgetId.toString()) = synchronized(this) {
         val all = Prefs.obj(ctx, KEY)
@@ -81,6 +88,20 @@ object WidgetSpecs {
 class WidgetReceiver : AppWidgetProvider() {
     companion object {
         const val ACTION_MIDNIGHT = "kr.dot.wherepark.WIDGET_MIDNIGHT"
+        const val ACTION_PINNED = "kr.dot.wherepark.WIDGET_PINNED"
+        private const val TOKEN = "wp_widget_token"
+
+        /** Per-install secret on our own PendingIntents: the receiver is exported (launcher updates), our actions are not public. */
+        internal fun token(ctx: Context): String = synchronized(this) {
+            Prefs.sp(ctx).getString(TOKEN, null) ?: java.util.UUID.randomUUID().toString().also { Prefs.sp(ctx).edit().putString(TOKEN, it).commit() }
+        }
+
+        internal fun ours(ctx: Context, i: Intent) = i.getStringExtra(TOKEN) == token(ctx)
+
+        /** Broadcast the system fires after requestPinAppWidget succeeds; it adds EXTRA_APPWIDGET_ID (so the intent is mutable). */
+        fun pinnedCallback(ctx: Context): PendingIntent = PendingIntent.getBroadcast(ctx, 2,
+            Intent(ctx, WidgetReceiver::class.java).setAction(ACTION_PINNED).putExtra(TOKEN, token(ctx)),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE)
         private val MIC_SLOTS = intArrayOf(R.id.m0, R.id.m1, R.id.m2, R.id.m3)
         private val ROW_SLOTS = intArrayOf(R.id.r0, R.id.r1, R.id.r2, R.id.r3)
         private val ZONE: ZoneId = ZoneId.of("Asia/Seoul")
@@ -127,11 +148,17 @@ class WidgetReceiver : AppWidgetProvider() {
             val pend = WidgetRenderer.pending(ctx)
             val wall = wallpaper(ctx); val mic = micReady(ctx); val now = System.currentTimeMillis()
             val (shown, _) = WidgetRenderer.carsFor(spec, cars)
-            val views = sizes.mapIndexed { i, size ->
-                val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend)
-                size to views(ctx, id, out.rendered, shown) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
-            }.toMap()
-            mgr.updateAppWidget(id, RemoteViews(views))
+            val bitmaps = ArrayList<android.graphics.Bitmap>()
+            try {
+                val views = sizes.mapIndexed { i, size ->
+                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend)
+                    bitmaps += out.rendered.bitmap
+                    size to views(ctx, id, out.rendered, shown) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
+                }.toMap()
+                mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
+            } finally {
+                bitmaps.forEach { it.recycle() }
+            }
         }
 
         private fun views(ctx: Context, id: Int, r: Rendered, shown: List<kr.dot.wherepark.core.Car>, describe: (kr.dot.wherepark.core.Car) -> String): RemoteViews {
@@ -163,17 +190,30 @@ class WidgetReceiver : AppWidgetProvider() {
         fun armMidnight(ctx: Context) {
             val am = ctx.getSystemService(AlarmManager::class.java) ?: return
             val at = LocalDate.now(ZONE).plusDays(1).atTime(0, 1).atZone(ZONE).toInstant().toEpochMilli()
-            val pi = PendingIntent.getBroadcast(ctx, 1, Intent(ctx, WidgetReceiver::class.java).setAction(ACTION_MIDNIGHT),
+            val pi = PendingIntent.getBroadcast(ctx, 1, Intent(ctx, WidgetReceiver::class.java).setAction(ACTION_MIDNIGHT).putExtra(TOKEN, token(ctx)),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             am.setAndAllowWhileIdle(AlarmManager.RTC, at, pi)
         }
     }
 
+    /** Drawing every size takes longer than the main thread should: all work runs on a worker, the broadcast kept alive by goAsync. */
     override fun onReceive(context: Context, intent: Intent) {
-        when (intent.action) {
-            ACTION_MIDNIGHT, Intent.ACTION_BOOT_COMPLETED -> refreshAll(context)
-            else -> super.onReceive(context, intent)
-        }
+        val pending = goAsync()
+        Thread {
+            try {
+                when (intent.action) {
+                    Intent.ACTION_BOOT_COMPLETED -> refreshAll(context)
+                    ACTION_MIDNIGHT -> if (ours(context, intent)) refreshAll(context)
+                    ACTION_PINNED -> if (ours(context, intent)) {
+                        val id = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID)
+                        if (id != AppWidgetManager.INVALID_APPWIDGET_ID && WidgetSpecs.claimNext(context, id)) update(context, AppWidgetManager.getInstance(context), id)
+                    }
+                    else -> super.onReceive(context, intent)   // onUpdate / onAppWidgetOptionsChanged / onDeleted, on this worker
+                }
+            } finally {
+                pending.finish()
+            }
+        }.start()
     }
 
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
