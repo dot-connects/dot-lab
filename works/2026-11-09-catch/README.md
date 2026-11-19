@@ -5,6 +5,7 @@
 - 앱 0.6.0: 서명 AAB(API 36, 16KB 정렬). `cloudProject`(app/build.gradle.kts 맨 위)가 0이면 `bundleRelease` 가 멈춘다.
 - 다음: 운영자 `scripts/wizard-play-console.bat` 메뉴 7 1~4 → 프로젝트 번호 → `cloudProject` 넣고 AAB → 메뉴 3 업로드 →
   "앱 서명 키 인증서" SHA-256 → `worker/wrangler.toml` CERT_SHA256 → `npm test` → `npx wrangler@4 deploy`.
+- 스토어 그림 끝(11-19): 아이콘·그래픽 1024×500·스크린샷 4장(`store/shots/`, 다시 그리기: `StoreShotTest` -PstoreShots + `frame.py`). 업로드 묶음 = `C:\DC\ignore\catchpet-play\` — AAB 를 만들면 여기에도 넣는다.
 - 테스트 열기 전: 운영자에게 OpenAI 충전 확인(plan-release Task 13), `wrangler tail` 로 insufficient_quota 확인.
 - 업로드 키: `~/.catchpet-upload.jks`(백업 `C:\DC\ignore\catchpet-upload-key\`), 비밀번호는 사용자 환경변수 `CATCHPET_KS_PASS`.
 - 남은 Low(/done 11-19): Integrity 실패 원인 구분, 앱 시작 때 Integrity 준비, 구름 로드 메인 스레드, 사용 기록 없을 때 빈 구름, /quota 분당 한도 공유.
