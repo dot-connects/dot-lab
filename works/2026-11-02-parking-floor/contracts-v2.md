@@ -116,7 +116,7 @@ object WidgetRenderer { fun render(ctx, spec: WidgetSpec, cars: List<Car>, parks
 
 | 상황 | 규칙 |
 |---|---|
-| Op key | `car:{carId}`(PutCar·DelCar), `undo:{carId}`(Undo), `park:{carId}`(PutPark), `state:{carId}`(State), `photo:{carId}:{parkId}`. 각 op에 증가하는 `seq` |
+| Op key | `car:{carId}`(PutCar·DelCar), `undo:{carId}:{parkId}`(Undo, 여러 개가 쌓임), `park:{carId}`(PutPark), `state:{carId}`(State), `photo:{carId}:{parkId}`. 각 op에 증가하는 `seq` |
 | 처리 순서 | 종류 순 `car:` → `undo:` → `park:` → `state:` → `photo:`, 같은 종류 안에서는 seq 순. `DelCar`가 대기하면 그 차의 `undo:/park:/state:/photo:` op는 버림. **`PutPark`를 넣을 때 같은 차의 `state:` op는 버림**(새 기록이 운행 중 뒤에 오는 경우) |
 | State 합치기 | `State` 추가 때 같은 차 `PutPark`가 대기 중이면 그 park의 state만 바꿔 PutPark에 합침(State op 안 만듦). 아니면 `state:` op |
 | 큐 추가 | 같은 key가 있으면 새 op로 바꿈(seq 새로, 처리 순서는 위 종류 순이라 뒤집히지 않음). **모든 큐 읽기·쓰기는 `SyncQueue` 안의 한 lock**(`synchronized(SyncQueue)`) |
