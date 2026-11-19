@@ -60,12 +60,13 @@ object SyncEngine {
     fun pull(ctx: Context): Boolean {
         val gen = SyncQueue.generation(ctx)
         val st = Api.state(ctx).getOrNull() ?: return false
-        return Merge.state(ctx, st, gen)
+        return Merge.state(ctx, st, gen).also { if (it) WidgetRefresh.request(ctx) }
     }
 
     /** Applies one response. Drops and local writes happen only while [op] is still the queue's op for its key. false = retry. */
     private fun settle(ctx: Context, op: Op, auth: String, status: Int, body: org.json.JSONObject?): Boolean {
         var notice: String? = null
+        var refresh = false
         when {
             status in 200..299 -> SyncQueue.ifCurrent(ctx, op) { SyncQueue.drop(ctx, op.key, op.seq) }
             status == 409 -> SyncQueue.ifCurrent(ctx, op) {
@@ -74,17 +75,25 @@ object SyncEngine {
                     CarStore.remove(ctx, op.car.id); ParkStore.clearCar(ctx, op.car.id)
                     notice = "차는 4대까지예요"
                 } else {
-                    body?.optJSONObject("park")?.let { ParkStore.setFromServer(ctx, op.carId, Wire.park(it, op.carId)) }
+                    body?.optJSONObject("park")?.let { ParkStore.setFromServer(ctx, op.carId, Wire.park(it, op.carId)); refresh = true }
                 }
             }
             status == 401 -> FamilyStore.dropIfSame(ctx, auth)
             status == 400 || status == 404 || status == 413 -> {
                 Log.w("wp-sync", "dropped ${op.key}: $status")
-                SyncQueue.ifCurrent(ctx, op) { SyncQueue.drop(ctx, op.key, op.seq) }
+                SyncQueue.ifCurrent(ctx, op) {
+                    SyncQueue.drop(ctx, op.key, op.seq)
+                    // the server never stored this car: keep it (and its history) on this phone, say so
+                    if (op is Op.PutCar && CarStore.cars(ctx).any { it.id == op.car.id }) {
+                        CarStore.setLocalOnly(ctx, CarStore.localOnly(ctx) + op.car.id)
+                        notice = "가족과 나누지 못한 차가 있어요 (${op.car.name}). 이 폰에만 남아 있어요"
+                    }
+                }
             }
             else -> return false
         }
         notice?.let { notify(ctx, it) }
+        if (refresh) WidgetRefresh.request(ctx)
         return true
     }
 

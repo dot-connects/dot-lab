@@ -65,13 +65,20 @@ object FamilyStore {
     /** Join step 5: cars of a family that was only this phone, offered to the new family. */
     fun carryOver(ctx: Context): List<Car> = Prefs.arr(ctx, CARRY).toList(Wire::car)
     fun setCarryOver(ctx: Context, cars: List<Car>) = Prefs.put(ctx, CARRY, if (cars.isEmpty()) null else JSONArray(cars.map { Wire.carJson(it, 0) }))
-    fun declineCarryOver(ctx: Context) = Prefs.put(ctx, CARRY, null)
+    /** "No": the offered cars are gone from this phone now, so their Bluetooth links go too. */
+    fun declineCarryOver(ctx: Context) {
+        val gone = synchronized(SyncQueue) {
+            val have = CarStore.cars(ctx).map { it.id }.toSet()
+            carryOver(ctx).map { it.id }.filter { it !in have }.also { Prefs.put(ctx, CARRY, null) }
+        }
+        gone.forEach { kr.dot.wherepark.car.CarLink.unlink(ctx, it) }
+    }
 
     /** "Yes": same ids go up as PutCar (server key is (group, id)); records are not carried. */
     fun acceptCarryOver(ctx: Context) {
         synchronized(SyncQueue) {
             carryOver(ctx).forEach { CarStore.upsert(ctx, it); SyncQueue.add(ctx, Op.PutCar(it)) }
-            declineCarryOver(ctx)
+            Prefs.put(ctx, CARRY, null)
         }
         SyncQueue.kick(ctx)
     }

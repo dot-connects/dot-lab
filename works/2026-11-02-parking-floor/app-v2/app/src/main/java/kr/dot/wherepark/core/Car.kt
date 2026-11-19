@@ -3,6 +3,9 @@ package kr.dot.wherepark.core
 import java.time.Instant
 import java.time.ZoneId
 
+/** Contract id: "c_" + 8 lowercase hex (the Worker routes only ^c_[0-9a-f]{8}$). */
+fun newCarId(): String = "c_" + "%08x".format(java.security.SecureRandom().nextInt())
+
 data class Car(val id: String, val name: String, val color: Int, val plate: String?, val order: Int)
 
 enum class ParkState { PARKED, DRIVING }

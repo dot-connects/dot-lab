@@ -50,7 +50,7 @@ import kr.dot.wherepark.ui.ts
 
 /** 가족 초대 (mockup section 6, sender side): KakaoTalk, other apps, QR, code with [복사]. */
 @Composable
-internal fun InviteScreen(inv: Invite?, failed: Boolean, back: () -> Unit, kakao: (Invite) -> Unit, other: (Invite) -> Unit, copy: (Invite) -> Unit) =
+internal fun InviteScreen(inv: Invite?, failed: Boolean, back: () -> Unit, kakao: (Invite) -> Unit, other: (Invite) -> Unit, copy: (Invite) -> Unit, renew: () -> Unit = {}) =
     WScreen("가족 초대", onBack = back) {
         Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("같이 쓸 가족에게 보내요", Modifier.trimLine(26.4.sp), style = ts(22.sp, FontWeight.ExtraBold, lh = 1.2f, family = gro(800), ls = (-0.02).em))
@@ -80,6 +80,7 @@ internal fun InviteScreen(inv: Invite?, failed: Boolean, back: () -> Unit, kakao
                         Btn(if (copied) "복사됨" else "복사", BtnKind.NT, Modifier.width(84.dp), h = 44.dp, size = 14.sp, lead = { Ic("copy", 17.dp) }) { copy(inv); copied = true }
                     }
                 }
+                Btn("새 코드 만들기", BtnKind.GHOST, h = 44.dp, size = 14.sp, onClick = renew)
             }
         }
     }
@@ -91,13 +92,18 @@ class InviteActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        val app = applicationContext
-        Thread { Api.invite(app).let { r -> runOnUiThread { if (!isFinishing && !isDestroyed) r.fold({ invite = it }, { failed = true }) } } }.start()
+        load(false)  // reuses the stored invite: a rotation must not replace the code already sent
         setContent {
             WpTheme(AppPrefs.bigText(this)) {
                 InviteScreen(invite, failed, back = { finish() }, kakao = { InviteShare.sendKakao(this, it.link) },
-                    other = { InviteShare.sendOther(this, it.link) }, copy = { InviteShare.copyCode(this, it.code) })
+                    other = { InviteShare.sendOther(this, it.link) }, copy = { InviteShare.copyCode(this, it.code) }, renew = { load(true) })
             }
         }
+    }
+
+    private fun load(fresh: Boolean) {
+        val app = applicationContext
+        invite = null; failed = false
+        Thread { Api.invite(app, fresh).let { r -> runOnUiThread { if (!isFinishing && !isDestroyed) r.fold({ invite = it }, { failed = true }) } } }.start()
     }
 }

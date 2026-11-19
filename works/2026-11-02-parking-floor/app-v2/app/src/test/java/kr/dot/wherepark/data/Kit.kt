@@ -11,6 +11,11 @@ import org.json.JSONObject
 
 /** Scripted Api.transport; the default answers 200 {} and fails GET /v2/state so a pull never rewrites local data. */
 class FakeNet : Transport {
+    companion object {
+        val CAR_ID = Regex("^c_[0-9a-f]{8}$")
+        private val CAR_ROUTE = Regex("^/v2/cars/([^/?]*)")
+    }
+
     val calls = mutableListOf<String>()
     val auths = mutableListOf<String?>()
     var handler: (method: String, path: String, auth: String?, body: String?) -> Pair<Int, String?> = { m, p, _, _ ->
@@ -19,6 +24,8 @@ class FakeNet : Transport {
 
     override fun send(method: String, path: String, auth: String?, body: ByteArray?, contentType: String?): Pair<Int, String?> {
         calls += "$method $path"; auths += auth
+        // like the Worker: car routes match only ^c_[0-9a-f]{8}$, anything else is 404 "route"
+        CAR_ROUTE.find(path)?.let { if (!CAR_ID.matches(it.groupValues[1])) return 404 to """{"error":"route"}""" }
         return handler(method, path, auth, body?.toString(Charsets.UTF_8))
     }
 }

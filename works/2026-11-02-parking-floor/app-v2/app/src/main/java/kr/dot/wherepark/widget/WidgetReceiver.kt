@@ -120,6 +120,14 @@ class WidgetReceiver : AppWidgetProvider() {
 
         fun ids(ctx: Context): IntArray = AppWidgetManager.getInstance(ctx).getAppWidgetIds(ComponentName(ctx, WidgetReceiver::class.java))
 
+        /** WidgetRefresh hook: queued on the receiver's worker (never draws on the caller's thread, keeps draw order). */
+        fun requestAll(ctx: Context) {
+            val app = ctx.applicationContext
+            worker.execute {
+                try { refreshAll(app) } catch (e: RuntimeException) { android.util.Log.w("wp-widget", "refresh failed: $e") }
+            }
+        }
+
         fun refreshAll(ctx: Context) {
             val mgr = AppWidgetManager.getInstance(ctx)
             ids(ctx).forEach { update(ctx, mgr, it) }

@@ -12,7 +12,7 @@ class App : Application() {
         super.onCreate()
         Push.createChannels(this)
         kr.dot.wherepark.family.Referrer.captureOnce(this)
-        WidgetRefresh.hook = WidgetReceiver::refreshAll
+        WidgetRefresh.hook = WidgetReceiver::requestAll
         ListenModel.styleOf = WidgetSpecs::styleFor
     }
 }

@@ -95,11 +95,11 @@ class SyncQueueTest {
 
     // row: seq guard - a fix that lands during the send keeps its place
     @Test fun sentSeqNotCurrentKeepsOpAndLocalState() {
-        ParkStore.save(ctx, park("a", 1)); SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
+        ParkStore.save(ctx, park("c_0000000a", 1)); SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 1)))
         var n = 0
         net.handler = { m, _, _, _ ->
             if (m == "GET") 500 to null
-            else if (n++ == 0) { SyncQueue.add(ctx, Op.PutPark(park("a", 1, floor = 5))); 200 to "{}" } else 500 to null
+            else if (n++ == 0) { SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 1, floor = 5))); 200 to "{}" } else 500 to null
         }
         assertFalse(SyncEngine.run(ctx))
         val o = SyncQueue.ops(ctx).single() as Op.PutPark
@@ -108,11 +108,11 @@ class SyncQueueTest {
 
     // row: 409 stale/moved -> drop + server park written locally
     @Test fun conflictWritesServerParkWhenSeqMatches() {
-        ParkStore.save(ctx, park("a", 10)); SyncQueue.add(ctx, Op.PutPark(park("a", 10)))
-        net.handler = { m, _, _, _ -> if (m == "GET") 500 to null else 409 to """{"error":"stale","park":${Kit.serverPark(park("a", 20))}}""" }
+        ParkStore.save(ctx, park("c_0000000a", 10)); SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 10)))
+        net.handler = { m, _, _, _ -> if (m == "GET") 500 to null else 409 to """{"error":"stale","park":${Kit.serverPark(park("c_0000000a", 20))}}""" }
         SyncEngine.run(ctx)
         assertTrue(SyncQueue.ops(ctx).isEmpty())
-        val l = ParkStore.latest(ctx, "a")!!
+        val l = ParkStore.latest(ctx, "c_0000000a")!!
         assertEquals(20L, l.id); assertEquals("엄마", l.byName)
     }
 
@@ -125,20 +125,20 @@ class SyncQueueTest {
 
     // row: 409 response is applied only when seq matches
     @Test fun conflictIgnoredWhenSeqMoved() {
-        ParkStore.save(ctx, park("a", 10)); SyncQueue.add(ctx, Op.PutPark(park("a", 10)))
+        ParkStore.save(ctx, park("c_0000000a", 10)); SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 10)))
         var n = 0
         net.handler = { m, _, _, _ ->
             if (m == "GET") 500 to null
-            else if (n++ == 0) { SyncQueue.add(ctx, Op.PutPark(park("a", 10, floor = 7))); 409 to """{"error":"stale","park":${Kit.serverPark(park("a", 20))}}""" }
+            else if (n++ == 0) { SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 10, floor = 7))); 409 to """{"error":"stale","park":${Kit.serverPark(park("c_0000000a", 20))}}""" }
             else 500 to null
         }
         SyncEngine.run(ctx)
-        assertEquals(10L, ParkStore.latest(ctx, "a")!!.id); assertEquals(1, SyncQueue.ops(ctx).size)
+        assertEquals(10L, ParkStore.latest(ctx, "c_0000000a")!!.id); assertEquals(1, SyncQueue.ops(ctx).size)
     }
 
     // row: 409 full -> drop + local car deleted + notice
     @Test fun carFullDeletesLocalCarAndNotifies() {
-        CarStore.upsert(ctx, car("a")); SyncQueue.add(ctx, Op.PutCar(car("a")))
+        CarStore.upsert(ctx, car("c_0000000a")); SyncQueue.add(ctx, Op.PutCar(car("c_0000000a")))
         net.handler = { m, _, _, _ -> if (m == "GET") 500 to null else 409 to """{"error":"full"}""" }
         SyncEngine.run(ctx)
         assertTrue(CarStore.cars(ctx).isEmpty()); assertTrue(SyncQueue.ops(ctx).isEmpty())
@@ -154,7 +154,7 @@ class SyncQueueTest {
 
     // row: other/network -> retry
     @Test fun serverErrorAndOfflineRetryKeepOp() {
-        SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
+        SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 1)))
         net.handler = { _, _, _, _ -> 503 to null }
         assertFalse(SyncEngine.run(ctx)); assertEquals(1, SyncQueue.ops(ctx).size)
         net.handler = { _, _, _, _ -> throw java.io.IOException("offline") }
@@ -176,7 +176,7 @@ class SyncQueueTest {
 
     // row: 401 only if the request's auth is still the stored one (join in the middle)
     @Test fun staleAuth401DoesNotClearNewAuth() {
-        SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
+        SyncQueue.add(ctx, Op.PutPark(park("c_0000000a", 1)))
         var n = 0
         net.handler = { m, _, _, _ ->
             if (m == "GET") 500 to null
@@ -188,12 +188,12 @@ class SyncQueueTest {
 
     // row: after 401, new family from pendingGroup re-uploads the local car under the same id
     @Test fun newFamilyAfter401ReuploadsCarWithSameId() {
-        CarStore.upsert(ctx, car("c_1"))
+        CarStore.upsert(ctx, car("c_00000001"))
         FamilyStore.dropIfSame(ctx, "m1.s1")
         FamilyStore.setPendingGroup(ctx, "나", "새 가족")
         net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
         assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_1"), net.calls.filter { !it.startsWith("GET") })
+        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001"), net.calls.filter { !it.startsWith("GET") })
         assertEquals("m9.s9", FamilyStore.auth(ctx)); assertNull(FamilyStore.pendingGroup(ctx)); assertTrue(SyncQueue.ops(ctx).isEmpty())
     }
 
@@ -208,26 +208,26 @@ class SyncQueueTest {
     // fix round: ops queue while a pendingGroup waits; the park is uploaded after the group exists
     @Test fun parkQueuedWhilePendingGroupIsUploadedAndSurvivesMerge() {
         FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        CarStore.upsert(ctx, car("c_1")); ParkStore.save(ctx, park("c_1", 5)); SyncQueue.add(ctx, Op.PutPark(park("c_1", 5)))
-        assertEquals(listOf("park:c_1"), keys())
+        CarStore.upsert(ctx, car("c_00000001")); ParkStore.save(ctx, park("c_00000001", 5)); SyncQueue.add(ctx, Op.PutPark(park("c_00000001", 5)))
+        assertEquals(listOf("park:c_00000001"), keys())
         net.handler = { m, p, _, _ ->
             when {
                 p == "/v2/groups" -> 200 to Kit.groupJson()
-                m == "GET" -> 200 to """{"groupName":"새 가족","members":[],"cars":[${Wire.carJson(car("c_1"))}],"parks":{"c_1":${Kit.serverPark(park("c_1", 5))}}}"""
+                m == "GET" -> 200 to """{"groupName":"새 가족","members":[],"cars":[${Wire.carJson(car("c_00000001"))}],"parks":{"c_00000001":${Kit.serverPark(park("c_00000001", 5))}}}"""
                 else -> 200 to "{}"
             }
         }
         assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_1", "PUT /v2/cars/c_1/park"), net.calls.filter { !it.startsWith("GET") })
-        assertEquals(5L, ParkStore.latest(ctx, "c_1")!!.id); assertEquals(5L, ParkStore.latest(ctx, "c_1")!!.atMs)
+        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001", "PUT /v2/cars/c_00000001/park"), net.calls.filter { !it.startsWith("GET") })
+        assertEquals(5L, ParkStore.latest(ctx, "c_00000001")!!.id); assertEquals(5L, ParkStore.latest(ctx, "c_00000001")!!.atMs)
     }
 
     @Test fun reFamilyAfter401UploadsLatestPark() {
-        CarStore.upsert(ctx, car("c_1")); ParkStore.save(ctx, park("c_1", 7))
+        CarStore.upsert(ctx, car("c_00000001")); ParkStore.save(ctx, park("c_00000001", 7))
         FamilyStore.dropIfSame(ctx, "m1.s1"); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
         net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
         assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_1", "PUT /v2/cars/c_1/park"), net.calls.filter { !it.startsWith("GET") })
+        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001", "PUT /v2/cars/c_00000001/park"), net.calls.filter { !it.startsWith("GET") })
     }
 
     @Test fun undoBeforePickMeansPutParkIsNeverMarkedStarted() {

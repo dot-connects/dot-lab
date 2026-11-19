@@ -41,6 +41,9 @@ private fun nz(v: Any?): Any = v ?: JSONObject.NULL
 
 /** Wire (contracts section 1) and local JSON for the shared models. */
 object Wire {
+    /** v1 groups have no name (server sends null). */
+    const val NO_GROUP_NAME = "우리 가족"
+
     fun carJson(c: Car, updated: Long = System.currentTimeMillis()): JSONObject = JSONObject()
         .put("id", c.id).put("name", c.name).put("color", c.color).put("plate", nz(c.plate)).put("order", c.order).put("updated", updated)
 
@@ -73,6 +76,6 @@ object Wire {
     fun state(j: JSONObject): ApiState {
         val parks = HashMap<String, Park?>()
         j.optJSONObject("parks")?.let { o -> o.keys().forEach { k -> parks[k] = o.optJSONObject(k)?.let { p -> park(p, k) } } }
-        return ApiState(j.str("groupName") ?: "", members(j.optJSONArray("members")), j.optJSONArray("cars")?.toList(::car).orEmpty(), parks)
+        return ApiState(j.str("groupName") ?: Wire.NO_GROUP_NAME, members(j.optJSONArray("members")), j.optJSONArray("cars")?.toList(::car).orEmpty(), parks)
     }
 }

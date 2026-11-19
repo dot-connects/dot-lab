@@ -58,9 +58,9 @@ android {
     testOptions {
         unitTests {
             isIncludeAndroidResources = true
-            // r9 shot filters: -Pshot.themes=IPHONE,DAYPAPER -Pshot.group=board
+            // r9 shot filters: -Pshot.themes=IPHONE,DAYPAPER -Pshot.group=board; -Pwp.live=true runs LiveSyncTest against the deployed Worker
             all { t ->
-                listOf("shot.themes", "shot.group").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10")
+                listOf("shot.themes", "shot.group", "wp.live").forEach { k -> project.findProperty(k)?.let { t.systemProperty(k, it) } }; t.systemProperty("shot.second", "10")
                 // test classes over parallel JVMs; 2 by default (all-session heavy-job rule), -Ptest.forks=1 next to a render
                 t.maxParallelForks = (project.findProperty("test.forks") as String?)?.toInt() ?: 2; t.maxHeapSize = "1536m"
             }

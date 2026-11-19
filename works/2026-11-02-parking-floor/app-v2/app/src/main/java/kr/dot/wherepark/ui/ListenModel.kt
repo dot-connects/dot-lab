@@ -240,7 +240,7 @@ class ListenModel(
 
     /** No car yet (sheet opened before onboarding finished): one local car so the record is not lost. */
     private fun firstCar(): Car {
-        val c = Car(java.util.UUID.randomUUID().toString(), "내 차", 0xFFF4F1EA.toInt(), null, 0)
+        val c = Car(kr.dot.wherepark.core.newCarId(), "내 차", 0xFFF4F1EA.toInt(), null, 0)
         CarStore.upsert(ctx, c)
         SyncQueue.add(ctx, Op.PutCar(c))
         return c

@@ -35,13 +35,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.core.content.FileProvider
 import java.io.File
-import java.util.UUID
 import kr.dot.wherepark.car.CarLink
 import kr.dot.wherepark.car.ExitNotifier
 import kr.dot.wherepark.core.Car
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.SpotParser
+import kr.dot.wherepark.core.newCarId
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
@@ -105,7 +105,7 @@ class MainActivity : ComponentActivity() {
     private var bigText by mutableStateOf(false)
     private var joinedOnb = false
     private var joinLaunched = false
-    private val carStep = CarStep(UUID.randomUUID().toString())
+    private val carStep = CarStep(newCarId())
     private var practice by mutableStateOf(Practice(false, null, null, null))
     private var draft: Pair<Nav.Edit, CarDraft>? = null
     private var draftLinkId: String? = null
@@ -183,7 +183,7 @@ class MainActivity : ComponentActivity() {
         Thread {
             WidgetRefresh.request(app)  // re-reads the wallpaper colours (no broadcast for wallpaper changes)
             Push.start(app)
-            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ }
+            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ }  // a merged pull also refreshes widgets
         }.start()
         publishShortcuts()
     }
@@ -317,7 +317,7 @@ class MainActivity : ComponentActivity() {
         val cars = remember(n) { CarStore.cars(this) }
         val d = draft?.takeIf { it.first == n }?.second ?: run {
             val car = cars.firstOrNull { it.id == n.carId }
-                ?: Car(UUID.randomUUID().toString(), "", Wp.CAR_COLORS.first { c -> cars.none { it.color == c } }, null, (cars.maxOfOrNull { it.order } ?: -1) + 1)
+                ?: Car(newCarId(), "", Wp.CAR_COLORS.first { c -> cars.none { it.color == c } }, null, (cars.maxOfOrNull { it.order } ?: -1) + 1)
             CarDraft(car).also { draft = n to it; draftLinkId = car.id }
         }
         val id = draftLinkId!!

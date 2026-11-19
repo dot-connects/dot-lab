@@ -114,7 +114,7 @@ object Api {
     }
 
     fun peek(code: String): Result<Pair<String, Int>> =
-        ok(call("POST", "/v2/peek", null, JSONObject().put("code", code))).map { it.getString("groupName") to it.getInt("count") }
+        ok(call("POST", "/v2/peek", null, JSONObject().put("code", code))).map { (it.str("groupName") ?: Wire.NO_GROUP_NAME) to it.getInt("count") }
 
     /** [guard] and [onSaved] run under the queue lock: the response is stored only if [guard] still holds (SyncWorker passes "no family, same pendingGroup"). */
     fun createGroup(ctx: Context, name: String, groupName: String, guard: () -> Boolean = { true }, onSaved: () -> Unit = {}): Result<ApiState> {
@@ -164,16 +164,26 @@ object Api {
         val st = Wire.state(j)
         synchronized(SyncQueue) {
             FamilyStore.save(ctx, j.getString("memberId"), j.getString("secret"), st.groupName, st.members)
+            FamilyStore.setCarryOver(ctx, if (oldAlone) oldCars else emptyList())  // before the merge: carried cars keep their links
             Merge.write(ctx, st)
-            FamilyStore.setCarryOver(ctx, if (oldAlone) oldCars else emptyList())
         }
+        WidgetRefresh.request(ctx)
         if (oldAuth != null) call("DELETE", "/v2/me", oldAuth)  // failure ignored
         return Result.success(st)
     }
 
-    fun invite(ctx: Context): Result<Invite> {
+    /**
+     * A new invite drops the family's previous code on the server, so the current one is kept in prefs (per member) and
+     * reused until a minute before it expires; [fresh] = the explicit [새 코드 만들기].
+     */
+    fun invite(ctx: Context, fresh: Boolean = false, now: Long = System.currentTimeMillis()): Result<Invite> {
         val auth = FamilyStore.auth(ctx) ?: return Result.failure(ApiException(401, "no family"))
+        val member = auth.substringBefore('.')
+        val c = Prefs.obj(ctx, "wp_invite")
+        if (!fresh && c.str("member") == member && c.optLong("expiresAt") > now + 60_000)
+            return Result.success(Invite(c.getString("code"), c.getLong("expiresAt"), c.getString("link")))
         return ok(authed(ctx, auth, "POST", "/v2/invites")).map { Invite(it.getString("code"), it.getLong("expiresAt"), it.getString("link")) }
+            .onSuccess { Prefs.put(ctx, "wp_invite", JSONObject().put("member", member).put("code", it.code).put("expiresAt", it.expiresAt).put("link", it.link)) }
     }
 
     /** true only when the server stored the token (2xx while joined); callers keep the pull fallback otherwise. */
