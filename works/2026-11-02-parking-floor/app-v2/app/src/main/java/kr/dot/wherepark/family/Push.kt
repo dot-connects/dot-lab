@@ -120,6 +120,7 @@ object Push {
         val nm = ctx.getSystemService(NotificationManager::class.java)
         nm.createNotificationChannel(NotificationChannel(CH_PARK, "가족이 댔을 때", NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(NotificationChannel(CH_DRIVE, "운행 시작", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(kr.dot.wherepark.car.ExitNotifier.CH_EXIT, "차에서 내리면 묻기", NotificationManager.IMPORTANCE_HIGH))
         nm.createNotificationChannel(NotificationChannel(CH_JOIN, "가족 참여", NotificationManager.IMPORTANCE_DEFAULT))
     }
 

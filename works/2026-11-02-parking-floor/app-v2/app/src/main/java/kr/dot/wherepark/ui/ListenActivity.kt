@@ -23,7 +23,7 @@ import kr.dot.wherepark.data.Prefs
 
 /**
  * The speak/save bottom sheet over whatever is on screen (widget, notification, tile, app, shortcut, onboarding practice).
- * Extras: car_id, bt_car_id, from (contracts-v2 section 2). Recognition is on-device only; the heard text never leaves the phone.
+ * Extras: car_id, bt_car_id, from, mode=manual (contracts-v2 section 2). Recognition is on-device only; the heard text never leaves the phone.
  */
 class ListenActivity : ComponentActivity() {
     private lateinit var model: ListenModel
@@ -64,7 +64,7 @@ class ListenActivity : ComponentActivity() {
             val id = savedInstanceState.getLong(SHOT_PARK)
             kr.dot.wherepark.data.ParkStore.history(this, c).firstOrNull { it.id == id }?.let { p -> p to File(savedInstanceState.getString(SHOT_FILE)!!) }
         }
-        if (restored != null) { shot = restored; model.restore(restored.first) } else begin()
+        if (restored != null) { shot = restored; model.restore(restored.first) } else if (intent.getStringExtra("mode") == "manual") model.manual() else begin()
     }
 
     /** Keeps the pending camera shot across a process death while the camera app is in front. */
