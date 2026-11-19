@@ -31,7 +31,7 @@ class ListenActivity : ComponentActivity() {
     private var shot: Pair<Park, File>? = null
 
     private val micAsk = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
-        if (ok) { Prefs.put(this, DENIALS, null); checkPack() } else {
+        if (ok) { Prefs.put(this, DENIALS, null); kr.dot.wherepark.data.WidgetRefresh.request(applicationContext); checkPack() } else {
             val n = denials() + 1
             Prefs.put(this, DENIALS, n)
             model.micDenied(n)
@@ -100,10 +100,18 @@ class ListenActivity : ComponentActivity() {
         if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(this)) return model.noRecognizer()
         recognizer().checkRecognitionSupport(recIntent(), mainExecutor, object : RecognitionSupportCallback {
             override fun onSupportResult(s: RecognitionSupport) {
-                if (s.installedOnDeviceLanguages.any(::isKo)) listen() else model.packMissing()
+                val ok = s.installedOnDeviceLanguages.any(::isKo)
+                packKnown(ok)
+                if (ok) listen() else model.packMissing()
             }
-            override fun onError(error: Int) = model.packMissing()
+            override fun onError(error: Int) { packKnown(false); model.packMissing() }
         })
+    }
+
+    /** Widget mics show "음성팩 필요" while the Korean pack is known missing (spec 8.3). */
+    private fun packKnown(ok: Boolean) {
+        val was = Prefs.sp(this).getString(NO_PACK, null) == null
+        if (was != ok) { Prefs.put(this, NO_PACK, if (ok) null else 1); kr.dot.wherepark.data.WidgetRefresh.request(applicationContext) }
     }
 
     private fun isKo(tag: String) = tag.replace('_', '-').lowercase().startsWith("ko")
@@ -159,6 +167,7 @@ class ListenActivity : ComponentActivity() {
     private companion object {
         const val LANG = "ko-KR"
         const val DENIALS = "wp_mic_denials"
+        const val NO_PACK = "wp_no_pack"
         const val SHOT_CAR = "shot_car"
         const val SHOT_PARK = "shot_park"
         const val SHOT_FILE = "shot_file"

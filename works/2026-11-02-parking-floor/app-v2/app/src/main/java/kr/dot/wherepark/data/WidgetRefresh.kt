@@ -2,7 +2,7 @@ package kr.dot.wherepark.data
 
 import android.content.Context
 
-/** Called after a merge so widgets redraw. Task 7 fills [hook] with the AppWidgetManager update; until then it is a no-op. */
+/** Called after any data change so widgets redraw; App points [hook] at WidgetReceiver.refreshAll (no-op in plain unit tests). */
 object WidgetRefresh {
     @Volatile var hook: (Context) -> Unit = {}
 

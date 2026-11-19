@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Widget: one drawn bitmap + 8 transparent button slots (4 cars x mic/row), placed per size from WidgetRenderer hits. -->
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/w_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+    <ImageView
+        android:id="@+id/w_img"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:importantForAccessibility="no"
+        android:scaleType="fitXY" />
+    <FrameLayout android:id="@+id/r0" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/r1" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/r2" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/r3" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/m0" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/m1" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/m2" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+    <FrameLayout android:id="@+id/m3" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+</FrameLayout>

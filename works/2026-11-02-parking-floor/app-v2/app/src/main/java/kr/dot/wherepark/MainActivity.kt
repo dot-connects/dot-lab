@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.Text
 import kr.dot.wherepark.data.FamilyStore
 import kr.dot.wherepark.data.SyncEngine
+import kr.dot.wherepark.data.WidgetRefresh
 import kr.dot.wherepark.family.Push
 
 class MainActivity : ComponentActivity() {
@@ -19,6 +20,7 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         val app = applicationContext
         Thread {
+            WidgetRefresh.request(app)  // re-reads the wallpaper colours (no broadcast for wallpaper changes)
             Push.start(app)
             if (FamilyStore.joined(app)) SyncEngine.pull(app)
         }.start()
