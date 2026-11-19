@@ -353,58 +353,61 @@ figure{margin:0}
   box-shadow:inset 0 1px 0 rgba(255,255,255,calc(var(--whi)*1.3)),inset 0 -1px 0 rgba(0,0,0,.2),0 10px 22px -10px rgba(0,0,0,.45)}
 .wx[data-mat=soft]{--wgl:none;box-shadow:-4px -4px 10px rgba(255,255,255,.4),6px 7px 14px rgba(0,0,0,.24),inset 0 0 0 1px rgba(255,255,255,.14)}
 
-/* ---- row-list skins ---- (kN 기본 = the base above: Braun light grey + orange) */
-/* A dot matrix: dot digits; the floor letter is a normal heavy face because a dot-matrix B reads as 8 or E */
-.wx.kA{--wbg:#0e0e0e;--wfg:#f2f2f2;--wmu:#a8a8a8;--wdk:1;--wacc:#181818;
-  --wtx:radial-gradient(color-mix(in srgb,var(--wfg) calc(var(--wop,1)*11%),transparent) 1px,transparent 1.3px) 0 0/6px 6px}
-.wx.kA .f{font-family:"Doto",monospace;letter-spacing:0;font-size:40px}
-.wx.kA .f .fa{font-family:"Inter Tight",sans-serif;font-weight:900;font-size:.86em;letter-spacing:-.02em;margin-right:2px}
-.wx.kA .s{font-family:"Space Mono",monospace;font-weight:700;font-size:18px;letter-spacing:-.02em}
-.wx.kA .mic{position:relative;background:var(--wacc);box-shadow:inset 0 0 0 1.5px rgba(242,242,242,.72),0 4px 8px -3px rgba(0,0,0,.5)}
-.wx.kA .mic::after{content:"";position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:#e8352b}
-.wx.one.kA .f{font-size:54px}
-/* B recorder: spot lives in an inset LCD, button has a machined ring */
-.wx.kB{--wbg:#e5e4e0;--wacc:#ff5b1f}
-.wx.kB .sp{background:linear-gradient(180deg,#131613,#222622);color:#f7a35c;border-radius:9px;padding:6px 10px 5px;width:max-content;
-  text-shadow:none;box-shadow:inset 0 2px 3px rgba(0,0,0,.6),0 1px 0 rgba(255,255,255,calc(var(--whi)*1.4))}
-.wx.kB .sp.emp .f,.wx.kB .sp.emp .s{color:inherit}
-.wx.kB .f{font-size:31px}.wx.kB .s{font-size:17px}
-.wx.kB .mic{width:40px;height:40px;margin:2px;box-shadow:0 0 0 3px color-mix(in srgb,var(--wfg) 9%,transparent),inset 0 -1px 0 rgba(0,0,0,.22),0 5px 9px -5px rgba(0,0,0,.4)}
-.wx.one.kB .sp{padding:7px 10px 6px;gap:3px;min-width:76px}
-.wx.one.kB .f{font-size:42px}.wx.one.kB .s{font-size:20px}
-/* M bubble: every spot is a speech bubble. No tail, no badge dot: one squarer corner is the only cue. */
-.wx.kM{--wbg:#e8e6e2}
-.wx.kM .sp{background:linear-gradient(180deg,#fefdfb,#f1efea);color:#141414;border-radius:14px 14px 14px 4px;padding:6px 12px 5px;width:max-content;text-shadow:none;
-  box-shadow:0 1px 2px rgba(0,0,0,.16),0 5px 8px -5px rgba(0,0,0,.3)}
-.wx.kM .sp.emp .f{color:#6a6863}
-.wx.kM .f{font-size:30px;letter-spacing:-.04em}.wx.kM .s{font-size:17px}
-.wx.one.kM .sp{padding:8px 12px 7px;border-radius:16px 16px 16px 5px;min-width:78px}
-.wx.one.kM .f{font-size:42px}.wx.one.kM .s{font-size:20px}
-/* P ticket: printed mono, mic sits on a tear-off stub behind a perforation */
-.wx.kP{--wbg:#f5f0e4;--wfg:#1e1b16;--wmu:#645d50;--wacc:#1e1b16;--wnum:"IBM Plex Mono",monospace;position:relative;border-radius:var(--wr,14px);
-  --wpf:color-mix(in srgb,var(--wfg) 30%,transparent)}
-.wx.kP::before{content:"";position:absolute;top:6px;bottom:6px;right:58px;border-left:1.5px dashed var(--wpf)}
-.wx.kP .f{font-weight:700;font-size:34px;letter-spacing:-.05em}
-.wx.kP .s{font-weight:600;font-size:18px;letter-spacing:-.02em}
-.wx.kP .wh{font-family:"IBM Plex Mono",var(--ui)}
-.wx.kP .meta{padding-right:5px}
-.wx.kP .hr{height:0;background:none;border-top:1.5px dashed var(--wpf);margin-right:50px}
-.wx.one.kP::before{display:none}
-.wx.one.kP .hd{padding-bottom:5px;border-bottom:1.5px dashed var(--wpf)}
-.wx.one.kP .f{font-size:46px}
-/* S split-flap: every character on its own flap */
-.wx.kS{--wbg:#17171a;--wfg:#f4f1e8;--wmu:#cfa954;--wdk:1;--wacc:#e2a336;border-radius:var(--wr,16px)}
-.wx.kS .sp{gap:6px;align-items:flex-end}
-.fl{display:inline-flex;gap:2px}
-.wx .fl b{position:relative;display:grid;place-items:center;width:25px;height:35px;border-radius:4px;font-family:var(--wnum,"Inter Tight"),sans-serif;font-weight:800;font-size:25px;line-height:1;overflow:hidden;color:#f4f1e8;text-shadow:none;
-  background:linear-gradient(180deg,#34343a 0,#2a2a2f 49%,#1d1d20 51%,#27272b 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.09),0 1px 2px rgba(0,0,0,.55)}
-.wx .fl b::after{content:"";position:absolute;left:0;right:0;top:50%;height:1px;background:rgba(0,0,0,.7)}
-.wx .fl.sm b{width:17px;height:24px;font-size:16px;border-radius:3px}
-.wx .fl.ko b{font-family:var(--ui);font-size:13px;font-weight:700}
-.wx.one.kS .sp{gap:4px;align-items:flex-start}
-.wx.one.kS .fl b{width:31px;height:42px;font-size:31px}
-.wx.one.kS .fl.sm b{width:19px;height:26px;font-size:17px}
-.wx.one.kS .fl.ko b{font-size:13px}
+/* ---- shapes: kN 줄 목록 = the base above (Braun light grey + orange); the others follow ---- */
+/* ---- A dot matrix: an LED board, not a row list. Dark bezel; an inset dot-grid panel holds one line per car with a dotted LED
+   rule between lines; the mics are physical buttons on the bezel beside their line. Digits are dot digits, letters (the
+   floor's B, the zone letter) stay a normal heavy face because a dot-matrix B reads as 8 or E. ---- */
+.wx.kA{--wbg:#1c1c1f;--wfg:#f2f2f2;--wmu:#b2b2b2;--wdk:1;--wacc:#2a2a2e;--led:#ff5a36;padding:7px;grid-template-columns:1fr 44px;gap:0 7px;border-radius:var(--wr,18px)}
+.wx.kA .led{min-width:0;border-radius:max(4px,calc(var(--wr,18px) - 8px));padding:0 9px 0 10px;
+  background:radial-gradient(color-mix(in srgb,var(--wfg) 13%,transparent) 1px,transparent 1.3px) 0 0/6px 6px,
+    linear-gradient(rgba(0,0,0,calc(.5*var(--wdk)*var(--wop,1))),rgba(0,0,0,calc(.5*var(--wdk)*var(--wop,1)))),
+    linear-gradient(rgba(255,255,255,calc(.5*(1 - var(--wdk))*var(--wop,1))),rgba(255,255,255,calc(.5*(1 - var(--wdk))*var(--wop,1))));
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.45),0 1px 0 rgba(255,255,255,.07)}
+.wx.kA .ln{display:grid;grid-template-columns:auto 1fr;align-items:center;column-gap:8px;height:50px}
+.wx.kA .rule{height:5px;margin:0 -4px;background:radial-gradient(circle,var(--led) 1.2px,transparent 1.6px) 0 50%/6px 6px repeat-x}
+.wx.kA .btns{display:grid;grid-auto-rows:50px;row-gap:5px;align-items:center}
+.wx.kA .f,.wx.kA .s{font-family:"Doto",monospace;font-weight:900;letter-spacing:0}
+.wx.kA .f{font-size:36px}.wx.kA .s{font-size:21px}
+.wx.kA .f,.wx.kA .s{-webkit-text-stroke:.55px currentColor}.wx.kA .fa{-webkit-text-stroke:0}
+.wx.kA .fa{font-family:"Inter Tight",sans-serif;font-weight:900;font-size:.84em;letter-spacing:-.02em;margin-right:2px}
+.wx.kA .s .fa{font-size:.92em;margin-right:1px}
+.wx.kA .sp.emp .s{font-family:var(--ui);font-size:17px;font-weight:700}
+.wx.kA .wh{font-family:"Space Mono",var(--ui);letter-spacing:-.02em}
+.wx.kA .mic{position:relative;background:linear-gradient(180deg,#3b3b40,#1a1a1c);box-shadow:inset 0 1px 0 rgba(255,255,255,.2),inset 0 0 0 1px rgba(255,255,255,.1),0 2px 4px rgba(0,0,0,.5)}
+.wx.kA .mic::after{content:"";position:absolute;top:8px;right:8px;width:6px;height:6px;border-radius:50%;background:var(--led)}
+.wx.kA .note{grid-column:1/-1;border:0;padding:6px 4px 0}
+.wx.one.kA{width:150px;padding:6px;gap:0 6px}
+.wx.one.kA .led{display:grid;align-content:center;gap:3px;padding:7px 8px 8px}
+.wx.one.kA .sp{margin-top:0;gap:1px}
+.wx.one.kA .f{font-size:46px}.wx.one.kA .s{font-size:21px}
+.wx.one.kA .btns{grid-auto-rows:auto;row-gap:0;align-content:space-between;justify-items:center}
+.wx.one.kA .btns .wh{text-align:center;padding-top:3px}
+.wx.one.kA .mic{grid-column:auto}
+/* ---- P ticket: every car is its own printed ticket, stacked. Left of the perforation = the stub you keep (barcode edge,
+   big floor + spot in printed mono); right = the tear-off with car name, who/when and the mic. A notch is punched
+   where the perforation meets each edge. ---- */
+.wx.kP{--wbg:#f5f0e4;--wfg:#1e1b16;--wmu:#645d50;--wacc:#1e1b16;--wnum:"IBM Plex Mono",monospace;--wpf:color-mix(in srgb,var(--wfg) 36%,transparent);--tear:134px;
+  padding:0;gap:5px;background:none;border:0;box-shadow:none;border-radius:0;filter:drop-shadow(0 2px 3px rgba(0,0,0,.24))}
+.wx.kP .tk{display:grid;grid-template-columns:auto 1fr var(--tear);align-items:center;height:58px;border-radius:min(var(--wr,10px),14px);
+  background:var(--wtx),var(--wgl),linear-gradient(var(--wsf),var(--wsf)),var(--wsc,transparent);
+  -webkit-mask:radial-gradient(circle 5px at calc(100% - var(--tear)) 0,transparent 4.6px,#000 5px),radial-gradient(circle 5px at calc(100% - var(--tear)) 100%,transparent 4.6px,#000 5px);-webkit-mask-composite:source-in;
+  mask:radial-gradient(circle 5px at calc(100% - var(--tear)) 0,transparent 4.6px,#000 5px),radial-gradient(circle 5px at calc(100% - var(--tear)) 100%,transparent 4.6px,#000 5px);mask-composite:intersect}
+.wx.kP .bc{width:11px;height:38px;margin:0 9px 0 10px;opacity:.6;background:repeating-linear-gradient(180deg,var(--wfg) 0 1.5px,transparent 1.5px 3px,var(--wfg) 3px 4px,transparent 4px 6.5px,var(--wfg) 6.5px 9px,transparent 9px 10.5px)}
+.wx.kP .f{font-weight:700;font-size:40px;letter-spacing:-.06em}
+.wx.kP .s{font-weight:600;font-size:19px;letter-spacing:-.03em}
+.wx.kP .side{display:grid;grid-template-columns:1fr 44px;align-items:center;column-gap:6px;height:100%;padding:0 7px 0 10px;border-left:1.5px dashed var(--wpf)}
+.wx.kP .side .meta{justify-items:start}
+.wx.kP .wh{font-family:"IBM Plex Mono",var(--ui);letter-spacing:-.03em}
+.wx.kP .mic{box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.wx.kP .tk.note{display:block;height:auto;padding:7px 12px;border:0;-webkit-mask:none;mask:none}
+.wx.one.kP{display:block;width:150px;padding:0}
+.wx.one.kP .tk{height:auto;grid-template-columns:1fr 44px;column-gap:4px;align-items:end;padding:0 9px 9px 12px;
+  -webkit-mask:radial-gradient(circle 5px at 0 31px,transparent 4.6px,#000 5px),radial-gradient(circle 5px at 100% 31px,transparent 4.6px,#000 5px);-webkit-mask-composite:source-in;
+  mask:radial-gradient(circle 5px at 0 31px,transparent 4.6px,#000 5px),radial-gradient(circle 5px at 100% 31px,transparent 4.6px,#000 5px);mask-composite:intersect}
+.wx.one.kP .hd{height:31px;margin-bottom:7px;border-bottom:1.5px dashed var(--wpf)}
+.wx.one.kP .sp{margin-top:0}
+.wx.one.kP .f{font-size:48px}.wx.one.kP .s{font-size:21px}
+.wx.one.kP .mic{grid-column:2}
 
 /* ---- F pillar: each car is a painted column, the colour band carries the car name. 2 side by side; 3-4 cars = 2x2 ---- */
 .wx.kF{--wbg:#e9e7e2;--wnum:"Big Shoulders Display",sans-serif;--wacc:#161616;padding:7px;grid-template-columns:1fr 1fr;gap:7px}
@@ -442,24 +445,7 @@ figure{margin:0}
 .wx.one.kT .s{position:absolute;right:11px;top:27px;font-size:21px}
 .wx.one.kT .mic{position:absolute;right:8px;bottom:8px;width:44px;height:44px}
 
-/* ---- X section: the building cut. Floors with a car are full slabs, the floors between are thin ---- */
-.wx.kX{--wbg:#f4f3ef;--wfg:#151515;--wmu:#5f5d58;--wsl:color-mix(in srgb,var(--wfg) 24%,transparent);padding:7px 9px 8px 0;gap:0}
-.wx.kX .xg{height:4px;margin-left:48px;background:repeating-linear-gradient(135deg,var(--wsl) 0 1.2px,transparent 1.2px 5px)}
-.wx.kX .xr,.wx.kX .xe{display:grid;grid-template-columns:48px 1fr}
-.wx.kX .xr>.f{font-size:28px;letter-spacing:-.04em;text-align:center;align-self:center;line-height:1}
-.wx.kX .xc,.wx.kX .xe i{border-left:2px solid var(--wsl);border-top:1.5px solid var(--wsl)}
-.wx.kX .xe i{grid-column:2;height:6px}
-.wx.kX>:last-child i,.wx.kX>:last-child .xc{border-bottom:1.5px solid var(--wsl)}
-.wx.kX .xc{display:grid;grid-template-columns:auto 1fr 44px;align-items:center;column-gap:8px;min-height:44px;padding-left:9px;background:var(--wpn)}
-.wx.kX .chip{display:inline-flex;align-items:center;background:var(--wfg);color:var(--wbg);border-radius:8px;padding:5px 9px 4px;text-shadow:none;
-  box-shadow:0 1px 2px rgba(0,0,0,.2),0 4px 6px -3px rgba(0,0,0,.35)}
-.wx.kX .chip .s{font-size:18px}
-.wx.kX .mic,.wx.kT .mic{width:40px;height:40px;justify-self:center}
-.wx.one.kX{width:218px;grid-template-columns:1fr;padding:7px 8px 8px 0}
-.wx.one.kX .xc{grid-template-columns:1fr 44px;grid-template-rows:auto auto;align-content:center;row-gap:2px;min-height:46px;padding-left:8px}
-.wx.one.kX .chip{grid-area:1/1;justify-self:start;padding:4px 8px 3px}
-.wx.one.kX .meta{grid-area:2/1;display:flex;gap:6px;justify-self:start}
-.wx.one.kX .mic{grid-area:1/2/3/3;align-self:center}
+.wx.kT .mic{width:40px;height:40px;justify-self:center}
 
 /* ===== r3 app rules: orange = speak + one primary per screen, flat with a 1px darker bottom edge ===== */
 .bigmic{background:var(--app-acc);box-shadow:inset 0 -1px 0 #cf520b,0 2px 5px rgba(0,0,0,.2)}
@@ -473,12 +459,9 @@ figure{margin:0}
 .notif .na{color:var(--app-fg)}.notif .na .say{color:var(--app-acc)}
 .spot .edit{margin-left:auto;align-self:center;display:inline-flex;align-items:center;gap:4px;min-height:44px;padding:0 10px;border-radius:999px;background:var(--app-bg);font-size:13px;color:var(--app-mu)}
 /* widget settings: 4 skeleton thumbs + skin chips */
-.sks{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.sks{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
 .sks div{display:grid;justify-items:center;gap:2px;padding:7px 2px 6px;border-radius:14px;background:var(--app-sf);font-size:12px;color:var(--app-mu);border:2px solid transparent;cursor:pointer}
 .sks div.on{border-color:var(--app-fg);color:var(--app-fg);font-weight:600}
-.pres{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
-.pres span{min-height:44px;display:flex;align-items:center;justify-content:center;border-radius:999px;background:var(--app-sf);font-size:13px;color:var(--app-mu);cursor:pointer}
-.pres span.on{background:var(--app-fg);color:var(--app-sf)}
 /* one Braun sheet for listening / saved; it borrows only --wnum (numeral face) and --wacc (accent) from the chosen widget */
 .bs{background:var(--app-bg);color:var(--app-fg);padding:0 16px 20px;display:grid;gap:12px;--wnum:"Inter Tight",sans-serif;--wacc:#ff6a13}
 .bs .bh{display:flex;align-items:center;gap:7px;font-size:14px;min-height:44px}
@@ -531,18 +514,18 @@ figure{margin:0}
 <div class="wrap">
 <header>
   <h1>어디댔어 — 최종 시안</h1>
-  <p class="lede">이름 <b>어디댔어</b> · 아이콘 <b>브라운 버튼</b> · 말투 <b>해요</b> · 앱 바탕 <b>밝은 회색 + 주황</b>. 위젯 모양은 <b>뼈대 3개</b>(줄 목록 · 포스터 · 기둥 띠) 중에서 위젯마다 고르고, 줄 목록은 <b>스타일 3개</b>(기본 · 점 행렬 · 주차권)로 겉모습을 바꿔요. 위젯은 <b>모든 차</b> / <b>한 대 고정</b> 두 종류예요. 앱 화면과 말하는 시트는 전부 브라운 바탕 하나이고, 시트는 고른 위젯에서 숫자 글씨체와 강조색만 빌려 와요. 이 페이지가 구현의 기준(정본)이에요.</p>
+  <p class="lede">이름 <b>어디댔어</b> · 아이콘 <b>브라운 버튼</b> · 말투 <b>해요</b> · 앱 바탕 <b>밝은 회색 + 주황</b>. 위젯은 <b>모양 5개</b>(줄 목록 · 포스터 · 기둥 띠 · 점 행렬 · 주차권) 중에서 위젯마다 하나를 고르고, <b>모든 차</b> / <b>한 대 고정</b> 두 종류예요. 앱 화면과 말하는 시트는 전부 브라운 바탕 하나이고, 시트는 고른 위젯에서 숫자 글씨체와 강조색만 빌려 와요. 이 페이지가 구현의 기준(정본)이에요.</p>
 </header>
 
 <div class="bar" role="toolbar" aria-label="보기 설정">
-  <span class="lbl">위젯 뼈대</span>
+  <span class="lbl">위젯 모양</span>
   <span class="seg" id="sk"></span>
-  <span id="prw" style="display:contents"><span class="lbl">줄 목록 스타일</span><span class="seg" id="pr"></span></span>
+
 </div>
 
 <section>
-  <h2>1. 위젯 — 뼈대 3 + 줄 목록 스타일 3</h2>
-  <p class="lede">뼈대는 구조가 다르고, 스타일은 줄 목록의 겉모습만 달라요. 어느 것이든 위계는 같아요: 층이 가장 크고, 그다음 칸, 차 이름·누가·언제는 12px 이상. 줄마다 그 차의 마이크가 있고, 한 위젯 안의 마이크는 전부 같은 모양이에요. 차 순서는 등록한 순서로 고정이고(최근 순으로 바뀌지 않아요), 포스터는 첫 차를 크기로만 강조해요. 위젯은 흐림 효과 없이 단색·선형 그라데이션·그림자만 써서 안드로이드 위젯 비트맵 한 장으로 그릴 수 있어요. 배경 진하기를 낮추면 흐림 대신 반투명 막과 글자 테두리로 읽히게 해요.</p>
+  <h2>1. 위젯 — 모양 5</h2>
+  <p class="lede">다섯 모양은 색이 아니라 구조가 달라요: 줄 목록은 줄, 포스터는 큰 숫자 하나와 띠, 기둥 띠는 색 띠를 두른 기둥, 점 행렬은 전광판 패널과 옆 버튼, 주차권은 절취선으로 나뉜 표 한 장씩. 어느 것이든 위계는 같아요: 층이 가장 크고, 그다음 칸, 차 이름·누가·언제는 12px 이상. 차마다 그 차의 마이크가 있고, 한 위젯 안의 마이크는 전부 같은 모양이에요. 차 순서는 등록한 순서로 고정이고(최근 순으로 바뀌지 않아요), 포스터는 첫 차를 크기로만 강조해요. 위젯은 흐림 효과 없이 단색·선형 그라데이션·그림자만 써서 안드로이드 위젯 비트맵 한 장으로 그릴 수 있어요. 배경 진하기를 낮추면 흐림 대신 반투명 막과 글자 테두리로 읽히게 해요.</p>
   <div class="bar" style="position:static;border:0;padding:6px 0"><span class="lbl">배경화면</span><span class="seg" id="wp"><button data-v="sky" aria-pressed="true">밝은 하늘</button><button data-v="photo">사진</button><button data-v="night">밤</button></span><span class="opbar">배경 진하기 <input type="range" class="opr" min="0" max="100" value="100" aria-label="위젯 배경 진하기"> <b class="opv">100%</b></span></div>
   <div class="wgrid" id="wgrid"></div>
 </section>
@@ -556,14 +539,14 @@ figure{margin:0}
 <section>
   <h2>3. 위젯을 놓을 때 · 앱 홈</h2>
   <div class="row" style="margin-top:12px">
-    <figure><div class="phone" id="cfg" style="height:790px"></div><p class="cap"><b>위젯 설정.</b> [모양]에서 뼈대 3개 중 하나를 고르고, 줄 목록이면 [스타일] 3개 중 하나를 골라요(위젯마다 따로). [배경 진하기]로 0~100% 투명도를 정해요. [색 바꿔 보기]를 누를 때마다 색(5계열) · 재질(무광·유광·종이·금속·소프트) · 숫자 글씨체(7종) · 모서리가 무작위로 바뀌어요(글자가 안 읽히는 조합은 건너뜀, 점 행렬은 점 숫자 고정). [되돌리기]는 바로 전 색 한 번. 위젯을 홈 화면에 놓으면 이 화면이 뜨고, 나중에 위젯을 길게 눌러 다시 바꿀 수 있어요.</p></figure>
+    <figure><div class="phone" id="cfg"></div><p class="cap"><b>위젯 설정.</b> [모양]에서 5개 중 하나를 골라요(위젯마다 따로). [배경 진하기]로 0~100% 투명도를 정해요. [색 바꿔 보기]를 누를 때마다 색(5계열) · 재질(무광·유광·종이·금속·소프트) · 숫자 글씨체(6종) · 모서리가 무작위로 바뀌어요(글자가 안 읽히는 조합은 건너뜀, 점 행렬은 점 숫자 고정). [되돌리기]는 바로 전 색 한 번. 위젯을 홈 화면에 놓으면 이 화면이 뜨고, 나중에 위젯을 길게 눌러 다시 바꿀 수 있어요.</p></figure>
     <figure><div class="phone" id="homeA" style="height:750px"></div><p class="cap"><b>홈 (확정 · 카드 목록).</b> 차마다 카드 한 장. 카드의 마이크는 그 차에 저장해요. 아래 큰 버튼은 어느 차에 저장할지 이름을 보여 줘요("흰 차에 저장"). 말에 다른 차 이름이 있으면 그 차로, 없으면 마지막에 탄 차로. 주황은 말하기와 화면마다 주 버튼 하나에만 써요.</p></figure>
   </div>
 </section>
 
 <section>
   <h2>4. 말하는 화면 — 브라운 시트 하나</h2>
-  <p class="lede">위젯 마이크나 블루투스 알림을 누르면 앱 전체가 아니라 아래쪽 시트만 올라와요. 시트 디자인은 하나이고, 위 막대에서 뼈대·스타일을 바꾸면 숫자 글씨체와 강조색(소리 막대, 되돌리기 줄)만 따라 바뀌어요.</p>
+  <p class="lede">위젯 마이크나 블루투스 알림을 누르면 앱 전체가 아니라 아래쪽 시트만 올라와요. 시트 디자인은 하나이고, 위 막대에서 위젯 모양을 바꾸면 숫자 글씨체와 강조색(소리 막대, 되돌리기 줄)만 따라 바뀌어요.</p>
   <div class="row" style="margin-top:12px">
     <figure><div class="phone" id="lsn"></div><p class="cap"><b>① 듣는 중.</b> 소리 크기 막대가 움직이고, 들리는 대로 큰 글자(30px)로 바로 떠요. 말소리는 폰 안에서 글자로 바꿔요. [취소]로 저장 없이 닫아요.</p></figure>
     <figure><div class="phone" id="sav"></div><p class="cap"><b>② 저장됨.</b> "저장했어요"와 보내기 상태를 따로 보여 줘요: 신호가 있으면 "가족에게 보냈어요", 없으면 "신호가 잡히면 가족에게 보내요". 오른쪽 위에서 차를 바꾸고, 8초 동안 되돌리기, [고치기] · [사진]. 층·칸이 아닌 말("엘리베이터 옆")은 메모로.</p></figure>
@@ -720,7 +703,7 @@ function randomPal(k){
     const fl1=hsl(R(0,360),R(45,80),R(28,40)),fl2=hsl(R(0,360),R(45,80),R(28,40));
     if(cr(fg,bg)<4.5||cr(muHex,bg)<4.5||(acc&&cr(acc,bg)<(k==="T"?3:1.6))||cr("#ffffff",fl1)<4.5||cr("#ffffff",fl2)<4.5)continue;
     const mat=pickNot(["matte","gloss","paper","metal","soft"],PAL&&PAL.mat);
-    const font=k==="A"?FONTS[3]:pickNot(FONTS,PAL&&FONTS.find(x=>x[1]===PAL.fontName));
+    const font=k==="A"?FONTS[3]:pickNot(FONTS.filter(x=>x!==FONTS[3]),PAL&&FONTS.find(x=>x[1]===PAL.fontName)); // dot digits belong to 점 행렬 only (a dot B reads as 8)
     return {bg,fg,mu,acc:k==="A"?null:acc,onAcc,fl1,fl2,r:[10,16,22,28,34][Math.floor(Math.random()*5)]+"px",fam,mat,font:font[0],fontName:k==="A"?"점 숫자(고정)":font[1]};
   }
   return null;
@@ -728,12 +711,12 @@ function randomPal(k){
 function mixHex(a,b,t){const pa=[1,3,5].map(i=>parseInt(a.slice(i,i+2),16)),pb=[1,3,5].map(i=>parseInt(b.slice(i,i+2),16));return "#"+pa.map((x,i)=>Math.round(x+(pb[i]-x)*t).toString(16).padStart(2,"0")).join("")}
 
 
-/* v10 widgets. Keys: row-list skins N 기본, A 점 행렬, B 녹음기, M 말풍선, P 주차권, S 플립 보드; skeletons T 포스터, F 기둥 띠, X 단면도.
+/* v11 widgets. Five shapes, each its own structure: N 줄 목록, T 포스터, F 기둥 띠, A 점 행렬 (LED board), P 주차권 (tickets).
    W(key,pal,cars,{nomic}) = all-cars widget, W1(key,pal,car) = one-car widget. Each row's mic saves to that car.
    Car states: st "none" 기록 없음, "pend" 전송 대기, "gone" 운행 중 (set when that car's Bluetooth reconnects); an old record just shows a date in t. */
 const fsplit=f=>{const m=/^([A-Za-z]*)(.*)$/.exec(f);return (m[1]?`<span class="fa">${m[1]}</span>`:"")+m[2]};
 const spv=c=>c.st==="none"?{f:"–",s:"",emp:1}:c.st==="gone"?{f:"",s:"운행 중",emp:1}:{f:c.f,s:c.s};
-const wsp=c=>{const v=spv(c);return `<div class="sp${v.emp?" emp":""}">${v.f?`<span class="f">${fsplit(v.f)}</span>`:""}${v.s?`<span class="s">${v.s}</span>`:""}</div>`};
+const wsp=c=>{const v=spv(c);return `<div class="sp${v.emp?" emp":""}">${v.f?`<span class="f">${fsplit(v.f)}</span>`:""}${v.s?`<span class="s">${fsplit(v.s)}</span>`:""}</div>`};
 const flap=(str,cls="")=>`<span class="fl ${cls}">${[...str].map(ch=>`<b>${ch}</b>`).join("")}</span>`;
 const fsp=c=>{const v=spv(c);return `<div class="sp">${v.emp?(v.f?flap("––"):flap("운행중","sm ko")):flap(v.f)+flap(v.s,"sm")}</div>`};
 const UPI=`<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V6M6.5 11.5L12 6l5.5 5.5"/></svg>`;
@@ -745,6 +728,8 @@ const FLOORS=["B1","B2","B3","B4"];
 function W(k,p=null,cars=WC,o={}){
   const mic=c=>wmic(k,p,c,o.nomic),note=o.nomic?`<div class="note"${k==="F"?' style="grid-column:1/-1"':k==="T"||k==="X"?' style="padding:6px 12px 8px"':""}>마이크·음성팩이 필요해요 · 눌러서 켜기</div>`:"";
   const fx=c=>{const v=spv(c);return v.f?fsplit(v.f):"&nbsp;"},sx=c=>spv(c).s;
+  if(k==="A")return `<div class="wx kA" ${PS(p)}><div class="led">${cars.map(c=>`<div class="ln">${wsp(c)}${wmeta(c)}</div>`).join('<div class="rule"></div>')}</div><div class="btns">${cars.map(mic).join("")}</div>${note}</div>`;
+  if(k==="P")return `<div class="wx kP" ${PS(p)}>${cars.map(c=>`<div class="tk"><div class="bc"></div>${wsp(c)}<div class="side">${wmeta(c)}${mic(c)}</div></div>`).join("")}${note.replace('class="note"','class="tk note"')}</div>`;
   if(k==="F")return `<div class="wx kF" ${PS(p)}>${cars.map(c=>`<div class="pil"><div class="band" style="background-color:${FL(c,p)}">${wnm(c)}</div><span class="f">${fx(c)}</span>${mic(c)}<div class="ln"><span class="s">${sx(c)}</span>${wwho(c)}</div></div>`).join("")}${note}</div>`;
   if(k==="T"){const c=cars[0];return `<div class="wx kT" ${PS(p)}><div class="hero"><span class="big">${fx(c)}</span><div class="hi"><span class="s">${sx(c)}</span>${wnm(c)}${wwho(c)}</div>${mic(c)}</div>${cars.slice(1).map(c=>`<div class="strip"><span class="f">${fx(c)}</span><span class="s">${sx(c)}</span>${wmeta(c)}${mic(c)}</div>`).join("")}${note}</div>`}
   if(k==="X"){const row=c=>`<div class="xr"><span class="f">${fx(c)}</span><div class="xc"><span class="chip"><span class="s">${sx(c)||"기록 없음"}</span></span>${wmeta(c)}${mic(c)}</div></div>`;
@@ -753,6 +738,8 @@ function W(k,p=null,cars=WC,o={}){
 }
 function W1(k,p=null,c=WC[0]){
   const hd=`<div class="hd">${wnm(c)}${wwho(c)}</div>`,mic=wmic(k,p,c);
+  if(k==="A")return `<div class="wx one kA" ${PS(p)}><div class="led">${wnm(c)}${wsp(c)}</div><div class="btns"><div class="wh"><b>${c.who}</b><br>${c.t}</div>${mic}</div></div>`;
+  if(k==="P")return `<div class="wx one kP" ${PS(p)}><div class="tk">${hd}${wsp(c)}${mic}</div></div>`;
   if(k==="F")return `<div class="wx one kF" ${PS(p)}><div class="band" style="background-color:${FL(c,p)}">${wnm(c)}${wwho(c)}</div>${wsp(c)}${mic}</div>`;
   if(k==="T")return `<div class="wx one kT" ${PS(p)}>${hd}<span class="big">${fsplit(c.f)}</span><span class="s">${c.s}</span>${mic}</div>`;
   if(k==="X")return W("X",p,[c]).replace('class="wx kX"','class="wx one kX"');
@@ -819,14 +806,14 @@ const IP={
 const ic=(n,s=20,w=1.7)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="flex:none">${IP[n]}</svg>`;
 
 /* widget look = one of 4 skeletons; the row list also takes one of 6 skins. key() is the CSS/renderer key in use. */
-const SK=[{k:"R",name:"줄 목록"},{k:"T",name:"포스터"},{k:"F",name:"기둥 띠"}];
-const PRE=[{k:"N",name:"기본"},{k:"A",name:"점 행렬"},{k:"P",name:"주차권"}];
+const SK=[{k:"N",name:"줄 목록"},{k:"T",name:"포스터"},{k:"F",name:"기둥 띠"},{k:"A",name:"점 행렬"},{k:"P",name:"주차권"}];
+
 /* what the Braun sheets borrow from the chosen widget: numeral face + accent, nothing else */
 const SKIN={N:["'Inter Tight',sans-serif","#ff6a13"],A:["'Doto',monospace","#e8352b"],B:["'Inter Tight',sans-serif","#ff5b1f"],M:["'Inter Tight',sans-serif","#ff6a13"],P:["'IBM Plex Mono',monospace","#1e1b16"],
  S:["'Inter Tight',sans-serif","#e2a336"],T:["'Inter Tight',sans-serif","#ff5a1f"],F:["'Big Shoulders Display',sans-serif","#161616"],X:["'Inter Tight',sans-serif","#ff6a13"]};
 const t=T.yo;
-let sk="R",pre="N",wp="sky",WOP=1;
-const key=()=>sk==="R"?pre:sk;
+let sk="N",wp="sky",WOP=1;
+const key=()=>sk;
 const IC='<img src="ic-min-braun.jpg" alt="" style="width:18px;height:18px;border-radius:5px">';
 const SB=`<div class="sb"><span>14:36</span><span>● ▲ 82%</span></div>`;
 const MICW=(c="#fff",s=30)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="${c}"/><path d="M6 11a6 6 0 0 0 12 0M12 17v4" stroke="${c}" stroke-width="2" fill="none" stroke-linecap="round"/></svg>`;
@@ -839,9 +826,8 @@ function widgets(){setTimeout(applyOp);
   const cell=(title,k)=>`<div class="wcell"><h4>${title}</h4>${tile(W(k))}${tile(W1(k),"min-height:0")}</div>`;
   const one=(title,inner)=>`<div class="wcell"><h4>${title}</h4>${tile(inner,"min-height:0")}</div>`;
   document.getElementById("wgrid").innerHTML=
-    `<h3 class="wgh">뼈대 3<small>위: 모든 차 · 아래: 한 대 고정</small></h3>`+SK.map(d=>cell(`${d.name}${d.k==="R"?" <small>기본 스타일</small>":""}`,d.k==="R"?"N":d.k)).join("")+
-    `<h3 class="wgh">줄 목록 스타일 3<small>뼈대는 같고 겉모습만 달라요 (기본은 위 첫 칸)</small></h3>`+PRE.slice(1).map(d=>cell(d.name,d.k)).join("")+
-    `<h3 class="wgh">차가 3~4대일 때<small>순서는 등록한 순서 그대로</small></h3>`+one("기둥 띠 · 3대 <small>셋째가 한 줄을 다 써요</small>",W("F",null,WC4.slice(0,3)))+one("기둥 띠 · 4대 <small>2×2</small>",W("F",null,WC4))+one("포스터 · 3대 <small>첫 차만 크게, 순서 고정</small>",W("T",null,WC4.slice(0,3)));
+    `<h3 class="wgh">모양 5<small>위: 모든 차 · 아래: 한 대 고정</small></h3>`+SK.map(d=>cell(d.name,d.k)).join("")+
+    `<h3 class="wgh">차가 3~4대일 때<small>순서는 등록한 순서 그대로</small></h3>`+one("줄 목록 · 3대",W("N",null,WC4.slice(0,3)))+one("포스터 · 3대 <small>첫 차만 크게, 순서 고정</small>",W("T",null,WC4.slice(0,3)))+one("기둥 띠 · 3대 <small>셋째가 한 줄을 다 써요</small>",W("F",null,WC4.slice(0,3)))+one("기둥 띠 · 4대 <small>2×2</small>",W("F",null,WC4))+one("점 행렬 · 3대",W("A",null,WC4.slice(0,3)))+one("주차권 · 4대 <small>표가 한 장씩 늘어요</small>",W("P",null,WC4));
 }
 
 const CAR=[{c:"#f4f1ea",n:"흰 차",f:"B2",s:"C37",who:"아빠",when:"오늘 14:32",ago:"2시간 4분째",memo:"엘리베이터 옆, 3번 출구 쪽",st:""},{c:"#8e9399",n:"회색 차",f:"B4",s:"A12",who:"엄마",when:"어제 19:05",ago:"",memo:"",st:"gone"}];
@@ -869,14 +855,14 @@ function states(){
 function screens(){setTimeout(applyOp);
   const k=key(),skin=SKIN[k],acc=PAL&&PAL.acc&&cr(PAL.acc,"#e9e7e3")>=1.6?PAL.acc:skin[1];
   const bs=`class="sheetw bs k${k}" style="--wnum:${PAL&&k!=="A"?PAL.font:skin[0]};--wacc:${acc}"`;
-  const TH_SVG={R:'<rect x="5" y="6" width="20" height="7" rx="2"/><circle cx="41" cy="9.5" r="3.5"/><rect x="5" y="19" width="20" height="7" rx="2"/><circle cx="41" cy="22.5" r="3.5"/>',
+  const TH_SVG={N:'<rect x="5" y="6" width="20" height="7" rx="2"/><circle cx="41" cy="9.5" r="3.5"/><rect x="5" y="19" width="20" height="7" rx="2"/><circle cx="41" cy="22.5" r="3.5"/>',
     T:'<rect x="5" y="4" width="24" height="16" rx="2"/><rect x="33" y="6" width="10" height="3" rx="1.5"/><rect x="5" y="24" width="38" height="4" rx="2"/>',
     F:'<rect x="6" y="4" width="16" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="6" y="4" width="16" height="6" rx="2"/><rect x="26" y="4" width="16" height="24" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="26" y="4" width="16" height="6" rx="2"/>',
-    X:'<path d="M12 4v24M12 7h32M12 11h32M12 21h32M12 25h32" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="16" y="13.5" width="12" height="5" rx="1.5"/><rect x="2" y="13" width="6" height="6" rx="1"/>'};
+    A:'<rect x="4" y="5" width="30" height="22" rx="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M8 12h22M8 20h22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-dasharray="1.8 2.2"/><circle cx="41" cy="11" r="3"/><circle cx="41" cy="21" r="3"/>',
+    P:'<rect x="4" y="5" width="40" height="9.5" rx="2"/><rect x="4" y="17.5" width="40" height="9.5" rx="2"/><path d="M29 5v9.5M29 17.5v9.5" fill="none" stroke="var(--app-sf)" stroke-width="1.6" stroke-dasharray="2 1.6"/>'};
   set("cfg",`${SB}<div class="scr" style="gap:10px"><div class="top"><h3>위젯 꾸미기</h3></div>
     <div class="sect">무엇을 보여 줄까요</div><div class="tabs"><span class="on">모든 차</span><span>흰 차만</span><span>회색 차만</span></div>
     <div class="sect">모양</div><div class="sks">${SK.map(x=>`<div data-sk="${x.k}" class="${x.k===sk?"on":""}" role="button"><svg width="48" height="32" viewBox="0 0 48 32" fill="currentColor" aria-hidden="true">${TH_SVG[x.k]}</svg>${x.name}</div>`).join("")}</div>
-    ${sk==="R"?`<div class="sect">스타일</div><div class="pres">${PRE.map(x=>`<span data-pre="${x.k}" class="${x.k===pre?"on":""}" role="button">${x.name}</span>`).join("")}</div>`:""}
     <div class="wg-home wp-sky" style="min-height:0;padding:10px;width:100%;align-content:center;flex:none"><div id="wprev" style="display:contents">${W(k,PAL)}</div></div>
     <div style="display:flex;gap:8px"><button id="wshuf" class="btn ghost" style="all:unset;cursor:pointer;flex:1;height:44px;border-radius:999px;display:flex;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14.5px;background:var(--app-sf);box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(0,0,0,.1),0 6px 12px -6px rgba(0,0,0,.2)">${ic("shuffle",18)}색 바꿔 보기</button><button id="wundo" style="all:unset;cursor:pointer;height:44px;padding:0 16px;border-radius:999px;display:flex;align-items:center;font-size:14px;color:var(--app-mu);${HASPREV?"":"opacity:.4;pointer-events:none"}">되돌리기</button></div>
     ${PAL?`<div style="font-size:12px;color:var(--app-mu);margin:-4px 4px 0">지금: ${({pastel:"파스텔",bold:"원색",deep:"깊은 색",mono:"무채색",comp:"보색"})[PAL.fam]} · ${({matte:"무광",gloss:"유광",paper:"종이",metal:"금속",soft:"소프트"})[PAL.mat]} · ${PAL.fontName}</div>`:""}
@@ -983,16 +969,14 @@ function set(id,html){document.getElementById(id).innerHTML=html}
 const TONES=[{},{"--app-bg":"#ffffff","--app-sf":"#f3f2ef","--app-ln":"#e3e1dc"},{"--app-bg":"#1b1b1a","--app-sf":"#272725","--app-fg":"#efede8","--app-mu":"#a9a6a0","--app-ln":"#3a3936"}];
 function tone(i){const r=document.documentElement.style;["--app-bg","--app-sf","--app-fg","--app-mu","--app-ln"].forEach(k=>r.removeProperty(k));Object.entries(TONES[i]).forEach(([k,v])=>r.setProperty(k,v))}
 function seg(id,fn){const el=document.getElementById(id);el.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;el.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",x===b));fn(b.dataset.v)})}
-function segs(){document.getElementById("sk").innerHTML=SK.map(d=>`<button data-v="${d.k}" aria-pressed="${d.k===sk}">${d.name}</button>`).join("");
-  document.getElementById("pr").innerHTML=PRE.map(d=>`<button data-v="${d.k}" aria-pressed="${d.k===pre}">${d.name}</button>`).join("");
-  document.getElementById("prw").style.display=sk==="R"?"contents":"none"}
-function pick(s,p){if(s)sk=s;if(p)pre=p;PAL=null;PREV=null;HASPREV=false;segs();screens()}
+function segs(){document.getElementById("sk").innerHTML=SK.map(d=>`<button data-v="${d.k}" aria-pressed="${d.k===sk}">${d.name}</button>`).join("")}
+function pick(v){sk=v;PAL=null;PREV=null;HASPREV=false;segs();screens()}
 seg("wp",v=>{wp=v;widgets()});
-seg("sk",v=>pick(v));seg("pr",v=>pick(null,v));
+seg("sk",v=>pick(v));
 document.addEventListener("click",e=>{
   if(e.target.closest("#wshuf")){const np=randomPal(key());if(np){PREV=PAL;PAL=np;HASPREV=true;screens()}}
   if(e.target.closest("#wundo")){PAL=PREV;PREV=null;HASPREV=false;screens()}
-  const a=e.target.closest("[data-sk]"),b=e.target.closest("[data-pre]");if(a)pick(a.dataset.sk);else if(b)pick(null,b.dataset.pre);
+  const a=e.target.closest("[data-sk]");if(a)pick(a.dataset.sk);
 });
 segs();widgets();states();screens();applyOp();
 </script>
