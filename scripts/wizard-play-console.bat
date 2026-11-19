@@ -400,7 +400,7 @@ switch ($part) {
   if ($K -eq 'STAND') {
     Say "Stand Screen 답안(권한 신고 4개 · 데이터 보안 · 콘텐츠 등급 · 타겟층 · 앱 액세스): $StandDocs"
     if (Confirm-Yes '답안 문서를 메모장으로 열까요?') { Start-Process notepad.exe $StandDocs }
-    $store = 'C:\DC\DD\dot-lab\works6-11-09-standby\store'
+    $store = 'C:\DC\DD\dot-lab\works\2026-11-09-standby\store'
     Step "스토어 등록정보 → 기본 스토어 등록정보: 이름·간단한 설명·자세한 설명은 $store\listing.md 에서 복사"
     Step '그림: icon-512.png (앱 아이콘) · feature-1024x500.png (그래픽 이미지) · shot-1~7.png (휴대전화 스크린샷, 순서대로) — 같은 폴더'
     Step '앱 카테고리: 도구 · 연락처 이메일 입력 → 저장'
