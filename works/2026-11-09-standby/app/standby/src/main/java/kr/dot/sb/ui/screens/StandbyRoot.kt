@@ -51,6 +51,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
@@ -273,6 +275,17 @@ internal fun RootImpl(
                 }
                 Overlays(state, config, boardActions, layer, editing, onNowPlaying = { npOpen = it })
                 // plan-r15 F10: one tip per session for the page on screen
+                // operator 2026-11-19: 지금 보기 has one day/night button at the top right
+                if (state.showNow && !editing && !mood && layer == Layer.NONE) {
+                    val s = min(w, h)
+                    val d = max(40.dp, s * 0.1f)
+                    Box(
+                        Modifier.align(Alignment.TopEnd).padding(Grid.margin(s) / 2).size(d).clip(CircleShape)
+                            .background(ink.ink.copy(alpha = 0.16f)).tap { act.toggleNight() }
+                            .semantics { contentDescription = if (nightNow) "낮 화면으로" else "밤 화면으로" },
+                        Alignment.Center,
+                    ) { kr.dot.sb.ui.cards.IconView(if (nightNow) kr.dot.sb.ui.cards.Ic.SUN else kr.dot.sb.ui.cards.Ic.MOON, ink.ink2, Modifier.size(d * 0.55f)) }
+                }
                 TipOverlay(config, pages.getOrNull(pager.settledPage)?.let { p -> kr.dot.sb.settings.TipContext(p.index, (p.board ?: widgets.takeIf { p.index == 0 })?.slots.orEmpty()) }, editing || mood || npOpen || layer != Layer.NONE) { act.tipSeen(it) }
             }
             val a by animateFloatAsState(if (barOn) 1f else 0f, tween(200), label = "bar")

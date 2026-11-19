@@ -139,6 +139,7 @@ class HostActions(
     override fun setBrightness(value: Float) = holder.setUserBrightness(value)
     override fun moodShowing(on: Boolean) = holder.moodShowing(on)
     override fun moodDone() = holder.moodDone()
+    override fun toggleNight() = holder.toggleNight()
     override fun exit() = host.finish()
 }
 

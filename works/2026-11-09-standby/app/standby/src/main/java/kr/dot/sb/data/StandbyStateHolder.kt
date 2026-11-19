@@ -79,6 +79,8 @@ class StandbyStateHolder(
     app: Context, private val host: HostCallbacks, private val ownRotation: Boolean,
     private val alerts: TimerAlerts = DeviceTimerAlerts.shared(app),
     private val automatic: Boolean = false,
+    /** Opened from 지금 보기: the window follows the phone's brightness, night is the user's button, no display-off. */
+    private val showNow: Boolean = false,
 ) {
     private val ctx = app.applicationContext
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate) // new one per start(): stop() cancels it
@@ -92,7 +94,7 @@ class StandbyStateHolder(
 
     private val _state = MutableStateFlow(
         StandbyState(
-            now = minute(), use24h = cfg.use24h ?: DateFormat.is24HourFormat(ctx), night = lastNight,
+            now = minute(), use24h = cfg.use24h ?: DateFormat.is24HourFormat(ctx), night = lastNight, showNow = showNow,
             agenda = emptyList(), permissions = DeviceSources.permissions(ctx),
         ),
     )
@@ -339,7 +341,7 @@ class StandbyStateHolder(
         val c = cfg
         nightSw.enterLux = c.nightEnterLux; nightSw.exitLux = c.nightExitLux
         lastLux?.let { nightSw.update(now, it) }
-        val nightOn = NightRules.on(
+        val nightOn = manualNight ?: NightRules.on(
             c.nightMode, c.displayOff,
             scheduled = c.nightMode == NightMode.SCHEDULE && NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour),
             auto = nightSw.night,
@@ -347,7 +349,7 @@ class StandbyStateHolder(
         )
         setNight(if (nightOn) 1f else 0f)
         val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
-        val off = NightRules.displayOff(
+        val off = !showNow && NightRules.displayOff(
             machine.evaluate(now, c.displayOff, lastLux, c.nightEnterLux, c.nightExitLux) || flat,
             _state.value.alarm != null, _state.value.notification != null, mood = mood && !machine.asleep, // sleep wins over mood
         )
@@ -367,6 +369,11 @@ class StandbyStateHolder(
         val w = waits.minOrNull() ?: return
         pollJob = scope.launch { delay(w + 20); evaluate() }
     }
+
+    /** 지금 보기's day/night button: null = the night rules decide (until the first press). */
+    private var manualNight: Boolean? = null
+
+    fun toggleNight() { manualNight = nightTarget < 0.5f; evaluate() }
 
     private fun setNight(target: Float) {
         if (target == nightTarget) return
@@ -415,6 +422,7 @@ class StandbyStateHolder(
         val b = pendingBrightness ?: return
         pendingBrightness = null
         logBrightness("막대", barFrom, lastBrightness) // one line per edit, not per frame
+        if (showNow) return // 지금 보기: a bar edit lasts this visit only; the charge-start values stay
         // plan-r15 E8: over the mood light the bar is the mood light's own brightness
         if (pendingMood) ConfigStore.update(ctx) { it.copy(mood = it.mood.copy(bright = Brightness.toBar(b))) }
         else ConfigStore.update(ctx) { Brightness.store(it, nightTarget >= 0.5f, b) }
@@ -445,7 +453,11 @@ class StandbyStateHolder(
         // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
         if (!off && pendingBrightness != null) return
         // plan-r15 E8: the mood light has its own brightness, up to the panel maximum (heat protection still caps it)
-        val b = if (!off && mood) Brightness.applied(Brightness.fromBar(cfg.mood.bright), cfg, hot) else Brightness.target(off, nightOn, cfg, hot)
+        val b = when {
+            showNow -> Brightness.applied(Brightness.AUTO, cfg, hot) // the phone's own brightness (heat protection still caps it)
+            !off && mood -> Brightness.applied(Brightness.fromBar(cfg.mood.bright), cfg, hot)
+            else -> Brightness.target(off, nightOn, cfg, hot)
+        }
         if (b != lastBrightness) {
             // screen off/on is not logged: it repeats all night and would push the charge-start lines out of the trail
             // a battery near 42 °C toggles the heat cap often: one "열" line per 10 min at most, for the same reason

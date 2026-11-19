@@ -68,7 +68,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
             hide(WindowInsetsCompat.Type.systemBars())
         }
-        holder = StandbyStateHolder(this, this, ownRotation = false, automatic = chargeStart)
+        holder = StandbyStateHolder(this, this, ownRotation = false, automatic = chargeStart, showNow = intent.getBooleanExtra(EXTRA_SHOW_NOW, false))
         val base = HostActions(this, holder, this)
         // plan-r15 E7: the mood light on the inner screen brings the clock to the outer screen (where the phone allows it)
         val actions = object : kr.dot.sb.ui.state.StandbyActions by base {
@@ -155,6 +155,8 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     companion object {
         const val EXTRA_TILE = "kr.dot.sb.TILE"
+        /** The settings' 지금 보기 button (not the tile): the phone's brightness, a day/night button. */
+        const val EXTRA_SHOW_NOW = "kr.dot.sb.SHOW_NOW"
         const val LOW_BATTERY = 20
 
         /** No charger and the battery at [LOW_BATTERY] % or less: a manual start would only drain it. */
@@ -167,7 +169,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
          */
         fun startNow(ctx: Context): Boolean {
             if (refused(ctx)) return false
-            ctx.startActivity(intentNow(ctx))
+            ctx.startActivity(intentNow(ctx).putExtra(EXTRA_SHOW_NOW, true))
             return true
         }
 

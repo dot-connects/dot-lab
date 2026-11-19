@@ -23,6 +23,8 @@ data class StandbyState(
     val night: Float = 0f,
     /** Display auto-off: true renders the black "off" state. */
     val displayOff: Boolean = false,
+    /** Opened from settings' 지금 보기: StandbyRoot shows the day/night button. */
+    val showNow: Boolean = false,
     val media: MediaInfo? = null,
     val usage: UsageInfo? = null,
     val weather: WeatherInfo? = null,
@@ -277,6 +279,8 @@ interface StandbyActions {
     fun moodShowing(on: Boolean) {}
     /** The mood light's auto-off ran out: the screen sleeps until touched. */
     fun moodDone() {}
+    /** 지금 보기's day/night button. */
+    fun toggleNight() {}
     /** Timer ring drag (11-14 #10): set timer [id] to [minutes] (stopped = focus length, paused = time left). */
     fun timerSet(id: String, minutes: Int) {}
     /** Alarm card: the clock app's alarm list (after unlock). */
