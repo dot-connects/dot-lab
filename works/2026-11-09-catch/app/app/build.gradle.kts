@@ -47,7 +47,9 @@ android {
             versionNameSuffix = "-dev"
             manifestPlaceholders["appLabel"] = "리얼뽑기 개발"
             // dev builds buy AI pet sheets free (operator 11-14): the Worker's debug token, read from this PC, never committed
-            val token = File(System.getProperty("user.home"), ".catchpet-debug-purchase").takeIf { it.exists() }?.readText()?.trim().orEmpty()
+            // -PstoreShots: no token, so StoreShotTest draws the screens the Play build shows
+            val token = if (project.hasProperty("storeShots")) "" else
+                File(System.getProperty("user.home"), ".catchpet-debug-purchase").takeIf { it.exists() }?.readText()?.trim().orEmpty()
             buildConfigField("String", "DEBUG_PURCHASE", "\"$token\"")
             isMinifyEnabled = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")

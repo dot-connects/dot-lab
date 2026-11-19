@@ -36,7 +36,7 @@ Drafted 2026-11-18. Lab copy rules: no "AI" word in the first line, no "무료" 
 ## 그래픽
 - 아이콘 512×512: `out/store-icon-512.png` (있음).
 - 그래픽 이미지 1024×500: `store/graphics/feature-1024x500.png` (있음, 11-19).
-- 휴대전화 스크린샷 4장 (운영자가 폰에서 캡처 → Claude 가 다듬음):
+- 휴대전화 스크린샷 4장: `store/shots/shot1~4.png` (11-19, 1~3 = 실제 화면 StoreShotTest, 4 = 홈 화면 합성 make_home.py, 글귀 frame.py)
 
 ## 찍을 화면
 1. 뽑기: 카메라에 고양이(또는 강아지)가 비치고 집게가 내려오는 순간.
