@@ -61,6 +61,13 @@ class R16RulesTest {
         assertFalse(m.evaluate(700_001, DisplayOff.AUTO, 500f, 3f, 8f))
     }
 
+    @Test fun notificationWakeDoesNotResetTheBrightRoomCeiling() {
+        val m = DisplayOffMachine(); m.touch(0)
+        m.touch(500_000, user = false) // a notification lit the screen
+        assertFalse(m.evaluate(510_000, DisplayOff.AUTO, 500f, 3f, 8f))
+        assertTrue(m.evaluate(DisplayOffMachine.BRIGHT_IDLE_MS, DisplayOff.AUTO, 500f, 3f, 8f))
+    }
+
     @Test fun autoDarkOffStillWakesWhenTheLightComesOn() {
         val m = DisplayOffMachine(); m.touch(0)
         assertTrue(m.evaluate(20_000, DisplayOff.AUTO, 1f, 3f, 8f))

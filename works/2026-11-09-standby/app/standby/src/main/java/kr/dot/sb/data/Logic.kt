@@ -265,10 +265,12 @@ class DisplayOffMachine {
     var asleep = false
         private set
     private var last = 0L
+    /** Q4: the bright-room ceiling counts from the last user touch only (a notification wake must not reset it). */
+    private var userLast = 0L
     /** Went off in the dark (AUTO): light coming back wakes it; the bright-room ceiling does not. */
     private var darkOff = false
 
-    fun touch(nowMs: Long) { last = nowMs; off = false; asleep = false }
+    fun touch(nowMs: Long, user: Boolean = true) { last = nowMs; if (user) userLast = nowMs; off = false; asleep = false }
 
     fun sleep() { off = true; asleep = true }
 
@@ -286,7 +288,7 @@ class DisplayOffMachine {
             DisplayOff.AUTO ->
                 if (off) { if (darkOff && lux != null && lux >= exitLux) touch(nowMs) }
                 else if (nowMs - last >= IDLE_MS && (lux == null || lux <= enterLux)) { off = true; darkOff = true }
-                else if (nowMs - last >= BRIGHT_IDLE_MS) { off = true; darkOff = false }
+                else if (nowMs - userLast >= BRIGHT_IDLE_MS) { off = true; darkOff = false }
         }
         return off
     }
@@ -295,8 +297,8 @@ class DisplayOffMachine {
     fun idleLeftMs(nowMs: Long, mode: DisplayOff = DisplayOff.AFTER_20S): Long? {
         if (off) return null
         val idle = nowMs - last
-        val limit = if (mode == DisplayOff.AUTO && idle >= IDLE_MS) BRIGHT_IDLE_MS else IDLE_MS
-        return (limit - idle).coerceAtLeast(0)
+        if (mode == DisplayOff.AUTO && idle >= IDLE_MS) return (BRIGHT_IDLE_MS - (nowMs - userLast)).coerceAtLeast(0)
+        return (IDLE_MS - idle).coerceAtLeast(0)
     }
 
     companion object {

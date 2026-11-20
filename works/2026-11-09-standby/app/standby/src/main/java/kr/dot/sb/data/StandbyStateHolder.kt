@@ -689,6 +689,8 @@ class StandbyStateHolder(
         if (_state.value.alarm != null) return // dropped while an alarm shows; it stays in the shade
         // quiet night: no banner, no wake; the notification card still updates through ListenerBus.shade
         if (!NightRules.wakeOnNotification(nightTarget >= 0.5f, cfg.nightNotifQuiet, _state.value.displayOff)) return
+        // plan-r16 review: black with keep=0 = the phone timeout is running; a wake would restart it and flicker
+        if (_state.value.displayOff && keepOn == false) return
         notifJob?.cancel()
         notifJob = scope.launch {
             val wait = 2_000 - (el() - notifShownAt) // a newer one replaces the shown one after >= 2 s
@@ -697,7 +699,7 @@ class StandbyStateHolder(
             // woken from OFF by this notification: back to OFF afterwards unless the user touched the screen (spec I4)
             if (_state.value.notification == null) { wasOffAtNotif = _state.value.displayOff; wasAsleepAtNotif = machine.asleep }
             _state.update { it.copy(notification = n) }
-            machine.touch(el()); notifWokeAt = machine.lastTouch; evaluate()
+            machine.touch(el(), user = false); notifWokeAt = machine.lastTouch; evaluate()
             delay(6_500) // 6 s + fade
             endNotification(n.key)
         }
@@ -706,7 +708,7 @@ class StandbyStateHolder(
     private fun endNotification(key: String?) {
         if (key != null && _state.value.notification?.key != key) return
         _state.update { it.copy(notification = null) }
-        if (wasOffAtNotif && machine.lastTouch == notifWokeAt) { if (wasAsleepAtNotif) machine.sleep() else machine.forceOff() } else machine.touch(el())
+        if (wasOffAtNotif && machine.lastTouch == notifWokeAt) { if (wasAsleepAtNotif) machine.sleep() else machine.forceOff() } else machine.touch(el(), user = false)
         wasOffAtNotif = false; wasAsleepAtNotif = false
         evaluate()
     }

@@ -87,7 +87,8 @@ class Listener : NotificationListenerService() {
                     val alive = StandbyPresence.alive || GlowPresence.covering
                     handler.postDelayed({ ChargeStart.onEvent(this@Listener, StartEvent.SCREEN_OFF, alive || StandbyPresence.alive) }, 1500)
                 }
-                Intent.ACTION_USER_PRESENT -> ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                // review M4: with no secure lock every wake sends USER_PRESENT, so it is not proof of use (start loop)
+                Intent.ACTION_USER_PRESENT -> if (getSystemService(android.app.KeyguardManager::class.java).isKeyguardSecure) ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
                 // plan-r16 T2: a pad flaps for a moment; only an unplug that lasts counts
                 Intent.ACTION_POWER_DISCONNECTED -> { handler.removeCallbacks(unplugCheck); handler.postDelayed(unplugCheck, StartPolicy.FLAP_MS) }
             }

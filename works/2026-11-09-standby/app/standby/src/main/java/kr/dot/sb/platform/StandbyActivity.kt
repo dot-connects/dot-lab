@@ -58,11 +58,18 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         // plan-r16 T4: unlock ends every session (unplug: the state holder); the exit swipe goes through HostActions.exit()
         unlockRx = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) {
+                // review H1: a screen-off while covered (dream stub, alarm, call) brings no onStop: end here too
+                if (i.action == Intent.ACTION_SCREEN_OFF) {
+                    if (!GlowPresence.covering && !isFinishing) { ChargeStart.log(c, "닫힘 · 화면 꺼짐(가려진 채)"); finish() }
+                    return
+                }
                 if (unlocking) return
                 ChargeStart.log(c, "닫힘 · 잠금 해제")
                 finish()
             }
-        }.also { registerReceiver(it, IntentFilter(Intent.ACTION_USER_PRESENT), Context.RECEIVER_NOT_EXPORTED) }
+        }.also {
+            registerReceiver(it, IntentFilter(Intent.ACTION_USER_PRESENT).apply { addAction(Intent.ACTION_SCREEN_OFF) }, Context.RECEIVER_NOT_EXPORTED)
+        }
         setShowWhenLocked(true)
         // plan-r16 T4: light the panel for the first show only; a later resume or finish must never turn it on
         setTurnScreenOn(true)
