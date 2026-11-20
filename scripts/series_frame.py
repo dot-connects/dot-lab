@@ -13,18 +13,17 @@ PAD = 16
 SX = (W - SW) // 2
 SY = 318
 
-WORKS = {
-    "standby": dict(
-        src=r"C:\DC\DD\dot-lab\works\2026-11-09-standby\out\reel.mp4",
-        n=5, name="Stand Screen", desc="충전하는 동안 시계가 되는 앱",
-        bg=(243, 238, 230), ink=(28, 24, 20), sub=(110, 100, 90), accent=(222, 110, 40),
-    ),
-    "catch": dict(
-        src=r"C:\DC\DD\dot-lab\works\2026-11-09-catch\out\reel.mp4",
-        n=6, name="리얼뽑기", desc="우리 아이를 뽑아 폰에 키우는 앱",
-        bg=(221, 238, 250), ink=(24, 34, 48), sub=(80, 98, 120), accent=(232, 160, 0),
-    ),
-}
+WORKS_DIR = Path(__file__).resolve().parent.parent / "works"
+
+
+def load(slug: str) -> dict:
+    """Frame settings from works/<slug>/manifest.json "series": {n, name, desc, bg, ink, sub, accent} (colours = RGB lists)."""
+    m = __import__("json").loads((WORKS_DIR / slug / "manifest.json").read_text(encoding="utf-8"))
+    c = dict(m["series"])
+    for k in ("bg", "ink", "sub", "accent"):
+        c[k] = tuple(c[k])
+    c["src"] = str(WORKS_DIR / slug / m["media"].get("reel_src", "out/reel.mp4"))
+    return c
 
 
 def font(size: int, weight: int) -> ImageFont.FreeTypeFont:
@@ -42,7 +41,7 @@ def centered(d: ImageDraw.ImageDraw, y: int, parts: list[tuple[str, ImageFont.Fr
 
 
 def build(key: str) -> None:
-    c = WORKS[key]
+    c = load(key)
     # background + title + phone body
     bg = Image.new("RGB", (W, H), c["bg"])
     d = ImageDraw.Draw(bg)
@@ -98,5 +97,7 @@ def build(key: str) -> None:
 
 
 if __name__ == "__main__":
-    for k in sys.argv[1:] or WORKS:
+    if len(sys.argv) < 2:
+        sys.exit("usage: python scripts/series_frame.py <work-slug> [...]  (needs a \"series\" block in its manifest)")
+    for k in sys.argv[1:]:
         build(k)

@@ -13,5 +13,30 @@
     "reel": "out/framed-v1.mp4",
     "cover": "out/cover.png",
     "mixed": true
+  },
+  "series": {
+    "n": 5,
+    "name": "Stand Screen",
+    "desc": "충전하는 동안 시계가 되는 앱",
+    "bg": [
+      243,
+      238,
+      230
+    ],
+    "ink": [
+      28,
+      24,
+      20
+    ],
+    "sub": [
+      110,
+      100,
+      90
+    ],
+    "accent": [
+      222,
+      110,
+      40
+    ]
   }
 }
