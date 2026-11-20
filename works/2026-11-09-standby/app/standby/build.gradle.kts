@@ -20,6 +20,8 @@ val upload = Properties().apply {
     if (f.exists()) f.inputStream().use { load(it) }
 }
 
+base { archivesName.set("stand-screen") } // operator: never "standby" in anything they see, file names included
+
 android {
     namespace = "kr.dot.sb"
     compileSdk = 36

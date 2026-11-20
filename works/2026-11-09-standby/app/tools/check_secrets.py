@@ -51,7 +51,7 @@ def apk(flavour: str, build: str) -> Path:
 
 
 def aab() -> Path:
-    return out() / "bundle" / "publicRelease" / "standby-public-release.aab"
+    return out() / "bundle" / "publicRelease" / "stand-screen-public-release.aab"
 
 
 def hits(path: Path, secrets: dict[str, str]) -> dict[str, int]:
