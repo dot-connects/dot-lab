@@ -85,10 +85,21 @@ class Listener : NotificationListenerService() {
                 // moment it went off (side key, our own off) is read now, before it finishes
                 Intent.ACTION_SCREEN_OFF -> {
                     val alive = StandbyPresence.alive || GlowPresence.covering
-                    handler.postDelayed({ ChargeStart.onEvent(this@Listener, StartEvent.SCREEN_OFF, alive || StandbyPresence.alive) }, 1500)
+                    handler.postDelayed({
+                        // r16b: back on within the delay (woken again at once): this screen-off is stale, keep `used`
+                        if (getSystemService(android.os.PowerManager::class.java).isInteractive) Measure.log(this@Listener, "start 판단 · SCREEN_OFF → 바로 다시 켜져 무시")
+                        else ChargeStart.onEvent(this@Listener, StartEvent.SCREEN_OFF, alive || StandbyPresence.alive)
+                    }, 1500)
                 }
-                // review M4: with no secure lock every wake sends USER_PRESENT, so it is not proof of use (start loop)
-                Intent.ACTION_USER_PRESENT -> if (getSystemService(android.app.KeyguardManager::class.java).isKeyguardSecure) ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                Intent.ACTION_SCREEN_ON -> ChargeStart.screenOnAt = android.os.SystemClock.elapsedRealtime()
+                // r16b: an unlock is use. Only a phone with no lock at all (USER_PRESENT within a second of every wake)
+                // is ignored, or a notification wake + timeout would loop starts (review M4)
+                Intent.ACTION_USER_PRESENT -> {
+                    val secure = getSystemService(android.app.KeyguardManager::class.java).isKeyguardSecure
+                    val auto = !secure && android.os.SystemClock.elapsedRealtime() - ChargeStart.screenOnAt < 1_000L
+                    Measure.log(this@Listener, "잠금 해제 · secure=${if (secure) 1 else 0}${if (auto) " · 잠금 없음이라 무시" else ""}")
+                    if (!auto) ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                }
                 // plan-r16 T2: a pad flaps for a moment; only an unplug that lasts counts
                 Intent.ACTION_POWER_DISCONNECTED -> { handler.removeCallbacks(unplugCheck); handler.postDelayed(unplugCheck, StartPolicy.FLAP_MS) }
             }
@@ -123,7 +134,7 @@ class Listener : NotificationListenerService() {
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
         // this service stays bound, so it hears every plug-in at once (the charging job alone can lag by minutes)
         registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply {
-            addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
+            addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON); addAction(Intent.ACTION_USER_PRESENT)
         }, RECEIVER_NOT_EXPORTED)
         // plan-r16 T1: connecting never starts StandBy; it repairs an unplug missed while unbound
         if (ChargeStart.plugged(this) == 0) ChargeStart.onEvent(this, StartEvent.UNPLUG_CONFIRMED)

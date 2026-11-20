@@ -92,8 +92,9 @@ object ChargeStart {
     private const val JOB_ID = 4101
     private const val NOTIF_ID = 8
     private const val HANDLED_KEY = "plugHandled"
-    /** Unlocked since the last screen-off; memory only (process death = no start, the safe side). */
-    @Volatile private var used = false
+    private const val USED_KEY = "used"
+    /** Last ACTION_SCREEN_ON (elapsedRealtime), to tell a phone with no lock from a real unlock. */
+    @Volatile var screenOnAt = 0L
 
     private fun on(ctx: Context) = ConfigStore.flow(ctx).value.startOnCharge
 
@@ -116,10 +117,10 @@ object ChargeStart {
      */
     fun onEvent(ctx: Context, e: StartEvent, sessionAlive: Boolean = StandbyPresence.alive, jobDone: (() -> Unit)? = null): Boolean {
         val p = prefs(ctx)
-        val s = StartState(used, p.getBoolean(HANDLED_KEY, false))
+        // r16b: `used` is persisted too: an app update or process death between unlock and screen-off lost it (operator 11-20)
+        val s = StartState(p.getBoolean(USED_KEY, false), p.getBoolean(HANDLED_KEY, false))
         val (n, launch) = StartPolicy.next(s, e, sessionAlive)
-        used = n.used
-        if (n.plugHandled != s.plugHandled) p.edit().putBoolean(HANDLED_KEY, n.plugHandled).apply()
+        if (n != s) p.edit().putBoolean(USED_KEY, n.used).putBoolean(HANDLED_KEY, n.plugHandled).apply()
         if (e == StartEvent.UNPLUG_CONFIRMED && on(ctx)) arm(ctx, 0, replace = true)
         // plan-r15 C7: a screen-off with no charger has nothing to start (no log line)
         if (e == StartEvent.SCREEN_OFF && plugged(ctx) == 0) return false
@@ -309,5 +310,9 @@ class ChargeJobService : JobService() {
 
 /** BOOT_COMPLETED / MY_PACKAGE_REPLACED: persisted jobs normally survive, this is the belt for the cases they do not. */
 class ChargeBootReceiver : BroadcastReceiver() {
-    override fun onReceive(context: Context, intent: Intent) = ChargeStart.sync(context)
+    override fun onReceive(context: Context, intent: Intent) {
+        // r16b: an unplug while powered off was never seen; a boot starts a fresh plug session
+        if (intent.action == Intent.ACTION_BOOT_COMPLETED) ChargeStart.onEvent(context, StartEvent.UNPLUG_CONFIRMED)
+        ChargeStart.sync(context)
+    }
 }

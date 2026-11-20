@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -684,12 +685,17 @@ fun AboutScreen(config: AppConfig, nav: Nav, env: SettingsEnv, back: () -> Unit)
                 }
                 // plan-r15 Order step 2: the measurement round's log, read-only, newest first; 복사 for sending it on
                 item {
-                    val lines = remember { env.measureLog() }
+                    var lines by remember { mutableStateOf(env.measureLog()) }
                     val clip = androidx.compose.ui.platform.LocalClipboardManager.current
+                    val ctx = androidx.compose.ui.platform.LocalContext.current
                     Column(Modifier.fillMaxWidth().padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             T("측정 기록", 16.sp, 500, SK.text, Modifier.weight(1f))
-                            if (lines.isNotEmpty()) ActionButton("복사", { clip.setText(androidx.compose.ui.text.AnnotatedString(lines.joinToString("\n"))) }, primary = false)
+                            if (lines.isNotEmpty()) {
+                                ActionButton("복사", { clip.setText(androidx.compose.ui.text.AnnotatedString(lines.joinToString("\n"))) }, primary = false)
+                                androidx.compose.foundation.layout.Spacer(Modifier.width(8.dp))
+                                ActionButton("지우기", { kr.dot.sb.platform.Measure.clear(ctx); lines = emptyList() }, primary = false)
+                            }
                         }
                         T(if (lines.isEmpty()) "아직 기록이 없어요" else lines.joinToString("\n"), 12.sp, 400, SK.muted, Modifier.padding(top = 6.dp), lineHeight = 17.sp)
                     }

@@ -104,7 +104,13 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onResume() {
         super.onResume()
-        if (!resumedOnce) { resumedOnce = true; setTurnScreenOn(false) }
+        // r16b (review): the panel wakes after resume, so the flag may only go once the screen is really on
+        if (!resumedOnce && getSystemService(android.os.PowerManager::class.java).isInteractive) { resumedOnce = true; setTurnScreenOn(false) }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && !resumedOnce && getSystemService(android.os.PowerManager::class.java).isInteractive) { resumedOnce = true; setTurnScreenOn(false) }
     }
 
     /** plan-r16 T4: a second start (another plug-in, the tile) brings this task forward; a different mode starts over. */

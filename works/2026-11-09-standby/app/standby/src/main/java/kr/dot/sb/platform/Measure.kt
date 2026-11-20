@@ -41,6 +41,8 @@ object Measure {
         }
     }
 
+    fun clear(ctx: Context) { synchronized(this) { prefs(ctx).edit().remove(KEY).apply() } }
+
     fun lines(ctx: Context): List<String> = prefs(ctx).getString(KEY, "").orEmpty().lines().filter { it.isNotBlank() }
 
     /** Automatic-start options and battery status at the decision, including protection-charge pauses. */
