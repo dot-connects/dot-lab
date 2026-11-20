@@ -60,7 +60,7 @@ internal const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2
 
 /**
  * Home (plan-r15 F1, mockup r15 "설정 · 홈 다시 묶기"): large title, one preview of the pages that are on (dots) with
- * [지금 보기], the banner only while charge-start's screen saver is missing, then the seven rows by task, each with an
+ * [지금 보기], the banner only while the system screen saver is set to ours, then the seven rows by task, each with an
  * accent line icon and its current value ("설정 필요" when a default-on feature lacks its grant), then 팁 and 정보.
  */
 @Composable
@@ -69,7 +69,7 @@ fun HomeScreen(config: AppConfig, nav: Nav, env: SettingsEnv) {
     val need = "설정 필요"
     Page("Stand Screen", null, preview = Preview(config, pageSlides(config), initial = Pages.start(config))) {
         ActionButton("지금 보기", env.onShowNow, Modifier.fillMaxWidth().padding(top = 12.dp))
-        if (Perm.DREAM in missing) PermBanner { env.onPermWalkOf(Perm.CHARGE_START) }
+        if (Perm.SCREEN_SAVER in missing) PermBanner { env.onPerm(Perm.SCREEN_SAVER) }
         Section(null) {
             item { NavRow("시계", { nav.push(Routes.CLOCKS) }, value = kr.dot.sb.ui.clock.spec(config.myClocks.firstOrNull() ?: kr.dot.sb.model.FaceId.DIGITAL).ko, lead = { HomeIcon(kr.dot.sb.ui.cards.Ic.ALARM) }) }
             item {
@@ -275,7 +275,7 @@ private fun InlineAsk(text: String, buttons: @Composable () -> Unit) {
     }
 }
 
-/** plan-r15 F1: "충전할 때 자동으로 켜지게 하려면 한 가지만 더 해 주세요 · 켜러 가기", only while the screen saver is missing. */
+/** plan-r16 T9: only while the system screen saver is set to ours (the panel can never go off for real then). */
 @Composable
 private fun PermBanner(onClick: () -> Unit) {
     Row(
@@ -284,8 +284,8 @@ private fun PermBanner(onClick: () -> Unit) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(10.dp).clip(CircleShape).background(SK.danger))
-        T("충전할 때 자동으로 켜지게 하려면 한 가지만 더 해 주세요", 15.sp, 700, SK.text, Modifier.weight(1f).padding(start = 12.dp, end = 8.dp), lineHeight = 20.sp)
-        ActionButton("켜러 가기", onClick, padH = 14.dp)
+        T("화면 보호기를 꺼야 화면이 완전히 꺼져요", 15.sp, 700, SK.text, Modifier.weight(1f).padding(start = 12.dp, end = 8.dp), lineHeight = 20.sp)
+        ActionButton(Perm.SCREEN_SAVER.button, onClick, padH = 14.dp)
     }
 }
 

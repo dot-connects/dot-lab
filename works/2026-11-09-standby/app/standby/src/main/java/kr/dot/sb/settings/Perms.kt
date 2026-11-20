@@ -17,14 +17,14 @@ import kr.dot.sb.data.UsageApps
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.model.AppSource
 import kr.dot.sb.model.CardType
-import kr.dot.sb.platform.StandbyDream
 
 /**
  * The things StandBy needs the user to grant, mockup `PERMS` order (r10 checklist). Photos need none (plan-r15
  * B1). plan-r15 F3/F7: [ko] names the effect, [why] says what you get, [need] is the [PermLine] at the feature.
  */
 enum class Perm(val ko: String, val why: String, val button: String, val need: String) {
-    DREAM("충전하면 자동으로 켜기", "화면 보호기에서 Stand Screen을 골라 주세요.", "켜러 가기", "충전할 때 자동으로 켜지려면 허용이 필요해요"),
+    /** plan-r16 T9: a warning, not a grant: "missing" while the system screen saver is on and set to ours. */
+    SCREEN_SAVER("화면 보호기 끄기", "화면 보호기가 켜져 있으면 화면이 완전히 꺼지지 않아요. '없음'으로 바꿔 주세요.", "끄러 가기", "화면이 완전히 꺼지려면 화면 보호기를 꺼야 해요"),
     NOTIFICATIONS("알림 읽기", "알림, 듣는 음악, 알람을 화면에 보여줘요. 알림 내용은 폰 밖으로 나가지 않아요.", "허용하기", "알림을 보려면 허용이 필요해요"),
     POST("알람 화면 보여주기", "알람이 울릴 때 큰 화면을 띄워요.", "허용하기", "알람 화면을 띄우려면 허용이 필요해요"),
     FULL_SCREEN("화면이 꺼져 있을 때도 바로 켜기", "화면이 꺼져 있어도 알람 화면과 무드등이 바로 켜져요.", "허용하기", "화면이 꺼져 있을 때 켜지려면 허용이 필요해요"),
@@ -36,10 +36,10 @@ enum class Perm(val ko: String, val why: String, val button: String, val need: S
 
     companion object {
         /**
-         * plan-r15 B4/F3 step 3: what "충전하면 자동으로 켜기" needs, checked in this order (screen saver, then the
+         * plan-r15 B4/F3 step 3: what "충전하면 자동으로 켜기" needs, checked in this order (screen saver off, then the
          * listener that sees the plug-in, then the two that let it open over a dark screen).
          */
-        val CHARGE_START = listOf(DREAM, NOTIFICATIONS, POST, FULL_SCREEN)
+        val CHARGE_START = listOf(SCREEN_SAVER, NOTIFICATIONS, POST, FULL_SCREEN)
     }
 }
 
@@ -57,8 +57,11 @@ object Perms {
         val pm = ctx.getSystemService(PowerManager::class.java)
         fun has(p: String) = ctx.checkSelfPermission(p) == PackageManager.PERMISSION_GRANTED
         return mapOf(
-            Perm.DREAM to (runCatching { Settings.Secure.getString(ctx.contentResolver, "screensaver_components") }.getOrNull()
-                ?.split(',')?.any { ComponentName.unflattenFromString(it.trim()) == ComponentName(ctx, StandbyDream::class.java) } == true),
+            Perm.SCREEN_SAVER to !screenSaverWarning(
+                runCatching { Settings.Secure.getInt(ctx.contentResolver, "screensaver_enabled") }.getOrNull(),
+                runCatching { Settings.Secure.getString(ctx.contentResolver, "screensaver_components") }.getOrNull(),
+                ctx.packageName,
+            ),
             Perm.NOTIFICATIONS to (ctx.packageName in NotificationManagerCompat.getEnabledListenerPackages(ctx)),
             Perm.POST to has(Manifest.permission.POST_NOTIFICATIONS),
             Perm.CALENDAR to has(Manifest.permission.READ_CALENDAR),
@@ -68,6 +71,13 @@ object Perms {
             Perm.USAGE to UsageApps.granted(ctx),
         )
     }
+
+    /**
+     * plan-r16 T9: the screen saver is on and set to us, so a timeout starts our black stub instead of turning the panel
+     * off. Unreadable settings = no warning.
+     */
+    fun screenSaverWarning(enabled: Int?, components: String?, pkg: String): Boolean =
+        enabled == 1 && components.orEmpty().split(',').any { it.trim().substringBefore('/') == pkg }
 
     private fun pkg(ctx: Context) = Uri.parse("package:${ctx.packageName}")
 
@@ -79,7 +89,7 @@ object Perms {
 
     /** Intent that opens the system page for [p]; null for runtime permissions (requested in-app). */
     fun intents(ctx: Context, p: Perm): List<Intent> = when (p) {
-        Perm.DREAM -> dreamIntents()
+        Perm.SCREEN_SAVER -> dreamIntents()
         Perm.NOTIFICATIONS -> listOf(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
         Perm.USAGE -> listOf(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS, pkg(ctx)), Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
         Perm.FULL_SCREEN -> listOf(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT, pkg(ctx)), Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, pkg(ctx)))

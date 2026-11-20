@@ -14,14 +14,14 @@ class EasySettingsTest {
     // ---- B1 permission walk ----
 
     @Test fun walkOpensEachMissingPermissionOnceInOrder() {
-        val missing = listOf(Perm.DREAM, Perm.POST, Perm.BATTERY)
+        val missing = listOf(Perm.SCREEN_SAVER, Perm.POST, Perm.BATTERY)
         var w = PermWalk().advance(null, missing)
-        assertEquals(Perm.DREAM, w.current)
-        w = w.advance(Perm.DREAM, missing) // DREAM still missing (the user came back without granting): not asked again
+        assertEquals(Perm.SCREEN_SAVER, w.current)
+        w = w.advance(Perm.SCREEN_SAVER, missing) // still missing (the user came back without granting): not asked again
         assertEquals(Perm.POST, w.current)
-        w = w.advance(Perm.POST, listOf(Perm.DREAM, Perm.BATTERY))
+        w = w.advance(Perm.POST, listOf(Perm.SCREEN_SAVER, Perm.BATTERY))
         assertEquals(Perm.BATTERY, w.current)
-        w = w.advance(Perm.BATTERY, listOf(Perm.DREAM))
+        w = w.advance(Perm.BATTERY, listOf(Perm.SCREEN_SAVER))
         assertNull(w.current)
         assertTrue(w.done)
     }
@@ -37,12 +37,12 @@ class EasySettingsTest {
         val w = PermWalk().advance(null, emptyList())
         assertTrue(w.done)
         assertNull(w.current)
-        assertEquals(w, w.advance(null, listOf(Perm.DREAM))) // a finished walk stays finished
+        assertEquals(w, w.advance(null, listOf(Perm.SCREEN_SAVER))) // a finished walk stays finished
     }
 
     @Test fun nextSkipsWhatWasAsked() {
-        assertEquals(Perm.BATTERY, PermWalk.next(listOf(Perm.DREAM, Perm.BATTERY), setOf(Perm.DREAM)))
-        assertNull(PermWalk.next(listOf(Perm.DREAM), setOf(Perm.DREAM)))
+        assertEquals(Perm.BATTERY, PermWalk.next(listOf(Perm.SCREEN_SAVER, Perm.BATTERY), setOf(Perm.SCREEN_SAVER)))
+        assertNull(PermWalk.next(listOf(Perm.SCREEN_SAVER), setOf(Perm.SCREEN_SAVER)))
     }
 
     @Test fun walkStartsOnlyOnAFreshInstall() {

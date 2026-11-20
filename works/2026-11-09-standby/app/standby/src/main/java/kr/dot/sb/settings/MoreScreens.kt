@@ -229,9 +229,11 @@ private fun LuxRow(lux: Float?, config: AppConfig) {
 @Composable
 fun OnOffScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, back: () -> Unit) {
     val never = config.displayOff == DisplayOff.NEVER
+    // plan-r16: off = the panel really goes off (at the phone's own screen timeout), so say how it comes back
+    val wake = " 꺼진 화면은 폰에서 두 번 탭하거나 측면 버튼을 눌러 켜요. 그다음엔 잠금 화면이 나와요."
     val notes = listOf(
-        "폰을 안 쓰는데 방이 어두우면 화면을 꺼요.", "20초 동안 만지지 않으면 화면을 꺼요.",
-        "Stand Screen이 켜져 있는 동안 화면을 끄지 않아요. 이때는 밤 화면과 움직이면 켜기를 쓸 수 없어요.",
+        "방이 어두우면 20초 뒤, 밝아도 10분 동안 만지지 않으면 화면을 꺼요.$wake", "20초 동안 만지지 않으면 화면을 꺼요.$wake",
+        "스탠드 스크린이 켜져 있는 동안 화면을 끄지 않아요. 이때는 밤 화면을 쓸 수 없어요.",
     )
     Page("자동으로 켜기·끄기", back) {
         Section(null) {
@@ -261,12 +263,7 @@ fun OnOffScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
                     Segmented(listOf("방이 어두우면", "20초 뒤", "끄지 않기"), config.displayOff.ordinal, { i -> update { it.copy(displayOff = DisplayOff.entries[i]) } })
                 }
             }
-            item {
-                SwitchRow(
-                    "움직이면 켜기", config.motionToWake && !never, { v -> update { it.copy(motionToWake = v) } },
-                    subtitle = "밤에 폰을 건드리면 화면이 켜져요.", enabled = !never, why = "화면을 끄지 않기로 해 두면 쓸 수 없어요.",
-                )
-            }
+            // plan-r16 T5: 움직이면 켜기 is gone (a sensor offset kept the screen on all night); motionToWake stays in the codec
             item {
                 SwitchRow(
                     "밤에도 알림 오면 화면 켜기", NightWake.shown(config), { v -> update { NightWake.set(it, v) } },

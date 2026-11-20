@@ -418,7 +418,8 @@ private fun PermLineRow(perm: Perm, modifier: Modifier, onClick: () -> Unit) {
             buildAnnotatedString {
                 // plan-r15 F7: the line names what the grant is for
                 append(perm.need + " · ")
-                withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) { append("허용하기") }
+                // plan-r16 T9: the screen saver line is a warning ("끄러 가기"), not a grant
+                withStyle(SpanStyle(fontFamily = Fonts.ui(700), fontWeight = FontWeight.Bold, textDecoration = TextDecoration.Underline)) { append(if (perm == Perm.SCREEN_SAVER) perm.button else "허용하기") }
             },
             color = SK.danger, fontSize = 13.sp, fontFamily = Fonts.ui(500), fontWeight = FontWeight(500),
         )

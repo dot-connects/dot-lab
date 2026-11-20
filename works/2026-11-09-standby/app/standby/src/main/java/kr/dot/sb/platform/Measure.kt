@@ -56,7 +56,7 @@ object Measure {
         val g = Perms.granted(ctx)
         fun yn(p: Perm) = if (g[p] == true) "O" else "X"
         fun secure(k: String) = runCatching { Settings.Secure.getInt(ctx.contentResolver, k) }.getOrNull()?.toString() ?: "?"
-        return "listener=${yn(Perm.NOTIFICATIONS)} post=${yn(Perm.POST)} fsi=${yn(Perm.FULL_SCREEN)} dream=${yn(Perm.DREAM)}" +
+        return "listener=${yn(Perm.NOTIFICATIONS)} post=${yn(Perm.POST)} fsi=${yn(Perm.FULL_SCREEN)} saver_off=${yn(Perm.SCREEN_SAVER)}" +
             " ss_on=${secure("screensaver_enabled")} ss_sleep=${secure("screensaver_activate_on_sleep")}"
     }
 }

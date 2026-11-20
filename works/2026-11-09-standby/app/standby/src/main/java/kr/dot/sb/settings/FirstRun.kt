@@ -100,18 +100,8 @@ fun FirstRunScreen(config: AppConfig, update: Update, env: SettingsEnv) {
 /** Step 3: where to tap (the screen saver list with Stand Screen picked) and the bundle as a checklist. */
 @Composable
 private fun ChargeStep(env: SettingsEnv) {
-    T("다음 화면에서 Stand Screen을 골라 주세요.", 15.sp, 500, SK.text, Modifier.padding(start = 4.dp, top = 6.dp))
-    // the system list drawn small, our row ticked (mockup step 3: "누를 곳을 그림으로")
-    Group(Modifier.padding(top = 12.dp)) {
-        listOf("시계", "사진 테이블", "Stand Screen", "색상").forEach { n ->
-            item {
-                Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-                    T(n, 15.sp, if (n == "Stand Screen") 700 else 400, if (n == "Stand Screen") SK.text else SK.muted, Modifier.weight(1f))
-                    if (n == "Stand Screen") Icon(Ic.CHECK, LocalAccent.current, 20.dp)
-                }
-            }
-        }
-    }
+    // plan-r16 T9: no screen saver pick any more; charging brings 스탠드 스크린 up by itself
+    T("충전기에 꽂으면 스탠드 스크린이 켜지도록 아래를 차례로 허용해 주세요.", 15.sp, 500, SK.text, Modifier.padding(start = 4.dp, top = 6.dp))
     Section("필요한 것") {
         Perm.CHARGE_START.forEach { p ->
             item {
