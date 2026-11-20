@@ -3,6 +3,8 @@ package kr.dot.wherepark.car
 import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Activity
+import android.bluetooth.BluetoothClass
+import android.bluetooth.BluetoothManager
 import android.companion.AssociationInfo
 import android.companion.AssociationRequest
 import android.companion.BluetoothDeviceFilter
@@ -40,11 +42,29 @@ object CarLink {
 
     fun requestPermission(activity: Activity) = activity.requestPermissions(arrayOf(Manifest.permission.BLUETOOTH_CONNECT), REQ_BT)
 
-    /** Shows the system device picker; on success stores the address for [carId] and starts presence observing. */
+    /** A Bluetooth device the phone is already paired with, by its readable name. */
+    data class Paired(val name: String, val address: String, val car: Boolean)
+
+    /** Paired devices, car audio first. Needs BLUETOOTH_CONNECT; empty without it or with Bluetooth off. */
     @SuppressLint("MissingPermission")
-    fun associate(activity: Activity, carId: String, onDone: (Boolean) -> Unit = {}) {
+    fun paired(ctx: Context): List<Paired> = try {
+        ctx.getSystemService(BluetoothManager::class.java)?.adapter?.bondedDevices.orEmpty().map { d ->
+            val c = d.bluetoothClass?.deviceClass
+            Paired(d.alias ?: d.name ?: d.address, norm(d.address), c == BluetoothClass.Device.AUDIO_VIDEO_CAR_AUDIO || c == BluetoothClass.Device.AUDIO_VIDEO_HANDSFREE)
+        }.sortedWith(compareBy({ !it.car }, { it.name }))
+    } catch (_: SecurityException) {
+        emptyList()
+    }
+
+    /**
+     * Links [carId] through the system companion dialog: with [address] it only confirms that one paired device,
+     * without it the system scans nearby devices. On success stores the address and starts presence observing.
+     */
+    @SuppressLint("MissingPermission")
+    fun associate(activity: Activity, carId: String, address: String? = null, onDone: (Boolean) -> Unit = {}) {
         val cdm = activity.getSystemService(CompanionDeviceManager::class.java)
-        val request = AssociationRequest.Builder().addDeviceFilter(BluetoothDeviceFilter.Builder().build()).build()
+        val filter = BluetoothDeviceFilter.Builder().apply { if (address != null) setAddress(address) }.build()
+        val request = AssociationRequest.Builder().addDeviceFilter(filter).setSingleDevice(address != null).build()
         cdm.associate(request, activity.mainExecutor, object : CompanionDeviceManager.Callback() {
             override fun onAssociationPending(intentSender: IntentSender) {
                 try {
@@ -55,14 +75,14 @@ object CarLink {
             }
 
             override fun onAssociationCreated(associationInfo: AssociationInfo) {
-                val address = associationInfo.deviceMacAddress?.toString()?.let(::norm)
-                if (address == null) return onDone(false)
+                val got = associationInfo.deviceMacAddress?.toString()?.let(::norm)
+                if (got == null) return onDone(false)
                 val old = CarLinkStore.address(activity, carId)
-                if (old != null && norm(old) != address) dropAssociation(activity, carId, RealCdm(activity))
-                CarLinkStore.set(activity, carId, address)
+                if (old != null && norm(old) != got) dropAssociation(activity, carId, RealCdm(activity))
+                CarLinkStore.set(activity, carId, got)
                 try {
                     @Suppress("DEPRECATION")
-                    cdm.startObservingDevicePresence(address)
+                    cdm.startObservingDevicePresence(got)
                     onDone(true)
                 } catch (_: Exception) {
                     // no presence callbacks means a useless link: roll it back

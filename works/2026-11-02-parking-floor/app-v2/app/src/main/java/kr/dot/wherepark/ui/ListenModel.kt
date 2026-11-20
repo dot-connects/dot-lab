@@ -34,7 +34,7 @@ import kr.dot.wherepark.data.WidgetRefresh
 enum class ManualWhy { FAILED, CONFIRM, EDIT, NO_MIC, NO_PACK, NO_RECOGNIZER }
 
 sealed interface Sheet {
-    data class Listening(val partial: String = "", val rms: Float = 10f, val again: Boolean = false) : Sheet
+    data class Listening(val partial: String = "", val rms: Float = -2f, val again: Boolean = false) : Sheet
     data class AskMic(val denied: Int) : Sheet
     data class Saved(val park: Park, val sent: String?, val photo: Boolean = false) : Sheet
     data class Ambiguous(val raw: String, val ambiguity: Ambiguity, val options: List<Spot>, val primary: Spot?) : Sheet

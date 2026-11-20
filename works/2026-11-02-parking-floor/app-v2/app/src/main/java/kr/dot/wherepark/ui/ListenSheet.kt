@@ -42,6 +42,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -202,6 +204,8 @@ private fun Header(content: @Composable RowScope.() -> Unit) =
 
 // 1. listening
 
+private const val BARS = 30
+
 @Composable
 private fun Listening(m: ListenModel, s: Sheet.Listening, f: Faces) = Body {
     Header {
@@ -209,13 +213,21 @@ private fun Listening(m: ListenModel, s: Sheet.Listening, f: Faces) = Body {
         Spacer(Modifier.weight(1f))
         Pill("취소", m.close)
     }
-    // rms (dB, about -2..10) scales the mockup's bar pattern between 45 % and 100 %
-    val level = ((s.rms + 2f) / 12f).coerceIn(0f, 1f)
-    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-        repeat(30) { i ->
-            val h = (5 + (i * 53) % 31) * (0.45f + 0.55f * level)
-            Box(Modifier.weight(1f).height(maxOf(3f, h).dp).clip(RoundedCornerShape(2.dp)).background(f.acc))
+    // rms (dB, about -2..10) feeds a scrolling waveform: each tick the newest level enters on the right
+    val target by rememberUpdatedState(((s.rms + 2f) / 12f).coerceIn(0f, 1f))
+    val bars = remember { mutableStateListOf<Float>().apply { repeat(BARS) { i -> add(target * (5 + (i * 53) % 31) / 35f) } } }
+    LaunchedEffect(Unit) {
+        var cur = target
+        var t = 0
+        while (true) {
+            cur += (target - cur) * (if (target > cur) 0.6f else 0.25f)  // fast attack, slow release
+            bars.removeAt(0)
+            bars.add(cur * (0.7f + 0.3f * kotlin.math.abs(kotlin.math.sin(t++ * 1.3f))))
+            kotlinx.coroutines.delay(50)
         }
+    }
+    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        bars.forEach { v -> Box(Modifier.weight(1f).height((4f + 36f * v).dp).clip(RoundedCornerShape(2.dp)).background(f.acc)) }
     }
     var lines by remember { mutableIntStateOf(1) }
     Text(

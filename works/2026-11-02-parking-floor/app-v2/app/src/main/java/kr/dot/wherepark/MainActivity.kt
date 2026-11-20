@@ -24,6 +24,12 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -112,6 +118,7 @@ class MainActivity : ComponentActivity() {
     private var pendingShot: Pair<Park, File>? = null
     private var rec: SpeechRecognizer? = null
     private var afterBt: (() -> Unit)? = null
+    private var btPick by mutableStateOf<Pair<String, () -> Unit>?>(null)
 
     private val top get() = stack.last()
     private fun go(n: Nav) { stack = stack + n }
@@ -137,7 +144,7 @@ class MainActivity : ComponentActivity() {
         bigText = AppPrefs.bigText(this)
         route()
         openCar(intent)
-        setContent { WpTheme(bigText) { App() } }
+        setContent { WpTheme(bigText) { App(); BtPicker() } }
     }
 
     override fun onNewIntent(intent: Intent) {
@@ -363,10 +370,35 @@ class MainActivity : ComponentActivity() {
         reset(Nav.Home); go(Nav.Settings)
     }
 
-    /** BLUETOOTH_CONNECT first, then the system companion picker (no location permission). */
+    /** BLUETOOTH_CONNECT first, then our list of paired devices by name; the system dialog only confirms the pick. */
     private fun linkBt(carId: String, done: () -> Unit) {
-        val run = { CarLink.associate(this, carId) { onUi(done) } }
+        val run = { btPick = carId to done }
         if (CarLink.hasPermission(this)) run() else { afterBt = run; btAsk.launch(Manifest.permission.BLUETOOTH_CONNECT) }
+    }
+
+    @Composable
+    private fun BtPicker() {
+        val (carId, done) = btPick ?: return
+        val list = remember(carId) { CarLink.paired(this) }
+        val pick = { address: String? -> btPick = null; CarLink.associate(this, carId, address) { onUi(done) } }
+        AlertDialog(
+            onDismissRequest = { btPick = null }, containerColor = Wp.SF,
+            title = { Text("차 블루투스 고르기", color = Wp.FG) },
+            text = {
+                androidx.compose.foundation.lazy.LazyColumn(androidx.compose.ui.Modifier.heightIn(max = 360.dp)) {
+                    if (list.isEmpty()) item { Text("연결된 기기가 없어요. 블루투스를 켜고 차와 한 번 연결해 주세요.", color = Wp.MU) }
+                    items(list.size) { i ->
+                        val d = list[i]
+                        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxWidth().clickable { pick(d.address) }.padding(vertical = 12.dp)) {
+                            Text(d.name, color = Wp.FG, fontSize = 17.sp, fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                            if (d.car) Text("차량 오디오", color = Wp.MU, fontSize = 13.sp)
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton({ pick(null) }) { Text("목록에 없어요", color = Wp.MU) } },
+            dismissButton = { TextButton({ btPick = null }) { Text("취소", color = Wp.MU) } },
+        )
     }
 
     // settings
