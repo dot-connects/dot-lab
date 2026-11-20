@@ -78,6 +78,7 @@ import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.ParkStore
+import kr.dot.wherepark.ui.AppPrefs
 import kr.dot.wherepark.ui.AssetFonts
 
 private val BG = Color(0xFFE9E7E3); private val SF = Color(0xFFF6F5F2); private val FG = Color(0xFF161616)
@@ -88,7 +89,10 @@ internal val SHAPE_NAMES = mapOf(Shape.ROW to "줄 목록", Shape.POSTER to "포
 private val FAMILY_NAMES = mapOf("pastel" to "파스텔", "bold" to "원색", "deep" to "깊은 색", "mono" to "무채색", "comp" to "보색")
 private val MATERIAL_NAMES = mapOf("matte" to "무광", "gloss" to "유광", "paper" to "종이", "metal" to "금속", "soft" to "소프트")
 private val FONT_NAMES = mapOf("Inter Tight" to "고딕", "Big Shoulders Display" to "좁은 고딕", "IBM Plex Mono" to "고정폭", "Doto" to "점 숫자(고정)",
-    "Big Shoulders Stencil Display" to "스텐실", "Playfair Display" to "세리프", "Chakra Petch" to "각진 고딕")
+    "Playfair Display" to "세리프", "Chakra Petch" to "각진 고딕")
+
+/** 글자 색: auto = white with a halo under 50 %, the better of white/black from 50 %. */
+private val TEXT_COLORS = listOf("auto" to "자동", "white" to "흰", "black" to "검정")
 
 internal fun comboLine(s: Style): String? = if (s.family == "default") null else
     "지금: ${FAMILY_NAMES[s.family] ?: s.family} · ${MATERIAL_NAMES[s.material] ?: s.material} · ${FONT_NAMES[s.font] ?: s.font}"
@@ -190,6 +194,19 @@ internal fun WidgetConfig(start: WidgetSpec, cars: List<Car>, samples: List<Int>
                 thumb = { Box(Modifier.size(20.dp).shadow(2.dp, CircleShape).background(ACC, CircleShape)) },
                 track = { st -> SliderDefaults.Track(sliderState = st, modifier = Modifier.height(4.dp), colors = colors, drawStopIndicator = null, thumbTrackGapSize = 0.dp) },
             )
+            Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text("글자 색", fontSize = 14.5.sp, color = FG, modifier = Modifier.weight(1f))
+                Row(Modifier.clip(RoundedCornerShape(999.dp)).background(BG).padding(3.dp)) {
+                    TEXT_COLORS.forEach { (k, label) ->
+                        val on = spec.text == k
+                        Box(
+                            Modifier.height(36.dp).clip(RoundedCornerShape(999.dp)).background(if (on) FG else Color.Transparent)
+                                .semantics { selected = on }.clickable(role = Role.RadioButton) { spec = spec.copy(text = k) }.padding(horizontal = 14.dp),
+                            contentAlignment = Alignment.Center,
+                        ) { Text(label, fontSize = 13.5.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) SF else FG) }
+                    }
+                }
+            }
         }
         Spacer(Modifier.weight(1f))
         Box(
@@ -212,21 +229,32 @@ private fun Preview(spec: WidgetSpec, cars: List<Car>, wall: List<Int>) {
     val ctx = LocalContext.current
     val density = LocalDensity.current.density
     val grad = Brush.verticalGradient(wall.map { Color(it) }.let { if (it.size == 1) it + it else it })
-    // the bitmap carries its own shadow margins (MX/MT/MB), so the tile pads less than the mockup's 10 dp
-    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(grad).padding(start = 4.dp, end = 4.dp, top = 6.dp), contentAlignment = Alignment.Center) {
-        val w = maxWidth.value
-        val bmp = remember(spec, cars, w, wall) { preview(ctx, spec, cars, w, density, wall) }
-        Image(bmp.asImageBitmap(), contentDescription = "위젯 미리 보기", modifier = Modifier.size((bmp.width / density).dp, (bmp.height / density).dp))
+    var pick by remember { mutableStateOf(2) }
+    BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(grad).padding(vertical = 14.dp), contentAlignment = Alignment.Center) {
+        val size = PREVIEW_SIZES[pick].second
+        val k = minOf(1f, (maxWidth.value - 16f) / size.width)
+        val bmp = remember(spec, cars, pick, wall) { preview(ctx, spec, cars, size, density, wall) }
+        Image(bmp.asImageBitmap(), contentDescription = "위젯 미리 보기", modifier = Modifier.size((size.width * k).dp, (size.height * k).dp))
+    }
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally)) {
+        PREVIEW_SIZES.forEachIndexed { i, (label, _) ->
+            val on = i == pick
+            Box(
+                Modifier.height(36.dp).clip(RoundedCornerShape(999.dp)).background(if (on) FG else SF)
+                    .semantics { selected = on }.clickable(role = Role.RadioButton) { pick = i }.padding(horizontal = 14.dp),
+                contentAlignment = Alignment.Center,
+            ) { Text(label, fontSize = 13.5.sp, fontWeight = if (on) FontWeight.SemiBold else FontWeight.Normal, color = if (on) SF else FG) }
+        }
     }
 }
 
-internal fun preview(ctx: Context, spec: WidgetSpec, cars: List<Car>, widthDp: Float, density: Float, wall: List<Int>): android.graphics.Bitmap {
-    val (shown, one) = WidgetRenderer.carsFor(spec, cars)
-    val (nw, nh) = Shapes.natural(spec.shape, one, shown.size, true)
-    val w = if (one) nw + 2 * WidgetRenderer.MX else widthDp
-    val size = SizeF(w, nh * minOf(1f, (w - 2 * WidgetRenderer.MX) / nw) + WidgetRenderer.MT + WidgetRenderer.MB)
+/** Preview sizes: cells of the smallest 4-column phone (82x100 dp), drawn at their true dp size and scaled down only to fit. */
+private val PREVIEW_SIZES = listOf("2×1" to SizeF(164f, 100f), "4×1" to SizeF(328f, 100f), "4×2" to SizeF(328f, 200f))
+
+internal fun preview(ctx: Context, spec: WidgetSpec, cars: List<Car>, size: SizeF, density: Float, wall: List<Int>): android.graphics.Bitmap {
     val parks = cars.associate { it.id to ParkStore.latest(ctx, it.id) }
-    return WidgetRenderer.draw(ctx, spec, cars, parks, size, density, wall, System.currentTimeMillis(), true, emptySet()).rendered.bitmap
+    return WidgetRenderer.draw(ctx, spec, cars, parks, size, density, wall, System.currentTimeMillis(), true, emptySet(),
+        AppPrefs.mainCar(ctx), WidgetReceiver.textScale(ctx)).rendered.bitmap
 }
 
 private const val SHUFFLE = "M3.5 7.5h3.2c2.2 0 3.3 1 4.6 3.1l1.4 2.8c1.3 2.1 2.4 3.1 4.6 3.1h3M3.5 16.5h3.2c1.4 0 2.4-.4 3.2-1.2M14.2 8.7c.8-.8 1.8-1.2 3.2-1.2h2.9M18 5l2.5 2.5L18 10M18 14l2.5 2.5L18 19"

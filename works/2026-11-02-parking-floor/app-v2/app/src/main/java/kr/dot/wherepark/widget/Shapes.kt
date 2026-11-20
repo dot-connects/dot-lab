@@ -7,49 +7,57 @@ import android.graphics.DashPathEffect
 import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Path
+import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.TextPaint
-import android.text.TextUtils
-import kotlin.math.ceil
 import kotlin.math.cos
+import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kr.dot.wherepark.core.Car
+import kr.dot.wherepark.core.Contrast
 import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.ui.AssetFonts
 
-/** One car line as the widget shows it (spec 8.3). [f] floor, [s] zone/number; [who]/[time] feed the "who when" line. */
-internal enum class St { OK, NONE, PEND, GONE }
-internal data class Line(val car: Car, val f: String, val s: String, val st: St, val who: String, val time: String)
+/** One car as the widget shows it. [f] floor, [s] zone/number/pillar, [memo] the park's memo; [stale] = "3일 전" chip. */
+internal enum class St { OK, NONE, PEND, FAIL, GONE }
+internal data class Line(
+    val car: Car, val f: String, val s: String, val memo: String, val st: St, val who: String, val time: String, val stale: String? = null,
+)
 
-/** Text box drawn, in card dp, for tools/contrast.py. */
+/** Text box drawn, in widget dp, for tools/contrast.py. */
 internal data class TextBox(val rect: RectF, val text: String, val base: Float = rect.bottom)
 
 /**
- * Readable colours at any strength, ported from the mockup's fitText (round2/src.html, v10): the surface at [wop] over the
- * wallpaper samples; if the theme's text does not reach 4.5:1, nudge the surface toward a pole and add a scrim one step at a
- * time (pass 0 keeps the theme polarity with a light scrim, pass 1 may flip the text). [big] = accent numerals moved toward
- * the text pole until 4.5:1 (poster; the mockup used 3:1 for large text, spec 8.2 asks 4.5 for all text). Below 60 % the text gets a halo.
+ * Text colours (mockup v3 look()). Under 50 % ([low]) the text is white (or the forced colour) and the halo grows one level at a
+ * time (3 levels) until small text reaches 7:1 over the wallpaper; from 50 % auto nudges the surface toward a pole until 7:1
+ * ([of], ported from round2 fitText), a forced colour leaves the card as it is ([fixed]).
+ * [big] = poster accent numerals moved toward the text colour until they read. [haloLv] 0 none .. 3 strongest.
  */
 internal data class Look(
-    val bg: Int, val a: Float, val fg: Int, val mu: Int, val dk: Boolean, val scrim: Int, val big: Int, val halo: Boolean, val score: Double,
+    val bg: Int, val a: Float, val fg: Int, val mu: Int, val dk: Boolean, val scrim: Int, val big: Int, val haloLv: Int, val score: Double,
 ) {
     val whi: Float get() = if (dk) .07f else .55f
 
     companion object {
         private val BLACK = doubleArrayOf(0.0, 0.0, 0.0, 1.0)
         private val WHITE = doubleArrayOf(255.0, 255.0, 255.0, 1.0)
+        private val INK = doubleArrayOf(17.0, 17.0, 17.0, 1.0)
         private val DARK = doubleArrayOf(17.0, 17.0, 17.0, .78)
         private val LIGHT = doubleArrayOf(255.0, 255.0, 255.0, .88)
 
-        /** 7:1, not 4.5: widget text is small and often scaled down (operator 11-20: hard to read). */
-        private const val MIN_CR = 7.0
+        /** How much each halo level covers what is behind the text (mockup HA; an estimate, to check on a phone). */
+        private val HALO = doubleArrayOf(0.0, .4, .6, .8)
+
+        /** 7:1 for small text, 4.5:1 for the big numerals. */
+        const val MIN_CR = 7.0
+        private const val MIN_BIG = 4.5
         private fun rgba(c: Int) = doubleArrayOf((c shr 16 and 255).toDouble(), (c shr 8 and 255).toDouble(), (c and 255).toDouble(), (c ushr 24) / 255.0)
         private fun lin(v: Double): Double { val s = v / 255; return if (s <= .03928) s / 12.92 else ((s + .055) / 1.055).pow(2.4) }
         private fun lum(c: DoubleArray) = .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2])
@@ -58,15 +66,58 @@ internal data class Look(
         private fun argb(c: DoubleArray, a: Double = 1.0): Int =
             ((a * 255).roundToInt().coerceIn(0, 255) shl 24) or (c[0].roundToInt().coerceIn(0, 255) shl 16) or
                 (c[1].roundToInt().coerceIn(0, 255) shl 8) or c[2].roundToInt().coerceIn(0, 255)
+        private fun pol(f: DoubleArray) = lum(f) > .4
+        private fun worst(col: DoubleArray, bgs: List<DoubleArray>) = bgs.minOf { bg -> cr(over(col, col.getOrElse(3) { 1.0 }, bg), bg) }
+        private fun walls(samples: List<Int>) = samples.ifEmpty { listOf(0xFF808080.toInt()) }.map(::rgba)
+
+        /** Accent moved toward the text colour until [min] against every background. */
+        private fun bigOf(f: DoubleArray, acc: DoubleArray, bgs: List<DoubleArray>, min: Double): Int {
+            var t = 0.0
+            while (t <= 1.001) {
+                val c = over(f, t, acc)
+                if (bgs.minOf { cr(c, it) } >= min) return argb(c)
+                t += .15
+            }
+            return argb(f)
+        }
+
+        /** The widget's colours: [mode] = auto | white | black (per-widget 글자 색). */
+        fun pick(style: Style, strength: Int, samples: List<Int>, mode: String): Look {
+            val wop = strength / 100.0
+            val force = when (mode) { "white" -> WHITE; "black" -> INK; else -> null }
+            return when {
+                wop < .5 -> low(style, wop, samples, force ?: WHITE)
+                force != null -> fixed(style, wop, samples, force)
+                else -> of(style, wop, samples)
+            }
+        }
+
+        /** Under 50 %: the text colour stays, the halo (dark under light text) steps up until 7:1. */
+        private fun low(style: Style, wop: Double, samples: List<Int>, f: DoubleArray): Look {
+            val b = rgba(style.bg); val a = wop * b[3]
+            val pole = if (pol(f)) BLACK else WHITE
+            val under = walls(samples).map { over(b, a, it) }
+            var lv = 1; var bgs = under; var score = 0.0
+            for (l in 1..3) {
+                lv = l; bgs = under.map { over(pole, HALO[l], it) }; score = worst(f, bgs)
+                if (score >= MIN_CR) break
+            }
+            return Look(argb(b), wop.toFloat(), argb(f), argb(f), pol(f), 0, bigOf(f, rgba(style.acc), bgs, MIN_BIG), lv, score)
+        }
+
+        /** 흰 / 검정 from 50 %: only the text colour changes, the card keeps its colour. */
+        private fun fixed(style: Style, wop: Double, samples: List<Int>, f: DoubleArray): Look {
+            val b = rgba(style.bg); val a = wop * b[3]
+            val bgs = walls(samples).map { over(b, a, it) }
+            return Look(argb(b), wop.toFloat(), argb(f), argb(f, .86), pol(f), 0, bigOf(f, rgba(style.acc), bgs, MIN_BIG), 0, worst(f, bgs))
+        }
 
         fun of(style: Style, wop: Double, samples: List<Int>): Look {
             val b = rgba(style.bg); val f0 = rgba(style.fg); val m0 = rgba(style.mu); val acc = rgba(style.acc)
             val a = wop * b[3]
-            val ws = samples.ifEmpty { listOf(0xFF808080.toInt()) }.map(::rgba)
-            fun pol(f: DoubleArray) = lum(f) > .4
+            val ws = walls(samples)
             val cands = listOf(f0 to m0, f0 to (if (pol(f0)) LIGHT else DARK), DARK to DARK, LIGHT to LIGHT)
             class E(val f: DoubleArray, val m: DoubleArray, val lt: Boolean, val bp: DoubleArray, val sc: Double, val pole: DoubleArray, val bgs: List<DoubleArray>, val score: Double)
-            fun worst(col: DoubleArray, bgs: List<DoubleArray>) = bgs.minOf { bg -> cr(over(col, col.getOrElse(3) { 1.0 }, bg), bg) }
             var best: E? = null
             var pick: E? = null
             search@ for ((set, maxL) in listOf(cands.take(2) to 4, cands to 9)) for (l in 0..maxL) for ((f, m) in set) {
@@ -79,17 +130,10 @@ internal data class Look(
                 if (score >= MIN_CR) { pick = e; break@search }
             }
             val r = pick ?: best!!
-            val fg = argb(r.f)
-            var big = fg
-            var t = 0.0
-            while (t <= 1.001) {
-                val c = over(if (r.lt) WHITE else BLACK, t, acc)
-                // also on the poster strips, which tint the surface with 5 % text colour
-                if ((r.bgs + r.bgs.map { over(r.f, .05, it) }).minOf { cr(c, it) } >= MIN_CR) { big = argb(c); break }
-                t += .15
-            }
-            return Look(argb(r.bp), wop.toFloat(), fg, argb(r.m, r.m.getOrElse(3) { 1.0 }), r.lt,
-                if (r.sc > 0 && wop < .995) argb(r.pole, r.sc) else 0, big, wop < .6, r.score)
+            // also on the poster strip, which tints the surface with 5 % text colour
+            val big = bigOf(if (r.lt) WHITE else BLACK, acc, r.bgs + r.bgs.map { over(r.f, .05, it) }, MIN_CR)
+            return Look(argb(r.bp), wop.toFloat(), argb(r.f), argb(r.m, r.m.getOrElse(3) { 1.0 }), r.lt,
+                if (r.sc > 0 && wop < .995) argb(r.pole, r.sc) else 0, big, 0, r.score)
         }
     }
 }
@@ -99,49 +143,58 @@ private fun white(a: Float) = 0xFFFFFFFF.toInt().alpha(a)
 private fun black(a: Float) = 0xFF000000.toInt().alpha(a)
 
 /**
- * Canvas drawing of the five widget shapes from the mockup (round2/src.html W()/W1(), v10 CSS), in card dp: mockup px = dp.
- * Positions and baselines are the mockup's measured values (Chrome layout of final/preview.html); right-side parts are anchored
- * to the card's right edge so wider cards stretch the middle like the CSS grids do.
+ * Canvas drawing of the widget (mockup v3-widget-sizes, A안): the content fills the real cell. Every shape shares one tile
+ * layout per car (mockup tile()); a shape only adds its structure behind it (card, bands, LED panel, tickets), faded with the
+ * strength, and its numeral faces. At strength 0 nothing but text and the mic button is drawn.
+ * [textScale] = system font scale x 글자 크게, already clamped to 1..1.3; it grows small text only, never the floor.
  */
 internal class Shapes(
     private val ctx: Context, private val c: Canvas, private val style: Style, private val look: Look, private val shape: Shape,
-    private val micOn: Boolean,
+    private val micOn: Boolean, private val textScale: Float = 1f,
 ) {
     val hits = ArrayList<Hit>()
     val texts = ArrayList<TextBox>()
     private val p = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val isDefault = style.family == "default"
     private val mat = if (isDefault) "base" else style.material
+    private val a = look.a
     private val fg = look.fg
     private val mu = look.mu
-    private val line = look.fg.alpha(.13f)
+    private val bw = if (a < .5f) KO700 else KO500   // memo and time: bolder over the bare wallpaper
     private val micIcon = if (shape == Shape.DOT) 0xFFF2F2F2.toInt() else if (isDefault) 0xFFFFFFFF.toInt() else style.onAcc
+    private val geo = GEO.getValue(shape)
+    private val xh = geo[6]
+    /** 기둥 띠 name line sits on the painted band (white text) only while the band is clearly there. */
+    private val onBand = shape == Shape.PILLAR && a >= .5f
 
     companion object {
-        const val NOTE = "마이크·음성팩이 필요해요 · 눌러서 켜기"
-        private val tfCache = HashMap<String, Typeface>()
-        private val KO400: Typeface = Typeface.DEFAULT
+        private val KO500: Typeface = Typeface.create(Typeface.DEFAULT, 500, false)
         private val KO600: Typeface = Typeface.create(Typeface.DEFAULT, 600, false)
         private val KO700: Typeface = Typeface.create(Typeface.DEFAULT, 700, false)
         private val MONO: Typeface = Typeface.MONOSPACE
-        private val DEFAULT_BANDS = intArrayOf(0xFF2F7D4F.toInt(), 0xFF2D5DA8.toInt(), 0xFFB5562B.toInt(), 0xFF6A4A9C.toInt())
+        private val tfCache = HashMap<String, Typeface>()
+        private const val PAD = 8f
 
-        /** Natural card size in dp (mockup measurements): width is the minimum, the card may be drawn wider. */
-        fun natural(shape: Shape, one: Boolean, n: Int, micOn: Boolean): Pair<Float, Float> {
-            val note = if (micOn || one) 0f else when (shape) { Shape.ROW -> 28.6f; Shape.TICKET -> 35f; else -> 30.6f }
-            if (one) return when (shape) {
-                Shape.ROW -> 150f to 111.4f; Shape.POSTER -> 164f to 104f; Shape.PILLAR -> 150f to 123.2f
-                Shape.DOT -> 150f to 111.3f; Shape.TICKET -> 150f to 113.2f
-            }
-            val h = when (shape) {
-                Shape.ROW -> n * 57f + 5f
-                Shape.POSTER -> 80f + (n - 1) * 46f
-                Shape.PILLAR -> { val rows = ceil(n / 2.0).toInt(); 16f + rows * 97.6f + (rows - 1) * 7f }
-                Shape.DOT -> 16f + n * 50f + (n - 1) * 5f
-                Shape.TICKET -> n * 58f + (n - 1) * 5f
-            }
-            return (if (shape == Shape.ROW) 200f else 280f) to h + note  // ROW: a 2-cell-wide widget scales less (operator 11-20: text too small)
-        }
+        /** Floor size = its row height / this (the mockup's line-height .84 on the numerals). */
+        private const val F_LH = .84f
+        /** Floor cap so a tablet-size cell keeps the hierarchy instead of one giant glyph. */
+        private const val F_MAX = 150f
+        private const val MIC_MIN = 48f
+        /** Content-box widths: below NARROW the mic shares the floor row; from WIDE_ONE a one-row tile stacks pillar + memo beside a big floor. */
+        private const val NARROW = 190f
+        private const val WIDE_ONE = 280f
+        /** Content-box heights: from TALL the tall layouts; below SHORT two compact lines beside the mic. */
+        private const val TALL = 120f
+        private const val SHORT = 68f
+        /** Widget width from which two cars sit side by side. */
+        const val WIDE = 290f
+
+        /** Per shape (mockup GEO): gap between cars, top pad (first, later), bottom pad (last, earlier), inner side pad, extra height under the name line. */
+        private val GEO = mapOf(
+            Shape.ROW to floatArrayOf(1f, 8f, 4f, 8f, 4f, 4f, 0f), Shape.POSTER to floatArrayOf(1f, 8f, 7f, 8f, 7f, 7f, 0f),
+            Shape.PILLAR to floatArrayOf(4f, 5f, 5f, 7f, 7f, 7f, 4f), Shape.DOT to floatArrayOf(6f, 8f, 7f, 8f, 7f, 7f, 0f),
+            Shape.TICKET to floatArrayOf(5f, 6f, 6f, 6f, 6f, 8f, 3f),
+        )
     }
 
     private fun num(w: Int) = face(style.font, w)
@@ -201,54 +254,80 @@ internal class Shapes(
     private fun surface(box: Path, r: RectF) {
         c.save(); c.clipPath(box)
         if (look.scrim != 0) c.drawPaint(fill(look.scrim))
-        c.drawPaint(fill(look.bg.alpha(look.a)))
-        val w = look.whi; val a = look.a
+        c.drawPaint(fill(look.bg.alpha(a)))
+        val w = look.whi
         when (mat) {
             "base" -> c.drawRect(r, Paint().apply { shader = linear(r, 180f, intArrayOf(white(w * a), white(0f)), floatArrayOf(0f, .44f)) })
             "gloss" -> c.drawRect(r, Paint().apply { shader = linear(r, 180f, intArrayOf(white(w * .95f * a), white(w * .16f * a), white(0f)), floatArrayOf(0f, .48f, .52f)) })
-            "metal" -> c.drawRect(r, Paint().apply { shader = linear(r, 160f, intArrayOf(white(w * .7f * a), white(0f), black(.09f)), floatArrayOf(0f, .42f, 1f)) })
+            "metal" -> c.drawRect(r, Paint().apply { shader = linear(r, 160f, intArrayOf(white(w * .7f * a), white(0f), black(.09f * a)), floatArrayOf(0f, .42f, 1f)) })
         }
         c.restore()
     }
 
-    /** Card = outer shadows + surface + inset edges + 1-px border, per material (CSS .wx and .wx[data-mat]). */
+    /** Card = outer shadows + surface + inset edges + 1-px border, per material (CSS .wx and .wx[data-mat]); all faded with the strength. */
     private fun card(r: RectF, rad: Float) {
         val box = rrPath(r, rad)
         val w = look.whi
         when (mat) {
-            "matte" -> { shadow(box, r, rad, 0f, 1f, 2f, 0f, black(.14f)); shadow(box, r, rad, 0f, 10f, 20f, -10f, black(.35f)) }
-            "gloss" -> shadow(box, r, rad, 0f, 12f, 26f, -10f, black(.45f))
-            "paper" -> { shadow(box, r, rad, 0f, 1f, 1f, 0f, black(.12f)); shadow(box, r, rad, 0f, 6f, 10f, -6f, black(.28f)) }
-            "metal" -> shadow(box, r, rad, 0f, 10f, 22f, -10f, black(.45f))
-            "soft" -> { shadow(box, r, rad, -4f, -4f, 10f, 0f, white(.4f)); shadow(box, r, rad, 6f, 7f, 14f, 0f, black(.24f)) }
-            else -> { shadow(box, r, rad, 0f, 1f, 2f, 0f, black(.10f)); shadow(box, r, rad, 0f, 12f, 24f, -12f, black(.38f)) }
+            "matte" -> { shadow(box, r, rad, 0f, 1f, 2f, 0f, black(.14f * a)); shadow(box, r, rad, 0f, 10f, 20f, -10f, black(.35f * a)) }
+            "gloss" -> shadow(box, r, rad, 0f, 12f, 26f, -10f, black(.45f * a))
+            "paper" -> { shadow(box, r, rad, 0f, 1f, 1f, 0f, black(.12f * a)); shadow(box, r, rad, 0f, 6f, 10f, -6f, black(.28f * a)) }
+            "metal" -> shadow(box, r, rad, 0f, 10f, 22f, -10f, black(.45f * a))
+            "soft" -> { shadow(box, r, rad, -4f, -4f, 10f, 0f, white(.4f * a)); shadow(box, r, rad, 6f, 7f, 14f, 0f, black(.24f * a)) }
+            else -> { shadow(box, r, rad, 0f, 1f, 2f, 0f, black(.10f * a)); shadow(box, r, rad, 0f, 12f, 24f, -12f, black(.38f * a)) }
         }
         surface(box, r)
         c.save(); c.clipPath(box)
         when (mat) {
-            "gloss" -> { edge(box, 1f, white(min(1f, w * 1.7f))); innerShadow(box, r, 0f, -2f, 6f, black(.12f)) }
-            "paper" -> ring(r, rad, 3f, 1f, fg.alpha(.12f))
-            "metal" -> { edge(box, 1f, white(min(1f, w * 1.3f))); edge(box, -1f, black(.2f)) }
-            "soft" -> ring(r, rad, 0f, 1f, white(.14f))
+            "gloss" -> { edge(box, 1f, white(min(1f, w * 1.7f) * a)); innerShadow(box, r, 0f, -2f, 6f, black(.12f * a)) }
+            "paper" -> ring(r, rad, 3f, 1f, fg.alpha(.12f * a))
+            "metal" -> { edge(box, 1f, white(min(1f, w * 1.3f) * a)); edge(box, -1f, black(.2f * a)) }
+            "soft" -> ring(r, rad, 0f, 1f, white(.14f * a))
             "matte" -> {}
-            else -> edge(box, 1f, white(min(1f, w * 1.5f)))
+            else -> edge(box, 1f, white(min(1f, w * 1.5f) * a))
         }
         c.restore()
-        ring(r, rad, 0f, 1f, fg.alpha(if (mat == "paper") .16f else .06f))
+        ring(r, rad, 0f, 1f, fg.alpha((if (mat == "paper") .16f else .06f) * a))
     }
 
-    /** Text at a baseline; halo below 60 % (CSS --wts). Returns the advance width. */
+    // ---------- text ----------
+
+    private fun setText(size: Float, tf: Typeface, ls: Float) { p.reset(); p.flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG; p.typeface = tf; p.textSize = size; p.letterSpacing = ls }
+    private fun measure(s: String, size: Float, tf: Typeface, ls: Float = 0f): Float { setText(size, tf, ls); return p.measureText(s) }
+    /** [s] cut to [max] with "…" (by measuring: TextUtils.ellipsize is a no-op under Robolectric, so the shots would lie). */
+    private fun clip(s: String, size: Float, tf: Typeface, max: Float, ls: Float = 0f): String {
+        setText(size, tf, ls)
+        if (p.measureText(s) <= max) return s
+        var n = p.breakText(s, true, max(0f, max - p.measureText("…")), null)
+        while (n > 0 && s[n - 1] == ' ') n--
+        return if (n <= 0) "" else s.substring(0, n) + "…"
+    }
+
+    /** Baseline that centres one line of [tf] at [size] in a [h]-tall box at [top]. */
+    private fun midBase(top: Float, h: Float, size: Float, tf: Typeface): Float { setText(size, tf, 0f); val fm = p.fontMetrics; return top + h / 2 - (fm.ascent + fm.descent) / 2 }
+
+    private fun isLight(color: Int) = Contrast.readableOn(color or (0xFF shl 24)) == Contrast.INK
+
+    /** Halo passes per level (mockup halo(): CSS blur, dy, alpha). */
+    private val haloPasses = when (look.haloLv) {
+        0 -> emptyList()
+        1 -> listOf(Triple(2f, 0f, .7f), Triple(6f, 0f, .45f))
+        2 -> listOf(Triple(1f, 0f, .9f), Triple(3f, 0f, .8f), Triple(7f, 0f, .6f), Triple(12f, 1f, .4f))
+        else -> listOf(Triple(1f, 0f, 1f), Triple(2f, 0f, 1f), Triple(4f, 0f, .9f), Triple(8f, 0f, .75f), Triple(14f, 2f, .55f))
+    }
+
+    /** Text at a baseline with the look's halo (dark under light text, light under dark). Returns the advance width. */
     private fun text(s: String, x: Float, base: Float, size: Float, tf: Typeface, color: Int, ls: Float = 0f, right: Boolean = false,
-                     stroke: Float = 0f, halo: Boolean = look.halo, record: Boolean = true): Float {
+                     stroke: Float = 0f, halo: Boolean = look.haloLv > 0, record: Boolean = true): Float {
         if (s.isEmpty()) return 0f
         setText(size, tf, ls)
         val w = p.measureText(s)
         val x0 = if (right) x - w else x
         if (halo) {
-            val passes = if (look.dk) listOf(Triple(3f, 1f, black(.45f)), Triple(2f, 0f, black(.6f)))
-            else listOf(Triple(5f, 0f, white(.55f)), Triple(2f, 0f, white(.8f)))
-            for ((blur, dy, col) in passes) {
-                p.color = col; p.maskFilter = BlurMaskFilter(sigmaRadius(blur), BlurMaskFilter.Blur.NORMAL); p.style = Paint.Style.FILL
+            val sh = if (isLight(color)) 0xFF000000.toInt() else 0xFFFFFFFF.toInt()
+            for ((blur, dy, al) in haloPasses) {
+                p.color = sh.alpha(al); p.maskFilter = BlurMaskFilter(sigmaRadius(blur), BlurMaskFilter.Blur.NORMAL)
+                if (stroke > 0) { p.style = Paint.Style.FILL_AND_STROKE; p.strokeWidth = stroke } else p.style = Paint.Style.FILL
                 c.drawText(s, x0, base + dy, p)
             }
             p.maskFilter = null
@@ -261,403 +340,451 @@ internal class Shapes(
         return w
     }
 
-    private fun setText(size: Float, tf: Typeface, ls: Float) { p.reset(); p.flags = Paint.ANTI_ALIAS_FLAG or Paint.SUBPIXEL_TEXT_FLAG; p.typeface = tf; p.textSize = size; p.letterSpacing = ls }
-    private fun measure(s: String, size: Float, tf: Typeface, ls: Float = 0f): Float { setText(size, tf, ls); return p.measureText(s) }
-    private fun clip(s: String, size: Float, tf: Typeface, max: Float): String { setText(size, tf, 0f); return TextUtils.ellipsize(s, p, max, TextUtils.TruncateAt.END).toString() }
+    // floor (big) and zone/pillar (small) faces per shape; DOT draws every Latin letter and digit in Doto, Hangul in gothic
+    private val fFace get() = num(if (shape == Shape.TICKET) 700 else 900)
+    private val pFace get() = num(if (shape == Shape.TICKET) 600 else 800)
+    private val fLs = when (shape) { Shape.POSTER, Shape.TICKET -> -.06f; Shape.PILLAR, Shape.DOT -> 0f; else -> -.03f }
+    private val pLs = when (shape) { Shape.TICKET -> -.03f; Shape.DOT -> 0f; else -> -.01f }
+    private val doto get() = face("Doto", 900)
+    private val gothic get() = face("Inter Tight", 900)
+    private fun runs(s: String) = Regex("[ -~]+|[^ -~]+").findAll(s).map { it.value to (it.value[0] in ' '..'~') }
 
-    /** Floor or zone text. DOT: digits in Doto with a .55 stroke, letters in heavy Inter Tight (a dotted B reads as 8). */
-    private fun spotText(s: String, x: Float, base: Float, size: Float, weight: Int, color: Int, ls: Float, sub: Boolean): Float {
-        if (shape != Shape.DOT) return text(s, x, base, size, num(weight), color, ls)
+    private fun spotW(s: String, size: Float, big: Boolean): Float =
+        if (shape != Shape.DOT) measure(s, size, if (big) fFace else pFace, if (big) fLs else pLs)
+        else runs(s).sumOf { (t, latin) -> (if (latin) measure(t, size, doto) else measure(t, size * .84f, gothic, -.02f) + 2f).toDouble() }.toFloat()
+
+    private fun spotDraw(s: String, x: Float, base: Float, size: Float, big: Boolean, color: Int): Float {
+        if (shape != Shape.DOT) return text(s, x, base, size, if (big) fFace else pFace, color, if (big) fLs else pLs)
         var cx = x
-        Regex("\\d+|\\D+").findAll(s).forEach { m ->
-            val run = m.value
-            cx += if (run[0].isDigit() || run == "–") text(run, cx, base, size, face("Doto", 900), color, 0f, stroke = .55f)
-            else text(run, cx, base, size * (if (sub) .92f else .84f), face("Inter Tight", 900), color, -.02f) + (if (sub) 1f else 2f)
-        }
+        runs(s).forEach { (t, latin) -> cx += if (latin) text(t, cx, base, size, doto, color, stroke = .55f) else text(t, cx, base, size * .84f, gothic, color, -.02f) + 2f }
         return cx - x
     }
 
-    private fun spotWidth(s: String, size: Float, weight: Int, ls: Float, sub: Boolean): Float {
-        if (shape != Shape.DOT) return measure(s, size, num(weight), ls)
-        return Regex("\\d+|\\D+").findAll(s).sumOf { m ->
-            val run = m.value
-            (if (run[0].isDigit() || run == "–") measure(run, size, face("Doto", 900)) else measure(run, size * (if (sub) .92f else .84f), face("Inter Tight", 900), -.02f) + (if (sub) 1f else 2f)).toDouble()
-        }.toFloat()
+    /** Ink-centred baseline for a spot string in a [h]-tall row. */
+    private fun spotBase(s: String, size: Float, big: Boolean, top: Float, h: Float): Float {
+        setText(size, if (shape == Shape.DOT) doto else if (big) fFace else pFace, 0f)
+        val r = Rect(); p.getTextBounds(s, 0, s.length, r)
+        return if (r.height() == 0) top + h * .8f else top + h / 2 - (r.top + r.bottom) / 2f
     }
 
-    /** Car-colour dot (always outlined, a white car shows on a light widget) + bold name. */
-    private fun name(l: Line, x: Float, base: Float, right: Boolean = false, onBand: Boolean = false, max: Float = 120f) {
-        val nm = clip(l.car.name, 13.5f, KO700, max - 13f)
-        val tw = measure(nm, 13.5f, KO700)
-        val x0 = if (right) x - (13f + tw) else x
-        val cy = base - 4.2f
-        c.drawCircle(x0 + 4f, cy, 5f, fill(if (onBand) white(.7f) else fg.alpha(.48f)))
-        c.drawCircle(x0 + 4f, cy, 4f, fill(l.car.color or (0xFF shl 24)))
-        text(nm, x0 + 13f, base, 13.5f, KO700, if (onBand) 0xFFFFFFFF.toInt() else fg, halo = !onBand && look.halo)
+    /** Drop characters until [s] fits [maxW] (last resort after shrinking). */
+    private fun squeeze(s: String, size: Float, big: Boolean, maxW: Float): String {
+        if (spotW(s, size, big) <= maxW + .5f) return s
+        var t = s
+        while (t.length > 1 && spotW("$t…", size, big) > maxW) t = t.dropLast(1)
+        return "$t…"
     }
 
-    /** "아빠 14:32" (who bold in fg, when in muted), "↑ 전송 대기", "기록 없음", "엄마 출발". */
-    private fun who(l: Line, x: Float, base: Float, right: Boolean = false, mono: Boolean = false, onBand: Boolean = false, max: Float = 999f) {
-        val f = if (onBand) 0xFFFFFFFF.toInt() else fg
-        val m = if (onBand) 0xFFFFFFFF.toInt() else mu
-        val halo = !onBand && look.halo
-        val timeFace = if (mono) MONO else KO400
-        when (l.st) {
-            St.NONE -> text("기록 없음", x, base, 13.5f, KO400, m, right = right, halo = halo)
-            St.PEND -> {
-                val tw = measure("전송 대기", 13.5f, KO400)
-                val x0 = if (right) x - tw - 15f else x
-                upIcon(x0, base - 10f, m)
-                text("전송 대기", x0 + 15f, base, 13.5f, KO400, m, halo = halo)
+    /** Shrink the pillar first (down to 14 dp), then the floor (down to 20 dp), until floor + pillar fit [avail]. */
+    private fun fit(f: String, s: String, fz0: Float, pz0: Float, gap: Float, avail: Float): Pair<Float, Float> {
+        var fz = fz0; var pz = pz0
+        fun over() = spotW(f, fz, true) + (if (s.isEmpty()) 0f else gap + spotW(s, pz, false)) - avail
+        var i = 0
+        while (s.isNotEmpty() && pz > 14f && over() > .5f && i++ < 8) { val wp = spotW(s, pz, false); pz = max(14f, pz * max(.2f, (wp - over()) / wp * .98f)) }
+        i = 0
+        while (fz > 20f && over() > .5f && i++ < 8) { val wf = spotW(f, fz, true); fz = max(20f, fz * max(.2f, (wf - over()) / wf * .98f)) }
+        return fz to pz
+    }
+
+    private fun spotShown(l: Line) = l.st == St.OK || l.st == St.PEND || l.st == St.FAIL
+    private val fColor = if (shape == Shape.POSTER) look.big else fg
+
+    /**
+     * Floor (+ pillar) on one baseline, centred in the row; non-spot states show "운행 중" / "기록 없음" at [k] x 15..26.
+     * Returns the width used.
+     */
+    private fun spotRow(l: Line, x: Float, top: Float, h: Float, avail: Float, fz0: Float, pz0: Float, withP: Boolean, k: Float, gap: Float = 8f): Float {
+        if (!spotShown(l)) {
+            val t = if (l.st == St.GONE) "운행 중" else "기록 없음"
+            var z = (fz0 * .4f).coerceIn(15f * k, 26f * k)
+            while (z > 13f && measure(t, z, KO700) > avail) z = max(13f, z * .92f)
+            return text(clip(t, z, KO700, avail), x, midBase(top, h, z, KO700), z, KO700, if (l.st == St.NONE) mu else fg)
+        }
+        val s = if (withP) l.s else ""
+        val (fz, pz) = fit(l.f, s, min(F_MAX, fz0), pz0, gap, avail)
+        val base = spotBase(l.f, fz, true, top, h)
+        val fw = spotDraw(squeeze(l.f, fz, true, avail), x, base, fz, true, fColor)
+        if (s.isEmpty()) return fw
+        val room = avail - fw - gap
+        return if (room > 14f) fw + gap + spotDraw(squeeze(s, pz, false, room), x + fw + gap, base, pz, false, fg) else fw
+    }
+
+    /** Size of the pillar alone in [maxW], from [z0] down to 14. */
+    private fun pillarSize(l: Line, z0: Float, maxW: Float): Float {
+        var z = z0
+        while (z > 14f && spotW(l.s, z, false) > maxW) z = max(14f, z * .92f)
+        return z
+    }
+
+    /** Pillar alone; [base] null = ink-centred in the row at [top]/[h]. Returns the width drawn. */
+    private fun pillar(l: Line, x: Float, z0: Float, maxW: Float, top: Float, h: Float, base: Float? = null): Float {
+        if (!spotShown(l) || l.s.isEmpty() || maxW < 14f) return 0f
+        val z = pillarSize(l, z0, maxW)
+        return spotDraw(squeeze(l.s, z, false, maxW), x, base ?: spotBase(l.s, z, false, top, h), z, false, fg)
+    }
+
+    /** Memo: one step smaller when long, then an ellipsis. */
+    private fun memo(m: String, x: Float, base: Float, z: Float, maxW: Float): Float {
+        if (m.isEmpty() || maxW < 16f) return 0f
+        val zz = if (measure(m, z, bw) > maxW) z * .87f else z
+        return text(clip(m, zz, bw, maxW), x, base, zz, bw, fg)
+    }
+
+    /** Memo on up to two lines (tall wide tiles): break at the last space that fits, the second line ellipsized. */
+    private fun memo2(m: String, x: Float, top: Float, h: Float, z: Float, maxW: Float) {
+        if (m.isEmpty() || maxW < 16f) return
+        val lh = z * 1.25f
+        if (measure(m, z, bw) <= maxW) { text(m, x, midBase(top, h, z, bw), z, bw, fg); return }
+        setText(z, bw, 0f)
+        var n = p.breakText(m, true, maxW, null)
+        m.lastIndexOf(' ', n).takeIf { it > 0 && n < m.length }?.let { n = it }
+        val first = m.substring(0, n).trimEnd(); val rest = m.substring(n).trimStart()
+        val t0 = top + (h - 2 * lh) / 2
+        text(first, x, midBase(t0, lh, z, bw), z, bw, fg)
+        text(clip(rest, z, bw, maxW), x, midBase(t0 + lh, lh, z, bw), z, bw, fg)
+    }
+
+    /**
+     * Name line (mockup l1): colour bar + name first, "외 N대", then the time or a state chip at the right end.
+     * A long name first shortens the time ("동찬 17:15" -> "17:15"), then drops it; when even a short name has no room,
+     * "외 N대" goes first, the state chip last.
+     */
+    private fun nameLine(l: Line, more: Int, x: Float, top: Float, w: Float, z: Float, band: Boolean) {
+        val lh = z * 1.15f
+        val zs = z * 12f / 13f
+        val base = midBase(top, lh, z, KO700)
+        val f = if (band) 0xFFFFFFFF.toInt() else fg
+        val m = if (band) 0xFFFFFFFF.toInt() else mu
+        val halo = !band && look.haloLv > 0
+        val cy = top + lh / 2
+        val bar = RectF(x, cy - z / 2, x + 4f, cy + z / 2)
+        c.drawRoundRect(RectF(bar).apply { inset(-1f, -1f) }, 3f, 3f, fill(if (band) white(.75f) else fg.alpha(.6f)))
+        c.drawRoundRect(bar, 2f, 2f, fill(l.car.color or (0xFF shl 24)))
+        val moreS = if (more > 0) "외 ${more}대" else ""
+        val chip = when { l.st == St.PEND -> "저장 중"; l.st == St.FAIL -> "실패"; l.stale != null && l.st == St.OK -> l.stale; else -> null }
+        var moreOn = more > 0; var chipOn = chip != null
+        fun moreW() = if (moreOn) measure(moreS, zs, KO600) + 4f else 0f
+        fun chipW() = if (chipOn) measure(chip!!, zs, KO700) + zs + 6f else 0f
+        val nameW = measure(l.car.name, z, KO700)
+        val minName = min(nameW, z * 1.5f)
+        if (8f + minName + moreW() + chipW() > w) moreOn = false
+        if (8f + minName + chipW() > w) chipOn = false
+        val timeFace = if (shape == Shape.DOT || shape == Shape.TICKET) MONO else bw
+        val tls = if (timeFace == MONO) -.03f else 0f
+        val full = when (l.st) { St.OK -> "${l.who} ${l.time}".trim(); St.GONE -> "${l.who} 출발".trim(); else -> "" }
+        val short = when (l.st) { St.OK -> l.time; St.GONE -> "출발"; else -> "" }
+        val fixed = 8f + moreW() + chipW()
+        var tail = if (chip != null) "" else full
+        fun tailW() = if (tail.isEmpty()) 0f else measure(tail, z, timeFace, tls) + 6f
+        if (tail.isNotEmpty() && nameW > w - fixed - tailW()) tail = short
+        if (tail.isNotEmpty() && nameW > w - fixed - tailW()) tail = ""
+        val nm = clip(l.car.name, z, KO700, w - fixed - tailW())
+        val nw = text(nm, x + 8f, base, z, KO700, f, halo = halo)
+        if (moreOn) text(moreS, x + 8f + nw + 4f, base, zs, KO600, m, halo = halo)
+        if (tail.isNotEmpty()) text(tail, x + w, base, z, timeFace, m, tls, right = true, halo = halo)
+        if (chipOn) {
+            val ch = zs * 16f / 12f
+            val r = RectF(x + w - (chipW() - 6f), cy - ch / 2, x + w, cy + ch / 2)
+            val (bg, tc) = when {
+                l.st == St.PEND -> fg to (if (isLight(fg)) 0xFF111111.toInt() else 0xFFFFFFFF.toInt())
+                l.st == St.FAIL -> 0xFFA3120A.toInt() to 0xFFFFFFFF.toInt()
+                else -> 0xFFFFD24A.toInt() to 0xFF161616.toInt()
             }
-            else -> {
-                var rest = if (l.st == St.GONE) " 출발" else " ${l.time}"
-                var restFace = if (l.st == St.GONE) KO400 else timeFace
-                val ls = if (mono) -.02f else 0f
-                var whoName = l.who
-                // a date ("11월 16일") that does not fit drops the name: when matters more than who on an old record
-                if (measure(whoName, 13.5f, KO600) + measure(rest, 13.5f, restFace, ls) > max && rest.contains('월')) { whoName = ""; rest = rest.trim(); restFace = KO400 }
-                val w1 = measure(whoName, 13.5f, KO600)
-                // narrow slot: "어제 19:05" -> "어제" (the mockup's short form), then an ellipsis
-                if (w1 + measure(rest, 13.5f, restFace, ls) > max && rest.startsWith(" 어제 ")) rest = " 어제"
-                if (w1 + measure(rest, 13.5f, restFace, ls) > max) { setText(13.5f, restFace, ls); rest = TextUtils.ellipsize(rest, p, max(0f, max - w1), TextUtils.TruncateAt.END).toString() }
-                val w2 = measure(rest, 13.5f, restFace, ls)
-                val x0 = if (right) x - w1 - w2 else x
-                text(whoName, x0, base, 13.5f, KO600, f, halo = halo)
-                text(rest, x0 + w1, base, 13.5f, restFace, m, ls, halo = halo)
-            }
+            c.drawRoundRect(r, ch / 2, ch / 2, fill(bg))
+            text(chip!!, r.left + zs / 2, midBase(r.top, ch, zs, KO700), zs, KO700, tc, halo = false)
         }
     }
 
-    /** One-car head line: name on the left, who/when on the right; the name gets at most half when both are long. */
-    private fun header(l: Line, x0: Float, x1: Float, nameBase: Float, whoBase: Float, onBand: Boolean = false, mono: Boolean = false) {
-        val room = x1 - x0 - 6f
-        val nw = min(13f + measure(l.car.name, 13.5f, KO700), max(room / 2, room - measure("${l.who} ${l.time}", 13.5f, if (mono) MONO else KO400)))
-        name(l, x0, nameBase, onBand = onBand, max = nw)
-        who(l, x1, whoBase, right = true, mono = mono, onBand = onBand, max = room - nw)
-    }
+    // ---------- mic ----------
 
-    private fun upIcon(x: Float, y: Float, color: Int) {
-        val s = 12f / 24f
-        val q = fill(color).apply { style = Paint.Style.STROKE; strokeWidth = 2.4f; strokeCap = Paint.Cap.ROUND; strokeJoin = Paint.Join.ROUND }
-        val path = Path().apply { moveTo(12f, 19f); lineTo(12f, 6f); moveTo(6.5f, 11.5f); lineTo(12f, 6f); lineTo(17.5f, 11.5f) }
-        c.save(); c.translate(x, y); c.scale(s, s); c.drawPath(path, q); c.restore()
-    }
-
-    private fun micGlyph(cx: Float, cy: Float, color: Int) {
-        c.save(); c.translate(cx - 10f, cy - 10f); c.scale(20f / 24f, 20f / 24f)
-        c.drawRoundRect(RectF(9f, 3f, 15f, 14f), 3f, 3f, fill(color))
-        val q = fill(color).apply { style = Paint.Style.STROKE; strokeWidth = 2f; strokeCap = Paint.Cap.ROUND }
-        c.drawArc(RectF(6f, 5f, 18f, 17f), 0f, 180f, false, q)
-        c.drawLine(12f, 17f, 12f, 21f, q)
+    private fun micGlyph(cx: Float, cy: Float, size: Float, color: Int, dots: Boolean) {
+        c.save(); c.translate(cx - size / 2, cy - size / 2); c.scale(size / 24f, size / 24f)
+        if (dots) listOf(5f, 12f, 19f).forEach { c.drawCircle(it, 12f, 2.4f, fill(color)) }
+        else {
+            c.drawRoundRect(RectF(9f, 2.5f, 15f, 14.5f), 3f, 3f, fill(color))
+            val q = fill(color).apply { style = Paint.Style.STROKE; strokeWidth = 2.2f; strokeCap = Paint.Cap.ROUND }
+            c.drawArc(RectF(5.5f, 5f, 18.5f, 18f), 0f, 180f, false, q)
+            c.drawLine(12f, 18f, 12f, 21.5f, q)
+        }
         c.restore()
     }
 
-    /** One mic style per widget; off = outlined circle, muted glyph, diagonal bar (spec 8.3 mic/pack needed). */
-    private fun mic(l: Line, x: Float, y: Float, d: Float = 44f) {
-        val r = RectF(x, y, x + d, y + d)
+    /** The 말하기 button; off = outlined circle, muted glyph, diagonal bar and "켜기" (tap opens the permission / pack step). */
+    private fun mic(l: Line, r: RectF) {
+        val d = r.width()
         val box = Path().apply { addOval(r, Path.Direction.CW) }
         val cx = r.centerX(); val cy = r.centerY()
-        hits += Hit(l.car.id, RectF(r), "MIC")
         if (!micOn) {
             c.drawCircle(cx, cy, d / 2 - .75f, fill(fg.alpha(.38f)).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f })
-            micGlyph(cx, cy, mu)
-            c.save(); c.rotate(-45f, cx, cy); c.drawRect(cx - 13f, cy - .75f, cx + 13f, cy + .75f, fill(mu)); c.restore()
+            val gy = cy - d * .1f
+            micGlyph(cx, gy, d * .38f, mu, false)
+            c.save(); c.rotate(-45f, cx, gy); c.drawRect(cx - d * .22f, gy - .75f, cx + d * .22f, gy + .75f, fill(mu)); c.restore()
+            val z = d * .2f
+            text("켜기", cx - measure("켜기", z, KO700) / 2, cy + d * .3f, z, KO700, fg)
             return
         }
-        when (shape) {
-            Shape.DOT -> {
-                shadow(box, r, d / 2, 0f, 2f, 4f, 0f, black(.5f))
+        val acc = style.acc or (0xFF shl 24)
+        if (shape == Shape.DOT) {
+            if (a > 0) {
+                shadow(box, r, d / 2, 0f, 2f, 4f, 0f, black(.5f * a))
                 c.drawOval(r, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, r.top, 0f, r.bottom, 0xFF3B3B40.toInt(), 0xFF1A1A1C.toInt(), Shader.TileMode.CLAMP) })
                 c.save(); c.clipPath(box); edge(box, 1f, white(.2f)); c.restore()
-                c.drawCircle(cx, cy, d / 2 - .5f, fill(white(.1f)).apply { style = Paint.Style.STROKE; strokeWidth = 1f })
-                c.drawCircle(r.right - 11f, r.top + 11f, 3f, fill(0xFFFF5A36.toInt()))
-            }
-            else -> {
-                if (shape == Shape.TICKET) shadow(box, r, d / 2, 0f, 1f, 2f, 0f, black(.25f))
-                else { shadow(box, r, d / 2, 0f, 1f, 2f, 0f, black(.2f)); shadow(box, r, d / 2, 0f, 5f, 9f, -5f, black(.4f)) }
-                c.drawOval(r, fill(style.acc or (0xFF shl 24)))
-                c.drawOval(r, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, r.top, 0f, r.top + d * .55f, white(.22f), white(0f), Shader.TileMode.CLAMP) })
-                if (shape != Shape.TICKET) { c.save(); c.clipPath(box); edge(box, -1f, black(.22f)); c.restore() }
-            }
+            } else c.drawOval(r, fill(0xFF2A2A2E.toInt()))
+            c.drawCircle(cx, cy, d / 2 - .5f, fill(white(.1f)).apply { style = Paint.Style.STROKE; strokeWidth = 1f })
+            c.drawCircle(r.right - d * .15f - 3f, r.top + d * .15f + 3f, 3f, fill(0xFFFF5A36.toInt()))
+        } else {
+            if (a > 0) { shadow(box, r, d / 2, 0f, 1f, 2f, 0f, black(.2f * a)); shadow(box, r, d / 2, 0f, 5f, 9f, -5f, black(.4f * a)) }
+            c.drawOval(r, fill(acc))
+            c.drawOval(r, Paint(Paint.ANTI_ALIAS_FLAG).apply { shader = LinearGradient(0f, r.top, 0f, r.top + d * .55f, white(.22f), white(0f), Shader.TileMode.CLAMP) })
+            // a ring when the button would melt into what is behind it
+            if (a < .5f || Contrast.ratio(acc, look.bg or (0xFF shl 24)) < 3.0)
+                c.drawCircle(cx, cy, d / 2 - .75f, fill(fg.alpha(.9f)).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f })
         }
-        micGlyph(cx, cy, micIcon)
+        micGlyph(cx, cy, d * .5f, micIcon, l.st == St.PEND)
     }
 
-    private fun row(l: Line, r: RectF) { hits += Hit(l.car.id, r, "ROW") }
+    // ---------- layout ----------
 
-    private fun note(x: Float, y: Float, base: Float, w: Float, border: Boolean) {
-        if (border) c.drawRect(x, y, x + w, y + 1f, fill(line))
-        text(clip(NOTE, 12f, KO400, w), x, base, 12f, KO400, mu)
-    }
-
-    // ---------- shapes ----------
-
-    fun draw(lines: List<Line>, one: Boolean, w: Float, h: Float) {
-        when (shape) {
-            Shape.ROW -> if (one) rowOne(lines[0], w, h) else rowAll(lines, w, h)
-            Shape.POSTER -> if (one) posterOne(lines[0], w, h) else posterAll(lines, w, h)
-            Shape.PILLAR -> if (one) pillarOne(lines[0], w, h) else pillarAll(lines, w, h)
-            Shape.DOT -> if (one) dotOne(lines[0], w, h) else dotAll(lines, w, h)
-            Shape.TICKET -> if (one) ticketOne(lines[0], w, h) else ticketAll(lines, w)
-        }
+    /** One car's place: [r] the cell (with its padding), [t] the content box. Decor reads [mic], [nameBottom], [side]. */
+    private class Cell(val l: Line, val more: Int, val r: RectF, val t: RectF, val bc: Boolean) {
+        var mic = RectF(); var nameBottom = 0f; var side = false
+        val ops = ArrayList<() -> Unit>()
     }
 
     private val wr get() = style.radiusDp.toFloat()
 
-    /** f + s on one baseline (CSS .sp, align-items baseline); empty states per spec 8.3. */
-    private fun spotRow(l: Line, x: Float, base: Float, fs: Float, ss: Float, gap: Float, fls: Float = -.03f, sls: Float = -.01f,
-                        fw: Int = 900, sw: Int = 800, goneBase: Float = base - 8.4f) {
-        when (l.st) {
-            St.NONE -> spotText("–", x, base, fs, fw, mu, fls, false)
-            St.GONE -> text("운행 중", x, goneBase, 17f, KO700, fg, -.01f)
-            else -> {
-                val fw0 = spotText(l.f, x, base, fs, fw, fg, fls, false)
-                if (l.s.isNotEmpty()) spotText(l.s, x + fw0 + gap, base, ss, sw, fg, sls, true)
+    /** [lines] = the cars this size shows (main first, at most two); [more] = cars left out ("외 N대"). */
+    fun draw(lines: List<Line>, more: Int, w: Float, h: Float) {
+        val g = geo[0]
+        val cols = when { lines.size == 1 -> listOf(lines); w >= WIDE -> lines.map { listOf(it) }; else -> listOf(lines) }
+        val nc = cols.size; val cw = (w - g * (nc - 1)) / nc
+        val cells = ArrayList<Cell>()
+        cols.forEachIndexed { ci, col ->
+            val nr = col.size; val ch = (h - g * (nr - 1)) / nr
+            col.forEachIndexed { ri, l ->
+                val x = ci * (cw + g); val y = ri * (ch + g)
+                val pl = if (ci > 0) geo[5] else PAD; val pr = if (ci < nc - 1) geo[5] else PAD
+                val pt = if (ri > 0) geo[2] else geo[1]; val pb = if (ri < nr - 1) geo[4] else geo[3]
+                val bc = shape == Shape.TICKET && a > 0 && ch < TALL && cw - pl - pr >= 220
+                val bx = if (bc) 19f else 0f
+                cells += Cell(l, more, RectF(x, y, x + cw, y + ch), RectF(x + pl + bx, y + pt, x + cw - pr, y + ch - pb), bc)
+            }
+        }
+        cells.forEach { plan(it) }
+        if (a > 0) {
+            if (shape != Shape.TICKET) card(RectF(0f, 0f, w, h), wr)
+            cells.forEachIndexed { i, cl -> decor(cl, i, cells.size, w, h) }
+            dividers(cols.size, cells, w, h)
+        }
+        cells.forEach { cl ->
+            cl.ops.forEach { it() }
+            mic(cl.l, cl.mic)
+            // a side mic owns its column of the cell (easier to hit); on 기둥 띠 the name row above it stays the car's
+            val m = if (cl.side && !onBand) RectF(cl.mic.left - 4f, cl.r.top, cl.r.right, cl.r.bottom) else RectF(cl.mic)
+            hits += Hit(cl.l.car.id, RectF(cl.r), "ROW")
+            hits += Hit(cl.l.car.id, m, "MIC")
+        }
+    }
+
+    /** Mockup tile(): the layout is picked from the content box, so one car fills a 2x1, a strip or a 4x2. */
+    private fun plan(cl: Cell) {
+        val t = cl.t; val x0 = t.left; val y0 = t.top; val w = t.width(); val hb = t.height(); val h = hb - xh; val l = cl.l
+        fun spread(vararg hs: Float): FloatArray {
+            val gap = max(0f, (hb - hs.sum()) / (hs.size - 1)); var y = y0
+            return FloatArray(hs.size) { i -> val v = y; y += hs[i] + gap; v }
+        }
+        val tall = h >= TALL
+        // small text: font scale, and a little more in cells far bigger than a phone's (tablets) so the floor does not dwarf it
+        val k = min(1.6f, textScale * (if (tall) h / 184f else h / 84f).coerceIn(1f, 1.5f))
+        val z1 = 13f * k; val l1 = 15f * k   // one-row name line: font, line height
+        val z2 = 15f * k; val l2 = 17f * k   // tall name line
+        val l3 = 17f * k
+        val band = onBand
+        if (hb < SHORT) {   // compact: name / floor + pillar + memo, mic as tall as the cell allows
+            val d = max(min(MIC_MIN, cl.r.height()), min(56f, hb))
+            val my = max(cl.r.top, cl.r.centerY() - d / 2)
+            cl.mic = RectF(x0 + w - d, my, x0 + w, my + d)
+            cl.side = true
+            val lcw = w - d - 6f
+            val rest = max(14f, hb - l1 - xh)
+            val ys = spread(l1 + xh, rest)
+            cl.nameBottom = ys[0] + l1
+            cl.ops += {
+                nameLine(l, cl.more, x0, ys[0], lcw, z1, band)   // the mic is centred here, so the band text stops before it
+                val fz = rest / F_LH
+                val used = spotRow(l, x0, ys[1], rest, lcw, fz, fz * .46f, true, k)
+                val mx = x0 + used + 8f
+                memo(l.memo, mx, midBase(ys[1], rest, z1, bw), z1, x0 + lcw - mx)
+            }
+        } else if (!tall && w < NARROW) {   // t1: name / floor + mic / pillar + memo
+            val mh = h - l1 - l3 - 2
+            val d = max(MIC_MIN, floor(min(mh, 56f)))
+            val ys = spread(l1 + xh, mh, l3)
+            var mt = ys[1] + mh / 2 - d / 2
+            mt = min(max(mt, ys[0] + l1), y0 + hb - d)
+            cl.mic = RectF(x0 + w - d, mt, x0 + w, mt + d)
+            cl.nameBottom = ys[0] + l1
+            val l3w = if (cl.mic.bottom > ys[2] + 1f) w - d - 6f else w
+            cl.ops += {
+                nameLine(l, cl.more, x0, ys[0], w, z1, band)
+                spotRow(l, x0, ys[1], mh, w - d - 6f, mh / F_LH, 0f, false, k)
+                // the third line is pillar + memo; with a memo the pillar takes at most 55 % so the memo always shows
+                val base = midBase(ys[2], l3, z1, bw)
+                val pmax = if (l.memo.isNotEmpty()) l3w * .55f else l3w
+                val pw = pillar(l, x0, 17f, pmax, ys[2], l3, base)
+                memo(l.memo, x0 + pw + (if (pw > 0) 6f else 0f), base, z1, l3w - pw - (if (pw > 0) 6f else 0f))
+            }
+        } else if (!tall) {   // t2 / t3: content left, mic on the right across the tile height
+            val mh = h - l1 - l3 - 2
+            var d = Math.round(min(h, min(88f, max(MIC_MIN, w * .3f)))).toFloat()
+            if (band) d = min(d, h - 16f)
+            d = max(MIC_MIN, d)
+            val my = if (band) y0 + hb - d else y0 + (hb - d) / 2
+            cl.mic = RectF(x0 + w - d, my, x0 + w, my + d)
+            cl.side = true
+            val lcw = w - d - 8f
+            val nw = if (band) w else lcw
+            if (w < WIDE_ONE) {   // t2: name / floor + pillar / memo
+                val ys = spread(l1 + xh, mh, l3)
+                cl.nameBottom = ys[0] + l1
+                cl.ops += {
+                    nameLine(l, cl.more, x0, ys[0], nw, z1, band)
+                    val fz = mh / F_LH
+                    spotRow(l, x0, ys[1], mh, lcw, fz, fz * .46f, true, k)
+                    memo(l.memo, x0, midBase(ys[2], l3, z1, bw), z1, lcw)
+                }
+            } else {   // t3: big floor, pillar + memo stacked beside it
+                val bh = h - l1 - 2
+                val ys = spread(l1 + xh, bh)
+                cl.nameBottom = ys[0] + l1
+                cl.ops += {
+                    nameLine(l, cl.more, x0, ys[0], nw, z1, band)
+                    val bottom = ys[1] + bh
+                    if (!spotShown(l)) spotRow(l, x0, ys[1], bh, lcw, bh / F_LH, 0f, false, k)
+                    else {
+                        val (fz, _) = fit(l.f, "", min(F_MAX, bh / F_LH), 0f, 0f, lcw - 10f - 96f)
+                        setText(fz, if (shape == Shape.DOT) doto else fFace, 0f)
+                        val r = Rect(); p.getTextBounds(l.f, 0, l.f.length, r)
+                        val fw = spotDraw(squeeze(l.f, fz, true, lcw - 106f), x0, bottom - r.bottom - 1f, fz, true, fColor)
+                        val px = x0 + fw + 10f; val pw = lcw - fw - 10f
+                        val mz = 14f * k
+                        setText(mz, bw, 0f); val fm = p.fontMetrics
+                        val mBase = bottom - fm.descent
+                        val hasMemo = l.memo.isNotEmpty()
+                        if (hasMemo) memo(l.memo, px, mBase, mz, pw)
+                        pillar(l, px, 34f, pw, 0f, 0f, if (hasMemo) mBase + fm.ascent - 4f else bottom - 2f)
+                    }
+                }
+            }
+        } else if (w < NARROW) {   // tn: name / floor across / pillar + mic / memo
+            val fh = max(20f, h - l2 - MIC_MIN - l3 - 3)
+            val ys = spread(l2 + xh, fh, MIC_MIN, l3)
+            cl.mic = RectF(x0 + w - MIC_MIN, ys[2], x0 + w, ys[2] + MIC_MIN)
+            cl.nameBottom = ys[0] + l2
+            cl.ops += {
+                nameLine(l, cl.more, x0, ys[0], w, z2, band)
+                spotRow(l, x0, ys[1], fh, w, fh / F_LH, 0f, false, k)
+                pillar(l, x0, 38f, w - MIC_MIN - 6f, ys[2], MIC_MIN)
+                memo(l.memo, x0, midBase(ys[3], l3, z2, bw), z2, w)
+            }
+        } else {   // tx: name / floor + pillar / memo (two lines) + mic
+            val bot = 64f
+            val mh = max(20f, h - l2 - bot - 6)
+            val ys = spread(l2 + xh, mh, bot)
+            cl.mic = RectF(x0 + w - bot, ys[2], x0 + w, ys[2] + bot)
+            cl.nameBottom = ys[0] + l2
+            cl.ops += {
+                nameLine(l, cl.more, x0, ys[0], w, z2, band)
+                val fz = min(F_MAX, mh / F_LH)
+                spotRow(l, x0, ys[1], mh, w, fz, ((w - 1.2f * fz - 12f) / 2.3f).coerceIn(28f, 64f), true, k)
+                memo2(l.memo, x0, ys[2], bot, (if (w < WIDE_ONE) 17f else 20f) * min(k, 1.2f), w - bot - 6f)
             }
         }
     }
 
-    private fun rowAll(lines: List<Line>, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        lines.forEachIndexed { i, l ->
-            val top = 9f + i * 57f
-            if (i > 0) c.drawRect(14f, top - 7f, w - 64f, top - 6f, fill(line))
-            spotRow(l, 14f, top + 35.9f, 38f, 19f, 6f)
-            val metaMax = w - 64f - 14f - (if (l.st == St.OK || l.st == St.PEND) spotWidth(l.f, 38f, 900, -.03f, false) + 6f + spotWidth(l.s, 19f, 800, -.01f, true) + 10f else 40f)
-            name(l, w - 64f, top + 16.9f, right = true, max = max(40f, metaMax))
-            who(l, w - 64f, top + 33.5f, right = true, max = max(40f, metaMax))
-            mic(l, w - 54f, top)
-            row(l, RectF(0f, max(0f, top - 6.5f), w - 56f, min(h, top + 50.5f)))
-        }
-        if (!micOn) { val y = 9f + lines.size * 57f - 7f; note(14f, y, y + 18f, w - 24f, true) }
+    private fun band(i: Int): Int {
+        var c = (if (i % 2 == 0) style.fl1 else style.fl2) or (0xFF shl 24)
+        while (Contrast.ratio(Contrast.WHITE, c) < 7) c = Contrast.blend(0xFF000000.toInt(), .1, c)
+        return c
     }
 
-    private fun rowOne(l: Line, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        header(l, 13f, w - 10f, 20f, 20f)
-        when (l.st) {
-            St.NONE -> spotText("–", 13f, 71.6f, 52f, 900, mu, -.03f, false)
-            St.GONE -> text("운행 중", 13f, 60f, 17f, KO700, fg, -.01f)
-            else -> { spotText(l.f, 13f, 71.6f, 52f, 900, fg, -.03f, false); spotText(l.s, 13f, 98.4f, 22f, 800, fg, -.01f, true) }
-        }
-        mic(l, w - 54f, h - 54f)
-        row(l, RectF(0f, 0f, w - 56f, h))
-    }
-
-    private fun posterAll(lines: List<Line>, w: Float, h: Float) {
-        val r = RectF(0f, 0f, w, h)
-        card(r, wr)
-        c.save(); c.clipPath(rrPath(RectF(1f, 1f, w - 1f, h - 1f), max(0f, wr - 1f)))
-        val l0 = lines[0]
-        c.save(); c.clipRect(1f, 1f, w - 1f, 79f)
-        val big = when (l0.st) { St.NONE -> "–"; St.GONE -> ""; else -> l0.f }
-        val bw = if (big.isEmpty()) 0f else text(big, 10f, 80f, 100f, num(900), look.big, -.06f)
-        c.restore()
-        val hx = 10f + bw + 11f
-        val s0 = if (l0.st == St.GONE) "운행 중" else if (l0.st == St.NONE) "" else l0.s
-        text(s0, hx, 31.4f, 27f, num(800), fg, -.03f)
-        name(l0, hx, 50.4f, max = w - 52f - hx - 4f)
-        who(l0, hx, 67f, max = w - 52f - hx - 4f)
-        mic(l0, w - 52f, 20f, 40f)
-        row(l0, RectF(0f, 0f, w - 54f, 79f))
-        lines.drop(1).forEachIndexed { i, l ->
-            val y = 79f + i * 46f
-            c.drawRect(1f, y, w - 1f, y + 46f, fill(fg.alpha(.05f)))
-            c.drawRect(1f, y, w - 1f, y + 1f, fill(line))
-            var x = 13f
-            when (l.st) {
-                St.NONE -> text("–", x, y + 32.3f, 25f, num(900), look.big, -.03f)
-                St.GONE -> text("운행 중", x, y + 29.5f, 16f, KO700, fg)
-                else -> { x += text(l.f, x, y + 32.3f, 25f, num(900), look.big, -.03f) + 7f; x += text(l.s, x, y + 29.5f, 16f, num(800), fg, -.01f) }
+    /** What makes the shape, drawn behind the content (mockup deco()), faded with the strength. */
+    private fun decor(cl: Cell, i: Int, n: Int, w: Float, h: Float) {
+        val r = cl.r
+        val whole = RectF(0f, 0f, w, h)
+        when (shape) {
+            Shape.POSTER -> if (i > 0) {
+                c.save(); c.clipPath(rrPath(whole, wr)); c.drawRect(r, fill(fg.alpha(.05f * a))); c.restore()
             }
-            name(l, w - 61f, y + 18.4f, right = true, max = 110f)
-            who(l, w - 61f, y + 35f, right = true, max = w - 61f - x - 8f)
-            mic(l, w - 52f, y + 3.5f, 40f)
-            row(l, RectF(0f, y, w - 54f, y + 46f))
-        }
-        if (!micOn) { val y = 80f + (lines.size - 1) * 46f - 1f; note(12f, y, y + 18f, w - 24f, true) }
-        c.restore()
-    }
-
-    private fun posterOne(l: Line, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        header(l, 13f, w - 11f, 20f, 20f)
-        val big = when (l.st) { St.NONE -> "–"; St.GONE -> ""; else -> l.f }
-        text(big, 9f, 95.7f, 74f, num(900), look.big, -.06f)
-        text(if (l.st == St.GONE) "운행 중" else if (l.st == St.NONE) "" else l.s, w - 12f, 46f, 21f, if (l.st == St.GONE) KO700 else num(800), fg, -.01f, right = true)
-        mic(l, w - 53f, 51f)
-        row(l, RectF(0f, 0f, w - 56f, h))
-    }
-
-    private fun band(l: Line, i: Int): Int = if (isDefault) DEFAULT_BANDS[i % 4] else if (i % 2 == 0) style.fl1 else style.fl2
-
-    private fun pillarAll(lines: List<Line>, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        val pw = (w - 16f - 7f) / 2
-        val rad = max(0f, wr - 8f)
-        lines.forEachIndexed { i, l ->
-            val full = i == lines.size - 1 && i % 2 == 0
-            val px = 8f + (i % 2) * (pw + 7f); val py = 8f + (i / 2) * 104.6f
-            val pr = RectF(px, py, px + (if (full) w - 16f else pw), py + 97.6f)
-            val box = rrPath(pr, rad)
-            shadow(box, pr, rad, 0f, 1f, 2f, 0f, black(.14f))
-            c.drawPath(box, fill(white((.62f - .53f * (if (look.dk) 1 else 0)) * look.a)))
-            c.save(); c.clipPath(box)
-            val br = RectF(pr.left, pr.top, pr.right, pr.top + 21f)
-            c.drawRect(br, fill(band(l, i)))
-            c.drawRect(br, Paint().apply { shader = LinearGradient(0f, br.top, 0f, br.bottom, white(.06f), black(.12f), Shader.TileMode.CLAMP) })
-            ring(pr, rad, 0f, 1f, white(look.whi * .6f))
-            c.restore()
-            name(l, px + 10f, py + 13.7f, onBand = true, max = pr.width() - 20f)
-            when (l.st) {
-                St.NONE -> text("–", px + 10f, py + 64.8f, 46f, num(900), fg)
-                St.GONE -> {}
-                else -> text(l.f, px + 10f, py + 64.8f, 46f, num(900), fg)
+            Shape.PILLAR -> {
+                val holder = if (n > 1) {
+                    val box = rrPath(r, 8f)
+                    shadow(box, r, 8f, 0f, 1f, 2f, 0f, black(.14f * a))
+                    c.drawPath(box, fill(white((if (look.dk) .09f else .62f) * a)))
+                    box
+                } else rrPath(whole, wr)
+                c.save(); c.clipPath(holder)
+                val br = RectF(r.left, r.top, r.right, cl.nameBottom + 3f)
+                c.drawRect(br, fill(band(i).alpha(a)))
+                c.drawRect(br, Paint().apply { shader = LinearGradient(0f, br.top, 0f, br.bottom, white(.06f * a), black(.12f * a), Shader.TileMode.CLAMP) })
+                c.restore()
             }
-            mic(l, pr.right - 52f, py + 25f)
-            val sx = if (l.st == St.GONE) "운행 중" else if (l.st == St.NONE) "" else l.s
-            val sw = text(sx, px + 10f, py + 86f, 18f, if (l.st == St.GONE) KO700 else num(800), fg, -.01f)
-            who(l, pr.right - 9f, py + 86f, right = true, max = pr.width() - 19f - sw - 10f)
-            row(l, RectF(pr.left, pr.top, pr.right - 54f, pr.bottom))
-        }
-        if (!micOn) { val y = h - 30.6f + 7f - 8f; note(12f, y, y + 18f, w - 24f, true) }
-    }
-
-    private fun pillarOne(l: Line, w: Float, h: Float) {
-        val r = RectF(0f, 0f, w, h)
-        card(r, wr)
-        c.save(); c.clipPath(rrPath(RectF(1f, 1f, w - 1f, h - 1f), max(0f, wr - 1f)))
-        val br = RectF(1f, 1f, w - 1f, 24f)
-        c.drawRect(br, fill(band(l, 0)))
-        c.drawRect(br, Paint().apply { shader = LinearGradient(0f, br.top, 0f, br.bottom, white(.06f), black(.12f), Shader.TileMode.CLAMP) })
-        c.restore()
-        header(l, 13f, w - 11f, 15.7f, 15.7f, onBand = true)
-        when (l.st) {
-            St.NONE -> text("–", 14f, 85f, 58f, num(900), mu)
-            St.GONE -> text("운행 중", 14f, 70f, 17f, KO700, fg)
-            else -> { text(l.f, 14f, 85f, 58f, num(900), fg); text(l.s, 14f, 110.2f, 22f, num(800), fg, -.01f) }
-        }
-        mic(l, w - 54f, 69.2f)
-        row(l, RectF(0f, 0f, w - 56f, h))
-    }
-
-    /** LED panel: dot grid every 6 dp + darkening at strength (CSS .wx.kA .led). */
-    private fun led(r: RectF) {
-        val rad = max(4f, wr - 8f)
-        val box = rrPath(r, rad)
-        shadow(box, r, rad, 0f, 1f, 0f, 0f, white(.07f))
-        c.save(); c.clipPath(box)
-        val dot = fill(fg.alpha(.13f))
-        var y = r.top + 3f
-        while (y < r.bottom) { var x = r.left + 3f; while (x < r.right) { c.drawCircle(x, y, 1.15f, dot); x += 6f }; y += 6f }
-        val dk = if (look.dk) 1f else 0f
-        c.drawPaint(fill(black(.5f * dk * look.a)))
-        c.drawPaint(fill(white(.5f * (1 - dk) * look.a)))
-        c.restore()
-        innerShadow(box, r, 0f, 1f, 3f, black(.45f))
-    }
-
-    private fun dotAll(lines: List<Line>, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        val n = lines.size
-        led(RectF(8f, 8f, w - 59f, 8f + n * 50f + (n - 1) * 5f))
-        lines.forEachIndexed { i, l ->
-            val ty = 8f + i * 55f
-            spotRow(l, 18f, ty + 36.8f, 36f, 21f, 6f, 0f, 0f)
-            val meta = w - 68f - 18f - 10f - (if (l.st == St.OK || l.st == St.PEND) spotWidth(l.f, 36f, 900, 0f, false) + 6f + spotWidth(l.s, 21f, 900, 0f, true) else 50f)
-            name(l, w - 68f, ty + 19.9f, right = true, max = max(40f, meta))
-            who(l, w - 68f, ty + 37.5f, right = true, mono = true, max = max(40f, meta))
-            if (i < n - 1) {
-                val dot = fill(0xFFFF5A36.toInt())
-                var x = 17f
-                while (x < w - 64f) { c.drawCircle(x, ty + 52.5f, 1.3f, dot); x += 6f }
+            Shape.DOT -> {
+                val pr = RectF(r).apply { inset(3f, 3f) }
+                val rad = max(4f, wr - 5f)
+                val hole = Path().apply { addCircle(cl.mic.centerX(), cl.mic.centerY(), cl.mic.width() / 2 + 5f, Path.Direction.CW) }
+                val box = Path().apply { op(rrPath(pr, rad), hole, Path.Op.DIFFERENCE) }
+                c.save(); c.clipPath(box)
+                val dot = fill(fg.alpha(.13f * a))
+                var y = pr.top + 3f
+                while (y < pr.bottom) { var x = pr.left + 3f; while (x < pr.right) { c.drawCircle(x, y, 1.15f, dot); x += 6f }; y += 6f }
+                c.drawPaint(fill(if (look.dk) black(.5f * a) else white(.5f * a)))
+                c.restore()
+                innerShadow(box, pr, 0f, 1f, 3f, black(.45f * a))
             }
-            mic(l, w - 52f, ty + 3f)
-            row(l, RectF(0f, max(0f, ty - 2.5f), w - 54f, ty + 52.5f))
-        }
-        if (!micOn) { val y = 8f + n * 50f + (n - 1) * 5f; note(12f, y, y + 17f, w - 24f, false) }
-    }
-
-    private fun dotOne(l: Line, w: Float, h: Float) {
-        card(RectF(0f, 0f, w, h), wr)
-        led(RectF(7f, 7f, w - 57f, h - 7f))
-        name(l, 15f, 25f, max = w - 72f)
-        when (l.st) {
-            St.NONE -> spotText("–", 15f, 68.6f, 46f, 900, mu, 0f, false)
-            St.GONE -> text("운행 중", 15f, 60f, 17f, KO700, fg)
-            else -> { spotText(l.f, 15f, 68.6f, 46f, 900, fg, 0f, false); spotText(l.s, 15f, 93f, 21f, 900, fg, 0f, true) }
-        }
-        val cx = w - 29f
-        val (a, b) = when (l.st) { St.NONE -> "기록" to "없음"; St.PEND -> "전송" to "대기"; St.GONE -> l.who to "출발"; St.OK -> l.who to l.time }
-        text(a, cx - measure(a, 12f, KO600) / 2, 22f, 12f, KO600, fg)
-        val bf = if (l.st == St.OK) MONO else KO400
-        text(b, cx - measure(b, 12f, bf, -.02f) / 2, 37.6f, 12f, bf, mu, -.02f)
-        mic(l, w - 51f, h - 51f)
-        row(l, RectF(0f, 0f, w - 54f, h))
-    }
-
-    private fun ticketPath(r: RectF, holes: List<Pair<Float, Float>>): Path {
-        val rad = min(wr, 14f)
-        val path = rrPath(r, rad)
-        val cut = Path().apply { holes.forEach { (x, y) -> addCircle(x, y, 4.8f, Path.Direction.CW) } }
-        return Path().apply { op(path, cut, Path.Op.DIFFERENCE) }
-    }
-
-    /** One printed ticket: drop shadow following the punched notches, then the surface (CSS .wx.kP .tk). */
-    private fun ticket(path: Path, r: RectF) {
-        c.save(); c.clipOutPath(path)
-        c.drawPath(Path(path).apply { offset(0f, 2f) }, fill(black(.24f)).apply { maskFilter = BlurMaskFilter(sigmaRadius(3f), BlurMaskFilter.Blur.NORMAL) })
-        c.restore()
-        surface(path, r)
-    }
-
-    private fun dash(x0: Float, y0: Float, x1: Float, y1: Float) {
-        c.drawLine(x0, y0, x1, y1, fill(fg.alpha(.36f)).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f; pathEffect = DashPathEffect(floatArrayOf(4.5f, 3f), 0f) })
-    }
-
-    private fun ticketAll(lines: List<Line>, w: Float) {
-        val tear = w - 134f
-        lines.forEachIndexed { i, l ->
-            val ty = i * 63f
-            val r = RectF(0f, ty, w, ty + 58f)
-            ticket(ticketPath(r, listOf(tear to ty, tear to ty + 58f)), r)
-            val bar = fill(fg.alpha(.6f))
-            var by = ty + 10f
-            while (by < ty + 48f) {
-                for ((a, b) in listOf(0f to 1.5f, 3f to 4f, 6.5f to 9f)) if (by + a < ty + 48f) c.drawRect(10f, by + a, 21f, min(ty + 48f, by + b), bar)
-                by += 10.5f
+            Shape.TICKET -> {
+                val rad = min(wr, 14f)
+                val tear = cl.mic.left - 4f
+                val notches = if (cl.side) listOf(tear to r.top, tear to r.bottom) else listOf(r.left to cl.nameBottom + 1.5f, r.right to cl.nameBottom + 1.5f)
+                val cut = Path().apply { notches.forEach { (x, y) -> addCircle(x, y, 4.8f, Path.Direction.CW) } }
+                val path = Path().apply { op(rrPath(r, rad), cut, Path.Op.DIFFERENCE) }
+                c.save(); c.clipOutPath(path)
+                c.drawPath(Path(path).apply { offset(0f, 2f) }, fill(black(.24f * a)).apply { maskFilter = BlurMaskFilter(sigmaRadius(3f), BlurMaskFilter.Blur.NORMAL) })
+                c.restore()
+                surface(path, r)
+                val dash = fill(fg.alpha(.36f * a)).apply { style = Paint.Style.STROKE; strokeWidth = 1.5f; pathEffect = DashPathEffect(floatArrayOf(4.5f, 3f), 0f) }
+                if (cl.side) c.drawLine(tear, r.top + 6f, tear, r.bottom - 6f, dash)
+                else c.drawLine(r.left + 7f, cl.nameBottom + 1.5f, r.right - 7f, cl.nameBottom + 1.5f, dash)
+                if (cl.bc) {
+                    val bar = fill(fg.alpha(.6f * a))
+                    val top = r.top + 10f; val bot = r.bottom - 10f
+                    var by = top
+                    while (by < bot) {
+                        for ((s, e) in listOf(0f to 1.5f, 3f to 4f, 6.5f to 9f)) if (by + s < bot) c.drawRect(r.left + 9f, by + s, r.left + 20f, min(bot, by + e), bar)
+                        by += 10.5f
+                    }
+                }
             }
-            when (l.st) {
-                St.NONE -> text("–", 30f, ty + 44f, 40f, num(700), mu, -.06f)
-                St.GONE -> text("운행 중", 30f, ty + 36f, 17f, KO700, fg)
-                else -> { val fw = text(l.f, 30f, ty + 44f, 40f, num(700), fg, -.06f); text(l.s, 30f + fw + 6f, ty + 44f, 19f, num(600), fg, -.03f) }
-            }
-            dash(tear + .75f, ty, tear + .75f, ty + 58f)
-            name(l, tear + 11f, ty + 23.9f, max = w - 57f - tear - 11f)
-            who(l, tear + 11f, ty + 41.5f, mono = true, max = w - 57f - tear - 11f)
-            mic(l, w - 51f, ty + 7f)
-            row(l, RectF(0f, ty, w - 54f, ty + 58f))
-        }
-        if (!micOn) {
-            val ty = lines.size * 63f
-            val r = RectF(0f, ty, w, ty + 30f)
-            ticket(rrPath(r, min(wr, 14f)), r)
-            note(12f, ty, ty + 19.5f, w - 24f, false)
+            Shape.ROW -> {}
         }
     }
 
-    private fun ticketOne(l: Line, w: Float, h: Float) {
-        val r = RectF(0f, 0f, w, h)
-        ticket(ticketPath(r, listOf(0f to 31f, w to 31f)), r)
-        dash(12f, 30.25f, w - 9f, 30.25f)
-        header(l, 12f, w - 9f, 18.2f, 19.2f, mono = true)
-        when (l.st) {
-            St.NONE -> text("–", 12f, 77f, 48f, num(700), mu, -.06f)
-            St.GONE -> text("운행 중", 12f, 70f, 17f, KO700, fg)
-            else -> { text(l.f, 12f, 77f, 48f, num(700), fg, -.06f); text(l.s, 12f, 101.2f, 21f, num(600), fg, -.03f) }
+    /** Lines between cars: ROW hairline, POSTER rule, DOT red dots; PILLAR and TICKET are apart by their own panels. Faded with the strength. */
+    private fun dividers(nc: Int, cells: List<Cell>, w: Float, h: Float) {
+        if (cells.size < 2) return
+        val g = geo[0]
+        val vertical = nc > 1
+        val pos = if (vertical) cells[0].r.right else cells[0].r.bottom
+        val hr = fg.alpha(.16f + .18f * (1 - a))
+        when (shape) {
+            Shape.ROW -> if (vertical) c.drawRect(pos, 8f, pos + g, h - 8f, fill(hr)) else c.drawRect(8f, pos, w - 8f, pos + g, fill(hr))
+            Shape.POSTER -> if (vertical) c.drawRect(pos, 0f, pos + g, h, fill(hr)) else c.drawRect(0f, pos, w, pos + g, fill(hr))
+            Shape.DOT -> {
+                val dot = fill(0xFFFF5A36.toInt().alpha(a)); val mid = pos + g / 2
+                if (vertical) { var y = 12f; while (y < h - 9f) { c.drawCircle(mid, y, 1.2f, dot); y += 6f } }
+                else { var x = 12f; while (x < w - 9f) { c.drawCircle(x, mid, 1.2f, dot); x += 6f } }
+            }
+            else -> {}
         }
-        mic(l, w - 53f, h - 53f)
-        row(l, RectF(0f, 0f, w - 56f, h))
     }
 }

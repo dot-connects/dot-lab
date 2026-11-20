@@ -204,8 +204,10 @@ fun Step4(invite: () -> Unit, later: () -> Unit, pin: () -> Unit, ask: () -> Uni
     if (cars.isNotEmpty()) BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(SKY).padding(vertical = 10.dp), Alignment.Center) {
         val density = LocalDensity.current.density
         val spec = WidgetSpecs.default(AppWidgetManager.INVALID_APPWIDGET_ID).copy(carId = cars.first().id)
-        val bmp = remember(maxWidth) { runCatching { preview(ctx, spec, cars, maxWidth.value, density, listOf(0xFFA9CDE6.toInt(), 0xFFE7D2B4.toInt())) }.getOrNull() }
-        if (bmp != null) Image(bmp.asImageBitmap(), "위젯 미리 보기", Modifier.size((bmp.width / density).dp, (bmp.height / density).dp))
+        val size = android.util.SizeF(328f, 200f)   // 4x2, scaled down to fit
+        val k = minOf(1f, (maxWidth.value - 16f) / size.width)
+        val bmp = remember { runCatching { preview(ctx, spec, cars, size, density, listOf(0xFFA9CDE6.toInt(), 0xFFE7D2B4.toInt())) }.getOrNull() }
+        if (bmp != null) Image(bmp.asImageBitmap(), "위젯 미리 보기", Modifier.size((size.width * k).dp, (size.height * k).dp))
     }
     Btn("카카오톡으로 초대", BtnKind.KAKAO, onClick = invite)
     Btn("가족에게 요청하기", BtnKind.GHOST, onClick = ask)

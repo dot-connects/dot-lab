@@ -11,6 +11,8 @@ import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Spot
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -18,7 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** Button slots per size: inside the widget, mic >= 44 dp, no slot overlap, the same requestCode at every size. */
+/** Which cars a size shows, the text colour rule, and button slots at every size: inside the widget, mic >= 48 dp, no mic overlap. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])
@@ -26,42 +28,90 @@ class WidgetLayoutTest {
     private val ctx get() = ApplicationProvider.getApplicationContext<android.content.Context>()
     private val now = 1_763_600_000_000L
     private val cars = (0 until 4).map { Car("c$it", listOf("흰 차", "회색 차", "검정 차", "파란 차")[it], 0xFF8E9399.toInt(), null, it) }
-    private val parks = cars.associate { it.id to Park(now - 60_000, it.id, Spot(Floor.Under(2), "C", 37, null, null), now - 60_000, "m", "아빠", null, false, ParkState.PARKED) }
+    private val parks = cars.associate { it.id to Park(now - 60_000, it.id, Spot(Floor.Under(2), "C", 37, "12", "엘리베이터 옆 기둥 뒤 두번째 칸"), now - 60_000, "m", "아빠", null, false, ParkState.PARKED) }
 
-    private fun hits(shape: Shape, n: Int, one: Boolean, size: SizeF, mic: Boolean = true): List<Hit> {
-        val spec = WidgetSpec(7, shape, if (one) "c0" else null, 100, Palette.default(shape), null)
-        return WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, listOf(0xFFA9CDE6.toInt()), now, mic, emptySet()).rendered.hits
-    }
+    private fun out(shape: Shape, n: Int, size: SizeF, mic: Boolean = true, strength: Int = 100, main: String? = null, scale: Float = 1f,
+                    parks: Map<String, Park?> = this.parks) =
+        WidgetRenderer.draw(ctx, WidgetSpec(7, shape, null, strength, Palette.default(shape), null), cars.take(n), parks, size, 2f,
+            listOf(0xFFA9CDE6.toInt()), now, mic, emptySet(), main, scale)
 
     private fun overlap(a: RectF, b: RectF) = maxOf(0f, minOf(a.right, b.right) - maxOf(a.left, b.left)) * maxOf(0f, minOf(a.bottom, b.bottom) - maxOf(a.top, b.top))
 
+    @Test fun carsPerSize() {
+        val ids = { p: Pair<List<Car>, Int> -> p.first.map { it.id } to p.second }
+        assertEquals(listOf("c0") to 3, ids(WidgetRenderer.carsFor(cars, null, false)))           // one row: main + 외 3대
+        assertEquals(listOf("c0") to 1, ids(WidgetRenderer.carsFor(cars.take(2), null, false)))
+        assertEquals(listOf("c1", "c0") to 0, ids(WidgetRenderer.carsFor(cars.take(2), "c1", true)))   // two rows, two cars: both, main first
+        assertEquals(listOf("c2") to 2, ids(WidgetRenderer.carsFor(cars.take(3), "c2", true)))     // three cars: main alone
+        assertEquals(listOf("c0") to 0, ids(WidgetRenderer.carsFor(cars.take(1), null, true)))
+        assertEquals("", WidgetRenderer.carsFor(emptyList(), null, true).first.single().id)       // placeholder car
+    }
+
+    @Test fun mainCarFallsBackToFirst() {
+        val shuffled = listOf(cars[2], cars[0], cars[1])
+        assertEquals("c0", WidgetRenderer.mainCar(shuffled, null)?.id)
+        assertEquals("c0", WidgetRenderer.mainCar(shuffled, "deleted")?.id)
+        assertEquals("c1", WidgetRenderer.mainCar(shuffled, "c1")?.id)
+        assertNull(WidgetRenderer.mainCar(emptyList(), "c1"))
+    }
+
+    @Test fun rowsFromHeight() {
+        assertFalse(WidgetRenderer.twoRow(100f)); assertFalse(WidgetRenderer.twoRow(130f))
+        assertTrue(WidgetRenderer.twoRow(150f)); assertTrue(WidgetRenderer.twoRow(200f))
+    }
+
+    @Test fun staleAfterTwoDays() {
+        val at = 1_763_564_400_000L + 10 * 3_600_000L   // 2025-11-20 10:00 KST
+        assertNull(WidgetRenderer.staleLabel(at, at + 20 * 3_600_000L))   // next day: "어제 10:00" stays
+        assertEquals("3일 전", WidgetRenderer.staleLabel(at, at + 3 * 86_400_000L))
+    }
+
+    @Test fun autoTextColour() {
+        val row = Palette.default(Shape.ROW)          // light card, dark text
+        val white = listOf(0xFFFFFFFF.toInt())
+        fun light(c: Int) = (c shr 16 and 255) > 200
+        assertTrue("auto under 50 % is white even on a white wallpaper", light(Look.pick(row, 30, white, "auto").fg))
+        for (st in listOf(0, 30)) assertTrue("halo reaches 7:1 for small text at $st %", Look.pick(row, st, white, "auto").score >= Look.MIN_CR)
+        assertEquals(1, Look.pick(row, 0, listOf(0xFF04141A.toInt()), "auto").haloLv)   // dark wallpaper: the softest halo
+        assertFalse("auto from 50 % reads the card", light(Look.pick(row, 100, white, "auto").fg))
+        assertTrue(Look.pick(Palette.default(Shape.POSTER), 100, white, "auto").let { light(it.fg) && it.haloLv == 0 })
+        assertFalse(light(Look.pick(row, 0, white, "black").fg))
+        assertTrue(light(Look.pick(row, 100, white, "white").fg))
+        assertEquals("forcing a text colour keeps the card colour", row.bg, Look.pick(row, 100, white, "white").bg)
+        assertEquals(row.bg, Look.pick(row, 60, white, "black").bg)
+    }
+
     @Test fun slotsPerSize() {
-        val sizes = listOf(SizeF(292f, 135f), SizeF(360f, 200f), SizeF(250f, 110f), SizeF(150f, 60f), SizeF(520f, 120f), SizeF(170f, 130f))
-        for (shape in Shape.values()) for (one in listOf(false, true)) for (n in (if (one) listOf(1) else listOf(1, 2, 3, 4))) for (size in sizes) for (mic in listOf(true, false)) {
-            val h = hits(shape, n, one, size, mic)
-            val tag = "$shape one=$one n=$n $size mic=$mic"
-            val expected = if (one) 1 else n
-            assertEquals(tag, expected, h.count { it.kind == "MIC" }); assertEquals(tag, expected, h.count { it.kind == "ROW" })
+        val sizes = listOf(SizeF(164f, 100f), SizeF(246f, 100f), SizeF(328f, 100f), SizeF(164f, 200f), SizeF(246f, 200f), SizeF(328f, 200f),
+            SizeF(200f, 80f), SizeF(400f, 230f), SizeF(180f, 150f), SizeF(110f, 50f), SizeF(164f, 60f), SizeF(420f, 150f), SizeF(600f, 600f))
+        for (shape in Shape.values()) for (n in 1..4) for (size in sizes) for (mic in listOf(true, false)) for (st in listOf(0, 100)) for (scale in listOf(1f, 1.3f)) {
+            val o = out(shape, n, size, mic, st, scale = scale)
+            val h = o.rendered.hits
+            val tag = "$shape n=$n $size mic=$mic st=$st scale=$scale"
+            val shown = if (WidgetRenderer.twoRow(size.height) && n <= 2) n else 1
+            assertEquals(tag, shown, h.count { it.kind == "MIC" }); assertEquals(tag, shown, h.count { it.kind == "ROW" })
             h.forEach { assertTrue("$tag ${it.rectDp} in bounds", it.rectDp.left >= -.01f && it.rectDp.top >= -.01f && it.rectDp.right <= size.width + .01f && it.rectDp.bottom <= size.height + .01f) }
-            val (nw, nh) = Shapes.natural(shape, one, n, mic)
-            val full = size.width >= nw + 12f && size.height >= nh + 16f   // card at 1x: every mic keeps its full 44 dp
-            h.filter { it.kind == "MIC" }.forEach { assertTrue("$tag mic ${it.rectDp}", it.rectDp.width() >= 43.99f && (!full || it.rectDp.height() >= 43.99f)) }
             val mics = h.filter { it.kind == "MIC" }
-            for (i in mics.indices) for (j in i + 1 until mics.size) assertTrue("$tag mics overlap", overlap(mics[i].rectDp, mics[j].rectDp) < 1f || size.height < 70f && n >= 3)  // 3-4 cars in a 1-row cell cannot hold separate targets
-            for (m in mics) assertTrue("$tag mic/row", overlap(m.rectDp, h.first { it.kind == "ROW" && it.carId == m.carId }.rectDp) < 0.2f * m.rectDp.width() * m.rectDp.height())
+            mics.forEach { assertTrue("$tag mic ${it.rectDp}", it.rectDp.width() >= 47.99f && it.rectDp.height() >= 47.99f) }
+            for (i in mics.indices) for (j in i + 1 until mics.size) assertTrue("$tag mics overlap", overlap(mics[i].rectDp, mics[j].rectDp) < 1f)
+            o.texts.forEach { assertTrue("$tag text '${it.text}' ${it.rect} out of the widget", it.rect.left >= -1f && it.rect.right <= size.width + 1f) }
         }
     }
 
-    /** At its natural size the ROW widget puts the mic where the mockup does (card at MX/MT, mic at x 226, rows 57 apart). */
-    @Test fun naturalRowMatchesMockup() {
-        val h = hits(Shape.ROW, 2, false, SizeF(280f + 2 * WidgetRenderer.MX, 119f + WidgetRenderer.MT + WidgetRenderer.MB))
-        val m = h.filter { it.kind == "MIC" }.map { it.rectDp }
-        assertEquals(RectF(6f + 226f, 4f + 9f, 6f + 270f, 4f + 53f), m[0])
-        assertEquals(4f + 66f, m[1].top, .01f)
+    /** 2x1 with a long pillar: the memo still gets drawn next to it (pillar capped at 55 % of the line). */
+    @Test fun memoShowsAtTwoByOne() {
+        for (shape in Shape.values()) for (scale in listOf(1f, 1.3f)) {
+            val o = out(shape, 1, SizeF(164f, 100f), scale = scale)
+            val m = o.texts.firstOrNull { it.text.startsWith("엘리") }
+            assertTrue("$shape scale=$scale memo drawn: ${o.texts.map { it.text }}", m != null && m.rect.width() > 30f)
+        }
     }
 
-    @Test fun smallSizeKeepsMicTouchTarget() {
-        hits(Shape.ROW, 1, false, SizeF(200f, 50f)).filter { it.kind == "MIC" }.forEach { assertTrue(it.rectDp.width() >= 44f && it.rectDp.height() >= 44f) }
+    @Test fun oldPendingIsFailed() {
+        val p = parks.getValue("c0")!!
+        assertEquals(St.PEND, WidgetRenderer.line(cars[0], p, true, p.atMs + 60_000).st)
+        assertEquals(St.FAIL, WidgetRenderer.line(cars[0], p, true, p.atMs + WidgetRenderer.FAIL_AFTER_MS + 1).st)
+        assertEquals(St.OK, WidgetRenderer.line(cars[0], p, false, p.atMs + WidgetRenderer.FAIL_AFTER_MS + 1).st)
     }
 
     @Test fun requestCodesUnique() {
@@ -82,11 +132,15 @@ class WidgetLayoutTest {
     }
 
     @Test fun talkback() {
-        val p = parks.getValue("c0").copy(atMs = 1_763_616_720_000L)   // 2025-11-20 14:32 KST
+        val p = parks.getValue("c0").copy(atMs = 1_763_616_720_000L, spot = Spot(Floor.Under(2), "C", 37, null, null))   // 2025-11-20 14:32 KST
         assertEquals("흰 차 지하 2층 C구역 37번, 아빠 14시 32분", WidgetRenderer.describe(cars[0], p, false, p.atMs + 60_000))
         assertEquals("흰 차 기록 없음", WidgetRenderer.describe(cars[0], null, false, now))
         assertEquals("흰 차 운행 중, 엄마 출발", WidgetRenderer.describe(cars[0], p.copy(state = ParkState.DRIVING, drivingBy = "엄마"), false, now))
-        assertTrue(WidgetRenderer.describe(cars[0], p, true, p.atMs).endsWith(", 전송 대기"))
+        assertTrue(WidgetRenderer.describe(cars[0], p, true, p.atMs).endsWith(", 저장 중"))
+        assertTrue(WidgetRenderer.describe(cars[0], p, true, p.atMs + WidgetRenderer.FAIL_AFTER_MS + 1).endsWith(", 저장 실패"))
+        assertEquals("흰 차 지하 2층 C구역 37번, 엘리베이터 옆, 아빠 14시 32분",
+            WidgetRenderer.describe(cars[0], p.copy(spot = p.spot.copy(memo = "엘리베이터 옆")), false, p.atMs + 60_000))
+        assertTrue(WidgetRenderer.describe(cars[0], p, false, p.atMs + 3 * 86_400_000L).endsWith(", 3일 전"))
         assertEquals("어제 9시 5분", WidgetRenderer.timeWords("어제 09:05"))
         assertEquals("14시", WidgetRenderer.timeWords("14:00"))
     }

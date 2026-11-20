@@ -1,0 +1,529 @@
+<title>어디댔어 위젯 테마별 시안</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Big+Shoulders+Display:wght@800;900&family=Big+Shoulders+Stencil+Display:wght@900&family=Doto:wght@900&family=IBM+Plex+Mono:wght@500;600;700&family=Playfair+Display:wght@800;900&family=Chakra+Petch:wght@700&display=swap">
+<style>
+/* layout: one phone-width column. sticky control bar, an overview of the five shapes, then the picked shape at six sizes.
+   every widget is drawn at true dp (1 CSS px = 1 dp) on a strip of wallpaper. page chrome reuses the app's neutrals and orange. */
+:root{--bg:#ecebe8;--panel:#fafaf8;--fg:#1b1c1e;--muted:#55585e;--line:#d3d0ca;--acc:#ff6a13;--ok:#1c6e3a;--bad:#b3261e;
+  --ui:"IBM Plex Sans KR","Noto Sans KR",system-ui,sans-serif;--num:"Inter Tight","Archivo",system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#151617;--panel:#1f2022;--fg:#ecebe8;--muted:#a9abb0;--line:#35373b;--acc:#ff7a2b;--ok:#6fcf8e;--bad:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#151617;--panel:#1f2022;--fg:#ecebe8;--muted:#a9abb0;--line:#35373b;--acc:#ff7a2b;--ok:#6fcf8e;--bad:#ff8a80;color-scheme:dark}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.55}
+.page{max-width:430px;box-sizing:border-box;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+h1{font-size:24px;line-height:1.25;margin:0;font-weight:700;letter-spacing:-.02em;text-wrap:balance}
+h2{font-size:19px;line-height:1.3;margin:0;font-weight:700;letter-spacing:-.01em}
+p{margin:0}.lede{color:var(--muted)}
+ul.rule{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;font-size:14px}
+ul.rule b{font-weight:700}
+section{display:flex;flex-direction:column;gap:12px;scroll-margin-top:300px}
+/* control bar */
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--bg);border-bottom:1px solid var(--line);margin-inline:-4px;padding:8px 4px 8px;display:flex;flex-direction:column;gap:6px}
+.rowc{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:none;color:var(--fg);font:inherit;font-size:13px;padding:7px 9px;min-height:36px;cursor:pointer;white-space:nowrap}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed="true"]{background:var(--fg);color:var(--bg);font-weight:700}
+.seg.tabs button{flex:1 1 0;padding-inline:2px}
+.seg.tabs button[aria-pressed="true"]{background:var(--acc);color:#161616}
+.btn{border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:13px;font-weight:600;padding:7px 11px;min-height:36px;border-radius:10px;cursor:pointer}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#161616}
+.btn:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.sl{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:center;font-size:13px}
+.sl b{font-family:var(--num);font-weight:800;font-size:15px;display:inline-block;min-width:3.2em}
+.sl input{width:100%;accent-color:var(--acc);min-width:0}
+.sum{font-size:12.5px;color:var(--muted);line-height:1.4}
+.sum b{color:var(--fg)}.sum .ok{color:var(--ok);font-weight:700}.sum .bad{color:var(--bad);font-weight:700}
+.sel{display:flex;align-items:center;gap:4px;font-size:13px;flex:1 1 0;min-width:0;white-space:nowrap}
+.sel select{font:inherit;font-size:13px;font-weight:600;min-height:36px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--fg);padding:0 4px;flex:1 1 0;min-width:0;width:0}
+/* stage = a strip of wallpaper */
+.stgs{display:flex;flex-direction:column;gap:14px}
+.ov1{display:grid;grid-template-columns:1fr 1fr;gap:12px 8px}.ov1 .mode{display:none}
+.stg{display:flex;flex-direction:column;gap:5px;min-width:0}
+.cap{display:flex;justify-content:space-between;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);flex-wrap:wrap}
+.cap b{color:var(--fg);font-family:var(--num);font-weight:800;font-size:14px}
+.cap .mode{font-weight:700;border-radius:99px;padding:1px 8px;margin-left:4px;border:1px solid var(--line);color:var(--fg);white-space:nowrap}.cap .mode.all{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.cap .ok{color:var(--ok);font-weight:700}.cap .bad{color:var(--bad);font-weight:700}
+.pick{border:1px solid var(--line);background:var(--panel);color:var(--fg);font:inherit;font-size:13px;font-weight:700;border-radius:99px;padding:2px 10px;min-height:28px;cursor:pointer}
+.pick[aria-pressed="true"]{background:var(--acc);border-color:var(--acc);color:#161616}
+.wall{position:relative;margin-inline:auto;border-radius:14px;overflow:hidden;display:flex;align-items:center;justify-content:center;background-color:#111}
+.bgc{position:absolute;inset:0;width:100%;height:100%}
+.note{font-size:14px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.note h3{margin:0;font-size:15px}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:5px 6px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--muted);font-weight:600;white-space:nowrap}
+
+/* ===== widget =====
+   .w = the real cell. .bgl = everything that is not text (card, material, bands, LED panel, tickets), drawn behind;
+   .in = the content. the content of every shape comes from the same tile(); a shape adds its own structure in .bgl.
+   no overflow:hidden on the content: a clipped glow would draw the card edge back at 0% background. */
+.w{position:relative;box-sizing:border-box;flex:none;color:var(--wfg);font-family:var(--ui);font-feature-settings:"tnum";text-shadow:var(--halo);line-height:1.2;text-align:left}
+.w.over{outline:2px dashed #ff2d2d!important}
+.w *{box-sizing:border-box}
+.w .bgl{position:absolute;inset:0;border-radius:var(--r);pointer-events:none}
+.w .bgl i{position:absolute;display:block}
+.w .in{position:relative;width:100%;height:100%}
+.w .cols{display:flex;width:100%;height:100%}
+.w .col{display:flex;flex-direction:column;flex:none}
+.w .cell{flex:none}
+.w .hr,.w .vr{flex:none}
+.w .t{display:flex;flex:none;min-width:0}
+.w .t1,.w .tn,.w .tx,.w .lc{flex-direction:column;justify-content:space-between}
+.w .t2,.w .t3{align-items:center;gap:8px}
+.w .lc{display:flex;flex:1 1 0;min-width:0;height:100%}
+.w .el{min-width:0;white-space:nowrap;overflow:clip;overflow-clip-margin:14px;text-overflow:ellipsis}
+/* line 1: colour bar, car name, "외 N대", then time or a state chip at the right end */
+.w .l1{display:flex;align-items:center;gap:4px;font-weight:700;flex:none;white-space:nowrap;line-height:1.15;min-width:0}
+.w .cb{width:4px;height:1em;border-radius:2px;flex:none;box-shadow:0 0 0 1px var(--ring)}
+.w .nm{flex:0 1 auto}
+.w .more{flex:none;font-size:12px;font-weight:600;color:var(--wmu)}
+.w .wh{flex:none;margin-left:auto;padding-left:2px;color:var(--wmu);font-weight:var(--bw);font-size:13px}
+.w .chip{flex:none;margin-left:auto;font-size:12px;font-weight:700;line-height:16px;padding:0 6px;border-radius:99px;text-shadow:none}
+.w .chip.p{background:var(--wfg);color:var(--inv)}.w .chip.x{background:#a3120a;color:#fff}.w .chip.o{background:#ffd24a;color:#161616}
+/* floor + pillar: .fit rows are shrunk by script until they fit, then ellipsized (.sq) as a last resort */
+.w .mid{display:flex;align-items:center;gap:6px;flex:none;min-width:0}
+.w .fit{display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap;flex:none}
+.w .mid>.fit{flex:1 1 0}
+.w .tx .fit{gap:14px}
+.w .fit>.fz{flex:none}
+.w .fit.sq>.fz{flex:0 1 auto;min-width:0;overflow:clip;overflow-clip-margin:14px;text-overflow:ellipsis}
+.w .f,.w .s{font-family:var(--wnum),"IBM Plex Sans KR",system-ui,sans-serif;font-feature-settings:normal;font-variant-numeric:lining-nums;line-height:.84}
+.w .f{font-weight:900;letter-spacing:-.03em}.w .s{font-weight:800;letter-spacing:-.01em}
+.w .stt{font-weight:700;line-height:1.15}.w .stt.none{color:var(--wmu)}
+.w .l3{display:flex;align-items:baseline;gap:6px;flex:none;min-width:0;white-space:nowrap}
+.w .l3 .s{flex:none}
+.w .mm{font-weight:var(--bw)}
+.w .mm.c2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:clip;overflow-clip-margin:14px;line-height:1.25;word-break:keep-all;overflow-wrap:anywhere}
+.w .fit.big{align-items:flex-end;gap:10px}
+.w .pc{display:flex;flex-direction:column;gap:4px;flex:1 1 0;min-width:96px}
+.w .bot{display:flex;align-items:flex-end;gap:6px;flex:none;min-width:0}
+.w .bc{display:flex;flex-direction:column;gap:4px;flex:1 1 0;min-width:0}
+.w .mic{border-radius:50%;flex:none;display:grid;place-items:center;background:var(--mbg);color:var(--mgl);box-shadow:var(--mshadow);text-shadow:none;position:relative}
+.w .mic svg{width:50%;height:50%}
+/* ---- 줄 목록: hairline between cars ---- */
+.w.ROW .hr{background:var(--hr);margin:0 8px}.w.ROW .vr{background:var(--hr);margin:8px 0}
+/* ---- 포스터: floor in the accent colour, tight; the second car sits on a tinted strip ---- */
+.w.POSTER .f{color:var(--big);letter-spacing:-.06em}
+.w.POSTER .hr,.w.POSTER .vr{background:var(--hr)}
+.bgl .tint{background:var(--tint)}
+/* ---- 기둥 띠: every car is a pillar, the painted band carries the car name line in white ---- */
+.w.PILLAR .l1{margin-bottom:4px;color:#fff;text-shadow:none}
+.w.PILLAR .l1 .more,.w.PILLAR .l1 .wh{color:#fff}
+.w.PILLAR .cb{box-shadow:0 0 0 1px rgba(255,255,255,.75)}
+.w.PILLAR .f{letter-spacing:0}
+.w.PILLAR .t2>.mic,.w.PILLAR .t3>.mic{align-self:flex-end}
+.bgl .pan{background:var(--pan);border-radius:8px;box-shadow:var(--pansh)}
+.bgl .band{border-radius:8px 8px 0 0}
+/* ---- 점 행렬: LED board. dot glyphs for letters and digits alike, dot-grid panel, a physical button
+   with a red lamp, a dotted red rule between cars ---- */
+.w.DOT .f,.w.DOT .s{font-family:"Doto","IBM Plex Sans KR",monospace;letter-spacing:0;-webkit-text-stroke:.55px currentColor}
+.w.DOT .fa{font-family:"Inter Tight","IBM Plex Sans KR",sans-serif;font-style:normal;font-size:.84em;letter-spacing:-.02em;margin-right:2px;-webkit-text-stroke:0}
+.w.DOT .s .fa{font-size:.92em;margin-right:1px}
+.w.DOT .wh,.w.TICKET .wh{font-family:"IBM Plex Mono",var(--ui);letter-spacing:-.03em}
+.w.DOT .mic::after{content:"";position:absolute;top:15%;right:15%;width:6px;height:6px;border-radius:50%;background:#ff5a36}
+.w.DOT .hr{background:radial-gradient(circle,#ff5a36 1.2px,transparent 1.6px) 0 50%/6px 6px repeat-x;margin:0 9px}
+.w.DOT .vr{background:radial-gradient(circle,#ff5a36 1.2px,transparent 1.6px) 50% 0/6px 6px repeat-y;margin:9px 0}
+.bgl .led{border-radius:max(4px,calc(var(--r) - 5px));background:radial-gradient(var(--dot) 1px,transparent 1.3px) 0 0/6px 6px,var(--ledo);box-shadow:var(--ledsh)}
+/* ---- 주차권: every car is its own ticket. punched notches + a dashed tear line, printed mono numbers, a barcode edge when wide ---- */
+.w.TICKET .l1{margin-bottom:3px}
+.w.TICKET .f{font-weight:700;letter-spacing:-.06em}.w.TICKET .s{font-weight:600;letter-spacing:-.03em}
+.bgl .tk{border-radius:min(var(--r),14px);background:var(--tks)}
+.bgl .ph{border-top:1.5px dashed var(--pf)}.bgl .pv{border-left:1.5px dashed var(--pf)}
+.bgl .bcd{opacity:.6;background:repeating-linear-gradient(180deg,var(--wfg) 0 1.5px,transparent 1.5px 3px,var(--wfg) 3px 4px,transparent 4px 6.5px,var(--wfg) 6.5px 9px,transparent 9px 10.5px)}
+.bgl .ring{inset:3px;border:1px solid var(--ringc);border-radius:calc(var(--r) - 3px)}
+</style>
+
+<div class="page">
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>어디댔어 위젯 A안 · 모든 테마</h1>
+    <p class="lede">고르신 <b>A안</b>(내용이 칸을 꽉 채움, 많아야 두 대)을 위젯 설정의 모든 모양·색 계열·재질·글꼴에 입힌 시안입니다. 위젯은 전부 실제 크기(1dp = 1px)이고, 위쪽 막대를 바꾸면 아래 16개가 같이 바뀝니다.</p>
+  </header>
+
+  <div class="bar" id="bar">
+    <div class="seg tabs" role="group" aria-label="모양" id="shSeg"></div>
+    <div class="rowc">
+      <div class="seg" role="group" aria-label="배경화면" id="wpSeg">
+        <button type="button" data-wp="dune" aria-pressed="true">모래 언덕</button>
+        <button type="button" data-wp="white" aria-pressed="false">흰 바탕</button>
+        <button type="button" data-wp="busy" aria-pressed="false">알록달록</button>
+      </div>
+      <div class="seg" role="group" aria-label="차 대수" id="nSeg">
+        <button type="button" data-n="1" aria-pressed="false">1대</button>
+        <button type="button" data-n="2" aria-pressed="true">2</button>
+        <button type="button" data-n="3" aria-pressed="false">3</button>
+        <button type="button" data-n="4" aria-pressed="false">4</button>
+      </div>
+    </div>
+    <label class="sl" for="a-range"><span>바탕 진하기 <b id="aV">100%</b></span><input type="range" id="a-range" min="0" max="100" step="5" value="100"></label>
+    <div class="rowc">
+      <label class="sel" for="famSel">색 <select id="famSel"></select></label>
+      <label class="sel" for="matSel">재질 <select id="matSel"></select></label>
+      <label class="sel" for="fontSel">글꼴 <select id="fontSel"></select></label>
+    </div>
+    <div class="rowc">
+      <label class="sel" for="mainSel">메인 <select id="mainSel"></select></label>
+      <label class="sel" for="stSel">상태 <select id="stSel">
+        <option value="base">기본</option><option value="pending">저장 중</option><option value="fail">실패</option><option value="stale">오래됨</option>
+        <option value="memo">긴 메모</option><option value="f1">긴 층 (지하2층)</option><option value="f2">긴 층 (B1M)</option></select></label>
+      <label class="sel" for="tcSel">글자 <select id="tcSel"><option value="auto">자동</option><option value="w">흰</option><option value="k">검정</option></select></label>
+    </div>
+    <div class="rowc">
+      <button type="button" class="btn pri" id="shuf">색 조합 바꾸기</button>
+      <button type="button" class="btn" id="undo" disabled>되돌리기</button>
+    </div>
+    <p class="sum" id="sum"></p>
+  </div>
+
+  <section id="all">
+    <h2>모든 모양 한눈에</h2>
+    <p class="lede" style="font-size:14px">다섯 모양을 가장 작은 크기(2×1)와 가장 큰 크기(4×2)로 나란히 놓았습니다. 이름을 누르면 아래 여섯 크기가 그 모양으로 바뀝니다.</p>
+    <div class="ov1" id="ov1"></div>
+    <div class="stgs" id="ov2"></div>
+  </section>
+
+  <section id="sizes">
+    <h2><span id="shName"></span> · 여섯 크기</h2>
+    <p class="lede" style="font-size:14px" id="shDesc"></p>
+    <div class="stgs" id="det"></div>
+  </section>
+
+  <section id="notes">
+    <h2>규칙과 기준</h2>
+    <div class="note">
+      <h3>A안 규칙 (모든 모양 공통)</h3>
+      <ul class="rule">
+        <li>어느 크기든 내용이 칸 끝까지 찹니다. 가장자리 여백은 8dp 안팎입니다.</li>
+        <li>항상 보이는 것: <b>차 이름</b>(색 막대와 함께 맨 앞) · <b>층</b> · <b>기둥 번호</b> · <b>메모</b> · <b>말하기 버튼</b>(48dp 이상).</li>
+        <li><b>2×1·3×1·4×1</b>: 메인 차량 한 대 + 「외 N대」.</li>
+        <li><b>2×2·3×2·4×2</b>: 2대까지는 모든 차, 3대부터는 메인 차량만 크게.</li>
+        <li><b>바탕 0%</b>: 테두리·입체 모서리·그림자·재질을 그리지 않습니다. 점선은 시안에서 칸 크기를 보여 주는 표시이고 실제 화면에는 없습니다.</li>
+        <li><b>글자 색 자동</b>: 50% 아래는 흰 글자 + 부드러운 어두운 번짐, 50% 이상은 흰색·검정 중 잘 보이는 쪽. 「흰」·「검정」으로 고정할 수 있습니다.</li>
+      </ul>
+    </div>
+    <div class="note">
+      <h3>모양마다 남는 것</h3>
+      <table>
+        <tbody><tr><th>줄 목록</th><td>차 한 대가 한 줄. 차 사이에 가는 선.</td></tr>
+        <tr><th>포스터</th><td>층 숫자가 강조색이고 자간이 좁습니다. 둘째 차는 옅게 깔린 띠 위에 놓입니다.</td></tr>
+        <tr><th>기둥 띠</th><td>차 이름 줄이 색 띠입니다(글자는 항상 흰색). 두 대면 기둥 두 개. 띠는 0%에서도 남습니다.</td></tr>
+        <tr><th>점 행렬</th><td>층·기둥 글자는 영문자와 숫자 모두 점 글꼴(고정). 점 격자 판과 빨간 등이 달린 버튼, 차 사이에 빨간 점선. 점 격자는 0%에서도 남습니다.</td></tr>
+        <tr><th>주차권</th><td>차마다 표 한 장. 양 끝을 따낸 절취선, 인쇄체 숫자, 넓은 한 줄 크기에는 바코드. 절취선은 0%에서도 남습니다.</td></tr></tbody>
+      </table>
+    </div>
+    <div class="note">
+      <h3>색 계열 · 재질 · 글꼴</h3>
+      <p><b>색</b> 「모양 기본」은 앱에서 모양을 처음 골랐을 때의 색입니다. 파스텔·원색·깊은 색·무채색·보색은 앱과 같은 규칙으로 뽑은 한 벌(바탕·강조·띠 두 색·모서리 둥글기)입니다. <b>색 조합 바꾸기</b>는 앱의 「색 바꿔 보기」처럼 계열·재질·글꼴을 통째로 다시 뽑습니다.</p>
+      <p><b>재질</b>은 바탕의 광택과 그림자만 바꿉니다(무광 · 유광 · 종이 · 금속 · 소프트). 바탕 진하기에 비례해 옅어지고 0%에서는 사라집니다. 주차권은 표 자체가 바탕이라 광택만 받습니다.</p>
+      <p><b>글꼴</b>은 층·기둥 숫자에만 적용됩니다. 점 행렬은 점 숫자로 고정입니다. 글꼴마다 폭이 달라서 숫자는 자리에 맞을 때까지 자동으로 줄어듭니다.</p>
+    </div>
+    <div class="note">
+      <h3>칸 크기</h3>
+      <p>화면 폭 360dp 갤럭시, 홈 격자 4×6 기준으로 한 칸을 <b>82×100dp</b>로 잡았습니다(화면 크기에서 계산한 값). 더 큰 화면에서는 칸이 커지므로 여기가 가장 좁은 경우입니다. 실제 앱은 런처가 알려 주는 크기로 그립니다.</p>
+      <table>
+        <tbody><tr><td>2×1</td><td>164×100dp</td><td>2×2</td><td>164×200dp</td></tr>
+        <tr><td>3×1</td><td>246×100dp</td><td>3×2</td><td>246×200dp</td></tr>
+        <tr><td>4×1</td><td>328×100dp</td><td>4×2</td><td>328×200dp</td></tr></tbody></table>
+    </div>
+    <div class="note">
+      <h3>상태와 긴 글</h3>
+      <p><b>저장 중</b>·<b>실패</b>·<b>오래됨</b>은 차 이름 줄 오른쪽 끝, 시각 자리에 색 꼬리표로 나옵니다. 자리가 모자라면 시각을 줄이고, 그래도 모자라면 시각만 뺍니다.</p>
+      <p><b>긴 메모</b>는 …으로 줄입니다(3×2·4×2에서 한 대만 보일 때만 두 줄). <b>긴 층 이름</b>은 자리에 맞을 때까지 글자를 줄입니다.</p>
+    </div>
+    <div class="note">
+      <h3>대비 계산</h3>
+      <p>위젯 밑 배경화면 72곳의 색을 읽어 가장 불리한 곳으로 계산합니다(WCAG). 목표는 작은 글자 <b>7:1</b>, 큰 숫자 <b>4.5:1</b>. 50% 이상에서 모자라면 앱처럼 바탕색을 글자 반대쪽으로 한 단계씩 당기고, 50% 아래에서는 번짐을 한 단계씩 진하게 합니다. 기둥 띠의 띠 색도 흰 글자가 7:1이 될 때까지 어둡게 합니다. 번짐의 덮는 정도(40·60·80%)는 추정이라 실제 폰에서 확인이 필요합니다.</p>
+    </div>
+    <div class="note">
+      <h3>예시 자료</h3>
+      <p>펠리 B4 C156 「엘리베이터 옆」 동찬 17:15 · 흰 차 B2 A12 메모 없음, 엄마 어제 21:03 · 아빠 차 운행 중 · 새 차 기록 없음. 상태는 메인 차량에 적용됩니다.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(function(){
+"use strict";
+const $=id=>document.getElementById(id);
+// ---------- data ----------
+const CARS=[
+ {i:0,name:'펠리',color:'#2f6fde',state:'ok',f:'B4',s:'C156',memo:'엘리베이터 옆',who:'동찬',when:'17:15'},
+ {i:1,name:'흰 차',color:'#f4f4f2',state:'ok',f:'B2',s:'A12',memo:'',who:'엄마',when:'어제 21:03'},
+ {i:2,name:'아빠 차',color:'#3d4148',state:'drive',memo:'',who:'아빠',when:'출발'},
+ {i:3,name:'새 차',color:'#d8402f',state:'none',memo:'',who:'',when:''}];
+const CELL={w:82,h:100};
+const SIZES=[[2,1],[3,1],[4,1],[2,2],[3,2],[4,2]];
+const OFF=[60,250,300,40,230,380];           // which part of the 398x629 wallpaper each size sits on
+const VW=398,VH=629;
+const hex=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16));
+// shapes: name, what makes it that shape, then the app's default style (Palette.default) for "모양 기본"
+const SH={
+ ROW:['줄 목록','차 한 대가 한 줄입니다. 차 사이에는 가는 선만 있습니다.',{bg:'#f4f3f0',fg:'#161616',acc:'#ff6a13',r:22,font:'it'}],
+ POSTER:['포스터','층 숫자가 강조색으로 가장 크게 나옵니다. 둘째 차는 옅은 띠 위에 놓입니다.',{bg:'#121212',fg:'#f5f2ec',acc:'#ff5a1f',r:20,font:'it'}],
+ PILLAR:['기둥 띠','차 이름 줄이 주차장 기둥의 색 띠입니다. 두 대면 기둥이 두 개가 됩니다.',{bg:'#e9e7e2',fg:'#161616',acc:'#161616',r:22,font:'bs'}],
+ DOT:['점 행렬','전광판입니다. 숫자는 점 글꼴로 고정이고, 버튼은 판 옆에 박힌 실물 버튼입니다.',{bg:'#1c1c1f',fg:'#f2f2f2',acc:'#2a2a2e',r:18,font:'it'}],
+ TICKET:['주차권','차마다 주차권 한 장입니다. 절취선 양 끝을 따냈고 숫자는 인쇄체입니다.',{bg:'#f5f0e4',fg:'#1e1b16',acc:'#1e1b16',r:10,font:'pm'}]};
+const SHK=Object.keys(SH);
+SHK.forEach(k=>{const d=SH[k][2];['bg','fg','acc'].forEach(p=>d[p]=hex(d[p]));d.fl1=hex('#2f7d4f');d.fl2=hex('#2d5da8')});
+// cell geometry per shape: gap between cars, top pad (first, later), bottom pad (last, earlier), inner side pad, extra height under the name line
+const GEO={ROW:[1,8,4,8,4,4,0],POSTER:[1,8,7,8,7,7,0],PILLAR:[4,5,5,7,7,7,4],DOT:[6,8,7,8,7,7,0],TICKET:[5,6,6,6,6,8,3]};
+const FAM={def:'모양 기본',pastel:'파스텔',bold:'원색',deep:'깊은 색',mono:'무채색',comp:'보색'};
+const MAT={base:'기본',matte:'무광',gloss:'유광',paper:'종이',metal:'금속',soft:'소프트'};
+const FONT={def:['모양 기본',''],it:['고딕','"Inter Tight"'],bs:['좁은 고딕','"Big Shoulders Display"'],pm:['고정폭','"IBM Plex Mono"'],st:['스텐실','"Big Shoulders Stencil Display"'],pf:['세리프','"Playfair Display"'],cp:['각진 고딕','"Chakra Petch"']};
+const SEED={pastel:11,bold:5,deep:3,mono:8,comp:2};
+const S={shape:'ROW',wp:'dune',a:1,n:2,fam:'def',pal:null,mat:'base',font:'def',hist:[],main:0,st:'base',tc:'auto'};
+
+// ---------- colour maths (WCAG) ----------
+const lin=v=>{v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4)};
+const lum=c=>.2126*lin(c[0])+.7152*lin(c[1])+.0722*lin(c[2]);
+const cr=(a,b)=>{const x=lum(a),y=lum(b);return (Math.max(x,y)+.05)/(Math.min(x,y)+.05)};
+const over=(t,a,b)=>[0,1,2].map(i=>t[i]*a+b[i]*(1-a));
+const rgb=(c,a)=>a===undefined?`rgb(${c.map(Math.round).join(',')})`:`rgba(${c.map(Math.round).join(',')},${a})`;
+const L=[255,255,255],D=[17,17,17],HA=[0,.4,.6,.8];
+function hsl(h,s,l){s/=100;l/=100;const a=s*Math.min(l,1-l),f=n=>{const k=(n+h/30)%12;return Math.round(255*(l-a*Math.max(-1,Math.min(k-3,9-k,1))))};return [f(0),f(8),f(4)]}
+// one palette of a family, same ranges and rejects as the app's Palette.shuffle. seeded, so a family opens on the same set every time
+function pal(fam,seed){let s=seed;const r=()=>(s=(s*16807)%2147483647)/2147483647,R=(a,b)=>a+r()*(b-a);
+  for(let n=0;n<300;n++){const h=R(0,360);let bg,acc;
+    if(fam==='pastel'){bg=hsl(h,R(35,75),R(82,92));acc=hsl((h+R(150,210))%360,R(55,85),R(42,55))}
+    else if(fam==='bold'){bg=hsl(h,R(60,95),R(42,58));acc=r()<.5?D:L}
+    else if(fam==='deep'){bg=hsl(h,R(35,75),R(12,24));acc=hsl((h+R(20,60))%360,R(70,95),R(55,68))}
+    else if(fam==='mono'){bg=hsl(h,R(0,6),r()<.5?R(88,97):R(8,18));acc=r()<.6?hex('#ff6a13'):hsl(R(0,360),R(70,90),R(48,58))}
+    else{bg=hsl(h,R(45,80),R(30,70));acc=hsl((h+180)%360,R(60,90),R(45,65))}
+    const fg=cr(L,bg)>=cr(D,bg)?L:D,fl1=hsl(R(0,360),R(45,80),R(28,40)),fl2=hsl(R(0,360),R(45,80),R(28,40));
+    if(cr(fg,bg)<4.5||cr(acc,bg)<3||cr(L,fl1)<4.5||cr(L,fl2)<4.5)continue;
+    return {bg,fg,acc,fl1,fl2,r:[10,16,22,28,34][Math.floor(r()*5)]}}
+  return SH.ROW[2]}
+// text colour for one widget: forced by the control, or (auto) white + dark halo while the card is under 50%, else whichever reads best.
+// at 50%+ the card is pulled toward the pole opposite the text, 10% a step, like the app; under that the halo gets one step stronger.
+function look(samples,a,sty,acc,shape,two){
+  const solid=a>=.999,force=S.tc==='w'?L:S.tc==='k'?D:a<.5?L:null;
+  let best=null;
+  out:for(let lv=(force===L&&a<.5)?1:0;lv<(solid?1:4);lv++)for(let n=0;n<=(solid?9:a>=.5?4:0);n++)
+    for(const f of (force?[force]:lv?[L]:[sty.fg,L,D])){   // auto never puts a light glow under dark text: it drowns on dark patches
+      const dk=lum(f)>.4,pole=dk?[0,0,0]:[255,255,255],card=over(pole,n*.1,sty.bg);
+      let bgs=samples.map(s=>over(pole,HA[lv],over(card,a,s)));
+      if(two&&shape==='POSTER')bgs=bgs.concat(bgs.map(b=>over(f,.05*a,b)));              // the tinted strip
+      if(two&&shape==='PILLAR')bgs=bgs.concat(bgs.map(b=>over(L,(dk?.09:.62)*a,b)));     // the pillar panels
+      const score=Math.min(...bgs.map(b=>cr(f,b)));
+      if(!best||score>=7||score>best.score+.3)best={f,lv,pole,bgs,score,card,dk};   // the set's own text colour wins ties
+      if(score>=7)break out}
+  let mu=best.f,crMu=best.score;
+  // under a strong halo the small text keeps the full text colour
+  if(best.lv<2)for(const t of [.38,.28,.18,.09]){const m=over([128,128,128],t,best.f);const sc=Math.min(...best.bgs.map(b=>cr(m,b)));if(sc>=7){mu=m;crMu=sc;break}}
+  // poster: the accent numerals move toward the text colour until they reach 4.5:1 (large text)
+  let big=best.f,crBig=best.score;
+  if(shape==='POSTER')for(let t=0;t<1;t+=.15){const c=over(best.f,t,acc),sc=Math.min(...best.bgs.map(b=>cr(c,b)));if(sc>=4.5){big=c;crBig=sc;break}}
+  const micRing=Math.min(...samples.map(s=>cr(acc,over(best.card,a,s))))<3;
+  return {...best,mu,crMu,big,crBig,micRing}}
+function halo(lv,p){const P=a=>rgb(p,a);
+  return ['none',`0 0 2px ${P(.7)},0 0 6px ${P(.45)}`,`0 0 1px ${P(.9)},0 0 3px ${P(.8)},0 0 7px ${P(.6)},0 1px 12px ${P(.4)}`,
+    `0 0 1px ${P(1)},0 0 2px ${P(1)},0 0 4px ${P(.9)},0 0 8px ${P(.75)},0 2px 14px ${P(.55)}`][lv]}
+const band=c=>{while(cr(L,c)<7)c=over([0,0,0],.1,c);return c};   // white band text reaches 7:1
+
+// ---------- wallpapers (canvas, so the colours under each widget can be read back) ----------
+function poly(g,pts,fill){g.beginPath();pts.forEach((p,i)=>i?g.lineTo(p[0],p[1]):g.moveTo(p[0],p[1]));g.closePath();g.fillStyle=fill;g.fill()}
+function grad(g,x0,y0,x1,y1,stops){const l=g.createLinearGradient(x0,y0,x1,y1);stops.forEach((s,i)=>l.addColorStop(i/(stops.length-1),s));return l}
+const PAINT={
+ dune(g){g.fillStyle=grad(g,0,0,0,VH,['#01080b','#04141a','#0c2a33','#17404b','#24525f']);g.fillRect(0,0,VW,VH);
+  g.beginPath();g.arc(302,356,42,0,7);g.fillStyle='#a5522a';g.fill();
+  poly(g,[[0,277],[230,364],[0,437]],grad(g,0,300,230,380,['#5a8391','#2b5463']));
+  poly(g,[[0,437],[266,352],[398,402],[398,470],[0,560]],grad(g,0,430,398,430,['#a48b79','#b39883','#86705f']));
+  poly(g,[[0,531],[398,434],[398,VH],[0,VH]],grad(g,0,480,0,VH,['#bfa38c','#c9ae96']))},
+ white(g){g.fillStyle=grad(g,0,0,0,VH,['#f8f9fb','#eef1f5','#e4e9ef']);g.fillRect(0,0,VW,VH);
+  g.beginPath();g.arc(310,170,150,0,7);g.fillStyle='#ffffff';g.fill();
+  poly(g,[[0,330],[398,250],[398,420],[0,470]],'#dde5ee');g.beginPath();g.arc(70,560,120,0,7);g.fillStyle='#f4f6f9';g.fill()},
+ busy(g){g.fillStyle=grad(g,0,0,VW,VH,['#ff3d77','#ffb300','#00c2a8','#2b5bff']);g.fillRect(0,0,VW,VH);
+  let s=7;const r=()=>(s=(s*16807)%2147483647)/2147483647;const pal=['#ffffff','#111827','#ff3d77','#ffe14d','#19d3c5','#7c3aed','#ff7a00','#f8fafc','#0b1020'];
+  for(let i=0;i<70;i++){g.beginPath();g.arc(r()*VW,r()*VH,10+r()*46,0,7);g.globalAlpha=.9;g.fillStyle=pal[Math.floor(r()*pal.length)];g.fill()}g.globalAlpha=1}
+};
+const WP={};
+function wall(name){
+  if(WP[name])return WP[name];
+  const c=document.createElement('canvas');c.width=VW*2;c.height=VH*2;const g=c.getContext('2d',{willReadFrequently:true});g.scale(2,2);PAINT[name](g);
+  const px=g.getImageData(0,0,c.width,c.height).data;
+  return WP[name]={cv:c,at(x,y){x=Math.max(0,Math.min(VW*2-1,Math.round(x*2)));y=Math.max(0,Math.min(VH*2-1,Math.round(y*2)));const i=(y*VW*2+x)*4;return [px[i],px[i+1],px[i+2]]}};
+}
+
+// ---------- widget content (the same for every shape) ----------
+const PAD=8;
+let cur='ROW';                                  // the shape being drawn
+const stTxt=c=>c.state==='drive'?'운행 중':'기록 없음';
+const MIC='<rect x="9" y="2.5" width="6" height="12" rx="3" fill="currentColor"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3.5" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/>';
+const DOTS='<circle cx="5" cy="12" r="2.4" fill="currentColor"/><circle cx="12" cy="12" r="2.4" fill="currentColor"/><circle cx="19" cy="12" r="2.4" fill="currentColor"/>';
+const mic=(d,c)=>`<span class="mic" style="width:${d}px;height:${d}px" role="img" aria-label="${c.st==='pending'?'저장 중':'말하기'}"><svg viewBox="0 0 24 24" aria-hidden="true">${c.st==='pending'?DOTS:MIC}</svg></span>`;
+// line 1: car colour bar + name first, "외 N대" when other cars are hidden, then time or a state chip
+function l1(c,more,z,x){
+  const t=c.state==='none'?['','']:c.state==='drive'?[`${c.who} 출발`,'출발']:[`${c.who} ${c.when}`,c.when];
+  const tail=c.st==='pending'?'<span class="chip p">저장 중</span>':c.st==='fail'?'<span class="chip x">실패</span>':c.st==='stale'?'<span class="chip o">3일 전</span>'
+    :t[0]?`<span class="wh" data-short="${t[1]}">${t[0]}</span>`:'';
+  return `<div class="l1" style="font-size:${z}px;${x||''}"><i class="cb" style="background:${c.color}"></i><span class="nm el">${c.name}</span>${more?`<span class="more">외 ${more}대</span>`:''}${tail}</div>`}
+// one car drawn into a W x H dp box. the layout is picked from the box, so the same car fills a 2x1, a strip or a 4x2
+function tile(c,W,H,more){
+  const ok=c.state==='ok',px=z=>z.toFixed(1)+'px',xh=GEO[cur][6],PIL=cur==='PILLAR';
+  const sp=s=>cur==='DOT'?s.replace(/[^ -~]+/g,m=>`<i class="fa">${m}</i>`):s;      // letters and digits all in dot glyphs; only Hangul (not in Doto) stays gothic
+  const F=z=>ok?`<b class="f fz" style="font-size:${px(z)}">${sp(c.f)}</b>`:`<b class="stt fz ${c.state}" style="font-size:${px(Math.min(26,Math.max(15,z*.4)))}">${stTxt(c)}</b>`;
+  const P=(z,cls)=>ok?`<b class="s ${cls}" style="font-size:${px(z)}">${sp(c.s)}</b>`:'';
+  const M=(z,two,step)=>c.memo?`<span class="mm ${two?'c2':'el'}"${step?` data-step="${step}"`:''} style="font-size:${z}px">${c.memo}</span>`:'';
+  const box=(cls,inner)=>`<div class="t ${cls}" style="width:${W}px;height:${H+xh}px">${inner}</div>`;
+  if(H<120){
+    const mh=H-15-17-2,fz=mh/.84;      // floor line = cell height minus the name line and the memo line: about 50dp in a 100dp cell
+    if(W<190)return box('t1',`${l1(c,more,13)}<div class="mid" style="height:${mh}px"><div class="fit">${F(fz)}</div>${mic(Math.floor(Math.min(mh,56)),c)}</div><div class="l3" style="height:17px">${P(17,'')}${M(13)}</div>`);
+    let d=Math.round(Math.min(H,88,Math.max(48,W*.3)));
+    if(PIL)d=Math.min(d,H-16);         // pillar: the band runs over the button, so the button stays under it
+    const hd=l1(c,more,13,PIL?`margin-right:-${d+8}px`:'');
+    if(W<280)return box('t2',`<div class="lc">${hd}<div class="mid" style="height:${mh}px"><div class="fit">${F(fz)}${P(fz*.46,'fz')}</div></div><div class="l3" style="height:17px">${M(13)}</div></div>${mic(d,c)}`);
+    const bh=H-15-2;
+    return box('t3',`<div class="lc">${hd}<div class="fit big" style="height:${bh}px">${F(bh/.84)}<div class="pc">${P(34,'el')}${M(14)}</div></div></div>${mic(d,c)}`)}
+  if(W<190){           // tall, narrow: name / floor across the whole width / pillar + mic / memo on one line
+    const fh=H-17-48-17-3;
+    return box('tn',`${l1(c,more,15)}<div class="mid" style="height:${fh}px"><div class="fit">${F(fh/.84)}</div></div><div class="mid" style="height:48px"><div class="fit">${P(38,'fz')}</div>${mic(48,c)}</div><div class="l3" style="height:17px">${M(15,0,13)}</div>`)}
+  const mh=H-17-64-6,fz=mh/.84,pz=Math.max(28,Math.min(64,(W-1.2*fz-12)/2.3));   // tall, wide: floor and pillar share the big line
+  return box('tx',`${l1(c,more,15)}<div class="mid" style="height:${mh}px"><div class="fit">${F(fz)}${P(pz,'fz')}</div></div><div class="bot" style="height:64px;align-items:center"><div class="bc">${M(W<280?17:20,1)}</div>${mic(64,c)}</div>`)}
+// A: which cars a size shows, as columns of cars. null = they do not all fit, show the main car alone
+function A(w,h,cs){const n=cs.length;
+  if(n===1)return [[cs[0]]];
+  if(h===1||n>2)return null;
+  return w===4?[[cs[0]],[cs[1]]]:[cs]}
+function draw(colsOf,w,h,more){
+  const [g,T,Ti,B,Bi,si,xh]=GEO[cur],nc=colsOf.length,cw=(w-g*(nc-1))/nc;
+  return `<div class="cols">${colsOf.map((col,ci)=>{const nr=col.length,ch=(h-g*(nr-1))/nr;
+    return `<div class="col">${col.map((c,ri)=>{const pl=ci?si:PAD,pr=ci<nc-1?si:PAD,pt=ri?Ti:T,pb=ri<nr-1?Bi:B,
+        bc=cur==='TICKET'&&ch<120&&cw-pl-pr>=220?19:0;       // room for the barcode edge
+      return `<div class="cell${bc?' wbc':''}" style="padding:${pt}px ${pr}px ${pb}px ${pl+bc}px">${tile(c,cw-pl-pr-bc,ch-pt-pb-xh,more)}</div>`}).join(`<div class="hr" style="height:${g}px"></div>`)}</div>`}).join(`<div class="vr" style="width:${g}px"></div>`)}</div>`}
+// shrink floor/pillar rows that are too wide, trim the optional time, report anything still out of its box
+function fit(w){
+  w.querySelectorAll('.fit').forEach(r=>{const kids=[...r.children].filter(k=>k.classList.contains('fz'));
+    // how far the last child sticks out. not scrollWidth: an ellipsized memo inside the row would count as overflow
+    const out=()=>r.lastElementChild?r.lastElementChild.getBoundingClientRect().right-r.getBoundingClientRect().right:0;
+    for(let i=0;i<6&&out()>.5;i++){
+      const over=out(),tot=kids.reduce((a,k)=>a+k.getBoundingClientRect().width,0),k=Math.max(.2,(tot-over)/tot*.98);
+      kids.forEach(e=>e.style.fontSize=Math.max(e.classList.contains('f')?20:14,parseFloat(e.style.fontSize)*k).toFixed(1)+'px')}
+    r.classList.toggle('sq',out()>.5)});
+  w.querySelectorAll('.mm[data-step]').forEach(m=>{if(m.scrollWidth>m.clientWidth)m.style.fontSize=m.dataset.step+'px'});   // one step smaller, then ellipsis
+  w.querySelectorAll('.l1').forEach(l=>{const nm=l.querySelector('.nm'),wh=l.querySelector('.wh'),cut=()=>nm.scrollWidth>nm.clientWidth;
+    if(wh&&cut()){wh.textContent=wh.dataset.short;if(cut())wh.remove()}});
+  // layout boxes, not scrollHeight: the tight line-height of the big floor text overhangs its line on purpose
+  return [...w.querySelectorAll('.t')].every(t=>{const a=t.getBoundingClientRect();
+    return [...t.querySelectorAll('.l1,.mid,.l3,.bot,.fit,.lc,.pc,.bc,.mic,.mm,.nm')].every(e=>{const b=e.getBoundingClientRect();
+      return b.left>=a.left-1&&b.right<=a.right+1&&b.top>=a.top-1&&b.bottom<=a.bottom+1})})}
+// what makes the shape: drawn behind the content from the measured positions of the cells, name lines and buttons
+function deco(st,shape,ring){const R=st.w.getBoundingClientRect(),cells=[...st.w.querySelectorAll('.cell')];
+  const q=e=>{const b=e.getBoundingClientRect();return {l:b.left-R.left,t:b.top-R.top,w:b.width,h:b.height,b:b.bottom-R.top}};
+  const bx=(c,x,y,w,h,s)=>`<i class="${c}" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${w.toFixed(1)}px;height:${h.toFixed(1)}px;${s||''}"></i>`;
+  let h=ring?'<i class="ring"></i>':'';
+  cells.forEach((cell,i)=>{const c=q(cell),n1=q(cell.querySelector('.l1')),m=q(cell.querySelector('.mic')),side=/t[23]/.test(cell.firstElementChild.className);
+    if(shape==='POSTER'&&i)h+=bx('tint',c.l,c.t,c.w,c.h);
+    if(shape==='PILLAR'){if(cells.length>1)h+=bx('pan',c.l,c.t,c.w,c.h);h+=bx('band',c.l,c.t,c.w,n1.b-c.t+3,`background:var(--band${i%2})`)}
+    if(shape==='DOT'){const r=m.w/2+5;     // the panel opens around the button
+      h+=bx('led',c.l+3,c.t+3,c.w-6,c.h-6,`mask:radial-gradient(circle ${r}px at ${(m.l+m.w/2-c.l-3).toFixed(1)}px ${(m.t+m.h/2-c.t-3).toFixed(1)}px,transparent ${r-.5}px,#000 ${r}px)`)}
+    if(shape==='TICKET'){const x=m.l-4-c.l,y=n1.b+1.5-c.t,n=(X,Y)=>`radial-gradient(circle 5px at ${X.toFixed(1)}px ${Y.toFixed(1)}px,transparent 4.6px,#000 5px)`;
+      // tear line: under the name line, or (one-row wide sizes) between the stub and the button
+      h+=bx('tk',c.l,c.t,c.w,c.h,`mask:${side?n(x,0)+','+n(x,c.h):n(0,y)+','+n(c.w,y)};mask-composite:intersect`);
+      h+=side?bx('pv',c.l+x-.75,c.t+6,0,c.h-12):bx('ph',c.l+7,c.t+y-.75,c.w-14,0);
+      if(cell.classList.contains('wbc'))h+=bx('bcd',c.l+9,c.t+10,11,c.h-20)}});
+  st.bgl.innerHTML=h}
+
+// ---------- build ----------
+const stages=[];
+function mk(box,shape,cw,ch,si){const w=cw*CELL.w,h=ch*CELL.h,el=document.createElement('div');el.className='stg';
+  el.innerHTML=`<div class="cap"><span>${shape?`<button type="button" class="pick" data-sh="${shape}">${SH[shape][0]}</button>`:`<b>${cw}×${ch}</b> ${w}×${h}dp`}<span class="mode"></span></span><span class="cr"></span></div><div class="wall" style="width:${w+24}px;height:${h+24}px"><canvas class="bgc" aria-hidden="true"></canvas><div class="w" style="width:${w}px;height:${h}px"><div class="bgl"></div><div class="in"></div></div></div>`;
+  box.appendChild(el);const g=s=>el.querySelector(s);
+  stages.push({shape,cw,ch,si,el,wall:g('.wall'),w:g('.w'),bgl:g('.bgl'),in:g('.in'),cap:g('.cr'),mode:g('.mode'),bg:g('.bgc')})}
+SHK.forEach(s=>mk($('ov1'),s,2,1,0));SHK.forEach(s=>mk($('ov2'),s,4,2,5));SIZES.forEach(([cw,ch],si)=>mk($('det'),null,cw,ch,si));
+$('shSeg').innerHTML=SHK.map(k=>`<button type="button" data-sh="${k}">${SH[k][0]}</button>`).join('');
+const opts=(id,o)=>$(id).innerHTML=Object.keys(o).map(k=>`<option value="${k}">${o[k][0].length>1?o[k][0]:o[k]}</option>`).join('');
+opts('famSel',FAM);opts('matSel',MAT);opts('fontSel',FONT);$('fontSel').insertAdjacentHTML('beforeend','<option value="dot" hidden>점 숫자(고정)</option>');
+
+function render(){
+  if(S.main>=S.n)S.main=0;
+  const cars=CARS.slice(0,S.n).map(c=>({...c})),main=cars[S.main],ord=[main,...cars.filter(c=>c!==main)];
+  if(['pending','fail','stale'].includes(S.st))main.st=S.st;
+  if(S.st==='memo')main.memo='엘리베이터 옆 기둥 뒤 두번째 칸, 소화기 앞';
+  if(S.st==='f1'||S.st==='f2')cars.forEach(c=>{if(c.state==='ok')c.f=(c===main)===(S.st==='f1')?'지하2층':'B1M'});
+  const sel=$('mainSel');sel.innerHTML=cars.map(c=>`<option value="${c.i}">${c.name}</option>`).join('');sel.value=S.main;
+  const a=S.a,wp=wall(S.wp),stat=[];let minMu=99,minFg=99,overs=0;
+  const W=x=>`rgba(255,255,255,${(x*a).toFixed(3)})`,B=x=>`rgba(0,0,0,${(x*a).toFixed(3)})`;
+  for(const st of stages){const {w,cw,ch}=st,shape=st.shape||S.shape,ws=w.style;if(!st.wall.clientWidth)continue;
+    cur=shape;w.className='w '+shape;
+    const sty=S.fam==='def'?SH[shape][2]:S.pal,acc=shape==='DOT'?[42,42,46]:sty.acc;
+    ws.setProperty('--bw',a<.5?700:500);ws.setProperty('--r',sty.r+'px');
+    ws.setProperty('--wnum',FONT[S.font==='def'?SH[shape][2].font:S.font][1]);
+    const all=A(cw,ch,ord),cols=all||[[main]],two=cols.flat().length>1;
+    st.in.innerHTML=draw(cols,cw*CELL.w,ch*CELL.h,all?0:ord.length-1);
+    const ok=fit(st.in);
+    st.mode.textContent=ord.length===1?'차 1대':all?`모든 차 ${ord.length}대`:`메인 차량만 · 외 ${ord.length-1}대`;
+    st.mode.className='mode '+(all?'all':'main');
+    w.classList.toggle('over',!ok);if(!ok)overs++;
+    // the frame is a 1:1 window onto the middle of the phone wallpaper, 12dp wider than the cell on each side
+    const WW=st.wall.clientWidth,HH=st.wall.clientHeight,xo=(VW-WW)/2;
+    if(st.key!==S.wp){st.key=S.wp;const cv=st.bg;cv.width=WW*2;cv.height=HH*2;
+      cv.getContext('2d').drawImage(wp.cv,xo*2,OFF[st.si]*2,WW*2,HH*2,0,0,WW*2,HH*2)}
+    const x0=w.offsetLeft,y0=w.offsetTop,ww=w.offsetWidth,hh=w.offsetHeight,sm=[];
+    for(let i=0;i<12;i++)for(let j=0;j<6;j++)sm.push(wp.at(xo+x0+ww*(i+.5)/12,y0+hh*(j+.5)/6+OFF[st.si]));
+    const k=look(sm,a,sty,acc,shape,two),F=x=>rgb(k.f,+(x*a).toFixed(3)),m=S.mat,wh=k.dk?.07:.55;
+    ws.setProperty('--wfg',rgb(k.f));ws.setProperty('--wmu',rgb(k.mu));ws.setProperty('--inv',rgb(k.dk?D:L));ws.setProperty('--big',rgb(k.big));
+    ws.setProperty('--halo',halo(k.lv,k.pole));
+    ws.outline=a?'':'1px dashed rgba(128,128,128,.75)';   // mockup-only: where the cell is when nothing of the card is drawn
+    ws.setProperty('--ring',rgb(k.f,.6));ws.setProperty('--hr',rgb(k.f,a<.15?.34:.16));
+    ws.setProperty('--mbg',shape==='DOT'&&a?'linear-gradient(180deg,#3b3b40,#1a1a1c)':rgb(acc));
+    ws.setProperty('--mgl',shape==='DOT'?'#f2f2f2':cr(L,acc)>=cr(D,acc)?'#fff':'#161616');
+    ws.setProperty('--mshadow',[k.micRing?`0 0 0 1.5px ${rgb(k.f,.9)}`:'',a?`0 1px 2px ${B(.2)},0 5px 9px -5px ${B(.4)}`:''].filter(Boolean).join(',')||'none');
+    // shape parts. everything that belongs to the card fades with the strength; bands, dot grid, tear lines stay
+    ws.setProperty('--tint',F(.05));ws.setProperty('--pan',W(k.dk?.09:.62));ws.setProperty('--pansh',a?`0 1px 2px ${B(.14)}`:'none');
+    ws.setProperty('--band0',rgb(band(sty.fl1)));ws.setProperty('--band1',rgb(band(sty.fl2)));
+    ws.setProperty('--dot',rgb(k.f,.13));ws.setProperty('--ledo',`linear-gradient(${k.dk?B(.5):W(.5)},${k.dk?B(.5):W(.5)})`);ws.setProperty('--ledsh',a?`inset 0 1px 3px ${B(.45)}`:'none');
+    ws.setProperty('--pf',rgb(k.f,.36));ws.setProperty('--ringc',F(.12));
+    // card surface + material. 0% background: no surface, no edge line, no raised edge, no shadow at all
+    const gl={base:`linear-gradient(180deg,${W(wh)},${W(0)} 44%),`,gloss:`linear-gradient(180deg,${W(wh*.95)},${W(wh*.16)} 48%,${W(0)} 52%),`,metal:`linear-gradient(160deg,${W(wh*.7)},${W(0)} 42%,${B(.09)}),`}[m]||'';
+    const surf=gl+`linear-gradient(${rgb(k.card,a)},${rgb(k.card,a)})`,i1=x=>`inset 0 1px 0 ${W(Math.min(1,wh*x))},`;
+    const sh={base:i1(1.5)+`0 1px 2px ${B(.1)},0 12px 24px -12px ${B(.38)}`,matte:`0 1px 2px ${B(.14)},0 10px 20px -10px ${B(.35)}`,
+      gloss:i1(1.7)+`inset 0 -2px 6px ${B(.12)},0 12px 26px -10px ${B(.45)}`,paper:`0 1px 1px ${B(.12)},0 6px 10px -6px ${B(.28)}`,
+      metal:i1(1.3)+`inset 0 -1px 0 ${B(.2)},0 10px 22px -10px ${B(.45)}`,soft:`-4px -4px 10px ${W(.4)},6px 7px 14px ${B(.24)},inset 0 0 0 1px ${W(.14)}`}[m];
+    const tk=shape==='TICKET',bs=st.bgl.style;
+    ws.setProperty('--tks',a?surf:'none');
+    bs.background=tk||!a?'none':surf;bs.boxShadow=tk||!a?'none':`inset 0 0 0 1px ${F(m==='paper'?.16:.06)},${sh}`;
+    bs.filter=tk&&a?`drop-shadow(0 2px 3px ${B(.24)})`:'';bs.overflow=tk?'visible':'hidden';
+    deco(st,shape,a&&m==='paper'&&!tk);
+    minMu=Math.min(minMu,k.crMu);minFg=Math.min(minFg,k.score,k.crBig);
+    st.cap.innerHTML=`${k.dk?'흰':'검은'} 글자${k.lv?` · 번짐 ${k.lv}`:''} · <span class="${k.crMu>=7?'ok':'bad'}">${k.crMu.toFixed(1)}:1</span>`;
+    stat.push({shape,size:cw+'x'+ch,mu:+k.crMu.toFixed(2),fg:+Math.min(k.score,k.crBig).toFixed(2),lv:k.lv,ok});
+  }
+  const dot=S.shape==='DOT',fs=$('fontSel');
+  $('sum').innerHTML=`색 <b>${FAM[S.fam]}</b> · 재질 <b>${MAT[S.mat]}</b> · 글꼴 <b>${FONT[S.font][0]}</b>${S.pal&&S.fam!=='def'?` · 모서리 ${S.pal.r}dp`:''}<br>16개 중 가장 낮은 대비: 작은 글자 <span class="${minMu>=7?'ok':'bad'}">${minMu.toFixed(1)}:1</span>, 큰 글자 <span class="${minFg>=4.5?'ok':'bad'}">${minFg.toFixed(1)}:1</span> ${minMu>=7&&minFg>=4.5?'<span class="ok">기준 통과</span>':'<span class="bad">기준 미달</span>'}${overs?` · <span class="bad">넘침 ${overs}개</span>`:''}`;
+  $('aV').textContent=Math.round(a*100)+'%';$('a-range').value=Math.round(a*100);
+  document.querySelectorAll('[data-sh]').forEach(b=>b.setAttribute('aria-pressed',b.dataset.sh===S.shape));
+  document.querySelectorAll('#wpSeg button').forEach(b=>b.setAttribute('aria-pressed',b.dataset.wp===S.wp));
+  document.querySelectorAll('#nSeg button').forEach(b=>b.setAttribute('aria-pressed',+b.dataset.n===S.n));
+  $('shName').textContent=SH[S.shape][0];$('shDesc').textContent=SH[S.shape][1];
+  $('undo').disabled=!S.hist.length;
+  $('stSel').value=S.st;$('tcSel').value=S.tc;$('famSel').value=S.fam;$('matSel').value=S.mat;
+  fs.disabled=dot;fs.value=dot?'dot':S.font;       // 점 행렬 keeps its dot digits, as in the app
+  window.__overs=overs;window.__stat=stat;
+}
+
+// ---------- controls ----------
+const pickFam=f=>{S.fam=f;S.pal=f==='def'?null:pal(f,SEED[f])};
+const on=(id,ev,fn)=>$(id).addEventListener(ev,e=>{if(fn(e)!==false)render()});
+const seg=(id,key,num)=>on(id,'click',e=>{const b=e.target.closest('button');if(!b)return false;S[key]=num?+b.dataset[key]:b.dataset[key]});
+seg('wpSeg','wp');seg('nSeg','n',1);
+on('shSeg','click',e=>{const b=e.target.closest('button');if(!b)return false;S.shape=b.dataset.sh});
+on('all','click',e=>{const b=e.target.closest('.pick');if(!b)return false;S.shape=b.dataset.sh;render();$('sizes').scrollIntoView();return false});
+on('a-range','input',e=>{S.a=e.target.value/100});
+on('famSel','change',e=>pickFam(e.target.value));
+on('matSel','change',e=>{S.mat=e.target.value});
+on('fontSel','change',e=>{S.font=e.target.value});
+on('mainSel','change',e=>{S.main=+e.target.value});
+on('stSel','change',e=>{S.st=e.target.value});
+on('tcSel','change',e=>{S.tc=e.target.value});
+// like the app's 색 바꿔 보기: another family, another material, another font, a fresh palette
+on('shuf','click',()=>{const not=(o,c)=>{const k=Object.keys(o).filter(x=>x!==c&&x!=='def'&&x!=='base');return k[Math.floor(Math.random()*k.length)]};
+  S.hist.push({fam:S.fam,pal:S.pal,mat:S.mat,font:S.font});
+  S.fam=not(FAM,S.fam);S.pal=pal(S.fam,1+Math.floor(Math.random()*1e6));S.mat=not(MAT,S.mat);S.font=not(FONT,S.font)});
+on('undo','click',()=>{if(S.hist.length)Object.assign(S,S.hist.pop())});
+let rt;addEventListener('resize',()=>{clearTimeout(rt);rt=setTimeout(render,120)});
+window.__set=o=>{if(o.fam)pickFam(o.fam);Object.assign(S,o);render()};   // used by the screenshot check
+render();
+if(document.fonts){document.fonts.ready.then(render);document.fonts.addEventListener('loadingdone',()=>{clearTimeout(rt);rt=setTimeout(render,250)})}
+})();
+</script>

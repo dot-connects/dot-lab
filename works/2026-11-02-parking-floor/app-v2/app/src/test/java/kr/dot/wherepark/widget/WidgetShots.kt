@@ -30,10 +30,10 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * Widget bitmaps at 2x for the mockup comparison (tools/sheets.py) and contrast check (tools/contrast.py):
- * 5 shapes x (one car, 2, 3-4 cars) x strength 100/30, plus the 6 ROW states -> app-v2/shots/widget/<name>.png (+ .json text boxes).
- * Each shot = the card at its natural size + the shadow margins, over the mockup's sky backdrop; the wallpaper samples are the
- * mockup's sky samples so the colours can be compared hex for hex.
+ * Widget bitmaps at 2x for the comparison with mockups/v3-widget-sizes (A안) and the contrast check (tools/contrast.py):
+ * 5 shapes x 6 cell sizes (82x100 dp cells) x 1/2/3 cars x strength 0/100, plus states and long text
+ * -> app-v2/shots/widget/<shape>-<cols>x<rows>-<cars>car-<strength>.png (+ .json text boxes and hits).
+ * Each shot = the widget with a 12 dp strip of a dune-like wallpaper around it; the samples are that wallpaper's colours.
  */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -43,61 +43,101 @@ class WidgetShots {
     private val ctx get() = Kit.ctx()
 
     private val day = 1_763_564_400_000L   // 2025-11-20 00:00 KST
-    private val now = day + 16 * 3_600_000L
-    private val sky = listOf(0xFFCFE3F2, 0xFF9CC4E0, 0xFFA9CDE6, 0xFFE7D2B4, 0xFFD8A978, 0xFFE9C9A0).map { it.toInt() }
+    private val now = day + 18 * 3_600_000L
+    private val dune = intArrayOf(0xFF04141A.toInt(), 0xFF17404B.toInt(), 0xFF5A8391.toInt(), 0xFFB39883.toInt(), 0xFFC9AE96.toInt())
+    private val samples = dune.toList()
+    private val whiteWall = intArrayOf(0xFFF8F9FB.toInt(), 0xFFEEF1F5.toInt(), 0xFFFFFFFF.toInt(), 0xFFDDE5EE.toInt(), 0xFFE4E9EF.toInt())
 
     private val cars = listOf(
-        Car("w", "흰 차", 0xFFF4F1EA.toInt(), null, 0), Car("g", "회색 차", 0xFF8E9399.toInt(), null, 1),
-        Car("k", "검정 차", 0xFF1C1C1C.toInt(), null, 2), Car("b", "파란 차", 0xFF2D5DA8.toInt(), null, 3),
+        Car("p", "펠리", 0xFF2F6FDE.toInt(), null, 0), Car("w", "흰 차", 0xFFF4F4F2.toInt(), null, 1),
+        Car("d", "아빠 차", 0xFF3D4148.toInt(), null, 2), Car("n", "새 차", 0xFFD8402F.toInt(), null, 3),
     )
-    private fun park(car: String, f: Int, z: String, n: Int, by: String, at: Long) =
-        Park(at, car, Spot(Floor.Under(f), z, n, null, null), at, "m", by, null, false, ParkState.PARKED)
+    private fun park(car: String, spot: Spot, by: String, at: Long, state: ParkState = ParkState.PARKED) =
+        Park(at, car, spot, at, "m", by, null, false, state)
     private val parks: Map<String, Park?> = mapOf(
-        "w" to park("w", 2, "C", 37, "아빠", day + (14 * 60 + 32) * 60_000L),
-        "g" to park("g", 4, "A", 12, "엄마", day - (4 * 60 + 55) * 60_000L),
-        "k" to park("k", 3, "D", 8, "민지", day + (9 * 60 + 10) * 60_000L),
-        "b" to park("b", 1, "F", 21, "아빠", day - 3 * 86_400_000L + 10 * 3_600_000L),
+        "p" to park("p", Spot(Floor.Under(4), "C", 156, null, "엘리베이터 옆"), "동찬", day + (17 * 60 + 15) * 60_000L),
+        "w" to park("w", Spot(Floor.Under(2), "A", 12, null, null), "엄마", day - (2 * 60 + 57) * 60_000L),
+        "d" to park("d", Spot(Floor.Under(1), "B", 3, null, null), "아빠", day + 3_600_000L, ParkState.DRIVING),
+        "n" to null,
     )
+    private val sizes = listOf(2 to 1, 3 to 1, 4 to 1, 2 to 2, 3 to 2, 4 to 2)
 
-    private fun save(name: String, spec: WidgetSpec, n: Int, parks: Map<String, Park?> = this.parks, mic: Boolean = true, pending: Set<String> = emptySet()) {
+    private fun save(name: String, spec: WidgetSpec, n: Int, cols: Int, rows: Int, parks: Map<String, Park?> = this.parks, mic: Boolean = true,
+                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f) =
+        saveAt(name, spec, n, SizeF(cols * 82f, rows * 100f), parks, mic, pending, cars, wall, scale)
+
+    private fun saveAt(name: String, spec: WidgetSpec, n: Int, size: SizeF, parks: Map<String, Park?> = this.parks, mic: Boolean = true,
+                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f) {
         if (!groupOn("widget")) return
-        val one = spec.carId != null
-        val (nw, nh) = Shapes.natural(spec.shape, one, n, mic)
-        val size = SizeF(nw + 2 * WidgetRenderer.MX, nh + WidgetRenderer.MT + WidgetRenderer.MB)
-        val out = WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, sky, now, mic, pending)
+        val out = WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, wall.toList(), now, mic, pending, null, scale)
         val bmp = out.rendered.bitmap
-        val shot = Bitmap.createBitmap(bmp.width, bmp.height, Bitmap.Config.ARGB_8888)
+        val m = 24   // 12 dp at 2x
+        val shot = Bitmap.createBitmap(bmp.width + 2 * m, bmp.height + 2 * m, Bitmap.Config.ARGB_8888)
         val c = Canvas(shot)
-        c.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, 0f, shot.height.toFloat(), 0xFFA9CDE6.toInt(), 0xFFE7D2B4.toInt(), Shader.TileMode.CLAMP) })
-        c.drawBitmap(bmp, 0f, 0f, null)
+        c.drawPaint(Paint().apply { shader = LinearGradient(0f, 0f, shot.width * .3f, shot.height.toFloat(), wall, null, Shader.TileMode.CLAMP) })
+        c.drawBitmap(bmp, m.toFloat(), m.toFloat(), null)
         val f = File("../shots/widget/$name.png").apply { parentFile?.mkdirs() }
-        if (name == "row-2-100") File("../shots/widget-preview.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }  // res previewImage
+        if (name == "row-4x2-2car-100") File("../shots/widget-preview.png").outputStream().use { bmp.compress(Bitmap.CompressFormat.PNG, 100, it) }  // res previewImage
         f.outputStream().use { shot.compress(Bitmap.CompressFormat.PNG, 100, it) }
-        val boxes = JSONArray(out.texts.map { t -> JSONObject().put("text", t.text).put("base", (t.base * 2).toDouble()).put("box", JSONArray(listOf(t.rect.left, t.rect.top, t.rect.right, t.rect.bottom).map { (it * 2).toDouble() })) })
-        val hits = JSONArray(out.rendered.hits.map { h -> JSONObject().put("car", h.carId).put("kind", h.kind).put("box", JSONArray(listOf(h.rectDp.left, h.rectDp.top, h.rectDp.right, h.rectDp.bottom).map { (it * 2).toDouble() })) })
-        File("../shots/widget/$name.json").writeText(JSONObject().put("card", JSONArray(listOf(out.card.left, out.card.top, out.card.right, out.card.bottom).map { (it * 2).toDouble() })).put("texts", boxes).put("hits", hits).toString())
+        fun box(l: Float, t: Float, r: Float, b: Float) = JSONArray(listOf(l, t, r, b).map { (it * 2 + m).toDouble() })
+        val boxes = JSONArray(out.texts.map { t -> JSONObject().put("text", t.text).put("base", (t.base * 2 + m).toDouble()).put("box", box(t.rect.left, t.rect.top, t.rect.right, t.rect.bottom)) })
+        val hits = JSONArray(out.rendered.hits.map { h -> JSONObject().put("car", h.carId).put("kind", h.kind).put("box", box(h.rectDp.left, h.rectDp.top, h.rectDp.right, h.rectDp.bottom)) })
+        File("../shots/widget/$name.json").writeText(JSONObject().put("card", box(0f, 0f, size.width, size.height)).put("texts", boxes).put("hits", hits).toString())
     }
 
-    private fun spec(shape: Shape, strength: Int, one: Boolean = false) = WidgetSpec(1, shape, if (one) "w" else null, strength, Palette.default(shape), null)
+    private fun spec(shape: Shape, strength: Int, text: String = "auto") = WidgetSpec(1, shape, null, strength, Palette.default(shape), null, text)
 
     @Test fun shapes() {
-        for (shape in Shape.values()) for (st in listOf(100, 30)) {
+        for (shape in Shape.values()) for (st in listOf(100, 0)) for (n in 1..3) for ((cw, ch) in sizes)
+            save("${shape.name.lowercase()}-${cw}x$ch-${n}car-$st", spec(shape, st), n, cw, ch)
+    }
+
+    /** States and long text on the main car, at the smallest and the widest one-row and two-row sizes. */
+    @Test fun states() {
+        val p = parks.getValue("p")!!
+        fun with(q: Park?) = parks + ("p" to q)
+        val long = listOf(Car("p", "우리 가족 큰 카니발", 0xFF2F6FDE.toInt(), null, 0)) + cars.drop(1)
+        for (shape in listOf(Shape.ROW, Shape.PILLAR, Shape.DOT, Shape.TICKET)) for ((cw, ch) in listOf(2 to 1, 4 to 1, 2 to 2, 4 to 2)) {
+            val k = "${shape.name.lowercase()}-${cw}x$ch"
+            val s = spec(shape, 100)
+            save("st-pend-$k", s, 2, cw, ch, with(p.copy(atMs = now - 5 * 60_000L)), pending = setOf("p"))
+            save("st-fail-$k", s, 2, cw, ch, with(p.copy(atMs = now - WidgetRenderer.FAIL_AFTER_MS - 60_000)), pending = setOf("p"))
+            save("st-stale-$k", s, 2, cw, ch, with(p.copy(atMs = day - 3 * 86_400_000L + 10 * 3_600_000L)))
+            save("st-drive-$k", s, 2, cw, ch, with(p.copy(state = ParkState.DRIVING, drivingBy = "엄마")))
+            save("st-none-$k", s, 2, cw, ch, with(null))
+            save("st-longmemo-$k", s, 2, cw, ch, with(p.copy(spot = p.spot.copy(memo = "엘리베이터 옆 기둥 뒤 두번째 칸, 소화기 앞"))))
+            save("st-longfloor-$k", s, 2, cw, ch, with(p.copy(spot = Spot(null, "C", 156, "12", "엘리베이터 옆"))))
+            save("st-longpillar-$k", s, 2, cw, ch, with(p.copy(spot = Spot(Floor.Under(2), "A", 1234, "C7", "엘리베이터 옆"))))
+            save("st-longname-$k", s, 3, cw, ch, cars = long)
+        }
+        save("st-nomic-row-2x1", spec(Shape.ROW, 100), 2, 2, 1, mic = false)
+        save("st-nomic-row-4x2", spec(Shape.ROW, 100), 2, 4, 2, mic = false)
+        save("st-nocar-row-2x1", spec(Shape.ROW, 100), 0, 2, 1)
+    }
+
+    /** Short cells: two rows on a zoomed / 6-7 row grid (150 dp), and the smallest resize sizes. */
+    @Test fun compact() {
+        for (shape in Shape.values()) {
             val k = shape.name.lowercase()
-            save("$k-one-$st", spec(shape, st, one = true), 4)
-            save("$k-2-$st", spec(shape, st), 2)
-            val many = if (shape == Shape.PILLAR) listOf(3, 4) else if (shape == Shape.TICKET) listOf(4) else listOf(3)
-            many.forEach { save("$k-$it-$st", spec(shape, st), it) }
+            saveAt("short-$k-164x150-2car", spec(shape, 100), 2, SizeF(164f, 150f))
+            saveAt("short-$k-110x50", spec(shape, 100), 2, SizeF(110f, 50f))
+            saveAt("short-$k-164x60", spec(shape, 100), 2, SizeF(164f, 60f))
         }
     }
 
-    @Test fun rowStates() {
-        val s = spec(Shape.ROW, 100)
-        save("row-st-none", s, 2, parks + ("w" to null))
-        save("row-st-pend", s, 2, pending = setOf("w"))
-        save("row-st-ok", s, 2)
-        save("row-st-gone", s, 2, parks + ("g" to parks["g"]!!.copy(state = ParkState.DRIVING, drivingBy = "엄마")))
-        save("row-st-old", s, 2, parks + ("w" to parks["w"]!!.copy(atMs = day - 4 * 86_400_000L + (14 * 60 + 32) * 60_000L)))
-        save("row-st-nomic", s, 2, mic = false)
+    /** 0 % on a white wallpaper (strongest halo) and small text at 1.3x (font scale / 글자 크게). */
+    @Test fun whiteAndLargeText() {
+        for (shape in Shape.values()) for ((cw, ch) in listOf(2 to 1, 4 to 1, 4 to 2)) {
+            val k = "${shape.name.lowercase()}-${cw}x$ch"
+            save("white0-$k", spec(shape, 0), 1, cw, ch, wall = whiteWall)
+            save("text13-$k-2car", spec(shape, 100), 2, cw, ch, scale = 1.3f)
+        }
+    }
+
+    /** 글자 색 forced, at 30 % and 100 %. */
+    @Test fun textColours() {
+        for (t in listOf("white", "black")) for (st in listOf(30, 100)) for (shape in listOf(Shape.ROW, Shape.POSTER))
+            save("tc-$t-${shape.name.lowercase()}-$st", spec(shape, st, t), 2, 4, 2)
     }
 
     /** A few shuffled looks (one per material) so the materials can be eyeballed; not compared with the mockup. */
@@ -106,15 +146,15 @@ class WidgetShots {
         var prev: kr.dot.wherepark.core.Style? = null
         for (shape in Shape.values()) for (i in 0 until 2) {
             val st = Palette.shuffle(shape, prev, r); prev = st
-            save("shuf-${shape.name.lowercase()}-$i-${st.material}", WidgetSpec(1, shape, null, if (i == 0) 100 else 30, st, null), 2)
+            save("shuf-${shape.name.lowercase()}-$i-${st.material}", WidgetSpec(1, shape, null, if (i == 0) 100 else 60, st, null), 2, 4, 2)
         }
     }
 
     @Test fun config() {
         Kit.reset(FakeNet(), mutableListOf())
-        listOf("w", "g").forEach { kr.dot.wherepark.data.ParkStore.save(ctx, parks.getValue(it)!!.copy(atMs = System.currentTimeMillis() - 3_600_000L)) }
+        listOf("p", "w").forEach { kr.dot.wherepark.data.ParkStore.save(ctx, parks.getValue(it)!!.copy(atMs = System.currentTimeMillis() - 3_600_000L)) }
         rule.shot("widget", "config", Device.MOCK_PHONE) {
-            WidgetConfig(WidgetSpec(1, Shape.ROW, null, 100, Palette.default(Shape.ROW), null), cars.take(2), sky) {}
+            WidgetConfig(WidgetSpec(1, Shape.ROW, null, 100, Palette.default(Shape.ROW), null), cars.take(2), samples) {}
         }
     }
 }

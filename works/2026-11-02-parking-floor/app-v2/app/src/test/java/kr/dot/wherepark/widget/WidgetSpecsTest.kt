@@ -54,6 +54,18 @@ class WidgetSpecsTest {
         assertEquals(1, wins.get())
     }
 
+    /** 스텐실 is gone: a widget saved with it reads as 고딕; 글자 색 survives a save. */
+    @Test fun decodeDropsStencilKeepsTextColour() {
+        WidgetSpecs.put(ctx, WidgetSpec(3, Shape.ROW, null, 40, Palette.default(Shape.ROW).copy(font = "Big Shoulders Stencil Display"),
+            Palette.default(Shape.ROW).copy(font = "Big Shoulders Stencil Display"), "black"))
+        val s = WidgetSpecs.get(ctx, 3)
+        assertEquals("Inter Tight", s.style.font); assertEquals("Inter Tight", s.prevStyle?.font)
+        assertEquals("black", s.text)
+        WidgetSpecs.put(ctx, s.copy(style = s.style.copy(font = "Chakra Petch")))
+        assertEquals("Chakra Petch", WidgetSpecs.get(ctx, 3).style.font)
+        assertEquals("auto", WidgetSpecs.get(ctx, 99).text)
+    }
+
     @Test fun midnightNeedsToken() {
         val bare = Intent(WidgetReceiver.ACTION_MIDNIGHT)
         assertFalse(WidgetReceiver.ours(ctx, bare))

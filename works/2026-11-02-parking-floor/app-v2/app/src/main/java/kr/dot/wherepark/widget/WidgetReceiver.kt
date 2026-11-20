@@ -25,6 +25,8 @@ import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.Prefs
+import kr.dot.wherepark.ui.AppPrefs
+import kr.dot.wherepark.ui.AssetFonts
 import kr.dot.wherepark.ui.ListenActivity
 import org.json.JSONObject
 
@@ -36,15 +38,16 @@ object WidgetSpecs {
     private fun styleJson(s: Style) = JSONObject().put("bg", s.bg).put("fg", s.fg).put("mu", s.mu).put("acc", s.acc).put("onAcc", s.onAcc)
         .put("fl1", s.fl1).put("fl2", s.fl2).put("r", s.radiusDp).put("family", s.family).put("material", s.material).put("font", s.font)
 
+    /** A face that is gone from the app (스텐실, removed 11-20) reads as 고딕. */
     private fun style(j: JSONObject) = Style(j.getInt("bg"), j.getInt("fg"), j.getInt("mu"), j.getInt("acc"), j.getInt("onAcc"), j.getInt("fl1"),
-        j.getInt("fl2"), j.getInt("r"), j.getString("family"), j.getString("material"), j.getString("font"))
+        j.getInt("fl2"), j.getInt("r"), j.getString("family"), j.getString("material"), j.getString("font").takeIf(AssetFonts::has) ?: "Inter Tight")
 
     fun default(id: Int) = WidgetSpec(id, Shape.ROW, null, 100, Palette.default(Shape.ROW), null)
 
     private fun spec(id: Int, j: JSONObject?): WidgetSpec? = j?.let {
         runCatching {
             WidgetSpec(id, Shape.valueOf(j.getString("shape")), if (j.isNull("carId")) null else j.getString("carId"), j.getInt("strength"),
-                style(j.getJSONObject("style")), j.optJSONObject("prev")?.let(::style))
+                style(j.getJSONObject("style")), j.optJSONObject("prev")?.let(::style), j.optString("text", "auto"))
         }.getOrNull()
     }
 
@@ -71,7 +74,7 @@ object WidgetSpecs {
     fun put(ctx: Context, s: WidgetSpec, key: String = s.appWidgetId.toString()) = synchronized(this) {
         val all = Prefs.obj(ctx, KEY)
         all.put(key, JSONObject().put("shape", s.shape.name).put("carId", s.carId ?: JSONObject.NULL).put("strength", s.strength)
-            .put("style", styleJson(s.style)).put("prev", s.prevStyle?.let(::styleJson) ?: JSONObject.NULL))
+            .put("style", styleJson(s.style)).put("prev", s.prevStyle?.let(::styleJson) ?: JSONObject.NULL).put("text", s.text))
         Prefs.put(ctx, KEY, all)
     }
 
@@ -146,6 +149,9 @@ class WidgetReceiver : AppWidgetProvider() {
             return listOfNotNull(wc.primaryColor, wc.secondaryColor, wc.tertiaryColor).map { it.toArgb() }
         }
 
+        /** System font scale x the app's 글자 크게 (x1.3, as WpTheme), for the widget's small text. */
+        fun textScale(ctx: Context): Float = ctx.resources.configuration.fontScale * (if (AppPrefs.bigText(ctx)) 1.3f else 1f)
+
         fun sizes(mgr: AppWidgetManager, id: Int): List<SizeF> {
             val o: Bundle = mgr.getAppWidgetOptions(id)
             o.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java)?.takeIf { it.isNotEmpty() }?.let { return it }
@@ -166,13 +172,14 @@ class WidgetReceiver : AppWidgetProvider() {
             val scale = WidgetRenderer.budget(sizes, dm.density, (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong())
             val pend = WidgetRenderer.pending(ctx)
             val wall = wallpaper(ctx); val mic = micReady(ctx); val now = System.currentTimeMillis()
-            val (shown, _) = WidgetRenderer.carsFor(spec, cars)
+            val main = AppPrefs.mainCar(ctx)
+            val ts = textScale(ctx)
             val bitmaps = ArrayList<android.graphics.Bitmap>()
             try {
                 val views = sizes.mapIndexed { i, size ->
-                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend)
+                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend, main, ts)
                     bitmaps += out.rendered.bitmap
-                    size to views(ctx, id, out.rendered, shown) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
+                    size to views(ctx, id, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
                 }.toMap()
                 mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
             } finally {
@@ -180,13 +187,14 @@ class WidgetReceiver : AppWidgetProvider() {
             }
         }
 
-        private fun views(ctx: Context, id: Int, r: Rendered, shown: List<kr.dot.wherepark.core.Car>, describe: (kr.dot.wherepark.core.Car) -> String): RemoteViews {
+        /** Slots and request codes follow the car's place in the car list, so every size sends the same car through the same PendingIntent. */
+        private fun views(ctx: Context, id: Int, r: Rendered, cars: List<kr.dot.wherepark.core.Car>, describe: (kr.dot.wherepark.core.Car) -> String): RemoteViews {
             val v = RemoteViews(ctx.packageName, R.layout.w_root)
             v.setImageViewBitmap(R.id.w_img, r.bitmap)
             (MIC_SLOTS + ROW_SLOTS).forEach { v.setViewVisibility(it, android.view.View.GONE) }
             r.hits.forEach { h ->
-                val idx = shown.indexOfFirst { it.id == h.carId }.coerceIn(0, 3)
-                val shownCar = shown[idx]
+                val idx = cars.indexOfFirst { it.id == h.carId }.coerceIn(0, 3)
+                val shownCar = cars.firstOrNull { it.id == h.carId } ?: WidgetRenderer.NO_CAR
                 val slot = if (h.kind == "MIC") MIC_SLOTS[idx] else ROW_SLOTS[idx]
                 v.setViewVisibility(slot, android.view.View.VISIBLE)
                 v.setViewLayoutMargin(slot, RemoteViews.MARGIN_LEFT, h.rectDp.left, TypedValue.COMPLEX_UNIT_DIP)

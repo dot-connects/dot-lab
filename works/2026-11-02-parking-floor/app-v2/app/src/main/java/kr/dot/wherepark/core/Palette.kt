@@ -39,7 +39,7 @@ object Palette {
     private val MATERIALS = listOf("matte", "gloss", "paper", "metal", "soft")
     private val RADII = listOf(10, 16, 22, 28, 34)
     private const val DOTO = "Doto"
-    private val FONTS = listOf("Inter Tight", "Big Shoulders Display", "IBM Plex Mono", "Big Shoulders Stencil Display", "Playfair Display", "Chakra Petch")
+    private val FONTS = listOf("Inter Tight", "Big Shoulders Display", "IBM Plex Mono", "Playfair Display", "Chakra Petch")
 
     // Values from mockups/v2/round2/src.html: .wx base (ROW), .wx.kT, .wx.kF, .wx.kA, .wx.kP
     fun default(shape: Shape): Style = when (shape) {

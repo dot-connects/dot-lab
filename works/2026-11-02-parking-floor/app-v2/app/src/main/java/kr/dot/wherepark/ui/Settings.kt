@@ -18,6 +18,7 @@ import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.FamilyStore
 import kr.dot.wherepark.data.Prefs
+import kr.dot.wherepark.data.WidgetRefresh
 import kr.dot.wherepark.family.Push
 
 object AppPrefs {
@@ -30,6 +31,10 @@ object AppPrefs {
     /** The name typed at onboarding, kept so [새 가족 만들기] after a 401 can recreate the family without asking again. */
     fun myName(ctx: Context): String? = Prefs.sp(ctx).getString("wp_my_name", null)
     fun setMyName(ctx: Context, name: String) = Prefs.put(ctx, "wp_my_name", name)
+
+    /** 메인 차량 for the widgets (null = first registered car); the widget falls back to the first car when this one is deleted. */
+    fun mainCar(ctx: Context): String? = Prefs.sp(ctx).getString("wp_main_car", null)
+    fun setMainCar(ctx: Context, id: String?) { Prefs.put(ctx, "wp_main_car", id); WidgetRefresh.request(ctx) }
 }
 
 class SettingsActions(
@@ -47,6 +52,7 @@ fun SettingsScreen(a: SettingsActions) {
     var v by remember { mutableIntStateOf(0) }   // bumped by each toggle so the rows re-read the stores
     var askDelete by remember { mutableStateOf(false) }
     var contact by remember { mutableStateOf(false) }
+    var pickMain by remember { mutableStateOf(false) }
     val cars = remember(v) { CarStore.cars(ctx) }
     WScreen("설정", gap = 10.dp, scroll = true) {
         Sect("내 차")
@@ -76,6 +82,10 @@ fun SettingsScreen(a: SettingsActions) {
         Sect("보기")
         WList {
             ToggleLi("글자 크게", v >= 0 && AppPrefs.bigText(ctx)) { AppPrefs.setBigText(ctx, it); v++; a.bigText(it) }
+            if (cars.size > 1) {
+                val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.first()
+                Li("위젯 메인 차량", lead = { Swatch(main.color) }, right = "${main.name} ›", onClick = { pickMain = true })
+            }
             Li("홈 화면에 위젯 놓기", last = true, right = "›", onClick = a.widget)
         }
         Sect("정보")
@@ -86,6 +96,21 @@ fun SettingsScreen(a: SettingsActions) {
             Li("버전", last = true, right = BuildConfig.VERSION_NAME)
         }
     }
+    if (pickMain) AlertDialog(
+        onDismissRequest = { pickMain = false },
+        title = { Text("위젯 메인 차량") },
+        text = {
+            androidx.compose.foundation.layout.Column {
+                val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.firstOrNull()
+                cars.forEach { c ->
+                    Li(c.name, lead = { Swatch(c.color) }, right = if (c == main) "✓" else null, last = c == cars.last(),
+                        onClick = { AppPrefs.setMainCar(ctx, c.id); v++; pickMain = false })
+                }
+            }
+        },
+        confirmButton = { TextButton({ pickMain = false }) { Text("닫기", color = Wp.FG) } },
+        containerColor = Wp.SF,
+    )
     if (askDelete) AlertDialog(
         onDismissRequest = { askDelete = false },
         text = { Text("이 폰의 차·기록·가족 정보를 모두 지우고 가족에서 나갈까요? 되돌릴 수 없어요.") },
