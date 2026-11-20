@@ -41,6 +41,11 @@ export async function requestInvites(store, groupId, now) {
   return Promise.all((await store.groupRequests(groupId, now)).map(r => sha256(r.code)));
 }
 
+/** A removed member's accepted join requests and the invites made for them go with the member. */
+export async function dropMemberRequests(store, memberId) {
+  for (const r of await store.memberRequests(memberId)) { await store.dropInvite(await sha256(r.code)); await store.dropRequest(r.reqHash); }
+}
+
 export const cleanName = n => String(n || "").trim().slice(0, NAME_MAX);
 
 /** The park fields phones may send; everything else is dropped. */
@@ -198,6 +203,7 @@ export async function handle(req, env, store, ctx) {
   if (req.method === "DELETE" && del) {
     if (del[1] !== me.id && !me.owner) return fail(403, "owner");
     const rest = (await store.members(me.groupId)).filter(m => m.id !== del[1]);
+    await dropMemberRequests(store, del[1]);
     await store.removeMember(me.groupId, del[1]);
     // an owner leaving hands the family to the oldest member; the last one out clears the family
     if (rest.length === 0) { await v2.deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }

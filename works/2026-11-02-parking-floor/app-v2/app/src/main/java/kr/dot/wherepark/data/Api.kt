@@ -190,9 +190,9 @@ object Api {
     }
 
     /** Join request poll (POST /v2/requests/poll {secret}, no auth): the invite code once a family accepted, null while nobody has (404). */
-    fun requestCode(secret: String): Result<String?> {
+    fun requestCode(secret: String): Result<Pair<String, String?>?> {
         val r = call("POST", "/v2/requests/poll", null, JSONObject().put("secret", secret))
-        return if (r.first == 404) Result.success(null) else ok(r).map { it.getString("code") }
+        return if (r.first == 404) Result.success(null) else ok(r).map { it.getString("code") to it.str("byName") }  // byName = who accepted
     }
 
     /** Accepts a join request ([id] = the link's sha256 of the requester's secret); the server makes its invite. 409 = accepted already. */

@@ -1,10 +1,10 @@
-import { cleanName, fail, json, member, newCode, newMember, normCode, notify, randomId, requestInvites, sha256 } from "./index.js";
+import { cleanName, dropMemberRequests, fail, json, member, newCode, newMember, normCode, notify, randomId, requestInvites, sha256 } from "./index.js";
 
 const DAY = 86400_000;
 const MAX_PHOTO = 400 * 1024;
 const validCarId = id => /^c_[0-9a-f]{8}$/.test(id);
 const validParkId = id => Number.isSafeInteger(id) && id >= 0;
-const REQ_SECRET = /^[0-9a-f]{32}$/, REQ_HASH = /^[0-9a-f]{64}$/;
+const REQ_SECRET = /^[0-9a-f]{32}$/, REQ_HASH = /^[0-9a-f]{64}$/, MAX_REQUESTS = 5;
 
 // JSON body capped at 4 KB by actual bytes (content-length can be absent or lie).
 async function body(req) {
@@ -103,7 +103,7 @@ async function route(req, env, store, ctx) {
     const secret = (await body(req))?.secret;
     if (typeof secret !== "string" || !REQ_SECRET.test(secret)) return fail(400, "req");
     const r = await store.request(await sha256(secret), now);
-    return r ? json({ code: r.code.replace(/(.{4})(?=.)/g, "$1-") }) : fail(404, "req");
+    return r ? json({ code: r.code.replace(/(.{4})(?=.)/g, "$1-"), byName: r.byName ?? null }) : fail(404, "req");
   }
   // the requester withdraws ([취소] / [아니요]): the request row and the invite made for it go away
   if (req.method === "POST" && path === "/v2/requests/cancel") {
@@ -123,9 +123,12 @@ async function route(req, env, store, ctx) {
     // the server makes the request its own invite; the family's other open invites stay open
     const b = await body(req), id = typeof b?.req === "string" ? b.req : "";
     if (!REQ_HASH.test(id)) return fail(400, "req");
+    if (await store.request(id, now)) return fail(409, "taken");
+    // ponytail: count-then-insert is not atomic; two racing accepts can make 6 rows (still bounded, expires in 24 h)
+    if ((await store.groupRequests(me.groupId, now)).length >= MAX_REQUESTS) return fail(429, "many");
     const code = normCode(newCode()), codeHash = await sha256(code);
     await store.addInvite({ codeHash, groupId: me.groupId, expires: now + DAY });
-    if (!await store.addRequest({ reqHash: id, groupId: me.groupId, code, expires: now + DAY }, now)) {
+    if (!await store.addRequest({ reqHash: id, groupId: me.groupId, code, expires: now + DAY, byId: me.id, byName: me.name }, now)) {
       await store.dropInvite(codeHash);
       return fail(409, "taken");
     }
@@ -247,6 +250,7 @@ async function route(req, env, store, ctx) {
     if (!victim || victim.groupId !== me.groupId) return fail(404, "member");
     if (id !== me.id && !me.owner && (victim.owner || now - (victim.lastSeen ?? victim.created) <= 30 * DAY)) return fail(403, "owner");
     const rest = (await store.members(me.groupId)).filter(x => x.id !== id);
+    await dropMemberRequests(store, id);
     await store.removeMember(me.groupId, id);
     if (!rest.length) { await deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }
     else if (!rest.some(x => x.owner)) await store.makeOwner(rest[0].id);

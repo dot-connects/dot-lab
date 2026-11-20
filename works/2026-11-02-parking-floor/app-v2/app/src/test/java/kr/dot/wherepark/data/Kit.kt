@@ -42,6 +42,9 @@ class FakeNet : Transport {
     /** Join requests held like the Worker's requests table: sha256(secret) (the link's hash) -> code. Tests may seed it. */
     val requests = mutableMapOf<String, String>()
     var nextCode = "K7QM-28XP-4HDA"
+    /** Who accepted each request (poll's byName); PUT records [acceptor]. */
+    val requestBy = mutableMapOf<String, String>()
+    var acceptor = "엄마"
     var cancels = 0
 
     /**
@@ -55,7 +58,8 @@ class FakeNet : Transport {
         if (method == "POST" && path == "/v2/requests/poll") {
             val secret = j?.opt("secret") as? String
             if (secret == null || !REQ_SECRET.matches(secret)) return 400 to """{"error":"req"}"""
-            return requests[sha256(secret)]?.let { 200 to JSONObject().put("code", it).toString() } ?: (404 to """{"error":"req"}""")
+            val h = sha256(secret)
+            return requests[h]?.let { 200 to JSONObject().put("code", it).put("byName", requestBy[h] ?: JSONObject.NULL).toString() } ?: (404 to """{"error":"req"}""")
         }
         if (method == "POST" && path == "/v2/requests/cancel") {
             val secret = j?.opt("secret") as? String
@@ -68,7 +72,7 @@ class FakeNet : Transport {
         val req = j?.optString("req").orEmpty()
         if (!REQ_HASH.matches(req)) return 400 to """{"error":"req"}"""
         if (req in requests) return 409 to """{"error":"taken"}"""
-        requests[req] = nextCode
+        requests[req] = nextCode; requestBy[req] = acceptor
         return 200 to """{"ok":true}"""
     }
 }

@@ -64,7 +64,9 @@ class RequestTest {
         assertEquals(listOf("POST /v2/requests/poll"), net.calls)
         assertEquals(listOf<String?>(null), net.auths)
         net.requests[r.hash] = code
-        assertEquals(JoinRequest.Poll.Code(code, "민준"), JoinRequest.poll(ctx))
+        assertEquals(JoinRequest.Poll.Code(code, "민준", null), JoinRequest.poll(ctx))
+        net.requestBy[r.hash] = "엄마"
+        assertEquals(JoinRequest.Poll.Code(code, "민준", "엄마"), JoinRequest.poll(ctx))
         assertTrue(joins.isEmpty())  // no blind join, also not on app start (MainActivity only opens the confirm)
         assertNotNull(JoinRequest.pending(ctx))
         JoinRequest.cancel(ctx)
@@ -77,9 +79,10 @@ class RequestTest {
         val hash = m.waiting!!.hash
         m.poll()
         assertNotNull(m.waiting); assertFalse(m.fromRequest); assertFalse(m.busy)
-        net.requests[hash] = code
+        net.requests[hash] = code; net.requestBy[hash] = "엄마"
         m.poll()
         assertTrue(m.fromRequest)
+        assertEquals("엄마", m.acceptedBy)  // the confirm shows "엄마님이 받아 줬어요"
         assertEquals("민지네 가족" to 3, m.peek)
         assertTrue(joins.isEmpty())  // asked, not joined
         assertEquals(listOf("POST /v2/requests/poll", "POST /v2/requests/poll", "POST /v2/peek"), net.calls)

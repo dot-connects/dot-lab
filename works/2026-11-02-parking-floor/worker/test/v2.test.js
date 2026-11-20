@@ -338,6 +338,7 @@ test("join request: accept makes its own invite under the link hash, only the se
   assert.equal((await poll(call, H.slice(0, 32))).status, 404);
   const polled = await poll(call, S);
   assert.match(polled.body.code, /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.equal(polled.body.byName, "Owner");  // the requester sees who accepted
   assert.deepEqual((await poll(call, S)).body, polled.body);  // polling does not consume
   assert.equal((await call("POST", "/v2/peek", { code: polled.body.code })).body.groupName, "Home");
   // a new invite from the family closes the old shared one but not the request's
@@ -378,4 +379,48 @@ test("join request: the requester cancels; expired rows are missing and purged b
   assert.equal((await call("DELETE", "/v2/me", null, owner.token)).status, 200);
   assert.equal((await poll(call, S)).status, 404);
   assert.equal((await call("GET", "/r")).status, 200);
+});
+
+test("join request: at most five live requests per family; a removed member's requests and their invites go", async () => {
+  const { call, store } = setup();
+  const { owner, guest } = await (async () => {
+    const o = (await call("POST", "/v2/groups", { name: "Owner", groupName: "Home" })).body;
+    const inv = (await call("POST", "/v2/invites", null, o.token)).body.code;
+    return { owner: o, guest: (await call("POST", "/v2/join", { code: inv, name: "Guest" })).body };
+  })();
+  const secrets = [...Array(6)].map((_, i) => String(i).repeat(32));
+  const hashes = await Promise.all(secrets.map(s => sha256(s)));
+  for (let i = 0; i < 3; i++) assert.equal((await call("PUT", "/v2/requests", { req: hashes[i] }, guest.token)).status, 200);
+  for (let i = 3; i < 5; i++) assert.equal((await call("PUT", "/v2/requests", { req: hashes[i] }, owner.token)).status, 200);
+  const r6 = await call("PUT", "/v2/requests", { req: hashes[5] }, owner.token);
+  assert.equal(r6.status, 429); assert.equal(r6.body.error, "many");
+  assert.equal((await call("PUT", "/v2/requests", { req: hashes[0] }, owner.token)).status, 409);  // a taken one is still 409
+  const guestCodes = [];
+  for (let i = 0; i < 3; i++) { const b = (await poll(call, secrets[i])).body; assert.equal(b.byName, "Guest"); guestCodes.push(b.code); }
+  // the owner removes the guest (v2): the guest's accepted requests and their invites are gone, the owner's stay
+  assert.equal((await call("DELETE", `/v2/members/${guest.memberId}`, null, owner.token)).status, 200);
+  for (let i = 0; i < 3; i++) assert.equal((await poll(call, secrets[i])).status, 404);
+  for (const c of guestCodes) assert.equal((await call("POST", "/v2/peek", { code: c })).status, 404);
+  assert.equal((await poll(call, secrets[3])).body.byName, "Owner");
+  assert.equal((await call("PUT", "/v2/requests", { req: hashes[5] }, owner.token)).status, 200);  // room again
+  // a member leaving by DELETE /v2/me takes theirs along too
+  const inv2 = (await call("POST", "/v2/invites", null, owner.token)).body.code;
+  const kid = (await call("POST", "/v2/join", { code: inv2, name: "Kid" })).body;
+  for (const r of store.requests.values()) r.expires = Date.now() - 1;  // free the cap
+  const S7 = "7".repeat(32);
+  assert.equal((await call("PUT", "/v2/requests", { req: await sha256(S7) }, kid.token)).status, 200);
+  const kidCode = (await poll(call, S7)).body.code;
+  assert.equal((await call("DELETE", "/v2/me", null, kid.token)).status, 200);
+  assert.equal((await poll(call, S7)).status, 404);
+  assert.equal((await call("POST", "/v2/peek", { code: kidCode })).status, 404);
+  // v1 member delete does the same
+  const inv3 = (await call("POST", "/v2/invites", null, owner.token)).body.code;
+  const old = (await call("POST", "/v2/join", { code: inv3, name: "Old" })).body;
+  const S8 = "8".repeat(32);
+  assert.equal((await call("PUT", "/v2/requests", { req: await sha256(S8) }, old.token)).status, 200);
+  assert.equal((await call("DELETE", `/v1/members/${old.memberId}`, null, old.token)).status, 200);
+  assert.equal((await poll(call, S8)).status, 404);
+  // the last one out drops the family and its requests
+  assert.equal((await call("DELETE", "/v2/me", null, owner.token)).status, 200);
+  assert.equal(store.requests.size, 0);
 });

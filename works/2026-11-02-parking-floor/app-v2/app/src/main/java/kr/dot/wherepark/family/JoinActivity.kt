@@ -62,6 +62,8 @@ class JoinModel(private val ctx: Context, private val bg: (() -> Unit) -> Unit =
     var asking by mutableStateOf(false)
     /** The current code came from an accepted request: the screen asks "<가족> · N명에 들어갈까요?" before joining. */
     var fromRequest by mutableStateOf(false); private set
+    /** Who accepted the request, shown above the confirm so a stranger's accept is recognisable. */
+    var acceptedBy by mutableStateOf<String?>(null); private set
     private var polling = false  // not [busy]: a poll must not disable the code entry
 
     fun useCode(c: String?) {
@@ -121,7 +123,7 @@ class JoinModel(private val ctx: Context, private val bg: (() -> Unit) -> Unit =
                 polling = false
                 waiting = JoinRequest.pending(ctx)
                 when (p) {
-                    is JoinRequest.Poll.Code -> if (waiting != null && code == null) { error = null; fromRequest = true; name = p.name; useCode(p.code) }
+                    is JoinRequest.Poll.Code -> if (waiting != null && code == null) { error = null; fromRequest = true; acceptedBy = p.byName; name = p.name; useCode(p.code) }
                     is JoinRequest.Poll.Failed -> error = if (p.status == 429) "잠시 뒤 다시 확인할게요" else "인터넷 연결을 확인해 주세요"
                     JoinRequest.Poll.Waiting -> error = null
                     JoinRequest.Poll.None -> {}
@@ -156,6 +158,7 @@ internal fun JoinScreen(m: JoinModel, clip: String?, ask: () -> Unit = {}, share
         val w = m.waiting
         val rp = m.peek
         if (m.fromRequest && rp != null) {
+            m.acceptedBy?.let { Text("${it}님이 받아 줬어요", style = ts(15.sp, color = Wp.MU), textAlign = TextAlign.Center) }
             Text("${rp.first} · ${rp.second}명에 들어갈까요?", style = ts(22.sp, FontWeight.ExtraBold, lh = 1.25f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
             Btn(if (m.busy) "들어가는 중" else "들어가기", BtnKind.ACC, enabled = !m.busy, onClick = tapJoin)
             Btn("아니요", BtnKind.GHOST, enabled = !m.busy) { m.cancelRequest() }

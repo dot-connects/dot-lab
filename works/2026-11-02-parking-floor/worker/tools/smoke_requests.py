@@ -26,6 +26,7 @@ def main() -> int:
     r.append(check("poll with link hash = 404", s == 404, (s, b)))
     s, b = call("POST", "/v2/requests/poll", {"secret": sec})
     ok = check("poll returns code", s == 200 and "code" in b, (s, b)); r.append(ok)
+    r.append(check("poll says who accepted", s == 200 and b.get("byName") == "요청스모크", (s, b)))
     code = b.get("code") if ok else ""
     s, b = call("POST", "/v2/peek", {"code": code})
     r.append(check("peek shows family", s == 200 and b.get("groupName") == "요청스모크네 가족" and b.get("count") == 1, (s, b)))

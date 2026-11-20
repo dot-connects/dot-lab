@@ -90,14 +90,14 @@ object JoinRequest {
     sealed interface Poll {
         data object None : Poll                                  // no pending request
         data object Waiting : Poll                               // nobody accepted yet (404)
-        data class Code(val code: String, val name: String) : Poll  // accepted: peek, then ask before joining
+        data class Code(val code: String, val name: String, val byName: String?) : Poll  // accepted (by [byName]): peek, then ask
         data class Failed(val status: Int) : Poll                // 429 / offline / server: keep the request, try later
     }
 
     /** Requester side, one poll. Never joins and never drops the request (24 h aside). */
     fun poll(ctx: Context, now: Long = System.currentTimeMillis()): Poll {
         val r = pending(ctx, now) ?: return Poll.None
-        return Api.requestCode(r.secret).fold({ if (it == null) Poll.Waiting else Poll.Code(it, r.name) }, { Poll.Failed((it as? ApiException)?.status ?: 0) })
+        return Api.requestCode(r.secret).fold({ if (it == null) Poll.Waiting else Poll.Code(it.first, r.name, it.second) }, { Poll.Failed((it as? ApiException)?.status ?: 0) })
     }
 
     /** [취소] / [아니요]: forget locally now, withdraw on the server best effort ([bg] runs the network call). */
