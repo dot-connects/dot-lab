@@ -143,17 +143,6 @@ internal fun WidgetConfig(start: WidgetSpec, cars: List<Car>, samples: List<Int>
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Text("위젯 꾸미기", style = TextStyle(fontFamily = gro, fontSize = 22.sp, letterSpacing = (-.01).em, color = FG), modifier = Modifier.padding(vertical = 2.dp))
-        Sect("무엇을 보여 줄까요")
-        Row(Modifier.fillMaxWidth().lift(999).background(SF, RoundedCornerShape(999.dp)).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            (listOf<Car?>(null) + cars).forEach { car ->
-                val on = spec.carId == car?.id
-                Box(
-                    Modifier.weight(1f).height(36.dp).clip(RoundedCornerShape(999.dp)).background(if (on) FG else Color.Transparent)
-                        .semantics { selected = on }.clickable(role = Role.Tab) { spec = spec.copy(carId = car?.id) },
-                    contentAlignment = Alignment.Center,
-                ) { Text(car?.let { "${it.name}만" } ?: "모든 차", fontSize = 13.5.sp, color = if (on) SF else MU, maxLines = 1) }
-            }
-        }
         Sect("모양")
         Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             Shape.values().forEach { sh ->
@@ -205,9 +194,9 @@ internal fun WidgetConfig(start: WidgetSpec, cars: List<Car>, samples: List<Int>
         Spacer(Modifier.weight(1f))
         Box(
             Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(999.dp)).background(ACC)
-                .clickable(role = Role.Button) { onPlace(spec.copy(strength = strength.toInt())) },
+                .clickable(role = Role.Button) { onPlace(spec.copy(carId = null, strength = strength.toInt())) },
             contentAlignment = Alignment.Center,
-        ) { Text("홈 화면에 놓기", fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, color = ON_ACC) }
+        ) { Text("완료", fontSize = 15.5.sp, fontWeight = FontWeight.SemiBold, color = ON_ACC) }
     }
 }
 

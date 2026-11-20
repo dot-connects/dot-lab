@@ -48,6 +48,8 @@ internal data class Look(
         private val DARK = doubleArrayOf(17.0, 17.0, 17.0, .78)
         private val LIGHT = doubleArrayOf(255.0, 255.0, 255.0, .88)
 
+        /** 7:1, not 4.5: widget text is small and often scaled down (operator 11-20: hard to read). */
+        private const val MIN_CR = 7.0
         private fun rgba(c: Int) = doubleArrayOf((c shr 16 and 255).toDouble(), (c shr 8 and 255).toDouble(), (c and 255).toDouble(), (c ushr 24) / 255.0)
         private fun lin(v: Double): Double { val s = v / 255; return if (s <= .03928) s / 12.92 else ((s + .055) / 1.055).pow(2.4) }
         private fun lum(c: DoubleArray) = .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2])
@@ -74,7 +76,7 @@ internal data class Look(
                 val score = min(worst(doubleArrayOf(f[0], f[1], f[2], 1.0), bgs), worst(m, bgs))
                 val e = E(f, m, lt, bp, sc, pole, bgs, score)
                 if (best == null || score > best.score) best = e
-                if (score >= 4.5) { pick = e; break@search }
+                if (score >= MIN_CR) { pick = e; break@search }
             }
             val r = pick ?: best!!
             val fg = argb(r.f)
@@ -83,7 +85,7 @@ internal data class Look(
             while (t <= 1.001) {
                 val c = over(if (r.lt) WHITE else BLACK, t, acc)
                 // also on the poster strips, which tint the surface with 5 % text colour
-                if ((r.bgs + r.bgs.map { over(r.f, .05, it) }).minOf { cr(c, it) } >= 4.5) { big = argb(c); break }
+                if ((r.bgs + r.bgs.map { over(r.f, .05, it) }).minOf { cr(c, it) } >= MIN_CR) { big = argb(c); break }
                 t += .15
             }
             return Look(argb(r.bp), wop.toFloat(), fg, argb(r.m, r.m.getOrElse(3) { 1.0 }), r.lt,
@@ -138,7 +140,7 @@ internal class Shapes(
                 Shape.DOT -> 16f + n * 50f + (n - 1) * 5f
                 Shape.TICKET -> n * 58f + (n - 1) * 5f
             }
-            return 280f to h + note
+            return (if (shape == Shape.ROW) 200f else 280f) to h + note  // ROW: a 2-cell-wide widget scales less (operator 11-20: text too small)
         }
     }
 
@@ -285,13 +287,13 @@ internal class Shapes(
 
     /** Car-colour dot (always outlined, a white car shows on a light widget) + bold name. */
     private fun name(l: Line, x: Float, base: Float, right: Boolean = false, onBand: Boolean = false, max: Float = 120f) {
-        val nm = clip(l.car.name, 12f, KO700, max - 13f)
-        val tw = measure(nm, 12f, KO700)
+        val nm = clip(l.car.name, 13.5f, KO700, max - 13f)
+        val tw = measure(nm, 13.5f, KO700)
         val x0 = if (right) x - (13f + tw) else x
         val cy = base - 4.2f
         c.drawCircle(x0 + 4f, cy, 5f, fill(if (onBand) white(.7f) else fg.alpha(.48f)))
         c.drawCircle(x0 + 4f, cy, 4f, fill(l.car.color or (0xFF shl 24)))
-        text(nm, x0 + 13f, base, 12f, KO700, if (onBand) 0xFFFFFFFF.toInt() else fg, halo = !onBand && look.halo)
+        text(nm, x0 + 13f, base, 13.5f, KO700, if (onBand) 0xFFFFFFFF.toInt() else fg, halo = !onBand && look.halo)
     }
 
     /** "아빠 14:32" (who bold in fg, when in muted), "↑ 전송 대기", "기록 없음", "엄마 출발". */
@@ -301,12 +303,12 @@ internal class Shapes(
         val halo = !onBand && look.halo
         val timeFace = if (mono) MONO else KO400
         when (l.st) {
-            St.NONE -> text("기록 없음", x, base, 12f, KO400, m, right = right, halo = halo)
+            St.NONE -> text("기록 없음", x, base, 13.5f, KO400, m, right = right, halo = halo)
             St.PEND -> {
-                val tw = measure("전송 대기", 12f, KO400)
+                val tw = measure("전송 대기", 13.5f, KO400)
                 val x0 = if (right) x - tw - 15f else x
                 upIcon(x0, base - 10f, m)
-                text("전송 대기", x0 + 15f, base, 12f, KO400, m, halo = halo)
+                text("전송 대기", x0 + 15f, base, 13.5f, KO400, m, halo = halo)
             }
             else -> {
                 var rest = if (l.st == St.GONE) " 출발" else " ${l.time}"
@@ -314,15 +316,15 @@ internal class Shapes(
                 val ls = if (mono) -.02f else 0f
                 var whoName = l.who
                 // a date ("11월 16일") that does not fit drops the name: when matters more than who on an old record
-                if (measure(whoName, 12f, KO600) + measure(rest, 12f, restFace, ls) > max && rest.contains('월')) { whoName = ""; rest = rest.trim(); restFace = KO400 }
-                val w1 = measure(whoName, 12f, KO600)
+                if (measure(whoName, 13.5f, KO600) + measure(rest, 13.5f, restFace, ls) > max && rest.contains('월')) { whoName = ""; rest = rest.trim(); restFace = KO400 }
+                val w1 = measure(whoName, 13.5f, KO600)
                 // narrow slot: "어제 19:05" -> "어제" (the mockup's short form), then an ellipsis
-                if (w1 + measure(rest, 12f, restFace, ls) > max && rest.startsWith(" 어제 ")) rest = " 어제"
-                if (w1 + measure(rest, 12f, restFace, ls) > max) { setText(12f, restFace, ls); rest = TextUtils.ellipsize(rest, p, max(0f, max - w1), TextUtils.TruncateAt.END).toString() }
-                val w2 = measure(rest, 12f, restFace, ls)
+                if (w1 + measure(rest, 13.5f, restFace, ls) > max && rest.startsWith(" 어제 ")) rest = " 어제"
+                if (w1 + measure(rest, 13.5f, restFace, ls) > max) { setText(13.5f, restFace, ls); rest = TextUtils.ellipsize(rest, p, max(0f, max - w1), TextUtils.TruncateAt.END).toString() }
+                val w2 = measure(rest, 13.5f, restFace, ls)
                 val x0 = if (right) x - w1 - w2 else x
-                text(whoName, x0, base, 12f, KO600, f, halo = halo)
-                text(rest, x0 + w1, base, 12f, restFace, m, ls, halo = halo)
+                text(whoName, x0, base, 13.5f, KO600, f, halo = halo)
+                text(rest, x0 + w1, base, 13.5f, restFace, m, ls, halo = halo)
             }
         }
     }
@@ -330,7 +332,7 @@ internal class Shapes(
     /** One-car head line: name on the left, who/when on the right; the name gets at most half when both are long. */
     private fun header(l: Line, x0: Float, x1: Float, nameBase: Float, whoBase: Float, onBand: Boolean = false, mono: Boolean = false) {
         val room = x1 - x0 - 6f
-        val nw = min(13f + measure(l.car.name, 12f, KO700), max(room / 2, room - measure("${l.who} ${l.time}", 12f, if (mono) MONO else KO400)))
+        val nw = min(13f + measure(l.car.name, 13.5f, KO700), max(room / 2, room - measure("${l.who} ${l.time}", 13.5f, if (mono) MONO else KO400)))
         name(l, x0, nameBase, onBand = onBand, max = nw)
         who(l, x1, whoBase, right = true, mono = mono, onBand = onBand, max = room - nw)
     }

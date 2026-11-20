@@ -44,10 +44,9 @@ object WidgetRenderer {
 
     internal class Out(val rendered: Rendered, val texts: List<TextBox>, val card: RectF)
 
-    /** Which cars a widget shows: its one car, else all cars in the fixed order (at most 4). */
+    /** Which cars a widget shows: always all cars in the fixed order (at most 4); the one-car option is gone (operator 11-20). */
+    @Suppress("UNUSED_PARAMETER")
     fun carsFor(spec: WidgetSpec, cars: List<Car>): Pair<List<Car>, Boolean> {
-        val one = spec.carId?.let { id -> cars.firstOrNull { it.id == id } }
-        if (one != null) return listOf(one) to true
         return cars.sortedBy { it.order }.take(4).ifEmpty { listOf(NO_CAR) } to false
     }
 

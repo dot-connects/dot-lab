@@ -328,6 +328,7 @@ private fun Saved(m: ListenModel, s: Sheet.Saved, f: Faces, acts: SheetActions) 
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ActButton("고치기", R.drawable.ic_pen, 17.dp, m::fix, Modifier.weight(1f))
             ActButton(if (s.photo) "사진 다시" else "사진", R.drawable.ic_cam, 18.dp, { m.hold(); acts.photo() }, Modifier.weight(1f))
+            ActButton("확인", R.drawable.ic_check_s, 17.dp, m.close, Modifier.weight(1f))
         }
     }
 }

@@ -82,7 +82,7 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
             }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Btn(if (car.plate.isNullOrBlank()) "차량번호 넣기" else "차량번호", BtnKind.NT, Modifier.weight(1f), onClick = if (car.plate.isNullOrBlank()) a.edit else a.plate)
+            Btn(if (car.plate.isNullOrBlank()) "차량번호 넣기" else car.plate!!, BtnKind.NT, Modifier.weight(1f), onClick = if (car.plate.isNullOrBlank()) a.edit else a.plate)
             if (park != null) Btn(if (photo != null) "사진 바꾸기" else "사진 넣기", BtnKind.NT, Modifier.weight(1f), onClick = a.photo)
         }
         WList { Li("내 기록", last = true, right = "나만 보여요 ›", onClick = a.history) }

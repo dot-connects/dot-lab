@@ -196,7 +196,7 @@ fun HomeCard(car: Car, park: Park?, ui: CardUi, acts: AppActions, big: Boolean =
         }
         if (chips) FlowRow(Modifier.padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Chip(null, { acts.speak(car.id) }, label = "${car.name}에 말로 저장", icon = "mic")
-            if (!car.plate.isNullOrBlank()) Chip("차량번호", { acts.plate(car.id) })
+            if (!car.plate.isNullOrBlank()) Chip(car.plate, { acts.plate(car.id) }, label = "차량번호 크게", icon = "car", iconTint = Wp.FG)
         }
     }
 }
