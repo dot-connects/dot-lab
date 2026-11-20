@@ -195,7 +195,7 @@ fun Step3(p: Practice, speak: () -> Unit, next: () -> Unit) = WScreen(null, gap 
 private val SKY = Brush.linearGradient(listOf(Color(0xFFA9CDE6), Color(0xFFCFE3F2), Color(0xFFE7D2B4), Color(0xFFD8A978)))
 
 @Composable
-fun Step4(invite: () -> Unit, later: () -> Unit, pin: () -> Unit) = WScreen(null, gap = 14.dp) {
+fun Step4(invite: () -> Unit, later: () -> Unit, pin: () -> Unit, ask: () -> Unit = {}) = WScreen(null, gap = 14.dp) {
     val ctx = LocalContext.current
     Steps(4)
     Head("가족과 같이 볼까요?")
@@ -208,6 +208,7 @@ fun Step4(invite: () -> Unit, later: () -> Unit, pin: () -> Unit) = WScreen(null
         if (bmp != null) Image(bmp.asImageBitmap(), "위젯 미리 보기", Modifier.size((bmp.width / density).dp, (bmp.height / density).dp))
     }
     Btn("카카오톡으로 초대", BtnKind.KAKAO, onClick = invite)
+    Btn("가족에게 요청하기", BtnKind.GHOST, onClick = ask)
     Btn("나중에", BtnKind.GHOST, onClick = later)
     CreateError()
     Spacer(Modifier.weight(1f))

@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { handle, scheduled } from "../src/index.js";
+import { handle, scheduled, sha256 } from "../src/index.js";
 import { MemoryStore } from "../src/store.js";
 
 const base = "https://p.test";
@@ -314,4 +314,68 @@ test("photo GET needs photo=true on the current park; scheduled deletes expired 
   await scheduled({ scheduledTime: Date.now() + 31 * 86400_000 }, env, { waitUntil() {} }, store);
   assert.equal(objects.size, 0);
   assert.equal((await call("GET", `/v2/cars/${id}/photo?park=200`, null, owner.token)).status, 404);
+});
+
+const poll = (call, secret) => call("POST", "/v2/requests/poll", { secret });
+
+test("join request: accept makes its own invite under the link hash, only the secret polls it, join clears it", async () => {
+  const { call, store } = setup();
+  const owner = (await call("POST", "/v2/groups", { name: "Owner", groupName: "Home" })).body;
+  const other = (await call("POST", "/v2/groups", { name: "Other", groupName: "Away" })).body;
+  const S = "0123456789abcdef0123456789abcdef", H = await sha256(S);
+  assert.equal((await poll(call, S)).status, 404);
+  for (const bad of ["0123456789ABCDEF0123456789ABCDEF", "abc", H, 42, null]) assert.equal((await poll(call, bad)).status, 400);
+  assert.equal((await call("GET", `/v2/requests/${S}`)).status, 401);  // no GET-by-id route
+  const shared = (await call("POST", "/v2/invites", null, owner.token)).body.code;  // an invite already sent to someone else
+  assert.equal((await call("PUT", "/v2/requests", { req: H })).status, 401);
+  for (const req of [S, "short", H.toUpperCase(), undefined]) assert.equal((await call("PUT", "/v2/requests", { req }, owner.token)).status, 400);
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, owner.token)).status, 200);
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, other.token)).status, 409);  // first accept wins
+  assert.equal(store.invites.size, 2);  // the 409 left no invite behind; the shared one is still open
+  assert.deepEqual([...store.requests.keys()], [H]);
+  // someone who only saw the link (H) or guesses a secret gets nothing
+  assert.equal((await poll(call, "ffffffffffffffffffffffffffffffff")).status, 404);
+  assert.equal((await poll(call, H.slice(0, 32))).status, 404);
+  const polled = await poll(call, S);
+  assert.match(polled.body.code, /^[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+  assert.deepEqual((await poll(call, S)).body, polled.body);  // polling does not consume
+  assert.equal((await call("POST", "/v2/peek", { code: polled.body.code })).body.groupName, "Home");
+  // a new invite from the family closes the old shared one but not the request's
+  const next = (await call("POST", "/v2/invites", null, owner.token)).body.code;
+  assert.equal((await call("POST", "/v2/peek", { code: shared })).status, 404);
+  assert.equal((await call("POST", "/v2/join", { code: polled.body.code, name: "Kid" })).status, 200);
+  assert.equal((await poll(call, S)).status, 404);
+  assert.equal((await call("POST", "/v2/join", { code: next, name: "Kid2" })).status, 200);
+  assert.equal((await call("GET", "/v2/state", null, owner.token)).body.members.length, 3);
+});
+
+test("join request: the requester cancels; expired rows are missing and purged by the cron; rate limited", async () => {
+  const { call, store, env } = setup();
+  const owner = (await call("POST", "/v2/groups", { name: "Owner", groupName: "Home" })).body;
+  const S = "ffffffffffffffffffffffffffffffff", H = await sha256(S);
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, owner.token)).status, 200);
+  const code = (await poll(call, S)).body.code;
+  assert.equal((await call("POST", "/v2/requests/cancel", { secret: H })).status, 400);
+  assert.equal((await call("POST", "/v2/requests/cancel", { secret: S })).status, 200);
+  assert.equal((await poll(call, S)).status, 404);
+  assert.equal((await call("POST", "/v2/peek", { code })).status, 404);  // its invite is gone too
+  assert.equal((await call("POST", "/v2/requests/cancel", { secret: S })).status, 200);  // idempotent
+
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, owner.token)).status, 200);
+  for (const r of store.requests.values()) r.expires = Date.now() - 1;
+  assert.equal((await poll(call, S)).status, 404);
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, owner.token)).status, 200);  // an expired row no longer blocks
+  for (const r of store.requests.values()) r.expires = Date.now() - 1;
+  await scheduled({ scheduledTime: Date.now() }, env, { waitUntil() {} }, store);
+  assert.equal(store.requests.size, 0);
+
+  assert.equal((await call("PUT", "/v2/requests", { req: H }, owner.token)).status, 200);
+  env.LIMIT = { limit: async ({ key }) => ({ success: !key.startsWith("/v2/requests:") }) };
+  assert.equal((await poll(call, S)).status, 429);
+  assert.equal((await call("POST", "/v2/requests/cancel", { secret: S })).status, 429);
+  env.LIMIT = undefined;
+  // the family going away takes its requests along
+  assert.equal((await call("DELETE", "/v2/me", null, owner.token)).status, 200);
+  assert.equal((await poll(call, S)).status, 404);
+  assert.equal((await call("GET", "/r")).status, 200);
 });

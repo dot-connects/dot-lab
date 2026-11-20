@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS members (
 );
 CREATE INDEX IF NOT EXISTS members_group ON members (group_id);
 CREATE TABLE IF NOT EXISTS invites (code_hash TEXT PRIMARY KEY, group_id TEXT NOT NULL, expires INTEGER NOT NULL);
+-- join requests: req_hash = SHA-256 hex of the requester's secret (the /r link carries only this hash), code = the invite code (normalized) handed to it
+CREATE TABLE IF NOT EXISTS requests (req_hash TEXT PRIMARY KEY, group_id TEXT NOT NULL, code TEXT NOT NULL, expires INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS parks (
   group_id TEXT PRIMARY KEY,
   json TEXT NOT NULL,

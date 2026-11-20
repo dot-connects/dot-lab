@@ -65,6 +65,7 @@ import kr.dot.wherepark.data.WidgetRefresh
 import kr.dot.wherepark.family.FamilyActivity
 import kr.dot.wherepark.family.InviteActivity
 import kr.dot.wherepark.family.JoinActivity
+import kr.dot.wherepark.family.JoinRequest
 import kr.dot.wherepark.family.Push
 import kr.dot.wherepark.ui.AppActions
 import kr.dot.wherepark.ui.AppPrefs
@@ -111,6 +112,7 @@ class MainActivity : ComponentActivity() {
     private var bigText by mutableStateOf(false)
     private var joinedOnb = false
     private var joinLaunched = false
+    private var requestShown = false  // an accepted join request opens its confirm screen once per launch
     private val carStep = CarStep(newCarId())
     private var practice by mutableStateOf(Practice(false, null, null, null))
     private var draft: Pair<Nav.Edit, CarDraft>? = null
@@ -190,6 +192,11 @@ class MainActivity : ComponentActivity() {
         Thread {
             WidgetRefresh.request(app)  // re-reads the wallpaper colours (no broadcast for wallpaper changes)
             Push.start(app)
+            // a family accepted my join request while I was away: ask on the join screen (never join blindly)
+            if (!requestShown && JoinRequest.poll(app) is JoinRequest.Poll.Code) onUi {
+                requestShown = true
+                startActivity(Intent(this, JoinActivity::class.java))
+            }
             if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ }  // a merged pull also refreshes widgets
         }.start()
         publishShortcuts()
@@ -470,10 +477,11 @@ class MainActivity : ComponentActivity() {
             3 -> Step3(practice, speak = {
                 practiceRun.launch(Intent(this, ListenActivity::class.java).putExtra("from", "practice"))
             }) { go(Nav.Onb(4)) }
-            else -> Step4(invite = { startActivity(Intent(this, InviteActivity::class.java)) }, later = ::endOnboarding) {
+            else -> Step4(invite = { startActivity(Intent(this, InviteActivity::class.java)) }, later = ::endOnboarding,
+                ask = { startActivity(Intent(this, JoinActivity::class.java).putExtra(JoinActivity.ASK, true)) }, pin = {
                 pinWidget(this)
                 endOnboarding()
-            }
+            })
         }
     }
 

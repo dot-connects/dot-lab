@@ -14,20 +14,20 @@ import com.google.zxing.qrcode.QRCodeWriter
 object InviteShare {
     fun message(link: String) = "어디댔어 가족으로 초대해요. 링크를 누르면 돼요.\n$link"
 
-    fun sendIntent(link: String): Intent =
-        Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, message(link))
+    fun sendIntent(link: String, text: String = message(link)): Intent =
+        Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)
 
-    /** KakaoTalk first; no KakaoTalk (or it refuses) falls back to the chooser. */
-    fun sendKakao(ctx: Context, link: String) {
+    /** KakaoTalk first; no KakaoTalk (or it refuses) falls back to the chooser. [text] = the join request message too. */
+    fun sendKakao(ctx: Context, link: String, text: String = message(link)) {
         try {
-            ctx.startActivity(sendIntent(link).setPackage("com.kakao.talk").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            ctx.startActivity(sendIntent(link, text).setPackage("com.kakao.talk").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         } catch (_: ActivityNotFoundException) {
-            sendOther(ctx, link)
+            sendOther(ctx, link, text)
         }
     }
 
-    fun sendOther(ctx: Context, link: String) =
-        ctx.startActivity(Intent.createChooser(sendIntent(link), "초대 보내기").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+    fun sendOther(ctx: Context, link: String, text: String = message(link)) =
+        ctx.startActivity(Intent.createChooser(sendIntent(link, text), "초대 보내기").addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
 
     fun copyCode(ctx: Context, code: String) =
         ctx.getSystemService(ClipboardManager::class.java).setPrimaryClip(ClipData.newPlainText("invite", code))

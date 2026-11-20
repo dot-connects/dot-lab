@@ -125,6 +125,7 @@ object Api {
             if (!guard()) false else {
                 FamilyStore.save(ctx, j.getString("memberId"), j.getString("secret"), st.groupName, st.members)
                 FamilyStore.clearPendingGroup(ctx)
+                kr.dot.wherepark.family.JoinRequest.cancel(ctx)  // in a family now: a waiting join request is over
                 onSaved()
                 true
             }
@@ -164,6 +165,7 @@ object Api {
         val st = Wire.state(j)
         synchronized(SyncQueue) {
             FamilyStore.save(ctx, j.getString("memberId"), j.getString("secret"), st.groupName, st.members)
+            kr.dot.wherepark.family.JoinRequest.cancel(ctx)  // any successful join ends a waiting join request
             FamilyStore.setCarryOver(ctx, if (oldAlone) oldCars else emptyList())  // before the merge: carried cars keep their links
             CarStore.setLocalOnly(ctx, emptySet())  // refusals belonged to the old family; carry-over decides these cars now
             Merge.write(ctx, st)
@@ -186,6 +188,21 @@ object Api {
         return ok(authed(ctx, auth, "POST", "/v2/invites")).map { Invite(it.getString("code"), it.getLong("expiresAt"), it.getString("link")) }
             .onSuccess { Prefs.put(ctx, "wp_invite", JSONObject().put("member", member).put("code", it.code).put("expiresAt", it.expiresAt).put("link", it.link)) }
     }
+
+    /** Join request poll (POST /v2/requests/poll {secret}, no auth): the invite code once a family accepted, null while nobody has (404). */
+    fun requestCode(secret: String): Result<String?> {
+        val r = call("POST", "/v2/requests/poll", null, JSONObject().put("secret", secret))
+        return if (r.first == 404) Result.success(null) else ok(r).map { it.getString("code") }
+    }
+
+    /** Accepts a join request ([id] = the link's sha256 of the requester's secret); the server makes its invite. 409 = accepted already. */
+    fun putRequest(ctx: Context, id: String): Result<Unit> {
+        val auth = FamilyStore.auth(ctx) ?: return Result.failure(ApiException(401, "no family"))
+        return ok(authed(ctx, auth, "PUT", "/v2/requests", JSONObject().put("req", id))).map { }
+    }
+
+    /** The requester withdraws its request (row + its invite); best effort, the result is ignored by callers. */
+    fun cancelRequest(secret: String): Result<Unit> = ok(call("POST", "/v2/requests/cancel", null, JSONObject().put("secret", secret))).map { }
 
     /** true only when the server stored the token (2xx while joined); callers keep the pull fallback otherwise. */
     fun setFcmToken(ctx: Context, token: String?): Boolean {

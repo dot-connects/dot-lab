@@ -1,9 +1,10 @@
-import { cleanName, fail, json, member, newCode, newMember, normCode, notify, randomId, sha256 } from "./index.js";
+import { cleanName, fail, json, member, newCode, newMember, normCode, notify, randomId, requestInvites, sha256 } from "./index.js";
 
 const DAY = 86400_000;
 const MAX_PHOTO = 400 * 1024;
 const validCarId = id => /^c_[0-9a-f]{8}$/.test(id);
 const validParkId = id => Number.isSafeInteger(id) && id >= 0;
+const REQ_SECRET = /^[0-9a-f]{32}$/, REQ_HASH = /^[0-9a-f]{64}$/;
 
 // JSON body capped at 4 KB by actual bytes (content-length can be absent or lie).
 async function body(req) {
@@ -88,18 +89,52 @@ async function route(req, env, store, ctx) {
     if (!name) return fail(400, "name");
     if (members.length >= 8) return fail(409, "full");
     if (!await store.takeInvite(hash, now)) return fail(404, "code");
+    await store.dropRequests(code);
     const m = await newMember(store, inv.groupId, name, false);
     const all = await store.members(inv.groupId);
     ctx?.waitUntil?.(notify(env, store, inv.groupId, m.memberId, { type: "members" }));
     return json({ groupId: inv.groupId, ...m, groupName, members: all.map(x => ({ id: x.id, name: x.name, me: x.id === m.memberId, owner: x.owner, lastSeen: x.lastSeen })), cars: await store.cars(inv.groupId) });
   }
 
+  // join request poll: no auth; only the requester holds the secret S, the shared /r link carries sha256(S).
+  // The row stays until a join uses its code (a lost response must not lose the code).
+  if (req.method === "POST" && path === "/v2/requests/poll") {
+    if (await limited(env, req, "/v2/requests")) return fail(429, "slow");
+    const secret = (await body(req))?.secret;
+    if (typeof secret !== "string" || !REQ_SECRET.test(secret)) return fail(400, "req");
+    const r = await store.request(await sha256(secret), now);
+    return r ? json({ code: r.code.replace(/(.{4})(?=.)/g, "$1-") }) : fail(404, "req");
+  }
+  // the requester withdraws ([취소] / [아니요]): the request row and the invite made for it go away
+  if (req.method === "POST" && path === "/v2/requests/cancel") {
+    if (await limited(env, req, "/v2/requests")) return fail(429, "slow");
+    const secret = (await body(req))?.secret;
+    if (typeof secret !== "string" || !REQ_SECRET.test(secret)) return fail(400, "req");
+    const hash = await sha256(secret), r = await store.request(hash, now);
+    if (r) await store.dropInvite(await sha256(r.code));
+    await store.dropRequest(hash);
+    return json({ ok: true });
+  }
+
   const me = await member(req, store);
   if (!me) return fail(401, "auth");
 
+  if (req.method === "PUT" && path === "/v2/requests") {
+    // the server makes the request its own invite; the family's other open invites stay open
+    const b = await body(req), id = typeof b?.req === "string" ? b.req : "";
+    if (!REQ_HASH.test(id)) return fail(400, "req");
+    const code = normCode(newCode()), codeHash = await sha256(code);
+    await store.addInvite({ codeHash, groupId: me.groupId, expires: now + DAY });
+    if (!await store.addRequest({ reqHash: id, groupId: me.groupId, code, expires: now + DAY }, now)) {
+      await store.dropInvite(codeHash);
+      return fail(409, "taken");
+    }
+    return json({ ok: true });
+  }
+
   if (req.method === "POST" && path === "/v2/invites") {
     const code = newCode(), expiresAt = now + DAY;
-    await store.dropInvites(me.groupId);
+    await store.dropInvites(me.groupId, await requestInvites(store, me.groupId, now));
     await store.addInvite({ codeHash: await sha256(normCode(code)), groupId: me.groupId, expires: expiresAt });
     return json({ code, expiresAt, link: `${env.LINK_BASE}#${code}` });
   }

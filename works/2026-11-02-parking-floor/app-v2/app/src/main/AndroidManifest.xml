@@ -55,6 +55,17 @@
                 <data android:scheme="https" android:host="dot-lab-parking.dotconnects.workers.dev" android:path="/j" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".family.RequestActivity"
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="dot-lab-parking.dotconnects.workers.dev" android:path="/r" />
+            </intent-filter>
+        </activity>
         <activity android:name=".family.InviteActivity" android:exported="false" />
         <activity android:name=".family.FamilyActivity" android:exported="false" />
         <provider

@@ -13,6 +13,9 @@ import org.json.JSONObject
 class FakeNet : Transport {
     companion object {
         val CAR_ID = Regex("^c_[0-9a-f]{8}$")
+        val REQ_SECRET = Regex("^[0-9a-f]{32}$")
+        val REQ_HASH = Regex("^[0-9a-f]{64}$")
+        fun sha256(s: String): String = java.security.MessageDigest.getInstance("SHA-256").digest(s.toByteArray()).joinToString("") { "%02x".format(it) }
         private val CAR_ROUTE = Regex("^/v2/cars/([^/?]*)")
     }
 
@@ -26,7 +29,47 @@ class FakeNet : Transport {
         calls += "$method $path"; auths += auth
         // like the Worker: car routes match only ^c_[0-9a-f]{8}$, anything else is 404 "route"
         CAR_ROUTE.find(path)?.let { if (!CAR_ID.matches(it.groupValues[1])) return 404 to """{"error":"route"}""" }
-        return handler(method, path, auth, body?.toString(Charsets.UTF_8))
+        requestRoute(method, path, auth, body?.toString(Charsets.UTF_8))?.let { return it }
+        return handler(method, path, auth, body?.toString(Charsets.UTF_8)).also { (s, _) ->
+            // a successful join drops the requests that carried its code
+            if (method == "POST" && path == "/v2/join" && s in 200..299) {
+                val used = JSONObject(body!!.toString(Charsets.UTF_8)).optString("code")
+                requests.values.removeAll { it == used }
+            }
+        }
+    }
+
+    /** Join requests held like the Worker's requests table: sha256(secret) (the link's hash) -> code. Tests may seed it. */
+    val requests = mutableMapOf<String, String>()
+    var nextCode = "K7QM-28XP-4HDA"
+    var cancels = 0
+
+    /**
+     * Like the Worker: poll = POST /v2/requests/poll {secret ^[0-9a-f]{32}$} (else 400), looked up by sha256(secret), unknown 404;
+     * cancel = POST /v2/requests/cancel {secret} (same check, always 200); PUT /v2/requests {req: 64-hex hash} needs auth, the
+     * server makes the code ([nextCode]), a second accept 409. There is no GET-by-id route.
+     */
+    private fun requestRoute(method: String, path: String, auth: String?, body: String?): Pair<Int, String?>? {
+        if (!path.startsWith("/v2/requests")) return null
+        val j = runCatching { JSONObject(body ?: "") }.getOrNull()
+        if (method == "POST" && path == "/v2/requests/poll") {
+            val secret = j?.opt("secret") as? String
+            if (secret == null || !REQ_SECRET.matches(secret)) return 400 to """{"error":"req"}"""
+            return requests[sha256(secret)]?.let { 200 to JSONObject().put("code", it).toString() } ?: (404 to """{"error":"req"}""")
+        }
+        if (method == "POST" && path == "/v2/requests/cancel") {
+            val secret = j?.opt("secret") as? String
+            if (secret == null || !REQ_SECRET.matches(secret)) return 400 to """{"error":"req"}"""
+            requests.remove(sha256(secret)); cancels++
+            return 200 to """{"ok":true}"""
+        }
+        if (method != "PUT" || path != "/v2/requests") return (if (auth == null) 401 else 404) to """{"error":"route"}"""
+        if (auth == null) return 401 to """{"error":"auth"}"""
+        val req = j?.optString("req").orEmpty()
+        if (!REQ_HASH.matches(req)) return 400 to """{"error":"req"}"""
+        if (req in requests) return 409 to """{"error":"taken"}"""
+        requests[req] = nextCode
+        return 200 to """{"ok":true}"""
     }
 }
 

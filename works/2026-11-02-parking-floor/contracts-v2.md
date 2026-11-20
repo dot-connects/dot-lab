@@ -27,7 +27,7 @@ plan-v2.md의 모든 task가 이 이름과 형식을 쓴다. 바꾸려면 이 �
 | `POST /v2/groups` | `{name, groupName}` | `{groupId, memberId, secret, groupName, members, cars:[]}` rate limit(IP) |
 | `POST /v2/peek` | `{code}` | `{groupName, count}` 인증 없음, rate limit(`/v2/join`과 같은 키), 초대를 소모하지 않음 |
 | `POST /v2/join` | `{name, code}` | `{groupId, memberId, secret, groupName, members, cars}` + 가족에게 push `{type:"members"}` |
-| `POST /v2/invites` | — | `{code, expiresAt, link}` link = `env.LINK_BASE + "#" + code` |
+| `POST /v2/invites` | — | `{code, expiresAt, link}` link = `env.LINK_BASE + "#" + code`. 이전 초대는 닫되 **살아 있는 요청에 준 초대는 남김**(v1 `/v1/invites`도 같음) |
 | `PUT /v2/token` | `{fcmToken}` | v1 `/v1/token`과 같은 동작 |
 | `GET /v2/state` | — | `{groupName, members:[{id,name,me,owner,lastSeen}], cars:[Car], parks:{carId: Park+by/byId/mine/drivingBy}}` |
 | `PUT /v2/cars/{id}` | `{car}` | 가족당 ≤4(5번째 409 `full`), 키 = (group_id, id), push `{type:"cars"}` |
@@ -38,6 +38,9 @@ plan-v2.md의 모든 task가 이 이름과 형식을 쓴다. 바꾸려면 이 �
 | `PUT /v2/cars/{id}/photo?park={parkId}` | `image/jpeg` 바이트 ≤400 KB | parkId가 그 차 **현재** 기록이 아니면 409 `{error:"moved"}`. 맞으면 R2 `g/{group}/{car}/{parkId}.jpg`, park.photo=true, push `park` |
 | `GET /v2/cars/{id}/photo?park=` | — | jpeg 바이트 |
 | `DELETE /v2/members/{id}` | — | 대상이 **같은 가족**일 때만. 본인 / 방장 / 대상 `coalesce(last_seen, created)` < now−30일이면 누구나. 방장이 빠지면 가장 오래된 사람이 방장(v1 규칙) |
+| `PUT /v2/requests` | `{req}` | 가족에게 요청하기 수락(인증). `req` = 링크의 H = sha256(S) `^[0-9a-f]{64}$`(아니면 400 `req`). **서버가** 새 코드 C를 만들어 내 가족의 invites 행(+24h)을 넣음 — `dropInvites` 안 부름(가족의 다른 초대는 그대로). 행 = `requests(req_hash = H 그대로, group_id, code = C 정규화 12자, expires = now+24h)`. 살아 있는 행이 이미 있으면 **409** `taken`(먼저 받은 쪽이 이김, 만든 invite는 지움). `{ok:true}` |
+| `POST /v2/requests/poll` | `{secret}` | 요청한 폰만 가진 S(`^[0-9a-f]{32}$`, 아니면 400)로 조회 — 서버가 sha256(S)로 행을 찾음. 링크(H)만 본 사람은 못 가져감. id를 URL에 넣는 GET 라우트는 없음. 인증 없음, rate limit(IP, 키 `/v2/requests`). 없거나 만료 404, 있으면 `{code:"XXXX-XXXX-XXXX"}`. 조회는 지우지 않음. 그 code로 `POST /v2/join`(v1 `/v1/join`도)이 성공하면 같은 code의 행 삭제. 가족 삭제(`dropGroup`) 때도 삭제 |
+| `POST /v2/requests/cancel` | `{secret}` | 요청한 폰의 [취소]·[아니요]. S 형식 틀리면 400, rate limit은 poll과 같은 키. 그 요청 행과 그 행의 invite 삭제. 없어도 `{ok:true}`(멱등) |
 | `DELETE /v2/me` | — | 내 member 삭제(방장이면 가장 오래된 사람에게 넘김). 마지막 1명이면 그룹의 invites·cars·parks2·R2 `g/{group}/` 전부 삭제. **v1 `dropGroup`도 같은 범위로 고친다** |
 
 - park·state·undo·photo 라우트는 차가 **그 가족의 cars에 있는지** 먼저 확인, 없으면 404.
@@ -46,6 +49,8 @@ plan-v2.md의 모든 task가 이 이름과 형식을 쓴다. 바꾸려면 이 �
 - 30일 사진 삭제 = R2 lifecycle 규칙(`npx wrangler@4 r2 bucket lifecycle add dot-lab-parking-photos --expire-days 30`) + 크론 `scheduled`이 **`atMs`** 기준 30일 지난 parks2의 `photo`를 false로. `export default { fetch, scheduled }`.
 - `wrangler.toml`: `[vars] LINK_BASE = "https://dot-lab-parking.dotconnects.workers.dev/j"`, `ASSETLINKS_SHA256 = "<서명 지문>"`, `[[r2_buckets]] binding = "PHOTOS"`, `bucket_name = "dot-lab-parking-photos"`, `[triggers] crons = ["0 18 * * *"]`.
 - 같은 Worker가 서빙: `GET /j` (초대 페이지 HTML, UTF-8 `<meta charset>`: 코드 = `location.hash` 표시·[복사]·[앱으로 열기] = `intent://dot-lab-parking.dotconnects.workers.dev/j?c=<code>#Intent;scheme=https;package=kr.dot.wherepark;S.browser_fallback_url=<설치 안내 URL>;end` — 코드는 `?c=`로, JoinActivity는 `fragment` 또는 `c` 쿼리를 읽음), `GET /.well-known/assetlinks.json` (`ASSETLINKS_SHA256` 여러 개 콤마 → 배열).
+- 같은 Worker가 서빙: `GET /r` (가족 요청 페이지, 링크 `/r#<H>.<URL 인코딩 이름>`, H = sha256(S) 64 hex). 앱이 있으면 App Links가 `RequestActivity`를 먼저 엶. 없으면 "받으려면 어디댔어가 있어야 해요" + [앱으로 열기] = `intent://…/r?q=<fragment 그대로>#Intent;scheme=https;package=kr.dot.wherepark;S.browser_fallback_url=<이 페이지>;end` (Play 안내 없음).
+- 가족에게 요청하기 흐름: 새 폰이 비밀 S 32 hex(SecureRandom)를 만들어 로컬 `wp_request {secret,name,createdMs}`(24시간 지나면 버림)에만 두고 H = sha256(S)를 담은 `/r` 링크를 카톡으로 보냄 → 대기 화면에서 **10초마다**(분당 6회 < rate limit 10), 앱 시작·복귀 때 한 번 `POST /v2/requests/poll {secret:S}` → 가족이 [받기] = `PUT /v2/requests {req:H}` 하나 → 새 폰은 code를 받아도 **바로 들어가지 않음**: `POST /v2/peek` → "<가족 이름> · N명에 들어갈까요?" [들어가기] [아니요] (앱 시작 때 code가 와 있으면 JoinActivity로 이 확인 화면을 엶; 이미 가족이 있으면 기존 "지금 가족에서 나가고 들어갈까요?" 확인) → [들어가기] = 저장한 이름으로 기존 합류(§3 "합류"). [아니요]·[취소] = `POST /v2/requests/cancel`(실패 무시) + 로컬 삭제. 로컬 요청은 **모든** 성공한 합류·가족 만들기 때 지움. 400/404(코드 없음)일 때만 요청을 버리고, 429·409 full·네트워크 오류는 남겨 두고 "잠시 뒤 다시 확인할게요"/"가족이 꽉 찼어요"/"인터넷 연결을 확인해 주세요". 받는 화면: 링크 H가 내 폰의 요청이면 "내가 보낸 요청이에요…"(받기 없음), 가족이 없으면 "먼저 가족을 만들어야 받을 수 있어요" + [가족 만들기](→ 앱 홈/온보딩). 크론 `scheduled`이 만료된 requests 행을 지움(그 invite는 스스로 만료). 마이그레이션 `worker/migrations/2026-11-20-requests.sql`.
 - D1 마이그레이션 `worker/migrations/2026-11-19-v2.sql` (추가만, 되돌릴 필요 없음):
 
 ```sql

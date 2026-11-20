@@ -24,11 +24,16 @@ export class D1Store {
     const r = await this.db.prepare("SELECT group_id, expires FROM invites WHERE code_hash = ? AND expires >= ?").bind(codeHash, now).first();
     return r ? { groupId: r.group_id, expires: r.expires } : null;
   }
-  async dropInvites(groupId) { await this.db.prepare("DELETE FROM invites WHERE group_id = ?").bind(groupId).run(); }
+  /** [keep] = invite hashes that stay open (the ones handed to join requests). */
+  async dropInvites(groupId, keep = []) {
+    await this.db.prepare("DELETE FROM invites WHERE group_id = ? AND code_hash NOT IN (SELECT value FROM json_each(?))").bind(groupId, JSON.stringify(keep)).run();
+  }
+  async dropInvite(codeHash) { await this.db.prepare("DELETE FROM invites WHERE code_hash = ?").bind(codeHash).run(); }
   async makeOwner(id) { await this.db.prepare("UPDATE members SET owner = 1 WHERE id = ?").bind(id).run(); }
   async dropGroup(groupId) {
     await this.db.batch([
       this.db.prepare("DELETE FROM invites WHERE group_id = ?").bind(groupId),
+      this.db.prepare("DELETE FROM requests WHERE group_id = ?").bind(groupId),
       this.db.prepare("DELETE FROM parks WHERE group_id = ?").bind(groupId),
       this.db.prepare("DELETE FROM parks2 WHERE group_id = ?").bind(groupId),
       this.db.prepare("DELETE FROM cars WHERE group_id = ?").bind(groupId),
@@ -86,6 +91,24 @@ export class D1Store {
     const r = await this.db.prepare("DELETE FROM invites WHERE code_hash = ? RETURNING group_id, expires").bind(codeHash).first();
     return r ? { groupId: r.group_id, expires: r.expires } : null;
   }
+  /** Join requests: first accept wins; an expired row no longer blocks. false = a live row already exists. */
+  async addRequest(r, now) {
+    await this.db.prepare("DELETE FROM requests WHERE req_hash = ? AND expires < ?").bind(r.reqHash, now).run();
+    const res = await this.db.prepare("INSERT INTO requests (req_hash, group_id, code, expires) VALUES (?, ?, ?, ?) ON CONFLICT(req_hash) DO NOTHING")
+      .bind(r.reqHash, r.groupId, r.code, r.expires).run();
+    return (res.meta?.changes ?? 0) > 0;
+  }
+  async request(reqHash, now) {
+    const r = await this.db.prepare("SELECT group_id, code FROM requests WHERE req_hash = ? AND expires >= ?").bind(reqHash, now).first();
+    return r ? { groupId: r.group_id, code: r.code } : null;
+  }
+  async dropRequests(code) { await this.db.prepare("DELETE FROM requests WHERE code = ?").bind(code).run(); }
+  async dropRequest(reqHash) { await this.db.prepare("DELETE FROM requests WHERE req_hash = ?").bind(reqHash).run(); }
+  async groupRequests(groupId, now) {
+    const { results } = await this.db.prepare("SELECT code, expires FROM requests WHERE group_id = ? AND expires >= ?").bind(groupId, now).all();
+    return results.map(r => ({ code: r.code, expires: r.expires }));
+  }
+  async expireRequests(now) { await this.db.prepare("DELETE FROM requests WHERE expires < ?").bind(now).run(); }
   async park(groupId) {
     const r = await this.db.prepare("SELECT * FROM parks WHERE group_id = ?").bind(groupId).first();
     return r ? { park: JSON.parse(r.json), by: r.by_name, byId: r.by_id, updated: r.updated } : null;
@@ -105,7 +128,7 @@ const rowMember = r => ({
 });
 
 export class MemoryStore {
-  constructor() { this.groups = new Map(); this.membersById = new Map(); this.invites = new Map(); this.parks = new Map(); this.carsByGroup = new Map(); this.parks2ByGroup = new Map(); }
+  constructor() { this.groups = new Map(); this.membersById = new Map(); this.invites = new Map(); this.parks = new Map(); this.carsByGroup = new Map(); this.parks2ByGroup = new Map(); this.requests = new Map(); }
   async addGroup(g) { this.groups.set(g.id, g); }
   async group(id) { return this.groups.get(id) || null; }
   async addMember(m) { this.membersById.set(m.id, { ...m }); }
@@ -117,10 +140,12 @@ export class MemoryStore {
   async touchMember(id, now) { const m = this.membersById.get(id); if (m) m.lastSeen = now; }
   async addInvite(i) { this.invites.set(i.codeHash, i); }
   async invite(codeHash, now) { const i = this.invites.get(codeHash); return i && i.expires >= now ? i : null; }
-  async dropInvites(groupId) { for (const [k, v] of this.invites) if (v.groupId === groupId) this.invites.delete(k); }
+  async dropInvites(groupId, keep = []) { for (const [k, v] of this.invites) if (v.groupId === groupId && !keep.includes(k)) this.invites.delete(k); }
+  async dropInvite(codeHash) { this.invites.delete(codeHash); }
   async makeOwner(id) { const m = this.membersById.get(id); if (m) m.owner = true; }
   async dropGroup(groupId) {
     for (const [k, v] of this.invites) if (v.groupId === groupId) this.invites.delete(k);
+    for (const [k, v] of this.requests) if (v.groupId === groupId) this.requests.delete(k);
     this.parks.delete(groupId); this.carsByGroup.delete(groupId); this.parks2ByGroup.delete(groupId); this.groups.delete(groupId);
   }
   async cars(groupId) { return [...(this.carsByGroup.get(groupId)?.values() || [])].sort((a,b) => a.order - b.order || a.id.localeCompare(b.id)); }
@@ -159,6 +184,16 @@ export class MemoryStore {
     this.invites.delete(codeHash);
     return i;
   }
+  async addRequest(r, now) {
+    const cur = this.requests.get(r.reqHash);
+    if (cur && cur.expires >= now) return false;
+    this.requests.set(r.reqHash, { ...r }); return true;
+  }
+  async request(reqHash, now) { const r = this.requests.get(reqHash); return r && r.expires >= now ? { groupId: r.groupId, code: r.code } : null; }
+  async dropRequests(code) { for (const [k, v] of this.requests) if (v.code === code) this.requests.delete(k); }
+  async dropRequest(reqHash) { this.requests.delete(reqHash); }
+  async groupRequests(groupId, now) { return [...this.requests.values()].filter(r => r.groupId === groupId && r.expires >= now).map(r => ({ code: r.code, expires: r.expires })); }
+  async expireRequests(now) { for (const [k, v] of this.requests) if (v.expires < now) this.requests.delete(k); }
   async park(groupId) { return this.parks.get(groupId) || null; }
   async setPark(groupId, v) { this.parks.set(groupId, structuredClone(v)); }
 }

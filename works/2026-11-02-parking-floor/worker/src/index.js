@@ -5,7 +5,7 @@
 
 import { sendData } from "./fcm.js";
 import * as v2 from "./v2.js";
-import { renderJoinPage } from "./jpage.js";
+import { renderJoinPage, renderRequestPage } from "./jpage.js";
 
 const INVITE_MS = 24 * 60 * 60 * 1000;
 const MAX_MEMBERS = 8;
@@ -34,6 +34,11 @@ export const normCode = c => String(c || "").toUpperCase().replace(/[^A-Z0-9]/g,
 export async function sha256(text) {
   const d = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
   return [...new Uint8Array(d)].map(x => x.toString(16).padStart(2, "0")).join("");
+}
+
+/** Invite hashes handed to live join requests: a new invite must not close them. */
+export async function requestInvites(store, groupId, now) {
+  return Promise.all((await store.groupRequests(groupId, now)).map(r => sha256(r.code)));
 }
 
 export const cleanName = n => String(n || "").trim().slice(0, NAME_MAX);
@@ -106,6 +111,7 @@ export async function handle(req, env, store, ctx) {
 
   if (path.startsWith("/v2/")) return v2.handle(req, env, store, ctx);
   if (req.method === "GET" && path === "/j") return new Response(renderJoinPage(env), { headers: { "content-type": "text/html; charset=utf-8" } });
+  if (req.method === "GET" && path === "/r") return new Response(renderRequestPage(env), { headers: { "content-type": "text/html; charset=utf-8" } });
   if (req.method === "GET" && path === "/.well-known/assetlinks.json") {
     const fingerprints = String(env.ASSETLINKS_SHA256 || "").split(",").map(x => x.trim()).filter(Boolean);
     return json(fingerprints.map(fingerprint => ({ relation: ["delegate_permission/common.handle_all_urls"], target: { namespace: "android_app", package_name: "kr.dot.wherepark", sha256_cert_fingerprints: [fingerprint] } })));
@@ -141,6 +147,7 @@ export async function handle(req, env, store, ctx) {
     if ((await store.members(peek.groupId)).length >= MAX_MEMBERS) return fail(409, "full");
     const inv = await store.takeInvite(codeHash, now);
     if (!inv) return fail(404, "code");
+    await store.dropRequests(code);
     const m = await newMember(store, inv.groupId, name, false);
     const members = await store.members(inv.groupId);
     ctx?.waitUntil?.(notify(env, store, inv.groupId, m.memberId, { type: "members" }));
@@ -152,7 +159,7 @@ export async function handle(req, env, store, ctx) {
 
   if (req.method === "POST" && path === "/v1/invites") {
     const code = newCode();
-    await store.dropInvites(me.groupId); // only the newest invite of a family is open
+    await store.dropInvites(me.groupId, await requestInvites(store, me.groupId, now)); // only the newest invite (plus join-request ones) is open
     await store.addInvite({ codeHash: await sha256(normCode(code)), groupId: me.groupId, expires: now + INVITE_MS });
     return json({ code, expiresAt: now + INVITE_MS });
   }
@@ -207,6 +214,7 @@ export async function scheduled(event, env, ctx, store) {
   // objects first: a crash before the flag flip is retried next run (delete is idempotent)
   for (const k of await store.expiredPhotos(cutoff)) await env.PHOTOS?.delete(`g/${k.groupId}/${k.carId}/${k.parkId}.jpg`);
   await store.expirePhotos(cutoff);
+  await store.expireRequests(event.scheduledTime || Date.now());  // their invite rows expire on their own
 }
 
 export default {
