@@ -84,6 +84,7 @@ class Listener : NotificationListenerService() {
                 // after the keyguard has locked and StandBy (if it was up) has stopped; a session on screen at the
                 // moment it went off (side key, our own off) is read now, before it finishes
                 Intent.ACTION_SCREEN_OFF -> {
+                    handler.removeCallbacks(unlockPoll)
                     foldedAtOff = unfoldedNow()?.not()
                     val alive = StandbyPresence.alive || GlowPresence.covering
                     handler.postDelayed({
@@ -94,6 +95,7 @@ class Listener : NotificationListenerService() {
                 }
                 Intent.ACTION_SCREEN_ON -> {
                     ChargeStart.screenOnAt = android.os.SystemClock.elapsedRealtime()
+                    watchUnlock()
                     handler.removeCallbacks(unfoldCheck); handler.postDelayed(unfoldCheck, 700)
                 }
                 // r16b: an unlock is use. Only a phone with no lock at all (USER_PRESENT within a second of every wake)
@@ -102,11 +104,38 @@ class Listener : NotificationListenerService() {
                     val secure = getSystemService(android.app.KeyguardManager::class.java).isKeyguardSecure
                     val auto = !secure && android.os.SystemClock.elapsedRealtime() - ChargeStart.screenOnAt < 1_000L
                     Measure.log(this@Listener, "잠금 해제 · secure=${if (secure) 1 else 0}${if (auto) " · 잠금 없음이라 무시" else ""}")
-                    if (!auto) ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                    if (!auto) { handler.removeCallbacks(unlockPoll); ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT) }
                 }
                 // plan-r16 T2: a pad flaps for a moment; only an unplug that lasts counts
                 Intent.ACTION_POWER_DISCONNECTED -> { handler.removeCallbacks(unplugCheck); handler.postDelayed(unplugCheck, StartPolicy.FLAP_MS) }
             }
+        }
+    }
+
+    /** Keyguard was up when this wake began (a wake inside the lock grace period starts unlocked). */
+    private var lockedAtWake = true
+
+    /**
+     * r16c: on the operator's phone USER_PRESENT never arrived (0.6.6 log: no unlock line at all, every screen-off
+     * used=0). So use is also read directly: the keyguard seen down while the screen is on. With no lock at all the
+     * keyguard is never up, so that phone still counts nothing here (review M4: a notification wake is not use).
+     */
+    private fun watchUnlock() {
+        val km = getSystemService(KeyguardManager::class.java)
+        lockedAtWake = km.isKeyguardLocked
+        handler.removeCallbacks(unlockPoll); handler.post(unlockPoll)
+    }
+
+    private val unlockPoll = object : Runnable {
+        override fun run() {
+            val km = getSystemService(KeyguardManager::class.java)
+            if (!km.isKeyguardLocked && (lockedAtWake || km.isKeyguardSecure)) {
+                Measure.log(this@Listener, "잠금 풀림 확인 · USER_PRESENT 없이")
+                ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                return
+            }
+            // ponytail: 2 s poll while the screen is on; stops at unlock or screen-off
+            if (getSystemService(android.os.PowerManager::class.java).isInteractive) handler.postDelayed(this, 2_000)
         }
     }
 
@@ -165,6 +194,8 @@ class Listener : NotificationListenerService() {
         }, RECEIVER_NOT_EXPORTED)
         // plan-r16 T1: connecting never starts StandBy; it repairs an unplug missed while unbound
         if (ChargeStart.plugged(this) == 0) ChargeStart.onEvent(this, StartEvent.UNPLUG_CONFIRMED)
+        // an app update rebinds us mid-use: that use must count for the next screen-off
+        if (getSystemService(android.os.PowerManager::class.java).isInteractive) watchUnlock()
         val rm0 = runCatching { currentRanking }.getOrNull()
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()
