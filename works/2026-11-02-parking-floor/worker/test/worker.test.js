@@ -132,6 +132,12 @@ test("only the owner removes others; anyone can leave", async () => {
   assert.equal((await call("GET", "/v1/park", null, dad.token)).status, 401);
 });
 
+test("an owner cannot remove a member of another family", async () => {
+  const a = await family(), b = await family();
+  assert.equal((await call("DELETE", `/v1/members/${b.dad.memberId}`, null, a.mom.token)).status, 404);
+  assert.ok(await store.member(b.dad.memberId));
+});
+
 test("without a service account nothing is pushed but the park is stored", async () => {
   const { mom, dad } = await family();
   delete env.FCM_SA;

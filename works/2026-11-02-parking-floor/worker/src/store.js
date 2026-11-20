@@ -110,8 +110,8 @@ export class D1Store {
   }
   async expireRequests(now) { await this.db.prepare("DELETE FROM requests WHERE expires < ?").bind(now).run(); }
   /** Requests this member accepted (any expiry): removed with the member. */
-  async memberRequests(memberId) {
-    const { results } = await this.db.prepare("SELECT req_hash, code FROM requests WHERE by_id = ?").bind(memberId).all();
+  async memberRequests(groupId, memberId) {
+    const { results } = await this.db.prepare("SELECT req_hash, code FROM requests WHERE group_id = ? AND by_id = ?").bind(groupId, memberId).all();
     return results.map(r => ({ reqHash: r.req_hash, code: r.code }));
   }
   async park(groupId) {
@@ -195,7 +195,7 @@ export class MemoryStore {
     this.requests.set(r.reqHash, { ...r }); return true;
   }
   async request(reqHash, now) { const r = this.requests.get(reqHash); return r && r.expires >= now ? { groupId: r.groupId, code: r.code, byName: r.byName } : null; }
-  async memberRequests(memberId) { return [...this.requests.values()].filter(r => r.byId === memberId).map(r => ({ reqHash: r.reqHash, code: r.code })); }
+  async memberRequests(groupId, memberId) { return [...this.requests.values()].filter(r => r.groupId === groupId && r.byId === memberId).map(r => ({ reqHash: r.reqHash, code: r.code })); }
   async dropRequests(code) { for (const [k, v] of this.requests) if (v.code === code) this.requests.delete(k); }
   async dropRequest(reqHash) { this.requests.delete(reqHash); }
   async groupRequests(groupId, now) { return [...this.requests.values()].filter(r => r.groupId === groupId && r.expires >= now).map(r => ({ code: r.code, expires: r.expires })); }

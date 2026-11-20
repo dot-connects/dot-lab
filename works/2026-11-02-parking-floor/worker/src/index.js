@@ -42,8 +42,8 @@ export async function requestInvites(store, groupId, now) {
 }
 
 /** A removed member's accepted join requests and the invites made for them go with the member. */
-export async function dropMemberRequests(store, memberId) {
-  for (const r of await store.memberRequests(memberId)) { await store.dropInvite(await sha256(r.code)); await store.dropRequest(r.reqHash); }
+export async function dropMemberRequests(store, groupId, memberId) {
+  for (const r of await store.memberRequests(groupId, memberId)) { await store.dropInvite(await sha256(r.code)); await store.dropRequest(r.reqHash); }
 }
 
 export const cleanName = n => String(n || "").trim().slice(0, NAME_MAX);
@@ -202,8 +202,10 @@ export async function handle(req, env, store, ctx) {
   const del = path.match(/^\/v1\/members\/([0-9a-f]{16})$/);
   if (req.method === "DELETE" && del) {
     if (del[1] !== me.id && !me.owner) return fail(403, "owner");
+    const victim = await store.member(del[1]);
+    if (!victim || victim.groupId !== me.groupId) return fail(404, "member");
     const rest = (await store.members(me.groupId)).filter(m => m.id !== del[1]);
-    await dropMemberRequests(store, del[1]);
+    await dropMemberRequests(store, me.groupId, del[1]);
     await store.removeMember(me.groupId, del[1]);
     // an owner leaving hands the family to the oldest member; the last one out clears the family
     if (rest.length === 0) { await v2.deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }

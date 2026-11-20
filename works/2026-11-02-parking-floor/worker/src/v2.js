@@ -250,7 +250,7 @@ async function route(req, env, store, ctx) {
     if (!victim || victim.groupId !== me.groupId) return fail(404, "member");
     if (id !== me.id && !me.owner && (victim.owner || now - (victim.lastSeen ?? victim.created) <= 30 * DAY)) return fail(403, "owner");
     const rest = (await store.members(me.groupId)).filter(x => x.id !== id);
-    await dropMemberRequests(store, id);
+    await dropMemberRequests(store, me.groupId, id);
     await store.removeMember(me.groupId, id);
     if (!rest.length) { await deletePhotos(env, `g/${me.groupId}/`); await store.dropGroup(me.groupId); }
     else if (!rest.some(x => x.owner)) await store.makeOwner(rest[0].id);
