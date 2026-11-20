@@ -95,6 +95,18 @@ enum class GlowSource {
     }
 }
 
+/**
+ * plan-r16 T8: how long a glow may stay at most. An alarm glow: 10 min; a pre-alarm glow: its lead time plus 10 min (the
+ * alarm may have been deleted meanwhile); the mood light (UNFOLD, TEST) has its own auto-off instead.
+ */
+object GlowCap {
+    fun minutes(source: GlowSource, minBefore: Int): Int? = when (source) {
+        GlowSource.ALARM -> 10
+        GlowSource.PRE_ALARM -> minBefore + 10
+        GlowSource.UNFOLD, GlowSource.TEST -> null
+    }
+}
+
 /** plan-r15 C6: our mood light is on top of StandBy (onStart..onStop); StandBy must not take that for the side key. */
 object GlowPresence {
     @Volatile var covering = false
@@ -264,7 +276,7 @@ class GlowActivity : ComponentActivity() {
             sm.registerListener(l, light, SensorManager.SENSOR_DELAY_FASTEST)
             handler.postDelayed({ sm.unregisterListener(l); startRamp(cfg.glowRampSec) }, 400)
         } else startRamp(cfg.glowRampSec)
-        if (ListenerBus.alarm.value != null) handler.postDelayed({ finish() }, 10 * 60_000L) // M2: until Stop/Snooze or 10 min (plain mood light: until tapped)
+        scheduleCap()
 
         var seen = false
         lifecycleScope.launch {
@@ -291,6 +303,16 @@ class GlowActivity : ComponentActivity() {
             }
             if (cfg.tentClock) tent = Tent(this).also { it.start() }
         }
+    }
+
+    private val cap = Runnable { finish() }
+
+    /** M2 / plan-r16 T8: until Stop/Snooze or the [GlowCap] limit; an alarm ringing now counts as an alarm glow. */
+    private fun scheduleCap() {
+        val source = if (ListenerBus.alarm.value != null) GlowSource.ALARM else GlowSource.of(intent)
+        val min = GlowCap.minutes(source, ConfigStore.flow(this).value.glowStartMinBefore) ?: return
+        handler.removeCallbacks(cap)
+        handler.postDelayed(cap, min * 60_000L)
     }
 
     private fun restartFx() {
@@ -336,6 +358,7 @@ class GlowActivity : ComponentActivity() {
         // the pre-alarm / alarm glow takes over an open unfold mood light: no auto-off then
         val s = GlowSource.of(intent)
         if (s == GlowSource.PRE_ALARM || s == GlowSource.ALARM) cancelMood()
+        scheduleCap()
     }
 
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
@@ -388,13 +411,12 @@ class GlowActivity : ComponentActivity() {
     }
 
     /**
-     * plan-r15 C6: the side key while the glow is on top. The glow leaves, and so does a charge-started StandBy under
-     * it, so the next wake shows the lock screen; the screen-off is counted as ours ([StandbyPresence.lastHiddenMs]).
+     * plan-r15 C6: the side key while the glow is on top. The glow leaves, and so does a StandBy session under it, so
+     * the next wake shows the lock screen.
      */
     override fun onStop() {
         if (shownLit && !isChangingConfigurations && !getSystemService(android.os.PowerManager::class.java).isInteractive) {
-            StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
-            StandbyPresence.chargeActivity?.get()?.takeIf { !it.isFinishing }?.let {
+            StandbyPresence.session?.get()?.takeIf { !it.isFinishing }?.let {
                 ChargeStart.log(this, "닫힘 · 무드등 위에서 화면 꺼짐")
                 it.finish()
             }

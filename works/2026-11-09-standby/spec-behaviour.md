@@ -14,7 +14,7 @@ on all of them. Night red = `#FC0000`. Background `#000000`.
 
 | # | Feature | iPhone | Ours (Android) | Our value | P |
 |---|---|---|---|---|---|
-| E1 | Entry | Locked + charging (MagSafe/Qi/cable) + on its side + still (no stillness/delay numbers, U2) | `DreamService` started by the system screen saver "while charging" after screen timeout (that is our stillness gate) | - | P0 |
+| E1 | Entry | Locked + charging (MagSafe/Qi/cable) + on its side + still (no stillness/delay numbers, U2) | plan-r16: `StandbyActivity` over the lock screen via a full-screen intent, on two triggers only: a genuine plug-in (once per plug session; a pad flap < 3 s is not one) and the screen going off after the phone was unlocked. A system wake (notification, lock-screen timeout) never starts it. The screen-saver dream is a black stub, not an entry | 3 s flap | P0 |
 | E2 | Angle gate | "Upright at an angle", flat = no StandBy, no degrees | Dream runs; while flat it renders the **off** state, upright again = on | flat = gravity \|z\| > 9.0 m/s² (~25°) for 1 s; upright = \|z\| < 8.0 for 1 s (U2) | P0 |
 | E4 | Orientation | Landscape only (non-Duo) | Landscape **and** portrait, all four rotations. Own rotation from accelerometer (dreams cannot request orientation) | 600 ms debounce, 30° hysteresis (ours) | P0 |
 | E5 | Exit: unplug | Ends | AOSP ends dream when power is removed | - | P0 |
@@ -22,11 +22,11 @@ on all of them. Night red = `#FC0000`. Background `#000000`.
 | E7 | Exit: pick up | Ends (implicit) | `finish()` when linear accel > 2.5 m/s² for 300 ms, or flat-to-hand rotation | ours | P0 |
 | E8 | Exit: swipe | - | Swipe up from bottom 48 dp edge > 30% height → `finish()` → lock screen | ours | P0 |
 | E9 | First entry | Welcome splash once | Splash card once (copy §4) | ours text | P1 |
-| E10 | Display 자동 | Off "when not in use and the room is dark"; ~10-20 s reported | Off state after 20 s with lux ≤ 3 and no touch/motion | 20 s, 3 lux (U16) | P0 |
-| E11 | Display 20초 후 | Off after 20 s | Off state 20 s after entry / last wake, any light | 20 s | P0 |
-| E12 | Display 안 함 | Stays on until unplugged; hides Night Mode + Motion to Wake (reported). 17.0's Always On toggle became these 3 options in 17.1 | Never off; hide 야간 모드 and 움직임으로 깨우기 rows (copied as reported) | - | P0 |
-| E13 | Motion to Wake | Movement at night wakes; only under 자동 (reported) | Accelerometer delta wakes from off state | > 0.25 m/s² over low-passed gravity (U15) | P0 |
-| E14 | Wake by tap / table nudge | Tap, light knock, Siri | Tap anywhere (first tap only wakes, not delivered); knock = E13 | - | P0 |
+| E10 | Display 자동 | Off "when not in use and the room is dark"; ~10-20 s reported | Off after 20 s without a touch with lux ≤ 3, or no light reading (no sensor); in a bright room after 10 min without a touch (operator 2026-11-20). Off = black frame + `FLAG_KEEP_SCREEN_ON` cleared, so the phone's own screen timeout turns the panel off for real | 20 s, 3 lux (U16), 10 min | P0 |
+| E11 | Display 20초 후 | Off after 20 s | Off 20 s after entry / last touch, any light; panel off as E10 | 20 s | P0 |
+| E12 | Display 안 함 | Stays on until unplugged; hides Night Mode + Motion to Wake (reported). 17.0's Always On toggle became these 3 options in 17.1 | Never off (the user's choice); hides 야간 모드 | - | P0 |
+| E13 | Motion to Wake | Movement at night wakes; only under 자동 (reported) | **Removed (plan-r16):** a 0.3 m/s² sensor offset kept the screen on all night. `motionToWake` stays in the config codec, unused | - | - |
+| E14 | Wake | Tap, light knock, Siri | While black (panel still lit): a tap wakes. Once the panel is off a tap cannot reach us; the phone's double tap / side key wakes the phone, and any screen-off has ended the session, so that wake shows the phone's lock screen | - | P0 |
 | E16 | Siri on/off | Voice turns StandBy on/off | App shortcut "스탠바이 켜기/끄기" (toggles setting); Assistant/Bixby via shortcut only | ours | P1 |
 | E17 | Per-charger memory | Remembers clock/photos/widgets per MagSafe charger; other chargers = last view | Key = plug type (`EXTRA_PLUGGED` AC/USB/WIRELESS/DOCK) + screen (cover/inner/bar); remembers last board. Key shown in settings | ours (U3) | P1 |
 | E18 | Low Power / Sleep Focus / Bedtime | AOD off in LPM, Sleep Focus (U4) | Power saving on → force off state; DND/Bedtime mode → off state unless woken | ours (U4) | P1 |
@@ -133,29 +133,33 @@ viewed board (per E17 key when P1 lands).
 
 ## 2. State machine
 
+plan-r16 (operator decisions 2026-11-20): one host, `StandbyActivity`; any screen-off ends the session.
+
 ```
-            charger in + screen timeout (system)
- [LOCKED/AWAKE] ───────────────────────────────► [DREAM_START] ─ 스탠바이 off ─► finish()
-        ▲                                             │
-        │ unplug / unlock / pick-up (E7) /            ▼
-        │ swipe-up (E8) / call or Samsung     ┌──► [ON] ◄───────── wake: tap, motion (E13, 자동 only),
-        │ alarm activity on top                │     │  ▲             interrupt, lux ≥ 8 (자동),
-        └──────────────────────────────────────┘     │  │             stood upright
-                                                     │  └── 20 s timer (E10/E11) / flat (E2) ──► [OFF]
-                                           night? ───┤                                (black, dream alive,
-                                    lux≤3 5s ▼  ▲ lux≥8 1.5s                           touch still delivered)
-                                          [ON+NIGHT]
+            plug-in (once per plug session)          unlock → screen off (while plugged)
+                        └───────────────┬────────────────────┘
+                                        ▼ charger rule + posture gate
+                                  [ON]  FLAG_KEEP_SCREEN_ON ◄── tap, interrupt, lux ≥ 8 (dark off only)
+                                        │ idle 20 s / dark / flat / 10 min bright (자동)
+                                        ▼
+                                  [OFF] black, flag cleared ── phone's screen timeout ──► panel off
+                                                                                           │ session ends
+                                                                                           ▼
+                                                                    next wake = phone lock screen (no StandBy)
+ side key while ON → session ends (lock screen next)     unlock / unplug (3 s) / exit swipe / pick-up → finish
  Inner screen turns on (Fold, D12 펼쳤을 때 checked) ─► [MOOD]  (fold again → back to cover board)
 ```
 
 - **ON** draws the current board; minute tick only (second hand / Float roll are the only animations).
-- **OFF** = all-black frame, window brightness minimum, pixel shift paused. Not `finish()`: finishing hands over to
-  Samsung AOD and nothing would wake us on motion.
+- **OFF** = all-black frame, window brightness minimum, pixel shift paused, `FLAG_KEEP_SCREEN_ON` cleared: the phone's
+  own screen timeout then turns the panel off (an app has no API to do it sooner) and the session ends.
 - **Night** is a layer on ON, not a separate screen; OFF keeps the night flag so a wake shows red immediately.
-- **Lock state:** dream runs over the keyguard. Anything that needs auth (edit, open app, preview content) =
-  `finish()` the dream → our `StandbyActivity` (`setShowWhenLocked(true)`) → `KeyguardManager.requestDismissKeyguard`
-  → on success the action runs; the activity then shows the same board unlocked (`FLAG_KEEP_SCREEN_ON` while plugged)
-  until the next screen timeout restarts the dream.
+- **Lock state:** `StandbyActivity` (`setShowWhenLocked(true)`) runs over the keyguard. Anything that needs auth (edit,
+  open app, preview content) = `KeyguardManager.requestDismissKeyguard` → on success the action runs and the unlock
+  ends the session.
+- **Screen saver:** the dream is a black stub (never bright, never `finish()`: a self-finish from the lock screen woke
+  the phone every ~5 s all night). Settings warn while the system screen saver is set to ours, since then a timeout
+  starts the stub instead of turning the panel off.
 - **Fold:** display 0 swaps panels. In the dream, a configuration change to smallestWidth ≥ 600 dp = inner screen.
   If the dream survives the unfold → switch to MOOD in place. If it ends → the launcher-side `MoodActivity` is opened
   by a full-screen-intent notification posted from the dream's `onDetachedFromWindow` when the last config was inner
@@ -235,7 +239,7 @@ Apple Korean (verbatim from Apple Support, [07]) is marked **A**; everything els
 | Mood light | 무드등, 밝기, 따뜻한 주황, 호박, 빨강, 민트, 흰색, 끄기 타이머, 알람 전에 미리 밝히기, 끔, 5분, 10분, 15분, 30분, 60분 |
 | Page switch | 페이스 전환: 바로 넘기기 / 탭한 뒤 넘기기 |
 | Splash | "스탠바이" / "충전 중에 세워 두면 시계, 사진, 위젯이 크게 보입니다." / 계속 |
-| Setup rows | 화면 보호기로 선택, 알림 접근 허용, 정확한 알람 허용, 전체 화면 알림 허용, 사진 접근 허용, 캘린더 접근 허용, 위치 허용 (날씨), 미리보기 |
+| Setup rows | 화면 보호기 끄기 (plan-r16: warning while it is set to ours, "끄러 가기"), 알림 접근 허용, 정확한 알람 허용, 전체 화면 알림 허용, 사진 접근 허용, 캘린더 접근 허용, 위치 허용 (날씨), 미리보기 |
 | Arrow badge a11y | "앱에서 열기" |
 
 ## 5. Feasibility and risks

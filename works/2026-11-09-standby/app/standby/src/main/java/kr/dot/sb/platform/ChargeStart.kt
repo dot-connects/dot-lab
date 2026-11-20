@@ -24,19 +24,19 @@ import android.os.PowerManager
 import android.os.SystemClock
 import kr.dot.sb.R
 import kr.dot.sb.data.ChargeGate
+import kr.dot.sb.data.StartEvent
+import kr.dot.sb.data.StartPolicy
+import kr.dot.sb.data.StartState
 import kr.dot.sb.model.AppConfig
 import kr.dot.sb.settings.ConfigStore
 
-/** Which StandBy host is on screen right now (same process as the job, so a plain flag is enough). */
+/** Whether StandBy is on screen right now (same process as the job, so a plain flag is enough). */
 object StandbyPresence {
-    @Volatile var dream = false
     @Volatile var activity = false
-    /** A StandbyActivity exists (maybe stopped behind the lock screen); it comes back by itself on the next wake. */
+    /** A StandbyActivity session exists (maybe stopped under our mood light). */
     @Volatile var alive = false
-    /** When a StandBy surface last hid with the screen off (elapsed ms); that screen-off was StandBy's own. */
-    @Volatile var lastHiddenMs = 0L
-    /** plan-r15 C6: the charge-started StandbyActivity, so the mood light over it can end it on the side key. */
-    @Volatile var chargeActivity: java.lang.ref.WeakReference<android.app.Activity>? = null
+    /** plan-r16 T4: the StandbyActivity session (any start mode), so the mood light over it can end it on the side key. */
+    @Volatile var session: java.lang.ref.WeakReference<android.app.Activity>? = null
 }
 
 /** Why plugging in did or did not bring StandBy up; the order of the checks is the order of the `when`. */
@@ -48,7 +48,7 @@ enum class ChargeVerdict(val ko: String) {
 
 object ChargeRules {
     /**
-     * The one charger rule for every way StandBy starts (plug-in, screen off/on, the system screen saver): a charger is
+     * The one charger rule for every way StandBy starts (plug-in, screen off after use): a charger is
      * there ([plugged] = EXTRA_PLUGGED, 0 = none) and, with 무선 충전일 때만, it is a wireless pad.
      */
     fun chargerOk(plugged: Int, wirelessOnly: Boolean): Boolean =
@@ -64,13 +64,13 @@ object ChargeRules {
 
     fun decide(
         optionOn: Boolean, charging: Boolean, interactive: Boolean, locked: Boolean,
-        dreamRunning: Boolean, activityFront: Boolean, notificationsOk: Boolean, fullScreenOk: Boolean,
+        sessionAlive: Boolean, notificationsOk: Boolean, fullScreenOk: Boolean,
         pluggedOk: Boolean = true,
     ): ChargeVerdict = when {
         !optionOn -> ChargeVerdict.OPTION_OFF
         !charging -> ChargeVerdict.NOT_CHARGING
         !pluggedOk -> ChargeVerdict.NOT_WIRELESS
-        dreamRunning || activityFront -> ChargeVerdict.ALREADY_SHOWING
+        sessionAlive -> ChargeVerdict.ALREADY_SHOWING
         interactive && !locked -> ChargeVerdict.USING_PHONE // unlocked with the screen on: someone is using the phone
         !notificationsOk -> ChargeVerdict.NO_NOTIFICATIONS
         !fullScreenOk -> ChargeVerdict.NO_FULL_SCREEN
@@ -84,18 +84,16 @@ object ChargeRules {
  * woken by the system when power arrives (that ends Doze); it posts the same full-screen-intent notification the
  * mood light uses, which is the only way to put an activity over the lock screen from the background.
  *
- * JobScheduler has no "not charging" constraint, so a job re-armed while still plugged in would run again at once.
- * After each run the next job therefore waits [REARM_MS]; an unplug (dream/holder, [rearmNow]) re-arms it without
- * the wait, so the usual plug-in, unplug, plug-in cycle is never delayed.
- * ponytail: unplug while nothing of ours is alive, then plug in again within [REARM_MS] of the last run = up to
- * [REARM_MS] late. The upgrade is a dynamic power receiver inside the (already bound) notification listener.
+ * plan-r16 T1: [StartPolicy] decides whether an event may start StandBy at all (plug-in once per plug session, screen
+ * off after use). The job is armed only by [sync] and a confirmed unplug, so it never runs again while still plugged.
  */
 object ChargeStart {
     const val EXTRA = "kr.dot.sb.CHARGE_START"
-    @Volatile private var lastLaunchMs = 0L
     private const val JOB_ID = 4101
     private const val NOTIF_ID = 8
-    private const val REARM_MS = 20 * 60_000L
+    private const val HANDLED_KEY = "plugHandled"
+    /** Unlocked since the last screen-off; memory only (process death = no start, the safe side). */
+    @Volatile private var used = false
 
     private fun on(ctx: Context) = ConfigStore.flow(ctx).value.startOnCharge
 
@@ -112,10 +110,26 @@ object ChargeStart {
         if (on(ctx)) arm(ctx, 0, replace = false) else ctx.getSystemService(JobScheduler::class.java).cancel(JOB_ID)
     }
 
-    /** The charger came out: the next plug-in must not wait for the rearm delay. */
-    fun rearmNow(ctx: Context) {
-        lastLaunchMs = 0L // an unplug ends the one-minute double-fire guard, so a quick re-plug starts again
-        if (on(ctx)) arm(ctx, 0, replace = true)
+    /**
+     * One start event through [StartPolicy]. [sessionAlive] for SCREEN_OFF is what the listener saw when the screen
+     * went off (a session finishing on that screen-off still counts). Main thread.
+     */
+    fun onEvent(ctx: Context, e: StartEvent, sessionAlive: Boolean = StandbyPresence.alive, jobDone: (() -> Unit)? = null): Boolean {
+        val p = prefs(ctx)
+        val s = StartState(used, p.getBoolean(HANDLED_KEY, false))
+        val (n, launch) = StartPolicy.next(s, e, sessionAlive)
+        used = n.used
+        if (n.plugHandled != s.plugHandled) p.edit().putBoolean(HANDLED_KEY, n.plugHandled).apply()
+        if (e == StartEvent.UNPLUG_CONFIRMED && on(ctx)) arm(ctx, 0, replace = true)
+        // plan-r15 C7: a screen-off with no charger has nothing to start (no log line)
+        if (e == StartEvent.SCREEN_OFF && plugged(ctx) == 0) return false
+        fun b(v: Boolean) = if (v) 1 else 0
+        val source = "start 판단 · $e · used=${b(s.used)} handled=${b(s.plugHandled)}"
+        if (!launch) {
+            if (e != StartEvent.USER_PRESENT) Measure.log(ctx, "$source → 안 띄움${if (sessionAlive) " · 세션 있음" else ""}")
+            return false
+        }
+        return fire(ctx, source, jobDone)
     }
 
     fun cancelNotification(ctx: Context) = ctx.getSystemService(NotificationManager::class.java).cancel(NOTIF_ID)
@@ -127,9 +141,6 @@ object ChargeStart {
     internal fun plugged(ctx: Context): Int =
         ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
 
-    /** ms since the last launch notification, for the trail ("–" when none in this process). */
-    internal fun sinceLaunch(): String = lastLaunchMs.takeIf { it > 0 }?.let { "${System.currentTimeMillis() - it}ms" } ?: "–"
-
     // ---- on-device trail: the last few attempts, shown in settings (the operator has no adb) ----
     private const val LOG_KEY = "trail"
     private fun prefs(ctx: Context) = ctx.getSharedPreferences("charge_start", Context.MODE_PRIVATE)
@@ -140,99 +151,19 @@ object ChargeStart {
     }
     fun trail(ctx: Context): List<String> = prefs(ctx).getString(LOG_KEY, "").orEmpty().lines().filter { it.isNotBlank() }
 
-    /** The notification listener (always bound) heard the charger go in: start now, no job delay. */
-    fun onPowerConnected(ctx: Context) { manualOff = false; fire(ctx, "충전기 연결") }
-
-    /**
-     * While charging, StandBy comes back right after the phone's screen goes off from normal use (timeout, double tap
-     * or side key: Android does not say which, operator 2026-11-13: all three start StandBy).
-     * StandBy keeps the screen on, so a screen-off while StandBy is showing is the side key: the next wake shows the
-     * phone's own lock screen (operator 2026-11-13, replaces r9's "StandBy again on the next wake"). StandBy returns at
-     * the next screen-off from normal use or the next plug-in.
-     */
-    /**
-     * Called the moment the screen goes off (not after the settle delay), while StandBy still counts as showing: a
-     * side-key press on StandBy sets [manualOff] before any wake can be seen. Returns whether the screen-off was ours.
-     */
-    fun screenOffNow(): Boolean {
-        val own = StandbyPresence.activity || StandbyPresence.dream || GlowPresence.covering ||
-            android.os.SystemClock.elapsedRealtime() - StandbyPresence.lastHiddenMs < 4_000L
-        if (own) manualOff = true
-        return own
-    }
-
-    /** The settled screen-off ([own] = [screenOffNow] at the moment it went off). */
-    fun onScreenOff(ctx: Context, own: Boolean) {
-        if (plugged(ctx) == 0) return // plan-r15 C7: no charger, nothing to start (no re-arm, no log line)
-        if (own || screenOffNow()) { log(ctx, "화면 꺼짐 · StandBy에서 끔 → 다음 화면 꺼짐까지 폰 화면"); return }
-        manualOff = false
-        fire(ctx, "화면 꺼짐", force = true)
-    }
-
-    /**
-     * operator 2026-11-19: after the side key on StandBy, nothing brings StandBy back while the screen stays on (the
-     * charging job, a re-arm, the wake itself); only the next screen-off from normal use or a new plug-in decides again.
-     * ponytail: process memory only; if the process dies in between, the next wake may show StandBy as before
-     */
-    @Volatile private var manualOff = false
-
-    /** The screen woke on the lock screen while charging and no StandBy is waiting behind it. */
-    fun onScreenOn(ctx: Context) {
-        if (plugged(ctx) == 0) return // plan-r15 C7
-        if (StandbyPresence.alive || StandbyPresence.dream) return
-        if (manualOff) { log(ctx, "화면 켜짐 · 직접 껐음 → 폰 화면"); return }
-        fire(ctx, "화면 켜짐", force = true)
-    }
-
     private fun verdict(ctx: Context, plugged: Int, cfg: AppConfig = ConfigStore.flow(ctx).value): ChargeVerdict = ChargeRules.decide(
         optionOn = cfg.startOnCharge,
         charging = plugged != 0,
         interactive = ctx.getSystemService(PowerManager::class.java).isInteractive,
         locked = ctx.getSystemService(KeyguardManager::class.java).isKeyguardLocked,
-        dreamRunning = StandbyPresence.dream,
-        activityFront = StandbyPresence.activity,
+        sessionAlive = StandbyPresence.alive,
         notificationsOk = ctx.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED,
         fullScreenOk = ctx.getSystemService(NotificationManager::class.java).canUseFullScreenIntent(),
         pluggedOk = ChargeRules.allowed(cfg.startOnCharge, plugged, cfg.chargeWirelessOnly) == null,
     )
 
-    /**
-     * The system screen saver starts on any charger after a screen timeout, so it obeys the same rule as the plug-in
-     * start: wrong charger = [onWrong] now; 가로로 놓였을 때만 켜기 and the phone not in landscape = [onWrong] after about
-     * a second of accelerometer samples. Main thread.
-     */
-    fun checkDream(ctx: Context, onWrong: (String) -> Unit, onOk: () -> Unit) {
-        val cfg = ConfigStore.flow(ctx).value
-        ChargeRules.allowed(cfg.startOnCharge, plugged(ctx), cfg.chargeWirelessOnly)?.let { onWrong(it); return }
-        if (!(cfg.chargeWirelessOnly && cfg.startLandscapeOnly)) { onOk(); return }
-        val sm = ctx.getSystemService(SensorManager::class.java)
-        val acc = sm?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-        if (sm == null || acc == null) { onWrong("가로 확인 불가 · 센서 없음"); return }
-        val window = ArrayList<FloatArray>()
-        val handler = Handler(Looper.getMainLooper())
-        val l = object : SensorEventListener {
-            override fun onSensorChanged(e: SensorEvent) { window.add(e.values.copyOf(3)) }
-            override fun onAccuracyChanged(s: Sensor?, a: Int) {}
-        }
-        if (!sm.registerListener(l, acc, SensorManager.SENSOR_DELAY_GAME, handler)) {
-            sm.unregisterListener(l)
-            onWrong("가로 확인 불가 · 센서 등록 실패"); return
-        }
-        handler.postDelayed({
-            sm.unregisterListener(l)
-            val current = ConfigStore.flow(ctx).value
-            val reason = ChargeRules.allowed(current.startOnCharge, plugged(ctx), current.chargeWirelessOnly)
-            if (reason != null) onWrong(reason)
-            else if (current.chargeWirelessOnly && current.startLandscapeOnly && !ChargeGate.landscape(window)) {
-                onWrong(if (window.isEmpty()) "가로 확인 불가 · 샘플 없음" else "가로 아님이라 닫음")
-            } else onOk()
-        }, 1_200L)
-    }
-
     /** plan-r15 C2: one posture window at a time (the listener and the job both see one plug-in). Main thread only. */
     private var sampling = false
-    /** The job's window is running: nothing may re-arm (replace) its JOB_ID until the job itself re-arms at the end. */
-    private var jobWindow = false
     private var cancelJobWindow: (() -> Unit)? = null
 
     internal fun stopJob() { cancelJobWindow?.invoke() }
@@ -240,20 +171,14 @@ object ChargeStart {
     private const val STEP_MS = 2_000L
 
     /**
-     * A trigger (plug-in, screen off/on, the charging job). [jobDone] = the job path: true = a posture window runs
-     * and re-arms + finishes the job at its end (onStartJob returns this); false = already re-armed, job over.
+     * A start [StartPolicy] allowed. [jobDone] = the job path: true = a posture window runs and finishes the job at its
+     * end (onStartJob returns this); false = job over.
      */
-    internal fun fire(ctx: Context, source: String = "충전 작업", force: Boolean = false, jobDone: (() -> Unit)? = null): Boolean {
+    private fun fire(ctx: Context, source: String, jobDone: (() -> Unit)? = null): Boolean {
         val path = if (jobDone != null) "job" else "listener"
         fun record(line: String) { Measure.log(ctx, "$source · $path · $line · ${Measure.charge(ctx)}") }
         if (!on(ctx)) { record(ChargeVerdict.OPTION_OFF.ko); return false }
-        // first, so a failure below cannot leave us unarmed; never while the job's own window runs (C2)
-        if (jobDone == null && !jobWindow) arm(ctx, REARM_MS, replace = true)
-        fun skip(): Boolean { if (jobDone != null) arm(ctx, REARM_MS, replace = true); return false }
-        if (manualOff) { record("직접 껐음 → 다음 화면 꺼짐까지 안 띄움"); return skip() } // Measure only: the 8-line trail would fill with job ticks
-        // the listener and the job both see one plug-in; the second one within a minute does nothing
-        if (!force && System.currentTimeMillis() - lastLaunchMs < 60_000L) { record("이미 띄움"); return skip() }
-        if (sampling) { record("자세 확인 중이라 건너뜀"); return skip() }
+        if (sampling) { record("자세 확인 중이라 건너뜀"); return false }
         val battery = ctx.registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
         val plugged = battery?.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) ?: 0
         // heat protection starts at 42 °C: the log shows how warm a charge start really is
@@ -261,17 +186,17 @@ object ChargeStart {
         val v = verdict(ctx, plugged)
         log(ctx, "$source · ${v.ko}$temp")
         if (Measure.on) record("${v.ko} · plugged=$plugged · ${Measure.grants(ctx)}")
-        if (v != ChargeVerdict.LAUNCH) return skip()
-        return gate(ctx, source, force, jobDone)
+        if (v != ChargeVerdict.LAUNCH) return false
+        return gate(ctx, source, jobDone)
     }
 
     /**
      * plan-r15 C2: start only once the phone lies still and not face down (+ landscape with 가로로 놓였을 때만 켜기):
-     * the last second of accelerometer samples, checked every [STEP_MS] for up to [WINDOW_MS]. The decision and the
-     * double-fire guard are taken again at the still sample (someone may have unlocked meanwhile). No sample at all
+     * the last second of accelerometer samples, checked every [STEP_MS] for up to [WINDOW_MS]. The decision is taken
+     * again at the still sample (someone may have unlocked meanwhile). No sample at all
      * in the window (sensor asleep) = start only when landscape confirmation is not required.
      */
-    private fun gate(ctx: Context, source: String, force: Boolean, jobDone: (() -> Unit)?): Boolean {
+    private fun gate(ctx: Context, source: String, jobDone: (() -> Unit)?): Boolean {
         val app = ctx.applicationContext
         val sm = app.getSystemService(SensorManager::class.java)
         val acc = sm?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
@@ -282,15 +207,13 @@ object ChargeStart {
         fun withoutSamples(reason: String) {
             val cfg = ConfigStore.flow(app).value
             val v = verdict(app, plugged(app), cfg)
-            val again = !force && System.currentTimeMillis() - lastLaunchMs < 60_000L
             when {
                 v != ChargeVerdict.LAUNCH -> record("$reason · ${v.ko}")
-                again -> record("$reason · 이미 띄움")
                 cfg.chargeWirelessOnly && cfg.startLandscapeOnly -> record("가로 확인 불가 · $reason → 건너뜀")
                 else -> { record("$reason → 띄움"); launch(app) }
             }
         }
-        if (sm == null || acc == null) { withoutSamples("센서 없음"); return skip(app, jobDone) }
+        if (sm == null || acc == null) { withoutSamples("센서 없음"); return false }
         val samples = ArrayDeque<Pair<Long, FloatArray>>()
         var any = false
         val handler = Handler(Looper.getMainLooper())
@@ -309,17 +232,16 @@ object ChargeStart {
         }
         val t0 = SystemClock.elapsedRealtime()
         sampling = true
-        if (jobDone != null) jobWindow = true
         fun cleanUp() {
             sm.unregisterListener(l)
             handler.removeCallbacksAndMessages(null)
             sampling = false
             runCatching { if (wl?.isHeld == true) wl.release() }
-            if (jobDone != null) { jobWindow = false; cancelJobWindow = null }
+            if (jobDone != null) cancelJobWindow = null
         }
         fun end() {
             cleanUp()
-            if (jobDone != null) { arm(app, REARM_MS, replace = true); jobDone() }
+            jobDone?.invoke()
         }
         val step = object : Runnable {
             override fun run() {
@@ -335,11 +257,10 @@ object ChargeStart {
                 if (p == ChargeGate.Posture.STILL || (noSamples && !opts.landscapeOnly)) {
                     // re-check at the still sample: unlocked, unplugged or already up since the trigger = nothing
                     val v = verdict(app, plugged(app), cfg)
-                    val again = !force && System.currentTimeMillis() - lastLaunchMs < 60_000L
-                    if (v == ChargeVerdict.LAUNCH && !again) {
+                    if (v == ChargeVerdict.LAUNCH) {
                         record("자세 ${if (noSamples) "샘플 없음" else p.ko} → 띄움")
                         launch(app)
-                    } else record("자세 확인 뒤 ${if (again) "이미 띄움" else v.ko}")
+                    } else record("자세 확인 뒤 ${v.ko}")
                     end()
                     return
                 }
@@ -350,19 +271,16 @@ object ChargeStart {
         if (!sm.registerListener(l, acc, SensorManager.SENSOR_DELAY_GAME, handler)) {
             cleanUp()
             withoutSamples("센서 등록 실패")
-            return skip(app, jobDone)
+            return false
         }
         if (jobDone != null) cancelJobWindow = { cleanUp() }
         handler.postDelayed(step, 1_000L)
         return jobDone != null
     }
 
-    private fun skip(ctx: Context, jobDone: (() -> Unit)?): Boolean { if (jobDone != null) arm(ctx, REARM_MS, replace = true); return false }
-
     /** Post the full-screen intent that brings StandbyActivity up over the lock screen. */
     private fun launch(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
-        lastLaunchMs = System.currentTimeMillis()
         Channels.ensure(ctx)
         val open = PendingIntent.getActivity(
             ctx, 13, Intent(ctx, StandbyActivity::class.java).putExtra(EXTRA, true).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
@@ -384,8 +302,8 @@ object ChargeStart {
 }
 
 class ChargeJobService : JobService() {
-    // plan-r15 C2: true while the posture window runs; the window re-arms and then calls jobFinished
-    override fun onStartJob(params: JobParameters): Boolean = ChargeStart.fire(this, jobDone = { jobFinished(params, false) })
+    // plan-r15 C2: true while the posture window runs; the window calls jobFinished. Never re-armed here (plan-r16 T1).
+    override fun onStartJob(params: JobParameters): Boolean = ChargeStart.onEvent(this, StartEvent.JOB, jobDone = { jobFinished(params, false) })
     override fun onStopJob(params: JobParameters): Boolean { ChargeStart.stopJob(); return false }
 }
 

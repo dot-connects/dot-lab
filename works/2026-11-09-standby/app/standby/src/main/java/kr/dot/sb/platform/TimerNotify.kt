@@ -127,7 +127,7 @@ class TimerReceiver : BroadcastReceiver() {
         val id = intent.data?.schemeSpecificPart ?: return
         val now = SystemClock.elapsedRealtime()
         if (intent.action == END) {
-            val visible = StandbyPresence.activity || StandbyPresence.dream
+            val visible = StandbyPresence.activity
             // keep the process unfrozen while the alert (~7 s for 3 rounds) plays on its thread
             if (Timers.onAlarm(context, id, now, visible)) goAsync().let { p -> Handler(Looper.getMainLooper()).postDelayed({ p.finish() }, 8_000) }
             return

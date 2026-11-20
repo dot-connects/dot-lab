@@ -31,7 +31,7 @@ import kr.dot.sb.ui.theme.switchFromPanel
 import kr.dot.sb.ui.screens.StandbyRoot
 import kr.dot.sb.ui.state.StandbyActions
 
-/** A DreamService is not a LifecycleOwner: this gives its ComposeView the three owners Compose looks for. */
+/** A LifecycleOwner for a ComposeView outside an activity: the three owners Compose looks for. */
 class ViewOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     private val registry = LifecycleRegistry(this)
     private val saved = SavedStateRegistryController.create(this)
@@ -58,12 +58,7 @@ class ViewOwner : LifecycleOwner, SavedStateRegistryOwner, ViewModelStoreOwner {
     }
 }
 
-/** Set by a dream that must hand over to [StandbyActivity] before an action that needs the unlocked phone. */
-object PendingUnlock {
-    @Volatile var block: (() -> Unit)? = null
-}
-
-/** The one [StandbyActions] implementation, used by dream and activity. */
+/** The one [StandbyActions] implementation. */
 class HostActions(
     private val ctx: Context,
     private val holder: StandbyStateHolder,

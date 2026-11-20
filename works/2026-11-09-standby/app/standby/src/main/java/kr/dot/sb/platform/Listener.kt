@@ -36,6 +36,8 @@ import kr.dot.sb.data.NotifPrivacy
 import kr.dot.sb.data.NotifRules
 import kr.dot.sb.data.Reveal
 import kr.dot.sb.data.ShadeRules
+import kr.dot.sb.data.StartEvent
+import kr.dot.sb.data.StartPolicy
 import kr.dot.sb.ui.theme.Themes
 import kr.dot.sb.settings.ConfigStore
 import kr.dot.sb.ui.state.BigNotification
@@ -77,18 +79,22 @@ class Listener : NotificationListenerService() {
                 // let the battery state settle (the plug type arrives a moment later on some chargers)
                 Intent.ACTION_POWER_CONNECTED -> {
                     MoodLatch.done = false // a new charge may light the unfold mood light again
-                    handler.postDelayed({ ChargeStart.onPowerConnected(this@Listener) }, 1500)
+                    handler.postDelayed({ ChargeStart.onEvent(this@Listener, StartEvent.POWER_CONNECTED) }, 1500)
                 }
-                // after the keyguard has locked and StandBy (if it was up) has stopped
+                // after the keyguard has locked and StandBy (if it was up) has stopped; a session on screen at the
+                // moment it went off (side key, our own off) is read now, before it finishes
                 Intent.ACTION_SCREEN_OFF -> {
-                    val own = ChargeStart.screenOffNow() // before StandBy stops, so a quick wake already sees it
-                    handler.postDelayed({ ChargeStart.onScreenOff(this@Listener, own) }, 1500)
+                    val alive = StandbyPresence.alive || GlowPresence.covering
+                    handler.postDelayed({ ChargeStart.onEvent(this@Listener, StartEvent.SCREEN_OFF, alive || StandbyPresence.alive) }, 1500)
                 }
-                Intent.ACTION_SCREEN_ON -> ChargeStart.onScreenOn(this@Listener)
-                else -> ChargeStart.rearmNow(c)
+                Intent.ACTION_USER_PRESENT -> ChargeStart.onEvent(this@Listener, StartEvent.USER_PRESENT)
+                // plan-r16 T2: a pad flaps for a moment; only an unplug that lasts counts
+                Intent.ACTION_POWER_DISCONNECTED -> { handler.removeCallbacks(unplugCheck); handler.postDelayed(unplugCheck, StartPolicy.FLAP_MS) }
             }
         }
     }
+
+    private val unplugCheck = Runnable { if (ChargeStart.plugged(this) == 0) ChargeStart.onEvent(this, StartEvent.UNPLUG_CONFIRMED) }
 
     private val nextAlarm = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) = GlowScheduler.reschedule(c)
@@ -116,11 +122,10 @@ class Listener : NotificationListenerService() {
         registerReceiver(nextAlarm, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), RECEIVER_NOT_EXPORTED)
         // this service stays bound, so it hears every plug-in at once (the charging job alone can lag by minutes)
         registerReceiver(power, IntentFilter(Intent.ACTION_POWER_CONNECTED).apply {
-            addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_SCREEN_ON)
+            addAction(Intent.ACTION_POWER_DISCONNECTED); addAction(Intent.ACTION_SCREEN_OFF); addAction(Intent.ACTION_USER_PRESENT)
         }, RECEIVER_NOT_EXPORTED)
-        if (ChargeStart.plugged(this) != 0 && !getSystemService(android.os.PowerManager::class.java).isInteractive) {
-            ChargeStart.fire(this, "알림 연결", force = true)
-        }
+        // plan-r16 T1: connecting never starts StandBy; it repairs an unplug missed while unbound
+        if (ChargeStart.plugged(this) == 0) ChargeStart.onEvent(this, StartEvent.UNPLUG_CONFIRMED)
         val rm0 = runCatching { currentRanking }.getOrNull()
         runCatching { activeNotifications }.getOrNull()?.forEach { handle(it, rm0) }
         publishShade()

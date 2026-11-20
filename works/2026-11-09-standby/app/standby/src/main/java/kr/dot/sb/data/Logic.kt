@@ -105,6 +105,37 @@ class LuxMedian {
         times[k] = nowMs; vals[k] = lux; n = k + 1
         return vals.copyOf(n).sorted()[n / 2]
     }
+
+    /**
+     * plan-r16 T6: the median of the readings at most 1 s old at [nowMs], else the newest reading. A sensor that went
+     * quiet (steady light) must not leave a middle value of an old burst in place. Null = no reading yet.
+     */
+    fun value(nowMs: Long): Float? {
+        if (n == 0) return null
+        val fresh = (0 until n).filter { nowMs - times[it] <= 1_000 }.map { vals[it] }
+        return if (fresh.isEmpty()) vals[n - 1] else fresh.sorted()[fresh.size / 2]
+    }
+}
+
+/** plan-r16 T3 (operator Q1): the window keeps the screen on only while StandBy is lit, and never for a 지금 보기 preview. */
+fun keepScreenOn(off: Boolean, showNow: Boolean): Boolean = !off && !showNow
+
+/**
+ * plan-r16 T4 (operator Q1): what a StandbyActivity does when it stops. Any screen-off ends the session (our own off
+ * and the side key alike), so the next wake is the phone's lock screen; covered by something over the lock screen
+ * (an alarm, a call, the dream stub, our mood light) keeps it; unlocked and gone (home, an app) ends it.
+ */
+enum class StopRule {
+    KEEP, FINISH;
+
+    companion object {
+        fun onStop(interactive: Boolean, keyguardLocked: Boolean, glowCovering: Boolean, changingConfig: Boolean): StopRule = when {
+            changingConfig || glowCovering -> KEEP
+            !interactive -> FINISH
+            keyguardLocked -> KEEP
+            else -> FINISH
+        }
+    }
 }
 
 /** Night look from the settings (spec E12: 안 함 = the display never changes, so no night mode at all). */
@@ -234,6 +265,8 @@ class DisplayOffMachine {
     var asleep = false
         private set
     private var last = 0L
+    /** Went off in the dark (AUTO): light coming back wakes it; the bright-room ceiling does not. */
+    private var darkOff = false
 
     fun touch(nowMs: Long) { last = nowMs; off = false; asleep = false }
 
@@ -249,17 +282,28 @@ class DisplayOffMachine {
         when (mode) {
             DisplayOff.NEVER -> off = false
             DisplayOff.AFTER_20S -> if (!off && nowMs - last >= IDLE_MS) off = true
+            // plan-r16 T6: no sensor or no reading = the 20 s rule; Q4: a bright room still goes off after BRIGHT_IDLE_MS
             DisplayOff.AUTO ->
-                if (off) { if (lux != null && lux >= exitLux) touch(nowMs) }
-                else if (nowMs - last >= IDLE_MS && lux != null && lux <= enterLux) off = true
+                if (off) { if (darkOff && lux != null && lux >= exitLux) touch(nowMs) }
+                else if (nowMs - last >= IDLE_MS && (lux == null || lux <= enterLux)) { off = true; darkOff = true }
+                else if (nowMs - last >= BRIGHT_IDLE_MS) { off = true; darkOff = false }
         }
         return off
     }
 
-    /** ms until idle time runs out while on, else null. */
-    fun idleLeftMs(nowMs: Long): Long? = if (off) null else (IDLE_MS - (nowMs - last)).coerceAtLeast(0)
+    /** ms until the next idle limit of [mode] while on, else null (AUTO past 20 s: the bright-room ceiling). */
+    fun idleLeftMs(nowMs: Long, mode: DisplayOff = DisplayOff.AFTER_20S): Long? {
+        if (off) return null
+        val idle = nowMs - last
+        val limit = if (mode == DisplayOff.AUTO && idle >= IDLE_MS) BRIGHT_IDLE_MS else IDLE_MS
+        return (limit - idle).coerceAtLeast(0)
+    }
 
-    companion object { const val IDLE_MS = 20_000L }
+    companion object {
+        const val IDLE_MS = 20_000L
+        /** plan-r16 Q4: 방이 어두우면 in a bright room goes off after 10 min without a touch. */
+        const val BRIGHT_IDLE_MS = 600_000L
+    }
 }
 
 /**
@@ -281,7 +325,7 @@ object BurnIn {
     }
 }
 
-/** Accelerometer: gravity low-pass, linear acceleration for wake (0.25) and pick-up (2.5 for 300 ms), pose (spec E2/E7/E13). */
+/** Accelerometer: gravity low-pass, linear acceleration for pick-up (2.5 for 300 ms), pose (spec E2/E7). */
 class MotionDetector {
     var gz = 0f
         private set
@@ -295,7 +339,6 @@ class MotionDetector {
 
     val isFlat get() = flat.on
     val pickedUp get() = pickup.on
-    val wakeMotion get() = linear > WAKE
 
     fun update(nowMs: Long, x: Float, y: Float, z: Float) {
         if (!init) { gx = x; gy = y; gz = z; init = true }
@@ -306,7 +349,7 @@ class MotionDetector {
         flat.update(nowMs, abs(gz) > 9.0f, abs(gz) < 8.0f)
     }
 
-    companion object { const val G = 9.81f; const val A = 0.9f; const val WAKE = 0.25f; const val PICKUP = 2.5f }
+    companion object { const val G = 9.81f; const val A = 0.9f; const val PICKUP = 2.5f }
 }
 
 /** Content rotation from gravity (dreams cannot request orientation): 600 ms debounce, 30 deg hysteresis (spec E4). */

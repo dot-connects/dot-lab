@@ -22,9 +22,12 @@ object Brightness {
         else -> applied(c.dayBrightness?.let(::clamp) ?: AUTO, c, hot)
     }
 
-    /** [v] as the window gets it: capped at [HOT_MAX] while hot and protected (system AUTO becomes an explicit value). */
+    /**
+     * [v] as the window gets it: capped at [HOT_MAX] while hot and protected. plan-r16 T7: system AUTO stays AUTO (it
+     * used to become 35 %, brighter than auto in a dark room).
+     */
     fun applied(v: Float, c: AppConfig, hot: Boolean): Float =
-        if (c.heatProtect && hot && (v == AUTO || v > HOT_MAX)) HOT_MAX else v
+        if (c.heatProtect && hot && v > HOT_MAX) HOT_MAX else v
 
     /** What the bar shows first: the stored value, or a middle value while day brightness follows auto. */
     fun shown(night: Boolean, c: AppConfig): Float = toBar(if (night) c.nightMaxBrightness else c.dayBrightness ?: AUTO)

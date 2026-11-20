@@ -441,7 +441,7 @@ data class AppConfig(
     /** Dim to 35 % while the battery is hot (r10). */
     val heatProtect: Boolean = true,
     /** Unfold mood light turns itself off after this many minutes; 0 = never. One of [MOOD_AUTO_OFF_MIN]. */
-    val moodAutoOffMin: Int = 0,
+    val moodAutoOffMin: Int = 30,
     /** plan-r15 E8: brightness, colour, effect and speed of the unfold mood light. */
     val mood: Mood = Mood(),
     /** plan-r15 E7: while the mood light is on, the outer screen shows the clock (dual-screen, where the phone allows it). */
@@ -472,7 +472,7 @@ data class AppConfig(
 const val PAGE_WIDGETS = "widgets"
 const val PAGE_PHOTOS = "photos"
 
-val MOOD_AUTO_OFF_MIN = listOf(0, 3, 10, 15)
+val MOOD_AUTO_OFF_MIN = listOf(0, 3, 10, 15, 30)
 val PHOTO_INTERVAL_SEC = listOf(10, 15, 30, 60, 300)
 
 object Presets {

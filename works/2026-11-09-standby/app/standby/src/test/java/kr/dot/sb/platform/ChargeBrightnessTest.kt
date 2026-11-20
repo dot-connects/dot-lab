@@ -9,8 +9,8 @@ import org.junit.Test
 class ChargeBrightnessTest {
     private fun decide(
         on: Boolean = true, charging: Boolean = true, interactive: Boolean = false, locked: Boolean = true,
-        dream: Boolean = false, activity: Boolean = false, notif: Boolean = true, fsi: Boolean = true,
-    ) = ChargeRules.decide(on, charging, interactive, locked, dream, activity, notif, fsi)
+        session: Boolean = false, notif: Boolean = true, fsi: Boolean = true,
+    ) = ChargeRules.decide(on, charging, interactive, locked, session, notif, fsi)
 
     // 11-18: the screen saver ignored 무선 충전일 때만 and ran all night on a cable; one rule for every start path now
     @Test fun chargerRule() {
@@ -27,18 +27,15 @@ class ChargeBrightnessTest {
     @Test fun usingTheUnlockedPhoneSkips() = assertEquals(ChargeVerdict.USING_PHONE, decide(interactive = true, locked = false))
     @Test fun optionOffSkips() = assertEquals(ChargeVerdict.OPTION_OFF, decide(on = false))
     @Test fun notChargingSkips() = assertEquals(ChargeVerdict.NOT_CHARGING, decide(charging = false))
-    @Test fun dreamOrActivityAlreadyShowingSkips() {
-        assertEquals(ChargeVerdict.ALREADY_SHOWING, decide(dream = true))
-        assertEquals(ChargeVerdict.ALREADY_SHOWING, decide(activity = true))
-    }
+    @Test fun aLiveSessionSkips() = assertEquals(ChargeVerdict.ALREADY_SHOWING, decide(session = true))
     @Test fun missingPermissionsSkip() {
         assertEquals(ChargeVerdict.NO_NOTIFICATIONS, decide(notif = false))
         assertEquals(ChargeVerdict.NO_FULL_SCREEN, decide(fsi = false))
     }
 
     @Test fun wiredSkipsOnlyWhenWirelessOnly() {
-        assertEquals(ChargeVerdict.NOT_WIRELESS, ChargeRules.decide(true, true, false, true, false, false, true, true, pluggedOk = false))
-        assertEquals(ChargeVerdict.NOT_CHARGING, ChargeRules.decide(true, false, false, true, false, false, true, true, pluggedOk = false))
+        assertEquals(ChargeVerdict.NOT_WIRELESS, ChargeRules.decide(true, true, false, true, false, true, true, pluggedOk = false))
+        assertEquals(ChargeVerdict.NOT_CHARGING, ChargeRules.decide(true, false, false, true, false, true, true, pluggedOk = false))
     }
 
     @Test fun clampKeepsTheBarOffZeroAndNaN() {
@@ -88,7 +85,8 @@ class ChargeBrightnessTest {
     @Test fun heatCapsOnlyTheAppliedWindowValue() {
         val c = AppConfig(nightMaxBrightness = 0.25f, dayBrightness = 0.7f)
         assertEquals(0.35f, Brightness.target(off = false, night = false, c = c, hot = true))
-        assertEquals(0.35f, Brightness.target(off = false, night = false, c = c.copy(dayBrightness = null), hot = true)) // AUTO
+        // plan-r16 T7: system AUTO stays AUTO (it used to be raised to 35 %)
+        assertEquals(Brightness.AUTO, Brightness.target(off = false, night = false, c = c.copy(dayBrightness = null), hot = true))
         assertEquals(0.25f, Brightness.target(off = false, night = true, c = c, hot = true)) // already lower
         assertEquals(Brightness.OFF, Brightness.target(off = true, night = false, c = c, hot = true))
         assertEquals(0.7f, Brightness.target(off = false, night = false, c = c.copy(heatProtect = false), hot = true))

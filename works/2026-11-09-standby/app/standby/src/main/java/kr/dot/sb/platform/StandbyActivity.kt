@@ -16,14 +16,19 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import kr.dot.sb.data.HostCallbacks
 import kr.dot.sb.data.StandbyStateHolder
+import kr.dot.sb.data.StopRule
 import kr.dot.sb.settings.ConfigStore
 
-/** Manual start / preview, and the unlocked hand-over target of the dream (same UI, system rotation). */
+/** The one StandBy host: charge start, manual start (tile) and the 지금 보기 preview. */
 class StandbyActivity : ComponentActivity(), HostCallbacks {
     private lateinit var holder: StandbyStateHolder
     /** Started by the plug-in notification ([ChargeStart]): it lives only as long as the charger and the lock screen. */
     private var chargeStart = false
     private var endRx: BroadcastReceiver? = null
+    private var unlockRx: BroadcastReceiver? = null
+    /** The session began with a charger in: an unplug missed while stopped ends it at the next start. */
+    private var beganPlugged = false
+    private var resumedOnce = false
     /** r14 C1: an unlock this activity asked for (open an app): the unlock close below must not race its launch. */
     private var unlocking = false
     private val tent = Tent(this)
@@ -31,7 +36,9 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         StandbyPresence.alive = true
+        StandbyPresence.session = java.lang.ref.WeakReference(this)
         clearOldWidgetHost(this)
+        beganPlugged = ChargeStart.plugged(this) != 0
         chargeStart = intent.getBooleanExtra(ChargeStart.EXTRA, false)
         if (intent.getBooleanExtra(EXTRA_TILE, false)) {
             if (lowBattery(this)) { finish(); return }
@@ -44,25 +51,22 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
             }.also { registerReceiver(it, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) }
         }
         if (chargeStart) {
-            StandbyPresence.chargeActivity = java.lang.ref.WeakReference(this)
             ChargeStart.cancelNotification(this)
-            val plugged = ChargeStart.plugged(this)
-            ChargeStart.log(this, "화면 열림 · ${ChargeStart.sinceLaunch()} · plugged=$plugged")
+            ChargeStart.log(this, "화면 열림 · plugged=${ChargeStart.plugged(this)}")
             if (!checkChargeRule()) return
-            // unlock ends it (unplug: the state holder, for every start path); the exit swipe goes through HostActions.exit()
-            endRx = object : BroadcastReceiver() {
-                override fun onReceive(c: Context, i: Intent) {
-                    if (unlocking) return
-                    ChargeStart.log(c, "닫힘 · 잠금 해제")
-                    finish()
-                }
-            }.also {
-                registerReceiver(it, IntentFilter(Intent.ACTION_USER_PRESENT), Context.RECEIVER_NOT_EXPORTED)
-            }
         }
+        // plan-r16 T4: unlock ends every session (unplug: the state holder); the exit swipe goes through HostActions.exit()
+        unlockRx = object : BroadcastReceiver() {
+            override fun onReceive(c: Context, i: Intent) {
+                if (unlocking) return
+                ChargeStart.log(c, "닫힘 · 잠금 해제")
+                finish()
+            }
+        }.also { registerReceiver(it, IntentFilter(Intent.ACTION_USER_PRESENT), Context.RECEIVER_NOT_EXPORTED) }
         setShowWhenLocked(true)
+        // plan-r16 T4: light the panel for the first show only; a later resume or finish must never turn it on
         setTurnScreenOn(true)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        // FLAG_KEEP_SCREEN_ON follows the holder (setKeepScreenOn): lit = on, black = the phone's timeout runs
         WindowCompat.setDecorFitsSystemWindows(window, false)
         WindowInsetsControllerCompat(window, window.decorView).apply {
             systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
@@ -85,6 +89,7 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
     override fun onStart() {
         super.onStart()
         if (!checkChargeRule() || !::holder.isInitialized || isFinishing) return
+        if (beganPlugged && ChargeStart.plugged(this) == 0) { ChargeStart.log(this, "닫힘 · 충전기 뽑힘"); finish(); return }
         StandbyPresence.activity = true
         holder.start()
         window.lowRefreshRate()
@@ -92,25 +97,47 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun onResume() {
         super.onResume()
-        PendingUnlock.block?.let { PendingUnlock.block = null; unlockThen(it) }
+        if (!resumedOnce) { resumedOnce = true; setTurnScreenOn(false) }
+    }
+
+    /** plan-r16 T4: a second start (another plug-in, the tile) brings this task forward; a different mode starts over. */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        fun mode(i: Intent) = listOf(ChargeStart.EXTRA, EXTRA_TILE, EXTRA_SHOW_NOW).map { i.getBooleanExtra(it, false) }
+        val differs = mode(intent) != mode(getIntent())
+        setIntent(intent)
+        if (intent.getBooleanExtra(ChargeStart.EXTRA, false)) ChargeStart.cancelNotification(this)
+        if (differs) recreate()
     }
 
     override fun onStop() {
         StandbyPresence.activity = false
-        if (!getSystemService(android.os.PowerManager::class.java).isInteractive) StandbyPresence.lastHiddenMs = android.os.SystemClock.elapsedRealtime()
+        val off = ::holder.isInitialized && holder.state.value.displayOff
         if (::holder.isInitialized) holder.stop()
         unlocking = false // a lost dismiss callback must not keep the unlock close off for good
-        // the side key turned the screen off: leave StandBy so the next wake shows the normal lock screen. Covered by our
-        // own mood light is not that (plan-r15 C6): the glow ends us itself if the side key comes while it is on top
-        if (chargeStart && !isChangingConfigurations && !isFinishing && !GlowPresence.covering) { ChargeStart.log(this, "닫힘 · 화면 꺼짐"); finish() }
+        // plan-r16 T4 (operator Q1): any screen-off ends the session, so the next wake is the phone's lock screen; our
+        // own mood light on top is not that (plan-r15 C6): the glow ends us itself if the side key comes while it is on top
+        val interactive = getSystemService(android.os.PowerManager::class.java).isInteractive
+        val rule = StopRule.onStop(
+            interactive = interactive, keyguardLocked = getSystemService(KeyguardManager::class.java).isKeyguardLocked,
+            glowCovering = GlowPresence.covering, changingConfig = isChangingConfigurations,
+        )
+        if (rule == StopRule.FINISH && !isFinishing) {
+            if (interactive) ChargeStart.log(this, "닫힘 · 다른 화면")
+            else {
+                ChargeStart.log(this, "닫힘 · 화면 꺼짐")
+                Measure.log(this, "화면 꺼짐 · 세션 종료(${if (off) "꺼짐 뒤 시간 초과" else "측면 버튼"})")
+            }
+            finish()
+        }
         super.onStop()
     }
 
     override fun onDestroy() {
         tent.stop()
-        StandbyPresence.alive = false
-        if (StandbyPresence.chargeActivity?.get() === this) StandbyPresence.chargeActivity = null
+        if (StandbyPresence.session?.get() === this) { StandbyPresence.session = null; StandbyPresence.alive = false }
         endRx?.let { unregisterReceiver(it) }
+        unlockRx?.let { unregisterReceiver(it) }
         super.onDestroy()
     }
 
@@ -132,6 +159,10 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
 
     override fun setBrightness(b: Float) {
         window.attributes = window.attributes.apply { screenBrightness = b }
+    }
+
+    override fun setKeepScreenOn(on: Boolean) {
+        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON) else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
     }
 
     override fun unlockThen(block: () -> Unit) {

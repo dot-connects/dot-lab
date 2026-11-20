@@ -38,6 +38,7 @@ import kr.dot.sb.platform.Brightness
 import kr.dot.sb.platform.ChargeStart
 import kr.dot.sb.platform.ChargeRules
 import kr.dot.sb.platform.ListenerBus
+import kr.dot.sb.platform.Measure
 import kr.dot.sb.platform.SleepService
 import kr.dot.sb.platform.DeviceTimerAlerts
 import kr.dot.sb.platform.TimerAlerts
@@ -59,13 +60,15 @@ import java.time.LocalTime
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 
-/** What the screen host (dream or activity) must do for the holder. */
+/** What the screen host (the activity) must do for the holder. */
 interface HostCallbacks {
     fun finish()
     fun finishForChargeRule(reason: String) = finish()
     /** 0..1, or -1f for "system auto". */
     fun setBrightness(b: Float)
-    /** Run [block] after the keyguard is dismissed (dream: hand over to the activity first). */
+    /** plan-r16 T3: FLAG_KEEP_SCREEN_ON; off = the phone's own screen timeout turns the panel off for real. */
+    fun setKeepScreenOn(on: Boolean) {}
+    /** Run [block] after the keyguard is dismissed. */
     fun unlockThen(block: () -> Unit)
     fun openGlow()
 }
@@ -131,14 +134,17 @@ class StandbyStateHolder(
         else { _ticks.update { it.copy(mediaPositionMs = null) }; _state.update { it.copy(media = m) } }
     }
 
-    private var lastLux: Float? = null
     private var luxOn = false
+    /** plan-r16 T6: a light event's median settles 1 s later without a new event; evaluate again then. */
+    private var luxSettleAt = 0L
+    /** What the host was last told about FLAG_KEEP_SCREEN_ON; null = not yet this start. */
+    private var keepOn: Boolean? = null
+    private var unplugJob: Job? = null
     /** What the last config needed ([Needs]); null = not checked since [start]. */
     private var memWanted: Boolean? = null
     private var photosWanted: Boolean? = null
     private var nightTarget = lastNight
     private var wasFlat = false
-    private var lastMotionTouch = 0L
     private var startedAt = 0L
     private var exited = false
     private var lastPlugged: Int? = null
@@ -166,7 +172,7 @@ class StandbyStateHolder(
     private var notifShownAt = 0L
 
     private val lightL = object : SensorEventListener {
-        override fun onSensorChanged(e: SensorEvent) { lastLux = lux.add(el(), e.values[0]); evaluate() }
+        override fun onSensorChanged(e: SensorEvent) { val now = el(); lux.add(now, e.values[0]); luxSettleAt = now + 1_000; evaluate() }
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
     private val accelL = object : SensorEventListener {
@@ -175,14 +181,22 @@ class StandbyStateHolder(
         override fun onAccuracyChanged(s: Sensor?, a: Int) {}
     }
     /**
-     * Charger out (wired or wireless): StandBy ends, however it was opened (r8: a tile or dream hand-over start stayed
-     * on after the phone left the pad). Also re-arms the "start on charge" job at once (see [ChargeStart]).
+     * Charger out (wired or wireless): StandBy ends, however it was opened (r8: a tile start stayed on after the phone
+     * left the pad). plan-r16 T2: only after [StartPolicy.FLAP_MS] with no power source, so a pad flap keeps it.
      */
     private val unplugRx = object : BroadcastReceiver() {
-        override fun onReceive(c: Context, i: Intent) {
-            ChargeStart.rearmNow(ctx)
-            if (automatic) { checkChargeRule(0); return }
-            if (!exited) { exited = true; ChargeStart.log(ctx, "닫힘 · 충전기 뽑힘"); host.finish() }
+        override fun onReceive(c: Context, i: Intent) = scheduleUnplugCheck()
+    }
+
+    private fun scheduleUnplugCheck() {
+        unplugJob?.cancel()
+        unplugJob = scope.launch {
+            delay(StartPolicy.FLAP_MS)
+            val p = ChargeStart.plugged(ctx)
+            if (p == 0) ChargeStart.onEvent(ctx, StartEvent.UNPLUG_CONFIRMED)
+            // automatic: the charger rule with the plug type of now (a wireless-only start moved to a cable ends too)
+            if (automatic) checkChargeRule(p)
+            else if (p == 0 && !exited) { exited = true; ChargeStart.log(ctx, "닫힘 · 충전기 뽑힘"); host.finish() }
         }
     }
     private val nextAlarmRx = object : BroadcastReceiver() {
@@ -193,8 +207,9 @@ class StandbyStateHolder(
         override fun onReceive(c: Context, i: Intent) {
             val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
             if (plugged != lastPlugged) {
+                // the sticky value at start was checked by start(); a later change waits out a flap (T2)
+                if (lastPlugged != null) scheduleUnplugCheck()
                 lastPlugged = plugged
-                if (!checkChargeRule(plugged)) return
             }
             val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
             val h = HeatRule.next(t, hot)
@@ -229,6 +244,7 @@ class StandbyStateHolder(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         exited = false
         lastPlugged = null
+        keepOn = null
         startedAt = el()
         machine.touch(startedAt)
         nightSw.prime(lastNight >= 0.5f) // a dream restarted in the dark starts red, not day
@@ -340,7 +356,8 @@ class StandbyStateHolder(
         val now = el()
         val c = cfg
         nightSw.enterLux = c.nightEnterLux; nightSw.exitLux = c.nightExitLux
-        lastLux?.let { nightSw.update(now, it) }
+        val lx = if (luxOn) lux.value(now) else null
+        lx?.let { nightSw.update(now, it) }
         val nightOn = manualNight ?: NightRules.on(
             c.nightMode, c.displayOff,
             scheduled = c.nightMode == NightMode.SCHEDULE && NightRamp.scheduledNight(LocalTime.now().hour, c.nightStartHour, c.nightEndHour),
@@ -350,7 +367,7 @@ class StandbyStateHolder(
         setNight(if (nightOn) 1f else 0f)
         val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
         val off = !showNow && NightRules.displayOff(
-            machine.evaluate(now, c.displayOff, lastLux, c.nightEnterLux, c.nightExitLux) || flat,
+            machine.evaluate(now, c.displayOff, lx, c.nightEnterLux, c.nightExitLux) || flat,
             _state.value.alarm != null, _state.value.notification != null, mood = mood && !machine.asleep, // sleep wins over mood
         )
         setOff(off, nightOn)
@@ -364,7 +381,8 @@ class StandbyStateHolder(
         val luxNight = c.nightMode == NightMode.AUTO || (c.nightMode == NightMode.OFF && c.baseTheme().tokens.light) // light theme: forced AUTO
         val waits = listOfNotNull(
             if (luxNight) nightSw.pendingMs(now) else null,
-            if (cfg.displayOff != DisplayOff.NEVER) machine.idleLeftMs(now)?.takeIf { it > 0 } else null,
+            if (cfg.displayOff != DisplayOff.NEVER) machine.idleLeftMs(now, cfg.displayOff)?.takeIf { it > 0 } else null,
+            (luxSettleAt - now).takeIf { luxOn && it > 0 },
         )
         val w = waits.minOrNull() ?: return
         pollJob = scope.launch { delay(w + 20); evaluate() }
@@ -449,6 +467,13 @@ class StandbyStateHolder(
             _state.update { it.copy(displayOff = off) }
             if (off) { visibleJob?.cancel(); visibleJob = null } else startVisible()
         }
+        // plan-r16 T3: off = black frame and the flag cleared, so the phone's own timeout turns the panel off for real
+        val keep = keepScreenOn(off, showNow)
+        if (keep != keepOn) {
+            keepOn = keep
+            host.setKeepScreenOn(keep)
+            Measure.log(ctx, if (keep) "켜짐 · keep=1" else "꺼짐 요청 · keep=0")
+        }
         publishCapped()
         // while a bar edit is still unsaved the config holds the old value: don't snap the screen back to it
         if (!off && pendingBrightness != null) return
@@ -483,7 +508,7 @@ class StandbyStateHolder(
         if (want == luxOn) return
         luxOn = want
         if (want) sm.getDefaultSensor(Sensor.TYPE_LIGHT)?.let { sm.registerListener(lightL, it, SensorManager.SENSOR_DELAY_NORMAL, 5_000_000) } // 5 s batching
-        else { sm.unregisterListener(lightL); lastLux = null }
+        else sm.unregisterListener(lightL)
     }
 
     /**
@@ -513,10 +538,6 @@ class StandbyStateHolder(
         if (!exited && now - startedAt > 3_000 && motion.pickedUp) { exited = true; host.finish(); return } // E7
         val flat = motion.isFlat
         if (flat != wasFlat) { wasFlat = flat; if (!flat) machine.touch(now); evaluate() }
-        // E13: motion keeps/wakes the screen, only under 자동
-        if (cfg.motionToWake && cfg.displayOff == DisplayOff.AUTO && !flat && motion.wakeMotion && now - lastMotionTouch > 1_000) {
-            lastMotionTouch = now; machine.touch(now); evaluate()
-        }
     }
 
     // ---- visible tickers (cancelled while off) -----------------------------------------------------------------
@@ -548,6 +569,8 @@ class StandbyStateHolder(
             if (calendarDay != null && calendarDay != t.toLocalDate()) scope.launch { refreshCalendar() }
             refreshStatic(force = false)
             evaluate()
+            // plan-r16 T11: does the lit panel itself read above the night threshold (candidate 13)?
+            if (nightTarget >= 0.5f && luxOn) Measure.log(ctx, "lux=${lux.value(el())} night=1")
             delay(60_000L - (t.second * 1000L + t.nano / 1_000_000))
         }
     }
