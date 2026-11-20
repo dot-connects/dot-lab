@@ -1,0 +1,17 @@
+{
+  "kind": "work",
+  "slug": "2026-11-09-standby",
+  "title": "갤럭시가 충전할 때 탁상시계가 됐어요 (5번째 그냥 시켜본 것)",
+  "link": "https://dot-connects.github.io/dot-lab/",
+  "status": "draft",
+  "caption": "5번째 그냥 시켜본 것: 스탠드 스크린\n\n갤럭시도 충전할 때 탁상시계가 되면 좋겠다 싶었어요. 아이폰엔 있는데 갤럭시엔 없거든요. 그래서 그냥 시켜 봤어요.\n\n충전기에 꽂아 두면 폰이 시계가 돼요.\n시계 모양, 색, 글씨를 마음대로 바꾸고, 날씨·일정·음악도 한 화면에 둘 수 있어요.\n어두운 방에선 눈부시지 않게 빨간 밤 화면으로 바뀌어요.\n\n지금은 테스트 중인 앱이에요.\n안드로이드면 테스터로 먼저 써 볼 수 있어요 → 프로필 링크\n같이 써 주는 분이 많으면 진짜 출시도 해 볼게요.\n\n#스탠드스크린 #갤럭시 #탁상시계 #충전 #폰꾸미기",
+  "caption_threads": "5번째 그냥 시켜본 것: 스탠드 스크린\n\n갤럭시도 충전할 때 탁상시계가 되면 좋겠다 싶었어요. 아이폰엔 있는데 갤럭시엔 없거든요. 그래서 그냥 시켜 봤어요.\n\n충전기에 꽂아 두면 폰이 시계가 돼요.\n시계 모양, 색, 글씨를 마음대로 바꾸고, 날씨·일정·음악도 한 화면에 둘 수 있어요.\n어두운 방에선 눈부시지 않게 빨간 밤 화면으로 바뀌어요.\n\n지금은 테스트 중인 앱이에요.\n안드로이드면 테스터로 먼저 써 볼 수 있어요.\n같이 써 주는 분이 많으면 진짜 출시도 해 볼게요.\nhttps://dot-connects.github.io/dot-lab/",
+  "blog_html": "<p><b>5번째 그냥 시켜본 것.</b> 갤럭시도 충전할 때 탁상시계가 되면 좋겠다 싶었어요. 아이폰엔 있는데 갤럭시엔 없거든요. 그래서 그냥 시켜 봤어요.</p>\n<p>충전기에 꽂아 두면 폰이 탁상시계가 됩니다. 시계 모양과 색, 글씨를 마음대로 바꾸고, 날씨·일정·음악 카드를 한 화면에 둘 수 있습니다. 어두운 방에서는 눈부시지 않게 빨간 밤 화면으로 바뀝니다.</p>\n<p>지금은 테스트 중인 앱입니다. 안드로이드라면 테스터로 먼저 써 볼 수 있고, 같이 써 주시는 분이 많으면 진짜 출시도 해 보겠습니다.</p>",
+  "notes": "Operator 2026-11-20: posted as work #5 with the series frame (out/framed-v1.mp4, built from out/reel.mp4). Status stays draft until the Play closed-test opt-in link and a landing page exist (link is the works list for now) and the screen-on/off fix (plan-r16-screen) ships.",
+  "shots": [],
+  "media": {
+    "reel": "out/framed-v1.mp4",
+    "cover": "out/cover.png",
+    "mixed": true
+  }
+}
