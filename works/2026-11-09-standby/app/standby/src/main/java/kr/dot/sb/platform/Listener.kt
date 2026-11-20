@@ -84,6 +84,7 @@ class Listener : NotificationListenerService() {
                 // after the keyguard has locked and StandBy (if it was up) has stopped; a session on screen at the
                 // moment it went off (side key, our own off) is read now, before it finishes
                 Intent.ACTION_SCREEN_OFF -> {
+                    foldedAtOff = unfoldedNow()?.not()
                     val alive = StandbyPresence.alive || GlowPresence.covering
                     handler.postDelayed({
                         // r16b: back on within the delay (woken again at once): this screen-off is stale, keep `used`
@@ -91,7 +92,10 @@ class Listener : NotificationListenerService() {
                         else ChargeStart.onEvent(this@Listener, StartEvent.SCREEN_OFF, alive || StandbyPresence.alive)
                     }, 1500)
                 }
-                Intent.ACTION_SCREEN_ON -> ChargeStart.screenOnAt = android.os.SystemClock.elapsedRealtime()
+                Intent.ACTION_SCREEN_ON -> {
+                    ChargeStart.screenOnAt = android.os.SystemClock.elapsedRealtime()
+                    handler.removeCallbacks(unfoldCheck); handler.postDelayed(unfoldCheck, 700)
+                }
                 // r16b: an unlock is use. Only a phone with no lock at all (USER_PRESENT within a second of every wake)
                 // is ignored, or a notification wake + timeout would loop starts (review M4)
                 Intent.ACTION_USER_PRESENT -> {
@@ -104,6 +108,29 @@ class Listener : NotificationListenerService() {
                 Intent.ACTION_POWER_DISCONNECTED -> { handler.removeCallbacks(unplugCheck); handler.postDelayed(unplugCheck, StartPolicy.FLAP_MS) }
             }
         }
+    }
+
+    /** Folded when the screen last went off (null = unknown or no hinge). */
+    private var foldedAtOff: Boolean? = null
+
+    /** Inner screen in use right now; null on a phone without a hinge sensor. */
+    private fun unfoldedNow(): Boolean? {
+        if (getSystemService(android.hardware.SensorManager::class.java)?.getDefaultSensor(android.hardware.Sensor.TYPE_HINGE_ANGLE) == null) return null
+        val d = getSystemService(android.hardware.display.DisplayManager::class.java).getDisplay(android.view.Display.DEFAULT_DISPLAY) ?: return null
+        return createDisplayContext(d).resources.configuration.smallestScreenWidthDp >= 600
+    }
+
+    /**
+     * r16b: the old screen saver lit the mood light when a charging phone was unfolded at night. With the screen saver
+     * off nothing is running then, so the wake itself is read: off folded, on unfolded = the user opened the phone.
+     * A wake that stays unfolded (notification on an open phone) is not an unfold. The glow applies the charger rule.
+     */
+    private val unfoldCheck = Runnable {
+        val opened = foldedAtOff == true && unfoldedNow() == true
+        if (opened) foldedAtOff = false
+        if (!opened || StandbyPresence.alive || ChargeStart.plugged(this) == 0 || ConfigStore.flow(this).value.onUnfold != kr.dot.sb.model.UnfoldAction.MOOD_LIGHT) return@Runnable
+        Measure.log(this, "펼침 감지 · 화면 꺼진 채 충전 중")
+        GlowReceiver.post(this, GlowSource.UNFOLD)
     }
 
     private val unplugCheck = Runnable { if (ChargeStart.plugged(this) == 0) ChargeStart.onEvent(this, StartEvent.UNPLUG_CONFIRMED) }
