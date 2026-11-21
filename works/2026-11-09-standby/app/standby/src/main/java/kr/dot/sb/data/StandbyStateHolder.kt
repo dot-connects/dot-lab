@@ -149,6 +149,8 @@ class StandbyStateHolder(
     private var startedAt = 0L
     private var exited = false
     private var lastPlugged: Int? = null
+    /** This session has had a charger ([NightRules.wantOff]); never goes back to false within the session. */
+    private var onCharger = false
     private var lastBrightness = Float.NaN
     private var page = 0
     private var started = false
@@ -211,7 +213,9 @@ class StandbyStateHolder(
                 // the sticky value at start was checked by start(); a later change waits out a flap (T2)
                 if (lastPlugged != null) scheduleUnplugCheck()
                 lastPlugged = plugged
-                evaluate() // on a charger nothing goes black by itself (NightRules.wantOff)
+                // a charger arriving later counts; leaving does not: the unplug check ends the session after FLAP_MS, and
+                // going black in that wait looked like a dead screen (operator 11-21: unplug = lock screen, phone brightness)
+                if (plugged != 0 && !onCharger) { onCharger = true; evaluate() }
             }
             val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
             val h = HeatRule.next(t, hot)
@@ -246,6 +250,7 @@ class StandbyStateHolder(
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
         exited = false
         lastPlugged = null
+        onCharger = ChargeStart.plugged(ctx) != 0
         keepOn = null
         startedAt = el()
         machine.touch(startedAt)
@@ -369,7 +374,7 @@ class StandbyStateHolder(
         setNight(if (nightOn) 1f else 0f)
         val never = c.displayOff == DisplayOff.NEVER // E12: 안 함 = never black
         val wanted = NightRules.wantOff(
-            charging = (lastPlugged ?: ChargeStart.plugged(ctx)) != 0,
+            charging = onCharger,
             idleOff = machine.evaluate(now, c.displayOff, lx, c.nightEnterLux, c.nightExitLux),
             asleep = machine.asleep, flat = motion.isFlat && !never, faceDown = motion.isFaceDown && !never,
         )

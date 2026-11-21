@@ -27,6 +27,15 @@ class R16RulesTest {
     private fun stop(interactive: Boolean, locked: Boolean, glow: Boolean = false, config: Boolean = false) =
         StopRule.onStop(interactive = interactive, keyguardLocked = locked, glowCovering = glow, changingConfig = config)
 
+    @Test fun unlockWatchFiresOnlyAfterTheLockWasSeen() {
+        val w = kr.dot.sb.data.UnlockWatch()
+        assertFalse(w.unlocked(locked = false)) // tile on an unlocked phone / lock grace: never closes
+        assertFalse(w.unlocked(locked = true))
+        assertFalse(w.unlocked(locked = true))
+        assertTrue(w.unlocked(locked = false)) // fingerprint over StandBy
+        assertFalse(w.unlocked(locked = false)) // once
+    }
+
     @Test fun stopRuleTable() {
         assertEquals(StopRule.KEEP, stop(interactive = false, locked = true, config = true))
         assertEquals(StopRule.KEEP, stop(interactive = false, locked = true, glow = true))

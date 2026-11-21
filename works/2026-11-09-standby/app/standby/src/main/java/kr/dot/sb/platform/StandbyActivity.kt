@@ -102,8 +102,29 @@ class StandbyActivity : ComponentActivity(), HostCallbacks {
         window.lowRefreshRate()
     }
 
+    private val unlockWatch = kr.dot.sb.data.UnlockWatch()
+    private val unlockHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    /** USER_PRESENT never arrives on the operator's phone: read the keyguard while shown ([kr.dot.sb.data.UnlockWatch]). */
+    private val unlockPoll = object : Runnable {
+        override fun run() {
+            val locked = getSystemService(KeyguardManager::class.java).isKeyguardLocked
+            if (unlockWatch.unlocked(locked) && !unlocking && !isFinishing) {
+                ChargeStart.log(this@StandbyActivity, "닫힘 · 잠금 해제(키가드)")
+                finish()
+                return
+            }
+            unlockHandler.postDelayed(this, 300) // ponytail: 300 ms poll only while resumed; a fingerprint feels instant
+        }
+    }
+
+    override fun onPause() {
+        unlockHandler.removeCallbacks(unlockPoll)
+        super.onPause()
+    }
+
     override fun onResume() {
         super.onResume()
+        unlockHandler.removeCallbacks(unlockPoll); unlockHandler.post(unlockPoll)
         // r16b (review): the panel wakes after resume, so the flag may only go once the screen is really on
         if (!resumedOnce && getSystemService(android.os.PowerManager::class.java).isInteractive) { resumedOnce = true; setTurnScreenOn(false) }
     }

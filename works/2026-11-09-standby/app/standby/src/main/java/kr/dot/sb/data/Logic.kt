@@ -138,6 +138,23 @@ enum class StopRule {
     }
 }
 
+/**
+ * Operator 2026-11-21: a fingerprint unlock over StandBy must end it, but this phone never sends USER_PRESENT. So the
+ * session polls the keyguard: once seen locked, seeing it unlocked = the user unlocked. A session that never saw the
+ * lock (tile on an unlocked phone, lock grace period after screen-off) is not closed by this.
+ */
+class UnlockWatch {
+    private var sawLocked = false
+
+    /** True once: the keyguard went from locked to unlocked during this session. */
+    fun unlocked(locked: Boolean): Boolean {
+        if (locked) { sawLocked = true; return false }
+        if (!sawLocked) return false
+        sawLocked = false
+        return true
+    }
+}
+
 /** Night look from the settings (spec E12: 안 함 = the display never changes, so no night mode at all). */
 object NightRules {
     /**
