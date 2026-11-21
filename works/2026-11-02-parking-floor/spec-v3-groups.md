@@ -24,6 +24,7 @@ decisions differ, the decisions win (★). Review round 1 (Codex, 13 findings) a
 | D13 | Parker not in a group I see the car through → show **"다른 그룹"** ("다른 그룹 17:15"); the API must not send that viewer the name or id | §4.1 masking |
 | D14 | Group rename by the 방장: in scope | `PUT /v3/groups/{gid}` |
 | D15 | `/v1/*` closed (410); no phone uses it | §2.4 |
+| D16 | Third park state **LEFT** ("내림, 위치 미입력", 2026-11-21): the driving phone sends it with the time when the car's Bluetooth disappears while the park is DRIVING; everyone shows "HH:MM 내림 · 위치 미입력", the driver's phone "어디 댔는지 말해 주세요" + mic; a new park replaces it. Same name masking as DRIVING; v2 responses map LEFT → DRIVING | plan W4/W5/D3/D4/U5 |
 
 Spec choices (reasons in the archive): one **device** identity + per-group **memberships** (`device.id = old
 member.id`, so installed credentials stay valid); server keeps all my cars once I have a device; a car is only in

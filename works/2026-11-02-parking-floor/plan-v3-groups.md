@@ -1,26 +1,24 @@
 # 어디댔어 v3 — 가족 → 그룹 Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development or superpowers:executing-plans. Steps use `- [ ]`.
-
 **Goal:** One-family model → devices with ≤3 groups and per-car sharing (Worker `/v3` + `/v2` compat, one-shot D1 migration, app v3), cut over in a maintenance window.
 
-**Architecture:** One store class (`D1Store`) over new tables (`devices`, `memberships`, `cars3`, `car_groups`, `parks3`, `car_map`); `src/core.js` holds the domain ops (auth, authz, park CAS, masking, leave, fan-out, state) called by `src/v3.js` and a thin `src/v2.js`. A Python tool migrates families once. The app swaps `FamilyStore` for `GroupStore`, adds `Op.Share` and `State.parkId`, and moves sharing + alarms into the car screen.
+**Architecture:** `D1Store` over the §1 tables; `src/core.js` = domain ops (auth, authz, park CAS, masking, leave, fan-out, state) under `src/v3.js` and a thin `src/v2.js`. A Python tool migrates once. App: `GroupStore`, `Op.Share`, `State.parkId`; sharing + alarms move into the car screen.
 
-**Tech Stack:** Workers, D1, R2, FCM; Node 24 `node --test` + `miniflare`; Python `sqlite3`/`unittest`; Kotlin/Compose, Robolectric, Roborazzi, WorkManager.
+**Tech Stack:** Workers/D1/R2/FCM; Node 24 + `miniflare`; Python `sqlite3`; Kotlin/Compose, Robolectric, Roborazzi.
 
 **Spec:** `spec-v3-groups.md` (§-refs point there) + `contracts-v2.md` + mockup `mockups/v4-groups/index.html`. Paths relative to `C:\DC\DD\dot-lab\works\2026-11-02-parking-floor\`; `$A` = `app-v2/app/src/main/java/kr/dot/wherepark`, `$T` = `app-v2/app/src/test/java/kr/dot/wherepark`.
 
 ## Global Constraints
 
-- **[Codex]** tasks run via `codex-run.ps1` (background Bash, no network). Codex **never** runs `wrangler`, `npm install`, deploys or anything `--remote`; it edits files and runs `npm test`, `python -m unittest`, Gradle. **[Claude]** tasks need network, wrangler, Korean UI copy or judgement. Usage may move a task; network/wrangler steps stay with Claude.
+- **[Codex]** = `codex-run.ps1` (background, no network): never `wrangler`, `npm install`, deploy or `--remote`; only edits + `npm test`, `unittest`, Gradle. **[Claude]** tasks need network, wrangler, Korean UI copy or judgement. Usage may move a task; network/wrangler steps stay with Claude.
 - Done = the task's tests **and** that side's full suite pass. Delegated work: Claude reads `git diff`, runs `git show HEAD | grep -n '??'` (mojibake), checks the diff stays inside the task's Files.
-- **Order:** Phase 1 Worker → 2 migration → 3 app data → 4 app UI → 6 smoke → 7 APK → 5 cutover (runbook written in 5, run last). Phases 1–2 may run beside phase 3 (worker/ vs app-v2/); inside a phase, sequential; never two writers on one file.
+- **Order:** Phase 1 Worker → 2 migration → 3 app data → 4 app UI → 6 smoke → 7 APK → 5 cutover (runbook written in 5, run last). Phases 1–2 may run beside 3; never two writers on one file.
 - Worker: `cd worker && npm test` (= `node --test test/`, every file). Migration: `cd worker && python -m unittest tools/test_migrate_v3.py tools/test_migrate_v2.py`.
 - **Deviation from spec §8 (same coverage):** v2/v3 tests run on `D1Store` over local Miniflare D1 (`test/harness.js`), not `MemoryStore` (§2.6 guarantees live in SQL); `MemoryStore` is deleted in W5. The "v2 log line" becomes column `devices.v2_seen` (step 8 needs 7 days of evidence; Workers logs keep 3).
-- Gradle: **one build at a time across sessions** — SendMessage `dot-dev` and `dot-dev2` "Gradle 칸 잡음 (wherepark)" before, "끝" after. No Gradle 06:00–06:40 / 23:10–23:40 KST (Git Bash `date` = KST). `export JAVA_HOME=C:/DC/tools/jdk-17`; `cd app-v2 && ./gradlew :app:testDebugUnitTest --max-workers=2 -Ptest.forks=1` (`--tests '<fqcn>'` for one class). Rules: `C:\DC\DD\docs\procedures\heavy-jobs.md`.
-- Commits: Conventional Commits, English, one "why" line; explicit paths only (`git commit --only <paths>` from `C:\DC\DD\dot-lab`), then push. Never commit `firebase.properties`, `.env`, D1 exports, smoke keys, `~/.wherepark/*`.
-- D1 exports hold personal data: scratchpad only, deleted after cutover step 8.
-- Copy verbatim from spec §5/§5.8. "차 주인" (`ownerId`) ≠ "방장" (`memberships.owner`) in code and copy.
+- Gradle: **one build at a time across sessions** — SendMessage `dot-dev` and `dot-dev2` "Gradle 칸 잡음 (wherepark)" before, "끝" after. No Gradle 06:00–06:40 / 23:10–23:40 KST (Git Bash `date` = KST). `export JAVA_HOME=C:/DC/tools/jdk-17`; `cd app-v2 && ./gradlew :app:testDebugUnitTest --max-workers=2 -Ptest.forks=1` (`--tests '<fqcn>'` for one class). See `docs/procedures/heavy-jobs.md`.
+- Commits: Conventional Commits, English, one "why" line; explicit paths only (`git commit --only <paths>` from `C:\DC\DD\dot-lab`), then push. Never commit secrets, keys or D1 exports.
+- D1 exports (personal data): scratchpad only, deleted after cutover step 8.
+- Copy verbatim from spec §5. 차 주인 (`ownerId`) ≠ 방장 (`memberships.owner`).
 - Caps: 3 groups/device, 8 devices/group, 4 cars/owner, 5 live requests/group; name ≤12, group name 1–40.
 
 ---
@@ -33,8 +31,8 @@
 
 **Produces:** `setup({ sql = ["schema.sql"] }) → { db, store, env, objects, call, reset, close }`: one `new Miniflare({ modules: true, script: "export default {}", d1Databases: ["DB"] })` per file, `db = await mf.getD1Database("DB")`, each SQL file applied statement by statement (split on `;`, comment lines dropped), `store = new D1Store(db)`, `env`/`objects`/`call` as in today's `v2.test.js` `setup()`, `reset()` deletes every row.
 
-- [ ] `npm i -D miniflare@4` (network; exact pin + lockfile). Script `"test": "node --test test/"`.
-- [ ] `harness.test.js`: `addGroup` → `group` round-trips; `npm test` green. Commit `test(wherepark-worker): miniflare D1 harness`.
+- [ ] `npm i -D miniflare@4` (exact pin + lockfile). Script `"test": "node --test test/"`.
+- [ ] `harness.test.js`: `addGroup` → `group` round-trip. Commit `test(wherepark-worker): miniflare D1 harness`.
 
 ### Task W1 [Codex]: Maintenance gate (= the maintenance build)
 
@@ -75,12 +73,13 @@
 
 **Files:** `worker/src/core.js`, `worker/src/v3.js`, `worker/src/index.js` (`scheduled` on `parks3`, both photo keys); Test `worker/test/v3.test.js`.
 
-**Contract:** §2.1 car rows, §2.2, §2.6 park CAS with recency re-judge (≤3 tries, else 409 `{error:"stale", park}`); `POST …/state {state, parkId}` with `parkId ≠ cur.park.id` → 409 `{error:"moved", park}`. New park id → `by/byId` = me, same id keeps them; DRIVING → `drivingBy/drivingById` = me. Photo key `c/<car>/<park>.jpg`, GET falls back to `g/<legacyGroup>/<legacyCarId>/<park>.jpg`, deletes remove both. Every response park goes through `present`. Pushes `park`/`cars` to `audience` (DELETE: read before).
+**Contract:** §2.1 car rows, §2.2, §2.6 park CAS with recency re-judge (≤3 tries, else 409 `{error:"stale", park}`); `POST …/state {state, parkId}` with `parkId ≠ cur.park.id` → 409 `{error:"moved", park}`. New park id → `by/byId` = me, same id keeps them; DRIVING → `drivingBy/drivingById` = me. Photo key `c/<car>/<park>.jpg`, GET falls back to `g/<legacyGroup>/<legacyCarId>/<park>.jpg`, deletes remove both. **LEFT (D16):** park `state` ∈ PARKED/DRIVING/LEFT; `POST …/state {state:"LEFT", parkId, atMs}` sets `json.leftAt = atMs` and `drivingBy/drivingById` = me (masked like DRIVING); a later park replaces it. Every response park goes through `present`. Pushes `park`/`cars` to `audience` (DELETE: read before).
 
 - [ ] Tests first (owner O in X and Y, MX in X, MY in Y only, stranger S; car in X and Y):
   - every car route × {O, MX, MY, S}: S 404 `car`; MX/MY 403 `owner` on PUT/DELETE car and include/exclude, 200 on park/state/undo/photo. 5th own car 409 `cars`; foreign id 409 `id`, no car data.
   - O excludes X → MX park 404 `car`; MX also in Y → 200.
   - **D13:** MY parks then DRIVING → MX's `/v3/state`, park/undo bodies and a 409 `stale` body: `by`, `byId`, `drivingBy` null, `byOther`/`drivingOther` true; O sees the name; after MY leaves Y, O reads `byOther` too.
+  - LEFT: stored with `leftAt`, masked like DRIVING; a new park clears it.
   - `casPark3` stubbed to lose once: older row meanwhile → incoming wins; newer → 409 `stale`. Stale `parkId` → 409 `moved`.
   - device in X and Y → one push; actor none; shared token once. Photo: legacy-only GET works; undo/replace/DELETE/cron delete both keys.
 - [ ] Commit `feat(wherepark-worker): v3 cars, parks, masking, fan-out`.
@@ -89,9 +88,9 @@
 
 **Files:** Rewrite `worker/src/v2.js` over `core.js`; `worker/src/index.js` (`/v1/*` → `410 {"error":"update"}`; delete v1 handlers, `newMember`, old `notify`); `worker/src/store.js` (delete `MemoryStore` + v2-table methods); port `worker/test/v2.test.js` and `worker/test/worker.test.js` to the harness (keep HTTP assertions, store pokes → v3 store calls, v1 tests → one 410 test).
 
-**Contract (§2.4):** `/v2/groups`, `/v2/join` make a new device (v2 response shapes, `memberId` = device id). v2 group = the device's only membership; 0 or >1 → 410 `update` on every authed v2 route. Shapes = `contracts-v2.md` §1. `/v2/state` = group's cars + all mine, parks via `present`. Invisible → 404 `car` first on every v2 car route. `PUT /v2/cars/{id}`: new → `createCar` + `include` (409 `cars` → `full`); mine → update; visible not mine → 200 `{car: <server value>}`. `DELETE`: owner → delete, else 200 `{ok:true}`. `POST …/state` without `parkId`: only if `cur.updated <= me.lastSeen` (pre-request row), else 409 `moved` + park. Authed v2 calls `touchDevice(id, now, true)`.
+**Contract (§2.4):** `/v2/groups`, `/v2/join` make a new device (v2 response shapes, `memberId` = device id). v2 group = the device's only membership; 0 or >1 → 410 `update` on every authed v2 route. Shapes = `contracts-v2.md` §1. `/v2/state` = group's cars + all mine, parks via `present`. Invisible → 404 `car` first on every v2 car route. `PUT /v2/cars/{id}`: new → `createCar` + `include` (409 `cars` → `full`); mine → update; visible not mine → 200 `{car: <server value>}`. `DELETE`: owner → delete, else 200 `{ok:true}`. `POST …/state` without `parkId`: only if `cur.updated <= me.lastSeen` (pre-request row), else 409 `moved` + park. Authed v2 calls `touchDevice(id, now, true)`. **v2 never sees LEFT:** every v2 park body (state, park/undo/state responses, 409s) maps LEFT → DRIVING, drops `leftAt`; v2 `state`/`park` input LEFT → 400.
 
-- [ ] Tests first: ported suite; another group's car id PUT/DELETE → 404, no data; non-owner edit → 200 + server value, DB unchanged; non-owner delete → 200, car kept; legacy state after a later park → 409; D13 masking on `/v2/state`; 2 memberships → 410; `/v1/park` → 410; `v2_seen` set. `grep -rn MemoryStore worker/src worker/test` empty. Commit `feat(wherepark-worker): v2 compat on v3 tables, close v1`.
+- [ ] Tests first: ported suite; another group's car id PUT/DELETE → 404, no data; non-owner edit → 200 + server value, DB unchanged; non-owner delete → 200, car kept; legacy state after a later park → 409; D13 masking on `/v2/state`; LEFT reads DRIVING on every v2 body; 2 memberships → 410; `/v1/park` → 410; `v2_seen` set. `grep -rn MemoryStore worker/src worker/test` empty. Commit `feat(wherepark-worker): v2 compat on v3 tables, close v1`.
 
 ### Task W6 [Codex]: Concurrency on real D1
 
@@ -127,7 +126,7 @@
 data class Car(val id: String, val name: String, val color: Int, val plate: String?, val order: Int,
     val ownerId: String? = null, val ownerName: String? = null, val groups: List<String> = emptyList())
 fun Car.isMine(meId: String?) = ownerId == null || ownerId == meId
-// Park += val byOther: Boolean = false, val drivingOther: Boolean = false
+// Park += byOther: Boolean = false, drivingOther: Boolean = false, leftAt: Long? = null; ParkState += LEFT
 data class Group(val id: String, val name: String, val owner: Boolean, val members: List<Member>)
 data class ApiState(val me: Member?, val groups: List<Group>, val cars: List<Car>, val parks: Map<String, Park?>)
 // Wire.state(j) parses §4.1; Wire.group/groupJson; carJson/car keep owner fields locally (server PUT body = v2 Car fields only)
@@ -142,7 +141,7 @@ Delete `pendingGroup`, `carryOver`, `groupCreateError` and their uses: `SyncEngi
 
 **Files:** Create `$T/data/FakeWorker.kt`, `$T/data/FakeWorkerTest.kt`.
 
-**Produces:** `class FakeWorker : Transport` — in-memory devices/groups/cars/links/parks with W3–W5 rules for every route the app calls: 401, §2.2 authz, 409 `groups|full|cars|id|member`, recency 409 `stale`+park, `parkId` 409 `moved`, masking, photo bytes. Helpers `device(name): Pair<String /*auth*/, String /*id*/>`, `group(auth, name): String`, `addMember(gid, auth)`, `car(auth, id)`, `share(carId, gid)`, `exclude(carId, gid)`, `parkAs(auth, park)`, `var down: Int?` (answer every call with it), `calls`. `FakeNet` stays for request routes.
+**Produces:** `class FakeWorker : Transport` — in-memory devices/groups/cars/links/parks with W3–W5 rules for every route the app calls: 401, §2.2 authz, 409 `groups|full|cars|id|member`, recency 409 `stale`+park, `parkId` 409 `moved`, masking, photo bytes. Helpers `device(name) → (auth, id)`, `group(auth, name) → gid`, `addMember`, `car`, `share`, `exclude`, `parkAs`, `var down: Int?` (status for every call), `calls`. `FakeNet` stays for request routes.
 
 - [ ] `FakeWorkerTest` = the W4 authz table as data, passing. Commit `test(wherepark): FakeWorker enforces the v3 contract`.
 
@@ -159,12 +158,12 @@ Api.putRequest(ctx, id: String, groupId: String): Result<Unit>
 Api.removeMember(ctx, groupId, id); Api.leaveGroup(ctx, groupId): Result<Boolean> /*deviceGone*/
 Api.deleteMe(ctx); Api.renameGroup(ctx, groupId, name)   // peek, requestCode, cancelRequest, setFcmToken, photo: same signatures on /v3
 Op.Share(carId: String, groupId: String, on: Boolean)     // key "share:$carId:$groupId", json t="share"
-Op.State(carId, state, parkId: Long? = null, seq)         // null = queued by v2 → exec sends ParkStore.latest id
+Op.State(carId, state, parkId: Long? = null, atMs: Long? = null, seq)  // parkId null = queued by v2 → latest id; atMs for LEFT
 ```
 - create/join without device, under `synchronized(SyncQueue)`: `GroupStore.save`, `JoinRequest.cancel`, `PutCar` + latest `PutPark` per local car, `Merge.write(state)`; with device: `Merge.write`. Then `kick`. Remove `Discarded`, join backup/restore, old-auth DELETE.
 - `SyncQueue.add`: no device → ignore; PutCar/DelCar of a non-mine car → ignore + log. Order car → share → undo → park → state → photo.
 - `exec`: `/v3/cars/{id}…`; Share → `PUT|DELETE /v3/cars/{id}/groups/{gid}`; State body `{state, parkId}`.
-- `settle` (§4.4): 403 → drop + log; 404 `car` on park/state/undo/photo of a non-mine car → drop all its ops, remove car + parks, §4.4 notice; 404 `group` on Share → drop; PutCar 409 `cars` → remove + §4.4 notice; PutCar 409 `id`/400/404/413 → localOnly + §4.4 notice; 0/5xx → retry, queue and credential kept. Korean literals: copy from the spec file, then grep the diff for `??`.
+- `settle` (§4.4): 403 → drop + log; 404 `car` on park/state/undo/photo of a non-mine car → drop all its ops, remove car + parks, §4.4 notice; 404 `group` on Share → drop; PutCar 409 `cars` → remove + §4.4 notice; PutCar 409 `id`/400/404/413 → localOnly + §4.4 notice; 0/5xx → retry, queue and credential kept. Copy Korean from the spec; grep diff for `??`.
 
 - [ ] Tests first (FakeWorker): order with Share; same-key replace; DelCar drops Share; park on a car excluded meanwhile → notice, car gone, others untouched; still visible via Y → saved; Share to a left group dropped; stale `parkId` → server park written; v2-era State sends latest id; `down = 503` run → queue + `auth()` unchanged; create without device queues PutCar+PutPark of 2 cars before any Share. Commit `feat(wherepark): v3 api, Share op, settle rules`.
 
@@ -176,6 +175,7 @@ Op.State(carId, state, parkId: Long? = null, seq)         // null = queued by v2
 - `GroupStore.toSolo(ctx)`: drop non-mine cars (+parks, unlink), strip owner fields from mine; used by `dropIfSame` (band), `leaveGroup` when gone, `deleteMe`. `CarStore.mine(ctx)` for the 4-car limit and "＋ 차 추가".
 - `Upgrade.run(ctx)` in `App.onCreate` once (`wp_schema = 3`): drop `wp_pending`, `wp_carry`, `wp_create_error`; queued PutCar ids → `wp_legacy_share`; after the first pull with exactly one group → `Share(id, it, true)` for owned ids, clear.
 - `Push.enabled` default **true** for every key; channel ids kept, names per §5.8. `Push.handle` → unique work `wp-pushpull`, KEEP, 3 s delay; `PushPullWorker`: snapshot parks + members → pull → notify per non-mine changed park (`drive:`/`park:`; today's texts, or `다른 그룹에서 {차}를 가져갔어요/댔어요` when masked) and new member (`join`, §5.8). `// ponytail: one pull's diff; a pull merged elsewhere skips its notice`.
+- LEFT (D16): `ExitNotifier.onDisappeared` with the car's latest park DRIVING by me → local `state = LEFT, leftAt = now` + `Op.State(LEFT, parkId, now)`; replaces the interim `ExitNotifier.leftAt` (delete it + prefs). No LEFT push notice.
 - `CarResolver`: name tie → my car.
 
 - [ ] Tests first: merge keeps my queued car, replaces others', removes one that left (unlinked), shows pending Share; vanished group notice; 401 → others' cars gone, mine kept, band; upgrade from v2 prefs (credential, PutCar, State without parkId) → `joined()`, ops on `/v3`, one Share per owned car after first pull; alarms default on; 3 pushes → 1 pull; `byOther` texts. Commit `feat(wherepark): v3 merge, upgrade, coalesced push pulls`.
@@ -188,23 +188,23 @@ Per task: screen + `$T/ui/AppScreensTest.kt` cases (texts per state) + `AppShots
 - **U2 차 화면 (A-2/B-4, §5.6)** `$A/ui/CarScreens.kt` `CarEditScreen(draft, car, isNew, linked, a)`: mine = edit + "알림 · 이 폰에만" (`exit:`, `park:`, `drive:`; group rows only if `car.groups` non-empty) + "이 차가 보이는 그룹" (switch per my group → `CarStore.upsert` + `Op.Share`; ≥2 on → "두 그룹 모두…"; hidden without groups) + delete ("그룹 폰에서도 사라져요" only when shared). Others' = `{owner}님 차`, read-only + owner line, BT link allowed, alarms (exit only when linked), no delete/toggles; `saveDraft` never queues PutCar for them.
 - **U3 그룹 상세 (B-1/B-6, §5.3)** `$A/family/FamilyActivity.kt` → `GroupActivity` (extra `groupId`, manifest): rename for 방장 (`Api.renameGroup`); members; my/others' car rows → car screen; invite → `InviteActivity(groupId)`; leave → B-6 lines from pure `LeaveText.of(group, cars, groups, meId): List<String>` (unit test: 4 combinations) → `Api.leaveGroup`.
 - **U4 그룹 추가 (B-2, §5.4)** new `$A/family/AddGroup.kt`: sheet (3 rows + "…지금 N개"); create = group name (+ my name only without device) + my cars **all ON** → `Api.createGroup` → Shares; join → if I own cars, same list **all off** + [완료]; `member`/`groups`/`full`/offline copy.
-- **U5 홈 (B-3, §5.5)** `$A/ui/Home.kt`: pure `HomeOrder.arrange(cars, parks, groups, meId): Pair<List<Car>, List<Pair<Car, String>>>` (mine by order; others by park `atMs` desc, parkless last; label `{owner}님 차 · {first shared group in my order}` / `… 외 N`) + unit test; 3 others then "N대 더 보기" in place; `WhoLine` → `다른 그룹` when `byOther`; 401 band copy + [그룹 추가].
+- **U5 홈 (B-3, §5.5)** `$A/ui/Home.kt`: pure `HomeOrder.arrange(cars, parks, groups, meId): Pair<List<Car>, List<Pair<Car, String>>>` (mine by order; others by park `atMs` desc, parkless last; label `{owner}님 차 · {first shared group in my order}` / `… 외 N`) + unit test; 3 others then "N대 더 보기" in place; `WhoLine` → `다른 그룹` when `byOther`; LEFT card "HH:MM 내림 · 위치 미입력", on the driver's phone "어디 댔는지 말해 주세요" + mic (D16); 401 band copy + [그룹 추가].
 - **U6 처음·초대·요청 (§5.7)** Onboarding Step4 4 buttons, nothing created; name asked on first create/join (`AppPrefs.setMyName`); `Request.kt` accept: 1 group / chooser (full greyed) / none → create; request hidden at 3 groups; JoinActivity request confirm.
 - **U7 문구 (B-7, §5.8)** `Invite.kt`, `InviteActivity`, `JoinActivity`, `ListenModel`, `Home`, `Push`, `SyncWorker`, `worker/src/jpage.js` (title/heading 가족 → 그룹) + a worker test that `/j` and `/r` contain `그룹`. Done: `grep -rn 가족 $A worker/src/jpage.js` → only `Wire.NO_GROUP_NAME` and placeholders; both suites green.
-- **U8 위젯 (§5.9)** `WidgetRenderer.mainCar(cars, mainId, meId)`: visible main → my lowest order → any; `carsFor` input = mine + main if not mine; config picker lists all visible with owner labels; `WidgetSpecsTest` cases.
+- **U8 위젯 (§5.9)** `WidgetRenderer.mainCar(cars, mainId, meId)`: visible main → my lowest order → any; `carsFor` input = mine + main if not mine; picker lists all visible with owner labels; `WidgetSpecsTest`.
 
 ## Phase 6 — Live smoke
 
 ### Task S1 [Codex writes, Claude runs]: `worker/tools/smoke_v3.py`
 
 Pattern of `smoke_v2.py`; every call sends `x-smoke` from env `WP_SMOKE_KEY`. `seed` (maintenance build, v2 routes): throwaway family + car + park → `~/.wherepark/smoke-v3-seed.json`. `check` (v3): the seed credential reads `/v2/state` and `/v3/state` with its car; devices A, B; G1 (A, B), G2 (A); A's car into G1 → B parks 200 → A excludes → B 404 `car` → B leaves G1 → B 401; `DELETE /v3/me` for A and the seed; PASS/FAIL lines, exit 1 on any FAIL. Task check: `python -m py_compile`.
-[Claude] also: `$T/data/LiveSyncTest.kt` (`-Pwp.live=true`) → v3 two-device, two-group round trip, cleanup `DELETE /v3/me`; run once after cutover stage 6.
+[Claude] also: `LiveSyncTest.kt` → v3 two-device, two-group round trip (cleanup `DELETE /v3/me`); run after stage 6.
 
 ## Phase 7 — Release
 
 ### Task R1 [Claude]: v3 APK
 
-- [ ] `versionCode = 2`, `versionName = "1.1.0"`; full unit + shot suite (Gradle slot); `./gradlew :app:assembleRelease --max-workers=2`; ≤30 MiB; `zipalign -c -P 16 -v 4`; same key (`~/.wherepark/`) so it installs over 1.0.0. `RELEASE.md`: 가족 → 그룹, note "한 비밀값이 최대 3개 그룹을 연다" (§6). Commit; the APK goes out at cutover stage 7.
+- [ ] `versionCode = 2`, `versionName = "1.1.0"`; full suite; `./gradlew :app:assembleRelease --max-workers=2`; ≤30 MiB; `zipalign -c -P 16 -v 4`; same key → installs over 1.0.0. `RELEASE.md` 가족 → 그룹 + §6 note. Commit; APK ships at stage 7.
 
 ## Phase 5 — Cutover (written now, run after S1 + R1)
 
@@ -223,5 +223,5 @@ From `C:\DC\DD\.agents\skills\wizard\template.bat`; UTF-8 no BOM, **CRLF**, in `
 | 7 | SendUserFile the R1 APK; operator installs over the old app | — |
 | R | before 6 only: `d1 time-travel restore dot-lab-parking --bookmark=<3>` → deploy MAINT_SHA → MAINTENANCE 0 | prints §9 rollback notes |
 
-- [ ] `--print` mode lists every command; compare with this table. Commit `chore(wherepark): v3 cutover wizard`.
+- [ ] `--print` lists the commands = table. Commit `chore(wherepark): v3 cutover wizard`.
 - [ ] After 7: ROADMAP note for §9 step 8 — no `devices.v2_seen` in 7 days + 30 days since stage 6 → own plan; dropping old tables needs operator confirmation.
