@@ -1,1 +1,1 @@
-{"type":"module","private":true,"scripts":{"test":"node --test test/worker.test.js"}}
+{"type":"module","private":true,"scripts":{"test":"node --test \"test/*.test.js\""},"devDependencies":{"miniflare":"4.20260730.0"},"allowScripts":{"workerd@1.20260730.1":true}}
