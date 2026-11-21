@@ -58,7 +58,7 @@ class DetailActions(
 )
 
 @Composable
-fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailActions) =
+fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailActions, leftAt: Long? = null) =
     WScreen(car.name, onBack = a.back, action = { RoundIcon("gear", "차 편집", 19.dp, a.edit) }) {
         WCard {
             if (park == null) {
@@ -69,7 +69,7 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
                 Box(Modifier.semantics(mergeDescendants = true) { role = Role.Button; contentDescription = "층과 칸 고치기" }.clickable(onClick = a.fix)) {
                     SpotLine(x, y, trailing = { EditPill("고치기", "pen", a.fix) })
                 }
-                WhoLine(park.byName.ifBlank { null }, HomeCards.whenFull(park.atMs, now) + if (park.state == ParkState.DRIVING) " · 운행 중" else " · " + HomeCards.ago(park.atMs, now))
+                WhoLine(park.byName.ifBlank { null }, HomeCards.whenFull(park.atMs, now) + if (park.state == ParkState.DRIVING) (if (leftAt != null) " · ${HomeCards.hm(leftAt)} 내림 · 어디 댔는지 말해 주세요" else " · 운행 중") else " · " + HomeCards.ago(park.atMs, now))
                 park.spot.memo?.let { MemoLine("note", it) }
                 if (photo != null) {
                     val bmp by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, photo.path, photo.lastModified()) {
@@ -89,7 +89,7 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
         Spacer(Modifier.weight(1f))
         if (park != null) {
             val driving = park.state == ParkState.DRIVING
-            Btn(if (driving) "운행 중이에요" else "가져갔어요", BtnKind.GHOST, enabled = !driving, onClick = a.took)
+            Btn(if (driving) (if (leftAt != null) "내렸어요" else "운행 중이에요") else "가져갔어요", BtnKind.GHOST, enabled = !driving, onClick = a.took)
         }
     }
 

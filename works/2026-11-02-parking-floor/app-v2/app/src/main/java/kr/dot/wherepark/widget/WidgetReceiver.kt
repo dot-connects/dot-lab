@@ -173,15 +173,16 @@ class WidgetReceiver : AppWidgetProvider() {
             val sizes = WidgetRenderer.layoutSizes(reported)
             val scale = WidgetRenderer.budget(sizes, dm.density, (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong(), reported.size)
             val pend = WidgetRenderer.pending(ctx)
+            val left = WidgetRenderer.left(ctx, cars)
             val wall = wallpaper(ctx); val mic = micReady(ctx); val now = System.currentTimeMillis()
             val main = AppPrefs.mainCar(ctx)
             val ts = textScale(ctx)
             val bitmaps = ArrayList<android.graphics.Bitmap>()
             try {
                 val views = sizes.mapIndexed { i, size ->
-                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend, main, ts)
+                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend, main, ts, left)
                     bitmaps += out.rendered.bitmap
-                    size to views(ctx, id, size, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
+                    size to views(ctx, id, size, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now, left[car.id]) }
                 }.toMap()
                 mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
             } finally {

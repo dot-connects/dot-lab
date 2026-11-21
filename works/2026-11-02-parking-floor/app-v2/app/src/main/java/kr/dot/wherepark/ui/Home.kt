@@ -50,8 +50,8 @@ import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.SyncQueue
 
-enum class CardKind { NONE, PENDING, OK, DRIVING, OLD }
-enum class CardLine { MEMO, PENDING, BT, NOMIC }
+enum class CardKind { NONE, PENDING, OK, DRIVING, LEFT, OLD }
+enum class CardLine { MEMO, PENDING, BT, NOMIC, LEFT }
 
 /** One home card's content (spec 8.3 "앱 홈 카드" column). */
 data class CardUi(val kind: CardKind, val tag: String?, val who: String?, val whenText: String?, val line: CardLine?, val lineText: String?)
@@ -75,6 +75,8 @@ object HomeCards {
         }
     }
 
+    fun hm(atMs: Long): String = Instant.ofEpochMilli(atMs).atZone(ZONE).let { "%d:%02d".format(it.hour, it.minute) }
+
     /** "2시간 4분째"; the app and detail only (widgets never show elapsed time). */
     fun ago(atMs: Long, nowMs: Long): String {
         val m = ((nowMs - atMs) / 60_000).coerceAtLeast(0)
@@ -87,10 +89,11 @@ object HomeCards {
     }
 
     /** Order: no record, driving, waiting to send, 2+ calendar days old, normal. The line under it: pending, bluetooth, mic, memo. */
-    fun of(park: Park?, pending: Boolean, micReady: Boolean, linked: Boolean, nowMs: Long): CardUi {
+    fun of(park: Park?, pending: Boolean, micReady: Boolean, linked: Boolean, nowMs: Long, leftAt: Long? = null): CardUi {
         val nomic = if (micReady) null else CardLine.NOMIC
         if (park == null) return CardUi(CardKind.NONE, null, null, null, nomic, if (nomic != null) NOMIC else null)
         val kind = when {
+            park.state == ParkState.DRIVING && leftAt != null -> CardKind.LEFT
             park.state == ParkState.DRIVING -> CardKind.DRIVING
             pending -> CardKind.PENDING
             days(park.atMs, nowMs) >= 2 -> CardKind.OLD
@@ -98,6 +101,7 @@ object HomeCards {
         }
         val tag = when (kind) {
             CardKind.DRIVING -> listOf(park.drivingBy ?: park.byName).filter { it.isNotBlank() }.joinToString("") { "$it " } + "운행 중"
+            CardKind.LEFT -> "내림"
             CardKind.PENDING -> "전송 대기"
             CardKind.OLD -> "${days(park.atMs, nowMs)}일 전"
             else -> ago(park.atMs, nowMs)
@@ -105,6 +109,7 @@ object HomeCards {
         val whenText = if (kind == CardKind.PENDING && nowMs - park.atMs < 60_000) "방금" else whenFull(park.atMs, nowMs)
         val (line, text) = when {
             kind == CardKind.PENDING -> CardLine.PENDING to "신호가 잡히면 가족에게 보내요"
+            kind == CardKind.LEFT -> CardLine.LEFT to "${hm(leftAt!!)} 내림 · 어디 댔는지 말해 주세요"
             kind == CardKind.DRIVING && linked -> CardLine.BT to "블루투스가 다시 연결됐어요"
             nomic != null -> nomic to NOMIC
             park.spot.memo != null -> CardLine.MEMO to park.spot.memo
@@ -118,6 +123,7 @@ object HomeCards {
 data class HomeData(
     val cars: List<Car>, val parks: Map<String, Park?>, val pending: Set<String>, val linked: Set<String>,
     val micReady: Boolean, val now: Long, val removed: Boolean, val createError: String?, val sayTo: Car?,
+    val left: Map<String, Long> = emptyMap(),
 ) {
     companion object {
         fun load(ctx: Context, now: Long, micReady: Boolean): HomeData {
@@ -129,6 +135,7 @@ data class HomeData(
                 cars.filter { CarLinkStore.address(ctx, it.id) != null }.map { it.id }.toSet(), micReady, now,
                 FamilyStore.removed(ctx), FamilyStore.groupCreateError(ctx),
                 CarResolver.resolve(null, null, null, cars, ParkStore.lastUsedCarId(ctx)),
+                cars.mapNotNull { c -> kr.dot.wherepark.car.ExitNotifier.leftAt(ctx, c.id)?.let { c.id to it } }.toMap(),
             )
         }
     }
@@ -189,7 +196,7 @@ fun HomeCard(car: Car, park: Park?, ui: CardUi, acts: AppActions, big: Boolean =
             WhoLine(ui.who, ui.whenText)
         }
         ui.line?.let { l ->
-            val icon = when (l) { CardLine.PENDING -> "up"; CardLine.BT -> "bt"; CardLine.NOMIC -> "mic"; CardLine.MEMO -> "note" }
+            val icon = when (l) { CardLine.PENDING -> "up"; CardLine.BT -> "bt"; CardLine.NOMIC, CardLine.LEFT -> "mic"; CardLine.MEMO -> "note" }
             MemoLine(icon, ui.lineText.orEmpty(), trail = if (l == CardLine.NOMIC) ({
                 Text("켜기", Modifier.clickable(onClick = acts.fixMic).padding(horizontal = 4.dp), style = ts(13.5.sp, FontWeight.Bold))
             }) else null)
@@ -220,7 +227,7 @@ fun HomeScreen(d: HomeData, acts: AppActions) = WScreen(null, gap = 10.dp) {
         else if (d.createError != null) Band("가족을 만들지 못했어요", "잠시 뒤 다시 해 주세요", listOf("다시 해 보기" to acts.retryGroup, "초대 코드로 들어가기" to acts.joinByCode))
         d.cars.forEach { c ->
             val p = d.parks[c.id]
-            HomeCard(c, p, HomeCards.of(p, c.id in d.pending, d.micReady, c.id in d.linked, d.now), acts)
+            HomeCard(c, p, HomeCards.of(p, c.id in d.pending, d.micReady, c.id in d.linked, d.now, d.left[c.id]), acts)
         }
     }
     val to = d.sayTo

@@ -42,9 +42,12 @@ object WidgetRenderer {
 
     fun render(ctx: Context, spec: WidgetSpec, cars: List<Car>, parks: Map<String, Park?>, sizeDp: SizeF,
                density: Float, wallpaperColor: Int, now: Long, micReady: Boolean): Rendered =
-        draw(ctx, spec, cars, parks, sizeDp, density, listOf(wallpaperColor), now, micReady, pending(ctx), AppPrefs.mainCar(ctx)).rendered
+        draw(ctx, spec, cars, parks, sizeDp, density, listOf(wallpaperColor), now, micReady, pending(ctx), AppPrefs.mainCar(ctx), left = left(ctx, cars)).rendered
 
     /** Cars whose latest park is still in the send queue while a family exists ("저장 중"). */
+    internal fun left(ctx: Context, cars: List<Car>): Map<String, Long> =
+        cars.mapNotNull { c -> kr.dot.wherepark.car.ExitNotifier.leftAt(ctx, c.id)?.let { c.id to it } }.toMap()
+
     internal fun pending(ctx: Context): Set<String> =
         if (!FamilyStore.joined(ctx)) emptySet() else SyncQueue.ops(ctx).filter { it.key.startsWith("park:") }.map { it.key.removePrefix("park:") }.toSet()
 
@@ -74,11 +77,12 @@ object WidgetRenderer {
 
     internal fun failed(park: Park, pending: Boolean, now: Long) = pending && now - park.atMs > FAIL_AFTER_MS
 
-    internal fun line(car: Car, park: Park?, pending: Boolean, now: Long): Line {
+    internal fun line(car: Car, park: Park?, pending: Boolean, now: Long, leftAt: Long? = null): Line {
         if (park == null) return Line(car, "", "", "", St.NONE, "", "")
         val (f, s) = park.spot.big()
         val memo = park.spot.memo?.trim().orEmpty()
         return when {
+            park.state == ParkState.DRIVING && leftAt != null -> Line(car, f, s, "", St.LEFT, "", ParkRules.whenLabel(leftAt, now))
             park.state == ParkState.DRIVING -> Line(car, f, s, "", St.GONE, park.drivingBy ?: park.byName, "")
             failed(park, pending, now) -> Line(car, f, s, memo, St.FAIL, park.byName, ParkRules.whenLabel(park.atMs, now))
             pending -> Line(car, f, s, memo, St.PEND, park.byName, ParkRules.whenLabel(park.atMs, now))
@@ -89,10 +93,10 @@ object WidgetRenderer {
     /** [textScale] = font scale x 글자 크게 (1..1.3), small text only. */
     internal fun draw(ctx: Context, spec: WidgetSpec, cars: List<Car>, parks: Map<String, Park?>, sizeDp: SizeF, density: Float,
                       samples: List<Int>, now: Long, micReady: Boolean, pending: Set<String>, mainId: String? = null,
-                      textScale: Float = 1f): Out {
+                      textScale: Float = 1f, left: Map<String, Long> = emptyMap()): Out {
         val w = sizeDp.width; val h = sizeDp.height
         val (shown, more) = carsFor(cars, mainId, twoRow(h))
-        val lines = shown.map { line(it, parks[it.id], it.id in pending, now) }
+        val lines = shown.map { line(it, parks[it.id], it.id in pending, now, left[it.id]) }
         val bw = max(1, (w * density).roundToInt()); val bh = max(1, (h * density).roundToInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
         val c = Canvas(bmp)
@@ -155,8 +159,9 @@ object WidgetRenderer {
     }
 
     /** "흰 차 지하 2층 C구역 37번, 엘리베이터 옆, 아빠 14시 32분" (spec 8.1) + the chip the widget shows (저장 중 / 저장 실패 / N일 전). */
-    fun describe(car: Car, park: Park?, pending: Boolean, now: Long): String = when {
+    fun describe(car: Car, park: Park?, pending: Boolean, now: Long, leftAt: Long? = null): String = when {
         park == null -> "${car.name} 기록 없음"
+        park.state == ParkState.DRIVING && leftAt != null -> "${car.name} 내림, 위치 입력 전"
         park.state == ParkState.DRIVING -> "${car.name} 운행 중, ${park.drivingBy ?: park.byName} 출발"
         else -> listOfNotNull("${car.name} ${spotWords(park.spot)}", park.spot.memo?.trim()?.takeIf { it.isNotEmpty() },
             "${park.byName} ${timeWords(ParkRules.whenLabel(park.atMs, now))}".trim(),

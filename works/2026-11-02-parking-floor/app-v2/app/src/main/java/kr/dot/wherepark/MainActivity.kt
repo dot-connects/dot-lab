@@ -304,7 +304,7 @@ class MainActivity : ComponentActivity() {
             back = ::back, edit = { go(Nav.Edit(car.id)) }, fix = { listen(car.id, "edit") }, speak = { listen(car.id) },
             plate = { go(Nav.Plate(car.id)) }, history = { go(Nav.History(car.id)) },
             photo = { park?.let(::takePhoto) }, took = { park?.let(::tookCar) },
-        ))
+        ), kr.dot.wherepark.car.ExitNotifier.leftAt(this, car.id))
     }
 
     private fun takePhoto(p: Park) {
@@ -316,6 +316,7 @@ class MainActivity : ComponentActivity() {
     /** [가져갔어요]: same op as the Bluetooth reconnect (contracts "운행 중"). */
     private fun tookCar(p: Park) {
         synchronized(SyncQueue) {
+            kr.dot.wherepark.car.ExitNotifier.markDriving(this, p.carId)
             ParkStore.save(this, p.copy(state = ParkState.DRIVING, drivingBy = FamilyStore.me(this)?.name))
             SyncQueue.add(this, Op.State(p.carId, ParkState.DRIVING))
         }

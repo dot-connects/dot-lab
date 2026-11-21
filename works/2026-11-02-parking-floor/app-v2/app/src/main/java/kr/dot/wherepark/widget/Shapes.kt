@@ -27,7 +27,7 @@ import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.ui.AssetFonts
 
 /** One car as the widget shows it. [f] floor, [s] zone/number/pillar, [memo] the park's memo; [stale] = "3일 전" chip. */
-internal enum class St { OK, NONE, PEND, FAIL, GONE }
+internal enum class St { OK, NONE, PEND, FAIL, GONE, LEFT }
 internal data class Line(
     val car: Car, val f: String, val s: String, val memo: String, val st: St, val who: String, val time: String, val stale: String? = null,
 )
@@ -404,7 +404,7 @@ internal class Shapes(
      */
     private fun spotRow(l: Line, x: Float, top: Float, h: Float, avail: Float, fz0: Float, pz0: Float, withP: Boolean, k: Float, gap: Float = 8f): Float {
         if (!spotShown(l)) {
-            val t = if (l.st == St.GONE) "운행 중" else "기록 없음"
+            val t = when (l.st) { St.GONE -> "운행 중"; St.LEFT -> "내림 ${l.time}"; else -> "기록 없음" }
             var z = (fz0 * .4f).coerceIn(15f * k, 26f * k)
             while (z > 13f && measure(t, z, KO700) > avail) z = max(13f, z * .92f)
             return text(clip(t, z, KO700, avail), x, midBase(top, h, z, KO700), z, KO700, if (l.st == St.NONE) mu else fg)

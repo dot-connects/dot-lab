@@ -66,13 +66,15 @@ class WidgetShots {
     private val sizes = listOf(2 to 1, 3 to 1, 4 to 1, 2 to 2, 3 to 2, 4 to 2)
 
     private fun save(name: String, spec: WidgetSpec, n: Int, cols: Int, rows: Int, parks: Map<String, Park?> = this.parks, mic: Boolean = true,
-                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f) =
-        saveAt(name, spec, n, SizeF(cols * 82f, rows * 100f), parks, mic, pending, cars, wall, scale)
+                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f,
+                     left: Map<String, Long> = emptyMap()) =
+        saveAt(name, spec, n, SizeF(cols * 82f, rows * 100f), parks, mic, pending, cars, wall, scale, left)
 
     private fun saveAt(name: String, spec: WidgetSpec, n: Int, size: SizeF, parks: Map<String, Park?> = this.parks, mic: Boolean = true,
-                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f) {
+                     pending: Set<String> = emptySet(), cars: List<Car> = this.cars, wall: IntArray = dune, scale: Float = 1f,
+                     left: Map<String, Long> = emptyMap()) {
         if (!groupOn("widget")) return
-        val out = WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, wall.toList(), now, mic, pending, null, scale)
+        val out = WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, wall.toList(), now, mic, pending, null, scale, left)
         val bmp = out.rendered.bitmap
         val m = 24   // 12 dp at 2x
         val shot = Bitmap.createBitmap(bmp.width + 2 * m, bmp.height + 2 * m, Bitmap.Config.ARGB_8888)
@@ -107,6 +109,7 @@ class WidgetShots {
             save("st-fail-$k", s, 2, cw, ch, with(p.copy(atMs = now - WidgetRenderer.FAIL_AFTER_MS - 60_000)), pending = setOf("p"))
             save("st-stale-$k", s, 2, cw, ch, with(p.copy(atMs = day - 3 * 86_400_000L + 10 * 3_600_000L)))
             save("st-drive-$k", s, 2, cw, ch, with(p.copy(state = ParkState.DRIVING, drivingBy = "엄마")))
+            save("st-left-$k", s, 2, cw, ch, with(p.copy(state = ParkState.DRIVING, drivingBy = "동찬")), left = mapOf("p" to now - 20 * 60_000L))
             save("st-none-$k", s, 2, cw, ch, with(null))
             save("st-longmemo-$k", s, 2, cw, ch, with(p.copy(spot = p.spot.copy(memo = "엘리베이터 옆 기둥 뒤 두번째 칸, 소화기 앞"))))
             save("st-longfloor-$k", s, 2, cw, ch, with(p.copy(spot = Spot(null, "C", 156, "12", "엘리베이터 옆"))))

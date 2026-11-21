@@ -73,15 +73,30 @@ object ExitNotifier {
             s.remove("notified")  // a flicker must not use up the 30 minutes
             return putSlot(ctx, carId, s)
         }
+        val p = ParkStore.latest(ctx, carId)
+        if (p == null || p.state == ParkState.DRIVING) return putSlot(ctx, carId, s)
         putSlot(ctx, carId, s)
-        val p = ParkStore.latest(ctx, carId) ?: return
-        if (p.state == ParkState.DRIVING) return
         // No "gone" record (process restarted, or first connect): only count it as driving when the park is at least 2 minutes old.
         if (gone == 0L && now() - p.atMs < REAPPEAR_MS) return
+        markDriving(ctx, carId)
         ParkStore.save(ctx, p.copy(state = ParkState.DRIVING, drivingBy = FamilyStore.me(ctx)?.name))
         SyncQueue.add(ctx, Op.State(carId, ParkState.DRIVING))
         SyncQueue.kick(ctx)
         WidgetRefresh.request(ctx)
+    }
+
+    /** Remembers when this phone set DRIVING (also the [가져갔어요] button), so [leftAt] can tell a later disappearance from an old one. */
+    fun markDriving(ctx: Context, carId: String) = putSlot(ctx, carId, slot(ctx, carId).put("drivingAt", now()).also { it.remove("gone") })
+
+    /**
+     * When this phone saw the car's Bluetooth vanish after the drive began, while the latest park still says DRIVING; else null.
+     * A DRIVING set by another phone has no local drivingAt, a newer park record (state PARKED) ends it, a reconnect removes "gone".
+     */
+    fun leftAt(ctx: Context, carId: String): Long? {
+        val p = ParkStore.latest(ctx, carId) ?: return null
+        val s = slot(ctx, carId)
+        val gone = s.optLong("gone", 0)
+        return gone.takeIf { p.state == ParkState.DRIVING && s.optLong("drivingAt", 0) in 1 until gone && gone > p.atMs }
     }
 
     /** "안 댔어요": counts in a row (a new park record resets the count). */

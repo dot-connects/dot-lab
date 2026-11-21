@@ -95,6 +95,37 @@ class ExitNotifierTest {
         assertEquals(listOf<Op>(Op.State("a", ParkState.DRIVING, 1)), SyncQueue.ops(c))
     }
 
+    @Test fun leftAtOnlyAfterThisPhoneSawTheCarGoAfterDriving() {
+        ParkStore.save(c, Kit.park("a", 1))
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        min(5); ExitNotifier.onAppeared(c, "AA:AA")
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        min(10); ExitNotifier.onDisappeared(c, "AA:AA")
+        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+        min(5); ExitNotifier.onAppeared(c, "AA:AA")
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        min(10); ExitNotifier.onDisappeared(c, "AA:AA")
+        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+        ParkStore.save(c, Kit.park("a", 2, atMs = t + 60_000))
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+    }
+
+    @Test fun drivingFromAnotherPhoneStaysDriving() {
+        ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+    }
+
+    @Test fun staleLocalDriveDoesNotLeakIntoAnotherPhonesDrive() {
+        ParkStore.save(c, Kit.park("a", 1))
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        min(5); ExitNotifier.onAppeared(c, "AA:AA")
+        min(10); ExitNotifier.onDisappeared(c, "AA:AA")
+        min(5); ParkStore.save(c, Kit.park("a", 2, atMs = t))
+        min(5); ParkStore.save(c, Kit.park("a", 2, atMs = t, state = ParkState.DRIVING))
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+    }
+
     @Test fun unknownAddressIgnored() {
         ExitNotifier.onDisappeared(c, "ZZ:ZZ")
         assertTrue(posted.isEmpty())
