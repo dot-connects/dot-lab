@@ -1,11 +1,55 @@
 import { test, beforeEach } from "node:test";
 import assert from "node:assert/strict";
-import { handle, newCode, normCode } from "../src/index.js";
+import { handle, newCode, normCode, scheduled } from "../src/index.js";
 import { MemoryStore } from "../src/store.js";
 import { resetTokenCache } from "../src/fcm.js";
 
 const BASE = "https://p.test";
 let store, env, sent;
+
+test("maintenance gates every API version and only accepts the configured smoke key", async () => {
+  env.MAINTENANCE = "1";
+  env.SMOKE_KEY = "local-smoke";
+  for (const path of ["/v1/park", "/v2/state", "/v3/state"]) {
+    for (const key of [null, "wrong"]) {
+      const headers = key ? { "x-smoke": key } : {};
+      const res = await handle(new Request(BASE + path, { headers }), env, store);
+      assert.equal(res.status, 503);
+      assert.equal(res.headers.get("retry-after"), "600");
+      assert.deepEqual(await res.json(), { error: "maintenance" });
+    }
+  }
+  const request = key => new Request(BASE + "/v2/state", { headers: { "x-smoke": key } });
+  assert.equal((await handle(request("local-smoke"), env, store)).status, 401);
+  for (const key of [undefined, ""]) {
+    env.SMOKE_KEY = key;
+    assert.equal((await handle(request("local-smoke"), env, store)).status, 503);
+    assert.equal((await handle(request(""), env, store)).status, 503);
+  }
+  env.MAINTENANCE = "0";
+  assert.equal((await handle(request("wrong"), env, store)).status, 401);
+});
+
+test("maintenance keeps public join, request and asset links available", async () => {
+  env.MAINTENANCE = "1";
+  for (const path of ["/j", "/r", "/.well-known/assetlinks.json"]) {
+    assert.equal((await handle(new Request(BASE + path), env, store)).status, 200);
+  }
+});
+
+test("maintenance cron leaves expired photo flags and objects untouched", async () => {
+  await store.setPark2("group", "car", { park: { id: 1, atMs: 1, photo: true }, prev: null });
+  const deleted = [];
+  env.PHOTOS = { delete: async key => deleted.push(key) };
+  env.MAINTENANCE = "1";
+  await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
+  assert.equal((await store.park2("group", "car")).park.photo, true);
+  assert.deepEqual(deleted, []);
+  env.MAINTENANCE = "0";
+  await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
+  assert.equal((await store.park2("group", "car")).park.photo, false);
+  assert.deepEqual(deleted, ["g/group/car/1.jpg"]);
+});
 
 async function call(method, path, body, token) {
   const headers = { "content-type": "application/json" };

@@ -53,10 +53,12 @@ async function accessToken(env, fetcher) {
 export async function sendData(env, token, data, fetcher = fetch) {
   const sa = parseSa(env.FCM_SA);
   const access = await accessToken(env, fetcher);
+  const collapseKey = data.type === "park" && data.carId ? `park:${data.carId}`
+    : data.type === "members" && data.groupId ? `members:${data.groupId}` : data.type === "cars" ? "cars" : undefined;
   const r = await fetcher(`https://fcm.googleapis.com/v1/projects/${sa.project_id}/messages:send`, {
     method: "POST",
     headers: { "content-type": "application/json", authorization: `Bearer ${access}` },
-    body: JSON.stringify({ message: { token, data, android: { priority: "high", ttl: "3600s" } } }),
+    body: JSON.stringify({ message: { token, data, android: { priority: "high", ttl: "3600s", collapse_key: collapseKey } } }),
   });
   if (r.ok) return { ok: true };
   const text = await r.text();

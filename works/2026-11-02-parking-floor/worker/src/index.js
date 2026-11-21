@@ -5,6 +5,7 @@
 
 import { sendData } from "./fcm.js";
 import * as v2 from "./v2.js";
+import * as v3 from "./v3.js";
 import { renderJoinPage, renderRequestPage } from "./jpage.js";
 
 const INVITE_MS = 24 * 60 * 60 * 1000;
@@ -114,7 +115,14 @@ export async function handle(req, env, store, ctx) {
   const path = url.pathname.replace(/\/+$/, "");
   const now = Date.now();
 
+  if (env.MAINTENANCE === "1" && /^\/v[123]\//.test(url.pathname) &&
+      !(env.SMOKE_KEY && req.headers.get("x-smoke") === env.SMOKE_KEY)) {
+    const response = fail(503, "maintenance");
+    response.headers.set("Retry-After", "600");
+    return response;
+  }
   if (path.startsWith("/v2/")) return v2.handle(req, env, store, ctx);
+  if (path.startsWith("/v3/")) return v3.handle(req, env, store, ctx);
   if (req.method === "GET" && path === "/j") return new Response(renderJoinPage(env), { headers: { "content-type": "text/html; charset=utf-8" } });
   if (req.method === "GET" && path === "/r") return new Response(renderRequestPage(env), { headers: { "content-type": "text/html; charset=utf-8" } });
   if (req.method === "GET" && path === "/.well-known/assetlinks.json") {
@@ -217,6 +225,7 @@ export async function handle(req, env, store, ctx) {
 }
 
 export async function scheduled(event, env, ctx, store) {
+  if (env.MAINTENANCE === "1") return;
   if (!store) { const { D1Store } = await import("./store.js"); store = new D1Store(env.DB); }
   const cutoff = (event.scheduledTime || Date.now()) - 30 * 86400_000;
   // objects first: a crash before the flag flip is retried next run (delete is idempotent)
