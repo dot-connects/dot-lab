@@ -217,7 +217,8 @@ private fun ReliefDial(kind: RlKind, style: ClockStyle, d: FaceData, ink: Ink, i
             )
         } else {
             val hands = remember(geo, pal) { RlHands(geo, pal) }
-            val sweep = if (style.sweep) rememberSweep() else null
+            // operator 2026-11-21: StandBy stays lit all night on a charger, so the night look ticks at 1 Hz (no 30 fps sweep)
+            val sweep = if (style.sweep && nightBg == null) rememberSweep() else null
             val hr = d.now.hour % 12; val mn = d.now.minute
             // plan-r15 E9 #12 날짜·요일 (default off): weekday over, date under the dial in the empty top/bottom of an
             // upright screen, pressed into the dial; only where that band has room for it
