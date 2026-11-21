@@ -145,6 +145,7 @@ class StandbyStateHolder(
     private var photosWanted: Boolean? = null
     private var nightTarget = lastNight
     private var wasFlat = false
+    private var wasFaceDown = false
     private var startedAt = 0L
     private var exited = false
     private var lastPlugged: Int? = null
@@ -210,6 +211,7 @@ class StandbyStateHolder(
                 // the sticky value at start was checked by start(); a later change waits out a flap (T2)
                 if (lastPlugged != null) scheduleUnplugCheck()
                 lastPlugged = plugged
+                evaluate() // on a charger nothing goes black by itself (NightRules.wantOff)
             }
             val t = i.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE).takeIf { it != Int.MIN_VALUE } ?: return
             val h = HeatRule.next(t, hot)
@@ -365,9 +367,14 @@ class StandbyStateHolder(
             forceNight = c.baseTheme().tokens.light,
         )
         setNight(if (nightOn) 1f else 0f)
-        val flat = motion.isFlat && c.displayOff != DisplayOff.NEVER // E12: 안 함 = never black
+        val never = c.displayOff == DisplayOff.NEVER // E12: 안 함 = never black
+        val wanted = NightRules.wantOff(
+            charging = (lastPlugged ?: ChargeStart.plugged(ctx)) != 0,
+            idleOff = machine.evaluate(now, c.displayOff, lx, c.nightEnterLux, c.nightExitLux),
+            asleep = machine.asleep, flat = motion.isFlat && !never, faceDown = motion.isFaceDown && !never,
+        )
         val off = !showNow && NightRules.displayOff(
-            machine.evaluate(now, c.displayOff, lx, c.nightEnterLux, c.nightExitLux) || flat,
+            wanted,
             _state.value.alarm != null, _state.value.notification != null, mood = mood && !machine.asleep, // sleep wins over mood
         )
         setOff(off, nightOn)
@@ -538,6 +545,7 @@ class StandbyStateHolder(
         if (!exited && now - startedAt > 3_000 && motion.pickedUp) { exited = true; host.finish(); return } // E7
         val flat = motion.isFlat
         if (flat != wasFlat) { wasFlat = flat; if (!flat) machine.touch(now); evaluate() }
+        if (motion.isFaceDown != wasFaceDown) { wasFaceDown = motion.isFaceDown; evaluate() }
     }
 
     // ---- visible tickers (cancelled while off) -----------------------------------------------------------------

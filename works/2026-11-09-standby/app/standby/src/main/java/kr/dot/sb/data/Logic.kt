@@ -158,6 +158,14 @@ object NightRules {
     fun displayOff(wanted: Boolean, alarm: Boolean, notification: Boolean, mood: Boolean = false) =
         wanted && !alarm && !notification && !mood
 
+    /**
+     * Operator 2026-11-21: on a charger StandBy never goes black by itself (a dark room = the night look only); only face
+     * down (nobody sees it) or the mood light's own timer ([asleep]). Off the charger the 화면 끄기 rule ([idleOff]) and
+     * lying [flat] still apply. 0.6.7 went black 1 s after a face-up desk start: the start gate allows flat, this did not.
+     */
+    fun wantOff(charging: Boolean, idleOff: Boolean, asleep: Boolean, flat: Boolean, faceDown: Boolean): Boolean =
+        asleep || faceDown || (!charging && (idleOff || flat))
+
     /** Quiet night (r10): at night a notification never lights a screen that is off; the alarm always does. */
     fun wakeOnNotification(night: Boolean, quiet: Boolean, displayOff: Boolean) = !(night && quiet && displayOff)
 }
@@ -339,7 +347,10 @@ class MotionDetector {
     private val pickup = HoldSwitch(300, 0)
     private val flat = HoldSwitch(1_000, 1_000)
 
+    private val down = HoldSwitch(1_000, 1_000)
+
     val isFlat get() = flat.on
+    val isFaceDown get() = down.on
     val pickedUp get() = pickup.on
 
     fun update(nowMs: Long, x: Float, y: Float, z: Float) {
@@ -349,6 +360,7 @@ class MotionDetector {
         linear = abs(sqrt(x * x + y * y + z * z) - G)
         pickup.update(nowMs, linear > PICKUP, linear <= PICKUP)
         flat.update(nowMs, abs(gz) > 9.0f, abs(gz) < 8.0f)
+        down.update(nowMs, gz < -9.0f, gz > -8.0f)
     }
 
     companion object { const val G = 9.81f; const val A = 0.9f; const val PICKUP = 2.5f }

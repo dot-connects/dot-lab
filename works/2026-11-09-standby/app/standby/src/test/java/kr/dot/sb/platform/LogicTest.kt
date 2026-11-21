@@ -111,6 +111,27 @@ class LogicTest {
         assertFalse(m.isFlat)
     }
 
+    @Test fun faceDownIsOnlyTheScreenAgainstTheTable() {
+        val m = MotionDetector()
+        var t = 0L
+        repeat(40) { m.update(t, 0f, 0f, 9.8f); t += 50 }
+        assertTrue(m.isFlat); assertFalse(m.isFaceDown) // face up on a desk
+        repeat(60) { m.update(t, 0f, 0f, -9.8f); t += 50 }
+        assertTrue(m.isFaceDown)
+    }
+
+    // operator 2026-11-21: on a charger StandBy never goes black by itself; a dark room is the night look only
+    @Test fun onAChargerOnlyFaceDownOrTheMoodTimerTurnItOff() {
+        // face up on a desk, idle in a dark room: stays on while charging (the 0.6.7 bug went black after 1 s)
+        assertFalse(NightRules.wantOff(charging = true, idleOff = true, asleep = false, flat = true, faceDown = false))
+        assertTrue(NightRules.wantOff(charging = true, idleOff = false, asleep = false, flat = true, faceDown = true))
+        assertTrue(NightRules.wantOff(charging = true, idleOff = true, asleep = true, flat = false, faceDown = false))
+        // off the charger the 화면 끄기 rule and lying flat still apply
+        assertTrue(NightRules.wantOff(charging = false, idleOff = true, asleep = false, flat = false, faceDown = false))
+        assertTrue(NightRules.wantOff(charging = false, idleOff = false, asleep = false, flat = true, faceDown = false))
+        assertFalse(NightRules.wantOff(charging = false, idleOff = false, asleep = false, flat = false, faceDown = false))
+    }
+
     @Test fun rotationFollowsGravityAfterDebounce() {
         val r = RotationTracker()
         assertFalse(r.update(0, 0f, 9.8f, 0f))

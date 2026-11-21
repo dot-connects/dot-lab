@@ -233,7 +233,9 @@ fun OnOffScreen(config: AppConfig, update: Update, nav: Nav, env: SettingsEnv, b
     // plan-r16: off = the panel really goes off (at the phone's own screen timeout), so say how it comes back
     val wake = " 꺼진 화면은 폰에서 두 번 탭하거나 측면 버튼을 눌러 켜요. 그다음엔 잠금 화면이 나와요."
     val notes = listOf(
-        "방이 어두우면 20초 뒤, 밝아도 10분 동안 만지지 않으면 화면을 꺼요.$wake", "20초 동안 만지지 않으면 화면을 꺼요.$wake",
+        // operator 2026-11-21: on a charger it never goes off by itself (NightRules.wantOff)
+        "충전 중에는 끄지 않고, 방이 어두우면 밤 화면으로 바꿔요. 충전기 없이 켰을 때는 방이 어두우면 20초 뒤, 밝아도 10분 동안 만지지 않으면 화면을 꺼요.$wake",
+        "충전 중에는 끄지 않아요. 충전기 없이 켰을 때는 20초 동안 만지지 않으면 화면을 꺼요.$wake",
         "스탠드 스크린이 켜져 있는 동안 화면을 끄지 않아요. 이때는 밤 화면을 쓸 수 없어요.",
     )
     Page("자동으로 켜기·끄기", back) {
