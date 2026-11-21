@@ -177,6 +177,8 @@ internal class Shapes(
         private val MONO: Typeface = Typeface.MONOSPACE
         private val tfCache = HashMap<String, Typeface>()
         private const val PAD = 8f
+        /** The launcher's widget corner clip (Android 12+ system_app_widget_background_radius is at most 28 dp). */
+        private const val LAUNCHER_R = 28f
         /** Largest corner radius as a share of the widget's short side. */
         const val R_MAX = .22f
         /** Distance from a corner where a box corner just touches the rounded curve: r * (1 - 1/sqrt 2). */
@@ -566,8 +568,12 @@ internal class Shapes(
     fun draw(lines: List<Line>, more: Int, w: Float, h: Float) {
         val g = geo[0]
         wr = min(style.radiusDp.toFloat(), R_MAX * min(w, h))
-        // with a card, content at the widget's edge keeps clear of the corner curve (no card at 0 %: layout unchanged; tickets have their own small corners)
-        val cin = if (a > 0 && shape != Shape.TICKET) ceil(CURVE * wr) + 1f else 0f
+        // content at the widget's edge keeps clear of the card's corner curve and of the launcher's own rounded clip, which cuts even
+        // at 0 % (11-21 phone: the name bar cut at the top-left); tickets have their own small corners
+        val clipR = max(if (a > 0 && shape != Shape.TICKET) wr else 0f, min(LAUNCHER_R, R_MAX * min(w, h)))
+        val cin = ceil(CURVE * clipR) + 1f
+        // without a visible divider (under 50 %) side-by-side cars need air between them, or one car's time runs into the next name
+        val inner = if (a < .5f) max(geo[5], 10f) else geo[5]
         val cols = when { lines.size == 1 -> listOf(lines); w >= WIDE -> lines.map { listOf(it) }; else -> listOf(lines) }
         val nc = cols.size; val cw = (w - g * (nc - 1)) / nc
         val cells = ArrayList<Cell>()
@@ -575,7 +581,7 @@ internal class Shapes(
             val nr = col.size; val ch = (h - g * (nr - 1)) / nr
             col.forEachIndexed { ri, l ->
                 val x = ci * (cw + g); val y = ri * (ch + g)
-                val pl = if (ci > 0) geo[5] else max(PAD, cin); val pr = if (ci < nc - 1) geo[5] else max(PAD, cin)
+                val pl = if (ci > 0) inner else max(PAD, cin); val pr = if (ci < nc - 1) inner else max(PAD, cin)
                 val pt = if (ri > 0) geo[2] else max(geo[1], cin); val pb = if (ri < nr - 1) geo[4] else max(geo[3], cin)
                 val bc = shape == Shape.TICKET && a > 0 && ch < TALL && cw - pl - pr >= 220
                 val bx = if (bc) 19f else 0f
@@ -689,6 +695,15 @@ internal class Shapes(
                         pillar(l, px, 34f, pw, 0f, 0f, if (hasMemo) mBase + fm.ascent - 4f else bottom - 2f)
                     }
                 }
+            }
+        } else if (w < NARROW && !spotShown(l)) {   // tn, 운행 중 / 기록 없음: the status left of the mic on one row, centred under the name
+            val ys = spread(l2 + xh, max(0f, hb - l2 - xh))
+            val my = ys[1] + (hb - (ys[1] - y0) - MIC_MIN) / 2
+            cl.mic = RectF(x0 + w - MIC_MIN, my, x0 + w, my + MIC_MIN)
+            cl.nameBottom = ys[0] + l2
+            cl.ops += {
+                nameLine(l, cl.more, x0, ys[0], w, z2, band)
+                spotRow(l, x0, my, MIC_MIN, w - MIC_MIN - 8f, 26f * k / .4f, 0f, false, k)
             }
         } else if (w < NARROW) {   // tn: name / floor across / pillar + mic / memo
             val fh = max(20f, h - l2 - MIC_MIN - l3 - 3)

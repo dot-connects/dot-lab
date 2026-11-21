@@ -164,6 +164,43 @@ class WidgetLayoutTest {
         assertEquals(listOf(1f, 1f), WidgetRenderer.budget(sizes, 1f, 100_000_000L))
     }
 
+    /** Android's pick among sized RemoteViews (RemoteViews.findBestFitLayout): the closest size that fits, else the smallest. */
+    private fun aospPick(sizes: List<SizeF>, actual: SizeF): SizeF {
+        val fits = sizes.filter { Math.ceil(actual.width.toDouble()) + 1 > it.width && Math.ceil(actual.height.toDouble()) + 1 > it.height }
+        fun d(s: SizeF) = (s.width - actual.width).let { it * it } + (s.height - actual.height).let { it * it }
+        return fits.minByOrNull(::d) ?: sizes.minBy { it.width * it.height }
+    }
+
+    /** A host that lays the widget out smaller than it reports (0.6x seen 11-21) still gets a layout drawn close to its real size. */
+    @Test fun layoutSizesFitSmallerHosts() {
+        val reported = listOf(SizeF(380f, 262f), SizeF(520f, 190f))
+        val s = WidgetRenderer.layoutSizes(reported)
+        assertEquals(reported, s.take(2))
+        assertTrue("${s.size} sizes", s.size <= 16)
+        assertEquals(s.size, s.distinct().size)
+        s.forEach { c -> assertTrue("$c keeps a reported aspect", reported.any { r -> Math.abs(c.width / c.height - r.width / r.height) < .01f }) }
+        for (r in reported) for (f in listOf(1f, .99f, .97f, .9f, .8f, .7f, .6f, .53f)) {
+            val actual = SizeF(r.width * f, r.height * f)
+            val pick = aospPick(s, actual)
+            assertTrue("$actual got $pick", pick.width <= actual.width + 1.01f && pick.height <= actual.height + 1.01f)
+            assertTrue("$actual got $pick", pick.width >= actual.width * .87f && pick.height >= actual.height * .87f)
+        }
+        // only the reported sizes: the same 0.6x host got the smallest layout, bigger than its view (the bug)
+        val old = aospPick(reported, SizeF(228f, 157f))
+        assertTrue(old.width > 228f && old.height > 157f)
+        assertEquals(1, WidgetRenderer.layoutSizes(listOf(SizeF(300f, 140f), SizeF(300f, 140f))).count { it == SizeF(300f, 140f) })
+    }
+
+    /** Over the memory cap the extra (smaller-host) sizes lose resolution before the reported ones. */
+    @Test fun budgetKeepsReportedSizes() {
+        val reported = listOf(SizeF(380f, 262f), SizeF(520f, 190f))
+        val s = WidgetRenderer.layoutSizes(reported)
+        val one = 380 * 3 * 262 * 3 * 4L
+        val k = WidgetRenderer.budget(s, 3f, one * 5, reported.size)
+        assertEquals(listOf(1f, 1f), k.take(2))
+        assertTrue(k.drop(2).any { it < 1f })
+    }
+
     @Test fun talkback() {
         val p = parks.getValue("c0").copy(atMs = 1_763_616_720_000L, spot = Spot(Floor.Under(2), "C", 37, null, null))   // 2025-11-20 14:32 KST
         assertEquals("흰 차 지하 2층 C구역 37번, 아빠 14시 32분", WidgetRenderer.describe(cars[0], p, false, p.atMs + 60_000))

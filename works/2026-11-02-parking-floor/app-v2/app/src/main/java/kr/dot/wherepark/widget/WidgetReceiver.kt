@@ -169,8 +169,9 @@ class WidgetReceiver : AppWidgetProvider() {
             val cars = CarStore.cars(ctx)
             val parks = cars.associate { it.id to ParkStore.latest(ctx, it.id) }
             val dm = ctx.resources.displayMetrics
-            val sizes = sizes(mgr, id)
-            val scale = WidgetRenderer.budget(sizes, dm.density, (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong())
+            val reported = sizes(mgr, id).distinct()
+            val sizes = WidgetRenderer.layoutSizes(reported)
+            val scale = WidgetRenderer.budget(sizes, dm.density, (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong(), reported.size)
             val pend = WidgetRenderer.pending(ctx)
             val wall = wallpaper(ctx); val mic = micReady(ctx); val now = System.currentTimeMillis()
             val main = AppPrefs.mainCar(ctx)
@@ -180,7 +181,7 @@ class WidgetReceiver : AppWidgetProvider() {
                 val views = sizes.mapIndexed { i, size ->
                     val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend, main, ts)
                     bitmaps += out.rendered.bitmap
-                    size to views(ctx, id, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
+                    size to views(ctx, id, size, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now) }
                 }.toMap()
                 mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
             } finally {
@@ -189,8 +190,11 @@ class WidgetReceiver : AppWidgetProvider() {
         }
 
         /** Slots and request codes follow the car's place in the car list, so every size sends the same car through the same PendingIntent. */
-        private fun views(ctx: Context, id: Int, r: Rendered, cars: List<kr.dot.wherepark.core.Car>, describe: (kr.dot.wherepark.core.Car) -> String): RemoteViews {
+        private fun views(ctx: Context, id: Int, size: SizeF, r: Rendered, cars: List<kr.dot.wherepark.core.Car>, describe: (kr.dot.wherepark.core.Car) -> String): RemoteViews {
             val v = RemoteViews(ctx.packageName, R.layout.w_root)
+            // the box is exactly the size the bitmap was laid out for (centred in the launcher's cell): no stretch, slots on the drawing
+            v.setViewLayoutWidth(R.id.w_box, size.width, TypedValue.COMPLEX_UNIT_DIP)
+            v.setViewLayoutHeight(R.id.w_box, size.height, TypedValue.COMPLEX_UNIT_DIP)
             v.setImageViewBitmap(R.id.w_img, r.bitmap)
             (MIC_SLOTS + ROW_SLOTS).forEach { v.setViewVisibility(it, android.view.View.GONE) }
             r.hits.forEach { h ->

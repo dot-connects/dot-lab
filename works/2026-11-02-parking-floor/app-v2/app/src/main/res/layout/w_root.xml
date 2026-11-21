@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Widget: one drawn bitmap + 8 transparent button slots (4 cars x mic/row), placed per size from WidgetRenderer hits. -->
+<!-- Widget: one drawn bitmap + 8 transparent button slots (4 cars x mic/row), placed per size from WidgetRenderer hits.
+     w_box gets the exact dp size the bitmap was laid out for and sits centred, so the picture never stretches and the slots stay on it. -->
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/w_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
+<FrameLayout
+    android:id="@+id/w_box"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:layout_gravity="center">
     <ImageView
         android:id="@+id/w_img"
         android:layout_width="match_parent"
@@ -18,4 +24,5 @@
     <FrameLayout android:id="@+id/m1" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
     <FrameLayout android:id="@+id/m2" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
     <FrameLayout android:id="@+id/m3" android:layout_width="0dp" android:layout_height="0dp" android:layout_gravity="top|start" android:visibility="gone" />
+</FrameLayout>
 </FrameLayout>

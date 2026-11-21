@@ -6,7 +6,10 @@ import android.graphics.LinearGradient
 import android.graphics.Paint
 import android.graphics.Shader
 import android.util.SizeF
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.unit.dp
 import java.io.File
 import kr.dot.wherepark.Device
 import kr.dot.wherepark.core.Car
@@ -113,6 +116,44 @@ class WidgetShots {
         save("st-nomic-row-2x1", spec(Shape.ROW, 100), 2, 2, 1, mic = false)
         save("st-nomic-row-4x2", spec(Shape.ROW, 100), 2, 4, 2, mic = false)
         save("st-nocar-row-2x1", spec(Shape.ROW, 100), 0, 2, 1)
+    }
+
+    /**
+     * Both cars without a spot (운행 중 + 기록 없음, the 11-21 phone), every shape at 0 % and 100 %: 4x2, the config preview size (328x200)
+     * and the size the phone really showed (~0.6x of 380x262).
+     */
+    @Test fun twoCarNoSpot() {
+        val q = parks + ("p" to parks.getValue("p")!!.copy(state = ParkState.DRIVING, drivingBy = "동찬")) + ("w" to null)
+        for (shape in Shape.values()) for (st in listOf(0, 100)) {
+            val k = shape.name.lowercase()
+            save("st-gonenone-$k-4x2-$st", spec(shape, st), 2, 4, 2, q)
+            saveAt("st-gonenone-$k-328x200-$st", spec(shape, st), 2, SizeF(328f, 200f), q)
+            saveAt("st-gonenone-$k-228x157-$st", spec(shape, st), 2, SizeF(228f, 157f), q)
+        }
+    }
+
+    /** 설정 > 위젯 꾸미기 with three widgets on the home screen: each one drawn, caption under it. */
+    @Test fun picker() {
+        Kit.reset(FakeNet(), mutableListOf())
+        listOf("p", "w").forEach { kr.dot.wherepark.data.ParkStore.save(ctx, parks.getValue(it)!!.copy(atMs = System.currentTimeMillis() - 3_600_000L)) }
+        cars.take(2).forEach { kr.dot.wherepark.data.CarStore.upsert(ctx, it) }
+        val mgr = android.appwidget.AppWidgetManager.getInstance(ctx)
+        val sh = org.robolectric.Shadows.shadowOf(mgr)
+        val ids = listOf(Shape.ROW to SizeF(328f, 200f), Shape.DOT to SizeF(328f, 100f), Shape.PILLAR to SizeF(164f, 100f)).mapIndexed { i, (shape, size) ->
+            val id = sh.createWidget(WidgetReceiver::class.java, kr.dot.wherepark.R.layout.w_root)
+            mgr.updateAppWidgetOptions(id, android.os.Bundle().apply {
+                putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, size.width.toInt()); putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, size.height.toInt())
+                putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH, size.width.toInt()); putInt(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, size.height.toInt())
+                putParcelableArrayList(android.appwidget.AppWidgetManager.OPTION_APPWIDGET_SIZES, arrayListOf(size))
+            })
+            WidgetSpecs.put(ctx, WidgetSpec(id, shape, null, if (i == 1) 0 else 100, Palette.default(shape), null))
+            id
+        }
+        rule.shot("widget", "picker", Device.MOCK_PHONE) {
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.background(androidx.compose.ui.graphics.Color(0xFFF6F5F2)).padding(24.dp)) {
+                kr.dot.wherepark.ui.WidgetPicker(ids) {}
+            }
+        }
     }
 
     /** Short cells: two rows on a zoomed / 6-7 row grid (150 dp), and the smallest resize sizes. */

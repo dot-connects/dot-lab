@@ -125,13 +125,13 @@ class WidgetConfigActivity : ComponentActivity() {
     }
 }
 
-/** "위젯 1 · 4×2 · 줄 목록" for the settings picker; cells from the launcher's size hints (cell = 70 dp - 30 dp rule). */
-internal fun widgetLabel(ctx: Context, n: Int, id: Int): String {
-    val o = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
-    val cols = ((o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) + 30) / 70).coerceAtLeast(1)
-    val rows = ((o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) + 30) / 70).coerceAtLeast(1)
-    return "위젯 $n · ${cols}×$rows · ${SHAPE_NAMES.getValue(WidgetSpecs.get(ctx, id).shape)}"
-}
+/** "위젯 1 · 줄 목록" for the settings picker; no cell count — launcher cell sizes vary (foldables read 4x2 as 5x3), the thumbnail shows the size. */
+internal fun widgetLabel(ctx: Context, n: Int, id: Int): String =
+    "위젯 $n · ${SHAPE_NAMES.getValue(WidgetSpecs.get(ctx, id).shape)}"
+
+/** 위젯 꾸미기 picker: the widget as drawn now, with its own settings at its launcher size (first reported, as the label reads it). */
+internal fun widgetThumb(ctx: Context, id: Int, density: Float, wall: List<Int>): android.graphics.Bitmap =
+    preview(ctx, WidgetSpecs.get(ctx, id), CarStore.cars(ctx), WidgetReceiver.sizes(AppWidgetManager.getInstance(ctx), id).first(), density, wall)
 
 /** From the app (settings, onboarding step 4): the launcher asks where to put it; the pin callback moves [spec] to the new id. */
 fun pinWidget(ctx: Context, spec: WidgetSpec = WidgetSpecs.default(AppWidgetManager.INVALID_APPWIDGET_ID)): Boolean {

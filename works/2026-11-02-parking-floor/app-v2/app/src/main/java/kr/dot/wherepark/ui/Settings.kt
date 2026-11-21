@@ -2,6 +2,18 @@ package kr.dot.wherepark.ui
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -11,8 +23,17 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import kr.dot.wherepark.BuildConfig
 import kr.dot.wherepark.car.ExitNotifier
 import kr.dot.wherepark.data.CarLinkStore
@@ -23,6 +44,7 @@ import kr.dot.wherepark.data.WidgetRefresh
 import kr.dot.wherepark.family.Push
 import kr.dot.wherepark.widget.WidgetReceiver
 import kr.dot.wherepark.widget.widgetLabel
+import kr.dot.wherepark.widget.widgetThumb
 
 object AppPrefs {
     const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-02-parking-floor/privacy.html"
@@ -108,7 +130,7 @@ fun SettingsScreen(a: SettingsActions) {
         onDismissRequest = { pickMain = false },
         title = { Text("위젯 메인 차량") },
         text = {
-            androidx.compose.foundation.layout.Column {
+            Column {
                 val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.firstOrNull()
                 cars.forEach { c ->
                     Li(c.name, lead = { Swatch(c.color) }, right = if (c == main) "✓" else null, last = c == cars.last(),
@@ -123,13 +145,7 @@ fun SettingsScreen(a: SettingsActions) {
         AlertDialog(
             onDismissRequest = { pickWidget = null },
             title = { Text("어떤 위젯을 꾸밀까요?") },
-            text = {
-                androidx.compose.foundation.layout.Column {
-                    ids.forEachIndexed { i, id ->
-                        Li(widgetLabel(ctx, i + 1, id), right = "›", last = i == ids.lastIndex, onClick = { pickWidget = null; a.widget(id) })
-                    }
-                }
-            },
+            text = { WidgetPicker(ids) { id -> pickWidget = null; a.widget(id) } },
             confirmButton = { TextButton({ pickWidget = null }) { Text("닫기", color = Wp.FG) } },
             containerColor = Wp.SF,
         )
@@ -141,4 +157,38 @@ fun SettingsScreen(a: SettingsActions) {
         dismissButton = { TextButton({ askDelete = false }) { Text("취소", color = Wp.FG) } },
         containerColor = Wp.SF,
     )
+}
+
+/** 위젯 꾸미기 with several widgets: each one as it is drawn now (its own settings and size) over the wallpaper colours, caption under it. */
+@Composable
+internal fun WidgetPicker(ids: List<Int>, onPick: (Int) -> Unit) {
+    val ctx = LocalContext.current
+    val density = LocalDensity.current.density
+    val wall = remember { WidgetReceiver.wallpaper(ctx) }
+    val thumbs = remember(ids) { ids.map { widgetThumb(ctx, it, density, wall) } }
+    val grad = Brush.verticalGradient(wall.map { Color(it) }.let { if (it.size == 1) it + it else it })
+    Column(
+        Modifier.verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+        ids.forEachIndexed { i, id ->
+            val bmp = thumbs[i]
+            Column(
+                Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                    .clickable(role = Role.Button) { onPick(id) },
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                // one scale for all, so a 2x1 reads smaller than a 4x2 as on the home screen
+                BoxWithConstraints(
+                    Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(grad).padding(10.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    val k = minOf(1f, maxWidth.value / (thumbs.maxOf { it.width } / density))
+                    Image(bmp.asImageBitmap(), contentDescription = null,
+                        modifier = Modifier.size((bmp.width / density * k).dp, (bmp.height / density * k).dp))
+                }
+                Text(widgetLabel(ctx, i + 1, id), style = ts(13.sp, color = Wp.FG), modifier = Modifier.padding(top = 6.dp))
+            }
+        }
+    }
 }

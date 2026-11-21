@@ -103,15 +103,40 @@ object WidgetRenderer {
         return Out(Rendered(bmp, sh.hits.map { Hit(it.carId, RectF(it.rectDp), it.kind) }), sh.texts.toList(), sh.mics.toList(), sh.cardRadius)
     }
 
+    /** Steps below each reported size (fine near 1 for launcher padding, down to ~0.5): a launcher that lays the widget out smaller than it reports still finds a layout. */
+    private val STEPS = floatArrayOf(1f, .95f, .9f, .82f, .74f, .67f, .6f, .53f)
+
+    /** RemoteViews(Map) takes at most 16 sizes. */
+    private const val MAX_SIZES = 16
+
+    /**
+     * The sizes to draw for: every reported size first (as is), then each one scaled down in [STEPS], aspect kept, at most 16.
+     * Android applies the layout whose size is closest among those that fit the real view and, when none fits, the smallest
+     * (RemoteViews.findBestFitLayout): with only the reported sizes, a host that lays the widget out smaller than it reports
+     * got a layout drawn for a bigger size, shrunk into its view (11-21 phone: content at ~0.6x, mic 48 dp shown at ~29 dp).
+     */
+    fun layoutSizes(reported: List<SizeF>): List<SizeF> {
+        val base = reported.distinct()
+        val out = LinkedHashSet<SizeF>(base)
+        for (k in STEPS.drop(1)) for (s in base) {
+            if (out.size >= MAX_SIZES) break
+            out += SizeF(Math.round(s.width * k * 10) / 10f, Math.round(s.height * k * 10) / 10f)
+        }
+        return out.toList().take(MAX_SIZES)
+    }
+
     /**
      * Resolution per size so the bitmaps of every size fit [limitBytes] (RemoteViews cap = 1.5 x screen x 4 bytes):
-     * the biggest one drops to 0.75x until the sum fits.
+     * the biggest one drops to 0.75x until the sum fits, the first [keep] (the reported sizes) only once the others are at 0.42x.
      */
-    fun budget(sizes: List<SizeF>, density: Float, limitBytes: Long): List<Float> {
+    fun budget(sizes: List<SizeF>, density: Float, limitBytes: Long, keep: Int = 0): List<Float> {
         val k = MutableList(sizes.size) { 1f }
         fun bytes(i: Int): Long { val d = density * k[i]; return (sizes[i].width * d).roundToInt().toLong() * (sizes[i].height * d).roundToInt() * 4 }
         var guard = 0
-        while (sizes.indices.sumOf(::bytes) > limitBytes && guard++ < 64) k[sizes.indices.maxBy(::bytes)] *= .75f
+        while (sizes.indices.sumOf(::bytes) > limitBytes && guard++ < 128) {
+            val extra = if (keep == 0) emptyList() else sizes.indices.filter { it >= keep && k[it] > .43f }
+            k[(extra.ifEmpty { sizes.indices.toList() }).maxBy(::bytes)] *= .75f
+        }
         return k
     }
 
