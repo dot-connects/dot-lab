@@ -1,11 +1,41 @@
-import { test, beforeEach } from "node:test";
+import { test, before, beforeEach, after } from "node:test";
 import assert from "node:assert/strict";
 import { handle, newCode, normCode, scheduled } from "../src/index.js";
-import { MemoryStore } from "../src/store.js";
 import { resetTokenCache } from "../src/fcm.js";
+import { setup } from "./harness.js";
 
 const BASE = "https://p.test";
-let store, env, sent;
+let h, store, db, env, call, sent, realFetch;
+
+async function serviceAccount() {
+  const kp = await crypto.subtle.generateKey(
+    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
+  const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey));
+  const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----\n`;
+  return JSON.stringify({ client_email: "sa@p.iam.gserviceaccount.com", private_key: pem, project_id: "parking-test" });
+}
+const SA = serviceAccount();
+
+before(async () => { h = await setup(); ({ store, db, env, call } = h); realFetch = globalThis.fetch; });
+after(async () => { globalThis.fetch = realFetch; await h?.close(); });
+beforeEach(async () => {
+  await h.reset();
+  for (const k of ["MAINTENANCE", "SMOKE_KEY", "LIMIT"]) delete env[k];
+  sent = [];
+  resetTokenCache();
+  env.FCM_SA = await SA;
+  globalThis.fetch = async (url, init) => {
+    if (typeof url !== "string" || !url.startsWith("https://")) return realFetch(url, init);
+    if (url.startsWith("https://oauth2.googleapis.com/token")) {
+      assert.match(init.body, /assertion=[\w-]+\.[\w-]+\.[\w-]+$/);
+      return new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }));
+    }
+    const msg = JSON.parse(init.body).message;
+    if (msg.token === "dead") return new Response('{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}', { status: 404 });
+    sent.push(msg);
+    return new Response("{}");
+  };
+});
 
 test("maintenance gates every API version and only accepts the configured smoke key", async () => {
   env.MAINTENANCE = "1";
@@ -37,63 +67,14 @@ test("maintenance keeps public join, request and asset links available", async (
   }
 });
 
-test("maintenance cron leaves expired photo flags and objects untouched", async () => {
-  await store.setPark2("group", "car", { park: { id: 1, atMs: 1, photo: true }, prev: null });
-  const deleted = [];
-  env.PHOTOS = { delete: async key => deleted.push(key) };
-  env.MAINTENANCE = "1";
-  await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
-  assert.equal((await store.park2("group", "car")).park.photo, true);
-  assert.deepEqual(deleted, []);
-  env.MAINTENANCE = "0";
-  await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
-  assert.equal((await store.park2("group", "car")).park.photo, false);
-  assert.deepEqual(deleted, ["g/group/car/1.jpg"]);
+test("v1 is closed with 410 update, authenticated or not", async () => {
+  const mom = (await call("POST", "/v2/groups", { name: "엄마", groupName: "집" })).body;
+  for (const [method, path, token] of [["POST", "/v1/groups"], ["POST", "/v1/join"], ["PUT", "/v1/park", mom.token], ["GET", "/v1/park", mom.token], ["DELETE", `/v1/members/${mom.memberId}`, mom.token]]) {
+    const r = await call(method, path, null, token);
+    assert.equal(r.status, 410); assert.deepEqual(r.body, { error: "update" });
+  }
+  assert.ok(await store.device(mom.memberId));
 });
-
-async function call(method, path, body, token) {
-  const headers = { "content-type": "application/json" };
-  if (token) headers.authorization = `Bearer ${token}`;
-  const req = new Request(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-  const waits = [];
-  const res = await handle(req, env, store, { waitUntil: p => waits.push(p) });
-  await Promise.all(waits);
-  return { status: res.status, body: await res.json() };
-}
-
-async function serviceAccount() {
-  const kp = await crypto.subtle.generateKey(
-    { name: "RSASSA-PKCS1-v1_5", modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: "SHA-256" }, true, ["sign", "verify"]);
-  const der = new Uint8Array(await crypto.subtle.exportKey("pkcs8", kp.privateKey));
-  const pem = `-----BEGIN PRIVATE KEY-----\n${btoa(String.fromCharCode(...der))}\n-----END PRIVATE KEY-----\n`;
-  return JSON.stringify({ client_email: "sa@p.iam.gserviceaccount.com", private_key: pem, project_id: "parking-test" });
-}
-
-beforeEach(async () => {
-  store = new MemoryStore();
-  sent = [];
-  resetTokenCache();
-  env = { FCM_SA: await serviceAccount() };
-  globalThis.fetch = async (url, init) => {
-    if (url.startsWith("https://oauth2.googleapis.com/token")) {
-      assert.match(init.body, /assertion=[\w-]+\.[\w-]+\.[\w-]+$/);
-      return new Response(JSON.stringify({ access_token: "at", expires_in: 3600 }));
-    }
-    const msg = JSON.parse(init.body).message;
-    if (msg.token === "dead") return new Response('{"error":{"status":"NOT_FOUND","details":[{"errorCode":"UNREGISTERED"}]}}', { status: 404 });
-    sent.push(msg);
-    return new Response("{}");
-  };
-});
-
-async function family() {
-  const mom = (await call("POST", "/v1/groups", { name: "엄마" })).body;
-  const code = (await call("POST", "/v1/invites", null, mom.token)).body.code;
-  const dad = (await call("POST", "/v1/join", { code, name: "아빠" })).body;
-  return { mom, dad, code };
-}
-
-const park = (over = {}) => ({ id: 1000, atMs: 1000, floor: -2, est: -2, alt: -3, confirmed: false, pillar: "", color: 0, placeName: "스타필드 수원", ...over });
 
 test("codes look like XXXX-XXXX-XXXX and normalise", () => {
   const c = newCode();
@@ -101,142 +82,70 @@ test("codes look like XXXX-XXXX-XXXX and normalise", () => {
   assert.equal(normCode(" abcd-efgh-jkmn "), "ABCDEFGHJKMN");
 });
 
-test("an invite joins once, then is gone", async () => {
-  const { dad, code } = await family();
-  assert.equal(dad.members.length, 2);
-  const again = await call("POST", "/v1/join", { code, name: "동생" });
-  assert.equal(again.status, 404);
-});
+async function family() {
+  const mom = (await call("POST", "/v2/groups", { name: "엄마", groupName: "집" })).body;
+  const code = (await call("POST", "/v2/invites", null, mom.token)).body.code;
+  const dad = (await call("POST", "/v2/join", { code, name: "아빠" })).body;
+  await call("PUT", "/v2/cars/c_00000001", { car: { id: "c_00000001", name: "흰 차", color: 0, plate: null, order: 0, updated: 1 } }, mom.token);
+  return { mom, dad };
+}
+const park = (over = {}) => ({ park: { id: 1000, carId: "c_00000001", atMs: 1000, floor: "B2", state: "PARKED", ...over } });
 
-test("expired invites do not join", async () => {
-  const mom = (await call("POST", "/v1/groups", { name: "엄마" })).body;
-  const code = (await call("POST", "/v1/invites", null, mom.token)).body.code;
-  const real = Date.now;
-  Date.now = () => real() + 25 * 60 * 60 * 1000;
-  try {
-    assert.equal((await call("POST", "/v1/join", { code, name: "아빠" })).status, 404);
-  } finally {
-    Date.now = real;
-  }
-});
-
-test("a park reaches the other phone by push and by pull", async () => {
+test("a park reaches the other phone by push and by pull; a dead token is cleared", async () => {
   const { mom, dad } = await family();
-  await call("PUT", "/v1/token", { fcmToken: "dad-phone" }, dad.token);
-  await call("PUT", "/v1/token", { fcmToken: "mom-phone" }, mom.token);
-  const r = await call("PUT", "/v1/park", { park: park() }, mom.token);
-  assert.equal(r.body.ok, true);
+  await call("PUT", "/v2/token", { fcmToken: "dad-phone" }, dad.token);
+  await call("PUT", "/v2/token", { fcmToken: "mom-phone" }, mom.token);
+  assert.equal((await call("PUT", "/v2/cars/c_00000001/park", park(), mom.token)).status, 200);
   assert.deepEqual(sent.map(m => m.token), ["dad-phone"]);
   assert.equal(sent[0].data.type, "park");
   assert.equal(sent[0].android.priority, "high");
-  const pulled = (await call("GET", "/v1/park", null, dad.token)).body;
-  assert.equal(pulled.park.floor, -2);
-  assert.equal(pulled.park.by, "엄마");
-  assert.equal(pulled.park.mine, false);
-});
-
-test("an older park does not replace a newer one; an update of the same park does", async () => {
-  const { mom, dad } = await family();
-  await call("PUT", "/v1/park", { park: park({ id: 2000, atMs: 2000 }) }, dad.token);
-  const old = await call("PUT", "/v1/park", { park: park({ id: 1000, atMs: 1000 }) }, mom.token);
-  assert.equal(old.body.stale, true);
-  await call("PUT", "/v1/park", { park: park({ id: 2000, atMs: 2000, confirmed: true, floor: -3, pillar: "C-12" }) }, mom.token);
-  const cur = (await call("GET", "/v1/park", null, mom.token)).body.park;
-  assert.equal(cur.floor, -3);
-  assert.equal(cur.pillar, "C-12");
-  assert.equal(cur.by, "아빠"); // who parked stays the driver
-});
-
-test("coordinates and unknown fields are dropped", async () => {
-  const { mom } = await family();
-  await call("PUT", "/v1/park", { park: { ...park(), lat: 37.1, lng: 127.1, secret: "x" } }, mom.token);
-  const cur = (await call("GET", "/v1/park", null, mom.token)).body.park;
-  assert.equal(cur.lat, undefined);
-  assert.equal(cur.secret, undefined);
+  const pulled = (await call("GET", "/v2/state", null, dad.token)).body.parks.c_00000001;
+  assert.equal(pulled.by, "엄마");
+  assert.equal(pulled.mine, false);
+  await call("PUT", "/v2/token", { fcmToken: "dead" }, dad.token);
+  await call("PUT", "/v2/cars/c_00000001/park", park({ id: 2000, atMs: 2000 }), mom.token);
+  assert.equal((await store.device(dad.memberId)).fcmToken, null);
 });
 
 test("bad or missing credentials are refused", async () => {
   const { mom } = await family();
-  assert.equal((await call("GET", "/v1/park")).status, 401);
+  assert.equal((await call("GET", "/v2/state")).status, 401);
   const forged = mom.token.slice(0, 17) + "0".repeat(64);
-  assert.equal((await call("GET", "/v1/park", null, forged)).status, 401);
-});
-
-test("a dead push token is cleared", async () => {
-  const { mom, dad } = await family();
-  await call("PUT", "/v1/token", { fcmToken: "dead" }, dad.token);
-  await call("PUT", "/v1/park", { park: park() }, mom.token);
-  assert.equal((await store.member(dad.memberId)).fcmToken, null);
-});
-
-test("only the owner removes others; anyone can leave", async () => {
-  const { mom, dad } = await family();
-  assert.equal((await call("DELETE", `/v1/members/${mom.memberId}`, null, dad.token)).status, 403);
-  assert.equal((await call("DELETE", `/v1/members/${dad.memberId}`, null, dad.token)).status, 200);
-  assert.equal((await call("GET", "/v1/park", null, dad.token)).status, 401);
-});
-
-test("an owner cannot remove a member of another family", async () => {
-  const a = await family(), b = await family();
-  assert.equal((await call("DELETE", `/v1/members/${b.dad.memberId}`, null, a.mom.token)).status, 404);
-  assert.ok(await store.member(b.dad.memberId));
+  assert.equal((await call("GET", "/v2/state", null, forged)).status, 401);
 });
 
 test("without a service account nothing is pushed but the park is stored", async () => {
   const { mom, dad } = await family();
   delete env.FCM_SA;
-  await call("PUT", "/v1/token", { fcmToken: "dad-phone" }, dad.token);
-  await call("PUT", "/v1/park", { park: park() }, mom.token);
+  await call("PUT", "/v2/token", { fcmToken: "dad-phone" }, dad.token);
+  await call("PUT", "/v2/cars/c_00000001/park", park(), mom.token);
   assert.equal(sent.length, 0);
-  assert.equal((await call("GET", "/v1/park", null, dad.token)).body.park.floor, -2);
-});
-
-test("a park dated in the future is refused", async () => {
-  const { mom } = await family();
-  const r = await call("PUT", "/v1/park", { park: park({ id: 9, atMs: Date.now() + 3600_000 }) }, mom.token);
-  assert.equal(r.status, 400);
-});
-
-test("a full family keeps the invite open", async () => {
-  const mom = (await call("POST", "/v1/groups", { name: "m" })).body;
-  for (let i = 0; i < 7; i++) {
-    const c = (await call("POST", "/v1/invites", null, mom.token)).body.code;
-    assert.equal((await call("POST", "/v1/join", { code: c, name: `k${i}` })).status, 200);
-  }
-  const code = (await call("POST", "/v1/invites", null, mom.token)).body.code;
-  assert.equal((await call("POST", "/v1/join", { code, name: "x" })).status, 409);
-  const kid = (await store.members((await store.member(mom.memberId)).groupId))[1];
-  await store.removeMember(kid.groupId, kid.id);
-  assert.equal((await call("POST", "/v1/join", { code, name: "x" })).status, 200);
-});
-
-test("only the newest invite works", async () => {
-  const mom = (await call("POST", "/v1/groups", { name: "m" })).body;
-  const first = (await call("POST", "/v1/invites", null, mom.token)).body.code;
-  await call("POST", "/v1/invites", null, mom.token);
-  assert.equal((await call("POST", "/v1/join", { code: first, name: "x" })).status, 404);
-});
-
-test("the owner leaving hands over; the last one out clears the family", async () => {
-  const { mom, dad } = await family();
-  await call("PUT", "/v1/park", { park: park() }, mom.token);
-  await call("DELETE", `/v1/members/${mom.memberId}`, null, mom.token);
-  assert.equal((await store.member(dad.memberId)).owner, true);
-  const gid = (await store.member(dad.memberId)).groupId;
-  await call("DELETE", `/v1/members/${dad.memberId}`, null, dad.token);
-  assert.equal(await store.park(gid), null);
-});
-
-test("an oversized body is refused", async () => {
-  const { mom } = await family();
-  const r = await call("PUT", "/v1/park", { park: park({ placeName: "x".repeat(5000) }) }, mom.token);
-  assert.ok(r.status === 413 || r.status === 400);
+  assert.equal((await call("GET", "/v2/state", null, dad.token)).body.parks.c_00000001.floor, "B2");
 });
 
 test("a service account pasted with a BOM still signs", async () => {
   const { mom, dad } = await family();
   env.FCM_SA = "﻿" + env.FCM_SA;
-  await call("PUT", "/v1/token", { fcmToken: "dad-phone" }, dad.token);
-  const r = await call("PUT", "/v1/park", { park: park() }, mom.token);
-  assert.deepEqual(r.body.push, { sent: 1, failed: 0, reason: null });
+  await call("PUT", "/v2/token", { fcmToken: "dad-phone" }, dad.token);
+  await call("PUT", "/v2/cars/c_00000001/park", park(), mom.token);
+  assert.deepEqual(sent.map(m => m.token), ["dad-phone"]);
+});
+
+test("maintenance cron leaves expired photo flags and objects untouched", async () => {
+  const { mom } = await family();
+  await call("PUT", "/v2/cars/c_00000001/park", park({ id: 1, atMs: 1 }), mom.token);
+  await db.prepare("UPDATE parks3 SET json=json_set(json,'$.photo',json('true'))").run();
+  const deleted = [];
+  const photos = env.PHOTOS;
+  env.PHOTOS = { delete: async key => deleted.push(key) };
+  try {
+    env.MAINTENANCE = "1";
+    await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
+    assert.equal((await store.park3("c_00000001")).park.photo, true);
+    assert.deepEqual(deleted, []);
+    env.MAINTENANCE = "0";
+    await scheduled({ scheduledTime: 40 * 86400_000 }, env, null, store);
+    assert.equal((await store.park3("c_00000001")).park.photo, false);
+    assert.deepEqual(deleted, ["c/c_00000001/1.jpg"]);
+  } finally { env.PHOTOS = photos; }
 });

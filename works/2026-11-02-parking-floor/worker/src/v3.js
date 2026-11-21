@@ -1,5 +1,6 @@
 import { cleanName, fail, json, newCode, normCode, randomId, requestInvites, sha256 } from "./index.js";
-import { auth, leaveGroup, notifyGroup, stateFor } from "./core.js";
+import { MAX_PHOTO, STATES, auth, cleanCar, cleanPark, dropCarPhotos, leaveGroup, notifyCars, notifyGroup, photo, putPark,
+  sendTokens, setState, stateFor, undoPark, validParkId, viewer } from "./core.js";
 
 const DAY = 86400_000;
 const REQ_SECRET = /^[0-9a-f]{32}$/, REQ_HASH = /^[0-9a-f]{64}$/;
@@ -22,13 +23,22 @@ async function identity(name, now) {
     credentials: { deviceId: id, secret, token: `${id}.${secret}` } };
 }
 
+/** Photo uploads need a declared length up to 400 KB; every other body is capped at 4 KB. */
+export function sizeRefused(req, path) {
+  if (req.method === "PUT" && path.endsWith("/photo")) {
+    const length = Number(req.headers.get("content-length"));
+    return !req.headers.has("content-length") || !Number.isSafeInteger(length) || length < 0 || length > MAX_PHOTO;
+  }
+  return Number(req.headers.get("content-length") || 0) > 4096;
+}
+
 export async function handle(req, env, store, ctx) {
   try { return await route(req, env, store, ctx); } catch (e) { if (e instanceof Response) return e; throw e; }
 }
 
 async function route(req, env, store, ctx) {
-  const path = new URL(req.url).pathname.replace(/\/+$/, ""), now = Date.now();
-  if (Number(req.headers.get("content-length") || 0) > 4096) return fail(413, "size");
+  const url = new URL(req.url), path = url.pathname.replace(/\/+$/, ""), now = Date.now();
+  if (sizeRefused(req, path)) return fail(413, "size");
 
   if (req.method === "POST" && ["/v3/groups", "/v3/join"].includes(path)) {
     const me = req.headers.has("authorization") ? await auth(req, store) : null;
@@ -138,5 +148,65 @@ async function route(req, env, store, ctx) {
       return json(action === "me" ? { ok: true, device: result.deviceGone ? "gone" : "kept" } : { ok: true });
     }
   }
+  const carRoute = path.match(/^\/v3\/cars\/(c_[0-9a-f]{8})(?:\/(park|state|undo|photo)|\/groups\/([0-9a-f]{16}))?$/);
+  if (carRoute) return await carRoutes(req, env, store, ctx, me, url, carRoute, now);
   return fail(404, "route");
+}
+
+async function carRoutes(req, env, store, ctx, me, url, [, id, kind, gid], now) {
+  const car = await store.car(id);
+  const visible = !!car && (car.ownerId === me.id || await store.visible(id, me.id));
+  const pushCars = (ids, tokens) => ctx?.waitUntil?.(tokens ? sendTokens(env, store, tokens, { type: "cars" }) : notifyCars(env, store, ids, me.id, { type: "cars" }));
+  if (!kind && !gid && req.method === "PUT") {
+    const next = cleanCar((await body(req))?.car, id);
+    if (!next) return fail(400, "car");
+    if (!car) {
+      const result = await store.createCar(me.id, next, now);
+      if (result !== "ok") return fail(409, result);
+    } else if (!visible) return fail(409, "id");
+    else if (car.ownerId !== me.id) return fail(403, "owner");
+    else if (!await store.updateCar(me.id, next)) return fail(403, "owner");
+    pushCars([id]);
+    return json({ car: next });
+  }
+  if (!visible) return fail(404, "car");
+  if (!kind && !gid && req.method === "DELETE") {
+    if (car.ownerId !== me.id) return fail(403, "owner");
+    const tokens = await store.audience([id], me.id);
+    if (!await store.deleteCar(id, me.id)) return fail(403, "owner");
+    await dropCarPhotos(env, car);
+    pushCars(null, tokens);
+    return json({ ok: true });
+  }
+  if (gid && (req.method === "PUT" || req.method === "DELETE")) {
+    if (car.ownerId !== me.id) return fail(403, "owner");
+    const result = req.method === "PUT" ? await store.include(id, gid, me.id, now) : await store.exclude(id, gid, me.id);
+    if (result !== "ok") return fail(404, result);
+    ctx?.waitUntil?.(notifyGroup(env, store, gid, me.id, { type: "cars" }));
+    return json({ ok: true });
+  }
+  if (!kind) return fail(404, "route");
+  // The photo body is read before the park row, so a park written during the upload is not overwritten.
+  let bytes, res;
+  if (kind === "photo" && req.method === "PUT") {
+    if (req.headers.get("content-type") !== "image/jpeg") return fail(400, "photo");
+    bytes = await req.arrayBuffer();
+    if (bytes.byteLength > MAX_PHOTO) return fail(413, "size");
+  }
+  const view = await viewer(store, me, id);
+  if (kind === "park" && req.method === "PUT") {
+    const park = cleanPark((await body(req))?.park, id, now);
+    if (!park) return fail(400, "park");
+    res = await putPark(env, store, me, car, park, view, now);
+  } else if (kind === "state" && req.method === "POST") {
+    const b = await body(req);
+    if (!STATES.includes(b?.state) || (b.state === "LEFT" && !(validParkId(b.atMs) && b.atMs <= now + 5 * 60_000))) return fail(400, "state");
+    res = await setState(env, store, me, car, b.state, b.parkId, b.atMs, view, now);
+  } else if (kind === "undo" && req.method === "POST") {
+    res = await undoPark(env, store, me, car, (await body(req))?.parkId, view, now);
+  } else if (kind === "photo" && (req.method === "PUT" || req.method === "GET")) {
+    res = await photo(env, store, me, car, req.method, url.searchParams.get("park"), bytes, view);
+  } else return fail(404, "route");
+  if (res.status === 200 && req.method !== "GET") ctx?.waitUntil?.(notifyCars(env, store, [id], me.id, { type: "park", carId: id }));
+  return res;
 }

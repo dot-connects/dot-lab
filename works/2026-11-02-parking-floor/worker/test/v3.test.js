@@ -239,7 +239,7 @@ test("state dedupes visible cars, hides foreign group ids and masks current and 
   const second = await create(null, a.token, "Work"), c = await join({ ...a, groupId: second.groupId }, "Third");
   await store.createCar(a.deviceId, car(), 10);
   await store.createCar(b.deviceId, car("c_00000002"), 10);
-  await store.include(car().id, a.groupId, a.deviceId, 10); await store.include(car().id, second.groupId, a.deviceId, 10);
+  await store.include(car().id, a.groupId, a.deviceId, 10); await store.include(car().id, second.groupId, a.deviceId, 11);
   const who = { id: c.deviceId, name: "Third" };
   await store.casPark3(car().id, null, park(2, who, park(1, who)), a.deviceId);
   const state = (await call("GET", "/v3/state", null, b.token)).body;
@@ -364,4 +364,169 @@ test("leave also closes requests accepted after its initial invite snapshot", as
   assert.equal((await call("DELETE", `/v3/groups/${a.groupId}/me`, null, b.token)).status, 200);
   assert.equal(await store.request("a".repeat(64), Date.now()), null);
   await error("POST", "/v3/peek", { code: "ABCD-EFGH-JKLM" }, null, 404, "code");
+});
+
+// ---- W4: cars, parks, masking, fan-out, cron ----
+const C = "c_00000001";
+const pk = (id, extra = {}) => ({ park: { id, carId: C, atMs: id, floor: "B2", state: "PARKED", ...extra } });
+const jpeg = (token, path) => call("PUT", path, new Uint8Array(1), token, { "content-length": "1", "content-type": "image/jpeg" });
+const setPhoto = () => db.prepare("UPDATE parks3 SET json=json_set(json,'$.photo',json('true'))").run();
+
+// Owner O in X and Y, MX in X only, MY in Y only, stranger S; car C shared into X and Y.
+async function world() {
+  const o = await create("Owner"), y = await create(null, o.token, "Y");
+  const mx = await join(o, "MX"), my = await join({ ...o, groupId: y.groupId }, "MY"), s = await create("S");
+  assert.equal((await call("PUT", `/v3/cars/${C}`, { car: car() }, o.token)).status, 200);
+  for (const gid of [o.groupId, y.groupId]) assert.deepEqual((await call("PUT", `/v3/cars/${C}/groups/${gid}`, null, o.token)).body, { ok: true });
+  return { o, mx, my, s, X: o.groupId, Y: y.groupId };
+}
+
+test("car routes authorize owner, members of either group and strangers", async () => {
+  const { o, mx, my, s, X, Y } = await world();
+  const routes = n => [
+    ["DELETE", `/v3/cars/${C}`], ["PUT", `/v3/cars/${C}/groups/${X}`], ["DELETE", `/v3/cars/${C}/groups/${Y}`],
+    ["PUT", `/v3/cars/${C}/park`, pk(n)], ["POST", `/v3/cars/${C}/state`, { state: "DRIVING", parkId: n }],
+    ["POST", `/v3/cars/${C}/undo`, { parkId: n }], ["GET", `/v3/cars/${C}/photo?park=${n}`],
+  ];
+  for (const [method, path, payload] of routes(1)) await error(method, path, payload, s.token, 404, "car");
+  await error("PUT", `/v3/cars/${C}`, { car: car() }, s.token, 409, "id");
+  let n = 100;
+  for (const m of [mx, my]) {
+    await error("PUT", `/v3/cars/${C}`, { car: { ...car(), name: "Hijack" } }, m.token, 403, "owner");
+    for (const [method, path, payload] of routes(n).slice(0, 3)) await error(method, path, payload, m.token, 403, "owner");
+    assert.equal((await call("PUT", `/v3/cars/${C}/park`, pk(n), m.token)).status, 200);
+    assert.equal((await call("POST", `/v3/cars/${C}/state`, { state: "DRIVING", parkId: n }, m.token)).status, 200);
+    assert.equal((await jpeg(m.token, `/v3/cars/${C}/photo?park=${n}`)).status, 200);
+    assert.equal((await call("GET", `/v3/cars/${C}/photo?park=${n}`, null, m.token)).status, 200);
+    assert.equal((await call("POST", `/v3/cars/${C}/undo`, { parkId: n }, m.token)).status, 200);
+    n += 100;
+  }
+  assert.equal((await store.car(C)).car.name, "Car");
+  assert.equal((await call("PUT", `/v3/cars/${C}`, { car: { ...car(), name: "New" } }, o.token)).body.car.name, "New");
+  await error("PUT", `/v3/cars/${C}/groups/${s.groupId}`, null, o.token, 404, "group");
+  await error("PUT", `/v3/cars/${C}`, { car: { ...car(), color: "x" } }, o.token, 400, "car");
+  for (let i = 2; i <= 4; i++) assert.equal((await call("PUT", `/v3/cars/c_0000000${i}`, { car: car(`c_0000000${i}`) }, o.token)).status, 200);
+  await error("PUT", "/v3/cars/c_00000005", { car: car("c_00000005") }, o.token, 409, "cars");
+  assert.deepEqual((await call("DELETE", `/v3/cars/${C}`, null, o.token)).body, { ok: true });
+  await error("PUT", `/v3/cars/${C}/park`, pk(900), mx.token, 404, "car");
+});
+
+test("excluding a group ends its members' access unless another group still shares the car", async () => {
+  const { o, mx, my, X, Y } = await world();
+  assert.deepEqual((await call("DELETE", `/v3/cars/${C}/groups/${X}`, null, o.token)).body, { ok: true });
+  assert.deepEqual((await call("DELETE", `/v3/cars/${C}/groups/${X}`, null, o.token)).body, { ok: true });
+  await error("PUT", `/v3/cars/${C}/park`, pk(100), mx.token, 404, "car");
+  assert.equal((await call("PUT", `/v3/cars/${C}/park`, pk(100), my.token)).status, 200);
+  await join({ ...o, groupId: Y }, "Both", mx.token);
+  assert.equal((await call("PUT", `/v3/cars/${C}/park`, pk(200), mx.token)).status, 200);
+  assert.deepEqual(await store.carGroups([C]), { [C]: [Y] });
+});
+
+test("D13: parkers outside the viewer's shared groups are masked in every park body", async () => {
+  const { o, mx, my, Y } = await world();
+  const masked = p => {
+    assert.equal(p.by, null); assert.equal(p.byId, null); assert.equal(p.byOther, true);
+    assert.equal(p.drivingBy, null); assert.equal(p.drivingById, null); assert.equal(p.drivingOther, true);
+  };
+  assert.equal((await call("PUT", `/v3/cars/${C}/park`, pk(100), my.token)).body.park.by, "MY");
+  assert.equal((await call("POST", `/v3/cars/${C}/state`, { state: "DRIVING", parkId: 100 }, my.token)).body.park.drivingBy, "MY");
+  masked((await call("GET", "/v3/state", null, mx.token)).body.parks[C]);
+  const stale = await call("PUT", `/v3/cars/${C}/park`, pk(50), mx.token);
+  assert.equal(stale.status, 409); assert.equal(stale.body.error, "stale"); masked(stale.body.park);
+  await call("PUT", `/v3/cars/${C}/park`, pk(200, { state: "DRIVING" }), my.token);
+  const undone = await call("POST", `/v3/cars/${C}/undo`, { parkId: 200 }, mx.token);
+  assert.equal(undone.status, 200); masked(undone.body.park);
+  const own = (await call("GET", "/v3/state", null, o.token)).body.parks[C];
+  assert.equal(own.by, "MY"); assert.equal(own.drivingBy, "MY"); assert.equal(own.byOther, false);
+  await call("DELETE", `/v3/groups/${Y}/me`, null, my.token);
+  masked((await call("GET", "/v3/state", null, o.token)).body.parks[C]);
+  const moved = await call("POST", `/v3/cars/${C}/state`, { state: "PARKED", parkId: 1 }, mx.token);
+  assert.equal(moved.status, 409); assert.equal(moved.body.error, "moved"); masked(moved.body.park);
+});
+
+test("LEFT is stored with leftAt, masked like DRIVING, validated, and replaced by a new park", async () => {
+  const { o, mx, my } = await world();
+  await call("PUT", `/v3/cars/${C}/park`, pk(100, { state: "DRIVING" }), my.token);
+  await error("POST", `/v3/cars/${C}/state`, { state: "LEFT", parkId: 100 }, my.token, 400, "state");
+  await error("POST", `/v3/cars/${C}/state`, { state: "GONE", parkId: 100 }, my.token, 400, "state");
+  const left = await call("POST", `/v3/cars/${C}/state`, { state: "LEFT", parkId: 100, atMs: 150 }, my.token);
+  assert.equal(left.status, 200);
+  assert.equal(left.body.park.state, "LEFT"); assert.equal(left.body.park.leftAt, 150); assert.equal(left.body.park.drivingBy, "MY");
+  const seen = (await call("GET", "/v3/state", null, mx.token)).body.parks[C];
+  assert.equal(seen.state, "LEFT"); assert.equal(seen.leftAt, 150); assert.equal(seen.drivingBy, null); assert.equal(seen.drivingOther, true);
+  assert.equal((await call("GET", "/v3/state", null, o.token)).body.parks[C].drivingBy, "MY");
+  const parked = (await call("POST", `/v3/cars/${C}/state`, { state: "PARKED", parkId: 100 }, my.token)).body.park;
+  assert.equal(parked.leftAt, undefined); assert.equal(parked.drivingBy, null);
+  await call("POST", `/v3/cars/${C}/state`, { state: "LEFT", parkId: 100, atMs: 160 }, my.token);
+  const next = (await call("PUT", `/v3/cars/${C}/park`, pk(200), mx.token)).body.park;
+  assert.equal(next.state, "PARKED"); assert.equal(next.leftAt, undefined); assert.equal(next.drivingOther, false);
+  assert.equal(next.prev.state, "LEFT");
+  await error("PUT", `/v3/cars/${C}/park`, pk(300, { state: "LEFT" }), mx.token, 400, "park");
+  assert.equal((await call("PUT", `/v3/cars/${C}/park`, pk(300, { state: "LEFT", leftAt: 300 }), mx.token)).body.park.leftAt, 300);
+});
+
+test("a lost park CAS re-judges recency: an older row loses to the incoming park, a newer row answers stale", async t => {
+  const { o, mx } = await world();
+  const row = id => ({ park: { ...pk(id).park, photo: false }, prev: null, by: "Owner", byId: o.deviceId, drivingBy: null, drivingById: null, updated: id });
+  const original = store.casPark3.bind(store);
+  let rival;
+  t.mock.method(store, "casPark3", async (...args) => {
+    if (rival) { const r = rival; rival = null; await original(C, await store.park3(C), r, o.deviceId); return false; }
+    return original(...args);
+  });
+  rival = row(100);
+  const won = await call("PUT", `/v3/cars/${C}/park`, pk(200), mx.token);
+  assert.equal(won.status, 200);
+  const stored = await store.park3(C);
+  assert.equal(stored.park.id, 200); assert.equal(stored.prev.park.id, 100);
+  rival = row(400);
+  const lost = await call("PUT", `/v3/cars/${C}/park`, pk(300), mx.token);
+  assert.equal(lost.status, 409); assert.equal(lost.body.error, "stale"); assert.equal(lost.body.park.id, 400);
+  const moved = await call("POST", `/v3/cars/${C}/state`, { state: "DRIVING", parkId: 300 }, mx.token);
+  assert.equal(moved.status, 409); assert.equal(moved.body.error, "moved"); assert.equal(moved.body.park.id, 400);
+});
+
+test("park pushes reach each phone once, never the actor; car edits push cars", async t => {
+  const { o, mx, my, X, Y } = await world();
+  await join({ ...o, groupId: Y }, "Both", mx.token);
+  await store.setToken(mx.deviceId, "mx"); await store.setToken(my.deviceId, "shared");
+  await db.prepare("UPDATE devices SET fcm_token='shared' WHERE id=?").bind(o.deviceId).run();
+  const sent = await pushCapture(t);
+  await call("PUT", `/v3/cars/${C}/park`, pk(100), mx.token);
+  assert.deepEqual(sent.map(m => [m.token, m.data.type]), [["shared", "park"]]);
+  sent.length = 0;
+  await call("PUT", `/v3/cars/${C}`, { car: car() }, o.token);
+  assert.deepEqual(sent.map(m => [m.token, m.data.type]).sort(), [["mx", "cars"], ["shared", "cars"]]);
+  sent.length = 0;
+  await call("DELETE", `/v3/cars/${C}/groups/${X}`, null, o.token);
+  assert.deepEqual(sent.map(m => m.token), ["mx"]);
+  sent.length = 0;
+  await call("DELETE", `/v3/cars/${C}`, null, my.token);
+  assert.deepEqual(sent, []);
+  await call("DELETE", `/v3/cars/${C}`, null, o.token);
+  assert.deepEqual(sent.map(m => [m.token, m.data.type]).sort(), [["mx", "cars"], ["shared", "cars"]]);
+});
+
+test("photos use the car key, fall back to the legacy key, and every delete path removes both", async () => {
+  const { o, mx } = await world();
+  await db.prepare("UPDATE cars3 SET legacy_group='oldg',legacy_car_id='oldc'").run();
+  await call("PUT", `/v3/cars/${C}/park`, pk(100), mx.token);
+  await setPhoto();
+  h.objects.set("g/oldg/oldc/100.jpg", "legacy");
+  assert.equal((await call("GET", `/v3/cars/${C}/photo?park=100`, null, mx.token)).body, "legacy");
+  assert.equal((await jpeg(mx.token, `/v3/cars/${C}/photo?park=100`)).status, 200);
+  assert.ok(h.objects.has(`c/${C}/100.jpg`));
+  await call("POST", `/v3/cars/${C}/undo`, { parkId: 100 }, mx.token);
+  assert.equal(h.objects.size, 0, "undo");
+  const both = id => { h.objects.set(`c/${C}/${id}.jpg`, "x"); h.objects.set(`g/oldg/oldc/${id}.jpg`, "x"); };
+  for (const id of [100, 200]) { await call("PUT", `/v3/cars/${C}/park`, pk(id), mx.token); both(id); await setPhoto(); }
+  await call("PUT", `/v3/cars/${C}/park`, pk(300), mx.token);
+  assert.deepEqual([...h.objects.keys()].sort(), [`c/${C}/200.jpg`, "g/oldg/oldc/200.jpg"], "replace");
+  const { scheduled } = await import("../src/index.js");
+  await scheduled({ scheduledTime: 30 * DAY + 250 }, env, null, store);
+  assert.equal(h.objects.size, 0, "cron");
+  assert.equal((await store.park3(C)).prev.park.photo, false);
+  both(300); h.objects.set("c/c_00000009/1.jpg", "keep");
+  await call("DELETE", `/v3/cars/${C}`, null, o.token);
+  assert.deepEqual([...h.objects.keys()], ["c/c_00000009/1.jpg"], "delete");
 });
