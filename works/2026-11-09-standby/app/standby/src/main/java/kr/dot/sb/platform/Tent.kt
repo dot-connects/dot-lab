@@ -69,7 +69,8 @@ class Tent(private val activity: ComponentActivity) {
                 setViewTreeLifecycleOwner(activity)
                 setViewTreeSavedStateRegistryOwner(activity)
                 setViewTreeViewModelStoreOwner(activity)
-                setContent { Content() }
+                // this@Tent: a bare Content() inside apply{} is ComposeView's own Content() (it recursed, the clock never drew)
+                setContent { this@Tent.Content() }
             }
             view = v
             session.setContentView(v)
