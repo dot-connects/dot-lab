@@ -1,0 +1,47 @@
+확정된 운영 결정은 제외했습니다. **High 8건, Medium 5건**입니다. 경로는 대상 프로젝트 기준입니다.
+
+1. **High — 탈퇴·추방된 인증이 migration으로 복구됨 (§3, §9).** 첫 복사 후 기존 Worker에서 회원을 제거해도 `OR IGNORE` 재실행은 새 테이블의 회원·membership을 삭제하지 않습니다. 반대로 배포 후 제거된 회원은 남아 있는 옛 행에서 재생성됩니다. 제거된 credential로 다시 접근할 수 있습니다. 근거: [store.js:19](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:19), [v2.js:253](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:253).
+
+2. **High — 컷오버 틈의 신규 가입자가 로그인·큐를 잃음 (§3, §9).** 첫 migration 이후 기존 Worker에서 가입한 폰은 배포 직후 두 번째 migration 전까지 `devices`에 없습니다. 이때 받은 401은 앱이 credential과 전체 큐를 삭제하게 하며, 이후 서버 복사가 완료돼도 복구되지 않습니다. 근거: [Api.kt:112](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/Api.kt:112), [FamilyStore.kt:55](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/FamilyStore.kt:55).
+
+3. **High — 충돌 ID의 승자가 재실행마다 달라질 수 있음 (§3).** G1이 원본 ID를 받았는데 두 실행 사이 G2에 더 최신 주차가 생기면, 두 번째 실행은 G2를 원본 ID로 보냅니다. `owner_id`는 유지하면서 주차·그룹 연결은 다른 차량 것으로 섞일 수 있습니다. 결정적 hash만으로는 매핑이 안정되지 않습니다. 근거: [schema.sql:24](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/schema.sql:24), [store.js:59](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:59).
+
+4. **High — 권한 확인 후 공유 해제돼도 저장 성공 가능 (§2.2, §2.5, §4.4).** 현재는 차량 확인과 CAS가 별도 작업이며 CAS는 membership을 검사하지 않습니다. B의 확인 직후 owner가 공유를 해제해도 B의 주차가 저장됩니다. include 역시 확인 후 owner 탈퇴가 끼면 소유자 membership 없는 연결을 만들 수 있습니다. 근거: [v2.js:179](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:179), [store.js:64](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:64).
+
+5. **High — v2 호환 예외가 다른 그룹 차량 정보를 반환할 수 있음 (§2.4, §6).** “내 차가 아니면 서버 차량을 200으로 반환”을 그대로 적용하면, 다른 그룹 차량 ID로 PUT하여 이름·번호판을 얻습니다. 현재의 그룹별 조회를 전역 조회로 바꾸기 전에 invisible→404가 이 예외보다 우선한다는 계약과 테스트가 필요합니다. 근거: [v2.js:158](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:158).
+
+6. **High — ‘최신 atMs 우선’이 동시 저장에서는 성립하지 않음 (§4.3).** 두 요청이 같은 이전 행을 읽고 오래된 주차가 먼저 CAS에 성공하면, 더 최신 주차는 409 `moved`를 받습니다. 앱은 그 작업을 버리고 오래된 서버 주차로 덮습니다. CAS 실패 후 최신성 재평가가 없습니다. 근거: [v2.js:192](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:192), [SyncWorker.kt:72](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/SyncWorker.kt:72).
+
+7. **High — 업데이트 전 오프라인 State가 다른 주차를 변경함 (§4.3–4.4, §8).** 큐의 `State`에는 대상 park ID/version이 없습니다. A가 이전 주차에서 오프라인으로 “가져감”을 누르고 B가 새로 주차하면, A의 재접속은 B의 최신 주차를 DRIVING으로 바꿉니다. 서버 내부 CAS로는 이 오래된 사용자 의도를 구별하지 못합니다. 근거: [SyncQueue.kt:40](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/SyncQueue.kt:40), [v2.js:201](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:201).
+
+8. **High — rollback의 ‘옛 테이블은 그대로’ 전제가 틀림 (§1, §9).** `groups/invites/requests`는 공유하며, v3 탈퇴는 이를 삭제합니다. 사진도 기존 키를 실제 삭제합니다. rollback하면 옛 회원·차량 행은 남아도 그룹·초대·사진이 사라진 혼합 상태가 됩니다. 명시된 “v3-era writes 손실”보다 범위가 큽니다. 근거: [store.js:33](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:33), [v2.js:215](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:215).
+
+9. **Medium — 기존 오프라인 신규 차량이 업데이트 후 비공유 차량이 됨 (§4.4, §5.1, §8).** v2에서 오프라인 등록한 `PutCar`에는 공유 정보가 없습니다. 이를 v3로 그대로 보내면 개인 차량만 생성되고 `Share`는 생기지 않아, 원래 가족에게 보낼 차량이 공유되지 않습니다. legacy 큐 변환 규칙이 필요합니다. 근거: [SyncQueue.kt:61](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/SyncQueue.kt:61), [Api.kt:247](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/app-v2/app/src/main/java/kr/dot/wherepark/data/Api.kt:247).
+
+10. **Medium — ID 재배정 차량의 사진 fallback이 실패함 (§1, §3).** 기존 객체는 `g/G/oldId/park.jpg`인데 새 차량은 `newId`이고 저장하는 것은 `legacy_group`뿐입니다. fallback·삭제가 `newId`를 사용하므로 기존 사진을 찾거나 정리할 수 없습니다. `legacy_car_id`도 보존해야 합니다. 근거: [v2.js:222](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:222).
+
+11. **Medium — 정원 검사·초대 소비·가입이 원자적이지 않음 (§2.1, §8).** v2 순서를 유지하면 7명인 그룹에 서로 다른 초대로 동시에 가입하여 9명이 됩니다. 초대 소비 후 회원 생성이 실패하면 코드는 소진되고 가입은 실패합니다. 3그룹 제한도 동일한 count-then-insert 경쟁을 막아야 합니다. 근거: [v2.js:85](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/v2.js:85), [store.js:89](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:89).
+
+12. **Medium — 전체 pull·fan-out의 D1 비용 상한이 없음 (§1, §2, §4.1–4.2).** 현재 `parks2()`는 목록 조회 뒤 차량마다 추가 조회합니다. 이를 96대에 유지하면 주차 조회만 97회이며, 한 이벤트가 최대 21개 다른 폰의 전체 pull을 유발합니다. 인증 호출은 무제한이고 재사용 테이블에도 `requests(group_id/by_id/code)`, `invites(group_id/expires)` 조회용 인덱스가 없습니다. 근거: [store.js:54](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/src/store.js:54), [schema.sql:14](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/schema.sql:14).
+
+13. **Medium — 완료 기준이 빠진 테스트로도 초록색이 됨 (§8–9).** 현재 `npm test`는 `worker.test.js`만 실행하여 v2와 예정된 v3 테스트를 제외합니다. 기존 두 테스트 파일도 MemoryStore를 사용하므로 “D1Store parity as today”는 실제 SQL 경쟁·batch 실패 검증을 보장하지 않습니다. 근거: [package.json:1](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/package.json:1), [v2.test.js:4](/C:/DC/DD/dot-lab/works/2026-11-02-parking-floor/worker/test/v2.test.js:4).
+
+우선 바꿀 3가지:
+
+1. **migration 컷오버 계약:** 쓰기 차단 또는 변경분 추적, 영구 ID 매핑, 삭제 반영, 실패 후 재개·복구 절차를 확정합니다.
+2. **권한·경쟁 조건 계약:** 권한과 저장을 같은 조건부 SQL에 묶고, 최신성 재평가·State version·가입 원자성·v2 예외 우선순위를 명시합니다.
+3. **실제 업그레이드 검증:** 설치된 v2와 기존 큐를 그대로 사용하여 컷오버·ID 충돌·혼합 버전·D1 실패를 재현하고 필수 테스트 명령에 포함합니다.
+
+## SUMMARY
+
+정책 변경 없이 구현 설계의 결함 13건을 확인했습니다.
+현재 v2 테스트 통과는 위 migration·v3 안전성을 증명하지 않습니다.
+
+## FILES_CHANGED
+
+- 없음. 파일 변경·wrangler·deploy·네트워크 호출 없음.
+
+## TESTS
+
+- `node --input-type=module -e "globalThis.fetch=async()=>{throw Error('Network disabled')}; import('./test/v2.test.js')"`에 해당하는 실행: **20 passed, 0 failed**.
+- v3·실제 D1 검증은 미실행: 설계 검토 범위와 네트워크 금지 조건을 준수했습니다.
