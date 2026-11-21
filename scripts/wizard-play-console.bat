@@ -184,7 +184,7 @@ $Apps = @{
   '2' = @{ Key = 'DUO';   Name = '따로 같이 네컷'; Kind = '앱';   Pkg = '(T-0188 에서 정함)'; Aab = '' }
   '3' = @{ Key = 'PARK';  Name = '주차 앱';        Kind = '앱';   Pkg = '(T-0189 에서 정함)'; Aab = '' }
   '4' = @{ Key = 'STAND'; Name = 'Stand Screen';   Kind = '앱';   Pkg = 'kr.dot.standscreen';
-           Aab = (Join-Path $env:LOCALAPPDATA 'standby-build\standby\outputs\bundle\publicRelease\standby-public-release.aab') }
+           Aab = (Join-Path $env:LOCALAPPDATA 'standby-build\standby\outputs\bundle\publicRelease\stand-screen-public-release.aab') }
 }
 # Stand Screen (T-0162, 0.6.2 final 2026-11-19): Play answers are in works/2026-11-09-standby/docs/play-declarations.md.
 $StandDocs = 'C:\DC\DD\dot-lab\works\2026-11-09-standby\docs\play-declarations.md'

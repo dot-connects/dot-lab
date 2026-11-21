@@ -44,7 +44,7 @@ def out() -> Path:
 def apk(flavour: str, build: str) -> Path:
     d = out() / "apk" / flavour / build
     # the public release is "-unsigned" until ~/.standscreen/upload.properties exists (plan-r15 A3)
-    for name in (f"standby-{flavour}-{build}.apk", f"standby-{flavour}-{build}-unsigned.apk"):
+    for name in (f"stand-screen-{flavour}-{build}.apk", f"stand-screen-{flavour}-{build}-unsigned.apk"):
         if (d / name).exists():
             return d / name
     raise FileNotFoundError(f"no {flavour}-{build} APK in {d}")
