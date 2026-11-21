@@ -190,14 +190,14 @@ class MainActivity : ComponentActivity() {
         if (top is Nav.Onb && (top as Nav.Onb).step == 3) practice = practiceNow(practice.raw)
         val app = applicationContext
         Thread {
-            WidgetRefresh.request(app)  // re-reads the wallpaper colours (no broadcast for wallpaper changes)
             Push.start(app)
             // a family accepted my join request while I was away: ask on the join screen (never join blindly)
             if (!requestShown && JoinRequest.poll(app) is JoinRequest.Poll.Code) onUi {
                 requestShown = true
                 startActivity(Intent(this, JoinActivity::class.java))
             }
-            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ }  // a merged pull also refreshes widgets
+            // a merged pull refreshes widgets itself; otherwise refresh once here (re-reads the wallpaper colours, no broadcast for wallpaper changes)
+            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ } else WidgetRefresh.request(app)
         }.start()
         publishShortcuts()
     }

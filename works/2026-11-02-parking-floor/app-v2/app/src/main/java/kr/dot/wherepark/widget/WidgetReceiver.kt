@@ -164,30 +164,56 @@ class WidgetReceiver : AppWidgetProvider() {
 
         fun update(ctx: Context, mgr: AppWidgetManager, id: Int) = synchronized(drawLock) { draw(ctx, mgr, id) }
 
+        /** appWidgetId -> every input of the last successful draw; an equal set means the widget already shows this. */
+        private val lastDrawn = java.util.concurrent.ConcurrentHashMap<Int, List<Any?>>()
+        /** Draws that reached the renderer (tests count them). */
+        internal val drawCount = java.util.concurrent.atomic.AtomicInteger()
+
+        internal fun forget(ids: IntArray) = ids.forEach { lastDrawn.remove(it) }
+
+        /**
+         * Tries the reported sizes plus the shrunken candidates; when the system refuses the RemoteViews (bitmap limit,
+         * IllegalArgumentException) retries once with only the reported sizes, then once at half the density. The last failure propagates.
+         */
+        internal fun drawWithFallback(reported: List<SizeF>, density: Float, attempt: (List<SizeF>, Float) -> Unit) {
+            try { attempt(WidgetRenderer.layoutSizes(reported), density); return } catch (e: IllegalArgumentException) { android.util.Log.w("wp-widget", "RemoteViews refused: $e") }
+            try { attempt(reported, density); return } catch (e: IllegalArgumentException) { android.util.Log.w("wp-widget", "reported sizes refused: $e") }
+            attempt(reported, density / 2)
+        }
+
         private fun draw(ctx: Context, mgr: AppWidgetManager, id: Int) {
             val spec = WidgetSpecs.get(ctx, id)
             val cars = CarStore.cars(ctx)
             val parks = cars.associate { it.id to ParkStore.latest(ctx, it.id) }
             val dm = ctx.resources.displayMetrics
             val reported = sizes(mgr, id).distinct()
-            val sizes = WidgetRenderer.layoutSizes(reported)
-            val scale = WidgetRenderer.budget(sizes, dm.density, (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong(), reported.size)
             val pend = WidgetRenderer.pending(ctx)
             val left = WidgetRenderer.left(ctx, cars)
             val wall = wallpaper(ctx); val mic = micReady(ctx); val now = System.currentTimeMillis()
             val main = AppPrefs.mainCar(ctx)
             val ts = textScale(ctx)
-            val bitmaps = ArrayList<android.graphics.Bitmap>()
-            try {
-                val views = sizes.mapIndexed { i, size ->
-                    val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, dm.density * scale[i], wall, now, mic, pend, main, ts, left)
-                    bitmaps += out.rendered.bitmap
-                    size to views(ctx, id, size, out.rendered, cars) { car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now, left[car.id]) }
-                }.toMap()
-                mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
-            } finally {
-                bitmaps.forEach { it.recycle() }
+            val limit = (1.5 * dm.widthPixels * dm.heightPixels * 4).toLong()
+            val describe = { car: kr.dot.wherepark.core.Car -> WidgetRenderer.describe(car, parks[car.id], car.id in pend, now, left[car.id]) }
+            // everything the pixels and click slots depend on; time labels are in the lines, so a new minute/day/state changes the key
+            val key = listOf(spec, reported, dm.density, limit, wall, mic, ts, main,
+                cars.map { WidgetRenderer.line(it, parks[it.id], it.id in pend, now, left[it.id]) }, cars.map(describe))
+            if (lastDrawn[id] == key) return
+            drawWithFallback(reported, dm.density) { sizes, density ->
+                val scale = WidgetRenderer.budget(sizes, density, limit, reported.size)
+                val bitmaps = ArrayList<android.graphics.Bitmap>()
+                try {
+                    drawCount.incrementAndGet()
+                    val views = sizes.mapIndexed { i, size ->
+                        val out = WidgetRenderer.draw(ctx, spec, cars, parks, size, density * scale[i], wall, now, mic, pend, main, ts, left)
+                        bitmaps += out.rendered.bitmap
+                        size to views(ctx, id, size, out.rendered, cars) { car -> describe(car) }
+                    }.toMap()
+                    mgr.updateAppWidget(id, RemoteViews(views))   // parcels the bitmaps; ours are free after it returns
+                } finally {
+                    bitmaps.forEach { it.recycle() }
+                }
             }
+            lastDrawn[id] = key
         }
 
         /** Slots and request codes follow the car's place in the car list, so every size sends the same car through the same PendingIntent. */
@@ -243,6 +269,8 @@ class WidgetReceiver : AppWidgetProvider() {
                     }
                     else -> super.onReceive(context, intent)   // onUpdate / onAppWidgetOptionsChanged / onDeleted, on this worker
                 }
+            } catch (e: RuntimeException) {
+                android.util.Log.w("wp-widget", "receive failed: $e")
             } finally {
                 pending.finish()
             }
@@ -256,5 +284,5 @@ class WidgetReceiver : AppWidgetProvider() {
 
     override fun onAppWidgetOptionsChanged(context: Context, mgr: AppWidgetManager, id: Int, newOptions: Bundle) = update(context, mgr, id)
 
-    override fun onDeleted(context: Context, ids: IntArray) = WidgetSpecs.remove(context, ids)
+    override fun onDeleted(context: Context, ids: IntArray) { forget(ids); WidgetSpecs.remove(context, ids) }
 }

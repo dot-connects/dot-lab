@@ -42,6 +42,7 @@ object Push {
     const val CH_DRIVE = "family_drive"
     const val CH_JOIN = "family_join"
     private const val KEY = "wp_notif"
+    private const val SENT_KEY = "wp_fcm_sent"
 
     @Volatile var post: (Context, String, Int, String) -> Unit = ::postNotification
 
@@ -57,7 +58,13 @@ object Push {
     /** Background thread only (blocks on the token). Uploads the token, or falls back to the 15-minute pull when there is none. */
     fun start(ctx: Context) {
         val token = token(ctx)
-        if (token != null && Api.setFcmToken(ctx, token)) cancelPull(ctx) else schedulePull(ctx)
+        // same token for the same member as last time: the server already has it, no PUT on every app open
+        val stamp = token?.let { t -> FamilyStore.auth(ctx)?.let { "$t|$it" } }
+        if (stamp != null && Prefs.sp(ctx).getString(SENT_KEY, null) == stamp) { cancelPull(ctx); return }
+        if (token != null && Api.setFcmToken(ctx, token)) {
+            stamp?.let { Prefs.sp(ctx).edit().putString(SENT_KEY, it).apply() }
+            cancelPull(ctx)
+        } else schedulePull(ctx)
     }
 
     fun token(ctx: Context): String? {
@@ -138,12 +145,7 @@ object Push {
 class PullWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
         if (!FamilyStore.joined(applicationContext)) return Result.success()
-        return if (SyncEngine.pull(applicationContext)) {
-            WidgetRefresh.request(applicationContext)
-            Result.success()
-        } else {
-            Result.retry()
-        }
+        return if (SyncEngine.pull(applicationContext)) Result.success() else Result.retry()  // pull() already refreshes the widgets
     }
 }
 
