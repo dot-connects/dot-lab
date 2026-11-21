@@ -85,7 +85,7 @@ private val BG = Color(0xFFE9E7E3); private val SF = Color(0xFFF6F5F2); private 
 private val MU = Color(0xFF6C6A66); private val ACC = Color(0xFFFF6A13); private val ON_ACC = Color(0xFF1A0F06)
 
 /** Shape names and the combo line words (mockup "위젯 꾸미기"). */
-internal val SHAPE_NAMES = mapOf(Shape.ROW to "줄 목록", Shape.POSTER to "포스터", Shape.PILLAR to "기둥 띠", Shape.DOT to "점 행렬", Shape.TICKET to "주차권")
+internal val SHAPE_NAMES = mapOf(Shape.ROW to "줄 목록", Shape.PILLAR to "기둥 띠", Shape.DOT to "점 행렬", Shape.TICKET to "주차권")
 private val FAMILY_NAMES = mapOf("pastel" to "파스텔", "bold" to "원색", "deep" to "깊은 색", "mono" to "무채색", "comp" to "보색")
 private val MATERIAL_NAMES = mapOf("matte" to "무광", "gloss" to "유광", "paper" to "종이", "metal" to "금속", "soft" to "소프트")
 private val FONT_NAMES = mapOf("Inter Tight" to "고딕", "Big Shoulders Display" to "좁은 고딕", "IBM Plex Mono" to "고정폭", "Doto" to "점 숫자(고정)",
@@ -123,6 +123,14 @@ class WidgetConfigActivity : ComponentActivity() {
         setResult(RESULT_OK, Intent().putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, spec.appWidgetId))
         finish()
     }
+}
+
+/** "위젯 1 · 4×2 · 줄 목록" for the settings picker; cells from the launcher's size hints (cell = 70 dp - 30 dp rule). */
+internal fun widgetLabel(ctx: Context, n: Int, id: Int): String {
+    val o = AppWidgetManager.getInstance(ctx).getAppWidgetOptions(id)
+    val cols = ((o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) + 30) / 70).coerceAtLeast(1)
+    val rows = ((o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT) + 30) / 70).coerceAtLeast(1)
+    return "위젯 $n · ${cols}×$rows · ${SHAPE_NAMES.getValue(WidgetSpecs.get(ctx, id).shape)}"
 }
 
 /** From the app (settings, onboarding step 4): the launcher asks where to put it; the pin callback moves [spec] to the new id. */
@@ -271,7 +279,6 @@ private fun Thumb(sh: Shape, col: Color) = Canvas(Modifier.size(48.dp, 32.dp)) {
             drawRoundRect(col, Offset(x, y), Size(w, h), CornerRadius(r), style = if (stroke) Stroke(1.6f) else androidx.compose.ui.graphics.drawscope.Fill)
         when (sh) {
             Shape.ROW -> { rr(5f, 6f, 20f, 7f, 2f); drawCircle(col, 3.5f, Offset(41f, 9.5f)); rr(5f, 19f, 20f, 7f, 2f); drawCircle(col, 3.5f, Offset(41f, 22.5f)) }
-            Shape.POSTER -> { rr(5f, 4f, 24f, 16f, 2f); rr(33f, 6f, 10f, 3f, 1.5f); rr(5f, 24f, 38f, 4f, 2f) }
             Shape.PILLAR -> listOf(6f, 26f).forEach { x -> rr(x, 4f, 16f, 24f, 2f, true); rr(x, 4f, 16f, 6f, 2f) }
             Shape.DOT -> {
                 rr(4f, 5f, 30f, 22f, 3f, true)

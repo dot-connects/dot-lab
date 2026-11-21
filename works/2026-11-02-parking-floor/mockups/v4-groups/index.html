@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="ko">
+<meta charset="utf-8">
+<title>어디댔어 v4 — 차별 알림 이동 · 그룹</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@600;700;800;900&family=Noto+Sans+KR:wght@400;500;600;700;800&display=swap">
+<style>
+/* page = one 430 px column. each .ph is a phone screen drawn at 1 css px = 1 dp with the app tokens from ui/Theme.kt (Wp.*) */
+:root{--bg:#E9E7E3;--sf:#F6F5F2;--fg:#161616;--mu:#6C6A66;--ln:#D5D2CC;--acc:#FF6A13;--onacc:#1A0F06;--ok:#3A8A4F;--danger:#C2412D;--kakao:#FEE500;
+  --ui:"Noto Sans KR","Malgun Gothic",system-ui,sans-serif;--gro:"Inter Tight","Noto Sans KR",system-ui,sans-serif}
+*{box-sizing:border-box}
+html,body{margin:0;overflow-x:hidden}
+body{background:#fbfaf8;color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.6;word-break:keep-all}
+main{max-width:430px;margin:0 auto;padding:20px 16px 60px}
+h1{font:800 24px/1.3 var(--gro);margin:0 0 6px}
+h2{font:800 19px/1.35 var(--gro);margin:44px 0 4px;padding-top:16px;border-top:2px solid var(--fg)}
+h3{font:700 16px/1.4 var(--ui);margin:28px 0 10px}
+h3 small{display:block;font:500 12.5px/1.5 var(--ui);color:var(--mu)}
+p{margin:6px 0}
+.lead{color:var(--mu);font-size:14px}
+ul.why{margin:10px 0 0;padding-left:18px;font-size:14px}
+ul.why li{margin:3px 0}
+.rec{background:#fff3ea;border-left:4px solid var(--acc);padding:10px 12px;border-radius:0 10px 10px 0;font-size:14px;margin:12px 0}
+.rec b{font-weight:700}
+table{border-collapse:collapse;width:100%;font-size:13.5px;margin-top:8px}
+td,th{border-bottom:1px solid var(--ln);padding:7px 6px;text-align:left;vertical-align:top}
+th{color:var(--mu);font-weight:600;font-size:12.5px}
+ol.pick{padding-left:20px;font-size:14px}
+ol.pick li{margin:10px 0}
+ol.pick b{font-weight:700}
+.opt{display:block;color:var(--mu);font-size:13.5px}
+
+/* phone */
+.ph{width:390px;max-width:100%;margin:0 auto;background:var(--bg);border:1px solid var(--ln);border-radius:28px;overflow:hidden;position:relative;display:flex;flex-direction:column;box-shadow:0 6px 20px rgba(0,0,0,.08)}
+.ph.tall{min-height:760px}
+.sb{display:flex;justify-content:space-between;padding:12px 24px 4px;font:600 14px/1.4 var(--gro)}
+.scr{flex:1;display:flex;flex-direction:column;gap:12px;padding:6px 16px 16px}
+.scr.g10{gap:10px}
+.top{display:flex;align-items:center;gap:10px;min-height:40px}
+.top svg{width:22px;height:22px;margin-left:-6px;flex:none}
+.top h4{flex:1;margin:0;font:800 22px/1.6 var(--gro);letter-spacing:-.01em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ico{width:40px;height:40px;border-radius:50%;background:var(--sf);box-shadow:0 1px 3px rgba(0,0,0,.16);display:grid;place-items:center;flex:none}
+.ico svg{width:19px;height:19px;margin:0}
+svg{fill:none;stroke:var(--fg);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.sect{font-size:12.5px;font-weight:600;color:var(--mu);letter-spacing:.02em;padding:4px 4px 0;margin-bottom:-4px}
+.list,.card{background:var(--sf);box-shadow:0 1px 3px rgba(0,0,0,.14);overflow:hidden}
+.list{border-radius:20px}
+.card{border-radius:22px;padding:14px 16px;background:linear-gradient(#fbfaf9,var(--sf) 40%)}
+.li{display:flex;align-items:center;gap:10px;min-height:52px;padding:12px 14px;border-bottom:1px solid var(--ln);font-size:14.5px}
+.li:last-child{border-bottom:0}
+.li .t{flex:1;min-width:0}
+.li .t small{display:block;font-size:12.5px;color:var(--mu)}
+.li .r{font-size:13.5px;color:var(--mu);text-align:right;flex:none}
+.li.mu .t{color:var(--mu)}
+.sw{width:12px;height:12px;border-radius:50%;border:1px solid rgba(0,0,0,.2);flex:none;display:inline-block}
+.tg{width:44px;height:26px;border-radius:99px;background:var(--ln);position:relative;flex:none}
+.tg::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.3)}
+.tg.on{background:var(--ok)}.tg.on::after{left:21px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--bg);display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+.lab{font-size:13px;color:var(--mu)}
+.val{font-size:20px;font-weight:600}
+.note{font-size:13px;color:var(--mu);padding:0 4px}
+.btn{min-height:52px;border-radius:99px;display:grid;place-items:center;font-size:15.5px;font-weight:600;text-align:center;padding:0 12px}
+.btn.acc{background:var(--acc);color:var(--onacc)}
+.btn.ghost{border:1.5px solid var(--ln)}
+.btn.nt{background:var(--sf);box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.btn.kakao{background:var(--kakao);color:#191919}
+.btn.sm{min-height:44px;font-size:14px}
+.sp{flex:1;min-height:8px}
+.colors{display:flex;gap:10px;margin-top:8px}
+.colors i{flex:1;aspect-ratio:1;border-radius:50%;border:1px solid rgba(0,0,0,.2)}
+.colors i.on{outline:2px solid var(--fg);outline-offset:3px;transform:scale(.82)}
+.hl{outline:2.5px dashed var(--acc);outline-offset:3px}
+.cut{text-align:center;color:var(--mu);font-size:12px;padding:2px 0 8px}
+/* home card */
+.hd{display:flex;align-items:center;gap:8px;font-size:14.5px;color:var(--mu)}
+.hd .tag{margin-left:auto;background:var(--ok);color:#fff;font-size:12px;font-weight:600;border-radius:99px;padding:2px 8px;flex:none}
+.hd .tag.gr{background:var(--mu)}
+.gl{font-size:12px;border:1px solid var(--ln);border-radius:99px;padding:0 7px;color:var(--mu);white-space:nowrap}
+.spot{font:900 62px/1 var(--gro);letter-spacing:-.03em;margin:4px 0 6px}
+.spot span{font-size:34px;font-weight:800;margin-left:8px}
+.spot.off{color:#9a9894}
+.who{font-size:14.5px;color:var(--mu)}.who b{color:var(--fg);font-weight:700}
+.chip{width:44px;height:44px;border-radius:50%;background:var(--bg);display:grid;place-items:center;margin-top:10px}
+.chip svg{stroke:var(--acc);width:20px;height:20px}
+/* overlays */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.42);display:flex;flex-direction:column;justify-content:flex-end}
+.scrim.mid{justify-content:center;padding:0 28px}
+.sheet{background:var(--bg);border-radius:26px 26px 0 0;padding:10px 16px 20px;display:flex;flex-direction:column;gap:12px}
+.grab{width:36px;height:4px;border-radius:9px;background:rgba(128,128,128,.5);margin:0 auto 2px}
+.sheet h5{margin:0;font:800 20px/1.4 var(--gro)}
+.dlg{background:var(--sf);border-radius:26px;padding:22px 22px 12px;font-size:15px;line-height:1.55}
+.dlg .acts{display:flex;justify-content:flex-end;gap:22px;padding:16px 4px 8px;font-weight:600;font-size:14.5px}
+.dlg .acts .d{color:var(--danger)}.dlg .acts .m{color:var(--mu)}
+.band{background:var(--sf);border-radius:18px;padding:12px 14px;font-size:13.5px;color:var(--mu);box-shadow:0 1px 3px rgba(0,0,0,.14)}
+.band b{display:block;color:var(--fg);font-size:14.5px}
+</style>
+
+<main>
+<h1>어디댔어 v4 시안</h1>
+<p class="lead">A. 차별 알림을 차 화면으로 · B. 가족 → 그룹, 여러 그룹. 화면은 지금 앱(설정·차 편집·가족 화면)의 색·카드·토글 그대로 그렸어요. 주황 점선 = 이번에 바뀌는 곳.</p>
+
+<!-- ============ A ============ -->
+<h2>A. 알림이 차 화면으로</h2>
+
+<h3>A-1 · 설정 (바뀐 뒤)<small>B의 그룹 목록도 같은 화면에 있어요</small></h3>
+<div class="ph" id="s-settings">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr g10">
+    <div class="top"><h4>설정</h4></div>
+    <div class="sect">내 차</div>
+    <div class="list">
+      <div class="li"><i class="sw" style="background:#F4F1EA"></i><div class="t">흰 차<small>우리 가족</small></div><div class="r">블루투스 연결됨 ›</div></div>
+      <div class="li"><i class="sw" style="background:#8E9399"></i><div class="t">회색 차<small>우리 가족 · 회사 주차</small></div><div class="r">블루투스 연결됨 ›</div></div>
+      <div class="li"><div class="t">＋ 차 추가</div></div>
+    </div>
+    <div class="sect">그룹</div>
+    <div class="list hl">
+      <div class="li"><div class="t">우리 가족 · 3명<small>내 차 2대 · 다른 사람 차 0대</small></div><div class="r">›</div></div>
+      <div class="li"><div class="t">회사 주차 · 5명<small>내 차 1대 · 다른 사람 차 2대</small></div><div class="r">›</div></div>
+      <div class="li"><div class="t">＋ 그룹 추가</div></div>
+    </div>
+    <div class="sect">알림</div>
+    <div class="list hl">
+      <div class="li"><div class="t">알림 시험<small>차마다 알림은 위 '내 차'에서 차를 눌러 바꿔요</small></div><div class="r">보내 보기 ›</div></div>
+    </div>
+    <div class="sect">보기</div>
+    <div class="list">
+      <div class="li"><div class="t">글자 크게</div><i class="tg"></i></div>
+      <div class="li"><i class="sw" style="background:#F4F1EA"></i><div class="t">위젯 메인 차량</div><div class="r">흰 차 ›</div></div>
+      <div class="li"><div class="t">홈 화면에 위젯 놓기</div><div class="r">›</div></div>
+    </div>
+    <div class="sect">정보</div>
+    <div class="list">
+      <div class="li"><div class="t">개인정보 처리방침</div><div class="r">›</div></div>
+      <div class="li"><div class="t">내 데이터 지우기</div><div class="r">›</div></div>
+      <div class="li"><div class="t">문의</div><div class="r">›</div></div>
+      <div class="li"><div class="t">버전</div><div class="r">2.4.0</div></div>
+    </div>
+  </div>
+</div>
+<ul class="why">
+  <li>차 2대 기준 알림 줄이 9줄 → 1줄. 차가 4대여도 설정 길이는 그대로예요.</li>
+  <li>'알림 시험'은 한 줄짜리 "알림" 묶음으로 남기고, 밑줄에 "차마다 알림은 차를 눌러 바꿔요"를 적어 옮긴 자리를 알려줘요.</li>
+  <li>'내 차' 줄 아래에 그 차가 들어간 그룹 이름을 작게 보여줘요 (그룹이 없으면 안 보임).</li>
+</ul>
+
+<h3>A-2 · 차 화면 (설정 &gt; 내 차 &gt; 회색 차)<small>알림 3개 + 이 차가 보이는 그룹</small></h3>
+<div class="ph" id="s-car">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr">
+    <div class="top"><svg viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><h4>회색 차</h4></div>
+    <div class="card"><div class="lab">별명</div><div class="val">회색 차</div></div>
+    <div class="card"><div class="lab">색</div><div class="colors"><i style="background:#F4F1EA"></i><i class="on" style="background:#8E9399"></i><i style="background:#1C1C1C"></i><i style="background:#2D5DA8"></i><i style="background:#C2412D"></i><i style="background:#2F7D4F"></i></div></div>
+    <div class="card"><div class="lab">차량번호 (선택)</div><div class="val">34나 5678</div></div>
+    <div class="card"><div class="lab">이 차의 블루투스</div><div style="font-size:17px;font-weight:600">연결됨</div><div class="lab" style="font-size:12.5px">끊기면 "어디에 댔어요?" 알림을 보내고, 다시 연결되면 "운행 중"으로 바꿔요</div><div class="btn ghost sm" style="margin-top:8px">연결 끊기</div></div>
+    <div class="sect">알림 · 이 폰에만</div>
+    <div class="list hl">
+      <div class="li"><div class="t">차에서 내리면 물어보기</div><i class="tg on"></i></div>
+      <div class="li"><div class="t">그룹에서 댔을 때</div><i class="tg on"></i></div>
+      <div class="li"><div class="t">그룹에서 가져갔을 때</div><i class="tg"></i></div>
+    </div>
+    <div class="sect">이 차가 보이는 그룹</div>
+    <div class="list hl">
+      <div class="li"><div class="t">우리 가족<small>3명</small></div><i class="tg on"></i></div>
+      <div class="li"><div class="t">회사 주차<small>5명</small></div><i class="tg on"></i></div>
+    </div>
+    <div class="note">두 그룹 모두 같은 자리를 봐요. 누가 대든 마지막 자리 하나로 맞춰져요.</div>
+    <div class="btn ghost" style="color:var(--danger);margin-top:8px">이 차 지우기</div>
+  </div>
+</div>
+<ul class="why">
+  <li>기존 차 편집 화면 아래에 묶음 2개만 붙였어요. 화면이 길어져 스크롤이 생겨요 (지금은 한 화면).</li>
+  <li>"그룹에서 댔을 때"는 차 기준 하나예요. 차가 두 그룹에 있어도 알림은 한 번만 와요.</li>
+  <li>그룹이 하나도 없으면 "이 차가 보이는 그룹" 묶음과 그룹 알림 2줄은 숨겨요.</li>
+</ul>
+
+<!-- ============ B ============ -->
+<h2>B. 가족 → 그룹, 여러 그룹</h2>
+<div class="rec"><b>추천: 포함 토글은 양쪽에 다 둬요.</b> 값은 하나(차×그룹)라서 어느 쪽에서 바꿔도 같이 바뀌고, 차를 새로 넣을 땐 차 화면에서, 그룹을 새로 만들 땐 그룹 화면에서 찾게 되기 때문이에요.</div>
+
+<h3>B-1 · 그룹 상세 (설정 &gt; 그룹 &gt; 회사 주차)</h3>
+<div class="ph" id="s-group">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr">
+    <div class="top"><svg viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><h4>회사 주차</h4><div class="ico"><svg viewBox="0 0 24 24"><path d="M5 19l.8-3.6L15.6 5.6a1.9 1.9 0 0 1 2.8 2.8L8.6 18.2z"/><path d="M13.8 7.4l2.8 2.8"/></svg></div></div>
+    <div class="sect">멤버 · 5명</div>
+    <div class="list">
+      <div class="li"><div class="av">민수</div><div class="t">민수<small>이 폰</small></div></div>
+      <div class="li"><div class="av">김대</div><div class="t">김대리<small>방장 · 마지막 활동 2시간 전</small></div><div class="r">2시간 전</div></div>
+      <div class="li"><div class="av">박과</div><div class="t">박과장<small>마지막 활동 3일 전</small></div><div class="r">3일 전</div></div>
+      <div class="li mu"><div class="t" style="text-align:center">2명 더 보기</div></div>
+    </div>
+    <div class="sect">이 그룹에 보이는 내 차</div>
+    <div class="list hl">
+      <div class="li"><i class="sw" style="background:#F4F1EA"></i><div class="t">흰 차</div><i class="tg"></i></div>
+      <div class="li"><i class="sw" style="background:#8E9399"></i><div class="t">회색 차<small>우리 가족에도 보여요</small></div><i class="tg on"></i></div>
+    </div>
+    <div class="sect">다른 사람 차</div>
+    <div class="list hl">
+      <div class="li"><i class="sw" style="background:#1C1C1C"></i><div class="t">검은 차<small>김대리님 차</small></div><div class="r">알림 ›</div></div>
+      <div class="li"><i class="sw" style="background:#2D5DA8"></i><div class="t">파란 차<small>박과장님 차</small></div><div class="r">알림 ›</div></div>
+    </div>
+    <div class="note">다른 사람 차는 차 주인만 넣고 뺄 수 있어요.</div>
+    <div class="sp"></div>
+    <div class="btn acc">그룹 초대하기</div>
+    <div class="btn ghost">그룹에서 나가기</div>
+  </div>
+</div>
+<ul class="why">
+  <li>지금 가족 화면(멤버 목록 + 초대 + 나가기)에 "내 차 토글"과 "다른 사람 차" 두 묶음을 끼웠어요.</li>
+  <li>다른 사람 차는 토글이 없고 "○○님 차"만. 누르면 그 차의 알림만 바꾸는 화면(B-4)으로 가요.</li>
+  <li>이름 바꾸기(연필)는 방장만 보여요. 30일 안 쓴 폰 내보내기 규칙은 그대로.</li>
+</ul>
+
+<h3>B-2 · 그룹 추가 시트 (＋ 그룹 추가)</h3>
+<div class="ph" id="s-add" style="min-height:560px">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr g10">
+    <div class="top"><h4>설정</h4></div>
+    <div class="sect">내 차</div>
+    <div class="list"><div class="li"><i class="sw" style="background:#F4F1EA"></i><div class="t">흰 차</div></div><div class="li"><i class="sw" style="background:#8E9399"></i><div class="t">회색 차</div></div></div>
+  </div>
+  <div class="scrim">
+    <div class="sheet">
+      <div class="grab"></div>
+      <h5>그룹 추가</h5>
+      <div class="list">
+        <div class="li"><div class="t">새 그룹 만들기<small>이름을 정하고, 넣을 내 차를 골라요</small></div><div class="r">›</div></div>
+        <div class="li"><div class="t">초대 코드로 들어가기<small>받은 코드나 링크가 있을 때</small></div><div class="r">›</div></div>
+        <div class="li"><div class="t">그룹에게 요청하기<small>코드가 없을 때. 그룹 사람이 [받기]를 누르면 들어가요</small></div><div class="r">›</div></div>
+      </div>
+      <div class="note">그룹은 3개까지 만들거나 들어갈 수 있어요 · 지금 2개</div>
+    </div>
+  </div>
+</div>
+<ul class="why">
+  <li>세 길 모두 지금 있는 화면(가족 만들기 · 코드 넣기 · 요청 보내기)을 그대로 쓰고, 입구만 시트 하나로 모았어요.</li>
+  <li>들어갈 때 "지금 가족에서 나가고 들어갈까요?" 물음은 없어져요 (나가지 않고 하나 더 들어감).</li>
+  <li>들어간 직후 "이 그룹에 넣을 내 차"를 한 번 물어요. 기본은 모두 꺼짐 — 모르는 사이에 차가 공유되지 않게.</li>
+</ul>
+
+<h3>B-3 · 홈 (모든 그룹의 차를 한 목록에)</h3>
+<div class="ph" id="s-home">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr">
+    <div class="top"><h4>어디댔어</h4><div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M3 12h2.5M18.5 12H21M5.6 5.6l1.8 1.8M16.6 16.6l1.8 1.8M5.6 18.4l1.8-1.8M16.6 7.4l1.8-1.8"/></svg></div></div>
+    <div class="card">
+      <div class="hd"><i class="sw" style="background:#F4F1EA"></i>흰 차<span class="tag">2시간 4분째</span></div>
+      <div class="spot">B2<span>C37</span></div>
+      <div class="who"><b>아빠</b> 오늘 14:32</div>
+    </div>
+    <div class="card">
+      <div class="hd"><i class="sw" style="background:#8E9399"></i>회색 차<span class="tag gr">엄마 운행 중</span></div>
+      <div class="spot off">B4<span>A12</span></div>
+      <div class="who"><b>엄마</b> 어제 19:05</div>
+    </div>
+    <div class="card hl">
+      <div class="hd"><i class="sw" style="background:#1C1C1C"></i>검은 차<span class="gl">김대리님 차 · 회사 주차</span><span class="tag">40분째</span></div>
+      <div class="spot">3F<span>B08</span></div>
+      <div class="who"><b>김대리</b> 오늘 13:56</div>
+    </div>
+    <div class="cut">· · · 파란 차 (박과장님 차 · 회사 주차) · · ·</div>
+  </div>
+</div>
+<ul class="why">
+  <li><b>제안: 그룹 표시는 "다른 사람 차"에만</b> 붙여요. 내 차는 내가 아니까 라벨 없이 지금 그대로.</li>
+  <li>순서는 내 차 먼저, 그다음 다른 사람 차를 최근에 바뀐 순으로. 탭·필터는 없어요.</li>
+  <li>같은 차가 두 그룹에 있어도 카드는 한 장이에요.</li>
+</ul>
+
+<h3>B-4 · 차 화면의 그룹 부분<small>내 차는 A-2 그대로 · 아래는 다른 사람 차를 눌렀을 때</small></h3>
+<div class="ph" id="s-other">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr">
+    <div class="top"><svg viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><h4>검은 차</h4></div>
+    <div class="card"><div class="hd" style="color:var(--fg)"><i class="sw" style="background:#1C1C1C"></i>김대리님 차</div><div class="lab" style="margin-top:4px">회사 주차 그룹에서 같이 봐요. 이름·색·번호는 차 주인만 바꿀 수 있어요.</div></div>
+    <div class="sect">알림 · 이 폰에만</div>
+    <div class="list hl">
+      <div class="li"><div class="t">그룹에서 댔을 때</div><i class="tg"></i></div>
+      <div class="li"><div class="t">그룹에서 가져갔을 때</div><i class="tg"></i></div>
+    </div>
+    <div class="note">다른 사람 차의 알림은 처음엔 꺼져 있어요.</div>
+  </div>
+</div>
+<ul class="why">
+  <li>내 차 화면은 A-2 그대로 (그룹마다 토글). 다른 사람 차는 읽기 전용 + 알림 2줄뿐.</li>
+  <li>"차에서 내리면 물어보기"는 블루투스를 연결한 내 차에만 있어서 여기엔 없어요.</li>
+  <li>회사 차 5대 알림이 한꺼번에 울리지 않게, 다른 사람 차 알림은 기본 꺼짐을 추천해요.</li>
+</ul>
+
+<h3>B-5 · 처음 (그룹이 아직 없을 때)</h3>
+<div class="ph" id="s-empty">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr g10">
+    <div class="top"><h4>설정</h4></div>
+    <div class="sect">내 차</div>
+    <div class="list">
+      <div class="li"><i class="sw" style="background:#F4F1EA"></i><div class="t">흰 차</div><div class="r">연결 안 함 ›</div></div>
+      <div class="li"><div class="t">＋ 차 추가</div></div>
+    </div>
+    <div class="sect">그룹</div>
+    <div class="card hl">
+      <div style="font-size:17px;font-weight:600">아직 혼자 쓰고 있어요</div>
+      <div class="lab">그룹을 만들면 가족·동료 폰에서도 이 차 자리가 보여요. 내 위치는 공유되지 않아요.</div>
+      <div class="btn acc sm" style="margin-top:10px">＋ 그룹 추가</div>
+    </div>
+    <div class="sect">알림</div>
+    <div class="list"><div class="li"><div class="t">알림 시험</div><div class="r">보내 보기 ›</div></div></div>
+  </div>
+</div>
+<ul class="why">
+  <li>그룹이 없어도 앱은 지금처럼 혼자 다 돼요 (말하기·위젯·내 기록).</li>
+  <li>버튼은 B-2 시트를 열어요. 그룹이 생기면 이 카드는 A-1의 목록으로 바뀌어요.</li>
+  <li>홈에는 따로 띠를 띄우지 않아요 — 첫 실행 안내 4번째 장("같이 볼까요?")이 이미 그 일을 해요.</li>
+</ul>
+
+<h3>B-6 · 내 차가 들어 있는 그룹에서 나갈 때</h3>
+<div class="ph" id="s-leave" style="min-height:440px">
+  <div class="sb"><span>14:36</span><span>82%</span></div>
+  <div class="scr">
+    <div class="top"><svg viewBox="0 0 24 24"><path d="M14.5 5.5L8 12l6.5 6.5"/></svg><h4>회사 주차</h4></div>
+    <div class="list"><div class="li"><div class="av">민수</div><div class="t">민수<small>이 폰</small></div></div><div class="li"><div class="av">김대</div><div class="t">김대리</div></div></div>
+  </div>
+  <div class="scrim mid">
+    <div class="dlg">
+      <b>회사 주차에서 나갈까요?</b><br>
+      회색 차가 이 그룹에서 빠지고, 검은 차·파란 차는 내 홈에서 사라져요.<br>
+      <span style="color:var(--mu)">회색 차와 기록은 이 폰에 남고, 우리 가족에서는 계속 보여요.</span>
+      <div class="acts"><span class="m">취소</span><span class="d">나가기</span></div>
+    </div>
+  </div>
+</div>
+<ul class="why">
+  <li>나가면 일어나는 일 세 가지(내 차 빠짐 · 남의 차 사라짐 · 다른 그룹은 그대로)를 차 이름으로 적어요.</li>
+  <li>내 차가 그 그룹에 없으면 가운데 줄은 "검은 차·파란 차는 내 홈에서 사라져요"만.</li>
+  <li>내가 방장이면 가장 오래된 멤버가 방장이 돼요. 마지막 한 명이 나가면 그룹은 없어져요.</li>
+</ul>
+
+<h3>B-7 · 문구 바꾸기 (가족 → 그룹)</h3>
+<table>
+  <tr><th>어디</th><th>지금</th><th>바뀐 뒤</th></tr>
+  <tr><td>카카오톡 초대</td><td>어디댔어 가족으로 초대해요. 링크를 누르면 돼요.</td><td>어디댔어 '우리 가족' 그룹에 초대해요. 링크를 누르면 돼요.</td></tr>
+  <tr><td>초대 화면</td><td>가족 초대 · 같이 쓸 가족에게 보내요</td><td>그룹 초대 · '우리 가족'에 부를 사람에게 보내요</td></tr>
+  <tr><td>받는 화면</td><td>가족 초대를 받았어요 · 가족에게 보일 내 이름</td><td>그룹 초대를 받았어요 · 이 그룹에 보일 내 이름</td></tr>
+  <tr><td>요청</td><td>가족에게 요청하기 · ○○를 가족으로 받을까요?</td><td>그룹에게 요청하기 · ○○를 어느 그룹에 받을까요? (그룹이 둘 이상이면 고르기)</td></tr>
+  <tr><td>알림 토글</td><td>가족이 댔을 때 · 가족이 가져갔을 때</td><td>그룹에서 댔을 때 · 그룹에서 가져갔을 때</td></tr>
+  <tr><td>홈</td><td>신호가 잡히면 가족에게 보내요</td><td>신호가 잡히면 그룹에 보내요</td></tr>
+  <tr><td>차 지우기</td><td>가족 폰에서도 사라져요</td><td>그룹 폰에서도 사라져요</td></tr>
+  <tr><td>꽉 참</td><td>가족이 꽉 찼어요</td><td>그룹이 꽉 찼어요</td></tr>
+</table>
+<p class="lead">초대 메시지에 그룹 이름을 넣은 건, 받는 사람이 여러 그룹 초대를 구분할 수 있게 하려는 거예요.</p>
+
+<!-- ============ edge ============ -->
+<h2>가장자리 경우</h2>
+<table>
+  <tr><th style="width:38%">경우</th><th>이렇게 돼요</th></tr>
+  <tr><td>그룹 사람이 대는 중에 주인이 차를 그룹에서 뺌</td><td>그 저장은 받지 않아요. 대던 폰에 "이 차는 이제 그룹에 없어요. 저장하지 못했어요"를 띄우고 홈에서 카드를 내려요. 주인 쪽 자리는 안 바뀌어요.</td></tr>
+  <tr><td>마지막 그룹에서 나감</td><td>혼자 쓰는 상태(B-5)로 돌아가요. 내 차·기록·위젯은 그대로, 그룹 알림 2줄과 "보이는 그룹" 묶음은 숨겨요.</td></tr>
+  <tr><td>그룹 수 한도</td><td>폰 하나에 3개 추천 (가족·회사·하나 더). 3개가 되면 "＋ 그룹 추가" 줄이 사라져요 — 차 4대 한도와 같은 방식.</td></tr>
+  <tr><td>같은 사람이 내 두 그룹에 다 있음</td><td>그 사람에게 내 차 카드는 한 장, 알림도 한 번 (차 기준으로 합쳐요). 멤버 목록엔 그룹마다 따로 나오고 이름은 그룹마다 다를 수 있어요.</td></tr>
+  <tr><td>차 한 대를 두 그룹이 동시에 고침</td><td>지금 가족과 같아요 — 나중에 온 기록이 이겨요. 누가 댔는지는 이름으로 보여요.</td></tr>
+  <tr><td>다른 사람 차가 많아짐</td><td>홈에서 다른 사람 차는 접을 수 있게 할지 → 아래 결정 5.</td></tr>
+</table>
+
+<!-- ============ decide ============ -->
+<h2>결정할 것</h2>
+<ol class="pick">
+  <li><b>포함 토글 위치</b> — 추천: 그룹 화면 + 차 화면 양쪽.<span class="opt">다른 안: 그룹 화면에만 두고 차 화면엔 그룹 이름만 표시 (차 화면이 짧아짐).</span></li>
+  <li><b>홈의 그룹 표시</b> — 추천: 다른 사람 차에만 "○○님 차 · 그룹 이름".<span class="opt">다른 안: 모든 카드에 표시 / 아예 없음.</span></li>
+  <li><b>그룹 수 한도</b> — 추천 3개.<span class="opt">다른 안: 2개(가족+회사만) / 5개.</span></li>
+  <li><b>그룹마다 내 이름</b> — 추천: 그룹마다 따로 (가족엔 "아빠", 회사엔 "민수"). 들어갈 때 이미 이름을 묻고 있어요.<span class="opt">다른 안: 폰 하나에 이름 하나.</span></li>
+  <li><b>다른 사람 차 한도</b> — 회사 그룹에 차가 10대면 홈이 길어져요. 추천: 홈엔 다른 사람 차를 최근 3대만 보이고 "N대 더 보기".<span class="opt">다른 안: 전부 보이기 / 그룹당 차 수 한도.</span></li>
+  <li><b>다른 사람 차 알림 기본값</b> — 추천: 꺼짐 (내 차는 지금처럼 켜짐).<span class="opt">다른 안: 가족처럼 전부 켜짐.</span></li>
+  <li><b>첫 실행 때 그룹 자동 만들기</b> — 지금은 "○○네 가족"을 자동으로 만들어요. 추천: 자동으로 만들지 않고 첫 초대를 보낼 때 만들기 (B-5).<span class="opt">다른 안: 지금처럼 자동, 이름만 "○○네 그룹".</span></li>
+  <li><b>기존 사용자 옮기기</b> — 추천: 지금 가족이 그대로 첫 그룹이 되고, 가족이 같이 보던 차는 등록한 사람의 "내 차"로 그 그룹에 켜진 채 넘어가요.<span class="opt">등록한 사람을 모르는 옛 차는 방장 차로 둘지 확인 필요.</span></li>
+</ol>
+</main>
+</html>

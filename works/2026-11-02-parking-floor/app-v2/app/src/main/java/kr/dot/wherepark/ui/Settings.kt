@@ -1,5 +1,6 @@
 package kr.dot.wherepark.ui
 
+import android.appwidget.AppWidgetManager
 import android.content.Context
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
@@ -20,6 +21,8 @@ import kr.dot.wherepark.data.FamilyStore
 import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.data.WidgetRefresh
 import kr.dot.wherepark.family.Push
+import kr.dot.wherepark.widget.WidgetReceiver
+import kr.dot.wherepark.widget.widgetLabel
 
 object AppPrefs {
     const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-02-parking-floor/privacy.html"
@@ -39,7 +42,8 @@ object AppPrefs {
 
 class SettingsActions(
     val back: () -> Unit = {}, val editCar: (String?) -> Unit = {}, val testNotice: () -> Unit = {}, val family: () -> Unit = {},
-    val privacy: () -> Unit = {}, val deleteAll: () -> Unit = {}, val copyContact: () -> Unit = {}, val bigText: (Boolean) -> Unit = {}, val widget: () -> Unit = {},
+    val privacy: () -> Unit = {}, val deleteAll: () -> Unit = {}, val copyContact: () -> Unit = {}, val bigText: (Boolean) -> Unit = {}, val widget: (Int) -> Unit = {},   // appWidgetId to reconfigure, or INVALID_APPWIDGET_ID = pin a new one
+
 )
 
 /**
@@ -53,6 +57,7 @@ fun SettingsScreen(a: SettingsActions) {
     var askDelete by remember { mutableStateOf(false) }
     var contact by remember { mutableStateOf(false) }
     var pickMain by remember { mutableStateOf(false) }
+    var pickWidget by remember { mutableStateOf<List<Int>?>(null) }
     val cars = remember(v) { CarStore.cars(ctx) }
     WScreen("설정", gap = 10.dp, scroll = true) {
         Sect("내 차")
@@ -86,7 +91,10 @@ fun SettingsScreen(a: SettingsActions) {
                 val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.first()
                 Li("위젯 메인 차량", lead = { Swatch(main.color) }, right = "${main.name} ›", onClick = { pickMain = true })
             }
-            Li("홈 화면에 위젯 놓기", last = true, right = "›", onClick = a.widget)
+            Li("위젯 꾸미기", last = true, right = "›", onClick = {
+                val ids = WidgetReceiver.ids(ctx).sorted()
+                when (ids.size) { 0 -> a.widget(AppWidgetManager.INVALID_APPWIDGET_ID); 1 -> a.widget(ids[0]); else -> pickWidget = ids }
+            })
         }
         Sect("정보")
         WList {
@@ -111,6 +119,21 @@ fun SettingsScreen(a: SettingsActions) {
         confirmButton = { TextButton({ pickMain = false }) { Text("닫기", color = Wp.FG) } },
         containerColor = Wp.SF,
     )
+    pickWidget?.let { ids ->
+        AlertDialog(
+            onDismissRequest = { pickWidget = null },
+            title = { Text("어떤 위젯을 꾸밀까요?") },
+            text = {
+                androidx.compose.foundation.layout.Column {
+                    ids.forEachIndexed { i, id ->
+                        Li(widgetLabel(ctx, i + 1, id), right = "›", last = i == ids.lastIndex, onClick = { pickWidget = null; a.widget(id) })
+                    }
+                }
+            },
+            confirmButton = { TextButton({ pickWidget = null }) { Text("닫기", color = Wp.FG) } },
+            containerColor = Wp.SF,
+        )
+    }
     if (askDelete) AlertDialog(
         onDismissRequest = { askDelete = false },
         text = { Text("이 폰의 차·기록·가족 정보를 모두 지우고 가족에서 나갈까요? 되돌릴 수 없어요.") },

@@ -11,7 +11,7 @@ class PaletteTest {
             val st = Palette.default(s)
             assertTrue("$s fg", Contrast.ratio(st.fg, st.bg) >= 4.5); assertTrue("$s mu", Contrast.ratio(st.mu, st.bg) >= 4.5)
             assertTrue("$s fl1", Contrast.ratio(0xFFFFFFFF.toInt(), st.fl1) >= 4.5); assertTrue("$s fl2", Contrast.ratio(0xFFFFFFFF.toInt(), st.fl2) >= 4.5)
-            if (s != Shape.DOT) assertTrue("$s acc", Contrast.ratio(st.acc, st.bg) >= (if (s == Shape.POSTER) 3.0 else 1.6))
+            if (s != Shape.DOT) assertTrue("$s acc", Contrast.ratio(st.acc, st.bg) >= 1.6)
         }
     }
 

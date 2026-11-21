@@ -432,7 +432,7 @@ class MainActivity : ComponentActivity() {
         privacy = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppPrefs.PRIVACY_URL))) } },
         copyContact = { copy("contact", AppPrefs.CONTACT); Toast.makeText(this, "메일 주소를 복사했어요", Toast.LENGTH_SHORT).show() },
         bigText = { bigText = it },
-        widget = { startActivity(Intent(this, kr.dot.wherepark.widget.WidgetConfigActivity::class.java)) },
+        widget = { id -> startActivity(Intent(this, kr.dot.wherepark.widget.WidgetConfigActivity::class.java).putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, id)) },
         deleteAll = ::deleteAll,
     )
 

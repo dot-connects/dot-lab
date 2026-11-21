@@ -66,6 +66,17 @@ class WidgetSpecsTest {
         assertEquals("auto", WidgetSpecs.get(ctx, 99).text)
     }
 
+    /** 포스터 is gone: a widget saved with it reads as 줄 목록 and keeps its colours. */
+    @Test fun decodePosterAsRow() {
+        val st = Palette.default(Shape.ROW)
+        WidgetSpecs.put(ctx, WidgetSpec(4, Shape.ROW, null, 70, st, null))
+        val all = Prefs.obj(ctx, "wp_widgets")
+        all.getJSONObject("4").put("shape", "POSTER")
+        Prefs.put(ctx, "wp_widgets", all)
+        val s = WidgetSpecs.get(ctx, 4)
+        assertEquals(Shape.ROW, s.shape); assertEquals(70, s.strength); assertEquals(st, s.style)
+    }
+
     @Test fun midnightNeedsToken() {
         val bare = Intent(WidgetReceiver.ACTION_MIDNIGHT)
         assertFalse(WidgetReceiver.ours(ctx, bare))

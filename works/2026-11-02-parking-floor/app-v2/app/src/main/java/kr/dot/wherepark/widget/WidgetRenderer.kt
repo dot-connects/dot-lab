@@ -48,7 +48,7 @@ object WidgetRenderer {
     internal fun pending(ctx: Context): Set<String> =
         if (!FamilyStore.joined(ctx)) emptySet() else SyncQueue.ops(ctx).filter { it.key.startsWith("park:") }.map { it.key.removePrefix("park:") }.toSet()
 
-    internal class Out(val rendered: Rendered, val texts: List<TextBox>)
+    internal class Out(val rendered: Rendered, val texts: List<TextBox>, val mics: List<RectF> = emptyList(), val radius: Float = 0f)
 
     /** 메인 차량: the chosen car, else (unset or deleted) the first registered one. */
     fun mainCar(cars: List<Car>, mainId: String?): Car? = cars.firstOrNull { it.id == mainId } ?: cars.minByOrNull { it.order }
@@ -100,7 +100,7 @@ object WidgetRenderer {
         val look = Look.pick(spec.style, spec.strength, samples, spec.text)
         val sh = Shapes(ctx, c, spec.style, look, spec.shape, micReady, textScale.coerceIn(1f, 1.3f))
         sh.draw(lines, more, w, h)
-        return Out(Rendered(bmp, sh.hits.map { Hit(it.carId, RectF(it.rectDp), it.kind) }), sh.texts.toList())
+        return Out(Rendered(bmp, sh.hits.map { Hit(it.carId, RectF(it.rectDp), it.kind) }), sh.texts.toList(), sh.mics.toList(), sh.cardRadius)
     }
 
     /**

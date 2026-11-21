@@ -136,7 +136,7 @@ class WidgetShots {
 
     /** 글자 색 forced, at 30 % and 100 %. */
     @Test fun textColours() {
-        for (t in listOf("white", "black")) for (st in listOf(30, 100)) for (shape in listOf(Shape.ROW, Shape.POSTER))
+        for (t in listOf("white", "black")) for (st in listOf(30, 100)) for (shape in listOf(Shape.ROW, Shape.DOT))
             save("tc-$t-${shape.name.lowercase()}-$st", spec(shape, st, t), 2, 4, 2)
     }
 
@@ -148,6 +148,12 @@ class WidgetShots {
             val st = Palette.shuffle(shape, prev, r); prev = st
             save("shuf-${shape.name.lowercase()}-$i-${st.material}", WidgetSpec(1, shape, null, if (i == 0) 100 else 60, st, null), 2, 4, 2)
         }
+    }
+
+    /** Corner radius 34 dp (the largest): every shape at 2x1, 3x1, 4x2, 100 % and 40 %, 1 and 2 cars. */
+    @Test fun maxRadius() {
+        for (shape in Shape.values()) for (st in listOf(100, 40)) for (n in 1..2) for ((cw, ch) in listOf(2 to 1, 3 to 1, 4 to 2))
+            save("r34-${shape.name.lowercase()}-${cw}x$ch-${n}car-$st", spec(shape, st).let { it.copy(style = it.style.copy(radiusDp = 34)) }, n, cw, ch)
     }
 
     @Test fun config() {

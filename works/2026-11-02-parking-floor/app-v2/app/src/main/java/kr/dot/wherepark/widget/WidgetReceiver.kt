@@ -38,6 +38,7 @@ object WidgetSpecs {
     private fun styleJson(s: Style) = JSONObject().put("bg", s.bg).put("fg", s.fg).put("mu", s.mu).put("acc", s.acc).put("onAcc", s.onAcc)
         .put("fl1", s.fl1).put("fl2", s.fl2).put("r", s.radiusDp).put("family", s.family).put("material", s.material).put("font", s.font)
 
+    // 포스터 is gone (11-21, looked like 줄 목록): a widget saved with it reads as ROW, keeping its colours.
     /** A face that is gone from the app (스텐실, removed 11-20) reads as 고딕. */
     private fun style(j: JSONObject) = Style(j.getInt("bg"), j.getInt("fg"), j.getInt("mu"), j.getInt("acc"), j.getInt("onAcc"), j.getInt("fl1"),
         j.getInt("fl2"), j.getInt("r"), j.getString("family"), j.getString("material"), j.getString("font").takeIf(AssetFonts::has) ?: "Inter Tight")
@@ -46,7 +47,7 @@ object WidgetSpecs {
 
     private fun spec(id: Int, j: JSONObject?): WidgetSpec? = j?.let {
         runCatching {
-            WidgetSpec(id, Shape.valueOf(j.getString("shape")), if (j.isNull("carId")) null else j.getString("carId"), j.getInt("strength"),
+            WidgetSpec(id, Shape.valueOf(j.getString("shape").let { if (it == "POSTER") "ROW" else it }), if (j.isNull("carId")) null else j.getString("carId"), j.getInt("strength"),
                 style(j.getJSONObject("style")), j.optJSONObject("prev")?.let(::style), j.optString("text", "auto"))
         }.getOrNull()
     }

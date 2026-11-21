@@ -74,7 +74,7 @@ class WidgetLayoutTest {
         for (st in listOf(0, 30)) assertTrue("halo reaches 7:1 for small text at $st %", Look.pick(row, st, white, "auto").score >= Look.MIN_CR)
         assertEquals(1, Look.pick(row, 0, listOf(0xFF04141A.toInt()), "auto").haloLv)   // dark wallpaper: the softest halo
         assertFalse("auto from 50 % reads the card", light(Look.pick(row, 100, white, "auto").fg))
-        assertTrue(Look.pick(Palette.default(Shape.POSTER), 100, white, "auto").let { light(it.fg) && it.haloLv == 0 })
+        assertTrue(Look.pick(Palette.default(Shape.DOT), 100, white, "auto").let { light(it.fg) && it.haloLv == 0 })
         assertFalse(light(Look.pick(row, 0, white, "black").fg))
         assertTrue(light(Look.pick(row, 100, white, "white").fg))
         assertEquals("forcing a text colour keeps the card colour", row.bg, Look.pick(row, 100, white, "white").bg)
@@ -96,6 +96,39 @@ class WidgetLayoutTest {
             for (i in mics.indices) for (j in i + 1 until mics.size) assertTrue("$tag mics overlap", overlap(mics[i].rectDp, mics[j].rectDp) < 1f)
             o.texts.forEach { assertTrue("$tag text '${it.text}' ${it.rect} out of the widget", it.rect.left >= -1f && it.rect.right <= size.width + 1f) }
         }
+    }
+
+    private fun inRounded(x: Float, y: Float, w: Float, h: Float, r: Float): Boolean {
+        val cx = if (x < r) r else if (x > w - r) w - r else x
+        val cy = if (y < r) r else if (y > h - r) h - r else y
+        return (x - cx) * (x - cx) + (y - cy) * (y - cy) <= r * r + .01f
+    }
+
+    /** Max corner radius (34 dp): the radius is capped by the short side, and no text box corner or mic edge enters the corner curve. */
+    @Test fun contentStaysOutOfTheCorners() {
+        val sizes = listOf(SizeF(164f, 100f), SizeF(246f, 100f), SizeF(328f, 100f), SizeF(164f, 200f), SizeF(246f, 200f), SizeF(328f, 200f),
+            SizeF(164f, 150f), SizeF(110f, 50f), SizeF(164f, 60f), SizeF(420f, 150f))
+        val bad = ArrayList<String>()
+        for (shape in Shape.values()) for (n in 1..3) for (size in sizes) for (mic in listOf(true, false)) for (st in listOf(30, 100)) for (scale in listOf(1f, 1.3f)) {
+            val spec = WidgetSpec(7, shape, null, st, Palette.default(shape).copy(radiusDp = 34), null)
+            val o = WidgetRenderer.draw(ctx, spec, cars.take(n), parks, size, 2f, listOf(0xFFA9CDE6.toInt()), now, mic, emptySet(), null, scale)
+            val tag = "$shape n=$n $size mic=$mic st=$st scale=$scale"
+            if (shape == Shape.TICKET) continue   // tickets round their own cell corners (<= 14 dp) and are not a widget-wide card
+            val r = o.radius
+            assertTrue("$tag radius $r", r <= Shapes.R_MAX * minOf(size.width, size.height) + .01f)
+            o.texts.forEach { t ->
+                for ((x, y) in listOf(t.rect.left to t.rect.top, t.rect.right to t.rect.top, t.rect.left to t.rect.bottom, t.rect.right to t.rect.bottom))
+                    if (!inRounded(x, y, size.width, size.height, r)) bad += "$tag text '${t.text}' ($x,$y)"
+            }
+            o.mics.forEach { m ->
+                for (i in 0 until 72) {
+                    val a = Math.toRadians(i * 5.0)
+                    val x = m.centerX() + m.width() / 2 * Math.cos(a).toFloat(); val y = m.centerY() + m.height() / 2 * Math.sin(a).toFloat()
+                    if (!inRounded(x, y, size.width, size.height, r)) bad += "$tag mic $m ($x,$y)"
+                }
+            }
+        }
+        assertTrue("${bad.size} in the curve, e.g.\n" + bad.distinctBy { it.substringBefore(" n=") + it.substringAfter("text").take(12) }.take(25).joinToString("\n"), bad.isEmpty())
     }
 
     /** 2x1 with a long pillar: the memo still gets drawn next to it (pillar capped at 55 % of the line). */

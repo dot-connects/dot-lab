@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 
-enum class Shape { ROW, POSTER, PILLAR, DOT, TICKET }
+enum class Shape { ROW, PILLAR, DOT, TICKET }
 
 data class Style(
     val bg: Int, val fg: Int, val mu: Int, val acc: Int, val onAcc: Int, val fl1: Int, val fl2: Int,
@@ -44,7 +44,6 @@ object Palette {
     // Values from mockups/v2/round2/src.html: .wx base (ROW), .wx.kT, .wx.kF, .wx.kA, .wx.kP
     fun default(shape: Shape): Style = when (shape) {
         Shape.ROW -> d(0xFFF4F3F0, 0xFF161616, 0xFF5D5B57, 0xFFFF6A13, "Inter Tight", 22)
-        Shape.POSTER -> d(0xFF121212, 0xFFF5F2EC, 0xFFACA79E, 0xFFFF5A1F, "Inter Tight", 20)
         Shape.PILLAR -> d(0xFFE9E7E2, 0xFF161616, 0xFF5D5B57, 0xFF161616, "Big Shoulders Display", 22)
         Shape.DOT -> d(0xFF1C1C1F, 0xFFF2F2F2, 0xFFB2B2B2, 0xFF2A2A2E, DOTO, 18)
         Shape.TICKET -> d(0xFFF5F0E4, 0xFF1E1B16, 0xFF645D50, 0xFF1E1B16, "IBM Plex Mono", 10)
@@ -79,7 +78,7 @@ object Palette {
             val mu = Contrast.blend(fg, if (fg == Contrast.WHITE) .86 else .76, bg)
             val fl1 = hsl(rnd.range(0.0, 360.0), rnd.range(45.0, 80.0), rnd.range(28.0, 40.0))
             val fl2 = hsl(rnd.range(0.0, 360.0), rnd.range(45.0, 80.0), rnd.range(28.0, 40.0))
-            if (Contrast.ratio(fg, bg) < 4.5 || Contrast.ratio(mu, bg) < 4.5 || Contrast.ratio(acc, bg) < (if (shape == Shape.POSTER) 3.0 else 1.6) ||
+            if (Contrast.ratio(fg, bg) < 4.5 || Contrast.ratio(mu, bg) < 4.5 || Contrast.ratio(acc, bg) < 1.6 ||
                 Contrast.ratio(Contrast.WHITE, fl1) < 4.5 || Contrast.ratio(Contrast.WHITE, fl2) < 4.5) return@repeat
             val mat = pickNot(MATERIALS, prev?.material, rnd)
             // Doto is DOT-only (a dotted B reads as 8); other shapes never get it

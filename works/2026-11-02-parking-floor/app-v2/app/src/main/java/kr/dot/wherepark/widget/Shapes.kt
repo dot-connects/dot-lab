@@ -12,6 +12,7 @@ import android.graphics.RectF
 import android.graphics.Shader
 import android.graphics.Typeface
 import android.text.TextPaint
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.floor
 import kotlin.math.max
@@ -154,6 +155,8 @@ internal class Shapes(
 ) {
     val hits = ArrayList<Hit>()
     val texts = ArrayList<TextBox>()
+    /** Mic circles as drawn (widget dp), for the corner test. */
+    val mics = ArrayList<RectF>()
     private val p = TextPaint(Paint.ANTI_ALIAS_FLAG)
     private val isDefault = style.family == "default"
     private val mat = if (isDefault) "base" else style.material
@@ -174,6 +177,10 @@ internal class Shapes(
         private val MONO: Typeface = Typeface.MONOSPACE
         private val tfCache = HashMap<String, Typeface>()
         private const val PAD = 8f
+        /** Largest corner radius as a share of the widget's short side. */
+        const val R_MAX = .22f
+        /** Distance from a corner where a box corner just touches the rounded curve: r * (1 - 1/sqrt 2). */
+        private const val CURVE = .2929f
 
         /** Floor size = its row height / this (the mockup's line-height .84 on the numerals). */
         private const val F_LH = .84f
@@ -191,7 +198,7 @@ internal class Shapes(
 
         /** Per shape (mockup GEO): gap between cars, top pad (first, later), bottom pad (last, earlier), inner side pad, extra height under the name line. */
         private val GEO = mapOf(
-            Shape.ROW to floatArrayOf(1f, 8f, 4f, 8f, 4f, 4f, 0f), Shape.POSTER to floatArrayOf(1f, 8f, 7f, 8f, 7f, 7f, 0f),
+            Shape.ROW to floatArrayOf(1f, 8f, 4f, 8f, 4f, 4f, 0f),
             Shape.PILLAR to floatArrayOf(4f, 5f, 5f, 7f, 7f, 7f, 4f), Shape.DOT to floatArrayOf(6f, 8f, 7f, 8f, 7f, 7f, 0f),
             Shape.TICKET to floatArrayOf(5f, 6f, 6f, 6f, 6f, 8f, 3f),
         )
@@ -343,7 +350,7 @@ internal class Shapes(
     // floor (big) and zone/pillar (small) faces per shape; DOT draws every Latin letter and digit in Doto, Hangul in gothic
     private val fFace get() = num(if (shape == Shape.TICKET) 700 else 900)
     private val pFace get() = num(if (shape == Shape.TICKET) 600 else 800)
-    private val fLs = when (shape) { Shape.POSTER, Shape.TICKET -> -.06f; Shape.PILLAR, Shape.DOT -> 0f; else -> -.03f }
+    private val fLs = when (shape) { Shape.TICKET -> -.06f; Shape.PILLAR, Shape.DOT -> 0f; else -> -.03f }
     private val pLs = when (shape) { Shape.TICKET -> -.03f; Shape.DOT -> 0f; else -> -.01f }
     private val doto get() = face("Doto", 900)
     private val gothic get() = face("Inter Tight", 900)
@@ -387,7 +394,7 @@ internal class Shapes(
     }
 
     private fun spotShown(l: Line) = l.st == St.OK || l.st == St.PEND || l.st == St.FAIL
-    private val fColor = if (shape == Shape.POSTER) look.big else fg
+    private val fColor = fg
 
     /**
      * Floor (+ pillar) on one baseline, centred in the row; non-spot states show "운행 중" / "기록 없음" at [k] x 15..26.
@@ -551,11 +558,16 @@ internal class Shapes(
         val ops = ArrayList<() -> Unit>()
     }
 
-    private val wr get() = style.radiusDp.toFloat()
+    /** Card corner radius: the style's, capped to [R_MAX] of the widget's short side so a one-row card keeps room for its text; set in [draw]. */
+    private var wr = style.radiusDp.toFloat()
+    val cardRadius get() = wr
 
     /** [lines] = the cars this size shows (main first, at most two); [more] = cars left out ("외 N대"). */
     fun draw(lines: List<Line>, more: Int, w: Float, h: Float) {
         val g = geo[0]
+        wr = min(style.radiusDp.toFloat(), R_MAX * min(w, h))
+        // with a card, content at the widget's edge keeps clear of the corner curve (no card at 0 %: layout unchanged; tickets have their own small corners)
+        val cin = if (a > 0 && shape != Shape.TICKET) ceil(CURVE * wr) + 1f else 0f
         val cols = when { lines.size == 1 -> listOf(lines); w >= WIDE -> lines.map { listOf(it) }; else -> listOf(lines) }
         val nc = cols.size; val cw = (w - g * (nc - 1)) / nc
         val cells = ArrayList<Cell>()
@@ -563,8 +575,8 @@ internal class Shapes(
             val nr = col.size; val ch = (h - g * (nr - 1)) / nr
             col.forEachIndexed { ri, l ->
                 val x = ci * (cw + g); val y = ri * (ch + g)
-                val pl = if (ci > 0) geo[5] else PAD; val pr = if (ci < nc - 1) geo[5] else PAD
-                val pt = if (ri > 0) geo[2] else geo[1]; val pb = if (ri < nr - 1) geo[4] else geo[3]
+                val pl = if (ci > 0) geo[5] else max(PAD, cin); val pr = if (ci < nc - 1) geo[5] else max(PAD, cin)
+                val pt = if (ri > 0) geo[2] else max(geo[1], cin); val pb = if (ri < nr - 1) geo[4] else max(geo[3], cin)
                 val bc = shape == Shape.TICKET && a > 0 && ch < TALL && cw - pl - pr >= 220
                 val bx = if (bc) 19f else 0f
                 cells += Cell(l, more, RectF(x, y, x + cw, y + ch), RectF(x + pl + bx, y + pt, x + cw - pr, y + ch - pb), bc)
@@ -578,6 +590,7 @@ internal class Shapes(
         }
         cells.forEach { cl ->
             cl.ops.forEach { it() }
+            mics += RectF(cl.mic)
             mic(cl.l, cl.mic)
             // a side mic owns its column of the cell (easier to hit); on 기둥 띠 the name row above it stays the car's
             val m = if (cl.side && !onBand) RectF(cl.mic.left - 4f, cl.r.top, cl.r.right, cl.r.bottom) else RectF(cl.mic)
@@ -665,7 +678,8 @@ internal class Shapes(
                         val (fz, _) = fit(l.f, "", min(F_MAX, bh / F_LH), 0f, 0f, lcw - 10f - 96f)
                         setText(fz, if (shape == Shape.DOT) doto else fFace, 0f)
                         val r = Rect(); p.getTextBounds(l.f, 0, l.f.length, r)
-                        val fw = spotDraw(squeeze(l.f, fz, true, lcw - 106f), x0, bottom - r.bottom - 1f, fz, true, fColor)
+                        val fl = if (a > 0) 4f else 0f   // the text box reaches below the baseline: keep it out of the card's bottom corners
+                        val fw = spotDraw(squeeze(l.f, fz, true, lcw - 106f), x0, bottom - r.bottom - 1f - fl, fz, true, fColor)
                         val px = x0 + fw + 10f; val pw = lcw - fw - 10f
                         val mz = 14f * k
                         setText(mz, bw, 0f); val fm = p.fontMetrics
@@ -713,17 +727,16 @@ internal class Shapes(
         val r = cl.r
         val whole = RectF(0f, 0f, w, h)
         when (shape) {
-            Shape.POSTER -> if (i > 0) {
-                c.save(); c.clipPath(rrPath(whole, wr)); c.drawRect(r, fill(fg.alpha(.05f * a))); c.restore()
-            }
             Shape.PILLAR -> {
                 val holder = if (n > 1) {
                     val box = rrPath(r, 8f)
+                    c.save(); c.clipPath(rrPath(whole, wr))   // cells at the widget corners stay inside the card's curve
                     shadow(box, r, 8f, 0f, 1f, 2f, 0f, black(.14f * a))
                     c.drawPath(box, fill(white((if (look.dk) .09f else .62f) * a)))
+                    c.restore()
                     box
                 } else rrPath(whole, wr)
-                c.save(); c.clipPath(holder)
+                c.save(); c.clipPath(holder); c.clipPath(rrPath(whole, wr))
                 val br = RectF(r.left, r.top, r.right, cl.nameBottom + 3f)
                 c.drawRect(br, fill(band(i).alpha(a)))
                 c.drawRect(br, Paint().apply { shader = LinearGradient(0f, br.top, 0f, br.bottom, white(.06f * a), black(.12f * a), Shader.TileMode.CLAMP) })
@@ -769,7 +782,7 @@ internal class Shapes(
         }
     }
 
-    /** Lines between cars: ROW hairline, POSTER rule, DOT red dots; PILLAR and TICKET are apart by their own panels. Faded with the strength. */
+    /** Lines between cars: ROW hairline, DOT red dots; PILLAR and TICKET are apart by their own panels. Faded with the strength. */
     private fun dividers(nc: Int, cells: List<Cell>, w: Float, h: Float) {
         if (cells.size < 2) return
         val g = geo[0]
@@ -778,7 +791,6 @@ internal class Shapes(
         val hr = fg.alpha(.16f + .18f * (1 - a))
         when (shape) {
             Shape.ROW -> if (vertical) c.drawRect(pos, 8f, pos + g, h - 8f, fill(hr)) else c.drawRect(8f, pos, w - 8f, pos + g, fill(hr))
-            Shape.POSTER -> if (vertical) c.drawRect(pos, 0f, pos + g, h, fill(hr)) else c.drawRect(0f, pos, w, pos + g, fill(hr))
             Shape.DOT -> {
                 val dot = fill(0xFFFF5A36.toInt().alpha(a)); val mid = pos + g / 2
                 if (vertical) { var y = 12f; while (y < h - 9f) { c.drawCircle(mid, y, 1.2f, dot); y += 6f } }
