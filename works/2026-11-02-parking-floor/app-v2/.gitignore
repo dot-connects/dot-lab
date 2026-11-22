@@ -4,3 +4,4 @@ firebase.properties
 *.jks
 build/
 .gradle/
+.kotlin/
