@@ -6,6 +6,7 @@ and a finished run re-run changes 0 rows. Never deletes or rewrites old rows or 
 
 import argparse
 import json
+import os
 import secrets
 import shutil
 import subprocess
@@ -163,9 +164,12 @@ def main() -> None:
     out = Path(args.out)
 
     def d1(*extra: str) -> list:
-        cmd = [shutil.which("npx") or "npx", "wrangler@4", "d1", "execute", args.db, *target, *extra, "--json"]
+        # WRANGLER = a wrangler.cmd path: avoids npx re-resolving wrangler@4 on every call (slow, EPERM on a busy cache)
+        base = [os.environ["WRANGLER"]] if os.environ.get("WRANGLER") else [shutil.which("npx") or "npx", "wrangler@4"]
+        cmd = [*base, "d1", "execute", args.db, *target, *extra, "--json"]
         result = subprocess.run(cmd, check=True, capture_output=True, text=True, encoding="utf-8")
-        return json.loads(result.stdout)
+        out = result.stdout  # --file prints upload progress lines before the JSON
+        return json.loads(out[out.index("["):])
 
     def select(sql: str) -> list[dict]:
         return [r for batch in d1("--command", sql) for r in batch.get("results", [])]
