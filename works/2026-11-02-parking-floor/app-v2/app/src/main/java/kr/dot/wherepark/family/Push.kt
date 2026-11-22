@@ -43,6 +43,7 @@ object Push {
     const val CH_JOIN = "family_join"
     private const val KEY = "wp_notif"
     private const val SENT_KEY = "wp_fcm_sent"
+    private const val SENT_AT_KEY = "wp_fcm_sent_at"
 
     @Volatile var post: (Context, String, Int, String) -> Unit = ::postNotification
 
@@ -55,14 +56,20 @@ object Push {
     fun setEnabled(ctx: Context, key: String, on: Boolean) =
         synchronized(SyncQueue) { Prefs.put(ctx, KEY, Prefs.obj(ctx, KEY).put(key, on)) }
 
+    const val RESEND_MS = 24 * 3_600_000L
+
+    /** Same token+auth uploaded less than 24 h ago: the server has it; older uploads are repeated (a server-side loss would otherwise stay). */
+    internal fun skipPut(sent: String?, stamp: String, sentAt: Long, now: Long) = sent == stamp && now - sentAt < RESEND_MS
+
     /** Background thread only (blocks on the token). Uploads the token, or falls back to the 15-minute pull when there is none. */
     fun start(ctx: Context) {
         val token = token(ctx)
         // same token for the same member as last time: the server already has it, no PUT on every app open
         val stamp = token?.let { t -> FamilyStore.auth(ctx)?.let { "$t|$it" } }
-        if (stamp != null && Prefs.sp(ctx).getString(SENT_KEY, null) == stamp) { cancelPull(ctx); return }
+        val sp = Prefs.sp(ctx)
+        if (stamp != null && skipPut(sp.getString(SENT_KEY, null), stamp, sp.getLong(SENT_AT_KEY, 0), System.currentTimeMillis())) { cancelPull(ctx); return }
         if (token != null && Api.setFcmToken(ctx, token)) {
-            stamp?.let { Prefs.sp(ctx).edit().putString(SENT_KEY, it).apply() }
+            stamp?.let { sp.edit().putString(SENT_KEY, it).putLong(SENT_AT_KEY, System.currentTimeMillis()).apply() }
             cancelPull(ctx)
         } else schedulePull(ctx)
     }

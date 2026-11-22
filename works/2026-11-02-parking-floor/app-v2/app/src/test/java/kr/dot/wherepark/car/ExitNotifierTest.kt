@@ -126,6 +126,30 @@ class ExitNotifierTest {
         assertEquals(null, ExitNotifier.leftAt(c, "a"))
     }
 
+    @Test fun disappearRequestsWidgetRefresh() {
+        var n = 0
+        val old = kr.dot.wherepark.data.WidgetRefresh.hook
+        kr.dot.wherepark.data.WidgetRefresh.hook = { n++ }
+        try { ExitNotifier.onDisappeared(c, "AA:AA") } finally { kr.dot.wherepark.data.WidgetRefresh.hook = old }
+        assertEquals(1, n)
+    }
+
+    @Test fun passengerPhoneNeverCountsLeft() {
+        ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))  // another phone set DRIVING
+        min(5); ExitNotifier.onAppeared(c, "AA:AA")
+        min(10); ExitNotifier.onDisappeared(c, "AA:AA")
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+    }
+
+    @Test fun yesterdaysDrivingAtDoesNotMatchTodaysFamilyDrive() {
+        ParkStore.save(c, Kit.park("a", 1, atMs = t))
+        min(5); ExitNotifier.markDriving(c, "a")
+        min(60 * 24); ParkStore.save(c, Kit.park("a", 2, atMs = t))
+        min(10); ParkStore.save(c, Kit.park("a", 2, atMs = t - 10 * 60_000L, state = ParkState.DRIVING))
+        min(5); ExitNotifier.onDisappeared(c, "AA:AA")
+        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+    }
+
     @Test fun unknownAddressIgnored() {
         ExitNotifier.onDisappeared(c, "ZZ:ZZ")
         assertTrue(posted.isEmpty())

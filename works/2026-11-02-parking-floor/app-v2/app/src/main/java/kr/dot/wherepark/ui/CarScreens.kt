@@ -89,7 +89,8 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
         Spacer(Modifier.weight(1f))
         if (park != null) {
             val driving = park.state == ParkState.DRIVING
-            Btn(if (driving) (if (leftAt != null) "내렸어요" else "운행 중이에요") else "가져갔어요", BtnKind.GHOST, enabled = !driving, onClick = a.took)
+            if (driving && leftAt != null) Btn("위치 말하기", BtnKind.GHOST, onClick = a.speak)
+            else Btn(if (driving) "운행 중이에요" else "가져갔어요", BtnKind.GHOST, enabled = !driving, onClick = a.took)
         }
     }
 

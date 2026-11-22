@@ -75,6 +75,10 @@ object WidgetRenderer {
     /** A park still unsent after this long reads as 실패 (the queue keeps retrying; no upload error is kept). */
     const val FAIL_AFTER_MS = 30 * 60_000L
 
+    /** When to redraw so a still-unsent park flips to 실패 (nothing else triggers a refresh then); null = nothing to wait for. */
+    internal fun failAlarmAt(pendingParks: List<Park>, now: Long): Long? =
+        pendingParks.map { it.atMs + FAIL_AFTER_MS + 1 }.filter { it > now }.minOrNull()
+
     internal fun failed(park: Park, pending: Boolean, now: Long) = pending && now - park.atMs > FAIL_AFTER_MS
 
     internal fun line(car: Car, park: Park?, pending: Boolean, now: Long, leftAt: Long? = null): Line {

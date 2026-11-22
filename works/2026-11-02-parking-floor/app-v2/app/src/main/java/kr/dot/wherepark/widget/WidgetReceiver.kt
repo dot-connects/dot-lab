@@ -85,7 +85,7 @@ object WidgetSpecs {
 
     /** The listen sheet borrows numeral face + accent from a widget showing that car (one-car widget first). */
     fun styleFor(ctx: Context, carId: String): Style? {
-        val specs = WidgetReceiver.ids(ctx).map { get(ctx, it) }
+        val specs = WidgetReceiver.realIds(ctx).map { get(ctx, it) }
         return (specs.firstOrNull { it.carId == carId } ?: specs.firstOrNull { it.carId == null })?.style
     }
 }
@@ -124,6 +124,16 @@ class WidgetReceiver : AppWidgetProvider() {
 
         fun ids(ctx: Context): IntArray = AppWidgetManager.getInstance(ctx).getAppWidgetIds(ComponentName(ctx, WidgetReceiver::class.java))
 
+        /** Placed widgets only: an id whose options carry no size is a ghost of a failed or cancelled placement (counted by the 위젯 꾸미기 picker). */
+        fun realIds(ctx: Context): List<Int> {
+            val mgr = AppWidgetManager.getInstance(ctx)
+            return ids(ctx).filter { hasSize(mgr.getAppWidgetOptions(it)) }
+        }
+
+        internal fun hasSize(o: Bundle): Boolean =
+            !o.getParcelableArrayList(AppWidgetManager.OPTION_APPWIDGET_SIZES, SizeF::class.java).isNullOrEmpty() ||
+                o.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH) > 0
+
         /** WidgetRefresh hook: queued on the receiver's worker (never draws on the caller's thread, keeps draw order). */
         fun requestAll(ctx: Context) {
             val app = ctx.applicationContext
@@ -136,6 +146,7 @@ class WidgetReceiver : AppWidgetProvider() {
             val mgr = AppWidgetManager.getInstance(ctx)
             ids(ctx).forEach { update(ctx, mgr, it) }
             armMidnight(ctx)
+            armFail(ctx)
         }
 
         /** Mic usable from the widget: permission granted, on-device recognizer present, language pack not known missing. */
@@ -253,6 +264,16 @@ class WidgetReceiver : AppWidgetProvider() {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             am.setAndAllowWhileIdle(AlarmManager.RTC, at, pi)
         }
+
+        /** One inexact refresh when the oldest unsent park turns 실패; replaced or cancelled by every refresh. */
+        fun armFail(ctx: Context) {
+            val am = ctx.getSystemService(AlarmManager::class.java) ?: return
+            val pi = PendingIntent.getBroadcast(ctx, 2, Intent(ctx, WidgetReceiver::class.java).setAction(ACTION_MIDNIGHT).putExtra(TOKEN, token(ctx)),
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            val pend = WidgetRenderer.pending(ctx)
+            val at = WidgetRenderer.failAlarmAt(pend.mapNotNull { ParkStore.latest(ctx, it) }, System.currentTimeMillis())
+            if (at == null) am.cancel(pi) else am.setAndAllowWhileIdle(AlarmManager.RTC, at, pi)
+        }
     }
 
     /** Drawing every size takes longer than the main thread should: all work runs on a worker, the broadcast kept alive by goAsync. */
@@ -280,6 +301,7 @@ class WidgetReceiver : AppWidgetProvider() {
     override fun onUpdate(context: Context, mgr: AppWidgetManager, ids: IntArray) {
         ids.forEach { update(context, mgr, it) }
         armMidnight(context)
+        armFail(context)
     }
 
     override fun onAppWidgetOptionsChanged(context: Context, mgr: AppWidgetManager, id: Int, newOptions: Bundle) = update(context, mgr, id)

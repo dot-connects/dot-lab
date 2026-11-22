@@ -6,9 +6,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -18,9 +20,11 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import kotlinx.coroutines.withContext
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -114,7 +118,7 @@ fun SettingsScreen(a: SettingsActions) {
                 Li("위젯 메인 차량", lead = { Swatch(main.color) }, right = "${main.name} ›", onClick = { pickMain = true })
             }
             Li("위젯 꾸미기", last = true, right = "›", onClick = {
-                val ids = WidgetReceiver.ids(ctx).sorted()
+                val ids = WidgetReceiver.realIds(ctx).sorted()
                 when (ids.size) { 0 -> a.widget(AppWidgetManager.INVALID_APPWIDGET_ID); 1 -> a.widget(ids[0]); else -> pickWidget = ids }
             })
         }
@@ -165,14 +169,17 @@ internal fun WidgetPicker(ids: List<Int>, onPick: (Int) -> Unit) {
     val ctx = LocalContext.current
     val density = LocalDensity.current.density
     val wall = remember { WidgetReceiver.wallpaper(ctx) }
-    val thumbs = remember(ids) { ids.map { widgetThumb(ctx, it, density, wall) } }
+    // drawing every size is slow: off the main thread, a placeholder box until it is ready
+    val thumbs by produceState<List<android.graphics.Bitmap>?>(null, ids) {
+        value = withContext(kotlinx.coroutines.Dispatchers.Default) { ids.map { widgetThumb(ctx, it, density, wall) } }
+    }
     val grad = Brush.verticalGradient(wall.map { Color(it) }.let { if (it.size == 1) it + it else it })
     Column(
         Modifier.verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         ids.forEachIndexed { i, id ->
-            val bmp = thumbs[i]
+            val bmp = thumbs?.get(i)
             Column(
                 Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                     .clickable(role = Role.Button) { onPick(id) },
@@ -183,9 +190,12 @@ internal fun WidgetPicker(ids: List<Int>, onPick: (Int) -> Unit) {
                     Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(grad).padding(10.dp),
                     contentAlignment = Alignment.Center,
                 ) {
-                    val k = minOf(1f, maxWidth.value / (thumbs.maxOf { it.width } / density))
-                    Image(bmp.asImageBitmap(), contentDescription = null,
-                        modifier = Modifier.size((bmp.width / density * k).dp, (bmp.height / density * k).dp))
+                    if (bmp == null) Box(Modifier.fillMaxWidth().height(80.dp))
+                    else {
+                        val k = minOf(1f, maxWidth.value / (thumbs!!.maxOf { it.width } / density))
+                        Image(bmp.asImageBitmap(), contentDescription = null,
+                            modifier = Modifier.size((bmp.width / density * k).dp, (bmp.height / density * k).dp))
+                    }
                 }
                 Text(widgetLabel(ctx, i + 1, id), style = ts(13.sp, color = Wp.FG), modifier = Modifier.padding(top = 6.dp))
             }

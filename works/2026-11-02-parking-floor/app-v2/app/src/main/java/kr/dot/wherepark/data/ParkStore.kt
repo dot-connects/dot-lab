@@ -2,6 +2,7 @@ package kr.dot.wherepark.data
 
 import android.content.Context
 import kr.dot.wherepark.core.Park
+import kr.dot.wherepark.core.ParkState
 import org.json.JSONArray
 
 /** Per car: newest-first history (max 50) of this phone's view. latest = history[0], prev = history[1]. */
@@ -29,6 +30,7 @@ object ParkStore {
         val h = history(ctx, p.carId).toMutableList()
         if (h.firstOrNull()?.id == p.id) h[0] = p else h.add(0, p)
         write(ctx, p.carId, h)
+        if (p.state != ParkState.DRIVING) kr.dot.wherepark.car.ExitNotifier.clearDriving(ctx, p.carId)
         Prefs.put(ctx, "wp_last_car", p.carId)
     }
 
@@ -39,6 +41,7 @@ object ParkStore {
         val i = h.indexOfFirst { it.id == p.id }
         val keep = if (i >= 0) p.copy(raw = h[i].raw) else p
         write(ctx, carId, listOf(keep) + (if (i >= 0) h.drop(i + 1) else h))
+        if (keep.state != ParkState.DRIVING) kr.dot.wherepark.car.ExitNotifier.clearDriving(ctx, carId)
     }
 
     fun clearCar(ctx: Context, carId: String) = synchronized(SyncQueue) { write(ctx, carId, emptyList()) }

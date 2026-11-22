@@ -1,4 +1,5 @@
 package kr.dot.wherepark.widget
+import kr.dot.wherepark.data.Kit
 
 import android.graphics.RectF
 import android.util.SizeF
@@ -145,6 +146,13 @@ class WidgetLayoutTest {
         assertEquals(St.PEND, WidgetRenderer.line(cars[0], p, true, p.atMs + 60_000).st)
         assertEquals(St.FAIL, WidgetRenderer.line(cars[0], p, true, p.atMs + WidgetRenderer.FAIL_AFTER_MS + 1).st)
         assertEquals(St.OK, WidgetRenderer.line(cars[0], p, false, p.atMs + WidgetRenderer.FAIL_AFTER_MS + 1).st)
+    }
+
+    @Test fun failAlarmAtOldestUnsentPark() {
+        val a = Kit.park("a", 1, atMs = 1_000L); val b = Kit.park("b", 2, atMs = 5_000L)
+        assertEquals(1_000L + WidgetRenderer.FAIL_AFTER_MS + 1, WidgetRenderer.failAlarmAt(listOf(b, a), 2_000L))
+        assertEquals(null, WidgetRenderer.failAlarmAt(listOf(a), 1_000L + WidgetRenderer.FAIL_AFTER_MS + 1))
+        assertEquals(null, WidgetRenderer.failAlarmAt(emptyList(), 0L))
     }
 
     @Test fun requestCodesUnique() {

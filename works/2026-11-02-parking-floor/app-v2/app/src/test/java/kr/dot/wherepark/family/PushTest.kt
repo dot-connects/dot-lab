@@ -49,6 +49,12 @@ class PushTest {
 
     private fun serve(body: String) { net.handler = { m, p, _, _ -> if (m == "GET" && p == "/v2/state") 200 to body else 200 to "{}" } }
 
+    @Test fun tokenPutIsRepeatedAfter24Hours() {
+        assertTrue(Push.skipPut("t|a", "t|a", 1_000L, 1_000L + Push.RESEND_MS - 1))
+        assertFalse(Push.skipPut("t|a", "t|a", 1_000L, 1_000L + Push.RESEND_MS))
+        assertFalse(Push.skipPut("t|a", "t2|a", 1_000L, 2_000L))
+    }
+
     @Test fun parkMessageMergesAndNotifiesWhenEnabled() {
         serve(serverState(100))
         Push.handle(ctx, mapOf("type" to "park", "carId" to "a"))
