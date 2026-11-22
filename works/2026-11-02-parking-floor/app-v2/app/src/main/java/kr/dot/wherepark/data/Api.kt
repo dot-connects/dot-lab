@@ -120,18 +120,21 @@ object Api {
 
     private fun enter(ctx: Context, path: String, body: JSONObject): Result<String> {
         val auth = GroupStore.auth(ctx)
-        val j = ok(call("POST", path, auth, body)).getOrElse { return Result.failure(it) }
+        val r = call("POST", path, auth, body)
+        if (r.first == 401) GroupStore.dropIfSame(ctx, auth)
+        val j = ok(r).getOrElse { return Result.failure(it) }
         val st = Wire.state(j.getJSONObject("state"))
         synchronized(SyncQueue) {
+            if (path == "/v3/join" || auth == null) kr.dot.wherepark.family.JoinRequest.cancel(ctx)
             if (auth == null) {
                 GroupStore.save(ctx, j.getString("deviceId"), j.getString("secret"), st.me, st.groups)
-                kr.dot.wherepark.family.JoinRequest.cancel(ctx)
                 CarStore.cars(ctx).forEach { car ->
                     SyncQueue.add(ctx, Op.PutCar(car))
                     ParkStore.latest(ctx, car.id)?.let { SyncQueue.add(ctx, Op.PutPark(it)) }
                 }
             }
             Merge.write(ctx, st)
+            SyncQueue.invalidatePulls()
         }
         SyncQueue.kick(ctx)
         WidgetRefresh.request(ctx)
@@ -193,6 +196,7 @@ object Api {
             val gone = j.optString("device") == "gone"
             if (gone) GroupStore.leave(ctx) else {
                 GroupStore.setState(ctx, GroupStore.me(ctx), GroupStore.groups(ctx).filterNot { it.id == groupId })
+                SyncQueue.invalidatePulls()
                 SyncEngine.pull(ctx)
             }
             gone

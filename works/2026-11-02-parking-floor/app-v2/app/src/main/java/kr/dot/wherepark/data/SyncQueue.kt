@@ -108,6 +108,9 @@ object SyncQueue {
 
     fun generation(ctx: Context): Long = gen.get()
 
+    /** Group membership changed online: a pull that started before it must not be merged. */
+    internal fun invalidatePulls() { gen.incrementAndGet() }
+
     /** No family and no pendingGroup (after a 401) = new records stay local only; with a pendingGroup ops wait for SyncWorker to create it. */
     fun add(ctx: Context, op: Op) = synchronized(this) {
         if (!GroupStore.joined(ctx)) return@synchronized

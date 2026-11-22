@@ -21,7 +21,12 @@ object Upgrade {
         val ids = Prefs.arr(ctx, LEGACY).let { a -> (0 until a.length()).map(a::getString) }
         if (ids.isEmpty() || st.groups.size != 1) return@synchronized
         val meId = st.me?.id
-        st.cars.filter { it.id in ids && it.isMine(meId) }.forEach { SyncQueue.add(ctx, Op.Share(it.id, st.groups.single().id, true)) }
-        Prefs.put(ctx, LEGACY, null)
+        val group = st.groups.single().id
+        val onServer = st.cars.map { it.id }.toSet()
+        st.cars.filter { it.id in ids && it.isMine(meId) }.forEach { SyncQueue.add(ctx, Op.Share(it.id, group, true)) }
+        // a car whose PutCar is still queued is not on the server yet: keep its id for the next pull
+        val local = CarStore.cars(ctx).map { it.id }.toSet()
+        val left = ids.filter { it !in onServer && it in local }
+        Prefs.put(ctx, LEGACY, if (left.isEmpty()) null else JSONArray(left))
     }
 }

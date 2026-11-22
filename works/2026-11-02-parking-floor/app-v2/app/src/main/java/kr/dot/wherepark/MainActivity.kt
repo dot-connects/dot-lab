@@ -468,7 +468,11 @@ class MainActivity : ComponentActivity() {
                 join = { startActivity(Intent(this, JoinActivity::class.java)) },
                 ask = { startActivity(Intent(this, JoinActivity::class.java).putExtra(JoinActivity.ASK, true)) }) { go(Nav.Onb(3)) }
             3 -> StepCar(carStep, link = { linkBt(carStep.carId) { carStep.linked = CarLinkStore.address(this, carStep.carId) != null } },
-                skip = { practice = practiceNow(null); go(Nav.Onb(4)) }) {
+                skip = {
+                    val app = applicationContext; val id = carStep.carId  // a Bluetooth link made for a car that is never saved would linger
+                    if (CarLinkStore.address(app, id) != null) Thread { kr.dot.wherepark.car.CarLink.unlink(app, id) }.start()
+                    practice = practiceNow(null); go(Nav.Onb(4))
+                }) {
                 Onboarding.saveCar(this, Car(carStep.carId, carStep.car.trim(), Wp.CAR_COLORS.first(), carStep.plate.trim().ifEmpty { null }, 0))
                 practice = practiceNow(null)
                 go(Nav.Onb(4))
