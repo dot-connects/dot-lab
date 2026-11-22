@@ -72,11 +72,18 @@ object ExitNotifier {
         cancel(ctx, carId)
         if (gone != 0L && now() - gone < REAPPEAR_MS) {
             s.remove("notified")  // a flicker must not use up the 30 minutes
-            return putSlot(ctx, carId, s)
+            putSlot(ctx, carId, s)
+            return WidgetRefresh.request(ctx)  // "내림" -> back to 운행 중
         }
         val p = ParkStore.latest(ctx, carId)
-        if (p == null || p.state == ParkState.DRIVING) return putSlot(ctx, carId, s)
         putSlot(ctx, carId, s)
+        if (p == null) return
+        if (p.state == ParkState.DRIVING) {
+            // Already DRIVING (someone else's unrecorded drive, or a push that beat the connect): this phone is in the car now,
+            // so its own leaving must still show "내림" (a passenger phone may show it too — harmless, it can record the spot).
+            markDriving(ctx, carId)
+            return WidgetRefresh.request(ctx)
+        }
         // No "gone" record (process restarted, or first connect): only count it as driving when the park is at least 2 minutes old.
         if (gone == 0L && now() - p.atMs < REAPPEAR_MS) return
         markDriving(ctx, carId)

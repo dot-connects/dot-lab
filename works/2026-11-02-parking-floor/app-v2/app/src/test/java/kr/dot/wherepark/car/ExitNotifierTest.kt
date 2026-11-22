@@ -134,11 +134,23 @@ class ExitNotifierTest {
         assertEquals(1, n)
     }
 
-    @Test fun passengerPhoneNeverCountsLeft() {
+    /** Review round 2: a phone that connects while the park already says DRIVING (unrecorded earlier drive, or a push that
+     *  beat the connect) is in the car now, so its own leaving shows "내림" (a passenger phone may too — accepted). */
+    @Test fun connectWhileAlreadyDrivingStillCountsLeft() {
         ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))  // another phone set DRIVING
         min(5); ExitNotifier.onAppeared(c, "AA:AA")
         min(10); ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+    }
+
+    @Test fun reconnectRefreshesTheWidget() {
+        ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        var n = 0
+        val old = kr.dot.wherepark.data.WidgetRefresh.hook
+        kr.dot.wherepark.data.WidgetRefresh.hook = { n++ }
+        try { min(1); ExitNotifier.onAppeared(c, "AA:AA") } finally { kr.dot.wherepark.data.WidgetRefresh.hook = old }
+        assertEquals(1, n)
     }
 
     @Test fun yesterdaysDrivingAtDoesNotMatchTodaysFamilyDrive() {

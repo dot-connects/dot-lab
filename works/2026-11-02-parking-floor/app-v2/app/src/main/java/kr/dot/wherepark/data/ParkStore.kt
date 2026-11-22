@@ -37,7 +37,7 @@ object ParkStore {
     /** Server value is canon: an id already in the history rolls the newer entries off, a new id goes on top. */
     fun setFromServer(ctx: Context, carId: String, p: Park?) = synchronized(SyncQueue) {
         val h = history(ctx, carId)
-        if (p == null) return@synchronized write(ctx, carId, emptyList())
+        if (p == null) { kr.dot.wherepark.car.ExitNotifier.clearDriving(ctx, carId); return@synchronized write(ctx, carId, emptyList()) }
         val i = h.indexOfFirst { it.id == p.id }
         val keep = if (i >= 0) p.copy(raw = h[i].raw) else p
         write(ctx, carId, listOf(keep) + (if (i >= 0) h.drop(i + 1) else h))
@@ -52,6 +52,7 @@ object ParkStore {
         val undone = h.firstOrNull() ?: return@synchronized null
         val prev = h.getOrNull(1)
         write(ctx, carId, h.drop(1))
+        kr.dot.wherepark.car.ExitNotifier.clearDriving(ctx, carId)  // an undone drive must not leave a stale drivingAt
         SyncQueue.dropKey(ctx, "park:$carId")
         if (!sendStarted(ctx, undone.id)) {
             if (prev != null) SyncQueue.add(ctx, Op.PutPark(prev))

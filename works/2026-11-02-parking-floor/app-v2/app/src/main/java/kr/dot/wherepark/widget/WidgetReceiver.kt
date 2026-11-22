@@ -101,8 +101,16 @@ class WidgetReceiver : AppWidgetProvider() {
         private const val TOKEN = "wp_widget_token"
 
         /** Per-install secret on our own PendingIntents: the receiver is exported (launcher updates), our actions are not public. */
-        internal fun token(ctx: Context): String = synchronized(this) {
-            Prefs.sp(ctx).getString(TOKEN, null) ?: java.util.UUID.randomUUID().toString().also { Prefs.sp(ctx).edit().putString(TOKEN, it).commit() }
+        @Volatile private var cachedToken: String? = null
+
+        // The lock covers only the in-memory pick: holding it across a prefs commit deadlocked a widget worker against the
+        // main thread (Robolectric's commit waits for the main looper, which was blocked on this lock).
+        internal fun token(ctx: Context): String {
+            cachedToken?.let { return it }
+            val sp = Prefs.sp(ctx)
+            val t = synchronized(this) { cachedToken ?: (sp.getString(TOKEN, null) ?: java.util.UUID.randomUUID().toString()).also { cachedToken = it } }
+            if (sp.getString(TOKEN, null) != t) sp.edit().putString(TOKEN, t).commit()
+            return t
         }
 
         internal fun ours(ctx: Context, i: Intent) = i.getStringExtra(TOKEN) == token(ctx)
