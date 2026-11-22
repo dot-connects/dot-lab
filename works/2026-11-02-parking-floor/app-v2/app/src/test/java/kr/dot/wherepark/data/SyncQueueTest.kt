@@ -49,7 +49,7 @@ class SyncQueueTest {
         SyncQueue.add(ctx, Op.PutPark(park("a", 1))); SyncQueue.add(ctx, Op.Undo("c", 3)); SyncQueue.add(ctx, Op.PutCar(car("a")))
         assertEquals(listOf("car:a", "undo:c:3", "park:a", "state:b", "photo:a:1"), keys())
         SyncEngine.run(ctx)
-        assertEquals(listOf("PUT /v2/cars/a", "POST /v2/cars/c/undo", "PUT /v2/cars/a/park", "POST /v2/cars/b/state"), net.calls.filter { !it.startsWith("GET") })
+        assertEquals(listOf("PUT /v3/cars/a", "POST /v3/cars/c/undo", "PUT /v3/cars/a/park", "POST /v3/cars/b/state"), net.calls.filter { !it.startsWith("GET") })
     }
 
     // row: DelCar pending discards that car's undo/park/state/photo ops
@@ -82,7 +82,7 @@ class SyncQueueTest {
 
     // row: no family -> nothing queued
     @Test fun noFamilyNoPendingNothingQueued() {
-        FamilyStore.clear(ctx)
+        GroupStore.clear(ctx)
         SyncQueue.add(ctx, Op.PutPark(park("a", 1)))
         assertTrue(SyncQueue.ops(ctx).isEmpty())
     }
@@ -136,10 +136,10 @@ class SyncQueueTest {
         assertEquals(10L, ParkStore.latest(ctx, "c_0000000a")!!.id); assertEquals(1, SyncQueue.ops(ctx).size)
     }
 
-    // row: 409 full -> drop + local car deleted + notice
+    // row: 409 cars -> drop + local car deleted + notice
     @Test fun carFullDeletesLocalCarAndNotifies() {
         CarStore.upsert(ctx, car("c_0000000a")); SyncQueue.add(ctx, Op.PutCar(car("c_0000000a")))
-        net.handler = { m, _, _, _ -> if (m == "GET") 500 to null else 409 to """{"error":"full"}""" }
+        net.handler = { m, _, _, _ -> if (m == "GET") 500 to null else 409 to """{"error":"cars"}""" }
         SyncEngine.run(ctx)
         assertTrue(CarStore.cars(ctx).isEmpty()); assertTrue(SyncQueue.ops(ctx).isEmpty())
         assertEquals(listOf("차는 4대까지예요"), notices)
@@ -161,15 +161,14 @@ class SyncQueueTest {
         assertFalse(SyncEngine.run(ctx)); assertEquals(1, SyncQueue.ops(ctx).size)
     }
 
-    // row: 401 -> queue + family + pendingGroup cleared, local data and links stay, removed band
+    // row: 401 -> queue + family + cleared, local data and links stay, removed band
     @Test fun unauthorizedClearsFamilyButKeepsLocalData() {
         CarStore.upsert(ctx, car("a")); ParkStore.save(ctx, park("a", 1)); CarLinkStore.set(ctx, "a", "AA:BB")
-        FamilyStore.setPendingGroup(ctx, "나", "새 가족")
         SyncQueue.add(ctx, Op.PutPark(park("a", 1))); SyncQueue.add(ctx, Op.State("b", ParkState.DRIVING))
         net.handler = { _, _, _, _ -> 401 to """{"error":"auth"}""" }
         assertTrue(SyncEngine.run(ctx))
-        assertFalse(FamilyStore.joined(ctx)); assertNull(FamilyStore.pendingGroup(ctx)); assertTrue(SyncQueue.ops(ctx).isEmpty())
-        assertTrue(FamilyStore.removed(ctx))
+        assertFalse(GroupStore.joined(ctx)); assertTrue(SyncQueue.ops(ctx).isEmpty())
+        assertTrue(GroupStore.removed(ctx))
         assertEquals(1, CarStore.cars(ctx).size); assertNotNull(ParkStore.latest(ctx, "a")); assertEquals("AA:BB", CarLinkStore.address(ctx, "a"))
         net.calls.clear(); assertTrue(SyncEngine.run(ctx)); assertTrue("no silent family", net.calls.isEmpty())
     }
@@ -180,55 +179,15 @@ class SyncQueueTest {
         var n = 0
         net.handler = { m, _, _, _ ->
             if (m == "GET") 500 to null
-            else if (n++ == 0) { FamilyStore.save(ctx, "m2", "s2", "새", listOf(Kit.me)); 401 to "{}" } else 500 to null
+            else if (n++ == 0) { Kit.saveGroup(ctx, "m2", "s2", "새", listOf(Kit.me)); 401 to "{}" } else 500 to null
         }
         SyncEngine.run(ctx)
-        assertEquals("m2.s2", FamilyStore.auth(ctx)); assertEquals(1, SyncQueue.ops(ctx).size)
+        assertEquals("m2.s2", GroupStore.auth(ctx)); assertEquals(1, SyncQueue.ops(ctx).size)
     }
 
-    // row: after 401, new family from pendingGroup re-uploads the local car under the same id
-    @Test fun newFamilyAfter401ReuploadsCarWithSameId() {
-        CarStore.upsert(ctx, car("c_00000001"))
-        FamilyStore.dropIfSame(ctx, "m1.s1")
-        FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
-        assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001"), net.calls.filter { !it.startsWith("GET") })
-        assertEquals("m9.s9", FamilyStore.auth(ctx)); assertNull(FamilyStore.pendingGroup(ctx)); assertTrue(SyncQueue.ops(ctx).isEmpty())
-    }
 
-    // row: SyncWorker is the only group creator; a create result is dropped if the pendingGroup changed (e.g. joined meanwhile)
-    @Test fun createResultDiscardedWhenPendingGroupGone() {
-        FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        net.handler = { _, p, _, _ -> if (p == "/v2/groups") { FamilyStore.clearPendingGroup(ctx); 200 to Kit.groupJson() } else 200 to "{}" }
-        SyncEngine.run(ctx)
-        assertFalse(FamilyStore.joined(ctx)); assertTrue(net.calls.contains("DELETE /v2/me"))
-    }
 
-    // fix round: ops queue while a pendingGroup waits; the park is uploaded after the group exists
-    @Test fun parkQueuedWhilePendingGroupIsUploadedAndSurvivesMerge() {
-        FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        CarStore.upsert(ctx, car("c_00000001")); ParkStore.save(ctx, park("c_00000001", 5)); SyncQueue.add(ctx, Op.PutPark(park("c_00000001", 5)))
-        assertEquals(listOf("park:c_00000001"), keys())
-        net.handler = { m, p, _, _ ->
-            when {
-                p == "/v2/groups" -> 200 to Kit.groupJson()
-                m == "GET" -> 200 to """{"groupName":"새 가족","members":[],"cars":[${Wire.carJson(car("c_00000001"))}],"parks":{"c_00000001":${Kit.serverPark(park("c_00000001", 5))}}}"""
-                else -> 200 to "{}"
-            }
-        }
-        assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001", "PUT /v2/cars/c_00000001/park"), net.calls.filter { !it.startsWith("GET") })
-        assertEquals(5L, ParkStore.latest(ctx, "c_00000001")!!.id); assertEquals(5L, ParkStore.latest(ctx, "c_00000001")!!.atMs)
-    }
 
-    @Test fun reFamilyAfter401UploadsLatestPark() {
-        CarStore.upsert(ctx, car("c_00000001")); ParkStore.save(ctx, park("c_00000001", 7))
-        FamilyStore.dropIfSame(ctx, "m1.s1"); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
-        assertTrue(SyncEngine.run(ctx))
-        assertEquals(listOf("POST /v2/groups", "PUT /v2/cars/c_00000001", "PUT /v2/cars/c_00000001/park"), net.calls.filter { !it.startsWith("GET") })
-    }
 
     @Test fun undoBeforePickMeansPutParkIsNeverMarkedStarted() {
         ParkStore.save(ctx, park("a", 1)); ParkStore.save(ctx, park("a", 2)); SyncQueue.add(ctx, Op.PutPark(park("a", 2)))
@@ -242,17 +201,7 @@ class SyncQueueTest {
         assertEquals(listOf("undo:a:3", "undo:a:2", "park:a"), keys())
     }
 
-    @Test fun createGroup4xxKeepsErrorFlagAndClearsPending() {
-        FamilyStore.leave(ctx); FamilyStore.setPendingGroup(ctx, "나", "새 가족")
-        net.handler = { _, _, _, _ -> 400 to """{"error":"name"}""" }
-        assertTrue(SyncEngine.run(ctx))
-        assertNull(FamilyStore.pendingGroup(ctx)); assertEquals("name", FamilyStore.groupCreateError(ctx))
-    }
 
-    @Test fun noPendingGroupNoFamilyDoesNothing() {
-        FamilyStore.leave(ctx)
-        assertTrue(SyncEngine.run(ctx)); assertTrue(net.calls.isEmpty())
-    }
 
     // row: undo before sending = op replaced / dropped
     @Test fun undoBeforeSendRestoresPrevAndReplacesOp() {

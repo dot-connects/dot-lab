@@ -92,28 +92,42 @@ class ExitNotifierTest {
         val p = ParkStore.latest(c, "a")!!
         assertEquals(ParkState.DRIVING, p.state)
         assertEquals("나", p.drivingBy)
-        assertEquals(listOf<Op>(Op.State("a", ParkState.DRIVING, 1)), SyncQueue.ops(c))
+        assertEquals(listOf<Op>(Op.State("a", ParkState.DRIVING, 1, null, 1)), SyncQueue.ops(c))
     }
+
+    private fun leftAt(): Long? = ParkStore.latest(c, "a")?.takeIf { it.state == ParkState.LEFT }?.leftAt
 
     @Test fun leftAtOnlyAfterThisPhoneSawTheCarGoAfterDriving() {
         ParkStore.save(c, Kit.park("a", 1))
         ExitNotifier.onDisappeared(c, "AA:AA")
         min(5); ExitNotifier.onAppeared(c, "AA:AA")
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
         min(10); ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+        assertEquals(t, leftAt())
         min(5); ExitNotifier.onAppeared(c, "AA:AA")
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
         min(10); ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+        assertEquals(t, leftAt())
         ParkStore.save(c, Kit.park("a", 2, atMs = t + 60_000))
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
+    }
+
+    @Test fun leavingAfterMyDriveMarksLeftAndQueuesIt() {
+        ParkStore.save(c, Kit.park("a", 1))
+        ExitNotifier.onDisappeared(c, "AA:AA")
+        min(5); ExitNotifier.onAppeared(c, "AA:AA")
+        min(10); ExitNotifier.onDisappeared(c, "AA:AA")
+        val p = ParkStore.latest(c, "a")!!
+        assertEquals(ParkState.LEFT, p.state); assertEquals(t, p.leftAt)
+        assertTrue(SyncQueue.ops(c).any { it is Op.State && it.state == ParkState.LEFT && it.parkId == 1L && it.atMs == t })
+        min(1); ExitNotifier.onAppeared(c, "AA:AA")  // a flicker brings the drive back
+        assertEquals(ParkState.DRIVING, ParkStore.latest(c, "a")!!.state)
     }
 
     @Test fun drivingFromAnotherPhoneStaysDriving() {
         ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))
         ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
     }
 
     @Test fun staleLocalDriveDoesNotLeakIntoAnotherPhonesDrive() {
@@ -123,7 +137,7 @@ class ExitNotifierTest {
         min(10); ExitNotifier.onDisappeared(c, "AA:AA")
         min(5); ParkStore.save(c, Kit.park("a", 2, atMs = t))
         min(5); ParkStore.save(c, Kit.park("a", 2, atMs = t, state = ParkState.DRIVING))
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
     }
 
     @Test fun disappearRequestsWidgetRefresh() {
@@ -140,7 +154,7 @@ class ExitNotifierTest {
         ParkStore.save(c, Kit.park("a", 1, state = ParkState.DRIVING))  // another phone set DRIVING
         min(5); ExitNotifier.onAppeared(c, "AA:AA")
         min(10); ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(t, ExitNotifier.leftAt(c, "a"))
+        assertEquals(t, leftAt())
     }
 
     @Test fun reconnectRefreshesTheWidget() {
@@ -159,7 +173,7 @@ class ExitNotifierTest {
         min(60 * 24); ParkStore.save(c, Kit.park("a", 2, atMs = t))
         min(10); ParkStore.save(c, Kit.park("a", 2, atMs = t - 10 * 60_000L, state = ParkState.DRIVING))
         min(5); ExitNotifier.onDisappeared(c, "AA:AA")
-        assertEquals(null, ExitNotifier.leftAt(c, "a"))
+        assertEquals(null, leftAt())
     }
 
     @Test fun unknownAddressIgnored() {

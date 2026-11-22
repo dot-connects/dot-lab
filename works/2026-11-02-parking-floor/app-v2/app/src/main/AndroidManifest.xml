@@ -67,7 +67,8 @@
             </intent-filter>
         </activity>
         <activity android:name=".family.InviteActivity" android:exported="false" />
-        <activity android:name=".family.FamilyActivity" android:exported="false" />
+        <activity android:name=".family.GroupActivity" android:exported="false" />
+        <activity android:name=".family.AddGroupActivity" android:exported="false" />
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.files"

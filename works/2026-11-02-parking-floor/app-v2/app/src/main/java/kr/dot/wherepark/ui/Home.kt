@@ -40,12 +40,18 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 import kotlin.math.roundToInt
 import kr.dot.wherepark.core.Car
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import kr.dot.wherepark.data.Group
+import kr.dot.wherepark.core.isMine
 import kr.dot.wherepark.core.CarResolver
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.SyncQueue
@@ -58,6 +64,7 @@ data class CardUi(val kind: CardKind, val tag: String?, val who: String?, val wh
 
 object HomeCards {
     private val ZONE: ZoneId = ZoneId.of("Asia/Seoul")
+    const val OTHER_GROUP = "다른 그룹"
     const val EMPTY = "아직 기록이 없어요. 마이크를 눌러 말해 보세요"
     const val NOMIC = "마이크 권한 · 음성팩이 필요해요"
 
@@ -89,18 +96,18 @@ object HomeCards {
     }
 
     /** Order: no record, driving, waiting to send, 2+ calendar days old, normal. The line under it: pending, bluetooth, mic, memo. */
-    fun of(park: Park?, pending: Boolean, micReady: Boolean, linked: Boolean, nowMs: Long, leftAt: Long? = null): CardUi {
+    fun of(park: Park?, pending: Boolean, micReady: Boolean, linked: Boolean, nowMs: Long, driver: Boolean = true): CardUi {
         val nomic = if (micReady) null else CardLine.NOMIC
         if (park == null) return CardUi(CardKind.NONE, null, null, null, nomic, if (nomic != null) NOMIC else null)
         val kind = when {
-            park.state == ParkState.DRIVING && leftAt != null -> CardKind.LEFT
+            park.state == ParkState.LEFT -> CardKind.LEFT
             park.state == ParkState.DRIVING -> CardKind.DRIVING
             pending -> CardKind.PENDING
             days(park.atMs, nowMs) >= 2 -> CardKind.OLD
             else -> CardKind.OK
         }
         val tag = when (kind) {
-            CardKind.DRIVING -> listOf(park.drivingBy ?: park.byName).filter { it.isNotBlank() }.joinToString("") { "$it " } + "운행 중"
+            CardKind.DRIVING -> listOf(if (park.drivingOther) OTHER_GROUP else park.drivingBy ?: park.byName).filter { it.isNotBlank() }.joinToString("") { "$it " } + "운행 중"
             CardKind.LEFT -> "내림"
             CardKind.PENDING -> "전송 대기"
             CardKind.OLD -> "${days(park.atMs, nowMs)}일 전"
@@ -108,34 +115,50 @@ object HomeCards {
         }
         val whenText = if (kind == CardKind.PENDING && nowMs - park.atMs < 60_000) "방금" else whenFull(park.atMs, nowMs)
         val (line, text) = when {
-            kind == CardKind.PENDING -> CardLine.PENDING to "신호가 잡히면 가족에게 보내요"
-            kind == CardKind.LEFT -> CardLine.LEFT to "${hm(leftAt!!)} 내림 · 어디 댔는지 말해 주세요"
+            kind == CardKind.PENDING -> CardLine.PENDING to "신호가 잡히면 그룹에 보내요"
+            kind == CardKind.LEFT -> (if (driver) CardLine.LEFT else CardLine.MEMO) to "${hm(park.leftAt ?: park.atMs)} 내림 · " + if (driver) "어디 댔는지 말해 주세요" else "위치 미입력"
             kind == CardKind.DRIVING && linked -> CardLine.BT to "블루투스가 다시 연결됐어요"
             nomic != null -> nomic to NOMIC
             park.spot.memo != null -> CardLine.MEMO to park.spot.memo
             else -> null to null
         }
-        return CardUi(kind, tag, park.byName.ifBlank { null }, whenText, line, text)
+        return CardUi(kind, tag, if (park.byOther) OTHER_GROUP else park.byName.ifBlank { null }, whenText, line, text)
+    }
+}
+
+/** On the driver's phone (the one that saw the car leave) a LEFT card asks "어디 댔는지"; elsewhere it only says the spot is unknown. */
+fun Park.iAmDriver(meId: String?) = state == ParkState.LEFT && !drivingOther && (drivingById == null || drivingById == meId)
+
+object HomeOrder {
+    /** (my cars by order, others' cars by latest park desc with parkless last in server order, each with its "{owner}님 차 · {group}" label). */
+    fun arrange(cars: List<Car>, parks: Map<String, Park?>, groups: List<Group>, meId: String?): Pair<List<Car>, List<Pair<Car, String>>> {
+        val mine = cars.filter { it.isMine(meId) }.sortedBy { it.order }
+        val others = cars.filter { !it.isMine(meId) }.sortedByDescending { parks[it.id]?.atMs ?: Long.MIN_VALUE }
+        return mine to others.map { c ->
+            val shared = groups.filter { it.id in c.groups }
+            val where = when { shared.isEmpty() -> ""; shared.size == 1 -> " · ${shared[0].name}"; else -> " · ${shared[0].name} 외 ${shared.size - 1}" }
+            c to "${c.ownerName.orEmpty()}님 차$where"
+        }
     }
 }
 
 /** Everything the home screen shows, read from the stores in one go. */
 data class HomeData(
     val cars: List<Car>, val parks: Map<String, Park?>, val pending: Set<String>, val linked: Set<String>,
-    val micReady: Boolean, val now: Long, val removed: Boolean, val createError: String?, val sayTo: Car?,
-    val left: Map<String, Long> = emptyMap(),
+    val micReady: Boolean, val now: Long, val removed: Boolean, val sayTo: Car?,
+    val others: List<Pair<Car, String>> = emptyList(), val meId: String? = null,
 ) {
     companion object {
         fun load(ctx: Context, now: Long, micReady: Boolean): HomeData {
-            val cars = CarStore.cars(ctx)
-            val pend = if (FamilyStore.joined(ctx) || FamilyStore.pendingGroup(ctx) != null)
+            val all = CarStore.cars(ctx)
+            val me = GroupStore.me(ctx)?.id
+            val parks = all.associate { it.id to ParkStore.latest(ctx, it.id) }
+            val (mine, others) = HomeOrder.arrange(all, parks, GroupStore.groups(ctx), me)
+            val pend = if (GroupStore.joined(ctx))
                 SyncQueue.ops(ctx).filterIsInstance<Op.PutPark>().map { it.carId }.toSet() else emptySet()
             return HomeData(
-                cars, cars.associate { it.id to ParkStore.latest(ctx, it.id) }, pend,
-                cars.filter { CarLinkStore.address(ctx, it.id) != null }.map { it.id }.toSet(), micReady, now,
-                FamilyStore.removed(ctx), FamilyStore.groupCreateError(ctx),
-                CarResolver.resolve(null, null, null, cars, ParkStore.lastUsedCarId(ctx)),
-                cars.mapNotNull { c -> kr.dot.wherepark.car.ExitNotifier.leftAt(ctx, c.id)?.let { c.id to it } }.toMap(),
+                mine, parks, pend, all.filter { CarLinkStore.address(ctx, it.id) != null }.map { it.id }.toSet(), micReady, now,
+                GroupStore.removed(ctx), CarResolver.resolve(null, null, null, mine, ParkStore.lastUsedCarId(ctx), me), others, me,
             )
         }
     }
@@ -148,9 +171,7 @@ class AppActions(
     val plate: (String) -> Unit = {},
     val settings: () -> Unit = {},
     val fixMic: () -> Unit = {},
-    val newFamily: () -> Unit = {},
-    val joinByCode: () -> Unit = {},
-    val retryGroup: () -> Unit = {},
+    val addGroup: () -> Unit = {},
 )
 
 /** Compose keeps a line as tall as the font; CSS line-height under 1 (.spot .f .95) trims it. */
@@ -180,11 +201,11 @@ fun WhoLine(who: String?, whenText: String?) = Text(buildAnnotatedString {
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun HomeCard(car: Car, park: Park?, ui: CardUi, acts: AppActions, big: Boolean = true, chips: Boolean = true) {
+fun HomeCard(car: Car, park: Park?, ui: CardUi, acts: AppActions, big: Boolean = true, chips: Boolean = true, label: String? = null) {
     WCard(onClick = { acts.openCar(car.id) }) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Swatch(car.color)
-            Text(car.name, Modifier.weight(1f), style = ts(13.5.sp, color = Wp.MU))
+            Text(label ?: car.name, Modifier.weight(1f), style = ts(13.5.sp, color = Wp.MU), maxLines = 1)
             ui.tag?.let { t -> Tag(t, if (ui.kind == CardKind.OK) Wp.OK else Wp.MU, icon = if (ui.kind == CardKind.PENDING) "up" else null) }
         }
         if (park == null) {
@@ -223,12 +244,17 @@ fun Band(text: String, sub: String?, actions: List<Pair<String, () -> Unit>>) = 
 fun HomeScreen(d: HomeData, acts: AppActions) = WScreen(null, gap = 10.dp) {
     TopBar("어디댔어", null, action = { RoundIcon("gear", "설정", onClick = acts.settings) }, lead = { Brand(34.dp, 10.dp) })
     Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (d.removed) Band("가족에서 나가게 됐어요", "내 차와 기록은 이 폰에 남아 있어요", listOf("새 가족 만들기" to acts.newFamily, "초대 코드로 들어가기" to acts.joinByCode))
-        else if (d.createError != null) Band("가족을 만들지 못했어요", "잠시 뒤 다시 해 주세요", listOf("다시 해 보기" to acts.retryGroup, "초대 코드로 들어가기" to acts.joinByCode))
+        if (d.removed) Band("그룹에서 나가게 됐어요", "내 차와 기록은 이 폰에 남아 있어요", listOf("그룹 추가" to acts.addGroup))
         d.cars.forEach { c ->
             val p = d.parks[c.id]
-            HomeCard(c, p, HomeCards.of(p, c.id in d.pending, d.micReady, c.id in d.linked, d.now, d.left[c.id]), acts)
+            HomeCard(c, p, HomeCards.of(p, c.id in d.pending, d.micReady, c.id in d.linked, d.now, p?.iAmDriver(d.meId) ?: true), acts)
         }
+        var all by remember { mutableStateOf(false) }
+        (if (all) d.others else d.others.take(3)).forEach { (c, label) ->
+            val p = d.parks[c.id]
+            HomeCard(c, p, HomeCards.of(p, c.id in d.pending, d.micReady, c.id in d.linked, d.now, false), acts, chips = false, label = label)
+        }
+        if (!all && d.others.size > 3) Btn("${d.others.size - 3}대 더 보기", BtnKind.GHOST, h = 44.dp, size = 14.sp, onClick = { all = true })
     }
     val to = d.sayTo
     Box(

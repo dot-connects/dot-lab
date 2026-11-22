@@ -14,7 +14,7 @@ import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.Spot
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.FakeNet
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Kit
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.Prefs
@@ -55,7 +55,7 @@ class AppScreensTest {
     @Test fun noCodeRunsTheFourSteps() = assertEquals(Route.Steps(joined = false), Onboarding.route(ctx, null))
 
     @Test fun afterAJoinTheCarStepIsSkippedAndCodesIgnored() {
-        FamilyStore.save(ctx, "m1", "s1", "우리", listOf(Kit.me))
+        GroupStore.save(ctx, "m1", "s1", Kit.me, listOf(kr.dot.wherepark.data.Group("g1", "우리", true, listOf(Kit.me))))
         Prefs.put(ctx, "wp_referrer_code", "K7QM-28XP-4HDA")
         assertEquals(Route.Steps(joined = true), Onboarding.route(ctx, null))
     }
@@ -65,26 +65,14 @@ class AppScreensTest {
         assertEquals(Route.Home, Onboarding.route(ctx, "AAAA-BBBB-CCCC"))
     }
 
-    @Test fun carStepStoresPendingGroupAndQueuesCarButNeverCreatesTheGroup() {
-        val car = Kit.car("c_1").copy(name = "흰 차")
-        Onboarding.saveCar(ctx, " 아빠 ", car)
-        assertEquals("아빠" to "아빠네 가족", FamilyStore.pendingGroup(ctx))
-        assertEquals(listOf("c_1"), CarStore.cars(ctx).map { it.id })
-        assertEquals(listOf("car:c_1"), SyncQueue.ops(ctx).map { it.key })
-        assertTrue(SyncQueue.ops(ctx).single() is Op.PutCar)
-        assertFalse(FamilyStore.joined(ctx))
-        assertTrue(net.calls.none { it.contains("/v2/groups") })
-        assertEquals("아빠", AppPrefs.myName(ctx))
-    }
-
-    @Test fun groupCreatedBySyncWorkerStartsPush() {
-        var pushes = 0
-        JoinFlow.startPush = { pushes++ }
-        Onboarding.saveCar(ctx, "아빠", Kit.car("c_1"))
-        net.handler = { m, p, _, _ -> if (p == "/v2/groups") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
+    @Test fun carStepStaysSoloUntilExplicitGroupCreation() {
+        val car = Kit.car("c_00000001").copy(name = "흰 차")
+        Onboarding.saveCar(ctx, car)
+        assertEquals(listOf(car.id), CarStore.cars(ctx).map { it.id })
+        assertTrue(SyncQueue.ops(ctx).isEmpty())
+        assertFalse(GroupStore.joined(ctx))
         SyncEngine.run(ctx)
-        assertTrue(FamilyStore.joined(ctx))
-        assertEquals(1, pushes)
+        assertTrue(net.calls.isEmpty())
     }
 
     // home card states (spec 8.3)
@@ -109,7 +97,7 @@ class AppScreensTest {
     @Test fun cardPendingBeatsOldAndSaysJustNow() {
         val c = HomeCards.of(park(now - 20_000), pending = true, micReady = true, linked = false, nowMs = now)
         assertEquals(CardKind.PENDING, c.kind); assertEquals("전송 대기", c.tag); assertEquals("방금", c.whenText)
-        assertEquals(CardLine.PENDING, c.line); assertEquals("신호가 잡히면 가족에게 보내요", c.lineText)
+        assertEquals(CardLine.PENDING, c.line); assertEquals("신호가 잡히면 그룹에 보내요", c.lineText)
     }
 
     @Test fun cardDrivingNamesWhoAndBluetoothOnlyWhenLinked() {
@@ -134,21 +122,6 @@ class AppScreensTest {
 
     // settings toggles persist in the stores the notifiers read
 
-    @Test fun settingsTogglesPersist() {
-        CarStore.upsert(ctx, Kit.car("w").copy(name = "흰 차"))
-        rule.setContent { SettingsScreen(SettingsActions()) }
-        assertTrue(ExitNotifier.enabled(ctx, "w")); assertTrue(Push.enabled(ctx, "park:w")); assertFalse(Push.enabled(ctx, "drive:w"))
-        rule.onNodeWithText("차에서 내리면 물어보기").performClick()
-        rule.onNodeWithText("가족이 댔을 때").performClick()
-        rule.onNodeWithText("가족이 가져갔을 때").performClick()
-        rule.onNodeWithText("글자 크게").performScrollTo().performClick()
-        rule.waitForIdle()
-        assertFalse(ExitNotifier.enabled(ctx, "w")); assertFalse(Push.enabled(ctx, "park:w")); assertTrue(Push.enabled(ctx, "drive:w"))
-        assertTrue(AppPrefs.bigText(ctx))
-        rule.onNodeWithText("차에서 내리면 물어보기").performClick()
-        rule.waitForIdle()
-        assertTrue(ExitNotifier.enabled(ctx, "w"))
-    }
 
     // join screen model (Task 9 review: double tap, stale peek, error wording)
 
@@ -158,7 +131,7 @@ class AppScreensTest {
 
     @Test fun doubleTapJoinsOnce() {
         net.handler = { m, p, _, _ ->
-            when { p == "/v2/peek" -> 200 to """{"groupName":"민지네 가족","count":3}"""; p == "/v2/join" -> 200 to Kit.groupJson(); m == "GET" -> 500 to null; else -> 200 to "{}" }
+            when { p == "/v3/peek" -> 200 to """{"groupName":"민지네 가족","count":3}"""; p == "/v3/join" -> 200 to Kit.groupJson(); m == "GET" -> 500 to null; else -> 200 to "{}" }
         }
         val m = model()
         m.useCode("AAAA-BBBB-CCCC"); drain()
@@ -166,7 +139,7 @@ class AppScreensTest {
         m.join(); m.join()
         assertTrue(m.busy)
         drain()
-        assertEquals(1, net.calls.count { it == "POST /v2/join" })
+        assertEquals(1, net.calls.count { it == "POST /v3/join" })
         assertTrue(m.finished)
     }
 

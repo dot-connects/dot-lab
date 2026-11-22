@@ -31,7 +31,7 @@ class LocalDataTest {
         ParkStore.save(ctx, Kit.park("c_00000001", 5).copy(photo = true))
         val stale = LocalData.photoFile(ctx, "c_00000001", 1).also { it.parentFile!!.mkdirs(); it.writeText("old") }
         val prev = LocalData.photoFile(ctx, "c_00000001", 3).also { it.writeText("prev") }
-        net.handler = { m, p, _, _ -> if (m == "GET" && p == "/v2/cars/c_00000001/photo?park=5") 200 to "JPEGÿØ" else 500 to null }
+        net.handler = { m, p, _, _ -> if (m == "GET" && p == "/v3/cars/c_00000001/photo?park=5") 200 to "JPEGÿØ" else 500 to null }
 
         val f = LocalData.photo(ctx, ParkStore.latest(ctx, "c_00000001")!!)
         assertArrayEquals("JPEGÿØ".toByteArray(Charsets.ISO_8859_1), f!!.readBytes())
@@ -41,7 +41,7 @@ class LocalDataTest {
         assertEquals(listOf("m1.s1"), net.auths.distinct())
 
         LocalData.photo(ctx, ParkStore.latest(ctx, "c_00000001")!!)
-        assertEquals(1, net.calls.count { it.startsWith("GET /v2/cars/c_00000001/photo") })  // second look = cache
+        assertEquals(1, net.calls.count { it.startsWith("GET /v3/cars/c_00000001/photo") })  // second look = cache
     }
 
     @Test fun noPhotoFlagOrMissingPhotoIsQuiet() {
@@ -51,7 +51,7 @@ class LocalDataTest {
         net.handler = { _, _, _, _ -> 404 to """{"error":"photo"}""" }
         assertNull(LocalData.photo(ctx, p.copy(photo = true)))
         assertFalse(LocalData.photoFile(ctx, "c_00000001", 5).exists())
-        assertTrue(FamilyStore.joined(ctx))
+        assertTrue(GroupStore.joined(ctx))
     }
 
     @Test fun wipeClearsEverythingAndDropsAPullInFlight() {
@@ -66,12 +66,12 @@ class LocalDataTest {
         LocalData.wipe(ctx)
 
         assertNotEquals(genBefore, SyncQueue.generation(ctx))
-        assertFalse(Merge.state(ctx, ApiState("우리", listOf(Kit.me), listOf(Kit.car("c_00000001")), mapOf("c_00000001" to Kit.park("c_00000001", 5))), genBefore))
+        assertFalse(Merge.state(ctx, ApiState(Kit.me, listOf(Group("g1", "우리", true, listOf(Kit.me))), listOf(Kit.car("c_00000001")), mapOf("c_00000001" to Kit.park("c_00000001", 5))), genBefore))
         assertTrue(CarStore.cars(ctx).isEmpty())
         assertNull(ParkStore.latest(ctx, "c_00000001"))
         assertTrue(CarLinkStore.carIds(ctx).isEmpty())
         assertTrue(SyncQueue.ops(ctx).isEmpty())
-        assertFalse(FamilyStore.joined(ctx))
+        assertFalse(GroupStore.joined(ctx))
         assertFalse(File(ctx.filesDir, "photos").exists())
     }
 }

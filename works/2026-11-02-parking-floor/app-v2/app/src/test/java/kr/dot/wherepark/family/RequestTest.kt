@@ -4,7 +4,7 @@ import android.content.Context
 import android.net.Uri
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.FakeNet
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Kit
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -33,8 +33,8 @@ class RequestTest {
         joinAnswer = 200 to Kit.groupJson()
         net.handler = { m, p, _, body ->
             when {
-                m == "POST" && p == "/v2/join" -> { joins += body!!; joinAnswer }
-                m == "POST" && p == "/v2/peek" -> peekAnswer
+                m == "POST" && p == "/v3/join" -> { joins += body!!; joinAnswer }
+                m == "POST" && p == "/v3/peek" -> peekAnswer
                 m == "GET" -> 500 to null
                 else -> 200 to "{}"
             }
@@ -61,7 +61,7 @@ class RequestTest {
     @Test fun pollNeverJoinsOrDrops() {
         val r = JoinRequest.start(ctx, "민준")
         assertEquals(JoinRequest.Poll.Waiting, JoinRequest.poll(ctx))
-        assertEquals(listOf("POST /v2/requests/poll"), net.calls)
+        assertEquals(listOf("POST /v3/requests/poll"), net.calls)
         assertEquals(listOf<String?>(null), net.auths)
         net.requests[r.hash] = code
         assertEquals(JoinRequest.Poll.Code(code, "민준", null), JoinRequest.poll(ctx))
@@ -85,7 +85,7 @@ class RequestTest {
         assertEquals("엄마", m.acceptedBy)  // the confirm shows "엄마님이 받아 줬어요"
         assertEquals("민지네 가족" to 3, m.peek)
         assertTrue(joins.isEmpty())  // asked, not joined
-        assertEquals(listOf("POST /v2/requests/poll", "POST /v2/requests/poll", "POST /v2/peek"), net.calls)
+        assertEquals(listOf("POST /v3/requests/poll", "POST /v3/requests/poll", "POST /v3/peek"), net.calls)
         m.join()
         val sent = JSONObject(joins.single())
         assertEquals(code, sent.getString("code")); assertEquals("민준", sent.getString("name"))
@@ -114,7 +114,7 @@ class RequestTest {
         m.poll()
         joinAnswer = 409 to """{"error":"full"}"""
         m.join()
-        assertEquals("가족이 꽉 찼어요", m.error); assertNotNull(JoinRequest.pending(ctx))
+        assertEquals("그룹이 꽉 찼어요", m.error); assertNotNull(JoinRequest.pending(ctx))
         joinAnswer = 429 to """{"error":"slow"}"""
         m.join()
         assertEquals("잠시 뒤 다시 확인할게요", m.error); assertNotNull(JoinRequest.pending(ctx))
@@ -143,7 +143,7 @@ class RequestTest {
         JoinRequest.start(ctx, "민준")
         assertTrue(JoinFlow.join(ctx, "AAAA-BBBB-CCCC", "민준").isSuccess)  // the normal invite path
         assertNull(JoinRequest.pending(ctx))
-        FamilyStore.clear(ctx)
+        GroupStore.clear(ctx)
         JoinRequest.start(ctx, "민준")
         net.handler = { _, _, _, _ -> 200 to Kit.groupJson() }
         assertTrue(Api.createGroup(ctx, "민준", "민준네 가족").isSuccess)
@@ -174,18 +174,18 @@ class RequestTest {
     }
 
     @Test fun acceptIsOnePutWithTheHashOnly() {
-        FamilyStore.save(ctx, "m1", "s1", "우리", listOf(Kit.me))
+        Kit.saveGroup(ctx, "m1", "s1", "우리", listOf(Kit.me))
         val id = FakeNet.sha256("0123456789abcdef0123456789abcdef")
-        assertTrue(JoinRequest.accept(ctx, id).isSuccess)
-        assertEquals(listOf("PUT /v2/requests"), net.calls)  // no invite of mine is created or replaced
+        assertTrue(JoinRequest.accept(ctx, id, "g1").isSuccess)
+        assertEquals(listOf("PUT /v3/requests"), net.calls)  // no invite of mine is created or replaced
         assertEquals(listOf<String?>("m1.s1"), net.auths)
         assertEquals(code, net.requests[id])
-        assertEquals(409, (JoinRequest.accept(ctx, id).exceptionOrNull() as kr.dot.wherepark.data.ApiException).status)  // first accept wins
-        assertEquals(400, (JoinRequest.accept(ctx, "nope").exceptionOrNull() as kr.dot.wherepark.data.ApiException).status)
+        assertEquals(409, (JoinRequest.accept(ctx, id, "g1").exceptionOrNull() as kr.dot.wherepark.data.ApiException).status)  // first accept wins
+        assertEquals(400, (JoinRequest.accept(ctx, "nope", "g1").exceptionOrNull() as kr.dot.wherepark.data.ApiException).status)
     }
 
     @Test fun acceptWithoutFamilyCallsNothing() {
-        assertTrue(JoinRequest.accept(ctx, FakeNet.sha256("x")).isFailure)
+        assertTrue(JoinRequest.accept(ctx, FakeNet.sha256("x"), "g1").isFailure)
         assertTrue(net.calls.isEmpty())
     }
 

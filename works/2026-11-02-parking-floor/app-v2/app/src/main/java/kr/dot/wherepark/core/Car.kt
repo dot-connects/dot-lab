@@ -6,21 +6,25 @@ import java.time.ZoneId
 /** Contract id: "c_" + 8 lowercase hex (the Worker routes only ^c_[0-9a-f]{8}$). */
 fun newCarId(): String = "c_" + "%08x".format(java.security.SecureRandom().nextInt())
 
-data class Car(val id: String, val name: String, val color: Int, val plate: String?, val order: Int)
+data class Car(val id: String, val name: String, val color: Int, val plate: String?, val order: Int,
+    val ownerId: String? = null, val ownerName: String? = null, val groups: List<String> = emptyList())
 
-enum class ParkState { PARKED, DRIVING }
+fun Car.isMine(meId: String?) = ownerId == null || ownerId == meId
+
+enum class ParkState { PARKED, DRIVING, LEFT }
 
 data class Park(
     val id: Long, val carId: String, val spot: Spot, val atMs: Long, val byId: String, val byName: String,
     val raw: String?, val photo: Boolean, val state: ParkState, val drivingBy: String? = null,
+    val byOther: Boolean = false, val drivingOther: Boolean = false, val leftAt: Long? = null, val drivingById: String? = null,
 )
 
 object CarResolver {
     /** Order: explicit id, bluetooth id, spoken name, last used, first by order. Unknown ids are skipped. */
-    fun resolve(explicitCarId: String?, btCarId: String?, spokenCarName: String?, cars: List<Car>, lastUsedCarId: String?): Car? =
+    fun resolve(explicitCarId: String?, btCarId: String?, spokenCarName: String?, cars: List<Car>, lastUsedCarId: String?, meId: String? = null): Car? =
         cars.firstOrNull { it.id == explicitCarId }
             ?: cars.firstOrNull { it.id == btCarId }
-            ?: spokenCarName?.let { n -> cars.firstOrNull { it.name == n } }
+            ?: spokenCarName?.let { n -> cars.filter { it.name == n }.sortedByDescending { it.isMine(meId) }.firstOrNull() }
             ?: cars.firstOrNull { it.id == lastUsedCarId }
             ?: cars.minByOrNull { it.order }
 }

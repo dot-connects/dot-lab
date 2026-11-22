@@ -67,6 +67,13 @@ test("maintenance keeps public join, request and asset links available", async (
   }
 });
 
+test("join and request pages say 그룹, not 가족", async () => {
+  for (const path of ["/j", "/r"]) {
+    const html = await (await handle(new Request(BASE + path), env, store)).text();
+    assert.ok(html.includes("그룹")); assert.ok(!html.includes("가족"));
+  }
+});
+
 test("v1 is closed with 410 update, authenticated or not", async () => {
   const mom = (await call("POST", "/v2/groups", { name: "엄마", groupName: "집" })).body;
   for (const [method, path, token] of [["POST", "/v1/groups"], ["POST", "/v1/join"], ["PUT", "/v1/park", mom.token], ["GET", "/v1/park", mom.token], ["DELETE", `/v1/members/${mom.memberId}`, mom.token]]) {

@@ -39,25 +39,25 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kr.dot.wherepark.BuildConfig
-import kr.dot.wherepark.car.ExitNotifier
 import kr.dot.wherepark.data.CarLinkStore
+import kr.dot.wherepark.core.Car
+import kr.dot.wherepark.core.isMine
 import kr.dot.wherepark.data.CarStore
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.Group
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.data.WidgetRefresh
-import kr.dot.wherepark.family.Push
 import kr.dot.wherepark.widget.WidgetReceiver
 import kr.dot.wherepark.widget.widgetLabel
 import kr.dot.wherepark.widget.widgetThumb
 
 object AppPrefs {
     const val PRIVACY_URL = "https://dot-connects.github.io/dot-lab/works/2026-11-02-parking-floor/privacy.html"
-    const val CONTACT = "dotconnects.lab@gmail.com"
 
     fun bigText(ctx: Context): Boolean = Prefs.sp(ctx).getString("wp_big_text", null) != null
     fun setBigText(ctx: Context, on: Boolean) = Prefs.put(ctx, "wp_big_text", if (on) "1" else null)
 
-    /** The name typed at onboarding, kept so [새 가족 만들기] after a 401 can recreate the family without asking again. */
+    /** The name typed on the first group create/join (spec 5.7), kept locally for the 401 band. */
     fun myName(ctx: Context): String? = Prefs.sp(ctx).getString("wp_my_name", null)
     fun setMyName(ctx: Context, name: String) = Prefs.put(ctx, "wp_my_name", name)
 
@@ -67,54 +67,54 @@ object AppPrefs {
 }
 
 class SettingsActions(
-    val back: () -> Unit = {}, val editCar: (String?) -> Unit = {}, val testNotice: () -> Unit = {}, val family: () -> Unit = {},
-    val privacy: () -> Unit = {}, val deleteAll: () -> Unit = {}, val copyContact: () -> Unit = {}, val bigText: (Boolean) -> Unit = {}, val widget: (Int) -> Unit = {},   // appWidgetId to reconfigure, or INVALID_APPWIDGET_ID = pin a new one
+    val back: () -> Unit = {}, val editCar: (String?) -> Unit = {}, val testNotice: () -> Unit = {}, val group: (String) -> Unit = {},
+    val addGroup: () -> Unit = {}, val privacy: () -> Unit = {}, val deleteAll: () -> Unit = {}, val bigText: (Boolean) -> Unit = {}, val widget: (Int) -> Unit = {},   // appWidgetId to reconfigure, or INVALID_APPWIDGET_ID = pin a new one
 
 )
 
+/** "내 차 1대 · 다른 사람 차 2대" under a group row. */
+internal fun groupSummary(g: Group, cars: List<Car>, meId: String?): String =
+    "내 차 ${cars.count { it.isMine(meId) && g.id in it.groups }}대 · 다른 사람 차 ${cars.count { !it.isMine(meId) && g.id in it.groups }}대"
+
 /**
- * 설정 (mockup section 7): 내 차 · 알림 (this phone only, per car: exit prompt / family parked / family drove off, [알림 시험]) ·
- * 가족 · 보기 (글자 크게) · 정보. Toggles write the stores directly.
+ * 설정 (spec 5.2): 내 차 (mine only, group names under each) · 그룹 · 알림 (시험 only; per-car switches live on the car screen) ·
+ * 보기 · 정보.
  */
 @Composable
 fun SettingsScreen(a: SettingsActions) {
     val ctx = LocalContext.current
     var v by remember { mutableIntStateOf(0) }   // bumped by each toggle so the rows re-read the stores
     var askDelete by remember { mutableStateOf(false) }
-    var contact by remember { mutableStateOf(false) }
     var pickMain by remember { mutableStateOf(false) }
     var pickWidget by remember { mutableStateOf<List<Int>?>(null) }
-    val cars = remember(v) { CarStore.cars(ctx) }
+    val groups = remember(v) { GroupStore.groups(ctx) }
+    val meId = remember(v) { GroupStore.me(ctx)?.id }
+    val all = remember(v) { CarStore.cars(ctx) }
+    val cars = remember(v) { all.filter { it.isMine(meId) } }
     WScreen("설정", gap = 10.dp, scroll = true) {
         Sect("내 차")
         WList {
             cars.forEach { c ->
-                Li(c.name, lead = { Swatch(c.color) }, right = if (CarLinkStore.address(ctx, c.id) != null) "차 블루투스 연결됨" else "연결 안 함",
+                val names = groups.filter { it.id in c.groups }.joinToString(" · ") { it.name }
+                Li(c.name, lead = { Swatch(c.color) }, sub = names.ifEmpty { null }, right = if (CarLinkStore.address(ctx, c.id) != null) "차 블루투스 연결됨" else "연결 안 함",
                     last = cars.size >= 4 && c == cars.last(), onClick = { a.editCar(c.id) })
             }
             if (cars.size < 4) Li("＋ 차 추가", last = true, onClick = { a.editCar(null) })
         }
-        Sect("알림 · 나만 적용돼요")
+        Sect("그룹")
         WList {
-            cars.forEach { c ->
-                if (cars.size > 1) Li(c.name, lead = { Swatch(c.color) }, textColor = Wp.MU)
-                ToggleLi("차에서 내리면 물어보기", v >= 0 && ExitNotifier.enabled(ctx, c.id)) { ExitNotifier.setEnabled(ctx, c.id, it); v++ }
-                ToggleLi("가족이 댔을 때", v >= 0 && Push.enabled(ctx, "park:${c.id}")) { Push.setEnabled(ctx, "park:${c.id}", it); v++ }
-                ToggleLi("가족이 가져갔을 때", v >= 0 && Push.enabled(ctx, "drive:${c.id}")) { Push.setEnabled(ctx, "drive:${c.id}", it); v++ }
-            }
-            Li("알림 시험", last = true, right = "지금 한 번 보내 보기 ›", onClick = a.testNotice)
+            if (groups.isEmpty()) Li("아직 혼자 쓰고 있어요", sub = "그룹을 만들면 가족·동료 폰에서도 이 차 자리가 보여요. 내 위치는 공유되지 않아요.")
+            groups.forEach { g -> Li("${g.name} · ${g.members.size}명", sub = groupSummary(g, all, meId), right = "›", onClick = { a.group(g.id) }) }
+            if (groups.size < 3) Li("＋ 그룹 추가", last = true, onClick = a.addGroup)
         }
-        Sect("가족")
-        WList {
-            val g = FamilyStore.groupName(ctx)
-            Li(if (g != null) "$g · ${FamilyStore.members(ctx).size}명" else if (FamilyStore.pendingGroup(ctx) != null) "가족 만드는 중" else "초대 코드로 들어가기",
-                last = true, right = "›", onClick = a.family)
-        }
+        Sect("알림")
+        WList { Li("알림 시험", last = true, right = "지금 한 번 보내 보기 ›", onClick = a.testNotice) }
+        Text("차마다 알림은 위 '내 차'에서 차를 눌러 바꿔요", Modifier.padding(horizontal = 4.dp), style = ts(13.sp, color = Wp.MU))
         Sect("보기")
         WList {
             ToggleLi("글자 크게", v >= 0 && AppPrefs.bigText(ctx)) { AppPrefs.setBigText(ctx, it); v++; a.bigText(it) }
-            if (cars.size > 1) {
-                val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.first()
+            if (all.size > 1) {
+                val main = all.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.firstOrNull() ?: all.first()
                 Li("위젯 메인 차량", lead = { Swatch(main.color) }, right = "${main.name} ›", onClick = { pickMain = true })
             }
             Li("위젯 꾸미기", last = true, right = "›", onClick = {
@@ -126,8 +126,7 @@ fun SettingsScreen(a: SettingsActions) {
         WList {
             Li("개인정보 처리방침", right = "›", onClick = a.privacy)
             Li("내 데이터 지우기", right = "›", onClick = { askDelete = true })
-            Li("문의", right = if (contact) AppPrefs.CONTACT else "›", onClick = { if (contact) a.copyContact() else contact = true })
-            Li("버전", last = true, right = BuildConfig.VERSION_NAME)
+            Li("버전", last = true, right = "${BuildConfig.VERSION_NAME} · ${BuildConfig.GIT_SHA}")
         }
     }
     if (pickMain) AlertDialog(
@@ -135,9 +134,9 @@ fun SettingsScreen(a: SettingsActions) {
         title = { Text("위젯 메인 차량") },
         text = {
             Column {
-                val main = cars.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.firstOrNull()
-                cars.forEach { c ->
-                    Li(c.name, lead = { Swatch(c.color) }, right = if (c == main) "✓" else null, last = c == cars.last(),
+                val main = all.firstOrNull { it.id == AppPrefs.mainCar(ctx) } ?: cars.firstOrNull() ?: all.firstOrNull()
+                all.forEach { c ->
+                    Li(c.name, lead = { Swatch(c.color) }, sub = if (c.isMine(meId)) null else "${c.ownerName.orEmpty()}님 차", right = if (c == main) "✓" else null, last = c == all.last(),
                         onClick = { AppPrefs.setMainCar(ctx, c.id); v++; pickMain = false })
                 }
             }
@@ -156,7 +155,7 @@ fun SettingsScreen(a: SettingsActions) {
     }
     if (askDelete) AlertDialog(
         onDismissRequest = { askDelete = false },
-        text = { Text("이 폰의 차·기록·가족 정보를 모두 지우고 가족에서 나갈까요? 되돌릴 수 없어요.") },
+        text = { Text("이 폰의 차·기록·그룹 정보를 모두 지우고 모든 그룹에서 나갈까요? 되돌릴 수 없어요.") },
         confirmButton = { TextButton({ askDelete = false; a.deleteAll() }) { Text("모두 지우기", color = Wp.DANGER) } },
         dismissButton = { TextButton({ askDelete = false }) { Text("취소", color = Wp.FG) } },
         containerColor = Wp.SF,

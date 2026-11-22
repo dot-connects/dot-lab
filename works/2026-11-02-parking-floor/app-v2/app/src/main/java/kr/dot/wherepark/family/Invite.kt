@@ -12,7 +12,7 @@ import com.google.zxing.EncodeHintType
 import com.google.zxing.qrcode.QRCodeWriter
 
 object InviteShare {
-    fun message(link: String) = "어디댔어 가족으로 초대해요. 링크를 누르면 돼요.\n$link"
+    fun message(link: String, group: String? = null) = "어디댔어 " + (if (group == null) "" else "'$group' ") + "그룹에 초대해요. 링크를 누르면 돼요.\n$link"
 
     fun sendIntent(link: String, text: String = message(link)): Intent =
         Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, text)

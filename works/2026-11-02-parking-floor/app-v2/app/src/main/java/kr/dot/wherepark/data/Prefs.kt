@@ -14,7 +14,8 @@ import org.json.JSONObject
 
 data class Member(val id: String, val name: String, val me: Boolean, val owner: Boolean, val lastSeenMs: Long?)
 data class Invite(val code: String, val expiresAt: Long, val link: String)
-data class ApiState(val groupName: String, val members: List<Member>, val cars: List<Car>, val parks: Map<String, Park?>)
+data class Group(val id: String, val name: String, val owner: Boolean, val members: List<Member>)
+data class ApiState(val me: Member?, val groups: List<Group>, val cars: List<Car>, val parks: Map<String, Park?>)
 
 /** One SharedPreferences file; every value is a JSON string under a wp_* key. Writers hold synchronized(SyncQueue). */
 object Prefs {
@@ -44,17 +45,18 @@ object Wire {
     /** v1 groups have no name (server sends null). */
     const val NO_GROUP_NAME = "우리 가족"
 
-    fun carJson(c: Car, updated: Long = System.currentTimeMillis()): JSONObject = JSONObject()
-        .put("id", c.id).put("name", c.name).put("color", c.color).put("plate", nz(c.plate)).put("order", c.order).put("updated", updated)
+    fun carJson(c: Car, updated: Long = System.currentTimeMillis(), local: Boolean = true): JSONObject = JSONObject()
+        .put("id", c.id).put("name", c.name).put("color", c.color).put("plate", nz(c.plate)).put("order", c.order).put("updated", updated).also { if (local) it.put("ownerId", nz(c.ownerId)).put("ownerName", nz(c.ownerName)).put("groups", JSONArray(c.groups)) }
 
-    fun car(j: JSONObject): Car = Car(j.getString("id"), j.getString("name"), j.getInt("color"), j.str("plate"), j.optInt("order", 0))
+    fun car(j: JSONObject): Car = Car(j.getString("id"), j.getString("name"), j.getInt("color"), j.str("plate"), j.optInt("order", 0), j.str("ownerId"), j.str("ownerName"), strings(j.optJSONArray("groups")))
 
     /** [local] adds the fields the server never receives (raw, by, byId, drivingBy). */
     fun parkJson(p: Park, local: Boolean): JSONObject {
         val j = JSONObject().put("id", p.id).put("carId", p.carId).put("atMs", p.atMs)
             .put("floor", nz(p.spot.floor?.wire())).put("zone", nz(p.spot.zone)).put("number", nz(p.spot.number))
             .put("pillar", nz(p.spot.pillar)).put("memo", nz(p.spot.memo)).put("state", p.state.name).put("photo", p.photo)
-        if (local) j.put("raw", nz(p.raw)).put("by", p.byName).put("byId", p.byId).put("drivingBy", nz(p.drivingBy))
+        p.leftAt?.let { j.put("leftAt", it) }
+        if (local) j.put("raw", nz(p.raw)).put("by", p.byName).put("byId", p.byId).put("drivingBy", nz(p.drivingBy)).put("drivingById", nz(p.drivingById)).put("byOther", p.byOther).put("drivingOther", p.drivingOther)
         return j
     }
 
@@ -64,6 +66,7 @@ object Wire {
         atMs = j.optLong("atMs", j.getLong("id")), byId = j.str("byId") ?: "", byName = j.str("by") ?: "",
         raw = j.str("raw"), photo = j.optBoolean("photo", false),
         state = runCatching { ParkState.valueOf(j.optString("state")) }.getOrDefault(ParkState.PARKED), drivingBy = j.str("drivingBy"),
+        byOther = j.optBoolean("byOther"), drivingOther = j.optBoolean("drivingOther"), leftAt = j.longOrNull("leftAt"), drivingById = j.str("drivingById"),
     )
 
     fun member(j: JSONObject) = Member(j.getString("id"), j.getString("name"), j.optBoolean("me"), j.optBoolean("owner"), j.longOrNull("lastSeen"))
@@ -72,10 +75,14 @@ object Wire {
 
     fun members(a: JSONArray?): List<Member> = a?.toList(::member).orEmpty()
 
+    fun strings(a: JSONArray?): List<String> = a?.let { (0 until it.length()).map(it::getString) }.orEmpty()
+    fun group(j: JSONObject) = Group(j.getString("id"), j.str("name") ?: NO_GROUP_NAME, j.optBoolean("owner"), members(j.optJSONArray("members")))
+    fun groupJson(g: Group): JSONObject = JSONObject().put("id", g.id).put("name", g.name).put("owner", g.owner).put("members", JSONArray(g.members.map(::memberJson)))
+
     /** `parks` is absent in group/join responses. */
     fun state(j: JSONObject): ApiState {
         val parks = HashMap<String, Park?>()
         j.optJSONObject("parks")?.let { o -> o.keys().forEach { k -> parks[k] = o.optJSONObject(k)?.let { p -> park(p, k) } } }
-        return ApiState(j.str("groupName") ?: Wire.NO_GROUP_NAME, members(j.optJSONArray("members")), j.optJSONArray("cars")?.toList(::car).orEmpty(), parks)
+        return ApiState(j.optJSONObject("me")?.let(::member), j.optJSONArray("groups")?.toList(::group).orEmpty(), j.optJSONArray("cars")?.toList(::car).orEmpty(), parks)
     }
 }

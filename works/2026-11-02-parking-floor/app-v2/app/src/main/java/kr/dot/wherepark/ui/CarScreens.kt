@@ -48,6 +48,11 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import java.io.File
 import kr.dot.wherepark.core.Car
+import kr.dot.wherepark.core.isMine
+import kr.dot.wherepark.data.GroupStore
+import kr.dot.wherepark.family.Push
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.runtime.mutableIntStateOf
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkState
 
@@ -58,7 +63,7 @@ class DetailActions(
 )
 
 @Composable
-fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailActions, leftAt: Long? = null) =
+fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailActions, driver: Boolean = true) =
     WScreen(car.name, onBack = a.back, action = { RoundIcon("gear", "차 편집", 19.dp, a.edit) }) {
         WCard {
             if (park == null) {
@@ -69,7 +74,11 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
                 Box(Modifier.semantics(mergeDescendants = true) { role = Role.Button; contentDescription = "층과 칸 고치기" }.clickable(onClick = a.fix)) {
                     SpotLine(x, y, trailing = { EditPill("고치기", "pen", a.fix) })
                 }
-                WhoLine(park.byName.ifBlank { null }, HomeCards.whenFull(park.atMs, now) + if (park.state == ParkState.DRIVING) (if (leftAt != null) " · ${HomeCards.hm(leftAt)} 내림 · 어디 댔는지 말해 주세요" else " · 운행 중") else " · " + HomeCards.ago(park.atMs, now))
+                WhoLine(if (park.byOther) HomeCards.OTHER_GROUP else park.byName.ifBlank { null }, HomeCards.whenFull(park.atMs, now) + when (park.state) {
+                    ParkState.DRIVING -> " · 운행 중"
+                    ParkState.LEFT -> " · ${HomeCards.hm(park.leftAt ?: park.atMs)} 내림 · " + if (driver) "어디 댔는지 말해 주세요" else "위치 미입력"
+                    else -> " · " + HomeCards.ago(park.atMs, now)
+                })
                 park.spot.memo?.let { MemoLine("note", it) }
                 if (photo != null) {
                     val bmp by androidx.compose.runtime.produceState<androidx.compose.ui.graphics.ImageBitmap?>(null, photo.path, photo.lastModified()) {
@@ -89,7 +98,7 @@ fun DetailScreen(car: Car, park: Park?, photo: File?, now: Long, a: DetailAction
         Spacer(Modifier.weight(1f))
         if (park != null) {
             val driving = park.state == ParkState.DRIVING
-            if (driving && leftAt != null) Btn("위치 말하기", BtnKind.GHOST, onClick = a.speak)
+            if (park.state == ParkState.LEFT) Btn("위치 말하기", BtnKind.GHOST, onClick = a.speak)
             else Btn(if (driving) "운행 중이에요" else "가져갔어요", BtnKind.GHOST, enabled = !driving, onClick = a.took)
         }
     }
@@ -140,8 +149,8 @@ fun HistoryScreen(car: Car, history: List<Park>, now: Long, back: () -> Unit) = 
     }
 }
 
-/** 차 편집 (mockup section 7): nickname, six colours, plate, this car's Bluetooth, delete. Saved when leaving. */
-class EditActions(val back: () -> Unit = {}, val link: () -> Unit = {}, val unlink: () -> Unit = {}, val delete: () -> Unit = {})
+/** 차 편집 (spec 5.6): mine = edit + 알림 + 그룹 switches + delete; someone else's = read-only + 알림 + Bluetooth. Saved when leaving. */
+class EditActions(val back: () -> Unit = {}, val link: () -> Unit = {}, val unlink: () -> Unit = {}, val delete: () -> Unit = {}, val share: (String, Boolean) -> Unit = { _, _ -> })
 
 class CarDraft(car: Car) {
     var name by mutableStateOf(car.name)
@@ -150,25 +159,38 @@ class CarDraft(car: Car) {
 }
 
 @Composable
-fun CarEditScreen(draft: CarDraft, isNew: Boolean, linked: Boolean, a: EditActions) {
+fun CarEditScreen(draft: CarDraft, car: Car, isNew: Boolean, linked: Boolean, a: EditActions) {
+    val ctx = LocalContext.current
     var confirm by remember { mutableStateOf(false) }
-    WScreen(if (isNew) "차 추가" else draft.name.ifBlank { "차" }, onBack = a.back) {
-        FieldCard("별명", draft.name, { draft.name = it.take(10) }, placeholder = "흰 차", underline = false)
-        WCard {
-            Text("색", Modifier.padding(bottom = 8.dp), style = ts(13.sp, color = Wp.MU))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                Wp.CAR_COLORS.forEach { c ->
-                    val on = c == draft.color
-                    Box(Modifier.weight(1f).aspectRatio(1f).semantics { selected = on; role = Role.RadioButton; contentDescription = "차 색" }
-                        .clickable { draft.color = c }, Alignment.Center) {
-                        if (on) Box(Modifier.fillMaxSize().border(2.dp, Wp.FG, CircleShape))
-                        Box(Modifier.fillMaxSize().padding(if (on) 4.dp else 0.dp).clip(CircleShape).background(Color(c)).border(1.dp, Color(0x33000000), CircleShape))
+    var v by remember { mutableIntStateOf(0) }   // bumped by each alarm switch so the rows re-read Push
+    val groups = GroupStore.groups(ctx)
+    val mine = car.isMine(GroupStore.me(ctx)?.id)
+    val shown = groups.filter { it.id in car.groups }
+    WScreen(if (isNew) "차 추가" else if (mine) draft.name.ifBlank { "차" } else "${car.ownerName.orEmpty()}님 차", onBack = a.back, scroll = true) {
+        if (mine) {
+            FieldCard("별명", draft.name, { draft.name = it.take(10) }, placeholder = "흰 차", underline = false)
+            WCard {
+                Text("색", Modifier.padding(bottom = 8.dp), style = ts(13.sp, color = Wp.MU))
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Wp.CAR_COLORS.forEach { c ->
+                        val on = c == draft.color
+                        Box(Modifier.weight(1f).aspectRatio(1f).semantics { selected = on; role = Role.RadioButton; contentDescription = "차 색" }
+                            .clickable { draft.color = c }, Alignment.Center) {
+                            if (on) Box(Modifier.fillMaxSize().border(2.dp, Wp.FG, CircleShape))
+                            Box(Modifier.fillMaxSize().padding(if (on) 4.dp else 0.dp).clip(CircleShape).background(Color(c)).border(1.dp, Color(0x33000000), CircleShape))
+                        }
                     }
                 }
             }
+            FieldCard("차량번호 (선택)", draft.plate, { draft.plate = it.take(12) }, placeholder = "12가 3456", underline = false,
+                keyboard = KeyboardOptions(keyboardType = KeyboardType.Text))
+        } else {
+            WList {
+                Li(car.name, lead = { Swatch(car.color) }, sub = "${car.ownerName.orEmpty()}님 차")
+                Li("차량번호", last = true, right = car.plate ?: "없음")
+            }
+            Text("${shown.joinToString("·") { it.name }} 그룹에서 같이 봐요. 이름·색·번호는 차 주인만 바꿀 수 있어요.", Modifier.padding(horizontal = 4.dp), style = ts(13.sp, color = Wp.MU))
         }
-        FieldCard("차량번호 (선택)", draft.plate, { draft.plate = it.take(12) }, placeholder = "12가 3456", underline = false,
-            keyboard = KeyboardOptions(keyboardType = KeyboardType.Text))
         WCard {
             Text("이 차의 블루투스", style = ts(13.sp, color = Wp.MU))
             Text(if (linked) "연결됨" else "연결 안 함", style = ts(17.sp, FontWeight.SemiBold))
@@ -178,12 +200,24 @@ fun CarEditScreen(draft: CarDraft, isNew: Boolean, linked: Boolean, a: EditActio
                 else Btn("차 블루투스 연결", BtnKind.NT, h = 44.dp, size = 14.sp, lead = { Ic("bt", 18.dp) }, onClick = a.link)
             }
         }
-        Spacer(Modifier.weight(1f))
-        if (!isNew) Btn("이 차 지우기", BtnKind.GHOST, fg = Wp.DANGER, onClick = { confirm = true })
+        val alarms = buildList {
+            if (mine || linked) add("차에서 내리면 물어보기" to "exit:${car.id}")
+            if (car.groups.isNotEmpty()) { add("그룹에서 댔을 때" to "park:${car.id}"); add("그룹에서 가져갔을 때" to "drive:${car.id}") }
+        }
+        if (alarms.isNotEmpty() && !isNew) {
+            Sect("알림 · 이 폰에만")
+            WList { alarms.forEachIndexed { i, (label, key) -> ToggleLi(label, v >= 0 && Push.enabled(ctx, key), last = i == alarms.lastIndex) { Push.setEnabled(ctx, key, it); v++ } } }
+        }
+        if (mine && !isNew && groups.isNotEmpty()) {
+            Sect("이 차가 보이는 그룹")
+            WList { groups.forEachIndexed { i, g -> ToggleLi(g.name, g.id in car.groups, last = i == groups.lastIndex) { a.share(g.id, it) } } }
+            if (shown.size >= 2) Text("두 그룹 모두 같은 자리를 봐요. 누가 대든 마지막 자리 하나로 맞춰져요.", Modifier.padding(horizontal = 4.dp), style = ts(13.sp, color = Wp.MU))
+        }
+        if (mine && !isNew) Btn("이 차 지우기", BtnKind.GHOST, fg = Wp.DANGER, onClick = { confirm = true })
     }
     if (confirm) AlertDialog(
         onDismissRequest = { confirm = false },
-        text = { Text("${draft.name}를 지울까요? 가족 폰에서도 사라져요.") },
+        text = { Text("${draft.name}를 지울까요?" + if (car.groups.isNotEmpty()) " 그룹 폰에서도 사라져요." else "") },
         confirmButton = { TextButton({ confirm = false; a.delete() }) { Text("지우기", color = Wp.DANGER) } },
         dismissButton = { TextButton({ confirm = false }) { Text("취소", color = Wp.FG) } },
         containerColor = Wp.SF,

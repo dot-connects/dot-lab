@@ -9,6 +9,8 @@ import android.content.pm.PackageManager
 import android.util.Log
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.NetworkType
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
@@ -23,8 +25,10 @@ import com.google.firebase.messaging.RemoteMessage
 import java.util.concurrent.TimeUnit
 import kr.dot.wherepark.BuildConfig
 import kr.dot.wherepark.core.ParkState
+import kr.dot.wherepark.core.isMine
+import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.Api
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Merge
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.Prefs
@@ -33,7 +37,7 @@ import kr.dot.wherepark.data.SyncQueue
 import kr.dot.wherepark.data.WidgetRefresh
 
 /**
- * Family push. Firebase is set up by hand from BuildConfig FB_* (gitignored firebase.properties), so without those values
+ * Group push. Firebase is set up by hand from BuildConfig FB_* (gitignored firebase.properties), so without those values
  * the app still builds and a 15-minute pull ("wp-pull") keeps the family in sync.
  */
 object Push {
@@ -49,9 +53,9 @@ object Push {
 
     private val configured: Boolean get() = BuildConfig.FB_APP_ID.isNotEmpty()
 
-    /** Setting keys: "park:<carId>", "drive:<carId>", "join". Defaults: park and join on, drive off. */
+    /** Setting keys: "park:<carId>", "drive:<carId>", "join". Default: every key on. */
     fun enabled(ctx: Context, key: String): Boolean =
-        Prefs.obj(ctx, KEY).let { if (it.has(key)) it.getBoolean(key) else !key.startsWith("drive:") }
+        Prefs.obj(ctx, KEY).let { if (it.has(key)) it.getBoolean(key) else true }
 
     fun setEnabled(ctx: Context, key: String, on: Boolean) =
         synchronized(SyncQueue) { Prefs.put(ctx, KEY, Prefs.obj(ctx, KEY).put(key, on)) }
@@ -65,7 +69,7 @@ object Push {
     fun start(ctx: Context) {
         val token = token(ctx)
         // same token for the same member as last time: the server already has it, no PUT on every app open
-        val stamp = token?.let { t -> FamilyStore.auth(ctx)?.let { "$t|$it" } }
+        val stamp = token?.let { t -> GroupStore.auth(ctx)?.let { "$t|$it" } }
         val sp = Prefs.sp(ctx)
         if (stamp != null && skipPut(sp.getString(SENT_KEY, null), stamp, sp.getLong(SENT_AT_KEY, 0), System.currentTimeMillis())) { cancelPull(ctx); return }
         if (token != null && Api.setFcmToken(ctx, token)) {
@@ -101,41 +105,58 @@ object Push {
         WorkManager.getInstance(ctx).cancelUniqueWork(PULL_WORK)
     }
 
-    /** Contracts section 3 pull (generation-guarded merge), then widget refresh, then notices for [data] (type park|cars|members). */
+    /** Pushes within 3 s coalesce into one pull ([PushPullWorker]); the first one wins (KEEP). */
     fun handle(ctx: Context, data: Map<String, String>) {
         val type = data["type"] ?: return
         if (type != "park" && type != "cars" && type != "members") return
+        try {
+            WorkManager.getInstance(ctx).enqueueUniqueWork(
+                "wp-pushpull", ExistingWorkPolicy.KEEP,
+                OneTimeWorkRequestBuilder<PushPullWorker>().setInitialDelay(3, TimeUnit.SECONDS)
+                    .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build()).build(),
+            )
+        } catch (_: IllegalStateException) {
+            // WorkManager not initialised (plain unit tests)
+        }
+    }
+
+    /**
+     * One generation-guarded pull, then widget refresh, then notices for the diff against the snapshot taken before it.
+     * false = retry. // ponytail: one pull's diff; a pull merged elsewhere skips its notice
+     */
+    fun pullAndNotify(ctx: Context): Boolean {
         val gen = SyncQueue.generation(ctx)
-        val oldMembers = FamilyStore.members(ctx).map { it.id }.toSet()
-        val carId = data["carId"]
-        val oldPark = carId?.let { ParkStore.latest(ctx, it) }
-        val st = Api.state(ctx).getOrNull() ?: return
-        if (!Merge.state(ctx, st, gen)) return  // queue changed: nothing merged, the next pull notifies
+        val oldParks = CarStore.cars(ctx).associate { it.id to ParkStore.latest(ctx, it.id) }
+        val oldMembers = GroupStore.groups(ctx).flatMap { g -> g.members.map { it.id } }.toSet()
+        val st = Api.state(ctx).getOrNull() ?: return false
+        if (!Merge.state(ctx, st, gen)) return true  // queue changed: nothing merged, the next pull notifies
         WidgetRefresh.request(ctx)
-        when (type) {
-            "park" -> {
-                val car = st.cars.firstOrNull { it.id == carId } ?: return
-                val p = st.parks[car.id] ?: return
-                if (oldPark?.id == p.id && oldPark.state == p.state) return  // an undo or a repeat: nothing new
-                if (p.state == ParkState.DRIVING) {
-                    if (enabled(ctx, "drive:${car.id}")) post(ctx, CH_DRIVE, "d${car.id}".hashCode(), "${p.drivingBy ?: p.byName}가 운행을 시작했어요")
-                } else if (enabled(ctx, "park:${car.id}")) {
-                    post(ctx, CH_PARK, "p${car.id}".hashCode(), "${p.byName}가 ${car.name}를 댔어요")
-                }
-            }
-            "members" -> if (oldMembers.isNotEmpty() && enabled(ctx, "join")) {
-                st.members.filter { it.id !in oldMembers }.forEach { post(ctx, CH_JOIN, "j${it.id}".hashCode(), "${it.name}가 가족에 들어왔어요") }
+        val meId = st.me?.id ?: GroupStore.me(ctx)?.id
+        st.cars.filter { !it.isMine(meId) }.forEach { car ->
+            val p = st.parks[car.id] ?: return@forEach
+            val old = oldParks[car.id]
+            if (old?.id == p.id && old.state == p.state) return@forEach  // an undo or a repeat: nothing new
+            when (p.state) {
+                ParkState.DRIVING -> if (enabled(ctx, "drive:${car.id}"))
+                    post(ctx, CH_DRIVE, "d${car.id}".hashCode(), if (p.drivingOther) "다른 그룹에서 ${car.name}를 가져갔어요" else "${p.drivingBy ?: p.byName}가 운행을 시작했어요")
+                ParkState.PARKED -> if (enabled(ctx, "park:${car.id}"))
+                    post(ctx, CH_PARK, "p${car.id}".hashCode(), if (p.byOther) "다른 그룹에서 ${car.name}를 댔어요" else "${p.byName}가 ${car.name}를 댔어요")
+                ParkState.LEFT -> {}
             }
         }
+        if (oldMembers.isNotEmpty() && enabled(ctx, "join")) st.groups.forEach { g ->
+            g.members.filter { it.id !in oldMembers && !it.me }.forEach { post(ctx, CH_JOIN, "j${it.id}".hashCode(), "${it.name}가 '${g.name}' 그룹에 들어왔어요") }
+        }
+        return true
     }
 
     /** Called once from App.onCreate. */
     fun createChannels(ctx: Context) {
         val nm = ctx.getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(NotificationChannel(CH_PARK, "가족이 댔을 때", NotificationManager.IMPORTANCE_DEFAULT))
-        nm.createNotificationChannel(NotificationChannel(CH_DRIVE, "운행 시작", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_PARK, "그룹에서 댔을 때", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_DRIVE, "그룹에서 가져갔을 때", NotificationManager.IMPORTANCE_DEFAULT))
         nm.createNotificationChannel(NotificationChannel(kr.dot.wherepark.car.ExitNotifier.CH_EXIT, "차에서 내리면 묻기", NotificationManager.IMPORTANCE_HIGH))
-        nm.createNotificationChannel(NotificationChannel(CH_JOIN, "가족 참여", NotificationManager.IMPORTANCE_DEFAULT))
+        nm.createNotificationChannel(NotificationChannel(CH_JOIN, "그룹 참여", NotificationManager.IMPORTANCE_DEFAULT))
     }
 
     internal fun postNotification(ctx: Context, channel: String, id: Int, text: String) {
@@ -151,9 +172,14 @@ object Push {
 
 class PullWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
     override fun doWork(): Result {
-        if (!FamilyStore.joined(applicationContext)) return Result.success()
+        if (!GroupStore.joined(applicationContext)) return Result.success()
         return if (SyncEngine.pull(applicationContext)) Result.success() else Result.retry()  // pull() already refreshes the widgets
     }
+}
+
+class PushPullWorker(ctx: Context, params: WorkerParameters) : Worker(ctx, params) {
+    override fun doWork(): Result =
+        if (!GroupStore.joined(applicationContext) || Push.pullAndNotify(applicationContext)) Result.success() else Result.retry()
 }
 
 class PushService : FirebaseMessagingService() {

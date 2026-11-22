@@ -31,7 +31,9 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kr.dot.wherepark.MainActivity
 import kr.dot.wherepark.data.ApiException
-import kr.dot.wherepark.data.FamilyStore
+import androidx.compose.foundation.layout.padding
+import kr.dot.wherepark.data.CarStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.ui.AppPrefs
 import kr.dot.wherepark.ui.Brand
 import kr.dot.wherepark.ui.Btn
@@ -55,12 +57,13 @@ class JoinModel(private val ctx: Context, private val bg: (() -> Unit) -> Unit =
     var error by mutableStateOf<String?>(null); private set
     var name by mutableStateOf("")
     var busy by mutableStateOf(false); private set
-    var carCount by mutableIntStateOf(0); private set
     var finished by mutableStateOf(false); private set
-    /** 가족에게 요청하기: the request this phone is waiting on, and whether the name box for it is open. */
+    /** The group just joined, for the "which of my cars" step. */
+    var joinedGroup: String? = null; private set
+    /** 그룹에게 요청하기: the request this phone is waiting on, and whether the name box for it is open. */
     var waiting by mutableStateOf(JoinRequest.pending(ctx)); private set
     var asking by mutableStateOf(false)
-    /** The current code came from an accepted request: the screen asks "<가족> · N명에 들어갈까요?" before joining. */
+    /** The current code came from an accepted request: the screen asks "<그룹> · N명에 들어갈까요?" before joining. */
     var fromRequest by mutableStateOf(false); private set
     /** Who accepted the request, shown above the confirm so a stranger's accept is recognisable. */
     var acceptedBy by mutableStateOf<String?>(null); private set
@@ -87,15 +90,15 @@ class JoinModel(private val ctx: Context, private val bg: (() -> Unit) -> Unit =
         val n = name
         bg {
             val r = JoinFlow.join(ctx, c, n)
-            main { r.fold({ joined() }, { busy = false; error = if (fromRequest) requestFailed(it) else message(it, "코드가 만료됐거나 잘못됐어요. 새 초대를 받아 주세요") }) }
+            main { r.fold({ joined(it) }, { busy = false; error = if (fromRequest) requestFailed(it) else message(it, "코드가 만료됐거나 잘못됐어요. 새 초대를 받아 주세요") }) }
         }
     }
 
-    private fun joined() {
+    private fun joined(groupId: String) {
+        joinedGroup = groupId
         waiting = null; fromRequest = false  // Api.join already cleared the stored request
         Referrer.consume(ctx)
-        val cars = JoinFlow.carryOver(ctx).size
-        if (cars > 0) carCount = cars else finished = true
+        finished = true
     }
 
     /** Stores a new request under [name] and hands it to [share] (KakaoTalk); the screen switches to waiting. */
@@ -132,27 +135,27 @@ class JoinModel(private val ctx: Context, private val bg: (() -> Unit) -> Unit =
         }
     }
 
-    /** A refused code (400/404) ends the request; a full family, 429 or offline keeps it for later. */
+    /** A refused code (400/404) ends the request; a full group, 429 or offline keeps it for later. */
     private fun requestFailed(e: Throwable): String = when ((e as? ApiException)?.status) {
         400, 404 -> { JoinRequest.withdraw(ctx, bg); waiting = null; fromRequest = false; code = null; peek = null; "요청이 만료됐어요. 다시 보내 주세요" }
-        409 -> "가족이 꽉 찼어요"
+        409 -> if (AddGroupCopy.known(e)) AddGroupCopy.error(e) else "그룹이 꽉 찼어요"
         429 -> "잠시 뒤 다시 확인할게요"
         else -> "인터넷 연결을 확인해 주세요"
     }
 
-    fun carryOver(take: Boolean) {
-        if (take) FamilyStore.acceptCarryOver(ctx) else FamilyStore.declineCarryOver(ctx)
-        carCount = 0; finished = true
-    }
-
     /** Offline (status 0) or a server error = connection; a 4xx = the code itself. */
-    private fun message(e: Throwable, codeProblem: String) =
-        if (e is ApiException && e.status in 400..499) codeProblem else "인터넷 연결을 확인해 주세요"
+    private fun message(e: Throwable, codeProblem: String) = when {
+        AddGroupCopy.known(e) -> AddGroupCopy.error(e)
+        e is ApiException && e.status in 400..499 -> codeProblem
+        else -> "인터넷 연결을 확인해 주세요"
+    }
 }
 
-/** 받는 쪽 (mockup section 6): group name + head count only, then my name -> [들어가기]. Without a code: paste box. */
+/** 받는 쪽 (mockup section 6): group name + head count only, then my name (only without a device yet) -> [들어가기]. Without a code: paste box. */
 @Composable
 internal fun JoinScreen(m: JoinModel, clip: String?, ask: () -> Unit = {}, share: (PendingRequest) -> Unit = {}, tapJoin: () -> Unit) = WScreen(null, gap = 18.dp) {
+    val ctx = androidx.compose.ui.platform.LocalContext.current
+    val needName = !GroupStore.joined(ctx)
     Column(Modifier.fillMaxWidth().weight(1f), Arrangement.spacedBy(18.dp, Alignment.CenterVertically), Alignment.CenterHorizontally) {
         Brand(88.dp, 24.dp)
         val w = m.waiting
@@ -166,20 +169,20 @@ internal fun JoinScreen(m: JoinModel, clip: String?, ask: () -> Unit = {}, share
             return@Column
         }
         if (w != null) {
-            Text("가족이 [받기]를 누르면 바로 들어가요", style = ts(22.sp, FontWeight.ExtraBold, lh = 1.25f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
-            if (m.fromRequest) Text("가족을 확인하는 중이에요", style = ts(13.sp, color = Wp.MU))
+            Text("그룹 사람이 [받기]를 누르면 바로 들어가요", style = ts(22.sp, FontWeight.ExtraBold, lh = 1.25f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
+            if (m.fromRequest) Text("그룹을 확인하는 중이에요", style = ts(13.sp, color = Wp.MU))
             Btn("다시 보내기", BtnKind.KAKAO) { share(w) }
             Btn("취소", BtnKind.GHOST) { m.cancelRequest() }
             m.error?.let { Text(it, style = ts(13.sp, color = Wp.DANGER), textAlign = TextAlign.Center) }
             return@Column
         }
-        Text("가족 초대를 받았어요", Modifier.trimLine(31.2.sp), style = ts(26.sp, FontWeight.ExtraBold, lh = 1.2f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
+        Text("그룹 초대를 받았어요", Modifier.trimLine(31.2.sp), style = ts(26.sp, FontWeight.ExtraBold, lh = 1.2f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
         val p = m.peek
         if (p != null) {
             Text("${p.first} · ${p.second}명", style = ts(18.sp, FontWeight.SemiBold))
-            Text("들어가면 가족 차의 주차 자리가\n이 폰 위젯에도 보여요", style = ts(15.sp, color = Wp.MU), textAlign = TextAlign.Center)
-            FieldCard("가족에게 보일 내 이름", m.name, { m.name = it.take(12) }, placeholder = "엄마", size = 18.sp, valuePad = 4.dp)
-            Btn(if (m.busy) "들어가는 중" else "들어가기", BtnKind.ACC, enabled = !m.busy && m.name.isNotBlank(), onClick = tapJoin)
+            Text("들어가면 그룹 차의 주차 자리가\n이 폰 위젯에도 보여요", style = ts(15.sp, color = Wp.MU), textAlign = TextAlign.Center)
+            if (needName) FieldCard("그룹에 보일 내 이름", m.name, { m.name = it.take(12) }, placeholder = "엄마", size = 18.sp, valuePad = 4.dp)
+            Btn(if (m.busy) "들어가는 중" else "들어가기", BtnKind.ACC, enabled = !m.busy && (!needName || m.name.isNotBlank()), onClick = tapJoin)
             Text("내 위치는 공유되지 않아요. 차 자리만 보여요", style = ts(13.sp, color = Wp.MU), textAlign = TextAlign.Center)
         } else {
             Text("받은 초대 코드를 넣어 주세요", style = ts(15.sp, color = Wp.MU))
@@ -188,9 +191,9 @@ internal fun JoinScreen(m: JoinModel, clip: String?, ask: () -> Unit = {}, share
             if (m.code != null && m.error == null) Text("초대를 확인하는 중이에요", style = ts(13.sp, color = Wp.MU))
             clip?.let { c -> Btn("복사한 코드 붙여 넣기 ($c)", BtnKind.GHOST) { m.typed = c; m.useCode(c) } }
             if (m.asking) {
-                FieldCard("가족에게 보일 내 이름", m.name, { m.name = it.take(12) }, placeholder = "엄마", size = 18.sp, valuePad = 4.dp)
+                FieldCard("그룹에 보일 내 이름", m.name, { m.name = it.take(12) }, placeholder = "엄마", size = 18.sp, valuePad = 4.dp)
                 Btn("요청 보내기", BtnKind.KAKAO, enabled = m.name.isNotBlank()) { m.request(m.name) { share(it) } }
-            } else Btn("가족에게 요청하기", BtnKind.GHOST, onClick = ask)
+            } else if (GroupStore.groups(ctx).size < AddGroupCopy.MAX_GROUPS) Btn("그룹에게 요청하기", BtnKind.GHOST, onClick = ask)
         }
         m.error?.let { Text(it, style = ts(13.sp, color = Wp.DANGER), textAlign = TextAlign.Center) }
     }
@@ -201,7 +204,7 @@ class JoinActivity : ComponentActivity() {
     private lateinit var model: JoinModel
     private var clip by mutableStateOf<String?>(null)
     private var clipRead = false
-    private var confirmLeave by mutableStateOf(false)
+    private var picking by mutableStateOf<Set<String>?>(null)  // after a join: which of my cars the new group sees (all off)
     private val handler = Handler(Looper.getMainLooper())
     private val poller = object : Runnable {
         override fun run() { model.poll(); handler.postDelayed(this, 10_000) }  // 10 s: the poll route allows 10 calls a minute per IP
@@ -215,20 +218,16 @@ class JoinActivity : ComponentActivity() {
         if (intent?.getBooleanExtra(ASK, false) == true && model.waiting == null) ask()
         setContent {
             WpTheme(AppPrefs.bigText(this)) {
-                JoinScreen(model, clip, ask = ::ask, share = ::share) { if (FamilyStore.joined(this)) confirmLeave = true else model.join() }
-                if (confirmLeave) AlertDialog(
-                    onDismissRequest = { confirmLeave = false }, containerColor = Wp.SF,
-                    text = { Text("지금 가족에서 나가고 들어갈까요?") },
-                    confirmButton = { TextButton({ confirmLeave = false; model.join() }) { Text("나가고 들어가기", color = Wp.FG) } },
-                    dismissButton = { TextButton({ confirmLeave = false }) { Text("취소", color = Wp.MU) } },
-                )
-                if (model.carCount > 0) AlertDialog(
-                    onDismissRequest = {}, containerColor = Wp.SF,
-                    text = { Text("차 ${model.carCount}대를 새 가족으로 가져갈까요?") },
-                    confirmButton = { TextButton({ model.carryOver(true) }) { Text("가져가기", color = Wp.FG) } },
-                    dismissButton = { TextButton({ model.carryOver(false) }) { Text("안 가져가요", color = Wp.MU) } },
-                )
-                LaunchedEffect(model.finished) { if (model.finished) done() }
+                val on = picking
+                if (on != null) {
+                    val mine = CarStore.mine(this)
+                    WScreen("내 차도 보일까요?", scroll = true) {
+                        CarPicker(mine, on) { id -> picking = if (id in on) on - id else on + id }
+                        Text("나중에 차 화면에서 바꿀 수 있어요", Modifier.padding(horizontal = 4.dp), style = ts(13.sp, color = Wp.MU))
+                        Btn("완료", BtnKind.ACC) { model.joinedGroup?.let { AddGroupCopy.share(applicationContext, on, it) }; done() }
+                    }
+                } else JoinScreen(model, clip, ask = ::ask, share = ::share) { model.join() }
+                LaunchedEffect(model.finished) { if (model.finished) { if (CarStore.mine(this@JoinActivity).isNotEmpty()) picking = emptySet() else done() } }
             }
         }
     }
@@ -237,9 +236,9 @@ class JoinActivity : ComponentActivity() {
     override fun onResume() { super.onResume(); handler.post(poller) }
     override fun onPause() { handler.removeCallbacks(poller); super.onPause() }
 
-    /** [가족에게 요청하기]: the stored name goes straight to sharing; without one the name box opens first. */
+    /** [그룹에게 요청하기]: the stored name goes straight to sharing; without one the name box opens first. */
     private fun ask() {
-        val name = AppPrefs.myName(this)
+        val name = AppPrefs.myName(this) ?: GroupStore.me(this)?.name
         if (name.isNullOrBlank()) model.asking = true else model.request(name, ::share)
     }
 

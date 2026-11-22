@@ -14,10 +14,10 @@ export function renderJoinPage(env) {
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>어디댔어 가족 초대</title>
+<title>어디댔어 그룹 초대</title>
 ${STYLE}</head>
 <body><main>
-<h1>어디댔어 가족 초대</h1>
+<h1>어디댔어 그룹 초대</h1>
 <div id="code" aria-live="polite"></div>
 <button id="copy" type="button">코드 복사</button>
 <a id="open" class="btn go" href="#">앱으로 열기</a>
@@ -53,10 +53,10 @@ export function renderRequestPage(env) {
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>어디댔어 가족 요청</title>
+<title>어디댔어 그룹 요청</title>
 ${STYLE}</head>
 <body><main>
-<h1 id="who">가족 요청이 왔어요</h1>
+<h1 id="who">그룹 요청이 왔어요</h1>
 <a id="open" class="btn go" href="#">앱으로 열기</a>
 <p>받으려면 이 폰에 어디댔어가 있어야 해요. 앱에서 [받기]를 누르면 바로 같이 써요</p>
 </main>
@@ -66,7 +66,7 @@ ${STYLE}</head>
   var raw = (location.hash.slice(1) || q.get("q") || "").trim();
   var dot = raw.indexOf("."), name = "";
   try { name = dot > 0 ? decodeURIComponent(raw.slice(dot + 1)) : ""; } catch (e) {}
-  if (name) document.getElementById("who").textContent = name.slice(0, 12) + "님이 가족으로 들어오고 싶어 해요";
+  if (name) document.getElementById("who").textContent = name.slice(0, 12) + "님이 그룹에 들어오고 싶어 해요";
   var self = location.origin + location.pathname;
   document.getElementById("open").href = "intent://dot-lab-parking.dotconnects.workers.dev/r?q=" + encodeURIComponent(raw) +
     "#Intent;scheme=https;package=kr.dot.wherepark;S.browser_fallback_url=" + encodeURIComponent(self) + ";end";

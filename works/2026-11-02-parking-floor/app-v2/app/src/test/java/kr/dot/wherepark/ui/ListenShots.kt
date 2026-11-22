@@ -23,7 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
-/** The listen sheet's states at the mockup phone size -> app-v2/shots/listen/ (mockups/v2/final section 4). */
+/** The listen sheet's states at the mockup phone size -> app-v2/shots/listen/ (mockups/v3/final section 4). */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34])

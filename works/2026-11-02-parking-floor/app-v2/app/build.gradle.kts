@@ -7,11 +7,20 @@ plugins {
     id("io.github.takahirom.roborazzi")
 }
 
-// Firebase client values, kept in the gitignored app-v2/firebase.properties. Missing file = no push; family sync still pulls.
+// Firebase client values: gitignored app-v2/firebase.properties, else ~/.wherepark/firebase.properties (so worktrees and
+// fresh clones still build with push). Missing both = no push; sync still pulls.
 val firebase = Properties().apply {
-    val f = rootProject.file("firebase.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
+    val f = listOf(rootProject.file("firebase.properties"), file("${System.getProperty("user.home")}/.wherepark/firebase.properties"))
+        .firstOrNull { it.exists() }
+    if (f != null) f.inputStream().use { load(it) }
+    else if (gradle.startParameter.taskNames.any { it.contains("Release", ignoreCase = true) })
+        logger.warn("wherepark: no firebase.properties (app-v2/ or ~/.wherepark/) - this release APK has no push")
 }
+// Short commit of the build, shown in 설정 > 버전; "dev" when git is not available.
+val gitSha: String = runCatching {
+    val p = ProcessBuilder("git", "rev-parse", "--short", "HEAD").directory(rootProject.projectDir).redirectErrorStream(true).start()
+    p.inputStream.bufferedReader().readText().trim().also { check(p.waitFor() == 0 && it.isNotEmpty()) }
+}.getOrDefault("dev")
 fun fb(key: String) = "\"" + firebase.getProperty(key, "") + "\""
 
 // Release upload key (created in Task 11). Missing -> debug key.
@@ -27,8 +36,9 @@ android {
         applicationId = "kr.dot.wherepark"
         minSdk = 34
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
+        buildConfigField("String", "GIT_SHA", "\"$gitSha\"")
         buildConfigField("String", "SYNC_URL", "\"https://dot-lab-parking.dotconnects.workers.dev\"")
         buildConfigField("String", "FB_API_KEY", fb("apiKey"))
         buildConfigField("String", "FB_APP_ID", fb("appId"))

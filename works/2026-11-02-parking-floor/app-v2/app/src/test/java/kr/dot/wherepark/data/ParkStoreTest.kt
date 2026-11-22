@@ -50,24 +50,5 @@ class ParkStoreTest {
         assertEquals(listOf("a", "b"), CarStore.cars(ctx).map { it.id }); assertEquals("x", CarStore.cars(ctx)[1].name)
     }
 
-    // join (contracts section 3): success keeps the alone family's cars as an offer, old auth is deleted
-    @Test fun joinSuccessCarriesCarsAndDeletesOldMembership() {
-        CarStore.upsert(ctx, car("c_1")); SyncQueue.add(ctx, Op.PutCar(car("c_1")))
-        net.handler = { _, p, _, _ -> if (p == "/v2/join") 200 to Kit.groupJson("m5", "s5", "남의 집") else 200 to "{}" }
-        val st = Api.join(ctx, "ABC", "나").getOrThrow()
-        assertEquals("남의 집", st.groupName); assertEquals("m5.s5", FamilyStore.auth(ctx))
-        assertTrue(SyncQueue.ops(ctx).isEmpty())
-        assertEquals("m1.s1", net.auths.last()); assertEquals("DELETE /v2/me", net.calls.last())
-        assertEquals(listOf("c_1"), FamilyStore.carryOver(ctx).map { it.id })
-        FamilyStore.acceptCarryOver(ctx)
-        assertEquals(listOf("car:c_1"), SyncQueue.ops(ctx).map { it.key }); assertTrue(FamilyStore.carryOver(ctx).isEmpty())
-    }
 
-    @Test fun joinFailureRestoresQueueAndPendingGroup() {
-        SyncQueue.add(ctx, Op.PutCar(car("c_1"))); FamilyStore.setPendingGroup(ctx, "나", "가족")
-        net.handler = { _, _, _, _ -> 404 to """{"error":"code"}""" }
-        assertTrue(Api.join(ctx, "BAD", "나").isFailure)
-        assertEquals("m1.s1", FamilyStore.auth(ctx)); assertEquals(listOf("car:c_1"), SyncQueue.ops(ctx).map { it.key })
-        assertEquals("가족" , FamilyStore.pendingGroup(ctx)!!.second); assertTrue(FamilyStore.carryOver(ctx).isEmpty())
-    }
 }

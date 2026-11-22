@@ -10,6 +10,7 @@ import kr.dot.wherepark.widget.WidgetSpecs
 class App : Application() {
     override fun onCreate() {
         super.onCreate()
+        kr.dot.wherepark.data.Upgrade.run(this)
         Push.createChannels(this)
         kr.dot.wherepark.family.Referrer.captureOnce(this)
         WidgetRefresh.hook = WidgetReceiver::requestAll

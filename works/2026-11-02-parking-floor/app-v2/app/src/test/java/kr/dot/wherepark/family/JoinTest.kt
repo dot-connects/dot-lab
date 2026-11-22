@@ -5,7 +5,7 @@ import android.net.Uri
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.FakeNet
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Kit
 import kr.dot.wherepark.data.Kit.car
 import kr.dot.wherepark.data.Member
@@ -32,7 +32,7 @@ class JoinTest {
         net = FakeNet(); ctx = Kit.reset(net, mutableListOf())
         pushStarts = 0
         JoinFlow.startPush = { pushStarts++ }
-        net.handler = { m, p, _, _ -> if (m == "POST" && p == "/v2/join") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
+        net.handler = { m, p, _, _ -> if (m == "POST" && p == "/v3/join") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
     }
 
     @Test fun codeFromFragmentOrQuery() {
@@ -58,60 +58,16 @@ class JoinTest {
         net.handler = { _, _, _, _ -> 200 to """{"groupName":"민지네 가족","count":3}""" }
         val r = JoinFlow.peek("K7QM-28XP-4HDA")
         assertEquals("민지네 가족" to 3, r.getOrNull())
-        assertEquals(listOf("POST /v2/peek"), net.calls)
+        assertEquals(listOf("POST /v3/peek"), net.calls)
         assertEquals(listOf<String?>(null), net.auths)
-        assertEquals("m1", FamilyStore.me(ctx)?.id)  // nothing about the other family was stored
-        assertEquals(1, FamilyStore.members(ctx).size)
+        assertEquals("m1", GroupStore.me(ctx)?.id)  // nothing about the other family was stored
+        assertEquals(1, GroupStore.groups(ctx).first().members.size)
     }
 
-    @Test fun joinOrderNewJoinThenDeleteWithOldAuth() {
-        SyncQueue.add(ctx, Op.PutCar(car("a")))
-        val r = JoinFlow.join(ctx, "K7QM-28XP-4HDA", " 엄마 ")
-        assertTrue(r.isSuccess)
-        assertEquals(listOf("POST /v2/join", "DELETE /v2/me"), net.calls)
-        assertEquals(listOf<String?>(null, "m1.s1"), net.auths)
-        assertEquals("m9.s9", FamilyStore.auth(ctx))
-        assertTrue(SyncQueue.ops(ctx).isEmpty())
-        assertEquals(1, pushStarts)
-    }
 
-    @Test fun carryOverKeepsSameCarIds() {
-        CarStore.upsert(ctx, car("a")); CarStore.upsert(ctx, car("b", 1))
-        JoinFlow.join(ctx, "K7QM-28XP-4HDA", "엄마")
-        assertEquals(listOf("a", "b"), JoinFlow.carryOver(ctx).map { it.id })
-        FamilyStore.acceptCarryOver(ctx)
-        assertEquals(listOf("a", "b"), CarStore.cars(ctx).map { it.id })
-        assertEquals(listOf("a", "b"), SyncQueue.ops(ctx).filterIsInstance<Op.PutCar>().map { it.car.id })
-        assertTrue(JoinFlow.carryOver(ctx).isEmpty())
-    }
 
-    @Test fun noCarryOverWhenOldFamilyHadOthers() {
-        FamilyStore.save(ctx, "m1", "s1", "우리", listOf(Kit.me, Member("m2", "아빠", false, false, null)))
-        CarStore.upsert(ctx, car("a"))
-        JoinFlow.join(ctx, "K7QM-28XP-4HDA", "엄마")
-        assertTrue(JoinFlow.carryOver(ctx).isEmpty())
-    }
 
-    @Test fun failedJoinRestoresQueueAndPendingAndKeepsOldFamily() {
-        SyncQueue.add(ctx, Op.PutCar(car("a")))
-        FamilyStore.setPendingGroup(ctx, "나", "우리집")
-        net.handler = { _, _, _, _ -> 404 to """{"error":"code"}""" }
-        val r = JoinFlow.join(ctx, "K7QM-28XP-4HDA", "엄마")
-        assertTrue(r.isFailure)
-        assertEquals(listOf("POST /v2/join"), net.calls)  // old family never deleted
-        assertEquals("m1.s1", FamilyStore.auth(ctx))
-        assertEquals(listOf("a"), SyncQueue.ops(ctx).filterIsInstance<Op.PutCar>().map { it.car.id })
-        assertEquals("나" to "우리집", FamilyStore.pendingGroup(ctx))
-        assertEquals(0, pushStarts)
-    }
 
-    @Test fun joinWithoutFamilyOffersLocalCars() {
-        Prefs_clearFamily()
-        CarStore.upsert(ctx, car("a"))
-        assertTrue(JoinFlow.join(ctx, "K7QM-28XP-4HDA", "엄마").isSuccess)
-        assertEquals(listOf("POST /v2/join"), net.calls)  // no old auth, nothing to delete
-        assertEquals(listOf("a"), JoinFlow.carryOver(ctx).map { it.id })
-    }
 
     @Test fun removeRules() {
         val now = 100L * 24 * 3600 * 1000
@@ -125,5 +81,5 @@ class JoinTest {
         assertFalse(FamilyRules.canRemove(owner, owner, now))
     }
 
-    private fun Prefs_clearFamily() { FamilyStore.clear(ctx); assertFalse(FamilyStore.joined(ctx)); Api.transport = net }
+    private fun Prefs_clearFamily() { GroupStore.clear(ctx); assertFalse(GroupStore.joined(ctx)); Api.transport = net }
 }

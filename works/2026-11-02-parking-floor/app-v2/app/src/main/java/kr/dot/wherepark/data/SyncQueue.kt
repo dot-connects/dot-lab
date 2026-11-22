@@ -7,6 +7,7 @@ import androidx.work.NetworkType
 import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.WorkManager
 import java.util.concurrent.atomic.AtomicLong
+import kr.dot.wherepark.core.isMine
 import kr.dot.wherepark.core.Car
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkState
@@ -28,6 +29,10 @@ sealed interface Op {
         override val key get() = "car:$carId"
         override fun withSeq(s: Long) = copy(seq = s)
     }
+    data class Share(override val carId: String, val groupId: String, val on: Boolean, override val seq: Long = 0) : Op {
+        override val key get() = "share:$carId:$groupId"
+        override fun withSeq(s: Long) = copy(seq = s)
+    }
     data class PutPark(val park: Park, override val seq: Long = 0) : Op {
         override val key get() = "park:${park.carId}"
         override val carId get() = park.carId
@@ -37,7 +42,7 @@ sealed interface Op {
         override val key get() = "undo:$carId:$parkId"
         override fun withSeq(s: Long) = copy(seq = s)
     }
-    data class State(override val carId: String, val state: ParkState, override val seq: Long = 0) : Op {
+    data class State(override val carId: String, val state: ParkState, val parkId: Long? = null, val atMs: Long? = null, override val seq: Long = 0) : Op {
         override val key get() = "state:$carId"
         override fun withSeq(s: Long) = copy(seq = s)
     }
@@ -50,19 +55,21 @@ sealed interface Op {
 /** Processing order: car, undo, park, state, photo; then seq. */
 private fun Op.kind() = when (this) {
     is Op.PutCar, is Op.DelCar -> 0
-    is Op.Undo -> 1
-    is Op.PutPark -> 2
-    is Op.State -> 3
-    is Op.PutPhoto -> 4
+    is Op.Share -> 1
+    is Op.Undo -> 2
+    is Op.PutPark -> 3
+    is Op.State -> 4
+    is Op.PutPhoto -> 5
 }
 
 private fun Op.toJson(): JSONObject = JSONObject().put("seq", seq).also {
     when (this) {
         is Op.PutCar -> it.put("t", "putCar").put("car", Wire.carJson(car, 0))
         is Op.DelCar -> it.put("t", "delCar").put("carId", carId)
+        is Op.Share -> it.put("t", "share").put("carId", carId).put("groupId", groupId).put("on", on)
         is Op.PutPark -> it.put("t", "putPark").put("park", Wire.parkJson(park, true))
         is Op.Undo -> it.put("t", "undo").put("carId", carId).put("parkId", parkId)
-        is Op.State -> it.put("t", "state").put("carId", carId).put("state", state.name)
+        is Op.State -> it.put("t", "state").put("carId", carId).put("state", state.name).put("parkId", parkId).put("atMs", atMs)
         is Op.PutPhoto -> it.put("t", "photo").put("carId", carId).put("parkId", parkId).put("file", file)
     }
 }
@@ -72,9 +79,10 @@ private fun opOf(j: JSONObject): Op {
     return when (j.getString("t")) {
         "putCar" -> Op.PutCar(Wire.car(j.getJSONObject("car")), s)
         "delCar" -> Op.DelCar(j.getString("carId"), s)
+        "share" -> Op.Share(j.getString("carId"), j.getString("groupId"), j.getBoolean("on"), s)
         "putPark" -> Op.PutPark(Wire.park(j.getJSONObject("park")), s)
         "undo" -> Op.Undo(j.getString("carId"), j.getLong("parkId"), s)
-        "state" -> Op.State(j.getString("carId"), ParkState.valueOf(j.getString("state")), s)
+        "state" -> Op.State(j.getString("carId"), ParkState.valueOf(j.getString("state")), j.longOrNull("parkId"), j.longOrNull("atMs"), s)
         else -> Op.PutPhoto(j.getString("carId"), j.getLong("parkId"), j.getString("file"), s)
     }
 }
@@ -102,15 +110,19 @@ object SyncQueue {
 
     /** No family and no pendingGroup (after a 401) = new records stay local only; with a pendingGroup ops wait for SyncWorker to create it. */
     fun add(ctx: Context, op: Op) = synchronized(this) {
-        if (!FamilyStore.joined(ctx) && FamilyStore.pendingGroup(ctx) == null) return@synchronized
+        if (!GroupStore.joined(ctx)) return@synchronized
+        if ((op is Op.PutCar || op is Op.DelCar) && (if (op is Op.PutCar) op.car else CarStore.cars(ctx).firstOrNull { it.id == op.carId })?.isMine(GroupStore.me(ctx)?.id) == false) {
+            android.util.Log.w("wp-sync", "ignored non-owner car operation")
+            return@synchronized
+        }
         val list = read(ctx).toMutableList()
         if (op !is Op.PutCar && op !is Op.DelCar && list.any { it is Op.DelCar && it.carId == op.carId }) return@synchronized
         var o = op
         when (op) {
             is Op.DelCar -> list.removeAll { it.carId == op.carId && it !is Op.PutCar && it !is Op.DelCar }
             is Op.PutPark -> list.removeAll { it.key == "state:${op.carId}" }
-            is Op.State -> list.firstOrNull { it is Op.PutPark && it.carId == op.carId }?.let { pending ->
-                o = (pending as Op.PutPark).let { it.copy(park = it.park.copy(state = op.state, drivingBy = null)) }
+            is Op.State -> list.firstOrNull { it is Op.PutPark && it.carId == op.carId && (op.parkId == null || op.parkId == it.park.id) }?.let { pending ->
+                o = (pending as Op.PutPark).let { it.copy(park = it.park.copy(state = op.state, drivingBy = null, leftAt = op.atMs)) }
             }
             else -> {}
         }
@@ -138,6 +150,8 @@ object SyncQueue {
     fun <T> ifCurrent(ctx: Context, op: Op, block: () -> T): T? = synchronized(this) {
         if (read(ctx).any { it.key == op.key && it.seq == op.seq }) block() else null
     }
+
+    internal fun dropCar(ctx: Context, carId: String) = synchronized(this) { write(ctx, read(ctx).filterNot { it.carId == carId }) }
 
     internal fun clear(ctx: Context) = synchronized(this) { write(ctx, emptyList()) }
 

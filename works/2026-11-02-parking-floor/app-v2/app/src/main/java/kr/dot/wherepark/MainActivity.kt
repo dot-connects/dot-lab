@@ -44,6 +44,10 @@ import java.io.File
 import kr.dot.wherepark.car.CarLink
 import kr.dot.wherepark.car.ExitNotifier
 import kr.dot.wherepark.core.Car
+import kr.dot.wherepark.ui.iAmDriver
+import kr.dot.wherepark.family.GroupActivity
+import kr.dot.wherepark.family.AddGroupActivity
+import kr.dot.wherepark.core.isMine
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.SpotParser
@@ -51,7 +55,7 @@ import kr.dot.wherepark.core.newCarId
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.LocalData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -62,7 +66,6 @@ import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.data.SyncEngine
 import kr.dot.wherepark.data.SyncQueue
 import kr.dot.wherepark.data.WidgetRefresh
-import kr.dot.wherepark.family.FamilyActivity
 import kr.dot.wherepark.family.InviteActivity
 import kr.dot.wherepark.family.JoinActivity
 import kr.dot.wherepark.family.JoinRequest
@@ -87,9 +90,9 @@ import kr.dot.wherepark.ui.Route
 import kr.dot.wherepark.ui.SettingsActions
 import kr.dot.wherepark.ui.SettingsScreen
 import kr.dot.wherepark.ui.Step1
-import kr.dot.wherepark.ui.Step2
-import kr.dot.wherepark.ui.Step3
-import kr.dot.wherepark.ui.Step4
+import kr.dot.wherepark.ui.StepCar
+import kr.dot.wherepark.ui.StepGroups
+import kr.dot.wherepark.ui.StepPractice
 import kr.dot.wherepark.ui.Wp
 import kr.dot.wherepark.ui.WpTheme
 import kr.dot.wherepark.widget.WidgetReceiver
@@ -110,7 +113,6 @@ class MainActivity : ComponentActivity() {
     private var stack by mutableStateOf(listOf<Nav>(Nav.Home))
     private var tick by mutableIntStateOf(0)
     private var bigText by mutableStateOf(false)
-    private var joinedOnb = false
     private var joinLaunched = false
     private var requestShown = false  // an accepted join request opens its confirm screen once per launch
     private val carStep = CarStep(newCarId())
@@ -158,6 +160,9 @@ class MainActivity : ComponentActivity() {
 
     /** Widget row / dynamic shortcut "흰 차 어디?" -> that car's detail. */
     private fun openCar(i: Intent?) {
+        val edit = i?.getStringExtra("edit_car")
+        i?.removeExtra("edit_car")
+        if (edit != null && top !is Nav.Onb && CarStore.cars(this).any { it.id == edit }) return reset(Nav.Home).also { go(Nav.Edit(edit)) }
         val id = i?.getStringExtra("car_id") ?: return
         i.removeExtra("car_id")
         if (top !is Nav.Onb && CarStore.cars(this).any { it.id == id }) reset(Nav.Home).also { go(Nav.Detail(id)) }
@@ -175,9 +180,8 @@ class MainActivity : ComponentActivity() {
                 }
             }
             is Route.Steps -> {
-                joinedOnb = r.joined
                 if (top !is Nav.Onb) reset(Nav.Onb(1))
-                if (r.joined && (top as Nav.Onb).step == 2) reset(Nav.Onb(3))
+                if (r.joined && (top as Nav.Onb).step == 2) reset(Nav.Onb(3))  // a group made or joined on the group step moves on to the car
             }
         }
     }
@@ -187,17 +191,17 @@ class MainActivity : ComponentActivity() {
         super.onResume()
         route()
         tick++
-        if (top is Nav.Onb && (top as Nav.Onb).step == 3) practice = practiceNow(practice.raw)
+        if (top is Nav.Onb && (top as Nav.Onb).step == 4) practice = practiceNow(practice.raw)
         val app = applicationContext
         Thread {
             Push.start(app)
-            // a family accepted my join request while I was away: ask on the join screen (never join blindly)
+            // a group accepted my join request while I was away: ask on the join screen (never join blindly)
             if (!requestShown && JoinRequest.poll(app) is JoinRequest.Poll.Code) onUi {
                 requestShown = true
                 startActivity(Intent(this, JoinActivity::class.java))
             }
             // a merged pull refreshes widgets itself; otherwise refresh once here (re-reads the wallpaper colours, no broadcast for wallpaper changes)
-            if (FamilyStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ } else WidgetRefresh.request(app)
+            if (GroupStore.joined(app) && SyncEngine.pull(app)) onUi { tick++ } else WidgetRefresh.request(app)
         }.start()
         publishShortcuts()
     }
@@ -264,31 +268,14 @@ class MainActivity : ComponentActivity() {
         val d = remember(t) { HomeData.load(this, System.currentTimeMillis(), WidgetReceiver.micReady(this)) }
         HomeScreen(d, AppActions(
             speak = ::listen, openCar = { go(Nav.Detail(it)) }, plate = { go(Nav.Plate(it)) }, settings = { go(Nav.Settings) },
-            fixMic = { listen(null) }, newFamily = ::recreateFamily, retryGroup = ::recreateFamily,
-            joinByCode = { startActivity(Intent(this, JoinActivity::class.java)) },
+            fixMic = { listen(null) }, addGroup = { startActivity(Intent(this, AddGroupActivity::class.java)) },
         ))
-        val carry = remember(t) { if (FamilyStore.joined(this)) FamilyStore.carryOver(this) else emptyList() }
-        if (carry.isNotEmpty()) AlertDialog(
-            onDismissRequest = {}, containerColor = Wp.SF,
-            text = { Text("차 ${carry.size}대를 새 가족으로 가져갈까요?") },
-            confirmButton = { TextButton({ FamilyStore.acceptCarryOver(this); tick++ }) { Text("가져가기", color = Wp.FG) } },
-            dismissButton = { TextButton({ FamilyStore.declineCarryOver(this); tick++ }) { Text("안 가져가요", color = Wp.MU) } },
-        )
     }
 
     private fun listen(carId: String?, mode: String? = null) {
         startActivity(Intent(this, ListenActivity::class.java).putExtra("from", "app").also { i ->
             carId?.let { i.putExtra("car_id", it) }; mode?.let { i.putExtra("mode", it) }
         })
-    }
-
-    /** After a 401 band or a refused create: a new family from the stored name; SyncWorker creates it and re-sends the local cars. */
-    private fun recreateFamily() {
-        val name = AppPrefs.myName(this) ?: FamilyStore.me(this)?.name ?: "나"
-        FamilyStore.setPendingGroup(this, name, "${name}네 가족")
-        FamilyStore.dismissRemoved(this)
-        SyncQueue.kick(this)
-        tick++
     }
 
     // car detail
@@ -304,7 +291,7 @@ class MainActivity : ComponentActivity() {
             back = ::back, edit = { go(Nav.Edit(car.id)) }, fix = { listen(car.id, "edit") }, speak = { listen(car.id) },
             plate = { go(Nav.Plate(car.id)) }, history = { go(Nav.History(car.id)) },
             photo = { park?.let(::takePhoto) }, took = { park?.let(::tookCar) },
-        ), kr.dot.wherepark.car.ExitNotifier.leftAt(this, car.id))
+        ), park?.iAmDriver(GroupStore.me(this)?.id) ?: true)
     }
 
     private fun takePhoto(p: Park) {
@@ -317,8 +304,8 @@ class MainActivity : ComponentActivity() {
     private fun tookCar(p: Park) {
         synchronized(SyncQueue) {
             kr.dot.wherepark.car.ExitNotifier.markDriving(this, p.carId)
-            ParkStore.save(this, p.copy(state = ParkState.DRIVING, drivingBy = FamilyStore.me(this)?.name))
-            SyncQueue.add(this, Op.State(p.carId, ParkState.DRIVING))
+            ParkStore.save(this, p.copy(state = ParkState.DRIVING, drivingBy = GroupStore.me(this)?.name))
+            SyncQueue.add(this, Op.State(p.carId, ParkState.DRIVING, parkId = p.id))
         }
         SyncQueue.kick(this)
         WidgetRefresh.request(applicationContext)
@@ -329,14 +316,16 @@ class MainActivity : ComponentActivity() {
 
     @Composable
     private fun Edit(n: Nav.Edit) {
-        val cars = remember(n) { CarStore.cars(this) }
+        val cars = remember(n, tick) { CarStore.cars(this) }
         val d = draft?.takeIf { it.first == n }?.second ?: run {
             val car = cars.firstOrNull { it.id == n.carId }
                 ?: Car(newCarId(), "", Wp.CAR_COLORS.first { c -> cars.none { it.color == c } }, null, (cars.maxOfOrNull { it.order } ?: -1) + 1)
             CarDraft(car).also { draft = n to it; draftLinkId = car.id }
         }
         val id = draftLinkId!!
-        CarEditScreen(d, n.carId == null, tick >= 0 && CarLinkStore.address(this, id) != null, EditActions(
+        val car = cars.firstOrNull { it.id == id } ?: Car(id, d.name, d.color, null, 0)
+        CarEditScreen(d, car, n.carId == null, tick >= 0 && CarLinkStore.address(this, id) != null, EditActions(
+            share = { g, on -> share(id, g, on) },
             back = { leaving(); back() },
             link = { linkBt(id) { tick++ } },
             unlink = { CarLink.unlink(this, id); tick++ },
@@ -357,14 +346,28 @@ class MainActivity : ComponentActivity() {
         if (top != n) return
         val id = draftLinkId ?: return
         val old = CarStore.cars(this).firstOrNull { it.id == id }
+        if (old != null && !old.isMine(GroupStore.me(this)?.id)) return  // someone else's car: only its owner edits it
         if (d.name.isBlank()) { if (old == null && leaving) CarLink.unlink(this, id); return }
-        val car = Car(id, d.name.trim(), d.color, d.plate.trim().ifEmpty { null }, old?.order ?: ((CarStore.cars(this).maxOfOrNull { it.order } ?: -1) + 1))
+        val car = (old ?: Car(id, "", 0, null, (CarStore.cars(this).maxOfOrNull { it.order } ?: -1) + 1))
+            .copy(name = d.name.trim(), color = d.color, plate = d.plate.trim().ifEmpty { null })
         if (car == old) return
-        if (old == null && CarStore.cars(this).size >= 4) { Toast.makeText(this, "차는 4대까지예요", Toast.LENGTH_SHORT).show(); return }
-        synchronized(SyncQueue) { CarStore.upsert(this, car); SyncQueue.add(this, Op.PutCar(car)) }
-        SyncQueue.kick(this)
+        if (old == null && CarStore.mine(this).size >= 4) { Toast.makeText(this, "차는 4대까지예요", Toast.LENGTH_SHORT).show(); return }
+        if (old == null) CarStore.addMine(this, car)
+        else { synchronized(SyncQueue) { CarStore.upsert(this, car); SyncQueue.add(this, Op.PutCar(car)) }; SyncQueue.kick(this) }
         WidgetRefresh.request(applicationContext)
         publishShortcuts()
+    }
+
+    /** 이 차가 보이는 그룹 switch: local car.groups now, `Share` op to the server. */
+    private fun share(carId: String, groupId: String, on: Boolean) {
+        synchronized(SyncQueue) {
+            val c = CarStore.cars(this).firstOrNull { it.id == carId } ?: return
+            CarStore.upsert(this, c.copy(groups = if (on) (c.groups + groupId).distinct() else c.groups - groupId))
+            SyncQueue.add(this, Op.Share(carId, groupId, on))
+        }
+        SyncQueue.kick(this)
+        WidgetRefresh.request(applicationContext)
+        tick++
     }
 
     private fun deleteCar(id: String) {
@@ -423,32 +426,23 @@ class MainActivity : ComponentActivity() {
                 else -> ExitNotifier.testNotice(this, car.id)
             }
         },
-        family = {
-            when {
-                FamilyStore.joined(this) -> startActivity(Intent(this, FamilyActivity::class.java))
-                FamilyStore.pendingGroup(this) != null -> Toast.makeText(this, "인터넷이 연결되면 가족이 만들어져요", Toast.LENGTH_SHORT).show()
-                else -> startActivity(Intent(this, JoinActivity::class.java))
-            }
-        },
+        group = { id -> startActivity(Intent(this, GroupActivity::class.java).putExtra("groupId", id)) },
+        addGroup = { startActivity(Intent(this, AddGroupActivity::class.java)) },
         privacy = { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(AppPrefs.PRIVACY_URL))) } },
-        copyContact = { copy("contact", AppPrefs.CONTACT); Toast.makeText(this, "메일 주소를 복사했어요", Toast.LENGTH_SHORT).show() },
         bigText = { bigText = it },
         widget = { id -> startActivity(Intent(this, kr.dot.wherepark.widget.WidgetConfigActivity::class.java).putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, id)) },
         deleteAll = ::deleteAll,
     )
 
-    /** 내 데이터 지우기: leave the family on the server first (deleteMe), then wipe this phone. Offline = nothing is wiped. */
+    /** 내 데이터 지우기: leave every group on the server (deleteMe, best effort), then wipe this phone. */
     private fun deleteAll() {
         val app = applicationContext
         Thread {
-            val ok = !FamilyStore.joined(app) || Api.deleteMe(app).isSuccess
-            if (ok) {
-                LocalData.wipe(app)
-                app.getSystemService(ShortcutManager::class.java)?.removeAllDynamicShortcuts()
-                WidgetRefresh.request(app)
-            }
+            if (GroupStore.joined(app)) Api.deleteMe(app)
+            LocalData.wipe(app)
+            app.getSystemService(ShortcutManager::class.java)?.removeAllDynamicShortcuts()
+            WidgetRefresh.request(app)
             onUi {
-                if (!ok) { Toast.makeText(this, "인터넷 연결을 확인해 주세요", Toast.LENGTH_SHORT).show(); return@onUi }
                 bigText = false
                 joinLaunched = true  // a used invite code is gone with the prefs; do not reopen the join screen
                 reset(Nav.Onb(1))
@@ -467,22 +461,21 @@ class MainActivity : ComponentActivity() {
         when (step) {
             1 -> Step1 {
                 if (checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) notifAsk.launch(Manifest.permission.POST_NOTIFICATIONS)
-                if (joinedOnb) { practice = practiceNow(null); go(Nav.Onb(3)) } else { maybeDownloadPack(); go(Nav.Onb(2)) }
+                maybeDownloadPack(); go(Nav.Onb(2))
             }
-            2 -> Step2(carStep, link = { linkBt(carStep.carId) { carStep.linked = CarLinkStore.address(this, carStep.carId) != null } }) {
-                val color = Wp.CAR_COLORS.first()
-                Onboarding.saveCar(this, carStep.me, Car(carStep.carId, carStep.car.trim(), color, carStep.plate.trim().ifEmpty { null }, 0))
+            2 -> StepGroups(joined = tick >= 0 && GroupStore.joined(this),
+                create = { startActivity(Intent(this, AddGroupActivity::class.java)) },
+                join = { startActivity(Intent(this, JoinActivity::class.java)) },
+                ask = { startActivity(Intent(this, JoinActivity::class.java).putExtra(JoinActivity.ASK, true)) }) { go(Nav.Onb(3)) }
+            3 -> StepCar(carStep, link = { linkBt(carStep.carId) { carStep.linked = CarLinkStore.address(this, carStep.carId) != null } },
+                skip = { practice = practiceNow(null); go(Nav.Onb(4)) }) {
+                Onboarding.saveCar(this, Car(carStep.carId, carStep.car.trim(), Wp.CAR_COLORS.first(), carStep.plate.trim().ifEmpty { null }, 0))
                 practice = practiceNow(null)
-                go(Nav.Onb(3))
+                go(Nav.Onb(4))
             }
-            3 -> Step3(practice, speak = {
+            else -> StepPractice(practice, speak = {
                 practiceRun.launch(Intent(this, ListenActivity::class.java).putExtra("from", "practice"))
-            }) { go(Nav.Onb(4)) }
-            else -> Step4(invite = { startActivity(Intent(this, InviteActivity::class.java)) }, later = ::endOnboarding,
-                ask = { startActivity(Intent(this, JoinActivity::class.java).putExtra(JoinActivity.ASK, true)) }, pin = {
-                pinWidget(this)
-                endOnboarding()
-            })
+            }, pin = { pinWidget(this); endOnboarding() }) { endOnboarding() }
         }
     }
 

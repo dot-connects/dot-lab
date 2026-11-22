@@ -27,7 +27,10 @@ import android.content.Intent
 import kr.dot.wherepark.MainActivity
 import kr.dot.wherepark.data.Api
 import kr.dot.wherepark.data.ApiException
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
+import kr.dot.wherepark.ui.WList
+import kr.dot.wherepark.ui.Li
+import kr.dot.wherepark.data.Group
 import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.ui.AppPrefs
 import kr.dot.wherepark.ui.Btn
@@ -45,7 +48,7 @@ data class PendingRequest(val secret: String, val name: String, val createdMs: L
 }
 
 /**
- * 가족에게 요청하기, the reverse of an invite: the new phone sends a /r#<hash>.<name> link, a member taps [받기] and the server
+ * 그룹에게 요청하기, the reverse of an invite: the new phone sends a /r#<hash>.<name> link, a member taps [받기] and the server
  * makes the request its own invite code, which the new phone picks up by polling with the secret behind the hash (anyone who
  * only saw the link cannot). The phone then peeks it and asks before joining (the normal join path); no blind join.
  */
@@ -107,8 +110,8 @@ object JoinRequest {
         bg { Api.cancelRequest(r.secret) }
     }
 
-    /** Member side [받기]: the server makes an invite of my family for the request [id] (the link's hash). */
-    fun accept(ctx: Context, id: String): Result<Unit> = Api.putRequest(ctx, id)
+    /** Member side [받기]: the server makes an invite of group [groupId] for the request [id] (the link's hash). */
+    fun accept(ctx: Context, id: String, groupId: String): Result<Unit> = Api.putRequest(ctx, id, groupId)
 
     /** 을/를 after a Korean name (a final consonant takes 을); other scripts get 를. */
     fun objectOf(name: String): String = name + (name.lastOrNull()?.takeIf { it in '가'..'힣' }?.let { if ((it - '가') % 28 != 0) "을" else null } ?: "를")
@@ -116,32 +119,38 @@ object JoinRequest {
 
 enum class AcceptState { ASK, BUSY, SENT, TAKEN, FAILED }
 
-/** [own] = the link is this phone's own request (no [받기]). */
+/** 8 devices per group: a full group is greyed in the chooser. */
+internal fun Group.full() = members.size >= 8
+
+/** [own] = the link is this phone's own request (no [받기]). One group: [받기]; 2+: pick the group; none: make one first. */
 @Composable
-internal fun AcceptScreen(name: String, joined: Boolean, own: Boolean, state: AcceptState, accept: () -> Unit, no: () -> Unit, create: () -> Unit = {}) = WScreen("가족 요청", onBack = no) {
+internal fun AcceptScreen(name: String, groups: List<Group>, own: Boolean, state: AcceptState, accept: (String) -> Unit, no: () -> Unit, create: () -> Unit = {}) = WScreen("그룹 요청", onBack = no) {
     Column(Modifier.fillMaxWidth().weight(1f), Arrangement.spacedBy(18.dp, Alignment.CenterVertically), Alignment.CenterHorizontally) {
         val head = when {
-            own -> "내가 보낸 요청이에요. 가족이 링크를 누르면 들어가요"
-            !joined -> "먼저 가족을 만들어야 받을 수 있어요"
+            own -> "내가 보낸 요청이에요. 그룹 사람이 링크를 누르면 들어가요"
+            groups.isEmpty() -> "먼저 그룹을 만들어야 받을 수 있어요"
             state == AcceptState.SENT -> "보냈어요. $name 폰에서 곧 들어와요"
-            else -> "${JoinRequest.objectOf(name)} 가족으로 받을까요?"
+            groups.size == 1 -> "${JoinRequest.objectOf(name)} '${groups[0].name}' 그룹에 받을까요?"
+            else -> "${JoinRequest.objectOf(name)} 어느 그룹에 받을까요?"
         }
         Text(head, style = ts(24.sp, FontWeight.ExtraBold, lh = 1.25f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
         if (own) return@Column
-        if (!joined) { Btn("가족 만들기", BtnKind.ACC, onClick = create); return@Column }
+        if (groups.isEmpty()) { Btn("그룹 만들기", BtnKind.ACC, onClick = create); return@Column }
         if (state != AcceptState.SENT) {
-            Btn(if (state == AcceptState.BUSY) "보내는 중" else "받기", BtnKind.ACC, enabled = state != AcceptState.BUSY && state != AcceptState.TAKEN, onClick = accept)
+            val busy = state == AcceptState.BUSY || state == AcceptState.TAKEN
+            if (groups.size == 1) Btn(if (state == AcceptState.BUSY) "보내는 중" else "받기", BtnKind.ACC, enabled = !busy && !groups[0].full(), onClick = { accept(groups[0].id) })
+            else WList { groups.forEachIndexed { i, g -> Li(g.name, last = i == groups.lastIndex, right = if (g.full()) "꽉 찼어요" else "${g.members.size}명 ›", textColor = if (g.full()) Wp.MU else Wp.FG, onClick = if (busy || g.full()) null else ({ accept(g.id) })) } }
             Btn("아니요", BtnKind.GHOST, onClick = no)
         }
         when (state) {
-            AcceptState.TAKEN -> "이미 다른 가족이 받은 요청이에요"
+            AcceptState.TAKEN -> "이미 다른 그룹이 받은 요청이에요"
             AcceptState.FAILED -> "보내지 못했어요. 인터넷 연결을 확인해 주세요"
             else -> null
         }?.let { Text(it, style = ts(13.sp, color = Wp.DANGER), textAlign = TextAlign.Center) }
     }
 }
 
-/** /r link (App Links, singleTask): "<name>를 가족으로 받을까요?" [받기] [아니요]. */
+/** /r link (App Links, singleTask): "<name>를 '그룹' 그룹에 받을까요?" [받기] [아니요]. */
 class RequestActivity : ComponentActivity() {
     private var req by mutableStateOf<Pair<String, String>?>(null)
     private var state by mutableStateOf(AcceptState.ASK)
@@ -153,9 +162,8 @@ class RequestActivity : ComponentActivity() {
         setContent {
             WpTheme(AppPrefs.bigText(this)) {
                 val (id, name) = req ?: return@WpTheme
-                AcceptScreen(name, FamilyStore.joined(this), JoinRequest.pending(this)?.hash == id, state, accept = { accept(id) }, no = { finish() }, create = {
-                    // home / onboarding is where a family gets made (MainActivity routes a phone with no family to onboarding)
-                    startActivity(Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP))
+                AcceptScreen(name, GroupStore.groups(this), JoinRequest.pending(this)?.hash == id, state, accept = { g -> accept(id, g) }, no = { finish() }, create = {
+                    startActivity(Intent(this, AddGroupActivity::class.java))
                     finish()
                 })
             }
@@ -167,12 +175,12 @@ class RequestActivity : ComponentActivity() {
         JoinRequest.fromUri(intent.data)?.let { if (it != req) { req = it; state = AcceptState.ASK } }
     }
 
-    private fun accept(id: String) {
+    private fun accept(id: String, groupId: String) {
         if (state == AcceptState.BUSY) return
         state = AcceptState.BUSY
         val app = applicationContext
         Thread {
-            val r = JoinRequest.accept(app, id)
+            val r = JoinRequest.accept(app, id, groupId)
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
                 state = r.fold({ AcceptState.SENT }, { if ((it as? ApiException)?.status == 409) AcceptState.TAKEN else AcceptState.FAILED })

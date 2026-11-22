@@ -24,7 +24,7 @@ import org.robolectric.annotation.GraphicsMode
 
 /**
  * Real HttpTransport against the deployed Worker (BuildConfig.SYNC_URL). Skipped unless -Pwp.live=true.
- * Creates a throwaway family through the onboarding path and deletes it (DELETE /v2/me) at the end.
+ * Creates a throwaway family through the onboarding path and deletes it (DELETE /v3/me) at the end.
  */
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [34])
@@ -41,13 +41,14 @@ class LiveSyncTest {
         kr.dot.wherepark.family.JoinFlow.startPush = {}
         try {
             val car = Car(newCarId(), "라이브 차", -1, null, 0)
-            Onboarding.saveCar(ctx, "라이브", car)
+            CarStore.upsert(ctx, car)
+            assertTrue(kr.dot.wherepark.data.Api.createGroup(ctx, "라이브 그룹", "라이브").isSuccess)
             val now = System.currentTimeMillis()
             val park = Park(now, car.id, Spot(Floor.Under(2), "C", 37, null, "live test"), now, "", "라이브", "지하 2층 C37", false, ParkState.PARKED)
             synchronized(SyncQueue) { ParkStore.save(ctx, park); SyncQueue.add(ctx, Op.PutPark(park)) }
 
             assertTrue("sync run", SyncEngine.run(ctx))
-            assertTrue("joined", FamilyStore.joined(ctx))
+            assertTrue("joined", GroupStore.joined(ctx))
             assertTrue("queue empty: ${SyncQueue.ops(ctx)}", SyncQueue.ops(ctx).isEmpty())
             assertEquals(listOf(car.id), CarStore.cars(ctx).map { it.id })
             assertEquals(park.id, ParkStore.latest(ctx, car.id)!!.id)
@@ -55,7 +56,7 @@ class LiveSyncTest {
             assertEquals(listOf(car.id), st.cars.map { it.id })
             assertEquals(park.id, st.parks[car.id]!!.id)
             assertEquals(Floor.Under(2), st.parks[car.id]!!.spot.floor)
-            println("LIVE state: group=${st.groupName} members=${st.members.size} car=${car.id} park=${park.id}")
+            println("LIVE state: groups=${st.groups.size} car=${car.id} park=${park.id}")
 
             // photo: ~10 KB JPEG up through the queue, down through the family photo path
             val bmp = Bitmap.createBitmap(160, 160, Bitmap.Config.ARGB_8888)
@@ -74,7 +75,7 @@ class LiveSyncTest {
             println("LIVE photo download: ${got.size} B, notices=$notices")
             assertTrue(notices.isEmpty())
         } finally {
-            if (FamilyStore.joined(ctx)) println("LIVE cleanup deleteMe: ${Api.deleteMe(ctx).isSuccess}")
+            if (GroupStore.joined(ctx)) println("LIVE cleanup deleteMe: ${Api.deleteMe(ctx).isSuccess}")
         }
     }
 }

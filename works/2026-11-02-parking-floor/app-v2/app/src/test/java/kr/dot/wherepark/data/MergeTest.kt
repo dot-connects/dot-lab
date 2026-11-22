@@ -20,10 +20,11 @@ class MergeTest {
     private lateinit var ctx: Context
     private val net = FakeNet()
 
-    @Before fun setUp() { ctx = Kit.reset(net, mutableListOf()) }
+    private val notices = mutableListOf<String>()
+    @Before fun setUp() { ctx = Kit.reset(net, notices) }
 
     private fun st(cars: List<kr.dot.wherepark.core.Car>, parks: Map<String, kr.dot.wherepark.core.Park?> = emptyMap()) =
-        ApiState("서버 가족", listOf(Member("m1", "나", true, true, 5L)), cars, parks)
+        ApiState(Member("m1", "나", true, true, 5L), listOf(Group("g1", "서버 가족", true, listOf(Member("m1", "나", true, true, 5L)))), cars, parks)
 
     private fun merge(s: ApiState) = assertTrue(Merge.state(ctx, s, SyncQueue.generation(ctx)))
 
@@ -31,7 +32,7 @@ class MergeTest {
         ParkStore.save(ctx, park("a", 1)); ParkStore.save(ctx, park("a", 2))
         merge(st(listOf(car("a")), mapOf("a" to park("a", 1))))  // server undo: old record is current again
         assertEquals(1L, ParkStore.latest(ctx, "a")!!.id)
-        assertEquals("서버 가족", FamilyStore.groupName(ctx))
+        assertEquals("서버 가족", GroupStore.groups(ctx).single().name)
     }
 
     @Test fun serverRemovesLocalCarsAndParksNotInQueue() {
@@ -89,5 +90,22 @@ class MergeTest {
         val p = Wire.park(j, "a")
         assertNull(p.spot.pillar); assertNull(p.drivingBy); assertEquals("엄마", p.byName); assertEquals("m2", p.byId)
         assertFalse(Wire.parkJson(p, false).has("raw"))
+    }
+
+    @Test fun myQueuedCarWinsOthersAreServerAndPendingShareShows() {
+        val mine = car("a"); CarStore.upsert(ctx, mine)
+        SyncQueue.add(ctx, Op.PutCar(mine.copy(name = "내 수정"))); SyncQueue.add(ctx, Op.Share("a", "g1", true))
+        val theirs = car("z", 1).copy(ownerId = "m2", ownerName = "아빠", groups = listOf("g1"))
+        val groups = listOf(Group("g1", "우리", true, listOf(Member("m1", "나", true, true, null))))
+        merge(ApiState(Kit.me, groups, listOf(car("a"), theirs), emptyMap()))
+        assertEquals(listOf("내 수정", theirs.name), CarStore.cars(ctx).map { it.name })
+        assertEquals(listOf("g1"), CarStore.cars(ctx).first().groups)
+        merge(ApiState(Kit.me, groups, listOf(car("a")), emptyMap()))  // the other car left visibility
+        assertEquals(listOf("a"), CarStore.cars(ctx).map { it.id })
+    }
+
+    @Test fun groupGoneWithoutLeavingNotifies() {
+        merge(ApiState(Kit.me, emptyList(), emptyList(), emptyMap()))
+        assertEquals(listOf("'우리' 그룹에서 나가게 됐어요"), notices)
     }
 }

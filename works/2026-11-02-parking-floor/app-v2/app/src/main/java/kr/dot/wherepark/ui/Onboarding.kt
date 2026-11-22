@@ -41,7 +41,7 @@ import androidx.compose.ui.unit.sp
 import kr.dot.wherepark.core.Car
 import kr.dot.wherepark.core.Spot
 import kr.dot.wherepark.data.CarStore
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.data.SyncQueue
@@ -63,38 +63,25 @@ object Onboarding {
 
     fun route(ctx: Context, linkCode: String?): Route {
         if (done(ctx)) return Route.Home
-        val joined = FamilyStore.joined(ctx)
+        val joined = GroupStore.joined(ctx)
         val code = linkCode ?: Referrer.pendingCode(ctx)
         return if (!joined && code != null) Route.Join(code) else Route.Steps(joined)
     }
 
-    /**
-     * Step 2 end: contracts section 3 says onboarding only stores pendingGroup + PutCar + kick; SyncWorker is the one place that
-     * creates the family. Already in a family (or waiting for one) = the car just joins the queue.
-     */
-    fun saveCar(ctx: Context, myName: String, car: Car) {
-        val name = myName.trim()
-        synchronized(SyncQueue) {
-            if (!FamilyStore.joined(ctx)) FamilyStore.setPendingGroup(ctx, name, "${name}네 가족")
-            CarStore.upsert(ctx, car)
-            SyncQueue.add(ctx, Op.PutCar(car))
-        }
-        AppPrefs.setMyName(ctx, name)
-        SyncQueue.kick(ctx)
-    }
+    /** Car step end: stored, queued, and shared into every group I already belong to (nothing is created otherwise). */
+    fun saveCar(ctx: Context, car: Car) { CarStore.addMine(ctx, car) }
 }
 
-/** Step 2 inputs; the car id exists before saving so the Bluetooth link can be stored against it. */
+/** Car step inputs; the car id exists before saving so the Bluetooth link can be stored against it. */
 class CarStep(val carId: String) {
-    var me by mutableStateOf("")
     var car by mutableStateOf("")
     var plate by mutableStateOf("")
     var linked by mutableStateOf(false)
     var packDownloading by mutableStateOf(false)
-    val ready get() = me.isNotBlank() && car.isNotBlank()
+    val ready get() = car.isNotBlank()
 }
 
-/** Step 3: what the practice sheet reported. [pack] null = not checked yet. */
+/** Practice step: what the practice sheet reported. [pack] null = not checked yet. */
 data class Practice(val mic: Boolean, val pack: Boolean?, val raw: String?, val spot: Spot?)
 
 @Composable
@@ -109,19 +96,13 @@ private fun Caption(text: String, color: Color = Wp.MU, size: Float = 13f) =
     Text(text, Modifier.fillMaxWidth(), style = ts(size.sp, color = color), textAlign = TextAlign.Center)
 
 @Composable
-private fun CreateError() {
-    if (FamilyStore.groupCreateError(LocalContext.current) != null)
-        Text("가족을 만들지 못했어요. 홈에서 다시 해 볼 수 있어요", style = ts(13.sp, color = Wp.DANGER))
-}
-
-@Composable
 fun Step1(start: () -> Unit) = WScreen(null, gap = 18.dp) {
     Steps(1)
     Box(Modifier.weight(1f).fillMaxWidth(), Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Brand(120.dp, 32.dp)
             Text("차를 대고\n말로 남기면", Modifier.padding(top = 22.dp).trimLine(31.2.sp, 2), style = ts(26.sp, FontWeight.ExtraBold, lh = 1.2f, family = gro(800), ls = (-0.02).em), textAlign = TextAlign.Center)
-            Para("가족 폰 위젯에도 바로 떠요.\n\"지하 2층 C37\" 한마디면 돼요.", Modifier.padding(top = 10.dp), center = true)
+            Para("그룹 폰 위젯에도 바로 떠요.\n\"지하 2층 C37\" 한마디면 돼요.", Modifier.padding(top = 10.dp), center = true)
         }
     }
     Btn("시작하기", BtnKind.ACC, onClick = start)
@@ -129,8 +110,8 @@ fun Step1(start: () -> Unit) = WScreen(null, gap = 18.dp) {
 }
 
 @Composable
-fun Step2(s: CarStep, link: () -> Unit, next: () -> Unit) = WScreen(null, gap = 14.dp) {
-    Steps(2)
+fun StepCar(s: CarStep, link: () -> Unit, skip: () -> Unit, next: () -> Unit) = WScreen(null, gap = 14.dp) {
+    Steps(3)
     Head("어느 차예요?")
     FieldCard("별명", s.car, { s.car = it.take(10) }, placeholder = "흰 차")
     FieldCard("차량번호 (선택)", s.plate, { s.plate = it.take(12) }, placeholder = "12가 3456", underline = false)
@@ -147,10 +128,9 @@ fun Step2(s: CarStep, link: () -> Unit, next: () -> Unit) = WScreen(null, gap = 
         Box(Modifier.size(10.dp).clip(CircleShape).background(Wp.OK))
         Text("지하에서도 알아듣게 음성팩 받는 중 · Wi-Fi", style = ts(13.sp, color = Wp.OK))
     }
-    // not in the mockup: contracts section 3 needs a member name for pendingGroup(name, "${name}네 가족")
-    FieldCard("가족에게 보일 내 이름", s.me, { s.me = it.take(12) }, placeholder = "아빠", size = 18.sp, underline = false)
     Spacer(Modifier.weight(1f))
     Btn("다음", BtnKind.ACC, enabled = s.ready, onClick = next)
+    Btn("다음에 하기", BtnKind.GHOST, onClick = skip)
     Caption("차는 나중에 더 넣을 수 있어요")
 }
 
@@ -161,8 +141,8 @@ private fun OkRow(ok: Boolean?, text: String, right: String, last: Boolean) =
     })
 
 @Composable
-fun Step3(p: Practice, speak: () -> Unit, next: () -> Unit) = WScreen(null, gap = 12.dp) {
-    Steps(3)
+fun StepPractice(p: Practice, speak: () -> Unit, pin: () -> Unit, next: () -> Unit) = WScreen(null, gap = 12.dp) {
+    Steps(4)
     Head("한번 말해 보세요")
     Para("주차장에 가기 전에 여기서 한 번만요. \"지하 2층 C37\"처럼 말하면 돼요.")
     WList {
@@ -182,37 +162,27 @@ fun Step3(p: Practice, speak: () -> Unit, next: () -> Unit) = WScreen(null, gap 
         } else Text("잘 못 알아들었어요. 층과 칸을 또박또박 말해 보세요", style = ts(14.sp, FontWeight.SemiBold))
     }
     Text("말소리는 폰 안에서 글자로 바꿔요. 음성팩을 못 받았거나 잘 안 들리면 층·구역을 손으로 골라 넣을 수 있어요.", style = ts(13.sp, color = Wp.MU))
-    CreateError()
     Spacer(Modifier.weight(1f))
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Box(Modifier.size(60.dp).shadow(3.dp, CircleShape).clip(CircleShape).background(Wp.ACC).clickable(onClick = speak)
             .semantics { contentDescription = "말해 보기" }, Alignment.Center) { Ic("micw", 24.dp, Color.White) }
         Text(if (p.raw == null) "말해 보기" else "다시 말해 보기", style = ts(13.5.sp, color = Wp.MU))
     }
-    Btn("다음", BtnKind.ACC, onClick = next)
+    Btn("위젯 놓고 끝내기", BtnKind.ACC, onClick = pin)
+    Btn("끝내기", BtnKind.GHOST, onClick = next)
 }
 
 private val SKY = Brush.linearGradient(listOf(Color(0xFFA9CDE6), Color(0xFFCFE3F2), Color(0xFFE7D2B4), Color(0xFFD8A978)))
 
+/** "같이 볼까요?": nothing is created unless a button is used; [나중에] (or [다음] once in a group) moves on. */
 @Composable
-fun Step4(invite: () -> Unit, later: () -> Unit, pin: () -> Unit, ask: () -> Unit = {}) = WScreen(null, gap = 14.dp) {
-    val ctx = LocalContext.current
-    Steps(4)
-    Head("가족과 같이 볼까요?")
+fun StepGroups(joined: Boolean, create: () -> Unit, join: () -> Unit, ask: () -> Unit, next: () -> Unit) = WScreen(null, gap = 14.dp) {
+    Steps(2)
+    Head("같이 볼까요?")
     Para("누가 차를 댔든 내 위젯에 떠요.")
-    val cars = remember { CarStore.cars(ctx) }
-    if (cars.isNotEmpty()) BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(26.dp)).background(SKY).padding(vertical = 10.dp), Alignment.Center) {
-        val density = LocalDensity.current.density
-        val spec = WidgetSpecs.default(AppWidgetManager.INVALID_APPWIDGET_ID).copy(carId = cars.first().id)
-        val size = android.util.SizeF(328f, 200f)   // 4x2, scaled down to fit
-        val k = minOf(1f, (maxWidth.value - 16f) / size.width)
-        val bmp = remember { runCatching { preview(ctx, spec, cars, size, density, listOf(0xFFA9CDE6.toInt(), 0xFFE7D2B4.toInt())) }.getOrNull() }
-        if (bmp != null) Image(bmp.asImageBitmap(), "위젯 미리 보기", Modifier.size((size.width * k).dp, (size.height * k).dp))
-    }
-    Btn("카카오톡으로 초대", BtnKind.KAKAO, onClick = invite)
-    Btn("가족에게 요청하기", BtnKind.GHOST, onClick = ask)
-    Btn("나중에", BtnKind.GHOST, onClick = later)
-    CreateError()
     Spacer(Modifier.weight(1f))
-    Btn("위젯 놓고 끝내기", BtnKind.ACC, onClick = pin)
+    Btn("그룹 만들기", BtnKind.ACC, onClick = create)
+    Btn("초대 코드로 들어가기", BtnKind.GHOST, onClick = join)
+    Btn("그룹에게 요청하기", BtnKind.GHOST, onClick = ask)
+    Btn(if (joined) "다음" else "나중에", BtnKind.GHOST, onClick = next)
 }

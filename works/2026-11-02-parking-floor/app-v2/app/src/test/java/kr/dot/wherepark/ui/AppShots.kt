@@ -38,12 +38,14 @@ import kr.dot.wherepark.core.SpotParser
 import kr.dot.wherepark.data.CarLinkStore
 import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.FakeNet
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Invite
 import kr.dot.wherepark.data.Kit
 import kr.dot.wherepark.data.Member
 import kr.dot.wherepark.data.ParkStore
-import kr.dot.wherepark.family.FamilyScreen
+import kr.dot.wherepark.data.Group
+import kr.dot.wherepark.family.GroupActions
+import kr.dot.wherepark.family.GroupScreen
 import kr.dot.wherepark.family.InviteScreen
 import kr.dot.wherepark.family.JoinModel
 import kr.dot.wherepark.family.JoinScreen
@@ -59,7 +61,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 
 /**
- * App screens at the mockup phone size -> app-v2/shots/app/ (mockups/v2/final sections 2-8). A fake 30 dp status bar
+ * App screens at the mockup phone size -> app-v2/shots/app/ (mockups/v3/final sections 2-8). A fake 30 dp status bar
  * stands in for the mockup's .sb so both line up from the top. Contact sheet: tools/sheets.py app.
  */
 @RunWith(RobolectricTestRunner::class)
@@ -79,7 +81,7 @@ class AppShots {
 
     @Before fun setUp() {
         Kit.reset(FakeNet(), mutableListOf())
-        FamilyStore.save(ctx, "m1", "s1", "민지네 가족", listOf(Kit.me.copy(name = "아빠"), Member("m2", "엄마", false, false, now), Member("m3", "민지", false, false, now)))
+        GroupStore.save(ctx, "m1", "s1", Kit.me.copy(name = "아빠"), listOf(kr.dot.wherepark.data.Group("g1", "민지네 가족", true, listOf(Kit.me.copy(name = "아빠"), Member("m2", "엄마", false, false, now), Member("m3", "민지", false, false, now)))))
         CarStore.upsert(ctx, white); CarStore.upsert(ctx, grey)
         ParkStore.save(ctx, gPark); ParkStore.save(ctx, wPark)
         CarLinkStore.set(ctx, "w", "AA:BB:CC:DD:EE:01"); CarLinkStore.set(ctx, "g", "AA:BB:CC:DD:EE:02")
@@ -141,22 +143,22 @@ class AppShots {
         phone("settings-onecar", qualifiers = "w326dp-h976dp-port-xhdpi") { SettingsScreen(SettingsActions()) }
     }
 
-    @Test fun carEdit() = phone("caredit") { CarEditScreen(CarDraft(white), isNew = false, linked = true, a = EditActions()) }
+    @Test fun carEdit() = phone("caredit") { CarEditScreen(CarDraft(white), white, isNew = false, linked = true, a = EditActions()) }
 
     @Test fun onboarding1() = phone("ob1") { Step1 {} }
 
     @Test fun onboarding2() = phone("ob2") {
-        Step2(CarStep("new").apply { car = "흰 차"; me = "아빠"; packDownloading = true }, {}, {})
+        StepCar(CarStep("new").apply { car = "흰 차"; packDownloading = true }, {}, {}, {})
     }
 
     @Test fun onboarding3() = phone("ob3-practice") {
-        Step3(Practice(mic = true, pack = true, raw = "지하 2층 C37", spot = SpotParser.parse("지하 2층 C37").spot), {}, {})
+        StepPractice(Practice(mic = true, pack = true, raw = "지하 2층 C37", spot = SpotParser.parse("지하 2층 C37").spot), {}, {}, {})
     }
 
-    @Test fun onboarding4() = phone("ob4") { Step4({}, {}, {}) }
+    @Test fun onboarding4() = phone("ob4-groups") { StepGroups(false, {}, {}, {}, {}) }
 
     @Test fun invite() = phone("invite") {
-        InviteScreen(Invite("K7QM-28XP-4HDA", 0, "https://dot-lab-parking.dotconnects.workers.dev/j#K7QM-28XP-4HDA"), false, {}, {}, {}, {})
+        InviteScreen("민지네 가족", Invite("K7QM-28XP-4HDA", 0, "https://dot-lab-parking.dotconnects.workers.dev/j#K7QM-28XP-4HDA"), false, {}, {}, {}, {})
     }
 
     @Test fun join() {
@@ -169,7 +171,7 @@ class AppShots {
         val day = 24 * 3600_000L
         val ms = listOf(Member("m1", "아빠", true, true, now), Member("m2", "엄마", false, false, now - 2 * 3600_000L),
             Member("m3", "민지", false, false, now - 3 * day), Member("m4", "옛날 폰 (민지)", false, false, now - 41 * day))
-        phone("family") { FamilyScreen("민지네 가족", ms, now, null, {}, {}, {}, {}) }
+        phone("group") { GroupScreen(Group("g1", "민지네 가족", true, ms), emptyList(), listOf(Group("g1", "민지네 가족", true, ms)), "m1", now, null, GroupActions()) }
     }
 
     // home card states (mockup section 2, the 300 px state grid: 44/24 numerals, no chips)

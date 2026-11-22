@@ -23,7 +23,7 @@ import kr.dot.wherepark.core.Spot
 import kr.dot.wherepark.core.SpotParser
 import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.data.CarStore
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.ParkStore
 import kr.dot.wherepark.data.Prefs
@@ -54,8 +54,8 @@ class ListenModel(
     private val now: () -> Long = System::currentTimeMillis,
 ) {
     companion object {
-        const val SENT = "가족에게 보냈어요"
-        const val PENDING = "신호가 잡히면 가족에게 보내요"
+        const val SENT = "그룹에 보냈어요"
+        const val PENDING = "신호가 잡히면 그룹에 보내요"
         const val UNDO_MS = 8_000L
 
         /** Task 7 points this at the car's widget Style; null = the ROW default. */
@@ -210,7 +210,7 @@ class ListenModel(
     private fun save(spot: Spot, raw: String?, spoken: String?, force: Car? = null) {
         val c = force ?: resolve(spoken) ?: firstCar()
         car = c
-        val me = FamilyStore.me(ctx)
+        val me = GroupStore.me(ctx)
         val t = now()
         commit(Park(t, c.id, spot, t, me?.id ?: "", me?.name ?: "", raw, false, ParkState.PARKED))
     }
@@ -248,7 +248,7 @@ class ListenModel(
 
     /** Null = no family to send to (local only), otherwise sent once the park op has left the queue. */
     fun sentLine(p: Park): String? {
-        if (!FamilyStore.joined(ctx) && FamilyStore.pendingGroup(ctx) == null) return null
+        if (!GroupStore.joined(ctx)) return null
         return if (SyncQueue.ops(ctx).any { it is Op.PutPark && it.park.id == p.id }) PENDING else SENT
     }
 

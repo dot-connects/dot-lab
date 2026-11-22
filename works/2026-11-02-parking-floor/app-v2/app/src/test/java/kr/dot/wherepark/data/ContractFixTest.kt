@@ -37,13 +37,13 @@ class ContractFixTest {
     private fun server(): Pair<MutableMap<String, JSONObject>, MutableMap<String, JSONObject>> {
         val cars = linkedMapOf<String, JSONObject>(); val parks = linkedMapOf<String, JSONObject>()
         net.handler = { m, p, _, body ->
-            val id = p.removePrefix("/v2/cars/").substringBefore('/')
+            val id = p.removePrefix("/v3/cars/").substringBefore('/')
             when {
-                p == "/v2/groups" -> 200 to Kit.groupJson()
-                m == "GET" && p == "/v2/state" -> 200 to JSONObject().put("groupName", JSONObject.NULL).put("members", JSONArray())
+                p == "/v3/groups" -> 200 to Kit.groupJson()
+                m == "GET" && p == "/v3/state" -> 200 to JSONObject().put("me", JSONObject().put("id", "m1").put("name", "나")).put("groups", JSONArray().put(JSONObject().put("id", "g1").put("name", JSONObject.NULL).put("owner", true).put("members", JSONArray())))
                     .put("cars", JSONArray(cars.values.toList())).put("parks", JSONObject().also { o -> parks.forEach { (k, v) -> o.put(k, v) } }).toString()
                 m == "PUT" && p.endsWith("/park") -> { parks[id] = JSONObject(body!!).getJSONObject("park").put("by", "나").put("byId", "m9"); 200 to "{}" }
-                m == "PUT" && p.startsWith("/v2/cars/") -> { cars[id] = JSONObject(body!!).getJSONObject("car"); 200 to "{}" }
+                m == "PUT" && p.startsWith("/v3/cars/") -> { cars[id] = JSONObject(body!!).getJSONObject("car"); 200 to "{}" }
                 else -> 200 to "{}"
             }
         }
@@ -56,16 +56,16 @@ class ContractFixTest {
 
     // C1 regression: onboarding car -> createGroup -> PutCar -> pull keeps the car and its park
     @Test fun onboardingCarAndParkSurviveCreateGroupAndPull() {
-        FamilyStore.leave(ctx)
+        GroupStore.leave(ctx)
         val (cars, parks) = server()
         val car = Car(newCarId(), "흰 차", -1, null, 0)
-        Onboarding.saveCar(ctx, "나", car)
-        ParkStore.save(ctx, Kit.park(car.id, 5)); SyncQueue.add(ctx, Op.PutPark(Kit.park(car.id, 5)))
+        CarStore.upsert(ctx, car); ParkStore.save(ctx, Kit.park(car.id, 5))
+        assertTrue(Api.createGroup(ctx, "새 그룹", "나").isSuccess)
         assertTrue(SyncEngine.run(ctx))
         assertTrue(car.id in cars); assertTrue(car.id in parks)
         assertEquals(listOf(car.id), CarStore.cars(ctx).map { it.id })
         assertEquals(5L, ParkStore.latest(ctx, car.id)!!.id)
-        assertEquals("우리 가족", FamilyStore.groupName(ctx))  // M2: null group name from the server
+        assertEquals("우리 가족", GroupStore.groups(ctx).single().name)  // M2: null group name from the server
         assertTrue(notices.isEmpty())
     }
 
@@ -94,28 +94,7 @@ class ContractFixTest {
         assertEquals(listOf(c.id), CarStore.cars(ctx).map { it.id })
     }
 
-    // I1: join keeps Bluetooth links of carried cars until the user answers
-    @Test fun joinKeepsCarriedLinksUntilDeclined() {
-        net.handler = { m, p, _, _ -> if (p == "/v2/join") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
-        val a = Kit.car("c_0000000a"); val b = Kit.car("c_0000000b", 1)
-        CarStore.upsert(ctx, a); CarStore.upsert(ctx, b)
-        CarLinkStore.set(ctx, a.id, "AA:AA"); CarLinkStore.set(ctx, b.id, "BB:BB")
-        assertTrue(Api.join(ctx, "K7QM-28XP-4HDA", "엄마").isSuccess)
-        assertTrue(CarStore.cars(ctx).isEmpty())
-        assertEquals("AA:AA", CarLinkStore.address(ctx, a.id)); assertEquals("BB:BB", CarLinkStore.address(ctx, b.id))
-        FamilyStore.declineCarryOver(ctx)
-        assertNull(CarLinkStore.address(ctx, a.id)); assertNull(CarLinkStore.address(ctx, b.id))
-    }
 
-    @Test fun acceptedCarryOverKeepsLinks() {
-        net.handler = { m, p, _, _ -> if (p == "/v2/join") 200 to Kit.groupJson() else if (m == "GET") 500 to null else 200 to "{}" }
-        val a = Kit.car("c_0000000a")
-        CarStore.upsert(ctx, a); CarLinkStore.set(ctx, a.id, "AA:AA")
-        Api.join(ctx, "K7QM-28XP-4HDA", "엄마")
-        FamilyStore.acceptCarryOver(ctx)
-        assertEquals("AA:AA", CarLinkStore.address(ctx, a.id))
-        assertEquals(listOf(a.id), CarStore.cars(ctx).map { it.id })
-    }
 
     // I2: widgets redraw after a merged pull and after a 409 local write
     @Test fun widgetRefreshAfterPullAndConflict() {
@@ -134,13 +113,13 @@ class ContractFixTest {
         var n = 0
         val exp = 1_000_000 + 86_400_000L
         net.handler = { _, _, _, _ -> n++; 200 to """{"code":"CODE-$n","expiresAt":$exp,"link":"https://x/j#CODE-$n"}""" }
-        assertEquals("CODE-1", Api.invite(ctx, now = 1_000_000).getOrThrow().code)
-        assertEquals("CODE-1", Api.invite(ctx, now = 2_000_000).getOrThrow().code)
+        assertEquals("CODE-1", Api.invite(ctx, "g1", now = 1_000_000).getOrThrow().code)
+        assertEquals("CODE-1", Api.invite(ctx, "g1", now = 2_000_000).getOrThrow().code)
         assertEquals(1, n)
-        assertEquals("CODE-2", Api.invite(ctx, fresh = true, now = 2_000_000).getOrThrow().code)
-        assertEquals("CODE-3", Api.invite(ctx, now = exp - 30_000).getOrThrow().code)  // within a minute of expiry
-        FamilyStore.save(ctx, "m2", "s2", "다른", listOf(Kit.me))
-        assertEquals("CODE-4", Api.invite(ctx, now = 2_000_000).getOrThrow().code)  // another member never reuses it
+        assertEquals("CODE-2", Api.invite(ctx, "g1", fresh = true, now = 2_000_000).getOrThrow().code)
+        assertEquals("CODE-3", Api.invite(ctx, "g1", now = exp - 30_000).getOrThrow().code)  // within a minute of expiry
+        Kit.saveGroup(ctx, "m2", "s2", "다른", listOf(Kit.me))
+        assertEquals("CODE-4", Api.invite(ctx, "g1", now = 2_000_000).getOrThrow().code)  // another member never reuses it
     }
 
     // M2

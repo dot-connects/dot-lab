@@ -8,6 +8,7 @@ import android.util.SizeF
 import kotlin.math.max
 import kotlin.math.roundToInt
 import kr.dot.wherepark.core.Car
+import kr.dot.wherepark.core.isMine
 import kr.dot.wherepark.core.Floor
 import kr.dot.wherepark.core.Park
 import kr.dot.wherepark.core.ParkRules
@@ -15,7 +16,7 @@ import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Spot
 import kr.dot.wherepark.core.Style
-import kr.dot.wherepark.data.FamilyStore
+import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.SyncQueue
 import kr.dot.wherepark.ui.AppPrefs
 import kr.dot.wherepark.ui.big
@@ -46,24 +47,26 @@ object WidgetRenderer {
 
     /** Cars whose latest park is still in the send queue while a family exists ("저장 중"). */
     internal fun left(ctx: Context, cars: List<Car>): Map<String, Long> =
-        cars.mapNotNull { c -> kr.dot.wherepark.car.ExitNotifier.leftAt(ctx, c.id)?.let { c.id to it } }.toMap()
+        cars.mapNotNull { c -> kr.dot.wherepark.data.ParkStore.latest(ctx, c.id)?.leftAt?.let { c.id to it } }.toMap()
 
     internal fun pending(ctx: Context): Set<String> =
-        if (!FamilyStore.joined(ctx)) emptySet() else SyncQueue.ops(ctx).filter { it.key.startsWith("park:") }.map { it.key.removePrefix("park:") }.toSet()
+        if (!GroupStore.joined(ctx)) emptySet() else SyncQueue.ops(ctx).filter { it.key.startsWith("park:") }.map { it.key.removePrefix("park:") }.toSet()
 
     internal class Out(val rendered: Rendered, val texts: List<TextBox>, val mics: List<RectF> = emptyList(), val radius: Float = 0f)
 
-    /** 메인 차량: the chosen car, else (unset or deleted) the first registered one. */
-    fun mainCar(cars: List<Car>, mainId: String?): Car? = cars.firstOrNull { it.id == mainId } ?: cars.minByOrNull { it.order }
+    /** 메인 차량: the chosen car if still visible (any group's), else my lowest-order car, else any visible car. */
+    fun mainCar(cars: List<Car>, mainId: String?, meId: String? = null): Car? =
+        cars.firstOrNull { it.id == mainId } ?: cars.filter { it.isMine(meId) }.minByOrNull { it.order } ?: cars.minByOrNull { it.order }
 
     /**
      * Which cars a size shows (A안), main car first, and how many are left out ("외 N대"):
      * one row -> the main car only; two rows -> every car when there are at most two, else the main car alone.
      */
-    fun carsFor(cars: List<Car>, mainId: String?, twoRow: Boolean): Pair<List<Car>, Int> {
-        val main = mainCar(cars, mainId) ?: return listOf(NO_CAR) to 0
-        val rest = cars.sortedBy { it.order }.filter { it.id != main.id }
-        return if (twoRow && cars.size <= 2) (listOf(main) + rest) to 0 else listOf(main) to rest.size
+    fun carsFor(cars: List<Car>, mainId: String?, twoRow: Boolean, meId: String? = null): Pair<List<Car>, Int> {
+        val main = mainCar(cars, mainId, meId) ?: return listOf(NO_CAR) to 0
+        val pool = cars.filter { it.isMine(meId) || it.id == main.id }  // my cars + the main car when it is someone else's
+        val rest = pool.sortedBy { it.order }.filter { it.id != main.id }
+        return if (twoRow && pool.size <= 2) (listOf(main) + rest) to 0 else listOf(main) to rest.size
     }
 
     /** "3일 전" once a park is two or more calendar days old (yesterday still reads "어제 21:03"). */
@@ -86,7 +89,7 @@ object WidgetRenderer {
         val (f, s) = park.spot.big()
         val memo = park.spot.memo?.trim().orEmpty()
         return when {
-            park.state == ParkState.DRIVING && leftAt != null -> Line(car, f, s, "", St.LEFT, "", ParkRules.whenLabel(leftAt, now))
+            park.state == ParkState.LEFT -> Line(car, f, s, "", St.LEFT, "", ParkRules.whenLabel(park.leftAt ?: park.atMs, now))
             park.state == ParkState.DRIVING -> Line(car, f, s, "", St.GONE, park.drivingBy ?: park.byName, "")
             failed(park, pending, now) -> Line(car, f, s, memo, St.FAIL, park.byName, ParkRules.whenLabel(park.atMs, now))
             pending -> Line(car, f, s, memo, St.PEND, park.byName, ParkRules.whenLabel(park.atMs, now))
@@ -99,7 +102,7 @@ object WidgetRenderer {
                       samples: List<Int>, now: Long, micReady: Boolean, pending: Set<String>, mainId: String? = null,
                       textScale: Float = 1f, left: Map<String, Long> = emptyMap()): Out {
         val w = sizeDp.width; val h = sizeDp.height
-        val (shown, more) = carsFor(cars, mainId, twoRow(h))
+        val (shown, more) = carsFor(cars, mainId, twoRow(h), GroupStore.me(ctx)?.id)
         val lines = shown.map { line(it, parks[it.id], it.id in pending, now, left[it.id]) }
         val bw = max(1, (w * density).roundToInt()); val bh = max(1, (h * density).roundToInt())
         val bmp = Bitmap.createBitmap(bw, bh, Bitmap.Config.ARGB_8888)
@@ -165,7 +168,7 @@ object WidgetRenderer {
     /** "흰 차 지하 2층 C구역 37번, 엘리베이터 옆, 아빠 14시 32분" (spec 8.1) + the chip the widget shows (저장 중 / 저장 실패 / N일 전). */
     fun describe(car: Car, park: Park?, pending: Boolean, now: Long, leftAt: Long? = null): String = when {
         park == null -> "${car.name} 기록 없음"
-        park.state == ParkState.DRIVING && leftAt != null -> "${car.name} 내림, 위치 입력 전"
+        park.state == ParkState.LEFT -> "${car.name} 내림, 위치 입력 전"
         park.state == ParkState.DRIVING -> "${car.name} 운행 중, ${park.drivingBy ?: park.byName} 출발"
         else -> listOfNotNull("${car.name} ${spotWords(park.spot)}", park.spot.memo?.trim()?.takeIf { it.isNotEmpty() },
             "${park.byName} ${timeWords(ParkRules.whenLabel(park.atMs, now))}".trim(),
