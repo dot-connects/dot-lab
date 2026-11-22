@@ -98,11 +98,11 @@ export function cleanCar(c, id) {
 export function cleanPark(p, carId, now, states = STATES) {
   if (p && typeof p === "object") for (const k of ["floor", "zone", "number", "pillar", "memo"]) p = { ...p, [k]: p[k] ?? null };
   if (!p || p.carId !== carId || !validParkId(p.id) || !validParkId(p.atMs) || p.atMs > now + 5 * 60_000 ||
-      !(p.floor === null || (typeof p.floor === "string" && /^(B[1-9]|[1-9]F|ROOF)$/.test(p.floor))) ||
+      !(p.floor === null || (typeof p.floor === "string" && /^(B[1-9](\.5)?|[1-9](\.5)?F|M|MZ2|G|L[1-9]|P[1-9]|ROOF)$/.test(p.floor))) ||
       !(p.zone === null || (typeof p.zone === "string" && p.zone.length <= 8)) ||
       !(p.number === null || (Number.isInteger(p.number) && p.number >= 1 && p.number <= 999)) ||
       !(p.pillar === null || (typeof p.pillar === "string" && p.pillar.length <= 12)) ||
-      !(p.memo === null || (typeof p.memo === "string" && p.memo.length <= 40)) ||
+      !(p.memo === null || (typeof p.memo === "string" && p.memo.length <= 80)) ||
       !states.includes(p.state) || (p.state === "LEFT" && !validParkId(p.leftAt))) return null;
   const out = { id: p.id, carId, atMs: p.atMs, floor: p.floor, zone: p.zone, number: p.number, pillar: p.pillar, memo: p.memo, state: p.state, photo: false };
   if (p.state === "LEFT") out.leftAt = p.leftAt;

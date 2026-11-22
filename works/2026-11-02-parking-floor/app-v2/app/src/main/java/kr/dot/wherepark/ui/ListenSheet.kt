@@ -78,10 +78,11 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.delay
 import kr.dot.wherepark.R
-import kr.dot.wherepark.core.Ambiguity
+import kr.dot.wherepark.core.Ask
 import kr.dot.wherepark.core.Contrast
 import kr.dot.wherepark.core.Floor
 import kr.dot.wherepark.core.Spot
+import kr.dot.wherepark.core.chip
 import kr.dot.wherepark.core.label
 
 // Colours: plan-v2 global constraints (mockups/v2/final --app-*)
@@ -95,6 +96,7 @@ private val ON_ACC = Color(0xFF1A0F06)
 private val OK = Color(0xFF3A8A4F)
 private val GRAB = Color(0x80808080)
 private val SCRIM = Color(0x6B000000)
+private val TAIL = Color(0xFFA8A59F)
 
 /* ts(): Theme.kt (same values) */
 
@@ -105,13 +107,9 @@ private fun Modifier.tight(lineHeight: TextUnit, lines: Int = 1) = layout { m, c
     layout(p.width, p.height - 2 * trim) { p.place(0, -trim) }
 }
 
-/** "B2" and "C37" for the big readout; a digit zone reads "2-37". */
+/** Floor chip and zone/number chip for the big readout ("B2", "C 37"); with no floor the zone/number chip goes first. */
 fun Spot.big(): Pair<String, String> {
-    val zn = when {
-        zone != null && number != null -> if (zone.first().isDigit()) "$zone-$number" else "$zone$number"
-        else -> zone ?: number?.toString()
-    }
-    val rest = listOfNotNull(zn, pillar?.let { "기둥 $it" }).joinToString(" ")
+    val rest = chip().orEmpty()
     return floor?.label()?.let { it to rest } ?: (rest to "")
 }
 
@@ -146,12 +144,11 @@ fun ListenSheet(m: ListenModel, acts: SheetActions, behind: @Composable () -> Un
                 .clickable(remember { MutableInteractionSource() }, null) {}
                 .navigationBarsPadding().imePadding(),
         ) {
-            Box(Modifier.padding(top = if (m.state is Sheet.Ambiguous) 22.dp else 8.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(GRAB).align(Alignment.CenterHorizontally))
+            Box(Modifier.padding(top = 8.dp).size(40.dp, 5.dp).clip(RoundedCornerShape(3.dp)).background(GRAB).align(Alignment.CenterHorizontally))
             when (val s = m.state) {
                 is Sheet.Listening -> Listening(m, s, f)
                 is Sheet.AskMic -> AskMic(m, s, acts)
                 is Sheet.Saved -> Saved(m, s, f, acts)
-                is Sheet.Ambiguous -> Ambiguous(m, s, f)
                 is Sheet.Manual -> Manual(m, s, f, acts)
                 is Sheet.Practice -> Practice(m, s, f)
             }
@@ -202,17 +199,36 @@ private fun CarTo(m: ListenModel) {
 private fun Header(content: @Composable RowScope.() -> Unit) =
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp), content = content)
 
-// 1. listening
+// 1. listening (mockups/v5-listen option C): text so far + grey live tail, [정지] mini button, waveform, timer
 
-private const val BARS = 30
+private const val BARS = 22
+const val LISTEN_MAX_SEC = 60
 
 @Composable
-private fun Listening(m: ListenModel, s: Sheet.Listening, f: Faces) = Body {
+private fun Listening(m: ListenModel, s: Sheet.Listening, f: Faces) = Body(gap = 14.dp) {
+    var sec by remember { mutableIntStateOf(0) }
+    LaunchedEffect(Unit) {
+        while (sec < LISTEN_MAX_SEC) { delay(1000); sec++ }
+        m.stop()
+    }
     Header {
         CarTo(m)
         Spacer(Modifier.weight(1f))
-        Pill("취소", m.close)
+        Text("%d:%02d".format(sec / 60, sec % 60), style = ts(13.sp, FontWeight.SemiBold, MU, family = f.gro8))
     }
+    Text(
+        buildAnnotatedString {
+            append(s.heard)
+            if (s.heard.isNotEmpty() && s.partial.isNotEmpty()) append(" ")
+            withStyle(SpanStyle(color = TAIL)) { append(if (s.heard.isEmpty() && s.partial.isEmpty()) "듣고 있어요" else s.partial) }
+            appendInlineContent("cur", "|")
+        },
+        Modifier.heightIn(min = 64.dp),
+        style = ts(24.sp, FontWeight.Bold, lh = 1.35f, ls = (-0.01).em),
+        inlineContent = mapOf("cur" to InlineTextContent(Placeholder(4.sp, 24.sp, PlaceholderVerticalAlign.TextCenter)) {
+            Box(Modifier.fillMaxSize().padding(start = 2.dp).background(f.acc))
+        }),
+    )
     // rms (dB, about -2..10) feeds a scrolling waveform: each tick the newest level enters on the right
     val target by rememberUpdatedState(((s.rms + 2f) / 12f).coerceIn(0f, 1f))
     val bars = remember { mutableStateListOf<Float>().apply { repeat(BARS) { i -> add(target * (5 + (i * 53) % 31) / 35f) } } }
@@ -223,22 +239,24 @@ private fun Listening(m: ListenModel, s: Sheet.Listening, f: Faces) = Body {
             cur += (target - cur) * (if (target > cur) 0.6f else 0.25f)  // fast attack, slow release
             bars.removeAt(0)
             bars.add(cur * (0.7f + 0.3f * kotlin.math.abs(kotlin.math.sin(t++ * 1.3f))))
-            kotlinx.coroutines.delay(50)
+            delay(50)
         }
     }
-    Row(Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
-        bars.forEach { v -> Box(Modifier.weight(1f).height((4f + 36f * v).dp).clip(RoundedCornerShape(2.dp)).background(f.acc)) }
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.clip(CircleShape).clickable(onClick = m::stop).padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(58.dp).clip(CircleShape).background(ACC), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(18.dp).clip(RoundedCornerShape(4.dp)).background(ON_ACC))
+            }
+            Column {
+                Text("정지", style = ts(15.sp, FontWeight.Bold, lh = 1.3f))
+                Text("다 말하면 눌러요", style = ts(12.sp, color = MU, lh = 1.3f))
+            }
+        }
+        Row(Modifier.weight(1f).height(40.dp), horizontalArrangement = Arrangement.spacedBy(3.dp), verticalAlignment = Alignment.CenterVertically) {
+            bars.forEach { v -> Box(Modifier.weight(1f).height((4f + 36f * v).dp).clip(RoundedCornerShape(2.dp)).background(f.acc)) }
+        }
     }
-    var lines by remember { mutableIntStateOf(1) }
-    Text(
-        buildAnnotatedString { append(s.partial); appendInlineContent("cur", "|") },
-        Modifier.tight(37.5.sp, lines), onTextLayout = { lines = it.lineCount },
-        style = ts(30.sp, FontWeight.Bold, lh = 1.25f, ls = (-0.02).em),
-        inlineContent = mapOf("cur" to InlineTextContent(Placeholder(5.sp, 28.sp, PlaceholderVerticalAlign.TextCenter)) {
-            Box(Modifier.fillMaxSize().padding(start = 3.dp).background(f.acc))
-        }),
-    )
-    Text(if (s.again) "다시 말해 주세요" else "듣고 있어요 · 다 말하면 저장돼요", style = ts(13.5.sp, color = MU))
 }
 
 // mic permission reason
@@ -299,14 +317,9 @@ private fun Saved(m: ListenModel, s: Sheet.Saved, f: Faces, acts: SheetActions) 
                 }
             }
         }
-        BigSpot(s.park.spot, f)
-        s.park.spot.memo?.let { memo ->
-            Row(Modifier.clip(RoundedCornerShape(10.dp)).background(BG).padding(horizontal = 10.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Ic(R.drawable.ic_note, 16.dp, MU)
-                Text(memo, style = ts(13.5.sp))
-            }
-        }
+        if (s.park.spot.big().first.isNotEmpty()) BigSpot(s.park.spot, f)
+        s.park.spot.memo?.let { Text(it, style = ts(16.sp, FontWeight.Medium, lh = 1.4f)) }
+        if (s.ask != Ask.NONE) AskRow(m, s)
         s.sent?.let { line ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (line == ListenModel.SENT) Ic(R.drawable.ic_check_s, 16.dp, OK)
@@ -333,6 +346,29 @@ private fun Saved(m: ListenModel, s: Sheet.Saved, f: Faces, acts: SheetActions) 
     }
 }
 
+/** One gentle question about the saved default (brief 2): one-tap answers, never blocks. */
+@Composable
+private fun AskRow(m: ListenModel, s: Sheet.Saved) {
+    val q = when (s.ask) {
+        Ask.BASEMENT -> "지하예요?"
+        Ask.ZONE_2 -> "${s.options.firstOrNull()?.zone ?: "2"}구역이에요?"
+        else -> "어느 층이에요?"
+    }
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(SF).padding(start = 14.dp, end = 6.dp, top = 6.dp, bottom = 6.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(q, Modifier.weight(1f), style = ts(14.5.sp, FontWeight.Bold))
+        s.options.forEach { o ->
+            val label = when (s.ask) {
+                Ask.BASEMENT -> "${o.floor?.label()}으로"
+                Ask.ZONE_2 -> "${o.zone}구역으로"
+                else -> o.floor?.label().orEmpty()
+            }
+            Pill(label, { m.answer(o) }, h = 40.dp, padH = 14.dp, size = 14.sp, bg = FG, fg = SF)
+        }
+        if (s.ask != Ask.WHICH_FLOOR) Pill("아니요", m::keep, h = 40.dp, padH = 12.dp, size = 14.sp, bg = BG)
+    }
+}
+
 @Composable
 private fun ActButton(text: String, @DrawableRes icon: Int, iconSize: Dp, onClick: () -> Unit, modifier: Modifier) {
     Row(modifier.height(48.dp).shadow(1.dp, CircleShape).clip(CircleShape).background(SF).clickable(onClick = onClick),
@@ -340,26 +376,6 @@ private fun ActButton(text: String, @DrawableRes icon: Int, iconSize: Dp, onClic
         Ic(icon, iconSize, FG)
         Text(text, style = ts(14.5.sp, FontWeight.SemiBold))
     }
-}
-
-// 4. ambiguous
-
-@Composable
-private fun Ambiguous(m: ListenModel, s: Sheet.Ambiguous, f: Faces) = Body(top = 12.dp, bottom = 22.dp) {
-    Text("\"${s.raw}\"", style = ts(14.sp, color = MU))
-    Text(if (s.ambiguity == Ambiguity.FLOOR_SIGN) "지하예요, 지상이에요?" else "구역이 어느 쪽이에요?", style = ts(18.sp, FontWeight.Bold))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        s.options.forEach { o ->
-            Box(
-                Modifier.weight(1f).shadow(2.dp, RoundedCornerShape(22.dp)).clip(RoundedCornerShape(22.dp)).background(SF)
-                    .then(if (o == s.primary) Modifier.border(2.dp, FG, RoundedCornerShape(22.dp)) else Modifier)
-                    .clickable { m.pick(o) }.padding(vertical = 14.dp, horizontal = 6.dp),
-                contentAlignment = Alignment.Center,
-            ) { Text(o.short(), style = ts(26.sp, FontWeight.Black, family = f.gro9), maxLines = 1, textAlign = TextAlign.Center) }
-        }
-    }
-    Text("한 번 고르면 이 주차장에선 다시 묻지 않아요", style = ts(13.sp, color = MU))
-    BigButton("다시 말하기", m::again, primary = false)
 }
 
 // 3. manual entry (two failures, confirm, edit, no mic, no language pack)
@@ -377,7 +393,6 @@ private fun Manual(m: ListenModel, s: Sheet.Manual, f: Faces, acts: SheetActions
     val spot = Spot(floor, zone, num.toIntOrNull(), s.prefill?.pillar, memo.trim().ifEmpty { null })
     val (title, sub) = when (s.why) {
         ManualWhy.FAILED -> "잘 안 들렸어요" to "골라서 넣어 주세요"
-        ManualWhy.CONFIRM -> "이렇게 저장할까요?" to "맞는지 확인해 주세요"
         ManualWhy.EDIT -> "고치기" to "바꿀 곳을 골라 주세요"
         ManualWhy.NO_MIC -> "마이크가 꺼져 있어요" to "골라서 넣어 주세요"
         ManualWhy.NO_PACK -> "음성팩이 없어요" to "골라서 넣어 주세요"
@@ -415,7 +430,7 @@ private fun Manual(m: ListenModel, s: Sheet.Manual, f: Faces, acts: SheetActions
             NumberField(num, { v -> num = v.filter(Char::isDigit).take(3).trimStart('0') }, s.why == ManualWhy.FAILED, f, Modifier.weight(1f))
         }
         BasicTextField(
-            memo, { memo = it.take(40) }, Modifier.fillMaxWidth(), singleLine = true, textStyle = ts(14.sp), cursorBrush = SolidColor(FG),
+            memo, { memo = it.take(80) }, Modifier.fillMaxWidth(), singleLine = true, textStyle = ts(14.sp), cursorBrush = SolidColor(FG),
             decorationBox = { inner ->
                 Row(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(16.dp)).background(SF).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {

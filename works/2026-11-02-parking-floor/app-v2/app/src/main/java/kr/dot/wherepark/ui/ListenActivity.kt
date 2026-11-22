@@ -48,6 +48,7 @@ class ListenActivity : ComponentActivity() {
         enableEdgeToEdge()
         model = ListenModel(applicationContext, intent.getStringExtra("car_id"), intent.getStringExtra("bt_car_id"), intent.getStringExtra("from"))
         model.relisten = ::listen
+        model.halt = { rec?.cancel() }
         model.close = {
             if (model.practice) (model.state as? Sheet.Practice).let { pr ->
                 setResult(RESULT_OK, Intent().putExtra("understood", pr?.result?.spot != null).putExtra("raw", pr?.raw))

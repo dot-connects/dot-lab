@@ -10,14 +10,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import java.io.File
-import kr.dot.wherepark.core.Ambiguity
+import kr.dot.wherepark.core.Ask
 import kr.dot.wherepark.core.Car
 import kr.dot.wherepark.core.CarResolver
 import kr.dot.wherepark.core.Floor
 import kr.dot.wherepark.core.Palette
 import kr.dot.wherepark.core.Park
-import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.ParseResult
+import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Spot
 import kr.dot.wherepark.core.SpotParser
@@ -26,18 +26,18 @@ import kr.dot.wherepark.data.CarStore
 import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.Op
 import kr.dot.wherepark.data.ParkStore
-import kr.dot.wherepark.data.Prefs
 import kr.dot.wherepark.data.SyncQueue
 import kr.dot.wherepark.data.WidgetRefresh
 
 /** Why the manual-entry sheet is up; decides its title and the extra action (settings link, language pack download). */
-enum class ManualWhy { FAILED, CONFIRM, EDIT, NO_MIC, NO_PACK, NO_RECOGNIZER }
+enum class ManualWhy { FAILED, EDIT, NO_MIC, NO_PACK, NO_RECOGNIZER }
 
 sealed interface Sheet {
-    data class Listening(val partial: String = "", val rms: Float = -2f, val again: Boolean = false) : Sheet
+    /** [heard] = finished recognizer sessions joined, [partial] = the one still running (grey tail). */
+    data class Listening(val partial: String = "", val rms: Float = -2f, val heard: String = "") : Sheet
     data class AskMic(val denied: Int) : Sheet
-    data class Saved(val park: Park, val sent: String?, val photo: Boolean = false) : Sheet
-    data class Ambiguous(val raw: String, val ambiguity: Ambiguity, val options: List<Spot>, val primary: Spot?) : Sheet
+    /** [ask] = one gentle question about the saved default; [options] = its one-tap answers. */
+    data class Saved(val park: Park, val sent: String?, val photo: Boolean = false, val ask: Ask = Ask.NONE, val options: List<Spot> = emptyList()) : Sheet
     data class Manual(val why: ManualWhy, val prefill: Spot?, val floors: List<Floor>, val editId: Long? = null, val downloading: Boolean = false) : Sheet
     data class Practice(val raw: String, val result: ParseResult) : Sheet
 }
@@ -68,10 +68,12 @@ class ListenModel(
         private set
     var close: () -> Unit = {}
     var relisten: () -> Unit = {}
+    /** Stops the recognizer without a result (정지). */
+    var halt: () -> Unit = {}
 
     private var fails = 0
-    private var lastRaw: String? = null
     private var lastName: String? = null
+    private var undoOver = false
     /** [고치기] or [사진] keeps the sheet open past the undo window. */
     var held = false
         private set
@@ -83,39 +85,48 @@ class ListenModel(
 
     // recognizer events
 
-    fun listening() { state = Sheet.Listening(again = fails > 0) }
+    /** A recognizer session (re)started: what was heard so far stays. */
+    fun listening() { state = (state as? Sheet.Listening)?.copy(partial = "") ?: Sheet.Listening() }
     fun partial(text: String?) { (state as? Sheet.Listening)?.let { state = it.copy(partial = text.orEmpty()) } }
     fun rms(db: Float) { (state as? Sheet.Listening)?.let { state = it.copy(rms = db) } }
 
+    /** The on-device recognizer ends on silence: keep its text and start the next session at once (listen until 정지). */
     fun result(raw: String) {
-        if (raw.isBlank()) return fail()
-        val r = SpotParser.parse(raw, cars.map { it.name })
-        if (practice) { state = Sheet.Practice(raw, r); return }
-        val spot = r.spot ?: return fail()
-        lastRaw = raw; lastName = r.carName
-        if (r.carName != null) car = resolve(r.carName)
-        when {
-            r.options.size >= 2 -> remembered(r)?.let { save(it, raw, r.carName) }
-                ?: run { state = Sheet.Ambiguous(raw, r.ambiguity, r.options.sortedBy { it == spot }, spot) }
-            r.ambiguity != Ambiguity.NONE -> state = Sheet.Manual(ManualWhy.CONFIRM, spot, floors())
-            else -> save(spot, raw, r.carName)
-        }
+        val s = state as? Sheet.Listening ?: return
+        fails = 0
+        state = s.copy(heard = join(s.heard, raw), partial = "")
+        relisten()
     }
 
-    /** NO_MATCH / SPEECH_TIMEOUT once = listen again, twice = manual entry. */
+    /** 정지 (or 60 s): parse everything heard, save at once; the default is saved even when a question follows. */
+    fun stop() {
+        val s = state as? Sheet.Listening ?: return
+        halt()
+        finish(join(s.heard, s.partial))
+    }
+
+    private fun join(a: String, b: String) = listOf(a, b).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+
+    private fun finish(raw: String) {
+        val r = SpotParser.parse(raw, cars.map { it.name })
+        if (practice) { state = Sheet.Practice(raw, r); return }
+        val spot = r.spot ?: run { state = Sheet.Manual(ManualWhy.FAILED, null, floors()); return }
+        lastName = r.carName
+        if (r.carName != null) car = resolve(r.carName)
+        save(spot, raw, r.carName)
+        (state as? Sheet.Saved)?.let { state = it.copy(ask = r.ask, options = r.options) }
+    }
+
+    /** Silence ends a session without text: listen on. Other errors: retry twice, then stop with what was heard. */
     fun fail() {
-        fails++
-        when {
-            fails < 2 -> { state = Sheet.Listening(again = true); relisten() }
-            practice -> state = Sheet.Practice("", ParseResult(null, Ambiguity.NONE, emptyList(), null))
-            else -> state = Sheet.Manual(ManualWhy.FAILED, null, floors())
-        }
+        if (state !is Sheet.Listening) return
+        if (++fails < 3) { listening(); relisten() } else stop()
     }
 
     fun error(code: Int) = when (code) {
         SpeechRecognizer.ERROR_INSUFFICIENT_PERMISSIONS -> micDenied(2)
         SpeechRecognizer.ERROR_LANGUAGE_NOT_SUPPORTED, SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE -> packMissing()
-        SpeechRecognizer.ERROR_CLIENT -> if (state is Sheet.Listening) fail() else Unit
+        SpeechRecognizer.ERROR_NO_MATCH, SpeechRecognizer.ERROR_SPEECH_TIMEOUT -> if (state is Sheet.Listening) { listening(); relisten() } else Unit
         else -> fail()
     }
 
@@ -128,14 +139,22 @@ class ListenModel(
 
     // user actions
 
-    fun again() { fails = 0; held = false; state = Sheet.Listening(); relisten() }
+    fun again() { fails = 0; held = false; undoOver = false; state = Sheet.Listening(); relisten() }
 
     fun manual() { state = Sheet.Manual(ManualWhy.FAILED, null, floors()) }
 
-    fun pick(spot: Spot) {
-        val a = state as? Sheet.Ambiguous ?: return
-        remember(a.ambiguity, spot)
-        save(spot, a.raw, lastName)
+    /** One-tap answer on the saved sheet: the same record (park id) gets the answered spot. */
+    fun answer(spot: Spot) {
+        val s = state as? Sheet.Saved ?: return
+        if (ParkStore.latest(ctx, s.park.carId)?.id == s.park.id) commit(s.park.copy(spot = spot), s.photo)
+        if (undoOver && !held) close()
+    }
+
+    /** [아니요]: the saved default was right. */
+    fun keep() {
+        val s = state as? Sheet.Saved ?: return
+        state = s.copy(ask = Ask.NONE, options = emptyList())
+        if (undoOver && !held) close()
     }
 
     fun saveManual(spot: Spot) {
@@ -145,7 +164,7 @@ class ListenModel(
             val cur = car?.let { ParkStore.latest(ctx, it.id) }?.takeIf { it.id == m.editId } ?: return save(spot, null, null)
             commit(cur.copy(spot = spot))
             if (editOnly) close()
-        } else save(spot, if (m.why == ManualWhy.CONFIRM) lastRaw else null, lastName)
+        } else save(spot, null, lastName)
     }
 
     /** 차 상세 [고치기]: straight to the edit form for [p]; saving closes the sheet (same park id, contracts "fix"). */
@@ -200,8 +219,13 @@ class ListenModel(
 
     fun refreshSent() { (state as? Sheet.Saved)?.let { state = it.copy(sent = sentLine(it.park)) } }
 
-    /** Undo window over: close unless the user asked for more. */
-    fun timeout(parkId: Long) { if (!held && (state as? Sheet.Saved)?.park?.id == parkId) close() }
+    /** Undo window over: close unless the user asked for more or a question is still open. */
+    fun timeout(parkId: Long) {
+        val s = state as? Sheet.Saved ?: return
+        if (s.park.id != parkId) return
+        undoOver = true
+        if (!held && s.ask == Ask.NONE) close()
+    }
 
     fun hold() { held = true }
 
@@ -215,14 +239,14 @@ class ListenModel(
         commit(Park(t, c.id, spot, t, me?.id ?: "", me?.name ?: "", raw, false, ParkState.PARKED))
     }
 
-    private fun commit(p: Park) {
+    private fun commit(p: Park, photo: Boolean = false) {
         synchronized(SyncQueue) {
             ParkStore.save(ctx, p)
             SyncQueue.add(ctx, Op.PutPark(p))
         }
         SyncQueue.kick(ctx)
         WidgetRefresh.request(ctx)
-        state = Sheet.Saved(p, sentLine(p))
+        state = Sheet.Saved(p, sentLine(p), photo)
     }
 
     /** Also drops the undone park's photo op and file, so no orphan upload is left behind. */
@@ -253,23 +277,6 @@ class ListenModel(
     }
 
     private fun floors(): List<Floor> = car?.let { c -> ParkStore.history(ctx, c.id).mapNotNull { it.spot.floor }.distinct().take(4) }.orEmpty()
-
-    // ambiguity memory: v1 keeps the last choice only (spec 4.3 rule 2)
-
-    private fun remember(a: Ambiguity, s: Spot) = when (a) {
-        Ambiguity.FLOOR_SIGN -> Prefs.put(ctx, "wp_amb_floor", if (s.floor is Floor.Under) "U" else "A")
-        Ambiguity.ZONE_E_OR_2 -> Prefs.put(ctx, "wp_amb_zone", if (s.zone?.firstOrNull()?.isDigit() == true) "D" else "L")
-        else -> Unit
-    }
-
-    private fun remembered(r: ParseResult): Spot? {
-        val sp = Prefs.sp(ctx)
-        return when (r.ambiguity) {
-            Ambiguity.FLOOR_SIGN -> sp.getString("wp_amb_floor", null)?.let { k -> r.options.firstOrNull { (it.floor is Floor.Under) == (k == "U") } }
-            Ambiguity.ZONE_E_OR_2 -> sp.getString("wp_amb_zone", null)?.let { k -> r.options.firstOrNull { (it.zone?.firstOrNull()?.isDigit() == true) == (k == "D") } }
-            else -> null
-        }
-    }
 
     // photo
 

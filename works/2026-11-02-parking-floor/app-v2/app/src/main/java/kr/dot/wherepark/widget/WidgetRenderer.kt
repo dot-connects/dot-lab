@@ -15,6 +15,8 @@ import kr.dot.wherepark.core.ParkRules
 import kr.dot.wherepark.core.ParkState
 import kr.dot.wherepark.core.Shape
 import kr.dot.wherepark.core.Spot
+import kr.dot.wherepark.core.label
+import kr.dot.wherepark.core.restAfterFloor
 import kr.dot.wherepark.core.Style
 import kr.dot.wherepark.data.GroupStore
 import kr.dot.wherepark.data.SyncQueue
@@ -87,7 +89,7 @@ object WidgetRenderer {
     internal fun line(car: Car, park: Park?, pending: Boolean, now: Long, leftAt: Long? = null): Line {
         if (park == null) return Line(car, "", "", "", St.NONE, "", "")
         val (f, s) = park.spot.big()
-        val memo = park.spot.memo?.trim().orEmpty()
+        val memo = park.spot.restAfterFloor()   // the floor is already big beside it
         return when {
             park.state == ParkState.LEFT -> Line(car, f, s, "", St.LEFT, "", ParkRules.whenLabel(park.leftAt ?: park.atMs, now))
             park.state == ParkState.DRIVING -> Line(car, f, s, "", St.GONE, park.drivingBy ?: park.byName, "")
@@ -153,7 +155,7 @@ object WidgetRenderer {
 
     // ---------- talkback ----------
 
-    private fun floorWords(f: Floor) = when (f) { is Floor.Under -> "지하 ${f.n}층"; is Floor.Above -> "${f.n}층"; Floor.Roof -> "옥상" }
+    private fun floorWords(f: Floor) = if (f is Floor.Under) "지하 ${f.label().drop(1)}층" else f.label()
 
     internal fun spotWords(s: Spot): String = listOfNotNull(
         s.floor?.let(::floorWords), s.zone?.let { "${it}구역" }, s.number?.let { "${it}번" }, s.pillar?.let { "기둥 $it" },

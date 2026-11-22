@@ -1,0 +1,261 @@
+<title>어디댔어 말하기 개선</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;800&family=Inter+Tight:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: page column of notes; three phone frames side by side (wrap on phone), then a scrolling result table. App tokens from v4-groups. */
+:root{
+  --bg:#E9E7E3; --sf:#F6F5F2; --fg:#161616; --mu:#6C6A66; --ln:#D5D2CC;
+  --acc:#FF6A13; --onacc:#1A0F06; --ok:#3A8A4F; --bad:#C2412D; --lcd:#1E1F1C; --lcdfg:#E9F2D8;
+  --ui:"Noto Sans KR","Malgun Gothic",system-ui,sans-serif; --gro:"Inter Tight","Noto Sans KR",system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171716;--sf:#232321;--fg:#F1EFEA;--mu:#A19E97;--ln:#3A3935;--ok:#6CC283;--bad:#F07A64;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171716;--sf:#232321;--fg:#F1EFEA;--mu:#A19E97;--ln:#3A3935;--ok:#6CC283;--bad:#F07A64;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--ui);font-size:15px;line-height:1.55}
+.wrap{max-width:1120px;margin:0 auto;padding-block:28px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1{font-family:var(--gro);font-size:28px;font-weight:800;margin:0;text-wrap:balance}
+h2{font-size:19px;font-weight:800;margin:0 0 6px}
+p{margin:0;max-width:68ch}
+.mu{color:var(--mu)}
+.rules{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+.rule{background:var(--sf);border-radius:14px;padding:12px 14px;font-size:14px}
+.rule b{display:block;font-size:14.5px;margin-bottom:2px}
+/* phones */
+.phones{display:flex;flex-wrap:wrap;gap:22px;justify-content:center}
+.opt{display:grid;gap:10px;justify-items:center;width:300px;max-width:100%}
+.opt h3{margin:0;font-size:16px;font-weight:800;justify-self:start}
+.opt .why{font-size:13.5px;color:var(--mu);justify-self:start}
+.phone{width:280px;max-width:100%;height:560px;border-radius:34px;background:#F6F5F2;border:7px solid #111;position:relative;overflow:hidden;color:#161616;display:flex;flex-direction:column}
+.bar{height:26px;display:flex;justify-content:space-between;align-items:center;padding:0 18px;font:600 11px var(--gro);color:#161616}
+.scr{flex:1;display:flex;flex-direction:column;padding:10px 18px 18px;gap:12px}
+.top{display:flex;justify-content:space-between;align-items:center;font-size:13px;color:#6C6A66}
+.carchip{display:inline-flex;gap:6px;align-items:center;background:#E9E7E3;border-radius:99px;padding:4px 10px;font-size:12.5px;color:#161616;font-weight:600}
+.dot{width:10px;height:10px;border-radius:50%;background:#F3F1EC;border:1px solid #bbb}
+.live{font-size:21px;font-weight:700;line-height:1.35;color:#161616;min-height:84px}
+.live .tail{color:#A8A59F}
+.caret{display:inline-block;width:2px;height:22px;background:var(--acc);vertical-align:-4px;margin-left:2px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.caret,.wv i,.ring{animation:none!important}}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:700 13px var(--gro);background:#161616;color:#fff;border-radius:8px;padding:3px 8px}
+.chip.soft{background:#E9E7E3;color:#161616}
+.hint{font-size:12px;color:#6C6A66}
+.spacer{flex:1}
+.wv{display:flex;align-items:center;justify-content:center;gap:3px;height:46px}
+.wv i{width:4px;border-radius:2px;background:var(--acc);animation:wv 0.9s ease-in-out infinite}
+@keyframes wv{0%,100%{height:8px}50%{height:40px}}
+.stop{align-self:center;width:84px;height:84px;border-radius:50%;background:var(--acc);display:grid;place-items:center;box-shadow:0 6px 14px rgba(255,106,19,.35),inset 0 -3px 0 rgba(0,0,0,.12);position:relative}
+.stop::after{content:"";width:26px;height:26px;border-radius:6px;background:var(--onacc)}
+.ring{position:absolute;inset:-10px;border-radius:50%;border:3px solid rgba(255,106,19,.35);animation:rg 1.6s ease-out infinite}
+@keyframes rg{from{transform:scale(.9);opacity:1}to{transform:scale(1.15);opacity:0}}
+.stoplbl{align-self:center;font-size:13px;font-weight:700;color:#161616;margin-top:-4px}
+.timer{align-self:center;font:600 12px var(--gro);color:#6C6A66}
+/* B: LCD */
+.lcd{background:var(--lcd);color:var(--lcdfg);border-radius:16px;padding:14px;box-shadow:inset 0 2px 6px rgba(0,0,0,.6);display:grid;gap:8px}
+.lcd .live{color:var(--lcdfg);font-size:19px;min-height:76px}
+.lcd .live .tail{color:#7D8770}
+.lcd .meta{display:flex;justify-content:space-between;font:600 11px var(--gro);color:#9DA88C}
+.pill{align-self:stretch;height:60px;border-radius:99px;background:#161616;color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-weight:800;font-size:16px}
+.pill::before{content:"";width:16px;height:16px;border-radius:4px;background:var(--acc)}
+/* C: bottom sheet over home */
+.home{flex:1;padding:8px 14px;display:grid;gap:8px;align-content:start;filter:saturate(.6);opacity:.45}
+.hc{background:#fff;border-radius:16px;height:74px}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:16px 18px 18px;display:grid;gap:10px;box-shadow:0 -8px 24px rgba(0,0,0,.12)}
+.sheet .live{font-size:19px;min-height:60px}
+.row{display:flex;align-items:center;gap:12px}
+.minis{width:58px;height:58px;border-radius:50%;background:var(--acc);display:grid;place-items:center;flex:none}
+.minis::after{content:"";width:18px;height:18px;border-radius:4px;background:var(--onacc)}
+.grab{width:36px;height:4px;border-radius:2px;background:#D5D2CC;justify-self:center}
+/* saved */
+.saved{display:flex;flex-wrap:wrap;gap:18px;justify-content:center}
+.card{width:300px;max-width:100%;background:var(--sf);border-radius:18px;padding:14px 16px;display:grid;gap:8px}
+.card .lab{font-size:12.5px;color:var(--mu)}
+.card .big{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.card .fl{font:800 30px var(--gro)}
+.card .zn{font:700 18px var(--gro)}
+.card .sent{font-size:15px;font-weight:500}
+.wid{width:300px;max-width:100%;background:#F6F5F2;color:#161616;border-radius:22px;padding:12px 14px;display:flex;gap:10px;align-items:center;box-shadow:inset 0 1px 0 #fff,0 3px 8px rgba(0,0,0,.12)}
+.wid .fl{font:800 24px var(--gro);min-width:44px}
+.wid .t{flex:1;min-width:0;font-size:13px;line-height:1.35}
+.wid .t b{display:block;font-size:12px;color:#6C6A66;font-weight:500}
+.wid .mic{width:38px;height:38px;border-radius:50%;background:var(--acc);flex:none}
+/* table */
+.tbl{overflow-x:auto;background:var(--sf);border-radius:16px}
+table{border-collapse:collapse;width:100%;min-width:860px;font-size:13.5px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--ln);vertical-align:top}
+th{font-size:12.5px;color:var(--mu);font-weight:700;position:sticky;top:0;background:var(--sf)}
+td.n{font:600 12px var(--gro);color:var(--mu);font-variant-numeric:tabular-nums}
+td.u{font-weight:700;min-width:190px}
+.mk{font:800 12px var(--gro);border-radius:6px;padding:1px 6px;white-space:nowrap}
+.mk.x{background:color-mix(in srgb,var(--bad) 16%,transparent);color:var(--bad)}
+.mk.o{background:color-mix(in srgb,var(--ok) 16%,transparent);color:var(--ok)}
+.mk.q{background:color-mix(in srgb,var(--acc) 18%,transparent);color:#B5470A}
+.f{font:800 13px var(--gro);background:var(--fg);color:var(--bg);border-radius:6px;padding:1px 6px;margin-right:4px;white-space:nowrap}
+.f.s{background:var(--ln);color:var(--fg)}
+.why2{color:var(--mu);font-size:12.5px;display:block;margin-top:2px}
+.sum{display:flex;gap:10px;flex-wrap:wrap}
+.sum div{background:var(--sf);border-radius:12px;padding:8px 14px;font-size:14px}
+.sum b{font:800 20px var(--gro);margin-right:4px}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>어디댔어 · 말하기 개선 시안</h1>
+    <p class="mu">누르면 [정지]로 바뀌고 정지를 누를 때까지 들어요. 말한 문장이 그대로 기록이 되고, 층·구역·번호는 확실할 때만 뽑아요.</p>
+  </header>
+
+  <section class="rules">
+    <div class="rule"><b>정지를 누를 때까지 듣기</b>말을 멈춰도 끊기지 않아요. 인식기가 끝나면 바로 다시 켜서 이어 붙여요. 60초 지나면 자동 정지.</div>
+    <div class="rule"><b>말한 문장 = 기록</b>단어를 버리지 않아요. "있어/댔어/이야" 같은 끝말만 지워요.</div>
+    <div class="rule"><b>확실할 때만 뽑기</b>층은 "지하 N층·BN·N층·옥상"만. 구역·번호는 "C 37"처럼 붙어 나올 때만.</div>
+    <div class="rule"><b>묻지 않기</b>애매하면 묻는 대신 문장으로만 남겨요. "3층"은 3층 그대로.</div>
+    <div class="rule"><b>"다시" = 하이픈</b>"3다시7", "에이 다시 칠"은 3-7, A-7. 기둥·칸 번호를 표지판 모양 그대로 써요.</div>
+    <div class="rule"><b>층 이름 넓히기</b>2.5층·B1.5·M층·중2층·G층·L2도 층으로 잡아요. 서버가 받는 층 형식도 같이 넓혀요.</div>
+    <div class="rule"><b>번호가 아닌 숫자</b>"제2주차장, 101동, 2호기"처럼 뒤에 붙은 말이 있으면 번호로 안 써요.</div>
+    <div class="rule"><b>고쳐 말하기</b>"아니, 아니다, 말고, 아 잠깐" 뒤가 앞의 같은 종류를 바꾸고, 고친 앞부분은 문장에서도 지워요.</div>
+  </section>
+
+  <section>
+    <h2>1. 듣는 화면 — 세 가지</h2>
+    <p class="mu" style="margin-bottom:14px">셋 다 같은 순간이에요: "H1 B타워 3층 계단 옆에"까지 말했고 아직 듣는 중.</p>
+    <div class="phones">
+      <div class="opt">
+        <h3>A · 큰 정지 버튼</h3>
+        <div class="phone"><div class="bar"><span>18:42</span><span>82%</span></div>
+          <div class="scr">
+            <div class="top"><span class="carchip"><span class="dot"></span>흰 차</span><span>듣는 중</span></div>
+            <div class="live">H1 B타워 3층 계단 옆에<span class="caret"></span></div>
+            <div class="chips"><span class="chip">3층</span></div>
+            <div class="spacer"></div>
+            <div class="wv"><i style="animation-delay:-.1s"></i><i style="animation-delay:-.5s"></i><i style="animation-delay:-.2s"></i><i style="animation-delay:-.7s"></i><i style="animation-delay:-.3s"></i><i style="animation-delay:-.6s"></i><i style="animation-delay:-.15s"></i><i style="animation-delay:-.45s"></i><i style="animation-delay:-.25s"></i></div>
+            <div class="stop"><span class="ring"></span></div>
+            <div class="stoplbl">정지</div>
+            <div class="timer">0:07 · 다 말하면 정지를 눌러요</div>
+          </div></div>
+        <div class="why">지금 화면과 같은 자리·같은 크기. 마이크가 정지 모양으로만 바뀌어요.</div>
+      </div>
+
+      <div class="opt">
+        <h3>B · 녹음기 창</h3>
+        <div class="phone"><div class="bar"><span>18:42</span><span>82%</span></div>
+          <div class="scr">
+            <div class="top"><span class="carchip"><span class="dot"></span>흰 차</span><span></span></div>
+            <div class="lcd">
+              <div class="meta"><span>● REC 0:07</span><span>60초까지</span></div>
+              <div class="live">H1 B타워 3층 계단 옆에<span class="caret"></span></div>
+              <div class="wv" style="height:34px"><i style="animation-delay:-.1s;background:#C6D9A8"></i><i style="animation-delay:-.5s;background:#C6D9A8"></i><i style="animation-delay:-.2s;background:#C6D9A8"></i><i style="animation-delay:-.7s;background:#C6D9A8"></i><i style="animation-delay:-.3s;background:#C6D9A8"></i><i style="animation-delay:-.6s;background:#C6D9A8"></i><i style="animation-delay:-.15s;background:#C6D9A8"></i></div>
+            </div>
+            <div class="chips"><span class="chip">3층</span><span class="chip soft">계단 옆</span></div>
+            <div class="spacer"></div>
+            <div class="pill">정지하고 저장</div>
+            <div class="hint" style="text-align:center">말을 멈춰도 계속 들어요</div>
+          </div></div>
+        <div class="why">글자가 화면 안쪽 창에 들어가요. 버튼이 넓어서 운전석에서도 누르기 쉬워요.</div>
+      </div>
+
+      <div class="opt">
+        <h3>C · 아래 시트 <span class="mk o">선택</span></h3>
+        <div class="phone"><div class="bar"><span>18:42</span><span>82%</span></div>
+          <div class="home"><div class="hc"></div><div class="hc"></div><div class="hc"></div></div>
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="top"><span class="carchip"><span class="dot"></span>흰 차</span><span class="timer" style="margin:0">0:07</span></div>
+            <div class="live">H1 B타워 3층 계단 옆에<span class="caret"></span></div>
+            <div class="row"><div class="minis"></div><div><b style="font-size:15px">정지</b><div class="hint">다 말하면 눌러요</div></div></div>
+          </div></div>
+        <div class="why">홈 위에 반쯤 올라와요. 위젯에서 눌렀을 때 화면 전환이 가장 적어요.</div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>2. 저장된 모습</h2>
+    <p class="mu" style="margin-bottom:14px">층이 있으면 크게, 나머지는 말한 문장. 구역·번호를 뽑았으면 층 옆에 같이 보여요.</p>
+    <div class="saved">
+      <div class="card"><div class="lab">흰 차 · 동찬 · 18:42</div><div class="big"><span class="fl">3층</span></div><div class="sent">H1 B타워 3층 계단 옆</div></div>
+      <div class="card"><div class="lab">회색 차 · 정원 · 09:10</div><div class="big"><span class="fl">B2</span><span class="zn">C 37</span></div><div class="sent">지하 2층 C구역 37번</div></div>
+      <div class="card"><div class="lab">흰 차 · 동찬 · 어제 21:05</div><div class="big"><span class="fl">B2</span></div><div class="sent">지하 2층, A랑 B 나오자마자</div></div>
+    </div>
+    <div class="saved" style="margin-top:14px">
+      <div class="wid"><span class="fl">3층</span><span class="t"><b>흰 차 · 18:42</b>H1 B타워 3층 계단 옆</span><span class="mic"></span></div>
+      <div class="wid"><span class="fl">B2</span><span class="t"><b>흰 차 · 어제</b>A랑 B 나오자마자</span><span class="mic"></span></div>
+    </div>
+    <p class="mu" style="margin-top:10px;font-size:13.5px">위젯은 층을 크게 두고 문장에서 층 부분만 뺀 나머지를 보여요. 두 줄이 넘으면 말줄임.</p>
+  </section>
+
+  <section>
+    <h2>3. 예문 결과표 (25개)</h2>
+    <p class="mu" style="margin-bottom:10px">"지금"은 앱 코드 그대로 돌린 결과예요. "바뀐 뒤"는 위 규칙으로 만들 목표이고, 이 표를 그대로 테스트로 넣어요. 소리를 글자로 바꾸는 단계(폰 음성 인식)는 이 표에 포함되지 않아요.</p>
+    <div class="sum" style="margin-bottom:12px">
+      <div><b>34</b>/60 지금 틀리는 예문</div>
+      <div><b>7</b>/60 지금 되묻는 예문</div>
+      <div><b>19</b>/60 지금도 맞는 예문 (그대로 유지)</div>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>#</th><th>말한 문장</th><th>지금</th><th>바뀐 뒤 (목표)</th></tr></thead>
+      <tbody>
+<tr><td class="n">1</td><td class="u">지하2층에 a랑b 나오자마자</td><td><span class="mk x">틀림</span> B2 · 구역 A · 메모 "랑 나오자마자"<span class="why2">B를 버리고 "랑"만 남음</span></td><td><span class="f">B2</span> 지하 2층, A랑 B 나오자마자<span class="why2">A·B가 함께 나와 구역은 안 뽑음</span></td></tr>
+<tr><td class="n">2</td><td class="u">h1 b타워 3층 계단 옆에 있어</td><td><span class="mk x">틀림</span> 되물음(B3/3F) · 구역 H · 번호 1 · 메모 "타워 계단 옆에 있어"<span class="why2">b타워의 B를 지하로 읽음</span></td><td><span class="f">3층</span> H1 B타워 3층 계단 옆</td></tr>
+<tr><td class="n">3</td><td class="u">지하 2층 C구역 37번</td><td><span class="mk o">맞음</span> B2 · C · 37</td><td><span class="f">B2</span><span class="f s">C 37</span> 지하 2층 C구역 37번</td></tr>
+<tr><td class="n">4</td><td class="u">비투 에이 십이</td><td><span class="mk o">맞음</span> B2 · A · 12</td><td><span class="f">B2</span><span class="f s">A 12</span> B2 A 12</td></tr>
+<tr><td class="n">5</td><td class="u">지하3층 엘리베이터 앞</td><td><span class="mk o">맞음</span> B3 · 메모 "엘리베이터 앞"</td><td><span class="f">B3</span> 지하 3층 엘리베이터 앞</td></tr>
+<tr><td class="n">6</td><td class="u">B1 마트 입구 쪽</td><td><span class="mk o">맞음</span> B1 · 메모 "마트 입구 쪽"</td><td><span class="f">B1</span> B1 마트 입구 쪽</td></tr>
+<tr><td class="n">7</td><td class="u">지하 1층 하늘색 구역 기둥 옆</td><td><span class="mk x">틀림</span> B1 · 메모 "하늘색 옆"<span class="why2">"구역", "기둥"을 버림</span></td><td><span class="f">B1</span> 지하 1층 하늘색 구역 기둥 옆</td></tr>
+<tr><td class="n">8</td><td class="u">2층 동문 출구 가까운 데</td><td><span class="mk q">되물음</span> B2인지 2F인지 고르기</td><td><span class="f">2층</span> 2층 동문 출구 가까운 데</td></tr>
+<tr><td class="n">9</td><td class="u">옥상 주차장 맨 끝</td><td><span class="mk o">맞음</span> 옥상 · 메모 "주차장 맨 끝"</td><td><span class="f">옥상</span> 옥상 주차장 맨 끝</td></tr>
+<tr><td class="n">10</td><td class="u">지하4층 D 15 근데 기둥 뒤</td><td><span class="mk x">틀림</span> B4 · D · 15 · 메모 "근데 뒤"<span class="why2">"기둥"을 버림</span></td><td><span class="f">B4</span><span class="f s">D 15</span> 지하 4층 D 15, 기둥 뒤</td></tr>
+<tr><td class="n">11</td><td class="u">b2 가 7</td><td><span class="mk o">맞음</span> B2 · 가 · 7</td><td><span class="f">B2</span><span class="f s">가 7</span> B2 가 7</td></tr>
+<tr><td class="n">12</td><td class="u">지하 2층 101동 앞</td><td><span class="mk x">틀림</span> B2 · 번호 101 · 메모 "동 앞"</td><td><span class="f">B2</span> 지하 2층 101동 앞<span class="why2">"동"이 붙은 숫자는 번호가 아님</span></td></tr>
+<tr><td class="n">13</td><td class="u">3번 출구 나와서 지하 1층 왼쪽</td><td><span class="mk o">맞음</span> B1 · 메모 "3번 출구 나와서 왼쪽"</td><td><span class="f">B1</span> 3번 출구 나와서 지하 1층 왼쪽</td></tr>
+<tr><td class="n">14</td><td class="u">지하 2층 장애인 주차 옆 자리</td><td><span class="mk o">맞음</span> B2 · 메모 "장애인 주차 옆 자리"</td><td><span class="f">B2</span> 지하 2층 장애인 주차 옆 자리</td></tr>
+<tr><td class="n">15</td><td class="u">a동 지하 3층 엘리베이터 2호기 앞</td><td><span class="mk x">틀림</span> B3 · 구역 A · 번호 2 · 메모 "동 엘리베이터 호기 앞"</td><td><span class="f">B3</span> A동 지하 3층 엘리베이터 2호기 앞<span class="why2">"동·호기"가 붙으면 구역·번호 아님</span></td></tr>
+<tr><td class="n">16</td><td class="u">지하 1층 이마트 쪽 빨간 기둥</td><td><span class="mk x">틀림</span> B1 · 구역 "빨강" · 메모 "이마트 쪽"</td><td><span class="f">B1</span> 지하 1층 이마트 쪽 빨간 기둥<span class="why2">"빨간 기둥"은 구역이 아니라 표시</span></td></tr>
+<tr><td class="n">17</td><td class="u">지하5층 E구역 이백십이번</td><td><span class="mk o">맞음</span> B5 · E · 212</td><td><span class="f">B5</span><span class="f s">E 212</span> 지하 5층 E구역 212번</td></tr>
+<tr><td class="n">18</td><td class="u">1층 정문 경비실 옆</td><td><span class="mk q">되물음</span> B1인지 1F인지 고르기</td><td><span class="f">1층</span> 1층 정문 경비실 옆</td></tr>
+<tr><td class="n">19</td><td class="u">지하 2층 충전소 3번 자리</td><td><span class="mk o">맞음</span> B2 · 번호 3 · 메모 "충전소 자리"</td><td><span class="f">B2</span><span class="f s">3번</span> 지하 2층 충전소 3번 자리</td></tr>
+<tr><td class="n">20</td><td class="u">p3 블루존 22</td><td><span class="mk q">되물음</span> P3를 B3로 바꾸고 확인</td><td><span class="f">P3</span><span class="f s">22</span> P3 블루존 22<span class="why2">표지판 글자 그대로 둠</span></td></tr>
+<tr><td class="n">21</td><td class="u">지하 3층 아니 2층 B 14</td><td><span class="mk x">틀림</span> 되물음 · 2F · B · 14<span class="why2">고칠 때 "지하"가 빠짐</span></td><td><span class="f">B2</span><span class="f s">B 14</span> 지하 2층 B 14</td></tr>
+<tr><td class="n">22</td><td class="u">흰차 지하 1층 C 5</td><td><span class="mk o">맞음</span> 흰 차 · B1 · C · 5</td><td>흰 차 <span class="f">B1</span><span class="f s">C 5</span> 지하 1층 C 5</td></tr>
+<tr><td class="n">23</td><td class="u">지하 이층 에이 나오자마자 오른쪽</td><td><span class="mk o">맞음</span> B2 · A · 메모 "나오자마자 오른쪽"</td><td><span class="f">B2</span> 지하 2층 A 나오자마자 오른쪽<span class="why2">번호가 없으면 구역 칩도 안 씀</span></td></tr>
+<tr><td class="n">24</td><td class="u">지하 2층 g7 기둥 앞에 댔어</td><td><span class="mk o">맞음</span> B2 · 기둥 G-7 · 메모 "앞에 댔어"</td><td><span class="f">B2</span><span class="f s">G7 기둥</span> 지하 2층 G7 기둥 앞</td></tr>
+<tr><td colspan="4" style="font-weight:800;padding-top:16px">추가 20개 · 기둥 번호(○다시○)·반 층·특이한 층 이름·고쳐 말하기</td></tr>
+<tr><td class="n">26</td><td class="u">지하 2층 3다시7 기둥</td><td><span class="mk x">틀림</span> B2 · 구역 "다" · 번호 3 · 기둥 C-7<span class="why2">"다시"의 "다"를 구역으로 읽음</span></td><td><span class="f">B2</span><span class="f s">3-7 기둥</span> 지하 2층 3-7 기둥</td></tr>
+<tr><td class="n">27</td><td class="u">비투 에이 다시 칠</td><td><span class="mk x">틀림</span> B2 · A · 7 · 메모 "다"</td><td><span class="f">B2</span><span class="f s">A-7</span> B2 A-7</td></tr>
+<tr><td class="n">28</td><td class="u">지하 1층 십이 다시 삼 기둥 앞</td><td><span class="mk x">틀림</span> B1 · 구역 "다" · 12 · 기둥 C-3</td><td><span class="f">B1</span><span class="f s">12-3 기둥</span> 지하 1층 12-3 기둥 앞</td></tr>
+<tr><td class="n">29</td><td class="u">B2 3-12</td><td><span class="mk x">틀림</span> B2 · 번호 3<span class="why2">"-12"를 버림</span></td><td><span class="f">B2</span><span class="f s">3-12</span> B2 3-12</td></tr>
+<tr><td class="n">30</td><td class="u">지하 3층 C-15 기둥 옆</td><td><span class="mk o">맞음</span> B3 · 기둥 C-15 · 메모 "옆"</td><td><span class="f">B3</span><span class="f s">C-15 기둥</span> 지하 3층 C-15 기둥 옆</td></tr>
+<tr><td class="n">31</td><td class="u">2.5층 엘리베이터 앞</td><td><span class="mk x">틀림</span> 되물음 · 5F · 번호 2</td><td><span class="f">2.5층</span> 2.5층 엘리베이터 앞</td></tr>
+<tr><td class="n">32</td><td class="u">이점오층 계단 쪽</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f">2.5층</span> 2.5층 계단 쪽</td></tr>
+<tr><td class="n">33</td><td class="u">지하 1.5층</td><td><span class="mk x">틀림</span> B1 · 번호 5</td><td><span class="f">B1.5</span> 지하 1.5층</td></tr>
+<tr><td class="n">34</td><td class="u">M층 출구 옆</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f">M층</span> M층 출구 옆</td></tr>
+<tr><td class="n">35</td><td class="u">중2층 화장실 앞</td><td><span class="mk x">틀림</span> 되물음 · 2F · 메모 "중 화장실 앞"</td><td><span class="f">중2층</span> 중2층 화장실 앞<span class="why2">말한 그대로 중2층 (운영자 결정)</span></td></tr>
+<tr><td class="n">36</td><td class="u">지상 3층 D 8</td><td><span class="mk q">되물음</span> 3F · D · 8 · 메모 "지상"</td><td><span class="f">3층</span><span class="f s">D 8</span> 지상 3층 D 8</td></tr>
+<tr><td class="n">37</td><td class="u">제2주차장 지하 1층 A 5</td><td><span class="mk x">틀림</span> B1 · A · 번호 2 · 메모 "제 주차장"</td><td><span class="f">B1</span><span class="f s">A 5</span> 제2주차장 지하 1층 A 5<span class="why2">"제2·2동·2호기"의 숫자는 번호 아님</span></td></tr>
+<tr><td class="n">38</td><td class="u">주차타워 5층</td><td><span class="mk q">되물음</span> B5인지 5F인지</td><td><span class="f">5층</span> 주차타워 5층</td></tr>
+<tr><td class="n">39</td><td class="u">L2 남쪽 출구</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f">L2</span> L2 남쪽 출구<span class="why2">표지판 글자 그대로</span></td></tr>
+<tr><td class="n">40</td><td class="u">G층 입구</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f">G층</span> G층 입구</td></tr>
+<tr><td class="n">41</td><td class="u">지하 2층 E 17 아니다 E 18</td><td><span class="mk x">틀림</span> B2 · E · 17<span class="why2">"아니다"를 고침 말로 몰라 앞 번호를 씀</span></td><td><span class="f">B2</span><span class="f s">E 18</span> 지하 2층 E 18<span class="why2">고친 앞부분은 문장에서도 지움</span></td></tr>
+<tr><td class="n">42</td><td class="u">비원 비 이십삼</td><td><span class="mk o">맞음</span> B1 · B · 23</td><td><span class="f">B1</span><span class="f s">B 23</span> B1 B 23</td></tr>
+<tr><td class="n">43</td><td class="u">지하 이층 비구역 칠번</td><td><span class="mk o">맞음</span> B2 · B · 7</td><td><span class="f">B2</span><span class="f s">B 7</span> 지하 2층 B구역 7번</td></tr>
+<tr><td class="n">44</td><td class="u">4층 사번 기둥</td><td><span class="mk x">틀림</span> 되물음 · 4F · 번호 4<span class="why2">기둥 번호를 주차 번호로 읽음</span></td><td><span class="f">4층</span><span class="f s">4번 기둥</span> 4층 4번 기둥</td></tr>
+<tr><td class="n">45</td><td class="u">지하 일층 일 다시 일</td><td><span class="mk x">틀림</span> B1 · 구역 "다" · 번호 1</td><td><span class="f">B1</span><span class="f s">1-1</span> 지하 1층 1-1</td></tr>
+<tr><td colspan="4" style="font-weight:800;padding-top:16px">추가 15개 · 순서 바꿔 말하기·발음이 같은 말·시간·서수·위치 설명만</td></tr>
+<tr><td class="n">46</td><td class="u">C 37 지하 2층</td><td><span class="mk o">맞음</span> B2 · C · 37</td><td><span class="f">B2</span><span class="f s">C 37</span> C 37 지하 2층</td></tr>
+<tr><td class="n">47</td><td class="u">이 층 엘리베이터 옆</td><td><span class="mk q">되물음</span> B2인지 2F인지</td><td><span class="f">2층</span> 2층 엘리베이터 옆<span class="why2">"이 층"은 인식기가 2층을 띄어 쓴 것으로 봄</span></td></tr>
+<tr><td class="n">48</td><td class="u">지 칠 기둥</td><td><span class="mk o">맞음</span> 기둥 G-7</td><td><span class="f s">G7 기둥</span> G7 기둥<span class="why2">"지"를 지하로 읽지 않음</span></td></tr>
+<tr><td class="n">49</td><td class="u">디 구</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f s">D 9</span> D 9<span class="why2">층 없이도 저장</span></td></tr>
+<tr><td class="n">50</td><td class="u">지하 2층 이 구역 이 번</td><td><span class="mk q">되물음</span> E구역인지 2구역인지</td><td><span class="f">B2</span><span class="f s">E 2</span> 지하 2층 E구역 2번<span class="why2">묻지 않고 E로 저장, 저장 화면 칩을 누르면 2구역으로 바뀜</span></td></tr>
+<tr><td class="n">51</td><td class="u">세 번째 칸 지하 1층</td><td><span class="mk x">틀림</span> B1 · 번호 3 · 메모 "번째 칸"</td><td><span class="f">B1</span> 세 번째 칸 지하 1층<span class="why2">"번째"는 순서, 번호 아님</span></td></tr>
+<tr><td class="n">52</td><td class="u">1층이랑 2층 사이 계단</td><td><span class="mk x">틀림</span> 되물음 · 2F · 번호 1</td><td>1층이랑 2층 사이 계단<span class="why2">층이 둘이면 층 칩 없이 문장만</span></td></tr>
+<tr><td class="n">53</td><td class="u">지하 2층 아니 3층 아니 2층</td><td><span class="mk x">틀림</span> 되물음 · 2F</td><td><span class="f">B2</span> 지하 2층<span class="why2">여러 번 고쳐도 마지막 값, "지하"는 유지</span></td></tr>
+<tr><td class="n">54</td><td class="u">엘베 내려서 바로 앞</td><td><span class="mk x">틀림</span> 못 알아들음 → 직접 입력</td><td>엘베 내려서 바로 앞<span class="why2">층·번호 없이 문장만 저장</span></td></tr>
+<tr><td class="n">55</td><td class="u">3시까지 무료 지하 1층</td><td><span class="mk x">틀림</span> B1 · 번호 3 · 메모 "시까지 무료"</td><td><span class="f">B1</span> 3시까지 무료 지하 1층<span class="why2">"시·분·시간·시까지" 붙은 숫자는 번호 아님</span></td></tr>
+<tr><td class="n">56</td><td class="u">노랑 12</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f s">노랑 12</span> 노랑 12</td></tr>
+<tr><td class="n">57</td><td class="u">에이 일공삼</td><td><span class="mk x">틀림</span> 못 알아들음</td><td><span class="f s">A 103</span> A 103<span class="why2">한 자리씩 읽은 숫자는 이어 붙임</span></td></tr>
+<tr><td class="n">58</td><td class="u">지하 주차장 2층</td><td><span class="mk x">틀림</span> 되물음 · 2F</td><td><span class="f">B2</span> 지하 주차장 2층<span class="why2">"지하 주차장 N층" = 지하 N층</span></td></tr>
+<tr><td class="n">59</td><td class="u">37번 칸 B2</td><td><span class="mk o">맞음</span> B2 · 37 · 메모 "칸"</td><td><span class="f">B2</span><span class="f s">37번</span> 37번 칸 B2</td></tr>
+<tr><td class="n">60</td><td class="u">출구 2번 쪽 지하 1층</td><td><span class="mk x">틀림</span> B1 · 번호 2 · 메모 "출구 쪽"</td><td><span class="f">B1</span> 출구 2번 쪽 지하 1층<span class="why2">"출구 N번"도 "N번 출구"처럼 번호 아님</span></td></tr>
+<tr><td class="n">25</td><td class="u">에이치원 비타워 삼층 계단 옆</td><td><span class="mk x">틀림</span> 되물음(B3/3F) · 구역 H · 번호 1 · 메모 "비타워 계단 옆"</td><td><span class="f">3층</span> H1 B타워 3층 계단 옆<span class="why2">"에이치원→H1", "비타워→B타워"</span></td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</div>

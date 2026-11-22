@@ -115,6 +115,10 @@ class WidgetShots {
             save("st-longfloor-$k", s, 2, cw, ch, with(p.copy(spot = Spot(null, "C", 156, "12", "엘리베이터 옆"))))
             save("st-longpillar-$k", s, 2, cw, ch, with(p.copy(spot = Spot(Floor.Under(2), "A", 1234, "C7", "엘리베이터 옆"))))
             save("st-longname-$k", s, 3, cw, ch, cars = long)
+            // 1.1.1: the record is the spoken sentence; the widget drops the floor words, named/half floors are wider
+            save("st-sentence-$k", s, 2, cw, ch, with(p.copy(spot = Spot(Floor.Above(3), null, null, null, "H1 B타워 3층 계단 옆, 엘리베이터 내려서 오른쪽 맨 끝 기둥 뒤"))))
+            save("st-midfloor-$k", s, 2, cw, ch, with(p.copy(spot = Spot(Floor.Named("MZ2"), "E", 212, null, "중2층 E구역 212번 화장실 앞"))))
+            save("st-halffloor-$k", s, 2, cw, ch, with(p.copy(spot = Spot(Floor.Under(1, half = true), null, null, "12-3", "지하 1.5층 12-3 기둥 앞"))))
         }
         save("st-nomic-row-2x1", spec(Shape.ROW, 100), 2, 2, 1, mic = false)
         save("st-nomic-row-4x2", spec(Shape.ROW, 100), 2, 4, 2, mic = false)
