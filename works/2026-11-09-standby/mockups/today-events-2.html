@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스탠드 스크린 — 오늘 일정 시안 2차 (더 단순하게)</title>
+<style>
+  :root { --bg:#141210; --plate:#211f1d; --ink:#e4e3e0; --ink2:#9a9793; --ink3:#6c6965; --acc:#f5c07e; --onacc:#241a0d; --ev:#8f86f5; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; padding: 20px 14px 60px; }
+  h1 { font-size: 18px; margin-bottom: 6px; }
+  .lead { color: var(--ink2); font-size: 13px; line-height: 1.55; margin-bottom: 14px; max-width: 640px; }
+  .tabs { display: flex; gap: 6px; margin: 0 0 16px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 2; }
+  .tabs button { background: #2a2826; color: var(--ink); border: 0; border-radius: 99px; padding: 7px 12px; font: inherit; font-size: 13px; }
+  .tabs button.on { background: var(--acc); color: var(--onacc); font-weight: 700; }
+  .opt { margin-bottom: 28px; }
+  .opt h2 { font-size: 15px; margin-bottom: 2px; }
+  .opt p { font-size: 12.5px; color: var(--ink2); line-height: 1.5; margin-bottom: 8px; max-width: 560px; }
+  .pair { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .cap { font-size: 11px; color: var(--ink2); margin-bottom: 4px; }
+  .card > * { flex: none; } .card > .fill { flex: 1; }
+  .card { background: var(--plate); border-radius: 22px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .dow { color: var(--acc); } .m { color: var(--ink2); }
+  .hero { font-weight: 300; line-height: .95; letter-spacing: -2px; }
+  .fill { flex: 1; }
+  .r2 { display: flex; gap: 8px; margin-top: 9px; }
+  .r2 .bar { width: 3px; border-radius: 3px; background: var(--ev); flex: none; }
+  .r2 .t { font-size: 15px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r2 .w { font-size: 13px; color: var(--ink2); margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .acc { color: var(--acc) !important; font-weight: 700; }
+  .sum { font-size: 13px; font-weight: 700; color: var(--acc); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sum.quiet { color: var(--ink2); font-weight: 600; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; max-height: 52px; overflow: hidden; }
+  .chip { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 3px 8px; background: rgba(245,192,126,.16); color: var(--acc); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .chip.done { background: #ffffff0d; color: var(--ink3); font-weight: 500; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); margin-right: 5px; vertical-align: 1px; }
+  .sm { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<h1>오늘 일정 시안 2차 — 더 단순하게</h1>
+<p class="lead">D안이 복잡해 보이고, 얇은 폰에서는 일정이 거의 안 보일 수 있어서 덜어낸 방향 4가지를 만들었어요. 각 시안은 <b>폴드 커버 칸(198×253)</b>과 <b>얇은 폰 칸(162×205, 예: S 시리즈를 세워 2칸으로 나눈 크기)</b> 두 크기로 보여줘요. 위 버튼으로 경우를 바꿔 보세요.</p>
+<div class="tabs" id="tabs"></div>
+<div id="out"></div>
+<p class="lead" style="margin-top:20px">참고: 지금 폰 화면에서 IRP와 지원 집들이가 <b>08:00 일정</b>으로 들어와 있어요(다가오는 일정들도 모두 08:00). 처음에 오늘 일정이 안 보였던 것도 08:00 일정이 이미 끝나서 숨겨졌기 때문이에요. 캘린더에 종일로 넣은 거라면 알려 주세요.</p>
+<script>
+const CASES = {
+  "지금 폰 그대로": { today: [["IRP","08:00",true],["지원 집들이","08:00",true]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘 남은 일정": { today: [["IRP","08:00",true],["지원 집들이","19:00",false]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘 없음": { today: [], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+};
+const SIZES = [["폴드 커버 칸", 198, 253], ["얇은 폰 칸", 162, 205]];
+const h = (s) => { const d = document.createElement("div"); d.innerHTML = s.trim(); return d.firstElementChild; };
+const head = (extra = "") => `<div class="head"><span class="dow">월요일</span> <span class="m">11월${extra}</span></div>`;
+const row = (t, w, cls = "") => `<div class="r2"><div class="bar"></div><div style="min-width:0"><div class="t">${t}</div><div class="w ${cls}">${w}</div></div></div>`;
+function fit(card) {   // drop list rows from the end until nothing spills out of the card
+  document.body.append(card);
+  const rows = () => [...card.querySelectorAll(".r2")];
+  while (card.scrollHeight > card.clientHeight + 1 && rows().length > 1) rows().pop().remove();
+  card.remove(); return card;
+}
+const OPTS = [
+  { name: "E · 한 목록, 오늘만 색", desc: "구역 이름 없이 원래 모양 그대로예요. 오늘 남은 일정만 맨 앞에 \"오늘 19:00\"을 살구색으로 써요. 끝난 일정은 예전처럼 숨기고, 날짜 밑에 \"오늘 끝난 일정 2\" 한 줄만 남겨요.",
+    build(c, w, hh) {
+      const live = c.today.filter(x => !x[2]), done = c.today.filter(x => x[2]);
+      const hero = Math.min(hh * 0.3, w * 0.42);
+      let html = head() + `<div class="hero" style="font-size:${hero}px">23</div>`;
+      if (done.length && !live.length) html += `<div class="sum quiet">오늘 일정 ${done.length}개 모두 끝남</div>`;
+      html += `<div class="fill"></div>`;
+      live.forEach(x => html += row(x[0], "오늘 " + x[1], "acc"));
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+  { name: "F · 날짜 밑 한 줄", desc: "오늘 일정은 큰 날짜 바로 밑 살구색 한 줄로만 보여요(\"오늘 19:00 지원 집들이\", 다 끝났으면 \"오늘 일정 2개 끝남\"). 목록은 다가오는 일정만이라 지금과 똑같이 깔끔해요.",
+    build(c, w, hh) {
+      const live = c.today.filter(x => !x[2]), done = c.today.filter(x => x[2]);
+      const hero = Math.min(hh * 0.3, w * 0.42);
+      let html = head() + `<div class="hero" style="font-size:${hero}px">23</div>`;
+      if (live.length) html += `<div class="sum">오늘 ${live[0][1]} ${live[0][0]}${live.length > 1 ? ` 외 ${live.length - 1}` : ""}</div>`;
+      else if (done.length) html += `<div class="sum quiet">오늘 일정 ${done.length}개 끝남</div>`;
+      html += `<div class="fill"></div>`;
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+  { name: "G · 작은 날짜, 긴 목록", desc: "큰 날짜 숫자를 머리줄 크기로 줄여(\"23 월요일\") 목록에 한두 줄을 더 줘요. 얇은 폰에서 일정이 가장 많이 보여요. 오늘 일정은 앞에 살구색 점, 끝난 건 흐리게.",
+    build(c, w, hh) {
+      let html = `<div class="sm"><div class="hero" style="font-size:${Math.min(44, w * .26)}px">23</div><div class="head" style="font-size:13px;line-height:1.25"><div class="dow">월요일</div><div class="m">11월</div></div></div>`;
+      c.today.forEach(x => html += row(`<span class="dot"></span>${x[0]}`, (x[2] ? "끝남 · " : "오늘 ") + x[1], x[2] ? "" : "acc").replace('class="r2"', x[2] ? 'class="r2" style="opacity:.45"' : 'class="r2"'));
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+  { name: "H · 오늘 칩", desc: "오늘 일정은 날짜 밑 작은 알약(칩)으로 모아요. 끝난 건 회색 칩이에요. 목록은 다가오는 일정만이에요. 칩이 넘치면 \"+N\"으로 접어요.",
+    build(c, w, hh) {
+      const hero = Math.min(hh * 0.27, w * 0.4);
+      let html = head() + `<div class="hero" style="font-size:${hero}px">23</div>`;
+      if (c.today.length) {
+        const chips = c.today.slice(0, 2).map(x => `<span class="chip ${x[2] ? "done" : ""}">${x[2] ? "" : x[1] + " "}${x[0]}</span>`).join("");
+        html += `<div class="chips">${chips}${c.today.length > 2 ? `<span class="chip">+${c.today.length - 2}</span>` : ""}</div>`;
+      }
+      html += `<div class="fill"></div>`;
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+];
+function render(key) {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.textContent === key));
+  const out = document.getElementById("out"); out.innerHTML = "";
+  OPTS.forEach(o => {
+    const sec = h(`<div class="opt"><h2>${o.name}</h2><p>${o.desc}</p><div class="pair"></div></div>`);
+    SIZES.forEach(([n, w, hh]) => {
+      const wrap = h(`<div><div class="cap">${n} ${w}×${hh}</div></div>`);
+      const card = h(`<div class="card" style="width:${w}px;height:${hh}px"></div>`);
+      card.innerHTML = o.build(CASES[key], w, hh);
+      wrap.append(fit(card)); sec.querySelector(".pair").append(wrap);
+    });
+    out.append(sec);
+  });
+}
+const tabs = document.getElementById("tabs");
+Object.keys(CASES).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.onclick = () => render(k); tabs.append(b); });
+const k0 = decodeURIComponent(location.hash.slice(1));
+render(CASES[k0] ? k0 : "지금 폰 그대로");
+</script>
+</body>
+</html>

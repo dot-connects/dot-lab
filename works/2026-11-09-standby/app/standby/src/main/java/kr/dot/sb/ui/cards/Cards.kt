@@ -1358,20 +1358,10 @@ private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
     val denied = state.agenda == null
     val events = if (denied) emptyList() else state.upcoming
     val mod = Modifier.fillMaxSize().padding(p).tap(if (denied) ({ actions.openSettings("calendar") }) else null)
-    val live = events.count { (it.date ?: e.today) == e.today && !it.done }
     val tiny = @Composable {
         Column(mod, verticalArrangement = Arrangement.SpaceBetween) {
             CalHead(e, e.meta)
-            Row(verticalAlignment = Alignment.Bottom) {
-                val chipW = e.meta * 4.4f
-                Hero(e, AnnotatedString("${e.today.dayOfMonth}"), ih - e.metaCap - LG, e.ink.ink, if (live > 0) iw - chipW - 6.dp else iw)
-                if (live > 0) {
-                    Spacer(Modifier.width(6.dp))
-                    Box(Modifier.padding(bottom = 4.dp).clip(RoundedCornerShape(50)).background(e.ink.acc).padding(horizontal = 7.dp, vertical = 3.dp)) {
-                        Txt("오늘 $live", e.meta * 0.9f, e.onAcc, weight = 800, num = true)
-                    }
-                }
-            }
+            Hero(e, AnnotatedString("${e.today.dayOfMonth}"), ih - e.metaCap - LG, e.ink.ink, iw)
         }
     }
     when (calendarShape(e.w.value, e.h.value)) {
@@ -1388,30 +1378,30 @@ private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
                 }
                 Spacer(Modifier.width(p))
                 Column(Modifier.weight(1f).fillMaxHeight()) {
-                    val rows = ((ih - 64.dp) / e.rowStep).toInt().coerceIn(1, 4)
+                    val n = if (ih >= 170.dp) 2 else 1
                     DayGrid(e, e.today.minusDays((e.today.dayOfWeek.value % 7).toLong()), 1, events, Modifier.fillMaxWidth().weight(1f))
                     Spacer(Modifier.height(LG))
-                    EventList(e, events, rows.toFloat(), denied, labels = false)
+                    EventList(e, events, n, denied)
                 }
             }
         }
-        CalendarShape.NARROW -> Column(mod) { DayAndEvents(e, iw, ih, events, denied, e.meta) }
+        CalendarShape.NARROW -> Column(mod) { DayAndEvents(e, iw, ih, events, denied, e.meta, 5) }
         // big day + events left, the month right
         CalendarShape.WIDE_MONTH -> {
             val cell = (ih - e.head * 1.6f) / 6.2f
             val gw = min(cell * 7 * 1.3f, e.w * 0.6f)
             Row(mod) {
-                Column(Modifier.weight(1f).fillMaxHeight()) { DayAndEvents(e, e.w - gw - p * 3, ih, events, denied, e.head) }
+                Column(Modifier.weight(1f).fillMaxHeight()) { DayAndEvents(e, e.w - gw - p * 3, ih, events, denied, e.head, 4) }
                 Spacer(Modifier.width(p))
                 MonthGrid(e, events, Modifier.width(gw).fillMaxHeight())
             }
         }
-        // the month, then today / upcoming in what is left
+        // the month, then "다가오는 날" in what is left
         CalendarShape.MONTH -> {
             val headH = e.head * e.cap
             val cell = min(iw / 7 / 1.1f, (ih - headH - 40.dp) / 6.4f)
             val left = ih - headH - LG * 2 - cell * 6.4f - e.metaCap - 10.dp
-            val rows = ((left - 10.dp) / e.rowStep).coerceAtLeast(0f)
+            val n = if (events.isEmpty() && !denied) 0 else ((left - 10.dp) / e.evStep).toInt().coerceIn(0, 5)
             Column(mod) {
                 val text = buildAnnotatedString {
                     withStyle(SpanStyle(color = e.ink.accText)) { append("${e.today.monthValue}월") }
@@ -1420,9 +1410,11 @@ private fun CalendarCard(e: Env, state: StandbyState, actions: StandbyActions) {
                 Txt(text, e.head, e.ink.ink, weight = 700)
                 Spacer(Modifier.height(LG * 2))
                 MonthGrid(e, events, Modifier.fillMaxWidth().weight(1f))
-                if (rows >= 1f || denied) {
+                if (n > 0) {
                     Spacer(Modifier.height(LG * 2))
-                    EventList(e, events, rows, denied, labels = true)
+                    Txt("일정", e.meta, e.readInk2, weight = 600)
+                    Spacer(Modifier.height(10.dp))
+                    EventList(e, events, n, denied)
                 }
             }
         }
@@ -1439,75 +1431,56 @@ private fun CalHead(e: Env, size: Dp) {
     Txt(text, size, e.ink.ink, weight = 700)
 }
 
-/**
- * Head, the big day, then the list under it. The day keeps at least ~56 dp; everything else is rows (a taller card
- * lists more, a smaller number), and whatever the list leaves goes to the day.
- */
+/** Head, the big day, then up to [max] coming events under it; whatever the events leave goes to the day. */
 @Composable
-private fun ColumnScope.DayAndEvents(e: Env, w: Dp, h: Dp, events: List<AgendaItem>, denied: Boolean, headSize: Dp) {
+private fun ColumnScope.DayAndEvents(e: Env, w: Dp, h: Dp, events: List<AgendaItem>, denied: Boolean, headSize: Dp, max: Int) {
     val headH = headSize * e.cap + LG
-    val rows = ((h - headH - LG - 56.dp) / e.rowStep).coerceAtLeast(0f)
-    val listH = if (denied || events.isEmpty()) e.metaCap else e.rowStep * planAgenda(events, e.today, rows, true).rows(true)
-    val cap = min(h - headH - LG - listH - LG, w * 0.6f).coerceAtLeast(56.dp)
+    val fit = ((h - headH - h * 0.3f - 20.dp) / e.evStep).toInt().coerceIn(1, max)
+    val n = minOf(fit, events.size.coerceAtLeast(1))
+    val cap = h - headH - 20.dp - e.evStep * n
     CalHead(e, headSize)
     Spacer(Modifier.height(LG))
     Hero(e, AnnotatedString("${e.today.dayOfMonth}"), cap, e.ink.ink, w)
     Spacer(Modifier.weight(1f))
-    EventList(e, events, rows, denied, labels = true)
+    EventList(e, events, n, denied)
 }
 
 /**
- * The calendar's list: "오늘" section (accent) with today's rows, then "다가오는" (secondary ink); [rows] is the budget
- * in [rowStep]s, see [planAgenda]. Without [labels] (too few rows) today's rows just come first.
+ * Events: colour bar (the calendar's colour, contrast-floored) + title over the date line. Today's come first: still to
+ * come = "오늘 22:30" in the accent, already over = grey "끝남 · 08:00" with the time struck (option E, 2026-11-23).
  */
 @Composable
-private fun EventList(e: Env, events: List<AgendaItem>, rows: Float, denied: Boolean, labels: Boolean) {
+private fun EventList(e: Env, events: List<AgendaItem>, n: Int, denied: Boolean) {
     if (denied || events.isEmpty()) {
         Txt(if (denied) "눌러서 캘린더 허용하기" else "다가오는 일정이 없어요", e.meta, e.readInk2, weight = 500)
         return
     }
-    val p = planAgenda(events, e.today, rows, labels)
-    Column {
-        if (p.today.isNotEmpty()) {
-            if (labels) SecLabel(e, "오늘", true)
-            p.today.forEach { CalEventLine(e, it, it.start, today = true) }
-            if (p.more > 0) Box(Modifier.height(e.rowStep * MORE_ROWS), contentAlignment = Alignment.CenterStart) { Txt("오늘 외 ${p.more}", e.meta, e.readInk2, weight = 500) }
-        }
-        if (p.up.isNotEmpty()) {
-            if (labels && p.today.isNotEmpty()) SecLabel(e, "다가오는", false)
-            p.up.forEach { CalEventLine(e, it, whenKo(e, it), today = false) }
+    val isToday = { ev: AgendaItem -> (ev.date ?: e.today) == e.today }
+    val ordered = events.filter { isToday(it) && !it.done } + events.filter { isToday(it) && it.done } + events.filterNot(isToday)
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        ordered.take(n).forEach { ev ->
+            when {
+                !isToday(ev) -> EventRow(e, ev, whenKo(e, ev))
+                ev.done -> EventRow(e, ev, "끝남 · ${ev.start}", strikeFrom = "끝남 · ".length)
+                else -> EventRow(e, ev, "오늘 ${ev.start}", e.ink.accText, 700)
+            }
         }
     }
 }
 
-/** Section label: text in the accent (today) or the secondary ink, then a hairline to the edge. */
+/** One event: colour bar + title over [time] (secondary ink by default); [strikeFrom] >= 0 strikes the time from there. */
 @Composable
-private fun SecLabel(e: Env, text: String, today: Boolean) = Row(Modifier.fillMaxWidth().height(e.rowStep * SEC_ROWS), verticalAlignment = Alignment.CenterVertically) {
-    Txt(text, e.meta, if (today) e.ink.accText else e.readInk2, weight = 700)
-    Spacer(Modifier.width(6.dp))
-    Box(Modifier.weight(1f).height(1.dp).background(if (today) e.ink.acc.copy(alpha = 0.35f) else e.ink.ink3))
-}
-
-/** One line: colour bar + title (ellipsis) + [time] kept whole on the right. Done rows: struck through, secondary ink, dim bar. */
-@Composable
-private fun CalEventLine(e: Env, ev: AgendaItem, time: String, today: Boolean) = Row(Modifier.fillMaxWidth().height(e.rowStep), verticalAlignment = Alignment.CenterVertically) {
-    Box(Modifier.width(4.dp).height(e.read * e.cap + 6.dp).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color).copy(alpha = if (ev.done) 0.35f else 1f)))
-    Spacer(Modifier.width(8.dp))
-    val title = if (ev.done) buildAnnotatedString { withStyle(SpanStyle(textDecoration = TextDecoration.LineThrough)) { append(ev.title) } } else AnnotatedString(ev.title)
-    Txt(title, e.read, if (ev.done) e.readInk2 else e.ink.ink, Modifier.weight(1f), weight = if (ev.done) 500 else 600)
-    Spacer(Modifier.width(8.dp))
-    Txt(time, e.meta, if (today && !ev.done) e.ink.accText else e.readInk2, weight = if (today && !ev.done) 700 else 500, num = true)
-}
-
-/** One event: colour bar + title over [time]. */
-@Composable
-private fun EventRow(e: Env, ev: AgendaItem, time: String) = Row {
+private fun EventRow(e: Env, ev: AgendaItem, time: String, timeInk: Color = e.readInk2, timeWeight: Int = 500, strikeFrom: Int = -1) = Row {
     Box(Modifier.width(4.dp).height(e.evH).clip(RoundedCornerShape(50)).background(eventInk(e, ev.color)))
     Spacer(Modifier.width(8.dp))
     Column {
         Txt(ev.title, e.read, e.ink.ink, weight = 600)
         Spacer(Modifier.height(8.dp))
-        Txt(time, e.meta, e.readInk2, weight = 500, num = true)
+        if (strikeFrom < 0) Txt(time, e.meta, timeInk, weight = timeWeight, num = true)
+        else Txt(buildAnnotatedString {
+            append(numSpans(time, LocalTheme.current.numerals, timeWeight))
+            addStyle(SpanStyle(textDecoration = TextDecoration.LineThrough), strikeFrom, time.length)
+        }, e.meta, timeInk, weight = timeWeight)
     }
 }
 
@@ -1521,10 +1494,10 @@ private fun eventInk(e: Env, argb: Long): Color {
     return lerp(Contrast.fit(Color(argb), listOf(e.ink.bg, e.ink.plate.compositeOver(e.ink.bg)), light), Ink.NIGHT_DIM, e.ink.night)
 }
 
-/** Upcoming row time: "화 08:00" inside a week, "11/30 (일)" (+ time) beyond. */
 private fun whenKo(e: Env, ev: AgendaItem): String {
     val d = ev.date ?: e.today
-    if (d == e.today) return ev.start
+    if (d == e.today) return "오늘 ${ev.start}"
+    // inside a week the weekday is enough ("화 08:00"): shorter rows read on narrow phones
     if (java.time.temporal.ChronoUnit.DAYS.between(e.today, d) < 7) return "${dowKo(d)} ${ev.start}"
     return "${d.monthValue}/${d.dayOfMonth} (${dowKo(d)})" + if (ev.start != "종일") " ${ev.start}" else ""
 }

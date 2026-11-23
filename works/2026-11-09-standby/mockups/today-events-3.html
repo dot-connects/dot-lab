@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스탠드 스크린 — 오늘 일정 시안 E 수정판</title>
+<style>
+  :root { --bg:#141210; --plate:#211f1d; --ink:#e4e3e0; --ink2:#9a9793; --ink3:#6c6965; --acc:#f5c07e; --onacc:#241a0d; --ev:#8f86f5; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; padding: 20px 14px 60px; }
+  h1 { font-size: 18px; margin-bottom: 6px; }
+  .lead { color: var(--ink2); font-size: 13px; line-height: 1.55; margin-bottom: 14px; max-width: 640px; }
+  .tabs { display: flex; gap: 6px; margin: 0 0 16px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 2; }
+  .tabs button { background: #2a2826; color: var(--ink); border: 0; border-radius: 99px; padding: 7px 12px; font: inherit; font-size: 13px; }
+  .tabs button.on { background: var(--acc); color: var(--onacc); font-weight: 700; }
+  .opt { margin-bottom: 28px; }
+  .opt h2 { font-size: 15px; margin-bottom: 2px; }
+  .opt p { font-size: 12.5px; color: var(--ink2); line-height: 1.5; margin-bottom: 8px; max-width: 560px; }
+  .pair { display: flex; gap: 14px; align-items: flex-start; flex-wrap: wrap; }
+  .cap { font-size: 11px; color: var(--ink2); margin-bottom: 4px; }
+  .card > * { flex: none; } .card > .fill { flex: 1; }
+  .card { background: var(--plate); border-radius: 22px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .dow { color: var(--acc); } .m { color: var(--ink2); }
+  .hero { font-weight: 300; line-height: .95; letter-spacing: -2px; }
+  .fill { flex: 1; }
+  .r2 { display: flex; gap: 8px; margin-top: 9px; }
+  .r2 .bar { width: 3px; border-radius: 3px; background: var(--ev); flex: none; }
+  .r2 .t { font-size: 15px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .r2 .w { font-size: 13px; color: var(--ink2); margin-top: 2px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .acc { color: var(--acc) !important; font-weight: 700; }
+  .gone { color: var(--ink3) !important; }
+  .sum { font-size: 13px; font-weight: 700; color: var(--acc); margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sum.quiet { color: var(--ink2); font-weight: 600; }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 7px; max-height: 52px; overflow: hidden; }
+  .chip { font-size: 12px; font-weight: 700; border-radius: 99px; padding: 3px 8px; background: rgba(245,192,126,.16); color: var(--acc); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+  .chip.done { background: #ffffff0d; color: var(--ink3); font-weight: 500; }
+  .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: var(--acc); margin-right: 5px; vertical-align: 1px; }
+  .sm { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+<h1>E 수정판 — 이전 디자인 + 날짜 색만</h1>
+<p class="lead">이전 디자인 그대로예요. 오늘 일정은 날짜 줄만 바뀌어요. 남은 일정은 살구색 <b>"오늘 19:00"</b>, 끝난 일정도 목록에 그대로 두고 날짜 줄만 회색 <b>"끝남 · 08:00"</b>으로 바꿔요. 오늘 일정이 먼저, 그다음 다가오는 일정 순서예요. 구역 이름·요약 줄은 없어요.</p>
+<div class="tabs" id="tabs"></div>
+<div id="out"></div>
+<p class="lead" style="margin-top:20px">참고: 지금 폰 화면에서 IRP와 지원 집들이가 <b>08:00 일정</b>으로 들어와 있어요(다가오는 일정들도 모두 08:00). 처음에 오늘 일정이 안 보였던 것도 08:00 일정이 이미 끝나서 숨겨졌기 때문이에요. 캘린더에 종일로 넣은 거라면 알려 주세요.</p>
+<script>
+const CASES = {
+  "지금 폰 그대로": { today: [["IRP","08:00",true],["지원 집들이","08:00",true]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘 남은 일정": { today: [["IRP","08:00",true],["지원 집들이","19:00",false]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘 없음": { today: [], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+};
+const SIZES = [["폴드 커버 칸", 198, 253], ["얇은 폰 칸", 162, 205]];
+const h = (s) => { const d = document.createElement("div"); d.innerHTML = s.trim(); return d.firstElementChild; };
+const head = (extra = "") => `<div class="head"><span class="dow">월요일</span> <span class="m">11월${extra}</span></div>`;
+const row = (t, w, cls = "") => `<div class="r2"><div class="bar"></div><div style="min-width:0"><div class="t">${t}</div><div class="w ${cls}">${w}</div></div></div>`;
+function fit(card) {   // drop list rows from the end until nothing spills out of the card
+  document.body.append(card);
+  const rows = () => [...card.querySelectorAll(".r2")];
+  while (card.scrollHeight > card.clientHeight + 1 && rows().length > 1) rows().pop().remove();
+  card.remove(); return card;
+}
+const OPTS = [
+  { name: "이전 디자인 (비교용)", desc: "지금 폰에 있던 모양이에요. 오늘 일정과 다가오는 일정이 구분되지 않아요.",
+    build(c, w, hh) {
+      let html = head() + `<div class="hero" style="font-size:${Math.min(hh * 0.3, w * 0.42)}px">23</div><div class="fill"></div>`;
+      c.today.filter(x => !x[2]).forEach(x => html += row(x[0], "오늘 " + x[1]));
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+  { name: "E 수정판", desc: "오늘 남은 일정 = 살구색 \"오늘 19:00\", 끝난 오늘 일정 = 회색 \"끝남 · 08:00\" (제목은 그대로).",
+    build(c, w, hh) {
+      let html = head() + `<div class="hero" style="font-size:${Math.min(hh * 0.3, w * 0.42)}px">23</div><div class="fill"></div>`;
+      const today = [...c.today.filter(x => !x[2]), ...c.today.filter(x => x[2])];
+      today.forEach(x => html += x[2] ? row(x[0], "끝남 · " + x[1], "gone") : row(x[0], "오늘 " + x[1], "acc"));
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+  { name: "E 수정판 + 날짜 줄 취소선 (적용할 안)", desc: "끝난 오늘 일정은 제목은 그대로, 날짜 줄만 회색 \"끝남 · <s>08:00</s>\"로 시간에 취소선을 그어요.",
+    build(c, w, hh) {
+      let html = head() + `<div class="hero" style="font-size:${Math.min(hh * 0.3, w * 0.42)}px">23</div><div class="fill"></div>`;
+      const today = [...c.today.filter(x => !x[2]), ...c.today.filter(x => x[2])];
+      today.forEach(x => html += x[2] ? row(x[0], `끝남 · <s>${x[1]}</s>`, "gone") : row(x[0], "오늘 " + x[1], "acc"));
+      c.up.forEach(x => html += row(x[0], x[1]));
+      return html;
+    } },
+];
+function render(key) {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.textContent === key));
+  const out = document.getElementById("out"); out.innerHTML = "";
+  OPTS.forEach(o => {
+    const sec = h(`<div class="opt"><h2>${o.name}</h2><p>${o.desc}</p><div class="pair"></div></div>`);
+    SIZES.forEach(([n, w, hh]) => {
+      const wrap = h(`<div><div class="cap">${n} ${w}×${hh}</div></div>`);
+      const card = h(`<div class="card" style="width:${w}px;height:${hh}px"></div>`);
+      card.innerHTML = o.build(CASES[key], w, hh);
+      wrap.append(fit(card)); sec.querySelector(".pair").append(wrap);
+    });
+    out.append(sec);
+  });
+}
+const tabs = document.getElementById("tabs");
+Object.keys(CASES).forEach(k => { const b = document.createElement("button"); b.textContent = k; b.onclick = () => render(k); tabs.append(b); });
+const k0 = decodeURIComponent(location.hash.slice(1));
+render(CASES[k0] ? k0 : "지금 폰 그대로");
+</script>
+</body>
+</html>
