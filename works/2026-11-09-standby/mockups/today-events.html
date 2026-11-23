@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스탠드 스크린 — 오늘 일정 표시 시안</title>
+<style>
+  :root { --bg:#141210; --plate:#211f1d; --ink:#e4e3e0; --ink2:#9a9793; --acc:#f5c07e; --ev:#8f86f5; --green:#56b96f; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", system-ui, sans-serif; padding: 20px 14px 60px; }
+  h1 { font-size: 18px; font-weight: 700; margin-bottom: 4px; }
+  .lead { color: var(--ink2); font-size: 13px; line-height: 1.5; margin-bottom: 20px; }
+  .grid { display: flex; flex-wrap: wrap; gap: 26px 18px; }
+  .opt { width: 180px; }
+  .opt h2 { font-size: 15px; font-weight: 700; margin-bottom: 2px; }
+  .opt p { font-size: 12px; color: var(--ink2); line-height: 1.45; margin-bottom: 10px; min-height: 52px; }
+  .card { width: 174px; height: 222px; background: var(--plate); border-radius: 22px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; }
+  .head { font-size: 12px; font-weight: 700; }
+  .head .dow { color: var(--acc); } .head .m { color: var(--ink2); }
+  .hero { font-size: 50px; font-weight: 300; line-height: 1; letter-spacing: -2px; margin: 2px 0 0; }
+  .spacer { flex: 1; }
+  .ev { display: flex; gap: 7px; margin-top: 7px; }
+  .bar { width: 3px; border-radius: 3px; background: var(--ev); flex: none; }
+  .t { font-size: 13px; font-weight: 600; line-height: 1.25; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+  .w { font-size: 11.5px; color: var(--ink2); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .g .bar { background: var(--green); }
+  .now { color: var(--acc) !important; font-weight: 700; }
+  /* A */
+  .A .today { background: rgba(245,192,126,.13); border-radius: 10px; padding: 6px 7px; margin: 6px -4px 0; }
+  .A .today .ev { margin-top: 0; } .A .today .ev + .ev { margin-top: 6px; }
+  .A .later .t { font-size: 12px; font-weight: 500; color: var(--ink2); }
+  .A .later .w { font-size: 10.5px; }
+  /* B */
+  .B .row { display: flex; align-items: flex-end; gap: 8px; }
+  .B .hero { font-size: 46px; }
+  .B .badge { background: var(--acc); color: #241a0d; font-size: 11px; font-weight: 800; border-radius: 99px; padding: 3px 8px; margin-bottom: 9px; }
+  .B .later .t { font-size: 12px; color: var(--ink2); font-weight: 500; }
+  /* C */
+  .C .lab { font-size: 11px; font-weight: 700; color: var(--acc); margin-top: 10px; letter-spacing: .5px; }
+  .C .big .t { font-size: 17px; font-weight: 700; max-width: 145px; }
+  .C .big .w { font-size: 12px; }
+  .C .big .bar { width: 4px; }
+  .C .next { font-size: 11.5px; color: var(--ink2); border-top: 1px solid #ffffff14; padding-top: 7px; margin-top: auto; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* D */
+  .D .sec { font-size: 10.5px; font-weight: 700; color: var(--ink2); margin-top: 8px; display: flex; align-items: center; gap: 6px; }
+  .D .sec::after { content: ""; flex: 1; height: 1px; background: #ffffff1a; }
+  .D .sec.o { color: var(--acc); }
+  .D .sec.o::after { background: rgba(245,192,126,.35); }
+  .D .ev { margin-top: 5px; }
+  .D .done .t { color: var(--ink2); text-decoration: line-through; font-weight: 500; }
+  .D .done .bar { opacity: .35; }
+  .D .hero { font-size: 30px; }
+  .D .ev .w { display:inline; margin-left:6px; } .D .ev > div { display:flex; align-items:baseline; }
+  .ref { margin-top: 34px; }
+  .ref h2 { font-size: 15px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<h1>오늘 일정 표시 시안</h1>
+<p class="lead">지금 쓰는 일정 카드 크기(174×222dp, 어두운 테마) 그대로예요. 오늘 = 11/23 월: <b>IRP</b>(종일), <b>지원 집들이</b> 19:00. 다가오는 일정은 화·수·목 3개. 맘에 드는 걸 골라 주세요. 섞어도 돼요.</p>
+
+<div class="grid">
+
+  <div class="opt">
+    <h2>지금</h2>
+    <p>오늘 일정과 다가오는 일정이 같은 모양이에요. 오늘 것도 "오늘 19:00"으로만 구분돼요.</p>
+    <div class="card">
+      <div class="head"><span class="dow">월요일</span> <span class="m">11월</span></div>
+      <div class="hero">23</div>
+      <div class="spacer"></div>
+      <div class="ev g"><div class="bar"></div><div><div class="t">IRP</div><div class="w">오늘 종일</div></div></div>
+      <div class="ev"><div class="bar"></div><div><div class="t">지원 집들이</div><div class="w">오늘 19:00</div></div></div>
+      <div class="ev"><div class="bar"></div><div><div class="t">svp 형들</div><div class="w">11/24 (화) 08:00</div></div></div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h2>A · 오늘 판</h2>
+    <p>오늘 일정만 살구색 판 위에 올려요. 다가오는 건 작고 흐리게 밑에 붙어요.</p>
+    <div class="card A">
+      <div class="head"><span class="dow">월요일</span> <span class="m">11월</span></div>
+      <div class="hero">23</div>
+      <div class="spacer"></div>
+      <div class="today">
+        <div class="ev g"><div class="bar"></div><div><div class="t">IRP</div><div class="w now">종일</div></div></div>
+        <div class="ev"><div class="bar"></div><div><div class="t">지원 집들이</div><div class="w now">19:00</div></div></div>
+      </div>
+      <div class="later">
+        <div class="ev"><div class="bar"></div><div><div class="t">svp 형들</div><div class="w">화 08:00</div></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h2>B · 숫자 옆 배지</h2>
+    <p>큰 날짜 옆에 "오늘 2" 배지. 오늘 일정이 위에, 다가오는 건 흐리게 아래에 와요.</p>
+    <div class="card B">
+      <div class="head"><span class="dow">월요일</span> <span class="m">11월</span></div>
+      <div class="row"><div class="hero">23</div><div class="badge">오늘 2</div></div>
+      <div class="spacer"></div>
+      <div class="ev g"><div class="bar"></div><div><div class="t">IRP</div><div class="w now">종일</div></div></div>
+      <div class="ev"><div class="bar"></div><div><div class="t">지원 집들이</div><div class="w now">19:00</div></div></div>
+      <div class="ev later"><div class="bar"></div><div><div class="t">svp 형들</div><div class="w">화 08:00</div></div></div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h2>C · 오늘이 주인공</h2>
+    <p>오늘 일정이 있으면 큰 날짜 대신 일정을 크게. 다가오는 건 맨 아래 한 줄로 줄여요. 오늘 일정이 없으면 지금처럼.</p>
+    <div class="card C">
+      <div class="head"><span class="dow">월요일</span> <span class="m">11월 23</span></div>
+      <div class="lab">오늘</div>
+      <div class="big">
+        <div class="ev g"><div class="bar"></div><div><div class="t">IRP</div><div class="w now">종일</div></div></div>
+        <div class="ev"><div class="bar"></div><div><div class="t">지원 집들이</div><div class="w now">19:00</div></div></div>
+      </div>
+      <div class="next">내일 svp 형들 08:00 외 2</div>
+    </div>
+  </div>
+
+  <div class="opt">
+    <h2>D · 오늘 / 다가오는</h2>
+    <p>구역 두 개로 나눠요. 오늘 이미 끝난 일정도 줄 그어서 남겨요. 날짜는 조금 작아져요.</p>
+    <div class="card D">
+      <div class="head"><span class="dow">월요일</span> <span class="m">11월</span></div>
+      <div class="hero">23</div>
+      <div class="sec o">오늘</div>
+      <div class="ev g"><div class="bar"></div><div><div class="t">IRP</div><div class="w now">종일</div></div></div>
+      <div class="ev done"><div class="bar"></div><div><div class="t">점심 미팅</div><div class="w">12:00</div></div></div>
+      <div class="ev"><div class="bar"></div><div><div class="t">지원 집들이</div><div class="w now">19:00</div></div></div>
+      <div class="sec">다가오는</div>
+      <div class="ev"><div class="bar"></div><div><div class="t">svp 형들</div><div class="w">화 08:00</div></div></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="ref">
+  <h2>같이 정할 것</h2>
+  <p class="lead">1) 오늘 이미 끝난 일정: 지금처럼 숨길지, D처럼 줄 그어 남길지.<br>2) 달력 칸(월 보기)에서 오늘 날짜 원 안에 일정 점을 보일지 — 지금은 원에 가려서 숨겨요.</p>
+</div>
+</body>
+</html>

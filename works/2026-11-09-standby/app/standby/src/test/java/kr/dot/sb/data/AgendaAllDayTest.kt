@@ -16,4 +16,15 @@ class AgendaAllDayTest {
     @Test fun todaysAllDayIsLive() = assertTrue(Agenda.allDayLive(utcMidnight(today.plusDays(1)), today))
 
     @Test fun multiDayRunningThroughTodayIsLive() = assertTrue(Agenda.allDayLive(utcMidnight(today.plusDays(3)), today))
+
+    // Samsung-style local-midnight storage (KST = UTC+9): today's all-day row runs 22 15:00Z..23 15:00Z
+    private fun kstMidnight(d: LocalDate) = d.atStartOfDay(java.time.ZoneOffset.ofHours(9)).toInstant().toEpochMilli()
+
+    @Test fun localStoredTodayIsLive() = assertTrue(Agenda.allDayLive(kstMidnight(today.plusDays(1)), today))
+
+    @Test fun localStoredYesterdayIsOver() = assertFalse(Agenda.allDayLive(kstMidnight(today), today))
+
+    @Test fun localStoredDateIsToday() = org.junit.Assert.assertEquals(today, Agenda.allDayDate(kstMidnight(today)))
+
+    @Test fun utcStoredDateIsToday() = org.junit.Assert.assertEquals(today, Agenda.allDayDate(utcMidnight(today)))
 }

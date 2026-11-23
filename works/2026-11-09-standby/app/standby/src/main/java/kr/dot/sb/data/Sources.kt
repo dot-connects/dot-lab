@@ -225,7 +225,7 @@ object DeviceSources {
                         val t = if (allDay) "종일" else at.format(HM)
                         val end = if (allDay) null else Instant.ofEpochMilli(c.getLong(1)).atZone(zone).toLocalDateTime()
                         // a multi-day all-day event that began earlier counts as today's
-                        val day = if (allDay) maxOf(at.toLocalDate(), today) else at.toLocalDate()
+                        val day = if (allDay) maxOf(Agenda.allDayDate(c.getLong(0)), today) else at.toLocalDate()
                         add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, day, end))
                     }
                 }

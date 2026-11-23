@@ -46,11 +46,14 @@ object Agenda {
     }
 
     /**
-     * All-day instances sit on UTC midnights with an exclusive END, so a query from local midnight east of UTC also
-     * returns yesterday's (END = today 00:00 UTC). Keep only those still running on [today].
+     * All-day instances should sit on UTC midnights with an exclusive END, but some providers store local midnights
+     * (KST: 15:00 UTC the day before). Rounding by 12 h gives the intended date either way, east or west of UTC.
      */
-    fun allDayLive(endUtcMs: Long, today: java.time.LocalDate): Boolean =
-        java.time.Instant.ofEpochMilli(endUtcMs).atZone(java.time.ZoneOffset.UTC).toLocalDate().isAfter(today)
+    fun allDayDate(utcMs: Long): java.time.LocalDate =
+        java.time.Instant.ofEpochMilli(utcMs + 12 * 3_600_000L).atZone(java.time.ZoneOffset.UTC).toLocalDate()
+
+    /** A query from local midnight east of UTC also returns yesterday's all-day rows: keep those still running [today]. */
+    fun allDayLive(endUtcMs: Long, today: java.time.LocalDate): Boolean = allDayDate(endUtcMs).isAfter(today)
 }
 
 class HoldSwitch(private val onMs: Long, private val offMs: Long) {
