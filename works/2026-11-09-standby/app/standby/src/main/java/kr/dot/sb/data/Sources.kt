@@ -207,6 +207,7 @@ object DeviceSources {
         val start = now.toLocalDate().atStartOfDay(zone).toInstant().toEpochMilli()
         val end = now.toLocalDate().plusDays(15).atStartOfDay(zone).toInstant().toEpochMilli()
         val nowMs = now.atZone(zone).toInstant().toEpochMilli()
+        val today = now.toLocalDate()
         val uri = CalendarContract.Instances.CONTENT_URI.buildUpon().also { ContentUris.appendId(it, start); ContentUris.appendId(it, end) }.build()
         val cols = arrayOf(
             CalendarContract.Instances.BEGIN, CalendarContract.Instances.END, CalendarContract.Instances.TITLE,
@@ -218,11 +219,14 @@ object DeviceSources {
                     while (c.moveToNext() && size < 8) {
                         val allDay = c.getInt(4) == 1
                         if (!allDay && c.getLong(1) < nowMs) continue // already over
+                        if (allDay && !Agenda.allDayLive(c.getLong(1), today)) continue // yesterday's, ended
                         // all-day instances are stored at UTC midnight
                         val at = Instant.ofEpochMilli(c.getLong(0)).atZone(if (allDay) ZoneId.of("UTC") else zone)
                         val t = if (allDay) "종일" else at.format(HM)
                         val end = if (allDay) null else Instant.ofEpochMilli(c.getLong(1)).atZone(zone).toLocalDateTime()
-                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, at.toLocalDate(), end))
+                        // a multi-day all-day event that began earlier counts as today's
+                        val day = if (allDay) maxOf(at.toLocalDate(), today) else at.toLocalDate()
+                        add(AgendaItem(t, c.getString(2)?.ifBlank { null } ?: "(제목 없음)", c.getInt(3).toLong() and 0xFFFFFFFFL, day, end))
                     }
                 }
             }

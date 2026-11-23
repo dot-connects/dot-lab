@@ -44,6 +44,13 @@ object Agenda {
         val left = all.filter { it.end == null || it.end.isAfter(now) }
         return left.filter { it.date == now.toLocalDate() }.take(5) to left
     }
+
+    /**
+     * All-day instances sit on UTC midnights with an exclusive END, so a query from local midnight east of UTC also
+     * returns yesterday's (END = today 00:00 UTC). Keep only those still running on [today].
+     */
+    fun allDayLive(endUtcMs: Long, today: java.time.LocalDate): Boolean =
+        java.time.Instant.ofEpochMilli(endUtcMs).atZone(java.time.ZoneOffset.UTC).toLocalDate().isAfter(today)
 }
 
 class HoldSwitch(private val onMs: Long, private val offMs: Long) {
