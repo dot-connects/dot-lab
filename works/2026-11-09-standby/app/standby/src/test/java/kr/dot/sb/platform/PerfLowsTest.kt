@@ -24,7 +24,10 @@ class PerfLowsTest {
         val all = listOf(item("a", 10), item("b", 22), item("allday", null), item("tomorrow", 9, d.plusDays(1)))
         val (agenda, upcoming) = kr.dot.sb.data.Agenda.visible(all, d.atTime(21, 41))
         assertEquals(listOf("b", "allday"), agenda.map { it.title })
-        assertEquals(listOf("b", "allday", "tomorrow"), upcoming.map { it.title })
+        // today's ended timed event stays for the calendar card, flagged; tomorrow's is not today's
+        assertEquals(listOf("a", "b", "allday", "tomorrow"), upcoming.map { it.title })
+        assertEquals(listOf(true, false, false, false), upcoming.map { it.done })
+        assertEquals(listOf(false, false), agenda.map { it.done })
         // six left today: the agenda shows five
         val many = (0 until 6).map { item("e$it", 23) }
         assertEquals(5, kr.dot.sb.data.Agenda.visible(many, d.atTime(21, 41)).first.size)

@@ -197,7 +197,7 @@ object DeviceSources {
         } catch (e: SecurityException) { null }
     }
 
-    /** Events from today through the next 14 days that are not over yet, in start order, at most 8; [excluded] calendar keys left out. */
+    /** Events from today through the next 14 days in start order, at most 12; today's ended ones stay (`Agenda.visible` flags them); [excluded] calendar keys left out. */
     fun upcoming(ctx: Context, now: LocalDateTime, excluded: Set<String> = emptySet()): List<AgendaItem>? {
         if (!has(ctx, Manifest.permission.READ_CALENDAR)) return null
         // keys, not ids, are stored (ids get reused): map them to today's ids; no clause at all when nothing is excluded
@@ -216,9 +216,9 @@ object DeviceSources {
         return try {
             buildList {
                 ctx.contentResolver.query(uri, cols, where, null, "${CalendarContract.Instances.BEGIN} ASC")?.use { c ->
-                    while (c.moveToNext() && size < 8) {
+                    while (c.moveToNext() && size < 12) {
                         val allDay = c.getInt(4) == 1
-                        if (!allDay && c.getLong(1) < nowMs) continue // already over
+                        if (!allDay && c.getLong(1) < nowMs && Instant.ofEpochMilli(c.getLong(0)).atZone(zone).toLocalDate() != today) continue // over, and not today's
                         if (allDay && !Agenda.allDayLive(c.getLong(1), today)) continue // yesterday's, ended
                         // all-day instances are stored at UTC midnight
                         val at = Instant.ofEpochMilli(c.getLong(0)).atZone(if (allDay) ZoneId.of("UTC") else zone)

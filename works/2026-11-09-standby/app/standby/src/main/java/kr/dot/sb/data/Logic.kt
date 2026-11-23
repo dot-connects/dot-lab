@@ -39,10 +39,14 @@ class Debounce(private val waitMs: Long, private val maxWaitMs: Long) {
 
 /** plan-r11 B4: what the agenda/calendar cards show at [now] from the last calendar query. */
 object Agenda {
-    /** (today's agenda, at most 5; everything upcoming): items that ended before [now] are gone. */
+    /**
+     * (today's live agenda, at most 5; everything upcoming): items that ended before [now] are gone from the agenda;
+     * today's ended timed ones stay in the second list flagged `done` (calendar card), other days' ended ones drop.
+     */
     fun visible(all: List<kr.dot.sb.ui.state.AgendaItem>, now: java.time.LocalDateTime): Pair<List<kr.dot.sb.ui.state.AgendaItem>, List<kr.dot.sb.ui.state.AgendaItem>> {
-        val left = all.filter { it.end == null || it.end.isAfter(now) }
-        return left.filter { it.date == now.toLocalDate() }.take(5) to left
+        val today = now.toLocalDate()
+        val all2 = all.mapNotNull { if (it.end == null || it.end.isAfter(now)) it.copy(done = false) else if ((it.date ?: today) == today) it.copy(done = true) else null }
+        return all2.filter { it.date == today && !it.done }.take(5) to all2
     }
 
     /**

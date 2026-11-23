@@ -171,6 +171,7 @@ object Fixtures {
             AgendaItem("19:00", "헬스", 0xFF30D158), AgendaItem("22:30", "독서 모임", 0xFFFF375F),
         ),
         upcoming = listOf(
+            AgendaItem("종일", "IRP", 0xFF30D158, now.toLocalDate()), AgendaItem("09:30", "팀 회의", 0xFF0A84FF, now.toLocalDate(), done = true),
             AgendaItem("22:30", "독서 모임", 0xFFFF375F, now.toLocalDate()), AgendaItem("13:00", "병원 예약", 0xFFFF9C56, now.toLocalDate().plusDays(2)),
             AgendaItem("종일", "김장", 0xFF6FDC86, now.toLocalDate().plusDays(5)), AgendaItem("종일", "수능", 0xFFFF9F0A, now.toLocalDate().plusDays(10)),
             AgendaItem("18:00", "엄마 생신", 0xFFBF5AF2, now.toLocalDate().plusDays(12)),
