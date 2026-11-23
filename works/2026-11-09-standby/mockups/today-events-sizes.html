@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>스탠드 스크린 — D안 카드 크기별 검토</title>
+<style>
+  :root { --bg:#141210; --plate:#211f1d; --ink:#e4e3e0; --ink2:#9a9793; --acc:#f5c07e; --onacc:#241a0d; --ev:#8f86f5; --green:#56b96f; --red:#e0685e; }
+  * { box-sizing: border-box; margin: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: "Pretendard","Apple SD Gothic Neo","Noto Sans KR",system-ui,sans-serif; padding: 20px 14px 60px; }
+  h1 { font-size: 18px; margin-bottom: 6px; }
+  h2 { font-size: 15px; margin: 30px 0 4px; }
+  .lead, .note { color: var(--ink2); font-size: 13px; line-height: 1.55; }
+  .note { margin-bottom: 10px; max-width: 640px; }
+  .lead { margin-bottom: 8px; max-width: 640px; }
+  .tabs { display: flex; gap: 6px; flex-wrap: wrap; margin: 12px 0 4px; position: sticky; top: 0; background: var(--bg); padding: 6px 0; z-index: 2; }
+  .tabs button { background: #2a2826; color: var(--ink); border: 0; border-radius: 99px; padding: 7px 12px; font: inherit; font-size: 13px; }
+  .tabs button.on { background: var(--acc); color: var(--onacc); font-weight: 700; }
+  .row { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 6px; align-items: flex-start; }
+  .cap { font-size: 11px; color: var(--ink2); margin-bottom: 4px; white-space: nowrap; }
+  .card { background: var(--plate); border-radius: 22px; padding: 12px; overflow: hidden; display: flex; flex-direction: column; flex: none; position: relative; }
+  .head { font-size: 13px; font-weight: 700; white-space: nowrap; }
+  .head .dow { color: var(--acc); } .head .m { color: var(--ink2); }
+  .hero { font-weight: 300; line-height: .95; letter-spacing: -2px; }
+  .chip { display: inline-block; background: var(--acc); color: var(--onacc); font-size: 11px; font-weight: 800; border-radius: 99px; padding: 2px 7px; }
+  .sec { font-size: 11px; font-weight: 700; color: var(--ink2); display: flex; align-items: center; gap: 6px; margin: 8px 0 2px; white-space: nowrap; }
+  .sec::after { content: ""; flex: 1; height: 1px; background: #ffffff1a; }
+  .sec.o { color: var(--acc); } .sec.o::after { background: rgba(245,192,126,.35); }
+  .ev { display: flex; gap: 7px; align-items: baseline; margin-top: 6px; min-width: 0; }
+  .bar { width: 3px; height: 15px; border-radius: 3px; background: var(--ev); flex: none; align-self: center; }
+  .t { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .w { font-size: 13px; color: var(--ink2); white-space: nowrap; flex: none; font-variant-numeric: tabular-nums; }
+  .w.now { color: var(--acc); font-weight: 700; }
+  .done .t { color: var(--ink2); text-decoration: line-through; font-weight: 500; }
+  .done .bar { opacity: .35; }
+  .more { font-size: 12px; color: var(--ink2); margin-top: 6px; white-space: nowrap; }
+  .empty { font-size: 13px; color: var(--ink2); margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); text-align: center; font-size: 12px; row-gap: 2px; }
+  .grid .dw { color: var(--ink2); font-weight: 600; font-size: 11px; padding-bottom: 2px; }
+  .grid .d { position: relative; height: var(--cell); display: flex; align-items: center; justify-content: center; font-variant-numeric: tabular-nums; }
+  .grid .d.sun { color: var(--red); }
+  .grid .d.out { visibility: hidden; }
+  .grid .d.today span { background: var(--acc); color: var(--onacc); font-weight: 700; border-radius: 50%; width: calc(var(--cell) * .86); height: calc(var(--cell) * .86); display: flex; align-items: center; justify-content: center; }
+  .grid .d i { position: absolute; bottom: 0; width: 4px; height: 4px; border-radius: 50%; background: var(--ev); }
+  .grid .d.today i { bottom: -3px; background: var(--acc); }
+  .issues { margin-top: 26px; max-width: 680px; }
+  .issues li { font-size: 13px; line-height: 1.6; color: var(--ink); margin-left: 18px; }
+  .issues b { color: var(--acc); }
+</style>
+</head>
+<body>
+<h1>D안 · 카드 크기별 검토</h1>
+<p class="lead">앱이 실제로 쓰는 다섯 모양(작은·짧고 넓은·좁고 긴·넓은 달력·달력)과 지금 폰의 칸(198×253)에 D안을 같은 규칙으로 얹었어요. 위 버튼으로 경우를 바꿔 보세요. 1 px = 1 dp, 넓은 달력은 옆으로 밀어서 봐요.</p>
+<div class="tabs" id="tabs"></div>
+<div id="out"></div>
+
+<div class="issues">
+  <h2>검토 결과 — 크기별로 달라지는 규칙</h2>
+  <ul>
+    <li><b>작은 칸(150dp 미만)</b>: 목록이 들어갈 자리가 없어요. 큰 날짜 옆에 <b>"오늘 N"</b> 배지만 달아요. 오늘 일정이 없으면 배지도 없어요.</li>
+    <li><b>짧고 넓은 칸</b>: 1~2줄뿐이라 구역 이름을 빼요. <b>오늘 일정을 먼저</b>, 시간은 살구색으로 표시해요. 끝난 일정은 줄이 모자라면 먼저 빠져요.</li>
+    <li><b>좁고 긴 칸·지금 폰 칸</b>: D안 그대로예요. 날짜 숫자는 최소 약 56dp만 남기고 나머지 높이를 일정 줄에 줘요. 그래서 긴 칸일수록 일정이 많이 보여요. 줄이 모자라면 ① 끝난 일정 ② 다가오는 일정 순서로 빼요(5줄 미만 칸이면 다가오는 일정은 0개까지). 그래도 남는 오늘 일정은 <b>"오늘 외 N"</b>으로 묶어요.</li>
+    <li><b>넓은 달력·달력</b>: 목록은 D안이고, 달력 칸의 오늘 원 아래에도 일정 점을 찍어요. 지금은 원에 가려서 안 보여요.</li>
+    <li><b>오늘 일정이 없으면</b>: "오늘" 구역을 통째로 빼고 지금처럼 다가오는 일정만 보여요. "오늘 일정 없음" 한 줄로 자리를 쓰지 않아요.</li>
+    <li><b>한 줄 배치</b>(제목 + 시간): 좁은 칸에서는 긴 제목이 말줄임돼요. 시간은 절대 잘리지 않게 오른쪽에 붙여요.</li>
+  </ul>
+</div>
+
+<script>
+const TODAY = 23, MONTH = 11, DOW = "월";
+const CASES = {
+  "보통": { today: [["IRP","종일","g"],["점심 미팅","12:00","",true],["지원 집들이","19:00"]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘 많음": { today: [["IRP","종일","g"],["아침 회의","09:00","",true],["점심 미팅","12:00","",true],["병원 예약","15:30"],["헬스","18:00"],["지원 집들이","19:00"]], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"]] },
+  "오늘 없음": { today: [], up: [["svp 형들","화 08:00"],["필라테스","수 08:00"],["파트회식 본앤브레드 6시","목 08:00"]] },
+  "오늘만": { today: [["IRP","종일","g"],["지원 집들이","19:00"]], up: [] },
+};
+const SIZES = [
+  ["작은 칸", 140, 120, "tiny"],
+  ["짧고 넓은 칸", 270, 200, "short"],
+  ["지금 폰 칸", 198, 253, "narrow"],
+  ["좁고 긴 칸", 218, 419, "narrow"],
+  ["달력", 338, 419, "month"],
+  ["넓은 달력", 695, 419, "wide"],
+];
+const ROW = 27, SEC = 23, HEAD = 17;   // one event row, one section label, the head line (dp)
+const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const head = () => el("div", "head", `<span class="dow">${DOW}요일</span> <span class="m">${MONTH}월</span>`);
+function evRow([t, w, c, done], isToday) {
+  const r = el("div", "ev" + (done ? " done" : ""));
+  const b = el("div", "bar"); if (c === "g") b.style.background = "var(--green)";
+  r.append(b, el("div", "t", t), el("div", "w" + (isToday && !done ? " now" : ""), w));
+  return r;
+}
+/** Today first. Upcoming gets what is left, or one row when the card has 5+ rows; done-today goes before live ones;
+ *  live today rows that still do not fit fold into "오늘 외 N" (done ones just drop). */
+function plan(c, rows, labels) {
+  const L = labels ? .85 : 0, up = c.up.slice();
+  if (!c.today.length) return { today: [], up: up.slice(0, Math.max(0, Math.floor(rows))), more: 0 };
+  const room = rows - L, spare = room - c.today.length - L;
+  const nUp = spare >= 1 ? Math.min(up.length, Math.floor(spare)) : (rows >= 5 ? Math.min(1, up.length) : 0);
+  const todayRoom = room - (nUp ? nUp + L : 0);
+  let today = c.today.slice(), more = 0;
+  if (today.length > todayRoom) today = today.filter(x => !x[3]);
+  if (today.length > todayRoom) { const k = Math.max(1, Math.floor(todayRoom - .8)); more = today.length - k; today = today.slice(0, k); }
+  return { today, up: up.slice(0, nUp), more };
+}
+function list(c, rows, labels) {
+  const box = el("div");
+  const p = plan(c, rows, labels);
+  if (!c.today.length && !c.up.length) { box.append(el("div", "empty", "다가오는 일정이 없어요")); return box; }
+  if (p.today.length) {
+    if (labels) box.append(el("div", "sec o", "오늘"));
+    p.today.forEach(x => box.append(evRow(x, true)));
+    if (p.more) box.append(el("div", "more", `오늘 외 ${p.more}`));
+  }
+  if (p.up.length) {
+    if (labels && p.today.length) box.append(el("div", "sec", "다가오는"));
+    p.up.forEach(x => box.append(evRow(x, false)));
+  }
+  return box;
+}
+function monthGrid(c, w, h) {
+  const g = el("div", "grid"); const cell = Math.min(w / 7 / 1.1, h / 6.6);
+  g.style.setProperty("--cell", cell + "px");
+  "일월화수목금토".split("").forEach(d => g.append(el("div", "dw", d)));
+  const first = 0 /* 2026-11-01 is a Sunday */, days = 30, evDays = { 24: 1, 25: 1, 26: 1, 4: 1, 6: 1, 13: 1, 18: 1, 20: 1 };
+  if (c.today.length) evDays[TODAY] = 1; else delete evDays[TODAY];
+  for (let i = 0; i < 35; i++) {
+    const day = i - first + 1, cls = ["d"];
+    if (day < 1 || day > days) cls.push("out");
+    if (i % 7 === 0) cls.push("sun");
+    if (day === TODAY) cls.push("today");
+    const d = el("div", cls.join(" "), `<span>${day}</span>`);
+    if (evDays[day]) d.append(el("i"));
+    g.append(d);
+  }
+  return g;
+}
+function card([name, w, h, shape], c, rowsOverride) {
+  const wrap = el("div"); wrap.append(el("div", "cap", `${name} ${w}×${h}`));
+  const k = el("div", "card"); k.style.width = w + "px"; k.style.height = h + "px";
+  const ih = h - 24, iw = w - 24;
+  if (shape === "tiny") {
+    k.append(head());
+    const r = el("div"); r.style.cssText = "display:flex;align-items:flex-end;gap:6px;margin-top:auto";
+    const hero = el("div", "hero", TODAY); hero.style.fontSize = Math.min(ih - HEAD - 4, iw * 0.55) + "px";
+    r.append(hero); if (c.today.some(x => !x[3])) r.append(Object.assign(el("div", "chip", `오늘 ${c.today.filter(x => !x[3]).length}`), { style: "margin-bottom:8px" }));
+    k.append(r);
+  } else if (shape === "short") {
+    k.style.flexDirection = "row"; k.style.gap = "12px";
+    const left = el("div"); left.style.cssText = `width:${iw * .35}px;display:flex;flex-direction:column;justify-content:space-between`;
+    const hero = el("div", "hero", TODAY); hero.style.fontSize = Math.min(ih - HEAD, iw * .35 * .62) + "px";
+    left.append(head(), hero);
+    const right = el("div"); right.style.cssText = "flex:1;min-width:0;display:flex;flex-direction:column";
+    const g = monthGrid(c, iw * .65 - 12, 120); g.style.marginBottom = "6px";
+    // week strip only: keep the header + the row holding today
+    const cells = [...g.children]; cells.slice(7).forEach((x, i) => { if (Math.floor(i / 7) !== Math.floor((TODAY - 1) / 7)) x.remove(); });
+    right.append(g);
+    const rows = rowsOverride ?? Math.max(1, Math.floor((ih - 60) / ROW));
+    right.append(list(c, rows, false));
+    k.append(left, right);
+  } else if (shape === "narrow") {
+    k.append(head());
+    const rows = rowsOverride ?? Math.floor((ih - HEAD - 70) / ROW);   // the day keeps >= ~56 dp, the rest is rows
+    const l = list(c, rows, true);
+    const hero = el("div", "hero", TODAY);
+    k.append(hero); k.append(el("div", null)); k.lastChild.style.flex = "1";
+    k.append(l);
+    document.body.append(k); // measure what the list leaves to the day number
+    const room = ih - HEAD - l.offsetHeight - 4;
+    hero.style.fontSize = Math.max(56, Math.min(room * 0.95, iw * 0.6)) + "px";
+    k.remove();
+  } else if (shape === "month") {
+    const t = el("div", "head", `<span class="dow">${MONTH}월</span> <span class="m">2026</span>`); t.style.fontSize = "17px";
+    k.append(t);
+    const g = monthGrid(c, iw, ih * .55); g.style.margin = "8px 0 2px"; k.append(g);
+    const rows = rowsOverride ?? Math.floor((ih - 17 - ih * .55 - 20) / ROW);
+    k.append(list(c, rows, true));
+  } else {
+    k.style.flexDirection = "row"; k.style.gap = "12px";
+    const gw = Math.min(iw * .6, (ih / 6.6) * 7 * 1.3);
+    const left = el("div"); left.style.cssText = "flex:1;min-width:0;display:flex;flex-direction:column";
+    const rows = rowsOverride ?? Math.floor((ih - HEAD - 80) / ROW);
+    const l = list(c, rows, true);
+    const hero = el("div", "hero", TODAY); hero.style.fontSize = "64px";
+    left.append(head(), hero, Object.assign(el("div"), { style: "flex:1" }), l);
+    const g = monthGrid(c, gw, ih); g.style.cssText += `;width:${gw}px;align-self:center`;
+    k.append(left, g);
+  }
+  wrap.append(k); return wrap;
+}
+function render(key) {
+  document.querySelectorAll(".tabs button").forEach(b => b.classList.toggle("on", b.textContent === key));
+  const out = document.getElementById("out"); out.innerHTML = "";
+  const r1 = el("div", "row"), r2 = el("div", "row");
+  SIZES.forEach((s, i) => {
+    const row = i < 4 ? r1 : r2; out.append(row);
+    let w = card(s, CASES[key], 12); row.append(w);
+    for (let n = 11; n >= 1; n--) {               // measured fit: drop a row until the card does not overflow
+      const k = w.querySelector(".card");
+      if (k.scrollHeight <= k.clientHeight + 1 && [...k.querySelectorAll("*")].every(e => e.getBoundingClientRect().bottom <= k.getBoundingClientRect().bottom - 8)) break;
+      const nw = card(s, CASES[key], n); row.replaceChild(nw, w); w = nw;
+    }
+  });
+  out.insertBefore(el("div", null, "&nbsp;"), r2);
+}
+const tabs = document.getElementById("tabs");
+Object.keys(CASES).forEach(k => { const b = el("button", null, k); b.onclick = () => render(k); tabs.append(b); });
+render(CASES[decodeURIComponent(location.hash.slice(1))] ? decodeURIComponent(location.hash.slice(1)) : "보통");
+</script>
+</body>
+</html>
