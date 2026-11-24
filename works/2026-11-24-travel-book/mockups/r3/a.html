@@ -1,0 +1,148 @@
+<!-- fonts: Gowun+Batang:wght@400;700 | Jost:wght@400;500 -->
+<style>
+/* 여백의 책: a 12-column page (1 unit = 1/12 page width). Photos sit on the unit grid, hug the outer edge;
+   captions hang under the photo's left edge. Positions in %, type in px. */
+.t-a{--paper:#f5f5f2;--ink:#1f2326;--soft:#666c71;--plane:#2c3b44;--onplane:#e6eaeb;
+  --f-b:"Gowun Batang","Noto Serif KR",serif;--f-m:"Jost","Gowun Batang",sans-serif}
+.t-a .pg{background:var(--paper);color:var(--ink);font-family:var(--f-b);word-break:keep-all}
+.t-a .ph{position:absolute;overflow:hidden;background:#d9dcdd}
+.t-a .tx{position:absolute}
+.t-a .m{font:400 9.5px/1.6 var(--f-m);letter-spacing:.07em;color:var(--soft);margin:0}
+.t-a .c{font:400 11px/1.85 var(--f-b);margin:5px 0 0;color:var(--ink);text-wrap:pretty}
+.t-a .fo{position:absolute;bottom:4.6%;font:400 9.5px/1 var(--f-m);letter-spacing:.1em;color:var(--soft);display:flex;gap:10px}
+.t-a .fo b{font-weight:500;color:var(--ink)}
+.t-a .fo.l{left:8.333%}
+.t-a .fo.r{right:8.333%;flex-direction:row-reverse}
+
+/* covers */
+.t-a .cv h3{font:400 24px/1.2 var(--f-b);letter-spacing:.06em;margin:0}
+.t-a .cv .d{font:400 10px/1 var(--f-m);letter-spacing:.16em;margin-top:11px}
+.t-a .cv1 .ph{left:41.667%;right:8.333%;top:12.5%;height:47%}
+.t-a .cv1 .tx{left:8.333%;bottom:10%}
+.t-a .cv1 .d{color:var(--soft)}
+.t-a .cv2{color:#fff}
+.t-a .cv2::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(8,20,40,.30),rgba(8,20,40,0) 42%,rgba(8,20,40,0) 74%,rgba(8,20,40,.34))}
+.t-a .cv2 .tx{z-index:1;text-shadow:0 1px 6px rgba(0,10,30,.45)}
+.t-a .cv2 .v{left:8.333%;top:7%;writing-mode:vertical-rl}
+.t-a .cv2 .v h3{font-size:22px;letter-spacing:.16em}
+.t-a .cv2 .v i{display:inline-block;height:.7em}
+.t-a .cv2 .b{left:8.333%;bottom:6.5%}
+.t-a .cv2 .d{margin:0}
+.t-a .cv3{background:var(--plane);color:var(--onplane)}
+.t-a .cv3 .ph{left:25%;width:50%;top:13.5%;aspect-ratio:3/4}
+.t-a .cv3 .tx{left:0;right:0;top:71%;text-align:center}
+.t-a .cv3 h3{font-size:18px;letter-spacing:.2em;text-indent:.2em}
+.t-a .cv3 .d{opacity:.78}
+
+/* chapter openers: colour plane / full photo / white */
+.t-a .day{font:400 10px/1 var(--f-m);letter-spacing:.14em;margin:0}
+.t-a .ti{font:400 21px/1.35 var(--f-b);letter-spacing:.04em;margin:9px 0 0}
+.t-a .pl{background:var(--plane);color:var(--onplane)}
+.t-a .pl .m{color:inherit;opacity:.78}
+.t-a .pl .a{left:8.333%;top:9.375%}
+.t-a .pl .z{left:8.333%;right:8.333%;bottom:8%;display:grid;grid-template-columns:auto 1fr;gap:3px 14px}
+.t-a .pl .z span{font:400 10.5px/1.7 var(--f-m);letter-spacing:.05em}
+.t-a .pl .z span:nth-child(odd){opacity:.72}
+.t-a .fb{color:#fff}
+.t-a .fb::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,rgba(6,22,40,.46),rgba(6,22,40,0) 40%,rgba(6,22,40,0) 68%,rgba(6,22,40,.52))}
+.t-a .fb .tx{z-index:1;text-shadow:0 1px 5px rgba(0,12,30,.5)}
+.t-a .fb .m{color:#fff}
+.t-a .fb .c{color:#fff}
+.t-a .fb .a{left:8.333%;top:9.375%}
+.t-a .fb .z{left:8.333%;right:25%;bottom:6.5%}
+
+/* body pages */
+.t-a .big .ph{left:16.667%;right:0;top:12.5%;height:52%}
+.t-a .big .tx{left:16.667%;top:67.5%;width:64%}
+.t-a .rest .a{left:16.667%;top:21%;width:62%}
+.t-a .rest .a p{font:400 12px/2.1 var(--f-b);margin:0}
+.t-a .rest .ph{right:8.333%;width:41.667%;top:55%;aspect-ratio:4/3}
+.t-a .rest .z{left:50%;top:80.5%}
+.t-a .vid .ph{left:8.333%;right:8.333%;top:18.75%;aspect-ratio:16/9}
+.t-a .vid .tx{left:8.333%;top:58%;width:72%}
+.t-a .vid .n{position:absolute;left:8.333%;bottom:12%;font:400 9.5px/1.6 var(--f-m);letter-spacing:.04em;color:var(--soft);margin:0}
+.t-a .set .g{position:absolute;left:8.333%;right:8.333%;top:14%;display:grid;grid-template-columns:4fr 5fr;gap:9px 8.5%}
+.t-a .set .g i{display:block;aspect-ratio:3/2;overflow:hidden;background:#d9dcdd}
+.t-a .set .g div{align-self:end}
+.t-a .set .c{font-size:10.5px;line-height:1.7;margin-top:3px}
+.t-a .tall .ph{left:41.667%;right:8.333%;top:9.375%;height:68%}
+.t-a .tall .a{left:8.333%;top:9.375%;width:30%}
+.t-a .tall .a .m{margin-top:12px}
+.t-a .tall .z{left:8.333%;bottom:22.625%;width:29%}
+.t-a .tall .z .c{font-size:10.5px;line-height:1.8}
+.t-a .end .ph{left:16.667%;width:33.333%;top:12.5%;aspect-ratio:4/3}
+.t-a .end .k{left:54.5%;top:23.5%}
+.t-a .end .a{left:16.667%;top:37%;width:67%}
+.t-a .end h4{font:400 15px/1.5 var(--f-b);letter-spacing:.03em;margin:0 0 14px}
+.t-a .end .a p{font:400 11px/2 var(--f-b);margin:0 0 9px;text-wrap:pretty}
+.t-a .idx .a{left:16.667%;right:8.333%;top:9.375%}
+.t-a .idx dl{display:grid;grid-template-columns:38px 1fr auto;gap:0 6px;margin:0;font:400 10.5px/1.85 var(--f-m);letter-spacing:.03em}
+.t-a .idx dt{grid-column:1/4;font:400 9.5px/1 var(--f-m);letter-spacing:.14em;color:var(--soft);margin:15px 0 5px}
+.t-a .idx dd{margin:0}
+.t-a .idx dd:nth-of-type(3n+1),.t-a .idx dd:nth-of-type(3n){color:var(--soft)}
+.t-a .idx .z{left:16.667%;right:8.333%;bottom:10.5%}
+</style>
+<section class="t-a" data-palettes='[{"--paper":"#f5f5f2","--ink":"#1f2326","--soft":"#666c71","--plane":"#2c3b44","--onplane":"#e6eaeb"},{"--paper":"#f3f4ef","--ink":"#20241f","--soft":"#676d63","--plane":"#4f5b48","--onplane":"#eceee5"},{"--paper":"#fafafa","--ink":"#18191b","--soft":"#666a6e","--plane":"#c5cbce","--onplane":"#1d2226"},{"--paper":"#f1f0ee","--ink":"#1a1a1a","--soft":"#696662","--plane":"#232324","--onplane":"#e8e6e2"}]'>
+  <div class="head"><h2>여백의 책</h2><p class="idea">사진 한 장을 어디에, 얼마나 크게 놓느냐로 만드는 책. 쪽의 절반은 비워 두고 글은 사진 아래 작게.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+  <h3 class="sub">표지 후보</h3>
+  <div class="strip">
+    <div class="pg cv cv1"><div class="ph"><img src="{{hallasan}}" alt="" style="object-position:55% 50%"></div><div class="tx"><h3>제주, 사흘</h3><div class="d">2026.06.12 — 06.14</div></div></div>
+    <div class="pg cv cv2"><img src="{{hyeopjae}}" alt="" style="object-position:70% 50%"><div class="tx v"><h3>제주<i></i>사흘</h3></div><div class="tx b"><div class="d">2026.06.12 — 06.14</div></div></div>
+    <div class="pg cv cv3"><div class="ph"><img src="{{road}}" alt="" style="object-position:88% 50%"></div><div class="tx"><h3>제주, 사흘</h3><div class="d">2026.06.12 — 06.14</div></div></div>
+  </div>
+  <div class="under"><span>① 흰 표지 · 바깥쪽에 붙인 작은 사진, 제목은 왼쪽 아래 ② 사진 전면 · 빈 하늘에 세로쓰기 제목 ③ 색 면 · 가운데 세로 사진 한 장</span><span>3개</span></div>
+
+  <h3 class="sub">책 본문</h3>
+  <div class="strip">
+    <div class="pg pl"><div class="tx a"><p class="day">첫째 날</p><h4 class="ti">서쪽 바다</h4><p class="m" style="margin-top:10px">06.12 금 · 맑음 24°</p></div><div class="tx z"><span>13:20</span><span>협재 해변</span><span>17:40</span><span>신창 풍차해안도로</span></div></div>
+
+    <div class="pg big"><div class="ph"><img src="{{hyeopjae}}" alt=""></div><div class="tx"><p class="m">협재 해변 · 13:20</p><p class="c">물이 생각보다 차가웠다. 발목까지만 담그고 앉아서, 비양도가 흐려졌다가 다시 또렷해지는 걸 봤다.</p></div><div class="fo r"><b>7</b><span>06.12</span></div></div>
+
+    <div class="pg rest"><div class="tx a"><p>해가 낮아지자 바람이 세졌다.<br>풍차 도는 소리가<br>파도 소리보다 컸다.</p></div><div class="ph"><img src="{{road}}" alt="" style="object-position:80% 50%"></div><div class="tx z"><p class="m">신창 풍차해안도로 · 17:40</p></div><div class="fo l"><b>10</b><span>06.12</span></div></div>
+
+    <div class="pg fb"><img src="{{udo}}" alt="" style="object-position:42% 50%"><div class="tx a"><p class="day">둘째 날</p><h4 class="ti">섬과 동쪽 해안</h4><p class="m" style="margin-top:10px">06.13 토 · 바람 강함 21°</p></div><div class="tx z"><p class="m">우도 · 09:42 · 도항선 15분</p><p class="c">모자가 두 번 날아갔다. 등대에 오르니 섬이 끝에서 끝까지 보였다.</p></div></div>
+
+    <div class="pg vid"><div class="ph"><img src="{{haenyeo}}" alt="" style="object-position:50% 40%"><div class="play"><span></span></div></div><div class="tx"><p class="m">하도 해녀 탈의장 앞 · 14:10 · 영상 0:03</p><p class="c">물질을 마친 두 분이 말없이 그물을 갰다. 젖은 고무옷에서 물 떨어지는 소리가 났다.</p></div><p class="n">PDF에서는 이 장면이 사진 한 장으로 실립니다</p><div class="fo r"><b>15</b><span>06.13</span></div></div>
+
+    <div class="pg set"><div class="g">
+      <div><p class="m">16:05<br>월정리 돌담길</p><p class="c">돌담 너머로 밭, 그 뒤로 낮은 지붕.</p></div><i><img src="{{doldam}}" alt=""></i>
+      <div><p class="m">17:20<br>월정리 해변</p><p class="c">산책로에 사람이 늘었다.</p></div><i><img src="{{woljeongri}}" alt="" style="object-position:60% 60%"></i>
+      <div><p class="m">19:05<br>성산일출봉 앞</p><p class="c">해가 지고 나서야 수국이 파랗게 보였다.</p></div><i><img src="{{seongsan}}" alt=""></i>
+    </div><div class="fo l"><b>18</b><span>06.13</span></div></div>
+
+    <div class="pg tall"><div class="tx a"><p class="day">셋째 날</p><h4 class="ti">숲과<br>오름</h4><p class="m">06.14 일<br>흐림 22°</p></div><div class="ph"><img src="{{hallasan}}" alt="" style="object-position:55% 50%"></div><div class="tx z"><p class="m">한라산 어리목 숲길<br>08:30</p><p class="c">나무 계단이 젖어 있었다. 안개 때문에 열 걸음 앞까지만 보였다.</p></div><div class="fo r"><b>23</b><span>06.14</span></div></div>
+
+    <div class="pg end"><div class="ph"><img src="{{tangerine}}" alt=""></div><div class="tx k"><p class="m">귤나무 카페 마당<br>13:30</p></div><div class="tx a"><h4>사흘 동안 물 가까이 있었다</h4><p>첫날은 서쪽 바다, 둘째 날은 섬과 동쪽 해안이었다. 마지막 날 숲으로 들어갔는데 거기서는 안개가 물처럼 움직였다.</p><p>귤나무는 아직 초록이었다. 카페 마당에 앉아 비행기 시간을 세 번 확인했다. 커피가 다 식을 때까지 아무도 먼저 일어나지 않았다.</p></div><div class="fo l"><b>28</b><span>06.14</span></div></div>
+
+    <div class="pg idx"><div class="tx a"><dl>
+      <dt style="margin-top:0">06.12 금</dt>
+      <dd>13:20</dd><dd>협재 해변</dd><dd>7</dd>
+      <dd>17:40</dd><dd>신창 풍차해안도로</dd><dd>10</dd>
+      <dt>06.13 토</dt>
+      <dd>09:42</dd><dd>우도</dd><dd>12</dd>
+      <dd>14:10</dd><dd>하도 해녀 탈의장 앞</dd><dd>15</dd>
+      <dd>16:05</dd><dd>월정리 돌담길</dd><dd>18</dd>
+      <dd>17:20</dd><dd>월정리 해변</dd><dd>18</dd>
+      <dd>19:05</dd><dd>성산일출봉 앞</dd><dd>18</dd>
+      <dt>06.14 일</dt>
+      <dd>08:30</dd><dd>한라산 어리목 숲길</dd><dd>23</dd>
+      <dd>11:10</dd><dd>원물오름</dd><dd>25</dd>
+      <dd>13:30</dd><dd>귤나무 카페 마당</dd><dd>28</dd>
+    </dl></div><div class="tx z"><p class="m">사진 46 · 영상 3 · 9곳 · 214km</p></div><div class="fo r"><b>30</b></div></div>
+  </div>
+  <div class="under"><span>장 표지(색 면) → 한 장 크게 → 쉬어가는 쪽 → 장 표지(사진 전면) → 영상 → 세 장 묶음 → 장 표지(흰 쪽+세로 사진) → 맺음 → 실린 곳</span><span>9쪽</span></div>
+
+  <details class="notes"><summary>디자인 규칙</summary><ul>
+    <li>격자: 쪽 폭을 12칸으로 나눈다(1칸 = 폭의 1/12). 바깥 여백 1칸, 위 1.5~2칸, 아래는 위보다 넓게 2.5칸 이상. 사진·글은 모두 칸 선에 맞춘다.</li>
+    <li>사진 크기는 네 가지뿐: 전면(12칸) · 큰 것(10칸, 한쪽 끝은 쪽 밖으로) · 중간(6칸 세로) · 작은 것(4~5칸). 한 쪽에 사진 면적이 60%를 넘는 건 전면 쪽뿐이고, 나머지는 55% 이하.</li>
+    <li>비대칭: 사진은 가운데 두지 않고 바깥쪽 끝에 붙인다. 작은 사진일수록 여백을 넓게(작은 사진 쪽은 쪽의 80% 이상이 흰 면).</li>
+    <li>리듬: 전면·색 면 쪽 다음에는 반드시 흰 쪽. 사진 3~4쪽마다 글 한두 줄만 있는 쉬어가는 쪽 1개. 같은 배치를 연달아 쓰지 않는다.</li>
+    <li>장 표지는 세 가지를 날마다 돌려 쓴다: 색 면 + 작은 제목 / 사진 전면 + 작은 제목 / 흰 쪽 + 세로 사진. 제목은 늘 왼쪽 위 21px, 그 아래 날짜·날씨 한 줄.</li>
+    <li>캡션: 사진 바로 아래, 사진 왼쪽 끝에 맞춤. 첫 줄 "곳 · 시각"(9.5px, 회색) → 다음 줄 문장(11px, 최대 3줄). 묶음 쪽은 사진 왼쪽 칸에, 사진 아래 끝에 맞춤.</li>
+    <li>글꼴: 한글은 고운바탕 400 한 굵기만(굵은 글씨 없음). 숫자·시각·쪽 번호는 Jost 400, 자간 +0.07em. 크기는 9.5 / 11 / 15 / 21px 네 단계.</li>
+    <li>색: 종이색 1 + 먹색 1 + 회색 1 + 색 면 1개가 전부. 색 면은 장 표지 1쪽과 표지 ③에만 쓰고 줄·테두리·아이콘은 없다. 사진 위 글자는 흰색 + 위아래 어두운 그라데이션(최대 50%).</li>
+    <li>작은 장치: 흰 쪽 아래 바깥 모서리에 "쪽 번호 + 날짜"(9.5px). 전면·색 면 쪽에는 넣지 않는다. 영상은 16:9 사진 + ▶, 아래에 "영상 0:03"과 PDF 안내 한 줄. 책 끝에 "실린 곳"(시각 · 곳 · 쪽) 목록과 숫자 한 줄.</li>
+    <li>표지: ① 흰 표지 — 사진 6칸을 오른쪽 위에, 제목 24px 왼쪽 아래 ② 전면 사진 — 하늘·바다처럼 빈 면이 있는 사진을 골라 그 자리에 세로쓰기 제목 22px(쉼표는 빈칸으로) ③ 색 면 — 세로로 자른 사진 6칸을 가운데, 제목 18px 아래 가운데. 세 표지 모두 제목 + 날짜 두 줄만.</li>
+  </ul></details>
+</section>

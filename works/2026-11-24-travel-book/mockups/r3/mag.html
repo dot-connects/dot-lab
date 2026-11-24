@@ -1,0 +1,274 @@
+<!-- fonts: Hahmlet:wght@400;600;700;800;900 | Noto+Serif+KR:wght@400;600 | IBM+Plex+Sans+KR:wght@400;500;600;700 -->
+<style>
+.t-mag{--paper:#f8f8f5;--ink:#121a22;--soft:#5b6570;--acc:#0e5aa7;--band:#0d3558;--onband:#f3f6f8;--tint:#e4ebf0;--rule:#c9d0d6;
+  --f-h:"Hahmlet","Noto Serif KR",serif;--f-b:"Noto Serif KR",serif;--f-s:"IBM Plex Sans KR","Gothic A1",sans-serif}
+.t-mag .pg{background:var(--paper);color:var(--ink);font-family:var(--f-b);word-break:keep-all}
+.t-mag .pg,.t-mag .pg *{box-sizing:border-box}
+.t-mag .pg h4,.t-mag .pg p,.t-mag .pg ol,.t-mag .pg ul,.t-mag .pg blockquote{margin:0;padding:0;list-style:none}
+.t-mag .kick{font:600 9.5px/1.4 var(--f-s);letter-spacing:.14em;color:var(--acc)}
+.t-mag .fo{position:absolute;left:16px;right:16px;bottom:9px;display:flex;justify-content:space-between;font:500 9.5px/1 var(--f-s);letter-spacing:.06em;color:var(--soft)}
+
+/* cover 1 — full-bleed, masthead top centre */
+.t-mag .c1{color:#fff}
+.t-mag .c1 img{position:absolute;inset:0}
+.t-mag .c1::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(rgba(4,18,32,.5),rgba(4,18,32,0) 40%,rgba(4,18,32,0) 52%,rgba(4,18,32,.78))}
+.t-mag .c1>div{position:absolute;z-index:2;left:16px;right:16px}
+.t-mag .c1 .iss{top:14px;display:flex;justify-content:space-between;font:500 9.5px/1 var(--f-s);letter-spacing:.1em;padding-bottom:7px;border-bottom:1px solid rgba(255,255,255,.75)}
+.t-mag .c1 .mast{top:36px;text-align:center;font:900 96px/1 var(--f-h);letter-spacing:.14em;text-indent:.14em;text-shadow:0 2px 14px rgba(0,0,0,.28)}
+.t-mag .c1 .lines{bottom:15px;text-shadow:0 1px 6px rgba(0,0,0,.5)}
+.t-mag .c1 .lines em{font:600 10px/1 var(--f-s);font-style:normal;letter-spacing:.12em;background:var(--acc);padding:4px 7px;text-shadow:none;display:inline-block}
+.t-mag .c1 .lines b{display:block;font:800 28px/1.22 var(--f-h);margin:8px 0 11px}
+.t-mag .c1 ul{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border-top:1px solid rgba(255,255,255,.75);padding-top:8px}
+.t-mag .c1 li{font:500 10px/1.45 var(--f-s)}
+.t-mag .c1 li i{display:block;font:700 13px/1.2 var(--f-h);font-style:normal}
+
+/* cover 2 — paper frame, small masthead top-left, headline under the picture */
+.t-mag .c2{padding:18px 18px 0}
+.t-mag .c2 .iss{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.t-mag .c2 .mast{font:900 36px/1 var(--f-h);letter-spacing:.06em}
+.t-mag .c2 .iss span{font:500 9.5px/1.5 var(--f-s);letter-spacing:.06em;text-align:right;color:var(--soft)}
+.t-mag .c2 .ph{height:198px;margin-top:12px}
+.t-mag .c2 .cap{font:400 9.5px/1.4 var(--f-s);color:var(--soft);margin-top:5px}
+.t-mag .c2 b{display:block;font:800 26px/1.26 var(--f-h);margin-top:12px}
+.t-mag .c2 ul{position:absolute;left:18px;right:18px;bottom:16px;display:grid;grid-template-columns:1fr 1fr;gap:12px;border-top:1px solid var(--rule);padding-top:8px}
+.t-mag .c2 li{font:500 10px/1.45 var(--f-s)}
+.t-mag .c2 li i{font:700 12px/1 var(--f-h);font-style:normal;color:var(--acc);margin-right:5px}
+
+/* cover 3 — picture on top, colour band below, masthead bottom-left, numbered lines right */
+.t-mag .c3 .ph{height:56%;position:relative}
+.t-mag .c3 .ph em{position:absolute;left:0;bottom:0;font:600 10px/1 var(--f-s);font-style:normal;letter-spacing:.12em;background:var(--acc);color:#fff;padding:6px 10px 6px 16px}
+.t-mag .c3 .band{position:absolute;left:0;right:0;bottom:0;height:44%;background:var(--band);color:var(--onband);padding:14px 16px;display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:end}
+.t-mag .c3 .mast{font:900 76px/.92 var(--f-h);letter-spacing:.02em}
+.t-mag .c3 .mast small{display:block;font:500 9.5px/1 var(--f-s);letter-spacing:.1em;margin-bottom:10px;opacity:.85}
+.t-mag .c3 .lines{align-self:stretch;display:flex;flex-direction:column;justify-content:space-between;border-left:1px solid color-mix(in srgb,var(--onband) 40%,transparent);padding-left:12px}
+.t-mag .c3 .lines b{font:700 16px/1.34 var(--f-h)}
+.t-mag .c3 li{font:500 10px/1.4 var(--f-s);margin-top:5px;display:flex;gap:6px}
+.t-mag .c3 li i{font:700 11px/1.3 var(--f-h);font-style:normal;opacity:.75}
+
+/* p1 contents */
+.t-mag .cont{padding:18px 16px 0}
+.t-mag .cont .hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:8px}
+.t-mag .cont .hd h4{font:800 30px/1 var(--f-h)}
+.t-mag .cont .hd span{font:500 9.5px/1.5 var(--f-s);color:var(--soft);text-align:right;letter-spacing:.06em}
+.t-mag .cont li{display:grid;grid-template-columns:34px 1fr 64px;gap:8px;align-items:center;padding:11px 0;border-bottom:1px solid var(--rule)}
+.t-mag .cont li>i{font:800 22px/1 var(--f-h);font-style:normal;color:var(--acc)}
+.t-mag .cont li b{display:block;font:700 13.5px/1.35 var(--f-h);margin:2px 0}
+.t-mag .cont li span{display:block;font:400 10px/1.45 var(--f-s);color:var(--soft)}
+.t-mag .cont li .ph{height:54px}
+.t-mag .cont .note{margin-top:12px;background:var(--tint);padding:10px 12px;font:400 11px/1.65 var(--f-b)}
+.t-mag .cont .note b{font:700 9.5px/1 var(--f-s);letter-spacing:.14em;color:var(--acc);display:block;margin-bottom:4px}
+
+/* p2 chapter opener */
+.t-mag .chap .band{height:42%;background:var(--band);color:var(--onband);padding:16px;position:relative;overflow:hidden;display:flex;flex-direction:column;justify-content:flex-end}
+.t-mag .chap .band .kick{color:var(--onband);opacity:.85;position:absolute;left:16px;top:16px}
+.t-mag .chap .band>i{position:absolute;right:10px;top:-22px;font:900 190px/1 var(--f-h);font-style:normal;opacity:.13}
+.t-mag .chap h4{font:800 38px/1.1 var(--f-h);position:relative}
+.t-mag .chap .band p{font:500 10.5px/1.5 var(--f-s);margin-top:8px;position:relative}
+.t-mag .chap .ph{height:58%}
+
+/* p3 feature first page */
+.t-mag .feat .ph{height:156px}
+.t-mag .feat .cap{font:400 9.5px/1.4 var(--f-s);color:var(--soft);padding:5px 16px 0;display:flex;justify-content:space-between;gap:8px}
+.t-mag .feat .kick{margin:10px 16px 0}
+.t-mag .feat h4{font:800 20.5px/1.28 var(--f-h);margin:3px 16px 0}
+.t-mag .feat .lead{font:500 11.5px/1.55 var(--f-s);margin:7px 16px 0;padding-bottom:7px;border-bottom:1px solid var(--rule)}
+.t-mag .feat .cols{columns:2;column-gap:16px;column-rule:1px solid var(--rule);margin:8px 16px 0;font:400 11px/1.68 var(--f-b);word-break:normal}
+.t-mag .feat .cols p+p{text-indent:1em}
+.t-mag .feat .cols p:first-child::first-letter{font:800 33px/.86 var(--f-h);float:left;margin:3px 5px 0 0;color:var(--acc)}
+
+/* p4 full picture */
+.t-mag .full img{position:absolute;inset:0}
+.t-mag .full .cap{position:absolute;left:0;bottom:0;width:84%;background:var(--paper);padding:10px 12px 12px 16px;font:400 11px/1.6 var(--f-b)}
+.t-mag .full .cap .kick{display:block;margin-bottom:3px}
+.t-mag .full .cr{position:absolute;right:8px;top:14px;writing-mode:vertical-rl;font:500 9.5px/1 var(--f-s);letter-spacing:.12em;color:#fff;text-shadow:0 1px 4px rgba(0,0,0,.6)}
+
+/* p5 pull quote + info box */
+.t-mag .quo .q{position:absolute;left:18px;right:18px;top:0;bottom:176px;display:flex;flex-direction:column;justify-content:center}
+.t-mag .quo blockquote{font:700 24px/1.42 var(--f-h)}
+.t-mag .quo blockquote::before{content:"“";display:block;font:900 64px/.7 var(--f-h);color:var(--acc);height:34px}
+.t-mag .quo cite{display:block;font:500 9.5px/1.4 var(--f-s);font-style:normal;color:var(--soft);margin-top:10px;letter-spacing:.04em}
+.t-mag .quo .box{position:absolute;left:18px;right:18px;bottom:32px;background:var(--tint);border-top:2px solid var(--ink);padding:10px 12px 11px}
+.t-mag .quo .box h4{font:700 11.5px/1 var(--f-s);margin-bottom:6px}
+.t-mag .quo .row{display:grid;grid-template-columns:50px 1fr 62px 40px;gap:6px;align-items:center;font:400 10.5px/1 var(--f-s);padding:6px 0;border-top:1px solid var(--rule)}
+.t-mag .quo .row b{font-weight:700}
+.t-mag .quo .row u{display:block;height:5px;background:var(--acc);text-decoration:none}
+.t-mag .quo .row span:last-child{text-align:right;font-weight:600}
+.t-mag .quo .row.sum{border-top:1px solid var(--ink);font-weight:700;padding-bottom:0}
+
+/* p6 video page */
+.t-mag .vid .ph{height:61%;position:relative}
+.t-mag .vid .ph em{position:absolute;left:0;top:14px;font:600 10px/1 var(--f-s);font-style:normal;letter-spacing:.1em;background:var(--paper);color:var(--ink);padding:6px 9px 6px 16px}
+.t-mag .vid .ph u{position:absolute;left:16px;right:16px;bottom:10px;height:2px;background:rgba(255,255,255,.55)}
+.t-mag .vid .ph u::after{content:"";position:absolute;left:0;top:0;bottom:0;width:38%;background:#fff}
+.t-mag .vid .tx{padding:11px 16px 0}
+.t-mag .vid h4{font:700 18px/1.3 var(--f-h);margin:2px 0 5px}
+.t-mag .vid p{font:400 11px/1.68 var(--f-b)}
+.t-mag .vid .pdf{margin-top:8px;padding-top:6px;border-top:1px dotted var(--soft);font:400 9.5px/1.4 var(--f-s);color:var(--soft)}
+
+/* p7 picture story */
+.t-mag .story{padding:16px 16px 0}
+.t-mag .story h4{font:800 18px/1.3 var(--f-h);margin-top:2px}
+.t-mag .story .grid{display:grid;grid-template-columns:1.08fr 1fr;grid-template-rows:1fr 1fr;gap:5px;height:284px;margin-top:9px}
+.t-mag .story .grid div{position:relative;min-height:0}
+.t-mag .story .grid div:first-child{grid-row:1/3}
+.t-mag .story .grid i{position:absolute;left:0;top:0;min-width:18px;padding:4px 0;text-align:center;background:var(--paper);font:700 10px/1 var(--f-s);font-style:normal}
+.t-mag .story ol{margin-top:9px}
+.t-mag .story li{font:400 10px/1.6 var(--f-s);display:grid;grid-template-columns:14px 34px 1fr}
+.t-mag .story li i{font-style:normal;font-weight:700;color:var(--acc)}
+.t-mag .story li b{font-weight:600}
+
+/* p8 places */
+.t-mag .guide{padding:14px 16px 0}
+.t-mag .guide .hd{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid var(--ink);padding-bottom:7px}
+.t-mag .guide .hd h4{font:800 23px/1 var(--f-h)}
+.t-mag .guide .hd span{font:500 9.5px/1 var(--f-s);color:var(--soft);letter-spacing:.06em}
+.t-mag .guide li{display:grid;grid-template-columns:22px 1fr auto;column-gap:4px;padding:4px 0 3px;border-bottom:1px solid var(--rule)}
+.t-mag .guide li i{grid-row:1/3;font:700 15px/1.15 var(--f-h);font-style:normal;color:var(--acc)}
+.t-mag .guide li b{font:700 11.5px/1.35 var(--f-s)}
+.t-mag .guide li em{font:500 9.5px/1.6 var(--f-s);font-style:normal;color:var(--soft)}
+.t-mag .guide li span{grid-column:2/4;font:400 10px/1.4 var(--f-s);color:var(--ink)}
+
+/* p9 closing column */
+.t-mag .last{padding:20px 18px 0}
+.t-mag .last h4{font:800 26px/1.2 var(--f-h);margin:3px 0 12px}
+.t-mag .last .ph{height:112px;margin-bottom:11px}
+.t-mag .last p{font:400 11.5px/1.78 var(--f-b);word-break:normal}
+.t-mag .last p+p{text-indent:1em}
+.t-mag .last .colo{position:absolute;left:18px;right:18px;bottom:14px;border-top:2px solid var(--ink);padding-top:8px;display:grid;grid-template-columns:1fr 1fr;gap:2px 12px;font:400 9.5px/1.5 var(--f-s);color:var(--soft)}
+.t-mag .last .colo b{color:var(--ink);font-weight:700}
+</style>
+<section class="t-mag" data-palettes='[{"--paper":"#f8f8f5","--ink":"#121a22","--soft":"#5b6570","--acc":"#0e5aa7","--band":"#0d3558","--onband":"#f3f6f8","--tint":"#e4ebf0","--rule":"#c9d0d6"},{"--paper":"#fafaf6","--ink":"#1a1d17","--soft":"#62685c","--acc":"#c44a00","--band":"#22392c","--onband":"#f4f3ea","--tint":"#e9ede0","--rule":"#cfd3c6"},{"--paper":"#f4f4f2","--ink":"#131313","--soft":"#606060","--acc":"#c4122f","--band":"#1c1c1c","--onband":"#f4f4f2","--tint":"#e6e6e3","--rule":"#cbcbc8"},{"--paper":"#f6f8f6","--ink":"#12211c","--soft":"#586860","--acc":"#17714f","--band":"#f0c93a","--onband":"#12211c","--tint":"#e2ece6","--rule":"#c6d2cb"}]'>
+  <div class="head"><h2>잡지</h2><p class="idea">이 여행이 한 권의 여행지 특집호가 된다. 제호·차례·기사·인용구·정보 박스·맺는 글.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+  <h3 class="sub">표지 후보</h3>
+  <div class="strip">
+    <div class="pg c1"><img src="{{udo}}" alt="" style="object-position:35% 50%">
+      <div class="iss"><span>2026년 6월호</span><span>2박 3일 · 214km</span></div>
+      <div class="mast">제주</div>
+      <div class="lines"><em>특집</em><b>사흘 동안<br>바다만 봤다</b>
+        <ul><li><i>04</i>협재, 차가운 물에 앉은 오후</li><li><i>14</i>우도, 모자가 두 번 날아간 날</li><li><i>30</i>어리목, 안개 속 나무 계단</li></ul></div>
+    </div>
+    <div class="pg c2">
+      <div class="iss"><div class="mast">제주</div><span>2026년 6월호<br>2박 3일 · 아홉 곳</span></div>
+      <div class="ph"><img src="{{seongsan}}" alt=""></div>
+      <div class="cap">표지 사진 — 성산일출봉 앞, 둘째 날 19:05</div>
+      <b>해가 지고 나서야<br>수국이 파래졌다</b>
+      <ul><li><i>04</i>서쪽 해안, 맑음 24도</li><li><i>14</i>동쪽 바다, 바람 강함</li></ul>
+    </div>
+    <div class="pg c3">
+      <div class="ph"><img src="{{road}}" alt="" style="object-position:78% 50%"><em>특집 · 사흘의 날씨</em></div>
+      <div class="band">
+        <div class="mast"><small>2026년 6월호</small>제주</div>
+        <div class="lines"><b>바람이 세서<br>등대까지만<br>걸었다</b>
+          <ul><li><i>04</i>맑음, 서쪽</li><li><i>14</i>바람, 동쪽</li><li><i>30</i>흐림, 숲길</li></ul></div>
+      </div>
+    </div>
+  </div>
+  <div class="under"><span>① 사진 가득, 제호 위 가운데, 문구 아래 ② 종이 틀 안 사진, 제호 작게 왼쪽 위 ③ 위 사진·아래 색 면, 제호 왼쪽 아래</span><span>3개</span></div>
+
+  <h3 class="sub">책 본문</h3>
+  <div class="strip">
+    <div class="pg cont">
+      <div class="hd"><h4>차례</h4><span>제주<br>2026년 6월호</span></div>
+      <ol>
+        <li><i>04</i><div><span>첫째 날 · 서쪽 · 맑음 24°</span><b>물이 차가워서 더 오래 앉아 있었다</b><span>협재 해변, 신창 풍차해안도로</span></div><div class="ph"><img src="{{hyeopjae}}" alt=""></div></li>
+        <li><i>14</i><div><span>둘째 날 · 동쪽 · 바람 강함 21°</span><b>모자가 두 번 날아간 날</b><span>우도, 하도, 월정리, 성산</span></div><div class="ph"><img src="{{udo}}" alt=""></div></li>
+        <li><i>30</i><div><span>셋째 날 · 중산간 · 흐림 22°</span><b>안개 속 나무 계단</b><span>어리목 숲길, 원물오름, 귤나무 카페</span></div><div class="ph"><img src="{{hallasan}}" alt=""></div></li>
+      </ol>
+      <div class="note"><b>편집 노트</b>하루는 맑았고, 하루는 바람이 불었고, 하루는 흐렸다. 그래서 물빛이 날마다 달랐다.</div>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>02</span></div>
+    </div>
+
+    <div class="pg chap">
+      <div class="band"><i>1</i><span class="kick">첫째 날 · 06.12 금요일 · 맑음 24°</span><h4>서쪽 해안</h4><p>13:20 협재 해변 — 17:40 신창 풍차해안도로</p></div>
+      <div class="ph"><img src="{{hyeopjae}}" alt=""></div>
+    </div>
+
+    <div class="pg feat">
+      <div class="ph"><img src="{{road}}" alt="" style="object-position:70% 60%"></div>
+      <div class="cap"><span>17:40 신창 풍차해안도로. 등대 앞에서 바람이 가장 셌다.</span><span>글·사진 두 사람</span></div>
+      <div class="kick">첫째 날 · 서쪽 해안</div>
+      <h4>물이 차가워서<br>더 오래 앉아 있었다</h4>
+      <p class="lead">오후 1시 20분, 협재. 발목까지만 들어갔는데 숨이 짧아졌다.</p>
+      <div class="cols"><p>유월의 물은 아직 봄이었다. 그래도 나오지 않았다. 비양도가 구름 그림자에 흐려졌다가 다시 또렷해지는 걸 세 번쯤 보고서야 모래 위로 올라왔다.</p><p>신창에는 해 질 무렵 닿았다. 풍차 날개 도는 소리가 차 안까지 들렸고, 등대까지 걷는 동안 겉옷 지퍼를 끝까지 올렸다.</p></div>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>05</span></div>
+    </div>
+
+    <div class="pg full"><img src="{{udo}}" alt="" style="object-position:40% 50%">
+      <div class="cr">사진 46장 가운데 열일곱 번째</div>
+      <div class="cap"><span class="kick">둘째 날 · 09:42 · 우도</span>도항선으로 15분. 등대에 오르자 섬이 끝에서 끝까지 한눈에 들어왔다.</div>
+    </div>
+
+    <div class="pg quo">
+      <div class="q"><blockquote>모자가 두 번 날아갔다.<br>두 번 다 주워 왔다.</blockquote>
+      <cite>— 둘째 날 오전, 우도 등대 가는 길</cite></div>
+      <div class="box"><h4>그날의 날씨와 거리</h4>
+        <div class="row"><b>12일 금</b><span>맑음 24°</span><u style="width:60%"></u><span>58km</span></div>
+        <div class="row"><b>13일 토</b><span>바람 강함 21°</span><u style="width:100%"></u><span>96km</span></div>
+        <div class="row"><b>14일 일</b><span>흐림 22°</span><u style="width:63%"></u><span>60km</span></div>
+        <div class="row sum"><span>사흘</span><span>아홉 곳</span><span></span><span>214km</span></div>
+      </div>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>17</span></div>
+    </div>
+
+    <div class="pg vid">
+      <div class="ph"><img src="{{haenyeo}}" alt=""><div class="play"><span></span></div><em>영상 · 0:03</em><u></u></div>
+      <div class="tx"><div class="kick">둘째 날 · 14:10 · 하도</div>
+        <h4>물질을 마친 두 사람</h4>
+        <p>해녀 탈의장 앞. 두 분은 말없이 그물을 갰다. 노란 테왁이 발치에 놓여 있었고, 파도 소리가 말소리보다 컸다.</p>
+        <div class="pdf">인쇄본과 PDF 에는 이 장면이 사진 한 장으로 실립니다.</div></div>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>21</span></div>
+    </div>
+
+    <div class="pg story">
+      <div class="kick">사진 · 둘째 날 오후</div>
+      <h4>네 시부터 일곱 시까지, 동쪽</h4>
+      <div class="grid"><div><img src="{{doldam}}" alt="" style="object-position:30% 50%"><i>1</i></div><div><img src="{{woljeongri}}" alt=""><i>2</i></div><div><img src="{{seongsan}}" alt=""><i>3</i></div></div>
+      <ol>
+        <li><i>1</i><b>16:05</b><span>월정리 돌담길. 담 너머는 전부 밭이었다.</span></li>
+        <li><i>2</i><b>17:20</b><span>월정리 해변. 산책로에 사람이 늘었다.</span></li>
+        <li><i>3</i><b>19:05</b><span>성산일출봉 앞. 해가 지고 수국이 더 파랬다.</span></li>
+      </ol>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>24</span></div>
+    </div>
+
+    <div class="pg guide">
+      <div class="hd"><h4>가 본 곳</h4><span>아홉 곳 · 214km</span></div>
+      <ol>
+        <li><i>1</i><b>협재 해변</b><em>12일 13:20</em><span>물이 얕고 차다. 비양도가 정면에 있다.</span></li>
+        <li><i>2</i><b>신창 풍차해안도로</b><em>12일 17:40</em><span>해 질 무렵에. 바람이 세니 겉옷을 챙길 것.</span></li>
+        <li><i>3</i><b>우도</b><em>13일 09:42</em><span>도항선 15분. 모자는 끈 달린 것으로.</span></li>
+        <li><i>4</i><b>하도 해녀 탈의장 앞</b><em>13일 14:10</em><span>물질이 끝나는 오후에 지나갈 것.</span></li>
+        <li><i>5</i><b>월정리</b><em>13일 16:05</em><span>돌담길을 먼저 걷고 해변은 나중에.</span></li>
+        <li><i>6</i><b>성산일출봉 앞</b><em>13일 19:05</em><span>해가 진 직후, 하늘이 파랄 때.</span></li>
+        <li><i>7</i><b>한라산 어리목 숲길</b><em>14일 08:30</em><span>안개 낀 아침엔 나무 계단이 젖어 있다.</span></li>
+        <li><i>8</i><b>원물오름</b><em>14일 11:10</em><span>정자까지 흙길. 그늘이 거의 없다.</span></li>
+        <li><i>9</i><b>귤나무 카페</b><em>14일 13:30</em><span>유월의 마당 귤은 아직 초록이다.</span></li>
+      </ol>
+      <div class="fo"><span>제주 · 2026년 6월호</span><span>36</span></div>
+    </div>
+
+    <div class="pg last">
+      <div class="kick">맺는 글</div>
+      <h4>초록 귤</h4>
+      <div class="ph"><img src="{{tangerine}}" alt="" style="object-position:50% 38%"></div>
+      <p>오후 1시 30분, 카페 마당. 귤나무에 달린 건 전부 초록이었다. 노래지려면 다섯 달이 남았다고 했다. 비행기는 네 시간 남아 있었다.</p>
+      <p>사흘 동안 날씨가 한 번도 겹치지 않았다. 맑은 날엔 물이 차가웠고, 바람 부는 날엔 모자를 쫓아다녔고, 흐린 날엔 숲이 조용했다. 귤이 노래지면 다시 오기로 했다.</p>
+      <div class="colo"><span><b>제주</b> 2026년 6월호</span><span>2026.06.12 금 – 06.14 일</span><span>사진 46 · 영상 3</span><span>아홉 곳 · 214km</span><span>글·사진 두 사람</span><span>40</span></div>
+    </div>
+  </div>
+  <div class="under"><span>차례 → 장 표지 → 기사 첫 쪽 → 큰 사진 → 인용구·날씨 박스 → 영상 → 사진 묶음 → 가 본 곳 → 맺는 글</span><span>9쪽</span></div>
+
+  <details class="notes"><summary>디자인 규칙</summary><ul>
+    <li><b>색</b> 종이(흰색에 가까운 회백) · 먹 · 강조 1색 · 색 면 1색, 네 가지뿐. 강조색은 킥커·쪽 번호·드롭캡·막대에만, 색 면은 장 표지와 표지 ③에만 쓴다. 한 쪽에 강조색 면적 5% 이하.</li>
+    <li><b>글꼴</b> 제호·헤드라인 Hahmlet 800–900, 본문 Noto Serif KR 400, 킥커·캡션·표·쪽 번호 IBM Plex Sans KR. 세 가지 역할을 섞지 않는다.</li>
+    <li><b>크기</b> 제호 76–96px, 헤드라인 19–28px(두 줄 이내), 리드 11.5px, 본문 11px·줄 간격 1.68, 캡션·킥커 9.5–10px. 킥커는 자간 0.14em.</li>
+    <li><b>그리드</b> 바깥 여백 16–18px. 기사는 2단(단 사이 16px + 가는 선), 차례·가 본 곳은 1단 목록, 사진 묶음은 큰 것 1 + 작은 것 2.</li>
+    <li><b>기사 첫 쪽</b> 사진(높이 35%) → 캡션·글쓴이 → 킥커(날·구역) → 헤드라인 → 리드 → 2단 본문. 리드는 시각과 장소로 시작하는 장면 한 문장, 본문 첫 글자는 강조색 드롭캡.</li>
+    <li><b>쪽 순서</b> 차례 1쪽으로 시작, 날마다 장 표지(색 면 42% + 사진 58%, 큰 숫자) → 기사 → 큰 사진 또는 사진 묶음. 인용구·정보 박스는 책 중간에 1번, 가 본 곳과 맺는 글은 맨 끝.</li>
+    <li><b>인용구</b> 여행자가 쓴 메모에서 가장 짧은 두 문장을 그대로 쓴다. 꾸미는 말을 덧붙이지 않는다.</li>
+    <li><b>영상 쪽</b> 사진 61% + 가운데 ▶ + 왼쪽 위 "영상 · 길이" 딱지 + 재생 줄. 아래에 인쇄본 안내 한 줄(9.5px).</li>
+    <li><b>표지</b> 제호는 여행지 이름 두세 글자, 호수는 "연도 + 월호". 커버라인은 큰 문구 1 + 쪽 번호 달린 작은 문구 2–3. ① 사진 가득·제호 위 가운데 ② 종이 틀·제호 왼쪽 위 작게 ③ 사진 56% + 색 면 44%·제호 왼쪽 아래.</li>
+    <li><b>쪽 번호</b> 왼쪽 "여행지 · 호수", 오른쪽 숫자. 사진이 가득한 쪽과 장 표지에는 넣지 않는다.</li>
+  </ul></details>
+</section>
