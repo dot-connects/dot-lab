@@ -1,0 +1,249 @@
+<!-- fonts: IBM+Plex+Sans+KR:wght@300;400;600 | IBM+Plex+Mono:wght@400;500 | Orbit -->
+<style>
+/* Diary r5: a journaling app, printed. One soft colour field per day, huge date numerals, the user's own lines carry the pages.
+   All sizes are cqw (1cqw = 3.3px on a 330px page) so pages scale as one piece. */
+.t-diary{--paper:#FBF8F1;--ink:#1a1a1a;--soft:rgba(26,26,26,.66);--line:rgba(26,26,26,.16);--d1:#EFD3CF;--d2:#BCCAB4;--d3:#F6E696;
+  --f:"IBM Plex Sans KR",sans-serif;--m:"IBM Plex Mono","IBM Plex Sans KR",monospace;--n:"Orbit","IBM Plex Mono",sans-serif}
+.t-diary .pg{container-type:size;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:var(--f)}
+.t-diary .pg *{box-sizing:border-box}
+.t-diary .pg img{filter:saturate(.8) contrast(.94) brightness(1.04) sepia(.06)}
+.t-diary .pg p{margin:0;word-break:keep-all}
+.t-diary .m{font:500 2.9cqw/1.45 var(--m);letter-spacing:.02em;color:var(--soft)}
+.t-diary .c1{--c:var(--d1)}.t-diary .c2{--c:var(--d2)}.t-diary .c3{--c:var(--d3)}
+.t-diary .in{position:absolute;inset:0}
+
+/* day opener: colour field + huge numeral */
+.t-diary .op{background:var(--c)}
+.t-diary .op .top{position:absolute;left:5cqw;right:5cqw;top:4.5cqw;display:flex;justify-content:space-between}
+.t-diary .op .num{position:absolute;font:400 60cqw/.8 var(--n);letter-spacing:-.06em}
+.t-diary .op .wx{position:absolute;display:flex;flex-direction:column;gap:.6cqw}
+.t-diary .op .wx b{font:600 3.6cqw/1.3 var(--f)}
+.t-diary .op .say{position:absolute;left:5cqw;right:5cqw;font:600 5.6cqw/1.4 var(--f);letter-spacing:-.02em}
+.t-diary .op .say .m{display:block;margin-top:2cqw}
+/* voice memo fragment */
+.t-diary .memo{position:absolute;left:5cqw;right:5cqw}
+.t-diary .memo .row{display:flex;align-items:center;gap:2.6cqw}
+.t-diary .memo .pl{flex:none;width:6cqw;height:6cqw;border-radius:50%;background:var(--ink);display:grid;place-items:center}
+.t-diary .memo .pl::before{content:"";border-left:2cqw solid var(--c);border-top:1.2cqw solid transparent;border-bottom:1.2cqw solid transparent;margin-left:.5cqw}
+.t-diary .memo svg{flex:1;min-width:0;height:6cqw;stroke:var(--ink);stroke-width:1.6;stroke-linecap:round}
+.t-diary .memo p{margin:3cqw 0 1.6cqw;font:600 5.6cqw/1.4 var(--f);letter-spacing:-.02em}
+
+/* app timeline */
+.t-diary .tl{padding:5cqw 5cqw 0}
+.t-diary .tl .hd{display:flex;align-items:center;gap:2cqw;padding-bottom:3.4cqw;border-bottom:.5px solid var(--ink)}
+.t-diary .tl .hd i{width:3.4cqw;height:3.4cqw;border-radius:50%;background:var(--c)}
+.t-diary .tl .hd b{font:600 3.8cqw var(--f);flex:1}
+.t-diary .tl ol{list-style:none;margin:0;padding:0}
+.t-diary .tl li{display:grid;grid-template-columns:12.5cqw 1fr 22cqw;gap:0 3cqw;align-items:start;padding:3.4cqw 0;border-bottom:.5px solid var(--soft);min-height:28.8cqw}
+.t-diary .tl li:last-child{border-bottom:0}
+.t-diary .tl time{font:500 3.5cqw/1.6 var(--m);color:var(--ink)}
+.t-diary .tl h5{margin:0 0 1.2cqw;font:600 4.3cqw/1.35 var(--f)}
+.t-diary .tl li p{font:400 3.6cqw/1.6 var(--f);color:var(--soft)}
+.t-diary .tl li img{width:22cqw;height:22cqw}
+.t-diary .tl li .nx{align-self:center;justify-self:end}
+
+/* stair quote + tall photo */
+.t-diary .q{display:flex}
+.t-diary .q .f{flex:0 0 45%;background:var(--c);position:relative}
+.t-diary .q .f p{position:absolute;left:4.5cqw;top:20cqw;font:600 6.8cqw/1 var(--f);letter-spacing:-.03em}
+.t-diary .q .f p span{display:block;margin-bottom:6.4cqw}
+.t-diary .q .f p span:nth-child(2){margin-left:5cqw}.t-diary .q .f p span:nth-child(3){margin-left:10cqw}.t-diary .q .f p span:nth-child(4){margin-left:15cqw}
+.t-diary .q .f .m{position:absolute;left:4.5cqw;bottom:5cqw}
+.t-diary .q .ph{flex:1;min-width:0}
+
+/* full bleed + weather card */
+.t-diary .wxp img{height:98cqw}
+.t-diary .card{position:absolute;left:0;right:0;top:98cqw;bottom:0;background:var(--c);padding:5cqw 5cqw 0;display:grid;grid-template-columns:1fr auto;gap:0 3cqw;align-items:start}
+.t-diary .card h5{margin:1.4cqw 0 0;font:600 5.6cqw/1.4 var(--f);letter-spacing:-.02em}
+.t-diary .card .deg{font:400 13cqw/.9 var(--n);text-align:right}
+.t-diary .card .deg+.m{text-align:right}
+
+/* video */
+.t-diary .vd{background:var(--c)}
+.t-diary .vd .top{position:absolute;left:5cqw;right:5cqw;top:4.5cqw;display:flex;justify-content:space-between}
+.t-diary .vd .say{position:absolute;left:5cqw;top:17cqw;font:600 7.2cqw/1 var(--f);letter-spacing:-.03em}
+.t-diary .vd .say span{display:block;margin-bottom:5.4cqw}
+.t-diary .vd .say span:nth-child(2){margin-left:6cqw}.t-diary .vd .say span:nth-child(3){margin-left:12cqw}
+.t-diary .vd .fr{position:absolute;left:5cqw;right:5cqw;bottom:17cqw;height:39cqw;display:grid;grid-template-columns:repeat(3,1fr);gap:1cqw}
+.t-diary .vd .fr>div{position:relative;overflow:hidden}
+.t-diary .vd .fr img{transform:scale(1.7)}
+.t-diary .vd .tr{position:absolute;left:5cqw;right:5cqw;bottom:10cqw;display:flex;align-items:center;gap:2.4cqw}
+.t-diary .vd .tr .m{color:var(--ink)}
+.t-diary .vd .tr i{flex:1;height:.7cqw;border-radius:1cqw;background:linear-gradient(90deg,var(--ink) 38%,rgba(26,26,26,.22) 0)}
+.t-diary .vd .ft{position:absolute;left:5cqw;bottom:4.6cqw}
+
+/* three photos, glued */
+.t-diary .g3{display:grid;grid-template-columns:1fr 1fr;grid-template-rows:74cqw 34cqw 1fr;gap:1cqw}
+.t-diary .g3 img:nth-of-type(3){grid-column:1/3}
+.t-diary .g3 ul{grid-column:1/3;list-style:none;margin:0;padding:2.2cqw 5cqw 0;background:var(--c);margin-top:-1cqw}
+.t-diary .g3 li{display:flex;gap:3cqw;font:400 3.4cqw/1.72 var(--f)}
+.t-diary .g3 li time{flex:0 0 12cqw;font:500 3.4cqw/1.75 var(--m)}
+
+/* 4:5 full width + one line */
+.t-diary .f45 img{height:125cqw}
+.t-diary .f45 .cap{position:absolute;left:0;right:0;bottom:0;top:125cqw;background:var(--c);display:flex;align-items:center;justify-content:space-between;padding:0 5cqw;font:600 3.5cqw var(--f)}
+.t-diary .f45 .cap .m{color:var(--ink)}
+
+/* calendar-dot recap */
+.t-diary .cal{padding:5cqw}
+.t-diary .cal h4{margin:1cqw 0 0;font:400 21cqw/.95 var(--n);letter-spacing:-.05em}
+.t-diary .cal .grid{margin-top:4.5cqw;display:grid;grid-template-columns:repeat(7,1fr);row-gap:.6cqw;text-align:center}
+.t-diary .cal .grid span{position:relative;display:grid;place-items:center;height:12.6cqw;font:500 3.5cqw/1 var(--m);color:var(--soft)}
+.t-diary .cal .grid .w{color:var(--ink);height:6cqw}
+.t-diary .cal .grid .on{color:#fff;font-weight:500;font-size:3.9cqw;z-index:0}
+.t-diary .cal .grid .on img{position:absolute;z-index:-1;left:50%;top:50%;width:12.4cqw;height:12.4cqw;margin:-6.2cqw 0 0 -6.2cqw;border-radius:50%;border:.9cqw solid var(--c);filter:saturate(.8) brightness(.72)}
+.t-diary .cal .end{position:absolute;left:5cqw;right:5cqw;bottom:5cqw;font:600 4.8cqw/1.4 var(--f);letter-spacing:-.02em}
+.t-diary .cal .end .m{display:block;margin-top:1cqw}
+
+/* covers */
+.t-diary .cv1 img{height:102cqw}
+.t-diary .cv1 .lab{position:absolute;left:0;right:0;top:102cqw;bottom:0;background:var(--paper);padding:6cqw 5cqw 0}
+.t-diary .cv1 .lab h4{margin:1.6cqw 0 0;font:600 7.4cqw/1.3 var(--f);letter-spacing:-.03em}
+.t-diary .cv1 .lab .dots{position:absolute;right:5cqw;top:6.4cqw;display:flex;gap:1.2cqw}
+.t-diary .cv1 .lab .dots i{width:3cqw;height:3cqw;border-radius:50%;background:var(--d1)}
+.t-diary .cv1 .lab .dots i:nth-child(2){background:var(--d2)}.t-diary .cv1 .lab .dots i:nth-child(3){background:var(--d3)}
+.t-diary .cv2{background:var(--d1);padding:6cqw 5cqw 0}
+.t-diary .cv2 .r{display:flex;align-items:center;gap:3cqw;font:400 38cqw/.86 var(--n);letter-spacing:-.06em}
+.t-diary .cv2 .r:nth-child(2){margin-left:16cqw}.t-diary .cv2 .r:nth-child(3){margin-left:28cqw}
+.t-diary .cv2 .r img{width:18cqw;height:18cqw;border-radius:50%;flex:none}
+.t-diary .cv2 .bt{position:absolute;left:5cqw;right:5cqw;bottom:5cqw}
+.t-diary .cv2 .bt h4{margin:0 0 .8cqw;font:600 5cqw/1.3 var(--f);letter-spacing:-.02em}
+.t-diary .cv3{display:flex}
+.t-diary .cv3 .f{flex:0 0 47%;background:var(--d3);position:relative}
+.t-diary .cv3 .f h4{position:absolute;left:4.5cqw;top:9cqw;margin:0;font:600 8.2cqw/1 var(--f);letter-spacing:-.04em}
+.t-diary .cv3 .f h4 span{display:block;margin-bottom:5cqw}
+.t-diary .cv3 .f h4 span:nth-child(2){margin-left:6cqw}.t-diary .cv3 .f h4 span:nth-child(3){margin-left:9cqw}
+.t-diary .cv3 .f .big{position:absolute;left:3.6cqw;bottom:13cqw;font:400 24cqw/.85 var(--n);letter-spacing:-.06em}
+.t-diary .cv3 .f .big small{font:600 4cqw var(--f);letter-spacing:0;margin-left:1.5cqw}
+.t-diary .cv3 .f .m{position:absolute;left:4.5cqw;bottom:5cqw;color:var(--ink)}
+.t-diary .cv3 .ph{flex:1;min-width:0}
+</style>
+<section class="t-diary" data-palettes='[{"--d1":"#EFD3CF","--d2":"#BCCAB4","--d3":"#F6E696","--paper":"#FBF8F1"},{"--d1":"#C9D4E8","--d2":"#F3E2A6","--d3":"#EBC8C2","--paper":"#FAF9F6"},{"--d1":"#F3D5BC","--d2":"#D9D5E6","--d3":"#C4D3BD","--paper":"#FBF7F0"}]'>
+<div class="head"><h2>일기</h2><p class="idea">내가 쓴 한 줄이 주인공. 요즘 일기 앱을 그대로 책으로 뽑은 것처럼</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+<h3 class="sub">표지 후보</h3>
+<div class="strip">
+  <div class="pg cv1"><img src="{{udo}}" alt="" style="object-position:100% 50%">
+    <div class="lab"><span class="m">2026.06.12 — 06.14 · 제주</span><div class="dots"><i></i><i></i><i></i></div><h4>모자가 두 번 날아갔다</h4></div>
+  </div>
+  <div class="pg"><div class="in cv2">
+    <div class="r">12<img src="{{hyeopjae_2}}" alt=""></div>
+    <div class="r">13<img src="{{d7}}" alt=""></div>
+    <div class="r">14<img src="{{tangerine_2}}" alt=""></div>
+    <div class="bt"><h4>모자가 두 번 날아갔다</h4><span class="m" style="color:var(--ink)">2026년 6월 제주 · 금 토 일</span></div>
+  </div></div>
+  <div class="pg cv3">
+    <div class="f"><h4><span>모자가</span><span>두 번</span><span>날아갔다</span></h4><div class="big">06<small>6월</small></div><span class="m">2026.06.12 — 14 · 제주</span></div>
+    <div class="ph"><img src="{{d10}}" alt=""></div>
+  </div>
+</div>
+<div class="under"><span>① 사진 가득 + 일기 앱 카드 ② 날짜 숫자 셋이 계단, 하루에 동그란 사진 하나 ③ 색면에 계단 제목 + 세로 사진</span><span>3개</span></div>
+
+<h3 class="sub">책 본문</h3>
+<div class="strip">
+  <!-- 1 day opener 12 -->
+  <div class="pg op c1">
+    <img src="{{hyeopjae_2}}" alt="" style="height:50cqw;object-position:50% 78%">
+    <div class="num" style="left:3cqw;top:57cqw">12</div>
+    <div class="wx" style="left:69cqw;top:91cqw"><b>금요일</b><span class="m">첫째 날<br>맑음 24°</span></div>
+    <p class="say" style="bottom:5cqw">물이 생각보다 차가웠다.<span class="m">협재 → 신창 · 사진 14장</span></p>
+  </div>
+  <!-- 2 timeline day 1 -->
+  <div class="pg c1"><div class="in tl">
+    <div class="hd"><i></i><b>6월 12일 금요일</b><span class="m">맑음 24°</span></div>
+    <ol>
+      <li><time>13:20</time><div><h5>협재 해변</h5><p>물이 차갑다. 발만 담갔다.</p></div><img src="{{d9}}" alt=""></li>
+      <li><time>13:50</time><div><h5>비양도</h5><p>십 분 사이에 흐렸다 맑았다.</p></div><img src="{{hyeopjae}}" alt=""></li>
+      <li><time>15:30</time><div><h5>바다 앞 카페</h5><p>아이스 두 잔. 말 없이 바다만 봤다.</p></div><img src="{{d2}}" alt=""></li>
+      <li><time>17:40</time><div><h5>신창 풍차해안도로</h5><p>바람이 세다. 해가 주황색.</p></div><span class="m nx">다음 쪽</span></li>
+    </ol>
+  </div></div>
+  <!-- 3 stair quote -->
+  <div class="pg q c1">
+    <div class="f"><p><span>해가</span><span>지는 걸</span><span>끝까지</span><span>봤다</span></p><span class="m">17:40<br>신창 풍차해안도로</span></div>
+    <div class="ph"><img src="{{road}}" alt=""></div>
+  </div>
+  <!-- 4 day opener 13 + voice memo -->
+  <div class="pg op c2">
+    <div class="top"><span class="m">둘째 날</span><span class="m">2026.06</span></div>
+    <div class="memo" style="top:14cqw">
+      <div class="row"><span class="pl"></span>
+        <svg viewBox="0 0 132 20" preserveAspectRatio="none"><path d="M2 8v4M7 6v8M12 3v14M17 7v6M22 5v10M27 9v2M32 4v12M37 2v16M42 6v8M47 8v4M52 5v10M57 3v14M62 7v6M67 9v2M72 6v8M77 4v12M82 8v4M87 5v10M92 2v16M97 7v6M102 9v2M107 6v8M112 8v4M117 9v2M122 7v6M127 9v2" fill="none"/></svg>
+        <span class="m" style="color:var(--ink)">0:12</span></div>
+      <p>"아 모자. 또 날아갔어.<br>두 번째야."</p>
+      <span class="m">음성 메모 · 09:51 우도 가는 배</span>
+    </div>
+    <div class="num" style="right:3cqw;bottom:17cqw">13</div>
+    <div class="wx" style="left:5cqw;bottom:5cqw"><b>토요일</b><span class="m">바람 강함 21° · 사진 19장</span></div>
+  </div>
+  <!-- 5 udo + weather card -->
+  <div class="pg wxp c2"><img src="{{udo}}" alt="" style="object-position:8% 50%">
+    <div class="card"><div><span class="m">오늘의 날씨 · 09:42 우도</span><h5>도항선 15분.<br>갈매기가 계속 따라옴</h5></div><div><div class="deg">21°</div><span class="m" style="display:block">바람 강함</span></div></div>
+  </div>
+  <!-- 6 video -->
+  <div class="pg vd c2">
+    <div class="top"><span class="m">오늘 찍은 영상</span><span class="m">14:10 하도 해녀 탈의장 앞</span></div>
+    <p class="say"><span>바구니</span><span>정리하는 걸</span><span>한참 봤다</span></p>
+    <div class="fr">
+      <div><img src="{{haenyeo}}" alt="" style="transform-origin:30% 62%"><div class="play"><span></span></div></div>
+      <div><img src="{{haenyeo}}" alt="" style="transform-origin:48% 68%"></div>
+      <div><img src="{{haenyeo}}" alt="" style="transform-origin:70% 74%"></div>
+    </div>
+    <div class="tr"><span class="m">0:01</span><i></i><span class="m">0:03</span></div>
+    <span class="m ft">영상 3초 · PDF 에서는 사진 한 장으로</span>
+  </div>
+  <!-- 7 three photos -->
+  <div class="pg c2"><div class="in g3"><img src="{{doldam}}" alt=""><img src="{{woljeongri}}" alt=""><img src="{{seongsan}}" alt="">
+    <ul><li><time>16:05</time>월정리 돌담길. 밭이 전부 초록</li><li><time>17:20</time>해변 카페 마당, 빈 테이블</li><li><time>19:05</time>성산 앞. 해가 넘어갔다</li></ul>
+  </div></div>
+  <!-- 8 day opener 14 -->
+  <div class="pg op c3">
+    <div class="top"><span class="m">셋째 날</span><span class="m">2026.06</span></div>
+    <p class="say" style="top:15cqw">안개 때문에<br>아무것도 안 보였다.<br>그게 좋았다.</p>
+    <div class="wx" style="right:5.5cqw;top:63cqw;text-align:right"><b>일요일</b><span class="m">흐림 22° · 사진 13장</span></div>
+    <div class="num" style="left:3cqw;bottom:6cqw">14</div>
+  </div>
+  <!-- 9 4:5 photo -->
+  <div class="pg f45 c3"><img src="{{oreum}}" alt="" style="object-position:72% 50%">
+    <div class="cap"><span>억새가 사람 키만 했다</span><span class="m">11:10 원물오름</span></div>
+  </div>
+  <!-- 10 timeline day 3 -->
+  <div class="pg c3"><div class="in tl">
+    <div class="hd"><i></i><b>6월 14일 일요일</b><span class="m">흐림 22°</span></div>
+    <ol>
+      <li><time>08:30</time><div><h5>한라산 어리목</h5><p>안개. 봉우리가 숨었다 나왔다.</p></div><img src="{{hallasan}}" alt=""></li>
+      <li><time>09:10</time><div><h5>숲길 나무 계단</h5><p>돌하르방 둘이 입구를 지킨다.</p></div><img src="{{hallasan_2}}" alt=""></li>
+      <li><time>13:30</time><div><h5>귤나무 카페</h5><p>창가 자리. 비행기 시간 계산.</p></div><img src="{{d1}}" alt=""></li>
+      <li><time>14:10</time><div><h5>카페 마당</h5><p>귤 하나 까먹고 일어났다.</p></div><img src="{{d6}}" alt=""></li>
+    </ol>
+  </div></div>
+  <!-- 11 calendar recap -->
+  <div class="pg"><div class="in cal">
+    <span class="m">2026 · 9곳 · 사진 46장 · 영상 3개 · 이동 214km</span>
+    <h4>6월</h4>
+    <div class="grid">
+      <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+      <span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+      <span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span class="on c1">12<img src="{{woljeongri_2}}" alt=""></span><span class="on c2">13<img src="{{udo_2}}" alt=""></span>
+      <span class="on c3">14<img src="{{tangerine}}" alt=""></span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+      <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span>
+      <span>28</span><span>29</span><span>30</span>
+    </div>
+    <p class="end">끝. 다음 일기는 어디서 쓰지<span class="m">2026년 6월 제주 · 2박 3일</span></p>
+  </div></div>
+</div>
+<div class="under"><span>12일 → 하루 기록 → 한 줄 → 13일(음성 메모) → 우도 → 영상 → 오후 세 장 → 14일 → 오름 → 하루 기록 → 6월 달력</span><span>11쪽</span></div>
+
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>하루에 색 하나(1일 블러시 · 2일 세이지 · 3일 버터). 그날의 모든 색면·점·띠는 그 색만 쓴다. 4일 이상이면 세 색을 순서대로 돌린다.</li>
+<li>날 시작 쪽은 색면 전체 + 날짜 숫자(Orbit, 쪽 폭의 60%) + 요일·날씨 모노 한 줄 + 그날 메모 중 가장 짧은 한 줄(600, 18px). 숫자 위치는 날마다 바꾼다(좌상·우하·좌하).</li>
+<li>글자는 두 크기만: 큰 것(숫자 200px / 한 줄 18~23px)과 작은 것(본문 11~12px, 모노 라벨 9.6px 500). 중간 크기 없음. 비율 약 12:1 이상.</li>
+<li>하루 기록 쪽은 앱 타임라인: 시각(모노) · 곳(600) · 내가 쓴 한 줄 · 73px 정사각 썸네일(모서리 0), 구분선 0.5px. 한 쪽에 4줄까지, 넘치면 다음 쪽.</li>
+<li>사용자 메모가 12자 이하면 계단 글자 쪽(색면 45% + 세로 사진 55%)으로, 낱말 단위로 끊어 한 줄씩 16px 들여 쓴다. 한 권에 1~2번.</li>
+<li>사진은 흰 테두리 없이 쪽 끝까지. 큰 사진은 4:5 로 폭 전체, 아래 남는 27px 띠에 한 줄 + 시각. 여러 장은 3px 간격으로 맞붙인다.</li>
+<li>UI 조각은 한 권에 종류별 1번: 음성 메모(작은 재생 아이콘 + 파형 + 받아쓴 한 줄), 오늘의 날씨(사진 아래 색 띠에 기온·날씨), 재생 바(영상 쪽), 달력(마지막 쪽). 흰 카드·그림자 없이 본문 글자로.</li>
+<li>사진 톤: saturate .8 · contrast .94 · brightness 1.04 · sepia .06 — 파란 하늘을 눌러 파스텔 색면과 맞춘다.</li>
+<li>마지막 쪽은 그 달 달력. 여행한 날은 날짜 칸 안에 동그란 사진(41px, 그날 색 테두리)을 깔고 숫자를 그 위에 흰색으로, 위에 곳·사진·영상·km 숫자 한 줄.</li>
+<li>문구는 사용자 메모를 그대로, 없으면 시각+곳만. 설명문·감탄을 만들어 넣지 않는다.</li>
+</ul></details>
+</section>

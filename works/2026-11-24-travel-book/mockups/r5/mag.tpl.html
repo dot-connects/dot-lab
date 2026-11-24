@@ -1,0 +1,350 @@
+<!-- fonts: Gasoek+One | Noto+Sans+KR:wght@400;700;800;900 | Archivo:wght@500;700;900 -->
+<style>
+.t-mag{--paper:#f4f3ef;--ink:#111111;--a:#f5d90a;--ona:#111111;--b:#1f4d3a;--onb:#ffffff;--tb:#f5d90a;
+  --f-d:"Gasoek One","Noto Sans KR",sans-serif;--f-k:"Noto Sans KR",sans-serif;--f-n:"Archivo","Noto Sans KR",sans-serif}
+.t-mag .pg{background:var(--paper);color:var(--ink);font-family:var(--f-k);container-type:inline-size;word-break:keep-all;border-radius:0}
+.t-mag .pg,.t-mag .pg *{box-sizing:border-box}
+.t-mag .pg h4,.t-mag .pg p,.t-mag .pg ol,.t-mag .pg ul{margin:0;padding:0;list-style:none;font-weight:inherit}
+.t-mag .pg img{filter:saturate(.84) contrast(.96) brightness(1.04)}
+.t-mag .pg::after{content:"";position:absolute;inset:0;z-index:9;pointer-events:none;opacity:.06;mix-blend-mode:multiply;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
+.t-mag .ph{position:absolute;overflow:hidden}
+.t-mag .g{font-family:var(--f-d);font-weight:400;letter-spacing:-.02em;line-height:.92}
+.t-mag .n{font-family:var(--f-n);font-weight:900;letter-spacing:-.045em;line-height:.8;font-variant-numeric:tabular-nums}
+.t-mag .lab{font:700 11px/1.2 var(--f-n);letter-spacing:.03em}
+.t-mag .cap{font:700 11.5px/1.45 var(--f-k)}
+.t-mag .cap i{font:700 11px/1 var(--f-n);font-style:normal;margin-right:5px;font-variant-numeric:tabular-nums}
+.t-mag .sm{font:400 11px/1.5 var(--f-k)}
+.t-mag .fo{position:absolute;right:12px;bottom:10px;z-index:4;font:700 11px/1 var(--f-n)}
+.t-mag .row{position:absolute;left:14px;right:14px;display:flex;justify-content:space-between;z-index:4}
+
+/* drawn spiral binding (covers only) */
+.t-mag .sp{position:absolute;left:0;top:0;bottom:0;width:18px;z-index:6;background:radial-gradient(circle at 12px 8px,rgba(10,10,10,.82) 0 2.6px,transparent 3.2px) 0 3px/18px 16px repeat-y}
+.t-mag .sp::before{content:"";position:absolute;left:0;top:3px;bottom:0;width:12px;background:repeating-linear-gradient(180deg,transparent 0 6.5px,#f1f1ee 6.5px 8px,#8d8d88 8px 9.5px,transparent 9.5px 16px)}
+
+/* cover 1 — colour field, giant type, island cut-out */
+.t-mag .c1{background:var(--b);color:var(--onb)}
+.t-mag .c1 .row{left:28px;top:12px}
+.t-mag .c1 .row.bt{top:auto;bottom:12px}
+.t-mag .c1 h4{position:absolute;left:26px;top:8%;font-size:40cqw;line-height:.9;color:var(--tb)}
+.t-mag .c1 h4 span{display:block}
+.t-mag .c1 .cut{position:absolute;right:5%;bottom:8.5%;width:47%;aspect-ratio:1/1;border-radius:50%;overflow:hidden;z-index:3}
+.t-mag .c1 .cut img{filter:saturate(1) contrast(1.02)}
+.t-mag .c1 .sb{position:absolute;left:28px;bottom:38px;font:700 12px/1.45 var(--f-k)}
+
+/* cover 2 — full bleed, title bleeding off the bottom */
+.t-mag .c2{color:#fff}
+.t-mag .c2 .ph{inset:0}
+.t-mag .c2 h4{position:absolute;left:10px;bottom:2.5cqw;z-index:3;font-size:31cqw;white-space:nowrap;line-height:.88}
+.t-mag .c2 h4 span{display:block}
+.t-mag .c2 .row{top:13px}
+.t-mag .c2 .tm{position:absolute;right:14px;bottom:8%;z-index:3;text-align:right;font:900 15px/1.15 var(--f-n);letter-spacing:-.01em}
+
+/* cover 3 — photo half + colour half, distance as the graphic */
+.t-mag .c3{background:var(--a);color:var(--ona)}
+.t-mag .c3 .ph{inset:0 0 47% 0}
+.t-mag .c3 .ph img{object-position:60% 60%}
+.t-mag .c3 .km{position:absolute;left:23px;top:56%;font-size:29cqw;white-space:nowrap}
+.t-mag .c3 h4{position:absolute;left:26px;bottom:38px;font-size:11.5cqw;white-space:nowrap}
+.t-mag .c3 .row{left:28px;bottom:13px}
+
+/* itinerary + 1-colour route map */
+.t-mag .it{padding:13px 14px}
+.t-mag .it .hd{display:flex;justify-content:space-between}
+.t-mag .it h4{font-size:12.6cqw;margin:7px 0 0}
+.t-mag .it svg{display:block;width:100%;height:auto}
+.t-mag .it svg .land{fill:var(--b)}
+.t-mag .it svg .rt{fill:none;stroke:var(--ink);stroke-width:1.1;stroke-linejoin:round}
+.t-mag .it svg circle{fill:var(--ink);stroke:var(--paper);stroke-width:1.4}
+.t-mag .it svg text{font:700 10.6px var(--f-k);fill:var(--ink);paint-order:stroke;stroke:var(--paper);stroke-width:2.6px;stroke-linejoin:round}
+.t-mag .it ol{margin-top:4px;border-bottom:1.5px solid var(--ink)}
+.t-mag .it li{display:grid;grid-template-columns:27px 44px 1fr 22px;font:400 11px/14.6px var(--f-k);align-items:baseline}
+.t-mag .it li.h,.t-mag .it li.h *{font:700 11px/15px var(--f-k)}
+.t-mag .it li.d{border-top:1.5px solid var(--ink);padding-top:1px}
+.t-mag .it li b{font:900 11px/1 var(--f-n)}
+.t-mag .it li i{font:700 11px/1 var(--f-n);font-style:normal;font-variant-numeric:tabular-nums}
+.t-mag .it li em{font:700 11px/1 var(--f-n);font-style:normal;text-align:right}
+
+/* chapter 01 — photo on top, colour field with giant numeral */
+.t-mag .ch1{background:var(--a);color:var(--ona)}
+.t-mag .ch1 .ph{inset:0 0 51% 0}
+.t-mag .ch1 .n{position:absolute;left:-1.5cqw;bottom:-5.5cqw;font-size:60cqw}
+.t-mag .ch1 .tx{position:absolute;right:14px;top:52%;width:39%;bottom:30px;text-align:right;display:flex;flex-direction:column}
+.t-mag .ch1 h4{font-size:17cqw;white-space:nowrap}
+.t-mag .ch1 .lab{margin-top:8px}
+.t-mag .ch1 .cap{margin-top:auto}
+
+/* full bleed + giant time */
+.t-mag .fb{color:#fff}
+.t-mag .fb .ph{inset:0}
+.t-mag .fb h4{position:absolute;left:10px;top:12px;font-size:41cqw;color:var(--ink);z-index:3}
+.t-mag .fb .bt{position:absolute;left:14px;bottom:13px;z-index:3}
+.t-mag .fb .fo{color:#fff}
+
+/* chapter 02 — whole colour field */
+.t-mag .ch2{background:var(--b);color:var(--onb)}
+.t-mag .ch2 .n{position:absolute;left:-2cqw;top:-3.5cqw;font-size:66cqw;color:var(--tb)}
+.t-mag .ch2 .ph{right:0;top:0;bottom:0;width:31%}
+.t-mag .ch2 h4{position:absolute;left:14px;top:47%;font-size:23cqw}
+.t-mag .ch2 ol{position:absolute;left:14px;right:35%;bottom:14px}
+.t-mag .ch2 li{font:400 11px/17px var(--f-k);border-top:1px solid currentColor;display:flex;gap:8px;white-space:nowrap}
+.t-mag .ch2 li i{font:700 11px/17px var(--f-n);font-style:normal;font-variant-numeric:tabular-nums}
+.t-mag .ch2 .lab{position:absolute;left:14px;top:67.5%}
+
+/* three photos butted, 2px gutters */
+.t-mag .tri .p1{inset:0 0 calc(46% + 1px) 0}
+.t-mag .tri .p2{left:0;bottom:0;width:calc(58% - 1px);height:calc(46% - 1px)}
+.t-mag .tri .p3{right:0;bottom:0;width:calc(42% - 1px);height:calc(46% - 1px)}
+.t-mag .tri .pill{position:absolute;left:12px;top:12px;z-index:3;background:#fff;color:#111;border-radius:99px;padding:6px 11px 6px 9px;display:flex;align-items:center;gap:6px;font:700 11px/1 var(--f-k)}
+.t-mag .tri .pill u{width:22px;height:0;border-top:2px dotted #111;text-decoration:none;position:relative}
+.t-mag .tri .pill s{width:7px;height:7px;border-radius:50%;background:var(--b)}
+.t-mag .tri .tag{position:absolute;left:0;top:calc(54% - 15px);z-index:3;background:var(--a);color:var(--ona);padding:7px 12px 7px 14px}
+.t-mag .tri .fo{color:#fff}
+
+/* video page — three frames in a row */
+.t-mag .vd{background:var(--a);color:var(--ona)}
+.t-mag .vd .vl{position:absolute;left:14px;top:13px}
+.t-mag .vd h4{position:absolute;left:10px;top:8.5%;font-size:27cqw;white-space:nowrap}
+.t-mag .vd .f{top:36%;height:43%;width:calc((100% - 4px)/3)}
+.t-mag .vd .f1{left:0}
+.t-mag .vd .f2{left:calc((100% - 4px)/3 + 2px)}
+.t-mag .vd .f3{right:0}
+.t-mag .vd .f1 img{object-position:50% 70%}
+.t-mag .vd .f2 img{transform:scale(1.7);transform-origin:42% 72%}
+.t-mag .vd .f3 img{transform:scale(2.5);transform-origin:62% 74%}
+.t-mag .vd .play{inset:36% 0 21% 0}
+.t-mag .vd .tc{position:absolute;left:0;right:0;top:calc(79% + 6px);display:grid;grid-template-columns:repeat(3,1fr);font:700 11px/1 var(--f-n)}
+.t-mag .vd .tc span{padding-left:14px}
+.t-mag .vd .bd{position:absolute;left:14px;right:40px;bottom:11px}
+.t-mag .vd .bd .sm{opacity:.85}
+
+/* two portraits butted + word bleeding off the bottom */
+.t-mag .duo .p1{left:0;top:0;width:50%;height:68%}
+.t-mag .duo .p2{right:0;top:0;width:50%;height:68%}
+.t-mag .duo .cs{position:absolute;left:0;right:0;top:68%;display:grid;grid-template-columns:1fr 1fr;padding-top:8px}
+.t-mag .duo .cs p{padding-left:14px}
+.t-mag .duo h4{position:absolute;left:10px;bottom:1.5cqw;font-size:32cqw;white-space:nowrap}
+
+/* colour field + bleed */
+.t-mag .sp2{background:var(--a);color:var(--ona)}
+.t-mag .sp2 .p1{right:0;top:0;bottom:0;width:53%}
+.t-mag .sp2 .p2{left:0;bottom:0;width:47%;height:37%}
+.t-mag .sp2 .tx{position:absolute;left:14px;top:14px;width:calc(47% - 22px)}
+.t-mag .sp2 h4{font-size:20.5cqw;margin-top:14px}
+.t-mag .sp2 .cap{margin-top:10px}
+.t-mag .sp2 .fo{right:auto;left:14px;color:#fff}
+
+/* chapter 03 — tall photo + paper column */
+.t-mag .ch3 .p1{left:0;top:0;bottom:0;width:50%}
+.t-mag .ch3 .p2{right:0;bottom:0;width:50%;height:34%}
+.t-mag .ch3 .p2 img{object-position:72% 50%}
+.t-mag .ch3 .tx{position:absolute;left:calc(50% + 12px);right:10px;top:12px}
+.t-mag .ch3 .n{font-size:33cqw;margin:14px 0 0 -.04em}
+.t-mag .ch3 h4{font-size:13.2cqw;margin-top:10px;white-space:nowrap}
+.t-mag .ch3 .cap{margin-top:9px}
+.t-mag .ch3 .fo{color:#fff}
+
+/* contact sheet + index */
+.t-mag .ct{padding:13px 14px}
+.t-mag .ct .hd{display:flex;justify-content:space-between}
+.t-mag .ct h4{font:800 7.4cqw/1.1 var(--f-k);letter-spacing:0;margin:9px 0 9px}
+.t-mag .ct .gr{display:grid;grid-template-columns:repeat(4,1fr);gap:2px}
+.t-mag .ct .gr div{position:relative;aspect-ratio:1/1;overflow:hidden}
+.t-mag .ct .gr b{position:absolute;left:0;top:0;background:var(--ink);color:var(--paper);font:700 11px/1 var(--f-n);padding:3px 4px}
+.t-mag .ct ol{margin-top:9px;columns:2;column-gap:8px;border-top:1.5px solid var(--ink);padding-top:4px}
+.t-mag .ct li{font:500 11px/17px var(--f-k);white-space:nowrap;overflow:hidden}
+.t-mag .ct li b{font:900 11px/1 var(--f-n);margin-right:5px}
+
+/* last page — colophon */
+.t-mag .end{background:var(--b);color:var(--onb)}
+.t-mag .end .ph{inset:0 0 56% 0}
+.t-mag .end h4{position:absolute;left:12px;top:47%;font-size:15.4cqw;white-space:nowrap;color:var(--tb)}
+.t-mag .end ol{position:absolute;left:14px;right:14px;top:62.5%;border-bottom:1px solid currentColor}
+.t-mag .end li{display:grid;grid-template-columns:76px 1fr;font:400 11px/18px var(--f-k);border-top:1px solid currentColor}
+.t-mag .end li b{font-weight:700}
+.t-mag .end li span{font-variant-numeric:tabular-nums}
+.t-mag .end .row{bottom:12px}
+</style>
+<section class="t-mag" data-palettes='[{"--a":"#f5d90a","--ona":"#111111","--b":"#1f4d3a","--onb":"#ffffff","--tb":"#f5d90a"},{"--a":"#f6e696","--ona":"#111111","--b":"#1f4d3a","--onb":"#ffffff","--tb":"#f6e696"},{"--a":"#f5d90a","--ona":"#111111","--b":"#2c2b54","--onb":"#ffffff","--tb":"#f5d90a"}]'>
+<div class="head"><h2>잡지</h2><p class="idea">독립 여행 진 — 초굵은 한글, 색면 한 장, 숫자가 그림</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+<h3 class="sub">표지 후보</h3>
+<div class="strip">
+  <div class="pg c1">
+    <i class="sp"></i>
+    <div class="row"><span class="lab">제주 여행 잡지</span><span class="lab">1호</span></div>
+    <h4 class="g"><span>제주,</span><span>바람</span></h4>
+    <p class="sb">바람 많던<br>2박 3일</p>
+    <div class="cut"><img src="{{tangerine_2}}" alt=""></div>
+    <div class="row bt"><span class="lab">2026.06.12–14</span><span class="lab">사진 46 · 9곳</span></div>
+  </div>
+  <div class="pg c2">
+    <div class="ph"><img src="{{hallasan}}" alt=""></div>
+    <div class="row"><span class="lab">6월, 제주</span><span class="lab">1호</span></div>
+    <div class="tm">08:30<br>06.14</div>
+    <h4 class="g"><span>제주,</span><span>바람</span></h4>
+  </div>
+  <div class="pg c3">
+    <i class="sp"></i>
+    <div class="ph"><img src="{{road_2}}" alt=""></div>
+    <div class="n km">vol.01</div>
+    <h4 class="g">제주, 바람</h4>
+    <div class="row"><span class="lab">첫 번째 호 · 2026.06.12–14</span><span class="lab">3일 · 9곳</span></div>
+  </div>
+</div>
+<div class="under"><span>① 색면 + 초굵은 제목 + 원형 사진 한 점 ② 사진 한 장에 넘치는 제목 ③ 사진 반 · 색 반, 호수 "vol.01" 이 그림</span><span>3개</span></div>
+
+<h3 class="sub">책 본문</h3>
+<div class="strip">
+  <div class="pg it">
+    <div class="hd"><span class="lab">일정</span><span class="lab">02</span></div>
+    <h4 class="g">어디 갔나</h4>
+    <svg viewBox="10 4 285 156" aria-hidden="true">
+      <path class="land" d="@@COAST@@"/><path class="land" d="@@UDO@@"/>
+      <polyline class="rt" points="126,31.7 43.6,79 20.6,98.8 279.1,32.9 257.7,27.7 228,11.9 274.1,51.4 126,79 79.9,98.8 102.9,55.4 126,31.7"/>
+      <circle cx="126" cy="31.7" r="3.4"/><circle cx="43.6" cy="79" r="3.4"/><circle cx="20.6" cy="98.8" r="3.4"/><circle cx="279.1" cy="32.9" r="3.4"/><circle cx="257.7" cy="27.7" r="3.4"/><circle cx="228" cy="11.9" r="3.4"/><circle cx="274.1" cy="51.4" r="3.4"/><circle cx="126" cy="79" r="3.4"/><circle cx="79.9" cy="98.8" r="3.4"/><circle cx="102.9" cy="55.4" r="3.4"/>
+      <text x="126" y="24" text-anchor="middle">공항</text><text x="40" y="70" text-anchor="end">협재</text><text x="291" y="24" text-anchor="end">우도</text><text x="268" y="67" text-anchor="end">성산</text><text x="132" y="92">어리목</text><text x="216" y="24" text-anchor="end">월정리</text>
+    </svg>
+    <ol>
+      <li class="h"><b>날</b><i>시각</i><span>곳</span><em>쪽</em></li>
+      <li class="d"><b>01</b><i>13:20</i><span>협재 해변</span><em>04</em></li>
+      <li><b></b><i>17:40</i><span>신창 풍차해안도로</span><em>06</em></li>
+      <li class="d"><b>02</b><i>09:42</i><span>우도</span><em>10</em></li>
+      <li><b></b><i>14:10</i><span>하도 해녀 탈의장 앞</span><em>12</em></li>
+      <li><b></b><i>16:05</i><span>월정리 돌담길</span><em>14</em></li>
+      <li><b></b><i>17:20</i><span>월정리 해변</span><em>14</em></li>
+      <li><b></b><i>19:05</i><span>성산일출봉 앞</span><em>16</em></li>
+      <li class="d"><b>03</b><i>08:30</i><span>한라산 어리목</span><em>18</em></li>
+      <li><b></b><i>11:10</i><span>원물오름</span><em>18</em></li>
+      <li><b></b><i>13:30</i><span>귤나무 카페</span><em>22</em></li>
+    </ol>
+  </div>
+
+  <div class="pg ch1">
+    <div class="ph"><img src="{{hyeopjae}}" alt=""></div>
+    <div class="n">01</div>
+    <div class="tx">
+      <h4 class="g">서쪽</h4>
+      <p class="lab">06.12 금 · 맑음 24°</p>
+      <p class="cap"><i>13:20</i>협재<br>물이 생각보다 차가움</p>
+    </div>
+    <span class="fo">04</span>
+  </div>
+
+  <div class="pg fb">
+    <div class="ph"><img src="{{road}}" alt=""></div>
+    <h4 class="g">신창</h4>
+    <div class="bt"><p class="cap"><i>17:40</i>풍차해안도로</p><p class="sm">해 질 무렵, 바람 셈</p></div>
+    <span class="fo">06</span>
+  </div>
+
+  <div class="pg ch2">
+    <div class="n">02</div>
+    <div class="ph"><img src="{{d3}}" alt=""></div>
+    <h4 class="g">동쪽</h4>
+    <p class="lab">06.13 토 · 바람 강함 21°</p>
+    <ol>
+      <li><i>09:42</i>우도</li>
+      <li><i>14:10</i>하도 해녀 탈의장</li>
+      <li><i>16:05</i>월정리 돌담길</li>
+      <li><i>17:20</i>월정리 해변</li>
+      <li><i>19:05</i>성산일출봉 앞</li>
+    </ol>
+  </div>
+
+  <div class="pg tri">
+    <div class="ph p1"><img src="{{udo}}" alt=""></div>
+    <div class="ph p2"><img src="{{udo_2}}" alt=""></div>
+    <div class="ph p3"><img src="{{d10}}" alt=""></div>
+    <div class="pill"><s></s>성산항<u></u>우도 15분</div>
+    <p class="tag cap"><i>09:42</i>모자가 두 번 날아감</p>
+    <span class="fo">10</span>
+  </div>
+
+  <div class="pg vd">
+    <span class="lab vl">video 01/03 · 영상 3초</span>
+    <h4 class="g">하도</h4>
+    <div class="ph f f1"><img src="{{haenyeo}}" alt=""></div>
+    <div class="ph f f2"><img src="{{haenyeo}}" alt=""></div>
+    <div class="ph f f3"><img src="{{haenyeo}}" alt=""></div>
+    <div class="play"><span></span></div>
+    <div class="tc"><span>0:00</span><span>0:01</span><span>0:03</span></div>
+    <div class="bd"><p class="cap"><i>14:10</i>해녀 탈의장 앞, 바구니 정리 중</p><p class="sm">PDF 에서는 사진 한 장으로</p></div>
+    <span class="fo">12</span>
+  </div>
+
+  <div class="pg duo">
+    <div class="ph p1"><img src="{{doldam}}" alt=""></div>
+    <div class="ph p2"><img src="{{woljeongri}}" alt=""></div>
+    <div class="cs"><p class="cap"><i>16:05</i>돌담길</p><p class="cap"><i>17:20</i>해변 카페 마당</p></div>
+    <h4 class="g">월정리</h4>
+    <span class="fo">14</span>
+  </div>
+
+  <div class="pg sp2">
+    <div class="ph p1"><img src="{{seongsan_2}}" alt=""></div>
+    <div class="ph p2"><img src="{{seongsan}}" alt=""></div>
+    <div class="tx">
+      <span class="lab">둘째 날</span>
+      <h4 class="g">성산</h4>
+      <p class="cap"><i>19:05</i>일출봉 앞<br>해 지니까 파래짐</p>
+    </div>
+    <span class="fo">16</span>
+  </div>
+
+  <div class="pg ch3">
+    <div class="ph p1"><img src="{{hallasan}}" alt=""></div>
+    <div class="ph p2"><img src="{{oreum}}" alt=""></div>
+    <div class="tx">
+      <span class="lab">06.14 일 · 흐림 22°</span>
+      <div class="n">03</div>
+      <h4 class="g">중산간</h4>
+      <p class="cap"><i>08:30</i>어리목, 안개<br><i>11:10</i>원물오름 억새</p>
+    </div>
+    <span class="fo">18</span>
+  </div>
+
+  <div class="pg ct">
+    <div class="hd"><span class="lab">밀착 인화</span><span class="lab">20</span></div>
+    <h4 class="g">못 넣은 열두 장</h4>
+    <div class="gr">
+      <div><img src="{{hyeopjae_2}}" alt=""><b>01</b></div><div><img src="{{d9}}" alt=""><b>02</b></div><div><img src="{{d4}}" alt=""><b>03</b></div><div><img src="{{d5}}" alt=""><b>04</b></div>
+      <div><img src="{{d7}}" alt=""><b>05</b></div><div><img src="{{d2}}" alt=""><b>06</b></div><div><img src="{{woljeongri_2}}" alt=""><b>07</b></div><div><img src="{{hallasan_2}}" alt=""><b>08</b></div>
+      <div><img src="{{oreum_2}}" alt=""><b>09</b></div><div><img src="{{d1}}" alt=""><b>10</b></div><div><img src="{{d6}}" alt=""><b>11</b></div><div><img src="{{tangerine_2}}" alt=""><b>12</b></div>
+    </div>
+    <ol>
+      <li><b>01</b>13:25 협재 물놀이</li><li><b>02</b>13:40 젖은 운동화</li><li><b>03</b>13:55 조개 세 개</li><li><b>04</b>16:50 신창 가는 버스</li>
+      <li><b>05</b>16:20 돌담 위 벤치</li><li><b>06</b>17:30 커피 두 잔</li><li><b>07</b>17:45 월정리 물가</li><li><b>08</b>08:50 어리목 나무 계단</li>
+      <li><b>09</b>11:25 원물오름 분화구</li><li><b>10</b>13:30 카페 창가 자리</li><li><b>11</b>13:50 반쯤 깐 귤</li><li><b>12</b>14:05 가지에 달린 귤</li>
+    </ol>
+  </div>
+
+  <div class="pg end">
+    <div class="ph"><img src="{{tangerine}}" alt=""></div>
+    <h4 class="g">제주, 바람</h4>
+    <ol>
+      <li><b>펴낸 날</b><span>2026.06.14 일</span></li>
+      <li><b>다닌 날</b><span>06.12 금 – 06.14 일, 2박 3일</span></li>
+      <li><b>실린 것</b><span>사진 46 · 영상 3</span></li>
+      <li><b>들른 곳</b><span>9곳 · 이동 214km</span></li>
+      <li><b>끝난 곳</b><span>13:30 귤나무 카페, 비행기 시간</span></li>
+    </ol>
+    <div class="row"><span class="lab">판권 · 1호</span><span class="lab">22</span></div>
+  </div>
+</div>
+<div class="under"><span>일정표·지도 → 01 서쪽 → 신창 노을 → 02 동쪽 → 우도 → 영상 → 월정리 → 성산 → 03 중산간 → 밀착 인화 → 판권면</span><span>11쪽</span></div>
+
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>글꼴 3개만: 제목·지명 Gasoek One, 날 번호·라틴 Archivo 900/700(크게 쓰는 숫자는 날 번호 01·02·03 뿐, 시각은 항상 캡션 크기), 본문 Noto Sans KR. 큰 글자는 쪽 폭의 30~66%, 작은 글자는 11~12px(11px 미만 없음), 40px 아래 굵은 한글은 Noto Sans KR 800 — 중간 크기 없음(약 10:1).</li>
+<li>색면은 한 권에 두 색(기본 노랑 #F5D90A + 딥그린 #1F4D3A). 여행 사진에서 가장 넓은 색 두 개를 뽑아 채도를 올려 쓰고, 한 쪽에는 한 색만 넓게 깐다. 검정 바탕·그라데이션 없음.</li>
+<li>표지 제목은 두 줄까지, 한 줄 2~3글자를 쪽 폭 40% 크기로. 색면 표지에는 원형으로 자른 사진 한 점(지름 = 쪽 폭 47%)을 글자 끝에 겹친다. 가장자리에서 잘리는 글자는 높이의 1/4 이하.</li>
+<li>날(day)마다 챕터 쪽 1장: 숫자 "01"을 폭 60% 이상으로 가장자리 밖까지, 옆에 방위·동네 이름 한 단어("서쪽"). 세 챕터는 배치를 서로 다르게(사진 위·색 아래 / 전면 색 / 세로 사진 + 종이).</li>
+<li>사진은 전부 가장자리까지. 두세 장을 쓸 때는 간격 0~2px 로 맞붙이고 흰 테두리·그림자·둥근 모서리 없음. 세로 사진은 세로 칸에만.</li>
+<li>사진 위 글자는 하늘·어두운 땅처럼 고른 면에만 올린다. 고른 면이 없으면 글자를 색 띠나 종이 면으로 내린다(그림자·그라데이션으로 해결하지 않음).</li>
+<li>스프링 제본 그림은 표지에만, 본문 쪽에는 넣지 않는다. 영어 라벨 대신 한국어(일정·밀착 인화·판권·1호).</li>
+<li>사진 톤: saturate .84 · contrast .96 · brightness 1.04 + 그레인 6%. 표지 원형 사진만 원래 채도.</li>
+<li>일정표는 날 | 시각 | 곳 | 쪽 4열, 날이 바뀔 때만 1.5px 선. 지도는 1색 실루엣 + 점 + 1px 경로선, 지명은 4~6개만.</li>
+<li>본문에 못 들어간 사진은 끝에서 두 번째 쪽에 4×3 밀착 인화 + 번호·시각·한 줄 표. 마지막 쪽은 판권면: 사진 한 장 + 책 제목 + 펴낸 날·다닌 날·사진/영상 수·곳 수·이동 km 를 11px 표 5줄로(숫자를 크게 키우지 않음).</li>
+<li>영상 쪽은 같은 영상의 3컷(처음·중간·끝)을 2px 간격 가로 띠로, ▶ 는 가운데 하나, 컷 아래 시각 표시. PDF 에서는 ▶ 를 빼고 사진 한 장으로.</li>
+</ul></details>
+</section>

@@ -1,0 +1,220 @@
+<!-- fonts: Nanum+Gothic:wght@400;700;800 | JetBrains+Mono:wght@400;500;700 -->
+<style>
+/* Film-lab album. Lengths are design px on a 330x440 page, scaled by --u. */
+.t-album{--paper:#E8E5DF;--ink:#111111;--dim:#57534d;--led:#FF8A1F;
+  --f:"Nanum Gothic",system-ui,sans-serif;--m:"JetBrains Mono","Nanum Gothic",ui-monospace,monospace}
+.t-album .pg{container-type:inline-size;background:var(--paper)}
+.t-album .in{--u:.30303cqw;position:absolute;inset:0;background:var(--paper);color:var(--ink);font-family:var(--f)}
+/* borderless print: warm film grade, lifted blacks, fine grain */
+.t-album .ph{position:relative;overflow:hidden;isolation:isolate;background:#8a8a86;width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u))}
+.t-album .ph img{object-position:var(--op,50% 50%);filter:saturate(.8) contrast(.93) brightness(1.05) sepia(.14)}
+.t-album .ph::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:screen;background:linear-gradient(180deg,rgba(255,170,90,.11),rgba(255,120,60,.05))}
+.t-album .ph::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;mix-blend-mode:overlay;opacity:.34;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.95' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+/* flash snap: hot centre, fallen-off corners */
+.t-album .ph.fl::before{mix-blend-mode:normal;background:radial-gradient(circle at 50% 46%,rgba(255,246,228,.2),transparent 46%),radial-gradient(circle at 50% 50%,transparent 52%,rgba(0,0,0,.36))}
+.t-album .ph.sh::before{mix-blend-mode:normal;background:linear-gradient(180deg,rgba(0,0,0,.3),transparent 24%,transparent 62%,rgba(0,0,0,.55))}
+.t-album .a{position:absolute;box-sizing:border-box;margin:0;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u))}
+.t-album .rt{left:auto;right:calc(var(--r,14)*var(--u));text-align:right}
+.t-album .g{display:grid;gap:calc(2*var(--u));grid-template-columns:repeat(var(--c,3),1fr);grid-auto-rows:1fr;width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u))}
+.t-album .g>.ph{width:auto;height:auto;min-height:0}
+/* LED date imprint: the theme's signature, one per day at most */
+.t-album .st{position:absolute;right:calc(10*var(--u));bottom:calc(9*var(--u));z-index:2;white-space:pre;font:500 calc(var(--s,13)*var(--u))/1 var(--m);color:var(--led);letter-spacing:.14em;
+  text-shadow:0 0 calc(1*var(--u)) rgba(70,20,0,.95),0 0 calc(5*var(--u)) rgba(40,10,0,.55),0 0 calc(3*var(--u)) rgba(255,110,0,.7)}
+.t-album .x{white-space:nowrap;z-index:2;font:700 calc(var(--s,11)*var(--u))/1.4 var(--f);letter-spacing:-.01em}
+.t-album .x.n{font-weight:400}
+.t-album .x.b{font-weight:800}
+.t-album .x.mo{font-family:var(--m);font-weight:500;letter-spacing:.02em}
+.t-album .x.big{font-weight:800;line-height:.92;letter-spacing:-.05em}
+.t-album .x.mo.big{font-weight:700;letter-spacing:-.06em}
+.t-album .dim{color:var(--dim)}
+.t-album .wh{color:#fff}
+.t-album .ph.sb::before{mix-blend-mode:normal;background:linear-gradient(180deg,transparent 60%,rgba(0,0,0,.5))}
+</style>
+<section class="t-album" data-palettes='[{"--paper":"#E8E5DF","--ink":"#111111","--dim":"#57534d"},{"--paper":"#F4F1EA","--ink":"#151412","--dim":"#5c5852"},{"--paper":"#DFE3E1","--ink":"#10201A","--dim":"#4d5a55"},{"--paper":"#ECE7E4","--ink":"#1b1516","--dim":"#5e5456"}]'>
+<div class="head"><h2>앨범</h2><p class="idea">필름 현상소에서 막 찾아온 세 롤. 테두리 없이 맞붙은 인화, 주황 날짜 각인.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+<h3 class="sub">표지 후보</h3>
+<div class="strip">
+  <!-- cover 1: one frame, the date imprint is the title -->
+  <div class="pg"><div class="in">
+    <div class="a ph sh" style="--w:330;--h:440;--op:14% 50%"><img src="{{udo}}" alt=""><span class="st" style="--s:25;right:calc(16*var(--u));bottom:calc(18*var(--u))">'26  6 12</span></div>
+    <p class="a x b wh" style="--x:16;--y:16;--s:13">제주 2박 3일</p>
+    <p class="a x wh rt" style="--r:16;--y:17;--s:10">36컷 필름 세 롤</p>
+  </div></div>
+  <!-- cover 2: index print -->
+  <div class="pg"><div class="in">
+    <p class="a x big" style="--x:11;--y:12;--s:62">제주 46컷</p>
+    <p class="a x mo dim" style="--x:14;--y:80;--s:10">06.12—06.14</p>
+    <p class="a x dim rt" style="--r:14;--y:79;--s:10">36컷 필름 세 롤</p>
+    <div class="a g" style="--y:116;--w:330;--h:324">
+      <div class="ph"><img src="{{hyeopjae}}" alt=""></div>
+      <div class="ph fl"><img src="{{d9}}" alt=""></div>
+      <div class="ph" style="--op:50% 60%"><img src="{{road}}" alt=""></div>
+      <div class="ph" style="--op:70% 50%"><img src="{{udo_2}}" alt=""></div>
+      <div class="ph" style="--op:50% 80%"><img src="{{doldam}}" alt=""></div>
+      <div class="ph" style="--op:20% 50%"><img src="{{d7}}" alt=""></div>
+      <div class="ph" style="--op:50% 70%"><img src="{{seongsan_2}}" alt=""></div>
+      <div class="ph" style="--op:72% 50%"><img src="{{oreum}}" alt=""></div>
+      <div class="ph fl"><img src="{{d6}}" alt=""></div>
+    </div>
+  </div></div>
+  <!-- cover 3: three rolls, one frame each, against one big print -->
+  <div class="pg"><div class="in">
+    <p class="a x big" style="--x:10;--y:24;--s:128">제주</p>
+    <p class="a x mo" style="--x:16;--y:150;--s:10">06.12—06.14</p>
+    <p class="a x b rt" style="--r:16;--y:149;--s:11">세 롤 · 46컷</p>
+    <div class="a ph sb" style="--y:174;--w:128;--h:87"><img src="{{hyeopjae}}" alt=""></div>
+    <div class="a ph sb" style="--y:263;--w:128;--h:87;--op:50% 80%"><img src="{{doldam}}" alt=""></div>
+    <div class="a ph sb" style="--y:352;--w:128;--h:88;--op:72% 40%"><img src="{{oreum}}" alt=""></div>
+    <p class="a x wh" style="--x:6;--y:243;--s:10">첫째 날</p>
+    <p class="a x wh" style="--x:6;--y:332;--s:10">둘째 날</p>
+    <p class="a x wh" style="--x:6;--y:422;--s:10">셋째 날</p>
+    <div class="a ph" style="--x:130;--y:174;--w:200;--h:266;--op:50% 55%"><img src="{{road}}" alt=""></div>
+  </div></div>
+</div>
+<div class="under"><span>① 한 컷 + 날짜 각인이 제목 ② 인덱스 프린트 9칸 ③ 롤마다 한 컷씩 세 장 + 큰 인화 한 장</span><span>3개</span></div>
+
+<h3 class="sub">책 본문</h3>
+<div class="strip">
+  <!-- 1 roll info -->
+  <div class="pg"><div class="in">
+    <p class="a x mo dim" style="--x:14;--y:14;--s:9.5">06.12—06.14</p>
+    <p class="a x dim rt" style="--y:13;--s:10">컬러 네거 필름 · 36컷짜리</p>
+    <p class="a x big" style="--x:10;--y:40;--s:76">세 롤,<br>46컷</p>
+    <p class="a x" style="--x:14;--y:192;--s:11"><span style="font-weight:800">1롤</span>&ensp;금 · 맑음 24°&ensp;<span class="dim">협재, 신창</span></p>
+    <p class="a x" style="--x:14;--y:209;--s:11"><span style="font-weight:800">2롤</span>&ensp;토 · 바람 21°&ensp;<span class="dim">우도, 하도, 월정리, 성산</span></p>
+    <p class="a x" style="--x:14;--y:226;--s:11"><span style="font-weight:800">3롤</span>&ensp;일 · 흐림 22°&ensp;<span class="dim">어리목, 원물오름, 귤나무 카페</span></p>
+    <p class="a x mo dim" style="--x:14;--y:252;--s:10">프레임 00A</p>
+    <p class="a x dim rt" style="--y:251;--s:10">공항 버스, 창가 자리</p>
+    <div class="a ph" style="--y:270;--w:330;--h:170;--op:50% 40%"><img src="{{d5}}" alt=""></div>
+  </div></div>
+  <!-- 2 day 1: prints that touch -->
+  <div class="pg"><div class="in">
+    <p class="a x b" style="--x:14;--y:9;--s:10.5">첫째 날 롤</p>
+    <p class="a x dim rt" style="--y:9;--s:10">06.12 금 · 맑음 24°</p>
+    <div class="a ph" style="--y:34;--w:220;--h:148"><img src="{{hyeopjae}}" alt=""></div>
+    <div class="a ph" style="--x:222;--y:34;--w:108;--h:148;--op:58% 50%"><img src="{{road_2}}" alt=""></div>
+    <div class="a g" style="--y:184;--w:330;--h:146">
+      <div class="ph" style="--op:50% 85%"><img src="{{hyeopjae_2}}" alt=""></div>
+      <div class="ph fl"><img src="{{d9}}" alt=""></div>
+      <div class="ph fl"><img src="{{d10}}" alt=""></div>
+    </div>
+    <div class="a ph" style="--y:332;--w:164;--h:108"><img src="{{d4}}" alt=""></div>
+    <p class="a x b" style="--x:178;--y:346;--s:13">13:20 협재</p>
+    <p class="a x n" style="--x:178;--y:367;--s:11">물이 생각보다 차갑다</p>
+    <p class="a x mo dim" style="--x:178;--y:414;--s:10">프레임 01A—06A</p>
+  </div></div>
+  <!-- 3 single frame, full bleed -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:330;--h:440"><img src="{{road}}" alt=""><span class="st" style="--s:15;right:calc(14*var(--u));bottom:calc(16*var(--u))">'26  6 12</span></div>
+    <p class="a x mo wh" style="--x:14;--y:396;--s:10">프레임 07A · 17:40</p>
+    <p class="a x wh" style="--x:14;--y:411;--s:11">신창. 바람 셈</p>
+  </div></div>
+  <!-- 4 udo -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:330;--h:250;--op:30% 50%"><img src="{{udo}}" alt=""></div>
+    <div class="a ph" style="--y:252;--w:108;--h:132"><img src="{{d3}}" alt=""></div>
+    <div class="a ph" style="--x:110;--y:252;--w:220;--h:132;--op:60% 60%"><img src="{{udo_2}}" alt=""></div>
+    <p class="a x b" style="--x:14;--y:396;--s:11.5">09:42 우도, 도항선 15분</p>
+    <p class="a x n" style="--x:14;--y:414;--s:11">모자가 두 번 날아감</p>
+    <p class="a x dim rt" style="--y:396;--s:10">둘째 날 롤</p>
+    <p class="a x mo dim rt" style="--y:414;--s:10">프레임 08A—10A</p>
+  </div></div>
+  <!-- 5 video: three consecutive frames, no play button -->
+  <div class="pg"><div class="in">
+    <div class="a ph sb" style="--w:330;--h:126;--op:50% 70%"><img src="{{haenyeo}}" alt=""></div>
+    <div class="a ph sb" style="--y:128;--w:330;--h:126;--op:50% 76%"><img src="{{haenyeo}}" alt=""></div>
+    <div class="a ph sb" style="--y:256;--w:330;--h:126;--op:50% 82%"><img src="{{haenyeo}}" alt=""></div>
+    <p class="a x mo wh" style="--x:8;--y:107;--s:10">11A</p>
+    <p class="a x mo wh" style="--x:8;--y:235;--s:10">11B</p>
+    <p class="a x mo wh" style="--x:8;--y:363;--s:10">11C</p>
+    <p class="a x b" style="--x:14;--y:394;--s:11.5">14:10 하도. 그물 정리하는 해녀</p>
+    <p class="a x n" style="--x:14;--y:412;--s:11">영상 · 3초</p>
+    <p class="a x dim rt" style="--y:413;--s:10">PDF에서는 사진 한 장으로</p>
+  </div></div>
+  <!-- 6 contact sheet with frame numbers -->
+  <div class="pg"><div class="in">
+    <p class="a x b" style="--x:14;--y:8;--s:10.5">둘째 날 롤 · 06.13 토</p>
+    <p class="a x dim rt" style="--y:8;--s:10">월정리 16:05—17:20</p>
+    <div class="a g" style="--y:30;--w:330;--h:150">
+      <div class="ph sb" style="--op:50% 75%"><img src="{{doldam}}" alt=""></div>
+      <div class="ph sb"><img src="{{doldam_2}}" alt=""></div>
+      <div class="ph sb" style="--op:50% 70%"><img src="{{woljeongri}}" alt=""></div>
+    </div>
+    <p class="a x mo wh" style="--x:6;--y:162;--s:10">12A</p><p class="a x mo wh" style="--x:117;--y:162;--s:10">13A</p><p class="a x mo wh" style="--x:228;--y:162;--s:10">14A</p>
+    <div class="a g" style="--y:182;--w:330;--h:122;--c:2">
+      <div class="ph sb"><img src="{{d7}}" alt=""></div>
+      <div class="ph sb" style="--op:50% 60%"><img src="{{woljeongri_2}}" alt=""></div>
+    </div>
+    <p class="a x mo wh" style="--x:6;--y:286;--s:10">15A</p><p class="a x mo wh" style="--x:172;--y:286;--s:10">16A</p>
+    <div class="a ph sb" style="--y:306;--w:330;--h:104;--op:50% 62%"><img src="{{d2}}" alt=""></div>
+    <p class="a x mo wh" style="--x:6;--y:392;--s:10">17A</p>
+    <p class="a x mo dim" style="--x:14;--y:419;--s:10">프레임 12A—17A</p>
+    <p class="a x rt" style="--y:418;--s:10.5">돌담, 낮은 집, 커피 두 잔</p>
+  </div></div>
+  <!-- 7 two prints that touch -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:130;--h:384;--op:50% 60%"><img src="{{seongsan_2}}" alt=""></div>
+    <div class="a ph" style="--x:132;--w:198;--h:384;--op:52% 50%"><img src="{{seongsan}}" alt=""></div>
+    <p class="a x b" style="--x:14;--y:396;--s:11.5">19:05 성산일출봉 앞</p>
+    <p class="a x n" style="--x:14;--y:414;--s:11">해가 넘어간다. 유채는 덤</p>
+    <p class="a x dim rt" style="--y:396;--s:10">둘째 날 롤</p>
+    <p class="a x mo dim rt" style="--y:414;--s:10">프레임 18A—19A</p>
+  </div></div>
+  <!-- 8 one big + small column -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:220;--h:440"><img src="{{hallasan}}" alt=""><span class="st" style="--s:14;right:calc(12*var(--u));bottom:calc(14*var(--u))">'26  6 14</span></div>
+    <div class="a ph" style="--x:222;--w:108;--h:146;--op:45% 50%"><img src="{{hallasan_2}}" alt=""></div>
+    <div class="a ph" style="--x:222;--y:148;--w:108;--h:146;--op:40% 50%"><img src="{{oreum_2}}" alt=""></div>
+    <p class="a x dim" style="--x:232;--y:308;--s:10">셋째 날 롤</p>
+    <p class="a x b" style="--x:232;--y:345;--s:11">08:30 어리목</p>
+    <p class="a x n" style="--x:232;--y:362;--s:11">안개, 나무 계단</p>
+    <p class="a x mo dim" style="--x:232;--y:400;--s:10">프레임</p>
+    <p class="a x mo dim" style="--x:232;--y:415;--s:10">20A—22A</p>
+  </div></div>
+  <!-- 9 large single frame, tiny caption -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:330;--h:376;--op:72% 50%"><img src="{{oreum}}" alt=""></div>
+    <p class="a x mo dim" style="--x:14;--y:390;--s:10">프레임 23A</p>
+    <p class="a x" style="--x:14;--y:407;--s:11">11:10 원물오름. 억새가 키만큼</p>
+    <p class="a x dim rt" style="--y:389;--s:10">셋째 날 롤</p>
+  </div></div>
+  <!-- 10 cafe, last stop -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:164;--h:244"><img src="{{tangerine_2}}" alt=""></div>
+    <div class="a ph" style="--x:166;--w:164;--h:244;--op:50% 60%"><img src="{{d1}}" alt=""></div>
+    <div class="a ph fl" style="--y:246;--w:330;--h:138;--op:50% 45%"><img src="{{d6}}" alt=""></div>
+    <p class="a x b" style="--x:14;--y:396;--s:11.5">13:30 귤나무 카페 마당</p>
+    <p class="a x n" style="--x:14;--y:414;--s:11">귤 하나 까고 공항으로</p>
+    <p class="a x dim rt" style="--y:396;--s:10">셋째 날 롤</p>
+    <p class="a x mo dim rt" style="--y:414;--s:10">프레임 24A—26A</p>
+  </div></div>
+  <!-- 11 end of roll -->
+  <div class="pg"><div class="in">
+    <div class="a ph" style="--w:330;--h:228;--op:50% 60%"><img src="{{tangerine}}" alt=""></div>
+    <p class="a x mo big" style="--x:8;--y:244;--s:132">46</p>
+    <p class="a x b" style="--x:178;--y:262;--s:13">컷</p>
+    <p class="a x" style="--x:178;--y:296;--s:11"><span style="font-family:var(--m);font-weight:500">3</span>&ensp;롤</p>
+    <p class="a x" style="--x:178;--y:313;--s:11"><span style="font-family:var(--m);font-weight:500">3</span>&ensp;영상</p>
+    <p class="a x" style="--x:178;--y:330;--s:11"><span style="font-family:var(--m);font-weight:500">9</span>&ensp;곳</p>
+    <p class="a x" style="--x:178;--y:347;--s:11"><span style="font-family:var(--m);font-weight:500">214</span>&ensp;km</p>
+    <p class="a x b" style="--x:14;--y:408;--s:12">필름 끝. 되감는 중</p>
+    <p class="a x mo dim rt" style="--y:410;--s:10">프레임 27A · 06.14</p>
+  </div></div>
+</div>
+<div class="under"><span>롤 정보 → 1일 맞붙은 인화 → 한 컷 → 우도 → 영상(연속 3컷) → 밀착 인화 → 성산 두 장 → 큰 1 + 작은 2 → 한 컷 → 카페 → 끝</span><span>11쪽</span></div>
+
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>바탕은 따뜻한 연회색 종이(#E8E5DF) 또는 웜 화이트, 글자 #111. 검은 쪽·테두리·그림자·모서리 꽂이 없음.</li>
+<li>사진은 테두리 없이 맞붙임, 간격 2px 고정. 한 쪽 사진 1 / 2~4 / 6장 세 가지 밀도를 번갈아 쓴다.</li>
+<li>사진 톤: saturate .8 · contrast .93 · brightness 1.05 · sepia .14 + 따뜻한 블랙 들어올림 + 그레인(overlay 34%). 손·발·소품 근접 컷은 플래시 비네트.</li>
+<li>주황 날짜 각인('26 6 13, 모노, 주황 글로우)은 한 권 3번 이하: 표지 + 본문의 큰 한 컷 2장 우하단. 각인 자리가 어두운 사진만 고른다.</li>
+<li>모든 사진에 촬영 순서대로 프레임 번호(01A…)를 매기고, 밀착 인화·영상 쪽에서는 사진 안 왼쪽 아래에, 다른 쪽에서는 "프레임 08A—10A"처럼 뜻을 붙여 한 번만 적는다. 큰 글자로 쓰지 않는다.</li>
+<li>하루 = 한 롤, 라벨은 한국어("둘째 날 롤"). 첫 쪽에 "세 롤, 46컷"을 76px 로, 롤별 요일·날씨·장소를 11px 세 줄로. 필름 코드는 작은 보조 줄.</li>
+<li>글자는 두 크기만: 큰 글자 62~132px(롤·컷 수·표지 지명에만), 캡션 9.5~13px. 시각은 항상 캡션 크기.</li>
+<li>전면 색 면 없음. 색은 종이색뿐이고 주황은 날짜 각인에만 쓴다.</li>
+<li>세로 사진은 세로 칸(3:4 근처), 가로 사진은 가로 칸. 한 컷 쪽은 사진이 쪽의 85% 이상.</li>
+<li>영상은 같은 장면 연속 프레임 3장(11A·11B·11C)을 2px 간격 세로 띠로, ▶ 없이 "영상 · 3초" 캡션. PDF 에서는 사진 한 장.</li>
+</ul></details>
+</section>
