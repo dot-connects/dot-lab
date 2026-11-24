@@ -1,0 +1,218 @@
+<!-- fonts: Gamja+Flower | Nanum+Myeongjo:wght@400;700;800 | Gothic+A1:wght@500;600;700 | Share+Tech+Mono -->
+<style>
+/* Photo album. Lengths are design px on a 330x440 page, scaled by --u (same trick as the notebook theme). */
+.t-album{--mount:#1b1a19;--pen:#f2f0ea;--soft:#cbc8bf;--corner:#d8d2c2;--print:#fbfbf8;--date:#ff8a1f;--glass:rgba(238,236,228,.78);--gink:#1d1b19;--env:#e4e5df;--envink:#232321;
+  --f-pen:"Gamja Flower",cursive;--f-foil:"Nanum Myeongjo",serif;--f-label:"Gothic A1",system-ui,sans-serif;--f-date:"Share Tech Mono",ui-monospace,monospace}
+.t-album .pg{container-type:inline-size;background:var(--mount)}
+/* mount paper: faint fibre + shade toward the binding edge */
+.t-album .in{--u:.30303cqw;position:absolute;inset:0;color:var(--pen);background-color:var(--mount);
+  background-image:linear-gradient(90deg,rgba(0,0,0,.34),transparent calc(15*var(--u))),repeating-linear-gradient(94deg,rgba(255,255,255,.022) 0 1px,transparent 1px 4px),repeating-linear-gradient(2deg,rgba(0,0,0,.05) 0 1px,transparent 1px 6px)}
+.t-album .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u));margin:0}
+/* matte 4x6 print with a white border, held by four photo corners */
+.t-album .print{background:var(--print);padding:calc(5*var(--u));box-shadow:0 calc(1*var(--u)) calc(2*var(--u)) rgba(0,0,0,.35)}
+.t-album .ph{position:relative;aspect-ratio:var(--ar,3/2);overflow:hidden;background:#999}
+.t-album .ph img{object-position:var(--op,50% 50%);scale:var(--z,1);transform-origin:var(--op,50% 50%)}
+.t-album .cn::after{content:"";position:absolute;inset:calc(-2.5*var(--u));pointer-events:none;--c:calc(15*var(--u));filter:drop-shadow(0 calc(.6*var(--u)) calc(.8*var(--u)) rgba(0,0,0,.4));
+  background:linear-gradient(135deg,var(--corner) 49.4%,transparent 50.4%) 0 0/var(--c) var(--c) no-repeat,linear-gradient(225deg,var(--corner) 49.4%,transparent 50.4%) 100% 0/var(--c) var(--c) no-repeat,
+  linear-gradient(315deg,var(--corner) 49.4%,transparent 50.4%) 100% 100%/var(--c) var(--c) no-repeat,linear-gradient(45deg,var(--corner) 49.4%,transparent 50.4%) 0 100%/var(--c) var(--c) no-repeat}
+.t-album .cn.sm::after{--c:calc(11*var(--u))}
+/* film-camera date imprint: at most three in a book */
+.t-album .date{position:absolute;right:calc(8*var(--u));bottom:calc(6*var(--u));font:400 calc(11.5*var(--u))/1 var(--f-date);font-style:normal;color:var(--date);letter-spacing:.08em;text-shadow:0 0 calc(3*var(--u)) rgba(255,110,0,.75),0 0 calc(1*var(--u)) rgba(60,20,0,.9)}
+/* white pen on the mount */
+.t-album .pen{font:400 calc(var(--s,17)*var(--u))/1.3 var(--f-pen);color:var(--pen);rotate:var(--r,-1deg);transform-origin:0 50%;white-space:nowrap}
+.t-album .pen.soft{color:var(--soft)}
+.t-album .pen.c{text-align:center;transform-origin:50% 50%}
+/* glassine interleaf: the next page shows through */
+.t-album .glass{position:absolute;inset:0 0 0 calc(9*var(--u));color:var(--gink);-webkit-backdrop-filter:blur(calc(2.4*var(--u)));backdrop-filter:blur(calc(2.4*var(--u)));
+  background:linear-gradient(104deg,rgba(255,255,255,.2),transparent 26%,rgba(255,255,255,.1) 58%,transparent 80%),var(--glass);box-shadow:calc(-1*var(--u)) 0 calc(3*var(--u)) rgba(0,0,0,.3)}
+.t-album .glass .day{position:absolute;left:calc(22*var(--u));bottom:calc(30*var(--u));right:calc(18*var(--u))}
+.t-album .glass b{display:block;font:800 calc(31*var(--u))/1.1 var(--f-foil);letter-spacing:.04em}
+.t-album .glass .w{display:block;margin:calc(8*var(--u)) 0 calc(10*var(--u));font:700 calc(11.5*var(--u))/1.4 var(--f-label);letter-spacing:.04em}
+.t-album .glass ul{list-style:none;margin:0;padding:calc(9*var(--u)) 0 0;border-top:calc(1*var(--u)) solid var(--gink);font:600 calc(11.5*var(--u))/1.75 var(--f-label)}
+.t-album .glass li{display:flex;gap:calc(12*var(--u))}
+.t-album .glass li i{font:400 calc(12*var(--u))/1.68 var(--f-date);font-style:normal;min-width:calc(34*var(--u))}
+.t-album .glass .tab{position:absolute;right:calc(14*var(--u));top:calc(14*var(--u));font:700 calc(10*var(--u))/1 var(--f-label);letter-spacing:.14em;opacity:.8}
+/* cover 1: cloth binding with a recessed window and foil lettering */
+.t-album .cloth{background-image:repeating-linear-gradient(0deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,.07) 1px 2px,transparent 2px 3px),repeating-linear-gradient(90deg,rgba(255,255,255,.05) 0 1px,rgba(0,0,0,.07) 1px 2px,transparent 2px 3px),linear-gradient(90deg,rgba(0,0,0,.5),rgba(255,255,255,.06) calc(17*var(--u)),transparent calc(22*var(--u)))}
+.t-album .frame{position:absolute;inset:calc(16*var(--u)) calc(16*var(--u)) calc(16*var(--u)) calc(30*var(--u));border:calc(1*var(--u)) solid var(--corner);opacity:.55}
+.t-album .win{padding:calc(7*var(--u));background:rgba(0,0,0,.28);box-shadow:inset 0 calc(2*var(--u)) calc(5*var(--u)) rgba(0,0,0,.6),0 calc(1*var(--u)) 0 rgba(255,255,255,.12)}
+.t-album .foil{color:var(--corner);font-family:var(--f-foil);text-align:center;white-space:nowrap}
+.t-album .foil.t{font-weight:800;font-size:calc(27*var(--u));letter-spacing:.22em;text-indent:.22em;line-height:1.1}
+.t-album .foil.s{font-weight:700;font-size:calc(11*var(--u));letter-spacing:.2em;text-indent:.2em}
+/* cover 3: the photo-lab envelope the prints came home in */
+.t-album .env{background:var(--env);color:var(--envink);rotate:-1.6deg;height:calc(322*var(--u));box-shadow:0 calc(2*var(--u)) calc(7*var(--u)) rgba(0,0,0,.5);font-family:var(--f-label);
+  background-image:linear-gradient(var(--date),var(--date));background-size:100% calc(7*var(--u));background-repeat:no-repeat;background-position:0 calc(52*var(--u))}
+.t-album .env .cut{position:absolute;left:50%;top:0;width:calc(74*var(--u));height:calc(20*var(--u));translate:-50% 0;border-radius:0 0 calc(40*var(--u)) calc(40*var(--u));background:var(--mount);box-shadow:inset 0 calc(-2*var(--u)) calc(3*var(--u)) rgba(0,0,0,.4)}
+.t-album .env .k{position:absolute;left:calc(18*var(--u));top:calc(28*var(--u));font:700 calc(10.5*var(--u))/1 var(--f-label);letter-spacing:.3em}
+.t-album .env .k2{left:auto;right:calc(18*var(--u));letter-spacing:.06em}
+.t-album .env .name{position:absolute;left:calc(20*var(--u));top:calc(84*var(--u));font:400 calc(52*var(--u))/1 var(--f-pen);rotate:-3deg;white-space:nowrap}
+.t-album .env dl{position:absolute;left:calc(18*var(--u));right:calc(18*var(--u));bottom:calc(20*var(--u));margin:0;border-top:calc(1.5*var(--u)) solid var(--envink)}
+.t-album .env dl div{display:flex;align-items:baseline;gap:calc(10*var(--u));border-bottom:calc(1*var(--u)) solid var(--envink);padding:calc(5*var(--u)) calc(2*var(--u)) calc(3*var(--u))}
+.t-album .env dt{flex:0 0 calc(50*var(--u));font:700 calc(10*var(--u))/1.4 var(--f-label);letter-spacing:.08em}
+.t-album .env dd{margin:0;font:400 calc(17*var(--u))/1.15 var(--f-pen);white-space:nowrap}
+/* video page */
+.t-album .play span{width:calc(46*var(--u));height:calc(46*var(--u))}
+.t-album .slip{background:var(--print);color:#222220;font:600 calc(10*var(--u))/1.3 var(--f-label);padding:calc(5*var(--u)) calc(8*var(--u));text-align:center;white-space:nowrap}
+/* index print */
+.t-album .index{background:var(--print);color:#1e1e1c;padding:calc(10*var(--u));box-shadow:0 calc(1*var(--u)) calc(3*var(--u)) rgba(0,0,0,.4);font-family:var(--f-label)}
+.t-album .index header{display:flex;justify-content:space-between;align-items:baseline;padding-bottom:calc(8*var(--u));font:700 calc(10*var(--u))/1 var(--f-label);letter-spacing:.14em}
+.t-album .index header span{font:400 calc(11*var(--u))/1 var(--f-date);letter-spacing:.04em}
+.t-album .cells{display:grid;grid-template-columns:repeat(3,1fr);gap:calc(5*var(--u)) calc(6*var(--u))}
+.t-album .cell .ph{aspect-ratio:3/2}
+.t-album .cell p{margin:calc(2*var(--u)) 0 0;display:flex;justify-content:space-between;font:600 calc(9.5*var(--u))/1.35 var(--f-label);letter-spacing:-.03em;white-space:nowrap}
+.t-album .cell p i{font:400 calc(10*var(--u))/1.3 var(--f-date);font-style:normal;letter-spacing:0}
+.t-album .cell.num{display:grid;place-content:center;gap:calc(3*var(--u));aspect-ratio:auto;border:calc(1*var(--u)) solid #1e1e1c;text-align:center;font:700 calc(11*var(--u))/1.3 var(--f-label)}
+.t-album .cell.num b{display:block;font:400 calc(21*var(--u))/1 var(--f-date)}
+.t-album .cell .v{position:absolute;left:calc(4*var(--u));bottom:calc(4*var(--u));border-left:calc(8*var(--u)) solid #fff;border-top:calc(5*var(--u)) solid transparent;border-bottom:calc(5*var(--u)) solid transparent;filter:drop-shadow(0 0 calc(1.5*var(--u)) rgba(0,0,0,.8))}
+/* empty slot kept for the next print */
+.t-album .slot{height:calc(96*var(--u));display:grid;place-items:center}
+</style>
+<section class="t-album" data-palettes='[{"--mount":"#1b1a19","--pen":"#f2f0ea","--soft":"#cbc8bf","--corner":"#d8d2c2","--glass":"rgba(238,236,228,.78)","--gink":"#1d1b19","--env":"#e4e5df","--envink":"#232321"},{"--mount":"#4b2229","--pen":"#f7eeea","--soft":"#e0cbc7","--corner":"#eadfcf","--glass":"rgba(244,236,232,.8)","--gink":"#2c1418","--env":"#ece6df","--envink":"#3a1a20"},{"--mount":"#24352d","--pen":"#f0f3ec","--soft":"#c9d2c7","--corner":"#e2decd","--glass":"rgba(236,240,232,.78)","--gink":"#16211c","--env":"#e5e8df","--envink":"#1b2a23"},{"--mount":"#d6d5cf","--pen":"#1c1b1a","--soft":"#454441","--corner":"#1c1b1a","--glass":"rgba(255,255,255,.7)","--gink":"#1c1b1a","--env":"#f4f3ee","--envink":"#1c1b1a"}]'>
+<div class="head"><h2>앨범</h2><p class="idea">인화한 사진을 검은 대지에 모서리 꽂이로 꽂아 둔 책. 글은 사진 아래 흰 펜 한 줄.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+
+<h3 class="sub">표지 후보</h3>
+<div class="strip">
+  <!-- cover 1: cloth, window, foil -->
+  <div class="pg"><div class="in cloth">
+    <i class="frame"></i>
+    <div class="p foil s" style="--x:30;--y:44;--w:284">PHOTOGRAPHS</div>
+    <div class="p win" style="--x:63;--y:96;--w:218"><div class="print"><div class="ph" style="--ar:4/3;--op:50% 60%"><img src="{{seongsan}}" alt=""></div></div></div>
+    <div class="p foil t" style="--x:30;--y:302;--w:284">제주, 사흘</div>
+    <div class="p foil s" style="--x:30;--y:346;--w:284">2026. 6. 12 — 6. 14</div>
+  </div></div>
+  <!-- cover 2: first mount page, one print, white pen -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:28;--y:44;--w:274"><div class="ph" style="--op:40% 50%"><img src="{{udo}}" alt=""><i class="date">'26 6 13</i></div></figure>
+    <div class="p pen" style="--x:32;--y:256;--w:280;--s:50;--r:-3deg">제주, 사흘</div>
+    <div class="p pen soft" style="--x:36;--y:332;--w:280;--s:17;--r:-2deg">2026년 6월 12일부터 14일까지</div>
+    <div class="p pen soft" style="--x:36;--y:358;--w:280;--s:17;--r:-2deg">사흘 내내 바람이 불었다</div>
+  </div></div>
+  <!-- cover 3: lab envelope with a print half out -->
+  <div class="pg"><div class="in">
+    <figure class="p print" style="--x:76;--y:22;--w:196;rotate:2.2deg"><div class="ph" style="--op:80% 40%"><img src="{{road}}" alt=""></div></figure>
+    <div class="p env" style="--x:38;--y:92;--w:254">
+      <i class="cut"></i>
+      <span class="k">사진 봉투</span><span class="k k2">4×6 · 무광</span>
+      <span class="name">제주, 사흘</span>
+      <dl>
+        <div><dt>찍은 날</dt><dd>2026. 6. 12 – 6. 14</dd></div>
+        <div><dt>장수</dt><dd>사진 46장, 영상 3</dd></div>
+        <div><dt>다닌 곳</dt><dd>아홉 곳, 214km</dd></div>
+        <div><dt>날씨</dt><dd>맑음, 바람, 흐림</dd></div>
+      </dl>
+    </div>
+  </div></div>
+</div>
+<div class="under"><span>① 천 표지에 창을 내고 사진 한 장, 박 글씨 ② 대지 첫 쪽처럼 — 큰 인화 한 장과 흰 펜 제목 ③ 현상소 봉투에서 사진이 반쯤 나온 표지</span><span>3개</span></div>
+
+<h3 class="sub">책 본문</h3>
+<div class="strip">
+  <!-- 1 glassine over page 2 -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:26;--y:84;--w:278"><div class="ph" style="--op:50% 45%"><img src="{{hyeopjae}}" alt=""></div></figure>
+    <div class="glass"><span class="tab">1 / 3</span><div class="day"><b>첫째 날</b><span class="w">6월 12일 금요일 · 맑음 24°</span>
+      <ul><li><i>13:20</i>협재 해변</li><li><i>17:40</i>신창 풍차해안도로</li></ul></div></div>
+  </div></div>
+  <!-- 2 one large print -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:26;--y:84;--w:278"><div class="ph" style="--op:50% 45%"><img src="{{hyeopjae}}" alt=""><i class="date">'26 6 12</i></div></figure>
+    <div class="p pen" style="--x:32;--y:296;--w:270;--s:21">유월인데 물이 차다. 발목까지만.</div>
+    <div class="p pen soft" style="--x:32;--y:330;--w:270;--s:16">협재, 오후 1시 20분. 저 섬이 비양도</div>
+  </div></div>
+  <!-- 3 portrait print + a second small frame -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:28;--y:34;--w:186"><div class="ph" style="--ar:2/3;--op:86% 50%"><img src="{{road}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:224;--y:249;--w:84"><div class="ph" style="--op:8% 46%;--z:2.1"><img src="{{road}}" alt=""></div></figure>
+    <div class="p pen soft" style="--x:226;--y:42;--w:90;--s:16;--r:-2deg">신창, 17:40</div>
+    <div class="p pen" style="--x:32;--y:332;--w:280;--s:20">해가 낮아지자 바람이 세졌다.</div>
+    <div class="p pen soft" style="--x:32;--y:364;--w:280;--s:16">풍차 도는 소리가 파도보다 컸다</div>
+  </div></div>
+  <!-- 4 glassine over page 5 -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn sm" style="--x:28;--y:44;--w:132"><div class="ph"><img src="{{udo}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:170;--y:44;--w:132"><div class="ph"><img src="{{doldam}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:28;--y:186;--w:132"><div class="ph"><img src="{{woljeongri}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:170;--y:186;--w:132"><div class="ph"><img src="{{seongsan}}" alt=""></div></figure>
+    <div class="glass"><span class="tab">2 / 3</span><div class="day"><b>둘째 날</b><span class="w">6월 13일 토요일 · 바람 강함 21°</span>
+      <ul><li><i>09:42</i>우도 — 도항선 15분</li><li><i>14:10</i>하도 해녀 탈의장 앞</li><li><i>16:05</i>월정리 돌담길 · 해변</li><li><i>19:05</i>성산일출봉 앞</li></ul></div></div>
+  </div></div>
+  <!-- 5 four prints -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn sm" style="--x:28;--y:44;--w:132"><div class="ph"><img src="{{udo}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:170;--y:44;--w:132"><div class="ph"><img src="{{doldam}}" alt=""></div></figure>
+    <div class="p pen soft" style="--x:32;--y:144;--w:130;--s:16">우도 등대, 09:42</div>
+    <div class="p pen soft" style="--x:174;--y:144;--w:130;--s:16">월정리 돌담, 16:05</div>
+    <figure class="p print cn sm" style="--x:28;--y:186;--w:132"><div class="ph"><img src="{{woljeongri}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:170;--y:186;--w:132"><div class="ph" style="--op:50% 60%"><img src="{{seongsan}}" alt=""></div></figure>
+    <div class="p pen soft" style="--x:32;--y:286;--w:130;--s:16">해변 산책로, 17:20</div>
+    <div class="p pen soft" style="--x:174;--y:286;--w:130;--s:16">성산 수국, 19:05</div>
+    <div class="p pen" style="--x:30;--y:338;--w:280;--s:21">우도에서 모자가 두 번 날아갔다.</div>
+    <div class="p pen soft" style="--x:30;--y:372;--w:280;--s:16">해가 지고도 한참 파랬다</div>
+  </div></div>
+  <!-- 6 video -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:26;--y:40;--w:278"><div class="ph" style="--op:50% 40%"><img src="{{haenyeo}}" alt=""><div class="play"><span></span></div><i class="date">0:03</i></div></figure>
+    <figure class="p print" style="--x:26;--y:240;--w:88"><div class="ph" style="--op:30% 55%;--z:1.9"><img src="{{haenyeo}}" alt=""></div></figure>
+    <figure class="p print" style="--x:121;--y:240;--w:88"><div class="ph" style="--op:52% 60%;--z:1.9"><img src="{{haenyeo}}" alt=""></div></figure>
+    <figure class="p print" style="--x:216;--y:240;--w:88"><div class="ph" style="--op:82% 50%;--z:1.9"><img src="{{haenyeo}}" alt=""></div></figure>
+    <div class="p pen" style="--x:30;--y:318;--w:280;--s:20">그물 끄는 소리, 그 뒤로 파도 소리.</div>
+    <div class="p pen soft" style="--x:30;--y:349;--w:280;--s:16">하도 해녀 탈의장 앞, 14:10 — 삼 초짜리 영상</div>
+    <div class="p slip" style="--x:26;--y:392;--w:278">인쇄·PDF 에는 이 장면이 인화 한 장으로 들어가요</div>
+  </div></div>
+  <!-- 7 day three: one portrait, two landscape -->
+  <div class="pg"><div class="in">
+    <div class="p pen" style="--x:28;--y:24;--w:280;--s:19">셋째 날 — 6월 14일 일요일, 흐림 22°</div>
+    <figure class="p print cn" style="--x:26;--y:64;--w:162"><div class="ph" style="--ar:2/3"><img src="{{hallasan}}" alt=""></div></figure>
+    <figure class="p print cn sm" style="--x:198;--y:64;--w:108"><div class="ph"><img src="{{oreum}}" alt=""></div></figure>
+    <div class="p pen soft" style="--x:200;--y:146;--w:110;--s:15.5">원물오름, 11:10</div>
+    <figure class="p print cn sm" style="--x:198;--y:227;--w:108"><div class="ph"><img src="{{tangerine}}" alt=""></div></figure>
+    <div class="p pen soft" style="--x:30;--y:312;--w:160;--s:16">어리목 숲길, 08:30</div>
+    <div class="p pen soft" style="--x:200;--y:312;--w:110;--s:15.5">귤나무, 13:30</div>
+    <div class="p pen" style="--x:30;--y:360;--w:280;--s:20">나무 계단이 젖어 있었다.</div>
+    <div class="p pen soft" style="--x:30;--y:391;--w:280;--s:16">안개 때문에 열 걸음 앞만 보였다</div>
+  </div></div>
+  <!-- 8 index print: the numbers page -->
+  <div class="pg"><div class="in">
+    <div class="p index cn" style="--x:22;--y:34;--w:286">
+      <header>INDEX PRINT<span>2026.06.12-06.14</span></header>
+      <div class="cells">
+        <div class="cell"><div class="ph"><img src="{{hyeopjae}}" alt=""></div><p>01 협재<i>13:20</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{road}}" alt=""></div><p>02 신창<i>17:40</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{udo}}" alt=""></div><p>03 우도<i>09:42</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{haenyeo}}" alt=""><i class="v"></i></div><p>04 하도<i>14:10</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{doldam}}" alt=""></div><p>05 돌담길<i>16:05</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{woljeongri}}" alt=""></div><p>06 월정리<i>17:20</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{seongsan}}" alt=""></div><p>07 성산<i>19:05</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{hallasan}}" alt=""></div><p>08 어리목<i>08:30</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{oreum}}" alt=""></div><p>09 원물오름<i>11:10</i></p></div>
+        <div class="cell"><div class="ph"><img src="{{tangerine}}" alt=""></div><p>10 귤나무<i>13:30</i></p></div>
+        <div class="cell num"><span><b>46</b>사진 · 영상 3</span></div>
+        <div class="cell num"><span><b>214</b>km · 아홉 곳</span></div>
+      </div>
+    </div>
+    <div class="p pen" style="--x:28;--y:386;--w:280;--s:19">마흔여섯 장 가운데 열 장을 꽂았다.</div>
+  </div></div>
+  <!-- 9 closing: last print and an empty slot -->
+  <div class="pg"><div class="in">
+    <figure class="p print cn" style="--x:62;--y:36;--w:206"><div class="ph" style="--op:50% 30%"><img src="{{tangerine}}" alt=""></div></figure>
+    <div class="p pen c" style="--x:20;--y:194;--w:290;--s:21;--r:-1.5deg">귤은 아직 초록이었다.</div>
+    <div class="p pen c" style="--x:20;--y:224;--w:290;--s:21;--r:-1.5deg">노랗게 익으면 다시 와서</div>
+    <div class="p pen c" style="--x:20;--y:254;--w:290;--s:21;--r:-1.5deg">이 아래를 채우기로 했다.</div>
+    <div class="p slot cn" style="--x:92;--y:310;--w:146"><span class="pen soft" style="--s:16;--r:0deg">다음 사진 자리</span></div>
+  </div></div>
+</div>
+<div class="under"><span>간지(첫째 날) → 크게 한 장 → 세로 한 장 → 간지(둘째 날) → 네 장 → 영상 → 셋째 날 세 장 → 인덱스 프린트(숫자) → 맺음·빈 자리</span><span>9쪽</span></div>
+
+<details class="notes"><summary>디자인 규칙</summary><ul>
+<li>색: 쪽 전체가 대지 한 색(기본 흑대지 #1b1a19). 그 위에는 흰 테두리 인화, 모서리 꽂이(아이보리 #d8d2c2), 흰 펜 글씨 세 가지만 올린다. 색 조합 = 대지 색을 바꾸는 것(흑·팥·숲녹·밝은 회색 대지+먹 펜).</li>
+<li>인화: 모든 사진은 흰 테두리 5px 무광 인화. 비율은 가로 3:2 / 세로 2:3 두 가지뿐. 기울이지 않고 대지 가장자리와 나란히, 겹치지 않게. 테이프·도장·스티커는 쓰지 않는다.</li>
+<li>모서리 꽂이: 대지에 꽂은 인화마다 네 귀에 삼각형(큰 인화 15px, 작은 인화 11px). 이 테마의 표식이라 표지 ②와 본문 모든 사진 쪽에 나온다.</li>
+<li>글꼴: 흰 펜 = Gamja Flower(메모 20–21px 한 줄 + 장소·시각 16px 한 줄, -1° 기울임), 간지·박 글씨 = 나눔명조 800, 표·딱지 = Gothic A1 600 10px 이상, 날짜 각인·시각 = Share Tech Mono.</li>
+<li>글: 한 쪽에 흰 펜 두 줄까지(느낌 한 줄 + 어디·몇 시 한 줄). 긴 글 쪽은 없다. 맺음도 세 줄.</li>
+<li>간지(기름종이): 날이 바뀔 때 한 장. 다음 쪽 사진 배치를 그대로 깔고 그 위에 반투명 종이를 덮어, 날 이름·날짜·날씨·그날 들른 곳을 아래 1/3에 먹색으로 적는다. 한 권에 최대 3장 — 날이 더 많으면 나머지는 쪽 위 흰 펜 머리글 한 줄(시안의 셋째 날)로.</li>
+<li>쪽 구성: 사진 수에 따라 1장(폭 278) / 세로 1장+작은 1장 / 2×2 네 장(폭 134) / 세로 1+가로 2. 한 쪽 최대 4장, 사진 둘레 대지 여백 26px 이상.</li>
+<li>주황 날짜 각인('26 6 12): 날마다 대표 사진 한 장에만, 한 권에 3번 이하. 영상 쪽은 같은 자리에 길이(0:03)를 각인하고 ▶ + 장면 세 컷을 작은 인화로 붙인다.</li>
+<li>숫자 쪽 = 현상소 인덱스 프린트: 흰 종이에 3열 작은 사진 + 번호·곳·시각, 마지막 두 칸에 사진 수와 이동 거리. 지도는 쓰지 않는다.</li>
+<li>표지: ① 천 표지+창+박 글씨(대지 색 그대로) ② 대지 첫 쪽(큰 인화+흰 펜 제목 50px) ③ 현상소 봉투(제목은 손글씨, 찍은 날·장수·다닌 곳 세 칸). 마지막 쪽은 빈 모서리 꽂이 한 자리를 남긴다.</li>
+</ul></details>
+</section>
