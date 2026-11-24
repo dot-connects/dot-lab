@@ -18,4 +18,6 @@ async def go():
       for i,im in enumerate(ims):S.paste(im,((i%cols)*(w+10),(i//cols)*(hh+10)))
       S.save(R/f'sheet-{k}.jpg',quality=80);print(k,len(ims),S.size)
     await b.close()
-asyncio.run(go())
+from renderlock import render_slot
+with render_slot():
+  asyncio.run(go())

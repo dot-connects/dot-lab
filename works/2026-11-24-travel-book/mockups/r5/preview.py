@@ -89,4 +89,8 @@ if __name__ == "__main__":
     else:
         tag = "-".join(keys)
         (R3 / f"out-{tag}.html").write_text(html, encoding="utf-8")
-        asyncio.run(shoot(html, tag))
+        print("wrote", R3 / f"out-{tag}.html")
+        if "--shoot" in args:
+            from renderlock import render_slot
+            with render_slot():
+                asyncio.run(shoot(html, tag))

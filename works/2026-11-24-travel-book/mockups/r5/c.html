@@ -1,223 +1,272 @@
-<!-- fonts: Instrument+Sans:wght@700 | DM+Mono:wght@500 -->
-<!-- kfonts: Paperlogy:400;800 -->
+<!-- fonts: DM+Mono:wght@500 -->
+<!-- kfonts: Paperlogy:400;500;700 -->
 <style>
-/* Travel notebook. Design px on a 330x440 page, scaled by --u.
-   Grid: margin M 20, 6 columns of 40, gutter G 10 -> column c starts at 20+50(c-1).
-   Type: display 64 (cover 96) / body 12 / caption 10 (+ folio 10). */
-.t-c{--paper:#FFF9EF;--ink:#111111;--soft:#5b564d;--acc:#E8553B;--on:#111111;--card:#ffffff;
-  --M:20;--col:40;--G:10;--D:64;--DX:96;--B:12;--C:10;
-  --f-ko:"Paperlogy","Instrument Sans",sans-serif;--f-en:"Instrument Sans","Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
+/* Travel notebook r7. Design px on a 330x440 page, scaled by --u.
+   Grid: M 20, 6 cols x 40, G 10 (col c at 20+50(c-1)). Lines: photo floor y262, text y278, rule y384, folio y420.
+   Type: XL 72 (cover) / L 32 / B 11.5 / C 9.5 (digits DM Mono, Hangul Paperlogy 500). */
+.t-c{--paper:#FBF6EA;--ink:#151515;--soft:#6B665C;--line:#D9D2C2;--acc:#E8553B;--on:#000000;--acct:#C63F26;--land:#EFE7D3;
+  --f-ko:"Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
 .t-c .pg{container-type:inline-size;background:var(--paper)}
-.t-c .in{--u:.30303cqw;position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden;word-break:keep-all}
-.t-c .in.fill{background:var(--acc);color:var(--on)}
-/* placed piece: --x --y --w --h in design px; .g snaps x/width to grid columns (--c start, --n span) */
-.t-c .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u));margin:0}
-.t-c .g{left:calc((var(--M) + (var(--c,1) - 1)*(var(--col) + var(--G)))*var(--u));width:calc((var(--n,6)*(var(--col) + var(--G)) - var(--G))*var(--u))}
-.t-c .fw{left:0;width:calc(330*var(--u))}
+.t-c .in{--u:calc(100cqw/330);position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden;word-break:keep-all}
+.t-c .in *{margin:0;padding:0;font-style:normal}
+.t-c .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u))}
+.t-c .p[style*="--h"]{height:calc(var(--h)*var(--u))}
 .t-c .bleed{inset:0;width:auto;height:auto}
-.t-c .r45{aspect-ratio:4/5}
-.t-c .r32{aspect-ratio:3/2}
-.t-c .ph{overflow:hidden;background:#d8d2c6}
-.t-c .ph img{object-position:var(--pos,50% 50%)}
-/* the only shapes: arch (cover 1 + last page), circle (once) */
-.t-c .arch{border-radius:999px 999px 0 0}
-.t-c .circ{aspect-ratio:1;border-radius:50%}
-/* type scale */
-.t-c .ttl{font:800 calc(var(--D)*var(--u))/1.04 var(--f-ko);letter-spacing:-.045em;margin-left:-.04em;text-wrap:balance}
-.t-c .ttl.xl{font-size:calc(var(--DX)*var(--u));line-height:.98}
-.t-c .ttl.en{font-family:var(--f-en);font-weight:700;letter-spacing:-.05em;line-height:.9}
-.t-c .bd{font:400 calc(var(--B)*var(--u))/1.6 var(--f-ko);letter-spacing:-.015em;text-wrap:pretty}
-.t-c .cp{font:500 calc(var(--C)*var(--u))/1.4 var(--f-mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--soft)}
-.t-c .fill .cp,.t-c .cp.ik{color:inherit}
-.t-c .w,.t-c .cp.w{color:#fff}
-/* folio: running head left, page number right, bottom margin */
-.t-c .fo{position:absolute;left:calc(var(--M)*var(--u));right:calc(var(--M)*var(--u));bottom:calc(var(--M)*var(--u));display:flex;justify-content:space-between;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--soft);z-index:3}
-.t-c .fill .fo{color:var(--on)}
-.t-c .fo.w{color:#fff}
-.t-c .shade::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:var(--sh)}
-.t-c .shade~.p,.t-c .shade~.fo{z-index:2}
-/* UI pieces (flat, no shadow) */
-.t-c .bub{width:auto;background:var(--card);color:var(--ink);font:400 calc(var(--B)*var(--u))/1.2 var(--f-ko);white-space:nowrap;
-  padding:calc(8*var(--u)) calc(12*var(--u));border-radius:calc(16*var(--u)) calc(16*var(--u)) calc(16*var(--u)) calc(4*var(--u));z-index:3}
-.t-c .bub.ac{background:var(--acc);color:var(--on)}
-.t-c .route{background:var(--card);color:var(--ink);border-radius:calc(12*var(--u));padding:calc(10*var(--u)) calc(12*var(--u));display:grid;grid-template-columns:auto 1fr;gap:calc(2*var(--u)) calc(10*var(--u));align-items:center;z-index:3}
-.t-c .route .ln{grid-row:1/3;width:calc(8*var(--u));height:calc(30*var(--u));position:relative}
-.t-c .route .ln::before{content:"";position:absolute;left:50%;top:calc(4*var(--u));bottom:calc(4*var(--u));width:calc(2*var(--u));translate:-50% 0;background:var(--acc)}
-.t-c .route .ln::after{content:"";position:absolute;left:0;top:0;width:calc(8*var(--u));height:calc(8*var(--u));border-radius:50%;background:var(--acc);box-shadow:0 calc(22*var(--u)) 0 var(--ink)}
-.t-c .route b{font:800 calc(var(--B)*var(--u))/1.25 var(--f-ko);letter-spacing:-.015em;white-space:nowrap}
-.t-c .route span{font:500 calc(var(--C)*var(--u))/1.3 var(--f-mono);color:var(--soft);white-space:nowrap}
-.t-c .phone{border:calc(5*var(--u)) solid var(--ink);border-radius:calc(24*var(--u));z-index:2;background:var(--ink)}
-.t-c .snd{height:calc(40*var(--u));background:var(--ink);color:#fff;border-radius:calc(12*var(--u));display:flex;align-items:center;gap:calc(10*var(--u));padding:0 calc(14*var(--u));z-index:3}
-.t-c .snd .tri{border-left:calc(9*var(--u)) solid #fff;border-top:calc(6*var(--u)) solid transparent;border-bottom:calc(6*var(--u)) solid transparent;flex:none}
-.t-c .snd b{font:400 calc(var(--B)*var(--u))/1 var(--f-ko);white-space:nowrap}
-.t-c .snd .bar{flex:1;height:calc(3*var(--u));border-radius:9px;background:linear-gradient(90deg,var(--acc) 45%,rgba(255,255,255,.45) 45%)}
-.t-c .snd span{font:500 calc(var(--C)*var(--u))/1 var(--f-mono);font-variant-numeric:tabular-nums}
-.t-c .rl{list-style:none;padding:calc(10*var(--u)) calc(14*var(--u));background:var(--card);border-radius:calc(14*var(--u))}
-.t-c .rl::before{content:"";position:absolute;left:calc(66.5*var(--u));top:calc(22*var(--u));bottom:calc(22*var(--u));width:calc(1*var(--u));background:var(--ink);opacity:.25}
-.t-c .rl li{display:grid;grid-template-columns:calc(40*var(--u)) calc(11*var(--u)) 1fr auto;gap:calc(8*var(--u));align-items:center;height:calc(24*var(--u));position:relative}
-.t-c .rl time{grid-column:1;grid-row:1;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);color:var(--soft);font-variant-numeric:tabular-nums}
-.t-c .rl li::before{content:"";grid-column:2;grid-row:1;justify-self:center;width:calc(7*var(--u));height:calc(7*var(--u));border-radius:50%;background:var(--card);border:calc(1.5*var(--u)) solid var(--ink);box-sizing:border-box}
-.t-c .rl li.d::before{width:calc(11*var(--u));height:calc(11*var(--u));background:var(--acc);border:0}
-.t-c .rl b{grid-column:3;font:400 calc(var(--B)*var(--u))/1 var(--f-ko);letter-spacing:-.015em;white-space:nowrap}
-.t-c .rl li.d b{font-weight:800}
-.t-c .rl span{grid-column:4;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);color:var(--soft);white-space:nowrap}
-.t-c .play{z-index:2}
+.t-c .ph{overflow:hidden;background:var(--line)}
+/* type */
+.t-c .xl{font:700 calc(72*var(--u))/1 var(--f-ko);letter-spacing:-.05em;margin-left:-.04em}
+.t-c .ttl,.t-c .nm,.t-c .c3 .tl{font:700 calc(32*var(--u))/1.12 var(--f-ko);letter-spacing:-.04em;text-wrap:balance}
+.t-c .bd{font:400 calc(11.5*var(--u))/1.55 var(--f-ko);letter-spacing:-.015em;word-spacing:.08em;text-wrap:pretty}
+.t-c .cp,.t-c .fo,.t-c .nb,.t-c .idx,.t-c .clist,.t-c .kt,.t-c .tab{font:500 calc(9.5*var(--u))/1.35 var(--f-mono);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+/* Hangul inside mono lines: Paperlogy 500, tighter tracking (DM Mono has no Hangul) */
+.t-c :is(.cp,.fo,.clist,.kt) .k,.t-c .idx li.h .k{font-family:var(--f-ko);font-weight:500;color:inherit;letter-spacing:0}
+.t-c .cp{color:var(--soft)}
+.t-c .cp.ik{color:var(--ink)}
+.t-c .r{text-align:right}
+/* number box */
+.t-c .nb{display:inline-grid;place-items:center;box-sizing:border-box;width:calc(20*var(--u));height:calc(20*var(--u));background:var(--acc);color:var(--on);line-height:1;letter-spacing:0}
+.t-c .p.nb{display:grid;z-index:1}
+.t-c .map{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.t-c .p.ml{white-space:nowrap;width:auto;z-index:1;background:var(--paper);padding:0 calc(2*var(--u))}
+.t-c .p.ml.r{transform:translateX(-100%)}
+.t-c .ml .n{color:var(--soft)}
+.t-c .rg{display:flex;align-items:center;gap:calc(5*var(--u))}
+.t-c .dash{width:calc(10*var(--u));border-top:1px solid var(--ink)}
+/* place block from y278, next line on fixed rule y384 */
+.t-c .blk{display:flex;flex-direction:column}
+.t-c .nm{position:relative;padding-left:calc(28*var(--u));margin-bottom:calc(3*var(--u))}
+.t-c .nm .nb{position:absolute;left:0;top:calc(8*var(--u))}
+.t-c .blk .bd{margin-top:calc(4*var(--u))}
+.t-c .nx{padding-top:calc(6*var(--u));border-top:.75px solid var(--line);color:var(--ink);font:500 calc(11.5*var(--u))/1.3 var(--f-ko);letter-spacing:-.015em}
+/* B band: full width paper from y322 (y286 for 2-line names) to the foot */
+.t-c .band.b{position:absolute;left:0;right:0;bottom:0;top:calc(var(--y)*var(--u));background:var(--paper);z-index:2}
+.t-c .band.b .blk{top:calc(10*var(--u))}
+.t-c .band.two .blk{top:calc(8*var(--u))}
+.t-c .band.two .nm{line-height:1.05}
+.t-c .band.two .bd{margin-top:calc(2*var(--u))}
+/* day tab: 12 wide on the right edge, day digit inside */
+.t-c .tab{position:absolute;right:0;top:calc(var(--ty)*var(--u));width:calc(12*var(--u));height:calc(44*var(--u));background:var(--acc);color:var(--on);display:grid;place-items:center;line-height:1;z-index:3}
+/* folio */
+.t-c .fo{position:absolute;left:calc(20*var(--u));right:calc(20*var(--u));top:calc(411*var(--u));display:flex;justify-content:space-between;color:var(--soft);line-height:1;z-index:3}
+.t-c .fo>span:last-child{color:var(--ink)}
+/* day index, 3 columns */
+.t-c .idx{list-style:none}
+.t-c .idx li{display:flex;align-items:baseline;gap:calc(6*var(--u));height:calc(18*var(--u));line-height:calc(18*var(--u))}
+.t-c .idx li .n{color:var(--acct)}
+.t-c .idx li b{flex:1;font:500 calc(11.5*var(--u))/inherit var(--f-ko);letter-spacing:-.02em;white-space:nowrap}
+.t-c .idx li .pn{color:var(--soft)}
+.t-c .idx li.h{border-top:.75px solid var(--line);color:var(--soft);height:calc(20*var(--u))}
+.t-c .clist{list-style:none;color:var(--ink)}
+.t-c .clist li{display:flex;gap:calc(8*var(--u));line-height:calc(15.5*var(--u))}
+.t-c .clist li>span:first-child{color:var(--acc)}
+/* cover 3 band */
+.t-c .c3{background:var(--paper);padding:calc(12*var(--u)) calc(20*var(--u)) 0;z-index:2}
+.t-c .c3 .tl{font-size:calc(48*var(--u));line-height:1}
+.t-c .c3 .rg{position:absolute;right:calc(20*var(--u));top:calc(16*var(--u))}
+.t-c .c3 .cp{margin-top:calc(8*var(--u))}
+/* colophon table */
+.t-c .kt div{display:flex;flex-wrap:wrap;border-top:.75px solid var(--line);padding:calc(5*var(--u)) 0}
+.t-c .kt div:last-child{border-bottom:.75px solid var(--line)}
+.t-c .kt dt{color:var(--soft);width:calc(30*var(--u))}
+.t-c .kt dd{width:calc(42.5*var(--u));color:var(--ink)}
+.t-c .kt dd.w2{width:auto}
+/* round 2 */
+.t-c .sea{position:absolute;inset:0;background:var(--acc)}
+.t-c .on,.t-c .cp.on{color:var(--on)}
+.t-c .nb.dk{background:var(--ink);color:var(--paper)}
+.t-c .blk .bd,.t-c .lr+.bd,.t-c .p.bd{font-weight:500;color:var(--ink)}
+.t-c .tm{position:absolute;right:0;bottom:calc(7*var(--u));color:var(--ink)}
+.t-c .grad::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(220*var(--u));background:linear-gradient(transparent,rgba(21,21,21,.5) 35%,rgba(21,21,21,.72))}
+.t-c .blk.ov{position:absolute;left:calc(20*var(--u));right:calc(20*var(--u));bottom:calc(36*var(--u));z-index:2;color:#fff}
+.t-c .blk.ov .cp{color:rgba(255,255,255,.85)}
+.t-c .blk.ov .bd{color:#fff}
+.t-c .fo.w,.t-c .fo.w>span:last-child{color:#fff}
+.t-c .play{height:calc(400*var(--u));bottom:auto}
+.t-c .vl{background:var(--ink)}
+.t-c .lr{display:flex;justify-content:space-between;align-items:baseline;font:500 calc(11.5*var(--u))/1.4 var(--f-ko);letter-spacing:-.015em}
+.t-c .lr .cp{color:var(--ink)}
+.t-c .cp.ac{color:var(--acc)}
+.t-c .dh{border-top:.75px solid var(--line);padding-top:calc(3*var(--u))}
+.t-c .rule{height:0;border-top:1px solid var(--ink)}
+.t-c .nm0{padding-left:0;margin-top:calc(8*var(--u))}
+.t-c .fo.on,.t-c .fo.on>span:last-child{color:var(--on)}
+.t-c .fo.sd>span:last-child{color:#fff}
+.t-c .sea~.p .cp,.t-c .sea~.p.cp,.t-c .sea~.p.ttl,.t-c .sea~.p.bd,.t-c .sea~.p.lr,.t-c .sea~.p .lr .cp{color:var(--on)}
+.t-c .sea~.vl,.t-c .sea~.rule{background:var(--on);border-color:var(--on)}
+.t-c .sea~.p.dh{border-color:var(--on)}
+.t-c .nx0{margin-top:calc(14*var(--u))}
+.t-c .sea~.p .cp,.t-c .sea~.p.cp,.t-c .sea~.p.lr .cp,.t-c .sea~.fo{font-size:calc(10*var(--u))}
+.t-c .nm.big{font-size:calc(48*var(--u));line-height:1.02}
+.t-c .nm.big .nb{top:calc(14*var(--u))}
+.t-c .accol{background:var(--acc)}
+.t-c .accol~.clist,.t-c .accol~.clist li>span:first-child{color:var(--on)}
+.t-c .blk.ov .nt{margin-top:calc(4*var(--u))}
 </style>
-<section class="t-c" data-palettes='[{"--acc":"#E8553B","--on":"#111111","--paper":"#FFF9EF"},{"--acc":"#2F5BD6","--on":"#ffffff","--paper":"#FBF8F1"},{"--acc":"#EDC54E","--on":"#111111","--paper":"#FFF9EF"}]'>
-<div class="head"><h2>여행 수첩</h2><p class="idea">6단 그리드 위 사진 + 지도 앱 조각 — 아치 하나, 토마토 색면, 굵은 지명</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
-
-<h3 class="sub">표지 후보</h3>
+<section class="t-c" data-palettes='[{"--acc":"#E8553B","--on":"#000000","--acct":"#C63F26"},{"--acc":"#2F5FD0","--on":"#ffffff","--acct":"#2F5FD0"},{"--acc":"#1F6B4A","--on":"#ffffff","--acct":"#1F6B4A"}]'>
+<div class="head"><h2>여행 수첩</h2><p class="idea">번호 하나가 지도·목록·장소 쪽을 꿰는 내 여행 안내서 — 직각 사진, 괘선, 포인트색은 번호에만</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+<h3 class="sub"><span class="k">표지 후보</span></h3>
 <div class="strip">
-  <!-- cover 1: one arch on paper -->
   <div class="pg"><div class="in">
-    <div class="p g ph arch r45" style="--c:1;--n:5;--y:20;--pos:50% 40%"><img src="{{doldam}}" alt=""></div>
-    <div class="p g cp ik" style="--c:6;--n:1;--y:20">6월<br>제주</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:328">제주 46장</div>
-    <div class="p g cp" style="--c:1;--n:6;--y:406">2026.06.12 — 06.14 · 2박 3일</div>
+    <div class="sea"></div>
+    <h1 class="p xl on" style="--x:20;--y:20;--w:290"><span class="k">제주</span></h1>
+    <p class="p cp on" style="--x:20;--y:100;--w:150">2026.06.12–06.14</p>
+    <svg class="map" viewBox="0 0 330 440" aria-hidden="true">
+<g transform="translate(-8.00 190.33) scale(1.1667)" fill="var(--paper)" stroke="none"><path d="M21.1 121.5Q18.3 114.6 19.5 105.7Q20.6 96.8 25.6 92.8Q30.5 88.9 37 83Q43.6 77.1 47.8 73.2Q51.9 69.2 56 63.2Q60.1 57.3 66.7 53.3Q73.3 49.4 84.8 45.5Q96.3 41.5 106.2 37.6Q116.1 33.7 124.3 31.1Q132.5 28.5 144.8 27.1Q157.2 25.8 165.4 21.9Q173.7 17.9 179.4 17.9Q185.2 17.9 198.4 14.9Q211.6 11.9 219 12.3Q226.4 12.7 237.1 19.2Q247.8 25.8 253.6 27.8Q259.3 29.7 262.6 33.6Q265.9 37.6 267.5 42.5Q269.2 47.5 272.5 49Q275.8 50.6 273.4 53Q270.9 55.4 270 59.3Q269.2 63.3 270.9 64.7Q272.5 66 269.2 67.6Q265.9 69.2 260.1 75.1Q254.4 81 247 92.8Q239.6 104.7 220.6 114.6Q201.7 124.4 191.8 125.4Q181.9 126.4 166.3 132.4Q150.7 138.3 136.7 141.2Q122.7 144.2 112 141.2Q101.3 138.3 87.3 139.2Q73.3 140.2 66.7 147.1Q60.1 154 53.5 151.1Q46.9 148.1 40.3 143.2Q33.8 138.3 28.8 133.4Q23.9 128.4 21.1 121.5Z" vector-effect="non-scaling-stroke"/><path d="M275.8 32.6Q275.8 27.7 278.2 26.8Q280.7 25.8 282.4 29.8Q284 33.7 282.4 36.7Q280.7 39.6 278.2 38.6Q275.8 37.6 275.8 32.6Z" vector-effect="non-scaling-stroke"/></g>
+<polyline points="42.9,282.5 16.0,305.6" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="317.6,228.7 292.6,222.7 258.0,204.2 311.8,250.3" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="139.0,282.5 85.2,305.6 112.1,255.0" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="258.0,204.2 258.0,158" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="255.5" y="201.7" width="5" height="5" fill="var(--ink)"/>
+<polyline points="292.6,222.7 292.6,158" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="290.1" y="220.2" width="5" height="5" fill="var(--ink)"/>
+<polyline points="317.6,228.7 317.6,158" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="315.1" y="226.2" width="5" height="5" fill="var(--ink)"/>
+<polyline points="311.8,250.3 311.8,318" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="309.3" y="247.8" width="5" height="5" fill="var(--ink)"/>
+<polyline points="42.9,282.5 42.9,268.5" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="40.4" y="280.0" width="5" height="5" fill="var(--ink)"/>
+<polyline points="112.1,255.0 112.1,240.96666666666667" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="109.6" y="252.5" width="5" height="5" fill="var(--ink)"/>
+<polyline points="139.0,282.5 139.0,268.5" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="136.5" y="280.0" width="5" height="5" fill="var(--ink)"/>
+<polyline points="85.2,305.6 85.2,319.6" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="82.7" y="303.1" width="5" height="5" fill="var(--ink)"/>
+<polyline points="16.0,305.6 16.0,319.6" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="13.5" y="303.1" width="5" height="5" fill="var(--ink)"/></svg>
+    <i class="p nb dk" style="--x:32.9;--y:248.5;--w:20;--h:20">01</i>
+    <i class="p nb dk" style="--x:6.0;--y:319.6;--w:20;--h:20">02</i>
+    <i class="p nb dk" style="--x:307.6;--y:138.0;--w:20;--h:20">03</i>
+    <i class="p nb dk" style="--x:282.6;--y:138.0;--w:20;--h:20">04</i>
+    <i class="p nb dk" style="--x:248.0;--y:138.0;--w:20;--h:20">05</i>
+    <i class="p nb dk" style="--x:301.8;--y:318.0;--w:20;--h:20">06</i>
+    <i class="p nb dk" style="--x:129.0;--y:248.5;--w:20;--h:20">07</i>
+    <i class="p nb dk" style="--x:75.2;--y:319.6;--w:20;--h:20">08</i>
+    <i class="p nb dk" style="--x:102.1;--y:221.0;--w:20;--h:20">09</i>
+    <p class="p cp on" style="--x:20;--y:402;--w:290">2<span class="k">박</span> 3<span class="k">일</span> · 9<span class="k">곳</span> · 214km</p>
   </div></div>
-  <!-- cover 2: full bleed, huge title on the sky -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed" style="--pos:50% 0%"><img src="{{seongsan_2}}" alt=""></div>
-    <div class="p g cp ik" style="--c:1;--n:6;--y:20">2026.06.12 — 06.14 · 사진 46장</div>
-    <div class="p g ttl xl" style="--c:1;--n:6;--y:38">6월<br>제주</div>
+    <h1 class="p xl" style="--x:20;--y:20;--w:200"><span class="k">제주</span></h1>
+    <p class="p cp ik" style="--x:20;--y:100;--w:290">2026.06.12–06.14</p>
+    <div class="p ph" style="--x:110;--y:120;--w:220;--h:320"><img src="{{udo}}" alt="" style="object-position:22% 30%;"></div>
+    <div class="p accol" style="--x:0;--y:120;--w:110;--h:320"></div>
+    <ol class="p clist" style="--x:20;--y:136;--w:84"><li><span>01</span><span class="k">협재</span></li><li><span>02</span><span class="k">신창</span></li><li><span>03</span><span class="k">우도</span></li><li><span>04</span><span class="k">하도</span></li><li><span>05</span><span class="k">월정리</span></li><li><span>06</span><span class="k">성산</span></li><li><span>07</span><span class="k">어리목</span></li><li><span>08</span><span class="k">원물오름</span></li><li><span>09</span><span class="k">귤나무 카페</span></li></ol>
   </div></div>
-  <!-- cover 3: tomato field + one photo on the grid -->
-  <div class="pg"><div class="in fill">
-    <div class="p g ttl xl en" style="--c:1;--n:6;--y:22">jeju</div>
-    <div class="p g ph r45" style="--c:3;--n:4;--y:182.5;--pos:55% 50%"><img src="{{road}}" alt=""></div>
-    <div class="p g bd" style="--c:1;--n:2;--y:182">제주에서<br>찍은 것들</div>
-    <div class="p g cp" style="--c:1;--n:2;--y:392">06.12 — 06.14<br>2박 3일</div>
+  <div class="pg"><div class="in">
+    <div class="p ph bleed" style="--x:0;--y:0;--w:330;--h:440"><img src="{{doldam}}" alt="" style="object-position:50% 40%;"></div>
+    <div class="p band c3" style="--x:0;--y:246;--w:330;--h:88"><h1 class="tl"><span class="k">제주</span></h1><span class="rg"><i class="nb">01</i><i class="dash"></i><i class="nb">09</i></span><p class="cp ik">2<span class="k">박</span> 3<span class="k">일</span> · 9<span class="k">곳</span> · 46<span class="k">장</span></p></div>
   </div></div>
 </div>
-<div class="under"><span>① 종이 위 아치 한 장 + 굵은 제목 ② 풀블리드 + 하늘 위 큰 제목 ③ 토마토 색면 + 그리드 사진 한 장</span><span>3개</span></div>
-
-<h3 class="sub">책 본문</h3>
+<div class="under"><span>① <span class="k">색 바다 위 번호 지도</span>(<span class="k">기본</span>, <span class="k">사진 없음</span>, <span class="k">팔레트</span> 3<span class="k">색</span> = <span class="k">표지</span> 3<span class="k">종</span>) ② <span class="k">사진 한 장 블리드</span> + <span class="k">지명 목록</span> ③ <span class="k">풀블리드</span> + <span class="k">종이 띠 라벨</span></span><span>3<span class="k">개</span></span></div>
+<h3 class="sub"><span class="k">책 본문</span></h3>
 <div class="strip">
-  <!-- 1 route: map-app fragment -->
   <div class="pg"><div class="in">
-    <div class="p g cp" style="--c:1;--n:6;--y:20">06.12 — 06.14 · 9곳 · 214km</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:36">2박 3일</div>
-    <ol class="p g rl" style="--c:1;--n:6;--y:124">
-      <li class="d"><time>13:20</time><b>협재 해변</b><span>첫째 날</span></li>
-      <li><time>17:40</time><b>신창 풍차해안도로</b><span>28분</span></li>
-      <li class="d"><time>09:42</time><b>우도</b><span>둘째 날</span></li>
-      <li><time>14:10</time><b>하도 해녀 탈의장 앞</b><span>영상</span></li>
-      <li><time>16:05</time><b>월정리 돌담길</b><span></span></li>
-      <li><time>17:20</time><b>월정리 해변</b><span></span></li>
-      <li><time>19:05</time><b>성산일출봉 앞</b><span></span></li>
-      <li class="d"><time>08:30</time><b>한라산 어리목</b><span>셋째 날</span></li>
-      <li><time>11:10</time><b>원물오름</b><span></span></li>
-      <li><time>13:30</time><b>귤나무 카페</b><span>끝</span></li>
-    </ol>
-    <div class="fo"><span>6월 제주 · 경로</span><span>01</span></div>
+    <h2 class="p ttl" style="--x:20;--y:20;--w:190"><span class="k">제주</span> 9<span class="k">곳</span></h2>
+    <p class="p cp" style="--x:20;--y:60;--w:180">2<span class="k">박</span> 3<span class="k">일</span> · 214km</p>
+    <svg class="map" viewBox="0 0 330 440" aria-hidden="true">
+<g transform="translate(7.39 145.80) scale(1.0507)" fill="var(--land)" stroke="none"><path d="M21.1 121.5Q18.3 114.6 19.5 105.7Q20.6 96.8 25.6 92.8Q30.5 88.9 37 83Q43.6 77.1 47.8 73.2Q51.9 69.2 56 63.2Q60.1 57.3 66.7 53.3Q73.3 49.4 84.8 45.5Q96.3 41.5 106.2 37.6Q116.1 33.7 124.3 31.1Q132.5 28.5 144.8 27.1Q157.2 25.8 165.4 21.9Q173.7 17.9 179.4 17.9Q185.2 17.9 198.4 14.9Q211.6 11.9 219 12.3Q226.4 12.7 237.1 19.2Q247.8 25.8 253.6 27.8Q259.3 29.7 262.6 33.6Q265.9 37.6 267.5 42.5Q269.2 47.5 272.5 49Q275.8 50.6 273.4 53Q270.9 55.4 270 59.3Q269.2 63.3 270.9 64.7Q272.5 66 269.2 67.6Q265.9 69.2 260.1 75.1Q254.4 81 247 92.8Q239.6 104.7 220.6 114.6Q201.7 124.4 191.8 125.4Q181.9 126.4 166.3 132.4Q150.7 138.3 136.7 141.2Q122.7 144.2 112 141.2Q101.3 138.3 87.3 139.2Q73.3 140.2 66.7 147.1Q60.1 154 53.5 151.1Q46.9 148.1 40.3 143.2Q33.8 138.3 28.8 133.4Q23.9 128.4 21.1 121.5Z" vector-effect="non-scaling-stroke"/><path d="M275.8 32.6Q275.8 27.7 278.2 26.8Q280.7 25.8 282.4 29.8Q284 33.7 282.4 36.7Q280.7 39.6 278.2 38.6Q275.8 37.6 275.8 32.6Z" vector-effect="non-scaling-stroke"/></g>
+<polyline points="53.2,228.8 29.0,249.6" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="300.6,180.4 278.2,174.9 247.0,158.3 295.4,199.8" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="139.8,228.8 91.3,249.6 115.5,204.0" fill="none" stroke="var(--ink)" stroke-width="1" stroke-linejoin="round"/>
+<polyline points="247.0,158.3 247.0,124" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="244.5" y="155.8" width="5" height="5" fill="var(--ink)"/>
+<polyline points="278.2,174.9 278.2,102" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="275.7" y="172.4" width="5" height="5" fill="var(--ink)"/>
+<polyline points="300.6,180.4 300.6,132" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="298.1" y="177.9" width="5" height="5" fill="var(--ink)"/>
+<polyline points="295.4,199.8 295.4,236" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="292.9" y="197.3" width="5" height="5" fill="var(--ink)"/>
+<polyline points="53.2,228.8 53.2,214.80434782608694" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="50.7" y="226.3" width="5" height="5" fill="var(--ink)"/>
+<polyline points="115.5,204.0 115.5,190.0072463768116" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="113.0" y="201.5" width="5" height="5" fill="var(--ink)"/>
+<polyline points="139.8,228.8 139.8,214.80434782608694" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="137.3" y="226.3" width="5" height="5" fill="var(--ink)"/>
+<polyline points="91.3,249.6 91.3,263.6086956521739" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="88.8" y="247.1" width="5" height="5" fill="var(--ink)"/>
+<polyline points="29.0,249.6 29.0,263.6086956521739" fill="none" stroke="var(--ink)" stroke-width="1"/><rect x="26.5" y="247.1" width="5" height="5" fill="var(--ink)"/></svg>
+    <i class="p nb" style="--x:43.2;--y:194.8;--w:20;--h:20">01</i>
+    <i class="p nb" style="--x:19.0;--y:263.6;--w:20;--h:20">02</i>
+    <i class="p nb" style="--x:290.6;--y:112.0;--w:20;--h:20">03</i>
+    <i class="p nb" style="--x:268.2;--y:82.0;--w:20;--h:20">04</i>
+    <i class="p nb" style="--x:237.0;--y:104.0;--w:20;--h:20">05</i>
+    <i class="p nb" style="--x:285.4;--y:236.0;--w:20;--h:20">06</i>
+    <i class="p nb" style="--x:129.8;--y:194.8;--w:20;--h:20">07</i>
+    <i class="p nb" style="--x:81.3;--y:263.6;--w:20;--h:20">08</i>
+    <i class="p nb" style="--x:105.5;--y:170.0;--w:20;--h:20">09</i>
+    <ol class="p idx" style="--x:20;--y:345;--w:82"><li><span class="n">01</span><b><span class="k">협재</span></b></li><li><span class="n">02</span><b><span class="k">신창</span></b></li><li><span class="n">03</span><b><span class="k">우도</span></b></li></ol>
+    <ol class="p idx" style="--x:120;--y:345;--w:82"><li><span class="n">04</span><b><span class="k">하도</span></b></li><li><span class="n">05</span><b><span class="k">월정리</span></b></li><li><span class="n">06</span><b><span class="k">성산</span></b></li></ol>
+    <ol class="p idx" style="--x:220;--y:345;--w:90"><li><span class="n">07</span><b><span class="k">어리목</span></b></li><li><span class="n">08</span><b><span class="k">원물오름</span></b></li><li><span class="n">09</span><b><span class="k">귤나무 카페</span></b></li></ol>
+    <div class="fo"><span>06.12–06.14</span><span>01</span></div>
   </div></div>
-  <!-- 2 hyeopjae: band on top, text + one small photo below -->
   <div class="pg"><div class="in">
-    <div class="p fw ph r32" style="--y:0;--pos:50% 50%"><img src="{{hyeopjae}}" alt=""></div>
-    <div class="p g cp" style="--c:1;--n:4;--y:230">13:20 · 협재 해변</div>
-    <div class="p g ttl" style="--c:1;--n:4;--y:246">협재</div>
-    <div class="p g bd" style="--c:1;--n:4;--y:322">비양도가 흐렸다가 맑아짐.<br>물은 생각보다 차가움.</div>
-    <div class="p g ph r45" style="--c:5;--n:2;--y:230;--pos:50% 60%"><img src="{{d9}}" alt=""></div>
-    <div class="fo"><span>첫째 날 · 06.12 금 · 맑음 24°</span><span>02</span></div>
+    <div class="p ph" style="--x:0;--y:0;--w:210;--h:262"><img src="{{hyeopjae_2}}" alt="" style="object-position:50% 60%;"></div>
+    <div class="p ph" style="--x:220;--y:0;--w:110;--h:126"><img src="{{hyeopjae}}" alt="" style="object-position:40% 50%;"></div>
+    <div class="p ph" style="--x:220;--y:136;--w:110;--h:126"><img src="{{d9}}" alt="" style="object-position:50% 60%;"></div>
+    <div class="p blk" style="--x:20;--y:278;--w:290"><h4 class="nm"><i class="nb">01</i><span class="k">협재 해변</span></h4><p class="cp">13:20 · <span class="k">한림읍 협재리</span> · <span class="k">맑음</span> 24°</p><p class="bd"><span class="k">비양도가 흐렸다가 맑아짐</span>. <span class="k">물은 생각보다 차가움</span>.</p></div><p class="p nx" style="--x:20;--y:384;--w:290"><span class="k">다음</span> → 02 <span class="k">신창 풍차해안도로</span></p>
+    <div class="fo"><span><span class="k">첫째 날</span> · 06.12 <span class="k">금</span></span><span>02</span></div>
   </div></div>
-  <!-- 3 sinchang: full bleed + route card -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed shade" style="--pos:45% 60%;--sh:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.45))"><img src="{{road}}" alt=""></div>
-    <div class="p g cp ik" style="--c:1;--n:6;--y:20">17:40 · 신창 풍차해안도로</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:36">신창</div>
-    <div class="p g bd w" style="--c:1;--n:4;--y:298">해 질 무렵, 바람 셈.</div>
-    <div class="p g route" style="--c:1;--n:4;--y:330"><i class="ln"></i><b>협재 → 신창</b><span>해안도로 19km · 28분</span></div>
-    <div class="fo w"><span>첫째 날 · 06.12 금</span><span>03</span></div>
+    <div class="p ph bleed grad" style="--x:0;--y:0;--w:330;--h:440"><img src="{{road}}" alt="" style="object-position:50% 50%;"></div>
+    <div class="blk ov"><h4 class="nm big"><i class="nb">02</i><span class="k">신창</span><br><span class="k">풍차해안도로</span></h4><p class="cp">17:40 · <span class="k">한경면 신창리</span></p><p class="bd"><span class="k">해 질 무렵</span>, <span class="k">바람 셈</span>.</p></div>
+    <div class="fo w"><span></span><span>03</span></div>
   </div></div>
-  <!-- 4 udo: title first, wide band, one memo bubble -->
   <div class="pg"><div class="in">
-    <div class="p g cp" style="--c:1;--n:3;--y:20">09:42 · 우도</div>
-    <div class="p g ttl" style="--c:1;--n:3;--y:36">우도</div>
-    <div class="p g bd" style="--c:4;--n:3;--y:40">도항선 15분.<br>바람 강함, 21°.</div>
-    <div class="p fw ph r32" style="--y:122;--pos:50% 45%"><img src="{{udo}}" alt=""></div>
-    <div class="p g bub ac" style="--c:1;--y:356">모자 두 번 날아감</div>
-    <div class="fo"><span>둘째 날 · 06.13 토</span><span>04</span></div>
+    <div class="p ph" style="--x:0;--y:0;--w:330;--h:262"><img src="{{udo}}" alt="" style="object-position:20% 60%;"></div>
+    <div class="p ph" style="--x:220;--y:286;--w:90;--h:90"><img src="{{udo_2}}" alt="" style="object-position:50% 50%;"></div>
+    <div class="p blk" style="--x:20;--y:278;--w:190"><h4 class="nm"><i class="nb">03</i><span class="k">우도</span></h4><p class="cp">09:42 · <span class="k">우도면</span> · <span class="k">바람 강함</span> 21°</p><p class="bd"><span class="k">도항선</span> 15<span class="k">분</span>.<br><span class="k">모자가 두 번 날아감</span>.</p></div><p class="p nx" style="--x:20;--y:384;--w:190"><span class="k">다음</span> → 04 <span class="k">하도</span></p>
+    <div class="fo"><span><span class="k">둘째 날</span> · 06.13 <span class="k">토</span></span><span>04</span></div>
   </div></div>
-  <!-- 5 video: one phone screen over a colour band -->
   <div class="pg"><div class="in">
-    <div class="p fw" style="--y:130;--h:170;background:var(--acc)"></div>
-    <div class="p g cp" style="--c:1;--n:3;--y:20">14:10<br>하도 해녀 탈의장 앞</div>
-    <div class="p g ttl" style="--c:1;--n:3;--y:52">하도</div>
-    <div class="p g bd" style="--c:1;--n:3;--y:236;color:var(--on)">해녀 두 분이<br>그물 정리 중.</div>
-    <div class="p g ph phone" style="--c:4;--n:3;--y:20;--h:300;--pos:50% 60%"><img src="{{haenyeo}}" alt="">
-      <div class="play"><span></span></div>
-    </div>
-    <div class="p g snd" style="--c:1;--n:6;--y:334"><i class="tri"></i><b>파도 소리</b><i class="bar"></i><span>0:03</span></div>
-    <div class="p g cp" style="--c:1;--n:6;--y:382">영상 · PDF 에서는 사진 한 장으로</div>
-    <div class="fo"><span>둘째 날 · 06.13 토</span><span>05</span></div>
+    <div class="p ph bleed grad" style="--x:0;--y:0;--w:330;--h:440"><img src="{{haenyeo}}" alt="" style="object-position:50% 50%;transform:scale(1.3);transform-origin:50% 100%"></div>
+    <div class="play" style="height:calc(220*var(--u))"><span></span></div>
+    <div class="blk ov"><h4 class="nm"><i class="nb">04</i><span class="k">하도</span><br><span class="k">해녀 탈의장</span></h4><p class="cp">14:10 · <span class="k">구좌읍 하도리</span></p><p class="bd"><span class="k">해녀 두 분이 그물 정리 중</span>.</p><p class="cp nt"><span class="k">영상</span> 0:03 · PDF<span class="k">에서는 사진 한 장으로</span></p></div>
+    <div class="fo w"><span></span><span>05</span></div>
   </div></div>
-  <!-- 6 woljeongri: dense 3-photo grid -->
   <div class="pg"><div class="in">
-    <div class="p g ph" style="--c:1;--n:4;--y:20;--h:235;--pos:50% 60%"><img src="{{doldam_2}}" alt=""></div>
-    <div class="p g ph r45" style="--c:5;--n:2;--y:20;--pos:30% 50%"><img src="{{d7}}" alt=""></div>
-    <div class="p g ph r45" style="--c:5;--n:2;--y:142.5;--pos:40% 60%"><img src="{{woljeongri}}" alt=""></div>
-    <div class="p g cp" style="--c:1;--n:6;--y:270">16:05 돌담길 → 17:20 해변</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:286">월정리</div>
-    <div class="p g bd" style="--c:1;--n:6;--y:360">돌담 앞 의자, 바다 앞 벤치, 해변 카페 마당.</div>
-    <div class="fo"><span>둘째 날 · 06.13 토</span><span>06</span></div>
+    <div class="p ph" style="--x:0;--y:0;--w:210;--h:262"><img src="{{doldam}}" alt="" style="object-position:50% 45%;"></div>
+    <div class="p ph" style="--x:220;--y:0;--w:110;--h:80.7"><img src="{{d7}}" alt="" style="object-position:50% 50%;"></div>
+    <div class="p ph" style="--x:220;--y:90.7;--w:110;--h:80.7"><img src="{{woljeongri_2}}" alt="" style="object-position:55% 50%;"></div>
+    <div class="p ph" style="--x:220;--y:181.3;--w:110;--h:80.7"><img src="{{d2}}" alt="" style="object-position:50% 55%;"></div>
+    <div class="p blk" style="--x:20;--y:278;--w:290"><h4 class="nm"><i class="nb">05</i><span class="k">월정리</span></h4><p class="cp">16:05–17:20 · <span class="k">구좌읍 월정리</span></p><p class="bd"><span class="k">돌담과 밭</span>, <span class="k">분홍 벤치</span>,<br><span class="k">바다 찍는 사람</span>, <span class="k">커피 두 잔</span>.</p></div><p class="p nx" style="--x:20;--y:384;--w:290"><span class="k">다음</span> → 06 <span class="k">성산일출봉</span></p>
+    <div class="fo"><span></span><span>06</span></div>
   </div></div>
-  <!-- 7 seongsan: tomato field + bleed band -->
-  <div class="pg"><div class="in fill">
-    <div class="p fw ph r32" style="--y:0;--pos:50% 50%"><img src="{{seongsan}}" alt=""></div>
-    <div class="p g cp" style="--c:1;--n:6;--y:230">19:05 · 성산일출봉 앞</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:246">성산</div>
-    <div class="p g bub" style="--c:1;--y:336">해 넘어가는 중</div>
-    <div class="fo"><span>둘째 날 · 06.13 토</span><span>07</span></div>
-  </div></div>
-  <!-- 8 hallasan: fog full bleed, quiet -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed shade" style="--pos:50% 30%;--sh:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.45))"><img src="{{hallasan}}" alt=""></div>
-    <div class="p g cp ik" style="--c:1;--n:6;--y:20">08:30 · 한라산 어리목 숲길 · 흐림 22°</div>
-    <div class="p g ttl w" style="--c:1;--n:6;--y:300">안개</div>
-    <div class="p g bd w" style="--c:1;--n:6;--y:372">계단만 보고 걸음.</div>
-    <div class="fo w"><span>셋째 날 · 06.14 일</span><span>08</span></div>
+    <div class="p ph" style="--x:0;--y:0;--w:330;--h:330"><img src="{{seongsan}}" alt="" style="object-position:50% 60%;"></div>
+    <div class="p blk" style="--x:20;--y:346;--w:290"><h4 class="nm"><i class="nb">06</i><span class="k">성산일출봉</span></h4><p class="cp">19:05 · <span class="k">성산읍 성산리</span></p><p class="bd"><span class="k">해가 넘어간다</span>.</p></div>
+    <div class="fo"><span></span><span>07</span></div>
   </div></div>
-  <!-- 9 oreum: size contrast on the grid -->
   <div class="pg"><div class="in">
-    <div class="p g cp" style="--c:1;--n:6;--y:20">11:10 · 원물오름</div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:36">원물오름</div>
-    <div class="p g ph r45" style="--c:1;--n:4;--y:122;--pos:74% 40%"><img src="{{oreum}}" alt=""></div>
-    <div class="p g ph r45" style="--c:5;--n:2;--y:122;--pos:50% 50%"><img src="{{oreum_2}}" alt=""></div>
-    <div class="p g cp" style="--c:5;--n:2;--y:244">분화구,<br>멀리 한라산</div>
-    <div class="p g cp" style="--c:1;--n:4;--y:369">억새밭</div>
-    <div class="fo"><span>셋째 날 · 06.14 일</span><span>09</span></div>
+    <div class="p ph bleed" style="--x:0;--y:0;--w:330;--h:440"><img src="{{hallasan}}" alt="" style="object-position:50% 40%;"></div>
+    <div class="blk ov"><h4 class="nm big"><i class="nb">07</i><span class="k">한라산</span><br><span class="k">어리목</span></h4><p class="cp">08:30 · <span class="k">흐림</span> 22°</p><p class="bd"><span class="k">안개</span>. <span class="k">계단만 보고 걸음</span>.</p></div>
+    <div class="fo w"><span><span class="k">셋째 날</span> · 06.14 <span class="k">일</span></span><span>08</span></div>
   </div></div>
-  <!-- 10 cafe: band + the one circle -->
   <div class="pg"><div class="in">
-    <div class="p fw ph r32" style="--y:0;--pos:50% 55%"><img src="{{d1}}" alt=""></div>
-    <div class="p g cp" style="--c:1;--n:4;--y:230">13:30 · 귤나무 카페 마당</div>
-    <div class="p g ttl" style="--c:1;--n:4;--y:246">귤나무<br>카페</div>
-    <div class="p g ph circ" style="--c:5;--n:2;--y:230;--pos:50% 45%"><img src="{{d6}}" alt=""></div>
-    <div class="p g bd" style="--c:5;--n:2;--y:330">비행기 시간까지 귤 구경.</div>
-    <div class="fo"><span>셋째 날 · 06.14 일</span><span>10</span></div>
+    <div class="p ph" style="--x:170;--y:0;--w:160;--h:440"><img src="{{oreum}}" alt="" style="object-position:74% 50%;"></div>
+    <div class="p ph" style="--x:20;--y:20;--w:140;--h:230"><img src="{{oreum_2}}" alt="" style="object-position:50% 50%;"></div>
+    <div class="p blk" style="--x:20;--y:266;--w:140"><i class="nb">08</i><h4 class="nm nm0"><span class="k">원물오름</span></h4><p class="cp">11:10 · <span class="k">동광리</span></p><p class="bd"><span class="k">억새가 키만 하다</span>.<br><span class="k">멀리 한라산</span>.</p></div>
+    <div class="fo sd"><span></span><span>09</span></div>
   </div></div>
-  <!-- 11 last: tomato field + arch -->
-  <div class="pg"><div class="in fill">
-    <div class="p g cp" style="--c:1;--n:2;--y:20">06.14 일<br>제주 → 김포</div>
-    <div class="p g ph arch r45" style="--c:3;--n:4;--y:20;--pos:50% 40%"><img src="{{tangerine_2}}" alt=""></div>
-    <div class="p g ttl" style="--c:1;--n:6;--y:282">집 가는 중</div>
-    <div class="p g bd" style="--c:1;--n:6;--y:354">귤 한 봉지 사서 공항으로.</div>
-    <div class="p g cp" style="--c:1;--n:6;--y:378">사진 46 · 영상 3 · 9곳 · 214km</div>
-    <div class="fo"><span>6월 제주 · 끝</span><span>11</span></div>
+  <div class="pg"><div class="in">
+    <div class="p ph bleed grad" style="--x:0;--y:0;--w:330;--h:440"><img src="{{tangerine_2}}" alt="" style="object-position:50% 40%;"></div>
+    <div class="blk ov"><h4 class="nm"><i class="nb">09</i><span class="k">귤나무 카페 마당</span></h4><p class="cp">13:30</p><p class="bd"><span class="k">비행기 시간까지 귤 구경</span>. <span class="k">하나 까먹음</span>.</p></div>
+    <div class="fo w"><span></span><span>10</span></div>
+  </div></div>
+  <div class="pg"><div class="in">
+    <div class="sea"></div>
+    <i class="p vl" style="--x:37.5;--y:96.0;--w:1;--h:226.0"></i>
+    <p class="p cp dh" style="--x:58;--y:69.0;--w:252"><span class="k">첫째 날</span> · 06.12 <span class="k">금</span></p>
+    <i class="p nb dk" style="--x:28;--y:86.0;--w:20;--h:20">01</i><p class="p lr" style="--x:58;--y:88.0;--w:252"><b><span class="k">협재 해변</span></b><span class="cp">13:20</span></p>
+    <i class="p nb dk" style="--x:28;--y:112.0;--w:20;--h:20">02</i><p class="p lr" style="--x:58;--y:114.0;--w:252"><b><span class="k">신창 풍차해안도로</span></b><span class="cp">17:40</span></p>
+    <i class="p nb dk" style="--x:28;--y:152.0;--w:20;--h:20">03</i><p class="p lr" style="--x:58;--y:154.0;--w:252"><b><span class="k">우도</span></b><span class="cp">09:42</span></p>
+    <i class="p nb dk" style="--x:28;--y:176.0;--w:20;--h:20">04</i><p class="p lr" style="--x:58;--y:178.0;--w:252"><b><span class="k">하도 해녀 탈의장</span></b><span class="cp">14:10</span></p>
+    <i class="p nb dk" style="--x:28;--y:200.0;--w:20;--h:20">05</i><p class="p lr" style="--x:58;--y:202.0;--w:252"><b><span class="k">월정리</span></b><span class="cp">16:05</span></p>
+    <i class="p nb dk" style="--x:28;--y:224.0;--w:20;--h:20">06</i><p class="p lr" style="--x:58;--y:226.0;--w:252"><b><span class="k">성산일출봉</span></b><span class="cp">19:05</span></p>
+    <i class="p nb dk" style="--x:28;--y:264.0;--w:20;--h:20">07</i><p class="p lr" style="--x:58;--y:266.0;--w:252"><b><span class="k">한라산 어리목</span></b><span class="cp">08:30</span></p>
+    <i class="p nb dk" style="--x:28;--y:288.0;--w:20;--h:20">08</i><p class="p lr" style="--x:58;--y:290.0;--w:252"><b><span class="k">원물오름</span></b><span class="cp">11:10</span></p>
+    <i class="p nb dk" style="--x:28;--y:312.0;--w:20;--h:20">09</i><p class="p lr" style="--x:58;--y:314.0;--w:252"><b><span class="k">귤나무 카페 마당</span></b><span class="cp">13:30</span></p>
+    <p class="p cp dh" style="--x:58;--y:135.0;--w:252"><span class="k">둘째 날</span> · 06.13 <span class="k">토</span></p>
+    <p class="p cp dh" style="--x:58;--y:247.0;--w:252"><span class="k">셋째 날</span> · 06.14 <span class="k">일</span></p>
+    <h2 class="p ttl" style="--x:20;--y:20;--w:290"><span class="k">제주</span> → <span class="k">김포</span></h2>
+    <i class="p rule" style="--x:20;--y:338.0;--w:290"></i>
+    <p class="p ttl" style="--x:20;--y:344.0;--w:180">214km</p>
+    <p class="p bd" style="--x:20;--y:386;--w:290"><span class="k">귤 한 봉지 사서 공항으로</span>.</p>
+    <div class="fo on"><span></span><span>11</span></div>
   </div></div>
 </div>
-<div class="under"><span>경로 → 협재 → 신창 → 우도 → 영상 → 월정리 → 성산 → 한라산 → 오름 → 카페 → 끝</span><span>11쪽</span></div>
-
+<div class="under"><span>지도 M → 협재 C → 신창 B → 우도 A → 하도 영상 B → 월정리 C → 성산 A → 어리목 B → 원물오름 반풀블리드 → 귤나무 카페 B → 동선 정산표 K</span><span>11쪽</span></div>
 <details class="notes"><summary>디자인 규칙</summary><ul>
-<li>그리드(330×440 쪽 기준): 바깥 여백 M 20(6%), 6단, 단 폭 40, 단 간격 G 10 → c단 시작 x = 20 + 50(c−1). 모든 글 상자·사진 가장자리는 단 경계 또는 풀블리드. 위 여백 20에서 쪽이 시작하고 아래 20은 폴리오 자리, 본문은 y 396 까지.</li>
-<li>타입 스케일 3단: 디스플레이 64(표지만 96) Paperlogy 800 자간 −0.045em 행간 1.04 / 본문 12 Paperlogy 400 자간 −0.015em 행간 1.6 / 캡션 10 DM Mono 500 자간 +0.02em 숫자 tabular. 한 쪽 크기 3개까지, 가짜 볼드(text-stroke) 없음.</li>
-<li>캡션 규칙: 제목 바로 위 16px 에 "시각 · 장소 전체 이름" 한 줄(예: 13:20 · 협재 해변). 사진 캡션은 사진 아래 G 10 띄우고 왼쪽 단 시작. 색은 #5b564d(종이 위 6.9:1), 색면·사진 위는 잉크/흰색.</li>
-<li>폴리오: 표지 제외 모든 쪽 아래 20 자리, 왼쪽 러닝헤드 "첫째 날 · 06.12 금", 오른쪽 쪽 번호 01~11, 캡션과 같은 10 DM Mono. 사진 위에서는 흰색.</li>
-<li>사진 비율은 풀블리드 / 4:5 / 3:2 세 가지(원형 1:1 은 한 권에 1번). 사진 사이 간격은 G 10 하나. 테두리·그림자·기울기·흰 외곽선·누끼 없음, 원본 색 그대로.</li>
-<li>모양 크롭은 아치뿐: 표지 1개 + 마지막 쪽 1개(한 권 최대 3번). 원형은 한 권 1번(카페 쪽 귤 든 손).</li>
-<li>강한 색은 토마토 #E8553B 하나 — 전면 색면 쪽 2쪽(성산·끝) + 영상 쪽 색 띠 + 경로 점·재생바. 색면 위 글자는 #111.</li>
-<li>장치는 쪽당 하나, 종류별 한 권 3번까지: 지도 앱 경로 목록(1쪽), 경로 카드(1번), 말풍선(2번), 폰 화면+재생바(영상 쪽 1번). 장치 카드는 납작하게(그림자 없음).</li>
-<li>리듬: 빽빽한 쪽(경로·월정리·오름)과 조용한 쪽(풀블리드 신창·안개)을 번갈아. 사진 위 글자는 하늘·어두운 아래쪽에만, 아래 50%에 검정 최대 .45 그라데이션.</li>
-<li>영상 쪽은 단 4~6에 폰 화면 하나(모서리 24, 검정 테 5, 기울기 없음) + 색 띠 + 재생바. PDF·이미지로 내보낼 때는 ▶만 빼고 같은 모습.</li>
+<li>그리드(330×440 쪽): 바깥 여백 M 20, 6단×40, 단 간격 G 10 → c단 시작 x = 20 + 50(c−1). 가로 기준선: 사진 바닥 y262 · 글 시작 y278 · 다음 줄 괘선 y384 · 폴리오 y420.</li>
+<li>글꼴: 장소명 L Paperlogy 700·32·−0.04em·1.12(최대 2줄) / 메모 B 500·11.5·1.55 먹 100%(내 말이라 메타보다 진하게) / 메타·번호·폴리오 C 9.5·500 — 숫자는 DM Mono tabular, 한글은 Paperlogy 500·−0.01em. 표지 제목만 XL 72.</li>
+<li>번호 하나가 책을 꿴다: 장소 번호 01~09 = 지도 핀 = 장소 쪽 머리 = 마지막 정산표. 번호 상자 18×18 직각(acc + on 숫자), 지도 핀 16~18. 지도 쪽 핀 옆에 `03쪽` 쪽 참조.</li>
+<li>모듈은 사진 장수로 자동: 1장 B(진짜 풀블리드, 글은 사진 위 왼쪽 아래 흰색, 바닥 y404) · 2장 A(히어로 330×262 + 정사각 90) · 3~4장 C(큰 세로 210×262 + 오른쪽 띠 110폭 2~3칸). 같은 모듈 연속 금지.</li>
+<li>A·C 글 블록은 y278: 번호+장소명 → 메타 한 줄 `시각 · 읍면리 · 날씨`(쪽당 회색 줄은 이 한 줄뿐) → 메모 ≤2줄. `다음 →` 줄은 C·A 쪽에서만, 한 권 3번까지. 폴리오 왼쪽 날짜는 그날 첫 쪽에만. 풀블리드 B 는 4쪽 안팎, 연속 금지.</li>
+<li>사진 위 글자 예외 하나: 바닥이 밝은 B 사진만 아래 160px 먹 0→40% 그라디언트. 그 밖에 그림자·질감 없음.</li>
+<li>폴리오 y420 전 쪽 같은 자리: 왼쪽 `첫째 날 · 06.12 금`, 오른쪽 쪽번호 2자리(B 는 흰색).</li>
+<li>색: 종이 #FBF6EA · 먹 #151515 · 회 #6B665C · 괘선 #D9D2C2 고정, 포인트 1색(토마토/코발트/숲)은 본문에서 번호 상자·목록 숫자·거리에만 — 쪽당 ≤5%. 예외는 기본 표지 ① 하나: 바탕 전면 acc, 섬은 종이색 채움, 핀은 먹 상자 + 종이색 숫자.</li>
+<li>지도: 윤곽 0.75px 회색(표지는 면), 경로 1px 먹 한 줄(01→09, 밤을 넘는 구간 2-2 점선). 16px 안에 몰린 핀은 섬 위 한 줄로 빼고, 점 3px에서 위→옆→위로 꺾은 0.75px 지시선(왼쪽 핀일수록 낮게 꺾어 교차 0).</li>
+<li>마지막 쪽은 사진 없는 동선 정산표: 세로 1px 선 위 번호 상자 9개, 줄마다 장소·시각, 날 바뀔 때만 괘선+날 머리글, 구간 거리는 절반 이상 있을 때만 줄 사이 acc `↓ 19km`(없으면 합계만), 합계 L 32 `214km`. 영상 쪽은 B + ▶ 하나(인물 위 하늘), PDF 는 ▶ 빼고 사진 한 장.</li>
 </ul></details>
 </section>
