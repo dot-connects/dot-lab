@@ -53,14 +53,19 @@
 /* calendar: 7 equal square cells between margins, rows end on L; numbers centred so photo cells share the row centre */
 /* calendar page: three equal 2-column squares at the top margin, a uniform 7-column month grid ending on L.
    Trip days are the only 700 numbers in the grid. */
+.t-diary .tx.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--G)}
+.t-diary .tx.thumbs>div{min-width:0}
+.t-diary .tx.thumbs .sqp{aspect-ratio:1;overflow:hidden}
+.t-diary .tx.thumbs .cap{margin-top:1.5cqw}
 .t-diary .days{position:absolute;left:var(--M);right:var(--M);top:var(--M);display:grid;grid-template-columns:repeat(3,1fr);gap:var(--G)}
 .t-diary .days>div{min-width:0}
 .t-diary .days .sqp{aspect-ratio:1;overflow:hidden}
 .t-diary .days .cap{margin-top:1.5cqw}
 .t-diary .cal{position:absolute;left:var(--M);right:var(--M);bottom:calc(133.33cqw - var(--L) - 1.7cqw);display:grid;grid-template-columns:repeat(7,1fr);grid-auto-rows:6.8cqw;gap:0}
-.t-diary .cal>*{display:block;line-height:1}
-.t-diary .cal .wd{color:var(--sub);font-size:var(--C)}
-.t-diary .cal .on{font-weight:700}
+.t-diary .cal>*{display:block;line-height:1;padding-top:1.4cqw;font-size:var(--C)}
+.t-diary .cal>:nth-child(n+8){border-top:.5px solid color-mix(in srgb,var(--sub) 35%,transparent)}
+.t-diary .cal .wd{color:var(--sub)}
+.t-diary .cal .on{font-weight:700;font-size:var(--B);padding-top:.8cqw}
 .t-diary .cal i{font-style:normal;color:var(--sub)}
 </style>
 <section class="t-diary" data-palettes='[{"--paper":"#F5EAE6","--ink":"#33292A","--sub":"#6A5C5F"},{"--paper":"#F6F0D8","--ink":"#2E2B22","--sub":"#5F5A4A"},{"--paper":"#EDF1F2","--ink":"#25303A","--sub":"#56616A"}]'>
@@ -108,11 +113,15 @@
     <div class="tx narrow"><p><b>오후 3시, 바다 앞 카페</b><br>아이스 두 잔 시켜 놓고 말없이 바다만 봤다.</p></div>
     <span class="fo">3</span>
   </div>
-  <!-- 4 day page 13: two lines -->
+  <!-- 4 day page 13 as printed when the user wrote nothing: the day's other moments as three squares -->
   <div class="pg">
     <div class="win v"><img src="{{woljeongri}}" alt="" style="object-position:40% 50%"></div>
     <p class="dc"><b>6월 13일</b><span>토요일</span><span>바람 강함</span></p>
-    <div class="tx"><p>우도에서 하도를 지나 월정리까지.</p></div>
+    <div class="tx thumbs">
+      <div><div class="sqp"><img src="{{udo_2}}" alt="" style="object-position:72% 60%"></div><p class="cap">오전, 우도</p></div>
+      <div><div class="sqp"><img src="{{woljeongri_2}}" alt="" style="object-position:58% 50%"></div><p class="cap">오후, 월정리 해변</p></div>
+      <div><div class="sqp"><img src="{{seongsan}}" alt="" style="object-position:55% 50%"></div><p class="cap">저녁, 성산</p></div>
+    </div>
     <span class="fo">4</span>
   </div>
   <!-- 5 rest: the gulls -->
@@ -157,7 +166,7 @@
       <i>7</i><i>8</i><i>9</i><i>10</i><i>11</i><span class="on">12</span><span class="on">13</span>
       <span class="on">14</span><i>15</i><i>16</i><i>17</i><i>18</i><i>19</i><i>20</i>
       <i>21</i><i>22</i><i>23</i><i>24</i><i>25</i><i>26</i><i>27</i>
-      <i>28</i><i>29</i><i>30</i>
+      <i>28</i><i>29</i><i>30</i><span></span><span></span><span></span><span></span>
     </div>
     <div class="tx"><p><b>2026년 6월 12일부터 14일까지, 제주.</b><br>다음 일기는 어디서 쓰지.</p></div>
     <span class="fo">11</span>
@@ -171,13 +180,13 @@
 <li>글꼴은 LINE Seed KR 하나, 크기 둘: 본문 4.1%(폰 330px 기준 13.5px, 400·700, 자간 −1.5%, 행간 1.6) / 캡션 3.2%(10.6px, 400, 자간 +1%, 행간 1.4). 본문보다 큰 글자는 표지 포함 한 번도 없다.</li>
 <li>날짜·시각은 말로: "오후 1시 20분, 협재 해변"(본문 700, 쪽당 한 줄) + 한 문장 최대 3줄. 숫자 코드(06.12, 13:20)·모노체·날씨 숫자 안 씀.</li>
 <li>선반 창: 3단 또는 4단 × 3:4, 아랫변을 L 에 붙이고 블리드 없음(왼쪽 1단 시작 또는 오른쪽 3단 시작). 선반 쪽 글은 1~4단 폭.</li>
-<li>글이 없는 날: 날 쪽 L 아래에 그날 지나간 곳을 말로 한 줄('우도에서 하도를 지나 월정리까지.'), 날짜 단은 그대로. 날 쪽 문단은 최대 5줄(L 아래 4%, 행간 1.55). 하루 쪽은 날짜 줄만~3줄. 마지막 쉼 쪽이 다른 테마와 같은 전면이면 사방 M(7%) 종이 액자.</li>
+<li>글이 없는 날: 날 쪽 L 아래에 그날의 다른 순간 세 장(2단씩 1:1)과 캡션 '오전, 우도'. 날짜 단은 그대로. 날 쪽 문단은 최대 5줄(L 아래 4%, 행간 1.55). 하루 쪽은 날짜 줄만~3줄. 마지막 쉼 쪽이 다른 테마와 같은 전면이면 사방 M(7%) 종이 액자.</li>
 <li>사진 창은 셋만(+선반): 큰 창(전폭 × L, 위·좌·우 블리드) / 세로 창(3~6단 + 오른쪽 블리드 × L, 약 3:4) / 전면 3:4. 짝은 큰 창을 세로로 반(간격 0.6%). 달력 칸만 1:1.</li>
 <li>날 쪽: 그날 가장 밝은 세로 사진을 세로 창에(그날 사진이 전부 흐리면 선 위를 비우고 다음 쪽을 그 사진 전면 쉼으로), 1~2단에 "6월 12일(700) / 요일 / 날씨"를 사진 아랫변(L)에 맞춰, L 아래에 그날 문단(최대 5줄).</li>
 <li>시퀀스: 날 쪽 → 순간마다 하루 쪽(같은 순간 세로 2장이면 짝) → 날마다 쉼(전면, 글·쪽 번호 없음) 최대 1. 같은 패턴 3쪽 이상 연속 금지. 간지 없음.</li>
 <li>쪽 번호: 오른쪽 아래, 아래에서 쪽 높이 4.5%, 캡션 크기 --sub 색. 표지·쉼 쪽 제외.</li>
 <li>종이 한 색(기본 연분홍 #F5EAE6, 연노랑·연하늘 중 하나로 한 권 고정). 색 면·강조색·테두리·그림자·둥근 모서리·필터 없음. 파스텔은 밝은 사진 고르기로 낸다.</li>
-<li>영상: 큰 창에 대표 프레임 + 가운데 ▶, 아래 캡션 "영상 3초 · 책에서는 사진 한 장으로". 끝 쪽은 그 달 달력(본문 크기, 선 없음). 위에는 여행한 날마다 같은 크기 정사각 사진(2단씩)과 날짜 캡션, 아래 7열 고른 달력에서 여행한 날만 700(풍경 말고 한 덩어리 피사체). ▶ 는 사진 왼쪽 아래(M, L 위 3%).</li>
+<li>영상: 큰 창에 대표 프레임 + 가운데 ▶, 아래 캡션 "영상 3초 · 책에서는 사진 한 장으로". 끝 쪽은 그 달 달력(본문 크기, 선 없음). 위에는 여행한 날마다 같은 크기 정사각 사진(2단씩)과 날짜 캡션, 아래 7열 고른 달력은 캡션 크기 숫자 + 주마다 0.5px 선(--sub 35%), 여행한 날만 본문 700(풍경 말고 한 덩어리 피사체). ▶ 는 사진 왼쪽 아래(M, L 위 3%).</li>
 <li>글 길이는 쪽마다 다르게: 날짜 줄만 / 1줄 / 3줄을 섞는다. 날 쪽 문단은 사진에 없는 것(아침·이동·날씨)만, 하루 쪽은 그 순간의 구체 하나만. 같은 말 두 번 쓰지 않는다.</li>
 </ul></details>
 </section>

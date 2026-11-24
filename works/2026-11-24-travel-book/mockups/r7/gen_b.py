@@ -95,10 +95,10 @@ CSS = """<style>
 .t-b .bg{left:0;right:0;bottom:0;height:50cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4));z-index:1}
 /* 46 ticks: one per photo; off 1px x 2cqw, this page's photos 2px x 4cqw in spot, day start 3cqw */
 .t-b .tk{left:6cqw;right:6cqw;bottom:6cqw;height:4cqw;display:flex;justify-content:space-between;align-items:flex-end;z-index:2}
-.t-b .tk i{width:1px;height:2cqw;background:rgba(20,20,20,.42)}
-.t-b .tk i.d{height:3cqw}
-.t-b .tk i.on{background:var(--spot);width:2px;height:4cqw}
-.t-b .wh .tk i,.t-b .spot .tk i{background:rgba(255,255,255,.6)}
+.t-b .tk i{width:1px;height:1.6cqw;background:rgba(20,20,20,.3)}
+.t-b .tk i.d{height:2.6cqw}
+.t-b .tk i.on{background:var(--spot);width:1px;height:3.4cqw}
+.t-b .wh .tk i,.t-b .spot .tk i{background:rgba(255,255,255,.45)}
 .t-b .wh .tk i.on{background:#fff}
 .t-b .spot .sr i{background:#fff}
 .t-b .spot .hx s{opacity:.85}
@@ -227,12 +227,11 @@ def covers() -> str:
     {big3("46", "장", 105.5).replace('style="', 'style="z-index:2;', 1)}
   </div>"""
     c2 = f"""<div class="pg">
-    {ph("udo", 0, 0, 100, 93.33, "88% 60%")}
-    <div class="cell" style="left:6cqw;top:96cqw;width:20.5cqw"><p class="lb">기간</p><p class="mv">3<span class="u">일</span></p></div>
-    <div class="cell" style="left:28.5cqw;top:96cqw;width:20.5cqw"><p class="lb">장소</p><p class="mv">9<span class="u">곳</span></p></div>
-    <div class="cell" style="left:51cqw;top:96cqw;width:43cqw"><p class="lb">거리</p><p class="mv">214<span class="u">km</span></p></div>
-    <p class="mv" style="left:6cqw;top:74cqw;color:#fff">제주</p><p class="mo" style="left:6cqw;top:85cqw;color:#fff">2026.06.12–14</p>
-    {ticks(all_on=True)}
+    {ph("udo", 0, 0, 100, 103.33, "88% 60%")}
+    <div class="cell" style="left:6cqw;top:106cqw;width:20.5cqw"><p class="lb">기간</p><p class="mv">3<span class="u">일</span></p></div>
+    <div class="cell" style="left:28.5cqw;top:106cqw;width:20.5cqw"><p class="lb">장소</p><p class="mv">9<span class="u">곳</span></p></div>
+    <div class="cell" style="left:51cqw;top:106cqw;width:43cqw"><p class="lb">거리</p><p class="mv">214<span class="u">km</span></p></div>
+    <p class="mv" style="left:6cqw;top:82cqw;color:#fff">제주</p><p class="mo" style="left:6cqw;top:93cqw;color:#fff">2026.06.12–14</p>
   </div>"""
     times = "".join(f"<span>{t}</span>" for t in TIMES)
     c3 = f"""<div class="pg spot">
@@ -307,11 +306,11 @@ def body() -> str:
     strip = "".join(ph(k, i * 33.33 + (0.15 if i else 0), 88.3, 33.34 - (0.3 if i == 1 else 0.15), 33.33, pos)
                     for i, (k, pos) in enumerate([("doldam_2", "50% 55%"), ("woljeongri", "40% 60%"), ("woljeongri_2", "62% 50%")]))
     p.append(f"""<div class="pg">
-  {ph("doldam", 0, 0, 100, 88, "50% 55%")}<div style="left:0;top:56cqw;width:100%;height:32cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4));z-index:1"></div>
+  {ph("doldam", 0, 0, 100, 88, "50% 55%")}
   {folio("제주 · 06.13 토", 7, ink=True)}
   {strip}
   <p class="cap" style="left:6cqw;top:123.3cqw;width:88cqw;border:0;padding:0"><span class="mo">No.26–32</span><span class="mo">16:05–17:20</span><span>월정리 돌담길 → 해변 1.2km</span></p>
-  <p class="mv" style="left:6cqw;top:74cqw;color:#fff;z-index:2">7<span class="u">장 · 월정리</span></p>
+  <p class="mv" style="left:6cqw;top:46cqw;z-index:2">7<span class="u">장 · 월정리</span></p>
 </div>""")
     # 08 shot strip as the cobalt hero: band + white marks on spot
     p.append(f"""<div class="pg spot wh" style="--rule:rgba(255,255,255,.45)">
@@ -338,28 +337,20 @@ def body() -> str:
   <p class="mv" style="left:6cqw;top:102cqw;color:#fff;z-index:2">37<span class="u">분</span></p>
   {fcap(41, "억새 사이").replace("bottom:14cqw", "bottom:6cqw")}
 </div>""")
-    # 11 final: spot block closes the book; four facts at M with units
-    H = '<span class="u" style="margin:0 1.6cqw 0 .8cqw">{}</span>'
-    facts = [("가장 많이 찍은 곳 · 우도", "11" + H.format("장")),
-             ("가장 오래 머문 곳 · 우도", "1" + H.format("시간") + "39" + H.format("분")),
-             ("가장 긴 공백 · 06.12 오후", "2" + H.format("시간") + "57" + H.format("분")),
-             ("첫 사진에서 마지막 사진까지", "48" + H.format("시간") + "32" + H.format("분"))]
-    cells = "".join(
-        f'<div class="cell" style="left:{6 if i % 2 == 0 else 51}cqw;top:{74.5 + (i // 2) * 20}cqw;width:43cqw">'
-        f'<p class="lb">{lab}</p><p class="mv">{val}</p></div>' for i, (lab, val) in enumerate(facts))
+    # 11 final: one big number (first to last photo), the rest in one quiet line
     p.append(f"""<div class="pg spot wh" style="--rule:rgba(255,255,255,.45)">
   {ph("tangerine", 0, 0, 100, 66.67, "50% 55%")}<div class="tg"></div>
   {folio("제주 · 06.14 일", 11)}
   {cap(46, "귤나무 카페 마당", 68.67, extra='<span class="r mo">마지막 사진</span>')}
-  {cells}
-  <p class="mo" style="left:6cqw;top:117.5cqw;width:88cqw;display:flex;justify-content:space-between"><span>제주 · 2026.06.12–14 · 46장</span></p>
-  {ticks(all_on=True)}
+  <p class="lb" style="left:6cqw;top:78cqw">첫 사진에서 마지막 사진까지</p>
+  <p class="xl" style="left:6cqw;top:84cqw">48<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">시간 32분</span></p>
+  <p class="lb" style="left:6cqw;top:117cqw;width:88cqw;white-space:nowrap">우도 11장 · 1시간 39분 · 가장 긴 공백 2시간 57분 · 46장</p>
 </div>""")
     return f"""<h3 class="sub">책 본문</h3>
 <div class="strip">
 {chr(10).join(p)}
 </div>
-<div class="under"><span>01 총계 → 02 협재(티켓) → 03 첫째 날(풀블리드 + 13km + 아래 띠 넷) → 04 신창(쉬는 쪽) → 05 둘째 날(풀블리드 + 88km) → 06 해녀(영상) → 07 월정리(사진 + 띠 셋 + 7장) → 08 46장 찍은 시각(별색 면) → 09 한라산(970m + 고도선) → 10 오름(풀블리드 + 37분) → 11 결산(별색 면, 사실 4개)</span><span>11쪽</span></div>"""
+<div class="under"><span>01 총계 → 02 협재(티켓) → 03 첫째 날(풀블리드 + 13km + 아래 띠 넷) → 04 신창(쉬는 쪽) → 05 둘째 날(풀블리드 + 88km) → 06 해녀(영상) → 07 월정리(사진 + 띠 셋 + 7장) → 08 46장 찍은 시각(별색 면) → 09 한라산(970m + 고도선) → 10 오름(풀블리드 + 37분) → 11 결산(별색 면, 48시간 32분 하나)</span><span>11쪽</span></div>"""
 
 
 NOTES = """<details class="notes"><summary>디자인 규칙</summary><ul>

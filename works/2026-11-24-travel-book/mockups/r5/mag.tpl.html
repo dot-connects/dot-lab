@@ -124,10 +124,10 @@
 
 /* 06 numbered guide 2x2, 3 columns each */
 .t-mag .ng h5{left:var(--x1);top:13cqw}
-.t-mag .ng .big{left:var(--x1);width:var(--w6);top:21cqw}
-.t-mag .ng .big .ph{position:relative;aspect-ratio:4/3}
-.t-mag .ng .sm3{position:absolute;top:95cqw;width:var(--w2)}
-.t-mag .ng .sm3 .ph{position:relative;aspect-ratio:4/3}
+.t-mag .ng .big{left:var(--x1);width:var(--w6);top:20cqw}
+.t-mag .ng .big .ph{position:relative;aspect-ratio:3/2}
+.t-mag .ng .sm3{position:absolute;top:86cqw;width:var(--w2)}
+.t-mag .ng .sm3 .ph{position:relative;aspect-ratio:4/5}
 .t-mag .ng .s2{left:var(--x1)}.t-mag .ng .s3{left:var(--x3)}.t-mag .ng .s4{left:var(--x5)}
 .t-mag .ng .cap{margin-top:var(--g);white-space:nowrap}
 .t-mag .ng .no{font:400 4.2cqw/1 var(--f-s);color:var(--accent);margin-right:.5em}
@@ -164,12 +164,13 @@
 .t-mag .ix ol{left:var(--x1);width:var(--w6);top:27cqw;columns:2;column-gap:var(--g)}
 .t-mag .ix ol li{display:flex;justify-content:space-between;align-items:baseline;padding:1.5cqw 0;border-top:1px solid rgba(243,241,234,.3);break-inside:avoid}
 .t-mag .ix ol li i{font:400 4.2cqw/1 var(--f-s);font-style:normal}
-.t-mag .ix dl{position:absolute;left:var(--x1);width:var(--w4);bottom:var(--mb);margin:0;display:grid;grid-template-columns:var(--w1) 1fr;column-gap:var(--g);row-gap:1.8cqw}
+.t-mag .ix .lo{left:var(--x1);width:var(--w3);bottom:var(--mb)}
+.t-mag .ix dl{margin:4cqw 0 0;display:grid;grid-template-columns:var(--w1) 1fr;column-gap:var(--g);row-gap:1.8cqw}
 .t-mag .ix dt{font-weight:400}
 .t-mag .ix dd{font-weight:600}
 .t-mag .ix dd{margin:0}
-.t-mag .ix .end{left:var(--x1);width:var(--w4);top:79cqw;font:500 6cqw/1.2 var(--f-d);letter-spacing:-.03em}
-.t-mag .ix .stamp{bottom:var(--mb)}
+.t-mag .ix .end{font:500 6cqw/1.2 var(--f-d);letter-spacing:-.03em}
+.t-mag .ix .stamp{left:var(--x4);width:var(--w3);bottom:var(--mb)}
 .t-mag .ix .stamp img{object-position:50% 40%}
 .t-mag .ix .stamp .ph{background:rgba(243,241,234,.2)}
 </style>
@@ -218,7 +219,6 @@
     <div class="ph full"><img src="{{hyeopjae_2}}" alt=""></div>
     <div class="sh"></div>
     <div class="rh w"><span>제주, 바람 — Part 1 서쪽</span><i>2</i></div>
-    <p class="co">33.39°N 126.24°E</p>
     <div class="ab tx lo"><span class="pt">Part 1</span><h4 class="d2">서쪽</h4><p class="ld">06.12 금, 맑음 24°.<br>물은 생각보다 차가웠다.</p></div>
   </div>
   <!-- 03 text page -->
@@ -286,8 +286,8 @@
       <li>협재 해변<i>3</i></li><li>신창 풍차길<i>4</i></li><li>우도<i>6</i></li><li>하도<i>7</i></li><li>월정리<i>6</i></li>
       <li>성산<i>8</i></li><li>어리목<i>9</i></li><li>원물오름<i>10</i></li><li>귤나무 카페<i>10</i></li>
     </ol>
-    <dl class="cap"><dt>펴낸 날</dt><dd>2026.06.14</dd><dt>다닌 날</dt><dd>06.12—14, 2박 3일</dd><dt>실린 것</dt><dd>사진 46 · 영상 3</dd></dl>
-    <p class="ab end">바람은 이틀 내내<br>불었다.</p>
+    <div class="ab lo"><p class="end">바람은<br>이틀 내내<br>불었다.</p>
+    <dl class="cap"><dt>펴낸 날</dt><dd>2026.06.14</dd><dt>다닌 날</dt><dd>06.12—14</dd><dt>실린 것</dt><dd>사진 46 · 영상 3</dd></dl></div>
     <div class="stamp"><div class="ph"><img src="{{d10}}" alt=""></div></div>
   </div>
 </div>
