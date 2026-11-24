@@ -1,12 +1,12 @@
-<!-- fonts: IBM+Plex+Sans+KR:wght@300;400;600 | IBM+Plex+Mono:wght@400;500 | Orbit -->
+<!-- fonts: IBM+Plex+Mono:wght@400;500 -->
 <style>
 /* Diary r5: a journaling app, printed. One soft colour field per day, huge date numerals, the user's own lines carry the pages.
    All sizes are cqw (1cqw = 3.3px on a 330px page) so pages scale as one piece. */
 .t-diary{--paper:#FBF8F1;--ink:#1a1a1a;--soft:rgba(26,26,26,.66);--line:rgba(26,26,26,.16);--d1:#EFD3CF;--d2:#BCCAB4;--d3:#F6E696;
-  --f:"IBM Plex Sans KR",sans-serif;--m:"IBM Plex Mono","IBM Plex Sans KR",monospace;--n:"Orbit","IBM Plex Mono",sans-serif}
+  --f:"LINE Seed KR",sans-serif;--m:"IBM Plex Mono","LINE Seed KR",monospace;--n:"LINE Seed KR","IBM Plex Mono",sans-serif}
 .t-diary .pg{container-type:size;box-sizing:border-box;background:var(--paper);color:var(--ink);font-family:var(--f)}
 .t-diary .pg *{box-sizing:border-box}
-.t-diary .pg img{filter:saturate(.8) contrast(.94) brightness(1.04) sepia(.06)}
+.t-diary .pg img{}
 .t-diary .pg p{margin:0;word-break:keep-all}
 .t-diary .m{font:500 2.9cqw/1.45 var(--m);letter-spacing:.02em;color:var(--soft)}
 .t-diary .c1{--c:var(--d1)}.t-diary .c2{--c:var(--d2)}.t-diary .c3{--c:var(--d3)}
@@ -91,7 +91,8 @@
 .t-diary .cal .grid span{position:relative;display:grid;place-items:center;height:12.6cqw;font:500 3.5cqw/1 var(--m);color:var(--soft)}
 .t-diary .cal .grid .w{color:var(--ink);height:6cqw}
 .t-diary .cal .grid .on{color:#fff;font-weight:500;font-size:3.9cqw;z-index:0}
-.t-diary .cal .grid .on img{position:absolute;z-index:-1;left:50%;top:50%;width:12.4cqw;height:12.4cqw;margin:-6.2cqw 0 0 -6.2cqw;border-radius:50%;border:.9cqw solid var(--c);filter:saturate(.8) brightness(.72)}
+.t-diary .cal .grid .on{text-shadow:0 0 3px rgba(0,0,0,.7),0 0 1px rgba(0,0,0,.8)}
+.t-diary .cal .grid .on img{position:absolute;z-index:-1;left:50%;top:50%;width:12.4cqw;height:12.4cqw;margin:-6.2cqw 0 0 -6.2cqw;border-radius:50%;border:.9cqw solid var(--c)}
 .t-diary .cal .end{position:absolute;left:5cqw;right:5cqw;bottom:5cqw;font:600 4.8cqw/1.4 var(--f);letter-spacing:-.02em}
 .t-diary .cal .end .m{display:block;margin-top:1cqw}
 
@@ -236,13 +237,13 @@
 
 <details class="notes"><summary>디자인 규칙</summary><ul>
 <li>하루에 색 하나(1일 블러시 · 2일 세이지 · 3일 버터). 그날의 모든 색면·점·띠는 그 색만 쓴다. 4일 이상이면 세 색을 순서대로 돌린다.</li>
-<li>날 시작 쪽은 색면 전체 + 날짜 숫자(Orbit, 쪽 폭의 60%) + 요일·날씨 모노 한 줄 + 그날 메모 중 가장 짧은 한 줄(600, 18px). 숫자 위치는 날마다 바꾼다(좌상·우하·좌하).</li>
+<li>날 시작 쪽은 색면 전체 + 날짜 숫자(LINE Seed KR Thin, 쪽 폭의 60%) + 요일·날씨 모노 한 줄 + 그날 메모 중 가장 짧은 한 줄(600, 18px). 숫자 위치는 날마다 바꾼다(좌상·우하·좌하).</li>
 <li>글자는 두 크기만: 큰 것(숫자 200px / 한 줄 18~23px)과 작은 것(본문 11~12px, 모노 라벨 9.6px 500). 중간 크기 없음. 비율 약 12:1 이상.</li>
 <li>하루 기록 쪽은 앱 타임라인: 시각(모노) · 곳(600) · 내가 쓴 한 줄 · 73px 정사각 썸네일(모서리 0), 구분선 0.5px. 한 쪽에 4줄까지, 넘치면 다음 쪽.</li>
 <li>사용자 메모가 12자 이하면 계단 글자 쪽(색면 45% + 세로 사진 55%)으로, 낱말 단위로 끊어 한 줄씩 16px 들여 쓴다. 한 권에 1~2번.</li>
 <li>사진은 흰 테두리 없이 쪽 끝까지. 큰 사진은 4:5 로 폭 전체, 아래 남는 27px 띠에 한 줄 + 시각. 여러 장은 3px 간격으로 맞붙인다.</li>
 <li>UI 조각은 한 권에 종류별 1번: 음성 메모(작은 재생 아이콘 + 파형 + 받아쓴 한 줄), 오늘의 날씨(사진 아래 색 띠에 기온·날씨), 재생 바(영상 쪽), 달력(마지막 쪽). 흰 카드·그림자 없이 본문 글자로.</li>
-<li>사진 톤: saturate .8 · contrast .94 · brightness 1.04 · sepia .06 — 파란 하늘을 눌러 파스텔 색면과 맞춘다.</li>
+<li>사진 톤: 원본 색 그대로(보정·그레인 없음). 사진 위 글자는 아래쪽만 옅게 어둡게 깔아 읽히게 한다.</li>
 <li>마지막 쪽은 그 달 달력. 여행한 날은 날짜 칸 안에 동그란 사진(41px, 그날 색 테두리)을 깔고 숫자를 그 위에 흰색으로, 위에 곳·사진·영상·km 숫자 한 줄.</li>
 <li>문구는 사용자 메모를 그대로, 없으면 시각+곳만. 설명문·감탄을 만들어 넣지 않는다.</li>
 </ul></details>

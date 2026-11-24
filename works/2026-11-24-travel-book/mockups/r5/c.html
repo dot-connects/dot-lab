@@ -1,18 +1,15 @@
-<!-- fonts: Gowun+Dodum | Instrument+Sans:wght@400;500;600;700 | DM+Mono:wght@400;500 -->
+<!-- fonts: Instrument+Sans:wght@400;500;600;700 | DM+Mono:wght@400;500 -->
 <style>
 /* Photo-dump collage. All lengths are design px on a 330x440 page, scaled by --u. */
 .t-c{--paper:#FFF9EF;--ink:#111111;--soft:#5b564d;--acc:#E8553B;--on:#111111;--card:#ffffff;
-  --f-ko:"Gowun Dodum","Instrument Sans",sans-serif;--f-en:"Instrument Sans","Gowun Dodum",sans-serif;--f-mono:"DM Mono","Gowun Dodum",monospace}
+  --f-ko:"Paperlogy","Instrument Sans",sans-serif;--f-en:"Instrument Sans","Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
 .t-c .pg{container-type:inline-size;background:var(--paper)}
 .t-c .in{--u:.30303cqw;position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden}
 .t-c .in.fill{background:var(--acc);color:var(--on)}
-/* film grain over the whole page */
-.t-c .in::after{content:"";position:absolute;inset:0;z-index:9;pointer-events:none;opacity:.06;mix-blend-mode:multiply;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
 /* placed piece: --x --y --w --h in design px */
 .t-c .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u));margin:0}
 .t-c .ph{overflow:hidden;background:#d8d2c6}
-.t-c .ph img,.t-c .cut img{filter:saturate(.84) contrast(.95) brightness(1.04) sepia(.07);object-position:var(--pos,50% 50%)}
+.t-c .ph img,.t-c .cut img{object-position:var(--pos,50% 50%)}
 .t-c .bleed{inset:0;width:auto;height:auto}
 /* shaped crops: sparingly, with a thin paper edge so overlaps read as cut paper */
 .t-c .arch{border-radius:999px 999px 0 0}
@@ -239,9 +236,9 @@
 <li>모양 크롭(아치·원·알약)은 한 쪽에 1개만. 겹칠 때만 바탕색 4px 가장자리를 둔다. 나머지 사진은 직사각형.</li>
 <li>누끼 스티커는 한 쪽에 하나, 한 권에 3개까지. 손은 빼고 물건만(귤·조개는 원형, 모자는 윤곽) 딴다. 흰 외곽선 2.5px 균일, 기울기 ±8° 안. 사진 칸이 만나는 모서리에 얹는다.</li>
 <li>장식은 UI 조각만: 경로 카드(출발 → 도착 · 거리 · 시간), 말풍선(메모 한 줄, 12자 안팎), 재생바(소리 이름 + 진행선 + 0:03). 종류별 한 권에 3~4번까지. 반짝이·별 낙서는 쓰지 않는다.</li>
-<li>글자는 크거나 작게만: 지명 제목 30~84px Gowun Dodum(시각·거리 숫자는 크게 쓰지 않고 10px 라벨로), 캡션 12px, 라벨 11px DM Mono 500 · 라벨은 한국어(첫째 날, 06.12 금), 라틴은 숫자·단위만. 중간 크기 없음. 제목은 왼쪽 정렬, 쪽당 하나.</li>
+<li>글자는 크거나 작게만: 지명 제목 30~84px Paperlogy(시각·거리 숫자는 크게 쓰지 않고 10px 라벨로), 캡션 12px, 라벨 11px DM Mono 500 · 라벨은 한국어(첫째 날, 06.12 금), 라틴은 숫자·단위만. 중간 크기 없음. 제목은 왼쪽 정렬, 쪽당 하나.</li>
 <li>사진 위 글자는 흰색, 밝은 하늘 위는 #111. 사진 아래쪽 글자가 있으면 아래 40%에 검정 35% 그라데이션.</li>
-<li>사진 톤: 채도 0.84 · 대비 0.95 · 밝기 1.04 · 세피아 7% + 그레인 6%. 쨍한 하늘을 눌러 따뜻한 필름 느낌으로 통일.</li>
+<li>사진 톤: 원본 색 그대로(보정·그레인 없음). 사진 위 글자는 아래쪽만 옅게 어둡게 깔아 읽히게 한다.</li>
 <li>영상 쪽은 색 띠 위에 폰 화면 하나(둥근 모서리 26px, 검정 테 5px, 기울기 3°) 안에서 재생 중인 모습 + ▶ + 재생바. PDF·이미지로 내보낼 때는 ▶만 빼고 같은 모습.</li>
 <li>첫 쪽은 지도 대신 지도 앱 경로 화면 조각(시각 · 점-선-점 · 장소, 날이 바뀌는 곳만 색 점) + 요약 한 줄. 마지막 쪽은 색면 + 마지막 장소 사진 아치 + 혼잣말 제목(비행기 사진으로 끝내지 않는다).</li>
 </ul></details>

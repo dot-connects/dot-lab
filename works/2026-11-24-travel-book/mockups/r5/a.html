@@ -1,19 +1,14 @@
-<!-- fonts: Inter+Tight:wght@300;500;800 | Noto+Sans+KR:wght@300;500;800 -->
+<!-- fonts: Inter+Tight:wght@300;500;800 -->
 <style>
 /* 여백의 책 r5: quiet monochrome zine. Paper + ink only, colour comes from photos.
    Big type in cqw (page-width units), small type in px. Photos are full-bleed or edge-to-edge with one deliberate margin. */
 .t-a{--paper:#F4F3EF;--ink:#111111;--soft:#55575a;
   --grade:saturate(.76) contrast(.93) brightness(1.04) hue-rotate(-5deg);
   --mono:grayscale(1) contrast(1.06) brightness(1.02);
-  --f-l:"Inter Tight","Noto Sans KR",sans-serif;--f-k:"Noto Sans KR","Inter Tight",sans-serif}
+  --f-l:"Inter Tight","Pretendard",sans-serif;--f-k:"Pretendard","Inter Tight",sans-serif}
 .t-a .pg{container-type:inline-size;background:var(--paper);color:var(--ink);font-family:var(--f-k);word-break:keep-all}
 .t-a .pg p,.t-a .pg h3{margin:0}
 .t-a .ph{position:absolute;overflow:hidden;background:#cfd2d3}
-.t-a .ph img{filter:var(--grade)}
-.t-a .ph.bw img{filter:var(--mono)}
-/* grain 5% */
-.t-a .ph::after{content:"";position:absolute;inset:0;opacity:.05;pointer-events:none;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
 .t-a .full{inset:0}
 .t-a .sh-b::before,.t-a .sh-t::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
 .t-a .sh-b::before{background:linear-gradient(0deg,rgba(10,14,18,.42),rgba(10,14,18,0) 46%)}
@@ -38,7 +33,7 @@
 .t-a .c2 .a{left:6%;top:5%}
 .t-a .c2 .b{right:6%;top:5%}
 .t-a .c2 .c{left:6%;bottom:4.5%}
-.t-a .c3 .ph img{filter:var(--mono) brightness(.74)}
+.t-a .c3 .ph::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.42))}
 .t-a .c3 .t1{left:4%;top:6%;font-size:35cqw}
 .t-a .c3 .t2{right:4%;bottom:5%;font-size:35cqw}
 .t-a .c3 .a{left:6%;top:47%}
@@ -110,7 +105,7 @@
 .t-a .en .ix i{font:500 11px/1 var(--f-l);font-style:normal;letter-spacing:.03em;color:var(--soft);font-variant-numeric:tabular-nums}
 .t-a .en .c{left:calc(50% + 7px);right:6%;bottom:4.5%}
 </style>
-<section class="t-a" data-palettes='[{"--paper":"#F4F3EF","--ink":"#111111","--soft":"#55575a","--grade":"saturate(.76) contrast(.93) brightness(1.04) hue-rotate(-5deg)"},{"--paper":"#FFFFFF","--ink":"#111111","--soft":"#5a5c5f","--grade":"saturate(.62) contrast(.92) brightness(1.06) hue-rotate(-8deg)"},{"--paper":"#E6E7E6","--ink":"#16181A","--soft":"#4c4f52","--grade":"grayscale(1) contrast(1.06) brightness(1.02)"}]'>
+<section class="t-a" data-palettes='[{"--paper":"#F4F3EF","--ink":"#111111","--soft":"#55575a"},{"--paper":"#FFFFFF","--ink":"#111111","--soft":"#5a5c5f"},{"--paper":"#E6E7E6","--ink":"#16181A","--soft":"#4c4f52"}]'>
 <div class="head"><h2>여백의 책</h2><p class="idea">종이와 잉크 두 가지뿐. 색은 사진에서만 나오고, 글자는 아주 크거나 아주 작다.</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
 
 <h3 class="sub">표지 후보</h3>
@@ -225,7 +220,7 @@
 <li>큰 글자는 일차 숫자(01·02·03, 굵기 300)와 표지 지명·날짜뿐. 자간 −6%, 쪽 가장자리 밖으로 1~2% 잘리게. 시각·거리는 항상 작은 글자.</li>
 <li>사진은 쪽을 꽉 채우거나 최소 두 변이 쪽 끝에 닿는다. 여백은 한 쪽에 한 군데(위 12% 띠, 오른쪽 34% 단, 사방 7% 테)만 둔다.</li>
 <li>작은 사진은 큰 사진 옆에 한 장만, 칸 폭에 꽉 채운다(큰 것 폭 66% : 작은 것 34%). 사진끼리는 0~3px 로 붙이고 테두리·그림자·둥근 모서리 없음.</li>
-<li>사진 톤: 채도 −24%, 대비 −7%, 밝기 +4%, 그레인 5%. 흑백은 표지 한 장까지(안개처럼 색이 적은 컷).</li>
+<li>사진 톤: 원본 색 그대로(보정·그레인 없음). 사진 위 글자는 아래쪽만 옅게 어둡게 깔아 읽히게 한다.</li>
 <li>날마다 여는 쪽 1장: 풀블리드 + 가는 일차 숫자(폭 45%)를 아래 가장자리, 피사체 반대쪽에. 숫자 위에 “첫째 날” 라벨. 가로 사진 3장 이상이면 번호 띠 (01)(02)(03).</li>
 <li>문구는 쪽당 시각 + 장소 + 한 줄(12자 안팎). 사진 위 글자는 흰색, 밝은 하늘이면 위·아래 30~40% 어둡게 덮는다.</li>
 <li>영상 쪽은 같은 영상에서 뽑은 3컷을 세로로 2px 간격으로 붙인다(멀리→가까이). ▶ 는 첫 컷에만 작게, “영상 0:03” 한 줄. PDF 에서는 사진 한 장.</li>

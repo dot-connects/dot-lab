@@ -1,13 +1,10 @@
-<!-- fonts: Gasoek+One | Noto+Sans+KR:wght@400;700;800;900 | Archivo:wght@500;700;900 -->
+<!-- fonts: Archivo:wght@500;700;900 -->
 <style>
 .t-mag{--paper:#f4f3ef;--ink:#111111;--a:#f5d90a;--ona:#111111;--b:#1f4d3a;--onb:#ffffff;--tb:#f5d90a;
-  --f-d:"Gasoek One","Noto Sans KR",sans-serif;--f-k:"Noto Sans KR",sans-serif;--f-n:"Archivo","Noto Sans KR",sans-serif}
+  --f-d:"Gmarket Display","Pretendard",sans-serif;--f-k:"Pretendard",sans-serif;--f-n:"Archivo","Pretendard",sans-serif}
 .t-mag .pg{background:var(--paper);color:var(--ink);font-family:var(--f-k);container-type:inline-size;word-break:keep-all;border-radius:0}
 .t-mag .pg,.t-mag .pg *{box-sizing:border-box}
 .t-mag .pg h4,.t-mag .pg p,.t-mag .pg ol,.t-mag .pg ul{margin:0;padding:0;list-style:none;font-weight:inherit}
-.t-mag .pg img{filter:saturate(.84) contrast(.96) brightness(1.04)}
-.t-mag .pg::after{content:"";position:absolute;inset:0;z-index:9;pointer-events:none;opacity:.06;mix-blend-mode:multiply;
-  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1.4 -.2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E")}
 .t-mag .ph{position:absolute;overflow:hidden}
 .t-mag .g{font-family:var(--f-d);font-weight:400;letter-spacing:-.02em;line-height:.92}
 .t-mag .n{font-family:var(--f-n);font-weight:900;letter-spacing:-.045em;line-height:.8;font-variant-numeric:tabular-nums}
@@ -29,7 +26,6 @@
 .t-mag .c1 h4{position:absolute;left:26px;top:8%;font-size:40cqw;line-height:.9;color:var(--tb)}
 .t-mag .c1 h4 span{display:block}
 .t-mag .c1 .cut{position:absolute;right:5%;bottom:8.5%;width:47%;aspect-ratio:1/1;border-radius:50%;overflow:hidden;z-index:3}
-.t-mag .c1 .cut img{filter:saturate(1) contrast(1.02)}
 .t-mag .c1 .sb{position:absolute;left:28px;bottom:38px;font:700 12px/1.45 var(--f-k)}
 
 /* cover 2 — full bleed, title bleeding off the bottom */
@@ -335,14 +331,14 @@
 <div class="under"><span>일정표·지도 → 01 서쪽 → 신창 노을 → 02 동쪽 → 우도 → 영상 → 월정리 → 성산 → 03 중산간 → 밀착 인화 → 판권면</span><span>11쪽</span></div>
 
 <details class="notes"><summary>디자인 규칙</summary><ul>
-<li>글꼴 3개만: 제목·지명 Gasoek One, 날 번호·라틴 Archivo 900/700(크게 쓰는 숫자는 날 번호 01·02·03 뿐, 시각은 항상 캡션 크기), 본문 Noto Sans KR. 큰 글자는 쪽 폭의 30~66%, 작은 글자는 11~12px(11px 미만 없음), 40px 아래 굵은 한글은 Noto Sans KR 800 — 중간 크기 없음(약 10:1).</li>
+<li>글꼴 3개만: 제목·지명 Gmarket Sans Bold, 날 번호·라틴 Archivo 900/700(크게 쓰는 숫자는 날 번호 01·02·03 뿐, 시각은 항상 캡션 크기), 본문 Pretendard. 큰 글자는 쪽 폭의 30~66%, 작은 글자는 11~12px(11px 미만 없음), 40px 아래 굵은 한글은 Pretendard 800 — 중간 크기 없음(약 10:1).</li>
 <li>색면은 한 권에 두 색(기본 노랑 #F5D90A + 딥그린 #1F4D3A). 여행 사진에서 가장 넓은 색 두 개를 뽑아 채도를 올려 쓰고, 한 쪽에는 한 색만 넓게 깐다. 검정 바탕·그라데이션 없음.</li>
 <li>표지 제목은 두 줄까지, 한 줄 2~3글자를 쪽 폭 40% 크기로. 색면 표지에는 원형으로 자른 사진 한 점(지름 = 쪽 폭 47%)을 글자 끝에 겹친다. 가장자리에서 잘리는 글자는 높이의 1/4 이하.</li>
 <li>날(day)마다 챕터 쪽 1장: 숫자 "01"을 폭 60% 이상으로 가장자리 밖까지, 옆에 방위·동네 이름 한 단어("서쪽"). 세 챕터는 배치를 서로 다르게(사진 위·색 아래 / 전면 색 / 세로 사진 + 종이).</li>
 <li>사진은 전부 가장자리까지. 두세 장을 쓸 때는 간격 0~2px 로 맞붙이고 흰 테두리·그림자·둥근 모서리 없음. 세로 사진은 세로 칸에만.</li>
 <li>사진 위 글자는 하늘·어두운 땅처럼 고른 면에만 올린다. 고른 면이 없으면 글자를 색 띠나 종이 면으로 내린다(그림자·그라데이션으로 해결하지 않음).</li>
 <li>스프링 제본 그림은 표지에만, 본문 쪽에는 넣지 않는다. 영어 라벨 대신 한국어(일정·밀착 인화·판권·1호).</li>
-<li>사진 톤: saturate .84 · contrast .96 · brightness 1.04 + 그레인 6%. 표지 원형 사진만 원래 채도.</li>
+<li>사진 톤: 원본 색 그대로(보정·그레인 없음). 사진 위 글자는 아래쪽만 옅게 어둡게 깔아 읽히게 한다.</li>
 <li>일정표는 날 | 시각 | 곳 | 쪽 4열, 날이 바뀔 때만 1.5px 선. 지도는 1색 실루엣 + 점 + 1px 경로선, 지명은 4~6개만.</li>
 <li>본문에 못 들어간 사진은 끝에서 두 번째 쪽에 4×3 밀착 인화 + 번호·시각·한 줄 표. 마지막 쪽은 판권면: 사진 한 장 + 책 제목 + 펴낸 날·다닌 날·사진/영상 수·곳 수·이동 km 를 11px 표 5줄로(숫자를 크게 키우지 않음).</li>
 <li>영상 쪽은 같은 영상의 3컷(처음·중간·끝)을 2px 간격 가로 띠로, ▶ 는 가운데 하나, 컷 아래 시각 표시. PDF 에서는 ▶ 를 빼고 사진 한 장으로.</li>

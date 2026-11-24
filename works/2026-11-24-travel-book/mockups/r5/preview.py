@@ -43,7 +43,8 @@ def build(keys: list[str]) -> str:
     if fams:
         link = '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?' + "&".join(f"family={x}" for x in fams) + '&display=swap">'
     toc = '<div class="toc">' + "".join(f'<a href="#theme-{k}">{NAMES.get(k, k)}</a>' for k in keys if (R3 / f"{k}.html").exists()) + "</div>"
-    h = shell.replace("<!--FONTS-->", link).replace("<!--SECTIONS-->", "\n".join(secs)).replace("<!--TOC-->", toc)
+    faces = "<style>" + (R3 / "fontfaces.css").read_text(encoding="utf-8") + "</style>"
+    h = shell.replace("<!--FONTS-->", link + faces).replace("<!--SECTIONS-->", "\n".join(secs)).replace("<!--TOC-->", toc)
     keys_used = sorted(set(re.findall(r'src="\{\{(\w+)\}\}"', h)))
     h = re.sub(r'src="\{\{(\w+)\}\}"', r'data-k="\1" src="data:image/gif;base64,R0lGODlhAQABAAAAACwAAAAAAQABAAA="', h)
     imgs = ",".join(f'"{k}":"data:image/webp;base64,{base64.b64encode(_img(k)).decode()}"' for k in keys_used)
