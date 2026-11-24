@@ -53,7 +53,7 @@
 /* calendar: 7 equal square cells between margins, rows end on L; numbers centred so photo cells share the row centre */
 /* calendar page: three equal 2-column squares at the top margin, a uniform 7-column month grid ending on L.
    Trip days are the only 700 numbers in the grid. */
-.t-diary .tx.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--G)}
+.t-diary .tx.thumbs{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--G);top:calc(var(--L) + 2.5cqw)}
 .t-diary .tx.thumbs>div{min-width:0}
 .t-diary .tx.thumbs .sqp{aspect-ratio:1;overflow:hidden}
 .t-diary .tx.thumbs .cap{margin-top:1.5cqw}

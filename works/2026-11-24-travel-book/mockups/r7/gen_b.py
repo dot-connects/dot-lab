@@ -91,7 +91,7 @@ CSS = """<style>
 .t-b .fl,.t-b .fr{top:6cqw;font:500 3cqw/1 var(--mono);letter-spacing:0;z-index:2}
 .t-b .fl{left:6cqw}.t-b .fr{right:6cqw}
 .t-b .wh .fl,.t-b .wh .fr{color:#fff}
-.t-b .tg{left:0;right:0;top:0;height:20cqw;background:linear-gradient(rgba(0,0,0,.3),rgba(0,0,0,0));z-index:1}
+.t-b .tg{left:0;right:0;top:0;height:20cqw;background:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,0));z-index:1}
 .t-b .bg{left:0;right:0;bottom:0;height:50cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4));z-index:1}
 /* 46 ticks: one per photo; off 1px x 2cqw, this page's photos 2px x 4cqw in spot, day start 3cqw */
 .t-b .tk{left:6cqw;right:6cqw;bottom:6cqw;height:4cqw;display:flex;justify-content:space-between;align-items:flex-end;z-index:2}
@@ -274,9 +274,9 @@ def body() -> str:
                     for i, (k, pos) in enumerate([("hyeopjae_2", "50% 70%"), ("d4", "55% 60%"),
                                                   ("d2", "50% 60%"), ("road_2", "45% 50%")]))
     p.append(f"""<div class="pg wh">
-  {ph("d9", 0, 0, 100, 108.33, "50% 55%")}<div class="bg" style="bottom:25cqw;height:44cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4) 60%)"></div>
+  {ph("d9", 0, 0, 100, 108.33, "50% 55%")}<div class="bg" style="bottom:25cqw;height:56cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.6) 45%)"></div>
   {folio("제주 · 06.12 금", 3, ink=True)}
-  <p class="lb" style="left:6cqw;top:80cqw;color:#fff;opacity:.9;z-index:2">협재 → 신창 · 사진 사이 거리</p>
+  <p class="lb" style="left:6cqw;top:80cqw;color:#fff;opacity:1;z-index:2">협재 → 신창 · 사진 사이 거리</p>
   <p class="mv" style="left:6cqw;top:85.5cqw;color:#fff;z-index:2">13<span class="u">km</span></p>
   <p class="cap in" style="left:6cqw;top:99cqw;width:88cqw"><span class="mo">No.03</span><span class="mo">13:31</span><span>협재 모래 위</span></p>
   {strip}
@@ -289,15 +289,15 @@ def body() -> str:
 </div>""")
     # 05 day 2: full-bleed, the day's two counts on the photo
     p.append(f"""<div class="pg wh">
-  {ph("udo", 0, 0, 100, 133.33, "22% 50%")}<div class="bg" style="height:72cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4) 40%)"></div>
+  {ph("udo", 0, 0, 100, 133.33, "22% 50%")}<div class="bg" style="height:84cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.58) 35%)"></div>
   {folio("제주 · 06.13 토", 5, ink=True)}
-  <p class="lb" style="left:6cqw;top:68cqw;color:#fff;opacity:.9;z-index:2">06.13 토 · 26장 · 우도 → 하도 → 월정리 → 성산</p>
+  <p class="lb" style="left:6cqw;top:68cqw;color:#fff;opacity:1;z-index:2">06.13 토 · 26장 · 우도 → 하도 → 월정리 → 성산</p>
   <p class="xl" style="left:6cqw;top:74cqw;color:#fff;z-index:2">88<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">km</span></p>
   {fcap(12, "우도", pre='<span class="memo">모자가 두 번 날아감.</span>').replace("bottom:14cqw", "bottom:6cqw")}
 </div>""")
     # 06 video
     p.append(f"""<div class="pg wh">
-  {ph("haenyeo", 0, 0, 100, 133.33, "40% 50%").replace("object-position:40% 50%", "object-position:40% 0%;height:119%")}<div class="tg" style="height:16cqw;background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,0))"></div><div class="bg" style="height:56cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4) 50%)"></div>
+  {ph("haenyeo", 0, 0, 100, 133.33, "40% 50%").replace("object-position:40% 50%", "object-position:40% 0%;height:119%")}<div class="tg" style="height:16cqw;background:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,0))"></div><div class="bg" style="height:56cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.4) 50%)"></div>
   <div class="play"><span></span></div>
   {folio("제주 · 06.13 토", 6)}
   {fcap(22, "하도 해녀 탈의장 앞", pre='<span class="lb" style="flex-basis:100%;opacity:1">PDF에서는 사진 한 장으로</span>', lead='<span class="mo">▶ 3초</span>').replace("bottom:14cqw", "bottom:6cqw")}
@@ -310,7 +310,8 @@ def body() -> str:
   {folio("제주 · 06.13 토", 7, ink=True)}
   {strip}
   <p class="cap" style="left:6cqw;top:123.3cqw;width:88cqw;border:0;padding:0"><span class="mo">No.26–32</span><span class="mo">16:05–17:20</span><span>월정리 돌담길 → 해변 1.2km</span></p>
-  <p class="mv" style="left:6cqw;top:46cqw;z-index:2">7<span class="u">장 · 월정리</span></p>
+  <div class="bg" style="top:34cqw;bottom:auto;height:28cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.66) 42%,rgba(0,0,0,.66) 62%,rgba(0,0,0,0))"></div>
+  <p class="mv" style="left:6cqw;top:46cqw;color:#fff;z-index:2">7<span class="u">장 · 월정리</span></p>
 </div>""")
     # 08 shot strip as the cobalt hero: band + white marks on spot
     p.append(f"""<div class="pg spot wh" style="--rule:rgba(255,255,255,.45)">
@@ -321,7 +322,7 @@ def body() -> str:
 </div>""")
     # 09 hallasan + altitude: XL 970 on the photo, 46-point GPS altitude line aligned with the ticks
     p.append(f"""<div class="pg wh">
-  {ph("hallasan", 0, 0, 100, 133.33, "50% 40%")}<div class="tg" style="height:16cqw;background:linear-gradient(rgba(0,0,0,.25),rgba(0,0,0,0))"></div><div class="bg" style="height:84cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.45) 45%)"></div>
+  {ph("hallasan", 0, 0, 100, 133.33, "50% 40%")}<div class="tg" style="height:16cqw;background:linear-gradient(rgba(0,0,0,.58),rgba(0,0,0,0))"></div><div class="bg" style="height:84cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.45) 45%)"></div>
   {folio("제주 · 06.14 일", 9)}
   <p class="lb" style="left:6cqw;top:53cqw;color:#fff;opacity:.85;z-index:2">가장 높은 곳</p>
   <p class="xl" style="left:6cqw;top:59cqw;color:#fff;z-index:2">970<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">m</span></p>
@@ -344,7 +345,7 @@ def body() -> str:
   {cap(46, "귤나무 카페 마당", 68.67, extra='<span class="r mo">마지막 사진</span>')}
   <p class="lb" style="left:6cqw;top:78cqw">첫 사진에서 마지막 사진까지</p>
   <p class="xl" style="left:6cqw;top:84cqw">48<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">시간 32분</span></p>
-  <p class="lb" style="left:6cqw;top:117cqw;width:88cqw;white-space:nowrap">우도 11장 · 1시간 39분 · 가장 긴 공백 2시간 57분 · 46장</p>
+  <p class="lb" style="left:6cqw;top:117cqw;width:88cqw;white-space:nowrap">우도 11장 · 우도에 1시간 39분 · 가장 긴 공백 2시간 57분</p>
 </div>""")
     return f"""<h3 class="sub">책 본문</h3>
 <div class="strip">

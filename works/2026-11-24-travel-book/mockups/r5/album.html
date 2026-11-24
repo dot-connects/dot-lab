@@ -18,13 +18,13 @@
 /* borderless print, original colour */
 .t-album .ph{overflow:hidden;isolation:isolate;background:#8a8a86;width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u))}
 .t-album .ph img{object-position:var(--op,50% 50%)}
-.t-album .ph.sb::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,transparent 62%,rgba(0,0,0,.42))}
-.t-album .ph.st2::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.28),transparent 22%,transparent 66%,rgba(0,0,0,.42))}
+.t-album .ph.sb::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,transparent 58%,rgba(0,0,0,.72))}
+.t-album .ph.st2::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.58),transparent 26%,transparent 66%,rgba(0,0,0,.42))}
 /* LED date imprint: max 3 per book, bottom-right, M from the frame edge */
 .t-album .st{position:absolute;right:calc(var(--M)*var(--u));bottom:calc(var(--M)*var(--u));z-index:2;white-space:pre;font:500 calc(var(--s,16)*var(--u))/1 var(--m);color:var(--led);letter-spacing:.14em;
   text-shadow:0 0 calc(1*var(--u)) rgba(70,20,0,.95),0 0 calc(5*var(--u)) rgba(40,10,0,.55),0 0 calc(3*var(--u)) rgba(255,110,0,.7)}
 /* frame number inside a contact/video frame */
-.t-album .fn{position:absolute;left:calc(var(--M)*var(--u));bottom:calc(14*var(--u));z-index:2;color:#fff;font:500 calc(var(--L)*var(--u))/1 var(--m);letter-spacing:.02em}
+.t-album .fn{position:absolute;left:calc(var(--M)*var(--u));bottom:calc(14*var(--u));z-index:2;color:#fff;font:500 calc(var(--L)*var(--u))/1 var(--m);letter-spacing:.02em;background:rgba(0,0,0,.3);padding:2px 3px;margin-left:-3px}
 /* type scale */
 .t-album .d{white-space:pre;font:800 calc(var(--D)*var(--u))/1 var(--f);letter-spacing:-.045em;margin-left:-.035em}
 .t-album .d.mo{font-family:var(--m);font-weight:700;letter-spacing:-.06em;margin-left:-.05em}
@@ -52,12 +52,6 @@
 
 <h3 class="sub">표지 후보</h3>
 <div class="strip">
-  <!-- cover 1: one frame, the date imprint is the title -->
-  <div class="pg"><div class="in">
-    <div class="a ph st2" style="--w:330;--h:440;--op:22% 50%"><img src="{{udo}}" alt=""><span class="st" style="--s:28">'26  6 12</span></div>
-    <p class="a t b wh" style="--x:20;--y:16">제주 2박 3일</p>
-    <p class="a l wh rt" style="--y:21">필름 세 롤 · <span class="mo">46</span>컷</p>
-  </div></div>
   <!-- cover 2: the whole cover is one index print, 15 frames -->
   <div class="pg"><div class="in">
     <div class="a ph" style="--x:0;--y:0;--w:108.67;--h:72.44"><img src="{{hyeopjae}}" alt=""></div>
@@ -79,6 +73,12 @@
     <p class="a l dim" style="--x:20;--y:410"><span class="mo">06.12—06.14</span></p>
     <p class="a l dim rt" style="--y:410">인덱스 프린트 · 세 롤 <span class="mo">46</span>컷</p>
   </div></div>
+  <!-- cover 1: one frame, the date imprint is the title -->
+  <div class="pg"><div class="in">
+    <div class="a ph st2" style="--w:330;--h:440;--op:22% 50%"><img src="{{udo}}" alt=""><span class="st" style="--s:28">'26  6 12</span></div>
+    <p class="a t b wh" style="--x:20;--y:16">제주 2박 3일</p>
+    <p class="a l wh rt" style="--y:21">필름 세 롤 · <span class="mo">46</span>컷</p>
+  </div></div>
   <!-- cover 3: one big word, one print bled off the corner -->
   <div class="pg"><div class="in">
     <p class="a d" style="--x:20;--y:14">제주</p>
@@ -87,7 +87,7 @@
     <p class="a l dim" style="--x:20;--y:410"><span class="mo">06.12—06.14</span></p>
   </div></div>
 </div>
-<div class="under"><span>① 한 컷 + 날짜 각인이 제목 ② 표지 전체가 인덱스 프린트 한 장(15컷) ③ 큰 글자 '제주' + 모서리로 흘러나간 인화 한 장</span><span>3개</span></div>
+<div class="under"><span>① 표지 전체가 인덱스 프린트 한 장(15컷, 기본) ② 한 컷 + 날짜 각인이 제목 ③ 큰 글자 '제주' + 모서리로 흘러나간 인화 한 장</span><span>3개</span></div>
 
 <h3 class="sub">책 본문</h3>
 <div class="strip">
