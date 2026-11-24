@@ -1,118 +1,103 @@
-<!-- fonts: Instrument+Sans:wght@400;500;600;700 | DM+Mono:wght@400;500 -->
+<!-- fonts: Instrument+Sans:wght@700 | DM+Mono:wght@500 -->
+<!-- kfonts: Paperlogy:400;800 -->
 <style>
-/* Photo-dump collage. All lengths are design px on a 330x440 page, scaled by --u. */
+/* Travel notebook. Design px on a 330x440 page, scaled by --u.
+   Grid: margin M 20, 6 columns of 40, gutter G 10 -> column c starts at 20+50(c-1).
+   Type: display 64 (cover 96) / body 12 / caption 10 (+ folio 10). */
 .t-c{--paper:#FFF9EF;--ink:#111111;--soft:#5b564d;--acc:#E8553B;--on:#111111;--card:#ffffff;
+  --M:20;--col:40;--G:10;--D:64;--DX:96;--B:12;--C:10;
   --f-ko:"Paperlogy","Instrument Sans",sans-serif;--f-en:"Instrument Sans","Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
 .t-c .pg{container-type:inline-size;background:var(--paper)}
-.t-c .in{--u:.30303cqw;position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden}
+.t-c .in{--u:.30303cqw;position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden;word-break:keep-all}
 .t-c .in.fill{background:var(--acc);color:var(--on)}
-/* placed piece: --x --y --w --h in design px */
+/* placed piece: --x --y --w --h in design px; .g snaps x/width to grid columns (--c start, --n span) */
 .t-c .p{box-sizing:border-box;position:absolute;left:calc(var(--x,0)*var(--u));top:calc(var(--y,0)*var(--u));width:calc(var(--w)*var(--u));height:calc(var(--h)*var(--u));margin:0}
-.t-c .ph{overflow:hidden;background:#d8d2c6}
-.t-c .ph img,.t-c .cut img{object-position:var(--pos,50% 50%)}
+.t-c .g{left:calc((var(--M) + (var(--c,1) - 1)*(var(--col) + var(--G)))*var(--u));width:calc((var(--n,6)*(var(--col) + var(--G)) - var(--G))*var(--u))}
+.t-c .fw{left:0;width:calc(330*var(--u))}
 .t-c .bleed{inset:0;width:auto;height:auto}
-/* shaped crops: sparingly, with a thin paper edge so overlaps read as cut paper */
+.t-c .r45{aspect-ratio:4/5}
+.t-c .r32{aspect-ratio:3/2}
+.t-c .ph{overflow:hidden;background:#d8d2c6}
+.t-c .ph img{object-position:var(--pos,50% 50%)}
+/* the only shapes: arch (cover 1 + last page), circle (once) */
 .t-c .arch{border-radius:999px 999px 0 0}
-.t-c .circ{border-radius:50%}
-.t-c .pill{border-radius:999px}
-.t-c .edge{box-shadow:0 0 0 calc(4*var(--u)) var(--paper)}
-.t-c .fill .edge{box-shadow:0 0 0 calc(4*var(--u)) var(--acc)}
-/* cut-out sticker: clip-path on <i>, outline from stacked drop-shadows */
-.t-c .cut{height:auto;aspect-ratio:var(--ar,3/2);rotate:var(--r,0deg);
-  filter:drop-shadow(calc(2.5*var(--u)) 0 0 #fff) drop-shadow(calc(-2.5*var(--u)) 0 0 #fff) drop-shadow(0 calc(2.5*var(--u)) 0 #fff) drop-shadow(0 calc(-2.5*var(--u)) 0 #fff) drop-shadow(0 calc(3*var(--u)) calc(5*var(--u)) rgba(0,0,0,.18))}
-.t-c .cut i{position:absolute;inset:0;display:block}
-.t-c .cut.d6 i{clip-path:ellipse(18% 27% at 48% 44%)}
-.t-c .cut.d4 i{clip-path:ellipse(14% 18.7% at 52.5% 75%)}
-.t-c .cut.d10 i{clip-path:polygon(29% 51%,31% 47%,34% 43.5%,38% 40.8%,44% 38.8%,50% 38.2%,56% 38.6%,62% 40.2%,67% 43%,71% 47%,74% 52%,77% 57%,81% 62%,84.5% 65.5%,85% 68%,83% 70%,76% 70.9%,68% 71.3%,60% 71.5%,50% 71.5%,40% 71.3%,30% 71%,22% 70.6%,15% 69.8%,11.5% 68.3%,12% 66.3%,15.5% 63.6%,21% 61.4%,27% 59.8%,28.3% 55%)}
-/* type */
-.t-c .big{font-family:var(--f-ko);font-weight:400;font-size:calc(var(--s,48)*var(--u));line-height:1;letter-spacing:-.04em;white-space:nowrap;height:auto;width:auto;-webkit-text-stroke:calc(var(--s,48)*.014*var(--u)) currentColor}
-.t-c .num{font-family:var(--f-en);font-weight:700;font-size:calc(var(--s,48)*var(--u));line-height:.9;letter-spacing:-.045em;white-space:nowrap;height:auto;width:auto;font-variant-numeric:tabular-nums}
-.t-c .cap{font:400 calc(12*var(--u))/1.35 var(--f-ko);height:auto;width:auto;white-space:nowrap;-webkit-text-stroke:calc(.25*var(--u)) currentColor}
-.t-c .lab{font:500 calc(11*var(--u))/1.3 var(--f-mono);letter-spacing:.02em;height:auto;width:auto;white-space:nowrap}
-.t-c .w{color:#fff}
-.t-c .sf{color:var(--soft)}
-.t-c .fill .sf{color:inherit;opacity:.8}
-/* UI pieces */
-.t-c .bub{height:auto;width:auto;background:var(--acc);color:var(--on);font:400 calc(12*var(--u))/1.2 var(--f-ko);-webkit-text-stroke:calc(.3*var(--u)) currentColor;white-space:nowrap;
-  padding:calc(8*var(--u)) calc(13*var(--u));border-radius:calc(17*var(--u)) calc(17*var(--u)) calc(17*var(--u)) calc(4*var(--u));rotate:var(--r,0deg);z-index:3}
-.t-c .bub.rt{border-radius:calc(17*var(--u)) calc(17*var(--u)) calc(4*var(--u)) calc(17*var(--u))}
-.t-c .bub.wh{background:var(--card);color:var(--ink)}
-.t-c .route{height:auto;background:var(--card);color:var(--ink);border-radius:calc(14*var(--u));padding:calc(10*var(--u)) calc(12*var(--u));display:grid;grid-template-columns:auto 1fr;gap:0 calc(9*var(--u));align-items:center;z-index:3;box-shadow:0 calc(2*var(--u)) calc(10*var(--u)) rgba(0,0,0,.14)}
+.t-c .circ{aspect-ratio:1;border-radius:50%}
+/* type scale */
+.t-c .ttl{font:800 calc(var(--D)*var(--u))/1.04 var(--f-ko);letter-spacing:-.045em;margin-left:-.04em;text-wrap:balance}
+.t-c .ttl.xl{font-size:calc(var(--DX)*var(--u));line-height:.98}
+.t-c .ttl.en{font-family:var(--f-en);font-weight:700;letter-spacing:-.05em;line-height:.9}
+.t-c .bd{font:400 calc(var(--B)*var(--u))/1.6 var(--f-ko);letter-spacing:-.015em;text-wrap:pretty}
+.t-c .cp{font:500 calc(var(--C)*var(--u))/1.4 var(--f-mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--soft)}
+.t-c .fill .cp,.t-c .cp.ik{color:inherit}
+.t-c .w,.t-c .cp.w{color:#fff}
+/* folio: running head left, page number right, bottom margin */
+.t-c .fo{position:absolute;left:calc(var(--M)*var(--u));right:calc(var(--M)*var(--u));bottom:calc(var(--M)*var(--u));display:flex;justify-content:space-between;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);letter-spacing:.02em;font-variant-numeric:tabular-nums;color:var(--soft);z-index:3}
+.t-c .fill .fo{color:var(--on)}
+.t-c .fo.w{color:#fff}
+.t-c .shade::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:var(--sh)}
+.t-c .shade~.p,.t-c .shade~.fo{z-index:2}
+/* UI pieces (flat, no shadow) */
+.t-c .bub{width:auto;background:var(--card);color:var(--ink);font:400 calc(var(--B)*var(--u))/1.2 var(--f-ko);white-space:nowrap;
+  padding:calc(8*var(--u)) calc(12*var(--u));border-radius:calc(16*var(--u)) calc(16*var(--u)) calc(16*var(--u)) calc(4*var(--u));z-index:3}
+.t-c .bub.ac{background:var(--acc);color:var(--on)}
+.t-c .route{background:var(--card);color:var(--ink);border-radius:calc(12*var(--u));padding:calc(10*var(--u)) calc(12*var(--u));display:grid;grid-template-columns:auto 1fr;gap:calc(2*var(--u)) calc(10*var(--u));align-items:center;z-index:3}
 .t-c .route .ln{grid-row:1/3;width:calc(8*var(--u));height:calc(30*var(--u));position:relative}
 .t-c .route .ln::before{content:"";position:absolute;left:50%;top:calc(4*var(--u));bottom:calc(4*var(--u));width:calc(2*var(--u));translate:-50% 0;background:var(--acc)}
 .t-c .route .ln::after{content:"";position:absolute;left:0;top:0;width:calc(8*var(--u));height:calc(8*var(--u));border-radius:50%;background:var(--acc);box-shadow:0 calc(22*var(--u)) 0 var(--ink)}
-.t-c .route b{font:400 calc(12.5*var(--u))/1.25 var(--f-ko);-webkit-text-stroke:calc(.35*var(--u)) currentColor;white-space:nowrap}
-.t-c .route span{font:500 calc(11*var(--u))/1.3 var(--f-mono);color:var(--soft);white-space:nowrap}
-.t-c .chip{height:auto;width:auto;background:var(--card);color:var(--ink);border-radius:999px;padding:calc(6*var(--u)) calc(11*var(--u));font:500 calc(11*var(--u))/1.2 var(--f-mono);white-space:nowrap;z-index:3;display:flex;gap:calc(6*var(--u));align-items:center}
-.t-c .chip::before{content:"";width:calc(7*var(--u));height:calc(7*var(--u));border-radius:50%;background:var(--acc);flex:none}
-.t-c .chip.dk{background:rgba(17,17,17,.62);color:#fff}
-.t-c .chip.dk::before{display:none}
-.t-c .phone{border:calc(5*var(--u)) solid var(--ink);border-radius:calc(26*var(--u));rotate:3deg;z-index:2;background:var(--ink)}
-.t-c .snd{height:calc(44*var(--u));background:rgba(17,17,17,.86);color:#fff;border-radius:calc(13*var(--u));display:flex;align-items:center;gap:calc(10*var(--u));padding:0 calc(14*var(--u));z-index:3}
+.t-c .route b{font:800 calc(var(--B)*var(--u))/1.25 var(--f-ko);letter-spacing:-.015em;white-space:nowrap}
+.t-c .route span{font:500 calc(var(--C)*var(--u))/1.3 var(--f-mono);color:var(--soft);white-space:nowrap}
+.t-c .phone{border:calc(5*var(--u)) solid var(--ink);border-radius:calc(24*var(--u));z-index:2;background:var(--ink)}
+.t-c .snd{height:calc(40*var(--u));background:var(--ink);color:#fff;border-radius:calc(12*var(--u));display:flex;align-items:center;gap:calc(10*var(--u));padding:0 calc(14*var(--u));z-index:3}
 .t-c .snd .tri{border-left:calc(9*var(--u)) solid #fff;border-top:calc(6*var(--u)) solid transparent;border-bottom:calc(6*var(--u)) solid transparent;flex:none}
-.t-c .snd b{font:400 calc(13*var(--u))/1 var(--f-ko);-webkit-text-stroke:calc(.3*var(--u)) currentColor;white-space:nowrap}
+.t-c .snd b{font:400 calc(var(--B)*var(--u))/1 var(--f-ko);white-space:nowrap}
 .t-c .snd .bar{flex:1;height:calc(3*var(--u));border-radius:9px;background:linear-gradient(90deg,var(--acc) 45%,rgba(255,255,255,.45) 45%)}
-.t-c .snd span{font:500 calc(12*var(--u))/1 var(--f-mono)}
-.t-c .rl{height:auto;list-style:none;padding:calc(10*var(--u)) calc(14*var(--u));background:var(--card);border-radius:calc(16*var(--u));box-shadow:0 calc(2*var(--u)) calc(10*var(--u)) rgba(0,0,0,.1)}
-.t-c .rl::before{content:"";position:absolute;left:calc(66.5*var(--u));top:calc(22*var(--u));bottom:calc(22*var(--u));width:calc(2*var(--u));background:var(--ink);opacity:.22}
-.t-c .rl li{display:grid;grid-template-columns:calc(40*var(--u)) calc(11*var(--u)) 1fr auto;gap:calc(8*var(--u));align-items:center;height:calc(25*var(--u));position:relative}
-.t-c .rl time{font:500 calc(11*var(--u))/1 var(--f-mono);color:var(--soft)}
-.t-c .rl li::before{content:"";grid-column:2;grid-row:1;justify-self:center;width:calc(7*var(--u));height:calc(7*var(--u));border-radius:50%;background:var(--card);border:calc(2*var(--u)) solid var(--ink);box-sizing:border-box}
+.t-c .snd span{font:500 calc(var(--C)*var(--u))/1 var(--f-mono);font-variant-numeric:tabular-nums}
+.t-c .rl{list-style:none;padding:calc(10*var(--u)) calc(14*var(--u));background:var(--card);border-radius:calc(14*var(--u))}
+.t-c .rl::before{content:"";position:absolute;left:calc(66.5*var(--u));top:calc(22*var(--u));bottom:calc(22*var(--u));width:calc(1*var(--u));background:var(--ink);opacity:.25}
+.t-c .rl li{display:grid;grid-template-columns:calc(40*var(--u)) calc(11*var(--u)) 1fr auto;gap:calc(8*var(--u));align-items:center;height:calc(24*var(--u));position:relative}
+.t-c .rl time{grid-column:1;grid-row:1;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);color:var(--soft);font-variant-numeric:tabular-nums}
+.t-c .rl li::before{content:"";grid-column:2;grid-row:1;justify-self:center;width:calc(7*var(--u));height:calc(7*var(--u));border-radius:50%;background:var(--card);border:calc(1.5*var(--u)) solid var(--ink);box-sizing:border-box}
 .t-c .rl li.d::before{width:calc(11*var(--u));height:calc(11*var(--u));background:var(--acc);border:0}
-.t-c .rl time{grid-column:1;grid-row:1}
-.t-c .rl b{grid-column:3;font:400 calc(12.5*var(--u))/1 var(--f-ko);-webkit-text-stroke:calc(.3*var(--u)) currentColor;white-space:nowrap}
-.t-c .rl span{grid-column:4;font:500 calc(11*var(--u))/1 var(--f-mono);color:var(--acc);white-space:nowrap}
-.t-c .stats{display:grid;grid-template-columns:repeat(4,auto);justify-content:space-between;height:auto;align-items:end}
-.t-c .stats div{display:grid;gap:calc(4*var(--u))}
-.t-c .stats b{font:700 calc(34*var(--u))/.9 var(--f-en);letter-spacing:-.045em;font-variant-numeric:tabular-nums}
-.t-c .stats b small{font:600 calc(13*var(--u))/1 var(--f-en);letter-spacing:0;margin-left:calc(1*var(--u))}
-.t-c .stats span{font:400 calc(11*var(--u))/1 var(--f-ko);color:var(--soft)}
-.t-c .fill .stats span{color:inherit;opacity:.8}
-.t-c .shade::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:var(--sh)}
+.t-c .rl b{grid-column:3;font:400 calc(var(--B)*var(--u))/1 var(--f-ko);letter-spacing:-.015em;white-space:nowrap}
+.t-c .rl li.d b{font-weight:800}
+.t-c .rl span{grid-column:4;font:500 calc(var(--C)*var(--u))/1 var(--f-mono);color:var(--soft);white-space:nowrap}
 .t-c .play{z-index:2}
 </style>
 <section class="t-c" data-palettes='[{"--acc":"#E8553B","--on":"#111111","--paper":"#FFF9EF"},{"--acc":"#2F5BD6","--on":"#ffffff","--paper":"#FBF8F1"},{"--acc":"#EDC54E","--on":"#111111","--paper":"#FFF9EF"}]'>
-<div class="head"><h2>여행 수첩</h2><p class="idea">사진 콜라주 — 사진을 겹치고, 경로·말풍선·재생바를 스티커처럼</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
+<div class="head"><h2>여행 수첩</h2><p class="idea">6단 그리드 위 사진 + 지도 앱 조각 — 아치 하나, 토마토 색면, 굵은 지명</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
 
 <h3 class="sub">표지 후보</h3>
 <div class="strip">
-  <!-- cover 1: collage on paper -->
+  <!-- cover 1: one arch on paper -->
   <div class="pg"><div class="in">
-    <div class="p ph arch" style="--x:26;--y:24;--w:196;--h:270;--pos:40% 70%"><img src="{{hyeopjae_2}}" alt=""></div>
-    <div class="p ph" style="--x:150;--y:172;--w:180;--h:122;--pos:10% 100%"><img src="{{udo}}" alt=""></div>
-    <div class="p cut d6" style="--x:-62;--y:204;--w:280;--r:-6deg"><i><img src="{{d6}}" alt=""></i></div>
-    <div class="p bub rt" style="--x:232;--y:132;--r:5deg">2박 3일</div>
-    <div class="p lab sf" style="--x:240;--y:24;left:auto;right:calc(22*var(--u))">6월 제주</div>
-    <div class="p big" style="--x:22;--y:340;--s:66">제주 46장</div>
-    <div class="p lab" style="--x:24;--y:414">2026.06.12 — 06.14 · 사진 46장</div>
+    <div class="p g ph arch r45" style="--c:1;--n:5;--y:20;--pos:50% 40%"><img src="{{doldam}}" alt=""></div>
+    <div class="p g cp ik" style="--c:6;--n:1;--y:20">6월<br>제주</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:328">제주 46장</div>
+    <div class="p g cp" style="--c:1;--n:6;--y:406">2026.06.12 — 06.14 · 2박 3일</div>
   </div></div>
-  <!-- cover 2: full bleed + UI pieces -->
+  <!-- cover 2: full bleed, huge title on the sky -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed shade" style="--pos:40% 60%;--sh:linear-gradient(180deg,transparent 58%,rgba(0,0,0,.5))"><img src="{{road}}" alt=""></div>
-    <div class="p lab" style="--x:22;--y:24">2026년 6월 제주</div>
-    <div class="p big" style="--x:20;--y:44;--s:70">6월<br>제주</div>
-    <div class="p route" style="--x:20;--y:322;--w:196"><i class="ln"></i><b>김포 → 제주 → 신창</b><span>06.12 금 · 17:40 도착</span></div>
-    <div class="p lab w" style="--x:22;--y:404">사진 46 · 영상 3 · 9곳 · 214km</div>
+    <div class="p ph bleed" style="--pos:50% 0%"><img src="{{seongsan_2}}" alt=""></div>
+    <div class="p g cp ik" style="--c:1;--n:6;--y:20">2026.06.12 — 06.14 · 사진 46장</div>
+    <div class="p g ttl xl" style="--c:1;--n:6;--y:38">6월<br>제주</div>
   </div></div>
-  <!-- cover 3: one colour field + pill photo + cut-out -->
+  <!-- cover 3: tomato field + one photo on the grid -->
   <div class="pg"><div class="in fill">
-    <div class="p num" style="--x:18;--y:22;--s:112">jeju</div>
-    <div class="p ph pill" style="--x:150;--y:142;--w:156;--h:250;--pos:50% 60%"><img src="{{doldam}}" alt=""></div>
-    <div class="p cut d4" style="--x:-76;--y:150;--w:310;--ar:4/3;--r:6deg"><i><img src="{{d4}}" alt=""></i></div>
-    <div class="p big" style="--x:20;--y:176;--s:30">제주에서<br>찍은 것들</div>
-    <div class="p lab" style="--x:20;--y:414">06.12 — 06.14 · 2박 3일</div>
+    <div class="p g ttl xl en" style="--c:1;--n:6;--y:22">jeju</div>
+    <div class="p g ph r45" style="--c:3;--n:4;--y:182.5;--pos:55% 50%"><img src="{{road}}" alt=""></div>
+    <div class="p g bd" style="--c:1;--n:2;--y:182">제주에서<br>찍은 것들</div>
+    <div class="p g cp" style="--c:1;--n:2;--y:392">06.12 — 06.14<br>2박 3일</div>
   </div></div>
 </div>
-<div class="under"><span>① 종이 위 콜라주 + 귤 누끼 ② 노을 한 장 + 경로 카드 ③ 색면 + 알약 사진</span><span>3개</span></div>
+<div class="under"><span>① 종이 위 아치 한 장 + 굵은 제목 ② 풀블리드 + 하늘 위 큰 제목 ③ 토마토 색면 + 그리드 사진 한 장</span><span>3개</span></div>
 
 <h3 class="sub">책 본문</h3>
 <div class="strip">
-  <!-- 1 map + numbers -->
+  <!-- 1 route: map-app fragment -->
   <div class="pg"><div class="in">
-    <div class="p lab sf" style="--x:22;--y:24">6월 제주 · 06.12 — 06.14</div>
-    <div class="p big" style="--x:20;--y:44;--s:58">2박 3일</div>
-    <div class="p ph circ" style="--x:236;--y:22;--w:76;--h:76;--pos:55% 40%"><img src="{{d5}}" alt=""></div>
-    <ol class="p rl" style="--x:18;--y:112;--w:294">
+    <div class="p g cp" style="--c:1;--n:6;--y:20">06.12 — 06.14 · 9곳 · 214km</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:36">2박 3일</div>
+    <ol class="p g rl" style="--c:1;--n:6;--y:124">
       <li class="d"><time>13:20</time><b>협재 해변</b><span>첫째 날</span></li>
       <li><time>17:40</time><b>신창 풍차해안도로</b><span>28분</span></li>
       <li class="d"><time>09:42</time><b>우도</b><span>둘째 날</span></li>
@@ -122,124 +107,117 @@
       <li><time>19:05</time><b>성산일출봉 앞</b><span></span></li>
       <li class="d"><time>08:30</time><b>한라산 어리목</b><span>셋째 날</span></li>
       <li><time>11:10</time><b>원물오름</b><span></span></li>
-      <li><time>13:30</time><b>귤나무 카페</b><span>도착</span></li>
+      <li><time>13:30</time><b>귤나무 카페</b><span>끝</span></li>
     </ol>
-    <div class="p chip" style="--x:22;--y:398;background:var(--ink);color:var(--paper)">사진 46 · 영상 3 · 9곳 · 214km</div>
+    <div class="fo"><span>6월 제주 · 경로</span><span>01</span></div>
   </div></div>
-  <!-- 2 hyeopjae -->
+  <!-- 2 hyeopjae: band on top, text + one small photo below -->
   <div class="pg"><div class="in">
-    <div class="p ph" style="--x:0;--y:0;--w:330;--h:206;--pos:50% 40%"><img src="{{hyeopjae}}" alt=""></div>
-    <div class="p ph arch edge" style="--x:160;--y:128;--w:150;--h:222;--pos:60% 78%"><img src="{{hyeopjae_2}}" alt=""></div>
-    <div class="p ph" style="--x:0;--y:209;--w:140;--h:86;--pos:50% 92%"><img src="{{d9}}" alt=""></div>
-    <div class="p bub" style="--x:186;--y:336;--r:-3deg">물 생각보다 차가움</div>
-    <div class="p lab sf" style="--x:22;--y:308">첫째 날 · 13:20</div>
-    <div class="p big" style="--x:20;--y:326;--s:52">협재</div>
-    <div class="p cap" style="--x:22;--y:390">비양도가 흐렸다가 맑아짐</div>
-    <div class="p lab sf" style="--x:22;--y:412">06.12 금 · 맑음 24°</div>
+    <div class="p fw ph r32" style="--y:0;--pos:50% 50%"><img src="{{hyeopjae}}" alt=""></div>
+    <div class="p g cp" style="--c:1;--n:4;--y:230">13:20 · 협재 해변</div>
+    <div class="p g ttl" style="--c:1;--n:4;--y:246">협재</div>
+    <div class="p g bd" style="--c:1;--n:4;--y:322">비양도가 흐렸다가 맑아짐.<br>물은 생각보다 차가움.</div>
+    <div class="p g ph r45" style="--c:5;--n:2;--y:230;--pos:50% 60%"><img src="{{d9}}" alt=""></div>
+    <div class="fo"><span>첫째 날 · 06.12 금 · 맑음 24°</span><span>02</span></div>
   </div></div>
-  <!-- 3 road: full bleed + route card -->
+  <!-- 3 sinchang: full bleed + route card -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed shade" style="--pos:45% 60%;--sh:linear-gradient(180deg,transparent 62%,rgba(0,0,0,.35))"><img src="{{road}}" alt=""></div>
-    <div class="p lab" style="--x:22;--y:24">첫째 날 · 17:40</div>
-    <div class="p big" style="--x:18;--y:44;--s:78">신창</div>
-    <div class="p cap" style="--x:22;--y:130">풍차해안도로</div>
-    <div class="p ph pill edge" style="--x:226;--y:288;--w:86;--h:130;--pos:62% 50%;box-shadow:0 0 0 calc(3*var(--u)) #fff"><img src="{{road_2}}" alt=""></div>
-    <div class="p route" style="--x:18;--y:336;--w:190"><i class="ln"></i><b>협재 → 신창</b><span>해안도로 19km · 28분</span></div>
-    <div class="p cap w" style="--x:22;--y:404">해 질 무렵, 바람 셈</div>
+    <div class="p ph bleed shade" style="--pos:45% 60%;--sh:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.45))"><img src="{{road}}" alt=""></div>
+    <div class="p g cp ik" style="--c:1;--n:6;--y:20">17:40 · 신창 풍차해안도로</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:36">신창</div>
+    <div class="p g bd w" style="--c:1;--n:4;--y:298">해 질 무렵, 바람 셈.</div>
+    <div class="p g route" style="--c:1;--n:4;--y:330"><i class="ln"></i><b>협재 → 신창</b><span>해안도로 19km · 28분</span></div>
+    <div class="fo w"><span>첫째 날 · 06.12 금</span><span>03</span></div>
   </div></div>
-  <!-- 4 udo -->
+  <!-- 4 udo: title first, wide band, one memo bubble -->
   <div class="pg"><div class="in">
-    <div class="p ph" style="--x:0;--y:0;--w:330;--h:232;--pos:20% 60%"><img src="{{udo}}" alt=""></div>
-    <div class="p ph" style="--x:0;--y:235;--w:122;--h:205"><img src="{{d3}}" alt=""></div>
-    <div class="p ph" style="--x:125;--y:235;--w:205;--h:126;--pos:70% 60%"><img src="{{udo_2}}" alt=""></div>
-    <div class="p chip" style="--x:14;--y:14">도항선 15분</div>
-    <div class="p bub" style="--x:150;--y:212;--r:3deg">모자 두 번 날아감</div>
-    <div class="p cut d10" style="--x:-14;--y:262;--w:150;--ar:858/1200;--r:-8deg"><i><img src="{{d10}}" alt=""></i></div>
-    <div class="p big" style="--x:136;--y:374;--s:40">우도</div>
-    <div class="p lab sf" style="--x:216;--y:380">둘째 날 · 09:42<br>06.13 토 · 21°</div>
+    <div class="p g cp" style="--c:1;--n:3;--y:20">09:42 · 우도</div>
+    <div class="p g ttl" style="--c:1;--n:3;--y:36">우도</div>
+    <div class="p g bd" style="--c:4;--n:3;--y:40">도항선 15분.<br>바람 강함, 21°.</div>
+    <div class="p fw ph r32" style="--y:122;--pos:50% 45%"><img src="{{udo}}" alt=""></div>
+    <div class="p g bub ac" style="--c:1;--y:356">모자 두 번 날아감</div>
+    <div class="fo"><span>둘째 날 · 06.13 토</span><span>04</span></div>
   </div></div>
-  <!-- 5 video: one phone screen playing the clip -->
+  <!-- 5 video: one phone screen over a colour band -->
   <div class="pg"><div class="in">
-    <div class="p" style="--x:0;--y:150;--w:330;--h:176;background:var(--acc)"></div>
-    <div class="p lab sf" style="--x:22;--y:26">둘째 날 · 14:10</div>
-    <div class="p big" style="--x:20;--y:48;--s:52">하도</div>
-    <div class="p cap" style="--x:22;--y:112">해녀 탈의장 앞</div>
-    <div class="p ph phone" style="--x:138;--y:26;--w:172;--h:336;--pos:50% 60%"><img src="{{haenyeo}}" alt="">
+    <div class="p fw" style="--y:130;--h:170;background:var(--acc)"></div>
+    <div class="p g cp" style="--c:1;--n:3;--y:20">14:10<br>하도 해녀 탈의장 앞</div>
+    <div class="p g ttl" style="--c:1;--n:3;--y:52">하도</div>
+    <div class="p g bd" style="--c:1;--n:3;--y:236;color:var(--on)">해녀 두 분이<br>그물 정리 중.</div>
+    <div class="p g ph phone" style="--c:4;--n:3;--y:20;--h:300;--pos:50% 60%"><img src="{{haenyeo}}" alt="">
       <div class="play"><span></span></div>
     </div>
-    <div class="p snd" style="--x:18;--y:350;--w:240"><i class="tri"></i><b>파도 소리</b><i class="bar"></i><span>0:03</span></div>
-    <div class="p lab sf" style="--x:22;--y:412">영상 · PDF 에서는 사진 한 장으로</div>
+    <div class="p g snd" style="--c:1;--n:6;--y:334"><i class="tri"></i><b>파도 소리</b><i class="bar"></i><span>0:03</span></div>
+    <div class="p g cp" style="--c:1;--n:6;--y:382">영상 · PDF 에서는 사진 한 장으로</div>
+    <div class="fo"><span>둘째 날 · 06.13 토</span><span>05</span></div>
   </div></div>
-  <!-- 6 woljeongri: touching grid + shell cut-out -->
+  <!-- 6 woljeongri: dense 3-photo grid -->
   <div class="pg"><div class="in">
-    <div class="p ph" style="--x:0;--y:0;--w:182;--h:250;--pos:50% 70%"><img src="{{doldam}}" alt=""></div>
-    <div class="p ph" style="--x:185;--y:0;--w:145;--h:150;--pos:50% 55%"><img src="{{doldam_2}}" alt=""></div>
-    <div class="p ph" style="--x:185;--y:153;--w:145;--h:97;--pos:35% 60%"><img src="{{d7}}" alt=""></div>
-    <div class="p ph" style="--x:0;--y:253;--w:132;--h:187;--pos:40% 70%"><img src="{{woljeongri}}" alt=""></div>
-    <div class="p ph" style="--x:135;--y:253;--w:195;--h:108;--pos:50% 70%"><img src="{{woljeongri_2}}" alt=""></div>
-    <div class="p cut d4" style="--x:26;--y:84;--w:300;--ar:4/3;--r:-7deg"><i><img src="{{d4}}" alt=""></i></div>
-    <div class="p big" style="--x:146;--y:374;--s:34">월정리</div>
-    <div class="p lab sf" style="--x:148;--y:414">16:05 돌담길 → 17:20 해변</div>
+    <div class="p g ph" style="--c:1;--n:4;--y:20;--h:235;--pos:50% 60%"><img src="{{doldam_2}}" alt=""></div>
+    <div class="p g ph r45" style="--c:5;--n:2;--y:20;--pos:30% 50%"><img src="{{d7}}" alt=""></div>
+    <div class="p g ph r45" style="--c:5;--n:2;--y:142.5;--pos:40% 60%"><img src="{{woljeongri}}" alt=""></div>
+    <div class="p g cp" style="--c:1;--n:6;--y:270">16:05 돌담길 → 17:20 해변</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:286">월정리</div>
+    <div class="p g bd" style="--c:1;--n:6;--y:360">돌담 앞 의자, 바다 앞 벤치, 해변 카페 마당.</div>
+    <div class="fo"><span>둘째 날 · 06.13 토</span><span>06</span></div>
   </div></div>
-  <!-- 7 seongsan: colour field + big time -->
+  <!-- 7 seongsan: tomato field + bleed band -->
   <div class="pg"><div class="in fill">
-    <div class="p ph" style="--x:0;--y:214;--w:330;--h:226;--pos:55% 50%"><img src="{{seongsan}}" alt=""></div>
-    <div class="p lab" style="--x:22;--y:24">둘째 날 · 19:05</div>
-    <div class="p big" style="--x:18;--y:44;--s:84">성산</div>
-    <div class="p cap" style="--x:22;--y:140">일출봉 앞</div>
-    <div class="p bub wh" style="--x:20;--y:170;--r:-3deg">해 넘어가는 중</div>
-    <div class="p ph arch" style="--x:214;--y:118;--w:96;--h:206;--pos:50% 60%"><img src="{{seongsan_2}}" alt=""></div>
-    <div class="p chip" style="--x:196;--y:336">유채는 낮에</div>
+    <div class="p fw ph r32" style="--y:0;--pos:50% 50%"><img src="{{seongsan}}" alt=""></div>
+    <div class="p g cp" style="--c:1;--n:6;--y:230">19:05 · 성산일출봉 앞</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:246">성산</div>
+    <div class="p g bub" style="--c:1;--y:336">해 넘어가는 중</div>
+    <div class="fo"><span>둘째 날 · 06.13 토</span><span>07</span></div>
   </div></div>
-  <!-- 8 hallasan: fog full bleed -->
+  <!-- 8 hallasan: fog full bleed, quiet -->
   <div class="pg"><div class="in">
-    <div class="p ph bleed shade" style="--pos:50% 30%;--sh:linear-gradient(180deg,transparent 55%,rgba(0,0,0,.4))"><img src="{{hallasan}}" alt=""></div>
-    <div class="p lab w" style="--x:22;--y:24">셋째 날 · 08:30 · 흐림 22°</div>
-    <div class="p ph pill" style="--x:160;--y:232;--w:150;--h:100;--pos:50% 60%;box-shadow:0 0 0 calc(3*var(--u)) #fff;z-index:2"><img src="{{hallasan_2}}" alt=""></div>
-    <div class="p big w" style="--x:18;--y:330;--s:74;z-index:2">안개</div>
-    <div class="p cap w" style="--x:176;--y:372;z-index:2">한라산 어리목 숲길</div>
-    <div class="p cap w" style="--x:176;--y:392;z-index:2">계단만 보고 걸음</div>
+    <div class="p ph bleed shade" style="--pos:50% 30%;--sh:linear-gradient(180deg,transparent 50%,rgba(0,0,0,.45))"><img src="{{hallasan}}" alt=""></div>
+    <div class="p g cp ik" style="--c:1;--n:6;--y:20">08:30 · 한라산 어리목 숲길 · 흐림 22°</div>
+    <div class="p g ttl w" style="--c:1;--n:6;--y:300">안개</div>
+    <div class="p g bd w" style="--c:1;--n:6;--y:372">계단만 보고 걸음.</div>
+    <div class="fo w"><span>셋째 날 · 06.14 일</span><span>08</span></div>
   </div></div>
-  <!-- 9 oreum: number stack -->
+  <!-- 9 oreum: size contrast on the grid -->
   <div class="pg"><div class="in">
-    <div class="p ph" style="--x:0;--y:0;--w:330;--h:200;--pos:60% 50%"><img src="{{oreum}}" alt=""></div>
-    <div class="p ph" style="--x:0;--y:203;--w:330;--h:148;--pos:50% 55%"><img src="{{oreum_2}}" alt=""></div>
-    <div class="p chip" style="--x:14;--y:14">(01) 억새밭</div>
-    <div class="p chip" style="--x:14;--y:217">(02) 분화구, 멀리 한라산</div>
-    <div class="p big" style="--x:20;--y:366;--s:40">원물오름</div>
-    <div class="p lab sf" style="--x:22;--y:414">셋째 날 · 11:10 · 06.14 일</div>
+    <div class="p g cp" style="--c:1;--n:6;--y:20">11:10 · 원물오름</div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:36">원물오름</div>
+    <div class="p g ph r45" style="--c:1;--n:4;--y:122;--pos:74% 40%"><img src="{{oreum}}" alt=""></div>
+    <div class="p g ph r45" style="--c:5;--n:2;--y:122;--pos:50% 50%"><img src="{{oreum_2}}" alt=""></div>
+    <div class="p g cp" style="--c:5;--n:2;--y:244">분화구,<br>멀리 한라산</div>
+    <div class="p g cp" style="--c:1;--n:4;--y:369">억새밭</div>
+    <div class="fo"><span>셋째 날 · 06.14 일</span><span>09</span></div>
   </div></div>
-  <!-- 10 cafe: 2x2 + tangerine cut-out + share card -->
+  <!-- 10 cafe: band + the one circle -->
   <div class="pg"><div class="in">
-    <div class="p ph" style="--x:0;--y:0;--w:330;--h:204;--pos:50% 55%"><img src="{{d1}}" alt=""></div>
-    <div class="p ph" style="--x:0;--y:207;--w:150;--h:118;--pos:50% 70%"><img src="{{d2}}" alt=""></div>
-    <div class="p ph" style="--x:153;--y:207;--w:177;--h:118;--pos:50% 60%"><img src="{{tangerine}}" alt=""></div>
-    <div class="p cut d6" style="--x:104;--y:132;--w:250;--r:8deg"><i><img src="{{d6}}" alt=""></i></div>
-    <div class="p big" style="--x:20;--y:342;--s:30">귤나무 카페</div>
-    <div class="p cap" style="--x:22;--y:384">비행기 시간까지 귤 구경</div>
-    <div class="p lab sf" style="--x:22;--y:412">셋째 날 · 13:30</div>
+    <div class="p fw ph r32" style="--y:0;--pos:50% 55%"><img src="{{d1}}" alt=""></div>
+    <div class="p g cp" style="--c:1;--n:4;--y:230">13:30 · 귤나무 카페 마당</div>
+    <div class="p g ttl" style="--c:1;--n:4;--y:246">귤나무<br>카페</div>
+    <div class="p g ph circ" style="--c:5;--n:2;--y:230;--pos:50% 45%"><img src="{{d6}}" alt=""></div>
+    <div class="p g bd" style="--c:5;--n:2;--y:330">비행기 시간까지 귤 구경.</div>
+    <div class="fo"><span>셋째 날 · 06.14 일</span><span>10</span></div>
   </div></div>
-  <!-- 11 last -->
+  <!-- 11 last: tomato field + arch -->
   <div class="pg"><div class="in fill">
-    <div class="p ph arch" style="--x:150;--y:26;--w:156;--h:226;--pos:55% 60%"><img src="{{tangerine_2}}" alt=""></div>
-    <div class="p bub wh" style="--x:22;--y:60;--r:-4deg">귤 한 봉지 삼</div>
-    <div class="p lab" style="--x:22;--y:26">06.14 일 · 제주 → 김포</div>
-    <div class="p big" style="--x:18;--y:290;--s:60">집 가는 중</div>
-    <div class="p lab" style="--x:22;--y:398">사진 46 · 영상 3 · 9곳 · 214km<br>2026년 6월 제주 · 끝</div>
+    <div class="p g cp" style="--c:1;--n:2;--y:20">06.14 일<br>제주 → 김포</div>
+    <div class="p g ph arch r45" style="--c:3;--n:4;--y:20;--pos:50% 40%"><img src="{{tangerine_2}}" alt=""></div>
+    <div class="p g ttl" style="--c:1;--n:6;--y:282">집 가는 중</div>
+    <div class="p g bd" style="--c:1;--n:6;--y:354">귤 한 봉지 사서 공항으로.</div>
+    <div class="p g cp" style="--c:1;--n:6;--y:378">사진 46 · 영상 3 · 9곳 · 214km</div>
+    <div class="fo"><span>6월 제주 · 끝</span><span>11</span></div>
   </div></div>
 </div>
-<div class="under"><span>경로 → 협재 → 풍차도로 → 우도 → 영상 → 월정리 → 성산 → 한라산 → 오름 → 카페 → 끝</span><span>11쪽</span></div>
+<div class="under"><span>경로 → 협재 → 신창 → 우도 → 영상 → 월정리 → 성산 → 한라산 → 오름 → 카페 → 끝</span><span>11쪽</span></div>
 
 <details class="notes"><summary>디자인 규칙</summary><ul>
-<li>바탕은 웜 오프화이트 #FFF9EF, 글자 #111. 강한 색은 한 권에 하나(토마토 #E8553B)만 — 색면 쪽 2쪽 + 말풍선·지도·재생바 진행 부분에만 쓴다.</li>
-<li>사진은 테두리·그림자 없이 맞붙인다(간격 3px). 한 쪽에 3~5장, 가장 큰 사진이 쪽 넓이의 45% 이상. 쪽 3장 중 1장은 사진 한 장 꽉 채움.</li>
-<li>모양 크롭(아치·원·알약)은 한 쪽에 1개만. 겹칠 때만 바탕색 4px 가장자리를 둔다. 나머지 사진은 직사각형.</li>
-<li>누끼 스티커는 한 쪽에 하나, 한 권에 3개까지. 손은 빼고 물건만(귤·조개는 원형, 모자는 윤곽) 딴다. 흰 외곽선 2.5px 균일, 기울기 ±8° 안. 사진 칸이 만나는 모서리에 얹는다.</li>
-<li>장식은 UI 조각만: 경로 카드(출발 → 도착 · 거리 · 시간), 말풍선(메모 한 줄, 12자 안팎), 재생바(소리 이름 + 진행선 + 0:03). 종류별 한 권에 3~4번까지. 반짝이·별 낙서는 쓰지 않는다.</li>
-<li>글자는 크거나 작게만: 지명 제목 30~84px Paperlogy(시각·거리 숫자는 크게 쓰지 않고 10px 라벨로), 캡션 12px, 라벨 11px DM Mono 500 · 라벨은 한국어(첫째 날, 06.12 금), 라틴은 숫자·단위만. 중간 크기 없음. 제목은 왼쪽 정렬, 쪽당 하나.</li>
-<li>사진 위 글자는 흰색, 밝은 하늘 위는 #111. 사진 아래쪽 글자가 있으면 아래 40%에 검정 35% 그라데이션.</li>
-<li>사진 톤: 원본 색 그대로(보정·그레인 없음). 사진 위 글자는 아래쪽만 옅게 어둡게 깔아 읽히게 한다.</li>
-<li>영상 쪽은 색 띠 위에 폰 화면 하나(둥근 모서리 26px, 검정 테 5px, 기울기 3°) 안에서 재생 중인 모습 + ▶ + 재생바. PDF·이미지로 내보낼 때는 ▶만 빼고 같은 모습.</li>
-<li>첫 쪽은 지도 대신 지도 앱 경로 화면 조각(시각 · 점-선-점 · 장소, 날이 바뀌는 곳만 색 점) + 요약 한 줄. 마지막 쪽은 색면 + 마지막 장소 사진 아치 + 혼잣말 제목(비행기 사진으로 끝내지 않는다).</li>
+<li>그리드(330×440 쪽 기준): 바깥 여백 M 20(6%), 6단, 단 폭 40, 단 간격 G 10 → c단 시작 x = 20 + 50(c−1). 모든 글 상자·사진 가장자리는 단 경계 또는 풀블리드. 위 여백 20에서 쪽이 시작하고 아래 20은 폴리오 자리, 본문은 y 396 까지.</li>
+<li>타입 스케일 3단: 디스플레이 64(표지만 96) Paperlogy 800 자간 −0.045em 행간 1.04 / 본문 12 Paperlogy 400 자간 −0.015em 행간 1.6 / 캡션 10 DM Mono 500 자간 +0.02em 숫자 tabular. 한 쪽 크기 3개까지, 가짜 볼드(text-stroke) 없음.</li>
+<li>캡션 규칙: 제목 바로 위 16px 에 "시각 · 장소 전체 이름" 한 줄(예: 13:20 · 협재 해변). 사진 캡션은 사진 아래 G 10 띄우고 왼쪽 단 시작. 색은 #5b564d(종이 위 6.9:1), 색면·사진 위는 잉크/흰색.</li>
+<li>폴리오: 표지 제외 모든 쪽 아래 20 자리, 왼쪽 러닝헤드 "첫째 날 · 06.12 금", 오른쪽 쪽 번호 01~11, 캡션과 같은 10 DM Mono. 사진 위에서는 흰색.</li>
+<li>사진 비율은 풀블리드 / 4:5 / 3:2 세 가지(원형 1:1 은 한 권에 1번). 사진 사이 간격은 G 10 하나. 테두리·그림자·기울기·흰 외곽선·누끼 없음, 원본 색 그대로.</li>
+<li>모양 크롭은 아치뿐: 표지 1개 + 마지막 쪽 1개(한 권 최대 3번). 원형은 한 권 1번(카페 쪽 귤 든 손).</li>
+<li>강한 색은 토마토 #E8553B 하나 — 전면 색면 쪽 2쪽(성산·끝) + 영상 쪽 색 띠 + 경로 점·재생바. 색면 위 글자는 #111.</li>
+<li>장치는 쪽당 하나, 종류별 한 권 3번까지: 지도 앱 경로 목록(1쪽), 경로 카드(1번), 말풍선(2번), 폰 화면+재생바(영상 쪽 1번). 장치 카드는 납작하게(그림자 없음).</li>
+<li>리듬: 빽빽한 쪽(경로·월정리·오름)과 조용한 쪽(풀블리드 신창·안개)을 번갈아. 사진 위 글자는 하늘·어두운 아래쪽에만, 아래 50%에 검정 최대 .45 그라데이션.</li>
+<li>영상 쪽은 단 4~6에 폰 화면 하나(모서리 24, 검정 테 5, 기울기 없음) + 색 띠 + 재생바. PDF·이미지로 내보낼 때는 ▶만 빼고 같은 모습.</li>
 </ul></details>
 </section>
