@@ -231,14 +231,16 @@ fun SlotStack(
     }
     val ctx = LocalContext.current
     val start = remember(slotId) { if (rememberCard) LastCard.start(LastCard.read(ctx, slotId), cards) else 0 }
-    val pager = rememberPagerState(start) { cards.size }
+    // the stack loops (operator 11-25): a long virtual page run, card = page mod size, starting mid-run
+    val n = cards.size
+    val pager = rememberPagerState(LOOP_MID / n * n + start) { LOOP_PAGES }
     if (rememberCard) LaunchedEffect(pager.settledPage) {
-        cards.getOrNull(pager.settledPage)?.let(LastCard::keyOf)?.let { LastCard.write(ctx, slotId, it) }
+        cards.getOrNull(pager.settledPage % n)?.let(LastCard::keyOf)?.let { LastCard.write(ctx, slotId, it) }
     }
     // banner tap: bring this stack's notification card up so it can open
     val openReq = LocalNotifOpen.current
     LaunchedEffect(openReq?.value) {
-        if (openReq?.value == true) cards.indexOfFirst { it.isNotif }.takeIf { it >= 0 }?.let { pager.scrollToPage(it) }
+        if (openReq?.value == true) cards.indexOfFirst { it.isNotif }.takeIf { it >= 0 }?.let { pager.scrollToPage(pager.currentPage - pager.currentPage % n + it) }
     }
     var show by remember { mutableStateOf(false) }
     LaunchedEffect(pager.settledPage, pager.isScrollInProgress) {
@@ -248,7 +250,8 @@ fun SlotStack(
     val a by animateFloatAsState(if (show) 1f else 0f, tween(300), label = "dots")
     Box(modifier) {
         VerticalPager(pager, Modifier.fillMaxSize()) { p ->
-            CardView(cards[p], state, config, actions, Modifier.fillMaxSize(), "$slotId-$p", look, onFace = onFace?.let { cb -> { f -> cb(p, f) } })
+            val i = p % n
+            CardView(cards[i], state, config, actions, Modifier.fillMaxSize(), "$slotId-$i", look, onFace = onFace?.let { cb -> { f -> cb(i, f) } })
         }
         if (a > 0f) {
             val ink = LocalInk.current
@@ -259,9 +262,13 @@ fun SlotStack(
                 verticalArrangement = Arrangement.spacedBy(d * 0.8f),
             ) {
                 repeat(cards.size) {
-                    Box(Modifier.size(d).clip(CircleShape).background(if (it == pager.currentPage) ink.ink else ink.ink3))
+                    Box(Modifier.size(d).clip(CircleShape).background(if (it == pager.currentPage % n) ink.ink else ink.ink3))
                 }
             }
         }
     }
 }
+
+/** Virtual pages of a looping card stack: far more than anyone swipes, the middle is the start. */
+private const val LOOP_PAGES = 100_000
+private const val LOOP_MID = LOOP_PAGES / 2
