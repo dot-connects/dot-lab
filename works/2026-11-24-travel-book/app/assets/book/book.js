@@ -10,6 +10,9 @@
 
   async function loadTheme(theme) {
     document.getElementById("theme").href = `themes/${theme}/theme.css`;
+    // theme.css scopes every rule under .t-<theme>; without it the pages render unstyled (emulator run 2026-11-26)
+    for (const c of [...document.body.classList]) if (c.startsWith("t-")) document.body.classList.remove(c);
+    document.body.classList.add(`t-${theme}`);
     const html = await (await fetch(`themes/${theme}/layouts.html`)).text();
     document.getElementById("tpl").innerHTML = html;
   }

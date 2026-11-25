@@ -7,7 +7,7 @@
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" android:maxSdkVersion="32"/>
 
     <application
-        android:label="여행 책자"
+        android:label="여행 한 권"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

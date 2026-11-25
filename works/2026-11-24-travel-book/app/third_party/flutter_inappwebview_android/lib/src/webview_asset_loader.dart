@@ -195,7 +195,8 @@ class AndroidInternalStoragePathHandler
 
   @override
   Map<String, dynamic> toMap() {
-    return {...toMap(), 'directory': directory};
+    // Vendored fix: upstream spreads toMap() into itself here (infinite recursion -> Stack Overflow on the book page).
+    return {...super.toMap(), 'directory': directory};
   }
 }
 

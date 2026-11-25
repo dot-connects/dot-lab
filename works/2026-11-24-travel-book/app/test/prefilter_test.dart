@@ -22,7 +22,7 @@ Candidate cand(String id, DateTime t, img.Image im) {
 void main() {
   test('blur lowers sharpness below the threshold, a crisp image stays above', () {
     final crisp = measure(checker());
-    final blurred = measure(img.gaussianBlur(checker(), radius: 6));
+    final blurred = measure(img.gaussianBlur(checker(), radius: 10)); // a smeared frame, not soft focus
     expect(crisp.sharp, greaterThan(kSharpMin));
     expect(blurred.sharp, lessThan(kSharpMin));
   });

@@ -6,8 +6,9 @@ import 'chapters.dart' show tripDay;
 import 'models.dart';
 
 /// Laplacian variance on a 256 px grey thumbnail below this = blurred.
-/// ponytail: provisional; Task 6 sets it from the seeded blurred copies on the emulator.
-const double kSharpMin = 120;
+/// Emulator seed 2026-11-26: a Gaussian-8 blurred copy measured 11.2, but sharp low-texture shots measured 12.3 (fog
+/// over a peak) and 50 (sky over sea) - 120 dropped both. Only near-blank frames go here; the AI pick judges the rest.
+const double kSharpMin = 8;
 
 ({double sharp, double luma, int dhash}) measure(img.Image thumb) {
   final g = img.grayscale(thumb.clone());

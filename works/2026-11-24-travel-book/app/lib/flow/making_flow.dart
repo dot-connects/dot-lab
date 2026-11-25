@@ -130,9 +130,11 @@ class _MakingFlowState extends State<MakingFlow> {
         : widget.paid || n > freeBooks
             ? '책장에 넣었어요.'
             : '책장에 넣었어요. 이번 책은 무료예요 ($freeBooks권 중 ${n == 1 ? '첫' : '두'} 번째).';
-    Navigator.of(context).pushReplacement(MaterialPageRoute<void>(
-      builder: (_) => BookScreen(app: app, book: _book!, failed: failed, tip: tip, notes: _notes),
-    ));
+    // The new-book steps are done: back from the book goes to the shelf, not to step 3 (emulator run 2026-11-26).
+    Navigator.of(context).pushAndRemoveUntil(
+      MaterialPageRoute<void>(builder: (_) => BookScreen(app: app, book: _book!, failed: failed, tip: tip, notes: _notes)),
+      (r) => r.isFirst,
+    );
   }
 
   Candidate? _cand(String id) => _book!.pool.where((c) => c.id == id).firstOrNull;
