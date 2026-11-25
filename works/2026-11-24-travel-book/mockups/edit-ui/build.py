@@ -19,7 +19,7 @@ imgs = ",".join(f'"{k}":"data:image/webp;base64,{base64.b64encode(preview._img(k
 # keep {{k}} out of src= so the browser does not request it; JS fills src from IMG
 section = re.sub(r'src="\{\{(\w+)\}\}"', r'src="\1"', section)
 text = src + section
-want = {"Wanted Sans": {500, 700, 800}, "Pretendard": {400, 500, 600, 700, 800}, "SUIT": {500, 700, 800}}
+want = {"Wanted Sans": {500, 700, 800}, "Pretendard": {400, 500, 600, 700, 800}, "SUIT": {500, 700, 800}, "Gmarket Sans": {500, 700, 800}}
 faces = "<style>" + fonts.faces_css(want, text) + "</style>"
 out = (src.replace("<!--FONTS-->", faces).replace("<!--BSTYLE-->", style).replace("<!--BSECTION-->", section)
        .replace("<script>\nconst ICON", "<script>const IMG={" + imgs + "};</script>\n<script>\nconst ICON", 1))
