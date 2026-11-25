@@ -77,6 +77,7 @@ fun CardListScreen(config: AppConfig, nav: Nav, back: () -> Unit) {
                                 CardType.WEATHER -> kr.dot.sb.ui.cards.Ic.SUN
                                 CardType.MEMORIES -> kr.dot.sb.ui.cards.Ic.PHOTO
                                 CardType.NOTIF -> kr.dot.sb.ui.cards.Ic.BELL
+                                CardType.BATTERY -> kr.dot.sb.ui.cards.Ic.BATT
                                 CardType.APPS -> null
                             }
                             if (icon == null) Icon(Ic.PAGES, LocalAccent.current, 22.dp)

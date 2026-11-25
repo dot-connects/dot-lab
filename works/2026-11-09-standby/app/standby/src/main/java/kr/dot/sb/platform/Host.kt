@@ -135,6 +135,12 @@ class HostActions(
     override fun moodShowing(on: Boolean) = holder.moodShowing(on)
     override fun moodDone() = holder.moodDone()
     override fun toggleNight() = holder.toggleNight()
+    override fun setRinger(r: kr.dot.sb.ui.state.Ringer) = holder.setRinger(r)
+    override fun setVolume(v: Float) = holder.setVolume(v)
+    override fun setDnd(on: Boolean) = holder.setDnd(on)
+    override fun openDndAccess() = host.unlockThen {
+        runCatching { ctx.startActivity(Intent(android.provider.Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
+    }
     override fun exit() = host.finish()
 }
 

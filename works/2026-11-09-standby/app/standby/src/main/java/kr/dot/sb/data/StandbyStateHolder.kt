@@ -208,6 +208,7 @@ class StandbyStateHolder(
     /** Heat protection: battery temperature (tenths of °C) on every BATTERY_CHANGED; a change re-applies the brightness. */
     private val batteryRx = object : BroadcastReceiver() {
         override fun onReceive(c: Context, i: Intent) {
+            refreshBattery(i)
             val plugged = i.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0)
             if (plugged != lastPlugged) {
                 // the sticky value at start was checked by start(); a later change waits out a flap (T2)
@@ -225,6 +226,38 @@ class StandbyStateHolder(
             evaluate()
         }
     }
+
+    /** 배터리 card: sound mode / 방해 금지 changed (by us or elsewhere). Volume keys and network catch up on the minute tick. */
+    private val phoneRx = object : BroadcastReceiver() {
+        override fun onReceive(c: Context, i: Intent) = refreshPhone()
+    }
+
+    /** 배터리 card: % / charge kind / temperature / power / time to full / curve, from [i] or the sticky broadcast. */
+    private fun refreshBattery(i: Intent? = null) {
+        val b = i ?: ctx.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return
+        val bm = ctx.getSystemService(BatteryManager::class.java)
+        val pct = b.getIntExtra(BatteryManager.EXTRA_LEVEL, -1).let { l -> if (l < 0) bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY) else l * 100 / b.getIntExtra(BatteryManager.EXTRA_SCALE, 100).coerceAtLeast(1) }
+        val plugged = b.getIntExtra(BatteryManager.EXTRA_PLUGGED, 0) != 0
+        // power rounded to 0.5 W: a voltage wobble alone does not redraw the board
+        val w = if (plugged) (BatteryRules.watts(bm.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW), b.getIntExtra(BatteryManager.EXTRA_VOLTAGE, 0)) * 2).roundToInt() / 2f else 0f
+        val kind = BatteryRules.kind(plugged, pct, b.getIntExtra(BatteryManager.EXTRA_STATUS, -1), w)
+        val curve = BatteryLog.record(System.currentTimeMillis(), pct, plugged)
+        val info = kr.dot.sb.ui.state.BatteryInfo(
+            pct, kind, (b.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0) / 10f).roundToInt(), w,
+            leftMs = if (kind.filling) bm.computeChargeTimeRemaining().takeIf { it > 0 } else null,
+            fullSince = BatteryLog.fullSince, curve = curve,
+        )
+        _state.update { if (it.battery == info) it else it.copy(battery = info) }
+    }
+
+    private fun refreshPhone() {
+        val p = runCatching { kr.dot.sb.platform.Phone.read(ctx) }.getOrNull() ?: return
+        _state.update { if (it.phone == p) it else it.copy(phone = p) }
+    }
+
+    fun setRinger(r: kr.dot.sb.ui.state.Ringer) { kr.dot.sb.platform.Phone.setRinger(ctx, r); refreshPhone() }
+    fun setVolume(v: Float) { kr.dot.sb.platform.Phone.setVolume(ctx, v); refreshPhone() }
+    fun setDnd(on: Boolean) { kr.dot.sb.platform.Phone.setDnd(ctx, on); refreshPhone() }
 
     private fun checkChargeRule(plugged: Int? = null): Boolean {
         if (!automatic) return true
@@ -263,6 +296,11 @@ class StandbyStateHolder(
         ctx.registerReceiver(unplugRx, IntentFilter(Intent.ACTION_POWER_DISCONNECTED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(nextAlarmRx, IntentFilter(AlarmManager.ACTION_NEXT_ALARM_CLOCK_CHANGED), Context.RECEIVER_NOT_EXPORTED)
         ctx.registerReceiver(batteryRx, IntentFilter(Intent.ACTION_BATTERY_CHANGED), Context.RECEIVER_NOT_EXPORTED) // sticky: the current value arrives at once
+        ctx.registerReceiver(phoneRx, IntentFilter().apply {
+            addAction(android.media.AudioManager.RINGER_MODE_CHANGED_ACTION)
+            addAction(android.app.NotificationManager.ACTION_INTERRUPTION_FILTER_CHANGED)
+        }, Context.RECEIVER_NOT_EXPORTED)
+        refreshPhone()
         media.start()
         runCatching { ctx.contentResolver.registerContentObserver(android.provider.CalendarContract.Events.CONTENT_URI, true, calendarObs) }
         onConfiguration(ctx.resources.configuration.smallestScreenWidthDp, initial = true)
@@ -348,6 +386,7 @@ class StandbyStateHolder(
         memWanted = null; photosWanted = null
         runCatching { ctx.unregisterReceiver(nextAlarmRx) }
         runCatching { ctx.unregisterReceiver(batteryRx) }
+        runCatching { ctx.unregisterReceiver(phoneRx) }
         runCatching { ctx.unregisterReceiver(unplugRx) }
         runCatching { ctx.contentResolver.unregisterContentObserver(calendarObs) }
         calendarJob?.cancel()
@@ -581,6 +620,8 @@ class StandbyStateHolder(
             if (memWanted == true && memoryDay != t.toLocalDate()) { memoryDay = t.toLocalDate(); scope.launch { loadMemory(t.toLocalDate()) } }
             if (calendarDay != null && calendarDay != t.toLocalDate()) scope.launch { refreshCalendar() }
             refreshStatic(force = false)
+            refreshBattery() // the curve's once-a-minute point and the power, which sends no broadcast of its own
+            refreshPhone()
             evaluate()
             // plan-r16 T11: does the lit panel itself read above the night threshold (candidate 13)?
             if (nightTarget >= 0.5f && luxOn) Measure.log(ctx, "lux=${lux.value(el())} night=1")

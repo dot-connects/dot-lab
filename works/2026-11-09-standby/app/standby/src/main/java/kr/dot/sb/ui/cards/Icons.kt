@@ -19,7 +19,9 @@ import kr.dot.sb.ui.state.WeatherCondition
 import kr.dot.sb.ui.theme.LocalInk
 
 /** design-system §4.2 icon set, drawn on a 24 grid with 2-unit round strokes. Weather glyphs are filled like iPhone's. */
-enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL, THERMO }
+enum class Ic { NOTE, VIDEO, ARROW, SUN, MOON, CLOUD, PARTLY, RAIN, SNOW, FOG, THUNDER, PREV, PLAY, PAUSE, NEXT, TIMER, SOUND, CALENDAR, LOCK, ALARM, USAGE, PHOTO, CLOSE, BELL, THERMO,
+    // 배터리 card (mockup battery-card.html IC, same 24 grid)
+    BOLT, BATT, SHIELD, PLUG, SPEAKER, VIBRATE, MUTE, WIFI, CELL }
 
 internal fun weatherIc(c: WeatherCondition): Ic = when (c) {
     WeatherCondition.CLEAR -> Ic.SUN
@@ -151,5 +153,24 @@ private fun DrawScope.drawIc(ic: Ic, col: Color, bg: Color, outline: Boolean, c2
             line(12f, 15f, 16.5f, 9.5f)
             drawCircle(col, 1.8f, Offset(12f, 15f))
         }
+        Ic.BOLT -> drawPath(svg("M13.2 2 4.8 13.4h6l-1.2 8.6 8.6-11.6h-6.1z"), col)
+        Ic.BATT -> {
+            drawRoundRect(col, Offset(3f, 7f), androidx.compose.ui.geometry.Size(16f, 10f), CornerRadius(2.5f), style = st)
+            line(21f, 10.5f, 21f, 13.5f)
+        }
+        Ic.SHIELD -> drawPath(svg("M12 3 5 6v5.5c0 4.2 3 7.8 7 9.5 4-1.7 7-5.3 7-9.5V6z"), col, style = st)
+        Ic.PLUG -> drawPath(svg("M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"), col, style = st)
+        Ic.SPEAKER -> { drawPath(svg("M4 9.5h3.5L12 6v12l-4.5-3.5H4z"), col, style = st); drawPath(svg("M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"), col, style = st) }
+        Ic.VIBRATE -> {
+            drawRoundRect(col, Offset(8f, 4f), androidx.compose.ui.geometry.Size(8f, 16f), CornerRadius(2f), style = st)
+            line(4.5f, 9f, 4.5f, 15f); line(19.5f, 9f, 19.5f, 15f)
+        }
+        Ic.MUTE -> { drawPath(svg("M4 9.5h3.5L12 6v12l-4.5-3.5H4z"), col, style = st); line(16f, 10f, 20f, 14f); line(20f, 10f, 16f, 14f) }
+        Ic.WIFI -> { drawPath(svg("M3 9a13 13 0 0 1 18 0M6 12.5a8.5 8.5 0 0 1 12 0M9 16a4 4 0 0 1 6 0"), col, style = st); drawCircle(col, 1f, Offset(12f, 19f)) }
+        Ic.CELL -> { line(5f, 19f, 5f, 16f); line(10f, 19f, 10f, 12.5f); line(15f, 19f, 15f, 9f); line(20f, 19f, 20f, 5f) }
     }
 }
+
+/** An SVG path on the 24 grid (the 배터리 card's mockup glyphs), parsed once. */
+private val svgCache = HashMap<String, Path>()
+private fun svg(d: String): Path = svgCache.getOrPut(d) { androidx.compose.ui.graphics.vector.PathParser().parsePathString(d).toPath() }

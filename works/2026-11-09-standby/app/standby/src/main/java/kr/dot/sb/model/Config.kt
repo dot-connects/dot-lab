@@ -335,7 +335,9 @@ enum class CardType(val ko: String) {
     /** The phone's notifications (r9: the old stack and list cards decode to this, D3). */
     NOTIF("알림"),
     /** 다음 알람 + [빠른 알람] [알람 앱 열기] (11-14 #8). */
-    ALARM("알람");
+    ALARM("알람"),
+    /** Charge %, time to full, charge curve; the big slots add sound mode, ring volume, brightness, 방해 금지. */
+    BATTERY("배터리");
 
     val isNotif: Boolean get() = this == NOTIF
 }

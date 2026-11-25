@@ -65,7 +65,32 @@ data class StandbyState(
     val worldCity: City = City("서울", 37.5665, 126.9780),
     /** IANA zone of [worldCity] ("Europe/London"); null = the system zone. */
     val worldZoneId: String? = null,
+    /** 배터리 card: null = not read yet. */
+    val battery: BatteryInfo? = null,
+    /** 배터리 card controls (sound mode, ring volume, 방해 금지, network); null = not read yet. */
+    val phone: PhoneControls? = null,
 )
+
+/**
+ * The phone's battery for the 배터리 card. [watts] 0 = unknown; [leftMs] = time to full (null = the phone does not
+ * know); [fullSince] epoch ms it reached 100 % on this charge; [curve] = (epoch ms, %) once a minute since plug-in.
+ */
+@Immutable
+data class BatteryInfo(
+    val pct: Int,
+    val kind: kr.dot.sb.data.ChargeKind,
+    val tempC: Int,
+    val watts: Float = 0f,
+    val leftMs: Long? = null,
+    val fullSince: Long? = null,
+    val curve: List<Pair<Long, Int>> = emptyList(),
+)
+
+enum class Ringer(val ko: String) { SOUND("소리"), VIBRATE("진동"), SILENT("무음") }
+
+/** [volume] = ring stream 0..1; [dndAccess] = this app may turn 방해 금지 / 무음 on (notification policy access). */
+@Immutable
+data class PhoneControls(val ringer: Ringer, val volume: Float, val dnd: Boolean, val dndAccess: Boolean, val network: String?)
 
 enum class MediaKind { MUSIC, VIDEO }
 
@@ -293,6 +318,14 @@ interface StandbyActions {
     fun setCardFace(boardId: String, slot: Int, index: Int, face: kr.dot.sb.model.FaceId) {}
     /** plan-r15 F10: a one-time tip was shown; it never shows again. */
     fun tipSeen(name: String) {}
+    /** 배터리 card: 소리 / 진동 / 무음 (무음 needs 방해 금지 access). */
+    fun setRinger(r: Ringer) {}
+    /** 배터리 card: ring volume 0..1. */
+    fun setVolume(v: Float) {}
+    /** 배터리 card: 방해 금지 on/off (needs access). */
+    fun setDnd(on: Boolean) {}
+    /** 배터리 card: the system page that grants 방해 금지 access (after unlock). */
+    fun openDndAccess() {}
     fun exit() {}
 
     companion object { val NONE = object : StandbyActions {} }

@@ -14,6 +14,8 @@
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- plan-r15 C2: the listener path holds the CPU for the charge-start posture window (<= 15 s) -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <!-- 배터리 card: 무음 and 방해 금지 (granted on the system's 방해 금지 access page; no prompt) -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <!-- App shortcuts can use recent or frequent apps after the user grants usage access. -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />

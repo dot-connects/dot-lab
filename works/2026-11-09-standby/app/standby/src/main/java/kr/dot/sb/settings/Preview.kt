@@ -177,7 +177,17 @@ object Sample {
         photos = listOf(Photo(photo, "설악산", "2025년 10월 18일")),
         memory = Photo(photo, "설악산", "2023년 11월 9일", yearsAgo = 3),
         notifications = sampleNotifs(),
+        battery = sampleBattery(),
+        phone = kr.dot.sb.ui.state.PhoneControls(kr.dot.sb.ui.state.Ringer.VIBRATE, 0.55f, dnd = false, dndAccess = true, network = "와이파이"),
     )
+
+    /** 배터리 card preview: 68 % on a 15 W charger since 14:02 (23 %), full in 1 h 12 min (mockup round 3 "충전 중"). */
+    fun sampleBattery(at: LocalDateTime = now): kr.dot.sb.ui.state.BatteryInfo {
+        val z = java.time.ZoneId.systemDefault()
+        val start = at.minusMinutes(90)
+        val curve = (0..90 step 3).map { m -> start.plusMinutes(m.toLong()).atZone(z).toInstant().toEpochMilli() to (23 + 45 * (1 - Math.pow(1 - m / 90.0, 1.6))).toInt() }
+        return kr.dot.sb.ui.state.BatteryInfo(68, kr.dot.sb.data.ChargeKind.FAST, 31, 15f, leftMs = 72 * 60_000L, curve = curve)
+    }
 
     /** Picker preview of the notification cards (sample text, never the phone's own). */
     private fun sampleNotifs(): List<kr.dot.sb.ui.state.NotifItem> {

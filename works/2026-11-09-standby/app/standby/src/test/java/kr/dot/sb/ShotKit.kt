@@ -181,6 +181,8 @@ object Fixtures {
         photos = listOf(Photo(photo, "올림픽공원", "2025년 10월 18일")),
         memory = Photo(memoryPhoto, "광안리", "2023년 11월 9일", yearsAgo = 3),
         notifications = notifs(),
+        battery = kr.dot.sb.settings.Sample.sampleBattery(now),
+        phone = kr.dot.sb.ui.state.PhoneControls(kr.dot.sb.ui.state.Ringer.VIBRATE, 0.55f, dnd = false, dndAccess = false, network = "와이파이"),
     )
 
     private val nowSec: Long get() = now.atZone(java.time.ZoneId.systemDefault()).toEpochSecond()

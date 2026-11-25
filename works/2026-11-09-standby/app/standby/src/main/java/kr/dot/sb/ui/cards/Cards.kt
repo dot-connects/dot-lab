@@ -192,6 +192,7 @@ fun CardView(
                     // r9: stack and list merged into one card (boards saved with the stack still draw it)
                     CardType.NOTIF -> NotifCard(e, state, actions, plate)
                     CardType.ALARM -> AlarmCard(g, state, config, actions)
+                    CardType.BATTERY -> BatteryCard(e, state, config, actions)
                 }
                 if (arrows && sw.face != null) FaceArrows(e, kr.dot.sb.ui.clock.ClockRegistry.boardPages(config.myClocks), sw)
             }
