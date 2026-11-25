@@ -1,6 +1,7 @@
 // D3 일기·메모 넣기: paste / file / handwriting, then the list of what was added.
 import 'package:material_ui/material_ui.dart';
 
+import '../failures.dart';
 import '../tokens.dart';
 import '../widgets.dart';
 import 'draft.dart';
@@ -38,7 +39,7 @@ class NotesScreen extends StatelessWidget {
             ),
           ),
         );
-    final n = items.length;
+    final n = items.where((i) => !i.bad).length;
     return NbScaffold(
       onBack: onBack,
       right: n > 0 ? topLabel('$n개 넣음', bold: true) : null,
@@ -52,10 +53,13 @@ class NotesScreen extends StatelessWidget {
           const SizedBox(width: 6),
           way(Icons.photo_camera_outlined, '손글씨', '찍거나 사진에서', onHandwriting),
         ]),
-        if (n > 0) ...[
+        if (items.isNotEmpty) ...[
           const OptLabel('넣은 것', note: '누르면 빼거나 볼 수 있어요', top: 18),
           for (final (i, it) in items.indexed) ...[
             if (i > 0) const SizedBox(height: 8),
+            if (it.bad)
+              BadRow('못 읽은 파일: ${it.title}', it.detail, onTap: () => onTapItem(i))
+            else
             GestureDetector(
               onTap: () => onTapItem(i),
               child: Container(
@@ -84,6 +88,11 @@ class NotesScreen extends StatelessWidget {
             ),
           ],
         ],
+        if (items.any((i) => i.bad && i.title.toLowerCase().endsWith('.hwp')))
+          Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: Text('한글 파일은 PDF로 저장해서 다시 넣어 보세요.', style: ui(11, color: C.ink2, h: 1.45)),
+          ),
         Container(
           margin: const EdgeInsets.only(top: 14),
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),

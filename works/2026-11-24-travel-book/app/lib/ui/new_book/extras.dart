@@ -39,7 +39,7 @@ class ExtrasScreen extends StatelessWidget {
       title: '더 넣을 게 있어요?',
       titleSmall: '(없어도 돼요)',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-        _row(Icons.check_box_outlined, '꼭 넣을 사진', must > 0 ? '$must장 골랐어요' : '고른 사진은 빠지지 않아요', must > 0, onMust,
+        _row(Icons.check_box_outlined, '꼭 넣을 사진', must > 0 ? '$must장 골랐어요' : '빠지면 안 되는 사진이 있으면 골라 두세요', must > 0, onMust,
             trail: mustThumbs.isEmpty ? null : _stack()),
         const SizedBox(height: 8),
         _row(Icons.edit_outlined, '일기·메모',
@@ -60,14 +60,16 @@ class ExtrasScreen extends StatelessWidget {
                 TextSpan(text: '무료', style: ui(12, w: FontWeight.w700)),
                 const TextSpan(text: ' (처음 2권) · '),
                 TextSpan(text: kw('그다음부터 1권 1,500원')),
-              ] else
+              ] else ...[
                 TextSpan(text: '1,500원', style: nm(12, w: FontWeight.w700)),
+                const TextSpan(text: ' · 무료 2권을 다 썼어요'),
+              ],
             ]),
             style: ui(12, color: C.body, h: 1.55),
           ),
         ),
       ]),
-      foot: [Btn('책 만들기', onTap: onMake), Btn(shapeLabel, ghost: true, onTap: onShape)],
+      foot: [Btn(freeLeft > 0 ? '책 만들기' : '책 만들기 · 1,500원', onTap: onMake), Btn(shapeLabel, ghost: true, onTap: onShape)],
     );
   }
 

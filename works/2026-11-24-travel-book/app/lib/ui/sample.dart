@@ -1,5 +1,7 @@
 // Fake data with the mockup's numbers, so the screens can be seen before the gallery is wired.
 import '../core/library.dart';
+import 'making/pairs.dart';
+import 'making/swap_sheet.dart';
 import 'new_book/draft.dart';
 
 const _s = 'assets/sample/';
@@ -58,4 +60,43 @@ String samplePath(String id) {
 const sampleNotes = [
   NoteItem('제주 메모.txt', '1,240자 · 6월 12일, 13일 글을 찾았어요'),
   NoteItem('손글씨 사진 1장', '글 쓸 때 읽어요 · 날짜를 못 찾으면 책 전체에 써요', thumb: '${_s}d10.jpg'),
+];
+
+// ----- D4 making -----
+
+/// What the picker kept, by day (9 / 13 / 16 = 38), with the mockup's must-include and cover photos.
+final samplePicks = <(DateTime, List<PhotoRef>)>[
+  (DateTime(2026, 6, 12), [for (final k in ['d8', 'hyeopjae', 'd9', 'd4', 'd2', 'd6', 'd7', 'road_2', 'road']) PhotoRef('p-$k', '$_s$k.jpg')]),
+  (DateTime(2026, 6, 13), [
+    for (final k in ['d3', 'udo', 'd10', 'udo_2', 'd5', 'haenyeo', 'haenyeo_2', 'doldam', 'doldam_2', 'woljeongri', 'woljeongri_2', 'seongsan', 'seongsan_2'])
+      PhotoRef('p-$k', '$_s$k.jpg'),
+  ]),
+  (DateTime(2026, 6, 14), [
+    for (final (i, k) in ['hallasan', 'hallasan_2', 'oreum', 'oreum_2', 'tangerine', 'tangerine_2', 'd1', 'hyeopjae_2', 'seongsan', 'udo', 'road', 'doldam', 'd9', 'd5', 'd2', 'd8'].indexed)
+      PhotoRef('p14-$i', '$_s$k.jpg'),
+  ]),
+];
+const sampleMustPicks = {'p-road', 'p-haenyeo', 'p-doldam_2'};
+const sampleCoverId = 'p-udo';
+
+/// The 6x2 strip on the picking screen: kept / dropped.
+const samplePickStrip = [
+  ('${_s}hyeopjae.jpg', true), ('${_s}d3.jpg', false), ('${_s}road.jpg', true), ('${_s}hyeopjae_2.jpg', false), ('${_s}udo.jpg', true), ('${_s}d5.jpg', false), //
+  ('${_s}road_2.jpg', false), ('${_s}haenyeo.jpg', true), ('${_s}d7.jpg', false), ('${_s}doldam_2.jpg', true), ('${_s}d10.jpg', false), ('${_s}seongsan.jpg', true),
+];
+
+PairAsk _pair(String a, String b, String ta, String tb, String label) =>
+    PairAsk(PhotoRef('p-$a', '$_s$a.jpg'), PhotoRef('x-$b', '$_s$b.jpg'), aTime: ta, bTime: tb, label: label);
+
+final samplePairs = [
+  _pair('hyeopjae', 'hyeopjae_2', '13:20', '13:24', '협재 해변 · 6월 12일'),
+  _pair('udo', 'udo_2', '10:05', '10:07', '우도 · 6월 13일'),
+  _pair('haenyeo', 'haenyeo_2', '14:10', '14:12', '하도 해녀 탈의장 · 6월 13일'),
+  _pair('oreum', 'oreum_2', '09:40', '09:52', '오름 · 6월 14일'),
+];
+
+/// Same-place alternatives for the swap sheet (the pair's loser first).
+final sampleAlts = [
+  for (final (k, l, t) in const [('hyeopjae_2', '아까 둘 중', '13:24'), ('d9', '같은 곳', '13:31'), ('d4', '같은 곳', '13:47')])
+    SwapAlt(PhotoRef('a-$k', '$_s$k.jpg'), l, t),
 ];

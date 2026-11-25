@@ -263,3 +263,120 @@ Widget topLabel(String s, {bool bold = false}) =>
 
 /// Korean count words for days ("사흘"), as the mockup writes them.
 String dayWord(int n) => const {1: '하루', 2: '이틀', 3: '사흘', 4: '나흘', 5: '닷새', 6: '엿새', 7: '이레', 8: '여드레', 9: '아흐레', 10: '열흘'}[n] ?? '$n일';
+
+/// .priv — soft card with a privacy / fine-print line.
+class Priv extends StatelessWidget {
+  final String text;
+  final double top;
+  const Priv(this.text, {super.key, this.top = 14});
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: EdgeInsets.only(top: top),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(color: C.card, borderRadius: BorderRadius.circular(14)),
+        child: Text(kw(text), style: ui(11.5, color: C.body, h: 1.5)),
+      );
+}
+
+/// .warn — the amber notice box; [bold] runs first.
+class Warn extends StatelessWidget {
+  final String bold, text;
+  const Warn(this.bold, this.text, {super.key});
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+        decoration: BoxDecoration(
+          color: C.warn,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: const Color(0xFFD3B48A)),
+        ),
+        child: Text.rich(
+          TextSpan(children: [TextSpan(text: kw(bold), style: ui(11.5, w: FontWeight.w700, color: const Color(0xFF3A322A))), TextSpan(text: ' ${kw(text)}')]),
+          style: ui(11.5, color: const Color(0xFF3A322A), h: 1.5),
+        ),
+      );
+}
+
+enum StepMark { done, now, wait }
+
+/// One line of .steps: label (+ small), a big number or a waiting word on the right.
+class StepRow {
+  final String label;
+  final String? small;
+  final String value;
+  final String? unit; // " / 24쪽"
+  final StepMark state;
+  const StepRow(this.label, this.value, {this.small, this.unit, this.state = StepMark.done});
+}
+
+class Steps extends StatelessWidget {
+  final List<StepRow> rows;
+  const Steps(this.rows, {super.key});
+  @override
+  Widget build(BuildContext context) => Column(children: [
+        for (final r in rows)
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: const BoxDecoration(border: Border(top: BorderSide(color: C.line))),
+            child: Row(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              if (r.state == StepMark.now)
+                Container(
+                  width: 7,
+                  height: 7,
+                  margin: const EdgeInsets.only(right: 7, bottom: 5),
+                  decoration: const BoxDecoration(color: C.oak2, shape: BoxShape.circle),
+                ),
+              Expanded(
+                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(r.label, style: ui(12.5, h: 1.4, color: r.state == StepMark.wait ? C.ink2 : C.ink)),
+                  if (r.small != null) Text(kw(r.small!), style: ui(11, color: C.ink2, h: 1.35)),
+                ]),
+              ),
+              const SizedBox(width: 10),
+              Text.rich(
+                TextSpan(text: r.value, children: [
+                  if (r.unit != null) TextSpan(text: r.unit, style: nm(13, w: FontWeight.w400, color: C.ink2, ls: 0)),
+                ]),
+                style: r.state == StepMark.wait || int.tryParse(r.value.replaceAll(',', '')) == null // a word, not a count
+                    ? nm(15, w: FontWeight.w400, color: C.ink2, h: 1)
+                    : nm(26, w: r.state == StepMark.now ? FontWeight.w700 : FontWeight.w300, h: 1, ls: -1),
+              ),
+            ]),
+          ),
+      ]);
+}
+
+/// Bottom sheet frame (.sheet): rounded top, grabber, paper background.
+class SheetFrame extends StatelessWidget {
+  final Widget child;
+  const SheetFrame({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          color: C.paper,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          boxShadow: [BoxShadow(color: Color(0x3328190A), blurRadius: 24, offset: Offset(0, -8))],
+        ),
+        padding: EdgeInsets.fromLTRB(20, 8, 20, 20 + MediaQuery.paddingOf(context).bottom),
+        child: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Center(
+            child: Container(
+              width: 36,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(color: const Color(0xFFCFC4B3), borderRadius: BorderRadius.circular(2)),
+            ),
+          ),
+          child,
+        ]),
+      );
+}
+
+/// Shows [child] in a SheetFrame over the mockup's warm scrim.
+Future<T?> showSheet<T>(BuildContext context, Widget Function(BuildContext) child) => showModalBottomSheet<T>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: const Color(0x6B1E160E),
+      isScrollControlled: true,
+      builder: (c) => SheetFrame(child: child(c)),
+    );

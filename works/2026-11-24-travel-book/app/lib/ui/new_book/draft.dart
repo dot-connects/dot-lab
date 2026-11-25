@@ -16,7 +16,8 @@ class PhotoRef {
 class NoteItem {
   final String title, detail;
   final String? thumb; // handwriting photo
-  const NoteItem(this.title, this.detail, {this.thumb});
+  final bool bad; // could not be read: shown, but left out of the book
+  const NoteItem(this.title, this.detail, {this.thumb, this.bad = false});
 }
 
 const maxMustInclude = 10;

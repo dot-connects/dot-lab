@@ -24,6 +24,8 @@ class DatesScreen extends StatefulWidget {
   final DateTime? start, end;
   final VoidCallback onClose;
   final void Function(DateTime start, DateTime end) onNext;
+  final int? partial; // photos visible under "일부만 허용"; null = full access
+  final VoidCallback? onOpenSettings;
   const DatesScreen({
     super.key,
     required this.month,
@@ -33,6 +35,8 @@ class DatesScreen extends StatefulWidget {
     this.end,
     required this.onClose,
     required this.onNext,
+    this.partial,
+    this.onOpenSettings,
   });
   @override
   State<DatesScreen> createState() => _DatesScreenState();
@@ -41,6 +45,7 @@ class DatesScreen extends StatefulWidget {
 class _DatesScreenState extends State<DatesScreen> {
   late DateTime _m = DateTime(widget.month.year, widget.month.month);
   late DateTime? _s = widget.start, _e = widget.end;
+  bool _goOn = false; // "N장으로 계속" under partial access
 
   void _tap(DateTime d) => setState(() {
         if (_s == null || _e != null || d.isBefore(_s!)) {
@@ -68,6 +73,12 @@ class _DatesScreenState extends State<DatesScreen> {
       right: topLabel('1 / 3'),
       title: '언제 다녀왔어요?',
       body: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+        if (widget.partial != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Warn('사진을 일부만 볼 수 있어요.',
+                '허용한 ${widget.partial}장에서만 찾아요. 모두 허용해야 날짜만으로 여행 사진을 다 찾고, 사진에 든 위치도 읽어요.'),
+          ),
         Row(crossAxisAlignment: CrossAxisAlignment.center, children: [
           Text('${_m.year}. ${_m.month}', style: nm(15, w: FontWeight.w600)),
           const Spacer(),
@@ -106,7 +117,13 @@ class _DatesScreenState extends State<DatesScreen> {
           ]),
         ),
       ]),
-      foot: [Btn('다음', onTap: _s == null ? null : () => widget.onNext(_s!, _e ?? _s!))],
+      fade: widget.partial != null && !_goOn,
+      foot: widget.partial != null && !_goOn
+          ? [
+              Btn('설정에서 모두 허용', onTap: widget.onOpenSettings),
+              Btn('${widget.partial}장으로 계속', ghost: true, onTap: () => setState(() => _goOn = true)),
+            ]
+          : [Btn('다음', onTap: _s == null ? null : () => widget.onNext(_s!, _e ?? _s!))],
     );
   }
 
