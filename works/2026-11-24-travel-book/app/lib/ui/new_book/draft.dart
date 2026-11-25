@@ -1,5 +1,6 @@
 // State of one new book while the person walks the new-book screens. Plain data, no plugins.
 import '../../core/models.dart' show BookOptions;
+import '../../pipeline.dart' show NoteInput;
 
 class Album {
   final String id, name;
@@ -17,7 +18,8 @@ class NoteItem {
   final String title, detail;
   final String? thumb; // handwriting photo
   final bool bad; // could not be read: shown, but left out of the book
-  const NoteItem(this.title, this.detail, {this.thumb, this.bad = false});
+  final NoteInput? input; // what goes to the AI
+  const NoteItem(this.title, this.detail, {this.thumb, this.bad = false, this.input});
 }
 
 const maxMustInclude = 10;

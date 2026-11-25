@@ -6,6 +6,7 @@ class Prefs {
   final File file;
   String shelfView = 'display'; // display|timeline
   String quality = 'reduced'; // reduced|original — default for new books
+  bool onboarded = false;
   Prefs(this.file);
 
   /// Reads [dir]/prefs.json; a missing or broken file gives the defaults.
@@ -15,12 +16,13 @@ class Prefs {
       final j = jsonDecode(p.file.readAsStringSync()) as Map<String, dynamic>;
       p.shelfView = j['shelfView'] as String? ?? p.shelfView;
       p.quality = j['quality'] as String? ?? p.quality;
+      p.onboarded = j['onboarded'] as bool? ?? false;
     } catch (_) {}
     return p;
   }
 
   void save() {
-    final tmp = File('${file.path}.tmp')..writeAsStringSync(jsonEncode({'shelfView': shelfView, 'quality': quality}));
+    final tmp = File('${file.path}.tmp')..writeAsStringSync(jsonEncode({'shelfView': shelfView, 'quality': quality, 'onboarded': onboarded}));
     tmp.renameSync(file.path);
   }
 }

@@ -1,5 +1,9 @@
 // App-screen design tokens, copied from mockups/shelf/r4-all.src.html :root and its classes.
 import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' show Codec, ImmutableBuffer;
+
+import 'package:flutter/foundation.dart' show SynchronousFuture;
 
 import 'package:material_ui/material_ui.dart';
 
@@ -60,5 +64,36 @@ ThemeData appTheme() => ThemeData(
       splashFactory: NoSplash.splashFactory,
     );
 
-/// Asset paths start with "assets/"; anything else is a file on the phone.
-ImageProvider imageOf(String path) => path.startsWith('assets/') ? AssetImage(path) : FileImage(File(path));
+/// "assets/..." = bundled, `gallery:<id>` = a phone photo's thumbnail (via [galleryThumbs]), else a file.
+ImageProvider imageOf(String path) => path.startsWith('assets/')
+    ? AssetImage(path)
+    : path.startsWith('gallery:')
+        ? GalleryImage(path.substring(8))
+        : FileImage(File(path));
+
+/// Thumbnail loader for `gallery:<id>` images; set once at start-up (main.dart) to the phone source.
+Future<Uint8List?> Function(String id, int long)? galleryThumbs;
+
+class GalleryImage extends ImageProvider<GalleryImage> {
+  final String id;
+  final int long;
+  const GalleryImage(this.id, {this.long = 320});
+
+  @override
+  Future<GalleryImage> obtainKey(ImageConfiguration configuration) => SynchronousFuture(this);
+
+  @override
+  ImageStreamCompleter loadImage(GalleryImage key, ImageDecoderCallback decode) =>
+      MultiFrameImageStreamCompleter(codec: _load(decode), scale: 1);
+
+  Future<Codec> _load(ImageDecoderCallback decode) async {
+    final bytes = await galleryThumbs?.call(id, long);
+    if (bytes == null) throw StateError('no thumbnail for $id');
+    return decode(await ImmutableBuffer.fromUint8List(bytes));
+  }
+
+  @override
+  bool operator ==(Object other) => other is GalleryImage && other.id == id && other.long == long;
+  @override
+  int get hashCode => Object.hash(id, long);
+}

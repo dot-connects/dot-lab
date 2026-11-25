@@ -26,6 +26,7 @@ class DatesScreen extends StatefulWidget {
   final void Function(DateTime start, DateTime end) onNext;
   final int? partial; // photos visible under "일부만 허용"; null = full access
   final VoidCallback? onOpenSettings;
+  final ValueChanged<DateTime>? onMonth; // the shown month changed: load its counts into [photos]/[videos]
   const DatesScreen({
     super.key,
     required this.month,
@@ -37,6 +38,7 @@ class DatesScreen extends StatefulWidget {
     required this.onNext,
     this.partial,
     this.onOpenSettings,
+    this.onMonth,
   });
   @override
   State<DatesScreen> createState() => _DatesScreenState();
@@ -84,7 +86,10 @@ class _DatesScreenState extends State<DatesScreen> {
           const Spacer(),
           for (final (g, dm) in [('‹', -1), ('›', 1)])
             GestureDetector(
-              onTap: () => setState(() => _m = DateTime(_m.year, _m.month + dm)),
+              onTap: () {
+                setState(() => _m = DateTime(_m.year, _m.month + dm));
+                widget.onMonth?.call(_m);
+              },
               child: SizedBox(width: 26, height: 26, child: Center(child: Text(g, style: ui(16, color: C.ink2)))),
             ),
         ]),
