@@ -1,0 +1,1373 @@
+<title>여행 책자 전체 화면</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Inter+Tight:wght@300;400;500;700;800&family=Nanum+Myeongjo:wght@700&family=Gothic+A1:wght@800&display=swap">
+<style>
+/* layout: final — every screen of the app, ten labelled rows of 300x640 phone frames in the order a person meets them. app palette = warm paper + ink + oak (rounds 2-3) */
+:root{
+  --bg:#E9E6DF; --fg:#1C1A17; --soft:#6E6A62; --line:#CCC7BC;
+  --paper:#F4EFE7; --ink:#2B2621; --ink2:#7D7366; --oak1:#C69C6D; --oak2:#9A6F45; --tint:#E7DCCB;
+  --f-ui:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif; --f-num:"Inter Tight","IBM Plex Sans KR",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#191816;--fg:#ECE9E2;--soft:#A29E95;--line:#3A3833;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#191816;--fg:#ECE9E2;--soft:#A29E95;--line:#3A3833;color-scheme:dark}
+body{word-break:keep-all;background:var(--bg);color:var(--fg);font-family:var(--f-ui);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+h1{font-size:22px;margin:0 0 6px;text-wrap:balance}
+.lead{color:var(--soft);margin:0 0 14px;max-width:66ch;line-height:1.55}
+.toc{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
+.toc a{font:600 12.5px var(--f-ui);color:var(--fg);text-decoration:none;padding:6px 10px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap}
+.toc a b{font:500 11px var(--f-num);color:var(--soft);margin-left:5px}
+.toc a:focus-visible{outline:2px solid var(--fg);outline-offset:2px}
+.part{margin:0 0 38px;scroll-margin-top:12px}
+.part h2{font-size:17px;margin:0 0 4px}
+.part p.why{color:var(--soft);margin:0 0 12px;max-width:72ch;line-height:1.5}
+.row{display:flex;gap:18px;overflow-x:auto;padding:4px 2px 10px;scroll-snap-type:x mandatory;align-items:flex-start}
+.col{flex:0 0 auto;scroll-snap-align:start;width:300px}
+.cap{font-size:12px;color:var(--soft);margin:9px 0 0;line-height:1.45}
+.cap b{color:var(--fg);font-weight:600}
+.ph{width:300px;height:640px;border-radius:32px;overflow:hidden;position:relative;background:var(--paper);color:var(--ink);box-shadow:0 0 0 1px var(--line),0 12px 32px rgba(0,0,0,.13)}
+.ph.short{height:452px}
+.ph *{box-sizing:border-box}
+.sb{height:30px;flex:none;display:flex;justify-content:space-between;align-items:center;padding:0 22px;font:600 11px var(--f-num)}
+img.c{display:block;width:100%;height:100%;object-fit:cover}
+svg.i{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.btn{display:flex;align-items:center;justify-content:center;height:50px;border-radius:25px;font-weight:600;font-size:15px;background:var(--ink);color:var(--paper)}
+.btn.ghost{background:transparent;color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.btn.sm{height:40px;font-size:13.5px}
+.foot{position:absolute;left:20px;right:20px;bottom:22px;display:grid;gap:10px;z-index:3}
+.fade{position:absolute;left:0;right:0;bottom:0;height:128px;background:linear-gradient(transparent,var(--paper) 46%);z-index:2;pointer-events:none}
+.k{font:500 11px var(--f-num);color:var(--ink2)}
+.flowline{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 28px;padding:0;list-style:none;font-size:12.5px;font-weight:600}
+.flowline li{display:flex;align-items:center;gap:6px}
+.flowline li span{padding:6px 10px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);white-space:nowrap}
+.flowline li.ai span{background:var(--fg);color:var(--bg);box-shadow:none}
+.flowline li.opt span{box-shadow:none;outline:1px dashed var(--soft);outline-offset:-1px;color:var(--soft)}
+.flowline li:not(:last-child):after{content:"→";color:var(--soft);font-weight:400}
+
+/* covers: CSS miniatures (round 2) for the other trips; the Jeju book uses the real theme render */
+.cv{position:relative;overflow:hidden;background:#ddd}
+.cv .tl{position:absolute;color:#fff}
+.cv.a .tl{left:7%;bottom:5%;font:800 2.3em/.8 var(--f-num);letter-spacing:-.05em}
+.cv.a .dt{position:absolute;left:7%;top:6%;color:#fff;font:500 .62em var(--f-num)}
+.cv.a:before{content:"";position:absolute;inset:0;background:linear-gradient(0deg,rgba(0,0,0,.45),transparent 55%)}
+.cv.b{background:#2A45AE}.cv.b img{position:absolute;left:0;right:0;bottom:0;height:58%}
+.cv.b .tl{left:8%;top:9%;font:800 1.5em/1 var(--f-ui);letter-spacing:-.03em}.cv.b .dt{position:absolute;left:8%;top:34%;color:rgba(255,255,255,.85);font:500 .6em var(--f-num)}
+.cv.d{background:#F6F3EC}.cv.d img{position:absolute;left:14%;right:14%;top:16%;width:72%;height:52%}
+.cv.d .tl{left:0;right:0;bottom:12%;text-align:center;color:#2B2621;font:600 .95em var(--f-ui)}.cv.d:after{content:"";position:absolute;left:14%;right:14%;top:12%;height:1px;background:#2B2621;opacity:.4}
+.cv.m .tl{left:6%;top:5%;font:800 1.7em/.95 var(--f-ui);letter-spacing:-.04em;text-shadow:0 1px 8px rgba(0,0,0,.3)}
+.cv.m .dt{position:absolute;right:6%;bottom:5%;color:#fff;font:700 .62em var(--f-num)}
+
+/* first run (round 2) */
+.onb{position:absolute;inset:30px 0 0;display:flex;flex-direction:column;padding:0 24px}
+.onb .art{flex:1;display:flex;align-items:center;justify-content:center;min-height:0}
+.onb h3{font-size:25px;line-height:1.28;margin:0 0 10px;letter-spacing:-.02em;text-wrap:balance}
+.onb p{margin:0;font-size:14px;line-height:1.6;color:#4D463E}
+.onb .dots{display:flex;gap:6px;margin:0 0 18px}.onb .dots i{width:6px;height:6px;border-radius:3px;background:var(--ink);opacity:.2}.onb .dots i.cur{opacity:1;width:20px}
+.onb .sp{height:150px}
+.spread{width:248px;height:186px;display:flex;filter:drop-shadow(0 14px 18px rgba(60,40,20,.22))}
+.spread .pg{flex:1;position:relative;overflow:hidden;background:#fff}
+.spread .pg.l{border-radius:3px 0 0 3px}.spread .pg.r{border-radius:0 3px 3px 0}
+.spread .gut{position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg,transparent 46%,rgba(0,0,0,.18) 50%,transparent 54%)}
+.spread .pg .cp{position:absolute;left:8px;bottom:7px;font:500 8.5px var(--f-num);color:#222}
+.flow{display:flex;align-items:center;gap:8px;font:500 12px var(--f-num)}
+.flow .st{display:grid;justify-items:center;gap:6px}
+.flow .st b{font:300 30px var(--f-num);letter-spacing:-.04em}
+.flow .ar{opacity:.35;font-size:18px}
+.mini{display:grid;grid-template-columns:repeat(5,22px);gap:3px}
+.mini img{width:22px;height:22px;object-fit:cover;border-radius:2px}
+.mini img.x{opacity:.25;filter:grayscale(1)}
+.lock{display:grid;gap:10px;justify-items:center;text-align:center}
+.lock .ph1{width:120px;height:160px;border-radius:16px;background:#fff;box-shadow:0 10px 24px rgba(60,40,20,.15);display:grid;place-items:center;position:relative}
+.lock .ph1 img{width:96px;height:120px;object-fit:cover;border-radius:6px}
+.lock .tag{font:500 11px var(--f-num);background:var(--tint);border-radius:12px;padding:5px 10px}
+
+/* home (round 2) */
+.hd{padding:10px 20px 0;display:flex;justify-content:space-between;align-items:flex-end}
+.hd h3{margin:0;font-size:24px;letter-spacing:-.02em}
+.hd .sub{font:500 11px var(--f-num);color:var(--ink2);margin-top:3px}
+.hd .rt{display:flex;align-items:center;gap:8px}
+.hd .gear{width:30px;height:30px;border-radius:15px;display:grid;place-items:center;color:var(--ink2)}
+.mode{display:flex;background:var(--tint);border-radius:16px;padding:3px}
+.mode span{font-size:11.5px;font-weight:600;padding:5px 10px;border-radius:13px;color:var(--ink2)}
+.mode span.on2{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.1)}
+.wall{position:absolute;inset:104px 0 0;overflow:hidden;background:linear-gradient(#F4EFE7,#EFE8DC)}
+.shelfA{position:relative;padding:0 0 0 20px;height:200px}
+.shelfA .books{position:absolute;left:0;right:0;bottom:12px;display:flex;align-items:flex-end;gap:26px;padding:0 22px;overflow:visible}
+.shelfA .bk{position:relative;flex:none}
+.shelfA .bk .cv{font-size:10px;box-shadow:1px 0 0 rgba(255,255,255,.25) inset,6px 8px 14px rgba(70,45,20,.28)}
+.shelfA .bk .edge{position:absolute;top:2px;bottom:0;right:calc(-1*var(--th));width:var(--th);background:repeating-linear-gradient(90deg,#F3EEE4 0 1px,#DCD4C6 1px 2px);transform:skewY(-28deg);transform-origin:left top}
+.shelfA .board{position:absolute;left:0;right:0;bottom:0;height:12px;background:linear-gradient(var(--oak1),var(--oak2));box-shadow:0 4px 8px rgba(70,40,15,.25)}
+.shelfA .board:before{content:"";position:absolute;left:0;right:0;top:-5px;height:5px;background:linear-gradient(transparent,rgba(70,40,15,.12))}
+.fab{position:absolute;right:20px;bottom:24px;height:52px;padding:0 20px 0 16px;border-radius:26px;background:var(--ink);color:var(--paper);display:flex;align-items:center;gap:6px;font-weight:600;font-size:14px;box-shadow:0 8px 18px rgba(40,25,10,.3)}
+.fab i{font-style:normal;font-size:22px;line-height:1;margin-top:-2px}
+.tlv{position:absolute;inset:100px 0 0;overflow:hidden}
+.yr{padding:12px 20px 0;display:flex;align-items:baseline;gap:10px}
+.yr b{font:300 40px/1 var(--f-num);letter-spacing:-.05em}
+.yr span{font:500 11px var(--f-num);color:var(--ink2)}
+.track{position:relative;margin:10px 0 0;padding:0 20px 0 40px}
+.track:before{content:"";position:absolute;left:26px;top:0;bottom:0;width:1px;background:var(--line)}
+.trip{position:relative;display:flex;gap:12px;align-items:stretch;padding:0 0 14px}
+.trip:before{content:"";position:absolute;left:-17px;top:10px;width:7px;height:7px;border-radius:4px;background:var(--ink)}
+.trip .cv{flex:none;width:76px;height:101px;font-size:7.6px;box-shadow:3px 4px 10px rgba(70,45,20,.22)}
+.trip .meta{display:flex;flex-direction:column;justify-content:space-between;padding:4px 0 2px;min-width:0}
+.trip .meta .m{font:500 10.5px var(--f-num);color:var(--ink2)}
+.trip .meta b{font-size:15px;margin-top:2px;display:block}
+.trip .meta .n{display:flex;gap:10px;font:500 10.5px var(--f-num);color:var(--ink2)}
+.trip .meta .n em{font-style:normal;color:var(--ink);font-weight:700}
+/* long-press menu */
+.pop{position:absolute;z-index:7;width:168px;background:var(--paper);border-radius:16px;box-shadow:0 12px 30px rgba(40,25,10,.35);padding:6px;font-size:13.5px;font-weight:600}
+.pop>div{display:flex;align-items:center;gap:10px;height:42px;padding:0 10px;border-radius:10px}
+.pop>div.del{display:block;height:auto;padding:10px;background:#EFDCC2;margin-top:2px}
+.pop .del b{display:block}.pop .del small{display:block;font-weight:400;font-size:11px;color:#4D463E;margin:2px 0 9px;line-height:1.4}
+.pop .del p{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:0}
+.pop .del p span{height:34px;border-radius:17px;display:grid;place-items:center;font-size:12.5px;box-shadow:inset 0 0 0 1.5px var(--ink)}
+.pop .del p span.go{background:var(--ink);color:var(--paper);box-shadow:none}
+
+/* new book shell (round 3) */
+.nb{position:absolute;inset:30px 0 0;padding:4px 20px 0}
+.nb .top{display:flex;justify-content:space-between;align-items:center;font:500 11px var(--f-num);color:var(--ink2);height:16px}
+.nb .top b{font:600 12.5px var(--f-ui);color:var(--ink)}
+.nb h3{font-size:21px;margin:10px 0 14px;letter-spacing:-.02em;line-height:1.25}
+.nb h3 small{font-size:13px;color:var(--ink2);font-weight:500}
+.nb p.s{margin:-8px 0 12px;font-size:12px;line-height:1.5;color:#4D463E}
+.mon{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+.mon b{font:600 15px var(--f-num)}.mon span{font-size:16px;color:var(--ink2);letter-spacing:6px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);row-gap:2px;font:500 12.5px var(--f-num);text-align:center}
+.cal .w{font-size:10px;color:var(--ink2);padding-bottom:4px}
+.cal span{height:32px;display:flex;align-items:center;justify-content:center;position:relative}
+.cal .has:after{content:"";position:absolute;bottom:3px;width:4px;height:4px;border-radius:2px;background:var(--oak2)}
+.cal .in{background:var(--tint)}.cal .s{border-radius:16px 0 0 16px}.cal .e{border-radius:0 16px 16px 0}
+.cal .s b,.cal .e b{width:32px;height:32px;border-radius:16px;display:flex;align-items:center;justify-content:center;background:var(--ink);color:var(--paper)}
+.cal .s.has:after,.cal .e.has:after{background:var(--paper);z-index:1}
+.sum{display:flex;justify-content:space-between;align-items:baseline;border-top:1px solid var(--line);margin-top:10px;padding-top:10px}
+.sum b{font:600 15px var(--f-num)}.sum span{font:500 11.5px var(--f-num);color:var(--ink2)}
+.days3{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:12px}
+.days3 div{border-radius:12px;background:#EFE8DD;padding:8px 10px;font:500 11px var(--f-num);color:var(--ink2)}
+.days3 div b{display:block;font:600 16px var(--f-num);color:var(--ink);margin-top:2px}
+.ck{width:22px;height:22px;border-radius:11px;box-shadow:inset 0 0 0 1.5px var(--ink2);flex:none;display:grid;place-items:center}
+.ck.on{background:var(--ink);box-shadow:none}
+.ck.on:after{content:"";width:9px;height:5px;border:solid var(--paper);border-width:0 0 2px 2px;transform:translateY(-1.5px) rotate(-45deg)}
+.ck.some{background:var(--ink);box-shadow:none}
+.ck.some:after{content:"";width:9px;height:2px;background:var(--paper);border-radius:1px}
+.all{display:flex;align-items:center;gap:10px;padding:2px 8px 10px;margin-bottom:2px}
+.all .t{flex:1}.all .t b{display:block;font-size:13.5px}.all .t small{font-size:11px;color:var(--ink2)}
+.albs{display:grid;gap:8px}
+.alb{display:flex;align-items:center;gap:10px;padding:8px;border-radius:14px;background:#EFE8DD}
+.alb img{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none}
+.alb .t{flex:1;min-width:0}.alb .t b{display:block;font-size:13.5px}.alb .t small{font:500 11px var(--f-num);color:var(--ink2)}
+.alb.sel{background:#E4D7C3}
+.alb.zero{opacity:.42}.alb.zero .ck{box-shadow:inset 0 0 0 1.5px #B9AE9E}
+.add{display:grid;gap:8px;margin-top:2px}
+.add>div{display:flex;gap:12px;align-items:center;padding:11px 12px;border-radius:14px;background:#EFE8DD}
+.add>div.fill{background:#E4D7C3}
+.add>div.bad{background:#EFDCC2;box-shadow:inset 0 0 0 1px #D3B48A}
+.add i.ic{width:36px;height:36px;border-radius:10px;background:var(--paper);display:grid;place-items:center;flex:none}
+.add .t{flex:1;min-width:0}
+.add b{display:block;font-size:13.5px}.add small{font-size:11px;color:var(--ink2);line-height:1.38;display:block;margin-top:1px}
+.add .bad small{color:#4D463E}
+.add .go{color:var(--ink2);font-size:16px;flex:none}
+.add .go.ok{width:20px;height:20px;border-radius:10px;background:var(--ink);display:grid;place-items:center}
+.add .go.ok:after{content:"";width:8px;height:4px;border:solid var(--paper);border-width:0 0 2px 2px;transform:translateY(-1px) rotate(-45deg)}
+.stack{display:flex;flex:none}
+.stack img{width:30px;height:30px;border-radius:7px;object-fit:cover;box-shadow:0 0 0 2px #E4D7C3;margin-left:-9px}
+.stack img:first-child{margin-left:0}
+.est{margin-top:12px;padding:12px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);font-size:12px;line-height:1.55;color:#4D463E}
+.est b{font-family:var(--f-num);color:var(--ink)}
+.chips{display:flex;gap:6px;margin:0 0 12px}
+.chips span{flex:1;height:30px;border-radius:15px;background:#EFE8DD;display:flex;align-items:center;justify-content:center;gap:5px;font:600 12px var(--f-num);color:var(--ink2)}
+.chips span i{font-style:normal;font-weight:500;font-size:10.5px;opacity:.8}
+.chips span.on{background:var(--ink);color:var(--paper)}
+.chips span em{width:5px;height:5px;border-radius:3px;background:var(--oak2)}
+.chips span.on em{background:var(--oak1)}
+.dh{display:flex;justify-content:space-between;align-items:baseline;height:22px;margin-top:10px}
+.dh:first-of-type{margin-top:0}
+.dh b{font:600 12.5px var(--f-ui)}.dh span{font:500 11px var(--f-num);color:var(--ink2)}
+.g{display:grid;gap:4px}
+.g4{grid-template-columns:repeat(4,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+.g>div{position:relative;aspect-ratio:1;border-radius:6px;overflow:hidden;background:#DDD3C4}
+.g4>div .ck{position:absolute;right:4px;top:4px;width:20px;height:20px;border-radius:10px;box-shadow:inset 0 0 0 1.5px #fff,0 0 0 .5px rgba(0,0,0,.25);background:rgba(0,0,0,.14)}
+.g4>div .ck.on{background:var(--ink);box-shadow:0 0 0 1.5px #fff}
+.g4>div.on img{transform:scale(.86);border-radius:4px}
+.g4>div.on{background:#D9C9B0}
+.g .must{position:absolute;right:3px;top:3px;width:16px;height:16px;border-radius:8px;background:var(--ink);color:var(--paper);font:700 9px/16px var(--f-ui);text-align:center;box-shadow:0 0 0 1.5px var(--paper)}
+.g .cvb{position:absolute;left:0;bottom:0;background:var(--ink);color:var(--paper);font:600 9px/1 var(--f-ui);padding:3px 5px 4px;border-radius:0 5px 0 0}
+.g .plus{background:transparent;box-shadow:inset 0 0 0 1.5px #BBAA90;display:grid;place-items:center;color:var(--ink2);font:300 22px/1 var(--f-num)}
+.g .cur{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink);overflow:visible}.g .cur img{border-radius:6px}
+
+/* book-shape options (new) */
+.ol{display:flex;justify-content:space-between;align-items:baseline;margin:14px 0 7px;font-size:12.5px}
+.ol b{font-weight:700}.ol small{font-size:11px;color:var(--ink2)}
+.ol:first-of-type{margin-top:0}
+.ths{display:grid;grid-template-columns:repeat(3,1fr);gap:10px 6px}
+.th{display:grid;justify-items:center;text-align:center;position:relative}
+.th img{width:63px;height:84px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px #D8CDBC,2px 3px 8px rgba(70,45,20,.18);display:block}
+.th b{font-size:11.5px;margin-top:6px;line-height:1.2}
+.th small{font-size:10px;color:var(--ink2);line-height:1.3}
+.th.on img{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
+.th.on small{color:var(--ink);font-weight:600}
+.shp h3{margin-bottom:10px}.shp .ol{margin:10px 0 6px}.shp .ths{row-gap:7px}.shp .th img{width:54px;height:72px}.shp .th b{margin-top:5px}.shp .th u{margin-left:9px}.shp .more{margin-top:11px;padding:8px 12px}
+.th u{position:absolute;top:-5px;left:50%;margin-left:14px;text-decoration:none;font:700 9.5px/1 var(--f-ui);background:var(--ink);color:var(--paper);padding:4px 6px;border-radius:8px;box-shadow:0 0 0 1.5px var(--paper)}
+.sg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:6px}
+.sg>div{border-radius:12px;background:#EFE8DD;padding:8px 4px 9px;text-align:center;font-size:12.5px;font-weight:600;line-height:1.25}
+.sg>div small{display:block;font:500 10.5px/1.3 var(--f-num);color:var(--ink2);margin-top:2px}
+.sg>div.on{background:var(--ink);color:var(--paper)}.sg>div.on small{color:#CFC6B9}
+.sg u{text-decoration:none;font-size:9.5px;font-weight:700;color:var(--oak2);margin-left:3px;vertical-align:1px}
+.sg .on u{color:var(--oak1)}
+.sg.one>div{padding:9px 4px}
+.more{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:14px;padding:11px 12px;border-radius:14px;box-shadow:inset 0 0 0 1px var(--line);font-size:12.5px;font-weight:700}
+.more small{display:block;font-weight:400;font-size:10.5px;color:var(--ink2);margin-top:1px}
+.more span{font:500 11px var(--f-num);color:var(--ink2);white-space:nowrap}
+.eg{margin:7px 0 0;font-size:11px;color:var(--ink2);line-height:1.45}
+.eg b{color:var(--ink);font-weight:500}
+.tg{width:40px;height:24px;border-radius:12px;background:#D8CDBC;position:relative;flex:none}
+.tg:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:9px;background:var(--paper)}
+.tg.on{background:var(--ink)}.tg.on:after{left:19px}
+.rw{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.rw:first-of-type{border-top:0;padding-top:2px}
+.rw .t{flex:1;min-width:0}.rw .t b{display:block;font-size:12.5px;font-weight:600}.rw .t small{display:block;font-size:10.5px;color:var(--ink2);line-height:1.38;margin-top:1px}
+.rw .v{font:500 11.5px var(--f-num);color:var(--ink2);white-space:nowrap}
+.chs{display:flex;flex-wrap:wrap;gap:6px}
+.chs span{height:30px;padding:0 12px;border-radius:15px;background:#EFE8DD;display:flex;align-items:center;font-size:12px;font-weight:600}
+.chs span.on{background:var(--ink);color:var(--paper)}
+
+/* diary / timeline */
+.ways{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.ways div{border-radius:14px;background:#EFE8DD;padding:12px 4px 10px;display:grid;justify-items:center;gap:6px;font-size:12px;font-weight:600;text-align:center}
+.ways small{font-weight:400;font-size:10px;color:var(--ink2);line-height:1.3}
+.hw{position:relative;overflow:hidden;border-radius:7px;width:36px;height:36px;flex:none}
+.tsteps{display:grid;gap:8px}
+.tsteps>div{display:flex;gap:12px;align-items:center;padding:9px;border-radius:14px;background:#EFE8DD}
+.tsteps .il{width:92px;height:64px;border-radius:9px;background:var(--paper);flex:none;padding:7px 8px;display:grid;gap:4px;align-content:center;font:500 8.5px/1 var(--f-ui);color:var(--ink2)}
+.tsteps .il span{display:flex;align-items:center;gap:4px;height:11px;padding:0 4px;border-radius:3px;white-space:nowrap}
+.tsteps .il span:before{content:"";width:5px;height:5px;border-radius:3px;background:#CFC4B3;flex:none}
+.tsteps .il span.hi{background:var(--ink);color:var(--paper)}.tsteps .il span.hi:before{background:var(--oak1)}
+.tsteps .il.f{justify-items:center;gap:5px;color:var(--ink)}
+.tsteps .t{flex:1;font-size:12px;line-height:1.45}
+.tsteps .t b{display:block;font:300 20px/1 var(--f-num);margin-bottom:3px}
+
+/* working */
+.work{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:2px 0 18px}
+.work img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:5px;display:block}
+.work img.x{opacity:.22;filter:grayscale(1)}
+.steps{display:grid}
+.steps div{display:flex;align-items:baseline;gap:10px;padding:10px 0;border-top:1px solid var(--line)}
+.steps div span{flex:1;font-size:12.5px;line-height:1.4}
+.steps div span small{display:block;font-size:11px;color:var(--ink2);margin-top:1px}
+.steps div b{font:300 26px/1 var(--f-num);letter-spacing:-.04em}
+.steps div b small{font-size:13px;font-weight:400;color:var(--ink2);letter-spacing:0}
+.steps div.now b{font-weight:700}
+.steps div.now span:before{content:"";display:inline-block;width:7px;height:7px;border-radius:4px;background:var(--oak2);margin-right:7px;vertical-align:1px}
+.steps div.wait{color:var(--ink2)}.steps div.wait b{font-size:15px;font-weight:400}
+.priv{margin:14px 0 0;padding:11px 12px;border-radius:14px;background:#EFE8DD;font-size:11.5px;line-height:1.5;color:#4D463E}
+.wr{display:flex;gap:12px;align-items:flex-end;margin:0 0 16px;padding:12px;border-radius:14px;background:#fff;box-shadow:0 6px 16px rgba(60,40,20,.12)}
+.wr img{width:92px;height:122px;object-fit:cover;flex:none}
+.wr p{margin:0;font-size:12px;line-height:1.5}
+.wr p small{display:block;font:500 10.5px var(--f-num);color:var(--ink2);margin-bottom:3px}
+.wr p i{display:inline-block;width:1.5px;height:13px;background:var(--ink);vertical-align:-2px;margin-left:2px}
+.pair{display:grid;gap:8px}
+.pair div{position:relative;height:172px;border-radius:12px;overflow:hidden}
+.pair div span{position:absolute;left:8px;bottom:8px;background:rgba(24,20,16,.72);color:#fff;font:600 11px var(--f-num);padding:5px 8px;border-radius:10px}
+.pmeta{display:flex;justify-content:space-between;align-items:center;margin-top:12px;font-size:12px}
+.pmeta b{font-weight:600}
+.pdots{display:flex;gap:5px}.pdots i{width:6px;height:6px;border-radius:3px;background:var(--ink);opacity:.2}.pdots i.cur{opacity:1;width:18px}
+.pnote{margin:14px 0 0;font-size:11.5px;line-height:1.5;color:var(--ink2)}
+.shape{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:11.5px;color:#4D463E;padding:0 4px}
+.shape b{font-weight:600;color:var(--ink);white-space:nowrap}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(30,22,14,.42);z-index:4}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:5;background:var(--paper);border-radius:24px 24px 0 0;padding:8px 20px 20px;box-shadow:0 -8px 24px rgba(40,25,10,.2)}
+.sheet:before{content:"";display:block;width:36px;height:4px;border-radius:2px;background:#CFC4B3;margin:0 auto 12px}
+.sheet .big{height:150px;border-radius:12px;overflow:hidden}
+.sheet .mt{display:flex;justify-content:space-between;align-items:baseline;margin:10px 0 12px}
+.sheet .mt b{font-size:14.5px}.sheet .mt span{font:500 11px var(--f-num);color:var(--ink2)}
+.sheet .lb{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:600;margin:0 0 7px}
+.sheet .lb small{font-weight:400;font-size:11px;color:var(--ink2)}
+.alts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.alts div{font:500 10.5px var(--f-num);color:var(--ink2)}
+.alts div img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;display:block;margin-bottom:4px}
+.alts div b{display:block;color:var(--ink);font:600 10.5px var(--f-ui)}
+.alts div.more i{display:grid;place-items:center;aspect-ratio:1;border-radius:8px;box-shadow:inset 0 0 0 1.5px #BBAA90;font:600 12px var(--f-num);font-style:normal;margin-bottom:4px}
+.alts div.more{display:block;margin:0;padding:0;box-shadow:none;border-radius:0}
+.acts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+.acts .btn{height:46px;font-size:14px}
+.sheet h4{margin:0;font-size:16px;line-height:1.35}
+.sheet .hh{display:flex;justify-content:space-between;align-items:baseline;margin:0 0 10px}
+.sheet .hh span{font:500 11px var(--f-num);color:var(--ink2)}
+.sheet p.s{margin:6px 0 12px;font-size:12px;line-height:1.5;color:#4D463E}
+.warn{padding:11px 12px;border-radius:14px;background:#EFDCC2;box-shadow:inset 0 0 0 1px #D3B48A;font-size:11.5px;line-height:1.5;color:#3A322A}
+.warn b{font-weight:700}
+.price{display:flex;justify-content:space-between;align-items:baseline;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);margin:12px 0;font-size:13px}
+.price b{font:700 20px var(--f-num)}
+.incl{margin:0;padding:0;list-style:none;display:grid;gap:6px;font-size:12.5px}
+.incl li{display:flex;gap:8px;align-items:baseline}
+.incl li:before{content:"";width:9px;height:5px;border:solid var(--ink);border-width:0 0 2px 2px;transform:translateY(-3px) rotate(-45deg);flex:none}
+
+/* book viewer */
+.vw{display:flex;flex-direction:column;background:#E6DDCF}
+.vw .bar{height:44px;flex:none;display:flex;align-items:center;gap:6px;padding:0 12px 0 18px;font-size:13px}
+.vw .bar b{flex:1;font-size:14.5px;white-space:nowrap;margin-left:6px}
+.vw .bar em{font-style:normal;font-weight:600;font-size:12.5px;height:30px;padding:0 11px;border-radius:15px;display:flex;align-items:center;box-shadow:inset 0 0 0 1.5px var(--ink);white-space:nowrap}
+.vw .bar em.f{background:var(--ink);color:var(--paper);box-shadow:none}
+.vw .stg{flex:1;position:relative;overflow:hidden}
+.vw .pgs{position:absolute;top:10px;display:flex;gap:8px}
+.vw .pgs img{width:264px;height:352px;display:block;flex:none;border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.14),0 10px 24px rgba(60,40,20,.2)}
+.vw .ind{position:absolute;left:0;right:0;top:374px;text-align:center;font:600 12px var(--f-num)}
+.vw .ind small{font-weight:500;color:var(--ink2);margin-left:6px}
+.vw .film{position:absolute;left:18px;top:400px;display:flex;gap:4px}
+.vw .film img{width:33px;height:44px;object-fit:cover;border-radius:1.5px;display:block;opacity:.6;flex:none}
+.vw .film img.cur{opacity:1;box-shadow:0 0 0 1.5px #E6DDCF,0 0 0 3px var(--ink)}
+.vw .film i{width:1px;background:#BBAA90;margin:0 3px;flex:none}
+.vw .tip{position:absolute;left:18px;right:18px;bottom:20px;padding:11px 14px;border-radius:14px;background:var(--ink);color:var(--paper);font-size:12px;line-height:1.45;display:flex;gap:10px;align-items:center;justify-content:space-between}
+.vw .tip b{font-weight:600;color:var(--oak1);white-space:nowrap}
+.vw .tip.soft{background:var(--paper);color:#4D463E;box-shadow:0 4px 12px rgba(60,40,20,.12)}
+.vw .bn{position:absolute;left:14px;right:14px;top:8px;z-index:3;padding:11px 12px;border-radius:14px;background:var(--ink);color:var(--paper);font-size:11.5px;line-height:1.5}
+.vw .bn b{display:block;font-size:13px;margin-bottom:2px}
+.vw .bn p{display:flex;gap:6px;margin:9px 0 0}
+.vw .bn p span{height:32px;padding:0 14px;border-radius:16px;display:flex;align-items:center;font-weight:600;font-size:12px;background:var(--paper);color:var(--ink)}
+.vw .bn p span.gh{background:transparent;color:var(--paper);box-shadow:inset 0 0 0 1.5px rgba(244,239,231,.6)}
+.opt2{display:grid;gap:8px}
+.opt2>div{display:flex;gap:12px;align-items:center;padding:13px 12px;border-radius:14px;background:#EFE8DD}
+.opt2 i.ic{width:36px;height:36px;border-radius:10px;background:var(--paper);display:grid;place-items:center;flex:none}
+.opt2 b{display:block;font-size:14px}.opt2 small{display:block;font-size:11px;color:var(--ink2);line-height:1.4;margin-top:1px}
+
+/* edit: the approved 6 decision cards, in the app palette (ink buttons on paper) */
+.ed{--ov:#D8CDBC;--onv:#5F564B;display:flex;flex-direction:column}
+.ed .bar{height:40px;flex:none;display:flex;align-items:center;gap:8px;padding:0 14px 0 18px;font-size:13px}
+.ed .bar b{font-size:15px;flex:1}.ed .bar span{font:600 11.5px var(--f-num);color:var(--onv)}.ed .bar em{font-style:normal;font-weight:700;padding-left:6px;text-decoration:underline;text-underline-offset:3px}
+.ed .prog{display:flex;gap:3px;padding:0 18px 8px;flex:none}.ed .prog i{flex:1;height:3px;border-radius:2px;background:var(--ov)}.ed .prog i.on{background:var(--ink)}
+.ed .stage{flex:1;min-height:0;background:#E6DDCF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;position:relative;overflow:hidden}
+.ed .pgi{position:relative;width:132px;aspect-ratio:3/4;flex:none;box-shadow:0 1px 2px rgba(0,0,0,.14),0 10px 24px rgba(60,40,20,.2)}
+.ed .pgi img{display:block;width:100%;height:100%;object-fit:cover;border-radius:2px}
+.ed .pgi .box{position:absolute;border:1.5px dashed #fff;border-radius:2px;box-shadow:0 0 0 1px rgba(0,0,0,.25)}
+.ed .pgi .selb{position:absolute;border:2px solid #fff;box-shadow:0 0 0 2px var(--ink);display:grid;place-items:center}
+.ed .pgi .selb span{background:rgba(24,20,16,.78);color:#fff;font-size:10px;font-weight:600;padding:5px 8px;border-radius:10px;white-space:nowrap}
+.ed .nav{display:flex;align-items:center;gap:6px;font:600 11px var(--f-num)}
+.ed .nav span{background:var(--paper);height:26px;min-width:26px;padding:0 9px;border-radius:13px;display:grid;place-items:center}
+.ed .card{flex:none;padding:14px 18px 16px;border-top:1px solid var(--ov);background:var(--paper)}
+.ed .card h4{margin:0 0 10px;font-size:17px;font-weight:700;display:flex;justify-content:space-between;align-items:baseline}
+.ed .card h4 small,.ed .lb small{font-size:11px;font-weight:400;color:var(--onv)}
+.ed .cvs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ed .cvs div{display:grid;justify-items:center;gap:5px;font-size:11px;font-weight:600;color:var(--onv)}
+.ed .cvs img{width:56px;height:74px;object-fit:cover;border-radius:2px;box-shadow:0 0 0 1px var(--ov);display:block}
+.ed .cvs .on{color:var(--ink)}.ed .cvs .on img{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
+.ed .lb{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:700;margin:13px 0 7px}
+.ed .pts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ed .pts div{height:42px;border-radius:8px;overflow:hidden;position:relative}
+.ed .pts .on{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink);overflow:visible}.ed .pts .on img{border-radius:8px}
+.ed .pts .more{box-shadow:inset 0 0 0 1px var(--ink2);display:grid;place-items:center;font-size:11px;font-weight:600;margin:0;padding:0}
+.ed .sws{display:flex;gap:9px}
+.ed .sws i{width:28px;height:28px;border-radius:14px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.12)}
+.ed .sws i.on{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
+.ed .sws i.any{background:conic-gradient(#e5484d,#f5a524,#e7d33a,#46a758,#3e8eed,#8e4ec6,#e5484d)}
+.ed .hint{margin:10px 0 0;font-size:11px;line-height:1.45;color:var(--onv)}
+.ed .bts{display:flex;gap:7px;margin-top:14px}
+.ed .bts span{height:44px;border-radius:22px;display:flex;align-items:center;justify-content:center;font-size:13.5px;font-weight:600;width:62px;box-shadow:inset 0 0 0 1.5px var(--ink)}
+.ed .bts span.off{opacity:.3}
+.ed .bts span.go{flex:1;background:var(--ink);color:var(--paper);box-shadow:none}
+.ed .sheet .btn{margin-top:14px;height:46px;font-size:14px}
+.ed .fts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ed .fts div{border-radius:12px;background:#EFE8DD;padding:10px 8px 8px;font-size:10.5px;color:var(--onv);font-weight:600}
+.ed .fts div b{display:block;font-size:22px;line-height:1;color:var(--ink);margin-bottom:6px;letter-spacing:-.03em}
+.ed .fts div.on{background:var(--paper);box-shadow:inset 0 0 0 2px var(--ink);color:var(--ink)}
+.ed .eacts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.ed .eacts div{height:52px;border-radius:12px;background:#EFE8DD;display:grid;place-items:center;align-content:center;gap:3px;font-size:11.5px;font-weight:600}
+.ed .eacts div.on{background:var(--ink);color:var(--paper)}
+.ed .ealts{display:flex;gap:7px;margin-top:10px;overflow:hidden}
+.ed .ealts div{flex:none;width:52px;font:500 10px var(--f-num);color:var(--onv)}
+.ed .ealts img{width:52px;height:52px;object-fit:cover;border-radius:8px;display:block;margin-bottom:3px}
+.ed .ealts .on img{box-shadow:0 0 0 2px var(--paper),0 0 0 4px var(--ink)}
+.ed .ealts b{display:block;font:600 10px var(--f-ui);color:var(--ink)}
+.ed .strip{display:flex;gap:8px;padding:0 18px;align-self:flex-start}
+.ed .strip div{flex:none;font:500 10px var(--f-num);color:var(--onv);text-align:center}
+.ed .strip img{width:84px;height:112px;object-fit:cover;display:block;margin-bottom:5px;border-radius:2px;box-shadow:0 4px 10px rgba(60,40,20,.18)}
+.ed .scap{align-self:flex-start;padding:0 18px;font-size:11.5px;font-weight:600;color:var(--onv)}
+.ed .smy div{display:flex;align-items:center;gap:8px;height:36px;border-top:1px solid var(--ov);font-size:12px}
+.ed .smy div:first-child{border-top:0}
+.ed .smy b{width:68px;flex:none;font-weight:600}
+.ed .smy span{flex:1;color:var(--onv);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ed .smy em{font-style:normal;font-size:10px;font-weight:700;background:var(--ink);color:var(--paper);border-radius:6px;padding:3px 5px}
+.ed .smy i{font-style:normal;color:var(--ink2)}
+.ed .tch{display:flex;flex-wrap:wrap;gap:6px}
+.ed .tch span{height:34px;padding:0 13px;border-radius:10px;display:flex;align-items:center;font-size:13px;font-weight:600;box-shadow:inset 0 0 0 1.5px var(--ink2)}
+.ed .tch span.on{background:var(--ink);color:var(--paper);box-shadow:none}
+
+/* export */
+.bkrow{display:flex;gap:12px;align-items:center;margin:0 0 14px}
+.bkrow img{width:45px;height:60px;object-fit:cover;border-radius:2px;box-shadow:2px 3px 8px rgba(70,45,20,.22);flex:none}
+.bkrow b{display:block;font-size:14.5px}.bkrow small{font:500 11px var(--f-num);color:var(--ink2)}
+.pb{height:4px;border-radius:2px;background:#D8CDBC;margin-top:7px}
+.pb i{display:block;height:100%;border-radius:2px;background:var(--ink)}
+.vid{position:relative;width:158px;height:281px;border-radius:14px;overflow:hidden;margin:0 auto;box-shadow:0 10px 24px rgba(60,40,20,.22)}
+.vid:after{content:"";position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px;border-radius:22px;background:rgba(255,255,255,.92)}
+.vid:before{content:"";position:absolute;z-index:1;left:50%;top:50%;margin:-8px 0 0 -5px;border-left:13px solid var(--ink);border-top:8px solid transparent;border-bottom:8px solid transparent}
+.vid span{position:absolute;right:8px;bottom:8px;background:rgba(24,20,16,.72);color:#fff;font:600 11px var(--f-num);padding:4px 7px;border-radius:9px}
+.vmeta{text-align:center;margin:12px 0 0;font:500 11.5px var(--f-num);color:var(--ink2)}
+.vmeta b{display:block;font:600 14.5px var(--f-ui);color:var(--ink);margin-bottom:2px}
+.sbd{display:flex;gap:3px;margin:0 0 4px}
+.sbd img{flex:1;min-width:0;height:44px;object-fit:cover;border-radius:4px;display:block}
+.mus{display:grid}
+.mus div{display:flex;align-items:center;gap:10px;height:38px;border-top:1px solid var(--line);font-size:12.5px;font-weight:600}
+.mus div:first-child{border-top:0}
+.mus div span{flex:1}.mus div small{font:500 10.5px var(--f-num);color:var(--ink2)}
+.mus .rd{width:18px;height:18px;border-radius:9px;box-shadow:inset 0 0 0 1.5px var(--ink2);flex:none}
+.mus .on .rd{box-shadow:inset 0 0 0 5.5px var(--ink)}
+.link{text-align:center;font-size:12px;font-weight:600;text-decoration:underline;text-underline-offset:3px;color:var(--ink)}
+
+.notes{max-width:72ch;line-height:1.6;font-size:14px}
+.notes h2{font-size:17px;margin:0 0 6px}
+.notes ul{padding-left:20px;margin:0 0 18px}
+.notes li{margin-bottom:6px}
+.notes li b{font-weight:600}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-photo" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="m8.5 12.2 2.4 2.4 4.6-5"/></symbol>
+  <symbol id="i-pen" viewBox="0 0 24 24"><path d="M4 20l1-4L16.5 4.5l3 3L8 19l-4 1z"/><path d="m14.5 6.5 3 3"/></symbol>
+  <symbol id="i-route" viewBox="0 0 24 24"><circle cx="6" cy="18" r="2"/><circle cx="18" cy="6" r="2"/><path d="M8 18h6a3 3 0 0 0 0-6h-4a3 3 0 0 1 0-6h6"/></symbol>
+  <symbol id="i-paste" viewBox="0 0 24 24"><rect x="6" y="5" width="12" height="15" rx="2"/><path d="M9 5V3.8h6V5M9 11h6M9 15h4"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4"/></symbol>
+  <symbol id="i-cam" viewBox="0 0 24 24"><rect x="3.5" y="7" width="17" height="12" rx="2.5"/><circle cx="12" cy="13" r="3.2"/><path d="M8.5 7l1.2-2h4.6l1.2 2"/></symbol>
+  <symbol id="i-imgs" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="m4 16 4.5-4.5 3.5 3.5 2.5-2.5L20 17"/></symbol>
+  <symbol id="i-pdf" viewBox="0 0 24 24"><path d="M7 3.5h7l4 4v13H7z"/><path d="M14 3.5v4h4M10 13h5M10 16.5h5"/></symbol>
+  <symbol id="i-film" viewBox="0 0 24 24"><rect x="3.5" y="6" width="17" height="12" rx="2.5"/><path d="m10.5 9.5 4 2.5-4 2.5z"/></symbol>
+  <symbol id="i-share" viewBox="0 0 24 24"><circle cx="6.5" cy="12" r="2"/><circle cx="17" cy="6.5" r="2"/><circle cx="17" cy="17.5" r="2"/><path d="m8.3 11 6.9-3.6M8.3 13l6.9 3.6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5V6M12 18v2.5M3.5 12H6M18 12h2.5M6 6l1.8 1.8M16.2 16.2 18 18M18 6l-1.8 1.8M7.8 16.2 6 18"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M4 8h14l-3-3M20 16H6l3 3"/></symbol>
+  <symbol id="i-move" viewBox="0 0 24 24"><path d="M12 3.5v17M3.5 12h17M9.5 6 12 3.5 14.5 6M9.5 18l2.5 2.5 2.5-2.5M6 9.5 3.5 12 6 14.5M18 9.5l2.5 2.5-2.5 2.5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M5 7h14M9.5 7V5h5v2M7 7l.8 12.5h8.4L17 7"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 6.5c-2-1.5-4.5-1.8-7.5-1.5v13c3-.3 5.5 0 7.5 1.5 2-1.5 4.5-1.8 7.5-1.5V5c-3-.3-5.5 0-7.5 1.5zM12 6.5v13"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M12 15V4M8 8l4-4 4 4M5 14v5.5h14V14"/></symbol>
+</svg>
+
+<h1>여행 책자 — 전체 화면 (최종 시안)</h1>
+<p class="lead">앱의 모든 화면을 쓰는 순서대로 놓았어요. 예시는 한 여행으로 끝까지 가요: 제주 2026.06.12–14, 사진 412 → 앨범 2개 186 → 폰에서 거른 뒤 57 → 고른 38장 → 24쪽. 줄마다 옆으로 밀어 보세요.</p>
+<nav class="toc" aria-label="차례">
+  <a href="#first">1 처음 켰을 때<b>3</b></a><a href="#shelf">2 책장 홈<b>4</b></a><a href="#new">3 새 책<b>10</b></a><a href="#making">4 만드는 중<b>5</b></a><a href="#book">5 책<b>3</b></a><a href="#edit">6 다듬기<b>8</b></a><a href="#export">7 내보내기<b>4</b></a><a href="#price">8 가격<b>2</b></a><a href="#fail">9 실패할 때<b>6</b></a><a href="#settings">10 설정<b>1</b></a><a href="#notes">정한 것 · 물어볼 것</a>
+</nav>
+<ol class="flowline">
+  <li><span>날짜</span></li><li><span>앨범</span></li><li><span>더 넣을 것</span></li><li class="opt"><span>책 모양 고르기</span></li>
+  <li class="ai"><span>AI 1 고르기</span></li><li class="opt"><span>둘 중 하나</span></li><li><span>고른 사진 보기</span></li>
+  <li class="ai"><span>AI 2 글 쓰기</span></li><li><span>책</span></li><li class="opt"><span>다듬기 1–6</span></li><li><span>내보내기</span></li>
+</ol>
+
+<!-- ===================== 1. first run ===================== -->
+<section class="part" id="first">
+  <h2>1 처음 켰을 때</h2>
+  <p class="why">무엇이 나오는지 → 어떻게 고르는지 → 사진은 어디 있는지. 권한은 마지막 장에서 한 번만 물어요. (2차 그대로)</p>
+  <div class="row">
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>건너뛰기</span></div>
+      <div class="onb">
+        <div class="art"><div class="spread">
+          <div class="pg l"><div class="cv a" style="width:100%;height:100%;font-size:9px"><img class="c" src="{{udo}}" alt=""><span class="dt">2026.06.12 — 06.14</span><span class="tl">JEJU</span></div></div>
+          <div class="pg r"><img class="c" src="{{haenyeo}}" alt="" style="height:76%"><span class="cp">14:10 · 하도 해녀 탈의장 앞</span></div>
+          <div class="gut"></div>
+        </div></div>
+        <div class="dots"><i class="cur"></i><i></i><i></i></div>
+        <h3>날짜만 고르면<br>그 여행이 한 권의 책이 돼요</h3>
+        <p>표지부터 마지막 쪽까지, 날짜·장소별로 엮어 넘겨 보는 책. PDF·사진·짧은 영상으로도 남겨요.</p>
+        <div class="sp"></div>
+      </div>
+      <div class="foot"><div class="btn">다음</div></div>
+    </div><p class="cap"><b>1/3 결과물</b> · 실제 테마 표지와 본문 한 쪽을 펼친 책으로.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>건너뛰기</span></div>
+      <div class="onb">
+        <div class="art"><div style="display:grid;gap:18px;justify-items:center">
+          <div class="mini">
+            <img src="{{hyeopjae}}" alt=""><img class="x" src="{{d3}}" alt=""><img src="{{road}}" alt=""><img class="x" src="{{d4}}" alt=""><img src="{{udo}}" alt="">
+            <img class="x" src="{{d5}}" alt=""><img src="{{haenyeo}}" alt=""><img class="x" src="{{d7}}" alt=""><img src="{{doldam}}" alt=""><img class="x" src="{{d10}}" alt="">
+            <img src="{{seongsan}}" alt=""><img class="x" src="{{d2}}" alt=""><img src="{{hallasan}}" alt=""><img class="x" src="{{d6}}" alt=""><img src="{{tangerine}}" alt="">
+          </div>
+          <div class="flow"><div class="st"><b>412</b>장</div><span class="ar">→</span><div class="st"><b>38</b>장</div><span class="ar">→</span><div class="st"><b>24</b>쪽</div></div>
+        </div></div>
+        <div class="dots"><i></i><i class="cur"></i><i></i></div>
+        <h3>흐린 사진·연사·스크린샷은<br>알아서 빼요</h3>
+        <p>잘 나온 것만 남기고, 둘 다 좋은 사진은 한 번만 물어봐요. 귀찮으면 [다 맡기기].</p>
+        <div class="sp"></div>
+      </div>
+      <div class="foot"><div class="btn">다음</div></div>
+    </div><p class="cap"><b>2/3 고르는 방식</b> · 숫자가 줄어드는 게 핵심이라 큰 숫자로.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span></span></div>
+      <div class="onb">
+        <div class="art"><div class="lock">
+          <div class="ph1"><img src="{{tangerine}}" alt=""></div>
+          <span class="tag">원본은 이 폰에만 · 작은 미리보기만 AI 로</span>
+        </div></div>
+        <div class="dots"><i></i><i></i><i class="cur"></i></div>
+        <h3>사진은 폰을 떠나지 않아요</h3>
+        <p>고르고 글을 쓰기 위해 작게 줄인 미리보기만 잠깐 보내고, 어디에도 저장하지 않아요. 위치 정보를 쓰려면 사진 접근을 "모두 허용"으로 해 주세요.</p>
+        <div class="sp" style="height:132px"></div>
+      </div>
+      <div class="foot"><div class="btn">사진 접근 허용하고 시작</div></div>
+    </div><p class="cap"><b>3/3 권한</b> · 여기서 한 번. "일부만 허용"을 고르면 9번 줄의 안내가 나와요.</p></div>
+  </div>
+</section>
+
+<!-- ===================== 2. shelf ===================== -->
+<section class="part" id="shelf">
+  <h2>2 책장 홈</h2>
+  <p class="why">오른쪽 위 [진열 | 연표]로 바꾸고 고른 보기를 기억해요. 책을 누르면 펼쳐지고, 길게 누르면 그 자리에 메뉴가 나와요. 톱니 = 설정. (책이 5권 모인 몇 달 뒤 모습)</p>
+  <div class="row">
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><div><h3>내 책장</h3><div class="sub">5권 · 사진 214장</div></div><div class="rt"><span class="gear"><svg class="i"><use href="#i-gear"/></svg></span><div class="mode"><span class="on2">진열</span><span>연표</span></div></div></div>
+      <div class="wall">
+        <div class="shelfA" style="height:214px">
+          <div class="books">
+            <div class="bk" style="--th:9px"><div class="cv" style="width:112px;height:150px"><img class="c" src="{{pp_a_0}}" alt="제주 책 표지"></div><div class="edge"></div></div>
+            <div class="bk" style="--th:6px"><div class="cv b" style="width:112px;height:150px"><img class="c" src="{{seongsan}}" alt=""><span class="tl">부산,<br>겨울</span><span class="dt">2026.02.03–05</span></div><div class="edge"></div></div>
+          </div>
+          <div class="board"></div>
+        </div>
+        <div style="display:flex;gap:26px;padding:8px 22px 0">
+          <div style="width:112px"><b style="font-size:12px">제주 2박 3일</b><div class="k">06.12 · 24쪽</div></div>
+          <div style="width:112px"><b style="font-size:12px">부산, 겨울</b><div class="k">02.03 · 18쪽</div></div>
+        </div>
+        <div class="shelfA" style="height:198px">
+          <div class="books">
+            <div class="bk" style="--th:11px"><div class="cv m" style="width:112px;height:150px"><img class="c" src="{{woljeongri}}" alt=""><span class="tl">오사카<br>4일</span><span class="dt">25.04</span></div><div class="edge"></div></div>
+            <div class="bk" style="--th:5px"><div class="cv d" style="width:112px;height:150px"><img class="c" src="{{oreum}}" alt=""><span class="tl">강릉 일기</span></div><div class="edge"></div></div>
+          </div>
+          <div class="board"></div>
+        </div>
+        <div style="display:flex;gap:26px;padding:8px 22px 0">
+          <div style="width:112px"><b style="font-size:12px">오사카 4일</b><div class="k">25.04.02 · 32쪽</div></div>
+          <div style="width:112px"><b style="font-size:12px">강릉 일기</b><div class="k">25.08.15 · 14쪽</div></div>
+        </div>
+      </div>
+      <div class="fab"><i>+</i>새 책</div>
+    </div><p class="cap"><b>진열</b> · 저장된 책의 실제 표지. 선반 한 칸에 두 권, 옆면 두께 = 쪽수.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><div><h3>내 책장</h3><div class="sub">5권 · 사진 214장</div></div><div class="rt"><span class="gear"><svg class="i"><use href="#i-gear"/></svg></span><div class="mode"><span>진열</span><span class="on2">연표</span></div></div></div>
+      <div class="tlv">
+        <div class="yr"><b>2026</b><span>2권 · 2곳 · 5일</span></div>
+        <div class="track">
+          <div class="trip"><div class="cv"><img class="c" src="{{pp_a_0}}" alt=""></div>
+            <div class="meta"><div><span class="m">06.12 — 06.14 · 2박 3일</span><b>제주 2박 3일</b></div><div class="n"><span><em>9</em>곳</span><span><em>38</em>장</span><span><em>214</em>km</span></div></div></div>
+          <div class="trip"><div class="cv b"><img class="c" src="{{seongsan}}" alt=""><span class="tl">부산</span></div>
+            <div class="meta"><div><span class="m">02.03 — 02.05 · 2박 3일</span><b>부산, 겨울</b></div><div class="n"><span><em>5</em>곳</span><span><em>27</em>장</span><span><em>31</em>km</span></div></div></div>
+        </div>
+        <div class="yr"><b>2025</b><span>3권 · 4곳 · 9일</span></div>
+        <div class="track">
+          <div class="trip"><div class="cv d"><img class="c" src="{{oreum}}" alt=""><span class="tl">강릉</span></div>
+            <div class="meta"><div><span class="m">08.15 — 08.16 · 1박 2일</span><b>강릉 일기</b></div><div class="n"><span><em>4</em>곳</span><span><em>19</em>장</span></div></div></div>
+        </div>
+      </div>
+      <div class="fab"><i>+</i>새 책</div>
+    </div><p class="cap"><b>연표</b> · 해마다 큰 연도 + 그해 합계, 아래로 날짜순. 숫자는 책에서 그대로.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><div><h3>내 책장</h3><div class="sub">아직 비어 있어요</div></div><div class="rt"><span class="gear"><svg class="i"><use href="#i-gear"/></svg></span><div class="mode"><span class="on2">진열</span><span>연표</span></div></div></div>
+      <div class="wall">
+        <div class="shelfA" style="height:214px">
+          <div class="books">
+            <div class="bk"><div style="width:112px;height:150px;border:1.5px dashed #BBAA90;border-radius:2px;display:grid;place-items:center;color:var(--ink2);font-size:12px;text-align:center;line-height:1.5">첫 책이<br>여기 놓여요</div></div>
+          </div>
+          <div class="board"></div>
+        </div>
+        <div class="shelfA" style="height:198px"><div class="board"></div></div>
+        <p style="margin:22px 22px 0;font-size:13px;line-height:1.6;color:#4D463E">최근 여행 날짜를 골라 보세요.<br>처음 2권은 무료예요.</p>
+      </div>
+      <div class="fab"><i>+</i>첫 책 만들기</div>
+    </div><p class="cap"><b>빈 책장</b> · 점선 자리에 첫 책이 놓일 곳만. 무료 2권을 여기서 처음 알려요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><div><h3>내 책장</h3><div class="sub">5권 · 사진 214장</div></div><div class="rt"><span class="gear"><svg class="i"><use href="#i-gear"/></svg></span><div class="mode"><span class="on2">진열</span><span>연표</span></div></div></div>
+      <div class="wall">
+        <div class="shelfA" style="height:214px">
+          <div class="books">
+            <div class="bk" style="--th:9px;z-index:6;transform:translateY(-6px) scale(1.04)"><div class="cv" style="width:112px;height:150px;box-shadow:10px 16px 26px rgba(40,25,10,.5)"><img class="c" src="{{pp_a_0}}" alt=""></div><div class="edge"></div></div>
+            <div class="bk" style="--th:6px"><div class="cv b" style="width:112px;height:150px"><img class="c" src="{{seongsan}}" alt=""><span class="tl">부산,<br>겨울</span><span class="dt">2026.02.03–05</span></div><div class="edge"></div></div>
+          </div>
+          <div class="board"></div>
+        </div>
+        <div style="display:flex;gap:26px;padding:8px 22px 0">
+          <div style="width:112px"><b style="font-size:12px">제주 2박 3일</b><div class="k">06.12 · 24쪽</div></div>
+          <div style="width:112px"><b style="font-size:12px">부산, 겨울</b><div class="k">02.03 · 18쪽</div></div>
+        </div>
+        <div class="shelfA" style="height:198px">
+          <div class="books">
+            <div class="bk" style="--th:11px"><div class="cv m" style="width:112px;height:150px"><img class="c" src="{{woljeongri}}" alt=""><span class="tl">오사카<br>4일</span><span class="dt">25.04</span></div><div class="edge"></div></div>
+            <div class="bk" style="--th:5px"><div class="cv d" style="width:112px;height:150px"><img class="c" src="{{oreum}}" alt=""><span class="tl">강릉 일기</span></div><div class="edge"></div></div>
+          </div>
+          <div class="board"></div>
+        </div>
+      </div>
+      <div class="scrim"></div>
+      <div class="pop" style="left:112px;top:226px">
+        <div><svg class="i"><use href="#i-book"/></svg>펼치기</div>
+        <div><svg class="i"><use href="#i-out"/></svg>내보내기</div>
+        <div><svg class="i"><use href="#i-pen"/></svg>이름 바꾸기</div>
+        <div class="del"><b>이 책을 지울까요?</b><small>책만 지워요. 사진은 폰에 그대로 있어요. 되돌릴 수 없어요.</small><p><span>취소</span><span class="go">지우기</span></p></div>
+      </div>
+    </div><p class="cap"><b>책을 길게 눌렀을 때</b> · 펼치기 / 내보내기 / 이름 바꾸기 / 지우기. [지우기]를 누르면 그 줄이 그 자리에서 확인으로 바뀌어요(지금 모습). 바깥을 누르면 닫혀요.</p></div>
+  </div>
+</section>
+
+<!-- ===================== 3. new book ===================== -->
+<section class="part" id="new">
+  <h2>3 새 책</h2>
+  <p class="why">꼭 해야 하는 건 날짜 고르기와 [다음] 두 번, [책 만들기] 한 번. 나머지(앨범 끄기, 꼭 넣을 사진, 일기, 타임라인, 책 모양)는 전부 안 해도 되는 곁길이에요.</p>
+  <div class="row">
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>✕</span><span>1 / 3</span></div>
+        <h3>언제 다녀왔어요?</h3>
+        <div class="mon"><b>2026. 6</b><span>‹ ›</span></div>
+        <div class="cal">
+          <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+          <span></span><span>1</span><span class="has">2</span><span>3</span><span>4</span><span>5</span><span class="has">6</span>
+          <span>7</span><span>8</span><span>9</span><span>10</span><span class="has">11</span><span class="in s has"><b>12</b></span><span class="in has">13</span>
+          <span class="in e has"><b>14</b></span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span class="has">20</span>
+          <span>21</span><span>22</span><span>23</span><span>24</span><span>25</span><span>26</span><span>27</span>
+        </div>
+        <div class="sum"><b>6월 12일 – 14일</b><span>사진 412 · 영상 9</span></div>
+        <div class="days3">
+          <div>12 금<b>131</b></div><div>13 토<b>178</b></div><div>14 일<b>103</b></div>
+        </div>
+      </div>
+      <div class="foot"><div class="btn">다음</div></div>
+    </div><p class="cap"><b>1/3 날짜</b> · 처음·끝 두 번 탭. 점 = 사진이 있는 날. 고르면 날마다 몇 장인지 바로.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>2 / 3</span></div>
+        <h3>어느 앨범에서 가져올까요?</h3>
+        <div class="all"><div class="t"><b>전체 선택</b><small>이 기간 사진이 있는 앨범 4개</small></div><span class="ck on"></span></div>
+        <div class="albs">
+          <div class="alb sel"><img src="{{hyeopjae}}" alt=""><div class="t"><b>카메라</b><small>이 기간 164 · 전체 9,842</small></div><span class="ck on"></span></div>
+          <div class="alb sel"><img src="{{d5}}" alt=""><div class="t"><b>KakaoTalk</b><small>이 기간 148 · 전체 2,310</small></div><span class="ck on"></span></div>
+          <div class="alb sel"><img src="{{d8}}" alt=""><div class="t"><b>스크린샷</b><small>이 기간 78 · 전체 1,204</small></div><span class="ck on"></span></div>
+          <div class="alb sel"><img src="{{tangerine}}" alt=""><div class="t"><b>제주 여행</b><small>이 기간 22 · 전체 22</small></div><span class="ck on"></span></div>
+          <div class="alb zero"><img src="{{d1}}" alt=""><div class="t"><b>다운로드</b><small>이 기간 0</small></div><span class="ck"></span></div>
+        </div>
+      </div>
+      <div class="foot"><div class="btn">412장으로 다음</div></div>
+    </div><p class="cap"><b>2/3 앨범 · 처음 모습</b> · 전부 켜진 채로 시작해서 그냥 [다음]. 0장인 앨범은 흐리고 눌리지 않아요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>2 / 3</span></div>
+        <h3>어느 앨범에서 가져올까요?</h3>
+        <div class="all"><div class="t"><b>전체 선택</b><small>앨범 4개 중 2개 고름</small></div><span class="ck some"></span></div>
+        <div class="albs">
+          <div class="alb sel"><img src="{{hyeopjae}}" alt=""><div class="t"><b>카메라</b><small>이 기간 164 · 전체 9,842</small></div><span class="ck on"></span></div>
+          <div class="alb"><img src="{{d5}}" alt=""><div class="t"><b>KakaoTalk</b><small>이 기간 148 · 전체 2,310</small></div><span class="ck"></span></div>
+          <div class="alb"><img src="{{d8}}" alt=""><div class="t"><b>스크린샷</b><small>이 기간 78 · 전체 1,204</small></div><span class="ck"></span></div>
+          <div class="alb sel"><img src="{{tangerine}}" alt=""><div class="t"><b>제주 여행</b><small>이 기간 22 · 전체 22</small></div><span class="ck on"></span></div>
+          <div class="alb zero"><img src="{{d1}}" alt=""><div class="t"><b>다운로드</b><small>이 기간 0</small></div><span class="ck"></span></div>
+        </div>
+      </div>
+      <div class="foot"><div class="btn">186장으로 다음</div></div>
+    </div><p class="cap"><b>2/3 앨범 · 두 개 끈 뒤</b> · 412 → 186. 버튼의 숫자가 바로 바뀌어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>3 / 3</span></div>
+        <h3>더 넣을 게 있어요? <small>(없어도 돼요)</small></h3>
+        <div class="add">
+          <div class="fill"><i class="ic"><svg class="i"><use href="#i-photo"/></svg></i><div class="t"><b>꼭 넣을 사진</b><small>3장 골랐어요</small></div>
+            <span class="stack"><img src="{{road}}" alt=""><img src="{{haenyeo}}" alt=""><img src="{{doldam_2}}" alt=""></span><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-pen"/></svg></i><div class="t"><b>일기·메모</b><small>글·파일·손글씨 사진. 넣으면 그 말투로 글을 써요</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-route"/></svg></i><div class="t"><b>구글 타임라인</b><small>다닌 길을 지도 쪽에. 내보내는 법은 그림으로 안내</small></div><span class="go">›</span></div>
+        </div>
+        <div class="est">사진 186장에서 잘 나온 것을 골라 <b>약 24쪽</b>으로 만들어요. 1분쯤 걸려요.<br>이번 책: <b>무료</b> (처음 2권) · <span style="white-space:nowrap">그다음부터 1권 1,500원</span></div>
+      </div>
+      <div class="foot"><div class="btn">책 만들기</div><div class="btn ghost">테마·길이 먼저 고르기</div></div>
+    </div><p class="cap"><b>3/3 더 넣을 것</b> · 쪽수·시간·가격을 누르기 전에. 아래 버튼이 다음 세 화면으로 가요. 거기서 고르고 돌아오면 이 버튼 글이 "여백의 책 · 보통 24쪽 · 바꾸기"로 바뀌어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>3장 고름</b></div>
+        <h3>꼭 넣을 사진</h3>
+        <p class="s">고른 사진은 빠지지 않아요. 나머지는 알아서 골라요.</p>
+        <div class="chips"><span class="on">12 금 <i>58</i><em></em></span><span>13 토 <i>81</i><em></em></span><span>14 일 <i>47</i></span></div>
+        <div class="dh"><b>6월 12일 금</b><span>58장 · 1장 고름</span></div>
+        <div class="g g4">
+          <div><img class="c" src="{{d9}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{d4}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{d2}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{d7}}" alt=""><span class="ck"></span></div>
+          <div><img class="c" src="{{road_2}}" alt=""><span class="ck"></span></div><div class="on"><img class="c" src="{{road}}" alt=""><span class="ck on"></span></div>
+        </div>
+        <div class="dh"><b>6월 13일 토</b><span>81장 · 2장 고름</span></div>
+        <div class="g g4">
+          <div><img class="c" src="{{d3}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{udo}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{d10}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{udo_2}}" alt=""><span class="ck"></span></div>
+          <div><img class="c" src="{{d5}}" alt=""><span class="ck"></span></div><div class="on"><img class="c" src="{{haenyeo}}" alt=""><span class="ck on"></span></div><div><img class="c" src="{{haenyeo_2}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{doldam}}" alt=""><span class="ck"></span></div>
+          <div class="on"><img class="c" src="{{doldam_2}}" alt=""><span class="ck on"></span></div><div><img class="c" src="{{woljeongri}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{woljeongri_2}}" alt=""><span class="ck"></span></div><div><img class="c" src="{{seongsan}}" alt=""><span class="ck"></span></div>
+        </div>
+      </div>
+      <div class="fade"></div>
+      <div class="foot"><div class="btn">3장 꼭 넣기</div></div>
+    </div><p class="cap"><b>꼭 넣을 사진</b> · 고른 앨범의 186장을 날짜별로. 위 날짜 칸으로 건너뛰고, 점 = 고른 사진이 있는 날.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb shp">
+        <div class="top"><span>‹</span><span>추천으로 되돌리기</span></div>
+        <h3>책 모양 고르기 <small>(안 바꿔도 돼요)</small></h3>
+        <p class="ol"><b>테마</b><small>표지는 예시예요</small></p>
+        <div class="ths">
+          <div class="th on"><u>추천</u><img src="{{pp_a_0}}" alt=""><b>여백의 책</b><small>풍경 사진이 많아서</small></div>
+          <div class="th"><img src="{{pp_b_0}}" alt=""><b>기록 카드</b><small>숫자와 동선</small></div>
+          <div class="th"><img src="{{pp_c_0}}" alt=""><b>여행 수첩</b><small>번호 지도 안내서</small></div>
+          <div class="th"><img src="{{pp_diary_0}}" alt=""><b>일기</b><small>사진과 두세 줄</small></div>
+          <div class="th"><img src="{{pp_mag_0}}" alt=""><b>잡지</b><small>큰 제목, 기사처럼</small></div>
+          <div class="th"><img src="{{pp_album_0}}" alt=""><b>앨범</b><small>인화한 사진첩</small></div>
+        </div>
+        <p class="ol"><b>길이</b><small>사진 186장 · 사흘</small></p>
+        <div class="sg">
+          <div>짧게<small>약 16쪽</small></div><div class="on">보통<u>추천</u><small>약 24쪽</small></div><div>길게<small>약 36쪽</small></div>
+        </div>
+        <p class="ol"><b>글의 양</b></p>
+        <div class="sg one">
+          <div>사진만</div><div>짧은 캡션</div><div class="on">캡션 + 에세이</div>
+        </div>
+        <div class="more"><div>더 보기<small>말투 · 장 나누기 · 넣을 쪽 · 판형 · 화질 · 영상</small></div><span>8가지 ⌄</span></div>
+      </div>
+      <div class="foot"><div class="btn">이대로 책 만들기</div></div>
+    </div><p class="cap"><b>[테마·길이 먼저 고르기] · 첫 모습</b> · 한 화면에 세 가지만: 테마 6(추천에 이유 한 줄), 길이(쪽수), 글의 양. 전부 추천값이 골라져 있어서 그냥 [이대로 책 만들기]를 눌러도 돼요. 나머지 8가지는 [더 보기] 안에.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>추천으로 되돌리기</b></div>
+        <div class="more" style="margin-top:12px"><div>더 보기<small>바꾼 것 1 · 나머지는 추천값</small></div><span>접기 ⌃</span></div>
+        <p class="ol" style="margin-top:14px"><b>말투</b><small>일기를 넣으면 그 말투로</small></p>
+        <div class="sg one">
+          <div class="on">담담한 일기체</div><div>다정한 존댓말</div><div>유머</div>
+        </div>
+        <p class="eg">예: <b>"물이 생각보다 차갑다."</b></p>
+        <p class="ol"><b>장 나누기</b></p>
+        <div class="sg">
+          <div class="on">날짜별<small>첫째 날 · 둘째 날 · 셋째 날</small></div><div>장소별<small>협재 · 우도 · 성산 …</small></div>
+        </div>
+        <p class="ol"><b>사람 사진</b></p>
+        <div class="sg one">
+          <div>섞어서<u>추천</u></div><div class="on">풍경 위주</div><div>사람 위주</div>
+        </div>
+        <p class="ol"><b>넣을 쪽</b><small>마지막 글은 "글의 양"에서</small></p>
+        <div class="rw"><div class="t"><b>동선 지도</b><small>사진에 든 위치로 그려요. 타임라인을 넣으면 다닌 길까지</small></div><span class="tg on"></span></div>
+        <div class="rw"><div class="t"><b>숫자 쪽</b><small>며칠 · 몇 곳 · 몇 km</small></div><span class="tg on"></span></div>
+        <div class="rw"><div class="t"><b>영상 쪽</b><small>영상 9개 중 고른 것에서 3–5초씩</small></div><span class="tg on"></span></div>
+      </div>
+      <div class="fade" style="height:104px"></div>
+      <div class="foot"><div class="btn">이대로 책 만들기</div></div>
+    </div><p class="cap"><b>[더 보기] 펼침 · 위쪽</b> · 같은 화면이 아래로 길어져요. 추천과 다르게 고른 것("풍경 위주")은 추천 표시가 옆 칸에 남고, [추천으로 되돌리기]가 켜져요. 말투는 예문 한 줄로 보여 줘요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>추천으로 되돌리기</b></div>
+        <p class="ol" style="margin-top:14px"><b>판형</b><small>PDF는 고른 판형으로 다시 짜요</small></p>
+        <div class="sg">
+          <div class="on">폰 세로<small>화면으로 볼 때</small></div><div>A5 세로<small>인쇄</small></div><div>정사각<small>20cm · 인쇄</small></div>
+        </div>
+        <p class="ol"><b>사진·영상 화질</b></p>
+        <div class="sg">
+          <div class="on">조금 낮추기<u>추천</u><small>PDF 약 22MB</small></div><div>원본 그대로<small>PDF 약 140MB</small></div>
+        </div>
+        <p class="eg">인쇄 판형을 고르면 "원본 그대로"로 바꿔 둬요.</p>
+        <div class="rw" style="border-top:0;margin-top:8px"><div class="t"><b>사진 톤 맞추기</b><small>끄면 찍은 색 그대로. 켜면 한 권을 같은 느낌으로 (원본 파일은 안 바뀌어요)</small></div><span class="tg"></span></div>
+        <p class="ol"><b>하이라이트 영상</b><small>내보낼 때 만들어요</small></p>
+        <div class="sg one">
+          <div>30초</div><div class="on">45초<u>추천</u></div><div>60초</div>
+        </div>
+        <div class="chs" style="margin-top:8px"><span class="on">잔잔한</span><span>밝은</span><span>느긋한</span><span>음악 없음</span></div>
+      </div>
+      <div class="foot"><div class="btn">이대로 책 만들기</div></div>
+    </div><p class="cap"><b>[더 보기] 펼침 · 아래쪽</b> · 판형, 화질(고르는 자리에 예상 용량), 사진 톤(기본 끔), 영상 길이·음악. 영상은 책을 만들 때가 아니라 내보낼 때 만들고, 거기서도 바꿀 수 있어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>2개 넣음</b></div>
+        <h3>일기·메모 넣기</h3>
+        <p class="s">넣으면 그날 일에 맞춰, 그 말투로 글을 써요.</p>
+        <div class="ways">
+          <div><svg class="i"><use href="#i-paste"/></svg>붙여 넣기<small>글을 그대로</small></div>
+          <div><svg class="i"><use href="#i-file"/></svg>파일 고르기<small>txt · md · html · pdf</small></div>
+          <div><svg class="i"><use href="#i-cam"/></svg>손글씨<small>찍거나 사진에서</small></div>
+        </div>
+        <p class="ol" style="margin-top:18px"><b>넣은 것</b><small>누르면 빼거나 볼 수 있어요</small></p>
+        <div class="add">
+          <div><i class="ic"><svg class="i"><use href="#i-file"/></svg></i><div class="t"><b>제주 메모.txt</b><small>1,240자 · 6월 12일, 13일 글을 찾았어요</small></div><span class="go ok"></span></div>
+          <div><div class="hw"><img class="c" src="{{d10}}" alt=""></div><div class="t"><b>손글씨 사진 1장</b><small>글 쓸 때 읽어요 · 날짜를 못 찾으면 책 전체에 써요</small></div><span class="go ok"></span></div>
+        </div>
+        <p class="priv">넣은 글과 손글씨 사진은 글을 쓸 때만 AI로 보내요. 어디에도 저장하지 않아요.</p>
+      </div>
+      <div class="foot"><div class="btn">2개 넣기</div></div>
+    </div><p class="cap"><b>일기·메모 넣기</b> · 세 가지 길을 한 줄에: 붙여 넣기 / 파일 / 손글씨. 넣은 것마다 몇 자인지, 어느 날 글인지 바로 알려 줘요. 넣으면 테마 추천이 "일기"로, 말투가 "넣은 글 말투로" 바뀌어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>구글 타임라인 넣기</h3>
+        <p class="s">다닌 길이 지도 쪽에 들어가요. 구글 지도에서 파일을 한 번 내보내야 해요.</p>
+        <div class="tsteps">
+          <div><div class="il"><span>소리</span><span class="hi">위치</span><span>배터리</span></div><div class="t"><b>1</b>폰 설정 → 위치 → 위치 서비스 → 타임라인</div></div>
+          <div><div class="il"><span>자동 삭제</span><span class="hi">내보내기</span><span>백업</span></div><div class="t"><b>2</b>[타임라인 데이터 내보내기]를 누르고 저장할 곳을 골라요</div></div>
+          <div><div class="il f"><svg class="i" style="width:24px;height:24px"><use href="#i-file"/></svg>Timeline.json</div><div class="t"><b>3</b>여기로 돌아와 그 파일을 골라요</div></div>
+        </div>
+        <p class="priv">파일은 폰 안에서만 읽고, 6월 12–14일 기록만 써요. 없어도 사진에 든 위치로 지도를 그려요.</p>
+      </div>
+      <div class="foot"><div class="btn">파일 고르기</div><div class="btn ghost">폰 설정 열기</div></div>
+    </div><p class="cap"><b>구글 타임라인 안내</b> · 그림 세 장으로 내보내는 순서. [폰 설정 열기]는 위치 설정 화면을 바로 띄워요. 안 넣어도 지도는 나온다는 걸 아래에 적어 둬요.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 4. making ===================== -->
+<section class="part" id="making">
+  <h2>4 만드는 중</h2>
+  <p class="why">AI는 두 번 일해요. 먼저 고르고(1번), 사람이 고른 사진을 확인한 다음에야 글을 써요(2번). 그래서 사진을 바꿔도 글이 그 사진에 맞아요.</p>
+  <div class="row">
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>✕</span><span>1 / 2</span></div>
+        <h3>사진을 고르고 있어요</h3>
+        <div class="work">
+          <img src="{{hyeopjae}}" alt=""><img class="x" src="{{d3}}" alt=""><img src="{{road}}" alt=""><img class="x" src="{{hyeopjae_2}}" alt=""><img src="{{udo}}" alt=""><img class="x" src="{{d5}}" alt="">
+          <img class="x" src="{{road_2}}" alt=""><img src="{{haenyeo}}" alt=""><img class="x" src="{{d7}}" alt=""><img src="{{doldam_2}}" alt=""><img class="x" src="{{d10}}" alt=""><img src="{{seongsan}}" alt="">
+        </div>
+        <div class="steps">
+          <div><span>이 기간 사진</span><b>412</b></div>
+          <div><span>고른 앨범 2개</span><b>186</b></div>
+          <div><span>폰에서 먼저 거르기<small>흐림·어두움 34 · 비슷한 사진 88 · 화면 캡처 7</small></span><b>57</b></div>
+          <div class="now"><span>잘 나온 사진 고르는 중<small>꼭 넣을 사진 3장은 그대로 들어가요</small></span><b>38</b></div>
+        </div>
+        <p class="priv">작게 줄인 미리보기 57장만 AI로 보내요. 원본은 폰에 그대로 있고 어디에도 저장하지 않아요.</p>
+      </div>
+    </div><p class="cap"><b>고르는 중 (AI 1번)</b> · 숫자가 줄어드는 걸 한 줄씩. 186 − 129 = 57 → 38.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>다 맡기기</b></div>
+        <h3>어느 쪽을 넣을까요?</h3>
+        <div class="pair">
+          <div><img class="c" src="{{hyeopjae}}" alt=""><span>13:20</span></div>
+          <div><img class="c" src="{{hyeopjae_2}}" alt=""><span>13:24</span></div>
+        </div>
+        <div class="pmeta"><b>협재 해변 · 6월 12일</b><span class="pdots"><i></i><i class="cur"></i><i></i><i></i></span></div>
+        <p class="pnote">누르면 다음 질문으로 넘어가요. 4개 중 2번째. 안 고른 쪽은 다음 화면에서 다시 바꿀 수 있어요.</p>
+      </div>
+    </div><p class="cap"><b>둘 중 하나</b> (있을 때만) · 앱이 못 정한 것만 물어요. [다 맡기기]면 바로 다음 화면.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>사진 38 · 영상 2</span></div>
+        <h3>이 38장으로 만들어요</h3>
+        <p class="s">186장에서 골랐어요. 누르면 빼거나 바꿀 수 있어요.</p>
+        <div class="dh"><b>6월 12일 금</b><span>9장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{d8}}" alt=""></div><div><img class="c" src="{{hyeopjae}}" alt=""></div><div><img class="c" src="{{d9}}" alt=""></div><div><img class="c" src="{{d4}}" alt=""></div><div><img class="c" src="{{d2}}" alt=""></div>
+          <div><img class="c" src="{{d6}}" alt=""></div><div><img class="c" src="{{d7}}" alt=""></div><div><img class="c" src="{{road_2}}" alt=""></div><div><img class="c" src="{{road}}" alt=""><i class="must">꼭</i></div><div class="plus">+</div>
+        </div>
+        <div class="dh"><b>6월 13일 토</b><span>13장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{d3}}" alt=""></div><div><img class="c" src="{{udo}}" alt=""><i class="cvb">표지</i></div><div><img class="c" src="{{d10}}" alt=""></div><div><img class="c" src="{{udo_2}}" alt=""></div><div><img class="c" src="{{d5}}" alt=""></div>
+          <div><img class="c" src="{{haenyeo}}" alt=""><i class="must">꼭</i></div><div><img class="c" src="{{haenyeo_2}}" alt=""></div><div><img class="c" src="{{doldam}}" alt=""></div><div><img class="c" src="{{doldam_2}}" alt=""><i class="must">꼭</i></div><div><img class="c" src="{{woljeongri}}" alt=""></div>
+          <div><img class="c" src="{{woljeongri_2}}" alt=""></div><div><img class="c" src="{{seongsan}}" alt=""></div><div><img class="c" src="{{seongsan_2}}" alt=""></div><div class="plus">+</div>
+        </div>
+        <div class="dh"><b>6월 14일 일</b><span>16장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{hallasan}}" alt=""></div><div><img class="c" src="{{hallasan_2}}" alt=""></div><div><img class="c" src="{{oreum}}" alt=""></div><div><img class="c" src="{{oreum_2}}" alt=""></div><div><img class="c" src="{{tangerine}}" alt=""></div>
+        </div>
+      </div>
+      <div class="fade" style="height:150px"></div>
+      <div class="foot"><div class="shape"><span>여백의 책 · 보통 · 캡션 + 에세이</span><b>모양 바꾸기 ›</b></div><div class="btn">이대로 책 만들기 · 약 24쪽</div></div>
+    </div><p class="cap"><b>고른 사진 보기</b> · 9 + 13 + 16 = 38. 빼기·바꾸기·날마다 [+]로 더 넣기. 버튼 위 한 줄은 이번에 더한 것: 글을 쓰기 직전이라 테마·길이·글의 양을 바꿀 마지막 자리예요([책 모양 고르기]와 같은 화면).</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>사진 38 · 영상 2</span></div>
+        <h3>이 38장으로 만들어요</h3>
+        <p class="s">186장에서 골랐어요. 누르면 빼거나 바꿀 수 있어요.</p>
+        <div class="dh"><b>6월 12일 금</b><span>9장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{d8}}" alt=""></div><div class="cur"><img class="c" src="{{hyeopjae}}" alt=""></div><div><img class="c" src="{{d9}}" alt=""></div><div><img class="c" src="{{d4}}" alt=""></div><div><img class="c" src="{{d2}}" alt=""></div>
+        </div>
+      </div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="big"><img class="c" src="{{hyeopjae}}" alt=""></div>
+        <div class="mt"><b>협재 해변</b><span>6.12 금 13:20</span></div>
+        <p class="lb">이 사진 대신<small>같은 곳 사진 14장</small></p>
+        <div class="alts">
+          <div><img src="{{hyeopjae_2}}" alt=""><b>아까 둘 중</b>13:24</div>
+          <div><img src="{{d9}}" alt=""><b>같은 곳</b>13:31</div>
+          <div><img src="{{d4}}" alt=""><b>같은 곳</b>13:47</div>
+          <div class="more"><i>+11</i>더 보기</div>
+        </div>
+        <div class="acts"><div class="btn ghost">빼기</div><div class="btn ghost">표지로 쓰기</div></div>
+      </div>
+    </div><p class="cap"><b>사진을 눌렀을 때</b> · 같은 곳 사진으로 바꾸기(둘 중 하나에서 안 고른 쪽이 맨 앞), 빼기, 표지로 쓰기.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>✕</span><span>2 / 2</span></div>
+        <h3>글을 쓰고 있어요</h3>
+        <div class="wr"><img src="{{hyeopjae_2}}" alt=""><p><small>13:20 · 협재 해변</small>물이 생각보다 차<i></i></p></div>
+        <div class="steps">
+          <div><span>고른 사진</span><b>38</b></div>
+          <div class="now"><span>쪽마다 한 줄 쓰는 중<small>시각·장소를 붙이고 담담한 일기체로</small></span><b>14<small> / 24쪽</small></b></div>
+          <div class="wait"><span>마지막 글</span><b>기다리는 중</b></div>
+          <div class="wait"><span>책으로 엮기<small>여백의 책 · 폰에서</small></span><b>기다리는 중</b></div>
+        </div>
+        <p class="priv">고른 38장의 작은 미리보기와 시각·장소 이름만 AI로 보내요. 20초쯤 걸려요.</p>
+      </div>
+    </div><p class="cap"><b>글 쓰는 중 (AI 2번, 새로)</b> · 짧게 지나가는 화면. 지금 쓰는 한 줄이 사진 옆에 찍히고, 몇 쪽째인지 보여요. 다 되면 책이 펼쳐져요.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 5. book ===================== -->
+<section class="part" id="book">
+  <h2>5 책</h2>
+  <p class="why">만들어지면 바로 책장에 들어가고 이 화면이 열려요. 한 쪽씩 옆으로 넘기고, 아래 작은 쪽들로 건너뛰어요. 위에는 버튼 두 개뿐: [다듬기] [내보내기].</p>
+  <div class="row">
+
+    <div class="col"><div class="ph vw">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>‹</span><b>제주 2박 3일</b><em>다듬기</em><em class="f">내보내기</em></div>
+      <div class="stg">
+        <div class="pgs" style="left:18px"><img src="{{pp_a_0}}" alt="표지"><img src="{{pp_a_3}}" alt=""></div>
+        <div class="ind">표지<small>24쪽</small></div>
+        <div class="film"><img class="cur" src="{{pp_a_0}}" alt=""><i></i><img src="{{pp_a_3}}" alt=""><img src="{{pp_a_4}}" alt=""><img src="{{pp_a_5}}" alt=""><i></i><img src="{{pp_a_6}}" alt=""><img src="{{pp_a_7}}" alt=""><img src="{{pp_a_8}}" alt=""></div>
+        <div class="tip"><span>책장에 넣었어요. 이번 책은 무료예요 (2권 중 첫 번째).</span><b>확인</b></div>
+      </div>
+    </div><p class="cap"><b>책 · 처음 열렸을 때</b> · 표지부터. 오른쪽에 다음 쪽이 살짝 보여서 넘기는 방향을 알아요. 아래 띠의 세로선 = 날이 바뀌는 곳. 알림 한 줄은 처음 한 번만.</p></div>
+
+    <div class="col"><div class="ph vw">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>‹</span><b>제주 2박 3일</b><em>다듬기</em><em class="f">내보내기</em></div>
+      <div class="stg">
+        <div class="pgs" style="left:-254px"><img src="{{pp_a_3}}" alt=""><img src="{{pp_a_4}}" alt=""><img src="{{pp_a_5}}" alt=""></div>
+        <div class="ind">2 / 24<small>6월 12일 · 협재 해변</small></div>
+        <div class="film"><img src="{{pp_a_0}}" alt=""><i></i><img src="{{pp_a_3}}" alt=""><img class="cur" src="{{pp_a_4}}" alt=""><img src="{{pp_a_5}}" alt=""><i></i><img src="{{pp_a_6}}" alt=""><img src="{{pp_a_7}}" alt=""><img src="{{pp_a_8}}" alt=""></div>
+        <div class="tip soft"><span>쪽을 길게 누르면 그 쪽의 사진이나 글만 고쳐요.</span></div>
+      </div>
+    </div><p class="cap"><b>책 · 넘기는 중</b> · 가운데 한 쪽, 양옆에 앞뒤 쪽. 몇 쪽인지와 그 쪽의 날짜·장소. 영상이 든 쪽은 누르면 그 자리에서 3–5초 재생.</p></div>
+
+    <div class="col"><div class="ph vw">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>‹</span><b>제주 2박 3일</b><em>다듬기</em><em class="f">내보내기</em></div>
+      <div class="stg">
+        <div class="pgs" style="left:-254px"><img src="{{pp_a_3}}" alt=""><img src="{{pp_a_4}}" alt="" style="position:relative;z-index:5;transform:scale(1.02);box-shadow:0 0 0 2px #fff,0 14px 30px rgba(0,0,0,.4)"><img src="{{pp_a_5}}" alt=""></div>
+      </div>
+      <div class="scrim" style="z-index:4"></div>
+      <div class="sheet">
+        <div class="hh"><h4>2쪽 · 협재 해변</h4><span>6.12 금 13:20</span></div>
+        <div class="opt2">
+          <div><i class="ic"><svg class="i"><use href="#i-swap"/></svg></i><div><b>사진 바꾸기</b><small>같은 곳·같은 날 사진 14장 중에서. 빼기도 여기서</small></div></div>
+          <div><i class="ic"><svg class="i"><use href="#i-pen"/></svg></i><div><b>글 다시 쓰기</b><small>이 쪽 글만 새로 받아요. 5초쯤 · 직접 고치려면 [다듬기]</small></div></div>
+        </div>
+      </div>
+    </div><p class="cap"><b>쪽을 길게 눌렀을 때</b> · [사진 바꾸기] [글 다시 쓰기] 두 가지만. 그 쪽만 다시 그려요. 여러 쪽을 한꺼번에 볼 땐 [다듬기].</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 6. edit ===================== -->
+<section class="part" id="edit">
+  <h2>6 다듬기 — 한 장씩 결정 카드 6단계</h2>
+  <p class="why">승인된 6단계(표지 → 글자 → 제목·한 줄 → 사진 → 정보 줄 → 확인) 그대로, 색만 앱 색으로 맞췄어요: 종이 바탕에 먹색 버튼. 아래 [이전] [원본] [다음], 위에 n / 6 과 [바로 저장].</p>
+  <div class="row">
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>표지</b><span>1 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="stage"><div class="pgi" style="width:140px"><img src="{{pp_a_0}}" alt=""></div></div>
+      <div class="card">
+        <h4>표지<small>배치 · 사진</small></h4>
+        <div class="cvs">
+          <div class="on"><img src="{{pp_a_0}}" alt="">가득</div>
+          <div><img src="{{pp_a_1}}" alt="">반반</div>
+          <div><img src="{{pp_a_2}}" alt="">날짜</div>
+        </div>
+        <p class="lb"><span>표지 사진</span><small>책에 든 38장 중</small></p>
+        <div class="pts">
+          <div class="on"><img class="c" src="{{udo}}" alt=""></div><div><img class="c" src="{{seongsan_2}}" alt=""></div><div><img class="c" src="{{hallasan}}" alt=""></div><div class="more">다른 사진</div>
+        </div>
+        <p class="hint">사진이 꽉 찬 표지라 색은 없어요. "반반"을 고르면 표지 색도 골라요.</p>
+        <div class="bts"><span class="off">이전</span><span class="off">원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>1/6 표지 · 사진만 꽉 찬 배치</b> · 표지 색 줄이 숨어요(오늘 결정). 왜 없는지와 어디서 나오는지를 한 줄로.</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>표지</b><span>1 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="stage"><div class="pgi"><img src="{{pp_a_1}}" alt=""></div></div>
+      <div class="card">
+        <h4>표지<small>배치 · 사진 · 색</small></h4>
+        <div class="cvs">
+          <div><img src="{{pp_a_0}}" alt="">가득</div>
+          <div class="on"><img src="{{pp_a_1}}" alt="">반반</div>
+          <div><img src="{{pp_a_2}}" alt="">날짜</div>
+        </div>
+        <p class="lb"><span>표지 사진</span><small>책에 든 38장 중</small></p>
+        <div class="pts">
+          <div><img class="c" src="{{udo}}" alt=""></div><div class="on"><img class="c" src="{{road}}" alt=""></div><div><img class="c" src="{{hallasan}}" alt=""></div><div class="more">다른 사진</div>
+        </div>
+        <p class="lb"><span>표지 색</span><small>글자색은 알아서 맞춰요</small></p>
+        <div class="sws"><i class="on" style="background:#F1EDE4"></i><i style="background:#2A45AE"></i><i style="background:#B4381C"></i><i style="background:#0B6B4A"></i><i style="background:#141414"></i><i class="any"></i></div>
+        <div class="bts"><span class="off">이전</span><span>원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>1/6 표지 · 색 면이 있는 배치</b> · "반반"을 고르면 표지 색 줄이 나와요. 바꾼 게 생겨서 [원본]이 켜졌어요.</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>표지</b><span>1 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="stage" style="justify-content:flex-start;padding-top:10px"><div class="pgi cv a" style="width:108px;font-size:9.6px"><img class="c" src="{{seongsan_2}}" alt=""><span class="dt">2026.06.12 — 06.14</span><span class="tl">JEJU</span></div></div>
+      <div class="sheet">
+        <div class="hh"><h4>표지 사진</h4><span>책에 든 38장</span></div>
+        <div class="dh"><b>6월 13일 토</b><span>13장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{d3}}" alt=""></div><div><img class="c" src="{{udo}}" alt=""></div><div><img class="c" src="{{d10}}" alt=""></div><div><img class="c" src="{{udo_2}}" alt=""></div><div><img class="c" src="{{d5}}" alt=""></div>
+          <div><img class="c" src="{{haenyeo}}" alt=""></div><div><img class="c" src="{{haenyeo_2}}" alt=""></div><div><img class="c" src="{{doldam}}" alt=""></div><div><img class="c" src="{{doldam_2}}" alt=""></div><div><img class="c" src="{{woljeongri}}" alt=""></div>
+          <div><img class="c" src="{{woljeongri_2}}" alt=""></div><div><img class="c" src="{{seongsan}}" alt=""></div><div class="cur"><img class="c" src="{{seongsan_2}}" alt=""></div>
+        </div>
+        <div class="dh"><b>6월 14일 일</b><span>16장</span></div>
+        <div class="g g5">
+          <div><img class="c" src="{{hallasan}}" alt=""></div><div><img class="c" src="{{hallasan_2}}" alt=""></div><div><img class="c" src="{{oreum}}" alt=""></div><div><img class="c" src="{{oreum_2}}" alt=""></div><div><img class="c" src="{{tangerine}}" alt=""></div>
+        </div>
+        <div class="btn">이 사진으로</div>
+      </div>
+    </div><p class="cap"><b>[다른 사진]을 눌렀을 때</b> · 책에 든 38장에서 한 장. 누르는 대로 위 표지가 바뀌어서 글자가 가려지는지 보고 정해요.</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>글자</b><span>2 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i></div>
+      <div class="stage"><div class="pgi" style="width:168px"><img src="{{pp_a_4}}" alt=""></div><div class="nav"><span>‹</span><span>2쪽 / 24</span><span>›</span></div></div>
+      <div class="card">
+        <h4>글자<small>글꼴 · 크기</small></h4>
+        <div class="fts">
+          <div class="on"><b>제주</b>프리텐다드</div>
+          <div><b style="font-family:'Gmarket Sans','Black Han Sans',sans-serif;font-weight:700">제주</b>G마켓 산스</div>
+          <div><b style="font-family:'Gothic A1',sans-serif;font-weight:800">제주</b>수트</div>
+        </div>
+        <p class="lb"><span>글자 크기</span><small>작은 글자만 바뀌어요</small></p>
+        <div class="sg one"><div>작게</div><div class="on">보통</div><div>크게</div></div>
+        <div class="bts"><span>이전</span><span class="off">원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>2/6 글자</b> · 테마에 어울리는 글꼴 3개와 크기 3단. 위에서 쪽을 넘겨 본문에서 확인해요. 쪽 배치는 그대로.</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>제목·한 줄</b><span>3 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i></div>
+      <div class="stage"><div class="pgi" style="width:186px"><img src="{{pp_a_0}}" alt=""><span class="box" style="left:-3px;right:-3px;bottom:-2px;height:27%"></span></div><div class="nav"><span>‹</span><span>표지</span><span>›</span></div></div>
+      <div class="card">
+        <h4>제목<small>표지의 제목을 눌러 바로 고쳐요</small></h4>
+        <div class="tch"><span class="on">JEJU</span><span>제주</span><span>제주 사흘</span><span>바람의 섬</span></div>
+        <p class="hint">쪽을 넘기면 쪽마다 한 줄도 고쳐요. 그 줄의 [다시 쓰기]만 글을 새로 받아요.</p>
+        <div class="bts"><span>이전</span><span class="off">원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>3/6 제목·한 줄</b> · 지어 둔 후보를 누르거나 표지 위 글자를 직접 고쳐요. 긴 제목은 표지 너비에 맞게 줄어요.</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>사진</b><span>4 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+      <div class="stage"><div class="pgi" style="width:156px"><img src="{{pp_a_4}}" alt=""><span class="selb" style="left:0;top:0;width:63%;height:100%"></span></div><div class="nav"><span>‹</span><span>2쪽 / 24</span><span>›</span></div></div>
+      <div class="card">
+        <h4>쪽마다 사진<small>사진을 눌러 고르고</small></h4>
+        <div class="eacts">
+          <div><svg class="i"><use href="#i-move"/></svg>옮기기</div><div class="on"><svg class="i"><use href="#i-swap"/></svg>바꾸기</div><div><svg class="i"><use href="#i-trash"/></svg>빼기</div>
+        </div>
+        <div class="ealts">
+          <div class="on"><img src="{{hyeopjae_2}}" alt=""><b>처음 사진</b>13:24</div>
+          <div><img src="{{hyeopjae}}" alt=""><b>같은 곳</b>13:20</div>
+          <div><img src="{{d4}}" alt=""><b>같은 곳</b>13:47</div>
+          <div><img src="{{d2}}" alt=""><b>카페</b>14:15</div>
+          <div><img src="{{d7}}" alt=""><b>신창</b>17:12</div>
+        </div>
+        <div class="bts"><span>이전</span><span class="off">원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>4/6 사진</b> · 옮기기(끌어서 보이는 부분) · 바꾸기(같은 곳 → 같은 날 순) · 빼기(쪽이 다시 짜이고 되돌릴 수 있어요).</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>정보 줄</b><span>5 / 6</span><em>바로 저장</em></div>
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></div>
+      <div class="stage"><div class="pgi" style="width:150px"><img src="{{pp_a_3}}" alt=""></div><div class="nav"><span>‹</span><span>1쪽 / 24</span><span>›</span></div></div>
+      <div class="card">
+        <h4>정보 줄<small>책 전체에서 보이기 · 숨기기</small></h4>
+        <div class="rw"><div class="t"><b>촬영 시각</b><small>13:20</small></div><span class="tg on"></span></div>
+        <div class="rw"><div class="t"><b>장소 이름</b><small>협재 해변</small></div><span class="tg on"></span></div>
+        <div class="rw"><div class="t"><b>이동 거리</b><small>오늘 62km</small></div><span class="tg"></span></div>
+        <div class="bts"><span>이전</span><span>원본</span><span class="go">다음</span></div>
+      </div>
+    </div><p class="cap"><b>5/6 정보 줄</b> · 숫자 줄을 한 번에 켜고 꺼요. 줄 이름은 테마마다 달라요(기록 카드는 거리·장수 칸).</p></div>
+
+    <div class="col"><div class="ph ed">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>✕</span><b>확인</b><span>6 / 6</span></div>
+      <div class="prog"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></div>
+      <div class="stage"><p class="scap" style="margin:0">책 미리 넘겨 보기</p><div class="strip">
+        <div><img src="{{pp_a_1}}" alt="">표지</div><div><img src="{{pp_a_3}}" alt="">1쪽</div><div><img src="{{pp_a_4}}" alt="">2쪽</div><div><img src="{{pp_a_5}}" alt="">3쪽</div>
+      </div></div>
+      <div class="card">
+        <h4>이렇게 저장할까요?<small>줄을 누르면 그 단계로</small></h4>
+        <div class="smy">
+          <div><b>표지</b><span>반반 · 해 질 무렵 사진</span><em>바뀜</em><i>›</i></div>
+          <div><b>글자</b><span>프리텐다드 · 보통</span><i>›</i></div>
+          <div><b>제목·한 줄</b><span>「JEJU」</span><i>›</i></div>
+          <div><b>사진</b><span>그대로</span><i>›</i></div>
+          <div><b>정보 줄</b><span>이동 거리 숨김</span><em>바뀜</em><i>›</i></div>
+        </div>
+        <div class="bts"><span>이전</span><span class="go">저장하기</span></div>
+      </div>
+    </div><p class="cap"><b>6/6 확인</b> · 바뀐 것만 표시. 줄을 누르면 그 단계로 갔다가 [요약으로] 돌아와요. [저장하기]를 누르면 책장의 책이 바뀌어요.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 7. export ===================== -->
+<section class="part" id="export">
+  <h2>7 내보내기</h2>
+  <p class="why">네 가지를 한 화면에, 줄마다 무엇이 얼마만 한 크기로 나오는지 먼저 보여 줘요. 전부 폰에서 만들어요. 영상만 길이·음악을 한 번 더 물어요.</p>
+  <div class="row">
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>내보내기</h3>
+        <div class="bkrow"><img src="{{pp_a_0}}" alt=""><div><b>제주 2박 3일</b><small>24쪽 · 사진 38 · 영상 2</small></div></div>
+        <div class="add">
+          <div><i class="ic"><svg class="i"><use href="#i-imgs"/></svg></i><div class="t"><b>페이지 이미지 저장</b><small>24장 · 약 31MB · 갤러리 "여행 책자" 앨범에</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-pdf"/></svg></i><div class="t"><b>PDF 만들기</b><small>폰 세로 24쪽 · 약 22MB</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-film"/></svg></i><div class="t"><b>영상 저장</b><small>하이라이트 45초 · 약 38MB · 길이와 음악 고르기</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-share"/></svg></i><div class="t"><b>공유</b><small>만든 PDF나 영상을 다른 앱으로</small></div><span class="go">›</span></div>
+        </div>
+        <div class="rw" style="border-top:0;margin-top:10px;padding:0 4px"><div class="t"><b>화질: 조금 낮추기</b><small>원본 그대로면 PDF 약 140MB</small></div><span class="v" style="color:var(--ink);font-weight:600;text-decoration:underline;text-underline-offset:3px">바꾸기</span></div>
+      </div>
+    </div><p class="cap"><b>내보내기</b> · 책 위 [내보내기]나 책장 메뉴에서. 판형·화질은 책을 만들 때 고른 값이고 여기 맨 아래에서 바꿀 수 있어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>내보내기</h3>
+        <div class="bkrow"><img src="{{pp_a_0}}" alt=""><div><b>제주 2박 3일</b><small>24쪽 · 사진 38 · 영상 2</small></div></div>
+        <div class="add">
+          <div class="fill"><i class="ic"><svg class="i"><use href="#i-imgs"/></svg></i><div class="t"><b>이미지 24장 저장했어요</b><small>31MB · 갤러리에서 보기</small></div><span class="go ok"></span></div>
+          <div class="fill"><i class="ic"><svg class="i"><use href="#i-pdf"/></svg></i><div class="t"><b>PDF 만드는 중</b><small>14 / 24쪽 · 13MB</small><div class="pb"><i style="width:58%"></i></div></div><span class="go" style="font-size:12px;font-weight:600;color:var(--ink)">취소</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-film"/></svg></i><div class="t"><b>영상 저장</b><small>하이라이트 45초 · 약 38MB · 길이와 음악 고르기</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-share"/></svg></i><div class="t"><b>공유</b><small>만든 PDF나 영상을 다른 앱으로</small></div><span class="go">›</span></div>
+        </div>
+        <p class="priv">앱을 닫지 않으면 다른 화면을 봐도 계속 만들어요.</p>
+      </div>
+    </div><p class="cap"><b>만드는 중 · 다 된 것</b> · 줄이 그 자리에서 진행 막대 → 끝난 표시로 바뀌어요. 다 된 PDF는 줄을 누르면 열기 / 공유.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>하이라이트 영상</h3>
+        <div class="sbd"><img src="{{udo}}" alt=""><img src="{{hyeopjae}}" alt=""><img src="{{road}}" alt=""><img src="{{haenyeo}}" alt=""><img src="{{seongsan}}" alt=""><img src="{{hallasan}}" alt=""><img src="{{oreum}}" alt=""></div>
+        <p class="eg" style="margin:0 0 14px">책에 든 순서대로 사진 22장과 영상 2구간을 이어요.</p>
+        <p class="ol"><b>길이</b><small>사진 38 · 영상 2</small></p>
+        <div class="sg">
+          <div>30초<small>사진 14 · 영상 1</small></div><div class="on">45초<u>추천</u><small>사진 22 · 영상 2</small></div><div>60초<small>사진 30 · 영상 2</small></div>
+        </div>
+        <p class="ol"><b>음악 분위기</b><small>눌러서 들어 보기</small></p>
+        <div class="mus">
+          <div class="on"><i class="rd"></i><span>잔잔한</span><small>▶ 0:12</small></div>
+          <div><i class="rd"></i><span>밝은</span><small>▶</small></div>
+          <div><i class="rd"></i><span>느긋한</span><small>▶</small></div>
+          <div><i class="rd"></i><span>음악 없음</span><small>영상 소리만</small></div>
+        </div>
+      </div>
+      <div class="foot"><div class="btn">영상 만들기 · 1분쯤</div></div>
+    </div><p class="cap"><b>영상 길이·음악</b> · 30 / 45 / 60초(사진·영상 양으로 추천)와 음악 분위기. 길이마다 몇 장이 들어가는지 보여 줘요. 책 모양에서 고른 값이 먼저 골라져 있어요.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>영상이 다 됐어요</h3>
+        <div class="vid"><img class="c" src="{{udo}}" alt=""><span>0:45</span></div>
+        <p class="vmeta"><b>제주 2박 3일</b>45초 · 1080 × 1920 · 38MB · 잔잔한</p>
+        <p class="link" style="margin:16px 0 0">길이·음악 바꿔 다시 만들기</p>
+      </div>
+      <div class="foot"><div class="btn">갤러리에 저장</div><div class="btn ghost">공유</div></div>
+    </div><p class="cap"><b>다 된 영상</b> · 그 자리에서 재생해 보고 저장하거나 공유. 만들다 실패하면 책은 그대로 두고 이 자리에 "영상을 못 만들었어요 [다시 만들기]"만 나와요.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 8. price ===================== -->
+<section class="part" id="price">
+  <h2>8 가격 — 세 번째 책부터</h2>
+  <p class="why">처음 2권은 무료, 그다음은 1권 1,500원. 값은 누르기 전에 늘 보여요(더 넣을 것의 예상 줄, 버튼, 설정). 결제는 아직 붙이지 않았고, 화면에도 그렇게 적어요.</p>
+  <div class="row">
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>3 / 3</span></div>
+        <h3>더 넣을 게 있어요? <small>(없어도 돼요)</small></h3>
+        <div class="add">
+          <div><i class="ic"><svg class="i"><use href="#i-photo"/></svg></i><div class="t"><b>꼭 넣을 사진</b><small>빠지면 안 되는 사진이 있으면 골라 두세요</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-pen"/></svg></i><div class="t"><b>일기·메모</b><small>글·파일·손글씨 사진. 넣으면 그 말투로 글을 써요</small></div><span class="go">›</span></div>
+          <div><i class="ic"><svg class="i"><use href="#i-route"/></svg></i><div class="t"><b>구글 타임라인</b><small>다닌 길을 지도 쪽에. 내보내는 법은 그림으로 안내</small></div><span class="go">›</span></div>
+        </div>
+        <div class="est">사진 96장에서 잘 나온 것을 골라 <b>약 16쪽</b>으로 만들어요. 1분쯤 걸려요.<br>이번 책: <b>1,500원</b> · 무료 2권을 다 썼어요</div>
+      </div>
+      <div class="foot"><div class="btn">책 만들기 · 1,500원</div><div class="btn ghost">테마·길이 먼저 고르기</div></div>
+    </div><p class="cap"><b>세 번째 책의 "더 넣을 것"</b> · 예상 줄과 버튼에 값이 들어가요. 사진 수·쪽수와 상관없이 같은 값.</p></div>
+
+    <div class="col"><div class="ph">
+      <div class="nb">
+        <div class="top"><span>‹</span><span>3 / 3</span></div>
+        <h3>더 넣을 게 있어요? <small>(없어도 돼요)</small></h3>
+        <div class="add">
+          <div><i class="ic"><svg class="i"><use href="#i-photo"/></svg></i><div class="t"><b>꼭 넣을 사진</b><small>빠지면 안 되는 사진이 있으면 골라 두세요</small></div><span class="go">›</span></div>
+        </div>
+      </div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <h4>세 번째 책부터는<br>1권에 1,500원이에요</h4>
+        <p class="s">무료 2권을 다 썼어요. 만든 책은 계속 볼 수 있어요.</p>
+        <ul class="incl">
+          <li>사진 고르기와 글 쓰기</li>
+          <li>다듬기·내보내기는 몇 번이든</li>
+          <li>사진이 많아도, 쪽이 늘어도 같은 값</li>
+        </ul>
+        <div class="price"><span>경주 10월 3–4일 · 약 16쪽</span><b>1,500원</b></div>
+        <p class="warn"><b>아직 결제를 붙이지 않았어요.</b> 지금은 개인용 빌드라 [결제]를 눌러도 돈이 나가지 않고 책은 그대로 만들어져요.</p>
+        <div class="acts" style="grid-template-columns:1fr 1.6fr"><div class="btn ghost">다음에</div><div class="btn">결제 · 1,500원</div></div>
+        <p class="eg" style="text-align:center;margin-top:10px">책이 만들어지지 않으면 값을 받지 않아요.</p>
+      </div>
+    </div><p class="cap"><b>[책 만들기 · 1,500원]을 눌렀을 때</b> · 무엇이 들어 있는지 세 줄, 값, 그리고 솔직한 한 칸: 결제는 아직 자리만 있어요. 결제 수단 화면은 나중에.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 9. failures ===================== -->
+<section class="part" id="fail">
+  <h2>9 실패할 때</h2>
+  <p class="why">멈추지 않고 할 수 있는 데까지 해요. 무슨 일이 있었는지 한 줄, 그다음에 할 수 있는 것 하나. 시스템 알림창은 쓰지 않아요.</p>
+  <div class="row">
+
+    <div class="col"><div class="ph short">
+      <div class="nb">
+        <div class="top"><span>✕</span><span>1 / 3</span></div>
+        <h3>이 기간엔 사진이 3장뿐이에요</h3>
+        <div class="g g5" style="margin-bottom:14px"><div><img class="c" src="{{d2}}" alt=""></div><div><img class="c" src="{{d7}}" alt=""></div><div><img class="c" src="{{d1}}" alt=""></div></div>
+        <p class="s" style="margin:0 0 12px">책 한 권은 5장부터 만들어요. 기간을 넓혀 볼까요?</p>
+        <div class="est" style="margin:0">앞뒤로 하루씩 넓히면 <b>8월 14–16일 · 27장</b>이에요.</div>
+      </div>
+      <div class="foot"><div class="btn">8월 14–16일로 넓히기</div><div class="btn ghost">날짜 다시 고르기</div></div>
+    </div><p class="cap"><b>사진 5장 미만</b> · 날짜를 고른 바로 그 자리에서. 넓히면 몇 장이 되는지 먼저 세어서 버튼으로.</p></div>
+
+    <div class="col"><div class="ph short vw">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>‹</span><b>제주 2박 3일</b><em>다듬기</em><em class="f">내보내기</em></div>
+      <div class="stg">
+        <div class="bn"><b>글 없이 만들었어요</b>이번 달 AI 사용량이 다 찼어요. 다음 달 1일부터 [다시 시도]를 누르면 이 책에 글이 들어가요. 이 책은 무료 2권에 넣지 않았어요.<p><span>다시 시도</span><span class="gh">닫기</span></p></div>
+        <div class="pgs" style="left:18px;top:170px"><img src="{{pp_a_0}}" alt=""><img src="{{pp_a_5}}" alt=""></div>
+      </div>
+    </div><p class="cap"><b>이번 달 사용량이 다 참</b> · 폰에서 거른 사진으로 글 없는 책을 먼저 줘요. 책은 책장에 있고, 다음 달에 같은 버튼으로 글만 채워요.</p></div>
+
+    <div class="col"><div class="ph short vw">
+      <div class="sb"><span>9:41</span><span>5G</span></div>
+      <div class="bar"><span>‹</span><b>제주 2박 3일</b><em>다듬기</em><em class="f">내보내기</em></div>
+      <div class="stg">
+        <div class="bn"><b>글을 못 썼어요</b>인터넷이 끊겼어요. 고른 38장은 그대로라서 글만 다시 쓰면 돼요.<p><span>다시 시도</span><span class="gh">글 없이 두기</span></p></div>
+        <div class="pgs" style="left:18px;top:150px"><img src="{{pp_a_0}}" alt=""><img src="{{pp_a_5}}" alt=""></div>
+      </div>
+    </div><p class="cap"><b>인터넷 끊김</b> · AI가 두 번이라 실패도 두 군데: 고르기에서 끊기면 폰에서 거른 사진으로, 글 쓰기에서 끊기면 고른 38장으로 글 없는 책 + [다시 시도].</p></div>
+
+    <div class="col"><div class="ph short">
+      <div class="nb">
+        <div class="top"><span>‹</span><b>1개 넣음</b></div>
+        <h3>일기·메모 넣기</h3>
+        <div class="add">
+          <div><i class="ic"><svg class="i"><use href="#i-file"/></svg></i><div class="t"><b>제주 메모.txt</b><small>1,240자 · 6월 12일, 13일 글을 찾았어요</small></div><span class="go ok"></span></div>
+          <div class="bad"><i class="ic"><svg class="i"><use href="#i-file"/></svg></i><div class="t"><b>못 읽은 파일: 여행일기.hwp</b><small>이 파일만 빼고 만들어요. txt · md · html · pdf · 사진은 읽을 수 있어요</small></div><span class="go">✕</span></div>
+        </div>
+        <p class="eg" style="margin-top:12px">한글 파일은 PDF로 저장해서 다시 넣어 보세요.</p>
+      </div>
+      <div class="foot"><div class="btn">1개 넣기</div></div>
+    </div><p class="cap"><b>못 읽은 파일</b> · 그 파일만 빼고 나머지로 계속. 파일 이름과 읽을 수 있는 형식을 같은 줄에.</p></div>
+
+    <div class="col"><div class="ph short">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>타임라인을 못 읽었어요</h3>
+        <div class="add">
+          <div class="bad"><i class="ic"><svg class="i"><use href="#i-file"/></svg></i><div class="t"><b>Records.json</b><small>타임라인 파일이 아니거나 6월 12–14일 기록이 없어요</small></div><span class="go">✕</span></div>
+        </div>
+        <p class="s" style="margin:14px 0 0">괜찮아요. 사진에 든 위치만으로 지도를 그려요. 위치가 없는 사진 6장은 날짜로만 넣어요.</p>
+      </div>
+      <div class="foot"><div class="btn">사진 위치로 계속</div><div class="btn ghost">다른 파일 고르기</div></div>
+    </div><p class="cap"><b>타임라인 못 읽음</b> · 지도는 사진 GPS로 그대로 나와요. 위치 없는 사진이 몇 장인지도 여기서 알려 줘요.</p></div>
+
+    <div class="col"><div class="ph short">
+      <div class="nb">
+        <div class="top"><span>✕</span><span>1 / 3</span></div>
+        <h3>언제 다녀왔어요?</h3>
+        <p class="warn" style="margin:0 0 12px"><b>사진을 일부만 볼 수 있어요.</b> 허용한 42장에서만 찾아요. 모두 허용해야 날짜만으로 여행 사진을 다 찾고, 사진에 든 위치도 읽어요.</p>
+        <div class="mon"><b>2026. 6</b><span>‹ ›</span></div>
+        <div class="cal">
+          <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+          <span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+          <span>7</span><span>8</span><span>9</span><span>10</span><span>11</span><span class="has">12</span><span class="has">13</span>
+        </div>
+      </div>
+      <div class="fade" style="height:150px"></div>
+      <div class="foot"><div class="btn">설정에서 모두 허용</div><div class="btn ghost">42장으로 계속</div></div>
+    </div><p class="cap"><b>사진 접근 "일부만 허용"</b> · 막지 않고 알려요: 몇 장만 보이는지, 모두 허용하면 무엇이 달라지는지. 그대로 계속할 수도 있어요.</p></div>
+
+  </div>
+</section>
+
+<!-- ===================== 10. settings ===================== -->
+<section class="part" id="settings">
+  <h2>10 설정</h2>
+  <p class="why">책장 오른쪽 위 톱니. 기본값 두 개와 읽을거리뿐이에요.</p>
+  <div class="row">
+    <div class="col"><div class="ph short" style="height:520px">
+      <div class="nb">
+        <div class="top"><span>‹</span><span></span></div>
+        <h3>설정</h3>
+        <p class="ol"><b>책장 기본 보기</b></p>
+        <div class="sg one"><div class="on">진열</div><div>연표</div></div>
+        <p class="ol"><b>화질 기본값</b><small>책마다 바꿀 수 있어요</small></p>
+        <div class="sg one"><div class="on">조금 낮추기</div><div>원본 그대로</div></div>
+        <div style="margin-top:16px">
+          <div class="rw" style="border-top:1px solid var(--line);padding-top:9px"><div class="t"><b>만든 책</b><small>무료 2권 중 2권 씀 · 다음 책부터 1권 1,500원</small></div><span class="v">5권</span></div>
+          <div class="rw"><div class="t"><b>사진 접근</b><small>모두 허용 · 위치 읽기 켜짐</small></div><span class="v">›</span></div>
+          <div class="rw"><div class="t"><b>이용 약관 · 개인정보</b><small>원본은 폰에만. 작은 미리보기만 AI로 보내고 저장하지 않아요</small></div><span class="v">›</span></div>
+          <div class="rw"><div class="t"><b>버전</b><small>개인용 빌드 · 결제 없음</small></div><span class="v">0.1.0</span></div>
+        </div>
+      </div>
+    </div><p class="cap"><b>설정</b> · 기본 보기(진열 / 연표), 화질 기본값, 만든 책 수와 값, 사진 접근, 약관·개인정보 한 줄, 버전.</p></div>
+  </div>
+</section>
+
+<section class="part notes" id="notes">
+  <h2>이번에 정한 것</h2>
+  <ul>
+    <li><b>[테마·길이 먼저 고르기] = "책 모양 고르기" 한 화면.</b> 첫 모습엔 세 가지만(테마 6 · 길이 · 글의 양), 나머지 8가지는 [더 보기] 안. 전부 추천값이 골라져 있어서 들어왔다가 바로 [이대로 책 만들기]를 눌러도 돼요.</li>
+    <li><b>같은 화면을 한 번 더 열 수 있어요</b>: "고른 사진 보기"의 버튼 위 한 줄. 고르기가 끝나 사진 내용을 아는 때이고, 글을 쓰기 직전이라 테마·글의 양·말투를 바꾸기 가장 좋은 자리예요.</li>
+    <li><b>"넣을 쪽"에서 마지막 에세이는 뺐어요.</b> "글의 양 = 캡션 + 에세이"와 같은 말이라 한 곳에서만 고르게. 넣을 쪽은 동선 지도 · 숫자 쪽 · 영상 쪽 세 개.</li>
+    <li><b>하이라이트 영상은 내보낼 때 만들어요.</b> 책 만드는 시간이 늘지 않고, 영상이 실패해도 책은 그대로. 길이·음악은 책 모양에서 미리 정해 둘 수 있고 내보내기에서 다시 물어요.</li>
+    <li><b>책은 만들어지는 순간 책장에 들어가요.</b> 따로 [저장]을 누르지 않아도 되고, 다듬기의 [저장하기]는 고친 것만 저장해요. 무료 권수는 글까지 다 된 책만 세요(글 없는 책은 안 세요).</li>
+    <li><b>표지 색 줄</b>은 사진이 꽉 찬 배치에서 숨기고, 왜 없는지 한 줄을 남겨요. 예시 책(여백의 책)은 기본 표지가 "가득"이라 처음엔 색 줄이 없어요.</li>
+    <li><b>책장에 톱니(설정)</b>를 하나 더했고, 빈 책장 문구에 "처음 2권은 무료예요"를 넣었어요.</li>
+  </ul>
+  <h2>물어볼 것</h2>
+  <ul>
+    <li>값은 언제 받나요? 시안은 [책 만들기]를 누를 때(고르기 전)예요. "고른 사진 보기"까지 보고 받는 쪽이 사람에겐 편하지만, 그러면 고르기 1번을 값없이 몇 번이든 돌릴 수 있어요.</li>
+    <li>책을 만든 뒤 테마를 바꿀 수 있게 할까요? 지금은 글을 쓰기 전까지만 바꿔요. 뒤에 바꾸면 쪽은 폰에서 다시 짜면 되지만 글의 길이가 테마마다 달라요.</li>
+    <li>테마 추천 이유 "풍경 사진이 많아서"는 고르기 전엔 폰이 얼굴 수를 세야 알 수 있어요. 그게 없으면 고르기 전 추천은 날짜·장소 수·일기 유무로만 하고, 고른 뒤 한 줄에서 다시 추천해요.</li>
+    <li>[글 다시 쓰기]는 누를 때마다 AI를 불러요. 한 권에 몇 번까지로 할지 정해야 해요.</li>
+  </ul>
+</section>
