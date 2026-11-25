@@ -129,12 +129,12 @@ List<RefPiece> trimForAi(List<RefPiece> xs, {int maxChars = 12000}); // every da
 ### Task 6: 기기 조각 + 에뮬레이터 첫 실행
 
 - [ ] 권한: `requestPermissionExtend(requestOption: PermissionRequestOption(androidPermission: AndroidPermission(type: RequestType.common, mediaLocation: true)))`. `limited`(일부 사진만 허용)면 "전체 사진 허용이 필요해요" + 설정 열기.
-- [ ] 조회: `createTimeCond` 는 `DATE_ADDED` 를 거른다(photo_manager 3.12 `CommonFilterOption.kt:152`) → 쓰지 않는다. `AdvancedCustomFilter` 에 `DateColumnWhereCondition(column: CustomColumns.android.dateTaken, operator: '>=' / '<=', value: …)` 두 개(사용자 날짜 ±14시간, ms) + `ColumnWhereCondition(column: CustomColumns.base.mediaType, operator: 'in', value: '(1,3)')`(WHERE 가 있으면 RequestType 조건이 빠진다). `ColumnWhereCondition` 에 날짜 열을 넣으면 WHERE 가 조용히 빈다(`advance.dart:346`). → `localOf` 뒤 `tripDay` 로 다시 거른다.
+- [ ] 조회: `createTimeCond` 는 `DATE_ADDED` 를 거른다(photo_manager 3.12 `CommonFilterOption.kt:152`) → 쓰지 않는다. `AdvancedCustomFilter` 에 `DateColumnWhereCondition(column: CustomColumns.android.dateTaken, operator: '>=' / '<=', value: DateTime)` 두 개(사용자 날짜 ±14시간) + `ColumnWhereCondition(column: CustomColumns.base.mediaType, operator: 'in', value: '(1,3)')`(WHERE 가 있으면 RequestType 조건이 빠진다). `ColumnWhereCondition` 에 날짜 열을 넣으면 WHERE 가 조용히 빈다(`advance.dart:346`). → `localOf` 뒤 `tripDay` 로 다시 거른다. `DATE_TAKEN` 이 없는 사진(메신저 저장 등)은 `DATE_ADDED` 로 한 번 더 조회해 기간 안이면 넣고, 그 수를 찾는 중 화면에 한 줄.
 - [ ] GPS: Q+ 에서 `AssetEntity.latitude` 는 비어 있다 → 사진은 `latlngAsync()`(내부에서 setRequireOriginal + EXIF), 영상은 null. `Shot.w/h` 는 `orientatedWidth/Height`(세로 사진이 가로로 저장된 경우).
 - [ ] 측정: `thumbnailDataWithSize(크기)` → isolate 에서 `measure`. 400장 기준 시간·메모리를 기록.
 - [ ] `MediaChannel.kt`: `exif(uri) -> {wall, offset}`(TAG_DATETIME_ORIGINAL, TAG_OFFSET_TIME_ORIGINAL), `videoFrames(uri) -> 4장`(길이의 15/40/65/90%, `getScaledFrameAtTime` 긴 변 512, JPEG 80), `trim(uri, startMs, endMs, outPath)`(Media3, 720p, 소리 유지).
 - [ ] `places.dart`: `placemarkFromCoordinates` → `locality ?? subAdministrativeArea ?? name`, 좌표 소수 2자리 캐시. 장소 우선순위 = 사진 GPS > `visitAt`(타임라인, 이름 없으면 좌표를 geocode) > 없음.
-- [ ] 썸네일 크기: Glide 는 짧은 변을 맞춘다(`ThumbnailUtil.kt:28`) → `fit(w,h,long)` 로 원본 비율에 맞춘 (w,h) 를 넘긴다(긴 변 = 256 / 512 / 1600). `original` 화질은 썸네일이 아니라 `originBytes`(HEIC 면 긴 변 4000 JPEG 썸네일).
+- [ ] 썸네일 크기: Glide 는 짧은 변을 맞춘다(`ThumbnailUtil.kt:28`) → `fit(w,h,long)` 로 원본 비율에 맞춘 (w,h) 를 넘긴다(긴 변 = 256 / 512 / 1600). `original` 화질도 `thumbnailDataWithSize(fit(w,h,4000), jpeg, 95)` — EXIF(GPS) 가 빠진 JPEG 라 공유해도 위치가 안 샌다. `originBytes` 는 쓰지 않는다.
 - [ ] `tools/seed_emulator.py <사진 폴더>`: EXIF(DateTimeOriginal·OffsetTimeOriginal·GPS) 붙인 사본 + 일부러 흐림·어둠·스크린샷·연사 사본 + DATE_TAKEN 이 붙은 짧은 mp4 1개 → `adb push /sdcard/DCIM/Camera` + 미디어 스캔. 표본 사진은 repo 에 커밋하지 않는다.
 - [ ] 확인(빌드 칸 + 에뮬레이터): "N장 → M장, 장 K개, 위치 없는 사진 J장". 흐린 사본 분포로 `kSharpMin` 확정(근거 주석 한 줄). Commit.
 
@@ -147,7 +147,8 @@ List<RefPiece> trimForAi(List<RefPiece> xs, {int maxChars = 12000}); // every da
 - [ ] 스키마(`additionalProperties:false`, 전부 required, **배열 길이·숫자 범위·글자 수 제약 없음** — structured output 이 지원하지 않는다; 개수는 `checkPlan` 이 자른다): `titles`, `theme` enum 6, `picks[{id,caption,score}]`, `ask[{a,b}]`, `chapters[{day,line}]`, `essay`, `clips[{id,startMs,endMs}]`.
 - [ ] `/rewrite`: 같은 경로, 이미지 ≤ 4, `max_tokens` 1000, `{caption}`.
 - [ ] `prompt.js`: 캡션 12~20자 사실 한 줄 또는 반말 혼잣말, 금지어(`mockups/r5/BRIEF.md` 공통 규칙), 참고 자료 말투 따르기, 사람 비율, 애매한 두 장만 `ask`, 영상 구간 3~5초(받은 장면 시각 안에서). 예시 문장 없음.
-- [ ] 테스트(`node --test`, SDK 는 `env.makeClient` 로 주입): 401, 413, 429, 상한 503 + 호출 0, SDK 가 보내기 전 throw → 예약 환불, 정상 → usage 정산, 실제가 예약보다 크면 넘어도 기록, max_tokens 정지 → 200 + 본문 `{error:"model"}` + 기록, API 오류(529·400·끊김) → 본문 `{error:"upstream"}` + usage 없으면 예약 전액 환불, 로그에 글 없음.
+- [x] Worker 코드 + 테스트 11개(아래 목록). 남은 것: 실호출 1회, CPU 확인, 배포.
+- [ ] 테스트(`node --test`, SDK 는 `env.makeClient` 로 주입): 401, 413, 429, 상한 503 + 호출 0, SDK 가 보내기 전 throw → 예약 환불, 정상 → usage 정산, 실제가 예약보다 크면 넘어도 기록, max_tokens 정지 → 200 + 본문 `{error:"model"}` + 기록, API 오류 → 본문 `{error:"upstream"}`; `message_start` 전이면 예약 환불, 그 뒤 끊김이면 예약 유지(과다 기록, 과소 없음), 로그에 글 없음.
 - [ ] 실호출 1회(배포 전, 표본 60장): 스키마가 받아들여지는지, usage 의 thinking·text 토큰, 걸린 시간. `usage.output_tokens`(thinking 포함) 가 `max_tokens` 의 절반을 넘으면 `max_tokens`·예약을 그만큼 올린다.
 - [ ] CPU 확인: 60장 요청을 `wrangler dev` 로 보내 CPU ms 측정. 무료 한도(10ms)를 넘으면 멈추고 운영자에게(유료 $5/월 또는 이미지 수 축소).
 - [ ] 배포: `scripts/wizard-travel-book.bat`(운영자: Console 에서 키 만들기 → `wrangler secret put ANTHROPIC_API_KEY`, 앱 토큰 생성 → `APP_TOKEN` + 로컬 `app/secrets.json`). D1 생성·`wrangler deploy` 는 운영자에게 한 줄 확인받고 Claude 가. Commit.
@@ -158,7 +159,7 @@ List<RefPiece> trimForAi(List<RefPiece> xs, {int maxChars = 12000}); // every da
 BookPlan checkPlan(Map<String,dynamic>? ai, List<Candidate> sent, BookOptions o);
 BookPlan fallbackPlan(List<Candidate> sent, BookOptions o); // sharpest per chapter, no text, aiText=false, theme by recommendTheme
 String recommendTheme(List<Chapter> ch, bool hasDiaryNotes); // diary notes → diary; places/day ≥ 3 → b; else a
-BookPlan resolveAsk(BookPlan p, Map<String,String> chosen /* key "$a|$b" with a<b */); // unanswered → higher score
+BookPlan resolveAsk(BookPlan p, Map<String,String> chosen /* key "$a|$b" in the order the AI sent the pair */); // unanswered → higher score
 ```
 - [ ] 테스트: 안 보낸 id 버림, 중복 한 번, 캡션 > 40자 → 빈 캡션, 모르는 theme → `recommendTheme`, 영상 밖 구간 → 0~4초, picks < 5 → fallback, null → fallback, resolveAsk 미응답.
 - [ ] `client.dart`: 512px 는 `thumbnailDataWithSize(fit(w,h,512), format: jpeg, quality: 80)`(quality 기본 100 이라 명시). 상한 배분(사진 44 = 점수순, 장면 12 = 영상마다 고르게, 참고 4). 스트림 읽기, 타임아웃 300초, 재시도 없음. 결과 `AiResult.ok(map) | off | failed`. Commit.
@@ -185,11 +186,13 @@ int recommendPages(int photos, int days); // 2 + days + ceil(photos / 1.8), leng
 
 - [ ] `pipeline.dart`: `Stream<Progress> make(DateTimeRange r, BookOptions o, {List<RefPiece> notes, Timeline? tl})` — 조회 → `gate` → 측정·거르기 → 장 → 512px → AI → `checkPlan` → (ask 있으면 화면 3 대기) → `resolveAsk` → 원본 복사·영상 trim → `paginate` → `store`. 각 단계 숫자를 Progress 로(“사진 412 → 38 → 고르는 중”). AI off/failed → `fallbackPlan` + [다시 시도].
 - [ ] M1 화면(테마 a 종이·글꼴 문법, 시안 없이 최소): 시작(달력 두 번 탭, 참고 자료, 타임라인, 첫 실행 한 줄), 찾는 중, 둘 중 하나([다 맡기기]), 책(뷰어), 책장. 실패 문구는 spec "실패할 때" 표 그대로(사진 5장 미만, 위치 없는 사진 N장, AI 실패·상한, 못 읽은 파일, 타임라인 실패).
-- [ ] 확인: 에뮬레이터에서 표본 여행 끝까지(실제 Worker). 실패 행마다 한 번씩 일부러 일으켜 스크린샷. 첫 화면 시간 = `flutter run --profile` 첫 프레임 로그 ≤ 2초. Commit.
+- [ ] `make()` 동안 화면 켜 둠(`FLAG_KEEP_SCREEN_ON`, MediaChannel `keepScreenOn(bool)`). 화면 끈 채 한 번 돌려 본다.
+- [ ] 확인: 에뮬레이터에서 표본 여행 끝까지(실제 Worker), **릴리스 APK(R8)로도 한 번** 책 화면까지. 실패 행마다 한 번씩 일부러 일으켜 스크린샷. 첫 화면 시간 = `flutter run --profile` 첫 프레임 로그 ≤ 2초. Commit.
 
 ### Task 12: 운영자 폰 (M1 끝)
 
 - [ ] 릴리스 APK(디버그 키 서명, `--dart-define-from-file`) → SendUserFile(30 MiB 넘으면 글꼴 정리). 운영자는 날짜만 넣는다.
+- [ ] 보고에 "테마 a 시안에는 에세이·지도·뒤표지 쪽이 없어 M1 책에는 빠진다(M2 에서 추가)" 한 줄.
 - [ ] 실측 기록: 갤러리 장수 → 거른 뒤 → AI 고른 장수, 단계별 시간, Worker usage → 원. 이 값으로 "이번 책 약 N원" 계산식 상수를 정한다. 보고 = 숫자 + 화면 캡처, 통과 기준 질문.
 - [ ] M1 화면(시작·찾는 중·둘 중 하나·책장·내보내기)의 디자인 시안 3방향을 Artifact 로 — 운영자 고른 뒤 M2 에서 교체.
 

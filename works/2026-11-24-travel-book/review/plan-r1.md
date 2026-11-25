@@ -21,3 +21,6 @@ Mediums folded: stream means status 200 -> errors in the body; Glide thumbnails 
 # Round 3 (2026-11-25, one Opus reviewer)
 High 1, fixed: ColumnWhereCondition on a date column silently empties WHERE -> DateColumnWhereCondition x2 + mediaType in (1,3).
 Mediums fixed: body errors in the test list, upstream API errors refund, output_tokens (thinking included) drives max_tokens, orientated sizes. Lows fixed in code: capEvenly buckets by tripDay, Takeout *TimestampMs.
+
+# Round 4 (2026-11-25, one Opus reviewer) — no High, loop stops.
+Mediums folded: keep the reservation after message_start (code already does), keep the screen on during make(), original quality = 4000 px JPEG thumbnail (no EXIF GPS), DATE_TAKEN-null photos via DATE_ADDED, one release (R8) run before the operator APK, M1 theme a has no essay/map/back page (say so in the report).
