@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>여행 책자</title>
+<style>
+@font-face{font-family:"Pretendard";font-weight:400;src:url(fonts/Pretendard-Regular.otf)}
+@font-face{font-family:"Pretendard";font-weight:500;src:url(fonts/Pretendard-Medium.otf)}
+@font-face{font-family:"Pretendard";font-weight:600;src:url(fonts/Pretendard-SemiBold.otf)}
+@font-face{font-family:"Pretendard";font-weight:700;src:url(fonts/Pretendard-Bold.otf)}
+@font-face{font-family:"Pretendard";font-weight:800;src:url(fonts/Pretendard-ExtraBold.otf)}
+/* Latin faces of the mockups (Inter Tight ...) are added once their files are in fonts/; Pretendard covers Latin meanwhile */
+html,body{margin:0;height:100%;background:#1b1b1b;overscroll-behavior:none}
+/* the book: one page per screen width, horizontal snap */
+#book{display:flex;height:100%;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none}
+#book::-webkit-scrollbar{display:none}
+.sheet{flex:0 0 100%;height:100%;display:flex;align-items:center;justify-content:center;scroll-snap-align:center}
+/* page box: --ratio = height / width (phone 4/3, A5 1.414, square 1); fits the screen on both axes */
+.pg{--ratio:1.3333;position:relative;overflow:hidden;width:min(100vw - 24px,(100vh - 24px) / var(--ratio));aspect-ratio:1/var(--ratio)}
+.pg img{display:block;width:100%;height:100%;object-fit:cover}
+.pg video{display:block;width:100%;height:100%;object-fit:cover}
+.pg [data-text]:empty{display:none}
+/* export mode: one page fills the viewport exactly */
+body.export #book{overflow:hidden}
+body.export .sheet{flex-basis:100vw}
+body.export .pg{width:100vw}
+</style>
+<link id="theme" rel="stylesheet">
+</head>
+<body>
+<div id="book"></div>
+<div id="tpl" hidden></div>
+<script src="book.js"></script>
+</body>
+</html>
