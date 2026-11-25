@@ -1,0 +1,115 @@
+/* theme a 「여백의 책」: copied from mockups/r5/a.html (approved round 7). Do not restyle here. */
+
+/* 여백의 책 r6: quiet monochrome photobook. Paper + ink only, colour comes from photos.
+   Grid (page width = 100cqw, height = 133.33cqw): margin M 6cqw, 6 columns, gutter G 2.4cqw, column step 15.067cqw.
+   Column left edges x1..x6 = 6 / 21.067 / 36.133 / 51.2 / 66.267 / 81.333; right edges = 18.667 / 33.733 / 48.8 / 63.867 / 78.933 / 94.
+   Every photo edge is a page edge or a column edge; photo gap is always G. Ratios: bleed (page height) / 4:5 / 3:2. */
+.t-a{--paper:#F4F3EF;--ink:#111111;--soft:#55575a;
+  --M:6cqw;--G:2.4cqw;--cs:15.067cqw;
+  --x2:21.067cqw;--x3:36.133cqw;--x4:51.2cqw;--x5:66.267cqw;--x6:81.333cqw;
+  --e3:48.8cqw;--e4:63.867cqw;
+  --f-l:"Inter Tight","Pretendard",sans-serif;--f-k:"Pretendard","Inter Tight",sans-serif}
+.t-a .pg{container-type:inline-size;background:var(--paper);color:var(--ink);font-family:var(--f-k);word-break:keep-all}
+.t-a .pg p,.t-a .pg h3{margin:0}
+.t-a .ph{position:absolute;overflow:hidden;background:#cfd2d3}
+.t-a .full{inset:0}
+.t-a .sh-b::before,.t-a .sh-t::before{content:"";position:absolute;inset:0;z-index:1;pointer-events:none}
+.t-a .sh-b::before{background:linear-gradient(0deg,rgba(10,14,18,.56),rgba(10,14,18,.5) 32%,rgba(10,14,18,0) 60%)}
+.t-a .sh-t::before{background:linear-gradient(180deg,rgba(10,14,18,.6),rgba(10,14,18,0) 30%)}
+.t-a .tx{position:absolute;z-index:2}
+.t-a .w{color:#fff}
+.t-a .sf{color:var(--soft)}
+.t-a .w .sf,.t-a .w.sf{color:rgba(255,255,255,.86)}
+.t-a .r{text-align:right}
+
+/* type scale: display (big thin numbers, cqw) / body 12px / caption 10px. Running head uses caption. */
+.t-a .lb{font:500 10px/1.3 var(--f-l);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.t-a .sm{font:500 10px/1.4 var(--f-k);letter-spacing:.01em}
+.t-a .cp{font:500 12px/1.4 var(--f-k);letter-spacing:-.015em;text-wrap:pretty}
+.t-a .big{font-family:var(--f-l);font-weight:800;letter-spacing:-.05em;line-height:.78;font-variant-numeric:tabular-nums;white-space:nowrap}
+.t-a .thin{font-weight:300}
+
+/* caption: time in column 1 (one column step wide), place from column 2, note pushed to the right margin */
+.t-a .cap{display:flex;align-items:baseline}
+.t-a .cap .lb{flex:none;width:var(--cs)}
+.t-a .cap .n{margin-left:auto;padding-left:var(--G)}
+.t-a .cap.stk{display:block}
+.t-a .cap.stk .lb,.t-a .cap.stk .cp{display:block;width:auto}
+/* folio: page number at x1, running head at x2, bottom margin. Same on every body page. */
+.t-a .fo{left:var(--M);bottom:var(--M);display:flex;align-items:baseline}
+.t-a .fo .lb{width:var(--cs)}
+.t-a .fo .sm{color:var(--soft)}
+.t-a .fo.w .sm{color:rgba(255,255,255,.86)}
+/* caption row sitting on a bleed photo: one caption line above the folio */
+.t-a .cb{left:var(--M);right:var(--M);bottom:calc(var(--M) + 13px + var(--G))}
+
+/* covers */
+.t-a .c1 .t{left:-1.5cqw;bottom:-1.5cqw;font-size:46cqw}
+.t-a .c1 .a{left:var(--M);top:var(--M)}
+.t-a .c1 .b{right:var(--M);top:var(--M)}
+.t-a .c2 .ph{left:0;right:0;top:66.667cqw;bottom:0}
+.t-a .c2 .t{left:calc(var(--M) - .03em);top:14cqw;font:800 45cqw/.9 var(--f-k);letter-spacing:-.05em;white-space:nowrap}
+.t-a .c2 .a{left:var(--M);top:var(--M)}
+.t-a .c2 .b{right:var(--M);top:var(--M)}
+.t-a .c2 .c{left:var(--M);bottom:var(--M)}
+.t-a .c3 .ph::before{content:"";position:absolute;inset:0;z-index:1;background:linear-gradient(180deg,rgba(0,0,0,.18),rgba(0,0,0,.42))}
+.t-a .c3 .t1{left:calc(var(--M) - .045em);top:var(--M);font-size:34cqw}
+.t-a .c3 .t2{right:calc(var(--M) - .03em);bottom:var(--M);font-size:34cqw}
+.t-a .c3 .a{left:var(--M);top:62cqw}
+.t-a .c3 .b{right:var(--M);top:62cqw}
+
+/* day opener: bleed photo, thin day number 44cqw, right ink on the right margin, sitting on the bottom edge */
+.t-a .op .n{right:calc(var(--M) - .035em);bottom:-.6cqw;font-size:44cqw}
+.t-a .op .d{right:var(--M);bottom:37cqw}
+
+/* 1-2 size contrast: bleed column (x0..e4, full height) + 4:5 detail in columns 5-6, caption under it */
+.t-a .sz .p1{left:0;top:0;bottom:0;width:var(--e4)}
+.t-a .sz .p1 img{transform:scale(1.75);transform-origin:62% 100%}
+.t-a .sz .p2{left:var(--x5);right:0;top:0;height:42.17cqw}
+.t-a .sz .c{left:var(--x5);right:var(--M);top:44.57cqw}
+
+/* 1-3 road: single bleed photo, caption above folio */
+
+/* 2-2 video: three 3:2 frames of one clip, stacked in columns 1-3 (bleed left/top), gap G */
+.t-a .vd .v1{left:0;right:0;top:0;height:66.667cqw}
+.t-a .vd .v2,.t-a .vd .v3{top:69.067cqw;width:42.8cqw;height:28.533cqw}
+.t-a .vd .v2{left:var(--M)}.t-a .vd .v3{left:var(--x4)}
+.t-a .vd .v2 img{transform:scale(2.1);transform-origin:50% 62%}
+.t-a .vd .v3 img{transform:scale(3.4);transform-origin:56% 66%}
+.t-a .vd .play span{transform:scale(.8)}
+.t-a .vd .c{left:var(--M);right:var(--M);top:100cqw}
+.t-a .vd .c2{left:var(--x2);right:var(--M);top:105.5cqw}
+
+/* 2-3 stone wall: 4:5 photo columns 2-6 (bleed top/right) + 4:5 detail in column 1, bottoms aligned */
+.t-a .dl .p1{left:var(--M);right:var(--M);top:0;height:110cqw}
+.t-a .dl .c{left:var(--M);right:var(--M);top:112.4cqw}
+
+/* 2-4 staggered three: 3:2 (cols 1-4) + 4:5 (cols 5-6) on top, 3:2 (cols 3-6) below */
+.t-a .st .p1{left:0;right:0;top:0;height:66.667cqw}
+.t-a .st .c1{left:var(--M);right:var(--M);top:69.067cqw}
+.t-a .st .p2,.t-a .st .p3{top:76.6cqw;width:42.8cqw;height:28.533cqw}
+.t-a .st .p2{left:var(--M)}.t-a .st .p3{left:var(--x4)}
+.t-a .st .c2{left:var(--M);width:42.8cqw;top:107.533cqw}
+.t-a .st .c3{left:var(--x4);width:42.8cqw;top:107.533cqw}
+
+/* 3-2 panorama: 3:2 bleed + three 4:5 on column pairs */
+.t-a .pn .p0{left:0;right:0;top:0;height:66.667cqw}
+.t-a .pn .c1{left:var(--M);right:var(--M);top:69.067cqw}
+.t-a .pn .s{top:76.6cqw;width:27.733cqw;height:34.667cqw}
+.t-a .pn .sa{left:var(--M)}.t-a .pn .sb{left:var(--x3)}.t-a .pn .sc{left:var(--x5)}
+.t-a .pn .c2{left:var(--M);right:var(--M);top:113.667cqw}
+
+/* last page: 3:2 photo cols 1-4 + summary in cols 5-6, then a two-column index (cols 1-3 / 4-6) */
+.t-a .en .ph{left:0;top:0;width:var(--e4);height:42.578cqw}
+.t-a .en .s{left:var(--x5);right:var(--M);top:var(--M)}
+.t-a .en .s .sm{display:block}
+.t-a .en .s .cp{margin-bottom:1.2cqw}
+.t-a .en .ix{left:var(--M);right:var(--M);top:49.4cqw;display:grid;grid-template-columns:1fr 1fr;column-gap:var(--G)}
+.t-a .en .ix .sm{display:block;padding:1.4cqw 0 1.2cqw;border-top:1px solid var(--ink)}
+.t-a .en .ix .sm.g{margin-top:3.6cqw}
+.t-a .en .ix .cp{display:flex;align-items:baseline;line-height:2}
+.t-a .en .ix .cp .lb{width:var(--cs);flex:none;color:var(--soft)}
+.t-a .en .e{left:var(--x4);right:var(--M);bottom:calc(var(--M) + 13px + var(--G))}
+
+/* app runtime (not in the mockup): sample-specific zooms off, the app sends real frames and crops */
+.t-a .sz .p1 img,.t-a .vd .v2 img,.t-a .vd .v3 img{transform:none}
