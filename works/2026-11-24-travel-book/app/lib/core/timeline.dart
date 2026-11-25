@@ -38,6 +38,14 @@ final _num = RegExp(r'-?\d+(?:\.\d+)?');
 
 DateTime? _t(Object? s) => s is String ? DateTime.tryParse(s)?.toUtc() : null;
 
+/// Older Takeout files carry epoch-millisecond strings (startTimestampMs) instead of ISO times.
+DateTime? _tAny(Map? d, String key) {
+  final iso = _t(d?[key]);
+  if (iso != null) return iso;
+  final ms = int.tryParse('${d?['${key}Ms']}');
+  return ms == null ? null : DateTime.fromMillisecondsSinceEpoch(ms, isUtc: true);
+}
+
 Timeline _segments(List xs) {
   final visits = <Visit>[];
   final paths = <List<(double, double)>>[];
@@ -69,7 +77,7 @@ Timeline _takeout(List xs) {
     final pv = o['placeVisit'];
     if (pv is Map) {
       final loc = pv['location'] as Map?, d = pv['duration'] as Map?;
-      final st = _t(d?['startTimestamp']), en = _t(d?['endTimestamp']);
+      final st = _tAny(d, 'startTimestamp'), en = _tAny(d, 'endTimestamp');
       if (loc?['latitudeE7'] != null && st != null && en != null) {
         visits.add(Visit(st, en, e7(loc!['latitudeE7']), e7(loc['longitudeE7']), loc['name'] as String?));
       }

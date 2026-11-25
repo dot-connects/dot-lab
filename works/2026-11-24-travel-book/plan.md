@@ -111,9 +111,9 @@ class Chapter { String day; String? place; List<Candidate> items; }
 class Visit { DateTime start, end; double lat, lng; String? name; }
 class Timeline { List<Visit> visits; List<List<(double,double)>> paths; }
 Timeline parseTimeline(String json);  // FormatException when no shape matches
-String? placeAt(Timeline t, DateTime utc); // visit covering utc ±15 min
+Visit? visitAt(Timeline t, DateTime utc); // visit covering utc ±15 min; Android/iOS visits have no name → caller geocodes
 ```
-- [ ] 손으로 만든 표본 3개(`test/fixtures/timeline_{android,ios,takeout}.json`: Android `semanticSegments` + `"37.5°, 127.0°"`, iOS 최상위 배열 + `"geo:37.5,127.0"`, Takeout `timelineObjects` + `latitudeE7`). 테스트: 각 visits 2·paths 1, 모르는 형식 예외, `placeAt` 경계. Commit.
+- [ ] 손으로 만든 표본 3개(`test/fixtures/timeline_{android,ios,takeout}.json`: Android `semanticSegments` + `"37.5°, 127.0°"`, iOS 최상위 배열 + `"geo:37.5,127.0"`, Takeout `timelineObjects` + `latitudeE7`). 테스트: 각 visits 2·paths 1, 모르는 형식 예외, `visitAt` 경계. Commit.
 
 ### Task 5: 참고 자료 (순수 + 접착)
 
@@ -129,23 +129,26 @@ List<RefPiece> trimForAi(List<RefPiece> xs, {int maxChars = 12000}); // every da
 ### Task 6: 기기 조각 + 에뮬레이터 첫 실행
 
 - [ ] 권한: `requestPermissionExtend(requestOption: PermissionRequestOption(androidPermission: AndroidPermission(type: RequestType.common, mediaLocation: true)))`. `limited`(일부 사진만 허용)면 "전체 사진 허용이 필요해요" + 설정 열기.
-- [ ] 조회: 사용자 날짜를 앞뒤 14시간 넓혀 `createTimeCond` 로 조회 → `localOf` 계산 뒤 현지 날짜로 다시 거른다. photo_manager 가 `DATE_TAKEN` 을 쓰는지 소스에서 확인해 주석 한 줄(아니면 `DATE_TAKEN` 조건을 직접).
-- [ ] 측정: `thumbnailDataWithSize(256)` → isolate 에서 `measure`. 400장 기준 시간·메모리를 기록.
+- [ ] 조회: `createTimeCond` 는 `DATE_ADDED` 를 거른다(photo_manager 3.12 `CommonFilterOption.kt:152`) → 쓰지 않는다. `AdvancedCustomFilter` 에 `DateColumnWhereCondition(column: CustomColumns.android.dateTaken, operator: '>=' / '<=', value: …)` 두 개(사용자 날짜 ±14시간, ms) + `ColumnWhereCondition(column: CustomColumns.base.mediaType, operator: 'in', value: '(1,3)')`(WHERE 가 있으면 RequestType 조건이 빠진다). `ColumnWhereCondition` 에 날짜 열을 넣으면 WHERE 가 조용히 빈다(`advance.dart:346`). → `localOf` 뒤 `tripDay` 로 다시 거른다.
+- [ ] GPS: Q+ 에서 `AssetEntity.latitude` 는 비어 있다 → 사진은 `latlngAsync()`(내부에서 setRequireOriginal + EXIF), 영상은 null. `Shot.w/h` 는 `orientatedWidth/Height`(세로 사진이 가로로 저장된 경우).
+- [ ] 측정: `thumbnailDataWithSize(크기)` → isolate 에서 `measure`. 400장 기준 시간·메모리를 기록.
 - [ ] `MediaChannel.kt`: `exif(uri) -> {wall, offset}`(TAG_DATETIME_ORIGINAL, TAG_OFFSET_TIME_ORIGINAL), `videoFrames(uri) -> 4장`(길이의 15/40/65/90%, `getScaledFrameAtTime` 긴 변 512, JPEG 80), `trim(uri, startMs, endMs, outPath)`(Media3, 720p, 소리 유지).
-- [ ] `places.dart`: `placemarkFromCoordinates` → `locality ?? subAdministrativeArea ?? name`, 좌표 소수 2자리 캐시. 장소 우선순위 = 사진 GPS > `placeAt`(타임라인) > 없음.
-- [ ] `tools/seed_emulator.py <사진 폴더>`: EXIF(DateTimeOriginal·OffsetTimeOriginal·GPS) 붙인 사본 + 일부러 흐림·어둠·스크린샷·연사 사본 → `adb push /sdcard/DCIM/Camera` + 미디어 스캔. 표본 사진은 repo 에 커밋하지 않는다.
+- [ ] `places.dart`: `placemarkFromCoordinates` → `locality ?? subAdministrativeArea ?? name`, 좌표 소수 2자리 캐시. 장소 우선순위 = 사진 GPS > `visitAt`(타임라인, 이름 없으면 좌표를 geocode) > 없음.
+- [ ] 썸네일 크기: Glide 는 짧은 변을 맞춘다(`ThumbnailUtil.kt:28`) → `fit(w,h,long)` 로 원본 비율에 맞춘 (w,h) 를 넘긴다(긴 변 = 256 / 512 / 1600). `original` 화질은 썸네일이 아니라 `originBytes`(HEIC 면 긴 변 4000 JPEG 썸네일).
+- [ ] `tools/seed_emulator.py <사진 폴더>`: EXIF(DateTimeOriginal·OffsetTimeOriginal·GPS) 붙인 사본 + 일부러 흐림·어둠·스크린샷·연사 사본 + DATE_TAKEN 이 붙은 짧은 mp4 1개 → `adb push /sdcard/DCIM/Camera` + 미디어 스캔. 표본 사진은 repo 에 커밋하지 않는다.
 - [ ] 확인(빌드 칸 + 에뮬레이터): "N장 → M장, 장 K개, 위치 없는 사진 J장". 흐린 사본 분포로 `kSharpMin` 확정(근거 주석 한 줄). Commit.
 
 ### Task 7: Worker
 
-- [ ] `counts.js` = catch `worker/src/index.js:154-195` 의 `MemoryCounts`/`D1Counts`/`num` 을 복사(파일 첫 줄 "copied from works/2026-11-09-catch/worker, keep in sync"). 단위는 **밀(1/10 센트) 정수**.
+- [ ] `counts.js` = catch `worker/src/index.js:154-195` 의 `MemoryCounts`/`D1Counts`/`num` 을 복사(파일 첫 줄 "copied from works/2026-11-09-catch/worker, keep in sync"). 단위는 **밀(1/10 센트) 정수**, `MONTH_CENTS` 는 센트로 두고 읽을 때 ×10.
 - [ ] `POST /book`: `x-app-token` 확인(401) → ratelimit(429) → 이미지 > 60 (413) → `DAY_BOOKS` take → 예약 = 입력 추정(이미지 × 260 + 글자 수/2 토큰 × $2/M) + `max_tokens` 12000 × $10/M, 밀 올림. 상한 못 넘으면 503 off, SDK 호출 0.
-- [ ] 호출: `new Anthropic({ apiKey, maxRetries: 0 }).messages.stream({ model: env.MODEL, max_tokens: 12000, output_config: { effort: "medium", format: { type: "json_schema", schema } }, system, messages })`. 응답 본문은 스트림으로 내보내며 10초마다 공백 한 칸(연결 유지), 끝에 JSON 한 덩어리. `ctx.waitUntil` 으로 정산: `finalMessage().usage` 로 실제 밀 계산 → 예약과 차액을 `add(k, diff, Infinity)`(넘어도 기록). 연결이 끊겨도 정산은 돈다.
-- [ ] 결과: `content` 에서 `type === "text"` 블록을 찾아 JSON.parse. `stop_reason` 이 `refusal`·`max_tokens` 이거나 파싱 실패면 `{error:"model"}`(비용은 기록). 
-- [ ] 스키마(`additionalProperties:false`, 전부 required): `titles[3]`, `theme` enum 6, `picks[{id,caption,score}]`, `ask[{a,b}]`(≤5), `chapters[{day,line}]`, `essay`, `clips[{id,startMs,endMs}]`.
+- [ ] 호출: `new Anthropic({ apiKey, maxRetries: 0 }).messages.stream({ model: env.MODEL, max_tokens: 12000, output_config: { effort: "medium", format: { type: "json_schema", schema } }, system, messages })`. 응답 본문은 스트림으로 내보내며 10초마다 공백 한 칸(연결 유지), 끝에 JSON 한 덩어리. `ctx.waitUntil` 으로 정산: `finalMessage().usage` 로 실제 밀 계산 → 예약과 차액을 `settle(k, diff)` = `UPDATE counts SET n = n + ?` (상한 없이 기록; D1 은 Infinity 를 bind 못 한다). 연결이 끊겨도 정산은 돈다.
+- [ ] 결과: `content` 에서 `type === "text"` 블록을 찾아 JSON.parse. `stop_reason` 이 `refusal`·`max_tokens` 이거나 파싱 실패면 본문 `{error:"model"}`(비용은 기록). 스트림이라 상태 코드는 이미 200 — 앱은 상태가 아니라 **본문의 `error`** 로 판단하고, 테스트도 본문을 본다. 스트림 전에 끝나는 401·413·429·503 만 상태 코드.
+- [ ] 스키마(`additionalProperties:false`, 전부 required, **배열 길이·숫자 범위·글자 수 제약 없음** — structured output 이 지원하지 않는다; 개수는 `checkPlan` 이 자른다): `titles`, `theme` enum 6, `picks[{id,caption,score}]`, `ask[{a,b}]`, `chapters[{day,line}]`, `essay`, `clips[{id,startMs,endMs}]`.
 - [ ] `/rewrite`: 같은 경로, 이미지 ≤ 4, `max_tokens` 1000, `{caption}`.
 - [ ] `prompt.js`: 캡션 12~20자 사실 한 줄 또는 반말 혼잣말, 금지어(`mockups/r5/BRIEF.md` 공통 규칙), 참고 자료 말투 따르기, 사람 비율, 애매한 두 장만 `ask`, 영상 구간 3~5초(받은 장면 시각 안에서). 예시 문장 없음.
-- [ ] 테스트(`node --test`, SDK 는 `env.makeClient` 로 주입): 401, 413, 429, 상한 503 + 호출 0, SDK 가 보내기 전 throw → 예약 환불, 정상 → usage 정산, 실제가 예약보다 크면 넘어도 기록, max_tokens 정지 → 502 + 기록, 로그에 글 없음.
+- [ ] 테스트(`node --test`, SDK 는 `env.makeClient` 로 주입): 401, 413, 429, 상한 503 + 호출 0, SDK 가 보내기 전 throw → 예약 환불, 정상 → usage 정산, 실제가 예약보다 크면 넘어도 기록, max_tokens 정지 → 200 + 본문 `{error:"model"}` + 기록, API 오류(529·400·끊김) → 본문 `{error:"upstream"}` + usage 없으면 예약 전액 환불, 로그에 글 없음.
+- [ ] 실호출 1회(배포 전, 표본 60장): 스키마가 받아들여지는지, usage 의 thinking·text 토큰, 걸린 시간. `usage.output_tokens`(thinking 포함) 가 `max_tokens` 의 절반을 넘으면 `max_tokens`·예약을 그만큼 올린다.
 - [ ] CPU 확인: 60장 요청을 `wrangler dev` 로 보내 CPU ms 측정. 무료 한도(10ms)를 넘으면 멈추고 운영자에게(유료 $5/월 또는 이미지 수 축소).
 - [ ] 배포: `scripts/wizard-travel-book.bat`(운영자: Console 에서 키 만들기 → `wrangler secret put ANTHROPIC_API_KEY`, 앱 토큰 생성 → `APP_TOKEN` + 로컬 `app/secrets.json`). D1 생성·`wrangler deploy` 는 운영자에게 한 줄 확인받고 Claude 가. Commit.
 
@@ -158,7 +161,7 @@ String recommendTheme(List<Chapter> ch, bool hasDiaryNotes); // diary notes → 
 BookPlan resolveAsk(BookPlan p, Map<String,String> chosen /* key "$a|$b" with a<b */); // unanswered → higher score
 ```
 - [ ] 테스트: 안 보낸 id 버림, 중복 한 번, 캡션 > 40자 → 빈 캡션, 모르는 theme → `recommendTheme`, 영상 밖 구간 → 0~4초, picks < 5 → fallback, null → fallback, resolveAsk 미응답.
-- [ ] `client.dart`: 512px 는 `thumbnailDataWithSize(512, format: jpeg, quality: 80)`. 상한 배분(사진 44 = 점수순, 장면 12 = 영상마다 고르게, 참고 4). 스트림 읽기, 타임아웃 300초, 재시도 없음. 결과 `AiResult.ok(map) | off | failed`. Commit.
+- [ ] `client.dart`: 512px 는 `thumbnailDataWithSize(fit(w,h,512), format: jpeg, quality: 80)`(quality 기본 100 이라 명시). 상한 배분(사진 44 = 점수순, 장면 12 = 영상마다 고르게, 참고 4). 스트림 읽기, 타임아웃 300초, 재시도 없음. 결과 `AiResult.ok(map) | off | failed`. Commit.
 
 ### Task 9: 테마 a 배치 틀 + 쪽 배치
 
@@ -173,8 +176,8 @@ int recommendPages(int photos, int days); // 2 + days + ceil(photos / 1.8), leng
 
 ### Task 10: 책 런타임 (테마 a)
 
-- [ ] 로드: `InAppWebView` `webViewAssetLoader: WebViewAssetLoader(domain: 'appassets.androidplatform.net', pathHandlers: [AssetsPathHandler(path: '/assets/'), InternalStoragePathHandler(path: '/books/', directory: <docs>/books)])`. `index.html` 은 `https://appassets.androidplatform.net/assets/flutter_assets/assets/book/index.html`, 사진은 `/books/<id>/img/<pid>.jpg`. `@font-face` 는 `fonts/` 상대 경로. file:// 는 쓰지 않는다.
-- [ ] `book.js`: `render(book)` — PageSpec 마다 template 복제·채우기, 가로 스크롤 스냅, `.pg` 비율 변수 `--ratio`(phone 4/3, a5 1.414, square 1). 영상 칸 = `<video muted playsinline loop poster>` + `src=/books/<id>/vid/<pid>.mp4`(Task 6 `trim` 결과), 보일 때만 재생. JS→Flutter 다리 이름: `edit`, `longPress {page}`, `save`, `rewrite {page}`, `swap {page, slot}`.
+- [ ] 로드: `InAppWebViewSettings(mediaPlaybackRequiresUserGesture: false, webViewAssetLoader: WebViewAssetLoader(domain: 'appassets.androidplatform.net', pathHandlers: [AssetsPathHandler(path: '/assets/'), InternalStoragePathHandler(path: '/books/', directory: <docs>/books)]))`. `index.html` 은 `https://appassets.androidplatform.net/assets/flutter_assets/assets/book/index.html`, 사진은 `/books/<id>/img/<pid>.jpg`. `@font-face` 는 `fonts/` 상대 경로. file:// 는 쓰지 않는다.
+- [ ] `book.js`: `render(book)` — PageSpec 마다 template 복제·채우기, 가로 스크롤 스냅, `.pg` 비율 변수 `--ratio`(phone 4/3, a5 1.414, square 1). 영상 칸 = `<video muted playsinline loop poster>` + `src=/books/<id>/vid/<pid>.mp4`(Task 6 `trim` 결과), 보일 때만 재생. Range 미지원으로 반복 재생이 멈추면 poster 정지 화면으로 둔다(시트 확인). JS→Flutter 다리 이름: `edit`, `longPress {page}`, `save`, `rewrite {page}`, `swap {page, slot}`.
 - [ ] `store.dart`: `books/<id>/book.json`(`Book`), 임시 파일에 쓰고 rename. img = 화질 `reduced` 1600px / `original` 4000px, 모두 `thumbnailDataWithSize(... jpeg)`. 목록·삭제.
 - [ ] `tools/check_book.py`: 표본 book.json 을 런타임으로 렌더 → 시안 쪽과 나란히 시트 + `textcontrast.py` 대비(`render_slot()` 안). 시트를 Read 로 직접 본다. 대비 LOW 0. Commit.
 
@@ -210,7 +213,7 @@ int recommendPages(int photos, int days); // 2 + days + ceil(photos / 1.8), leng
 - [ ] PDF: 같은 이미지를 `pdf` 로 판형 크기에 꽉 채움 → `Documents/여행 책자/<책 id>.pdf`. 판형이 폰이면 PDF 는 A5 로 다시 렌더. 판형마다 무너지는 배치는 `layouts.json` `formats` 에서 뺀다(시트로 확인).
 - [ ] 하이라이트(Kotlin, Looper 스레드): Media3 `Composition` — 사진 `durationUs` 1.6초 + `Presentation` 1080×1920 꽉 채움, 영상 = clip, 음악 시퀀스 `isLooping`, 사진 구간 `experimentalSetForceAudioTrack`, 입력 디코드 최대 2048, HDR 은 SDR 톤매핑. 앱 폴더 → MediaStore `Movies/여행 책자/`. 실패 → 책 그대로 + [다시 만들기].
 - [ ] 음악: 퍼블릭 도메인·CC0 후보 5곡(분위기·출처·라이선스 링크 표) → 운영자 승인 뒤 내려받아 `assets/music/`.
-- [ ] `share_plus` 공유. 확인: `adb pull` 로 결과를 직접 본다(PDF 쪽 수·해상도, `ffprobe` 길이).
+- [ ] `share_plus` 공유. HeadlessInAppWebView 에도 같은 `webViewAssetLoader` 설정. 확인: `adb pull` 로 결과를 직접 본다(PDF 쪽 수·해상도, `ffprobe` 길이).
 
 ### Task 16: 실제 여행 2회차 (M2 끝)
 

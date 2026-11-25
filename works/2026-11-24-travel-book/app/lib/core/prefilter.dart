@@ -2,6 +2,7 @@
 // before anything is sent to the AI. Works on a 256 px thumbnail.
 import 'package:image/image.dart' as img;
 
+import 'chapters.dart' show tripDay;
 import 'models.dart';
 
 /// Laplacian variance on a 256 px grey thumbnail below this = blurred.
@@ -87,7 +88,7 @@ List<Candidate> capEvenly(List<Candidate> xs, int cap) {
   if (xs.length <= cap) return [...xs]..sort((a, b) => a.local.compareTo(b.local));
   final byDay = <String, List<Candidate>>{};
   for (final c in xs) {
-    byDay.putIfAbsent(ymd(c.local), () => []).add(c);
+    byDay.putIfAbsent(tripDay(c.local), () => []).add(c);
   }
   for (final l in byDay.values) {
     l.sort((a, b) => b.sharp.compareTo(a.sharp));
