@@ -3,11 +3,11 @@ main = "src/index.js"
 compatibility_date = "2026-10-01"
 compatibility_flags = ["nodejs_compat"]
 
-# 「여행 책자」 AI relay: 512 px previews + local times + place names + notes -> Claude -> picks, captions, essay.
+# 「여행 책자」 AI relay: 512 px previews + local times + place names + notes -> GPT -> picks, captions, essay.
 # Nothing is stored; logs carry status and token counts only.
-# Secrets: ANTHROPIC_API_KEY (none = 503 off), APP_TOKEN (the app's x-app-token; none = every call 401).
+# Secrets: OPENAI_KEY (none = 503 off), APP_TOKEN (the app's x-app-token; none = every call 401).
 [vars]
-MODEL = "claude-sonnet-5-5"
+MODEL = "gpt-5.4"
 # month ceiling in cents ("0" = AI off), books a day for everyone
 MONTH_CENTS = "1000"
 DAY_BOOKS = "20"

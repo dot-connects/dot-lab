@@ -15,7 +15,7 @@
 - applicationId `kr.dot.tripbook`, 이름 "여행 책자", minSdk 29, targetSdk 35. Android 만 빌드, Dart 에 Android 전용 가정 금지.
 - 원본은 폰을 떠나지 않는다. Worker 로 가는 것: 긴 변 512px JPEG(품질 80), 영상 장면, 현지 시각·장소 이름·참고 자료 글. 좌표 숫자는 Worker 로 보내지 않는다. (장소 이름은 기기 Geocoder 가 구한다 — Google 에 좌표가 가지만 사진은 아니다.)
 - 이미지 디코딩은 플랫폼에 맡긴다(`photo_manager` `thumbnailDataWithSize` / `thumbnailDataWithOption`, JPEG 출력). `package:image` 는 256px 썸네일 측정에만. HEIC 는 플랫폼이 JPEG 로 준다.
-- AI 이미지 상한 60장 = 사진 ≤ 44 + 영상 장면 ≤ 12 + 참고 자료 이미지 ≤ 4. 모델 `claude-sonnet-5-5`(spec "Claude Sonnet"), Worker `MODEL` 변수 한 곳. lab Worker 라 `ai-hub/llm-registry.toml` 대상 아님(catch Worker 와 같음, 시스템 코드 아님).
+- AI 이미지 상한 60장 = 사진 ≤ 44 + 영상 장면 ≤ 12 + 참고 자료 이미지 ≤ 4. 모델 `gpt-5.4`(운영자 11-25: 가진 GPT 키로, Claude 대신), Worker `MODEL` 변수 한 곳. 실측 11-25: 사진 30장 72초 9.8센트. lab Worker 라 `ai-hub/llm-registry.toml` 대상 아님(catch Worker 와 같음, 시스템 코드 아님).
 - Worker 는 요청 내용·AI 답을 저장하지 않는다. 로그 = 상태·토큰 수만. 월 상한 `MONTH_CENTS = "1000"`, 하루 책 상한 `DAY_BOOKS = "20"`, IP 당 분당 4회.
 - 앱 토큰은 코드에 없다: `--dart-define-from-file=secrets.json`(gitignore). 커밋 전 `git diff --staged` 에 토큰 없음 확인.
 - 'AI' 라는 말은 첫 실행 한 줄, 진행 화면, 상한 문구("이번 달 AI 사용량이 다 찼어요", spec 그대로)에서만.

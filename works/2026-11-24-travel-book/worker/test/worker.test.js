@@ -7,28 +7,22 @@ import { handle, MemoryCounts, D1Counts, reserveMills, realMills } from "../src/
 const B64 = "/9j/" + "A".repeat(300);
 let counts, env, calls, logs, waits;
 
-// a fake SDK stream: finalMessage resolves to `reply` or rejects with `fail`
-function fakeClient({ reply, fail, started = true } = {}) {
-  return () => ({ messages: { stream(params) {
-    calls.push(params);
-    const handlers = [];
-    return {
-      on(ev, f) { if (ev === "streamEvent") handlers.push(f); return this; },
-      async finalMessage() {
-        if (started) handlers.forEach(f => f({ type: "message_start" }));
-        if (fail) throw fail;
-        return reply;
-      },
-    };
-  } } });
+// a fake OpenAI fetch: `reply` (Responses API body), an HTTP error `status`, or a network `fail`
+function fakeFetch({ reply, status, fail } = {}) {
+  return async (url, init) => {
+    calls.push(JSON.parse(init.body));
+    if (fail) throw fail;
+    if (status) return new Response("{}", { status });
+    return new Response(JSON.stringify(reply), { status: 200 });
+  };
 }
-const ok = (obj, usage = { input_tokens: 20000, output_tokens: 4000 }, stop = "end_turn") =>
-  ({ stop_reason: stop, usage, content: [{ type: "thinking", thinking: "" }, { type: "text", text: JSON.stringify(obj) }] });
+const ok = (obj, usage = { input_tokens: 20000, output_tokens: 4000 }, st = "completed") =>
+  ({ status: st, usage, output: [{ type: "reasoning" }, { type: "message", content: [{ type: "output_text", text: JSON.stringify(obj) }] }] });
 
 beforeEach(() => {
   counts = new MemoryCounts(); calls = []; logs = []; waits = [];
-  env = { APP_TOKEN: "tok", ANTHROPIC_API_KEY: "k", MONTH_CENTS: "1000", DAY_BOOKS: "20",
-    makeClient: fakeClient({ reply: ok({ picks: [] }) }) };
+  env = { APP_TOKEN: "tok", OPENAI_KEY: "k", MONTH_CENTS: "1000", DAY_BOOKS: "20",
+    fetchModel: fakeFetch({ reply: ok({ picks: [] }) }) };
   console.log = (...a) => logs.push(a.join(" "));
 });
 
@@ -69,46 +63,47 @@ test("day books cap refuses the 21st book", async () => {
 });
 
 test("a good answer: JSON from the text block, the month records the real cost", async () => {
-  env.makeClient = fakeClient({ reply: ok({ titles: ["제주"] }, { input_tokens: 20000, output_tokens: 4000 }) });
+  env.fetchModel = fakeFetch({ reply: ok({ titles: ["제주"] }, { input_tokens: 20000, output_tokens: 4000 }) });
   const r = await call({ images: imgs(40), shots: [{ id: "p0", local: "2026-06-12T13:20", place: "협재" }] });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { titles: ["제주"] });
   assert.equal(month(), realMills({ input_tokens: 20000, output_tokens: 4000 }));   // 40 + 40 = 80 mills
-  assert.equal(calls[0].output_config.format.type, "json_schema");
+  assert.equal(calls[0].text.format.type, "json_schema");
+  assert.equal(calls[0].input[1].content[1].detail, "low");
 });
 
 test("real cost above the reservation is still recorded past the ceiling", async () => {
   const reserve = reserveMills(2, 50, 12000);
   env.MONTH_CENTS = String(Math.ceil(reserve / 10));   // room for one reservation only
-  env.makeClient = fakeClient({ reply: ok({}, { input_tokens: 10, output_tokens: 30000 }) });   // 300 mills > reserve
+  env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 10, output_tokens: 30000 }) });   // 300 mills > reserve
   await call({ images: imgs(2) });
   assert.equal(month(), realMills({ input_tokens: 10, output_tokens: 30000 }));
   assert.ok(month() > Number(env.MONTH_CENTS) * 10);
 });
 
-test("max_tokens stop: 200 with {error:model} in the body, cost recorded", async () => {
-  env.makeClient = fakeClient({ reply: ok({}, { input_tokens: 1000, output_tokens: 12000 }, "max_tokens") });
+test("incomplete (output limit): 200 with {error:model} in the body, cost recorded", async () => {
+  env.fetchModel = fakeFetch({ reply: ok({}, { input_tokens: 1000, output_tokens: 12000 }, "incomplete") });
   const r = await call({ images: imgs(2) });
   assert.equal(r.status, 200);
   assert.deepEqual(r.body, { error: "model" });
   assert.equal(month(), realMills({ input_tokens: 1000, output_tokens: 12000 }));
 });
 
-test("rejected before the model ran: upstream error, the reservation is refunded", async () => {
-  env.makeClient = fakeClient({ fail: Object.assign(new Error("overloaded"), { status: 529 }), started: false });
+test("rejected by the model API (HTTP error): upstream error, the reservation is refunded", async () => {
+  env.fetchModel = fakeFetch({ status: 429 });
   const r = await call({ images: imgs(2) });
   assert.deepEqual(r.body, { error: "upstream" });
   assert.equal(month(), 0);
 });
 
-test("cut off after the model started: the reservation stays", async () => {
-  env.makeClient = fakeClient({ fail: new Error("socket"), started: true });
+test("network cut: billing unknown, the reservation stays", async () => {
+  env.fetchModel = fakeFetch({ fail: new Error("socket") });
   await call({ images: imgs(2) });
   assert.equal(month(), reserveMills(2, JSON.stringify({}).length, 12000));
 });
 
 test("logs carry counts only, never captions or notes", async () => {
-  env.makeClient = fakeClient({ reply: ok({ essay: "비밀 일기 내용" }) });
+  env.fetchModel = fakeFetch({ reply: ok({ essay: "비밀 일기 내용" }) });
   await call({ images: imgs(2), notes: [{ day: "2026-06-12", text: "비밀 메모" }] });
   assert.ok(logs.every(l => !l.includes("비밀")));
 });
