@@ -80,7 +80,7 @@ def grid_page(n: int, head: str, title: str, cells: list[tuple[str, int, str]], 
 
 CSS = """<style>
 /* grid: M 6cqw, 4 cols, G 2cqw -> col i starts 6+22.5i, col w 20.5, 2-col 43. page h 133.33cqw; folio top 6, ticks bottom 6 */
-.t-b{--paper:#ECECE8;--ink:#141414;--rule:rgba(20,20,20,.28);--spot:#2447E6;
+.t-b{--paper:#ECECE8;--ink:#141414;--rule:rgba(20,20,20,.28);--spot:#2A45AE;
   --f:"Wanted Sans",system-ui,sans-serif;--mono:"Red Hat Mono","Wanted Sans",monospace}
 .t-b .pg{background:var(--paper);color:var(--ink);container-type:inline-size;font:500 3.4cqw/1.5 var(--f);letter-spacing:.02em;word-break:keep-all;font-variant-numeric:tabular-nums}
 .t-b .pg>*{position:absolute;margin:0}
@@ -100,9 +100,8 @@ CSS = """<style>
 .t-b .tk i.on{background:var(--spot);width:1px;height:3.4cqw}
 .t-b .wh .tk i,.t-b .spot .tk i{background:rgba(255,255,255,.45)}
 .t-b .wh .tk i.on{background:#fff}
-.t-b .spot .sr i{background:#fff}
-.t-b .spot .hx s{opacity:.85}
 .t-b .spot .lb{opacity:.85}
+.t-b .acc{color:var(--spot)}
 /* type: XL 40 / M 10 / S 3.4 (+ mono 3) */
 .t-b .xl{font:800 40cqw/.82 var(--f);letter-spacing:-.05em;margin-left:-.05em;white-space:nowrap}
 .t-b .mv{font:800 10cqw/1 var(--f);letter-spacing:-.03em;white-space:nowrap}
@@ -139,8 +138,8 @@ CSS = """<style>
 .t-b .hx{left:6cqw;width:88cqw;height:3cqw}
 .t-b .hx s{top:0;transform:translateX(-50%);opacity:.62}
 /* distance axis (01) */
-.t-b .ax{left:6cqw;width:88cqw;height:1px;background:rgba(255,255,255,.75)}
-.t-b .ax i{position:absolute;top:0;width:2.4cqw;height:2.4cqw;border-radius:50%;background:#fff;transform:translate(-50%,-50%)}
+.t-b .ax{left:6cqw;width:88cqw;height:1px;background:var(--ink)}
+.t-b .ax i{position:absolute;top:0;width:2.4cqw;height:2.4cqw;border-radius:50%;background:var(--ink);transform:translate(-50%,-50%)}
 .t-b .ax s{position:absolute;text-decoration:none;font:500 3cqw/1 var(--mono);letter-spacing:0;white-space:nowrap}
 .t-b .ax s.a{top:-6.5cqw}
 .t-b .ax s.b{top:3.6cqw;font:700 3.4cqw/1 var(--f);transform:translateX(-50%)}
@@ -251,8 +250,8 @@ def covers() -> str:
 def body() -> str:
     p = []
     # 01 totals
-    p.append(f"""<div class="pg spot wh">{folio("제주 · 06.12–14", 1)}
-  <p class="xl" style="left:6cqw;top:16cqw">214<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">km</span></p>
+    p.append(f"""<div class="pg">{folio("제주 · 06.12–14", 1)}
+  <p class="xl" style="left:6cqw;top:16cqw">214<span class="u acc" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">km</span></p>
   <p class="memo" style="left:6cqw;top:52cqw">협재에서 귤나무 카페까지</p>
   {axis()}
   <div class="cell" style="left:6cqw;top:100cqw;width:88cqw;display:grid;grid-template-columns:repeat(4,20.5cqw);column-gap:2cqw">
@@ -313,8 +312,8 @@ def body() -> str:
   <div class="bg" style="top:34cqw;bottom:auto;height:28cqw;background:linear-gradient(rgba(0,0,0,0),rgba(0,0,0,.66) 42%,rgba(0,0,0,.66) 62%,rgba(0,0,0,0))"></div>
   <p class="mv" style="left:6cqw;top:46cqw;color:#fff;z-index:2">7<span class="u">장 · 월정리</span></p>
 </div>""")
-    # 08 shot strip as the cobalt hero: band + white marks on spot
-    p.append(f"""<div class="pg spot wh" style="--rule:rgba(255,255,255,.45)">
+    # 08 shot strip: band + accent marks on paper
+    p.append(f"""<div class="pg">
   {ph("seongsan", 0, 0, 100, 66.67, "50% 50%")}<div class="bg" style="bottom:66.67cqw;height:24cqw"></div>
   {folio("제주 · 06.13 토", 8, ink=True)}
   <p class="cap in" style="left:6cqw;top:59.5cqw;width:88cqw"><span class="mo">No.33</span><span class="mo">19:05</span><span>성산일출봉 앞</span></p>
@@ -339,12 +338,12 @@ def body() -> str:
   {fcap(41, "억새 사이").replace("bottom:14cqw", "bottom:6cqw")}
 </div>""")
     # 11 final: one big number (first to last photo), the rest in one quiet line
-    p.append(f"""<div class="pg spot wh" style="--rule:rgba(255,255,255,.45)">
+    p.append(f"""<div class="pg">
   {ph("tangerine", 0, 0, 100, 66.67, "50% 55%")}<div class="tg"></div>
-  {folio("제주 · 06.14 일", 11)}
+  {folio("제주 · 06.14 일", 11, True)}
   {cap(46, "귤나무 카페 마당", 68.67, extra='<span class="r mo">마지막 사진</span>')}
   <p class="lb" style="left:6cqw;top:78cqw">첫 사진에서 마지막 사진까지</p>
-  <p class="xl" style="left:6cqw;top:84cqw">48<span class="u" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">시간 32분</span></p>
+  <p class="xl" style="left:6cqw;top:84cqw">48<span class="u acc" style="font:800 6cqw/1 var(--f);margin-left:1.5cqw">시간 32분</span></p>
   <p class="lb" style="left:6cqw;top:117cqw;width:88cqw;white-space:nowrap">우도 11장 · 우도에 1시간 39분 · 가장 긴 공백 2시간 57분</p>
 </div>""")
     return f"""<h3 class="sub">책 본문</h3>
@@ -358,7 +357,7 @@ NOTES = """<details class="notes"><summary>디자인 규칙</summary><ul>
 <li>그리드: M = 쪽 폭 6%, 4단, G 2% (단 폭 20.5%, 단 i 시작 = 6 + 22.5i %). 글 상자·사진 가장자리는 단 경계 또는 풀블리드. 칸은 가로 괘선 0.5px 로만, 세로선·박스 없음.</li>
 <li>타입 3단 + 모노: XL 40%(Wanted Sans 800, 자간 −5%, 행간 .82, 한 권 3번까지 — 01 총 거리·05 둘째 날 거리·09 최고 고도, 사진 위면 흰색) / M 10%(800, −3%) / S 3.4%(500, 라벨은 잉크 62%, 메모 한 줄만 700). 시각·날짜·번호·쪽수는 Red Hat Mono 500 3%. 표지만 28%·40% 허용.</li>
 <li>큰 숫자는 세는 값(km·장·곳·분)만, 항상 단위·라벨을 붙인다. 촬영 시각·날짜는 캡션 크기로만. 같은 총계(46·214)는 표지와 01 밖에서 다시 키우지 않고, 결산은 새 사실 4개(최다·최장 체류·최장 공백·첫–끝 사진 간격)를 M 으로, 시간은 「1시간 15분」처럼 단위를 붙여 시각과 구별. 모든 사실은 촬영 시각·GPS(고도)·장수에서 계산.</li>
-<li>색: 종이 #ECECE8 + 먹 #141414 + 별색 1. 팔레트는 별색만 바꾼다(코발트·주홍·초록). 별색 자리는 눈금·막대·시각 띠·01쪽 면·11쪽 아래 면·표지③ 면뿐, 글자엔 쓰지 않는다.</li>
+<li>색: 종이 #ECECE8 + 먹 #141414 + 별색 1(인쇄 잉크 톤, 기본 #2A45AE, 종이 위 대비 ≥ 4.5:1). 색 면은 표지만. 본문에서 별색은 큰 숫자 또는 그 단위 하나(쪽당 하나), 켜진 눈금, 08쪽 촬영 시각 눈금뿐이고 쪽 면적의 5% 이하. 모든 별색은 --spot 변수 하나로, 팔레트(파랑·주홍·초록)는 이 값만 바꾼다.</li>
 <li>46눈금(책 유일 장치): 쪽 아래 M, 폭 88%, 사진 1장 = 1px·2% 눈금(날 시작 3%), 이 쪽 사진은 별색 2px·4%. 사진이 쪽 위에 붙는 틀은 눈금이 종이 위에 오게 띠를 위에 둔다. 풀블리드 쉬는 쪽에는 넣지 않는다(고도선이 눈금과 1:1인 09쪽만 흰색). 08쪽은 같은 눈금을 촬영 분 위치에 날별 3줄로 키운 별색 면 쪽. 사진 60장 넘으면 시간당 1눈금.</li>
 <li>사진 비율 3: 풀블리드 3:4 / 전폭 띠 3:2(쪽 위에 붙임, 티켓만 65%) / 1:1(2단 43% 또는 격자 28%, 간격 G). 3×3 격자(사진 8 + 값 칸 1)는 한 권 1번(사진이 가장 많은 날). 다른 장소는 3:2 띠 + 1:1 셋(28%) + 값 2개. 격자·띠 아래 캡션은 「No. 시각」만, 장소는 머리줄.</li>
 <li>틀 4종(장소 사진 수 n): 세로 대표컷 → 쉬는 쪽 / 가로 대표컷 → 티켓(사진 + 세는 값 3칸) 또는 표(띠 + 표) / n≥8 → 격자. 사진 없는 쪽은 01 총계뿐, 표와 풀블리드를 교대. 한 쪽 사진은 시간 순(왼→오, 위→아래).</li>
@@ -368,7 +367,7 @@ NOTES = """<details class="notes"><summary>디자인 규칙</summary><ul>
 
 
 def main() -> None:
-    pals = '[{"--spot":"#2447E6"},{"--spot":"#F0441E"},{"--spot":"#0C8A5E"}]'
+    pals = '[{"--spot":"#2A45AE"},{"--spot":"#B4381C"},{"--spot":"#0B6B4A"}]'
     html = "\n".join([
         "<!-- fonts: Red+Hat+Mono:wght@500 -->",
         "<!-- kfonts: Wanted Sans:500;700;800 -->",

@@ -4,7 +4,7 @@
 /* Travel notebook r7. Design px on a 330x440 page, scaled by --u.
    Grid: M 20, 6 cols x 40, G 10 (col c at 20+50(c-1)). Lines: photo floor y262, text y278, rule y384, folio y420.
    Type: XL 72 (cover) / L 32 / B 11.5 / C 9.5 (digits DM Mono, Hangul Paperlogy 500). */
-.t-c{--paper:#FBF6EA;--ink:#151515;--soft:#6B665C;--line:#D9D2C2;--acc:#E8553B;--on:#000000;--acct:#C63F26;--land:#EFE7D3;
+.t-c{--paper:#FBF6EA;--ink:#151515;--soft:#6B665C;--line:#D9D2C2;--acc:#A93A28;--on:#ffffff;--land:#EFE7D3;
   --f-ko:"Paperlogy",sans-serif;--f-mono:"DM Mono","Paperlogy",monospace}
 .t-c .pg{container-type:inline-size;background:var(--paper)}
 .t-c .in{--u:calc(100cqw/330);position:absolute;inset:0;color:var(--ink);font-family:var(--f-ko);background:var(--paper);overflow:hidden;word-break:keep-all}
@@ -52,7 +52,7 @@
 /* day index, 3 columns */
 .t-c .idx{list-style:none}
 .t-c .idx li{display:flex;align-items:baseline;gap:calc(6*var(--u));height:calc(18*var(--u));line-height:calc(18*var(--u))}
-.t-c .idx li .n{color:var(--acct)}
+.t-c .idx li .n{color:var(--acc)}
 .t-c .idx li b{flex:1;font:500 calc(11.5*var(--u))/inherit var(--f-ko);letter-spacing:-.02em;white-space:nowrap}
 .t-c .idx li .pn{color:var(--soft)}
 .t-c .idx li.h{border-top:.75px solid var(--line);color:var(--soft);height:calc(20*var(--u))}
@@ -76,7 +76,7 @@
 .t-c .nb.dk{background:var(--ink);color:var(--paper)}
 .t-c .blk .bd,.t-c .lr+.bd,.t-c .p.bd{font-weight:500;color:var(--ink)}
 .t-c .tm{position:absolute;right:0;bottom:calc(7*var(--u));color:var(--ink)}
-.t-c .grad::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(220*var(--u));background:linear-gradient(transparent,rgba(21,21,21,.5) 35%,rgba(21,21,21,.72))}
+.t-c .grad::after{content:"";position:absolute;left:0;right:0;bottom:0;height:calc(260*var(--u));background:linear-gradient(transparent,rgba(21,21,21,.55) 30%,rgba(21,21,21,.75))}
 .t-c .blk.ov{position:absolute;left:calc(20*var(--u));right:calc(20*var(--u));bottom:calc(36*var(--u));z-index:2;color:#fff}
 .t-c .blk.ov .cp{color:rgba(255,255,255,.85)}
 .t-c .blk.ov .bd{color:#fff}
@@ -98,11 +98,12 @@
 .t-c .sea~.p .cp,.t-c .sea~.p.cp,.t-c .sea~.p.lr .cp,.t-c .sea~.fo{font-size:calc(10*var(--u))}
 .t-c .nm.big{font-size:calc(48*var(--u));line-height:1.02}
 .t-c .nm.big .nb{top:calc(14*var(--u))}
-.t-c .accol{background:var(--acc)}
-.t-c .accol~.clist,.t-c .accol~.clist li>span:first-child{color:var(--on)}
+.t-c .accol{background:color-mix(in srgb,var(--acc) 14%,var(--paper))}
+.t-c .accol~.clist{color:var(--ink)}
+.t-c .accol~.clist li>span:first-child{color:var(--acc)}
 .t-c .blk.ov .nt{margin-top:calc(4*var(--u))}
 </style>
-<section class="t-c" data-palettes='[{"--acc":"#E8553B","--on":"#000000","--acct":"#C63F26"},{"--acc":"#2F5FD0","--on":"#ffffff","--acct":"#2F5FD0"},{"--acc":"#1F6B4A","--on":"#ffffff","--acct":"#1F6B4A"}]'>
+<section class="t-c" data-palettes='[{"--acc":"#A93A28"},{"--acc":"#26406F"},{"--acc":"#245C3F"}]'>
 <div class="head"><h2>여행 수첩</h2><p class="idea">번호 하나가 지도·목록·장소 쪽을 꿰는 내 여행 안내서 — 직각 사진, 괘선, 포인트색은 번호에만</p><button class="shuffle" type="button">색 조합 바꾸기</button></div>
 <h3 class="sub"><span class="k">표지 후보</span></h3>
 <div class="strip">
@@ -234,18 +235,17 @@
     <div class="fo w"><span></span><span>10</span></div>
   </div></div>
   <div class="pg"><div class="in">
-    <div class="sea"></div>
     <i class="p vl" style="--x:37.5;--y:96.0;--w:1;--h:226.0"></i>
     <p class="p cp dh" style="--x:58;--y:69.0;--w:252"><span class="k">첫째 날</span> · 06.12 <span class="k">금</span></p>
-    <i class="p nb dk" style="--x:28;--y:86.0;--w:20;--h:20">01</i><p class="p lr" style="--x:58;--y:88.0;--w:252"><b><span class="k">협재 해변</span></b><span class="cp">13:20</span></p>
-    <i class="p nb dk" style="--x:28;--y:112.0;--w:20;--h:20">02</i><p class="p lr" style="--x:58;--y:114.0;--w:252"><b><span class="k">신창 풍차해안도로</span></b><span class="cp">17:40</span></p>
-    <i class="p nb dk" style="--x:28;--y:152.0;--w:20;--h:20">03</i><p class="p lr" style="--x:58;--y:154.0;--w:252"><b><span class="k">우도</span></b><span class="cp">09:42</span></p>
-    <i class="p nb dk" style="--x:28;--y:176.0;--w:20;--h:20">04</i><p class="p lr" style="--x:58;--y:178.0;--w:252"><b><span class="k">하도 해녀 탈의장</span></b><span class="cp">14:10</span></p>
-    <i class="p nb dk" style="--x:28;--y:200.0;--w:20;--h:20">05</i><p class="p lr" style="--x:58;--y:202.0;--w:252"><b><span class="k">월정리</span></b><span class="cp">16:05</span></p>
-    <i class="p nb dk" style="--x:28;--y:224.0;--w:20;--h:20">06</i><p class="p lr" style="--x:58;--y:226.0;--w:252"><b><span class="k">성산일출봉</span></b><span class="cp">19:05</span></p>
-    <i class="p nb dk" style="--x:28;--y:264.0;--w:20;--h:20">07</i><p class="p lr" style="--x:58;--y:266.0;--w:252"><b><span class="k">한라산 어리목</span></b><span class="cp">08:30</span></p>
-    <i class="p nb dk" style="--x:28;--y:288.0;--w:20;--h:20">08</i><p class="p lr" style="--x:58;--y:290.0;--w:252"><b><span class="k">원물오름</span></b><span class="cp">11:10</span></p>
-    <i class="p nb dk" style="--x:28;--y:312.0;--w:20;--h:20">09</i><p class="p lr" style="--x:58;--y:314.0;--w:252"><b><span class="k">귤나무 카페 마당</span></b><span class="cp">13:30</span></p>
+    <i class="p nb" style="--x:28;--y:86.0;--w:20;--h:20">01</i><p class="p lr" style="--x:58;--y:88.0;--w:252"><b><span class="k">협재 해변</span></b><span class="cp">13:20</span></p>
+    <i class="p nb" style="--x:28;--y:112.0;--w:20;--h:20">02</i><p class="p lr" style="--x:58;--y:114.0;--w:252"><b><span class="k">신창 풍차해안도로</span></b><span class="cp">17:40</span></p>
+    <i class="p nb" style="--x:28;--y:152.0;--w:20;--h:20">03</i><p class="p lr" style="--x:58;--y:154.0;--w:252"><b><span class="k">우도</span></b><span class="cp">09:42</span></p>
+    <i class="p nb" style="--x:28;--y:176.0;--w:20;--h:20">04</i><p class="p lr" style="--x:58;--y:178.0;--w:252"><b><span class="k">하도 해녀 탈의장</span></b><span class="cp">14:10</span></p>
+    <i class="p nb" style="--x:28;--y:200.0;--w:20;--h:20">05</i><p class="p lr" style="--x:58;--y:202.0;--w:252"><b><span class="k">월정리</span></b><span class="cp">16:05</span></p>
+    <i class="p nb" style="--x:28;--y:224.0;--w:20;--h:20">06</i><p class="p lr" style="--x:58;--y:226.0;--w:252"><b><span class="k">성산일출봉</span></b><span class="cp">19:05</span></p>
+    <i class="p nb" style="--x:28;--y:264.0;--w:20;--h:20">07</i><p class="p lr" style="--x:58;--y:266.0;--w:252"><b><span class="k">한라산 어리목</span></b><span class="cp">08:30</span></p>
+    <i class="p nb" style="--x:28;--y:288.0;--w:20;--h:20">08</i><p class="p lr" style="--x:58;--y:290.0;--w:252"><b><span class="k">원물오름</span></b><span class="cp">11:10</span></p>
+    <i class="p nb" style="--x:28;--y:312.0;--w:20;--h:20">09</i><p class="p lr" style="--x:58;--y:314.0;--w:252"><b><span class="k">귤나무 카페 마당</span></b><span class="cp">13:30</span></p>
     <p class="p cp dh" style="--x:58;--y:135.0;--w:252"><span class="k">둘째 날</span> · 06.13 <span class="k">토</span></p>
     <p class="p cp dh" style="--x:58;--y:247.0;--w:252"><span class="k">셋째 날</span> · 06.14 <span class="k">일</span></p>
     <h2 class="p ttl" style="--x:20;--y:20;--w:290"><span class="k">제주</span> → <span class="k">김포</span></h2>
@@ -253,7 +253,7 @@
     <p class="p ttl" style="--x:20;--y:344.0;--w:180">214km</p>
     <p class="p bd" style="--x:20;--y:386;--w:180"><span class="k">귤 한 봉지 사서 공항으로</span>.</p>
     <div class="p ph" style="--x:220;--y:346.0;--w:90;--h:60"><img src="{{d6}}" alt="" style="object-position:50% 50%;"></div>
-    <div class="fo on"><span></span><span>11</span></div>
+    <div class="fo"><span></span><span>11</span></div>
   </div></div>
 </div>
 <div class="under"><span>지도 M → 협재 C → 신창 B → 우도 A → 하도 영상 B → 월정리 C → 성산 A → 어리목 B → 원물오름 반풀블리드 → 귤나무 카페 B → 동선 정산표 K</span><span>11쪽</span></div>
@@ -265,7 +265,7 @@
 <li>A·C 글 블록은 y278: 번호+장소명 → 메타 한 줄 `시각 · 읍면리 · 날씨`(쪽당 회색 줄은 이 한 줄뿐) → 메모 ≤2줄. `다음 →` 같은 이동 안내 줄은 두지 않는다(순서는 번호가 말함). 폴리오 왼쪽 날짜는 그날 첫 쪽에만. 풀블리드 B 는 4쪽 안팎, 연속 금지.</li>
 <li>사진 위 글자 예외 하나: 바닥이 밝은 B 사진만 아래 160px 먹 0→40% 그라디언트. 그 밖에 그림자·질감 없음.</li>
 <li>폴리오 y420 전 쪽 같은 자리: 왼쪽 `첫째 날 · 06.12 금`, 오른쪽 쪽번호 2자리(B 는 흰색).</li>
-<li>색: 종이 #FBF6EA · 먹 #151515 · 회 #6B665C · 괘선 #D9D2C2 고정, 포인트 1색(토마토/코발트/숲)은 본문에서 번호 상자·목록 숫자·거리에만 — 쪽당 ≤5%. 예외는 기본 표지 ① 하나: 바탕 전면 acc, 섬은 종이색 채움, 핀은 먹 상자 + 종이색 숫자.</li>
+<li>색 면은 표지만: 종이 #FBF6EA · 먹 #151515 · 회 #6B665C · 괘선 #D9D2C2 고정. 포인트 1색은 변수 하나 --acc(벽돌 #A93A28 / 남색 #26406F / 짙은 초록 #245C3F, 인쇄 잉크 쪽으로 한 단계 낮춤, 종이 위 작은 글자 ≥5.8:1, 위 글자는 흰색). 본문에서는 번호 상자·목록 숫자에만, 쪽당 ≤5%. 면으로 쓰는 곳은 표지 ① 바탕 하나, 표지 ② 목록 기둥은 --acc 14% 옅은 면. 앱에서 사용자가 --acc 를 바꿔도 같은 규칙.</li>
 <li>지도: 윤곽 0.75px 회색(표지는 면), 경로 1px 먹 한 줄(01→09, 밤을 넘는 구간 2-2 점선). 16px 안에 몰린 핀은 섬 위 한 줄로 빼고, 점 3px에서 위→옆→위로 꺾은 0.75px 지시선(왼쪽 핀일수록 낮게 꺾어 교차 0).</li>
 <li>마지막 쪽은 사진 없는 동선 정산표: 세로 1px 선 위 번호 상자 9개, 줄마다 장소·시각, 날 바뀔 때만 괘선+날 머리글, 구간 거리는 절반 이상 있을 때만 줄 사이 acc `↓ 19km`(없으면 합계만), 합계 L 32 `214km`. 영상 쪽은 B + ▶ 하나(인물 위 하늘), PDF 는 ▶ 빼고 사진 한 장.</li>
 </ul></details>
