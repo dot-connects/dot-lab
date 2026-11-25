@@ -47,6 +47,11 @@ dependencies:
   read_pdf_text: ^0.3.1
   pdfx: ^2.11.0
 
+# AGP 9 rejects proguard-android.txt in the plugin's build.gradle; vendored copy with only that line changed
+dependency_overrides:
+  flutter_inappwebview_android:
+    path: third_party/flutter_inappwebview_android
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
