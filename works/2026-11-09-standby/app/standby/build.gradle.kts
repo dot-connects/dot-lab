@@ -29,8 +29,8 @@ android {
         applicationId = "kr.dot.standby"
         minSdk = 34
         targetSdk = 36
-        versionCode = 27
-        versionName = "0.6.12"
+        versionCode = 28
+        versionName = "0.6.13"
     }
     // personal = the operator's phone (usage card + PC feed + secrets); public = release builds, no secret anywhere
     // (tools/check_secrets.py scans both APKs and the AAB). Different ids so both can sit on one phone.
