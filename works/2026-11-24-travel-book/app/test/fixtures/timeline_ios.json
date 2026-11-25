@@ -1,0 +1,10 @@
+[
+ {"startTime":"2026-06-12T13:10:00.000+09:00","endTime":"2026-06-12T14:30:00.000+09:00",
+  "visit":{"hierarchyLevel":"0","probability":"0.8","topCandidate":{"probability":"0.7","semanticType":"Unknown","placeID":"p1","placeLocation":"geo:33.394000,126.239000"}}},
+ {"startTime":"2026-06-12T14:30:00.000+09:00","endTime":"2026-06-12T15:00:00.000+09:00",
+  "timelinePath":[{"point":"geo:33.394000,126.239000","durationMinutesOffsetFromStartTime":"1"},{"point":"geo:33.345000,126.180000","durationMinutesOffsetFromStartTime":"20"}]},
+ {"startTime":"2026-06-12T17:30:00.000+09:00","endTime":"2026-06-12T18:10:00.000+09:00",
+  "activity":{"probability":"0.9","topCandidate":{"type":"in passenger vehicle"}}},
+ {"startTime":"2026-06-12T17:30:00.000+09:00","endTime":"2026-06-12T18:10:00.000+09:00",
+  "visit":{"topCandidate":{"placeID":"p2","placeLocation":"geo:33.345000,126.180000"}}}
+]

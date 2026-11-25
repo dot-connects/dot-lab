@@ -1,0 +1,9 @@
+{"timelineObjects":[
+ {"placeVisit":{"location":{"latitudeE7":333940000,"longitudeE7":1262390000,"placeId":"p1","name":"협재해수욕장"},
+  "duration":{"startTimestamp":"2026-06-12T04:10:00.000Z","endTimestamp":"2026-06-12T05:30:00.000Z"}}},
+ {"activitySegment":{"startLocation":{"latitudeE7":333940000,"longitudeE7":1262390000},"endLocation":{"latitudeE7":333450000,"longitudeE7":1261800000},
+  "duration":{"startTimestamp":"2026-06-12T05:30:00.000Z","endTimestamp":"2026-06-12T06:00:00.000Z"},
+  "simplifiedRawPath":{"points":[{"latE7":333940000,"lngE7":1262390000,"timestamp":"2026-06-12T05:31:00Z"},{"latE7":333450000,"lngE7":1261800000,"timestamp":"2026-06-12T05:50:00Z"}]}}},
+ {"placeVisit":{"location":{"latitudeE7":333450000,"longitudeE7":1261800000,"name":"신창풍차해안도로"},
+  "duration":{"startTimestamp":"2026-06-12T08:30:00.000Z","endTimestamp":"2026-06-12T09:10:00.000Z"}}}
+]}
