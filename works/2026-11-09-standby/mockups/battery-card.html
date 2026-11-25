@@ -28,8 +28,7 @@ h2{font-size:15px;margin:28px 0 6px}
 .board::after{content:"";position:absolute;inset:0;pointer-events:none;background:var(--glow,none)}
 
 .card{position:relative;overflow:hidden;color:var(--ink);background:var(--plate);border-radius:var(--rad);font-variant-numeric:tabular-nums;z-index:1;box-shadow:var(--edge,none)}
-.fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--accA2),var(--accA1));transition:height .8s cubic-bezier(.4,0,.2,1)}
-.fill::before{content:"";position:absolute;left:0;right:0;top:0;height:1.5px;background:var(--acc);opacity:.75}
+.fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--accA2),var(--accA1) calc(100% - 28px),transparent);transition:height .8s cubic-bezier(.4,0,.2,1)}
 .in{position:absolute;inset:0;padding:var(--p);display:flex;flex-direction:column}
 .sp{flex:1}
 
@@ -47,6 +46,14 @@ h2{font-size:15px;margin:28px 0 6px}
 .eta.warn{color:var(--warn)}
 .sub{font-size:var(--meta);font-weight:500;color:var(--ink2);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+.stats{display:grid;grid-template-columns:repeat(var(--cols,2),1fr);gap:14px 12px}
+.stat{display:flex;flex-direction:column;gap:4px;min-width:0}
+.stat .k{font-size:var(--meta);font-weight:500;color:var(--ink2);white-space:nowrap;display:flex;align-items:center;gap:5px}
+.stat .k svg{width:14px;height:14px}
+.stat .v{font-size:calc(var(--read) * 1.15);font-weight:600;color:var(--ink);white-space:nowrap;letter-spacing:-.01em;line-height:1.1}
+.stat .v small{font-size:.72em;font-weight:500;color:var(--ink2);margin-left:2px}
+.stat .v.warn{color:var(--warn)}
+.rule{height:1px;background:var(--ink3)}
 .chips{display:flex;gap:6px}
 .chip{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:34px;border-radius:12px;background:var(--plate2);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap}
 .chip svg{width:16px;height:16px;color:var(--ink2)}
@@ -87,7 +94,7 @@ table.src th{color:#9a9793;font-weight:600}
 </style>
 </head>
 <body>
-<h1>스탠드 스크린 · 배터리 카드 (B 차오름 2차)</h1>
+<h1>스탠드 스크린 · 배터리 카드 (B 차오름 3차)</h1>
 <p class="lead">카드 바탕이 배터리만큼 아래에서 차올라요. 큰 숫자는 %, 그 아래 한 줄은 완충 시각. 색은 따로 정하지 않고 <b>지금 앱에 고른 테마</b>를 그대로 따르고, 밤에는 앱의 밤 색(촛불 톤)이 돼요. 달력 크기·넓은 칸에서는 밝기와 소리를 끌어서 바로 조절해요(막대를 눌러 끌어 보세요). 1px = 1dp.</p>
 
 <div class="bar">
@@ -98,7 +105,14 @@ table.src th{color:#9a9793;font-weight:600}
 <div class="grid" id="grid"></div>
 
 <div class="notes">
-  <h2>1차에서 바꾼 것</h2>
+  <h2>3차에서 바꾼 것</h2>
+  <ul>
+    <li><b>수위선 뺌</b>: 차오른 면 윗변을 28dp 에 걸쳐 흐리게 풀어 선 없이 경계만 느껴지게.</li>
+    <li><b>지금 폰 칸</b>: 소리·네트워크·밝기를 빼고 충전 세기·온도 두 칸만.</li>
+    <li><b>정보 칸 통일</b>: 아이콘 목록 대신 "작은 이름 위에 큰 값" 칸으로 모든 크기를 맞춤(폰·긴 칸·달력·넓은 칸).</li>
+    <li><b>달력 크기</b>: 밝기·볼륨 막대를 나란히 두고, 빈 가운데에 충전·온도.</li>
+  </ul>
+  <h2>2차에서 바꾼 것</h2>
   <ul>
     <li><b>밤</b>: 빨강 대신 앱의 밤 색 그대로(검정 바탕 + 아래쪽 호박빛, 글자 #B9A48C). 경고색도 밤엔 쓰지 않아요.</li>
     <li><b>테마 따라</b>: 카드 판·글자·강조색 모두 앱 테마 값. 기본·종이·하늘 세 개로 확인.</li>
@@ -111,8 +125,8 @@ table.src th{color:#9a9793;font-weight:600}
   <ul>
     <li><b>작은 칸 140×120</b>: % · 완충 시각.</li>
     <li><b>짧고 넓은 칸 270×200</b>: + 남은 시간, 충전 세기·온도.</li>
-    <li><b>지금 폰 칸 198×253</b>: + 소리 모드·네트워크·밝기 칩(보기만).</li>
-    <li><b>좁고 긴 칸 218×419</b>: + 다섯 줄(충전·온도·소리·밝기·네트워크).</li>
+    <li><b>지금 폰 칸 198×253</b>: + 충전 세기·온도 두 칸.</li>
+    <li><b>좁고 긴 칸 218×419</b>: + 여섯 칸(충전·온도·소리·밝기·네트워크·꽂은 뒤 오른 %).</li>
     <li><b>달력 크기 338×419</b>: + 소리 모드 바꾸기, 밝기·볼륨 막대.</li>
     <li><b>넓은 칸 695×419</b>: + 충전 곡선, 세로 막대 둘, 방해 금지.</li>
   </ul>
@@ -211,6 +225,15 @@ function chips(){
   c.append(el("div", "chip", `${IC[m[1]]}${m[0]}`), el("div", "chip", `${IC.wifi}와이파이`), el("div", "chip", `${IC.sun}${ui.bright}`));
   return c;
 }
+function chgVal(s){ return !s.chg ? ["안 함",""] : s.protect ? ["멈춤",""] : s.done ? ["완충",""] : [String(s.w), "W"]; }
+function chgKey(s){ return !s.chg ? "충전" : s.slow ? "느린 충전" : s.w > 20 ? "초고속 충전" : s.w >= 10 ? "고속 충전" : "충전"; }
+function stats(items, cols = 2){
+  const g = el("div", "stats"); g.style.setProperty("--cols", cols);
+  for (const [ic, k, v, u, warn] of items) g.append(el("div", "stat", `<div class="k">${ic}${k}</div><div class="v${warn ? " warn" : ""}">${v}${u ? `<small>${u}</small>` : ""}</div>`));
+  return g;
+}
+function baseStats(s){ const [v, u] = chgVal(s); return [[IC.plug, chgKey(s), v, u], [IC.temp, "온도", s.temp, "°", s.temp >= 40 && !night]]; }
+function allStats(s){ const m = MODES[ui.mode]; return [...baseStats(s), [IC[m[1]], "소리", m[0]], [IC.sun, "밝기", ui.bright, "%"], [IC.wifi, "네트워크", "와이파이"], [IC.batt, "꽂은 뒤", s.chg && s.since ? `+${(s.protect ? 85 : s.done ? 100 : s.pct) - s.from}` : "—", s.chg && s.since ? "%" : ""]]; }
 function list(s){
   const l = el("div", "list"), m = MODES[ui.mode];
   const rows = [[IC.plug, "충전", s.chg ? (s.w ? `${s.w}W` : (s.protect ? "멈춤" : s.done ? "완충" : "—")) : "안 함"], [IC.temp, "온도", `${s.temp}°`], [IC[m[1]], "소리", m[0]], [IC.sun, "밝기", `${ui.bright}%`], [IC.wifi, "네트워크", "와이파이"]];
@@ -225,7 +248,7 @@ function pill(kind, w, h, vertical){
   const v = off ? 0 : ui[key];
   const f = el("div", "pf"); if (vertical) f.style.height = v + "%"; else f.style.width = v + "%";
   const ic = kind === "bright" ? IC.sun : IC[MODES[ui.mode][1]];
-  const label = off ? (vertical ? "—" : `${MODES[ui.mode][0]} 중 · 볼륨 꺼짐`) : (vertical ? `${v}` : (kind === "bright" ? "밝기" : "볼륨"));
+  const label = off ? (vertical ? "—" : `${MODES[ui.mode][0]} 중`) : (vertical ? `${v}` : (kind === "bright" ? "밝기" : "볼륨"));
   const c = el("div", "pc2", vertical ? `<span class="v">${label}</span>${ic}` : `${ic}<span>${label}</span><span class="v">${off ? "" : v + "%"}</span>`);
   p.append(f, c);
   const set = ev => { const r = p.getBoundingClientRect(); const t = vertical ? 1 - (ev.clientY - r.top) / r.height : (ev.clientX - r.left) / r.width; ui[key] = Math.max(0, Math.min(100, Math.round(t * 100))); render(); };
@@ -278,17 +301,17 @@ function card(w, h, kind){
 
   if (kind === "tiny") i.append(lab(s), el("div", "sp"), num(s, 46), el("div", "sp"), eta(s));
   else if (kind === "short") i.append(lab(s, wt(s)), el("div", "sp"), num(s, 96), el("div", "sp"), eta(s), gap(3), sub(s));
-  else if (kind === "phone") i.append(lab(s, s.chg && s.w ? `${s.w}W` : ""), gap(14), num(s, 92), gap(12), eta(s), gap(3), sub(s), el("div", "sp"), chips());
-  else if (kind === "tall") i.append(lab(s), gap(16), num(s, 100), gap(14), eta(s), gap(3), sub(s), el("div", "sp"), list(s));
+  else if (kind === "phone") i.append(lab(s), gap(12), num(s, 80), gap(10), eta(s), gap(3), sub(s), el("div", "sp"), stats(baseStats(s)));
+  else if (kind === "tall") i.append(lab(s), gap(16), num(s, 100), gap(14), eta(s), gap(3), sub(s), el("div", "sp"), el("div", "rule"), gap(16), stats(allStats(s)));
   else if (kind === "square") {
-    i.append(lab(s, wt(s)), gap(12), num(s, 112), gap(12), eta(s), gap(3), sub(s), el("div", "sp"), modes(false), gap(8));
-    const r = el("div"); r.style.cssText = "display:flex;flex-direction:column;gap:8px";
-    r.append(pill("bright", iw, 48), pill("vol", iw, 48)); i.append(r);
+    i.append(lab(s), gap(12), num(s, 104), gap(12), eta(s), gap(3), sub(s), el("div", "sp"), stats(baseStats(s)), el("div", "sp"), modes(false), gap(8));
+    const r = el("div"); r.style.cssText = "display:flex;gap:8px";
+    r.append(pill("bright", (iw - 8) / 2, 56), pill("vol", (iw - 8) / 2, 56)); i.append(r);
   }
   else if (kind === "wide") {
     const row = el("div"); row.style.cssText = "display:flex;gap:24px;height:100%";
     const c1 = el("div"); c1.style.cssText = "width:200px;flex:none;display:flex;flex-direction:column";
-    c1.append(lab(s), gap(16), num(s, 124, 200), el("div", "sp"), eta(s), gap(3), sub(s), gap(3), el("div", "sub", wt(s) + " · 와이파이"));
+    c1.append(lab(s), gap(16), num(s, 124, 200), gap(14), eta(s), gap(3), sub(s), el("div", "sp"), stats(baseStats(s)));
     const ctlW = 2 * 64 + 10, cw = iw - 200 - 24 - 24 - ctlW;
     const c2 = el("div"); c2.style.cssText = `width:${cw}px;flex:none;display:flex;flex-direction:column`;
     c2.append(el("div", "lab", `${IC.plug}<span>${s.chg ? s.since + "에 " + s.from + "%로 꽂음" : "충전 곡선"}</span>`), gap(14), curve(s, cw, ih - 14 - 15));
