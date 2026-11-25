@@ -24,3 +24,6 @@ Mediums fixed: body errors in the test list, upstream API errors refund, output_
 
 # Round 4 (2026-11-25, one Opus reviewer) — no High, loop stops.
 Mediums folded: keep the reservation after message_start (code already does), keep the screen on during make(), original quality = 4000 px JPEG thumbnail (no EXIF GPS), DATE_TAKEN-null photos via DATE_ADDED, one release (R8) run before the operator APK, M1 theme a has no essay/map/back page (say so in the report).
+
+# plan-r2 review (2026-11-25 night, one round: failure + implementer/rules)
+High 7 (clips lost in the split, image caps past 60/48, /write output budget, must-include overflow, 0-photo albums missing from the filtered path list, M1 diary step impossible, 46 screens in one checkbox) — all closed in plan-r2 "리뷰 반영" 1–14.
