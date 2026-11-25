@@ -15,7 +15,7 @@ DAY_BOOKS = "20"
 [[d1_databases]]
 binding = "DB"
 database_name = "dot-lab-travel-book"
-database_id = "TO-BE-CREATED"
+database_id = "33bf654f-96be-4d9a-9a30-854daaacab6d"
 
 # 4 requests a minute per IP
 [[ratelimits]]
