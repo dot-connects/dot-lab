@@ -5,66 +5,79 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>배터리 카드 시안</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&family=Noto+Sans+KR:wght@400;500;600;700&display=swap">
 <style>
-:root{
-  --page:#141210; --board:#000; --plate:#211f1d; --plate2:#2c2a27; --ink:#ecebe8; --ink2:#9a9793; --ink3:#3d3a37;
-  --acc:#f5c07e; --onacc:#241a0d; --warn:#ff6b5e; --ok:#7fd49a;
-  --f:"Inter","Noto Sans KR",system-ui,sans-serif;
-}
-body.night{ --plate:#160000; --plate2:#220000; --ink:#fc0000; --ink2:#a80000; --ink3:#3a0000; --acc:#fc0000; --onacc:#000; --warn:#fc0000; --ok:#a80000; }
+:root{--f:"Inter","Noto Sans KR",system-ui,sans-serif}
 *{box-sizing:border-box;margin:0}
-body{background:var(--page);color:#ecebe8;font-family:var(--f);padding:20px 16px 60px}
+body{background:#141210;color:#ecebe8;font-family:var(--f);padding:20px 16px 60px}
 h1{font-size:19px;margin-bottom:6px}
 h2{font-size:15px;margin:28px 0 6px}
-.lead{color:#9a9793;font-size:13px;line-height:1.6;max-width:720px}
-.bar{position:sticky;top:0;z-index:5;background:var(--page);padding:10px 0 8px;display:flex;flex-direction:column;gap:6px}
+.lead{color:#9a9793;font-size:13px;line-height:1.6;max-width:760px}
+.lead b{color:#ecebe8}
+.bar{position:sticky;top:0;z-index:5;background:#141210;padding:10px 0 8px;display:flex;flex-direction:column;gap:6px}
 .seg{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-.seg span{font-size:12px;color:#9a9793;width:42px;flex:none}
+.seg>span{font-size:12px;color:#9a9793;width:42px;flex:none}
 .seg button{background:#2a2826;color:#ecebe8;border:0;border-radius:99px;padding:8px 13px;font:600 13px var(--f);min-height:36px}
 .seg button.on{background:#f5c07e;color:#241a0d}
-.dir{color:#9a9793;font-size:13px;line-height:1.55;margin:4px 0 0;max-width:720px}
 .grid{display:flex;flex-wrap:wrap;gap:22px 18px;margin-top:14px;align-items:flex-start}
 .cell .cap{font-size:12px;color:#9a9793;margin-bottom:6px;white-space:nowrap}
 .cell .cap b{color:#ecebe8;font-weight:600}
-.board{background:var(--board);border-radius:18px;padding:10px;display:inline-block}
-.card{background:var(--plate);border-radius:22px;position:relative;overflow:hidden;color:var(--ink);font-variant-numeric:tabular-nums}
-.card .fillbg{position:absolute;left:0;right:0;bottom:0;background:var(--acc);opacity:.16;transition:height .8s cubic-bezier(.4,0,.2,1)}
-.card .fillbg::before{content:"";position:absolute;left:0;right:0;top:0;height:2px;background:var(--acc);opacity:1;filter:none}
-.card .in{position:absolute;inset:0;padding:var(--p);display:flex;flex-direction:column}
-.lab{display:flex;align-items:center;gap:6px;font-size:var(--meta);font-weight:600;color:var(--ink2);white-space:nowrap;line-height:1}
-.lab svg{width:1.05em;height:1.05em;flex:none}
-.lab .r{margin-left:auto;font-weight:500}
-.lab.acc{color:var(--acc)}
-.big{font-weight:300;letter-spacing:-.04em;line-height:.86;white-space:nowrap}
-.big small{font-size:.42em;letter-spacing:0;font-weight:400;margin-left:.04em;color:var(--ink2)}
-.line{font-size:var(--read);font-weight:600;line-height:1.25;white-space:nowrap}
-.meta{font-size:var(--meta);font-weight:500;color:var(--ink2);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.acc{color:var(--acc)} .warn{color:var(--warn)}
+
+/* the board page = the app's theme background */
+.board{border-radius:20px;padding:14px;display:inline-block;background:var(--page);position:relative;overflow:hidden}
+.board::after{content:"";position:absolute;inset:0;pointer-events:none;background:var(--glow,none)}
+
+.card{position:relative;overflow:hidden;color:var(--ink);background:var(--plate);border-radius:var(--rad);font-variant-numeric:tabular-nums;z-index:1;box-shadow:var(--edge,none)}
+.fill{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(to top,var(--accA2),var(--accA1));transition:height .8s cubic-bezier(.4,0,.2,1)}
+.fill::before{content:"";position:absolute;left:0;right:0;top:0;height:1.5px;background:var(--acc);opacity:.75}
+.in{position:absolute;inset:0;padding:var(--p);display:flex;flex-direction:column}
 .sp{flex:1}
-.ring{display:block}
-.cells{display:flex;gap:3px}
-.cells i{flex:1;border-radius:3px;background:var(--ink3)}
-.cells i.on{background:var(--acc)}
-.cells i.half{background:linear-gradient(90deg,var(--acc) 50%,var(--ink3) 50%)}
-.rows{display:flex;flex-direction:column}
-.rw{display:flex;align-items:center;gap:8px;border-top:1px solid var(--ink3);font-size:var(--meta);color:var(--ink2);white-space:nowrap}
-.rw svg{width:1.15em;height:1.15em;flex:none}
-.rw b{margin-left:auto;color:var(--ink);font-weight:600}
-.tiles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.tile{background:var(--plate2);border-radius:16px;padding:10px 12px;display:flex;flex-direction:column;justify-content:space-between;cursor:pointer;user-select:none;min-height:48px}
-.tile .tl{display:flex;align-items:center;gap:6px;font-size:var(--meta);color:var(--ink2);font-weight:600;white-space:nowrap}
-.tile .tl svg{width:1.2em;height:1.2em}
-.tile .tv{font-size:var(--read);font-weight:600;white-space:nowrap}
-.tile.on{background:var(--acc);color:var(--onacc)}
-.tile.on .tl{color:var(--onacc);opacity:.75}
-.slider{height:6px;border-radius:6px;background:var(--ink3);position:relative;margin-top:6px}
-.slider i{position:absolute;left:0;top:0;bottom:0;border-radius:6px;background:var(--ink)}
-.stats{display:flex;gap:6px}
-.st{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;font-size:var(--meta);color:var(--ink2);font-weight:500;white-space:nowrap}
-.st svg{width:22px;height:22px;color:var(--ink)}
-.graph{position:relative}
-.graph svg{display:block}
+
+.lab{display:flex;align-items:center;gap:6px;font-size:var(--meta);font-weight:600;color:var(--ink2);white-space:nowrap;line-height:1;letter-spacing:-.01em}
+.lab svg{width:1.05em;height:1.05em;flex:none}
+.lab .r{margin-left:auto;font-weight:500;color:var(--ink2)}
+.lab.on{color:var(--accT)}
+.lab.warn{color:var(--warn)}
+
+.num{display:flex;align-items:flex-start;font-weight:200;letter-spacing:-.055em;line-height:.8;white-space:nowrap;color:var(--ink);margin-left:-.04em;padding-top:.12em}
+.num .pc{font-size:.3em;font-weight:400;letter-spacing:0;margin:.12em 0 0 .12em;color:var(--ink2)}
+.num.warn{color:var(--warn)}
+.eta{font-size:var(--read);font-weight:600;line-height:1.2;white-space:nowrap;color:var(--accT);letter-spacing:-.01em}
+.eta.plain{color:var(--ink)}
+.eta.warn{color:var(--warn)}
+.sub{font-size:var(--meta);font-weight:500;color:var(--ink2);line-height:1.35;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.chips{display:flex;gap:6px}
+.chip{flex:1;display:flex;align-items:center;justify-content:center;gap:5px;height:34px;border-radius:12px;background:var(--plate2);font-size:13px;font-weight:600;color:var(--ink);white-space:nowrap}
+.chip svg{width:16px;height:16px;color:var(--ink2)}
+
+.list{display:flex;flex-direction:column;gap:2px}
+.li{display:flex;align-items:center;gap:9px;height:32px;font-size:var(--meta);color:var(--ink2);white-space:nowrap}
+.li svg{width:16px;height:16px;flex:none}
+.li b{margin-left:auto;color:var(--ink);font-weight:600}
+.li b.warn{color:var(--warn)}
+
+.pill{position:relative;border-radius:16px;background:var(--plate2);overflow:hidden;touch-action:none;cursor:pointer;user-select:none}
+.pill .pf{position:absolute;left:0;bottom:0;top:0;background:var(--ctl)}
+.pill.v .pf{top:auto;right:0}
+.pill .pc2{position:absolute;inset:0;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:15px;font-weight:600;color:var(--ink);white-space:nowrap}
+.pill.v .pc2{flex-direction:column;justify-content:space-between;padding:14px 0;font-size:14px}
+.pill .pc2 svg{width:20px;height:20px;flex:none}
+.pill .pc2 .v{margin-left:auto;font-variant-numeric:tabular-nums}
+.pill.v .pc2 .v{margin:0}
+.pill.off{opacity:.45;pointer-events:none}
+.modes{display:flex;background:var(--plate2);border-radius:14px;padding:3px;gap:3px}
+.modes button{flex:1;border:0;background:transparent;color:var(--ink2);font:600 14px var(--f);height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;gap:5px;cursor:pointer}
+.modes button svg{width:16px;height:16px}
+.modes button.on{background:var(--ink);color:var(--plateSolid)}
+.tog{display:flex;align-items:center;gap:6px;height:44px;border-radius:14px;background:var(--plate2);padding:0 10px;font-size:13px;white-space:nowrap;font-weight:600;color:var(--ink);cursor:pointer;user-select:none}
+.tog svg{width:18px;height:18px;color:var(--ink2)}
+.tog .sw{margin-left:auto;width:34px;height:20px;border-radius:10px;background:var(--ink3);position:relative}
+.tog .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--ink)}
+.tog.on .sw{background:var(--acc)} .tog.on .sw::after{left:16px;background:var(--plateSolid)}
+
+.graph svg{display:block;overflow:visible}
+
 .notes{margin-top:30px;max-width:760px}
 .notes li{font-size:13px;line-height:1.65;margin-left:18px;color:#d9d7d3}
 .notes b{color:#f5c07e}
@@ -74,45 +87,46 @@ table.src th{color:#9a9793;font-weight:600}
 </style>
 </head>
 <body>
-<h1>스탠드 스크린 · 배터리 카드</h1>
-<p class="lead">충전 거치대 위에서 가장 궁금한 건 "언제 다 차?"예요. 그래서 큰 숫자는 배터리 %, 바로 아래 한 줄은 완충 시각으로 고정하고, 칸이 커질수록 충전 속도·온도 → 소리·밝기·네트워크 → 충전 곡선 순서로 얹어요. 큰 칸의 소리·밝기 타일은 눌러서 바로 바꿔요. 1px = 1dp, 앱이 실제로 쓰는 칸 6개.</p>
+<h1>스탠드 스크린 · 배터리 카드 (B 차오름 2차)</h1>
+<p class="lead">카드 바탕이 배터리만큼 아래에서 차올라요. 큰 숫자는 %, 그 아래 한 줄은 완충 시각. 색은 따로 정하지 않고 <b>지금 앱에 고른 테마</b>를 그대로 따르고, 밤에는 앱의 밤 색(촛불 톤)이 돼요. 달력 크기·넓은 칸에서는 밝기와 소리를 끌어서 바로 조절해요(막대를 눌러 끌어 보세요). 1px = 1dp.</p>
 
 <div class="bar">
-  <div class="seg" id="segDir"><span>방향</span></div>
+  <div class="seg" id="segTheme"><span>테마</span></div>
   <div class="seg" id="segState"><span>상태</span></div>
-  <div class="seg" id="segMode"><span>화면</span></div>
+  <div class="seg" id="segMode"><span>시간</span></div>
 </div>
-<p class="dir" id="dirNote"></p>
 <div class="grid" id="grid"></div>
 
 <div class="notes">
+  <h2>1차에서 바꾼 것</h2>
+  <ul>
+    <li><b>밤</b>: 빨강 대신 앱의 밤 색 그대로(검정 바탕 + 아래쪽 호박빛, 글자 #B9A48C). 경고색도 밤엔 쓰지 않아요.</li>
+    <li><b>테마 따라</b>: 카드 판·글자·강조색 모두 앱 테마 값. 기본·종이·하늘 세 개로 확인.</li>
+    <li><b>차오름</b>: 딱 잘린 색 면 대신 아래가 진하고 위로 옅어지는 면 + 얇은 수위선. 숫자를 가로질러도 숫자가 묻히지 않아요.</li>
+    <li><b>숫자</b>: 아주 가는 Inter 200, % 는 위에 작게. 한글 굵은 글자와 섞여도 숫자가 주인공.</li>
+    <li><b>조절</b>: 큰 칸은 밝기·볼륨 막대가 바탕처럼 아래(왼쪽)에서 차오르는 같은 언어. 소리 모드는 소리/진동/무음 한 줄. 진동·무음일 땐 볼륨 막대가 흐려져요.</li>
+    <li><b>넓은 칸</b>: 세로 막대 둘(밝기·볼륨) + 소리 모드 + 방해 금지 스위치. 충전 곡선은 가운데.</li>
+  </ul>
   <h2>크기별로 담는 것</h2>
   <ul>
-    <li><b>작은 칸 140×120</b>: 숫자와 완충 시각만. 충전 중이면 번개 표시.</li>
-    <li><b>짧고 넓은 칸 270×200</b>: 게이지 왼쪽, 오른쪽에 숫자 · 완충까지 남은 시간 · 충전 세기(W)와 온도.</li>
-    <li><b>지금 폰 칸 198×253</b>: 위 내용 + 아래에 소리·와이파이·밝기 상태 아이콘 3개(보기만).</li>
-    <li><b>좁고 긴 칸 218×419</b>: 위 내용 + 다섯 줄 목록(충전 · 온도 · 소리 · 밝기 · 네트워크).</li>
-    <li><b>달력 크기 338×419</b>: 위 내용 + 눌러서 바꾸는 타일 4개(소리 모드 · 화면 밝기 · 네트워크 · 방해 금지).</li>
-    <li><b>넓은 칸 695×419</b>: 게이지 · 꽂은 뒤 충전 곡선(점선 = 완충 예상) · 타일 4개.</li>
-  </ul>
-  <h2>규칙</h2>
-  <ul>
-    <li><b>색 하나</b>: 강조색은 채워진 양과 "완충 시각"에만. 20% 아래·과열(40°+)·느린 충전만 빨강.</li>
-    <li><b>밤</b>: 레이아웃 그대로 빨강 4단. 채움 면도 빨강 16%.</li>
-    <li><b>배터리 보호(갤럭시 85%)</b>가 켜져 있으면 85%를 꽉 찬 걸로 보고 "85%에서 멈춤"이라고 써요. 100%로 안 가서 고장처럼 보이지 않게.</li>
-    <li><b>움직임</b>: 숫자는 1%씩 조용히 바뀌고 채움은 0.8초에 걸쳐 올라가요. 깜빡이는 충전 애니메이션은 없어요(밤에 거슬려서).</li>
+    <li><b>작은 칸 140×120</b>: % · 완충 시각.</li>
+    <li><b>짧고 넓은 칸 270×200</b>: + 남은 시간, 충전 세기·온도.</li>
+    <li><b>지금 폰 칸 198×253</b>: + 소리 모드·네트워크·밝기 칩(보기만).</li>
+    <li><b>좁고 긴 칸 218×419</b>: + 다섯 줄(충전·온도·소리·밝기·네트워크).</li>
+    <li><b>달력 크기 338×419</b>: + 소리 모드 바꾸기, 밝기·볼륨 막대.</li>
+    <li><b>넓은 칸 695×419</b>: + 충전 곡선, 세로 막대 둘, 방해 금지.</li>
   </ul>
   <h2>정보를 어디서 읽나 (권한)</h2>
   <table class="src">
     <tr><th>정보</th><th>Android</th><th>권한</th></tr>
-    <tr><td>%, 충전 중, 꽂은 방식(유선·무선), 온도</td><td>배터리 상태 방송</td><td>없음</td></tr>
+    <tr><td>%, 충전 중, 온도</td><td>배터리 상태 방송</td><td>없음</td></tr>
     <tr><td>완충까지 시간</td><td>BatteryManager.computeChargeTimeRemaining (Android 9+)</td><td>없음 · 못 구하면 줄 숨김</td></tr>
-    <tr><td>충전 세기 W</td><td>전류 × 전압으로 계산. 10W 미만 "느린", 10–20W "고속", 20W 넘게 "초고속"(가정)</td><td>없음</td></tr>
-    <tr><td>충전 곡선</td><td>앱이 켜져 있는 동안 1분마다 직접 기록(꽂은 뒤부터)</td><td>없음</td></tr>
-    <tr><td>소리 · 진동 · 무음</td><td>AudioManager 벨소리 모드. 무음으로 바꾸기는 방해 금지 권한 필요</td><td>무음만: 방해 금지 접근</td></tr>
-    <tr><td>밝기</td><td>앱 화면 밝기만 바꿈(폰 전체 밝기는 안 건드림)</td><td>없음</td></tr>
-    <tr><td>와이파이 · 모바일 데이터</td><td>연결 종류만. 와이파이 이름은 위치 권한이 필요해서 안 씀</td><td>없음</td></tr>
-    <tr><td>버즈·워치 배터리</td><td>공개 API 가 없어서 뺐어요</td><td>—</td></tr>
+    <tr><td>충전 세기 W</td><td>전류 × 전압. 10W 미만 "느린", 10–20W "고속", 20W 넘게 "초고속"(가정)</td><td>없음</td></tr>
+    <tr><td>충전 곡선</td><td>앱이 켜져 있는 동안 1분마다 직접 기록</td><td>없음</td></tr>
+    <tr><td>소리 모드 · 볼륨</td><td>AudioManager. 벨소리 볼륨·소리↔진동은 바로. 무음은 방해 금지 권한</td><td>무음·방해 금지만: 방해 금지 접근</td></tr>
+    <tr><td>밝기</td><td>이 앱 화면 밝기만(폰 전체 밝기는 안 건드림)</td><td>없음</td></tr>
+    <tr><td>와이파이 · 데이터</td><td>연결 종류만(이름은 위치 권한이라 안 씀)</td><td>없음</td></tr>
+    <tr><td>버즈·워치 배터리</td><td>공개 API 없음 — 뺌</td><td>—</td></tr>
   </table>
 </div>
 
@@ -124,152 +138,129 @@ const IC = {
   plug:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 3v5M15 3v5M6 8h12v3a6 6 0 0 1-12 0zM12 17v4"/></svg>',
   temp:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/></svg>',
   sound:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg>',
-  vib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4.5 9v6M19.5 9v6M2 11v2M22 11v2"/></svg>',
+  vib:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="8" y="4" width="8" height="16" rx="2"/><path d="M4.5 9v6M19.5 9v6"/></svg>',
   mute:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 6v12l-4.5-3.5H4z"/><path d="m16 10 4 4M20 10l-4 4"/></svg>',
   sun:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></svg>',
   wifi:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 9a13 13 0 0 1 18 0M6 12.5a8.5 8.5 0 0 1 12 0M9 16a4 4 0 0 1 6 0"/><circle cx="12" cy="19" r="1" fill="currentColor"/></svg>',
-  cell:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="15" width="3.5" height="5" rx="1"/><rect x="8.5" y="11" width="3.5" height="9" rx="1"/><rect x="14" y="7" width="3.5" height="13" rx="1"/><rect x="19.5" y="3" width="1.5" height="17" rx=".75" opacity=".35"/></svg>',
   moon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z"/></svg>',
 };
 
+/* app themes (ThemeTokens.kt); night = ThemeTokens.night(): black + amber glow, ink #B9A48C, plates ink at 6% / 10% */
+const THEMES = {
+  "기본": {page:"#000", plate:"#1C1A18", plate2:"#2A2724", plateSolid:"#1C1A18", ink:"#F6EFE6", ink2a:.62, ink3a:.22, acc:"#FFAD5C", accT:"#FFAD5C", warn:"#FF6B5E", fillA:[.10,.26], ctl:"rgba(255,173,92,.42)", rad:22},
+  "종이": {page:"#F2EBDD", plate:"#E9E0CF", plate2:"#DDD4C3", plateSolid:"#F2EBDD", ink:"#1F1B16", ink2a:.72, ink3a:.22, acc:"#A6360A", accT:"#A6360A", warn:"#B3261E", fillA:[.06,.16], ctl:"rgba(166,54,10,.26)", rad:14, edge:"inset 0 0 0 1px rgba(31,27,22,.12)"},
+  "하늘": {page:"linear-gradient(180deg,#0E1E46,#4B3F86 60%,#9E4C4A)", plate:"rgba(255,255,255,.09)", plate2:"rgba(255,255,255,.14)", plateSolid:"#1d2457", ink:"#FFFFFF", ink2a:.76, ink3a:.28, acc:"#FFE1B0", accT:"#FFE1B0", warn:"#FF8A80", fillA:[.08,.22], ctl:"rgba(255,225,176,.38)", rad:24},
+};
+const NIGHT = {page:"#000", glow:"radial-gradient(120% 60% at 50% 115%, rgba(170,90,20,.35), transparent 70%)", plate:"rgba(185,164,140,.06)", plate2:"rgba(185,164,140,.10)", plateSolid:"#100e0c", ink:"#B9A48C", ink2a:.58, ink3a:.22, acc:"#B9A48C", accT:"#B9A48C", warn:"#B9A48C", fillA:[.04,.12], ctl:"rgba(185,164,140,.22)"};
+
 const STATES = {
-  "충전 중": {pct:68, chg:true, kind:"고속", w:15, eta:"1시간 12분", full:"16:40", temp:31, from:23, since:"14:02"},
-  "보호 85%": {pct:85, chg:true, protect:true, kind:"멈춤", w:0, eta:null, full:null, temp:29, from:31, since:"13:10"},
-  "완충": {pct:100, chg:true, kind:"완충", w:0, eta:null, full:null, fullSince:"14:52", temp:28, from:40, since:"13:20"},
-  "느린 충전": {pct:12, chg:true, kind:"느린", w:4.5, eta:"3시간 40분", full:"19:10", temp:30, from:6, since:"15:05", slow:true, nx:.14},
-  "빠짐": {pct:46, chg:false, kind:"충전 안 함", w:0, temp:27},
+  "충전 중": {pct:68, chg:true, kind:"고속 충전", w:15, eta:"1시간 12분", full:"16:40", temp:31, from:23, since:"14:02", nx:.58},
+  "보호 85%": {pct:85, chg:true, protect:true, kind:"배터리 보호", w:0, temp:29, from:31, since:"13:10", nx:.8},
+  "완충": {pct:100, chg:true, done:true, kind:"완충", w:0, fullSince:"14:52", temp:28, from:40, since:"13:20", nx:.8},
+  "느린 충전": {pct:12, chg:true, kind:"느린 충전", w:4.5, eta:"3시간 40분", full:"19:10", temp:30, from:6, since:"15:05", slow:true, nx:.14},
+  "빠짐": {pct:46, chg:false, kind:"배터리", w:0, temp:27},
 };
-const DIRS = {
-  A:{name:"A 링", note:"애플 배터리 위젯처럼 원 하나. 칸이 작아도 모양이 안 무너지고, 원 안 숫자가 바로 읽혀요."},
-  B:{name:"B 차오름", note:"카드 바탕이 아래에서부터 %만큼 차요. 게이지를 따로 안 그려서 숫자를 가장 크게 쓸 수 있어요. 탁상 위에서 멀리서도 양이 보여요."},
-  C:{name:"C 칸 막대", note:"10칸 막대 + 큰 숫자. 기록 카드처럼 정확한 느낌이고, 가로로 긴 칸에서 제일 깔끔해요."},
-};
-const SIZES = [
-  ["작은 칸", 140, 120, "tiny"],
-  ["짧고 넓은 칸", 270, 200, "short"],
-  ["지금 폰 칸", 198, 253, "phone"],
-  ["좁고 긴 칸", 218, 419, "tall"],
-  ["달력 크기", 338, 419, "square"],
-  ["넓은 칸", 695, 419, "wide"],
-];
-let dir = "B", stName = "충전 중", night = false;
-const ui = {sound:1, bright:60, dnd:false, net:0};   // sound 0 소리 1 진동 2 무음
-const SOUND = [["소리","sound"],["진동","vib"],["무음","mute"]];
-const NET = [["와이파이","wifi"],["모바일 데이터","cell"]];
+const SIZES = [["작은 칸",140,120,"tiny"],["짧고 넓은 칸",270,200,"short"],["지금 폰 칸",198,253,"phone"],["좁고 긴 칸",218,419,"tall"],["달력 크기",338,419,"square"],["넓은 칸",695,419,"wide"]];
+let themeName = "기본", stName = "충전 중", night = false;
+const ui = {mode:1, vol:55, bright:60, dnd:false};
+const MODES = [["소리","sound"],["진동","vib"],["무음","mute"]];
 
 const el = (t, c, h) => { const e = document.createElement(t); if (c) e.className = c; if (h != null) e.innerHTML = h; return e; };
 const S = () => STATES[stName];
-const tone = s => (s.pct <= 20 || s.temp >= 40 || s.slow) ? "warn" : "acc";
+const T = () => night ? {...THEMES[themeName], ...NIGHT, rad: THEMES[themeName].rad, edge: "none"} : THEMES[themeName];
+const isWarn = s => !night && (s.pct <= 20 || s.temp >= 40 || s.slow);
+const hexA = (hex, a) => { const n = parseInt(hex.slice(1), 16); return `rgba(${n>>16},${(n>>8)&255},${n&255},${a})`; };
 
-function labelText(s){
-  if (!s.chg) return [IC.batt, "배터리", ""];
-  if (s.protect) return [IC.shield, "배터리 보호", ""];
-  if (s.kind === "완충") return [IC.bolt, "완충", ""];
-  return [IC.bolt, s.slow ? "느린 충전" : (s.kind + " 충전"), ""];
-}
-function etaLine(s){
-  if (!s.chg) return {t:"충전기 빠짐", c:""};
-  if (s.protect) return {t:"85%에서 멈춤", c:"acc"};
-  if (s.kind === "완충") return {t:`${s.fullSince}부터 가득`, c:"acc"};
-  return {t:`${s.full} 완충`, c: tone(s)};
-}
-function etaSub(s){
-  if (!s.chg) return "꽂으면 완충 시각 표시";
-  if (s.protect) return "갤럭시 배터리 보호 켜짐";
-  if (s.kind === "완충") return "충전기를 빼도 돼요";
-  return `${s.eta} 남음`;
-}
-const wattTxt = s => s.chg && s.w ? `${s.w}W` : "";
-const wt = s => s.chg && s.w ? `${s.w}W · ${s.temp}°` : `${s.temp}°`;
-
-function ring(d, s, inner){
-  const sw = Math.max(6, d * .085), r = (d - sw) / 2, c = 2 * Math.PI * r, f = s.protect ? 1 : s.pct / 100;
-  const col = tone(s) === "warn" ? "var(--warn)" : "var(--acc)";
-  const w = el("div"); w.style.cssText = `position:relative;width:${d}px;height:${d}px;flex:none`;
-  w.innerHTML = `<svg class="ring" width="${d}" height="${d}"><circle cx="${d/2}" cy="${d/2}" r="${r}" fill="none" stroke="var(--ink3)" stroke-width="${sw}"/>
-  <circle cx="${d/2}" cy="${d/2}" r="${r}" fill="none" stroke="${col}" stroke-width="${sw}" stroke-linecap="round" stroke-dasharray="${c*f} ${c}" transform="rotate(-90 ${d/2} ${d/2})"/></svg>`;
-  if (inner) { const i = el("div"); i.style.cssText = "position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px"; i.append(...inner); w.append(i); }
-  return w;
-}
-function cells(w, h, s){
-  const c = el("div", "cells"); c.style.cssText = `width:${w}px;height:${h}px`;
-  const n = s.protect ? 10 : s.pct / 10;
-  for (let i = 0; i < 10; i++) { const x = el("i"); if (i + 1 <= n) x.className = "on"; else if (i < n) x.className = "half"; if (tone(s) === "warn" && x.className) x.style.background = "var(--warn)"; c.append(x); }
-  return c;
-}
-let curIW = 999;
-function big(s, px, maxW = curIW){
-  // width-fit so "100%" never clips: Inter 300 digit ≈ 0.6 em, "%" at 0.42 em ≈ 0.45 em with its gap
-  const fit = maxW / (String(s.pct).length * 0.6 + 0.45);
-  const b = el("div", "big"); b.style.fontSize = Math.min(px, fit) + "px";
-  b.innerHTML = `${s.pct}<small>%</small>`;
-  if (tone(s) === "warn") b.style.color = "var(--warn)";
-  return b;
+function vars(node){
+  const t = T(), set = (k, v) => node.style.setProperty(k, v);
+  set("--page", t.page); set("--glow", t.glow || "none"); set("--plate", t.plate); set("--plate2", t.plate2); set("--plateSolid", t.plateSolid);
+  set("--ink", t.ink); set("--ink2", hexA(t.ink, t.ink2a)); set("--ink3", hexA(t.ink, t.ink3a));
+  set("--acc", t.acc); set("--accT", t.accT); set("--warn", t.warn); set("--ctl", t.ctl); set("--rad", t.rad + "px"); set("--edge", t.edge || "none");
+  const fc = isWarn(S()) ? t.warn : t.acc;
+  set("--accA1", hexA(fc, t.fillA[0])); set("--accA2", hexA(fc, t.fillA[1]));
 }
 function lab(s, right){
-  const [ic, t] = labelText(s);
-  const l = el("div", "lab" + (s.chg && !s.protect ? " acc" : ""), `${ic}<span>${t}</span>`);
-  if (tone(s) === "warn" && s.chg) l.className = "lab warn";
+  const ic = !s.chg ? IC.batt : s.protect ? IC.shield : IC.bolt;
+  const l = el("div", "lab" + (isWarn(s) && s.chg ? " warn" : s.chg && !s.protect ? " on" : ""), `${ic}<span>${s.kind}</span>`);
   if (right) l.append(el("span", "r", right));
   return l;
 }
-function eta(s, cls = "line"){ const e = etaLine(s); return el("div", cls + " " + e.c, e.t); }
-function gap(h){ const g = el("div"); g.style.cssText = `height:${h}px;flex:none`; return g; }
+let curW = 999;
+function num(s, px, maxW = curW){
+  // width-fit so "100%" never clips: Inter 200 digit ≈ 0.56 em, "%" at 0.3 em + gap ≈ 0.42 em
+  const fit = maxW / (String(s.pct).length * 0.56 + 0.42);
+  const n = el("div", "num" + (isWarn(s) ? " warn" : ""), `<span>${s.pct}</span><span class="pc">%</span>`);
+  n.style.fontSize = Math.min(px, fit) + "px";
+  return n;
+}
+function eta(s){
+  if (!s.chg) return el("div", "eta plain", "충전기 빠짐");
+  if (s.protect) return el("div", "eta", "85%에서 멈춤");
+  if (s.done) return el("div", "eta", `${s.fullSince}부터 가득`);
+  return el("div", "eta" + (isWarn(s) ? " warn" : ""), `${s.full} 완충`);
+}
+function sub(s){
+  const t = !s.chg ? "꽂으면 완충 시각 표시" : s.protect ? "갤럭시 배터리 보호 켜짐" : s.done ? "충전기를 빼도 돼요" : `${s.eta} 남음`;
+  return el("div", "sub", t);
+}
+const wt = s => s.chg && s.w ? `${s.w}W · ${s.temp}°` : `${s.temp}°`;
+const gap = h => { const g = el("div"); g.style.cssText = `height:${h}px;flex:none`; return g; };
 
-/* gauge per direction; returns {node, numberInside} */
-function gauge(s, box, numPx){
-  if (dir === "A") return ring(box, s, [big(s, numPx)]);
-  if (dir === "C") { const w = el("div"); w.style.cssText = "display:flex;flex-direction:column;gap:10px"; w.append(big(s, numPx), cells(box, Math.max(10, numPx * .16), s)); return w; }
-  return big(s, numPx);
+function chips(){
+  const c = el("div", "chips"), m = MODES[ui.mode];
+  c.append(el("div", "chip", `${IC[m[1]]}${m[0]}`), el("div", "chip", `${IC.wifi}와이파이`), el("div", "chip", `${IC.sun}${ui.bright}`));
+  return c;
 }
-
-function statusIcons(s){
-  const r = el("div", "stats");
-  const so = SOUND[ui.sound], ne = NET[ui.net];
-  r.append(el("div", "st", `${IC[so[1]]}<span>${so[0]}</span>`), el("div", "st", `${IC[ne[1]]}<span>${ne[0] === "와이파이" ? "와이파이" : "데이터"}</span>`), el("div", "st", `${IC.sun}<span>밝기 ${ui.bright}%</span>`));
-  return r;
+function list(s){
+  const l = el("div", "list"), m = MODES[ui.mode];
+  const rows = [[IC.plug, "충전", s.chg ? (s.w ? `${s.w}W` : (s.protect ? "멈춤" : s.done ? "완충" : "—")) : "안 함"], [IC.temp, "온도", `${s.temp}°`], [IC[m[1]], "소리", m[0]], [IC.sun, "밝기", `${ui.bright}%`], [IC.wifi, "네트워크", "와이파이"]];
+  for (const [ic, k, v] of rows) l.append(el("div", "li", `${ic}<span>${k}</span><b${k === "온도" && s.temp >= 40 && !night ? ' class="warn"' : ""}>${v}</b>`));
+  return l;
 }
-function rowsList(s, rowH){
-  const r = el("div", "rows");
-  const so = SOUND[ui.sound], ne = NET[ui.net];
-  const items = [[IC.plug, "충전", s.chg ? (s.w ? `${s.kind} · ${s.w}W` : s.kind) : "안 함"], [IC.temp, "온도", `${s.temp}°`], [IC[so[1]], "소리", so[0]], [IC.sun, "화면 밝기", `${ui.bright}%`], [IC[ne[1]], "네트워크", ne[0]]];
-  for (const [ic, k, v] of items) { const x = el("div", "rw", `${ic}<span>${k}</span><b>${v}</b>`); x.style.height = rowH + "px"; if (k === "온도" && s.temp >= 40) x.querySelector("b").className = "warn"; r.append(x); }
-  return r;
+function pill(kind, w, h, vertical){
+  const key = kind === "bright" ? "bright" : "vol";
+  const off = kind === "vol" && ui.mode !== 0;
+  const p = el("div", "pill" + (vertical ? " v" : "") + (off ? " off" : ""));
+  p.style.cssText = `width:${w}px;height:${h}px;flex:none`;
+  const v = off ? 0 : ui[key];
+  const f = el("div", "pf"); if (vertical) f.style.height = v + "%"; else f.style.width = v + "%";
+  const ic = kind === "bright" ? IC.sun : IC[MODES[ui.mode][1]];
+  const label = off ? (vertical ? "—" : `${MODES[ui.mode][0]} 중 · 볼륨 꺼짐`) : (vertical ? `${v}` : (kind === "bright" ? "밝기" : "볼륨"));
+  const c = el("div", "pc2", vertical ? `<span class="v">${label}</span>${ic}` : `${ic}<span>${label}</span><span class="v">${off ? "" : v + "%"}</span>`);
+  p.append(f, c);
+  const set = ev => { const r = p.getBoundingClientRect(); const t = vertical ? 1 - (ev.clientY - r.top) / r.height : (ev.clientX - r.left) / r.width; ui[key] = Math.max(0, Math.min(100, Math.round(t * 100))); render(); };
+  p.addEventListener("pointerdown", ev => { set(ev); const mv = e => set(e), up = () => { window.removeEventListener("pointermove", mv); window.removeEventListener("pointerup", up); }; window.addEventListener("pointermove", mv); window.addEventListener("pointerup", up); });
+  return p;
 }
-function tiles(h, cols = 2){
-  const t = el("div", "tiles"); t.style.gridAutoRows = h + "px"; if (cols === 1) t.style.gridTemplateColumns = "1fr";
-  const so = SOUND[ui.sound], ne = NET[ui.net];
-  const a = el("div", "tile", `<div class="tl">${IC[so[1]]}소리 모드</div><div class="tv">${so[0]}</div>`); a.onclick = () => { ui.sound = (ui.sound + 1) % 3; render(); };
-  const b = el("div", "tile", `<div class="tl">${IC.sun}밝기</div><div><div class="tv">${ui.bright}%</div><div class="slider"><i style="width:${ui.bright}%"></i></div></div>`);
-  b.onclick = ev => { const r = b.getBoundingClientRect(); ui.bright = Math.max(5, Math.min(100, Math.round((ev.clientX - r.left - 12) / (r.width - 24) * 100 / 5) * 5)); render(); };
-  const c = el("div", "tile", `<div class="tl">${IC[ne[1]]}네트워크</div><div class="tv">${ne[0]}</div>`); c.onclick = () => { ui.net = (ui.net + 1) % 2; render(); };
-  const d = el("div", "tile" + (ui.dnd ? " on" : ""), `<div class="tl">${IC.moon}방해 금지</div><div class="tv">${ui.dnd ? "켜짐" : "꺼짐"}</div>`); d.onclick = () => { ui.dnd = !ui.dnd; render(); };
-  t.append(a, b, c, d);
+function modes(iconOnly){
+  const m = el("div", "modes");
+  MODES.forEach(([k, ic], i) => { const b = el("button", ui.mode === i ? "on" : "", iconOnly ? IC[ic] : `${IC[ic]}${k}`); b.title = k; b.onclick = () => { ui.mode = i; render(); }; m.append(b); });
+  return m;
+}
+function dnd(){
+  const t = el("div", "tog" + (ui.dnd ? " on" : ""), `${IC.moon}<span>방해 금지</span><span class="sw"></span>`);
+  t.onclick = () => { ui.dnd = !ui.dnd; render(); };
   return t;
 }
 function curve(s, w, h){
   const g = el("div", "graph");
-  if (!s.chg || !s.since) { g.innerHTML = `<div class="meta" style="padding-top:${h/2-10}px;text-align:center;width:${w}px">충전기를 꽂으면 곡선을 그려요</div>`; return g; }
-  const end = s.protect ? 85 : (s.kind === "완충" ? 100 : s.pct);
-  const N = 30, pts = [], fut = [];
-  const pad = 22, gw = w, gh = h - pad;
-  const nowX = gw * (s.nx || ((s.kind === "완충" || s.protect) ? .78 : .58));
-  for (let i = 0; i <= N; i++) { const t = i / N; const v = s.from + (end - s.from) * (1 - Math.pow(1 - t, 1.6)); pts.push([t * nowX, gh - v / 100 * gh]); }
-  if (s.full) { for (let i = 0; i <= 12; i++) { const t = i / 12; const v = s.pct + (100 - s.pct) * (1 - Math.pow(1 - t, 2.2)); fut.push([nowX + t * (gw - nowX), gh - v / 100 * gh]); } }
-  const P = a => a.map(p => p.map(n => n.toFixed(1)).join(",")).join(" ");
-  const col = tone(s) === "warn" ? "var(--warn)" : "var(--acc)";
-  const area = `0,${gh} ${P(pts)} ${pts.at(-1)[0].toFixed(1)},${gh}`;
-  const lines = [25, 50, 75, 100].map(v => `<line x1="0" x2="${gw}" y1="${gh - v/100*gh}" y2="${gh - v/100*gh}" stroke="var(--ink3)" stroke-width="1"/>`).join("");
-  g.innerHTML = `<svg width="${gw}" height="${h}">${lines}
-    ${s.protect ? `<line x1="0" x2="${gw}" y1="${gh - .85*gh}" y2="${gh - .85*gh}" stroke="${col}" stroke-dasharray="3 4" stroke-width="1.5"/>` : ""}
-    <polygon points="${area}" fill="${col}" opacity=".18"/>
-    <polyline points="${P(pts)}" fill="none" stroke="${col}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-    ${fut.length ? `<polyline points="${P(fut)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="2 6" stroke-linecap="round" opacity=".8"/>` : ""}
-    <circle cx="${pts.at(-1)[0]}" cy="${pts.at(-1)[1]}" r="5" fill="${col}"/>
-    <text x="0" y="${h - 4}" fill="var(--ink2)" font-size="13" font-weight="500" font-family="Inter">${s.since}</text>
-    <text x="${nowX}" y="${h - 4}" fill="var(--ink2)" font-size="13" font-weight="500" font-family="Inter" text-anchor="middle">지금</text>
-    ${s.full ? `<text x="${gw}" y="${h - 4}" fill="var(--ink2)" font-size="13" font-weight="500" font-family="Inter" text-anchor="end">${s.full}</text>` : ""}
-    <text x="${gw}" y="${gh - .85*gh - 6}" fill="${s.protect ? col : "transparent"}" font-size="12" font-weight="600" text-anchor="end" font-family="Inter">보호 85%</text>
+  if (!s.chg) { g.innerHTML = `<div class="sub" style="padding-top:${h/2-10}px;text-align:center;width:${w}px">충전기를 꽂으면 곡선을 그려요</div>`; return g; }
+  const end = s.protect ? 85 : s.done ? 100 : s.pct, gh = h - 22, pw = w - 34, nowX = pw * s.nx, pts = [], fut = [];
+  for (let i = 0; i <= 30; i++) { const k = i / 30, v = s.from + (end - s.from) * (1 - Math.pow(1 - k, 1.6)); pts.push([k * nowX, gh - v / 100 * gh]); }
+  if (s.full) for (let i = 0; i <= 14; i++) { const k = i / 14, v = s.pct + (100 - s.pct) * (1 - Math.pow(1 - k, 2.2)); fut.push([nowX + k * (pw - nowX), gh - v / 100 * gh]); }
+  const P = a => a.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+  const col = isWarn(s) ? "var(--warn)" : "var(--acc)";
+  const id = "ga" + Math.random().toString(36).slice(2, 7);
+  const grid = [25, 50, 75, 100].map(v => `<line x1="0" x2="${pw}" y1="${gh - v/100*gh}" y2="${gh - v/100*gh}" stroke="var(--ink3)" stroke-width="1" stroke-dasharray="1 5" stroke-linecap="round"/><text x="${w}" y="${gh - v/100*gh + 4}" fill="var(--ink2)" font-size="11" text-anchor="end" font-family="Inter" font-weight="500">${v}</text>`).join("");
+  g.innerHTML = `<svg width="${w}" height="${h}"><defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${col}" stop-opacity=".32"/><stop offset="1" stop-color="${col}" stop-opacity="0"/></linearGradient></defs>
+    ${grid}
+    <polygon points="0,${gh} ${P(pts)} ${pts.at(-1)[0].toFixed(1)},${gh}" fill="url(#${id})"/>
+    <polyline points="${P(pts)}" fill="none" stroke="${col}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    ${fut.length ? `<polyline points="${P(fut)}" fill="none" stroke="${col}" stroke-width="2" stroke-dasharray="1 6" stroke-linecap="round"/>` : ""}
+    <circle cx="${pts.at(-1)[0]}" cy="${pts.at(-1)[1]}" r="9" fill="${col}" opacity=".25"/><circle cx="${pts.at(-1)[0]}" cy="${pts.at(-1)[1]}" r="4.5" fill="${col}"/>
+    ${nowX > 64 ? `<text x="0" y="${h - 3}" fill="var(--ink2)" font-size="12" font-weight="500" font-family="Inter">${s.since}</text>` : ""}
+    <text x="${Math.max(nowX, 14)}" y="${h - 3}" fill="var(--ink)" font-size="12" font-weight="600" font-family="Noto Sans KR" text-anchor="middle">지금</text>
+    ${s.full ? `<text x="${pw}" y="${h - 3}" fill="var(--ink2)" font-size="12" font-weight="500" font-family="Inter" text-anchor="end">${s.full}</text>` : ""}
   </svg>`;
   return g;
 }
@@ -277,91 +268,53 @@ function curve(s, w, h){
 function card(w, h, kind){
   const s = S();
   const c = el("div", "card"); c.style.cssText = `width:${w}px;height:${h}px`;
-  const short = Math.min(w, h);
-  const p = Math.max(12, Math.round(short * .07));
+  const short = Math.min(w, h), p = Math.max(14, Math.round(short * .075));
   c.style.setProperty("--p", p + "px");
-  c.style.setProperty("--meta", Math.max(13, Math.min(16, short * .075)) + "px");
-  c.style.setProperty("--read", Math.max(15, Math.min(22, short * .085)) + "px");
-  if (dir === "B") { const f = el("div", "fillbg"); f.style.height = (s.protect ? 100 : s.pct) + "%"; if (tone(s) === "warn") { f.style.background = "var(--warn)"; } c.append(f); }
+  c.style.setProperty("--meta", Math.max(13, Math.min(15, short * .07)) + "px");
+  c.style.setProperty("--read", Math.max(15, Math.min(21, short * .08)) + "px");
+  const f = el("div", "fill"); f.style.height = (s.protect || s.done ? 100 : s.pct) + "%"; c.append(f);
   const i = el("div", "in"); c.append(i);
-  const iw = w - p * 2, ih = h - p * 2; curIW = iw;
+  const iw = w - p * 2, ih = h - p * 2; curW = iw;
 
-  if (kind === "tiny") {
-    i.append(lab(s));
-    i.append(el("div", "sp"));
-    if (dir === "A") { const row = el("div"); row.style.cssText = "display:flex;align-items:center;gap:10px"; row.append(ring(52, s, null), big(s, 36, iw - 62)); i.append(row); }
-    else if (dir === "C") { i.append(big(s, 40), gap(8), cells(iw, 8, s)); }
-    else i.append(big(s, 50));
-    i.append(el("div", "sp"));
-    i.append(eta(s, "meta"));
-  }
-  else if (kind === "short") {
-    const row = el("div"); row.style.cssText = "display:flex;gap:16px;height:100%;align-items:center";
-    const right = el("div"); right.style.cssText = "flex:1;min-width:0;display:flex;flex-direction:column;justify-content:space-between;height:100%";
-    if (dir === "A") { row.append(ring(Math.min(ih, iw * .44), s, [big(s, 36, Math.min(ih, iw * .44) * .7)])); right.append(lab(s), el("div","sp"), eta(s), gap(4), el("div", "meta", etaSub(s)), el("div","sp"), el("div", "meta", `${wt(s)}`)); row.append(right); i.append(row); }
-    else {
-      i.append(lab(s, `${wt(s)}`), el("div","sp"), big(s, dir === "C" ? 72 : 88));
-      if (dir === "C") i.append(gap(10), cells(iw, 12, s));
-      i.append(el("div","sp"), eta(s), gap(3), el("div", "meta", etaSub(s)));
-    }
-  }
-  else if (kind === "phone") {
-    i.append(lab(s, s.chg && s.w ? `${s.w}W` : ""));
-    i.append(el("div","sp"));
-    if (dir === "A") { const g = ring(108, s, [big(s, 34, 76)]); g.style.alignSelf = "center"; i.append(g); }
-    else if (dir === "C") i.append(big(s, 64), gap(10), cells(iw, 10, s));
-    else i.append(big(s, 78));
-    i.append(gap(10), eta(s), gap(2), el("div", "meta", etaSub(s)), el("div","sp"), statusIcons(s));
-  }
-  else if (kind === "tall") {
-    i.append(lab(s));
-    i.append(gap(16));
-    if (dir === "A") { const g = ring(132, s, [big(s, 40, 92)]); g.style.alignSelf = "center"; i.append(g); }
-    else if (dir === "C") i.append(big(s, 68), gap(10), cells(iw, 10, s));
-    else i.append(big(s, 88));
-    i.append(gap(12), eta(s), gap(2), el("div", "meta", etaSub(s)), el("div","sp"), rowsList(s, 34));
-  }
+  if (kind === "tiny") i.append(lab(s), el("div", "sp"), num(s, 46), el("div", "sp"), eta(s));
+  else if (kind === "short") i.append(lab(s, wt(s)), el("div", "sp"), num(s, 96), el("div", "sp"), eta(s), gap(3), sub(s));
+  else if (kind === "phone") i.append(lab(s, s.chg && s.w ? `${s.w}W` : ""), gap(14), num(s, 92), gap(12), eta(s), gap(3), sub(s), el("div", "sp"), chips());
+  else if (kind === "tall") i.append(lab(s), gap(16), num(s, 100), gap(14), eta(s), gap(3), sub(s), el("div", "sp"), list(s));
   else if (kind === "square") {
-    const top = el("div"); top.style.cssText = "display:flex;gap:16px;align-items:flex-end";
-    const txt = el("div"); txt.style.cssText = "display:flex;flex-direction:column;min-width:0;flex:1";
-    if (dir === "A") { top.style.alignItems = "center"; top.append(ring(128, s, [big(s, 38, 90)])); txt.append(eta(s), gap(4), el("div", "meta", etaSub(s)), gap(8), el("div", "meta", `${wt(s)}`)); top.append(txt); i.append(lab(s), gap(14), top); }
-    else { i.append(lab(s, `${wt(s)}`), gap(10), big(s, dir === "C" ? 84 : 104)); if (dir === "C") i.append(gap(12), cells(iw, 12, s)); i.append(gap(12), eta(s), gap(2), el("div", "meta", etaSub(s))); }
-    i.append(el("div","sp"), tiles(66));
+    i.append(lab(s, wt(s)), gap(12), num(s, 112), gap(12), eta(s), gap(3), sub(s), el("div", "sp"), modes(false), gap(8));
+    const r = el("div"); r.style.cssText = "display:flex;flex-direction:column;gap:8px";
+    r.append(pill("bright", iw, 48), pill("vol", iw, 48)); i.append(r);
   }
   else if (kind === "wide") {
-    const row = el("div"); row.style.cssText = "display:flex;gap:22px;height:100%";
-    const c1 = el("div"); c1.style.cssText = "width:190px;flex:none;display:flex;flex-direction:column";
-    c1.append(lab(s), gap(14));
-    curIW = 190; if (dir === "A") { c1.append(ring(170, s, [big(s, 50, 120)])); }
-    else if (dir === "C") c1.append(big(s, 84), gap(12), cells(190, 12, s));
-    else c1.append(big(s, 104));
-    c1.append(el("div","sp"), eta(s), gap(2), el("div", "meta", etaSub(s)), gap(2), el("div", "meta", wt(s)));
-    const c2 = el("div"); c2.style.cssText = "flex:1;min-width:0;display:flex;flex-direction:column";
-    c2.append(el("div", "lab", `${IC.plug}<span>${s.chg && s.since ? s.since + "에 " + s.from + "%로 꽂음" : "충전 곡선"}</span></span>`), el("div","sp"));
-    const cw = iw - 190 - 22 - 22 - 168;
-    c2.append(curve(s, cw, ih - 40));
-    const c3 = el("div"); c3.style.cssText = "width:168px;flex:none;display:flex;flex-direction:column";
-    c3.append(tiles((ih - 24) / 4, 1));
+    const row = el("div"); row.style.cssText = "display:flex;gap:24px;height:100%";
+    const c1 = el("div"); c1.style.cssText = "width:200px;flex:none;display:flex;flex-direction:column";
+    c1.append(lab(s), gap(16), num(s, 124, 200), el("div", "sp"), eta(s), gap(3), sub(s), gap(3), el("div", "sub", wt(s) + " · 와이파이"));
+    const ctlW = 2 * 64 + 10, cw = iw - 200 - 24 - 24 - ctlW;
+    const c2 = el("div"); c2.style.cssText = `width:${cw}px;flex:none;display:flex;flex-direction:column`;
+    c2.append(el("div", "lab", `${IC.plug}<span>${s.chg ? s.since + "에 " + s.from + "%로 꽂음" : "충전 곡선"}</span>`), gap(14), curve(s, cw, ih - 14 - 15));
+    const c3 = el("div"); c3.style.cssText = `width:${ctlW}px;flex:none;display:flex;flex-direction:column;gap:10px`;
+    const pv = el("div"); pv.style.cssText = "display:flex;gap:10px";
+    const ph = ih - 44 - 10 - 44 - 10;
+    pv.append(pill("bright", 64, ph, true), pill("vol", 64, ph, true));
+    c3.append(pv, modes(true), dnd());
     row.append(c1, c2, c3); i.append(row);
   }
   return c;
 }
 
 function render(){
-  document.body.classList.toggle("night", night);
-  document.getElementById("dirNote").textContent = DIRS[dir].note;
   const g = document.getElementById("grid"); g.innerHTML = "";
   for (const [name, w, h, kind] of SIZES) {
     const cell = el("div", "cell");
     cell.append(el("div", "cap", `<b>${name}</b> ${w}×${h}`));
-    const b = el("div", "board"); b.append(card(w, h, kind)); cell.append(b); g.append(cell);
+    const b = el("div", "board"); vars(b); b.append(card(w, h, kind)); cell.append(b); g.append(cell);
   }
 }
 function seg(id, items, get, set){
   const s = document.getElementById(id);
   for (const [k, label] of items) { const b = el("button", null, label); b.onclick = () => { set(k); [...s.querySelectorAll("button")].forEach(x => x.classList.toggle("on", x === b)); render(); }; if (get() === k) b.classList.add("on"); s.append(b); }
 }
-seg("segDir", Object.entries(DIRS).map(([k, v]) => [k, v.name]), () => dir, v => dir = v);
+seg("segTheme", Object.keys(THEMES).map(k => [k, k]), () => themeName, v => themeName = v);
 seg("segState", Object.keys(STATES).map(k => [k, k]), () => stName, v => stName = v);
 seg("segMode", [[false, "낮"], [true, "밤"]], () => night, v => night = v);
 render();
