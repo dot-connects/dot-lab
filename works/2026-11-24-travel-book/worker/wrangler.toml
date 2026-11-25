@@ -11,6 +11,8 @@ MODEL = "gpt-5.4"
 # month ceiling in cents ("0" = AI off), books a day for everyone
 MONTH_CENTS = "1000"
 DAY_BOOKS = "20"
+WRITE_DAY = "60"
+REWRITE_DAY = "200"
 
 [[d1_databases]]
 binding = "DB"

@@ -26,7 +26,7 @@ beforeEach(() => {
   console.log = (...a) => logs.push(a.join(" "));
 });
 
-async function call(body, { path = "/book", token = "tok" } = {}) {
+async function call(body, { path = "/pick", token = "tok" } = {}) {
   const req = new Request("https://w" + path, { method: "POST", headers: { "x-app-token": token }, body: JSON.stringify(body) });
   const r = await handle(req, env, { waitUntil: p => waits.push(p) }, counts);
   const text = await r.text();
@@ -120,4 +120,32 @@ test("D1 settle binds only finite numbers and records past the limit", async () 
   await c.settle("m|x", 30);                       // the real cost: recorded anyway
   assert.equal(db.prepare("SELECT n FROM counts WHERE k='m|x'").get().n, 80);
   assert.ok(binds.every(v => typeof v !== "number" || Number.isFinite(v)));
+});
+
+test("/write: 49 images is 413, the shape picks the output budget", async () => {
+  assert.equal((await call({ images: imgs(49), shape: "short" }, { path: "/write" })).status, 413);
+  await call({ images: imgs(10), shape: "diary" }, { path: "/write" });
+  await call({ images: imgs(10), shape: "short" }, { path: "/write" });
+  assert.equal(calls[0].max_output_tokens, 16000);
+  assert.equal(calls[1].max_output_tokens, 8000);
+  assert.equal(calls[0].text.format.name, "write");
+  assert.ok(calls[0].input[0].content.includes("두세 줄"));   // diary rules in the system prompt
+});
+
+test("/write has its own day cap, separate from books", async () => {
+  env.WRITE_DAY = "1";
+  assert.equal((await call({ images: imgs(2) }, { path: "/write" })).status, 200);
+  assert.equal((await call({ images: imgs(2) }, { path: "/write" })).status, 503);
+  assert.equal((await call({ images: imgs(2) })).status, 200);   // /pick still open
+});
+
+test("/pick passes must-include ids to the model, never more than 10", async () => {
+  await call({ images: imgs(3), mustInclude: Array.from({ length: 12 }, (_, i) => "p" + i) });
+  const texts = calls[0].input[1].content.filter(c => c.type === "input_text").map(c => c.text).join("\n");
+  const line = texts.split("\n").find(l => l.startsWith("꼭 넣을 사진"));
+  assert.equal(line.split(",").length, 10);
+});
+
+test("unknown route is 404", async () => {
+  assert.equal((await call({ images: imgs(1) }, { path: "/book" })).status, 404);
 });

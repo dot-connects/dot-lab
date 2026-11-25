@@ -3,13 +3,18 @@
 // Model: OpenAI Responses API (operator 11-25: use the GPT key already on hand); the MODEL var picks the model.
 // Money unit = mills (1/10 cent, integers). Reserve the worst case before the call, settle the real cost after.
 import { MemoryCounts, D1Counts } from "./counts.js";
-import { SYSTEM_BOOK, SYSTEM_REWRITE, BOOK_SCHEMA, REWRITE_SCHEMA } from "./prompt.js";
+import { SYSTEM_PICK, systemWrite, systemRewrite, PICK_SCHEMA, WRITE_SCHEMA, REWRITE_SCHEMA } from "./prompt.js";
 
 export { MemoryCounts, D1Counts };
 
-const MAX_IMAGES = 60, MAX_REWRITE_IMAGES = 4;
+// per route: image cap, output budget (reasoning included), day counter key + var + default
+const ROUTES = {
+  "/pick": { images: 60, tokens: () => 12000, day: ["dp", "DAY_BOOKS", 20] },
+  "/write": { images: 48, tokens: shape => (shape === "short" ? 8000 : 16000), day: ["dw", "WRITE_DAY", 60] },
+  "/rewrite": { images: 4, tokens: () => 1000, day: ["dr", "REWRITE_DAY", 200] },
+};
+const SHAPES = ["short", "diary", "mag"];
 const MAX_B64 = 400_000;           // one 512 px JPEG is ~40-80 KB as base64
-const BOOK_MAX_TOKENS = 12000, REWRITE_MAX_TOKENS = 1000;
 // gpt-5.4: $2.50 / M input = 0.0025 mills a token, $15 / M output (reasoning included) = 0.015 mills a token
 const IN_MILLS = 0.0025, OUT_MILLS = 0.015;
 const IMG_TOKENS = 400;            // a 512 px preview at detail "low" is well under this; rounded up for the reservation
@@ -35,7 +40,7 @@ const jpeg = b64 => ({ type: "input_image", image_url: `data:image/jpeg;base64,$
 const txt = text => ({ type: "input_text", text });
 
 /** The user turn: each preview labelled with its id, local time and place, then the notes and the options. */
-export function bookContent(body) {
+export function bookContent(body, pick = true) {
   const shots = new Map((body.shots || []).map(s => [s.id, s]));
   const content = [];
   for (const im of body.images) {
@@ -46,6 +51,8 @@ export function bookContent(body) {
   }
   const notes = (body.notes || []).map(n => `${clean(n.day, 10) || "날짜 없음"}: ${clean(n.text, 12000)}`).join("\n\n");
   const o = body.opts || {};
+  const must = (body.mustInclude || []).filter(x => typeof x === "string").slice(0, 10);
+  if (pick && must.length) content.push(txt(`꼭 넣을 사진: ${must.map(x => clean(x, 64)).join(", ")}`));
   content.push(txt(
     `메모:\n${notes || "(없음)"}\n\n옵션: 말투=${clean(o.tone, 20) || "auto"}, 글의 양=${clean(o.textAmount, 20) || "caption_essay"}, ` +
     `사람 사진=${clean(o.people, 20) || "mix"}, 길이=${clean(o.length, 20) || "normal"}`));
@@ -60,34 +67,37 @@ function rewriteContent(body, images) {
 }
 
 /** Text chars in a request (for the input reservation). */
-const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opts, p: body.page }).length;
+const chars = body => JSON.stringify({ s: body.shots, n: body.notes, o: body.opts, p: body.page, m: body.mustInclude }).length;
 
 export async function handle(req, env, ctx, counts) {
   const url = new URL(req.url);
-  if (req.method !== "POST" || !["/book", "/rewrite"].includes(url.pathname)) return json({ error: "not found" }, 404);
+  const route = ROUTES[url.pathname];
+  if (req.method !== "POST" || !route) return json({ error: "not found" }, 404);
   if (!env.APP_TOKEN || req.headers.get("x-app-token") !== env.APP_TOKEN) return json({ error: "token" }, 401);
   if (env.LIMIT && !(await env.LIMIT.limit({ key: req.headers.get("cf-connecting-ip") || "?" })).success) return json({ error: "slow" }, 429);
   let body;
   try { body = await req.json(); } catch { return json({ error: "body" }, 400); }
-  const book = url.pathname === "/book";
   const images = Array.isArray(body?.images) ? body.images : [];
-  if (images.length > (book ? MAX_IMAGES : MAX_REWRITE_IMAGES)) return json({ error: "too many images" }, 413);
+  if (images.length > route.images) return json({ error: "too many images" }, 413);
   if (!images.length || !images.every(i => goodB64(i?.b64) && typeof i.id === "string")) return json({ error: "body" }, 400);
+  const shape = SHAPES.includes(body.shape) ? body.shape : "short";
   if (!env.OPENAI_KEY) return json({ error: "off" }, 503);
 
-  const now = kst(), kMonth = `m|${now.slice(0, 7)}`, kDay = `d|${now.slice(0, 10)}`;
+  const now = kst(), kMonth = `m|${now.slice(0, 7)}`;
+  const [dk, dvar, ddef] = route.day, kDay = `${dk}|${now.slice(0, 10)}`;
   const cap = num(env.MONTH_CENTS, 1000) * 10;
-  if (book && !(await counts.take(kDay, num(env.DAY_BOOKS, 20)))) return json({ error: "off" }, 503);
-  const maxTokens = book ? BOOK_MAX_TOKENS : REWRITE_MAX_TOKENS;
+  if (!(await counts.take(kDay, num(env[dvar], ddef)))) return json({ error: "off" }, 503);
+  const maxTokens = route.tokens(shape);
   const reserved = reserveMills(images.length, chars(body), maxTokens);
   if (cap <= 0 || !(await counts.add(kMonth, reserved, cap))) {
-    if (book) await counts.give(kDay);
+    await counts.give(kDay);
     return json({ error: "off" }, 503);
   }
 
-  const system = book ? SYSTEM_BOOK : SYSTEM_REWRITE;
-  const schema = book ? BOOK_SCHEMA : REWRITE_SCHEMA;
-  const content = book ? bookContent(body) : rewriteContent(body, images);
+  const kind = url.pathname.slice(1);
+  const system = kind === "pick" ? SYSTEM_PICK : kind === "write" ? systemWrite(shape) : systemRewrite(shape);
+  const schema = kind === "pick" ? PICK_SCHEMA : kind === "write" ? WRITE_SCHEMA : REWRITE_SCHEMA;
+  const content = kind === "rewrite" ? rewriteContent(body, images) : bookContent(body, kind === "pick");
 
   // Stream to the app: a space every 10 s keeps the connection open while the model thinks, then one JSON object.
   // Status is already 200 by then, so errors travel in the body: {error: "model" | "upstream"}.
@@ -104,7 +114,7 @@ export async function handle(req, env, ctx, counts) {
         body: JSON.stringify({
           model: env.MODEL || "gpt-5.4", max_output_tokens: maxTokens, reasoning: { effort: "medium" }, store: false,
           input: [{ role: "system", content: system }, { role: "user", content }],
-          text: { format: { type: "json_schema", name: book ? "book" : "rewrite", schema, strict: true } },
+          text: { format: { type: "json_schema", name: kind, schema, strict: true } },
         }),
       });
       if (!r.ok) {
