@@ -67,6 +67,26 @@ flutter:
     - assets/book/
     - assets/book/fonts/
     - assets/book/themes/a/
+    - assets/covers/
+    - assets/sample/
+
+  # App-screen fonts. Pretendard stands in for IBM Plex Sans KR (mockup font) until Plex is bundled.
+  fonts:
+    - family: Pretendard
+      fonts:
+        - asset: assets/book/fonts/Pretendard-Regular.otf
+          weight: 400
+        - asset: assets/book/fonts/Pretendard-Medium.otf
+          weight: 500
+        - asset: assets/book/fonts/Pretendard-SemiBold.otf
+          weight: 600
+        - asset: assets/book/fonts/Pretendard-Bold.otf
+          weight: 700
+        - asset: assets/book/fonts/Pretendard-ExtraBold.otf
+          weight: 800
+    - family: InterTight
+      fonts:
+        - asset: assets/book/fonts/InterTightwght.ttf
 
   # The following line ensures that the Material Icons font is
   # included with your application, so that you can use the icons in

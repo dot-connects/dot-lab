@@ -1,122 +1,152 @@
 import 'package:material_ui/material_ui.dart';
 
-void main() {
-  runApp(const MyApp());
+import 'core/library.dart';
+import 'ui/new_book/albums.dart';
+import 'ui/new_book/book_shape.dart';
+import 'ui/new_book/dates.dart';
+import 'ui/new_book/draft.dart';
+import 'ui/new_book/extras.dart';
+import 'ui/new_book/must_pick.dart';
+import 'ui/new_book/notes.dart';
+import 'ui/new_book/timeline_help.dart';
+import 'ui/onboarding.dart';
+import 'ui/sample.dart';
+import 'ui/shelf.dart';
+import 'ui/tokens.dart';
+
+void main() => runApp(const TripbookApp());
+
+class TripbookApp extends StatelessWidget {
+  const TripbookApp({super.key});
+  @override
+  Widget build(BuildContext context) =>
+      MaterialApp(title: '여행 한 권', debugShowCheckedModeBanner: false, theme: appTheme(), home: const _Root());
 }
 
-class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+// Wiring with FAKE data (ui/sample.dart) until the gallery and the pipeline land.
+class _Root extends StatefulWidget {
+  const _Root();
+  @override
+  State<_Root> createState() => _RootState();
+}
 
-  // This widget is the root of your application.
+class _RootState extends State<_Root> {
+  bool _onboarded = false;
+  final _books = [...sampleBooks];
+  var _view = ShelfView.display;
+
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Flutter Demo',
-      theme: ThemeData(
-        // This is the theme of your application.
-        //
-        // TRY THIS: Try running your application with "flutter run". You'll see
-        // the application has a purple toolbar. Then, without quitting the app,
-        // try changing the seedColor in the colorScheme below to Colors.green
-        // and then invoke "hot reload" (save your changes or press the "hot
-        // reload" button in a Flutter-supported IDE, or press "r" if you used
-        // the command line to start the app).
-        //
-        // Notice that the counter didn't reset back to zero; the application
-        // state is not lost during the reload. To reset the state, use hot
-        // restart instead.
-        //
-        // This works for code too, not just values: Most code changes can be
-        // tested with just a hot reload.
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+    if (!_onboarded) return Onboarding(onAllow: () => setState(() => _onboarded = true));
+    void none(ShelfBook _) {}
+    return Shelf(
+      books: _books,
+      view: _view,
+      onViewChanged: (v) => setState(() => _view = v),
+      onOpen: none,
+      onExport: none,
+      onRename: none,
+      onDelete: (b) => setState(() => _books.remove(b)),
+      onSettings: () {},
+      onNew: () => Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => _NewBook(freeLeft: freeLeft(_books)))),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  // This widget is the home page of your application. It is stateful, meaning
-  // that it has a State object (defined below) that contains fields that affect
-  // how it looks.
-
-  // This class is the configuration for the state. It holds the values (in this
-  // case the title) provided by the parent (in this case the App widget) and
-  // used by the build method of the State. Fields in a Widget subclass are
-  // always marked "final".
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      // This call to setState tells the Flutter framework that something has
-      // changed in this State, which causes it to rerun the build method below
-      // so that the display can reflect the updated values. If we changed
-      // _counter without calling setState(), then the build method would not be
-      // called again, and so nothing would appear to happen.
-      _counter++;
-    });
-  }
-
+class _NewBook extends StatelessWidget {
+  final int freeLeft;
+  const _NewBook({required this.freeLeft});
   @override
   Widget build(BuildContext context) {
-    // This method is rerun every time setState is called, for instance as done
-    // by the _incrementCounter method above.
-    //
-    // The Flutter framework has been optimized to make rerunning build methods
-    // fast, so that you can just rebuild anything that needs updating rather
-    // than having to individually change instances of widgets.
-    return Scaffold(
-      appBar: AppBar(
-        // TRY THIS: Try changing the color here to a specific color (to
-        // Colors.amber, perhaps?) and trigger a hot reload to see the AppBar
-        // change color while the other colors stay the same.
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // Here we take the value from the MyHomePage object that was created by
-        // the App.build method, and use it to set our appbar title.
-        title: Text(widget.title),
-      ),
-      body: Center(
-        // Center is a layout widget. It takes a single child and positions it
-        // in the middle of the parent.
-        child: Column(
-          // Column is also a layout widget. It takes a list of children and
-          // arranges them vertically. By default, it sizes itself to fit its
-          // children horizontally, and tries to be as tall as its parent.
-          //
-          // Column has various properties to control how it sizes itself and
-          // how it positions its children. Here we use mainAxisAlignment to
-          // center the children vertically; the main axis here is the vertical
-          // axis because Columns are vertical (the cross axis would be
-          // horizontal).
-          //
-          // TRY THIS: Invoke "debug painting" (choose the "Toggle Debug Paint"
-          // action in the IDE, or press "p" in the console), to see the
-          // wireframe for each widget.
-          mainAxisAlignment: .center,
-          children: [
-            const Text('You have pushed the button this many times:'),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
-      ),
+    final draft = NewBookDraft();
+    final nav = Navigator.of(context);
+    return DatesScreen(
+      month: sampleMonth,
+      photos: samplePhotosPerDay,
+      videos: sampleVideosPerDay,
+      start: DateTime(2026, 6, 12),
+      end: DateTime(2026, 6, 14),
+      onClose: nav.pop,
+      onNext: (s, e) {
+        draft
+          ..start = s
+          ..end = e;
+        nav.push(MaterialPageRoute<void>(
+          builder: (_) => AlbumsScreen(
+            albums: sampleAlbums,
+            onBack: nav.pop,
+            onNext: (ids, n) {
+              draft.albums = ids;
+              nav.push(MaterialPageRoute<void>(builder: (_) => _Extras(draft: draft, photos: n, freeLeft: freeLeft)));
+            },
+          ),
+        ));
+      },
     );
   }
+}
+
+class _Extras extends StatefulWidget {
+  final NewBookDraft draft;
+  final int photos, freeLeft;
+  const _Extras({required this.draft, required this.photos, required this.freeLeft});
+  @override
+  State<_Extras> createState() => _ExtrasState();
+}
+
+class _ExtrasState extends State<_Extras> {
+  NewBookDraft get d => widget.draft;
+
+  Future<void> _push(Widget Function(VoidCallback back) screen) async {
+    final nav = Navigator.of(context);
+    await nav.push(MaterialPageRoute<void>(builder: (_) => screen(nav.pop)));
+    setState(() {});
+  }
+
+  void _make() => Navigator.of(context).popUntil((r) => r.isFirst); // D4 (making) is not built yet
+
+  @override
+  Widget build(BuildContext context) => ExtrasScreen(
+        draft: d,
+        photos: widget.photos,
+        mustThumbs: [for (final id in d.mustInclude) samplePath(id)],
+        freeLeft: widget.freeLeft,
+        onBack: Navigator.of(context).pop,
+        onMust: () => _push((back) => MustPickScreen(days: sampleMustDays, draft: d, onDone: back)),
+        onNotes: () => _push((back) => StatefulBuilder(
+              builder: (_, set) => NotesScreen(
+                items: d.notes,
+                onBack: back,
+                onPaste: () => set(() => d.notes = [...d.notes, sampleNotes[0]]),
+                onFile: () => set(() => d.notes = [...d.notes, sampleNotes[0]]),
+                onHandwriting: () => set(() => d.notes = [...d.notes, sampleNotes[1]]),
+                onTapItem: (i) => set(() => d.notes = [...d.notes]..removeAt(i)),
+                onDone: back,
+              ),
+            )),
+        onTimeline: () => _push((back) => TimelineHelpScreen(
+              range: rangeShort(d.start!, d.end!),
+              onBack: back,
+              onPickFile: () {
+                d.timeline = 'Timeline.json';
+                back();
+              },
+              onOpenSettings: () {},
+            )),
+        onShape: () => _push((back) => BookShapeScreen(
+              draft: d,
+              recommended: 'a',
+              reason: '풍경 사진이 많아서',
+              photos: widget.photos,
+              days: d.end!.difference(d.start!).inDays + 1,
+              videos: 9,
+              placesHint: '협재 · 우도 · 성산 …',
+              onBack: () {
+                d.shapeTouched = true;
+                back();
+              },
+              onMake: _make,
+            )),
+        onMake: _make,
+      );
 }
