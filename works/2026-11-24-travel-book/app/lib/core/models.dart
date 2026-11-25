@@ -24,6 +24,24 @@ class Shot {
     this.h = 0,
   });
   bool get portrait => h > w;
+
+  Map<String, dynamic> toJson() => {
+        'id': id, 'utc': utc.toIso8601String(), 'wall': wall?.toIso8601String(), 'off': exifOffset?.inMinutes,
+        'v': isVideo, 'dur': durationMs, 'lat': lat, 'lng': lng, 'rel': relPath, 'w': w, 'h': h,
+      };
+  factory Shot.fromJson(Map<String, dynamic> j) => Shot(
+        id: j['id'] as String,
+        utc: DateTime.parse(j['utc'] as String),
+        wall: j['wall'] == null ? null : DateTime.parse(j['wall'] as String),
+        exifOffset: j['off'] == null ? null : Duration(minutes: j['off'] as int),
+        isVideo: j['v'] as bool,
+        durationMs: j['dur'] as int,
+        lat: (j['lat'] as num?)?.toDouble(),
+        lng: (j['lng'] as num?)?.toDouble(),
+        relPath: j['rel'] as String,
+        w: j['w'] as int,
+        h: j['h'] as int,
+      );
 }
 
 class Candidate {
@@ -35,6 +53,11 @@ class Candidate {
   const Candidate(this.shot, {required this.sharp, required this.luma, required this.dhash, this.place, required this.local});
   String get id => shot.id;
   Candidate withPlace(String? p) => Candidate(shot, sharp: sharp, luma: luma, dhash: dhash, place: p, local: local);
+  Map<String, dynamic> toJson() =>
+      {'shot': shot.toJson(), 'sharp': sharp, 'luma': luma, 'dhash': dhash, 'place': place, 'local': local.toIso8601String()};
+  factory Candidate.fromJson(Map<String, dynamic> j) => Candidate(Shot.fromJson(j['shot'] as Map<String, dynamic>),
+      sharp: (j['sharp'] as num).toDouble(), luma: (j['luma'] as num).toDouble(), dhash: j['dhash'] as int,
+      place: j['place'] as String?, local: DateTime.parse(j['local'] as String));
 }
 
 class Pick {
