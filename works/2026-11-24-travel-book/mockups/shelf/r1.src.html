@@ -1,0 +1,297 @@
+<title>여행 책자 책장</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Inter+Tight:wght@300;500;700;800&display=swap">
+<style>
+/* layout: three directions side by side as phone frames; each direction = first run, home shelf, new book (dates + source) */
+:root{
+  --bg:#ECEAE4; --fg:#1A1A18; --soft:#6B6A64; --line:#CFCCC3; --accent:#2A45AE;
+  --f-ui:"IBM Plex Sans KR","Apple SD Gothic Neo",sans-serif; --f-num:"Inter Tight","IBM Plex Sans KR",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#1B1B19;--fg:#EDEBE5;--soft:#A3A19A;--line:#3A3935;--accent:#8EA2F0;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#1B1B19;--fg:#EDEBE5;--soft:#A3A19A;--line:#3A3935;--accent:#8EA2F0;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-ui);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 48px}
+h1{font-size:22px;margin:0 0 4px;text-wrap:balance}
+.lead{color:var(--soft);margin:0 0 20px;max-width:62ch;line-height:1.55}
+.dir{margin:0 0 36px}
+.dir h2{font-size:17px;margin:0 0 2px}
+.dir p.why{color:var(--soft);margin:0 0 12px;max-width:62ch;line-height:1.5}
+.row{display:flex;gap:16px;overflow-x:auto;padding-bottom:8px;scroll-snap-type:x mandatory}
+.cap{font-size:12px;color:var(--soft);margin:8px 0 0;max-width:300px;line-height:1.45}
+.col{flex:0 0 auto;scroll-snap-align:start}
+/* phone */
+.ph{width:300px;height:620px;border-radius:30px;overflow:hidden;position:relative;box-shadow:0 0 0 1px var(--line),0 10px 30px rgba(0,0,0,.12);font-family:var(--f-ui)}
+.ph *{box-sizing:border-box}
+.sb{height:28px;display:flex;justify-content:space-between;align-items:center;padding:0 20px;font:600 11px var(--f-num)}
+img.c{display:block;width:100%;height:100%;object-fit:cover}
+.btn{display:flex;align-items:center;justify-content:center;height:48px;border-radius:24px;font-weight:600;font-size:15px}
+.tiny{font-size:11px}
+
+/* ---------- A: 나무 책장 (spines on wooden shelves) ---------- */
+.A{background:#F3EEE6;color:#2B2621}
+.A .wood{height:10px;background:linear-gradient(#B98D5E,#8E6440);box-shadow:0 3px 6px rgba(60,30,10,.25)}
+.A .shelf{display:flex;align-items:flex-end;gap:3px;padding:0 18px;height:150px}
+.A .sp{width:30px;border-radius:2px 2px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:8px 0 6px;color:#fff;box-shadow:inset -3px 0 0 rgba(0,0,0,.12),inset 2px 0 0 rgba(255,255,255,.15)}
+.A .sp b{writing-mode:vertical-rl;font-size:12px;font-weight:600;letter-spacing:.04em}
+.A .sp i{font:500 9px var(--f-num);font-style:normal;writing-mode:vertical-rl;opacity:.85}
+.A .face{width:96px;height:128px;box-shadow:2px 3px 8px rgba(0,0,0,.25);margin-left:8px;position:relative;overflow:hidden}
+.A .face .t{position:absolute;left:8px;bottom:8px;color:#fff;font:800 22px var(--f-num);letter-spacing:-.04em;text-shadow:0 1px 6px rgba(0,0,0,.4)}
+.A .hd{padding:14px 20px 6px;display:flex;justify-content:space-between;align-items:baseline}
+.A .hd h3{margin:0;font-size:22px}
+.A .add{position:absolute;right:20px;bottom:26px;width:56px;height:56px;border-radius:28px;background:#2B2621;color:#F3EEE6;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.25)}
+
+/* ---------- B: 표지 진열 (face-out on a ledge) ---------- */
+.B{background:#FFFFFF;color:#111}
+.B .hd{padding:16px 20px 10px}
+.B .hd small{font:500 11px var(--f-num);color:#777;letter-spacing:.04em}
+.B .hd h3{margin:2px 0 0;font-size:26px;letter-spacing:-.02em}
+.B .hero{margin:0 20px;height:230px;position:relative;box-shadow:0 14px 26px rgba(0,0,0,.18),0 2px 0 #ddd}
+.B .hero .t{position:absolute;left:14px;bottom:14px;color:#fff;font:800 40px/0.9 var(--f-num);letter-spacing:-.05em}
+.B .hero .m{position:absolute;left:14px;top:12px;color:#fff;font:500 11px var(--f-num)}
+.B .ledge{height:6px;margin:0 12px;background:#E8E6E1;border-radius:3px}
+.B .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:18px 20px 0}
+.B .bk{aspect-ratio:3/4;position:relative;box-shadow:0 6px 12px rgba(0,0,0,.14)}
+.B .bk span{position:absolute;left:6px;bottom:5px;color:#fff;font:700 12px var(--f-ui);text-shadow:0 1px 4px rgba(0,0,0,.5)}
+.B .lbl{font-size:11px;color:#666;margin-top:6px}
+.B .fab{position:absolute;left:20px;right:20px;bottom:22px;background:#111;color:#fff}
+
+/* ---------- C: 연표 책장 (one long shelf ordered by date) ---------- */
+.C{background:#14161A;color:#E9E7E1}
+.C .hd{padding:16px 20px 4px;display:flex;justify-content:space-between;align-items:baseline}
+.C .hd h3{margin:0;font:800 30px var(--f-num);letter-spacing:-.04em}
+.C .yr{padding:16px 20px 6px;font:500 11px var(--f-num);color:#8C8A84;letter-spacing:.06em;display:flex;gap:8px;align-items:center}
+.C .yr:after{content:"";flex:1;height:1px;background:#2E3036}
+.C .run{display:flex;gap:10px;padding:0 20px;overflow:hidden}
+.C .bk{flex:0 0 104px;height:150px;position:relative;border-radius:2px;overflow:hidden}
+.C .bk .t{position:absolute;left:8px;bottom:22px;font:700 15px var(--f-ui);color:#fff}
+.C .bk .d{position:absolute;left:8px;bottom:8px;font:500 10px var(--f-num);color:rgba(255,255,255,.85)}
+.C .st{display:flex;gap:18px;padding:14px 20px 0;font:500 11px var(--f-num);color:#8C8A84}
+.C .st b{display:block;font:300 26px var(--f-num);color:#E9E7E1;letter-spacing:-.03em}
+.C .fab{position:absolute;left:20px;right:20px;bottom:22px;background:#E9E7E1;color:#14161A}
+
+/* ---------- first run ---------- */
+.on{display:flex;flex-direction:column;height:592px;padding:0 24px 26px}
+.on .art{flex:1;display:flex;align-items:center;justify-content:center}
+.on h3{font-size:24px;line-height:1.3;margin:0 0 10px;text-wrap:balance}
+.on p{margin:0 0 18px;font-size:14px;line-height:1.55}
+.on .dots{display:flex;gap:6px;margin-bottom:16px}.on .dots i{width:6px;height:6px;border-radius:3px;background:currentColor;opacity:.25}.on .dots i.on1{opacity:1;width:18px}
+.open{width:230px;height:170px;display:flex;perspective:600px}
+.open .pg{flex:1;position:relative;overflow:hidden;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+.open .pg.l{transform:rotateY(10deg);transform-origin:right}.open .pg.r{transform:rotateY(-10deg);transform-origin:left}
+.open .pg.r .cap2{position:absolute;left:8px;bottom:8px;font:500 9px var(--f-num)}
+
+/* ---------- new book ---------- */
+.nb{padding:6px 20px 0}
+.nb h3{font-size:20px;margin:4px 0 12px}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:2px 0;font:500 12px var(--f-num);text-align:center}
+.cal .w{font-size:10px;opacity:.55;padding-bottom:4px}
+.cal span{height:30px;display:flex;align-items:center;justify-content:center}
+.cal .in{background:var(--rng)}.cal .s{border-radius:15px 0 0 15px}.cal .e{border-radius:0 15px 15px 0}
+.cal .s b,.cal .e b{width:30px;height:30px;border-radius:15px;display:flex;align-items:center;justify-content:center;background:var(--sel);color:var(--selfg)}
+.cal .dot{position:relative}.cal .dot:after{content:"";position:absolute;bottom:3px;width:3px;height:3px;border-radius:2px;background:currentColor;opacity:.5}
+.src{margin-top:14px;display:grid;gap:8px}
+.opt{border-radius:14px;padding:11px 12px;display:flex;gap:10px;align-items:flex-start}
+.opt .rd{flex:none;width:18px;height:18px;border-radius:9px;margin-top:1px;border:2px solid currentColor;opacity:.5}
+.opt.sel .rd{opacity:1;box-shadow:inset 0 0 0 3px var(--rdbg);background:currentColor}
+.opt b{display:block;font-size:14px}.opt small{font-size:11.5px;opacity:.7;line-height:1.4;display:block;margin-top:2px}
+.alb{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.alb span{display:flex;align-items:center;gap:5px;font-size:11.5px;border-radius:14px;padding:4px 9px 4px 4px}
+.alb span img{width:20px;height:20px;border-radius:10px;object-fit:cover}
+.cnt{font:500 12px var(--f-num);margin-top:10px;opacity:.75}
+.nb .go{position:absolute;left:20px;right:20px;bottom:22px}
+.A .nbx{--rng:#E6D8C4;--sel:#2B2621;--selfg:#F3EEE6;--rdbg:#F3EEE6}
+.A .opt{background:#EAE2D6}.A .opt.sel{background:#2B2621;color:#F3EEE6;--rdbg:#2B2621}.A .alb span{background:#F3EEE6;color:#2B2621}
+.B .nbx{--rng:#EEF0F7;--sel:#111;--selfg:#fff;--rdbg:#fff}
+.B .opt{background:#F4F4F2}.B .opt.sel{background:#111;color:#fff;--rdbg:#111}.B .alb span{background:#fff;color:#111}
+.C .nbx{--rng:#262A33;--sel:#E9E7E1;--selfg:#14161A;--rdbg:#14161A}
+.C .opt{background:#1F2228}.C .opt.sel{background:#E9E7E1;color:#14161A;--rdbg:#E9E7E1}.C .alb span{background:#14161A;color:#E9E7E1}
+.notes{max-width:68ch;line-height:1.6;color:var(--fg);font-size:14px}
+.notes li{margin-bottom:6px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<h1>여행 책자 — 첫 화면 · 책장 · 새 책</h1>
+<p class="lead">세 방향 모두 같은 세 화면입니다: ① 처음 켰을 때 ② 홈 = 만든 책을 모아 둔 책장 ③ 새 책 만들기(날짜 + 사진 범위). 옆으로 밀어 보세요. 책 표지는 승인된 테마 표지 그대로 씁니다.</p>
+
+<!-- ===================== A ===================== -->
+<section class="dir">
+  <h2>A. 나무 책장</h2>
+  <p class="why">진짜 책장처럼 책등이 꽂혀 있고, 가장 최근 책 한 권만 표지가 보이게 세워 둡니다. 권수가 늘수록 책장이 차 오르는 맛.</p>
+  <div class="row">
+    <div class="col"><div class="ph A">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="on">
+        <div class="art"><div class="open">
+          <div class="pg l"><img class="c" src="{{udo}}" alt=""></div>
+          <div class="pg r" style="background:#fff;color:#111"><img class="c" src="{{haenyeo}}" alt="" style="height:70%"><span class="cap2">14:10 하도 해녀 탈의장 앞</span></div>
+        </div></div>
+        <div class="dots"><i class="on1"></i><i></i><i></i></div>
+        <h3>날짜만 고르면,<br>그 여행이 책이 돼요</h3>
+        <p>그 기간 사진·영상 중 잘 나온 것만 골라 날짜·장소별로 엮어요. 사진은 폰을 떠나지 않고, 작은 미리보기만 AI 가 봐요.</p>
+        <div class="btn" style="background:#2B2621;color:#F3EEE6">사진 접근 허용하고 시작</div>
+      </div>
+    </div><p class="cap">① 처음 켰을 때: 펼친 책 한 장 + 한 문장 + 권한 버튼. 3장 넘김(만드는 법 · 사진은 폰에 · 내보내기).</p></div>
+
+    <div class="col"><div class="ph A">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><h3>내 책장</h3><span class="tiny" style="color:#8A7F72">4권 · 사진 173장</span></div>
+      <div class="shelf">
+        <div class="face"><img class="c" src="{{udo}}" alt=""><span class="t">JEJU</span></div>
+        <div class="sp" style="height:132px;background:#2A45AE"><b>부산, 겨울</b><i>25.12</i></div>
+        <div class="sp" style="height:118px;background:#245C3F"><b>강릉</b><i>25.08</i></div>
+        <div class="sp" style="height:140px;background:#B4381C"><b>오사카 4일</b><i>25.04</i></div>
+      </div>
+      <div class="wood"></div>
+      <div class="shelf" style="height:120px">
+        <div class="sp" style="height:104px;background:#7A6A58"><b>엄마 생일</b><i>24.11</i></div>
+        <div class="sp" style="height:96px;border:1.5px dashed #B9A88F;background:transparent;color:#8A7F72;justify-content:center"><b>새 책</b></div>
+      </div>
+      <div class="wood"></div>
+      <p class="tiny" style="padding:14px 20px;color:#8A7F72;margin:0">책등을 누르면 꺼내 펼쳐요 · 길게 누르면 지우기·내보내기</p>
+      <div class="add">+</div>
+    </div><p class="cap">② 홈: 최근 책은 표지가 앞으로, 나머지는 책등. 책등 색 = 그 책 표지 색, 높이 = 쪽수.</p></div>
+
+    <div class="col"><div class="ph A nbx">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="nb">
+        <span class="tiny" style="color:#8A7F72">새 책 1/2</span>
+        <h3>언제 다녀왔어요?</h3>
+        <div class="cal">
+          <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+          <span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+          <span>7</span><span>8</span><span>9</span><span>10</span><span class="dot">11</span><span class="in s dot"><b>12</b></span><span class="in dot">13</span>
+          <span class="in e dot"><b>14</b></span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+        </div>
+        <div class="cnt">6월 12일 – 14일 · 사진 412 · 영상 9</div>
+        <div class="src">
+          <div class="opt sel"><i class="rd"></i><div><b>그 날짜 사진 전부</b><small>갤러리 전체에서 이 기간에 찍은 것</small></div></div>
+          <div class="opt"><i class="rd"></i><div><b>고른 앨범에서만</b><small>이 기간 사진 중 고른 앨범에 든 것만</small>
+            <div class="alb"><span><img src="{{tangerine}}" alt="">제주 여행</span><span><img src="{{d1}}" alt="">카메라</span><span>+ 앨범</span></div></div></div>
+        </div>
+      </div>
+      <div class="btn go" style="background:#2B2621;color:#F3EEE6">다음</div>
+    </div><p class="cap">③ 새 책: 달력에서 처음·끝 두 번 탭(사진 있는 날엔 점). 아래에서 사진 범위를 고르면 숫자가 바로 바뀌어요.</p></div>
+  </div>
+</section>
+
+<!-- ===================== B ===================== -->
+<section class="dir">
+  <h2>B. 표지 진열대</h2>
+  <p class="why">서점 신간대처럼 표지를 앞으로 세워 둡니다. 최근 책은 크게, 나머지는 3열. 사진이 주인공이라 가장 화려해요.</p>
+  <div class="row">
+    <div class="col"><div class="ph B">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="on">
+        <div class="art"><div style="position:relative;width:200px;height:260px">
+          <img class="c" src="{{road}}" alt="" style="position:absolute;inset:20px 0 0 30px;width:170px;height:226px;box-shadow:0 10px 24px rgba(0,0,0,.2);transform:rotate(4deg)">
+          <img class="c" src="{{hyeopjae}}" alt="" style="position:absolute;inset:0 30px 20px 0;width:170px;height:226px;box-shadow:0 10px 24px rgba(0,0,0,.25)">
+          <span style="position:absolute;left:12px;bottom:34px;color:#fff;font:800 34px/0.9 var(--f-num);letter-spacing:-.05em">제주</span>
+        </div></div>
+        <div class="dots"><i class="on1"></i><i></i><i></i></div>
+        <h3>여행 사진첩,<br>날짜만 주면 만들어요</h3>
+        <p>흐린 사진·연사·스크린샷은 빼고, 잘 나온 것만 골라 표지부터 마지막 쪽까지.</p>
+        <div class="btn" style="background:#111;color:#fff">시작하기</div>
+      </div>
+    </div><p class="cap">① 처음: 실제 표지 두 권을 겹쳐 세워 "이런 게 나와요"를 먼저 보여 줌.</p></div>
+
+    <div class="col"><div class="ph B">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><small>MY BOOKS · 4</small><h3>여행 책자</h3></div>
+      <div class="hero"><img class="c" src="{{udo}}" alt=""><span class="m">2026.06.12 — 06.14</span><span class="t">JEJU</span></div>
+      <div class="ledge"></div>
+      <div class="grid">
+        <div><div class="bk"><img class="c" src="{{seongsan}}" alt=""><span>부산, 겨울</span></div><div class="lbl">25.12 · 28쪽</div></div>
+        <div><div class="bk"><img class="c" src="{{oreum}}" alt=""><span>강릉</span></div><div class="lbl">25.08 · 22쪽</div></div>
+        <div><div class="bk"><img class="c" src="{{woljeongri}}" alt=""><span>오사카</span></div><div class="lbl">25.04 · 34쪽</div></div>
+      </div>
+      <div class="btn fab">+ 새 책 만들기</div>
+    </div><p class="cap">② 홈: 맨 위 최근 책 한 권 크게, 아래 3열. 표지 = 그 책의 실제 표지(테마·색 그대로).</p></div>
+
+    <div class="col"><div class="ph B nbx">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="nb">
+        <span class="tiny" style="color:#777">새 책 1/2</span>
+        <h3>여행 날짜</h3>
+        <div class="cal">
+          <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+          <span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+          <span>7</span><span>8</span><span>9</span><span>10</span><span class="dot">11</span><span class="in s dot"><b>12</b></span><span class="in dot">13</span>
+          <span class="in e dot"><b>14</b></span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+        </div>
+        <div class="cnt">사진 412 · 영상 9</div>
+        <div class="src">
+          <div class="opt"><i class="rd"></i><div><b>날짜만</b><small>이 기간 갤러리 사진 전부에서 골라요</small></div></div>
+          <div class="opt sel"><i class="rd"></i><div><b>날짜 + 앨범</b><small>이 기간 사진 중 아래 앨범에 든 것만 · 사진 186</small>
+            <div class="alb"><span><img src="{{tangerine}}" alt="">제주 여행</span><span><img src="{{haenyeo}}" alt="">카카오톡</span><span>+ 앨범</span></div></div></div>
+        </div>
+      </div>
+      <div class="btn go" style="background:#111;color:#fff">다음</div>
+    </div><p class="cap">③ 새 책: "날짜 + 앨범"을 고르면 앨범 칩이 열리고 숫자가 줄어요(412 → 186).</p></div>
+  </div>
+</section>
+
+<!-- ===================== C ===================== -->
+<section class="dir">
+  <h2>C. 연표 책장</h2>
+  <p class="why">한 줄 긴 책장에 날짜순으로 꽂고 해마다 칸을 나눕니다. 어두운 바탕이라 표지 사진이 빛나고, 다닌 곳·장수 같은 숫자를 함께 보여 줘요.</p>
+  <div class="row">
+    <div class="col"><div class="ph C">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="on">
+        <div class="art"><div style="display:flex;gap:8px;align-items:flex-end">
+          <img class="c" src="{{hallasan}}" alt="" style="width:70px;height:100px;opacity:.6">
+          <img class="c" src="{{udo}}" alt="" style="width:110px;height:150px;box-shadow:0 12px 30px rgba(0,0,0,.5)">
+          <img class="c" src="{{tangerine}}" alt="" style="width:70px;height:100px;opacity:.6">
+        </div></div>
+        <div class="dots"><i class="on1"></i><i></i><i></i></div>
+        <h3>다녀온 여행마다<br>한 권씩</h3>
+        <p>날짜를 고르면 그 기간 사진으로 책을 엮어요. 원본은 폰에만 있고, 작은 미리보기만 AI 가 봐요.</p>
+        <div class="btn" style="background:#E9E7E1;color:#14161A">첫 책 만들기</div>
+      </div>
+    </div><p class="cap">① 처음: 책 세 권이 나란히, 가운데 한 권에 불이 들어온 느낌.</p></div>
+
+    <div class="col"><div class="ph C">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="hd"><h3>2026</h3><span class="tiny" style="color:#8C8A84">4권</span></div>
+      <div class="st"><span><b>9</b>곳</span><span><b>173</b>장</span><span><b>11</b>일</span></div>
+      <div class="yr">2026</div>
+      <div class="run">
+        <div class="bk"><img class="c" src="{{udo}}" alt=""><span class="t">제주</span><span class="d">06.12–14</span></div>
+        <div class="bk"><img class="c" src="{{seongsan}}" alt=""><span class="t">부산</span><span class="d">02.03–05</span></div>
+      </div>
+      <div class="yr">2025</div>
+      <div class="run">
+        <div class="bk"><img class="c" src="{{oreum}}" alt=""><span class="t">강릉</span><span class="d">08.15–16</span></div>
+        <div class="bk"><img class="c" src="{{woljeongri}}" alt=""><span class="t">오사카</span><span class="d">04.02–05</span></div>
+      </div>
+      <div class="btn fab">+ 새 책</div>
+    </div><p class="cap">② 홈: 해마다 한 줄. 위에 그해 숫자(곳·장·일). 옆으로 밀면 그해의 다른 책.</p></div>
+
+    <div class="col"><div class="ph C nbx">
+      <div class="sb"><span>9:41</span><span>●●●</span></div>
+      <div class="nb">
+        <span class="tiny" style="color:#8C8A84">새 책 1/2</span>
+        <h3>여행 기간</h3>
+        <div class="cal">
+          <span class="w">일</span><span class="w">월</span><span class="w">화</span><span class="w">수</span><span class="w">목</span><span class="w">금</span><span class="w">토</span>
+          <span></span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span>
+          <span>7</span><span>8</span><span>9</span><span>10</span><span class="dot">11</span><span class="in s dot"><b>12</b></span><span class="in dot">13</span>
+          <span class="in e dot"><b>14</b></span><span>15</span><span>16</span><span>17</span><span>18</span><span>19</span><span>20</span>
+        </div>
+        <div class="cnt">사진 412 · 영상 9</div>
+        <div class="src">
+          <div class="opt sel"><i class="rd"></i><div><b>날짜만</b><small>갤러리 전체</small></div></div>
+          <div class="opt"><i class="rd"></i><div><b>앨범도 고르기</b><small>고른 앨범 안의 이 기간 사진만</small></div></div>
+        </div>
+      </div>
+      <div class="btn go" style="background:#E9E7E1;color:#14161A">다음</div>
+    </div><p class="cap">③ 새 책: 어두운 달력, 두 줄짜리 선택. 앨범을 고르면 다음 화면에서 앨범 목록이 열려요.</p></div>
+  </div>
+</section>
+
+<section class="notes">
+  <h2 style="font-size:17px">정할 것</h2>
+  <ul>
+    <li><b>앨범 옵션의 뜻</b>: 시안은 "이 기간 사진 중 고른 앨범에 든 것만"(범위를 좁힘)으로 그렸어요. 앨범 사진도 원래 갤러리에 들어 있어서 "더하기"로는 달라지는 게 없기 때문이에요. 다른 뜻이면 알려 주세요.</li>
+    <li>구글 포토 공유 앨범처럼 폰에 내려받지 않은 사진은 갤러리에 없어서 못 가져와요.</li>
+  </ul>
+</section>
