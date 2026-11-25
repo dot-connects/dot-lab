@@ -1,8 +1,13 @@
-// The AI's answer is untrusted input: keep only what refers to shots we sent, and fall back to a book
-// without text when the answer is missing or too thin.
+// The AI's answers are untrusted input: keep only what refers to shots we sent, enforce the counts the schema
+// cannot (structured outputs carry no length limits), and fall back to a sharpness-ranked book when an answer
+// is missing or too thin. Two calls: /pick (which photos) and /write (text for the confirmed photos).
 import 'models.dart';
+import 'text_shape.dart';
 
 const themes = ['a', 'b', 'c', 'diary', 'mag', 'album'];
+
+/// Photos and videos one book may carry into /write (its 48-image cap).
+const maxPickPhotos = 44, maxPickVideos = 4, maxBookImages = 48;
 
 String recommendTheme(List<Chapter> ch, {required bool hasDiaryNotes}) {
   if (hasDiaryNotes) return 'diary';
@@ -17,30 +22,55 @@ String recommendTheme(List<Chapter> ch, {required bool hasDiaryNotes}) {
   return avg >= 3 ? 'b' : 'a';
 }
 
-BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a'}) {
+/// Keep at most [maxPickPhotos] photos and [maxPickVideos] videos, dropping the lowest scores first;
+/// must-include ids are never dropped.
+List<Pick> capPicks(List<Pick> picks, Map<String, Candidate> byId, Set<String> must) {
+  final ranked = [...picks]..sort((a, b) {
+      final m = (must.contains(b.id) ? 1 : 0) - (must.contains(a.id) ? 1 : 0);
+      return m != 0 ? m : b.score.compareTo(a.score);
+    });
+  var photos = 0, videos = 0;
+  final keep = <String>{};
+  for (final p in ranked) {
+    final video = byId[p.id]?.shot.isVideo ?? false;
+    if (video ? videos < maxPickVideos : photos < maxPickPhotos) {
+      keep.add(p.id);
+      video ? videos++ : photos++;
+    }
+  }
+  return [for (final p in picks) if (keep.contains(p.id)) p];
+}
+
+BookPlan fallbackPlan(List<Candidate> sent, BookOptions o, {String theme = 'a', Set<String> must = const {}}) {
   final ranked = [...sent]..sort((a, b) => b.sharp.compareTo(a.sharp));
   final n = ranked.length;
+  final picks = [for (var i = 0; i < n; i++) Pick(ranked[i].id, '', n == 1 ? 100 : 100 - (i * 100 ~/ (n - 1)))];
   return BookPlan(
     titles: const ['', '', ''],
     theme: o.theme ?? theme,
-    picks: [for (var i = 0; i < n; i++) Pick(ranked[i].id, '', n == 1 ? 100 : 100 - (i * 100 ~/ (n - 1)))],
+    picks: capPicks(picks, {for (final c in sent) c.id: c}, must),
     aiText: false,
   );
 }
 
-BookPlan checkPlan(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o, {String recommended = 'a'}) {
-  if (ai == null) return fallbackPlan(sent, o, theme: recommended);
+/// /pick answer -> picks (no captions yet), ambiguous pairs, clips, chapter lines, theme.
+BookPlan checkPick(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o,
+    {String recommended = 'a', Set<String> must = const {}}) {
+  if (ai == null) return fallbackPlan(sent, o, theme: recommended, must: must);
   final byId = {for (final c in sent) c.id: c};
   final seen = <String>{};
-  final picks = <Pick>[];
+  var picks = <Pick>[];
   for (final p in (ai['picks'] as List? ?? const [])) {
     if (p is! Map) continue;
-    final id = p['id'], cap = p['caption'], score = p['score'];
+    final id = p['id'], score = p['score'];
     if (id is! String || !byId.containsKey(id) || !seen.add(id)) continue;
-    final text = cap is String && cap.trim().length <= 40 ? cap.trim() : '';
-    picks.add(Pick(id, text, score is num ? score.round().clamp(0, 100) : 50));
+    picks.add(Pick(id, '', score is num ? score.round().clamp(0, 100) : 50));
   }
-  if (picks.length < 5) return fallbackPlan(sent, o, theme: recommended);
+  if (picks.length < 5) return fallbackPlan(sent, o, theme: recommended, must: must);
+  for (final m in must) {
+    if (byId.containsKey(m) && seen.add(m)) picks.add(Pick(m, '', 50));
+  }
+  picks = capPicks(picks, byId, must);
 
   final picked = {for (final p in picks) p.id};
   final ask = <(String, String)>[];
@@ -55,30 +85,59 @@ BookPlan checkPlan(Map<String, dynamic>? ai, List<Candidate> sent, BookOptions o
   for (final c in (ai['clips'] as List? ?? const [])) {
     if (c is! Map) continue;
     final shot = byId[c['id']]?.shot;
-    if (shot == null || !shot.isVideo) continue;
+    if (shot == null || !shot.isVideo || !picked.contains(shot.id) || clips.any((x) => x.id == shot.id)) continue;
     final s = (c['startMs'] as num?)?.toInt() ?? 0, e = (c['endMs'] as num?)?.toInt() ?? 0;
     final ok = s >= 0 && e > s && e <= shot.durationMs && e - s <= 6000;
     clips.add(ok ? Clip(shot.id, s, e) : Clip(shot.id, 0, shot.durationMs < 4000 ? shot.durationMs : 4000));
   }
 
+  final aiTheme = ai['theme'];
+  return BookPlan(
+    titles: const ['', '', ''],
+    theme: o.theme ?? (themes.contains(aiTheme) ? aiTheme as String : recommended),
+    picks: picks,
+    ask: ask,
+    chapterLines: _lines(ai['chapters']),
+    clips: clips,
+    aiText: false,
+  );
+}
+
+Map<String, String> _lines(Object? xs) => {
+      for (final c in (xs as List? ?? const []))
+        if (c is Map && c['day'] is String && c['line'] is String) c['day'] as String: (c['line'] as String).trim(),
+    };
+
+/// The text a /write call produced for one shape.
+class WriteResult {
+  final List<String> titles;
+  final Map<String, String> captions; // pick id -> text
+  final Map<String, String> chapterLines;
+  final String essay;
+  const WriteResult(this.titles, this.captions, this.chapterLines, this.essay);
+  Map<String, dynamic> toJson() => {'titles': titles, 'captions': captions, 'chapterLines': chapterLines, 'essay': essay};
+  factory WriteResult.fromJson(Map<String, dynamic> j) => WriteResult((j['titles'] as List).cast<String>(),
+      (j['captions'] as Map).cast<String, String>(), (j['chapterLines'] as Map).cast<String, String>(), j['essay'] as String);
+}
+
+/// /write answer -> text only for the confirmed photos, each within its shape's length (too long = empty).
+/// Null when the answer is missing (the book stays at "picked" and the app offers [다시 시도]).
+WriteResult? checkWrite(Map<String, dynamic>? ai, List<String> pickedIds, String shape) {
+  if (ai == null) return null;
+  final ids = pickedIds.toSet();
+  final caps = <String, String>{};
+  for (final c in (ai['captions'] as List? ?? const [])) {
+    if (c is! Map) continue;
+    final id = c['id'], text = c['text'];
+    if (id is String && ids.contains(id) && text is String && !caps.containsKey(id)) caps[id] = fitText(text, shape);
+  }
   final titles = [for (final t in (ai['titles'] as List? ?? const [])) if (t is String && t.trim().isNotEmpty) t.trim()].take(3).toList();
   while (titles.length < 3) {
     titles.add('');
   }
-  final aiTheme = ai['theme'];
-  return BookPlan(
-    titles: titles,
-    theme: o.theme ?? (themes.contains(aiTheme) ? aiTheme as String : recommended),
-    picks: picks,
-    ask: ask,
-    chapterLines: {
-      for (final c in (ai['chapters'] as List? ?? const []))
-        if (c is Map && c['day'] is String && c['line'] is String) c['day'] as String: (c['line'] as String).trim(),
-    },
-    essay: ai['essay'] is String ? (ai['essay'] as String).trim() : '',
-    clips: clips,
-    aiText: true,
-  );
+  final lines = _lines(ai['chapters']);
+  if (shape == 'mag') lines.updateAll((_, v) => fitText(v, 'mag'));
+  return WriteResult(titles, caps, lines, ai['essay'] is String ? (ai['essay'] as String).trim() : '');
 }
 
 /// Apply the user's choices between ambiguous pairs. [chosen] is keyed "a|b" with the pair as the AI sent it.
